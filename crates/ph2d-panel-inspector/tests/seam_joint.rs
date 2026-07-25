@@ -49,9 +49,8 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         stiffness: 30.0,
         damping: 0.5,
         max_length: 2.0,
-        // No re-pick target by default — the base fixture is a joint being
-        // tuned, not one being re-bound. The Set-Body sweep supplies its own.
-        rebind_target_name: None,
+        // No pick armed by default — the base fixture is a joint being tuned.
+        pick_armed: 0,
     }
 }
 
@@ -149,43 +148,42 @@ fn delete_joint_is_dispatched() {
     );
 }
 
-/// **The Set-Body buttons dispatch, and ONLY when there is a target.**
+/// **The two body eyedroppers are ALWAYS live and each arms its own slot.**
 ///
-/// Live (a body selected alongside the joint → `rebind_target_name` is `Some`):
-/// both buttons are painted, focusable, and each writes its own slot. Dimmed (no
-/// target → `None`): they register no hit, so a click where they sit does
-/// nothing — a dimmed control that dispatches lies (the §12/§11 rule). The shell
-/// is what supplies the target; here we prove the panel honours the presence.
+/// The redesign's point: with only the joint selected — no other object — both
+/// pickers are painted, focusable, and dispatch `PickBodyA`/`PickBodyB` (the
+/// shell then resolves the body from the next canvas click). A mismatch that
+/// routed both to one slot would pass a one-button check; this exercises each.
 #[test]
-fn the_set_body_buttons_dispatch_only_with_a_target() {
-    let live = InspectorJointInfo {
-        rebind_target_name: Some("Crate".into()),
-        ..joint(0)
-    };
+fn the_body_pickers_arm_their_own_slot() {
     expect(
-        &click_real(live.clone(), ids::INSP_JOINT_SET_A),
-        JointFieldEdit::SetBodyA,
-        "Set Body A",
+        &click_real(joint(0), ids::INSP_JOINT_PICK_A),
+        JointFieldEdit::PickBodyA,
+        "pick Body A",
     );
     expect(
-        &click_real(live, ids::INSP_JOINT_SET_B),
-        JointFieldEdit::SetBodyB,
-        "Set Body B",
+        &click_real(joint(0), ids::INSP_JOINT_PICK_B),
+        JointFieldEdit::PickBodyB,
+        "pick Body B",
     );
+}
 
-    // No target → the buttons are painted dimmed but register NO hit, so they
-    // are absent from the returned hit rects.
-    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
-    let mut state = InspectorState::default();
-    set_current_inspector_joint(Some(joint(0))); // rebind_target_name: None
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    set_current_inspector_joint(None);
-    for id in [ids::INSP_JOINT_SET_A, ids::INSP_JOINT_SET_B] {
-        assert!(
-            !rects.iter().any(|(n, _)| *n == id),
-            "{id:?} was hit-registered with no re-pick target — a dimmed button \
-             that dispatches lies"
-        );
+/// **The eyedroppers show for EVERY kind** — a body has two ends whatever the
+/// constraint is, so the pickers are not gated on kind like the parameter rows.
+#[test]
+fn both_pickers_paint_for_every_kind() {
+    for kind in 0u8..4 {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(joint(kind)));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        for id in [ids::INSP_JOINT_PICK_A, ids::INSP_JOINT_PICK_B] {
+            assert!(
+                rects.iter().any(|(n, _)| *n == id),
+                "kind {kind} did not paint the body picker {id:?}"
+            );
+        }
     }
 }
 

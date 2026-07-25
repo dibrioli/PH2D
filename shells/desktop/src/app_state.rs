@@ -825,6 +825,13 @@ pub(crate) struct App {
     /// arm; o clique seguinte no canvas prende, um clique no vazio desiste. Sair do modo Select (ou
     /// da tool) o limpa. Runtime-only: o pick não é documento — o vínculo que ele cria é.
     pub(crate) vec_path_pick: Option<crate::vec_pick::PathPick>,
+    /// **The armed §12 joint-body eyedropper** (`(joint_bits, slot_b)`): `Some`
+    /// while a Physics-Joint "Body A/B" pick waits for the next canvas click to
+    /// name that end's body. Modal like `vec_path_pick` — the click resolves the
+    /// body under it (`inspector_joint::set_joint_body`) and does not fall to
+    /// selection/gizmo. Runtime-only: the pick is not the document, the binding
+    /// it writes is.
+    pub(crate) joint_body_pick: Option<(u64, bool)>,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

@@ -154,11 +154,11 @@ impl crate::App {
                3. Select the joint -> the 'Physics Joint' section (12) appears. Switch\n     \
                   its Kind (Pin/Spring/Rope/Weld); turn Limits or a Motor on and tune.\n  \
                4. Press B: an amber DOT sits at the pivot -- DRAG it to move the anchor.\n  \
-               5. RE-PICK a body: with the joint still selected, Ctrl-click 'Post'. The\n     \
-                  section grows 'Set Body A: Post' and 'Set Body B: Post' -- click\n     \
-                  'Set Body A'. The joint now hangs from POST instead of Hook, without\n     \
-                  deleting and re-making it. (The buttons are DIMMED until a single body\n     \
-                  is selected alongside the joint.)\n  \
+               5. RE-PICK a body: the section shows 'Body A: Hook' and 'Body B: Plank',\n     \
+                  each with an EYEDROPPER. Click the one next to Body A (it lights up),\n     \
+                  then click 'Post' on the canvas. The joint now hangs from POST instead\n     \
+                  of Hook, without deleting and re-making it -- and no other object had\n     \
+                  to be selected first.\n  \
                6. Play: the plank swings from wherever you left the anchor.\n\
              Ctrl+Z undoes each step; Ctrl+S / Ctrl+O: the joint survives a round trip."
         );

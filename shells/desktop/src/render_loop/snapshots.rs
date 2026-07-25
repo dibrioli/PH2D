@@ -109,6 +109,9 @@ pub(super) fn publish(
     // Which pose channels the §11 Bake selector shows as chosen (the shell's
     // transient `bake_channels`, a global bake option).
     bake_channels_tag: u8,
+    // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
+    // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
+    joint_body_pick: Option<(u64, bool)>,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -726,10 +729,21 @@ pub(super) fn publish(
             bake_channels_tag,
         )
     });
-    let inspector_joint = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_joint::build_joint_info(sim, b, sel));
+    let inspector_joint = hero.gizmo.selection.and_then(|b| {
+        // The eyedropper of the slot with an armed pick FOR THIS joint paints
+        // pressed; 0 otherwise.
+        let pick_armed = match joint_body_pick {
+            Some((j, slot_b)) if j == b => {
+                if slot_b {
+                    2
+                } else {
+                    1
+                }
+            }
+            _ => 0,
+        };
+        super::inspector_joint::build_joint_info(sim, b, pick_armed)
+    });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),

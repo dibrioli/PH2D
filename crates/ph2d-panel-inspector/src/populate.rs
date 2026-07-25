@@ -105,8 +105,8 @@ fn populate_joint(store: &mut WidgetStore) {
         store,
         &[
             ids::INSP_JOINT_REMOVE,
-            ids::INSP_JOINT_SET_A,
-            ids::INSP_JOINT_SET_B,
+            ids::INSP_JOINT_PICK_A,
+            ids::INSP_JOINT_PICK_B,
             ids::INSP_PHYS_JOIN,
         ],
     );

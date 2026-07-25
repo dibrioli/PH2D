@@ -10,7 +10,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
-use ph2d_physics_ecs::{Collider, JointKind, PhysicsJoint, RigidBody};
+use ph2d_physics_ecs::{JointKind, PhysicsJoint};
 
 use super::inspector_ordering::queue_set;
 
@@ -54,32 +54,17 @@ fn name_for(world: &World, id: u64, q: &mut bevy_ecs::query::QueryState<(&Name,)
         .unwrap_or_default()
 }
 
-/// The single OTHER physics body selected alongside `joint` — the target the
-/// §12 "Set Body A/B" buttons re-bind to. `None` unless the selection is
-/// exactly the joint plus one body (a body with a `Collider`, the same
-/// precondition the Join button checks). **One door:** the snapshot asks it to
-/// label and enable the button, and the edit asks it to resolve the click, so
-/// the two halves cannot disagree about which body the button binds.
-pub(crate) fn rebind_target(world: &World, joint: u64, selection: &[u64]) -> Option<Entity> {
-    let mut others = selection.iter().copied().filter(|&b| b != joint);
-    let only = others.next()?;
-    if others.next().is_some() {
-        return None; // more than one other body — ambiguous, offer nothing
-    }
-    let e = Entity::from_bits(only);
-    (world.get::<RigidBody>(e).is_some() && world.get::<Collider>(e).is_some()).then_some(e)
-}
-
 /// Build the §12 snapshot. `None` for anything that is not a joint — unlike
 /// §11, this section has no empty face: there is nothing useful to offer on an
 /// object that is not a joint, and the button that CREATES one lives in §11.
 ///
-/// `selection` is the full inspector selection (the shell owns it); it feeds the
-/// re-pick target through [`rebind_target`], exactly as `can_join` is fed.
+/// `pick_armed` (`0` none / `1` A / `2` B) is the shell's armed-pick state for
+/// THIS joint, mirrored into the snapshot so the painter draws the waiting
+/// eyedropper pressed.
 pub(crate) fn build_joint_info(
     sim: &mut SimWorld,
     entity_bits: u64,
-    selection: &[u64],
+    pick_armed: u8,
 ) -> Option<InspectorJointInfo> {
     let entity = Entity::from_bits(entity_bits);
     let joint = *sim.world().get::<PhysicsJoint>(entity)?;
@@ -87,17 +72,6 @@ pub(crate) fn build_joint_info(
     let world = sim.world();
     let a = name_for(world, joint.body_a, &mut q);
     let b = name_for(world, joint.body_b, &mut q);
-    // The re-pick target's name for the button label + enabled state. A body
-    // with no name yet still counts (it is named on the click); it just shows a
-    // stand-in until then.
-    let rebind_target_name = rebind_target(world, entity_bits, selection).map(|e| {
-        world
-            .get::<Name>(e)
-            .map(|n| n.as_str())
-            .filter(|s| !s.is_empty())
-            .unwrap_or("(body)")
-            .to_string()
-    });
     Some(InspectorJointInfo {
         entity_bits,
         kind_tag: tag_of(joint.kind),
@@ -118,31 +92,39 @@ pub(crate) fn build_joint_info(
         stiffness: joint.stiffness,
         damping: joint.damping,
         max_length: joint.max_length,
-        rebind_target_name,
+        pick_armed,
     })
 }
 
 /// Re-bind slot A (or B, if `slot_b`) of the joint at `joint_bits` to `target`
-/// — the §12 re-pick gesture. The target is NAMED if it lacks one (a joint
-/// refers to bodies by name hash, the same requirement `create_joint` has), then
-/// the hash is written through the SAME clamp + queue as [`apply_joint_edit`].
+/// — the resolve half of the §12 eyedropper pick, called from `input_dispatch`
+/// when the armed pick's next canvas click lands on a body. Returns whether the
+/// bind took (so the caller clears the armed pick only on success).
 ///
-/// The caller resolves `target` from the selection via [`rebind_target`], so a
-/// button that was live could always name a body here.
+/// The target is NAMED if it lacks one (a joint refers to bodies by name hash,
+/// the requirement `create_joint` also has), then the hash is written **in
+/// place** — not through the editor queue like the field edits, because the pick
+/// resolves mid-frame in the pointer handler, and the global diff-based undo
+/// captures a direct write the same as a queued one. The value still goes
+/// through `clamped()`, the one door before the solver.
+///
+/// ⚠️ **Refuses a self-joint.** Picking the body already in the OTHER slot would
+/// name both ends the same body — a joint that can never bind — so it returns
+/// `false` and the pick stays armed for another click, rather than writing a
+/// silently-dormant joint.
+#[must_use]
 pub(crate) fn set_joint_body(
     sim: &mut SimWorld,
     joint_bits: u64,
     slot_b: bool,
     target: Entity,
-    queue: &EditorCommandQueue,
-    registry: &ComponentRegistry,
-) {
+) -> bool {
     let joint_e = Entity::from_bits(joint_bits);
     let Some(&current) = sim.world().get::<PhysicsJoint>(joint_e) else {
-        return;
+        return false;
     };
     let Some(name) = ensure_named(sim, target, "Body") else {
-        return;
+        return false;
     };
     let hash = stable_name_id(&name);
     let mut next = current;
@@ -151,10 +133,16 @@ pub(crate) fn set_joint_body(
     } else {
         next.body_a = hash;
     }
-    let next = next.clamped();
-    if next != current {
-        queue_set(queue, registry, joint_bits, JOINT, &next);
+    if next.body_a == next.body_b {
+        return false; // a self-joint is dormant — keep the pick armed instead
     }
+    let next = next.clamped();
+    if next != current
+        && let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(joint_e)
+    {
+        *j = next;
+    }
+    true
 }
 
 /// Apply one [`JointFieldEdit`].
@@ -191,10 +179,11 @@ pub(crate) fn apply_joint_edit(
         // A rope of zero length is a weld nobody asked for, and rapier's own
         // docs require the distance to be strictly positive.
         JointFieldEdit::MaxLength(v) => next.max_length = v.max(1e-3),
-        // Handled by the caller (`set_joint_body`) — they need the SELECTION,
-        // which this per-joint apply does not have, exactly like `Remove` is
-        // handled where the despawn lives. Listed so the match stays exhaustive.
-        JointFieldEdit::SetBodyA | JointFieldEdit::SetBodyB => return,
+        // The eyedropper ARMS a pick in the action loop (it sets shell state,
+        // not a component), and the pick RESOLVES in `input_dispatch` via
+        // `set_joint_body`. Neither reaches this per-joint apply; listed so the
+        // match stays exhaustive, exactly like `Remove`.
+        JointFieldEdit::PickBodyA | JointFieldEdit::PickBodyB => return,
         JointFieldEdit::Remove => return,
     }
     // Through the SAME clamp the bridge uses on the way to the solver, so the

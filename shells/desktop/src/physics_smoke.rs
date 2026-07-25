@@ -1,36 +1,11 @@
 //! `PH2D_PHYSICS_SMOKE=<n>` — READY-TO-SEE scenes for the global rigid
 //! physics (ADR-0131).
 //!
-//! | `n` | Wave | Scene |
-//! |-----|------|-------|
-//! | `1` | W1   | one **dynamic** sprite dropped above a **static** floor |
-//! | `2` | W1.5 | a **pile** of bodies, for scrubbing the clock backwards |
-//! | `3` | W2a  | plain sprites + a floor, for authoring bodies in the Inspector |
-//! | `4` | W2b  | a world panel scene: bodies of mixed size to feel every knob |
-//! | `5` | W2c  | two groups on DIFFERENT layers, for the collision matrix |
-//! | `6` | W3   | pendulum + chain + ragdoll, for the joints |
-//! | `7` | W4   | a drop to BAKE into timeline curves, then replay without physics |
-//! | `8` | W5   | PARENTED bodies: the collider is where the sprite is, at any depth |
-//! | `9` | W6   | SCALED bodies: uniform circle, non-uniform ELLIPSE, inherited parent scale |
-//! | `10`| W7   | SENSOR (trigger): a ball passes through a sensor zone that lights up |
-//! | `11`| Weld | a bar WELDED to a hook stays rigid; a PINNED bar swings (side by side) |
-//! | `12`| W8   | four bodies, one gravity, four **Gravity Scale**s: fall / weightless / heavy / balloon |
-//! | `13`| Caps | a CAPSULE rides a stair a BOX catches on — the character shape of 2D |
-//! | `14`| W9   | LAUNCHED bodies: initial velocity (arc / spin / rest), arrows shown paused |
-//! | `15`| W-CCD| CONTINUOUS vs discrete: two fast balls at two thin walls, one tunnels one is stopped |
-//! | `16`| W-LockRot| FREEZE ROTATION: two boxes on mirror slopes, the free one tumbles, the locked one stays upright |
-//! | `17`| W-Offset| COLLIDER OFFSET: two characters, one with a foot-offset collider stands, the centred one sinks |
-//! | `18`| W-LockPos| FREEZE POSITION: three launched balls — free arcs, X-locked drops straight, Y-locked glides level |
-//! | `19`| W-Mass| MANUAL MASS: a heavy (30 kg override) ball plows through a row of pins; the same-size light ball stops |
-//! | `20`| W-Dominance| DOMINANCE: a LIGHT high-dominance ball plows through heavy balls; the neutral light one bounces |
-//! | `21`| W-Material| BOUNCE COMBINE: a Max-combine superball bounces high off a DEAD floor; the Average one dies in 2 hops |
-//! | `22`| W-Damping| DRAG: a Linear-damped ball drifts down like a feather; an Angular-damped box winds to a stop |
-//! | `23`| W-OneWay| JUMP-THROUGH: a ball passes UP through a one-way platform then lands on top; the solid one bonks it |
-//! | `24`| W-Area| FORCE ZONE: an updraft holds a light box, hovers a middle one and loses a heavy one; a conveyor carries a crate |
-//! | `25`| W-Contacts| WHERE THEY TOUCH: white crosses on every contact, growing with the LOAD -- a stack, and a ball in a V |
-//! | `26`| W-AreaDrag| WIND vs WATER: the same three boxes into a vacuum, a wind and a pool -- drag is what makes it a liquid |
-//! | `27`| W-Buoyancy| ARQUIMEDES: cortica boia na linha d'agua, pedra afunda, e o barco tombado se ENDIREITA sozinho |
-//! | `28`| W-FormDrag| SECCAO: de proa passa na frente de trave; e o tronco girando para enquanto a bola roda |
+//! The scene index (`n` -> wave -> what you see) is the wave table in
+//! [`docs/Physics/00_plano_waves.md`], the maintained map. It is NOT copied here:
+//! a duplicate only rots — the inline table stopped at 28 while the dispatch grew
+//! to 40 — so the `match` below is the source of truth for which `n` runs what,
+//! and the plan doc is the source of truth for what each shows.
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge

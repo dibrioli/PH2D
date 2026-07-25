@@ -385,13 +385,11 @@ pub struct InspectorJointInfo {
     pub stiffness: f32,
     pub damping: f32,
     pub max_length: f32,
-    /// The NAME of the single OTHER body selected alongside this joint, if
-    /// exactly one is — the target the "Set Body A/B" buttons would re-bind to.
-    /// `None` dims the buttons: re-picking needs a body to point at, and the
-    /// shell owns the selection that supplies it (the same idiom as the Join
-    /// button's `can_join`). Shown ON the button so the artist sees what they
-    /// are about to bind before clicking.
-    pub rebind_target_name: Option<String>,
+    /// Which body slot has an ARMED canvas pick right now: `0` none, `1` A,
+    /// `2` B. The §12 draws that slot's eyedropper pressed (accent) so the
+    /// artist sees the picker is waiting for a click on a body. The shell owns
+    /// the armed state (`App.joint_body_pick`); this mirrors it for the paint.
+    pub pick_armed: u8,
 }
 
 /// A single editable §12 joint field, dispatched as
@@ -413,14 +411,13 @@ pub enum JointFieldEdit {
     Stiffness(f32),
     Damping(f32),
     MaxLength(f32),
-    /// Re-bind slot A to the OTHER selected body (§12 re-pick). Carries no
-    /// operand for the same reason [`PhysicsFieldEdit::Join`] does: the shell
-    /// owns the selection and reads which body from it, so a second copy of
-    /// "which body" would be a second answer to a question only one half can
-    /// give. Offered only when `rebind_target_name` is `Some`.
-    SetBodyA,
-    /// Re-bind slot B — the sibling of [`SetBodyA`](JointFieldEdit::SetBodyA).
-    SetBodyB,
+    /// ARM a canvas pick for slot A (§12 eyedropper): the next click on a body
+    /// re-binds this end. Carries no operand — the shell holds the armed state
+    /// and the body is chosen by the click, with nothing pre-selected.
+    PickBodyA,
+    /// ARM a canvas pick for slot B — the sibling of
+    /// [`PickBodyA`](JointFieldEdit::PickBodyA).
+    PickBodyB,
     /// Delete the joint object.
     Remove,
 }

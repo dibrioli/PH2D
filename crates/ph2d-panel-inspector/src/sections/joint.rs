@@ -70,62 +70,79 @@ pub(crate) fn paint_joint_section(
     let h = ROW_H_PX;
     let label_font = TypeToken::Sm.px();
 
-    // Which two bodies, by name — and whether they are actually there. A joint
-    // whose body was renamed is dormant, and saying so is the difference
-    // between "this is off" and "this is broken".
-    let line = if info.bound {
-        format!("{} \u{2194} {}", info.body_a_name, info.body_b_name)
-    } else {
-        format!(
-            "{} \u{2194} {} \u{00b7} not connected",
-            display_name(&info.body_a_name),
-            display_name(&info.body_b_name)
-        )
-    };
-    paint_text(
-        text_system,
-        scene,
-        &line,
-        x,
-        yy + (h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(
-            if info.bound {
-                ColorToken::Text2
-            } else {
-                ColorToken::Text3
-            },
-            theme,
+    // One row per body END: the label ("Body A"/"Body B"), the CURRENT body's
+    // name, and an eyedropper to re-pick it. Shown for any selected joint — no
+    // other object needs selecting (the redesign's whole point). Clicking the
+    // eyedropper ARMS a canvas pick; the next click on a body re-binds that end.
+    // A body whose name no longer resolves shows "(missing)" dimmed — the
+    // per-end replacement for the old combined "not connected" line, which said
+    // it once for both ends and could not point at WHICH end broke.
+    let icon_w = (h * 0.82).min(w); // compact square button, inset in the row
+    // "Body A" / "Body B" column, wide enough for the label at this font.
+    let label_w = (label_font * 3.6).min(w * 0.4);
+    let gap = Spacing::Sm.px();
+    for (slot_label, name, id, armed) in [
+        (
+            "Body A",
+            &info.body_a_name,
+            ids::INSP_JOINT_PICK_A,
+            info.pick_armed == 1,
         ),
-    );
-    yy += h;
-
-    // Re-pick which body each slot binds. Dimmed until a single OTHER body is
-    // selected alongside the joint — the shell owns that fact
-    // (`rebind_target_name`), the same shell-owned-selection idiom the Join
-    // button uses. When live the button shows the target's name, so the artist
-    // sees what the click will bind before pressing it. Fixes a mis-joined pair
-    // without deleting and re-creating the joint. A Disabled button registers no
-    // hit — a dimmed control that dispatches lies.
-    for (id, slot) in [(ids::INSP_JOINT_SET_A, 'A'), (ids::INSP_JOINT_SET_B, 'B')] {
-        let brect = Rect::new(x, yy, w, h);
-        let label = match &info.rebind_target_name {
-            Some(name) => format!("Set Body {slot}: {name}"),
-            None => format!("Set Body {slot}"),
-        };
-        let state = if info.rebind_target_name.is_some() {
-            store.button_state(id).unwrap_or(ButtonState::Normal)
+        (
+            "Body B",
+            &info.body_b_name,
+            ids::INSP_JOINT_PICK_B,
+            info.pick_armed == 2,
+        ),
+    ] {
+        let text_y = yy + (h - label_font) * 0.5;
+        paint_text(
+            text_system,
+            scene,
+            slot_label,
+            x,
+            text_y,
+            label_font,
+            label_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        let shown = display_name(name);
+        let name_x = x + label_w;
+        let name_w = (w - label_w - icon_w - gap).max(0.0);
+        paint_text(
+            text_system,
+            scene,
+            shown,
+            name_x,
+            text_y,
+            label_font,
+            name_w,
+            resolve(
+                if name.is_empty() {
+                    ColorToken::Text3
+                } else {
+                    ColorToken::Text1
+                },
+                theme,
+            ),
+        );
+        // The eyedropper, right-aligned. Pressed (accent) while its pick is
+        // ARMED, so the artist sees which end is waiting for a body click.
+        let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
+        let state = if armed {
+            ButtonState::Pressed
         } else {
-            ButtonState::Disabled
+            store.button_state(id).unwrap_or(ButtonState::Normal)
         };
-        let btn = Button::new(id, &label)
-            .kind(ButtonKind::Default)
-            .state(state);
-        paint_button(&btn, brect, scene, text_system, theme);
-        if info.rebind_target_name.is_some() {
-            hit_index.register(id, brect);
-        }
+        paint_icon_button(
+            brect,
+            IconGlyph::Builtin(IconId::Eyedropper),
+            IconButtonStyle::Compact,
+            state,
+            scene,
+            theme,
+        );
+        hit_index.register(id, brect);
         yy += h;
     }
 

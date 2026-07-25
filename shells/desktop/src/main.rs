@@ -459,6 +459,7 @@ impl App {
             motion_path_last_click: None,
             vec_patternpath_handle: None,
             vec_path_pick: None,
+            joint_body_pick: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

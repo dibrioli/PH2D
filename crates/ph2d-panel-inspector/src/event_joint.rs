@@ -25,10 +25,10 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::Click(id) => {
             if id == ids::INSP_JOINT_REMOVE {
                 Some(JointFieldEdit::Remove)
-            } else if id == ids::INSP_JOINT_SET_A {
-                Some(JointFieldEdit::SetBodyA)
-            } else if id == ids::INSP_JOINT_SET_B {
-                Some(JointFieldEdit::SetBodyB)
+            } else if id == ids::INSP_JOINT_PICK_A {
+                Some(JointFieldEdit::PickBodyA)
+            } else if id == ids::INSP_JOINT_PICK_B {
+                Some(JointFieldEdit::PickBodyB)
             } else if let Some(i) = ids::INSP_JOINT_KIND.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::Kind(i as u8))
             } else if let Some(i) = ids::INSP_JOINT_LIMITS.iter().position(|&o| o == id) {

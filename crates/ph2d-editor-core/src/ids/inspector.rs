@@ -630,13 +630,13 @@ pub const INSP_JOINT_MAX_LENGTH: NodeId = hash_node_id("insp_joint_max_length");
 /// Delete the joint object.
 pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 
-/// Re-pick which body the joint's slot A / B binds. Offered in §12 when the
-/// joint is primary AND exactly one OTHER body is selected — the same
-/// shell-owned-selection idiom the Join button uses (the click reads the
-/// selection, so the button carries no operand). Fixes a mis-joined pair
-/// without deleting and re-creating the joint.
-pub const INSP_JOINT_SET_A: NodeId = hash_node_id("insp_joint_set_a");
-pub const INSP_JOINT_SET_B: NodeId = hash_node_id("insp_joint_set_b");
+/// The eyedropper next to each of the joint's two body rows (§12). Clicking it
+/// ARMS a canvas pick for that slot; the next click on a body re-binds that end,
+/// with no other object pre-selected (the app's pick idiom — arm, then click the
+/// target, like the colour eyedropper). Fixes a mis-joined pair without deleting
+/// and re-creating the joint.
+pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
+pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 
 /// The creation gesture, and it lives in §11 (Physics Body) rather than here:
 /// a joint does not exist yet when you want to make one, so the button has to

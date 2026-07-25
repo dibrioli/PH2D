@@ -38,7 +38,7 @@ mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
-mod inspector_joint;
+pub(crate) mod inspector_joint;
 /// The §11 Physics Body seam's OTHER half: the Inspector click reached the
 /// ECS and the sprite actually falls (panel-side proof lives in
 /// ).
@@ -1577,6 +1577,9 @@ impl crate::App {
                 },
                 // Which pose channels the Bake selector shows as chosen.
                 self.bake_channels.tag(),
+                // The armed §12 joint-body eyedropper, so the waiting slot's
+                // picker paints pressed.
+                self.joint_body_pick,
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -2562,7 +2565,19 @@ impl crate::App {
                     // §12 Physics Joint. No fan-out either, and for a simpler
                     // reason: the section only ever describes one joint object.
                     EditorAction::InspectorJointEdit { entity_bits, edit } => {
-                        joint_edits.push((entity_bits, edit));
+                        // The eyedropper ARMS a canvas pick (shell state), it is
+                        // not a component edit — handled here where `self` is
+                        // freely mutable, exactly like `Join` sets `join_request`.
+                        // The next canvas click resolves it (`input_dispatch`).
+                        match edit {
+                            ph2d_editor::JointFieldEdit::PickBodyA => {
+                                self.joint_body_pick = Some((entity_bits, false));
+                            }
+                            ph2d_editor::JointFieldEdit::PickBodyB => {
+                                self.joint_body_pick = Some((entity_bits, true));
+                            }
+                            _ => joint_edits.push((entity_bits, edit)),
+                        }
                     }
                     EditorAction::InspectorVisibilitySectionEdit { entity_bits, edit } => {
                         // BulkSelect fan-out, same shape as the sampling edit.
@@ -5305,38 +5320,20 @@ impl crate::App {
             // "Delete Joint" despawns it through the same path any other object
             // takes, and gets the same undo step for free.
             for &(bits, edit) in &joint_edits {
-                match edit {
-                    ph2d_editor::JointFieldEdit::Remove => {
-                        let e = ph2d_ecs::Entity::from_bits(bits);
-                        let _ = sim.world_mut().despawn(e);
-                    }
-                    // Re-pick a body: the target is the one OTHER selected body,
-                    // resolved HERE for the same reason Join is — the shell owns
-                    // the selection, so the button carries no operand and a
-                    // button that was live always has a target (`rebind_target`).
-                    ph2d_editor::JointFieldEdit::SetBodyA
-                    | ph2d_editor::JointFieldEdit::SetBodyB => {
-                        if let Some(target) =
-                            inspector_joint::rebind_target(sim.world(), bits, &inspector_selection)
-                        {
-                            let slot_b = matches!(edit, ph2d_editor::JointFieldEdit::SetBodyB);
-                            inspector_joint::set_joint_body(
-                                sim,
-                                bits,
-                                slot_b,
-                                target,
-                                editor_queue,
-                                component_registry,
-                            );
-                        }
-                    }
-                    _ => inspector_joint::apply_joint_edit(
+                // `PickBodyA/B` never reach here — they arm a canvas pick in the
+                // action loop above (shell state, not a component edit). `Remove`
+                // despawns the joint object; everything else is a field edit.
+                if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
+                    let e = ph2d_ecs::Entity::from_bits(bits);
+                    let _ = sim.world_mut().despawn(e);
+                } else {
+                    inspector_joint::apply_joint_edit(
                         sim,
                         bits,
                         edit,
                         editor_queue,
                         component_registry,
-                    ),
+                    );
                 }
             }
             if let Some((a, b)) = join_request {

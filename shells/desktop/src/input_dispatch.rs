@@ -1989,6 +1989,51 @@ impl App {
         }
     }
 
+    /// **O clique do eyedropper de corpo do joint** (§12): com um pick armado,
+    /// resolve o CORPO sob o cursor e religa aquela ponta do joint. Clique no
+    /// vazio (ou num não-corpo) desiste; clicar o corpo que já está na outra
+    /// ponta é RECUSADO e mantém o pick armado (um self-joint fica dormente,
+    /// `set_joint_body`). Consome o press (o guard já filtrou por
+    /// `joint_body_pick.is_some()`), então nunca cai no picking/gizmo.
+    fn joint_body_pick_click(&mut self, sx: f32, sy: f32) {
+        let Some((joint, slot_b)) = self.joint_body_pick else {
+            return;
+        };
+        self.any_input_this_frame = true;
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let window_size = gfx.surface.size();
+        let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
+        // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a
+        // própria entidade-joint.
+        let target = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos)
+            .into_iter()
+            .find(|&bits| {
+                bits != joint
+                    && gfx
+                        .sim
+                        .world()
+                        .get::<ph2d_physics_ecs::RigidBody>(ph2d_ecs::Entity::from_bits(bits))
+                        .is_some()
+            })
+            .map(ph2d_ecs::Entity::from_bits);
+        match target {
+            Some(t) => {
+                if crate::render_loop::inspector_joint::set_joint_body(
+                    &mut gfx.sim,
+                    joint,
+                    slot_b,
+                    t,
+                ) {
+                    self.joint_body_pick = None; // religado — pronto
+                }
+                // senão: self-joint recusado, segue armado para outro clique
+            }
+            None => self.joint_body_pick = None, // vazio / não-corpo = desiste
+        }
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -2884,6 +2929,19 @@ impl App {
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
         {
             self.vec_path_pick_click(w);
+            return;
+        }
+        // **O eyedropper de corpo do joint** (§12) — mesma classe de pick modal do
+        // acima, mas independente de ferramenta: armado, o próximo Down no canvas
+        // escolhe o corpo sob o cursor e religa aquela ponta. Precede o
+        // picking/gizmo; nenhum outro objeto precisa estar pré-selecionado.
+        if self.joint_body_pick.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+        {
+            self.joint_body_pick_click(evt.x, evt.y);
             return;
         }
         // **A alça do TEXTO EM CAMINHO** (W5), no modo Select — irmã da do conector, mesmo lugar

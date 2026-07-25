@@ -53,6 +53,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
+    ph2d_node_value_noise::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -2804,6 +2805,80 @@ fn drive_kernel_matches_the_cpu_across_channels_modes_and_both_value_lengths() {
             }
         }
     }
+}
+
+/// **`value.noise` on the device — the coherent-noise producer, fBm and all.**
+/// `grid → value.noise → motion.drive(Y) → output`, no CPU seam. The noise's
+/// lattice hash + fade are byte-mirrors of `motion.wiggle` (whose kernel already
+/// has a device parity gate), so what THIS test adds is the piece wiggle never
+/// exercises: the **fBm octave loop** (`octaves = 3`, so three layers sum and
+/// normalize on the GPU) reaching the screen through a value→drive chain.
+///
+/// Non-round params so a unit slip can't hide behind a tidy number; the integer
+/// hash must land bit-exact per lattice cell or the offset diverges by
+/// `O(amplitude)`, far outside ε. `is_fully_gpu` PROVES the chain dispatches — a
+/// silent CPU fallback would compare CPU to CPU and stay green with the kernel
+/// dead.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_noise_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 11.0);
+    let vn = g.add_node("value.noise");
+    g.set_param(vn, "frequency", 0.23);
+    g.set_param(vn, "speed", 0.7);
+    g.set_param(vn, "octaves", 3.0); // the fBm loop wiggle never runs
+    g.set_param(vn, "roughness", 0.55);
+    g.set_param(vn, "amplitude", 1.9);
+    g.set_param(vn, "seed", 4.0);
+    connect(&mut g, grid, vn); // read the grid for its count
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 1.3);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (vn, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("noise into drive's value port");
+
+    // A value producer emits `v`, not P — so the geometry rides `grid → drive`
+    // while `value.noise` feeds drive's value port; the drive node is the sink
+    // (mirrors the `drive_kernel_matches...` chain).
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "value.noise → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.noise → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the noise drove nothing"
+    );
 }
 
 /// `motion.orbit` — swings each element around a pivot by an angle the playhead

@@ -78,7 +78,12 @@ verde, futuro azul) para o app ter UM vocabulário de fantasma, e uma unificaç�
   `extra` do pass de sprite · toggle (flag + env de smoke) · smoke. Gates: equivalência
   `pose_at`==apply · contagem/tint/alfa dos fantasmas · nenhum fantasma no tempo VIVO ·
   off = zero fantasma.
-- **W2:** modo **Keys** (a união das keyframes vizinhas das tracks da entidade).
+- **W2 (LANDOU):** modo **Keys** — `ph2d_timeline::entity_key_times` (a união deduplicada
+  das keyframes da entidade, sem o Time Remap) + `OnionMode{Frames,Keys}`, default **Keys**
+  (pose-a-pose). O onion ghosta as keyframes vizinhas em vez de `t±k`. Gates: caem NAS
+  keys · o fps não move um fantasma de modo Keys (mutação → RED). ⚠️ Sob Time Remap a
+  vizinhança-por-key é aproximada (a inversa `fonte→clip` não é única — a mesma razão do
+  bake recusar instante ambíguo).
 - **W3:** a UI no painel da timeline (modo, contagens, opacidade, cores, escopo) + tokens
   + i18n. Estado de VISTA, **não serializado** (a classe do toggle Physics/Speed graph —
   a resposta a *"o que a tela mostra"* não deve mudar sozinha após um load).

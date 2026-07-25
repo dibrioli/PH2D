@@ -100,6 +100,31 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
     Some(xf)
 }
 
+/// **Os instantes de keyframe de uma entidade**, em segundos, ordenados e sem repetição —
+/// a UNIÃO dos tempos de key de todas as tracks dela (exceto o Time Remap, que é o
+/// relógio, não uma pose). É o que o onion em modo *Keys* ghosta: as poses AUTORADAS
+/// vizinhas, o modelo pose-a-pose do animador.
+///
+/// ⚠️ Tempos da TRACK (tempo-fonte). Sem Time Remap, tempo-fonte == tempo de clip, e o
+/// onion amostra a pose neles diretamente; sob remap a vizinhança-por-key é aproximada
+/// (a inversa `fonte→clip` não é única — a mesma razão pela qual o bake recusa instante
+/// ambíguo). Uma coluna de keys `X`+`Y` no mesmo tempo conta UMA vez.
+#[must_use]
+pub fn entity_key_times(doc: &TimelineDoc, entity: u64) -> Vec<f64> {
+    let clip = doc.active_clip();
+    let mut out: Vec<f64> = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.entity == entity && !b.missing && b.prop != PropKind::TimeRemap)
+        .filter_map(|b| clip.track(b.target))
+        .flat_map(|tr| tr.keys().iter().map(|k| k.t.to_seconds()))
+        .collect();
+    out.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    // Dedup de colunas alinhadas (X e Y keyados no mesmo tempo são UMA pose-fantasma).
+    out.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+    out
+}
+
 /// **Toda entidade que a timeline dirige** (o alvo de um binding vivo com track não-vazia)
 /// — o conjunto que o onion pode ghostar. Ordenado e sem repetição: um objeto com X e Y
 /// keyados aparece UMA vez.

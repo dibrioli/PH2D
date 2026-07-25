@@ -16,7 +16,17 @@
 
 use ph2d_ecs::{GlobalTransform, PresentWorld, SimRef, World};
 use ph2d_render::RenderInstance;
-use ph2d_timeline::{TimelineDoc, animated_entities, pose_at};
+use ph2d_timeline::{TimelineDoc, animated_entities, entity_key_times, pose_at};
+
+/// **O que os fantasmas vizinhos SÃO** (ADR-0142 §4). O onion serve os dois fluxos de um
+/// timeline de keyframes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OnionMode {
+    /// Fantasmas a `t ± k` QUADROS — mostra o espaçamento dos inbetweens (o ritmo).
+    Frames,
+    /// Fantasmas nas KEYFRAMES vizinhas — o pose-a-pose, o modelo do animador. O default.
+    Keys,
+}
 
 /// Piso de opacidade de um fantasma — o mais distante ainda tem de ser visível. Espelha o
 /// `GHOST_MIN_ALPHA` do onion do Flip.
@@ -39,8 +49,11 @@ pub(crate) struct OnionSettings {
     pub color_before: [f32; 3],
     /// A cor de um fantasma do futuro — o azul do Flip.
     pub color_after: [f32; 3],
-    /// Quadros por segundo, para converter `frames_before/after` em tempo de clip.
+    /// Quadros por segundo, para converter `frames_before/after` em tempo de clip
+    /// (modo `Frames`).
     pub fps: f64,
+    /// Fantasmas por QUADRO ou por KEYFRAME (ADR-0142 §4). Default `Keys`.
+    pub mode: OnionMode,
 }
 
 impl Default for OnionSettings {
@@ -54,6 +67,8 @@ impl Default for OnionSettings {
             color_before: [0.145, 0.420, 0.137], // LITERAL-COLOR-OK: onion, espelha o Flip
             color_after: [0.125, 0.082, 0.529],  // LITERAL-COLOR-OK: onion, espelha o Flip
             fps: 24.0,
+            // Pose-a-pose é o modelo do animador num timeline de keyframes (ADR-0142 §4).
+            mode: OnionMode::Keys,
         }
     }
 }
@@ -96,9 +111,61 @@ fn ghost_instance(
     Some(g)
 }
 
+/// Os instantes de clip a ghostar de UM lado, do mais PRÓXIMO ao mais distante do vivo.
+/// `Frames`: `live ± k·dt`. `Keys`: as keyframes vizinhas de `entity` (o pose-a-pose).
+fn ghost_times(
+    settings: &OnionSettings,
+    doc: &TimelineDoc,
+    entity: u64,
+    live_clip_t: f64,
+    past: bool,
+) -> Vec<f64> {
+    let count = if past {
+        settings.frames_before
+    } else {
+        settings.frames_after
+    } as usize;
+    match settings.mode {
+        OnionMode::Frames => {
+            if settings.fps <= 0.0 {
+                return Vec::new();
+            }
+            let dt = 1.0 / settings.fps;
+            (1..=count)
+                .map(|k| {
+                    let off = k as f64 * dt;
+                    if past { live_clip_t - off } else { live_clip_t + off }
+                })
+                .collect()
+        }
+        OnionMode::Keys => {
+            // Um `eps` exclui o próprio instante vivo se ele cair EXATO sobre uma key (o
+            // playhead num keyframe): a pose viva não é um fantasma.
+            let eps = 1e-6;
+            let times = entity_key_times(doc, entity);
+            if past {
+                times
+                    .iter()
+                    .rev()
+                    .filter(|&&t| t < live_clip_t - eps)
+                    .take(count)
+                    .copied()
+                    .collect()
+            } else {
+                times
+                    .iter()
+                    .filter(|&&t| t > live_clip_t + eps)
+                    .take(count)
+                    .copied()
+                    .collect()
+            }
+        }
+    }
+}
+
 /// Constrói TODOS os fantasmas do onion e os acrescenta a `out`. `targets` = as entidades
 /// a ghostar com o `RenderInstance` VIVO de cada uma (os campos de sprite — textura, uv,
-/// tamanho, anchor). No-op quando desligado, sem alvos, ou com `fps` inválido.
+/// tamanho, anchor). No-op quando desligado ou sem alvos.
 pub(crate) fn build_ghosts(
     settings: &OnionSettings,
     sim: &World,
@@ -107,37 +174,22 @@ pub(crate) fn build_ghosts(
     live_clip_t: f64,
     out: &mut Vec<RenderInstance>,
 ) {
-    if !settings.enabled || settings.fps <= 0.0 {
+    if !settings.enabled {
         return;
     }
-    let dt = 1.0 / settings.fps;
     for (entity, template) in targets {
-        for k in 1..=settings.frames_before {
-            let a = ghost_alpha(settings, k, settings.frames_before);
-            let tint = [
-                settings.color_before[0],
-                settings.color_before[1],
-                settings.color_before[2],
-                a,
-            ];
-            if let Some(g) =
-                ghost_instance(sim, doc, *entity, template, live_clip_t - f64::from(k) * dt, tint)
-            {
-                out.push(g);
-            }
-        }
-        for k in 1..=settings.frames_after {
-            let a = ghost_alpha(settings, k, settings.frames_after);
-            let tint = [
-                settings.color_after[0],
-                settings.color_after[1],
-                settings.color_after[2],
-                a,
-            ];
-            if let Some(g) =
-                ghost_instance(sim, doc, *entity, template, live_clip_t + f64::from(k) * dt, tint)
-            {
-                out.push(g);
+        for (past, color) in [(true, settings.color_before), (false, settings.color_after)] {
+            let times = ghost_times(settings, doc, *entity, live_clip_t, past);
+            // O falloff é sobre a contagem DE FATO encontrada (em Keys pode faltar key de
+            // um lado): o mais próximo é o mais forte, o mais distante encontrado o mais
+            // fraco.
+            let n = times.len().max(1) as u32;
+            for (i, &t) in times.iter().enumerate() {
+                let a = ghost_alpha(settings, i as u32 + 1, n);
+                let tint = [color[0], color[1], color[2], a];
+                if let Some(g) = ghost_instance(sim, doc, *entity, template, t, tint) {
+                    out.push(g);
+                }
             }
         }
     }

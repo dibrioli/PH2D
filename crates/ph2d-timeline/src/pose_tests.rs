@@ -136,6 +136,26 @@ fn pose_at_honours_the_clip_duration_cut() {
 }
 
 #[test]
+fn entity_key_times_are_the_deduped_union_across_tracks() {
+    let mut doc = TimelineDoc::new();
+    let e = 9_u64;
+    // X keyado em 0,1,2 ; Y keyado em 1,3 ; TimeRemap em 0,4 (NÃO conta — é o relógio).
+    for (p, t) in [
+        (PropKind::TranslationX, 0.0),
+        (PropKind::TranslationX, 1.0),
+        (PropKind::TranslationX, 2.0),
+        (PropKind::TranslationY, 1.0), // alinhado com o X em t=1 ⇒ UMA pose
+        (PropKind::TranslationY, 3.0),
+        (PropKind::TimeRemap, 0.0),
+        (PropKind::TimeRemap, 4.0),
+    ] {
+        key(&mut doc, e, p, t, 0.0, Interp::Linear);
+    }
+    let times = crate::entity_key_times(&doc, e);
+    assert_eq!(times, vec![0.0, 1.0, 2.0, 3.0], "união deduplicada, sem o Time Remap");
+}
+
+#[test]
 fn animated_entities_lists_each_entity_once() {
     let mut w = World::new();
     let e1 = w.spawn(Transform::from_translation(Vec2::ZERO)).id().to_bits();

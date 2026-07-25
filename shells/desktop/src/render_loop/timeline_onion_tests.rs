@@ -3,7 +3,7 @@
 //! fantasmas, *onde* (a pose de `t±k`, não a viva), *de que cor* (frio atrás, quente à
 //! frente), *quão fortes* (falloff) e *que forma* (silhueta plana).
 
-use super::{GHOST_MIN_ALPHA, OnionSettings, build_ghosts};
+use super::{GHOST_MIN_ALPHA, OnionMode, OnionSettings, build_ghosts};
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Transform, World};
@@ -34,15 +34,29 @@ fn rig() -> (World, u64, TimelineDoc) {
     (w, b, doc)
 }
 
-/// `fps = 4` ⇒ `dt = 0,25 s` ⇒ passos de X de `0,625` bem separados, ligado.
+/// Modo FRAMES, `fps = 4` ⇒ `dt = 0,25 s` ⇒ passos de X de `0,625` bem separados. (O
+/// default é `Keys`; estes gates fixam `Frames` de propósito — é o que eles testam.)
 fn settings() -> OnionSettings {
     OnionSettings {
         enabled: true,
         frames_before: 2,
         frames_after: 2,
         fps: 4.0,
+        mode: OnionMode::Frames,
         ..OnionSettings::default()
     }
+}
+
+/// Um rig com keys em 0,1,2,3,4 s (`x = 2,5·t`) — o modo Keys ghosta as VIZINHAS.
+fn rig_keys() -> (World, u64, TimelineDoc) {
+    let mut w = World::new();
+    let e = w.spawn(Transform::from_translation(Vec2::ZERO)).id();
+    let b = e.to_bits();
+    let mut doc = TimelineDoc::new();
+    for t in [0.0, 1.0, 2.0, 3.0, 4.0] {
+        doc.insert_key(b, PropKind::TranslationX, RationalTime::from_seconds(t), AnimValue::Float((2.5 * t) as f32), Interp::Linear);
+    }
+    (w, b, doc)
 }
 
 #[test]
@@ -154,4 +168,39 @@ fn no_targets_no_ghosts() {
     let mut out = Vec::new();
     build_ghosts(&settings(), &w, &doc, &[], 2.0, &mut out);
     assert!(out.is_empty());
+}
+
+#[test]
+fn keys_mode_ghosts_the_neighboring_keyframes() {
+    // Keys em 0,1,2,3,4; playhead em 2 (sobre um key); antes=2/depois=2 ⇒ fantasmas nas
+    // keys 1 e 0 (passado) e 3 e 4 (futuro) — as poses AUTORADAS vizinhas.
+    let (w, e, doc) = rig_keys();
+    let s = OnionSettings { enabled: true, frames_before: 2, frames_after: 2, mode: OnionMode::Keys, ..OnionSettings::default() };
+    let mut out = Vec::new();
+    build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, &mut out);
+    assert_eq!(out.len(), 4, "duas keys de cada lado do playhead");
+    // As posições X dos fantasmas são as poses NAS keys (2,5·t): 2.5 e 0.0 (passado),
+    // 7.5 e 10.0 (futuro). O live (5.0) NÃO está entre elas.
+    let mut xs: Vec<f32> = out.iter().map(|g| g.world_pos[0]).collect();
+    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_eq!(xs, vec![0.0, 2.5, 7.5, 10.0], "os fantasmas caem NAS keyframes vizinhas");
+    assert!(!xs.contains(&5.0), "a pose viva (uma key) não vira fantasma");
+}
+
+#[test]
+fn keys_mode_ignores_the_frame_grid() {
+    // O CONTROLE do modo Keys: os fantasmas caem nas KEYS, então mudar o fps (a grade de
+    // quadros) não muda onde eles estão. Mutação (Keys usar `live ± k·dt`) ⇒ RED.
+    let (w, e, doc) = rig_keys();
+    let base = OnionSettings { enabled: true, frames_before: 2, frames_after: 2, mode: OnionMode::Keys, ..OnionSettings::default() };
+    let x_of = |fps: f64| -> Vec<f32> {
+        let s = OnionSettings { fps, ..base };
+        let mut out = Vec::new();
+        build_ghosts(&s, &w, &doc, &[(e, template())], 2.0, &mut out);
+        let mut xs: Vec<f32> = out.iter().map(|g| g.world_pos[0]).collect();
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        xs
+    };
+    assert_eq!(x_of(4.0), x_of(60.0), "o fps não pode mover um fantasma de modo Keys");
+    assert_eq!(x_of(4.0), vec![0.0, 2.5, 7.5, 10.0], "e eles estão NAS keys");
 }

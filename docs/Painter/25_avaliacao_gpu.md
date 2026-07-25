@@ -681,3 +681,30 @@ tem de bater byte-a-byte com um recompose cheio da MESMA cena. Mutações que sa
 `apply_mask_overlay_region` → a região do dab perde o tint, `partial != full` (assert de byte).
 
 **Sem schema, sem contrato congelado.** Só a `ph2d-tool-painter` (mask.rs + runtime.rs).
+
+### 13.5 O smoke do Enio: o composite parcial é limpo, o UPLOAD parcial não (no device)
+
+O smoke aprovou o FPS mas reprovou a QUALIDADE: a máscara saiu com **bordas em bloco +
+retângulos translúcidos** (as regiões do upload parcial). Bissecção com o interruptor
+`PH2D_PAINT_FULL_UPLOAD=1` (força `UploadPlan::Full` sem tocar o composite):
+
+- **com upload cheio** → máscara **lisa** e ainda **60 fps** (dispatch ~8 ms: composite
+  parcial ~2 ms + upload cheio ~6 ms, sob os 16,7 ms @ 2048²);
+- **com upload parcial** → os retângulos.
+
+⚠️ **O cache da CPU é byte-idêntico ao recompose cheio** — provado por gate E por uma
+sonda quadro-a-quadro que simula o upload parcial (0/65536 bytes diferem, pincel macio,
+arrasto). Logo o defeito é **só no device** (o `write_texture` de sub-região do overlay
+translúcido), mecanismo ainda não isolado. O `regen_mips` roda dos dois lados a partir do
+nível 0 (correto), então não é mip; o `replace_individual_pixels_region` é o MESMO da
+pintura normal (que é limpa) — o overlay translúcido é que torna a costura visível.
+
+**Decisão (commit `2da916c99`):** a máscara mantém o **composite PARCIAL** (o ganho de
+17 ms → ~2 ms) mas **força upload CHEIO** (`preview_upload_bbox = None` com scratch vivo).
+Byte-idêntico à referência, 60 fps @ 2048². Gate estendido: o drain de máscara reporta
+`bbox=None` (mutação: `Some(bbox)` incondicional → RED).
+
+**Aberto (o "melhores que Procreate"):** (a) isolar a costura do upload parcial no device
+para o caminho rápido ser limpo TAMBÉM — importa a 4096², onde o upload cheio estoura o
+orçamento; (b) a qualidade da borda da máscara em si (a versão lisa é a referência antiga
+e o Enio quer superá-la) — item de qualidade separado, a especificar.

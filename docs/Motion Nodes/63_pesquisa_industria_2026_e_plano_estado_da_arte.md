@@ -23,8 +23,27 @@
 | **D10** | **Presets serializam o grafo inteiro** — o formato textual v2 JÁ é a serialização; falta o browser + pasta de user presets + **exemplo carregável por nó** (o F1 do Houdini instala a cena de exemplo). É onboarding, marketing e teste de regressão de graça. | Stardust Smart Presets · Houdini galleries/examples |
 | **D11** | **O benchmark de UX vira smoke permanente**: o mograph clássico (grid de clones + falloff arrastável + stagger com delay) em **≤5 gestos**, cronometrado como cena de smoke. Cavalry faz em 5; C4D em 2 (auto-wire). Cada wave de UI se mede contra ele. | Cavalry §D · C4D §D |
 | **D12** | **Defaults vivos**: nó recém-criado FAZ algo visível (C4D: effector nasce com P.Y=50; Houdini: scatter nasce com 1000 pts). Auditar os 87 na wave de params: nada nasce inerte, `Enabled=off ⇒ neutro-1` (falloff desligado devolve 1, nunca mata a cena — Cavalry). | C4D · Houdini · Cavalry |
+| **D13** | **PRODUTO FINAL, não MVP — cada nó carrega o conjunto COMPLETO de params que os apps pro expõem para o SEU tipo**, conferido nos `referencia_pesquisa_*.md` (o catálogo, **não a memória**) ANTES de fechar o nó E ao TOCÁ-LO de novo. Subconjunto mínimo = dívida disfarçada de "v1". Caso que forçou a regra: shipei `field.box` **axis-aligned** e os pros TODOS giram — e o catálogo ainda disse **COMO** (per-field + gizmo, nunca nó de transform), corrigindo os dois reflexos de uma vez. Detalhe: §0.1. | Enio 2026-07-24 |
 
 **O que já é nosso e ninguém tem** (o plano AMPLIA, não alcança): deformers/grade espacial/scan/reduce **100% GPU-resident** (nenhum app 2D tem; Cavalry e C4D são CPU) · scrub **bit-exato** GGPO · emitter **stateless** (função pura do playhead — o dos outros re-simula) · véu/marcha/massa + influência (inteligibilidade que nem Houdini pinta) · determinismo cross-OS gateado · LLM co-autora (MCP) no horizonte do design v1.
+
+---
+
+## §0.1 — A regra de processo (D13): revisar os params PRO a cada nó
+
+**Não é o MVP; é o produto final.** Toda task de nó — **nova OU revisão** — abre por:
+1. Abrir o `referencia_pesquisa_*.md` dos apps que têm aquele tipo de nó e **LISTAR** os params que expõem (o catálogo verbatim, não a lembrança).
+2. Implementar o **superset** — ou, se um param for deliberadamente fatorado noutro nó / diferido, **escrever por quê** no doc-comment do nó (senão vira o buraco da rotação: "esqueci" vestido de "v1").
+3. Conferir **Coordinates** (position/**rotation**/scale), o neutro byte-idêntico (D12) e a rota GPU.
+
+**O alvo da família `field.*` — a decomposição, ancorada no catálogo (não em palpite).** Cada *field object* pro tem as abas **Coordinates · Field · Remapping · Color Remap · Direction**, e — verificado nos três dumps (D13) — **C4D, Cavalry E Houdini/MOPs põem o transform (position+rotation+scale) NO campo, com um GIZMO de canvas**, nunca num nó de transform separado (nó-de-transform é idioma TouchDesigner/DAG-geral, **não** mograph). **Enio confirmou per-field + gizmo (2026-07-24).** Então, no nosso idioma de nós:
+- **Coordinates** = params do próprio field: `center_x/y` + **`rotation`** (✓ box; **todo spatial field ganha os dois**) + size. O **gizmo de canvas (D9)** é a UI ergonômica — arrastar a alça mexe NESSES params, e é a resposta ao *"não quero caçar a rotação"*. **PRIORIZADO.**
+- **Field** = os params de forma (Box: width/height/soft; Radial: setor + repetições + ângulos; Linear: comprimento/direção).
+- **Remapping** (Inner Offset/Contour/Min-Max/Clamp/Invert) = o nó **`field.remap`** a jusante — fatorado de propósito (D1: composição por nós, não aba embutida). **Documentar essa fatoração no doc-comment de cada field**, senão parece gap.
+- **Color Remap / Direction** (os 3 canais value/color/direction) = **diferido** (§6.3; v1 = só o canal value/`falloff`).
+- ⚠️ **`index_range` NÃO tem Coordinates** — mascara por **RANK** (`i/(n-1)`), não por posição; rotação/posição não têm sentido num posto. É **categoria** (spatial vs rank/data), **não gap**.
+
+**Estado (2026-07-24):** 3 nós da família landaram — `field.index_range` (rank) · `field.box` (espacial, **com rotation**) · `field.combine` (composer) — todos GPU-resident **bit-exatos** (paridade `0e0` a 25.6k na RTX), smokes `=17/=18/=19`. Próximo, pela D13: o **gizmo dos fields** (D9, priorizado) · `field.radial_sweep` (já nasce com Coordinates) · `field.remap` + `ParamWidget::Curve`.
 
 ---
 
@@ -275,7 +294,7 @@ P0 = diferencial imediato de motion design · P1 = completa a família · P2 = v
 
 ## §7 — O PLANO: waves com tasks
 
-> Ordem recomendada: **W-A → W-B → W-C** (linguagem → campo → forças = os multiplicadores), depois **W-I** (UI do nó — pode intercalar), **W-D/E/F** (eventos/dados/distribuições), **W-G/H** (tempo/áudio), **W-J** (assets). Cada wave fecha com: gate batched + smoke próprio + entrada no handoff. Nada aqui integra sozinho (regra da linha).
+> Ordem recomendada: **W-A → W-B → W-C** (linguagem → campo → forças = os multiplicadores), depois **W-I** (UI do nó — pode intercalar), **W-D/E/F** (eventos/dados/distribuições), **W-G/H** (tempo/áudio), **W-J** (assets). Cada wave fecha com: gate batched + smoke próprio + entrada no handoff. Nada aqui integra sozinho (regra da linha). **E cada TASK de nó ABRE com a revisão de params PRO (D13/§0.1) — produto final, não MVP: o superset do que os apps pro expõem, conferido no catálogo.**
 
 ### W-A — A LINGUAGEM DOS PARAMS (fundação, tudo consome)
 | Task | Entregável | Aceitação |

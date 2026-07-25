@@ -110,6 +110,31 @@ pub(crate) fn world_to_art(object: &Xform, key_pose: Pose) -> Xform {
         .unwrap_or(Xform::IDENTITY)
 }
 
+/// A pose (afim) da chave que está NA TELA agora, para o 1º objeto e a camada ativa
+/// (fallback: o topo) — a MESMA amostragem do render (`pose_at_cycled`, W7.2).
+///
+/// Função livre porque tem DOIS chamadores com borrows diferentes:
+/// `App::flip_active_pose` (o funil da autoria, `&self` inteiro) e o overlay dos
+/// helpers do Gap Closure, que roda com `self.gfx` destruturado e só tem os campos —
+/// duas resoluções de pose divergiriam exatamente onde o helper tem de sentar em cima
+/// do desenho posado.
+#[must_use]
+pub(crate) fn active_pose(
+    flip: &FlipDoc,
+    active_layer: Option<ph2d_flip::LayerId>,
+    playhead: &ph2d_core::Playhead,
+) -> Pose {
+    let Some(obj) = flip.objects().first() else {
+        return Pose::IDENTITY;
+    };
+    let frame = obj.frame_at(playhead);
+    active_layer
+        .filter(|id| obj.layer(*id).is_some())
+        .or_else(|| obj.layers().last().map(|l| l.id))
+        .and_then(|lid| obj.layer(lid))
+        .map_or(Pose::IDENTITY, |l| l.pose_at_cycled(frame))
+}
+
 /// O afim de cada objeto Flip, uma vez por frame. Um objeto na identidade **não
 /// entra no mapa** — o render trata o ausente como identidade e não paga lookup.
 #[must_use]

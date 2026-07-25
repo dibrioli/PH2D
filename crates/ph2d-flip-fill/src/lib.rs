@@ -198,6 +198,28 @@ pub enum FillError {
 
 /// **Preenche** a região que contém `click`, delimitada por `strokes`.
 ///
+/// **Os fechamentos que um clique FARIA** — a porta do overlay do Gap Closure
+/// (doc `06 §8`: os helpers ao vivo nos vãos pendentes).
+///
+/// É o passo 1 do [`fill_at`], que **delega aqui**: uma porta só constrói as fronteiras
+/// e chama o motor, então o helper desenhado na tela e o fechamento que o clique
+/// materializa são, por construção, a mesma lista — duas cópias divergiriam no único
+/// lugar em que ninguém compara números (a tela contra o clique).
+///
+/// `strokes` no formato do `fill_at` (`(pontos, meia-espessura, fechado)`); a espessura
+/// não participa (o Gap Closure trabalha no EIXO, como todo o resto do solver).
+#[must_use]
+pub fn preview_closures(strokes: &[(Vec<Vec2>, Vec<f32>, bool)], gap_reach: f32) -> Vec<Closure> {
+    let bounds: Vec<Boundary<'_>> = strokes
+        .iter()
+        .map(|(p, _, c)| Boundary {
+            points: p,
+            closed: *c,
+        })
+        .collect();
+    gap::closures(&bounds, gap_reach)
+}
+
 /// `strokes` são as polilinhas de fronteira (`(pontos, meia-espessura por ponto,
 /// fechado)`), no espaço do documento. **A espessura NÃO entra no raster** — a parede e
 /// a âncora do resultado são o **EIXO** da polilinha (ver o passo 3, e por quê); ela só
@@ -210,15 +232,10 @@ pub fn fill_at(
     if strokes.is_empty() {
         return Err(FillError::Empty);
     }
-    // 1. Gap Closure: as extensões que fecham os vãos (já cortadas na colisão).
-    let bounds: Vec<Boundary<'_>> = strokes
-        .iter()
-        .map(|(p, _, c)| Boundary {
-            points: p,
-            closed: *c,
-        })
-        .collect();
-    let closures = gap::closures(&bounds, params.gap_reach);
+    // 1. Gap Closure: as extensões que fecham os vãos (já cortadas na colisão) — pela
+    //    MESMA porta que o overlay dos helpers desenha (`preview_closures`): o clique e
+    //    o que o artista viu na tela não podem discordar sobre quais vãos fecham.
+    let closures = preview_closures(strokes, params.gap_reach);
 
     // 2. A grade: bbox de tudo (linhas + clique + fechamentos), com margem.
     let (mut lo, mut hi) = (click, click);

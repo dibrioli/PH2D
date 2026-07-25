@@ -709,6 +709,10 @@ pub(crate) struct App {
     /// (transientes — sementes do corte LazyBrush, não arte). Apply os transforma em
     /// regiões preenchidas; Clear os descarta. Ver `flip_colorize`.
     pub(crate) flip_colorize: crate::flip_colorize::FlipColorize,
+    /// Doc 06 §8: os helpers ao vivo do Gap Closure — os vãos que o alcance atual
+    /// fecha, computados num worker (o custo é 5-339 ms, medido) e desenhados pelo
+    /// overlay em modo Fill. Display-only: nunca toca o documento.
+    pub(crate) flip_gap: crate::flip_gap_live::GapHelpers,
     /// ADR-0114 C2: o botão Apply/Clear do Colorize foi clicado neste frame? O drain de
     /// painel roda com `self.gfx` preso; o gesto real (que precisa de `self` livre) roda no
     /// topo do frame seguinte. Falso fora do clique.

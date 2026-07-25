@@ -2532,6 +2532,31 @@ impl App {
         // (forward to hero).
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
+        // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
+        // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
+        // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
+        // (inspecionar o line-art é load-bearing); o GP toma a roda inteira durante o
+        // fill, e esta é a divergência deliberada, documentada em vez de silenciosa.
+        if !over_panel
+            && (self.modifiers.control_key() || self.modifiers.super_key())
+            && let Some(track) =
+                crate::flip_gap_live::gap_wheel_track(self.flip_active, self.flip_style, dy / 16.0)
+        {
+            if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                // As DUAS metades do que o próprio slider faz num arrasto (ver
+                // `panel-flip/event.rs`): o valor do widget no store (o knob que o
+                // artista vê — sem isto ele pinta o valor velho por cima do novo) e o
+                // `SetValue` pro tool (o valor autorado, clampado pelo MESMO braço).
+                hero.store
+                    .set_slider_value(ph2d_editor::ids::FLIP_GAP, track as f32);
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor::tool::PanelEvent::SetValue(ph2d_editor::ids::FLIP_GAP, track),
+                    ));
+                self.any_input_this_frame = true;
+            }
+            return;
+        }
         if !over_panel && let Some(gfx) = self.gfx.as_mut() {
             // Wheel up (positive dy) zooms IN (smaller height_world).
             let factor = 0.9_f32.powf(dy / 16.0);

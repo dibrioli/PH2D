@@ -746,3 +746,78 @@ fn the_requested_px_door_follows_the_clamp_law() {
         "4 px a 80/doc sao 0,05 doc = 0,1014 px efetivos (saiu {eff})"
     );
 }
+
+/// 🔴 **A porta do overlay É o passo 1 do clique** (doc 06 §8 — os helpers ao vivo).
+///
+/// O fixture é o vão CANÔNICO do BUGS #23 (duas metades colineares da mesma linha, vão
+/// de 1,0): `preview_closures` no alcance exato devolve o par ponta-a-ponta — e a MESMA
+/// lista que o `fill_at` materializa num clique dentro da caixa. Se as duas divergirem,
+/// o artista vê um helper na tela e o clique fecha outro vão.
+///
+/// Mutação que sangra: `preview_closures` escalar o `reach` (p.ex. `reach * 0.5`) — o
+/// helper some no alcance que o clique honra.
+#[test]
+fn the_preview_door_is_the_clicks_own_first_step() {
+    // A caixa do §2.5: paredes que fecham uma célula, com o vão colinear de 1,0 na
+    // parede direita (entre (2,-0.5) e (2,0.5)).
+    let strokes = vec![
+        (
+            vec![Vec2::new(2.0, -2.0), Vec2::new(2.0, -0.5)],
+            vec![0.1; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(2.0, 0.5), Vec2::new(2.0, 2.0)],
+            vec![0.1; 2],
+            false,
+        ),
+        (
+            vec![
+                Vec2::new(2.0, 2.0),
+                Vec2::new(-2.0, 2.0),
+                Vec2::new(-2.0, -2.0),
+                Vec2::new(2.0, -2.0),
+            ],
+            vec![0.1; 4],
+            false,
+        ),
+    ];
+    let preview = preview_closures(&strokes, 1.0);
+    assert!(
+        preview.iter().any(|c| {
+            let (lo, hi) = if c.a.y < c.b.y {
+                (c.a, c.b)
+            } else {
+                (c.b, c.a)
+            };
+            (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3
+        }),
+        "o helper do vao colinear tinha de existir no alcance exato: {preview:?}"
+    );
+    // Abaixo do vão, nenhum helper PARA AQUELE vão (o slider não mente).
+    assert!(
+        !preview_closures(&strokes, 0.9).iter().any(|c| {
+            let (lo, hi) = if c.a.y < c.b.y {
+                (c.a, c.b)
+            } else {
+                (c.b, c.a)
+            };
+            (lo.y - -0.5).abs() < 1e-3 && (hi.y - 0.5).abs() < 1e-3
+        }),
+        "alcance menor que o vao nao pode mostrar helper nele"
+    );
+    // E o clique materializa A MESMA lista — a tela e o clique não podem discordar.
+    let r = fill_at(
+        &strokes,
+        Vec2::new(0.0, 0.0),
+        FillParams {
+            gap_reach: 1.0,
+            ..Default::default()
+        },
+    )
+    .expect("com o vao fechado pelo par, a caixa preenche");
+    assert_eq!(
+        r.closures, preview,
+        "o fill_at tem de materializar exatamente o que o overlay mostrou"
+    );
+}

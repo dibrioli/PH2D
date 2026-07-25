@@ -12,6 +12,10 @@
 //!    põe a cor no PRÓPRIO traço dela. Preencher, ir pro **Sculpt**, selecionar SÓ a
 //!    linha e esculpir: a cor tem de ir junto. (A seleção é o que separa as duas rotas;
 //!    sem ela as duas empatam.)
+//! 4. **O Gap Closure AO VIVO (doc 06 §8).** A caixa de baixo tem um vão DELIBERADO na
+//!    parede de cima (0,2 unidade, fora do alcance da solda — ver o comentário da
+//!    cena). Ctrl+roda sobe o Gap com o slider acompanhando; o helper VERDE aparece
+//!    tapando a boca quando o alcance a atinge, e o clique preenche.
 //!
 //! Roteiro impresso no terminal quando a cena monta.
 
@@ -121,6 +125,42 @@ impl crate::App {
         // ── DIREITA: uma forma fechada SOZINHA (a rota do traço próprio). ──
         dr.strokes.push(hand(&ring(2.6, 0.0, 1.7, 22), 53, true));
 
+        // ── EMBAIXO: a caixa com um VÃO DELIBERADO (doc 06 §8 — o Gap Closure ao vivo).
+        //
+        // Os números são um TRADE medido, não estética: o vão tem de caber entre dois
+        // tetos que apertam em direções opostas. (a) A solda das juntas fecha sozinha
+        // até `meia-largura + meia-largura` — com a tinta padrão do smoke (0,28) isso é
+        // 0,28 de alcance, então a caixa usa tinta FINA (0,12 ⇒ solda ≤ 0,12) para o
+        // vão de 0,2 ficar FORA dela (senão o balde preenche com Gap 0 e o teste morre).
+        // (b) O Gap é em px de TELA com teto 40, e 1 unidade de mundo ≈ 108 px na câmera
+        // default (10 unidades em 1080p): 0,2 unidade ≈ 22 px de Gap — alcançável com
+        // folga, e ainda alcançável depois de o artista afastar a câmera.
+        let thin = |pts: &[Vec2], seed: usize| {
+            let mut s = hand(pts, seed, false);
+            s.widths_mut().fill(0.12);
+            s
+        };
+        dr.strokes.push(thin(
+            &seg(Vec2::new(-1.4, -5.6), Vec2::new(-0.1, -5.6), 12),
+            61,
+        ));
+        dr.strokes.push(thin(
+            &seg(Vec2::new(0.1, -5.6), Vec2::new(1.4, -5.6), 12),
+            67,
+        ));
+        dr.strokes.push(thin(
+            &seg(Vec2::new(-1.4, -5.6), Vec2::new(-1.4, -7.6), 14),
+            71,
+        ));
+        dr.strokes.push(thin(
+            &seg(Vec2::new(1.4, -5.6), Vec2::new(1.4, -7.6), 14),
+            79,
+        ));
+        dr.strokes.push(thin(
+            &seg(Vec2::new(-1.4, -7.6), Vec2::new(1.4, -7.6), 16),
+            83,
+        ));
+
         self.playhead.pause();
         eprintln!(
             "\n[fill-smoke] Pincel MACIO (hardness 0.35) — e ali que a franja vivia.\n\
@@ -131,6 +171,12 @@ impl crate::App {
              3) IDENTIDADE — preencha a forma da DIREITA, va pro Sculpt, selecione SO a\n   \
                 linha dela e esculpa: a cor tem de ir junto. (Sem selecao as duas rotas\n   \
                 empatam; e a selecao que as separa.)\n\
+             4) GAP AO VIVO — a caixa de BAIXO tem um vao deliberado na parede de cima.\n   \
+                Com Gap 0 o clique dentro VAZA (toast). Segure Ctrl e role a RODA sobre\n   \
+                o canvas: o Gap sobe/desce 1 px por tique (o slider acompanha) e, quando\n   \
+                o alcance atinge o vao, um segmento VERDE aparece tapando a boca — o\n   \
+                helper mostra exatamente o que o clique vai selar. Clique dentro:\n   \
+                preenche. (A roda SEM Ctrl segue sendo zoom.)\n\
              \n\
              Grow e Trap em ZERO para ver a rota nova — armados, o balde cai na rota velha\n\
              de proposito (ela sabe deslocar; a nova poe a fronteira no eixo).\n"

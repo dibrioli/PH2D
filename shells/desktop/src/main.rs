@@ -83,6 +83,7 @@ mod flip_fill;
 mod flip_fill_dilate;
 mod flip_fill_smoke;
 mod flip_fill_target;
+mod flip_gap_live;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_multiframe;
@@ -436,6 +437,7 @@ impl App {
             flip_style: None,
             flip_draw: crate::flip_draw::FlipDraw::default(),
             flip_colorize: crate::flip_colorize::FlipColorize::default(),
+            flip_gap: crate::flip_gap_live::GapHelpers::default(),
             pending_flip_colorize_apply: false,
             pending_flip_colorize_clear: false,
             flip_active_layer: None,

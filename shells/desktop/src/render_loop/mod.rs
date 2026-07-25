@@ -29,6 +29,7 @@ pub(crate) mod flip_bridge;
 /// O anel do cursor do pincel do FLIP (ADR-0114 W5, smoke do Enio): o Size é absoluto
 /// em px de tela, então o anel é px de tela — sem conversão de câmera.
 pub(crate) mod flip_cursor;
+mod flip_gap_overlay;
 pub(crate) mod flip_pass;
 mod flip_pass_cache;
 mod flip_pass_ghosts;
@@ -660,6 +661,9 @@ impl crate::App {
         // ADR-0114 C2 (6º smoke): Trap/Bleed em tempo real depois do Apply. Se um dos dois
         // mudou desde a última rodada, re-roda o corte in-place (o "ajustar a última operação").
         self.flip_colorize_live_adjust();
+        // Doc 06 §8: os helpers ao vivo do Gap Closure — mantém o worker sincronizado
+        // com o desenho na tela e o alcance atual (só em modo Fill; no-op fora dele).
+        self.flip_gap_helpers_tick();
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -4282,6 +4286,26 @@ impl crate::App {
                     flip_active && self.flip_strip.tween_correct.is_some(),
                     self.flip_strip.tween_correct.as_ref(),
                     &l2w,
+                    camera,
+                    surface.size(),
+                    vector_scene,
+                );
+
+                // Gap Closure (doc 06 §8): os helpers ao vivo — cada vão que o alcance
+                // atual fecha, desenhado onde o clique vai fechá-lo. Os segmentos vêm do
+                // worker (`flip_gap_live`, coords de ARTE); a pergunta do modo é a MESMA
+                // porta do tick, e a projeção é a MESMA cadeia do render (l2w ∘ pose).
+                flip_gap_overlay::draw(
+                    crate::flip_gap_live::wants_gap_helpers(flip_active, flip_style),
+                    &self.flip_gap.segments,
+                    &l2w,
+                    // A MESMA pose que a autoria dobra (`flip_transform::active_pose`) —
+                    // função livre porque aqui `self.gfx` está destruturado.
+                    crate::flip_transform::active_pose(
+                        flip,
+                        self.flip_active_layer,
+                        &self.playhead,
+                    ),
                     camera,
                     surface.size(),
                     vector_scene,

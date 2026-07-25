@@ -303,21 +303,15 @@ impl crate::App {
     }
 
     /// A pose (afim) da chave que está NA TELA agora — a MESMA que o render dobra
-    /// (`pose_at_cycled`, W7.2).
+    /// (`pose_at_cycled`, W7.2). Delega à função livre `flip_transform::active_pose`
+    /// (o overlay dos helpers do Gap Closure chama a MESMA, com os campos soltos —
+    /// uma 2ª derivação desenharia o helper fora do desenho posado).
     #[must_use]
     fn flip_active_pose(&self) -> ph2d_flip::Pose {
         let Some(gfx) = self.gfx.as_ref() else {
             return ph2d_flip::Pose::IDENTITY;
         };
-        let Some(obj) = gfx.flip.objects().first() else {
-            return ph2d_flip::Pose::IDENTITY;
-        };
-        let frame = obj.frame_at(&self.playhead);
-        self.flip_active_layer
-            .filter(|id| obj.layer(*id).is_some())
-            .or_else(|| obj.layers().last().map(|l| l.id))
-            .and_then(|lid| obj.layer(lid))
-            .map_or(ph2d_flip::Pose::IDENTITY, |l| l.pose_at_cycled(frame))
+        crate::flip_transform::active_pose(&gfx.flip, self.flip_active_layer, &self.playhead)
     }
 
     /// O afim MUNDO→LOCAL(objeto) **sem a pose da chave** — o funil do gesto de MOVER.

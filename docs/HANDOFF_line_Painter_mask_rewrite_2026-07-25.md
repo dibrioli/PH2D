@@ -5,7 +5,7 @@
 > A tarefa deste handoff foi executada. **Não a reconstrua**; leia
 > [`docs/Painter/25_avaliacao_gpu.md` §13.9](Painter/25_avaliacao_gpu.md) (a pesquisa, as medições
 > antes/depois, os trades) e o handoff de integração
-> [`HANDOFF_INTEGRACAO_line_Painter_mask_coverage_2026-07-25.md`](HANDOFF_INTEGRACAO_line_Painter_mask_coverage_2026-07-25.md).
+> [`HANDOFF_INTEGRACAO_line_Painter_2026-07-25.md`](HANDOFF_INTEGRACAO_line_Painter_2026-07-25.md).
 >
 > **O que a §5 abaixo previu bem:** o candidato certo era o **Wash do Krita** — cap/alvo por-traço,
 > aditivo entre traços. **O que ela previu errado, e importa:** *"acumulação por-traço com CAP na

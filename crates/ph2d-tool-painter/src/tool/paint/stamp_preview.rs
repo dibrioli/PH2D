@@ -159,6 +159,7 @@ impl PainterTool {
         }
         self.commit_stroke_height();
         self.end_sculpt_session(); // committed ⇒ the sculpt session dies (the card arms the NEXT stroke)
+        self.end_gate_session(); // …and so does the protection session: this preview IS the canvas now
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape
         // or a freehand stroke. Harmless to the freehand brush, which never sets this flag.

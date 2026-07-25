@@ -17,14 +17,14 @@ pub(super) fn feather(dn: f32) -> f32 {
 }
 
 /// Per-pixel PAINT-GATE weight for the watercolor splats: the product of the two canvas gates the
-/// normal stamp route enforces by snapshot/restore ([`PainterTool::restore_deselected_region`] /
-/// [`PainterTool::restore_protected_region`]) — the **selection** coverage (1 = inside, 0 = outside;
+/// normal stamp route enforces with its free plane ([`PainterTool::stamp_dabs_gated`]) — the
+/// **selection** coverage (1 = inside, 0 = outside;
 /// a feathered edge scales) × the **protection** scratch keep (`mask_value`: 1 = unprotected, 0 =
-/// frozen). The watercolor path can't use snapshot/restore (its canvas write happens later, in
-/// `apply_watercolor`, over a frozen base), so instead the wash never FORMS on gated-out texels:
-/// the coverage / colour / soak splats scale by this weight, the optics read "no paint here"
-/// (`cw = 0`) and the composite leaves the frozen base verbatim — the same end state the restore
-/// path produces. A THIRD gate (`alock`, doc 13 #8) is the **alpha-lock**: the frozen-base RGBA, whose
+/// frozen). The watercolor path can't use the free plane (its canvas write happens later, in
+/// `apply_watercolor`, over a frozen base of its own), so instead the wash never FORMS on gated-out
+/// texels: the coverage / colour / soak splats scale by this weight, the optics read "no paint here"
+/// (`cw = 0`) and the composite leaves the frozen base verbatim — the same end state the projection
+/// produces, and by the same arithmetic (`keep` applied once). A THIRD gate (`alock`, doc 13 #8) is the **alpha-lock**: the frozen-base RGBA, whose
 /// α scales the deposit so the wash forms only into existing paint (0 where transparent) — same family,
 /// same machinery. Callers pass `None` for an inactive gate (all `None` = ungated fast path,
 /// byte-identical to before the gates existed).

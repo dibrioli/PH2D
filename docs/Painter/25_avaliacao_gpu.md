@@ -1043,3 +1043,127 @@ com o preço de cada uma:
 proteção com orla macia + N traços de tinta cruzando — e imprime a tabela acima, incluindo o controle
 (o contorno da máscara). Ela é o red-first da wave: hoje ela MEDE o defeito; depois do fix, a tinta em
 `keep = 0.5` tem de dar **0,5 nas duas colunas**.
+
+## 13.12 A cura: a proteção é aplicada UMA vez por texel — a sessão por-TRAÇO (2026-07-25)
+
+**Ordem do Enio:** *"veja nos commits se já não foi tentado sem sucesso. Muita coisa já foi tentada sem
+sucesso. se é uma abordagem nova então vá"*. Foi conferido antes de escrever uma linha, e a resposta é:
+**a LEI já foi tentada; o ESCOPO dela é novo.**
+
+### 13.12.1 O que já tinha sido tentado, e por que isto não é aquilo
+
+A §13.7 (`38c1f725b`, revertida em `569149dfc`) construiu exatamente `canvas = ref·(1−keep) + free·keep`.
+Ela foi revertida porque o tempo de vida era a **ÉPOCA** — *enquanto a declaração de proteção existir* —,
+o que atravessa traços e atravessa troca de ferramenta: a proteção virava um **TETO cross-stroke** e
+**vazou no brush normal** (o teto capava tinta comum depois de você trocar de tool; §13.8).
+
+| | §13.7 (revertida) | esta wave |
+|---|---|---|
+| vida da sessão | a declaração de proteção | **UM traço** (nasce no 1º batch gateado, morre no fecho) |
+| entre traços | teto (N passadas convergem) | **build-up, como o brush digital** — intocado |
+| sítios de commit a enumerar | **22** (toda edição de keep-source + todo escritor estrangeiro de canvas) | **0** — nada escreve o canvas no meio de um gesto |
+| planos no `ModelSnapshot` | sim (o undo tinha de carregá-los) | **não** — transiente, o undo só derruba a sessão |
+| gêmeo do plano livre no preview | sim (`PreviewPatch::free_pixels`) | **não** — a porta única `restore_region` o repõe |
+| o vazamento que a matou | possível por construção | **impossível por construção** (não há o que vazar) |
+
+⚠️ **O que fez a diferença toda foi perguntar *"por quanto tempo?"*, não *"qual fórmula?"*.** A fórmula
+estava certa desde 25/07 de manhã; o custo dela era o tempo de vida.
+
+### 13.12.2 O desenho
+
+`GateSession { base, free, dirty }` mora no `PainterTool`, **ao lado do `canvas_rgba` e dos três planos de
+relevo** (é um plano canvas-shaped, não um ajuste de pintura — e `paint.rs` está no teto de 700 LOC).
+
+- **`base`** = o canvas como o traço o encontrou. `Arc` clone ⇒ **refcount, não cópia** (o 1º `make_mut`
+  do canvas o forka uma vez, e a sessão fica com o lado pristino).
+- **`free`** = o que a pintura **IRRESTRITA** teria produzido. É trocado para dentro do `canvas_rgba`
+  durante o stamp (o MESMO truque que o sub-brush da máscara usa para o scratch), então **toda rota** —
+  cor, smear, blur, clone, composite — pinta exatamente o que pintaria sem gate nenhum: *o gate não tem
+  voto sobre O QUE é pintado, só sobre o que APARECE*.
+- **`dirty`** = a união do que já foi carimbado no `free`: exatamente onde ele difere do `base`.
+
+Depois do stamp, a região do batch do canvas visível é **re-derivada do zero** como
+`free·keep + base·(1−keep)`, com `keep = proteção × seleção` (as duas portas antigas, rodadas em sequência
+contra um snapshot, compunham **exatamente** esse produto — conferido na álgebra, não assumido).
+
+⚠️ **Um traço de UM batch é byte-idêntico à porta antiga**, e o argumento é uma linha: `base` *é* o canvas
+que o código antigo snapshotava, `free` *é* o que ele carimbava, e o blend é a mesma expressão termo a
+termo. É só do SEGUNDO batch que as duas divergem — que é o bug.
+
+### 13.12.3 A porta única que evita a próxima enumeração
+
+Um método de **re-stamp** (Drag Dot e todo shape editor) devolve o canvas ao pristino e re-carimba a cada
+frame de preview. O plano livre tem de voltar com ele — senão toda posição pela qual o artista ARRASTOU
+fica nele e a projeção segue mostrando um leque de fantasmas.
+
+Isso mora **dentro do `restore_region`**, não nos cinco chamadores dele: uma regra escrita uma vez por
+chamador é uma regra que o sexto chamador nasce sem. (É o argumento do `reset_stroke_height`, uma linha
+acima do primeiro chamador, um plano ao lado.) E o reset abrange o `dirty` **da sessão**, não o `rect` do
+chamador: os dois batem na prática, mas são computados por funções diferentes (`dab_bbox` vs
+`dab_batch_region`), e *"na prática"* é como um resíduo de 1 texel sobrevive para ser reportado como
+rastro fraco.
+
+As mortes da sessão são as MESMAS quatro do sculpt, no mesmo lugar: `paint_begin` (defensivo),
+`close_stroke`, `commit_drag_preview`, `restore_model` (undo).
+
+### 13.12.4 O resultado, medido pela sonda que diagnosticou
+
+`probe_paint_through_the_protection`, a MESMA cena do reporte, a duas taxas de polling:
+
+| lei | tinta em `keep ≈ 0.5`, 4 ev | 60 ev | serra do contorno | contorno médio |
+|---|---|---|---|---|
+| pull-back por BATCH (o bug) | 0,886 | **0,992** | 0,061 → **0,164 px** | andava **4 px** |
+| pull-back contra a base do traço (cura mínima, refutada em §13.11.2) | 0,667 | **0,141** | 0,077 → 0,039 px | — |
+| **plano livre por-traço** (hoje) | **0,800** | **0,800** | **0,082 px** nas duas | **x = 73,36** nas duas |
+
+O controle da própria sonda — a serra do contorno da MÁSCARA — é **0,040 px**, então os 0,082 px são a
+ordem do traçado, não resíduo do gate.
+
+### 13.12.5 O custo, medido e NÃO otimizado (nomeado de propósito)
+
+|  | pen-down | por move |
+|---|---|---|
+| 2048² sem proteção | 3,02 ms | 0,46 ms |
+| 2048² **com** proteção | **7,43 ms** | **1,20 ms** |
+| 4096² sem proteção | 11,26 ms | 0,41 ms |
+| 4096² **com** proteção | **24,53 ms** | **1,13 ms** |
+
+O **move é plano na tela** (1,20 vs 1,13): a projeção é limitada pela PEGADA, e é isso que o gate de perf
+afirma como RAZÃO. O **pen-down é canvas-proporcional e sempre será** — ele aloca e enche um plano livre
+canvas-sized, uma vez por traço. ⚠️ A 4096² isso é um quadro perdido no início de um traço protegido — e
+**já era um antes desta wave** (o snapshot de undo força o próprio fork do canvas), então agora são dois.
+O recurso tem nome: **largura de banda de memória + o zero-fill de uma alocação**.
+
+**Não otimizado aqui, e a receita fica escrita:** semeadura **lazy por TILE** (um bitmap de tiles semeados;
+uma cópia base→free por tile tocado ⇒ custo proporcional à pegada) + **reuso da alocação** entre traços
+(mata o page-fault; preço = um plano canvas-sized residente enquanto o Painter tem documento, que é uma
+pergunta de HR-13 e portanto de ADR-0117). É wave de perf com gates próprios; a wave de CORREÇÃO não
+carrega uma otimização que nenhum smoke pediu.
+
+### 13.12.6 Gates (6 novos) e mutações (4, todas sangram)
+
+| gate | o que pina |
+|---|---|
+| `the_gate_lets_through_exactly_the_keep_it_declares` | **A LEI**: a tinta que passa é `keep × a que teria caído`, medida contra um **run de controle** do gesto idêntico com a orla fora do caminho |
+| `the_protection_is_a_fact_of_the_mask_not_of_the_polling_rate` | **O SINTOMA REPORTADO**: seis passadas a 4 e a 60 eventos pintam a MESMA figura, e o contorno não anda |
+| `repeated_strokes_through_the_feather_build_up_instead_of_converging` | **o guard anti-§13.7**: passar de novo aprofunda, como o brush digital — sequência plana = a sessão vazou |
+| `a_session_is_born_only_under_a_gate_and_dies_with_the_stroke` | presença E ausência, as duas **no meio do traço** (depois do pen-up a resposta é `None` de qualquer jeito) |
+| `a_restamp_preview_leaves_no_ghost_in_the_free_plane` | a porta única do `restore_region` |
+| `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` | razão 1024²/2048² + kill 8 ms |
+
+Mutações: **M1** re-semear por batch (= a porta antiga) ⇒ erro 0,235 / diferença 0,467, mata os 2 primeiros
+· **M2** tirar o `restore_gate_free` ⇒ **960 texels** lembram uma posição arrastada · **M3** a sessão
+sobrevive ao traço ⇒ `[0,678, 0,678, 0,678]`, a sequência plana que É o teto do §13.7, mata 2 · **M4** a
+projeção percorre o plano ⇒ a razão dispara (2,20 vs 4,26 ms).
+
+⚠️ **As duas portas antigas MORRERAM** (`snapshot_region`, `restore_protected_region`,
+`restore_deselected_region`) — código morto e comentário obsoleto MENTEM, e os 5 doc-links que as citavam
+foram reapontados. Zero id, zero token, zero contrato congelado, **nenhum schema** (`PROJECT_SCHEMA` 29):
+a sessão é transiente por construção, e o gate de undo prova isso.
+
+**Aberto:** o custo do pen-down (§13.12.5) · o **endurecimento da borda da máscara** segue aberto e é
+outro eixo (§13.10.4 — as duas leis de acúmulo já foram tentadas) · smear/blur/clone atravessando a
+proteção agora leem o plano LIVRE em vez do display, o que é a semântica de máscara de camada e é
+**mudança de comportamento**: arrastar por cima de uma zona protegida carrega a tinta que o gate esconde.
+O desenho antigo lia o display, mas o que ele lia dependia da taxa de polling, então não era referência
+estável. **O smoke decide.**

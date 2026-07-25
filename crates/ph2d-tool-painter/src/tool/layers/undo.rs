@@ -70,6 +70,11 @@ impl PainterTool {
         // 2026-07-15: "desfez a cor mas restou o relevo"). A gesture cannot be in flight during an
         // undo, so there is never a live envelope this reset could legitimately lose.
         self.reset_stroke_height();
+        // …and the protection session, one plane over and for a stronger reason: its `base` is a canvas
+        // that no longer exists, and a projection against it would blend the restored pixels toward the
+        // undone ones. The canvas is replaced on the very next line, so nothing here could survive as a
+        // valid base — dropping it makes the next gated batch re-seed from the restored truth.
+        self.end_gate_session();
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the

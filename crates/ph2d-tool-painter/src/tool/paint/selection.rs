@@ -4,8 +4,8 @@
 //! The mask is a single-channel coverage buffer (`w*h` bytes, `0` = outside / `255` = inside; Feather
 //! softens the edge), held in [`super::PaintState`]. It is the SELECTION analogue of the Mask brush's
 //! `mask_scratch` (see [`super::mask`]): captured into / restored from the `ModelSnapshot` in lock-step
-//! with the pixels, and applied at stamp time by reverting texels OUTSIDE the selection to their
-//! pre-stamp values ([`Self::restore_deselected_region`], mirror of `restore_protected_region`).
+//! with the pixels, and applied at stamp time as one FACTOR of the paint gate's keep — the product of
+//! selection coverage and protection keep, applied once per texel ([`Self::stamp_dabs_gated`]).
 //!
 //! This file holds the CORE: state accessors, snapshot/restore, the paint gate, and the Feather / Edit-flag
 //! / overlay-opacity view setters. The creation gestures live in [`super::selection_input`], rasterization
@@ -13,7 +13,7 @@
 //! [`super::selection_edit`], the shape-list model in [`super::selection_shapes`], and Wave-5 actions in
 //! [`super::selection_actions`].
 
-use super::{PainterTool, Region};
+use super::PainterTool;
 use std::sync::Arc;
 
 impl PainterTool {
@@ -74,38 +74,6 @@ impl PainterTool {
     /// no selection (paint everywhere) or the buffer is unsized.
     pub(super) fn selection_restricts_paint(&self) -> bool {
         self.paint.selection_active && !self.paint.selection_mask.is_empty()
-    }
-
-    /// Restore the DESELECTED texels of `region` from `before` after a stamp: blend the pre-stamp pixel
-    /// back by `1 - coverage`, so a fully-selected texel (coverage = 1) keeps the fresh paint and an
-    /// unselected one (coverage = 0) reverts entirely. Mirror of [`Self::restore_protected_region`], but
-    /// keyed on the selection coverage instead of the protection mask.
-    pub(super) fn restore_deselected_region(&mut self, region: Region, before: &[u8]) {
-        let (w, _h) = self.source_size;
-        let mask = Arc::clone(&self.paint.selection_mask);
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let n = mask.len().min(buf.len() / 4);
-        for ry in 0..region.h {
-            for rx in 0..region.w {
-                let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
-                if gidx >= n {
-                    continue;
-                }
-                let keep = f32::from(mask[gidx]) / 255.0; // 1 = inside (keep paint), 0 = outside (revert)
-                if keep >= 1.0 {
-                    continue; // fully selected → keep the fresh paint untouched
-                }
-                let b = gidx * 4;
-                let s = ((ry * region.w + rx) * 4) as usize;
-                for c in 0..4 {
-                    let painted = f32::from(buf[b + c]);
-                    let orig = f32::from(before[s + c]);
-                    buf[b + c] = (painted * keep + orig * (1.0 - keep))
-                        .round()
-                        .clamp(0.0, 255.0) as u8;
-                }
-            }
-        }
     }
 
     /// Ensure the selection buffer is sized to the current canvas (`w*h`, zero-filled = nothing selected).

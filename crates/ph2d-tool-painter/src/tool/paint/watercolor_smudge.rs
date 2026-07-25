@@ -28,8 +28,8 @@ impl PainterTool {
         // verbatim wherever the wash doesn't cover — so an ungated smear leaked dragged paint outside
         // the selection / into the protected region. Mirror of the canvas stamp gate
         // (`stamp_dabs`): snapshot the smear footprint of the BASE, smear, then lerp the gated texels
-        // back by `keep` (`splat_keep` — the same weights `restore_deselected_region` /
-        // `restore_protected_region` apply to the canvas). Ungated (the default) ⇒ zero-cost path.
+        // back by `keep` (`splat_keep` — the same weights `project_gate_region` applies to the canvas,
+        // and applied ONCE here too: the base is frozen for the session). Ungated ⇒ zero-cost path.
         // Seamless Tiling (doc 13 #2, follow-up a): the smear must wrap like the coverage/color wash
         // (which tiles via `tiled_dabs`) — otherwise an edge-crossing smear drags paint only on the near
         // edge and the OPPOSITE edge's wash composites over an un-smeared base (a visible smudge seam).

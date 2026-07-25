@@ -30,9 +30,9 @@ impl PainterTool {
 
     /// Stamp a batch of dabs into `canvas_rgba`, gated by the Sculpt-style **protection** mask. While a
     /// mask scratch is live on the active layer (and we're NOT in Mask mode — that edits the scratch), the
-    /// painted region is FROZEN against EVERY paint tool: snapshot the dab footprint, stamp normally, then
-    /// restore the protected texels ([`Self::restore_protected_region`]). Nothing is made invisible — only
-    /// the paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
+    /// painted region is FROZEN against EVERY paint tool: the dabs land in the stroke's FREE plane and what
+    /// shows is `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]). Nothing is made invisible — only the
+    /// paint is gated. Engine-agnostic: it wraps ALL the routes in [`Self::stamp_dabs_routed`].
     pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
@@ -105,22 +105,16 @@ impl PainterTool {
             self.stamp_dabs_routed(dabs);
             return;
         }
-        // Two footprint gates share one snapshot: the Sculpt-style protection mask (freeze painted texels)
-        // and the Selection mask (restrict paint to the selected region, ADR-0103). Snapshot the footprint
-        // once, stamp, then revert whatever each active gate protects.
+        // Two footprint gates share ONE session: the Sculpt-style protection mask (freeze painted texels)
+        // and the Selection mask (restrict paint to the selected region, ADR-0103). The paint accumulates
+        // free of both and the keep factor — their product — is applied once per texel; `stamp_dabs_gated`
+        // owns the whole law and says why a per-batch pull-back could not have it.
         let mask_gate = self.mask_protection_active();
         let sel_gate = self.selection_restricts_paint();
         if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
         {
-            let before = self.snapshot_region(region);
-            self.stamp_dabs_routed(dabs);
-            if mask_gate {
-                self.restore_protected_region(region, &before);
-            }
-            if sel_gate {
-                self.restore_deselected_region(region, &before);
-            }
+            self.stamp_dabs_gated(dabs, region, mask_gate, sel_gate);
             return;
         }
         self.stamp_dabs_routed(dabs);

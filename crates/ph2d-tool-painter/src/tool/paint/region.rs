@@ -44,6 +44,19 @@ impl PainterTool {
     }
 
     /// Write `pixels` (from [`Self::save_region`]) back into `rect` and flag it dirty.
+    ///
+    /// **This is also where a live protection session's FREE plane is put back**, and it belongs here
+    /// rather than at the five call sites for the reason the repo keeps re-learning: a rule spelled out
+    /// once per caller is a rule the sixth caller is born without. Every caller of this function is
+    /// undoing a preview — putting the canvas back to what it was before the last re-stamp — and the free
+    /// plane's "before" is the session base. Leave it un-restored and each preview frame's paint stays in
+    /// `free` forever, so the projection keeps showing a shape the artist already dragged away from: the
+    /// fan of ghosts that `reset_stroke_height` (one line above the first caller) exists to prevent in the
+    /// relief channel, one plane over.
+    ///
+    /// The reset spans the session's OWN recorded rect, not `rect`: the two are the same in practice but
+    /// they are computed by different functions (`dab_bbox` fold vs `dab_batch_region`), and "in practice"
+    /// is how a 1-texel sliver of stale paint survives to be reported as a faint trail.
     pub(super) fn restore_region(&mut self, rect: &Region, pixels: &[u8]) {
         let stride = self.source_size.0 as usize * 4;
         let rw = rect.w as usize * 4;
@@ -53,7 +66,32 @@ impl PainterTool {
             let src = row as usize * rw;
             buf[dst..dst + rw].copy_from_slice(&pixels[src..src + rw]);
         }
+        self.restore_gate_free();
         self.mark_dirty(*rect);
+    }
+
+    /// Put the protection session's free plane back to its base over everything it has stamped, and
+    /// forget that region. No-op without a session (the overwhelmingly common case: one `is_none` test).
+    fn restore_gate_free(&mut self) {
+        let stride = self.source_size.0 as usize * 4;
+        let Some(sess) = self.gate.as_mut() else {
+            return;
+        };
+        let Some(dirty) = sess.dirty.take() else {
+            return;
+        };
+        if sess.base.len() != sess.free.len() {
+            return; // a re-seed is due anyway (the size guard in `stamp_dabs_gated`)
+        }
+        let base = Arc::clone(&sess.base);
+        let free = Arc::make_mut(&mut sess.free);
+        let rw = dirty.w as usize * 4;
+        for row in 0..dirty.h {
+            let at = (dirty.y + row) as usize * stride + dirty.x as usize * 4;
+            if at + rw <= free.len() {
+                free[at..at + rw].copy_from_slice(&base[at..at + rw]);
+            }
+        }
     }
 }
 

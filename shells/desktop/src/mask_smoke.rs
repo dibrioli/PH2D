@@ -1,8 +1,9 @@
-//! `PH2D_MASK_SMOKE` — a ready-to-mask canvas for the **coverage-law rewrite** (doc 25 §13.9).
+//! `PH2D_MASK_SMOKE` — a ready-to-mask canvas for the mask/protection axis (doc 25 §13.10 + **§13.12**).
 //!
-//! The defect this scene exists to judge only appears when you **scrub**: one pass always looked fine,
-//! and that is why it survived so long ("VC não percebe porque dá poucas passadas", Enio). So the
-//! script below asks for the gesture, not for a stroke.
+//! Both defects this scene judges only appear when you **repeat**: one pass always looked fine, and that
+//! is why they survived so long ("VC não percebe porque dá poucas passadas", Enio). So the script below
+//! asks for the GESTURE, not for a stroke — and for the SPEED, because the crackle it now judges was a
+//! fact about the mouse's report rate.
 //!
 //! ```text
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
@@ -16,34 +17,36 @@
 //!
 //! ## The script
 //!
-//! 1. Click the canvas → the **Painter** pill → paint a few ordinary strokes, in a strong colour. This
+//! 1. Click the canvas -> the **Painter** pill -> paint a few ordinary strokes, in a strong colour. This
 //!    is the art the mask will FREEZE, and you need it to see the mask do its job.
 //! 2. Click **MASK** on the left rail. Take the **Size** up (~60) so the edge is big enough to judge,
 //!    and zoom in.
 //! 3. **Scrub.** Hold the pen down and go back and forth over the same curve, ten or twenty times.
-//!    → The edge must stay a soft ramp. It must NOT tighten into a hard, stair-stepped boundary as
-//!    you keep going. (This half is now completely inert: measured, scrubbing four legs in one
-//!    pen-down moves the coverage by **2 levels of 255**, where the old law moved it by **118** and
-//!    collapsed the ramp from 3.53 px to 1.88 px *within that one gesture*.)
-//! 4. Lift, and paint **neighbouring** mask strokes side by side, overlapping.
-//!    → The valleys where they meet must FILL and get darker, never leave a light line between the
-//!    lanes (the seam of the reverted attempt — doc 25 §13.8). A second sweep over the block must
-//!    close what the first left (measured 0.75 → 0.94 → 0.98 at one-radius spacing).
-//! 5. Now the point of the whole thing: switch back to the **Brush** and paint across the masked
-//!    region. The protected art must resist while the paint lands freely around it.
-//! 6. **Ctrl+Z** — one undo per mask stroke, and the next stroke must deposit normally afterwards.
+//!    -> The mask must lay the SAME field the plain brush lays — solid core, no beads along the shoulder,
+//!    no light lines where lanes meet.
+//! 4. **Now the star of this pass** (the crackle report, doc 25 §13.11 -> §13.12): switch back to the
+//!    **Brush**, pick a strong colour, and paint ACROSS the masked region — many strokes, repeatedly,
+//!    over the same place. Change speed: drag slowly, then whip across fast.
+//!    -> The frozen art must resist while the paint lands freely around it, and the boundary where the
+//!    paint dies must be a SMOOTH ramp that looks the same however fast you moved. It must NOT come out
+//!    crackled / stair-stepped, and the paint must not creep further in when you move the mouse slowly.
+//! 5. **Ctrl+Z** — one undo per stroke, and the next stroke must deposit normally afterwards.
 //!
-//! ## What is EXPECTED to differ from the old build (say so, do not "fix" it in the smoke)
+//! ## What is EXPECTED, and must not be "fixed" in the smoke
 //!
-//! - **One pass is SOFTER than it used to be** — it now lays the brush's own feather (6.21 px against
-//!   the analytic 5.40 px at r = 10) instead of a pre-hardened 3.53 px. If you want a crisper mask, that
-//!   is the brush's Hardness / falloff, which is where it belongs.
-//! - **One pass leaves the core at 0.984, not 1.000** (a soft brush's dab centres never land dead on a
-//!   texel centre). The second pass reaches exactly 1.000.
-//! - **Many passes still tighten the ramp, slowly** — as `N^(−1/2)`: 6.21 / 2.10 / 1.94 / 1.55 px at
-//!   1 / 15 / 30 / 45 passes, against the old law's 3.53 / 1.38. The only law that freezes the edge
-//!   outright is the cross-stroke union, and it cannot fill the valley in step 4 — that trade is the
-//!   one Enio already rejected, so this is the honest half of it, not an oversight.
+//! - **Repeated strokes across the feather still BUILD UP** — passing again over a half-protected texel
+//!   deepens it, exactly as the plain digital brush does. That is the law, not a leak: a protection that
+//!   converged instead would be the cross-stroke ceiling that got doc 25 §13.7 reverted.
+//! - **The mask edge still tightens under very many passes** (3.53 px -> 1.38 px at fifteen). That is the
+//!   OTHER defect and it is still open (§13.10.4): both accumulation laws have been tried and each has
+//!   its artifact, so the cure is not the coverage law. Do not judge this pass on it.
+//! - **Smear / Blur / Clone dragged over a protected zone now read the UNRESTRICTED paint** (layer-mask
+//!   semantics) instead of the masked view. The old behaviour read the view, but WHAT it read depended on
+//!   the mouse's report rate, so it was never a stable reference. If this reads wrong, say so — it is a
+//!   product decision, and it is named in §13.12.
+//! - **The first frame of a protected stroke is heavier** (7.4 ms at 2048^2 against 3.0 ungated; 24.5 vs
+//!   11.3 at 4096^2): it allocates the free plane once per stroke. Measured, named, and deliberately not
+//!   optimised in a correctness wave (§13.12.5).
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -86,9 +89,10 @@ pub(crate) fn spawn_if_enabled(
                 "PH2D_MASK_SMOKE: canvas '{label}' staged (1024x1024, opaque white). NOTHING else is \
                  armed — the painter opens in DIGITAL with the shipped default brush.\n\
                  PH2D_MASK_SMOKE: 1) paint some art  2) rail chip MASK, Size ~60, zoom in  \
-                 3) SCRUB one pen-down back and forth 10-20x: the edge must stay a soft ramp  \
-                 4) neighbouring strokes: the valleys must FILL, no light lines  \
-                 5) back to Brush: the masked art must resist  6) Ctrl+Z once per stroke."
+                 3) SCRUB one pen-down back and forth 10-20x: the mask must look like the plain brush  \
+                 4) THE STAR: back to Brush, paint ACROSS the masked zone many times, SLOW then FAST — \
+                 the boundary must be a smooth ramp and must look the SAME at both speeds  \
+                 5) Ctrl+Z once per stroke."
             );
             Some(bits)
         }

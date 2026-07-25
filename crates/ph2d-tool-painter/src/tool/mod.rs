@@ -60,6 +60,33 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
+/// A live **protection session** — the state that lets the mask/selection gate apply its keep factor
+/// exactly **ONCE per texel** instead of once per pointer event (`docs/Painter/25_avaliacao_gpu.md`
+/// §13.12; the paint crossing a feathered protection came out crackled because the old gate lerped
+/// against a per-BATCH snapshot, so the surviving paint was `(1−keep)^N` with `N` = the mouse's polling
+/// rate — a law that was a fact about the sampling, not about the gesture).
+///
+/// Born lazily at the first gated batch of a stroke, dies with the stroke ([`PainterTool::end_gate_session`]).
+///
+/// ⚠️ **Not to be confused with the ÉPOCA of §13.7** (`38c1f725b`, reverted in `569149dfc`): that one
+/// carried the same arithmetic for as long as the protection *declaration* stood — across strokes and
+/// across tool switches — which turned protection into a cross-stroke CEILING and leaked into the plain
+/// brush (the ceiling capped ordinary paint after you changed tools; §13.8). A session that cannot
+/// outlive its stroke cannot leak that way: there is nothing left to leak into.
+pub(crate) struct GateSession {
+    /// The canvas as the stroke found it. An `Arc` clone, so seeding costs a refcount, not a copy (the
+    /// first `make_mut` on the canvas forks it once and the session keeps the pristine side).
+    pub(crate) base: Arc<Vec<u8>>,
+    /// What **unrestricted** painting would have produced. Swapped into `canvas_rgba` for the stamp, so
+    /// every route (colour, smear, blur, clone, composite) paints exactly what it would paint with no
+    /// gate at all — the gate has no say in WHAT is painted, only in what SHOWS.
+    pub(crate) free: Arc<Vec<u8>>,
+    /// The union of the regions stamped into `free` so far: exactly where it deviates from `base`. A
+    /// re-stamp method restores the canvas to pristine every preview frame, and this is what lets the
+    /// free plane be put back with it without assuming the two rects agree ([`PainterTool::restore_region`]).
+    pub(crate) dirty: Option<Region>,
+}
+
 /// Painter — the layers + effects host. Stateful tool.
 ///
 /// `PainterTool` is a state holder: `canvas_rgba` (the active layer's RGBA8
@@ -107,6 +134,11 @@ pub struct PainterTool {
     /// A layer with relief but NO material entry (a document from before this existed) reads as
     /// [`ph2d_painter_brush::material::Material::NEUTRAL`], which is the pass as it shaded then.
     mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+    /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
+    /// [`Self::canvas_rgba`] and the three relief planes rather than in `PaintState` (which holds
+    /// settings and per-stroke bookkeeping). `None` whenever no stroke is painting through a gate,
+    /// which is almost always: an ungated stroke never allocates it and is byte-identical to before.
+    gate: Option<GateSession>,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
@@ -243,6 +275,7 @@ impl Default for PainterTool {
             heights: BTreeMap::new(),
             covers: BTreeMap::new(),
             mats: BTreeMap::new(),
+            gate: None,
             composited: None,
             preview_upload_bbox: None,
             last_drain_branch: DrainBranch::Idle,

@@ -63,6 +63,11 @@ impl PainterTool {
         // finds nothing — but any path that leaves one open (a shape abandoned without Cancel) would
         // otherwise have THIS stroke re-render from a `pre` frozen for a different one.
         self.end_sculpt_session();
+        // The protection session, for the SAME reason and with a sharper consequence: a base frozen for
+        // the previous stroke would make this stroke's gated paint blend toward pixels the artist has
+        // since painted over — and a session that survives one pen-down survives all of them, which is
+        // precisely the cross-stroke ceiling that got §13.7 reverted (`super::mask::end_gate_session`).
+        self.end_gate_session();
         if !wet_session {
             self.paint.stroke_coverage.clear();
             self.paint.stroke_color.clear();
@@ -365,6 +370,9 @@ impl PainterTool {
         // Smear: the knife's warp session is per STROKE (unlike Deform's, which spans them for
         // Reconstruct). The result stays on the canvas and becomes the next stroke's baseline.
         self.end_smear_session();
+        // Protection: same shape, same reason — what the projection left on the canvas IS the result, and
+        // the next stroke's base is whatever it then finds (`super::mask::end_gate_session`).
+        self.end_gate_session();
         self.paint.stroke = None;
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;

@@ -8,9 +8,9 @@
 //! - is edited by the sub-brush (Paint = protect / Erase = unprotect / Blur / Smear) — painting swaps the
 //!   scratch into `canvas_rgba` so the whole stamp pipeline edits it, then swaps back;
 //! - is edited by the whole-canvas **Modifiers** (Expand / Contract / Blur / Sharpen / Invert / Clear);
-//! - PROTECTS the painted region LIVE: every paint op ([`Self::stamp_dabs`]) snapshots the dab footprint,
-//!   stamps normally, then restores the protected texels ([`Self::restore_protected_region`]) so no tool
-//!   can alter them. The layer stays fully visible; [`Self::apply_mask_overlay`] only TINTS the protected
+//! - PROTECTS the painted region LIVE: every paint op ([`Self::stamp_dabs`]) paints into a per-stroke FREE
+//!   plane and shows `lerp(base, free, keep)` ([`Self::stamp_dabs_gated`]), so no tool can alter the
+//!   protected texels. The layer stays fully visible; [`Self::apply_mask_overlay`] only TINTS the protected
 //!   area so you can see it;
 //! - PERSISTS across tool switches (it stays live while its target layer is active, so you protect a
 //!   region in Mask mode, switch to the Brush, and paint freely around the frozen area); it goes dormant
@@ -231,52 +231,124 @@ impl PainterTool {
         })
     }
 
-    /// Snapshot `region`'s RGBA from `canvas_rgba` (region-sized, row-major) before a stamp — the
-    /// pre-paint pixels the protection gate reverts the frozen texels to.
-    pub(super) fn snapshot_region(&self, region: Region) -> Vec<u8> {
-        let (w, _h) = self.source_size;
-        let row = (region.w * 4) as usize;
-        let mut out = vec![0u8; (region.w as usize) * (region.h as usize) * 4];
-        for ry in 0..region.h {
-            let src = (((region.y + ry) * w + region.x) * 4) as usize;
-            let dst = (ry * region.w * 4) as usize;
-            if src + row <= self.canvas_rgba.len() {
-                out[dst..dst + row].copy_from_slice(&self.canvas_rgba[src..src + row]);
-            }
+    /// Stamp a batch of dabs through the protection / selection gates, applying the keep factor
+    /// **ONCE per texel** — the whole point of [`GateSession`], and the fix for Enio's crackled paint
+    /// (doc 25 §13.12).
+    ///
+    /// The paint goes into the session's FREE plane (swapped into `canvas_rgba` for the stamp — the same
+    /// trick the mask sub-brush uses for its scratch, [`Self::stamp_dabs_mask`]), and then the batch's
+    /// region of the visible canvas is re-derived from scratch as `lerp(base, free, keep)`. So the gate
+    /// never *reads back its own output*, which is exactly what made the old snapshot-and-restore door
+    /// compound: it lerped against a per-BATCH snapshot, so the paint surviving `N` pointer events was
+    /// `(1−keep)^N` — measured 0,886 at 4 events/stroke against 0,992 at 60, with the paint's contour
+    /// moving 4 px on nothing but the mouse's report rate.
+    ///
+    /// **A single-batch stroke is byte-identical to that old door**, and the argument is one line: `base`
+    /// *is* the canvas the old code snapshotted, `free` *is* what the old code stamped, and the blend is
+    /// the same expression term for term. It is only from the SECOND batch that the two diverge — which
+    /// is the bug.
+    pub(super) fn stamp_dabs_gated(
+        &mut self,
+        dabs: &[Dab],
+        region: Region,
+        mask_gate: bool,
+        sel_gate: bool,
+    ) {
+        // Seeded LAZILY: a stroke that never crosses a gate never allocates a canvas-sized plane, and
+        // an ungated document is byte-untouched by all of this. The size check is what makes it safe to
+        // hold a plane across a batch boundary — anything that re-sizes the canvas mid-stroke (or writes
+        // it wholesale) re-seeds instead of projecting stale pixels.
+        let n4 = self.canvas_rgba.len();
+        let stale = self
+            .gate
+            .as_ref()
+            .is_none_or(|g| g.base.len() != n4 || g.free.len() != n4);
+        if stale {
+            self.gate = Some(crate::tool::GateSession {
+                base: Arc::clone(&self.canvas_rgba),
+                free: Arc::new(self.canvas_rgba.as_ref().clone()),
+                dirty: None,
+            });
         }
-        out
+        let Some(mut sess) = self.gate.take() else {
+            return; // unreachable (just seeded) — but never stamp ungated by accident
+        };
+        std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
+        self.stamp_dabs_routed(dabs);
+        std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
+        sess.dirty = Some(
+            sess.dirty
+                .map_or(region, |acc| super::union_region(acc, region)),
+        );
+        self.project_gate_region(&sess, region, mask_gate, sel_gate);
+        self.gate = Some(sess);
     }
 
-    /// Restore the PROTECTED texels of `region` from `before` after a stamp: blend the pre-stamp pixel
-    /// back by the protection factor `1 - mask_value(scratch)`, so a fully-painted scratch texel
-    /// (protect = 1) reverts entirely (frozen) and an unpainted one (protect = 0) keeps the fresh paint.
-    /// Nothing is made invisible — only the paint is gated (Blender Sculpt-mask semantics).
-    pub(super) fn restore_protected_region(&mut self, region: Region, before: &[u8]) {
+    /// Re-derive `region` of the VISIBLE canvas from the session: `free·keep + base·(1−keep)`, where
+    /// `keep = protection × selection` (each factor only when its gate is live — the two old restore
+    /// doors, run in sequence against one snapshot, composed to exactly this product).
+    ///
+    /// Nothing is made invisible — only the paint is gated (Blender Sculpt-mask semantics). Writing the
+    /// batch region alone is complete, not an approximation: `base` is frozen, `keep` cannot change while
+    /// a paint stroke is open (editing the scratch means Mask mode, where this gate is off), and `free`
+    /// changed only where this batch stamped.
+    fn project_gate_region(
+        &mut self,
+        sess: &crate::tool::GateSession,
+        region: Region,
+        mask_gate: bool,
+        sel_gate: bool,
+    ) {
         let (w, _h) = self.source_size;
-        let scratch = Arc::clone(&self.paint.mask_scratch_rgba);
+        let scratch = mask_gate.then(|| Arc::clone(&self.paint.mask_scratch_rgba));
+        let sel = sel_gate.then(|| Arc::clone(&self.paint.selection_mask));
+        let base = Arc::clone(&sess.base);
+        let free = Arc::clone(&sess.free);
         let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let n = (scratch.len() / 4).min(buf.len() / 4);
+        let n = buf.len() / 4;
         for ry in 0..region.h {
             for rx in 0..region.w {
                 let gidx = ((region.y + ry) * w + (region.x + rx)) as usize;
                 if gidx >= n {
                     continue;
                 }
-                let keep = crate::compositor::mask_value(&scratch, gidx); // 1 = keep paint, 0 = frozen
-                if keep >= 1.0 {
-                    continue; // unprotected → keep the fresh paint untouched
+                // A texel past the end of a gate's buffer is a texel that gate says nothing about, so it
+                // keeps the fresh paint — the same stance the old `n = min(len)` clamp took.
+                let mut keep = 1.0_f32;
+                if let Some(s) = &scratch
+                    && gidx < s.len() / 4
+                {
+                    keep *= crate::compositor::mask_value(s, gidx); // 1 = keep paint, 0 = frozen
+                }
+                if let Some(m) = &sel
+                    && gidx < m.len()
+                {
+                    keep *= f32::from(m[gidx]) / 255.0; // 1 = inside, 0 = outside
                 }
                 let b = gidx * 4;
-                let s = ((ry * region.w + rx) * 4) as usize;
+                if keep >= 1.0 {
+                    buf[b..b + 4].copy_from_slice(&free[b..b + 4]); // ungated → the free paint IS the display
+                    continue;
+                }
                 for c in 0..4 {
-                    let painted = f32::from(buf[b + c]);
-                    let orig = f32::from(before[s + c]);
+                    let painted = f32::from(free[b + c]);
+                    let orig = f32::from(base[b + c]);
                     buf[b + c] = (painted * keep + orig * (1.0 - keep))
                         .round()
                         .clamp(0.0, 255.0) as u8;
                 }
             }
         }
+    }
+
+    /// End the protection session — the stroke is over (pen-up close, shape Apply, a new pen-down, an
+    /// undo restore). The next gated batch re-seeds from whatever the canvas then holds, which is the
+    /// only base a new stroke could honestly have.
+    ///
+    /// ⚠️ This is the ONLY thing standing between a per-stroke session and the reverted époque of §13.7:
+    /// call it late and protection silently becomes a cross-stroke ceiling that caps the plain brush.
+    pub(crate) fn end_gate_session(&mut self) {
+        self.gate = None;
     }
 
     /// Apply a whole-canvas Modifier (Expand / Contract / Blur / Sharpen / Invert / Clear) to the scratch
@@ -429,6 +501,9 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
 #[cfg(test)]
 #[path = "mask_probe.rs"]
 mod mask_probe;
+#[cfg(test)]
+#[path = "mask_probe_gate.rs"]
+mod mask_probe_gate;
 #[cfg(test)]
 #[path = "mask_tests.rs"]
 mod mask_tests;

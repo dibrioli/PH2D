@@ -126,7 +126,7 @@ fn contour_ripple(cov: &[f32], size: u32, y0: u32, y1: u32) -> (f32, f32) {
 }
 
 /// Dump `cov` as an 8-bit gray raster next to a line in the index file, for `magick`+eyes.
-fn dump(name: &str, cov: &[f32], size: u32) {
+pub(super) fn dump(name: &str, cov: &[f32], size: u32) {
     let Ok(dir) = std::env::var("PH2D_MASK_PROBE_DIR") else {
         return;
     };
@@ -659,107 +659,4 @@ fn probe_mask_where_the_modulation_lives() {
         "PICO: x={} com {:.1} níveis (cobertura ali = {:.3})",
         worst.0, worst.1, worst.2
     );
-}
-
-/// **PROBE 12 — o reporte de 2026-07-25 (2ª rodada): a TINTA atravessando a proteção sai CRAQUELADA.**
-///
-/// ## O que ela já mediu (não re-derive; doc 25 §13.11)
-///
-/// | referência do pull-back | tinta onde `keep = 0.5`, 4 ev/traço | 60 ev/traço | serra do contorno |
-/// |---|---|---|---|
-/// | o snapshot do BATCH (o que ship a) | 0,886 | **0,992** | 0,061 → 0,164 px |
-/// | a base do TRAÇO (`stroke_undo.canvas_rgba`) | 0,667 | **0,141** | 0,077 → 0,039 px |
-///
-/// A máscara manda passar METADE e o produto entrega 89 % ou 99 % (ou 67 % ou 14 %) **dependendo da taxa
-/// de polling do mouse**. As duas referências erram, em direções opostas, e as duas dependem do nº de
-/// batches: puxar de volta uma vez por batch é a doença, não a referência escolhida. A cura mínima foi
-/// implementada, medida e **refutada** por esta sonda — a lei certa é `final = lerp(base, tinta_LIVRE,
-/// keep)`, aplicada UMA vez, e isso exige separar a tinta livre do que se mostra (§13.11.3).
-///
-/// A máscara em si está lisa (a §13.10 fechou isso); o que craquela é a BORDA DA TINTA dentro da zona de
-/// alpha PARCIAL da máscara, *"quando muitas pinceladas são dadas repetidamente"* (Enio, com a foto).
-///
-/// A pergunta que ela responde: o artefato depende do número de EVENTOS de ponteiro — isto é, de quantos
-/// BATCHES cruzaram o texel? Se sim, a causa é o `restore_protected_region` compondo o `keep` uma vez por
-/// batch (`(1−keep)^N`), e não a máscara nem o pincel.
-#[test]
-#[ignore]
-fn probe_paint_through_the_protection() {
-    const SZ: u32 = 256;
-    for (label, events, strokes) in [("poucos-eventos", 4u32, 8u32), ("muitos-eventos", 60, 8)] {
-        // Canvas BRANCO (o `mask_tool` pinta uma arte avermelhada, e aqui a TINTA é que tem de
-        // destacar-se do fundo — com o fundo já vermelho não há contorno a medir; a 1ª versão desta
-        // sonda mediu n=0 amostras por isso).
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (SZ * SZ * 4) as usize], SZ, SZ);
-        t.handle_panel_event(PanelEvent::SelectOption(
-            ph2d_editor_core::ids::PAINTER_PAINT_MODE,
-            "mask".to_string(),
-        ));
-        t.set_brush_size_px(40.0);
-        // 1) A proteção: um traço de máscara VERTICAL, com a orla macia atravessando o meio.
-        vstroke(&mut t, 100.0, 40.0, 220.0, 30);
-        let prot = coverage(&t, SZ);
-        // 2) A tinta: N traços HORIZONTAIS de vermelho cruzando a zona protegida.
-        t.set_paint_tool_mode("brush");
-        t.set_brush_color_srgb8([0, 0, 0]); // tinta PRETA sobre branco: a cobertura é `1 − luma`
-        t.set_brush_size_px(18.0);
-        for k in 0..strokes {
-            let y = 70.0 + k as f32 * 12.0;
-            t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
-            for i in 1..=events {
-                let x = 40.0 + 170.0 * (i as f32) / (events as f32);
-                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
-            }
-            t.on_canvas_pointer(cp([210.0, y], PointerPhase::Up));
-            let _ = t.take_preview_arc();
-        }
-        // 3) Onde a tinta morre dentro da zona de alpha parcial. Numa proteção lisa, liso.
-        let red: Vec<f32> = (0..(SZ as usize * SZ as usize))
-            .map(|i| 1.0 - f32::from(t.canvas_rgba[i * 4]) / 255.0)
-            .collect();
-        let xs: Vec<f32> = (70..160)
-            .filter_map(|y| cross_x(&red, SZ, y, 0.5))
-            .collect();
-        let saw = if xs.len() > 3 {
-            xs.windows(3)
-                .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())
-                .sum::<f32>()
-                / (xs.len() - 2) as f32
-        } else {
-            f32::NAN
-        };
-        let (mn, mx) = (
-            xs.iter().copied().fold(f32::MAX, f32::min),
-            xs.iter().copied().fold(f32::MIN, f32::max),
-        );
-        let pxs: Vec<f32> = (70..160)
-            .filter_map(|y| cross_x(&prot, SZ, y, 0.5))
-            .collect();
-        let psaw = pxs
-            .windows(3)
-            .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())
-            .sum::<f32>()
-            / (pxs.len().max(3) - 2) as f32;
-        // O DEGRAU de verdade: o maior salto de linha para linha do contorno (é isso que lê como
-        // craquelado), e a POSIÇÃO média do contorno — se ela anda com o nº de eventos, a força da
-        // proteção depende da taxa de polling, que é a doença que esta linha já curou 4× no relevo.
-        let step = xs
-            .windows(2)
-            .map(|w| (w[1] - w[0]).abs())
-            .fold(0.0_f32, f32::max);
-        let mean = xs.iter().sum::<f32>() / xs.len() as f32;
-        // E quanta tinta sobrevive exactamente onde a proteção é meia (o texel que decide tudo).
-        let half_x = (100..160)
-            .find(|&x| prot[130 * SZ as usize + x] < 0.5)
-            .unwrap_or(0);
-        println!(
-            "{label:15} ({events:2} ev/traço): TINTA serra {saw:.3} px, DEGRAU máx {step:.2} px, \
-             contorno médio x={mean:.2} (p2p {:.2}) | MÁSCARA (controle) serra {psaw:.3} px | \
-             tinta em keep≈0.5 (x={half_x}): {:.3}",
-            mx - mn,
-            red[130 * SZ as usize + half_x]
-        );
-        dump(&format!("through_{label}"), &red, SZ);
-    }
 }

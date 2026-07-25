@@ -54,15 +54,35 @@ pub type EdgeBows = [[f64; 2]; 4];
 /// é 14% de curso, invisível na tela, e o ganho é uma garantia que não depende da tabela.
 pub const AMP: f64 = 0.30;
 
-/// A gaiola do preset no quadrado unitário: os cantos (sempre os do quadrado — **um preset não move
-/// canto**) e os lados envergados por `bows · bend`.
+/// Amplitude máxima do SHEAR (deslocamento de canto), em fração do lado do quadrado unitário.
+///
+/// Ao contrário das barrigas (cujo teto [`AMP`] existe para nunca dobrar), um shear puro leva o
+/// quadrado a um **paralelogramo**, que é convexo para QUALQUER deslocamento — então este teto é de
+/// GOSTO (um "Rise" que inclina meia largura), não de segurança. `0.5` = a quina de cima anda meio
+/// lado; forte o bastante para ler como inclinação, longe de qualquer degeneração.
+pub const AMP_SHEAR: f64 = 0.5;
+
+/// A gaiola do preset no quadrado unitário: os cantos (movidos por `shift · bend · AMP_SHEAR` — o
+/// **shear** do Rise) e os lados envergados por `bows · bend`.
+///
+/// ⚠️ **`bows` e `shift` são MUTUAMENTE EXCLUSIVOS nos estilos de hoje** (só o Rise cisalha, e ele
+/// não enverga lado nenhum): a garantia de não-dobra das barrigas vale para os cantos do quadrado, e
+/// o shear puro é sempre convexo. Combinar os dois num estilo futuro exige re-verificar a não-dobra
+/// sobre os cantos deslocados — hoje o caso não ocorre.
 ///
 /// `bend ∈ [-1, 1]`; fora disso é clampado, porque a garantia de não-dobra é sobre essa faixa e um
 /// chamador distraído não deve poder comprá-la de volta.
 #[must_use]
-pub fn preset_cage(bows: &EdgeBows, bend: f64) -> ([[f64; 2]; 4], CageEdges) {
+pub fn preset_cage(bows: &EdgeBows, shift: &EdgeBows, bend: f64) -> ([[f64; 2]; 4], CageEdges) {
     let bend = bend.clamp(-1.0, 1.0);
-    let corners = UNIT_CAGE;
+    // O shear move cada canto por `shift · bend` (o `shift` já vem escalado por [`AMP_SHEAR`] no
+    // chamador, o mesmo padrão de `bows · AMP`). Sem shift (quase todo estilo) os cantos ficam no
+    // quadrado unitário e a garantia de barriga vale intacta.
+    let mut corners = UNIT_CAGE;
+    for (c, s) in corners.iter_mut().zip(shift.iter()) {
+        c[0] += s[0] * bend;
+        c[1] += s[1] * bend;
+    }
     let mut edges = rest_edges(&corners);
     for (i, edge) in edges.iter_mut().enumerate() {
         let a = corners[i];

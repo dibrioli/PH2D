@@ -43,7 +43,7 @@ pub use gesture::{
     nearest_corner, nearest_handle,
 };
 pub use mls::{MlsWarp, Pin, domain_samples, pins_fold_at};
-pub use preset::{AMP, EdgeBows, UNIT_CAGE, preset_cage};
+pub use preset::{AMP, AMP_SHEAR, EdgeBows, UNIT_CAGE, preset_cage};
 pub use quad::QuadWarp;
 
 /// Um mapa `R2 -> R2` **arbitrário** (afim ou não), com a sua diferencial.

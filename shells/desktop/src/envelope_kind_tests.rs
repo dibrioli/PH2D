@@ -171,7 +171,8 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
 
 use ph2d_ecs::EnvelopeWarp;
 
-/// **NENHUM PRESET REAL DOBRA, EM PONTO NENHUM DA FAIXA.** Varre os 7 × `bend ∈ [-1,1]`.
+/// **NENHUM PRESET REAL DOBRA, EM PONTO NENHUM DA FAIXA.** Varre os 9 × `bend ∈ [-1,1]` (inclui o
+/// SHEAR do Rise — a re-verificação de não-dobra que a gaiola estendida prometeu).
 ///
 /// A crate do motor gateia a garantia sobre barrigas escritas à mão; ela **não conhece a tabela**
 /// (que é dado, e mora no componente). Este é o irmão que fecha o circuito: se alguém acrescentar
@@ -180,11 +181,17 @@ use ph2d_ecs::EnvelopeWarp;
 #[test]
 fn no_real_preset_folds_anywhere_in_its_range() {
     for warp in EnvelopeWarp::ALL {
+        let cage = warp.cage();
         let bows: ph2d_vec_envelope::EdgeBows =
-            warp.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+            cage.bows.map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+        // ⚠️ Inclui o SHEAR do Rise (o canto move): é a re-verificação da garantia de não-dobra
+        // que a extensão da gaiola prometeu — um shear puro é paralelogramo, sempre convexo.
+        let shift: ph2d_vec_envelope::EdgeBows = cage
+            .shift
+            .map(|s| s.map(|v| v * ph2d_vec_envelope::AMP_SHEAR));
         for step in -20..=20 {
             let bend = f64::from(step) / 20.0;
-            let (c, e) = ph2d_vec_envelope::preset_cage(&bows, bend);
+            let (c, e) = ph2d_vec_envelope::preset_cage(&bows, &shift, bend);
             assert!(
                 !ph2d_vec_envelope::cage_folds(&c, &e),
                 "o preset {} dobrou em bend={bend}",
@@ -194,17 +201,23 @@ fn no_real_preset_folds_anywhere_in_its_range() {
     }
 }
 
-/// **CADA PRESET PRODUZ UMA GAIOLA DISTINTA.** Sete botões que fizessem a mesma coisa seriam seis
-/// botões mortos — e nada no resto da suíte notaria.
+/// **CADA PRESET PRODUZ UMA GAIOLA DISTINTA.** Nove botões que fizessem a mesma coisa seriam oito
+/// botões mortos — e nada no resto da suíte notaria. (O Rise entra pelos CANTOS, não pelas
+/// barrigas, então a gaiola dele é distinta via `corners`, não `edges`.)
 #[test]
 fn every_preset_is_a_different_cage() {
     let cages: Vec<Vec<[f64; 2]>> = EnvelopeWarp::ALL
         .iter()
         .map(|w| {
+            let cage = w.cage();
             let bows: ph2d_vec_envelope::EdgeBows =
-                w.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
-            let (_, e) = ph2d_vec_envelope::preset_cage(&bows, 1.0);
-            e.iter().flatten().copied().collect()
+                cage.bows.map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+            let shift: ph2d_vec_envelope::EdgeBows = cage
+                .shift
+                .map(|s| s.map(|v| v * ph2d_vec_envelope::AMP_SHEAR));
+            let (c, e) = ph2d_vec_envelope::preset_cage(&bows, &shift, 1.0);
+            // Os CANTOS entram na assinatura (o Rise só se distingue por eles).
+            c.iter().chain(e.iter().flatten()).copied().collect()
         })
         .collect();
     for (i, a) in cages.iter().enumerate() {

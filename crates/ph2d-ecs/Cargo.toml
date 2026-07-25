@@ -18,6 +18,10 @@ ph2d-core = { path = "../ph2d-core" }
 # ph2d-asset is consumed by `scene::spawn_prefab` (M14.3b) to resolve
 # ComponentBlob bytes into typed Components via ComponentRegistry.
 ph2d-asset = { path = "../ph2d-asset" }
+# O catálogo ÚNICO de estilos de warp (Enio 2026-07-25): `EnvelopeWarp` é apelido do
+# `ph2d_warp_style::WarpStyle`, a MESMA lista do efeito Warp. Folha pura (só serde), não fere a
+# regra "a fundação não puxa satélite pesado".
+ph2d-warp-style = { path = "../ph2d-warp-style" }
 # serde derives on every SimComponent (HR-14 mitigation while
 # `#[derive(Saveable)]` macro is pending). PrefabDoc/SceneDoc in
 # ph2d-asset (M14.3) consume these via postcard.

@@ -119,7 +119,9 @@ mod vec_morph;
 pub use vec_morph::VecMorph;
 
 mod vec_envelope;
-pub use vec_envelope::{EnvelopeKind, EnvelopeWarp, VecEnvelope, VecEnvelopeChild};
+pub use vec_envelope::{
+    ENVELOPE_DEFAULT_BEND, EnvelopeKind, EnvelopeWarp, VecEnvelope, VecEnvelopeChild,
+};
 
 /// **O RÓTULO** — o texto que pertence a uma forma (ou a um conector) e a segue. Mesma família
 /// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (de quem, e onde em relação a

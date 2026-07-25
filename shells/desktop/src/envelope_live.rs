@@ -306,11 +306,17 @@ pub(crate) fn apply_preset(
     let Some((origin, size)) = sim.world().get::<VecEnvelope>(entity).and_then(rest_domain) else {
         return false;
     };
-    // A tabela do componente é a FORMA (±1); a amplitude é do motor, e é ela que carrega a garantia
-    // de não-dobra. Multiplicar aqui mantém as duas metades onde elas pertencem.
+    // O estilo vem do CATÁLOGO ÚNICO (`WarpStyle::cage`): as barrigas de lado + o shear de canto (o
+    // Rise). A tabela é a FORMA (±1); a amplitude é do motor, e é ela que carrega a garantia de
+    // não-dobra — `AMP` para as barrigas, `AMP_SHEAR` para o shear. Multiplicar aqui mantém as duas
+    // metades onde elas pertencem.
+    let cage = warp.cage();
     let bows: ph2d_vec_envelope::EdgeBows =
-        warp.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
-    let (unit_corners, unit_edges) = ph2d_vec_envelope::preset_cage(&bows, bend);
+        cage.bows.map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+    let shift: ph2d_vec_envelope::EdgeBows = cage
+        .shift
+        .map(|s| s.map(|v| v * ph2d_vec_envelope::AMP_SHEAR));
+    let (unit_corners, unit_edges) = ph2d_vec_envelope::preset_cage(&bows, &shift, bend);
     let to_rect = |p: [f64; 2]| [origin[0] + p[0] * size[0], origin[1] + p[1] * size[1]];
 
     let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {

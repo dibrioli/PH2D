@@ -13,9 +13,12 @@ const BULGE: EdgeBows = [[AMP, AMP], [0.0, 0.0], [AMP, AMP], [0.0, 0.0]];
 /// **`bend = 0` é a gaiola em REPOUSO, ao bit.** O preset com força zero não é "quase" a identidade
 /// — é ela. Sem isto, arrastar o slider até o zero deixaria um resíduo, e o artista veria a forma
 /// não voltar.
+/// Sem shear — o argumento novo de `preset_cage` que quase todo preset passa em zero.
+const NO_SHIFT: [[f64; 2]; 4] = [[0.0; 2]; 4];
+
 #[test]
 fn a_zero_bend_is_the_rest_cage_exactly() {
-    let (corners, edges) = preset_cage(&BULGE, 0.0);
+    let (corners, edges) = preset_cage(&BULGE, &NO_SHIFT, 0.0);
     assert_eq!(corners, UNIT_CAGE);
     assert_eq!(edges, rest_edges(&UNIT_CAGE));
 }
@@ -25,7 +28,7 @@ fn a_zero_bend_is_the_rest_cage_exactly() {
 #[test]
 fn a_preset_never_moves_a_corner() {
     for bend in [-1.0, -0.5, 0.25, 1.0] {
-        let (corners, _) = preset_cage(&BULGE, bend);
+        let (corners, _) = preset_cage(&BULGE, &NO_SHIFT, bend);
         assert_eq!(
             corners, UNIT_CAGE,
             "o preset mexeu num canto em bend={bend}"
@@ -39,10 +42,10 @@ fn a_preset_never_moves_a_corner() {
 /// simétrica.
 #[test]
 fn a_positive_bow_leaves_the_cage_by_the_outward_normal() {
-    let (_, out) = preset_cage(&BULGE, 1.0);
+    let (_, out) = preset_cage(&BULGE, &NO_SHIFT, 1.0);
     assert!(out[0][0][1] < 0.0, "o lado de baixo devia descer: {out:?}");
     assert!(out[2][0][1] > 1.0, "o lado de cima devia subir: {out:?}");
-    let (_, inn) = preset_cage(&BULGE, -1.0);
+    let (_, inn) = preset_cage(&BULGE, &NO_SHIFT, -1.0);
     assert!(
         inn[0][0][1] > 0.0 && inn[2][0][1] < 1.0,
         "bend negativo não inverteu: {inn:?}"
@@ -54,8 +57,8 @@ fn a_positive_bow_leaves_the_cage_by_the_outward_normal() {
 /// para todo o intervalo.
 #[test]
 fn the_bend_is_linear() {
-    let (_, half) = preset_cage(&BULGE, 0.5);
-    let (_, full) = preset_cage(&BULGE, 1.0);
+    let (_, half) = preset_cage(&BULGE, &NO_SHIFT, 0.5);
+    let (_, full) = preset_cage(&BULGE, &NO_SHIFT, 1.0);
     let rest = rest_edges(&UNIT_CAGE);
     let d_half = half[0][0][1] - rest[0][0][1];
     let d_full = full[0][0][1] - rest[0][0][1];
@@ -69,8 +72,8 @@ fn the_bend_is_linear() {
 /// sobre essa faixa, e um chamador distraído não pode comprá-la de volta.
 #[test]
 fn the_bend_range_is_clamped() {
-    let (_, at_one) = preset_cage(&BULGE, 1.0);
-    let (_, beyond) = preset_cage(&BULGE, 7.5);
+    let (_, at_one) = preset_cage(&BULGE, &NO_SHIFT, 1.0);
+    let (_, beyond) = preset_cage(&BULGE, &NO_SHIFT, 7.5);
     assert_eq!(at_one, beyond, "bend fora da faixa não foi clampado");
 }
 
@@ -98,7 +101,7 @@ fn a_full_amplitude_bow_never_folds() {
     for (name, bows) in cases {
         for step in -20..=20 {
             let bend = f64::from(step) / 20.0;
-            let (corners, edges) = preset_cage(&bows, bend);
+            let (corners, edges) = preset_cage(&bows, &NO_SHIFT, bend);
             assert!(
                 !cage_folds(&corners, &edges),
                 "o preset {name} dobrou em bend={bend}"
@@ -114,7 +117,7 @@ fn a_full_amplitude_bow_never_folds() {
 fn an_amplitude_past_the_ceiling_does_fold() {
     let over = 4.0 * AMP;
     let bows: EdgeBows = [[-over, -over], [0.0, 0.0], [-over, -over], [0.0, 0.0]];
-    let (corners, edges) = preset_cage(&bows, 1.0);
+    let (corners, edges) = preset_cage(&bows, &NO_SHIFT, 1.0);
     assert!(
         cage_folds(&corners, &edges),
         "barriga de {over} não dobrou — o teto AMP={AMP} não está a defender nada"

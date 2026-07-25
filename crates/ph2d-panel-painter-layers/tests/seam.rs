@@ -662,6 +662,51 @@ fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
     );
 }
 
+/// **Na MÁSCARA o Accumulate também não é oferecido** (2026-07-25, a reescrita da cobertura —
+/// doc 25 §13.9). Terceira vez que esta row se esconde, e cada vez por um motivo diferente:
+///
+/// | onde | por quê |
+/// |---|---|
+/// | aquarela | o caminho óptico curto-circuita antes do stamp: **provadamente inerte** |
+/// | impasto | governa a COR e não o CORPO: metade do que promete |
+/// | **máscara** | a cobertura tem lei PRÓPRIA (`StrokeCoverLaw::Envelope`, o Wash do Krita), escolhida pelo MODO — `accumulate` nunca é lido |
+///
+/// Aqui é o caso mais claro dos três: o motor não consulta o campo, então o checkbox seria pintado e
+/// inerte. Presença E ausência, pelo mesmo motivo do irmão do impasto.
+///
+/// **Mutação que deve sangrar:** tirar o `&& !brush.is_mask` da condição em `paint_brush.rs`.
+#[test]
+fn the_mask_hides_the_accumulate_row_because_coverage_has_its_own_law() {
+    let viewport = || ph2d_editor_core::zones::Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let id = core_ids::PAINTER_BRUSH_ACCUMULATE;
+    let painted_in = |mask: bool| {
+        let mut tool = ph2d_tool_painter::PainterTool::default();
+        tool.set_paint_tool_mode(if mask { "mask" } else { "brush" });
+        let bs = tool.brush_settings();
+        assert_eq!(bs.is_mask, mask, "fixture: o modo não pegou");
+        set_current_brush(Some(bs));
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        host.paint::<PainterLayersPanel>(&mut st, viewport())
+            .iter()
+            .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+    };
+    assert!(
+        painted_in(false),
+        "fora da máscara o Accumulate tem de estar na tela — sem esta metade a de baixo não prova nada"
+    );
+    assert!(
+        !painted_in(true),
+        "em modo MÁSCARA o Accumulate continuou pintado: ali a cobertura acumula pela lei do canal \
+         (envelope) e o campo nunca é lido, então o checkbox está morto sob o mouse"
+    );
+}
+
 /// DEFECT REPRO (Enio 2026-07-21, "não consigo sair do modo wet"): the Wet
 /// Paint **Enable** checkbox shipped painted + registered but ABSENT from the
 /// `event.rs` click allowlist — dead under the mouse, so the artist could

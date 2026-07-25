@@ -76,7 +76,8 @@
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
-- [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra
+- [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra
+- [Mutação sem sangue acusa o ORÁCULO](feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding.md) — meça a propriedade que a mudança É antes de descartar o achado
 - [Aproximação dentro de ponto fixo CAMINHA](feedback_an_approximation_inside_a_fixed_point_walks_it_does_not_merely_err.md) — tabela num laço de realimentação: meça deriva sob iteração, não erro de chamada única
 - [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA

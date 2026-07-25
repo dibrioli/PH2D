@@ -158,3 +158,233 @@ fn probe_gated_stroke_cost() {
         println!("{size}^2 {tag:24}: pen-down {seed_ms:.2} ms | move {per_move:.2} ms");
     }
 }
+
+/// **PROBE 14 — o que sobrou (Enio, 2026-07-25: *"sanou quase 85% do problema"*).**
+///
+/// Hipótese: a fronteira da TINTA **é** o contorno do campo `keep`, então ela herda a nitidez da borda da
+/// MÁSCARA — e a borda da máscara **endurece sob muitas passadas** (o defeito ABERTO da §13.10: 3,53 px de
+/// rampa numa passada, 1,38 em quinze). Uma rampa de 1,4 px é quase binária na grade de pixels, e quase
+/// binária lê como ESCADA. Se for isso, o resíduo não é do gate: é o outro eixo aparecendo através dele.
+///
+/// Mede a largura da rampa da tinta e a serra do contorno dela sobre a MESMA proteção, fresca e esfregada.
+#[test]
+#[ignore]
+fn probe_what_is_left_after_the_gate() {
+    const SZ: u32 = 256;
+    for passes in [1u32, 5, 15] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SZ * SZ * 4) as usize], SZ, SZ);
+        t.handle_panel_event(PanelEvent::SelectOption(
+            ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+            "mask".to_string(),
+        ));
+        t.set_brush_size_px(40.0);
+        for _ in 0..passes {
+            vstroke(&mut t, 128.0, 40.0, 220.0, 30);
+        }
+        let prot = coverage(&t, SZ);
+        // A rampa da MÁSCARA em si (a largura entre 10 % e 90 % de proteção, na linha y = 130).
+        let band = |f: &[f32]| -> f32 {
+            let row: Vec<f32> = (100..190).map(|x| f[130 * SZ as usize + x]).collect();
+            let at = |lv: f32| -> Option<f32> {
+                row.windows(2).enumerate().find_map(|(i, w)| {
+                    ((w[0] - lv) * (w[1] - lv) <= 0.0 && (w[1] - w[0]).abs() > 1e-6)
+                        .then(|| i as f32 + (lv - w[0]) / (w[1] - w[0]))
+                })
+            };
+            match (at(0.9), at(0.1)) {
+                (Some(a), Some(b)) => (b - a).abs(),
+                _ => f32::NAN,
+            }
+        };
+        let mask_band = band(&prot);
+        // Agora a TINTA atravessando essa proteção, num traço só (o gate já é polling-independente).
+        t.set_paint_tool_mode("brush");
+        t.set_brush_color_srgb8([0, 0, 0]);
+        t.set_brush_size_px(18.0);
+        for k in 0..6 {
+            let y = 100.0 + k as f32 * 11.0;
+            t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+            for i in 1..=12u8 {
+                let x = 40.0 + 170.0 * f32::from(i) / 12.0;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([210.0, y], PointerPhase::Up));
+            let _ = t.take_preview_arc();
+        }
+        let ink: Vec<f32> = (0..(SZ as usize * SZ as usize))
+            .map(|i| 1.0 - f32::from(t.canvas_rgba[i * 4]) / 255.0)
+            .collect();
+        let ink_band = band(&ink);
+        let xs: Vec<f32> = (100..160)
+            .filter_map(|y| cross_x(&ink, SZ, y, 0.5))
+            .collect();
+        let saw = xs
+            .windows(3)
+            .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())
+            .sum::<f32>()
+            / (xs.len().max(3) - 2) as f32;
+        // Quantos NÍVEIS de 255 a fronteira da tinta atravessa por pixel: o número que decide se ela lê
+        // como rampa ou como escada.
+        let step = if ink_band.is_finite() && ink_band > 0.0 {
+            0.8 * 255.0 / ink_band
+        } else {
+            f32::NAN
+        };
+        println!(
+            "{passes:2} passada(s) de máscara: rampa da MÁSCARA {mask_band:5.2} px | rampa da TINTA \
+             {ink_band:5.2} px ({step:5.1} níveis/px) | serra do contorno da tinta {saw:.3} px"
+        );
+        dump(&format!("left_mask_{passes}"), &prot, SZ);
+        dump(&format!("left_ink_{passes}"), &ink, SZ);
+    }
+}
+
+/// **PROBE 15 — o PENTE na fronteira: amplificação, ou tinta irregular?**
+///
+/// O render da sonda 14 mostra a fronteira da tinta **dentada no período dos traços**, e pior com máscara
+/// MACIA. Duas explicações possíveis, e elas pedem curas opostas: (a) a tinta LIVRE ondula ao longo da
+/// fronteira e o gradiente raso do `keep` **amplifica** essa ondulação em deslocamento de contorno
+/// (`dx = (Δfree/free) / (dkeep/keep)`) — inevitável em QUALQUER máscara correta, e então o alvo seria a
+/// ondulação da tinta; ou (b) a tinta livre é lisa ali e o pente nasce no gate.
+#[test]
+#[ignore]
+fn probe_the_comb_on_the_boundary() {
+    const SZ: u32 = 256;
+    for mask_passes in [1u32, 3, 15] {
+        let scene = |mask_y0: f32, mask_y1: f32| -> (PainterTool, Vec<f32>) {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (SZ * SZ * 4) as usize], SZ, SZ);
+            t.handle_panel_event(PanelEvent::SelectOption(
+                ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+                "mask".to_string(),
+            ));
+            t.set_brush_size_px(40.0);
+            for _ in 0..mask_passes {
+                vstroke(&mut t, 128.0, mask_y0, mask_y1, 30);
+            }
+            let keep: Vec<f32> = coverage(&t, SZ).iter().map(|c| 1.0 - c).collect();
+            t.set_paint_tool_mode("brush");
+            t.set_brush_color_srgb8([0, 0, 0]);
+            t.set_brush_size_px(18.0);
+            for k in 0..6 {
+                let y = 100.0 + k as f32 * 11.0;
+                t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+                for i in 1..=12u8 {
+                    let x = 40.0 + 170.0 * f32::from(i) / 12.0;
+                    t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                }
+                t.on_canvas_pointer(cp([210.0, y], PointerPhase::Up));
+                let _ = t.take_preview_arc();
+            }
+            (t, keep)
+        };
+        // A cena protegida, e o CONTROLE com o mesmo nº de traços de máscara longe da banda de tinta.
+        let (t, keep) = scene(40.0, 220.0);
+        let (c0, _) = scene(232.0, 252.0);
+        let ink = |tool: &PainterTool| -> Vec<f32> {
+            (0..(SZ as usize * SZ as usize))
+                .map(|i| 1.0 - f32::from(tool.canvas_rgba[i * 4]) / 255.0)
+                .collect()
+        };
+        let (prot, free) = (ink(&t), ink(&c0));
+        let xs: Vec<f32> = (100..156)
+            .filter_map(|y| cross_x(&prot, SZ, y, 0.5))
+            .collect();
+        let mean = xs.iter().sum::<f32>() / xs.len() as f32;
+        let p2p = xs.iter().copied().fold(f32::MIN, f32::max)
+            - xs.iter().copied().fold(f32::MAX, f32::min);
+        let col = mean.round().clamp(1.0, (SZ - 2) as f32) as usize;
+        let fs: Vec<f32> = (100..156).map(|y| free[y * SZ as usize + col]).collect();
+        let f_p2p = fs.iter().copied().fold(f32::MIN, f32::max)
+            - fs.iter().copied().fold(f32::MAX, f32::min);
+        let f_mid = fs.iter().sum::<f32>() / fs.len() as f32;
+        let ks: Vec<f32> = (100..156).map(|y| keep[y * SZ as usize + col]).collect();
+        let k_mid = ks.iter().sum::<f32>() / ks.len() as f32;
+        let k_p2p = ks.iter().copied().fold(f32::MIN, f32::max)
+            - ks.iter().copied().fold(f32::MAX, f32::min);
+        // O período da ondulação do keep ao longo da fronteira: quantos cruzamentos da média em 56 px
+        // (se casar com o espaçamento dos dabs da MÁSCARA, o pente é o ombro dela, não a tinta).
+        let crossings = ks
+            .windows(2)
+            .filter(|w| (w[0] - k_mid) * (w[1] - k_mid) < 0.0)
+            .count();
+        let grad = (keep[128 * SZ as usize + col + 1] - keep[128 * SZ as usize + col - 1]) / 2.0;
+        let predicted = if grad.abs() > 1e-6 && f_mid > 1e-6 {
+            (f_p2p / f_mid) * (k_mid / grad).abs()
+        } else {
+            f32::NAN
+        };
+        println!(
+            "{mask_passes:2} passada(s): contorno x={mean:6.2}, PENTE p2p {p2p:5.2} px | tinta LIVRE \
+             ali {f_mid:.3} +/- {f_p2p:.3} (amplif. prevista {predicted:.2} px) | keep {k_mid:.3} \
+             +/- {k_p2p:.4} em {crossings} cruzamentos/56px, grad {grad:+.4}/px => ondulação do keep \
+             vale {:.2} px de contorno",
+            k_p2p / grad.abs()
+        );
+    }
+}
+
+/// **PROBE 16 — o pente é o BUILD-UP entre traços encontrando o gradiente do `keep`.**
+///
+/// As sondas 14/15 refutaram as duas explicações fáceis (a tinta livre é `1,000 ± 0,000` na fronteira; a
+/// ondulação do `keep` vale 0,07 px contra um pente de 1,68). Sobra a aritmética do próprio build-up: cada
+/// traço é escalado por `keep`, então depois de `N` traços o texel guarda `1 − (1−keep)^N` — e `N` VARIA
+/// com a linha (quantos traços vizinhos a cobriram). O contorno de meia-tinta senta em `keep`
+/// diferente para `N = 2` e para `N = 3`, e a distância entre esses dois `keep` dividida pelo gradiente
+/// **é** o pente.
+///
+/// Também mede a consequência que ninguém tinha posto num número: **a proteção ERODE com a repetição.**
+#[test]
+#[ignore]
+fn probe_the_comb_is_the_cross_stroke_buildup() {
+    // A previsão, puramente aritmética: onde 1 − (1−k)^N = 0.5.
+    let k_for = |n: f32| 1.0 - 0.5_f32.powf(1.0 / n);
+    let dk = k_for(2.0) - k_for(3.0);
+    println!(
+        "previsão: keep p/ N=2 é {:.4}, p/ N=3 é {:.4} => Δkeep {dk:.4}; com grad 0,0529/px (máscara \
+         fresca) isso dá {:.2} px de pente, e com 0,1784/px (15 passadas) dá {:.2} px",
+        k_for(2.0),
+        k_for(3.0),
+        dk / 0.0529,
+        dk / 0.1784
+    );
+    // E a erosão: quanta tinta um texel de keep = 0.5 aceita depois de N passadas.
+    const SZ: u32 = 192;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SZ * SZ * 4) as usize], SZ, SZ);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    t.set_brush_size_px(40.0);
+    vstroke(&mut t, 96.0, 30.0, 162.0, 24);
+    let keep: Vec<f32> = coverage(&t, SZ).iter().map(|c| 1.0 - c).collect();
+    let probe = (50..140usize)
+        .map(|x| 96 * SZ as usize + x)
+        .min_by(|&a, &b| {
+            (keep[a] - 0.5)
+                .abs()
+                .partial_cmp(&(keep[b] - 0.5).abs())
+                .unwrap()
+        })
+        .unwrap();
+    t.set_paint_tool_mode("brush");
+    t.set_brush_color_srgb8([0, 0, 0]);
+    t.set_brush_size_px(16.0);
+    print!("erosão em keep={:.3}:", keep[probe]);
+    for n in 1..=12 {
+        t.on_canvas_pointer(cp([20.0, 96.0], PointerPhase::Down));
+        for i in 1..=8u8 {
+            let x = 20.0 + 152.0 * f32::from(i) / 8.0;
+            t.on_canvas_pointer(cp([x, 96.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([172.0, 96.0], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        let ink = 1.0 - f32::from(t.canvas_rgba[probe * 4]) / 255.0;
+        if n <= 4 || n % 4 == 0 {
+            print!(" N={n}:{ink:.3}");
+        }
+    }
+    println!(" <- a proteção deixa passar quase TUDO se você insistir");
+}

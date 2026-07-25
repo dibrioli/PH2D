@@ -1167,3 +1167,54 @@ proteção agora leem o plano LIVRE em vez do display, o que é a semântica de 
 **mudança de comportamento**: arrastar por cima de uma zona protegida carrega a tinta que o gate esconde.
 O desenho antigo lia o display, mas o que ele lia dependia da taxa de polling, então não era referência
 estável. **O smoke decide.**
+
+## 13.13 Os 15% que sobraram: o build-up entre traços ERODE a proteção (2026-07-25, MEDIDO)
+
+**Enio, depois do fix:** *"sanou quase 85% do problema"*. Os 15% restantes têm causa única e exata, e ela
+**não é o gate** — é a semântica que o gate agora reproduz fielmente.
+
+### 13.13.1 Duas explicações fáceis, as duas REFUTADAS por medição
+
+| hipótese | previsão | medido | veredito |
+|---|---|---|---|
+| a tinta LIVRE ondula e o gradiente raso do `keep` amplifica | ondulação de `free` na fronteira | **1,000 ± 0,000** | ✗ a tinta é perfeitamente lisa ali |
+| o OMBRO da máscara tem contas por-dab (§13.10) e o contorno as herda | `Δkeep/∇keep` = **0,07 px** | pente de **1,68 px** | ✗ 24× pequeno demais |
+
+### 13.13.2 A causa: `1 − (1−keep)^N`
+
+Cada traço é escalado por `keep`, então depois de `N` traços o texel guarda `1 − (1−keep)^N`. Duas
+consequências, e a segunda é a grave:
+
+**(a) o PENTE.** O contorno de meia-tinta senta em `keep` diferente para `N = 2` (0,2929) e para `N = 3`
+(0,2063); a distância entre os dois dividida pelo gradiente **é** o pente, e `N` varia com a linha (quantos
+traços vizinhos a cobriram). Previsão puramente aritmética contra a medição:
+
+| | previsto | medido |
+|---|---|---|
+| máscara fresca (grad 0,0529/px) | **1,64 px** | **1,68 px** |
+| 15 passadas (grad 0,1784/px) | **0,49 px** | **0,60 px** |
+
+**(b) A PROTEÇÃO ERODE.** Num texel de `keep = 0,522`: `N=1` → 0,522 · `N=2` → 0,773 · `N=3` → 0,890 ·
+`N=4` → 0,949 · **`N=8` → 1,000**. Oito passadas e a máscara não protege mais nada. ⚠️ **E a queixa do Enio
+é literalmente esse gesto** (*"quando muitas pinceladas são dadas repetidamente"*).
+
+### 13.13.3 Isto é um FORK de produto, e as duas referências discordam
+
+- **Sculpt mask do Blender** (o que o código declara, e o que ship a): a máscara escala a força de cada
+  traço ⇒ repetir constrói ⇒ erode. É consistente com *"pinta como o brush digital"*.
+- **Layer mask / alpha lock** (Photoshop, Krita — e o que a pesquisa do §13.7 já tinha achado, *"tudo cuja
+  promessa é PROTEÇÃO é um TETO que nunca endurece"*): o `keep` é aplicado UMA vez sobre a tinta acumulada
+  livremente ⇒ **pente exatamente zero** e a proteção nunca erode.
+
+⚠️ **O gate `repeated_strokes_through_the_feather_build_up_instead_of_converging` PINA a erosão como
+correta.** Ele foi escrito como guarda contra reintroduzir o vazamento do §13.7, e nessa função está certo —
+mas se o teto for a resposta, ele pina a lei de produto errada ([[feedback_inherited_affordance_must_be_rederived]]).
+
+**O que o teto custa:** um plano por-MÁSCARA (a época do §13.7), cujo revert foi por **VAZAMENTO de ciclo de
+vida** (a época sobrevivia à troca de ferramenta e capava tinta comum), não por a semântica estar errada. O
+padrão da sessão agora existe e o commit obrigatório em toda edição do scratch é a peça que faltava — mas é
+**wave própria**, e é a 3ª rodada neste mesmo eixo, então **exige ordem do Enio**.
+
+**Sondas no repo:** `probe_what_is_left_after_the_gate` (a rampa da tinta rastreia a da máscara, razão
+0,876/0,875/0,847) · `probe_the_comb_on_the_boundary` (as duas refutações) ·
+`probe_the_comb_is_the_cross_stroke_buildup` (a previsão aritmética + a tabela de erosão).

@@ -4146,3 +4146,34 @@ hierarquia única). W1 (a coluna) fecha o report; o resto são enriquecimentos:
 4. **Limite (arco) e motor (seta) VISUAIS** — precisa do FRAME (o `angle_a/b` da rep, que a W1 NÃO
    guardou de propósito: sem consumidor era campo órfão; entra aqui com seu consumidor).
 5. **Break force / break torque** — o joint arrebenta sob carga (casa com o canal W-ImpactForce).
+
+---
+
+## W-JointCreate (padrão-ouro) — ESCOLHER O TIPO NA CRIAÇÃO (2026-07-25, `ec0c944ad`, cena `=40`, pendente de smoke)
+
+Report do Enio: *"só dá pra criar Pin pela UI"*. Diagnóstico (medido, sonda apagada): a criação
+sempre fazia Pin (`create_joint` -> `PhysicsJoint::default()`), o tipo só mudava DEPOIS na §12, e a
+§12 só aparece com a JOINT selecionada -- mas o "Join Selected Bodies" **não selecionava a joint
+nova** (deixava os dois corpos), então o seletor Kind ficava escondido. ⚠️ A troca de tipo em si
+FUNCIONA (Pin->Rope derruba a bola ao comprimento da corda; Pin->Spring balança) -- era
+descobribilidade, não capacidade quebrada.
+
+Três correções (o padrão-ouro é criar o tipo que se quer, como Unity/Godot/Rive):
+
+1. **Seletor "Join As" (Pin/Spring/Rope/Weld) na §11**, ao lado do botão Join, aparece com os dois
+   corpos selecionados; o Join cria o tipo escolhido. Default Pin (caso comum = um clique). Seam:
+   `INSP_PHYS_JOIN_KIND[4]` -> populate -> `physics_rows::paint_join_gesture` -> event
+   `PhysicsFieldEdit::JoinKind` -> `App.join_kind` (classe do BakeChannels) -> `create_joint(.., kind)`.
+2. **Auto-seleção da joint nova** -- o `create_joint` já devolvia a entidade (era descartada); agora
+   `hero.gizmo.selection` aponta pra ela, e a §12 aparece na hora.
+3. **Re-seed da âncora na troca de tipo** -- `apply_joint_edit(Kind)` marca `anchored=false` (o 4º
+   sítio de autoria), pro reconcile re-derivar sob a política nova (Spring/Rope ancoram body B no
+   centro; sem isso um Pin->Rope pendurava do ponto errado).
+
+Gates: seam `join_kind_chips_pick_their_kind_only_when_joinable` + shell `create_joint_makes_the_
+requested_kind` + `changing_the_kind_re_seeds_the_anchor` (todos mutação-provados).
+`InspectorPhysicsInfo.join_kind_tag` fiado por `build_physics_info`/`publish`. LOC: o seletor
+estourou dois caps de painel -- `paint_join_gesture` foi pro `physics_rows.rs`, e a §12
+`paint_joint_section` (231, latente da redesign do eyedropper) virou `paint_body_rows`; 3 literais de
+proporção (0.82/3.6/0.4, latentes) ganharam `// LITERAL-PX-OK`. Smoke: **`=40`** (cria um Rope pela
+seleção "Join As", a §12 abre já selecionada).

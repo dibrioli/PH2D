@@ -147,19 +147,21 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 40] Three bodies, NO joint yet -- author one end to end.\n\
-             PAUSED. The UI to create a joint has existed since W3; this is the walk:\n  \
+             PAUSED. This walks the whole create loop:\n  \
                1. Select Hook AND Plank (click Hook, then Ctrl-click Plank).\n  \
-               2. Inspector > Physics Body grows 'Join Selected Bodies' -> click it.\n     \
-                  A Pin joint appears in the Hierarchy, and Plank now hangs from Hook.\n  \
-               3. Select the joint -> the 'Physics Joint' section (12) appears. Switch\n     \
-                  its Kind (Pin/Spring/Rope/Weld); turn Limits or a Motor on and tune.\n  \
+               2. Inspector > Physics Body grows a 'Join As' selector\n     \
+                  (Pin/Spring/Rope/Weld) + 'Join Selected Bodies'. Pick a TYPE --\n     \
+                  say Rope -- then click Join. A ROPE appears, ALREADY SELECTED,\n     \
+                  so the 'Physics Joint' section (12) is right there (no hunting the\n     \
+                  Hierarchy). Leave it Pin and it is one click.\n  \
+               3. In section 12: switch the Kind if you like (Spring/Rope re-anchor\n     \
+                  body B at its centre); turn Limits or a Motor on and tune.\n  \
                4. Press B: an amber DOT sits at the pivot -- DRAG it to move the anchor.\n  \
-               5. RE-PICK a body: the section shows 'Body A: Hook' and 'Body B: Plank',\n     \
-                  each with an EYEDROPPER. Click the one next to Body A (it lights up),\n     \
-                  then click 'Post' on the canvas. The joint now hangs from POST instead\n     \
-                  of Hook, without deleting and re-making it -- and no other object had\n     \
-                  to be selected first.\n  \
-               6. Play: the plank swings from wherever you left the anchor.\n\
+               5. RE-PICK a body: the section shows 'Body A' / 'Body B' with the\n     \
+                  current name + an EYEDROPPER each. Click Body A's (it lights up),\n     \
+                  then click 'Post' on the canvas. The joint re-binds to POST, no\n     \
+                  delete-and-remake, no other object selected first.\n  \
+               6. Play: the body swings/hangs from wherever you left the anchor.\n\
              Ctrl+Z undoes each step; Ctrl+S / Ctrl+O: the joint survives a round trip."
         );
     }

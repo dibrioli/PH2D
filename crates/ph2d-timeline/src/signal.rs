@@ -53,12 +53,12 @@ pub struct TimelineSignal {
 /// longer than the entire loop; rather than fake-handle it with a branch that can never
 /// be reached from these two numbers, it is named here.
 #[must_use]
-pub fn signals_crossed<'a>(
-    markers: &'a [Marker],
+pub fn signals_crossed(
+    markers: &[Marker],
     prev: f64,
     now: f64,
     loop_range: Option<(f64, f64)>,
-) -> Vec<&'a str> {
+) -> Vec<&str> {
     if now >= prev {
         return crossed_in(markers, prev, now, false);
     }
@@ -74,8 +74,8 @@ pub fn signals_crossed<'a>(
 /// Signalled markers with `t` in `(a, b]` (or `[a, b]` when `closed_low`), sorted
 /// ascending by time. Markers are stored by insertion order; a signal fires in
 /// chronological order, so we sort here.
-fn crossed_in<'a>(markers: &'a [Marker], a: f64, b: f64, closed_low: bool) -> Vec<&'a str> {
-    let mut hits: Vec<(f64, &'a str)> = markers
+fn crossed_in(markers: &[Marker], a: f64, b: f64, closed_low: bool) -> Vec<&str> {
+    let mut hits: Vec<(f64, &str)> = markers
         .iter()
         .filter_map(|m| {
             let sig = m.signal.as_deref()?;

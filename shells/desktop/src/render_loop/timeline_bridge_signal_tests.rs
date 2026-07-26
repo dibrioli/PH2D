@@ -30,7 +30,10 @@ fn forward_play_across_a_marker_emits_the_signal() {
     sig.emit(&doc, &forward_at(1.5), false); // (0, 1.5] crosses 1.0
     assert_eq!(sig.out.len(), 1);
     assert_eq!(sig.out[0].name, "foo");
-    assert!((sig.out[0].t - 1.5).abs() < 1e-9, "stamped at the scene time");
+    assert!(
+        (sig.out[0].t - 1.5).abs() < 1e-9,
+        "stamped at the scene time"
+    );
 }
 
 #[test]
@@ -63,7 +66,10 @@ fn a_seek_while_playing_re_baselines_instead_of_firing_the_skipped_span() {
     assert!(sig.out.is_empty(), "a seek is not a crossing");
     // And it re-baselined last_time to 1.5: the next forward tick does not re-fire it.
     sig.emit(&doc, &forward_at(1.6), false);
-    assert!(sig.out.is_empty(), "the marker is behind the re-baselined last_time");
+    assert!(
+        sig.out.is_empty(),
+        "the marker is behind the re-baselined last_time"
+    );
 }
 
 #[test]
@@ -76,7 +82,10 @@ fn a_scrub_past_the_marker_does_not_arm_the_next_play_to_burst() {
     sig.emit(&doc, &paused, false);
     assert!(sig.out.is_empty());
     sig.emit(&doc, &forward_at(2.5), false); // playing forward from 2.0
-    assert!(sig.out.is_empty(), "the marker at 1.0 is behind us, not re-fired");
+    assert!(
+        sig.out.is_empty(),
+        "the marker at 1.0 is behind us, not re-fired"
+    );
 }
 
 #[test]

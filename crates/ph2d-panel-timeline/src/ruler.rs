@@ -374,10 +374,11 @@ fn paint_markers(
         // punched into the pennant, so an emitter reads apart from a plain
         // annotation (the way Unity draws a Signal Emitter apart from a marker).
         if signal.is_some() {
-            let d = MARKER_W * 0.42; // LITERAL-PX-OK: signal dot, fraction of the pennant
+            let d = MARKER_W * 0.42; // LITERAL-PX-OK: signal dot diameter, fraction of the pennant
+            let dot_y = region.y + MARKER_H * 0.22; // LITERAL-PX-OK: dot inset from the pennant top
             fill_rounded_rect(
                 ctx.scene,
-                Rect::new(x - d * 0.5, region.y + MARKER_H * 0.22, d, d),
+                Rect::new(x - d * 0.5, dot_y, d, d),
                 d * 0.5, // full radius → a circle
                 resolve(ColorToken::BgElev, theme),
             );

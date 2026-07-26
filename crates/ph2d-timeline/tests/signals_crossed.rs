@@ -38,14 +38,20 @@ fn a_signal_fires_once_when_the_play_crosses_it() {
 #[test]
 fn catch_up_fires_every_crossed_marker_in_chronological_order() {
     let doc = doc_with(&[(3.0, Some("c")), (1.0, Some("a")), (2.0, Some("b"))]);
-    assert_eq!(signals_crossed(doc.markers(), 0.0, 3.5, None), ["a", "b", "c"]);
+    assert_eq!(
+        signals_crossed(doc.markers(), 0.0, 3.5, None),
+        ["a", "b", "c"]
+    );
 }
 
 /// A marker with no signal is a pure annotation and never emits — the v12 behaviour.
 #[test]
 fn a_marker_without_a_signal_never_fires() {
     let doc = doc_with(&[(1.0, None), (1.2, Some("only_this"))]);
-    assert_eq!(signals_crossed(doc.markers(), 0.0, 2.0, None), ["only_this"]);
+    assert_eq!(
+        signals_crossed(doc.markers(), 0.0, 2.0, None),
+        ["only_this"]
+    );
 }
 
 /// Half-open `(prev, now]`: a marker exactly at `prev` already fired last tick and

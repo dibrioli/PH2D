@@ -190,6 +190,7 @@ mod project_painter;
 mod render_loop;
 mod shape_build;
 mod shape_build_gesture;
+mod signal_smoke;
 mod sim_populate;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
@@ -198,7 +199,6 @@ mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
 mod theme;
-mod signal_smoke;
 mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]

@@ -19,6 +19,11 @@ use crate::prop::PropKind;
 use crate::stack::ClipLane;
 use crate::stack_frames::StackScratch;
 
+// The marker methods live in a child module (it reaches the private `markers` field)
+// to keep this file under the LOC cap — split by responsibility, not allowlist.
+#[path = "doc_markers.rs"]
+mod markers;
+
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
 /// as the first field (never trust `serde(default)` under a positional format).
 /// v2: tracks carry per-key roving flags (`TrackData.roving`, appended field —
@@ -613,72 +618,6 @@ impl TimelineDoc {
         // roving choke point: a re-keyed value shifts the derived times.
         track.resolve_roving();
         (target, id)
-    }
-
-    /// All markers (sorted by insertion; the panel sorts for display).
-    #[must_use]
-    pub fn markers(&self) -> &[Marker] {
-        &self.markers
-    }
-
-    /// Add a marker; returns its index.
-    pub fn add_marker(&mut self, t: RationalTime, label: impl Into<String>) -> usize {
-        self.markers.push(Marker {
-            t,
-            label: label.into(),
-            signal: None,
-        });
-        self.markers.len() - 1
-    }
-
-    /// Remove the marker at `index`, returning `true` if it existed.
-    pub fn remove_marker(&mut self, index: usize) -> bool {
-        if index < self.markers.len() {
-            self.markers.remove(index);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Move the marker at `index` to `t` (storage order is preserved, so the
-    /// index stays valid across a drag). Returns `true` if it existed.
-    pub fn move_marker(&mut self, index: usize, t: RationalTime) -> bool {
-        match self.markers.get_mut(index) {
-            Some(m) => {
-                m.t = t;
-                true
-            }
-            None => false,
-        }
-    }
-
-    /// Relabel the marker at `index`. Returns `true` if it existed. Marker labels
-    /// are user content, not HR-15 UI strings.
-    pub fn set_marker_label(&mut self, index: usize, label: impl Into<String>) -> bool {
-        match self.markers.get_mut(index) {
-            Some(m) => {
-                m.label = label.into();
-                true
-            }
-            None => false,
-        }
-    }
-
-    /// Set (or clear, with `None`) the signal the marker at `index` emits when the
-    /// play crosses it ([ADR-0143]). Returns `true` if it existed. An empty or
-    /// whitespace-only name **clears** the signal — a signal without a name is not a
-    /// contract anyone can match, so it must not read as "has a signal".
-    ///
-    /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
-    pub fn set_marker_signal(&mut self, index: usize, signal: Option<String>) -> bool {
-        match self.markers.get_mut(index) {
-            Some(m) => {
-                m.signal = signal.filter(|s| !s.trim().is_empty());
-                true
-            }
-            None => false,
-        }
     }
 
     /// After loading, reseat the target allocator past every bound target so new

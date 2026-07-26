@@ -168,7 +168,8 @@ fn a_double_click_arms_the_rename_and_raises_no_edit() {
         "the double-click closes its empty bracket and raises no document edit"
     );
     assert_eq!(
-        st.marker_rename.map(|m| (m.index, m.opened, m.editing_signal)),
+        st.marker_rename
+            .map(|m| (m.index, m.opened, m.editing_signal)),
         Some((0, false, false)),
         "the rename is armed for marker 0, not yet seeded, in LABEL mode"
     );
@@ -192,7 +193,14 @@ fn a_shift_double_click_arms_the_signal_editor_not_the_label() {
             alt: false,
         },
     };
-    apply(&mut st, 0.0, 100.0, &s, 0, shift_double(GesturePhase::Begin));
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        shift_double(GesturePhase::Begin),
+    );
     apply(
         &mut st,
         0.0,

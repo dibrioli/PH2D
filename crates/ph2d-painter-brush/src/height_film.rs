@@ -360,9 +360,19 @@ impl FilmAa {
     /// **A porta que os dois kernels chamam de fato**: pela LUT quando há plano E o texel é admissível,
     /// pelas nove amostras reais quando não.
     ///
-    /// `sil_centre` é uma CLOSURE, e isso é o ponto: no caminho rápido a silhueta do centro nunca é
-    /// avaliada — ela é justamente a cadeia de `sqrt` que a LUT existe para não percorrer, e computá-la
-    /// "só para o caso de" devolveria metade do ganho.
+    /// `sil_centre` é uma CLOSURE, e isso é o ponto: **na BANDA** a silhueta do centro nunca é avaliada —
+    /// ela é justamente a cadeia de `sqrt` que a LUT existe para não percorrer.
+    ///
+    /// ⚠️ **Mas FORA da banda quem responde é ela, não a tabela** — e isto foi medido, não escolhido. A
+    /// banda é ~25% da área do disco, logo **três quartos dos texels** de todo dab caíam no early-out do
+    /// [`Self::film_at_lut`], que serve `lut.at(t)`: uma **leitura de memória** de 64 KB, paga por texel
+    /// da bbox inteira. Ablação (`where_the_relief_dab_spends_its_time`): com a expansão inteira desligada
+    /// e UM lookup por texel o AA ainda custava **1,02 dos 2,60 ms** — ou seja 40% do custo do AA não era
+    /// a grade, era a tabela sendo lida onde ela não é necessária.
+    ///
+    /// E não é necessária porque o chamador **já tem a resposta exata**: o kernel de altura computa `w`
+    /// para o próprio envelope, e `film_of(w)` é o valor EXATO onde `lut.at(t)` é o interpolado. Fora da
+    /// banda esta porta é agora **byte-idêntica ao produto pré-LUT**, e mais barata.
     ///
     /// ⚠️ **A premissa da tabela é estrutural, não uma condição a conferir aqui:** a LUT tabula
     /// `film_of(falloff_weight(t))`, ou seja assume que a silhueta É o falloff — e um `FilmAa` só existe
@@ -380,6 +390,11 @@ impl FilmAa {
         sil_centre: impl Fn() -> f32,
         sil_at: impl Fn(f32, f32) -> f32,
     ) -> f32 {
+        // Fora da banda o filme é o single-sample, e a silhueta do chamador é a resposta EXATA — a
+        // tabela não tem o que oferecer aqui e cobra uma leitura de memória por texel (ver o doc acima).
+        if t <= self.t_lo || t >= self.t_hi {
+            return film_of(sil_centre());
+        }
         if let Some(p) = plan
             && let Some(v) = p.film_at(self, t, w, d)
         {

@@ -25,7 +25,8 @@
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
-| K | **O AA do filme POR DAB** | 🎯 **o maior item que sobrou**, mas 🔴 **não diagnosticado** | **2,60 dos 6,35 ms** — 41%, depois da LUT. ⚠️ 335 ns/texel de banda: o modelo "são as nove amostras" NÃO fecha (§4.6.1) |
+| K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
+| L | **As nove amostras da grade** | 🟡 aberto, **e agora com modelo que fecha** | 1,43 ms = 184 ns/texel de banda ≈ 9 leituras em L2. Um lookup em vez de nove vale ~1,27 ms |
 
 ---
 
@@ -332,30 +333,46 @@ medição** — e os números que este doc trazia antes vinham dela.
 O **PUSH custa 0,07–0,26 ms** (ruído); o SETTLE saiu da tabela porque roda no **commit**, não por dab,
 então uma sonda de MOVE não pode vê-lo — a v1 media ruído nas duas colunas dele.
 
-### 4.6.1 ⚠️ E o custo do AA NÃO é o que eu supunha — duas hipóteses medidas e REFUTADAS
+### 4.6.1 ✅ E o custo do AA não era a grade — era a TABELA lida onde ela não é necessária
 
-A banda do AA é conhecida (`how_wide_is_the_aa_band`), e para o falloff default do impasto ela é
-**24,7% da área do disco — 7 758 texels a r=100**:
-
-| falloff | `t_lo .. t_hi` | fração da área | texels a r=100 |
-|---|---|---|---|
-| **Sphere** (default do impasto) | 0,805 .. 0,946 | **24,7%** | 7 758 |
-| Smooth | 0,437 .. 0,611 | 18,2% | 5 721 |
-| Smoother | 0,448 .. 0,591 | 14,9% | 4 671 |
-| Sharp | 0,229 .. 0,418 | 12,2% | 3 837 |
-
-**2,60 ms sobre 7 758 texels = 335 ns/texel.** Nove leituras numa tabela quente não custam isso — então
-o modelo *"o AA é as nove amostras"* **não fecha**, e as duas explicações que eu tinha morreram medidas:
+**2,60 ms sobre 7 758 texels de banda = 335 ns/texel.** Nove leituras numa tabela quente não custam
+isso, então o modelo *"o AA é as nove amostras"* **não fechava**. Duas explicações minhas morreram
+medidas antes da certa:
 
 1. ⛔ **"a closure da silhueta é construída por texel mesmo sem ser chamada"** — trocada por uma trivial
-   (`|_,_| 0.0`, imagem errada de propósito): AA **2,53** contra 2,57 da base. **Sem diferença.**
-2. ⛔ **"o corpo da closure infla o laço quente"** — `film_at_exact` marcado `#[inline(never)] + #[cold]`
-   (imagem INTACTA): AA **2,83**, ou seja **PIOR** que a base. Outlinar cobra do caminho inadmissível e
-   não devolve nada.
+   (imagem errada de propósito): AA **2,53** contra 2,57 da base. **Sem diferença.**
+2. ⛔ **"o corpo da closure infla o laço quente"** — `film_at_exact` com `#[inline(never)] + #[cold]`
+   (imagem INTACTA): AA **2,83**, ou seja **PIOR**. Outlinar cobra do caminho inadmissível e não devolve.
 
-⚠️ **Fica ABERTO onde os 335 ns/texel estão**, e a próxima tentativa tem de começar por descobrir isso —
-não por desenhar uma aproximação nova. Projetar a convolução 2-D (um lookup em vez de nove) sobre um
-modelo de custo que a medição já contradisse seria construir a cura de uma doença não diagnosticada.
+**O que respondeu foi a ablação**: desligar a expansão inteira (um lookup por texel, imagem errada) levou
+o AA de **2,60 para 1,02 ms** ⇒ a grade custa 1,58 e **sobra 1,02 ms só por ter o AA ligado com UM
+lookup**. E o erro do meu modelo estava aí: eu atribuía o custo da **bbox inteira** aos texels da
+**banda**. A banda é ~25% da área do disco (tabela acima), então **três quartos dos texels de todo dab**
+caíam no early-out da LUT — que serve `lut.at(t)`, uma leitura de 64 KB, por texel.
+
+⚠️ **E ela nunca foi necessária lá: o chamador JÁ TEM a resposta exata.** O kernel de altura computa a
+silhueta `w` para o próprio envelope, e `film_of(w)` é o valor EXATO onde `lut.at(t)` é o interpolado.
+A porta (`film_at_planned`) passou a testar a banda PRIMEIRO e a devolver o single-sample do chamador
+fora dela — **byte-idêntica ao produto pré-LUT** naqueles três quartos, e mais barata:
+
+| | AA (ms/dab) | dab (ms) |
+|---|---|---|
+| antes | 2,60 (41%) | 6,35 |
+| **depois** | **1,43 (28%)** | **5,15** |
+
+E o traço a 2048²: **110,22 → 96,92 ms** (virgem) · **142,96 → 130,17** (sobre tinta). Somado à LUT, a
+jornada inteira leva o traço de **134,84 → 96,92 (−28,1%)** e de **167,79 → 130,17 (−22,4%)**.
+
+**Gate `outside_the_band_the_caller_answers_not_the_table`** — comportamental, e tem de ser: a tabela
+interpola a MESMA curva, então servi-la fora da banda erra ~1e-5, que **nenhum gate de bytes vê**. O
+oráculo é uma tabela **deliberadamente errada** (construída de outro falloff): fora da banda o resultado
+tem de ignorá-la por completo, e **dentro** dela tem de vazar — senão o fixture não contém o fenômeno.
+2 mutações, as duas sangram.
+
+⚠️ **E agora o modelo de custo FECHA**, o que reabre a avenida seguinte com base sólida: os 1,43 ms
+restantes sobre 7 758 texels são **184 ns/texel**, consistente com 9 leituras que caem em L2 (~20 ns
+cada). A convolução tabulada de verdade — **um** lookup em vez de nove — vale portanto ~1,27 ms, e agora
+é uma estimativa derivada de um modelo que bate com a medição, não de um palpite.
 
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
@@ -462,12 +479,11 @@ onde o tempo realmente está.
 
 **A fila, por tamanho medido:**
 
-1. 🎯 **O AA do filme, 2,60 ms POR DAB** (41% do dab de relevo, depois da LUT) — o maior item do
-   módulo, pago em **todo move**. ⚠️ **Mas o próximo passo dele é DIAGNOSTICAR, não construir:** são
-   335 ns por texel de banda, o que o modelo *"são as nove amostras"* não explica, e as duas
-   explicações alternativas já morreram medidas (§4.6.1). A convolução 2-D (um lookup em vez de nove)
-   é a cura ÓBVIA — e projetá-la agora seria curar uma doença não diagnosticada, com uma aproximação
-   nova, num kernel onde a §3.3 registra que aproximações morrem por casos imprevistos.
+1. 🎯 **A convolução tabulada de verdade — UM lookup em vez de nove, ~1,27 ms/dab.** O diagnóstico
+   fechou (§4.6.1) e o modelo de custo agora bate com a medição, então esta estimativa é derivada e não
+   um palpite. ⚠️ Segue sendo uma **aproximação NOVA** (o espalhamento da grade é anisotrópico, e
+   colapsá-lo num escalar tem épsilon próprio a medir) num kernel onde a §3.3 registra que aproximações
+   do AA morrem por casos imprevistos — o épsilon se mede ANTES de fiar, como na LUT.
 2. **O fork do canvas no pen-down, 3,4 ms uma vez por traço** — captura do "antes" por REGIÃO. Continua
    sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de pintura.
 3. **O setup dos planos do traço, 1,8 ms uma vez por traço** — representá-los por JANELA em vez de por

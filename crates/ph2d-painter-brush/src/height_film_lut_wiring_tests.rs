@@ -250,3 +250,52 @@ fn how_wide_is_the_aa_band() {
         );
     }
 }
+
+/// **Fora da banda a resposta é do CHAMADOR, nunca da tabela.**
+///
+/// ⚠️ Este gate existe porque o defeito que ele pega é **invisível em bytes**: a tabela interpola a mesma
+/// curva, então servir `lut.at(t)` fora da banda erra ~1e-5 — nada que um gate de bytes veja — e custa
+/// **1,02 dos 2,60 ms** do AA, porque a banda é só ~25% da área do disco e os outros três quartos pagavam
+/// uma leitura de 64 KB por texel (medido em `measure_impasto_cost::where_the_relief_dab_spends_its_time`).
+///
+/// O oráculo é uma tabela **DELIBERADAMENTE ERRADA** — construída de outro falloff. Fora da banda o
+/// resultado tem de ignorá-la por completo e ser exactamente `film_of(silhueta)`; dentro dela, a tabela
+/// errada tem de vazar (senão o fixture não contém o fenômeno e o gate não pode falhar).
+#[test]
+fn outside_the_band_the_caller_answers_not_the_table() {
+    const RADIUS: f32 = 100.0;
+    let s = spec(Falloff::Sphere, RADIUS);
+    let aa = FilmAa::for_dab(&s, false, RADIUS).expect("banda a r=100");
+    // A tabela de OUTRO pincel: se ela for consultada, o valor muda.
+    let wrong = crate::height_film::FilmLut::new(&spec(Falloff::Sharp, RADIUS));
+    let fp = s.dab_footprint([1.0, 0.0]);
+    let plan = crate::height_film::FilmLutPlan::new(&wrong, fp, RADIUS, None);
+    let film_of = crate::height_film::film_of;
+
+    let mut leaked_inside = 0usize;
+    for i in 0..=200u32 {
+        let t = f32::from(i as u16) / 200.0;
+        let sil = s.falloff_weight(t);
+        let w = [t, 0.0]; // ŵ = (1,0), o footprint é a identidade neste fixture
+        let got = aa.film_at_planned(Some(&plan), t, w, [t * RADIUS, 0.0], || sil, |_, _| sil);
+        let inside = t > aa.t_lo_for_test() && t < aa.t_hi_for_test();
+        if inside {
+            if (got - film_of(sil)).abs() > 1e-4 {
+                leaked_inside += 1;
+            }
+        } else {
+            assert!(
+                (got - film_of(sil)).abs() == 0.0,
+                "t={t}: fora da banda o filme tem de ser o single-sample EXATO do chamador \
+                 ({} esperado, {got} obtido) — a tabela nao pode ser consultada aqui",
+                film_of(sil)
+            );
+        }
+    }
+    // Controle: a tabela errada TEM de vazar dentro da banda, senão o fixture não contém o fenômeno e o
+    // gate acima passaria mesmo com a porta consultando a tabela em todo lugar.
+    assert!(
+        leaked_inside > 5,
+        "controle: a tabela errada tem de mudar o valor DENTRO da banda ({leaked_inside} texels)"
+    );
+}

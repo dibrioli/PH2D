@@ -157,7 +157,7 @@ pub(crate) fn spawn_if_enabled(
                 println!(
                     "PH2D_IMPASTO_SMOKE=2: o que julgar e o numero que ele tinha. Pinte um traco \
                      LONGO e continuo, e depois va e volte sobre ele. O pincel tem de acompanhar o \
-                     cursor. Medido nesta tela, por movimento: 225,6 ms antes (aprox. 4 fps, o pincel \
+                     cursor. Medido nesta tela, por movimento: 225,6 ms antes (cerca de 4 fps, o pincel \
                      ficava uma mao atras do cursor) contra 2,62 ms agora. O desenho nao muda -- a \
                      wave e so velocidade -- entao se a tinta parecer diferente da de 1024, isso e um \
                      achado e nao um detalhe."

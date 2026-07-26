@@ -159,7 +159,7 @@ fn p50(v: &[f32]) -> f32 {
     s[s.len() / 2]
 }
 
-/// O percentil `q` de `v` (0..1). ⚠️ A latência se julga pela **CAUDA**: uma mediana de 8 ms com um
+/// O quantil `q` de `v` (0..1). ⚠️ A latência se julga pela **CAUDA**: uma mediana de 8 ms com um
 /// p95 de 40 é exatamente o que o artista descreve como *"às vezes trava"*, e a mediana sozinha diz
 /// que está tudo bem.
 fn pq(v: &[f32], q: f32) -> f32 {

@@ -57,12 +57,12 @@ fn a_frame_with_nothing_pending_records_nothing() {
     );
 }
 
-/// **A latência se julga pela CAUDA** — o `pq` tem de ser o percentil que afirma ser.
+/// **A latência se julga pela CAUDA** — o `pq` tem de ser o quantil que afirma ser.
 ///
 /// Uma mediana de 8 ms com um p95 de 40 é o que o artista descreve como *"às vezes trava"*, e a
 /// mediana sozinha diz que está tudo bem.
 #[test]
-fn the_percentile_is_the_percentile_it_claims() {
+fn the_quantile_is_the_quantile_it_claims() {
     let v: Vec<f32> = (0..=100).map(|i| i as f32).collect();
     assert!((pq(&v, 0.5) - 50.0).abs() < 1e-3);
     assert!((pq(&v, 0.95) - 95.0).abs() < 1e-3);

@@ -208,7 +208,7 @@ impl PainterTool {
         // on `preview_version`: the version replaces the shell's old `Arc::as_ptr` compare, which forced a
         // whole-canvas copy per move.)
         self.preview_version += 1;
-        // Esta pista está prestes a CONSUMIR o `dirty_rect` que a pista GPU também usaria para saber
+        // Esta pista vai CONSUMIR agora o `dirty_rect` que a pista GPU também usaria para saber
         // o que mudou. A GPU não vê este frame, então tudo o que sai daqui é uma edição que o cache
         // dela (fatias por-camada no compositor + as texturas de plano do impasto) não conhece:
         // marque-o, para a próxima drenagem dela recusar confinamento e refazer inteiro. Espelho do

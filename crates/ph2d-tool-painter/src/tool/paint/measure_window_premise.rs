@@ -102,14 +102,14 @@ fn the_window_premise_is_measured_not_assumed() {
         (n, worst_cov, worst_h)
     }
 
-    println!("[window-premise] cenario                     claim              fora  dcov   dh");
+    println!("[window-premise] cena                        claim              fora  dcov   dh");
     let probe = |name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterTool)| {
         let mut t = build();
         let _ = t.take_preview_dirty(); // zera a reivindicação anterior
         let Some(before) = planes_opt(&t) else {
             // Uma sessao de sculpt CONGELA os planos no pen-down, entao a sonda nao tem "antes" para
-            // comparar: o cenario nao monta desta forma, e dizer isso e mais honesto que imprimir zero.
-            println!("[window-premise] {name:<28} (cenario nao montou nesta sonda)");
+            // comparar: a cena nao monta desta forma, e dizer isso e mais honesto que imprimir zero.
+            println!("[window-premise] {name:<28} (cena nao montou nesta sonda)");
             return;
         };
         act(&mut t);

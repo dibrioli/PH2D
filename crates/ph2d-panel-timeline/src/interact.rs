@@ -126,10 +126,13 @@ pub(crate) fn dispatch_primary(
         // column (`SummaryKey`, below).
         TimelineHitKind::Key { target, key } => {
             let sel = ph2d_timeline::SelectedKey::new(target, key);
-            // Alt-drag is the Quick-Offset stagger (§3): it cascades the selection
-            // instead of moving it rigidly, and bypasses column-lock (staggering a
-            // whole aligned column is not the gesture). Plain drag = key move.
-            if g.mods.alt {
+            // Alt-drag OR Ctrl-drag is the Quick-Offset stagger (§3): it cascades
+            // the selection instead of moving it rigidly, and bypasses column-lock
+            // (staggering a whole aligned column is not the gesture). Plain drag =
+            // key move. Ctrl (`cmd`) is here because a Linux compositor (KDE) grabs
+            // Alt+left-drag for its window-move gesture, so the app never sees the
+            // drag — Ctrl is the WM-safe path and is otherwise free on a diamond.
+            if g.mods.alt || g.mods.cmd {
                 crate::stagger_drag::apply(state, px_per_s, snap, sel, g);
             } else if let Some(t_bits) = state
                 .column_lock
@@ -289,8 +292,8 @@ mod tests {
     fn an_alt_key_drag_routes_to_stagger_not_a_plain_move() {
         // Alt-drag on a key is the Quick-Offset cascade (§3): the router must send
         // it to the stagger machine (StaggerSelectedKeys), never the rigid key
-        // move (MoveSelectedKeys). (Mutation: drop the `g.mods.alt` branch -> the
-        // drag emits MoveSelectedKeys -> RED.)
+        // move (MoveSelectedKeys). (Mutation: drop the `g.mods.alt` disjunct -> an
+        // Alt drag emits MoveSelectedKeys -> RED.)
         let mut st = TimelinePanelState::default();
         let s = TimelineViewSnapshot {
             fps: 60.0,
@@ -319,6 +322,48 @@ mod tests {
             got.iter()
                 .any(|i| matches!(i, TimelineIntent::StaggerSelectedKeys { .. })),
             "the router sends an Alt key-drag to the stagger machine"
+        );
+        assert!(
+            !got.iter()
+                .any(|i| matches!(i, TimelineIntent::MoveSelectedKeys { .. })),
+            "and NOT to the rigid key move"
+        );
+    }
+
+    #[test]
+    fn a_ctrl_key_drag_also_routes_to_stagger_the_wm_safe_trigger() {
+        // A KDE compositor grabs Alt+left-drag for window-move, so the app never
+        // sees an Alt key-drag. Ctrl (`cmd`) is the WM-safe path and must reach the
+        // SAME stagger machine. (Mutation: drop the `g.mods.cmd` disjunct -> a Ctrl
+        // drag falls through to the rigid key move (MoveSelectedKeys) -> RED.)
+        let mut st = TimelinePanelState::default();
+        let s = TimelineViewSnapshot {
+            fps: 60.0,
+            frame_snap: false,
+            ..TimelineViewSnapshot::default()
+        };
+        let key = TimelineHitKind::Key { target: 1, key: 0 };
+        let ctrl = |phase, x: f32| TimelineGesture {
+            surface: SURFACE,
+            kind: key,
+            phase,
+            x,
+            y: 0.0,
+            button: PointerButton::Primary,
+            mods: GestureMods {
+                shift: false,
+                cmd: true,
+                alt: false,
+            },
+        };
+        feed(&mut st, ctrl(GesturePhase::Begin, 100.0), 100.0, &s);
+        feed(&mut st, ctrl(GesturePhase::Update, 200.0), 100.0, &s);
+        feed(&mut st, ctrl(GesturePhase::End, 200.0), 100.0, &s);
+        let got = state::drain_intents();
+        assert!(
+            got.iter()
+                .any(|i| matches!(i, TimelineIntent::StaggerSelectedKeys { .. })),
+            "the router sends a Ctrl key-drag to the stagger machine too"
         );
         assert!(
             !got.iter()

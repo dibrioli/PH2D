@@ -4,15 +4,18 @@
 //! começo ({0, 0.3, 0.6, 2.0}), com TODAS as keys JÁ SELECIONADAS e a timeline
 //! ABERTA. Dois verbos, ambos só sobre KEYS (nunca strips — o fade é intocável):
 //!
-//! - **Quick-Offset (Alt+arrastar uma key):** a seleção CASCATEIA — o 1º objeto
-//!   fica, cada seguinte desloca `rank·passo` (a cascata de motion-graphics). O
-//!   passo É a distância do arrasto; solte e a cascata pousa em um Ctrl+Z.
+//! - **Quick-Offset (Alt+arrastar OU Ctrl+arrastar uma key):** a seleção CASCATEIA
+//!   — o 1º objeto fica, cada seguinte desloca `rank·passo` (a cascata de
+//!   motion-graphics). O passo É a distância do arrasto; solte e a cascata pousa em
+//!   um Ctrl+Z. ⚠️ Use **Ctrl+arrastar** no KDE/Linux: o compositor rouba o
+//!   Alt+arrastar (gesto de mover-janela) e o app nunca vê o arrasto.
 //! - **Distribute (Ctrl+E):** as keys de cada track se re-espaçam UNIFORMEMENTE
 //!   entre a primeira e a última ({0, 0.3, 0.6, 2.0} -> {0, 0.667, 1.333, 2.0}) —
 //!   as pontas ficam, os miolos deslizam. Por track, independente.
 //!
 //! O que provar na tela:
-//! - Alt+arrastar uma das keys ESCALONA as três linhas (a de cima fica parada).
+//! - Ctrl+arrastar (ou Alt, fora do KDE) uma das keys ESCALONA as três linhas (a
+//!   de cima fica parada).
 //! - Ctrl+E espalha os miolos de cada linha uniformemente.
 //! - Um Ctrl+Z desfaz o gesto inteiro.
 //! - Nenhum strip/fade se mexe (os dois verbos vivem no dope-sheet).
@@ -104,9 +107,9 @@ impl crate::App {
 
         eprintln!(
             "[stagger-smoke] 3 tracks (X amontoado em 0..2 s), {total} keys, TODAS \
-             selecionadas. Alt+ARRASTAR uma key CASCATEIA as 3 linhas (a de cima fica); \
-             Ctrl+E DISTRIBUI os miolos de cada linha uniformemente. Um Ctrl+Z desfaz. \
-             Nenhum strip/fade se mexe."
+             selecionadas. Ctrl+ARRASTAR (ou Alt fora do KDE) uma key CASCATEIA as 3 \
+             linhas (a de cima fica); Ctrl+E DISTRIBUI os miolos de cada linha \
+             uniformemente. Um Ctrl+Z desfaz. Nenhum strip/fade se mexe."
         );
     }
 }

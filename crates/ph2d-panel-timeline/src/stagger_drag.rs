@@ -1,11 +1,13 @@
-//! The Quick-Offset stagger gesture (§3 crown jewel) — **Alt-drag** a selected
-//! key to CASCADE the whole selection: each track is shifted by `rank · step`,
-//! where `step` is the drag distance and `rank` is the track's stable position
-//! (the apply resolves rank; see [`TimelineIntent::StaggerSelectedKeys`]). The
-//! first track stays; each later one offsets more — the motion-graphics cascade.
+//! The Quick-Offset stagger gesture (§3 crown jewel) — **Alt-drag OR Ctrl-drag**
+//! a selected key to CASCADE the whole selection: each track is shifted by
+//! `rank · step` (Ctrl is the WM-safe trigger — a Linux compositor like KDE grabs
+//! Alt+left-drag for window-move, so the app never sees an Alt key-drag; routed in
+//! `interact`), where `step` is the drag distance and `rank` is the track's stable
+//! position (the apply resolves rank; see [`TimelineIntent::StaggerSelectedKeys`]).
+//! The first track stays; each later one offsets more — the motion-graphics cascade.
 //!
 //! It rides on a KEY hit, distinguished from the plain key-move purely by the
-//! Alt modifier (routed in `interact`). Like the key drag and the time-scale, it
+//! Alt/Ctrl modifier (routed in `interact`). Like the key drag and the time-scale, it
 //! streams one incremental [`StaggerSelectedKeys`] per frame inside a single
 //! `BeginEdit`/`EndEdit` bracket, so the cascade tracks the cursor and undoes in
 //! one step. A constant rank makes the per-frame steps compose to the total.

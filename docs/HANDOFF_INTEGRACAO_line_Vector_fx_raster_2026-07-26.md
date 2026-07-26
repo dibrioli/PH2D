@@ -1,7 +1,7 @@
-# Handoff de integração — `line/Vector`: a PILHA de FX RASTER (Blur / Glow / Drop Shadow)
+# Handoff de integração — `line/Vector`: a PILHA de FX RASTER (7 tipos, GPU-resident)
 
 **Plano:** [`docs/Vector Module/24_plano_fx_raster.md`](Vector%20Module/24_plano_fx_raster.md) ·
-**Data:** 2026-07-26 · **W1 + W2** na `line/Vector`.
+**Data:** 2026-07-26 · **W1 + W2 + W3** na `line/Vector`.
 
 O FX raster de alta qualidade para formas vetoriais — a resposta ao pedido *"efeitos FX de alta
 qualidade, estado da arte, compatível com o que temos"*, e depois ao *"aqui tudo é para o game em
@@ -10,7 +10,9 @@ blend, com sombra e brilho DERIVADOS do feather, sem pilha nenhuma).
 
 - **W1 — a forma filtrada** (Blur · Outer Glow · Drop Shadow). **SMOKE APROVADO** pelo Enio
   (`=33`, incluindo maximizar + zoom: FPS liso, sem panic).
-- **W2 — a PILHA componível** (escolha do Enio). **PENDENTE DE SMOKE.**
+- **W2 — a PILHA componível** (escolha do Enio). **SMOKE APROVADO** pelo Enio.
+- **W3 — o CATÁLOGO:** `Inner Shadow` · `Inner Glow` · `Outline` · `Color Overlay` (3 tipos → 7).
+  **PENDENTE DE SMOKE.**
 
 ## A costura (o inegociável)
 
@@ -59,6 +61,32 @@ então é 1:1 — **mas é o olho do smoke que decide**, e a estrela 4 (`=33`) �
 ⚠️ **`ph2d_vec_render::FxImage` perdeu o campo `mode`** e `FxMode` deixou de existir. Único
 chamador do `dispatch` é a `render_loop`.
 
+## ⚠️ W3 — o CATÁLOGO, e as três decisões que ele carrega
+
+Detalhe e números no [plano §8](Vector%20Module/24_plano_fx_raster.md). O resumo que a integração
+precisa:
+
+1. **Fora da textura é TRANSPARENTE, não `clamp`.** Trocar a extensão do kernel é o que dá **margem
+   ZERO** aos degraus de dentro (para eles, *fora da textura* É *fora da forma*). Nos degraus de
+   fora as duas respostas **coincidem** — a margem garante borda transparente —, então nada do que
+   a W1/W2 desenhava se move. ⚠️ Um gate da W2 ficou vermelho com isso e a culpa era da **fixture**
+   (barra flush contra a borda de uma textura de 8 px, situação que o `stack_reach` nunca produz);
+   ela ganhou margem e ficou mais forte.
+2. **O Outline é o mesmo kernel com um CORTE em `Φ(−1)`** ⇒ a borda para exactamente na largura
+   pedida (medido: 3,5 px para 4 · 7,5 px para 8, transição ≤1 px contra 5-10 px de um Glow).
+3. **O Color Overlay é PONTUAL:** um dispatch, margem zero (medido a 512²: 6 overlays 0,282 ms
+   contra 0,646 ms de 6 borrões). `passes_of` é porta única — quem escreve os globals e quem
+   despacha perguntam à mesma.
+
+⚠️ **UMA tabela, quatro consumidores:** `ph2d_ecs::FxOp::SPECS` responde *o que este tipo é* para o
+painel (que rows), o passe (margem + passes), os predicados `tints`/`displaces` e o **WGSL** — cujos
+códigos são **GERADOS** (`kind_consts_wgsl`), não repetidos do outro lado da fronteira de linguagem.
+O `FilterRowView` **perdeu o `label`** (o nome só pode vir da tabela) e
+`set_filter_kind_names` virou **`set_filter_kinds(Vec<FilterKindView>)`**.
+
+⚠️ **`ids::MAX_FILTER_KINDS` 3 → 7** (espelho de `FxOp::KINDS`; há gate na shell, o único lugar que
+vê os dois lados).
+
 ## Deltas que a integração precisa CONFERIR (o número se conta, não se escolhe)
 
 | Item | Antes | Depois | Como |
@@ -69,6 +97,7 @@ chamador do `dispatch` é a `render_loop`.
 | `VEC_SCENE_SCHEMA` | 13 | **13 (intocado)** | — |
 | **§6 contrato vetorial** | — | **INTACTO** | `architecture_vector_contract_surface` verde |
 | `VECTOR_SECTIONS` (painel) | 26 | **27** (append) | Filters (gate de contagem atualizado) |
+| `ids::MAX_FILTER_KINDS` | — | **7** | espelha `FxOp::KINDS` (W3) |
 
 ⚠️ Se outra linha mexer no registry/`PROJECT_SCHEMA` na MESMA janela, o número final **se
 recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `VecFilter` não move
@@ -92,6 +121,12 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
 
 ## Gates
 
+- **GPU do CATÁLOGO (`fx_stack_kinds_gpu.rs`, 6, W3):** **todo tipo da tabela desenha alguma
+  coisa** (o gate da wave — varre `FxOp::KINDS`, então um tipo novo entra nele no mesmo commit em
+  que entra na tabela) · a sombra de dentro escurece a borda e **não vaza um texel** para fora · o
+  contorno alcança a largura e para **duro** (com o Glow do mesmo σ como controle) · o Color
+  Overlay repinta **sem mover cobertura** em três forças · o op pontual custa muito menos que um
+  borrão · **a margem é um fato do TIPO** (puro, roda sem device).
 - **GPU (`ph2d-render/tests/fx_stack_gpu.rs`, 8, `#[ignore]`):** rampa alarga com sigma · o halo é
   do EFEITO e a FORMA sobrevive por cima · **a ORDEM da pilha muda o desenho** (o gate da wave) ·
   pilha vazia é a identidade · o custo por degrau (medição) · `stack_reach` (puro, roda em qualquer
@@ -99,18 +134,22 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
 - **Shell (5):** os tetos painel↔motor concordam · degrau desligado nunca chega ao passe · o raio é
   de MUNDO (2× de zoom = 2× de borrão) · o offset cruza a câmera e cai em pixel inteiro · `hit_of`
   decodifica cada controle **e nada mais**.
-- **Modelo (4, `ph2d-ecs`):** reordenar troca vizinhos e as pontas são no-ops · a pilha só está
-  ativa com algum degrau ligado · um degrau novo nasce VISÍVEL · o teto é resposta da pilha.
+- **Modelo (6, `ph2d-ecs`):** reordenar troca vizinhos e as pontas são no-ops · a pilha só está
+  ativa com algum degrau ligado · um degrau novo nasce VISÍVEL (**varrendo a tabela**, e pedindo a
+  ELA o que exigir) · o teto é resposta da pilha · a tabela é indexada pelo CÓDIGO e os nomes são
+  únicos · `tints`/`displaces` são VISTAS da tabela, não uma segunda opinião.
 - **Seam (6, `seam_filters.rs`):** os Add ao bus · os ícones do card ao bus · as setas das PONTAS
-  **não** são desenhadas · cada linha pinta só os controles do TIPO dela (presença E ausência) · a
+  **não** são desenhadas · cada linha pinta só os controles do TIPO dela, **varrendo a tabela inteira**, presença E ausência
+  (a versão da W2 comparava dois tipos escritos à mão e teria ficado verde sobre os quatro novos) · a
   swatch é alvo de PICKER (não botão) · a seção não é oferecida sem forma.
 - Fechamento: `cargo fmt` · clippy limpo · LOC caps (workspace + shell + painel) · §6 ·
   `node_id_collisions` (agora cobrindo as DUAS famílias por-linha) · `panel_wiring_parity` ·
   `cargo test --workspace --no-run` exit 0.
 
 ⚠️ **Os gates GPU são `#[ignore]`** — o integrador roda
-`cargo test -p ph2d-render --release --test fx_stack_gpu -- --ignored` na RTX (**8/8 verdes**; sem
-adapter fazem *skip gracioso*, que não é verde).
+`cargo test -p ph2d-render --release --test fx_stack_gpu -- --ignored` **e**
+`--test fx_stack_kinds_gpu -- --ignored` na RTX (**8/8 e 6/6 verdes**; sem adapter fazem *skip
+gracioso*, que não é verde).
 
 ## ⚠️ Três lições que a wave pagou
 
@@ -128,29 +167,38 @@ adapter fazem *skip gracioso*, que não é verde).
 
 ## Smoke
 
-`cd <worktree> && env PH2D_BUILD_SMOKE=33 cargo run -p ph2d-host-desktop --release` — **sete
-estrelas em duas fileiras**:
+`cd <worktree> && env PH2D_BUILD_SMOKE=33 cargo run -p ph2d-host-desktop --release` — **doze
+estrelas em três fileiras** (a cena imprime a legenda inteira no stderr, com os números medidos):
 
-- **CIMA (a regressão da W1):** controle nítido · **Blur** · **Glow** ciano · **Drop Shadow**.
-- **BAIXO (a W2):** a **PILHA INTEIRA** (`Shadow → Blur → Glow`, três degraus numa forma só) · e o
-  **PAR DE ORDEM** (`Glow → Blur` × `Blur → Glow`), que tem os MESMOS dois degraus trocados —
-  **se as duas parecerem iguais, a pilha não está compondo**.
+- **CIMA — a regressão** (W1/W2): controle nítido · **Blur** · **Glow** ciano · **Drop Shadow**.
+- **MEIO — o catálogo da W3**, cada tipo sozinho: **Inner Shadow** (a estrela lê como RECORTE) ·
+  **Inner Glow** ciano · **Outline** branco de borda DURA · **Color Overlay** (a mesma estrela
+  repintada de azul, sem borrar).
+- **BAIXO — a composição:** a **PILHA INTEIRA** (`Shadow → Blur → Glow`) · o **PAR DE ORDEM**
+  (`Glow → Blur` × `Blur → Glow`, os MESMOS dois degraus trocados — se parecerem iguais, a pilha
+  não está compondo) · e **O STICKER** (`Outline → Drop Shadow`), o desenho que nenhum dos dois faz
+  sozinho.
 
-Dê ZOOM (o borrão cresce — o raio é de MUNDO) e MAXIMIZE (o resize re-registra).
-`PH2D_FX_PERF=1` imprime `re-cozida(s)` + ms do recook.
+Depois: **dê zoom** (o borrão cresce — o raio é de MUNDO) e **maximize** (o resize re-registra a
+textura). `PH2D_FX_PERF=1` imprime `N pilha(s), M re-cozida(s), recook X ms`.
 
-**E o smoke do PAINEL:** abra o Vector, desenhe uma forma, selecione → seção *Filters* →
-**Add Blur** / **Add Glow** / **Add Drop Shadow** → afine Radius/Offset/Color/Opacity → use as
-**setas** do card para reordenar (o desenho tem de mudar) → o **olho** desarma sem perder os
-números → o **✕** apaga (e o último ✕ tira o filtro da forma).
+**E o gesto do painel** (que a cena não exercita): desenhe uma forma → seção **Filters** → os
+**sete** botões "Add" → cada card oferece **só** os controles do tipo dele (o Color Overlay não tem
+Radius; só as sombras têm Offset; o Outline diz **Width**, não Radius) → as setas reordenam, o olho
+desarma sem perder os números, o ✕ apaga.
 
 ## Aberto / follow-ups (nomeados, não contrabandeados)
 
-- **Só três TIPOS.** O `apply_op` é a porta por onde um tipo novo entra com um braço de shader e um
-  `kind_name` — color-matrix (tint/duotone), morphology (dilate/erode), displacement + turbulence,
-  bevel. **Nenhum deles muda a pilha**, e é isso que a W2 comprou.
-- **W3 — o feather analítico** (erf da distância / SDF via JFA), quando a nitidez em zoom extremo
-  importar.
+- **W4 — o feather analítico** (erf da distância / SDF via JFA), quando a nitidez em zoom extremo
+  importar. ⚠️ **Reordenado para depois do catálogo, com motivo:** o argumento dele é
+  *resolution-crisp*, e o nosso borrão já o é (re-coze na escala da tela por frame, e há gate). O
+  que a W3 comprou — tipos que a Gaussiana **não desenha** — é delta de produto.
+- **W5 — os tipos que pedem maquinaria NOVA:** Bevel/Emboss (o `blur(alfa)` já é a altura), a
+  turbulência + deslocamento (o eixo ORGÂNICO), e o **blend mode por degrau** (um campo a mais no
+  `FxOp` e um `mix` a mais no finalize — não mexe na pilha).
+- **O Outline arredonda quinas convexas** — é um corte no nível de uma Gaussiana isotrópica, logo
+  aproxima a dilatação por DISCO (o que um pincel redondo faz). A dilatação exata é `O(r²)` por
+  texel; não se justifica sem pedido.
 - **Radius é slider em unidades de MUNDO** (`FILTER_RADIUS_MAX = 2.0`) — fração-do-tamanho seria
   mais robusto para formas de tamanhos diferentes (a mesma nota que o Contour faz do Offset).
 - **O deslocamento da sombra é arredondado ao PIXEL** (o halo é amostrado por `textureLoad`, sem

@@ -123,10 +123,20 @@ posição do centroide da sombra, e a mensagem traz os números.
   a meio caminho (o 1º corte era CPU-first e vazava o atlas do Vello — 37→793 ms num smoke parado);
   e o `override_image` foi trocado por RE-REGISTRO no resize (dims estáveis) depois do "panic ao
   zoom".
-- **W2 — A PILHA COMPONÍVEL (FECHADA, pendente de smoke):** ver §7 abaixo.
-- **W3 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
+- **W2 — A PILHA COMPONÍVEL (FECHADA, smoke aprovado 2026-07-26):** ver §7 abaixo.
+- **W3 — O CATÁLOGO (FECHADA, pendente de smoke):** os degraus de DENTRO, o CONTORNO e a COR —
+  `Inner Shadow` · `Inner Glow` · `Outline` · `Color Overlay`, três tipos → **sete**. Ver §8.
+- **W4 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
   via erf da distância (o Levien `draw_blurred_rounded_rect` generalizado, ou SDF via o JFA in-repo
-  do motion-nodes). O primitivo premium, quando a nitidez em zoom extremo importar.
+  do motion-nodes). O primitivo premium, quando a nitidez em zoom extremo importar. ⚠️ **Reordenado
+  para depois do catálogo, com motivo:** o argumento dele é *resolution-crisp*, e o nosso borrão já
+  o é (o `resolve_ops` re-coze na escala da tela a cada frame, e o gate do zoom o pina). O que a
+  W3 comprou — tipos que a Gaussiana **não desenha** — é delta de produto; o feather é qualidade de
+  um degrau que já existe.
+- **W5 — os tipos que pedem maquinaria NOVA:** Bevel/Emboss (uma altura + uma luz — o `blur(alfa)`
+  já é a altura, e o modelo de luz é parente do impasto), turbulência + deslocamento (o
+  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem), e o
+  blend mode POR DEGRAU (o Layer Style do Photoshop). Nenhum deles muda a pilha.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -212,3 +222,90 @@ duvidosa. As duas entraram no MESMO conjunto.
   sampler). Invisível numa sombra; nomeado por honestidade.
 - **`MAX_HALF = 96`** no kernel (sigma ≈ 32 px de tela): acima, o borrão satura — limite de CUSTO
   do passe, não de produto.
+
+## §8 — W3: o CATÁLOGO (o que se construiu, e por quê)
+
+**A W2 comprou um multiplicador e esta wave o gasta.** O `apply_op` é a porta por onde um tipo novo
+entra com um braço de shader e um nome; nada aqui mexe na pilha, na margem-como-conceito, no memo,
+no registro de textura ou na costura de render. Três tipos viraram **sete**:
+
+| # | tipo | o que desenha | raio | offset | cor | cresce | passes |
+|---|---|---|---|---|---|---|---|
+| 0 | Blur | borra o que chegou | Radius | — | — | 3σ | 2 |
+| 1 | Glow | halo tingido POR BAIXO | Radius | — | ✓ | 3σ | 2 |
+| 2 | Drop Shadow | o Glow deslocado | Radius | ✓ | ✓ | 3σ + offset | 2 |
+| 3 | **Inner Shadow** | a sombra que cai **para dentro** | Radius | ✓ | ✓ | **0** | 2 |
+| 4 | **Inner Glow** | a Inner Shadow sem deslocamento | Radius | — | ✓ | **0** | 2 |
+| 5 | **Outline** | contorno de borda **DURA** | **Width** | — | ✓ | **σ+1** | 2 |
+| 6 | **Color Overlay** | repinta sem borrar | — | — | ✓ | **0** | **1** |
+
+### As três decisões que decidem o resto
+
+**(a) Fora da textura é TRANSPARENTE, não `clamp`.** A W2 grampeava a coordenada, o que *estica* o
+texel da borda para dentro do kernel. Trocar por *fora não há imagem* é a extensão correta de uma
+imagem premultiplicada sobre campo transparente — e é ela que dá **margem zero** aos degraus de
+dentro: para eles, "fora da textura" É "fora da forma", que é exactamente o que o alfa invertido
+precisa de ler. Nos degraus de fora as duas respostas coincidem (a margem garante borda
+transparente), então **nada do que a W1/W2 desenhava se move**.
+
+⚠️ **Um gate da W2 ficou vermelho com isso, e a culpa era da FIXTURE:** ela punha uma barra opaca
+ocupando a altura inteira de uma textura de 8 px — flush contra a borda, que é a única situação em
+que as duas respostas diferem, e que o `stack_reach` **nunca produz**. Medido: o platô caía de 255
+para 242 (o kernel perdia 4,9 % do peso pelo topo/base). A fixture ganhou margem e ficou mais forte
+do que era (agora afirma também que o miolo continua opaco).
+
+**(b) O Outline é o mesmo kernel com um CORTE, e a largura é uma promessa medida.** Para uma aresta
+reta a silhueta borrada vale `Φ(−d/σ)` a `d` px para fora, então cortar em `Φ(−1) = 0,1587` põe a
+borda **exactamente a σ px**. Medido: alcance **3,5 px** para largura 4 e **7,5 px** para 8 (o meio
+pixel é a convenção da última coluna acima do limiar), com transição de **≤1 px** — contra os 5 e 10
+px de banda de um Glow do mesmo σ. A meia-banda de anti-aliasing é **derivada** do gradiente do
+perfil ali (`φ(1)/σ`), não escolhida. Por isso o slider dele se chama **Width** e não Radius: é a
+tabela que dá o rótulo.
+
+**(c) O Color Overlay é PONTUAL, e isso aparece no custo.** Um dispatch, sem vizinho nenhum, margem
+zero. Medido a 512²: **6 overlays 0,282 ms contra 0,646 ms de 6 borrões**. O `passes_of` é porta
+única — quem escreve os globals e quem despacha perguntam à mesma, porque as duas varreduras andam
+em lockstep sobre a mesma lista e um `if` duplicado as descasaria em silêncio.
+
+### UMA tabela, quatro consumidores
+
+`ph2d_ecs::FxOp::SPECS` responde *o que este tipo é* para: o **painel** (que rows oferecer, e o
+rótulo do raio), o **passe** (quanto espalhar, quantos dispatches), os predicados
+`tints`/`displaces`, e o **WGSL** — cujos códigos são **gerados** (`kind_consts_wgsl`) em vez de
+repetidos do outro lado da fronteira de linguagem. Com três tipos o painel decidia por `kind == 2`
+espalhado pelo `paint`; com sete isso apodrece na primeira adição, e o modo de falha é um knob morto
+que nenhum gate vê.
+
+O `FilterRowView` **perdeu o campo `label`**: o nome só pode vir da tabela porque não existe outro
+sítio de onde ele possa vir. Divergência inexprimível > divergência testada.
+
+### Gates (e as três lições)
+
+6 no catálogo de GPU + 6 de seam + 6 no modelo + os 8 da W1/W2 intactos. O gate que carrega a wave
+é **`every_kind_draws_something`**: varre `FxOp::KINDS` e exige que TODO tipo mude a imagem — o
+antídoto do modo de falha desta wave (um tipo entra na tabela, ganha botão, card e defaults, e o
+shader cai no `else`). Um tipo novo entra nele no mesmo commit em que entra na tabela.
+
+⚠️ **A fixture do Color Overlay não continha o fenômeno.** Ela testava só a força cheia, e ali
+`alfa × k` com `k = 1` **é** o alfa — então a mutação que escreve a força no canal de cobertura era
+a identidade, e o gate ficava verde sobre ela. Agora varre `[1,0 · 0,6 · 0,25]`.
+
+⚠️ **Um "sobrevivente" era o HARNESS, não um buraco:** eu filtrava com `--ignored` um gate que é
+puro (roda sem device) ⇒ **zero testes rodaram** e o verde era *nada aconteceu*
+([[feedback_a_negative_search_needs_a_positive_control]]).
+
+⚠️ **O seam varre a tabela INTEIRA, presença e ausência.** A versão da W2 comparava dois tipos
+escritos à mão (Blur × Drop Shadow) e teria ficado **verde** sobre os quatro tipos desta wave: um
+Color Overlay com slider de Radius, ou um Outline sem cor, passariam sem nada falhar.
+
+7 mutações, 7 sangram.
+
+### Aberto
+
+- **`MAX_HALF = 96`** continua o teto do kernel; para o Outline ele limita a largura a ~32 px de
+  tela, o que é muito mais do que um contorno pede.
+- **O Outline arredonda quinas convexas** — é um corte no nível de uma Gaussiana isotrópica, logo
+  aproxima a dilatação por DISCO (o que um pincel redondo faz). Uma dilatação exata seria `O(r²)`
+  por texel, ou um EDT; não se justifica sem um pedido.
+- **Sem blend mode por degrau** (o Layer Style do Photoshop tem um por efeito) — é W5, e não mexe na
+  pilha: é um campo a mais no `FxOp` e um `mix` a mais no finalize.

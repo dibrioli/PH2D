@@ -110,6 +110,15 @@ As duas fns do painel estavam **no teto de 200** e as +2 linhas do feature estou
 
 ## 6. Aberto (não-bloqueante, decisões de produto)
 
+- **SMOKE APROVADO — Enio "aceitar" (2026-07-25).** O smoke expôs um **brilho de 4 pontas** (star)
+  no cruzamento com pincel MACIO; render-and-look (3 casos lado a lado) provou que **não é bug**:
+  é a acumulação `over` de duas passagens de falloff **em pico** (o macio) concentrando no ponto
+  central — fisicamente correta para tinta translúcida (o que um aerógrafo sobreposto faz). Com
+  pincel DURO o mesmo `over` dá um **quadrado mais claro limpo** (o marcador). Ou seja: o Self
+  Overlap está correto para o caso de uso dele (marcador/nanquim, borda dura); a estrela é o macio.
+  Enio **aceitou como está** (opção 1: modelo correto, cruzamento limpo se faz com pincel duro).
+  **Nenhuma mudança de código.** Evidência renderizada: `so_A_x` (duro, quadrado limpo) ×
+  `so_D_x_soft`/`so_F_x_soft_off` (macio ON=estrela, OFF=liso) — sonda throwaway, não commitada.
 - **Quina afiada limpa** — hoje a quina acumula junto (bleed de marcador, por design, gateado). Se
   o Enio quiser separar "cruzamento verdadeiro" de "quina", é outro mecanismo (a depth por-segmento
   faz as duas blendarem por construção). Nomeado, não construído.

@@ -64,6 +64,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_smooth::register(&mut reg).unwrap();
     ph2d_node_value_pattern::register(&mut reg).unwrap();
     ph2d_node_value_wrap::register(&mut reg).unwrap();
+    ph2d_node_value_time::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3586,6 +3587,71 @@ fn value_wrap_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the wrap drove nothing"
+    );
+}
+
+/// **`value.time` runs fully on the GPU and matches the CPU.** A PRODUCER that
+/// reads the playhead uniform (`params.playhead`, the same one `value.lfo` reads)
+/// and mints `t·rate + offset + i·stagger`. The fixture uses a NON-ZERO `stagger`
+/// so the field VARIES per instance — a producer that dropped the `f32(i)·stagger`
+/// term would give a flat constant and still pass `column_is_nonzero`, so the
+/// per-element ramp is what the parity actually pins. `rate`/`offset` are un-round
+/// so `playhead·rate` is not trivially the playhead. The clock drives Y; the device
+/// multiply-add matches the CPU (the only divergence is an FMA the driver may fuse,
+/// ε below the budget). `is_fully_gpu` PROVES the chain dispatches (no CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_time_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let time = g.add_node("value.time");
+    g.set_param(time, "rate", 1.3); // un-round: playhead·rate is not the playhead
+    g.set_param(time, "offset", 0.4);
+    g.set_param(time, "stagger", 0.13); // per-instance ramp — the term that varies
+    connect(&mut g, grid, time); // read for its count (a travelling ramp)
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (time, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("clock value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "grid → time → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.time → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the clock drove nothing"
     );
 }
 

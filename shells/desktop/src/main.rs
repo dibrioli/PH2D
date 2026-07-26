@@ -65,6 +65,7 @@ mod value_reduce_smoke;
 mod value_smooth_smoke;
 mod value_pattern_smoke;
 mod value_wrap_smoke;
+mod value_time_smoke;
 mod value_quantize_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;

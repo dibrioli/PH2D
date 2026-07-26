@@ -7,8 +7,8 @@
 //! arm; only the per-move advance moved here.
 // ph2d-loc-cap: 680 LOC — the keyed-handle-id multi-select rotate/scale/translate
 // advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
-// +12 (gold-standard joint anchor): a Translate on a joint marks it `anchored = false`
-// so the bridge re-derives its body-local anchors from the dragged pivot.
+// +12 (gold-standard joint anchor): the joint tail — REMOVED again by W-J2; the
+// anchor dots open `crate::joint_anchor_drag`, which writes one side's local.
 
 use crate::{App, Transform};
 
@@ -591,22 +591,14 @@ impl App {
                 }
             }
         }
-        // Anchor-dot drag: a physics joint's `Transform` is its authored world
-        // pivot, so a Translate on a joint entity REPOSITIONS the anchor. Mark it
-        // un-anchored each Move so the next reconcile re-derives the body-local
-        // anchors from the dragged pivot — the pin tracks the drag. Only a joint
-        // carries a `PhysicsJoint`; a body or sprite Translate is untouched.
-        if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
-            && let Some(gfx) = self.gfx.as_mut()
-            && let Some(mut j) = gfx
-                .sim
-                .world_mut()
-                .get_mut::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(
-                    drag.entity_bits,
-                ))
-        {
-            j.anchored = false;
-        }
+        // ⚠️ **No joint-anchor tail here any more (W-J2).** A Translate on a
+        // joint entity used to clear `PhysicsJoint::anchored`, because the dot
+        // opened a generic Translate and the joint's `Transform` was its anchor.
+        // Both halves of that are gone: the dot opens
+        // `crate::joint_anchor_drag` instead, and clearing the sentinel
+        // re-derives BOTH locals from the seed policy — so dragging the A dot
+        // would have thrown away a B anchor the artist had just placed. A
+        // reposition knows its side and writes that local directly.
     }
 
     /// Compute the world-space center of the selected sprite's CONTENT

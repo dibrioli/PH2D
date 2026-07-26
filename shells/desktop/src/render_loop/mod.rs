@@ -1637,6 +1637,24 @@ impl crate::App {
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
+                // W-J2: the anchor handles. Rest-only — during play the overlay
+                // draws the SOLVER's anchors and these authored ones would
+                // describe a pose the artist is not editing.
+                !self.playhead.is_playing(),
+                // The B end, through the bridge's anchor door. Resolved HERE
+                // because `publish` does not take the bridge, and asked of the
+                // SAME function `sync_joint_pivots` uses for the A pivot — two
+                // derivations of "where is this anchor" is how the two dots would
+                // come to disagree.
+                hero.gizmo.selection.and_then(|bits| {
+                    physics.joint_anchor_world(
+                        sim,
+                        ph2d_ecs::Entity::from_bits(bits),
+                        ph2d_physics_ecs::JointSide::B,
+                    )
+                }),
+                // The candidate a live anchor drag has caught (the crosshair).
+                self.joint_anchor_drag.and_then(|d| d.snap),
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -5603,6 +5621,12 @@ impl crate::App {
             // Inspector commits phase — Transform / Visibility / Name
             // / Sprite source-strategy + Reimport. Extracted to sibling
             // `inspector_commits.rs` as a free fn (Wave 3.2 stage A).
+            //
+            // W-J2: a physics joint's Position IS its A anchor, so the committed
+            // pivot is re-seated through the bridge's anchor door just below.
+            // Captured here because `transform_edit` is consumed by the call.
+            let joint_pivot_commit =
+                transform_edit.map(|info| (info.entity_bits, info.translation));
             if inspector_commits::dispatch(
                 reimport_entity,
                 transform_edit,
@@ -5629,6 +5653,22 @@ impl crate::App {
                 *sprite_type_id,
             ) {
                 self.title_dirty = true;
+            }
+            // W-J2: re-seat a joint's A anchor after a Position commit — the
+            // SAME door the canvas handles write through, so typing a pivot and
+            // dragging it mean the same thing. ⚠️ Not the `anchored` sentinel the
+            // old tail cleared: that re-derives BOTH locals, so editing X for the
+            // A end would silently reset the B end the artist just placed.
+            // A joint is a root entity, so its local translation IS world.
+            if let Some((bits, world)) = joint_pivot_commit {
+                let e = ph2d_ecs::Entity::from_bits(bits);
+                if sim
+                    .world()
+                    .get::<ph2d_physics_ecs::PhysicsJoint>(e)
+                    .is_some()
+                {
+                    physics.set_joint_anchor_world(sim, e, ph2d_physics_ecs::JointSide::A, world);
+                }
             }
             // §12 Physics Joint (W3) — the joint edits and the one gesture that
             // creates a joint. Deletion is NOT here: a joint is an object, so

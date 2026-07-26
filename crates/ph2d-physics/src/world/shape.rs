@@ -108,6 +108,92 @@ impl ShapeDesc {
         }
     }
 
+    /// Room for the largest [`snap_points`](ShapeDesc::snap_points) answer — a
+    /// `Cuboid`'s nine (centre, four corners, four edge midpoints).
+    pub const MAX_SNAP_POINTS: usize = 9;
+
+    /// **The points on this shape an artist aims at** — its centre and its
+    /// extremes, in the shape's own local frame. Returns how many were written.
+    ///
+    /// This is the candidate set a joint anchor snaps to (W-J2), and it is the
+    /// COLLIDER's, never the sprite quad's: a joint attaches to a *body*, and a
+    /// body's shape is the thing the solver collides with. Snapping to the
+    /// picture would put the dot where the physics is not.
+    ///
+    /// The vocabulary is deliberately the same one the pivot handle already
+    /// snaps to (`ph2d_editor::pivot_snap_candidates`: centre / corners / edge
+    /// mids) — a second answer to *"what can I snap a point to?"* is how two
+    /// handles in the same editor come to feel like different programs. What
+    /// differs is that a round shape has no corners, and inventing some would
+    /// offer the artist a point that is **not on the body**:
+    ///
+    /// | shape | points |
+    /// |---|---|
+    /// | `Cuboid` | centre · 4 corners · 4 edge midpoints (9) |
+    /// | `Ball` / `Ellipse` | centre · 4 cardinal rim points (5) |
+    /// | `Capsule` / `Stadium` | centre · 2 cap centres · 2 poles · 2 barrel sides (7) |
+    ///
+    /// A capsule's **cap centres** earn their place: they are where a limb
+    /// pivots, and they are invisible on the outline, so they are exactly the
+    /// point an artist cannot hit by eye.
+    ///
+    /// A degenerate shape (a zero half-extent) still answers — the extremes
+    /// simply collapse onto the centre, and the nearest-wins search that consumes
+    /// this treats duplicates as one point.
+    #[must_use]
+    pub fn snap_points(self, out: &mut [[f32; 2]; Self::MAX_SNAP_POINTS]) -> usize {
+        out[0] = [0.0, 0.0];
+        match self {
+            Self::Ball { radius } => Self::cardinal_rim(out, radius, radius),
+            Self::Ellipse { rx, ry } => Self::cardinal_rim(out, rx, ry),
+            Self::Cuboid { half_x, half_y } => {
+                out[1] = [-half_x, half_y];
+                out[2] = [half_x, half_y];
+                out[3] = [-half_x, -half_y];
+                out[4] = [half_x, -half_y];
+                out[5] = [0.0, half_y];
+                out[6] = [half_x, 0.0];
+                out[7] = [0.0, -half_y];
+                out[8] = [-half_x, 0.0];
+                9
+            }
+            Self::Capsule {
+                half_height,
+                radius,
+            } => Self::stadium_points(out, half_height, radius, radius),
+            Self::Stadium {
+                half_height,
+                rx,
+                ry,
+            } => Self::stadium_points(out, half_height, rx, ry),
+        }
+    }
+
+    /// Centre plus the four cardinal points of an axis-aligned ellipse.
+    fn cardinal_rim(out: &mut [[f32; 2]; Self::MAX_SNAP_POINTS], rx: f32, ry: f32) -> usize {
+        out[1] = [0.0, ry];
+        out[2] = [rx, 0.0];
+        out[3] = [0.0, -ry];
+        out[4] = [-rx, 0.0];
+        5
+    }
+
+    /// Centre, the two cap centres, the two poles and the two barrel sides.
+    fn stadium_points(
+        out: &mut [[f32; 2]; Self::MAX_SNAP_POINTS],
+        half_height: f32,
+        rx: f32,
+        ry: f32,
+    ) -> usize {
+        out[1] = [0.0, half_height];
+        out[2] = [0.0, -half_height];
+        out[3] = [0.0, half_height + ry];
+        out[4] = [0.0, -half_height - ry];
+        out[5] = [rx, 0.0];
+        out[6] = [-rx, 0.0];
+        7
+    }
+
     /// The fraction for an axis-aligned ellipse: normalise each axis by its own radius
     /// and the boundary becomes the unit circle, so the fraction is just the length of
     /// the normalised point. (A circle is the case `rx == ry`.)

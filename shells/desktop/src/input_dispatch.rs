@@ -2560,6 +2560,9 @@ impl App {
         // (MovePivot / scale / rotate / translate). Extracted to the
         // `gizmo_drag` sibling to keep this dispatch hub readable.
         self.advance_gizmo_drag();
+        // W-J2: and the joint-anchor drag, which is NOT a gizmo drag — it writes
+        // a body-local anchor through the bridge's door, not a `Transform`.
+        self.advance_joint_anchor_drag();
         // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
         // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
         // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
@@ -4067,55 +4070,45 @@ impl App {
                             began_pivot = true;
                         }
                     }
-                    // Joint-anchor point handle: a Down on the joint's dot opens
-                    // a plain Translate drag of the JOINT entity (= the
-                    // selection). A joint has no sprite for the canvas-pick
-                    // Translate path (`pick_sprites_at_world`) to resolve, so it
-                    // is recognised HERE by its hit id, before the generic handle
-                    // path — the same shape as `began_pivot` and the Flip
-                    // targets. Moving it writes `Transform.translation`, which is
-                    // the joint's authored anchor; `advance_gizmo_drag` does the
-                    // write and `post_frame_undo` makes it one global step.
+                    // Joint-anchor point handles: a Down on either dot opens the
+                    // anchor drag (`crate::joint_anchor_drag`) for that END. A
+                    // joint has no sprite for the canvas-pick Translate path
+                    // (`pick_sprites_at_world`) to resolve, so they are
+                    // recognised HERE by hit id, before the generic handle path
+                    // — the same shape as `began_pivot` and the Flip targets.
+                    //
+                    // ⚠️ Both ends run the SAME gesture, which is the point of
+                    // W-J2: the A end used to open a generic `Translate` of the
+                    // joint entity (its `Transform` used to BE the anchor), and
+                    // body B has no `Transform` at all, so a Translate could
+                    // never author it. One door writes both locals.
+                    let anchor_side = match hit_id {
+                        Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR) => {
+                            Some(ph2d_physics_ecs::JointSide::A)
+                        }
+                        Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR_B) => {
+                            Some(ph2d_physics_ecs::JointSide::B)
+                        }
+                        _ => None,
+                    };
                     let mut began_joint_anchor = false;
-                    if hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR)
+                    if let Some(side) = anchor_side
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
-                        && let Some(entity_bits) = hero.gizmo.selection
                     {
-                        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-                        if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
-                            && let Some(t) = gfx.sim.world().get::<Transform>(entity)
-                        {
-                            let window_size = gfx.surface.size();
-                            let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                            let snap_t = ph2d_editor::TransformSnapshot {
-                                translation: [t.translation.x, t.translation.y],
-                                rotation: t.rotation,
-                                scale: [t.scale.x, t.scale.y],
-                            };
-                            let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
-                            let parent_world = ph2d_editor::TransformSnapshot {
-                                translation: [pw.translation.x, pw.translation.y],
-                                rotation: pw.rotation,
-                                scale: [pw.scale.x, pw.scale.y],
-                            };
-                            hero.gizmo.drag = Some(ph2d_editor::GizmoDragState {
-                                kind: ph2d_editor::GizmoDragKind::Translate,
-                                entity_bits,
-                                start_screen: (evt.x, evt.y),
-                                cursor_screen: (evt.x, evt.y),
-                                start_transform: snap_t,
-                                // Ignored by Translate; set to the anchor for
-                                // clarity.
-                                pivot_world: [t.translation.x, t.translation.y],
-                                start_cursor_world: world_pos,
-                                // A point has no half-extent — it never scales.
-                                sprite_half_intrinsic: [0.0, 0.0],
-                                anchor_is_center: false,
-                                target: ph2d_editor::GizmoTarget::PrimaryIndividual,
-                                parent_world,
-                                turns: 0,
-                            });
+                        let opened = crate::joint_anchor_drag::open_drag(
+                            &gfx.physics,
+                            &gfx.sim,
+                            &gfx.camera,
+                            gfx.surface.size(),
+                            hero.gizmo.selection,
+                            (evt.x, evt.y),
+                            side,
+                        );
+                        if opened.is_some() {
+                            // Disjoint field write: `gfx`/`hero` borrow
+                            // `self.gfx`, this is `self.joint_anchor_drag`.
+                            self.joint_anchor_drag = opened;
                             began_joint_anchor = true;
                         }
                     }
@@ -4501,6 +4494,13 @@ impl App {
                     }
                 }
                 PointerKind::Up => {
+                    // W-J2: close any joint-anchor drag. The write already landed
+                    // on the last Move; `post_frame_undo` records the whole
+                    // gesture as one global step once the button is up. Written
+                    // as a field (not a `&mut self` method) because `gfx`/`hero`
+                    // are borrowed from `self.gfx` for the whole of this arm —
+                    // disjoint fields are fine, a second `&mut self` is not.
+                    self.joint_anchor_drag = None;
                     // Fase 0f: resolve the rubber-band rect — pick every
                     // sprite whose world bbox intersects, then apply
                     // replace or add depending on `add_mode` (Shift held

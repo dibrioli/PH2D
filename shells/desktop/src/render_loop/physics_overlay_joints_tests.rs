@@ -6,7 +6,8 @@
 //! importam: **os quatro tipos desenham figuras DIFERENTES** (nunca o mesmo
 //! desenho com nome diferente — a cicatriz `Layer`/`Layers` da timeline), **o
 //! que é comprimento cresce com o mundo e o que é ângulo não**, **a deformação
-//! só é acusada onde ela é anormal**, e **cada ponta diz de quem é**.
+//! só é acusada onde a restrição não está sendo imposta**, e **cada ponta diz
+//! de quem é**.
 
 use super::super::physics_overlay_joint_glyphs::LIMIT_ARC_PX;
 use super::{JOINT_DIM_RGBA, JOINT_RGBA, JOINT_STRAIN_RGBA, joint_marks};

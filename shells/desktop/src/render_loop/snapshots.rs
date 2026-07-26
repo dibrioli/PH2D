@@ -115,6 +115,15 @@ pub(super) fn publish(
     // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
     // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
     joint_body_pick: Option<(u64, bool)>,
+    // W-J2: the joint anchor handles. `joint_anchors_at_rest` is the clock gate
+    // (the handles are authoring, and authoring is a rest-time act);
+    // `joint_anchor_b` is the B end resolved through the bridge's anchor door
+    // (`PhysicsBridge::joint_anchor_world`) — the SAME door the A pivot is synced
+    // from, so the two dots cannot describe different frames; `joint_anchor_snap`
+    // is the candidate a live drag has caught, for the crosshair.
+    joint_anchors_at_rest: bool,
+    joint_anchor_b: Option<[f32; 2]>,
+    joint_anchor_snap: Option<[f32; 2]>,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -413,8 +422,15 @@ pub(super) fn publish(
     // no box (so `build_view` returns None for it); this is the handle it gets.
     // The "which entities get one" rule lives in `point_gizmo` so it is gated
     // headless (the publish here needs a live HeroScreen the test cannot build).
-    hero.gizmo.point_view =
-        super::point_gizmo::build_point_view(sim, hero.gizmo.selection, camera, window_size);
+    hero.gizmo.point_view = super::point_gizmo::build_point_view(
+        sim,
+        hero.gizmo.selection,
+        camera,
+        window_size,
+        joint_anchors_at_rest,
+        joint_anchor_b,
+        joint_anchor_snap,
+    );
     hero.gizmo.extra_views.clear();
     for bits in hero.gizmo.extra_selection.clone() {
         if let Some(v) = build_view(bits, sim, present) {

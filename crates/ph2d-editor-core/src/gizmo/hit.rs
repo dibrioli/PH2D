@@ -116,4 +116,9 @@ pub mod ids {
     /// the selected entity (which has no sprite to `pick_sprites_at_world`), the
     /// same way `MovePivot`/Flip targets are recognised before the generic path.
     pub const GIZMO_JOINT_ANCHOR: NodeId = NodeId(964);
+    /// The POINT gizmo's **second** dot — a joint's body-B anchor (W-J2). A
+    /// joint binds two bodies and each end attaches somewhere on its own; one
+    /// handle could only ever author one of them. Same recognition rule as its
+    /// sibling above.
+    pub const GIZMO_JOINT_ANCHOR_B: NodeId = NodeId(965);
 }

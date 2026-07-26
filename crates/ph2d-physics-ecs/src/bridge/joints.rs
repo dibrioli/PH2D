@@ -341,21 +341,15 @@ impl PhysicsBridge {
         let mut scratch = std::mem::take(&mut self.joints_to_sync);
         scratch.clear();
         {
-            let world = sim.world();
-            for (&e, j) in self.joints.iter() {
-                let (Some(ba), Some(joint)) =
-                    (self.bodies.get(&j.entities.0), world.get::<PhysicsJoint>(e))
-                else {
-                    continue;
-                };
-                // Only a seeded joint has a meaningful local anchor; an un-seeded
-                // one still carries the world `Transform` the seed will read, so
-                // leave it be until reconcile seeds it next dispatch.
-                if !joint.anchored {
-                    continue;
+            // Through the SAME door the handles and the Inspector read
+            // (`bridge::anchors`) — the displayed pivot and the grabbable dot
+            // cannot describe different points if only one function answers
+            // "where is the A anchor?". An un-seeded joint answers with its own
+            // `Transform`, so this is a no-op there rather than a special case.
+            for &e in self.joints.keys() {
+                if let Some(pivot) = self.joint_anchor_world(sim, e, super::anchors::JointSide::A) {
+                    scratch.push((e, pivot));
                 }
-                let pivot = PhysicsWorld::world_from_local_at_pose(rest_pose(ba), joint.local_a);
-                scratch.push((e, pivot));
             }
         }
         for &(e, pivot) in scratch.iter() {

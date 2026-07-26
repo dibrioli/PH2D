@@ -868,6 +868,11 @@ pub(crate) struct App {
     /// selection/gizmo. Runtime-only: the pick is not the document, the binding
     /// it writes is.
     pub(crate) joint_body_pick: Option<(u64, bool)>,
+    /// **The open joint-anchor drag** (W-J2), or `None`. Both canvas handles — the
+    /// filled A dot and the hollow B ring — open this one gesture, which writes
+    /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime
+    /// only: the drag is not the document, the anchor it writes is.
+    pub(crate) joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
     /// **The pending join KIND** for the next *Join Selected Bodies* — a
     /// `JointKind` tag (`0` Pin · `1` Spring · `2` Rope · `3` Weld). The §11
     /// join-kind selector sets it; `create_joint` reads it, so the artist creates

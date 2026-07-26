@@ -24,6 +24,7 @@ mod scale;
 pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
+pub use bridge::anchors::JointSide;
 pub use bridge::contacts::{
     BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,
 };

@@ -13,6 +13,7 @@
 //!
 //! [`dispatch`]: PhysicsBridge::dispatch
 
+pub mod anchors;
 pub mod contacts;
 mod damping;
 mod diagnostics;

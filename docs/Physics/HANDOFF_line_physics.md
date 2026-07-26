@@ -4369,3 +4369,103 @@ diz o que olhar parado e o que muda no Play).
 pose-não-digite (arrastar as pontas do arco / o anel / a seta) · W-J4 criar onde
 se olha · W-J5 Slider · W-J6 servo + guincho · W-J7 break force · W-J8 higiene do
 par · W-JG grupo carrega o rig.
+
+---
+
+## W-J2 — A âncora tem DUAS alças, e um ímã (2026-07-25, cena `=44`)
+
+A wave seguinte do [plano 02](02_plano_joints_ui_authoring.md). Um joint liga
+**dois** corpos e cada ponta prende em algum lugar do seu; até aqui só a ponta A
+tinha alça, e a de B era o que a política de semeadura produzisse — o mesmo ponto
+num Pin/Weld, o **centro do corpo** numa Spring/Rope — sem nenhum gesto do editor
+capaz de movê-la.
+
+### O que se vê
+
+- **2ª alça** (`GIZMO_JOINT_ANCHOR_B`, id **965**) no **MESMO âmbar**, desenhada
+  como **anel vazado** contra o disco cheio do A. Duas cores diriam *coisas
+  diferentes*; a diferença aqui é de **forma**, que é a gramática que a W-J1 já
+  fala nas linhas de posse (**sólida = A, tracejada = B**).
+- ⚠️ **Um Pin em repouso tem as duas âncoras no MESMO ponto** — dois corpos num
+  lugar só *é* o que um pino é. As marcas são **concêntricas** e os hit-rects
+  **aninhados**: A fica com o quadrado interno (registrado por ÚLTIMO, e o
+  `HitIndex` anda de trás pra frente), B com a faixa de fora. Empurrar um dos
+  pontos para o lado "para caber" desenharia uma âncora onde ela não está.
+- **Snap por CTRL** aos pontos do collider, com **CRUZ** marcando o capturado
+  (sem ela um ímã é indistinguível de um arrasto que parou de seguir o cursor).
+
+### As decisões que carregam peso
+
+1. **`ShapeDesc::snap_points` é do COLLIDER, não do quad do sprite** — um joint
+   prende num CORPO, e o corpo é o que o solver colide. Nove pontos para uma
+   caixa: **exatamente os nove do `pivot_snap_candidates`**, na mesma ordem, para
+   duas alças de ponto no mesmo editor não oferecerem vocabulários diferentes. Um
+   redondo **não ganha quinas**: seria oferecer um ponto fora do corpo. O raio de
+   14 px também é o da alça de pivô — duas distâncias seriam duas respostas.
+2. **Uma porta, duas pontas** (`bridge/anchors.rs`): `joint_anchor_world` (*onde
+   está*), `set_joint_anchor_world` (*ponha aqui*), `joint_snap_targets` (*no que
+   encaixa*). O `sync_joint_pivots` passou a **ler dela** em vez de re-derivar,
+   então o pivô desenhado e a alça não podem descrever quadros diferentes.
+3. ⚠️ **O `anchored` deixou de ser o mecanismo de reposição, e isto é o bug que a
+   wave evita.** O sentinela é do **joint inteiro**: limpá-lo re-deriva as DUAS
+   âncoras da política. Enquanto B não tinha valor autorado isso era invisível;
+   com a 2ª alça, arrastar o disco do A jogaria fora a âncora que o artista
+   acabou de pôr no outro corpo — **em silêncio, com o resto da suíte verde**. Um
+   reposicionamento conhece o **lado** e escreve aquele local direto. O sentinela
+   sobrevive só onde re-derivar AMBOS é a intenção: create, troca de kind,
+   re-pick. (Re-derivar A é **no-op** nesses casos, porque o pivô já é
+   `bodyA · local_a` — o sentinela só custava B de verdade.)
+4. **Um gesto só para as duas alças** (`shells/desktop/src/joint_anchor_drag.rs`).
+   O dot do A abria um `GizmoDragKind::Translate` porque o `Transform` do joint
+   *era* a âncora; B não tem `Transform` nenhum, então um Translate nunca poderia
+   autorá-la. Chegar ao mesmo resultado por dois caminhos é como eles passariam a
+   discordar sobre snap, undo e em que frame a escrita cai.
+5. ⚠️ **As alças são REST-ONLY, e isso fecha um vão em vez de abrir um:** o doc do
+   `sync_joint_pivots` afirmava desde a W-AnchorFollow que *"durante o play o dot
+   não é mostrado"* — e **nada perguntava**. Uma alça que aceitasse arrasto contra
+   um corpo balançando autoraria contra uma pose que ninguém escolheu.
+6. **`set_joint_anchor_world` escreve o LOCAL e nada mais.** Eu tinha posto o
+   `Transform` junto "para as três vistas concordarem no mesmo frame"; a mutação
+   que apagava o `sync_joint_pivots` **não sangrava**, porque as duas escritas
+   cobriam uma a outra. Duas funções responsáveis por um número é a forma que uma
+   deriva toma — a redundância saiu, e o gate do pivô passou a testar o sync.
+
+### Gates
+
+**23 novos** — 6 no `snap_points` (ph2d-physics) · 6 no `joint_anchor_authoring`
+(ph2d-physics-ecs) · 5 no `gizmo::point` (editor-core) · 3 no `point_gizmo` +
+3 no `nearest_within` (shell) · 6 arch-gates de shell. **8 mutações, 8 sangram:**
+
+| # | mutação | sangra em |
+|---|---|---|
+| M1 | a porta volta a limpar `anchored` | B reseta (0,400 m) **+** o pivô |
+| M2 | a escrita de `local_b` some | 3 gates (autoria, solver, rewind) |
+| M3 | o snap ignora a pose do corpo | os alvos ficam em local |
+| M4 | a ponta B inventa fallback de `Transform` | a alça aparece sem corpo B |
+| M5 | `sync_joint_pivots` não deriva mais o pivô | o pivô desenhado congela |
+| M6 | um `Ball` ganha as 4 quinas da caixa | ponto a `√2` do raio: FORA do corpo |
+| M7 | o rabo do Translate volta ao `gizmo_drag` | arch-gate da remoção |
+| M8 | as duas alças mapeiam para `JointSide::A` | arch-gate do Down |
+
+⚠️ **O gate M7 pegou um comentário MENTIROSO na hora:** o cabeçalho de LOC do
+`gizmo_drag.rs` ainda dizia *"a Translate on a joint marks it `anchored = false`"*.
+O gate passou a ler **código** (linhas com `//` removidas) — a remoção é fato
+sobre código, e a prosa que a explica não pode ser lida como ela de volta.
+
+**Zero componente, zero schema, zero id de física** (`PROJECT_SCHEMA` **31**,
+registro **21**); o único id novo é de gizmo (965). **c9 byte-idêntico**
+(`4e862761…`, 83 corpos) — nada do solver mudou, só a autoria.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=44`** (duas pistas — Rope com as pontas separadas ·
+Pin com as pontas coincidentes; PAUSADA). Números **medidos** na mensagem: a barra
+amarrada no centro assenta NIVELADA em `(-3,862, 4,652)` e amarrada na ponta em
+`(-3,378, 4,320)` a **145,0°**; o Pin com o anel arrastado 0,5 m abre vão
+`0,00000 → 0,50000` (o vermelho da W-J1, **alcançável por um gesto pela 1ª vez**)
+e o solver **monta** os dois corpos em 2 ticks (`x=3,800 → 3,300`).
+
+**Aberto:** W-J3 pose-não-digite (arrastar as pontas do arco / o anel de
+comprimento / a seta do motor) — depende do arco da W-J1, que agora existe ·
+W-J4 criar onde se olha · W-J5 Slider · W-J6 servo + guincho · W-J7 break force ·
+W-J8 higiene do par · W-JG grupo carrega o rig. E, nomeado: o snap só oferece os
+pontos do collider do **próprio** corpo daquela ponta — encaixar a âncora de A
+num ponto do corpo B (útil para montar) seria outro conjunto de candidatos.

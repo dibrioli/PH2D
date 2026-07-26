@@ -17,8 +17,8 @@
 // drain code with no isolation, where a blind split risks regressions the
 // gate can't catch. Pre-existing debt; tracked exception to unblock the
 // accumulated W2/W3 ship (Coord ship-prep 2026-06-02). +12 (gold-standard
-// joint anchor): a joint's Position commit sets `anchored = false` so the
-// bridge re-derives its body-local anchors from the new pivot.
+// joint anchor): a joint's Position commit re-seats the A anchor — through the
+// bridge's anchor door, from `mod.rs` (see the tail of the Transform drain).
 
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};
@@ -204,19 +204,14 @@ pub(super) fn dispatch(
                 title_dirty = true;
             }
         }
-        // A physics joint's `Transform` IS its authored world pivot, so an
-        // Inspector Position edit REPOSITIONS the anchor — mark it un-anchored so
-        // the bridge re-derives the body-local anchors from the new pivot (the
-        // same re-seat the anchor-dot drag does). A body's Position edit carries
-        // no `PhysicsJoint`, so it is untouched.
-        if let Some(mut j) =
-            sim.world_mut()
-                .get_mut::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(
-                    info.entity_bits,
-                ))
-        {
-            j.anchored = false;
-        }
+        // ⚠️ **The joint tail moved out (W-J2).** A joint's Position edit still
+        // repositions its A anchor, but it now goes through the bridge's anchor
+        // door in `mod.rs` (`reseat_joint_pivot_after_position_commit`) rather
+        // than clearing `PhysicsJoint::anchored` here — that sentinel re-derives
+        // BOTH locals, so typing a new X for the pivot would have thrown away a
+        // body-B anchor the artist placed with the second handle. The door needs
+        // the `PhysicsBridge` (for body A's rest pose), which this signature's
+        // own doc-comment warns against growing further.
     }
     // M14.D: drain Inspector Visibility commit → same
     // EditorCommandQueue path as Transform.

@@ -158,6 +158,7 @@ mod input_drop;
 mod input_handlers;
 mod input_log;
 mod integration;
+mod joint_anchor_drag;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -186,6 +187,7 @@ mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_joint_bake;
 mod physics_smoke_joint_glyphs;
+mod physics_smoke_joint_handles;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_zones;
@@ -518,6 +520,7 @@ impl App {
             vec_patternpath_handle: None,
             vec_path_pick: None,
             joint_body_pick: None,
+            joint_anchor_drag: None,
             join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),

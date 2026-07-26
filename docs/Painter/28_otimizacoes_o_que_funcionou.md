@@ -8,6 +8,14 @@
 > ⚠️ **A regra que governou tudo (CLAUDE.md §0):** nenhum limite, nenhuma barra e nenhum veredito sem
 > MEDIÇÃO. Três teorias minhas, plausíveis e erradas, morreram nesta jornada — e cada uma está aqui com
 > o número que a derrubou, porque uma teoria refutada que não é escrita volta como trabalho planejado.
+>
+> **O saldo, numa linha:** o frame pior de um traço a 4096² saiu de **232,7 ms** para **1,1–1,3 ms**
+> (§4.8.3, medido no app pelo Enio), e o `dispatch p50` ficou em **0,7 ms — 4% de um quadro de 60 fps**.
+>
+> ⚠️ **E é por isso que a §7 foi reescrita três vezes.** Cada medição não só respondeu a pergunta: ela
+> **mudou qual era a pergunta**. A última tirou o vencedor da mesa — com o dispatch em 0,7 ms, o custo
+> que estava escondido atrás dele (`INPUT (fora do frame)`, 5,3–8,8 ms) virou a fronteira. *Um doc de
+> perf cuja fila nunca se reordena é um doc que parou de medir.*
 
 ---
 
@@ -27,8 +35,11 @@
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
 | M | O 1º traço compilava pipelines | ✅ fechada (§4.8), mas **não era a causa** | ~10-28 ms (varia com a ordem), e **independente da tela** — o smoke refutou (§4.8.1) |
 | N | 🎯 **O 1º traço ALOCAVA as texturas** | ✅ **fechada** (§4.8.1) | **0,76 / 2,72 / 13,21 ms** a 1024²/2048²/4096² — a escada que o Enio descreveu |
-| **O** | 🎯🎯 **O 1º traço dobrava o CANVAS INTEIRO** | ✅ **fechada** (§4.8.2) — **era ESTA a causa** | `PH2D_PAINT_PERF` no app: **232,7 ms, 100% em `preview`**. O fold **201,53 → 14,55 ms** a 4096² (**13,8×**), por linhas, byte-idêntico |
-| P | Semear os planos da luz no BIND | 🟡 **aberto, e é decisão de PRODUTO** | vale **14,55 → 0,38** + 13,21 ms, e cobra **~218 MB de VRAM em TODO bind** — inclusive de quem nunca liga o impasto |
+| **O** | 🎯🎯 **O 1º traço dobrava o CANVAS INTEIRO** | ✅ **fechada e CONFIRMADA no smoke** (§4.8.2–§4.8.3) | `dispatch max` **232,7 → 1,1–1,3 ms** no app · `p50` **0,7** (4% de um quadro). O fold **201,53 → 14,55** headless |
+| P | Semear os planos da luz no BIND | 🟡 aberto, **decisão de PRODUTO, e o preço agora é MEDIDO** | vale **12,7 ms** no produto (era estimativa minha de ~31) e cobra **~218 MB de VRAM em TODO bind** — inclusive de quem nunca liga o impasto |
+| **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | 🔴 **a fronteira NOVA** (§4.8.3) | **5,3–8,8 ms/frame** contra 0,7 de dispatch ⇒ **7–12×**. Era invisível atrás dos 232 ms |
+| R | O outlier de **134,8 ms** num evento | 🔴 aberto, **sem causa atribuída** | o maior número que sobrou no log; falta **medição por fase**, não hipótese |
+| S | `EVENTO→FRAME` 16,8 contra alvo **9** | ⚪ **não é compute** | `p50 ≈ periodo real (16,5)` ⇒ é **cadência**, e o dispatch é 4% dela |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -584,6 +595,78 @@ este pré-aquecimento fora do boot, num tamanho dez vezes maior. **O número que
 `PH2D_PAINT_PERF`.** O doc-comment do `prewarm` foi corrigido: ele afirmava alocar as texturas dos
 **três** passes, e as da luz não estavam entre elas.
 
+### 4.8.3 ✅ O SMOKE confirmou — e **moveu a fronteira de lugar**
+
+> *"A impressão que tive é que ficou muito bom!"* (Enio, 2026-07-26)
+
+Quatro janelas de 90 frames, canvas **4096²**, Impasto, `GPU 90/CPU 0` em todas — o produto ficou
+inteiramente na pista GPU.
+
+| janela | `frame p50` | `dispatch p50` | `dispatch max` | split do PIOR | eventos/frame |
+|---|---|---|---|---|---|
+| A | — | — | **1,2** | `preview 1,2` | 2,0 |
+| B | 10,4 | **0,7** | **1,1** | `preview 1,1` | 1,9 |
+| C | 6,6 | **0,8** | **1,3** | `preview 1,2` | 1,9 |
+| D | 16,7 | 0,0 | **12,7** | `preview 12,7` | **0,3** |
+
+**O frame pior saiu de 232,7 para 1,1–1,3 ms** nas três janelas em que se pintava de fato — e o
+`dispatch p50` é **0,7–0,8 ms**, ou seja **4% de um quadro de 60 fps**. É o número que o *"muito bom"*
+descreve.
+
+⚠️ **A janela D não é uma regressão, é a frente P se mostrando** — 12,7 ms, **100% em `preview`**, numa
+janela quase parada (0,3 evento por frame, 15 amostras de latência). Essa é a assinatura de um **re-fold
+de canvas inteiro**, e o número bate com os 14,55 ms medidos headless. ⚠️ **O log não diz se aquele
+frame foi o primeiro traço** — e não vou afirmar que foi; o que ele diz, e basta, é que **o fold de
+canvas inteiro agora custa 12,7 ms no produto e portanto CABE dentro de um quadro** (16,7 ms), onde
+antes custava catorze quadros. Isso re-precifica a frente P: o preço dela deixou de ser os **~31 ms de
+resíduo aritmético** que eu havia estimado e passou a ser **12,7 ms medidos**, contra ~218 MB de VRAM em
+todo bind. *A estimativa era minha; o número é do produto, e é o número que vale.*
+
+#### O que a medição REVELA agora que o dispatch saiu da frente
+
+Com o dispatch em 0,7 ms, duas grandezas que estavam escondidas atrás dele viraram as maiores da tabela.
+
+**(1) A latência é EXATAMENTE um período de frame — logo ela não é mais compute.**
+
+| janela | `EVENTO→FRAME` p50 | p95 | `periodo real` |
+|---|---|---|---|
+| A | 16,9 | 17,7 | 16,5 |
+| B | 16,9 | 19,3 | 16,5 |
+| C | 16,8 | 22,2 | 16,5 |
+
+⚠️ **`p50 ≈ periodo real` é o piso desta arquitetura, não um defeito a caçar:** o evento chega, espera o
+próximo frame, e o instrumento o fecha no fim dele. O dispatch é **4%** disso. O alvo público de **9 ms**
+que o instrumento carrega ao lado (`alvo 9`) portanto **não sai de otimizar cálculo** — o próprio
+doc-comment do L0 já dizia de onde ele saiu no Apple Pencil: *"não foi compute — foi pipeline"*. Reduzir
+17 para 9 é mexer em **cadência** (frame rate, quando o evento é servido, quando o present acontece),
+que é uma frente de outra natureza e de outro dono.
+
+⚠️ **E o instrumento mede *evento → fim do frame*, nunca *→ pixel*** — o present acontece a uma fração de
+ms depois. O doc dele é explícito sobre isso, e citar este número como "latência até o pixel" seria
+vender o que ele não mede.
+
+**(2) O custo do PAINTER migrou do frame para o INPUT.**
+
+`INPUT (fora do frame)` — o tempo dentro de `on_canvas_pointer`, isto é, carimbar dabs — mede
+**p50 5,3 · 5,4 · 8,8 ms** nas três janelas de pintura, contra **0,7–0,8 ms** de dispatch. Com ~2
+eventos por frame, são ~2,7–4,4 ms **por evento**.
+
+🎯 **Isto reordena o doc inteiro:** o trabalho das §4.5/§4.6 (a decomposição do dab, o AA a 1,43 ms/dab,
+a LUT do filme) sempre foi sobre *este* número, e ele estava atrás do dispatch enquanto o dispatch valia
+232 ms. Agora ele é **7–12× o dispatch** e é o maior custo do Painter no caminho quente. A fila da §7 é
+reescrita em cima disso.
+
+**(3) E um outlier que eu NÃO vou enterrar: `INPUT max = 134,8 ms`.**
+
+Na janela D, um único evento custou **134,8 ms** dentro do `on_canvas_pointer` (e a latência daquele
+frame foi 148,8 ms). ⚠️ **O log não o atribui, e eu não vou inventar a causa.** O que se sabe: é tempo do
+**tool**, não do frame; caiu na janela quase parada, junto do re-fold de canvas inteiro; e os candidatos
+que a §4.7 e o [doc 25 §13.12.5](25_avaliacao_gpu.md) já nomeiam com números da mesma ordem a 4096² são
+o **pen-down** (o clone canvas-sized: 24,5 ms protegido · 11,7 livre) e o **commit de pen-up** do
+impasto. Nenhum deles chega a 134,8 sozinho pelo que está medido, então **falta medição, não hipótese** —
+e a forma de obtê-la é a mesma que funcionou aqui: instrumentar por fase o que hoje é um número só, em
+vez de deduzir. **É o maior número que sobrou no log.**
+
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
 A U1 (undo por delta) resolveu o que sobra **DEPOIS** do traço; isto é o que a cópia custa **DURANTE**
@@ -670,6 +753,19 @@ teste para aplicar isto noutro lugar é uma pergunta só: *este laço lê algo q
   dois números pequenos passa a medir o escalonador — quem paralelizar um caminho tem de reconferir os
   gates de perf que o cercam, que foi exatamente o que quebrou aqui.
 
+### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
+
+O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
+modo carimba dabs. Os 5,3–8,8 ms/frame medidos são de uma sessão de **Impasto**, mas o instrumento é
+agnóstico ao meio: rodar o mesmo `PH2D_PAINT_PERF` em Digital, Watercolor e Wet Paint dá a mesma coluna
+para os quatro, e é a comparação entre elas que diz quanto de cada número é *o carimbo* e quanto é *a
+simulação daquele meio*.
+
+⚠️ **Isto é uma medição de 4 linhas que ainda não foi feita**, e ela vale mais que qualquer palpite sobre
+onde otimizar em seguida — inclusive porque o Wet Paint já tem o próprio custo medido pelo outro lado
+(0,83–0,89 ms/tick na sessão representativa, doc 24), então para ele as duas colunas podem ser
+reconciliadas em vez de estimadas.
+
 ---
 
 ## 6. As lições de método (as que custaram tempo)
@@ -716,18 +812,24 @@ Primeiro os planos canvas-sized do traço saíram do topo (§4.5: valem 1,8 ms, 
 `PH2D_PAINT_PERF` mostrou que **nada disso era o "delay do primeiro traço"**: era o fold do relevo
 dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 
-**O próximo passo é uma MEDIÇÃO, não uma construção:** re-rodar
+**E o smoke da §4.8.3 a reordenou uma TERCEIRA vez** — desta vez não por derrubar uma hipótese, mas por
+**tirar o vencedor da mesa**: com o dispatch em 0,7 ms, o que estava atrás dele apareceu.
 
-```bash
-cd .../Worktrees/line-Painter && env PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release
-```
+**A fila de hoje, por número MEDIDO no produto:**
 
-a 4096², em impasto, e ler as duas linhas `[paint-perf]`. Do 232,7 ms medido, o fold era 201,5 ⇒ o
-resíduo aritmético é **~31 ms**, e ele é **estimativa, não medição**. É esse número que decide a frente
-**P** (semear os planos da luz no bind), que vale ~27 ms e cobra ~218 MB de VRAM em todo bind — um trade
-que não se faz sem o número.
+1. 🎯 **`INPUT (fora do frame)`: 5,3–8,8 ms/frame (frente Q).** É o carimbo de dabs dentro do
+   `on_canvas_pointer`, hoje **7–12× o dispatch**, e é para onde as §4.5/§4.6 sempre apontaram — só que
+   agora ele é o maior custo do caminho quente em vez do segundo. ⚠️ **Comece medindo por FASE**, como o
+   split do frame pior fez aqui: hoje é um número só, e um número só não nomeia culpado.
+2. 🔴 **O outlier de 134,8 ms num único evento (frente R).** O maior número que sobrou. Sem causa
+   atribuída, com dois candidatos nomeados (pen-down canvas-sized · commit de pen-up) que **não somam a
+   134,8 pelo que está medido** ⇒ falta instrumentação, não teoria.
+3. 🟡 **Semear os planos da luz no bind (frente P): 12,7 ms contra ~218 MB de VRAM em todo bind.**
+   Decisão de produto, e agora com o preço dos dois lados medido em vez de estimado.
+4. ⚪ **`EVENTO→FRAME` 16,8 contra o alvo 9 (frente S) — NÃO é compute.** `p50 ≈ periodo real`, o
+   dispatch é 4% dela: é frente de **cadência/pipeline**, de outra natureza e outro dono.
 
-**A fila abaixo continua válida, por tamanho medido:**
+**A fila antiga continua válida abaixo dela, e é o que alimenta o item 1:**
 
 1. ⛔ **A redução de amostras do AA está ESGOTADA como eixo.** Três tentativas, três medições, três
    rejeições: cinco amostras (§3.3), três casando o 2º momento e três casando o 4º (§4.6.2). O que

@@ -54,6 +54,9 @@ pub struct FlipTool {
     /// **Auto-sobreposição com acúmulo** (03 §8): o traço que cruza a si mesmo escurece no
     /// cruzamento. Herdado por cada `FlipStroke` desenhado. Default OFF (byte-idêntico).
     self_overlap: bool,
+    /// **Pincel airbrush analítico** (03 §8): o falloff físico de um dab esférico. Herdado por
+    /// cada `FlipStroke` desenhado. Default OFF (byte-idêntico).
+    airbrush: bool,
     opacity: f32,
     smoothing: f32,
     mode: FlipMode,
@@ -100,6 +103,7 @@ impl Default for FlipTool {
             tip: StrokeTip::Continuous,
             dot_spacing: DEFAULT_DOT_SPACING,
             self_overlap: false,
+            airbrush: false,
             opacity: DEFAULT_OPACITY,
             smoothing: DEFAULT_SMOOTHING,
             // Default = Select (gizmo transforma o objeto; arbitragem ADR-0112).
@@ -257,6 +261,15 @@ impl FlipTool {
     pub fn set_self_overlap(&mut self, on: bool) {
         self.self_overlap = on;
     }
+    /// O pincel airbrush analítico está ligado? (03 §8.)
+    #[must_use]
+    pub fn airbrush(&self) -> bool {
+        self.airbrush
+    }
+    /// Liga/desliga o pincel airbrush analítico (falloff físico de dab esférico).
+    pub fn set_airbrush(&mut self, on: bool) {
+        self.airbrush = on;
+    }
     /// Define a opacidade do traço `0..=1` (clampada).
     pub fn set_opacity(&mut self, o: f32) {
         self.opacity = o.clamp(0.0, 1.0);
@@ -276,6 +289,7 @@ impl FlipTool {
             tip: self.tip,
             dot_spacing: f64::from(self.dot_spacing),
             self_overlap: self.self_overlap,
+            airbrush: self.airbrush,
             opacity: self.opacity,
             smoothing: self.smoothing,
             mode: self.mode,
@@ -375,6 +389,10 @@ impl Tool for FlipTool {
             // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição com acúmulo.
             PanelEvent::Click(id) if id == ids::FLIP_SELF_OVERLAP => {
                 self.self_overlap = !self.self_overlap;
+            }
+            // Airbrush (Draw, 03 §8): o toggle do pincel airbrush analítico.
+            PanelEvent::Click(id) if id == ids::FLIP_AIRBRUSH => {
+                self.airbrush = !self.airbrush;
             }
             // O domínio da seleção (modo Edit, W8 + §4.B): traço inteiro, ponto ou pedaço.
             PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_STROKE => {

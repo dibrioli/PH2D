@@ -43,6 +43,10 @@ pub const FLIP_DOT_SPACING_NUM: NodeId = hash_node_id("flip.tip.spacing.num");
 /// (darkens at the crossing, like a marker) instead of the flat union. The GP `GP_STROKE_OVERLAP`.
 pub const FLIP_SELF_OVERLAP: NodeId = hash_node_id("flip.self_overlap");
 
+/// Airbrush (Draw mode, 03 §8): a toggle — when on, the brush edge falloff becomes the physical
+/// Beer-Lambert transmittance of a spherical dab (a wide soft dome) instead of pow+smoothstep.
+pub const FLIP_AIRBRUSH: NodeId = hash_node_id("flip.airbrush");
+
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 

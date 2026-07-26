@@ -37,6 +37,11 @@ pub const FLAG_END_FLAT: u32 = 1 << 2;
 /// descartadas pelo depth GREATER estrito — a tinta escurece no cruzamento. Sem o bit é
 /// byte-idêntico ao traço de sempre. **Cabe no bitfield `flags` — nenhum campo novo no GpuStroke.**
 pub const FLAG_SELF_OVERLAP: u32 = 1 << 3;
+/// **Pincel AIRBRUSH analítico** (`FlipStroke::airbrush`, 03 §8). Com o bit, o `hardness_mask`
+/// do shader troca o falloff `pow`+smoothstep pela transmitância física de um dab esférico
+/// (`A = 1 − exp(−k·√(1−dn²))`, `k` da hardness) — um domo largo de borda sempre macia. Sem o
+/// bit é byte-idêntico. **Cabe no bitfield `flags` — nenhum campo novo no GpuStroke.**
+pub const FLAG_AIRBRUSH: u32 = 1 << 4;
 
 /// Um ponto na GPU: posição (mundo, 2D), largura e opacidade por-ponto, cor RGBA
 /// linear straight-alpha. `repr(C)` + `Pod` = 8×`f32` = 32 bytes, sem padding.
@@ -196,7 +201,7 @@ fn tip_code(tip: StrokeTip) -> u32 {
 }
 
 /// Empacota `flags` a partir dos atributos por-curva.
-fn stroke_flags(closed: bool, cap: (Cap, Cap), self_overlap: bool) -> u32 {
+fn stroke_flags(closed: bool, cap: (Cap, Cap), self_overlap: bool, airbrush: bool) -> u32 {
     let mut f = 0;
     if closed {
         f |= FLAG_CLOSED;
@@ -209,6 +214,9 @@ fn stroke_flags(closed: bool, cap: (Cap, Cap), self_overlap: bool) -> u32 {
     }
     if self_overlap {
         f |= FLAG_SELF_OVERLAP;
+    }
+    if airbrush {
+        f |= FLAG_AIRBRUSH;
     }
     f
 }
@@ -272,7 +280,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             g.strokes.push(GpuStroke {
                 first_point,
                 point_count: 0,
-                flags: stroke_flags(s.closed, s.cap, s.self_overlap),
+                flags: stroke_flags(s.closed, s.cap, s.self_overlap, s.airbrush),
                 hardness: s.hardness,
                 material: s.material.0,
                 tip: tip_code(s.tip),
@@ -303,7 +311,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             g.strokes.push(GpuStroke {
                 first_point,
                 point_count: pos.len() as u32,
-                flags: stroke_flags(s.closed, s.cap, s.self_overlap),
+                flags: stroke_flags(s.closed, s.cap, s.self_overlap, s.airbrush),
                 hardness: s.hardness,
                 material: s.material.0,
                 tip: tip_code(s.tip),
@@ -494,6 +502,32 @@ mod tests {
             g.strokes[0].flags ^ g.strokes[1].flags,
             FLAG_SELF_OVERLAP,
             "a unica diferenca de flags e o bit de self-overlap"
+        );
+    }
+
+    /// 🔴 **Airbrush** (03 §8): `airbrush` vira o bit `FLAG_AIRBRUSH` no `flags`, e SÓ ele — sem a
+    /// flag o `flags` é byte-idêntico. Mutação que sangra: `stroke_flags` ignorar `airbrush`.
+    #[test]
+    fn airbrush_sets_the_flag_bit_and_nothing_else() {
+        let mut d = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::new(0.0, 0.0));
+        s.push_default(Vec2::new(1.0, 0.0));
+        d.strokes.push(s.clone()); // OFF (default): bit 0.
+        s.airbrush = true;
+        d.strokes.push(s); // ON.
+
+        let g = pack_drawing(&d);
+        assert_eq!(g.strokes[0].flags & FLAG_AIRBRUSH, 0, "OFF nao liga o bit");
+        assert_eq!(
+            g.strokes[1].flags & FLAG_AIRBRUSH,
+            FLAG_AIRBRUSH,
+            "ON liga o bit FLAG_AIRBRUSH"
+        );
+        assert_eq!(
+            g.strokes[0].flags ^ g.strokes[1].flags,
+            FLAG_AIRBRUSH,
+            "a unica diferenca de flags e o bit de airbrush"
         );
     }
 

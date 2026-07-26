@@ -418,6 +418,68 @@ fn a_stroke_with_self_overlap_accumulates_at_the_crossing() {
     );
 }
 
+/// Um traço horizontal (o mesmo de `horizontal_stroke`) com o pincel **AIRBRUSH** ligado.
+fn airbrush_horizontal(width: f32, hard: f32) -> FlipDrawing {
+    let mut d = horizontal_stroke(width, hard);
+    d.strokes[0].airbrush = true;
+    d
+}
+
+/// 🔴 **O pincel AIRBRUSH tem um núcleo CHATO (domo largo), o padrão tem um PICO estreito** (03 §8).
+/// O falloff do airbrush é a transmitância física de um dab esférico `A = 1 − exp(−k·√(1−dn²))`,
+/// `k` da hardness — um domo que cobre quase todo o raio antes de cair. O padrão (`pow`+smoothstep)
+/// a hardness 0.5 já é ~0 no meio do raio (`pow(0.5,5) ≈ 0.03`). Na MESMA hardness, meço o perfil
+/// através da banda (eixo · meio-raio · perto da borda): o airbrush fica CHEIO no meio-raio onde o
+/// padrão já sumiu — é o que distingue os dois pincéis.
+///
+/// **Red-first:** com o ramo do airbrush revertido (a flag ignorada → cai no `pow`) o airbrush
+/// vira o padrão, o meio-raio desaba para ~0 e a asserção `air_mid > 200` fica VERMELHA. A mutação
+/// que sangra é `hardness_mask` ignorar o parâmetro `airbrush`.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn an_airbrush_has_a_flatter_core_than_the_standard_brush() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Banda de 20px (raio 10) no meio, opacity 1, hardness 0.5. Eixo em y=32; meio-raio em y=37
+    // (dn≈0.5); perto da borda em y=40 (dn≈0.8).
+    let std = render(&device, &queue, &horizontal_stroke(20.0, 0.5));
+    let air = render(&device, &queue, &airbrush_horizontal(20.0, 0.5));
+
+    let std_axis = i32::from(alpha_at(&std, 32, 32));
+    let std_mid = i32::from(alpha_at(&std, 32, 37));
+    let air_axis = i32::from(alpha_at(&air, 32, 32));
+    let air_mid = i32::from(alpha_at(&air, 32, 37));
+    let air_edge = i32::from(alpha_at(&air, 32, 40));
+
+    // Medido (RTX, hardness 0.5): std_axis=222 std_mid=0 air_axis=252 air_mid=249 air_edge=231.
+    // O airbrush é opaco no centro do dab (domo cheio).
+    assert!(air_axis > 240, "airbrush opaco no eixo: {air_axis}");
+    // ⚠️ Já a UM pixel do eixo, o pico do padrão CAIU (222) enquanto o domo do airbrush SEGURA
+    // (252) — o falloff `pow` a hardness 0.5 é agudo; a diferença aparece na 1ª amostra fora do
+    // centro. É a assinatura pico×domo já no eixo.
+    assert!(
+        air_axis > std_axis + 15,
+        "o domo segura perto do eixo onde o pico ja caiu: air={air_axis} std={std_axis}"
+    );
+    // O padrão a hardness 0.5 DESABA no meio-raio (pico estreito) — quase nada.
+    assert!(
+        std_mid < 20,
+        "o padrão a hardness 0.5 e um PICO: meio-raio {std_mid}"
+    );
+    // O airbrush fica CHEIO no meio-raio (domo largo) — O DISCRIMINANTE (249 vs 0).
+    assert!(
+        air_mid > 200,
+        "o airbrush e um DOMO: o meio-raio tem de ficar cheio: {air_mid} (padrão la e {std_mid})"
+    );
+    // E a borda do airbrush é SEMPRE macia: ainda pinta perto da borda, mas menos que o eixo (rola
+    // suave a zero em dn=1). Nunca o corte duro do padrão.
+    assert!(
+        air_edge > 120 && air_edge < air_axis,
+        "borda do airbrush macia (rola a zero): edge={air_edge} axis={air_axis}"
+    );
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
 fn a_sharp_corner_is_a_round_join_without_an_outward_spike() {

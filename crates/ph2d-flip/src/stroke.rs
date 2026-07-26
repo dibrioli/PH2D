@@ -131,6 +131,17 @@ pub struct FlipStroke {
     /// opacidade < 1 (a tinta opaca já satura). Ver `docs/Flip/03_traco_rasterizacao.md` §8 e
     /// `flip.wgsl`.
     pub self_overlap: bool,
+    /// **Pincel AIRBRUSH analítico** (Ciallo, 03 §8) — o falloff deixa de ser o `pow`+smoothstep
+    /// e vira a **transmitância física** da tinta por um dab esférico (Beer-Lambert):
+    /// `A(dn) = 1 − exp(−k·√(1−dn²))`, onde `dn` é a distância normalizada à linha-de-centro e
+    /// `k = mix(1, 8, hardness)` é a densidade (o slider Hardness vira a densidade da névoa). É um
+    /// **domo largo** de núcleo chato e borda SEMPRE macia — o oposto do pico estreito do `pow`. Casa
+    /// com [`Self::self_overlap`]: a acumulação `over` de airbrush é a multiplicação de transmitâncias,
+    /// que é o build-up físico correto. Atributo POR-CURVA (o pincel decide), como [`Self::tip`].
+    ///
+    /// `false` (o default) é **byte-idêntico** (o bit `FLAG_AIRBRUSH` fica 0, o ramo do shader nem
+    /// roda). Ver `docs/Flip/03_traco_rasterizacao.md` §8 e `flip.wgsl` (`hardness_mask`).
+    pub airbrush: bool,
     /// Material (paleta). `0` = default.
     pub material: MaterialId,
     /// Preenchimento, se houver.
@@ -189,6 +200,7 @@ impl Default for FlipStroke {
             tip: StrokeTip::Continuous,
             dot_spacing: DEFAULT_DOT_SPACING,
             self_overlap: false,
+            airbrush: false,
             material: MaterialId::default(),
             fill: None,
             holes: Vec::new(),
@@ -296,6 +308,7 @@ impl FlipStroke {
             tip: self.tip,
             dot_spacing: self.dot_spacing,
             self_overlap: self.self_overlap,
+            airbrush: self.airbrush,
             material: self.material,
             fill: self.fill,
             holes: self.holes.clone(),

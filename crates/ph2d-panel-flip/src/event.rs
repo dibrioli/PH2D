@@ -46,6 +46,8 @@ fn is_style_forward_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::FLIP_TIP_SQUARES
         // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição — a tool inverte.
         || id == ids::FLIP_SELF_OVERLAP
+        // Airbrush (Draw, 03 §8): o toggle do pincel airbrush — a tool inverte.
+        || id == ids::FLIP_AIRBRUSH
         || id == ids::FLIP_ERASE_SOFT
         || id == ids::FLIP_ERASE_HARD
         || id == ids::FLIP_ERASE_STROKE

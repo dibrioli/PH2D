@@ -146,7 +146,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v36 (Flip, Self Overlap, 03 §8): o `FlipStroke` ganhou `self_overlap` (auto-sobreposição com
 /// acúmulo) no MEIO do struct (após `dot_spacing`) ⇒ layout posicional muda, um save v35 leria os
 /// campos seguintes deslocados. `FLIP_SCHEMA_VERSION` 10→11.
-const PROJECT_SCHEMA: u32 = 36;
+/// v37 (Flip, Airbrush, 03 §8): o `FlipStroke` ganhou `airbrush` (falloff físico Beer-Lambert por
+/// dab esférico) no MEIO do struct (após `self_overlap`) ⇒ mesmo raciocínio posicional.
+/// `FLIP_SCHEMA_VERSION` 11→12.
+const PROJECT_SCHEMA: u32 = 37;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

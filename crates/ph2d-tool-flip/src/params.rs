@@ -320,6 +320,11 @@ pub struct FlipStyleSnapshot {
     /// em vez de ficar a união chapada. O traço desenhado herda isto (`flip_draw`). Só relevante
     /// em [`FlipMode::Draw`]; visível com opacidade < 1.
     pub self_overlap: bool,
+    /// **Pincel AIRBRUSH analítico** ([`ph2d_flip::FlipStroke::airbrush`], 03 §8): quando ligado,
+    /// o falloff da borda vira a transmitância física de um dab esférico (domo largo de borda
+    /// macia) em vez do `pow`+smoothstep; o slider Hardness vira a densidade. O traço desenhado
+    /// herda isto (`flip_draw`). Só relevante em [`FlipMode::Draw`].
+    pub airbrush: bool,
     /// Opacidade do traço `0..=1`.
     pub opacity: f32,
     /// Intensidade do active smoothing `0..=1` (o "assentar" da cauda).
@@ -400,6 +405,7 @@ impl Default for FlipStyleSnapshot {
             tip: ph2d_flip::StrokeTip::Continuous,
             dot_spacing: ph2d_flip::DEFAULT_DOT_SPACING as f64,
             self_overlap: false,
+            airbrush: false,
             opacity: 1.0,
             smoothing: 0.5,
             mode: FlipMode::Select,

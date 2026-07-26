@@ -56,6 +56,21 @@ fn the_self_overlap_toggle_reaches_the_tool_and_toggles() {
     assert!(!t.self_overlap(), "o segundo clique desliga (e um toggle)");
 }
 
+/// 🔴 **O toggle Airbrush chega à tool e ALTERNA** (03 §8): o `Click` do `FLIP_AIRBRUSH` inverte
+/// o flag, que o snapshot leva ao painel e o `flip_draw` leva ao `FlipStroke`. Nasce OFF
+/// (byte-idêntico). Mutação que sangra: o arm de Click não alcançar o campo.
+#[test]
+fn the_airbrush_toggle_reaches_the_tool_and_toggles() {
+    let mut t = FlipTool::new();
+    assert!(!t.airbrush(), "nasce OFF (o pincel de sempre)");
+    assert!(!t.ui_snapshot().airbrush, "e o snapshot concorda");
+    t.handle_panel_event(PanelEvent::Click(ids::FLIP_AIRBRUSH));
+    assert!(t.airbrush(), "um clique liga");
+    assert!(t.ui_snapshot().airbrush);
+    t.handle_panel_event(PanelEvent::Click(ids::FLIP_AIRBRUSH));
+    assert!(!t.airbrush(), "o segundo clique desliga (e um toggle)");
+}
+
 /// **O slider Bleed do Colorize chega à tool** (6º smoke): o `SetValue` do
 /// `FLIP_COLORIZE_BLEED` grava a fração `colorize_bleed` (`0..1`), que o shell mapeia
 /// para o pedágio de aperto do motor. Trap e Bleed são knobs INDEPENDENTES.

@@ -442,7 +442,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // FLIP 10→11 + PROJECT 35→36: o `FlipStroke` ganhou `self_overlap` (auto-sobreposição
         // com acúmulo, 03 §8) — campo no MEIO do struct (após `dot_spacing`), layout posicional
         // muda ⇒ v10 lê os campos seguintes deslocados.
-        (36, 11, 13),
+        // FLIP 11→12 + PROJECT 36→37: o `FlipStroke` ganhou `airbrush` (falloff físico
+        // Beer-Lambert por dab esférico, 03 §8) — campo no MEIO do struct (após `self_overlap`),
+        // mesmo raciocínio posicional.
+        (37, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

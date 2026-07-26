@@ -107,7 +107,9 @@ pub use ph2d_painter_effects::BlendMode;
 /// v11 (Self Overlap, 03 §8): o traço ganhou `self_overlap` (auto-sobreposição com acúmulo).
 /// Postcard é POSICIONAL, e o campo entrou no MEIO do `FlipStroke` (após `dot_spacing`) ⇒ todo
 /// `FlipStroke` salvo em v10 lê os campos seguintes deslocados ⇒ bump obrigatório.
-pub const FLIP_SCHEMA_VERSION: u32 = 11;
+/// v12 (Airbrush, 03 §8): o traço ganhou `airbrush` (falloff físico Beer-Lambert por dab
+/// esférico). Campo no MEIO do `FlipStroke` (após `self_overlap`) ⇒ mesmo raciocínio ⇒ bump.
+pub const FLIP_SCHEMA_VERSION: u32 = 12;
 
 #[cfg(test)]
 mod tests {

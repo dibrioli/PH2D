@@ -113,6 +113,10 @@ const FLAG_END_FLAT: u32 = 4u;
 // `pack.rs::FLAG_SELF_OVERLAP`. Com o bit, a profundidade vira por-SEGMENTO (abaixo, no
 // vertex) e as faces sobrepostas do mesmo traço BLENDam em vez de serem descartadas.
 const FLAG_SELF_OVERLAP: u32 = 8u;
+// Pincel AIRBRUSH analítico (`FlipStroke::airbrush`, 03 §8) — TÊM de bater com
+// `pack.rs::FLAG_AIRBRUSH`. Com o bit, o `hardness_mask` troca o falloff `pow`+smoothstep pela
+// transmitância física de um dab esférico (Beer-Lambert). Lido no FRAGMENT (via o varying `flags`).
+const FLAG_AIRBRUSH: u32 = 16u;
 // `miter_break` do GP (`gpencil_vertex` ~l.696): a quina deixa de mitrar quando
 // `cos_angle > 0.5` (virada > 120°). cos_angle = -dot(dir_in, dir_out): -1 numa
 // reta, +1 num hairpin. Abaixo do limite o esticão do miter é ≤ 1/cos(60°) = 2 —
@@ -157,6 +161,9 @@ struct VsOut {
     @location(11) @interpolate(flat) tip: u32,
     @location(12) @interpolate(flat) dot_spacing: f32,
     @location(13) @interpolate(flat) ref_width: f32,
+    // Os `FLAG_*` do traço, para o fragment testar (hoje só `FLAG_AIRBRUSH` — a máscara é
+    // função da flag). FLAT: os bits chegam exatos, sem interpolação.
+    @location(14) @interpolate(flat) flags: u32,
 }
 
 fn to_screen(world: vec2<f32>) -> vec2<f32> {
@@ -370,6 +377,7 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     out.tip = st.tip;
     out.dot_spacing = st.dot_spacing;
     out.ref_width = st.ref_width;
+    out.flags = st.flags;
     return out;
 }
 
@@ -377,10 +385,26 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 // `hardness`, queda `pow`+smoothstep até a borda. `dn` = distância normalizada à
 // linha-de-centro (0 centro, 1 borda). `aa` (~1px) fecha a borda com AA — o GP usa
 // MSAA; aqui a cobertura é analítica, então o AA sai do `fwidth`.
-fn hardness_mask(dn: f32, hardness: f32, aa: f32) -> f32 {
+// Densidade óptica do airbrush no CENTRO (`k = 2·μ·R`): o slider Hardness a controla. Faixa
+// ESTÉTICA (quão densa a névoa mais forte), não limite de recurso — a borda do airbrush é
+// SEMPRE macia (mesmo em `k = K_MAX`, os últimos %% rolam suave a zero), que é a razão de ele
+// existir ao lado do `pow`. `K_MIN` (hardness 0) = névoa tênue (centro `1−e^{−1}=0.63`);
+// `K_MAX` (hardness 1) = domo largo quase sólido de borda macia.
+const AIRBRUSH_K_MIN: f32 = 1.0;
+const AIRBRUSH_K_MAX: f32 = 8.0;
+
+fn hardness_mask(dn: f32, hardness: f32, aa: f32, airbrush: bool) -> f32 {
     let inv = clamp(1.0 - dn, 0.0, 1.0); // 1 no centro, 0 na borda
     var profile: f32;
-    if (hardness > 0.999) {
+    if (airbrush) {
+        // Airbrush analítico (Ciallo, 03 §8): a transmitância de Beer-Lambert por um dab
+        // esférico. A corda pela esfera no deslocamento `dn` é `2R·√(1−dn²)`, a tinta absorve
+        // exponencialmente ao longo dela ⇒ cobertura `A = 1 − exp(−k·√(1−dn²))`. Domo largo de
+        // núcleo chato e borda sempre macia (em `dn=1` a corda some ⇒ `A=0`, sem degrau). O
+        // `max(…,0)` guarda o `√` de `dn` fora do disco (fragmento descartado de todo jeito).
+        let k = mix(AIRBRUSH_K_MIN, AIRBRUSH_K_MAX, clamp(hardness, 0.0, 1.0));
+        profile = 1.0 - exp(-k * sqrt(max(1.0 - dn * dn, 0.0)));
+    } else if (hardness > 0.999) {
         profile = 1.0; // borda dura: o núcleo é chapado; a borda é o AA abaixo
     } else {
         let soft = 1.0 - hardness;
@@ -540,7 +564,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // `dn` é contínuo (os campos coincidem onde trocam de dono), então o `fwidth`
     // do AA só vê um salto de DERIVADA na costura do `min` — nunca um degrau.
     let aa = max(fwidth(dn), 1e-4);
-    var mask = hardness_mask(dn, in.hardness, aa);
+    var mask = hardness_mask(dn, in.hardness, aa, (in.flags & FLAG_AIRBRUSH) != 0u);
     // Fade SUB-PIXEL (`gpencil_frag.glsl:534`): um traço mais fino que um pixel não
     // "afina" — ele perde OPACIDADE. Sem isto, a linha fina pisca e serrilha ao
     // mover/zoomar (o rasterizador acerta ou erra o centro do pixel); com isto, a

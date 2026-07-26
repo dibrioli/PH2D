@@ -246,6 +246,7 @@ fn build_stroke(
     // **Self Overlap** (03 §8): o traço herda do pincel se cruzar a si mesmo ACUMULA (escurece)
     // ou fica a união chapada. Default OFF ⇒ o traço de sempre.
     s.self_overlap = style.self_overlap;
+    s.airbrush = style.airbrush;
     // **O traço PREENCHIDO** (o material stroke+fill do GP — como o Suzanne é feito):
     // o fill é a triangulação dos pontos DESTE traço, então linha e cor são UMA
     // geometria. Esculpir a linha move a cor exatamente junto, no mesmo frame — nada a

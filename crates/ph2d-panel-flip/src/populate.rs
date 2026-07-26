@@ -42,6 +42,8 @@ fn draw_style_buttons(store: &mut WidgetStore) {
     button(store, ids::FLIP_TIP_SQUARES);
     // Self Overlap (Draw, 03 §8): the accumulate toggle-chip.
     button(store, ids::FLIP_SELF_OVERLAP);
+    // Airbrush (Draw, 03 §8): the analytic-airbrush toggle-chip.
+    button(store, ids::FLIP_AIRBRUSH);
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.

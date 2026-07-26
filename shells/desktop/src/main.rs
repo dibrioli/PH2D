@@ -74,6 +74,7 @@ mod falloff_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;
+mod flip_airbrush_smoke;
 mod flip_autokey;
 mod flip_colorize;
 mod flip_colorize_smoke;

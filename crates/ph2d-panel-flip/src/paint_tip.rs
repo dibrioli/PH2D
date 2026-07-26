@@ -55,6 +55,9 @@ impl BodyCtx<'_> {
             [(ids::FLIP_SELF_OVERLAP, "Self Overlap", snap.self_overlap)],
             y,
         );
+        // **Airbrush** (03 §8) — o toggle do pincel airbrush analítico (falloff físico de dab
+        // esférico; o slider Hardness vira a densidade). Mesmo idioma do chip acima. Só no Draw.
+        y = self.segmented("", [(ids::FLIP_AIRBRUSH, "Airbrush", snap.airbrush)], y);
         y
     }
 }

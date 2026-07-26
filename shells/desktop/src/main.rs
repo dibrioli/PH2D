@@ -160,6 +160,7 @@ mod input_log;
 mod integration;
 mod joint_anchor_drag;
 mod joint_draw;
+mod joint_rig_drag;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -194,6 +195,7 @@ mod physics_smoke_joint_handles;
 mod physics_smoke_joint_motor;
 mod physics_smoke_joint_pair;
 mod physics_smoke_joint_pose;
+mod physics_smoke_joint_rig;
 mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_rigs;

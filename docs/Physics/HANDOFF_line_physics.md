@@ -5660,3 +5660,142 @@ Swap pede **PAUSA** primeiro: o ponto âmbar só é desenhado com o relógio par
 **Aberto:** o swap não re-nomeia o joint (o rótulo é um retrato da criação, e
 reescrevê-lo brigaria com um rename do artista) · nada na §12 diz que um joint
 está inativo além do próprio chip (o overlay diz, e é onde o artista está olhando).
+
+---
+
+## W-JG — O GRUPO CARREGA O RIG (2026-07-26, cena `=51`, pendente de smoke)
+
+A última linha do [plano 02](02_plano_joints_ui_authoring.md), e a conclusão
+natural da **W-AnchorFollow**: ela tornou a âncora de um joint **body-local**
+(ela segue o corpo por construção), o que fechou o *slide* do pivô e, no mesmo
+movimento, abriu o preço — se o corpo carrega a âncora, mover **um** corpo de um
+par jointado separa as duas âncoras e deixa a **pose de repouso violada**. O
+joint nasce esticado, e o Play o resolve com um puxão que o artista não autorou.
+
+Um rig é uma coisa só; arrastar um elo dele arrasta o rig.
+
+### A lei é a do `jointed_group` — a MESMA função que o bake usa
+
+A W-BakeJoint já respondeu *"que corpos são um rig?"*: o **componente conexo
+DINÂMICO** do grafo de joints — corpo dinâmico conduz, Static e Kinematic são
+**fronteiras** (alcançadas, nunca cruzadas). Reusá-la não é economia: uma segunda
+resposta é como o rig que o bake assa passaria a diferir do rig que o arrasto
+move.
+
+Três consequências que a lei acerta, cada uma um bug se fosse de outra forma —
+e **medidas** sobre as armações da própria cena 51 (sonda `probe_smoke_51`):
+
+| gesto | leva a mais | por quê |
+|---|---|---|
+| pegar o elo do MEIO de uma corrente de 3 | **2** (os outros dois elos) | a corrente é uma coisa |
+| …e o gancho estático | **fora** | uma parede não anda com o rig |
+| pegar um de dois pêndulos no MESMO gancho | **0** | o gancho é uma parede ENTRE eles, não um fio |
+| pegar um par livre (sem âncora) | **1** | o par inteiro |
+
+O joint até a parede **estica**, e isso é deliberado: afastar um rig de uma
+âncora estática é um ato de autoria, e o overlay **desenha** o segmento
+esticado.
+
+### As três condições (decididas pelo chamador, passadas como `carry_rig`)
+
+1. **É um `Translate`.** *Mover* um corpo é o que a wave trata. Girar/escalar um
+   rig precisaria decidir um pivô (o joint? a bbox do grupo?), e a semântica de
+   multi-seleção local hoje gira cada membro em torno do PRÓPRIO centro — o que
+   num rig não é rotação de rig nenhuma. **Nomeado, não contrabandeado.**
+2. **O relógio está parado** (`!playhead.is_playing()`) — exatamente o gate de
+   `sync_joint_pivots`, ou seja: o rig é carregado **precisamente quando as
+   âncoras seguem os corpos**. Tocando, a pose é do SOLVER, o `settle` teleporta
+   e a restrição é reimposta no tick seguinte de qualquer forma.
+3. **Alt não está apertado.** É o modificador de *escape* que este app já usa no
+   MESMO gesto (`vec_snap`: Alt fura o ímã), e é a mesma palavra — *só isto, sem
+   ajuda*. ⚠️ Ele é **inerte** no braço `Translate` do `compute_gizmo_transform`
+   (verificado, e agora **gateado**: se alguém der um sentido de Translate ao Alt
+   na matemática do gizmo, o gate cai e a escolha volta à mesa).
+
+### Uma porta, dois sítios de Down
+
+Um gizmo abre por dois caminhos — a **alça** (`is_specific_handle`) e o **pick de
+canvas** — e cada um carregava a **sua cópia** da semeadura de grupo (~30 linhas
+idênticas). Duas cópias é como arrastar pela alça passaria a carregar a corrente
+e arrastar pelo corpo, não. Agora os dois chamam
+`joint_rig_drag::seed_group_drag_starts`, e o arch-gate conta os chamadores **e**
+recusa a volta da construção manual de `GroupDragSnapshot` no despacho.
+
+⚠️ **A semeadura teve de sair de DENTRO do bloco do `Transform`** nos dois
+sítios: `jointed_group` monta queries e precisa de `&mut SimWorld`, e o
+`if let Some(t) = gfx.sim.world().get::<Transform>(…)` empresta o mundo
+imutavelmente por todo o bloco. Daí o sinalizador `opened_drag` — sem drag
+aberto não há grupo a semear.
+
+### A regra de PARENTESCO, e por que ela é conservadora
+
+O translate de grupo soma o delta de MUNDO ao `Transform` **local** de cada
+extra. Se um membro é descendente de outro, o de baixo anda **duas vezes** (o pai
+já o carrega por herança) — o rig *explodiria*. Então: **o rig só acrescenta um
+corpo quando nenhum OUTRO candidato lhe é parente** (nem ancestral, nem
+descendente). O teste é **simétrico** (perguntar só para cima deixa passar o caso
+em que o corpo arrastado é o de baixo — mutação M5 prova) e independente de
+ordem (o conjunto de candidatos é fechado ANTES de qualquer push, porque a ordem
+de `jointed_group` é por bits e não tem relação com a árvore).
+
+Erra para o lado honesto: quem não é carregado deixa o joint esticado — que se
+vê — em vez de andar em dobro, que lê como coisa quebrada.
+
+⚠️ **A regra vale só para o que o RIG acrescenta.** A multi-seleção explícita
+segue como sempre (o artista escolheu aqueles objetos), e o **duplo-movimento
+pai+filho que ela permite é ANTERIOR a esta wave** — nomeado aqui, não corrigido
+de contrabando: mexer nisso é mudar a semântica de seleção do editor, com gate e
+smoke próprios.
+
+### A metade visível
+
+**Nada de chrome novo, de propósito.** O rig andando junto É o que se vê; e o que
+o Alt deixa para trás se vê pelo MESMO desenho (o segmento âmbar do joint
+estica). As duas metades do interruptor são legíveis sem um segundo indicador.
+
+### O que a wave NÃO toca
+
+- Zero componente, zero id, zero widget, zero i18n.
+- `PROJECT_SCHEMA` **34** intocado · registro **21** intocado · `physics_ecs_c9`
+  **intocado** (é gesto de editor; nada disto alcança o solver).
+
+### Gates
+
+**9 no `joint_rig_drag` (headless, `SimWorld` real)** — a corrente inteira · o
+modificador · os dois pêndulos independentes · a multi-seleção simples
+preservada · corpo sem joint · a regra de parentesco nas duas direções · a
+regra de parentesco NÃO tocando a seleção explícita · sem duplicar ninguém · e
+**o rig é o da SELEÇÃO INTEIRA, não só o do corpo agarrado** (⚠️ este último
+existe porque o gate da corrente **não** o cobre: com uma corrente só, semear a
+seleção inteira e semear só o primário dão a mesma resposta — a mutação que
+descarta os extras da semente passava por toda a suíte antes dele).
+
+**4 no arch-gate** `tests/the_drag_carries_the_jointed_rig.rs` — os dois Downs
+pela mesma porta · o relógio e o Alt em TODO sítio · o tipo do gesto no sítio
+que pode abrir qualquer um (⚠️ **não** cobrado do pick de canvas, cujo
+`GizmoDragState` traz `Translate` literal: ali a condição não poderia ser falsa,
+e um gate incapaz de falhar pelo motivo que alega é pior que nenhum) · e o Alt
+inerte na matemática do Translate.
+
+**Mais a sonda `probe_smoke_51`** (`#[ignore]`), que mede a cena de smoke sobre
+as MESMAS armações que o artista abre (`physics_smoke_joint_rig::spawn_rigs`) —
+não sobre umas parecidas.
+
+**10 mutações, 10 sangram.**
+
+### LOC
+
+`physics_smoke.rs` estava em 597/600 e a cena 51 o estouraria. A lista de cenas
+pausadas — 22 linhas de `| "n"` num `matches!` — virou a tabela
+**`PAUSED_SCENES`** (589). Não é hack de tamanho: é exatamente o tipo de lista
+que só cresce, e uma cadeia de `|` gasta uma linha por item.
+
+### Smoke
+
+**`PH2D_PHYSICS_SMOKE=51`** — três armações em repouso (corrente · gêmeos · par
+livre), com os números acima impressos no terminal pela própria cena.
+
+**Aberto:** rotação/escala de um rig (decisão de PIVÔ, não construída) · o
+duplo-movimento pai+filho da multi-seleção explícita (pré-existente) · nada na
+§12 diz "este corpo faz parte de um rig" antes do arrasto (o overlay de joints
+diz, e é onde o artista está olhando).

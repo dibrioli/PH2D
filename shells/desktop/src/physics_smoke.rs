@@ -20,6 +20,18 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
+/// **As cenas que abrem PARADAS.** Uma cena que espera um gesto do artista
+/// (adicionar um corpo, assar, arrastar um rig) não pode ter meio caído antes de
+/// ele chegar ao mouse.
+///
+/// Uma TABELA e não uma cadeia de `|`: com vinte e poucas entradas o `matches!`
+/// gastava uma linha por cena e comia o teto de LOC deste arquivo — e a lista é
+/// exatamente o tipo de coisa que só cresce.
+const PAUSED_SCENES: &[&str] = &[
+    "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
+    "44", "45", "46", "47", "51",
+];
+
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
 /// (full size) matches the collider (half-extents).
 pub(crate) fn spawn_floor(world: &mut bevy_ecs::world::World) {
@@ -105,6 +117,7 @@ impl crate::App {
             "48" => self.physics_smoke_joint_motor(),
             "49" => self.physics_smoke_joint_break(),
             "50" => self.physics_smoke_joint_pair(),
+            "51" => self.physics_smoke_joint_rig(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -122,28 +135,7 @@ impl crate::App {
         self.timeline.flags.simulate_physics = true;
 
         self.playhead.rewind();
-        if matches!(
-            which.trim(),
-            "3" | "7"
-                | "14"
-                | "15"
-                | "16"
-                | "17"
-                | "21"
-                | "22"
-                | "23"
-                | "24"
-                | "37"
-                | "38"
-                | "39"
-                | "40"
-                | "41"
-                | "43"
-                | "44"
-                | "45"
-                | "46"
-                | "47"
-        ) {
+        if PAUSED_SCENES.contains(&which.trim()) {
             self.playhead.pause();
         } else {
             self.playhead.play();

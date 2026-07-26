@@ -4170,6 +4170,11 @@ impl App {
                         }
                         let window_size = gfx.surface.size();
                         let start_world = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
+                        // ⚠️ A semeadura do grupo saiu de DENTRO deste bloco (W-JG): ela
+                        // precisa de `&mut gfx.sim` (o `jointed_group` monta queries) e o
+                        // `t` abaixo empresta o mundo imutavelmente. Sem drag aberto não
+                        // há grupo a semear, daí o sinalizador.
+                        let mut opened_drag = false;
                         if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
                             let snap = ph2d_editor::TransformSnapshot {
                                 translation: [t.translation.x, t.translation.y],
@@ -4244,6 +4249,9 @@ impl App {
                                 parent_world,
                                 turns: 0,
                             });
+                            opened_drag = true;
+                        }
+                        if opened_drag {
                             // Onda 1 + 2C.4: snapshot every OTHER selected
                             // sprite's full start_transform so
                             // advance_gizmo_drag can apply translate /
@@ -4252,37 +4260,24 @@ impl App {
                             // for ANY drag kind that touches multi-select
                             // (Translate / Scale / Rotate) so the math
                             // branches can fire uniformly later.
-                            self.group_drag_starts.clear();
-                            if hero.gizmo.selected_len() > 1 {
-                                for sel in hero.gizmo.iter_selected() {
-                                    if sel == entity_bits {
-                                        continue;
-                                    }
-                                    let e = ph2d_ecs::Entity::from_bits(sel);
-                                    if let Some(t) = gfx.sim.world().get::<Transform>(e) {
-                                        let epw =
-                                            ph2d_ecs::parent_world_transform(gfx.sim.world(), e);
-                                        self.group_drag_starts.push(
-                                            crate::app_state::GroupDragSnapshot {
-                                                entity_bits: sel,
-                                                start_transform: ph2d_editor::TransformSnapshot {
-                                                    translation: [t.translation.x, t.translation.y],
-                                                    rotation: t.rotation,
-                                                    scale: [t.scale.x, t.scale.y],
-                                                },
-                                                parent_world: ph2d_editor::TransformSnapshot {
-                                                    translation: [
-                                                        epw.translation.x,
-                                                        epw.translation.y,
-                                                    ],
-                                                    rotation: epw.rotation,
-                                                    scale: [epw.scale.x, epw.scale.y],
-                                                },
-                                            },
-                                        );
-                                    }
-                                }
-                            }
+                            //
+                            // W-JG: e, num Translate em repouso sem Alt, o
+                            // **rig articulado** do conjunto entra junto — a
+                            // MESMA porta que o pick de canvas usa
+                            // (`crate::joint_rig_drag`), porque duas cópias da
+                            // regra é como arrastar pela alça passaria a
+                            // carregar a corrente e arrastar pelo corpo, não.
+                            let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
+                            let carry_rig = matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
+                                && !self.playhead.is_playing()
+                                && !self.modifiers.alt_key();
+                            crate::joint_rig_drag::seed_group_drag_starts(
+                                &mut self.group_drag_starts,
+                                &mut gfx.sim,
+                                entity_bits,
+                                &selected,
+                                carry_rig,
+                            );
                         }
                     } else if hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
@@ -4436,6 +4431,9 @@ impl App {
                             && !is_modifier_click
                         {
                             let entity = ph2d_ecs::Entity::from_bits(bits);
+                            // Ver a nota gêmea no sítio da alça (W-JG): a semeadura
+                            // precisa de `&mut gfx.sim` e mora fora do bloco do `t`.
+                            let mut opened_drag = false;
                             if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
                                 && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                             {
@@ -4465,6 +4463,9 @@ impl App {
                                     parent_world,
                                     turns: 0,
                                 });
+                                opened_drag = true;
+                            }
+                            if opened_drag {
                                 // Onda 1 + 2C.4: snapshot every OTHER
                                 // selected sprite's full start_transform
                                 // (skip the drag's own primary — its
@@ -4474,43 +4475,20 @@ impl App {
                                 // future scale/rotate handles on extras +
                                 // global (advance_gizmo_drag dispatches
                                 // by drag.kind + drag.target).
-                                self.group_drag_starts.clear();
-                                if hero.gizmo.selected_len() > 1 {
-                                    for sel in hero.gizmo.iter_selected() {
-                                        if sel == bits {
-                                            continue;
-                                        }
-                                        let e = ph2d_ecs::Entity::from_bits(sel);
-                                        if let Some(t) = gfx.sim.world().get::<Transform>(e) {
-                                            let epw = ph2d_ecs::parent_world_transform(
-                                                gfx.sim.world(),
-                                                e,
-                                            );
-                                            self.group_drag_starts.push(
-                                                crate::app_state::GroupDragSnapshot {
-                                                    entity_bits: sel,
-                                                    start_transform:
-                                                        ph2d_editor::TransformSnapshot {
-                                                            translation: [
-                                                                t.translation.x,
-                                                                t.translation.y,
-                                                            ],
-                                                            rotation: t.rotation,
-                                                            scale: [t.scale.x, t.scale.y],
-                                                        },
-                                                    parent_world: ph2d_editor::TransformSnapshot {
-                                                        translation: [
-                                                            epw.translation.x,
-                                                            epw.translation.y,
-                                                        ],
-                                                        rotation: epw.rotation,
-                                                        scale: [epw.scale.x, epw.scale.y],
-                                                    },
-                                                },
-                                            );
-                                        }
-                                    }
-                                }
+                                //
+                                // W-JG: um pick de canvas SEMPRE abre um
+                                // Translate, então aqui as três condições do
+                                // rig se reduzem às duas do relógio e do Alt.
+                                let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
+                                let carry_rig =
+                                    !self.playhead.is_playing() && !self.modifiers.alt_key();
+                                crate::joint_rig_drag::seed_group_drag_starts(
+                                    &mut self.group_drag_starts,
+                                    &mut gfx.sim,
+                                    bits,
+                                    &selected,
+                                    carry_rig,
+                                );
                             }
                         }
                         // ADR-0029 Phase C.2: live entries owned by the

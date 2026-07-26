@@ -5288,6 +5288,7 @@ dependencies = [
  "ph2d-node-value-switch",
  "ph2d-node-value-time",
  "ph2d-node-value-unary",
+ "ph2d-node-value-wave",
  "ph2d-node-value-wrap",
  "ph2d-nodegraph",
  "ph2d-render",
@@ -6400,6 +6401,7 @@ dependencies = [
  "ph2d-node-value-switch",
  "ph2d-node-value-time",
  "ph2d-node-value-unary",
+ "ph2d-node-value-wave",
  "ph2d-node-value-wrap",
 ]
 
@@ -6673,6 +6675,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-unary"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-wave"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

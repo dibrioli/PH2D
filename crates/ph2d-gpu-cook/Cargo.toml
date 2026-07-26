@@ -111,6 +111,8 @@ ph2d-node-value-slope = { path = "../ph2d-node-value-slope" }
 ph2d-node-value-median = { path = "../ph2d-node-value-median" }
 # The value-domain morphological/rank filter (windowed erosion/median/dilation).
 ph2d-node-value-percentile = { path = "../ph2d-node-value-percentile" }
+# The value-domain waveform shaper (any field as phase -> a waveform; the lfo dual).
+ph2d-node-value-wave = { path = "../ph2d-node-value-wave" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

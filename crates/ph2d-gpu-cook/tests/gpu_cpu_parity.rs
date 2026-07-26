@@ -68,6 +68,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_slope::register(&mut reg).unwrap();
     ph2d_node_value_median::register(&mut reg).unwrap();
     ph2d_node_value_percentile::register(&mut reg).unwrap();
+    ph2d_node_value_wave::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3880,6 +3881,140 @@ fn value_percentile_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the percentile drove nothing"
+    );
+}
+
+/// **`value.wave` runs fully on the GPU and matches the CPU.** The waveform shaper
+/// maps an input field, read as a PHASE, through the parabolic-sine bank. A
+/// `value.instance_field` Ramp at `frequency = 3` draws THREE cycles of a Sine
+/// standing wave across the grid (non-round amplitude/offset so nothing hides),
+/// driving Y. Compared within ε — the parabolic sine is the same FMA-carrying
+/// polynomial `value.lfo` uses, so the ε budget matches. `is_fully_gpu` PROVES the
+/// chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_wave_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let wave = g.add_node("value.wave");
+    g.set_param(wave, "wave", 0.0); // Sine (the parabolic path, the ε one)
+    g.set_param(wave, "frequency", 3.0); // three cycles across the ramp
+    g.set_param(wave, "amplitude", 1.7);
+    g.set_param(wave, "offset", 0.4);
+    connect(&mut g, field, wave);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (wave, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("waveform value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → wave → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.wave(Sine, f3) → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the wave drove nothing"
+    );
+}
+
+/// **`time → wave` IS `value.lfo` — the shaper-dual, proved byte-for-byte.** The
+/// `value.wave` waveform bank is a leaf-local COPY of `value.lfo`'s (the codebase
+/// convention: the shared vocabulary is the shape, not a shared symbol). This gate
+/// straddles the two copies so they cannot drift: it cooks `grid → time(rate 1) →
+/// wave(freq 1)` and `grid → lfo(period 1)` with MATCHED params (`rate·freq = 1 =
+/// 1/period`, same wave/amplitude/offset/phase, no stagger) and demands the two `v`
+/// fields are BIT-identical. This runs on the CPU (no adapter needed) — and combined
+/// with each node's own CPU↔GPU parity gate it transitively pins the WGSL copies too
+/// (wave.wgsl == wave.cpu == lfo.cpu == lfo.wgsl).
+#[test]
+fn time_into_wave_equals_the_lfo() {
+    let reg = registry();
+    // Matched non-round shaping params so a divergence in the bank cannot hide.
+    let (amp, off, ph) = (1.7f32, 0.4f32, 0.2f32);
+
+    // Chain A: grid → time(rate 1) → wave(Sine, freq 1, amp, off, phase).
+    let mut ga = Graph::new();
+    let grid_a = grid_node(&mut ga, 24.0);
+    let time = ga.add_node("value.time");
+    ga.set_param(time, "rate", 1.0);
+    connect(&mut ga, grid_a, time);
+    let wave = ga.add_node("value.wave");
+    ga.set_param(wave, "wave", 0.0);
+    ga.set_param(wave, "frequency", 1.0);
+    ga.set_param(wave, "amplitude", amp);
+    ga.set_param(wave, "offset", off);
+    ga.set_param(wave, "phase", ph);
+    connect(&mut ga, time, wave);
+    ga.validate(&reg).expect("A well-typed");
+
+    // Chain B: grid → lfo(Sine, period 1, amp, off, phase).
+    let mut gb = Graph::new();
+    let grid_b = grid_node(&mut gb, 24.0);
+    let lfo = gb.add_node("value.lfo");
+    gb.set_param(lfo, "wave", 0.0);
+    gb.set_param(lfo, "period", 1.0);
+    gb.set_param(lfo, "amplitude", amp);
+    gb.set_param(lfo, "offset", off);
+    gb.set_param(lfo, "phase", ph);
+    connect(&mut gb, grid_b, lfo);
+    gb.validate(&reg).expect("B well-typed");
+
+    let mut cook = Cook::new();
+    // Scope each cook so its borrow of `cook` drops before the next.
+    let va = {
+        let out_a = cook.cook(&ga, &reg, wave, PLAYHEAD).expect("A cook");
+        match out_a[0].as_stream().get("v") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("A has no v"),
+        }
+    };
+    let vb = {
+        let out_b = cook.cook(&gb, &reg, lfo, PLAYHEAD).expect("B cook");
+        match out_b[0].as_stream().get("v") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("B has no v"),
+        }
+    };
+    assert_eq!(va.len(), vb.len(), "same count");
+    assert!(va.iter().all(|x| x.is_finite()) && va[0] != off, "the wave actually oscillated");
+    assert_eq!(
+        bytemuck::cast_slice::<_, u8>(&va),
+        bytemuck::cast_slice::<_, u8>(&vb),
+        "time -> wave must equal the lfo byte-for-byte (the leaf-local copies agree)"
     );
 }
 

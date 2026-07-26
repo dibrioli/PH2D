@@ -12,9 +12,33 @@ e W3 (feather analítico) ficam para depois.
 
 Um FX raster produz **PIXELS**, não `VecPath` ⇒ **não é PathEffect** (`effect::run_stack` é
 `VecPath->VecPath`, puro, sem GPU, dentro da `ph2d-vec-scene`) **nem `LiveGeometry`**. É uma
-`FxImages` que o **shell produz** (isola a forma → rasteriza num scratch de GPU → readback → borra
-na CPU → recompõe) e o `dispatch` só **encoda** no z da forma. É por isso que a seção do painel se
-chama **Filters**, distinta de **Effects** (deformadores vetoriais, ADR-0132).
+`FxImages` que o **shell produz** e o `dispatch` só **encoda** no z da forma. É por isso que a
+seção do painel se chama **Filters**, distinta de **Effects** (deformadores vetoriais, ADR-0132).
+
+## ⚠️ ARQUITETURA: 100% RESIDENTE NA GPU (Enio: "tudo é para o game em runtime, total performance")
+
+O 1º corte foi CPU-first (render→**readback GPU→CPU**→Gaussiana na CPU→**re-upload**) — padrão de
+PREVIEW de editor. Em runtime a forma anima, e esse roundtrip roda por frame por forma: o readback
+bloqueia o pipeline e o re-upload **vaza o atlas do Vello** (Blob nova por frame = id novo = upload
+que cresce sem fim — medido: recook 37→793 ms num smoke parado). **Reescrito GPU-resident:**
+- **`ph2d_render::FxBlurPass`** — passe de compute textura→textura, Gaussiana SEPARÁVEL (H/V
+  ping-pong) + finalize fundido no V (des-premul p/ Blur; cor do efeito × alfa da silhueta p/
+  Glow/Drop Shadow; opacity). Molde do `ImpastoLightPass`. Gate `#[ignore]` `fx_blur_gpu.rs`
+  (verde na RTX; **roda na lane de GPU** com `--ignored`).
+- **`VelloPass::register_texture`/`override_image`/`unregister_texture`** — uma textura da GPU vira
+  imagem desenhável por **id ESTÁVEL**, sem upload de CPU; re-borrar escreve NA MESMA textura ⇒
+  zero churn de id no atlas.
+- **`fx_live`** — por forma: um scratch `VelloPass` (render isolado, sem readback) → `FxBlurPass` →
+  textura de saída persistente registrada no **renderer PRINCIPAL** (o que desenha `vector_scene`;
+  registrar noutro faz o Vello entrar em pânico). O memo vira OTIMIZAÇÃO (pula o re-blur), não
+  correção. Desregistro enfileirado (`forget` não tem `vello_pass`; o `recook` drena).
+- **`ph2d_vector::StableImage::from_image_data`** + re-export `ImageData`.
+- **Removidos:** `process_fx`/`blur_premul`/`gaussian` (blur da CPU) + o readback + os gates de CPU
+  (substituídos pelo gate de GPU).
+
+Custo por frame: 1 render isolado + 2 passes de blur + 1 cópia GPU→GPU no atlas — tudo na placa,
+escala para formas animadas. ⚠️ **`dispatch` ganhou +1 arg** (`fx: &FxImages`); e o `recook` do
+shell recebe `&mut VelloPass` (o principal).
 
 ## Deltas que a integração precisa CONFERIR (o número se conta, não se escolhe)
 
@@ -64,16 +88,23 @@ não move `PROJECT_SCHEMA` (blob-key), então esse eixo não conflita; o registr
 estrelas: controle nítido · **Blur** · **Glow** ciano · **Drop Shadow** preta 60% deslocada. Arma
 via `set_filter` programaticamente (não exercita o painel).
 
-**PENDENTE (o único item de smoke aberto):** re-smoke do **Blur** (renderiza agora, era branco) +
-smoke do **PAINEL** (abra o Vector, desenhe uma forma, selecione → seção *Filters* → Blur/Glow/
-Shadow → afine Radius/Offset/Color/Opacity).
+**PENDENTE (smoke):** re-smoke de **PERFORMANCE** — a versão CPU caía o FPS (readback + vazamento
+do atlas); a GPU-resident deve rodar liso. `PH2D_FX_PERF=1` imprime `re-borrado(s)` + ms do recook.
+E o smoke do **PAINEL** (abra o Vector, desenhe uma forma, selecione → seção *Filters* → Blur/Glow/
+Shadow → afine Radius/Offset/Color/Opacity). ⚠️ **Os gates GPU do FX são `#[ignore]`** — o
+integrador roda `cargo test -p ph2d-render --test fx_blur_gpu -- --ignored` na RTX (sem adapter =
+skip gracioso, que não é verde).
 
 ## Aberto / follow-ups (nomeados, não contrabandeados)
 
-- **e2e wgpu do ramp** — a metade CPU (rampa) + os gates de dispatch + o smoke cobrem; um gate
-  headless-GPU que renderiza + mede o ramp na tela é o reforço de regressão que falta.
+- **1 filtro re-borrava todo frame na versão CPU** (memo miss) — a causa exata do miss não foi
+  isolada, mas na GPU-resident ela virou barata (um blur de GPU por frame) e o id estável mata o
+  vazamento. Se o `PH2D_FX_PERF` ainda mostrar `re-borrado` constante em cena parada, vale caçar o
+  miss (é uma otimização, não correção).
 - **Radius é slider em unidades de MUNDO** (`FILTER_RADIUS_MAX=2.0`) — fração-do-tamanho seria mais
   robusto para formas de tamanhos diferentes (a mesma nota que o Contour faz do Offset).
+- **`FxBlurPass` cap `MAX_HALF=96`** (sigma ≈ 32 px de tela): acima o borrão satura — limite de
+  CUSTO honesto do passe, não de produto.
 - **W2/W3** do plano 24 (grafo componível além do Rive; feather analítico).
 - Sombra/glow do FX **não** compõem com a pilha de Effects na mesma forma numa ordem escolhida
   (cada forma tem UM VecFilter); é decisão de produto se um dia precisar.

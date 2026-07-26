@@ -128,6 +128,7 @@ pub(crate) mod physics_overlay;
 mod physics_overlay_annotations;
 mod physics_overlay_contacts;
 mod physics_overlay_joint_glyphs;
+mod physics_overlay_joint_readout;
 mod physics_overlay_joints;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
@@ -4467,9 +4468,24 @@ impl crate::App {
                 &flashes,
                 &waterlines,
                 &triggered,
+                // W-J7b: o joint selecionado ganha readout mesmo sem teto armado
+                // — é preciso ler a carga ANTES de escolher um número.
+                hero.gizmo
+                    .iter_selected()
+                    .map(ph2d_ecs::Entity::from_bits)
+                    .find(|e| {
+                        sim.world()
+                            .get::<ph2d_physics_ecs::PhysicsJoint>(*e)
+                            .is_some()
+                    }),
                 camera,
                 window_size,
                 vector_scene,
+                // ⚠️ Reborrow por `paint_ctx`, não o binding cru: o `text_system`
+                // já está emprestado por ele desde o começo do frame, e um
+                // segundo empréstimo direto não compila. O reborrow morre com a
+                // chamada, que é exatamente o tempo de vida que o rótulo precisa.
+                paint_ctx.text,
             );
             // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda
             // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a

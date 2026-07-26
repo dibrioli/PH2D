@@ -222,11 +222,21 @@ impl crate::App {
                   6 kg com um metro de braco -- 58,9 N.m contra um teto de 20. O\n     \
                   teto de FORCA dela esta em 1000 N (fora de alcance -- a porta pesa\n     \
                   58,9 N), entao so o TORQUE pode ter sido o que rompeu.\n  \
-               4. Rebobine (o rompimento e RUNTIME, nao autoria): tudo volta\n     \
+               4. **OS NUMEROS NA TELA** (W-J7b) -- ao lado de cada corda, em ambar,\n     \
+                  o par **carga / teto** em newtons. E o que torna o teto ajustavel\n     \
+                  em vez de adivinhavel: a de 1 kg le '9.8 / 60', a de 5 kg\n     \
+                  '49.1 / 60', e a de 10 kg congela em **VERMELHO** na carga que a\n     \
+                  partiu. Sem esses numeros, escolher um teto e chutar e dar Play.\n     \
+                  Num tranco aparece uma 2a linha **max <n>**: um pico acaba antes\n     \
+                  de dar para ler, e e ele que se digita.\n  \
+               5. Rebobine (o rompimento e RUNTIME, nao autoria): tudo volta\n     \
                   inteiro. Selecione 'Rope 10kg' na Hierarquia -- a secao Physics\n     \
                   Joint mostra o card **Breakable** com **Break Force (N)** em 60.\n     \
-                  Digite 200 e de Play: agora ela segura.\n  \
-               5. Selecione 'Door Hinge Joint'. O MESMO card mostra uma row a mais,\n     \
+                  O readout ja te disse que ela carrega 98,1: digite 200 e de Play,\n     \
+                  agora ela segura -- **na primeira tentativa**.\n     \
+                  (Selecionar um joint mostra a carga dele mesmo SEM teto armado:\n     \
+                  e preciso poder ler o numero ANTES de escolher um.)\n  \
+               6. Selecione 'Door Hinge Joint'. O MESMO card mostra uma row a mais,\n     \
                   **Break Torque (N.m)** -- e ela existe SO no Pin. Clique pelos\n     \
                   cinco tipos no seletor Kind: Spring/Rope/Weld/Slider oferecem\n     \
                   Break Force e nao oferecem Break Torque. Nao e gosto: o rapier\n     \
@@ -234,11 +244,11 @@ impl crate::App {
                   de um eixo TRAVADO (medido -- um Weld em balanco segura 4,905 N.m\n     \
                   e le 0,0000), entao um teto de torque num Weld nunca poderia\n     \
                   disparar.\n  \
-               6. ARME UM A MAO: selecione 'Bare Hook' e 'Bare Load', ponha\n     \
+               7. ARME UM A MAO: selecione 'Bare Hook' e 'Bare Load', ponha\n     \
                   **Join As = Rope**, aperte **Join Selected Bodies**. A joint nova\n     \
                   ja nasce selecionada: ligue **Breakable**, digite 20 no Break\n     \
                   Force e de Play -- 4 kg sao 39,2 N, entao ela parte na hora.\n  \
-               7. ⚠️ E um teto de CARGA, nao de impacto. O pico de uma pancada\n     \
+               8. ⚠️ E um teto de CARGA, nao de impacto. O pico de uma pancada\n     \
                   resolve DENTRO de um sub-passo do solver e nao e observavel de\n     \
                   fora (medido: uma corda que para 1 kg vindo a 6,26 m/s reporta os\n     \
                   mesmos 9,8 N que ela reporta parada). Uma corda nao arrebenta\n     \

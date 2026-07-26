@@ -37,6 +37,11 @@ impl PhysicsBridge {
         // Reporting the difference across the jump would call a scrub a hundred
         // collisions; the rebuild at the end of the dispatch re-baselines in silence.
         self.discard_contact_history();
+        // And the tuning high-water marks: a rebuild is where a new RUN begins,
+        // so the hardest each joint was pulled describes a run that is over.
+        // ⚠️ Deliberately NOT cleared by `hold` — pausing is exactly when the
+        // artist stops to read the number.
+        self.discard_joint_peaks();
         let anchor = self.ring.seed(&mut self.world, target);
         let (from, replayed) = match anchor {
             Some(tick) => (tick, target - tick),

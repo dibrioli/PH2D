@@ -87,6 +87,26 @@ pub struct JointView {
     /// estouro). Um joint rompido continua na cena, com os parâmetros que o
     /// artista autorou — o que parou foi a restrição.
     pub broken: bool,
+    /// **O que este joint está segurando AGORA**, newtons e newton-metros — o
+    /// pico deste tick (`PhysicsWorld::joint_load`).
+    ///
+    /// Zero num joint rompido: ele não segura mais nada, e é por isso que o
+    /// número que interessa depois de um rompimento é o [`Self::peak`].
+    pub load: ph2d_physics::JointLoad,
+    /// **O mais forte que ele foi puxado desde que o relógio recomeçou.**
+    ///
+    /// O número que se DIGITA. O pico de um tick é exato e transiente — um
+    /// tranco acaba antes de o artista conseguir lê-lo —, então sem esta marca
+    /// d'água ajustar um teto é busca binária sem sinal de retorno
+    /// ([[feedback_ergonomics_verdict_is_a_design_bug]]). Num rig parado ele é
+    /// igual ao `load`; num rompimento ele **congela na carga que cruzou**.
+    pub peak: ph2d_physics::JointLoad,
+    /// O teto de força autorado, newtons — `f32::INFINITY` quando o joint não é
+    /// quebrável (o `∞ = off` do P7, já resolvido pela ponte).
+    pub break_force: f32,
+    /// O teto de torque, newton-metros. `∞` fora do Pin, onde ele não pode
+    /// disparar (ver [`ph2d_physics::JointLoad`]).
+    pub break_torque: f32,
 }
 
 /// De volta ao vocabulário AUTORADO.
@@ -151,6 +171,18 @@ impl PhysicsBridge {
                 // rompeu foi o mundo, e o componente segue autorado como estava
                 // (é isso que faz um Reset trazer o joint de volta).
                 broken: !self.world.joint_is_enabled(j.handle).unwrap_or(true),
+                // ⚠️ Os dois tetos saem do `rest` — o `JointDesc` que o SOLVER
+                // recebeu — e não do componente, pela MESMA lei que `limits`
+                // segue duas linhas acima: o desenho tem de mostrar o número que
+                // está em vigor, não o que está digitado num painel que a ponte
+                // ainda não reconciliou.
+                load: self
+                    .world
+                    .joint_load(j.handle)
+                    .unwrap_or(ph2d_physics::JointLoad::ZERO),
+                peak: self.joint_peak(entity),
+                break_force: j.rest.break_force,
+                break_torque: j.rest.break_torque,
                 axis: (kind == JointKind::Slider).then(|| {
                     let (s, c) = (pose_a.rotation.im, pose_a.rotation.re);
                     let [x, y] = j.rest.axis_a;

@@ -411,9 +411,13 @@ pub(super) fn draw(
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
     triggered: &[ph2d_ecs::Entity],
+    // W-J7b: quem está selecionado, para o readout de carga de um joint que
+    // ainda NÃO é quebrável — é preciso ler a carga antes de escolher um teto.
+    selected_joint: Option<ph2d_ecs::Entity>,
     camera: &Camera2d,
     window: WindowSize,
     vector_scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
     for (path, rgba) in outlines(show, show_velocity, sim, triggered, camera, window) {
@@ -504,7 +508,39 @@ pub(super) fn draw(
             &path,
         );
     }
+    // ⚠️ Os NÚMEROS por ÚLTIMO, depois do último uso do `vector_scene` para
+    // traço — a cena tem de estar livre para o renderizador de texto, que é a
+    // mesma ordem (e o mesmo comentário) do overlay de dimensões do Line.
+    for r in super::physics_overlay_joint_readout::joint_readouts(
+        show,
+        joint_views,
+        selected_joint,
+        camera,
+        window,
+    ) {
+        // Centrado numa caixa larga o bastante para o rótulo mais longo
+        // (`1234 / 1234 N.m`) e alta o bastante para uma linha.
+        let rect = ph2d_editor::zones::Rect::new(
+            r.at.x as f32 - READOUT_BOX_W_PX * 0.5,
+            r.at.y as f32 - READOUT_BOX_H_PX * 0.5,
+            READOUT_BOX_W_PX,
+            READOUT_BOX_H_PX,
+        );
+        ph2d_editor::paint::paint_text_centered(
+            text_system,
+            vector_scene,
+            &r.text,
+            rect,
+            super::physics_overlay_joint_readout::READOUT_PX,
+            Color::new(r.rgba),
+        );
+    }
 }
+
+/// Caixa do rótulo de readout, px de tela — larga o bastante para o par mais
+/// longo que ele pode escrever, e de uma linha de altura.
+const READOUT_BOX_W_PX: f32 = 110.0; // LITERAL-PX-OK: chrome de overlay
+const READOUT_BOX_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 
 #[cfg(test)]
 #[path = "physics_overlay_tests.rs"]

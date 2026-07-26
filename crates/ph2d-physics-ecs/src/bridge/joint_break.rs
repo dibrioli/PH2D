@@ -26,6 +26,7 @@
 //! undo (a diff every frame) and what makes a replay disagree with the live run.
 
 use ph2d_ecs::Entity;
+use ph2d_physics::JointLoad;
 
 use super::PhysicsBridge;
 
@@ -68,6 +69,50 @@ impl PhysicsBridge {
                 });
             }
         }
+    }
+
+    /// **Fold this frame's joint loads into the high-water mark of the RUN.**
+    ///
+    /// The per-tick peak the wrapper keeps ([`ph2d_physics::PhysicsWorld::joint_load`])
+    /// is exact but *transient* — it describes one tick, and a yank is over
+    /// before the artist can read it. What tuning a threshold needs is the
+    /// hardest this joint has been pulled since the clock last restarted: play,
+    /// do the thing, read the number, type it. That is a search with a feedback
+    /// signal instead of a binary one.
+    ///
+    /// ⚠️ **Cleared only by a REWIND, not by a hold.** A rebuild is where a new
+    /// run begins; pausing (or disarming the transport's Physics toggle) does not
+    /// make the last run's number untrue — and the artist pauses *precisely to
+    /// read it*, so clearing there would erase the answer at the moment it is
+    /// wanted.
+    ///
+    /// ⚠️ A BROKEN joint stops contributing, and that is the whole readout of a
+    /// break: the wrapper skips a disabled joint, so its live load reads zero
+    /// while the high-water keeps the load that crossed. No special case — the
+    /// number the artist wants to see frozen freezes itself.
+    pub(super) fn accumulate_joint_peaks(&mut self) {
+        for (&entity, j) in &self.joints {
+            let Some(load) = self.world.joint_load(j.handle) else {
+                continue;
+            };
+            let slot = self.joint_peaks.entry(entity).or_insert(JointLoad::ZERO);
+            slot.force = slot.force.max(load.force);
+            slot.torque = slot.torque.max(load.torque);
+        }
+    }
+
+    /// The high-water load of this run, per joint. `ZERO` for one never stepped.
+    #[must_use]
+    pub(super) fn joint_peak(&self, entity: Entity) -> JointLoad {
+        self.joint_peaks
+            .get(&entity)
+            .copied()
+            .unwrap_or(JointLoad::ZERO)
+    }
+
+    /// Forget every high-water mark — a new run starts here.
+    pub(super) fn discard_joint_peaks(&mut self) {
+        self.joint_peaks.clear();
     }
 
     /// The joints that gave way during this dispatch. Empty in almost every

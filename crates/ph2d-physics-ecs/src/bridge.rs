@@ -18,6 +18,7 @@ pub mod contacts;
 mod damping;
 mod diagnostics;
 mod hold;
+mod inspect;
 pub mod joint_break;
 pub mod joints;
 mod kinematic;
@@ -170,6 +171,10 @@ pub struct PhysicsBridge {
     /// shape and the same lifetime as `contact_events`, and for the same reason:
     /// a break is a transition, and a dispatch can owe several ticks.
     joint_breaks: Vec<joint_break::JointBreakEvent>,
+    /// The hardest each joint has been pulled since the clock last restarted
+    /// (`bridge::joint_break`) — the number a break threshold is TUNED against.
+    /// Unlike `joint_breaks` this is not per-dispatch: it is the memory of the run.
+    joint_peaks: BTreeMap<Entity, ph2d_physics::JointLoad>,
     /// The live begin-flashes (`bridge::contacts`) — the visible half. Seeded from
     /// `Began` transitions and decayed in SIM ticks; PERSISTS across dispatches (a
     /// flash outlives the tick it was born in), so it is not cleared per dispatch, only
@@ -218,68 +223,10 @@ impl PhysicsBridge {
             contact_since: BTreeMap::new(),
             contact_events: Vec::new(),
             joint_breaks: Vec::new(),
+            joint_peaks: BTreeMap::new(),
             flashes: Vec::new(),
             contacts_continuous: true,
         }
-    }
-
-    /// Total `step()` calls since this bridge was created — the ruler the
-    /// scrub gate reads (see [`PhysicsBridge::steps_taken`]'s field docs).
-    #[doc(hidden)]
-    pub fn steps_taken(&self) -> u64 {
-        self.steps_taken
-    }
-
-    /// How many past states the scrub cache is holding, and what they cost
-    /// (for the memory gate and diagnostics).
-    #[doc(hidden)]
-    pub fn ring_stats(&self) -> (usize, usize) {
-        (self.ring.len(), self.ring.approx_bytes())
-    }
-
-    /// The last fixed tick the world has been stepped to (for the shell's
-    /// play/scrub decision, and for tests).
-    pub fn last_stepped(&self) -> u64 {
-        self.last_stepped
-    }
-
-    /// Where the SOLVER has this entity's body, `(x, y, rotation)` — not where
-    /// the entity's `Transform` says it is.
-    ///
-    /// Exists for gates about the drive stage. The two agree for a dynamic
-    /// body (the readback copies one into the other), which is exactly why a
-    /// test that asks the `Transform` cannot see whether a KINEMATIC body's
-    /// aim reached rapier at all: nothing writes that `Transform`, so it holds
-    /// whatever the test put there either way.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn body_pose(&self, entity: Entity) -> Option<(f32, f32, f32)> {
-        let b = self.bodies.get(&entity)?;
-        let pose = self.world.body_pose(b.handle)?;
-        Some((
-            pose.translation.x,
-            pose.translation.y,
-            pose.rotation.angle(),
-        ))
-    }
-
-    /// Number of live rapier bodies (for tests / diagnostics).
-    pub fn body_count(&self) -> usize {
-        self.bodies.len()
-    }
-
-    /// Number of live rapier joints (for tests / diagnostics).
-    pub fn joint_count(&self) -> usize {
-        self.joints.len()
-    }
-
-    /// Both anchors of every live joint, in **world** meters — what the
-    /// collider overlay draws. A joint is as invisible as a collider is, and
-    /// the answer to that was the same one both times: draw it.
-    pub fn joint_anchors(&self) -> impl Iterator<Item = ([f32; 2], [f32; 2])> + '_ {
-        self.joints
-            .values()
-            .filter_map(|j| self.world.joint_anchors(j.handle))
     }
 
     /// Set world gravity (m/s²). Default is `(0, -9.81)` (Y-up).
@@ -435,6 +382,10 @@ impl PhysicsBridge {
                     // the wrapper clears its own list every `step`, so a break in
                     // an early tick of a multi-tick dispatch is gone by the last.
                     self.accumulate_joint_breaks();
+                    // And the high-water mark of the RUN (the tuning signal): the
+                    // wrapper's peak is per-TICK and a yank is over before it can
+                    // be read.
+                    self.accumulate_joint_peaks();
                     tick += 1;
                     // Asking is free; capturing costs about one step, which
                     // is why the ring is sparse (see `PhysicsCheckpointRing`).

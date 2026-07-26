@@ -30,6 +30,13 @@ fn broken_view(broken: bool) -> JointView {
         length: None,
         axis: None,
         broken,
+        // W-J7b: a fixture descreve um joint SEM teto e sem carga — o readout é
+        // assunto do irmão `physics_overlay_joint_readout_tests`, e um teto aqui
+        // faria estes gates contarem um rótulo que não é sobre eles.
+        load: ph2d_physics_ecs::JointLoad::ZERO,
+        peak: ph2d_physics_ecs::JointLoad::ZERO,
+        break_force: f32::INFINITY,
+        break_torque: f32::INFINITY,
     }
 }
 

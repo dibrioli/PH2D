@@ -261,6 +261,81 @@ fn a_torque_threshold_is_only_handed_to_a_kind_that_can_report_one() {
     }
 }
 
+/// **A marca d'água é o número que se DIGITA: ela sobrevive a uma pausa e só
+/// zera num rewind** (W-J7b).
+///
+/// O pico do wrapper é por TICK e um tranco acaba antes de dar para ler; sem a
+/// marca d'água da CORRIDA, ajustar um teto é busca binária sem sinal de retorno
+/// — o report que abriu esta wave. E o tempo de vida dela é a metade que decide:
+/// o artista **pausa exatamente para ler o número**, então limpá-lo no `hold`
+/// apagaria a resposta no instante em que ela é pedida.
+///
+/// Mutação: `discard_joint_peaks` chamado também no `hold` — a 2ª metade cai com
+/// o pico em 0,00 depois da pausa.
+#[test]
+fn the_high_water_mark_survives_a_pause_and_only_a_rewind_clears_it() {
+    let mut sim = rig(PhysicsJoint::default(), 5.0);
+    let mut b = PhysicsBridge::default();
+    run(&mut sim, &mut b, 0, 60);
+    let peak = b.joint_views().next().expect("uma view").peak.force;
+    assert!(
+        (peak - 49.05).abs() < 0.5,
+        "5 kg pendurados marcam ~49,05 N, marcou {peak:.2}"
+    );
+
+    // PAUSA (o toggle Physics DESARMADO): a corrida acabou, mas o que ela mediu
+    // continua verdadeiro — e é agora que o artista olha.
+    //
+    // ⚠️ **`hold`, não `dispatch(.., false, ..)`.** A 1ª versão deste gate usava
+    // o `false` do `dispatch`, que é *pausado* e cai no ramo `settle`; o `hold` —
+    // o toggle Physics da barra — é outra coisa, e a mutação que limpava a marca
+    // d'água ali **sobreviveu** porque a fixture nunca o executava.
+    b.hold(&mut sim, 60);
+    let after_hold = b.joint_views().next().expect("view").peak.force;
+    assert!(
+        (after_hold - peak).abs() < 1e-3,
+        "uma pausa nao apaga a medicao da corrida: {peak:.2} -> {after_hold:.2}"
+    );
+
+    // REWIND: uma corrida nova comeca aqui, e a marca velha nao descreve mais nada.
+    b.dispatch(&mut sim, true, 0);
+    assert!(
+        b.joint_views().next().expect("view").peak.force < 1.0,
+        "um rewind zera a marca d'agua"
+    );
+}
+
+/// **Num joint rompido a marca d'água CONGELA na carga que o partiu** — e é ela
+/// que o readout mostra, porque a carga viva de um rompido é zero.
+///
+/// Sem caso especial nenhum: o wrapper pula um joint desabilitado, então ele
+/// para de contribuir e o `max` fica onde estava.
+#[test]
+fn a_broken_joints_high_water_freezes_at_the_load_that_broke_it() {
+    let mut sim = rig(rated(50.0), 10.0);
+    let mut b = PhysicsBridge::default();
+    run(&mut sim, &mut b, 0, 90);
+    let v = b.joint_views().next().expect("view");
+    assert!(v.broken, "a premissa: ela rompeu");
+    assert!(
+        v.load.force < 1e-3,
+        "um rompido nao segura nada: carga viva {:.3}",
+        v.load.force
+    );
+    assert!(
+        v.peak.force > 50.0,
+        "e a marca d'agua guarda o que cruzou: {:.1} N",
+        v.peak.force
+    );
+    // E ela nao anda mais: mais 60 ticks de queda livre nao mexem no numero.
+    let frozen = v.peak.force;
+    run(&mut sim, &mut b, 90, 60);
+    assert!(
+        (b.joint_views().next().expect("view").peak.force - frozen).abs() < 1e-3,
+        "congelada"
+    );
+}
+
 /// **A SONDA da cena 49** — os números que a mensagem do smoke afirma, medidos
 /// sobre a mesma armação antes de ela ser escrita.
 ///

@@ -5461,3 +5461,70 @@ torque"* se escreve pondo o teto de força fora de alcance (é o que a cena faz)
 *"que parâmetros este tipo recebe?"* direto, e inferir isso do movimento de um
 corpo não distingue *o teto não foi passado* de *o teto foi passado e a leitura é
 estruturalmente zero*.
+
+### W-J7b — o NÚMERO ao lado do joint (2026-07-26, cena `=49`, pendente de re-smoke)
+
+Enio, pós-smoke da W-J7: *"é extremamente difícil configurar o valor exato de
+quebra que se deseja, necessitando de uma enorme quantidade de tentativas … melhor
+seria que as forças fossem mostradas no gizmo, tanto a força configurada pelo
+usuário como a força exercida"*.
+
+**Não é afinação, é informação que falta** ([[feedback_ergonomics_verdict_is_a_design_bug]]).
+O artista digitava um teto, dava Play e recebia uma resposta **binária** — rompeu
+ou não. Sem saber que carga o joint de fato carrega, escolher o número é busca
+binária feita à mão. E o dado já existia, exato: `PhysicsWorld::joint_load` lê o
+peso pendurado com razão **1,0000** (a tabela da W-J7). Ele só nunca chegava ao
+artista.
+
+**O readout, ao lado da âncora, em âmbar:**
+
+| estado | mostra |
+|---|---|
+| segurando, com teto | `58.9 / 60 N` — a comparação sai da cabeça e vai para a tela |
+| segurando, sem teto | `41.2 N` — **o número que se digita**, legível ANTES de armar |
+| depois de um tranco | `+ max 87.2` numa 2ª linha |
+| **rompido** | `87.2 / 60 N` em **VERMELHO** — a carga que provocou a fratura |
+
+**A marca d'água é o que faz o ajuste ser de UMA passada.** O pico do wrapper é
+por TICK e um tranco acaba antes de dar para ler; o `peak` da ponte é o mais forte
+que o joint foi puxado **desde que o relógio recomeçou**. ⚠️ Ele é limpo **só por
+um rewind**, nunca por um `hold`: o artista pausa *precisamente para ler o número*,
+e apagá-lo ali apagaria a resposta no instante em que ela é pedida.
+
+⚠️ **Num joint rompido a marca d'água CONGELA sozinha, sem caso especial:** o
+wrapper pula um joint desabilitado, então a carga viva de um rompido lê zero
+enquanto o `peak` guarda o que cruzou. É exatamente o segundo número que o Enio
+pediu, e ele cai de graça da mecânica que já existia.
+
+⚠️ **O `max` só aparece quando diz algo novo** (`PEAK_MARGIN = 1.10`): num rig
+parado o pico É a carga viva, e repetir o mesmo número duas vezes é ruído.
+
+**Quem ganha readout: um joint QUEBRÁVEL, ou o SELECIONADO.** As duas metades têm
+motivo próprio — o quebrável tem um teto para comparar (e numa corrente é assim
+que se vê qual elo está mais perto do dele); o selecionado é o **bootstrap**, sem
+o qual o laço continua começando por um chute, porque não haveria como ler a carga
+antes de armar. Uma cena sem nada armado e sem seleção não desenha número nenhum.
+
+**Detalhes que decidiram o formato:** o teto é um número que o ARTISTA digitou, e
+devolvê-lo como `60.0` põe um dígito que ninguém pediu bem ao lado do número que
+muda — a formatação derruba o `.0` (a carga é que tem de puxar o olho). O texto é
+desenhado **depois do último uso do `VectorScene`** para traço, a mesma ordem (e o
+mesmo motivo) do overlay de dimensões do Line. E o `text_system` entra por
+**reborrow do `paint_ctx`** — o binding cru já está emprestado desde o começo do
+frame.
+
+**NÃO construído, de propósito:** uma row de readout no §12. Ela seria a segunda
+superfície para o mesmo fato, e exigiria levar a carga (que vive na PONTE) até o
+`build_joint_info` (que só vê o ECS). O canvas responde onde o artista está
+olhando durante o Play, e no Play é onde o número existe.
+
+⚠️ **4 mutações, 4 sangram — e a 1ª SOBREVIVEU por fixture que não continha o
+fenômeno:** `dispatch(sim, false, t)` é *pausado* (ramo `settle`), não *Physics
+off*; o `hold` mora atrás do toggle da barra, na shell. O gate nunca o executava,
+então limpar a marca d'água ali passava. Agora ele chama `b.hold(..)` direto.
+
+**LOC:** `bridge.rs` 701→643 (`bridge/inspect.rs`: *o que se PERGUNTA à ponte* ×
+*o que ela FAZ* — o mesmo corte que `world/tuning.rs` fez do outro lado).
+
+`PROJECT_SCHEMA` **33** (intocado — o readout é derivado, não autorado), registro
+**21**, c9 **byte-idêntico** (`c9d4baee…`, 87).

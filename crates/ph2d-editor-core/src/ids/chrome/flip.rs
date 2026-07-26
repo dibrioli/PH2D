@@ -47,6 +47,13 @@ pub const FLIP_SELF_OVERLAP: NodeId = hash_node_id("flip.self_overlap");
 /// Beer-Lambert transmittance of a spherical dab (a wide soft dome) instead of pow+smoothstep.
 pub const FLIP_AIRBRUSH: NodeId = hash_node_id("flip.airbrush");
 
+/// Pressure dynamics (Draw): the MINIMUM width (fraction of Size at zero pen pressure) + its chip.
+pub const FLIP_PRESSURE_MIN: NodeId = hash_node_id("flip.pressure.min");
+pub const FLIP_PRESSURE_MIN_NUM: NodeId = hash_node_id("flip.pressure.min.num");
+/// Pressure dynamics (Draw): the RESPONSE curve (soft↔hard, 0.5 = linear) + its chip.
+pub const FLIP_PRESSURE_RESPONSE: NodeId = hash_node_id("flip.pressure.response");
+pub const FLIP_PRESSURE_RESPONSE_NUM: NodeId = hash_node_id("flip.pressure.response.num");
+
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 

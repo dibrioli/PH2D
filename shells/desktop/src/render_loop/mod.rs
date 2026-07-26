@@ -673,6 +673,7 @@ impl crate::App {
         self.flip_self_overlap_smoke();
         self.flip_airbrush_smoke();
         self.flip_resample_smoke();
+        self.flip_pressure_smoke();
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();

@@ -92,6 +92,46 @@ fn colorize_bleed_slider_drag_reaches_tool() {
     );
 }
 
+/// 🔴 **Os sliders de PRESSÃO (Min Width + Response, T2.6) percorrem a costura inteira** — do
+/// `populate` ao `event.rs` (arm) ao `handle_panel_event` (a fração no tool). Sem TODAS as pontas
+/// o arrasto é dropado em silêncio (a lição do Spacing). Dirige o `ValueChanged` REAL de cada um.
+#[test]
+fn pressure_sliders_drag_reaches_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+
+    for (slider, expect_min) in [
+        (ids::FLIP_PRESSURE_MIN, true),
+        (ids::FLIP_PRESSURE_RESPONSE, false),
+    ] {
+        host.set_slider_value(slider, 1.0);
+        let outcome = host
+            .apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::ValueChanged(slider));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "panel ignorou o slider de pressao — o arm de event.rs falta"
+        );
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        if expect_min {
+            assert!(
+                (tool.pressure_min_width() - 1.0).abs() < 1e-6,
+                "Min Width nao chegou ao tool"
+            );
+        } else {
+            assert!(
+                (tool.pressure_response() - 1.0).abs() < 1e-6,
+                "Response nao chegou ao tool"
+            );
+        }
+    }
+}
+
 /// **O slider Spacing do *tip* pontilhado (03 §8) percorre a costura inteira** — do
 /// `populate` (registro) ao `event.rs` (arm) ao `handle_panel_event` (o múltiplo no tool).
 ///

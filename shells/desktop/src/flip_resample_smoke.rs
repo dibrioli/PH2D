@@ -67,12 +67,8 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> (usize, usize) {
     let n_before = before.positions().len();
 
     // DEPOIS: os MESMOS 6 pontos pela porta real → reamostrados (liso).
-    let after = crate::flip_draw::stroke_from_samples(
-        &style,
-        &c_samples(1.4),
-        &[1.0; 6],
-        &Xform::IDENTITY,
-    );
+    let after =
+        crate::flip_draw::stroke_from_samples(&style, &c_samples(1.4), &[1.0; 6], &Xform::IDENTITY);
     let n_after = after.positions().len();
 
     let layer = obj.add_layer("Resample");

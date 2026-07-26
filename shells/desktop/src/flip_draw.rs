@@ -250,8 +250,14 @@ fn build_stroke(
         let l = world_to_local.apply([f64::from(p.x), f64::from(p.y)]);
         s.push_point(Point {
             pos: Vec2::new(l[0] as f32, l[1] as f32),
-            // Pressão→largura (1º corte, linear; a curva de falloff é T2.6+).
-            width: base_w * pr.clamp(0.05, 1.0),
+            // Pressão→largura pela **dinâmica de caneta** (porta única `pressure_width_factor`): o
+            // Min Width (piso) + a Response (curva macia⇔dura). No mouse `pr = 1` ⇒ largura cheia.
+            width: base_w
+                * ph2d_tool_flip::pressure_width_factor(
+                    pr,
+                    style.pressure_min_width,
+                    style.pressure_response,
+                ),
             opacity: style.opacity,
             color,
         });

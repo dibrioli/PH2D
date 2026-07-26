@@ -27,7 +27,8 @@ pub use params::{
     DOT_SPACING_MAX, EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD,
     GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, ReshapeKind,
     SIZE_PX_PER_WORLD, TRAP_MAX_PX, WIDTH_MAX_PX, WIDTH_MIN_PX, WIDTH_SLIDER_OFFSET,
-    WIDTH_SLIDER_SCALE, px_to_slider, size_to_world, slider_to_px, slider_to_unit,
+    WIDTH_SLIDER_SCALE, pressure_width_factor, px_to_slider, size_to_world, slider_to_px,
+    slider_to_unit,
 };
 /// O enum do *tip* pontilhado vem do MODELO (`ph2d-flip`) — re-exportado aqui para o painel
 /// (que já depende deste crate) nomeá-lo sem uma aresta nova de dependência.

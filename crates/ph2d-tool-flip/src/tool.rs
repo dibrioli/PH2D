@@ -57,6 +57,10 @@ pub struct FlipTool {
     /// **Pincel airbrush analítico** (03 §8): o falloff físico de um dab esférico. Herdado por
     /// cada `FlipStroke` desenhado. Default OFF (byte-idêntico).
     airbrush: bool,
+    /// **Dinâmica de pressão** (`params::pressure_width_factor`): largura mínima (piso em pressão
+    /// zero) + resposta (curva macia⇔dura). Aplicadas no `build_stroke`. Defaults 0.05 / 0.5.
+    pressure_min_width: f32,
+    pressure_response: f32,
     opacity: f32,
     smoothing: f32,
     mode: FlipMode,
@@ -104,6 +108,8 @@ impl Default for FlipTool {
             dot_spacing: DEFAULT_DOT_SPACING,
             self_overlap: false,
             airbrush: false,
+            pressure_min_width: 0.05,
+            pressure_response: 0.5,
             opacity: DEFAULT_OPACITY,
             smoothing: DEFAULT_SMOOTHING,
             // Default = Select (gizmo transforma o objeto; arbitragem ADR-0112).
@@ -270,6 +276,24 @@ impl FlipTool {
     pub fn set_airbrush(&mut self, on: bool) {
         self.airbrush = on;
     }
+    /// A largura mínima da dinâmica de pressão (fração `0..=1`, a largura em pressão zero).
+    #[must_use]
+    pub fn pressure_min_width(&self) -> f32 {
+        self.pressure_min_width
+    }
+    /// Define a largura mínima da dinâmica de pressão (clampada `0..=1`).
+    pub fn set_pressure_min_width(&mut self, v: f32) {
+        self.pressure_min_width = v.clamp(0.0, 1.0);
+    }
+    /// A resposta da dinâmica de pressão (`0..=1`, `0.5` = linear; macia ⇔ dura).
+    #[must_use]
+    pub fn pressure_response(&self) -> f32 {
+        self.pressure_response
+    }
+    /// Define a resposta da dinâmica de pressão (clampada `0..=1`).
+    pub fn set_pressure_response(&mut self, v: f32) {
+        self.pressure_response = v.clamp(0.0, 1.0);
+    }
     /// Define a opacidade do traço `0..=1` (clampada).
     pub fn set_opacity(&mut self, o: f32) {
         self.opacity = o.clamp(0.0, 1.0);
@@ -290,6 +314,8 @@ impl FlipTool {
             dot_spacing: f64::from(self.dot_spacing),
             self_overlap: self.self_overlap,
             airbrush: self.airbrush,
+            pressure_min_width: self.pressure_min_width,
+            pressure_response: self.pressure_response,
             opacity: self.opacity,
             smoothing: self.smoothing,
             mode: self.mode,
@@ -481,6 +507,13 @@ impl Tool for FlipTool {
             }
             PanelEvent::SetValue(id, v) if id == ids::FLIP_SMOOTHING => {
                 self.smoothing = slider_to_unit(v as f32);
+            }
+            // Dinâmica de pressão (Draw): a largura mínima e a curva de resposta.
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRESSURE_MIN => {
+                self.pressure_min_width = slider_to_unit(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRESSURE_RESPONSE => {
+                self.pressure_response = slider_to_unit(v as f32);
             }
             _ => {}
         }

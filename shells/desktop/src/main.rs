@@ -96,6 +96,7 @@ mod flip_multiplane_smoke;
 mod flip_peek;
 mod flip_pose_gizmo;
 mod flip_pose_smoke;
+mod flip_pressure_smoke;
 mod flip_resample_smoke;
 mod flip_reshape;
 mod flip_segment_smoke;

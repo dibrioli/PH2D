@@ -269,6 +269,29 @@ pub fn size_to_world(size_px: f64) -> f32 {
     (size_px as f32) / SIZE_PX_PER_WORLD
 }
 
+/// A escala do expoente da RESPOSTA de pressão (ver [`pressure_width_factor`]): o slider Response
+/// `[0,1]` vira `γ = 2^((response−0.5)·K)`, então `K = 4` dá a faixa `γ ∈ [0.25, 4]` (0 = bem
+/// macio, 1 = bem duro, 0.5 = linear). MEDIDO no smoke `PH2D_FLIP_PRESSURE_SMOKE=1`.
+const PRESSURE_RESPONSE_K: f32 = 4.0;
+
+/// **Pressão → fração de largura** (a dinâmica de caneta): a pressão `pr ∈ [0,1]` (do tablet; `1`
+/// no mouse) mapeia para a fração da espessura do pincel, com dois controles do artista —
+/// `min_width` (a largura em pressão ZERO, o piso) e `response` (a CURVA: macia ⇔ dura).
+///
+/// `factor = min + (1−min)·pr^γ`, `γ = 2^((response−0.5)·K)`: em `response = 0.5` a curva é LINEAR
+/// (`γ=1`); `< 0.5` é MACIA (`γ<1`, ease-in — pressão leve já engrossa); `> 0.5` é DURA (`γ>1`,
+/// ease-out — precisa apertar para engrossar). O piso `min` garante que a pressão zero ainda tem
+/// largura (senão a ponta some). `min = 1` = pressão IGNORADA (largura constante). Transcendental
+/// (`powf`) roda 1× por-ponto no BUILD (CPU, não é caminho de determinismo — o `pow` da hardness já
+/// vive no shader). É a MESMA porta do preview e do bake.
+#[must_use]
+pub fn pressure_width_factor(pr: f32, min_width: f32, response: f32) -> f32 {
+    let min = min_width.clamp(0.0, 1.0);
+    let gamma = 2.0_f32.powf((response.clamp(0.0, 1.0) - 0.5) * PRESSURE_RESPONSE_K);
+    let shaped = pr.clamp(0.0, 1.0).powf(gamma);
+    min + (1.0 - min) * shaped
+}
+
 /// Mapa afim do slider Size → chip px (o painel usa em `link_slider_number_mapped`:
 /// `px = track·SCALE + OFFSET`). Mantém painel e tool em lock-step com
 /// [`slider_to_px`]/[`px_to_slider`].
@@ -325,6 +348,12 @@ pub struct FlipStyleSnapshot {
     /// macia) em vez do `pow`+smoothstep; o slider Hardness vira a densidade. O traço desenhado
     /// herda isto (`flip_draw`). Só relevante em [`FlipMode::Draw`].
     pub airbrush: bool,
+    /// **Dinâmica de pressão — largura MÍNIMA** (fração da espessura, `0..=1`): a largura em pressão
+    /// ZERO. `1.0` = pressão ignorada (largura constante). Ver [`pressure_width_factor`]. Só Draw.
+    pub pressure_min_width: f32,
+    /// **Dinâmica de pressão — RESPOSTA** (`0..=1`, `0.5` = linear): a curva pressão→largura, macia
+    /// (`<0.5`, pressão leve engrossa) ⇔ dura (`>0.5`, precisa apertar). Ver [`pressure_width_factor`].
+    pub pressure_response: f32,
     /// Opacidade do traço `0..=1`.
     pub opacity: f32,
     /// Intensidade do active smoothing `0..=1` (o "assentar" da cauda).
@@ -406,6 +435,8 @@ impl Default for FlipStyleSnapshot {
             dot_spacing: ph2d_flip::DEFAULT_DOT_SPACING as f64,
             self_overlap: false,
             airbrush: false,
+            pressure_min_width: 0.05,
+            pressure_response: 0.5,
             opacity: 1.0,
             smoothing: 0.5,
             mode: FlipMode::Select,
@@ -427,5 +458,72 @@ impl Default for FlipStyleSnapshot {
             colorize_color: [200, 90, 90, 255],
             colorize_bleed: 0.5, // = o pedágio DEFAULT_SQUEEZE aprovado no 5º smoke
         }
+    }
+}
+
+#[cfg(test)]
+mod pressure_tests {
+    use super::pressure_width_factor;
+
+    /// 🔴 **A dinâmica de pressão: piso, cheio, e a curva macia⇔dura** (T2.6). Pressão ZERO dá o
+    /// `min` (o piso, a ponta não some); pressão CHEIA dá `1` (largura total); no meio, a Response
+    /// CURVA — macia (`<0.5`) engrossa cedo, dura (`>0.5`) segura. Mutação que sangra: ignorar a
+    /// `response` (sempre linear) — o macio e o duro colapsam no linear e a ordem quebra.
+    #[test]
+    fn pressure_width_factor_floor_full_and_response_curve() {
+        // Piso em pressão zero, cheio em pressão 1 (qualquer response).
+        assert!(
+            (pressure_width_factor(0.0, 0.2, 0.5) - 0.2).abs() < 1e-5,
+            "piso"
+        );
+        assert!(
+            (pressure_width_factor(1.0, 0.2, 0.5) - 1.0).abs() < 1e-5,
+            "cheio"
+        );
+        assert!(
+            (pressure_width_factor(1.0, 0.2, 0.0) - 1.0).abs() < 1e-5,
+            "cheio (macio)"
+        );
+        assert!(
+            (pressure_width_factor(1.0, 0.2, 1.0) - 1.0).abs() < 1e-5,
+            "cheio (duro)"
+        );
+
+        // No MEIO da pressão, a curva ordena macia > linear > dura.
+        let soft = pressure_width_factor(0.5, 0.2, 0.0);
+        let linear = pressure_width_factor(0.5, 0.2, 0.5);
+        let hard = pressure_width_factor(0.5, 0.2, 1.0);
+        assert!(
+            soft > linear && linear > hard,
+            "macia>linear>dura no meio: soft={soft} linear={linear} hard={hard}"
+        );
+        // O linear é o lerp exato: 0.2 + 0.8·0.5 = 0.6.
+        assert!((linear - 0.6).abs() < 1e-5, "linear = lerp exato: {linear}");
+    }
+
+    #[test]
+    fn min_width_one_ignores_pressure() {
+        // `min = 1` ⇒ largura constante, a pressão não muda nada.
+        for &p in &[0.0_f32, 0.3, 0.7, 1.0] {
+            assert!(
+                (pressure_width_factor(p, 1.0, 0.5) - 1.0).abs() < 1e-5,
+                "min=1 ignora a pressao (p={p})"
+            );
+        }
+    }
+
+    #[test]
+    fn pressure_and_min_are_clamped() {
+        // Fora de `[0,1]` não estoura: a pressão e o piso são clampados.
+        assert!(
+            (pressure_width_factor(2.0, 0.2, 0.5) - 1.0).abs() < 1e-5,
+            "pr>1 clampa a 1"
+        );
+        assert!(
+            (pressure_width_factor(-1.0, 0.2, 0.5) - 0.2).abs() < 1e-5,
+            "pr<0 clampa a 0=piso"
+        );
+        let f = pressure_width_factor(0.5, 2.0, 0.5); // min>1 clampa a 1
+        assert!((f - 1.0).abs() < 1e-5, "min>1 clampa a 1: {f}");
     }
 }

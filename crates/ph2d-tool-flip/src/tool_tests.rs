@@ -56,6 +56,41 @@ fn the_self_overlap_toggle_reaches_the_tool_and_toggles() {
     assert!(!t.self_overlap(), "o segundo clique desliga (e um toggle)");
 }
 
+/// 🔴 **Os sliders de pressão chegam à tool** (T2.6): o `SetValue` de `FLIP_PRESSURE_MIN` /
+/// `FLIP_PRESSURE_RESPONSE` grava a fração no campo, que o snapshot leva ao `flip_draw`
+/// (`pressure_width_factor`). Mutação que sangra: o arm de SetValue não alcançar o campo (o slider
+/// mexe na tela e nunca chega à tool — a lição do slider de Spacing que ficou de fora do arm).
+#[test]
+fn the_pressure_sliders_reach_the_tool() {
+    let mut t = FlipTool::new();
+    // Defaults: piso 0.05, resposta 0.5 (linear).
+    assert!((t.pressure_min_width() - 0.05).abs() < 1e-6, "min default");
+    assert!(
+        (t.pressure_response() - 0.5).abs() < 1e-6,
+        "response default"
+    );
+    assert!(
+        (t.ui_snapshot().pressure_min_width - 0.05).abs() < 1e-6,
+        "snapshot concorda"
+    );
+
+    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_PRESSURE_MIN, 0.4));
+    assert!(
+        (t.pressure_min_width() - 0.4).abs() < 1e-6,
+        "min chegou: {}",
+        t.pressure_min_width()
+    );
+    t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_PRESSURE_RESPONSE, 0.8));
+    assert!(
+        (t.pressure_response() - 0.8).abs() < 1e-6,
+        "response chegou"
+    );
+    assert!(
+        (t.ui_snapshot().pressure_response - 0.8).abs() < 1e-6,
+        "snapshot atualizado"
+    );
+}
+
 /// 🔴 **O toggle Airbrush chega à tool e ALTERNA** (03 §8): o `Click` do `FLIP_AIRBRUSH` inverte
 /// o flag, que o snapshot leva ao painel e o `flip_draw` leva ao `FlipStroke`. Nasce OFF
 /// (byte-idêntico). Mutação que sangra: o arm de Click não alcançar o campo.

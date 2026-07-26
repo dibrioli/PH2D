@@ -158,6 +158,27 @@ pub fn populate(store: &mut WidgetStore) {
         0.0,
         0.01, // LITERAL-PX-OK: passo do dominio (fracao 0..1), nao metrica de design
     );
+    // Dinâmica de pressão (Draw): Min Width (piso, fração→%) + Response (macia⇔dura, 50 = linear).
+    slider_chip(
+        store,
+        ids::FLIP_PRESSURE_MIN,
+        ids::FLIP_PRESSURE_MIN_NUM,
+        0.05,  // LITERAL-PX-OK: fracao default do pressure_min_width, nao metrica de design
+        5.0,   // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
+        100.0, // LITERAL-PX-OK: escala fracao 0..1 -> 0..100 %, nao metrica de design
+        0.0,
+        1.0, // step: % inteiro
+    );
+    slider_chip(
+        store,
+        ids::FLIP_PRESSURE_RESPONSE,
+        ids::FLIP_PRESSURE_RESPONSE_NUM,
+        0.5,   // track = `pressure_response` default (0.5 = linear)
+        50.0,  // LITERAL-PX-OK: display inicial em % do dominio, nao metrica de design
+        100.0, // LITERAL-PX-OK: escala fracao 0..1 -> 0..100 %, nao metrica de design
+        0.0,
+        1.0, // step: % inteiro
+    );
 
     // Fill (W4): modo, sub-modos do balde e os 3 sliders. Registrados sempre (só
     // PINTADOS no modo Fill) — um widget não-registrado não pode ser clicado.

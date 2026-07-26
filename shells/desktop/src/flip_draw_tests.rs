@@ -25,14 +25,6 @@ fn style() -> FlipStyleSnapshot {
     }
 }
 
-/// **A simplificação corta vértices redundantes de verdade** — e a tolerância escala com
-/// a espessura, então ela não depende do zoom em que se desenhou.
-///
-/// O sintoma (Enio, 2026-07-18): *"o traço gera muitos pontos muito próximos e até
-/// sobrepostos"*. A causa era uma tolerância em px de TELA calibrada para ser inerte.
-///
-/// Mutação que ele mata: voltar a tolerância para uma constante minúscula — a contagem
-/// não cai e o gate sangra.
 /// Distância do ponto `p` à polilinha `poly` (mín. sobre os segmentos).
 fn dist_to_polyline(p: Vec2, poly: &[Vec2]) -> f32 {
     let mut best = f32::MAX;
@@ -139,6 +131,43 @@ fn a_sparse_stroke_becomes_a_smooth_curve() {
     assert!(
         smooth_turn < 15.0,
         "a curva reamostrada tem de ser LISA (giro máx {smooth_turn}° < 15; cru era {coarse_turn}°)"
+    );
+}
+
+/// 🔴 **A dinâmica de pressão afina/engrossa o traço** (T2.6): uma reta desenhada com a pressão
+/// subindo de 0 a 1 sai FINA na ponta e GROSSA no fim, com o piso `Min Width` na pressão zero.
+/// É o gate end-to-end de que a `pressure_width_factor` está PLUGADA no `build_stroke`. Mutação que
+/// sangra: `build_stroke` ignorar a curva (largura constante) — a ponta e o fim ficam iguais.
+#[test]
+fn pressure_tapers_the_stroke_width() {
+    let style = FlipStyleSnapshot {
+        smoothing: 0.0,
+        pressure_min_width: 0.2, // piso 20% da espessura
+        pressure_response: 0.5,  // linear
+        ..Default::default()
+    };
+    // Uma reta com a pressão subindo 0 → 1 ao longo dela (5 amostras).
+    let pts: Vec<Vec2> = (0..5).map(|i| Vec2::new(i as f32 * 0.3, 0.0)).collect();
+    let prs: Vec<f32> = (0..5).map(|i| i as f32 / 4.0).collect();
+    let s = stroke_from_samples(&style, &pts, &prs, &Xform::IDENTITY);
+    let w = s.widths();
+    let base = ph2d_tool_flip::size_to_world(style.width_px);
+
+    let first = *w.first().unwrap();
+    let last = *w.last().unwrap();
+    // Ponta (pressão 0) = o piso; fim (pressão 1) = espessura cheia; fim MUITO maior que ponta.
+    assert!(
+        (first - base * 0.2).abs() < base * 0.02,
+        "a ponta (pressao 0) e o piso de 20%: {first} vs {}",
+        base * 0.2
+    );
+    assert!(
+        (last - base).abs() < base * 0.02,
+        "o fim (pressao 1) e a espessura cheia: {last} vs {base}"
+    );
+    assert!(
+        last > first * 3.0,
+        "o traco AFINA da ponta ao fim: {first} -> {last}"
     );
 }
 

@@ -366,6 +366,39 @@ impl BodyCtx<'_> {
             &format!("{track:.2}"),
             y,
         );
+        // **Dinâmica de pressão** — a pressão da caneta vira largura (`params::pressure_width_factor`):
+        // Min Width (o piso em pressão zero) + Response (curva macia⇔dura). Só no Draw (é a autoria
+        // do traço). No mouse a pressão é 1 ⇒ largura cheia; no tablet, a caneta afina/engrossa.
+        let track = self
+            .store
+            .slider(ids::FLIP_PRESSURE_MIN)
+            .map(|(_, v)| v)
+            .unwrap_or(snap.pressure_min_width);
+        let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
+        y = self.slider_row(
+            "Min Width",
+            ids::FLIP_PRESSURE_MIN,
+            ids::FLIP_PRESSURE_MIN_NUM,
+            track,
+            pct,
+            &format!("{}", pct.round() as i64),
+            y,
+        );
+        let track = self
+            .store
+            .slider(ids::FLIP_PRESSURE_RESPONSE)
+            .map(|(_, v)| v)
+            .unwrap_or(snap.pressure_response);
+        let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
+        y = self.slider_row(
+            "Response",
+            ids::FLIP_PRESSURE_RESPONSE,
+            ids::FLIP_PRESSURE_RESPONSE_NUM,
+            track,
+            pct,
+            &format!("{}", pct.round() as i64),
+            y,
+        );
         // **O *tip* pontilhado** (03 §8) — a linha Tip + o Spacing, no módulo-irmão
         // `paint_tip.rs` (o teto de LOC deste arquivo). Só no Draw (o método é no-op fora).
         self.tip_section(snap, y)

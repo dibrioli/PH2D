@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | a fusão não move os 118 ms | 🔴 kernel mais quente, gate = byte-identidade | 🎯 **alvo LOCALIZADO** — 19× o digital; settle 3%, bow wave 20%, depósito de altura **73%** |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). Sobra o AA **analítico** (§9.5) — decisão do Enio |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -674,7 +674,57 @@ Com **mediana de 5** e faixas independentes o termo **desmancha para 2-9%** nos 
 100 mantém 33%, e ali o `Color` sai **não-monotônico** (9,0 ms a raio 100 contra 20,1 a raio 50, com 2×
 os texels), o que denuncia a medição e não o produto. **Não há termo superaditivo estabelecido.**
 
-### 9.4 A candidata — e por que ela não é palpite
+### 9.4 ⛔ **O AA DO FILME É 54% DO TRAÇO — e as duas curas óbvias morreram, cada uma por uma medição**
+
+Ordem do Enio: *"fundir as varreduras"*. Executada até o veredito, que é **não dá** — e a medição que
+provou isso achou o número maior do módulo.
+
+**O ACHADO** (2048², traço de 600 px, camada virgem, mediana de 5; min/max apertados 124-128 vs 55-60,
+então **não** é o ruído que derrubou o "superaditivo" da §9.3):
+
+| | AA on | AA OFF | o AA custa | % do total |
+|---|---|---|---|---|
+| raio 5 | 21,7 | 12,3 | 9,4 | 43% |
+| raio 15 | 29,2 | 20,4 | 8,8 | 30% |
+| raio 40 | 55,6 | 37,7 | 17,9 | 32% |
+| **raio 100** | **127,1** | **58,4** | **68,7** | **54%** |
+
+Por rota a raio 100: `Color`-only 9,2/8,8 · `Depth`-only 79,2/48,3 · **produto 130,6/54,7**. O
+`film_aa_wanted` exige `deposits_height()`, então em `Color`-only o AA do pigmento está DESLIGADO — é
+por isso que a linha dele parece grátis. No produto os dois pagam: **~31 ms o filme, ~38 ms o
+pigmento**.
+
+**(1) Fundir as varreduras — premissa FALSA.** O doc do `height_film` diz que o AA dá *"a MESMA fração
+que o `dab.rs` dá ao pigmento (mesma porta, mesma grade)"*, e lido o código as duas closures
+supersampleiam **geometrias diferentes**: o pigmento amostra o **DISCO** (`falloff_t(dx·inv_r,
+dy·inv_r)`, `dab/bands.rs:168`) e a altura a **CÁPSULA VARRIDA** (`sweep_residual(dx+ox, dy+oy,
+sweep)`). Não são o mesmo número ⇒ **não há fração a compartilhar**. A própria frase do doc —
+*"a caller's own swept-silhouette chain"* — já dizia que cada chamador passa a SUA geometria, de
+propósito. ⚠️ **Terceira hipótese do dia morta por leitura/medição**, e a única razão de eu não ter
+refatorado o kernel mais quente do módulo em cima dela foi ter medido antes.
+
+**(2) Gatear o AA por raio — NÃO é grátis.** A hipótese: a raio 100 o supersampling calcula a média de
+uma rampa de 12,5 texels que já é suave — o MESMO argumento que o `height_film.rs` usou para estreitar
+a banda de 28 para 12,5 e ganhar 2 ms. Medido (`does_the_film_aa_change_a_pixel`): o AA muda
+**105.660 bytes com pior delta 62** sobre 334.028 px pintados a raio 100 (e 7.632 bytes / delta 74 a
+raio 5). Não é sub-quantum — é ~1/3 dos texels em até 62 níveis. **Desligá-lo muda a arte**, e isso é
+decisão do Enio, não remoção de desperdício.
+
+### 9.5 ✅ A avenida que SOBRA
+
+**Tornar o AA mais barato pelo mesmo número.** A fração de área de um campo escalar suave tem
+estimativa **analítica** pelo gradiente (`cobertura ≈ clamp(0,5 − f/|∇f|)`, o AA de SDF padrão): ~2
+amostras extras em vez das ~9 da grade sub-texel. Prêmio potencial: a maior parte dos **68,7 ms**, ou
+seja **~50% do traço**.
+
+⚠️ **É APROXIMAÇÃO**, então entra com **orçamento de épsilon declarado** e gate de bytes-divergentes —
+o template exato da paridade CPU×GPU da luz (*"quão longe" e "quantos" são perguntas diferentes*, e o
+gate afirma as duas). **Decisão de produto: não construída sem ordem.**
+
+**Critério de parada:** se o analítico não couber no épsilon, o AA fica, os 68,7 ms viram **o preço
+medido de uma borda de tinta anti-aliasada**, e a frente I fecha com esse número escrito.
+
+### 9.6 A candidata anterior — e por que ela não era palpite
 
 **Fundir as duas varreduras numa só:** a silhueta (falloff × Shape × Grain) é avaliada **uma vez** por
 texel e os planos são escritos juntos, em vez de a rota de altura fazer a própria passada sobre a mesma

@@ -2,6 +2,8 @@
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier;
+#[path = "measure_impasto_cost.rs"]
+mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]
 mod measure_input_cost;
 #[path = "measure_window_premise.rs"]

@@ -482,6 +482,7 @@ pub(crate) struct App {
     pub(crate) stagger_smoke_done: bool,
     pub(crate) buffer_smoke_done: bool,
     pub(crate) extrap_smoke_done: bool,
+    pub(crate) expr_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,

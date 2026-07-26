@@ -156,6 +156,25 @@ impl PainterTool {
     /// OFFER the button ([`Self::brush_settings`] publishes the answer), and this asks it to decide whether
     /// to honour the click.
     pub(super) fn live_stroke_envelope(&self) -> Option<Arc<Vec<f32>>> {
+        // O PAGAMENTO, construído a partir da RESPOSTA — nunca ao lado dela. Uma segunda cópia dos três
+        // testes aqui seria a segunda porta que este próprio doc-comment proíbe.
+        self.has_live_stroke_envelope()
+            .then(|| Arc::new(self.paint.relief.live_paint.clone()))
+    }
+
+    /// **A PERGUNTA, sem o pagamento** — os mesmos três testes, zero bytes copiados.
+    ///
+    /// ⚠️ **Isto custou 7,6 ms por frame com a mão PARADA, a 4096².** O `can_filter_last_stroke` abaixo é
+    /// um **booleano** e chamava o irmão acima, que termina num `live_paint.clone()` — 16,7 M de `f32` =
+    /// **67 MB memcpy** para responder *"existe um último traço?"*. Pior: quem pergunta é o
+    /// `brush_settings()`, e o frame o chama **DUAS** vezes (o publish do painel e o anel do cursor), então
+    /// o preço era cobrado em dobro — medido pelo split por-chamada do `PH2D_PAINT_PERF`, `brushsnap 3,9`
+    /// + `ring 3,7`, que somam exatamente o `dispatch p50 = 7,5`.
+    ///
+    /// A lição é a do ADR-0124 num eixo novo: *quem está a jusante tem de ser informado do que precisa* —
+    /// aqui, que precisa de um **sim ou não**, não do campo inteiro.
+    #[must_use]
+    pub(super) fn has_live_stroke_envelope(&self) -> bool {
         let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
         let live = &self.paint.relief;
         // `n == 0` and the `is_some` are not belt-and-braces — without them a tool with no canvas answers
@@ -163,19 +182,15 @@ impl PainterTool {
         // because BOTH are `None`. The gate caught exactly that (a virgin tool offering Filter Stroke),
         // which is the fixture law from the other side: **zero does not fail** unless you make it.
         if n == 0 || live.live_paint.len() != n {
-            return None;
+            return false;
         }
-        let owner = live.live_relief_layer?;
-        if Some(owner) != self.layers.active() {
-            return None;
-        }
-        Some(Arc::new(live.live_paint.clone()))
+        live.live_relief_layer.is_some() && live.live_relief_layer == self.layers.active()
     }
 
     /// Whether the **Filter Stroke** button has anything to act on — the verb reshapes AND there is a last
     /// stroke on this layer. Published to the card so it never paints a button that would refuse.
     #[must_use]
     pub fn can_filter_last_stroke(&self) -> bool {
-        self.paint.sculpt.mode_enum().filters_layer() && self.live_stroke_envelope().is_some()
+        self.paint.sculpt.mode_enum().filters_layer() && self.has_live_stroke_envelope()
     }
 }

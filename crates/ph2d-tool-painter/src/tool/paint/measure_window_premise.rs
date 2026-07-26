@@ -176,3 +176,85 @@ fn the_window_premise_is_measured_not_assumed() {
         },
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O SNAPSHOT DO PINCEL NÃO PODE CUSTAR O TAMANHO DA TELA
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **`brush_settings()` é O(1) na tela — e um dia não foi.**
+///
+/// Ele publica um `Copy` de floats para o painel, e o frame o chama **DUAS** vezes (o publish do painel
+/// e o anel do cursor). Um dos campos, `sculpt_can_filter_stroke`, é um **booleano** que era respondido
+/// construindo o payload inteiro: `Arc::new(live_paint.clone())` — 16,7 M de `f32` = **67 MB memcpy**, a
+/// 4096², **por chamada**. Medido no produto pelo split por-chamada do `PH2D_PAINT_PERF`:
+///
+/// | slot | p50 | | |
+/// |---|---|---|---|
+/// | `PANEL/brushsnap` | **3,9 ms** | `CHROME/ring` | **3,7 ms** |
+///
+/// …que somam exatamente o `dispatch p50 = 7,5 ms` que o Enio via **com a mão parada**.
+///
+/// **RAZÃO, nunca wall-clock:** o `ci-test` compila em `opt-level=1` e uma barra de milissegundos mede o
+/// PERFIL, não o código. A tela de 4096² tem **16× a área** da de 1024², então um custo canvas-shaped
+/// aparece como razão ~16; um snapshot honesto fica plano.
+///
+/// **Mutação que deve sangrar:** `has_live_stroke_envelope()` → `live_stroke_envelope().is_some()` em
+/// `can_filter_last_stroke`.
+#[test]
+fn the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger() {
+    use crate::tool::PainterTool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    use ph2d_painter_brush::{BrushSpec, Falloff};
+
+    fn snapshot_ms(side: u32) -> f64 {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
+        let b = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.1, 0.2, 0.3],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.5,
+            impasto_smoothing: 0.0,
+            impasto_body: 1.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        // A premissa: um traço DE VERDADE, senão o envelope está vazio e o caminho caro nunca corre —
+        // a fixture tem de CONTER o fenômeno.
+        let cp = |p: [f32; 2], phase| CanvasPointer {
+            pos: p,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        let m = f64::from(side) / 96.0;
+        t.on_canvas_pointer(cp([30.0 * m as f32, 48.0 * m as f32], PointerPhase::Down));
+        t.on_canvas_pointer(cp([66.0 * m as f32, 48.0 * m as f32], PointerPhase::Move));
+        t.on_canvas_pointer(cp([66.0 * m as f32, 48.0 * m as f32], PointerPhase::Up));
+
+        const N: u32 = 20;
+        let t0 = std::time::Instant::now();
+        for _ in 0..N {
+            std::hint::black_box(t.brush_settings());
+        }
+        t0.elapsed().as_secs_f64() * 1e3 / f64::from(N)
+    }
+
+    let small = snapshot_ms(1024);
+    let big = snapshot_ms(4096);
+    // Piso para não dividir por um relógio de resolução grossa num snapshot que é, corretamente, ~0.
+    let ratio = big / small.max(1e-4);
+    println!("[brush-snapshot] 1024 {small:.4} ms · 4096 {big:.4} ms · razao {ratio:.2}x");
+    assert!(
+        ratio < 4.0,
+        "o snapshot do pincel cresceu com a TELA (razao {ratio:.2}x para 16x a area: {small:.4} -> \
+         {big:.4} ms). Alguem voltou a responder uma PERGUNTA construindo o PAYLOAD — o frame chama \
+         isto duas vezes, entao o preco sai em dobro e com a mao parada."
+    );
+}

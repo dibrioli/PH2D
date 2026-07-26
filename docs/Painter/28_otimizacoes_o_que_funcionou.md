@@ -27,6 +27,8 @@
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
 | M | O 1º traço compilava pipelines | ✅ fechada (§4.8), mas **não era a causa** | ~10-28 ms (varia com a ordem), e **independente da tela** — o smoke refutou (§4.8.1) |
 | N | 🎯 **O 1º traço ALOCAVA as texturas** | ✅ **fechada** (§4.8.1) | **0,76 / 2,72 / 13,21 ms** a 1024²/2048²/4096² — a escada que o Enio descreveu |
+| **O** | 🎯🎯 **O 1º traço dobrava o CANVAS INTEIRO** | ✅ **fechada** (§4.8.2) — **era ESTA a causa** | `PH2D_PAINT_PERF` no app: **232,7 ms, 100% em `preview`**. O fold **201,53 → 14,55 ms** a 4096² (**13,8×**), por linhas, byte-idêntico |
+| P | Semear os planos da luz no BIND | 🟡 **aberto, e é decisão de PRODUTO** | vale **14,55 → 0,38** + 13,21 ms, e cobra **~218 MB de VRAM em TODO bind** — inclusive de quem nunca liga o impasto |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -504,6 +506,84 @@ inalcançável, e essa mutação **SOBREVIVEU**. *"Contém a chamada"* não é *
 também conta as SAÍDAS: o pré-aquecimento pode desistir por **dois** guards documentados (a `flatten`
 recusou · canvas 0×0) e por mais nenhum. **3 mutações, 3 sangram.**
 
+### 4.8.2 🎯 E o SEGUNDO smoke nomeou o custo de verdade: **o FOLD do relevo, 201,5 ms**
+
+> *"muito delay ainda"* (Enio, 2026-07-26)
+
+Parei de deduzir. Duas hipóteses minhas já tinham sido refutadas pelos smokes dele (a §4.8 e depois a
+§4.8.1), e as duas erraram pela mesma razão: **eu media peça isolada em vez do produto**. O
+`PH2D_PAINT_PERF` já existia e já reportava `max=`, mas o *split* de fases era todo **p50** — e um custo
+de UMA VEZ é invisível numa mediana **por construção**: ele é exatamente o outlier que a mediana existe
+para descartar. Acrescentei a linha do frame **PIOR** e pedi o número.
+
+```
+90f GPU 35/CPU 55 | dispatch p50=0.0 max=232.7 | WORST: GPU 4096x4096 impasto=true
+WORST split: dispatch=232.7 [preview 232.7 panel 0.0 overlay 0.0 upload 0.0]
+EVENTO->FRAME p50=16.8 p95=24.5 max=247.1 ms
+```
+
+**232,7 ms, e 100% dentro de `preview`.** E o `prewarm` da §4.8.1 **rodou** — a 1ª janela do log traz o
+frame CPU `trivial-fast` do bind. O custo não era nada do que eu tinha atacado.
+
+⚠️ **A causa estava ESCRITA no próprio produto**, num doc-comment que eu li e não conectei
+(`compose_light_premul`): *"Measured, at 4096²: **202 ms a frame whole** against 2,8 ms for a 512²
+window, and the walk is the entire cost."* O passe de luz **recusa upload parcial** até ter segurado a
+pintura inteira uma vez (`ImpastoLightPass::planes_seeded`), então o **primeiro frame com relevo dobra o
+CANVAS**, por mais curto que tenha sido o traço. Medido de novo hoje pela porta do produto: **201,53 ms**.
+
+**A cura é a que esta linha já usa em quatro lugares:** o walk é **puro por-texel** e as linhas são
+**disjuntas** (ADR-0109 — o mesmo desenho de `sculpt_offset`, `sculpt_close` e `watercolor_field`), então
+ele passa a `par_chunks_mut` por linha. **Byte-idêntico por construção:** muda qual thread avalia qual
+linha, nunca o que a linha diz.
+
+| canvas | serial | **paralelo** | |
+|---|---|---|---|
+| 2048² | 45,29 ms | **4,53** | 10,0× |
+| 4096² | **201,53 ms** | **14,55** | **13,8×** |
+| janela 512² | 2,85 | **0,39** | o estado permanente de todo traço |
+
+**Os gates que já existiam SÃO o oráculo:** um compara a porta contra um laço **serial** dos mesmos
+samplers, texel a texel; o outro usa janela de origem `(10, 16)`, que é a aritmética `y = ry + row` que
+a reescrita introduziu. A mutação do mapeamento `row → y` sangra.
+
+⚠️ **E ela expôs o ponto cego do gate de janela:** *door-contra-door não vê erro que desloca os DOIS
+lados igual*. Com o off-by-one instalado, `a_window_folds_exactly_what_the_whole_canvas_folded_there`
+fica **VERDE** — a janela e o canvas se movem juntos e continuam concordando — e só o gate contra os
+**samplers** morde. Os dois não são redundantes: um pina *a janela é igual ao canvas*, o outro *o canvas
+é igual ao fold*, e um erro de indexação uniforme satisfaz o primeiro.
+
+⚠️ **Um gate meu quebrou por ficar rápido demais, e isso é uma lição de forma.** O
+`the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` media uma janela de **128²**, que caiu
+de ~0,18 para **0,044 ms** — e uma razão entre dois números desse tamanho mede o **escalonador do
+rayon**, não a propriedade. Ele falhou sob a suíte inteira (0,0839 contra 0,2470, "2,95×") enquanto a
+varredura mostra a janela **plana** no tamanho do canvas a menos de 10%:
+
+| canvas | full | 1024² | 512² | 256² | 128² | 64² |
+|---|---|---|---|---|---|---|
+| 2048 | 4,53 | 1,19 | 0,41 | 0,159 | 0,042 | 0,024 |
+| 4096 | 14,89 | 1,23 | 0,39 | 0,153 | 0,046 | 0,021 |
+
+*Um gate cujo oráculo se dissolve quando a coisa que ele vigia fica mais rápida é um gate que será
+silenciado em vez de acreditado.* Agora usa janela **512²** (~0,39 ms, dez vezes o piso de ruído) sobre
+canvases 1024/2048, e lê o **MÍNIMO** das amostras — máquina carregada só sabe deixar mais lento.
+Re-provado: a mutação *"dobra o CANVAS, devolve a JANELA"* — a falha que **só um relógio pode ver** —
+sangra em **3,70×**, e os 4 gates de FORMA ficam verdes sob ela.
+
+⚠️ **E a sonda varrida nasceu com a fixture MENTINDO:** a janela era centrada no **canvas** e o traço
+vive em `x ∈ [200, 700]`, então a 2048² ela cobria tinta e a 4096² cobria **papel nu** — as duas linhas
+precificavam fenômenos diferentes, e a tela GRANDE saía *mais barata* (18,6 contra 51,0). Fixture, não
+fold. Centrada no TRAÇO, a tabela acima é estável entre execuções.
+
+⚠️ **O que fica ABERTO, nomeado com o número e com o preço:** o `prewarm` **não semeia** os planos da
+luz (uma pilha recém-bindada não tem relevo ⇒ `impasto_gpu_planes_in` recusa ⇒ a luz não roda ⇒ nem as
+texturas nem o `planes_seeded` acontecem), então o primeiro traço ainda dobra o canvas inteiro — **14,55
+ms em vez de 0,38** — mais a alocação das 5 planes (~218 MB a 4096², 13,21 ms medidos na §4.8.1).
+Fechá-lo é **decisão de produto, não correção mecânica**: qualquer pré-aquecimento da luz cobra VRAM
+canvas-sized de **todo bind**, inclusive de quem nunca liga o impasto — o mesmo argumento que já mantém
+este pré-aquecimento fora do boot, num tamanho dez vezes maior. **O número que decide é o próximo
+`PH2D_PAINT_PERF`.** O doc-comment do `prewarm` foi corrigido: ele afirmava alocar as texturas dos
+**três** passes, e as da luz não estavam entre elas.
+
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
 A U1 (undo por delta) resolveu o que sobra **DEPOIS** do traço; isto é o que a cópia custa **DURANTE**
@@ -575,6 +655,21 @@ milhões de vezes*. E as duas trazem a mesma cautela, aprendida no doc 24 e reco
 * ⚠️ **o determinismo fica MAIS forte, não mais fraco:** os nós saem das mesmas funções do produto, e
   entre nós só correm `+ − * /`, que o IEEE-754 especifica exatamente.
 
+### 5.7 ✅ E o segundo padrão que transfere: **um walk puro por-texel caminha por LINHAS**
+
+O fold do relevo (§4.8.2) caiu 13,8× sem uma linha de aritmética nova — só a constatação de que cada
+texel é **função pura de `(x, y)`** e de um estado congelado, logo as linhas são disjuntas (ADR-0109). O
+teste para aplicar isto noutro lugar é uma pergunta só: *este laço lê algo que ele mesmo escreveu?*
+
+* **Watercolor** — o `watercolor_field` **já** roda assim (`par_chunks_mut` em seis planos), e é dali que
+  o desenho veio;
+* **Wet Paint** — ⛔ **NÃO transfere, e não é falta de vontade:** o solver é **serial por semântica**
+  (ADR-0134 diz explicitamente que o ADR-0109 é inaplicável e para não re-derivar). O que *poderia*
+  paralelizar é o composite de folha cheia, que o doc 24 já derrubou de 133,3 para 18,2 ms por outra via;
+* ⚠️ **o que NÃO transfere é o formato do GATE.** Paralelizar deixa a grandeza pequena, e uma razão entre
+  dois números pequenos passa a medir o escalonador — quem paralelizar um caminho tem de reconferir os
+  gates de perf que o cercam, que foi exatamente o que quebrou aqui.
+
 ---
 
 ## 6. As lições de método (as que custaram tempo)
@@ -597,17 +692,42 @@ milhões de vezes*. E as duas trazem a mesma cautela, aprendida no doc 24 e reco
    diferindo só no campo que se quer testar.
 6. **A cwd do Bash volta para a árvore primária.** O mesmo path relativo existe nas duas árvores, e
    editar a errada compila e commita **sem erro**. Todo comando leva o `cd` da worktree.
+7. 🎯 **Meça o PRODUTO, não a peça — e uma mediana não pode ver um custo de UMA VEZ.** Duas hipóteses
+   minhas para *"o delay do primeiro traço"* (§4.8 e §4.8.1) foram refutadas pelos smokes do Enio, e as
+   duas erraram do mesmo jeito: eu cronometrava um componente isolado num harness meu. O `PH2D_PAINT_PERF`
+   já existia, já reportava `max=`, e o **split de fases era todo p50** — ou seja, cego por construção ao
+   outlier que é exatamente o fenômeno. Uma linha de diagnóstico (o split do frame **pior**) nomeou a
+   causa em **um** smoke, depois de duas rodadas perdidas deduzindo.
+8. **Uma sonda que re-implementa o laço fica CEGA à porta.** A `measure_what_the_fold_is_made_of`
+   dissecava o custo com um laço próprio — certo para *"de que isto é feito"*, e ela seguiria imprimindo
+   o custo **serial** depois de o produto parar de pagá-lo. Toda cura precisa de uma medição que passe
+   pela **porta do produto** (`measure_the_fold_the_product_runs`).
+9. **Um gate pode quebrar por a coisa que ele vigia ficar RÁPIDA.** A razão do fold media uma janela que
+   caiu para 0,044 ms e passou a medir o escalonador do rayon. *Um gate cujo oráculo se dissolve quando o
+   produto melhora será silenciado em vez de acreditado* — a cura é escolher a grandeza dez vezes acima
+   do piso de ruído e ler o **mínimo**, não afrouxar a barra.
 
 ---
 
 ## 7. Próxima etapa recomendada
 
-⚠️ **A medição REORDENOU a fila, e a recomendação anterior deste doc está superada.** Eu havia
-apontado os planos canvas-sized do traço como o item maior; a comparação contra um MOVE (§4.5) mostrou
-que eles valem **1,8 ms**, não 5,1 — o resto era um dab comum. E a decomposição do dab (§4.6) mostrou
-onde o tempo realmente está.
+⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**
+Primeiro os planos canvas-sized do traço saíram do topo (§4.5: valem 1,8 ms, não 5,1). Depois o
+`PH2D_PAINT_PERF` mostrou que **nada disso era o "delay do primeiro traço"**: era o fold do relevo
+dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 
-**A fila, por tamanho medido:**
+**O próximo passo é uma MEDIÇÃO, não uma construção:** re-rodar
+
+```bash
+cd .../Worktrees/line-Painter && env PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release
+```
+
+a 4096², em impasto, e ler as duas linhas `[paint-perf]`. Do 232,7 ms medido, o fold era 201,5 ⇒ o
+resíduo aritmético é **~31 ms**, e ele é **estimativa, não medição**. É esse número que decide a frente
+**P** (semear os planos da luz no bind), que vale ~27 ms e cobra ~218 MB de VRAM em todo bind — um trade
+que não se faz sem o número.
+
+**A fila abaixo continua válida, por tamanho medido:**
 
 1. ⛔ **A redução de amostras do AA está ESGOTADA como eixo.** Três tentativas, três medições, três
    rejeições: cinco amostras (§3.3), três casando o 2º momento e três casando o 4º (§4.6.2). O que

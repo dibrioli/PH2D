@@ -1433,3 +1433,111 @@ fn wetpaint_lays_no_relief() {
         "a wet shape preview laid relief the commit would never keep"
     );
 }
+
+/// **A sessão não é DONA do canvas vivo** — a propriedade que faz o move do Wet
+/// Paint ser limitado pela PEGADA em vez da TELA.
+///
+/// `wetpaint_composite` termina em `Arc::make_mut(&mut self.canvas_rgba)`, que
+/// devolve o slice ao dono ÚNICO e **copia o documento inteiro** se houver um
+/// segundo. O token de identidade do guard era um `Arc` forte, então era esse
+/// segundo dono: medido, **9,86 ms de cópia a 4096²** por movimento do mouse,
+/// e era a única razão de este meio escalar com a tela enquanto os outros três
+/// ficavam planos.
+///
+/// O gate afirma a PROPRIEDADE, não o relógio: depois de um move, o tool é o
+/// dono único do canvas. Mutação que sangra: `canvas: Weak<_>` de volta a
+/// `Arc<_>` (com os três `Arc::downgrade` virando `Arc::clone`) — a contagem
+/// vai a 2 e a cópia volta.
+///
+/// ⚠️ O `base` é o outro handle forte e é LEGÍTIMO: ele é a tela CONGELADA
+/// sobre a qual todo composite renderiza, então ele obriga a PRIMEIRA cópia —
+/// corretamente, porque escrever no lugar destruiria a base. É por isso que o
+/// gate mede depois do segundo composite, não do primeiro.
+#[test]
+fn the_wet_session_does_not_own_the_live_canvas() {
+    let mut t = tool_in_mode("wetpaint");
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    let _ = t.take_preview_arc();
+    for k in 1..=3u8 {
+        t.on_canvas_pointer(cp([30.0 + 20.0 * f32::from(k), 60.0], PointerPhase::Move));
+        let _ = t.take_preview_arc();
+    }
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "controle: a sessão tem de estar viva — sem ela não há composite a medir"
+    );
+    let owners = Arc::strong_count(&t.canvas_rgba);
+    assert_eq!(
+        owners, 1,
+        "a sessão (ou outro alguém) segura o canvas vivo: {owners} donos ⇒ todo composite \
+         copia o documento inteiro"
+    );
+}
+
+/// E a CONSEQUÊNCIA da propriedade acima: o custo de um move é o da pegada.
+///
+/// Razão entre duas telas, não relógio de parede — a mesma disciplina do
+/// `warp_perf_kill_criterion` e do gate do fold: o caminho é limitado pela
+/// PEGADA, então quadruplicar a área não pode mover o custo, e uma razão é
+/// imune à deriva da máquina.
+///
+/// ⚠️ **MEDIANA, não o mínimo — e a primeira versão deste gate usava o mínimo,
+/// que o cegava por completo.** O gate do fold lê o mínimo com razão (máquina
+/// carregada só sabe deixar mais lento), mas ali **toda** amostra faz o mesmo
+/// trabalho. Aqui não: o PRIMEIRO move de um traço não compõe (o espaçamento
+/// ainda não emitiu dab, então `stamp_dabs_wetpaint` volta antes do composite)
+/// e mede **0,22 ms nas DUAS telas** — medido, contra 1,0-3,6 e 12,0-13,6 nos
+/// oito seguintes. O mínimo é exatamente a amostra SEM o fenômeno, e a razão
+/// entre duas delas dava **1,00×** sob o defeito reinstalado.
+///
+/// ⚠️ **O PAR é 2048²/4096², e a primeira versão deste gate estava CEGA por usar
+/// 1024²/2048².** A cópia de tela custa 0,06 · 0,39 · 10,25 ms nas três telas,
+/// contra ~1,8 ms de trabalho de pegada — então nas duas telas pequenas o
+/// defeito é ruído (razão medida sob a mutação: **1,14×**, verde) e só a 4096²
+/// ele domina (**7,55×**). Uma fixture só prova o que ela CONTÉM, e o custo de
+/// montar a tela grande é o preço de o gate poder falhar pelo motivo que alega.
+///
+/// Mutação que sangra: o token forte de volta ⇒ **1,2196 ms a 2048² contra
+/// 13,6666 a 4096², razão 11,21×**.
+#[test]
+fn a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs() {
+    fn move_ms(size: u32) -> f64 {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 40.0,
+            hardness: 0.5,
+            falloff: Falloff::Smooth,
+            color: [0.8, 0.1, 0.1],
+            space_attenuation: false,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.set_paint_tool_mode("wetpaint");
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([80.0, mid], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        let mut ms = Vec::new();
+        for k in 1..=9u8 {
+            let x = 80.0 + 30.0 * f32::from(k);
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let _ = t.take_preview_arc();
+        }
+        // MEDIANA, nunca o mínimo — ver o doc do gate.
+        ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        ms[ms.len() / 2]
+    }
+    let small = move_ms(2048);
+    let big = move_ms(4096);
+    let ratio = big / small.max(1e-6);
+    assert!(
+        ratio < 2.0,
+        "o move do Wet Paint cresceu com a TELA: {small:.4} ms a 2048² contra {big:.4} a 4096² \
+         ({ratio:.2}x para 4x a área) — algo no caminho passou a percorrer o plano"
+    );
+}

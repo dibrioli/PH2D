@@ -29,7 +29,11 @@ impl PainterTool {
         self.paint.wetpaint.session = Some(WetSession {
             engine: Engine::new(w as usize, h as usize),
             base: Arc::clone(&self.canvas_rgba),
-            canvas: Arc::clone(&self.canvas_rgba),
+            // The identity token is WEAK on purpose ([`WetSession::canvas`]);
+            // `base` is the one strong handle the session needs, and it is what
+            // makes the FIRST composite copy — correctly, since the frozen base
+            // has to survive the write.
+            canvas: Arc::downgrade(&self.canvas_rgba),
             pigment: vec![0u8; w as usize * h as usize * 4],
             acc: 0.0,
             lanes: Vec::new(),

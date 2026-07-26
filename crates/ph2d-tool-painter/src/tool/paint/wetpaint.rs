@@ -50,6 +50,7 @@
 
 use super::*;
 use ph2d_wet_paint::painter::{Dirty, Engine};
+use std::sync::Weak;
 
 /// 40 Hz fixed-step (SPEC §5); at most 5 steps per frame, backlog dropped.
 const WET_STEP_S: f32 = 1.0 / 40.0;
@@ -136,129 +137,9 @@ impl Default for WetPaintState {
     }
 }
 
-/// Everything the session pushes into the ENGINE (doc 22) — compared as one
-/// value per batch/tick; the boot constant equals the engine's own boot (gate-pinned).
-#[derive(Clone, Copy, PartialEq)]
-pub(super) struct WetEngineFacts {
-    pub(super) knobs: WetKnobs,
-    pub(super) tilt: (bool, u8, u8),
-    pub(super) km_mixing: bool,
-}
-
-impl WetEngineFacts {
-    /// The session's `applied` init — the engine's REAL boot (`WetKnobs::ENGINE_BOOT` == `Engine::new`),
-    /// NOT the tool's product default (`WetKnobs::DEFAULT`). The first reconcile then sees the authored
-    /// knobs differ from this baseline and pushes them; collapsing the two would skip the product values.
-    pub(super) const BOOT: Self = Self {
-        knobs: WetKnobs::ENGINE_BOOT,
-        tilt: (true, 4, 3),
-        km_mixing: false,
-    };
-}
-
-pub(super) struct WetSession {
-    /// The engine (grid + sim + tuning), sized to the layer canvas.
-    pub(super) engine: Engine,
-    /// The canvas frozen at session start — every composite renders over THIS.
-    /// `pub(super)` so [`PainterTool::wet_splat_gates`] can serve it as the
-    /// alpha-lock's α reference (the frozen base the composite reads).
-    pub(super) base: Arc<Vec<u8>>,
-    /// The exact `canvas_rgba` Arc OUR last composite produced (or the one the
-    /// session started from). A mismatch = foreign mutation = session over.
-    /// `pub(super)` so the doc-21 commit door can re-arm it after an OWNED
-    /// authoring write (`wetpaint_commit::wetpaint_rearm_after_own_write`).
-    pub(super) canvas: Arc<Vec<u8>>,
-    /// Session-persistent pigment scratch (`w*h*4`); the region render fully
-    /// overwrites the rect it is asked for, so stale bytes outside are inert.
-    pigment: Vec<u8>,
-    /// Fixed-step accumulator for [`PainterTool::wetpaint_tick`].
-    acc: f32,
-    /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
-    /// matched geometrically): last dab centre (the chord source) + the last
-    /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
-    lanes: Vec<Lane>,
-    /// A direct stroke is open in the engine (pen-down .. pen-up).
-    stroke_open: bool,
-    /// What the engine's PAPER plane was last seeded from: `None` = the
-    /// engine's own preset tile (session birth / paper disarmed); `Some` =
-    /// the artist's Paper slot, keyed by everything the seed reads. The
-    /// session **reconciles** against this every dab batch — paper is
-    /// substrate under live water, but the SLOT is authored state, and the
-    /// session spans strokes: seeding only at session birth left every later
-    /// adjustment (Brightness/Contrast, any knob, the arm itself) silently
-    /// ignored until the bake (Enio 2026-07-21, "os ajustes ... não estão
-    /// sendo levados em consideração").
-    paper_key: Option<PaperKey>,
-    /// The [`WetEngineFacts`] last pushed into the engine — starts at the
-    /// boot constant (the engine boots with exactly it, gate-pinned) and the
-    /// reconcile pushes the authored values when they differ. Same law as
-    /// `paper_key`: the facts are authored state, the session is not.
-    applied: WetEngineFacts,
-}
-
-/// Everything the paper seed reads — the reconcile re-seeds exactly when one
-/// of these moves, and an unchanged key costs one small struct compare per
-/// batch. The image rides by its monotonic VERSION, never the `Arc` address
-/// (an address survives a content swap and a content survives an address
-/// swap — the ADR-0124 cache-identity trap).
-#[derive(Clone, Copy, PartialEq)]
-struct PaperKey {
-    tex: ph2d_painter_brush::TextureSettings,
-    image_version: u64,
-    period: [f32; 2],
-}
-
-impl WetSession {
-    /// Push the authored FACTS into the engine when they moved (W3, grown by
-    /// doc 22). ONE door for the stamp AND the tick — Dry Speed and Gravity
-    /// act on water already sitting on the canvas, so a knob must land while
-    /// the sim runs, not only at the next stroke. Unchanged facts cost one
-    /// struct compare. The tuning knobs go through `Engine::set_knob` (the
-    /// door that reacts to what a knob invalidates: bristle rebuild lazy,
-    /// paper re-bake, repaint) — and the paper re-bake only fires while the
-    /// ENGINE's own tile is the tooth source (an armed artist Paper slot
-    /// overrides it; its three physical knobs hide in the panel then).
-    fn reconcile_facts(&mut self, f: WetEngineFacts) {
-        use ph2d_wet_paint::tuning::KNOB_DEFS;
-        if self.applied == f {
-            return;
-        }
-        let a = self.applied;
-        if f.knobs.water != a.knobs.water {
-            self.engine.sliders.water = f.knobs.water;
-        }
-        if f.knobs.erase != a.knobs.erase {
-            self.engine.sliders.erase = f.knobs.erase;
-        }
-        let moved = KNOB_DEFS.iter().zip(&f.knobs.knobs).zip(&a.knobs.knobs);
-        for ((def, new), old) in moved {
-            if new != old {
-                self.engine.set_knob(def.knob, *new);
-            }
-        }
-        if f.tilt != a.tilt {
-            let (on, ring, spoke) = f.tilt;
-            let d = ph2d_wet_paint::sim::tilt_dir_for_spoke(spoke);
-            self.engine.sim.tilt_on = on;
-            self.engine.sim.tilt_dir_x = d[0];
-            self.engine.sim.tilt_dir_y = d[1];
-            self.engine.sim.tilt_scale = f64::from(ring) / 4.0;
-        }
-        if f.km_mixing != a.km_mixing {
-            self.engine.sim.km_mixing = f.km_mixing;
-        }
-        if self.paper_key.is_none() && self.engine.paper_dirty() {
-            self.engine.rebake_paper();
-        }
-        self.applied = f;
-    }
-}
-
-/// One replication lane of the open stroke — see [`WetSession::lanes`].
-struct Lane {
-    pos: [f32; 2],
-    ink: [f32; 3],
-}
+mod session; // what a wet SESSION is (data model) — child file (LOC cap)
+use session::{Lane, PaperKey};
+pub(super) use session::{WetEngineFacts, WetSession};
 
 impl PainterTool {
     /// Whether the WET module owns this batch of dabs — the ONE routing
@@ -681,9 +562,14 @@ impl PainterTool {
 
     /// The canvas-identity guard (module doc): a foreign `canvas_rgba` swap
     /// ends the session before anything composites over restored pixels.
+    ///
+    /// The comparison is `Weak::as_ptr` against `Arc::as_ptr` — see
+    /// [`WetSession::canvas`] for why the token is weak, and why comparing its
+    /// address is sound *because* it is weak (the handle pins the allocation,
+    /// so the address it names can never be re-issued to a different canvas).
     fn wetpaint_guard(&mut self) {
         if let Some(sess) = &self.paint.wetpaint.session
-            && !Arc::ptr_eq(&sess.canvas, &self.canvas_rgba)
+            && !std::ptr::eq(sess.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba))
         {
             self.paint.wetpaint.session = None;
         }

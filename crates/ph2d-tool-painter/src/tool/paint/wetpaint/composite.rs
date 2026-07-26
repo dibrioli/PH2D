@@ -186,8 +186,9 @@ impl PainterTool {
                 }
             }
         }
-        // Re-arm the guard with the Arc our own make_mut may have re-seated.
-        sess.canvas = Arc::clone(&self.canvas_rgba);
+        // Re-arm the guard with the allocation our own make_mut may have
+        // re-seated (weak — [`WetSession::canvas`]).
+        sess.canvas = Arc::downgrade(&self.canvas_rgba);
         let region = Region {
             x: (cx0 - 1) as u32,
             y: (cy0 - 1) as u32,

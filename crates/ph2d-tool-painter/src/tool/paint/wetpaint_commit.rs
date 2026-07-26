@@ -43,7 +43,7 @@ impl PainterTool {
         if !self.paint.eraser
             && let Some(sess) = self.paint.wetpaint.session.as_mut()
         {
-            sess.canvas = Arc::clone(&self.canvas_rgba);
+            sess.canvas = Arc::downgrade(&self.canvas_rgba);
         }
     }
 

@@ -10,6 +10,8 @@ mod measure_input_cost;
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
 #[path = "measure_watercolor_cost.rs"]
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
+#[path = "measure_wetpaint_cost.rs"]
+mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, frente V)
 #[path = "measure_window_premise.rs"]
 mod measure_window_premise;
 

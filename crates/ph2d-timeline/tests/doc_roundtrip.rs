@@ -117,10 +117,13 @@ fn schema_version_is_twelve() {
     // v12 = the MOTION PATH (ADR-0141): `TargetBinding.path`, appended — the
     //      trajectory a `PropKind::Position` binding follows, whose track measures
     //      distance along it. `None` behaves exactly as v11.
+    // v13 = TIMELINE SIGNALS (ADR-0143): `Marker.signal: Option<String>`, appended —
+    //      a marker can carry a named signal that emits a decoupled event when the
+    //      play crosses it. `None` is a pure annotation, byte-for-byte what v12 was.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 12);
-    assert_eq!(TimelineDoc::new().version, 12);
+    assert_eq!(DOC_VERSION, 13);
+    assert_eq!(TimelineDoc::new().version, 13);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

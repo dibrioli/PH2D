@@ -64,9 +64,14 @@ use crate::stack_frames::StackScratch;
 /// distance along it. `None` behaves exactly as v11, and every binding a v11
 /// document held is one of the kinds that never has a path.
 ///
+/// v13: **timeline signals** ([ADR-0143]) — `Marker.signal: Option<String>`, appended:
+/// a marker can carry a named signal that emits a decoupled event when the play crosses
+/// it. `None` is a pure annotation — byte-for-byte what a v12 marker was.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
-pub const DOC_VERSION: u32 = 12;
+/// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
+pub const DOC_VERSION: u32 = 13;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -98,6 +103,15 @@ pub struct Marker {
     /// Author-visible label (a raw string — markers are user content, not HR-15
     /// UI chrome).
     pub label: String,
+    /// The signal this marker emits when the play crosses it, if any ([ADR-0143]).
+    /// `None` is a pure annotation — the v12 behaviour, byte-for-byte. The name is
+    /// the decoupled contract a consumer matches on (the timeline never calls the
+    /// consumer — ADR-0075), and it is deliberately distinct from `label` (the human
+    /// text): conflating the two is the After Effects trap. Appended field — postcard
+    /// is positional, hence `DOC_VERSION` 12 -> 13.
+    ///
+    /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
+    pub signal: Option<String>,
 }
 
 /// A clip with an author-visible name.
@@ -612,6 +626,7 @@ impl TimelineDoc {
         self.markers.push(Marker {
             t,
             label: label.into(),
+            signal: None,
         });
         self.markers.len() - 1
     }
@@ -644,6 +659,22 @@ impl TimelineDoc {
         match self.markers.get_mut(index) {
             Some(m) => {
                 m.label = label.into();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Set (or clear, with `None`) the signal the marker at `index` emits when the
+    /// play crosses it ([ADR-0143]). Returns `true` if it existed. An empty or
+    /// whitespace-only name **clears** the signal — a signal without a name is not a
+    /// contract anyone can match, so it must not read as "has a signal".
+    ///
+    /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
+    pub fn set_marker_signal(&mut self, index: usize, signal: Option<String>) -> bool {
+        match self.markers.get_mut(index) {
+            Some(m) => {
+                m.signal = signal.filter(|s| !s.trim().is_empty());
                 true
             }
             None => false,

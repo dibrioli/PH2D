@@ -5,20 +5,24 @@
 //! o Play o resolve com um puxão. Esta cena é sobre a cura — arrastar um elo em
 //! repouso arrasta o **rig**.
 //!
-//! Três armações, cada uma respondendo uma pergunta diferente (e a segunda é o
-//! CONTROLE da primeira — um "andou junto" só quer dizer alguma coisa ao lado de
-//! um "não andou"):
+//! **O rig inteiro anda com ALT apertado** (decisão do Enio, 2026-07-26); sem
+//! Alt anda só o corpo que se pegou. As duas metades têm leitura própria, e o
+//! CONTROLE de cada rig é ele mesmo sem o modificador: sem Alt o **segmento
+//! âmbar do joint ESTICA** na tela. Não há chrome novo nesta wave — o rig
+//! andando junto É o que se vê, e o que fica para trás se vê pelo mesmo desenho.
 //!
-//! - **CORRENTE**: pegar o elo do MEIO leva os três, e o gancho estático fica.
-//! - **GÊMEOS**: dois pêndulos no MESMO gancho — arrastar um **não** move o
-//!   outro. O gancho é uma parede entre eles, não um fio.
+//! Três armações, cada uma exercitando uma parte da política *"a cadeia inteira,
+//! independente do tipo"*:
+//!
+//! - **CORRENTE**: pegar o elo do MEIO leva os três **e o gancho ESTÁTICO**.
+//! - **GÊMEOS**: um gancho **KINEMATIC** com dois pêndulos — o grafo se
+//!   RAMIFICA, então levar um pêndulo leva o gancho *e o irmão*. É o preço
+//!   honesto de "independente do tipo" quando a cadeia se abre.
 //! - **PAR LIVRE**: dois corpos pinados sem âncora nenhuma — vão juntos por
 //!   qualquer um deles, e o Play os derruba de onde você os pôs.
 //!
-//! ⚠️ **O Alt é o escape**, e ele tem metade visível própria: com Alt o elo anda
-//! sozinho e o **segmento âmbar do joint estica** na tela. Não há chrome novo
-//! nesta wave — o rig andando junto É o que se vê, e o que fica para trás se vê
-//! pelo mesmo desenho.
+//! ⚠️ Os três tipos de corpo aparecem de propósito (Static · Kinematic ·
+//! Dynamic): uma cena só com Static provaria metade da política.
 //!
 //! Os números da mensagem saíram da sonda `probe_smoke_51` (`joint_rig_drag`),
 //! rodada sobre ESTAS armações antes de a mensagem ser escrita.
@@ -37,14 +41,14 @@ pub(crate) fn spawn_rigs(world: &mut World) {
     let hot = [0.95, 0.6, 0.2, 1.0];
     let cool = [0.4, 0.8, 0.95, 1.0];
 
-    let hook = |world: &mut World, name: &str, at: [f32; 2]| {
+    // O tipo é PARÂMETRO porque a cena tem de exercitar os três: a política do
+    // arrasto é *independente do tipo*, e uma cena só com Static provaria metade.
+    let hook = |world: &mut World, name: &str, at: [f32; 2], kind: BodyKind| {
         world.spawn((
             Transform::from_translation(Vec2::new(at[0], at[1])),
             Sprite::atlas(WHITE_TILE_KEY, [0.16, 0.16], grey),
             Name::new(name.to_string()),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
+            RigidBody { kind },
             Collider {
                 shape: ColliderShape::Ball { radius: 0.08 },
                 ..Collider::default()
@@ -79,8 +83,8 @@ pub(crate) fn spawn_rigs(world: &mut World) {
         ));
     };
 
-    // ── CORRENTE (esquerda): gancho estático + três elos pendurados.
-    hook(world, "Chain Hook", [-5.5, 8.0]);
+    // ── CORRENTE (esquerda): gancho ESTÁTICO + três elos pendurados.
+    hook(world, "Chain Hook", [-5.5, 8.0], BodyKind::Static);
     link(world, "Chain L1", [-5.5, 7.2], cool);
     link(world, "Chain L2", [-5.5, 6.4], hot);
     link(world, "Chain L3", [-5.5, 5.6], cool);
@@ -88,8 +92,9 @@ pub(crate) fn spawn_rigs(world: &mut World) {
     pin(world, "Chain L1", "Chain L2", [-5.5, 6.8]);
     pin(world, "Chain L2", "Chain L3", [-5.5, 6.0]);
 
-    // ── GÊMEOS (meio): UM gancho, dois pêndulos. O controle.
-    hook(world, "Twin Hook", [0.0, 8.0]);
+    // ── GÊMEOS (meio): UM gancho KINEMATIC, dois pêndulos. O grafo se RAMIFICA
+    // aqui, e o terceiro tipo entra na cena.
+    hook(world, "Twin Hook", [0.0, 8.0], BodyKind::Kinematic);
     link(world, "Twin Left", [-0.9, 7.0], hot);
     link(world, "Twin Right", [0.9, 7.0], cool);
     pin(world, "Twin Hook", "Twin Left", [0.0, 8.0]);
@@ -109,17 +114,17 @@ impl crate::App {
         spawn_rigs(gfx.sim.world_mut());
 
         eprintln!(
-            "[physics-smoke 51] Tres rigs em REPOUSO. Arrastar um corpo arrasta o RIG.\n  \
+            "[physics-smoke 51] Tres rigs em REPOUSO. ALT+arrastar um corpo arrasta o RIG.\n  \
                1. Aperte B (mostra os joints em ambar).\n  \
-               2. CORRENTE (esquerda): arraste 'Chain L2' (o elo laranja do meio).\n     \
-                  Os TRES elos andam juntos; o gancho cinza NAO sai do lugar.\n     \
-                  (medido: pegar L2 leva L1 e L3 -- 2 corpos a mais, o gancho fora)\n  \
-               3. Agora com ALT apertado, arraste 'Chain L2' de novo: so ELE anda,\n     \
-                  e o segmento ambar do joint ESTICA. Esse e o escape.\n  \
-               4. GEMEOS (meio): arraste 'Twin Left'. 'Twin Right' NAO se mexe --\n     \
-                  o gancho estatico e uma parede entre os dois, nao um fio.\n     \
-                  (medido: pegar Twin Left leva 0 corpos a mais)\n  \
-               5. PAR LIVRE (direita): arraste 'Free Left' -- 'Free Right' vem junto\n     \
+               2. CORRENTE (esquerda): arraste 'Chain L2' (o elo laranja do meio) SEM Alt.\n     \
+                  So ELE anda, e o segmento ambar do joint ESTICA. Esse e o default.\n  \
+               3. Agora com ALT apertado, arraste 'Chain L2': andam os tres elos E o\n     \
+                  gancho cinza -- a cadeia inteira, independente do tipo.\n     \
+                  (medido: leva 3 corpos a mais -- Chain Hook + L1 + L3)\n  \
+               4. GEMEOS (meio): o gancho e KINEMATIC e o grafo se RAMIFICA nele.\n     \
+                  Alt+arraste 'Twin Left': vem o gancho E o irmao 'Twin Right'.\n     \
+                  (medido: leva 2 corpos a mais). Sem Alt, so o pendulo que pegou.\n  \
+               5. PAR LIVRE (direita): Alt+arraste 'Free Left' -- 'Free Right' vem junto\n     \
                   (medido: 1 corpo a mais). Solte, aperte Play: o par cai JUNTO,\n     \
                   sem puxao, de onde voce o deixou.\n\
              Ctrl+Z desfaz cada arrasto em UM passo (o rig inteiro por gesto)."

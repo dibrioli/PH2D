@@ -65,32 +65,55 @@ fn chain() -> (SimWorld, Entity, Entity, Entity, Entity) {
     (sim, hook, l1, l2, l3)
 }
 
-/// **Pegar UM elo carrega a corrente inteira.** A entrega da wave.
+/// **Pegar UM elo carrega a corrente inteira — INCLUSIVE o gancho estático.**
 ///
-/// Mutação-testado: passar `&[]` como seed do `jointed_group` (ou pular a
-/// expansão inteira) devolve lista vazia — o elo andaria sozinho e o joint
-/// nasceria esticado, que é o defeito que a W-AnchorFollow abriu.
+/// A entrega da wave, com a política de tipo que o Enio pediu em 2026-07-26
+/// (*"faça arrastar a cadeia inteira independente do tipo"*): um joint tem duas
+/// âncoras body-local, então o gancho deixado atrás estica o joint exactamente
+/// como um elo deixado atrás esticaria.
+///
+/// Mutação-testado: trocar `jointed_rig` pelo `jointed_group` do BAKE (mesma
+/// assinatura, compila calado) deixa o gancho de fora — o defeito reportado.
 #[test]
-fn dragging_one_link_carries_the_whole_chain() {
+fn dragging_one_link_carries_the_whole_chain_hook_included() {
     let (mut sim, hook, l1, l2, l3) = chain();
     let mut out = Vec::new();
     seed_group_drag_starts(&mut out, &mut sim, l2.to_bits(), &[l2.to_bits()], true);
     assert_eq!(
         seeded(&out),
-        sorted(vec![l1.to_bits(), l3.to_bits()]),
-        "a corrente inteira menos o primário; o gancho ESTÁTICO fica"
-    );
-    assert!(
-        !out.iter().any(|s| s.entity_bits == hook.to_bits()),
-        "um gancho estático é uma parede: ele não anda com o rig"
+        sorted(vec![hook.to_bits(), l1.to_bits(), l3.to_bits()]),
+        "a corrente inteira menos o primário, com o gancho ESTÁTICO dentro"
     );
 }
 
-/// **Com o modificador, anda só o corpo que se pegou.** A outra metade do
-/// pedido do plano — e o gate que prova que `carry_rig` é o interruptor, e não
-/// decoração.
+/// **TODO tipo de corpo é carregado** — Static, Kinematic e Dynamic.
+///
+/// O gate que nomeia a política inteira em vez de uma instância dela: o gate da
+/// corrente prova o Static, e sem este o Kinematic ficaria coberto por
+/// nada (é o tipo que o `jointed_group` do bake também recusa, e por outro
+/// motivo — ele já segue curva).
 #[test]
-fn the_modifier_moves_only_the_body_you_grabbed() {
+fn every_body_kind_travels_with_the_rig() {
+    let mut sim = SimWorld::new();
+    let wall = body(&mut sim, "Wall", BodyKind::Static, 0.0);
+    let lift = body(&mut sim, "Lift", BodyKind::Kinematic, 1.0);
+    let load = body(&mut sim, "Load", BodyKind::Dynamic, 2.0);
+    pin(&mut sim, "J0", "Wall", "Lift");
+    pin(&mut sim, "J1", "Lift", "Load");
+    let mut out = Vec::new();
+    seed_group_drag_starts(&mut out, &mut sim, load.to_bits(), &[load.to_bits()], true);
+    assert_eq!(
+        seeded(&out),
+        sorted(vec![wall.to_bits(), lift.to_bits()]),
+        "o Kinematic conduz E é carregado, como o Static"
+    );
+}
+
+/// **Sem o modificador, anda só o corpo que se pegou.** O DEFAULT depois da
+/// inversão de 2026-07-26 — e o gate que prova que `carry_rig` é o interruptor,
+/// e não decoração.
+#[test]
+fn without_the_modifier_only_the_body_you_grabbed_moves() {
     let (mut sim, _hook, _l1, l2, _l3) = chain();
     let mut out = Vec::new();
     seed_group_drag_starts(&mut out, &mut sim, l2.to_bits(), &[l2.to_bits()], false);
@@ -101,26 +124,27 @@ fn the_modifier_moves_only_the_body_you_grabbed() {
     );
 }
 
-/// **Dois pêndulos no MESMO gancho estático ficam independentes.**
+/// **Dois pêndulos no MESMO gancho são UM rig** — o gancho conduz.
 ///
-/// A lei do `jointed_group` pinada NESTA camada: o gancho é alcançado pela
-/// aresta e nunca atravessado, senão arrastar um pêndulo arrastaria o outro —
-/// e, num chão estático compartilhado, a cena inteira.
+/// ⚠️ Este gate afirmava o OPOSTO até 2026-07-26 (era a lei do `jointed_group`
+/// do bake, onde um Static é fronteira). A troca é deliberada e vem com o custo
+/// nomeado: sob Alt, arrastar um pêndulo leva o gancho **e** o pêndulo vizinho.
+/// É o que *"a cadeia inteira independente do tipo"* significa quando a cadeia
+/// se ramifica.
 #[test]
-fn two_pendulums_on_the_same_hook_stay_independent() {
+fn two_pendulums_on_the_same_hook_are_one_rig() {
     let mut sim = SimWorld::new();
-    let _hook = body(&mut sim, "Hook", BodyKind::Static, 0.0);
+    let hook = body(&mut sim, "Hook", BodyKind::Static, 0.0);
     let a = body(&mut sim, "BobA", BodyKind::Dynamic, -1.0);
     let b = body(&mut sim, "BobB", BodyKind::Dynamic, 1.0);
     pin(&mut sim, "JA", "Hook", "BobA");
     pin(&mut sim, "JB", "Hook", "BobB");
     let mut out = Vec::new();
     seed_group_drag_starts(&mut out, &mut sim, a.to_bits(), &[a.to_bits()], true);
-    assert!(
-        out.is_empty(),
-        "o gancho é uma parede entre os dois pêndulos, não um fio: {:?} (B = {})",
+    assert_eq!(
         seeded(&out),
-        b.to_bits()
+        sorted(vec![hook.to_bits(), b.to_bits()]),
+        "o gancho conduz, então os dois pêndulos e ele são um rig só"
     );
 }
 
@@ -235,7 +259,7 @@ fn the_parenthood_rule_does_not_touch_an_explicit_multi_selection() {
 /// pegar L1 com L3 já selecionado semeia L3 uma vez só e traz L2 junto.
 #[test]
 fn a_multi_selection_inside_one_rig_seeds_each_body_once() {
-    let (mut sim, _hook, l1, l2, l3) = chain();
+    let (mut sim, hook, l1, l2, l3) = chain();
     let mut out = Vec::new();
     seed_group_drag_starts(
         &mut out,
@@ -244,7 +268,10 @@ fn a_multi_selection_inside_one_rig_seeds_each_body_once() {
         &[l1.to_bits(), l3.to_bits()],
         true,
     );
-    assert_eq!(seeded(&out), sorted(vec![l2.to_bits(), l3.to_bits()]));
+    assert_eq!(
+        seeded(&out),
+        sorted(vec![hook.to_bits(), l2.to_bits(), l3.to_bits()])
+    );
 }
 
 /// **A SONDA da cena 51** — os números que a mensagem do smoke afirma, medidos

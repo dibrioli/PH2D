@@ -5674,27 +5674,44 @@ joint nasce esticado, e o Play o resolve com um puxão que o artista não autoro
 
 Um rig é uma coisa só; arrastar um elo dele arrasta o rig.
 
-### A lei é a do `jointed_group` — a MESMA função que o bake usa
+### A lei é o componente conexo INTEIRO — `jointed_rig`, irmão do `jointed_group`
 
-A W-BakeJoint já respondeu *"que corpos são um rig?"*: o **componente conexo
-DINÂMICO** do grafo de joints — corpo dinâmico conduz, Static e Kinematic são
-**fronteiras** (alcançadas, nunca cruzadas). Reusá-la não é economia: uma segunda
-resposta é como o rig que o bake assa passaria a diferir do rig que o arrasto
-move.
+⚠️ **Ajustado no mesmo dia por ordem do Enio:** *"faça arrastar a cadeia inteira
+independente do tipo"*. A v1 reusava o `jointed_group` do bake (Dynamic conduz,
+Static e Kinematic são fronteiras) e o preço apareceu no primeiro arrasto — a
+corrente andava **sem o gancho**.
 
-Três consequências que a lei acerta, cada uma um bug se fosse de outra forma —
-e **medidas** sobre as armações da própria cena 51 (sonda `probe_smoke_51`):
+E a razão é que **as duas perguntas são diferentes**:
 
-| gesto | leva a mais | por quê |
+| porta | pergunta | quem conduz |
 |---|---|---|
-| pegar o elo do MEIO de uma corrente de 3 | **2** (os outros dois elos) | a corrente é uma coisa |
-| …e o gancho estático | **fora** | uma parede não anda com o rig |
-| pegar um de dois pêndulos no MESMO gancho | **0** | o gancho é uma parede ENTRE eles, não um fio |
-| pegar um par livre (sem âncora) | **1** | o par inteiro |
+| `jointed_group` (bake) | *quem CONGELA quando a física é desligada?* | só Dynamic |
+| `jointed_rig` (arrasto) | *quem tem de andar junto para a pose ficar coerente?* | **todo corpo** |
 
-O joint até a parede **estica**, e isso é deliberado: afastar um rig de uma
-âncora estática é um ato de autoria, e o overlay **desenha** o segmento
-esticado.
+Um joint tem **duas** âncoras body-local, então um gancho Static ou uma
+plataforma Kinematic deixados atrás esticam o joint **exactamente** como um elo
+Dynamic deixado atrás esticaria. Congelar, não: um Static não congela e um
+Kinematic segue curva, e é por isso que o bake segue sem os assar.
+
+⚠️ **A travessia é UMA** (`joint_group::walk`, com a política de tipo como
+parâmetro) e as duas portas são dois nomes sobre ela — *que aresta existe* é a
+pergunta que não pode ter duas respostas. E há **gate no crate provando que elas
+DIVERGEM** sobre um vizinho Static e sobre um Kinematic, um por tipo, porque as
+assinaturas são idênticas e uma "simplificação" que as unificasse quebraria uma
+das duas em silêncio (mutações M8/M9/M10).
+
+Medido sobre as armações da própria cena 51 (sonda `probe_smoke_51`):
+
+| gesto | leva a mais |
+|---|---|
+| o elo do MEIO de uma corrente de 3 | **3** — os dois elos **e o gancho Static** |
+| um de dois pêndulos no MESMO gancho Kinematic | **2** — o gancho **e o irmão** |
+| um par livre (sem âncora) | **1** |
+
+⚠️ **O preço honesto da política:** onde o grafo se **RAMIFICA**, levar um ramo
+leva o outro (os gêmeos). É o que *"a cadeia inteira independente do tipo"*
+significa quando a cadeia se abre — e o gate que afirmava a independência dos
+dois pêndulos foi **invertido** com essa razão escrita nele.
 
 ### As três condições (decididas pelo chamador, passadas como `carry_rig`)
 
@@ -5706,11 +5723,19 @@ esticado.
    `sync_joint_pivots`, ou seja: o rig é carregado **precisamente quando as
    âncoras seguem os corpos**. Tocando, a pose é do SOLVER, o `settle` teleporta
    e a restrição é reimposta no tick seguinte de qualquer forma.
-3. **Alt não está apertado.** É o modificador de *escape* que este app já usa no
-   MESMO gesto (`vec_snap`: Alt fura o ímã), e é a mesma palavra — *só isto, sem
-   ajuda*. ⚠️ Ele é **inerte** no braço `Translate` do `compute_gizmo_transform`
-   (verificado, e agora **gateado**: se alguém der um sentido de Translate ao Alt
-   na matemática do gizmo, o gate cai e a escolha volta à mesa).
+3. **Alt ESTÁ apertado** (⚠️ **invertido no mesmo dia por ordem do Enio** — a v1
+   usava Alt como *escape*). O default volta a ser *anda só o corpo que você
+   pegou*, e o rig inteiro é **opt-in por gesto**. ⚠️ O preço honesto dessa
+   escolha: a cura que a wave existe para dar — a pose de repouso não ficar
+   violada — passa a valer só **quando o artista pede**; sem Alt, um arrasto ainda
+   deixa o joint esticado (o que se VÊ, pelo segmento âmbar). Alt é o modificador
+   certo para carregar isto porque é **inerte** no braço `Translate` do
+   `compute_gizmo_transform` (verificado, e agora **gateado**: se alguém der um
+   sentido de Translate ao Alt na matemática do gizmo, o gate cai e a escolha
+   volta à mesa). ⚠️ **O gate afirma o SINAL, não só a presença:** `alt_key()`
+   casa com as duas polaridades, então um gate que só procura o nome do
+   modificador ficaria verde sobre o comportamento oposto ao pedido (mutações
+   M11/M14).
 
 ### Uma porta, dois sítios de Down
 
@@ -5750,7 +5775,7 @@ smoke próprios.
 ### A metade visível
 
 **Nada de chrome novo, de propósito.** O rig andando junto É o que se vê; e o que
-o Alt deixa para trás se vê pelo MESMO desenho (o segmento âmbar do joint
+fica para trás **sem** Alt se vê pelo MESMO desenho (o segmento âmbar do joint
 estica). As duas metades do interruptor são legíveis sem um segundo indicador.
 
 ### O que a wave NÃO toca
@@ -5761,27 +5786,38 @@ estica). As duas metades do interruptor são legíveis sem um segundo indicador.
 
 ### Gates
 
-**9 no `joint_rig_drag` (headless, `SimWorld` real)** — a corrente inteira · o
-modificador · os dois pêndulos independentes · a multi-seleção simples
-preservada · corpo sem joint · a regra de parentesco nas duas direções · a
-regra de parentesco NÃO tocando a seleção explícita · sem duplicar ninguém · e
-**o rig é o da SELEÇÃO INTEIRA, não só o do corpo agarrado** (⚠️ este último
-existe porque o gate da corrente **não** o cobre: com uma corrente só, semear a
-seleção inteira e semear só o primário dão a mesma resposta — a mutação que
-descarta os extras da semente passava por toda a suíte antes dele).
+**10 no `joint_rig_drag` (headless, `SimWorld` real)** — a corrente inteira **com
+o gancho** · **TODO tipo viaja** (Static · Kinematic · Dynamic, o gate que nomeia
+a política inteira em vez de uma instância dela) · sem o modificador anda só o
+corpo pegado · os dois pêndulos são **um** rig · a multi-seleção simples
+preservada · corpo sem joint · a regra de parentesco nas duas direções · a regra
+de parentesco NÃO tocando a seleção explícita · sem duplicar ninguém · e **o rig
+é o da SELEÇÃO INTEIRA, não só o do corpo agarrado** (⚠️ este último existe
+porque o gate da corrente **não** o cobre: com uma corrente só, semear a seleção
+inteira e semear só o primário dão a mesma resposta — a mutação que descarta os
+extras da semente passava por toda a suíte antes dele).
 
-**4 no arch-gate** `tests/the_drag_carries_the_jointed_rig.rs` — os dois Downs
-pela mesma porta · o relógio e o Alt em TODO sítio · o tipo do gesto no sítio
-que pode abrir qualquer um (⚠️ **não** cobrado do pick de canvas, cujo
-`GizmoDragState` traz `Translate` literal: ali a condição não poderia ser falsa,
-e um gate incapaz de falhar pelo motivo que alega é pior que nenhum) · e o Alt
-inerte na matemática do Translate.
+**2 no crate** (`ph2d-physics-ecs/tests/joint_group.rs`) — as duas portas
+**DISCORDAM** sobre um vizinho Static, e sobre um Kinematic; um gate por tipo,
+porque o `jointed_group` os recusa por motivos DIFERENTES (um Static não congela;
+um Kinematic já segue curva). Os 5 gates originais do bake ficam **intocados**.
+
+**5 no arch-gate** `tests/the_drag_carries_the_jointed_rig.rs` — os dois Downs
+pela mesma porta · o relógio e o Alt (**com sinal**) em TODO sítio · o tipo do
+gesto no sítio que pode abrir qualquer um (⚠️ **não** cobrado do pick de canvas,
+cujo `GizmoDragState` traz `Translate` literal: ali a condição não poderia ser
+falsa, e um gate incapaz de falhar pelo motivo que alega é pior que nenhum) · **o
+arrasto pergunta à porta do RIG e não à do BAKE** (as duas têm a MESMA assinatura
+⇒ a troca compila calada, e ELA é o defeito que o Enio reportou) · e o Alt inerte
+na matemática do Translate.
 
 **Mais a sonda `probe_smoke_51`** (`#[ignore]`), que mede a cena de smoke sobre
 as MESMAS armações que o artista abre (`physics_smoke_joint_rig::spawn_rigs`) —
 não sobre umas parecidas.
 
-**10 mutações, 10 sangram.**
+**17 mutações, 17 sangram** (10 da v1 + as 7 dos dois ajustes: a troca de porta
+vista pelos dois lados, as três políticas dentro do `walk`, e as duas
+polaridades de Alt).
 
 ### LOC
 
@@ -5792,8 +5828,11 @@ que só cresce, e uma cadeia de `|` gasta uma linha por item.
 
 ### Smoke
 
-**`PH2D_PHYSICS_SMOKE=51`** — três armações em repouso (corrente · gêmeos · par
-livre), com os números acima impressos no terminal pela própria cena.
+**`PH2D_PHYSICS_SMOKE=51`** — três armações em repouso (corrente com gancho
+**Static** · gêmeos com gancho **Kinematic** · par livre só Dynamic: os três
+tipos, porque uma cena só com Static provaria metade da política), com os números
+acima impressos no terminal pela própria cena. O passo 2 pede o arrasto **SEM**
+Alt de propósito: é o controle, e é onde o segmento âmbar esticando se vê.
 
 **Aberto:** rotação/escala de um rig (decisão de PIVÔ, não construída) · o
 duplo-movimento pai+filho da multi-seleção explícita (pré-existente) · nada na

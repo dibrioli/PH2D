@@ -4261,7 +4261,7 @@ impl App {
                             // (Translate / Scale / Rotate) so the math
                             // branches can fire uniformly later.
                             //
-                            // W-JG: e, num Translate em repouso sem Alt, o
+                            // W-JG: e, num Translate em repouso **com ALT**, o
                             // **rig articulado** do conjunto entra junto — a
                             // MESMA porta que o pick de canvas usa
                             // (`crate::joint_rig_drag`), porque duas cópias da
@@ -4270,7 +4270,7 @@ impl App {
                             let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
                             let carry_rig = matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
                                 && !self.playhead.is_playing()
-                                && !self.modifiers.alt_key();
+                                && self.modifiers.alt_key();
                             crate::joint_rig_drag::seed_group_drag_starts(
                                 &mut self.group_drag_starts,
                                 &mut gfx.sim,
@@ -4481,7 +4481,7 @@ impl App {
                                 // rig se reduzem às duas do relógio e do Alt.
                                 let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
                                 let carry_rig =
-                                    !self.playhead.is_playing() && !self.modifiers.alt_key();
+                                    !self.playhead.is_playing() && self.modifiers.alt_key();
                                 crate::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,
                                     &mut gfx.sim,

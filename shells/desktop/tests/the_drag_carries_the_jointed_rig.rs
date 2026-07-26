@@ -13,12 +13,17 @@
 //!    arrastar pelo corpo, não.
 //! 2. **As condições do `carry_rig`.** Cada uma some em silêncio: sem o
 //!    `!is_playing()` o arrasto brigaria com o solver enquanto ele reimpõe a
-//!    restrição; sem o `!alt_key()` o escape do plano deixaria de existir e
-//!    NADA na tela diria isso; e sem o `Translate` um scale de grupo passaria a
-//!    arrastar rig. ⚠️ As duas primeiras valem para os DOIS sítios; a terceira é
-//!    só do sítio que pode abrir qualquer gesto — no pick de canvas ela não
-//!    poderia ser falsa, e um gate incapaz de falhar pelo motivo que alega é
-//!    pior que nenhum.
+//!    restrição; sem o `alt_key()` o rig deixaria de ser **opt-in** e todo
+//!    arrasto passaria a levar a corrente; e sem o `Translate` um scale de grupo
+//!    passaria a arrastar rig. ⚠️ As duas primeiras valem para os DOIS sítios; a
+//!    terceira é só do sítio que pode abrir qualquer gesto — no pick de canvas
+//!    ela não poderia ser falsa, e um gate incapaz de falhar pelo motivo que
+//!    alega é pior que nenhum.
+//!
+//! ⚠️ **O sinal do Alt é afirmado, não só a presença dele** (Enio inverteu a
+//! polaridade em 2026-07-26): `alt_key()` casa tanto com `!alt` quanto com `alt`,
+//! então um gate que só procura o nome do modificador passa por cima da
+//! inversão inteira.
 //!
 //! Nada aqui afirma distância em bytes ou vizinhança de linhas: a lição de
 //! `the_dispatch_is_handed_the_live_geometry` (2026-07-23) é que um proxy
@@ -85,13 +90,18 @@ fn carry_rig_exprs(src: &str) -> Vec<String> {
     out
 }
 
-/// **Todo sítio que carrega o rig pergunta pelo relógio E pelo Alt.**
+/// **Todo sítio que carrega o rig pergunta pelo relógio E pelo Alt — e o Alt
+/// ARMA, não escapa.**
 ///
 /// As duas condições que valem para os DOIS caminhos: em play a pose é do
-/// solver (que reimpõe a restrição no tick seguinte de qualquer forma), e Alt é
-/// o escape que o plano pediu.
+/// solver (que reimpõe a restrição no tick seguinte de qualquer forma), e o rig
+/// inteiro é **opt-in por gesto**.
+///
+/// ⚠️ A metade do SINAL é o que torna este gate capaz de pegar a inversão:
+/// procurar só `alt_key()` casaria com a polaridade antiga (`!alt`, o Alt como
+/// escape) e o gate ficaria verde sobre o comportamento oposto ao pedido.
 #[test]
-fn every_site_carries_the_rig_only_at_rest_and_without_alt() {
+fn every_site_carries_the_rig_only_at_rest_and_with_alt_held() {
     let src = source();
     let exprs = carry_rig_exprs(&src);
     assert_eq!(
@@ -101,12 +111,19 @@ fn every_site_carries_the_rig_only_at_rest_and_without_alt() {
         exprs.len()
     );
     for expr in &exprs {
-        for needle in ["!self.playhead.is_playing()", "!self.modifiers.alt_key()"] {
-            assert!(
-                expr.contains(needle),
-                "a condição `{needle}` sumiu de um carry_rig:\n{expr}"
-            );
-        }
+        assert!(
+            expr.contains("!self.playhead.is_playing()"),
+            "a condição do relógio sumiu de um carry_rig:\n{expr}"
+        );
+        assert!(
+            expr.contains("&& self.modifiers.alt_key()"),
+            "o Alt tem de ARMAR o rig (`&& self.modifiers.alt_key()`):\n{expr}"
+        );
+        assert!(
+            !expr.contains("!self.modifiers.alt_key()"),
+            "o Alt voltou a ser ESCAPE (`!alt`) — a polaridade foi invertida em \
+             2026-07-26 por ordem do Enio:\n{expr}"
+        );
     }
 }
 
@@ -126,6 +143,31 @@ fn the_site_that_can_open_any_gesture_also_asks_for_a_translate() {
     assert!(
         exprs.iter().any(|e| e.contains("GizmoDragKind::Translate")),
         "nenhum carry_rig gateia no tipo do gesto; um scale de grupo arrastaria rig"
+    );
+}
+
+/// **O arrasto usa a porta do RIG, não a do BAKE.**
+///
+/// As duas existem e respondem perguntas diferentes (`jointed_group` = *quem
+/// congela?*, só Dynamic; `jointed_rig` = *quem tem de andar junto?*, todo
+/// corpo). Trocar uma pela outra aqui é o modo de falha que o Enio reportou —
+/// a corrente que não arrasta o gancho — e ele compila em silêncio, porque as
+/// duas têm a MESMA assinatura.
+#[test]
+fn the_drag_asks_the_rig_door_not_the_bake_door() {
+    let door = fs::read_to_string("src/joint_rig_drag.rs").expect("joint_rig_drag.rs");
+    let call = door
+        .find("ph2d_physics_ecs::jointed_rig(")
+        .map(|_| "rig")
+        .or_else(|| {
+            door.find("ph2d_physics_ecs::jointed_group(")
+                .map(|_| "group")
+        });
+    assert_eq!(
+        call,
+        Some("rig"),
+        "o arrasto tem de expandir por `jointed_rig` (todo tipo conduz); \
+         `jointed_group` é a política do BAKE e deixaria o gancho para trás"
     );
 }
 

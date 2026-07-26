@@ -9,24 +9,29 @@
 //! puxão que o artista não autorou. Um rig é uma coisa só; arrastar um elo
 //! dele arrasta o rig.
 //!
-//! # A lei é a do [`ph2d_physics_ecs::jointed_group`] — a MESMA do bake
+//! # A lei é a do [`ph2d_physics_ecs::jointed_rig`] — o componente conexo INTEIRO
 //!
-//! A W-BakeJoint já respondeu *"que corpos são um rig?"* e a resposta é o
-//! **componente conexo DINÂMICO** do grafo de joints: corpo dinâmico conduz;
-//! Static e Kinematic são **fronteiras** (alcançadas, nunca cruzadas). Uma
-//! segunda resposta aqui é como o rig que o bake assa passaria a diferir do
-//! rig que o arrasto move.
+//! A W-BakeJoint já tinha um `jointed_group`, e a pergunta dele é **outra**:
+//! *quem CONGELA quando a física é desligada?* — só corpo Dynamic, com Static e
+//! Kinematic como fronteiras. Um arrasto pergunta *quem tem de andar junto para
+//! a pose ficar coerente?*, e aí **nada é fronteira**: um joint tem DUAS âncoras
+//! body-local, então um gancho Static ou uma plataforma Kinematic deixados atrás
+//! esticam o joint exactamente como um elo Dynamic esticaria (decisão do Enio,
+//! 2026-07-26: *"faça arrastar a cadeia inteira independente do tipo"*).
 //!
-//! Três consequências que essa lei acerta, e que valem a citação porque cada
-//! uma seria um bug se fosse de outra forma:
+//! ⚠️ **As duas portas moram na MESMA travessia** (`joint_group::walk`) e
+//! divergem só na política de tipo — *que aresta existe* é a pergunta que não
+//! pode ter duas respostas. Há gate no crate provando que elas **discordam**
+//! sobre um vizinho estático, para ninguém as unificar de volta.
 //!
-//! - Uma **corrente** de elos dinâmicos anda inteira, pegada por qualquer elo.
-//! - Dois pêndulos no **MESMO gancho estático** ficam independentes — o gancho
-//!   é uma parede entre eles, não um fio.
-//! - O **gancho não anda** quando se arrasta o pêndulo. O joint até a parede
-//!   estica, e isso é deliberado: afastar um rig da parede é um ato de autoria,
-//!   e o overlay **desenha** o segmento esticado (a metade visível desta wave é
-//!   o rig andando junto; o que não é carregado se vê pelo mesmo desenho).
+//! Consequências, todas gateadas:
+//!
+//! - Uma **corrente** anda inteira, pegada por qualquer elo — **com o gancho**.
+//! - Dois pêndulos no **MESMO gancho** são **um** rig (o gancho conduz). Pelo
+//!   `jointed_group` do bake eles são dois; as duas respostas estão certas para
+//!   as suas perguntas.
+//! - Mover um **Static** em repouso é autoria legítima (você está mudando a
+//!   parede de lugar), e é por isso que ele não é uma exceção.
 //!
 //! # Quando o rig é carregado (as três condições)
 //!
@@ -41,10 +46,15 @@
 //!    de `sync_joint_pivots`, ou seja: o rig é carregado precisamente quando as
 //!    âncoras seguem os corpos. Tocando, a pose é do SOLVER, o `settle`
 //!    teleporta e a restrição é reimposta no tick seguinte de qualquer forma.
-//! 3. **Alt não está apertado.** É o modificador de *escape* que este app já
-//!    usa no mesmo gesto (`vec_snap`: Alt fura o ímã), e é a mesma palavra —
-//!    *só isto, sem ajuda*. Ele é **inerte** no Translate do
-//!    `compute_gizmo_transform`, então não há segundo significado a disputar.
+//! 3. **Alt ESTÁ apertado** (decisão do Enio, 2026-07-26 — a v1 usava Alt como
+//!    escape e a inversão é dele). O default volta a ser *anda só o corpo que
+//!    você pegou*, e o rig inteiro é **opt-in por gesto**. ⚠️ O preço honesto
+//!    dessa escolha: a cura que a wave existe para dar — a pose de repouso não
+//!    ficar violada — passa a valer só **quando o artista pede**; sem Alt, um
+//!    arrasto ainda deixa o joint esticado (o que se VÊ, pelo segmento âmbar).
+//!    Alt é o modificador certo para carregar isto porque é **inerte** no
+//!    Translate do `compute_gizmo_transform`, então não há segundo significado a
+//!    disputar — e agora há gate pinando essa inércia.
 //!
 //! # A regra de PARENTESCO, e por que ela é conservadora
 //!
@@ -98,10 +108,10 @@ pub(crate) fn seed_group_drag_starts(
     let mut seed: Vec<Entity> = Vec::with_capacity(out.len() + 1);
     seed.push(Entity::from_bits(primary_bits));
     seed.extend(out.iter().map(|s| Entity::from_bits(s.entity_bits)));
-    let group = ph2d_physics_ecs::jointed_group(sim.world_mut(), &seed);
+    let group = ph2d_physics_ecs::jointed_rig(sim.world_mut(), &seed);
     // O conjunto que VAI se mover, decidido ANTES de empurrar qualquer coisa —
     // sem isso a regra de parentesco dependeria da ordem em que os candidatos
-    // aparecem, e a ordem de `jointed_group` é por bits (id de alocação), que
+    // aparecem, e a ordem de `jointed_rig` é por bits (id de alocação), que
     // não tem relação com a árvore.
     let candidates: Vec<u64> = seed
         .iter()

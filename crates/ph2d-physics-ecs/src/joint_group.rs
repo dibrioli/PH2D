@@ -43,6 +43,26 @@
 //! joint the artist made this very frame — and needs no dispatch to have run,
 //! which is what lets a headless gate build a rig and ask for its group without
 //! stepping the world. For a bake, the authored scene is the truth.
+//!
+//! # Two policies over ONE walk (W-JG)
+//!
+//! The **drag** (arrastar um rig no canvas em repouso) asks a different question
+//! from the bake, and the difference is exactly the kind filter:
+//!
+//! | | pergunta | quem conduz |
+//! |---|---|---|
+//! | [`jointed_group`] (bake) | *quem CONGELA quando a física é desligada?* | só Dynamic |
+//! | [`jointed_rig`] (arrasto) | *quem tem de andar junto para a pose ficar coerente?* | **todo corpo** |
+//!
+//! Um joint tem **duas** âncoras e as duas viajam com os corpos delas — então,
+//! para um arrasto, um gancho Static ou uma plataforma Kinematic que ficam para
+//! trás deixam o joint esticado exatamente como um elo Dynamic deixaria.
+//! Congelar, não: um Static não congela e um Kinematic segue curva, e é por isso
+//! que o bake não os assa.
+//!
+//! ⚠️ **A travessia é UMA** ([`walk`]) e as políticas são dois nomes sobre ela.
+//! *Que aresta existe* é a pergunta que não pode ter duas respostas — duas
+//! cópias do grafo divergiriam no dia em que um tipo novo de joint chegasse.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -52,26 +72,51 @@ use crate::components::{BodyKind, RigidBody};
 use crate::joint::PhysicsJoint;
 
 /// `seed` plus every Dynamic body it is coupled to through a chain of joints —
-/// the articulated rig. Returned sorted by entity bits (HR-5), so a bake of the
-/// same rig produces the same target order whichever link the artist clicked.
+/// the articulated rig **as a BAKE sees it**. Returned sorted by entity bits
+/// (HR-5), so a bake of the same rig produces the same target order whichever
+/// link the artist clicked.
 ///
 /// The `seed` is kept verbatim (a body with no joints returns just itself; a
 /// Static floor caught in a marquee passes through and bakes to nothing). What
 /// is ADDED is only the Dynamic bodies reachable through Dynamic bodies — see
-/// the module docs for why Static and Kinematic are boundaries.
+/// the module docs for why Static and Kinematic are boundaries here and NOT in
+/// [`jointed_rig`].
 #[must_use]
 pub fn jointed_group(world: &mut World, seed: &[Entity]) -> Vec<Entity> {
-    // name hash -> body entity, and the set of DYNAMIC body bits. Same key the
+    walk(world, seed, |k| k == BodyKind::Dynamic)
+}
+
+/// `seed` plus every body it is jointed to, **whatever kind they are** — the rig
+/// as a CANVAS DRAG sees it (W-JG). Same order guarantee as [`jointed_group`].
+///
+/// A hinge's two anchors are body-local, so any member left behind leaves the
+/// joint stretched — a Static hook and a Kinematic platform included. Moving a
+/// static anchor at rest is legitimate authoring (you are relocating the wall),
+/// which is why nothing is a boundary here.
+///
+/// ⚠️ **Consequência:** dois pêndulos no MESMO gancho são **um** rig por esta
+/// porta (o gancho conduz), enquanto pelo [`jointed_group`] eles são dois. As
+/// duas respostas estão certas para as suas perguntas, e há gate pinando que
+/// elas DIVERGEM — para ninguém as unificar de volta.
+#[must_use]
+pub fn jointed_rig(world: &mut World, seed: &[Entity]) -> Vec<Entity> {
+    walk(world, seed, |_| true)
+}
+
+/// A travessia: BFS pelo grafo de joints AUTORADO, conduzindo (e acrescentando)
+/// só pelos corpos que `carries` aceita.
+fn walk(world: &mut World, seed: &[Entity], carries: impl Fn(BodyKind) -> bool) -> Vec<Entity> {
+    // name hash -> body entity, and the set of CONDUCTING body bits. Same key the
     // reconcile uses; the source is the ECS because a bake is about the authored
     // scene. Only NAMED bodies can be part of the joint graph (a joint names its
     // bodies), so requiring `Name` here is not a filter, it is the domain.
     let mut name_to_body: BTreeMap<u64, Entity> = BTreeMap::new();
-    let mut dynamic: BTreeSet<u64> = BTreeSet::new();
+    let mut conducting: BTreeSet<u64> = BTreeSet::new();
     let mut bodies = world.query::<(Entity, &Name, &RigidBody)>();
     for (e, name, rb) in bodies.iter(world) {
         name_to_body.insert(stable_name_id(name.as_str()), e);
-        if rb.kind == BodyKind::Dynamic {
-            dynamic.insert(e.to_bits());
+        if carries(rb.kind) {
+            conducting.insert(e.to_bits());
         }
     }
 
@@ -93,21 +138,22 @@ pub fn jointed_group(world: &mut World, seed: &[Entity]) -> Vec<Entity> {
         adj.entry(eb.to_bits()).or_default().push(ea.to_bits());
     }
 
-    // BFS from the seed's Dynamic bodies, conducting through Dynamic bodies only.
-    // A reached body is ADDED to the group only if it is Dynamic (Static /
-    // Kinematic neighbours are boundaries: touched by the edge, never crossed).
+    // BFS from the seed's CONDUCTING bodies. A reached body is ADDED only if it
+    // conducts too — so under the bake's policy a Static / Kinematic neighbour is
+    // a boundary (touched by the edge, never crossed), and under the drag's
+    // policy there is no boundary at all.
     let mut group: BTreeSet<u64> = seed.iter().map(|e| e.to_bits()).collect();
     let mut frontier: Vec<u64> = seed
         .iter()
         .map(|e| e.to_bits())
-        .filter(|b| dynamic.contains(b))
+        .filter(|b| conducting.contains(b))
         .collect();
     while let Some(b) = frontier.pop() {
         let Some(neighbours) = adj.get(&b) else {
             continue;
         };
         for &n in neighbours {
-            if dynamic.contains(&n) && group.insert(n) {
+            if conducting.contains(&n) && group.insert(n) {
                 frontier.push(n);
             }
         }

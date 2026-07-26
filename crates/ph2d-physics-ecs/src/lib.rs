@@ -41,7 +41,7 @@ pub use components::{
     MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
 pub use joint::{JointKind, MotorMode, PhysicsJoint};
-pub use joint_group::jointed_group;
+pub use joint_group::{jointed_group, jointed_rig};
 pub use ph2d_physics::JointLoad;
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in

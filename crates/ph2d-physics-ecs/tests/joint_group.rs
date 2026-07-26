@@ -173,3 +173,78 @@ fn the_seed_is_kept_even_when_it_does_not_conduct() {
     // not conduct anyway).
     assert_eq!(group_names(&mut sim, &[floor]), names(&["Floor"]));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `jointed_rig` — a MESMA travessia, a OUTRA política (W-JG)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// O mesmo helper, pela porta do ARRASTO.
+fn rig_names(sim: &mut SimWorld, seed: &[Entity]) -> BTreeSet<String> {
+    let group = ph2d_physics_ecs::jointed_rig(sim.world_mut(), seed);
+    let bits: BTreeSet<u64> = group.iter().map(|e| e.to_bits()).collect();
+    let mut q = sim.world_mut().query::<(Entity, &Name)>();
+    q.iter(sim.world())
+        .filter(|(e, _)| bits.contains(&e.to_bits()))
+        .map(|(_, n)| n.as_str().to_string())
+        .collect()
+}
+
+/// **AS DUAS PORTAS DISCORDAM, e a divergência é o contrato.**
+///
+/// O gate mais importante deste par: sobre a MESMA cena, `jointed_group` (bake)
+/// para no gancho estático e `jointed_rig` (arrasto) o atravessa. Elas respondem
+/// perguntas diferentes — *quem CONGELA quando a física é desligada?* contra
+/// *quem tem de andar junto para a pose de repouso ficar coerente?* — e uma
+/// futura "simplificação" que as unificasse quebraria exatamente uma das duas,
+/// em silêncio, porque as assinaturas são idênticas.
+///
+/// Mutação-testada nas duas direções: `jointed_rig` com a política do Dynamic
+/// perde o gancho; `jointed_group` com a política de todo-tipo o ganha.
+#[test]
+fn the_bake_door_and_the_drag_door_disagree_about_a_static_neighbour() {
+    let mut sim = SimWorld::new();
+    body(&mut sim, "Hook", BodyKind::Static, 6.0);
+    body(&mut sim, "L1", BodyKind::Dynamic, 5.0);
+    body(&mut sim, "L2", BodyKind::Dynamic, 4.0);
+    joint(&mut sim, "J0", "Hook", "L1");
+    joint(&mut sim, "J1", "L1", "L2");
+
+    let l2 = named(&mut sim, "L2");
+    assert_eq!(
+        group_names(&mut sim, &[l2]),
+        names(&["L1", "L2"]),
+        "o BAKE para na fronteira estatica: um Static nao congela e nao se assa"
+    );
+    assert_eq!(
+        rig_names(&mut sim, &[l2]),
+        names(&["Hook", "L1", "L2"]),
+        "o ARRASTO atravessa: a ancora do joint no gancho tambem viaja com ele"
+    );
+}
+
+/// **Um Kinematic também é carregado pelo arrasto**, e pelo bake também não.
+///
+/// O irmão do gate acima para o terceiro tipo — o `jointed_group` o recusa por
+/// um motivo DIFERENTE do Static (ele já segue curva, então não congela), e é
+/// por isso que os dois tipos precisam de gate cada.
+#[test]
+fn the_drag_door_crosses_a_kinematic_the_bake_door_stops_at() {
+    let mut sim = SimWorld::new();
+    body(&mut sim, "Load", BodyKind::Dynamic, 5.0);
+    body(&mut sim, "Lift", BodyKind::Kinematic, 4.0);
+    body(&mut sim, "Far", BodyKind::Dynamic, 3.0);
+    joint(&mut sim, "J0", "Load", "Lift");
+    joint(&mut sim, "J1", "Lift", "Far");
+
+    let load = named(&mut sim, "Load");
+    assert_eq!(
+        group_names(&mut sim, &[load]),
+        names(&["Load"]),
+        "o BAKE nao conduz por um Kinematic"
+    );
+    assert_eq!(
+        rig_names(&mut sim, &[load]),
+        names(&["Far", "Lift", "Load"]),
+        "o ARRASTO conduz por ele e o leva junto"
+    );
+}

@@ -299,24 +299,40 @@ pub struct PreviewPatch {
     pub pixels: Vec<u8>,
 }
 
-/// **O teto do histórico, em BYTES** — não em passos.
+/// **O teto do histórico quando ainda não há documento** — ver [`history_budget_bytes`], que é quem
+/// manda assim que o canvas existe.
 ///
 /// ⚠️ *Contagem é multiplicador, não teto* (ADR-0117): o `max_depth = 300` que isto substitui não
-/// limitava nada — ele multiplicava por 300 o custo de um passo que ninguém media. Um cap em bytes diz
-/// de que **recurso** ele é (RAM do working set do editor) e sobrevive a mudar de resolução: a mesma
-/// constante dá mais passos a 1024² e menos a 4096², que é a coisa certa.
+/// limitava nada — ele multiplicava por 300 o custo de um passo que ninguém media.
+pub const DEFAULT_MAX_BYTES: usize = 256 * 1024 * 1024;
+
+/// **O orçamento do histórico é função do DOCUMENTO**, no molde exato do Audio Editor (ADR-0117, cuja
+/// linha no HR-13 diz `2×clipe + 256`): `2 × documento + 256 MB`.
 ///
-/// O número está MEDIDO em `tests/measure_undo_memory.rs`, e o que ele compra com o histórico por delta:
+/// ⚠️ **Uma constante absoluta foi escrita primeiro e a MEDIÇÃO a derrubou.** Ela prometia, no lugar
+/// desta doc, *"> 300 traços a 2048² e a 4096² — o cap não morde"*; medido (`measure_undo_capacity`),
+/// 512 MB fixos compram **204 traços a 1024², 62 a 2048² e 17 a 4096²**. Um teto absoluto racionaria o
+/// artista justamente na tela em que ele tem menos margem, e escreveria a promessa errada nos dois
+/// extremos. O orçamento acompanha o documento porque **é dele que o passo é uma fração**.
 ///
-/// | tela | traços que cabem | operação de camada inteira |
-/// |---|---|---|
-/// | 2048² | > 300 (o cap não morde) | ~4 |
-/// | 4096² | > 300 (o cap não morde) | ~1 |
+/// Medido, com um traço que atravessa a tela inteira (o pior caso — traços reais são mais curtos):
 ///
-/// É deliberado que o cap **não morda no uso normal**: ele existe para o caso irredutível (uma edição de
-/// camada inteira é irredutivelmente uma camada por passo) e para tirar o crescimento sem teto, não para
-/// racionar traços.
-pub const DEFAULT_MAX_BYTES: usize = 512 * 1024 * 1024;
+/// | tela | orçamento | passo (traço) | **traços** | camada inteira | ops |
+/// |---|---|---|---|---|---|
+/// | 1024² | 288 MB | 2,51 MB | **114** | 32 MB | 9 |
+/// | 2048² | 384 MB | 8,19 MB | **46** | 128 MB | 3 |
+/// | 4096² | 768 MB | 28,55 MB | **26** | 512 MB | 1 |
+///
+/// **Cena pesada ganha janela mais CURTA, não conta maior** — é a frase do W1.5 da física sobre o ring
+/// de checkpoints, e é o que um cap em bytes significa. Contra o modelo antigo (um documento por
+/// endpoint) o mesmo orçamento comprava **9 · 3 · 1** passos: o delta multiplica a profundidade do undo
+/// por ~13× em toda tela, que é o número que o gate afirma.
+#[must_use]
+pub const fn history_budget_bytes(width: u32, height: u32) -> usize {
+    // Os quatro planos canvas-shaped de uma camada tocada: rgba + heights(f32) + covers + mats([u8;7]).
+    let doc = (width as usize) * (height as usize) * 16;
+    2 * doc + 256 * 1024 * 1024
+}
 
 /// Guarda de sanidade sobre o NÚMERO de passos, muito acima de qualquer sessão real.
 ///
@@ -565,6 +581,13 @@ impl UndoController {
         self.redo.clear();
         self.cursor = None;
         self.bytes = 0;
+    }
+
+    /// Re-dimensiona o orçamento (o `set_source` o deriva do documento — [`history_budget_bytes`]) e
+    /// aplica o cap na hora.
+    pub fn set_max_bytes(&mut self, bytes: usize) {
+        self.max_bytes = bytes;
+        self.cap();
     }
 
     /// **Os bytes que o histórico de fato retém** — o número que o cap conta e que o gate de memória

@@ -58,6 +58,11 @@ impl RasterEditTool for PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
         self.undo.clear();
+        // O orçamento do histórico é função do DOCUMENTO (ADR-0117: `2×clipe + 256` no áudio). Aqui é o
+        // único ponto em que o tamanho do canvas é decidido, e o histórico acabou de ser esvaziado —
+        // dimensioná-lo em qualquer outro lugar seria um segundo dono do mesmo número.
+        self.undo
+            .set_max_bytes(crate::undo::history_budget_bytes(width, height));
     }
 
     /// Borrow the current composite iff it changed (drains `preview_dirty`); trivial → `canvas_rgba`.

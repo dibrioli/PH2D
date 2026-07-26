@@ -76,7 +76,7 @@ pub use tool::{
     TangentHandles, TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at,
     set_pending_select_mods,
 };
-pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController};
+pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

@@ -115,6 +115,7 @@ ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-mix = { path = "../ph2d-node-value-mix" }
 ph2d-node-value-noise = { path = "../ph2d-node-value-noise" }
 ph2d-node-value-normalize = { path = "../ph2d-node-value-normalize" }
+ph2d-node-value-pattern = { path = "../ph2d-node-value-pattern" }
 ph2d-node-value-quantize = { path = "../ph2d-node-value-quantize" }
 ph2d-node-value-reduce = { path = "../ph2d-node-value-reduce" }
 ph2d-node-value-smooth = { path = "../ph2d-node-value-smooth" }

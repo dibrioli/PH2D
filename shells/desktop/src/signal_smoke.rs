@@ -96,7 +96,9 @@ impl crate::App {
         // the toggle paints OFF, which reads as "está fazendo loop sem eu marcar loop" (Enio,
         // 2026-07-26). This is the exact single door `sync_transport_loop` exists for, and it
         // sets the loop MODE (Wrap here) too, so the toggle can never disagree with the clock.
-        self.timeline.doc.set_active_loop_for(false, Some((0.0, 4.0)));
+        self.timeline
+            .doc
+            .set_active_loop_for(false, Some((0.0, 4.0)));
         ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
         self.playhead.seek(0.0);
         self.playhead.play();

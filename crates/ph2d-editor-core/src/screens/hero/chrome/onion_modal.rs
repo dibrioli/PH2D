@@ -438,11 +438,19 @@ mod tests {
     #[test]
     fn count_sliders_carry_the_whole_ghost_count_and_opacity_does_not() {
         assert_eq!(
-            slider_label(ids::TIMELINE_ONION_MODAL_BEFORE, "Ghosts Before", count_to_frac(4)),
+            slider_label(
+                ids::TIMELINE_ONION_MODAL_BEFORE,
+                "Ghosts Before",
+                count_to_frac(4)
+            ),
             "Ghosts Before (4)"
         );
         assert_eq!(
-            slider_label(ids::TIMELINE_ONION_MODAL_AFTER, "Ghosts After", count_to_frac(7)),
+            slider_label(
+                ids::TIMELINE_ONION_MODAL_AFTER,
+                "Ghosts After",
+                count_to_frac(7)
+            ),
             "Ghosts After (7)"
         );
         assert_eq!(

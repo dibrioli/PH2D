@@ -10,7 +10,9 @@
 > o número que a derrubou, porque uma teoria refutada que não é escrita volta como trabalho planejado.
 >
 > **O saldo, numa linha:** o frame pior de um traço a 4096² saiu de **232,7 ms** para **1,1–1,3 ms**
-> (§4.8.3, medido no app pelo Enio), e o `dispatch p50` ficou em **0,7 ms — 4% de um quadro de 60 fps**.
+> (§4.8.3, medido no app pelo Enio), o `dispatch p50` ficou em **0,7 ms — 4% de um quadro de 60 fps**, e
+> o censo dos quatro meios não tem mais nenhum desvio de FORMA: **todo move é limitado pela pegada**
+> (§5.12 fechou o último, o Wet Paint, 13,71 → 1,82 ms a 4096²).
 >
 > ⚠️ **E é por isso que a §7 foi reescrita três vezes.** Cada medição não só respondeu a pergunta: ela
 > **mudou qual era a pergunta**. A última tirou o vencedor da mesa — com o dispatch em 0,7 ms, o custo
@@ -42,7 +44,7 @@
 | S | `EVENTO→FRAME` 16,8 contra alvo **9** | ⚪ **não é compute** | `p50 ≈ periodo real (16,5)` ⇒ é **cadência**, e o dispatch é 4% dela |
 | **T** | 🎯 **O WARP é 56% do custo da aquarela** | ✅ **medido** (§5.10) | 1,071 ms de um move de 3,082 · 10 avaliações/texel · a tabela trouxe o próprio **controle** (2 knobs já em 0 ⇒ piso de ruído ±0,13) |
 | U | Fatoração exata dos 2 eixos do warp | ✅ shipou, **e não é ganho de PRODUTO** (§5.11) | função **1,20×** (153,4 → 127,9 ms/4 M) · produto 0,12–0,17 ms = **dentro do ruído** |
-| **V** | 🔴 **O move do Wet Paint escala com a TELA** | 🔴 **aberto, nomeado** (§5.9) | **2,32 → 14,26 ms** de 2048² para 4096² — um move é limitado pela PEGADA; isto é varredura de plano |
+| **V** | 🎯🎯 **O move do Wet Paint escala com a TELA** | ✅ **FECHADA** (§5.12) | o token de identidade do guard era um `Arc` FORTE ⇒ todo composite copiava o documento. **13,71 → 1,82 ms a 4096² (7,5×) e PLANO** (1,842 / 1,815 / 1,817); pen-up **17,3 → 5,05** |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -785,8 +787,13 @@ A §5.8 pedia esta tabela e ela é de minutos. `measure_the_four_media`, `on_can
 **Três dos quatro têm MOVE plano na tela** — limitado pela PEGADA, que é a forma correta.
 
 ⚠️ **O Wet Paint NÃO: 6× para 4× a tela.** Um move não pode escalar com o canvas, e isto é a assinatura
-de uma varredura de plano inteiro — **a mesma família do fold que a §4.8.2 acabou de curar**. Não é o
-alvo desta wave e fica **NOMEADO**, com o número, para não voltar como surpresa.
+de uma varredura de plano inteiro — **a mesma família do fold que a §4.8.2 acabou de curar**. Não era o
+alvo daquela wave e ficou **NOMEADO**, com o número, para não voltar como surpresa.
+
+✅ **E FECHOU na wave seguinte (§5.12):** não era varredura nenhuma — era `Arc::make_mut` **copiando o
+documento inteiro** porque o token de identidade do guard segurava um segundo `Arc` forte. Números novos
+desta mesma tabela depois da cura: **Wet Paint 1,800 / 1,805** (move) e **3,0 / 5,05** (pen-up). Os
+quatro meios passam a ter o move limitado pela pegada.
 
 ⚠️ E o **pen-up do Impasto a 4096² (39,6 ms)** é o maior da tabela — o candidato mais próximo do outlier
 de 134,8 ms da §4.8.3, embora **não o alcance** com a fixture medida (traço de 960 px). Continua sem
@@ -856,6 +863,102 @@ gateado, e barateia o warp para qualquer consumidor futuro.
    um no-op e não podia sangrar. A mutação certa — **cruzar os seeds dos dois eixos**, que é o erro
    realista desta refatoração — sangra.
 
+### 5.12 🎯🎯 FECHADA — o move do Wet Paint: **um token de identidade cobrava uma cópia do documento**
+
+O censo da §5.9 nomeou o desvio: o Wet Paint era o único cujo MOVE **subia com a tela** (2,32 → 14,26 ms
+de 2048² para 4096²) enquanto os outros três ficavam planos. Um move é limitado pela **PEGADA** — o
+pincel cobre o mesmo número de texels seja qual for o documento —, então subir com a área é assinatura
+de **varredura de plano**, a mesma família do fold que a §4.8.2 curou.
+
+#### A FORMA respondeu antes do relógio
+
+A primeira pergunta não foi *"quanto custa?"* e sim *"quanto ele MARCA?"* — a área que o move declara
+suja, perguntada ao produto (`t.marks`, `measure_what_a_wet_move_marks`):
+
+| tela | move ms | texels sujos | vs pegada | vs tela |
+|---|---|---|---|---|
+| 1024² | 1,867 | 15.625 | 0,33× | 1,49% |
+| 2048² | 2,262 | 15.625 | 0,33× | 0,37% |
+| 4096² | **13,711** | **15.625** | 0,33× | 0,09% |
+
+**A região suja é CONSTANTE** ⇒ o composite não era o plano. Um cronômetro sozinho diria *quanto*; a
+área disse *o quê* — e eliminou o suspeito óbvio numa linha.
+
+#### A causa: `Arc::make_mut` só é grátis para o dono ÚNICO
+
+`wetpaint_composite` termina em `Arc::make_mut(&mut self.canvas_rgba)`, que devolve o slice se o tool for
+dono único e **CLONA O DOCUMENTO INTEIRO** se não for. Medido, logo depois de um move:
+
+| tela | donos (Watercolor) | donos (Wet Paint) | cópia de tela |
+|---|---|---|---|
+| 1024² | 1 | **2** | 0,061 ms |
+| 2048² | 1 | **2** | 0,389 ms |
+| 4096² | 1 | **2** | **10,254 ms** |
+
+O segundo dono era **`WetSession.canvas`** — um clone **forte** guardado *só* para responder ao guard de
+identidade (*"alguém trocou o canvas debaixo de mim?"*). ⚠️ **Uma pergunta de IDENTIDADE estava sendo
+paga com POSSE**, e o preço era uma cópia do documento por movimento do mouse.
+
+⚠️ **A PRIMEIRA cópia é legítima e continua acontecendo:** `sess.base` é a tela **congelada** sobre a
+qual todo composite renderiza, e escrever no lugar a destruiria. É por isso que o gate mede depois do
+segundo composite, não do primeiro.
+
+#### A cura foi MEDIDA antes de escolhida
+
+Duas formas de tirar a posse sem perder a identidade — soltar o handle durante a escrita, ou guardá-lo
+como **`Weak`**. A dúvida era o que `Arc::make_mut` faz com um `Weak` vivo; isso é afirmação sobre a
+`std`, então foi medido em vez de citado:
+
+| tela | dono único | com `Weak` | com `Arc` (o produto de então) |
+|---|---|---|---|
+| 1024² | 0,0000 | 0,0000 | 0,3514 |
+| 2048² | 0,0000 | 0,0000 | 2,0226 |
+| 4096² | 0,0000 | 0,0000 | **9,8580** |
+
+**O `Weak` custa zero** — `make_mut` move os 24 bytes de cabeçalho do `Vec` para uma alocação nova e
+deixa os pixels onde estão. E ele é o handle **certo por um segundo motivo**: um `Weak` **prende a
+alocação**, então nenhum `Arc` futuro pode nascer naquele endereço ⇒ a comparação de ponteiro é sã. É
+exatamente o ABA que torna insegura a identificação por endereço cru — a lição que o **ADR-0124** pagou
+no editor de áudio (*"pergunte ao valor, nunca ao `as_ptr()` de algo que você não prendeu"*).
+
+#### Resultado
+
+Move **13,71 → 1,82 ms a 4096² (7,5×)**, e **plano na tela** (1,842 / 1,815 / 1,817). No censo dos quatro
+meios o pen-up caiu junto (**17,3 → 5,05 ms**), porque ele compõe pela mesma porta. **Os quatro meios
+agora têm o move limitado pela pegada** — o desvio de forma que a tabela da §5.9 mostrava sumiu.
+
+#### Dois gates, e DOIS defeitos meus nos gates
+
+* **A PROPRIEDADE** (`the_wet_session_does_not_own_the_live_canvas`): depois de um move o tool é dono
+  único. Sem relógio, logo sem ruído. Mutação (token forte de volta) ⇒ **2 donos**, RED.
+* **A CONSEQUÊNCIA** (razão entre duas telas, a disciplina do `warp_perf_kill_criterion`). Mutação ⇒
+  **11,21×**, RED.
+
+Eles **não são redundantes**: um passe canvas-sized *novo* no composite passaria pelo primeiro e cairia
+no segundo — *a sessão não possui o canvas* × *o move não percorre o plano*.
+
+⚠️ **O gate de razão nasceu CEGO, duas vezes, e as duas por FIXTURE:**
+
+1. **O par era 1024²/2048².** A cópia custa 0,06 e 0,39 ms ali, contra ~1,8 ms de trabalho de pegada —
+   então nas telas pequenas o defeito é **ruído**: sob a mutação a razão media **1,14×** e o gate ficava
+   **VERDE**. Só a 4096² (10,25 ms) ele domina. *Uma fixture só prova o que ela contém*, e montar a tela
+   grande é o preço de o gate poder falhar pelo motivo que alega.
+2. **O redutor era o MÍNIMO.** O gate do fold (§4.8.2) lê o mínimo *com razão* — máquina carregada só
+   sabe deixar mais lento —, mas lá **toda** amostra faz o mesmo trabalho. Aqui não: o **PRIMEIRO** move
+   de um traço não compõe (o espaçamento ainda não emitiu dab, então a rota volta antes do composite) e
+   mede **0,22 ms nas DUAS telas**, contra 1,0–3,6 e 12,0–13,6 nos oito seguintes. **O mínimo era
+   exactamente a amostra sem o fenômeno**, e a razão entre duas delas dava **1,00×**. Mediana.
+
+**A lição geral, que é nova neste doc:** *o mínimo é o redutor certo quando toda amostra faz o mesmo
+trabalho, e o errado quando uma delas é estruturalmente diferente.* O redutor é parte da fixture.
+
+⚠️ **E o guard continua vivo** — neutralizá-lo sangra 2 gates existentes (o swap estrangeiro no tick e o
+eraser de re-stamp), então a troca `Arc`→`Weak` não comprou velocidade com correção.
+
+**LOC:** `wetpaint.rs` bateu **720 > 700** com o doc-comment da medição ⇒ split por responsabilidade em
+`wetpaint/session.rs` (*o que uma sessão É*) contra o que sobrou (*o que o tool FAZ com ela*: a rota do
+dab, o ciclo do traço, o guard). 585 + 146.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -905,6 +1008,20 @@ reconciliadas em vez de estimadas.
    caiu para 0,044 ms e passou a medir o escalonador do rayon. *Um gate cujo oráculo se dissolve quando o
    produto melhora será silenciado em vez de acreditado* — a cura é escolher a grandeza dez vezes acima
    do piso de ruído e ler o **mínimo**, não afrouxar a barra.
+10. **Pergunte a FORMA antes do relógio.** No Wet Paint (§5.12) a pergunta *"quantos texels este move
+    marca?"* eliminou o suspeito óbvio numa linha — a região suja é **constante nas três telas**, logo o
+    composite não era o plano. Um cronômetro diz *quanto*; uma área diz *o quê*, e um número estrutural
+    não flaka.
+11. **O REDUTOR é parte da fixture.** O mínimo é o redutor certo quando toda amostra faz o mesmo
+    trabalho (§4.8.2) e o **errado** quando uma delas é estruturalmente diferente: o primeiro move de um
+    traço não compõe e mede 0,22 ms nas DUAS telas, então o mínimo lia **exactamente a amostra sem o
+    fenômeno** e o gate dava 1,00× sobre o defeito reinstalado (§5.12). Antes de confiar num min/max,
+    pergunte se alguma amostra é de outra natureza.
+12. **Uma pergunta de IDENTIDADE não se paga com POSSE.** O guard do Wet Paint queria saber *"este ainda
+    é o meu canvas?"* e segurava um `Arc` forte para responder — o que fazia `Arc::make_mut` copiar o
+    documento a cada movimento do mouse (**9,86 ms a 4096²**). Um `Weak` responde a mesma pergunta por
+    **zero**, e ainda **prende a alocação**, que é o que torna a comparação de endereço sã (o ABA do
+    ADR-0124). *Se você guarda algo só para comparar, guarde a coisa mais fraca que ainda compare.*
 
 ---
 
@@ -931,9 +1048,9 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
    Decisão de produto, e agora com o preço dos dois lados medido em vez de estimado.
 4. ⚪ **`EVENTO→FRAME` 16,8 contra o alvo 9 (frente S) — NÃO é compute.** `p50 ≈ periodo real`, o
    dispatch é 4% dela: é frente de **cadência/pipeline**, de outra natureza e outro dono.
-5. 🔴 **O move do Wet Paint escala com a TELA (frente V): 2,32 → 14,26 ms.** Achado ao medir os quatro
-   meios (§5.9). É a **mesma família** do fold que a §4.8.2 curou — um move tem de ser limitado pela
-   pegada — e é o maior desvio de FORMA que sobrou na tabela.
+5. ✅ **FECHADA — o move do Wet Paint (frente V), 13,71 → 1,82 ms a 4096², e PLANO** (§5.12). Não era
+   varredura: era `Arc::make_mut` copiando o documento porque o token do guard segurava um `Arc` forte.
+   **Nenhum desvio de FORMA sobrou na tabela dos quatro meios.**
 6. ⛔ **O warp da aquarela (frente T) NÃO tem caminho de CPU óbvio, e isso está medido.** O custo é o
    número de avaliações (10/texel), cortar taps foi **rejeitado por LOOK** numa wave anterior, e a
    fatoração exata rendeu 1,20× na função sem sair do ruído no produto. O que sobra é **aproximar** o

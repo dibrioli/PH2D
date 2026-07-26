@@ -384,18 +384,37 @@ impl PhysicsJoint {
     /// change re-seeds through here whenever [`JointKind::motor_in_metres`]
     /// flips.
     ///
-    /// ⚠️ **A winch's default is NEGATIVE, and that is not a taste — it is the
-    /// only direction with anywhere to go.** A rope's free degree of freedom is
-    /// its length, bounded by `[0, max_length]`, and a hanging load sits at
-    /// **exactly** `max_length`: a positive rate means *pay out*, which the rope's
-    /// own limit already forbids. Measured, told `+0.5`: the load stays at
-    /// `y = 4.000` for five seconds, at every `max_force` — so switching a rope's
-    /// motor on and pressing Play did nothing at all, and both its knobs read as
-    /// broken (reported by Enio, 2026-07-26: *"Velocity parâmetros Speed e Max
-    /// Force não afetam a simulação"*). Told `-0.5` the same rig reels: 4.489 →
-    /// 4.980 → 5.470 → 5.960 → 6.000, a metre every two seconds until the rope
-    /// runs out. A default that is a no-op from the state the artist starts in is
-    /// a knob that looks dead.
+    /// ⚠️ **A winch's default is NEGATIVE, and the reason is in rapier's own
+    /// solver rather than in taste.** Read from
+    /// `joint_constraint_builder::motor_linear_coupled` — the constraint a Rope's
+    /// motor is actually built into, because a rope couples its linear axes:
+    ///
+    /// * the quantity the motor drives is `dist = ‖lin_jac‖`, **the distance
+    ///   between the two anchors** — a non-negative magnitude, with the jacobian
+    ///   the unit vector between them. So `target_pos` is a target *length* and
+    ///   `target_vel` is a target *rate of change of length*: **positive pays
+    ///   out, negative reels in**;
+    /// * and **the limits CLAMP the motor's own target velocity**, in that
+    ///   function, before any force is computed:
+    ///   `target_vel = clamp(target_vel, (min − dist)/dt, (max − dist)/dt)`.
+    ///
+    /// A rope carries `limits = [0, max_length]` and a hanging load sits at
+    /// **exactly** `max_length`, so the upper bound is `(max_length − dist)/dt`
+    /// = **0**: every positive target is clamped to zero. That is also why
+    /// `max_force` looked inert — `max_impulse = max_force · dt` bounds the
+    /// impulse, and with a target of zero there is no error to spend it on.
+    /// **One cause, both knobs dead.** (Enio, 2026-07-26: *"Velocity parâmetros
+    /// Speed e Max Force não afetam a simulação"*.)
+    ///
+    /// Measured on that rig, told `+0.5`: `y = 4.000` for five seconds at every
+    /// `max_force`. Told `-0.5`: 4.489 → 4.980 → 5.470 → 5.960 → 6.000, a metre
+    /// every two seconds until the rope runs out. A default that is a no-op from
+    /// the state the artist starts in is a knob that looks dead.
+    ///
+    /// ⚠️ **The same clamp applies to a Slider** parked at an end of its stroke,
+    /// and there it is right and visible: the rail stops, and the artist can see
+    /// the end-of-travel tick it stopped at. On a rope the boundary is where the
+    /// load *hangs*, which is why only this kind needed its default moved.
     pub fn default_motor_speed(kind: JointKind) -> f32 {
         match kind {
             // Reel IN: see above.

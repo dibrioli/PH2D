@@ -272,7 +272,14 @@ impl crate::App {
                   passam a dizer (m)/(m/s) e os numeros sao RE-SEMEADOS. Sem isso os\n     \
                   90 graus (1,57 rad) virariam 1,57 METROS de guincho -- um numero\n     \
                   que ninguem digitou.\n  \
-               7. Um Spring e um Weld NAO oferecem o card Motor, e nao e gosto: o\n     \
+               7. **O TRILHO SE MIRA PELAS ALCAS** (W-J6c): aperte B, selecione\n     \
+                  'Shaft Rail' e repare nas DUAS alcas sobre a reta, nos fins de\n     \
+                  curso. Elas sao livres em x e y: arraste uma para o lado e o\n     \
+                  trilho INTEIRO gira para apontar nela, com a outra ponta viajando\n     \
+                  junto. A reta pela ancora e a ponta arrastada E o eixo, e a\n     \
+                  distancia ate ela e aquele fim de curso -- duas alcas dizem tudo\n     \
+                  que um trilho e, sem digitar angulo nenhum.\n  \
+               8. Um Spring e um Weld NAO oferecem o card Motor, e nao e gosto: o\n     \
                   rapier modela mola COMO motor no mesmo eixo, entao um segundo ali\n     \
                   comeria a rigidez que voce autorou."
         );

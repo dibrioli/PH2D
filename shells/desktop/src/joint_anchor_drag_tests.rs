@@ -300,3 +300,95 @@ fn a_hinges_wall_still_speaks_degrees_at_the_boundary() {
         c.limit_max
     );
 }
+
+// ── W-J6c: as duas alças de um trilho estabelecem também a ROTAÇÃO ───────────
+
+/// A rotação autorada do joint (o EIXO do trilho), radianos.
+fn rail_angle(sim: &SimWorld, j: Entity) -> f32 {
+    sim.world().get::<Transform>(j).expect("transform").rotation
+}
+
+/// **Arrastar uma ponta AIMA o trilho** — as duas alças, livres em x e y, dizem
+/// entre si tudo que um trilho é: a reta pela âncora e a ponta é o eixo, e a
+/// distância até ela é aquele fim de curso.
+///
+/// O oráculo tem as DUAS metades porque a alça diz duas coisas: o ângulo passa a
+/// apontar para onde a ponta foi, e o curso passa a valer a distância. Um gate
+/// que só olhasse o ângulo ficaria verde numa alça que gira o trilho e esquece o
+/// comprimento — e vice-versa.
+///
+/// Mutação: `write_rail_end` não escrevendo o `Transform` — RED na metade do
+/// ângulo; escrevendo `len` sem o `side` — RED na do Min.
+#[test]
+fn dragging_a_rail_end_aims_the_rail_and_sets_that_end() {
+    // Max arrastado para (0, 2): o eixo vira +Y e o curso máximo vira 2.
+    let (mut sim, j) = rail(-1.0, 1.0);
+    write_rail_end(
+        &mut sim,
+        j,
+        PointHandleKind::LimitMax,
+        [0.0, 0.0],
+        [0.0, 2.0],
+    );
+    let (lo, hi) = limits_m(&sim, j);
+    assert!(
+        (rail_angle(&sim, j) - std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+        "o eixo tem de apontar para a ponta arrastada, got {} rad",
+        rail_angle(&sim, j)
+    );
+    assert!((hi - 2.0).abs() < 1e-3, "e o curso vira 2 m, got {hi}");
+    assert!(
+        (lo + 1.0).abs() < 1e-6,
+        "a OUTRA ponta mantém o valor dela — ela viaja com o trilho, \
+         não é reescrita, got {lo}"
+    );
+
+    // Min arrastado para (0, 2): a ponta de trás está ali, então o eixo aponta
+    // ao CONTRÁRIO (-Y) e o mínimo vira -2.
+    let (mut sim, j) = rail(-1.0, 1.0);
+    write_rail_end(
+        &mut sim,
+        j,
+        PointHandleKind::LimitMin,
+        [0.0, 0.0],
+        [0.0, 2.0],
+    );
+    let (lo, _) = limits_m(&sim, j);
+    assert!(
+        (rail_angle(&sim, j) + std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+        "arrastar a ponta de TRÁS aponta o eixo ao contrário dela, got {} rad",
+        rail_angle(&sim, j)
+    );
+    assert!((lo + 2.0).abs() < 1e-3, "e o mínimo vira -2 m, got {lo}");
+}
+
+/// **Uma alça largada NA âncora não envenena o eixo.**
+///
+/// Um ponto sobre a âncora não tem direção nenhuma dentro dele; entregá-lo ao
+/// `atan2` daria um ângulo arbitrário no melhor caso e um `NaN` no pior — e um
+/// `NaN` num `Transform` envenena o `GlobalTransform` da subárvore inteira.
+///
+/// Mutação: tirar o guarda `len > 1e-4` — RED, o eixo salta para 0 rad.
+#[test]
+fn a_grip_dropped_on_the_anchor_leaves_the_axis_alone() {
+    let (mut sim, j) = rail(-1.0, 1.0);
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(j) {
+        t.rotation = 0.75;
+    }
+    write_rail_end(
+        &mut sim,
+        j,
+        PointHandleKind::LimitMax,
+        [0.0, 0.0],
+        [0.0, 0.0],
+    );
+    assert!(
+        (rail_angle(&sim, j) - 0.75).abs() < 1e-6,
+        "o eixo tem de ficar onde estava, got {}",
+        rail_angle(&sim, j)
+    );
+    assert!(
+        rail_angle(&sim, j).is_finite(),
+        "e acima de tudo tem de ser finito"
+    );
+}

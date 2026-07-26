@@ -5255,3 +5255,66 @@ assunto em `physics_overlay_joint_rail_tests.rs`.
 Speed do guincho nasce **negativa**, e digitar +0,5 não move nada, de propósito), e
 o trilho do 'Shaft Rail' agora tem **duas alças sobre a própria reta**: arraste uma
 e o fim de curso anda em metros, sem anel e sem fuga.
+
+### W-J6c — as duas alças MIRAM o trilho, e o motor da Rope lido no fonte (2026-07-26, cena `=48`, pendente de re-smoke)
+
+Dois pedidos do Enio sobre a wave anterior.
+
+#### As alças são livres em x e y, e entre elas dizem o trilho INTEIRO
+
+*"duas alças sobre a reta devem estabelecer também a rotação do slider se vc
+permitir movê-las livremente em x e y"* — e está certo: prender o grip à reta que
+ele próprio define é uma alça que só encurta o que não consegue apontar, deixando
+o EIXO como campo digitado numa row de Rotation que o artista tem de saber ser a
+direção do trilho.
+
+**A regra numa frase, sinal e tudo: a reta pela âncora e a ponta arrastada É o
+eixo, a distância até ela é aquele fim de curso, e a ponta arrastada MANTÉM O LADO
+em que estava.** `limit_max` é normalmente à frente e `limit_min` atrás, então o
+eixo aponta *para* um Max arrastado e *ao contrário* de um Min — é isso que faz a
+outra ponta girar junto em vez de o trilho dobrar no meio. Um curso assimétrico
+(as duas pontas positivas, um trilho que só anda para a frente) mantém a forma,
+porque o sinal vem do VALOR sendo arrastado e não de qual alça é.
+
+⚠️ **O eixo é o `Transform::rotation` da entidade-joint** (W-J5), então isto
+escreve o MESMO campo que a row Rotation do §0 — uma grandeza autorada, duas
+maneiras de dizê-la — e o `sync_joint_pivots` só escreve *translação*, então nada
+briga de volta. Degenerado (alça largada NA âncora): o eixo fica onde estava e o
+curso vai a zero, em vez de entregar um vetor nulo ao `atan2` e um `NaN` ao
+`Transform` — que envenenaria o `GlobalTransform` da subárvore inteira.
+
+3 gates, 3 mutações, 3 sangram (não escrever o `Transform` · o comprimento sem o
+lado · sem o guarda de degeneração).
+
+#### O motor da Rope, lido no fonte do rapier em vez de inferido
+
+*"Procure saber nas configurações originais da física em rust qual o comportamento
+real do Motor em Rope"*. A resposta está em
+`joint_constraint_builder::motor_linear_coupled` — a construção em que o motor de
+uma corda de fato cai, porque uma corda **acopla** seus eixos lineares:
+
+- a grandeza que o motor dirige é `dist = ‖lin_jac‖`, **a distância entre as duas
+  âncoras** — uma magnitude não-negativa, com o jacobiano sendo o vetor unitário
+  entre elas. Logo `target_pos` é um COMPRIMENTO alvo e `target_vel` é a taxa de
+  variação dele: **positivo solta, negativo recolhe**;
+- e **os limites CLAMPAM o alvo do próprio motor**, dentro dessa função, antes de
+  qualquer força: `target_vel = clamp(target_vel, (min − dist)/dt, (max − dist)/dt)`.
+
+Uma corda carrega `limits = [0, max_length]` e a carga pendurada senta
+**exatamente** em `max_length` ⇒ o teto é `(max_length − dist)/dt` = **0**, e todo
+alvo positivo vira zero. É também por isso que o `max_force` parecia inerte:
+`max_impulse = max_force · dt` limita o impulso, e com alvo zero não há erro em que
+gastá-lo. **Uma causa, os dois knobs mortos** — a inferência do W-J6b estava certa
+e agora tem mecanismo em vez de uma medição só.
+
+Três coisas que a leitura acrescenta e a medição não daria: o mesmo clamp vale
+para um **Slider** parado num fim de curso (e ali é certo e visível — o tracinho
+mostra onde parou; numa corda a fronteira é onde a carga *pendura*, que é por que
+só este tipo precisou mover o default); o termo de posição é gateado em
+`erp_inv_dt != 0`, que sai de `combine_coefficients(dt, stiffness, damping)` — com
+stiffness 0 o servo simplesmente não existe, o que é exatamente o desenho dos dois
+modos; e o rapier **não tem motor angular acoplado** (`// TODO: coupled angular
+motor constraint`), o que não nos alcança porque nenhum tipo nosso usa eixo
+angular acoplado, mas fecha a pergunta.
+
+`PROJECT_SCHEMA` **32**, registro **21**, c9 **byte-idêntico** (`c9d4baee…`, 87).

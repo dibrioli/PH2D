@@ -71,22 +71,15 @@ enum Grab {
     /// Length ring: the signed difference between the ring's radius and the
     /// cursor's distance from the anchor.
     Radius(f32),
-    /// **Stroke end of a rail:** the signed difference between the end's
-    /// position along the axis and the cursor's projection onto it, metres.
+    /// **Stroke end of a rail:** the world vector from the cursor to the end,
+    /// exactly like [`Grab::World`] — because a rail's end is a POINT, free in
+    /// x and y, not a value on a line the artist cannot move.
     ///
     /// ⚠️ A Slider's limits are a *distance*, not an angle — the same split
     /// `JointKind::limits_in_metres` makes for the §12 rows, arriving at the
     /// canvas. Reusing [`Grab::Angle`] for them is what shipped a grip that
     /// authored a bearing into a field read as metres (see `write_limit`).
-    Along(f32),
-}
-
-/// How far along `axis` from `origin` the point `p` lies, metres. The rail's
-/// coordinate — the projection is exactly the number the stroke is measured in,
-/// so a grip on it needs no scale to invent (the same reason the length ring's
-/// radius needs none).
-fn along_axis(origin: [f32; 2], axis: [f32; 2], p: [f32; 2]) -> f32 {
-    (p[0] - origin[0]) * axis[0] + (p[1] - origin[1]) * axis[1]
+    Rail([f32; 2]),
 }
 
 /// Snap radius in **screen** pixels, converted to world at the current zoom so
@@ -143,7 +136,11 @@ pub(crate) fn open_drag(
             // disagreeing about what the number is.
             _ if v.kind.limits_in_metres() => {
                 let axis = v.axis?;
-                Grab::Along(held - along_axis(v.anchor_a, axis, cursor))
+                let end = [
+                    v.anchor_a[0] + axis[0] * held,
+                    v.anchor_a[1] + axis[1] * held,
+                ];
+                Grab::Rail([end[0] - cursor[0], end[1] - cursor[1]])
             }
             // The wall's bearing minus the cursor's, so the wall does not jump
             // to the cursor on press.
@@ -268,21 +265,85 @@ impl App {
                 write_length(&mut gfx.sim, entity, len);
                 None
             }
-            Grab::Along(off) => {
-                // The axis comes from the view the overlay DREW the rail from —
-                // a second derivation here would move the grip off the line the
-                // artist is looking at.
-                if let Some(v) = gfx.physics.joint_views().find(|v| v.entity == entity)
-                    && let Some(axis) = v.axis
+            Grab::Rail(off) => {
+                // The anchor comes from the view the overlay DREW the rail from —
+                // a second derivation here would swing the rail about a pivot the
+                // artist cannot see.
+                if let Some(anchor) = gfx
+                    .physics
+                    .joint_views()
+                    .find(|v| v.entity == entity)
+                    .map(|v| v.anchor_a)
                 {
-                    let t = along_axis(v.anchor_a, axis, cursor) + off;
-                    write_limit(&mut gfx.sim, entity, drag.kind, t);
+                    let end = [cursor[0] + off[0], cursor[1] + off[1]];
+                    write_rail_end(&mut gfx.sim, entity, drag.kind, anchor, end);
                 }
                 None
             }
         };
         self.joint_anchor_drag = Some(drag);
     }
+}
+
+/// **Aim the rail AND set its stroke, from one dragged point** (W-J6c).
+///
+/// The two grips on a Slider are free in x and y, so between them they say
+/// everything a rail is: **the line through the anchor and the dragged end is
+/// the axis, and the distance to it is that end of the stroke.** Constraining a
+/// grip to the line it defines would have been a handle that can only shorten
+/// something it cannot aim — and the axis would have stayed typed-only, in a
+/// Rotation field the artist has to know is the rail's direction.
+///
+/// The rule in one sentence, sign and all: **the dragged end keeps the SIDE it
+/// was on.** `limit_max` is normally forward and `limit_min` behind, so the axis
+/// points at a dragged Max and away from a dragged Min — which is what makes the
+/// far end swing with the rail instead of the rail folding in half. An
+/// asymmetric stroke (both ends positive, a rail that only travels forward)
+/// keeps its shape: the sign comes from the value being dragged, not from which
+/// handle it is.
+///
+/// ⚠️ **The axis is the joint entity's own `Transform::rotation`** (W-J5), so
+/// this writes the same field the §0 Rotation row does — one authored quantity,
+/// two ways to say it. And `sync_joint_pivots` only ever writes *translation*,
+/// so nothing fights this back.
+///
+/// Degenerate: a grip dropped ON the anchor has no direction in it. The axis is
+/// left where it was and the stroke goes to zero, rather than handing `atan2` a
+/// zero vector and the solver a `NaN`.
+fn write_rail_end(
+    sim: &mut SimWorld,
+    joint: ph2d_ecs::Entity,
+    kind: PointHandleKind,
+    anchor: [f32; 2],
+    end: [f32; 2],
+) {
+    let Some(&current) = sim.world().get::<PhysicsJoint>(joint) else {
+        return;
+    };
+    let held = if matches!(kind, PointHandleKind::LimitMin) {
+        current.limit_min
+    } else {
+        current.limit_max
+    };
+    // Which side of the anchor this end lives on. A zero value has no side of
+    // its own, so it takes the one its handle normally has.
+    let side = if held < 0.0 || (held == 0.0 && matches!(kind, PointHandleKind::LimitMin)) {
+        -1.0f32
+    } else {
+        1.0
+    };
+    let (dx, dy) = (end[0] - anchor[0], end[1] - anchor[1]);
+    let len = dx.hypot(dy);
+    if len > 1e-4 {
+        // The axis points at a forward end and away from a rearward one.
+        let ang = libm::atan2f(side * dy, side * dx);
+        if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(joint) {
+            t.rotation = ang;
+        }
+    }
+    // Through the same funnel a typed limit takes: the wall against the sibling,
+    // `clamped()`, and the kind's own unit.
+    write_limit(sim, joint, kind, side * len);
 }
 
 /// **Pose one end of the range** — a wall of a hinge's arc (radians relative to

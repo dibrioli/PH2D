@@ -216,10 +216,12 @@ fn a_rewind_re_arms_the_servo() {
 /// um no-op.
 ///
 /// Report do Enio (2026-07-26): *"Em Rope:Motor:ON: Velocity parâmetros Speed e
-/// Max Force não afetam a simulação"*. Era fiel: a corda vive em `[0, max_length]`
-/// e uma carga pendurada senta EXATAMENTE em `max_length`, então uma taxa positiva
-/// pede *soltar* — que o próprio limite da corda já proíbe. Os dois knobs pareciam
-/// mortos porque nada se movia em direção nenhuma.
+/// Max Force não afetam a simulação"*. Era fiel, e o mecanismo está no solver do
+/// rapier (`motor_linear_coupled`): os limites **CLAMPAM o alvo do próprio
+/// motor** — `target_vel = clamp(target_vel, (min−dist)/dt, (max−dist)/dt)` — e
+/// uma carga pendurada senta EXATAMENTE em `max_length`, então todo alvo positivo
+/// vira **zero**. Com alvo zero não há erro em que gastar força, e é por isso que
+/// os DOIS knobs pareciam mortos: uma causa só.
 ///
 /// O oráculo tem as duas metades: o default **levanta**, e a taxa oposta (a que
 /// era o default) **não move nada**. Sem a segunda o gate ficaria verde num mundo

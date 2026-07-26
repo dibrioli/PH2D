@@ -2,8 +2,8 @@
 //! bulk edits, cursor safety) and the `Interp` bézier-handle helpers.
 
 use ph2d_anim::{
-    AnimValue, AttributeEvaluator, Easing, EasingFamily, EasingMode, FitChannel, Interp,
-    RationalTime, Track,
+    AnimValue, AttributeEvaluator, Easing, EasingFamily, EasingMode, FitChannel, Interp, Key,
+    KeyId, RationalTime, Track,
 };
 
 fn as_f(v: AnimValue) -> f32 {
@@ -135,6 +135,50 @@ fn distribute_absorbs_a_stationary_key_it_lands_on() {
     assert!((tr.key(b).unwrap().t.to_seconds() - 1.0).abs() < 1e-4);
     // The moved key wins: value 1.0 survives, not the absorbed 9.0.
     assert!(matches!(tr.key(b).unwrap().value, AnimValue::Float(v) if (v - 1.0).abs() < 1e-6));
+}
+
+#[test]
+fn buffer_curve_round_trips_byte_identical_after_an_edit() {
+    // Store the curve, edit it three ways (move + set-value + remove), then
+    // restore: the keys AND their ids must come back exactly — the A/B toggle the
+    // graph editor's Buffer Curves relies on (§5).
+    let snapshot = |t: &Track| -> Vec<(KeyId, Key)> {
+        t.ids()
+            .iter()
+            .copied()
+            .zip(t.keys().iter().copied())
+            .collect()
+    };
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.0), AnimValue::Float(5.0), Interp::Hold);
+    let c = tr.insert_key(secs(2.0), AnimValue::Float(9.0), Interp::Linear);
+    let before = snapshot(&tr);
+
+    let buffer = tr.snapshot_curve();
+    tr.move_keys(&[b], secs(0.4));
+    tr.set_value(a, AnimValue::Float(3.0));
+    tr.remove_key(c);
+    assert_ne!(snapshot(&tr), before, "the edits changed the curve");
+
+    tr.restore_curve(&buffer);
+    assert_eq!(
+        snapshot(&tr),
+        before,
+        "restore is byte-identical: same keys, same ids"
+    );
+
+    // Swapping back to the EDITED curve is symmetric: store the edited state first,
+    // restore the buffer, then restore the edited snapshot — the A/B toggle.
+    let edited_buffer = {
+        tr.move_keys(&[b], secs(0.4));
+        tr.snapshot_curve()
+    };
+    let edited = snapshot(&tr);
+    tr.restore_curve(&buffer);
+    assert_eq!(snapshot(&tr), before);
+    tr.restore_curve(&edited_buffer);
+    assert_eq!(snapshot(&tr), edited, "the swap toggles both ways");
 }
 
 #[test]

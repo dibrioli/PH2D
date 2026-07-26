@@ -15,6 +15,9 @@ use crate::strip_edge_edit::{
     MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
 };
 
+/// The Buffer-Curves bodies (`store`/`swap`) — sibling module under the LOC cap.
+#[path = "intent_apply_buffer.rs"]
+mod intent_apply_buffer;
 /// Bulk time-transform bodies (scale markers, reverse selection) — child module
 /// under the LOC cap, reaching the parent's `edit`/`for_selected_tracks`.
 #[path = "intent_apply_time.rs"]
@@ -160,6 +163,8 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::StaggerSelectedKeys { step_seconds } => {
             intent_apply_time::stagger_selected(state, step_seconds)
         }
+        I::StoreTrackBuffer { target } => intent_apply_buffer::store(state, target),
+        I::SwapTrackBuffer { target } => intent_apply_buffer::swap(state, target),
         I::DuplicateSelection => {
             let Some(delta) = duplicate_delta(state, playhead.time()) else {
                 return; // nothing selected

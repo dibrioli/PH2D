@@ -1832,3 +1832,102 @@ fn stagger_streams_incremental_steps_that_compose_to_the_total() {
         "rank 1: 0.25 + 0.25 = 0.5"
     );
 }
+
+#[test]
+fn buffer_curves_store_edit_swap_toggles_a_b_and_swap_is_one_undo_step() {
+    // Store the curve, edit it, Swap -> stored curve back; Swap again -> edited
+    // curve back (the A/B toggle). The Swap that restores is exactly one undo
+    // step. (Mutation: `swap` not restoring -> the round-trip diverges -> RED.)
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    for t in [0.0, 1.0, 2.0] {
+        add_key(
+            &mut st,
+            &mut ph,
+            1,
+            PropKind::TranslationX,
+            t,
+            (t * 3.0) as f32,
+        );
+    }
+    let tgt = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let curve = |st: &TimelineState| -> Vec<(f64, f32)> {
+        st.doc
+            .active_clip()
+            .track(tgt)
+            .unwrap()
+            .keys()
+            .iter()
+            .map(|k| {
+                let v = match k.value {
+                    ph2d_anim::AnimValue::Float(v) => v,
+                    _ => f32::NAN,
+                };
+                (k.t.to_seconds(), v)
+            })
+            .collect()
+    };
+    let stored = curve(&st);
+
+    apply_intent(&mut st, &mut ph, I::StoreTrackBuffer { target: tgt });
+
+    // Edit: shift every key by +0.5 s.
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for key in st.doc.active_clip().track(tgt).unwrap().ids().to_vec() {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddToSelection(SelectedKey { target: tgt, key }),
+        );
+    }
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
+    let edited = curve(&st);
+    assert_ne!(edited, stored, "the edit changed the curve");
+
+    apply_intent(&mut st, &mut ph, I::SwapTrackBuffer { target: tgt });
+    assert_eq!(curve(&st), stored, "swap restores the stored curve");
+
+    apply_intent(&mut st, &mut ph, I::SwapTrackBuffer { target: tgt });
+    assert_eq!(
+        curve(&st),
+        edited,
+        "a second swap toggles back to the edited curve"
+    );
+
+    // The last swap was one undo step: one Undo returns to the stored curve.
+    apply_intent(&mut st, &mut ph, I::Undo);
+    assert_eq!(curve(&st), stored, "the swap is a single undo step");
+}
+
+#[test]
+fn swapping_a_buffer_stored_from_another_track_is_a_no_op() {
+    // The buffer belongs to the track it was stored from; swapping it onto a
+    // different track would silently corrupt that track. (Mutation: drop the
+    // target guard in `swap` -> track 2 gets track 1's curve -> RED.)
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 0.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 9.0);
+    add_key(&mut st, &mut ph, 2, PropKind::TranslationX, 0.5, 4.0);
+    let t1 = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let t2 = st
+        .doc
+        .binding_for(2, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let count = |st: &TimelineState, t| st.doc.active_clip().track(t).unwrap().keys().len();
+
+    apply_intent(&mut st, &mut ph, I::StoreTrackBuffer { target: t1 });
+    // Swapping onto track 2 (buffer is for track 1) must do nothing.
+    apply_intent(&mut st, &mut ph, I::SwapTrackBuffer { target: t2 });
+    assert_eq!(count(&st, t2), 1, "track 2 is untouched");
+    assert_eq!(count(&st, t1), 2, "track 1 is untouched");
+}

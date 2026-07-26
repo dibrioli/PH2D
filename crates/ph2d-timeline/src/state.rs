@@ -178,6 +178,12 @@ pub struct TimelineState {
     pub flags: TimelineFlags,
     /// Copied keys (panel state, not undoable, not serialized).
     pub clipboard: TimelineClipboard,
+    /// **The graph editor's buffered curve** (§5, Unreal *Buffer Curves*): the
+    /// target it was stored from + a byte-identical snapshot of its keys. Session
+    /// state, like [`Self::clipboard`] — never serialized, never in undo. `None`
+    /// until a Store. The A/B toggle (`SwapTrackBuffer`) keeps the just-replaced
+    /// curve here so a second swap returns to it.
+    pub curve_buffer: Option<(AnimTarget, ph2d_anim::CurveSnapshot)>,
     /// **The view the panel last painted is the Keys tab** — the shell stamps this
     /// each frame from `ph2d_panel_timeline::state::keys_mode()`, before draining
     /// intents. It picks which of the active clip's two loops an edit (or a

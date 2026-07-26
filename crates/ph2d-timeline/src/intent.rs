@@ -171,6 +171,21 @@ pub enum TimelineIntent {
         /// [`Self::ScaleSelectedKeys`]'s factor).
         step_seconds: f64,
     },
+    /// **Store** `target`'s current curve into the graph editor's buffer (§5,
+    /// Unreal *Buffer Curves*). Captures the exact keys + ids + roving; not a
+    /// document edit, so it raises no undo step. Overwrites any previous buffer.
+    StoreTrackBuffer {
+        /// The track whose curve is captured.
+        target: AnimTarget,
+    },
+    /// **Swap** `target`'s curve with the buffered one and keep the just-replaced
+    /// curve as the new buffer — the A/B toggle. A no-op unless a buffer exists
+    /// for THIS target. One undo step (the restore is a key edit; the buffer swap
+    /// itself is transient panel state, outside undo).
+    SwapTrackBuffer {
+        /// The track whose curve is swapped with the buffer.
+        target: AnimTarget,
+    },
     /// Duplicate every selected key, preserving the group's internal timing.
     ///
     /// Where the copies land is read off the playhead (see

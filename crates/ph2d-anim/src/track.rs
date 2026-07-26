@@ -32,8 +32,11 @@ use crate::curve_fit::FitKey;
 use crate::curve_prep::FitChannel;
 use crate::time::RationalTime;
 
+#[path = "track_buffer.rs"]
+mod track_buffer;
 #[path = "track_reverse.rs"]
 mod track_reverse;
+pub use track_buffer::CurveSnapshot;
 
 /// Stable identity of a key within its [`Track`] — monotonic, never reused, so
 /// the editor can track a key across re-sorts. Distinct tracks may share id

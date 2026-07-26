@@ -32,12 +32,20 @@
 //! - **`Whole`** — o plano mudou de tamanho, ou a janela é grande demais para compensar. É a frase do
 //!   ADR-0117 sobre o irredutível: *uma edição de camada inteira é irredutivelmente uma camada por passo.*
 
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::sync::Arc;
 
 use crate::compositor::LayerImage;
 use crate::layers::LayerId as RtLayerId;
+
+/// Abaixo de tantos elementos a varredura é sub-milissegundo e a escolha não pode importar, então o
+/// limiar só existe para manter o fork do rayon longe de plano pequeno.
+///
+/// Irmão exato do [`crate::tool::paint::plane_fork`]`::PAR_MIN`, que existe pela mesma razão e sobre os
+/// mesmos planos — e o mesmo número, porque a pergunta é a mesma: *este plano é canvas-shaped?*
+const PAR_MIN: usize = 1 << 20;
 
 /// A janela em que dois estados de um plano diferem — em **ELEMENTOS do plano**, nunca em pixels do
 /// canvas: um plano RGBA carrega quatro elementos por pixel, um de altura carrega um, e um de material
@@ -104,7 +112,7 @@ impl PlaneWindow {
 /// *idênticos*, e devolver `None` para *"não sei medir"* faria o `split` gravar `Unchanged` sobre dois
 /// buffers que de fato diferem: o undo perderia a edição, sem erro e sem warning. Os dois casos têm de
 /// ser perguntas separadas, e são.
-fn diff_window<T: PartialEq>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWindow> {
+fn diff_window<T: PartialEq + Sync>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWindow> {
     debug_assert_eq!(
         a.len(),
         b.len(),
@@ -114,37 +122,11 @@ fn diff_window<T: PartialEq>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWin
         fits(a.len(), stride),
         "diff_window quer um stride que divide o plano"
     );
-    let rows = a.len() / stride;
     // As LINHAS primeiro: uma comparação de slice por linha (memcmp vetorizado em `u8`), e a maioria
     // das linhas de um traço não difere.
-    let mut first = None;
-    let mut last = 0usize;
-    for r in 0..rows {
-        let s = r * stride;
-        if a[s..s + stride] != b[s..s + stride] {
-            if first.is_none() {
-                first = Some(r);
-            }
-            last = r;
-        }
-    }
-    let row = first?;
+    let (row, last) = diff_rows(a, b, stride)?;
     // …e só então as COLUNAS, dentro das linhas que já sabemos que diferem.
-    let mut col = stride;
-    let mut end = 0usize;
-    for r in row..=last {
-        let s = r * stride;
-        for c in 0..stride {
-            if a[s + c] != b[s + c] {
-                if c < col {
-                    col = c;
-                }
-                if c + 1 > end {
-                    end = c + 1;
-                }
-            }
-        }
-    }
+    let (col, end) = diff_cols(a, b, stride, row, last);
     Some(PlaneWindow {
         row,
         rows: last - row + 1,
@@ -153,6 +135,91 @@ fn diff_window<T: PartialEq>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWin
         stride,
         plane_len: a.len(),
     })
+}
+
+/// **A varredura de LINHAS, paralela acima de [`PAR_MIN`]** — a primeira e a última linha em que os dois
+/// planos diferem.
+///
+/// Uma linha é comparada contra a linha de MESMO índice do outro plano e não olha nenhuma outra: as
+/// linhas são **disjuntas e a leitura é pura**, que é a forma que o [ADR-0109] sanciona e que esta crate
+/// já usa no `sculpt_offset`, no `sculpt_close`, no campo da aquarela e no fold da luz. **Byte-idêntica
+/// por construção**: muda qual thread avalia qual linha, nunca o que a linha responde — `min`/`max` sobre
+/// índices é associativo e comutativo, então a ordem da redução não entra no resultado.
+///
+/// [ADR-0109]: ../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
+fn diff_rows<T: PartialEq + Sync>(a: &[T], b: &[T], stride: usize) -> Option<(usize, usize)> {
+    let rows = a.len() / stride;
+    if a.len() < PAR_MIN {
+        let mut first = None;
+        let mut last = 0usize;
+        for r in 0..rows {
+            let s = r * stride;
+            if a[s..s + stride] != b[s..s + stride] {
+                if first.is_none() {
+                    first = Some(r);
+                }
+                last = r;
+            }
+        }
+        return first.map(|f| (f, last));
+    }
+    a.par_chunks(stride)
+        .zip(b.par_chunks(stride))
+        .enumerate()
+        .filter(|(_, (x, y))| x != y)
+        .map(|(r, _)| (r, r))
+        .reduce_with(|(f1, l1), (f2, l2)| (f1.min(f2), l1.max(l2)))
+}
+
+/// **A varredura de COLUNAS, dentro da faixa que já se sabe diferente** — paralela pela mesma razão e
+/// com a mesma redução associativa.
+///
+/// ⚠️ Ela é element-a-element (não há memcmp que devolva *onde*), então num traço VERTICAL a faixa é a
+/// tela inteira em linhas e esta metade custa tanto quanto a outra. É por isso que ela também é
+/// paralela, e não só a de linhas.
+fn diff_cols<T: PartialEq + Sync>(
+    a: &[T],
+    b: &[T],
+    stride: usize,
+    row: usize,
+    last: usize,
+) -> (usize, usize) {
+    let band = (last - row + 1) * stride;
+    let (from, to) = (row * stride, (last + 1) * stride);
+    let scan = |x: &[T], y: &[T]| -> (usize, usize) {
+        let mut col = stride;
+        let mut end = 0usize;
+        for c in 0..stride {
+            if x[c] != y[c] {
+                if c < col {
+                    col = c;
+                }
+                if c + 1 > end {
+                    end = c + 1;
+                }
+            }
+        }
+        (col, end)
+    };
+    if band < PAR_MIN {
+        let mut col = stride;
+        let mut end = 0usize;
+        for r in row..=last {
+            let s = r * stride;
+            let (c, e) = scan(&a[s..s + stride], &b[s..s + stride]);
+            col = col.min(c);
+            end = end.max(e);
+        }
+        return (col, end);
+    }
+    a[from..to]
+        .par_chunks(stride)
+        .zip(b[from..to].par_chunks(stride))
+        .map(|(x, y)| scan(x, y))
+        .reduce(
+            || (stride, 0),
+            |(c1, e1), (c2, e2)| (c1.min(c2), e1.max(e2)),
+        )
 }
 
 /// Um plano canvas-shaped como o histórico o guarda. Ver o cabeçalho do módulo.
@@ -185,7 +252,7 @@ const fn fits(len: usize, stride: usize) -> bool {
     stride != 0 && len != 0 && len.is_multiple_of(stride)
 }
 
-impl<T: Clone + PartialEq> StoredPlane<T> {
+impl<T: Clone + PartialEq + Sync> StoredPlane<T> {
     /// Extrai o delta dos dois endpoints e **ESVAZIA os dois** — depois disto os pixels vivem aqui e só
     /// aqui, e o `ModelSnapshot` guardado carrega apenas metadados.
     pub(crate) fn split(before: &mut Arc<Vec<T>>, after: &mut Arc<Vec<T>>, stride: usize) -> Self {
@@ -274,7 +341,7 @@ pub(crate) enum StoredEntry<T> {
     OnlyAfter(Arc<Vec<T>>),
 }
 
-impl<T: Clone + PartialEq> StoredEntry<T> {
+impl<T: Clone + PartialEq + Sync> StoredEntry<T> {
     fn heap_bytes(&self) -> usize {
         match self {
             Self::Both(p) => p.heap_bytes(),
@@ -290,7 +357,7 @@ pub(crate) struct StoredMap<T> {
     entries: BTreeMap<RtLayerId, StoredEntry<T>>,
 }
 
-impl<T: Clone + PartialEq> StoredMap<T> {
+impl<T: Clone + PartialEq + Sync> StoredMap<T> {
     /// Extrai o delta dos dois mapas e **esvazia os dois**. `stride` é em elementos por linha do plano
     /// (um por pixel nos três mapas de impasto).
     pub(crate) fn split(
@@ -514,70 +581,5 @@ impl Strides {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A janela é o bbox EXATO da diferença — nem uma linha a mais.
-    #[test]
-    fn the_window_is_the_exact_bbox_of_the_difference() {
-        let stride = 8;
-        let mut a = vec![0u8; stride * 6];
-        let b = {
-            let mut b = a.clone();
-            b[2 * stride + 3] = 9;
-            b[4 * stride + 5] = 7;
-            b
-        };
-        let w = diff_window(&a, &b, stride).expect("difere");
-        assert_eq!((w.row, w.rows, w.col, w.cols), (2, 3, 3, 3));
-        // …e ela reconstrói o outro lado exatamente.
-        let patch = w.extract(&b);
-        w.blit(&patch, &mut a);
-        assert_eq!(a, b);
-    }
-
-    /// Planos idênticos em CONTEÚDO (ponteiros diferentes) não custam nada.
-    #[test]
-    fn identical_content_costs_nothing_even_with_different_pointers() {
-        let mut a = Arc::new(vec![3u8; 64]);
-        let mut b = Arc::new(vec![3u8; 64]);
-        assert!(!Arc::ptr_eq(&a, &b));
-        let p = StoredPlane::split(&mut a, &mut b, 8);
-        assert!(matches!(p, StoredPlane::Unchanged));
-        assert_eq!(p.heap_bytes(), 0);
-    }
-
-    /// Uma janela grande demais NÃO vira patch: dois lados de meia-tela custam mais que os dois buffers.
-    #[test]
-    fn a_window_that_does_not_pay_for_itself_falls_back_to_whole() {
-        let stride = 8;
-        let mut a = Arc::new(vec![0u8; stride * 8]);
-        let mut b = Arc::new({
-            let mut v = vec![0u8; stride * 8];
-            for (i, x) in v.iter_mut().enumerate() {
-                if i % stride < 6 {
-                    *x = 1;
-                }
-            }
-            v
-        });
-        let p = StoredPlane::split(&mut a, &mut b, stride);
-        assert!(matches!(p, StoredPlane::Whole { .. }), "esperava Whole");
-    }
-
-    /// Um cursor de outro tamanho RECUSA em vez de escrever pixels em lugares que ninguém autorou.
-    #[test]
-    fn a_cursor_of_the_wrong_size_is_refused_not_patched() {
-        let stride = 8;
-        let mut a = Arc::new(vec![0u8; stride * 8]);
-        let mut b = Arc::new({
-            let mut v = vec![0u8; stride * 8];
-            v[9] = 5;
-            v
-        });
-        let p = StoredPlane::split(&mut a, &mut b, stride);
-        assert!(matches!(p, StoredPlane::Patch { .. }));
-        let wrong = Arc::new(vec![0u8; stride * 4]);
-        assert!(p.side(&wrong, true).is_none());
-    }
-}
+#[path = "undo_delta_tests.rs"]
+mod tests;

@@ -8,6 +8,8 @@ mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão
 mod measure_input_cost;
 #[path = "measure_pendown_cost.rs"]
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
+#[path = "measure_stroke_owners.rs"]
+mod measure_stroke_owners; // QUEM segura os planos quando um traço começa (doc 28 §7, a porta única)
 #[path = "measure_watercolor_cost.rs"]
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
 #[path = "measure_wetpaint_cost.rs"]

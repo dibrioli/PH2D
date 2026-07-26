@@ -24,6 +24,8 @@ impl PainterTool {
             covers: self.covers.clone(),
             mats: self.mats.clone(),
             canvas_rgba: Arc::clone(&self.canvas_rgba),
+            // A forma do que o snapshot carrega — o stride de cada plano para o motor de delta.
+            canvas_size: self.source_size,
             selection: self.selection.clone(),
             // Layer ops carry no open shape / live preview; the shape paths override these via
             // `capture_shape_model` (see `tool::paint::shape_snapshot`).

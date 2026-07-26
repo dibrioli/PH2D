@@ -97,6 +97,15 @@ impl PainterTool {
         self.undo.can_redo()
     }
 
+    /// **Os bytes que o histórico de undo retém** — o número que o cap em BYTES consulta
+    /// ([`crate::undo::DEFAULT_MAX_BYTES`]) e que `tests/measure_undo_memory.rs` reconcilia contra o
+    /// dhat. Um budget que só é declarado não pode ser violado, só excedido em silêncio (HR-13, emenda
+    /// do ADR-0117): esta é a porta pela qual ele é observado.
+    #[must_use]
+    pub fn undo_retained_bytes(&self) -> usize {
+        self.undo.retained_bytes()
+    }
+
     // ── Apply / preview drive ───────────────────────────────────────────
 
     /// Requisita commit (Apply): the bridge fires `EditorAction::OneShotImageOp`

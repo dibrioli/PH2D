@@ -26,6 +26,10 @@ pub mod layers;
 pub mod params;
 pub mod tool;
 pub mod undo;
+/// Como um passo do histórico é GUARDADO — a janela em vez do documento (U1 do plano 26).
+mod undo_delta;
+/// A LISTA dos planos que o delta cobre — o irmão de `undo_delta` (o motor).
+mod undo_planes;
 
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
@@ -72,7 +76,7 @@ pub use tool::{
     TangentHandles, TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at,
     set_pending_select_mods,
 };
-pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
+pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

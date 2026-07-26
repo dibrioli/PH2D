@@ -1,18 +1,29 @@
-//! **U0 do plano 26** — quanto o histórico de undo do Painter de fato retém.
+//! **U0/U1 do plano 26** — quanto o histórico de undo do Painter de fato retém.
 //!
 //! O molde é o do **ADR-0117** (`ph2d-audio-edit/tests/measure_memory.rs`), que emendou o HR-13 com
 //! *quem declara budget possui um gate que MEDE*; o áudio chegou a **4351 MB** com a regra em vigor e
-//! nenhum byte observado. Esta é a mesma pergunta feita ao Painter, e a aritmética já assusta:
+//! nenhum byte observado. Esta é a mesma pergunta feita ao Painter.
 //!
-//! - o cap é por **CONTAGEM** (`DEFAULT_MAX_DEPTH = 300`), e contagem é **multiplicador, não teto**;
-//! - cada entrada carrega os **DOIS** endpoints (`before` + `after`), ambos `ModelSnapshot`;
-//! - com impasto, um traço toca **quatro** planos canvas-shaped da camada ativa — a 2048² isso é
-//!   `rgba 16 MB + heights 16 MB + covers 4 MB + mats 28 MB = 64 MB`.
+//! ## Como ele nasceu (2026-07-25) e o que a cura moveu (2026-07-26)
 //!
-//! ⚠️ **Ela IMPRIME e afirma uma propriedade ESTRUTURAL, não um número absoluto** — a mesma escolha
-//! que o ADR-0117 §4.1 fez ao descobrir que a barra fixa dele era aritmeticamente impossível. O que
-//! um histórico saudável promete é *o documento + um punhado de planos em construção + deltas*;
-//! **não N documentos**. É essa frase que 300 entradas de dois endpoints podem violar.
+//! | | antes (documento por passo) | agora (delta por janela) |
+//! |---|---|---|
+//! | pico, 24 traços a 2048² | 1.669,2 MB | **345,8 MB** |
+//! | retido no fim | **1.627,2 MB** (25,4 documentos) | **242,2 MB** (3,8) |
+//! | **por passo** | **~67,8 MB** = mais que um documento | **~4,3 MB** = a janela do traço |
+//!
+//! Um traço de 24 px de largura por 1.600 de comprimento cobre um bbox de ~1600×80 depois da orla do
+//! falloff; os quatro planos daquela janela somam ~2 MB e a entrada guarda **os dois lados** dela. O
+//! custo deixou de ser função do DOCUMENTO e passou a ser função da REGIÃO TOCADA.
+//!
+//! ⚠️ **A barra mudou junto com a cura, e tinha de mudar.** A antiga (`4 documentos + 0,5 MB/traço`)
+//! descrevia o DEFEITO, não a propriedade: com a cura ela passaria a 24 traços por acaso e voltaria a
+//! falhar a 60. E ela media o **total**, que mistura o histórico com o working set do tool — o documento
+//! vivo, o composite, os envelopes de relevo, ~139 MB que barra nenhuma deveria ter de adivinhar.
+//!
+//! ⚠️ **O oráculo é a INCLINAÇÃO: quanto custa MAIS UM PASSO.** Ela isola tudo o que é constante (a 2ª
+//! metade da sessão já encontra os planos alocados) e é literalmente a frase que o defeito violava —
+//! *"um documento por traço, LINEAR"*.
 //!
 //! Um `#[test]` por binário, de propósito: os contadores do dhat são globais do processo e o
 //! `cargo test` roda os testes de um binário em threads — dois profilers num processo se atropelam.
@@ -30,9 +41,13 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 const MB: f64 = 1_048_576.0;
 /// O regime que o Enio reporta. (A 4096² tudo abaixo quadruplica — a propriedade é a mesma.)
 const N: u32 = 2048;
-/// Traços de um artista numa sessão curta. O cap é 300; se o retido crescer linearmente aqui, ele
-/// cresce linearmente até lá.
+/// Traços de um artista numa sessão curta. Medidos em DUAS metades, para a inclinação.
 const STROKES: usize = 24;
+/// O pincel, e portanto a altura da janela de cada traço.
+const BRUSH_PX: f32 = 24.0;
+/// O comprimento do traço — de `X0` a `X1`, na horizontal.
+const X0: f32 = 200.0;
+const X1: f32 = 1800.0;
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -43,44 +58,25 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-/// **NASCEU VERMELHO, e o defeito é REAL — este é um repro, não um gate verde.**
+fn stroke(t: &mut PainterTool, k: usize) {
+    #[allow(clippy::cast_precision_loss)]
+    let y = 200.0 + (k as f32) * 40.0;
+    t.on_canvas_pointer(cp([X0, y], PointerPhase::Down));
+    t.on_canvas_pointer(cp([X1, y], PointerPhase::Move));
+    t.on_canvas_pointer(cp([X1, y], PointerPhase::Up));
+}
+
+/// **O gate de memória do histórico.** Nasceu VERMELHO (1.627 MB) e é o que a wave U1 fechou.
 ///
-/// ## Medido (2026-07-25, 2048², 24 traços com impasto)
-///
-/// | | |
-/// |---|---|
-/// | um documento (4 planos) | 64,0 MB |
-/// | pico | **1.669,2 MB** (26,1 documentos) |
-/// | retido no fim | **1.627,2 MB** (25,4 documentos) |
-/// | barra estrutural | 268,0 MB |
-///
-/// **Um documento por traço, linear.** E os números que isso implica, que é onde ele deixa de ser
-/// uma curiosidade:
-///
-/// - o teto do app INTEIRO é **3.500 MB** (HR-13) — 24 traços já comem **46%** dele;
-/// - a 4096² tudo isto **quadruplica**: 24 traços = ~6,5 GB, quase o dobro do orçamento;
-/// - e o cap é por **CONTAGEM** (`DEFAULT_MAX_DEPTH = 300`), então ele **multiplica** isto por 300 em
-///   vez de limitá-lo. É a frase exata do ADR-0117 (*"`MAX_HISTORY=64` era um multiplicador, não um
-///   teto"*), no Painter, com um zero a mais.
-///
-/// ⚠️ **`#[ignore]` porque o defeito está ABERTO, não porque a medição é opcional.** Ele fica com o
-/// `assert` de pé para que promovê-lo seja apagar uma linha no dia em que a cura entrar; um repro
-/// vermelho comentado é um repro que ninguém volta a rodar.
-///
-/// ⚠️ **A CURA NÃO É MECÂNICA E É DECISÃO DO ENIO.** Há duas, e as duas custam:
-///
-/// 1. **cap em BYTES** (o que o ADR-0117 fez) — resolve o teto imediatamente e **encurta o undo de
-///    forma visível**: com um orçamento de 512 MB o artista tem 8 passos a 2048² e 2 a 4096². É uma
-///    regressão de PRODUTO, não um detalhe de implementação;
-/// 2. **histórico por DELTA** (o U1 do plano 26) — o passo guarda só a região que mudou, e aí o cap
-///    em bytes deixa de morder. É re-arquitetura do undo do Painter, que é a coisa em que o artista
-///    mais confia, e o plano já a marca 🔴.
+/// Duas asserções, e a segunda existe porque a primeira sozinha não protege o cap: um controller que
+/// **conta** errado é um cap que não morde na hora certa, e nada nos pixels denunciaria isso.
 #[test]
-#[ignore = "RED: repro de um defeito ABERTO (1.627 MB em 24 tracos) — a cura e decisao de produto"]
-fn twenty_four_impasto_strokes_do_not_retain_twenty_four_documents() {
-    // Os quatro planos canvas-shaped de UMA camada tocada, a esta resolução.
+fn a_stroke_costs_the_window_it_touched_not_a_document() {
     let px = f64::from(N) * f64::from(N);
-    let one_doc = (px * 4.0 + px * 4.0 + px + px * 7.0) / MB; // rgba + heights(f32) + covers + mats
+    // Os quatro planos canvas-shaped de UMA camada tocada: rgba + heights(f32) + covers + mats([u8;7]).
+    let bytes_per_px = 4.0 + 4.0 + 1.0 + 7.0;
+    let one_doc = px * bytes_per_px / MB;
+
     // ⚠️ O profiler tem de estar VIVO para o `HeapStats::get` — sem ele o dhat entra em pânico
     // (*"getting heap stats when no profiler is running"*), que é como esta sonda nasceu.
     let profiler = dhat::Profiler::builder().testing().build();
@@ -92,40 +88,59 @@ fn twenty_four_impasto_strokes_do_not_retain_twenty_four_documents() {
     // QUATRO planos em vez de um, e é o caso do produto desde 2026-07-13. Sem impasto a medição
     // descreveria um Painter que não existe.
     t.toggle_brush_impasto();
-    t.set_brush_size_px(24.0);
-    for k in 0..STROKES {
-        #[allow(clippy::cast_precision_loss)]
-        let y = 200.0 + (k as f32) * 40.0;
-        t.on_canvas_pointer(cp([200.0, y], PointerPhase::Down));
-        t.on_canvas_pointer(cp([1800.0, y], PointerPhase::Move));
-        t.on_canvas_pointer(cp([1800.0, y], PointerPhase::Up));
+    t.set_brush_size_px(BRUSH_PX);
+    for k in 0..STROKES / 2 {
+        stroke(&mut t, k);
     }
+    let half = dhat::HeapStats::get();
+    let counted_half = t.undo_retained_bytes();
+    for k in STROKES / 2..STROKES {
+        stroke(&mut t, k);
+    }
+    let counted = t.undo_retained_bytes();
     let after = dhat::HeapStats::get();
     drop(profiler);
+
     #[allow(clippy::cast_precision_loss)]
-    let peak = after.max_bytes as f64 / MB;
+    let mb = |b: usize| b as f64 / MB;
+    let peak = mb(after.max_bytes);
+    let held = mb(after.curr_bytes) - mb(before.curr_bytes);
     #[allow(clippy::cast_precision_loss)]
-    let held = (after.curr_bytes as f64 - before.curr_bytes as f64) / MB;
+    let counted_mb = counted as f64 / MB;
+    #[allow(clippy::cast_precision_loss)]
+    let n_half = (STROKES / 2) as f64;
+    let slope = (mb(after.curr_bytes) - mb(half.curr_bytes)) / n_half;
+    #[allow(clippy::cast_precision_loss)]
+    let slope_counted = (counted - counted_half) as f64 / MB / n_half;
 
     println!(
         "[undo-mem] {N}x{N} · {STROKES} tracos com impasto\n\
          [undo-mem]   um documento (4 planos) = {one_doc:.1} MB\n\
          [undo-mem]   pico             {peak:.1} MB  ({:.1} documentos)\n\
-         [undo-mem]   retido no fim    {held:.1} MB  ({:.1} documentos)",
+         [undo-mem]   retido no fim    {held:.1} MB  ({:.1} documentos)\n\
+         [undo-mem]   o historico CONTA {counted_mb:.1} MB\n\
+         [undo-mem]   POR PASSO        {slope:.2} MB medido · {slope_counted:.2} MB contado  \
+         ({:.1}% de um documento)",
         peak / one_doc,
         held / one_doc,
+        100.0 * slope / one_doc,
     );
 
-    // A propriedade ESTRUTURAL: o histórico é *o documento + um punhado de planos em construção +
-    // deltas*, NÃO um documento por traço. A barra é generosa de propósito — ela existe para pegar
-    // o crescimento LINEAR em traços, que é o modo de falha, e não para afinar um número.
-    #[allow(clippy::cast_precision_loss)]
-    let bar = 4.0 * one_doc + (STROKES as f64) * 0.5;
+    // (1) A LEI: mais um passo custa a JANELA que ele tocou, não um documento. A barra é uma fração
+    // pequena do documento e não um número afinado — o defeito media **67,8 MB/traço**, isto é MAIS que
+    // um documento inteiro (os dois endpoints), contra os ~4,3 MB que o delta cobra.
+    let bar = one_doc / 5.0;
     assert!(
-        held < bar,
-        "o historico retem {held:.1} MB depois de {STROKES} tracos ({:.1} documentos) — a barra \
-         estrutural e {bar:.1} MB. Isto e crescimento por TRACO, e o cap por CONTAGEM \
-         (DEFAULT_MAX_DEPTH = 300) e um multiplicador dele, nao um teto.",
-        held / one_doc,
+        slope < bar,
+        "cada traco a mais retem {slope:.1} MB ({:.0}% de um documento de {one_doc:.0} MB) — a barra e \
+         {bar:.1} MB. Um passo voltou a custar um DOCUMENTO em vez da janela que ele tocou.",
+        100.0 * slope / one_doc,
+    );
+    // (2) …e a CONTABILIDADE do controller tem de acompanhar a inclinação REAL, não apenas ser pequena:
+    // é `retained_bytes` que o cap em BYTES consulta.
+    assert!(
+        slope_counted > 0.5 * slope && slope_counted < 2.0 * slope,
+        "o historico CONTA {slope_counted:.2} MB por passo e o processo RETEM {slope:.2} — a \
+         contabilidade do cap perdeu contato com a realidade"
     );
 }

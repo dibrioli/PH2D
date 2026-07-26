@@ -171,5 +171,53 @@ fn the_pen_down_forks_the_canvas_because_undo_holds_it() {
             n / 1_048_576
         );
         std::hint::black_box(dst.len());
+        // …e a DECOMPOSIÇÃO: quanto do fork é a ALOCAÇÃO (page-faults do kernel mapeando 64 MB novos) e
+        // quanto é o memcpy. É o que decide se a cura é um pool de buffers ou uma captura por tile —
+        // a receita da §13.12.5 nomeia as duas e nunca as separou num número.
+        let mut warm: Vec<u8> = vec![0u8; n];
+        let copy_only = ms(&mut || warm.copy_from_slice(&src));
+        println!(
+            "[fork]   … so o memcpy (buffer ja mapeado): {copy_only:.2} ms  \
+             ⇒ a ALOCACAO custa {:.2} ms ({:.0}%)",
+            cost - copy_only,
+            100.0 * (cost - copy_only) / cost
+        );
+        std::hint::black_box(warm.len());
+    }
+}
+
+/// **O que o histórico por delta CUSTA em tempo** — a outra metade do trade que a wave U1 fez.
+///
+/// Guardar a janela em vez do documento troca memória por trabalho na hora de DESFAZER: o endpoint é
+/// reconstruído clonando o plano do cursor e escrevendo a janela por cima, onde antes era um
+/// `Arc::clone` grátis. Um undo é user-paced (não é um frame de 60 fps), mas *"user-paced"* não é
+/// desculpa para não medir — o ADR-0117 trocou 4351 por 156 MB **e** publicou o custo.
+///
+/// Não afirma nada; IMPRIME. O gate de razão que protege o produto é o irmão `the_input_cost_*`.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_delta_history_costs_this_much_to_undo() {
+    for side in [1024u32, 2048, 4096] {
+        let mut t = tool(side);
+        t.toggle_brush_impasto();
+        t.set_brush_size_px(24.0);
+        #[allow(clippy::cast_precision_loss)]
+        let x1 = (side as f32) - 100.0;
+        for k in 0..4 {
+            #[allow(clippy::cast_precision_loss)]
+            let y = 100.0 + (k as f32) * 40.0;
+            t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down));
+            t.on_canvas_pointer(cp([x1, y], PointerPhase::Move));
+            t.on_canvas_pointer(cp([x1, y], PointerPhase::Up));
+        }
+        let undo = ms(&mut || {
+            t.undo_last();
+        });
+        let redo = ms(&mut || {
+            t.redo_last();
+        });
+        #[allow(clippy::cast_precision_loss)]
+        let held = t.undo_retained_bytes() as f64 / 1_048_576.0;
+        println!("[undo-cost] {side}x{side}: undo {undo:.2} ms · redo {redo:.2} ms  (retido {held:.1} MB)");
     }
 }

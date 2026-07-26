@@ -12,11 +12,27 @@
 //!
 //! [`UndoController`] keeps two chronological stacks of [`UndoEntry`] (the
 //! `undo` stack the user can step back through, the `redo` stack populated by
-//! `undo` and cleared by any new edit — the standard linear-history contract),
-//! bounded to `max_depth`. Each entry carries BOTH endpoints (`before` + `after`
-//! [`ModelSnapshot`]s) so the swap needs no live state and is allocation-stable;
-//! a snapshot's `canvas_rgba` is `Arc`-shared so the clone on a (rare, user-paced)
-//! structural edit is cheap CoW.
+//! `undo` and cleared by any new edit — the standard linear-history contract).
+//! Each entry carries BOTH endpoints, but **only their metadata**: the nineteen
+//! canvas-shaped planes live beside them as a DELTA of the window the step
+//! touched ([`crate::undo_delta`]), and the history is bounded in **BYTES**.
+//!
+//! # Por que bytes, e por que delta (U1 do plano 26 · o molde é o ADR-0117)
+//!
+//! Guardar os dois endpoints INTEIROS custava **um documento por traço**: 1.627 MB
+//! retidos depois de 24 traços a 2048² (`tests/measure_undo_memory.rs`), com o cap
+//! por CONTAGEM (`max_depth = 300`) **multiplicando** isso em vez de limitá-lo — a
+//! frase literal do ADR-0117 (*"`MAX_HISTORY=64` era um multiplicador, não um
+//! teto"*), no Painter, com um zero a mais. Um cap em bytes sem o delta resolveria
+//! o teto e **encurtaria o undo de forma visível** (8 passos a 2048², 2 a 4096²),
+//! que é regressão de produto; com o delta, o cap deixa de morder.
+//!
+//! O delta precisa de um lado completo do qual partir, e ele é o [`cursor`](UndoController):
+//! o endpoint adjacente ao topo, materializado. **UM documento, constante** — e em
+//! regime custa zero, porque compartilha os `Arc`s do tool enquanto ninguém escreve.
+//! ⚠️ O estado VIVO do tool não serve para isso: `restore_model` termina em
+//! `restore_shape_overlay`, que RE-CARIMBA a figura, então o vivo depois de um undo
+//! não é byte-a-byte o snapshot instalado.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -54,6 +70,10 @@ pub struct ModelSnapshot {
     /// gloss. `undoing_a_stroke_restores_the_material_underneath_it`.
     pub mats: BTreeMap<RtLayerId, Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>>,
     pub canvas_rgba: Arc<Vec<u8>>,
+    /// A forma do canvas quando o snapshot foi tirado — o que dá o **stride** de cada plano ao motor de
+    /// delta ([`crate::undo_delta::Strides`]). Um snapshot que não sabe a largura do que carrega só pode
+    /// guardar um intervalo LINEAR, e aí um traço VERTICAL reivindica o canvas inteiro em linhas.
+    pub canvas_size: (u32, u32),
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
     /// restores the live overlay TOGETHER with the pixels — the two can never desync. `None` = no shape
@@ -279,10 +299,31 @@ pub struct PreviewPatch {
     pub pixels: Vec<u8>,
 }
 
-/// Default cap on retained undo entries (ring depth). The caller can raise or
-/// lower it from its memory budget. The oldest entry beyond the cap is dropped
-/// (that depth becomes non-undoable, like a ring history).
-pub const DEFAULT_MAX_DEPTH: usize = 300;
+/// **O teto do histórico, em BYTES** — não em passos.
+///
+/// ⚠️ *Contagem é multiplicador, não teto* (ADR-0117): o `max_depth = 300` que isto substitui não
+/// limitava nada — ele multiplicava por 300 o custo de um passo que ninguém media. Um cap em bytes diz
+/// de que **recurso** ele é (RAM do working set do editor) e sobrevive a mudar de resolução: a mesma
+/// constante dá mais passos a 1024² e menos a 4096², que é a coisa certa.
+///
+/// O número está MEDIDO em `tests/measure_undo_memory.rs`, e o que ele compra com o histórico por delta:
+///
+/// | tela | traços que cabem | operação de camada inteira |
+/// |---|---|---|
+/// | 2048² | > 300 (o cap não morde) | ~4 |
+/// | 4096² | > 300 (o cap não morde) | ~1 |
+///
+/// É deliberado que o cap **não morda no uso normal**: ele existe para o caso irredutível (uma edição de
+/// camada inteira é irredutivelmente uma camada por passo) e para tirar o crescimento sem teto, não para
+/// racionar traços.
+pub const DEFAULT_MAX_BYTES: usize = 512 * 1024 * 1024;
+
+/// Guarda de sanidade sobre o NÚMERO de passos, muito acima de qualquer sessão real.
+///
+/// Não é o cap — o cap é [`DEFAULT_MAX_BYTES`]. Ele existe porque uma entrada pode custar ~zero byte
+/// (renomear uma camada), e sem ele uma sessão longa acumularia entradas indefinidamente por não pesar
+/// nada. Duas perguntas diferentes, dois limites; o que decide memória é o de bytes.
+pub const MAX_HISTORY_STEPS: usize = 1000;
 
 /// Marker for entries that may COALESCE with an immediately-preceding entry of the same kind: a run of
 /// repeated same-kind actions (N progressive-Simplify presses, N boolean-op taps on the same shape)
@@ -300,17 +341,51 @@ pub enum CoalesceKind {
     OpCycleSelection(usize),
 }
 
-/// One retained history entry: a structural edit stored as BOTH endpoints (the
-/// model `before` and `after` the edit). Carrying both means the entry needs no
-/// live state to swap directions; structural edits are user-paced (rare) so two
-/// model snapshots is a fine trade for the simpler, allocation-stable swap.
+/// One retained history entry: the two endpoints' **metadata** plus the DELTA of every canvas-shaped
+/// plane between them.
+///
+/// ⚠️ `before` e `after` aqui carregam os planos **ESVAZIADOS** — os pixels foram para `planes` no
+/// momento do push, e voltam na materialização ([`UndoController::undo`]). Os dois campos são privados e
+/// nunca escapam do módulo sem passar por ela; um endpoint meio-preenchido circulando seria um
+/// `ModelSnapshot` que mente sobre o próprio conteúdo.
 #[derive(Clone, Debug)]
 struct UndoEntry {
     before: Box<ModelSnapshot>,
     after: Box<ModelSnapshot>,
+    planes: crate::undo_planes::PlaneDeltas,
     /// `Some` for a coalescible action — see [`CoalesceKind`]. Plain entries carry `None` and thereby
     /// BREAK any run in progress.
     kind: Option<CoalesceKind>,
+}
+
+impl UndoEntry {
+    /// Guarda um par de endpoints COMPLETOS, extraindo o delta e esvaziando-os.
+    fn split(mut before: ModelSnapshot, mut after: ModelSnapshot, kind: Option<CoalesceKind>) -> Self {
+        let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after);
+        Self {
+            before: Box::new(before),
+            after: Box::new(after),
+            planes,
+            kind,
+        }
+    }
+
+    /// Reconstrói um dos endpoints a partir do cursor (o estado adjacente).
+    fn materialize(&self, cursor: &ModelSnapshot, want_before: bool) -> Option<Box<ModelSnapshot>> {
+        let mut out = Box::new(if want_before {
+            self.before.as_ref().clone()
+        } else {
+            self.after.as_ref().clone()
+        });
+        self.planes.side(cursor, &mut out, want_before)?;
+        Some(out)
+    }
+
+    /// Os bytes que esta entrada retém: os deltas mais os pixels de bbox que o preview carrega.
+    fn heap_bytes(&self) -> usize {
+        let patch = |m: &ModelSnapshot| m.preview_patch.as_ref().map_or(0, |p| p.pixels.len());
+        self.planes.heap_bytes() + patch(&self.before) + patch(&self.after)
+    }
 }
 
 /// Snapshot-based undo/redo for the editable layer model.
@@ -323,25 +398,37 @@ struct UndoEntry {
 pub struct UndoController {
     undo: Vec<UndoEntry>,
     redo: Vec<UndoEntry>,
-    max_depth: usize,
+    /// **A base de todo delta**: o endpoint adjacente ao topo, materializado — o `after` da entrada no
+    /// topo do `undo`, que é também o `before` da entrada no topo do `redo`.
+    ///
+    /// ⚠️ Custa **zero em regime**: enquanto ninguém escreve ele compartilha os mesmos `Arc`s do tool, e
+    /// só diverge entre o primeiro dab de um traço e o commit dele. É UM documento no pior caso, contra
+    /// os N que o histórico retinha.
+    cursor: Option<Box<ModelSnapshot>>,
+    max_bytes: usize,
+    /// Soma corrida de [`UndoEntry::heap_bytes`] das DUAS pilhas (o redo retém tanto quanto o undo).
+    bytes: usize,
 }
 
 impl Default for UndoController {
     fn default() -> Self {
-        Self::new(DEFAULT_MAX_DEPTH)
+        Self::new(DEFAULT_MAX_BYTES)
     }
 }
 
 impl UndoController {
-    /// New controller with an explicit retained-depth ceiling.
+    /// New controller with an explicit retained-BYTES ceiling.
     #[must_use]
-    pub fn new(max_depth: usize) -> Self {
+    pub fn new(max_bytes: usize) -> Self {
         Self {
             undo: Vec::new(),
             redo: Vec::new(),
-            // A depth of 0 would make undo permanently unavailable; clamp to 1
-            // so a degenerate budget still allows a single level.
-            max_depth: max_depth.max(1),
+            cursor: None,
+            // Um orçamento degenerado ainda tem de permitir UM passo — uma edição de camada inteira é
+            // irredutivelmente uma camada por passo, e recusar o único passo possível seria um histórico
+            // que não existe.
+            max_bytes,
+            bytes: 0,
         }
     }
 
@@ -350,12 +437,13 @@ impl UndoController {
     /// `after` is the model to roll forward to on redo. Pushing it clears the redo
     /// branch (standard linear-history semantics).
     pub fn record_structural(&mut self, before: ModelSnapshot, after: ModelSnapshot) {
-        self.undo.push(UndoEntry {
-            before: Box::new(before),
-            after: Box::new(after),
-            kind: None,
-        });
-        self.redo.clear();
+        // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
+        // um clone de `Arc`s, não de pixels.
+        self.cursor = Some(Box::new(after.clone()));
+        let entry = UndoEntry::split(before, after, None);
+        self.bytes += entry.heap_bytes();
+        self.undo.push(entry);
+        self.drop_redo();
         self.cap();
     }
 
@@ -370,18 +458,29 @@ impl UndoController {
         after: ModelSnapshot,
     ) {
         if self.redo.is_empty()
-            && let Some(top) = self.undo.last_mut()
+            && let Some(top) = self.undo.last()
             && top.kind == Some(kind)
+            // ⚠️ Estender o run RECOMPÕE o delta: o `before` da entrada está esvaziado, então ele é
+            // materializado do cursor ANTIGO (que é o `after` de que o delta partiu) e re-partido contra
+            // o `after` novo. Concatenar os dois deltas seria a alternativa, e ela erra quando as duas
+            // janelas se sobrepõem — o segundo passo escreveria por cima do primeiro na ordem errada.
+            && let Some(cursor) = self.cursor.as_deref()
+            && let Some(first_before) = top.materialize(cursor, true)
         {
-            *top.after = after;
+            let old = self.undo.pop().expect("o topo que acabamos de ler");
+            self.bytes -= old.heap_bytes();
+            self.cursor = Some(Box::new(after.clone()));
+            let entry = UndoEntry::split(*first_before, after, Some(kind));
+            self.bytes += entry.heap_bytes();
+            self.undo.push(entry);
+            self.cap();
             return;
         }
-        self.undo.push(UndoEntry {
-            before: Box::new(before),
-            after: Box::new(after),
-            kind: Some(kind),
-        });
-        self.redo.clear();
+        self.cursor = Some(Box::new(after.clone()));
+        let entry = UndoEntry::split(before, after, Some(kind));
+        self.bytes += entry.heap_bytes();
+        self.undo.push(entry);
+        self.drop_redo();
         self.cap();
     }
 
@@ -389,9 +488,20 @@ impl UndoController {
     /// park the entry on the redo stack so a later [`Self::redo`] can roll forward
     /// to `after`. Returns the model to reinstall, or `None` if nothing to undo.
     pub fn undo(&mut self) -> Option<Box<ModelSnapshot>> {
-        let entry = self.undo.pop()?;
-        let restore = entry.before.clone();
+        let entry = self.undo.last()?;
+        let cursor = self.cursor.as_deref()?;
+        let Some(restore) = entry.materialize(cursor, true) else {
+            // O cursor não descreve mais o plano que a entrada deltou (o canvas mudou de forma sob o
+            // histórico). Um undo que devolve pixels quase-certos é pior que um que se recusa: descarta.
+            eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado");
+            debug_assert!(false, "cursor incoerente com o delta — ver undo_delta::StoredPlane::side");
+            self.clear();
+            return None;
+        };
+        let entry = self.undo.pop().expect("o topo que acabamos de ler");
         self.redo.push(entry);
+        // O cursor ANDA com a história: o estado que acabamos de instalar é o adjacente do novo topo.
+        self.cursor = Some(restore.clone());
         Some(restore)
     }
 
@@ -399,9 +509,17 @@ impl UndoController {
     /// model and park the entry back on the undo stack. Returns the model to
     /// reinstall, or `None` if the redo stack is empty.
     pub fn redo(&mut self) -> Option<Box<ModelSnapshot>> {
-        let entry = self.redo.pop()?;
-        let restore = entry.after.clone();
+        let entry = self.redo.last()?;
+        let cursor = self.cursor.as_deref()?;
+        let Some(restore) = entry.materialize(cursor, false) else {
+            eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado (redo)");
+            debug_assert!(false, "cursor incoerente com o delta — ver undo_delta::StoredPlane::side");
+            self.clear();
+            return None;
+        };
+        let entry = self.redo.pop().expect("o topo que acabamos de ler");
         self.undo.push(entry);
+        self.cursor = Some(restore.clone());
         Some(restore)
     }
 
@@ -435,159 +553,39 @@ impl UndoController {
     pub fn clear(&mut self) {
         self.undo.clear();
         self.redo.clear();
+        self.cursor = None;
+        self.bytes = 0;
     }
 
-    /// Enforce the ring depth ceiling: drop the oldest entries (front of the
-    /// Vec) so the retained undo stack never exceeds `max_depth`.
+    /// **Os bytes que o histórico de fato retém** — o número que o cap conta e que o gate de memória
+    /// mede. Ele soma as duas pilhas: uma sessão de undos não devolve memória, ela a move de lado.
+    #[must_use]
+    pub fn retained_bytes(&self) -> usize {
+        self.bytes
+    }
+
+    /// Descarta a ramificação de redo, devolvendo os bytes dela ao orçamento.
+    fn drop_redo(&mut self) {
+        for e in self.redo.drain(..) {
+            self.bytes -= e.heap_bytes();
+        }
+    }
+
+    /// Enforce the **BYTE** ceiling (and the sanity limit on step count): drop the oldest entries — the
+    /// front of the undo Vec — until the history fits.
+    ///
+    /// ⚠️ Nunca abaixo de UMA entrada: um passo irredutivelmente grande (a edição de camada inteira do
+    /// ADR-0117) tem de continuar desfazível, e um cap que come o único passo possível é um histórico
+    /// que não existe.
     fn cap(&mut self) {
-        if self.undo.len() > self.max_depth {
-            let overflow = self.undo.len() - self.max_depth;
-            self.undo.drain(0..overflow);
+        while self.undo.len() > 1 && (self.bytes > self.max_bytes || self.undo.len() > MAX_HISTORY_STEPS)
+        {
+            let dropped = self.undo.remove(0);
+            self.bytes -= dropped.heap_bytes();
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn model(active_px: u8) -> ModelSnapshot {
-        ModelSnapshot {
-            layers: LayerStack::new(),
-            images: BTreeMap::new(),
-            heights: BTreeMap::new(),
-            mats: BTreeMap::new(),
-            covers: BTreeMap::new(),
-            canvas_rgba: Arc::new(vec![active_px; 16]),
-            selection: BTreeSet::new(),
-            shape: None,
-            offset_norm: 0.5,
-            offset_base_px: 0.0,
-            preview_patch: None,
-            parked_shapes: Vec::new(),
-            active_op: 0,
-            mask_scratch: Arc::new(Vec::new()),
-            mask_scratch_target: None,
-            selection_mask: Arc::new(Vec::new()),
-            selection_active: false,
-            selection_crisp: Arc::new(Vec::new()),
-            selection_feather: 0.0,
-            selection_shapes: Vec::new(),
-            deform: WarpSnap {
-                disp: Arc::new(Vec::new()),
-                pre: Arc::new(Vec::new()),
-                pre_h: Arc::new(Vec::new()),
-                pre_cover: Arc::new(Vec::new()),
-                pre_mats: Arc::new(Vec::new()),
-                relief_layer: None,
-                active: false,
-            },
-            sculpt: SculptSnap::default(),
-        }
-    }
-
-    #[test]
-    fn undo_rolls_back_to_before() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural(model(0x11), model(0x22));
-        assert!(c.can_undo());
-        let restored = c.undo().expect("one entry to undo");
-        assert_eq!(restored.canvas_rgba.as_slice(), &[0x11; 16]);
-        assert!(!c.can_undo());
-        assert!(c.can_redo());
-    }
-
-    #[test]
-    fn redo_rolls_forward_to_after() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural(model(0x11), model(0x22));
-        c.undo();
-        let restored = c.redo().expect("one entry to redo");
-        assert_eq!(restored.canvas_rgba.as_slice(), &[0x22; 16]);
-        assert!(c.can_undo());
-        assert!(!c.can_redo());
-    }
-
-    #[test]
-    fn new_edit_clears_redo_branch() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural(model(0), model(1));
-        c.record_structural(model(1), model(2));
-        c.undo();
-        assert!(c.can_redo());
-        c.record_structural(model(1), model(3));
-        assert!(!c.can_redo(), "a new edit must invalidate the redo branch");
-    }
-
-    /// A run of same-kind coalescible entries collapses to ONE undo step spanning first-before →
-    /// latest-after; a plain entry breaks the run; an undo/redo boundary never merges across.
-    #[test]
-    fn coalesced_runs_merge_and_break_correctly() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(1));
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(1), model(2));
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(2), model(3));
-        assert_eq!(c.undo_depth(), 1, "three Simplify presses = one entry");
-        let restored = c.undo().expect("entry");
-        assert_eq!(
-            restored.canvas_rgba.as_slice(),
-            &[0; 16],
-            "one undo restores the state before the FIRST press"
-        );
-        let fwd = c.redo().expect("entry");
-        assert_eq!(
-            fwd.canvas_rgba.as_slice(),
-            &[3; 16],
-            "redo lands on the LATEST press"
-        );
-        // A different kind never merges.
-        c.record_structural_coalesced(CoalesceKind::OpCycleSelection(0), model(3), model(4));
-        c.record_structural_coalesced(CoalesceKind::OpCycleSelection(1), model(4), model(5));
-        assert_eq!(
-            c.undo_depth(),
-            3,
-            "different shapes' taps stay separate entries"
-        );
-        // A plain entry breaks the run: the next same-kind action starts a NEW entry.
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(5), model(6));
-        c.record_structural(model(6), model(7));
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(7), model(8));
-        assert_eq!(
-            c.undo_depth(),
-            6,
-            "a plain entry between runs prevents merging"
-        );
-    }
-
-    /// After an undo, a new same-kind action must NOT merge into the undone entry (the redo branch is
-    /// discarded and a fresh run starts) — merging across the boundary would corrupt the timeline.
-    #[test]
-    fn coalescing_never_merges_across_an_undo_boundary() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(1));
-        c.undo();
-        c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(9));
-        assert_eq!(c.undo_depth(), 1);
-        assert!(!c.can_redo(), "the redo branch was discarded");
-        let restored = c.undo().expect("entry");
-        assert_eq!(restored.canvas_rgba.as_slice(), &[0; 16]);
-    }
-
-    #[test]
-    fn depth_cap_drops_oldest() {
-        let mut c = UndoController::new(4);
-        for v in 0..10u8 {
-            c.record_structural(model(v), model(v + 1));
-        }
-        assert!(c.undo_depth() <= 4, "cap enforced; got {}", c.undo_depth());
-    }
-
-    #[test]
-    fn clear_drops_both_stacks() {
-        let mut c = UndoController::new(DEFAULT_MAX_DEPTH);
-        c.record_structural(model(0), model(1));
-        c.undo();
-        c.clear();
-        assert!(!c.can_undo() && !c.can_redo());
-    }
-}
+#[path = "undo_tests.rs"]
+mod tests;

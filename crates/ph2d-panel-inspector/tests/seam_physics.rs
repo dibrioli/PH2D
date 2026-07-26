@@ -566,6 +566,24 @@ fn join_kind_chips_pick_their_kind_only_when_joinable() {
             );
         }
     }
+    // ⚠️ **E cada chip ESCOLHE o seu tipo, por clique real** (W-J5b). Pintado não
+    // é escolhível: o Slider tinha id e não tinha rótulo, o `seg_row` o descartou
+    // no `zip`, e o resultado foi um tipo que a simulação tinha e o artista não
+    // conseguia pedir (Enio: *"Slider não aparece no painel de joints"*). A
+    // varredura acima passaria com o chip pintado e morto; esta metade não.
+    for (i, &id) in ids::INSP_PHYS_JOIN_KIND.iter().enumerate() {
+        let acts = click_real(with_body(), id);
+        assert!(
+            acts.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPhysicsEdit {
+                    edit: ph2d_editor_core::screens::hero::PhysicsFieldEdit::JoinKind(t),
+                    ..
+                } if *t == i as u8
+            )),
+            "o chip de kind {i} tem de pedir JoinKind({i}): {acts:?}"
+        );
+    }
 }
 
 /// **The Bake button is painted, FOCUSABLE, and reaches the bus.** (W4.)

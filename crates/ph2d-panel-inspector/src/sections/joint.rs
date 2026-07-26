@@ -347,6 +347,12 @@ mod kind_chip_tests {
     /// ids, e o gate de seam dos chips ficou verde porque ele iterava a lista
     /// CURTA (os ids). Comparar os dois comprimentos é a asserção que nenhuma
     /// das duas listas pode satisfazer sozinha.
+    ///
+    /// ⚠️ **E o par existe DUAS vezes:** este (§12, o tipo que a joint É) e o
+    /// *Join As* do §11 (o tipo que o próximo gesto CRIA), com gate irmão em
+    /// `sections::physics_rows`. Foi escrever só ESTE que deixou o chip do Slider
+    /// faltar no seletor de criação — o artista via o tipo na simulação e não
+    /// conseguia escolhê-lo.
     #[test]
     fn every_kind_label_has_an_id_to_be_clicked_by() {
         assert_eq!(

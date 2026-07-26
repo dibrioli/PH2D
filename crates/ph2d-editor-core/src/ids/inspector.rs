@@ -660,11 +660,21 @@ pub const INSP_PHYS_JOIN: NodeId = hash_node_id("insp_phys_join");
 /// is how a CHAIN is made, the gesture is how a placement is made.
 pub const INSP_PHYS_JOIN_DRAW: NodeId = hash_node_id("insp_phys_join_draw");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
-/// Weld). Painted beside *Join Selected Bodies* so the artist creates the joint
-/// TYPE they want in one gesture, instead of making a Pin and converting it.
-pub const INSP_PHYS_JOIN_KIND: [NodeId; 4] = [
+/// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates
+/// the joint TYPE they want in one gesture, instead of making a Pin and
+/// converting it — and it qualifies the canvas DRAW gesture too.
+///
+/// ⚠️ **A lista de tipos existe DUAS vezes** — aqui (o tipo que o próximo gesto
+/// CRIA) e em [`INSP_JOINT_KIND`] (o tipo que a joint selecionada É) — e as duas
+/// têm de conhecer todo `JointKind`. O Slider chegou só na segunda (W-J5), e o
+/// resultado foi um tipo que a simulação tinha e o artista **não conseguia
+/// escolher** (Enio: *"Slider não aparece no painel de joints"*): o `seg_row` faz
+/// `option_ids.zip(labels)`, então o rótulo a mais foi silenciosamente descartado.
+/// Há um gate que compara os comprimentos dos DOIS pares.
+pub const INSP_PHYS_JOIN_KIND: [NodeId; 5] = [
     hash_node_id("insp_phys_join_kind_pin"),
     hash_node_id("insp_phys_join_kind_spring"),
     hash_node_id("insp_phys_join_kind_rope"),
     hash_node_id("insp_phys_join_kind_weld"),
+    hash_node_id("insp_phys_join_kind_slider"),
 ];

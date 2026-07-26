@@ -5041,3 +5041,32 @@ estrela — **desenhe** um trilho na direção que quiser).
 **Aberto:** motor linear (W-J6) · o eixo não tem alça de canvas (girar o joint é
 pelo campo Rotation; uma alça de ângulo é a família do W-J3 e pediria um grip
 próprio) · girar o corpo A não re-aponta o trilho (o modelo do Godot, gateado).
+
+### W-J5b — e o *Join As* também (2026-07-26, mesma cena `=47`, pendente de smoke)
+
+Report do Enio, com screenshot: *"ficou bom na simulação mas Slider não aparece no
+painel de joints"* — e o painel da foto é o **§11 *Join As***, o seletor que decide
+o que o próximo gesto CRIA. Ele tem array de ids e de rótulos **próprios**, e eu
+estendi só os do §12.
+
+⚠️ **A lista de tipos de joint existe DUAS vezes, de propósito** — *o tipo que a
+joint É* (§12 *Kind*) e *o tipo que o próximo gesto CRIA* (§11 *Join As*) — e o
+Slider chegou só na primeira. O preço é o pior formato possível: um tipo que a
+simulação tem, que se vê funcionar, e que **o artista não consegue pedir**.
+
+⚠️ **E o defeito do meu GATE é a lição de verdade:** eu escrevi
+`every_kind_label_has_an_id_to_be_clicked_by` para UM par, e o padrão tem dois.
+Um gate que cobre uma instância de um padrão duplicado deixa a outra exatamente
+tão desprotegida quanto antes — e o mecanismo já estava nomeado no comentário que
+eu mesmo tinha escrito (o `seg_row` faz `option_ids.zip(labels)`, e um `zip`
+**trunca** em silêncio). Agora há um gate por par, cada um apontando para o irmão.
+
+O seam do §11 ganhou a metade que faltava: ele **varria** os chips (pintado) e não
+os **clicava**. Pintado não é escolhível, e essa distinção é justamente o que este
+bug era — com o rótulo faltando o chip nem chega a existir, então a varredura o
+pega; mas a metade do clique é a que afirma *este chip pede JoinKind(4)*, que é o
+que o artista queria fazer.
+
+**M25** (o bug reinstalado — o 5º rótulo removido) sangra nas DUAS camadas: o gate
+de comprimento e o seam. `PROJECT_SCHEMA` **31**, registro **21**, c9 intocado
+(`55fa97c5…`, 85 corpos — nada aqui toca o solver).

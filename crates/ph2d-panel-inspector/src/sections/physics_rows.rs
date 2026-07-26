@@ -406,8 +406,11 @@ pub(super) fn paint_collision_rows(
 }
 
 /// Join-kind labels, indexed by `JointKind` tag — the TYPE the next
-/// *Join Selected Bodies* creates. Same order as §12's `KIND_LABELS`.
-const JOIN_KIND_LABELS: [&str; 4] = ["Pin", "Spring", "Rope", "Weld"];
+/// *Join Selected Bodies* (or canvas draw) creates. Same order as §12's
+/// `KIND_LABELS`, and it must list every kind that one does: this is the selector
+/// that decides what gets CREATED, so a kind missing here is a kind the artist
+/// cannot reach at all.
+const JOIN_KIND_LABELS: [&str; 5] = ["Pin", "Spring", "Rope", "Weld", "Slider"];
 
 /// Paint the joint-creation gesture: the "Join As" kind selector (Pin/Spring/
 /// Rope/Weld) and the "Join Selected Bodies" button. Split here for the panel's
@@ -518,6 +521,27 @@ fn join_button_label(join_count: u8) -> String {
 
 #[cfg(test)]
 mod join_label_tests {
+    /// **Um rótulo por id, no seletor que decide o que é CRIADO** (W-J5b).
+    ///
+    /// ⚠️ **A lista de tipos de joint existe DUAS vezes**, de propósito: aqui o
+    /// tipo que o próximo gesto CRIA (§11 *Join As*), no `sections::joint` o tipo
+    /// que a joint selecionada É (§12 *Kind*). O Slider chegou só na segunda
+    /// (W-J5), e o preço foi um tipo que a simulação tinha e o artista **não
+    /// conseguia escolher** — o `seg_row` faz `option_ids.zip(labels)` e um `zip`
+    /// TRUNCA, então o 5º rótulo foi descartado em silêncio, sem erro e sem
+    /// warning (Enio: *"Slider não aparece no painel de joints"*).
+    ///
+    /// O gate irmão em `sections::joint` afirma o mesmo do OUTRO par. Dois pares,
+    /// duas asserções — foi escrever só uma que deixou este passar.
+    #[test]
+    fn every_join_kind_label_has_an_id_to_be_clicked_by() {
+        assert_eq!(
+            super::JOIN_KIND_LABELS.len(),
+            ph2d_editor_core::ids::INSP_PHYS_JOIN_KIND.len(),
+            "um rotulo sem id e um chip que o seg_row DESCARTA no zip"
+        );
+    }
+
     use super::{draw_button_label, join_button_label};
 
     /// Mutação-testada: devolver sempre `"Join Selected Bodies"` faz o caso de 4

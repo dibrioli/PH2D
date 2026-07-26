@@ -24,9 +24,10 @@ Godot), **play-only**.
   `TIMELINE_MARKER_MENU`, roteado por `marker_menu::route`). Clique = busca · arrasto = move
   (manipulação direta, fora do menu); o marker saiu de `wants_double_click`.
 
-## Commits (tip = `8d4169783`)
+## Commits (tip = `1b4f6af2c`)
 
 ```
+1b4f6af2c feat(timeline): autoria de sinal do marker vira o menu do botao direito (W3)
 8d4169783 chore(timeline): fechamento -- fmt, elisao, split doc.rs, LITERAL-PX-OK
 edfb135aa feat(timeline): smoke dos sinais -- PH2D_SIGNAL_SMOKE=1
 26ef3ea34 feat(timeline): W2 -- autoria + glifo + consumidor visivel
@@ -38,8 +39,9 @@ e06d22387 docs(adr): 0143 -- sinais da timeline
 ## ⚠️ Números PROVISÓRIOS que o integrador RECONCILIA (o número se CONTA, não se escolhe)
 
 - **ADR-0143** — o maior no main hoje é **0142**. Se outra linha reivindicou 0143 nesta janela,
-  **renumere** (arquivo + os 8 `[ADR-0143]` nos doc-comments: `signal.rs`, `doc.rs`, `doc_markers.rs`,
-  `intent.rs`, `snapshot.rs`, os dois testes, o handoff). 4ª colisão potencial no repo.
+  **renumere** o arquivo **e todos os `[ADR-0143]`/`ADR-0143` nos doc-comments** — enumerar os arquivos
+  aqui apodrece (a W3 acrescentou mais: `menus_timeline.rs`, `marker_menu.rs`, `types.rs`), então use
+  `git grep -l 'ADR-0143'` como fonte. 4ª colisão potencial no repo.
 - **`DOC_VERSION` 12 → 13** (`crates/ph2d-timeline/src/doc.rs`). Se **physics/vector/qualquer linha**
   também bumpou o `DOC_VERSION` da timeline nesta janela, o valor final **se conta** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
   Pinado em 3 gates (`doc_roundtrip.rs`, `nesting_data.rs::the_schema_is_thirteen...`).

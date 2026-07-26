@@ -36,6 +36,7 @@
 //! a small `Vec` + a `u32`). `begin` at gesture start, `commit_if_changed` at the
 //! end (no-op if nothing changed), or `push_undo` for an atomic op.
 
+pub mod layout;
 pub mod subgraph;
 pub use subgraph::{Holder, Members, Subgraph};
 

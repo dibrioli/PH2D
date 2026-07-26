@@ -102,7 +102,7 @@ impl crate::App {
             sinks.push(sink);
             heroes.extend(hero);
         }
-        crate::smoke_layout::arrange_and_mark(g, &heroes);
+        crate::smoke_layout::arrange_and_mark(&mut gfx.motion.doc, &heroes);
         gfx.motion.sinks.extend(sinks);
         let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     }

@@ -15,6 +15,21 @@
 
 use crate::doc::Marker;
 
+/// A signal the timeline emitted because forward play crossed a marker carrying it
+/// ([ADR-0143]). A **decoupled** event: the timeline fills these and never calls a
+/// consumer (ADR-0075); any system drains them by matching `name`. The audio cue, a
+/// gameplay reaction and a Luau callback are all just consumers of this — none of them
+/// is `ph2d-timeline`'s concern.
+///
+/// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimelineSignal {
+    /// The name the marker carried — the contract a consumer matches on.
+    pub name: String,
+    /// The scene time (seconds) the play was at when it crossed the marker.
+    pub t: f64,
+}
+
 /// The signals crossed as forward play advanced from `prev` to `now` (scene seconds),
 /// in the order the playhead reached them.
 ///

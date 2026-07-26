@@ -14,7 +14,57 @@
 use ph2d_core::Playhead;
 use ph2d_ecs::World;
 use ph2d_editor::tool::PanelEvent;
-use ph2d_timeline::{PropKind, TimelineIntent, TimelineState, apply_from_doc_except, apply_intent};
+use ph2d_timeline::{
+    PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_from_doc_except, apply_intent,
+};
+
+/// The timeline's signal outbox (ADR-0143). When forward SCENE play crosses a marker
+/// that carries a signal, an event lands in `out`; the shell drains it after the apply
+/// and hands it to consumers (the v1 consumer is a toast; audio/gameplay/Luau are the
+/// deferred cross-line downstream). **Decoupled (ADR-0075):** [`Self::emit`] FILLS
+/// `out` and never calls a consumer — the timeline emits an event, it does not make a
+/// call. Scrub, reverse, pause and any non-Arrange view emit nothing and re-baseline
+/// silently — the physics `hold`/`rewind` re-baseline, one module over.
+#[derive(Debug, Default)]
+pub(crate) struct SignalEmitter {
+    /// The scene time the last forward tick reached — the `prev` of the crossing law.
+    last_time: f64,
+    /// Signals crossed this frame, drained by the shell. Cleared on every `emit`.
+    pub out: Vec<TimelineSignal>,
+}
+
+impl SignalEmitter {
+    /// Refill `out` from the SCENE playhead's forward advance across the document's
+    /// markers, then re-baseline. Called once per frame from [`run`]'s Arrange branch
+    /// with the SCENE clock — the only view where the scene plays and markers live.
+    ///
+    /// Forward play only ([`Playhead::is_advancing_forward`]): a scrub, a reverse leg
+    /// and a pause fire nothing but STILL re-baseline `last_time`, so the next play
+    /// does not fire the gap the artist skipped over. This is the exact `hold`/`rewind`
+    /// discipline the physics bridge uses for its contact events.
+    ///
+    /// `jumped` is `true` when a Scrub/SeekFrame intent moved the playhead this frame:
+    /// a seek forward WHILE playing looks like a huge forward advance, but it is a
+    /// discontinuity, not a crossing — so it re-baselines and fires nothing.
+    fn emit(&mut self, doc: &ph2d_timeline::TimelineDoc, playhead: &Playhead, jumped: bool) {
+        self.out.clear();
+        let now = playhead.time();
+        if !jumped && playhead.is_advancing_forward() {
+            for name in ph2d_timeline::signals_crossed(
+                doc.markers(),
+                self.last_time,
+                now,
+                playhead.loop_range(),
+            ) {
+                self.out.push(TimelineSignal {
+                    name: name.to_string(),
+                    t: now,
+                });
+            }
+        }
+        self.last_time = now;
+    }
+}
 
 /// Drain pending intents into `timeline`, then apply its document to `world` at
 /// the current `playhead` time. The apply leaves untouched: `live_entity` (the
@@ -40,6 +90,7 @@ pub(crate) fn run(
     ak: &mut super::autokey_pass::AutokeyState,
     solo: bool,
     container: Option<usize>,
+    signals: &mut SignalEmitter,
 ) -> bool {
     // **The Containers list has no playback mode** (Enio, 2026-07-22). The two
     // refusal layers upstream (the play button paints dead + unhittable; the
@@ -51,7 +102,14 @@ pub(crate) fn run(
     if timeline.containers_list && playhead.is_playing() {
         playhead.pause();
     }
+    // A Scrub/SeekFrame this frame is a DISCONTINUITY, not a crossing — a seek
+    // forward while playing must not fire every signal it skipped (ADR-0143 §3).
+    let mut jumped = false;
     for intent in intents.drain(..) {
+        jumped |= matches!(
+            intent,
+            TimelineIntent::Scrub(_) | TimelineIntent::SeekFrame(_)
+        );
         apply_intent(timeline, playhead, intent);
     }
     // **O PLAYHEAD É LIVRE — não há parede na duração autorada** (Enio, 2026-07-25). O transporte
@@ -87,6 +145,11 @@ pub(crate) fn run(
         ph2d_timeline::apply_active_clip(world, &mut timeline.doc, playhead.time(), skip);
     } else {
         apply_from_doc_except(world, &mut timeline.doc, playhead.time(), skip);
+        // Arrange is the ONLY view where the scene plays and markers live, so it is
+        // the only view that emits signals (ADR-0143). Here `playhead` IS the scene
+        // clock (the caller passes `self.playhead` only in this branch). The other
+        // two views freeze the scene clock, so nothing bursts on return.
+        signals.emit(&timeline.doc, playhead, jumped);
     }
     // Identity upkeep: heal (a project load's detached bindings recolam pelo
     // nome), then purge — a deleted object's tracks leave the document with it,
@@ -460,3 +523,7 @@ mod k_tests;
 #[cfg(test)]
 #[path = "timeline_bridge_container_tests.rs"]
 mod container_tests;
+
+#[cfg(test)]
+#[path = "timeline_bridge_signal_tests.rs"]
+mod signal_tests;

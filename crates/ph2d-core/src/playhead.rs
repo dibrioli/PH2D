@@ -254,6 +254,25 @@ impl Playhead {
         self.playing
     }
 
+    /// Whether the play is currently moving the position FORWARD in time — playing,
+    /// with an effective positive step (the `rate` sign times the ping-pong
+    /// direction). A normal forward loop is forward even on the tick its position
+    /// wraps back to the start; a ping-pong REVERSE leg and reverse playback
+    /// (`rate < 0`) are not. Timeline signals fire only on forward motion
+    /// (ADR-0143 §3): a signal is a forward-time event, like a footstep.
+    #[must_use]
+    pub fn is_advancing_forward(&self) -> bool {
+        if !self.playing {
+            return false;
+        }
+        let dir = if matches!(self.loop_mode, LoopMode::PingPong) {
+            self.rate * self.ping_dir
+        } else {
+            self.rate
+        };
+        dir > 0.0
+    }
+
     /// The playback-speed multiplier.
     #[must_use]
     pub fn rate(&self) -> f64 {

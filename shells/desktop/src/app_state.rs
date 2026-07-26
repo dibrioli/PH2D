@@ -431,6 +431,11 @@ pub(crate) struct App {
     /// Reused view-snapshot buffer, rebuilt from `timeline` + `playhead` each
     /// frame and published to the timeline panel (`set_current_timeline`).
     pub(crate) timeline_view: ph2d_timeline::TimelineViewSnapshot,
+    /// The timeline's signal outbox (ADR-0143): forward SCENE play crossing a marker
+    /// that carries a signal fills it in `timeline_bridge::run`; the shell drains it
+    /// the same frame and hands each to a consumer (v1: a toast). Runtime-only — a
+    /// signal is a per-frame event, never persisted.
+    pub(crate) timeline_signals: crate::render_loop::timeline_bridge::SignalEmitter,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,

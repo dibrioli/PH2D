@@ -263,6 +263,7 @@ fn run_in_solo_mode_shows_the_active_clip_not_the_stack() {
         &mut ak,
         true,
         None,
+        &mut super::SignalEmitter::default(),
     );
     let x = |sim: &SimWorld| {
         f64::from(
@@ -292,6 +293,7 @@ fn run_in_solo_mode_shows_the_active_clip_not_the_stack() {
         &mut ak,
         false,
         None,
+        &mut super::SignalEmitter::default(),
     );
     assert_eq!(
         x(&sim),

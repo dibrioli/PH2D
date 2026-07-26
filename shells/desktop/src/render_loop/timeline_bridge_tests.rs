@@ -337,6 +337,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         &mut ak,
         false,
         None,
+        &mut super::SignalEmitter::default(),
     );
     assert!(
         !ph.is_playing(),
@@ -356,6 +357,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         &mut ak,
         false,
         None,
+        &mut super::SignalEmitter::default(),
     );
     assert!(
         ph2.is_playing(),

@@ -394,6 +394,7 @@ impl App {
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,
             timeline_view: ph2d_timeline::TimelineViewSnapshot::default(),
+            timeline_signals: Default::default(),
             timeline_insert_key: false,
             autokey: Default::default(),
             last_frame: Instant::now(),

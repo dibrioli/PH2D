@@ -125,7 +125,7 @@ pub(crate) mod physics_panel_bridge;
 #[cfg(test)]
 mod push_look_probe;
 pub(crate) mod record_fit;
-mod timeline_bridge;
+pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
@@ -1431,6 +1431,7 @@ impl crate::App {
             &mut self.autokey,
             keys_mode,
             container,
+            &mut self.timeline_signals,
         );
         if timeline_reset {
             // The document just went back to a fresh state (the last animated

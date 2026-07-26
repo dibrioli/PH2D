@@ -35,6 +35,8 @@ fn snap(sel0: bool, sel1: bool) -> TimelineViewSnapshot {
             entity: 1,
             missing: false,
             buffer_ghost: None,
+            pre: ph2d_timeline::Extrap::Hold,
+            post: ph2d_timeline::Extrap::Hold,
             keys: vec![mk(1, 0.0, 0.0, sel0), mk(2, 1.0, 10.0, sel1)],
         }],
         ..TimelineViewSnapshot::default()

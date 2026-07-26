@@ -101,6 +101,8 @@ fn an_alt_click_without_dragging_collapses_a_preserved_group() {
             entity: 1,
             missing: false,
             buffer_ghost: None,
+            pre: ph2d_timeline::Extrap::Hold,
+            post: ph2d_timeline::Extrap::Hold,
             keys: vec![KeyView {
                 id: KeyId::new(0),
                 t_seconds: 0.0,

@@ -10,6 +10,49 @@ fn s(t: f64) -> RationalTime {
 }
 
 #[test]
+fn the_snapshot_carries_each_tracks_extrapolation() {
+    // The data path for the dope-sheet marks (plan §6): a track's Pre/Post reach
+    // the panel through the snapshot, independently. Default is Hold/Hold (no mark).
+    use crate::{Extrap, ExtrapSide};
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        Ix::AddKey {
+            entity: 1,
+            prop: PropKind::TranslationX,
+            t: s(0.0),
+            value: AnimValue::Float(0.0),
+            interp: Interp::Linear,
+        },
+    );
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .expect("binding")
+        .target;
+
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.tracks[0].pre, Extrap::Hold, "default Pre is Hold");
+    assert_eq!(snap.tracks[0].post, Extrap::Hold, "default Post is Hold");
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        Ix::SetTrackExtrap {
+            target,
+            side: ExtrapSide::Post,
+            mode: Extrap::Loop,
+        },
+    );
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.tracks[0].post, Extrap::Loop, "Post reaches the panel");
+    assert_eq!(snap.tracks[0].pre, Extrap::Hold, "Pre stays independent");
+}
+
+#[test]
 fn snapshot_projects_tracks_keys_selection_and_transport() {
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(1.0 / 60.0);

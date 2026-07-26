@@ -395,6 +395,8 @@ mod tests {
                 entity: 1,
                 missing: false,
                 buffer_ghost: None,
+                pre: ph2d_timeline::Extrap::Hold,
+                post: ph2d_timeline::Extrap::Hold,
                 keys: times
                     .iter()
                     .enumerate()

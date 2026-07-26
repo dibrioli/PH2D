@@ -20,7 +20,10 @@
 //!    com velocidade, em vez de esperar parado em 0).
 //! 5. **PRE -> Loop / Ping-Pong**: em `[0, 1.5)` o ciclo já roda ANTES do trecho keyado.
 //! 6. Pre e Post ligados juntos (ex.: os dois Loop) = oscilação infinita nas duas pontas.
-//! 7. Nenhum strip/fade se mexe (é edit de KEY, via edit/settle) — e uma track de
+//! 7. **A faixa MARCA a extrapolação**: ao sair do Hold, o lado ganha um **tracejado**
+//!    na região extrapolada + um **badge** com o modo (Loop / Ping-Pong / Continue).
+//!    Hold não marca nada (default limpo); a posição do tracejado diz Pre vs Post.
+//! 8. Nenhum strip/fade se mexe (é edit de KEY, via edit/settle) — e uma track de
 //!    **Time Remap** não oferece o controle (o menu dela é só Delete Track).
 //!
 //! ⚠️ Se a linha `[extrap-smoke]` não aparecer, PARE: a cena não montou.
@@ -99,7 +102,8 @@ impl crate::App {
              tocando em loop [0,4]. Zona PRE = [0,1.5), zona POST = (2.5,4]. Por padrao \
              (Hold/Hold) o objeto fica em 0 na entrada e congela em 3 no fim. R-CLICK na \
              LABEL da track -> Extrapolation Pre/Post -> Loop/Ping-Pong/Continue, cada lado \
-             independente. Nenhum strip/fade se mexe; Time Remap nao oferece o controle."
+             independente. A faixa MARCA o lado extrapolado (tracejado + badge do modo); \
+             Hold nao marca. Nenhum strip/fade se mexe; Time Remap nao oferece o controle."
         );
     }
 }

@@ -8,7 +8,7 @@
 //! The panel never reaches into the document; it reads this (mirrors
 //! `GraphViewSnapshot`).
 
-use ph2d_anim::{AnimTarget, Interp, Key, KeyId};
+use ph2d_anim::{AnimTarget, Extrap, Interp, Key, KeyId};
 use ph2d_core::Playhead;
 
 use crate::prop::PropKind;
@@ -61,6 +61,13 @@ pub struct TrackView {
     /// pass (to `None` when this row does not own the buffer) — a stale `Some` from
     /// a previous frame would paint a ghost the buffer no longer holds.
     pub buffer_ghost: Option<Vec<KeyView>>,
+    /// Extrapolation before the first key / after the last (crown-jewels plan §6),
+    /// so the dope-sheet can mark the extrapolated regions with a dashed line + a
+    /// mode badge. `Hold` is the default (no mark). Set every pass (the row is
+    /// reused), like `buffer_ghost`.
+    pub pre: Extrap,
+    /// Extrapolation after the last key — see [`TrackView::pre`].
+    pub post: Extrap,
 }
 
 /// Project one `(key, id, roving)` into the panel's [`KeyView`] — the ONE door for
@@ -546,6 +553,8 @@ impl TimelineViewSnapshot {
                     missing: false,
                     keys: Vec::new(),
                     buffer_ghost: None,
+                    pre: Extrap::Hold,
+                    post: Extrap::Hold,
                 });
             }
             let row = &mut self.tracks[rows];
@@ -555,6 +564,9 @@ impl TimelineViewSnapshot {
             row.entity = b.entity;
             row.missing = b.missing;
             row.keys.clear();
+            // Default Hold when there is no track yet (a bare binding) — the
+            // no-mark case, set every pass since the row is reused.
+            (row.pre, row.post) = (Extrap::Hold, Extrap::Hold);
             if let Some(track) = clip.track(b.target) {
                 for ((k, &id), &roving) in track.keys().iter().zip(track.ids()).zip(track.roving())
                 {
@@ -564,6 +576,7 @@ impl TimelineViewSnapshot {
                     });
                     row.keys.push(key_view(k, id, roving, selected));
                 }
+                (row.pre, row.post) = (track.pre(), track.post());
             }
             // The buffered-curve ghost — `Some` only for the track that OWNS the
             // A/B buffer, rebuilt from the snapshot through the SAME projection

@@ -72,6 +72,8 @@ fn snap_with(n: usize) -> TimelineViewSnapshot {
                 entity: 1,
                 missing: false,
                 buffer_ghost: None,
+                pre: ph2d_timeline::Extrap::Hold,
+                post: ph2d_timeline::Extrap::Hold,
                 keys: Vec::new(),
             })
             .collect(),

@@ -12,12 +12,14 @@
 //! drag-move, clear-on-empty).
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{PropKind, SelectedKey, TimelineViewSnapshot};
+use ph2d_timeline::{Extrap, PropKind, SelectedKey, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
@@ -40,6 +42,14 @@ const ROVE_DOT_R: f32 = 2.5; // LITERAL-PX-OK: roving key dot radius
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).
 pub(crate) const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
+/// Extrapolation marks (plan §6): a dashed line + mode badge on the dope-sheet
+/// over the region a non-Hold Pre/Post governs. Dash geometry + the smallest
+/// region worth marking / labelling.
+const DASH_LEN: f32 = 4.0; // LITERAL-PX-OK: extrapolation dash length
+const DASH_GAP: f32 = 3.0; // LITERAL-PX-OK: extrapolation dash gap
+const DASH_TH: f32 = 1.0; // LITERAL-PX-OK: extrapolation dash thickness
+const EXTRAP_BADGE_W: f32 = 52.0; // LITERAL-PX-OK: extrapolation mode badge width
+const EXTRAP_MARK_MIN_W: f32 = 6.0; // LITERAL-PX-OK: skip a region too small to dash
 
 /// Paint the "+ Track" dropdown button filling `header` (the label-column slice
 /// aligned with the ruler strip). The property list opens as an overlay popover
@@ -250,6 +260,9 @@ fn paint_lane_keys(
 ) {
     let (time_x, right) = (view.time_x, view.right);
     let cy = y + ROW_H_PX * 0.5;
+    // The extrapolation marks go UNDER the diamonds (drawn first): a dashed line +
+    // a mode badge over the region a non-Hold Pre/Post governs.
+    paint_extrap_marks(ctx, theme, track, view, cy);
     for k in &track.keys {
         let base_x = time_x + ((k.t_seconds - view.view_start) * view.px_per_s) as f32;
         // Selected keys ride the live drag preview.
@@ -294,6 +307,90 @@ fn paint_lane_keys(
             },
         );
         ctx.host.hit_index_mut().register(id, hit);
+    }
+}
+
+/// The i18n key for a mode's badge — `None` for [`Extrap::Hold`], the default
+/// that is DRAWN AS NOTHING. This one door is the "only when it is not the plain
+/// Hold" rule the marks obey (both the dash and the badge ask it).
+fn extrap_i18n_key(mode: Extrap) -> Option<&'static str> {
+    match mode {
+        Extrap::Hold => None,
+        Extrap::Loop => Some("panel.timeline.extrap.loop"),
+        Extrap::PingPong => Some("panel.timeline.extrap.pingpong"),
+        Extrap::Continue => Some("panel.timeline.extrap.continue"),
+    }
+}
+
+/// Mark the dope-sheet regions a non-Hold Pre/Post governs: a dashed line from the
+/// time-area edge to the first/last key, plus a small mode badge. Nothing is drawn
+/// for `Hold` (the clean default) — the region's SIDE (left of the first key vs
+/// right of the last) reads Pre vs Post, and the badge names the mode.
+fn paint_extrap_marks(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    track: &ph2d_timeline::TrackView,
+    view: graph::TimeView,
+    cy: f32,
+) {
+    let (Some(first), Some(last)) = (track.keys.first(), track.keys.last()) else {
+        return; // no key to anchor the extrapolated region to
+    };
+    let (time_x, right) = (view.time_x, view.right);
+    let x_at = |t: f64| time_x + ((t - view.view_start) * view.px_per_s) as f32;
+    let (first_x, last_x) = (x_at(first.t_seconds), x_at(last.t_seconds));
+    // Pre: the region left of the first key, clamped to the visible time area. The
+    // badge sits at the INNER edge (adjacent to the keys), where it reads.
+    if let Some(key) = extrap_i18n_key(track.pre) {
+        let (a, b) = (time_x, first_x.min(right));
+        paint_extrap_span(ctx, theme, a, b, cy, key, false);
+    }
+    // Post: the region right of the last key.
+    if let Some(key) = extrap_i18n_key(track.post) {
+        let (a, b) = (last_x.max(time_x), right);
+        paint_extrap_span(ctx, theme, a, b, cy, key, true);
+    }
+}
+
+/// One extrapolation span `[a, b]` at `cy`: a dashed line plus the mode badge (i18n
+/// `key`) at the inner edge — `b` for the Pre side, `a` for the Post side (`post`).
+fn paint_extrap_span(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    a: f32,
+    b: f32,
+    cy: f32,
+    key: &str,
+    post: bool,
+) {
+    if b - a < EXTRAP_MARK_MIN_W {
+        return; // region too small to read a dash
+    }
+    let dash = resolve(ColorToken::Text3, theme);
+    let mut x = a;
+    while x < b {
+        let seg = (x + DASH_LEN).min(b) - x;
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, cy - DASH_TH * 0.5, seg, DASH_TH),
+            0.0,
+            dash,
+        );
+        x += DASH_LEN + DASH_GAP;
+    }
+    // Badge, only when the span can hold it — anchored at the inner edge (nearest
+    // the keys) and clamped inside the span.
+    if b - a >= EXTRAP_BADGE_W {
+        let bx = if post { a } else { b - EXTRAP_BADGE_W };
+        let rect = Rect::new(bx, cy - ROW_H_PX * 0.5, EXTRAP_BADGE_W, ROW_H_PX);
+        paint_text_centered(
+            ctx.text_system,
+            ctx.scene,
+            ph2d_i18n::tr(key),
+            rect,
+            TypeToken::Xs.px(),
+            resolve(ColorToken::Text2, theme),
+        );
     }
 }
 
@@ -456,4 +553,23 @@ fn prop_label(p: PropKind) -> &'static str {
 /// A subtle zebra fill for alternate rows.
 fn fill_row(ctx: &mut PaintCtx, theme: Theme, rect: Rect, tok: ColorToken) {
     fill_rounded_rect(ctx.scene, rect, Radius::Xs.px(), resolve(tok, theme));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The one door that says "mark it or not": every non-Hold mode has a badge
+    /// key; Hold is the plain default and gets NONE (no dash, no badge).
+    #[test]
+    fn only_a_non_hold_side_is_marked() {
+        assert_eq!(extrap_i18n_key(Extrap::Hold), None, "Hold draws nothing");
+        for m in [Extrap::Loop, Extrap::PingPong, Extrap::Continue] {
+            let key = extrap_i18n_key(m).expect("a non-Hold mode is marked");
+            assert!(
+                !ph2d_i18n::tr(key).is_empty(),
+                "{m:?} resolves to a real badge label"
+            );
+        }
+    }
 }

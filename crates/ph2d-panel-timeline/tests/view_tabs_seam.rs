@@ -39,6 +39,8 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
             entity: 1,
             missing: false,
             buffer_ghost: None,
+            pre: ph2d_timeline::Extrap::Hold,
+            post: ph2d_timeline::Extrap::Hold,
             keys: vec![
                 KeyView {
                     id: KeyId::new(1),

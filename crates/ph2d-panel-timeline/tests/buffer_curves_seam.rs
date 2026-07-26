@@ -50,6 +50,8 @@ fn snap(ghost: Option<Vec<KeyView>>) -> TimelineViewSnapshot {
             missing: false,
             keys: vec![kv(1, 0.0, 0.0), kv(2, 1.0, 10.0)],
             buffer_ghost: ghost,
+            pre: ph2d_timeline::Extrap::Hold,
+            post: ph2d_timeline::Extrap::Hold,
         }],
         ..TimelineViewSnapshot::default()
     }

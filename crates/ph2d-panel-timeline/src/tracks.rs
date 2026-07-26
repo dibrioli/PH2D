@@ -48,7 +48,13 @@ pub(crate) const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-wid
 const DASH_LEN: f32 = 4.0; // LITERAL-PX-OK: extrapolation dash length
 const DASH_GAP: f32 = 3.0; // LITERAL-PX-OK: extrapolation dash gap
 const DASH_TH: f32 = 1.0; // LITERAL-PX-OK: extrapolation dash thickness
-const EXTRAP_BADGE_W: f32 = 52.0; // LITERAL-PX-OK: extrapolation mode badge width
+/// Horizontal padding inside the mode badge (each side). The badge width is the
+/// MEASURED label width plus this, so no label ever wraps (a fixed width clipped
+/// "Ping-Pong" to two lines) and it survives i18n.
+const EXTRAP_BADGE_PAD: f32 = 4.0; // LITERAL-PX-OK: extrapolation badge horizontal padding
+/// Clearance between a boundary key and the badge, so the label never overlaps
+/// the diamond it sits beside.
+const EXTRAP_BADGE_GAP: f32 = 10.0; // LITERAL-PX-OK: extrapolation badge clearance from the key
 const EXTRAP_MARK_MIN_W: f32 = 6.0; // LITERAL-PX-OK: skip a region too small to dash
 
 /// Paint the "+ Track" dropdown button filling `header` (the label-column slice
@@ -378,15 +384,26 @@ fn paint_extrap_span(
         );
         x += DASH_LEN + DASH_GAP;
     }
-    // Badge, only when the span can hold it — anchored at the inner edge (nearest
-    // the keys) and clamped inside the span.
-    if b - a >= EXTRAP_BADGE_W {
-        let bx = if post { a } else { b - EXTRAP_BADGE_W };
-        let rect = Rect::new(bx, cy - ROW_H_PX * 0.5, EXTRAP_BADGE_W, ROW_H_PX);
+    // Badge: MEASURED so no label wraps ("Ping-Pong" clipped to two lines under a
+    // fixed width), and sat a gap AWAY from the boundary key so the label never
+    // overlaps the diamond. Only drawn when the region can hold badge + gap.
+    let label = ph2d_i18n::tr(key);
+    let text_w = ctx
+        .text_system
+        .layout(label, TypeToken::Xs.px(), f32::INFINITY)
+        .width();
+    let badge_w = text_w + EXTRAP_BADGE_PAD * 2.0;
+    if b - a >= badge_w + EXTRAP_BADGE_GAP {
+        let bx = if post {
+            a + EXTRAP_BADGE_GAP
+        } else {
+            b - EXTRAP_BADGE_GAP - badge_w
+        };
+        let rect = Rect::new(bx, cy - ROW_H_PX * 0.5, badge_w, ROW_H_PX);
         paint_text_centered(
             ctx.text_system,
             ctx.scene,
-            ph2d_i18n::tr(key),
+            label,
             rect,
             TypeToken::Xs.px(),
             resolve(ColorToken::Text2, theme),

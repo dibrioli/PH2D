@@ -107,6 +107,7 @@ ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-curve = { path = "../ph2d-node-value-curve" }
+ph2d-node-value-gain = { path = "../ph2d-node-value-gain" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }

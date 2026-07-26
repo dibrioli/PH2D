@@ -93,6 +93,8 @@ ph2d-node-value-noise = { path = "../ph2d-node-value-noise" }
 ph2d-node-value-mix = { path = "../ph2d-node-value-mix" }
 # The value-domain staircase (snap to a grid; the posterize/stepped look).
 ph2d-node-value-quantize = { path = "../ph2d-node-value-quantize" }
+# The value-domain contrast/gamma shaper (Schlick bias/gain, transcendental-free).
+ph2d-node-value-gain = { path = "../ph2d-node-value-gain" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

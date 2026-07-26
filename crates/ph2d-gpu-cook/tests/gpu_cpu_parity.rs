@@ -56,6 +56,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_noise::register(&mut reg).unwrap();
     ph2d_node_value_mix::register(&mut reg).unwrap();
     ph2d_node_value_quantize::register(&mut reg).unwrap();
+    ph2d_node_value_gain::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3037,6 +3038,70 @@ fn value_quantize_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the staircase drove nothing"
+    );
+}
+
+/// **`value.gain` runs fully on the GPU and matches the CPU.** A `[0,1]` ramp
+/// (instance_field Ramp) through a Gain S-curve at `strength 0.6` — the real
+/// division path (`1/a - 2`, the two Schlick rationals), NOT the `strength = 0`
+/// neutral identity, which would hide a wrong port behind a passthrough — drives
+/// Y; the device result matches the CPU port term for term. `is_fully_gpu` PROVES
+/// the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_gain_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let gain = g.add_node("value.gain");
+    g.set_param(gain, "strength", 0.6); // a real S-curve, not the neutral identity
+    g.set_param(gain, "mode", 0.0); // Gain
+    connect(&mut g, field, gain);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (gain, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("gained value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → gain → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.gain → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the S-curve drove nothing"
     );
 }
 

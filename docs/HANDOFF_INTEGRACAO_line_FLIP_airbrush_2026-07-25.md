@@ -1,9 +1,14 @@
-# HANDOFF DE INTEGRAÇÃO — `line/FLIP` · AIRBRUSH (2026-07-25)
+# HANDOFF DE INTEGRAÇÃO — `line/FLIP` · AIRBRUSH + REAMOSTRAGEM (2026-07-25)
 
 > **Para o AGENTE INTEGRADOR.** Este é o handoff do **tip atual** da `line/FLIP`. A linha traz
-> agora **8 commits** sobre o `main` de hoje (ff-only): o multiplano 2.5D + o polish dos sliders +
+> agora **10 commits** sobre o `main` de hoje (ff-only): o multiplano 2.5D + o polish dos sliders +
 > o Self Overlap (detalhe em [`HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_self_overlap_2026-07-25.md))
-> e agora o **Airbrush** (`0443f98c2`). **Não integrar nem pushar sem ordem EXPLÍCITA do Enio.**
+> + o **Airbrush** (`0443f98c2`) + a **reamostragem suave do traço** (`a14335e5f`, §7 abaixo).
+> **Não integrar nem pushar sem ordem EXPLÍCITA do Enio.**
+>
+> ⚠️ **Contagem/schema:** 10 commits; `git rev-list --count main..line/FLIP` = 10. Schema INTOCADO
+> pela reamostragem (ela só produz mais pontos no MESMO `FlipStroke`) ⇒ segue `FLIP_SCHEMA` **12**,
+> `PROJECT_SCHEMA` **34**, tripla `(34, 12, 13)`.
 
 ## 0. GO — o essencial em 6 linhas
 
@@ -106,3 +111,28 @@ zero). Render-and-look confirmou: o padrão é uma espinha fina, o airbrush um d
   candidato natural.
 - O **eraser/reshape/tween** não leem `airbrush` (é atributo de DEPÓSITO); um traço com o flag
   sobrevive a eles pelo `clone_attrs`, que o carrega.
+
+## 7. Reamostragem suave do traço (`a14335e5f`, T2.8) — o report do "tracejado"
+
+Enio (com screenshot): *"o traço de qualquer modo tem baixo número de vértices e assim fica
+tracejado e não arredondado nas curvas. dê mais resolução ao traço."* O RDP + o render ligavam os
+pontos por RETAS ⇒ poucos pontos = curvas facetadas; o pipeline só **removia** pontos, nunca
+adicionava resolução suave.
+
+- **Fix:** `flip_smooth::resample_smooth(pts, prs, step)` — uma **Catmull-Rom** (Hermite uniforme)
+  entre o RDP e o `build_stroke`: interpola pelos pontos (o traço passa EXATO por eles) e densifica
+  a cada `step = 0.4 × size_to_world(width)` de arco. Pontos evenly-spaced (nem facetas, nem
+  redundantes). **Quinas preservadas** (giro > 60° ⇒ vinco C0, tangente unilateral); pressão
+  interpolada linear; cap por-span (`MAX_SUB_PER_SPAN=24`). É a MESMA porta do preview e do bake.
+- **Sem schema/contrato** — o `FlipStroke` não muda de forma, só ganha mais pontos.
+- **Gates:** 5 unit em `flip_smooth` (densifica+alisa · reta fica reta · quina sobrevive · pressão
+  interpola · <3 pontos identidade) + end-to-end `flip_draw_tests::a_sparse_stroke_becomes_a_smooth_curve`
+  (C esparso pela porta REAL: giro 45°→<15°; **RED provado** bypassando o `resample_smooth`) + o
+  `the_resampled_stroke_tracks_the_drawing_without_redundant_points` (reescrito do
+  `the_stroke_drops_redundant_vertices`: acompanha o desenho, sem pontos grudados). Render-and-look
+  (PNG): C 7 pts facetado × 49 pts liso.
+- **Smoke:** `PH2D_FLIP_RESAMPLE_SMOKE=1` — C esparso (6 pts, facetado) × reamostrado (62 pts, liso)
+  lado a lado; e desenhar à mão sai arredondado. ⚠️ **A DENSIDADE (`RESAMPLE_STEP_FRACTION=0.4`) é o
+  smoke que decide** (como a tolerância do RDP) — mais/menos arredondado é o olho do Enio.
+- **Aberto:** custo por-frame no preview (a reamostragem roda a cada frame do drag, como o RDP; o
+  item "Pack INCREMENTAL do traço em curso" do §8 cobre o caso patológico de 4000 pontos).

@@ -105,8 +105,14 @@ impl PlaneWindow {
 /// vez de assumi-lo do chamador — a mesma escolha que o motor de blend do vetor teve de fazer quando o
 /// invariante *"a origem está na lista"* era esperado de quem chamava.
 ///
-/// O custo é uma varredura por linha, uma vez por commit (user-paced), e só nos planos que os `Arc`s já
-/// não deram como idênticos.
+/// ⚠️ **O custo dessa escolha foi MEDIDO e a estimativa que morava aqui estava errada.** Esta doc dizia
+/// *"uma varredura por linha, uma vez por commit (user-paced)"*, como se user-paced quisesse dizer
+/// barato. Um commit acontece no **pen-up de todo traço**, e a 4096² com impasto são quatro planos a
+/// varrer (~256 MB): medido, **91% do pen-up era este scan** — 40,20 ms de pen-up contra 3,49 sem o
+/// commit, com o resto plano na tela (`measure_stroke_owners`). A varredura ficou (a decisão acima
+/// continua certa: uma janela informada errado não falha, some com texels) e virou **paralela**
+/// ([`diff_rows`] / [`diff_cols`]) — 25,03 → 10,96 ms no `record_structural`. Só nos planos que os
+/// `Arc`s já não deram como idênticos, como sempre foi.
 ///
 /// ⚠️ **Só é chamada com um stride que divide o plano** ([`fits`]) — porque `None` aqui significa
 /// *idênticos*, e devolver `None` para *"não sei medir"* faria o `split` gravar `Unchanged` sobre dois

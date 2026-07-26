@@ -12,7 +12,9 @@
 > **O saldo, numa linha:** o frame pior de um traço a 4096² saiu de **232,7 ms** para **1,1–1,3 ms**
 > (§4.8.3, medido no app pelo Enio), o `dispatch p50` ficou em **0,7 ms — 4% de um quadro de 60 fps**, e
 > o censo dos quatro meios não tem mais nenhum desvio de FORMA: **todo move é limitado pela pegada**
-> (§5.12 fechou o último, o Wet Paint, 13,71 → 1,82 ms a 4096²).
+> (§5.12 fechou o último, o Wet Paint, 13,71 → 1,82 ms a 4096²). E o **pen-up**, que a §5.13 atribuiu ao
+> fork do relevo, era **91% commit de undo** — o scan do histórico ficou paralelo e o commit caiu
+> **25,03 → 10,96 ms** a 4096² (§5.14), com a errata da atribuição escrita no lugar onde ela foi feita.
 >
 > ⚠️ **E é por isso que a §7 foi reescrita três vezes.** Cada medição não só respondeu a pergunta: ela
 > **mudou qual era a pergunta**. A última tirou o vencedor da mesa — com o dispatch em 0,7 ms, o custo
@@ -39,8 +41,8 @@
 | N | 🎯 **O 1º traço ALOCAVA as texturas** | ✅ **fechada** (§4.8.1) | **0,76 / 2,72 / 13,21 ms** a 1024²/2048²/4096² — a escada que o Enio descreveu |
 | **O** | 🎯🎯 **O 1º traço dobrava o CANVAS INTEIRO** | ✅ **fechada e CONFIRMADA no smoke** (§4.8.2–§4.8.3) | `dispatch max` **232,7 → 1,1–1,3 ms** no app · `p50` **0,7** (4% de um quadro). O fold **201,53 → 14,55** headless |
 | P | Semear os planos da luz no BIND | 🟡 aberto, **decisão de PRODUTO, e o preço agora é MEDIDO** | vale **12,7 ms** no produto (era estimativa minha de ~31) e cobra **~218 MB de VRAM em TODO bind** — inclusive de quem nunca liga o impasto |
-| **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | 🟡 **DECOMPOSTA** (§5.13) | o pior evento é o **PEN-UP** (38,9 ms a 4096², plane-bound, ~20× um move), não o pen-down nem um move; o impasto acrescenta 32,8 e a aritmética do fork dos 3 planos (28,47) fecha |
-| R | O outlier de **134,8 ms** num evento | 🔴 **segue aberto** (§5.13) | o maior evento REPRODUZÍVEL é o pen-up, **38,9 ms** — não chega lá. ⚠️ mas uma amostra ÚNICA de pen-up já foi medida em **117,76 ms** sem nada estar errado ⇒ o 134,8 é compatível com um pen-up num instante ruim; decide um 2º log |
+| **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | ✅ **DECOMPOSTA e a maior parte FECHADA** (§5.13 → **§5.14**) | o pior evento é o **PEN-UP**, e **91% dele era o COMMIT DE UNDO** (40,20 completo × **3,49** sem ele, este plano na tela). ⛔ a atribuição da §5.13 (o fork dos 3 planos, 28,47) fechava **por coincidência** — memcpy serial contra `fork_par` paralelo, que custa **9,25**. Scan paralelizado: `record_structural` **25,03 → 10,96** · pen-up **40,20 → 32,34** |
+| R | O outlier de **134,8 ms** num evento | 🔴 **segue aberto** (§5.13/§5.14) | o maior evento REPRODUZÍVEL é o pen-up, **38,9 ms** — não chega lá. ⚠️ mas uma amostra ÚNICA de pen-up já foi medida em **117,76 ms** sem nada estar errado ⇒ o 134,8 é compatível com um pen-up num instante ruim; decide um 2º log |
 | S | `EVENTO→FRAME` 16,8 contra alvo **9** | ⚪ **não é compute** | `p50 ≈ periodo real (16,5)` ⇒ é **cadência**, e o dispatch é 4% dela |
 | **T** | 🎯 **O WARP é 56% do custo da aquarela** | ✅ **medido** (§5.10) | 1,071 ms de um move de 3,082 · 10 avaliações/texel · a tabela trouxe o próprio **controle** (2 knobs já em 0 ⇒ piso de ruído ±0,13) |
 | U | Fatoração exata dos 2 eixos do warp | ✅ shipou, **e não é ganho de PRODUTO** (§5.11) | função **1,20×** (153,4 → 127,9 ms/4 M) · produto 0,12–0,17 ms = **dentro do ruído** |
@@ -1008,13 +1010,23 @@ acréscimo) — ali os clones pequenos medem **48 GB/s** contra **6,5 GB/s** nos
 microbenchmark pega um caminho favorecido pelo alocador. **A afirmação fica escopada a 4096²**, que é o
 tamanho onde o artista sente.
 
+> ## ⛔ ERRATA — ESTA ARITMÉTICA FECHAVA POR COINCIDÊNCIA, E A CAUSA É OUTRA (ver **§5.14**)
+>
+> `Vec::clone` é um memcpy **SERIAL**, e o produto **não usa memcpy**: usa `plane_fork::fork_par`, que é
+> **paralelo**. Medido pela porta do produto a 4096², o fork dos três planos custa **9,25 ms**, não
+> **28,47** — a soma acima casava com os 32,8 **por acaso**. ⚠️ *Uma atribuição que bate com o total por
+> acidente é pior que nenhuma: ela encerra a investigação no lugar errado* — e encerrou.
+>
+> A causa verdadeira é o **COMMIT DE UNDO** (§5.14). O parágrafo abaixo descreve um mecanismo **real mas
+> menor**, e fica como registro do que a wave seguinte vai colher.
+
 **O mecanismo, numa frase:** o snapshot de undo tirado no **pen-down** segura um `Arc` de cada plano de
 relevo, então o commit no **pen-up** bifurca os três — ~192 MB de cópia a 4096². É a **mesma família** do
 fork do canvas no pen-down (§4.3 / o gate `the_pen_down_is_still_a_canvas_copy`), e a cura é a mesma:
 **capturar o "antes" por REGIÃO, sob demanda** — o *tile-based undo* do GIMP/Krita, que a §13.12.5 do
 doc 25 já prescreve e que precisa de uma **porta única de escrita de plano** (hoje ~25 sítios chamam
-`Arc::make_mut` direto). Isso é **wave própria**, e agora ela tem a lista de preços completa:
-**pen-down 11,7 ms (canvas) + pen-up 28,5 ms (relevo)**.
+`Arc::make_mut` direto). Isso é **wave própria**, e o preço dela — corrigido pela §5.14 — é
+**pen-down 11,7 ms (canvas) + pen-up 9,2 ms (relevo)**, não os 28,5 que esta seção anunciou.
 
 #### ⚠️ E DUAS coisas minhas que a medição derrubou
 
@@ -1031,6 +1043,101 @@ O maior evento reprodutível que existe é o pen-up a **38,9 ms**, e ele não ch
 entrega é o candidato NOMEADO e MEDIDO (não o veredito), mais a demonstração de que uma amostra única
 pode passar de 100 ms sem que nada esteja errado — o que torna o 134,8 do log **compatível com um
 pen-up normal medido num instante ruim**, hipótese que só um segundo log com histograma decide.
+
+---
+
+### 5.14 ✅ E o pen-up era o **COMMIT DE UNDO** — 91% dele, e a §5.13 atribuiu ao lugar errado
+
+Indo abrir a wave da porta única, a primeira coisa a fazer era o que §5.13 não fez: **perguntar quantos
+donos cada plano tem e de quem são** — porque remover um de dois não remove cópia nenhuma. Duas sondas
+(`measure_stroke_owners`) derrubaram as duas metades da §5.13.
+
+#### 1. O dono extra é PERMANENTE, e é o HISTÓRICO
+
+| momento | `canvas` | `heights` | `covers` | `mats` |
+|---|---|---|---|---|
+| repouso (2 traços commitados) | **2** | **2** | **2** | **2** |
+| …depois de `undo.clear()` | 1 | 1 | 1 | 1 |
+| dentro do gesto (pós pen-down) | 1 | 4 | 4 | 4 |
+
+O `cursor` que a **U1** instalou como base de todo delta é um **segundo dono permanente**. A hipótese
+fácil — *"o dono extra é o snapshot de pen-down"* — descrevia metade, e a consequência de projeto é
+dura: **um journal que substituísse só o `paint.stroke_undo` deixaria a contagem em 2 e não mudaria um
+milissegundo.**
+
+#### 2. O fork custa um TERÇO do que a §5.13 somou
+
+| plano | MB @4096² | `fork_par` (produto) | `Vec::clone` (o que a §5.13 somou) |
+|---|---|---|---|
+| `covers` | 16 | 0,29 | 0,73 |
+| `heights` | 64 | 3,16 | 11,30 |
+| `mats` | 112 | 5,79 | 19,15 |
+| **soma** | 192 | **9,25 ms** | 31,2 |
+
+⚠️ A §5.13 mediu **memcpy serial** e o produto usa **fork paralelo**. Os 28,47 que "fechavam" com os
+32,8 fechavam **por coincidência**.
+
+#### 3. O pen-up é o commit de undo; o `commit_stroke_height` é FOOTPRINT-BOUND
+
+Ablação pela ENTRADA (`paint.stroke_undo = None` faz o `close_stroke` pular `commit_structural_edit`):
+
+| pen-up, mediana de 7 | 1024² | 2048² | 4096² |
+|---|---|---|---|
+| impasto **completo** | 5,98 | 10,70 | **40,20** |
+| impasto **sem o commit** | 3,35 | 3,43 | **3,49** |
+| digital completo | 0,86 | 1,07 | 5,64 |
+| digital sem o commit | 0,57 | 0,57 | 0,57 |
+
+**91% do pen-up era o histórico** — e o que sobra é **plano na tela**, que é a forma correta para
+trabalho limitado pela pegada. ⚠️ A ablação tira **duas** coisas de uma vez (o commit *e* o segundo dono
+que aquele snapshot representa), e é por isso que os 36,7 ms de diferença são mais que o
+`record_structural` isolado: `commit` + `forks` (9,25) + o `free()` dos buffers que o fork deixou órfãos.
+
+#### A cura: o scan do commit é leitura pura sobre linhas disjuntas
+
+`PlaneDeltas::split` roda **`diff_window` sobre todo plano que os `Arc`s não deram como idêntico** — com
+impasto são quatro, ~**256 MB de comparação por traço** — num row-scan **serial**. É a forma exata que o
+**ADR-0109** sanciona e que esta crate já usa quatro vezes (`sculpt_offset`, `sculpt_close`, o campo da
+aquarela, o fold da luz): **byte-idêntica por construção**, porque `min`/`max` sobre índices é
+associativo e comutativo — muda qual thread avalia qual linha, nunca o que a linha responde.
+
+⚠️ **A varredura de COLUNAS também é paralela**, e não por simetria: num traço **VERTICAL** a faixa é a
+tela inteira em linhas, e ela é element-a-element (não há memcmp que devolva *onde*).
+
+| | antes | depois |
+|---|---|---|
+| `record_structural` @4096² digital | 5,04 | **3,87** |
+| `record_structural` @4096² impasto | 25,03 | **10,96** (2,2×) |
+| scans @4096² (canvas·covers·heights·mats) | ~15 | **0,72 · 0,32 · 1,09 · 2,12** |
+| pen-up @4096² impasto | 40,20 | **32,34** |
+| `snapshot_model` | — | **0,00** (clones de `Arc`) |
+
+⚠️ **E o doc do `diff_window` foi CORRIGIDO junto:** ele dizia *"uma varredura por linha, uma vez por
+commit (user-paced)"*, como se *user-paced* quisesse dizer barato. Um commit acontece no **pen-up de
+todo traço**. A decisão de **calcular** a janela em vez de recebê-la continua certa (uma janela informada
+errado não falha: some com texels em silêncio) — o que estava errado era o preço estimado dela.
+
+#### Gates, e as duas mutações que ensinaram algo
+
+O oráculo é a **varredura serial congelada sob `cfg(test)`** — o código que shipava, verbatim. ⚠️ Ela
+mora sob `cfg` de propósito: um `fn` privado sem chamador de produção não é código morto silencioso, é
+uma **segunda resposta** esperando alguém chamá-la. Fixtures **atravessam o `PAR_MIN`** (abaixo dele o
+produto roda a rota serial, e um gate que só a exercitasse compararia o caminho antigo com ele mesmo) e
+cobrem os quatro tipos que o histórico guarda — `f32` e `[u8; 7]` **não** comparam por memcmp.
+
+**5 mutações: 4 sangram nos gates de identidade; a 5ª (voltar a ser serial) sangra só no de RAZÃO, por
+desenho** — as duas rotas produzem a mesma janela, então só o relógio pode vê-las.
+
+- ⚠️ **Uma sobreviveu por FIXTURE:** trocar a identidade da redução de colunas por `(0, 0)` passou porque
+  **toda banda larga das minhas fixtures acertava a coluna 0** por acidente — e `min(0, c) = 0` concorda
+  com a resposta certa. A fixture que faltava é uma banda **alta** cujas colunas ficam **longe do zero**.
+- ⚠️ **Uma era mutação INVÁLIDA, não buraco de gate:** varrer as colunas a partir da linha 0 em vez da
+  primeira linha diferente é **no-op semântico** (linhas iguais devolvem a identidade e não movem
+  `min`/`max`) — desperdício, nunca erro. A que de fato erra exclui a ÚLTIMA linha, e sangra.
+
+**Aberto, e agora com o preço certo:** a **porta única de escrita de plano** vale
+**pen-down 11,7 + pen-up 9,2 ms** de forks — e ela precisa alcançar o **histórico** também, porque o
+`cursor` é um dono permanente.
 
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
@@ -1100,6 +1207,21 @@ reconciliadas em vez de estimadas.
     documento a cada movimento do mouse (**9,86 ms a 4096²**). Um `Weak` responde a mesma pergunta por
     **zero**, e ainda **prende a alocação**, que é o que torna a comparação de endereço sã (o ABA do
     ADR-0124). *Se você guarda algo só para comparar, guarde a coisa mais fraca que ainda compare.*
+14. **Uma atribuição que casa com o total por ACIDENTE é pior que nenhuma.** A §5.13 somou `Vec::clone`
+    (memcpy **serial**) para explicar os 32,8 ms do pen-up e obteve 28,47 — *"fecha"*. O produto usa
+    `fork_par`, que é **paralelo** e custa **9,25**: os 20 ms restantes estavam noutro lugar, e a soma
+    coincidente **encerrou a investigação**. *Meça pela porta que o produto usa, mesmo quando a
+    aritmética já bateu* — e desconfie especialmente quando ela bate na primeira tentativa.
+15. **Um custo "user-paced" não é um custo desprezível.** O doc do `diff_window` justificava a varredura
+    canvas-inteira como *"uma vez por commit (user-paced)"*. Um commit acontece no **pen-up de todo
+    traço**: eram **91% do pen-up**. *Escreva com que FREQUÊNCIA o gesto acontece, não em que categoria
+    ele cai.*
+16. **Uma mutação que não sangra pode ser inválida em vez de reveladora.** Varrer as colunas a partir da
+    linha 0 em vez da primeira linha diferente **passou em tudo** — e está certo: linhas iguais devolvem
+    a identidade e não movem `min`/`max`. É desperdício, nunca erro. *Antes de escrever um gate para uma
+    mutação sobrevivente, confira se ela muda alguma resposta* (a irmã que de fato erra — excluir a
+    ÚLTIMA linha — sangra na hora). E a outra sobrevivente da mesma rodada era o oposto: um buraco real,
+    escondido por **toda banda larga das fixtures acertar a coluna 0 por acidente**.
 
 ---
 
@@ -1115,16 +1237,17 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 
 **A fila de hoje, por número MEDIDO no produto:**
 
-1. 🎯🎯 **A porta ÚNICA de escrita de plano — e ela tem a lista de preços COMPLETA agora.** A §5.13
-   decompôs a frente Q: o pior evento de um traço é o **pen-up** (38,9 ms a 4096², plane-bound), e o que
-   o impasto acrescenta a ele (32,8 ms) é o **fork dos três planos de relevo** para o snapshot de undo
-   (28,47 ms de clone medido — a previsão fecha). Somado ao fork do canvas no pen-down (**11,7 ms**), é
-   **~40 ms por traço em cópias que existem só porque o "antes" é capturado por PLANO em vez de por
-   REGIÃO.** A cura é uma só e já está prescrita (§13.12.5 do doc 25, o *tile-based undo* do
-   GIMP/Krita); o que ela pede é a **porta única de escrita** que hoje não existe (~25 sítios chamam
-   `Arc::make_mut` direto). ⚠️ **Wave própria, com gates próprios** — e é a única frente que cura os
-   QUATRO modos de uma vez, porque mora acima do modelo de pintura.
-2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13). O maior evento
+1. 🎯 **A porta ÚNICA de escrita de plano — e a §5.14 CORTOU o preço dela pela metade e mudou o alvo.**
+   A §5.13 dizia que o pen-up custava o **fork dos três planos** (28,47 ms) e a §7 anterior somava
+   *~40 ms por traço em cópias*. Medido: o fork paralelo custa **9,25 ms**, e **91% do pen-up era o
+   COMMIT DE UNDO** — que a §5.14 paralelizou (**25,03 → 10,96 ms**). O que sobra para esta wave é
+   **pen-down 11,7 + pen-up 9,2 ≈ 21 ms por traço**, e ⚠️ **ela tem de alcançar o HISTÓRICO também**: em
+   repouso os quatro planos têm **dois** donos, e o segundo é o `cursor` da U1 — um journal que só
+   substituísse o `paint.stroke_undo` deixaria a contagem em 2 e **não mudaria um milissegundo**. A cura
+   segue prescrita (§13.12.5 do doc 25, o *tile-based undo* do GIMP/Krita) e segue pedindo a **porta
+   única de escrita** que hoje não existe (~25 sítios chamam `Arc::make_mut` direto). ⚠️ **Wave própria,
+   com gates próprios** — e é a única frente que cura os QUATRO modos de uma vez.
+2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13/§5.14). O maior evento
    **reprodutível** é o pen-up a 38,9 ms e ele não chega lá. ⚠️ **Mas uma amostra única de pen-up já foi
    medida em 117,76 ms com o produto correto** — então o 134,8 é compatível com um pen-up normal pego
    num instante ruim. O que decide é um **segundo log com histograma**, não mais teoria.

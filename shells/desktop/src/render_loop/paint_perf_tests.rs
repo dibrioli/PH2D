@@ -73,3 +73,25 @@ fn the_quantile_is_the_quantile_it_claims() {
         "uma janela vazia nao pode indexar fora"
     );
 }
+
+/// **O contador de eventos conta TODOS, não só os que abrem um lote.**
+///
+/// É ele que distingue as duas causas de uma latência alta, e elas têm curas opostas: ~1 evento por
+/// frame significa que o **pipeline** demora; muitos significam que eles **enfileiram**. A 1ª leitura
+/// real deu `p50 34,3 ms` sobre um `frame p50` de 4,7 — aritmética que só fecha se uma das duas for
+/// verdade, e o relatório não dizia qual.
+///
+/// ⚠️ **Mutação que deve sangrar:** contar dentro do `if a.pending.is_none()` — o contador passaria a
+/// medir LOTES, que é exatamente o número que o relatório já tinha (`n`).
+#[test]
+fn the_event_counter_counts_every_event_not_every_batch() {
+    arm();
+    stamp_pointer();
+    stamp_pointer();
+    stamp_pointer();
+    assert_eq!(
+        super::events_seen(),
+        3,
+        "o contador registrou lotes, nao eventos — e lotes o relatorio ja contava em `n`"
+    );
+}

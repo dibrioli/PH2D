@@ -72,6 +72,20 @@ struct Agg {
     pending: Option<std::time::Instant>,
     /// `evento → fim do frame que o consumiu`, em ms.
     latency_ms: Vec<f32>,
+    /// **Quantos eventos chegaram na janela** — TODOS, não só os que abriram um lote.
+    ///
+    /// ⚠️ Sem ele o relatório não distingue as duas causas de uma latência alta, e elas têm curas
+    /// OPOSTAS: se chegam ~1 evento por frame, o atraso é do **pipeline** (o frame demora a sair); se
+    /// chegam muitos, eles **ENFILEIRAM** e a cura é consumir o lote inteiro por frame. A 1ª leitura
+    /// real (Enio, 4096², 2026-07-25) deu `p50 34,3 ms` com `frame p50 4,7 ms` — aritmética que só
+    /// fecha se uma das duas for verdade, e o relatório não dizia qual.
+    events: u32,
+    /// Início da janela, para o **PERÍODO** real do frame (`span / frames`).
+    ///
+    /// ⚠️ O `frame p50` mede o **TRABALHO** dentro do frame, não o intervalo entre frames — e a
+    /// diferença é o que o app passa esperando o vsync, a fila de eventos e o compositor. Uma latência
+    /// de 34 ms sobre um trabalho de 4,7 é impossível de ler sem o período ao lado.
+    window_start: Option<std::time::Instant>,
 }
 
 thread_local! {
@@ -98,6 +112,7 @@ pub(crate) fn stamp_pointer() {
     }
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
+        a.events = a.events.saturating_add(1);
         if a.pending.is_none() {
             a.pending = Some(std::time::Instant::now());
         }
@@ -125,6 +140,9 @@ pub(super) fn end_frame(total_ms: f32) {
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let Some(cur) = a.cur.take() else { return };
+        if a.window_start.is_none() {
+            a.window_start = Some(std::time::Instant::now());
+        }
         // L0: este frame consumiu o que estava pendente — fecha o relógio do evento mais antigo.
         // ⚠️ Ele mede *evento → fim do frame*, e o present acontece a uma fração de ms daqui; a
         // diferença é honesta e menor que a resolução com que o artista percebe atraso. Prometer
@@ -144,6 +162,8 @@ pub(super) fn end_frame(total_ms: f32) {
             a.samples.clear();
             a.frame_ms.clear();
             a.latency_ms.clear();
+            a.events = 0;
+            a.window_start = None;
             a.gpu = 0;
             a.cpu = 0;
         }
@@ -238,14 +258,22 @@ fn emit(a: &Agg) {
         chrome.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
     }
     eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
-    // L0: o número que a pergunta do Enio cobra, com o alvo público ao lado dele.
+    // L0: o número que a pergunta do Enio cobra, com o alvo público ao lado dele — e com as DUAS
+    // grandezas que dizem de onde ele vem (o período real do frame, e quantos eventos por frame).
     if !a.latency_ms.is_empty() {
+        #[allow(clippy::cast_precision_loss)]
+        let frames = a.samples.len().max(1) as f32;
+        let period = a
+            .window_start
+            .map_or(0.0, |t| t.elapsed().as_secs_f32() * 1e3 / frames);
         eprintln!(
-            "[paint-perf]   EVENTO->FRAME p50={:.1} p95={:.1} max={:.1} ms (n={}) · alvo 9",
+            "[paint-perf]   EVENTO->FRAME p50={:.1} p95={:.1} max={:.1} ms (n={}) · alvo 9 \
+             | periodo real {period:.1} ms/frame · {:.1} eventos/frame",
             pq(&a.latency_ms, 0.5),
             pq(&a.latency_ms, 0.95),
             a.latency_ms.iter().fold(0.0f32, |m, v| m.max(*v)),
             a.latency_ms.len(),
+            f32::from(u16::try_from(a.events).unwrap_or(u16::MAX)) / frames,
         );
     }
 }
@@ -289,6 +317,12 @@ mod tests;
 #[cfg(test)]
 pub(super) fn force_on() {
     ON.with(|c| c.set(1));
+}
+
+/// Só em teste: quantos eventos a janela corrente viu.
+#[cfg(test)]
+pub(super) fn events_seen() -> u32 {
+    AGG.with(|a| a.borrow().events)
 }
 
 /// Só em teste: as amostras de latência acumuladas na janela corrente.

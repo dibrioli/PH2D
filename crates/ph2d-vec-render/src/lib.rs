@@ -268,11 +268,23 @@ pub fn path_screen_bounds(
         bp.apply_affine(xf);
         let mut r = bp.bounding_box();
         // O traço transborda o fill por metade da largura; escala com o afim.
+        //
+        // ⚠️ **E uma junta MITER vai MUITO além disso.** Numa quina de ângulo interno `θ` a ponta do
+        // miter fica a `½w / sin(θ/2)` do vértice — numa ponta de estrela (36°), **3,24 × ½w** —, e
+        // a kurbo só a corta no `miter_limit`. Inflar por meia largura recortava a ponta contra a
+        // borda do scratch, e o efeito visível era **a ponta CEIFADA** (reportado no smoke). O
+        // limite é lido do MESMO construtor que o renderer usa, não de uma segunda constante.
         if let Some(s) = path.stroke {
             let [a, b, c, d, _, _] = xf.as_coeffs();
             let sx = (a * a + b * b).sqrt();
             let sy = (c * c + d * d).sqrt();
-            let m = 0.5 * s.width * sx.max(sy);
+            let k = kurbo_stroke(&s);
+            let reach = if matches!(k.join, Join::Miter) {
+                k.miter_limit.max(1.0)
+            } else {
+                1.0
+            };
+            let m = 0.5 * s.width * sx.max(sy) * reach;
             r = r.inflate(m, m);
         }
         acc = Some(acc.map_or(r, |cur| cur.union(r)));

@@ -490,31 +490,34 @@ fn the_contour_mode_shadows_a_reentrant_corner_and_proximity_barely_does() {
     );
 }
 
-/// **A banda do modo Contour não SERRILHA numa aresta diagonal.**
+/// **A banda do modo Contour é função da DISTÂNCIA, e de mais nada.**
 ///
-/// O campo de distância é semeado num conjunto BINARIZADO (`alfa <= 0,5`), então a fronteira dele
-/// cai em texels inteiros — e numa diagonal isso é exatamente a forma de produzir uma escada. O
-/// gate mede a variação da sombra ao longo de uma aresta a 45°, a distância constante da borda: se
-/// a escada existisse, ela apareceria aqui como oscilação.
+/// ⚠️ **O oráculo aqui é um BUCKET, não uma linha de sonda, e a diferença decidiu a wave.** Andar
+/// "paralelo à aresta" numa grade de texels obriga a arredondar o `y`, e o arredondamento sozinho
+/// move a sonda ±0,5 px através de uma banda cujo gradiente é ~32 níveis/px: o gate media **34
+/// níveis de oscilação** sobre um campo que podia estar perfeito. Agora ele agrupa TODOS os texels
+/// cuja distância VERDADEIRA (analítica, o meio-plano é conhecido) cai numa fatia estreita, e exige
+/// que a sombra deles concorde — que é a propriedade de verdade: *à mesma distância, a mesma
+/// sombra*, independentemente de onde o texel esteja ao longo da aresta.
 ///
-/// ⚠️ É também o gate que torna honesto NÃO ter um sobre o limiar da semente: mover o limiar dentro
-/// da rampa de AA desloca a banda por menos de um texel, e um bar que não distingue isso seria um
-/// gate que não pode falhar pelo motivo que alega.
+/// ⚠️ E a aresta é **obliqua de propósito** (21,8°): a 45° o texel-semente mais próximo é o mesmo
+/// para toda a linha `x + y` constante, então a discretização some POR SIMETRIA e o gate ficaria
+/// verde sobre um produto que penteia.
 #[test]
 #[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
-fn the_contour_band_does_not_stair_step_along_a_diagonal_edge() {
+fn the_contour_band_is_a_function_of_distance_alone() {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("[fx_stack_kinds] sem adapter — skip");
         return;
     };
     let (dw, dh) = (128u32, 128u32);
-    // Meio-plano diagonal com ANTI-ALIASING de verdade: alfa = cobertura da reta x + y = 128.
+    let (nx, ny) = (0.371_4f64, 0.928_5f64); // normal unitária ≈ 21,8°
+    let sd_at = |x: u32, y: u32| (f64::from(x) - 64.0).mul_add(nx, (f64::from(y) - 64.0) * ny);
     let mut bytes = vec![0u8; (dw * dh * 4) as usize];
     for y in 0..dh {
         for x in 0..dw {
-            let s = f64::from(x) + f64::from(y) - 128.0;
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let a = ((0.5 - s / 1.414).clamp(0.0, 1.0) * 255.0).round() as u8;
+            let a = ((0.5 - sd_at(x, y)).clamp(0.0, 1.0) * 255.0).round() as u8;
             let o = ((y * dw + x) * 4) as usize;
             bytes[o..o + 4].copy_from_slice(&[a, a, a, a]);
         }
@@ -526,32 +529,38 @@ fn the_contour_band_does_not_stair_step_along_a_diagonal_edge() {
     o.mode = FxOp::MODE_CONTOUR;
     pass.run(&gpu, &src, &dst, dw, dh, &[o]);
     let px = readback(&gpu, &dst, dw, dh);
-    // Anda PARALELO à aresta (`x + y` constante), DENTRO da banda (≈2,8 px da borda, com a banda
-    // em 8) e olha a oscilação. ⚠️ A 1ª versão sondou a 6,4 px, onde a banda já morreu: media
-    // 245..245 e passava sobre um lugar onde NADA acontece — daí o controle positivo abaixo.
-    let band: Vec<i32> = (30..90)
-        .map(|x: u32| {
-            let y = 124 - x;
-            i32::from(px[((y * dw + x) * 4) as usize])
-        })
-        .collect();
+    // Todos os texels a 3,0..3,1 px para DENTRO da aresta, longe das bordas da textura.
+    let mut band: Vec<i32> = Vec::new();
+    for y in 20..108u32 {
+        for x in 20..108u32 {
+            let d = -sd_at(x, y);
+            if (2.85..3.15).contains(&d) {
+                band.push(i32::from(px[((y * dw + x) * 4) as usize]));
+            }
+        }
+    }
     let (lo, hi) = (
         *band.iter().min().expect("banda"),
         *band.iter().max().expect("banda"),
     );
     eprintln!(
-        "[diagonal] sombra ao longo da aresta: {lo}..{hi} ({} niveis)",
+        "[diagonal] {} texels a 3,0-3,1 px da aresta: sombra {lo}..{hi} ({} niveis)",
+        band.len(),
         hi - lo
     );
     assert!(
-        hi < 150,
-        "o controle POSITIVO falhou: a sonda tem de cair DENTRO da banda (deu {lo}..{hi}) — \
-         medir onde nao ha sombra e um gate que nao pode falhar"
+        band.len() > 10,
+        "a fatia tem de conter texels ({})",
+        band.len()
+    );
+    assert!(
+        hi < 160,
+        "o controle POSITIVO falhou: a fatia tem de cair DENTRO da banda (deu {lo}..{hi})"
     );
     assert!(
         hi - lo <= 6,
-        "a banda oscila {} niveis ao longo de uma aresta reta ({lo}..{hi}) — e uma oscilacao \
-         periodica sobre campo quase-solido e exatamente o que o olho le como escada",
+        "a sombra varia {} niveis entre texels à MESMA distância ({lo}..{hi}) — o campo depende de \
+         onde o texel está ao longo da aresta, e isso é o PENTE que o olho vê",
         hi - lo
     );
 }
@@ -794,4 +803,70 @@ fn the_bevel_lights_the_rim_that_faces_the_light_and_flips_with_it() {
         l_deep < l_left - 20 && l_deep > l_core,
         "o realce tem de MORRER para o miolo: rim {l_left}, a 6 px {l_deep}, miolo {l_core}"
     );
+}
+
+/// **O CONTORNO também é função da distância, e de mais nada** — irmão do gate da banda, do outro
+/// lado da fronteira. Mede a fatia de texels FORA da forma, à mesma distância verdadeira: se o
+/// campo dependesse de onde o texel está ao longo da aresta, o serrilhado apareceria aqui.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_outline_edge_is_a_function_of_distance_alone() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let (dw, dh) = (128u32, 128u32);
+    let (nx, ny) = (0.371_4f64, 0.928_5f64);
+    let sd_at = |x: u32, y: u32| (f64::from(x) - 64.0).mul_add(nx, (f64::from(y) - 64.0) * ny);
+    let mut bytes = vec![0u8; (dw * dh * 4) as usize];
+    for y in 0..dh {
+        for x in 0..dw {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let a = ((0.5 - sd_at(x, y)).clamp(0.0, 1.0) * 255.0).round() as u8;
+            let o = ((y * dw + x) * 4) as usize;
+            bytes[o..o + 4].copy_from_slice(&[a, a, a, a]);
+        }
+    }
+    let src = make_src(&gpu, dw, dh, &bytes);
+    let dst = make_output_texture(&gpu, dw, dh);
+    let mut pass = FxStackPass::new(&gpu);
+    pass.run(
+        &gpu,
+        &src,
+        &dst,
+        dw,
+        dh,
+        &[one(FxOp::OUTLINE, 8.0, RED, [0, 0])],
+    );
+    let px = readback(&gpu, &dst, dw, dh);
+    // A fatia a ~4 px para FORA (o contorno de largura 8 ainda é opaco lá) e a ~7,9 (a borda dele).
+    for (lo_d, hi_d, what) in [
+        (3.85, 4.15, "no meio do contorno"),
+        (7.4, 7.7, "na borda dele"),
+    ] {
+        let mut band: Vec<i32> = Vec::new();
+        for y in 20..108u32 {
+            for x in 20..108u32 {
+                let d = sd_at(x, y);
+                if (lo_d..hi_d).contains(&d) {
+                    band.push(i32::from(px[(((y * dw + x) * 4) + 3) as usize]));
+                }
+            }
+        }
+        let (lo, hi) = (
+            *band.iter().min().expect("banda"),
+            *band.iter().max().expect("banda"),
+        );
+        eprintln!(
+            "[contorno-borda] {} texels {what}: alfa {lo}..{hi} ({} niveis)",
+            band.len(),
+            hi - lo
+        );
+        assert!(band.len() > 10, "a fatia tem de conter texels");
+        assert!(
+            hi - lo <= 8,
+            "o alfa do contorno varia {} niveis entre texels à MESMA distância ({what}: {lo}..{hi})",
+            hi - lo
+        );
+    }
 }

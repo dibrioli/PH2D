@@ -43,6 +43,10 @@ fn inner_tint(over: vec4<f32>, colour: vec3<f32>, strength: f32) -> vec4<f32> {
 // substitui o `clamp` de coordenada da W2 — que ESTICAVA o texel da borda para dentro do kernel.
 // Nos ops de fora as duas respostas coincidem (a margem garante borda transparente); nos de
 // DENTRO só esta é correta, e é ela que lhes dá margem ZERO.
+fn tap_img_at(p: vec2<f32>) -> vec4<f32> {
+    return tap_img(t0, i32(p.x), i32(p.y));
+}
+
 fn tap_img(t: texture_2d<f32>, x: i32, y: i32) -> vec4<f32> {
     if (x < 0 || y < 0 || x >= i32(g.dims.x) || y >= i32(g.dims.y)) { return vec4<f32>(0.0); }
     return textureLoad(t, vec2<i32>(x, y), 0);
@@ -145,6 +149,30 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
 // quando já há semente. ⚠️ Os offsets são limitados pela banda, e f16 representa inteiros até 2048
 // EXATAMENTE — o campo é exato na faixa que nos interessa, não "aproximado porque é f16".
 
+// **Onde a fronteira REALMENTE está dentro deste texel.** O alfa anti-aliased é, perto da borda,
+// uma rampa de ~1 px ao longo da normal, então a fronteira (onde ele cruza 0,5) fica a `a - 0,5` do
+// centro, na direção em que o alfa DECRESCE.
+//
+// ⚠️ **É isto que mata o PENTE.** Semear no centro do texel faz a distância saltar em degraus
+// inteiros ao andar paralelo a uma aresta obliqua — medido, 33 níveis de oscilação numa aresta a
+// 21,8° (a 45° o artefato some por simetria, e foi assim que ele passou pelo primeiro gate). Com a
+// semente sub-texel a distância é contínua, e a correção de meio texel que existia à mão
+// DESAPARECE: ela era o caso particular disto para uma borda dura.
+fn edge_offset(p: vec2<i32>, a: f32) -> vec2<f32> {
+    let gx = tap_img(t0, p.x + 1, p.y).a - tap_img(t0, p.x - 1, p.y).a;
+    let gy = tap_img(t0, p.x, p.y + 1).a - tap_img(t0, p.x, p.y - 1).a;
+    let g = vec2<f32>(gx, gy);
+    let m = length(g);
+    if (m < 1.0e-5) { return vec2<f32>(0.0); }
+    // ⚠️ A rampa de anti-aliasing NÃO tem 1 px de largura: numa aresta oblíqua ela é mais larga
+    // (~|nx|+|ny|), então o alfa cai mais devagar e a fronteira está mais longe do que `a − 0,5`
+    // sugere. A inclinação real é `|g|/2` (diferença central), logo a distância é `2(a−0,5)/|g|`.
+    // Com a suposição de 1 px o campo errava ~0,09 px, e numa borda DURA isso lê como serrilha —
+    // medido, 24 níveis de variação entre texels à mesma distância na borda do contorno.
+    let t = clamp(2.0 * (a - 0.5) / m, -1.5, 1.5);
+    return (-g / m) * t;
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_sdf_seed(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
@@ -162,11 +190,11 @@ fn cs_sdf_seed(@builtin(global_invocation_id) id: vec3<u32>) {
             let u = tap_img(t0, me.x, me.y - 1).a;
             let d = tap_img(t0, me.x, me.y + 1).a;
             if (l <= 0.5 || r <= 0.5 || u <= 0.5 || d <= 0.5) {
-                v = vec4<f32>(0.0, 0.0, 1.0, 0.0);
+                v = vec4<f32>(edge_offset(me, a), 1.0, 0.0);
             }
         }
     } else if (a <= 0.5) {
-        v = vec4<f32>(0.0, 0.0, 1.0, 0.0);
+        v = vec4<f32>(edge_offset(me, a), 1.0, 0.0);
     }
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), v);
 }
@@ -201,6 +229,31 @@ fn cs_sdf_jump(@builtin(global_invocation_id) id: vec3<u32>) {
     textureStore(dst, me, best);
 }
 
+// A distância guardada no campo (ou "longe" onde o JFA não chegou).
+fn field_dist(x: i32, y: i32) -> f32 {
+    if (x < 0 || y < 0 || x >= i32(g.dims.x) || y >= i32(g.dims.y)) { return 1.0e6; }
+    let f = textureLoad(t1, vec2<i32>(x, y), 0);
+    if (f.z <= 0.5) { return 1.0e6; }
+    return length(f.xy);
+}
+
+// **A normal do rebordo, pelo GRADIENTE do campo.**
+//
+// ⚠️ **Não use `normalize(off)`.** O vetor até a semente aponta para UMA semente, então ele salta na
+// fronteira entre células de Voronoi — a distância continua exata (texels à mesma distância dão o
+// mesmo número, há gate), mas a DIREÇÃO fica em degraus, e é ela que o bevel lê. Era esse o PENTE.
+// O gradiente é uma diferença central de uma grandeza que já é suave, então não tem esse salto.
+fn field_normal(x: i32, y: i32, fallback: vec2<f32>) -> vec2<f32> {
+    let dx = field_dist(x + 1, y) - field_dist(x - 1, y);
+    let dy = field_dist(x, y + 1) - field_dist(x, y - 1);
+    let grad = vec2<f32>(dx, dy);
+    // O gradiente cresce PARA DENTRO; a normal externa é o oposto.
+    if (dot(grad, grad) < 1.0e-8 || abs(dx) > 1.0e5 || abs(dy) > 1.0e5) {
+        return fallback;
+    }
+    return -normalize(grad);
+}
+
 // **O finalize sobre o CAMPO DE DISTÂNCIA** — serve QUATRO tipos: os degraus de dentro em modo
 // Contour, o contorno, o feather e o bevel. Todos perguntam a mesma coisa (*a que distância da
 // borda estou, e de que lado?*) e cada um responde com uma lei diferente.
@@ -226,18 +279,12 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
     // ⚠️ MEIO TEXEL, e ele é DERIVADO: a casca é a primeira fileira DE DENTRO, cujo centro está a
     // 0,5 px da fronteira. Somando de dentro e subtraindo de fora, os dois lados começam em 0,5 —
     // o campo fica simétrico, que é o que um feather centrado na borda exige.
+    // ⚠️ Sem correção nenhuma: a semente já aponta para a FRONTEIRA dentro do próprio texel
+    // (`edge_offset`), então `|off|` É a distância. O meio texel que se somava à mão era o caso
+    // particular disto para uma borda dura — e era ele que deixava o campo em degraus.
     var dist = 1.0e6;
     if (!far) {
-        let raw = length(off);
-        // A casca é a 1ª fileira DE DENTRO (centro a 0,5 px da fronteira) ⇒ soma-se de dentro e
-        // subtrai-se de fora, e os dois lados começam em 0,5: o campo fica simétrico, que é o que
-        // um feather centrado na borda exige. Semeando os texels de FORA, só o lado de dentro
-        // existe, e a correção é a subtração.
-        if (seeds_shell()) {
-            dist = select(max(raw - 0.5, 0.0), raw + 0.5, inside);
-        } else {
-            dist = max(raw - 0.5, 0.0);
-        }
+        dist = length(off);
     }
     let sdist = select(-dist, dist, inside);
     let w = max(g.band, 1.0e-4);
@@ -246,7 +293,15 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
         // A borda vira uma RAMPA CENTRADA na fronteira — sem borrar o miolo, que é o que separa
         // isto de um Blur. Fora da forma o pixel não tem cor própria: ele herda a do texel de
         // borda mais próximo, que é justamente para onde o campo aponta.
-        let edge = tap_img(t0, i32(id.x) + i32(off.x), i32(id.y) + i32(off.y));
+        // A cor da metade de FORA vem do texel de borda mais próximo. ⚠️ Duas cautelas, e as duas
+        // custaram artefato: **arredondar** (truncar um passo de −0,5 devolvia o próprio texel,
+        // transparente, apagando a metade de fora) e **cair DENTRO** — a amostra oblíqua às vezes
+        // pousava num texel ainda transparente, e o buraco resultante é um dente de pente. Se o
+        // primeiro passo falha, anda mais um texel na mesma direção.
+        let here = vec2<f32>(f32(id.x), f32(id.y));
+        let dir = normalize(off + vec2<f32>(1.0e-6, 0.0));
+        var edge = tap_img_at(round(here + off + dir * 0.5));
+        if (edge.a < 0.5) { edge = tap_img_at(round(here + off + dir * 1.5)); }
         let base = select(edge, over, over.a > 0.5);
         let f = smoothstep(-w * 0.5, w * 0.5, sdist);
         outc = mix(over, base * f, g.opacity);
@@ -255,7 +310,7 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
         // para o miolo. `off` aponta para a borda mais próxima, então ele É a normal 2D do rebordo.
         var shade = 0.0;
         if (!far && inside) {
-            let n = normalize(off + vec2<f32>(1.0e-6, 0.0));
+            let n = field_normal(sx, sy, normalize(off + vec2<f32>(1.0e-6, 0.0)));
             let lit = vec2<f32>(f32(g.off_x), f32(g.off_y));
             let l = select(vec2<f32>(0.0, -1.0), normalize(lit), dot(lit, lit) > 0.0);
             shade = dot(n, l) * (1.0 - smoothstep(0.0, w, dist)) * g.opacity;

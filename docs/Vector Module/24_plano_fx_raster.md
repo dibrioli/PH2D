@@ -129,10 +129,12 @@ posição do centroide da sombra, e a mensagem traz os números.
 - **W4 — O CAMPO DE DISTÂNCIA (FECHADA, pendente de smoke):** a revisão que as três observações do
   smoke do Enio pediram — o rim de 1 px, o modo `Contour` dos degraus de dentro e o contorno que
   deixou de encolher na quina. Ver §9.
-- **W5 — O FEATHER E O BEVEL (FECHADA, pendente de smoke):** os dois tipos que o campo de distância
+- **W5 — O FEATHER E O BEVEL (FECHADA, smoke reprovado → §11):** os dois tipos que o campo de distância
   da W4 destravou (7 → 9). Ver §10. ⚠️ O feather chegou pelo caminho oposto ao previsto: em vez do
   `erf` analítico de Levien, ele é uma rampa sobre o MESMO campo do JFA — o primitivo já estava
   construído por outro motivo, e a wave inteira coube num braço de shader.
+- **W5b — OS ARTEFATOS DO CAMPO (FECHADA, pendente de smoke):** o pente do feather/bevel, a serrilha
+  do contorno e a ponta ceifada pelo traço. Ver §11.
 - **W6 — o que ainda pede maquinaria NOVA:** turbulência + deslocamento (o
   `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem) e o
   blend mode POR DEGRAU (o Layer Style do Photoshop). Nenhum deles muda a pilha.
@@ -464,3 +466,58 @@ FIXTURE:
   `.take(MAX_FILTER_KINDS)` do paint deixaria os dois últimos tipos sem botão em silêncio.
 - **O bevel não tem "size" separado da profundidade** (o `Depth` governa os dois). O Photoshop tem
   Size + Soften; se o smoke pedir, é um knob a mais, não um modelo a mais.
+
+## §11 — W5b: os três artefatos, e o que cada um ensinou
+
+O smoke da W5 voltou com **pente** no feather e no bevel, **serrilha interna** no contorno e **as
+pontas ceifadas** quando a forma tem traço. Três causas diferentes, e a primeira coisa que a wave
+fez foi descobrir que **o gate que devia pegar tudo isso media a si mesmo**.
+
+### 0. O gate media a SONDA, não o campo
+
+O gate da banda andava "paralelo à aresta" numa grade de texels, o que obriga a **arredondar o y** —
+e ±0,5 px de sonda sobre uma banda de ~32 níveis/px são **±16 níveis de oscilação inventada**. Ele
+media 34 níveis sobre um campo que estava perfeito. E a fixture era a **45°**, o único ângulo onde a
+discretização do campo some por simetria (ao longo de `x + y` constante o texel-semente mais próximo
+é o mesmo para todos).
+
+O oráculo virou um **BUCKET**: agrupa todos os texels cuja distância VERDADEIRA (analítica) cai numa
+fatia estreita e exige que a sombra deles concorde — *à mesma distância, a mesma sombra*. Sem
+arredondamento nenhum, e num ângulo **oblíquo** (21,8°).
+
+### 1. O PENTE era a DIREÇÃO, não a distância
+
+Com o bucket, o campo mediu **0 níveis**: a distância estava exata. O que penteava era o que se
+derivava dela:
+
+- o **bevel** tomava a normal do rebordo como `normalize(off)` — e `off` aponta para UMA semente,
+  então ele salta na fronteira entre células de Voronoi. Agora a normal vem do **gradiente do
+  campo** (diferença central de uma grandeza que já é suave).
+- o **feather** amostrava a cor da metade de fora em `off` truncado, e a amostra oblíqua às vezes
+  pousava num texel ainda transparente — cada buraco desses é um dente. Agora arredonda, entra meio
+  texel e **tem fallback** de mais um.
+
+### 2. A SERRILHA do contorno era a rampa de AA suposta com 1 px
+
+No meio do contorno o alfa media 255..255; **na borda dele, 24 níveis** entre texels à mesma
+distância. A semente sub-texel estimava a fronteira como `a − 0,5` do centro, o que supõe uma rampa
+de exatamente 1 px — numa aresta oblíqua ela é mais larga (~`|nx|+|ny|`), e o erro chega a ~0,09 px.
+Numa borda DURA isso lê como serrilha. A inclinação real está no próprio gradiente
+(`|∇a|/2`), então a distância é **`2(a − 0,5)/|∇a|`** (Gustavson–Strand). **24 → 0 níveis.**
+
+### 3. A PONTA CEIFADA era o bbox do scratch contra a junta MITER
+
+`path_screen_bounds` inflava por **meia largura** de traço. Mas numa quina de ângulo `θ` a ponta do
+miter fica a `½w / sin(θ/2)` do vértice — numa ponta de estrela, **3,24 × ½w** — e a kurbo só a
+corta no `miter_limit` (4). A ponta era recortada contra a borda da textura, e o corte era reto:
+exatamente o que o smoke mostrou. O bbox passou a inflar por `½w × miter_limit`, **lido do MESMO
+construtor de traço que o renderer usa** (não de uma segunda constante).
+
+⚠️ É a **terceira** vez nesta linha que `1/sin(θ/2)` decide alguma coisa: ele proibiu o miter no
+contorno raster, explicou por que o corte-de-Gaussiana encolhia na quina, e agora dimensiona o
+scratch.
+
+### Gates
+
++2 de GPU (o bucket do contorno dos dois lados) e +1 puro na `ph2d-vec-render` (a ponta do miter
+cabe no bbox, com a ponta calculada ANALITICAMENTE). **22 mutações na jornada, 22 sangram.**

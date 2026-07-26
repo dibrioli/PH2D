@@ -195,6 +195,45 @@ fn path_screen_bounds_covers_the_shape_and_scales_with_the_camera() {
     );
 }
 
+/// **O bbox de tela cobre a PONTA DO MITER, não só meia largura.**
+///
+/// Numa quina de ângulo interno `θ` o miter chega a `½w / sin(θ/2)` do vértice — numa ponta de
+/// estrela (36°), **3,24 × ½w**. Inflar por meia largura recortava a ponta contra a borda do
+/// scratch do FX raster, e o que se via era **a ponta CEIFADA** (reportado no smoke). O gate mede a
+/// ponta ANALÍTICA e exige que ela caiba.
+#[test]
+fn the_screen_bounds_cover_a_miter_spike_not_just_half_the_width() {
+    use ph2d_vec_scene::{Rgba8, StrokeSpec, VecVertex};
+    // Uma cunha de 36° apontando para +Y, com a ponta na origem (o `StrokeSpec::new` já traz a
+    // junta Miter, que é o default do produto).
+    let half = (18.0f64).to_radians().tan();
+    let width = 4.0;
+    let mut scene = VecScene::new();
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [-half * 10.0, -10.0], [half * 10.0, -10.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), width)),
+        ..VecPath::default()
+    });
+    let (_, _, _, y1) = path_screen_bounds(
+        &scene,
+        &VecXforms::default(),
+        &LiveGeometry::new(),
+        id,
+        Affine::IDENTITY,
+    )
+    .expect("bounds");
+    // A ponta do miter, analítica: `½w / sin(θ/2)` acima do vértice (que está em y = 0).
+    let spike = 0.5 * width / (18.0f64).to_radians().sin();
+    assert!(
+        y1 >= spike - 0.01,
+        "o bbox parou em {y1} e a ponta do miter chega a {spike} — a ponta seria CEIFADA contra a \
+         borda do scratch"
+    );
+}
+
 /// Uma `FxImage` mínima de 1×1 para os gates de dispatch — o conteúdo não importa, só a PRESENÇA.
 fn one_pixel_image() -> FxImage {
     FxImage {

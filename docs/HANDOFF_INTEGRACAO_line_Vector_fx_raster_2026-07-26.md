@@ -16,7 +16,8 @@ blend, com sombra e brilho DERIVADOS do feather, sem pilha nenhuma).
 - **W4 — a REVISÃO** que essas observações pediram (o rim de 1 px · o modo `Contour` · a quina do
   contorno) + a auditoria dos sete tipos. **SMOKE APROVADO** pelo Enio.
 - **W5 — o FEATHER e o BEVEL** (7 → **9 tipos**), os dois que o campo de distância da W4
-  destravou. **PENDENTE DE SMOKE.**
+  destravou. **Smoke REPROVADO** (pente/serrilha/ponta ceifada) → **W5b**.
+- **W5b — os três artefatos do campo** e o gate que media a si mesmo. **PENDENTE DE SMOKE.**
 
 ## A costura (o inegociável)
 
@@ -139,6 +140,30 @@ Unificar foi **medido e recusado**: a casca de um lado só estima ~0,6 px pior n
 é onde o modo Contour existe para acertar.
 
 ⚠️ **`ids::MAX_FILTER_KINDS` 7 → 9.**
+
+## ⚠️ W5b — os três artefatos, e o gate que media a SONDA
+
+Detalhe no [plano §11](Vector%20Module/24_plano_fx_raster.md).
+
+⚠️ **Primeiro achado: o gate da banda media a si mesmo.** Andar "paralelo à aresta" obriga a
+arredondar o `y`, e ±0,5 px de sonda sobre uma banda de ~32 níveis/px são ±16 níveis INVENTADOS —
+ele reportava 34 sobre um campo perfeito. E a fixture era a **45°**, o único ângulo onde a
+discretização some por simetria. O oráculo virou um **BUCKET** por distância VERDADEIRA, num ângulo
+oblíquo.
+
+1. **O PENTE era a DIREÇÃO** (a distância mediu 0 níveis): o bevel tomava a normal como
+   `normalize(off)`, que salta entre células de Voronoi ⇒ agora vem do **gradiente do campo**; e o
+   feather amostrava a cor com o offset TRUNCADO, pousando às vezes em texel transparente ⇒ agora
+   arredonda, entra meio texel e tem fallback.
+2. **A SERRILHA do contorno** era a semente sub-texel supor uma rampa de AA de exatamente 1 px:
+   numa aresta oblíqua ela é mais larga, e o erro (~0,09 px) lê como serrilha numa borda dura. A
+   inclinação real está no gradiente ⇒ `2(a−0,5)/|∇a|`. **24 → 0 níveis.**
+3. **A PONTA CEIFADA com traço** era o `path_screen_bounds` inflando só meia largura: a ponta do
+   **miter** vai a `½w/sin(θ/2)` = **3,24 × ½w** numa ponta de estrela. Agora infla por
+   `½w × miter_limit`, lido do MESMO construtor de traço que o renderer usa.
+
+⚠️ **Isto toca a `ph2d-vec-render`** (`path_screen_bounds`), que tem outros consumidores além do FX
+— o bbox fica MAIOR para formas com traço e junta miter, que é a resposta correta para todos.
 
 ## Deltas que a integração precisa CONFERIR (o número se conta, não se escolhe)
 

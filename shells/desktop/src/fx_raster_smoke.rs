@@ -137,6 +137,17 @@ fn arm(app: &mut crate::App) {
         (14, vec![glow, blur]),
         (15, vec![blur, glow]),
     ];
+    // ⚠️ A estrela do Outline GROSSO leva um TRAÇO de verdade: é o caso que o smoke reportou
+    // ("com Stroke quebra as pontas"), e a ponta do miter dele vai a 3,24 × meia largura do
+    // vértice — o bbox do scratch tem de a conter, senão ela sai CEIFADA.
+    if let Some(gfx) = app.gfx.as_mut()
+        && let Some(path) = gfx.vec_scene.path_mut(ids[11])
+    {
+        path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(40, 70, 220, 255),
+            0.06,
+        ));
+    }
     let map = &app.vec_entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     // O arm passa pela porta única `set_filter` (a mesma que o bridge do painel usa).
@@ -155,7 +166,9 @@ fn arm(app: &mut crate::App) {
          \x20     modo DEFAULT, e é a resposta ao 'não projeta sombra nas reentrâncias'.\n\
          \x20  7) INNER GLOW (Contour) · 8) COLOR OVERLAY — a estrela repintada, sem borrar.\n\
          \x20 FILEIRA 3: 9) OUTLINE fino · 10) O STICKER (Outline -> Drop Shadow) ·\n\
-         \x20  11) A PILHA INTEIRA (Shadow -> Blur -> Glow) · 12) OUTLINE GROSSO — olhe as PONTAS.\n\
+         \x20  11) A PILHA INTEIRA (Shadow -> Blur -> Glow) · 12) OUTLINE GROSSO **com TRAÇO azul**\n\
+         \x20      — olhe as PONTAS: a ponta do miter de um traço vai a 3,24x meia largura do\n\
+         \x20      vértice, e o bbox do scratch tem de a conter (antes ela saía CEIFADA).\n\
          \x20     O contorno agora é uma DILATAÇÃO sobre um campo de distância: a ponta RECEBE\n\
          \x20     contorno (antes recebia 0,0 px numa quina de 36 graus) e a largura é a mesma na\n\
          \x20     ponta e na aresta. A quina é REDONDA por DERIVAÇÃO — um miter pediria 3,24x a\n\

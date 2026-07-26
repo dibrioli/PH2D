@@ -267,14 +267,35 @@ fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
     );
 }
 
-/// **SONDA: há overhead POR EVENTO a colher?** (a pergunta da coalescência)
+/// ⛔ **A SONDA QUE DERRUBOU A FRENTE C** — repartir a mesma pincelada em mais eventos custa mais,
+/// e o custo **não é orla de lote: é dab a mais.**
 ///
-/// O `on_canvas_pointer` roda no handler do winit, FORA do frame, uma vez por evento. Se N eventos
-/// pequenos custarem mais que UM evento cobrindo a mesma distância, a diferença é overhead por-evento —
-/// e o motor já trabalha em lote (`stamp_dabs` recebe uma lista de dabs), então coalescer os eventos
-/// pendentes de um frame seria colher isso sem tocar na arte.
+/// A 1ª leitura desta sonda mediu **11,3 ms para 1 evento contra 20,8 para 64** sobre a MESMA
+/// distância, idêntico nas três telas e saturando — e eu li isso como *"cada lote paga a orla da
+/// própria janela, então N janelas pequenas cobrem ~2,8x a área de uma grande"*. Virou a frente C do
+/// plano 26 §8, foi **construída inteira e REVERTIDA no mesmo dia**, porque as duas medições que
+/// faltavam dizem o contrário:
 ///
-/// Não afirma nada; IMPRIME.
+/// | | |
+/// |---|---|
+/// | dabs emitidos, 1 evento | **21** |
+/// | dabs emitidos, 64 eventos | **39** (+86%) |
+/// | pixels pintados | **177.760 nos dois** |
+/// | custo por-evento vs coalescido (raio 100, 2048²) | **1,00x** |
+///
+/// **+86% de dabs contra +84% de tempo**: a correlação é a resposta inteira. O `stamp_dabs` percorre
+/// a pegada de **cada dab**, não uma janela por lote, então juntar os carimbos de um frame num só não
+/// tem o que economizar — medido a **1,00x** exatamente no regime de orla máxima (raio 100, avanço de
+/// ~19 px), onde a hipótese da orla previa o ganho maior.
+///
+/// ⚠️ **O que sobra como lever de verdade, e é OUTRO:** 64 eventos emitem 39 dabs e pintam
+/// **exactamente os mesmos pixels** que 21. A amostragem fina não desenha mais nada — ela faz o
+/// filtro do traço (o sampler de média + o estabilizador) atrasar menos e emitir mais dabs sobre a
+/// mesma linha. Se esses dabs extras são trabalho **necessário** (com build-up de opacidade, dois
+/// dabs sobrepostos escurecem mais que um) ou **redundante** é a pergunta seguinte, e ela é sobre a
+/// LEI de emissão, não sobre lote. Não medida aqui: `painted px` conta cobertura, não valor.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release is_there_per_event -- --ignored --nocapture`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn is_there_per_event_overhead_to_coalesce() {
@@ -282,27 +303,71 @@ fn is_there_per_event_overhead_to_coalesce() {
     // descartava tudo depois de x=1024 — metade dos dabs fora do canvas, então a linha do 1024 media
     // meia pincelada e a comparação entre telas era inválida.
     const DIST: f32 = 800.0;
-    println!("[coalesce] mesma distancia ({DIST} px, cabe em toda tela), repartida em N eventos:");
-    for (side, n) in [1024u32, 2048, 4096]
-        .into_iter()
-        .flat_map(|s| [1usize, 4, 16, 64].map(move |n| (s, n)))
-    {
-        let mut t = tool(side);
+    // ⚠️ E a coluna que importa é o TOTAL, não `ms/evento`: na 1ª leitura eu olhei o custo POR EVENTO
+    // (que cai, porque cada evento anda menos) e concluí o oposto do que a sonda dizia.
+    println!(
+        "[coalesce] mesma distancia ({DIST} px) em N eventos — tempo TOTAL e os dabs emitidos:"
+    );
+    for side in [1024u32, 2048, 4096] {
+        for n in [1usize, 4, 16, 64] {
+            let mut t = tool(side);
+            t.set_brush_size_px(100.0); // raio grande: o regime em que a orla seria MAXIMA
+            #[allow(clippy::cast_precision_loss)]
+            let step = DIST / (n as f32);
+            t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
+            let total = ms(&mut || {
+                for i in 1..=n {
+                    #[allow(clippy::cast_precision_loss)]
+                    let x = 200.0 + step * (i as f32);
+                    t.on_canvas_pointer(cp([x, 300.0], PointerPhase::Move));
+                }
+            });
+            t.on_canvas_pointer(cp([200.0 + DIST, 300.0], PointerPhase::Up));
+            let painted = t
+                .canvas_rgba
+                .iter()
+                .step_by(4)
+                .filter(|&&v| v != 255)
+                .count();
+            println!(
+                "[coalesce]   {side:>4}  {n:>3} eventos: {total:>7.2} ms · {painted:>8} px pintados"
+            );
+        }
+    }
+}
+
+/// ⛔ **A MEDIÇÃO QUE NOMEOU A CAUSA** — o custo de entrada é por **DAB**, e mais eventos emitem mais
+/// dabs sobre o mesmo desenho.
+///
+/// É a metade que faltava à sonda acima, e ela é o motivo de a frente C ter sido revertida. O oráculo
+/// aqui não é tempo: é a **CONTAGEM**, que não flaka e não depende de perfil de build.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_dab_count -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
+    const DIST: f32 = 800.0;
+    println!("[dabs] mesma distancia ({DIST} px), pincel raio 100:");
+    for n in [1usize, 4, 16, 64] {
+        let mut t = tool(1024);
+        t.set_brush_size_px(100.0);
         #[allow(clippy::cast_precision_loss)]
         let step = DIST / (n as f32);
-        t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
-        let total = ms(&mut || {
-            for i in 1..=n {
-                #[allow(clippy::cast_precision_loss)]
-                let x = 200.0 + step * (i as f64) as f32;
-                t.on_canvas_pointer(cp([x, 300.0], PointerPhase::Move));
-            }
-        });
-        t.on_canvas_pointer(cp([200.0 + DIST, 300.0], PointerPhase::Up));
-        #[allow(clippy::cast_precision_loss)]
-        let per = total / (n as f64);
+        t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));
+        for i in 1..=n {
+            #[allow(clippy::cast_precision_loss)]
+            let x = 100.0 + step * (i as f32);
+            t.on_canvas_pointer(cp([x, 300.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([100.0 + DIST, 300.0], PointerPhase::Up));
+        let painted = t
+            .canvas_rgba
+            .iter()
+            .step_by(4)
+            .filter(|&&v| v != 255)
+            .count();
         println!(
-            "[coalesce]   {side:>4}  {n:>3} eventos: {total:>7.2} ms total · {per:>6.3} ms/evento"
+            "[dabs]   {n:>3} eventos -> {painted:>8} px pintados (identico = os dabs extras nao desenham nada novo)"
         );
     }
 }

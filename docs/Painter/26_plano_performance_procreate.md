@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | `INPUT` re-medido não cai | 🟡 byte-identidade do lote | 🟡 **em execução** — +84% medido por repartir o mesmo traço em 64 eventos |
+| 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
 não se moveu, a frente **não continua** — e o doc registra o negativo, que é resultado.
@@ -536,90 +536,91 @@ gate e mutação.
 
 ---
 
-## 8 — 🟡 Frente **C**: COALESCÊNCIA, a frente que o plano não tinha
+## 8 — ⛔ Frente **C**: COALESCÊNCIA — construída e REVERTIDA no mesmo dia
 
-A frente que a medição **achou**, depois de a U1 fechar. Ela não estava no §4 porque a pergunta que a
-revela — *"quanto custa repartir a MESMA pincelada em mais eventos?"* — nunca havia sido feita.
+A frente que a medição achou, e que a **medição seguinte matou**. Fica escrita inteira porque a
+hipótese é sedutora, o mecanismo proposto é plausível, e sem este registro a próxima pessoa (ou a
+próxima eu) a reconstrói.
 
-### 8.1 O número
+### 8.1 A hipótese, e a leitura que a produziu
 
-Sonda `is_there_per_event_overhead_to_coalesce` (`tool/paint/measure_input_cost.rs`). A **mesma**
-pincelada de 800 px, repartida em N eventos de ponteiro:
+Sonda `is_there_per_event_overhead_to_coalesce`: a **mesma** pincelada de 800 px, repartida em N
+eventos de ponteiro, media **11,3 ms em 1 evento contra 20,8 em 64** — idêntico nas três telas e
+**saturando**. Eu li as duas propriedades como a assinatura da **ORLA por lote**: a janela de um lote
+é `bbox(dabs) ⊕ fringe`, com avanço de ~12 px e raio 100 ela é quase toda orla, então N janelas
+pequenas cobririam ≈2,8× a área de uma grande. *Não é canvas-proporcional* e *satura* casavam.
 
-| eventos | 1 | 4 | 16 | 64 |
-|---|---|---|---|---|
-| 1024² | 11,45 ms | — | — | 20,80 ms |
-| 2048² | 11,30 | 16,7 | 19,9 | 20,78 |
-| 4096² | 11,27 | — | — | 20,85 |
+### 8.2 O que foi construído
 
-**+84% pelo mesmo traço**, e o número é *idêntico* nas três telas — **não é canvas-proporcional**, e
-**satura**. As duas propriedades juntas nomeiam o mecanismo.
+O painter passou a **acumular** os dabs das Moves de um frame e a carimbá-los **num lote só** no
+`on_tick` (que já existe e já roda no topo do `run_render_frame`, antes de qualquer coisa desenhar) —
+contrato congelado intocado, shell sem uma linha de mudança. Módulo novo `dab_batch.rs` (a razão de
+haver DOIS buffers: `Stroke::extend`/`tick`/`settle`/`finish` todos fazem `out.clear()` na entrada,
+então o vec que eles recebem nunca pode ser um acumulador), porta única `flush_dab_batch` com três
+chamadores (`paint_tick`, `paint_end`, `close_stroke`), **4 gates** e **3 mutações**.
 
-### 8.2 O mecanismo: a **ORLA** por lote
+### 8.3 ⛔ E então as duas medições que faltavam
 
-Cada batch processa a própria janela, e a janela de um lote é `pegada ⊕ avanço`. Com avanço de ~12 px e
-raio 100, a janela é **quase toda orla** (o falloff mais a cápsula do relevo somam ~1 raio de cada lado),
-então N janelas pequenas cobrem ≈2,8× a área de uma janela grande. Por isso a curva satura: passado o
-ponto em que o avanço é desprezível ante o raio, cada evento a mais custa uma orla inteira e nada mais.
+| | |
+|---|---|
+| dabs emitidos, 1 evento | **21** |
+| dabs emitidos, 64 eventos | **39** (+86%) |
+| pixels pintados | **177.760 nos dois** |
+| tempo, 1 → 64 eventos | 36 → 68 ms (**+89%**) |
+| **custo por-evento vs COALESCIDO** (raio 100, 2048²) | **1,00×** |
 
-⚠️ **Isto NÃO é "decimar eventos".** Decimar muda a arte e é proibido por arquitetura — *a lei é função
-do CAMINHO, nunca de quão fino o motor o amostrou*, a doença que esta linha curou **4×**. Coalescer
-entrega **a mesma lista de dabs**, num lote só.
+**+86% de dabs contra +89% de tempo: a correlação é a resposta inteira.** O `stamp_dabs` percorre a
+pegada de **cada dab** — não uma janela por lote — então juntar os carimbos de um frame **não tem o
+que economizar**, e o número é **1,00×** medido exatamente no regime que a hipótese previa como o
+mais favorável (raio 100, onde a orla é máxima).
 
-### 8.3 A rota: pelo `on_tick`, e o contrato fica INTACTO
+A mecânica foi **revertida inteira**. Sobreviveram as **duas sondas** (`is_there_per_event_overhead_to_coalesce`
++ `the_dab_count_grows_with_the_event_count_over_the_same_path`), que são a evidência.
 
-A infra de coalescência **já existe** — `painter_canvas_move` bufferiza (`pending_painter_move`) e
-`flush_pending_painter_move` esvazia uma vez por frame — mas é **latest-wins**, válido só para os métodos
-de re-carimbo (`StrokeMethod::coalesces_canvas_motion`). Para o pincel incremental o caminho importa:
-não é *guardar o último*, é **acumular a lista**.
+### 8.4 As lições, que valem mais que a frente
 
-| | rota | custo | contrato |
-|---|---|---|---|
-| ❌ | método de lote no `CanvasPaintTool` | shell + painter | **`CanvasPaintTool=1` é CONGELADO** ⇒ ADR + ordem do Enio |
-| ✅ | **o painter acumula e carimba no `on_tick`** | painter só | **intacto** |
+1. ⚠️ **"Não escala com a tela" + "satura" não implicam "overhead de lote".** As duas propriedades são
+   igualmente compatíveis com *"o trabalho por evento é constante e a contagem de eventos satura"* —
+   e era isso. Eu tinha um mecanismo bonito e duas propriedades que o confirmavam, e **nenhuma
+   medição do mecanismo em si**.
+2. ⚠️ **A medição que faltava era a mais barata de todas** — contar dabs. Não flaka, não depende de
+   perfil de build, e teria matado a frente antes de uma linha de código. *Quando a hipótese é "o
+   custo é overhead", meça o TRABALHO primeiro.*
+3. ⚠️ **A coluna que eu não olhei.** Na 1ª leitura eu vi `ms/evento` **caindo** e concluí o oposto do
+   que a sonda dizia; a coluna que subia era o total. (Já registrado na §8 da versão anterior — e
+   ainda assim não me levou a contar o trabalho.)
+4. **Duas mutações minhas "sobreviventes" eram afirmações FALSAS, não buracos de gate** — e o processo
+   de mutação foi o que as achou: (a) *"o flush tem de vir antes do `stroke.tick`, que limpa o
+   scratch"* — buffers diferentes, e medido, **nenhum frame tem dabs de caminho E de temporizador**
+   (Space/Dots: o tique emite zero; Airbrush: não acumula nada), então a posição é inerte; (b) *"o
+   flush do `close_stroke` protege o pen-up"* — o `paint_end` já tem o dele, e o do `close_stroke` é
+   load-bearing **só na porta de bail**. Nos dois casos a cura foi corrigir a frase e escrever o gate
+   que faltava, nunca inventar fixture para "fechar" uma mutação correta.
 
-A rota boa não é invenção: **`Tool::on_tick` já existe** (ADR-0040-amendment-2, criado para o heartbeat da
-aquarela) e **já roda uma vez por frame no TOPO** do `run_render_frame` (`render_loop/mod.rs:997`, antes
-do `fixed_step.advance` e antes de qualquer coisa desenhar). O `Move` passa a **anexar a amostra** e
-voltar; o `on_tick` carimba o caminho pendente **num lote**; o `Up` esvazia antes de commitar — precedente
-exato, `painter_canvas_up` já chama `flush_pending_painter_move` primeiro. **A shell não muda uma linha.**
+### 8.5 ✅ O que sobra, e é OUTRA frente
 
-### 8.4 O gate: **byte-identidade**, e o motor já foi construído para ela
+**64 eventos emitem 39 dabs e pintam exactamente os mesmos pixels que 21.** A amostragem fina não
+desenha mais nada — ela faz o filtro do traço (sampler de média + estabilizador) atrasar menos e
+emitir mais dabs sobre a mesma linha.
 
-*O mesmo caminho repartido em N eventos tem de produzir um canvas **byte-idêntico** ao mesmo caminho em
-1 evento.*
+⚠️ **E isto é uma PERGUNTA, não um achado** — não repito o erro da §8.1. Os dabs extras podem ser
+trabalho **necessário** (com build-up de opacidade, dois dabs sobrepostos escurecem mais que um: a
+contagem de `painted px` mede cobertura, **não valor**) ou **redundante**. A medição que decide é
+comparar os VALORES, não o conjunto, e ela é o primeiro passo de qualquer frente sobre a lei de
+emissão. Custo: uma sonda.
 
-Não é propriedade nova: `last_dab_center`, `last_height_center` e `Stroke::last_emit_pos` existem
-**precisamente** para atravessar fronteira de lote. Se o gate nascer VERMELHO, ele achou um defeito que
-já está lá — o que o torna valioso nos dois resultados.
+### 8.6 ⚠️ Correção ao §7.4: **o cache dos planos de relevo JÁ ESTÁ FEITO**
 
-⚠️ **Duas premissas de fixture, aprendidas na sonda:**
+Esta parte sobrevive à reversão, porque é leitura do produto e não hipótese. A §7.4 mirou a luz da
+pista CPU e a nota da §5 do `CLAUDE.md` listava *"cache com chave de versão pros planos"* como aberto:
+**`impasto_gpu_planes_in(region)` existe e está em uso** (`painter_gpu_preview.rs:305`, com
+`preview_gpu_region()` dando o rect confinado e `light.planes_seeded()` como segunda testemunha),
+medido no doc-comment dele em **202 ms → 2,8 ms a 4096²**.
 
-1. **A distância tem de caber na tela menor.** A 1ª versão andava de x=200 a x=1800 e a 4096² media a
-   pincelada inteira enquanto a 1024² media **metade** dela (tudo além de x=1024 é descartado). `DIST=800`.
-2. **A coluna que importa é o TOTAL, não `ms/evento`.** Eu li a coluna que **caía** (custo por evento) e
-   concluí o contrário do que a sonda dizia; a que subia era a que eu não havia olhado.
-
-### 8.5 ⚠️ Correção ao §7.4: **o cache dos planos de relevo JÁ ESTÁ FEITO**
-
-A §7.4 mirou a luz da pista CPU, e a nota da §5 do `CLAUDE.md` listava *"cache com chave de versão pros
-planos"* como aberto. Fui ler o produto: **`impasto_gpu_planes_in(region)` existe e está em uso**
-(`painter_gpu_preview.rs:305`, com `preview_gpu_region()` dando o rect confinado e
-`light.planes_seeded()` como segunda testemunha). Medido no doc-comment dele: **202 ms → 2,8 ms a 4096²**.
-
-E a **janela é melhor que um cache**: não tem problema de invalidação nenhum, então o modo de falha que a
-nota temia — *"uma luz velha que ninguém vê que é velha"* — **não existe** nesta forma. O resíduo é o fold
-cheio quando `preview_gpu_region()` é `None` (edição estrutural), que **não é o caminho do move**.
-
-**Custo desta frente: zero — o trabalho está feito.** A nota ficou para trás do produto.
-
-### 8.6 A ordem, e o que fica medido depois
-
-1. **C1** — acumular + carimbar no `on_tick`, com o gate de byte-identidade.
-2. **C2** — re-medir `INPUT` no app real (`PH2D_PAINT_PERF=1`) e registrar o `eventos/frame` observado,
-   que é o que dimensiona o ganho: ~3 eventos/frame ⇒ −32%; ~16-25 ⇒ ~−45%.
-
-**Critério de parada:** se o `INPUT` re-medido não cair, a frente para e o negativo fica escrito.
+E a **janela é melhor que um cache**: não tem invalidação, logo o modo de falha que a nota temia —
+*"uma luz velha que ninguém vê que é velha"* — **não existe** nesta forma. O resíduo é o fold cheio
+quando `preview_gpu_region()` é `None` (edição estrutural), que **não é o caminho do move**. A nota
+ficou para trás do produto.
 
 ---
 

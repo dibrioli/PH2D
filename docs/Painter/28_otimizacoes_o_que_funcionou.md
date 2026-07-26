@@ -1139,6 +1139,57 @@ desenho** — as duas rotas produzem a mesma janela, então só o relógio pode 
 **pen-down 11,7 + pen-up 9,2 ms** de forks — e ela precisa alcançar o **histórico** também, porque o
 `cursor` é um dono permanente.
 
+### 5.15 ✅ A PORTA ÚNICA de fork do canvas — e o `Weak` que ela contava como dono
+
+Com a atribuição corrigida (§5.14), a frente da porta única foi aberta pela metade que é **mecânica e
+segura**: fazer TODO sítio forkar o canvas pela rota paralela.
+
+**O estado que ela encontrou:** só o depósito de pigmento (`stamp_cache`, 10 sítios) vinha pela porta;
+**23 sítios** — fill, smear, blur, clone, seleção, warp, máscara, inpaint, aquarela, e o **composite do
+Wet Paint, que roda a cada TICK** — chamavam `Arc::make_mut` cru, isto é, a cópia **serial**. E a
+primeira escrita de **todo** gesto forka, porque o `cursor` do histórico é dono permanente (§5.14).
+
+⚠️ **O doc do gate antigo justificava o escopo estreito com uma afirmação FALSA:** *"o pen-down é o
+único sítio onde o `Arc` do canvas tem um segundo dono garantido"*. Ele tem dois donos **sempre**.
+
+| blur pen-down | 2048² | 4096² |
+|---|---|---|
+| `Arc::make_mut` serial | 1,11 | **11,64** |
+| `fork_par` paralelo | 0,85 | **3,66** (3,2×) |
+
+#### ⚠️ E a migração expôs um defeito MEU — a frente V mordendo pelo outro lado
+
+`fork_par` perguntava `Arc::get_mut(arc).is_none()` para decidir se havia dono. **`get_mut` devolve
+`None` na presença de QUALQUER `Weak`**; `Arc::make_mut` só **copia** com outro **strong** (com só
+`Weak` vivo ele *move* o valor — foi isso que a §5.12 mediu em 0,0000 ms). O guard de identidade do Wet
+Paint é **precisamente um `Weak`**, então o composite passou a **copiar o canvas inteiro por movimento
+do mouse**, com o `make_mut` da linha seguinte movendo-o de graça.
+
+**A pergunta certa é a que o COPIADOR faz:** `strong_count > 1`. Ela é um palpite sobre *como* copiar,
+nunca sobre *se* — quem decide continua sendo o `make_mut` final.
+
+⚠️ O sintoma foi o **gate de razão da §5.12 voltando a 4,77×** — nunca uma falha de comportamento, porque
+as duas rotas dão os mesmos bytes. Por isso o gate novo afirma a **propriedade direto** (*um `Weak` vivo
+não dispara cópia*): um defeito que só um relógio enxerga é um defeito que uma máquina carregada esconde.
+
+#### O arch-gate mudou de ESCOPO, e é a lição
+
+O gate antigo lia **um arquivo**. O novo varre **`tool/paint/**` inteiro**, com controle positivo nas
+duas pontas (arquivos varridos · escritas pela porta) e prosa isenta — *um gate por-arquivo protege o
+arquivo que alguém lembrou de listar; o sítio 24 nasce coberto, que é exatamente como os 23 nasceram
+descobertos.*
+
+#### ⚠️ DUAS fixtures de medição nasceram cegas, por motivos diferentes
+
+1. **Um FILL** custa ~130 ms por conta própria a 4096², e a variação entre corridas é **maior** que os
+   ~6 ms do fork: a diferença saía **negativa**. *Um sinal só é mensurável contra um fundo menor que ele.*
+2. **Ablar o HISTÓRICO** (`undo.clear()`) **não** remove o segundo dono de um traço — o `stroke_undo`
+   nasce DENTRO do `paint_begin`, então os dois braços forkam e a diferença é **zero**. A ablação certa é
+   trocar a **ROTA** no mesmo gesto.
+
+**O que esta wave NÃO é:** ela **acelera** o fork, não o remove. Removê-lo é capturar o "antes" por
+REGIÃO (o *tile-based undo*), e a §5.14 mostrou que essa wave tem de alcançar o **histórico** também.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**

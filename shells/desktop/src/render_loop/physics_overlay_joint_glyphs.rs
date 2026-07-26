@@ -108,6 +108,85 @@ pub(super) fn limit_end_screen(
     arc_point_in(c, u, v, f64::from(angle_a) + f64::from(limit), LIMIT_ARC_PX)
 }
 
+/// Meia-extensão do trilho de um Slider SEM limites, px de tela — ele diz só uma
+/// DIREÇÃO, então o comprimento é do chrome. Um pouco maior que o arco de limite
+/// do Pin, porque uma reta precisa de mais extensão que um arco para ler como
+/// eixo em vez de risco.
+const RAIL_PX: f64 = 26.0; // LITERAL-PX-OK: chrome de overlay
+
+/// Meio-comprimento dos tracinhos de fim de curso, px de tela — irmãos dos
+/// `LIMIT_TICK_PX` do arco (é a mesma figura: *o alcance termina aqui*), um
+/// pouco maiores porque cruzam uma reta e não a ponta de um arco.
+const RAIL_TICK_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay
+
+/// **O TRILHO de um Slider** (W-J5) — o desenho canônico do prismatic: uma reta
+/// pelo eixo, com tracinhos perpendiculares nos fins de curso.
+///
+/// ⚠️ **Os fins de curso são MUNDO, o resto é tela.** Um curso é uma distância em
+/// metros, então os tracinhos têm de sentar onde o corpo vai de fato parar — eles
+/// crescem com o zoom junto com a cena. Já a espessura, o comprimento dos
+/// tracinhos e a extensão de um trilho ILIMITADO são chrome: sem limites o eixo
+/// não tem comprimento nenhum a mostrar, e inventar um em metros seria desenhar
+/// um número que não existe.
+///
+/// `axis_w` é a direção unitária de mundo que a ponte resolveu
+/// (`JointView::axis`), nunca uma re-derivação daqui: duas respostas a *"para onde
+/// este trilho aponta?"* desenhariam um eixo que o solver não usa.
+pub(super) fn slider_rail(
+    camera: &Camera2d,
+    window: WindowSize,
+    anchor_w: [f32; 2],
+    axis_w: [f32; 2],
+    limits: Option<[f32; 2]>,
+) -> BezPath {
+    let mut p = BezPath::new();
+    let along = |t: f32| {
+        screen_of(
+            camera,
+            window,
+            [anchor_w[0] + axis_w[0] * t, anchor_w[1] + axis_w[1] * t],
+        )
+    };
+    // A direção do eixo JÁ PROJETADA, de onde sai a perpendicular de tela. Sai de
+    // dois pontos do próprio eixo, então honra qualquer flip da câmera sem saber
+    // que ele existe.
+    let c = along(0.0);
+    let ahead = along(1.0);
+    let (dx, dy) = (ahead.x - c.x, ahead.y - c.y);
+    let len = dx.hypot(dy);
+    if len < 1e-9 {
+        return p; // câmera degenerada: nada honesto a desenhar
+    }
+    let (ux, uy) = (dx / len, dy / len);
+    let (perp_x, perp_y) = (-uy, ux);
+    let (from, to) = match limits {
+        // Com curso: a reta vai de ponta a ponta do alcance REAL.
+        Some([min, max]) => (along(min), along(max)),
+        // Sem curso: só a direção, num comprimento de chrome.
+        None => (
+            Point::new(c.x - ux * RAIL_PX, c.y - uy * RAIL_PX),
+            Point::new(c.x + ux * RAIL_PX, c.y + uy * RAIL_PX),
+        ),
+    };
+    p.move_to(from);
+    p.line_to(to);
+    // Os tracinhos existem só quando há fim de curso — sem limites não há onde
+    // parar, e um tracinho ali afirmaria um limite que não existe.
+    if limits.is_some() {
+        for end in [from, to] {
+            p.move_to(Point::new(
+                end.x - perp_x * RAIL_TICK_PX,
+                end.y - perp_y * RAIL_TICK_PX,
+            ));
+            p.line_to(Point::new(
+                end.x + perp_x * RAIL_TICK_PX,
+                end.y + perp_y * RAIL_TICK_PX,
+            ));
+        }
+    }
+    p
+}
+
 /// **Onde o grip do anel de comprimento está, em MUNDO** (W-J3).
 ///
 /// Sobre o anel, na direção de `toward` (a âncora B) — onde o artista já está

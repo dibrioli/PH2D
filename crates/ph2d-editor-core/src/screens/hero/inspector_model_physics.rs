@@ -394,10 +394,17 @@ pub struct InspectorJointInfo {
     /// showing its parameters as if it were live would be a lie.
     pub bound: bool,
     pub limits_enabled: bool,
-    /// **Degrees** at this boundary; the component stores radians, exactly as
-    /// `rotation_rad` does.
-    pub limit_min_deg: f32,
-    pub limit_max_deg: f32,
+    /// The limit range **in the KIND's own unit** — degrees for a Pin's angular
+    /// range, metres for a Slider's stroke.
+    ///
+    /// ⚠️ Named `_ui` and not `_deg` because it is not always degrees, and an
+    /// identifier that promises one unit while carrying two is the same defect as
+    /// a label that does (the field was `limit_min_deg` until the Slider arrived).
+    /// The component stores radians for a Pin — converted at this boundary, as
+    /// `rotation_rad` is — and metres for a Slider, converted not at all. The
+    /// single door is `JointKind::limits_in_metres`.
+    pub limit_min_ui: f32,
+    pub limit_max_ui: f32,
     pub motor_enabled: bool,
     /// Degrees per second.
     pub motor_speed_deg: f32,
@@ -420,11 +427,12 @@ pub struct InspectorJointInfo {
 /// holds a radian and the component never holds a degree.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum JointFieldEdit {
-    /// `JointKind` tag: `0` Pin · `1` Spring · `2` Rope · `3` Weld.
+    /// `JointKind` tag: `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider.
     Kind(u8),
     LimitsEnabled(bool),
-    LimitMinDeg(f32),
-    LimitMaxDeg(f32),
+    /// The limit range in the kind's own unit — see [`InspectorJointInfo::limit_min_ui`].
+    LimitMin(f32),
+    LimitMax(f32),
     MotorEnabled(bool),
     MotorSpeedDeg(f32),
     MotorMaxForce(f32),

@@ -594,12 +594,21 @@ pub const INSP_JOINT_KIND_GROUP: NodeId = hash_node_id("insp_joint_kind_group");
 pub const INSP_JOINT_LIMITS_GROUP: NodeId = hash_node_id("insp_joint_limits_group");
 pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group");
 
-/// Pin · Spring · Rope. Indexed by the `JointKind` tag the snapshot carries.
-pub const INSP_JOINT_KIND: [NodeId; 4] = [
+/// Pin · Spring · Rope · Weld · Slider. Indexed by the `JointKind` tag the
+/// snapshot carries.
+///
+/// ⚠️ **Este array e o `KIND_LABELS` do painel têm de ter o MESMO tamanho.** O
+/// `seg_row` faz `option_ids.zip(labels)`, e um `zip` **trunca**: com um rótulo a
+/// mais que ids, o último chip simplesmente não é pintado — sem erro, sem
+/// warning. Foi o que aconteceu quando o Slider chegou (W-J5), e o gate de seam
+/// não pegou porque ele iterava justamente a lista CURTA. Há um teste no painel
+/// comparando os dois comprimentos.
+pub const INSP_JOINT_KIND: [NodeId; 5] = [
     hash_node_id("insp_joint_kind_pin"),
     hash_node_id("insp_joint_kind_spring"),
     hash_node_id("insp_joint_kind_rope"),
     hash_node_id("insp_joint_kind_weld"),
+    hash_node_id("insp_joint_kind_slider"),
 ];
 
 /// Off · On, for the two Pin-only switches. Segmented rather than a checkbox

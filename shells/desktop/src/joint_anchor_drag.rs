@@ -279,9 +279,9 @@ fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKin
         want.max(other)
     };
     let edit = if matches!(kind, PointHandleKind::LimitMin) {
-        JointFieldEdit::LimitMinDeg(walled.to_degrees())
+        JointFieldEdit::LimitMin(walled.to_degrees())
     } else {
-        JointFieldEdit::LimitMaxDeg(walled.to_degrees())
+        JointFieldEdit::LimitMax(walled.to_degrees())
     };
     write_edit(sim, joint, current, edit);
 }

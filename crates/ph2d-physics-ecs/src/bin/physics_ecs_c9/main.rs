@@ -38,11 +38,11 @@
 mod zones;
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{SimWorld, Transform};
+use ph2d_ecs::{Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics_ecs::{
     BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
-    GravityScale, InitialVelocity, LockPositionX, LockRotation, MassOverride, MaterialCombine,
-    OneWayPlatform, PhysicsBridge, RigidBody,
+    GravityScale, InitialVelocity, JointKind, LockPositionX, LockRotation, MassOverride,
+    MaterialCombine, OneWayPlatform, PhysicsBridge, PhysicsJoint, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -418,6 +418,57 @@ fn main() {
             angvel: 0.0,
         },
         Transform::from_translation(Vec2::new(-52.0, 0.0)),
+    ));
+
+    // Um SLIDER com curso (W-J5): a primeira JOINT no hash, e ela entra porque o
+    // prismatic e um caminho de solver PROPRIO (a restricao de um grau de
+    // liberdade de translacao, mais os batentes do curso) e porque o eixo dele
+    // cruza `libm::sincosf` no caminho determinista. Um trilho a 45 graus de
+    // proposito: no horizontal ou no vertical o seno e o cosseno sao 0 ou 1
+    // exatos, e uma diagonal e o unico angulo que de fato exercita a trigonometria.
+    //
+    // ⚠️ Lane propria, longe de tudo, e com os DOIS corpos nomeados -- uma joint
+    // referencia os corpos por hash de `Name`, entao um corpo sem nome e um que
+    // ela nao consegue apontar.
+    sim.world_mut().spawn((
+        Name::new("C9 Rail"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.05 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-58.0, 6.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Car"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.2 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-58.0, 6.0)),
+    ));
+    let mut rail_t = Transform::from_translation(Vec2::new(-58.0, 6.0));
+    // -45 graus: para baixo e para a direita, com a gravidade puxando ao longo.
+    rail_t.rotation = -std::f32::consts::FRAC_PI_4;
+    sim.world_mut().spawn((
+        Name::new("C9 Slider"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Rail"),
+            body_b: stable_name_id("C9 Car"),
+            kind: JointKind::Slider,
+            limits_enabled: true,
+            limit_min: -PhysicsJoint::DEFAULT_STROKE,
+            limit_max: PhysicsJoint::DEFAULT_STROKE,
+            ..PhysicsJoint::default()
+        },
+        rail_t,
     ));
 
     // As oito lanes da familia das ZONAS -- irmao proprio pelo cap de 700 LOC.

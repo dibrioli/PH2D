@@ -40,7 +40,8 @@ use ph2d_vector::{BezPath, Point};
 
 use super::physics_overlay_annotations::torque_glyph;
 use super::physics_overlay_joint_glyphs::{
-    length_ring, limit_arc, pin_glyph, ring_px, rope_span, screen_of, spring_zigzag, weld_glyph,
+    length_ring, limit_arc, pin_glyph, ring_px, rope_span, screen_of, slider_rail, spring_zigzag,
+    weld_glyph,
 };
 
 /// Raio do anel desenhado em cada âncora, px de tela. Grande o bastante para
@@ -268,6 +269,15 @@ fn kind_marks(
             };
             span = rope_span(a, b, slack, g_screen);
             ring_px(a, JOINT_DOT_PX, &mut glyph);
+            ring_px(b, JOINT_DOT_PX, &mut glyph);
+        }
+        // O Slider compartilha um ponto como o Pin — o glifo é o TRILHO, e o span
+        // fica vazio pela mesma razão (quando as duas âncoras discordam, isso é a
+        // deformação, pintada em vermelho logo abaixo).
+        JointKind::Slider => {
+            if let Some(axis) = v.axis {
+                glyph = slider_rail(camera, window, v.anchor_a, axis, v.limits);
+            }
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }
     }

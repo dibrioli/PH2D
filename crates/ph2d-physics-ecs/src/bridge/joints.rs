@@ -91,13 +91,19 @@ pub(super) fn anchor_points(
 
 /// Translate the component + the already-LOCAL anchors into the plain
 /// [`JointDesc`] the wrapper takes.
-pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2]) -> JointDesc {
+pub(super) fn joint_desc(
+    j: &PhysicsJoint,
+    local_a: [f32; 2],
+    local_b: [f32; 2],
+    axis: ([f32; 2], [f32; 2]),
+) -> JointDesc {
     JointDesc {
         kind: match j.kind {
             JointKind::Pin => ph2d_physics::JointKind::Pin,
             JointKind::Spring => ph2d_physics::JointKind::Spring,
             JointKind::Rope => ph2d_physics::JointKind::Rope,
             JointKind::Weld => ph2d_physics::JointKind::Weld,
+            JointKind::Slider => ph2d_physics::JointKind::Slider,
         },
         anchor_a: local_a,
         anchor_b: local_b,
@@ -105,7 +111,10 @@ pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2])
         // `is_hinge` is asked here exactly as the Inspector asks it to decide
         // which rows to paint, so a limit left over from a previous kind
         // cannot quietly still be in force.
-        limits: (j.kind.is_hinge() && j.limits_enabled).then_some([j.limit_min, j.limit_max]),
+        // `has_limits`, not `is_hinge`: a Slider is limited too, and its range is
+        // a stroke in metres (`limits_in_metres`) rather than an angle. The
+        // Inspector asks the same door to decide which label to paint.
+        limits: (j.kind.has_limits() && j.limits_enabled).then_some([j.limit_min, j.limit_max]),
         motor: (j.kind.is_hinge() && j.motor_enabled).then_some(MotorDesc {
             speed: j.motor_speed,
             max_force: j.motor_max_force,
@@ -114,6 +123,8 @@ pub(super) fn joint_desc(j: &PhysicsJoint, local_a: [f32; 2], local_b: [f32; 2])
         stiffness: j.stiffness,
         damping: j.damping,
         max_length: j.max_length,
+        axis_a: axis.0,
+        axis_b: axis.1,
     }
 }
 
@@ -246,7 +257,12 @@ impl PhysicsBridge {
             // `clamped()` here and not only in the Inspector: a component is
             // serde and arrives from the project file too, and this is the last
             // door before rapier.
-            let desc = joint_desc(&joint.clamped(), la, lb);
+            let desc = joint_desc(
+                &joint.clamped(),
+                la,
+                lb,
+                PhysicsWorld::axis_locals(transform.rotation, ba.rest.rotation, bb.rest.rotation),
+            );
             match self.joints.get(&e) {
                 None => self.joints_to_spawn.push((e, desc, handles, (ea, eb))),
                 // Re-described whenever `desc` changed — a parameter or anchor

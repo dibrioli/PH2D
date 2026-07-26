@@ -4911,3 +4911,133 @@ dentro de um conjunto recortado, não sobre distância.
 **Zero componente, zero schema, zero id novo** (`PROJECT_SCHEMA` **31**, registro
 **21**); **c9 byte-idêntico** (`4e862761…`, 83 corpos). O passo **5b** da cena 46
 cobre os dois ajustes.
+
+---
+
+## W-J5 — Slider (Prismatic): o 5º tipo (2026-07-26, cena `=47`, pendente de smoke)
+
+O espelho do Pin. Um Pin deixa **girar** e proíbe transladar; um **Slider** deixa
+transladar por UMA direção e proíbe todo o resto — o elevador, a porta de correr,
+o pistão. `rapier::PrismaticJoint`.
+
+**Medido na cena 47** (sonda headless antes desta mensagem):
+
+| trilho | onde o corpo para | o que prova |
+|---|---|---|
+| **vertical**, curso 0,6 | `(-4,000, 5,400)` | cai EXATAMENTE 0,60 m — o curso é em metros |
+| **45°**, curso 1,0 | `(0,707, 6,293)` | `dx = dy = 0,707` = 1,0 m ao longo do EIXO |
+| **horizontal** (controle) | `(4,000, 6,000)` | não se move: a gravidade é perpendicular |
+
+O horizontal é o **controle** e é ele que dá sentido aos outros dois — sem ele
+*"o carro desceu"* seria satisfeito por um corpo em queda livre.
+
+### Onde mora o eixo
+
+**Na rotação da entidade-joint**, e nenhum campo novo o guarda. É o modelo do
+Godot e do Unreal, e é o que este componente já implicava: o `Transform` de um
+joint é onde a **colocação** dele vive (a translação é a âncora), então a direção
+de uma colocação vive na rotação. Consequência prática: **o eixo é autorável no
+dia um, pelo campo Rotation do §0, com zero widget novo** — a mesma economia que
+deu ao joint os campos de Position no W3.
+
+A conversão mora em `PhysicsWorld::axis_locals`, **irmã de `local_anchor_at_pose`
+e sob a mesma lei**: o ângulo autorado é de MUNDO, então é convertido uma vez
+contra as rotações de **REPOUSO** dos dois corpos. ⚠️ **Duas** direções locais
+(`axis_a`/`axis_b`) e não uma, pelo mesmo motivo que as âncoras são duas: os
+corpos podem ter sido autorados em rotações diferentes, e um vetor só é a mesma
+direção nos dois frames por acidente. `PrismaticJointBuilder::new` põe UM vetor
+nos dois frames — correto apenas nesse acidente.
+
+⚠️ **`libm::sincosf`, nunca `f32::sin_cos`** — este número alcança o solver e
+portanto o `physics_ecs_c9`, e a trig do std não é pinada cross-OS (a regra do
+frame de zona e da tesselação de elipse).
+
+⚠️ **Consequência deliberada e gateada:** o eixo é autorado em MUNDO, então
+**girar o corpo A não re-aponta o trilho** (o eixo local muda para manter a
+direção de mundo). Um eixo prismático é uma direção na CENA — um poço de elevador
+—, não uma propriedade do carro; é por isso que ele é DERIVADO por reconcile em
+vez de guardado como o `local_a`, que *é* propriedade do corpo.
+
+### A unidade: um campo, duas unidades, e uma porta
+
+`limit_min`/`limit_max` passam a carregar **a unidade do TIPO** — radianos num
+Pin, metros num Slider — que é exatamente como o rapier modela (um campo
+`limits`, pertencente ao grau de liberdade que o joint deixou livre). A porta é
+`JointKind::limits_in_metres`, lida pelo rótulo do painel, pela conversão do
+shell e pelo hand-off ao solver.
+
+⚠️ **E a troca de tipo RE-SEMEIA o alcance quando a unidade muda**, senão os ±45°
+de um Pin (±0,785 rad) viram ±0,785 **metros** de curso — um número que ninguém
+digitou — e um trilho de 0,5 m lido como radianos vira uma dobradiça de 28,6°. Só
+na troca de UNIDADE: Pin→Weld→Pin ainda devolve os ângulos que o artista tinha,
+que é a promessa que o componente faz sobre trocar de tipo.
+
+⚠️ **`is_hinge` foi SPLIT em `has_limits`** — a mesma cirurgia que o Weld obrigou
+quando `has_length` saiu de `!is_hinge`: *"é uma dobradiça?"* e *"tem alcance?"*
+tinham a mesma resposta enquanto o Pin era o único limitado. Colapsadas, um Slider
+ou perderia o curso que o torna um trilho ou ganharia um motor sem modelo.
+
+E os campos `limit_min_deg`/`LimitMinDeg` viraram **`limit_min_ui`/`LimitMin`**:
+um identificador que promete uma unidade e carrega duas é o mesmo defeito que um
+rótulo que faz isso.
+
+### O desenho, e o gesto
+
+**Trilho + tracinhos** (o desenho canônico do prismatic, `slider_rail`): uma reta
+pelo eixo, com marcas perpendiculares nos fins de curso. ⚠️ **Os fins de curso são
+MUNDO, o resto é tela** — um curso é uma distância, então os tracinhos sentam onde
+o corpo de fato para e crescem com o zoom; a espessura e a extensão de um trilho
+ILIMITADO são chrome, porque sem limites o eixo não tem comprimento a mostrar.
+Sem curso **não há tracinhos**: eles afirmam onde o movimento para.
+
+**E o arrasto do W-J4 DESENHA O TRILHO:** com Slider armado, o rumo do press até
+o release é o eixo (escrito na rotação do joint). Sem isso, desenhar na diagonal
+criava um trilho horizontal e o artista teria de ir digitar o ângulo — o passo
+exato que aquele gesto existe para remover.
+
+**Sem MOTOR nesta wave, de propósito:** o motor linear (o guincho) é do W-J6,
+junto com os modos Position|Velocity, e oferecê-lo aqui seria pintar dois knobs
+que o `joint_desc` recusa (`is_hinge`).
+
+### Gates e mutações
+
+3 no wrapper + 3 no ECS + 2 no shell + 2 no overlay + 2 no painel + o seam
+estendido. **7 mutações, 7 sangram.**
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M18 | `axis_locals` devolve sempre `+X` | os três trilhos ficam horizontais |
+| M19 | `has_limits` colapsa em `is_hinge` | o Slider perde o curso |
+| M20 | as portas de unidade ignoram o tipo | (o oráculo NOVO; ver abaixo) |
+| M21 | a troca de tipo nunca re-semeia | ±0,785 rad viram ±0,785 m |
+| M22 | o trilho ignora o `axis` | desenha horizontal em qualquer eixo |
+| M23 | tracinhos sempre desenhados | o ilimitado afirma um fim que não tem |
+| M24 | o 5º id de chip removido | o `zip` trunca e o chip não pinta |
+
+⚠️ **A M20 sobreviveu, e o defeito era do ORÁCULO:** o gate media o **round-trip**
+(digitou 0,5 → a row mostra 0,5), e um par de conversões **consistentemente
+errado** vai e volta perfeitamente enquanto o trilho fica 57× curto. O oráculo
+certo é o número **GUARDADO** — o que chega ao solver. *Uma mutação que não sangra
+pode acusar o oráculo, não o achado.*
+
+⚠️ **E o M24 é um bug que eu shipei e o gate de seam não pegou:** o `seg_row` faz
+`option_ids.zip(labels)`, e um `zip` **trunca** — cinco rótulos com quatro ids
+deixam o chip do Slider **sem ser pintado**, sem erro e sem warning. O gate de
+seam dos chips ficou verde porque ele **iterava a lista CURTA** (os ids). O que
+fecha é comparar os dois comprimentos, uma asserção que nenhuma das duas listas
+satisfaz sozinha.
+
+**`PROJECT_SCHEMA` NÃO bumpou** (variant apendado ao FIM não move índice
+posicional — a lei do Weld), registro **21**; `JointDesc` ganhou `axis_a`/`axis_b`
+(plain data, não serializada). **c9: 83 → 85 corpos**, hash **`55fa97c5…`**
+(debug ≡ release) — **MUDA** vs main e é CORRETO: o prismatic é caminho de solver
+próprio e o eixo dele cruza `libm::sincosf`. A lane é um trilho a **45°** de
+propósito: no horizontal e no vertical o seno e o cosseno são 0 ou 1 exatos, e só
+a diagonal exercita a trigonometria.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=47`** (três trilhos + um par pelado; o passo 6 é a
+estrela — **desenhe** um trilho na direção que quiser).
+
+**Aberto:** motor linear (W-J6) · o eixo não tem alça de canvas (girar o joint é
+pelo campo Rotation; uma alça de ângulo é a família do W-J3 e pediria um grip
+próprio) · girar o corpo A não re-aponta o trilho (o modelo do Godot, gateado).

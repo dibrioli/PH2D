@@ -82,6 +82,20 @@ pub enum JointKind {
     /// for compound bodies and (later) breakable structures. It shares a point
     /// like a pin but has no motor, no limits, no length.
     Weld,
+    /// **Slider** — the bodies may only slide along ONE axis and never rotate
+    /// relative to each other. The elevator, the sliding door, the piston.
+    ///
+    /// The **axis is the joint entity's own `Transform::rotation`** — no new
+    /// field, and no second place to keep it. That is the model Godot and
+    /// Unreal use, and it is the one this component already implies: the
+    /// entity's `Transform` is where a joint's *placement* lives (its
+    /// translation is the anchor), so its rotation is where a placement's
+    /// direction lives. It also means the axis is authorable on day one, in the
+    /// Inspector's own Rotation field, with zero widgets added.
+    ///
+    /// Like a Pin it has **limits** — but they are a STROKE, in metres. See
+    /// [`JointKind::limits_in_metres`].
+    Slider,
 }
 
 impl JointKind {
@@ -96,6 +110,32 @@ impl JointKind {
         matches!(self, JointKind::Pin)
     }
 
+    /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
+    /// range) and a Slider (a stroke) do.
+    ///
+    /// ⚠️ **Split out of `is_hinge` when the Slider arrived**, for the same
+    /// reason `has_length` had to be split out of `!is_hinge` when the Weld did:
+    /// *"is it a hinge?"* and *"does it have limits?"* had the same answer while
+    /// the Pin was the only limited kind, and one of the two questions was
+    /// always going to grow a second member. Collapsed, a Slider would either
+    /// get a motor it has no model for or lose the limits that make it a rail.
+    pub fn has_limits(self) -> bool {
+        matches!(self, JointKind::Pin | JointKind::Slider)
+    }
+
+    /// Are this kind's limits a distance rather than an angle?
+    ///
+    /// ⚠️ **`limit_min`/`limit_max` carry the unit of the KIND** — radians for a
+    /// Pin, metres for a Slider — which is exactly how rapier models it (one
+    /// `limits` field, belonging to whichever degree of freedom the joint left
+    /// free). One door so the Inspector's label, its conversion, and the
+    /// bridge's hand-off to the solver cannot disagree about what the number
+    /// means; and the kind-change re-seeds the range, so `±0.785` rad never
+    /// silently becomes `±0.785` m.
+    pub fn limits_in_metres(self) -> bool {
+        matches!(self, JointKind::Slider)
+    }
+
     /// Does this kind have a length the artist tunes? Only Spring and Rope do —
     /// a Pin's length is zero (the anchors coincide) and a Weld's is too (it is
     /// rigid). **Not** `!is_hinge()`: a Weld is not a hinge but still has no
@@ -104,10 +144,16 @@ impl JointKind {
         matches!(self, JointKind::Spring | JointKind::Rope)
     }
 
-    /// Do the two bodies share one point (a Pin or a Weld), rather than have two
-    /// separate ends (a Spring or a Rope)? The anchor policy reads this: a
-    /// shared-point joint anchors both bodies at the same world point, a
+    /// Do the two bodies share one point (a Pin, a Weld or a Slider), rather than
+    /// have two separate ends (a Spring or a Rope)? The anchor policy reads this:
+    /// a shared-point joint anchors both bodies at the same world point, a
     /// two-ended one anchors body B at its own centre.
+    ///
+    /// A Slider shares a point **and that point is the zero of its stroke** —
+    /// rapier measures the prismatic displacement from where the two anchors
+    /// coincide, so authoring them apart would offset the whole range by the
+    /// gap. It falls out of `!has_length()` correctly, but it is stated here
+    /// rather than left to fall out by accident.
     pub fn shares_a_point(self) -> bool {
         !self.has_length()
     }
@@ -207,6 +253,29 @@ impl PhysicsJoint {
     /// The shortest rope the solver accepts. A rope of zero length is a weld
     /// nobody asked for.
     pub const MIN_LENGTH: f32 = 1e-3;
+    /// Half-stroke a newly limited **Slider** gets, metres — so its range is
+    /// ±0.5 m, a metre of travel centred where the artist put the joint.
+    ///
+    /// Reads the same way `DEFAULT_LIMIT` does for a hinge: wide enough to be
+    /// obviously a rail (the smoke's bodies are ~0.5-1 m, so the carriage
+    /// travels about its own length each way) and narrow enough that switching
+    /// limits on visibly differs from leaving them off.
+    pub const DEFAULT_STROKE: f32 = 0.5;
+
+    /// The default limit range for a kind, in **that kind's unit**.
+    ///
+    /// The door the kind-change re-seeds through: a Pin's ±45° reinterpreted as
+    /// a Slider's stroke is ±0.785 **metres**, a number nobody typed, and the
+    /// reverse turns a 0.5 m rail into a 28.6° hinge. Same field, two units, so
+    /// the switch has to restate the range.
+    pub fn default_limits(kind: JointKind) -> [f32; 2] {
+        let half = if kind.limits_in_metres() {
+            Self::DEFAULT_STROKE
+        } else {
+            Self::DEFAULT_LIMIT
+        };
+        [-half, half]
+    }
 
     /// This joint with every number forced back into a range the solver can
     /// use. **The door a loaded project file comes through.**

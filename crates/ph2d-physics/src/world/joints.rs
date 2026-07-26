@@ -34,10 +34,10 @@
 //! `ImpulseJointSet`, so a scrub backwards carries joints with no work at all.
 
 use rapier2d::dynamics::{
-    FixedJointBuilder, ImpulseJointHandle, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder,
-    SpringJointBuilder,
+    FixedJointBuilder, ImpulseJointHandle, PrismaticJointBuilder, RevoluteJointBuilder,
+    RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
 };
-use rapier2d::na::{Isometry2, Point2, Vector2};
+use rapier2d::na::{Isometry2, Point2, UnitVector2, Vector2};
 
 use super::PhysicsWorld;
 
@@ -84,6 +84,17 @@ pub enum JointKind {
     /// **Weld** — the two bodies are locked rigidly at the anchor: no relative
     /// translation OR rotation. rapier's `FixedJoint`.
     Weld,
+    /// **Slider** — the bodies may only slide along one AXIS, and never rotate
+    /// relative to each other. The elevator shaft, the sliding door, the piston.
+    /// rapier's `PrismaticJoint`.
+    ///
+    /// It is the mirror image of the Pin: a Pin allows rotation and forbids
+    /// translation, a Slider allows translation along one direction and forbids
+    /// everything else. That is why its `limits` are a range in **metres** —
+    /// the stroke — where a Pin's are radians. rapier expresses both through the
+    /// same `limits` field for the same reason: the limit belongs to whichever
+    /// degree of freedom the joint left free.
+    Slider,
 }
 
 /// A motor driving a [`JointKind::Pin`].
@@ -144,6 +155,25 @@ pub struct JointDesc {
     pub damping: f32,
     /// [`JointKind::Rope`]: the distance the anchors may not exceed, meters.
     pub max_length: f32,
+    /// [`JointKind::Slider`]: the sliding direction in **body A's local frame**.
+    ///
+    /// Local, and TWO of them, for exactly the reasons [`Self::anchor_a`] gives:
+    /// the artist aims a direction in the world, the caller converts once
+    /// against the bodies' REST poses, and the pair is what gets stored — so a
+    /// rebuild reproduces the same constraint instead of re-deriving the axis
+    /// against whatever pose the bodies drifted into.
+    ///
+    /// Need not be normalised; [`PhysicsWorld::spawn_joint`] normalises, and a
+    /// degenerate (zero / non-finite) axis falls back to `+X` rather than
+    /// handing rapier a `NaN` direction.
+    pub axis_a: [f32; 2],
+    /// The same direction in **body B's** local frame.
+    ///
+    /// Two fields and not one because the bodies can be authored at different
+    /// rotations: one vector cannot be the same direction in both frames unless
+    /// they happen to agree. (`anchor_a`/`anchor_b` are two fields for the same
+    /// reason, and a Pin's *are* usually the same point.)
+    pub axis_b: [f32; 2],
 }
 
 impl Default for JointDesc {
@@ -161,6 +191,9 @@ impl Default for JointDesc {
             stiffness: Self::DEFAULT_STIFFNESS,
             damping: Self::DEFAULT_DAMPING,
             max_length: 1.0,
+            // `+X` — a horizontal rail, which is what an unrotated joint means.
+            axis_a: [1.0, 0.0],
+            axis_b: [1.0, 0.0],
         }
     }
 }
@@ -190,6 +223,22 @@ impl JointDesc {
     /// rebound of 2 mm — the ball sank and stayed. At stiffness 30: damping
     /// 0.1 rebounds 0.113 m, **0.5 rebounds 0.077 m**, 1.0 rebounds 0.049 m.
     pub const DEFAULT_DAMPING: f32 = 0.5;
+}
+
+/// A direction as a unit vector, falling back to `+X` when it cannot be one.
+///
+/// ⚠️ **`UnitVector2::new_normalize` of a zero vector yields `NaN`**, and a `NaN`
+/// axis does not fail loudly — it poisons the solver, and from there the poses,
+/// the readback, and the determinism hash. A joint whose axis was never authored
+/// (or arrived non-finite from a project file) gets the horizontal rail an
+/// unrotated joint means, which is the same value `JointDesc::default` carries.
+fn unit_or_x(v: [f32; 2]) -> UnitVector2<f32> {
+    let len = v[0].hypot(v[1]);
+    if len.is_finite() && len > 1e-6 {
+        UnitVector2::new_normalize(Vector2::new(v[0], v[1]))
+    } else {
+        UnitVector2::new_normalize(Vector2::new(1.0, 0.0))
+    }
 }
 
 impl PhysicsWorld {
@@ -257,6 +306,26 @@ impl PhysicsWorld {
                 .local_anchor1(anchor_a)
                 .local_anchor2(anchor_b)
                 .into(),
+            // The mirror of the Pin: one translational degree of freedom, no
+            // rotation. The two local axes are the SAME world direction seen from
+            // each body (see `JointDesc::axis_a`), so they are set separately —
+            // `PrismaticJointBuilder::new` would put one vector in both frames,
+            // which is only right when the bodies were authored at the same
+            // rotation.
+            JointKind::Slider => {
+                let mut builder = PrismaticJointBuilder::new(unit_or_x(desc.axis_a))
+                    .local_axis1(unit_or_x(desc.axis_a))
+                    .local_axis2(unit_or_x(desc.axis_b))
+                    .local_anchor1(anchor_a)
+                    .local_anchor2(anchor_b);
+                // Stroke limits, in METRES — the same `limits` field a Pin uses
+                // for radians, because the limit belongs to whichever degree of
+                // freedom the joint left free (rapier models it exactly so).
+                if let Some([min, max]) = desc.limits {
+                    builder = builder.limits([min, max]);
+                }
+                builder.into()
+            }
         };
         // ⚠️ **Jointed bodies do not collide with each other**, and rapier's
         // default is the opposite (`contacts_enabled: true`). Box2D
@@ -286,6 +355,35 @@ impl PhysicsWorld {
         let iso = Isometry2::new(Vector2::new(pose[0], pose[1]), pose[2]);
         let p = iso.inverse_transform_point(&Point2::new(world[0], world[1]));
         [p.x, p.y]
+    }
+
+    /// **A Slider's axis in each body's local frame**, from the authored angles.
+    ///
+    /// The authored quantity is the joint entity's own rotation — a WORLD angle,
+    /// exactly as its translation is a world point — so it is converted once,
+    /// against the bodies' **REST** rotations. Same law as
+    /// [`Self::local_anchor_at_pose`], and for the same measured reason:
+    /// converting against a live pose makes one authored direction mean
+    /// different things depending on when the conversion happened.
+    ///
+    /// ⚠️ **`libm::sincosf`, never `f32::sin_cos`** — this number reaches the
+    /// solver and therefore the `physics_ecs_c9` cross-OS hash, and std trig is
+    /// not pinned across platforms. It is the same rule (and the same crate) the
+    /// ellipse collider tessellation follows.
+    ///
+    /// ⚠️ **Deliberate consequence, gated on the ECS side:** because the axis is
+    /// world-authored, rotating body A does not re-aim the rail — the local axis
+    /// changes to keep the world direction. That is the Godot/Unreal model: a
+    /// prismatic axis is a direction in the scene (an elevator shaft), not a
+    /// feature of the carriage. It is why the axis is DERIVED per reconcile
+    /// instead of stored like the anchor, which *is* a feature of the body.
+    #[must_use]
+    pub fn axis_locals(joint_rot: f32, a_rot: f32, b_rot: f32) -> ([f32; 2], [f32; 2]) {
+        fn dir(ang: f32) -> [f32; 2] {
+            let (s, c) = libm::sincosf(ang);
+            [c, s]
+        }
+        (dir(joint_rot - a_rot), dir(joint_rot - b_rot))
     }
 
     /// The inverse of [`Self::local_anchor_at_pose`]: a body-local anchor → the

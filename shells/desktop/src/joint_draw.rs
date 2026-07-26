@@ -182,8 +182,23 @@ impl App {
             match kind {
                 JointKind::Spring => j.rest_length = span,
                 JointKind::Rope => j.max_length = span,
-                JointKind::Pin | JointKind::Weld => {}
+                // Um Slider compartilha um ponto, então nunca chega aqui — mas o
+                // arrasto DIZ algo para ele, e é o eixo (logo abaixo).
+                JointKind::Pin | JointKind::Weld | JointKind::Slider => {}
             }
+        }
+        // **O arrasto DESENHA O TRILHO.** Para um Slider o gesto não mede um
+        // comprimento (ele compartilha um ponto), mede uma DIREÇÃO: o rumo do
+        // press até o release é o eixo, escrito na rotação da entidade-joint —
+        // que é onde o eixo mora (`JointKind::Slider`). Sem isto, desenhar um
+        // trilho na diagonal criava um trilho horizontal e o artista teria de ir
+        // digitar o ângulo, que é exatamente o passo que este gesto existe para
+        // remover.
+        if kind == JointKind::Slider
+            && span > 1e-3
+            && let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(joint)
+        {
+            t.rotation = libm::atan2f(world[1] - d.from[1], world[0] - d.from[0]);
         }
         // O gesto terminou: desarma, e SELECIONA o joint novo — a §12 abre no
         // que você acabou de desenhar, exatamente como no botão (W-JointCreate).

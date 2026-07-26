@@ -43,8 +43,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0) as f32;
             match id {
-                ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMinDeg(v)),
-                ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMaxDeg(v)),
+                ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMin(v)),
+                ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMax(v)),
                 ids::INSP_JOINT_MOTOR_SPEED => Some(JointFieldEdit::MotorSpeedDeg(v)),
                 ids::INSP_JOINT_MOTOR_FORCE => Some(JointFieldEdit::MotorMaxForce(v)),
                 ids::INSP_JOINT_REST_LENGTH => Some(JointFieldEdit::RestLength(v)),

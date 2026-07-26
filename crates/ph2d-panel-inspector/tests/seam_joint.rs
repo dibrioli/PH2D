@@ -40,8 +40,8 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         body_b_name: "Plank".into(),
         bound: true,
         limits_enabled: true,
-        limit_min_deg: -45.0,
-        limit_max_deg: 45.0,
+        limit_min_ui: -45.0,
+        limit_max_ui: 45.0,
         motor_enabled: true,
         motor_speed_deg: 114.0,
         motor_max_force: 10.0,
@@ -172,7 +172,7 @@ fn the_body_pickers_arm_their_own_slot() {
 /// constraint is, so the pickers are not gated on kind like the parameter rows.
 #[test]
 fn both_pickers_paint_for_every_kind() {
-    for kind in 0u8..4 {
+    for kind in 0u8..5 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
@@ -198,13 +198,13 @@ fn each_number_box_commits_to_its_own_field() {
             0,
             ids::INSP_JOINT_LIMIT_MIN,
             -30.0,
-            JointFieldEdit::LimitMinDeg(-30.0),
+            JointFieldEdit::LimitMin(-30.0),
         ),
         (
             0,
             ids::INSP_JOINT_LIMIT_MAX,
             60.0,
-            JointFieldEdit::LimitMaxDeg(60.0),
+            JointFieldEdit::LimitMax(60.0),
         ),
         (
             0,
@@ -257,12 +257,14 @@ fn each_number_box_commits_to_its_own_field() {
 /// painted here that the solver ignores would be a knob that does nothing.
 #[test]
 fn each_kind_paints_only_the_rows_it_uses() {
-    const PIN_ONLY: [ph2d_a11y::NodeId; 4] = [
-        ids::INSP_JOINT_LIMIT_MIN,
-        ids::INSP_JOINT_LIMIT_MAX,
-        ids::INSP_JOINT_MOTOR_SPEED,
-        ids::INSP_JOINT_MOTOR_FORCE,
-    ];
+    // ⚠️ **Split quando o Slider chegou** (W-J5): as rows de LIMITE deixaram de
+    // ser do Pin — um Slider tem alcance também (`has_limits`) — e o MOTOR
+    // continua só do Pin (o linear é W-J6). Colapsadas, um Slider ou perderia o
+    // curso que o torna um trilho ou ganharia um motor sem modelo.
+    const LIMIT_ROWS: [ph2d_a11y::NodeId; 2] =
+        [ids::INSP_JOINT_LIMIT_MIN, ids::INSP_JOINT_LIMIT_MAX];
+    const PIN_ONLY: [ph2d_a11y::NodeId; 2] =
+        [ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE];
     const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
         ids::INSP_JOINT_REST_LENGTH,
         ids::INSP_JOINT_STIFFNESS,
@@ -281,6 +283,22 @@ fn each_kind_paints_only_the_rows_it_uses() {
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
 
+        // As rows de limite pertencem a DOIS tipos, então não cabem na tabela
+        // "um dono" abaixo — são afirmadas à parte.
+        for &id in &LIMIT_ROWS {
+            let limited = kind == 0 || kind == 4;
+            assert_eq!(
+                painted(id),
+                limited,
+                "kind {kind} {} {id:?}: um alcance existe no Pin e no Slider, e em \
+                 mais nenhum",
+                if limited {
+                    "must paint"
+                } else {
+                    "must not paint"
+                }
+            );
+        }
         for (owner, ids_) in [
             (0u8, &PIN_ONLY[..]),
             (1, &SPRING_ONLY[..]),

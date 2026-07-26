@@ -15,7 +15,9 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,
 };
 
-use super::inspector_joint::{apply_joint_edit, build_joint_info, create_joint, set_joint_body};
+use super::inspector_joint::{
+    apply_joint_edit, build_joint_info, create_joint, joint_with_edit, kind_of, set_joint_body,
+};
 
 fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();
@@ -150,7 +152,7 @@ fn the_angle_fields_convert_at_the_boundary() {
     apply_joint_edit(
         &sim,
         joint.to_bits(),
-        JointFieldEdit::LimitMaxDeg(90.0),
+        JointFieldEdit::LimitMax(90.0),
         &queue,
         &reg,
     );
@@ -164,7 +166,7 @@ fn the_angle_fields_convert_at_the_boundary() {
     );
     // And it comes back out in degrees, so the round trip is closed.
     let info = build_joint_info(&mut sim, joint.to_bits(), 0).expect("info");
-    assert!((info.limit_max_deg - 90.0).abs() < 1e-3);
+    assert!((info.limit_max_ui - 90.0).abs() < 1e-3);
 }
 
 /// **The snapshot shows the two bodies by NAME, and says when one is gone.**
@@ -417,5 +419,88 @@ fn a_joint_param_edit_lands_only_when_the_queue_is_flushed() {
          edit the render loop failed to flush, so the joint sat at k=30. The \
          bridge picking a flushed component change up and tightening the spring \
          is proven end to end in ph2d-physics-ecs/tests/joint_live_edit.rs"
+    );
+}
+
+/// **O curso vai e volta na unidade do TIPO** (W-J5).
+///
+/// `limit_min/max` carregam radianos num Pin e metros num Slider — o modelo do
+/// próprio rapier (um campo `limits`, pertencente ao grau de liberdade que o
+/// joint deixou livre). Este gate pina o par de portas: o que o artista digita na
+/// row Min é o que a row Min mostra no frame seguinte, nos DOIS tipos.
+///
+/// Mutação: `limit_in`/`limit_out` ignorarem o tipo (converter sempre) ⇒ o
+/// Slider volta 0,5 m como 28,6 e isto fica vermelho.
+#[test]
+fn a_limit_round_trips_in_its_kinds_own_unit() {
+    for (kind_tag, typed) in [(0u8, 45.0_f32), (4, 0.5)] {
+        let base = PhysicsJoint {
+            kind: kind_of(kind_tag),
+            limits_enabled: true,
+            ..PhysicsJoint::default()
+        };
+        let after =
+            joint_with_edit(base, JointFieldEdit::LimitMax(typed)).expect("a limit edit lands");
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Name::new("J"), after, Transform::default()))
+            .id();
+        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        assert!(
+            (info.limit_max_ui - typed).abs() < 1e-3,
+            "kind {kind_tag}: digitou {typed}, a row mostra {}",
+            info.limit_max_ui
+        );
+        // ⚠️ **E o número GUARDADO, que é o que chega ao solver.** O round-trip
+        // sozinho é oráculo fraco: um par de conversões consistentemente ERRADO
+        // (converter sempre, ignorando o tipo) vai e volta perfeitamente enquanto
+        // o trilho fica 57x curto. A mutação que apaga o `if limits_in_metres`
+        // sobreviveu à asserção acima e é esta que a mata.
+        let stored = if kind_tag == 4 {
+            typed // metros, verbatim
+        } else {
+            typed.to_radians()
+        };
+        assert!(
+            (after.limit_max - stored).abs() < 1e-4,
+            "kind {kind_tag}: {typed} tem de VIRAR {stored} no componente, got {}",
+            after.limit_max
+        );
+    }
+}
+
+/// **Trocar entre dobradiça e trilho RE-SEMEIA o alcance** — e trocar entre dois
+/// tipos da mesma unidade NÃO.
+///
+/// Sem a re-semeadura os ±45° de um Pin (±0,785 rad) viram ±0,785 **metros** de
+/// curso, um número que ninguém digitou. Com ela sempre, Pin→Weld→Pin jogaria
+/// fora os ângulos do artista — que é a promessa que o componente faz sobre
+/// trocar de tipo.
+///
+/// Mutação: re-semear em toda troca ⇒ a 2ª metade fica vermelha; nunca re-semear
+/// ⇒ a 1ª.
+#[test]
+fn changing_the_limit_unit_re_seeds_the_range_and_nothing_else_does() {
+    let pin = PhysicsJoint {
+        kind: JointKind::Pin,
+        limit_min: -0.4,
+        limit_max: 0.4,
+        ..PhysicsJoint::default()
+    };
+    // Pin -> Slider: a unidade muda, o alcance é re-semeado em METROS.
+    let slider = joint_with_edit(pin, JointFieldEdit::Kind(4)).expect("kind edit");
+    let want = PhysicsJoint::default_limits(JointKind::Slider);
+    assert!(
+        (slider.limit_max - want[1]).abs() < 1e-6,
+        "Pin->Slider tem de re-semear o curso, got {}",
+        slider.limit_max
+    );
+    // Pin -> Weld: MESMA unidade, o alcance do artista sobrevive.
+    let weld = joint_with_edit(pin, JointFieldEdit::Kind(3)).expect("kind edit");
+    assert!(
+        (weld.limit_max - 0.4).abs() < 1e-6,
+        "Pin->Weld tem de PRESERVAR os angulos, got {}",
+        weld.limit_max
     );
 }

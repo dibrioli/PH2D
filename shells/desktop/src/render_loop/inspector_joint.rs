@@ -26,7 +26,30 @@ pub(crate) fn kind_of(tag: u8) -> JointKind {
         1 => JointKind::Spring,
         2 => JointKind::Rope,
         3 => JointKind::Weld,
+        4 => JointKind::Slider,
         _ => JointKind::Pin,
+    }
+}
+
+/// A limit range **out** of the component, in the unit the Inspector shows.
+///
+/// One door, and its twin [`limit_in`] is the other direction — the pair is why a
+/// value typed into the Min row and the value that row shows next frame are the
+/// same number. Degrees for an angular range, metres verbatim for a stroke.
+fn limit_out(kind: JointKind, v: f32) -> f32 {
+    if kind.limits_in_metres() {
+        v
+    } else {
+        v.to_degrees()
+    }
+}
+
+/// A limit range **into** the component, from the unit the Inspector typed.
+fn limit_in(kind: JointKind, v: f32) -> f32 {
+    if kind.limits_in_metres() {
+        v
+    } else {
+        v.to_radians()
     }
 }
 
@@ -36,6 +59,7 @@ fn tag_of(kind: JointKind) -> u8 {
         JointKind::Spring => 1,
         JointKind::Rope => 2,
         JointKind::Weld => 3,
+        JointKind::Slider => 4,
     }
 }
 
@@ -85,8 +109,8 @@ pub(crate) fn build_joint_info(
         body_a_name: a,
         body_b_name: b,
         limits_enabled: joint.limits_enabled,
-        limit_min_deg: joint.limit_min.to_degrees(),
-        limit_max_deg: joint.limit_max.to_degrees(),
+        limit_min_ui: limit_out(joint.kind, joint.limit_min),
+        limit_max_ui: limit_out(joint.kind, joint.limit_max),
         motor_enabled: joint.motor_enabled,
         motor_speed_deg: joint.motor_speed.to_degrees(),
         motor_max_force: joint.motor_max_force,
@@ -191,6 +215,7 @@ pub(crate) fn apply_joint_edit(
 #[must_use]
 pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Option<PhysicsJoint> {
     let mut next = current;
+    let prev_kind = current.kind;
     match edit {
         JointFieldEdit::Kind(tag) => {
             next.kind = kind_of(tag);
@@ -203,12 +228,26 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
             // Without this a Pin turned into a Rope keeps the Pin's shared-point
             // anchor and the rope hangs from the wrong spot on body B.
             next.anchored = false;
+            // ⚠️ **And the limit RANGE is re-seeded when the unit changes.**
+            // `limit_min/max` carry the kind's own unit, so a Pin's ±45°
+            // (±0.785 rad) reinterpreted as a stroke is ±0.785 **metres** — a
+            // number nobody typed — and a 0.5 m rail read as radians is a 28.6°
+            // hinge. Only on a unit CHANGE: Pin→Weld→Pin still returns the angles
+            // the artist had, which is the promise the component makes about
+            // switching kinds.
+            if next.kind.limits_in_metres() != prev_kind.limits_in_metres() {
+                let [lo, hi] = PhysicsJoint::default_limits(next.kind);
+                next.limit_min = lo;
+                next.limit_max = hi;
+            }
         }
         JointFieldEdit::LimitsEnabled(on) => next.limits_enabled = on,
-        // Degrees on the way in, radians in the component — the same boundary
-        // `Transform::rotation_rad` keeps.
-        JointFieldEdit::LimitMinDeg(v) => next.limit_min = v.to_radians(),
-        JointFieldEdit::LimitMaxDeg(v) => next.limit_max = v.to_radians(),
+        // The UNIT is the kind's (`limits_in_metres`): degrees→radians for a
+        // hinge, metres verbatim for a slider's stroke. One door each way, so the
+        // label the panel paints and the number the component holds cannot
+        // disagree about what was typed.
+        JointFieldEdit::LimitMin(v) => next.limit_min = limit_in(next.kind, v),
+        JointFieldEdit::LimitMax(v) => next.limit_max = limit_in(next.kind, v),
         JointFieldEdit::MotorEnabled(on) => next.motor_enabled = on,
         JointFieldEdit::MotorSpeedDeg(v) => next.motor_speed = v.to_radians(),
         JointFieldEdit::MotorMaxForce(v) => next.motor_max_force = v.max(0.0),

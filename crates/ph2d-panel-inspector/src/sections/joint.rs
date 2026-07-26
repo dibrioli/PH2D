@@ -19,7 +19,7 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 4] = ["Pin", "Spring", "Rope", "Weld"];
+const KIND_LABELS: [&str; 5] = ["Pin", "Spring", "Rope", "Weld", "Slider"];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
@@ -34,6 +34,27 @@ const KIND_SPRING: u8 = 1;
 /// (tag 3) — which has no parameter rows at all — falls through to nothing
 /// instead of inheriting the Rope's "Max Length" from a bare `else`.
 const KIND_ROPE: u8 = 2;
+/// Tag of the Slider kind. It shares the **Limits** switch with the Pin (both
+/// have a range) and has no motor of its own yet — W-J6 gives it one — so the
+/// painter asks the two questions separately instead of branching on "is it a
+/// Pin?", which is the same split `JointKind::has_limits` made engine-side.
+const KIND_SLIDER: u8 = 4;
+
+/// The unit the limit rows are in, **for this kind**. Degrees for a hinge's
+/// angular range, metres for a slider's stroke.
+///
+/// ⚠️ The panel is loose-coupled and hardcodes its own labels (the convention of
+/// every sibling section), so this is a second STATEMENT of
+/// `JointKind::limits_in_metres` rather than a second source of truth: the
+/// shell converts the value, this only names it. A seam gate pins that a slider's
+/// rows say metres, so the two cannot drift apart in silence.
+const fn limit_unit(kind_tag: u8) -> &'static str {
+    if kind_tag == KIND_SLIDER {
+        "m"
+    } else {
+        "\u{00b0}"
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_joint_section(
@@ -89,7 +110,7 @@ pub(crate) fn paint_joint_section(
         info.kind_tag,
     );
 
-    if info.kind_tag == KIND_PIN {
+    if info.kind_tag == KIND_PIN || info.kind_tag == KIND_SLIDER {
         yy = seg_row(
             scene,
             text_system,
@@ -106,9 +127,10 @@ pub(crate) fn paint_joint_section(
             u8::from(info.limits_enabled),
         );
         if info.limits_enabled {
+            let unit = limit_unit(info.kind_tag);
             for (label, id) in [
-                ("Min (\u{00b0})", ids::INSP_JOINT_LIMIT_MIN),
-                ("Max (\u{00b0})", ids::INSP_JOINT_LIMIT_MAX),
+                (format!("Min ({unit})"), ids::INSP_JOINT_LIMIT_MIN),
+                (format!("Max ({unit})"), ids::INSP_JOINT_LIMIT_MAX),
             ] {
                 yy = num_row(
                     scene,
@@ -119,43 +141,49 @@ pub(crate) fn paint_joint_section(
                     x,
                     w,
                     yy,
-                    label,
+                    &label,
                     id,
                 );
             }
         }
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Motor",
-            ids::INSP_JOINT_MOTOR_GROUP,
-            &ids::INSP_JOINT_MOTOR,
-            &SWITCH_LABELS,
-            u8::from(info.motor_enabled),
-        );
-        if info.motor_enabled {
-            for (label, id) in [
-                ("Speed (\u{00b0}/s)", ids::INSP_JOINT_MOTOR_SPEED),
-                ("Max Force", ids::INSP_JOINT_MOTOR_FORCE),
-            ] {
-                yy = num_row(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    x,
-                    w,
-                    yy,
-                    label,
-                    id,
-                );
+        // ⚠️ **O motor fica só no Pin**, e é a divisão do próprio plano: um motor
+        // LINEAR (o guincho do slider) chega no W-J6 junto com os modos
+        // Position|Velocity, e oferecê-lo aqui seria pintar dois knobs que o
+        // `joint_desc` recusa (`is_hinge`) — botão morto sob um rótulo que convence.
+        if info.kind_tag == KIND_PIN {
+            yy = seg_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                "Motor",
+                ids::INSP_JOINT_MOTOR_GROUP,
+                &ids::INSP_JOINT_MOTOR,
+                &SWITCH_LABELS,
+                u8::from(info.motor_enabled),
+            );
+            if info.motor_enabled {
+                for (label, id) in [
+                    ("Speed (\u{00b0}/s)", ids::INSP_JOINT_MOTOR_SPEED),
+                    ("Max Force", ids::INSP_JOINT_MOTOR_FORCE),
+                ] {
+                    yy = num_row(
+                        scene,
+                        text_system,
+                        theme,
+                        hit_index,
+                        store,
+                        x,
+                        w,
+                        yy,
+                        label,
+                        id,
+                    );
+                }
             }
         }
     } else if info.kind_tag == KIND_SPRING {
@@ -304,4 +332,38 @@ fn paint_body_rows(
 /// but neither is an empty gap where a name should be.
 fn display_name(name: &str) -> &str {
     if name.is_empty() { "(missing)" } else { name }
+}
+
+#[cfg(test)]
+mod kind_chip_tests {
+    use super::{KIND_LABELS, KIND_SLIDER, limit_unit};
+    use ph2d_editor_core::ids;
+
+    /// **Um rótulo por id, e a razão é um `zip` que TRUNCA.**
+    ///
+    /// O `seg_row` casa `option_ids.zip(labels)`, então um rótulo sem id **não é
+    /// pintado** — sem erro, sem warning, e o chip nasce inalcançável. Foi
+    /// exatamente o que aconteceu quando o Slider chegou: cinco rótulos, quatro
+    /// ids, e o gate de seam dos chips ficou verde porque ele iterava a lista
+    /// CURTA (os ids). Comparar os dois comprimentos é a asserção que nenhuma
+    /// das duas listas pode satisfazer sozinha.
+    #[test]
+    fn every_kind_label_has_an_id_to_be_clicked_by() {
+        assert_eq!(
+            KIND_LABELS.len(),
+            ids::INSP_JOINT_KIND.len(),
+            "um rotulo sem id e um chip que o seg_row DESCARTA no zip"
+        );
+    }
+
+    /// O rótulo do curso diz **metros** para um trilho e **graus** para o resto —
+    /// a segunda metade da porta `JointKind::limits_in_metres` (a primeira
+    /// converte o número; esta o nomeia).
+    #[test]
+    fn a_rails_range_is_named_in_metres() {
+        assert_eq!(limit_unit(KIND_SLIDER), "m");
+        for other in [0u8, 1, 2, 3] {
+            assert_eq!(limit_unit(other), "\u{00b0}");
+        }
+    }
 }

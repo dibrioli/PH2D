@@ -666,3 +666,181 @@ fn a_jointed_world_hashes_the_same_twice() {
     }
     assert_eq!(chain(), chain());
 }
+
+/// **The Slider slides along the axis it was GIVEN — a diagonal one** (W-J5).
+///
+/// A carriage sits on a static rail body. The axis is 45°, and gravity is
+/// straight down, so the only way the carriage can reach a diagonal position is
+/// for the constraint to be aiming there: on a default `+X` axis it would be
+/// held at the same height and slide sideways (or not at all), and on a free
+/// body it would fall straight down.
+///
+/// ⚠️ The oracle is the RATIO `dy/dx`, not the distance: how *far* it gets in a
+/// second is a fact about gravity's component along the rail, but the DIRECTION
+/// is the axis, and the direction is what the joint is for.
+///
+/// Mutation: drop `.local_axis1/.local_axis2` (so `PrismaticJointBuilder::new`'s
+/// single axis stays) → still diagonal (`new` takes the same vector), so the real
+/// mutation is passing `[1, 0]`: the carriage then travels `dy/dx = 0.000` and
+/// this goes red.
+#[test]
+fn a_slider_travels_along_the_axis_it_was_given() {
+    let mut w = PhysicsWorld::new();
+    let rail = body(
+        &mut w,
+        RigidBodyType::Fixed,
+        0.0,
+        5.0,
+        ShapeDesc::Ball { radius: 0.1 },
+    );
+    let car = body(
+        &mut w,
+        RigidBodyType::Dynamic,
+        0.0,
+        5.0,
+        ShapeDesc::Ball { radius: 0.2 },
+    );
+    // 45° down-and-to-the-right: gravity has a component along it, so the
+    // carriage runs DOWN the rail on its own.
+    let d = std::f32::consts::FRAC_1_SQRT_2;
+    join(
+        &mut w,
+        rail,
+        car,
+        JointDesc {
+            kind: JointKind::Slider,
+            anchor_a: [0.0, 5.0],
+            anchor_b: [0.0, 5.0],
+            axis_a: [d, -d],
+            axis_b: [d, -d],
+            ..Default::default()
+        },
+    )
+    .expect("the slider builds");
+    for _ in 0..60 {
+        w.step();
+    }
+    let p = pose(&w, car);
+    let (dx, dy) = (p[0] - 0.0, p[1] - 5.0);
+    assert!(
+        dx > 0.05,
+        "the carriage has to actually travel along the rail, got dx {dx}"
+    );
+    assert!(
+        (dy / dx + 1.0).abs() < 0.05,
+        "it must travel ALONG the 45 degree axis (dy/dx = -1), got dy {dy} dx {dx} \
+         ratio {}",
+        dy / dx
+    );
+}
+
+/// **And it STOPS at the stroke limits** — the range is in metres.
+///
+/// Same rail, axis straight down, so gravity drives the carriage the whole way.
+/// With a `[-0.5, 0.5]` stroke it may fall exactly half a metre and no further;
+/// unlimited it keeps going. The unlimited case is the control — without it a
+/// carriage that never moved would satisfy the limit.
+///
+/// Mutation: skip `builder.limits(...)` → the carriage runs past 0.5 m and this
+/// goes red.
+#[test]
+fn a_limited_slider_stops_at_the_authored_stroke() {
+    fn travelled(limits: Option<[f32; 2]>) -> f32 {
+        let mut w = PhysicsWorld::new();
+        let rail = body(
+            &mut w,
+            RigidBodyType::Fixed,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.1 },
+        );
+        let car = body(
+            &mut w,
+            RigidBodyType::Dynamic,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.2 },
+        );
+        join(
+            &mut w,
+            rail,
+            car,
+            JointDesc {
+                kind: JointKind::Slider,
+                anchor_a: [0.0, 5.0],
+                anchor_b: [0.0, 5.0],
+                // Straight DOWN, so the stroke is measured along gravity.
+                axis_a: [0.0, -1.0],
+                axis_b: [0.0, -1.0],
+                limits,
+                ..Default::default()
+            },
+        )
+        .expect("the slider builds");
+        for _ in 0..120 {
+            w.step();
+        }
+        5.0 - pose(&w, car)[1]
+    }
+    let free = travelled(None);
+    let capped = travelled(Some([-0.5, 0.5]));
+    assert!(
+        free > 1.0,
+        "the control: an unlimited slider keeps falling, got {free} m"
+    );
+    assert!(
+        (capped - 0.5).abs() < 0.05,
+        "a [-0.5, 0.5] stroke stops the carriage half a metre down, got {capped} m"
+    );
+}
+
+/// **A degenerate axis does not poison the solver.**
+///
+/// `UnitVector2::new_normalize` of a zero vector is `NaN`, and a `NaN` axis does
+/// not fail loudly — it flows into the pose, the readback and the determinism
+/// hash. A joint whose axis never got authored (or arrived non-finite from a
+/// project file) gets the horizontal rail an unrotated joint means.
+///
+/// Mutation: normalise without the guard → the pose reads `NaN` and this goes red.
+#[test]
+fn a_degenerate_slider_axis_falls_back_instead_of_poisoning_the_pose() {
+    for axis in [[0.0, 0.0], [f32::NAN, 1.0], [f32::INFINITY, 0.0]] {
+        let mut w = PhysicsWorld::new();
+        let rail = body(
+            &mut w,
+            RigidBodyType::Fixed,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.1 },
+        );
+        let car = body(
+            &mut w,
+            RigidBodyType::Dynamic,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.2 },
+        );
+        join(
+            &mut w,
+            rail,
+            car,
+            JointDesc {
+                kind: JointKind::Slider,
+                anchor_a: [0.0, 5.0],
+                anchor_b: [0.0, 5.0],
+                axis_a: axis,
+                axis_b: axis,
+                ..Default::default()
+            },
+        )
+        .expect("the slider builds");
+        for _ in 0..30 {
+            w.step();
+        }
+        let p = pose(&w, car);
+        assert!(
+            p[0].is_finite() && p[1].is_finite(),
+            "axis {axis:?} poisoned the pose: {p:?}"
+        );
+    }
+}

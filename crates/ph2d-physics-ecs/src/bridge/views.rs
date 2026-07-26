@@ -75,6 +75,10 @@ pub struct JointView {
     /// Dois campos seriam duas respostas para uma geometria, e o desenhista
     /// teria de escolher entre elas por um `match` que o `kind` já fez.
     pub length: Option<f32>,
+    /// **Slider:** a direção do trilho em MUNDO (unitária), ou `None` para todo
+    /// outro tipo — que não tem eixo, então não oferece um (o padrão do
+    /// `length` acima).
+    pub axis: Option<[f32; 2]>,
 }
 
 /// De volta ao vocabulário AUTORADO.
@@ -88,6 +92,7 @@ fn authored_kind(k: ph2d_physics::JointKind) -> JointKind {
         ph2d_physics::JointKind::Spring => JointKind::Spring,
         ph2d_physics::JointKind::Rope => JointKind::Rope,
         ph2d_physics::JointKind::Weld => JointKind::Weld,
+        ph2d_physics::JointKind::Slider => JointKind::Slider,
     }
 }
 
@@ -127,8 +132,18 @@ impl PhysicsBridge {
                 length: match kind {
                     JointKind::Spring => Some(j.rest.rest_length),
                     JointKind::Rope => Some(j.rest.max_length),
-                    JointKind::Pin | JointKind::Weld => None,
+                    JointKind::Pin | JointKind::Weld | JointKind::Slider => None,
                 },
+                // O eixo do trilho em MUNDO, resolvido aqui e não pelo
+                // desenhista: `rest.axis_a` está no frame de A, e girar aquilo
+                // pela pose viva de A é uma conversão que só pode existir uma
+                // vez — duas respostas desenhariam um trilho que o solver não
+                // usa (a mesma razão pela qual `limits` sai do `rest`).
+                axis: (kind == JointKind::Slider).then(|| {
+                    let (s, c) = (pose_a.rotation.im, pose_a.rotation.re);
+                    let [x, y] = j.rest.axis_a;
+                    [c * x - s * y, s * x + c * y]
+                }),
             })
         })
     }

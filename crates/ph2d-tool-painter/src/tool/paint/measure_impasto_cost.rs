@@ -626,53 +626,90 @@ fn the_first_stroke_latency() {
 /// **O DAB DE RELEVO custa 8× o de pigmento** (3,30 contra 0,39 ms a raio 100, 4096²) — e isto é o
 /// custo de TODO move, não só do pen-down. Esta sonda pergunta de onde ele vem.
 ///
-/// O método é o que produziu a LUT: separar por KNOB do produto, nunca por instrumentação — cada linha
-/// desliga uma coisa que o kernel de fato faz, então a diferença entre duas linhas é uma resposta sobre
-/// o produto e não sobre uma medição sintética.
+/// ⚠️ **A 1ª versão desta sonda era RUÍDO e eu acreditei nela.** Ela construía um `PainterTool` por
+/// configuração — canvas novo de 64 MB, planos novos, páginas novas — e tirava a mediana de 8 moves.
+/// O que a desmascarou foi uma mutação de medição que **não podia** tocar a linha de controle (*"só o
+/// depósito"* tem o AA desligado, então o caminho mutado nem é chamado ali) e mesmo assim a viu saltar
+/// de **4,26 para 5,99 ms**: ±40% de deriva entre corridas, com um efeito medido de 38% em cima.
 ///
-/// ⚠️ Mede o **MOVE**, não o pen-down: o pen-down carrega o fork do canvas e o setup dos planos por
-/// cima, e os dois já estão medidos (doc 28 §4.4). O que se quer aqui é o dab puro.
+/// A cura é **PAREAR**: um tool, uma tela, um traço, e as configurações **alternadas entre os moves**.
+/// Cada amostra encontra as mesmas páginas, o mesmo estado de alocador e a mesma vizinhança do canvas,
+/// então a diferença entre dois grupos é a configuração e nada mais. É o mesmo raciocínio dos gates de
+/// RAZÃO do módulo: comparar duas medições da MESMA corrida é imune à deriva que separa duas corridas.
 #[test]
 #[ignore]
 fn where_the_relief_dab_spends_its_time() {
     use ph2d_painter_brush::height::DrawTo;
     const SIZE: u32 = 4096;
-    println!("[relief-dab] raio 100, {SIZE}² — ms por MOVE (um dab), mediana de 8");
-    // (rótulo, smooth edges, push, settle)
-    for (name, aa, push, settle) in [
-        ("tudo ligado (o default)", true, 1.0f32, 1.0f32),
-        ("sem o AA do filme", false, 1.0, 1.0),
-        ("sem o PUSH", true, 0.0, 1.0),
-        ("sem o SETTLE", true, 1.0, 0.0),
-        ("so o deposito (nada dos tres)", false, 0.0, 0.0),
-    ] {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-        t.toggle_brush_impasto();
-        t.paint.brush.impasto_draw_to = DrawTo::Depth;
-        t.paint.brush.impasto_smooth_edges = aa;
-        t.paint.brush.impasto_push = push;
-        t.paint.brush.impasto_smoothing = settle;
-        for slot in &mut t.paint.brush_by_mode {
-            slot.impasto_draw_to = DrawTo::Depth;
-            slot.impasto_smooth_edges = aa;
-            slot.impasto_push = push;
-            slot.impasto_smoothing = settle;
-        }
-        t.set_brush_size_px(200.0);
-        let c = SIZE as f32 * 0.5;
-        let step = t.paint.brush.dab_spacing_px().max(4.0) * 2.0;
-        t.on_canvas_pointer(cp([c - 400.0, c], PointerPhase::Down));
-        let mut v: Vec<f64> = (1..=8u8)
-            .map(|k| {
-                let x = c - 400.0 + step * f32::from(k);
-                ms(&mut || {
-                    t.on_canvas_pointer(cp([x, c], PointerPhase::Move));
-                })
-            })
-            .collect();
-        t.on_canvas_pointer(cp([c + 400.0, c], PointerPhase::Up));
-        v.sort_by(f64::total_cmp);
-        println!("[relief-dab] {name:<32} {:.2}", v[v.len() / 2]);
+    const ROUNDS: usize = 24;
+    // (rótulo, smooth edges, push) — o SETTLE saiu: ele roda no commit (pen-up), não por dab, então
+    // uma sonda de MOVE não pode vê-lo e mediu ruído nas duas versões.
+    let cfgs = [
+        ("tudo ligado (o default)", true, 1.0f32),
+        ("sem o AA do filme", false, 1.0),
+        ("sem o PUSH", true, 0.0),
+        ("sem nenhum dos dois", false, 0.0),
+    ];
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+    t.toggle_brush_impasto();
+    t.paint.brush.impasto_draw_to = DrawTo::Depth;
+    for slot in &mut t.paint.brush_by_mode {
+        slot.impasto_draw_to = DrawTo::Depth;
     }
+    t.set_brush_size_px(200.0);
+    let c = SIZE as f32 * 0.5;
+    let step = t.paint.brush.dab_spacing_px().max(4.0) * 2.0;
+    // ⚠️ SOMA por grupo, não mediana por-move: nem todo move produz um dab (o espaçamento decide), e a
+    // mediana de uma amostra em que a maioria é `0,00` mede **quantos moves ficaram vazios**, não o
+    // custo de um dab — foi o que a 2ª versão desta sonda reportou. Cada configuração percorre a MESMA
+    // distância, então a soma do grupo carrega o mesmo número de dabs e é a comparação honesta.
+    let mut totals = vec![0.0f64; cfgs.len()];
+    let mut dabs = vec![0usize; cfgs.len()];
+    // Um traço só, longo, com as configurações ALTERNADAS move a move.
+    t.on_canvas_pointer(cp([c - 1500.0, c], PointerPhase::Down));
+    let mut x = c - 1500.0;
+    for round in 0..ROUNDS {
+        for (k, (_, aa, push)) in cfgs.iter().enumerate() {
+            t.paint.brush.impasto_smooth_edges = *aa;
+            t.paint.brush.impasto_push = *push;
+            x += step;
+            let v = ms(&mut || {
+                t.on_canvas_pointer(cp([x, c], PointerPhase::Move));
+            });
+            // A 1ª rodada aquece (a 1ª escrita em cada página do traço); as outras contam.
+            if round > 0 {
+                totals[k] += v;
+                if v > 0.05 {
+                    dabs[k] += 1;
+                }
+            }
+        }
+    }
+    t.on_canvas_pointer(cp([x, c], PointerPhase::Up));
+    println!("[relief-dab] raio 100, {SIZE}² — ms por MOVE, PAREADO (alternado no mesmo traço)");
+    let mut per_dab = Vec::new();
+    for (k, (name, _, _)) in cfgs.iter().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "contagem pequena")]
+        let d = dabs[k].max(1) as f64;
+        per_dab.push(totals[k] / d);
+        println!(
+            "[relief-dab] {name:<28} total {:.1} ms em {} dabs => {:.2} ms/dab",
+            totals[k],
+            dabs[k],
+            totals[k] / d
+        );
+    }
+    // ⚠️ CONTROLE: os grupos têm de ter carregado o MESMO número de dabs. Se não tiverem, eles não
+    // percorreram o mesmo trabalho e a diferença entre eles não é a configuração.
+    assert!(
+        dabs.iter().max().unwrap() - dabs.iter().min().unwrap() <= 1,
+        "controle: os grupos carregaram numeros de dabs diferentes ({dabs:?}) — a comparacao nao vale"
+    );
+    println!(
+        "[relief-dab] => o AA custa {:.2} ms ({:.0}% do dab) | o PUSH custa {:.2} ms",
+        per_dab[0] - per_dab[1],
+        (per_dab[0] - per_dab[1]) / per_dab[0] * 100.0,
+        per_dab[0] - per_dab[2]
+    );
 }

@@ -220,3 +220,33 @@ fn the_deposited_film_is_the_nine_sample_oracle_to_the_byte() {
         println!("[lut-wiring] {shape_name} {falloff:?}: {differing} bytes divergem, pior {worst}");
     }
 }
+
+/// **Quão GRANDE é a banda do AA?** — a pergunta que o custo por-dab levantou.
+///
+/// O AA custa **4,18 ms de 9,92** num dab de raio 100 (`measure_impasto_cost::
+/// where_the_relief_dab_spends_its_time`, pareado). Se a banda fosse o aro fino que eu vinha supondo
+/// (~7 700 texels), isso daria **543 ns por texel** para nove leituras de tabela — absurdo. Ou a banda
+/// é muito maior do que eu supunha, ou o custo não está onde eu acho. Esta sonda responde a metade que
+/// é aritmética pura.
+#[test]
+#[ignore]
+fn how_wide_is_the_aa_band() {
+    println!("[banda] falloff | t_lo .. t_hi | fracao da AREA do disco | texels a r=100");
+    for falloff in [
+        Falloff::Sphere, // o default do impasto
+        Falloff::Smooth,
+        Falloff::Smoother,
+        Falloff::Sharp,
+    ] {
+        let s = spec(falloff, 100.0);
+        let aa = FilmAa::for_dab(&s, false, 100.0).expect("banda a r=100");
+        let (lo, hi) = (aa.t_lo_for_test().max(0.0), aa.t_hi_for_test().min(1.0));
+        let frac = hi * hi - lo * lo; // area do anel / area do disco
+        let texels = frac * std::f32::consts::PI * 100.0 * 100.0;
+        println!(
+            "[banda] {:<10} | {lo:.3} .. {hi:.3} | {:>5.1}% | {texels:>8.0}",
+            format!("{falloff:?}"),
+            frac * 100.0
+        );
+    }
+}

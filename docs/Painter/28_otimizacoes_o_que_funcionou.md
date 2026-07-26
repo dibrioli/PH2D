@@ -25,7 +25,7 @@
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
-| K | **O AA do filme POR DAB** | 🎯 **o maior item que sobrou** | **2,51 dos 6,57 ms** do dab de relevo — 38%, depois da LUT (§4.6) |
+| K | **O AA do filme POR DAB** | 🎯 **o maior item que sobrou**, mas 🔴 **não diagnosticado** | **2,60 dos 6,35 ms** — 41%, depois da LUT. ⚠️ 335 ns/texel de banda: o modelo "são as nove amostras" NÃO fecha (§4.6.1) |
 
 ---
 
@@ -298,26 +298,64 @@ setup dos planos (1,8).
 nascia** e a coluna reportava `0,00 ms`. Um zero desses lê como *"o move é grátis"* quando o que ele diz
 é *"o move não aconteceu"* — e era essa leitura que mantinha o pen-down parecendo um caso especial.
 
-### 4.6 De onde vem o dab de RELEVO — e o AA ainda é 38% dele
+### 4.6 De onde vem o dab de RELEVO — e a sonda que eu tive de reescrever DUAS vezes
 
-O número que salta na tabela acima é outro: **o dab de relevo custa 8× o de pigmento** (3,30 contra
-0,39). Decomposto por KNOB do produto (`where_the_relief_dab_spends_its_time`, r=100, 4096², mediana de
-8 moves):
+O número que salta na tabela da §4.5 é outro: **o dab de relevo custa 8× o de pigmento**. Decompor isso
+custou três versões da sonda, e as duas primeiras mentiram de maneiras diferentes:
+
+* **v1 — um `PainterTool` por configuração**, mediana de 8 moves. ⛔ **Era ruído.** Uma mutação de
+  medição que **não podia** tocar a linha de controle (*"só o depósito"* tem o AA desligado, logo o
+  caminho mutado nem é chamado ali) mesmo assim a viu saltar de **4,26 para 5,99 ms**. Canvas novo de
+  64 MB por linha ⇒ páginas novas, alocador em outro estado: **±40% de deriva**, com um efeito medido de
+  38% em cima.
+* **v2 — pareada** (um tool, um traço, configurações alternadas move a move). Melhor, e ainda errada: a
+  **mediana por-move deu `0,00`** porque nem todo move produz um dab (o `dab_spacing_px` decide), e a
+  mediana de uma amostra majoritariamente vazia mede *quantos moves ficaram vazios*, não o custo do dab.
+* **v3 — pareada e SOMADA por grupo**, com **controle de contagem de dabs** (`assert` de que os grupos
+  carregaram o mesmo número; se não carregaram, eles não percorreram o mesmo trabalho e a comparação não
+  vale). Reproduz: três corridas consecutivas deram AA = **2,57 · 2,59 · 2,60 ms**.
+
+⚠️ **E a PRIMEIRA corrida da v3 também mentiu, por ser FRIA:** ela deu controle 5,38 e AA 4,18; as
+seguintes, controle 3,5 e AA 2,6. Binário recém-compilado, cache frio. **Uma corrida só não é uma
+medição** — e os números que este doc trazia antes vinham dela.
+
+**Os números confiáveis** (r=100, 4096², pareado, somado, controle de dabs):
 
 | configuração | ms/dab |
 |---|---|
-| tudo ligado (o default) | **6,57** |
-| **sem o AA do filme** | **4,06** |
-| sem o PUSH | 6,82 |
-| sem o SETTLE | 6,55 |
-| só o depósito (nada dos três) | 4,26 |
+| tudo ligado (o default) | **6,35** |
+| **sem o AA do filme** | **3,75** |
+| sem o PUSH | 6,27 |
+| sem nenhum dos dois | 3,53 |
 
-⚠️ **O AA do filme é 2,51 dos 6,57 ms — 38% — MESMO DEPOIS da LUT.** Ele é, de longe, o item mais caro
-que sobrou no módulo.
+⇒ **o AA do filme é 2,60 dos 6,35 ms — 41% — mesmo depois da LUT**, e é o maior item que sobrou.
+O **PUSH custa 0,07–0,26 ms** (ruído); o SETTLE saiu da tabela porque roda no **commit**, não por dab,
+então uma sonda de MOVE não pode vê-lo — a v1 media ruído nas duas colunas dele.
 
-⚠️ **E o Push e o Settle não movem o ponteiro** — 6,82 e 6,55 contra 6,57 é ruído, e o *"sem o Push"*
-saindo MAIOR que o default é a prova de que é ruído e não economia. O settle não aparece porque ele roda
-no **commit** (pen-up), não por dab. **Só o AA responde.**
+### 4.6.1 ⚠️ E o custo do AA NÃO é o que eu supunha — duas hipóteses medidas e REFUTADAS
+
+A banda do AA é conhecida (`how_wide_is_the_aa_band`), e para o falloff default do impasto ela é
+**24,7% da área do disco — 7 758 texels a r=100**:
+
+| falloff | `t_lo .. t_hi` | fração da área | texels a r=100 |
+|---|---|---|---|
+| **Sphere** (default do impasto) | 0,805 .. 0,946 | **24,7%** | 7 758 |
+| Smooth | 0,437 .. 0,611 | 18,2% | 5 721 |
+| Smoother | 0,448 .. 0,591 | 14,9% | 4 671 |
+| Sharp | 0,229 .. 0,418 | 12,2% | 3 837 |
+
+**2,60 ms sobre 7 758 texels = 335 ns/texel.** Nove leituras numa tabela quente não custam isso — então
+o modelo *"o AA é as nove amostras"* **não fecha**, e as duas explicações que eu tinha morreram medidas:
+
+1. ⛔ **"a closure da silhueta é construída por texel mesmo sem ser chamada"** — trocada por uma trivial
+   (`|_,_| 0.0`, imagem errada de propósito): AA **2,53** contra 2,57 da base. **Sem diferença.**
+2. ⛔ **"o corpo da closure infla o laço quente"** — `film_at_exact` marcado `#[inline(never)] + #[cold]`
+   (imagem INTACTA): AA **2,83**, ou seja **PIOR** que a base. Outlinar cobra do caminho inadmissível e
+   não devolve nada.
+
+⚠️ **Fica ABERTO onde os 335 ns/texel estão**, e a próxima tentativa tem de começar por descobrir isso —
+não por desenhar uma aproximação nova. Projetar a convolução 2-D (um lookup em vez de nove) sobre um
+modelo de custo que a medição já contradisse seria construir a cura de uma doença não diagnosticada.
 
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
@@ -424,13 +462,12 @@ onde o tempo realmente está.
 
 **A fila, por tamanho medido:**
 
-1. 🎯 **O AA do filme, 2,51 ms POR DAB** (38% do dab de relevo, depois da LUT). É o maior item do
-   módulo e ele é pago em **todo move**, não só no pen-down. A LUT trocou nove cadeias de silhueta por
-   nove leituras de tabela; o que sobra é a **contagem de amostras**, e atacá-la exige a convolução
-   tabulada de verdade — uma tabela 2-D em `(t, espalhamento)`, **um** lookup em vez de nove. ⚠️ O
-   espalhamento da grade é anisotrópico (`bx`/`by`), então colapsá-lo num escalar é uma aproximação
-   NOVA, com épsilon próprio a medir — e a §3.3 é o aviso de que aproximações do AA morrem por casos
-   que ninguém previu.
+1. 🎯 **O AA do filme, 2,60 ms POR DAB** (41% do dab de relevo, depois da LUT) — o maior item do
+   módulo, pago em **todo move**. ⚠️ **Mas o próximo passo dele é DIAGNOSTICAR, não construir:** são
+   335 ns por texel de banda, o que o modelo *"são as nove amostras"* não explica, e as duas
+   explicações alternativas já morreram medidas (§4.6.1). A convolução 2-D (um lookup em vez de nove)
+   é a cura ÓBVIA — e projetá-la agora seria curar uma doença não diagnosticada, com uma aproximação
+   nova, num kernel onde a §3.3 registra que aproximações morrem por casos imprevistos.
 2. **O fork do canvas no pen-down, 3,4 ms uma vez por traço** — captura do "antes" por REGIÃO. Continua
    sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de pintura.
 3. **O setup dos planos do traço, 1,8 ms uma vez por traço** — representá-los por JANELA em vez de por

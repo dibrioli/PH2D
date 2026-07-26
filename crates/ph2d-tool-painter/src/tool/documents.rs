@@ -212,6 +212,15 @@ impl PainterTool {
         self.source_size = doc.source_size;
         self.resolve_symmetry_geometry(); // re-pin the auto-centre symmetry pivot to the restored canvas
         self.undo = doc.undo;
+        // …e o orçamento do histórico é re-derivado do documento que acabou de entrar. O controller
+        // stashado já traz o dele, mas um `UndoController` que chegou por `Default` (um documento que
+        // nunca passou pelo `set_source`) carregaria o teto de *documento desconhecido* — apertado
+        // demais para uma tela grande. Derivar aqui torna a resposta função do documento em TODA rota,
+        // em vez de depender de por onde ele entrou.
+        self.undo.set_max_bytes(crate::undo::history_budget_bytes(
+            doc.source_size.0,
+            doc.source_size.1,
+        ));
         self.selection = doc.selection;
         self.composited = None;
         self.compositor_cache = CompositorCache::new();

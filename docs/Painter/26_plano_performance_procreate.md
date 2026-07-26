@@ -495,8 +495,8 @@ reuso da alocação** (mata o page-fault)"*): com o buffer já mapeado a cópia 
 GIMP/Krita). Isso quer uma **porta única de escrita de canvas**, e hoje há ~25 sítios chamando
 `Arc::make_mut` direto: **wave própria, com gates próprios**.
 
-O número fica pinado num gate executável — `the_pen_down_is_still_canvas_proportional_and_this_is_its_number`
-(razão **13,7×** para 16× a área) — que é o que vira VERMELHO no dia em que essa wave funcionar.
+O número fica pinado num gate executável — `the_pen_down_is_still_a_canvas_copy_and_this_is_its_number`
+(o pen-down ainda tem a ordem de grandeza de uma cópia do canvas) — que é o que vira VERMELHO no dia em que essa wave funcionar.
 
 ### 7.5.3 ⛔ Negativo 2: a constante do cap estava errada, e a medição a derrubou
 

@@ -11,21 +11,13 @@
 | | |
 |---|---|
 | branch | `line/Painter` (worktree `Worktrees/line-Painter/`) |
-| HEAD | `9a5b13fbe` |
+| HEAD | `<o tip desta branch>` (ver `git log --oneline -1`) |
 | base | `main` @ `0afc6bb28` — **já é ancestral**, `git rebase main` é no-op |
-| commits à frente | **37** (os 31 já descritos no handoff de 25/07 + **6** desta wave) |
+| commits à frente | **39** (os 31 já descritos no handoff de 25/07 + **8** desta wave) |
 | árvore | limpa |
 
-Os 6 commits desta wave:
-
-```
-9a5b13fbe docs(claude): a 5 ganha a entrada da U1 -- com os dois negativos
-a28677737 docs(plano 26): a 7.5 registra o que a U1 mediu -- incluindo os DOIS negativos
-fa5cce3c8 docs(hr-13): o Painter declara budget de historico -- e tem o gate que MEDE
-5c259ead3 perf(painter): o orcamento do historico e funcao do DOCUMENTO, e a medicao derrubou a constante
-27de1267a perf(painter): o pen-down NAO era o mesmo defeito, e a receita da cura estava 5% certa
-1f35c05a2 perf(painter): o historico de undo guarda a JANELA, nao o documento (U1)
-```
+Os commits desta wave estão todos com prefixo `perf(painter)` / `docs(...)` e são os que sucedem
+`0afc6bb28`; `git log --oneline main..HEAD` os lista.
 
 ## 2. O que a wave faz, numa tabela
 
@@ -93,11 +85,18 @@ Rodado nesta árvore, tudo verde:
 **Só o `ship.sh` pega:** `cargo deny` / `cargo audit` (nenhuma dep nova nesta wave — o `Cargo.lock` não
 foi tocado) e a matriz 3-OS do CI.
 
+⚠️ **Uma flake que eu CRIEI e consertei antes de fechar** (fica escrito porque a armadilha é fácil de
+repetir): o gate novo do pen-down nasceu comparando o custo a **1024² com o de 4096²** — dois instantes
+diferentes, que sob a carga da suíte flutuam de forma independente. Ele **falhou na 1ª rodada completa**.
+O oráculo agora é a razão contra a **cópia do canvas medida no mesmo instante** (que é literalmente a
+afirmação: *o pen-down É a cópia*): os dois números sobem e descem juntos. **5 rodadas seguidas da suíte
+completa, 0 falhas.**
+
 ⚠️ **Flake conhecida, PRÉ-EXISTENTE, não desta wave:**
 `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger`
 (`ph2d-tool-painter`, `measure_window_premise`) é um gate de RAZÃO sobre números **sub-microssegundo**
-(0,0008 vs 0,0003 ms) e é sensível a carga: falhou **1 vez em 4** rodadas da suíte completa e passa
-isolado e nas 3 rodadas seguintes. Mesma família da flake `the_cost_of_depth_is_linear_not_explosive` da
+(0,0008 vs 0,0003 ms) e é sensível a carga: falhou **1 vez em 9** rodadas da suíte completa e passa
+isolado e nas 8 restantes. Mesma família da flake `the_cost_of_depth_is_linear_not_explosive` da
 timeline. **Re-rode sozinho antes de suspeitar do merge.**
 
 ## 7. LOC
@@ -132,6 +131,18 @@ Vale repetir com **shape editors** (Line/Curve: criar, editar ponto, Offset, App
 ⚠️ **O que NÃO vai melhorar neste smoke, e é esperado:** *"o primeiro traço tem um delay"*. Ele não é
 esta wave (§7.5.2 do plano 26): medido, **16,49 → 16,07 ms** a 4096². A cura é a captura por região, que
 é wave própria — o número está pinado num gate para o dia em que ela chegar.
+
+## 8.1 ⚠️ A ÚNICA mudança de comportamento
+
+O cursor é imune a escritas estrangeiras (é cópia de um snapshot, não do vivo), então a cadeia se
+sustenta enquanto `entry[i].before` for o estado logo após o commit `i-1` — o contrato da história
+linear. **Onde isso for falso** (uma escrita de canvas que não registrou entrada de undo, entre dois
+commits), os dois modelos divergem: o antigo instalava o snapshot inteiro e **apagava** aquela escrita;
+o delta a **preserva** fora da janela do passo desfeito.
+
+Sem repro conhecido — canvas escrito sem entrada de undo já é um defeito por conta própria, e é o que as
+três testemunhas do `GateSession` vigiam do outro lado. Fica escrito porque é o que um smoke poderia
+encontrar.
 
 ## 9. Aberto, nomeado
 

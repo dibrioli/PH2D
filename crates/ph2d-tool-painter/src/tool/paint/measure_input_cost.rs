@@ -236,29 +236,33 @@ fn the_delta_history_costs_this_much_to_undo() {
 ///
 /// Um gate, não uma medição impressa — no molde do
 /// `the_documented_hardening_is_still_there_and_this_is_its_number` (§13.10): quando a wave da captura
-/// por tile chegar, é este teste que vira vermelho e diz que ela funcionou.
+/// por região chegar, é este teste que vira vermelho e diz que ela funcionou.
 ///
-/// ⚠️ **Ele afirma uma RAZÃO, nunca wall-clock** — o `ci-test` compila em `opt-level=1` e uma barra de
-/// tempo mediria o PERFIL, não o produto. A propriedade é: *o pen-down é canvas-proporcional*, e é
-/// exatamente isso que a cura tem de quebrar. Dezesseis vezes a área hoje custa perto de dezesseis
-/// vezes o pen-down; a barra é folgada (≥ 4×) porque o que se quer detectar é a MUDANÇA DE CLASSE, de
-/// proporcional-à-tela para proporcional-à-pegada.
+/// ⚠️ **O oráculo é a RAZÃO contra a CÓPIA DO CANVAS medida no mesmo instante**, e a primeira versão
+/// errou isso: ela comparava o pen-down a 1024² com o de 4096², que são dois instantes diferentes — sob
+/// a carga da suíte completa os dois flutuam de forma independente e o gate **flakou na 1ª rodada**.
+/// Um gate que flaka é pior que ausente. Medidos juntos, os dois números sobem e descem juntos, e a
+/// razão entre eles é exatamente a afirmação que interessa: **o pen-down É a cópia do canvas**.
 #[test]
-fn the_pen_down_is_still_canvas_proportional_and_this_is_its_number() {
-    let cost = |side: u32| {
-        let mut t = tool(side);
-        ms(&mut || {
-            t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));
-        })
-    };
-    let small = cost(1024);
-    let big = cost(4096);
-    let ratio = big / small.max(f64::MIN_POSITIVE);
-    println!("[pen-down] 1024 {small:.2} ms · 4096 {big:.2} ms · razao {ratio:.1}x (16x a area)");
+fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
+    const SIDE: u32 = 2048;
+    let n = (SIDE as usize) * (SIDE as usize) * 4;
+    let mut t = tool(SIDE);
+    let down = ms(&mut || {
+        t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));
+    });
+    let src: Vec<u8> = vec![7u8; n];
+    let mut dst = Vec::new();
+    let copy = ms(&mut || dst = src.clone());
+    std::hint::black_box(dst.len());
+    let ratio = down / copy.max(f64::MIN_POSITIVE);
+    println!(
+        "[pen-down] {SIDE}: pen-down {down:.2} ms · copiar o canvas {copy:.2} ms · {ratio:.2}x"
+    );
     assert!(
-        ratio > 4.0,
-        "o pen-down deixou de ser canvas-proporcional (razao {ratio:.1}x para 16x a area) — se isto \
-         foi a wave da captura por REGIAO, apague este gate e escreva o irmao que afirma o contrario; \
-         se nao foi, alguem tornou o primeiro traco mais lento na tela pequena"
+        ratio > 0.5,
+        "o pen-down ({down:.2} ms) deixou de ter a ordem de grandeza de uma copia do canvas \
+         ({copy:.2} ms) — se isto foi a wave da captura por REGIAO, apague este gate e escreva o irmao \
+         que afirma o contrario"
     );
 }

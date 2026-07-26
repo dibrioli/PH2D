@@ -33,6 +33,20 @@
 //! ⚠️ O estado VIVO do tool não serve para isso: `restore_model` termina em
 //! `restore_shape_overlay`, que RE-CARIMBA a figura, então o vivo depois de um undo
 //! não é byte-a-byte o snapshot instalado.
+//!
+//! # ⚠️ A ÚNICA mudança de comportamento, e ela é nomeada de propósito
+//!
+//! O cursor é imune a escritas estrangeiras (ele é cópia de um snapshot, não do vivo),
+//! então a cadeia se sustenta enquanto **`entry[i].before` for o estado logo após o
+//! commit `i-1`** — o que é o contrato da história linear. Onde isso for FALSO (uma
+//! escrita de canvas que não registrou entrada, entre dois commits), os dois modelos
+//! divergem: o antigo instalava o snapshot inteiro e **apagava** aquela escrita; o
+//! delta a **preserva** fora da janela do passo desfeito.
+//!
+//! Não há repro conhecido — canvas escrito sem entrada de undo já seria um defeito por
+//! conta própria, e é justamente o que as três testemunhas do [`GateSession`](crate::tool)
+//! vigiam do outro lado. Fica escrito porque é a diferença que um smoke poderia
+//! encontrar, e porque adivinhar de novo custaria a mesma tarde.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;

@@ -371,3 +371,94 @@ fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
         );
     }
 }
+
+/// **O TETO: quanto custa um texel de dab — e o impasto custa 19x o digital.**
+///
+/// A pergunta que decide se há melhoria a colher, e ela não tinha número. Medido a 2048², traço de
+/// 600 px:
+///
+/// | raio | impasto | ns/texel | ms/traço |
+/// |---|---|---|---|
+/// | 100 | **off** | **9,6** | 9,0 |
+/// | 100 | **ON** | **182,8** | **172,2** |
+/// | 20 | off | 55,5 | 10,5 |
+/// | 20 | ON | 238,9 | 45,0 |
+///
+/// **Duas leituras, e as duas são sobre o MECANISMO** (a razão entre ligado e desligado usa a mesma
+/// contagem de dabs, então ela não depende da derivação analítica de `dabs`):
+///
+/// 1. **O impasto custa 19x o digital por texel** a raio 100 (4,3x a raio 20). Ele escreve 12 bytes a
+///    mais por texel (`heights` f32 + `covers` u8 + `mats` 7xu8) contra os 4 do RGBA, ou seja **4x o
+///    tráfego de memória** — e a distância entre 4x e 19x é a **folga candidata**. Um traço de raio
+///    100 com impasto custa **172 ms**; o mesmo traço digital custa **9**.
+/// 2. **O pincel digital a raio 100 está em 9,6 ns/texel** — eficiente. A raio 20 sobe para 55,5,
+///    porque o custo FIXO por dab é amortizado sobre 25x menos texels: pincel pequeno é dominado por
+///    overhead de dab, pincel grande por trabalho de texel. **São dois regimes, e uma frente que ataca
+///    um não ajuda o outro.**
+///
+/// ⚠️ **O que este número NÃO diz, e a coluna `x-piso` é a armadilha:** o piso medido é um
+/// `d = s + 1` byte a byte, que o compilador vetoriza — é um piso de **largura de banda**, não de
+/// **trabalho**. Um dab legitimamente faz falloff, silhueta, grain, jitter, blend, gate de proteção,
+/// envelope de altura, cápsula, material e simetria por texel. Então `3154x o piso` **não é uma
+/// afirmação de desperdício**; a única comparação honesta aqui é impasto contra digital, porque as duas
+/// rotas fazem o mesmo trabalho de pigmento e diferem exactamente no relevo.
+///
+/// ⚠️ **E a frente que sai disto ainda NÃO está justificada** — é a lição da frente C revertida (§8 do
+/// plano 26), tomada a sério: eu tenho a razão 19x, e **não** tenho a decomposição de para onde ela vai
+/// dentro do dab de impasto. A próxima medição é essa, e ela é barata: cronometrar as passadas do
+/// depósito de altura separadamente (o envelope, a cápsula, o `settle`, o banco do Push) sobre a MESMA
+/// pegada. Sem ela, "otimizar o impasto" é a mesma frase que "coalescer os eventos" era ontem.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_per_texel -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_per_texel_cost_of_a_dab_against_the_hardware_floor() {
+    const DIST: f32 = 600.0;
+    println!("[texel] raio  impasto   ms/traco  dabs   ns/texel   x-piso");
+    for radius in [20.0f32, 100.0] {
+        for impasto in [false, true] {
+            let mut t = tool(2048);
+            if !impasto {
+                t.toggle_brush_impasto(); // `tool()` o liga; aqui desligamos p/ o digital puro
+            }
+            t.set_brush_size_px(radius * 2.0);
+            // Aquece (o 1o traco paga a alocacao dos planos por-traco).
+            for _ in 0..2 {
+                t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
+                for i in 1..=24u8 {
+                    let x = 200.0 + DIST / 24.0 * f32::from(i);
+                    t.on_canvas_pointer(cp([x, 300.0], PointerPhase::Move));
+                }
+                t.on_canvas_pointer(cp([200.0 + DIST, 300.0], PointerPhase::Up));
+            }
+            let ms_stroke = ms(&mut || {
+                t.on_canvas_pointer(cp([200.0, 700.0], PointerPhase::Down));
+                for i in 1..=24u8 {
+                    let x = 200.0 + DIST / 24.0 * f32::from(i);
+                    t.on_canvas_pointer(cp([x, 700.0], PointerPhase::Move));
+                }
+                t.on_canvas_pointer(cp([200.0 + DIST, 700.0], PointerPhase::Up));
+            });
+            // Dabs: o espacamento default e fracao do diametro, entao derivamos do arco/spacing real.
+            let spacing_px = f64::from(radius * 2.0) * f64::from(t.brush_settings().spacing);
+            let dabs = (f64::from(DIST) / spacing_px.max(1.0)).max(1.0);
+            let texels = dabs * std::f64::consts::PI * f64::from(radius) * f64::from(radius);
+            let ns_per_texel = ms_stroke * 1e6 / texels;
+            // PISO: uma passada de leitura+escrita sobre o mesmo numero de texels (4 B/px cada).
+            let n = texels as usize;
+            let src = vec![7u8; n * 4];
+            let mut dst = vec![0u8; n * 4];
+            let floor_ms = ms(&mut || {
+                for (d, s) in dst.iter_mut().zip(&src) {
+                    *d = s.wrapping_add(1);
+                }
+            });
+            let floor_ns = floor_ms * 1e6 / texels;
+            println!(
+                "[texel] {radius:>4}  {:>7}  {ms_stroke:>8.2}  {dabs:>4.0}  {ns_per_texel:>8.1}  {:>5.1}x",
+                if impasto { "ON" } else { "off" },
+                ns_per_texel / floor_ns.max(1e-9)
+            );
+        }
+    }
+}

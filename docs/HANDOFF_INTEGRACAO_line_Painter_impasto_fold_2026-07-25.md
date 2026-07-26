@@ -317,3 +317,53 @@ env PH2D_IMPASTO_SMOKE=2 cargo run -p ph2d-host-desktop --release
 # o fechamento: feche a janela no X e confira o código de saída (0, nunca 139)
 env PH2D_IMPASTO_SMOKE=1 cargo run -p ph2d-host-desktop --release; echo $status
 ```
+
+---
+
+## 13. O FPS que sobrava — o snapshot do pincel copiava 67 MB por frame (`7306adc7a`)
+
+**Report do Enio, pós-smoke:** *"bem melhor e mais rápido. Mas ainda cai um pouco do FPS"*.
+
+O split por-chamada do `PH2D_PAINT_PERF` (instalado pela 4ª lente e que só grava com o Painter ATIVO —
+um run sem interação registra zero) nomeou dois slots, e eles eram **o mesmo defeito contado duas
+vezes**:
+
+```
+PANEL  p50: brushsnap 3,9 ms
+CHROME p50: ring      3,7 ms        ->  dispatch p50 = 7,5 ms, com a mão PARADA (branch=idle)
+```
+
+**Causa.** `brush_settings()` publica um `Copy` de floats e o frame o chama **DUAS** vezes (o publish do
+painel e o anel do cursor). Um dos campos, `sculpt_can_filter_stroke`, é um **BOOLEANO** — e era
+respondido construindo o payload inteiro: `live_stroke_envelope()` termina em
+`Arc::new(live_paint.clone())`, **16,7 M de `f32` = 67 MB de memcpy por chamada** a 4096².
+
+**Cura:** `has_live_stroke_envelope()` — os MESMOS três testes, zero bytes copiados — e o payload passa
+a ser construído **a partir da resposta** (`.then(|| …)`), nunca ao lado dela: uma segunda cópia dos
+testes seria a segunda porta que o doc-comment daquela função já proibia. É a lição do **ADR-0124** num
+eixo novo: *quem está a jusante tem de ser informado do que precisa* — aqui, de um sim ou não.
+
+**Gate de RAZÃO** (`the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger`; wall-clock
+mediria o PERFIL, porque o `ci-test` compila em `opt-level=1`). 4096² tem 16× a área de 1024²:
+
+| | 1024² | 4096² | razão |
+|---|---|---|---|
+| depois | 0,0004 ms | 0,0003 ms | **0,67×** |
+| **mutação** (`has_…` → `…().is_some()`) | 0,1055 ms | **10,5556 ms** | **100×** |
+
+⚠️ A fixture **PINTA um traço de verdade** — sem envelope o caminho caro nunca corre e o gate ficaria
+verde sobre nada.
+
+**Confirmado no produto** (sessão do Enio, 4096²): `brushsnap 0.00` · `ring 0.00` · **`dispatch p50 0.0`**
+(era 7,5) · `frame p50` 16,0–16,9 (vsync).
+
+### O que sobra, medido e NÃO perseguido
+
+- **Uma CAUDA:** `dispatch max` de **100,1 / 61,1 ms**, ~1 frame em 90. ⚠️ **O tempo não está em fase
+  nenhuma** — nem no p50 nem no *max* de qualquer sub-slot —, e cada pico vem logo depois de um
+  `warn: dropped Xs of sim time (max_substeps cap)`, ou seja o relógio de parede SALTOU. É a assinatura
+  de **stall externo** (thread desescalonada / backpressure de compositor), e a lente para isso é
+  `perf`, não leitura de código.
+- **`CHROME/wet 10,27 p50 / 33,39 max`** na janela em que o Enio entrou no Wet Paint. Aquele é trabalho
+  **HONESTO** (monta uma imagem RGBA + blur para o véu de umidade), não uma pergunta paga com o
+  payload — **wave própria**, e do dono do Wet Paint.

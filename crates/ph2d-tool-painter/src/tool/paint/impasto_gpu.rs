@@ -451,6 +451,49 @@ mod tests {
         );
     }
 
+    /// **E o walk do fold é PARALELO — a única coisa que segura os 13,8×.**
+    ///
+    /// ⚠️ **Este gate existe porque nenhum outro pode pegar a regressão.** O irmão de RAZÃO acima não a
+    /// vê: um fold serial também é limitado pela janela, então a razão dele continua ~1 e ele fica verde
+    /// enquanto o primeiro frame com relevo volta de 14,55 para 201,5 ms. Os gates de FORMA também não —
+    /// serial e paralelo produzem os mesmos bytes, que é precisamente a propriedade que torna a cura
+    /// segura. Trocar `par_chunks_mut` por `chunks_mut` num refactor é **uma letra**, e a suíte inteira
+    /// ficaria verde sobre a regressão que motivou a wave.
+    ///
+    /// ⚠️ **E é ARQUITETURAL de propósito, não por preguiça.** "Este laço roda em paralelo" é uma
+    /// afirmação sobre a FORMA do código, não sobre um resultado observável: um gate de comportamento
+    /// mediria wall-clock, e o `ci-test` compila em `opt-level=1`, então uma barra de milissegundos
+    /// mediria o PERFIL do build e não o produto — o mesmo raciocínio que o ADR-0124 já registra. O
+    /// número vive na sonda (`measure_the_fold_the_product_runs`); o que este gate guarda é que o
+    /// mecanismo que o produziu continua lá.
+    ///
+    /// **Mutação que deve sangrar:** `par_chunks_mut` → `chunks_mut` no walk.
+    #[test]
+    fn the_fold_walks_in_parallel_because_the_rows_are_disjoint() {
+        let src = include_str!("impasto_gpu.rs");
+        // Controle positivo: a função tem de ser ENCONTRADA, senão o gate passa por não achar nada — a
+        // falha que o arch-gate do Shape Flow pegou em si mesmo.
+        let at = src
+            .find("pub fn impasto_gpu_planes_in(")
+            .expect("controle: a porta do fold tem de existir");
+        let body = &src[at..];
+        let end = body
+            .find("\n    }\n")
+            .expect("controle: a funcao tem de terminar");
+        let body = &body[..end];
+        // Os QUATRO planos, porque um `zip` serial no meio de três paralelos serializa o conjunto todo:
+        // `par_chunks_mut(...).zip(cover.chunks_mut(...))` nem compila como `ParallelIterator`, mas a
+        // forma que compila e regride é trocar TODOS, e contar é o que distingue "três de quatro".
+        let par = body.matches("par_chunks_mut(").count();
+        assert_eq!(
+            par, 4,
+            "o walk do fold tem de percorrer os QUATRO planos em paralelo (achei {par}) — as linhas sao \
+             disjuntas (ADR-0109) e este e o mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de \
+             razao ou de bytes pega esta regressao: serial e paralelo dao os MESMOS bytes e os dois sao \
+             limitados pela janela"
+        );
+    }
+
     /// **Trocar de sprite ESQUECE o retângulo sujo da pista GPU.**
     ///
     /// Achado da auditoria adversarial (2026-07-25), CONFIRMADO por medição a 96²: `preview_dirty_region`

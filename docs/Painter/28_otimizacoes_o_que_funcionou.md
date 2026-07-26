@@ -557,6 +557,20 @@ linha, nunca o que a linha diz.
 samplers, texel a texel; o outro usa janela de origem `(10, 16)`, que é a aritmética `y = ry + row` que
 a reescrita introduziu. A mutação do mapeamento `row → y` sangra.
 
+⚠️ **Mas nenhum deles gateia os 13,8×, e isso era um buraco meu** (achado ao conferir a pergunta *"a
+cura está bem documentada?"*, e fechado): o gate de **razão** não vê a regressão — um fold **serial**
+também é limitado pela janela, então a razão dele continua ~1 e ele fica verde enquanto o primeiro
+frame com relevo volta de 14,55 para 201,5 ms. Os gates de **forma** também não: serial e paralelo dão
+os **mesmos bytes**, que é precisamente a propriedade que torna a cura segura. E `par_chunks_mut →
+chunks_mut` num refactor é **uma letra**.
+
+Daí `the_fold_walks_in_parallel_because_the_rows_are_disjoint`, **arquitetural de propósito**: *"este
+laço roda em paralelo"* é afirmação sobre a FORMA do código, não sobre um resultado observável — um
+gate de comportamento mediria wall-clock, e o `ci-test` compila em `opt-level=1`, então uma barra de
+milissegundos mediria o **perfil do build** e não o produto. O número vive na sonda; o gate guarda que o
+mecanismo que o produziu continua lá. **Mutação medida: só ELE fica vermelho, os outros cinco passam** —
+que é exatamente o que o torna não-redundante.
+
 ⚠️ **E ela expôs o ponto cego do gate de janela:** *door-contra-door não vê erro que desloca os DOIS
 lados igual*. Com o off-by-one instalado, `a_window_folds_exactly_what_the_whole_canvas_folded_there`
 fica **VERDE** — a janela e o canvas se movem juntos e continuam concordando — e só o gate contra os

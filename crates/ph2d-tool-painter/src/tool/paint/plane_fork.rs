@@ -154,4 +154,34 @@ mod tests {
             serial / parallel
         );
     }
+
+    /// **A porta do pen-down** — que o depósito de PIGMENTO atravesse esta função, e não o `make_mut` cru.
+    ///
+    /// ⚠️ Este gate é arquitetural porque o defeito é **invisível ao comportamento**: as duas rotas produzem
+    /// os mesmos bytes (é o que o gate acima prova), então trocar uma pela outra deixa a suíte inteira verde e
+    /// custa **três vezes o tempo** no gesto que o artista mais sente. Medido no pen-down a 4096², pincel
+    /// digital: **10,3 ms com o `make_mut` cru contra 3,6 ms por aqui** (`measure_impasto_cost::
+    /// the_first_stroke_latency`); o pen-down do impasto, 18,6 -> 12,2.
+    ///
+    /// O escopo é o `stamp_cache` de propósito: é ele que escreve o canvas no **pen-down**, e o pen-down é o
+    /// único sítio onde o `Arc` do canvas tem um segundo dono garantido (o `stroke_undo` que o `paint_begin`
+    /// acabou de tirar) ⇒ o primeiro `make_mut` do traço **sempre** copia a tela inteira.
+    #[test]
+    fn the_pigment_deposit_forks_the_canvas_in_parallel() {
+        let src = include_str!("stamp_cache.rs");
+        // Controle positivo: o alvo tem de EXISTIR, senão o gate passa por não achar nada (a falha que o
+        // `the_shape_slot_goes_through_the_shape_door` do Flow pegou em si mesmo).
+        let through = src.matches("fork_par(&mut self.canvas_rgba)").count();
+        assert!(
+            through >= 5,
+            "controle: o stamp_cache tem de escrever o canvas pela porta paralela ({through} sitios)"
+        );
+        let raw = src.matches("Arc::make_mut(&mut self.canvas_rgba)").count();
+        assert_eq!(
+            raw, 0,
+            "o deposito de pigmento nao pode forkar o canvas SERIALMENTE: {raw} sitio(s) com `make_mut` cru \
+             (as duas rotas dao os mesmos bytes, entao isto nao acende em teste de comportamento nenhum \
+             -- custa 3x o tempo do pen-down e passa despercebido)"
+        );
+    }
 }

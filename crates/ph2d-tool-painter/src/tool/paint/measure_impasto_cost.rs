@@ -513,13 +513,23 @@ fn is_the_silhouette_chain_the_aa_cost() {
 #[test]
 #[ignore]
 fn the_first_stroke_latency() {
+    use ph2d_painter_brush::height::DrawTo;
     println!("[pendown] ms — 1o pen-down (camada virgem) | 2o pen-down | move seguinte");
     for size in [2048u32, 4096] {
-        for (name, impasto) in [("impasto OFF (controle)", false), ("impasto ON", true)] {
+        for (name, impasto, draw_to) in [
+            ("impasto OFF (controle)", false, DrawTo::ColorAndDepth),
+            ("impasto ON, so PIGMENTO", true, DrawTo::Color),
+            ("impasto ON, so RELEVO", true, DrawTo::Depth),
+            ("impasto ON (default)", true, DrawTo::ColorAndDepth),
+        ] {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
             if impasto {
                 t.toggle_brush_impasto();
+                t.paint.brush.impasto_draw_to = draw_to;
+                for slot in &mut t.paint.brush_by_mode {
+                    slot.impasto_draw_to = draw_to;
+                }
             }
             t.set_brush_size_px(200.0);
             let c = size as f32 * 0.5;

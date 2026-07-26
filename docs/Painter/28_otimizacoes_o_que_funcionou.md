@@ -23,7 +23,8 @@
 | F | Gatear o AA por raio | ⛔ rejeitado | **105.660 bytes** diferem, pior delta **62** — muda a arte |
 | G | Encolher a tabela pelo cache | ⛔ **refutado por medição** | N=512/1024/2048/16384 → **110,29 / 109,99 / 111,79 / 110,22 ms** |
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
-| I | **Latência do pen-down** | 🔴 **ABERTO — é o que o Enio sente** | **12 ms @2048² · 18,5 ms @4096²**, POR GESTO, com impasto |
+| I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
+| J | **Latência do pen-down — o resto** | 🟡 **aberto, decomposto** | 4096²: canvas **3,6** + planos do traço **5,1** = **12,0 ms** (§4.4) |
 
 ---
 
@@ -229,7 +230,55 @@ O custo escala com **bytes do documento**, não com a pegada do pincel:
 É **cópia canvas-sized limitada por largura de banda de memória**: o pen-down clona o documento inteiro
 para ter um estado "antes" do gesto.
 
-### 4.3 A cura, e por que ela é uma WAVE e não um fix
+### 4.3 ✅ PRIMEIRA METADE FECHADA — o fork do canvas era SERIAL
+
+⚠️ **A cura mais barata já estava no repo e o depósito não a usava.** O `plane_fork::fork_par` — um
+`Arc::make_mut` com a cópia **paralelizada**, semanticamente idêntico por construção e gateado como
+byte-idêntico — existia desde a wave do sculpt, e o doc dele nomeia os três donos: *"o sculpt, o Reshape
+e o Smear"*. **O depósito de pigmento não estava na lista** e forkava a tela em SÉRIE, uma vez por traço
+(o `stroke_undo` que o `paint_begin` acabou de tirar é o segundo dono garantido, então o primeiro
+`make_mut` do traço **sempre** copia o canvas inteiro).
+
+Roteados os 5 sítios do `stamp_cache`:
+
+| tela | modo | antes | **depois** | |
+|---|---|---|---|---|
+| 2048² | digital | 2,79–3,32 | **1,09–1,55** | −55% |
+| 2048² | impasto | 10,47–13,22 | 9,49–12,79 | ~igual |
+| 4096² | **digital** | 10,18–10,55 | **3,85–5,00** | **−62%** |
+| 4096² | **impasto** | 18,37–18,96 | **11,96–12,11** | **−36%** |
+
+⚠️ **E a medição corrigiu o escopo:** eu havia roteado **oito** sítios (5 no `stamp_cache`, 3 no
+`impasto_live`) e medido os oito juntos. Isolando: os do `impasto_live` **não mudam nada no pen-down** —
+eles são o caminho do **pen-UP** (`commit_stroke_height`). O ganho inteiro é do `stamp_cache`. Os três
+ficam roteados porque são estritamente melhores no commit, mas **o número acima é de cinco sítios, não
+de oito**.
+
+**Gate:** `the_pigment_deposit_forks_the_canvas_in_parallel` — arquitetural, e tem de ser, porque **as
+duas rotas dão os MESMOS BYTES**: trocar uma pela outra deixa a suíte inteira verde e custa 3× o tempo
+do gesto que o artista mais sente. Controle positivo (a porta tem de existir) + 2 mutações, as duas
+sangram.
+
+### 4.4 O que SOBRA, decomposto
+
+Pen-down a 4096², depois do fix:
+
+| | ms |
+|---|---|
+| só PIGMENTO (o fork do canvas, 64 MB, paralelo) | **3,6** |
+| só RELEVO (o `alloc_zeroed` dos 5 planos do traço, 235 MB) | **5,1** |
+| os dois (o default) | **12,0** |
+
+Superaditivo em ~3,4 ms: os dois disputam a mesma banda de memória.
+
+⚠️ **A metade do RELEVO já tem cerca de Chesterton COM NÚMERO e não se mexe:** os 5 planos usam
+`vec![0.0; n]` e **não** `clear() + resize`. A troca é tentadora (o `reset_stroke_height` preserva a
+capacidade) e foi **MEDIDA E REPROVADA** em 2026-07-25: o pen-down a 4096² subiu de **17,6 para
+47,5 ms**. `vec![0.0; n]` é `alloc_zeroed`, que pede páginas já zeradas ao SO e **não escreve um byte**;
+reusar a capacidade obriga um `memset` explícito dos mesmos 235 MB. **Reusar memória é mais caro que
+pedir memória nova quando a nova vem zerada de fábrica.**
+
+### 4.5 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
 A U1 (undo por delta) resolveu o que sobra **DEPOIS** do traço; isto é o que a cópia custa **DURANTE**
 ele, e **basta UMA segunda referência ao canvas para o 1º dab pagar um `make_mut`**.
@@ -327,10 +376,12 @@ milhões de vezes*. E as duas trazem a mesma cautela, aprendida no doc 24 e reco
 
 ## 7. Próxima etapa recomendada
 
-**A latência do pen-down (§4).** É o que o Enio sente, é o único item que ele nomeou como *"precisamos
-resolver"*, e é a única frente restante que **cura os quatro modos de uma vez** porque mora acima do
-modelo de pintura.
+**A segunda metade do pen-down (§4.5).** A primeira fechou por roteamento (§4.3) e entregou
+**−62% no digital e −36% no impasto** a 4096². O que sobra são os 12,0 ms decompostos na §4.4, e a
+frente é **captura do "antes" por REGIÃO** — que elimina o fork do canvas (3,6 ms) tornando o `Arc`
+unicamente possuído durante o traço.
 
-Forma: **porta única de escrita de canvas** (contra os ~25 `Arc::make_mut` diretos) + **captura do
-"antes" por região sob demanda**, com a barra saindo da medição desta sonda — alvo `≤ 4 ms` a 4096² com
-impasto, contra os 18,5 de hoje.
+Ela segue sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de
+pintura. ⚠️ Mas agora ela tem um irmão maior no mesmo pen-down: **os 5,1 ms dos planos canvas-sized do
+traço**, cuja cura seria representá-los por JANELA em vez de por tela — outro desenho, com aceitação
+própria, e sem a cerca do `alloc_zeroed` para atravessar (§4.4).

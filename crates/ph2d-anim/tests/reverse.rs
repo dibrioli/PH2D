@@ -186,3 +186,119 @@ fn reversing_an_empty_track_is_a_no_op() {
     t.reverse_about(3.0);
     assert!(t.is_empty());
 }
+
+// ── Time-Reverse SELECTED keys (AE verb, plan 07 §2) ─────────────────────────
+
+/// The faithful-restriction gate: reversing the WHOLE selection must equal
+/// [`Track::reverse_about`] — same mirrored curve, same interp migration. With a
+/// full selection the pivot is the span's centre, so the two are identical.
+#[test]
+fn reverse_keys_over_the_whole_selection_equals_reverse_about() {
+    let keys = &[
+        (
+            0.0,
+            0.0,
+            Interp::Eased(Easing {
+                family: EasingFamily::Cubic,
+                mode: EasingMode::Out,
+            }),
+        ),
+        (1.0, 5.0, Interp::Linear),
+        (3.0, 10.0, Interp::Linear),
+    ];
+    let mut about = track(keys);
+    about.reverse_about(3.0); // span = min(0) + max(3)
+
+    let mut sel = track(keys);
+    let ids: Vec<_> = sel.ids().to_vec();
+    sel.reverse_keys(&ids, 1.5); // pivot = centre of [0, 3]
+
+    for i in 0..=200 {
+        let t = 3.0 * f64::from(i) / 200.0;
+        assert!(
+            (f(about.sample(t)) - f(sel.sample(t))).abs() < 1e-6,
+            "t={t}: reverse_about {} != reverse_keys(all) {}",
+            f(about.sample(t)),
+            f(sel.sample(t))
+        );
+    }
+}
+
+/// A mirror is an involution: reversing the whole selection twice is the original
+/// (the only dropped interp is the last key's, which was never data — the same
+/// reason `reverse_about` twice is the identity).
+#[test]
+fn reverse_keys_over_the_whole_selection_twice_is_the_identity() {
+    let keys = &[
+        (0.0, -2.0, Interp::Linear),
+        (1.0, 4.0, Interp::Linear),
+        (3.0, 1.0, Interp::Linear),
+    ];
+    let original = track(keys);
+    let mut t = track(keys);
+    let ids: Vec<_> = t.ids().to_vec();
+    t.reverse_keys(&ids, 1.5);
+    t.reverse_keys(&ids, 1.5);
+    for i in 0..=200 {
+        let u = 3.0 * f64::from(i) / 200.0;
+        assert!(
+            (f(original.sample(u)) - f(t.sample(u))).abs() < 1e-6,
+            "u={u}: not restored"
+        );
+    }
+}
+
+/// A SUBSET: only the selected keys' times mirror about their own centre; the
+/// unselected keys do not move, and each key keeps its own value (the times swap,
+/// the values ride along). Select the two middle keys of four.
+#[test]
+fn reverse_keys_mirrors_only_the_selected_times_and_values_ride() {
+    let mut t = track(&[
+        (0.0, 0.0, Interp::Linear),  // A — unselected
+        (1.0, 10.0, Interp::Linear), // B — selected
+        (2.0, 20.0, Interp::Linear), // C — selected
+        (5.0, 50.0, Interp::Linear), // D — unselected
+    ]);
+    let all = t.ids().to_vec();
+    let (id_a, id_b, id_c, id_d) = (all[0], all[1], all[2], all[3]);
+    // pivot = centre of the selected span [1, 2] = 1.5
+    t.reverse_keys(&[id_b, id_c], 1.5);
+
+    let key = |id| t.key(id).expect("key survives reverse");
+    // B and C swap times (mirror about 1.5), values unchanged (ride with the key).
+    assert!(
+        (key(id_b).t.to_seconds() - 2.0).abs() < 1e-9,
+        "B moved to C's slot"
+    );
+    assert!(
+        (key(id_c).t.to_seconds() - 1.0).abs() < 1e-9,
+        "C moved to B's slot"
+    );
+    assert!(
+        (f(key(id_b).value) - 10.0).abs() < 1e-6,
+        "B keeps its value"
+    );
+    assert!(
+        (f(key(id_c).value) - 20.0).abs() < 1e-6,
+        "C keeps its value"
+    );
+    // The unselected keys are untouched.
+    assert!(
+        (key(id_a).t.to_seconds() - 0.0).abs() < 1e-9,
+        "A must not move"
+    );
+    assert!(
+        (key(id_d).t.to_seconds() - 5.0).abs() < 1e-9,
+        "D must not move"
+    );
+}
+
+/// Fewer than two selected keys has nothing to reverse — a no-op, never a panic.
+#[test]
+fn reverse_keys_of_a_single_key_is_a_no_op() {
+    let mut t = track(&[(0.0, 0.0, Interp::Linear), (2.0, 9.0, Interp::Linear)]);
+    let one = t.ids()[0];
+    let before = t.key(one).unwrap().t.to_seconds();
+    t.reverse_keys(&[one], 1.0);
+    assert!((t.key(one).unwrap().t.to_seconds() - before).abs() < 1e-9);
+}

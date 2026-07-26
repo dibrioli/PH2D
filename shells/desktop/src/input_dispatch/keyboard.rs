@@ -422,6 +422,10 @@ impl App {
                 // the selection — `apply_intent` owns that policy, it has both
                 // the playhead and the selection.
                 KeyCode::KeyD if has_selection => Some(I::DuplicateSelection),
+                // Time-Reverse Keyframes (AE): mirror the selected keys in time
+                // about their own centre. Same selection-verb family as C/X/V/D,
+                // so it lives in the same chord block and needs a selection.
+                KeyCode::KeyR if has_selection => Some(I::ReverseSelectedKeys),
                 _ => None,
             };
             if let Some(intent) = intent {

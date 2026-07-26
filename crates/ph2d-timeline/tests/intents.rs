@@ -1552,3 +1552,68 @@ fn a_plain_time_move_does_not_disturb_the_path_geometry() {
     );
     assert_eq!(counts(&st), (3, 3));
 }
+
+/// Time-Reverse (plan 07 §2): the selected keys mirror in time about ONE global
+/// pivot — the centre of the union of selected times — so a multi-track selection
+/// reverses coherently. A per-track pivot would mirror each track about its own
+/// centre and give different times, which is exactly what this gate rules out.
+/// One undo step.
+#[test]
+fn reverse_selected_keys_uses_one_global_pivot_and_is_one_undo_step() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    // Track 1 keys at {0, 2}, track 2 keys at {1, 3}. Union span [0, 3] -> pivot 1.5.
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 0.0, 0.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 2.0, 10.0);
+    add_key(&mut st, &mut ph, 2, PropKind::TranslationX, 1.0, 0.0);
+    add_key(&mut st, &mut ph, 2, PropKind::TranslationX, 3.0, 10.0);
+
+    let t1 = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let t2 = st
+        .doc
+        .binding_for(2, PropKind::TranslationX)
+        .unwrap()
+        .target;
+
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for tgt in [t1, t2] {
+        for key in st.doc.active_clip().track(tgt).unwrap().ids().to_vec() {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddToSelection(SelectedKey { target: tgt, key }),
+            );
+        }
+    }
+
+    let times = |st: &TimelineState, tgt| -> Vec<f64> {
+        let track = st.doc.active_clip().track(tgt).unwrap();
+        let mut v: Vec<f64> = track
+            .ids()
+            .iter()
+            .map(|&id| track.key(id).unwrap().t.to_seconds())
+            .collect();
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v
+    };
+    let close = |got: &[f64], want: &[f64]| {
+        assert_eq!(got.len(), want.len());
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() < 1e-9, "got {got:?} want {want:?}");
+        }
+    };
+
+    apply_intent(&mut st, &mut ph, I::ReverseSelectedKeys);
+    // Mirror about 1.5: t1 {0,2}->{3,1}; t2 {1,3}->{2,0}. (Per-track pivots 1.0/2.0
+    // would give t1->{2,0} and t2->{3,1} — different, so this pins the global pivot.)
+    close(&times(&st, t1), &[1.0, 3.0]);
+    close(&times(&st, t2), &[0.0, 2.0]);
+
+    apply_intent(&mut st, &mut ph, I::Undo);
+    close(&times(&st, t1), &[0.0, 2.0]);
+    close(&times(&st, t2), &[1.0, 3.0]);
+}

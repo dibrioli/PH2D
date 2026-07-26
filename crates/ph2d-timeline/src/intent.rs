@@ -133,6 +133,11 @@ pub enum TimelineIntent {
         /// Scale factor.
         factor: f64,
     },
+    /// **Time-reverse** the selected keys about the centre of their own span (AE
+    /// *Time-Reverse Keyframes*): every selected key's time mirrors and the eases
+    /// mirror with it. Coherent across tracks — one global pivot, so a multi-track
+    /// selection reverses together. One undo step.
+    ReverseSelectedKeys,
     /// Duplicate every selected key, preserving the group's internal timing.
     ///
     /// Where the copies land is read off the playhead (see

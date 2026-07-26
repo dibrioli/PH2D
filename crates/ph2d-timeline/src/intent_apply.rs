@@ -144,6 +144,25 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 track.scale_keys(ids, pivot_seconds, factor)
             });
         }),
+        I::ReverseSelectedKeys => edit(state, |doc, sel| {
+            // One GLOBAL pivot — the centre of the union of selected key times —
+            // so a multi-track selection mirrors coherently (AE). Read before
+            // mutating; the immutable borrow ends before `for_selected_tracks`.
+            let span = {
+                let clip = doc.active_clip();
+                sel.keys()
+                    .iter()
+                    .filter_map(|sk| clip.track(sk.target)?.key(sk.key))
+                    .fold((f64::MAX, f64::MIN), |(lo, hi), k| {
+                        let t = k.t.to_seconds();
+                        (lo.min(t), hi.max(t))
+                    })
+            };
+            if span.0 <= span.1 {
+                let pivot = 0.5 * (span.0 + span.1);
+                for_selected_tracks(doc, sel, |track, ids| track.reverse_keys(ids, pivot));
+            }
+        }),
         I::DuplicateSelection => {
             let Some(delta) = duplicate_delta(state, playhead.time()) else {
                 return; // nothing selected

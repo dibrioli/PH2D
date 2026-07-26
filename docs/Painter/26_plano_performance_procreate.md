@@ -279,7 +279,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 3 | **L0** latência evento→pixel | instrumento | — | 🟢 nenhum | ✅ **landou** — `EVENTO->FRAME p50/p95` no `PH2D_PAINT_PERF` |
 | 4 | **L1** traço vivo separado | L0 | L0 já em ~1 frame | 🟡 costura de preview | ⏸ espera o número do L0 num smoke real |
 | 5 | **U0** dhat do undo | harness | pico dentro do orçamento | 🟢 nenhum | 🔴 **VERMELHA** — 1.627 MB em 24 traços |
-| 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | ⏸ **decisão do Enio** (as duas curas custam — §7.3) |
+| 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
 
@@ -453,6 +453,88 @@ escolher-se num documento com relevo?**
 
 ---
 
+## 7.5 — 🟢 U1 EXECUTADA (2026-07-26): o histórico guarda a JANELA
+
+A frente U1 foi construída. O que ela moveu, e os **dois negativos** que ela produziu — que valem tanto
+quanto o positivo.
+
+### 7.5.1 O positivo: a memória
+
+| | antes | depois |
+|---|---|---|
+| retido, 24 traços a 2048² | **1.627,2 MB** (25,4 documentos) | **242,2 MB** (3,8) |
+| pico | 1.669,2 MB | 345,8 MB |
+| **por passo** | **~67,8 MB** — mais que um documento (os dois endpoints) | **2,36 MB** = 3,7% de um |
+
+Cada entrada guarda os dois endpoints só em **metadados**; os dezenove planos canvas-shaped viram um
+delta da janela que o passo tocou. O cap passou a ser em **BYTES**, e o orçamento é função do documento
+(`2 × documento + 256 MB`, o molde do ADR-0117).
+
+**A base de todo delta é um CURSOR** — o endpoint adjacente ao topo, materializado: UM documento,
+constante, e **zero bytes em regime** porque compartilha os `Arc` do tool. ⚠️ O estado VIVO do tool
+**não serve**: `restore_model` termina em `restore_shape_overlay`, que RE-CARIMBA a figura, então o vivo
+depois de um undo não é byte-a-byte o snapshot instalado.
+
+**O preço, medido e nomeado:** desfazer passou de um `Arc::clone` grátis para clonar o plano do cursor —
+**0,43 ms @2048² e 13,37 @4096²** por undo, contra ~25× menos memória.
+
+### 7.5.2 ⛔ Negativo 1: a U1 **não** cura o pen-down, e o §7.4/§4 diziam que sim
+
+A nota do `measure_input_cost` afirmava *"é o MESMO defeito … a cura é a mesma, e é a frente U1"*. Medido
+depois da U1: **16,49 → 16,07 ms** a 4096². Não se moveu.
+
+O raciocínio que falhou: guardar só a região no HISTÓRICO decide o que sobra **depois** do traço; o que
+força a cópia é precisar do estado anterior **durante** ele — e basta **UMA** segunda referência ao canvas
+(o snapshot do pen-down, o cursor do histórico, o `base` de uma sessão de proteção) para o primeiro dab
+pagar um `Arc::make_mut`. Tirar uma não ajuda.
+
+⚠️ **E a decomposição refuta metade da receita da §13.12.5 do doc 25** (*"semeadura lazy por TILE **+
+reuso da alocação** (mata o page-fault)"*): com o buffer já mapeado a cópia custa **11,68 dos 12,35 ms**
+⇒ **a alocação vale 5%**. O page-fault não é o alvo. Sobra a outra metade, e ela é a única — capturar o
+"antes" por **REGIÃO, sob demanda**, na primeira escrita de cada tile (o *tile-based undo* do
+GIMP/Krita). Isso quer uma **porta única de escrita de canvas**, e hoje há ~25 sítios chamando
+`Arc::make_mut` direto: **wave própria, com gates próprios**.
+
+O número fica pinado num gate executável — `the_pen_down_is_still_canvas_proportional_and_this_is_its_number`
+(razão **13,7×** para 16× a área) — que é o que vira VERMELHO no dia em que essa wave funcionar.
+
+### 7.5.3 ⛔ Negativo 2: a constante do cap estava errada, e a medição a derrubou
+
+O cap nasceu `512 MB` fixos, com a afirmação *"> 300 traços a 2048² e a 4096² — o cap não morde"*.
+Medido (`measure_undo_capacity`): **204 traços a 1024², 62 a 2048², 17 a 4096²**. A promessa era falsa nos
+dois extremos, e um teto absoluto raciona o artista justamente na tela em que ele tem menos margem.
+
+| tela | orçamento | passo | traços | (o modelo antigo comprava) |
+|---|---|---|---|---|
+| 1024² | 288 MB | 2,51 MB | **114** | 9 — **12,8×** |
+| 2048² | 384 MB | 8,19 MB | **46** | 3 — **15,6×** |
+| 4096² | 768 MB | 28,55 MB | **26** | 1 — **17,9×** |
+
+*Cena pesada ganha janela mais CURTA, não conta maior* — a frase do W1.5 da física, e é o que um cap em
+bytes significa. O gate afirma a **RAZÃO** contra o modelo antigo, nunca um número de passos.
+
+### 7.5.4 As duas lições de FIXTURE que a wave pagou
+
+A mutação *"o cursor não anda com a história"* **sobreviveu duas vezes**, e as duas por fixture:
+
+1. a 1ª versão fazia **todos** os elementos diferirem entre endpoints ⇒ todo plano caía em `Whole` ⇒ a
+   materialização nunca consultava o cursor;
+2. corrigida para uma janela, os estados ainda tocavam **o mesmo lugar** ⇒ o patch reescrevia exatamente
+   o que o cursor errado trazia, e o fundo comum cobria o resto.
+
+Só com a janela **variando por estado** (traços em lugares diferentes, que é o que um artista faz) o gate
+mordeu. E a mutação só é pega pelo gate da CADEIA: um delta sozinho está sempre certo — o que pode estar
+errado é a BASE de que ele parte, e ela só é observável a partir do segundo passo.
+
+### 7.5.5 Um defeito escrito e pego na releitura
+
+`diff_window` devolve `None` para *"idênticos"*, e a 1ª versão do `split` também caía nele quando o
+stride não dividia o plano: os dois buffers diferiam, o passo gravava `Unchanged`, e **o undo perdia a
+edição em silêncio**. As duas perguntas (*sei medir?* e *diferem?*) agora são separadas (`fits`), com
+gate e mutação.
+
+---
+
 ## Apêndice — reproduzir os números citados
 
 ```bash
@@ -473,8 +555,13 @@ env PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1 ./target/release/ph2d-host-desktop
 # T0 + o relógio da drenagem + o split por estágio (§7.1 e §7.4)
 cargo test -p ph2d-tool-painter --release measure_dirty_overclaim -- --ignored --nocapture
 
-# U0 — o repro VERMELHO do undo (§7.3)
-cargo test -p ph2d-tool-painter --release --test measure_undo_memory -- --ignored --nocapture
+# U0/U1 — o retido pelo historico, e o que o cap compra (§7.3 e §7.5)
+cargo test -p ph2d-tool-painter --release --test measure_undo_memory -- --nocapture
+cargo test -p ph2d-tool-painter --release --test measure_undo_capacity -- --nocapture
+
+# o preco do trade (quanto custa DESFAZER) + a decomposicao do fork do pen-down (§7.5.2)
+cargo test -p ph2d-tool-painter --release the_delta_history_costs -- --ignored --nocapture
+cargo test -p ph2d-tool-painter --release the_pen_down_forks -- --ignored --nocapture
 ```
 
 ---

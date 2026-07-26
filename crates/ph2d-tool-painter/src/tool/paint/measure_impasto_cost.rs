@@ -499,3 +499,56 @@ fn is_the_silhouette_chain_the_aa_cost() {
         );
     }
 }
+
+/// **O DELAY DO PRIMEIRO TRAÇO** (Enio, 2026-07-26: *"bem melhor e bastante aceitável com exceção do
+/// delay do primeiro traço"*).
+///
+/// A decomposição do traço mede o custo POR MOVE, e por ela o 1º traço é o mais BARATO (110 contra 143 ms
+/// sobre tinta) — ou seja o que o artista sente não está lá. O que ele sente é a **latência do
+/// pen-down**: o intervalo entre clicar e o primeiro dab aparecer.
+///
+/// Esta sonda separa as três coisas que um pen-down pode pagar, e mede cada uma no tamanho em que ela
+/// dói: o **1º** pen-down de uma camada virgem (que aloca o que for lazy), o **2º** (tudo já alocado) e o
+/// **move** que vem depois. A diferença entre o 1º e o 2º é, por definição, o custo de *estrear*.
+#[test]
+#[ignore]
+fn the_first_stroke_latency() {
+    println!("[pendown] ms — 1o pen-down (camada virgem) | 2o pen-down | move seguinte");
+    for size in [2048u32, 4096] {
+        for (name, impasto) in [("impasto OFF (controle)", false), ("impasto ON", true)] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+            if impasto {
+                t.toggle_brush_impasto();
+            }
+            t.set_brush_size_px(200.0);
+            let c = size as f32 * 0.5;
+            // 1º pen-down: a camada nunca foi tocada.
+            let first = ms(&mut || {
+                t.on_canvas_pointer(cp([c - 300.0, c], PointerPhase::Down));
+            });
+            let move_ms = ms(&mut || {
+                t.on_canvas_pointer(cp([c - 280.0, c], PointerPhase::Move));
+            });
+            t.on_canvas_pointer(cp([c - 260.0, c], PointerPhase::Up));
+            // Os pen-downs SEGUINTES: tudo o que era lazy já existe. Se o custo NÃO cair, ele é
+            // por-gesto (uma cópia canvas-sized por traço) e não estreia de nada.
+            let mut rest = Vec::new();
+            for k in 1..=4u8 {
+                let y = c + 40.0 * f32::from(k);
+                rest.push(ms(&mut || {
+                    t.on_canvas_pointer(cp([c - 300.0, y], PointerPhase::Down));
+                }));
+                t.on_canvas_pointer(cp([c - 260.0, y], PointerPhase::Up));
+            }
+            let tail = rest
+                .iter()
+                .map(|v| format!("{v:.2}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            println!(
+                "[pendown] {size}^2 {name:<24} 1o {first:>7.2} | seguintes {tail} | move {move_ms:.2}"
+            );
+        }
+    }
+}

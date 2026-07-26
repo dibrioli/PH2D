@@ -100,6 +100,13 @@ pub struct TimelinePanelState {
     /// not lag the cursor by a frame. Cleared at the top of the next
     /// `interact::process`, by when the snapshot has caught up.
     pub pending_move_dx: Option<f32>,
+    /// In-progress time-scale drag of the key selection (§4 crown jewel), while the
+    /// pointer is down on a [`SelectionTimeHandle`](ph2d_editor_core::interaction::TimelineHitKind::SelectionTimeHandle):
+    /// the pivot (the opposite edge, held fixed), the moving edge's ORIGINAL time,
+    /// the pointer x at Begin, and the total factor already streamed — so each Update
+    /// emits only the incremental factor and the whole drag undoes in one step. `None`
+    /// when not scaling.
+    pub scale_drag: Option<ScaleDrag>,
     /// Vertical scroll of the track rows, in px from the top of the list.
     pub scroll_y: f32,
     /// Scrollable overflow (`content_h - rows_h`), recomputed by `paint`. Kept so
@@ -406,6 +413,25 @@ impl BoxDrag {
     }
 }
 
+/// An in-progress time-scale drag of the key selection: the fixed pivot + the
+/// moving edge's original time + the total factor streamed so far.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScaleDrag {
+    /// The pivot (seconds) — the OPPOSITE edge of the selection, held fixed for the
+    /// whole drag so streamed incremental factors compose about ONE point (the
+    /// engine's `scale_keys` maps `t -> pivot + (t - pivot)*factor`).
+    pub pivot_seconds: f64,
+    /// The moving edge's time (seconds) at Begin. The target factor each frame is
+    /// `(t_at_cursor - pivot) / (edge_seconds - pivot)`, from the FIXED drag
+    /// geometry — never the live extent, which the scale itself is moving.
+    pub edge_seconds: f64,
+    /// Which edge is grabbed: `true` = right/end (pivot is the left edge).
+    pub right: bool,
+    /// Total scale factor already streamed as `ScaleSelectedKeys`. Each frame emits
+    /// only `want / applied`, so the composed scale equals the drag's target factor.
+    pub applied: f64,
+}
+
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
 /// time delta is `(cur_x - start_x) / px_per_s`, frame-snapped on commit.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -435,6 +461,7 @@ impl Default for TimelinePanelState {
             add_track_open: false,
             key_drag: None,
             pending_move_dx: None,
+            scale_drag: None,
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
@@ -535,8 +562,9 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
     let key = state.key_drag.take().is_some();
     let handle = state.handle_drag.take().is_some();
     let anchor = state.anchor_drag.take().is_some();
+    let scale = state.scale_drag.take().is_some();
     state.summary_press = None;
-    if key || handle || anchor {
+    if key || handle || anchor || scale {
         push_intent(TimelineIntent::EndEdit);
     }
 }

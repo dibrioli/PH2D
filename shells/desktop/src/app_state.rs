@@ -476,6 +476,8 @@ pub(crate) struct App {
     pub(crate) harmony_smoke_done: bool,
     /// O smoke dos sinais da timeline (ADR-0143) já rodou. `PH2D_SIGNAL_SMOKE=1`.
     pub(crate) signal_smoke_done: bool,
+    /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.
+    pub(crate) timescale_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,

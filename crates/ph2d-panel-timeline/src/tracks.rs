@@ -229,6 +229,9 @@ pub(crate) fn paint_rows(
             graph_paint::paint_track(ctx, theme, state, band, label_w, view, track);
         }
     }
+    // The time-scale box + grips over the current key selection (crown-jewels §4).
+    // Registered AFTER the diamonds so the grips win the hit where they sit.
+    crate::scale_drag::paint_selection_box(ctx, theme, g, view, state, snap);
     ctx.scene.pop_layer();
 }
 

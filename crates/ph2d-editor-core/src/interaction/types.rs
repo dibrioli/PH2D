@@ -391,6 +391,17 @@ pub enum TimelineHitKind {
         target: u64,
         key: u64,
     },
+    /// A **time-scale grip** at one edge of the current key selection's time
+    /// extent (the loved retiming box — §4 of the crown-jewels plan). `right`
+    /// picks the edge: `false` is the LEFT/start grip (pivot is the RIGHT edge),
+    /// `true` is the RIGHT/end grip (pivot is the LEFT edge). Dragging scales the
+    /// selected keys' TIME about the opposite edge — a KEY edit
+    /// (`ScaleSelectedKeys`), NEVER a strip stretch (`StretchStrip` lives on the
+    /// stack lane, a different surface). Painted just OUTSIDE the extent so the
+    /// grip never fights the edge diamond underneath it.
+    SelectionTimeHandle {
+        right: bool,
+    },
     /// A diamond on the **Summary** channel: the one row that aggregates every
     /// track's keys by time. Clicking it selects the whole column; dragging moves
     /// it. `t_bits` is the column's time in seconds, as `f64::to_bits` — an

@@ -99,6 +99,12 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Marker { index } => {
             marker_drag::apply(state, time_x, px_per_s, snap, index, g);
         }
+        // A time-scale grip on the key selection's box: scale the selected keys'
+        // TIME about the opposite edge. A KEY edit (`ScaleSelectedKeys`) — never a
+        // strip stretch, which is a different verb on the stack lane (`Strip`).
+        TimelineHitKind::SelectionTimeHandle { right } => {
+            crate::scale_drag::apply(state, time_x, px_per_s, snap, right, g);
+        }
         // A clip strip: the body slides, the two edges trim. Overlapping two of
         // them IS the crossfade — no code here knows that, and none needs to.
         TimelineHitKind::Strip { lane, strip, edge } => {
@@ -215,6 +221,51 @@ mod tests {
             frame_snap: true,
             ..TimelineViewSnapshot::default()
         }
+    }
+
+    #[test]
+    fn a_selection_time_handle_routes_to_scale_not_a_strip_stretch() {
+        // The precious fade lives on the STRIP surface (`StretchStrip`). The router
+        // must send the key-selection grip to the KEY-scale machine and nowhere
+        // near a strip — this is the one arch-gate the crown-jewels §4 asks for.
+        // (Mutation: route `SelectionTimeHandle` to `strip_drag` here -> RED.)
+        use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
+        let mut st = TimelinePanelState::default();
+        st.view_start_s = 0.0;
+        let key = |i: u64, t: f64| KeyView {
+            id: KeyId::new(i),
+            t_seconds: t,
+            value: 0.0,
+            interp: Interp::Linear,
+            selected: true,
+            roving: false,
+        };
+        let s = TimelineViewSnapshot {
+            fps: 60.0,
+            frame_snap: false,
+            tracks: vec![TrackView {
+                target: AnimTarget::new(7),
+                prop: PropKind::TranslationX,
+                entity: 1,
+                missing: false,
+                keys: vec![key(0, 0.0), key(1, 1.0)],
+            }],
+            ..TimelineViewSnapshot::default()
+        };
+        let handle = TimelineHitKind::SelectionTimeHandle { right: true };
+        // `feed` maps x -> time with time_x = 0, so x = 300 is t = 3 (factor 3).
+        feed(&mut st, gesture(handle, GesturePhase::Begin, 200.0, false), 100.0, &s);
+        feed(&mut st, gesture(handle, GesturePhase::Update, 300.0, false), 100.0, &s);
+        feed(&mut st, gesture(handle, GesturePhase::End, 300.0, false), 100.0, &s);
+        let got = state::drain_intents();
+        assert!(
+            got.iter().any(|i| matches!(i, TimelineIntent::ScaleSelectedKeys { .. })),
+            "the router sends the grip to the key-scale machine"
+        );
+        assert!(
+            !got.iter().any(|i| matches!(i, TimelineIntent::StretchStrip { .. })),
+            "and NEVER to the strip surface, where the fade lives"
+        );
     }
 
     // Run the real Primary router (bypassing the store drain, which needs a host)

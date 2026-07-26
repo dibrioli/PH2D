@@ -191,6 +191,7 @@ mod render_loop;
 mod shape_build;
 mod shape_build_gesture;
 mod signal_smoke;
+mod timescale_smoke;
 mod sim_populate;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
@@ -414,6 +415,7 @@ impl App {
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,
+            timescale_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

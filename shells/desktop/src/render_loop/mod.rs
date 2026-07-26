@@ -637,6 +637,7 @@ impl crate::App {
         self.harmony_smoke();
         self.timeline_onion_smoke();
         self.signal_smoke();
+        self.timescale_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.flip_pose_smoke();

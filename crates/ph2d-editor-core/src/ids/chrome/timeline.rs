@@ -31,6 +31,11 @@ pub const TIMELINE_FRAME_NUM: NodeId = hash_node_id("timeline.frame_num");
 pub const TIMELINE_LENGTH_NUM: NodeId = hash_node_id("timeline.length_num");
 /// Loop-range toggle.
 pub const TIMELINE_LOOP: NodeId = hash_node_id("timeline.loop");
+/// **Time-scale grip, LEFT edge** of the key selection's box (crown-jewels §4).
+/// Dragging it scales the selected keys' time about the RIGHT edge (the pivot).
+pub const TIMELINE_SCALE_HANDLE_L: NodeId = hash_node_id("timeline.scale_handle_l");
+/// **Time-scale grip, RIGHT edge** of the key selection's box. Pivot is the LEFT edge.
+pub const TIMELINE_SCALE_HANDLE_R: NodeId = hash_node_id("timeline.scale_handle_r");
 /// Auto-key arm toggle.
 pub const TIMELINE_AUTOKEY: NodeId = hash_node_id("timeline.autokey");
 /// Performing (record-during-play, W5) arm toggle.

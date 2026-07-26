@@ -107,8 +107,9 @@ fn min_len(snap: &TimelineViewSnapshot) -> f64 {
 }
 
 /// The time under pointer x, frame-snapped when the snapshot asks for it, never
-/// negative.
-fn time_at(
+/// negative. Shared with `scale_drag` (the time-scale grip rides the same axis) —
+/// one door so the loop brace and the selection box map x to time identically.
+pub(crate) fn time_at(
     view_start: f64,
     time_x: f32,
     px_per_s: f64,

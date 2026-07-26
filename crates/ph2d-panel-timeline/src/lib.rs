@@ -60,6 +60,7 @@ mod paint;
 pub mod populate;
 mod resize;
 mod ruler;
+mod scale_drag;
 mod scrollbar;
 mod stack_add_header;
 mod stack_ease_grip;

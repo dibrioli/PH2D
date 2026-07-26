@@ -204,7 +204,26 @@ pub(crate) fn stroke_from_samples(
     let keep = crate::flip_smooth::simplify_rdp(&smoothed, simplify_tolerance(style));
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
+    // **Reamostragem SUAVE** (T2.8): o RDP e o render ligam os pontos por RETAS, então poucos
+    // pontos = curvas facetadas ("tracejado", Enio 2026-07-25). Interpola uma Catmull-Rom pelos
+    // pontos (o traço passa exato por eles) e a densifica — as curvas ficam arredondadas, as quinas
+    // ficam. É a MESMA porta do preview e do bake, então os dois seguem idênticos.
+    let (pts, prs) = crate::flip_smooth::resample_smooth(&pts, &prs, resample_step(style));
     build_stroke(style, &pts, &prs, world_to_local)
+}
+
+/// **O passo da reamostragem suave, em MUNDO: uma fração da espessura.**
+///
+/// Os segmentos da curva reamostrada ficam ~`RESAMPLE_STEP_FRACTION × espessura` de comprimento —
+/// abaixo da própria espessura, então o render (cápsulas dessa espessura) esconde as facetas e a
+/// curva lê redonda. A grandeza é adimensional (fração da espessura) pela mesma razão do
+/// `STROKE_SIMPLIFY_FRACTION`: é a linha que diz qual comprimento de segmento é "pequeno". O passo
+/// cai com a espessura (pincel fino ⇒ passo fino ⇒ curva fina lisa), mas o cap por-span
+/// (`MAX_SUB_PER_SPAN`) impede explosão. MEDIDO no smoke `PH2D_FLIP_RESAMPLE_SMOKE=1`.
+const RESAMPLE_STEP_FRACTION: f32 = 0.4;
+
+fn resample_step(style: &FlipStyleSnapshot) -> f32 {
+    RESAMPLE_STEP_FRACTION * ph2d_tool_flip::size_to_world(style.width_px)
 }
 
 /// Constrói um `FlipStroke` a partir das amostras (MUNDO) + estilo. Compartilhado

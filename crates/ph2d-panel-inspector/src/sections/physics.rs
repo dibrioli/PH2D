@@ -492,10 +492,13 @@ fn paint_body_actions(
     // before the `paint_at` closure below, because `seg_row` cannot borrow
     // `scene`/`text_system` while the closure holds them. It lives in the body
     // section because a joint does not exist yet when you want to make one: the
-    // control has to be where you already are, looking at the two bodies you
-    // selected. Offered only for two selected bodies (`can_join`, a fact only
-    // the shell knows).
-    if info.can_join {
+    // control has to be where you already are.
+    //
+    // ⚠️ **Sempre pintado** (W-J4): a rota de DESENHAR não precisa de seleção —
+    // ela nomeia os dois corpos apontando — então gatear o grupo em `can_join`
+    // punha o gesto atrás do próprio passo que ele remove. O botão *Join
+    // Selected* segue gateado lá dentro, onde o `join_count` decide.
+    {
         yy = super::physics_rows::paint_join_gesture(
             scene,
             text_system,
@@ -506,6 +509,8 @@ fn paint_body_actions(
             w,
             yy,
             info.join_kind_tag,
+            info.join_count,
+            info.join_draw_armed,
         );
     }
 

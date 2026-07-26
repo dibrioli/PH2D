@@ -3046,6 +3046,32 @@ impl App {
             self.joint_body_pick_click(evt.x, evt.y);
             return;
         }
+        // **O gesto de DESENHAR um joint** (W-J4) — a 2ª rota de criação, e a única
+        // em que as âncoras nascem NOS pontos que a mão indicou. Modal como o
+        // eyedropper acima (precede picking/gizmo, independe de ferramenta): o
+        // press começa a banda elástica, o Move a estica, o release cria.
+        if self.joint_draw_armed
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.joint_draw_press(evt.x, evt.y)
+        {
+            return;
+        }
+        if self.joint_draw.is_some() {
+            match kind {
+                PointerKind::Move => {
+                    self.joint_draw_move(evt.x, evt.y);
+                    return;
+                }
+                PointerKind::Up => {
+                    self.joint_draw_release(evt.x, evt.y);
+                    return;
+                }
+                _ => {}
+            }
+        }
         // **A alça do TEXTO EM CAMINHO** (W5), no modo Select — irmã da do conector, mesmo lugar
         // e mesma razão: no Select a tool não captura o canvas, e sem este arm a pressão iria
         // para o picking/gizmo. O gizmo é inócuo sobre um texto vinculado (vive na identidade),

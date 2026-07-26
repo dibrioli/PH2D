@@ -22,6 +22,7 @@ mod event_physics;
 mod paint;
 mod paint_frame;
 mod populate;
+mod populate_physics;
 mod sections;
 pub mod state;
 mod sync;

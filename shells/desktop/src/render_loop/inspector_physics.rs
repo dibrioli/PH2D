@@ -20,7 +20,8 @@ pub(crate) use super::inspector_physics_apply::apply_physics_edit;
 pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
-    can_join: bool,
+    join_count: u8,
+    join_draw_armed: bool,
     join_kind_tag: u8,
     bake_range: (f32, f32),
     bake_channels_tag: u8,
@@ -114,8 +115,11 @@ pub(crate) fn build_physics_info(
             friction: Collider::DEFAULT_FRICTION,
             layer: 0,
             // An entity with no body cannot be half of a joint, whatever the
-            // selection looks like.
-            can_join: false,
+            // selection looks like. ⚠️ The empty face early-returns after the
+            // *Add Physics Body* door, so NEITHER creation route is painted here
+            // — a joint needs a body, and the door is the one thing to offer.
+            join_count: 0,
+            join_draw_armed,
             join_kind_tag,
             is_sensor: false,
             bake_channels_tag,
@@ -178,7 +182,8 @@ pub(crate) fn build_physics_info(
         restitution: col.restitution,
         friction: col.friction,
         layer: col.layer,
-        can_join,
+        join_count,
+        join_draw_armed,
         join_kind_tag,
         bake_seconds,
         bake_start_seconds,
@@ -255,7 +260,7 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), false, 0, (0.0, 5.0), 0)
+            build_physics_info(&world, e.to_bits(), 0, false, 0, (0.0, 5.0), 0)
                 .expect("a zone has a Transform, so §11 describes it")
                 .force_world_axes
         };

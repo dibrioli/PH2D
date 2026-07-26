@@ -354,7 +354,8 @@ pub(crate) fn apply_physics_edit(
         PhysicsFieldEdit::Join
         | PhysicsFieldEdit::Bake
         | PhysicsFieldEdit::BakeChannels(_)
-        | PhysicsFieldEdit::JoinKind(_) => {}
+        | PhysicsFieldEdit::JoinKind(_)
+        | PhysicsFieldEdit::JoinDraw => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

@@ -642,6 +642,14 @@ pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 /// a joint does not exist yet when you want to make one, so the button has to
 /// be somewhere you already are — looking at two bodies you have selected.
 pub const INSP_PHYS_JOIN: NodeId = hash_node_id("insp_phys_join");
+/// **Arm the canvas drawing gesture** (W-J4) — press a body, drag, release on
+/// another, and the joint is born with its anchors AT the two points.
+///
+/// The sibling route, and the one that puts the anchors where the artist
+/// pointed: `INSP_PHYS_JOIN` has no points to offer, so its anchors come from
+/// the seed policy (body B's CENTRE for a spring/rope). Both stay — the button
+/// is how a CHAIN is made, the gesture is how a placement is made.
+pub const INSP_PHYS_JOIN_DRAW: NodeId = hash_node_id("insp_phys_join_draw");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld). Painted beside *Join Selected Bodies* so the artist creates the joint
 /// TYPE they want in one gesture, instead of making a Pin and converting it.

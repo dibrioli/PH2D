@@ -1637,6 +1637,8 @@ impl crate::App {
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
+                // W-J4: o gesto de desenhar está armado?
+                self.joint_draw_armed,
                 // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
                 // because `publish` does not take the bridge, and through the
                 // SAME door `sync_joint_pivots` uses for the A pivot — two
@@ -1950,7 +1952,11 @@ impl crate::App {
             // The pair to join, at most one per frame — it is a click, not a
             // per-entity edit.
             let mut bake_request: Option<Vec<u64>> = None;
-            let mut join_request: Option<(u64, u64)> = None;
+            // W-J4: a rota por SELEÇÃO virou "ligue a sequência" (2 corpos = um
+            // joint; N = uma corrente de N−1), então o pedido é um booleano — a
+            // ordem vem da própria seleção, que o `join_selected_chain` lê.
+            let mut join_chain = false;
+            let mut join_draw_arm = false;
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
@@ -2620,9 +2626,21 @@ impl crate::App {
                         // between the same two objects, on the very click that
                         // is supposed to make one.
                         if matches!(edit, ph2d_editor::PhysicsFieldEdit::Join) {
-                            if let [a, b] = inspector_selection[..] {
-                                join_request = Some((a, b));
+                            // ⚠️ **2 ou MAIS** (W-J4): três corpos marcados
+                            // fazem uma CORRENTE de N−1 joints, na ordem da
+                            // seleção. Não é fan-out (isso criaria um joint por
+                            // corpo, entre os mesmos dois) — é UMA operação
+                            // sobre a sequência, que a `join_selected_chain`
+                            // executa depois do laço.
+                            if inspector_selection.len() >= 2 {
+                                join_chain = true;
                             }
+                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::JoinDraw) {
+                            // ARMA o gesto de canvas (sem operando, como os
+                            // eyedroppers do §12): quem nomeia os dois corpos é
+                            // o press e o release, não a seleção. Armado aqui e
+                            // honrado no `input_dispatch`.
+                            join_draw_arm = true;
                         } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::Bake) {
                             // WARNING: **Bake does not fan out either**, and the
                             // cost of getting it wrong is bigger than Join's:
@@ -4427,6 +4445,11 @@ impl crate::App {
                 // fantasma de B. Lido do componente (o arrasto já escreveu nele
                 // neste frame), então a silhueta e o arco mostram o mesmo número.
                 self.joint_anchor_drag.and_then(|d| d.posed_limit(sim)),
+                // W-J4: a banda elástica, se um gesto de criar está em voo (e o
+                // corpo A ainda existe — apagá-lo sob o gesto o invalida).
+                crate::joint_draw::body_alive(sim, self.joint_draw)
+                    .then(|| crate::joint_draw::band(self.joint_draw))
+                    .flatten(),
                 &contacts,
                 &flashes,
                 &waterlines,
@@ -5724,21 +5747,32 @@ impl crate::App {
                     }
                 }
             }
-            if let Some((a, b)) = join_request
-                && let Some(joint) = inspector_joint::create_joint(
+            if join_draw_arm {
+                self.joint_draw_armed = true;
+            }
+            if join_chain {
+                let (made, last) = crate::joint_draw::join_chain(
                     sim,
-                    a,
-                    b,
+                    &inspector_selection,
                     inspector_joint::kind_of(self.join_kind),
-                )
-            {
-                // Select the new joint so §12 (Physics Joint) appears
+                );
+                // Select the LAST joint so §12 (Physics Joint) appears
                 // immediately — the Kind selector and tuning are right there.
-                // Otherwise the two bodies stay selected (§11) and the joint is
-                // only reachable by hunting for it in the Hierarchy by hand,
-                // which is why creating anything but a Pin felt impossible.
-                hero.gizmo.selection = Some(joint.to_bits());
-                hero.gizmo.extra_selection.clear();
+                // Otherwise the bodies stay selected (§11) and the joint is only
+                // reachable by hunting for it in the Hierarchy by hand, which is
+                // why creating anything but a Pin felt impossible. On a chain it
+                // is the link that closes; showing one of the N is more honest
+                // than showing none.
+                if let Some(j) = last {
+                    hero.gizmo.selection = Some(j.to_bits());
+                    hero.gizmo.extra_selection.clear();
+                }
+                if made > 1 {
+                    toasts.push(ph2d_editor::Toast::info(format!(
+                        "Chained {} bodies with {made} joints",
+                        made + 1
+                    )));
+                }
             }
             // W4 - bake the selection's simulated motion into curves. After the
             // joint work above because a baked body stops being simulated, and

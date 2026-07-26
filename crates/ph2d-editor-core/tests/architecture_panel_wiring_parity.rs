@@ -261,12 +261,30 @@ fn hit_indexed_ids_are_registered() {
             .and_then(|n| n.to_str())
             .unwrap_or("?")
             .to_string();
-        // Registered-id source: hand-written `populate.rs` AND/OR the
+        // Registered-id source: the hand-written `populate*.rs` family AND/OR the
         // `panel_seam!`-generated `seam.rs` (Fase 2) — a panel uses one or the
         // other (or both). Read whichever exist and union their id tokens.
+        //
+        // ⚠️ The `populate` side is matched by PREFIX, never by the single name
+        // `populate.rs`: the 600-LOC cap forces a busy panel to split its
+        // populate into siblings (the Inspector's physics/joint half is
+        // `populate_physics.rs`), and a gate that enumerated one filename went
+        // RED on a pure code move while calling it "dead on click" — the proxy
+        // expired, not the product. Asking *"whatever this panel's populate
+        // answer is"* cannot rot the same way.
         let mut reg_src = String::new();
-        for f in ["src/populate.rs", "src/seam.rs"] {
-            if let Ok(s) = std::fs::read_to_string(dir.join(f)) {
+        let mut names: Vec<String> = vec!["seam.rs".to_string()];
+        if let Ok(rd) = std::fs::read_dir(dir.join("src")) {
+            for e in rd.flatten() {
+                let f = e.file_name().to_string_lossy().to_string();
+                if f.starts_with("populate") && f.ends_with(".rs") {
+                    names.push(f);
+                }
+            }
+        }
+        names.sort();
+        for f in &names {
+            if let Ok(s) = std::fs::read_to_string(dir.join("src").join(f)) {
                 reg_src.push_str(&s);
                 reg_src.push('\n');
             }

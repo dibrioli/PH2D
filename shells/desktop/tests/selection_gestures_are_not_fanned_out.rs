@@ -61,15 +61,33 @@ fn join_is_intercepted_before_the_per_entity_fan_out() {
     );
 }
 
+/// **Join reads the WHOLE ordered selection, never an arbitrary pair.**
+///
+/// ⚠️ **A claim desta gate MUDOU na W-J4.** Ela exigia `if let [a, b] = …[..]` —
+/// exatamente dois — pelo medo certo: *"um `.first()`/`.get(1)` aceitaria três
+/// corpos em silêncio e ligaria dois arbitrários"*. A W-J4 responde esse medo de
+/// outro jeito, melhor: três corpos fazem uma **CORRENTE** sobre a sequência
+/// inteira, então nada é arbitrário e nada é descartado.
+///
+/// O que continua sendo o perigo é ler um SUBCONJUNTO: o pedido tem de ser sobre
+/// a seleção inteira (um booleano + a ordem), e a construção dos pares mora na
+/// `joint_draw::join_chain` (gateada headless), não aqui.
 #[test]
-fn the_join_request_carries_exactly_two_bodies() {
+fn join_reads_the_whole_ordered_selection() {
     let arm = physics_edit_arm();
     assert!(
-        arm.contains("if let [a, b] = inspector_selection[..]"),
-        "the Join interception no longer destructures the selection as exactly \
-         two entities. A `.first()`/`.get(1)` pair would silently accept three \
-         selected bodies and join an arbitrary two of them"
+        arm.contains("inspector_selection.len() >= 2"),
+        "a interceptação do Join não pergunta mais pela seleção INTEIRA — se ela \
+         voltar a destruturar um par, três corpos marcados perdem um elo em \
+         silêncio"
     );
+    for forbidden in ["inspector_selection[..]", ".get(1)"] {
+        assert!(
+            !arm.contains(forbidden),
+            "a interceptação do Join volta a pegar um SUBCONJUNTO ({forbidden}) — \
+             a corrente é sobre a sequência toda"
+        );
+    }
 }
 
 /// **Bake is intercepted before the fan-out too (W4).**

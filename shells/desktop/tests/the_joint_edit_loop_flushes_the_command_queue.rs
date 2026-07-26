@@ -21,25 +21,60 @@
 //! the_queue_is_flushed`. This gate pins that the render loop actually MAKES that
 //! call, in the joint loop, before it moves on. Mutation: delete the
 //! `apply_editor_commands` call from the joint loop and this goes red.
+//!
+//! ⚠️ **The "inside the loop" half is asserted by BRACE MATCHING, not by a
+//! landmark that follows.** The first version bounded the flush with the block
+//! that came next (`create_joint(`) — and W-J4 legitimately replaced that call
+//! with `join_chain(`, so a gate about the FLUSH went red over a rename it had no
+//! opinion about. A byte landmark is a proxy that expires; the loop's own extent
+//! is the property.
 
 const SRC: &str = include_str!("../src/render_loop/mod.rs");
 
-fn at(needle: &str) -> usize {
-    SRC.find(needle).unwrap_or_else(|| {
-        panic!(
-            "`{needle}` vanished from the render loop — if it was renamed, update this gate \
-             (and confirm the §12 joint edit still flushes the command queue)"
-        )
-    })
+/// The byte range of the `for … in &joint_edits { … }` body, by brace matching.
+fn joint_loop_body() -> (usize, usize) {
+    let head = SRC
+        .find("for &(bits, edit) in &joint_edits {")
+        .unwrap_or_else(|| {
+            panic!(
+                "the §12 joint-edit loop vanished from the render loop — if it was \
+                 restructured, update this gate (and confirm the edit still flushes \
+                 the editor command queue per edit)"
+            )
+        });
+    let open = SRC[head..].find('{').expect("the loop opens a block") + head;
+    let mut depth = 0usize;
+    for (i, c) in SRC[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return (open, open + i);
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("the joint-edit loop body is never closed");
 }
 
 #[test]
 fn the_joint_edit_loop_flushes_the_command_queue() {
-    let apply = at("inspector_joint::apply_joint_edit(");
-    // The flush the fix added. `apply_editor_commands` appears nowhere else in
-    // mod.rs (every other flush lives in inspector_commits.rs), so its mere
-    // presence here IS the joint-loop flush.
-    let flush = SRC.find("apply_editor_commands(").unwrap_or_else(|| {
+    let (open, close) = joint_loop_body();
+    let body = &SRC[open..close];
+    // `apply_editor_commands` appears nowhere else in mod.rs (every other flush
+    // lives in inspector_commits.rs), so its presence INSIDE this body IS the
+    // joint-loop flush.
+    let apply = body
+        .find("inspector_joint::apply_joint_edit(")
+        .unwrap_or_else(|| {
+            panic!(
+                "`apply_joint_edit` is no longer called inside the joint-edit loop — \
+                 if the §12 edits moved, update this gate and confirm they still flush."
+            )
+        });
+    let flush = body.find("apply_editor_commands(").unwrap_or_else(|| {
         panic!(
             "the §12 joint-edit loop no longer flushes the editor command queue — \
              `apply_joint_edit` only QUEUES a SetComponent, so without the flush a \
@@ -50,12 +85,12 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
              for every other Inspector edit type."
         )
     });
-    // The create block that follows the joint loop — the flush must be BEFORE it,
-    // i.e. inside the loop, not stranded somewhere later.
-    let create = at("inspector_joint::create_joint(");
+    // PER edit: the flush follows the apply within the SAME loop body, which is
+    // the whole point — `apply_joint_edit` read-modify-writes the whole component,
+    // so a second edit that read a not-yet-applied first one would drop it.
     assert!(
-        apply < flush && flush < create,
-        "the flush must sit between `apply_joint_edit` and `create_joint` (i.e. \
-         inside the joint-edit loop): apply@{apply} flush@{flush} create@{create}"
+        apply < flush,
+        "the flush must follow `apply_joint_edit` inside the loop body: \
+         apply@{apply} flush@{flush} (body {open}..{close})"
     );
 }

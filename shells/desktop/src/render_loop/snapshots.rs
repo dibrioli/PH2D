@@ -115,6 +115,8 @@ pub(super) fn publish(
     // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
     // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
     joint_body_pick: Option<(u64, bool)>,
+    // W-J4: o gesto de desenhar um joint está ARMADO (o botão pinta Pressed).
+    join_draw_armed: bool,
     // W-J2/W-J2b: every grabbable joint anchor this frame, resolved through the
     // bridge's anchor door (`PhysicsBridge::joint_anchor_world`) — the SAME door
     // the A pivot is synced from, so no two dots can describe different frames.
@@ -731,18 +733,28 @@ pub(super) fn publish(
     // ⚠️ `sel.len() == 2`, not just `selected_count == 2`: `all()` on an empty
     // slice is TRUE, so a count that disagreed with the slice would offer the
     // button over nothing at all.
-    let can_join = selected_count == 2
-        && sel.len() == 2
+    // ⚠️ **`>= 2`, not `== 2`** (W-J4): three or more selected bodies make a
+    // CHAIN of `n − 1` joints, and the count travels to the panel so the button
+    // can SAY so. A label that says "Join Selected Bodies" over a five-body
+    // selection is how an artist discovers a chain by accident.
+    let join_count = if sel.len() >= 2
+        && selected_count == sel.len()
         && sel.iter().all(|&b| {
             let e = ph2d_ecs::Entity::from_bits(b);
             sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some()
                 && sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some()
-        });
+        }) {
+        u8::try_from(sel.len()).unwrap_or(u8::MAX)
+    } else {
+        0
+    };
+
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
         super::inspector_physics::build_physics_info(
             sim.world(),
             b,
-            can_join,
+            join_count,
+            join_draw_armed,
             join_kind_tag,
             bake_range,
             bake_channels_tag,

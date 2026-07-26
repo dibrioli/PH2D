@@ -254,6 +254,31 @@ pub(crate) fn create_joint(
     b_bits: u64,
     kind: JointKind,
 ) -> Option<Entity> {
+    create_joint_at(sim, a_bits, b_bits, kind, None)
+}
+
+/// The same creation, with the anchors the GESTURE named (W-J4).
+///
+/// `at` is `Some((anchor_a_world, anchor_b_world))` for the canvas gesture —
+/// press point and release point — and `None` for the selection route, which has
+/// no points to offer and lets the seed policy place them (`anchored: false`).
+///
+/// ⚠️ **With points, the joint is born ALREADY anchored**: the locals are
+/// converted here, against each body's authored pose, and `anchored: true` tells
+/// the reconcile to READ them rather than re-derive from the policy. Going
+/// through the seed instead would throw the gesture away — the policy puts a
+/// spring's B end at the body's CENTRE, which is exactly the *"anchors are born
+/// in centres, not where I dragged"* failure this wave exists to remove.
+///
+/// One function for both routes, so the naming, the two `a == b` guards, the
+/// unique label and the `RootOrder` stamp cannot drift between them.
+pub(crate) fn create_joint_at(
+    sim: &mut SimWorld,
+    a_bits: u64,
+    b_bits: u64,
+    kind: JointKind,
+    at: Option<([f32; 2], [f32; 2])>,
+) -> Option<Entity> {
     let (a, b) = (Entity::from_bits(a_bits), Entity::from_bits(b_bits));
     if a == b {
         return None;
@@ -271,7 +296,29 @@ pub(crate) fn create_joint(
         return None;
     }
     let label = crate::name_unique::unique_name(sim, "Joint");
-    let mid = (pa + pb) * 0.5;
+    // The authored poses of the two bodies — what a body-local anchor is
+    // measured against (the seed uses the same `rest`, and using the LIVE pose
+    // would bake a swing into the local; W-AnchorFollow).
+    let pose = |e: Entity| {
+        sim.world()
+            .get::<Transform>(e)
+            .map(|t| [t.translation.x, t.translation.y, t.rotation])
+    };
+    let anchored = at.and_then(|(wa, wb)| {
+        // A shared-point kind is ONE place: the press point is the pivot, and
+        // both bodies are anchored to it. A two-ended kind gets both points.
+        let wb = if kind.shares_a_point() { wa } else { wb };
+        Some((
+            ph2d_physics_ecs::PhysicsWorld::local_anchor_at_pose(pose(a)?, wa),
+            ph2d_physics_ecs::PhysicsWorld::local_anchor_at_pose(pose(b)?, wb),
+            wa,
+        ))
+    });
+    // The display pivot: the A anchor when the gesture named one (the value
+    // `sync_joint_pivots` will keep deriving), the midpoint otherwise.
+    let origin = anchored.map_or((pa + pb) * 0.5, |(_, _, wa)| {
+        ph2d_core::Vec2::new(wa[0], wa[1])
+    });
     let joint = sim
         .world_mut()
         .spawn((
@@ -280,9 +327,12 @@ pub(crate) fn create_joint(
                 body_a: stable_name_id(&name_a),
                 body_b: stable_name_id(&name_b),
                 kind,
+                local_a: anchored.map_or([0.0, 0.0], |(la, _, _)| la),
+                local_b: anchored.map_or([0.0, 0.0], |(_, lb, _)| lb),
+                anchored: anchored.is_some(),
                 ..PhysicsJoint::default()
             },
-            Transform::from_translation(mid),
+            Transform::from_translation(origin),
         ))
         .id();
     // Every root object gets an explicit z, or the tree falls back to sorting

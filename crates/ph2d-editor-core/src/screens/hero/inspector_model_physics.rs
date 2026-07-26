@@ -74,20 +74,26 @@ pub struct InspectorPhysicsInfo {
     /// then discarded. `0.0` is the common case, and the label collapses to the
     /// plain `Bake Ns` form there.
     pub bake_start_seconds: f32,
-    /// Is the current selection exactly **two** bodies? Then §11 offers the
-    /// Join button (W3).
+    /// **How many BODIES the selection holds** — 0 when the selection route is
+    /// not offered at all, 2 joins a pair, more makes a CHAIN of `n − 1` joints
+    /// (W-J4), and the button's label says which.
     ///
-    /// The precondition is answered by the shell, which is the half that owns
-    /// the selection — the panel sees one entity at a time and could not work
-    /// it out. It is a snapshot field rather than a check inside the painter
-    /// for the usual reason: the painter decides whether to OFFER the button
-    /// and the event handler decides whether to HONOUR the click, and both
-    /// have to read the same fact.
-    pub can_join: bool,
+    /// Only the shell can see this: the panel is handed one entity at a time.
+    ///
+    /// ⚠️ **This replaced a `can_join: bool` that sat beside it**, and the pair
+    /// diverged the day the chain arrived — the painter keyed on the count and
+    /// the event handler on the flag, so a fixture that set one without the
+    /// other painted a button whose click was refused. `>= 2` is the whole
+    /// predicate, asked of ONE number.
+    pub join_count: u8,
+    /// **The canvas drawing gesture is ARMED** (the *Draw Joint* button paints
+    /// pressed). Runtime state of the shell, mirrored for the painter.
+    pub join_draw_armed: bool,
     /// The kind the join-kind selector will create, `JointKind` tag (`0` Pin ·
     /// `1` Spring · `2` Rope · `3` Weld). App state the shell owns (the pending
     /// choice for the next *Join Selected Bodies*), mirrored here so the segmented
-    /// paints its selection. Only meaningful when `can_join`.
+    /// paints its selection. Qualifies BOTH creation routes (the button and the
+    /// canvas gesture), so it is meaningful whenever §11 shows a body.
     pub join_kind_tag: u8,
     /// Is this collider a **sensor** (trigger, W7)? Passes through, reports overlaps; the overlay lights it up. `false` is solid.
     pub is_sensor: bool,
@@ -352,6 +358,10 @@ pub enum PhysicsFieldEdit {
     /// second copy of either would be a second answer to a question only one
     /// half can answer.
     Join,
+    /// **ARM the canvas drawing gesture** (W-J4) — no operand, like the §12
+    /// eyedroppers: the shell holds the armed flag and the two bodies are named
+    /// by the press and the release, not by anything the panel can see.
+    JoinDraw,
     /// Bake the selection's simulated motion into timeline curves (W4).
     ///
     /// Carries no range for the same reason `Join` carries no bodies: the

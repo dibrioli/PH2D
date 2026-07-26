@@ -31,6 +31,8 @@ fn with_body() -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
         entity_bits: ENTITY,
         has_body: true,
+        join_count: 0,
+        join_draw_armed: false,
         kind_tag: 0,
         shape_tag: 1,
         radius: 0.4,
@@ -40,7 +42,6 @@ fn with_body() -> InspectorPhysicsInfo {
         restitution: 0.0,
         friction: 0.5,
         layer: 0,
-        can_join: false,
         join_kind_tag: 0,
         bake_seconds: 5.0,
         // A full-range bake starts at 0; W-BakeRange's partial start is exercised
@@ -471,7 +472,7 @@ fn the_panel_consumes_the_add_click_so_the_section_is_reachable() {
 /// **Join Selected Bodies is offered only when the shell says two bodies are
 /// selected, and it is CLICKABLE when it is.**
 ///
-/// `can_join` is computed by the shell — the only half that can see a
+/// the join COUNT is computed by the shell — the only half that can see a
 /// selection — and read twice: the painter decides whether to offer the
 /// button, the event arm decides whether to honour the click. Both halves are
 /// asserted here, because a button that is painted and not honoured (or
@@ -488,24 +489,26 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
         h: 2400.0,
     };
     let joinable = InspectorPhysicsInfo {
-        can_join: true,
+        join_count: 2,
         ..with_body()
     };
 
-    // Painted only when joinable...
-    for can in [false, true] {
+    // Painted only when the selection holds two or more bodies — the COUNT is
+    // the whole predicate now (W-J4), and the painter and the event handler read
+    // the SAME number.
+    for count in [0u8, 1, 2, 4] {
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_physics(Some(InspectorPhysicsInfo {
-            can_join: can,
+            join_count: count,
             ..with_body()
         }));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
             rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN),
-            can,
-            "the Join button was painted for can_join={can}"
+            count >= 2,
+            "a presença do botão Join tem de seguir a CONTAGEM (join_count={count})"
         );
     }
 
@@ -519,14 +522,14 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
     );
     assert!(
         click(with_body(), ids::INSP_PHYS_JOIN).is_empty(),
-        "Join fired with can_join=false — the refusal lives only in the paint \
+        "Join fired with join_count=0 — the refusal lives only in the paint \
          loop, which is not a refusal"
     );
 }
 
 /// **The join-kind selector picks each kind, and only when joinable.** It
 /// qualifies the Join button (create the TYPE you want, not a Pin you convert),
-/// so it lives under the same `can_join` gate: painted only for two selected
+/// so it lives under the same the join COUNT gate: painted only for two selected
 /// bodies, and honoured only then — dim is not a refusal
 /// ([[feedback_disabled_button_still_dispatches]]).
 #[test]
@@ -541,41 +544,27 @@ fn join_kind_chips_pick_their_kind_only_when_joinable() {
         h: 2400.0,
     };
 
-    // Each chip is painted only when joinable, and picks its own kind.
-    for can in [false, true] {
+    // ⚠️ **Cada chip é oferecido SEMPRE que a §11 mostra um corpo** — a claim
+    // MUDOU na W-J4, e a antiga (*"só quando há dois selecionados"*) virou falsa
+    // por DESENHO: o kind qualifica as DUAS rotas de criação, e a de DESENHAR não
+    // precisa de seleção nenhuma. Gatear os chips tornaria o TIPO inescolhível
+    // exatamente para a rota que removeu o passo da seleção.
+    for count in [0u8, 2] {
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_physics(Some(InspectorPhysicsInfo {
-            can_join: can,
+            join_count: count,
             ..with_body()
         }));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in &ids::INSP_PHYS_JOIN_KIND {
-            assert_eq!(
+            assert!(
                 rects.iter().any(|(n, _)| *n == id),
-                can,
-                "join-kind chip painted for can_join={can}"
+                "o chip de kind tem de ser oferecido com join_count={count} — ele \
+                 qualifica o gesto de desenhar, que não seleciona nada"
             );
         }
-    }
-
-    // ...and honoured only when joinable.
-    for (i, &id) in ids::INSP_PHYS_JOIN_KIND.iter().enumerate() {
-        let joinable = InspectorPhysicsInfo {
-            can_join: true,
-            ..with_body()
-        };
-        expect(
-            &click(joinable, id),
-            PhysicsFieldEdit::JoinKind(i as u8),
-            &format!("join-kind chip {i}"),
-        );
-        assert!(
-            click(with_body(), id).is_empty(),
-            "join-kind chip {i} fired with can_join=false — a paint-loop refusal \
-             is not a refusal"
-        );
     }
 }
 
@@ -1558,5 +1547,74 @@ fn selecting_a_zone_shows_its_authored_area_values() {
         val(ids::INSP_PHYS_AREA_FORM_DRAG),
         2.5,
         "Shape Drag did not sync"
+    );
+}
+
+// ── W-J4: as duas rotas de criação ───────────────────────────────────────────
+
+/// **O botão *Draw Joint* é SEMPRE oferecido, e o clique chega ao barramento.**
+///
+/// ⚠️ Não gateado em DOIS corpos, e é o ponto: o gesto nomeia os dois corpos
+/// apontando, então exigir a seleção exata antes o poria atrás do próprio passo
+/// que ele remove. Ele ainda precisa de UM corpo — a face vazia da §11
+/// early-returna depois da porta *Add Physics Body*, e um joint precisa de um
+/// corpo para existir. `click_at` REAL — um `WidgetEvent` sintético pula a checagem de
+/// focabilidade do store e ficaria verde sobre um botão morto sob o mouse (a
+/// cicatriz das 36 células do W2c).
+///
+/// Mutação-testada: tirar o `ids::INSP_PHYS_JOIN_DRAW` do `populate` deixa o
+/// retângulo pintado e o clique não vira ação — RED.
+#[test]
+fn the_draw_joint_button_is_always_offered_and_reaches_the_bus() {
+    for (what, info) in [
+        ("UM corpo selecionado", with_body()),
+        (
+            "dois corpos (as duas rotas juntas)",
+            InspectorPhysicsInfo {
+                join_count: 2,
+                ..with_body()
+            },
+        ),
+    ] {
+        let acts = click_real(info, ids::INSP_PHYS_JOIN_DRAW);
+        assert!(
+            acts.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPhysicsEdit {
+                    edit: ph2d_editor_core::screens::hero::PhysicsFieldEdit::JoinDraw,
+                    ..
+                }
+            )),
+            "com {what}, o clique em Draw Joint não virou `JoinDraw`: {acts:?}"
+        );
+    }
+}
+
+/// **Sem 2 corpos, a rota por seleção NÃO é oferecida** — e a de desenhar segue
+/// (o gate acima). Um botão que pede uma seleção que não existe é um botão que
+/// só pode recusar.
+#[test]
+fn the_selection_button_is_absent_without_two_bodies() {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(InspectorPhysicsInfo {
+        join_count: 0,
+        ..with_body()
+    }));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN),
+        "Join Selected foi pintado sem uma seleção que o justifique"
+    );
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN_DRAW),
+        "…e Draw Joint tem de continuar lá"
     );
 }

@@ -873,6 +873,17 @@ pub(crate) struct App {
     /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime
     /// only: the drag is not the document, the anchor it writes is.
     pub(crate) joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
+    /// **The canvas joint-drawing gesture is ARMED** (W-J4): the next press on a
+    /// body starts a rubber band, and the release on another body creates the
+    /// joint with the anchors AT the two points.
+    ///
+    /// Armed by the §11 *Draw Joint* button, disarmed by a completed creation —
+    /// and deliberately NOT by a refusal, so a release into empty space leaves
+    /// the gesture ready for another try (the eyedropper's precedent).
+    /// Runtime-only: it is what the pointer is about to do, not the document.
+    pub(crate) joint_draw_armed: bool,
+    /// The gesture in flight, or `None`. See [`crate::joint_draw`].
+    pub(crate) joint_draw: Option<crate::joint_draw::JointDraw>,
     /// **The pending join KIND** for the next *Join Selected Bodies* — a
     /// `JointKind` tag (`0` Pin · `1` Spring · `2` Rope · `3` Weld). The §11
     /// join-kind selector sets it; `create_joint` reads it, so the artist creates

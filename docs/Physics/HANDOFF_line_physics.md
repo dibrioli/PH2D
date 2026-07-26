@@ -4696,3 +4696,135 @@ comprimento a grade da cena, e nenhum dos dois conjuntos de candidatos existe
 aqui — os nove pontos de collider da âncora não respondem a nenhuma das duas
 perguntas · W-J4 criar onde se olha · W-J5 Slider · W-J6 servo + guincho · W-J7
 break force · W-J8 higiene do par · W-JG grupo carrega o rig.
+
+---
+
+## W-J4 — Criar onde se olha (2026-07-25, cena `=46`, pendente de smoke)
+
+O joint nascia de uma **seleção**: marque dois corpos, aperte o botão. Funciona, e
+tem um custo que só aparece no gesto seguinte — **as âncoras nascem onde a
+política de semeadura decide**, nunca onde o artista estava apontando. Amarrar
+uma corda na PONTA de uma prancha era: criar, selecionar a joint, arrastar o dot
+(ou digitar dois números no Position). Agora:
+
+**Aperte o corpo A, arraste, solte no corpo B.** As âncoras nascem **NOS dois
+pontos**, e uma corda/mola ganha de brinde o **comprimento que o arrasto mediu**
+— um número que ninguém digitou.
+
+**Medido nesta armação** (a cena 46, sonda headless antes desta mensagem):
+
+| rota | prancha assenta | rotação |
+|---|---|---|
+| **desenhada** (corda até a PONTA direita) | `(-3,748, 4,226)` | **104,2°** — pendurada pela ponta |
+| **pelo botão** (semeadura: centro de B) | `(-3,034, 5,036)` | **0,0°** — nivelada |
+
+*Essa é a diferença entre as duas rotas, num número.* E as duas FICAM.
+
+### Uma porta, com os pontos OPCIONAIS
+
+`create_joint_at(sim, a, b, kind, at: Option<([f32;2],[f32;2])>)` — o
+`create_joint` de antes **delega com `None`**, então a rota da seleção é
+byte-idêntica ao que era (gate `the_selection_route_still_seeds_its_anchors`).
+Com `Some`, os dois pontos são convertidos **uma vez** contra a pose de REPOUSO
+(`local_anchor_at_pose`, a MESMA conversão do seed da W-AnchorFollow) e o joint
+nasce `anchored: true` — ⚠️ **sem isso o reconcile faria o seed e jogaria os dois
+pontos no lixo**, com o joint parecendo funcionar.
+
+⚠️ **Um kind que compartilha um ponto usa a PRESSÃO nas duas pontas**: dois
+corpos no MESMO lugar é o que um pino *é*, então o release só nomeia o parceiro
+(`shares_a_point()`, a porta que o Weld criou).
+
+### A CORRENTE — a razão de a rota por seleção sobreviver
+
+Com 3+ corpos marcados o botão passa a dizer **`Chain 4 Selected Bodies`** e faz
+**N−1 joints em UM passo de undo** (os spawns caem no mesmo frame, e o undo
+global é por diff de fim de frame). Sete elos à mão são sete gestos; marcá-los é
+um. ⚠️ **`join_count: u8` substituiu o `can_join: bool`** — o pintor e o handler
+leem o MESMO número, e quando eram um bool ao lado de uma contagem eles
+discordaram no dia em que a corrente chegou (o meu próprio gate novo pegou).
+
+### O gesto, e o que ele recusa
+
+Banda **âmbar TRACEJADA** do ponto de pressão ao cursor (tracejada porque o joint
+ainda não existe) + anel na origem, desenhada **FORA do gate `show`** do overlay:
+o contorno de collider é uma preferência de vista, e um gesto em andamento não
+pode ser invisível por causa dela (gate). Release no vazio ou no MESMO corpo =
+**toast + o gesto SEGUE ARMADO** — soltar no mundo não cria um pino-no-mundo,
+isso é outra coisa.
+
+### Gates e mutações
+
+9 comportamentais (`joint_draw_tests.rs`) + 5 arch de shell
+(`tests/joint_draw_gesture.rs`) + 2 de seam. **9 mutações, 9 sangram** — ⚠️ e a
+**M1 sobreviveu primeiro**, nomeando um buraco real: todos os gates chamavam
+`create_joint_at` **direto**, então passar `None` no *release* deixava 8 verdes.
+O gate que faltava (`the_release_hands_the_two_points_to_the_creation_door`) é
+arch, porque aquele caminho exige janela.
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M1 | release descarta os dois pontos | (o gate NOVO; os 8 eram verdes) |
+| M2 | joint desenhado sem `anchored` | âncora cai no centro |
+| M3 | pin não compartilha a pressão | B fora do ponto |
+| M4 | `windows(2)` → estrela | a corrente perde a ORDEM |
+| M5 | banda gateada em `show` | o gesto fica invisível |
+| M6 | Draw fora do `populate` | morto sob o mouse |
+| M7 | rótulo fixo | o botão não CONTA |
+| M8 | recusa desarma o gesto | 2ª tentativa impossível |
+| M9 | registro fora do `populate` do IRMÃO | o wiring-parity nomeia o id |
+| M10 | flush fora do laço de edição de joint | o "às vezes funciona" volta |
+
+⚠️ **Três defeitos de gate, os três meus e todos de PROXY** (a família da âncora
+em bytes): `find(')')` truncava a lista de argumentos no `to_bits()` interno · um
+`find("fn dispatch_pointer")` que **não existe** (é `on_mouse_input`) tornava a
+comparação de ordem de bytes vazia — e o 1º `pick_sprites_at_world` do arquivo
+mora no HELPER do eyedropper, acima do handler · e o teste de adjacência do `if
+show` pegava o `if show` LEGÍTIMO do fantasma.
+
+### Duas afirmações antigas ficaram FALSAS por desenho, e foram reapontadas
+
+Os chips de **Join As** passam a ser oferecidos **sem seleção** (o kind qualifica
+as DUAS rotas, e gateá-lo tornaria o TIPO inescolhível justamente na rota que
+removeu a seleção); e `the_join_request_carries_exactly_two_bodies` — cujo medo
+era *"unir dois arbitrários de três"* — é melhor respondido pela CORRENTE, então
+virou `join_reads_the_whole_ordered_selection`. As duas com o motivo escrito.
+
+**Zero componente, zero schema, zero id de física** (`PROJECT_SCHEMA` **31**,
+registro **21**); um id de painel (`INSP_PHYS_JOIN_DRAW`). **c9 byte-idêntico**
+(`4e862761…`, 83 corpos) — a wave é autoria.
+
+**LOC — dois splits, os dois por RESPONSABILIDADE:** `populate.rs` (601) →
+`populate_physics.rs` (o §11+§12; o mesmo corte que a linha já fez em
+`inspector_model_physics.rs` e `inspector_physics_area.rs` — a churn de física
+passa a morar num arquivo desta linha) · `apply_physics_event` (201) →
+`click_edit` (*que CONTROLE foi apertado* × *que NÚMERO foi digitado*, o que as
+duas metades já eram), e o push no barramento passou de **duas cópias idênticas a
+uma**. ⚠️ **E o split expôs um gate por PROXY:** o `architecture_panel_wiring_parity`
+enumerava o nome `populate.rs`, então um code move puro o deixou **VERMELHO
+acusando "dead on click"** — ele passou a casar a família `populate*.rs` por
+PREFIXO (o cap de LOC *obriga* painel ocupado a partir o populate), e a mutação
+M9 prova que continua sangrando.
+
+⚠️ **E um SEGUNDO gate por proxy expirou na mesma wave, por outro caminho:** o
+`the_joint_edit_loop_flushes_the_command_queue` (da W-JointParams) provava
+*"o flush está DENTRO do laço"* limitando-o pelo bloco que vinha DEPOIS
+(`create_joint(`) — e esta wave legitimamente trocou aquela chamada por
+`join_chain(`, então um gate sobre o FLUSH ficou vermelho por um rename sobre o
+qual ele não tem opinião. Agora o "dentro do laço" é afirmado por **casamento de
+chaves** sobre o próprio `for … in &joint_edits`: a extensão do laço é a
+propriedade, um marco em bytes é um proxy que vence (a M10 sangra com o
+diagnóstico certo). **Duas instâncias da mesma doença numa wave** — a família de
+[[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]].
+
+**Smoke: `PH2D_PHYSICS_SMOKE=46`** (nenhum joint na cena — você cria os dois:
+desenhe a corda do poste até a PONTA da prancha; depois marque gancho + 3 elos e
+aperte `Chain 4 Selected Bodies` → 3 joints, medido, com os elos em
+`(2,661, 6,276)` / `(2,192, 5,111)` / `(1,224, 4,322)`; Ctrl+Z desfaz a corrente
+inteira num passo).
+
+**Aberto:** o gesto não tem ímã (o release pousa onde o cursor está — os nove
+pontos de collider do snap da W-J2 são candidatos naturais, mas *soltar* é um
+gesto de escolher PARCEIRO e o snap ali competiria com a escolha do corpo) ·
+começar o arrasto no VAZIO não faz marquee nem nada (o Down modal só é tomado
+sobre um corpo) · W-J5 Slider · W-J6 servo + guincho · W-J7 break force · W-J8
+higiene do par · W-JG grupo carrega o rig.

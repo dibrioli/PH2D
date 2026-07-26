@@ -151,6 +151,33 @@ pub(super) fn joint_marks(
 /// dizia onde ele PARARIA.
 pub(super) const JOINT_GHOST_RGBA: [f32; 4] = [0.98, 0.75, 0.25, 0.28]; // LITERAL-COLOR-OK: overlay de joint (fantasma)
 
+/// **A BANDA ELÁSTICA do gesto de criar** (W-J4) — âmbar, tracejada, do ponto do
+/// press até o cursor.
+///
+/// ⚠️ **Desenhada mesmo com o overlay DESLIGADO** (tecla `B`), ao contrário de
+/// todo o resto deste módulo: os outros traços são ANOTAÇÃO de coisas que
+/// existem (*onde está o collider, até onde vai o limite*) e o artista escolhe
+/// vê-los; esta é o **feedback de um gesto em andamento**, e um gesto que não se
+/// vê é um gesto que parece não ter começado.
+///
+/// Tracejada porque o joint ainda **não existe** — a linha de posse sólida é a de
+/// um vínculo real (W-J1), e usar o mesmo traço aqui prometeria que já há um.
+pub(super) fn draw_band(
+    band: Option<([f32; 2], [f32; 2])>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let (from, to) = band?;
+    let a = screen_of(camera, window, from);
+    let b = screen_of(camera, window, to);
+    let mut p = BezPath::new();
+    // Um anel no ponto de origem: ele é a ÂNCORA que vai nascer ali, e sem ele o
+    // press não deixa marca nenhuma até o cursor andar.
+    ring_px(a, JOINT_DOT_PX * 2.0, &mut p);
+    dashed(a, b, &mut p);
+    Some(p)
+}
+
 /// A silhueta de B na pose que `limit` permite, ou `None` quando não há arrasto
 /// de limite em voo / o corpo B não tem collider.
 ///

@@ -426,6 +426,11 @@ pub(crate) fn paint_join_gesture(
     w: f32,
     y: f32,
     join_kind_tag: u8,
+    // Quantos corpos a seleção tem (0 = a rota por seleção não é oferecida).
+    // Com 2 o botão liga um par; com N>2 ele faz uma CORRENTE de N−1 joints.
+    join_count: u8,
+    // O gesto de canvas está armado? (pinta o botão Pressed)
+    draw_armed: bool,
 ) -> f32 {
     // Choose the TYPE first — defaults to Pin, so the common case is still one
     // click on the button below.
@@ -444,18 +449,72 @@ pub(crate) fn paint_join_gesture(
         &JOIN_KIND_LABELS,
         join_kind_tag,
     );
+    // **DUAS rotas de criação, e cada uma aparece onde faz sentido.**
+    //
+    // *Desenhar* (W-J4) é sempre oferecido: aponte um corpo, arraste até outro, e
+    // as âncoras nascem NOS dois pontos. *Join Selected* precisa de uma seleção
+    // de 2+ corpos — fato que só a shell vê — e com 3 ou mais faz uma CORRENTE.
+    // Nenhuma escola da pesquisa tem as duas; o rótulo do 2º botão diz o que ele
+    // vai fazer, em vez de deixar o artista descobrir clicando.
+    //
     // A LITERAL `hit_index.register` id, the only form
     // `architecture_panel_wiring_parity` can see.
     let rect = Rect::new(x, yy, w, ROW_H_PX);
-    let btn = Button::new(ids::INSP_PHYS_JOIN, "Join Selected Bodies")
+    let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, "Draw Joint on Canvas")
         .kind(ButtonKind::Default)
-        .state(
+        .state(if draw_armed {
+            ButtonState::Pressed
+        } else {
             store
-                .button_state(ids::INSP_PHYS_JOIN)
-                .unwrap_or(ButtonState::Normal),
-        );
+                .button_state(ids::INSP_PHYS_JOIN_DRAW)
+                .unwrap_or(ButtonState::Normal)
+        });
     paint_button(&btn, rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_PHYS_JOIN, rect);
+    hit_index.register(ids::INSP_PHYS_JOIN_DRAW, rect);
     yy += ROW_H_PX + Spacing::Sm.px();
+
+    if join_count >= 2 {
+        let label = join_button_label(join_count);
+        let rect = Rect::new(x, yy, w, ROW_H_PX);
+        let btn = Button::new(ids::INSP_PHYS_JOIN, &label)
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_PHYS_JOIN)
+                    .unwrap_or(ButtonState::Normal),
+            );
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_PHYS_JOIN, rect);
+        yy += ROW_H_PX + Spacing::Sm.px();
+    }
     yy
+}
+
+/// **O rótulo do botão da rota por seleção diz quantos corpos ele vai ligar.**
+///
+/// Dois = *Join Selected Bodies*; três ou mais = *Chain N Selected Bodies*. Um
+/// rótulo fixo sobre cinco corpos é como um artista descobre a CORRENTE por
+/// acidente — e este texto é a única coisa na tela que sabe a diferença.
+fn join_button_label(join_count: u8) -> String {
+    if join_count > 2 {
+        format!("Chain {join_count} Selected Bodies")
+    } else {
+        "Join Selected Bodies".to_string()
+    }
+}
+
+#[cfg(test)]
+mod join_label_tests {
+    use super::join_button_label;
+
+    /// Mutação-testada: devolver sempre `"Join Selected Bodies"` faz o caso de 4
+    /// ficar RED.
+    #[test]
+    fn the_label_names_the_chain_when_there_is_one() {
+        assert_eq!(join_button_label(2), "Join Selected Bodies");
+        assert_eq!(join_button_label(4), "Chain 4 Selected Bodies");
+        // O botão não é oferecido abaixo de 2, mas o rótulo não deve inventar
+        // uma corrente se algum dia for.
+        assert_eq!(join_button_label(0), "Join Selected Bodies");
+    }
 }

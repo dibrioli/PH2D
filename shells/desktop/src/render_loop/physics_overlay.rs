@@ -404,6 +404,9 @@ pub(super) fn draw(
     // O limite sendo POSADO agora `(joint, rad relativo)` — desenha o fantasma
     // de B (W-J3). `None` sem arrasto de limite em voo.
     posed_limit: Option<(ph2d_ecs::Entity, f32)>,
+    // W-J4: a banda elástica do gesto de criar `(de, para)` em mundo. Desenhada
+    // mesmo com `show` FALSO — é gesto, não anotação (ver `draw_band`).
+    join_band: Option<([f32; 2], [f32; 2])>,
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
@@ -462,6 +465,17 @@ pub(super) fn draw(
     //
     // W-J1: uma cor por FATO (glifo · posse · limite · deformação), então o
     // laço percorre pares — a mesma forma que o `outlines` já usa.
+    // A BANDA do gesto de criar, ANTES de tudo e SEM o gate de `show`: ela é o
+    // feedback de algo que o artista está fazendo agora.
+    if let Some(band) = super::physics_overlay_joints::draw_band(join_band, camera, window) {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(OUTLINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(super::physics_overlay_joints::JOINT_RGBA)),
+            None,
+            &band,
+        );
+    }
     // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
     // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
     if show

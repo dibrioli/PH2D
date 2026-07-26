@@ -50,6 +50,23 @@ pub(crate) fn selection_extent(snap: &TimelineViewSnapshot) -> Option<(f64, f64)
     (hi > lo).then_some((lo, hi))
 }
 
+/// The x of a grip bar, clamped to stay INSIDE the time area and clear of the
+/// label splitter at `time_x` (Enio, 2026-07-26: a grip on the divider fought its
+/// panel-resize drag). `min_x` sits just right of the splitter's grab strip
+/// (`SPLIT_GRIP`) plus the grip's own hit padding, so a selection starting at
+/// Frame 0 puts its left grip a hair right of the border instead of on the
+/// divider; `max_x` keeps the right grip off the far edge. Pure so the geometry is
+/// gate-able. Mid-timeline selections have room and come back unclamped.
+pub(crate) fn grip_bar_x(right: bool, x_lo: f32, x_hi: f32, time_x: f32, right_edge: f32) -> f32 {
+    let min_x = time_x + geom::SPLIT_GRIP + HIT_PAD;
+    let max_x = (right_edge - HANDLE_W - HIT_PAD).max(min_x);
+    if right {
+        (x_hi + GAP).clamp(min_x, max_x)
+    } else {
+        (x_lo - GAP - HANDLE_W).clamp(min_x, max_x)
+    }
+}
+
 /// Paint the selection's time box + its two grips over the rows, and register a
 /// [`TimelineHitKind::SelectionTimeHandle`] per grip. Call AFTER the rows/diamonds
 /// so the grips register last (they win the hit where they sit — though the `GAP`
@@ -78,15 +95,13 @@ pub(crate) fn paint_selection_box(
     }
     let accent = resolve(ColorToken::Accent, theme);
     // A thin bracket line along the top of the rows tying the two grips together,
-    // so the box reads as one selection rather than two loose bars.
-    let top = Rect::new(x_lo, rows.y, (x_hi - x_lo).max(0.0), StrokeToken::Thin.px());
+    // so the box reads as one selection rather than two loose bars (clamped to the
+    // time area so it never bleeds into the label column).
+    let (lx, rx) = (x_lo.max(view.time_x), x_hi.min(view.right));
+    let top = Rect::new(lx, rows.y, (rx - lx).max(0.0), StrokeToken::Thin.px());
     fill_rounded_rect(ctx.scene, top, 0.0, accent);
     for right in [false, true] {
-        let bar_x = if right {
-            x_hi + GAP
-        } else {
-            x_lo - GAP - HANDLE_W
-        };
+        let bar_x = grip_bar_x(right, x_lo, x_hi, view.time_x, view.right);
         let bar = Rect::new(bar_x, rows.y, HANDLE_W, rows.h);
         fill_rounded_rect(ctx.scene, bar, Radius::Xs.px(), accent);
         let id = if right {
@@ -125,6 +140,16 @@ pub(crate) fn apply(
                 return;
             };
             let (pivot, edge) = if right { (lo, hi) } else { (hi, lo) };
+            // Capture the markers INSIDE the box's span [lo, hi] now — they scale
+            // with the keys. Captured once: a monotonic scale can grow a marker
+            // past `hi`, so recomputing the set each frame would drop it (feedback).
+            state.scale_markers = snap
+                .markers
+                .iter()
+                .enumerate()
+                .filter(|(_, (t, _, _))| *t >= lo && *t <= hi)
+                .map(|(i, _)| i)
+                .collect();
             state::push_intent(TimelineIntent::BeginEdit);
             state.scale_drag = Some(ScaleDrag {
                 pivot_seconds: pivot,
@@ -137,12 +162,14 @@ pub(crate) fn apply(
         GesturePhase::End => {
             emit_scale(state, time_x, px_per_s, snap, g.x);
             state.scale_drag = None;
+            state.scale_markers.clear();
             state::push_intent(TimelineIntent::EndEdit);
         }
         GesturePhase::Click | GesturePhase::DoubleClick => {
             // A grip is a grab target, not a seek: a plain click does nothing but
             // close the (empty) bracket, which commits no undo step.
             state.scale_drag = None;
+            state.scale_markers.clear();
             state::push_intent(TimelineIntent::EndEdit);
         }
     }
@@ -179,6 +206,15 @@ fn emit_scale(
         pivot_seconds: d.pivot_seconds,
         factor: inc,
     });
+    // The box carries its markers: same pivot, same incremental factor, same
+    // bracket — keys and markers retime as one undo step.
+    if !state.scale_markers.is_empty() {
+        state::push_intent(TimelineIntent::ScaleMarkers {
+            indices: state.scale_markers.clone(),
+            pivot_seconds: d.pivot_seconds,
+            factor: inc,
+        });
+    }
 }
 
 #[cfg(test)]

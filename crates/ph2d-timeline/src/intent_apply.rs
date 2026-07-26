@@ -15,6 +15,10 @@ use crate::strip_edge_edit::{
     MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
 };
 
+/// Bulk time-transform bodies (scale markers, reverse selection) — child module
+/// under the LOC cap, reaching the parent's `edit`/`for_selected_tracks`.
+#[path = "intent_apply_time.rs"]
+mod intent_apply_time;
 /// The loop-sync family (`sync_transport_loop`/`sync_container_loop`/`sync_loop`) — sibling
 /// module under the LOC cap.
 #[path = "intent_loop_sync.rs"]
@@ -144,25 +148,14 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 track.scale_keys(ids, pivot_seconds, factor)
             });
         }),
-        I::ReverseSelectedKeys => edit(state, |doc, sel| {
-            // One GLOBAL pivot — the centre of the union of selected key times —
-            // so a multi-track selection mirrors coherently (AE). Read before
-            // mutating; the immutable borrow ends before `for_selected_tracks`.
-            let span = {
-                let clip = doc.active_clip();
-                sel.keys()
-                    .iter()
-                    .filter_map(|sk| clip.track(sk.target)?.key(sk.key))
-                    .fold((f64::MAX, f64::MIN), |(lo, hi), k| {
-                        let t = k.t.to_seconds();
-                        (lo.min(t), hi.max(t))
-                    })
-            };
-            if span.0 <= span.1 {
-                let pivot = 0.5 * (span.0 + span.1);
-                for_selected_tracks(doc, sel, |track, ids| track.reverse_keys(ids, pivot));
-            }
-        }),
+        // The time-scale box carries the markers in its span (body in the sibling
+        // `intent_apply_time` under the LOC cap).
+        I::ScaleMarkers {
+            indices,
+            pivot_seconds,
+            factor,
+        } => intent_apply_time::scale_markers(state, &indices, pivot_seconds, factor),
+        I::ReverseSelectedKeys => intent_apply_time::reverse_selected(state),
         I::DuplicateSelection => {
             let Some(delta) = duplicate_delta(state, playhead.time()) else {
                 return; // nothing selected

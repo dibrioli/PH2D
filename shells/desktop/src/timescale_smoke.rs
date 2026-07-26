@@ -64,6 +64,14 @@ impl crate::App {
                 .to_bits()
         };
         author_zigzag(&mut self.timeline.doc, mover);
+        // Two markers INSIDE the 0..4 span so the box carries them: they scale with
+        // the keys (Enio, 2026-07-26). A third would sit outside and stay put.
+        self.timeline
+            .doc
+            .add_marker(RationalTime::from_seconds(1.0), "beat");
+        self.timeline
+            .doc
+            .add_marker(RationalTime::from_seconds(2.5), "hit");
 
         // Select EVERY key so the time-scale box shows on open. The selection lives
         // in `TimelineState.selection`; the snapshot derives `KeyView.selected` from
@@ -98,10 +106,11 @@ impl crate::App {
         self.playhead.pause();
 
         eprintln!(
-            "[timescale-smoke] 1 track (X zig-zag), {} keys em 0..4 s, TODAS selecionadas. \
-             A timeline abre com a CAIXA de seleção + 2 alças de tempo. Arraste a alça direita: \
-             a seleção estica/encolhe mantendo a borda esquerda parada; a esquerda espelha. \
-             Ctrl+Z desfaz o arrasto inteiro.",
+            "[timescale-smoke] 1 track (X zig-zag), {} keys em 0..4 s, TODAS selecionadas, \
+             + 2 markers na regua (beat@1,0 · hit@2,5) DENTRO da caixa. A timeline abre com a \
+             CAIXA de selecao + 2 alcas de tempo (a esquerda separada do divisor). Arraste a \
+             alca direita: a selecao E OS MARKERS esticam/encolhem mantendo a borda esquerda \
+             parada; a esquerda espelha. Ctrl+Z desfaz o arrasto inteiro.",
             keys.len()
         );
     }

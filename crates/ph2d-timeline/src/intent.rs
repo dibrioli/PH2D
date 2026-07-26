@@ -133,6 +133,21 @@ pub enum TimelineIntent {
         /// Scale factor.
         factor: f64,
     },
+    /// **Scale the listed markers' times** about `pivot_seconds` by `factor` — the
+    /// time-scale box carries the markers within its span along with the keys
+    /// (Enio, 2026-07-26). Streamed incrementally beside [`Self::ScaleSelectedKeys`]
+    /// in the SAME `BeginEdit`/`EndEdit` bracket, so keys and markers retime as one
+    /// undo step. `indices` are the doc's marker STORAGE indices, captured once at
+    /// the drag's start — a monotonic scale about an endpoint never reorders them,
+    /// and `move_marker` does not re-sort, so they stay valid across the stream.
+    ScaleMarkers {
+        /// Marker storage indices to scale.
+        indices: Vec<usize>,
+        /// Fixed point of the scale.
+        pivot_seconds: f64,
+        /// Scale factor (incremental, like [`Self::ScaleSelectedKeys`]).
+        factor: f64,
+    },
     /// **Time-reverse** the selected keys about the centre of their own span (AE
     /// *Time-Reverse Keyframes*): every selected key's time mirrors and the eases
     /// mirror with it. Coherent across tracks — one global pivot, so a multi-track

@@ -107,6 +107,11 @@ pub struct TimelinePanelState {
     /// emits only the incremental factor and the whole drag undoes in one step. `None`
     /// when not scaling.
     pub scale_drag: Option<ScaleDrag>,
+    /// The marker STORAGE indices the active time-scale drag carries — captured at
+    /// Begin (the markers whose time fell inside the selection's span) and scaled
+    /// with the keys each frame. Empty when not scaling; kept off [`ScaleDrag`]
+    /// (which is `Copy`) because it is a `Vec`.
+    pub scale_markers: Vec<usize>,
     /// Vertical scroll of the track rows, in px from the top of the list.
     pub scroll_y: f32,
     /// Scrollable overflow (`content_h - rows_h`), recomputed by `paint`. Kept so
@@ -462,6 +467,7 @@ impl Default for TimelinePanelState {
             key_drag: None,
             pending_move_dx: None,
             scale_drag: None,
+            scale_markers: Vec::new(),
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
@@ -563,6 +569,7 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
     let handle = state.handle_drag.take().is_some();
     let anchor = state.anchor_drag.take().is_some();
     let scale = state.scale_drag.take().is_some();
+    state.scale_markers.clear();
     state.summary_press = None;
     if key || handle || anchor || scale {
         push_intent(TimelineIntent::EndEdit);

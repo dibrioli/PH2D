@@ -1617,3 +1617,35 @@ fn reverse_selected_keys_uses_one_global_pivot_and_is_one_undo_step() {
     close(&times(&st, t1), &[0.0, 2.0]);
     close(&times(&st, t2), &[1.0, 3.0]);
 }
+
+#[test]
+fn scale_markers_scales_the_listed_ones_about_the_pivot_and_leaves_the_rest() {
+    // The time-scale box carries the markers in its span: `ScaleMarkers` maps each
+    // listed marker `t -> pivot + (t - pivot)*factor` and never touches an unlisted
+    // one. Mutation (apply to ALL markers, or ignore `factor`) shifts marker 2.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let m0 = st.doc.add_marker(s(0.5), "a");
+    let m1 = st.doc.add_marker(s(1.5), "b");
+    let _m2 = st.doc.add_marker(s(3.0), "c"); // NOT listed
+    assert_eq!((m0, m1), (0, 1));
+
+    // Scale markers 0 and 1 about pivot 0 by 2x (the box's right-grip case).
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::ScaleMarkers {
+            indices: vec![0, 1],
+            pivot_seconds: 0.0,
+            factor: 2.0,
+        },
+    );
+    let at = |i: usize| st.doc.markers()[i].t.to_seconds();
+    assert!((at(0) - 1.0).abs() < 1e-9, "0.5 * 2 = 1.0, got {}", at(0));
+    assert!((at(1) - 3.0).abs() < 1e-9, "1.5 * 2 = 3.0, got {}", at(1));
+    assert!(
+        (at(2) - 3.0).abs() < 1e-9,
+        "unlisted marker stays at 3.0, got {}",
+        at(2)
+    );
+}

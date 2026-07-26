@@ -1,24 +1,26 @@
 //! **Smoke da extrapolação por-track** (joia da coroa §6). `PH2D_EXTRAP_SMOKE=1`:
 //!
-//! UM objeto com uma track de X keyada SÓ no primeiro segundo (uma rampa 0 -> 3 m
-//! em `[0, 1]`), a timeline ABERTA e TOCANDO em loop `[0, 4]`. Por padrão a track
-//! flat-clampa (Hold): o objeto desliza 0 -> 3 no 1º segundo e depois **para** em
-//! 3 até o loop voltar. A extrapolação por-track é o loopOut / cycle / pingpong /
-//! continue do After Effects: o que a track faz ALÉM das keys, Pre e Post
-//! independentes.
+//! UM objeto com uma track de X keyada SÓ NO MEIO (uma rampa 0 -> 3 m em
+//! `[1.5, 2.5]`), a timeline ABERTA e TOCANDO em loop `[0, 4]`. As keys no meio
+//! abrem as DUAS zonas de extrapolação numa cena só:
+//!   - **`[0, 1.5)` = zona do PRE** (antes da 1ª key);
+//!   - **`(2.5, 4]` = zona do POST** (depois da última).
+//! Por padrão (Hold/Hold) o objeto fica em 0 na entrada, sobe 0 -> 3 no meio, e
+//! congela em 3 no fim. Pre e Post são INDEPENDENTES.
 //!
 //! O controle vive no menu de BOTÃO DIREITO da LABEL da track (a coluna de nomes à
 //! esquerda), em duas cascatas: **Extrapolation Pre ▸** e **Extrapolation Post ▸**,
 //! cada uma abrindo Hold / Loop / Ping-Pong / Continue.
 //!
-//! O que provar na tela (com o playhead correndo em `[0, 4]`):
-//! 1. Como está (Post = Hold): o objeto anda 0 -> 3 em 1 s e CONGELA em 3 até o loop.
-//! 2. R-click na LABEL da track -> **Extrapolation Post ▸ -> Loop**: agora o objeto
-//!    CICLA (0 -> 3, salta pra 0, repete) durante todo o `[0, 4]`.
-//! 3. Troque para **Ping-Pong**: ele vai-e-volta (0 -> 3 -> 0), refletindo.
-//! 4. Troque para **Continue**: ele passa de 3 e CONTINUA subindo pela reta (slope 3/s).
-//! 5. **Pre** é independente (scrube para antes de 0 para ver, ou anime o loop).
-//! 6. Nenhum strip/fade se mexe (é edit de KEY, via edit/settle) — e uma track de
+//! O que provar (playhead correndo em `[0, 4]`; R-click na LABEL da track):
+//! 1. **POST -> Loop**: em `(2.5, 4]` o objeto CICLA (salta e repete) em vez de parar.
+//! 2. **POST -> Ping-Pong**: em `(2.5, 4]` ele vai-e-volta (reflete).
+//! 3. **POST -> Continue**: em `(2.5, 4]` ele CONTINUA subindo pela reta (slope 3/s).
+//! 4. **PRE -> Continue**: em `[0, 1.5)` ele já CHEGA em movimento (entra na 1ª key
+//!    com velocidade, em vez de esperar parado em 0).
+//! 5. **PRE -> Loop / Ping-Pong**: em `[0, 1.5)` o ciclo já roda ANTES do trecho keyado.
+//! 6. Pre e Post ligados juntos (ex.: os dois Loop) = oscilação infinita nas duas pontas.
+//! 7. Nenhum strip/fade se mexe (é edit de KEY, via edit/settle) — e uma track de
 //!    **Time Remap** não oferece o controle (o menu dela é só Delete Track).
 //!
 //! ⚠️ Se a linha `[extrap-smoke]` não aparecer, PARE: a cena não montou.
@@ -29,22 +31,22 @@ use ph2d_ecs::{Name, Transform};
 use ph2d_render::Sprite;
 use ph2d_timeline::{PropKind, TimelineDoc};
 
-/// A short ramp `0 -> 3` over `[0, 1]s` — keyed only in the first second, so the
-/// rest of the `[0, 4]` loop is ALL extrapolation: Hold holds, Loop cycles,
-/// Continue keeps climbing.
+/// A short ramp `0 -> 3` keyed in the MIDDLE of the loop (`[1.5, 2.5]s`), so the
+/// `[0, 4]` loop has a PRE zone (`[0, 1.5)`, before the first key) AND a POST zone
+/// (`(2.5, 4]`, after the last) — both extrapolation, visible in one scene.
 fn author_ramp(doc: &mut TimelineDoc, bits: u64) {
     let s = RationalTime::from_seconds;
     doc.insert_key(
         bits,
         PropKind::TranslationX,
-        s(0.0),
+        s(1.5),
         AnimValue::Float(0.0),
         Interp::Linear,
     );
     doc.insert_key(
         bits,
         PropKind::TranslationX,
-        s(1.0),
+        s(2.5),
         AnimValue::Float(3.0),
         Interp::Linear,
     );
@@ -78,9 +80,10 @@ impl crate::App {
         };
         author_ramp(&mut self.timeline.doc, bits);
 
-        // Open the timeline, loop the transport over [0, 4] and PLAY — the keys end
-        // at 1 s, so [1, 4] is all extrapolation. Default Hold freezes there; the
-        // artist right-clicks the track label to pick Loop / Ping-Pong / Continue.
+        // Open the timeline, loop the transport over [0, 4] and PLAY — the keys sit
+        // in [1.5, 2.5], so [0, 1.5) is the PRE zone and (2.5, 4] the POST zone.
+        // Default Hold/Hold freezes both; the artist right-clicks the track label to
+        // pick Pre / Post extrapolation independently.
         self.timeline
             .doc
             .set_active_loop_for(false, Some((0.0, 4.0)));
@@ -92,11 +95,11 @@ impl crate::App {
         self.playhead.play();
 
         eprintln!(
-            "[extrap-smoke] 1 track (X, rampa 0->3 keyada so em [0,1]), timeline aberta \
-             tocando em loop [0,4]. Por padrao (Hold) o objeto para em 3 apos 1s. R-CLICK \
-             na LABEL da track -> Extrapolation Post -> Loop/Ping-Pong/Continue para ve-lo \
-             ciclar/refletir/continuar alem das keys. Nenhum strip/fade se mexe; Time Remap \
-             nao oferece o controle."
+            "[extrap-smoke] 1 track (X, rampa 0->3 keyada so em [1.5,2.5]), timeline aberta \
+             tocando em loop [0,4]. Zona PRE = [0,1.5), zona POST = (2.5,4]. Por padrao \
+             (Hold/Hold) o objeto fica em 0 na entrada e congela em 3 no fim. R-CLICK na \
+             LABEL da track -> Extrapolation Pre/Post -> Loop/Ping-Pong/Continue, cada lado \
+             independente. Nenhum strip/fade se mexe; Time Remap nao oferece o controle."
         );
     }
 }

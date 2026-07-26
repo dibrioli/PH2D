@@ -40,7 +40,7 @@ use ph2d_gpu::GpuContext;
 use ph2d_render::VelloPass;
 use ph2d_vec_render::{FxImage, FxImages, FxMode, LiveGeometry};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
-use ph2d_vector::{Affine, VectorScene};
+use ph2d_vector::{Affine, StableImage, VectorScene};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -50,13 +50,14 @@ use crate::vec_entities::VecEntityMap;
 /// a imagem sai cortada, o que é honesto e raro.
 const MAX_FX_SIDE: u32 = 8192;
 
-/// Uma entrada do memo: o que determina os PIXELS (spec + tamanho + sigma) e a imagem produzida.
+/// Uma entrada do memo: o que determina os PIXELS (spec + tamanho + sigma) e a imagem produzida
+/// como recurso ESTÁVEL (id de Blob fixo ⇒ o Vello não re-envia à GPU a cada frame).
 struct MemoFx {
     spec: VecFilter,
     w: u32,
     h: u32,
     sig_bits: u32,
-    rgba: Arc<Vec<u8>>,
+    image: StableImage,
     mode: FxMode,
 }
 
@@ -69,6 +70,8 @@ pub(crate) struct FxLive {
     /// Vello é caro), depois reusado (o intermediate é redimensionado por forma).
     pass: Option<VelloPass>,
     memo: BTreeMap<VecPathId, MemoFx>,
+    /// Contador só de diagnóstico (`PH2D_FX_PERF`) — não afeta o produto.
+    dbg_frames: u64,
 }
 
 impl FxLive {
@@ -98,6 +101,13 @@ impl FxLive {
         let [a, b, c, d, _, _] = camera.as_coeffs();
         let cam_scale = ((a * a + b * b).sqrt() + (c * c + d * d).sqrt()) as f32 * 0.5;
 
+        // Instrumentação de perf (medir-primeiro): `PH2D_FX_PERF=1` imprime, quando há re-cozimento
+        // (miss), quanto custou o recook — para separar "o memo não bate" (readback+blur por frame)
+        // de "o custo está no dispatch/compositor" (o recook fica barato mas a tela cai mesmo assim).
+        let perf = std::env::var("PH2D_FX_PERF").is_ok();
+        let t0 = std::time::Instant::now();
+        let mut misses = 0usize;
+
         for path in scene.paths() {
             let Some(spec) = spec_of(sim, map, path.id) else {
                 continue;
@@ -119,6 +129,7 @@ impl FxLive {
                 m.spec == spec && m.w == w && m.h == h && m.sig_bits == sig_bits
             });
             if !hit {
+                misses += 1;
                 // Rasteriza a forma isolada num scratch local (a Scene do Vello é um buffer de
                 // comandos — barata de criar por forma), transladada para a origem do scratch.
                 let mut scratch = VectorScene::new();
@@ -152,6 +163,11 @@ impl FxLive {
                     }
                 };
                 let (rgba, mode) = process_fx(&readback, w, h, sigma_px, &spec);
+                // Constrói o recurso ESTÁVEL UMA vez (id de Blob fixo); os frames seguintes clonam
+                // o handle e o Vello reusa a textura do atlas.
+                let Some(image) = StableImage::from_rgba(rgba, w, h) else {
+                    continue;
+                };
                 self.memo.insert(
                     path.id,
                     MemoFx {
@@ -159,7 +175,7 @@ impl FxLive {
                         w,
                         h,
                         sig_bits,
-                        rgba,
+                        image,
                         mode,
                     },
                 );
@@ -185,9 +201,8 @@ impl FxLive {
             self.live.insert(
                 path.id,
                 FxImage {
-                    rgba: m.rgba.clone(),
-                    width: m.w,
-                    height: m.h,
+                    // Clone do handle estável = refcount + MESMO id de Blob (o cache-hit do Vello).
+                    image: m.image.clone(),
                     rect,
                     mode: m.mode,
                 },
@@ -196,6 +211,15 @@ impl FxLive {
         // O memo não pode sobreviver ao componente: uma forma que perdeu o filtro (remove, Ctrl+Z)
         // manteria a imagem velha.
         self.memo.retain(|id, _| self.live.contains_key(id));
+
+        if perf && (misses > 0 || self.dbg_frames.is_multiple_of(120)) {
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            eprintln!(
+                "[fx-perf] {} filtro(s), {misses} re-cozido(s), recook {ms:.3} ms",
+                self.live.len()
+            );
+        }
+        self.dbg_frames = self.dbg_frames.wrapping_add(1);
     }
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do

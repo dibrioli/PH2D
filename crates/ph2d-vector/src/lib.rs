@@ -23,7 +23,7 @@
 pub mod scene;
 pub mod vector_network;
 
-pub use scene::VectorScene;
+pub use scene::{StableImage, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,
     draw_vector_network_with_fills, oklch_to_color, variable_width_band,

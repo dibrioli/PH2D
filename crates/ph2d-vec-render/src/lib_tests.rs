@@ -197,9 +197,8 @@ fn path_screen_bounds_covers_the_shape_and_scales_with_the_camera() {
 /// Uma `FxImage` mínima de 1×1 para os gates de dispatch — o conteúdo não importa, só o MODO.
 fn one_pixel_image(mode: FxMode) -> FxImage {
     FxImage {
-        rgba: std::sync::Arc::new(vec![0u8; 4]),
-        width: 1,
-        height: 1,
+        image: ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(vec![0u8; 4]), 1, 1)
+            .expect("1x1 image"),
         rect: (0.0, 0.0, 1.0, 1.0),
         mode,
     }

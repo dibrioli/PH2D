@@ -17,6 +17,77 @@ pub struct VectorScene {
     inner: Scene,
 }
 
+/// Uma imagem RGBA já preparada como recurso **ESTÁVEL** do Vello — construída UMA vez e
+/// redesenhada em vários frames.
+///
+/// ⚠️ **Por que existe:** [`VectorScene::draw_image_rgba`] reconstrói a `Blob` a cada chamada, e o
+/// Vello dá a cada `Blob::new` um **id novo** — então ele trata a imagem como INÉDITA todo frame e
+/// a RE-ENVIA ao atlas da GPU (o cache de imagem do Vello é por `data.id()`). Para uma imagem
+/// grande desenhada todo frame (um FX raster, plano 24), esse re-upload+repack é uma queda de FPS
+/// extrema. Guardar este handle e redesenhá-lo com [`VectorScene::draw_stable_image`] mantém o id
+/// ESTÁVEL ⇒ o cache do Vello acerta e pula o upload. O produtor constrói UMA vez (no memo) e
+/// clona o handle por frame (clone de `Blob` = refcount + MESMO id).
+#[derive(Clone)]
+pub struct StableImage {
+    data: ImageData,
+}
+
+impl StableImage {
+    /// Constrói a partir de RGBA **reta** (`width*height*4` bytes). `None` se as dimensões não
+    /// batem. Consome o `Arc` (o handle passa a ser o dono do id estável).
+    #[must_use]
+    pub fn from_rgba(rgba: Arc<Vec<u8>>, width: u32, height: u32) -> Option<Self> {
+        if width == 0 || height == 0 || rgba.len() != (width as usize) * (height as usize) * 4 {
+            return None;
+        }
+        Some(Self {
+            data: ImageData {
+                data: Blob::new(rgba),
+                format: ImageFormat::Rgba8,
+                alpha_type: ImageAlphaType::Alpha,
+                width,
+                height,
+            },
+        })
+    }
+
+    /// A largura em px da imagem.
+    #[must_use]
+    pub fn width(&self) -> u32 {
+        self.data.width
+    }
+
+    /// A altura em px da imagem.
+    #[must_use]
+    pub fn height(&self) -> u32 {
+        self.data.height
+    }
+}
+
+impl VectorScene {
+    /// Desenha um [`StableImage`] no retângulo de tela `dest = (x0,y0,x1,y1)` — o id estável faz o
+    /// Vello reusar a textura do atlas em vez de re-enviá-la. É o par de [`Self::draw_image_rgba`]
+    /// para quem redesenha a MESMA imagem em muitos frames.
+    pub fn draw_stable_image(
+        &mut self,
+        image: &StableImage,
+        dest: (f64, f64, f64, f64),
+        quality: ImageQuality,
+    ) {
+        let (w, h) = (image.data.width, image.data.height);
+        if w == 0 || h == 0 {
+            return;
+        }
+        let (x0, y0, x1, y1) = dest;
+        let sx = (x1 - x0) / f64::from(w);
+        let sy = (y1 - y0) / f64::from(h);
+        let transform = Affine::translate((x0, y0)) * Affine::scale_non_uniform(sx, sy);
+        // Clone do `ImageData` = clone da `Blob` = refcount + MESMO id (o que dá o cache-hit).
+        let brush = ImageBrush::new(image.data.clone()).with_quality(quality);
+        self.inner.draw_image(brush.as_ref(), transform);
+    }
+}
+
 impl VectorScene {
     pub fn new() -> Self {
         Self {

@@ -184,12 +184,14 @@ pub enum FxMode {
 /// Uma imagem de FX raster já pronta — pixels que o shell produziu (rasterizou a forma isolada,
 /// borrou, tingiu) e que o [`dispatch`] injeta no z da forma. O `dispatch` **não a computa** (é
 /// encode puro, sem GPU): ele só a desenha, com `rect` já em coordenadas de TELA.
+///
+/// ⚠️ Carrega um [`ph2d_vector::StableImage`] (id de Blob ESTÁVEL), não RGBA cru: o shell o
+/// constrói UMA vez (no memo) e clona por frame, então o Vello reusa a textura do atlas em vez de
+/// re-enviá-la a cada frame — a diferença entre 60 fps e uma queda extrema num FX desenhado sempre.
 #[derive(Clone)]
 pub struct FxImage {
-    /// RGBA reta (não-premultiplicada), `width*height*4` bytes.
-    pub rgba: std::sync::Arc<Vec<u8>>,
-    pub width: u32,
-    pub height: u32,
+    /// A imagem RGBA reta como recurso estável (o produtor a constrói uma vez).
+    pub image: ph2d_vector::StableImage,
     /// O retângulo de destino em pixels de TELA (`x0,y0,x1,y1`) — o shell já cruzou a câmera e
     /// somou a margem do blur (e o deslocamento da sombra).
     pub rect: (f64, f64, f64, f64),
@@ -257,13 +259,8 @@ pub fn dispatch(
 /// Encoda uma [`FxImage`] na cena, no retângulo de tela dela. RGBA reta (a mesma política do
 /// overlay de Background-Removal).
 fn draw_fx_image(img: &FxImage, target: &mut VectorScene) {
-    target.draw_image_rgba(
-        &img.rgba,
-        img.width,
-        img.height,
-        img.rect,
-        ph2d_vector::ImageQuality::Medium,
-    );
+    // Id de Blob estável ⇒ o Vello reusa a textura do atlas (sem re-upload por frame).
+    target.draw_stable_image(&img.image, img.rect, ph2d_vector::ImageQuality::Medium);
 }
 
 /// **O bbox em TELA de um caminho, como o [`dispatch`] o desenharia** — honrando a geometria

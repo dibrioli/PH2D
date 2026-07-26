@@ -63,7 +63,10 @@ pub(crate) mod motion_bridge;
 pub(crate) mod motion_path_overlay;
 mod padding_bridge;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
-mod paint_perf;
+///
+/// `pub(crate)` porque a frente L do plano 26 carimba a chegada do evento de ponteiro lá do
+/// `input_dispatch` (a latência começa na ENTREGA, não no frame).
+pub(crate) mod paint_perf;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.

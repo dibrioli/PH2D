@@ -460,6 +460,10 @@ impl App {
             None
         };
         painter.set_grid_snap(grid_snap);
+        // L0 (plano 26): carimba a chegada deste evento para o `paint_perf` fechar o relógio
+        // `evento → frame`. Aqui, e não antes das guardas: um Down fora da pegada do sprite cai para o
+        // pan/seleção e nunca vira pixel, então cronometrá-lo mediria uma latência que não existe.
+        crate::render_loop::paint_perf::stamp_pointer();
         painter.on_canvas_pointer(ev)
     }
 

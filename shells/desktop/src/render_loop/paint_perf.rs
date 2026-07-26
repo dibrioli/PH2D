@@ -67,11 +67,41 @@ struct Agg {
     gpu: u32,
     cpu: u32,
     frame_ms: Vec<f32>,
+    /// **L0 — o relógio que o artista SENTE.** O instante do evento de ponteiro mais ANTIGO que ainda
+    /// não foi mostrado; `None` quando não há nada pendente. Ver [`stamp_pointer`].
+    pending: Option<std::time::Instant>,
+    /// `evento → fim do frame que o consumiu`, em ms.
+    latency_ms: Vec<f32>,
 }
 
 thread_local! {
     static AGG: RefCell<Agg> = RefCell::new(Agg::default());
     static ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
+}
+
+/// **L0: carimba a chegada de um evento de ponteiro de canvas** (o plano 26, frente L).
+///
+/// O módulo media `ms/frame` e `ms/dispatch` e **nunca mediu do evento até o pixel** — que é o único
+/// número que a pergunta *"por que o Procreate parece mais rápido?"* de fato cobra, e cujo alvo é
+/// público: **9 ms** (o Apple Pencil saiu de 20 para 9, e não foi compute — foi pipeline).
+///
+/// ⚠️ **Carimba o MAIS ANTIGO não-servido, nunca o mais recente.** Entre dois frames chegam vários
+/// eventos; o que o artista percebe como atraso é o do PRIMEIRO deles, porque é ele que está na tela
+/// esperando há mais tempo. Carimbar o último mediria a latência do evento mais sortudo do lote e
+/// reportaria um número que ninguém sente.
+///
+/// ⚠️ **É o relógio da SHELL, não do tool** — o contrato `CanvasPaintTool` está congelado (§6) e um
+/// método novo nele exigiria ADR. A shell já é dona do evento; ela o carimba na entrega.
+pub(crate) fn stamp_pointer() {
+    if !on() {
+        return;
+    }
+    AGG.with(|cell| {
+        let a = &mut *cell.borrow_mut();
+        if a.pending.is_none() {
+            a.pending = Some(std::time::Instant::now());
+        }
+    });
 }
 
 /// Whether `PH2D_PAINT_PERF` is set (cached — no per-frame syscall).
@@ -95,6 +125,13 @@ pub(super) fn end_frame(total_ms: f32) {
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let Some(cur) = a.cur.take() else { return };
+        // L0: este frame consumiu o que estava pendente — fecha o relógio do evento mais antigo.
+        // ⚠️ Ele mede *evento → fim do frame*, e o present acontece a uma fração de ms daqui; a
+        // diferença é honesta e menor que a resolução com que o artista percebe atraso. Prometer
+        // "→ pixel" quando o instrumento para no fim do frame seria vender o que ele não mede.
+        if let Some(t0) = a.pending.take() {
+            a.latency_ms.push(t0.elapsed().as_secs_f32() * 1e3);
+        }
         a.samples.push(cur);
         a.frame_ms.push(total_ms);
         if cur.gpu {
@@ -106,6 +143,7 @@ pub(super) fn end_frame(total_ms: f32) {
             emit(a);
             a.samples.clear();
             a.frame_ms.clear();
+            a.latency_ms.clear();
             a.gpu = 0;
             a.cpu = 0;
         }
@@ -119,6 +157,20 @@ fn p50(v: &[f32]) -> f32 {
     let mut s = v.to_vec();
     s.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     s[s.len() / 2]
+}
+
+/// O percentil `q` de `v` (0..1). ⚠️ A latência se julga pela **CAUDA**: uma mediana de 8 ms com um
+/// p95 de 40 é exatamente o que o artista descreve como *"às vezes trava"*, e a mediana sozinha diz
+/// que está tudo bem.
+fn pq(v: &[f32], q: f32) -> f32 {
+    if v.is_empty() {
+        return 0.0;
+    }
+    let mut s = v.to_vec();
+    s.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let i = ((s.len() - 1) as f32 * q).round() as usize;
+    s[i.min(s.len() - 1)]
 }
 
 fn emit(a: &Agg) {
@@ -186,6 +238,16 @@ fn emit(a: &Agg) {
         chrome.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
     }
     eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
+    // L0: o número que a pergunta do Enio cobra, com o alvo público ao lado dele.
+    if !a.latency_ms.is_empty() {
+        eprintln!(
+            "[paint-perf]   EVENTO->FRAME p50={:.1} p95={:.1} max={:.1} ms (n={}) · alvo 9",
+            pq(&a.latency_ms, 0.5),
+            pq(&a.latency_ms, 0.95),
+            a.latency_ms.iter().fold(0.0f32, |m, v| m.max(*v)),
+            a.latency_ms.len(),
+        );
+    }
 }
 
 /// What the preview-diag trap reports: who owns the slot, and the CPU partial-upload bbox.
@@ -213,4 +275,24 @@ pub(super) fn preview_diag_changed(now: PreviewDiagState) -> bool {
     }
     *last = Some(now);
     true
+}
+
+#[cfg(test)]
+#[path = "paint_perf_tests.rs"]
+mod tests;
+
+/// Só em teste: liga o agregador nesta thread SEM tocar no ambiente.
+///
+/// ⚠️ `std::env::set_var` é `unsafe` na edição 2024 e a shell tem `forbid(unsafe_code)`; e mesmo que
+/// não tivesse, mutar o ambiente de um processo de teste multi-thread é uma corrida. O `ON` já é
+/// `thread_local`, então armá-lo direto é a porta certa.
+#[cfg(test)]
+pub(super) fn force_on() {
+    ON.with(|c| c.set(1));
+}
+
+/// Só em teste: as amostras de latência acumuladas na janela corrente.
+#[cfg(test)]
+pub(super) fn latency_samples() -> Vec<f32> {
+    AGG.with(|a| a.borrow().latency_ms.clone())
 }

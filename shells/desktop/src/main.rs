@@ -198,6 +198,7 @@ mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
 mod theme;
+mod signal_smoke;
 mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]
@@ -412,6 +413,7 @@ impl App {
             motion_path_smoke_done: false,
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
+            signal_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

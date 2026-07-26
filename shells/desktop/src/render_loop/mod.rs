@@ -144,7 +144,7 @@ pub(crate) mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
-mod point_gizmo;
+pub(crate) mod point_gizmo;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -1637,22 +1637,14 @@ impl crate::App {
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
-                // W-J2: the anchor handles. Rest-only — during play the overlay
-                // draws the SOLVER's anchors and these authored ones would
-                // describe a pose the artist is not editing.
-                !self.playhead.is_playing(),
-                // The B end, through the bridge's anchor door. Resolved HERE
-                // because `publish` does not take the bridge, and asked of the
-                // SAME function `sync_joint_pivots` uses for the A pivot — two
-                // derivations of "where is this anchor" is how the two dots would
-                // come to disagree.
-                hero.gizmo.selection.and_then(|bits| {
-                    physics.joint_anchor_world(
-                        sim,
-                        ph2d_ecs::Entity::from_bits(bits),
-                        ph2d_physics_ecs::JointSide::B,
-                    )
-                }),
+                // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
+                // because `publish` does not take the bridge, and through the
+                // SAME door `sync_joint_pivots` uses for the A pivot — two
+                // derivations of "where is this anchor" is how two dots would
+                // come to disagree. Rest-only (the rule lives in the callee):
+                // during play the overlay draws the SOLVER's anchors, and these
+                // authored ones would describe a pose the artist is not editing.
+                point_gizmo::joint_anchor_handles(sim, physics, !self.playhead.is_playing()),
                 // The candidate a live anchor drag has caught (the crosshair).
                 self.joint_anchor_drag.and_then(|d| d.snap),
             );
@@ -5495,6 +5487,9 @@ impl crate::App {
                 hero.gizmo.global_view = None;
             }
             hero.gizmo.gizmo_hit_map.clear();
+            // Its sibling for the anchor dots — same reason (no stale entry
+            // from a joint that left the scene), same frame.
+            hero.gizmo.point_hit_map.clear();
             // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
             let hero_t0 = frame_prof_on().then(Instant::now);
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);

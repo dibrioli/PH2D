@@ -159,13 +159,23 @@ pub struct GizmoStateGroup {
     /// sem interior — o field não é entidade, então o gizmo de sprite (`view`) fica
     /// intocado e os dois nunca coexistem por modalidade da tool. `None` ⇒ nada.
     pub field_view: Option<crate::gizmo::GizmoView>,
-    /// The POINT gizmo — a single grabbable dot at a world anchor, for a selected
-    /// entity that is a point rather than a box (a physics joint, whose
-    /// `Transform.translation` is its authored anchor). The shell publishes it
-    /// each frame when such an entity is selected; the painter draws the dot and
-    /// registers `GIZMO_JOINT_ANCHOR`. `None` ⇒ nothing painted. See
-    /// [`crate::gizmo::point`].
+    /// The POINT gizmo — the grabbable dots at world anchors, for entities that
+    /// are points rather than boxes (physics joints, whose two ends attach to a
+    /// body each). The shell publishes the whole list every frame, for EVERY
+    /// joint at rest rather than for a selected one: a joint has no sprite, so a
+    /// canvas click can never reach it, and handles that appear only after you
+    /// find the joint in the Hierarchy are not on the canvas at all. `None` ⇒
+    /// nothing painted. See [`crate::gizmo::point`].
     pub point_view: Option<crate::gizmo::PointGizmoView>,
+    /// Reverse lookup from a hit `NodeId` to the anchor handle it belongs to —
+    /// the point gizmo's own [`gizmo_hit_map`](Self::gizmo_hit_map).
+    ///
+    /// Several joints register the same two KINDS of handle in one frame, so the
+    /// ids are keyed by entity bits (`point_handle_id`) and no static table can
+    /// classify them. This map is filled by the same paint pass that registers
+    /// them, which is what makes it impossible for the two to disagree about
+    /// which joint a pixel belongs to. Cleared every frame with its sibling.
+    pub point_hit_map: std::collections::BTreeMap<ph2d_a11y::NodeId, crate::gizmo::PointHandle>,
     /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
     /// which handle of it) was clicked. The painters populate this
     /// map every frame for the primary, every extra, and the global

@@ -115,14 +115,13 @@ pub(super) fn publish(
     // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
     // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
     joint_body_pick: Option<(u64, bool)>,
-    // W-J2: the joint anchor handles. `joint_anchors_at_rest` is the clock gate
-    // (the handles are authoring, and authoring is a rest-time act);
-    // `joint_anchor_b` is the B end resolved through the bridge's anchor door
-    // (`PhysicsBridge::joint_anchor_world`) — the SAME door the A pivot is synced
-    // from, so the two dots cannot describe different frames; `joint_anchor_snap`
-    // is the candidate a live drag has caught, for the crosshair.
-    joint_anchors_at_rest: bool,
-    joint_anchor_b: Option<[f32; 2]>,
+    // W-J2/W-J2b: every grabbable joint anchor this frame, resolved through the
+    // bridge's anchor door (`PhysicsBridge::joint_anchor_world`) — the SAME door
+    // the A pivot is synced from, so no two dots can describe different frames.
+    // Built in `point_gizmo::joint_anchor_handles` (which owns the rest-only
+    // rule) because `publish` does not take the bridge. `joint_anchor_snap` is
+    // the candidate a live drag has caught, for the crosshair.
+    joint_anchor_handles: Vec<ph2d_editor::gizmo::PointHandle>,
     joint_anchor_snap: Option<[f32; 2]>,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
@@ -418,17 +417,17 @@ pub(super) fn publish(
         .gizmo
         .selection
         .and_then(|bits| build_view(bits, sim, present));
-    // The POINT gizmo — a selected joint's anchor. A joint has a `Transform` but
-    // no box (so `build_view` returns None for it); this is the handle it gets.
-    // The "which entities get one" rule lives in `point_gizmo` so it is gated
-    // headless (the publish here needs a live HeroScreen the test cannot build).
+    // The POINT gizmo — every joint's anchors. A joint has a `Transform` but no
+    // box (so `build_view` returns None for it); these are the handles it gets,
+    // and they are NOT selection-gated: a joint has no sprite to pick, so a
+    // selection-gated handle is reachable only by finding the joint in the
+    // Hierarchy first (W-J2b). The "which anchors get one" rule lives in
+    // `point_gizmo` so it is gated headless (the publish here needs a live
+    // HeroScreen the test cannot build).
     hero.gizmo.point_view = super::point_gizmo::build_point_view(
-        sim,
-        hero.gizmo.selection,
+        joint_anchor_handles,
         camera,
         window_size,
-        joint_anchors_at_rest,
-        joint_anchor_b,
         joint_anchor_snap,
     );
     hero.gizmo.extra_views.clear();

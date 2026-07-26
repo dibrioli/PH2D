@@ -15,6 +15,11 @@
 //!   que separar as duas produz o traço VERMELHO da W-J1 (a restrição que o
 //!   solver ainda não impôs).
 //!
+//! ⚠️ **Duas joints, e a cena NÃO seleciona nenhuma** (W-J2b). É essa a metade
+//! nova: as quatro alças aparecem sozinhas, porque uma joint não tem sprite e a
+//! seleção era a única coisa que as trazia à tela — ou seja, elas só eram
+//! alcançáveis depois de caçar a joint na Hierarquia.
+//!
 //! Os números abaixo saíram de uma sonda headless sobre esta mesma armação,
 //! rodada ANTES desta mensagem ser escrita.
 
@@ -116,35 +121,43 @@ impl crate::App {
         ));
 
         eprintln!(
-            "[physics-smoke 44] AS DUAS ALCAS de ancora de um joint (W-J2).\n\
-             PAUSADA. Aperte B se o contorno nao estiver ligado.\n  \
-               1. Selecione 'Tie' na Hierarquia (a Rope, a esquerda). Aparecem DUAS\n     \
-                  marcas ambar: o DISCO CHEIO e a ponta A (no poste) e o ANEL VAZADO\n     \
-                  e a ponta B (no centro da barra). Mesma cor, formas diferentes --\n     \
-                  a mesma gramatica das linhas de posse da cena 43 (solida = A,\n     \
-                  tracejada = B).\n  \
-               2. Arraste o ANEL ate a PONTA DIREITA da barra e de Play. A barra\n     \
-                  passa a pendurar PELA PONTA e nao pelo meio -- medido: amarrada no\n     \
-                  centro ela assenta NIVELADA em (-3,862, 4,652), rot 0,0 graus;\n     \
-                  amarrada na ponta assenta em (-3,378, 4,320), rot 145,0 graus.\n     \
-                  Rebobine e arraste o anel de volta ao centro: volta a pendurar reto.\n  \
+            "[physics-smoke 44] AS DUAS ALCAS de ancora, em TODA joint (W-J2 + W-J2b).\n\
+             PAUSADA, e NADA selecionado. Aperte B se o contorno nao estiver ligado.\n  \
+               1. Sem clicar em nada, olhe o canvas: as QUATRO marcas ja estao la\n     \
+                  (medido: 2 joints x 2 pontas = 4 alcas com selecao vazia; com o\n     \
+                  relogio andando sao 0). Ambar, e a forma diz a ponta: DISCO CHEIO\n     \
+                  = A, ANEL VAZADO = B -- a mesma gramatica das linhas de posse da\n     \
+                  cena 43 (solida = A, tracejada = B). Estao MAIORES que no smoke\n     \
+                  anterior (disco 6 -> 9 px de raio, anel 10 -> 15).\n  \
+               2. Arraste o ANEL da esquerda (a Rope 'Tie', em -2,000/4,600 -- o\n     \
+                  centro da barra) ate a PONTA DIREITA dela. Voce NAO precisou\n     \
+                  selecionar nada na Hierarquia; e repare que o Inspector passou a\n     \
+                  mostrar a secao Physics Joint: pegar a alca SELECIONA a joint.\n     \
+                  De Play: a barra passa a pendurar PELA PONTA e nao pelo meio --\n     \
+                  medido: amarrada no centro ela assenta NIVELADA em (-3,862, 4,652),\n     \
+                  rot 0,0 graus; amarrada na ponta assenta em (-3,378, 4,320), rot\n     \
+                  145,0 graus. Rebobine e arraste o anel de volta ao centro.\n  \
                3. Segure CTRL enquanto arrasta: o anel IMA nos pontos do collider --\n     \
                   centro, 4 quinas e 4 meios de aresta (9 no total para uma caixa,\n     \
                   os MESMOS nove que a alca de pivo ja oferece). Uma CRUZ marca o\n     \
                   ponto capturado; sem ela, um ima e indistinguivel de um arrasto\n     \
                   que parou de seguir o cursor. Solte o CTRL e ele se solta.\n  \
-               4. Selecione 'Hinge' (o Pin, a direita). As duas marcas estao no MESMO\n     \
-                  lugar -- e o que um pino e -- entao se desenham CONCENTRICAS: o\n     \
-                  disco no meio, o anel em volta. O centro pega o A; a faixa fora\n     \
-                  dele pega o B (senao a ponta B de todo Pin seria inalcancavel).\n  \
+               4. Olhe o Pin da direita ('Hinge'): as duas marcas estao no MESMO\n     \
+                  lugar -- medido, as duas em (3,000, 6,000), e e o que um pino e --\n     \
+                  entao se desenham CONCENTRICAS: o disco no meio, o anel em volta.\n     \
+                  O centro pega o A; a faixa fora dele pega o B (senao a ponta B de\n     \
+                  todo Pin seria inalcancavel).\n  \
                5. Arraste o ANEL do Pin 0,5 m para a direita: aparece o traco\n     \
                   VERMELHO da cena 43 -- a restricao existe e ainda nao foi imposta\n     \
                   (medido: vao 0,00000 -> 0,50000 m). De Play: o solver MONTA os dois\n     \
                   corpos em DOIS ticks (a barra salta de x=3,800 para 3,300) e a marca\n     \
                   some. Rebobine: ela volta -- as ancoras AUTORADAS nao se moveram, e\n     \
-                  o vermelho le as VIVAS. E o `connectedAnchor` do Unity, e e a 1a vez\n     \
-                  que aquela marca vermelha e alcancavel por um gesto.\n  \
-               6. Ctrl+Z desfaz um arrasto inteiro num passo so (o gesto todo, nao\n     \
+                  o vermelho le as VIVAS. E o `connectedAnchor` do Unity.\n  \
+               6. Selecione uma SPRITE qualquer e arraste o gizmo dela por cima de\n     \
+                  uma alca de ancora: a alca continua pegavel (ela e registrada por\n     \
+                  ULTIMO, entao ganha o pixel de quem estiver embaixo). Um painel\n     \
+                  por cima, nao -- painel e desenhado depois de todo o canvas.\n  \
+               7. Ctrl+Z desfaz um arrasto inteiro num passo so (o gesto todo, nao\n     \
                   um passo por frame de mouse).\n\
              O QUE MUDOU POR DENTRO: arrastar a ponta A NAO reseta mais a ponta B.\n\
              O sentinela `anchored` e do JOINT INTEIRO -- limpa-lo re-deriva as DUAS\n\

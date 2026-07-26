@@ -4082,17 +4082,20 @@ impl App {
                     // joint entity (its `Transform` used to BE the anchor), and
                     // body B has no `Transform` at all, so a Translate could
                     // never author it. One door writes both locals.
-                    let anchor_side = match hit_id {
-                        Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR) => {
-                            Some(ph2d_physics_ecs::JointSide::A)
-                        }
-                        Some(ph2d_editor::gizmo::ids::GIZMO_JOINT_ANCHOR_B) => {
-                            Some(ph2d_physics_ecs::JointSide::B)
-                        }
-                        _ => None,
-                    };
+                    //
+                    // ⚠️ **Which joint comes from the MAP, not the selection**
+                    // (W-J2b): every joint publishes handles now, so the ids are
+                    // keyed by entity bits and only the map the painter filled
+                    // knows them. Reading the selection here would author the
+                    // selected joint from a click on another one's dot.
+                    let anchor_hit = hit_id.and_then(|id| {
+                        crate::render_loop::point_gizmo::resolve_anchor_hit(
+                            &hero.gizmo.point_hit_map,
+                            id,
+                        )
+                    });
                     let mut began_joint_anchor = false;
-                    if let Some(side) = anchor_side
+                    if let Some((joint, side)) = anchor_hit
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                     {
@@ -4101,7 +4104,7 @@ impl App {
                             &gfx.sim,
                             &gfx.camera,
                             gfx.surface.size(),
-                            hero.gizmo.selection,
+                            joint,
                             (evt.x, evt.y),
                             side,
                         );
@@ -4110,6 +4113,16 @@ impl App {
                             // `self.gfx`, this is `self.joint_anchor_drag`.
                             self.joint_anchor_drag = opened;
                             began_joint_anchor = true;
+                            // **Grabbing a handle SELECTS its joint.** Half of
+                            // what "without selecting it in the Hierarchy" means
+                            // (Enio, 2026-07-25): the dot is now the way a joint
+                            // is reached at all, so the press that grabs it is
+                            // also the press that puts §12 (Physics Joint) on
+                            // screen — otherwise the artist drags an anchor
+                            // while the Inspector talks about something else.
+                            // Same two lines W-JointCreate uses after a Join.
+                            hero.gizmo.selection = Some(joint.to_bits());
+                            hero.gizmo.extra_selection.clear();
                         }
                     }
                     if began_pivot || began_joint_anchor {

@@ -4469,3 +4469,113 @@ W-J4 criar onde se olha · W-J5 Slider · W-J6 servo + guincho · W-J7 break for
 W-J8 higiene do par · W-JG grupo carrega o rig. E, nomeado: o snap só oferece os
 pontos do collider do **próprio** corpo daquela ponta — encaixar a âncora de A
 num ponto do corpo B (útil para montar) seria outro conjunto de candidatos.
+
+---
+
+## W-J2b — As alças ficam MAIORES, aparecem sozinhas e ganham o pixel (2026-07-25, cena `=44`)
+
+Smoke da W-J2 aprovado, com três pedidos numa frase (Enio): *"Os círculos
+(gizmos) das pontas precisam ser maiores e precisam ser selecionados e arrastável
+diretamente no canvas sem necessitar selecionar no hierarchy. Devem ter o Z index
+mais alto que os outros objetos."*
+
+⚠️ **Os três são a mesma mudança vista de três lados**, e o do meio é o que os
+explica: **uma joint não tem sprite.** O `pick_sprites_at_world` do canvas não
+tem o que achar nela, então a SELEÇÃO era a única coisa que trazia as alças à
+tela — ou seja, a única rota até uma alça de canvas passava por caçar a joint na
+**Hierarquia**. Uma alça que se acha noutro lugar antes de poder ser pegada não
+está no canvas. Daí decorrem o tamanho (agora se procura a marca, não se mira uma
+já selecionada) e o z (a marca tem de ganhar o pixel de quem estiver embaixo,
+porque não há um segundo caminho até ela).
+
+### O que mudou
+
+**1. A vista virou uma LISTA.** `PointGizmoView.handles: Vec<PointHandle>`
+(`{key, side, world}`), publicada para **toda joint em repouso** —
+`point_gizmo::joint_anchor_handles(sim, physics, at_rest)`, que resolve cada
+ponta pela **mesma porta** `PhysicsBridge::joint_anchor_world` da W-J2. Ordem
+determinística por `(entity, side)`: os ids são por-alça, então a ordem não
+decide **de quem** é um pixel — decide só qual de duas joints sobrepostas pinta
+por cima, e isso não pode depender de layout de arquétipo.
+
+**2. Vários registram a mesma alça ⇒ o id tem de dizer QUAL.** Essa pergunta já
+tinha resposta no repo: `keyed_handle_id` dá a cada seleção EXTRA um espaço de id
+próprio hasheando os bits da entidade, e o shell resolve pelo mapa que o pintor
+encheu enquanto pintava. As alças fazem o mesmo — **`point_handle_id`** +
+**`point_hit_map`** (irmão do `gizmo_hit_map`, limpo no mesmo frame). ⚠️ Os
+multiplicadores são ímpares, **diferentes por lado**, e nenhum é o dos extras: um
+scrambler *linear* cancela na comparação e faz ids consecutivos colidirem — é
+exatamente como um clique numa sprite passou a girar outra em 2026-06.
+
+**3. A porta de enumeração já existia como scratch.** `joint_entities()` publica
+o `joints_seen` do reconcile — mais largo que `self.joints` de propósito: uma
+joint **dormente** é vista sem nunca ser construída, e a ponta A dela segue
+autorável pelo fallback de `Transform`; oferecer alça só para as que o solver
+aceitou esconderia justamente a joint que o artista está consertando. Uma segunda
+query pela mesma pergunta precisaria de `&mut World` e seria a segunda
+enumeração que diverge.
+
+**4. Pegar a alça SELECIONA a joint** (as duas linhas do W-JointCreate). A alça
+passou a ser *como* uma joint é alcançada, então o press que a pega é o mesmo que
+põe a §12 na tela — senão o artista autora uma coisa e lê sobre outra.
+
+**5. Tamanhos.** Disco **6 → 9 px** de raio (1,5× a alça de caixa, 12), anel
+**10 → 15** (mantém a razão 5:3 que faz o par concêntrico se ler), traço do anel
+1,5 → 2,0, cruz do snap 14 → 20. ⚠️ **Os hit rects seguem o VISUAL** — uma marca
+maior que o retângulo que a pega é uma marca em que se clica e nada acontece, que
+é o modo de falha exato de *"deixe maior"* se só a metade do desenho se move.
+
+**6. Z-order = ordem de registro.** As alças pintam **por último** entre os
+gizmos: `HitIndex::hit` anda de trás para frente, então a última registrada ganha
+o pixel. Uma âncora sobre a quina de uma sprite é pega como âncora. Painéis
+seguem ganhando (pintam depois de todo o passe).
+
+### Gates (23 no total nesta wave; 10 mutações, 10 sangram)
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M1 | `point_handle_id` ignora a `key` | 4 alças viram 2 ids; o dot da 1ª joint resolve para a 2ª |
+| M2 | hit de A fica em 6 enquanto o disco desenha 9 | `the_hit_rects_are_never_smaller_than_the_marks` |
+| M3 | registra A antes de B (uma passada só) | o par coincidente: B engole A |
+| M4 | só a 1ª joint é oferecida | `every_joint_in_the_scene_is_offered…` |
+| M5 | cai o gate de relógio | as alças aparecem no play |
+| M6 | cai o filtro de `Locked` | alça que pinta e recusa o arrasto |
+| M7 | o early-out não limpa `joints_seen` | joint dormente **deletada** segue com dot |
+| M8 | as alças voltam a pintar antes dos gizmos de caixa | `…draws_the_point_gizmo_last` |
+| M9 | somem as 2 linhas de seleção | `grabbing_an_anchor_selects_its_joint` |
+| M10 | a joint volta a vir da SELEÇÃO | (ver abaixo) |
+
+⚠️ **M10 SOBREVIVEU na 1ª rodada, e o defeito era do gate:** eu tinha pinado uma
+**grafia** (`!block.contains("hero.gizmo.selection,")`) e a mutação escreveu
+`Entity::from_bits(hero.gizmo.selection.unwrap_or(0))`, que passa. O bloco
+menciona a seleção **legitimamente** (ele a ESCREVE, no item 4), então "não
+menciona" não podia ser a asserção. Agora o gate extrai a **lista de argumentos
+do `open_drag`** e afirma a propriedade ali (recebe `joint`, não recebe
+`selection`) — a pergunta *"qual joint está sendo autorada?"* é respondida
+naquele lugar e em nenhum outro.
+
+⚠️ **E a fixture do M7 teve de conter o fenômeno:** deletar uma joint **construída**
+toma o caminho lento, que já limpa a lista no meio — o gate passa sem o fix e não
+pina nada. Só a **dormente** cai no early-out com a lista do frame anterior de pé.
+A primeira versão do meu comentário no código dizia que a limpeza era redundante
+*"por construção"*; a mutação provou que não, e o comentário foi corrigido em vez
+de mantido.
+
+**Zero componente, zero schema, zero id de física** (`PROJECT_SCHEMA` **31**,
+registro **21**). **c9 byte-idêntico** (`4e862761…`, 83 corpos).
+
+**Smoke: `PH2D_PHYSICS_SMOKE=44`** — a MESMA cena, agora com **nada
+selecionado**. Medido headless antes de a mensagem ser escrita: **4 alças** com
+seleção vazia (`Hinge` A e B **coincidentes** em `(3,000, 6,000)`; `Tie` A em
+`(-3,000, 6,000)` e B no centro da barra, `(-2,000, 4,600)` — 1,72 m de distância)
+e **0** com o relógio andando.
+
+**Aberto, nomeado:** um clique numa alça é classificado como **chrome** por
+`pointer_over_chrome` (nem `is_gizmo_id` nem o `gizmo_hit_map` conhecem os ids
+das alças) — comportamento **pré-existente**, herdado da W-JointAnchor, e que
+agora vale para toda joint em vez de para a selecionada: sob uma ferramenta de
+pintura há uma zona morta do tamanho da alça sobre a arte. A doutrina do repo
+(`the_gizmo_is_not_chrome_so_the_brush_can_paint_over_its_handles`) diz que
+deveria ser *artwork*, mas invertê-la faria o Painter reclamar o press e a alça
+nunca pegaria — é decisão de produto, não mecânica. E: quem assume, siga com
+**W-J3** (arrastar as pontas do arco / o anel / a seta).

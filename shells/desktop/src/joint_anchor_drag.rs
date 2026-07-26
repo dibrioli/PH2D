@@ -61,8 +61,14 @@ pub(crate) struct JointAnchorDrag {
 /// space between targets stays reachable.
 const SNAP_PX: f32 = 14.0;
 
-/// Open an anchor drag on `side` of the selected joint, or `None` if there is
-/// nothing to author (no selection, a locked entity, an end with no body).
+/// Open an anchor drag on `side` of `joint`, or `None` if there is nothing to
+/// author (a locked entity, an end with no body).
+///
+/// ⚠️ **The joint comes from the HIT, not from the selection** (W-J2b). Every
+/// joint publishes handles now, so "which joint" is answered by the map the
+/// painter filled while registering the dots — asking the selection instead
+/// would author the selected joint's anchor from a click on a different one's
+/// handle, silently.
 ///
 /// ⚠️ Takes the four pieces of `AppGfx` it needs rather than `&AppGfx`, because
 /// the Down handler that calls it already holds a `&mut` into `gfx.hero_screen`
@@ -73,19 +79,17 @@ pub(crate) fn open_drag(
     sim: &SimWorld,
     camera: &Camera2d,
     window: WindowSize,
-    selection: Option<u64>,
+    joint: ph2d_ecs::Entity,
     pointer: (f32, f32),
     side: JointSide,
 ) -> Option<JointAnchorDrag> {
-    let bits = selection?;
-    let entity = ph2d_ecs::Entity::from_bits(bits);
-    if ph2d_ecs::is_locked_for_edit(sim.world(), entity) {
+    if ph2d_ecs::is_locked_for_edit(sim.world(), joint) {
         return None;
     }
-    let anchor = physics.joint_anchor_world(sim, entity, side)?;
+    let anchor = physics.joint_anchor_world(sim, joint, side)?;
     let cursor = camera.screen_to_world(pointer, window);
     Some(JointAnchorDrag {
-        joint_bits: bits,
+        joint_bits: joint.to_bits(),
         side,
         grab_offset: [anchor[0] - cursor[0], anchor[1] - cursor[1]],
         snap: None,

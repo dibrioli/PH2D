@@ -133,6 +133,15 @@ impl PhysicsBridge {
         // walk in the overwhelmingly common case of a scene without joints.
         let mut q = self.joint_query.take().expect("query built in dispatch");
         if q.iter(world).next().is_none() && self.joints.is_empty() {
+            // ⚠️ Clear the published list on this path too, and it is NOT
+            // redundant: a DORMANT joint is seen without ever being built, so
+            // deleting one leaves `self.joints` empty and the scene joint-less —
+            // straight into this early-out, with last frame's list still holding
+            // the corpse. `joint_entities` is what the canvas handles are drawn
+            // from, so that is a grabbable dot for something that no longer
+            // exists. (Deleting a BUILT joint takes the slow path, which clears
+            // below; that case is why this looked redundant.)
+            self.joints_seen.clear();
             self.joint_query = Some(q);
             return;
         }

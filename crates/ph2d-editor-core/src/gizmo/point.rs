@@ -1,4 +1,4 @@
-//! **The point gizmo** — the grabbable dots at a joint's two world anchors.
+//! **The point gizmo** — the grabbable dots at every joint's two world anchors.
 //!
 //! The three `GizmoView` publishers ([`super::paint_sprite_gizmo`] and friends)
 //! are all BOXES with scale/rotate handles, built from drawable geometry (a
@@ -6,15 +6,6 @@
 //! `Transform` (its authored anchor) but no geometry, so it publishes no box and
 //! — until this — had no canvas handle at all. Its anchor was authorable only by
 //! typing into the Inspector's Position fields.
-//!
-//! This is that missing handle. The shell publishes a [`PointGizmoView`] for a
-//! selected joint (its `Transform.translation`, in world); the painter draws a
-//! dot and registers a [`super::ids::GIZMO_JOINT_ANCHOR`] hit. A Down on it opens
-//! a plain [`super::GizmoDragKind::Translate`] drag of the joint ENTITY
-//! (shell-side, keyed on the selection since a joint has no sprite to pick), and
-//! the existing gizmo math moves its `Transform.translation`. So dragging the dot
-//! moves the pivot, and `rebuild_from_rest` re-derives the joint's local anchors
-//! from it — one global undo step, exactly like moving a sprite.
 //!
 //! # Two ends, one vocabulary (W-J2)
 //!
@@ -30,29 +21,66 @@
 //! place is what a pin is. So the marks are drawn concentric and the hit rects
 //! are nested: A takes the inner square, B the band outside it. Nudging one dot
 //! aside to make room would draw an anchor where it is not.
+//!
+//! # Every joint, not the selected one (W-J2b)
+//!
+//! The view carries a **list**. A joint has no sprite, so a canvas click could
+//! never reach it through `pick_sprites_at_world` — which meant the only way to
+//! get its handles on screen was to hunt for it in the Hierarchy first, and a
+//! handle you must find somewhere else before you can grab it is a handle that
+//! is not on the canvas at all (Enio, 2026-07-25).
+//!
+//! Several joints therefore register the same two kinds of handle in one frame,
+//! and a hit id must say *which*. That question already has an answer here:
+//! `gizmo::paint::keyed_handle_id` gives every EXTRA selection its own id space
+//! by hashing the entity bits, and the shell resolves the hit through the map
+//! the painter filled while painting. These dots do the same —
+//! [`point_handle_id`] — for the same reason and with the same failure mode
+//! avoided (a linear scrambler makes consecutive ids collide; see that
+//! function's note).
 
 use super::camera::world_to_screen_px;
 use super::hit::ids;
-use super::paint::HANDLE_SIZE_PX;
 use crate::interaction::HitIndex;
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, BezPath, Circle, Color as VelloColor, Point, Stroke, VectorScene};
+use std::collections::BTreeMap;
 
-/// The point handles to draw for the selected joint — the anchor gizmo.
+/// Which end of a joint a handle authors. Editor-core's own word for it — the
+/// gizmo layer knows there are two ends and nothing else about physics; the
+/// shell maps this onto `ph2d_physics_ecs::JointSide`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PointSide {
+    /// The end attached to body A — the filled dot.
+    A,
+    /// The end attached to body B — the hollow ring.
+    B,
+}
+
+/// One grabbable anchor: where it is, whose it is, and which end.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct PointHandle {
+    /// The owning entity (`Entity::to_bits`), opaque here. It is what makes two
+    /// joints' handles distinguishable, both in the hit id and in the map the
+    /// shell reads back.
+    pub key: u64,
+    pub side: PointSide,
+    /// World position of the anchor this handle authors.
+    pub world: [f32; 2],
+}
+
+/// The point handles to draw this frame — the anchor gizmo.
 ///
 /// Carries only the camera fields the projection needs. A point has no bbox and
 /// no rotation, which is exactly why it could not be a [`super::GizmoView`]: that
 /// type is a rotated box, and there is nothing here to rotate.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PointGizmoView {
-    /// World position of the A handle — the joint's authored anchor on body A,
-    /// which is also the value the Inspector's Position fields edit.
-    pub anchor_world: [f32; 2],
-    /// World position of the B handle, or `None` when there is no body B to
-    /// anchor to (a half-authored joint, a renamed body). An anchor with no body
-    /// is not a place, so no handle is offered for it.
-    pub anchor_b_world: Option<[f32; 2]>,
+    /// Every anchor on screen, in a stable order. Empty is not published (the
+    /// shell hands out `None` instead), so a non-empty list is the invariant.
+    pub handles: Vec<PointHandle>,
     /// The snap candidate the live drag has caught, if any — drawn as a
     /// crosshair through the dot so the artist can see *why* it stopped moving
     /// freely. `None` whenever nothing is snapped (including when no drag is in
@@ -67,23 +95,63 @@ pub struct PointGizmoView {
     pub canvas: Rect,
 }
 
-/// Visual radius of the anchor dot, screen px. Smaller than the [`HANDLE_SIZE_PX`]
-/// hit box, so the point is easy to catch but reads as a small marker rather than
-/// a fat button.
-const JOINT_ANCHOR_DOT_PX: f32 = 6.0;
+/// Visual radius of the anchor dot, screen px.
+///
+/// Sized up from 6 on Enio's smoke of W-J2 (*"os círculos das pontas precisam
+/// ser maiores"*): a mark you have to aim at is a mark you have to find first,
+/// and these are now offered for every joint in the scene rather than for the
+/// one already selected. 9 px puts the dot's extent at 1.5× the box gizmo's
+/// `HANDLE_SIZE_PX` corner square (12), so it reads as a deliberate grab target
+/// next to one rather than as a marker.
+const JOINT_ANCHOR_DOT_PX: f32 = 9.0;
 
 /// Visual radius of the B ring, screen px — outside A's dot, so a coincident
-/// pair reads as one mark inside another rather than as one mark.
-const JOINT_ANCHOR_RING_PX: f32 = 10.0;
+/// pair reads as one mark inside another rather than as one mark. Holds the
+/// same 5:3 ratio to the dot that the pair had at 6/10, which is what keeps the
+/// concentric reading legible at the new size.
+const JOINT_ANCHOR_RING_PX: f32 = 15.0;
 
-/// Half-extent of the B handle's hit square, screen px. Twice A's, so the band
-/// between them is B's grab zone when the two anchors coincide (A is registered
-/// last and therefore wins the inner square).
-const JOINT_ANCHOR_B_HALF_PX: f32 = HANDLE_SIZE_PX;
+/// Stroke width of the B ring, screen px. Wider than the 1.5 the pair shipped
+/// with, so the bigger circle keeps the same visual weight instead of thinning
+/// into a hairline.
+const JOINT_ANCHOR_RING_STROKE_PX: f64 = 2.0;
 
 /// Arm length of the snap crosshair, screen px — past the B ring, so the mark is
 /// legible even when both handles sit on the snapped point.
-const SNAP_CROSS_PX: f32 = 14.0;
+const SNAP_CROSS_PX: f32 = 20.0;
+
+/// Half-extent of a handle's hit square, screen px, **by side**.
+///
+/// ⚠️ These are the VISUAL radii, deliberately: a mark drawn larger than the
+/// rect that catches it is a dot the artist clicks and nothing happens. A takes
+/// the inner square and B the band outside it, which is the whole of how a
+/// coincident pair stays two handles.
+const fn hit_half_px(side: PointSide) -> f32 {
+    match side {
+        PointSide::A => JOINT_ANCHOR_DOT_PX,
+        PointSide::B => JOINT_ANCHOR_RING_PX,
+    }
+}
+
+/// The hit id of one joint's handle — `canonical ^ hash(key)`.
+///
+/// ⚠️ **The multipliers are odd and DIFFERENT per side, and neither is the one
+/// the box gizmo's extras use.** The failure this avoids is documented at
+/// `gizmo::paint::keyed_handle_id`: a *linear* scrambler (`canonical ^ bits ^
+/// CONST`) cancels when two ids are compared, so consecutive entity bits and
+/// consecutive canonical ids collide constantly — which is how a click on one
+/// sprite's handle came to resolve to a different sprite in 2026-06. Multiplying
+/// is non-linear, so consecutive keys land far apart; using a distinct constant
+/// per side means A and B hash independently rather than differing by the one
+/// bit that separates their canonical ids.
+#[must_use]
+pub fn point_handle_id(key: u64, side: PointSide) -> NodeId {
+    let (canonical, mul) = match side {
+        PointSide::A => (ids::GIZMO_JOINT_ANCHOR, 0x_C2B2_AE3D_27D4_EB4F_u64),
+        PointSide::B => (ids::GIZMO_JOINT_ANCHOR_B, 0x_D6E8_FEB8_6659_FD93_u64),
+    };
+    NodeId(canonical.0 ^ key.wrapping_mul(mul))
+}
 
 /// Amber — the joint overlay's colour, so the grabbable dot reads as "the thing
 /// you already see in the overlay, now grab it" rather than as a new element.
@@ -93,19 +161,22 @@ fn anchor_color() -> VelloColor {
     VelloColor::from_rgba8(0xFA, 0xBF, 0x40, 0xFF) // matches `JOINT_RGBA` in the physics overlay
 }
 
-/// Draw the joint's anchor handles and register their hit rects, so a canvas
-/// Down on one is recognised (`GIZMO_JOINT_ANCHOR` / `..._B`) and opens an
-/// anchor drag of that end.
+/// Draw every joint's anchor handles and register their hit rects, recording
+/// `id -> handle` in `hit_map` so a Down can be resolved back to the joint and
+/// the end it belongs to.
 ///
-/// Order is load-bearing twice: the **snap crosshair first** (it is a backdrop
-/// for the marks that sit on it), then **B, then A** — `HitIndex::hit` walks
-/// backwards, so the last registration wins, and A must win the square it shares
-/// with B on a coincident pair.
+/// Order is load-bearing twice. The **snap crosshair first** (it is a backdrop
+/// for the marks that sit on it), then **every B, then every A** —
+/// `HitIndex::hit` walks backwards, so the last registration wins, and A must
+/// win the square it shares with B on a coincident pair. Two passes rather than
+/// per-joint interleaving: with one pass the next joint's B would be registered
+/// after this joint's A and would swallow it wherever two joints overlap.
 pub fn paint_point_gizmo(
     scene: &mut VectorScene,
     view: &PointGizmoView,
     theme: Theme,
     hit_index: &mut HitIndex,
+    hit_map: &mut BTreeMap<NodeId, PointHandle>,
 ) {
     let _ = theme; // colour is theme-independent (see `anchor_color`)
     let project = |w: [f32; 2]| {
@@ -120,52 +191,48 @@ pub fn paint_point_gizmo(
     if let Some(snap) = view.snap_world {
         paint_snap_cross(scene, project(snap));
     }
-    if let Some(b) = view.anchor_b_world {
-        let s = project(b);
-        hit_index.register(
-            ids::GIZMO_JOINT_ANCHOR_B,
-            Rect::new(
-                s[0] - JOINT_ANCHOR_B_HALF_PX,
-                s[1] - JOINT_ANCHOR_B_HALF_PX,
-                JOINT_ANCHOR_B_HALF_PX * 2.0,
-                JOINT_ANCHOR_B_HALF_PX * 2.0,
-            ),
-        );
-        // Hollow — the B end, in the same amber as A (module docs).
-        let ring = Circle::new(
-            Point::new(f64::from(s[0]), f64::from(s[1])),
-            f64::from(JOINT_ANCHOR_RING_PX),
-        );
-        scene.inner_mut().stroke(
-            &Stroke::new(1.5),
-            Affine::IDENTITY,
-            anchor_color(),
-            None,
-            &ring,
-        );
+    for side in [PointSide::B, PointSide::A] {
+        for h in view.handles.iter().filter(|h| h.side == side) {
+            let s = project(h.world);
+            let half = hit_half_px(side);
+            let id = point_handle_id(h.key, side);
+            hit_index.register(
+                id,
+                Rect::new(s[0] - half, s[1] - half, half * 2.0, half * 2.0),
+            );
+            hit_map.insert(id, *h);
+            match side {
+                // Hollow — the B end, in the same amber as A (module docs).
+                PointSide::B => {
+                    let ring = Circle::new(
+                        Point::new(f64::from(s[0]), f64::from(s[1])),
+                        f64::from(JOINT_ANCHOR_RING_PX),
+                    );
+                    scene.inner_mut().stroke(
+                        &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
+                        Affine::IDENTITY,
+                        anchor_color(),
+                        None,
+                        &ring,
+                    );
+                }
+                // Filled dot — the A end.
+                PointSide::A => {
+                    let dot = Circle::new(
+                        Point::new(f64::from(s[0]), f64::from(s[1])),
+                        f64::from(JOINT_ANCHOR_DOT_PX),
+                    );
+                    scene.inner_mut().fill(
+                        ph2d_vector::Fill::NonZero,
+                        Affine::IDENTITY,
+                        anchor_color(),
+                        None,
+                        &dot,
+                    );
+                }
+            }
+        }
     }
-    let s = project(view.anchor_world);
-    // Generous grab: the hit rect is a full handle, larger than the visual dot,
-    // so the point is as catchable as any gizmo handle.
-    let hit = Rect::new(
-        s[0] - HANDLE_SIZE_PX * 0.5,
-        s[1] - HANDLE_SIZE_PX * 0.5,
-        HANDLE_SIZE_PX,
-        HANDLE_SIZE_PX,
-    );
-    hit_index.register(ids::GIZMO_JOINT_ANCHOR, hit);
-    // Filled dot — the A end.
-    let dot = Circle::new(
-        Point::new(f64::from(s[0]), f64::from(s[1])),
-        f64::from(JOINT_ANCHOR_DOT_PX),
-    );
-    scene.inner_mut().fill(
-        ph2d_vector::Fill::NonZero,
-        Affine::IDENTITY,
-        anchor_color(),
-        None,
-        &dot,
-    );
 }
 
 /// A crosshair through the snapped candidate — the only thing on screen that
@@ -189,191 +256,5 @@ fn paint_snap_cross(scene: &mut VectorScene, s: [f32; 2]) {
 }
 
 #[cfg(test)]
-mod tests {
-    //! **The point handle draws where the anchor is, and is grabbable there.**
-
-    use super::*;
-    use crate::interaction::HitIndex;
-
-    fn view(anchor: [f32; 2]) -> PointGizmoView {
-        PointGizmoView {
-            anchor_world: anchor,
-            anchor_b_world: None,
-            snap_world: None,
-            camera_center: [0.0, 0.0],
-            camera_height_world: 10.0,
-            window_w: 1000.0,
-            window_h: 1000.0,
-            canvas: Rect::new(0.0, 0.0, 1000.0, 1000.0),
-        }
-    }
-
-    /// **A Down on the dot's screen position hits `GIZMO_JOINT_ANCHOR`.**
-    ///
-    /// The whole point of the wave: the anchor must be grabbable on the canvas.
-    /// The hit is registered at the anchor's PROJECTED position, so it tracks the
-    /// joint under pan/zoom the same way every other gizmo handle does.
-    ///
-    /// Mutation-tested: dropping the `hit_index.register` call leaves nothing to
-    /// hit, and this goes red — the dot would paint but never be draggable.
-    #[test]
-    fn the_anchor_dot_is_hittable_where_it_is_drawn() {
-        let v = view([2.0, 1.0]);
-        let mut scene = VectorScene::new();
-        let mut hits = HitIndex::default();
-        paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-
-        let s = world_to_screen_px(
-            v.camera_center,
-            v.camera_height_world,
-            v.window_w,
-            v.window_h,
-            v.anchor_world,
-        );
-        assert_eq!(
-            hits.hit(s[0], s[1]),
-            Some(ids::GIZMO_JOINT_ANCHOR),
-            "a Down on the anchor's screen position did not hit the joint-anchor \
-             handle — the pivot would be undraggable on the canvas"
-        );
-        // And a point far away misses it (the hit is a small handle, not the
-        // whole canvas).
-        assert_ne!(
-            hits.hit(s[0] + 200.0, s[1] + 200.0),
-            Some(ids::GIZMO_JOINT_ANCHOR)
-        );
-    }
-
-    /// **The B end is grabbable where it is drawn** — the whole of W-J2's first
-    /// half. Without its own hit rect the second anchor would paint and never
-    /// take a drag.
-    ///
-    /// Mutation-tested: dropping the `GIZMO_JOINT_ANCHOR_B` registration goes red.
-    #[test]
-    fn the_b_handle_is_hittable_where_it_is_drawn() {
-        let mut v = view([0.0, 0.0]);
-        v.anchor_b_world = Some([2.0, 1.0]);
-        let mut scene = VectorScene::new();
-        let mut hits = HitIndex::default();
-        paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-
-        let s = world_to_screen_px(
-            v.camera_center,
-            v.camera_height_world,
-            v.window_w,
-            v.window_h,
-            [2.0, 1.0],
-        );
-        assert_eq!(
-            hits.hit(s[0], s[1]),
-            Some(ids::GIZMO_JOINT_ANCHOR_B),
-            "the B anchor must be grabbable at its own position"
-        );
-        // And A is still the one at A.
-        let a = world_to_screen_px(
-            v.camera_center,
-            v.camera_height_world,
-            v.window_w,
-            v.window_h,
-            [0.0, 0.0],
-        );
-        assert_eq!(hits.hit(a[0], a[1]), Some(ids::GIZMO_JOINT_ANCHOR));
-    }
-
-    /// **A coincident pair is still two handles.** A Pin at rest anchors both
-    /// bodies at the same world point, so the two marks land on each other — A
-    /// takes the inner square and B the band outside it.
-    ///
-    /// This is the gate that fails if the registration order is swapped (B last
-    /// would swallow A entirely, and the pivot would become undraggable on every
-    /// Pin and Weld in the scene — i.e. on the common case).
-    #[test]
-    fn a_coincident_pair_gives_a_the_centre_and_b_the_band() {
-        let mut v = view([1.0, -1.0]);
-        v.anchor_b_world = Some([1.0, -1.0]);
-        let mut scene = VectorScene::new();
-        let mut hits = HitIndex::default();
-        paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-
-        let s = world_to_screen_px(
-            v.camera_center,
-            v.camera_height_world,
-            v.window_w,
-            v.window_h,
-            [1.0, -1.0],
-        );
-        assert_eq!(
-            hits.hit(s[0], s[1]),
-            Some(ids::GIZMO_JOINT_ANCHOR),
-            "dead centre belongs to A"
-        );
-        assert_eq!(
-            hits.hit(s[0] + JOINT_ANCHOR_RING_PX, s[1]),
-            Some(ids::GIZMO_JOINT_ANCHOR_B),
-            "the band outside A's square must still reach B, or a Pin's B end \
-             could never be grabbed"
-        );
-    }
-
-    /// **No body B, no B handle.** A half-authored joint has nothing to anchor
-    /// its second end to, and offering a handle for it would let the artist
-    /// author a value that is thrown away by the first seed.
-    #[test]
-    fn a_joint_with_no_b_anchor_paints_one_handle() {
-        let v = view([0.0, 0.0]);
-        let mut scene = VectorScene::new();
-        let mut hits = HitIndex::default();
-        paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-        assert_eq!(
-            hits.len(),
-            1,
-            "only the A handle should be registered when there is no B anchor"
-        );
-    }
-
-    /// **The snap crosshair draws and takes no hit.** It is a readout — a mark
-    /// that says *this is why the dot stopped* — and a readout that swallows the
-    /// pointer would steal the drag it is describing.
-    #[test]
-    fn the_snap_mark_is_drawn_without_taking_the_pointer() {
-        let mut v = view([0.0, 0.0]);
-        v.snap_world = Some([3.0, 3.0]);
-        let mut scene = VectorScene::new();
-        let mut hits = HitIndex::default();
-        paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-        let s = world_to_screen_px(
-            v.camera_center,
-            v.camera_height_world,
-            v.window_w,
-            v.window_h,
-            [3.0, 3.0],
-        );
-        assert_eq!(
-            hits.hit(s[0], s[1]),
-            None,
-            "the snap crosshair must not register a hit"
-        );
-        assert_eq!(hits.len(), 1, "only the A handle registers");
-    }
-
-    /// **The dot moves with the anchor.** Two anchors project to two different
-    /// screen positions, and the hit follows — so the handle sits on the joint,
-    /// not at a fixed screen spot.
-    #[test]
-    fn the_hit_follows_the_anchor() {
-        for anchor in [[0.0, 0.0], [3.0, -2.0]] {
-            let v = view(anchor);
-            let mut scene = VectorScene::new();
-            let mut hits = HitIndex::default();
-            paint_point_gizmo(&mut scene, &v, Theme::default(), &mut hits);
-            let s = world_to_screen_px(
-                v.camera_center,
-                v.camera_height_world,
-                v.window_w,
-                v.window_h,
-                anchor,
-            );
-            assert_eq!(hits.hit(s[0], s[1]), Some(ids::GIZMO_JOINT_ANCHOR));
-        }
-    }
-}
+#[path = "point_tests.rs"]
+mod tests;

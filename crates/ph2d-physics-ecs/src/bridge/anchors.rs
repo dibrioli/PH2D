@@ -68,6 +68,26 @@ fn rest_pose(b: &BodyRef) -> [f32; 3] {
 }
 
 impl PhysicsBridge {
+    /// **Every entity carrying a [`PhysicsJoint`]**, as of the last reconcile —
+    /// the list a canvas handle is offered for (W-J2b).
+    ///
+    /// ⚠️ Wider than `self.joints`, deliberately: a **dormant** joint (bodies
+    /// half-authored, renamed, deleted) is seen here and is absent from there,
+    /// and its A anchor is still authorable through
+    /// [`Self::joint_anchor_world`]'s `Transform` fallback. Offering handles
+    /// only for joints the solver accepted would hide exactly the joint the
+    /// artist is in the middle of fixing.
+    ///
+    /// This is the reconcile's own scratch, published rather than re-queried:
+    /// a second `World` query for the same question would need `&mut World`
+    /// (the ECS builds query state on demand), and two enumerations of "which
+    /// entities are joints" is how the handles come to describe a set the
+    /// bridge is not holding.
+    #[must_use]
+    pub fn joint_entities(&self) -> &[Entity] {
+        &self.joints_seen
+    }
+
     /// The body (and the joint component) one side of a joint attaches to, or
     /// `None` if that side is not resolvable — a dormant joint, a renamed body,
     /// a joint the bridge has never built.

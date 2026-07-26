@@ -174,12 +174,6 @@ pub fn paint_hero_screen(
     if let Some(view) = hero.gizmo.view {
         crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
-    // The POINT gizmo — a joint's anchor dot. A joint entity has a `Transform`
-    // but no box, so it never publishes a `GizmoView` above; this is the only
-    // handle it gets. Painted at the same layer as the primary gizmo.
-    if let Some(view) = hero.gizmo.point_view {
-        crate::gizmo::paint_point_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
-    }
     // Flip W7.5: o gizmo da POSE da chave (modo Edit + quadro instanciado). Pintado
     // como gizmo KEYED — rotate/scale nos ids do espaço `FlipPose`, sem interior
     // (o arrasto de canvas do Edit já move a instância; um interior aqui comeria o
@@ -257,6 +251,26 @@ pub fn paint_hero_screen(
             &mut hero.gizmo.gizmo_hit_map,
             crate::gizmo::GizmoTarget::Global,
             2.0, // LITERAL-PX-OK: global gizmo outline stroke width
+        );
+    }
+    // The POINT gizmo — every joint's anchor dots. A joint entity has a
+    // `Transform` but no box, so it never publishes a `GizmoView` above; these
+    // are the only handles it gets.
+    //
+    // ⚠️ **Painted LAST among the gizmos, and the order is the feature** (Enio,
+    // 2026-07-25: *"devem ter o Z index mais alto que os outros objetos"*).
+    // `HitIndex::hit` walks backwards, so the last registration wins: an anchor
+    // sitting on a sprite's corner handle is grabbed as the anchor. A joint has
+    // no sprite to pick and no box of its own — losing the pixel to whatever it
+    // happens to lie on top of is how it becomes unreachable. Panels still win,
+    // because they paint after this whole pass.
+    if let Some(view) = hero.gizmo.point_view.as_ref() {
+        crate::gizmo::paint_point_gizmo(
+            scene,
+            view,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.point_hit_map,
         );
     }
     paint_top_bar(

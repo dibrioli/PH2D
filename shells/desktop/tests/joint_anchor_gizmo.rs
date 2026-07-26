@@ -19,7 +19,7 @@ use std::fs;
 fn joint_anchor_down_block() -> String {
     let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
     let start = src
-        .find("let anchor_side = match hit_id {")
+        .find("let anchor_hit = hit_id.and_then(")
         .expect("the joint-anchor Down branch is gone");
     let rest = &src[start..];
     let end = rest
@@ -28,12 +28,34 @@ fn joint_anchor_down_block() -> String {
     rest[..end].to_string()
 }
 
-/// **A Down on EITHER dot opens the anchor drag for THAT end.**
+/// The argument list of the `open_drag(...)` call inside that block — where the
+/// question *"which joint is being authored?"* is actually answered.
+///
+/// ⚠️ Asserting about the whole block cannot answer it: the block legitimately
+/// mentions `hero.gizmo.selection` (it WRITES it, to select the grabbed joint),
+/// so a "does not mention the selection" test over the block has to be phrased
+/// as a spelling — and a mutation that spells it differently walks straight
+/// through. Measured: `Entity::from_bits(hero.gizmo.selection.unwrap_or(0))`
+/// survived exactly that. The arguments are the property.
+fn open_drag_arguments() -> String {
+    let block = joint_anchor_down_block();
+    let start = block
+        .find("open_drag(")
+        .expect("the Down branch no longer opens the anchor drag");
+    let rest = &block[start..];
+    let end = rest.find(");").expect("unterminated open_drag call");
+    rest[..end].to_string()
+}
+
+/// **A Down on a dot opens the anchor drag for THAT joint and THAT end.**
 ///
 /// Four properties, each a way the wiring would silently break:
-///  - both hit ids are recognised — one handle each for body A and body B;
-///  - each maps to its own [`JointSide`], so the two dots do not author the same
-///    local (the whole point of the second handle);
+///  - the joint and the side come from `resolve_anchor_hit` over the painter's
+///    `point_hit_map` — every joint publishes handles (W-J2b), so the ids are
+///    keyed by entity bits and nothing else can say which one was clicked;
+///  - it does NOT resolve the joint from `hero.gizmo.selection`, which is the
+///    pre-W-J2b shape and would author the *selected* joint's anchor from a
+///    click on a different joint's dot;
 ///  - the gesture is `joint_anchor_drag::open_drag`, not a `GizmoDragKind` — a
 ///    Translate writes a `Transform`, and body B's anchor is not one;
 ///  - it does NOT `pick_sprites_at_world` — the generic Translate resolves its
@@ -42,17 +64,21 @@ fn joint_anchor_down_block() -> String {
 #[test]
 fn the_joint_anchor_down_opens_the_anchor_drag_for_its_side() {
     let block = joint_anchor_down_block();
-    for id in ["GIZMO_JOINT_ANCHOR", "GIZMO_JOINT_ANCHOR_B"] {
-        assert!(
-            block.contains(id),
-            "the Down branch is not keyed on `{id}` — that dot would be painted \
-             but a click on it would fall through to the generic path"
-        );
-    }
     assert!(
-        block.contains("JointSide::A") && block.contains("JointSide::B"),
-        "the Down branch does not distinguish the two ends — one handle would \
-         author the other's anchor"
+        block.contains("resolve_anchor_hit") && block.contains("point_hit_map"),
+        "the Down branch does not resolve the hit through the painter's map — with \
+         handles on every joint the ids are keyed by entity bits, so a constant-id \
+         match would recognise nothing and every dot would be painted but dead"
+    );
+    let args = open_drag_arguments();
+    assert!(
+        args.contains("\n                            joint,"),
+        "the drag is not opened on the joint the hit resolved to: {args}"
+    );
+    assert!(
+        !args.contains("selection"),
+        "the SELECTION is being passed as the joint to author — a click on one \
+         joint's dot would move a different joint's anchor: {args}"
     );
     assert!(
         block.contains("joint_anchor_drag::open_drag"),
@@ -64,6 +90,31 @@ fn the_joint_anchor_down_opens_the_anchor_drag_for_its_side() {
         !block.contains("pick_sprites_at_world"),
         "the Down branch resolves the entity by picking a sprite — a joint has \
          none, so this would drag nothing"
+    );
+}
+
+/// **Grabbing an anchor selects its joint.**
+///
+/// The other half of *"without having to select it in the Hierarchy"* (Enio,
+/// 2026-07-25). The dot is now how a joint is reached at all — it has no sprite,
+/// so the canvas pick can never select it — and a press that grabs an anchor
+/// while the Inspector goes on describing whatever was selected before leaves
+/// the artist authoring one thing and reading about another.
+///
+/// Mutation-tested: dropping the two lines leaves §12 showing the previous
+/// selection through the whole drag, and this goes red.
+#[test]
+fn grabbing_an_anchor_selects_its_joint() {
+    let block = joint_anchor_down_block();
+    assert!(
+        block.contains("hero.gizmo.selection = Some(joint.to_bits())"),
+        "grabbing an anchor no longer selects its joint — §12 would keep talking \
+         about whatever was selected before the press"
+    );
+    assert!(
+        block.contains("hero.gizmo.extra_selection.clear()"),
+        "the previous multi-selection survives the grab, so the Inspector shows a \
+         group while a single joint's anchor is being authored"
     );
 }
 
@@ -145,43 +196,85 @@ fn the_position_commit_reseats_the_anchor_through_the_door() {
     );
 }
 
-/// **The paint pass draws the published point view.** The editor-core gizmo pass
-/// must call `paint_point_gizmo` on `hero.gizmo.point_view`, or the shell can
-/// publish handles every frame that are never drawn and never registered — the
-/// dots are invisible and unclickable, with every behavioural gate still green
-/// (they call `paint_point_gizmo` directly).
+/// **The paint pass draws the published point view, LAST among the gizmos.**
+///
+/// Two properties. Drawing it at all: without the call the shell can publish
+/// handles every frame that are never drawn and never registered — the dots are
+/// invisible and unclickable, with every behavioural gate still green (they call
+/// `paint_point_gizmo` directly).
+///
+/// And drawing it **after every box gizmo**, which is the z-order Enio asked for
+/// (2026-07-25: *"devem ter o Z index mais alto que os outros objetos"*).
+/// `HitIndex::hit` walks backwards, so the last registration wins the pixel: an
+/// anchor that shares a spot with a sprite's corner handle is grabbed as the
+/// anchor. A joint has no sprite to pick and no box of its own, so losing that
+/// pixel is not a cosmetic detail — it is the handle becoming unreachable.
+///
+/// Mutation-tested: moving the call back above the extras/global block goes red.
 #[test]
-fn the_paint_pass_draws_the_point_gizmo() {
+fn the_paint_pass_draws_the_point_gizmo_last() {
     let paint = fs::read_to_string("../../crates/ph2d-editor-core/src/screens/hero/paint.rs")
         .expect("the hero paint pass");
-    assert!(
-        paint.contains("point_view") && paint.contains("paint_point_gizmo"),
-        "the hero paint pass no longer draws the point gizmo from `point_view` — \
-         a published joint-anchor handle would never reach the screen or the hit \
-         index"
+    let point = paint.find("paint_point_gizmo(").expect(
+        "the hero paint pass no longer draws the point gizmo — a published \
+         joint-anchor handle would never reach the screen or the hit index",
     );
+    assert!(
+        paint[..point].contains("point_view"),
+        "the point gizmo is drawn from something other than `hero.gizmo.point_view`"
+    );
+    for (what, needle) in [
+        ("the primary sprite gizmo", "paint_sprite_gizmo(scene"),
+        ("the extra / global gizmos", "GizmoTarget::Global"),
+    ] {
+        let other = paint.find(needle).expect("the box gizmo pass");
+        assert!(
+            other < point,
+            "the anchor handles are registered BEFORE {what}, so a box handle \
+             painted afterwards wins the pixel and the joint's dot cannot be \
+             grabbed where the two overlap"
+        );
+    }
 }
 
-/// **The B anchor the handles are drawn at comes from the bridge's door.**
+/// **The published anchors come from the bridge, for the whole scene, at rest.**
 ///
-/// `build_point_view` is handed the B anchor rather than deriving one, and the
-/// caller must ask `joint_anchor_world` — the SAME function `sync_joint_pivots`
-/// uses for the A pivot. A second derivation here is how the two dots would come
-/// to describe different frames (the failure W-AnchorFollow paid 1.771 m for).
+/// Three properties of the one publish argument:
+///  - it is `point_gizmo::joint_anchor_handles`, which resolves every anchor
+///    through `PhysicsBridge::joint_anchor_world` — the SAME door
+///    `sync_joint_pivots` uses for the A pivot. A second derivation here is how
+///    two dots come to describe different frames (W-AnchorFollow paid 1.771 m
+///    for that lesson);
+///  - it is handed the BRIDGE and the sim, not a selection — the handles are for
+///    every joint (W-J2b), and a selection argument is the shape that made them
+///    reachable only through the Hierarchy;
+///  - it is gated on the clock, or the dots would take drags against a swinging
+///    body and author a pose nobody chose.
 #[test]
-fn the_published_b_anchor_comes_from_the_bridge_door() {
+fn the_published_anchors_come_from_the_bridge_door_for_every_joint() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     let start = src
         .find("self.joint_body_pick,")
         .expect("the publish call's joint arguments are gone");
     let block = &src[start..(start + 1600).min(src.len())];
+    let call = block
+        .find("joint_anchor_handles(")
+        .map(|i| &block[i..block[i..].find(')').map_or(block.len(), |e| i + e)])
+        .expect("the publish site no longer builds the anchor handles");
     assert!(
-        block.contains("joint_anchor_world") && block.contains("JointSide::B"),
-        "the publish site no longer asks the bridge for the B anchor"
+        call.contains("physics"),
+        "the handles are built without the bridge, so they cannot be coming from \
+         its anchor door: {call}"
     );
     assert!(
-        block.contains("is_playing"),
+        !call.contains("selection"),
+        "the publish site still narrows the handles by selection — a joint has no \
+         sprite, so that makes them reachable only by finding it in the Hierarchy \
+         first: {call}"
+    );
+    assert!(
+        call.contains("is_playing"),
         "the handles are no longer gated on the clock — they would take drags \
-         against a swinging body and author a pose nobody chose"
+         against a swinging body and author a pose nobody chose: {call}"
     );
 }

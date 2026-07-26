@@ -309,3 +309,87 @@ fn the_display_pivot_agrees_with_the_authored_a_anchor() {
     );
     assert!(dist(pivot, [-0.15, 6.2]) < 1e-4);
 }
+
+/// **The bridge lists every joint entity, dormant ones included.**
+///
+/// This is the set the canvas handles are offered for (W-J2b). It is wider than
+/// `self.joints` on purpose: a half-authored joint is absent from the solver's
+/// map and its A anchor is still authorable through the `Transform` fallback —
+/// and that is precisely the joint the artist is in the middle of fixing.
+///
+/// Mutation-tested: returning the built joints instead of the seen ones drops
+/// the dormant one and this goes red.
+#[test]
+fn the_bridge_lists_every_joint_entity_including_a_dormant_one() {
+    let mut sim = rig();
+    // A second joint naming a body that does not exist: seen, never built.
+    sim.world_mut().spawn((
+        Name::new("Dangling"),
+        PhysicsJoint {
+            body_a: stable_name_id("Post"),
+            body_b: stable_name_id("NoSuchBody"),
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(2.0, 2.0)),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+
+    let link = named(&mut sim, "Link");
+    let dangling = named(&mut sim, "Dangling");
+    let listed = bridge.joint_entities().to_vec();
+    assert!(
+        listed.contains(&link) && listed.contains(&dangling),
+        "both joints must be listed, got {listed:?} (link {link:?}, dangling {dangling:?})"
+    );
+    // …and the dormant one answers for its A end and refuses its B end, which is
+    // what makes listing it useful rather than merely generous.
+    assert!(
+        bridge
+            .joint_anchor_world(&sim, dangling, JointSide::A)
+            .is_some()
+    );
+    assert!(
+        bridge
+            .joint_anchor_world(&sim, dangling, JointSide::B)
+            .is_none()
+    );
+}
+
+/// **A deleted joint leaves the list.** The handles are drawn from it, so a
+/// stale entity is a grabbable dot for something that no longer exists.
+///
+/// ⚠️ **The fixture is a DORMANT joint, and it has to be.** The reconcile takes
+/// an early-out when the scene has no joints *and* the bridge holds none — and a
+/// dormant joint is seen without ever being held, so deleting one lands exactly
+/// there, with the previous frame's list still populated. Delete a *built* joint
+/// instead and the slow path runs (the bridge still holds it, so it must remove
+/// it), clearing the list on the way through: the gate passes without the fix
+/// and pins nothing.
+///
+/// Mutation-tested: dropping `joints_seen.clear()` from the early-out branch
+/// keeps the deleted joint listed forever, and this goes red.
+#[test]
+fn a_deleted_dormant_joint_leaves_the_published_list() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Dangling"),
+        PhysicsJoint {
+            body_a: stable_name_id("NoSuchA"),
+            body_b: stable_name_id("NoSuchB"),
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(2.0, 2.0)),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let joint = named(&mut sim, "Dangling");
+    assert_eq!(bridge.joint_entities(), [joint], "seen but never built");
+
+    sim.world_mut().despawn(joint);
+    bridge.dispatch(&mut sim, false, 0);
+    assert!(
+        bridge.joint_entities().is_empty(),
+        "a joint that no longer exists is still being offered a canvas handle"
+    );
+}

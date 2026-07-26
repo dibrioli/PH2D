@@ -47,12 +47,26 @@ mais próximo". Ours é **por-key** (Godot é por-track) ⇒ mais expressivo (mi
 - **Gates mutação-provados:** `nearest_steps_at_the_midpoint_not_the_far_key` (mut `remap`→Hold: RED) ·
   o par `(NEAREST, Interp::Nearest)` no gate de pick do shell (mut `absolute`→Hold: RED) · o
   anti-item-morto `every_published_menu_row_resolves_to_a_preset` cobre a row nova de graça.
+- ⚠️ **BUG DE COSTURA FECHADO PÓS-SMOKE (`c6a5a4003`):** o clique real de "Nearest" no menu **não
+  fazia nada** (Enio: *"não muda o gráfico da animação em nada"*). Os gates acima testavam
+  `intents_for_pick` **direto**, pulando o passo `timeline_segment::apply` que transforma o clique da
+  linha num `TimelineInterpPick` — e esse passo **enumerava os ids "folha" à mão**
+  (`Hold|Linear|Custom|Rove`), sem Nearest ⇒ o clique caía no `return false`, nenhum pick era
+  estacionado, nenhum `SetInterp` saía. O gate de seam (`timeline_segment_menu_parks_each_leaf_pick_for_the_shell`)
+  enumerava a MESMA lista incompleta (nem cobria Rove) ⇒ **verde sobre produto quebrado**.
+  [[feedback_a_condition_that_enumerates_its_readers_rots]]. **Fix rot-proof:** `is_top_level_leaf`
+  agora DERIVA da tabela `TIMELINE_SEGMENT_MENU` (menos as 3 cascatas), e o gate caminha a mesma tabela
+  (5 folhas: Hold/Nearest/Linear/Custom/Rove, guard de contagem) — mutação (lista hardcoded sem
+  Nearest) → RED em "pick parked". Lição: **um gate que testa a função por baixo da UI não prova a
+  UI**; o seam do clique real era o que faltava.
 - **Sem smoke env-gated** (é um preset de menu): a checagem manual é botão-direito num key →
   **Nearest** → o valor salta no meio do segmento (Hold salta no fim).
 
-## Commits (tip = `af65ba67e`)
+## Commits (tip = `c6a5a4003`)
 
 ```
+c6a5a4003 fix(anim): liga a UI do Nearest -- o clique do menu estava caindo no vazio
+58dc14eb2 docs(handoff): registra o Interp::Nearest na linha line/anim
 af65ba67e feat(anim): Interp::Nearest -- o Interpolate Mode: Nearest do Godot
 1b4f6af2c feat(timeline): autoria de sinal do marker vira o menu do botao direito (W3)
 8d4169783 chore(timeline): fechamento -- fmt, elisao, split doc.rs, LITERAL-PX-OK

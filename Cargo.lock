@@ -5280,6 +5280,7 @@ dependencies = [
  "ph2d-node-value-pattern",
  "ph2d-node-value-quantize",
  "ph2d-node-value-reduce",
+ "ph2d-node-value-slope",
  "ph2d-node-value-smooth",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
@@ -6389,6 +6390,7 @@ dependencies = [
  "ph2d-node-value-pattern",
  "ph2d-node-value-quantize",
  "ph2d-node-value-reduce",
+ "ph2d-node-value-slope",
  "ph2d-node-value-smooth",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
@@ -6603,6 +6605,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-reduce"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-slope"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

@@ -65,6 +65,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_pattern::register(&mut reg).unwrap();
     ph2d_node_value_wrap::register(&mut reg).unwrap();
     ph2d_node_value_time::register(&mut reg).unwrap();
+    ph2d_node_value_slope::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3652,6 +3653,78 @@ fn value_time_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the clock drove nothing"
+    );
+}
+
+/// **`value.slope` runs fully on the GPU and matches the CPU.** The derivative
+/// reads NEIGHBOURS off `in_v` (the `value.smooth` pattern, `ReadWrite`). The input
+/// is **`value.noise`, not a ramp** — a ramp's slope is a flat CONSTANT that a
+/// producer returning a constant would still pass; noise makes the slope VARY per
+/// instance, so the per-element neighbour arithmetic (the centred difference, the
+/// one-sided edges, the span divide) is what the parity pins. The noise is itself
+/// bit-comparable CPU↔GPU (its own parity gate), and a subtraction of two ε-close
+/// neighbours stays ε. `scale = 2.3` amplifies the small slope into a visible Y
+/// drive; the device result matches the CPU term for term. `is_fully_gpu` PROVES
+/// the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_slope_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let vn = g.add_node("value.noise");
+    g.set_param(vn, "frequency", 0.23);
+    g.set_param(vn, "speed", 0.7);
+    g.set_param(vn, "octaves", 3.0);
+    g.set_param(vn, "roughness", 0.55);
+    g.set_param(vn, "amplitude", 1.9);
+    g.set_param(vn, "seed", 4.0);
+    connect(&mut g, grid, vn); // a jagged field whose slope varies per instance
+    let slope = g.add_node("value.slope");
+    g.set_param(slope, "scale", 2.3); // amplify the small derivative into a visible drive
+    connect(&mut g, vn, slope);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (slope, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("slope value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "grid → noise → slope → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.slope → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the slope drove nothing"
     );
 }
 

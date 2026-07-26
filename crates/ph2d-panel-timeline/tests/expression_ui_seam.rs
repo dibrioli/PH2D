@@ -28,7 +28,11 @@ fn publish_one_track(entity: u64, prop: ph2d_timeline::PropKind) -> u64 {
 }
 
 /// Open+park the track menu for `target`, then click the "Expression\u{2026}" row.
-fn open_field(host: &mut MockPanelHost, state: &mut TimelinePanelState, target: u64) -> EventOutcome {
+fn open_field(
+    host: &mut MockPanelHost,
+    state: &mut TimelinePanelState,
+    target: u64,
+) -> EventOutcome {
     host.store_mut().open_context_menu(ContextMenuRequest {
         x: 40.0,
         y: 50.0,
@@ -58,9 +62,17 @@ fn the_expression_menu_row_opens_the_field() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    assert_eq!(open_field(&mut host, &mut state, target), EventOutcome::Consumed);
-    let ee = state.expr_edit.expect("the Expression row must open the field");
-    assert_eq!(ee.target, target, "the field edits the clicked row's binding");
+    assert_eq!(
+        open_field(&mut host, &mut state, target),
+        EventOutcome::Consumed
+    );
+    let ee = state
+        .expr_edit
+        .expect("the Expression row must open the field");
+    assert_eq!(
+        ee.target, target,
+        "the field edits the clicked row's binding"
+    );
     ph2d_panel_timeline::set_current_timeline(None);
 }
 
@@ -124,9 +136,18 @@ fn the_expression_row_is_offered_on_scene_tracks_but_not_time_remap() {
     let has = |menu: &[(ph2d_a11y::NodeId, &str, Option<[u8; 4]>)]| {
         menu.iter().any(|(row, _, _)| *row == ids::CTX_MENU_TL_EXPR)
     };
-    assert!(has(&ids::TIMELINE_TRACK_MENU), "plain track offers Expression");
-    assert!(has(&ids::TIMELINE_AXIS_TRACK_MENU), "axis track offers Expression");
-    assert!(has(&ids::TIMELINE_PATH_TRACK_MENU), "path track offers Expression");
+    assert!(
+        has(&ids::TIMELINE_TRACK_MENU),
+        "plain track offers Expression"
+    );
+    assert!(
+        has(&ids::TIMELINE_AXIS_TRACK_MENU),
+        "axis track offers Expression"
+    );
+    assert!(
+        has(&ids::TIMELINE_PATH_TRACK_MENU),
+        "path track offers Expression"
+    );
     assert!(
         !has(&ids::TIMELINE_TIMEREMAP_TRACK_MENU),
         "the Time-Remap track must NOT offer Expression (its clock is not a value)"

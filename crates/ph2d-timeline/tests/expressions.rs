@@ -34,8 +34,20 @@ fn drive(doc: &mut TimelineDoc, e: Entity, prop: PropKind, src: &str) {
 /// Key `(e, prop)` linearly `v0 -> v1` over `0..dur` (Linear).
 fn ramp(doc: &mut TimelineDoc, e: Entity, prop: PropKind, v0: f32, v1: f32, dur: f64) {
     let s = RationalTime::from_seconds;
-    doc.insert_key(e.to_bits(), prop, s(0.0), AnimValue::Float(v0), Interp::Linear);
-    doc.insert_key(e.to_bits(), prop, s(dur), AnimValue::Float(v1), Interp::Linear);
+    doc.insert_key(
+        e.to_bits(),
+        prop,
+        s(0.0),
+        AnimValue::Float(v0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e.to_bits(),
+        prop,
+        s(dur),
+        AnimValue::Float(v1),
+        Interp::Linear,
+    );
 }
 
 fn x_at(w: &mut World, e: Entity, doc: &mut TimelineDoc, t: f64) -> f32 {
@@ -86,14 +98,23 @@ fn wiggle_is_deterministic_by_seed() {
     apply_from_doc(&mut w, &mut doc, 1.3);
     let xf = *w.get::<Transform>(e).unwrap();
     let (wx, wy) = (xf.translation.x, xf.translation.y);
-    assert!(wx.abs() <= 20.0 + 1e-4 && wy.abs() <= 20.0 + 1e-4, "within [-amp, amp]");
-    assert!((wx - wy).abs() > 1e-3, "two bindings, two seeds -> two values");
+    assert!(
+        wx.abs() <= 20.0 + 1e-4 && wy.abs() <= 20.0 + 1e-4,
+        "within [-amp, amp]"
+    );
+    assert!(
+        (wx - wy).abs() > 1e-3,
+        "two bindings, two seeds -> two values"
+    );
 
     // Reproducible: a fresh identical doc gives the same X at the same time.
     let (mut w2, e2) = one("W");
     let mut doc2 = TimelineDoc::new();
     drive(&mut doc2, e2, PropKind::TranslationX, "wiggle(2, 20)");
-    assert_eq!(x_at(&mut w, e, &mut doc, 1.3), x_at(&mut w2, e2, &mut doc2, 1.3));
+    assert_eq!(
+        x_at(&mut w, e, &mut doc, 1.3),
+        x_at(&mut w2, e2, &mut doc2, 1.3)
+    );
 }
 
 /// A prop-link follows a KEYED source with no lag: `Src.x` on Dst reads Src's
@@ -101,8 +122,12 @@ fn wiggle_is_deterministic_by_seed() {
 #[test]
 fn a_prop_link_follows_a_keyed_source() {
     let mut w = World::new();
-    let src = w.spawn((Transform::from_translation(Vec2::ZERO), Name::new("Src"))).id();
-    let dst = w.spawn((Transform::from_translation(Vec2::ZERO), Name::new("Dst"))).id();
+    let src = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("Src")))
+        .id();
+    let dst = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("Dst")))
+        .id();
     let mut doc = TimelineDoc::new();
     ramp(&mut doc, src, PropKind::TranslationX, 0.0, 10.0, 1.0); // Src.x = 10t
     drive(&mut doc, dst, PropKind::TranslationX, "Src.x");
@@ -121,8 +146,12 @@ fn a_prop_link_follows_a_keyed_source() {
 #[test]
 fn a_cycle_reads_the_snapshot_and_does_not_explode() {
     let mut w = World::new();
-    let a = w.spawn((Transform::from_translation(Vec2::ZERO), Name::new("A"))).id();
-    let b = w.spawn((Transform::from_translation(Vec2::ZERO), Name::new("B"))).id();
+    let a = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("A")))
+        .id();
+    let b = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("B")))
+        .id();
     let mut doc = TimelineDoc::new();
     drive(&mut doc, a, PropKind::TranslationX, "B.x + 1");
     drive(&mut doc, b, PropKind::TranslationX, "A.x + 1");
@@ -131,7 +160,10 @@ fn a_cycle_reads_the_snapshot_and_does_not_explode() {
         apply_from_doc(&mut w, &mut doc, 0.0);
         let ax = w.get::<Transform>(a).unwrap().translation.x;
         let bx = w.get::<Transform>(b).unwrap().translation.x;
-        assert!(ax.is_finite() && bx.is_finite(), "a cycle must never explode");
+        assert!(
+            ax.is_finite() && bx.is_finite(),
+            "a cycle must never explode"
+        );
     }
 }
 
@@ -143,7 +175,10 @@ fn a_parse_error_keeps_the_keyed_value() {
     let mut doc = TimelineDoc::new();
     ramp(&mut doc, e, PropKind::TranslationX, 0.0, 10.0, 1.0);
     drive(&mut doc, e, PropKind::TranslationX, "time * ("); // malformed
-    assert!((x_at(&mut w, e, &mut doc, 0.5) - 5.0).abs() < 1e-3, "keeps the keyed 5");
+    assert!(
+        (x_at(&mut w, e, &mut doc, 0.5) - 5.0).abs() < 1e-3,
+        "keeps the keyed 5"
+    );
 }
 
 /// A binding WITHOUT an expression is untouched even while the pass runs for
@@ -156,7 +191,10 @@ fn a_binding_without_expr_is_untouched_while_the_pass_runs() {
     let mut doc = TimelineDoc::new();
     ramp(&mut doc, e, PropKind::TranslationY, 0.0, 10.0, 1.0); // Y keyed, no expr
     drive(&mut doc, e, PropKind::TranslationX, "time*10"); // X drives the pass to run
-    assert!((y_at(&mut w, e, &mut doc, 0.5) - 5.0).abs() < 1e-4, "Y stays keyed");
+    assert!(
+        (y_at(&mut w, e, &mut doc, 0.5) - 5.0).abs() < 1e-4,
+        "Y stays keyed"
+    );
 }
 
 /// **Arch-gate: the expression pass never touches the fade evaluator.** The whole

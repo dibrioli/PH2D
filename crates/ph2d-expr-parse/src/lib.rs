@@ -111,8 +111,7 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
                 while i < b.len() {
                     let ch = b[i] as char;
                     let dot_join = ch == '.'
-                        && b
-                            .get(i + 1)
+                        && b.get(i + 1)
                             .is_some_and(|n| (*n as char).is_ascii_alphabetic() || *n == b'_');
                     if ch.is_ascii_alphanumeric() || ch == '_' || dot_join {
                         i += 1;

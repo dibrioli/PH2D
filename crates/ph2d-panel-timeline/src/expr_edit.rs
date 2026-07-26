@@ -54,9 +54,7 @@ pub(crate) fn route(
         WidgetEvent::Click(id) if id == ids::CTX_MENU_TL_EXPR => {
             Some(crate::event_track_menu::open_expr(state, host))
         }
-        WidgetEvent::Submit(id) | WidgetEvent::Blur(id)
-            if id == ids::TIMELINE_TRACK_EXPR_INPUT =>
-        {
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::TIMELINE_TRACK_EXPR_INPUT => {
             commit(state, host.store());
             Some(EventOutcome::Consumed)
         }
@@ -134,16 +132,16 @@ pub(crate) fn paint(
         resolve(ColorToken::TimelinePlayhead, theme),
     );
 
-    let (ti_state, text, caret, anchor) =
-        match ctx.host.store().get(ids::TIMELINE_TRACK_EXPR_INPUT) {
-            Some(InteractiveState::TextInput {
-                state,
-                text,
-                caret,
-                selection_anchor,
-            }) => (*state, text.clone(), *caret, *selection_anchor),
-            _ => (TextInputState::Focused, String::new(), 0, None),
-        };
+    let (ti_state, text, caret, anchor) = match ctx.host.store().get(ids::TIMELINE_TRACK_EXPR_INPUT)
+    {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, text.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Focused, String::new(), 0, None),
+    };
     let input = TextInput::new(ids::TIMELINE_TRACK_EXPR_INPUT, "").state(ti_state);
     paint_text_input_with_buffer(
         &input,

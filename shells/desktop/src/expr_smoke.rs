@@ -82,7 +82,12 @@ impl crate::App {
         drive(doc, slider, PropKind::TranslationX, "time*80");
         // Wiggler: a keyed X ramp + wiggle ON TOP of the keyed Y (`value`).
         ramp(doc, wiggler, PropKind::TranslationX, -200.0, 200.0, 4.0);
-        drive(doc, wiggler, PropKind::TranslationY, "value + wiggle(3, 40)");
+        drive(
+            doc,
+            wiggler,
+            PropKind::TranslationY,
+            "value + wiggle(3, 40)",
+        );
         // Follower: a prop-link — follows the Slider offset by 120.
         drive(doc, follower, PropKind::TranslationX, "Slider.x + 120");
 

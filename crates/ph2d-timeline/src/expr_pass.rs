@@ -53,7 +53,9 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
             snap.insert((b.entity, b.prop), v);
         }
         if let Some(name) = world.get::<Name>(e) {
-            names.entry(stable_name_id(name.0.as_str())).or_insert(b.entity);
+            names
+                .entry(stable_name_id(name.0.as_str()))
+                .or_insert(b.entity);
         }
     }
 
@@ -109,12 +111,17 @@ impl Bindings for ExprBindings<'_> {
         match name {
             "time" => self.time,
             "__seed" => self.seed,
-            "value" => *self.snap.get(&(self.this_entity, self.this_prop)).unwrap_or(&0.0),
+            "value" => *self
+                .snap
+                .get(&(self.this_entity, self.this_prop))
+                .unwrap_or(&0.0),
             dotted => {
                 // `Name.prop` -> the snapshot value of another animated property.
                 if let Some((nm, pr)) = dotted.rsplit_once('.')
-                    && let (Some(&e), Some(prop)) =
-                        (self.names.get(&stable_name_id(nm)), PropKind::from_expr_name(pr))
+                    && let (Some(&e), Some(prop)) = (
+                        self.names.get(&stable_name_id(nm)),
+                        PropKind::from_expr_name(pr),
+                    )
                 {
                     return *self.snap.get(&(e, prop)).unwrap_or(&0.0);
                 }

@@ -57,6 +57,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_mix::register(&mut reg).unwrap();
     ph2d_node_value_quantize::register(&mut reg).unwrap();
     ph2d_node_value_gain::register(&mut reg).unwrap();
+    ph2d_node_value_step::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3102,6 +3103,72 @@ fn value_gain_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the S-curve drove nothing"
+    );
+}
+
+/// **`value.step` runs fully on the GPU and matches the CPU.** A `[0,1]` ramp
+/// (instance_field Ramp) through a Smooth gate at `threshold 0.5, width 0.4` — the
+/// real division/Hermite path (`(x-lo)/(hi-lo)`, `3t²−2t³`), NOT the Hard branch
+/// (a trivial `select`), which would hide a wrong band behind a comparison —
+/// drives Y; the device result matches the CPU port. `is_fully_gpu` PROVES the
+/// chain dispatches (no silent CPU fallback). The ramp crosses the band, so the
+/// output is neither all-0 nor all-1 (`column_is_nonzero`).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_step_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let step = g.add_node("value.step");
+    g.set_param(step, "threshold", 0.5);
+    g.set_param(step, "width", 0.4); // a real smooth band, not the Hard select
+    g.set_param(step, "mode", 1.0); // Smooth
+    connect(&mut g, field, step);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (step, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("gated value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → step → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.step → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the gate drove nothing"
     );
 }
 

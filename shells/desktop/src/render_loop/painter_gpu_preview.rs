@@ -45,6 +45,27 @@ pub(crate) struct PainterGpuPreview {
     premul: PreviewPremul,
 }
 
+/// **Constrói a sessão ANTES do primeiro traço precisar dela** (doc 28 §4.8).
+///
+/// ⚠️ O `get_or_insert_with` do [`drive`] a criava no primeiro frame que precisasse do preview GPU — que
+/// é o **primeiro traço do artista** — e as três peças dela **COMPILAM shaders**. Medido na RTX
+/// (`ph2d-render/tests/measure_first_stroke_pipelines.rs`, driver já quente): `LayerCompositor` **6,01
+/// ms** + `ImpastoLightPass` **16,30** + `PreviewPremul` **5,70** = **28,01 ms**, ou seja quase dois
+/// quadros de 60 fps, pagos exatamente no gesto em que o artista está esperando a tinta aparecer.
+///
+/// É custo ÚNICO e por isso invisível a toda sonda do tool (elas medem o `PainterTool`, que não tem
+/// GPU) — e invisível também a uma sonda que meça o SEGUNDO traço, que foi o que me fez chamar o
+/// problema de *"o delay de todo pen-down"* quando o Enio o chamava de *"o delay do PRIMEIRO traço"*.
+///
+/// O gatilho é o **bind do documento**: o artista escolhe o sprite, depois leva o mouse até a tela e
+/// clica — há tempo HUMANO nesse vão, e é ali que os 28 ms cabem sem ninguém ver. Fazê-lo no boot
+/// cobraria os mesmos 28 ms de quem nunca pinta; fazê-lo por frame seria pior que o lazy.
+pub(crate) fn prewarm(session_slot: &mut Option<PainterGpuPreview>, gpu: &GpuContext) {
+    if session_slot.is_none() {
+        *session_slot = Some(PainterGpuPreview::new(gpu));
+    }
+}
+
 impl PainterGpuPreview {
     fn new(gpu: &GpuContext) -> Self {
         Self {

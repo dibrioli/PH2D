@@ -25,6 +25,7 @@
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
+| M | 🎯 **O 1º traço COMPILAVA SHADERS** | ✅ **fechada** (§4.8) | **28,01 ms** de criação de pipeline pagos no primeiro traço; movidos para o bind do documento |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -410,6 +411,54 @@ o §0 proíbe e que já matou a estimativa de cinco amostras (§3.3). Recusado p
 **É a lição da §3.3 outra vez, numa forma nova: o custo do AA é a contagem de amostras, e a qualidade
 dele também é.** O kernel rejeitado foi removido; o número vive no doc-comment do `film_at_lut`, que é
 onde a próxima pessoa com esta ideia vai ler.
+
+### 4.8 🎯 E o PRIMEIRO traço era outra coisa: 28 ms de COMPILAÇÃO DE SHADER
+
+> *"ainda não resolvemos o primeiro traço"* (Enio, 2026-07-26, depois de todas as medições acima)
+
+⚠️ **A §4.5 mediu que o custo é POR GESTO e concluiu que "o delay do primeiro traço" era o delay de todo
+pen-down. Isso estava certo sobre o que a sonda via, e ERRADO sobre o que o artista sentia** — porque
+toda sonda desta jornada mede o `PainterTool`, e **o `PainterTool` não tem GPU**. O que só o primeiro
+traço paga vive na SHELL.
+
+O `PainterGpuPreview` era construído **lazily** (`get_or_insert_with`, dentro do `drive`), ou seja no
+primeiro frame que precisasse do preview GPU — o primeiro traço. E as três peças dele **compilam
+shaders**. Medido na RTX com o driver já quente
+(`ph2d-render/tests/measure_first_stroke_pipelines.rs`):
+
+| peça | ms |
+|---|---|
+| `LayerCompositor::new` | 6,01 |
+| **`ImpastoLightPass::new`** | **16,30** |
+| `PreviewPremul::new` | 5,70 |
+| **total, pago no 1º traço** | **28,01** |
+
+Quase **dois quadros de 60 fps**, uma vez, exactamente no gesto em que o artista está esperando a tinta
+aparecer — e somados aos ~12 ms do pen-down dão ~40 ms antes do primeiro dab.
+
+⚠️ **A sonda que mede o SEGUNDO pen-down não pode ver isto**, e foi ela que me fez chamar o problema de
+*"o delay de todo pen-down"* enquanto o Enio o chamava, com precisão, de *"o delay do PRIMEIRO traço"*.
+**Quando o relato do artista e a medição discordam sobre QUAL gesto dói, a medição está olhando para o
+lugar errado.**
+
+⚠️ **E o número que a sonda descartou é o maior de todos:** a primeira chamada a qualquer pipeline neste
+processo custou **1 177,84 ms** (o compilador de shader do driver acordando). No app isso é pago no
+boot, pelo renderer principal — mas é o aviso de que compilação de pipeline **nunca** é barata, e de que
+a única pergunta que importa é *em que gesto ela cai*.
+
+**A cura é QUANDO, não o quê:** `prewarm` no **bind do documento** — o artista escolhe o sprite, depois
+leva o mouse até a tela e clica, e há tempo HUMANO nesse vão. No boot cobraria os 28 ms de quem nunca
+pinta; por frame seria pior que o lazy.
+
+⚠️ **O `get_or_insert_with` do `drive` FICA**, e não é redundância: o pré-aquecimento é uma otimização de
+*quando*, e o produto não pode depender dela para funcionar — uma rota que chegue ao `drive` sem passar
+pelo bind tem de continuar produzindo preview, só que pagando os 28 ms ali. Há gate para as duas metades.
+
+**Gates** (`the_first_stroke_does_not_compile_shaders.rs`) — arquiteturais, e **têm de ser**: a sessão
+existe nos dois casos e produz os mesmos pixels; o que muda é *quando* ela é construída, e nenhum gate de
+comportamento vê isso. A afirmação é **posicional** (o pré-aquecimento vem depois do bind **e dentro da
+mesma cadeia de guards**, contando chaves — senão ele rodaria noutra condição, por exemplo em todo
+frame, que é pior que o lazy). Controle positivo nos dois alvos; **3 mutações, 3 sangram**.
 
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 

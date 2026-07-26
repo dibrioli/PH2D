@@ -134,6 +134,6 @@ fn the_self_close_hook_uses_the_window_close_door() {
     );
     assert!(
         !body.contains("process::exit"),
-        "um `process::exit` pula TODO destrutor: sairia 0 sem provar nada sobre a ordem"
+        "um `process::exit` pula TODO drop: sairia 0 sem provar nada sobre a ordem de morte"
     );
 }

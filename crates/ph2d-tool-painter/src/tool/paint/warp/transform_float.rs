@@ -195,7 +195,7 @@ impl PainterTool {
         );
         let patch = &fp.patch;
         let base = &fp.base;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let stride = (w as usize) * 4;
         // Whole-image transforms make `dirty` the entire canvas (~4.2M px @ 2048²) — a serial per-texel
         // gather was ~190 ms/move (measured, `perf_transform_whole_image_table`). Split the rows into

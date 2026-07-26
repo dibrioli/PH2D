@@ -12,7 +12,6 @@
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushSpec, Dab};
-use std::sync::Arc;
 
 impl PainterTool {
     /// Blur every dab's footprint into `canvas_rgba`, routed like the paint path (see the module doc).
@@ -72,7 +71,7 @@ impl PainterTool {
         };
 
         let mut tex_rng = self.paint.tex_rng;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let amount = strength * d.coverage;

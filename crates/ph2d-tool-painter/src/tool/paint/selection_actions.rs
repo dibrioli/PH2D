@@ -59,7 +59,7 @@ impl PainterTool {
             255,
         ];
         let mask = Arc::clone(&self.paint.selection_mask);
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let n = mask.len().min(buf.len() / 4);
         for i in 0..n {
             let cov = f32::from(mask[i]) / 255.0;
@@ -153,7 +153,7 @@ impl PainterTool {
             clip.rect.w as usize,
             clip.rect.h as usize,
         );
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         for y in 0..ch {
             for x in 0..cw {
                 let (dx, dy) = (cx + x, cy + y);

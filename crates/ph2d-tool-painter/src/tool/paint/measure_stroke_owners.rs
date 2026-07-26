@@ -350,3 +350,61 @@ fn what_a_plane_fork_costs_through_the_products_own_door() {
     }
     println!();
 }
+
+/// **O que a porta única comprou, medido no PRODUTO** — num gesto BARATO, de propósito.
+///
+/// Até 2026-07-26 só o depósito de pigmento vinha pela rota paralela; os outros **23 sítios** (fill,
+/// smear, blur, clone, seleção, warp, máscara, inpaint, aquarela, e o composite do Wet Paint, que roda a
+/// cada TICK) forkavam **serialmente**. E a primeira escrita de todo gesto forka, porque em repouso o
+/// canvas tem dois donos — o que a sonda de donos deste arquivo mediu.
+///
+/// ⚠️ **DUAS fixtures anteriores não conseguiam ver o fork, por motivos diferentes, e as duas ficam
+/// escritas:**
+///
+/// 1. **Um FILL** custa ~130 ms por conta própria a 4096², e a variação entre corridas dele é MAIOR que
+///    os ~6 ms do fork: a diferença saía **negativa**. *Um sinal só é mensurável contra um fundo menor
+///    que ele.*
+/// 2. **Ablar o HISTÓRICO** (`undo.clear()`) não remove o segundo dono de um traço: o `stroke_undo`
+///    nasce DENTRO do `paint_begin`, então os dois braços forkam e a diferença é zero. A ablação certa
+///    é trocar a ROTA no mesmo gesto.
+///
+/// Medido assim, no pen-down de um **Blur** (dab limitado pela pegada, ~1 ms de fundo):
+///
+/// | blur pen-down | 2048² | 4096² |
+/// |---|---|---|
+/// | `Arc::make_mut` serial | 1,11 | **11,64** |
+/// | `fork_par` paralelo | 0,85 | **3,66** |
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_the_single_door_bought_a_non_pigment_gesture() {
+    use std::time::Instant;
+
+    fn blur_down_ms(side: u32) -> f64 {
+        let mut v = Vec::new();
+        for _ in 0..7 {
+            let mut t = armed(side);
+            t.paint.brush.impasto = false;
+            for slot in &mut t.paint.brush_by_mode {
+                slot.impasto = false;
+            }
+            stroke(&mut t, 200.0); // um traço commitado antes: o histórico passa a segurar o canvas
+            t.set_paint_tool_mode("blur");
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([500.0, 500.0], PointerPhase::Down));
+            v.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    }
+
+    println!(
+        "\n{:<26} {:>10} {:>10}",
+        "blur pen-down (ms)", "2048", "4096"
+    );
+    println!(
+        "{:<26} {:>10.2} {:>10.2}\n",
+        "pela porta",
+        blur_down_ms(2048),
+        blur_down_ms(4096)
+    );
+}

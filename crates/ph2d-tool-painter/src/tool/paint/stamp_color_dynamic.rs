@@ -11,7 +11,6 @@ use ph2d_painter_brush::{
     accumulate_shape_layers_rgba_batch, blend_over, shift_colors_like,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
-use std::sync::Arc;
 
 impl PainterTool {
     /// Each dab resolves its own Shape basis (rotation) and colour (`d.color` carries Randomize Color),
@@ -232,7 +231,7 @@ impl PainterTool {
         let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         {
-            let buf = Arc::make_mut(&mut self.canvas_rgba);
+            let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
             let super::stamp_color_cache::PerLayerStroke { pre, cov } =
                 &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;

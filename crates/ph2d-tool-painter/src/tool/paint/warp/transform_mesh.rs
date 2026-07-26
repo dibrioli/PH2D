@@ -10,7 +10,6 @@ use super::transform_float::{
 };
 use super::transform_geom::{Mat3, homography_from_quads};
 use crate::tool::PainterTool;
-use std::sync::Arc;
 
 /// The cached Catmull-Rom subdivision of the PRISTINE Warp grid — constant during a whole drag, but it
 /// was re-subdivided every move. Self-validating: `pristine` is compared against the live mesh's control
@@ -175,7 +174,7 @@ impl PainterTool {
         }
         let patch = &fp.patch;
         let base = &fp.base;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let stride = (w as usize) * 4;
         // Whole-image Warp makes `dirty` the entire canvas — split the rows into disjoint bands across
         // the cores (each band overlays the cells in the same (r,c) order, so the result is bit-identical

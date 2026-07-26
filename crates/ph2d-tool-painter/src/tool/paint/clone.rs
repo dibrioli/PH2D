@@ -13,7 +13,6 @@ use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_painter_brush::{BrushSpec, Dab};
-use std::sync::Arc;
 
 impl PainterTool {
     /// Whether the active operation is **Clone** (drives the stamp route + the panel snapshot).
@@ -150,7 +149,7 @@ impl PainterTool {
         };
 
         let mut tex_rng = self.paint.tex_rng;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let amount = strength * d.coverage;

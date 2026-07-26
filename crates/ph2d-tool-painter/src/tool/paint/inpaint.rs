@@ -15,7 +15,6 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_inpaint::{InpaintParams, InpaintRequest, inpaint_cpu};
 use ph2d_painter_brush::Dab;
-use std::sync::Arc;
 
 /// Live-feedback tint for a marked defect pixel (blended 50 % into the canvas). Cosmetic only — the heal
 /// overwrites every marked pixel, so the colour is irrelevant to the result.
@@ -72,7 +71,7 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         {
             let mask = &mut self.paint.inpaint_mask;
-            let buf = Arc::make_mut(&mut self.canvas_rgba);
+            let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
             if buf.len() != w * h * 4 {
                 return;
             }
@@ -197,7 +196,7 @@ impl PainterTool {
         );
         // Write only the reconstructed (marked) pixels back into the layer.
         {
-            let dst = Arc::make_mut(&mut self.canvas_rgba);
+            let dst = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
             for cy in 0..ch {
                 for cx in 0..cw {
                     if crop_mask[cy * cw + cx] < 128 {

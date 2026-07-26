@@ -9,7 +9,6 @@
 use super::Region;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-use std::sync::Arc;
 
 /// Max per-channel (RGBA) difference from the seed colour for a pixel to be filled, at a given tolerance.
 #[inline]
@@ -185,7 +184,7 @@ impl PainterTool {
         // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
         let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
             .then(|| self.selection_component_at(sx, sy, w, h));
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         if buf.len() != w * h * 4 {
             return;
         }
@@ -330,7 +329,7 @@ impl PainterTool {
         }
         let n = self.paint.fill_snapshot.len();
         if n > 0 && self.canvas_rgba.len() == n {
-            let buf = Arc::make_mut(&mut self.canvas_rgba);
+            let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
         if let Some(rect) = self.paint.fill_last_rect {

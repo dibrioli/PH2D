@@ -342,7 +342,7 @@ impl PainterTool {
         let sel = sel_gate.then(|| Arc::clone(&self.paint.selection_mask));
         let base = Arc::clone(&sess.base);
         let free = Arc::clone(&sess.free);
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         let n = buf.len() / 4;
         for ry in 0..region.h {
             for rx in 0..region.w {

@@ -47,9 +47,18 @@ pub(super) fn fork_par<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
 where
     T: Copy + Send + Sync,
 {
-    // `get_mut` is the question `make_mut` asks anyway; asking it first is what lets us choose HOW to
-    // copy rather than only whether to. (Phrased as `is_none` so the borrow ends before the copy.)
-    if Arc::get_mut(arc).is_none() && arc.len() >= PAR_MIN {
+    // ⚠️ **`strong_count`, NUNCA `Arc::get_mut`** — e a diferença custou uma regressão de 4× no Wet
+    // Paint antes de ser vista.
+    //
+    // `get_mut` devolve `None` se existir **qualquer `Weak`**; `make_mut` só COPIA se existir outro
+    // **strong** (com apenas `Weak` vivo ele *move* o valor, que é o que a frente V mediu em 0,0000 ms).
+    // Perguntar pelo `get_mut` é portanto fazer uma pergunta MAIS ESTRITA que a do copiador — e o guard
+    // de identidade do Wet Paint é precisamente um `Weak`, então esta função passou a copiar o canvas
+    // inteiro **a cada movimento do mouse** com o `make_mut` logo abaixo movendo-o de graça.
+    //
+    // A pergunta certa é a que o copiador faz: *há outro dono FORTE?* Ela é um palpite sobre HOW, nunca
+    // sobre WHETHER — quem decide de fato continua sendo o `make_mut` da última linha.
+    if Arc::strong_count(arc) > 1 && arc.len() >= PAR_MIN {
         let fresh: Vec<T> = arc.par_iter().copied().collect();
         *arc = Arc::new(fresh);
     }
@@ -86,6 +95,33 @@ mod tests {
             assert_eq!(*keep_a, src);
             assert_eq!(*keep_b, src);
         }
+    }
+
+    /// **Um `Weak` vivo NÃO é um dono — e perguntar isso errado custou 4× no Wet Paint.**
+    ///
+    /// `Arc::get_mut` devolve `None` na presença de qualquer `Weak`; `Arc::make_mut` só **copia** com
+    /// outro **strong** (com só `Weak` ele *move* o valor). Enquanto esta função perguntava pelo
+    /// `get_mut`, ela copiava o plano inteiro sempre que alguém segurasse um `Weak` — e o guard de
+    /// identidade do Wet Paint é exatamente isso (frente V, doc 28 §5.12), então o composite pagava uma
+    /// cópia do documento **por movimento do mouse** enquanto o `make_mut` seguinte o movia de graça.
+    ///
+    /// ⚠️ O sintoma foi o gate de RAZÃO do move molhado voltando a **4,77×** — nunca uma falha de
+    /// comportamento, porque as duas rotas dão os mesmos bytes. Este gate afirma a propriedade direto,
+    /// para o defeito não depender de um relógio para aparecer.
+    #[test]
+    fn a_live_weak_is_not_an_owner_and_does_not_trigger_a_copy() {
+        let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN + 1_000]);
+        let watcher = Arc::downgrade(&a); // o guard de identidade do Wet Paint, em miniatura
+        let before = a.as_ptr();
+        let got = fork_par(&mut a);
+        assert_eq!(
+            got.as_ptr(),
+            before,
+            "um `Weak` vivo fez o fork COPIAR o plano — a pergunta e `strong_count`, nao `get_mut`"
+        );
+        // E o `Weak` foi desassociado, exatamente como o `Arc::make_mut` faria: quem o segurava tem de
+        // enxergar que o buffer mudou de dono (e o guard do Wet Paint depende disso para se re-armar).
+        assert!(watcher.upgrade().is_none() || Arc::strong_count(&a) == 1);
     }
 
     /// **With no second owner it does not allocate at all.** The common case inside a stroke is that the
@@ -163,9 +199,12 @@ mod tests {
     /// digital: **10,3 ms com o `make_mut` cru contra 3,6 ms por aqui** (`measure_impasto_cost::
     /// the_first_stroke_latency`); o pen-down do impasto, 18,6 -> 12,2.
     ///
-    /// O escopo é o `stamp_cache` de propósito: é ele que escreve o canvas no **pen-down**, e o pen-down é o
-    /// único sítio onde o `Arc` do canvas tem um segundo dono garantido (o `stroke_undo` que o `paint_begin`
-    /// acabou de tirar) ⇒ o primeiro `make_mut` do traço **sempre** copia a tela inteira.
+    /// ⚠️ **O escopo deixou de ser o `stamp_cache` (2026-07-26).** A doc antiga dizia que o pen-down era
+    /// *"o único sítio onde o `Arc` do canvas tem um segundo dono garantido"* — e isso é **falso**:
+    /// medido (`measure_stroke_owners`), em repouso o canvas tem **dois donos**, porque o `cursor` do
+    /// histórico é um dono **permanente**. Logo a PRIMEIRA escrita de **todo** gesto forka, e os outros
+    /// 23 sítios (fill, smear, blur, clone, seleção, warp, máscara, inpaint, aquarela, e o composite do
+    /// Wet Paint, que roda a cada TICK) pagavam a cópia **serial**. O gate irmão abaixo cobre a crate.
     #[test]
     fn the_pigment_deposit_forks_the_canvas_in_parallel() {
         let src = include_str!("stamp_cache.rs");
@@ -182,6 +221,120 @@ mod tests {
             "o deposito de pigmento nao pode forkar o canvas SERIALMENTE: {raw} sitio(s) com `make_mut` cru \
              (as duas rotas dao os mesmos bytes, entao isto nao acende em teste de comportamento nenhum \
              -- custa 3x o tempo do pen-down e passa despercebido)"
+        );
+    }
+
+    /// **De que é feito um fork, por TIPO e por TAMANHO** — a medição que mostrou que
+    /// `par_iter().copied().collect()` **não é** uniformemente melhor que um memcpy.
+    #[test]
+    #[ignore = "medicao — rode com --release --ignored"]
+    fn what_a_fork_costs_by_element_type_and_size() {
+        use std::time::Instant;
+        fn best(mut f: impl FnMut() -> f64) -> f64 {
+            (0..5).map(|_| f()).fold(f64::MAX, f64::min)
+        }
+        fn go<T: Copy + Send + Sync + Default + PartialEq>(name: &str, n: usize) {
+            let src: Arc<Vec<T>> = Arc::new(vec![T::default(); n]);
+            let a = best(|| {
+                let s = Arc::clone(&src);
+                let t0 = Instant::now();
+                let v: Vec<T> = (*s).clone();
+                let dt = t0.elapsed().as_secs_f64() * 1000.0;
+                std::hint::black_box(v.len());
+                dt
+            });
+            let b = best(|| {
+                let s = Arc::clone(&src);
+                let t0 = Instant::now();
+                let v: Vec<T> = s.par_iter().copied().collect();
+                let dt = t0.elapsed().as_secs_f64() * 1000.0;
+                std::hint::black_box(v.len());
+                dt
+            });
+            let c = best(|| {
+                let s = Arc::clone(&src);
+                let t0 = Instant::now();
+                let mut v: Vec<T> = vec![T::default(); s.len()];
+                v.par_chunks_mut(1 << 16)
+                    .zip(s.par_chunks(1 << 16))
+                    .for_each(|(d, x)| d.copy_from_slice(x));
+                let dt = t0.elapsed().as_secs_f64() * 1000.0;
+                std::hint::black_box(v.len());
+                dt
+            });
+            let mb = (n * std::mem::size_of::<T>()) as f64 / (1024.0 * 1024.0);
+            println!(
+                "{name:<16} {mb:>7.0} MB  clone {a:>7.3}  par_collect {b:>7.3}  par_memcpy {c:>7.3}"
+            );
+        }
+        println!();
+        for side in [2048usize, 4096] {
+            let n = side * side;
+            println!("-- tela {side}x{side} --");
+            go::<u8>("canvas rgba u8", n * 4);
+            go::<u8>("covers u8", n);
+            go::<f32>("heights f32", n);
+            go::<[u8; 7]>("mats [u8;7]", n);
+        }
+        println!();
+    }
+
+    /// **NENHUM sítio da crate forka o canvas serialmente** — o irmão de escopo largo do gate acima.
+    ///
+    /// ⚠️ Um gate por-arquivo protege o arquivo que alguém lembrou de listar. Este varre `tool/paint/**`
+    /// inteiro, então o sítio 24 nasce coberto — que é exatamente como os 23 nasceram descobertos.
+    ///
+    /// **Prosa é isenta, código não.** O literal aparece em doc-comments explicando a diferença entre as
+    /// duas rotas, e um gate que os proibisse mandaria apagar a explicação; ele conta só linhas de código.
+    /// Arquivos de teste e de medição também são isentos — eles CHAMAM `make_mut` de propósito, para
+    /// medir a rota lenta contra a rápida.
+    #[test]
+    fn no_site_in_the_crate_forks_the_canvas_serially() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tool/paint");
+        let mut scanned = 0usize;
+        let mut through = 0usize;
+        let mut offenders: Vec<String> = Vec::new();
+        let mut stack = vec![root];
+        while let Some(dir) = stack.pop() {
+            for e in std::fs::read_dir(&dir).expect("src/tool/paint existe") {
+                let p = e.expect("entrada legivel").path();
+                if p.is_dir() {
+                    stack.push(p);
+                    continue;
+                }
+                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+                if !name.ends_with(".rs")
+                    || name.contains("test")
+                    || name.starts_with("measure_")
+                    || name == "plane_fork.rs"
+                {
+                    continue; // gates e sondas chamam a rota lenta DE PROPOSITO
+                }
+                let src = std::fs::read_to_string(&p).expect("fonte legivel");
+                scanned += 1;
+                through += src.matches("fork_par(&mut self.canvas_rgba)").count();
+                for (i, line) in src.lines().enumerate() {
+                    let t = line.trim_start();
+                    if t.starts_with("//") {
+                        continue; // prosa: explicar a rota lenta e o que os docs FAZEM
+                    }
+                    if t.contains("Arc::make_mut(&mut self.canvas_rgba)") {
+                        offenders.push(format!("{name}:{}", i + 1));
+                    }
+                }
+            }
+        }
+        // Controle positivo, nas DUAS pontas: sem ele o gate passa por não ter achado arquivo nenhum.
+        assert!(scanned > 20, "controle: so {scanned} arquivos varridos");
+        assert!(
+            through >= 20,
+            "controle: so {through} escritas de canvas pela porta paralela — o scanner esta cego"
+        );
+        assert!(
+            offenders.is_empty(),
+            "estes sitios forkam o canvas SERIALMENTE (a primeira escrita de todo gesto copia a tela \
+             inteira, ~3x mais devagar, e as duas rotas dao os mesmos bytes — nenhum teste de \
+             comportamento acende): {offenders:?}"
         );
     }
 }

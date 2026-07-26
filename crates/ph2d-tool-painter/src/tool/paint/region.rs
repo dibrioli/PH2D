@@ -60,7 +60,7 @@ impl PainterTool {
     pub(super) fn restore_region(&mut self, rect: &Region, pixels: &[u8]) {
         let stride = self.source_size.0 as usize * 4;
         let rw = rect.w as usize * 4;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
         for row in 0..rect.h {
             let dst = (rect.y + row) as usize * stride + rect.x as usize * 4;
             let src = row as usize * rw;

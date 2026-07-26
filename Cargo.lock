@@ -7070,6 +7070,7 @@ dependencies = [
 name = "ph2d-tool-painter"
 version = "0.0.0"
 dependencies = [
+ "dhat",
  "ph2d-a11y",
  "ph2d-color",
  "ph2d-core",

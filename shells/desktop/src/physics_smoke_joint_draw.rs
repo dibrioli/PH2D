@@ -117,6 +117,13 @@ impl crate::App {
                   gesto SEGUE ARMADO para a proxima tentativa (soltar no mundo nao\n     \
                   cria um pino-no-mundo: isso e outra coisa). Solte no MESMO corpo\n     \
                   em que apertou: outro toast, mesma coisa.\n  \
+               5b. E SAIR do modo (W-J4b): com o gesto armado o botao passa a dizer\n     \
+                  'Cancel Joint Drawing' -- aperte-o de novo, OU aperte Esc. As duas\n     \
+                  rotas fazem a mesma coisa. Repare tambem que enquanto o gesto esta\n     \
+                  armado as alcas ambar das joints JA POSTAS ficam semitransparentes\n     \
+                  e nao respondem ao mouse: elas seguem a vista (voce quer VER onde\n     \
+                  ja ha ancoras, para nao empilhar) sem risco de arrastar uma sem\n     \
+                  querer.\n  \
                6. A CORRENTE: marque o gancho e os 3 elos ciano na ordem (clique o\n     \
                   gancho, Ctrl+clique os elos). O botao passa a dizer 'Chain 4\n     \
                   Selected Bodies' -- ele CONTA. Aperte: medido, 4 corpos viram 3\n     \

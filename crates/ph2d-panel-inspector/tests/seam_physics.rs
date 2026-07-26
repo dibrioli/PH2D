@@ -1575,6 +1575,17 @@ fn the_draw_joint_button_is_always_offered_and_reaches_the_bus() {
                 ..with_body()
             },
         ),
+        // ⚠️ **ARMADO é o caso que importa** (W-J4b): o gesto é modal e come o
+        // press no canvas, então se o botão parasse de despachar depois de armado
+        // o artista ficaria preso no modo, com o rótulo oferecendo um
+        // cancelamento que não chega ao barramento.
+        (
+            "o gesto ARMADO (o clique que CANCELA)",
+            InspectorPhysicsInfo {
+                join_draw_armed: true,
+                ..with_body()
+            },
+        ),
     ] {
         let acts = click_real(info, ids::INSP_PHYS_JOIN_DRAW);
         assert!(

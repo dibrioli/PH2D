@@ -5748,7 +5748,11 @@ impl crate::App {
                 }
             }
             if join_draw_arm {
-                self.joint_draw_armed = true;
+                // TOGGLE, nao "arma" (W-J4b): o gesto e modal e come o press no
+                // canvas, entao sem uma saida o unico jeito de sair era completar
+                // um joint que o artista nao queria. Pela porta unica
+                // `toggle_joint_draw`, a MESMA que o Esc usa.
+                crate::joint_draw::toggle(&mut self.joint_draw_armed, &mut self.joint_draw);
             }
             if join_chain {
                 let (made, last) = crate::joint_draw::join_chain(

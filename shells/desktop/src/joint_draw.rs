@@ -54,6 +54,35 @@ fn body_at(gfx: &mut crate::AppGfx, world_pos: [f32; 2]) -> Option<Entity> {
 }
 
 impl App {
+    /// **A PORTA ÚNICA de desarmar** (W-J4b) — o botão, o Esc e qualquer futuro
+    /// consumidor passam por aqui.
+    ///
+    /// Desarmar são DUAS coisas: o modo sai do ar **e** a banda em voo morre. Uma
+    /// banda que sobrevivesse ao cancelamento desenharia um gesto que o artista
+    /// acabou de recusar, e — pior — o `joint_draw.is_some()` do
+    /// `input_dispatch` ainda tomaria o Move/Up seguinte, então o release criaria
+    /// o joint que o Esc cancelou. Dois campos, um fato: quem os limpa é uma
+    /// função, não dois call sites que precisam lembrar dos dois.
+    pub(crate) fn disarm_joint_draw(&mut self) {
+        disarm(&mut self.joint_draw_armed, &mut self.joint_draw);
+    }
+
+    /// **Esc cancela**, e só consome a tecla quando há o que cancelar — o formato
+    /// da família de Escapes do shell (Build / Pen / shape do Painter), senão o
+    /// Esc pararia de fazer blur de widget no resto do app.
+    pub(crate) fn joint_draw_cancel_key(&mut self) -> bool {
+        if !self.joint_draw_armed {
+            return false;
+        }
+        self.disarm_joint_draw();
+        self.any_input_this_frame = true;
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.toasts
+                .push(ph2d_editor::Toast::info("Joint drawing cancelled"));
+        }
+        true
+    }
+
     /// **O press.** Com o gesto ARMADO, começa a banda no corpo sob o cursor.
     /// Devolve `true` se consumiu o evento.
     pub(crate) fn joint_draw_press(&mut self, sx: f32, sy: f32) -> bool {
@@ -163,6 +192,30 @@ impl App {
             hero.gizmo.selection = Some(joint.to_bits());
             hero.gizmo.extra_selection.clear();
         }
+    }
+}
+
+/// **Desarmar são DUAS coisas** — o modo sai do ar e a banda em voo morre.
+///
+/// Função LIVRE sobre os dois campos, não método: o sítio de ação da
+/// `render_loop` tem o `gfx` emprestado de dentro do `self`, então um
+/// `&mut self` ali é E0499 — a mesma razão pela qual o `join_chain` é livre. É
+/// esta função (e não dois call sites) que sabe que o desarme tem duas metades.
+pub(crate) fn disarm(armed: &mut bool, draw: &mut Option<JointDraw>) {
+    *armed = false;
+    *draw = None;
+}
+
+/// **O botão é um TOGGLE** — apertar armado cancela, pela porta acima.
+///
+/// A alternativa (só armar) deixava o artista sem saída: o gesto é modal e come o
+/// press no canvas, então uma vez armado o único jeito de sair era completar um
+/// joint que ele não queria (Enio, smoke da W-J4).
+pub(crate) fn toggle(armed: &mut bool, draw: &mut Option<JointDraw>) {
+    if *armed {
+        disarm(armed, draw);
+    } else {
+        *armed = true;
     }
 }
 

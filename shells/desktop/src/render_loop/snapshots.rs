@@ -426,11 +426,15 @@ pub(super) fn publish(
     // Hierarchy first (W-J2b). The "which anchors get one" rule lives in
     // `point_gizmo` so it is gated headless (the publish here needs a live
     // HeroScreen the test cannot build).
+    // ⚠️ `join_draw_armed` chega aqui pela SEGUNDA vez de propósito: ele pinta o
+    // botão Pressed no §11 e torna estas alças inertes, e é o MESMO fato — durante
+    // o gesto de desenhar, as âncoras já postas ficam à vista e fora de alcance.
     hero.gizmo.point_view = super::point_gizmo::build_point_view(
         joint_anchor_handles,
         camera,
         window_size,
         joint_anchor_snap,
+        join_draw_armed,
     );
     hero.gizmo.extra_views.clear();
     for bits in hero.gizmo.extra_selection.clone() {

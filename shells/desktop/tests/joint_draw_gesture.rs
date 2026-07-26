@@ -176,3 +176,115 @@ fn a_completed_gesture_disarms_and_a_refusal_does_not() {
         "a recusa sai DEPOIS do desarme, então uma mira errada desarmaria o gesto"
     );
 }
+
+/// **Esc cancela, e vem PRIMEIRO entre os Escapes** (W-J4b).
+///
+/// O gesto é modal e independe de ferramenta — do lado do ponteiro ele precede
+/// picking e gizmos pela mesma razão —, então com ele armado o Esc é
+/// inequivocamente sobre ele. Se um irmão tool-scoped consumisse antes, cancelar o
+/// desenho dependeria de qual ferramenta está na mão.
+///
+/// Arch-gate porque a política mora no handler de teclado do shell, que precisa de
+/// janela: nenhum unit test chega lá. A metade comportamental (`disarm` limpa as
+/// duas coisas) está em `joint_draw::tests`.
+///
+/// Mutação: mover o braço para depois do Escape do Build ⇒ RED.
+#[test]
+fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
+    let src =
+        fs::read_to_string("src/input_dispatch/keyboard.rs").expect("input_dispatch/keyboard.rs");
+    // A FAMÍLIA dos cancelamentos por Escape tem uma forma só — o guard
+    // `matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))` —, e a afirmação
+    // é sobre a ORDEM dentro dela: o nosso é o primeiro.
+    //
+    // ⚠️ Duas versões anteriores deste gate falharam sobre produto CORRETO, as duas
+    // por proxy: procurar o helper cru achava a primeira menção dele em qualquer
+    // lugar (um `!self.vec_pen.is_drawing()` num guard sem relação), e janelas em
+    // torno de `KeyCode::Escape` colavam braços vizinhos num índice só — há ainda
+    // um `KeyCode::Escape` de outro construto lá no alto, cuja janela engolia meio
+    // arquivo. Perguntar pela família recorta exatamente os quatro braços.
+    const ARM: &str = "matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))";
+    let arms: Vec<usize> = src.match_indices(ARM).map(|(i, _)| i).collect();
+    assert!(
+        arms.len() >= 4,
+        "esperava a família de cancelamentos por Escape (joint draw / Build / Pen / \
+         shape do Painter); achei {} braços",
+        arms.len()
+    );
+    let extent = |n: usize| -> &str {
+        let end = arms.get(n + 1).copied().unwrap_or(src.len());
+        &src[arms[n]..end]
+    };
+    assert!(
+        extent(0).contains("self.joint_draw_cancel_key()"),
+        "o cancelamento do desenho de joint tem de ser o PRIMEIRO braço de Escape: o \
+         gesto é modal e independe de ferramenta (do lado do ponteiro ele precede \
+         picking e gizmos pela mesma razão), então cancelar não pode depender de qual \
+         ferramenta está na mão. Primeiro braço hoje: {}",
+        extent(0).lines().take(6).collect::<Vec<_>>().join(" / ")
+    );
+    // E os três irmãos tool-scoped seguem lá, atrás — se algum sumir, o gate acima
+    // pode ter ficado verde por o arquivo ter mudado de forma.
+    let rest: String = (1..arms.len()).map(extent).collect();
+    for sibling in [
+        "self.build_cancel()",
+        "self.vec_pen.is_drawing()",
+        "self.painter_shape_cancel()",
+    ] {
+        assert!(
+            rest.contains(sibling),
+            "`{sibling}` não está mais entre os braços de Escape posteriores — \
+             atualize este gate"
+        );
+    }
+}
+
+/// **O botão é um TOGGLE, pela porta única** (W-J4b).
+///
+/// O sítio de ação da `render_loop` escrevia `joint_draw_armed = true`; um segundo
+/// aperto não fazia nada e o artista ficava preso no modo. E a porta importa: ela
+/// é a que sabe que desarmar também mata a banda em voo.
+///
+/// Mutação: voltar para `= true` ⇒ RED (e o gate de comportamento do toggle segue
+/// verde, porque a função continua correta — é a CHAMADA que se perde; é por isso
+/// que este gate existe além dele).
+#[test]
+fn the_draw_button_toggles_through_the_single_door() {
+    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    let arm = src
+        .find("if join_draw_arm {")
+        .expect("the JoinDraw arm vanished from the render loop");
+    let block = &src[arm..arm + 400];
+    assert!(
+        block.contains("joint_draw::toggle("),
+        "o aperto do botão tem de passar por `joint_draw::toggle` (que desarma E \
+         derruba a banda), nunca escrever `joint_draw_armed` direto: {block}"
+    );
+    assert!(
+        !block.contains("self.joint_draw_armed = true"),
+        "e não pode voltar a só ARMAR — foi isso que prendeu o artista no modo: {block}"
+    );
+}
+
+/// **As alças existentes ficam fora de alcance durante o gesto** (W-J4b).
+///
+/// Enio: *"os gizmos das joints já colocadas devem ficar inacessíveis ao mouse e
+/// discretamente semitransparentes"*. O mecanismo é o `inert` da `PointGizmoView`
+/// (gateado headless em `gizmo::point::tests`); o que só este gate vê é que o
+/// shell de fato ENTREGA o flag do gesto ao construtor da vista — o mesmo booleano
+/// que pinta o botão Pressed, e não uma segunda cópia da pergunta.
+///
+/// Mutação: passar `false` literal ⇒ RED.
+#[test]
+fn the_armed_gesture_makes_the_existing_handles_inert() {
+    let src = fs::read_to_string("src/render_loop/snapshots.rs").expect("snapshots.rs");
+    let call = src
+        .find("build_point_view(")
+        .expect("the point view is no longer built");
+    let args = &src[call..src[call..].find(");").expect("the call closes") + call];
+    assert!(
+        args.contains("join_draw_armed"),
+        "a vista do gizmo de ponto tem de receber o flag do gesto, senão as alças \
+         seguem agarráveis debaixo de um gesto modal: {args}"
+    );
+}

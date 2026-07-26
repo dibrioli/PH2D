@@ -4828,3 +4828,86 @@ gesto de escolher PARCEIRO e o snap ali competiria com a escolha do corpo) ·
 começar o arrasto no VAZIO não faz marquee nem nada (o Down modal só é tomado
 sobre um corpo) · W-J5 Slider · W-J6 servo + guincho · W-J7 break force · W-J8
 higiene do par · W-JG grupo carrega o rig.
+
+---
+
+## W-J4b — a saída, e as alças fora de alcance (2026-07-25, mesma cena `=46`)
+
+Dois ajustes do smoke da W-J4 (*"Smoke OK! Maravilhoso!"*), e os dois são sobre o
+gesto ser **MODAL**.
+
+### 1. Dá para sair
+
+O botão só ARMAVA. E o gesto come o press no canvas, então uma vez armado **o
+único jeito de sair era completar um joint que o artista não queria**. Agora ele é
+um **toggle** — e o rótulo muda para **`Cancel Joint Drawing`**, porque um rótulo
+nomeia a ação que o clique vai fazer, não o estado em que o botão está. **Esc**
+faz o mesmo.
+
+⚠️ **"Cancel Joint Drawing", não "Cancel Joint"** (o Enio deixou o nome a meu
+critério): não existe joint nenhum para cancelar — o gesto ainda não criou nada, e
+nomear uma coisa que não está lá manda o artista procurar o que ele desfez. O que
+sai do ar é o **modo**.
+
+⚠️ **Desarmar são DUAS coisas, e a segunda carrega o peso:** o modo sai do ar *e*
+a banda em voo morre. O `input_dispatch` toma o Move/Up sempre que
+`joint_draw.is_some()` — **independente do armado** —, então uma banda que
+sobrevivesse ao cancelamento faria o release seguinte criar **exatamente o joint
+que o Esc cancelou**. Uma porta (`joint_draw::disarm`), dois campos; o `toggle` e o
+Esc a chamam. ⚠️ Ela é função **LIVRE** e não método porque o sítio de ação da
+`render_loop` tem o `gfx` emprestado de dentro do `self` (E0499) — a mesma razão do
+`join_chain`.
+
+**Esc é o PRIMEIRO** braço da família de Escapes (Build / Pen / shape do Painter):
+o gesto é modal e independe de ferramenta, então cancelar não pode depender de qual
+ferramenta está na mão. Consome só quando há o que cancelar, o formato dos irmãos.
+
+### 2. As alças já postas ficam à vista e fora de alcance
+
+`PointGizmoView::inert` — desenha as marcas, **registra nada**. ⚠️ **Um flag, as
+duas metades, na mesma função**: dimmar sem parar de registrar é a falha
+*"dim não é uma recusa"* que este repo já pagou várias vezes; registrar sem dimmar
+é o artista arrastando um gizmo achando que está desenhando. E elas seguem
+**visíveis** de propósito — durante o gesto você quer ver onde já há âncoras, para
+não empilhar um joint em cima de outro.
+
+O alpha (**0x59 ≈ 0,35**) é um degrau na escada que o overlay de física já usa, não
+um número novo: `JOINT_GHOST_RGBA` é 0,28 (*"isto é uma projeção, não uma coisa"*)
+e `JOINT_DIM_RGBA` é 0,5 (*"linha secundária de algo vivo"*). Uma alça inerte é
+nenhum dos dois — marca uma âncora **real** que está fora de alcance — então senta
+entre eles.
+
+⚠️ **`join_draw_armed` chega ao `publish` uma vez e é lido DUAS**: pinta o botão
+Pressed e torna as alças inertes. É o mesmo fato; uma segunda cópia da pergunta
+divergiria, e a divergência seria uma alça apagada que ainda pega o clique.
+
+### Gates e mutações
+
+4 gates novos (2 no gizmo headless + 2 comportamentais do toggle) + 3 arch de
+shell + 1 caso no seam + 1 unit do rótulo. **7 mutações, 7 sangram.**
+
+| # | mutação | quem sangra |
+|---|---|---|
+| M11 | vista inerte ainda registra | a alça pega o clique sob o gesto |
+| M12 | `disarm` limpa só o `armed` | a banda sobrevive ⇒ o release cria o cancelado |
+| M13 | o botão volta a só ARMAR | não há saída |
+| M14 | o Esc do joint depois do Build | cancelar depende da ferramenta |
+| M15 | rótulo fixo | o toggle não diz que é toggle |
+| M16 | a vista nunca recebe o flag | as alças seguem agarráveis |
+| M17 | inerte no alpha cheio | nada na tela diz "fora de alcance" |
+
+⚠️ **TRÊS versões do gate do Esc falharam sobre produto CORRETO, todas por
+proxy** — e a lição é a mesma da W-J4 (duas instâncias) e da `line/Vector`: buscar
+o helper cru achou a primeira menção dele em **qualquer** lugar (um
+`!self.vec_pen.is_drawing()` num guard sem relação, 11 kB antes); uma janela de 600
+bytes em torno de `KeyCode::Escape` colou braços **vizinhos** num índice só
+(19686 contra 19686); e bounding pelo próximo `KeyCode::Escape` ainda tropeçou num
+`KeyCode::Escape` de **outro construto** lá no alto, cuja janela engolia meio
+arquivo. O que ficou pergunta pela **FAMÍLIA** (`matches!(physical_key,
+PhysicalKey::Code(KeyCode::Escape))`, exatamente os quatro braços de
+cancelamento) e afirma que o nosso é o **primeiro** — uma asserção sobre ordem
+dentro de um conjunto recortado, não sobre distância.
+
+**Zero componente, zero schema, zero id novo** (`PROJECT_SCHEMA` **31**, registro
+**21**); **c9 byte-idêntico** (`4e862761…`, 83 corpos). O passo **5b** da cena 46
+cobre os dois ajustes.

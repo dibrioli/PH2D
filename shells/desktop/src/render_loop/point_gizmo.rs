@@ -169,6 +169,12 @@ pub(super) fn build_point_view(
     camera: &Camera2d,
     window_size: WindowSize,
     snap: Option<[f32; 2]>,
+    // W-J4b: o gesto de DESENHAR um joint está armado ⇒ as alças existentes ficam
+    // visíveis e fora de alcance (ver `PointGizmoView::inert`). O mesmo booleano
+    // que pinta o botão Pressed, lido aqui — duas cópias da pergunta *"o gesto
+    // está armado?"* divergiriam, e a divergência seria uma alça apagada que
+    // ainda pega o clique.
+    inert: bool,
 ) -> Option<PointGizmoView> {
     if handles.is_empty() {
         return None;
@@ -186,6 +192,7 @@ pub(super) fn build_point_view(
             window_size.width as f32,
             window_size.height as f32,
         ),
+        inert,
     })
 }
 

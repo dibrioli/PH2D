@@ -14,6 +14,7 @@ fn view(handles: Vec<PointHandle>) -> PointGizmoView {
         window_w: 1000.0,
         window_h: 1000.0,
         canvas: Rect::new(0.0, 0.0, 1000.0, 1000.0),
+        inert: false,
     }
 }
 
@@ -261,4 +262,61 @@ fn an_anchor_beats_a_parameter_grip_on_a_shared_pixel() {
         "a parameter grip took the anchor's own pixel — the anchor has nowhere \
          else to be grabbed, the grip has its whole line"
     );
+}
+
+/// **Uma vista INERTE desenha e não registra** (W-J4b).
+///
+/// Enio, smoke da W-J4: com o gesto de desenhar armado, as alças já postas
+/// *"devem ficar inacessíveis ao mouse e discretamente semitransparentes para que
+/// o usuário não corra o risco de mover os gizmos previamente colocados"*.
+///
+/// As duas metades num gate só, porque são um fato só: se registrar sem dimming,
+/// o artista move um gizmo achando que está desenhando; se dimmar sem parar de
+/// registrar, ele o move achando que não pode. ⚠️ O caso `inert: false` é o
+/// CONTROLE — sem ele o gate passaria sobre um painter que nunca registra nada.
+///
+/// Mutação: manter o `hit_index.register` sob `inert` ⇒ a metade "inacessível"
+/// falha nomeando a alça que ainda pega o clique.
+#[test]
+fn an_inert_view_is_drawn_but_registers_nothing() {
+    let live = view(vec![a(7, [1.0, 1.0])]);
+    let (hits, map) = paint(&live);
+    let s = screen(&live, [1.0, 1.0]);
+    assert!(
+        hits.hit(s[0], s[1]).is_some(),
+        "o controle: uma vista viva TEM de pegar o clique na âncora"
+    );
+    assert_eq!(map.len(), 1, "e mapear a alça de volta");
+
+    let inert = PointGizmoView {
+        inert: true,
+        ..view(vec![a(7, [1.0, 1.0])])
+    };
+    let (hits, map) = paint(&inert);
+    assert!(
+        hits.hit(s[0], s[1]).is_none(),
+        "com o gesto armado a alça não pode ser agarrada — o press é do gesto"
+    );
+    assert!(
+        map.is_empty(),
+        "e nada fica no mapa: um `id -> handle` órfão responderia um press que \
+         outro caminho produzisse"
+    );
+}
+
+/// **E a marca inerte é MAIS transparente, sem desaparecer.**
+///
+/// *"Discretamente semitransparente"* é uma faixa, não um valor: opaco demais e
+/// nada mudou na tela (o artista não sabe que está fora de alcance); zero e as
+/// âncoras existentes somem justamente no gesto em que ele quer VÊ-las para não
+/// empilhar um joint em cima de outro.
+#[test]
+fn the_inert_mark_is_dimmer_but_still_visible() {
+    let live = handle_color(false).to_rgba8().a;
+    let dim = handle_color(true).to_rgba8().a;
+    assert!(
+        dim < live,
+        "inerte tem de ser mais apagado: {dim} vs {live}"
+    );
+    assert!(dim > 0, "e não invisível: {dim}");
 }

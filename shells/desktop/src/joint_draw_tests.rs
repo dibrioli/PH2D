@@ -250,3 +250,53 @@ fn a_gesture_whose_body_vanished_draws_no_band() {
     // invalidate), which is what lets the caller ask it unconditionally.
     assert!(body_alive(&sim, None));
 }
+
+/// **O botão é um TOGGLE, e cancelar MATA a banda em voo** (W-J4b).
+///
+/// Enio, smoke da W-J4: *"precisamos de um modo de cancelar a operação"*. O gesto
+/// é modal e come o press no canvas, então sem saída o único jeito de sair era
+/// completar um joint que ninguém queria.
+///
+/// ⚠️ **A metade que carrega o peso é a segunda:** desarmar tem de derrubar o
+/// `joint_draw` também. O `input_dispatch` toma o Move/Up sempre que
+/// `joint_draw.is_some()` — *independente* do armado —, então uma banda que
+/// sobrevivesse ao cancelamento faria o release seguinte criar **exatamente o
+/// joint que o Esc cancelou**.
+///
+/// Mutação: `disarm` mexer só no `armed` ⇒ a asserção do `draw` falha.
+#[test]
+fn the_draw_toggle_cancels_and_takes_the_band_with_it() {
+    let mut armed = false;
+    let mut draw = None;
+    toggle(&mut armed, &mut draw);
+    assert!(armed, "o 1º aperto arma");
+
+    // O gesto começa: há uma banda em voo.
+    draw = Some(JointDraw {
+        body_a: Entity::from_bits(1),
+        from: [0.0, 0.0],
+        to: [1.0, 1.0],
+    });
+    toggle(&mut armed, &mut draw);
+    assert!(!armed, "o 2º aperto desarma");
+    assert!(
+        draw.is_none(),
+        "e leva a banda: o dispatch toma o Up de qualquer gesto em voo, então uma \
+         banda sobrevivente criaria o joint que o artista acabou de cancelar"
+    );
+}
+
+/// **Desarmar é UMA porta** — `disarm` limpa os dois campos, e é ela que o Esc e o
+/// toggle chamam. Dois call sites lembrando de dois campos é como o terceiro
+/// esquece um.
+#[test]
+fn disarming_clears_both_halves() {
+    let mut armed = true;
+    let mut draw = Some(JointDraw {
+        body_a: Entity::from_bits(9),
+        from: [0.0, 0.0],
+        to: [0.0, 0.0],
+    });
+    disarm(&mut armed, &mut draw);
+    assert!(!armed && draw.is_none());
+}

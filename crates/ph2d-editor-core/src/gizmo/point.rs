@@ -121,6 +121,20 @@ pub struct PointGizmoView {
     /// Canvas rect in screen px — carried for symmetry with [`super::GizmoView`]
     /// (a future scissor against chrome would read it; the dot ignores it today).
     pub canvas: Rect,
+    /// **Out of reach this frame** — draw the marks, register nothing.
+    ///
+    /// Set while another canvas gesture owns the pointer (today: the W-J4 joint
+    /// drawing). The handles stay VISIBLE because during that gesture the artist
+    /// wants to see where the existing anchors are — that is how you avoid
+    /// stacking a second joint on top of one — but a press must not move them:
+    /// the drawing gesture is modal and precedes the gizmos, so a handle that
+    /// still caught the press would be a mark that the pointer visibly ignores.
+    ///
+    /// ⚠️ **One flag, both halves, in the same function.** The dimming and the
+    /// missing hit rect are two expressions of a single fact, so nothing can end
+    /// up dimmed-but-live (the *"dim is not a refusal"* failure this repo has paid
+    /// for repeatedly) or live-but-invisible.
+    pub inert: bool,
 }
 
 /// Visual radius of the anchor dot, screen px.
@@ -204,6 +218,27 @@ fn anchor_color() -> VelloColor {
     VelloColor::from_rgba8(0xFA, 0xBF, 0x40, 0xFF) // matches `JOINT_RGBA` in the physics overlay
 }
 
+/// Alpha of an **inert** handle (see [`PointGizmoView::inert`]).
+///
+/// A rung on the ladder the physics overlay already uses, not a new number:
+/// `JOINT_GHOST_RGBA` is 0.28 (*"this is a projection, not a thing"*) and
+/// `JOINT_DIM_RGBA` is 0.5 (*"a secondary line of something live"*). An inert
+/// handle is neither — it marks a REAL anchor that is out of reach — so it sits
+/// between them, clearly weaker than the live mark (which is fully opaque) so the
+/// artist reads *"not now"* without the anchor disappearing.
+const INERT_ALPHA: u8 = 0x59; // 0.35
+
+/// The mark's colour, dimmed when the handle cannot be grabbed. **The single door**
+/// for both — a second `if inert` at a call site is how one mark ends up live-looking
+/// and unclickable.
+fn handle_color(inert: bool) -> VelloColor {
+    if inert {
+        VelloColor::from_rgba8(0xFA, 0xBF, 0x40, INERT_ALPHA)
+    } else {
+        anchor_color()
+    }
+}
+
 /// Draw every joint's point handles and register their hit rects, recording
 /// `id -> handle` in `hit_map` so a Down can be resolved back to the joint and
 /// what it authors.
@@ -240,11 +275,17 @@ pub fn paint_point_gizmo(
             let s = project(h.world);
             let half = hit_half_px(kind);
             let id = point_handle_id(h.key, kind);
-            hit_index.register(
-                id,
-                Rect::new(s[0] - half, s[1] - half, half * 2.0, half * 2.0),
-            );
-            hit_map.insert(id, *h);
+            // ⚠️ An inert view registers NOTHING — not the rect and not the map
+            // entry. The rect is the load-bearing half (no rect, no hit), and the
+            // map is skipped with it so a stale `id -> handle` cannot answer a
+            // press that some other path produced.
+            if !view.inert {
+                hit_index.register(
+                    id,
+                    Rect::new(s[0] - half, s[1] - half, half * 2.0, half * 2.0),
+                );
+                hit_map.insert(id, *h);
+            }
             let centre = Point::new(f64::from(s[0]), f64::from(s[1]));
             match kind {
                 // Hollow — the B end, in the same amber as A (module docs).
@@ -253,7 +294,7 @@ pub fn paint_point_gizmo(
                     scene.inner_mut().stroke(
                         &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
                         Affine::IDENTITY,
-                        anchor_color(),
+                        handle_color(view.inert),
                         None,
                         &ring,
                     );
@@ -264,7 +305,7 @@ pub fn paint_point_gizmo(
                     scene.inner_mut().fill(
                         ph2d_vector::Fill::NonZero,
                         Affine::IDENTITY,
-                        anchor_color(),
+                        handle_color(view.inert),
                         None,
                         &dot,
                     );
@@ -275,7 +316,7 @@ pub fn paint_point_gizmo(
                     scene.inner_mut().fill(
                         ph2d_vector::Fill::NonZero,
                         Affine::IDENTITY,
-                        anchor_color(),
+                        handle_color(view.inert),
                         None,
                         &dot,
                     );

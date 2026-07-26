@@ -460,7 +460,7 @@ pub(crate) fn paint_join_gesture(
     // A LITERAL `hit_index.register` id, the only form
     // `architecture_panel_wiring_parity` can see.
     let rect = Rect::new(x, yy, w, ROW_H_PX);
-    let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, "Draw Joint on Canvas")
+    let btn = Button::new(ids::INSP_PHYS_JOIN_DRAW, draw_button_label(draw_armed))
         .kind(ButtonKind::Default)
         .state(if draw_armed {
             ButtonState::Pressed
@@ -495,6 +495,19 @@ pub(crate) fn paint_join_gesture(
 /// Dois = *Join Selected Bodies*; três ou mais = *Chain N Selected Bodies*. Um
 /// rótulo fixo sobre cinco corpos é como um artista descobre a CORRENTE por
 /// acidente — e este texto é a única coisa na tela que sabe a diferença.
+/// O rotulo do botao de DESENHAR, que e um toggle (W-J4b).
+///
+/// ⚠️ **"Cancel Joint Drawing", nao "Cancel Joint"**: nao existe joint nenhum
+/// para cancelar — o gesto ainda nao criou nada, e nomear uma coisa que nao esta
+/// la faria o artista procurar o que ele desfez. O que sai do ar e o MODO.
+const fn draw_button_label(armed: bool) -> &'static str {
+    if armed {
+        "Cancel Joint Drawing"
+    } else {
+        "Draw Joint on Canvas"
+    }
+}
+
 fn join_button_label(join_count: u8) -> String {
     if join_count > 2 {
         format!("Chain {join_count} Selected Bodies")
@@ -505,7 +518,7 @@ fn join_button_label(join_count: u8) -> String {
 
 #[cfg(test)]
 mod join_label_tests {
-    use super::join_button_label;
+    use super::{draw_button_label, join_button_label};
 
     /// Mutação-testada: devolver sempre `"Join Selected Bodies"` faz o caso de 4
     /// ficar RED.
@@ -516,5 +529,17 @@ mod join_label_tests {
         // O botão não é oferecido abaixo de 2, mas o rótulo não deve inventar
         // uma corrente se algum dia for.
         assert_eq!(join_button_label(0), "Join Selected Bodies");
+    }
+
+    /// **O toggle DIZ que e um toggle** (W-J4b). Sem isto o botao armado se
+    /// parecia com o desarmado e o unico sinal era o Pressed — e um artista que
+    /// nao ve saida conclui que nao ha.
+    ///
+    /// ⚠️ Pina tambem que o desarmado NAO diz "Cancel": o rotulo tem de nomear a
+    /// acao que o clique vai fazer, e nao o estado em que o botao esta.
+    #[test]
+    fn the_draw_button_names_the_action_the_click_will_take() {
+        assert_eq!(draw_button_label(false), "Draw Joint on Canvas");
+        assert_eq!(draw_button_label(true), "Cancel Joint Drawing");
     }
 }

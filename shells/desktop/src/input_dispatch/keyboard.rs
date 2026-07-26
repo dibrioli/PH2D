@@ -439,6 +439,19 @@ impl App {
             }
         }
 
+        // **Esc cancela o gesto de DESENHAR um joint** (W-J4b), e vem PRIMEIRO entre os
+        // Escapes: o gesto e modal e independe de ferramenta (do lado do ponteiro ele
+        // precede picking e gizmos pela mesma razao), entao com ele armado o Esc e
+        // inequivocamente sobre ele. Consome so quando ha o que cancelar — o formato de
+        // todos os irmaos abaixo —, senao o Esc pararia de dar blur em widget.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.joint_draw_cancel_key()
+        {
+            return;
+        }
+
         // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
         // Escape do Pen porque um modo exclui o outro, e este consome só quando há
         // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).

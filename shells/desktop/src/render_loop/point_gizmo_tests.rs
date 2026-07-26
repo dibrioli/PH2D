@@ -172,7 +172,7 @@ fn a_dormant_joints_a_end_is_offered_and_its_b_end_is_not() {
 /// an empty struct every frame of every scene without joints.
 #[test]
 fn an_empty_scene_publishes_no_view() {
-    assert!(build_point_view(Vec::new(), &camera(), window(), None).is_none());
+    assert!(build_point_view(Vec::new(), &camera(), window(), None, false).is_none());
     let v = build_point_view(
         vec![PointHandle {
             key: 1,
@@ -182,10 +182,12 @@ fn an_empty_scene_publishes_no_view() {
         &camera(),
         window(),
         Some([3.0, 3.0]),
+        false,
     )
     .expect("a handle publishes a view");
     assert_eq!(v.handles.len(), 1);
     assert_eq!(v.snap_world, Some([3.0, 3.0]));
+    assert!(!v.inert, "nothing armed => the handles are grabbable");
 }
 
 /// **A hit id resolves back to the joint and the end it was painted for.** This

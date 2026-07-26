@@ -40,6 +40,9 @@
 | **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | 🔴 **a fronteira NOVA** (§4.8.3) | **5,3–8,8 ms/frame** contra 0,7 de dispatch ⇒ **7–12×**. Era invisível atrás dos 232 ms |
 | R | O outlier de **134,8 ms** num evento | 🔴 aberto, **sem causa atribuída** | o maior número que sobrou no log; falta **medição por fase**, não hipótese |
 | S | `EVENTO→FRAME` 16,8 contra alvo **9** | ⚪ **não é compute** | `p50 ≈ periodo real (16,5)` ⇒ é **cadência**, e o dispatch é 4% dela |
+| **T** | 🎯 **O WARP é 56% do custo da aquarela** | ✅ **medido** (§5.10) | 1,071 ms de um move de 3,082 · 10 avaliações/texel · a tabela trouxe o próprio **controle** (2 knobs já em 0 ⇒ piso de ruído ±0,13) |
+| U | Fatoração exata dos 2 eixos do warp | ✅ shipou, **e não é ganho de PRODUTO** (§5.11) | função **1,20×** (153,4 → 127,9 ms/4 M) · produto 0,12–0,17 ms = **dentro do ruído** |
+| **V** | 🔴 **O move do Wet Paint escala com a TELA** | 🔴 **aberto, nomeado** (§5.9) | **2,32 → 14,26 ms** de 2048² para 4096² — um move é limitado pela PEGADA; isto é varredura de plano |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -767,6 +770,92 @@ teste para aplicar isto noutro lugar é uma pergunta só: *este laço lê algo q
   dois números pequenos passa a medir o escalonador — quem paralelizar um caminho tem de reconferir os
   gates de perf que o cercam, que foi exatamente o que quebrou aqui.
 
+### 5.9 🎯 A MEDIÇÃO DE 4 LINHAS FOI FEITA — e onde cada modo gasta um move
+
+A §5.8 pedia esta tabela e ela é de minutos. `measure_the_four_media`, `on_canvas_pointer` (= o `INPUT
+(fora do frame)` do app), pincel r=100:
+
+| meio | move 2048² | move 4096² | composite | pen-up 2048²/4096² |
+|---|---|---|---|---|
+| Digital | 1,17 | 1,21 | 0 | 3,1 / 6,7 |
+| **Watercolor** | **3,07** | **3,12** | 0 | 11,8 / 14,3 |
+| Impasto | 2,00 | 1,93 | 2,9 | 19,4 / **39,6** |
+| **Wet Paint** | **2,32** | **14,26** | 0 | 3,1 / 17,3 |
+
+**Três dos quatro têm MOVE plano na tela** — limitado pela PEGADA, que é a forma correta.
+
+⚠️ **O Wet Paint NÃO: 6× para 4× a tela.** Um move não pode escalar com o canvas, e isto é a assinatura
+de uma varredura de plano inteiro — **a mesma família do fold que a §4.8.2 acabou de curar**. Não é o
+alvo desta wave e fica **NOMEADO**, com o número, para não voltar como surpresa.
+
+⚠️ E o **pen-up do Impasto a 4096² (39,6 ms)** é o maior da tabela — o candidato mais próximo do outlier
+de 134,8 ms da §4.8.3, embora **não o alcance** com a fixture medida (traço de 960 px). Continua sem
+causa atribuída.
+
+### 5.10 ✅ DE QUE É FEITO UM MOVE DE AQUARELA — e a tabela que se auto-calibrou
+
+`measure_what_a_watercolor_move_is_made_of`, a 4096², r=100. **Ablação por ENTRADA, nunca
+instrumentação** (a lição da §4.8.2: uma sonda que re-implementa o laço fica cega à porta) — cada linha
+dirige `on_canvas_pointer` e o que muda é um **knob do painel**.
+
+| configuração | move ms | vs baseline |
+|---|---|---|
+| **AQUARELA (baseline)** | **3,082** | — |
+| sem Warp | 2,012 | **−1,071** |
+| sem Spread | 2,866 | −0,216 |
+| sem Pigment mixing | 2,956 | −0,126 |
+| sem Smudge | 2,982 | −0,100 ⚠️ *já era 0* |
+| sem Granulation | 2,997 | −0,085 |
+| sem Edge (gain 0) | 3,016 | −0,066 |
+| sem Rewet | 3,021 | −0,061 ⚠️ *já era 0* |
+| TUDO desligado | 2,011 | −1,071 |
+| DIGITAL (o carimbo) | 1,167 | −1,915 |
+
+⚠️ **A tabela trouxe o próprio CONTROLE, e isso não foi planejado:** `wet_smudge` e `wet_rewet` **já
+valem 0 por default**, então aquelas duas linhas são **no-ops** — e mesmo assim medem −0,100 e −0,061.
+**Esse é o piso de ruído da sonda.** Logo Granulation (−0,085), Edge (−0,066) e Pigment mixing (−0,126)
+são **indistinguíveis de zero**, e teria sido fácil escrever três "otimizações" em cima delas.
+
+O que sobrevive ao controle: **Warp (1,071)** e Spread (0,216). E `TUDO desligado` (2,011) é **igual** a
+`sem Warp` (2,012) ⇒ **o warp é praticamente todo o custo ablacionável: 56% do que a aquarela cobra
+sobre o Digital, 35% do move inteiro.**
+
+⚠️ **E o custo é o NÚMERO de avaliações, não a avaliação:** com o supersample cortado de 9 taps para 1
+(mutação de medição), o baseline cai para 2,401 e o warp para 0,511 — ~0,085 ms por avaliação, linear.
+`warp_offset` roda **10× por texel** (centro + 9 taps). ⛔ **Cortar taps está FORA de discussão e não é
+opinião:** rotear os 9 taps pelo warp foi o que **curou a borda serrilhada** numa wave anterior (warp 48
+postava 226 cliffs; roteados, zero), e o doc do `aa_coverage` registra isso.
+
+### 5.11 ✅ A fatoração dos dois eixos do warp — exata, e HONESTA sobre o que rendeu
+
+`warp_offset` pede a **mesma oitava, na mesma posição**, para o eixo X e para o Y: só o `seed` difere.
+Toda a aritmética de GRADE (2 divisões, 2 `floor`, 2 `smooth01`, 2 `wrap_cell`) **não depende do seed** e
+era computada **duas** vezes. `value_noise_pair` a computa uma, e roda os 8 `hash2` (que dependem do
+seed — é neles que a decorrelação dos eixos mora).
+
+**Byte-exato por CONSTRUÇÃO:** mesmas operações, mesma ordem, mesmos valores; o prefixo comum é avaliado
+uma vez em vez de duas. Não é aproximação, é fatoração — e o gate compara contra `warp_axis`, que é
+**verbatim o que shipava**, com `assert_eq!` em `f32` (uma tolerância aceitaria uma aproximação, e a
+afirmação que se quer é mais forte).
+
+⚠️ **O NÚMERO, e a parte que não vende:** a função ficou **1,20×** mais rápida (153,41 → 127,86 ms em 4 M
+avaliações, mínimo de 5 corridas). No **produto**, o ganho é **0,12–0,17 ms** de um move de 3,08 — contra
+o piso de ruído de **±0,13** que a própria tabela calibrou. **Está dentro do ruído, logo não é um
+resultado de produto**, e o commit não o chama de um. Fica porque é estritamente menos trabalho, exato,
+gateado, e barateia o warp para qualquer consumidor futuro.
+
+⚠️ **Duas consequências de higiene que valem mais que o número:**
+
+1. **`warp_axis` ficou sem chamador de produção** ⇒ virou `#[cfg(test)]`, declarado **REFERÊNCIA
+   CONGELADA**. Um `pub(super)` sem chamador não é código morto silencioso: é uma **segunda resposta**
+   esperando alguém chamá-la — dois caminhos para *"qual é o deslocamento do warp aqui?"*, livres para
+   divergir. E o doc do gate, que dizia *"é o código que shipava"*, teria virado **falso** sem o `cfg`.
+2. ⚠️ **Uma mutação MINHA não sangrou, e o defeito era dela.** Eu escrevera que trocar a ordem dos termos
+   (`bx·0,35 + ax·0,65`) sangraria *"porque em `f32` não é igual"*. **É igual:** a adição IEEE-754 é
+   **COMUTATIVA** (`a + b == b + a` exatamente); o que falha é a **ASSOCIATIVIDADE**. Aquela mutação era
+   um no-op e não podia sangrar. A mutação certa — **cruzar os seeds dos dois eixos**, que é o erro
+   realista desta refatoração — sangra.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -842,6 +931,15 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
    Decisão de produto, e agora com o preço dos dois lados medido em vez de estimado.
 4. ⚪ **`EVENTO→FRAME` 16,8 contra o alvo 9 (frente S) — NÃO é compute.** `p50 ≈ periodo real`, o
    dispatch é 4% dela: é frente de **cadência/pipeline**, de outra natureza e outro dono.
+5. 🔴 **O move do Wet Paint escala com a TELA (frente V): 2,32 → 14,26 ms.** Achado ao medir os quatro
+   meios (§5.9). É a **mesma família** do fold que a §4.8.2 curou — um move tem de ser limitado pela
+   pegada — e é o maior desvio de FORMA que sobrou na tabela.
+6. ⛔ **O warp da aquarela (frente T) NÃO tem caminho de CPU óbvio, e isso está medido.** O custo é o
+   número de avaliações (10/texel), cortar taps foi **rejeitado por LOOK** numa wave anterior, e a
+   fatoração exata rendeu 1,20× na função sem sair do ruído no produto. O que sobra é **aproximar** o
+   warp dentro do texel — exatamente a classe que esta jornada já mediu e rejeitou **duas** vezes no AA
+   do impasto (§3.3, §4.6.2), onde o erro vinha das QUINAS e casar mais um momento PIOROU. Só com
+   oráculo de APARÊNCIA (a borda serrilhada) e ordem do Enio.
 
 **A fila antiga continua válida abaixo dela, e é o que alimenta o item 1:**
 

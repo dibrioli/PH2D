@@ -71,11 +71,21 @@ pub(crate) fn prewarm(
     if session_slot.is_none() {
         *session_slot = Some(PainterGpuPreview::new(renderer.gpu()));
     }
-    // ⚠️ E os RECURSOS, que é a metade que o smoke isolou. As texturas dos três passes nascem do
-    // TAMANHO DO CANVAS e a primeira execução as aloca e as semeia (upload dos planos por PCIe) —
-    // medido em `ph2d-render/tests/measure_first_stroke_pipelines.rs`, o que só a 1ª execução paga:
-    // **0,76 ms a 1024² · 2,72 a 2048² · 13,21 a 4096²**, que é exactamente a escada que o Enio
-    // descreveu (*"quanto menor o IMG menor o atraso; 1024 nem se percebe"*).
+    // ⚠️ E os RECURSOS do COMPOSITOR e do premul, que nascem do TAMANHO DO CANVAS e que só a 1ª
+    // execução aloca — medido em `ph2d-render/tests/measure_first_stroke_pipelines.rs`.
+    //
+    // ⚠️ **O passe de LUZ fica de fora, e isto é uma limitação NOMEADA, não um descuido.** Uma pilha
+    // recém-bindada não tem relevo, então `impasto_gpu_planes_in` recusa, a luz não roda, e nem as
+    // texturas dela nem a semeadura (`planes_seeded`) acontecem aqui. Consequência medida: o **primeiro
+    // traço com relevo dobra o CANVAS INTEIRO** em vez da própria região — 14,55 ms contra 0,38 a
+    // 4096² depois de o fold passar a caminhar por linhas (`measure_the_fold_the_product_runs`), mais
+    // a alocação das 4 planes + a out (~218 MB a 4096², 13,21 ms medidos).
+    //
+    // Fechá-lo é uma DECISÃO DE PRODUTO, não uma correção mecânica: qualquer pré-aquecimento da luz
+    // cobra VRAM canvas-sized de TODO bind, inclusive de quem nunca liga o impasto — o mesmo argumento
+    // que já mantém este pré-aquecimento fora do boot, num tamanho dez vezes maior. O número que
+    // decide é o que o `PH2D_PAINT_PERF` reportar no frame do primeiro traço agora que o fold caiu de
+    // 201,5 para 14,55 ms.
     //
     // ⚠️ **A `gpu_eligible` NÃO pode ser consultada aqui, e é isso que fazia o custo cair no 1º traço:**
     // uma pilha recém-bindada é TRIVIAL e sem relevo, então ela recusa, nada é alocado, e o primeiro

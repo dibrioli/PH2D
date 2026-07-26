@@ -385,11 +385,24 @@ mod tests {
     /// work is per texel and the window has the same texels either way. A ratio is also immune to machine
     /// drift and to the profile the suite happens to build in, which a millisecond bar is not.
     ///
+    /// It earns its keep against exactly one failure mode the SHAPE gates cannot see: a fold that
+    /// *returns* a window while *walking* the canvas (compute everything, then slice). `part.region`
+    /// and `relief.len()` would both still be right.
+    ///
     /// **Mutation that must bleed:** point the shell's fold back at `impasto_gpu_planes()` (or make
     /// `impasto_gpu_planes_in` ignore its argument) and this quadruples with the canvas.
+    ///
+    /// ⚠️ **The window is 512², and the size is load-bearing.** It used to be 128², which cost ~0,18 ms
+    /// when the fold walked serially and **0,044 ms** once it walked by rows — and a ratio between two
+    /// numbers that small is a measurement of rayon's scheduler, not of this property. It failed exactly
+    /// that way under the full suite (0,0839 against 0,2470, "2,95×") while the swept table showed the
+    /// window cost flat across canvas size to within 10%. A gate whose oracle dissolves when the thing it
+    /// watches gets faster is a gate that will be silenced rather than believed, so it moved up to a
+    /// window that still costs ~0,39 ms — ten times the noise floor — and reads the MINIMUM of its
+    /// samples, because a loaded machine can only ever make a sample slower.
     #[test]
     fn the_fold_costs_what_the_window_costs_not_what_the_canvas_costs() {
-        /// Median wall clock of the same window folded on a canvas of `size`.
+        /// Fastest wall clock of the same window folded on a canvas of `size`.
         fn window_ms(size: u32) -> f64 {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
@@ -413,25 +426,27 @@ mod tests {
             t.on_canvas_pointer(cp([40.0, mid], PointerPhase::Down));
             t.on_canvas_pointer(cp([160.0, mid], PointerPhase::Move));
             t.on_canvas_pointer(cp([160.0, mid], PointerPhase::Up));
-            let win = (20u32, (size / 2) - 64, 128, 128);
+            // Contains the stroke (x from 16 to 184) — a window over bare paper agrees trivially,
+            // because two cheap early-outs cost the same whatever the canvas is.
+            let win = (0u32, (size / 2) - 256, 512, 512);
             let mut s = Vec::new();
-            for _ in 0..5 {
+            for _ in 0..9 {
                 let t0 = std::time::Instant::now();
                 let p = t.impasto_gpu_planes_in(win).expect("sculpted and lit");
                 s.push(t0.elapsed().as_secs_f64() * 1e3);
                 drop(p);
             }
             s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
-            s[s.len() / 2]
+            s[0]
         }
-        let small = window_ms(512);
-        let large = window_ms(1024);
+        let small = window_ms(1024);
+        let large = window_ms(2048);
         // 4x the canvas, the same window. Anything that walks the plane shows up as ~4x here; the bar
         // sits well below that and well above the noise of two sub-millisecond samples.
         let ratio = large / small.max(1e-6);
         assert!(
             ratio < 2.0,
-            "the fold must be bounded by the window: 512²={small:.4} ms vs 1024²={large:.4} ms \
+            "the fold must be bounded by the window: 1024²={small:.4} ms vs 2048²={large:.4} ms \
              ({ratio:.2}x — a canvas-bound fold quadruples)"
         );
     }

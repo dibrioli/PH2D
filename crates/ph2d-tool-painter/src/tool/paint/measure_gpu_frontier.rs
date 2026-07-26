@@ -370,13 +370,21 @@ fn measure_the_fold_the_product_runs() {
         t.on_canvas_pointer(cp([700.0, mid], PointerPhase::Up));
         t
     }
-    const REGION_EDGE: u32 = 512;
-    println!("\n{:<8} {:>14} {:>14}", "canvas", "full ms", "region ms");
+    /// ⚠️ **The window sweep is not decoration.** Parallelising by rows made the FULL fold 13,8× cheaper
+    /// and made the tiny windows small enough that rayon's own scheduling can dominate them — and a tiny
+    /// window is the STEADY STATE of every stroke frame after the first, which is the frame the artist
+    /// feels most. A cure for the once-per-document cost that taxed the per-move cost would be a bad
+    /// trade made invisibly, so both ends are measured here, in one table.
+    const EDGES: [u32; 5] = [64, 128, 256, 512, 1024];
+    println!(
+        "\n{:<8} {:>12} {:>10} {:>10} {:>10} {:>10} {:>10}",
+        "canvas", "full ms", "1024²", "512²", "256²", "128²", "64²"
+    );
     for size in [2048u32, 4096] {
         let t = sculpted(size);
         let time = |region: (u32, u32, u32, u32)| -> f64 {
             let mut s = Vec::new();
-            for _ in 0..5 {
+            for _ in 0..9 {
                 let t0 = Instant::now();
                 let planes = t.impasto_gpu_planes_in(region).expect("sculpted and lit");
                 s.push(t0.elapsed().as_secs_f64() * 1e3);
@@ -386,9 +394,21 @@ fn measure_the_fold_the_product_runs() {
             s[s.len() / 2]
         };
         let full = time((0, 0, size, size));
-        let mid = size / 2 - REGION_EDGE / 2;
-        let region = time((mid, mid, REGION_EDGE, REGION_EDGE));
-        println!("{size:<8} {full:>14.3} {region:>14.3}");
+        let mut cols = Vec::new();
+        for edge in EDGES.iter().rev() {
+            // ⚠️ Centred on the STROKE, never on the canvas. The first version of this table centred the
+            // window on the canvas, and since the stroke lives at `x ∈ [200, 700]` the 2048² windows
+            // covered paint while the 4096² ones covered bare paper — so the two rows priced different
+            // phenomena and the big canvas looked *cheaper*, which is the fixture lying, not the fold.
+            let cx = 450u32.max(edge / 2).min(size - edge / 2);
+            let cy = size / 2;
+            cols.push(time((cx - edge / 2, cy - edge / 2, *edge, *edge)));
+        }
+        print!("{size:<8} {full:>12.3}");
+        for c in &cols {
+            print!(" {c:>10.4}");
+        }
+        println!();
     }
     println!();
 }

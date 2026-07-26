@@ -58,6 +58,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_quantize::register(&mut reg).unwrap();
     ph2d_node_value_gain::register(&mut reg).unwrap();
     ph2d_node_value_step::register(&mut reg).unwrap();
+    ph2d_node_value_normalize::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3169,6 +3170,76 @@ fn value_step_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the gate drove nothing"
+    );
+}
+
+/// **`value.normalize` runs fully on the GPU and matches the CPU.** This is the
+/// value domain's first `reduce → broadcast → map` — the field's `min` and `max`
+/// (two whole-stream reductions) fed into `(v − min)/(max − min)`. The fixture
+/// gives the reduction REAL work: a `[0,1]` ramp is stretched to `[−3, 5]` by a
+/// `value.map_range` FIRST (so `min = −3`, `max = 5`, not the trivial `0`/`1`),
+/// then Range-normalized back and driven to Y. The device tree reduction matches
+/// the CPU fold (`Min`/`Max` are bit-exact in any order) and the map matches term
+/// for term. `is_fully_gpu` PROVES the reduce pass AND the kernel dispatch on the
+/// device (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_normalize_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let map = g.add_node("value.map_range");
+    g.set_param(map, "out_lo", -3.0); // stretch to a non-trivial range so the
+    g.set_param(map, "out_hi", 5.0); // reduction has real min/max to discover
+    connect(&mut g, field, map);
+    let norm = g.add_node("value.normalize");
+    g.set_param(norm, "mode", 0.0); // Range → [0,1]
+    connect(&mut g, map, norm);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (norm, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("normalized value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → map → normalize → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.normalize → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the normalize drove nothing"
     );
 }
 

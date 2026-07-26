@@ -5276,6 +5276,7 @@ dependencies = [
  "ph2d-node-value-math",
  "ph2d-node-value-mix",
  "ph2d-node-value-noise",
+ "ph2d-node-value-normalize",
  "ph2d-node-value-quantize",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
@@ -6378,6 +6379,7 @@ dependencies = [
  "ph2d-node-value-math",
  "ph2d-node-value-mix",
  "ph2d-node-value-noise",
+ "ph2d-node-value-normalize",
  "ph2d-node-value-quantize",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
@@ -6557,6 +6559,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-noise"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-normalize"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

@@ -59,6 +59,7 @@ mod value_noise_smoke;
 mod value_mix_smoke;
 mod value_gain_smoke;
 mod value_step_smoke;
+mod value_normalize_smoke;
 mod value_quantize_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;

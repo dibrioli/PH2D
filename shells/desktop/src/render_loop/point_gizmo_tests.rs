@@ -87,8 +87,8 @@ fn an_unselected_joint_still_publishes_both_handles() {
         "the rope's two ends must both be grabbable with nothing selected, got {handles:?}"
     );
     assert!(handles.iter().all(|h| h.key == j.to_bits()));
-    assert!(handles.iter().any(|h| h.side == PointSide::A));
-    assert!(handles.iter().any(|h| h.side == PointSide::B));
+    assert!(handles.iter().any(|h| h.kind == PointHandleKind::AnchorA));
+    assert!(handles.iter().any(|h| h.kind == PointHandleKind::AnchorB));
 }
 
 /// **Two joints are four handles, and a plain sprite is none of them.** The
@@ -121,7 +121,7 @@ fn the_handle_order_is_stable() {
     let b = joint_anchor_handles(&sim, &bridge, true);
     assert_eq!(a, b);
     let mut sorted = a.clone();
-    sorted.sort_by_key(|h| (h.key, h.side));
+    sorted.sort_by_key(|h| (h.key, h.kind));
     assert_eq!(a, sorted, "handles must come out sorted by (entity, side)");
 }
 
@@ -162,7 +162,7 @@ fn a_dormant_joints_a_end_is_offered_and_its_b_end_is_not() {
 
     let handles = joint_anchor_handles(&sim, &bridge, true);
     assert_eq!(handles.len(), 1, "only the A end, got {handles:?}");
-    assert_eq!(handles[0].side, PointSide::A);
+    assert_eq!(handles[0].kind, PointHandleKind::AnchorA);
     assert_eq!(handles[0].key, j.to_bits());
     assert_eq!(handles[0].world, [0.0, 6.0]);
 }
@@ -176,7 +176,7 @@ fn an_empty_scene_publishes_no_view() {
     let v = build_point_view(
         vec![PointHandle {
             key: 1,
-            side: PointSide::A,
+            kind: PointHandleKind::AnchorA,
             world: [1.0, 2.0],
         }],
         &camera(),
@@ -198,17 +198,146 @@ fn a_hit_id_resolves_to_its_joint_and_side() {
     let handles = joint_anchor_handles(&sim, &bridge, true);
     let mut map = std::collections::BTreeMap::new();
     for h in &handles {
-        map.insert(ph2d_editor::gizmo::point_handle_id(h.key, h.side), *h);
+        map.insert(ph2d_editor::gizmo::point_handle_id(h.key, h.kind), *h);
     }
     for h in &handles {
-        let id = ph2d_editor::gizmo::point_handle_id(h.key, h.side);
-        let (e, side) = resolve_anchor_hit(&map, id).expect("a painted handle resolves");
+        let id = ph2d_editor::gizmo::point_handle_id(h.key, h.kind);
+        let (e, kind) = resolve_anchor_hit(&map, id).expect("a painted handle resolves");
         assert_eq!(e, j);
+        assert_eq!(kind, h.kind, "the resolved kind must be the one painted");
         assert_eq!(
-            side == JointSide::A,
-            h.side == PointSide::A,
-            "the resolved end must be the end that was painted"
+            anchor_side(kind) == Some(JointSide::A),
+            h.kind == PointHandleKind::AnchorA,
+            "an anchor kind must map back to its side"
         );
     }
     assert!(resolve_anchor_hit(&map, ph2d_editor::NodeId(7)).is_none());
+}
+
+// ── W-J3: the parameter grips ────────────────────────────────────────────────
+
+/// A hinge with limits + a spring, so both grip families are on screen at once.
+fn param_rig() -> (SimWorld, PhysicsBridge) {
+    let mut sim = SimWorld::new();
+    body(&mut sim, "HingePost", BodyKind::Static, [0.0, 0.0]);
+    body(&mut sim, "HingeArm", BodyKind::Dynamic, [1.0, 0.0]);
+    sim.world_mut().spawn((
+        Name::new("Hinge".to_string()),
+        PhysicsJoint {
+            body_a: stable_name_id("HingePost"),
+            body_b: stable_name_id("HingeArm"),
+            kind: JointKind::Pin,
+            limits_enabled: true,
+            limit_min: -0.5,
+            limit_max: 0.9,
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    body(&mut sim, "SpringPost", BodyKind::Static, [5.0, 0.0]);
+    body(&mut sim, "SpringBob", BodyKind::Dynamic, [6.0, 0.0]);
+    sim.world_mut().spawn((
+        Name::new("Spring".to_string()),
+        PhysicsJoint {
+            body_a: stable_name_id("SpringPost"),
+            body_b: stable_name_id("SpringBob"),
+            kind: JointKind::Spring,
+            rest_length: 1.0,
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(5.0, 0.0)),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    (sim, bridge)
+}
+
+fn kinds(hs: &[PointHandle]) -> Vec<PointHandleKind> {
+    let mut k: Vec<_> = hs.iter().map(|h| h.kind).collect();
+    k.sort_unstable();
+    k
+}
+
+/// **Each joint gets the grips its own kind has**, and no others: a hinge with
+/// limits gets two walls, a spring gets its ring. A parameter that a joint does
+/// not use is not a grip that quietly authors an unused field.
+#[test]
+fn a_hinge_gets_two_walls_and_a_spring_gets_its_ring() {
+    let (_sim, bridge) = param_rig();
+    let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+    assert_eq!(
+        kinds(&hs),
+        vec![
+            PointHandleKind::LimitMin,
+            PointHandleKind::LimitMax,
+            PointHandleKind::Length
+        ],
+        "got {hs:?}"
+    );
+}
+
+/// **A free hinge has no walls to grip.** `limits_enabled` off means the arc is
+/// not drawn, so there is nothing there to grab.
+#[test]
+fn a_hinge_without_limits_has_no_walls() {
+    let (mut sim, mut bridge) = param_rig();
+    let hinge = sim
+        .world_mut()
+        .query::<(Entity, &Name)>()
+        .iter(sim.world())
+        .find(|(_, n)| n.as_str() == "Hinge")
+        .map(|(e, _)| e)
+        .expect("the hinge");
+    if let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(hinge) {
+        c.limits_enabled = false;
+    }
+    bridge.dispatch(&mut sim, false, 0);
+    let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+    assert_eq!(kinds(&hs), vec![PointHandleKind::Length], "got {hs:?}");
+}
+
+/// **The grips follow the joint overlay's visibility.**
+///
+/// They are grips on ITS geometry — the arc, the ring. With `B` off there is no
+/// arc on screen, and a dot that moves an invisible line is a control the artist
+/// cannot reason about. (The ANCHOR dots are drawn by the gizmo itself, so they
+/// are not gated: they are always visible.)
+///
+/// Mutation-tested: dropping the `show_overlay` guard leaves the grips live with
+/// nothing drawn under them.
+#[test]
+fn the_parameter_grips_are_not_offered_with_the_overlay_hidden() {
+    let (_sim, bridge) = param_rig();
+    assert!(joint_param_handles(&bridge, &camera(), window(), false, true).is_empty());
+    // …nor while the clock runs, for the reason the anchors are not.
+    assert!(joint_param_handles(&bridge, &camera(), window(), true, false).is_empty());
+}
+
+/// **A wall's grip re-projects to the pixel the arc drew it at.** The handle
+/// carries WORLD (one projection serves every kind), and the arc lives at a
+/// fixed SCREEN radius, so the publish unprojects — a round trip that must land
+/// back where it started or the hit rect drifts off the tick as you zoom.
+#[test]
+fn a_walls_grip_round_trips_through_world_back_to_its_pixel() {
+    let (_sim, bridge) = param_rig();
+    let (cam, win) = (camera(), window());
+    let hs = joint_param_handles(&bridge, &cam, win, true, true);
+    for h in hs.iter().filter(|h| h.kind != PointHandleKind::Length) {
+        let v = bridge
+            .joint_views()
+            .find(|v| v.entity.to_bits() == h.key)
+            .expect("the joint");
+        let l = v.limits.expect("limits");
+        let i = usize::from(h.kind == PointHandleKind::LimitMax);
+        let drawn = crate::render_loop::physics_overlay_joint_glyphs::limit_end_screen(
+            &cam, win, v.anchor_a, v.angle_a, l[i],
+        );
+        let (sx, sy) = cam.world_to_screen(h.world, win);
+        let d = (f64::from(sx) - drawn.x).hypot(f64::from(sy) - drawn.y);
+        assert!(
+            d < 0.05,
+            "the {:?} grip re-projected {d:.4} px away from the wall it grips",
+            h.kind
+        );
+    }
 }

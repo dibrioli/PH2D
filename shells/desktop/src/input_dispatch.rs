@@ -4095,7 +4095,7 @@ impl App {
                         )
                     });
                     let mut began_joint_anchor = false;
-                    if let Some((joint, side)) = anchor_hit
+                    if let Some((joint, kind)) = anchor_hit
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                     {
@@ -4106,7 +4106,7 @@ impl App {
                             gfx.surface.size(),
                             joint,
                             (evt.x, evt.y),
-                            side,
+                            kind,
                         );
                         if opened.is_some() {
                             // Disjoint field write: `gfx`/`hero` borrow

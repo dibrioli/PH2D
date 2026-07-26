@@ -4579,3 +4579,120 @@ pintura há uma zona morta do tamanho da alça sobre a arte. A doutrina do repo
 deveria ser *artwork*, mas invertê-la faria o Painter reclamar o press e a alça
 nunca pegaria — é decisão de produto, não mecânica. E: quem assume, siga com
 **W-J3** (arrastar as pontas do arco / o anel / a seta).
+
+---
+
+## W-J3 — Pose, não digite: o limite e o comprimento no canvas (2026-07-25, cena `=45`)
+
+A wave seguinte do [plano 02](02_plano_joints_ui_authoring.md), e a que o arco da
+W-J1 desbloqueou. Até aqui o canvas MOSTRAVA o alcance de uma dobradiça e o
+comprimento de uma mola, e para MUDÁ-los o artista voltava ao §12 e digitava um
+número — olhando para o efeito num lugar e escrevendo a causa noutro.
+
+### O que ganhou alça, e por que exatamente estas duas
+
+**Um limite é um ÂNGULO e um comprimento é uma DISTÂNCIA: cada um já tem lugar
+na tela**, então arrastar a parede até 30° ou o anel até 2 m não converte nada —
+a posição *é* o valor, e não há constante entre o gesto e o número para divergir.
+As três alças novas: as **duas paredes** do arco (cada uma escreve SÓ a sua — o
+alcance é assimétrico por construção, o que o cone do Unreal não expressa) e o
+**anel de comprimento** (repouso da mola, máximo da corda).
+
+⚠️ **O MOTOR não ganhou alça, e a ausência é a decisão da wave.** O plano pedia
+*"seta de motor arrastável = velocidade (comprimento ∝ °/s)"* e essa frase não
+sobrevive à leitura do código: velocidade é uma **TAXA**, nenhum lugar da tela é
+120 °/s, e toda alça para ela precisa de uma constante px-por-°/s — enquanto a
+row do §12 que ela espelharia é um `num_row` livre, **sem faixa** de onde tirar
+uma. Inventá-la é precisamente o número que o §0 proíbe. As duas leis que
+dispensam constante falham por conta própria: o arco **SATURA** (o glifo tem
+270°, então toda velocidade acima do topo desenha igual) e uma posição angular
+que mapeie uma volta em 360 °/s **DÁ A VOLTA** (400 °/s e 40 °/s são o mesmo
+ponto). Fica nomeado no código, no plano e na cena — o que a destrava é uma
+decisão sobre a lei de controle (ou uma faixa na row), e ela é do Enio.
+
+### As quatro coisas que fazem isto ser uma wave e não quatro hacks
+
+**1. A geometria que se ARRASTA é a que se DESENHA.** `limit_end_screen` é a
+função que o `limit_arc` usa para pôr a marca radial da parede — o grip e a
+parede são um lugar só. Duas derivações seriam duas respostas a *"onde termina o
+alcance?"*, e a que discordasse seria justamente a **invisível**: o retângulo de
+hit. (`arc_point_in` virou o primitivo de toda figura angular do módulo; o glifo
+do weld passou por ele também.)
+
+**2. O arrasto escreve pelo MESMO funil do número.** `apply_joint_edit` foi
+partido: **`joint_with_edit(current, edit) -> Option<PhysicsJoint>`** é a metade
+PURA, e agora tem dois consumidores — a row do §12 e o grip. Mesma fronteira
+graus↔radianos, mesmos pisos por campo, mesmo `clamped()`. Uma segunda conversão
+poria a parede em 30° no canvas e `0,52` no campo.
+
+**3. ⚠️ Uma parede PARA na irmã; ela não troca de lugar com ela.**
+`PhysicsJoint::clamped` **TROCA** limites invertidos — certo para um par digitado
+(um `min > max` é um weld que ninguém pediu) e **errado para um gesto**: a troca
+entrega a OUTRA parede à mão do artista no meio do arrasto, e quem estava
+alargando o arco passa a estreitá-lo sem nada na tela dizer por quê. O grip para;
+o `clamped()` continua lá para quem digita.
+
+**4. O FANTASMA.** Enquanto uma parede é arrastada, o overlay desenha a silhueta
+do corpo B **na pose que aquela parede permite** — o collider de B girado em
+torno da âncora A por `Δ = (angle_a + limit) − angle_b`. É o *'L'* do RUBE **sem
+modo**: arrastar já posa. ⚠️ **Ele desenha e nada mais** — o corpo real só se
+move quando o solver o move, e é essa separação que torna possível posar um
+limite com a simulação PARADA. O ângulo vem do COMPONENTE (já passado pelo muro e
+pelo `clamped`), não do cursor: um fantasma onde o solver não deixa o corpo parar
+seria uma promessa que a simulação quebra. `JointView` ganhou **`body_b: Entity`**
+(a view já dizia onde B está e como está virado; esta é a mesma pergunta).
+
+### O resto do encanamento
+
+`PointSide` virou **`PointHandleKind`** (5 variantes) e o gizmo de ponto passou a
+ter tamanho, id e desenho por kind: grip pequeno (6 px) para os parâmetros,
+porque ele agarra uma linha que o overlay já desenhou em vez de ser marca nova.
+⚠️ **`PAINT_ORDER` põe as ÂNCORAS por último**: onde um grip e uma âncora caem no
+mesmo pixel, a âncora vence — ela é um ponto único sem outro lugar por onde ser
+pega, o grip tem a linha inteira. ⚠️ **Os grips seguem a visibilidade do
+overlay** (`show_colliders`): são grips na geometria DELE, e com o arco não
+desenhado seriam controles sobre uma linha invisível. Ids de gizmo novos: **966,
+967, 968**.
+
+### Gates (16 novos; 8 mutações, 8 sangram)
+
+| # | mutação | o que sangra |
+|---|---|---|
+| M1 | a parede não para na irmã (deixa o `clamped` trocar) | as duas voltam EXCHANGED |
+| M2 | `unwrap_near` devolve o cru | a parede a 190° salta para −170° |
+| M3 | o anel escreve `rest_length` para os dois kinds | a corda escreve no campo da mola |
+| M4 | o grip nasce em `LIMIT_ARC_PX + 1` | o grip sai do caminho desenhado |
+| M5 | o fantasma ignora o limite (usa `angle_b`) | a silhueta não se move com a parede |
+| M6 | os grips ignoram `show_overlay` | grip vivo sobre linha invisível |
+| M7 | paredes oferecidas numa dobradiça LIVRE | grip sobre arco que não existe |
+| M8 | radianos entregues a uma edição em GRAUS | o número do §12 não bate |
+| M9 | `PAINT_ORDER` com as âncoras na frente | o grip engole a âncora |
+
+⚠️ **O gate de round-trip NÃO pega o M4, e isso é correto**: ele compara a alça
+publicada contra `limit_end_screen`, e a mutação move os DOIS lados (é a razão
+entre dois doentes). Quem pega é o gate da porta, que compara contra o CAMINHO
+desenhado. Os dois defendem coisas diferentes — a des-projeção e o raio — e é por
+isso que são dois.
+
+**Zero componente, zero schema, zero id de física** (`PROJECT_SCHEMA` **31**,
+registro **21**); os três ids novos são de gizmo. **c9 byte-idêntico**
+(`4e862761…`, 83 corpos) — a wave é autoria, não solver, e `body_b` é readout.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=45`** (dobradiça com alcance à esquerda · mola com
+anel à direita; PAUSADA). Números **medidos** na mensagem: com a parede em −45° a
+barra assenta em **rot −45,0°**, `(-3,434, 5,434)`; posada em −20° ela assenta em
+**rot −20,0°**, `(-3,248, 5,726)` — *a barra para exatamente onde a parede foi
+posta*. E a mola: repouso 1,00 pendura o peso a **1,065 m** do poste; 2,00, a
+**2,063 m** (a sobra é o próprio peso esticando).
+
+**LOC:** `physics_overlay_joints_tests.rs` (643) partido por RESPONSABILIDADE em
+`physics_overlay_joint_pose_tests.rs` — lá se prova o que o joint **diz** de si
+(W-J1), aqui que o que ele diz é o que se **agarra**; e `joint_anchor_drag.rs`
+ganhou o irmão `joint_anchor_drag_tests.rs`.
+
+**Aberto:** o motor (acima — decisão de produto) · **sem ímã nos grips de
+parâmetro**, e é gap com nome: um ângulo quereria um PASSO (15°?) e um
+comprimento a grade da cena, e nenhum dos dois conjuntos de candidatos existe
+aqui — os nove pontos de collider da âncora não respondem a nenhuma das duas
+perguntas · W-J4 criar onde se olha · W-J5 Slider · W-J6 servo + guincho · W-J7
+break force · W-J8 higiene do par · W-JG grupo carrega o rig.

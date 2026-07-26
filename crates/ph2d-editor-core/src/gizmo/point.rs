@@ -48,26 +48,54 @@ use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, BezPath, Circle, Color as VelloColor, Point, Stroke, VectorScene};
 use std::collections::BTreeMap;
 
-/// Which end of a joint a handle authors. Editor-core's own word for it — the
-/// gizmo layer knows there are two ends and nothing else about physics; the
-/// shell maps this onto `ph2d_physics_ecs::JointSide`.
+/// What a point handle authors. Editor-core's own word for it — the gizmo layer
+/// knows there are grabbable points on a joint and nothing else about physics;
+/// the shell maps this onto the sides and the fields.
+///
+/// # The two families, and the difference is what a QUANTITY is (W-J3)
+///
+/// The **anchors** are places by nature: the dot is the value. The **parameter**
+/// handles are numbers the §12 rows also edit — an angle (a limit wall) and a
+/// distance (a rest / max length) — and they are here because *an angle and a
+/// distance already have places*: dragging the wall to 30° needs no scale to
+/// convert anything, and neither does dragging the ring to 2 m.
+///
+/// ⚠️ **That is exactly why the motor's speed is NOT in this list** — see the
+/// note on `render_loop::point_gizmo::joint_param_handles`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum PointSide {
-    /// The end attached to body A — the filled dot.
-    A,
-    /// The end attached to body B — the hollow ring.
-    B,
+pub enum PointHandleKind {
+    /// The anchor on body A — the filled dot.
+    AnchorA,
+    /// The anchor on body B — the hollow ring.
+    AnchorB,
+    /// The **lower** wall of a hinge's limit arc.
+    LimitMin,
+    /// The **upper** wall of a hinge's limit arc.
+    LimitMax,
+    /// The length ring — a spring's rest length, a rope's maximum.
+    Length,
 }
 
-/// One grabbable anchor: where it is, whose it is, and which end.
+impl PointHandleKind {
+    /// True for the two ANCHOR handles. The shell branches on this to choose the
+    /// door a drag writes through (the bridge's anchor door vs the joint
+    /// component), and asking it here keeps that a property of the kind rather
+    /// than a list every caller re-derives.
+    #[must_use]
+    pub fn is_anchor(self) -> bool {
+        matches!(self, Self::AnchorA | Self::AnchorB)
+    }
+}
+
+/// One grabbable point: where it is, whose it is, and what it authors.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PointHandle {
     /// The owning entity (`Entity::to_bits`), opaque here. It is what makes two
     /// joints' handles distinguishable, both in the hit id and in the map the
     /// shell reads back.
     pub key: u64,
-    pub side: PointSide,
-    /// World position of the anchor this handle authors.
+    pub kind: PointHandleKind,
+    /// World position of the value this handle authors.
     pub world: [f32; 2],
 }
 
@@ -120,35 +148,50 @@ const JOINT_ANCHOR_RING_STROKE_PX: f64 = 2.0;
 /// legible even when both handles sit on the snapped point.
 const SNAP_CROSS_PX: f32 = 20.0;
 
-/// Half-extent of a handle's hit square, screen px, **by side**.
+/// Visual radius of a PARAMETER grip, screen px — smaller than either anchor
+/// mark, because it is a grip ON geometry the overlay already drew (the limit
+/// wall, the length ring) rather than a mark of its own. It says *this line can
+/// be moved*; the line itself says what the value is.
+const JOINT_PARAM_GRIP_PX: f32 = 6.0;
+
+/// Half-extent of a handle's hit square, screen px, **by kind**.
 ///
 /// ⚠️ These are the VISUAL radii, deliberately: a mark drawn larger than the
 /// rect that catches it is a dot the artist clicks and nothing happens. A takes
 /// the inner square and B the band outside it, which is the whole of how a
 /// coincident pair stays two handles.
-const fn hit_half_px(side: PointSide) -> f32 {
-    match side {
-        PointSide::A => JOINT_ANCHOR_DOT_PX,
-        PointSide::B => JOINT_ANCHOR_RING_PX,
+const fn hit_half_px(kind: PointHandleKind) -> f32 {
+    match kind {
+        PointHandleKind::AnchorA => JOINT_ANCHOR_DOT_PX,
+        PointHandleKind::AnchorB => JOINT_ANCHOR_RING_PX,
+        // A parameter grip gets a touch more than it draws: it sits on a thin
+        // line, so the extra couple of pixels are what make it catchable
+        // without widening the mark into the arc it grips.
+        PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
+            JOINT_PARAM_GRIP_PX + 2.0
+        }
     }
 }
 
 /// The hit id of one joint's handle — `canonical ^ hash(key)`.
 ///
-/// ⚠️ **The multipliers are odd and DIFFERENT per side, and neither is the one
-/// the box gizmo's extras use.** The failure this avoids is documented at
+/// ⚠️ **The multipliers are odd and DIFFERENT per kind, and none is the one the
+/// box gizmo's extras use.** The failure this avoids is documented at
 /// `gizmo::paint::keyed_handle_id`: a *linear* scrambler (`canonical ^ bits ^
 /// CONST`) cancels when two ids are compared, so consecutive entity bits and
 /// consecutive canonical ids collide constantly — which is how a click on one
 /// sprite's handle came to resolve to a different sprite in 2026-06. Multiplying
-/// is non-linear, so consecutive keys land far apart; using a distinct constant
-/// per side means A and B hash independently rather than differing by the one
-/// bit that separates their canonical ids.
+/// is non-linear, so consecutive keys land far apart; a distinct constant per
+/// kind means the kinds hash independently rather than differing by the one bit
+/// that separates their canonical ids.
 #[must_use]
-pub fn point_handle_id(key: u64, side: PointSide) -> NodeId {
-    let (canonical, mul) = match side {
-        PointSide::A => (ids::GIZMO_JOINT_ANCHOR, 0x_C2B2_AE3D_27D4_EB4F_u64),
-        PointSide::B => (ids::GIZMO_JOINT_ANCHOR_B, 0x_D6E8_FEB8_6659_FD93_u64),
+pub fn point_handle_id(key: u64, kind: PointHandleKind) -> NodeId {
+    let (canonical, mul) = match kind {
+        PointHandleKind::AnchorA => (ids::GIZMO_JOINT_ANCHOR, 0x_C2B2_AE3D_27D4_EB4F_u64),
+        PointHandleKind::AnchorB => (ids::GIZMO_JOINT_ANCHOR_B, 0x_D6E8_FEB8_6659_FD93_u64),
+        PointHandleKind::LimitMin => (ids::GIZMO_JOINT_LIMIT_MIN, 0x_A24B_AF11_9E37_79B1_u64),
+        PointHandleKind::LimitMax => (ids::GIZMO_JOINT_LIMIT_MAX, 0x_8F51_2C6D_B3A7_45C9_u64),
+        PointHandleKind::Length => (ids::GIZMO_JOINT_LENGTH, 0x_F1B7_39D5_6C82_A0E3_u64),
     };
     NodeId(canonical.0 ^ key.wrapping_mul(mul))
 }
@@ -161,16 +204,17 @@ fn anchor_color() -> VelloColor {
     VelloColor::from_rgba8(0xFA, 0xBF, 0x40, 0xFF) // matches `JOINT_RGBA` in the physics overlay
 }
 
-/// Draw every joint's anchor handles and register their hit rects, recording
+/// Draw every joint's point handles and register their hit rects, recording
 /// `id -> handle` in `hit_map` so a Down can be resolved back to the joint and
-/// the end it belongs to.
+/// what it authors.
 ///
 /// Order is load-bearing twice. The **snap crosshair first** (it is a backdrop
-/// for the marks that sit on it), then **every B, then every A** —
+/// for the marks that sit on it), then the kinds in [`PAINT_ORDER`] —
 /// `HitIndex::hit` walks backwards, so the last registration wins, and A must
-/// win the square it shares with B on a coincident pair. Two passes rather than
-/// per-joint interleaving: with one pass the next joint's B would be registered
-/// after this joint's A and would swallow it wherever two joints overlap.
+/// win the square it shares with B on a coincident pair. One pass per kind
+/// rather than per-joint interleaving: with a single pass the next joint's B
+/// would be registered after this joint's A and would swallow it wherever two
+/// joints overlap.
 pub fn paint_point_gizmo(
     scene: &mut VectorScene,
     view: &PointGizmoView,
@@ -191,23 +235,21 @@ pub fn paint_point_gizmo(
     if let Some(snap) = view.snap_world {
         paint_snap_cross(scene, project(snap));
     }
-    for side in [PointSide::B, PointSide::A] {
-        for h in view.handles.iter().filter(|h| h.side == side) {
+    for kind in PAINT_ORDER {
+        for h in view.handles.iter().filter(|h| h.kind == kind) {
             let s = project(h.world);
-            let half = hit_half_px(side);
-            let id = point_handle_id(h.key, side);
+            let half = hit_half_px(kind);
+            let id = point_handle_id(h.key, kind);
             hit_index.register(
                 id,
                 Rect::new(s[0] - half, s[1] - half, half * 2.0, half * 2.0),
             );
             hit_map.insert(id, *h);
-            match side {
+            let centre = Point::new(f64::from(s[0]), f64::from(s[1]));
+            match kind {
                 // Hollow — the B end, in the same amber as A (module docs).
-                PointSide::B => {
-                    let ring = Circle::new(
-                        Point::new(f64::from(s[0]), f64::from(s[1])),
-                        f64::from(JOINT_ANCHOR_RING_PX),
-                    );
+                PointHandleKind::AnchorB => {
+                    let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX));
                     scene.inner_mut().stroke(
                         &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
                         Affine::IDENTITY,
@@ -217,11 +259,19 @@ pub fn paint_point_gizmo(
                     );
                 }
                 // Filled dot — the A end.
-                PointSide::A => {
-                    let dot = Circle::new(
-                        Point::new(f64::from(s[0]), f64::from(s[1])),
-                        f64::from(JOINT_ANCHOR_DOT_PX),
+                PointHandleKind::AnchorA => {
+                    let dot = Circle::new(centre, f64::from(JOINT_ANCHOR_DOT_PX));
+                    scene.inner_mut().fill(
+                        ph2d_vector::Fill::NonZero,
+                        Affine::IDENTITY,
+                        anchor_color(),
+                        None,
+                        &dot,
                     );
+                }
+                // A grip on the overlay's own line — small, filled, same amber.
+                PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
+                    let dot = Circle::new(centre, f64::from(JOINT_PARAM_GRIP_PX));
                     scene.inner_mut().fill(
                         ph2d_vector::Fill::NonZero,
                         Affine::IDENTITY,
@@ -234,6 +284,20 @@ pub fn paint_point_gizmo(
         }
     }
 }
+
+/// Back-to-front paint (and therefore registration) order.
+///
+/// The **anchors go last**, so where a parameter grip and an anchor overlap the
+/// anchor wins: a limit wall can be dragged from anywhere along its tick, while
+/// the anchor is a single point with nowhere else to go. Within the anchors, A
+/// after B — see [`paint_point_gizmo`].
+const PAINT_ORDER: [PointHandleKind; 5] = [
+    PointHandleKind::LimitMin,
+    PointHandleKind::LimitMax,
+    PointHandleKind::Length,
+    PointHandleKind::AnchorB,
+    PointHandleKind::AnchorA,
+];
 
 /// A crosshair through the snapped candidate — the only thing on screen that
 /// says *the dot stopped here on purpose*. Without it a snap is indistinguishable

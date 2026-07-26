@@ -121,4 +121,11 @@ pub mod ids {
     /// handle could only ever author one of them. Same recognition rule as its
     /// sibling above.
     pub const GIZMO_JOINT_ANCHOR_B: NodeId = NodeId(965);
+    /// The PARAMETER grips (W-J3) — the two walls of a hinge's limit arc and the
+    /// length ring of a spring / rope. Canonical ids only: the live ones are
+    /// keyed per joint (`super::point::point_handle_id`), like every other
+    /// handle a scene can hold several of.
+    pub const GIZMO_JOINT_LIMIT_MIN: NodeId = NodeId(966);
+    pub const GIZMO_JOINT_LIMIT_MAX: NodeId = NodeId(967);
+    pub const GIZMO_JOINT_LENGTH: NodeId = NodeId(968);
 }

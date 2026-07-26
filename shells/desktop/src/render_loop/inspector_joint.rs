@@ -169,6 +169,27 @@ pub(crate) fn apply_joint_edit(
     let Some(&current) = sim.world().get::<PhysicsJoint>(entity) else {
         return;
     };
+    let Some(next) = joint_with_edit(current, edit) else {
+        return;
+    };
+    if next != current {
+        queue_set(queue, registry, entity_bits, JOINT, &next);
+    }
+}
+
+/// **One edit applied to one joint** — the pure half of [`apply_joint_edit`],
+/// and the single funnel every author of these fields goes through.
+///
+/// Extracted in W-J3 so that DRAGGING a limit wall or a length ring writes the
+/// same way TYPING the number does: same degrees-to-radians boundary, same
+/// per-field floors, same `clamped()`. Two conversions of "what does this edit
+/// mean" is how a posed limit and a typed one would come to disagree — and the
+/// disagreement would be invisible, because each looks right on its own.
+///
+/// `None` for the edits that are not a component write (the eyedroppers arm
+/// shell state; `Remove` deletes the entity).
+#[must_use]
+pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Option<PhysicsJoint> {
     let mut next = current;
     match edit {
         JointFieldEdit::Kind(tag) => {
@@ -201,15 +222,12 @@ pub(crate) fn apply_joint_edit(
         // not a component), and the pick RESOLVES in `input_dispatch` via
         // `set_joint_body`. Neither reaches this per-joint apply; listed so the
         // match stays exhaustive, exactly like `Remove`.
-        JointFieldEdit::PickBodyA | JointFieldEdit::PickBodyB => return,
-        JointFieldEdit::Remove => return,
+        JointFieldEdit::PickBodyA | JointFieldEdit::PickBodyB => return None,
+        JointFieldEdit::Remove => return None,
     }
     // Through the SAME clamp the bridge uses on the way to the solver, so the
     // Inspector cannot author a state the loader would have to repair.
-    let next = next.clamped();
-    if next != current {
-        queue_set(queue, registry, entity_bits, JOINT, &next);
-    }
+    Some(next.clamped())
 }
 
 /// Create a joint between two bodies — the gesture behind §11's *Join Selected

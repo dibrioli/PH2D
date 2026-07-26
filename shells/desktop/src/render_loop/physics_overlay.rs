@@ -401,6 +401,9 @@ pub(super) fn draw(
     sim: &mut SimWorld,
     joint_views: &[ph2d_physics_ecs::JointView],
     joint_gravity: [f32; 2],
+    // O limite sendo POSADO agora `(joint, rad relativo)` — desenha o fantasma
+    // de B (W-J3). `None` sem arrasto de limite em voo.
+    posed_limit: Option<(ph2d_ecs::Entity, f32)>,
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
@@ -459,6 +462,25 @@ pub(super) fn draw(
     //
     // W-J1: uma cor por FATO (glifo · posse · limite · deformação), então o
     // laço percorre pares — a mesma forma que o `outlines` já usa.
+    // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
+    // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
+    if show
+        && let Some(ghost) = super::physics_overlay_joints::limit_ghost(
+            sim,
+            joint_views,
+            posed_limit,
+            camera,
+            window,
+        )
+    {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(OUTLINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(super::physics_overlay_joints::JOINT_GHOST_RGBA)),
+            None,
+            &ghost,
+        );
+    }
     for (path, rgba) in joint_marks(show, joint_views, joint_gravity, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),

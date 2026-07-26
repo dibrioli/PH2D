@@ -82,6 +82,52 @@ fn screen_basis(
     )
 }
 
+/// Um ponto sobre um arco, dada a base de tela já resolvida — o primitivo de
+/// TODA figura angular deste módulo.
+fn arc_point_in(c: Point, u: (f64, f64), v: (f64, f64), ang: f64, r: f64) -> Point {
+    Point::new(
+        c.x + r * (ang.cos() * u.0 + ang.sin() * v.0),
+        c.y + r * (ang.cos() * u.1 + ang.sin() * v.1),
+    )
+}
+
+/// **Onde uma parede do arco de limite está, em px de tela** (W-J3).
+///
+/// A MESMA função que [`limit_arc`] usa para desenhar a marca radial — o grip
+/// que o artista arrasta e a parede que ele vê são um lugar só. Duas derivações
+/// desta posição seriam duas respostas a *"onde termina o alcance?"*, e a que
+/// discordasse seria justamente a invisível: o retângulo de hit.
+pub(super) fn limit_end_screen(
+    camera: &Camera2d,
+    window: WindowSize,
+    centre_w: [f32; 2],
+    angle_a: f32,
+    limit: f32,
+) -> Point {
+    let (c, u, v) = screen_basis(camera, window, centre_w);
+    arc_point_in(c, u, v, f64::from(angle_a) + f64::from(limit), LIMIT_ARC_PX)
+}
+
+/// **Onde o grip do anel de comprimento está, em MUNDO** (W-J3).
+///
+/// Sobre o anel, na direção de `toward` (a âncora B) — onde o artista já está
+/// olhando, e onde o próprio anel responde *"B está no comprimento?"*. Mundo, e
+/// não tela, porque um comprimento é um comprimento: o grip cresce com o zoom
+/// junto com o anel que ele agarra.
+///
+/// Degenerado (B sobre A) cai no ponto onde [`ring_px`] começa a desenhar o anel,
+/// que é o único lugar sem escolha arbitrária.
+pub(super) fn length_handle_world(centre_w: [f32; 2], toward: [f32; 2], length: f32) -> [f32; 2] {
+    let (dx, dy) = (toward[0] - centre_w[0], toward[1] - centre_w[1]);
+    let d = dx.hypot(dy);
+    let (ux, uy) = if d < 1e-6 {
+        (1.0, 0.0)
+    } else {
+        (dx / d, dy / d)
+    };
+    [centre_w[0] + ux * length, centre_w[1] + uy * length]
+}
+
 /// Um anel de raio em PIXELS DE TELA, centrado num ponto de tela.
 pub(super) fn ring_px(centre: Point, radius_px: f64, path: &mut BezPath) {
     path.move_to(Point::new(centre.x + radius_px, centre.y));
@@ -117,12 +163,7 @@ pub(super) fn weld_glyph(
 ) -> BezPath {
     let (c, u, v) = screen_basis(camera, window, centre_w);
     let a = f64::from(angle_a);
-    let at = |ang: f64| {
-        Point::new(
-            c.x + WELD_HALF_PX * (ang.cos() * u.0 + ang.sin() * v.0),
-            c.y + WELD_HALF_PX * (ang.cos() * u.1 + ang.sin() * v.1),
-        )
-    };
+    let at = |ang: f64| arc_point_in(c, u, v, ang, WELD_HALF_PX);
     let mut p = BezPath::new();
     let corners = [0.25, 0.75, 1.25, 1.75].map(|k: f64| at(a + k * std::f64::consts::PI));
     p.move_to(corners[3]);
@@ -215,12 +256,7 @@ pub(super) fn limit_arc(
     angle_b: f32,
 ) -> BezPath {
     let (c, u, v) = screen_basis(camera, window, centre_w);
-    let at = |ang: f64, r: f64| {
-        Point::new(
-            c.x + r * (ang.cos() * u.0 + ang.sin() * v.0),
-            c.y + r * (ang.cos() * u.1 + ang.sin() * v.1),
-        )
-    };
+    let at = |ang: f64, r: f64| arc_point_in(c, u, v, ang, r);
     let a0 = f64::from(angle_a) + f64::from(limits[0]);
     let a1 = f64::from(angle_a) + f64::from(limits[1]);
     let mut p = BezPath::new();

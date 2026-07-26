@@ -20,7 +20,7 @@ fn view(handles: Vec<PointHandle>) -> PointGizmoView {
 fn a(key: u64, world: [f32; 2]) -> PointHandle {
     PointHandle {
         key,
-        side: PointSide::A,
+        kind: PointHandleKind::AnchorA,
         world,
     }
 }
@@ -28,7 +28,7 @@ fn a(key: u64, world: [f32; 2]) -> PointHandle {
 fn b(key: u64, world: [f32; 2]) -> PointHandle {
     PointHandle {
         key,
-        side: PointSide::B,
+        kind: PointHandleKind::AnchorB,
         world,
     }
 }
@@ -88,11 +88,11 @@ fn the_b_handle_is_hittable_where_it_is_drawn() {
     let hit_b = hits
         .hit(s[0], s[1])
         .expect("the B anchor must be grabbable");
-    assert_eq!(map[&hit_b].side, PointSide::B);
+    assert_eq!(map[&hit_b].kind, PointHandleKind::AnchorB);
 
     let sa = screen(&v, [0.0, 0.0]);
     let hit_a = hits.hit(sa[0], sa[1]).expect("and A at its own position");
-    assert_eq!(map[&hit_a].side, PointSide::A);
+    assert_eq!(map[&hit_a].kind, PointHandleKind::AnchorA);
 }
 
 /// **A coincident pair is still two handles.** A Pin at rest anchors both
@@ -109,14 +109,18 @@ fn a_coincident_pair_gives_a_the_centre_and_b_the_band() {
     let s = screen(&v, [1.0, -1.0]);
 
     let centre = hits.hit(s[0], s[1]).expect("dead centre belongs to A");
-    assert_eq!(map[&centre].side, PointSide::A, "dead centre belongs to A");
+    assert_eq!(
+        map[&centre].kind,
+        PointHandleKind::AnchorA,
+        "dead centre belongs to A"
+    );
 
     let band = hits
         .hit(s[0] + JOINT_ANCHOR_RING_PX - 1.0, s[1])
         .expect("the band outside A's square must still reach B");
     assert_eq!(
-        map[&band].side,
-        PointSide::B,
+        map[&band].kind,
+        PointHandleKind::AnchorB,
         "the band outside A's square must reach B, or a Pin's B end could never be grabbed"
     );
 }
@@ -177,20 +181,20 @@ fn an_empty_list_paints_nothing() {
 #[test]
 fn the_hit_rects_are_never_smaller_than_the_marks() {
     assert!(
-        hit_half_px(PointSide::A) >= JOINT_ANCHOR_DOT_PX,
+        hit_half_px(PointHandleKind::AnchorA) >= JOINT_ANCHOR_DOT_PX,
         "A's dot is drawn larger than its hit rect — visible and ungrabbable"
     );
     assert!(
-        hit_half_px(PointSide::B) >= JOINT_ANCHOR_RING_PX,
+        hit_half_px(PointHandleKind::AnchorB) >= JOINT_ANCHOR_RING_PX,
         "B's ring is drawn larger than its hit rect — visible and ungrabbable"
     );
     assert!(
-        hit_half_px(PointSide::B) - hit_half_px(PointSide::A) >= 4.0,
+        hit_half_px(PointHandleKind::AnchorB) - hit_half_px(PointHandleKind::AnchorA) >= 4.0,
         "the band between the two squares is where a coincident pair's B end is grabbed; \
          narrower than a few pixels and a Pin's B anchor is unreachable in practice"
     );
     assert!(
-        SNAP_CROSS_PX > hit_half_px(PointSide::B),
+        SNAP_CROSS_PX > hit_half_px(PointHandleKind::AnchorB),
         "the snap crosshair must reach past the outermost handle, or the mark that explains \
          the magnet is hidden under the marks it explains"
     );
@@ -225,4 +229,36 @@ fn the_hit_follows_the_anchor() {
         let id = hits.hit(s[0], s[1]).expect("hit at the projected anchor");
         assert_eq!(map[&id].world, anchor);
     }
+}
+
+/// **Where an anchor and a parameter grip land on each other, the ANCHOR wins.**
+///
+/// A limit wall can be grabbed anywhere along its tick and a length ring
+/// anywhere on its circle; an anchor is a single point with nowhere else to go.
+/// So the anchors register LAST (`PAINT_ORDER`) and the backwards walk of
+/// `HitIndex::hit` hands them the shared pixel.
+///
+/// Mutation-tested: moving the anchors to the front of `PAINT_ORDER` makes the
+/// grip swallow the dot, and this goes red.
+#[test]
+fn an_anchor_beats_a_parameter_grip_on_a_shared_pixel() {
+    let p = |kind| PointHandle {
+        key: 42,
+        kind,
+        world: [1.0, 1.0],
+    };
+    let v = view(vec![
+        p(PointHandleKind::AnchorA),
+        p(PointHandleKind::Length),
+        p(PointHandleKind::LimitMin),
+    ]);
+    let (hits, map) = paint(&v);
+    let s = screen(&v, [1.0, 1.0]);
+    let id = hits.hit(s[0], s[1]).expect("something is there");
+    assert_eq!(
+        map[&id].kind,
+        PointHandleKind::AnchorA,
+        "a parameter grip took the anchor's own pixel — the anchor has nowhere \
+         else to be grabbed, the grip has its whole line"
+    );
 }

@@ -1644,7 +1644,21 @@ impl crate::App {
                 // come to disagree. Rest-only (the rule lives in the callee):
                 // during play the overlay draws the SOLVER's anchors, and these
                 // authored ones would describe a pose the artist is not editing.
-                point_gizmo::joint_anchor_handles(sim, physics, !self.playhead.is_playing()),
+                {
+                    // As DUAS famílias numa lista só: as âncoras (sempre) e os
+                    // grips de parâmetro (só com o overlay de joints na tela —
+                    // eles agarram a geometria DELE).
+                    let at_rest = !self.playhead.is_playing();
+                    let mut hs = point_gizmo::joint_anchor_handles(sim, physics, at_rest);
+                    hs.extend(point_gizmo::joint_param_handles(
+                        physics,
+                        camera,
+                        window_size,
+                        self.show_colliders,
+                        at_rest,
+                    ));
+                    hs
+                },
                 // The candidate a live anchor drag has caught (the crosshair).
                 self.joint_anchor_drag.and_then(|d| d.snap),
             );
@@ -4409,6 +4423,10 @@ impl crate::App {
                 sim,
                 &joint_views,
                 joint_gravity,
+                // W-J3: o limite que o arrasto está posando AGORA, para o
+                // fantasma de B. Lido do componente (o arrasto já escreveu nele
+                // neste frame), então a silhueta e o arco mostram o mesmo número.
+                self.joint_anchor_drag.and_then(|d| d.posed_limit(sim)),
                 &contacts,
                 &flashes,
                 &waterlines,

@@ -51,6 +51,12 @@ pub struct JointView {
     pub centre_a: [f32; 2],
     /// Idem, corpo B.
     pub centre_b: [f32; 2],
+    /// QUEM é o corpo B. O overlay precisa dele para desenhar o **fantasma**
+    /// (W-J3): a silhueta de B na pose que o limite sendo arrastado permitiria.
+    /// A view já carrega onde B está e como está virado; esta é a mesma
+    /// pergunta — *de quem é essa pose?* — e sem ela o desenhista teria de
+    /// re-resolver o nome, que é a segunda resposta que esta linha evita.
+    pub body_b: Entity,
     /// Rotação viva do corpo A (rad). O arco de limite é desenhado no frame
     /// DELE — o limite do rapier é sobre o ângulo RELATIVO `θb − θa`.
     pub angle_a: f32,
@@ -104,6 +110,7 @@ impl PhysicsBridge {
                 anchor_b,
                 centre_a: [pose_a.translation.x, pose_a.translation.y],
                 centre_b: [pose_b.translation.x, pose_b.translation.y],
+                body_b: j.entities.1,
                 angle_a: pose_a.rotation.angle(),
                 angle_b: pose_b.rotation.angle(),
                 // ⚠️ **Sem re-filtrar por tipo, e é o ponto:** o `rest` É o

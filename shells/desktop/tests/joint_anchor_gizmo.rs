@@ -237,44 +237,51 @@ fn the_paint_pass_draws_the_point_gizmo_last() {
     }
 }
 
-/// **The published anchors come from the bridge, for the whole scene, at rest.**
+/// **The published handles come from the bridge, for the whole scene, at rest.**
 ///
-/// Three properties of the one publish argument:
-///  - it is `point_gizmo::joint_anchor_handles`, which resolves every anchor
-///    through `PhysicsBridge::joint_anchor_world` — the SAME door
+/// Four properties of the publish block:
+///  - the ANCHORS come from `point_gizmo::joint_anchor_handles`, which resolves
+///    every one through `PhysicsBridge::joint_anchor_world` — the SAME door
 ///    `sync_joint_pivots` uses for the A pivot. A second derivation here is how
 ///    two dots come to describe different frames (W-AnchorFollow paid 1.771 m
 ///    for that lesson);
-///  - it is handed the BRIDGE and the sim, not a selection — the handles are for
-///    every joint (W-J2b), and a selection argument is the shape that made them
-///    reachable only through the Hierarchy;
-///  - it is gated on the clock, or the dots would take drags against a swinging
-///    body and author a pose nobody chose.
+///  - the PARAMETER grips come from its sibling, and are gated on
+///    `show_colliders`: they are grips on the joint overlay's own geometry, so
+///    with the arc and the ring not drawn they would be controls over invisible
+///    lines (W-J3);
+///  - neither is narrowed by a SELECTION — the handles are for every joint
+///    (W-J2b), and a selection argument is the shape that made them reachable
+///    only through the Hierarchy;
+///  - both are gated on the clock, or the dots would take drags against a
+///    swinging body and author a pose nobody chose.
 #[test]
-fn the_published_anchors_come_from_the_bridge_door_for_every_joint() {
+fn the_published_handles_come_from_the_bridge_door_for_every_joint() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     let start = src
         .find("self.joint_body_pick,")
         .expect("the publish call's joint arguments are gone");
     let block = &src[start..(start + 1600).min(src.len())];
-    let call = block
-        .find("joint_anchor_handles(")
-        .map(|i| &block[i..block[i..].find(')').map_or(block.len(), |e| i + e)])
-        .expect("the publish site no longer builds the anchor handles");
+    let end = block
+        .find("hs\n")
+        .expect("the publish site no longer builds a handle list");
+    let block = &block[..end];
+    for needle in [
+        "joint_anchor_handles(",
+        "joint_param_handles(",
+        "physics",
+        "is_playing",
+        "show_colliders",
+    ] {
+        assert!(
+            block.contains(needle),
+            "the publish site no longer mentions `{needle}` — see this gate's doc for what \
+             each one is holding up:\n{block}"
+        );
+    }
     assert!(
-        call.contains("physics"),
-        "the handles are built without the bridge, so they cannot be coming from \
-         its anchor door: {call}"
-    );
-    assert!(
-        !call.contains("selection"),
+        !block.contains("selection"),
         "the publish site still narrows the handles by selection — a joint has no \
          sprite, so that makes them reachable only by finding it in the Hierarchy \
-         first: {call}"
-    );
-    assert!(
-        call.contains("is_playing"),
-        "the handles are no longer gated on the clock — they would take drags \
-         against a swinging body and author a pose nobody chose: {call}"
+         first:\n{block}"
     );
 }

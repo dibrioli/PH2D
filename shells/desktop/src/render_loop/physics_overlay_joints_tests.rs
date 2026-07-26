@@ -42,6 +42,7 @@ fn view(kind: JointKind) -> JointView {
         anchor_b: [0.0, 0.0],
         centre_a: [-1.0, 0.0],
         centre_b: [1.0, 0.0],
+        body_b: ph2d_ecs::Entity::from_bits(3),
         angle_a: 0.0,
         angle_b: 0.0,
         limits: None,
@@ -489,3 +490,6 @@ fn a_joint_whose_anchors_coincide_is_still_visible() {
          do editor ficaria invisível"
     );
 }
+
+#[path = "physics_overlay_joint_pose_tests.rs"]
+mod pose_tests;

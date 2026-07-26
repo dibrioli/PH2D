@@ -32,6 +32,7 @@
 //! P2): um joint cujos corpos não resolvem não tem view, e desenhá-lo do
 //! componente pintaria uma relação que o solver não está impondo.
 
+use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{JointKind, JointView};
 use ph2d_render::Camera2d;
@@ -139,6 +140,66 @@ pub(super) fn joint_marks(
         }
     }
     out
+}
+
+/// **O FANTASMA do corpo B** — âmbar quase apagado, a silhueta de onde o limite
+/// que está sendo arrastado deixaria o corpo parar.
+///
+/// É o *'L'* do RUBE sem modo: arrastar a parede JÁ posa. Sem ele o artista
+/// arrasta um tracinho num arco e descobre o que autorou só depois de dar Play —
+/// o arco tem uma agulha viva em `angle_b`, que diz onde o corpo ESTÁ, e nada
+/// dizia onde ele PARARIA.
+pub(super) const JOINT_GHOST_RGBA: [f32; 4] = [0.98, 0.75, 0.25, 0.28]; // LITERAL-COLOR-OK: overlay de joint (fantasma)
+
+/// A silhueta de B na pose que `limit` permite, ou `None` quando não há arrasto
+/// de limite em voo / o corpo B não tem collider.
+///
+/// ⚠️ **Desenha e nada mais.** O fantasma nunca escreve pose: ele é o collider de
+/// B **girado em torno da âncora A** por `Δ = (angle_a + limit) − angle_b`, uma
+/// função pura da view e do número que o arrasto está autorando. O corpo real
+/// só se move quando o solver o move — e é justamente essa separação que torna
+/// possível posar um limite com a simulação parada.
+pub(super) fn limit_ghost(
+    sim: &SimWorld,
+    views: &[JointView],
+    posed: Option<(ph2d_ecs::Entity, f32)>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let (joint, limit) = posed?;
+    let v = views.iter().find(|v| v.entity == joint)?;
+    let world = sim.world();
+    let col = world.get::<ph2d_physics_ecs::Collider>(v.body_b)?;
+    let mut chain = Vec::new();
+    let t = ph2d_ecs::world_transform_into(world, v.body_b, &mut chain)?;
+
+    // O giro rígido em torno da âncora A. `Δ` leva a pose VIVA de B até a que o
+    // limite nomeia, então o fantasma é o corpo tal como ele encostaria na
+    // parede — não uma figura nova.
+    let d = (v.angle_a + limit) - v.angle_b;
+    let (sin_d, cos_d) = libm::sincosf(d);
+    let rot_about = |p: [f32; 2]| {
+        let (dx, dy) = (p[0] - v.anchor_a[0], p[1] - v.anchor_a[1]);
+        [
+            v.anchor_a[0] + dx * cos_d - dy * sin_d,
+            v.anchor_a[1] + dx * sin_d + dy * cos_d,
+        ]
+    };
+    // O collider onde o SOLVER o põe: offset com a escala assinada dobrada,
+    // girado com o corpo — a mesma leitura do `outlines`, porque um fantasma que
+    // não casa com o contorno descreveria outro corpo.
+    let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
+    let (sin_r, cos_r) = (t.rotation + d).sin_cos();
+    let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
+    let c = rot_about([t.translation.x, t.translation.y]);
+    Some(super::physics_overlay::collider_outline(
+        ph2d_physics_ecs::scaled_shape(col.shape, t.scale),
+        c[0] + wox,
+        c[1] + woy,
+        t.rotation + d,
+        camera,
+        window,
+    ))
 }
 
 /// O span + o glifo de um tipo. Devolve os dois separados porque o span pode

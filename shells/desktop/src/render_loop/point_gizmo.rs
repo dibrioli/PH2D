@@ -30,7 +30,9 @@ use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{JointSide, PhysicsBridge};
 use ph2d_render::Camera2d;
 
-use ph2d_editor::gizmo::{PointGizmoView, PointHandle, PointSide};
+use ph2d_editor::gizmo::{PointGizmoView, PointHandle, PointHandleKind};
+
+use super::physics_overlay_joint_glyphs::{length_handle_world, limit_end_screen};
 
 /// Every anchor that should be grabbable this frame, sorted by `(entity, side)`.
 ///
@@ -64,11 +66,14 @@ pub(super) fn joint_anchor_handles(
         if ph2d_ecs::is_locked_for_edit(sim.world(), e) {
             continue;
         }
-        for (side, gizmo_side) in [(JointSide::A, PointSide::A), (JointSide::B, PointSide::B)] {
+        for (side, kind) in [
+            (JointSide::A, PointHandleKind::AnchorA),
+            (JointSide::B, PointHandleKind::AnchorB),
+        ] {
             if let Some(world) = physics.joint_anchor_world(sim, e, side) {
                 out.push(PointHandle {
                     key: e.to_bits(),
-                    side: gizmo_side,
+                    kind,
                     world,
                 });
             }
@@ -77,7 +82,78 @@ pub(super) fn joint_anchor_handles(
     // Deterministic display order. The hit ids are per-handle, so ordering
     // cannot decide WHO owns a pixel — it decides only which of two overlapping
     // joints paints on top, and that should not depend on archetype layout.
-    out.sort_by_key(|h| (h.key, h.side));
+    out.sort_by_key(|h| (h.key, h.kind));
+    out
+}
+
+/// The **parameter** grips (W-J3): the two walls of a hinge's limit arc, and the
+/// length ring of a spring / rope.
+///
+/// # Why these two and not the motor's speed
+///
+/// A limit is an **angle** and a rest length is a **distance**: each already has
+/// a place on the canvas, so dragging the wall to 30° or the ring to 2 m needs
+/// no scale to convert anything — the position IS the value, and the numeric row
+/// and the grip cannot drift because there is nothing between them.
+///
+/// ⚠️ Motor speed is a **rate**, and no place on the canvas is 120 °/s. Every
+/// handle for it needs a px-per-°/s constant, and the §12 row it would mirror is
+/// a free-form `num_row` with **no range** to derive one from — so the constant
+/// would be invented, which is exactly the kind of number this project refuses
+/// to write (§0: measure before you write a limit). The two alternatives that
+/// need no constant both fail on their own terms: the arc's SWEEP saturates (the
+/// glyph is 270°, so every speed past the top reads the same), and an angular
+/// position that maps one revolution to 360 °/s **wraps** — 400 °/s and 40 °/s
+/// would draw the identical dot. Deferred with the reason, not dropped: what
+/// unblocks it is a decision about the control law (or a range on the row), and
+/// that is Enio's to make.
+///
+/// The grips are offered only while the joint overlay is SHOWN, because they are
+/// grips on ITS geometry: with the arc and the ring not drawn, a dot on them is
+/// a control over an invisible line.
+#[must_use]
+pub(super) fn joint_param_handles(
+    physics: &PhysicsBridge,
+    camera: &Camera2d,
+    window: WindowSize,
+    show_overlay: bool,
+    at_rest: bool,
+) -> Vec<PointHandle> {
+    if !show_overlay || !at_rest {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for v in physics.joint_views() {
+        let key = v.entity.to_bits();
+        // The walls, through the door that DRAWS them: the grip and the tick are
+        // one place (see `limit_end_screen`).
+        if let Some(l) = v.limits {
+            for (i, kind) in [PointHandleKind::LimitMin, PointHandleKind::LimitMax]
+                .into_iter()
+                .enumerate()
+            {
+                let p = limit_end_screen(camera, window, v.anchor_a, v.angle_a, l[i]);
+                out.push(PointHandle {
+                    key,
+                    kind,
+                    // ⚠️ Unprojected. The arc lives at a fixed SCREEN radius (an
+                    // angle is not a length — the module's own law), while a
+                    // `PointHandle` is a world point so that one projection
+                    // serves every handle. The round trip is a linear map, so it
+                    // re-projects to the pixel it came from.
+                    world: camera.screen_to_world((p.x as f32, p.y as f32), window),
+                });
+            }
+        }
+        if let Some(len) = v.length {
+            out.push(PointHandle {
+                key,
+                kind: PointHandleKind::Length,
+                world: length_handle_world(v.anchor_a, v.anchor_b, len),
+            });
+        }
+    }
+    out.sort_by_key(|h| (h.key, h.kind));
     out
 }
 
@@ -123,15 +199,20 @@ pub(super) fn build_point_view(
 pub(crate) fn resolve_anchor_hit(
     hit_map: &std::collections::BTreeMap<ph2d_editor::NodeId, PointHandle>,
     id: ph2d_editor::NodeId,
-) -> Option<(Entity, JointSide)> {
+) -> Option<(Entity, PointHandleKind)> {
     let h = hit_map.get(&id)?;
-    Some((
-        Entity::from_bits(h.key),
-        match h.side {
-            PointSide::A => JointSide::A,
-            PointSide::B => JointSide::B,
-        },
-    ))
+    Some((Entity::from_bits(h.key), h.kind))
+}
+
+/// The [`JointSide`] a handle kind authors, or `None` for the parameter grips
+/// (they write the joint COMPONENT, not an anchor).
+#[must_use]
+pub(crate) fn anchor_side(kind: PointHandleKind) -> Option<JointSide> {
+    match kind {
+        PointHandleKind::AnchorA => Some(JointSide::A),
+        PointHandleKind::AnchorB => Some(JointSide::B),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

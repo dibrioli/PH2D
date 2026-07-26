@@ -99,6 +99,7 @@ impl crate::App {
             "42" => self.physics_smoke_live_tune(),
             "43" => self.physics_smoke_joint_glyphs(),
             "44" => self.physics_smoke_joint_handles(),
+            "45" => self.physics_smoke_joint_pose(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -134,6 +135,7 @@ impl crate::App {
                 | "41"
                 | "43"
                 | "44"
+                | "45"
         ) {
             self.playhead.pause();
         } else {

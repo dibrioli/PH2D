@@ -117,13 +117,98 @@ posição do centroide da sombra, e a mensagem traz os números.
 
 ## Waves
 
-- **W1 — A FORMA FILTRADA (esta):** a orquestração isolar→filtrar→recompor + `VecFilter` +
-  **Blur · Outer Glow · Drop Shadow** (ride o blur gaussiano que já existe) + painel + smoke. É o
-  Rive-headline e estabelece a costura que todo filtro futuro pluga.
-- **W2 — O GRAFO COMPONÍVEL (além do Rive):** color-matrix (tint/aberração/duotone), displacement +
-  turbulence (noise procedural), morphology (dilate/erode), lighting/bevel. Passes novos com o
-  template `PreviewPremul`; múltiplos filtros compõem numa cadeia (o `Vec<VecFilter>` ou uma pilha
-  própria — decisão da W2).
+- **W1 — A FORMA FILTRADA (FECHADA, smoke aprovado 2026-07-26):** a orquestração
+  isolar→filtrar→recompor + `VecFilter` + **Blur · Outer Glow · Drop Shadow** + painel + smoke. É
+  o Rive-headline e estabelece a costura que todo filtro futuro pluga. ⚠️ Reescrita **GPU-resident**
+  a meio caminho (o 1º corte era CPU-first e vazava o atlas do Vello — 37→793 ms num smoke parado);
+  e o `override_image` foi trocado por RE-REGISTRO no resize (dims estáveis) depois do "panic ao
+  zoom".
+- **W2 — A PILHA COMPONÍVEL (FECHADA, pendente de smoke):** ver §7 abaixo.
 - **W3 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
   via erf da distância (o Levien `draw_blurred_rounded_rect` generalizado, ou SDF via o JFA in-repo
   do motion-nodes). O primitivo premium, quando a nitidez em zoom extremo importar.
+
+## §7 — W2: a PILHA (o que se construiu, e por quê)
+
+**A pesquisa matou o DAG.** O `<filter>` do SVG é um grafo de primitivas (`feGaussianBlur`/
+`feOffset`/`feComposite`/`feMerge`/`feDisplacementMap`…) — poderosíssimo, e **abandonado como
+interface** por todo mundo que o tentou: Photoshop (Layer Styles), After Effects (effect stack) e
+Figma (Effects) convergiram numa **lista ordenada** de efeitos por objeto. O DAG sobrevive no
+*runtime* (o arquivo SVG), nunca na mão do artista. E nós já tínhamos a resposta em casa: a pilha
+de Live Path Effects (ADR-0132) é exatamente isto no eixo da GEOMETRIA.
+
+**O Rive não tem pilha nenhuma** (feather + blend, com sombra e brilho DERIVADOS do feather). Poder
+encadear *sombra → borrão → brilho*, nessa ordem, com o resultado de um alimentando o seguinte, é o
+que esta wave entrega e ele não.
+
+### O invariante, e a consequência que ele força
+
+**Todo op é imagem → imagem, premultiplicada, do MESMO tamanho.** É a mesma frase que governa a
+pilha de geometria (*"um efeito é `VecPath -> VecPath`, puro — é POR ISSO que a pilha compõe"*), e
+a consequência não é cosmética: **Glow e Drop Shadow compõem o halo POR BAIXO da entrada DENTRO do
+próprio op**, em vez de pedirem ao compositor que desenhe algo atrás da forma. Um op que devolvesse
+*duas* camadas não poderia alimentar o seguinte ⇒ o `FxMode::Below`/`Replace` da W1 **MORREU**, e o
+`dispatch` ficou mais simples do que era.
+
+⚠️ **Mudança de comportamento nomeada:** uma forma com Glow/Drop Shadow agora é desenhada
+INTEIRAMENTE a partir da textura (a W1 desenhava o vetor por cima). O scratch rasteriza na escala
+EXATA da tela e o retângulo é alinhado ao pixel, então é 1:1 — mas é o olho do smoke que decide.
+
+### As portas únicas
+
+| Pergunta | Porta |
+|---|---|
+| *quanto a pilha espalha?* | `ph2d_render::stack_reach` (as reaches SOMAM; assimétrica p/ a sombra) |
+| *que meia-largura o shader percorre?* | `kernel_half` — o `stack_reach` e o shader perguntam à MESMA |
+| *mundo → pixel* | `fx_live::resolve_ops` (a câmera é conhecida ali e em mais lado nenhum) |
+| *este id do painel é de quê?* | `fx_live::hit_of` — os TRÊS sítios da ponte (comando · valor · alvo do picker) |
+| *esta pilha desenha alguma coisa?* | `VecFilter::is_active` |
+
+### Os intermediários são `Rgba16Float`, e isso não é luxo
+
+Entre ops a imagem é premultiplicada. Guardá-la em `Rgba8Unorm` e des-premultiplicar depois
+**quantiza justamente a borda macia** que o borrão existe para produzir (alfa baixo ⇒ a divisão
+amplifica o erro). `rgba16float` é formato de storage do baseline do WebGPU ⇒ nem uma feature custa.
+
+### O teto, MEDIDO
+
+`VecFilter::MAX_OPS = 6`, e **o recurso que aperta é a TELA do painel, não a GPU** — medido na RTX
+(`fx_stack_gpu::the_cost_of_a_stack_is_linear_in_the_number_of_ops`, 512×512, sigma 8 px):
+
+| degraus | 0 | 1 | 2 | 3 | 4 | 6 |
+|---|---|---|---|---|---|---|
+| ms | 0,082 | 0,084 | 0,149 | 0,220 | 0,336 | **0,429** |
+
+Linear, ~0,07 ms por degrau; uma pilha CHEIA custa **2,6 % de um frame de 60 fps**. Cada degrau, em
+compensação, é um card de 4-6 linhas no painel — seis já enchem a coluna.
+
+### Gates (e as duas lições)
+
+8 de GPU + 5 no shell + 4 no modelo + 6 de seam + 3 de dispatch. O gate que carrega a wave é
+`the_order_of_the_stack_changes_the_picture`.
+
+⚠️ **A 1ª mutação estava ERRADA e sobreviveu:** *"todo op vira o primeiro"* não reproduz *"a ordem
+é ignorada"* — produz outra coisa errada (`[glow,blur]` vira glow-glow e `[blur,glow]` vira
+blur-blur, que **continuam diferentes**). A mutação honesta é **ORDENAR a pilha**: aí os dois lados
+ficam idênticos, `0 bytes diferentes`, RED.
+
+⚠️ **O seam nasceu VERMELHO e apontou um erro real:** a swatch de cor tinha sido registada como
+`button()`, e **um id só pode ter UM tipo de widget no store** — o Down abria o picker e nenhum
+`Click` saía. É a mesma lição que o `vector_fx_toggle_id` já documentava. Ela tem gate próprio
+agora (pintada + no conjunto de picker).
+
+⚠️ **O `node_id_collisions` não cobria nem `vector_fx_*` nem a família nova**, que partilham o
+prefixo `vector.f…` — "os nomes são diferentes" era uma afirmação por provar exatamente onde é
+duvidosa. As duas entraram no MESMO conjunto.
+
+### Aberto
+
+- **Só três tipos.** O `apply_op` é a porta por onde um tipo novo entra com um braço de shader e um
+  `kind_name`: color-matrix (tint/duotone), morphology (dilate/erode), displacement + turbulence,
+  bevel. Nenhum deles muda a pilha — é isso que a wave comprou.
+- **`Radius` é slider em unidades de MUNDO** (`FILTER_RADIUS_MAX = 2.0`) — fração-do-tamanho seria
+  mais robusto para formas de tamanhos diferentes (a mesma nota que o Contour faz do Offset).
+- **O deslocamento da sombra é arredondado ao PIXEL** (o halo é amostrado por `textureLoad`, sem
+  sampler). Invisível numa sombra; nomeado por honestidade.
+- **`MAX_HALF = 96`** no kernel (sigma ≈ 32 px de tela): acima, o borrão satura — limite de CUSTO
+  do passe, não de produto.

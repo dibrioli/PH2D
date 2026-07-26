@@ -250,9 +250,15 @@ impl FxLive {
         if need_alloc {
             let tex = make_output_texture(gpu, w, h);
             match self.paths.get_mut(&id) {
-                // Reusa o id: só troca a textura por trás dele (o atlas não ganha id novo).
+                // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do
+                // antigo. ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da
+                // `ImageData` — copiar com as dims velhas de uma textura de tamanho novo ESTOURA
+                // (o Vello avisa isso no doc; foi o "panic ao abrir" pós-resize). Resize é raro
+                // ⇒ churn de id mínimo; o re-blur (comum) não re-registra.
                 Some(pfx) => {
-                    vello_pass.override_image(&pfx.image, Some(tex.clone()));
+                    let fresh = vello_pass.register_texture(tex.clone());
+                    let old = std::mem::replace(&mut pfx.image, fresh);
+                    self.pending_unregister.push(old);
                     pfx.tex = tex;
                     pfx.w = w;
                     pfx.h = h;

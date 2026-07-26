@@ -113,22 +113,6 @@ impl VelloPass {
         self.renderer.register_texture(texture)
     }
 
-    /// Swap (or drop, with `None`) the GPU texture behind an already-registered [`ImageData`] id —
-    /// used when the FX texture is REALLOCATED (the shape resized on screen), keeping the id stable.
-    pub fn override_image(
-        &mut self,
-        image: &vello::peniko::ImageData,
-        texture: Option<wgpu::Texture>,
-    ) {
-        let base = texture.map(|t| wgpu::TexelCopyTextureInfoBase {
-            texture: t,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        });
-        self.renderer.override_image(image, base);
-    }
-
     /// Unregister a texture previously registered via [`Self::register_texture`] (the filter was
     /// removed / the shape deleted) — frees the atlas slot.
     pub fn unregister_texture(&mut self, image: vello::peniko::ImageData) {

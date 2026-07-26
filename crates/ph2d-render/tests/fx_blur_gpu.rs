@@ -8,7 +8,7 @@
 use std::sync::OnceLock;
 
 use ph2d_gpu::GpuContext;
-use ph2d_render::{FxBlurPass, make_output_texture};
+use ph2d_render::{FxBlurPass, VelloPass, make_output_texture};
 
 fn try_headless_gpu() -> Option<GpuContext> {
     static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
@@ -166,6 +166,118 @@ fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
         ramp_width(&wide),
         ramp_width(&narrow),
     );
+}
+
+/// **Repro do caminho de RENDER do FX** (o "panic ao abrir"): registrar uma textura de GPU no
+/// renderer, desenhá-la numa `Scene` e RENDERIZAR — o que a shell faz por frame. Se o Vello não
+/// aguentar uma textura-imagem override desenhada + renderizada, é AQUI que estoura.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn registering_a_texture_and_drawing_it_renders_without_panic() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_blur_gpu] sem adapter — skip");
+        return;
+    };
+    let mut vp = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, (256, 256))
+        .expect("main VelloPass");
+    // Uma textura de saída de FX (vazia — o conteúdo não importa para o teste de render).
+    let tex = make_output_texture(&gpu, 64, 64);
+    let img = vp.register_texture(tex);
+    // Desenha a imagem override numa Scene e renderiza pelo MESMO renderer (como a shell).
+    let mut scene = vello::Scene::new();
+    let brush = vello::peniko::ImageBrush::new(img).with_quality(vello::peniko::ImageQuality::Medium);
+    scene.draw_image(
+        brush.as_ref(),
+        vello::kurbo::Affine::translate((10.0, 10.0)),
+    );
+    vp.render_to_intermediate(
+        &gpu,
+        &scene,
+        (256, 256),
+        vello::peniko::Color::TRANSPARENT,
+        false,
+    )
+    .expect("render with an overridden image");
+}
+
+/// **O caminho INTEIRO da shell, com DOIS renderers** (o "panic ao abrir"): um scratch renderiza
+/// a forma, o `FxBlurPass` borra, o renderer PRINCIPAL registra a textura borrada e a desenha +
+/// renderiza. É a sequência exata do `fx_live::recook` + `dispatch` + `present`.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_two_renderer_scratch_blur_register_render_path_does_not_panic() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_blur_gpu] sem adapter — skip");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    // 1. Scratch renderer renderiza uma forma isolada (um retângulo preenchido).
+    let mut scratch =
+        VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (w, h)).expect("scratch");
+    let mut shape = vello::Scene::new();
+    shape.fill(
+        vello::peniko::Fill::NonZero,
+        vello::kurbo::Affine::IDENTITY,
+        vello::peniko::Color::from_rgba8(230, 170, 60, 255),
+        None,
+        &vello::kurbo::Rect::new(12.0, 12.0, 52.0, 52.0),
+    );
+    scratch
+        .render_to_intermediate(&gpu, &shape, (w, h), vello::peniko::Color::TRANSPARENT, false)
+        .expect("scratch render");
+
+    // 2. Borra o intermediate do scratch numa textura de saída.
+    let mut blur = FxBlurPass::new(&gpu);
+    let dst = make_output_texture(&gpu, w, h);
+    blur.run(
+        &gpu,
+        scratch.intermediate_texture(),
+        &dst,
+        w,
+        h,
+        4.0,
+        0,
+        [0.0, 0.0, 0.0, 1.0],
+        1.0,
+    );
+
+    // 3. Renderer PRINCIPAL registra a textura borrada e a desenha + renderiza.
+    let mut main =
+        VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (256, 256)).expect("main");
+    let img = main.register_texture(dst);
+    let mut scene = vello::Scene::new();
+    let brush =
+        vello::peniko::ImageBrush::new(img).with_quality(vello::peniko::ImageQuality::Medium);
+    scene.draw_image(brush.as_ref(), vello::kurbo::Affine::translate((20.0, 20.0)));
+    main.render_to_intermediate(&gpu, &scene, (256, 256), vello::peniko::Color::TRANSPARENT, false)
+        .expect("main render with the blurred FX image");
+}
+
+/// **O RESIZE re-registra (dims corretas), não faz override** — o "panic ao zoom / deforma ao
+/// maximizar". Registrar a 64², depois RE-registrar a 96² (dims novas) e desenhar + renderizar tem
+/// de rodar sem overrun. (Com `override_image`, a `ImageData` guardava as dims VELHAS e o Vello
+/// copiava além da textura nova → validation error / imagem esticada.)
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn re_registering_on_resize_does_not_overrun() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_blur_gpu] sem adapter — skip");
+        return;
+    };
+    let mut main =
+        VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (256, 256)).expect("main");
+    // Registra a 64².
+    let img_a = main.register_texture(make_output_texture(&gpu, 64, 64));
+    // "Resize" para 96²: re-registra (dims novas), desregistra o antigo — o que o recook faz.
+    let img_b = main.register_texture(make_output_texture(&gpu, 96, 96));
+    main.unregister_texture(img_a);
+    // Desenha a NOVA e renderiza — as dims da ImageData batem com a textura ⇒ sem overrun.
+    let mut scene = vello::Scene::new();
+    let brush =
+        vello::peniko::ImageBrush::new(img_b).with_quality(vello::peniko::ImageQuality::Medium);
+    scene.draw_image(brush.as_ref(), vello::kurbo::Affine::translate((10.0, 10.0)));
+    main.render_to_intermediate(&gpu, &scene, (256, 256), vello::peniko::Color::TRANSPARENT, false)
+        .expect("render after resize re-register");
 }
 
 /// O Glow/Drop Shadow (`kind != 0`) descartam a COR da forma e pintam a do EFEITO com o alfa

@@ -223,6 +223,13 @@ camadas finas de intent+UI.
 
 ## §7 — Expressões em propriedades (Wave C — ADR ANTES de construir)
 
+> ✅ **CONSTRUÍDA (2026-07-26, pendente de smoke)** — [ADR-0144](../architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md).
+> Parser compartilhado (leaf `ph2d-expr-parse`, o Motion node delega) · passe
+> `expr_pass.rs` pós-composição (early-out sem expr, `fade_fingerprint` intacto) ·
+> `TargetBinding.expr` (`DOC_VERSION 14→15`) · intent `SetBindingExpr` · campo de
+> texto no menu R-click da track (`expr_edit.rs`). `wiggle`/`time`/`value`/`Name.prop`.
+> Smoke: `PH2D_EXPR_SMOKE=1`. Pick-whip = follow-up.
+
 - **O QUE:** uma propriedade pode ser dirigida por uma FÓRMULA de tempo e/ou de
   OUTRAS propriedades — `wiggle(freq, amp)`, `time*v`, "linka a `X.position`". A
   feature mais amada do AE.

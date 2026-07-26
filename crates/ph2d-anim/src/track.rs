@@ -391,6 +391,42 @@ impl Track {
         self.resort();
     }
 
+    /// **Distribute** the listed keys uniformly in time: the earliest and latest
+    /// keep their exact times, and every key between them slides to equal spacing
+    /// (`t_i = t_first + (t_last − t_first)·i/n`, in time order). Fewer than three
+    /// listed keys is a no-op — with only the two endpoints there is nothing
+    /// between them to respace. Unknown ids are ignored.
+    ///
+    /// Re-sorts once. A respaced key landing on a stationary (non-listed) key's
+    /// exact time **absorbs** it, the moved one winning — the same rule as
+    /// [`Track::move_keys`]. Interior keys move by *different* deltas (this is not
+    /// a rigid shift), so the merge is told exactly which ids moved.
+    pub fn distribute_keys(&mut self, ids: &[KeyId]) {
+        // The listed keys that exist, in time order — the endpoints of THIS set
+        // define the span, so they must be the extremes of the listed keys.
+        let mut listed: Vec<(KeyId, RationalTime)> = ids
+            .iter()
+            .filter_map(|&id| self.index_of(id).map(|i| (id, self.keys[i].t)))
+            .collect();
+        if listed.len() < 3 {
+            return;
+        }
+        listed.sort_by_key(|&(_, t)| t);
+        let t0 = listed.first().expect("len >= 3").1.to_seconds();
+        let t1 = listed.last().expect("len >= 3").1.to_seconds();
+        let n = listed.len() - 1;
+        // Only the interior keys move; the endpoints already sit at t0/t1.
+        let moved: Vec<KeyId> = listed[1..n].iter().map(|(id, _)| *id).collect();
+        for (rank, (id, _)) in listed.iter().enumerate().take(n).skip(1) {
+            let s = t0 + (t1 - t0) * (rank as f64 / n as f64);
+            if let Some(i) = self.index_of(*id) {
+                self.keys[i].t = RationalTime::from_seconds(s);
+            }
+        }
+        self.merge_moved_over_stationary(&moved);
+        self.resort();
+    }
+
     /// Remove every listed key. Unknown ids ignored.
     pub fn remove_keys(&mut self, ids: &[KeyId]) {
         let mut idxs: Vec<usize> = ids.iter().filter_map(|&id| self.index_of(id)).collect();

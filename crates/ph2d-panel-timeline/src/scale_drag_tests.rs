@@ -38,9 +38,8 @@ fn snap_selected(times: &[f64]) -> TimelineViewSnapshot {
 
 /// time_x = 100, px_per_s = 100 (1 s = 100 px), view_start = 0: x = 100 + t·100.
 fn state_at_origin() -> TimelinePanelState {
-    let mut st = TimelinePanelState::default();
-    st.view_start_s = 0.0;
-    st
+    // Default already parks the view at t=0; named for the test's intent.
+    TimelinePanelState::default()
 }
 
 fn grip(right: bool, phase: GesturePhase, x: f32) -> TimelineGesture {

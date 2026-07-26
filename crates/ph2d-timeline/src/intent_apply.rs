@@ -156,6 +156,10 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             factor,
         } => intent_apply_time::scale_markers(state, &indices, pivot_seconds, factor),
         I::ReverseSelectedKeys => intent_apply_time::reverse_selected(state),
+        I::DistributeSelectedKeys => intent_apply_time::distribute_selected(state),
+        I::StaggerSelectedKeys { step_seconds } => {
+            intent_apply_time::stagger_selected(state, step_seconds)
+        }
         I::DuplicateSelection => {
             let Some(delta) = duplicate_delta(state, playhead.time()) else {
                 return; // nothing selected

@@ -112,6 +112,12 @@ pub struct TimelinePanelState {
     /// with the keys each frame. Empty when not scaling; kept off [`ScaleDrag`]
     /// (which is `Copy`) because it is a `Vec`.
     pub scale_markers: Vec<usize>,
+    /// In-progress Quick-Offset stagger drag (§3 crown jewel): Alt-drag on a key
+    /// cascades the selection, each track shifted by `rank · step`. Holds the
+    /// pointer x at Begin + the total per-rank step already streamed, so each
+    /// Update emits only the increment and the whole drag undoes in one step.
+    /// `None` when not staggering.
+    pub stagger_drag: Option<StaggerDrag>,
     /// Vertical scroll of the track rows, in px from the top of the list.
     pub scroll_y: f32,
     /// Scrollable overflow (`content_h - rows_h`), recomputed by `paint`. Kept so
@@ -437,6 +443,25 @@ pub struct ScaleDrag {
     pub applied: f64,
 }
 
+/// An in-progress Quick-Offset stagger drag (§3): the pointer x at Begin + the
+/// total per-rank step already streamed. The per-rank step is the frame-snapped
+/// drag delta; each track then shifts by `rank · step`, so the drag distance IS
+/// the cascade amount and successive increments compose (the rank is constant).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StaggerDrag {
+    /// Pointer x (global px) when the drag began.
+    pub start_x: f32,
+    /// Latest pointer x (global px).
+    pub cur_x: f32,
+    /// The pressed key was already selected and pressed without Shift: keep the
+    /// whole selection so the cascade spans it, collapsing to this key only on a
+    /// plain click. `None` when the press already set the selection.
+    pub collapse_to: Option<ph2d_timeline::SelectedKey>,
+    /// Total per-rank step already emitted as `StaggerSelectedKeys`. Each frame
+    /// emits only the difference from here.
+    pub applied_step_s: f64,
+}
+
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
 /// time delta is `(cur_x - start_x) / px_per_s`, frame-snapped on commit.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -468,6 +493,7 @@ impl Default for TimelinePanelState {
             pending_move_dx: None,
             scale_drag: None,
             scale_markers: Vec::new(),
+            stagger_drag: None,
             scroll_y: 0.0,
             scroll_max: 0.0,
             pan_drag: None,
@@ -570,8 +596,9 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
     let anchor = state.anchor_drag.take().is_some();
     let scale = state.scale_drag.take().is_some();
     state.scale_markers.clear();
+    let stagger = state.stagger_drag.take().is_some();
     state.summary_press = None;
-    if key || handle || anchor || scale {
+    if key || handle || anchor || scale || stagger {
         push_intent(TimelineIntent::EndEdit);
     }
 }

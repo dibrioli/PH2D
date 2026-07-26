@@ -91,6 +91,53 @@ fn bulk_move_and_scale() {
 }
 
 #[test]
+fn distribute_respaces_interiors_and_pins_the_ends() {
+    // Bunched interiors [0, 0.1, 0.5, 2.0] → uniform [0, 2/3, 4/3, 2]. The first
+    // and last keep their exact times; only the two middle keys slide.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(0.1), AnimValue::Float(1.0), Interp::Linear);
+    let c = tr.insert_key(secs(0.5), AnimValue::Float(2.0), Interp::Linear);
+    let d = tr.insert_key(secs(2.0), AnimValue::Float(3.0), Interp::Linear);
+    tr.distribute_keys(&[a, b, c, d]);
+    for (id, want) in [(a, 0.0), (b, 2.0 / 3.0), (c, 4.0 / 3.0), (d, 2.0)] {
+        assert!(
+            (tr.key(id).unwrap().t.to_seconds() - want).abs() < 1e-4,
+            "{id:?} at {} want {want}",
+            tr.key(id).unwrap().t.to_seconds()
+        );
+    }
+}
+
+#[test]
+fn distribute_is_a_noop_below_three_keys() {
+    // Two keys are only endpoints — there is nothing between them to respace.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(1.7), AnimValue::Float(1.0), Interp::Linear);
+    tr.distribute_keys(&[a, b]);
+    assert!((tr.key(a).unwrap().t.to_seconds() - 0.0).abs() < 1e-9);
+    assert!((tr.key(b).unwrap().t.to_seconds() - 1.7).abs() < 1e-9);
+}
+
+#[test]
+fn distribute_absorbs_a_stationary_key_it_lands_on() {
+    // [a=0, b=0.1, c=2.0] distributes b to 1.0 (the midpoint) — onto a stationary
+    // non-listed key `s` already at 1.0. The respaced key wins; `s` is absorbed.
+    let mut tr = Track::new(vec![]);
+    let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    let b = tr.insert_key(secs(0.1), AnimValue::Float(1.0), Interp::Linear);
+    let _s = tr.insert_key(secs(1.0), AnimValue::Float(9.0), Interp::Linear);
+    let c = tr.insert_key(secs(2.0), AnimValue::Float(2.0), Interp::Linear);
+    assert_eq!(tr.len(), 4);
+    tr.distribute_keys(&[a, b, c]);
+    assert_eq!(tr.len(), 3, "the stationary key at 1.0 is absorbed");
+    assert!((tr.key(b).unwrap().t.to_seconds() - 1.0).abs() < 1e-4);
+    // The moved key wins: value 1.0 survives, not the absorbed 9.0.
+    assert!(matches!(tr.key(b).unwrap().value, AnimValue::Float(v) if (v - 1.0).abs() < 1e-6));
+}
+
+#[test]
 fn bulk_remove_and_duplicate() {
     let mut tr = Track::new(vec![]);
     let a = tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);

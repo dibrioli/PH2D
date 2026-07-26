@@ -137,8 +137,10 @@ pub(crate) fn preview_dx(state: &TimelinePanelState) -> f32 {
     state.pending_move_dx.unwrap_or(0.0)
 }
 
-/// Whether `sel` is currently selected in the published snapshot.
-fn is_selected(snap: &TimelineViewSnapshot, sel: SelectedKey) -> bool {
+/// Whether `sel` is currently selected in the published snapshot. Shared with
+/// the stagger gesture, which uses the same "preserve a selection, select a
+/// fresh key" disambiguation at Begin.
+pub(crate) fn is_selected(snap: &TimelineViewSnapshot, sel: SelectedKey) -> bool {
     snap.tracks
         .iter()
         .filter(|t| t.target == sel.target)

@@ -125,20 +125,20 @@ pub(crate) fn dispatch_primary(
         // moves alone. Either way, the Summary diamond itself always moves the
         // column (`SummaryKey`, below).
         TimelineHitKind::Key { target, key } => {
-            if let Some(t_bits) = state
+            let sel = ph2d_timeline::SelectedKey::new(target, key);
+            // Alt-drag is the Quick-Offset stagger (§3): it cascades the selection
+            // instead of moving it rigidly, and bypasses column-lock (staggering a
+            // whole aligned column is not the gesture). Plain drag = key move.
+            if g.mods.alt {
+                crate::stagger_drag::apply(state, px_per_s, snap, sel, g);
+            } else if let Some(t_bits) = state
                 .column_lock
                 .then(|| summary::key_t_bits(snap, target, key))
                 .flatten()
             {
                 summary::apply_gesture(state, px_per_s, snap, t_bits, g);
             } else {
-                key_drag::apply_key(
-                    state,
-                    px_per_s,
-                    snap,
-                    ph2d_timeline::SelectedKey::new(target, key),
-                    g,
-                );
+                key_drag::apply_key(state, px_per_s, snap, sel, g);
             }
         }
         TimelineHitKind::SummaryKey { t_bits } => {
@@ -230,8 +230,8 @@ mod tests {
         // near a strip — this is the one arch-gate the crown-jewels §4 asks for.
         // (Mutation: route `SelectionTimeHandle` to `strip_drag` here -> RED.)
         use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
+        // Default already parks the view at t=0.
         let mut st = TimelinePanelState::default();
-        st.view_start_s = 0.0;
         let key = |i: u64, t: f64| KeyView {
             id: KeyId::new(i),
             t_seconds: t,
@@ -254,17 +254,76 @@ mod tests {
         };
         let handle = TimelineHitKind::SelectionTimeHandle { right: true };
         // `feed` maps x -> time with time_x = 0, so x = 300 is t = 3 (factor 3).
-        feed(&mut st, gesture(handle, GesturePhase::Begin, 200.0, false), 100.0, &s);
-        feed(&mut st, gesture(handle, GesturePhase::Update, 300.0, false), 100.0, &s);
-        feed(&mut st, gesture(handle, GesturePhase::End, 300.0, false), 100.0, &s);
+        feed(
+            &mut st,
+            gesture(handle, GesturePhase::Begin, 200.0, false),
+            100.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(handle, GesturePhase::Update, 300.0, false),
+            100.0,
+            &s,
+        );
+        feed(
+            &mut st,
+            gesture(handle, GesturePhase::End, 300.0, false),
+            100.0,
+            &s,
+        );
         let got = state::drain_intents();
         assert!(
-            got.iter().any(|i| matches!(i, TimelineIntent::ScaleSelectedKeys { .. })),
+            got.iter()
+                .any(|i| matches!(i, TimelineIntent::ScaleSelectedKeys { .. })),
             "the router sends the grip to the key-scale machine"
         );
         assert!(
-            !got.iter().any(|i| matches!(i, TimelineIntent::StretchStrip { .. })),
+            !got.iter()
+                .any(|i| matches!(i, TimelineIntent::StretchStrip { .. })),
             "and NEVER to the strip surface, where the fade lives"
+        );
+    }
+
+    #[test]
+    fn an_alt_key_drag_routes_to_stagger_not_a_plain_move() {
+        // Alt-drag on a key is the Quick-Offset cascade (§3): the router must send
+        // it to the stagger machine (StaggerSelectedKeys), never the rigid key
+        // move (MoveSelectedKeys). (Mutation: drop the `g.mods.alt` branch -> the
+        // drag emits MoveSelectedKeys -> RED.)
+        let mut st = TimelinePanelState::default();
+        let s = TimelineViewSnapshot {
+            fps: 60.0,
+            frame_snap: false,
+            ..TimelineViewSnapshot::default()
+        };
+        let key = TimelineHitKind::Key { target: 1, key: 0 };
+        let alt = |phase, x: f32| TimelineGesture {
+            surface: SURFACE,
+            kind: key,
+            phase,
+            x,
+            y: 0.0,
+            button: PointerButton::Primary,
+            mods: GestureMods {
+                shift: false,
+                cmd: false,
+                alt: true,
+            },
+        };
+        feed(&mut st, alt(GesturePhase::Begin, 100.0), 100.0, &s);
+        feed(&mut st, alt(GesturePhase::Update, 200.0), 100.0, &s);
+        feed(&mut st, alt(GesturePhase::End, 200.0), 100.0, &s);
+        let got = state::drain_intents();
+        assert!(
+            got.iter()
+                .any(|i| matches!(i, TimelineIntent::StaggerSelectedKeys { .. })),
+            "the router sends an Alt key-drag to the stagger machine"
+        );
+        assert!(
+            !got.iter()
+                .any(|i| matches!(i, TimelineIntent::MoveSelectedKeys { .. })),
+            "and NOT to the rigid key move"
         );
     }
 

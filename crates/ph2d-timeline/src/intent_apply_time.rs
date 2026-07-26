@@ -58,3 +58,43 @@ pub(crate) fn reverse_selected(state: &mut TimelineState) {
         }
     });
 }
+
+/// Body of [`TimelineIntent::DistributeSelectedKeys`](crate::TimelineIntent::DistributeSelectedKeys):
+/// respace each track's selected keys uniformly within their own span. Per-track
+/// (`for_selected_tracks`) — a multi-track selection distributes each track
+/// independently, and [`Track::distribute_keys`](ph2d_anim::Track::distribute_keys)
+/// no-ops a track with fewer than three selected keys.
+pub(crate) fn distribute_selected(state: &mut TimelineState) {
+    edit(state, |doc, sel| {
+        for_selected_tracks(doc, sel, |track, ids| track.distribute_keys(ids));
+    });
+}
+
+/// Body of [`TimelineIntent::StaggerSelectedKeys`](crate::TimelineIntent::StaggerSelectedKeys):
+/// shift each selected track rigidly by `rank · step_seconds`, where `rank` is
+/// the track's position in the selection's stable order (`distinct_targets`, by
+/// `AnimTarget`). Rank 0 stays put; each later track cascades further.
+///
+/// The delta is frame-snapped through the parent's `delta_time` (like
+/// `MoveSelectedKeys`), so a frame-aligned step keeps every key frame-exact.
+/// The step arrives incremental from the drag; a constant rank makes the
+/// per-frame shifts compose to `rank · total_step`.
+pub(crate) fn stagger_selected(state: &mut TimelineState, step_seconds: f64) {
+    let fps = state.doc.fps_display;
+    let frame_snap = state.flags.frame_snap;
+    edit(state, |doc, sel| {
+        for (rank, target) in super::distinct_targets(sel).into_iter().enumerate() {
+            if rank == 0 {
+                continue; // the first track anchors the cascade
+            }
+            let ids = sel.ids_for(target);
+            let delta = super::delta_time(step_seconds * rank as f64, fps, frame_snap);
+            if delta == ph2d_anim::RationalTime::ZERO {
+                continue;
+            }
+            if let Some(track) = doc.active_clip_mut().track_mut(target) {
+                track.move_keys(&ids, delta);
+            }
+        }
+    });
+}

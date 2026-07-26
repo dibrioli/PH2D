@@ -65,6 +65,7 @@ mod scrollbar;
 mod stack_add_header;
 mod stack_ease_grip;
 mod stack_lane_paint;
+mod stagger_drag;
 pub mod state;
 mod strip_drag;
 mod strip_paint;

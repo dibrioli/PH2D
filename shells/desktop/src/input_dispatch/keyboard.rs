@@ -426,6 +426,11 @@ impl App {
                 // about their own centre. Same selection-verb family as C/X/V/D,
                 // so it lives in the same chord block and needs a selection.
                 KeyCode::KeyR if has_selection => Some(I::ReverseSelectedKeys),
+                // Distribute Evenly: respace the selected keys uniformly in time,
+                // per track (Blender *Distribute Keyframes*). Parameterless — same
+                // selection-verb family. Plain `E` (no chord) is the Painter
+                // eraser, which requires NO modifier, so the two never collide.
+                KeyCode::KeyE if has_selection => Some(I::DistributeSelectedKeys),
                 _ => None,
             };
             if let Some(intent) = intent {

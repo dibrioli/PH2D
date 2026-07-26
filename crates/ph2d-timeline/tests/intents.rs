@@ -1649,3 +1649,186 @@ fn scale_markers_scales_the_listed_ones_about_the_pivot_and_leaves_the_rest() {
         at(2)
     );
 }
+
+#[test]
+fn distribute_respaces_the_selection_uniformly_per_track_one_undo_step() {
+    // Two tracks, each with keys bunched near the start. Distribute pins each
+    // track's own first/last and slides the interiors to equal spacing — the
+    // INTERIOR input times are irrelevant to the output, only the endpoints are.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    // Track 1 span [0, 3]: four keys -> {0, 1, 2, 3}.
+    for t in [0.0, 0.1, 0.2, 3.0] {
+        add_key(&mut st, &mut ph, 1, PropKind::TranslationX, t, 0.0);
+    }
+    // Track 2 span [0, 2]: three keys -> {0, 1, 2}.
+    for t in [0.0, 0.1, 2.0] {
+        add_key(&mut st, &mut ph, 2, PropKind::TranslationX, t, 0.0);
+    }
+    let t1 = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let t2 = st
+        .doc
+        .binding_for(2, PropKind::TranslationX)
+        .unwrap()
+        .target;
+
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for tgt in [t1, t2] {
+        for key in st.doc.active_clip().track(tgt).unwrap().ids().to_vec() {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddToSelection(SelectedKey { target: tgt, key }),
+            );
+        }
+    }
+
+    let times = |st: &TimelineState, tgt| -> Vec<f64> {
+        let track = st.doc.active_clip().track(tgt).unwrap();
+        let mut v: Vec<f64> = track
+            .ids()
+            .iter()
+            .map(|&id| track.key(id).unwrap().t.to_seconds())
+            .collect();
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v
+    };
+    let close = |got: &[f64], want: &[f64]| {
+        assert_eq!(got.len(), want.len(), "got {got:?} want {want:?}");
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() < 1e-9, "got {got:?} want {want:?}");
+        }
+    };
+
+    // The originals as the doc holds them (AddKey frame-snaps the input).
+    let before1 = times(&st, t1);
+    let before2 = times(&st, t2);
+
+    apply_intent(&mut st, &mut ph, I::DistributeSelectedKeys);
+    close(&times(&st, t1), &[0.0, 1.0, 2.0, 3.0]);
+    close(&times(&st, t2), &[0.0, 1.0, 2.0]); // independent per-track span
+
+    apply_intent(&mut st, &mut ph, I::Undo);
+    close(&times(&st, t1), &before1);
+    close(&times(&st, t2), &before2);
+}
+
+#[test]
+fn stagger_cascades_each_track_by_rank_times_step_in_stable_order() {
+    // Three tracks, each with keys {0, 1}. Stagger by step 0.5: rank 0 stays, rank
+    // 1 -> +0.5, rank 2 -> +1.0. The rank order is the selection's STABLE order
+    // (`distinct_targets`, sorted AnimTarget) — never click order. One undo step.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    for e in [1u64, 2, 3] {
+        add_key(&mut st, &mut ph, e, PropKind::TranslationX, 0.0, 0.0);
+        add_key(&mut st, &mut ph, e, PropKind::TranslationX, 1.0, 10.0);
+    }
+    let mut tgts: Vec<_> = [1u64, 2, 3]
+        .iter()
+        .map(|&e| {
+            st.doc
+                .binding_for(e, PropKind::TranslationX)
+                .unwrap()
+                .target
+        })
+        .collect();
+
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for &tgt in &tgts {
+        for key in st.doc.active_clip().track(tgt).unwrap().ids().to_vec() {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddToSelection(SelectedKey { target: tgt, key }),
+            );
+        }
+    }
+
+    let times = |st: &TimelineState, tgt| -> Vec<f64> {
+        let track = st.doc.active_clip().track(tgt).unwrap();
+        let mut v: Vec<f64> = track
+            .ids()
+            .iter()
+            .map(|&id| track.key(id).unwrap().t.to_seconds())
+            .collect();
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v
+    };
+    let close = |got: &[f64], want: &[f64]| {
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() < 1e-9, "got {got:?} want {want:?}");
+        }
+    };
+
+    // The apply's rank order is the sorted targets — mirror it here.
+    tgts.sort();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::StaggerSelectedKeys { step_seconds: 0.5 },
+    );
+    for (rank, &tgt) in tgts.iter().enumerate() {
+        let off = 0.5 * rank as f64;
+        close(&times(&st, tgt), &[off, 1.0 + off]);
+    }
+
+    apply_intent(&mut st, &mut ph, I::Undo);
+    for &tgt in &tgts {
+        close(&times(&st, tgt), &[0.0, 1.0]);
+    }
+}
+
+#[test]
+fn stagger_streams_incremental_steps_that_compose_to_the_total() {
+    // The Alt-drag streams incremental `step` deltas; a constant rank makes them
+    // compose to `rank · total_step`. Two 0.25 steps == one 0.5 step, per track.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    for e in [1u64, 2] {
+        add_key(&mut st, &mut ph, e, PropKind::TranslationX, 0.0, 0.0);
+    }
+    let mut tgts: Vec<_> = [1u64, 2]
+        .iter()
+        .map(|&e| {
+            st.doc
+                .binding_for(e, PropKind::TranslationX)
+                .unwrap()
+                .target
+        })
+        .collect();
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for &tgt in &tgts {
+        for key in st.doc.active_clip().track(tgt).unwrap().ids().to_vec() {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddToSelection(SelectedKey { target: tgt, key }),
+            );
+        }
+    }
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::StaggerSelectedKeys { step_seconds: 0.25 },
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::StaggerSelectedKeys { step_seconds: 0.25 },
+    );
+    tgts.sort();
+    let time = |st: &TimelineState, tgt| -> f64 {
+        let track = st.doc.active_clip().track(tgt).unwrap();
+        track.key(track.ids()[0]).unwrap().t.to_seconds()
+    };
+    assert!(time(&st, tgts[0]).abs() < 1e-9, "rank 0 stays");
+    assert!(
+        (time(&st, tgts[1]) - 0.5).abs() < 1e-9,
+        "rank 1: 0.25 + 0.25 = 0.5"
+    );
+}

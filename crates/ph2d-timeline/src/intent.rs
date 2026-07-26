@@ -153,6 +153,24 @@ pub enum TimelineIntent {
     /// mirror with it. Coherent across tracks — one global pivot, so a multi-track
     /// selection reverses together. One undo step.
     ReverseSelectedKeys,
+    /// **Distribute** the selected keys uniformly in time, per track: within each
+    /// track the earliest and latest selected keys stay put and the ones between
+    /// slide to equal spacing (Blender *Distribute Keyframes*). Parameterless —
+    /// the span is the selection's own. A track with fewer than three selected
+    /// keys is left alone. One undo step.
+    DistributeSelectedKeys,
+    /// **Stagger / cascade** the selection: each track that owns a selected key is
+    /// shifted rigidly by `rank · step_seconds`, where `rank` is the track's
+    /// position in the selection's stable order (by [`AnimTarget`](crate::AnimTarget)),
+    /// so the first track stays and each later one offsets more — the
+    /// motion-graphics cascade (AE *Quick Offset*). Streamed incrementally from
+    /// the Alt-drag: successive `step` deltas compose to the total because the
+    /// rank is constant across the drag. One undo step.
+    StaggerSelectedKeys {
+        /// Per-rank time offset for this frame (incremental, like
+        /// [`Self::ScaleSelectedKeys`]'s factor).
+        step_seconds: f64,
+    },
     /// Duplicate every selected key, preserving the group's internal timing.
     ///
     /// Where the copies land is read off the playhead (see

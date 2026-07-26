@@ -63,6 +63,11 @@ serde = { version = "1", features = ["derive"] }
 rayon = "1"
 
 [dev-dependencies]
+# dhat-rs: a medição do HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate que MEDE*.
+# O undo estrutural do painter guarda `ModelSnapshot`s canvas-shaped e o cap dele é por CONTAGEM
+# (`DEFAULT_MAX_DEPTH = 300`), que é multiplicador e não teto: `tests/measure_undo_memory.rs`.
+dhat = "0.3"
+
 # O round-trip do documento pintado é provado no formato REAL do projeto (postcard, o wire canônico do
 # repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
 postcard = { version = "1", features = ["alloc"] }

@@ -20,7 +20,7 @@
 //! épsilon (magnitude **E** contagem, nunca uma só — tirar o `+0.5` de um `quantise` moveu 2375 bytes
 //! por UM nível e passava sob um limite de 2) fica escrito para quando houver o que medir.
 
-use crate::height_film::{FilmAa, W_TAIL};
+use crate::height_film::{FilmAa, FilmLut, W_TAIL};
 use crate::{BrushSpec, Falloff};
 
 /// Os falloffs que o produto pinta. `Custom` fica fora: a `for_dab` toma o dab INTEIRO como banda para
@@ -194,5 +194,252 @@ fn outside_the_band_both_are_the_single_sample() {
             (aa.film_at(t, sil, never) - aa.film_at_exact(t, sil, never)).abs() == 0.0,
             "t={t} esta fora da banda: as duas devolvem o mesmo single-sample"
         );
+    }
+}
+
+/// **A LUT PRÉ-CONVOLUÍDA contra as nove amostras reais** (plano 26 §9.6) — o épsilon, medido.
+///
+/// O gradiente vem de onde os chamadores o têm: para o disco `t = |d|/radius`, logo
+/// `∇t = d̂/radius = d/(t·radius²)`. Nenhuma raiz nova — o `t` já traz a norma.
+///
+/// Rodar: `cargo test -p ph2d-painter-brush --release measure_the_lut_epsilon -- --ignored --nocapture`
+#[test]
+#[ignore = "medicao: o epsilon da LUT por falloff x raio"]
+fn measure_the_lut_epsilon() {
+    println!("[lut-eps] falloff        raio  pior erro  niveis u8  texels>=1/255  de");
+    for falloff in FALLOFFS {
+        for radius in [3.0f32, 5.0, 8.0, 12.0, 20.0, 40.0, 100.0] {
+            let s = spec(falloff, radius);
+            let Some(aa) = FilmAa::for_dab(&s, false, radius) else {
+                continue;
+            };
+            let lut = FilmLut::new(&s);
+            let fp = s.dab_footprint([1.0, 0.0]);
+            let inv = 1.0 / radius;
+            let reach = radius.ceil() as i64 + 2;
+            let (mut worst, mut differing, mut band) = (0.0f32, 0usize, 0usize);
+            for py in -reach..=reach {
+                for px in -reach..=reach {
+                    let (dx, dy) = (px as f32 + 0.5, py as f32 + 0.5);
+                    let t = fp.falloff_t(dx * inv, dy * inv);
+                    if t <= aa.t_lo_for_test() || t >= aa.t_hi_for_test() {
+                        continue;
+                    }
+                    band += 1;
+                    let sil = s.falloff_weight(t);
+                    // ∇t em unidades de texel: d̂/radius, e d̂ = d/(t·radius).
+                    let scale = 1.0 / (t * radius * radius).max(1e-9);
+                    let (gx, gy) = (dx * scale, dy * scale);
+                    let a = aa.film_at_lut(&lut, t, gx, gy);
+                    let b = aa.film_at_exact(t, sil, disc(&s, radius, dx, dy));
+                    let d = (a - b).abs();
+                    if d > worst {
+                        worst = d;
+                    }
+                    if d >= 1.0 / 255.0 {
+                        differing += 1;
+                    }
+                }
+            }
+            if band == 0 {
+                continue;
+            }
+            println!(
+                "[lut-eps] {falloff:<12?} {radius:>5}  {worst:>9.6}  {:>9.2}  {differing:>10}  {band}",
+                worst * 255.0
+            );
+        }
+    }
+}
+
+/// **A LUT é mais RÁPIDA?** — a razão contra as nove amostras reais, no mesmo instante.
+///
+/// Rodar: `cargo test -p ph2d-painter-brush --release measure_the_lut_speed -- --ignored --nocapture`
+#[test]
+#[ignore = "medicao: a razao de velocidade"]
+fn measure_the_lut_speed() {
+    use std::time::Instant;
+    const N: usize = 3_000_000;
+    println!("[lut-perf] falloff      nove reais      LUT      razao");
+    for falloff in [Falloff::Smooth, Falloff::Sphere, Falloff::Constant] {
+        let radius = 100.0f32;
+        let s = spec(falloff, radius);
+        let aa = FilmAa::for_dab(&s, false, radius).expect("banda");
+        let lut = FilmLut::new(&s);
+        let fp = s.dab_footprint([1.0, 0.0]);
+        let inv = 1.0 / radius;
+        // Um texel na banda.
+        let mut t0 = 0.0f32;
+        for k in 1..4000u32 {
+            let t = f32::from(u16::try_from(k).unwrap_or(u16::MAX)) / 4000.0;
+            if t > aa.t_lo_for_test() && t < aa.t_hi_for_test() {
+                t0 = t;
+                break;
+            }
+        }
+        let d = t0 * radius;
+        let sil = s.falloff_weight(t0);
+        let scale = 1.0 / (t0 * radius * radius);
+        let (gx, gy) = (d * scale, 0.0);
+        let mut acc = 0.0f32;
+        let t_ref = Instant::now();
+        for k in 0..N {
+            let j = (k % 7) as f32 * 1e-6;
+            acc += aa.film_at_exact(t0 + j, sil, |ox, oy| {
+                s.falloff_weight(fp.falloff_t((d + ox) * inv, oy * inv))
+            });
+        }
+        let nine = t_ref.elapsed().as_secs_f64() * 1e3;
+        let t_lut = Instant::now();
+        for k in 0..N {
+            let j = (k % 7) as f32 * 1e-6;
+            acc += aa.film_at_lut(&lut, t0 + j, gx, gy);
+        }
+        let l = t_lut.elapsed().as_secs_f64() * 1e3;
+        println!(
+            "[lut-perf] {falloff:<10?} {nine:>10.1} ms {l:>8.1} ms  {:>5.2}x   (acc {acc:.0})",
+            nine / l.max(1e-9)
+        );
+    }
+}
+
+/// **O GATE da LUT: no regime admissível ela é o mesmo filme, dentro do épsilon declarado.**
+///
+/// "Admissível" não é gosto — é a família de falloffs **suaves** com **raio ≥ 20**, e o número saiu da
+/// varredura (`measure_the_lut_epsilon`), não de preferência. O pior caso a r=20 é o `Pow4` com **0,44
+/// nível de u8 e ZERO texels movendo um nível**; a r=40 já é 0,06 e a r=100, 0,00.
+///
+/// ⚠️ **O limiar era r ≥ 90 antes do termo de segunda ordem** — só a expansão de 1ª ordem deixava o
+/// `Pow4` em 1,49 nível a r=50. Os ~4 flops do `perp2/(2t)` derrubaram o erro ~150× e custaram ~20% da
+/// razão de velocidade (2,8× → 2,3×). É a troca certa: sem eles o regime admissível não cobria nem o
+/// pincel default do impasto (40 px de diâmetro = raio 20).
+///
+/// **`Constant` se exclui por DOIS motivos ao mesmo tempo:** é errático (0,00 nível até r=40, mas
+/// **13,25 em 16 texels** a r=100 — o degrau interage com a grade) **e é mais LENTO** (0,46×, porque a
+/// curva dele é a constante 1 e não há raiz a economizar). Um recorte que serve à precisão E à velocidade
+/// não é caso especial: é o domínio da otimização. `Custom` fica fora porque a `for_dab` toma o dab
+/// inteiro como banda para ele e a tabela seria indexada por uma curva do documento.
+///
+/// ⚠️ **E o que este gate NÃO cobre, nomeado:** a geometria é o **DISCO** (a rota do pigmento). A rota
+/// de ALTURA supersampleia a **CÁPSULA VARRIDA**, cujo campo de distância não é `|d|` em torno de um
+/// ponto — a expansão de 2ª ordem acima **não está validada lá**, e é o primeiro passo de qualquer
+/// fiação (plano 26 §9.6).
+///
+/// O gate afirma **as duas** perguntas (quão longe · quantos), a lição do `quantise` do passe de luz.
+///
+/// Mutação: baixar o `FilmLut::N` para 256 ⇒ a resolução em `t` (3,9e-3) passa a dominar o erro da
+/// linearização (~4,4e-5) e o gate acende.
+#[test]
+fn the_lut_film_is_inside_its_epsilon_where_it_is_admissible() {
+    // Meio nível de u8: abaixo dela a estimativa sozinha não pode nem arredondar para outro byte.
+    const WORST_BAR: f32 = 0.5 / 255.0;
+    // A família SUAVE — `Constant` fora por medição (ver o doc acima), `Custom` fora porque a `for_dab`
+    // toma o dab inteiro como banda para ele e a tabela seria indexada por uma curva do documento.
+    const SMOOTH_FAMILY: [Falloff; 5] = [
+        Falloff::Smooth,
+        Falloff::Sphere,
+        Falloff::Sharp,
+        Falloff::Pow4,
+        Falloff::Root,
+    ];
+    let mut worst_overall = 0.0f32;
+    for falloff in SMOOTH_FAMILY {
+        for radius in [50.0f32, 100.0, 200.0] {
+            let s = spec(falloff, radius);
+            let aa = FilmAa::for_dab(&s, false, radius).expect("a banda existe");
+            let lut = FilmLut::new(&s);
+            let fp = s.dab_footprint([1.0, 0.0]);
+            let inv = 1.0 / radius;
+            let reach = radius.ceil() as i64 + 2;
+            let (mut worst, mut differing, mut band) = (0.0f32, 0usize, 0usize);
+            let mut toe_flips = 0usize;
+            for py in -reach..=reach {
+                for px in -reach..=reach {
+                    let (dx, dy) = (px as f32 + 0.5, py as f32 + 0.5);
+                    let t = fp.falloff_t(dx * inv, dy * inv);
+                    if t <= aa.t_lo_for_test() || t >= aa.t_hi_for_test() {
+                        continue;
+                    }
+                    band += 1;
+                    let scale = 1.0 / (t * radius * radius).max(1e-9);
+                    let a = aa.film_at_lut(&lut, t, dx * scale, dy * scale);
+                    let b = aa.film_at_exact(t, s.falloff_weight(t), disc(&s, radius, dx, dy));
+                    let d = (a - b).abs();
+                    // ⚠️ O **corte do TOE** é uma descontinuidade do PRODUTO (`frac < 2/255 ⇒ 0`), não
+                    // erro da estimativa: quando um lado cai um fio abaixo dele e o outro acima, a
+                    // diferença de saída é ~2/255 por construção, vinda de uma diferença de entrada
+                    // ínfima. Contado à parte — misturá-lo com a precisão fez a varredura anterior ler
+                    // "picos em raios arbitrários" onde havia UM mecanismo, e foi por isso que a §9.5
+                    // rejeitou a estimativa separável por uma razão que era metade falsa.
+                    if (a == 0.0) != (b == 0.0) && a.max(b) < 3.0 / 255.0 {
+                        toe_flips += 1;
+                        continue;
+                    }
+                    if d > worst {
+                        worst = d;
+                    }
+                    if d >= 1.0 / 255.0 {
+                        differing += 1;
+                    }
+                }
+            }
+            assert!(
+                band > 100,
+                "controle: {falloff:?} r={radius} varreu {band} texels de banda — poucos para o gate \
+                 significar algo"
+            );
+            worst_overall = worst_overall.max(worst);
+            assert!(
+                worst <= WORST_BAR,
+                "{falloff:?} r={radius}: pior erro {worst:.6} ({:.2} nivel) > barra {WORST_BAR:.6}",
+                worst * 255.0
+            );
+            assert_eq!(
+                differing, 0,
+                "{falloff:?} r={radius}: {differing} de {band} texels da banda movem um nivel de u8 — \
+                 a barra de MAGNITUDE sozinha nao basta, e esta e a metade da CONTAGEM"
+            );
+            // O toe é a cliff do produto, mas ela não pode virar uma cerca larga: um punhado de texels
+            // a ~1% de opacidade trocando por zero é invisível; centenas seriam outra coisa.
+            assert!(
+                toe_flips * 200 <= band,
+                "{falloff:?} r={radius}: {toe_flips} de {band} texels cruzaram o corte do toe — acima \
+                 de 0,5% da banda isso deixa de ser a cliff do produto e passa a ser a estimativa"
+            );
+        }
+    }
+    println!(
+        "[lut-gate] pior erro no regime admissivel: {:.3} nivel de u8",
+        worst_overall * 255.0
+    );
+}
+
+/// **A LUT É a curva, amostrada** — não uma segunda resposta a *"qual é o filme neste `t`"*.
+///
+/// Nos nós ela devolve exactamente `film_of(falloff_weight(t))`, ao bit: é o que impede a tabela de
+/// virar um modelo paralelo que deriva do produto (a doença que o doc 24 nomeou ao tabelar o sRGB).
+#[test]
+fn the_lut_is_the_curve_sampled_not_a_second_answer() {
+    for falloff in FALLOFFS {
+        let s = spec(falloff, 50.0);
+        let lut = FilmLut::new(&s);
+        for i in [
+            0usize,
+            1,
+            7,
+            100,
+            FilmLut::N / 3,
+            FilmLut::N - 1,
+            FilmLut::N,
+        ] {
+            #[expect(clippy::cast_precision_loss, reason = "i <= N = 16384, exato em f32")]
+            let t = (i as f32) / (FilmLut::N as f32);
+            let exact = crate::height_film::film_of(s.falloff_weight(t));
+            assert!(
+                (lut.at(t) - exact).abs() == 0.0,
+                "{falloff:?} no no t={t}: a tabela ({}) tem de SER a curva ({exact})",
+                lut.at(t)
+            );
+        }
     }
 }

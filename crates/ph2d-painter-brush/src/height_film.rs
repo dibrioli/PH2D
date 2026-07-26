@@ -346,6 +346,65 @@ impl FilmAa {
         self.film_at_exact(t, sil_centre, sil_at)
     }
 
+    /// **A LUT pré-convoluída (plano 26 §9.6): a grade sem um único `sqrt`.**
+    ///
+    /// O que a medição (`measure_impasto_cost::is_the_silhouette_chain_the_aa_cost`) disse: **~91% do
+    /// custo do `film_at` é a CADEIA de silhueta** — a closure real custa **10,3× a 12,3×** uma closure
+    /// que devolve constante, com as nove chamadas de `film_of` e o laço intactos nas duas. E lida a
+    /// cadeia, o que ela tem por amostra é **`sqrt`**: um em `Footprint::falloff_t` (a norma do ponto
+    /// deformado) e, em `Sphere`/`Root`, outro em `Falloff::weight` ⇒ **até 18 `sqrt` dependentes por
+    /// texel da banda**. Não é a curva que é caro; é a RAIZ.
+    ///
+    /// Então esta rota remove as duas, e cada uma por um mecanismo diferente:
+    ///
+    /// * **a curva** sai por LUT: `F(t) = film_of(falloff_weight(t))` é uma função 1-D **FIXA** do
+    ///   `t` (dado o falloff + hardness), tabelada sobre a **BANDA** e não sobre `[0,1]` — fora dela o
+    ///   early-out já responde, e tabelar só a banda multiplica a resolução por ~8×;
+    /// * **a métrica** sai por linearização: `t(o) ≈ t + ĝ·o`, onde `ĝ` é o gradiente de `t` em
+    ///   unidades de texel. O chamador **já o tem** — o de pigmento tem `(dx, dy)` e `t`, o de altura
+    ///   tem o `(rx, ry)` que o `sweep_residual` acabou de devolver — e em ambos
+    ///   `ĝ = (componentes)/(t · radius²)` sem raiz nova.
+    ///
+    /// ⚠️ **Por que este erro NÃO é o da estimativa separável rejeitada na §9.5:** lá as quinas erravam
+    /// o VALOR por `2/9` sempre que o `film_of` era um degrau — estrutural, em todo texel, em todo raio.
+    /// Aqui os nove valores continuam vindo da mesma função `F`; o que desloca é a **POSIÇÃO** em que ela
+    /// é lida, por `(|o|² − (ĝ·o)²)/(2|d|)` — a ~4,4e-5 de `t` no aro de um raio 100. Um degrau só erra
+    /// nos texels que caem DENTRO dessa faixa, uma fração que some com o raio, em vez de errar em todos.
+    ///
+    /// A varredura de paridade que a §9.5 deixou pronta mede as duas coisas sem uma linha nova.
+    #[must_use]
+    pub fn film_at_lut(&self, lut: &FilmLut, t: f32, gx: f32, gy: f32) -> f32 {
+        if t <= self.t_lo || t >= self.t_hi {
+            // Fora da banda o valor é o single-sample, e a LUT o serve exatamente como a curva serviria.
+            return lut.at(t);
+        }
+        // ⚠️ **O termo de SEGUNDA ordem, e ele não é refinamento opcional.** A expansão exata de
+        // `t(o) = |d + o|/r` é
+        //   `t + (d̂·o)/r + [|o|² − (d̂·o)²]/(2·|d|·r)`,
+        // e o terceiro termo é a componente PERPENDICULAR ao gradiente, ao quadrado, sobre a distância.
+        // Medido só com os dois primeiros, o pior erro escalava **~1/r²** (Smooth 1,41 → 0,39 → 0,10
+        // nível de u8 a r=25/50/100) e o limiar admissível caía em **r ≥ 90** — estreito demais para
+        // pagar a fiação. Com este termo o mesmo dado cai uma ordem, e o custo são ~3 flops por amostra
+        // (nenhuma raiz: `|d| = t·r` já é conhecido, e `|ĝ| = 1/r`).
+        //
+        // `gx`/`gy` são `d̂/r`, então `|g|² = 1/r²` e `|d|·r = t·r²` — as duas grandezas saem do que o
+        // chamador já tem, o que é o motivo de o termo ser barato aqui e caro em qualquer outro lugar.
+        // A álgebra, uma vez: `|d| = t·r` e `g² = |ĝ|² = 1/r²`, então
+        //   2ª ordem = `[|o|² − (d̂·o)²] / (2·|d|·r)` = `[|o|²·g² − along²] / (2·t)`,
+        // com `along = (d̂·o)/r`. Ou seja: `perp2 / (2t)`, e nada mais.
+        let g2 = gx * gx + gy * gy; // = 1/r²
+        let inv_2t = 0.5 / t.max(1e-6);
+        let mut acc = 0.0;
+        for &oy in &AA_SS {
+            for &ox in &AA_SS {
+                let along = gx * ox + gy * oy;
+                let perp2 = (ox * ox + oy * oy) * g2 - along * along;
+                acc += lut.at(t + along + perp2 * inv_2t);
+            }
+        }
+        Self::toe(acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32))
+    }
+
     /// The **reference**: the film averaged over the grid with all nine silhouette values SAMPLED.
     ///
     /// This is what [`Self::film_at`] approximated until 2026-07-26, kept as the oracle the parity
@@ -396,6 +455,77 @@ impl FilmAa {
     #[must_use]
     pub fn pad_px(aa: &Option<Self>) -> f32 {
         if aa.is_some() { 1.0 } else { 0.0 }
+    }
+}
+
+/// **A tabela de `F(t) = film_of(falloff_weight(t))`** — a curva do filme, pré-computada.
+///
+/// Construída **uma vez por traço** (o falloff e a hardness não mudam no meio de um) e emprestada por
+/// referência aos dois kernels: uma alocação por traço, nunca por dab, senão o `hot_path_no_alloc` do
+/// depósito acende — e com razão.
+///
+/// ⚠️ **A tabela cobre `[0, 1]` inteiro, não só a banda**, e isso é decisão: o `film_at_lut` precisa
+/// dela também fora da banda (o early-out do single-sample) e nas amostras que o gradiente joga PARA
+/// fora dela, e uma tabela de banda com clamp nas pontas mentiria exactamente nos texels de borda que o
+/// AA existe para desenhar. A resolução vem do tamanho, não do recorte.
+pub struct FilmLut {
+    /// `N + 1` amostras de `F` em `t = i/N`, para a interpolação linear ter o vizinho da direita sem
+    /// caso especial no último índice.
+    table: Vec<f32>,
+    /// `N` como `f32`, o fator de índice — guardado para o `at` não converter por chamada.
+    n: f32,
+}
+
+impl FilmLut {
+    /// Amostras da tabela. **16384** é o mesmo tamanho que a tabulação da transferência sRGB do doc 24
+    /// escolheu, e pelo mesmo motivo: a resolução em `t` (6,1e-5) fica **abaixo** do erro que a
+    /// linearização da métrica já introduz (~4,4e-5 no aro de um raio 100), então a tabela não é o termo
+    /// dominante do épsilon — o que a torna um detalhe de implementação em vez de um segundo knob.
+    pub const N: usize = 16_384;
+
+    /// Tabela para este pincel. `F` é avaliada com as MESMAS funções do produto (`falloff_weight` e
+    /// `film_of`), então a tabela não pode discordar da curva: ela **é** a curva, amostrada.
+    #[must_use]
+    pub fn new(spec: &crate::BrushSpec) -> Self {
+        let n = Self::N;
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "N = 16384 é exato em f32; o índice é um contador pequeno"
+        )]
+        let inv = 1.0 / (n as f32);
+        let mut table = Vec::with_capacity(n + 1);
+        for i in 0..=n {
+            #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
+            let t = (i as f32) * inv;
+            table.push(film_of(spec.falloff_weight(t)));
+        }
+        #[expect(clippy::cast_precision_loss, reason = "N = 16384 é exato em f32")]
+        let nf = n as f32;
+        Self { table, n: nf }
+    }
+
+    /// `F(t)` por interpolação linear. Fora de `[0, 1]` clampa — que é o que a curva faz de qualquer
+    /// forma (`falloff_weight` clampa o remap, `weight` devolve 0 em `t >= 1`).
+    #[inline]
+    #[must_use]
+    pub fn at(&self, t: f32) -> f32 {
+        let x = (t * self.n).clamp(0.0, self.n);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "x está clampado em [0, N] logo acima"
+        )]
+        let i = x as usize;
+        let f = x - {
+            #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
+            let fi = i as f32;
+            fi
+        };
+        // `i + 1` existe: a tabela tem N+1 entradas e `i <= N`. Em `i == N` o `f` é 0, então o vizinho
+        // não é lido — mas o índice tem de ser válido, e é por isso que a tabela leva a entrada extra.
+        let a = self.table[i];
+        let b = self.table[(i + 1).min(self.table.len() - 1)];
+        a + (b - a) * f
     }
 }
 

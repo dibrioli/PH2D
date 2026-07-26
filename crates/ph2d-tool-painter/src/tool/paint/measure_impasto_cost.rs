@@ -421,3 +421,81 @@ fn does_the_film_aa_change_a_pixel() {
         println!("[aa] {radius:>4}  {diff:>17}  {worst:>10}   ({painted} px pintados)");
     }
 }
+
+/// **A PREMISSA DA LUT: o caro dentro do AA e o `sil_at` ou o resto?**
+///
+/// Eu afirmei "o caro e o sil_at, nao o film_of" num doc-comment SEM medir. A LUT pre-convoluida da
+/// secao 9.6 do plano 26 inteira depende dessa frase, entao ela vai ser medida antes.
+///
+/// O metodo: rodar `film_at_exact` com a closure REAL (o produto) e com uma closure que devolve um
+/// valor pre-calculado -- as 9 chamadas de `film_of` e o laco ficam, so a cadeia de silhueta sai. Se os
+/// dois custarem o mesmo, a cadeia nao e o custo e a LUT nao tem o que economizar.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release is_the_silhouette_chain_the_aa_cost -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn is_the_silhouette_chain_the_aa_cost() {
+    use ph2d_painter_brush::height_film::FilmAa;
+    use ph2d_painter_brush::{BrushSpec, Falloff};
+    const N: usize = 3_000_000;
+    println!("[lut] falloff     cadeia REAL   closure const   razao");
+    for falloff in [Falloff::Smooth, Falloff::Sphere, Falloff::Constant] {
+        let radius = 100.0f32;
+        let s = BrushSpec {
+            radius_px: radius,
+            falloff,
+            impasto: true,
+            impasto_depth: 0.5,
+            impasto_smooth_edges: true,
+            ..Default::default()
+        };
+        let aa = FilmAa::for_dab(&s, false, radius).expect("banda a r=100");
+        let fp = s.dab_footprint([1.0, 0.0]);
+        let inv = 1.0 / radius;
+        // Um texel DENTRO da banda -- achado por varredura, porque os limites da banda sao privados
+        // (e um `t` fora dela mediria o early-out, nao a grade). O criterio e o proprio produto: na
+        // banda o `film_at_exact` difere do single-sample.
+        let probe = |t: f32| {
+            let d = t * radius;
+            let sil = s.falloff_weight(t);
+            let nine = aa.film_at_exact(t, sil, |ox, oy| {
+                s.falloff_weight(fp.falloff_t((d + ox) * inv, oy * inv))
+            });
+            (sil, nine)
+        };
+        let mut mid_t = 0.0f32;
+        for k in 1..2000u32 {
+            let t = f32::from(u16::try_from(k).unwrap_or(u16::MAX)) / 2000.0;
+            let (sil, nine) = probe(t);
+            if (nine - ph2d_painter_brush::height_film::film_of(sil)).abs() > 1e-6 {
+                mid_t = t;
+                break;
+            }
+        }
+        assert!(
+            mid_t > 0.0,
+            "controle: nao achei texel na banda de {falloff:?}"
+        );
+        let d = mid_t * radius; // distancia radial do texel
+        let sil = s.falloff_weight(mid_t);
+        let mut acc = 0.0f32;
+        let real = ms(&mut || {
+            for k in 0..N {
+                let jitter = (k % 7) as f32 * 0.01;
+                acc += aa.film_at_exact(mid_t, sil, |ox, oy| {
+                    s.falloff_weight(fp.falloff_t((d + ox + jitter) * inv, (oy) * inv))
+                });
+            }
+        });
+        let konst = ms(&mut || {
+            for k in 0..N {
+                let jitter = (k % 7) as f32 * 0.01;
+                acc += aa.film_at_exact(mid_t, sil, |_ox, _oy| sil + jitter * 1e-6);
+            }
+        });
+        println!(
+            "[lut] {falloff:<10?}  {real:>10.1} ms  {konst:>12.1} ms  {:>5.2}x   (acc {acc:.0})",
+            real / konst.max(1e-9)
+        );
+    }
+}

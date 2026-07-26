@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). Sobra a **LUT pré-convoluída** (§9.6) |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). **LUT pré-convoluída: kernel PROVADO** (§9.6) — 2,3×, épsilon **0,03 nível** e zero texels a r≥20; falta fiar (a cápsula não está validada) |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -756,7 +756,80 @@ com a delegação é zero) — agora a banda é `t ∈ (t_lo, t_hi)`, o que ela 
 
 Sem essa maquinaria a próxima tentativa é opinião; com ela é uma rodada de `cargo test`.
 
-### 9.6 ✅ A avenida que sobra (e é a última deste eixo)
+### 9.6 ✅ A LUT PRÉ-CONVOLUÍDA — o kernel está PROVADO (2,3×, épsilon 0,03 nível)
+
+Ordem do Enio: *"LUT pré-convoluída"*. **Construída, medida, e funciona** — o primeiro positivo deste
+eixo, depois de três negativos.
+
+**A premissa foi MEDIDA primeiro** (eu a havia afirmado num doc-comment sem medir):
+`is_the_silhouette_chain_the_aa_cost` roda o `film_at` com a closure real e com uma que devolve
+constante — **10,3× a 12,3×** de diferença ⇒ **~91% do custo do AA é a CADEIA de silhueta**. E lida a
+cadeia, o que ela tem por amostra é **`sqrt`**: um em `Footprint::falloff_t`, outro em
+`Falloff::weight` para `Sphere`/`Root` ⇒ **até 18 `sqrt` dependentes por texel da banda**. Não é a
+curva; é a RAIZ.
+
+**O desenho remove as duas, por mecanismos diferentes:**
+
+| | |
+|---|---|
+| a **curva** | LUT de `F(t) = film_of(falloff_weight(t))`, `N = 16 384` (o tamanho do doc 24, e pelo mesmo motivo) |
+| a **métrica** | `t(o) ≈ t + (ĝ·o) + perp²/(2t)` — o chamador já tem `ĝ`, e `\|d\| = t·r` dá o resto sem raiz nova |
+
+**⚠️ O termo de SEGUNDA ordem não é refinamento — é o que torna a wave viável.** Só com a 1ª ordem o
+`Pow4` errava **1,49 nível a r=50** e o regime admissível caía em **r ≥ 90** (estreito demais para pagar
+a fiação). Os ~4 flops do `perp²/(2t)` derrubaram o erro **~150×** ao custo de ~20% da razão de
+velocidade:
+
+| falloff | r=12 | **r=20** | r=40 | r=100 |
+|---|---|---|---|---|
+| Smooth | 0,17 | **0,04** | 0,01 | 0,00 |
+| Sphere | 0,11 | **0,03** | 0,00 | 0,00 |
+| Sharp | 0,59 | **0,09** | 0,01 | 0,00 |
+| Pow4 | 3,35 | **0,44** | 0,06 | 0,00 |
+| Root | 0,07 | **0,02** | 0,00 | 0,00 |
+
+*(níveis de u8 do pior texel; **zero** texels movem um nível a partir de r=20)*
+
+**Regime admissível: a família SUAVE com raio ≥ 20** — que cobre o pincel default do impasto (40 px de
+diâmetro). Velocidade **2,23× (Smooth) · 2,38× (Sphere)**.
+
+**`Constant` se exclui por DOIS motivos ao mesmo tempo:** é errático (0,00 nível até r=40 mas **13,25 em
+16 texels** a r=100) **e é mais LENTO** (0,46× — a curva dele é a constante 1, não há raiz a economizar).
+Um recorte que serve à precisão E à velocidade não é caso especial: é o domínio da otimização. `Custom`
+fica fora porque a `for_dab` toma o dab inteiro como banda para ele e a tabela seria indexada por uma
+curva do documento.
+
+#### 9.6.1 ⚠️ E uma conclusão da §9.5 estava METADE errada
+
+A §9.5 rejeitou a estimativa separável por **duas** razões. A #1 (`Constant` erra `2/9` estrutural)
+está certa e basta sozinha. A **#2 — *"picos isolados de ~2 níveis em raios arbitrários, logo nenhum
+limiar limita o erro"* — era ARTEFATO**: os picos vinham **exatamente 2,00-2,01 níveis em exactamente 8
+texels**, e `2/255 = 0,00784` é **o corte do TOE** (`if frac < 2/255 { 0 }`). É a descontinuidade do
+próprio produto amplificando uma diferença de entrada ínfima, presente em QUALQUER aproximação.
+
+A varredura desta §9.6 agora **classifica o toe à parte** (`(a==0) != (b==0)` com `max < 3/255`), com
+uma cerca própria (≤ 0,5% da banda). Sem essa separação eu estava medindo a cliff do produto e lendo
+"a estimativa é errática".
+
+#### 9.6.2 O que falta para SHIPAR, e a pergunta aberta
+
+O kernel (`FilmLut` + `FilmAa::film_at_lut`) está no produto e **gateado**
+(`the_lut_film_is_inside_its_epsilon_where_it_is_admissible`, 2 mutações: `N = 256` sangra; tirar a 2ª
+ordem sangra em `Sharp r=50: 0,53 > 0,50`). **Ninguém o chama ainda**, e são três passos:
+
+1. ⚠️ **A CÁPSULA não está validada.** A varredura testa o **DISCO** (a rota do pigmento). A rota de
+   ALTURA supersampleia a **cápsula varrida**, cujo campo de distância não é `|d|` em torno de um ponto
+   — a expansão de 2ª ordem **não vale lá sem derivação própria**, e ali vivem ~31 dos 68,7 ms. **É o
+   primeiro passo, e é uma pergunta de matemática, não de fiação.**
+2. **A LUT tem de ser por TRAÇO, nunca por dab** — 16 384 avaliações de `falloff_weight` contra ~1 800
+   amostras de banda a raio 20 ⇒ construir por dab é **9× mais caro que o que ela substitui**. O desenho
+   sugerido é um memo chaveado em `(falloff, hardness)` (2 words — `Custom` já está fora, então a chave
+   é completa), o que evita mudar a assinatura dos **15** chamadores de `stamp_dab`.
+3. **Gate de bytes no traço REAL**, além do gate de kernel — o template das duas perguntas.
+
+Prêmio quando fiado: o AA é 68,7 de 127,1 ms a r=100 ⇒ 2,3× nele corta **~39 ms, 31% do traço**.
+
+### 9.7 A avenida anterior (e é a última deste eixo)
 
 `film_of ∘ falloff_weight` é uma função **1-D FIXA** de `t`, então a média sobre o texel pode sair de uma
 **LUT pré-convoluída em `(t, |∇t|)`**, hoisteada **por dab** — **zero** amostras extras, em vez de cinco
@@ -767,7 +840,7 @@ de nove. É a única forma de cortar o custo sem cortar a contagem de amostras, 
 de ou aceitar o erro ali (medido pela MESMA varredura desta §9.5) ou indexar em duas dimensões. **Não
 construída sem ordem.**
 
-### 9.7 A avenida ANTERIOR — o que ela era antes da §9.5
+### 9.8 A avenida ANTERIOR — o que ela era antes da §9.5
 
 **Tornar o AA mais barato pelo mesmo número.** A fração de área de um campo escalar suave tem
 estimativa **analítica** pelo gradiente (`cobertura ≈ clamp(0,5 − f/|∇f|)`, o AA de SDF padrão): ~2

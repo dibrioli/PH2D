@@ -5280,6 +5280,7 @@ dependencies = [
  "ph2d-node-value-quantize",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
+ "ph2d-node-value-unary",
  "ph2d-nodegraph",
  "ph2d-render",
  "wgpu",
@@ -6383,6 +6384,7 @@ dependencies = [
  "ph2d-node-value-quantize",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
+ "ph2d-node-value-unary",
 ]
 
 [[package]]
@@ -6591,6 +6593,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-switch"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-unary"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

@@ -661,6 +661,7 @@ impl crate::App {
         self.value_gain_smoke();
         self.value_step_smoke();
         self.value_normalize_smoke();
+        self.value_unary_smoke();
         self.build_session_upkeep();
         // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
         // se o intervalo é o mesmo, ou se a sessão está fechada).

@@ -59,6 +59,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_gain::register(&mut reg).unwrap();
     ph2d_node_value_step::register(&mut reg).unwrap();
     ph2d_node_value_normalize::register(&mut reg).unwrap();
+    ph2d_node_value_unary::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3240,6 +3241,73 @@ fn value_normalize_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the normalize drove nothing"
+    );
+}
+
+/// **`value.unary` runs fully on the GPU and matches the CPU.** A ramp stretched
+/// to `[1, 5]` through the **Reciprocal** op — the real division path (`1/x`, the
+/// guarded one), NOT a trivial `abs`/`negate` — drives Y; the device result
+/// matches the CPU port. The range is all-positive so the `x == 0` guard is not
+/// hit (the unit tests cover it); the division is what a wrong port would get
+/// wrong. `is_fully_gpu` PROVES the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_unary_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let map = g.add_node("value.map_range");
+    g.set_param(map, "out_lo", 1.0); // [1, 5], all positive: real reciprocal
+    g.set_param(map, "out_hi", 5.0);
+    connect(&mut g, field, map);
+    let unary = g.add_node("value.unary");
+    g.set_param(unary, "op", 7.0); // Reciprocal
+    connect(&mut g, map, unary);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (unary, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("unary value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → map → unary → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.unary → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the op drove nothing"
     );
 }
 

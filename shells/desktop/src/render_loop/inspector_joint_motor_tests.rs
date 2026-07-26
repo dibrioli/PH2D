@@ -146,3 +146,68 @@ fn the_mode_chip_writes_the_mode_and_the_snapshot_reads_it_back() {
         );
     }
 }
+
+/// **Criar um Slider e converter um Pin em Slider chegam ao MESMO joint** — e as
+/// duas metades são afirmadas contra os NÚMEROS, não uma contra a outra.
+///
+/// Duas rotas para um estado que discordam é a forma que este arquivo inteiro
+/// recusa, e ela existiu aqui: a troca de tipo re-semeava os números da unidade
+/// desde o W-J5, e `create_joint` construía `PhysicsJoint { kind, ..default() }`
+/// — os do Pin. *"Join As = Slider"* dava um trilho com ±0,785 **metros** de
+/// curso, *"faça um Pin e troque"* dava ±0,5.
+///
+/// ⚠️ **A 1ª versão deste gate era VERDE POR CONSTRUÇÃO** e eu a escrevi na mesma
+/// sessão em que documentei o padrão três vezes: ela comparava
+/// `joint_with_edit(…)` com `PhysicsJoint::of_kind(…)`, e o re-seed da troca de
+/// tipo LÊ o `of_kind` — então neutralizar essa função adoecia os dois lados
+/// igualmente e a igualdade sobrevivia. Uma razão entre dois doentes. Agora cada
+/// rota é comparada com a constante que ela deve produzir, e a igualdade entre
+/// elas é a terceira asserção em vez da única.
+///
+/// Mutação: `of_kind` voltando a `Self { kind, ..default() }` — RED nas duas
+/// rotas; `create_joint_at` voltando a `..default()` — RED só na de criação, que
+/// é a metade que a mutação de fato quebra.
+#[test]
+fn creating_a_kind_and_converting_to_it_reach_the_same_joint() {
+    // (tag, curso esperado, velocidade esperada) — as constantes, escritas aqui
+    // e não derivadas da função sob teste.
+    for (tag, stroke, speed) in [
+        (2u8, PhysicsJoint::DEFAULT_LIMIT, -0.5f32), // Rope: sem faixa (fica em rad), winch recolhe
+        (4, PhysicsJoint::DEFAULT_STROKE, 0.5),      // Slider: curso em metros, carro avança
+    ] {
+        let converted =
+            joint_with_edit(PhysicsJoint::default(), JointFieldEdit::Kind(tag)).expect("kind edit");
+        let created = create_of_kind(kind_of(tag));
+        for (what, got, want) in [
+            ("curso convertido", converted.limit_max, stroke),
+            ("curso criado", created.limit_max, stroke),
+            ("velocidade convertida", converted.motor_speed, speed),
+            ("velocidade criada", created.motor_speed, speed),
+        ] {
+            assert!(
+                (got - want).abs() < 1e-6,
+                "tag {tag} {what}: esperado {want}, got {got}"
+            );
+        }
+    }
+}
+
+/// O joint que o gesto de CRIAÇÃO de fato produz — pelo `create_joint` real, não
+/// por uma re-derivação. É a rota que a mutação do `create_joint_at` quebra.
+fn create_of_kind(kind: JointKind) -> PhysicsJoint {
+    let mut sim = SimWorld::new();
+    let a = sim
+        .world_mut()
+        .spawn((Name::new("A"), Transform::default()))
+        .id();
+    let b = sim
+        .world_mut()
+        .spawn((
+            Name::new("B"),
+            Transform::from_translation(ph2d_core::Vec2::new(1.0, 0.0)),
+        ))
+        .id();
+    let j = super::inspector_joint::create_joint(&mut sim, a.to_bits(), b.to_bits(), kind)
+        .expect("create");
+    *sim.world().get::<PhysicsJoint>(j).expect("joint")
+}

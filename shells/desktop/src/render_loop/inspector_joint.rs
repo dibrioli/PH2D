@@ -36,7 +36,7 @@ pub(crate) fn kind_of(tag: u8) -> JointKind {
 /// One door, and its twin [`limit_in`] is the other direction — the pair is why a
 /// value typed into the Min row and the value that row shows next frame are the
 /// same number. Degrees for an angular range, metres verbatim for a stroke.
-fn limit_out(kind: JointKind, v: f32) -> f32 {
+pub(crate) fn limit_out(kind: JointKind, v: f32) -> f32 {
     if kind.limits_in_metres() {
         v
     } else {
@@ -275,10 +275,10 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
             // hinge. Only on a unit CHANGE: Pin→Weld→Pin still returns the angles
             // the artist had, which is the promise the component makes about
             // switching kinds.
+            let fresh = PhysicsJoint::of_kind(next.kind);
             if next.kind.limits_in_metres() != prev_kind.limits_in_metres() {
-                let [lo, hi] = PhysicsJoint::default_limits(next.kind);
-                next.limit_min = lo;
-                next.limit_max = hi;
+                next.limit_min = fresh.limit_min;
+                next.limit_max = fresh.limit_max;
             }
             // ⚠️ **And the MOTOR's unit is a separate question** — `motor_speed`
             // and `motor_target` carry radians on a hinge and metres on a rail or
@@ -288,7 +288,7 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
             // motor and no limit range at all): sharing the condition would leave
             // a winch running at 114 m/s under a label reading metres.
             if next.kind.motor_in_metres() != prev_kind.motor_in_metres() {
-                next.motor_speed = PhysicsJoint::default_motor_speed(next.kind);
+                next.motor_speed = fresh.motor_speed;
                 // Zero is the joint's own zero in either unit, so the target
                 // needs no per-kind default — only the reset.
                 next.motor_target = 0.0;
@@ -423,11 +423,15 @@ pub(crate) fn create_joint_at(
             PhysicsJoint {
                 body_a: stable_name_id(&name_a),
                 body_b: stable_name_id(&name_b),
-                kind,
                 local_a: anchored.map_or([0.0, 0.0], |(la, _, _)| la),
                 local_b: anchored.map_or([0.0, 0.0], |(_, lb, _)| lb),
                 anchored: anchored.is_some(),
-                ..PhysicsJoint::default()
+                // ⚠️ `of_kind`, not `default()` + `kind` — the numbers that carry
+                // a unit have to be seeded in THIS kind's unit. Built the other
+                // way, "Join As = Slider" gave a rail +-0.785 METRES of stroke
+                // (the Pin's +-45 deg read as a length) while making a Pin and
+                // switching it to Slider gave +-0.5. Same door for both routes.
+                ..PhysicsJoint::of_kind(kind)
             },
             Transform::from_translation(origin),
         ))

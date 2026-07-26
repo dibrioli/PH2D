@@ -132,17 +132,35 @@ pub(super) fn joint_param_handles(
                 .into_iter()
                 .enumerate()
             {
-                let p = limit_end_screen(camera, window, v.anchor_a, v.angle_a, l[i]);
-                out.push(PointHandle {
-                    key,
-                    kind,
+                // ⚠️ **Two geometries, because there are two kinds of range.** A
+                // hinge's ends live on the ARC; a rail's live ON THE RAIL, where
+                // `slider_rail` already draws its end-of-travel ticks. The
+                // question is `limits_in_metres` — the SAME door the §12 label
+                // and the shell's conversion ask, and the one this publisher did
+                // not ask until 2026-07-26: it put a rail's 0.5 *metre* stroke on
+                // the arc at 0.5 *radians*, and the drag then authored a bearing
+                // into a field read as metres (the runaway Enio reported).
+                let world = if v.kind.limits_in_metres() {
+                    let axis = match v.axis {
+                        Some(a) => a,
+                        // A rail with no resolved axis draws no rail, so there is
+                        // nothing for a grip to sit on.
+                        None => continue,
+                    };
+                    [
+                        v.anchor_a[0] + axis[0] * l[i],
+                        v.anchor_a[1] + axis[1] * l[i],
+                    ]
+                } else {
+                    let p = limit_end_screen(camera, window, v.anchor_a, v.angle_a, l[i]);
                     // ⚠️ Unprojected. The arc lives at a fixed SCREEN radius (an
                     // angle is not a length — the module's own law), while a
                     // `PointHandle` is a world point so that one projection
                     // serves every handle. The round trip is a linear map, so it
                     // re-projects to the pixel it came from.
-                    world: camera.screen_to_world((p.x as f32, p.y as f32), window),
-                });
+                    camera.screen_to_world((p.x as f32, p.y as f32), window)
+                };
+                out.push(PointHandle { key, kind, world });
             }
         }
         if let Some(len) = v.length {

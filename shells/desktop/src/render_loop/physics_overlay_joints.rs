@@ -119,8 +119,14 @@ pub(super) fn joint_marks(
         // e o comprimento que a mola/corda nomeia. Não são o joint — são o que
         // o artista permitiu a ele, e por isso lêem como fundo do glifo (a
         // mesma distinção que separa a seta de força do anel do falloff).
+        // ⚠️ **The arc is the envelope of an ANGULAR range only.** A Slider is
+        // limited too, and its range is a stroke in metres — drawn by
+        // `slider_rail`'s end-of-travel ticks, not by a circle at 0.5 radians.
+        // Without this question a rail painted BOTH, and the arc it painted
+        // described a hinge that does not exist.
         if let Some(arc) = v
             .limits
+            .filter(|_| !v.kind.limits_in_metres())
             .map(|l| limit_arc(camera, window, v.anchor_a, v.angle_a, l, v.angle_b))
         {
             out.push((arc, JOINT_DIM_RGBA));

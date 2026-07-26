@@ -343,3 +343,62 @@ fn a_walls_grip_round_trips_through_world_back_to_its_pixel() {
         );
     }
 }
+
+/// **A rail's stroke grips sit ON THE RAIL, in metres — not on an arc, in
+/// radians.**
+///
+/// A Slider is limited too (W-J5), and this publisher asked only *"does it have
+/// limits?"*: it put a 0.5 **metre** stroke on the hinge arc at 0.5 **radians**,
+/// 21 screen px from the anchor and pointing nowhere the rail goes. The drag that
+/// opened there then authored a bearing into a field read as metres — Enio's
+/// runaway (2026-07-26).
+///
+/// The oracle is the position, because that is the whole defect: the grip has to
+/// be at `anchor + axis · limit`, which is exactly where `slider_rail` already
+/// draws its end-of-travel tick. Grip and tick are one place, which is the law
+/// `limit_end_screen` states for the hinge.
+///
+/// Mutation: the publisher dropping the `limits_in_metres` branch — RED, the max
+/// grip lands 0.37 m from where the rail's tick is.
+#[test]
+fn a_rails_stroke_grips_sit_on_the_rail_not_on_an_arc() {
+    let mut sim = SimWorld::new();
+    body(&mut sim, "Post", BodyKind::Static, [2.0, 3.0]);
+    body(&mut sim, "Car", BodyKind::Dynamic, [2.0, 3.0]);
+    // A rail at 90°: the axis is +Y, so the two ends are directly above and
+    // below the anchor and a grip that stayed on the arc cannot coincide by luck.
+    let mut t = Transform::from_translation(Vec2::new(2.0, 3.0));
+    t.rotation = std::f32::consts::FRAC_PI_2;
+    sim.world_mut().spawn((
+        Name::new("Rail".to_string()),
+        PhysicsJoint {
+            body_a: stable_name_id("Post"),
+            body_b: stable_name_id("Car"),
+            kind: JointKind::Slider,
+            limits_enabled: true,
+            limit_min: -0.4,
+            limit_max: 0.9,
+            ..PhysicsJoint::default()
+        },
+        t,
+    ));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+    assert_eq!(
+        kinds(&hs),
+        vec![PointHandleKind::LimitMin, PointHandleKind::LimitMax],
+        "a rail has a stroke and no ring: got {hs:?}"
+    );
+    let at = |k: PointHandleKind| hs.iter().find(|h| h.kind == k).expect("grip").world;
+    for (k, want) in [
+        (PointHandleKind::LimitMin, [2.0f32, 3.0 - 0.4]),
+        (PointHandleKind::LimitMax, [2.0, 3.0 + 0.9]),
+    ] {
+        let p = at(k);
+        assert!(
+            (p[0] - want[0]).abs() < 1e-3 && (p[1] - want[1]).abs() < 1e-3,
+            "{k:?} must sit at anchor + axis*limit = {want:?}, got {p:?}"
+        );
+    }
+}

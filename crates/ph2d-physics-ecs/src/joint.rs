@@ -383,11 +383,52 @@ impl PhysicsJoint {
     /// its default stroke four times a second, a number nobody typed. The kind
     /// change re-seeds through here whenever [`JointKind::motor_in_metres`]
     /// flips.
+    ///
+    /// ⚠️ **A winch's default is NEGATIVE, and that is not a taste — it is the
+    /// only direction with anywhere to go.** A rope's free degree of freedom is
+    /// its length, bounded by `[0, max_length]`, and a hanging load sits at
+    /// **exactly** `max_length`: a positive rate means *pay out*, which the rope's
+    /// own limit already forbids. Measured, told `+0.5`: the load stays at
+    /// `y = 4.000` for five seconds, at every `max_force` — so switching a rope's
+    /// motor on and pressing Play did nothing at all, and both its knobs read as
+    /// broken (reported by Enio, 2026-07-26: *"Velocity parâmetros Speed e Max
+    /// Force não afetam a simulação"*). Told `-0.5` the same rig reels: 4.489 →
+    /// 4.980 → 5.470 → 5.960 → 6.000, a metre every two seconds until the rope
+    /// runs out. A default that is a no-op from the state the artist starts in is
+    /// a knob that looks dead.
     pub fn default_motor_speed(kind: JointKind) -> f32 {
-        if kind.motor_in_metres() {
-            Self::DEFAULT_LINEAR_MOTOR_SPEED
-        } else {
-            Self::DEFAULT_MOTOR_SPEED
+        match kind {
+            // Reel IN: see above.
+            JointKind::Rope => -Self::DEFAULT_LINEAR_MOTOR_SPEED,
+            k if k.motor_in_metres() => Self::DEFAULT_LINEAR_MOTOR_SPEED,
+            _ => Self::DEFAULT_MOTOR_SPEED,
+        }
+    }
+
+    /// **A joint of `kind`, with every unit-carrying number seeded in THAT
+    /// kind's own unit.**
+    ///
+    /// [`Self::default`] cannot do this — it has no kind to ask — so it seeds the
+    /// Pin's: `±45°` of range and `2 rad/s` of motor. Read as a Slider those are
+    /// **±0.785 metres** of stroke and **2 m/s** of carriage, and read as a Rope
+    /// the speed is 2 m/s of winch. Numbers nobody typed, in a joint the artist
+    /// just created.
+    ///
+    /// ⚠️ **The kind CHANGE has re-seeded through the same doors since W-J5, and
+    /// creation did not** — `create_joint` built `PhysicsJoint { kind,
+    /// ..default() }`, so "Join As = Slider" and "make a Pin then switch it to
+    /// Slider" produced different joints. Two ways to reach one state that
+    /// disagree is the shape this whole file keeps refusing; this is the one
+    /// door both now take.
+    #[must_use]
+    pub fn of_kind(kind: JointKind) -> Self {
+        let [lo, hi] = Self::default_limits(kind);
+        Self {
+            kind,
+            limit_min: lo,
+            limit_max: hi,
+            motor_speed: Self::default_motor_speed(kind),
+            ..Self::default()
         }
     }
 

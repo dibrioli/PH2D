@@ -211,3 +211,92 @@ fn a_pin_has_no_length_to_pose() {
     write_length(&mut sim, j, 3.0);
     assert_eq!(*sim.world().get::<PhysicsJoint>(j).expect("joint"), before);
 }
+
+// ── W-J6b: a rail's stroke is a LENGTH, and the grips had it as an angle ──────
+
+/// A **Slider** at the origin whose rail runs along `+X`, with a stroke.
+fn rail(min_m: f32, max_m: f32) -> (SimWorld, Entity) {
+    let (mut sim, j) = hinge(0.0, 0.0);
+    if let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(j) {
+        c.kind = JointKind::Slider;
+        c.limit_min = min_m;
+        c.limit_max = max_m;
+    }
+    (sim, j)
+}
+
+/// The pair as the COMPONENT holds it — metres for a rail, so no conversion.
+fn limits_m(sim: &SimWorld, j: Entity) -> (f32, f32) {
+    let c = sim.world().get::<PhysicsJoint>(j).expect("joint");
+    (c.limit_min, c.limit_max)
+}
+
+/// **Posing a rail's stroke writes METRES — and the bug it replaces was a
+/// runaway, not a wrong number.**
+///
+/// `write_limit` used to convert to degrees unconditionally, while the shell's
+/// `limit_in` takes a Slider's value **verbatim as metres**: dragging to 0.8 m
+/// stored `45.8`, which moved the grip 45 m down the rail, which the next frame
+/// re-read — Enio's *"loop sem fim"*, ending in an app that stopped answering.
+///
+/// So the oracle is two claims, and the second is the one that names the defect:
+/// the value is the metres that were posed, **and posing the same place twice is
+/// a fixed point**. A conversion that is merely wrong would satisfy neither, but
+/// a conversion that is wrong *and stable* would satisfy the second alone.
+///
+/// Mutation: `write_limit` converting with `.to_degrees()` again — RED, 0.8 m
+/// stores 45.837 and the second pose stores 2626.
+#[test]
+fn posing_a_rails_stroke_writes_metres_and_is_a_fixed_point() {
+    let (mut sim, j) = rail(-1.0, 1.0);
+    for want in [0.2_f32, 0.8, -0.55] {
+        // Pose it twice from the SAME place: a unit error compounds, a correct
+        // conversion lands on the same number both times.
+        write_limit(&mut sim, j, PointHandleKind::LimitMax, want.max(-0.9));
+        let (_, first) = limits_m(&sim, j);
+        write_limit(&mut sim, j, PointHandleKind::LimitMax, want.max(-0.9));
+        let (_, again) = limits_m(&sim, j);
+        assert!(
+            (first - want.max(-0.9)).abs() < 1e-4,
+            "posed {want} m, the component reads {first}"
+        );
+        assert!(
+            (first - again).abs() < 1e-6,
+            "posing the same place twice has to be a fixed point: {first} -> {again}"
+        );
+    }
+}
+
+/// **A stroke is never UNWRAPPED**, because a length has no turns.
+///
+/// The unwrap exists so a hinge's wall dragged across the ±pi cut moves by the
+/// small amount the cursor moved. Applied to a rail it would teleport an end by
+/// 6.28 m every 3.14 m of travel — the same code doing the right thing for one
+/// unit and something absurd for the other.
+///
+/// Mutation: dropping the `limits_in_metres` branch in `write_limit` — RED, the
+/// end lands at −2.28 m instead of 4.0.
+#[test]
+fn a_rails_stroke_is_not_unwrapped_because_a_length_has_no_turns() {
+    let (mut sim, j) = rail(-0.2, 0.2);
+    write_limit(&mut sim, j, PointHandleKind::LimitMax, 4.0);
+    let (_, hi) = limits_m(&sim, j);
+    assert!(
+        (hi - 4.0).abs() < 1e-4,
+        "a stroke end posed at 4 m has to be 4 m, got {hi}"
+    );
+}
+
+/// **And a hinge is unaffected** — the control, so the two branches above cannot
+/// be satisfied by a `write_limit` that simply stopped converting.
+#[test]
+fn a_hinges_wall_still_speaks_degrees_at_the_boundary() {
+    let (mut sim, j) = hinge(-90.0, 90.0);
+    write_limit(&mut sim, j, PointHandleKind::LimitMax, 0.5);
+    let c = sim.world().get::<PhysicsJoint>(j).expect("joint");
+    assert!(
+        (c.limit_max - 0.5).abs() < 1e-4,
+        "a hinge posed at 0.5 rad stores 0.5 rad, got {}",
+        c.limit_max
+    );
+}

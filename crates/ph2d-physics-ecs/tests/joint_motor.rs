@@ -211,3 +211,85 @@ fn a_rewind_re_arms_the_servo() {
         "the servo has to have lifted the arm at all, got {live:.3}"
     );
 }
+
+/// **Uma winch recém-criada RECOLHE no seu default** — e o default anterior era
+/// um no-op.
+///
+/// Report do Enio (2026-07-26): *"Em Rope:Motor:ON: Velocity parâmetros Speed e
+/// Max Force não afetam a simulação"*. Era fiel: a corda vive em `[0, max_length]`
+/// e uma carga pendurada senta EXATAMENTE em `max_length`, então uma taxa positiva
+/// pede *soltar* — que o próprio limite da corda já proíbe. Os dois knobs pareciam
+/// mortos porque nada se movia em direção nenhuma.
+///
+/// O oráculo tem as duas metades: o default **levanta**, e a taxa oposta (a que
+/// era o default) **não move nada**. Sem a segunda o gate ficaria verde num mundo
+/// onde qualquer motor levanta e o sinal não significa coisa alguma.
+///
+/// Mutação: `default_motor_speed(Rope)` sem o sinal — RED, a carga fica em 5,000.
+#[test]
+fn a_fresh_winch_reels_in_at_its_default_speed() {
+    let winch = |speed: f32| PhysicsJoint {
+        max_length: 1.0,
+        motor_enabled: true,
+        motor_speed: speed,
+        ..PhysicsJoint::of_kind(JointKind::Rope)
+    };
+    let mut b = PhysicsBridge::new();
+    let mut sim = rig(
+        winch(PhysicsJoint::default_motor_speed(JointKind::Rope)),
+        0.0,
+    );
+    let hauled = arm_y(&mut sim, &mut b, 0, 180);
+    assert!(
+        hauled > 5.6,
+        "o default de uma winch tem de RECOLHER a carga (o gancho está em y=6), \
+         got {hauled:.3}"
+    );
+    // A metade que nomeia o mecanismo: a taxa OPOSTA — a que era o default — não
+    // move nada, porque a corda já está no comprimento máximo dela.
+    let mut b2 = PhysicsBridge::new();
+    let paid_out = arm_y(
+        &mut rig(winch(PhysicsJoint::DEFAULT_LINEAR_MOTOR_SPEED), 0.0),
+        &mut b2,
+        0,
+        180,
+    );
+    assert!(
+        (paid_out - 5.0).abs() < 0.1,
+        "soltar corda que já está toda solta não move nada, got {paid_out:.3}"
+    );
+}
+
+/// **Um joint nasce com os números da SUA unidade** — e nascer e trocar de tipo
+/// chegam ao mesmo lugar.
+///
+/// `PhysicsJoint::default()` não tem tipo a que perguntar, então ele semeia os do
+/// Pin: ±45° de faixa e 2 rad/s de motor. Lidos como Slider isso é **±0,785
+/// metros** de curso e **2 m/s** de carrinho. A troca de tipo re-semeia por essas
+/// portas desde o W-J5; a CRIAÇÃO não semeava, então *"Join As = Slider"* e
+/// *"faça um Pin e troque para Slider"* produziam joints diferentes.
+///
+/// Mutação: `of_kind` voltando a `Self { kind, ..default() }` — RED nas duas
+/// metades.
+#[test]
+fn a_joint_is_born_with_its_own_kinds_numbers() {
+    let rail = PhysicsJoint::of_kind(JointKind::Slider);
+    assert!(
+        (rail.limit_max - PhysicsJoint::DEFAULT_STROKE).abs() < 1e-6,
+        "um trilho nasce com curso em METROS, got {}",
+        rail.limit_max
+    );
+    assert!(
+        (rail.motor_speed - PhysicsJoint::DEFAULT_LINEAR_MOTOR_SPEED).abs() < 1e-6,
+        "e com velocidade em m/s, got {}",
+        rail.motor_speed
+    );
+    assert!(
+        PhysicsJoint::of_kind(JointKind::Rope).motor_speed < 0.0,
+        "uma winch nasce recolhendo"
+    );
+    // O CONTROLE: uma dobradiça continua nascendo em radianos.
+    let hinge = PhysicsJoint::of_kind(JointKind::Pin);
+    assert!((hinge.limit_max - PhysicsJoint::DEFAULT_LIMIT).abs() < 1e-6);
+    assert!((hinge.motor_speed - PhysicsJoint::DEFAULT_MOTOR_SPEED).abs() < 1e-6);
+}

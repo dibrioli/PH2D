@@ -498,64 +498,8 @@ fn a_joint_whose_anchors_coincide_is_still_visible() {
 #[path = "physics_overlay_joint_pose_tests.rs"]
 mod pose_tests;
 
-/// **O trilho de um Slider corre pelo EIXO, e os tracinhos ficam nos fins de
-/// curso** (W-J5).
-///
-/// O oráculo é a FORMA: com o eixo em 45° a nuvem de pontos tem de se espalhar
-/// nos dois eixos de tela em proporções iguais, e com o eixo horizontal a
-/// dispersão vertical cai ao tamanho dos tracinhos. Um trilho que ignorasse
-/// `JointView::axis` desenharia o mesmo horizontal nos dois casos.
-///
-/// ⚠️ Mede-se DISPERSÃO e não um ponto: os fins de curso são mundo (crescem com o
-/// zoom) e os tracinhos são tela, então nenhum ponto isolado é uma coordenada
-/// estável — a razão entre as duas extensões é.
-#[test]
-fn the_slider_rail_runs_along_its_axis() {
-    let rail = |axis: [f32; 2]| {
-        let mut v = view(JointKind::Slider);
-        v.axis = Some(axis);
-        v.limits = Some([-0.5, 0.5]);
-        let pts = points_of(&marks(&v), JOINT_RGBA);
-        let (xs, ys): (Vec<f64>, Vec<f64>) = pts.iter().copied().unzip();
-        let span = |v: &[f64]| {
-            v.iter().copied().fold(f64::MIN, f64::max) - v.iter().copied().fold(f64::MAX, f64::min)
-        };
-        (span(&xs), span(&ys))
-    };
-    let d = std::f32::consts::FRAC_1_SQRT_2;
-    let (dx, dy) = rail([d, d]);
-    assert!(
-        (dx / dy - 1.0).abs() < 0.25,
-        "um trilho a 45 graus se espalha igual nos dois eixos: {dx} x {dy}"
-    );
-    let (hx, hy) = rail([1.0, 0.0]);
-    assert!(
-        hx > hy * 3.0,
-        "um trilho horizontal e largo e baixo (a altura sao os tracinhos): {hx} x {hy}"
-    );
-}
-
-/// **Sem curso não há tracinhos** — eles afirmam onde o movimento PARA, e um
-/// trilho ilimitado não para em lugar nenhum.
-///
-/// Mutação: desenhar os tracinhos sempre ⇒ o ilimitado passa a ter a mesma
-/// altura do limitado e isto fica vermelho.
-#[test]
-fn an_unlimited_rail_has_no_end_stops() {
-    let mut v = view(JointKind::Slider);
-    v.axis = Some([1.0, 0.0]);
-    let height = |v: &JointView| {
-        let pts = points_of(&marks(v), JOINT_RGBA);
-        let ys: Vec<f64> = pts.iter().map(|p| p.1).collect();
-        ys.iter().copied().fold(f64::MIN, f64::max) - ys.iter().copied().fold(f64::MAX, f64::min)
-    };
-    v.limits = None;
-    let free = height(&v);
-    v.limits = Some([-0.5, 0.5]);
-    let capped = height(&v);
-    assert!(
-        capped > free + 4.0,
-        "os tracinhos de fim de curso tem de acrescentar altura: livre {free} vs \
-         limitado {capped}"
-    );
-}
+/// Os gates do TRILHO (Slider), irmão próprio pelo cap de 600 LOC da shell — e o
+/// corte é por assunto: tudo aqui é sobre a figura que um `JointKind::Slider`
+/// desenha, que é a única cujo alcance é uma DISTÂNCIA e não um ângulo.
+#[path = "physics_overlay_joint_rail_tests.rs"]
+mod rail_tests;

@@ -5170,3 +5170,88 @@ onde tirar a escala; um servo, que mira um LUGAR, **tem**: é candidato natural 
 alça, e é wave própria) · `MotorModel` Force×Acceleration segue não exposto (knob
 de engenheiro) · a Rope não tem row de limite, então o guincho pode recolher além
 do que a cena quer — o `max_length` é o teto, não um piso.
+
+### W-J6b — os dois reports do smoke da 48 (2026-07-26, mesma cena, pendente de re-smoke)
+
+Enio: *"Em Rope:Motor:ON: Velocity parâmetros Speed e Max Force não afetam a
+simulação. Mode:Position OK"* · *"Slider: as alças de rotação se movidas criam um
+loop sem fim e quebra o app"*. São dois defeitos com a MESMA forma — **uma
+unidade que mudou de significado e não avisou quem a lia** — e o segundo é um
+sobrevivente do W-J5, não desta wave.
+
+#### (1) A winch não fazia nada, e o modelo estava certo
+
+Medido: uma corda vive em `[0, max_length]` e uma carga pendurada senta
+**exatamente** em `max_length`, então uma taxa POSITIVA pede *soltar* — que o
+próprio limite da corda já proíbe. Told `+0.5`: `y = 4.000` por cinco segundos,
+**em qualquer `max_force`**, o que faz os dois knobs lerem como mortos de uma vez.
+Told `-0.5`: 4.489 → 4.980 → 5.470 → 5.960 → 6.000.
+
+`default_motor_speed(Rope)` passa a ser **negativo**. ⚠️ E o sinal continua sendo
+o do grau de liberdade, não um segundo vocabulário só para a corda: inverter o
+significado de "positivo" num tipo seria a segunda convenção no mesmo campo que
+este arquivo recusa em todo lugar. O que muda é o DEFAULT, porque *um default que
+é no-op a partir do estado em que o artista começa é um knob que parece quebrado*.
+
+⚠️ **E a busca pelo default achou um terceiro defeito, pré-existente do W-J5:**
+`create_joint` construía `PhysicsJoint { kind, ..default() }` — os números do
+**Pin**. *"Join As = Slider"* dava um trilho com **±0,785 metros** de curso (os
+±45° lidos como comprimento) enquanto *"faça um Pin e troque para Slider"* dava
+±0,5. A troca de tipo re-semeava desde o W-J5; a criação não. Porta única nova
+**`PhysicsJoint::of_kind(kind)`**, usada pelas DUAS rotas.
+
+**Corner NOMEADO, não consertado:** Slider→Rope preserva a velocidade (mesma
+unidade, e preservar é a promessa), então um +0,5 de trilho vira um guincho que
+não recolhe. A regra que temos — *"mesma unidade, seu número sobrevive"* — é a
+certa; a alternativa pediria uma regra sobre o SIGNIFICADO do sinal por tipo.
+
+#### (2) O trilho estava com as alças de uma dobradiça
+
+Quando o Slider chegou (W-J5), `JointView::limits` deixou de significar *"uma
+faixa angular"* e passou a significar *"a faixa do grau de liberdade livre, na
+unidade DO TIPO"*. **Três leitores nunca foram avisados**, e o doc do campo ainda
+dizia `[JointKind::Pin]`:
+
+1. o overlay pintava o **arco** de limite para qualquer joint com faixa — o anel
+   da foto do Enio, uma dobradiça a 0,5 radiano por cima de um trilho vertical;
+2. `joint_param_handles` publicava as duas alças **nesse arco**, a 21 px de tela
+   do centro, apontando para onde o trilho não vai;
+3. `write_limit` convertia com `.to_degrees()` **incondicionalmente**, enquanto o
+   `limit_in` do shell toma o valor de um Slider **verbatim em metros**.
+
+O (3) é o *"loop sem fim"*: arrastar escrevia ~45 **metros** de curso, o que movia
+a alça 45 m trilho abaixo, o que o frame seguinte relia — realimentação positiva,
+terminando num trilho de centenas de metros e num app que parou de responder.
+
+**A cura completa o W-J3 para o trilho** em vez de só remover o que estava
+quebrado: um curso é uma DISTÂNCIA, então as alças ficam **no trilho**, em
+`anchor + eixo·limite` — exatamente onde `slider_rail` já desenha os tracinhos de
+fim de curso, e sem escala nenhuma a inventar (a mesma razão pela qual o anel de
+comprimento não precisa de uma). `Grab::Along` é o irmão de `Grab::Radius`; o
+`unwrap_near` (que é uma noção de VOLTAS) passa a valer só no ramo angular; e a
+saída sai pela porta `inspector_joint::limit_out`, a MESMA que o snapshot do §12
+usa, para que uma alça posada e um número digitado não possam significar coisas
+diferentes.
+
+**7 gates novos, 7 mutações, 7 sangram.** ⚠️ **Dois defeitos meus nos próprios
+gates, os dois pegos por medição e não por leitura:**
+
+- o gate do arco nasceu VERMELHO sobre produto CERTO — ele exigia **zero** ponto
+  na banda apagada, e as linhas de posse também são pintadas nela. O oráculo certo
+  é a CONTRIBUIÇÃO da faixa (a mesma view com e sem `limits`);
+- o gate de *"criar e converter chegam ao mesmo joint"* era **VERDE POR
+  CONSTRUÇÃO**: ele comparava `joint_with_edit(…)` com `of_kind(…)`, e o re-seed
+  da troca de tipo **lê** o `of_kind` — neutralizar essa função adoecia os dois
+  lados igualmente. Uma razão entre dois doentes, escrita na mesma sessão em que
+  documentei o padrão três vezes. Agora cada rota é comparada com a CONSTANTE que
+  deve produzir, e a igualdade entre elas é a terceira asserção em vez da única.
+
+**Nenhum schema, nenhum id, nenhum componente novo** (`PROJECT_SCHEMA` fica **32**,
+registro **21**) e o **c9 sai byte-idêntico** (`c9d4baee…`, 87) — a cena dele não
+tem guincho nem alça. LOC: `physics_overlay_joints_tests.rs` bateu 608 ⇒ split por
+assunto em `physics_overlay_joint_rail_tests.rs`.
+
+**Re-smoke: `PH2D_PHYSICS_SMOKE=48`** — o passo 4 ganhou a metade da Velocity (a
+Speed do guincho nasce **negativa**, e digitar +0,5 não move nada, de propósito), e
+o trilho do 'Shaft Rail' agora tem **duas alças sobre a própria reta**: arraste uma
+e o fim de curso anda em metros, sem anel e sem fuga.

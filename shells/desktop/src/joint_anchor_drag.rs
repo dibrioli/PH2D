@@ -71,6 +71,22 @@ enum Grab {
     /// Length ring: the signed difference between the ring's radius and the
     /// cursor's distance from the anchor.
     Radius(f32),
+    /// **Stroke end of a rail:** the signed difference between the end's
+    /// position along the axis and the cursor's projection onto it, metres.
+    ///
+    /// ⚠️ A Slider's limits are a *distance*, not an angle — the same split
+    /// `JointKind::limits_in_metres` makes for the §12 rows, arriving at the
+    /// canvas. Reusing [`Grab::Angle`] for them is what shipped a grip that
+    /// authored a bearing into a field read as metres (see `write_limit`).
+    Along(f32),
+}
+
+/// How far along `axis` from `origin` the point `p` lies, metres. The rail's
+/// coordinate — the projection is exactly the number the stroke is measured in,
+/// so a grip on it needs no scale to invent (the same reason the length ring's
+/// radius needs none).
+fn along_axis(origin: [f32; 2], axis: [f32; 2], p: [f32; 2]) -> f32 {
+    (p[0] - origin[0]) * axis[0] + (p[1] - origin[1]) * axis[1]
 }
 
 /// Snap radius in **screen** pixels, converted to world at the current zoom so
@@ -121,6 +137,14 @@ pub(crate) fn open_drag(
         let held = param_value(&v, kind)?;
         match kind {
             PointHandleKind::Length => Grab::Radius(held - distance(v.anchor_a, cursor)),
+            // A rail's stroke is a LENGTH along the axis, so the grab offset is
+            // one too. Asking `limits_in_metres` — the same door the row's label
+            // and the shell's conversion ask — is what keeps the three from
+            // disagreeing about what the number is.
+            _ if v.kind.limits_in_metres() => {
+                let axis = v.axis?;
+                Grab::Along(held - along_axis(v.anchor_a, axis, cursor))
+            }
             // The wall's bearing minus the cursor's, so the wall does not jump
             // to the cursor on press.
             _ => Grab::Angle(wrap_pi((v.angle_a + held) - bearing(v.anchor_a, cursor))),
@@ -244,26 +268,52 @@ impl App {
                 write_length(&mut gfx.sim, entity, len);
                 None
             }
+            Grab::Along(off) => {
+                // The axis comes from the view the overlay DREW the rail from —
+                // a second derivation here would move the grip off the line the
+                // artist is looking at.
+                if let Some(v) = gfx.physics.joint_views().find(|v| v.entity == entity)
+                    && let Some(axis) = v.axis
+                {
+                    let t = along_axis(v.anchor_a, axis, cursor) + off;
+                    write_limit(&mut gfx.sim, entity, drag.kind, t);
+                }
+                None
+            }
         };
         self.joint_anchor_drag = Some(drag);
     }
 }
 
-/// **Pose one wall of the limit arc**, in radians relative to body A.
+/// **Pose one end of the range** — a wall of a hinge's arc (radians relative to
+/// body A) or an end of a rail's stroke (metres along the axis).
 ///
-/// Two decisions live here, and both are about what an ARC is.
+/// `raw` arrives in the COMPONENT's own unit, whichever that is; the conversion
+/// to what the §12 row shows happens here, through
+/// [`crate::render_loop::inspector_joint::limit_out`] — the same function the
+/// snapshot uses. Three decisions live here.
 ///
-/// ⚠️ **The dragged wall is UNWRAPPED against the value it is replacing**, so
-/// crossing the ±pi cut moves the wall by the small amount the cursor moved
-/// rather than jumping a whole turn to the other side of the arc.
+/// ⚠️ **The dragged wall is UNWRAPPED against the value it is replacing, and
+/// only when it is an ANGLE.** Crossing the ±pi cut has to move the wall by the
+/// small amount the cursor moved rather than jumping a whole turn to the other
+/// side of the arc — but a *stroke* has no turns, and unwrapping one would teleport
+/// a rail's end by 6.28 m at every 3.14 m of travel.
 ///
-/// ⚠️ **A wall STOPS at its sibling; it never passes it.** `PhysicsJoint::clamped`
+/// ⚠️ **An end STOPS at its sibling; it never passes it.** `PhysicsJoint::clamped`
 /// *swaps* inverted limits — correct for a typed pair (a hinge limited to
 /// `min > max` is a weld nobody asked for), and wrong for a gesture: the swap
-/// would hand the artist the OTHER wall mid-drag, and the hand that was widening
-/// the arc would start narrowing it with nothing on screen saying why. A wall
-/// that stops is what every editor with a range does, and it is what the arc
-/// itself shows: the two ends cannot cross.
+/// would hand the artist the OTHER end mid-drag, and the hand that was widening
+/// the range would start narrowing it with nothing on screen saying why. An end
+/// that stops is what every editor with a range does, and it is what the arc and
+/// the rail both show: the two ends cannot cross.
+///
+/// ⚠️ **The UNIT is the kind's, and getting that wrong is what this fixed.**
+/// Until 2026-07-26 this wrote `walled.to_degrees()` unconditionally, while the
+/// shell's `limit_in` takes a Slider's value **verbatim as metres** — so dragging
+/// a rail's grip wrote ~45 *metres* of stroke, which moved the grip, which the
+/// next frame re-read, which wrote more: a runaway that ended in a rail hundreds
+/// of metres long and an app that stopped answering (Enio, 2026-07-26: *"as alças
+/// de rotação se movidas criam um loop sem fim e quebra o app"*).
 fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKind, raw: f32) {
     let Some(&current) = sim.world().get::<PhysicsJoint>(joint) else {
         return;
@@ -272,16 +322,23 @@ fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKin
         PointHandleKind::LimitMin => (current.limit_min, current.limit_max),
         _ => (current.limit_max, current.limit_min),
     };
-    let want = unwrap_near(raw, held);
+    let want = if current.kind.limits_in_metres() {
+        raw
+    } else {
+        unwrap_near(raw, held)
+    };
     let walled = if matches!(kind, PointHandleKind::LimitMin) {
         want.min(other)
     } else {
         want.max(other)
     };
+    // Out through the SAME door the §12 row reads its value from, so a posed
+    // limit and a typed one cannot mean different things.
+    let ui = crate::render_loop::inspector_joint::limit_out(current.kind, walled);
     let edit = if matches!(kind, PointHandleKind::LimitMin) {
-        JointFieldEdit::LimitMin(walled.to_degrees())
+        JointFieldEdit::LimitMin(ui)
     } else {
-        JointFieldEdit::LimitMax(walled.to_degrees())
+        JointFieldEdit::LimitMax(ui)
     };
     write_edit(sim, joint, current, edit);
 }

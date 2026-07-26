@@ -259,7 +259,11 @@ impl crate::App {
                   tem rows de limite -- por isso a unidade do MOTOR e uma pergunta\n     \
                   separada da unidade dos LIMITES.\n  \
                4. Mude o Target do 'Winch' para 1.5 e de Play: a carga desce e para\n     \
-                  a 1,5 m do gancho. O guincho SEGURA -- nao e um empurrao.\n  \
+                  a 1,5 m do gancho. O guincho SEGURA -- nao e um empurrao. Ponha\n     \
+                  o Mode em **Velocity** e a Speed nasce NEGATIVA (-0,5 m/s): num\n     \
+                  guincho o sinal e a direcao, e a corda ja esta toda solta, entao\n     \
+                  a unica direcao com para onde ir e RECOLHER. Digite +0,5 e nada\n     \
+                  se move -- o limite da propria corda ja proibe soltar mais.\n  \
                5. ARME UM A MAO (a estrela): selecione 'Bare Hub' e 'Bare Arm', aperte\n     \
                   **Join Selected Bodies** (Join As = Pin). A joint nova ja nasce\n     \
                   selecionada: ligue **Motor**, escolha **Position**, digite 90 no\n     \

@@ -173,6 +173,16 @@ camadas finas de intent+UI.
 
 ## §6 — Extrapolação por-track: loopOut / cycle / pingpong / continue (Wave B)
 
+> **✅ CONSTRUÍDA (2026-07-26, pendente de smoke).** Motor `ph2d-anim::extrap`
+> (`Extrap{Hold,Loop,PingPong,Continue}` + `ExtrapSide`, `Track::pre/post`,
+> consultado no flat-clamp de `Track::sample`) · intent `SetTrackExtrap` (edit(),
+> nunca strip) · UI = duas cascatas no menu R-click da row → submenu de 4 modos
+> (`ContextMenuKind::TimelineExtrap`), TimeRemap num menu próprio sem as cascatas.
+> **`DOC_VERSION 13→14`** (PROVISÓRIO — conta na integração). Default Hold/Hold =
+> byte-idêntico, `fade_fingerprint` intacto. Smoke: `PH2D_EXTRAP_SMOKE=1`. Gates:
+> `extrapolation.rs` (motor) · clock TimeRemap-inert · `track_extrapolation.rs`
+> (compose strip-Loop × track-loopOut) · `extrapolation_seam.rs` (UI).
+
 - **O QUE:** além dos keys, o track **CICLA** (loop) / **PINGPONG** / **CONTINUA**
   (extensão linear pelas tangentes de borda) / **SEGURA** (Hold — o comportamento de
   hoje). **Pre e Post independentes** (o loopIn/loopOut do AE, o *Pre/Post Infinity*

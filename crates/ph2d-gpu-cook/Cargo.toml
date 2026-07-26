@@ -107,6 +107,8 @@ ph2d-node-value-wrap = { path = "../ph2d-node-value-wrap" }
 ph2d-node-value-time = { path = "../ph2d-node-value-time" }
 # The value-domain derivative (discrete slope across index; the smooth's high-pass sibling).
 ph2d-node-value-slope = { path = "../ph2d-node-value-slope" }
+# The value-domain non-linear filter (windowed median; spike removal, edge-preserving).
+ph2d-node-value-median = { path = "../ph2d-node-value-median" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

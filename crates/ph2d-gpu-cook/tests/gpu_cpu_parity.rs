@@ -66,6 +66,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_wrap::register(&mut reg).unwrap();
     ph2d_node_value_time::register(&mut reg).unwrap();
     ph2d_node_value_slope::register(&mut reg).unwrap();
+    ph2d_node_value_median::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3725,6 +3726,88 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the slope drove nothing"
+    );
+}
+
+/// **`value.median` runs fully on the GPU and matches the CPU, BIT-exactly.** The
+/// order-statistic filter reads a WINDOW off `in_v` (the `value.smooth` pattern,
+/// `ReadWrite`) and SELECTS the r-th value — the CPU sorts the window, the device
+/// counts ranks, and both pick the SAME sample.
+///
+/// ⚠️ **The input is `value.pattern`, deliberately, NOT `value.noise`.** A median
+/// selecting on an ε-different input is NOT ε-safe: if two window samples are
+/// ε-close and straddle the rank boundary, the two devices pick DIFFERENT samples,
+/// diverging by the GAP between order statistics (>> ε), not by ε. So the fixture
+/// needs a **bit-identical** input — `value.pattern` is a param passthrough, exact
+/// on both devices — and then the selection is bit-exact and the output is too
+/// (`scale = 2.0` is an exact multiply, so the drive adds no rounding). A REPEATING
+/// pattern also fills the windows with equal values, exercising the tie-break path
+/// (rank by window position) that a continuous field never would.
+/// `is_fully_gpu` PROVES the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_median_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    // A bit-exact repeating field with distinct values → the windows carry ties
+    // (the tie-break path) and the median varies across the row.
+    let pat = g.add_node("value.pattern");
+    g.set_param(pat, "steps", 4.0);
+    g.set_param(pat, "v0", 0.2);
+    g.set_param(pat, "v1", 0.8);
+    g.set_param(pat, "v2", 0.5);
+    g.set_param(pat, "v3", 1.0);
+    connect(&mut g, grid, pat); // read for its count
+    let med = g.add_node("value.median");
+    g.set_param(med, "radius", 2.0); // a 5-sample window
+    connect(&mut g, pat, med);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (med, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("median value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "grid → pattern → median → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.median → drive(Y): col P, max |d| = {worst:e}");
+    // A selected existing sample of a bit-exact input, an exact-multiply drive: the
+    // result is bit-identical, tighter than the ε the arithmetic kernels need. A
+    // wrong rank (min instead of median) or a lost tie-break would diverge by a
+    // whole sample gap, far above 0.
+    assert_eq!(worst, 0.0, "the selected sample must be bit-identical: max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the median drove nothing"
     );
 }
 

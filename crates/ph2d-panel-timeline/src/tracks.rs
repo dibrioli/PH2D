@@ -192,6 +192,9 @@ pub(crate) fn paint_rows(
                         ph2d_timeline::PropKind::Position => TrackMenuKind::Path,
                         ph2d_timeline::PropKind::TranslationX
                         | ph2d_timeline::PropKind::TranslationY => TrackMenuKind::Axis,
+                        // Time Remap is sampled through its own clock, so per-track
+                        // extrapolation is inert on it — a menu without the cascades.
+                        ph2d_timeline::PropKind::TimeRemap => TrackMenuKind::TimeRemap,
                         _ => TrackMenuKind::Plain,
                     },
                 },

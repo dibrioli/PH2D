@@ -25,6 +25,13 @@ pub use ph2d_editor_core::ids::{
 pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_AUTO_ORIENT, CTX_MENU_TL_DELETE_TRACK, CTX_MENU_TL_TO_AXES, CTX_MENU_TL_TO_PATH,
 };
+// Per-track extrapolation menu (crown-jewels plan §6): the two cascade rows, the
+// four mode leaves, and the side wire-encodings.
+pub use ph2d_editor_core::ids::{
+    CTX_MENU_TL_EXTRAP_CONTINUE, CTX_MENU_TL_EXTRAP_HOLD, CTX_MENU_TL_EXTRAP_LOOP,
+    CTX_MENU_TL_EXTRAP_PINGPONG, CTX_MENU_TL_EXTRAP_POST, CTX_MENU_TL_EXTRAP_PRE,
+    TL_EXTRAP_SIDE_POST, TL_EXTRAP_SIDE_PRE,
+};
 // Marker right-click menu (ADR-0143): the pennant's whole edit surface.
 pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_DELETE_MARKER, CTX_MENU_TL_RENAME_MARKER, CTX_MENU_TL_SET_SIGNAL,

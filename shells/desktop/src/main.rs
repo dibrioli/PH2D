@@ -45,6 +45,7 @@ mod audio;
 mod blend_live;
 mod blend_smoke;
 mod buffer_smoke;
+mod extrap_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
 mod build_smoke_drive;
@@ -420,6 +421,7 @@ impl App {
             timescale_smoke_done: false,
             stagger_smoke_done: false,
             buffer_smoke_done: false,
+            extrap_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

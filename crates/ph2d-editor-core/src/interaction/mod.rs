@@ -61,10 +61,11 @@ pub use event::{PainterLayerDrop, WidgetEvent};
 pub use hit::HitIndex;
 pub use state::{InteractiveState, NamedPalette, WidgetStore};
 pub use types::{
-    BlenderHitKind, BufferAction, ContextMenuKind, ContextMenuRequest, GestureMods, GesturePhase,
-    GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData, PaletteIoKind, TIMELINE_EDGE_B,
-    TIMELINE_EDGE_L, TIMELINE_EDGE_R, TIMELINE_EDGE_T, TL_NO_EASE_MODE, TimelineGesture,
-    TimelineHitKind, TimelineInterpPick, TimelineInterpScope, TimelineWheel,
+    BlenderHitKind, BufferAction, GestureMods, GesturePhase, GraphGesture, GraphHitKind, GraphKey,
+    GraphZoom, NoteData, PaletteIoKind, TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R,
+    TIMELINE_EDGE_T, TL_NO_EASE_MODE, TimelineGesture, TimelineHitKind, TimelineInterpPick,
+    TimelineInterpScope, TimelineWheel,
 };
-pub use types_menu::TrackMenuKind;
+// `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
+pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};
 pub use util::{format_number, hsv_to_color_value};

@@ -92,11 +92,66 @@ pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 8] = [
 /// one undo step (`TimelineIntent::Unbind`).
 pub const CTX_MENU_TL_DELETE_TRACK: NodeId = hash_node_id("ctx_menu_tl_delete_track");
 
-/// The track-row menu, in paint order. One table, three consumers — the
-/// overlay paints it, `pre_populate` registers it, and the timeline panel's
-/// `apply_event` resolves every row (a row added here and unhandled there is a
-/// menu item that silently does nothing — the bug this table shape prevents).
-pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
+// ── Timeline per-track EXTRAPOLATION (crown-jewels plan §6) ─────────────────
+// Two cascade rows on every track menu (except Time Remap) REPLACE it with the
+// four-mode submenu, carrying the row's target + the side they stand for — the
+// same replace-the-parent cascade the segment ease menu uses. The panel owns the
+// `ph2d_anim::Extrap` vocabulary, so it opens the submenu and resolves the modes.
+/// Cascade row: what the track does BEFORE the first key (loopIn).
+pub const CTX_MENU_TL_EXTRAP_PRE: NodeId = hash_node_id("ctx_menu_tl_extrap_pre");
+/// Cascade row: what the track does AFTER the last key (loopOut).
+pub const CTX_MENU_TL_EXTRAP_POST: NodeId = hash_node_id("ctx_menu_tl_extrap_post");
+
+/// Wire encoding of the extrapolation SIDE, carried in
+/// `ContextMenuKind::TimelineExtrap` from the cascade row that opened the submenu.
+/// Opaque to editor-core; the panel decodes it into an `ExtrapSide`.
+pub const TL_EXTRAP_SIDE_PRE: u8 = 0;
+/// After the last key — see [`TL_EXTRAP_SIDE_PRE`].
+pub const TL_EXTRAP_SIDE_POST: u8 = 1;
+
+/// Submenu leaf: flat-clamp (hold the boundary value — the default).
+pub const CTX_MENU_TL_EXTRAP_HOLD: NodeId = hash_node_id("ctx_menu_tl_extrap_hold");
+/// Submenu leaf: cycle the range end-to-end.
+pub const CTX_MENU_TL_EXTRAP_LOOP: NodeId = hash_node_id("ctx_menu_tl_extrap_loop");
+/// Submenu leaf: reflect back and forth across the range.
+pub const CTX_MENU_TL_EXTRAP_PINGPONG: NodeId = hash_node_id("ctx_menu_tl_extrap_pingpong");
+/// Submenu leaf: linear extension along the boundary slope.
+pub const CTX_MENU_TL_EXTRAP_CONTINUE: NodeId = hash_node_id("ctx_menu_tl_extrap_continue");
+
+/// The two extrapolation cascade rows shared by the plain/axis/path track menus,
+/// so they read identically wherever they appear. Time Remap does not include them.
+pub const TIMELINE_EXTRAP_CASCADES: [(NodeId, &str, Option<[u8; 4]>); 2] = [
+    (CTX_MENU_TL_EXTRAP_PRE, "Extrapolation Pre \u{25b6}", None),
+    (CTX_MENU_TL_EXTRAP_POST, "Extrapolation Post \u{25b6}", None),
+];
+
+/// The extrapolation-mode submenu (the four `Extrap` modes), shared by both
+/// sides — the side rides in the `ContextMenuKind::TimelineExtrap`. One table,
+/// three consumers: the overlay paints it, `pre_populate` registers it, and the
+/// panel's `event_track_menu::route` resolves each mode.
+pub const TIMELINE_EXTRAP_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
+    (CTX_MENU_TL_EXTRAP_HOLD, "Hold", None),
+    (CTX_MENU_TL_EXTRAP_LOOP, "Loop", None),
+    (CTX_MENU_TL_EXTRAP_PINGPONG, "Ping-Pong", None),
+    (CTX_MENU_TL_EXTRAP_CONTINUE, "Continue", None),
+];
+
+/// The plain track-row menu, in paint order: Delete + the two extrapolation
+/// cascades. One table, three consumers — the overlay paints it, `pre_populate`
+/// registers it, and the timeline panel's `apply_event` resolves every row (a row
+/// added here and unhandled there is a menu item that silently does nothing — the
+/// bug this table shape prevents).
+pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
+    (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    TIMELINE_EXTRAP_CASCADES[0],
+    TIMELINE_EXTRAP_CASCADES[1],
+];
+
+/// The **Time Remap** track menu: Delete only. A Time Remap track is sampled
+/// through its own clock (`remap_through`), so per-track extrapolation is inert —
+/// the menu does not offer it (both halves of the same fact). A table of its own
+/// rather than a conditional row on the plain menu.
+pub const TIMELINE_TIMEREMAP_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
     [(CTX_MENU_TL_DELETE_TRACK, "Delete Track", None)];
 
 /// **Auto-orient** (ADR-0141 §6): o objeto encara a tangente do caminho enquanto o
@@ -112,10 +167,14 @@ pub const CTX_MENU_TL_TO_PATH: NodeId = hash_node_id("ctx_menu_tl_to_path");
 /// elas — a forma da curva é o que o modo de eixos não sabe expressar.
 pub const CTX_MENU_TL_TO_AXES: NodeId = hash_node_id("ctx_menu_tl_to_axes");
 
-/// O menu de uma track de **EIXO** (`TranslationX`/`Y`) — o comum mais a conversão.
-pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 2] = [
+/// O menu de uma track de **EIXO** (`TranslationX`/`Y`) — o comum mais a conversão
+/// mais as duas cascatas de extrapolação (um eixo de posição cicla/reflete como
+/// qualquer canal).
+pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
     (CTX_MENU_TL_TO_PATH, "Convert to Motion Path", None),
+    TIMELINE_EXTRAP_CASCADES[0],
+    TIMELINE_EXTRAP_CASCADES[1],
 ];
 
 /// O menu de uma track de **trajetória** — o de cima mais o auto-orient.
@@ -127,10 +186,12 @@ pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 2] = [
 /// ⚠️ **O `Delete Track` aparece nas DUAS tabelas, e é o mesmo id de propósito**: é a
 /// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
 /// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
-pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
+pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
     (CTX_MENU_TL_AUTO_ORIENT, "Auto-Orient", None),
     (CTX_MENU_TL_TO_AXES, "Convert to Separate Axes", None),
+    TIMELINE_EXTRAP_CASCADES[0],
+    TIMELINE_EXTRAP_CASCADES[1],
 ];
 
 // ── Timeline lane menu (ADR-0115 B5) ────────────────────────────────────────

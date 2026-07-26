@@ -160,6 +160,31 @@ fn a_zero_width_range_holds() {
 }
 
 #[test]
+fn scrubbing_out_of_order_is_bit_exact() {
+    // Extrapolation is a pure function of (keys, t): scrubbing back and forth must
+    // read the SAME bits as sampling each t on a fresh track. The Loop path uses a
+    // cursor-free in-range sampler, so an out-of-range read never corrupts the
+    // forward-play cursor — this pins that.
+    let mut t = ramp();
+    t.set_pre(Extrap::PingPong);
+    t.set_post(Extrap::Loop);
+    let times = [3.5, -1.0, 0.5, 5.0, 1.5, -2.5, 4.0, 0.0, 2.0, 3.0];
+    for &x in &times {
+        let fresh = {
+            let mut f = ramp();
+            f.set_pre(Extrap::PingPong);
+            f.set_post(Extrap::Loop);
+            f.sample(x)
+        };
+        assert_eq!(
+            t.sample(x),
+            fresh,
+            "scrubbed sample at t={x} must equal a fresh sample bit-for-bit"
+        );
+    }
+}
+
+#[test]
 fn extrapolation_survives_the_serde_round_trip() {
     let mut t = ramp();
     t.set_pre(Extrap::PingPong);

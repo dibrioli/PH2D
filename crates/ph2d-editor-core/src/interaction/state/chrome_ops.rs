@@ -9,8 +9,9 @@
 //! pattern.
 
 use super::WidgetStore;
+use crate::interaction::ContextMenuRequest;
 use crate::interaction::InteractiveState;
-use crate::interaction::types::{ContextMenuRequest, NoteData};
+use crate::interaction::types::NoteData;
 use crate::widget::{ButtonState, SliderOrientation, SliderState};
 use ph2d_a11y::NodeId;
 
@@ -136,7 +137,7 @@ impl WidgetStore {
         self.context_menu = Some(ContextMenuRequest {
             x: 0.0,
             y: 0.0,
-            kind: crate::interaction::types::ContextMenuKind::NewImageDialog,
+            kind: crate::interaction::ContextMenuKind::NewImageDialog,
         });
     }
 

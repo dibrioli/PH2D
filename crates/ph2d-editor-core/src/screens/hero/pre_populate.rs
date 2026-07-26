@@ -444,6 +444,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         .chain(ids::TIMELINE_TRACK_MENU.iter())
         .chain(ids::TIMELINE_AXIS_TRACK_MENU.iter())
         .chain(ids::TIMELINE_PATH_TRACK_MENU.iter())
+        .chain(ids::TIMELINE_TIMEREMAP_TRACK_MENU.iter())
+        .chain(ids::TIMELINE_EXTRAP_MENU.iter())
         .chain(ids::TIMELINE_STRIP_MENU.iter())
         .chain(ids::TIMELINE_LANE_MENU.iter())
         .chain(ids::TIMELINE_MARKER_MENU.iter())

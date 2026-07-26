@@ -481,6 +481,7 @@ pub(crate) struct App {
     /// O smoke do stagger/distribute (joias §3) já rodou. `PH2D_STAGGER_SMOKE=1`.
     pub(crate) stagger_smoke_done: bool,
     pub(crate) buffer_smoke_done: bool,
+    pub(crate) extrap_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).
     pub(crate) physics_smoke_done: bool,

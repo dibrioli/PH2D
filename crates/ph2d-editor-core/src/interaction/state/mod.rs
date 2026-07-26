@@ -29,13 +29,14 @@ mod widget_accessors;
 use ph2d_a11y::NodeId;
 use std::collections::BTreeMap;
 
+use super::ContextMenuRequest;
 use super::drag::{
     HierarchyDragState, NumberInputDragState, NumberStepperHoldState, ScrollbarDragAnchor,
 };
 use super::flip_strip::FlipStripHitKind;
 use super::types::{
-    BlenderHitKind, ContextMenuRequest, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData,
-    TimelineGesture, TimelineHitKind, TimelineWheel,
+    BlenderHitKind, GraphGesture, GraphHitKind, GraphKey, GraphZoom, NoteData, TimelineGesture,
+    TimelineHitKind, TimelineWheel,
 };
 use super::util::format_number;
 

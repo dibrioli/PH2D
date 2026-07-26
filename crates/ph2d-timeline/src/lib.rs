@@ -92,6 +92,8 @@ pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop, StripSource, 
 pub use stack_edit::MAX_LANES;
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
-pub use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp, KeyId};
+pub use ph2d_anim::{
+    AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Extrap, ExtrapSide, Interp, KeyId,
+};
 pub use sprite::{SpriteAnimation, SpriteProp, apply_sprite_animations};
 pub use state::{SelectedKey, Selection, TimelineFlags, TimelineState};

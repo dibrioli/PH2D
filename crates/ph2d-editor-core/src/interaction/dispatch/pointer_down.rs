@@ -14,10 +14,9 @@ use super::{
     commit_hex_buffer, commit_number_buffer, init_number_buffer, reset_focused_visual_state,
     select_all_in_text_widget,
 };
+use crate::interaction::ContextMenuKind;
 use crate::interaction::flip_strip::FlipStripGesture;
-use crate::interaction::types::{
-    BlenderHitKind, ContextMenuKind, GesturePhase, GraphGesture, TimelineGesture,
-};
+use crate::interaction::types::{BlenderHitKind, GesturePhase, GraphGesture, TimelineGesture};
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use crate::zones::Rect;
 use bumpalo::collections::Vec as BumpVec;

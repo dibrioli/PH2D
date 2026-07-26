@@ -74,7 +74,7 @@ pub use curve_fit::{FitKey, fit_fcurve, fit_fcurve_at, smooth_values};
 pub use curve_prep::{FitChannel, prepare, unwrap_angles};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
-pub use track::{CurveSnapshot, Extrap, Key, KeyId, RangeSamples, Track};
+pub use track::{CurveSnapshot, Extrap, ExtrapSide, Key, KeyId, RangeSamples, Track};
 
 // Ergonomic re-export of the contracts this crate implements, so consumers can
 // import the trait + value type from one place. The traits themselves stay

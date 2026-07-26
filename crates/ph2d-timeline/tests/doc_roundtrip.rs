@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_twelve() {
+fn schema_version_is_fourteen() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -120,10 +120,15 @@ fn schema_version_is_twelve() {
     // v13 = TIMELINE SIGNALS (ADR-0143): `Marker.signal: Option<String>`, appended —
     //      a marker can carry a named signal that emits a decoupled event when the
     //      play crosses it. `None` is a pure annotation, byte-for-byte what v12 was.
+    // v14 = per-track EXTRAPOLATION (crown-jewels plan §6): `ph2d_anim::Track`'s
+    //      `pre`/`post` (`Extrap`), appended to its serde proxy — loopOut / cycle /
+    //      pingpong / continue beyond the keyed range. Default `Hold` is the
+    //      flat-clamp, so a v13 doc re-reads Hold/Hold and samples byte-for-byte
+    //      as before (the fade fingerprint pin).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 13);
-    assert_eq!(TimelineDoc::new().version, 13);
+    assert_eq!(DOC_VERSION, 14);
+    assert_eq!(TimelineDoc::new().version, 14);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

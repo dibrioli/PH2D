@@ -13,11 +13,21 @@
 //! ⚠️ E uma row que sumiu do snapshot desde que o menu abriu (deletada no meio)
 //! **resolve para nada**: a ação expira com o alvo dela, em vez de acertar outra track.
 
-use ph2d_editor_core::interaction::ContextMenuKind;
+use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_timeline::TimelineIntent;
+use ph2d_timeline::{AnimTarget, Extrap, ExtrapSide, TimelineIntent};
 
 use crate::ids;
+
+/// The parked menu request (open or just-closed). The Down that precedes a menu
+/// Click already CLOSED the menu, parking the request in `last_context_menu` —
+/// reading only `context_menu()` here is how a menu ships doing nothing (the same
+/// gotcha the segment cascade documents).
+fn parked(host: &dyn PanelHostInternal) -> Option<ContextMenuRequest> {
+    host.store()
+        .context_menu()
+        .or_else(|| host.store().last_context_menu())
+}
 
 /// A entidade (e a prop) que a requisição de menu parqueada nomeia, se ela ainda
 /// existir no snapshot. `want_path` escolhe QUAL das duas variantes é aceita — o menu
@@ -27,16 +37,14 @@ fn target_of(
     host: &dyn PanelHostInternal,
     want_path: bool,
 ) -> Option<(u64, ph2d_timeline::PropKind)> {
-    let req = host
-        .store()
-        .context_menu()
-        .or_else(|| host.store().last_context_menu())?;
-    let target = match (req.kind, want_path) {
+    let target = match (parked(host)?.kind, want_path) {
         (ContextMenuKind::TimelineTrackPath { target }, true)
         | (ContextMenuKind::TimelineTrack { target }, false)
         // Uma row de EIXO é "não-trajetória" para efeito de qual menu a pediu: o
         // `Delete Track` dela e o `Convert to Motion Path` vêm da MESMA requisição.
-        | (ContextMenuKind::TimelineTrackAxis { target }, false) => target,
+        | (ContextMenuKind::TimelineTrackAxis { target }, false)
+        // Time Remap só tem o Delete Track (want_path é falso).
+        | (ContextMenuKind::TimelineTrackTimeRemap { target }, false) => target,
         _ => return None,
     };
     crate::state::current_snapshot()
@@ -44,6 +52,27 @@ fn target_of(
         .iter()
         .find(|t| t.target.get() == target)
         .map(|t| (t.entity, t.prop))
+}
+
+/// The RAW `AnimTarget` of the parked track menu — any of the four track menus —
+/// if the row still exists in the snapshot. The extrapolation rows carry the raw
+/// target through to `SetTrackExtrap`, which speaks `AnimTarget` directly (unlike
+/// Delete Track, which resolves to `(entity, prop)` for `Unbind`).
+fn raw_track_target(host: &dyn PanelHostInternal) -> Option<u64> {
+    let target = match parked(host)?.kind {
+        ContextMenuKind::TimelineTrack { target }
+        | ContextMenuKind::TimelineTrackAxis { target }
+        | ContextMenuKind::TimelineTrackPath { target } => target,
+        // Time Remap deliberately excluded: its menu has no extrapolation cascade,
+        // so this is never reached from there — but pinning it keeps the exclusion
+        // honest if a future edit adds the cascade to that table by mistake.
+        _ => return None,
+    };
+    crate::state::current_snapshot()
+        .tracks
+        .iter()
+        .any(|t| t.target.get() == target)
+        .then_some(target)
 }
 
 /// **Auto-Orient** (ADR-0141 §6) — só existe no menu de uma track de TRAJETÓRIA.
@@ -77,6 +106,45 @@ pub(crate) fn convert(host: &mut dyn PanelHostInternal, to_path: bool) -> EventO
     EventOutcome::Consumed
 }
 
+/// **Extrapolation cascade** — a Pre/Post row REPLACES the track menu with the
+/// four-mode submenu (plan §6), carrying the row's raw target + the side. Same
+/// replace-the-parent cascade the segment ease menu uses; the parent is already
+/// closed (the Down parked it), so the submenu opens at its position.
+fn open_extrap(host: &mut dyn PanelHostInternal, side_wire: u8) -> EventOutcome {
+    if let (Some(target), Some(req)) = (raw_track_target(host), parked(host)) {
+        host.store_mut().open_context_menu(ContextMenuRequest {
+            x: req.x,
+            y: req.y,
+            kind: ContextMenuKind::TimelineExtrap {
+                target,
+                side: side_wire,
+            },
+        });
+    }
+    EventOutcome::Consumed
+}
+
+/// **Extrapolation mode leaf** — resolve the parked `TimelineExtrap { target, side }`
+/// and raise `SetTrackExtrap`. One undo step; a key edit (never a strip intent),
+/// so the fade surface is untouched.
+fn set_extrap(host: &mut dyn PanelHostInternal, mode: Extrap) -> EventOutcome {
+    if let Some(ContextMenuKind::TimelineExtrap { target, side }) = parked(host).map(|r| r.kind) {
+        let side = if side == ids::TL_EXTRAP_SIDE_PRE {
+            ExtrapSide::Pre
+        } else {
+            ExtrapSide::Post
+        };
+        crate::state::push_intent(TimelineIntent::SetTrackExtrap {
+            target: AnimTarget::new(target),
+            side,
+            mode,
+        });
+        host.store_mut().close_context_menu();
+        host.store_mut().consume_last_context_menu();
+    }
+    EventOutcome::Consumed
+}
+
 /// Encaminha o Click, se ele for de uma linha deste menu. `None` = não é comigo.
 pub(crate) fn route(
     host: &mut dyn PanelHostInternal,
@@ -93,6 +161,25 @@ pub(crate) fn route(
     }
     if id == ids::CTX_MENU_TL_TO_AXES {
         return Some(convert(host, false));
+    }
+    // Extrapolation: the two cascade rows open the submenu; the four leaves set it.
+    if id == ids::CTX_MENU_TL_EXTRAP_PRE {
+        return Some(open_extrap(host, ids::TL_EXTRAP_SIDE_PRE));
+    }
+    if id == ids::CTX_MENU_TL_EXTRAP_POST {
+        return Some(open_extrap(host, ids::TL_EXTRAP_SIDE_POST));
+    }
+    if id == ids::CTX_MENU_TL_EXTRAP_HOLD {
+        return Some(set_extrap(host, Extrap::Hold));
+    }
+    if id == ids::CTX_MENU_TL_EXTRAP_LOOP {
+        return Some(set_extrap(host, Extrap::Loop));
+    }
+    if id == ids::CTX_MENU_TL_EXTRAP_PINGPONG {
+        return Some(set_extrap(host, Extrap::PingPong));
+    }
+    if id == ids::CTX_MENU_TL_EXTRAP_CONTINUE {
+        return Some(set_extrap(host, Extrap::Continue));
     }
     None
 }

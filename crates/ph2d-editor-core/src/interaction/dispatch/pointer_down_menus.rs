@@ -7,7 +7,7 @@
 
 use super::is_section_header_id;
 use crate::interaction::TrackMenuKind;
-use crate::interaction::types::{ContextMenuKind, ContextMenuRequest};
+use crate::interaction::{ContextMenuKind, ContextMenuRequest};
 use crate::interaction::{InteractiveState, WidgetStore};
 use crate::zones::Rect;
 use ph2d_host::PointerEvent;
@@ -112,6 +112,9 @@ pub(super) fn handle_down_menus(
                         TrackMenuKind::Plain => ContextMenuKind::TimelineTrack { target },
                         TrackMenuKind::Axis => ContextMenuKind::TimelineTrackAxis { target },
                         TrackMenuKind::Path => ContextMenuKind::TimelineTrackPath { target },
+                        TrackMenuKind::TimeRemap => {
+                            ContextMenuKind::TimelineTrackTimeRemap { target }
+                        }
                     }),
                     // A strip — any of its three grab zones: the body and both
                     // trim edges open the same menu, because they are all the

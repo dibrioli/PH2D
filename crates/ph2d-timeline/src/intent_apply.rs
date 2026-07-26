@@ -5,7 +5,7 @@
 //! is pure over `(state, playhead)`, which is why every gesture in the panel is
 //! testable with no UI at all — the seam test drives these functions directly.
 
-use ph2d_anim::{AnimTarget, AnimValue, Interp, KeyId, RationalTime};
+use ph2d_anim::{AnimTarget, KeyId, RationalTime};
 use ph2d_core::Playhead;
 
 use crate::doc::TimelineDoc;
@@ -18,6 +18,9 @@ use crate::strip_edge_edit::{
 /// The Buffer-Curves bodies (`store`/`swap`) — sibling module under the LOC cap.
 #[path = "intent_apply_buffer.rs"]
 mod intent_apply_buffer;
+/// The clipboard copy (`copy_selection`) — sibling module under the LOC cap.
+#[path = "intent_apply_clipboard.rs"]
+mod intent_apply_clipboard;
 /// Bulk time-transform bodies (scale markers, reverse selection) — child module
 /// under the LOC cap, reaching the parent's `edit`/`for_selected_tracks`.
 #[path = "intent_apply_time.rs"]
@@ -196,9 +199,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
             sel.clear();
         }),
-        I::CopySelection => copy_selection(state),
+        I::CopySelection => intent_apply_clipboard::copy_selection(state),
         I::CutSelection => {
-            copy_selection(state);
+            intent_apply_clipboard::copy_selection(state);
             edit(state, |doc, sel| {
                 for_selected_tracks(doc, sel, |track, ids| track.remove_keys(ids));
                 sel.clear();
@@ -293,6 +296,17 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::SetRove { target, key, on } => edit(state, |doc, _| {
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_roving(key, on);
+            }
+        }),
+        // Per-track extrapolation (plan §6). A KEY edit via `edit` (never `edit_at`)
+        // — it reaches only `track_mut`, never a strip/lane/container, so it cannot
+        // move the fade surface.
+        I::SetTrackExtrap { target, side, mode } => edit(state, |doc, _| {
+            if let Some(track) = doc.active_clip_mut().track_mut(target) {
+                match side {
+                    crate::ExtrapSide::Pre => track.set_pre(mode),
+                    crate::ExtrapSide::Post => track.set_post(mode),
+                }
             }
         }),
         I::SetSelectedRove { on } => edit(state, |doc, sel| {
@@ -537,28 +551,6 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             }
         }),
     }
-}
-
-/// Copy the selected keys' real `(track, time, value, interp)` onto the
-/// clipboard, time-rebased to the earliest. A selection that resolves to no live
-/// key leaves the clipboard untouched (never clobber a good clipboard).
-fn copy_selection(state: &mut TimelineState) {
-    let picked: Vec<(AnimTarget, f64, AnimValue, Interp)> = {
-        let clip = state.doc.active_clip();
-        state
-            .selection
-            .keys()
-            .iter()
-            .filter_map(|sk| {
-                let k = clip.track(sk.target)?.key(sk.key)?;
-                Some((sk.target, k.t.to_seconds(), k.value, k.interp))
-            })
-            .collect()
-    };
-    if picked.is_empty() {
-        return;
-    }
-    state.clipboard.set_from_absolute(&picked);
 }
 
 /// [`edit`], for a mutation that must land in whichever stack the animator has OPEN.

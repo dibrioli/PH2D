@@ -346,6 +346,10 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,
         ContextMenuKind::TimelineTrackAxis { .. } => &ids::TIMELINE_AXIS_TRACK_MENU,
         ContextMenuKind::TimelineTrackPath { .. } => &ids::TIMELINE_PATH_TRACK_MENU,
+        ContextMenuKind::TimelineTrackTimeRemap { .. } => &ids::TIMELINE_TIMEREMAP_TRACK_MENU,
+        // The four-mode extrapolation submenu (plan §6), opened by a track menu's
+        // Pre/Post cascade row.
+        ContextMenuKind::TimelineExtrap { .. } => &ids::TIMELINE_EXTRAP_MENU,
         // Timeline clip strip (a stack lane): what a pointer cannot say.
         ContextMenuKind::TimelineStrip { .. } => &ids::TIMELINE_STRIP_MENU,
         // Timeline stack lane (its label): how it blends, and whether it stays.

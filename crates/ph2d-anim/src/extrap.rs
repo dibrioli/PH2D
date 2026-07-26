@@ -51,11 +51,15 @@ pub enum Extrap {
     Continue,
 }
 
-/// Which end of the range is being extrapolated: `Pre` before the first key,
-/// `Post` after the last.
+/// Which end of a track's keyed range: `Pre` before the first key, `Post` after
+/// the last (the two extrapolate independently — the AE loopIn / loopOut). The
+/// authoring layer names sides with this too (a `SetTrackExtrap` intent), so it
+/// is one public enum, not a crate-private `Side` plus a mirror in the panel.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Side {
+pub enum ExtrapSide {
+    /// Before the first key.
     Pre,
+    /// After the last key.
     Post,
 }
 
@@ -65,7 +69,7 @@ pub(crate) enum Side {
 /// [`Track::sample`]). Pure — reads only the track's keys.
 pub(crate) fn extrapolate(
     track: &Track,
-    side: Side,
+    side: ExtrapSide,
     mode: Extrap,
     t: f64,
     t0: f64,
@@ -96,11 +100,11 @@ pub(crate) fn extrapolate(
 
 /// The boundary key's value — the Hold answer, and the safe fallback for a
 /// degenerate range or a non-scalar Continue.
-fn boundary_value(track: &Track, side: Side) -> AnimValue {
+fn boundary_value(track: &Track, side: ExtrapSide) -> AnimValue {
     let keys = track.keys();
     match side {
-        Side::Pre => keys[0].value,
-        Side::Post => keys[keys.len() - 1].value,
+        ExtrapSide::Pre => keys[0].value,
+        ExtrapSide::Post => keys[keys.len() - 1].value,
     }
 }
 
@@ -112,14 +116,14 @@ fn boundary_value(track: &Track, side: Side) -> AnimValue {
 /// Scalar-only: a non-`Float` boundary has no linear extension, so it holds. A
 /// vertical tangent (slope `±∞`) would shoot the value to infinity, so it holds
 /// too — Continue extends smoothly or not at all, it never explodes.
-fn continue_value(track: &Track, side: Side, t: f64) -> AnimValue {
+fn continue_value(track: &Track, side: ExtrapSide, t: f64) -> AnimValue {
     let keys = track.keys();
     let n = keys.len();
     // `edge` = the boundary key; `seg` = the segment touching it; `u` = the
     // parameter at the boundary within that segment.
     let (edge, seg, u) = match side {
-        Side::Pre => (0, 0, 0.0),          // first key, first segment, its start
-        Side::Post => (n - 1, n - 2, 1.0), // last key, last segment, its end
+        ExtrapSide::Pre => (0, 0, 0.0), // first key, first segment, its start
+        ExtrapSide::Post => (n - 1, n - 2, 1.0), // last key, last segment, its end
     };
     let (AnimValue::Float(a), AnimValue::Float(b)) = (keys[seg].value, keys[seg + 1].value) else {
         return keys[edge].value;

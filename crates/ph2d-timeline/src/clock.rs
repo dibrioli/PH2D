@@ -227,6 +227,40 @@ mod tests {
         }
     }
 
+    /// Per-track EXTRAPOLATION is INERT on a Time Remap track (crown-jewels plan
+    /// §6): the Time-Remap clock is `remap_through`, which contours `Track::sample`
+    /// outside the range with its OWN rule (slope-1 / Hold-freeze), so it never
+    /// reaches the extrapolation path. Setting `post = Loop` on the Time-Remap
+    /// track must change nothing here — a Loop would fold `t=6` back to `t=2` (a
+    /// half-speed value of 1.0), but the clock keeps its slope-1 extension (4.0).
+    ///
+    /// The mutation this pins: if `remap_through` ever routed out-of-range `t`
+    /// through the track's extrapolation, this reads 1.0 and fails.
+    #[test]
+    fn extrapolation_is_inert_on_a_time_remap_track() {
+        use ph2d_anim::Extrap;
+        let mut doc = doc_with(1, 1);
+        // The Time-Remap binding of entity 0, and its track.
+        let target = doc
+            .bindings()
+            .iter()
+            .find(|b| b.entity == 0 && b.prop == PropKind::TimeRemap)
+            .expect("time-remap binding")
+            .target;
+        doc.active_clip_mut()
+            .track_mut(target)
+            .expect("time-remap track")
+            .set_post(Extrap::Loop);
+
+        let clip = doc.active_clip();
+        // t = 6 is beyond the last Time-Remap key (t1 = 4). Slope-1: 2.0 + (6-4) = 4.0.
+        let got = remap_through(clip, target, 6.0).expect("remap");
+        assert!(
+            (got - 4.0).abs() < 1e-9,
+            "the Time-Remap clock keeps its slope-1 extension (4.0), not a looped 1.0; got {got}"
+        );
+    }
+
     /// A dead entity's clock must not survive: the liveness pass runs first, and
     /// a missing binding is skipped. (Otherwise a deleted object could keep
     /// retiming a namesake that reclaimed its bits.)

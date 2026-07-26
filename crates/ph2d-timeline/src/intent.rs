@@ -19,7 +19,7 @@
 //! `commit_if_changed`), so a no-op edit never pollutes the stack. Selection,
 //! transport and flag intents are not undoable.
 
-use ph2d_anim::{AnimTarget, AnimValue, Interp, KeyId, RationalTime};
+use ph2d_anim::{AnimTarget, AnimValue, Extrap, ExtrapSide, Interp, KeyId, RationalTime};
 
 use crate::prop::PropKind;
 use crate::stack::{LaneMode, StripId, StripLoop, StripSource};
@@ -148,40 +148,34 @@ pub enum TimelineIntent {
         /// Scale factor (incremental, like [`Self::ScaleSelectedKeys`]).
         factor: f64,
     },
-    /// **Time-reverse** the selected keys about the centre of their own span (AE
-    /// *Time-Reverse Keyframes*): every selected key's time mirrors and the eases
-    /// mirror with it. Coherent across tracks — one global pivot, so a multi-track
-    /// selection reverses together. One undo step.
+    /// **Time-reverse** the selected keys about the centre of their own span, eases
+    /// and all (AE *Time-Reverse Keyframes*). One global pivot, so a multi-track
+    /// selection reverses coherently. One undo step.
     ReverseSelectedKeys,
-    /// **Distribute** the selected keys uniformly in time, per track: within each
-    /// track the earliest and latest selected keys stay put and the ones between
-    /// slide to equal spacing (Blender *Distribute Keyframes*). Parameterless —
-    /// the span is the selection's own. A track with fewer than three selected
-    /// keys is left alone. One undo step.
+    /// **Distribute** the selected keys uniformly in time, per track: the earliest
+    /// and latest stay put and the ones between slide to equal spacing (Blender
+    /// *Distribute Keyframes*). The span is the selection's own; fewer than three
+    /// selected keys is a no-op. One undo step.
     DistributeSelectedKeys,
-    /// **Stagger / cascade** the selection: each track that owns a selected key is
-    /// shifted rigidly by `rank · step_seconds`, where `rank` is the track's
-    /// position in the selection's stable order (by [`AnimTarget`](crate::AnimTarget)),
-    /// so the first track stays and each later one offsets more — the
-    /// motion-graphics cascade (AE *Quick Offset*). Streamed incrementally from
-    /// the Alt-drag: successive `step` deltas compose to the total because the
-    /// rank is constant across the drag. One undo step.
+    /// **Stagger / cascade** the selection: each track owning a selected key is
+    /// shifted by `rank · step_seconds` (rank = its position in the selection's
+    /// stable [`AnimTarget`](crate::AnimTarget) order), so each later track offsets
+    /// more — the AE *Quick Offset*. Streamed from the drag; constant rank makes the
+    /// steps compose. One undo step.
     StaggerSelectedKeys {
         /// Per-rank time offset for this frame (incremental, like
         /// [`Self::ScaleSelectedKeys`]'s factor).
         step_seconds: f64,
     },
-    /// **Store** `target`'s current curve into the graph editor's buffer (§5,
-    /// Unreal *Buffer Curves*). Captures the exact keys + ids + roving; not a
-    /// document edit, so it raises no undo step. Overwrites any previous buffer.
+    /// **Store** `target`'s current curve (keys + ids + roving) into the graph
+    /// editor's buffer (§5, Unreal *Buffer Curves*). Not a doc edit; overwrites.
     StoreTrackBuffer {
         /// The track whose curve is captured.
         target: AnimTarget,
     },
-    /// **Swap** `target`'s curve with the buffered one and keep the just-replaced
-    /// curve as the new buffer — the A/B toggle. A no-op unless a buffer exists
-    /// for THIS target. One undo step (the restore is a key edit; the buffer swap
-    /// itself is transient panel state, outside undo).
+    /// **Swap** `target`'s curve with the buffered one, keeping the replaced curve
+    /// as the new buffer — the A/B toggle. A no-op without a buffer for THIS target.
+    /// One undo step (the restore is a key edit; the swap is panel state).
     SwapTrackBuffer {
         /// The track whose curve is swapped with the buffer.
         target: AnimTarget,
@@ -252,6 +246,17 @@ pub enum TimelineIntent {
     SetSelectedRove {
         /// `true` to rove, `false` to pin.
         on: bool,
+    },
+    /// Set a track's **extrapolation** on one `side` beyond the keyed range — Hold
+    /// (default) / Loop / PingPong / Continue (plan §6). A key edit, never a strip
+    /// intent: one undo step, cannot touch the fade surface, inert on Time Remap.
+    SetTrackExtrap {
+        /// Track target.
+        target: AnimTarget,
+        /// Which end of the range (`Pre`/`Post`).
+        side: ExtrapSide,
+        /// The extrapolation mode for that side.
+        mode: Extrap,
     },
 
     // ── markers (W4.T3; each is one undo step) ──────────────────────────────

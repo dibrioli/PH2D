@@ -409,8 +409,23 @@ a sonda precisa da reivindicação REAL, que não é recuperável do `dirty_rect
 tool** — `CanvasPaintTool` está congelado (§6) e a shell já é dona do evento. `render_loop::paint_perf`
 passou de `mod` para **`pub(crate) mod`** (a latência começa na ENTREGA, não no frame).
 
-Gates: 3 unitários + **1 arch-gate novo de shell** (`the_pointer_clock_starts_where_the_paint_starts`,
-com controle positivo). **3 mutações, 3 sangram.**
+Gates: 5 unitários + **1 arch-gate novo de shell** (`the_pointer_clock_starts_where_the_paint_starts`,
+com controle positivo). **5 mutações, 5 sangram.**
+
+⚠️ **O que ele achou no 1º uso, e é a coisa mais importante desta jornada:** o relatório era **CEGO ao
+trabalho de pintar**. O `PaintFrameTimer` cobre o `run_render_frame` e o `on_canvas_pointer` roda no
+handler de input do winit — fora dele. O relatório ganhou `período real` + `eventos/frame` + `INPUT`, e
+a conta fecha: **`período = frame + INPUT`** (12,8 + 12,6 = 25,4 contra 25,0 medidos).
+
+Os três relatos do Enio, um mecanismo só: **~4,7 ms por evento** a 4096² (rápido = mais eventos/frame =
+FPS cai) · **INPUT max 67–139 ms num único evento** no pen-down (os ~200 MB de planos preguiçosos:
+`heights 67 + covers 17 + mats 117`) · e, pintando normal, **latência de exatamente um frame** (p50
+16,9 · p95 17,8), que é o piso desta arquitetura.
+
+⚠️ **Corolário para o integrador e para a próxima wave:** o fix do snapshot do pincel (§13) levou
+`dispatch p50` de 7,5 a 0,0 — num número que **nunca foi onde a tinta custa**. Os dois alvos reais são
+o custo **por-evento** e a **materialização dos planos no pen-down**, e ambos exigem ordem do Enio
+(tocam o caminho quente de pintura de uma linha já smokada).
 
 ## §14.3 🔴 U0 — o undo retém UM DOCUMENTO POR TRAÇO (repro VERMELHO, `#[ignore]`)
 

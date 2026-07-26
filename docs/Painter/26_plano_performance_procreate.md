@@ -349,6 +349,36 @@ pela cauda.
 ⚠️ **Ele para no FIM DO FRAME, não no present** — a diferença é uma fração de ms e está escrita no
 código. Prometer *"→ pixel"* com um instrumento que para no fim do frame seria vender o que ele não mede.
 
+#### 7.2.1 ⚠️ E o que ele achou no 1º uso: **o relatório era CEGO ao trabalho de pintar**
+
+O `PaintFrameTimer` cronometra o `run_render_frame` inteiro — e o **`on_canvas_pointer` não roda lá
+dentro**. Ele roda no handler de input do winit. Carimbar dabs a 4096² com impasto nunca apareceu em
+`frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots.
+
+O relatório ganhou `período real` + `eventos/frame` + `INPUT (fora do frame)`, e **a conta fecha**:
+
+| janela | frame | INPUT | soma | **período real** | evento→frame |
+|---|---|---|---|---|---|
+| pintando rápido | 12,8 | **12,6** | 25,4 | **25,0** | p50 19,4 · p95 61,7 |
+| pintando normal | 16,6 | 3,8 | 20,4 | **16,5** | p50 16,9 · **p95 17,8** |
+| a 1ª leitura (sem o split) | 16,7 | *invisível* | — | **99,9** | p50 273,8 · p95 646,4 |
+
+**`período = trabalho do frame + INPUT`.** É a assinatura de um custo por-EVENTO, e ela explica os três
+relatos do Enio com um mecanismo só:
+
+- *"pintar lentamente funciona bem"* — poucos eventos por frame (janela normal: 60 fps, latência de
+  **exatamente um frame**, que é o piso desta arquitetura);
+- *"pintar rápido cai fps"* — **~4,7 ms por evento** × 2,7 eventos/frame = 12,6 ms **somados** ao frame
+  ⇒ 25 ms de período (40 fps) e p95 de 62 ms;
+- *"o primeiro traço tem um delay"* — **`INPUT max` de 67 a 139 ms num ÚNICO evento**: o pen-down
+  materializa os planos preguiçosos. A 4096²: `heights 67 MB + covers 17 MB + mats 117 MB` ≈ **200 MB
+  alocados e ZERADOS**, mais o plano livre da proteção (24,5 ms, §13.12 do doc 25).
+
+⚠️ **E é por isso que os ganhos anteriores não chegaram ao artista:** o fix do snapshot do pincel levou
+`dispatch p50` de 7,5 para **0,0** — num número que nunca foi onde a tinta custa. Os dois alvos reais
+são o **custo por-evento** (~4,7 ms) e a **materialização dos planos no pen-down** (~200 MB), e nenhum
+dos dois é visível sem este split.
+
 ### 7.3 🔴 U0 nasceu vermelha, e o defeito é grave
 
 | | |

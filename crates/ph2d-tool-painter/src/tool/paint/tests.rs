@@ -2,6 +2,8 @@
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier;
+#[path = "measure_input_cost.rs"]
+mod measure_input_cost;
 #[path = "measure_window_premise.rs"]
 mod measure_window_premise;
 

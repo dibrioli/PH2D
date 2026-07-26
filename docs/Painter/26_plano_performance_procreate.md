@@ -375,9 +375,41 @@ relatos do Enio com um mecanismo só:
   alocados e ZERADOS**, mais o plano livre da proteção (24,5 ms, §13.12 do doc 25).
 
 ⚠️ **E é por isso que os ganhos anteriores não chegaram ao artista:** o fix do snapshot do pincel levou
-`dispatch p50` de 7,5 para **0,0** — num número que nunca foi onde a tinta custa. Os dois alvos reais
-são o **custo por-evento** (~4,7 ms) e a **materialização dos planos no pen-down** (~200 MB), e nenhum
-dos dois é visível sem este split.
+`dispatch p50` de 7,5 para **0,0** — num número que nunca foi onde a tinta custa.
+
+#### 7.2.2 E o `INPUT`, partido: **o pen-down é a CÓPIA DO CANVAS, e o move é honesto**
+
+`measure_input_cost.rs`, com a variável isolada (traço de comprimento FIXO em px — a 1ª versão da sonda
+escalava o traço junto com a tela e mediu razões de 4× que eu quase li como *"o move é canvas-shaped"*):
+
+| tela | impasto | pen-down | move |
+|---|---|---|---|
+| 1024² | off | 0,73 | 0,75 |
+| **4096²** | **off** | **11,47** | **0,75** |
+| 4096² | ON | 15,74 | 2,83 |
+
+- **O MOVE é PLANO na tela** (0,75 → 0,75 · 2,86 → 2,83). É trabalho honesto por dab; *"pintar rápido
+  cai fps"* é o artista pedindo mais dabs por segundo, não um defeito. A cura ali é *dab mais barato*
+  ou *coalescer o lote*, e é outra frente.
+- **O PEN-DOWN é linear na ÁREA, e mesmo SEM impasto** — os cinco planos de relevo custam só 4,3 dos
+  15,7 ms. Confirmado por magnitude: copiar o canvas custa **0,70 / 2,54 / 9,40 ms** a 1024/2048/4096²,
+  contra um pen-down medido de **0,73 / ~3,2 / 11,47**. **O pen-down É a cópia do canvas.**
+
+⚠️ **O mecanismo:** `paint_begin` tira um `ModelSnapshot` para o undo e ele guarda `canvas_rgba` como
+`Arc` clonado; o **primeiro dab** escreve no canvas ⇒ `Arc::make_mut` vê duas referências e **copia os
+64 MB**. Copy-on-write, uma vez por traço, do tamanho da tela.
+
+⚠️ **É o MESMO defeito que a §7.3 mede pelo outro lado.** Lá o snapshot custa **memória** (1.627 MB em
+24 traços); aqui custa **latência** (9,4 ms no primeiro dab de todo traço a 4096²). **A cura é a mesma —
+a frente U1 — e não há atalho:** duas versões do canvas têm de coexistir enquanto o traço corre, então
+UMA cópia é irredutível a menos que o passo guarde só a **REGIÃO** que o traço tocou.
+
+⚠️ **E uma cura minha foi CONSTRUÍDA e REPROVADA pela medição no caminho:** reusar a capacidade dos
+cinco planos por-traço (`clear() + resize` em vez de `vec![0.0; n]`, que o `reset_stroke_height` parecia
+convidar) levou o pen-down de **17,6 para 47,5 ms**. `vec![0.0; n]` é `alloc_zeroed` — páginas já
+zeradas do SO, sem escrever um byte — e reusar a capacidade obriga um **memset explícito** dos mesmos
+235 MB. *Reusar memória é mais caro que pedir memória nova quando a nova vem zerada de fábrica.* O
+comentário fica no `impasto.rs` para ninguém "otimizar" isso de novo.
 
 ### 7.3 🔴 U0 nasceu vermelha, e o defeito é grave
 

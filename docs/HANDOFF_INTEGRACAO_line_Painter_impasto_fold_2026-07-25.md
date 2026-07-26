@@ -422,10 +422,26 @@ FPS cai) · **INPUT max 67–139 ms num único evento** no pen-down (os ~200 MB 
 `heights 67 + covers 17 + mats 117`) · e, pintando normal, **latência de exatamente um frame** (p50
 16,9 · p95 17,8), que é o piso desta arquitetura.
 
-⚠️ **Corolário para o integrador e para a próxima wave:** o fix do snapshot do pincel (§13) levou
-`dispatch p50` de 7,5 a 0,0 — num número que **nunca foi onde a tinta custa**. Os dois alvos reais são
-o custo **por-evento** e a **materialização dos planos no pen-down**, e ambos exigem ordem do Enio
-(tocam o caminho quente de pintura de uma linha já smokada).
+⚠️ **E o `INPUT` partido (`measure_input_cost.rs`) achou a causa exata:**
+
+| tela | impasto | pen-down | move |
+|---|---|---|---|
+| 1024² | off | 0,73 | 0,75 |
+| **4096²** | **off** | **11,47** | **0,75** |
+| 4096² | ON | 15,74 | 2,83 |
+
+**O move é PLANO na tela** — trabalho honesto por dab, não defeito. **O pen-down é a CÓPIA DO CANVAS:**
+copiar 4096² custa **9,40 ms** contra os 11,47 medidos. `paint_begin` tira um `ModelSnapshot` que guarda
+`canvas_rgba` como `Arc`; o primeiro dab escreve ⇒ `Arc::make_mut` copia os 64 MB.
+
+⚠️ **É o MESMO defeito do §14.3, pelo outro lado** — lá custa memória, aqui latência. **A cura é a
+frente U1 (histórico por DELTA) e não há atalho:** duas versões do canvas coexistem durante o traço, e
+uma cópia só deixa de ser irredutível se o passo guardar a REGIÃO tocada.
+
+⚠️ **Uma cura foi construída e REPROVADA pela medição, e o comentário anti-reincidência ficou no
+`impasto.rs`:** reusar a capacidade dos cinco planos por-traço (`clear() + resize`) levou o pen-down de
+**17,6 para 47,5 ms** — `vec![0.0; n]` é `alloc_zeroed` (páginas zeradas do SO, zero escrita) e reusar
+obriga um memset explícito de 235 MB.
 
 ## §14.3 🔴 U0 — o undo retém UM DOCUMENTO POR TRAÇO (repro VERMELHO, `#[ignore]`)
 

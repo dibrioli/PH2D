@@ -98,6 +98,14 @@ impl PainterTool {
             let mut f = std::mem::take(&mut self.paint.relief.stroke_film);
             let mut r = std::mem::take(&mut self.paint.relief.stroke_radius);
             // Lazily sized by the first dab of the stroke; zero cost for a document nobody sculpts.
+            //
+            // ⚠️ **`vec![0.0; n]`, e NÃO `clear() + resize`.** A troca é tentadora — estes cinco planos
+            // são canvas-sized (a 4096² são **235 MB**) e o `reset_stroke_height` os `clear()`a, o que
+            // preserva a capacidade — e foi **MEDIDA E REPROVADA** (2026-07-25): o pen-down a 4096²
+            // subiu de **17,6 para 47,5 ms**. `vec![0.0; n]` é `alloc_zeroed`, que pede páginas já
+            // zeradas ao SO e não escreve um byte; reusar a capacidade obriga um **memset explícito**
+            // dos mesmos 235 MB. Reusar memória é mais caro que pedir memória nova quando a nova vem
+            // zerada de fábrica.
             if h.len() != n {
                 h = vec![0.0; n];
             }

@@ -124,16 +124,19 @@ posição do centroide da sombra, e a mensagem traz os números.
   e o `override_image` foi trocado por RE-REGISTRO no resize (dims estáveis) depois do "panic ao
   zoom".
 - **W2 — A PILHA COMPONÍVEL (FECHADA, smoke aprovado 2026-07-26):** ver §7 abaixo.
-- **W3 — O CATÁLOGO (FECHADA, pendente de smoke):** os degraus de DENTRO, o CONTORNO e a COR —
+- **W3 — O CATÁLOGO (FECHADA, smoke aprovado 2026-07-26):** os degraus de DENTRO, o CONTORNO e a COR —
   `Inner Shadow` · `Inner Glow` · `Outline` · `Color Overlay`, três tipos → **sete**. Ver §8.
-- **W4 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
+- **W4 — O CAMPO DE DISTÂNCIA (FECHADA, pendente de smoke):** a revisão que as três observações do
+  smoke do Enio pediram — o rim de 1 px, o modo `Contour` dos degraus de dentro e o contorno que
+  deixou de encolher na quina. Ver §9.
+- **W5 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
   via erf da distância (o Levien `draw_blurred_rounded_rect` generalizado, ou SDF via o JFA in-repo
   do motion-nodes). O primitivo premium, quando a nitidez em zoom extremo importar. ⚠️ **Reordenado
   para depois do catálogo, com motivo:** o argumento dele é *resolution-crisp*, e o nosso borrão já
   o é (o `resolve_ops` re-coze na escala da tela a cada frame, e o gate do zoom o pina). O que a
   W3 comprou — tipos que a Gaussiana **não desenha** — é delta de produto; o feather é qualidade de
   um degrau que já existe.
-- **W5 — os tipos que pedem maquinaria NOVA:** Bevel/Emboss (uma altura + uma luz — o `blur(alfa)`
+- **W6 — os tipos que pedem maquinaria NOVA:** Bevel/Emboss (uma altura + uma luz — o `blur(alfa)`
   já é a altura, e o modelo de luz é parente do impasto), turbulência + deslocamento (o
   `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem), e o
   blend mode POR DEGRAU (o Layer Style do Photoshop). Nenhum deles muda a pilha.
@@ -309,3 +312,97 @@ Color Overlay com slider de Radius, ou um Outline sem cor, passariam sem nada fa
   por texel, ou um EDT; não se justifica sem um pedido.
 - **Sem blend mode por degrau** (o Layer Style do Photoshop tem um por efeito) — é W5, e não mexe na
   pilha: é um campo a mais no `FxOp` e um `mix` a mais no finalize.
+
+## §9 — W4: a REVISÃO (o rim, a lei da sombra e a quina)
+
+O smoke da W3 foi aprovado com **três observações**, e elas são de duas classes: uma era um BUG, as
+outras duas eram o MODELO. A revisão pediu auditar os sete tipos, e ela achou um quarto defeito que
+ninguém tinha visto.
+
+### 1. O rim claro de 1 px (BUG)
+
+O halo dos degraus de dentro era composto como uma **CAMADA por cima**
+(`halo + over*(1 − halo.a)`), e isso **SOMA alfa**: na borda anti-aliased, `over.a = 0,5` com
+`halo.a = 0,25` dava **0,625**. Como o `resolve` des-premultiplica, dividir por um alfa maior
+**CLAREIA** — o rim era essa divisão, não uma cor.
+
+**Um efeito de DENTRO tinge o que já está lá; ele não é uma camada nova.** A lei virou
+`mix(over, tint·over.a, s)`, que deixa o alfa EXATAMENTE onde estava. Gate:
+`an_inner_op_never_moves_the_coverage` — byte a byte, numa fixture de alfa em RAMPA, porque o
+fenômeno vive na fatia fracionária e o gate antigo só olhava o miolo (255) e o lado de fora (0),
+que estão certos **mesmo com o bug**.
+
+### 2. A AUDITORIA achou um quarto: opacidade 0 apagava a forma
+
+O Blur fazia `borrado × opacidade`, então opacidade 0 não era *este efeito não contribui* e sim **a
+forma desaparece**. Os outros seis já eram no-op por construção. Agora é `mix(over, borrado, op)`, e
+o gate **varre a tabela**: `an_op_at_zero_opacity_is_a_no_op_for_every_kind`. Foi a varredura que
+separou os dois casos — escolher um tipo teria acertado 6 em 7.
+
+### 3. A sombra de dentro não entrava nas reentrâncias — o MODO
+
+O modelo (o do Photoshop) mede a **PROXIMIDADE do lado de fora**: o alfa invertido, borrado. Numa
+reentrância o "fora" subtende um ângulo pequeno, então o número é pequeno **mesmo encostado na
+borda** — e numa parte fina tudo está perto de fora, então ela escurece INTEIRA. É por isso que a
+estrela tinha sombra só nas pontas.
+
+A outra lei é a **DISTÂNCIA à borda**, que não tem ângulo nenhum: é 0 em todo ponto do contorno.
+Medido numa cruz (as duas sondas à MESMA distância da borda, senão o gate compararia distâncias e
+não leis):
+
+| modo | reentrância | aresta reta |
+|---|---|---|
+| `Proximity` | **219** | 155 |
+| `Contour` | **115** | 104 |
+
+Os dois modos ficam (o Enio pediu os dois); **`Contour` é o default**. O campo vem de um **JFA
+limitado** (`cs_sdf_seed` + `n` saltos), com `n = bits(w)` — 4 passes para uma banda de 8 px. ⚠️ Os
+offsets são guardados em `rgba16float` e f16 representa inteiros **até 2048 exatamente**, então o
+campo é exato na faixa que interessa; não é "aproximado porque é f16".
+
+### 4. A quina do contorno: a derivação matou o pedido e a medição salvou metade dele
+
+O pedido era *"opção de arredondar ou não"*. **Miter é impossível a partir do alfa**, e isso é uma
+derivação, não uma preferência: numa quina de ângulo interno `θ` a ponta do miter fica a
+`w/sin(θ/2)` do vértice — numa ponta de estrela (`θ ≈ 36°`), **3,24 × w**. Toda dilatação é uma soma
+de Minkowski `A ⊕ S`; para esticar 3,24 w na quina o `S` teria de conter um ponto a 3,24 w naquela
+direção, e aí engordaria 3,24 w **na aresta reta também**. Quem decide um miter são as DIREÇÕES das
+duas arestas, e isso é geometria (`VecOffset { join }`, a pilha de Effects), não pixels.
+
+**Mas a medição achou um defeito real no caminho:** o corte num campo BORRADO **não é uma
+dilatação** — ele encolhe na quina convexa. Medido numa cunha de 36° com largura 10: a ponta
+recebia **0,0 px** de contorno contra 10,5 px na aresta. O contorno passou a ser uma dilatação de
+verdade sobre o mesmo campo de distância (`d ≤ w`): a ponta agora recebe **9,0 px**, e a largura é
+a que o slider promete (medido 3,5 px para 4 e 7,5 px para 8, na convenção da última coluna acima
+do limiar).
+
+⚠️ **A assimetria que custou dois gates vermelhos:** *fora da textura* é semente para quem mede a
+distância ao FORA (os degraus de dentro) e **não** para quem mede a distância à FORMA (o contorno).
+Semear os dois igual fazia o contorno crescer a partir da borda da CENA: medido, 63 px de halo numa
+largura de 4.
+
+⚠️ **Meio texel, derivado:** o JFA mede até o CENTRO do texel semente e a fronteira geométrica está
+0,5 px dele. Sem a correção o contorno sai 1 px mais fino do que a largura pedida — e o gate
+**não pegava**, porque a tolerância dele (±1,5 px) era maior que o erro. O bar apertou para ±0,25.
+
+### Gates
+
+10 no catálogo de GPU (4 novos) + 7 de seam (1 novo) + 7 no modelo (1 novo). **13 mutações, 13
+sangram.** Lições:
+
+- **Uma fixture de borda DURA não distingue limiares de semente** — a mutação do limiar sobreviveu,
+  e a resposta certa não foi um gate a mais e sim MEDIR: numa aresta diagonal com AA, a banda tem
+  **0 níveis** de oscilação em 60 texels. O limiar não é load-bearing dentro da rampa de AA, e um
+  bar que fingisse o contrário seria um gate que não pode falhar pelo motivo que alega.
+- **O gate da diagonal nasceu VERDE sobre o nada:** a sonda caía a 6,4 px, onde a banda (de 8) já
+  morreu — media `245..245`. Agora ela cai DENTRO da banda e há um **controle positivo** que exige
+  isso.
+- **Um `str.replace` sem asserção é no-op silencioso depois do `rustfmt`** — foi ele que me fez
+  medir o lugar errado por duas rodadas.
+
+### Aberto
+
+- **Miter/bevel no contorno**: geometria, não raster (ver a derivação acima). O caminho é um
+  *Stroke* na pilha de Effects, onde `VecOffset { join }` já vive.
+- **O modo `Contour` custa `2 + bits(w)` passes** contra 2 do borrão — 6 para uma banda de 16 px.
+  Barato (o JFA lê 9 texels por passe), mas é o tipo mais caro do catálogo.

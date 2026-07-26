@@ -1,7 +1,7 @@
 # Handoff de integração — `line/Vector`: a PILHA de FX RASTER (7 tipos, GPU-resident)
 
 **Plano:** [`docs/Vector Module/24_plano_fx_raster.md`](Vector%20Module/24_plano_fx_raster.md) ·
-**Data:** 2026-07-26 · **W1 + W2 + W3** na `line/Vector`.
+**Data:** 2026-07-26 · **W1 + W2 + W3 + W4** na `line/Vector`.
 
 O FX raster de alta qualidade para formas vetoriais — a resposta ao pedido *"efeitos FX de alta
 qualidade, estado da arte, compatível com o que temos"*, e depois ao *"aqui tudo é para o game em
@@ -12,7 +12,9 @@ blend, com sombra e brilho DERIVADOS do feather, sem pilha nenhuma).
   (`=33`, incluindo maximizar + zoom: FPS liso, sem panic).
 - **W2 — a PILHA componível** (escolha do Enio). **SMOKE APROVADO** pelo Enio.
 - **W3 — o CATÁLOGO:** `Inner Shadow` · `Inner Glow` · `Outline` · `Color Overlay` (3 tipos → 7).
-  **PENDENTE DE SMOKE.**
+  **SMOKE APROVADO** pelo Enio, com três observações.
+- **W4 — a REVISÃO** que essas observações pediram (o rim de 1 px · o modo `Contour` · a quina do
+  contorno) + a auditoria dos sete tipos. **PENDENTE DE SMOKE.**
 
 ## A costura (o inegociável)
 
@@ -87,6 +89,33 @@ O `FilterRowView` **perdeu o `label`** (o nome só pode vir da tabela) e
 ⚠️ **`ids::MAX_FILTER_KINDS` 3 → 7** (espelho de `FxOp::KINDS`; há gate na shell, o único lugar que
 vê os dois lados).
 
+## ⚠️ W4 — a REVISÃO (três observações do smoke, e a auditoria achou uma quarta)
+
+Detalhe e números no [plano §9](Vector%20Module/24_plano_fx_raster.md).
+
+1. **O rim claro de 1 px era um bug de COBERTURA.** O halo dos degraus de dentro era composto como
+   uma CAMADA por cima, o que SOMA alfa (0,5 + 0,25 → 0,625 na borda anti-aliased); o `resolve`
+   des-premultiplica, e dividir por um alfa maior CLAREIA. Agora um efeito de dentro **tinge o que
+   já está lá** e o alfa não se move um bit.
+2. **A auditoria achou o quarto defeito:** `opacidade 0` no Blur **apagava a forma** (`borrado × 0`)
+   em vez de ser no-op. Gate de VARREDURA sobre a tabela — escolher um tipo teria acertado 6 em 7.
+3. **O modo dos degraus de dentro** (`Proximity` | `Contour`): a proximidade não entra nas
+   reentrâncias (medido numa cruz: 219 contra 155 na aresta), a distância entra (115 contra 104).
+   **`Contour` é o default**, e o campo vem de um **JFA limitado** (`2 + bits(w)` passes).
+4. **A quina do contorno:** miter é **impossível** a partir do alfa (derivação no plano — pediria
+   3,24 × a largura numa ponta de estrela, e nenhuma dilatação é `w` na reta e `3,24 w` na quina).
+   **Mas a medição achou um defeito real:** o corte num campo borrado ENCOLHE na quina — uma ponta
+   de 36° recebia **0,0 px** de contorno. Agora o Outline é uma dilatação sobre o campo de
+   distância: a ponta recebe **9,0 px** e a largura é a que o slider promete.
+
+⚠️ **`FxOp` ganhou o campo `mode`** e `FxKindSpec` a lista `modes` (o painel pinta um chip por
+modo). O `FxOp` é serializado DENTRO do blob do `VecFilter`, e postcard é posicional — mas o
+`VecFilter` **não existe no `main`**, então nenhum arquivo salvo por um build de `main` pode
+contê-lo: `PROJECT_SCHEMA` **não bumpa**. (Um projeto salvo por um build ANTERIOR *desta linha* não
+carrega; nada fora da worktree é afetado.)
+
+⚠️ **`ids::MAX_FILTER_MODES = 4`** (novo) + `filter_mode_id(row, mode)`.
+
 ## Deltas que a integração precisa CONFERIR (o número se conta, não se escolhe)
 
 | Item | Antes | Depois | Como |
@@ -98,6 +127,7 @@ vê os dois lados).
 | **§6 contrato vetorial** | — | **INTACTO** | `architecture_vector_contract_surface` verde |
 | `VECTOR_SECTIONS` (painel) | 26 | **27** (append) | Filters (gate de contagem atualizado) |
 | `ids::MAX_FILTER_KINDS` | — | **7** | espelha `FxOp::KINDS` (W3) |
+| `ids::MAX_FILTER_MODES` | — | **4** | o chip de modo dos degraus de dentro (W4) |
 
 ⚠️ Se outra linha mexer no registry/`PROJECT_SCHEMA` na MESMA janela, o número final **se
 recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `VecFilter` não move
@@ -121,7 +151,12 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
 
 ## Gates
 
-- **GPU do CATÁLOGO (`fx_stack_kinds_gpu.rs`, 6, W3):** **todo tipo da tabela desenha alguma
+- **GPU do CATÁLOGO (`fx_stack_kinds_gpu.rs`, 10, W3+W4):** um degrau de dentro **nunca move a
+  cobertura** (a fixture tem alfa em RAMPA — o fenômeno vive na fatia fracionária) · **opacidade 0 é
+  no-op em TODO tipo** · o modo `Contour` **põe sombra na reentrância e o `Proximity` não** (a cruz,
+  com as duas sondas à mesma distância da borda) · a banda **não serrilha** numa diagonal com AA (0
+  níveis em 60 texels, com controle positivo) · o contorno é **redondo na quina, por derivação** ·
+  e os 6 da W3: **todo tipo da tabela desenha alguma
   coisa** (o gate da wave — varre `FxOp::KINDS`, então um tipo novo entra nele no mesmo commit em
   que entra na tabela) · a sombra de dentro escurece a borda e **não vaza um texel** para fora · o
   contorno alcança a largura e para **duro** (com o Glow do mesmo σ como controle) · o Color
@@ -134,11 +169,12 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
 - **Shell (5):** os tetos painel↔motor concordam · degrau desligado nunca chega ao passe · o raio é
   de MUNDO (2× de zoom = 2× de borrão) · o offset cruza a câmera e cai em pixel inteiro · `hit_of`
   decodifica cada controle **e nada mais**.
-- **Modelo (6, `ph2d-ecs`):** reordenar troca vizinhos e as pontas são no-ops · a pilha só está
+- **Modelo (7, `ph2d-ecs`):** só os tipos com modos carregam um (quem não tem nasce em ZERO) · reordenar troca vizinhos e as pontas são no-ops · a pilha só está
   ativa com algum degrau ligado · um degrau novo nasce VISÍVEL (**varrendo a tabela**, e pedindo a
   ELA o que exigir) · o teto é resposta da pilha · a tabela é indexada pelo CÓDIGO e os nomes são
   únicos · `tints`/`displaces` são VISTAS da tabela, não uma segunda opinião.
-- **Seam (6, `seam_filters.rs`):** os Add ao bus · os ícones do card ao bus · as setas das PONTAS
+- **Seam (7, `seam_filters.rs`):** os **chips de MODO** chegam ao bus e são pintados só em quem tem
+  modos · os Add ao bus · os ícones do card ao bus · as setas das PONTAS
   **não** são desenhadas · cada linha pinta só os controles do TIPO dela, **varrendo a tabela inteira**, presença E ausência
   (a versão da W2 comparava dois tipos escritos à mão e teria ficado verde sobre os quatro novos) · a
   swatch é alvo de PICKER (não botão) · a seção não é oferecida sem forma.
@@ -148,7 +184,7 @@ recalcula** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). O `Vec
 
 ⚠️ **Os gates GPU são `#[ignore]`** — o integrador roda
 `cargo test -p ph2d-render --release --test fx_stack_gpu -- --ignored` **e**
-`--test fx_stack_kinds_gpu -- --ignored` na RTX (**8/8 e 6/6 verdes**; sem adapter fazem *skip
+`--test fx_stack_kinds_gpu -- --ignored` na RTX (**8/8 e 10/10 verdes**; sem adapter fazem *skip
 gracioso*, que não é verde).
 
 ## ⚠️ Três lições que a wave pagou
@@ -167,25 +203,23 @@ gracioso*, que não é verde).
 
 ## Smoke
 
-`cd <worktree> && env PH2D_BUILD_SMOKE=33 cargo run -p ph2d-host-desktop --release` — **doze
-estrelas em três fileiras** (a cena imprime a legenda inteira no stderr, com os números medidos):
+`cd <worktree> && env PH2D_BUILD_SMOKE=33 cargo run -p ph2d-host-desktop --release` — **catorze
+estrelas em quatro fileiras** (a cena imprime a legenda inteira, com os números medidos):
 
-- **CIMA — a regressão** (W1/W2): controle nítido · **Blur** · **Glow** ciano · **Drop Shadow**.
-- **MEIO — o catálogo da W3**, cada tipo sozinho: **Inner Shadow** (a estrela lê como RECORTE) ·
-  **Inner Glow** ciano · **Outline** branco de borda DURA · **Color Overlay** (a mesma estrela
-  repintada de azul, sem borrar).
-- **BAIXO — a composição:** a **PILHA INTEIRA** (`Shadow → Blur → Glow`) · o **PAR DE ORDEM**
-  (`Glow → Blur` × `Blur → Glow`, os MESMOS dois degraus trocados — se parecerem iguais, a pilha
-  não está compondo) · e **O STICKER** (`Outline → Drop Shadow`), o desenho que nenhum dos dois faz
-  sozinho.
+1. **A regressão:** controle nítido · Blur · Glow · Drop Shadow.
+2. **Os degraus de DENTRO, lado a lado:** o MESMO Inner Shadow em **Proximity** (pontas escuras,
+   reentrâncias claras) e em **Contour** (banda constante em toda a volta) · Inner Glow · Color
+   Overlay.
+3. **O contorno e a composição:** Outline fino · o STICKER · a PILHA INTEIRA · **Outline GROSSO —
+   olhe as PONTAS** (é onde o contorno por distância se separa do corte por borrão).
+4. **O par de ordem:** `Glow → Blur` × `Blur → Glow`.
 
-Depois: **dê zoom** (o borrão cresce — o raio é de MUNDO) e **maximize** (o resize re-registra a
+Depois: **zoom** (o borrão cresce — o raio é de MUNDO) e **maximizar** (o resize re-registra a
 textura). `PH2D_FX_PERF=1` imprime `N pilha(s), M re-cozida(s), recook X ms`.
 
-**E o gesto do painel** (que a cena não exercita): desenhe uma forma → seção **Filters** → os
-**sete** botões "Add" → cada card oferece **só** os controles do tipo dele (o Color Overlay não tem
-Radius; só as sombras têm Offset; o Outline diz **Width**, não Radius) → as setas reordenam, o olho
-desarma sem perder os números, o ✕ apaga.
+**E o gesto do painel:** desenhe uma forma → seção **Filters** → os **sete** "Add"; cada card
+oferece só os controles do tipo dele (o Color Overlay não tem Radius, só as sombras têm Offset, o
+Outline diz **Width**) e os dois de dentro trazem o chip **Mode: Proximity | Contour**.
 
 ## Aberto / follow-ups (nomeados, não contrabandeados)
 

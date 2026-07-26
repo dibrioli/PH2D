@@ -24,7 +24,8 @@
 | G | Encolher a tabela pelo cache | ⛔ **refutado por medição** | N=512/1024/2048/16384 → **110,29 / 109,99 / 111,79 / 110,22 ms** |
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
-| J | **Latência do pen-down — o resto** | 🟡 **aberto, decomposto** | 4096²: canvas **3,6** + planos do traço **5,1** = **12,0 ms** (§4.4) |
+| J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
+| K | **O AA do filme POR DAB** | 🎯 **o maior item que sobrou** | **2,51 dos 6,57 ms** do dab de relevo — 38%, depois da LUT (§4.6) |
 
 ---
 
@@ -278,7 +279,47 @@ capacidade) e foi **MEDIDA E REPROVADA** em 2026-07-25: o pen-down a 4096² subi
 reusar a capacidade obriga um `memset` explícito dos mesmos 235 MB. **Reusar memória é mais caro que
 pedir memória nova quando a nova vem zerada de fábrica.**
 
-### 4.5 A metade que FALTA — e por que ela é uma WAVE e não um fix
+### 4.5 ⚠️ E então a medição mudou o ALVO: metade do "delay" é UM DAB COMUM
+
+A decomposição da §4.4 comparava o pen-down consigo mesmo. Faltava a comparação que decide tudo: **o
+pen-down contra um MOVE** — um dab comum, o custo que todo movimento do pincel paga.
+
+| 4096², r=100 | pen-down | move (1 dab) | **excesso do pen-down** |
+|---|---|---|---|
+| só pigmento | 3,8 | 0,39 | **3,4** (o fork do canvas) |
+| só relevo | 5,1 | 3,30 | **1,8** (setup dos planos) |
+| **default** | **12,1** | **5,50** | ~6 |
+
+⚠️ **Metade do que o artista sente como "delay do pen-down" é simplesmente o custo de UM DAB** — o
+mesmo que ele paga em todo move. O que é *específico* do pen-down são ~5 ms: o fork do canvas (3,4) e o
+setup dos planos (1,8).
+
+⚠️ **E a sonda do move nasceu MENTINDO:** ela andava menos que o `dab_spacing_px`, então **nenhum dab
+nascia** e a coluna reportava `0,00 ms`. Um zero desses lê como *"o move é grátis"* quando o que ele diz
+é *"o move não aconteceu"* — e era essa leitura que mantinha o pen-down parecendo um caso especial.
+
+### 4.6 De onde vem o dab de RELEVO — e o AA ainda é 38% dele
+
+O número que salta na tabela acima é outro: **o dab de relevo custa 8× o de pigmento** (3,30 contra
+0,39). Decomposto por KNOB do produto (`where_the_relief_dab_spends_its_time`, r=100, 4096², mediana de
+8 moves):
+
+| configuração | ms/dab |
+|---|---|
+| tudo ligado (o default) | **6,57** |
+| **sem o AA do filme** | **4,06** |
+| sem o PUSH | 6,82 |
+| sem o SETTLE | 6,55 |
+| só o depósito (nada dos três) | 4,26 |
+
+⚠️ **O AA do filme é 2,51 dos 6,57 ms — 38% — MESMO DEPOIS da LUT.** Ele é, de longe, o item mais caro
+que sobrou no módulo.
+
+⚠️ **E o Push e o Settle não movem o ponteiro** — 6,82 e 6,55 contra 6,57 é ruído, e o *"sem o Push"*
+saindo MAIOR que o default é a prova de que é ruído e não economia. O settle não aparece porque ele roda
+no **commit** (pen-up), não por dab. **Só o AA responde.**
+
+### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
 A U1 (undo por delta) resolveu o que sobra **DEPOIS** do traço; isto é o que a cópia custa **DURANTE**
 ele, e **basta UMA segunda referência ao canvas para o 1º dab pagar um `make_mut`**.
@@ -376,12 +417,22 @@ milhões de vezes*. E as duas trazem a mesma cautela, aprendida no doc 24 e reco
 
 ## 7. Próxima etapa recomendada
 
-**A segunda metade do pen-down (§4.5).** A primeira fechou por roteamento (§4.3) e entregou
-**−62% no digital e −36% no impasto** a 4096². O que sobra são os 12,0 ms decompostos na §4.4, e a
-frente é **captura do "antes" por REGIÃO** — que elimina o fork do canvas (3,6 ms) tornando o `Arc`
-unicamente possuído durante o traço.
+⚠️ **A medição REORDENOU a fila, e a recomendação anterior deste doc está superada.** Eu havia
+apontado os planos canvas-sized do traço como o item maior; a comparação contra um MOVE (§4.5) mostrou
+que eles valem **1,8 ms**, não 5,1 — o resto era um dab comum. E a decomposição do dab (§4.6) mostrou
+onde o tempo realmente está.
 
-Ela segue sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de
-pintura. ⚠️ Mas agora ela tem um irmão maior no mesmo pen-down: **os 5,1 ms dos planos canvas-sized do
-traço**, cuja cura seria representá-los por JANELA em vez de por tela — outro desenho, com aceitação
-própria, e sem a cerca do `alloc_zeroed` para atravessar (§4.4).
+**A fila, por tamanho medido:**
+
+1. 🎯 **O AA do filme, 2,51 ms POR DAB** (38% do dab de relevo, depois da LUT). É o maior item do
+   módulo e ele é pago em **todo move**, não só no pen-down. A LUT trocou nove cadeias de silhueta por
+   nove leituras de tabela; o que sobra é a **contagem de amostras**, e atacá-la exige a convolução
+   tabulada de verdade — uma tabela 2-D em `(t, espalhamento)`, **um** lookup em vez de nove. ⚠️ O
+   espalhamento da grade é anisotrópico (`bx`/`by`), então colapsá-lo num escalar é uma aproximação
+   NOVA, com épsilon próprio a medir — e a §3.3 é o aviso de que aproximações do AA morrem por casos
+   que ninguém previu.
+2. **O fork do canvas no pen-down, 3,4 ms uma vez por traço** — captura do "antes" por REGIÃO. Continua
+   sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de pintura.
+3. **O setup dos planos do traço, 1,8 ms uma vez por traço** — representá-los por JANELA em vez de por
+   tela. ⚠️ Sem atravessar a cerca do `alloc_zeroed` (§4.4), que já custou 17,6 → 47,5 ms a quem tentou
+   o atalho óbvio.

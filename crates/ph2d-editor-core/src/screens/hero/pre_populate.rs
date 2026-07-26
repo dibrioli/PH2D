@@ -396,18 +396,9 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_PAPER,
         ids::CTX_MENU_HIER_USE_AS_GRANULATION,
-        // New-image modal: the Size + Background radios + Create (same populate-register gotcha).
+        // New-image modal: só o Create, que não tem tabela. Os radios de Size/Background vêm das
+        // TABELAS, logo abaixo — ver o porquê lá.
         ids::CTX_MENU_NEW_IMAGE_CREATE,
-        ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT,
-        ids::CTX_MENU_NEW_IMAGE_BG_BLACK,
-        ids::CTX_MENU_NEW_IMAGE_BG_WHITE,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_32,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_64,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_128,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_256,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_512,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_1024,
-        ids::CTX_MENU_NEW_IMAGE_SIZE_2048,
         ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
         ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
         ids::CTX_MENU_CURVE_HANDLE_FREE,
@@ -427,6 +418,21 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_SCENE_ROW_6,
         ids::CTX_SCENE_ROW_7,
     ] {
+        store.register(id, InteractiveState::Plain);
+    }
+    // New-image modal: os radios de Size e Background saem das MESMAS tabelas que o modal pinta e que
+    // o handler de clique consulta.
+    //
+    // ⚠️ **Eles estavam escritos à mão aqui, e o quarto consumidor apodreceu na primeira oportunidade:**
+    // acrescentar o 4096 à tabela deu um botão pintado, hit-registered e **MORTO sob o mouse** (Enio,
+    // 2026-07-26: *"não aceita ser selecionado"*). Um id precisa de estado no store para ser
+    // `is_focusable` → virar `active` no Down → emitir `Click`; a tabela sozinha não faz isso. Iterando,
+    // o tamanho seguinte nasce vivo.
+    for id in ids::CTX_MENU_NEW_IMAGE_SIZES
+        .iter()
+        .map(|(_, id)| *id)
+        .chain(ids::CTX_MENU_NEW_IMAGE_BGS.iter().map(|(_, id)| *id))
+    {
         store.register(id, InteractiveState::Plain);
     }
     // Timeline segment presets (W3.E4) + track-row menu. Driven off the same

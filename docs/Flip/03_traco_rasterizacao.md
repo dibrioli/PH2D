@@ -446,9 +446,24 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
     o arrasto era dropado em silêncio. O teste do tool chamava `handle_panel_event` DIRETO,
     pulando a costura. Fix: os dois arms (o de forward + o de swallow do `_NUM`) ganham o id;
     gate `seam.rs::dot_spacing_slider_drag_reaches_tool` dirige o `ValueChanged` REAL pelo painel.
-- **Pincel airbrush analítico (Ciallo):** falloff por integral em forma fechada
-  `A(y) = 1 − exp(−2αc·sqrt(R²−y²))` — semântica de acúmulo físico; casa com a flag Self
-  Overlap. (Fórmulas do paper/tutorial; código do CialloResearch é GPL-3 — só comportamento.)
+- ~~**Pincel airbrush analítico (Ciallo)**~~ — **LANDOU 2026-07-25** (`PH2D_FLIP_AIRBRUSH_SMOKE=1`):
+  `FlipStroke::airbrush` (por-curva, irmão de `self_overlap`) → bit `FLAG_AIRBRUSH = 1<<4` no
+  `flags` do `GpuStroke` (sem resize) → um ramo em `hardness_mask`. O falloff da borda vira a
+  transmitância física de um dab esférico (Beer-Lambert): `A(dn) = 1 − exp(−k·√(1−dn²))`,
+  `k = mix(1, 8, hardness)` (o slider Hardness vira a densidade). Um **domo largo** de núcleo chato
+  e borda SEMPRE macia — o oposto do pico do `pow`+smoothstep. Casa com o Self Overlap: a
+  acumulação `over` de airbrush é a multiplicação de transmitâncias, o build-up físico. Toggle-chip
+  na seção Brush(Draw), abaixo do Self Overlap. `FLIP_SCHEMA` 11→12, `PROJECT_SCHEMA` 33→34.
+  - ⚠️ **A flag chega ao FRAGMENT por um varying flat `flags` novo** (loc 14) — antes o fragment não
+    lia `flags` (o Self Overlap é vertex-only, via depth); o airbrush é a 1ª decisão de máscara por
+    flag no fragment. Reusável (a próxima flag de máscara testa o mesmo varying).
+  - ⚠️ **`exp`/`sqrt` no shader são display path, não determinismo** (o `pow` já estava lá; o raster
+    do Flip é re-rasterizado por frame, não replayado bit-exato como o `physics_ecs_c9`).
+  - ⚠️ **`k∈[1,8]` é ESTÉTICO** (quão densa a névoa mais forte), não limite de recurso — a borda do
+    airbrush é sempre macia mesmo em `K_MAX`. Medido (banda raio 10, hardness 0.5): eixo 222 padrão
+    / 252 airbrush · meio-raio 0 / 249 (o discriminante) · borda 0 / 231. Gate GPU red-first
+    `an_airbrush_has_a_flatter_core_than_the_standard_brush` (a flag ignorada → o meio-raio desaba
+    para o pico → RED). Código do CialloResearch é GPL-3 — só comportamento, a fórmula é do paper.
 - **Variante SDF do caminho (b)** — hardness re-editável por uniform (scratch de distância +
   MIN). Interessante quando houver "estilo de traço" re-aplicável.
 - **Budget de depth:** quantum 2e-7 ≈ 5M índices por alvo. O Flip rasteriza POR CAMADA/frame

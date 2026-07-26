@@ -101,7 +101,7 @@ Novas crates: **`ph2d-painter-brush`** (engine pura) + **`ph2d-panel-painter-bru
 | Doc | O que tem |
 |---|---|
 | **[25_avaliacao_gpu.md](25_avaliacao_gpu.md)** | O censo MEDIDO do módulo (4 modos, por-move e por-frame) · os 4 achados · as ondas 1/2/5a/5b/5c entregues · a proteção por-traço e o TETO (§13.11–13.13) |
-| **[26_plano_performance_procreate.md](26_plano_performance_procreate.md)** | **Pesquisa do Procreate + o plano que sai dela** — os 3 pilares (latência · tiles · compositor), o que NÃO transfere (memória unificada × PCIe), e as frentes **T/L/U/R** com a medição que abre cada uma. ⚠️ **Plano, não trabalho feito** |
+| **[26_plano_performance_procreate.md](26_plano_performance_procreate.md)** | **Pesquisa do Procreate + o plano que saiu dela, e o que a EXECUÇÃO mediu (§7)** — os 3 pilares (latência · tiles · compositor) e o que NÃO transfere (memória unificada × PCIe). ⚠️ **Executado 2026-07-25:** a frente dos TILES foi construída inteira e **REVERTIDA** (a grade não pode ser mais apertada do que lhe contam) · o relógio **EVENTO→FRAME** landou · e a sonda do **undo nasceu VERMELHA** (1.627 MB em 24 traços) |
 
 > ⚠️ A pendência *"undo de stroke por TILES"* logo acima **é a frente U do doc 26** — anotada na Fase 4,
 > quando o snapshot tinha 1 plano; hoje tem 4.

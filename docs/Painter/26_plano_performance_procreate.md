@@ -4,8 +4,14 @@
 problemas de performance desapareçam?"* → e, depois da primeira resposta: *"então o que apps de extremo
 sucesso como Procreate fazem para ter performance espetacular? Investigue e pesquise"*.
 
-**Este documento é um PLANO, não trabalho feito.** Nada aqui foi construído. Cada frente traz a medição
-que a abre (red-first), os sítios exatos, os gates, as mutações que devem sangrar e o que **não** fazer.
+> ## ⛔ ESTE PLANO FOI EXECUTADO (2026-07-25). Leia a [§7](#7--o-que-a-execução-mediu) antes da §4.
+>
+> A frente **T** foi construída inteira e **revertida na medição de fechamento**; a **L0** e a **U0**
+> landaram e a U0 **nasceu vermelha sobre um defeito real**. O §4 abaixo fica **como foi escrito**,
+> com os erros que a medição corrigiu — um plano reescrito depois do resultado não ensina nada.
+
+**Este documento era um PLANO.** Cada frente trazia a medição que a abre (red-first), os sítios exatos,
+os gates, as mutações que devem sangrar e o que **não** fazer. O §7 registra o que aconteceu com cada uma.
 
 > ## A resposta em uma frase
 >
@@ -266,16 +272,16 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 
 ## 5. Ordem, custo e critério de parada
 
-| # | frente | abre com | cancela se | risco |
-|---|---|---|---|---|
-| 1 | **T0** medição do over-claim | sonda nova | razão ≈ 1 | 🟢 nenhum |
-| 2 | **T1–T3** tiles | T0 | — | 🟡 contabilidade |
-| 3 | **L0** latência evento→pixel | instrumento | — | 🟢 nenhum |
-| 4 | **L1** traço vivo separado | L0 | L0 já em ~1 frame | 🟡 costura de preview |
-| 5 | **U0** dhat do undo | harness | pico dentro do orçamento | 🟢 nenhum |
-| 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo |
-| 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador |
-| 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural |
+| # | frente | abre com | cancela se | risco | **resultado (§7)** |
+|---|---|---|---|---|---|
+| 1 | **T0** medição do over-claim | sonda nova | razão ≈ 1 | 🟢 nenhum | ✅ feita — o bbox mente de 1,66× a 916× |
+| 2 | **T1–T3** tiles | T0 | — | 🟡 contabilidade | ⛔ **construída e REVERTIDA** — a grade não pode ser mais apertada do que lhe contam |
+| 3 | **L0** latência evento→pixel | instrumento | — | 🟢 nenhum | ✅ **landou** — `EVENTO->FRAME p50/p95` no `PH2D_PAINT_PERF` |
+| 4 | **L1** traço vivo separado | L0 | L0 já em ~1 frame | 🟡 costura de preview | ⏸ espera o número do L0 num smoke real |
+| 5 | **U0** dhat do undo | harness | pico dentro do orçamento | 🟢 nenhum | 🔴 **VERMELHA** — 1.627 MB em 24 traços |
+| 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | ⏸ **decisão do Enio** (as duas curas custam — §7.3) |
+| 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
+| 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
 não se moveu, a frente **não continua** — e o doc registra o negativo, que é resultado.
@@ -294,6 +300,97 @@ não se moveu, a frente **não continua** — e o doc registra o negativo, que �
 
 ---
 
+## 7 — O que a EXECUÇÃO mediu
+
+> Escrito depois de construir. As frentes acima ficam como foram planejadas, **com os erros**; esta
+> seção é o que a medição respondeu, e ela contradiz o plano em três pontos.
+
+### 7.1 ⛔ A frente T foi construída inteira — e revertida
+
+Construída: o tipo `TileSet` (bitset + `bounds()` byte-idêntico como ponte), o campo migrado em 11
+sítios, o composite parcial percorrendo os retângulos, **13 gates e 6 mutações, todas sangrando** —
+incluindo `a_tiled_partial_composite_is_byte_identical_to_a_full_recompose`, que passava. **O desenho
+estava certo. Ele só não se paga.** Três números, nesta ordem:
+
+| pergunta | resposta |
+|---|---|
+| o bbox mente? | **sim, 1,66× a 916×** |
+| uma grade de tiles pega essa mentira? | **não** — a reivindicação REAL cai só ~1,4× |
+| e no relógio? | **+12-14%** em dois gestos, **−75%** no mais comum |
+
+⚠️ **A CAUSA, e é o que se leva desta frente: a grade não pode ser mais apertada do que aquilo que lhe
+contam.** O `mark_dirty` recebe o bbox de cada *SEGMENTO* do traço — medido, **90×54 texels para um
+pincel de 24 px**. O piso que a sonda calcula (marcar os tiles que os texels MUDADOS cruzam) é
+**inalcançável**: entre 45.568 (piso) e 145.856 (bbox) a marcação real entrega 104.000. **O over-claim
+mora nos CHAMADORES do `mark_dirty`, não na união deles** — e isso é uma frente diferente, mais barata
+e mais bem-mirada, se algum dia valer.
+
+**Dois erros do §4 que a medição corrigiu:**
+
+1. **`64/128/256`** — os tamanhos que a §1 citou da literatura de praticantes — **PERDEM para o bbox**
+   no gesto comum (traço curto: 10,40× contra 1,66×). Um tile de 64 são 4.096 texels e a faixa de um
+   pincel r=12 tem 24 px. **O tile útil é da ordem do diâmetro do PINCEL, não da tela.**
+2. **A razão sozinha decide errado.** No drag dot a grade é 4,07× *pior* em razão e **699 texels** pior
+   em absoluto — que é nada. Quem decide é a grandeza **absoluta**.
+
+⚠️ **E a sonda de fechamento reprovou a si mesma antes de reprovar a frente:** a 1ª versão media o frame
+do **pen-up** — o commit, que re-suja o envelope inteiro — onde a reivindicação por tiles é igual ou
+**MAIOR** que o bbox (414.208 contra 419.904). O frame do commit acontece **uma vez por traço**; os
+outros sessenta são de traço ABERTO, e são esses que a sonda mede hoje.
+
+### 7.2 ✅ L0 landou — e é o instrumento que faltava
+
+`PH2D_PAINT_PERF` agora fecha com `EVENTO->FRAME p50=.. p95=.. max=.. ms · alvo 9`. Três decisões,
+cada uma gateada: carimba o evento **mais ANTIGO** não-servido (o atraso que o artista sente é o do
+primeiro do lote, não o do mais sortudo) · o carimbo fica **entre a recusa por pegada e a entrega** (um
+Down que cai para o pan nunca vira pixel) · reporta **p95** ao lado do p50, porque latência se julga
+pela cauda.
+
+⚠️ **Ele para no FIM DO FRAME, não no present** — a diferença é uma fração de ms e está escrita no
+código. Prometer *"→ pixel"* com um instrumento que para no fim do frame seria vender o que ele não mede.
+
+### 7.3 🔴 U0 nasceu vermelha, e o defeito é grave
+
+| | |
+|---|---|
+| um documento (4 planos, 2048²) | 64,0 MB |
+| pico após 24 traços | **1.669,2 MB** |
+| retido | **1.627,2 MB** (25,4 documentos) |
+
+**Um documento por traço, linear.** O teto do app inteiro é 3.500 MB (HR-13) ⇒ 24 traços comem **46%**
+dele; a 4096² quadruplica (~6,5 GB, quase o dobro do orçamento); e o cap é por **CONTAGEM**
+(`DEFAULT_MAX_DEPTH = 300`), então ele **multiplica** isto por 300. É a frase do ADR-0117 no Painter,
+com um zero a mais.
+
+⚠️ **A cura é DECISÃO DO ENIO**, porque as duas custam:
+
+1. **cap em BYTES** — resolve o teto na hora e **encurta o undo de forma visível**: com 512 MB o artista
+   tem **8 passos a 2048² e 2 a 4096²**. É regressão de PRODUTO, não detalhe de implementação.
+2. **histórico por DELTA** (o U1) — o passo guarda só a região que mudou, e aí o cap em bytes deixa de
+   morder. É re-arquitetura do undo, a coisa em que o artista mais confia.
+
+### 7.4 ⚠️ E o perfil aponta para OUTRO lugar
+
+O split por estágio da drenagem parcial (`the_partial_drain_stages`, 1024²):
+
+| estágio | ms |
+|---|---|
+| `composite_region(bbox 365k)` | 1,6 |
+| **`apply_impasto_light(bbox)`** | **7,9** |
+| `impasto_fields()` | 0,000 |
+| `composite_region(TELA inteira)` | 2,8 |
+
+**A luz do impasto custa 3× um composite de tela inteira** e domina a drenagem da pista CPU. Cortar a
+área da reivindicação em 5× moveu o relógio em **5%** — o alvo da frente T estava errado desde o começo,
+e nenhuma quantidade de tiles conserta isso.
+
+⚠️ **Ela JÁ está na GPU** (o `ImpastoLightPass` landou em 2026-07-18, paridade `worst delta 0`), então
+este número é da pista **CPU** — o que ele diz é *quando* a pista CPU é escolhida, e não que a luz seja
+lenta em absoluto. A frente re-mirada é: **por que a pista CPU ainda é escolhida, e o que a leva a
+escolher-se num documento com relevo?**
+
+---
+
 ## Apêndice — reproduzir os números citados
 
 ```bash
@@ -308,8 +405,14 @@ cargo test -p ph2d-host-desktop --release --bins measure_the_sculpted_stroke -- 
 # o snapshot do pincel (o gate de razão que fechou os 7,6 ms)
 cargo test -p ph2d-tool-painter --release the_brush_snapshot -- --nocapture
 
-# o split por-chamada, no app REAL (só grava com o Painter ATIVO)
+# o split por-chamada + a LATÊNCIA (L0), no app REAL (só grava com o Painter ATIVO)
 env PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1 ./target/release/ph2d-host-desktop
+
+# T0 + o relógio da drenagem + o split por estágio (§7.1 e §7.4)
+cargo test -p ph2d-tool-painter --release measure_dirty_overclaim -- --ignored --nocapture
+
+# U0 — o repro VERMELHO do undo (§7.3)
+cargo test -p ph2d-tool-painter --release --test measure_undo_memory -- --ignored --nocapture
 ```
 
 ---

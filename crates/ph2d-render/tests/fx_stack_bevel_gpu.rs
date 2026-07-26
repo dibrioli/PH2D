@@ -98,6 +98,63 @@ fn the_relief_is_constant_along_a_straight_edge() {
     }
 }
 
+/// **O relevo é PLANO na silhueta e pica DENTRO da banda.**
+///
+/// Um bevel é uma quina arredondada: a superfície começa plana na borda, sobe pela banda e volta a
+/// ficar plana no miolo. O sombreado é a INCLINAÇÃO dessa superfície, logo ele se anula nas duas
+/// pontas — e é isso que o perfil `4t(1−t)` (a derivada normalizada de um smoothstep) entrega.
+///
+/// ⚠️ **O perfil antigo valia 1 em `dist = 0`**, ou seja punha o valor EXTREMO do sombreado no
+/// texel mais externo: o lado escuro saía preto no fio da borda e o claro saía branco. O smoke
+/// chamou isso de "linhas pretas", e nenhum gate o via — todos mediam ondulação AO LONGO da
+/// aresta, e uma linha dura é constante ao longo dela.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_relief_vanishes_at_the_silhouette_and_peaks_inside_the_band() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_bevel] sem adapter — skip");
+        return;
+    };
+    let px = beveled(&gpu, &oblique_segments(W));
+    // O desvio da tinta crua (luminância ~179,8) a cada profundidade.
+    let excursion = |dist: f64| -> f64 {
+        let mut worst = 0.0_f64;
+        for y in 3..H - 3 {
+            for x in 3..W - 3 {
+                if (oblique_signed(x, y) - dist).abs() > 0.06 {
+                    continue;
+                }
+                let o = ((y * W + x) * 4) as usize;
+                let l = 0.299 * f64::from(px[o])
+                    + 0.587 * f64::from(px[o + 1])
+                    + 0.114 * f64::from(px[o + 2]);
+                worst = worst.max((l - 179.8).abs());
+            }
+        }
+        worst
+    };
+    let rim = excursion(0.5);
+    let mid = excursion(f64::from(BAND) * 0.5);
+    // ⚠️ A afirmação é a RAZÃO, não um valor: ela é a PROPRIEDADE (o relevo cresce da borda para
+    // dentro) e é imune à escala do tint, da luz e da opacidade. Um perfil que pica na borda tem
+    // `rim >= mid`; um que se anula lá tem `rim` uma fração de `mid`.
+    eprintln!(
+        "[fx_stack_bevel] rim {rim:.1} | meio da banda {mid:.1} | razão {:.2}",
+        rim / mid
+    );
+    assert!(
+        mid > 60.0,
+        "o meio da banda desvia só {mid:.1} níveis — não há relevo para a borda estar plana \
+         em relação a"
+    );
+    assert!(
+        rim < mid * 0.45,
+        "o texel da SILHUETA desvia {rim:.1} níveis contra {mid:.1} no meio da banda \
+         (razão {:.2}) — o bevel está pintando o extremo no fio da borda, que é a linha dura",
+        rim / mid
+    );
+}
+
 /// **Os DOIS caminhos desenham relevo de verdade.**
 ///
 /// ⚠️ **Este gate nasceu cobrindo só o caminho do raster, e uma mutação o pegou:** desligar o pé

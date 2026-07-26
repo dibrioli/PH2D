@@ -417,7 +417,22 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
             if (g.n_segs == 0u) { n = field_normal(sx, sy, n); }
             let lit = vec2<f32>(f32(g.off_x), f32(g.off_y));
             let l = select(vec2<f32>(0.0, -1.0), normalize(lit), dot(lit, lit) > 0.0);
-            shade = dot(n, l) * (1.0 - smoothstep(0.0, w, dist)) * g.opacity;
+            // ⚠️ **O relevo é a INCLINAÇÃO do rebordo, e ela é ZERO na silhueta.**
+            //
+            // O perfil antigo (`1 − smoothstep(0, w, dist)`) vale **1 em `dist = 0`**, ou seja
+            // punha o valor EXTREMO do sombreado no texel mais externo da forma: o lado escuro
+            // saía preto no fio da borda e o claro saía branco. Era isso que o smoke reportou como
+            // "linhas pretas" — não um artefato numérico, mas o perfil errado.
+            //
+            // Um bevel é uma quina arredondada: a superfície começa PLANA na silhueta, sobe pela
+            // banda e volta a ficar plana no miolo. Com a altura `h(t) = smoothstep(0,1,t)`, a
+            // componente horizontal da normal é `h'(t) = 6t(1−t)` — que se anula nas DUAS pontas e
+            // pica no meio da banda. Normalizada ao pico: `4t(1−t)`.
+            //
+            // É a mesma figura que o Bevel & Emboss do Photoshop desenha (a faixa de luz mora
+            // DENTRO da banda, não no contorno), e mata a linha dura sem tocar no campo.
+            let t = clamp(dist / w, 0.0, 1.0);
+            shade = dot(n, l) * (4.0 * t * (1.0 - t)) * g.opacity;
         }
         let colour = select(g.tint.rgb, vec3<f32>(1.0), shade > 0.0);
         outc = inner_tint(over, colour, abs(shade) * g.tint.a);

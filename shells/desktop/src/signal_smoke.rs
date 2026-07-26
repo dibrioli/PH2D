@@ -89,7 +89,15 @@ impl crate::App {
 
         // Loop [0, 4) and PLAY: signals are a forward-play event, so the scene has to
         // be running for the toasts to fire — each pass crosses the two signal markers.
-        self.playhead.set_loop(0.0, 4.0);
+        //
+        // ⚠️ Arm the loop through the DOCUMENT, then sync the playhead FROM it — never poke
+        // `playhead.set_loop` directly. The doc is the truth the transport's Loop toggle
+        // reads (`snap.loop_range.is_some()`); poking only the playhead loops playback while
+        // the toggle paints OFF, which reads as "está fazendo loop sem eu marcar loop" (Enio,
+        // 2026-07-26). This is the exact single door `sync_transport_loop` exists for, and it
+        // sets the loop MODE (Wrap here) too, so the toggle can never disagree with the clock.
+        self.timeline.doc.set_active_loop_for(false, Some((0.0, 4.0)));
+        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
         self.playhead.seek(0.0);
         self.playhead.play();
 

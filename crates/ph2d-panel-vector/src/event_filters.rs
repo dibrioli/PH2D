@@ -24,6 +24,7 @@ pub(super) fn is_filter_button(id: ph2d_a11y::NodeId) -> bool {
                 || id == ids::filter_up_id(r)
                 || id == ids::filter_down_id(r)
                 || id == ids::filter_hide_id(r)
+                || (0..ids::MAX_FILTER_MODES).any(|m| id == ids::filter_mode_id(r, m))
         })
 }
 

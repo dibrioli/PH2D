@@ -44,6 +44,19 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
 pub const MAX_FILTER_KINDS: usize = 7;
 
+/// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
+/// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
+/// só os que a tabela publicada de fato oferece.
+pub const MAX_FILTER_MODES: usize = 4;
+
+/// **O MODO `m` da linha `row`** — a LEI do degrau, não a intensidade dele: um Inner Shadow em
+/// `Proximity` mede quanto de FORA há por perto (uma parte fina escurece inteira), em `Contour`
+/// mede a DISTÂNCIA à borda (uma banda de largura constante ao longo de todo o contorno).
+#[must_use]
+pub fn filter_mode_id(row: usize, mode: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.mode.{row}.{mode}"))
+}
+
 /// **Add \<tipo\>** — põe um degrau do tipo `kind` no TOPO da pilha (o fim da lista).
 #[must_use]
 pub fn filter_add_id(kind: usize) -> NodeId {

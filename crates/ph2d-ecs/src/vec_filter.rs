@@ -70,7 +70,15 @@ pub struct FxKindSpec {
     pub grows: bool,
     /// O halo nasce do alfa **INVERTIDO** e é mascarado pela forma — ou seja, mora DENTRO dela.
     pub inner: bool,
+    /// Os MODOS que este tipo oferece, na ordem dos códigos, ou vazio se ele não tem escolha a
+    /// fazer. O painel pinta um chip por modo e o **índice no slice É o código** — como a `SPECS`,
+    /// a lista é a tabela.
+    pub modes: &'static [&'static str],
 }
+
+/// Os modos dos degraus de DENTRO. Duas leis diferentes sobre *o que é "perto da borda"*, e a
+/// diferença é visível em qualquer forma com reentrância.
+pub const INNER_MODES: [&str; 2] = ["Proximity", "Contour"];
 
 /// **Um degrau da pilha** — um efeito com os parâmetros dele.
 ///
@@ -90,6 +98,9 @@ pub struct FxOp {
     pub color: [f32; 4],
     /// A intensidade/opacidade DESTE degrau, em `[0,1]`.
     pub opacity: f32,
+    /// O MODO deste degrau — o índice em [`FxKindSpec::modes`]. Zero (o 1º modo) para todo tipo
+    /// que não oferece escolha.
+    pub mode: u8,
     /// Desligado = a pilha o SALTA, como se não estivesse lá — mas os parâmetros ficam. Espelha o
     /// `FxEntry::enabled` da pilha de geometria: desarmar não pode custar números que o artista
     /// teria de lembrar.
@@ -103,6 +114,7 @@ const BLANK: FxOp = FxOp {
     offset: [0.0, 0.0],
     color: [0.0, 0.0, 0.0, 1.0],
     opacity: 1.0,
+    mode: FxOp::MODE_CONTOUR,
     enabled: true,
 };
 
@@ -127,6 +139,16 @@ impl FxOp {
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
     pub const KINDS: usize = 7;
 
+    /// Modo dos degraus de dentro: **a PROXIMIDADE do lado de fora** (o alfa invertido borrado — o
+    /// modelo do Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo
+    /// nela está perto de fora, e uma reentrância quase não escurece, porque o "fora" ali subtende
+    /// um ângulo pequeno.
+    pub const MODE_PROXIMITY: u8 = 0;
+    /// Modo dos degraus de dentro: **a DISTÂNCIA à borda** — uma banda de largura constante ao
+    /// longo de TODO o contorno, reentrâncias incluídas. É o que "sombra interna" desenha em quem
+    /// olha a forma, e é o default.
+    pub const MODE_CONTOUR: u8 = 1;
+
     /// **A tabela dos tipos.** Indexada pelo `kind`; a ordem É a dos códigos acima (há gate).
     pub const SPECS: [FxKindSpec; Self::KINDS] = [
         FxKindSpec {
@@ -136,6 +158,7 @@ impl FxOp {
             has_color: false,
             grows: true,
             inner: false,
+            modes: &[],
         },
         FxKindSpec {
             name: "Glow",
@@ -144,6 +167,7 @@ impl FxOp {
             has_color: true,
             grows: true,
             inner: false,
+            modes: &[],
         },
         FxKindSpec {
             name: "Drop Shadow",
@@ -152,6 +176,7 @@ impl FxOp {
             has_color: true,
             grows: true,
             inner: false,
+            modes: &[],
         },
         FxKindSpec {
             name: "Inner Shadow",
@@ -160,6 +185,7 @@ impl FxOp {
             has_color: true,
             grows: false,
             inner: true,
+            modes: &INNER_MODES,
         },
         FxKindSpec {
             name: "Inner Glow",
@@ -168,6 +194,7 @@ impl FxOp {
             has_color: true,
             grows: false,
             inner: true,
+            modes: &INNER_MODES,
         },
         FxKindSpec {
             name: "Outline",
@@ -178,6 +205,7 @@ impl FxOp {
             has_color: true,
             grows: true,
             inner: false,
+            modes: &[],
         },
         FxKindSpec {
             name: "Color Overlay",
@@ -186,6 +214,7 @@ impl FxOp {
             has_color: true,
             grows: false,
             inner: false,
+            modes: &[],
         },
     ];
 
@@ -227,6 +256,14 @@ impl FxOp {
     #[must_use]
     pub fn is_active(self) -> bool {
         self.enabled
+    }
+
+    /// Zera o modo de quem não tem modos (porta única do `new`).
+    fn with_default_mode(mut self) -> Self {
+        if Self::spec(self.kind).modes.is_empty() {
+            self.mode = 0;
+        }
+        self
     }
 
     /// O degrau que um "Add" recém-clicado deve criar, com defaults **VISÍVEIS** — armar no
@@ -278,6 +315,9 @@ impl FxOp {
                 ..BLANK
             },
         }
+        // Um tipo sem modos guarda ZERO — um número guardado que não seleciona nada é a semente do
+        // "este campo quer dizer o quê aqui?" seis meses depois.
+        .with_default_mode()
     }
 }
 
@@ -426,6 +466,32 @@ mod tests {
                     s.name
                 );
             }
+        }
+    }
+
+    /// **Quem tem modos nasce no default declarado; quem não tem nasce em ZERO.** Um número
+    /// guardado que não seleciona nada é a semente de "este campo quer dizer o quê aqui?".
+    #[test]
+    fn only_the_kinds_with_modes_carry_one() {
+        for kind in 0..FxOp::KINDS as u8 {
+            let o = FxOp::new(kind);
+            let s = FxOp::spec(kind);
+            if s.modes.is_empty() {
+                assert_eq!(o.mode, 0, "{} não tem modos e nasceu em {}", s.name, o.mode);
+            } else {
+                assert!(
+                    (o.mode as usize) < s.modes.len(),
+                    "{} nasceu num modo que a tabela não oferece ({})",
+                    s.name,
+                    o.mode
+                );
+            }
+        }
+        // Os dois de dentro nascem em CONTOUR — a banda que segue o contorno é o que "sombra
+        // interna" desenha para quem olha a forma; a proximidade fica como a outra opção.
+        for kind in [FxOp::INNER_SHADOW, FxOp::INNER_GLOW] {
+            assert_eq!(FxOp::new(kind).mode, FxOp::MODE_CONTOUR);
+            assert_eq!(FxOp::spec(kind).modes.len(), 2);
         }
     }
 

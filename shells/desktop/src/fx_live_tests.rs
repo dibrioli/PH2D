@@ -32,6 +32,13 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
         FxOp::KINDS,
         "o teto de TIPOS do painel tem de bater com o `FxOp::KINDS`"
     );
+    let widest = FxOp::SPECS.iter().map(|s| s.modes.len()).max().unwrap_or(0);
+    assert!(
+        widest <= ph2d_editor::ids::MAX_FILTER_MODES,
+        "o teto de MODOS do painel ({}) nao cobre o tipo mais largo ({widest}) — os ultimos \
+         modos ficariam sem chip, em silencio",
+        ph2d_editor::ids::MAX_FILTER_MODES
+    );
 }
 
 /// **Um degrau DESLIGADO nunca chega ao passe** — a pilha o salta, como a de geometria salta um
@@ -108,6 +115,11 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
         assert_eq!(hit_of(vid::filter_add_id(k)), Some(want));
     }
     for r in 0..VecFilter::MAX_OPS {
+        for m in 0..vid::MAX_FILTER_MODES {
+            #[allow(clippy::cast_possible_truncation)]
+            let want = FilterHit::Mode(r, m as u8);
+            assert_eq!(hit_of(vid::filter_mode_id(r, m)), Some(want));
+        }
         assert_eq!(hit_of(vid::filter_remove_id(r)), Some(FilterHit::Remove(r)));
         assert_eq!(hit_of(vid::filter_up_id(r)), Some(FilterHit::Up(r)));
         assert_eq!(hit_of(vid::filter_down_id(r)), Some(FilterHit::Down(r)));

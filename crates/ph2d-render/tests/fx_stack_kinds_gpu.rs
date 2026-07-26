@@ -46,6 +46,12 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
         offset_px,
         tint,
         opacity: 1.0,
+        // O modo default do TIPO — é o que o produto arma, e é o que o gate tem de medir.
+        mode: if FxOp::spec(kind).modes.is_empty() {
+            0
+        } else {
+            FxOp::new(kind).mode
+        },
     }
 }
 
@@ -151,6 +157,61 @@ fn the_inner_shadow_darkens_the_rim_and_never_leaks_outside() {
     assert_eq!(alpha_at(&out, (BX0 + BX1) / 2, y), 255);
 }
 
+/// **Um degrau de DENTRO nunca move a COBERTURA — nenhum texel, nem na borda anti-aliased.**
+///
+/// Foi o gate que faltava, e o defeito que ele pega foi reportado na tela: um **rim claro de 1 px**
+/// em volta da forma. O halo era composto como uma CAMADA por cima (`halo + over*(1−halo.a)`), o
+/// que SOMA alfa — na borda com `over.a = 0,5` e `halo.a = 0,25` o resultado era 0,625 — e como o
+/// `resolve` des-premultiplica, dividir por um alfa maior CLAREIA. O gate antigo só olhava o miolo
+/// (255) e o lado de fora (0): os dois estão certos mesmo com o bug, porque o fenômeno vive
+/// exatamente na fatia de alfa fracionário.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn an_inner_op_never_moves_the_coverage() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let mut pass = FxStackPass::new(&gpu);
+    // Uma borda com alfa FRACIONÁRIO em rampa — é onde o bug morava, e a fixture tem de o conter.
+    let mut bytes = vec![0u8; (W * H * 4) as usize];
+    for y in BY0..BY1 {
+        for x in BX0..BX1 {
+            #[allow(clippy::cast_possible_truncation)]
+            let a = ((x - BX0) * 255 / (BX1 - BX0 - 1)).min(255) as u8;
+            let o = ((y * W + x) * 4) as usize;
+            bytes[o..o + 4].copy_from_slice(&[a, a, a, a]);
+        }
+    }
+    let src = make_src(&gpu, W, H, &bytes);
+    let dst = make_output_texture(&gpu, W, H);
+    let run = |pass: &mut FxStackPass, ops: &[FxOpGpu]| {
+        pass.run(&gpu, &src, &dst, W, H, ops);
+        readback(&gpu, &dst, W, H)
+    };
+    let plain = run(&mut pass, &[]);
+    for kind in [FxOp::INNER_SHADOW, FxOp::INNER_GLOW] {
+        for strength in [1.0f32, 0.5] {
+            let mut o = one(kind, 5.0, BLACK, [4, -4]);
+            o.opacity = strength;
+            let out = run(&mut pass, &[o]);
+            let moved: Vec<usize> = (0..(W * H) as usize)
+                .filter(|i| plain[i * 4 + 3] != out[i * 4 + 3])
+                .collect();
+            assert!(
+                moved.is_empty(),
+                "{} (forca {strength}) moveu a cobertura de {} texels — o primeiro em ({}, {}): {} -> {}",
+                FxOp::kind_name(kind),
+                moved.len(),
+                moved[0] as u32 % W,
+                moved[0] as u32 / W,
+                plain[moved[0] * 4 + 3],
+                out[moved[0] * 4 + 3]
+            );
+        }
+    }
+}
+
 /// **O contorno alcança exatamente a LARGURA que o slider promete, e para com borda dura.**
 ///
 /// É a afirmação que separa um Outline de um Glow com opacidade alta: o Glow desvanece por ~3σ e
@@ -186,9 +247,14 @@ fn the_outline_reaches_its_width_and_stops_hard() {
             "[outline] sigma {sigma}: alcance {reach:.1} px (banda {band}) · glow {glow_reach:.1} \
              (banda {glow_band})"
         );
+        // ⚠️ Meio pixel de tolerância, e é a convenção da sonda (a ÚLTIMA coluna acima do limiar),
+        // não folga: com a dilatação sobre o campo de distância a borda cai em `w` exatamente, e é
+        // isso que faz o slider "Width" prometer o que entrega. Um bar de ±1,5 px não distinguia a
+        // correção de meio texel do JFA — a mutação que a remove passava por ele.
         assert!(
-            (reach - sigma).abs() <= 1.5,
-            "o contorno de largura {sigma} alcancou {reach} px"
+            (reach - (sigma - 0.5)).abs() <= 0.25,
+            "o contorno de largura {sigma} alcancou {reach} px (esperado {})",
+            sigma - 0.5
         );
         assert!(
             band <= 3,
@@ -319,5 +385,257 @@ fn the_pointwise_op_costs_much_less_than_a_blur() {
         overlay * 2.0 < blur,
         "seis ops pontuais ({overlay:.3} ms) tinham de custar bem menos que seis borroes \
          ({blur:.3} ms) — `passes_of` deve estar dando dois passes a quem nao borra"
+    );
+}
+
+/// **Opacidade 0 é no-op em TODO tipo** — byte a byte, contra a pilha vazia.
+///
+/// Varre a tabela, então um tipo novo entra aqui sozinho. ⚠️ O Blur **falhava**: ele fazia
+/// `borrado × opacidade`, então opacidade 0 não era *este efeito não contribui* e sim **a forma
+/// desaparece**. Os outros seis já eram no-op por construção — foi a varredura que separou os dois
+/// casos, e é por isso que ela varre em vez de escolher um tipo.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn an_op_at_zero_opacity_is_a_no_op_for_every_kind() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let mut pass = FxStackPass::new(&gpu);
+    let plain = render(&gpu, &mut pass, &[]);
+    for kind in 0..FxOp::KINDS as u8 {
+        let mut o = one(kind, 6.0, RED, [5, -5]);
+        o.opacity = 0.0;
+        let out = render(&gpu, &mut pass, &[o]);
+        let differ = plain
+            .chunks_exact(4)
+            .zip(out.chunks_exact(4))
+            .filter(|(a, b)| a != b)
+            .count();
+        assert_eq!(
+            differ,
+            0,
+            "o tipo {} mudou {differ} texels com opacidade ZERO — um degrau desligado pelo knob tem de ser o mesmo que nao estar la",
+            FxOp::kind_name(kind)
+        );
+    }
+}
+
+/// **O modo CONTOUR põe sombra na REENTRÂNCIA; o PROXIMITY quase não põe** — e essa é a diferença
+/// inteira entre os dois, reportada na tela (*"a estrela tem sombra só nas pontas"*).
+///
+/// A proximidade mede *quanto de FORA há por perto*: numa reentrância o fora subtende um ângulo
+/// pequeno, então o número é pequeno **mesmo encostado na borda**. A distância à borda não tem
+/// ângulo nenhum: é 0 em todo ponto do contorno.
+///
+/// A fixture é uma CRUZ — quatro quinas reentrantes e quatro pontas —, e as duas sondas ficam à
+/// MESMA distância da borda (≈3 px): sem isso o gate compararia distâncias diferentes e não a lei.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_contour_mode_shadows_a_reentrant_corner_and_proximity_barely_does() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let (cw, ch) = (128u32, 128u32);
+    let (v0, v1, h0, h1) = (44u32, 84u32, 44u32, 84u32);
+    let mut bytes = vec![0u8; (cw * ch * 4) as usize];
+    for y in 0..ch {
+        for x in 0..cw {
+            let horizontal = (14..114).contains(&x) && (h0..h1).contains(&y);
+            let vertical = (v0..v1).contains(&x) && (14..114).contains(&y);
+            if horizontal || vertical {
+                let o = ((y * cw + x) * 4) as usize;
+                bytes[o..o + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+    }
+    let src = make_src(&gpu, cw, ch, &bytes);
+    let dst = make_output_texture(&gpu, cw, ch);
+    let mut pass = FxStackPass::new(&gpu);
+    // Sem deslocamento: a pergunta é sobre a LEI da banda, não sobre a direção da luz.
+    let probe = |pass: &mut FxStackPass, mode: u8| -> (i32, i32) {
+        let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
+        o.mode = mode;
+        pass.run(&gpu, &src, &dst, cw, ch, &[o]);
+        let px = readback(&gpu, &dst, cw, ch);
+        let at = |x: u32, y: u32| i32::from(px[((y * cw + x) * 4) as usize]);
+        // Reentrante: 2 texels na diagonal para dentro da quina (distância 2,83 da borda).
+        // Reta: 3 texels acima da aresta de baixo do braço, longe de qualquer quina.
+        (at(v0 + 2, h0 + 2), at(v0 - 20, h0 + 3))
+    };
+    let (prox_notch, prox_edge) = probe(&mut pass, FxOp::MODE_PROXIMITY);
+    let (cont_notch, cont_edge) = probe(&mut pass, FxOp::MODE_CONTOUR);
+    eprintln!(
+        "[contorno] PROXIMITY reentrancia {prox_notch} vs aresta {prox_edge} · \
+         CONTOUR reentrancia {cont_notch} vs aresta {cont_edge} (0 = sombra cheia, 255 = sem sombra)"
+    );
+    // A lei do CONTOUR: à mesma distância da borda, a mesma sombra — na quina e na reta.
+    assert!(
+        (cont_notch - cont_edge).abs() <= 24,
+        "no modo Contour a reentrancia ({cont_notch}) tinha de escurecer como a aresta \
+         ({cont_edge}) — a banda segue o CONTORNO"
+    );
+    // E o controle: no PROXIMITY a reentrância é MUITO mais clara — é o defeito reportado, e ele
+    // continua lá de propósito (é o outro modo, não um bug).
+    assert!(
+        prox_notch > prox_edge + 40,
+        "o modo Proximity tinha de deixar a reentrancia bem mais CLARA que a aresta \
+         (deu {prox_notch} contra {prox_edge}) — se os dois modos concordam, um deles nao existe"
+    );
+    // E as duas leis escurecem de verdade a aresta reta (senão o gate acima passaria com tudo claro).
+    assert!(
+        cont_edge < 160 && prox_edge < 160,
+        "a aresta reta tinha de escurecer nos dois modos ({cont_edge} / {prox_edge})"
+    );
+}
+
+/// **A banda do modo Contour não SERRILHA numa aresta diagonal.**
+///
+/// O campo de distância é semeado num conjunto BINARIZADO (`alfa <= 0,5`), então a fronteira dele
+/// cai em texels inteiros — e numa diagonal isso é exatamente a forma de produzir uma escada. O
+/// gate mede a variação da sombra ao longo de uma aresta a 45°, a distância constante da borda: se
+/// a escada existisse, ela apareceria aqui como oscilação.
+///
+/// ⚠️ É também o gate que torna honesto NÃO ter um sobre o limiar da semente: mover o limiar dentro
+/// da rampa de AA desloca a banda por menos de um texel, e um bar que não distingue isso seria um
+/// gate que não pode falhar pelo motivo que alega.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_contour_band_does_not_stair_step_along_a_diagonal_edge() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let (dw, dh) = (128u32, 128u32);
+    // Meio-plano diagonal com ANTI-ALIASING de verdade: alfa = cobertura da reta x + y = 128.
+    let mut bytes = vec![0u8; (dw * dh * 4) as usize];
+    for y in 0..dh {
+        for x in 0..dw {
+            let s = f64::from(x) + f64::from(y) - 128.0;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let a = ((0.5 - s / 1.414).clamp(0.0, 1.0) * 255.0).round() as u8;
+            let o = ((y * dw + x) * 4) as usize;
+            bytes[o..o + 4].copy_from_slice(&[a, a, a, a]);
+        }
+    }
+    let src = make_src(&gpu, dw, dh, &bytes);
+    let dst = make_output_texture(&gpu, dw, dh);
+    let mut pass = FxStackPass::new(&gpu);
+    let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
+    o.mode = FxOp::MODE_CONTOUR;
+    pass.run(&gpu, &src, &dst, dw, dh, &[o]);
+    let px = readback(&gpu, &dst, dw, dh);
+    // Anda PARALELO à aresta (`x + y` constante), DENTRO da banda (≈2,8 px da borda, com a banda
+    // em 8) e olha a oscilação. ⚠️ A 1ª versão sondou a 6,4 px, onde a banda já morreu: media
+    // 245..245 e passava sobre um lugar onde NADA acontece — daí o controle positivo abaixo.
+    let band: Vec<i32> = (30..90)
+        .map(|x: u32| {
+            let y = 124 - x;
+            i32::from(px[((y * dw + x) * 4) as usize])
+        })
+        .collect();
+    let (lo, hi) = (
+        *band.iter().min().expect("banda"),
+        *band.iter().max().expect("banda"),
+    );
+    eprintln!(
+        "[diagonal] sombra ao longo da aresta: {lo}..{hi} ({} niveis)",
+        hi - lo
+    );
+    assert!(
+        hi < 150,
+        "o controle POSITIVO falhou: a sonda tem de cair DENTRO da banda (deu {lo}..{hi}) — \
+         medir onde nao ha sombra e um gate que nao pode falhar"
+    );
+    assert!(
+        hi - lo <= 6,
+        "a banda oscila {} niveis ao longo de uma aresta reta ({lo}..{hi}) — e uma oscilacao \
+         periodica sobre campo quase-solido e exatamente o que o olho le como escada",
+        hi - lo
+    );
+}
+
+/// **O contorno é REDONDO na quina, e isso é uma propriedade da representação — não um ajuste.**
+///
+/// O pedido de *"opção de arredondar ou não"* esbarra numa derivação, e o gate existe para gravá-la
+/// junto do número: numa quina convexa de ângulo interno `θ`, a ponta de um **miter** fica a
+/// `w/sin(θ/2)` do vértice, enquanto qualquer junção redonda alcança exactamente `w`. Numa ponta de
+/// estrela (`θ ≈ 36°`) isso é **3,24 × w**.
+///
+/// Ora, o nosso contorno (como QUALQUER dilatação morfológica) é uma soma de Minkowski `A ⊕ S`: para
+/// esticar 3,24 w na quina, o `S` teria de conter um ponto a 3,24 w naquela direção — e aí engordaria
+/// 3,24 w **também na aresta reta**. ⇒ **Nenhuma dilatação é `w` na reta e `3,24 w` na ponta.** O que
+/// decide um miter são as DIREÇÕES das duas arestas que se encontram, e isso não está no campo de
+/// alfa: é geometria, e mora na pilha de Effects (`VecOffset { join }`), não aqui.
+///
+/// O gate mede o alcance na PONTA contra o alcance na ARESTA: iguais ⇒ redondo. Se algum dia
+/// alguém "consertar" a quina por acidente, é aqui que aparece.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_outline_is_round_at_a_corner_because_a_dilation_cannot_be_anything_else() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let (tw, th) = (192u32, 192u32);
+    // Uma cunha de 36° apontando para +X, com a ponta em (120, 96) e a base à esquerda.
+    let (tipx, tipy) = (120.0f64, 96.0f64);
+    let half = (18.0f64).to_radians().tan();
+    let mut bytes = vec![0u8; (tw * th * 4) as usize];
+    for y in 0..th {
+        for x in 0..tw {
+            let dx = tipx - f64::from(x);
+            let dy = f64::from(y) - tipy;
+            if dx > 0.0 && dx < 90.0 && dy.abs() <= dx * half {
+                let o = ((y * tw + x) * 4) as usize;
+                bytes[o..o + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+    }
+    let src = make_src(&gpu, tw, th, &bytes);
+    let dst = make_output_texture(&gpu, tw, th);
+    let mut pass = FxStackPass::new(&gpu);
+    let w = 10.0f32;
+    pass.run(
+        &gpu,
+        &src,
+        &dst,
+        tw,
+        th,
+        &[one(FxOp::OUTLINE, w, RED, [0, 0])],
+    );
+    let px = readback(&gpu, &dst, tw, th);
+    let alpha = |x: u32, y: u32| i32::from(px[(((y * tw + x) * 4) + 3) as usize]);
+    // Alcance ALÉM da ponta, ao longo do eixo (o bissetor).
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let tip = tipx as u32;
+    let tip_reach = (tip..tw)
+        .rfind(|x| alpha(*x, 96) > 128)
+        .map_or(0.0, |x| f64::from(x) - tipx);
+    // Alcance acima de uma aresta, medido na PERPENDICULAR dela (a cunha é inclinada 18°).
+    let (ex, ey) = (60u32, 96 - (60.0 * half).round() as u32);
+    let edge_reach = (0..40u32).take_while(|k| alpha(ex, ey - k) > 128).count() as f64
+        * (18.0f64).to_radians().cos();
+    let miter = f64::from(w) / (18.0f64).to_radians().sin();
+    eprintln!(
+        "[quina] alcance na PONTA {tip_reach:.1} px · na ARESTA {edge_reach:.1} px · \
+         um miter pediria {miter:.1} px (largura {w})"
+    );
+    assert!(
+        tip_reach > 1.0,
+        "a PONTA ficou sem contorno nenhum ({tip_reach:.1} px) — foi exatamente isso que o corte \
+         num campo BORRADO fazia numa quina de 36 graus, e é por isso que o contorno passou a ser \
+         uma dilatação sobre o campo de DISTÂNCIA"
+    );
+    assert!(
+        (tip_reach - edge_reach).abs() <= 2.5,
+        "o contorno tem de alcançar o MESMO tanto na ponta ({tip_reach:.1}) e na aresta \
+         ({edge_reach:.1}) — é o que 'redondo' significa"
+    );
+    assert!(
+        tip_reach < miter * 0.6,
+        "a ponta alcançou {tip_reach:.1}, perto dos {miter:.1} de um miter — se isto acontecer, a \
+         derivação acima está errada e o comentário deste gate tem de mudar junto"
     );
 }

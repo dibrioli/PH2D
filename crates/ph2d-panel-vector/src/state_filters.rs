@@ -40,6 +40,8 @@ pub struct FilterKindView {
     pub has_offset: bool,
     /// Oferece a cor do halo?
     pub has_color: bool,
+    /// Os MODOS deste tipo, na ordem dos códigos, ou vazio se ele não tem escolha a fazer.
+    pub modes: &'static [&'static str],
 }
 
 /// Um degrau da pilha, como o painel o desenha. Espelha o `ph2d_ecs::FxOp` — o painel **não
@@ -51,6 +53,8 @@ pub struct FilterKindView {
 pub struct FilterRowView {
     /// O código do tipo — o índice na tabela publicada, que decide QUAIS controles a linha oferece.
     pub kind: u8,
+    /// O modo armado — o índice em `FilterKindView::modes`.
+    pub mode: u8,
     /// Ligado? Desligado, a pilha o SALTA e o card é desenhado apagado — mas os parâmetros ficam.
     pub enabled: bool,
     /// O `stdDev` do borrão, em MUNDO.

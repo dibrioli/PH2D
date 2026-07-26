@@ -336,6 +336,7 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 ],
                 tint: o.color,
                 opacity: o.opacity,
+                mode: o.mode,
             }
         })
         .collect()
@@ -360,6 +361,8 @@ pub(crate) enum FilterHit {
     Hide(usize),
     /// A swatch de cor da linha (abre o picker OKLCH partilhado).
     Color(usize),
+    /// O chip de MODO da linha (a LEI do degrau).
+    Mode(usize, u8),
     /// Os sliders.
     Radius(usize),
     OffX(usize),
@@ -377,6 +380,12 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
         }
     }
     for r in 0..vid::MAX_FILTER_ROWS {
+        for m in 0..vid::MAX_FILTER_MODES {
+            if id == vid::filter_mode_id(r, m) {
+                #[allow(clippy::cast_possible_truncation)]
+                return Some(FilterHit::Mode(r, m as u8));
+            }
+        }
         let hit = if id == vid::filter_remove_id(r) {
             FilterHit::Remove(r)
         } else if id == vid::filter_up_id(r) {

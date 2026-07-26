@@ -45,8 +45,7 @@ use ph2d_ecs::FxOp;
 use ph2d_gpu::GpuContext;
 
 use crate::fx_stack_shader::{
-    FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, OUTLINE_AA_NUM, OUTLINE_LEVEL,
-    kind_consts_wgsl,
+    FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, kind_consts_wgsl,
 };
 
 /// Meia-largura MÁXIMA do kernel (o laço do shader é limitado por ela). `96` cobre `sigma ≈ 32`
@@ -79,6 +78,8 @@ pub struct FxOpGpu {
     pub tint: [f32; 4],
     /// A intensidade deste degrau, `[0,1]`.
     pub opacity: f32,
+    /// O MODO (o índice em `FxKindSpec::modes`). Só os degraus de DENTRO o leem hoje.
+    pub mode: u8,
 }
 
 /// A meia-largura do kernel que o shader de facto percorre para um dado sigma.
@@ -91,15 +92,50 @@ pub fn kernel_half(sigma_px: f32) -> u32 {
     ((3.0 * sigma).ceil() as u32).clamp(1, MAX_HALF)
 }
 
-/// **Quantos dispatches este tipo custa.** Dois para quem borra (a Gaussiana é separável: H e
-/// depois V+finalize), **um** para quem é pontual (o Color Overlay não lê vizinho nenhum, e
-/// fingir uma Gaussiana de σ→0 para ele seria pagar um passe e ainda assim não ser identidade).
-///
-/// Porta única: quem ESCREVE os globals e quem os DESPACHA perguntam à mesma — as duas varreduras
-/// andam em lockstep sobre a mesma lista, e um `if` duplicado as descasaria em silêncio.
-#[must_use]
-fn passes_of(kind: u8) -> usize {
-    usize::from(FxOp::spec(kind).radius_label.is_some()) + 1
+/// **Como este degrau é executado.** Porta única: quem ESCREVE os globals e quem os DESPACHA
+/// perguntam à mesma — as duas varreduras andam em lockstep sobre a mesma lista, e um `if`
+/// duplicado as descasaria em silêncio.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Plan {
+    /// Um dispatch, sem vizinho nenhum (Color Overlay).
+    Point,
+    /// Gaussiana separável: H, depois V+finalize+composite.
+    Blur,
+    /// Campo de distância: semente + `n` saltos do JFA + finalize. Serve os degraus de dentro em
+    /// modo Contour **e o CONTORNO** — os dois pedem uma distância, não um borrão.
+    Field { jumps: usize },
+}
+
+impl Plan {
+    fn passes(self) -> usize {
+        match self {
+            Self::Point => 1,
+            Self::Blur => 2,
+            Self::Field { jumps } => jumps + 2,
+        }
+    }
+}
+
+/// **Quantos saltos o JFA precisa para uma banda de `band_px`.** Os saltos são `K, K/2, …, 1` com
+/// `K = 2^(n-1)`, e o alcance do JFA é a SOMA deles (`2K-1`), logo `n = bits(w)` cobre `w`.
+fn jump_count(band_px: f32) -> usize {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let w = band_px.max(1.0).ceil() as u32;
+    (u32::BITS - w.leading_zeros()) as usize
+}
+
+fn plan_of(op: &FxOpGpu) -> Plan {
+    let spec = FxOp::spec(op.kind);
+    let by_distance = op.kind == FxOp::OUTLINE || (spec.inner && op.mode == FxOp::MODE_CONTOUR);
+    if by_distance {
+        return Plan::Field {
+            jumps: jump_count(op.sigma_px),
+        };
+    }
+    if spec.radius_label.is_none() {
+        return Plan::Point;
+    }
+    Plan::Blur
 }
 
 /// **Quanto ESTE degrau espalha para fora do que recebeu**, em pixels.
@@ -164,10 +200,10 @@ struct Globals {
     opacity: f32,
     off_x: i32,
     off_y: i32,
-    /// O nível de corte do Outline (ignorado pelos outros tipos).
-    edge: f32,
-    /// A meia-banda de anti-aliasing desse corte.
-    aa: f32,
+    /// O passo do salto do JFA (só os passes de campo de distância o leem).
+    jump: i32,
+    /// A largura da banda (modo Contour) / do contorno, em pixels.
+    band: f32,
     _pad: [f32; 2],
 }
 
@@ -218,12 +254,15 @@ pub struct FxStackPass {
     pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
     pipeline_point: wgpu::ComputePipeline,
+    pipeline_seed: wgpu::ComputePipeline,
+    pipeline_jump: wgpu::ComputePipeline,
+    pipeline_field: wgpu::ComputePipeline,
     pipeline_out: wgpu::ComputePipeline,
     bgl_mid: wgpu::BindGroupLayout,
     bgl_out: wgpu::BindGroupLayout,
     globals: wgpu::Buffer,
     globals_cap: u64,
-    work: Option<[Tex; 3]>,
+    work: Option<[Tex; 4]>,
 }
 
 impl FxStackPass {
@@ -270,6 +309,9 @@ impl FxStackPass {
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
         let pipeline_point = make_pipe(&layout_mid, &shader_mid, "cs_op_point");
+        let pipeline_seed = make_pipe(&layout_mid, &shader_mid, "cs_sdf_seed");
+        let pipeline_jump = make_pipe(&layout_mid, &shader_mid, "cs_sdf_jump");
+        let pipeline_field = make_pipe(&layout_mid, &shader_mid, "cs_op_field");
         let pipeline_out = make_pipe(&layout_out, &shader_out, "cs_resolve");
 
         let globals_cap = UNIFORM_STRIDE * 8;
@@ -283,6 +325,9 @@ impl FxStackPass {
             pipeline_h,
             pipeline_v,
             pipeline_point,
+            pipeline_seed,
+            pipeline_jump,
+            pipeline_field,
             pipeline_out,
             bgl_mid,
             bgl_out,
@@ -353,7 +398,7 @@ impl FxStackPass {
             return;
         }
         self.ensure_work(gpu, w, h);
-        let total_passes: usize = ops.iter().map(|o| passes_of(o.kind)).sum();
+        let total_passes: usize = ops.iter().map(|o| plan_of(o).passes()).sum();
         self.ensure_globals(gpu, total_passes);
 
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
@@ -370,26 +415,42 @@ impl FxStackPass {
                 opacity: op.opacity,
                 off_x: op.offset_px[0],
                 off_y: op.offset_px[1],
-                edge: OUTLINE_LEVEL,
-                // Meia banda de ~1 px em distância; num sigma sub-pixel o corte satura (a banda
-                // não pode engolir o próprio nível), e aí o contorno já é mais fino que um texel.
-                aa: (OUTLINE_AA_NUM / sigma).min(OUTLINE_LEVEL * 0.9),
+                jump: 0,
+                band: op.sigma_px.max(0.0),
                 _pad: [0.0; 2],
             };
-            if passes_of(op.kind) == 1 {
-                write_at(&mut blob, slot, &g);
-                slot += 1;
-                continue;
+            match plan_of(op) {
+                Plan::Point => {
+                    write_at(&mut blob, slot, &g);
+                    slot += 1;
+                }
+                Plan::Blur => {
+                    // O passe H leva o deslocamento em X; o V leva o de Y. Juntos, amostram o halo
+                    // em `(x - off_x, y - off_y)` — a sombra cai deslocada DENTRO da imagem.
+                    let mut gh = g;
+                    gh.off_y = 0;
+                    let mut gv = g;
+                    gv.off_x = 0;
+                    write_at(&mut blob, slot, &gh);
+                    write_at(&mut blob, slot + 1, &gv);
+                    slot += 2;
+                }
+                Plan::Field { jumps } => {
+                    // Semente (não lê deslocamento nenhum) · os saltos `K, K/2, …, 1` · o finalize,
+                    // que é o único que amostra o campo DESLOCADO pela luz.
+                    let mut seed = g;
+                    seed.off_x = 0;
+                    seed.off_y = 0;
+                    write_at(&mut blob, slot, &seed);
+                    for i in 0..jumps {
+                        let mut gj = seed;
+                        gj.jump = 1 << (jumps - 1 - i);
+                        write_at(&mut blob, slot + 1 + i, &gj);
+                    }
+                    write_at(&mut blob, slot + 1 + jumps, &g);
+                    slot += jumps + 2;
+                }
             }
-            // O passe H leva o deslocamento em X; o V leva o de Y. Juntos, amostram o halo em
-            // `(x - off_x, y - off_y)` — a sombra cai deslocada DENTRO da imagem.
-            let mut gh = g;
-            gh.off_y = 0;
-            let mut gv = g;
-            gv.off_x = 0;
-            write_at(&mut blob, slot, &gh);
-            write_at(&mut blob, slot + 1, &gv);
-            slot += 2;
         }
         let resolve = Globals {
             dims: [w, h],
@@ -400,8 +461,8 @@ impl FxStackPass {
             opacity: 1.0,
             off_x: 0,
             off_y: 0,
-            edge: OUTLINE_LEVEL,
-            aa: OUTLINE_LEVEL,
+            jump: 0,
+            band: 1.0,
             _pad: [0.0; 2],
         };
         write_at(&mut blob, total_passes, &resolve);
@@ -417,23 +478,53 @@ impl FxStackPass {
             });
         let (gx, gy) = (w.div_ceil(8), h.div_ceil(8));
 
-        // ping/pong entre work[0] e work[1]; work[2] é o temp do passe horizontal.
+        // ping/pong da IMAGEM entre work[0] e work[1]; work[2]/work[3] são o temp do passe
+        // horizontal e o ping/pong do CAMPO DE DISTÂNCIA (que nunca coexiste com o temp do blur —
+        // um op é de um tipo só).
         let mut cur: Option<usize> = None; // `None` = a fonte é `src`
         let mut slot = 0u32;
         for op in ops {
             let input = cur.map_or(&src_view, |k| &work[k].view);
             let next = cur.map_or(0, |k| 1 - k);
-            if passes_of(op.kind) == 1 {
-                // Pontual: lê a entrada e escreve o resultado — sem intermediário.
-                let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
-                dispatch(&mut encoder, &self.pipeline_point, &bg, slot, gx, gy);
-                slot += 1;
-            } else {
-                let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
-                let bg_v = self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
-                dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, gx, gy);
-                dispatch(&mut encoder, &self.pipeline_v, &bg_v, slot + 1, gx, gy);
-                slot += 2;
+            match plan_of(op) {
+                Plan::Point => {
+                    // Pontual: lê a entrada e escreve o resultado — sem intermediário.
+                    let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
+                    dispatch(&mut encoder, &self.pipeline_point, &bg, slot, gx, gy);
+                    slot += 1;
+                }
+                Plan::Blur => {
+                    let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
+                    let bg_v =
+                        self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
+                    dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, gx, gy);
+                    dispatch(&mut encoder, &self.pipeline_v, &bg_v, slot + 1, gx, gy);
+                    slot += 2;
+                }
+                Plan::Field { jumps } => {
+                    let bg_seed = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
+                    dispatch(&mut encoder, &self.pipeline_seed, &bg_seed, slot, gx, gy);
+                    slot += 1;
+                    // Ping/pong 2 <-> 3: o salto `i` lê de onde o anterior escreveu.
+                    let mut field = 2usize;
+                    for _ in 0..jumps {
+                        let to = 5 - field; // 2 <-> 3
+                        let bg =
+                            self.bind(gpu, &self.bgl_mid, input, &work[field].view, &work[to].view);
+                        dispatch(&mut encoder, &self.pipeline_jump, &bg, slot, gx, gy);
+                        slot += 1;
+                        field = to;
+                    }
+                    let bg = self.bind(
+                        gpu,
+                        &self.bgl_mid,
+                        input,
+                        &work[field].view,
+                        &work[next].view,
+                    );
+                    dispatch(&mut encoder, &self.pipeline_field, &bg, slot, gx, gy);
+                    slot += 1;
+                }
             }
             cur = Some(next);
         }
@@ -493,6 +584,7 @@ impl FxStackPass {
         };
         let f = wgpu::TextureFormat::Rgba16Float;
         self.work = Some([
+            make_tex(gpu, nw, nh, f),
             make_tex(gpu, nw, nh, f),
             make_tex(gpu, nw, nh, f),
             make_tex(gpu, nw, nh, f),

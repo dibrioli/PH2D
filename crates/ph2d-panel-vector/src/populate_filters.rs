@@ -32,6 +32,9 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
         // no passe de sementes), e um id só pode ter UM tipo de widget no store — registá-la como
         // botão faz o Down abrir o picker e nenhum `Click` sair, que foi exatamente o que o seam
         // gate pegou. É a mesma lição do `vector_fx_toggle_id`.
+        for m in 0..ids::MAX_FILTER_MODES {
+            button(store, ids::filter_mode_id(row, m));
+        }
         for id in [
             ids::filter_remove_id(row),
             ids::filter_up_id(row),

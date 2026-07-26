@@ -44,6 +44,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 fn row(kind: u8) -> FilterRowView {
     FilterRowView {
         kind,
+        mode: 0,
         enabled: true,
         radius: 0.12,
         offx: 0.12,
@@ -61,20 +62,22 @@ fn row(kind: u8) -> FilterRowView {
 /// resposta estrutural: o publish é uma única `map` sobre `FxOp::SPECS` (e o gate do shell pina
 /// que os TETOS dos dois lados concordam).
 fn kinds_table() -> Vec<FilterKindView> {
-    let k = |name, radius_label, has_offset, has_color| FilterKindView {
+    let k = |name, radius_label, has_offset, has_color, modes| FilterKindView {
         name,
         radius_label,
         has_offset,
         has_color,
+        modes,
     };
+    const INNER: &[&str] = &["Proximity", "Contour"];
     vec![
-        k("Blur", Some("Radius"), false, false),
-        k("Glow", Some("Radius"), false, true),
-        k("Drop Shadow", Some("Radius"), true, true),
-        k("Inner Shadow", Some("Radius"), true, true),
-        k("Inner Glow", Some("Radius"), false, true),
-        k("Outline", Some("Width"), false, true),
-        k("Color Overlay", None, false, true),
+        k("Blur", Some("Radius"), false, false, &[]),
+        k("Glow", Some("Radius"), false, true, &[]),
+        k("Drop Shadow", Some("Radius"), true, true, &[]),
+        k("Inner Shadow", Some("Radius"), true, true, INNER),
+        k("Inner Glow", Some("Radius"), false, true, INNER),
+        k("Outline", Some("Width"), false, true, &[]),
+        k("Color Overlay", None, false, true, &[]),
     ]
 }
 
@@ -213,6 +216,32 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
             "a cor do {} discorda da tabela",
             spec.name
         );
+        // Os chips de MODO: um por modo publicado, e NENHUM em quem não tem escolha a fazer.
+        for m in 0..ids::MAX_FILTER_MODES {
+            assert_eq!(
+                painted(&mut host, &mut st, ids::filter_mode_id(0, m)),
+                m < spec.modes.len(),
+                "o chip de modo {m} do {} discorda da tabela",
+                spec.name
+            );
+        }
+    }
+}
+
+/// **Os chips de MODO chegam ao bus** — e é o único gesto que troca a LEI de um degrau (a banda
+/// que segue o contorno × a proximidade do lado de fora). Sem isto o card mostraria a escolha e o
+/// clique não mudaria nada.
+#[test]
+fn every_mode_chip_reaches_the_bus_when_clicked() {
+    let table = kinds_table();
+    for (kind, spec) in table.iter().enumerate() {
+        for m in 0..spec.modes.len() {
+            publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
+            click_reaches_bus(
+                ids::filter_mode_id(0, m),
+                &format!("modo {} do {}", spec.modes[m], spec.name),
+            );
+        }
     }
 }
 

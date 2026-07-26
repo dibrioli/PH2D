@@ -3327,6 +3327,19 @@ impl crate::App {
                                 }
                             });
                         }
+                        // O MODO é a LEI do degrau, não a intensidade dele — e um clique num modo
+                        // que o TIPO não oferece é recusado aqui (o painel não o pinta, mas a
+                        // recusa mora onde o valor é escrito).
+                        FilterHit::Mode(row, mode) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if let Some(op) = f.ops.get_mut(row)
+                                    && (mode as usize)
+                                        < ph2d_ecs::FxOp::spec(op.kind).modes.len()
+                                {
+                                    op.mode = mode;
+                                }
+                            });
+                        }
                         // A swatch só ABRE o picker (o `register_picker_swatch` faz isso); a cor
                         // é lida abaixo, do alvo do picker.
                         FilterHit::Color(_)
@@ -4731,6 +4744,7 @@ impl crate::App {
                             radius_label: s.radius_label,
                             has_offset: s.has_offset,
                             has_color: s.has_color,
+                            modes: s.modes,
                         })
                         .collect(),
                 );
@@ -4740,6 +4754,7 @@ impl crate::App {
                             .iter()
                             .map(|op| ph2d_panel_vector::FilterRowView {
                                 kind: op.kind,
+                                mode: op.mode,
                                 enabled: op.enabled,
                                 radius: f64::from(op.radius),
                                 offx: f64::from(op.offset[0]),

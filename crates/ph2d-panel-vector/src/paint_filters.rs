@@ -98,14 +98,20 @@ impl BodyCtx<'_> {
     ) -> f32 {
         let pad = Spacing::Sm.px();
         let head_h = self.row_h.max(ICON_PX);
-        // Opacity sempre; Radius, Offset X/Y e Color conforme o tipo.
+        // Opacity sempre; Radius, Offset X/Y, Color e a fileira de MODO conforme o tipo. A row de
+        // modo é mais alta (rótulo + chips), como as `segmented` do resto do painel.
         let rows = 1
             + usize::from(spec.radius_label.is_some())
             + usize::from(spec.has_offset) * 2
             + usize::from(spec.has_color);
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
-        let card_h = pad + head_h + body_h + pad;
+        let mode_h = if spec.modes.is_empty() {
+            0.0
+        } else {
+            TypeToken::Sm.px() + Spacing::Xs.px() + self.row_h + self.row_gap
+        };
+        let card_h = pad + head_h + body_h + mode_h + pad;
         let card_rect = Rect::new(self.inner_x, y, self.inner_w, card_h);
 
         let card = Card::new(ids::filter_card_id(row));
@@ -127,6 +133,23 @@ impl BodyCtx<'_> {
         self.inner_x = inner_x;
         self.inner_w = inner_w;
         let mut py = y + pad + head_h;
+        // O MODO vem PRIMEIRO: ele escolhe a LEI do degrau, e os números abaixo são lidos por ela.
+        if !spec.modes.is_empty() {
+            let chips: Vec<(ph2d_a11y::NodeId, &str, bool)> = spec
+                .modes
+                .iter()
+                .enumerate()
+                .take(ids::MAX_FILTER_MODES)
+                .map(|(m, name)| {
+                    (
+                        ids::filter_mode_id(row, m),
+                        *name,
+                        u8::try_from(m) == Ok(fx.mode),
+                    )
+                })
+                .collect();
+            py = self.segmented("Mode", &chips, py);
+        }
         if let Some(label) = spec.radius_label {
             py = self.filter_radius_row(row, fx, label, py);
         }

@@ -282,6 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | a fusão não move os 118 ms | 🔴 kernel mais quente, gate = byte-identidade | 🎯 **alvo LOCALIZADO** — 19× o digital; settle 3%, bow wave 20%, depósito de altura **73%** |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -621,6 +622,74 @@ E a **janela é melhor que um cache**: não tem invalidação, logo o modo de fa
 *"uma luz velha que ninguém vê que é velha"* — **não existe** nesta forma. O resíduo é o fold cheio
 quando `preview_gpu_region()` é `None` (edição estrutural), que **não é o caminho do move**. A nota
 ficou para trás do produto.
+
+---
+
+## 9 — 🎯 Frente **I**: o IMPASTO custa 19× o digital, e o alvo está localizado
+
+A frente que a frente C morta produziu — e a única deste plano cujo número foi medido **no mecanismo**
+(ligando e desligando a própria feature sobre a mesma lista de dabs), não inferido de propriedades
+circunstanciais.
+
+### 9.1 O número
+
+Traço de 600 px a 2048², **ms por traço**:
+
+| | raio 20 | raio 100 |
+|---|---|---|
+| impasto **OFF** | 10,5 | **9,0** |
+| impasto **ON** | 45,0 | **172,2** |
+| razão | 4,3× | **19×** |
+| ns/texel (off → on) | 55,5 → 238,9 | **9,6 → 182,8** |
+
+E o relevo escreve **12 B/texel** (`heights` f32 + `covers` u8 + `mats` 7×u8) contra os 4 do RGBA:
+**3× os bytes, 19× o tempo.**
+
+⚠️ **Dois REGIMES, e uma frente que ataca um não ajuda o outro:** o digital a raio 100 está em 9,6
+ns/texel (eficiente) e a raio 20 em 55,5 — pincel pequeno é dominado por custo **FIXO por dab**, grande
+por trabalho **de texel**.
+
+### 9.2 A decomposição, por portas do PRODUTO (nenhuma instrumentação)
+
+| lever | o que isola | custo |
+|---|---|---|
+| `impasto_smoothing = 0` | o **settle** (o blur que assenta a tinta) | **3%** (5 de 162 ms) |
+| 1º traço em camada virgem × 2º | a família do **bow wave** (banco + lóbulo + mordida) | **~20%** (32 ms) |
+| `DrawTo::Color` × `Depth` | pigmento × **altura** | a altura é **2,3× a 12×** o pigmento |
+| — | **o resto: o depósito de altura base** | **~73%** (118 ms) |
+
+⚠️ **O `ground` é da CAMADA, não do knob** — a família do bow wave entra sempre que a camada tem
+relevo (o `impasto.rs` diz isso: *"o custo cai exactamente onde a feature está, em tinta sobre
+tinta"*), e a medição confirma: **130 ms na camada virgem, 162 a partir do 2º traço**. Corolário: uma
+sonda que **aquece no mesmo lugar onde mede** reporta o caso tinta-sobre-tinta sob um cabeçalho que diz
+"traço" — a minha primeira fazia isso.
+
+### 9.3 ⛔ E o mecanismo que eu quase publiquei, e que a mediana desmanchou
+
+A 1ª rodada do split `DrawTo` dava **uma** amostra por config e mostrava as duas metades juntas
+custando **40% mais que a soma das partes**. Eu ia atribuir isso a **localidade de cache** — a terceira
+hipótese de mecanismo não-medida do dia.
+
+Com **mediana de 5** e faixas independentes o termo **desmancha para 2-9%** nos raios 10-50; só o raio
+100 mantém 33%, e ali o `Color` sai **não-monotônico** (9,0 ms a raio 100 contra 20,1 a raio 50, com 2×
+os texels), o que denuncia a medição e não o produto. **Não há termo superaditivo estabelecido.**
+
+### 9.4 A candidata — e por que ela não é palpite
+
+**Fundir as duas varreduras numa só:** a silhueta (falloff × Shape × Grain) é avaliada **uma vez** por
+texel e os planos são escritos juntos, em vez de a rota de altura fazer a própria passada sobre a mesma
+pegada.
+
+Isto **não é uma teoria sobre cache** — é remover uma varredura duplicada que se **sabe** existir. E há
+**precedente MEDIDO no próprio `impasto.rs`**: o comentário do `PushBite` registra que fazer a mordida
+*"num kernel de si mesma significava avaliar a silhueta DUAS vezes por texel, e isso sozinho punha o
+custo do impasto em 5,0 ms/move, além do orçamento"*. O mesmo argumento, um nível acima.
+
+⚠️ **É refatoração do kernel mais quente do módulo**, e o gate é **byte-identidade** do depósito (a
+impressão digital que o módulo já usa). Wave própria, ordem do Enio.
+
+**Critério de parada:** se a fusão não mover os 118 ms, a frente para e o 19× passa a ser registrado
+como **o preço honesto de tinta com corpo**.
 
 ---
 

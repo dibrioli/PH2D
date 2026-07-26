@@ -462,3 +462,158 @@ fn the_per_texel_cost_of_a_dab_against_the_hardware_floor() {
         }
     }
 }
+
+/// **A DECOMPOSIÇÃO do 19x: o alvo está LOCALIZADO, o mecanismo NÃO.**
+///
+/// Medido a 2048², raio 100, traço de 600 px (ms por traço):
+///
+/// | config | 1º (camada virgem) | 2º (sobre tinta) |
+/// |---|---|---|
+/// | impasto **OFF** (controle) | 11,6 | 11,6 |
+/// | impasto ON, smoothing 1,0 (default) | **130,3** | **162,6** |
+/// | impasto ON, smoothing 0,0 | 125,1 | 156,8 |
+///
+/// **Três leituras, e uma não-leitura:**
+///
+/// 1. **O `settle` vale 3%** (5 ms de 162). Não é o alvo, e a nota que o suspeitava está corrigida.
+/// 2. **A família do bow wave vale ~20%** (162 − 130 = 32 ms) — e ela entra pelo `ground`, que é
+///    `Some` sempre que a **CAMADA** tem relevo, não quando o knob Push está alto. O comentário do
+///    `impasto.rs` afirma *"o custo cai exactamente onde a feature está, em tinta sobre tinta"*, e a
+///    medição CONFIRMA: 130 na camada virgem, 162 a partir do 2º traço.
+///    ⚠️ Isto invalida qualquer sonda que aqueça no MESMO lugar onde mede — a minha primeira fazia
+///    isso e media o caso tinta-sobre-tinta enquanto o cabeçalho dizia "traço".
+/// 3. **O resto — ~118 ms, 73% — é o depósito de altura base**, e é ele o alvo.
+/// 4. ⚠️ **O que eu NÃO consegui estabelecer:** *por que* esses 118 ms. Ver o irmão
+///    `the_impasto_draw_to_split`, cujo termo "superaditivo" desmanchou quando a sonda ganhou medianas.
+///    Nomear um mecanismo aqui seria a terceira hipótese não-medida do dia (§8 do plano 26).
+///
+/// Levers, todos portas do PRODUTO (nenhuma instrumentação):
+/// * `impasto` off -> o controle (pigmento puro, mesma lista de dabs);
+/// * **1o traço numa camada virgem** -> `ground = None`, logo o banco/bite/onda **não rodam**;
+/// * **2o traço na mesma camada** -> `ground = Some`, e a familia do bow wave entra;
+/// * `impasto_smoothing = 0` -> mata o `settle` (o blur que assenta a tinta).
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_impasto_dab_decomposition -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_impasto_dab_decomposition() {
+    const DIST: f32 = 600.0;
+    fn stroke(t: &mut PainterTool, y: f32) -> f64 {
+        ms(&mut || {
+            t.on_canvas_pointer(cp([200.0, y], PointerPhase::Down));
+            for i in 1..=24u8 {
+                let x = 200.0 + DIST / 24.0 * f32::from(i);
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([200.0 + DIST, y], PointerPhase::Up));
+        })
+    }
+    println!("[decomp] raio 100, 2048², traco de 600 px — ms por traco");
+    println!("[decomp] config                              1o(virgem)  2o(sobre tinta)  3o");
+    for (name, impasto, smoothing) in [
+        ("impasto OFF (controle)", false, 1.0f32),
+        ("impasto ON, smoothing 1.0 (default)", true, 1.0),
+        ("impasto ON, smoothing 0.0", true, 0.0),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (2048 * 2048 * 4) as usize], 2048, 2048);
+        if impasto {
+            t.toggle_brush_impasto();
+        }
+        t.set_brush_size_px(200.0);
+        t.paint.brush.impasto_smoothing = smoothing;
+        for slot in &mut t.paint.brush_by_mode {
+            slot.impasto_smoothing = smoothing;
+        }
+        // Os TRES na MESMA faixa: o 2o e o 3o encontram o relevo do anterior.
+        let a = stroke(&mut t, 400.0);
+        let b = stroke(&mut t, 400.0);
+        let c = stroke(&mut t, 400.0);
+        println!("[decomp] {name:<38} {a:>8.2}  {b:>13.2}  {c:>8.2}");
+    }
+}
+
+/// **O 2º NÍVEL: dos 118 ms do depósito base, quanto é PIGMENTO e quanto é ALTURA?**
+///
+/// O `DrawTo` é a porta do produto que separa as duas metades sobre a MESMA pegada e a MESMA lista de
+/// dabs: `Color` = pigmento sem corpo, `Depth` = corpo sem pigmento, `ColorAndDepth` = o default.
+///
+/// Medido a 2048², 1º traço em faixa virgem, **mediana de 5**:
+///
+/// | raio | Color | Depth | soma | ColorAndDepth | sobra |
+/// |---|---|---|---|---|---|
+/// | 10 | 6,8 | 24,5 | 31,3 | 32,0 | +2% |
+/// | 25 | 10,5 | 33,6 | 44,1 | 47,4 | +8% |
+/// | 50 | 20,1 | 45,9 | 66,0 | 72,1 | +9% |
+/// | 100 | 9,0 | 111,6 | 120,7 | 160,8 | +33% |
+///
+/// **O que É robusto:** o depósito de ALTURA custa **2,3× a 12× o de pigmento** sobre a mesma lista de
+/// dabs. Ele escreve 12 B/texel (`heights` f32 + `covers` u8 + `mats` 7×u8) contra os 4 do RGBA — 3× os
+/// bytes — e faz a **própria varredura** da pegada, separada da varredura da cor.
+///
+/// ⚠️ **O que NÃO é robusto, e eu quase o publiquei como achado:** a primeira rodada desta sonda dava
+/// UMA amostra por config e mostrava um termo **superaditivo de 40%** (as duas metades juntas custando
+/// mais que a soma), que eu ia atribuir a **localidade de cache**. Com mediana de 5 e faixas
+/// independentes ele **desmancha para 2-9%** nos raios 10-50; só o raio 100 mantém 33%, e ali o `Color`
+/// sai **não-monotônico** (9,0 ms a raio 100 contra 20,1 a raio 50, com 2× os texels), o que denuncia a
+/// própria medição. **Não há termo superaditivo estabelecido.**
+///
+/// ## A candidata, e por que ela NÃO é palpite de mecanismo
+///
+/// Fundir as duas varreduras numa só (silhueta avaliada UMA vez por texel, os 5 planos escritos juntos)
+/// não é uma teoria sobre cache — é **remover uma varredura duplicada que se sabe existir**. E há
+/// PRECEDENTE medido no próprio `impasto.rs`: o comentário do `PushBite` registra que fazer a mordida
+/// *"num kernel de si mesma significava avaliar a silhueta DUAS vezes por texel, e isso sozinho punha o
+/// custo do impasto em 5,0 ms/move, além do orçamento"*. O mesmo argumento, um nível acima.
+///
+/// ⚠️ É refatoração do kernel mais quente do módulo, com **byte-identidade** como gate. Wave própria,
+/// e só com ordem do Enio.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_impasto_draw_to_split -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_impasto_draw_to_split() {
+    use ph2d_painter_brush::height::DrawTo;
+    const DIST: f32 = 600.0;
+    println!("[split] 2048², 1o traco numa camada VIRGEM (sem bow wave) — ms");
+    for radius in [10.0f32, 25.0, 50.0, 100.0] {
+        println!("[split] --- raio {radius} ---");
+        for (name, draw_to) in [
+            ("Color (pigmento sem corpo)", DrawTo::Color),
+            ("Depth (corpo sem pigmento)", DrawTo::Depth),
+            ("ColorAndDepth (o default)", DrawTo::ColorAndDepth),
+        ] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (2048 * 2048 * 4) as usize], 2048, 2048);
+            t.toggle_brush_impasto();
+            t.set_brush_size_px(radius * 2.0);
+            t.paint.brush.impasto_draw_to = draw_to;
+            for slot in &mut t.paint.brush_by_mode {
+                slot.impasto_draw_to = draw_to;
+            }
+            // ⚠️ MEDIANA de 5, e cada traço numa faixa PRÓPRIA: a 1ª versão desta sonda dava UMA amostra
+            // por config e o Color a raio 100 saiu ABAIXO do de raio 50 (não-monotônico), o que tornava o
+            // termo "superaditivo" indistinguível de ruído. E as faixas têm de ser distintas, senão o 2º
+            // traço encontra o relevo do 1º e o bow wave entra na conta (o `ground` é da CAMADA).
+            let mut samples = Vec::new();
+            for k in 0..5u8 {
+                let y = 200.0 + f32::from(k) * 300.0;
+                samples.push(ms(&mut || {
+                    t.on_canvas_pointer(cp([200.0, y], PointerPhase::Down));
+                    for i in 1..=24u8 {
+                        let x = 200.0 + DIST / 24.0 * f32::from(i);
+                        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                    }
+                    t.on_canvas_pointer(cp([200.0 + DIST, y], PointerPhase::Up));
+                }));
+            }
+            samples.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let ms_stroke = samples[samples.len() / 2];
+            println!(
+                "[split] {name:<30} {ms_stroke:>8.2}   (min {:.2} max {:.2})",
+                samples[0],
+                samples[samples.len() - 1]
+            );
+        }
+    }
+}

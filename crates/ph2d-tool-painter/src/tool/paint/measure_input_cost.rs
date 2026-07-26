@@ -371,3 +371,236 @@ fn the_dab_count_grows_with_the_event_count_over_the_same_path() {
         );
     }
 }
+
+/// **O PIOR evento de um traço inteiro** — a frente R (o outlier de 134,8 ms) perguntada ao produto
+/// em vez de deduzida.
+///
+/// O `PH2D_PAINT_PERF` do app reportou **`INPUT max = 134,8 ms` num único evento** e o doc 28 §4.8.3
+/// registrou que os dois candidatos nomeados — o pen-down canvas-sized (24,5 / 11,7) e o commit de
+/// pen-up (39,6) — **não somam a isso**. A conclusão de lá foi *"falta instrumentação por FASE, não
+/// hipótese"*, e esta sonda é o primeiro passo dela: rodar o CICLO INTEIRO de um traço e imprimir
+/// **todo** evento, para o pico se nomear sozinho.
+///
+/// ⚠️ **Dois traços, e o segundo é quem responde.** O primeiro paga as alocações únicas (os planos de
+/// relevo, as texturas); o segundo é o regime que o artista vive num traço longo. Ler só o primeiro
+/// atribuiria a alocação ao gesto.
+///
+/// Não afirma nada; IMPRIME.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_worst_single_event -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_worst_single_event_of_a_stroke_names_itself() {
+    use ph2d_painter_brush::{BrushSpec, Falloff};
+    const SIDE: u32 = 4096;
+    for radius in [20.0f32, 100.0] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIDE * SIDE * 4) as usize], SIDE, SIDE);
+        let b = BrushSpec {
+            radius_px: radius,
+            hardness: 0.5,
+            falloff: Falloff::Sphere,
+            strength: 1.0,
+            color: [0.8, 0.2, 0.1],
+            space_attenuation: false,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.toggle_brush_impasto();
+        t.set_brush_impasto_depth(1.0);
+
+        for stroke in 1..=2u8 {
+            let y = 400.0 + f32::from(stroke) * 400.0;
+            let mut total = 0f64;
+            let mut moves = Vec::new();
+
+            let down = ms(&mut || {
+                t.on_canvas_pointer(cp([300.0, y], PointerPhase::Down));
+            });
+            let _ = t.take_preview_arc();
+            total += down;
+            let mut worst = (down, String::from("pen-down"));
+
+            for k in 1..=30u8 {
+                let x = 300.0 + 40.0 * f32::from(k);
+                let mv = ms(&mut || {
+                    t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                });
+                let _ = t.take_preview_arc();
+                total += mv;
+                moves.push(mv);
+                if mv > worst.0 {
+                    worst = (mv, format!("move #{k}"));
+                }
+            }
+
+            let up = ms(&mut || {
+                t.on_canvas_pointer(cp([300.0 + 40.0 * 30.0, y], PointerPhase::Up));
+            });
+            let _ = t.take_preview_arc();
+            total += up;
+            if up > worst.0 {
+                worst = (up, "pen-up".into());
+            }
+
+            moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let med = moves[moves.len() / 2];
+            println!(
+                "[worst] r={radius:>5.0} traco {stroke}: down {down:>7.2} · move mediana {med:>6.2} \
+                 (max {:>7.2}) · up {up:>7.2} · TOTAL {total:>8.2} ms  ⇒ PIOR = {} ({:.2} ms)",
+                moves[moves.len() - 1],
+                worst.1,
+                worst.0
+            );
+        }
+    }
+}
+
+/// **DE QUE É FEITO O PEN-UP** — o maior evento de um traço.
+///
+/// O irmão acima mediu que o pior evento de um traço NÃO é o pen-down nem um move: é o **pen-up**, e
+/// ele é quase indiferente ao raio do pincel — a assinatura de trabalho limitado pela TELA. O
+/// `paint_end` tem dois candidatos canvas-bound: **`commit_stroke_height`** (dobra o envelope de
+/// relevo do traço nos planos da camada) e **`commit_structural_edit`** (o passo de undo, que desde a
+/// U1 faz o *diff* dos planos canvas-shaped para guardar só a janela).
+///
+/// ⚠️ **A primeira versão desta sonda media UM pen-up por configuração e NÃO REPRODUZIA** — a mesma
+/// célula deu 117,76 ms numa corrida e 28,46 na seguinte. Buffers de 67-117 MB pagam *first-touch* e o
+/// alocador tem memória entre chamadas, então um único gesto mede o estado do heap tanto quanto mede o
+/// produto. *Um número que não reproduz não é um achado; é ruído com casas decimais.* Agora: **8
+/// traços, o primeiro DESCARTADO** (é ele quem paga as alocações preguiçosas dos planos) e a MEDIANA
+/// dos sete seguintes, com o espalhamento impresso ao lado para o leitor julgar.
+///
+/// ⚠️ **A razão entre telas é o que decide**, não o valor absoluto: quadruplicar a área tem de
+/// quadruplicar um custo de PLANO e deixar quieto um custo de PEGADA.
+///
+/// Não afirma nada; IMPRIME.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release what_the_pen_up -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn what_the_pen_up_is_made_of() {
+    use ph2d_painter_brush::{BrushSpec, Falloff};
+    println!(
+        "\n{:<8} {:>8} {:>10} {:>12} {:>14} {:>9} {:>9}",
+        "tela", "impasto", "1o traco", "pen-up med", "min-max", "vs 1024x", "por area"
+    );
+    for impasto in [false, true] {
+        let mut base: Option<f64> = None;
+        for side in [1024u32, 2048, 4096] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
+            let b = BrushSpec {
+                radius_px: 40.0,
+                hardness: 0.5,
+                falloff: Falloff::Sphere,
+                strength: 1.0,
+                color: [0.8, 0.2, 0.1],
+                space_attenuation: false,
+                ..Default::default()
+            };
+            t.paint.brush = b;
+            for slot in &mut t.paint.brush_by_mode {
+                *slot = b;
+            }
+            if impasto {
+                t.toggle_brush_impasto();
+                t.set_brush_impasto_depth(1.0);
+            }
+            // Traço curto e FIXO em px: a variável isolada é a TELA (a lição do irmão acima, cuja 1ª
+            // versão escalava o traço junto e media a si mesma).
+            let mut ups = Vec::new();
+            let mut first = 0.0f64;
+            for stroke in 0..8u8 {
+                let y = 200.0 + 60.0 * f32::from(stroke);
+                t.on_canvas_pointer(cp([200.0, y], PointerPhase::Down));
+                let _ = t.take_preview_arc();
+                for k in 1..=6u8 {
+                    t.on_canvas_pointer(cp([200.0 + 40.0 * f32::from(k), y], PointerPhase::Move));
+                    let _ = t.take_preview_arc();
+                }
+                let up = ms(&mut || {
+                    t.on_canvas_pointer(cp([440.0, y], PointerPhase::Up));
+                });
+                let _ = t.take_preview_arc();
+                if stroke > 0 {
+                    ups.push(up); // o traço 0 paga as alocações preguiçosas — não é o regime
+                } else {
+                    first = up; // …e é POR ISSO que ele é reportado à parte, em vez de descartado
+                }
+            }
+            ups.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let med = ups[ups.len() / 2];
+            let b0 = *base.get_or_insert(med);
+            let area = f64::from(side * side) / f64::from(1024u32 * 1024);
+            println!(
+                "{side:<8} {:>8} {first:>10.2} {med:>12.3} {:>14} {:>8.2}x {:>9.2}",
+                if impasto { "ON" } else { "off" },
+                format!("{:.1}-{:.1}", ups[0], ups[ups.len() - 1]),
+                med / b0.max(1e-9),
+                med / b0.max(1e-9) / area,
+            );
+        }
+    }
+    println!();
+}
+
+/// **A ARITMÉTICA do pen-up de impasto, testada em vez de afirmada.**
+///
+/// O irmão acima mediu que o impasto **acrescenta 32,8 ms** ao pen-up a 4096² (6,05 → 38,9). Lendo o
+/// `commit_stroke_height`, ele é **window-bound de propósito** (o doc-comment dele diz e gateia isso) —
+/// exceto por uma coisa: ele chama `plane_fork::fork_par` em cada plano de relevo, e um **fork é
+/// canvas-sized** porque o snapshot de undo do pen-down segura um `Arc` de cada plano.
+///
+/// A 4096² os três planos somam ~200 MB (`covers` u8 16 MB · `heights` f32 67 MB · `mats` 7 B 117 MB),
+/// contra os 67 MB do `canvas_rgba` que o Digital já paga. **Se o fork for a causa, o custo de clonar
+/// esses três tem de casar com os 32,8 ms** — e essa é uma previsão que pode dar errado, que é o que a
+/// torna um teste em vez de uma narrativa.
+///
+/// ⚠️ Não prova SOZINHA que o fork é a causa (o diff do undo lê os mesmos planos): estabelece se a
+/// ordem de grandeza fecha ou não. Se não fechasse, a hipótese morreria aqui.
+///
+/// Não afirma nada; IMPRIME.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_relief_planes_arithmetic -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_relief_planes_arithmetic_of_the_pen_up() {
+    println!(
+        "\n{:<10} {:>10} {:>12} {:>12}",
+        "plano", "MB", "clone ms", "acumulado"
+    );
+    for side in [2048u32, 4096] {
+        let n = (side as usize) * (side as usize);
+        let mut acc = 0.0f64;
+        println!("-- tela {side}x{side} --");
+        for (name, bytes_per) in [
+            ("canvas", 4usize),
+            ("covers", 1),
+            ("heights", 4),
+            ("mats", 7),
+        ] {
+            let src: Vec<u8> = vec![7u8; n * bytes_per];
+            let mut lo = f64::INFINITY;
+            for _ in 0..5 {
+                let mut dst = Vec::new();
+                let t = ms(&mut || dst = src.clone());
+                std::hint::black_box(dst.len());
+                if t < lo {
+                    lo = t;
+                }
+            }
+            // O `canvas` é o que o DIGITAL já paga; os outros três são o que o impasto acrescenta.
+            if name != "canvas" {
+                acc += lo;
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let mb = (n * bytes_per) as f64 / (1024.0 * 1024.0);
+            println!("{name:<10} {mb:>10.0} {lo:>12.3} {acc:>12.3}");
+        }
+    }
+    println!();
+}

@@ -348,6 +348,51 @@ fn measure_what_the_fold_is_made_of() {
     println!();
 }
 
+/// **The fold as the PRODUCT runs it** — `impasto_gpu_planes_in`, not a loop of my own.
+///
+/// ⚠️ [`measure_what_the_fold_is_made_of`] re-implements the walk to dissect it, which is right for
+/// *"what is this number made of"* and **blind** to any change in the door itself: it would go on
+/// printing the serial cost after the product stopped paying it. This one times the door, so the two
+/// columns are what a frame is actually charged.
+///
+/// The number that matters is the FULL column: the first lit frame at 4096² cannot use a window
+/// (`ImpastoLightPass::planes_seeded` is false until the pass has held the whole painting once), so the
+/// artist's first relief stroke pays a whole-canvas fold. Measured in the running app by
+/// `PH2D_PAINT_PERF`, that frame was **232,7 ms, 100% of it inside `preview`** — and this is the piece.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_fold_the_product_runs() {
+    fn sculpted(size: u32) -> PainterTool {
+        let mut t = armed(size, PaintMedia::Impasto, 100.0);
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
+        t.on_canvas_pointer(cp([700.0, mid], PointerPhase::Move));
+        t.on_canvas_pointer(cp([700.0, mid], PointerPhase::Up));
+        t
+    }
+    const REGION_EDGE: u32 = 512;
+    println!("\n{:<8} {:>14} {:>14}", "canvas", "full ms", "region ms");
+    for size in [2048u32, 4096] {
+        let t = sculpted(size);
+        let time = |region: (u32, u32, u32, u32)| -> f64 {
+            let mut s = Vec::new();
+            for _ in 0..5 {
+                let t0 = Instant::now();
+                let planes = t.impasto_gpu_planes_in(region).expect("sculpted and lit");
+                s.push(t0.elapsed().as_secs_f64() * 1e3);
+                assert!(!planes.relief.is_empty(), "the fold has to produce planes");
+            }
+            s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            s[s.len() / 2]
+        };
+        let full = time((0, 0, size, size));
+        let mid = size / 2 - REGION_EDGE / 2;
+        let region = time((mid, mid, REGION_EDGE, REGION_EDGE));
+        println!("{size:<8} {full:>14.3} {region:>14.3}");
+    }
+    println!();
+}
+
 /// **The shell holds the drained Arc, and that is the whole cost of a plain stroke.**
 ///
 /// Every other MOVE measurement in this file drops the `take_preview_arc` result on the floor

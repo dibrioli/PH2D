@@ -34,6 +34,7 @@
 
 use super::impasto_light::ReliefFields;
 use crate::tool::PainterTool;
+use rayon::prelude::*;
 
 /// One resolved lamp, in the form the shader consumes: direction, half-vector, and `intensity × colour`
 /// already multiplied together.
@@ -129,6 +130,24 @@ impl PainterTool {
     /// costs **2,82 ms at BOTH canvas sizes**. Folding the rect that changed instead of the canvas that
     /// did not is therefore a ~64× cut at 4K, with no change to what any texel says.
     ///
+    /// ⚠️ **A window is not always available, and that is where the artist waits.** The pass refuses a
+    /// partial upload until its plane textures have held the whole painting once
+    /// ([`ph2d_render::ImpastoLightPass::planes_seeded`]), so the **first lit frame folds the canvas** no
+    /// matter how small the stroke was. Measured in the running app with `PH2D_PAINT_PERF`, that frame
+    /// was **232,7 ms at 4096², 100% of it inside `preview`** — the "delay do primeiro traço" Enio
+    /// reported across three rounds, of which this fold was **201,5 ms**.
+    ///
+    /// So the walk is **parallel by rows** now (`measure_the_fold_the_product_runs`, the same door the
+    /// product calls):
+    ///
+    /// | canvas | serial | parallel |
+    /// |---|---|---|
+    /// | 2048² | 45,29 ms | **4,53** |
+    /// | 4096² | **201,53 ms** | **14,55** |
+    ///
+    /// The window path gains the same way (2,85 → 0,38 ms), which matters because it is the steady state
+    /// of every stroke frame after the first.
+    ///
     /// # What makes a partial fold SOUND
     ///
     /// The pass's plane textures persist, so texels outside `region` keep what the last upload put
@@ -162,24 +181,42 @@ impl PainterTool {
         if n == 0 {
             return None;
         }
-        let mut relief = Vec::with_capacity(n);
-        let mut cover = Vec::with_capacity(n);
-        let mut mat0 = Vec::with_capacity(n * 4);
-        let mut mat1 = Vec::with_capacity(n * 4);
+        let mut relief = vec![0f32; n];
+        let mut cover = vec![0u8; n];
+        let mut mat0 = vec![0u8; n * 4];
+        let mut mat1 = vec![0u8; n * 4];
         // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
         // window carries the identical bytes a full fold would have given it. That is what makes
         // "partial" a statement about how MUCH is folded and never about WHAT it says.
-        for y in i64::from(ry)..i64::from(ry + rh) {
-            for x in i64::from(rx)..i64::from(rx + rw) {
-                relief.push(fields.height_at(x, y));
-                // Quantised the way the canvas already stores coverage, so the shader's unorm decode
-                // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
-                cover.push((fields.cover_at(x, y) * 255.0 + 0.5) as u8);
-                let m = fields.material_at(x, y);
-                mat0.extend_from_slice(&[m[0], m[1], m[2], m[3]]);
-                mat1.extend_from_slice(&[m[4], m[5], m[6], 255]);
-            }
-        }
+        //
+        // **By ROWS, in parallel** (ADR-0109's exception, the same shape `sculpt_offset` and
+        // `watercolor_field` already run on): every texel here is a pure function of `(x, y)` and the
+        // frozen `fields`, so rows are disjoint and the result is **byte-identical by construction** —
+        // what changes is which thread evaluates which row, never what any row says.
+        //
+        // ⚠️ The cure is aimed at the FULL fold, which is the one the artist waits on. Measured at 4096²
+        // with 32 cores: the walk is the entire cost (0,1 ms of allocation against 183 ms of walk), and
+        // it is the biggest single number a Painter frame can produce.
+        let rww = rw as usize;
+        relief
+            .par_chunks_mut(rww)
+            .zip(cover.par_chunks_mut(rww))
+            .zip(mat0.par_chunks_mut(rww * 4))
+            .zip(mat1.par_chunks_mut(rww * 4))
+            .enumerate()
+            .for_each(|(row, (((rrow, crow), m0row), m1row))| {
+                let y = i64::from(ry) + row as i64;
+                for i in 0..rww {
+                    let x = i64::from(rx) + i as i64;
+                    rrow[i] = fields.height_at(x, y);
+                    // Quantised the way the canvas already stores coverage, so the shader's unorm decode
+                    // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
+                    crow[i] = (fields.cover_at(x, y) * 255.0 + 0.5) as u8;
+                    let m = fields.material_at(x, y);
+                    m0row[i * 4..i * 4 + 4].copy_from_slice(&[m[0], m[1], m[2], m[3]]);
+                    m1row[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 255]);
+                }
+            });
         let lut = ph2d_painter_brush::material::SpecLut::get();
         Some(ImpastoPlanes {
             width: w,
@@ -295,6 +332,13 @@ mod tests {
     ///
     /// Compared against the FULL door's own output rather than against `height_at` again — the full door
     /// is what shipped and what every existing gate pins, so it is the oracle a regression has to break.
+    ///
+    /// ⚠️ **And that is also this gate's blind spot, measured:** door-against-itself cannot see an error
+    /// that shifts BOTH sides the same way. Mutating the row-to-`y` mapping of the parallel fold by one
+    /// row leaves this gate GREEN — the window and the canvas move together, so they still agree — and
+    /// only [`the_planes_are_the_light_s_own_fold_texel_for_texel`], which asks the SAMPLERS, goes red.
+    /// The two gates are not redundant: one pins *the window equals the canvas*, the other pins *the
+    /// canvas equals the fold*, and a uniform indexing bug satisfies the first.
     #[test]
     fn a_window_folds_exactly_what_the_whole_canvas_folded_there() {
         let t = sculpted();

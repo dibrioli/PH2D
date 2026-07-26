@@ -375,7 +375,7 @@ Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timest
 **Rule:** cada `Plugin::init` retorna `MemoryBudget { vram_mb, ram_mb, heap_script_mb }`. Na inicialização, `ph2d-core` soma e checa contra limite da plataforma (§4); se estourar, recusa o boot com erro claro.
 **Rule (emenda, [ADR-0117](docs/architecture/decisions/0117-audio-editor-memory-is-measured-not-declared.md)):** todo subsistema que declara um budget **possui também ao menos um gate executável que MEDE o consumo real** (dhat) contra ele. Subsistema sem gate de medição não tem budget — tem uma opinião.
 **Rationale:** OOM em iOS é jetsam silencioso; descobrir budget total no produto distribuído é cedo demais. E `check_budget` soma **intenções no boot** — ele nunca observa uma alocação. **Um budget que só é declarado não pode ser violado, só excedido em silêncio:** o Audio Editor chegou a **4351 MB de pico** (64 edições num clipe de 3 min, contra um teto de 3500 MB para o app INTEIRO) sem que a regra piscasse, porque a regra não estava olhando. O número declarado estava certo; ninguém o estava conferindo.
-**Enforced by:** unit test em `ph2d-core::budget::test_total_under_platform_min` simula a matriz §4 (a soma **declarada**) · gates dhat por subsistema medem o **real** — os do Audio Editor são `ph2d-audio-edit/tests/measure_*.rs` (ADR-0117 §4).
+**Enforced by:** unit test em `ph2d-core::budget::test_total_under_platform_min` simula a matriz §4 (a soma **declarada**) · gates dhat por subsistema medem o **real** — os do Audio Editor são `ph2d-audio-edit/tests/measure_*.rs` (ADR-0117 §4) e os do **Painter** são `ph2d-tool-painter/tests/measure_undo_{memory,capacity}.rs` (o 1º nasceu VERMELHO em 1.627 MB, exatamente como o do áudio: *o número declarado estava certo; ninguém o estava conferindo*).
 
 ### HR-14 — Save format é versionado e migrável
 **Rule:** todo struct que vai a save game tem campo `version: u32` no início. Migração de versão N → N+1 é função pura `fn migrate_v{N}_to_v{N+1}(old: VN) -> Result<V{N+1}>`. Sem migração, build de release não compila para um diff que muda schema.
@@ -801,6 +801,7 @@ Cada subsistema declara budget em `Plugin::init` (HR-13). Tabela default por pla
 | Audio buffers (residência do mixer em RUNTIME) | 30 | 30 | 80 | 20 |
 | └─ **Voz por STREAMING** ([ADR-0118](docs/architecture/decisions/0118-audio-streaming-voices-residency.md)) — custa o **ring**, não o clipe: **0,06 MB** por voz, **independente do comprimento** (uma faixa de 3 min residente custava 65,9 MB = **2,2× o budget iPad inteiro**) | 0,06/voz | 0,06/voz | 0,06/voz | 0,06/voz |
 | └─ **Audio Editor** (working set OFFLINE: clipe + histórico + preview) — [ADR-0117](docs/architecture/decisions/0117-audio-editor-memory-is-measured-not-declared.md) | — | — | **2×clipe + 256** | — |
+| └─ **Painter — histórico de undo** (working set OFFLINE do editor de camadas) — U1 do [plano 26](docs/Painter/26_plano_performance_procreate.md) §7.5, mesmo molde do ADR-0117: o passo guarda a **janela** que tocou, não o documento (~2,4 MB por traço a 2048² contra os ~67,8 de antes), e o cap é em **BYTES** | — | — | **2×documento + 256** | — |
 | Physics state | 20 | 20 | 80 | 10 |
 | Lighting (RC) | 80 | 80 | 200 | 50 |
 | Asset DB cache | 200 | 250 | 1000 | 150 |

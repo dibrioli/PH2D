@@ -141,6 +141,9 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if let Some(consumed) = contour::contour_slider_event(host, id) {
         return Some(consumed);
     }
+    if let Some(consumed) = filters::filters_slider_event(host, id) {
+        return Some(consumed);
+    }
     None
 }
 
@@ -538,6 +541,12 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_CONTOUR_SIDE_OUTER
         || id == ids::VECTOR_CONTOUR_SIDE_INNER
         || id == ids::VECTOR_CONTOUR_SIDE_BOTH
+        // Filters (FX raster, plano 24): os quatro chips de tipo. O drain da shell os traduz em
+        // armar/remover o `VecFilter` (None remove). Fora daqui pintariam e estariam MORTOS.
+        || id == ids::VECTOR_FILTER_KIND_NONE
+        || id == ids::VECTOR_FILTER_KIND_BLUR
+        || id == ids::VECTOR_FILTER_KIND_GLOW
+        || id == ids::VECTOR_FILTER_KIND_SHADOW
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION
@@ -595,3 +604,6 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
 /// O roteamento dos controles do **Contour** — irmão pelo teto de 600 LOC do painel.
 #[path = "event_contour.rs"]
 mod contour;
+
+#[path = "event_filters.rs"]
+mod filters;

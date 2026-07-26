@@ -68,6 +68,10 @@ mod patternpath;
 #[path = "paint_contour.rs"]
 mod contour;
 
+/// A seção **Filters** (FX raster, plano 24) — módulo irmão (teto de 600 LOC).
+#[path = "paint_filters.rs"]
+mod filters;
+
 /// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
 #[path = "paint_effects.rs"]
 mod effects;
@@ -227,6 +231,9 @@ impl BodyCtx<'_> {
         // Effects fica logo depois dos deformadores: os três são não-destrutivos, e a
         // pilha é a generalização deles (ADR-0132).
         y = self.step(y, Self::effects_section);
+        // Filters (FX raster, plano 24) — logo após Effects, mas de OUTRA natureza: pixels, não
+        // geometria. Some inteira sem forma selecionada e sem filtro vivo.
+        y = self.step(y, Self::filters_section);
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)

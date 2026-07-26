@@ -18,7 +18,7 @@ use ph2d_vec_scene::{
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
-    Stroke, VectorScene,
+    Shape, Stroke, VectorScene,
 };
 
 /// Gradient rendering (multi-point IDW fill) + on-canvas editing handles live in a
@@ -168,6 +168,38 @@ pub fn path_to_screen(xforms: &VecXforms, id: VecPathId, camera: Affine) -> Affi
 /// dois faria a forma reaparecer inteira no instante em que o offset a mata.
 pub type LiveGeometry = std::collections::BTreeMap<VecPathId, Vec<VecPath>>;
 
+/// Como uma [`FxImage`] entra na cena, no z da forma que a produziu.
+///
+/// A distinção é do TIPO de efeito, não uma escolha solta: um **Blur** é a própria forma borrada
+/// (substitui o desenho), uma **Drop Shadow** / **Glow** é uma cópia borrada e tingida que fica
+/// ATRÁS da forma (que segue desenhada por cima). Colapsar os dois faria a sombra comer a forma.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FxMode {
+    /// A imagem SUBSTITUI o desenho da forma (Blur).
+    Replace,
+    /// A imagem entra ABAIXO da forma, que ainda desenha por cima (Drop Shadow / Glow).
+    Below,
+}
+
+/// Uma imagem de FX raster já pronta — pixels que o shell produziu (rasterizou a forma isolada,
+/// borrou, tingiu) e que o [`dispatch`] injeta no z da forma. O `dispatch` **não a computa** (é
+/// encode puro, sem GPU): ele só a desenha, com `rect` já em coordenadas de TELA.
+#[derive(Clone)]
+pub struct FxImage {
+    /// RGBA reta (não-premultiplicada), `width*height*4` bytes.
+    pub rgba: std::sync::Arc<Vec<u8>>,
+    pub width: u32,
+    pub height: u32,
+    /// O retângulo de destino em pixels de TELA (`x0,y0,x1,y1`) — o shell já cruzou a câmera e
+    /// somou a margem do blur (e o deslocamento da sombra).
+    pub rect: (f64, f64, f64, f64),
+    pub mode: FxMode,
+}
+
+/// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
+/// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
+pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
+
 /// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `camera`
 /// (o world→screen). Fill primeiro, stroke por cima.
 ///
@@ -180,11 +212,17 @@ pub type LiveGeometry = std::collections::BTreeMap<VecPathId, Vec<VecPath>>;
 /// não num passe por cima de tudo. É o que mantém a promessa do Offset vivo: o documento guarda
 /// a curva autorada (o modo Node edita os nós DELA) e o que se vê é o resultado, empilhado
 /// exatamente onde a forma sempre esteve.
+///
+/// `fx` ([`FxImages`]) injeta o FX raster de uma forma **no z dela**: `Below` (sombra/glow) entra
+/// ANTES do desenho da forma, `Replace` (blur) desenha a imagem NO LUGAR da forma. As imagens já
+/// vêm em coordenadas de tela — o `dispatch` só as encoda, sem tocar GPU. Vazio = sem FX (o caminho
+/// comum é byte-idêntico ao mundo pré-FX).
 pub fn dispatch(
     scene: &VecScene,
     view: &VecViewState,
     xforms: &VecXforms,
     live: &LiveGeometry,
+    fx: &FxImages,
     camera: Affine,
     target: &mut VectorScene,
 ) {
@@ -192,16 +230,109 @@ pub fn dispatch(
         if view.is_hidden(path.id) {
             continue;
         }
-        // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela
-        // CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real desta linha.
-        if let Some(items) = live.get(&path.id) {
-            for item in items {
-                draw_path(item, camera, target);
-            }
-            continue;
+        // O FX da forma, se houver. A sombra/glow (`Below`) entra ANTES do desenho, no z da forma;
+        // o blur (`Replace`) TOMA o lugar do desenho (a imagem é desenhada, a forma não).
+        let fx_here = fx.get(&path.id);
+        if let Some(img) = fx_here.filter(|i| i.mode == FxMode::Below) {
+            draw_fx_image(img, target);
         }
-        let transform = path_to_screen(xforms, path.id, camera);
-        draw_path(path, transform, target);
+        if let Some(img) = fx_here.filter(|i| i.mode == FxMode::Replace) {
+            // A imagem substitui a forma, no z dela.
+            draw_fx_image(img, target);
+        } else {
+            // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela
+            // CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real desta linha.
+            if let Some(items) = live.get(&path.id) {
+                for item in items {
+                    draw_path(item, camera, target);
+                }
+            } else {
+                let transform = path_to_screen(xforms, path.id, camera);
+                draw_path(path, transform, target);
+            }
+        }
+    }
+}
+
+/// Encoda uma [`FxImage`] na cena, no retângulo de tela dela. RGBA reta (a mesma política do
+/// overlay de Background-Removal).
+fn draw_fx_image(img: &FxImage, target: &mut VectorScene) {
+    target.draw_image_rgba(
+        &img.rgba,
+        img.width,
+        img.height,
+        img.rect,
+        ph2d_vector::ImageQuality::Medium,
+    );
+}
+
+/// **O bbox em TELA de um caminho, como o [`dispatch`] o desenharia** — honrando a geometria
+/// DERIVADA (`live`) e a pose (`xforms`). É a pergunta que o produtor de FX raster (plano 24) faz
+/// para dimensionar o scratch e posicionar a imagem: onde, na tela, esta forma vive?
+///
+/// Inclui a metade da espessura do traço (o contorno transborda o fill), escalada pelo afim.
+/// `None` se o caminho não existe ou não tem geometria que desenhe algo.
+#[must_use]
+pub fn path_screen_bounds(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    id: VecPathId,
+    camera: Affine,
+) -> Option<(f64, f64, f64, f64)> {
+    let mut acc: Option<Rect> = None;
+    let mut eat = |path: &VecPath, xf: Affine| {
+        let mut bp = build_bezpath(path);
+        if bp.elements().is_empty() {
+            return;
+        }
+        bp.apply_affine(xf);
+        let mut r = bp.bounding_box();
+        // O traço transborda o fill por metade da largura; escala com o afim.
+        if let Some(s) = path.stroke {
+            let [a, b, c, d, _, _] = xf.as_coeffs();
+            let sx = (a * a + b * b).sqrt();
+            let sy = (c * c + d * d).sqrt();
+            let m = 0.5 * s.width * sx.max(sy);
+            r = r.inflate(m, m);
+        }
+        acc = Some(acc.map_or(r, |cur| cur.union(r)));
+    };
+    if let Some(items) = live.get(&id) {
+        // Derivada já em MUNDO ⇒ sobe pela câmera (como no `dispatch`).
+        for item in items {
+            eat(item, camera);
+        }
+    } else {
+        let path = scene.paths().iter().find(|p| p.id == id)?;
+        eat(path, path_to_screen(xforms, id, camera));
+    }
+    let r = acc?;
+    Some((r.x0, r.y0, r.x1, r.y1))
+}
+
+/// **Desenha exatamente UM caminho, como o [`dispatch`] o desenharia, transladado por `offset`
+/// (px de tela)** — a rasterização da forma isolada que o produtor de FX (plano 24) lê de volta.
+///
+/// Honra a geometria DERIVADA (`live`) e a pose, igual ao `dispatch`, então o que o FX borra é
+/// exatamente o que a forma É na tela; o `offset` leva o bbox da forma à origem `(0,0)` do scratch.
+/// Passa pela MESMA [`draw_path`] do `dispatch` — desenhar por uma 2ª porta faria o FX divergir do
+/// que a forma parece de verdade.
+pub fn draw_path_isolated(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    id: VecPathId,
+    camera: Affine,
+    offset: Affine,
+    target: &mut VectorScene,
+) {
+    if let Some(items) = live.get(&id) {
+        for item in items {
+            draw_path(item, offset * camera, target);
+        }
+    } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
+        draw_path(path, offset * path_to_screen(xforms, id, camera), target);
     }
 }
 
@@ -475,136 +606,8 @@ fn fill_brush(paint: &Paint, _path: &VecPath) -> Brush {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn empty_path_yields_empty_bezpath() {
-        let p = VecPath::default();
-        assert!(build_bezpath(&p).elements().is_empty());
-    }
-
-    #[test]
-    fn demo_scene_builds_nonempty_paths() {
-        let scene = VecScene::demo();
-        for path in scene.paths() {
-            assert!(!build_bezpath(path).elements().is_empty());
-        }
-    }
-
-    /// Uma cena de UM quadrado preenchido, e o id dele.
-    fn one_square() -> (VecScene, VecPathId) {
-        use ph2d_vec_scene::{Paint, Rgba8, VecVertex};
-        let mut scene = VecScene::new();
-        let id = scene.push_path(VecPath {
-            verts: [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]]
-                .map(VecVertex::corner)
-                .to_vec(),
-            closed: true,
-            fill: Some(Paint::Solid(Rgba8::new(200, 30, 30, 255))),
-            ..VecPath::default()
-        });
-        (scene, id)
-    }
-
-    /// **A geometria viva desenha NO LUGAR da fonte, não por cima dela.** Duas formas na tela
-    /// onde devia haver uma é o sintoma de um passe que só ACRESCENTA; e o z de um offset tem
-    /// de ser o z da forma que ele offseta.
-    #[test]
-    fn the_live_geometry_draws_instead_of_the_source() {
-        let (scene, id) = one_square();
-        let (view, xf) = (VecViewState::default(), VecXforms::default());
-        let mut a = VectorScene::new();
-        dispatch(
-            &scene,
-            &view,
-            &xf,
-            &LiveGeometry::new(),
-            Affine::IDENTITY,
-            &mut a,
-        );
-        let plain = a.inner().encoding().n_paths;
-
-        // A derivada: DOIS caminhos (um offset pode partir a forma em vários — o donut do
-        // smoke devolve oito). Se o `dispatch` acrescentasse em vez de trocar, sairiam três.
-        let mut live = LiveGeometry::new();
-        let (extra, _) = one_square();
-        live.insert(id, extra.paths().to_vec());
-        live.insert(id, vec![scene.paths()[0].clone(), scene.paths()[0].clone()]);
-        let mut b = VectorScene::new();
-        dispatch(&scene, &view, &xf, &live, Affine::IDENTITY, &mut b);
-        assert_eq!(
-            b.inner().encoding().n_paths,
-            plain * 2,
-            "a derivada tem de SUBSTITUIR a fonte (2 itens = 2 desenhos, não 3)"
-        );
-    }
-
-    /// **Uma entrada PRESENTE e VAZIA desenha NADA** — é a aniquilação (o offset comeu a
-    /// forma). Colapsá-la com "ausente" faria a forma reaparecer inteira no extremo do
-    /// slider, que é o oposto do que o artista acabou de pedir.
-    #[test]
-    fn an_empty_live_entry_draws_nothing() {
-        let (scene, id) = one_square();
-        let mut live = LiveGeometry::new();
-        live.insert(id, Vec::new());
-        let mut s = VectorScene::new();
-        dispatch(
-            &scene,
-            &VecViewState::default(),
-            &VecXforms::default(),
-            &live,
-            Affine::IDENTITY,
-            &mut s,
-        );
-        assert_eq!(s.inner().encoding().n_paths, 0);
-    }
-
-    /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,
-    /// sem dirty-tracking), a fração dominante do custo em escala (achado Rive).
-    /// `cargo test -p ph2d-vec-render --release -- --ignored --nocapture`
-    #[test]
-    #[ignore = "spike manual de medição; rode em --release --nocapture"]
-    fn encode_cost_by_n() {
-        use std::time::Instant;
-        let affine = Affine::IDENTITY;
-        println!("\n=== re-encode NAIVE por frame (CPU, sem dirty-tracking) ===");
-        for &n in &[1_000usize, 5_000, 10_000, 20_000, 50_000] {
-            let scene = VecScene::demo_grid(n);
-            let mut target = VectorScene::new();
-            target.reset();
-            let xf = VecXforms::new();
-            dispatch(
-                &scene,
-                &VecViewState::default(),
-                &xf,
-                &LiveGeometry::new(),
-                affine,
-                &mut target,
-            ); // warm
-            let iters = 30;
-            let t = Instant::now();
-            for _ in 0..iters {
-                target.reset();
-                dispatch(
-                    &scene,
-                    &VecViewState::default(),
-                    &xf,
-                    &LiveGeometry::new(),
-                    affine,
-                    &mut target,
-                );
-            }
-            let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
-            println!(
-                "N={:>6}  encode={:>7.3} ms/frame   (teto encode-bound: {:>6.0} fps)",
-                n,
-                ms,
-                1000.0 / ms
-            );
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;
 
 /// Os gates da largura ZERO (o slider chega a 0 = sem traço) — arquivo irmão.
 #[cfg(test)]

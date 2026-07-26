@@ -283,6 +283,8 @@ impl crate::App {
         // O Pattern vivo pela mesma razão do offset.
         self.pattern_live.forget();
         self.contour_live.forget();
+        // O FX raster vivo (plano 24) pela mesma razão: a cena inteira mudou debaixo do cozimento.
+        self.fx_live.forget();
         self.vec_offset_mirrored = None;
         // A mesma forma (mesmo id) pode voltar com OUTROS parâmetros — zerar o alvo
         // força a re-semente dos sliders, senão o painel seguiria mostrando o valor

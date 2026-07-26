@@ -370,6 +370,10 @@ mod patternpath;
 #[path = "populate_contour.rs"]
 mod contour;
 
+/// O registro dos widgets do **Filters** (FX raster, plano 24) — irmão pelo teto de 600 LOC.
+#[path = "populate_filters.rs"]
+mod filters;
+
 /// O registro dos widgets de **ESTILO** (traço, tracejado, pontas, preenchimento) — módulo
 /// irmão pelo teto de 600 LOC deste arquivo.
 #[path = "populate_style.rs"]
@@ -424,6 +428,8 @@ fn populate_ops(store: &mut WidgetStore) {
     patternpath::populate_patternpath(store);
     // Contour (pesquisa `20_*` #9): os três comandos, os dois pares exclusivos e os três sliders.
     contour::populate_contour(store);
+    // Filters (FX raster, plano 24): os quatro chips de tipo + os quatro pares slider/campo.
+    filters::populate_filters(store);
     effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);

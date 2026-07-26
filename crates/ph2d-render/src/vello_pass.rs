@@ -228,6 +228,95 @@ impl VelloPass {
         Some(pixel)
     }
 
+    /// Render `scene` into the intermediate at `size` **on a transparent
+    /// background** and read the whole region back to a straight-RGBA8 `Vec`
+    /// (`size.0 * size.1 * 4` bytes, sRGB-encoded like [`read_pixel`]).
+    ///
+    /// This is the FX producer's rasterizer (plano 24): the shell renders ONE
+    /// isolated vector shape into a scratch [`VelloPass`] sized to the shape's
+    /// screen bbox, reads it back, and blurs/tints it on the CPU. It is the
+    /// full-region sibling of [`read_pixel`] — same `copy_texture_to_buffer`
+    /// dance, same synchronous map, but a whole texture instead of one texel.
+    ///
+    /// wgpu requires `bytes_per_row` to be a multiple of 256, so the staging
+    /// buffer is padded per row and the padding is stripped on the way out —
+    /// the returned `Vec` is tightly packed (`width * 4` per row).
+    ///
+    /// Blocks the calling thread until the copy lands and the buffer maps
+    /// (a few ms). Do NOT call this per-frame per shape without a budget — the
+    /// producer sizes the scratch to the shape, not the surface, for exactly
+    /// this reason.
+    pub fn render_and_readback(
+        &mut self,
+        gpu: &GpuContext,
+        scene: &Scene,
+        size: (u32, u32),
+    ) -> Result<Vec<u8>, String> {
+        if size.0 == 0 || size.1 == 0 {
+            return Ok(Vec::new());
+        }
+        self.render_to_intermediate(gpu, scene, size, Color::TRANSPARENT, false)?;
+        let (w, h) = self.last_size;
+        // 256-byte row alignment for texture→buffer copies.
+        let unpadded = w * 4;
+        let padded = unpadded.div_ceil(256) * 256;
+        let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render fx readback"),
+            size: (padded as u64) * (h as u64),
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render fx readback encoder"),
+            });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.intermediate,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded),
+                    rows_per_image: Some(h),
+                },
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([encoder.finish()]);
+
+        let slice = buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |res| {
+            let _ = tx.send(res);
+        });
+        gpu.device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .map_err(|e| format!("fx readback poll: {e}"))?;
+        rx.recv()
+            .map_err(|e| format!("fx readback recv: {e}"))?
+            .map_err(|e| format!("fx readback map: {e}"))?;
+        let view = slice.get_mapped_range();
+        // Strip the per-row padding into a tightly-packed straight-RGBA8 buffer.
+        let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
+        for row in 0..h as usize {
+            let start = row * padded as usize;
+            out.extend_from_slice(&view[start..start + unpadded as usize]);
+        }
+        drop(view);
+        buffer.unmap();
+        Ok(out)
+    }
+
     /// Render `scene` into the intermediate then blit onto `target`.
     /// `target` must match the surface_format passed at construction.
     /// `bg_color` is the Vello clear before drawing; pass transparent

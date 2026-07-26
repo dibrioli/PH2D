@@ -46,6 +46,8 @@ mod topbar;
 mod vector;
 /// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_contour;
+/// Os ids da seção **Filters** (FX raster, plano 24) — irmão de `vector` pelo teto de 700 LOC.
+mod vector_filters;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
 /// A lista das seções colapsáveis do painel Vector — irmã de `vector` pelo teto de 700 LOC.
@@ -83,6 +85,7 @@ pub use timeline::*;
 pub use topbar::*;
 pub use vector::*;
 pub use vector_contour::*;
+pub use vector_filters::*;
 pub use vector_patternpath::*;
 pub use vector_sections::*;
 pub use vector_textpath::*;

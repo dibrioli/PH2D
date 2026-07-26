@@ -162,6 +162,12 @@ impl crate::App {
             crate::sketch_hatch_smoke::frame(self, f, level);
             return;
         }
+        // A cena do FX RASTER (=33 — Blur/Glow/Drop Shadow, plano 24) — irmão `fx_raster_smoke`.
+        // NÃO confundir com `fx_smoke` (=13/14), que é a pilha de deformadores vetoriais (ADR-0132).
+        if level == 33 {
+            crate::fx_raster_smoke::frame(self, f);
+            return;
+        }
         if matches!(level, 13 | 14) {
             crate::fx_smoke::frame(self, f, level);
             return;

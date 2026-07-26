@@ -107,6 +107,15 @@ pub use ph2d_editor_core::ids::{
     VECTOR_CONTOUR_STEPS, VECTOR_CONTOUR_STEPS_NUM, VECTOR_CONTOUR_TO, VECTOR_SECTION_CONTOUR,
 };
 
+/// **Filters** (FX raster, plano 24): a seção + os quatro chips de tipo + os pares
+/// Radius/OffX/OffY/Opacity + a swatch de cor. Distinta de EFFECTS (deformadores vetoriais).
+pub use ph2d_editor_core::ids::{
+    VECTOR_FILTER_COLOR, VECTOR_FILTER_KIND_BLUR, VECTOR_FILTER_KIND_GLOW, VECTOR_FILTER_KIND_NONE,
+    VECTOR_FILTER_KIND_SHADOW, VECTOR_FILTER_OFFX, VECTOR_FILTER_OFFX_NUM, VECTOR_FILTER_OFFY,
+    VECTOR_FILTER_OFFY_NUM, VECTOR_FILTER_OPACITY, VECTOR_FILTER_OPACITY_NUM, VECTOR_FILTER_RADIUS,
+    VECTOR_FILTER_RADIUS_NUM, VECTOR_SECTION_FILTERS,
+};
+
 /// **Pattern on Path** (plano 23): a seção + os quatro botões + os pares Spacing/Start/End/Slide/Offset.
 pub use ph2d_editor_core::ids::{
     VECTOR_PATTERNPATH_DETACH, VECTOR_PATTERNPATH_END, VECTOR_PATTERNPATH_END_NUM,

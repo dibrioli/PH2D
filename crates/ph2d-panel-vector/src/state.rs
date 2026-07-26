@@ -339,6 +339,10 @@ pub use expand::{expand_join, expand_side, set_expand_join, set_expand_side};
 pub(crate) mod contour;
 pub use contour::{set_current_contour, set_current_contour_can_add};
 
+#[path = "state_filters.rs"] // Filters (FX raster, plano 24), irmão pelo teto de 600 LOC
+pub(crate) mod filters;
+pub use filters::{set_current_filter, set_current_filter_can_add};
+
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {
     CURRENT_TEXT_VISIBLE.with(|c| c.set(v));

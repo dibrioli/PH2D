@@ -558,7 +558,8 @@ fn every_section_header_is_registered_as_collapsible() {
         ids::VECTOR_SECTIONS.len(),
         // +3 (2026-07-23): TEXTPATH e PATTERNPATH, que chegaram à `main` FORA da lista — os dois
         // cabeçalhos pintavam chevron e não dobravam —, e CONTOUR, que entrou junto.
-        26,
+        // +1 (2026-07-25): FILTERS (FX raster, plano 24), distinta de EFFECTS.
+        27,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

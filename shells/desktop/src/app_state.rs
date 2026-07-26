@@ -892,6 +892,10 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecContour`, pesquisa `20_*` item #9), irmão do `offset_live` de que é a
     /// generalização. Runtime-only e memoizado POR ANEL.
     pub(crate) contour_live: crate::contour_live::ContourLive,
+    /// O **cozimento do FX raster VIVO** — as imagens de Blur/Glow/Drop Shadow por-forma
+    /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
+    /// componente), e isto são os pixels derivados dela, injetados no z da forma.
+    pub(crate) fx_live: crate::fx_live::FxLive,
     /// Os knobs `(Corner, Side)` do painel no frame ANTERIOR. É o que distingue *"o artista
     /// clicou um chip"* (retunar os offsets vivos da seleção) de *"o painel está no valor de
     /// sempre"* — sem a borda, todo frame reescreveria o componente de toda forma selecionada.

@@ -102,6 +102,8 @@ fn seed_and_publish(
     // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
     // idempotente (uma pertença a conjunto), então não depende de a seção ter pintado.
     store.register_picker_swatch(ids::VECTOR_CONTOUR_TO);
+    // A cor do Glow / Drop Shadow (FX raster, plano 24) — a 4ª swatch de picker do painel.
+    store.register_picker_swatch(ids::VECTOR_FILTER_COLOR);
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();

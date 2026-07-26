@@ -117,6 +117,7 @@ mod flip_tween_torsion_smoke;
 mod forwarding;
 mod fx_bridge;
 mod fx_bridge_dispatch;
+mod fx_raster_smoke;
 mod fx_smoke;
 mod fx_undo_smoke;
 mod hero_bridge;
@@ -145,6 +146,9 @@ mod nest_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
+/// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
+/// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
+mod fx_live;
 /// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
 mod onion_modal;
 mod palette_persist;
@@ -488,6 +492,7 @@ impl App {
             offset_live: crate::offset_live::OffsetLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             pattern_live: crate::pattern_live::PatternLive::default(),
+            fx_live: crate::fx_live::FxLive::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
             vec_contour_mirrored: None,

@@ -51,6 +51,14 @@ impl StableImage {
         })
     }
 
+    /// Envolve uma [`ImageData`] JÁ construída — o caso do FX raster GPU-resident (plano 24), em
+    /// que a `ImageData` vem do `Renderer::register_texture` do Vello (respaldada por uma textura
+    /// da GPU, id estável) em vez de bytes de CPU. Desenhá-la amostra a textura direto, sem upload.
+    #[must_use]
+    pub fn from_image_data(data: ImageData) -> Self {
+        Self { data }
+    }
+
     /// A largura em px da imagem.
     #[must_use]
     pub fn width(&self) -> u32 {

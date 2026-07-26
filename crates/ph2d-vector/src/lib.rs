@@ -58,7 +58,7 @@ pub use vello::kurbo::{
     Affine, BezPath, Cap, Circle, Join, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2,
 };
 pub use vello::peniko::{
-    Brush, Color, ColorStop, ColorStops, Fill, Gradient, GradientKind, ImageQuality,
+    Brush, Color, ColorStop, ColorStops, Fill, Gradient, GradientKind, ImageData, ImageQuality,
     LinearGradientPosition,
 };
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`

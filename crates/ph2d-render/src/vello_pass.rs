@@ -104,6 +104,37 @@ impl VelloPass {
         &self.intermediate
     }
 
+    /// Register a GPU `texture` as a Vello image and return its stable [`ImageData`] handle
+    /// (the vector FX, plano 24). Drawing that handle in a `Scene` samples the texture DIRECTLY —
+    /// no CPU upload, no re-upload per frame. The texture must be `Rgba8Unorm` + `COPY_SRC`
+    /// (Vello copies it into its atlas each render). Keep the texture alive; re-blur into it in
+    /// place and Vello sees the fresh pixels behind the SAME id (zero atlas-id churn).
+    pub fn register_texture(&mut self, texture: wgpu::Texture) -> vello::peniko::ImageData {
+        self.renderer.register_texture(texture)
+    }
+
+    /// Swap (or drop, with `None`) the GPU texture behind an already-registered [`ImageData`] id —
+    /// used when the FX texture is REALLOCATED (the shape resized on screen), keeping the id stable.
+    pub fn override_image(
+        &mut self,
+        image: &vello::peniko::ImageData,
+        texture: Option<wgpu::Texture>,
+    ) {
+        let base = texture.map(|t| wgpu::TexelCopyTextureInfoBase {
+            texture: t,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        });
+        self.renderer.override_image(image, base);
+    }
+
+    /// Unregister a texture previously registered via [`Self::register_texture`] (the filter was
+    /// removed / the shape deleted) — frees the atlas slot.
+    pub fn unregister_texture(&mut self, image: vello::peniko::ImageData) {
+        self.renderer.unregister_texture(image);
+    }
+
     /// M14.5: render the Vello `scene` into the intermediate texture
     /// **without** the final blit onto a surface view. The intermediate
     /// stays available via [`intermediate_view`](Self::intermediate_view)

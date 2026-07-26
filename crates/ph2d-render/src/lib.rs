@@ -30,6 +30,7 @@ pub mod compressed_pipeline;
 /// makes [`SpriteSource::CookedTexture`] render. See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
+pub mod fx_blur;
 pub mod game_rt;
 pub mod image_filter;
 pub mod impasto_light;
@@ -77,6 +78,7 @@ pub use compressed_pipeline::{
 };
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use game_rt::GameRt;
+pub use fx_blur::{FxBlurPass, make_output_texture};
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use impasto_light::{
     IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput, ImpastoLightPass,

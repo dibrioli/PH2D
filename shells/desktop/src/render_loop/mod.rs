@@ -5021,6 +5021,7 @@ impl crate::App {
                 cam_affine,
                 surface.gpu(),
                 surface.format(),
+                vello_pass,
             );
             let vec_fx = self.fx_live.images();
             ph2d_vec_render::dispatch(

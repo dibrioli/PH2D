@@ -34,6 +34,11 @@ ph2d-core = { path = "../ph2d-core" }
 # `t`. Crate-folha ZERO-dep, partilhada com a pilha de efeitos do Vector -- duas
 # respostas para "quanto andei nesta curva" divergiriam.
 ph2d-arclen = { path = "../ph2d-arclen" }
+# Expressões de propriedade (ADR-0144): o IR congelado + o evaluator + a trait
+# Bindings (o passe pós-composição avalia contra os valores JÁ compostos), e o
+# parser VEX-lite compartilhado (o MESMO que o Motion node usa — porta única).
+ph2d-expr = { path = "../ph2d-expr" }
+ph2d-expr-parse = { path = "../ph2d-expr-parse" }
 # libm — `atan2f` puro-Rust para o auto-orient (ADR-0141 Fatia 5). MESMO pin de
 # `ph2d-ecs`/`physics`/`flip`/`wet-paint`: o ângulo que ele produz vai para o
 # `Transform`, que o `physics_ecs_c9` compara BIT A BIT entre os três OSes, e

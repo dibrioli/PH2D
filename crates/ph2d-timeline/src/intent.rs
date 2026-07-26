@@ -258,6 +258,14 @@ pub enum TimelineIntent {
         /// The extrapolation mode for that side.
         mode: Extrap,
     },
+    /// Set or clear (`None`) the property EXPRESSION on `target`'s binding — the
+    /// formula the post-composition pass evaluates (ADR-0144).
+    SetBindingExpr {
+        /// Track/binding target.
+        target: AnimTarget,
+        /// Formula text, or `None` to return to keyframes.
+        expr: Option<String>,
+    },
 
     // ── markers (W4.T3; each is one undo step) ──────────────────────────────
     /// Add a marker at `t_seconds` with `label` (user content; the shell
@@ -449,25 +457,11 @@ pub enum TimelineIntent {
         /// The new name (already trimmed by the panel's rename field).
         name: String,
     },
-    /// **Make a container** — the ASSET, and nothing else (ADR-0133, amended 2026-07-21).
-    ///
-    /// # Creating and placing are two acts
-    ///
-    /// The first cut created a container AND dropped an instance of it on a new lane, on the
-    /// reasoning that "an empty container that is nowhere is not a thing an animator asked
-    /// for". The consequence was the opposite of the intent: a container could not be *made*
-    /// without immediately appearing in the scene, could not be edited unless instanced, and
-    /// read as *"just another lane"* — which is exactly what Enio reported (2026-07-21:
-    /// *"não vi nenhum diferencial nos containers"*).
-    ///
-    /// So this is the "New Symbol" of Animate / "New Comp" of After Effects: the asset is
-    /// born, the **Containers** tab opens it, and placing it is the lane's `+` with the
-    /// container picked in the source dropdown. Nesting is *placing a container inside a
-    /// container* — one mechanism, not a second gesture.
-    ///
-    /// **Host-independent, deliberately**: a container is a document asset, so the stack you
-    /// happen to be looking at must not decide whose list it joins.
-    ///
+    /// **Make a container** — the ASSET, and nothing else (ADR-0133, amended 2026-07-21;
+    /// the "New Symbol"/"New Comp"). Creating and PLACING are two acts: the asset is born,
+    /// the **Containers** tab opens it, and placing it is the lane's `+` with the container
+    /// picked in the source dropdown (nesting = placing a container inside one, same gesture).
+    /// **Host-independent** (a document asset does not join whose stack you happen to view).
     /// Refused past [`crate::MAX_CONTAINERS`] — the list's rename ids are a fixed array.
     AddContainer,
     /// Rename container `index` — the sibling of [`Self::RenameClip`].

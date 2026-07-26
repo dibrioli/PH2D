@@ -309,6 +309,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 }
             }
         }),
+        I::SetBindingExpr { target, expr } => edit(state, |doc, _| {
+            if let Some(b) = doc.bindings_mut().iter_mut().find(|b| b.target == target) {
+                // Empty / whitespace-only text clears back to keyframes.
+                b.expr = expr.filter(|s| !s.trim().is_empty());
+            }
+        }),
         I::SetSelectedRove { on } => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| {
                 for &id in ids {

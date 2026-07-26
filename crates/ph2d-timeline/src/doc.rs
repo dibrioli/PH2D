@@ -80,10 +80,16 @@ mod markers;
 /// before (the fade fingerprint pin). Postcard is positional, so the appended fields
 /// still force the version bump: a v13 blob is refused on load.
 ///
+/// v15: **property expressions** (ADR-0144) — `TargetBinding.expr: Option<String>`,
+/// the formula that drives a property in a SEPARATE post-composition pass. `None`
+/// (the default) is byte-identical to v14 (no pass runs), but postcard is positional
+/// so the appended field forces the bump: a v14 blob is refused on load.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
-pub const DOC_VERSION: u32 = 14;
+/// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
+pub const DOC_VERSION: u32 = 15;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

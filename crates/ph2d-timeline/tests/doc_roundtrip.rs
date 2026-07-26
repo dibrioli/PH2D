@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_fourteen() {
+fn schema_version_is_fifteen() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -125,10 +125,13 @@ fn schema_version_is_fourteen() {
     //      pingpong / continue beyond the keyed range. Default `Hold` is the
     //      flat-clamp, so a v13 doc re-reads Hold/Hold and samples byte-for-byte
     //      as before (the fade fingerprint pin).
+    // v15 = property EXPRESSIONS (ADR-0144): `TargetBinding.expr: Option<String>`,
+    //      appended — the formula that drives a property in a separate
+    //      post-composition pass. `None` (the default) is byte-identical to v14.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 14);
-    assert_eq!(TimelineDoc::new().version, 14);
+    assert_eq!(DOC_VERSION, 15);
+    assert_eq!(TimelineDoc::new().version, 15);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

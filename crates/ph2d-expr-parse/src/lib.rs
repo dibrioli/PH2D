@@ -110,13 +110,11 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
                 // still lex as numbers, and `x.5` stops the ident at `x`.
                 while i < b.len() {
                     let ch = b[i] as char;
-                    if ch.is_ascii_alphanumeric() || ch == '_' {
-                        i += 1;
-                    } else if ch == '.'
+                    let dot_join = ch == '.'
                         && b
                             .get(i + 1)
-                            .is_some_and(|n| (*n as char).is_ascii_alphabetic() || *n == b'_')
-                    {
+                            .is_some_and(|n| (*n as char).is_ascii_alphabetic() || *n == b'_');
+                    if ch.is_ascii_alphanumeric() || ch == '_' || dot_join {
                         i += 1;
                     } else {
                         break;

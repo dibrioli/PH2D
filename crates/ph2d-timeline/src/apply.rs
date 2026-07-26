@@ -105,6 +105,12 @@ pub fn apply_from_doc_except(
     }
 
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
+
+    // ADR-0144 — the SEPARATE post-composition pass: after every keyed prop is
+    // written, expressions read the composed values and overwrite the driven
+    // props. Early-out (byte-identical) when no binding carries a formula; never
+    // touches `stack_eval`/the blend, so the fade is untouched by construction.
+    crate::expr_pass::run(world, doc, t);
 }
 
 /// **Apply container `container`'s INTERIOR alone, at ITS local clock `t`** — the
@@ -252,12 +258,16 @@ pub fn apply_active_clip(
             write_prop(world, e, b, v, orient);
         }
     }
+
+    // ADR-0144 — the expression pass, on the clip's own clock (the same `clip_t`
+    // the keyed props were sampled at). Early-out when nothing is driven.
+    crate::expr_pass::run(world, doc, clip_t);
 }
 
 /// Read one property back out of an entity — the exact inverse of
 /// [`write_prop`], and the reason `rest` can be captured without the shell's
 /// help. Also what the inverse-blend key authoring will need (ADR-0115 R9).
-fn read_prop(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
+pub(crate) fn read_prop(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
     if let Some(sp) = prop.as_sprite_transform() {
         let xf = world.get::<Transform>(entity)?;
         return Some(match sp {
@@ -406,7 +416,7 @@ fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
 ///
 /// Takes the whole BINDING, not just the kind: [`PropKind::Position`]'s value is a
 /// distance, and turning it back into a place needs that binding's trajectory.
-fn write_prop(
+pub(crate) fn write_prop(
     world: &mut World,
     entity: Entity,
     b: &crate::TargetBinding,

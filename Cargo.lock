@@ -5151,6 +5151,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-expr-parse"
+version = "0.0.0"
+dependencies = [
+ "ph2d-expr",
+]
+
+[[package]]
 name = "ph2d-flip"
 version = "0.0.0"
 dependencies = [
@@ -5896,6 +5903,7 @@ name = "ph2d-node-motion-expression"
 version = "0.0.0"
 dependencies = [
  "ph2d-expr",
+ "ph2d-expr-parse",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -7143,6 +7151,8 @@ dependencies = [
  "ph2d-arclen",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-expr",
+ "ph2d-expr-parse",
  "ph2d-render",
  "postcard",
  "serde",

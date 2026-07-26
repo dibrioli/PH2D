@@ -127,6 +127,26 @@ impl PropKind {
         }
     }
 
+    /// Resolve the tail of a **prop-link** identifier (`Name.<tail>`) to a kind —
+    /// the ADR-0144 expression syntax. Artist-friendly aliases (`x`/`rot`/`sx`),
+    /// case-insensitive. `TimeRemap` is deliberately absent (it is the timeline's
+    /// meta-clock, not a scene value to read); a bare `time` is the playhead, so
+    /// it is resolved by the pass's `Bindings`, not here.
+    #[must_use]
+    pub fn from_expr_name(name: &str) -> Option<PropKind> {
+        match name.to_ascii_lowercase().as_str() {
+            "x" | "translationx" | "tx" => Some(PropKind::TranslationX),
+            "y" | "translationy" | "ty" => Some(PropKind::TranslationY),
+            "rotation" | "rot" | "r" => Some(PropKind::Rotation),
+            "scalex" | "sx" => Some(PropKind::ScaleX),
+            "scaley" | "sy" => Some(PropKind::ScaleY),
+            "opacity" | "alpha" | "a" => Some(PropKind::Opacity),
+            "position" | "pos" | "p" => Some(PropKind::Position),
+            "morph" | "m" => Some(PropKind::Morph),
+            _ => None,
+        }
+    }
+
     /// The sprite-transform resolver's view of this kind, if it is one of the
     /// five `Transform` properties. `Opacity` returns `None` — it resolves to
     /// `Sprite.tint[3]`, not a `Transform` field (see [`crate::apply`]).

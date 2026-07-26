@@ -27,6 +27,7 @@ pub mod clipboard;
 mod clock;
 pub mod doc;
 pub mod doc_path;
+mod expr_pass;
 pub mod graph;
 pub mod history;
 pub mod intent;

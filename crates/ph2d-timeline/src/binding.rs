@@ -100,6 +100,21 @@ pub struct TargetBinding {
     /// **RECUSA** quando a mesma entidade tem uma track de Rotation, porque aí seriam
     /// dois autores do mesmo ângulo e o de trás venceria em silêncio. Appended (v12).
     pub auto_orient: bool,
+    /// **A EXPRESSÃO** que dirige esta propriedade (ADR-0144) — a fórmula de tempo
+    /// e/ou de outras props (`time*100`, `wiggle(3, 20)`, `value + Sprite.x`). `None`
+    /// = a prop é dirigida só pelos keyframes (o caminho de hoje, byte-idêntico).
+    ///
+    /// Ela é avaliada num passe pós-composição SEPARADO ([`crate::expr_pass`]) que
+    /// roda DEPOIS de o apply escrever os keyframes: lê os valores JÁ compostos e
+    /// sobrescreve esta prop. **Nunca entra em `stack_eval` nem no blend** — é isso
+    /// que mantém o fade intocado. Dentro da fórmula, `value` é o valor keyado desta
+    /// prop (o pré-expressão do AE), então `value + wiggle(...)` é wiggle SOBRE as keys.
+    ///
+    /// Mora no BINDING (document-wide) e não no track/clip: o binding já É "esta prop
+    /// desta entidade é animada", e uma prop pode ser expression-driven **sem keys**
+    /// nenhuma. Appended (`DOC_VERSION` 14 -> 15).
+    #[serde(default)]
+    pub expr: Option<String>,
 }
 
 impl crate::doc::TimelineDoc {
@@ -143,6 +158,7 @@ impl TargetBinding {
             rest: None,         // captured on the first live apply (see the field)
             path: None,         // a Position binding grows one with its first key
             auto_orient: false, // opt-in: girar sem pedido reescreve a pose autorada
+            expr: None,         // driven by keyframes until a formula is authored (v15)
         }
     }
 

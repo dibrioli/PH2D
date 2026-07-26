@@ -25,6 +25,19 @@ fn renaming(index: usize) -> TimelinePanelState {
         marker_rename: Some(MarkerRename {
             index,
             opened: true,
+            editing_signal: false,
+        }),
+        ..TimelinePanelState::default()
+    }
+}
+
+/// An open editor in SIGNAL mode (Shift+double-click, ADR-0143).
+fn editing_signal(index: usize) -> TimelinePanelState {
+    TimelinePanelState {
+        marker_rename: Some(MarkerRename {
+            index,
+            opened: true,
+            editing_signal: true,
         }),
         ..TimelinePanelState::default()
     }
@@ -73,6 +86,40 @@ fn commit_is_idempotent_across_the_submit_then_blur_pair() {
         state::drain_intents().is_empty(),
         "the take() guard makes the trailing Blur a no-op"
     );
+}
+
+#[test]
+fn signal_mode_commit_pushes_set_marker_signal_with_the_trimmed_name() {
+    let _ = state::drain_intents();
+    let store = store_with("  footstep  ");
+    let mut st = editing_signal(2);
+    commit(&mut st, &store);
+    assert_eq!(
+        state::drain_intents(),
+        vec![TimelineIntent::SetMarkerSignal {
+            index: 2,
+            signal: Some("footstep".to_string()),
+        }],
+        "signal mode commits SetMarkerSignal, not RenameMarker"
+    );
+    assert!(st.marker_rename.is_none());
+}
+
+#[test]
+fn signal_mode_commit_with_a_blank_buffer_clears_the_signal() {
+    let _ = state::drain_intents();
+    let store = store_with("   ");
+    let mut st = editing_signal(1);
+    commit(&mut st, &store);
+    assert_eq!(
+        state::drain_intents(),
+        vec![TimelineIntent::SetMarkerSignal {
+            index: 1,
+            signal: None,
+        }],
+        "a blank name in signal mode CLEARS the signal (None), unlike a blank label"
+    );
+    assert!(st.marker_rename.is_none());
 }
 
 #[test]

@@ -45,7 +45,7 @@ pub(crate) fn apply(
                 // A plain click seeks. Close the (empty) bracket first — a seek is
                 // a transport intent, not a document edit.
                 state::push_intent(TimelineIntent::EndEdit);
-                if let Some(&(t, _)) = snap.markers.get(index) {
+                if let Some(&(t, _, _)) = snap.markers.get(index) {
                     state::push_intent(TimelineIntent::Scrub(t));
                 }
             }
@@ -59,9 +59,12 @@ pub(crate) fn apply(
             state.marker_drag = None;
             state::push_intent(TimelineIntent::EndEdit);
             if !g.mods.alt {
+                // Shift+double-click edits the marker's SIGNAL (ADR-0143); a plain
+                // double-click edits its label. One field, two modes.
                 state.marker_rename = Some(MarkerRename {
                     index,
                     opened: false,
+                    editing_signal: g.mods.shift,
                 });
             }
         }

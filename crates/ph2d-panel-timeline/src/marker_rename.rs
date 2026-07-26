@@ -44,9 +44,16 @@ pub(crate) fn paint(
     };
     // The marker may have vanished (deleted, or an undo dropped it) — abandon the
     // rename rather than key a stale index.
-    let Some((t, label)) = snap.markers.get(mr.index) else {
+    let Some((t, label, signal)) = snap.markers.get(mr.index) else {
         state.marker_rename = None;
         return;
+    };
+    // One field, two modes: seed from the marker's SIGNAL in signal mode
+    // (Shift+double-click, ADR-0143), else from its label.
+    let seed = if mr.editing_signal {
+        signal.clone().unwrap_or_default()
+    } else {
+        label.clone()
     };
 
     let x = region.x + ((t - view_start) * px_per_s) as f32;
@@ -63,8 +70,8 @@ pub(crate) fn paint(
             ids::TIMELINE_MARKER_RENAME_INPUT,
             InteractiveState::TextInput {
                 state: TextInputState::Focused,
-                text: label.clone(),
-                caret: label.len(),
+                text: seed.clone(),
+                caret: seed.len(),
                 selection_anchor: None,
             },
         );
@@ -87,12 +94,19 @@ pub(crate) fn paint(
         Radius::Xs.px(),
         resolve(ColorToken::BgElev, theme),
     );
+    // The border colour is the mode cue: the marker's own colour when editing its
+    // SIGNAL (matches the pennant glyph), the playhead colour when editing its label.
+    let border = if mr.editing_signal {
+        ColorToken::TimelineMarker
+    } else {
+        ColorToken::TimelinePlayhead
+    };
     stroke_rounded_rect(
         ctx.scene,
         rect,
         Radius::Xs.px(),
         StrokeToken::Thin.px(),
-        resolve(ColorToken::TimelinePlayhead, theme),
+        resolve(border, theme),
     );
 
     let (ti_state, text, caret, anchor) =
@@ -129,14 +143,24 @@ pub(crate) fn commit(state: &mut TimelinePanelState, store: &WidgetStore) {
     let Some(mr) = state.marker_rename.take() else {
         return;
     };
-    if let Some(label) = field_text(store) {
-        let label = label.trim();
-        if !label.is_empty() {
-            state::push_intent(TimelineIntent::RenameMarker {
-                index: mr.index,
-                label: label.to_string(),
-            });
-        }
+    let Some(text) = field_text(store) else {
+        return;
+    };
+    let text = text.trim();
+    if mr.editing_signal {
+        // Signal mode (ADR-0143): a blank name CLEARS the signal — a signal without
+        // a name is no contract, and the setter collapses blank to `None` too.
+        let signal = (!text.is_empty()).then(|| text.to_string());
+        state::push_intent(TimelineIntent::SetMarkerSignal {
+            index: mr.index,
+            signal,
+        });
+    } else if !text.is_empty() {
+        // Label mode: an empty label is ignored — the marker keeps its old name.
+        state::push_intent(TimelineIntent::RenameMarker {
+            index: mr.index,
+            label: text.to_string(),
+        });
     }
 }
 

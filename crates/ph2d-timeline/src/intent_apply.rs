@@ -248,6 +248,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::RenameMarker { index, label } => edit(state, |doc, _| {
             doc.set_marker_label(index, label);
         }),
+        I::SetMarkerSignal { index, signal } => edit(state, |doc, _| {
+            doc.set_marker_signal(index, signal);
+        }),
         I::SetSelectedInterp { interp } => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| {
                 for &id in ids {

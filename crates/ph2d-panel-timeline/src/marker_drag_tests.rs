@@ -10,7 +10,7 @@ fn snap() -> TimelineViewSnapshot {
     TimelineViewSnapshot {
         fps: 60.0,
         frame_snap: true,
-        markers: vec![(1.0, "M1".into())],
+        markers: vec![(1.0, "M1".into(), None)],
         ..TimelineViewSnapshot::default()
     }
 }
@@ -168,11 +168,44 @@ fn a_double_click_arms_the_rename_and_raises_no_edit() {
         "the double-click closes its empty bracket and raises no document edit"
     );
     assert_eq!(
-        st.marker_rename.map(|m| (m.index, m.opened)),
-        Some((0, false)),
-        "the rename is armed for marker 0, not yet seeded"
+        st.marker_rename.map(|m| (m.index, m.opened, m.editing_signal)),
+        Some((0, false, false)),
+        "the rename is armed for marker 0, not yet seeded, in LABEL mode"
     );
     assert!(st.marker_drag.is_none());
+}
+
+#[test]
+fn a_shift_double_click_arms_the_signal_editor_not_the_label() {
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    let shift_double = |phase| TimelineGesture {
+        surface: ph2d_a11y::NodeId(0),
+        kind: TimelineHitKind::Marker { index: 0 },
+        phase,
+        x: 100.0,
+        y: 0.0,
+        button: PointerButton::Primary,
+        mods: GestureMods {
+            shift: true,
+            cmd: false,
+            alt: false,
+        },
+    };
+    apply(&mut st, 0.0, 100.0, &s, 0, shift_double(GesturePhase::Begin));
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        0,
+        shift_double(GesturePhase::DoubleClick),
+    );
+    assert_eq!(
+        st.marker_rename.map(|m| (m.index, m.editing_signal)),
+        Some((0, true)),
+        "Shift+double-click arms the SIGNAL editor (ADR-0143), not the label"
+    );
 }
 
 #[test]

@@ -229,6 +229,18 @@ pub enum TimelineIntent {
         /// New label.
         label: String,
     },
+    /// Set (or clear, with `None`/blank) the signal the marker at storage `index`
+    /// emits when forward play crosses it ([ADR-0143]). Distinct from the label:
+    /// the label is what the animator reads, the signal is the decoupled contract a
+    /// consumer matches on.
+    ///
+    /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
+    SetMarkerSignal {
+        /// Storage index.
+        index: usize,
+        /// The signal name; `None` or blank clears it.
+        signal: Option<String>,
+    },
 
     // ── selection (not undoable) ────────────────────────────────────────────
     /// Replace the selection with a single key.

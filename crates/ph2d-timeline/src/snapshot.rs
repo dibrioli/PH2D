@@ -202,8 +202,9 @@ pub struct TimelineViewSnapshot {
     pub keys_mode: bool,
     /// Track rows, in the **active clip's** own time — see [`Self::clip_time`].
     pub tracks: Vec<TrackView>,
-    /// Markers as `(seconds, label)`.
-    pub markers: Vec<(f64, String)>,
+    /// Markers as `(seconds, label, signal)` — the signal name (ADR-0143) is `Some`
+    /// when the marker emits, which the ruler draws as a distinct glyph.
+    pub markers: Vec<(f64, String, Option<String>)>,
     /// Auto-key armed.
     pub auto_key: bool,
     /// Frame snapping on.
@@ -493,7 +494,8 @@ impl TimelineViewSnapshot {
         // Markers (reuse buffer).
         self.markers.clear();
         for m in doc.markers() {
-            self.markers.push((m.t.to_seconds(), m.label.clone()));
+            self.markers
+                .push((m.t.to_seconds(), m.label.clone(), m.signal.clone()));
         }
 
         // Track rows: one per LIVE binding, in binding order — a missing binding

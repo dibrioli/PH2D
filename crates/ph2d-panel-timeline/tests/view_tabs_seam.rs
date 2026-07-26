@@ -200,7 +200,7 @@ fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_ma
     let mut state = TimelinePanelState::default();
     let mut snap = keys_and_a_stack(Some(2.0), 4.0);
     snap.loop_range = Some((0.0, 5.0)); // the clip's own loop (rebuild fills the keys pair)
-    snap.markers = vec![(1.0, "M1".into())];
+    snap.markers = vec![(1.0, "M1".into(), None)];
 
     let regs = paint(&mut host, &mut state, snap.clone());
     assert!(
@@ -237,7 +237,7 @@ fn without_a_stack_the_keys_tab_is_the_panel_it_has_always_been() {
     let mut snap = keys_and_a_stack(Some(1.5), 1.5);
     snap.lanes.clear(); // no stack
     snap.loop_range = Some((0.0, 3.0));
-    snap.markers = vec![(1.0, "M1".into())];
+    snap.markers = vec![(1.0, "M1".into(), None)];
 
     let regs = paint(&mut host, &mut state, snap);
     assert!(

@@ -346,7 +346,7 @@ fn paint_markers(
     let right = region.x + region.w;
     let font = TypeToken::Xs.px();
     let half = MARKER_W * 0.5;
-    for (index, (t, label)) in snap.markers.iter().enumerate() {
+    for (index, (t, label, signal)) in snap.markers.iter().enumerate() {
         let x = time_to_x(*t);
         if x < region.x - half || x > right + half {
             continue;
@@ -370,6 +370,18 @@ fn paint_markers(
             ],
             color,
         );
+        // A marker that carries a SIGNAL (ADR-0143) wears a distinct glyph: a dot
+        // punched into the pennant, so an emitter reads apart from a plain
+        // annotation (the way Unity draws a Signal Emitter apart from a marker).
+        if signal.is_some() {
+            let d = MARKER_W * 0.42; // LITERAL-PX-OK: signal dot, fraction of the pennant
+            fill_rounded_rect(
+                ctx.scene,
+                Rect::new(x - d * 0.5, region.y + MARKER_H * 0.22, d, d),
+                d * 0.5, // full radius → a circle
+                resolve(ColorToken::BgElev, theme),
+            );
+        }
         // Label to the right of the triangle, elided so it never runs off.
         ph2d_editor_core::text_elide::paint_text_elided(
             ctx.text_system,

@@ -1451,6 +1451,13 @@ impl crate::App {
             self.last_timeline_container = None;
             ph2d_panel_timeline::state::reset_trail();
         }
+        // Hand each signal the SCENE play crossed this frame to a consumer (ADR-0143).
+        // v1 consumer: a toast — the visible proof the decoupled channel round-trips.
+        // Audio/gameplay/Luau are the deferred cross-line consumers of the SAME outbox;
+        // the timeline emits an event and never calls any of them (ADR-0075).
+        for sig in self.timeline_signals.out.drain(..) {
+            toasts.push(ph2d_editor::Toast::info(format!("Signal: {}", sig.name)));
+        }
         // The playhead has now moved: a transport jump queued last frame can
         // finally ask the panel to pan to it (the snapshot below carries the
         // new time, and `paint` reads both later this frame).

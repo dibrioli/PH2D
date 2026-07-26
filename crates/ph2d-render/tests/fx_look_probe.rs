@@ -191,7 +191,48 @@ fn probe_fx_render_and_look() {
         return;
     };
     let mut pass = FxStackPass::new(&gpu);
-    let (src, _cov) = star_src(&gpu);
+    // ⚠️ **Quem RASTERIZA importa.** A sonda nasceu com supersampling próprio, e o produto usa o
+    // Vello — se as duas rampas de AA diferirem, o campo (que vem da GEOMETRIA) fica exato para uma
+    // forma e o raster desenha outra, e a discordância lê como dente. `PH2D_FX_VELLO=1` põe a sonda
+    // no rasterizador do produto para que a comparação seja honesta.
+    let vello_scratch = if std::env::var("PH2D_FX_VELLO").is_ok() {
+        let mut scratch =
+            ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Bgra8UnormSrgb, (W, H))
+                .expect("scratch");
+        let mut shape = vello::Scene::new();
+        let mut bp = vello::kurbo::BezPath::new();
+        for (i, (x, y)) in star_poly().iter().enumerate() {
+            if i == 0 {
+                bp.move_to((*x, *y));
+            } else {
+                bp.line_to((*x, *y));
+            }
+        }
+        bp.close_path();
+        shape.fill(
+            vello::peniko::Fill::NonZero,
+            vello::kurbo::Affine::IDENTITY,
+            vello::peniko::Color::from_rgba8(235, 175, 60, 255),
+            None,
+            &bp,
+        );
+        scratch
+            .render_to_intermediate(
+                &gpu,
+                &shape,
+                (W, H),
+                vello::peniko::Color::TRANSPARENT,
+                false,
+            )
+            .expect("scratch render");
+        Some(scratch)
+    } else {
+        None
+    };
+    let (own, _cov) = star_src(&gpu);
+    let src = vello_scratch
+        .as_ref()
+        .map_or(&own, |s| s.intermediate_texture());
 
     let white = [1.0, 1.0, 1.0, 1.0];
     let black = [0.0, 0.0, 0.0, 1.0];
@@ -213,7 +254,7 @@ fn probe_fx_render_and_look() {
         } else {
             star_segments()
         };
-        pass.run(&gpu, &src, &dst, W, H, &ops, &segs);
+        pass.run(&gpu, src, &dst, W, H, &ops, &segs);
         let px = readback(&gpu, &dst, W, H);
         write_ppm(&dir, name, &px);
     }

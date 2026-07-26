@@ -209,9 +209,16 @@ pub(super) fn paint_new_image_dialog(
     store: &WidgetStore,
     viewport: Rect,
 ) {
-    let menu_w = 360.0_f32; // LITERAL-PX-OK: fits the 7 size buttons in one row
     let row_h = ROW_H;
     let gap = Spacing::Xs.px();
+    // ⚠️ A largura é DERIVADA da contagem de tamanhos, não um literal. Ela era `360.0` com o comentário
+    // *"fits the 7 size buttons in one row"* — uma cerca cuja razão é a CONTAGEM, então acrescentar o
+    // oitavo (4096) teria espremido cada botão de 45,7 para 39,5 px sem nada acender. Assim, a tabela em
+    // `ids::CTX_MENU_NEW_IMAGE_SIZES` é a única edição que um tamanho novo pede.
+    const SIZE_BTN_W: f32 = 46.0; // LITERAL-PX-OK: cabe "4096" no `TypeToken::Sm` com folga
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de botoes, < 16")]
+    let n_sizes = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32;
+    let menu_w = Spacing::Md.px() * 2.0 + n_sizes * SIZE_BTN_W + (n_sizes - 1.0) * gap;
     // Six stacked rows: title · Size label · size buttons · Background label · bg buttons · Create.
     let total_h = PAD_Y * 2.0 + row_h * 6.0 + gap * 5.0; // LITERAL-PX-OK: 5 inter-row gaps
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
@@ -252,8 +259,9 @@ pub(super) fn paint_new_image_dialog(
     );
     y += row_h + gap;
     let sel_size = store.new_image_size();
-    let n = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32;
-    let bw = ((inner_w - gap * (n - 1.0)) / n).max(1.0);
+    // A MESMA regra que dimensionou o modal, do outro lado — medir por uma e preencher por outra é como
+    // a próxima seção pinta por cima dos botões. Com a largura derivada isto devolve `SIZE_BTN_W`.
+    let bw = ((inner_w - gap * (n_sizes - 1.0)) / n_sizes).max(1.0);
     for (i, (px, id)) in ids::CTX_MENU_NEW_IMAGE_SIZES.iter().enumerate() {
         let r = Rect::new(inner_x + i as f32 * (bw + gap), y, bw, row_h);
         paint_choice_button(

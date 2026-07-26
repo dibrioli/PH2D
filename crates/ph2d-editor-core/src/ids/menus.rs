@@ -112,9 +112,15 @@ pub const CTX_MENU_NEW_IMAGE_SIZE_256: NodeId = hash_node_id("ctx_menu_new_image
 pub const CTX_MENU_NEW_IMAGE_SIZE_512: NodeId = hash_node_id("ctx_menu_new_image_size_512");
 pub const CTX_MENU_NEW_IMAGE_SIZE_1024: NodeId = hash_node_id("ctx_menu_new_image_size_1024");
 pub const CTX_MENU_NEW_IMAGE_SIZE_2048: NodeId = hash_node_id("ctx_menu_new_image_size_2048");
-/// The 7 square-size choices, paired `(px, button id)` — one source for the modal paint, the
+pub const CTX_MENU_NEW_IMAGE_SIZE_4096: NodeId = hash_node_id("ctx_menu_new_image_size_4096");
+/// The 8 square-size choices, paired `(px, button id)` — one source for the modal paint, the
 /// populate registration, and the click dispatch.
-pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 7] = [
+///
+/// ⚠️ **A largura do modal é DERIVADA desta contagem** (`paint_new_image_dialog`), não um literal ao
+/// lado dela: o `360.0` que ela tinha vinha com o comentário *"fits the 7 size buttons"*, então
+/// acrescentar o oitavo teria espremido cada botão de 45,7 para 39,5 px em silêncio — e o próximo
+/// tamanho espremeria de novo. Acrescentar uma linha aqui é a única edição necessária.
+pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 8] = [
     (32, CTX_MENU_NEW_IMAGE_SIZE_32),
     (64, CTX_MENU_NEW_IMAGE_SIZE_64),
     (128, CTX_MENU_NEW_IMAGE_SIZE_128),
@@ -122,6 +128,10 @@ pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 7] = [
     (512, CTX_MENU_NEW_IMAGE_SIZE_512),
     (1024, CTX_MENU_NEW_IMAGE_SIZE_1024),
     (2048, CTX_MENU_NEW_IMAGE_SIZE_2048),
+    // 4096² = 64 MB de RGBA por camada (Enio 2026-07-26, "para testes"): é o tamanho em que os custos
+    // canvas-proporcionais do módulo ficam visíveis a olho nu, e por isso é o que as sondas de perf
+    // usam. O atlas cresce sob demanda, então não há teto novo a declarar aqui.
+    (4096, CTX_MENU_NEW_IMAGE_SIZE_4096),
 ];
 /// The 3 background choices, paired `(bg wire u8, button id)` — `0` transparent, `1` black, `2` white.
 pub const CTX_MENU_NEW_IMAGE_BGS: [(u8, NodeId); 3] = [

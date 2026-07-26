@@ -85,6 +85,7 @@ fn a_key_outside_the_selection_is_retuned_alone() {
     let (st, target, key) = doc_unselected();
     for (item, want) in [
         (c::CTX_MENU_TL_HOLD, Interp::Hold),
+        (c::CTX_MENU_TL_NEAREST, Interp::Nearest),
         (c::CTX_MENU_TL_LINEAR, Interp::Linear),
     ] {
         assert_eq!(

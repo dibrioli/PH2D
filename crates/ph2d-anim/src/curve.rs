@@ -59,6 +59,18 @@ pub enum Interp {
         /// `P2.y − v1` — the in handle's absolute value offset from its key.
         dy2: f64,
     },
+    /// **Nearest-keyframe** hold (Godot's *Interpolation: Nearest*): a step that
+    /// jumps at the segment MIDPOINT rather than at the far key. The value is the
+    /// start value for `u < 0.5` and the end value from `u ≥ 0.5` on — so a time
+    /// sits with whichever key is nearest, which is precisely Godot's per-track
+    /// nearest mode expressed as a per-key interp (ours is finer: mix it with
+    /// `Hold`/`Bezier` on the same track). Contrast [`Interp::Hold`], which steps
+    /// at the FAR key (`u = 1`). Like `Hold` it is a discontinuous step, not a
+    /// continuous easing family, so it has no 2-handle bézier form.
+    ///
+    /// Appended LAST so postcard's variant indexes — and every saved document —
+    /// stay stable (the same reason [`Interp::BezierW`] is last).
+    Nearest,
 }
 
 impl Interp {
@@ -101,6 +113,7 @@ impl Interp {
     /// - `Hold` stays `Hold`. A hold is a step, and reversed it is still a step —
     ///   at the other end of the segment. (Blender and AE both keep it; the step
     ///   moving is what reversal *means* here.)
+    /// - `Nearest` is its own mirror: the midpoint step reflects onto the midpoint.
     /// - `Linear` is its own mirror.
     /// - `Eased` swaps `In` ↔ `Out`; `InOut` is symmetric and stays.
     /// - `Bezier` reflects its control points through `(0.5, 0.5)` and swaps them:
@@ -111,7 +124,7 @@ impl Interp {
     #[must_use]
     pub fn reversed(self) -> Self {
         match self {
-            Self::Hold | Self::Linear => self,
+            Self::Hold | Self::Linear | Self::Nearest => self,
             Self::Eased(e) => Self::Eased(Easing {
                 family: e.family,
                 mode: match e.mode {
@@ -147,6 +160,9 @@ impl Interp {
         let u = u.clamp(0.0, 1.0);
         match self {
             Interp::Hold => 0.0,
+            // Step at the MIDPOINT: hold the start value, then jump to the end
+            // value at u = 0.5 (nearest-key). `Hold` jumps at u = 1.
+            Interp::Nearest => f64::from(u >= 0.5),
             Interp::Linear => u,
             Interp::Eased(e) => e.eval(u),
             Interp::Bezier { x1, y1, x2, y2 } => solve_cubic_bezier(x1, y1, x2, y2, u),
@@ -202,7 +218,8 @@ impl Interp {
     #[must_use]
     pub fn slope(self, u: f64) -> f64 {
         match self {
-            Interp::Hold => 0.0,
+            // A step is flat everywhere but the jump; slope 0 (like `Hold`).
+            Interp::Hold | Interp::Nearest => 0.0,
             Interp::Linear => 1.0,
             Interp::Eased(e) => eased_slope(e, u),
             Interp::Bezier { x1, y1, x2, y2 } => bezier_slope(x1, y1, x2, y2, u),
@@ -249,7 +266,7 @@ impl Interp {
             // `BezierW` IS a two-handle form, but not a normalized one — its
             // `dy`s are value-space and need the endpoint values to place
             // (`ph2d-timeline`'s segment-handle helpers own that mapping).
-            Interp::Hold | Interp::Eased(_) | Interp::BezierW { .. } => None,
+            Interp::Hold | Interp::Nearest | Interp::Eased(_) | Interp::BezierW { .. } => None,
         }
     }
 
@@ -278,6 +295,10 @@ impl Interp {
             Interp::Bezier { x1, y1, x2, y2 } => ((x1, y1), (x2, y2)),
             Interp::Linear => Self::LINEAR_HANDLES,
             Interp::Hold => ((x1, 0.0), (x2, 0.0)),
+            // A midpoint step: flat-low then flat-high. Both handles land on the
+            // curve's flat parts (out at value 0, in at value 1) — there is no
+            // tangent at the jump, and this is only a read-only draw / convert seed.
+            Interp::Nearest => ((x1, 0.0), (x2, 1.0)),
             Interp::Eased(e) => {
                 let m0 = endpoint_slope(e, 0.0);
                 let m1 = endpoint_slope(e, 1.0);

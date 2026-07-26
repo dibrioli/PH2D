@@ -20,6 +20,9 @@ use ph2d_timeline::{TimelineIntent, TimelineState};
 pub(crate) enum Preset {
     /// Hold the value, then jump.
     Hold,
+    /// Nearest keyframe: hold, then jump at the segment MIDPOINT (Godot's
+    /// *Interpolation: Nearest*, per-key here).
+    Nearest,
     /// Straight line.
     Linear,
     /// Freeze the drawn handles into an editable bézier.
@@ -44,6 +47,9 @@ pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> 
     use ph2d_editor::ids as c;
     if item == c::CTX_MENU_TL_HOLD {
         return Some(Preset::Hold);
+    }
+    if item == c::CTX_MENU_TL_NEAREST {
+        return Some(Preset::Nearest);
     }
     if item == c::CTX_MENU_TL_LINEAR {
         return Some(Preset::Linear);
@@ -219,11 +225,12 @@ pub(crate) fn keys_at(state: &TimelineState, t: f64) -> Vec<ph2d_timeline::Selec
         .collect()
 }
 
-/// The three presets that name one interpolation outright.
+/// The presets that name one interpolation outright.
 fn absolute(preset: Preset) -> ph2d_anim::Interp {
     use ph2d_anim::Interp;
     match preset {
         Preset::Hold => Interp::Hold,
+        Preset::Nearest => Interp::Nearest,
         Preset::Linear => Interp::Linear,
         Preset::Eased(e) => Interp::Eased(e),
         Preset::Custom => unreachable!("Custom is relative to each key's own curve"),

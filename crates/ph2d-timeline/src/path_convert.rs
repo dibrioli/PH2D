@@ -102,7 +102,7 @@ impl TimelineDoc {
         let eased = |tr: &ph2d_anim::Track| {
             tr.keys()
                 .iter()
-                .filter(|k| !matches!(k.interp, Interp::Linear | Interp::Hold))
+                .filter(|k| !matches!(k.interp, Interp::Linear | Interp::Hold | Interp::Nearest))
                 .count()
         };
         let dropped_eases = eased(track_x) + track_y.map_or(0, eased);
@@ -161,7 +161,7 @@ impl TimelineDoc {
             .collect();
         let dropped_eases = samples
             .iter()
-            .filter(|(_, _, i)| !matches!(i, Interp::Linear | Interp::Hold))
+            .filter(|(_, _, i)| !matches!(i, Interp::Linear | Interp::Hold | Interp::Nearest))
             .count();
 
         self.unbind(entity, PropKind::Position);

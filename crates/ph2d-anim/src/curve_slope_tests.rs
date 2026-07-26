@@ -68,3 +68,26 @@ fn a_vertical_tangent_reads_infinite_not_a_lie() {
     let i = Interp::bezier(0.0, 1.0, 0.58, 1.0);
     assert!(i.slope(0.0).is_infinite() && i.slope(0.0) > 0.0);
 }
+
+#[test]
+fn nearest_steps_at_the_midpoint_not_the_far_key() {
+    // The whole distinction between the two step interps (Godot's Interpolation:
+    // Nearest): `Nearest` jumps at the segment MIDPOINT, `Hold` at the far key.
+    let (v0, v1) = (0.0, 10.0);
+    // Before the midpoint both hold the start value.
+    assert_eq!(Interp::Nearest.value(v0, v1, 0.49), 0.0);
+    assert_eq!(Interp::Hold.value(v0, v1, 0.49), 0.0);
+    // At/after the midpoint `Nearest` has jumped; `Hold` has NOT (it holds to u=1).
+    assert_eq!(Interp::Nearest.value(v0, v1, 0.5), 10.0);
+    assert_eq!(Interp::Nearest.value(v0, v1, 0.6), 10.0);
+    assert_eq!(
+        Interp::Hold.value(v0, v1, 0.6),
+        0.0,
+        "Hold holds the start value until the far key"
+    );
+    // A step is flat (slope 0) and its own mirror (the midpoint reflects onto itself).
+    assert_eq!(Interp::Nearest.slope(0.5), 0.0);
+    assert_eq!(Interp::Nearest.reversed(), Interp::Nearest);
+    // It is not a two-handle bézier form (drawn read-only in the graph editor).
+    assert!(Interp::Nearest.handles().is_none());
+}

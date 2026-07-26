@@ -19,6 +19,9 @@ use super::*;
 // shell, which owns the `ph2d-anim` vocabulary.
 /// Step: hold the value, then jump at the next key.
 pub const CTX_MENU_TL_HOLD: NodeId = hash_node_id("ctx_menu_tl_hold");
+/// Step at the MIDPOINT (Godot's *Interpolation: Nearest*): the value sits with
+/// whichever key is nearest in time. `Hold` steps at the far key; this steps halfway.
+pub const CTX_MENU_TL_NEAREST: NodeId = hash_node_id("ctx_menu_tl_nearest");
 /// Straight line to the next key.
 pub const CTX_MENU_TL_LINEAR: NodeId = hash_node_id("ctx_menu_tl_linear");
 /// Freeze the drawn handles into an editable bézier (`Interp::to_bezier`).
@@ -71,8 +74,9 @@ pub const TL_EASE_MODE_INOUT: u8 = 2;
 /// it, and the shell's gate proves every row resolves to something. A row added
 /// here and forgotten in the shell is a compile-green menu item that does
 /// nothing; that is the bug this shape exists to make impossible.
-pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
+pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 8] = [
     (CTX_MENU_TL_HOLD, "Hold", None),
+    (CTX_MENU_TL_NEAREST, "Nearest", None),
     (CTX_MENU_TL_LINEAR, "Linear", None),
     (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
     (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),

@@ -90,6 +90,29 @@ fn star_poly() -> Vec<(f64, f64)> {
         .collect()
 }
 
+/// A MESMA silhueta, mas picada em pedaços COLINEARES — é o que o produto de facto entrega: as
+/// arestas do documento são cúbicas DEGENERADAS, e o achatador as subdivide (medido no app: 150
+/// segmentos para uma estrela de 10 arestas). Se o campo depender da densidade, é aqui que aparece.
+fn star_segments_dense(per_edge: usize) -> Vec<[f32; 4]> {
+    let p = star_poly();
+    let mut out = Vec::new();
+    for i in 0..p.len() {
+        let (x0, y0) = p[i];
+        let (x1, y1) = p[(i + 1) % p.len()];
+        for k in 0..per_edge {
+            let t0 = k as f64 / per_edge as f64;
+            let t1 = (k + 1) as f64 / per_edge as f64;
+            out.push([
+                (x0 + (x1 - x0) * t0) as f32,
+                (y0 + (y1 - y0) * t0) as f32,
+                (x0 + (x1 - x0) * t1) as f32,
+                (y0 + (y1 - y0) * t1) as f32,
+            ]);
+        }
+    }
+    out
+}
+
 /// A SILHUETA em segmentos, no espaço de texel — o que a wave da semeadura exata alimenta.
 fn star_segments() -> Vec<[f32; 4]> {
     let p = star_poly();
@@ -184,7 +207,13 @@ fn probe_fx_render_and_look() {
     ];
     for (name, ops) in scenes {
         let dst = make_output_texture(&gpu, W, H);
-        pass.run(&gpu, &src, &dst, W, H, &ops, &star_segments());
+        let dense = std::env::var("PH2D_FX_DENSE").is_ok();
+        let segs = if dense {
+            star_segments_dense(15)
+        } else {
+            star_segments()
+        };
+        pass.run(&gpu, &src, &dst, W, H, &ops, &segs);
         let px = readback(&gpu, &dst, W, H);
         write_ppm(&dir, name, &px);
     }

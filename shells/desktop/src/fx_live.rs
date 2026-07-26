@@ -306,6 +306,12 @@ impl FxLive {
             camera,
             Affine::translate((-ex0, -ey0)),
         );
+        if std::env::var("PH2D_FX_DIAG").is_ok() {
+            eprintln!(
+                "[fx-diag] path {id:?}: {} segmentos, scratch {w}x{h}",
+                geom.len()
+            );
+        }
         let stack = self.stack.get_or_insert_with(|| FxStackPass::new(gpu));
         stack.run(gpu, src, &pfx.tex, w, h, ops, &geom);
         true

@@ -38,6 +38,134 @@ fn model(active_px: u8) -> ModelSnapshot {
     }
 }
 
+/// Um canvas de 16 texels: fundo `base`, com os índices de `marks` trocados. Uma diferença **PONTUAL**
+/// é o que mantém a entrada no caminho `Patch` (a janela pequena), que é onde o cursor é consultado — um
+/// plano inteiro diferente cai em `Whole`, que guarda os dois lados e **não** pergunta nada ao cursor.
+fn model_marked(base: u8, marks: &[(usize, u8)]) -> ModelSnapshot {
+    let mut m = model(base);
+    let mut px = vec![base; 16];
+    for (i, v) in marks {
+        px[*i] = *v;
+    }
+    m.canvas_rgba = Arc::new(px);
+    m
+}
+
+/// **Uma escrita de canvas SEM entrada de undo é absorvida pelo passo que a causou.**
+///
+/// O repro do produto é o **escorrido** do Wet Paint (`wetpaint::undo_drip_tests`): a sim continua
+/// correndo depois do pen-up e composita no canvas sem gravar entrada nenhuma. Aqui ele está no nível do
+/// controller, que é onde a cura mora.
+///
+/// Sem a absorção, desfazer TUDO deixa o texel estrangeiro na tela: ele está fora da janela do passo que
+/// o causou, e o delta preserva o que está fora da janela.
+#[test]
+fn a_canvas_write_with_no_entry_is_absorbed_by_the_step_that_caused_it() {
+    let mut c = UndoController::new(DEFAULT_MAX_BYTES);
+    let pristine = model_marked(0x11, &[]);
+    let after_a = model_marked(0x11, &[(5, 0x22)]);
+    c.record_structural(pristine.clone(), after_a.clone());
+
+    // A ÁGUA CORRE: o canvas muda sem que ninguém grave uma entrada.
+    let drifted = model_marked(0x11, &[(5, 0x22), (9, 0x33)]);
+
+    // …e o passo seguinte adota esse canvas como o seu `before`.
+    let after_b = model_marked(0x11, &[(5, 0x22), (9, 0x33), (13, 0x44)]);
+    c.record_structural(drifted, after_b);
+
+    assert!(c.undo().is_some(), "desfaz o 2o passo");
+    let back = c.undo().expect("desfaz o 1o passo");
+    assert_eq!(
+        back.canvas_rgba.as_ref(),
+        pristine.canvas_rgba.as_ref(),
+        "desfazer tudo tem de devolver a tela pristina; o texel estrangeiro (9) sobrou"
+    );
+}
+
+/// **O mesmo, pelo caminho COALESCIDO** — e é ele que prova que o cursor tem de andar com a absorção.
+///
+/// ⚠️ Sem este gate, remover a linha que move o cursor em `absorb_foreign_writes` **sobrevive à suíte
+/// inteira**: no `record_structural` o cursor é sobrescrito na linha seguinte, então lá ela é inerte. Só
+/// o ramo que COALESCE volta a lê-lo — ele materializa o `before` do topo a partir do cursor — e um
+/// cursor obsoleto ali reconstrói o passo sobre um fundo que não existe mais.
+///
+/// Alcançável no produto: os shape editors ficam disponíveis sob Wet Paint (doc 21), então apertar
+/// **Simplify** duas vezes com a água viva é exatamente esta sequência.
+#[test]
+fn the_cursor_walks_with_the_absorption_so_a_coalesced_run_rebuilds_on_the_right_ground() {
+    let mut c = UndoController::new(DEFAULT_MAX_BYTES);
+    let pristine = model_marked(0x11, &[]);
+    let after_a = model_marked(0x11, &[(5, 0x22)]);
+    c.record_structural(pristine.clone(), after_a);
+
+    // 1º Simplify (não coalesce: o topo é um passo comum) — precedido de uma escrita estrangeira.
+    let drift1 = model_marked(0x11, &[(5, 0x22), (9, 0x33)]);
+    let s1 = model_marked(0x11, &[(5, 0x22), (9, 0x33), (13, 0x44)]);
+    c.record_structural_coalesced(CoalesceKind::Simplify, drift1, s1);
+
+    // A água corre DE NOVO, e então o 2º Simplify — este COALESCE com o primeiro.
+    let drift2 = model_marked(0x11, &[(5, 0x22), (9, 0x33), (13, 0x44), (2, 0x55)]);
+    let s2 = model_marked(
+        0x11,
+        &[(5, 0x22), (9, 0x33), (13, 0x44), (2, 0x55), (7, 0x66)],
+    );
+    c.record_structural_coalesced(CoalesceKind::Simplify, drift2, s2);
+
+    assert_eq!(c.undo_depth(), 2, "o run de Simplify e UM passo");
+    assert!(c.undo().is_some(), "desfaz o run de Simplify");
+    let back = c.undo().expect("desfaz o 1o passo");
+    assert_eq!(
+        back.canvas_rgba.as_ref(),
+        pristine.canvas_rgba.as_ref(),
+        "desfazer tudo tem de devolver a tela pristina"
+    );
+}
+
+/// **E o caso em que o cursor obsoleto MORDE: a escrita estrangeira que volta ao valor de origem.**
+///
+/// ⚠️ Este gate existe porque o irmão acima **não** distingue mover o cursor de não mover, e a razão é
+/// álgebra e não sorte: o único jeito de o cursor velho diferir do `before` é a escrita estrangeira, e a
+/// janela do re-split (diff entre o início do run e o `before`) normalmente a **contém** — então
+/// materializar do cursor velho ou do novo dá o mesmo. *Normalmente.*
+///
+/// A exceção é a escrita estrangeira que devolve o texel ao valor que ele tinha no **início do run**:
+/// aí ela sai da janela, e o cursor velho passa a servir um pixel que ninguém autora. E ela **não é
+/// contrivida** — é exatamente o que a evaporação do Wet Paint faz: o composite escreve `sess.base` onde
+/// o pigmento secou, devolvendo o texel ao que ele era antes de a água chegar.
+#[test]
+fn a_foreign_write_that_returns_to_the_run_start_value_still_lands_on_the_right_ground() {
+    let mut c = UndoController::new(DEFAULT_MAX_BYTES);
+    let pristine = model_marked(0x11, &[]);
+    let run_start = model_marked(0x11, &[(5, 0x22)]);
+    c.record_structural(pristine.clone(), run_start.clone());
+
+    // 1º Simplify — abre o run (o topo era um passo comum, então não coalesce).
+    let s1 = model_marked(0x11, &[(5, 0x22), (9, 0x33)]);
+    c.record_structural_coalesced(CoalesceKind::Simplify, run_start.clone(), s1);
+
+    // A água EVAPORA: o texel 9 volta ao valor do início do run. O canvas agora é `run_start` de novo,
+    // e nenhuma entrada registrou nem a chegada nem a saída.
+    let dried = run_start.clone();
+
+    // 2º Simplify — este COALESCE, e materializa o início do run a partir do cursor.
+    let s2 = model_marked(0x11, &[(5, 0x22), (14, 0x77)]);
+    c.record_structural_coalesced(CoalesceKind::Simplify, dried, s2);
+
+    assert_eq!(c.undo_depth(), 2, "o run de Simplify e UM passo");
+    let back = c.undo().expect("desfaz o run");
+    assert_eq!(
+        back.canvas_rgba.as_ref(),
+        run_start.canvas_rgba.as_ref(),
+        "desfazer o run tem de devolver o estado do INICIO dele, nao um fundo que o cursor velho servia"
+    );
+    let back = c.undo().expect("desfaz o 1o passo");
+    assert_eq!(
+        back.canvas_rgba.as_ref(),
+        pristine.canvas_rgba.as_ref(),
+        "e desfazer tudo devolve a tela pristina"
+    );
+}
+
 #[test]
 fn undo_rolls_back_to_before() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);

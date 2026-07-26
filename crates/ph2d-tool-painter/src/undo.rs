@@ -34,7 +34,7 @@
 //! `restore_shape_overlay`, que RE-CARIMBA a figura, então o vivo depois de um undo
 //! não é byte-a-byte o snapshot instalado.
 //!
-//! # ⚠️ A ÚNICA mudança de comportamento, e ela é nomeada de propósito
+//! # ⚠️ O invariante que o delta consome — e que agora é ESTABELECIDO, não assumido
 //!
 //! O cursor é imune a escritas estrangeiras (ele é cópia de um snapshot, não do vivo),
 //! então a cadeia se sustenta enquanto **`entry[i].before` for o estado logo após o
@@ -43,10 +43,20 @@
 //! divergem: o antigo instalava o snapshot inteiro e **apagava** aquela escrita; o
 //! delta a **preserva** fora da janela do passo desfeito.
 //!
-//! Não há repro conhecido — canvas escrito sem entrada de undo já seria um defeito por
-//! conta própria, e é justamente o que as três testemunhas do [`GateSession`](crate::tool)
-//! vigiam do outro lado. Fica escrito porque é a diferença que um smoke poderia
-//! encontrar, e porque adivinhar de novo custaria a mesma tarde.
+//! ⚠️ **Esta doc dizia *"não há repro conhecido"*. O smoke do Enio achou o repro em
+//! 2026-07-26, e ele não era defeito de outro sistema — era a ÁGUA:** um traço de Wet
+//! Paint grava a entrada no pen-up e a sim **continua correndo**, compositando pigmento
+//! no `canvas_rgba` a cada tick, sem entrada nenhuma. Isso é o que um **escorrido** é. O
+//! traço seguinte adota esse canvas como o seu `before`, e desfazer o traço que causou o
+//! escorrido reescreve só a janela DELE: a gota fica na tela, e nenhum Ctrl+Z a alcança.
+//!
+//! A cura é [`UndoController::absorb_foreign_writes`], chamada na entrada dos dois
+//! `record_*`: se o `before` que chega não é o cursor, alguém escreveu no meio — e essa
+//! escrita **pertence ao passo anterior, porque foi ele que a causou**. A entrada do topo
+//! é re-partida para terminar ali. Custa **zero** quando ninguém escreveu, porque a
+//! pergunta é feita pelo mesmo `PlaneDeltas::split` do commit, que começa por
+//! `Arc::ptr_eq`. Gates: `undo_tests` (os três de absorção) e
+//! `wetpaint::undo_drip_tests` (o repro do produto, com a água de verdade).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -471,6 +481,7 @@ impl UndoController {
     /// `after` is the model to roll forward to on redo. Pushing it clears the redo
     /// branch (standard linear-history semantics).
     pub fn record_structural(&mut self, before: ModelSnapshot, after: ModelSnapshot) {
+        self.absorb_foreign_writes(&before);
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         self.cursor = Some(Box::new(after.clone()));
@@ -491,6 +502,7 @@ impl UndoController {
         before: ModelSnapshot,
         after: ModelSnapshot,
     ) {
+        self.absorb_foreign_writes(&before);
         if self.redo.is_empty()
             && let Some(top) = self.undo.last()
             && top.kind == Some(kind)
@@ -633,6 +645,9 @@ impl UndoController {
         }
     }
 }
+
+#[path = "undo_absorb.rs"]
+mod absorb; // a reconciliacao com escritas que nao passaram pela historia
 
 #[cfg(test)]
 #[path = "undo_tests.rs"]

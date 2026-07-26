@@ -104,4 +104,14 @@ Novas crates: **`ph2d-painter-brush`** (engine pura) + **`ph2d-panel-painter-bru
 | **[26_plano_performance_procreate.md](26_plano_performance_procreate.md)** | **Pesquisa do Procreate + o plano que saiu dela, e o que a EXECUÇÃO mediu (§7)** — os 3 pilares (latência · tiles · compositor) e o que NÃO transfere (memória unificada × PCIe). ⚠️ **Executado 2026-07-25:** a frente dos TILES foi construída inteira e **REVERTIDA** (a grade não pode ser mais apertada do que lhe contam) · o relógio **EVENTO→FRAME** landou · e a sonda do **undo nasceu VERMELHA** (1.627 MB em 24 traços) |
 
 > ⚠️ A pendência *"undo de stroke por TILES"* logo acima **é a frente U do doc 26** — anotada na Fase 4,
-> quando o snapshot tinha 1 plano; hoje tem 4.
+> quando o snapshot tinha 1 plano; hoje tem 4. **A frente U EXECUTOU** em 2026-07-26 (doc 26 §7.5): o
+> histórico passou a guardar a **janela** e o cap virou **bytes** — 67,8 → 2,36 MB por passo. Ela **não**
+> é por tile: a janela sai de um diff, e a §7.5.2 registra que ela **não** cura o pen-down.
+
+---
+
+## Realismo da luz (2026-07-26)
+
+| Doc | O que tem |
+|---|---|
+| **[27_plano_luz_sombra_propria.md](27_plano_luz_sombra_propria.md)** | **A avaliação do "trocar impasto pelo sculpt do Blender" (veredito: NÃO, §1 — a premissa da GPU está invertida) e a lacuna que EXISTE: a tinta não faz sombra em si mesma.** O modelo é `N·L` + wrap + LUT especular, sem sombra projetada e sem AO ⇒ relevo lê como *inclinação*, nunca como *obstrução*. Plano em 5 waves, oráculo = **render-and-look** |

@@ -282,6 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
+| 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | `INPUT` re-medido não cai | 🟡 byte-identidade do lote | 🟡 **em execução** — +84% medido por repartir o mesmo traço em 64 eventos |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
 não se moveu, a frente **não continua** — e o doc registra o negativo, que é resultado.
@@ -532,6 +533,93 @@ errado é a BASE de que ele parte, e ela só é observável a partir do segundo 
 stride não dividia o plano: os dois buffers diferiam, o passo gravava `Unchanged`, e **o undo perdia a
 edição em silêncio**. As duas perguntas (*sei medir?* e *diferem?*) agora são separadas (`fits`), com
 gate e mutação.
+
+---
+
+## 8 — 🟡 Frente **C**: COALESCÊNCIA, a frente que o plano não tinha
+
+A frente que a medição **achou**, depois de a U1 fechar. Ela não estava no §4 porque a pergunta que a
+revela — *"quanto custa repartir a MESMA pincelada em mais eventos?"* — nunca havia sido feita.
+
+### 8.1 O número
+
+Sonda `is_there_per_event_overhead_to_coalesce` (`tool/paint/measure_input_cost.rs`). A **mesma**
+pincelada de 800 px, repartida em N eventos de ponteiro:
+
+| eventos | 1 | 4 | 16 | 64 |
+|---|---|---|---|---|
+| 1024² | 11,45 ms | — | — | 20,80 ms |
+| 2048² | 11,30 | 16,7 | 19,9 | 20,78 |
+| 4096² | 11,27 | — | — | 20,85 |
+
+**+84% pelo mesmo traço**, e o número é *idêntico* nas três telas — **não é canvas-proporcional**, e
+**satura**. As duas propriedades juntas nomeiam o mecanismo.
+
+### 8.2 O mecanismo: a **ORLA** por lote
+
+Cada batch processa a própria janela, e a janela de um lote é `pegada ⊕ avanço`. Com avanço de ~12 px e
+raio 100, a janela é **quase toda orla** (o falloff mais a cápsula do relevo somam ~1 raio de cada lado),
+então N janelas pequenas cobrem ≈2,8× a área de uma janela grande. Por isso a curva satura: passado o
+ponto em que o avanço é desprezível ante o raio, cada evento a mais custa uma orla inteira e nada mais.
+
+⚠️ **Isto NÃO é "decimar eventos".** Decimar muda a arte e é proibido por arquitetura — *a lei é função
+do CAMINHO, nunca de quão fino o motor o amostrou*, a doença que esta linha curou **4×**. Coalescer
+entrega **a mesma lista de dabs**, num lote só.
+
+### 8.3 A rota: pelo `on_tick`, e o contrato fica INTACTO
+
+A infra de coalescência **já existe** — `painter_canvas_move` bufferiza (`pending_painter_move`) e
+`flush_pending_painter_move` esvazia uma vez por frame — mas é **latest-wins**, válido só para os métodos
+de re-carimbo (`StrokeMethod::coalesces_canvas_motion`). Para o pincel incremental o caminho importa:
+não é *guardar o último*, é **acumular a lista**.
+
+| | rota | custo | contrato |
+|---|---|---|---|
+| ❌ | método de lote no `CanvasPaintTool` | shell + painter | **`CanvasPaintTool=1` é CONGELADO** ⇒ ADR + ordem do Enio |
+| ✅ | **o painter acumula e carimba no `on_tick`** | painter só | **intacto** |
+
+A rota boa não é invenção: **`Tool::on_tick` já existe** (ADR-0040-amendment-2, criado para o heartbeat da
+aquarela) e **já roda uma vez por frame no TOPO** do `run_render_frame` (`render_loop/mod.rs:997`, antes
+do `fixed_step.advance` e antes de qualquer coisa desenhar). O `Move` passa a **anexar a amostra** e
+voltar; o `on_tick` carimba o caminho pendente **num lote**; o `Up` esvazia antes de commitar — precedente
+exato, `painter_canvas_up` já chama `flush_pending_painter_move` primeiro. **A shell não muda uma linha.**
+
+### 8.4 O gate: **byte-identidade**, e o motor já foi construído para ela
+
+*O mesmo caminho repartido em N eventos tem de produzir um canvas **byte-idêntico** ao mesmo caminho em
+1 evento.*
+
+Não é propriedade nova: `last_dab_center`, `last_height_center` e `Stroke::last_emit_pos` existem
+**precisamente** para atravessar fronteira de lote. Se o gate nascer VERMELHO, ele achou um defeito que
+já está lá — o que o torna valioso nos dois resultados.
+
+⚠️ **Duas premissas de fixture, aprendidas na sonda:**
+
+1. **A distância tem de caber na tela menor.** A 1ª versão andava de x=200 a x=1800 e a 4096² media a
+   pincelada inteira enquanto a 1024² media **metade** dela (tudo além de x=1024 é descartado). `DIST=800`.
+2. **A coluna que importa é o TOTAL, não `ms/evento`.** Eu li a coluna que **caía** (custo por evento) e
+   concluí o contrário do que a sonda dizia; a que subia era a que eu não havia olhado.
+
+### 8.5 ⚠️ Correção ao §7.4: **o cache dos planos de relevo JÁ ESTÁ FEITO**
+
+A §7.4 mirou a luz da pista CPU, e a nota da §5 do `CLAUDE.md` listava *"cache com chave de versão pros
+planos"* como aberto. Fui ler o produto: **`impasto_gpu_planes_in(region)` existe e está em uso**
+(`painter_gpu_preview.rs:305`, com `preview_gpu_region()` dando o rect confinado e
+`light.planes_seeded()` como segunda testemunha). Medido no doc-comment dele: **202 ms → 2,8 ms a 4096²**.
+
+E a **janela é melhor que um cache**: não tem problema de invalidação nenhum, então o modo de falha que a
+nota temia — *"uma luz velha que ninguém vê que é velha"* — **não existe** nesta forma. O resíduo é o fold
+cheio quando `preview_gpu_region()` é `None` (edição estrutural), que **não é o caminho do move**.
+
+**Custo desta frente: zero — o trabalho está feito.** A nota ficou para trás do produto.
+
+### 8.6 A ordem, e o que fica medido depois
+
+1. **C1** — acumular + carimbar no `on_tick`, com o gate de byte-identidade.
+2. **C2** — re-medir `INPUT` no app real (`PH2D_PAINT_PERF=1`) e registrar o `eventos/frame` observado,
+   que é o que dimensiona o ganho: ~3 eventos/frame ⇒ −32%; ~16-25 ⇒ ~−45%.
+
+**Critério de parada:** se o `INPUT` re-medido não cair, a frente para e o negativo fica escrito.
 
 ---
 

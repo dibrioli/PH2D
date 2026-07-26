@@ -367,3 +367,103 @@ verde sobre nada.
 - **`CHROME/wet 10,27 p50 / 33,39 max`** na janela em que o Enio entrou no Wet Paint. Aquele é trabalho
   **HONESTO** (monta uma imagem RGBA + blur para o véu de umidade), não uma pergunta paga com o
   payload — **wave própria**, e do dono do Wet Paint.
+
+---
+
+# §14 — A EXECUÇÃO DO PLANO 26 (ordem do Enio: *"vamos lá, construa"*)
+
+O [doc 26](Painter/26_plano_performance_procreate.md) nasceu como plano na sessão anterior (pesquisa do
+Procreate + as frentes **T/L/U/R**, cada uma com a medição que a abre). O Enio mandou construir. O §7
+do próprio doc é o registro completo; aqui fica o que o integrador precisa saber.
+
+## §14.1 ⛔ A frente T foi construída INTEIRA e revertida na medição de fechamento
+
+**Não há código de tiles no diff.** O que existiu — `TileSet` (bitset + `bounds()` byte-idêntico como
+ponte), o campo `dirty_rect` migrado em 11 sítios, o composite parcial percorrendo os retângulos, **13
+gates e 6 mutações, todas sangrando** (incluindo a identidade byte a byte contra uma recomposição
+inteira) — foi removido no commit `bc912dda2`, que carrega a história inteira.
+
+| pergunta | resposta |
+|---|---|
+| o bbox mente? | **sim, 1,66× a 916×** |
+| uma grade de tiles pega essa mentira? | **não** — a reivindicação REAL cai só ~1,4× |
+| e no relógio? | **+12-14%** em dois gestos, **−75%** no mais comum |
+
+⚠️ **A causa é a coisa que se leva:** a grade **não pode ser mais apertada do que aquilo que lhe
+contam**. O `mark_dirty` recebe o bbox de cada *SEGMENTO* do traço — **90×54 texels para um pincel de
+24 px**. O over-claim mora nos **CHAMADORES**, não na união deles.
+
+⚠️ **Para o integrador:** o único resíduo desta frente no produto é o campo **`PainterTool::marks`**,
+um `Vec<Region>` **`#[cfg(test)]`** que o `mark_dirty` empurra. Ele **não existe fora de `cfg(test)`** —
+a sonda precisa da reivindicação REAL, que não é recuperável do `dirty_rect` (que já a uniu).
+
+## §14.2 ✅ L0 — o relógio `EVENTO → FRAME` (o número que nunca medimos)
+
+`PH2D_PAINT_PERF` ganhou a última linha do relatório:
+
+```
+[paint-perf]   EVENTO->FRAME p50=.. p95=.. max=.. ms (n=..) · alvo 9
+```
+
+**Toca a shell** (`render_loop/paint_perf.rs` + `input_dispatch/painter_canvas_input.rs`) e **nada no
+tool** — `CanvasPaintTool` está congelado (§6) e a shell já é dona do evento. `render_loop::paint_perf`
+passou de `mod` para **`pub(crate) mod`** (a latência começa na ENTREGA, não no frame).
+
+Gates: 3 unitários + **1 arch-gate novo de shell** (`the_pointer_clock_starts_where_the_paint_starts`,
+com controle positivo). **3 mutações, 3 sangram.**
+
+## §14.3 🔴 U0 — o undo retém UM DOCUMENTO POR TRAÇO (repro VERMELHO, `#[ignore]`)
+
+`crates/ph2d-tool-painter/tests/measure_undo_memory.rs` (dhat, molde do **ADR-0117**). Medido a 2048²
+com 24 traços de impasto: **1.627 MB retidos** = 25,4 documentos, **linear em traços**. O teto do app
+inteiro é 3.500 MB (HR-13); a 4096² isso quadruplica (~6,5 GB). E o cap é por **CONTAGEM**
+(`DEFAULT_MAX_DEPTH = 300`), que **multiplica** isto por 300 em vez de limitá-lo.
+
+⚠️ **Dep nova:** `dhat = "0.3"` em **`[dev-dependencies]`** da `ph2d-tool-painter` (mesma versão das
+outras 6 crates que já a usam — o `Cargo.lock` ganha só a aresta). **machete-safe** (o `src/` não a
+usa). Diretório `crates/ph2d-tool-painter/tests/` é **novo**.
+
+⚠️ **NÃO integrar como pendência silenciosa — é DECISÃO DO ENIO**, porque as duas curas custam:
+**(1)** cap em BYTES resolve o teto e **encurta o undo de forma visível** (8 passos a 2048², 2 a 4096²)
+— regressão de PRODUTO; **(2)** histórico por DELTA é re-arquitetura do undo, a coisa em que o artista
+mais confia.
+
+## §14.4 ⚠️ E o perfil aponta para OUTRO lugar
+
+Split por estágio da drenagem parcial (1024², `the_partial_drain_stages`): `composite_region(bbox)`
+**1,6 ms** · **`apply_impasto_light(bbox)` 7,9 ms** · `composite_region(TELA inteira)` **2,8 ms**.
+
+**A luz do impasto custa 3× um composite de tela inteira** e domina a pista CPU — cortar a área da
+reivindicação em 5× moveu o relógio em **5%**. Ela **já está na GPU** desde 2026-07-18, então a
+pergunta re-mirada é *por que a pista CPU ainda é escolhida num documento com relevo?*
+
+## §14.5 O que rodou, e o que o integrador ainda deve rodar
+
+Rodados nesta árvore, verdes: `cargo fmt --all --check` · `clippy --all-targets` nas 2 crates tocadas ·
+**`typos` project-wide agora sai LIMPO** (7 achados, todos meus de commits anteriores desta linha,
+corrigidos por REFORMULAÇÃO e não crescendo o `.typos.toml`) · `machete` na `ph2d-tool-painter` ·
+`architecture_workspace_file_loc_cap` · **`file_loc_caps` da shell** · `arch_safe_clamp_only` ·
+`architecture_tool_contract_surface` · `architecture_panel_wiring_parity` ·
+`architecture_docs_reference_live_gates` · suíte da `ph2d-tool-painter` (**838**) · suíte da shell
+(**45 binários, todos ok**).
+
+**Contratos:** `Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/`PanelEvent=4` **intactos** (gate verde).
+**Nenhum schema** (`PROJECT_SCHEMA` 29), nenhum id, nenhum token, nenhum ADR.
+
+**Falta ao integrador:** o `./scripts/ship.sh` completo (deny/audit/nextest `--cargo-profile ci-test`) e
+os gates GPU `#[ignore]` na RTX.
+
+## §14.6 Smoke
+
+Nada desta jornada muda um pixel — as três entregas são **medição**. O que se pede ao smoke é UMA coisa,
+e ela é nova:
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter
+cargo build --release -p ph2d-host-desktop
+env PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1 ./target/release/ph2d-host-desktop
+```
+
+Pinte por uns segundos e **leia a linha `EVENTO->FRAME`** no terminal. É o primeiro número de latência
+que este módulo já teve, o alvo público é **9 ms**, e o **p95** importa mais que o p50 — uma mediana boa
+com cauda ruim é exatamente o que se descreve como *"às vezes trava"*.

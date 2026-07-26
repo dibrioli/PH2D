@@ -6,8 +6,11 @@
 > + o **Airbrush** (`0443f98c2`) + a **reamostragem suave do traço** (`a14335e5f`, §7 abaixo).
 > **Não integrar nem pushar sem ordem EXPLÍCITA do Enio.**
 >
-> ⚠️ **Contagem/schema:** 10 commits; `git rev-list --count main..line/FLIP` = 10. Schema INTOCADO
-> pela reamostragem (ela só produz mais pontos no MESMO `FlipStroke`) ⇒ segue `FLIP_SCHEMA` **12**,
+> + a **dinâmica de pressão** (`c42edabf7`, §8 abaixo).
+>
+> ⚠️ **Contagem/schema:** ~12 commits; confira `git rev-list --count main..line/FLIP`. Schema
+> INTOCADO pela reamostragem E pela pressão (a primeira só produz mais pontos no MESMO `FlipStroke`;
+> a segunda assa a largura por-ponto e é estado de FERRAMENTA, não dado) ⇒ segue `FLIP_SCHEMA` **12**,
 > `PROJECT_SCHEMA` **34**, tripla `(34, 12, 13)`.
 
 ## 0. GO — o essencial em 6 linhas
@@ -136,3 +139,28 @@ adicionava resolução suave.
   smoke que decide** (como a tolerância do RDP) — mais/menos arredondado é o olho do Enio.
 - **Aberto:** custo por-frame no preview (a reamostragem roda a cada frame do drag, como o RDP; o
   item "Pack INCREMENTAL do traço em curso" do §8 cobre o caso patológico de 4000 pontos).
+
+## 8. Dinâmica de pressão → largura (`c42edabf7`, T2.6)
+
+A pressão da caneta virava largura LINEAR (`pr.clamp(0.05, 1.0)`, "1º corte"), sem controle. Toda
+caneta de tablet tem uma dinâmica editável.
+
+- **Fix:** dois controles do artista, pela porta única `ph2d_tool_flip::pressure_width_factor` (pura,
+  testada), aplicada no `build_stroke`: `factor = min + (1−min)·pr^γ`, `γ = 2^((response−0.5)·4)`.
+  **Min Width** (a largura em pressão zero, o piso; `1.0` ignora a pressão) + **Response** (a curva
+  macia⇔dura: `0.5` linear, `<0.5` ease-in, `>0.5` ease-out). No mouse `pr=1` ⇒ largura cheia.
+- **Sem schema/contrato** — a largura é assada por-ponto no traço em tempo de desenho; os params são
+  estado vivo da ferramenta (como Size/Hardness), NÃO dado guardado. `powf` roda 1×/ponto no build
+  (CPU, não é caminho de determinismo).
+- **UI:** 2 sliders **Min Width** (%) + **Response** na seção Brush(Draw), o `slider_row` canônico
+  (abaixo de Smoothing). Ids `FLIP_PRESSURE_MIN`/`_RESPONSE`(+`_NUM`), com populate + event.rs
+  (ValueChanged→SetValue + swallow do `_NUM`) + os setters do tool.
+- **Gates:** 3 puros em `params::pressure_tests` (piso/cheio · macia>linear>dura · min=1 ignora ·
+  clamps) + tool (`the_pressure_sliders_reach_the_tool`) + seam (`pressure_sliders_drag_reaches_tool`)
+  + end-to-end `flip_draw_tests::pressure_tapers_the_stroke_width` (rampa 0→1: ponta=piso, fim=cheio,
+  5×; **RED provado** com largura constante). Render-and-look (PNG): 3 tapers (default · piso alto ·
+  response dura) confirmam a cunha e os controles.
+- **Smoke:** `PH2D_FLIP_PRESSURE_SMOKE=1` — 3 traços com rampa de pressão 0→1 (default · Min 60% ·
+  Response dura). ⚠️ **A FAIXA/CURVA (`K=4`, defaults 0.05/0.5) é decisão de smoke** — mais/menos
+  taper é o gosto do Enio. Uma CURVA editável cheia (widget) seria o superset se ele quiser controle
+  fino (o `ph2d-curve` + `ParamWidget::Curve` já existem no repo).

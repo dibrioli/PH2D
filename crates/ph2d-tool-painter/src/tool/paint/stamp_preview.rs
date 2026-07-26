@@ -15,6 +15,8 @@ pub(super) struct DragPreview {
 impl PainterTool {
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
     pub(super) fn mark_dirty(&mut self, rect: Region) {
+        #[cfg(test)]
+        self.marks.push(rect);
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
         self.preview_dirty = true;
         self.edited_since_bind = true; // unbaked work — the shell auto-persists on leave/deactivate

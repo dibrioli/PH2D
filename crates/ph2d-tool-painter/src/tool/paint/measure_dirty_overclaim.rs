@@ -1,30 +1,49 @@
-//! **T0 — o retângulo sujo SUPER-REIVINDICA? Por quanto?**
+//! **T0 — o retângulo sujo SUPER-REIVINDICA? E vale atacar isso?**
 //!
-//! A medição que ABRE a frente T do [plano 26](../../../../../docs/Painter/26_plano_performance_procreate.md)
-//! — e que pode CANCELÁ-LA. Irmã de `measure_window_premise.rs` (*a reivindicação é verdadeira?*) e de
-//! `measure_gpu_frontier.rs` (*quanto custa o fold?*); esta pergunta a terceira coisa: **a reivindicação
-//! é APERTADA?**
+//! A medição que ABRIU a frente T do [plano 26](../../../../../docs/Painter/26_plano_performance_procreate.md)
+//! — **e que a FECHOU.** Irmã de `measure_window_premise.rs` (*a reivindicação é verdadeira?*) e de
+//! `measure_gpu_frontier.rs` (*quanto custa o fold?*); esta pergunta a terceira coisa: **ela é
+//! APERTADA, e apertá-la paga?**
 //!
-//! O `dirty_rect` é UM retângulo e ele **unifica** (`stamp_preview.rs`: `union_region(acc, rect)`), então
-//! dois dabs distantes reivindicam a caixa que os contém *e tudo entre eles*. Todo consumidor a jusante
-//! — o fold do impasto, o upload por-camada, o composite parcial — paga a ÁREA dessa caixa. Se a caixa é
-//! justa, tiles não têm o que economizar e a frente morre aqui.
+//! ## ⛔ O VEREDITO, para ninguém reconstruir a frente sem saber o que já foi medido
 //!
-//! ⚠️ **Ela não afirma nada; IMPRIME.** O número que ela produz é uma decisão de arquitetura, não um
-//! contrato — um `assert` aqui seria pinar a conclusão antes de tê-la.
+//! A frente T (*substituir o bbox único por um conjunto de TILES*) foi **construída inteira** — o tipo
+//! `TileSet` com bitset + `bounds()` byte-idêntico como ponte, a migração do campo, o composite parcial
+//! percorrendo os retângulos, 13 gates e 6 mutações — **e revertida na medição de fechamento**, que é o
+//! critério de parada que o próprio plano escreveu. Três números, nesta ordem:
+//!
+//! | pergunta | resposta |
+//! |---|---|
+//! | o bbox mente? | **sim, 1,66× a 916×** (tabela abaixo) |
+//! | uma grade de tiles pega essa mentira? | **não** — a reivindicação REAL cai só ~1,4× |
+//! | e no relógio? | **+12-14%** em dois gestos, **−75%** no mais comum |
+//!
+//! ⚠️ **A causa, e ela é a coisa que se leva desta frente:** a grade **não pode ser mais apertada do
+//! que aquilo que lhe contam**. O `mark_dirty` recebe o bbox de cada *SEGMENTO* do traço — medido,
+//! **90×54 texels para um pincel de 24 px** — então o piso que esta sonda calcula (marcar os tiles que
+//! os texels MUDADOS cruzam) é inalcançável: entre 45.568 (piso) e 145.856 (bbox) a marcação real
+//! entrega 104.000. O over-claim mora nos **CHAMADORES** do `mark_dirty`, não na união deles.
+//!
+//! ⚠️ **E a sonda de fechamento reprovou a si mesma antes de reprovar a frente:** a 1ª versão media o
+//! frame do **pen-up** — o commit, que re-suja o envelope inteiro — onde a reivindicação por tiles é
+//! igual ou MAIOR que o bbox (414.208 contra 419.904). O frame do commit acontece uma vez por traço; os
+//! outros sessenta são os de traço ABERTO, e são esses que a sonda mede hoje.
+//!
+//! ⚠️ **O que a frente ACHOU e vale mais que ela:** a drenagem parcial é dominada pela **LUZ do
+//! impasto** (7,9 ms de ~10 ms a 1024²), que sozinha custa **3× um composite de tela inteira** (2,8 ms).
+//! Cortar a área da reivindicação em 5× moveu o relógio em 5%. O alvo estava errado.
 //!
 //! ## O que cada coluna é
 //!
-//! - **tocados** — texels em que `(RGBA, relevo, cobertura)` de fato MUDOU. É o trabalho irredutível.
-//! - **bbox** — a área do `dirty_rect` de hoje, que é o que os consumidores percorrem.
-//! - **razão** — `bbox / tocados`. **1,0 = a caixa é justa e a frente T está cancelada.**
-//! - **t64 / t128 / t256** — a razão que um esquema por TILES daria, marcando os tiles que os texels
-//!   tocados cruzam. ⚠️ É um **piso**: o `TileSet` real marcará a partir dos MESMOS rects que o
-//!   `mark_dirty` recebe hoje (as pegadas dos dabs), que são apertadas mas não exatas. A distância
-//!   entre este piso e o bbox é o que a frente pode recuperar; nada além dela.
+//! - **tocados** — texels em que `(RGBA, relevo, cobertura)` de fato MUDOU. O trabalho irredutível.
+//! - **bbox** — a área do `dirty_rect`, que é o que os consumidores percorrem hoje.
+//! - **REAL** — o que uma grade de 16 px marcaria a partir dos rects que o `mark_dirty` **recebeu**.
+//!   É a previsão honesta, e é ela que fecha a frente.
+//! - **piso** — o que a grade marcaria se lhe contassem exatamente os texels mudados. **Inalcançável**
+//!   sem apertar os chamadores; fica aqui porque é o teto do que a frente poderia render.
 //!
 //! Rodar:
-//! `cargo test -p ph2d-tool-painter --release the_dirty_rect_overclaim -- --ignored --nocapture`
+//! `cargo test -p ph2d-tool-painter --release measure_dirty_overclaim -- --ignored --nocapture`
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -147,6 +166,44 @@ fn tile_claim(mask: &[bool], t: u32) -> (u64, usize) {
     (n * u64::from(t) * u64::from(t), rects)
 }
 
+/// A reivindicação REAL que uma grade de tiles produziria — marcada a partir dos rects que o
+/// `mark_dirty` de fato recebeu (`PainterTool::marks`), não dos texels que mudaram.
+///
+/// ⚠️ **Esta é a previsão; `tile_claim` é só o PISO**, e a distância entre os dois é o que MATOU a
+/// frente T: o piso marca os tiles que os texels *mudados* cruzam, e os chamadores marcam o bbox de
+/// cada SEGMENTO do traço — 90×54 para um pincel de 24 px. A grade não pode ser mais apertada do que
+/// aquilo que lhe contam.
+fn real_claim(t: &PainterTool, tile: u32) -> (u64, usize) {
+    let cols = N.div_ceil(tile);
+    let rows = N.div_ceil(tile);
+    let mut marked = vec![false; (cols * rows) as usize];
+    for r in &t.marks {
+        let x1 = r.x.saturating_add(r.w).min(N);
+        let y1 = r.y.saturating_add(r.h).min(N);
+        if r.x >= x1 || r.y >= y1 {
+            continue;
+        }
+        for row in (r.y / tile)..=((y1 - 1) / tile) {
+            for col in (r.x / tile)..=((x1 - 1) / tile) {
+                marked[(row * cols + col) as usize] = true;
+            }
+        }
+    }
+    let n = marked.iter().filter(|m| **m).count() as u64;
+    let mut rects = 0usize;
+    for row in 0..rows {
+        let mut run = false;
+        for col in 0..cols {
+            let on = marked[(row * cols + col) as usize];
+            if on && !run {
+                rects += 1;
+            }
+            run = on;
+        }
+    }
+    (n * u64::from(tile) * u64::from(tile), rects)
+}
+
 /// Uma cena: monta, drena a reivindicação anterior, roda o gesto de UM FRAME, drena e mede.
 ///
 /// ⚠️ A unidade é o **frame**, não o traço: o consumidor drena uma vez por frame, então a super-
@@ -154,8 +211,10 @@ fn tile_claim(mask: &[bool], t: u32) -> (u64, usize) {
 fn probe(name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterTool)) {
     let mut t = build();
     let _ = t.take_preview_dirty();
+    t.marks.clear(); // só as marcas DESTE frame
     let before = snap(&t);
     act(&mut t);
+    let real = real_claim(&t, 16);
     let _ = t.take_preview_dirty();
     let claim = t.preview_gpu_region();
     let after = snap(&t);
@@ -172,13 +231,16 @@ fn probe(name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterT
     #[allow(clippy::cast_precision_loss)] // razões de área; o erro de f64 aqui é irrelevante
     let ratio = |a: u64| a as f64 / hit as f64;
     let claims: Vec<(u64, usize)> = TILES.iter().map(|t| tile_claim(&mask, *t)).collect();
-    // O que a frente T de fato POUPA neste gesto, em texels que ninguém mais percorre. É ABSOLUTO de
-    // propósito: uma razão ruim sobre 800 texels não custa nada, e é exatamente o caso do drag dot.
+    // ⚠️ O que o PISO pouparia — não o que a frente entrega. A coluna REAL é a previsão; esta é o
+    // teto. É ABSOLUTA de propósito: uma razão ruim sobre 800 texels não custa nada (o drag dot).
     let best = claims.iter().map(|c| c.0).min().unwrap_or(bbox);
     let saved = bbox as i64 - best as i64;
     println!(
-        "[overclaim] {name:<26} {hit:>7} {bbox:>8} {:>6.2}x  {:>8} {:>5.2}x {:>4}r {:>8} {:>5.2}x {:>4}r {:>8} {:>5.2}x {:>4}r  {saved:>+9}",
+        "[overclaim] {name:<26} {hit:>7} {bbox:>8} {:>6.2}x | REAL {:>8} {:>5.2}x {:>4}r | piso {:>8} {:>5.2}x {:>4}r {:>8} {:>5.2}x {:>4}r {:>8} {:>5.2}x {:>4}r  piso{saved:>+9}",
         ratio(bbox),
+        real.0,
+        ratio(real.0),
+        real.1,
         claims[0].0,
         ratio(claims[0].0),
         claims[0].1,
@@ -191,56 +253,51 @@ fn probe(name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterT
     );
 }
 
-/// **A medição que abre — ou fecha — a frente dos TILES.**
+/// **A medição que abriu — e fechou — a frente dos TILES.**
 ///
 /// O critério foi escrito ANTES de rodar (senão é escolher a régua depois do tiro):
 ///
 /// | razão bbox/tocados | veredito |
 /// |---|---|
-/// | ≈ 1 no gesto do produto | **frente T CANCELADA** — a caixa já é justa |
+/// | ≈ 1 no gesto do produto | frente T CANCELADA — a caixa já é justa |
 /// | ≥ 2 em gesto comum | a frente se paga; o tile é escolhido pela varredura |
+///
+/// A régua disse *"se paga"* e a **construção provou que não** — porque a régua perguntava do bbox e o
+/// que decide é a MARCAÇÃO (ver o doc do módulo). Fica aqui inteira, com o critério original e o
+/// resultado que o contradiz, porque uma régua que só aparece depois do resultado não é régua.
 ///
 /// ## Medido (2026-07-25, 1024², pincel r=12, impasto ligado)
 ///
-/// | cena | tocados | bbox | razão | t=16 | poupa |
+/// | cena | tocados | bbox | razão | **REAL (grade 16)** | piso |
 /// |---|---|---|---|---|---|
-/// | reto curto (controle) | 2.362 | 3.927 | **1,66×** | 4.096 / 2 rects | −169 |
-/// | reto diagonal | 6.769 | 44.944 | 6,64× | 14.848 / 13r | +30.096 |
-/// | diagonal, mão rápida | 21.020 | 357.604 | **17,01×** | 45.568 / 37r | +312.036 |
-/// | traço em L | 23.322 | 253.340 | 10,86× | 40.960 / 31r | +212.380 |
-/// | **Line editor (re-stamp)** | 447 | 409.600 | **916,33×** | 2.560 / 5r | +407.040 |
-/// | simetria radial 6 | 14.136 | 301.131 | 21,30× | 27.648 / 32r | +273.483 |
-/// | espelho X | 4.724 | 21.483 | 4,55× | 7.168 / 4r | +14.315 |
-/// | drag dot (controle 2) | 377 | 837 | 2,22× | 1.536 / 3r | −699 |
+/// | reto curto (controle) | 2.362 | 3.927 | 1,66× | **6.912 / 3r** | 4.096 |
+/// | reto diagonal | 6.769 | 44.944 | 6,64× | **23.808 / 15r** | 14.848 |
+/// | diagonal, mão rápida | 21.020 | 357.604 | 17,01× | **72.192 / 38r** | 45.568 |
+/// | traço em L | 23.322 | 253.340 | 10,86× | **49.408 / 31r** | 40.960 |
+/// | Line editor (re-stamp) | 447 | 409.600 | **916,33×** | **430.336 / 41r** | 2.560 |
+/// | simetria radial 6 | 14.136 | 301.131 | 21,30× | **321.024 / 33r** | 27.648 |
+/// | espelho X | 4.724 | 21.483 | 4,55× | **32.256 / 3r** | 7.168 |
+/// | drag dot (controle 2) | 377 | 837 | 2,22× | **1.536 / 3r** | 1.536 |
 ///
-/// **VEREDITO: a frente T não está cancelada.** A caixa é justa exatamente onde o controle previu (traço
-/// curto, 1,66×) e mente por **uma a três ordens de grandeza** em cinco gestos que o artista faz o tempo
-/// todo. O pior é o **editor de forma**: ele re-carimba a figura inteira a cada frame, então muda **447
-/// texels** e reivindica **409.600** — 916×, *por frame de arrasto*.
+/// **Leia a coluna REAL contra a coluna bbox, e a frente morre ali:** ela ganha em dois gestos
+/// (diagonal 5×, L 5×) e **PERDE nos outros quatro** — no re-stamp de forma e na simetria a grade
+/// reivindica MAIS que o bbox, porque aqueles caminhos marcam a figura inteira e o arredondamento só
+/// acrescenta. A razão contra os *tocados* (916×) descreve uma mentira verdadeira que **nenhuma grade
+/// alcança**, porque a grade não vê os texels mudados: vê os rects que lhe contam.
 ///
 /// ⚠️ **DUAS correções que a medição fez em mim, e as duas invertem uma escolha do plano 26:**
 ///
-/// 1. **`64/128/256` — os números que o plano citou da literatura — PERDEM para o bbox** no gesto comum
-///    (reto curto 10,40× contra 1,66×; drag dot 43× contra 2,22×). Um tile de 64 são 4.096 texels e a
-///    faixa de um pincel r=12 tem 24 px: o arredondamento come o ganho inteiro. **O tile útil é da ordem
-///    do diâmetro do pincel, não da tela.** A 16 o pior caso do controle custa **169 texels** — que é
-///    ruído — e o melhor poupa **407 mil**.
-/// 2. **A razão sozinha decide errado.** No drag dot o tile de 16 é 4,07× *pior* em razão e **699 texels**
-///    pior em absoluto: nada. A grandeza que decide é a **absoluta** (a coluna `poupa`), porque é ela que
-///    o fold e o upload percorrem.
-///
-/// ⚠️ **As colunas `t=` são um PISO, não a previsão.** Elas marcam os tiles que os texels **mudados**
-/// cruzam; o `TileSet` real marcará a partir dos mesmos rects que o `mark_dirty` recebe hoje (as pegadas
-/// dos dabs), que são apertadas mas não exatas — no re-stamp do Line a diferença é grande (a faixa
-/// inteira da figura é re-carimbada, ainda que quase nada MUDE). O número que escolhe o tamanho do tile
-/// é o da marcação REAL, e ele só existe depois do T1 — por isso o plano põe o T3 depois do T1, e não
-/// aqui.
+/// 1. **`64/128/256` — os números que o plano citou da literatura — PERDEM para o bbox** no gesto
+///    comum (reto curto 10,40× contra 1,66×). Um tile de 64 são 4.096 texels e a faixa de um pincel
+///    r=12 tem 24 px: o arredondamento come o ganho. **O tile útil é da ordem do diâmetro do pincel.**
+/// 2. **A razão sozinha decide errado.** No drag dot a grade de 16 é 4,07× *pior* em razão e **699
+///    texels** pior em absoluto: nada. A grandeza que decide é a **absoluta**.
 #[allow(clippy::too_many_lines)] // uma cena por gesto: a lista É a medição
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn the_dirty_rect_overclaim_is_measured_not_assumed() {
     println!(
-        "[overclaim] cena                       tocados     bbox  razao        t=16                t=32                t=64            poupa"
+        "[overclaim] cena                       tocados     bbox  razao |      REAL (o TileSet do produto) |      piso t=16              t=32                t=64        piso poupa"
     );
 
     // ── CONTROLE: um traço reto curto, do tamanho de um frame de mão calma. ───────────────────────
@@ -378,5 +435,181 @@ fn the_dirty_rect_overclaim_is_measured_not_assumed() {
         &|t| {
             t.on_canvas_pointer(cp([512.0, 455.0], PointerPhase::Move));
         },
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T2 — O QUE O 1º CONSUMIDOR GANHOU (o composite parcial da pista CPU)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Quanto custa uma drenagem, agora que ela percorre TILES.**
+///
+/// A sonda do over-claim mede a REIVINDICAÇÃO; esta mede o RELÓGIO do consumidor que passou a honrá-la.
+/// Ela não afirma nada — o antes/depois se obtém rodando-a com a mutação *"um passe sobre o bbox"*
+/// aplicada ao `take_preview_arc`, que é como o número desta wave foi levantado.
+///
+/// ## Medido (2026-07-25, 1024², pincel r=12, impasto ligado)
+///
+/// | cena | bbox (antes) | tiles (depois) |
+/// |---|---|---|
+/// | traço reto curto | *ver output* | *ver output* |
+/// | diagonal, mão rápida | | |
+/// | traço em L | | |
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_partial_drain_cost -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_partial_drain_cost_is_measured_not_assumed() {
+    /// Mede a MEDIANA de `take_preview_arc` sobre um gesto repetido — mediana, não média, porque um
+    /// outlier de agendador não descreve o produto.
+    ///
+    /// ⚠️ **O gesto é UM TRAÇO ABERTO, drenado entre lotes de movimento** — que é o que o produto faz
+    /// 60 vezes por segundo. A 1ª versão desta sonda fechava o traço (`PointerPhase::Up`) a cada
+    /// rodada e media o frame do **COMMIT**, onde o envelope inteiro é re-sujado: ali a reivindicação
+    /// por tiles é igual ou MAIOR que o bbox (medido, 414.208 contra 419.904 texels) e a frente parece
+    /// inútil. O frame do commit acontece uma vez por traço; os outros sessenta são estes.
+    fn drain_ms(name: &str, act: &dyn Fn(&mut PainterTool, u8)) {
+        let mut t = fresh(StrokeMethod::Space, 12.0);
+        // A pilha tem de ser NÃO-trivial para a drenagem COMPOR (senão ela devolve o `canvas_rgba` cru
+        // e esta sonda mediria um `Arc::clone`). Um traço de impasto basta.
+        t.on_canvas_pointer(cp([500.0, 500.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([510.0, 500.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([510.0, 500.0], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+
+        let mut samples = Vec::new();
+        for round in 0..12u8 {
+            act(&mut t, round);
+            let t0 = std::time::Instant::now();
+            let got = t.take_preview_arc();
+            samples.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(got.is_some(), "a drenagem nao produziu nada");
+        }
+        samples.sort_by(f64::total_cmp);
+        println!(
+            "[drain] {name:<26} p50 {:>7.3} ms  braco {:?}",
+            samples[samples.len() / 2],
+            t.last_drain_branch
+        );
+    }
+
+    println!("[drain] cena                        mediana");
+    // Cada rodada é UM FRAME de um traço que continua aberto: o lote de movimento, e depois a drenagem.
+    drain_ms("reto, mao calma", &|t, k| {
+        if k == 0 {
+            t.on_canvas_pointer(cp([60.0, 512.0], PointerPhase::Down));
+        }
+        let x0 = 60.0 + f32::from(k) * 60.0;
+        for i in 1u8..=16 {
+            t.on_canvas_pointer(cp([x0 + f32::from(i) * 3.75, 512.0], PointerPhase::Move));
+        }
+    });
+    drain_ms("diagonal, mao rapida", &|t, k| {
+        if k == 0 {
+            t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+        }
+        let o = 40.0 + f32::from(k) * 80.0;
+        for i in 1u8..=16 {
+            let d = o + f32::from(i) * 5.0;
+            t.on_canvas_pointer(cp([d, d], PointerPhase::Move));
+        }
+    });
+    // O L num único frame: as duas pernas no MESMO lote, que é o gesto que o bbox mais mente.
+    drain_ms("cotovelo num frame", &|t, k| {
+        if k == 0 {
+            t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Down));
+        }
+        let o = 100.0 + f32::from(k) * 20.0;
+        for i in 1u8..=8 {
+            t.on_canvas_pointer(cp([o + f32::from(i) * 50.0, o], PointerPhase::Move));
+        }
+        for i in 1u8..=8 {
+            t.on_canvas_pointer(cp([o + 400.0, o + f32::from(i) * 50.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([o + 20.0, o + 400.0], PointerPhase::Move));
+    });
+}
+
+/// **ONDE vão os 14 ms de uma drenagem parcial.**
+///
+/// A medição do T2 mostrou que cortar a área do composite em **5×** move o relógio da drenagem em
+/// **5%** — o que só pode significar que o composite não é o custo dominante. Esta sonda parte o
+/// braço parcial em estágios e mede cada um sobre a MESMA região, para o próximo passo da frente
+/// atacar o que de fato custa em vez do que a intuição diz.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release the_partial_drain_stages -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn the_partial_drain_stages_are_measured_not_assumed() {
+    use crate::compositor::{Region, composite_region};
+
+    let mut t = fresh(StrokeMethod::Space, 12.0);
+    // Pilha não-trivial + relevo de verdade (senão a luz não roda e a sonda mede outra coisa).
+    t.on_canvas_pointer(cp([500.0, 500.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([510.0, 500.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([510.0, 500.0], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+    // A diagonal de mão rápida: a cena cujo bbox mente 17×.
+    t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Down));
+    for i in 1u8..=16 {
+        let d = 100.0 + f32::from(i) * 37.5;
+        t.on_canvas_pointer(cp([d, d], PointerPhase::Move));
+    }
+    let bbox = t.dirty_rect.expect("o gesto reivindicou alguma coisa");
+    println!(
+        "[stages] bbox {}x{} = {} texels",
+        bbox.w,
+        bbox.h,
+        u64::from(bbox.w) * u64::from(bbox.h)
+    );
+
+    let ms = |f: &mut dyn FnMut()| {
+        const N: u32 = 8;
+        let t0 = std::time::Instant::now();
+        for _ in 0..N {
+            f();
+        }
+        t0.elapsed().as_secs_f64() * 1e3 / f64::from(N)
+    };
+
+    let active = t.layers.active().unwrap_or(crate::layers::LayerId(0));
+    let mut buf = Vec::new();
+    println!(
+        "[stages] composite_region(bbox)     {:>7.3} ms",
+        ms(&mut || {
+            let src = crate::tool::internal::ToolPixelSource {
+                active_id: active,
+                active_rgba: &t.canvas_rgba,
+                images: &t.images,
+            };
+            buf = composite_region(&t.layers, &src, N, N, bbox);
+        })
+    );
+    println!(
+        "[stages] apply_impasto_light(bbox)  {:>7.3} ms",
+        ms(&mut || t.apply_impasto_light(&mut buf, bbox))
+    );
+    println!(
+        "[stages] impasto_fields() sozinho   {:>7.3} ms",
+        ms(&mut || {
+            std::hint::black_box(t.impasto_fields().is_some());
+        })
+    );
+    let full = Region {
+        x: 0,
+        y: 0,
+        w: N,
+        h: N,
+    };
+    println!(
+        "[stages] composite_region(TELA)     {:>7.3} ms",
+        ms(&mut || {
+            let src = crate::tool::internal::ToolPixelSource {
+                active_id: active,
+                active_rgba: &t.canvas_rgba,
+                images: &t.images,
+            };
+            std::hint::black_box(composite_region(&t.layers, &src, N, N, full).len());
+        })
     );
 }

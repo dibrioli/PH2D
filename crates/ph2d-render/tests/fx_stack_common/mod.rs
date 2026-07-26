@@ -126,3 +126,63 @@ pub fn readback(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8
     staging.unmap();
     out
 }
+
+// ── A FIXTURE OBLÍQUA ANTIALIASADA ────────────────────────────────────────────────────────────
+//
+// ⚠️ **A inclinação é IRRACIONAL de propósito, e é o coração destes gates.** Numa normal racional
+// — o gate antigo do bevel usava `(2,5)/√29` — todo texel à mesma distância da aresta é translação
+// de rede de outro, então a FASE da rasterização é a mesma em todos e o artefato mede **zero por
+// construção**. Foi assim que um pente de dezenas de níveis atravessou 13 gates verdes.
+//
+// E é rasa: a 23,7° a escada de rasterização tem passo longo, que é onde a estimativa da fronteira
+// pela cobertura erra mais (um estêncil 3×3 não resolve a inclinação).
+
+/// A inclinação da aresta (irracional).
+pub const SLOPE: f64 = 0.438_74;
+/// Onde ela cruza o centro da textura.
+pub const EDGE_C: f64 = 48.0;
+/// A cor da forma, em sRGB reto.
+pub const INK: [f64; 3] = [235.0, 175.0, 60.0];
+
+/// Distância COM SINAL do centro do texel `(x, y)` à aresta — positiva DENTRO.
+#[must_use]
+pub fn oblique_signed(x: u32, y: u32) -> f64 {
+    let px = f64::from(x) + 0.5;
+    let py = f64::from(y) + 0.5;
+    (py - (SLOPE * (px - EDGE_C) + EDGE_C)) / (1.0 + SLOPE * SLOPE).sqrt()
+}
+
+/// O meio-plano antialiasado, premultiplicado — cobertura por supersampling 8×8.
+pub fn oblique_source(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
+    let mut bytes = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let mut acc = 0u32;
+            for sy in 0..8u32 {
+                for sx in 0..8u32 {
+                    let px = f64::from(x) + (f64::from(sx) + 0.5) / 8.0;
+                    let py = f64::from(y) + (f64::from(sy) + 0.5) / 8.0;
+                    if py > SLOPE * (px - EDGE_C) + EDGE_C {
+                        acc += 1;
+                    }
+                }
+            }
+            let cov = f64::from(acc) / 64.0;
+            let o = ((y * w + x) * 4) as usize;
+            for c in 0..3 {
+                bytes[o + c] = (INK[c] * cov).round() as u8;
+            }
+            bytes[o + 3] = (cov * 255.0).round() as u8;
+        }
+    }
+    make_src(gpu, w, h, &bytes)
+}
+
+/// A MESMA aresta, como segmento — a geometria que o campo exato consome. Um só, longo o
+/// bastante para cobrir a textura pelos dois lados.
+#[must_use]
+pub fn oblique_segments(w: u32) -> Vec<[f32; 4]> {
+    let far = f64::from(w) * 4.0;
+    let y = |x: f64| SLOPE * (x - EDGE_C) + EDGE_C;
+    vec![[(-far) as f32, y(-far) as f32, far as f32, y(far) as f32]]
+}

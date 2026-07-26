@@ -85,6 +85,7 @@ fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
             opacity: 1.0,
             mode: 0,
         }],
+        &[],
     );
     readback(gpu, &dst, W, H)
 }

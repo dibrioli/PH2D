@@ -59,7 +59,7 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
 fn render(gpu: &ph2d_gpu::GpuContext, pass: &mut FxStackPass, ops: &[FxOpGpu]) -> Vec<u8> {
     let src = source(gpu);
     let dst = make_output_texture(gpu, W, H);
-    pass.run(gpu, &src, &dst, W, H, ops);
+    pass.run(gpu, &src, &dst, W, H, ops, &[]);
     readback(gpu, &dst, W, H)
 }
 
@@ -186,7 +186,7 @@ fn an_inner_op_never_moves_the_coverage() {
     let src = make_src(&gpu, W, H, &bytes);
     let dst = make_output_texture(&gpu, W, H);
     let run = |pass: &mut FxStackPass, ops: &[FxOpGpu]| {
-        pass.run(&gpu, &src, &dst, W, H, ops);
+        pass.run(&gpu, &src, &dst, W, H, ops, &[]);
         readback(&gpu, &dst, W, H)
     };
     let plain = run(&mut pass, &[]);
@@ -367,12 +367,12 @@ fn the_pointwise_op_costs_much_less_than_a_blur() {
     let dst = make_output_texture(&gpu, sw, sh);
     let time = |pass: &mut FxStackPass, ops: &[FxOpGpu]| -> f64 {
         for _ in 0..3 {
-            pass.run(&gpu, &src, &dst, sw, sh, ops);
+            pass.run(&gpu, &src, &dst, sw, sh, ops, &[]);
         }
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         let t = std::time::Instant::now();
         for _ in 0..20 {
-            pass.run(&gpu, &src, &dst, sw, sh, ops);
+            pass.run(&gpu, &src, &dst, sw, sh, ops, &[]);
         }
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         t.elapsed().as_secs_f64() * 1000.0 / 20.0
@@ -457,7 +457,7 @@ fn the_contour_mode_shadows_a_reentrant_corner_and_proximity_barely_does() {
     let probe = |pass: &mut FxStackPass, mode: u8| -> (i32, i32) {
         let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
         o.mode = mode;
-        pass.run(&gpu, &src, &dst, cw, ch, &[o]);
+        pass.run(&gpu, &src, &dst, cw, ch, &[o], &[]);
         let px = readback(&gpu, &dst, cw, ch);
         let at = |x: u32, y: u32| i32::from(px[((y * cw + x) * 4) as usize]);
         // Reentrante: 2 texels na diagonal para dentro da quina (distância 2,83 da borda).
@@ -527,7 +527,7 @@ fn the_contour_band_is_a_function_of_distance_alone() {
     let mut pass = FxStackPass::new(&gpu);
     let mut o = one(FxOp::INNER_GLOW, 8.0, BLACK, [0, 0]);
     o.mode = FxOp::MODE_CONTOUR;
-    pass.run(&gpu, &src, &dst, dw, dh, &[o]);
+    pass.run(&gpu, &src, &dst, dw, dh, &[o], &[]);
     let px = readback(&gpu, &dst, dw, dh);
     // Todos os texels a 3,0..3,1 px para DENTRO da aresta, longe das bordas da textura.
     let mut band: Vec<i32> = Vec::new();
@@ -613,6 +613,7 @@ fn the_outline_is_round_at_a_corner_because_a_dilation_cannot_be_anything_else()
         tw,
         th,
         &[one(FxOp::OUTLINE, w, RED, [0, 0])],
+        &[],
     );
     let px = readback(&gpu, &dst, tw, th);
     let alpha = |x: u32, y: u32| i32::from(px[(((y * tw + x) * 4) + 3) as usize]);
@@ -675,7 +676,7 @@ fn the_feather_softens_the_edge_and_leaves_the_interior_alone() {
     let dst = make_output_texture(&gpu, W, H);
     let mut pass = FxStackPass::new(&gpu);
     let run = |pass: &mut FxStackPass, ops: &[FxOpGpu]| {
-        pass.run(&gpu, &src, &dst, W, H, ops);
+        pass.run(&gpu, &src, &dst, W, H, ops, &[]);
         readback(&gpu, &dst, W, H)
     };
     let plain = run(&mut pass, &[]);
@@ -771,6 +772,7 @@ fn the_bevel_lights_the_rim_that_faces_the_light_and_flips_with_it() {
             W,
             H,
             &[one(FxOp::BEVEL, 8.0, BLACK, light)],
+            &[],
         );
         let out = readback(&gpu, &dst, W, H);
         (
@@ -837,6 +839,7 @@ fn the_outline_edge_is_a_function_of_distance_alone() {
         dw,
         dh,
         &[one(FxOp::OUTLINE, 8.0, RED, [0, 0])],
+        &[],
     );
     let px = readback(&gpu, &dst, dw, dh);
     // A fatia a ~4 px para FORA (o contorno de largura 8 ainda é opaco lá) e a ~7,9 (a borda dele).

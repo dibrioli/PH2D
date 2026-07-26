@@ -41,7 +41,6 @@
 //! custa nem uma feature: paga-se largura de banda em texturas temporárias, que são do tamanho da
 //! forma.
 
-use ph2d_ecs::FxOp;
 use ph2d_gpu::GpuContext;
 
 use crate::fx_stack_shader::{
@@ -82,10 +81,13 @@ pub struct FxOpGpu {
     pub mode: u8,
 }
 
+use crate::fx_stack_plan::plan_of;
 /// A meia-largura do kernel que o shader de facto percorre para um dado sigma.
 ///
 /// **Porta única**: quem calcula a MARGEM da textura ([`stack_reach`]) e quem a preenche (o
 /// shader) têm de concordar, senão o borrão é recortado na borda por uma margem que mentiu.
+pub use crate::fx_stack_plan::{jump_count, op_reach, stack_reach};
+
 #[must_use]
 pub fn kernel_half(sigma_px: f32) -> u32 {
     let sigma = sigma_px.max(1e-4);
@@ -96,14 +98,14 @@ pub fn kernel_half(sigma_px: f32) -> u32 {
 /// perguntam à mesma — as duas varreduras andam em lockstep sobre a mesma lista, e um `if`
 /// duplicado as descasaria em silêncio.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Plan {
+pub(crate) enum Plan {
     /// Um dispatch, sem vizinho nenhum (Color Overlay).
     Point,
     /// Gaussiana separável: H, depois V+finalize+composite.
     Blur,
     /// Campo de distância: semente + `n` saltos do JFA + finalize. Serve os degraus de dentro em
     /// modo Contour **e o CONTORNO** — os dois pedem uma distância, não um borrão.
-    Field { jumps: usize },
+    Field { jumps: usize, raster_seed: bool },
 }
 
 impl Plan {
@@ -111,90 +113,10 @@ impl Plan {
         match self {
             Self::Point => 1,
             Self::Blur => 2,
-            Self::Field { jumps } => jumps + 2,
+            // Com geometria não há semente nem saltos: só o finalize.
+            Self::Field { jumps, raster_seed } => jumps + usize::from(raster_seed) + 1,
         }
     }
-}
-
-/// **Quantos saltos o JFA precisa para uma banda de `band_px`.** Os saltos são `K, K/2, …, 1` com
-/// `K = 2^(n-1)`, e o alcance do JFA é a SOMA deles (`2K-1`), logo `n = bits(w)` cobre `w`.
-fn jump_count(band_px: f32) -> usize {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let w = band_px.max(1.0).ceil() as u32;
-    (u32::BITS - w.leading_zeros()) as usize
-}
-
-fn plan_of(op: &FxOpGpu) -> Plan {
-    let spec = FxOp::spec(op.kind);
-    let by_distance = matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER | FxOp::BEVEL)
-        || (spec.inner && op.mode == FxOp::MODE_CONTOUR);
-    if by_distance {
-        return Plan::Field {
-            jumps: jump_count(op.sigma_px),
-        };
-    }
-    if spec.radius_label.is_none() {
-        return Plan::Point;
-    }
-    Plan::Blur
-}
-
-/// **Quanto ESTE degrau espalha para fora do que recebeu**, em pixels.
-///
-/// Três respostas, e cada uma é um fato sobre o tipo, não uma margem "por segurança":
-/// - quem não cresce ([`FxKindSpec::grows`](ph2d_ecs::FxKindSpec) falso) espalha **zero** — o
-///   Inner Shadow / Inner Glow desenham só DENTRO da forma, e o Color Overlay não move um texel de
-///   cobertura. Margem para eles seria textura paga a troco de nada;
-/// - o **Outline** espalha a LARGURA dele (`σ`), não o suporte do kernel (`3σ`): o corte é duro em
-///   `Φ(−1)`, então além de `σ` não sobra nada para recortar. (O kernel ainda percorre `3σ` — o
-///   *suporte* e o *alcance* são perguntas diferentes, e é por isso que são duas funções.)
-/// - o resto espalha o suporte da Gaussiana.
-fn op_reach(op: &FxOpGpu) -> u32 {
-    if !FxOp::spec(op.kind).grows {
-        return 0;
-    }
-    if matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER) {
-        // O contorno alcança a LARGURA dele; o feather alcança METADE dela (a rampa é centrada na
-        // fronteira). Nenhum dos dois paga o suporte do kernel, que é 3×.
-        let span = if op.kind == FxOp::FEATHER {
-            op.sigma_px * 0.5
-        } else {
-            op.sigma_px
-        };
-        return (span.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
-    }
-    kernel_half(op.sigma_px)
-}
-
-/// **Quanto a pilha inteira espalha, em pixels, para cada lado.** Devolve
-/// `(esquerda, cima, direita, baixo)`.
-///
-/// Cada degrau espalha o que recebeu — logo as reaches **somam** ao longo da pilha, e a margem é
-/// função da pilha, nunca do maior degrau. O borrão espalha para os quatro lados; o deslocamento
-/// da sombra só para o lado para onde aponta, e é por isso que a margem é assimétrica (uma sombra
-/// longa para a direita não paga textura à esquerda).
-///
-/// ⚠️ O deslocamento de um op de DENTRO não conta: ele desloca o halo *dentro* da silhueta, e a
-/// máscara o corta na borda. Quem decide é a mesma [`FxOp::spec`] que decide as rows do painel.
-#[must_use]
-pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
-    let (mut l, mut t, mut r, mut b) = (0u32, 0u32, 0u32, 0u32);
-    for op in ops {
-        let reach = op_reach(op);
-        l += reach;
-        t += reach;
-        r += reach;
-        b += reach;
-        let spec = FxOp::spec(op.kind);
-        if spec.offset_labels.is_some() && spec.grows {
-            let (ox, oy) = (op.offset_px[0], op.offset_px[1]);
-            l += ox.min(0).unsigned_abs();
-            r += ox.max(0).unsigned_abs();
-            t += oy.min(0).unsigned_abs();
-            b += oy.max(0).unsigned_abs();
-        }
-    }
-    (l, t, r, b)
 }
 
 #[repr(C)]
@@ -212,7 +134,10 @@ struct Globals {
     jump: i32,
     /// A largura da banda (modo Contour) / do contorno, em pixels.
     band: f32,
-    _pad: [f32; 2],
+    /// Quantos segmentos de SILHUETA o chamador entregou. `0` = semeia pela cobertura (o caminho
+    /// antigo, e o único disponível quando não há geometria — os gates de raster puro).
+    n_segs: u32,
+    _pad: f32,
 }
 
 struct Tex {
@@ -270,6 +195,9 @@ pub struct FxStackPass {
     bgl_out: wgpu::BindGroupLayout,
     globals: wgpu::Buffer,
     globals_cap: u64,
+    /// Os segmentos da silhueta, em espaço de TEXEL do scratch. Grow-only, como as `work`.
+    segs: wgpu::Buffer,
+    segs_cap: u64,
     work: Option<[Tex; 4]>,
 }
 
@@ -329,6 +257,13 @@ impl FxStackPass {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let segs_cap = (std::mem::size_of::<[f32; 4]>() * 64) as u64;
+        let segs = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render fx_stack segments"),
+            size: segs_cap,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         Self {
             pipeline_h,
             pipeline_v,
@@ -341,6 +276,8 @@ impl FxStackPass {
             bgl_out,
             globals,
             globals_cap,
+            segs,
+            segs_cap,
             work: None,
         }
     }
@@ -384,6 +321,16 @@ impl FxStackPass {
                         },
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
                 ],
             })
     }
@@ -393,6 +340,10 @@ impl FxStackPass {
     /// Uma pilha VAZIA ainda resolve (`src` des-premultiplicada em `dst`) — o chamador é quem
     /// decide não produzir imagem nenhuma para uma forma sem filtro; aqui a operação vazia é a
     /// identidade, não um caso especial.
+    // ⚠️ Oito argumentos, e o oitavo é a GEOMETRIA — o que separa um campo de distância exato de
+    // um estimado da cobertura. Agrupá-los num struct de opções esconderia justamente o parâmetro
+    // cuja presença muda o número de passes despachados.
+    #[allow(clippy::too_many_arguments)]
     pub fn run(
         &mut self,
         gpu: &GpuContext,
@@ -401,12 +352,17 @@ impl FxStackPass {
         w: u32,
         h: u32,
         ops: &[FxOpGpu],
+        geom: &[[f32; 4]],
     ) {
         if w == 0 || h == 0 {
             return;
         }
         self.ensure_work(gpu, w, h);
-        let total_passes: usize = ops.iter().map(|o| plan_of(o).passes()).sum();
+        self.ensure_segments(gpu, geom);
+        let total_passes: usize = ops
+            .iter()
+            .map(|o| plan_of(o, geom.is_empty()).passes())
+            .sum();
         self.ensure_globals(gpu, total_passes);
 
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
@@ -425,9 +381,10 @@ impl FxStackPass {
                 off_y: op.offset_px[1],
                 jump: 0,
                 band: op.sigma_px.max(0.0),
-                _pad: [0.0; 2],
+                n_segs: u32::try_from(geom.len()).unwrap_or(u32::MAX),
+                _pad: 0.0,
             };
-            match plan_of(op) {
+            match plan_of(op, geom.is_empty()) {
                 Plan::Point => {
                     write_at(&mut blob, slot, &g);
                     slot += 1;
@@ -443,20 +400,23 @@ impl FxStackPass {
                     write_at(&mut blob, slot + 1, &gv);
                     slot += 2;
                 }
-                Plan::Field { jumps } => {
+                Plan::Field { jumps, raster_seed } => {
                     // Semente (não lê deslocamento nenhum) · os saltos `K, K/2, …, 1` · o finalize,
                     // que é o único que amostra o campo DESLOCADO pela luz.
-                    let mut seed = g;
-                    seed.off_x = 0;
-                    seed.off_y = 0;
-                    write_at(&mut blob, slot, &seed);
-                    for i in 0..jumps {
-                        let mut gj = seed;
-                        gj.jump = 1 << (jumps - 1 - i);
-                        write_at(&mut blob, slot + 1 + i, &gj);
+                    let head = usize::from(raster_seed);
+                    if raster_seed {
+                        let mut seed = g;
+                        seed.off_x = 0;
+                        seed.off_y = 0;
+                        write_at(&mut blob, slot, &seed);
+                        for i in 0..jumps {
+                            let mut gj = seed;
+                            gj.jump = 1 << (jumps - 1 - i);
+                            write_at(&mut blob, slot + 1 + i, &gj);
+                        }
                     }
-                    write_at(&mut blob, slot + 1 + jumps, &g);
-                    slot += jumps + 2;
+                    write_at(&mut blob, slot + head + jumps, &g);
+                    slot += jumps + head + 1;
                 }
             }
         }
@@ -471,7 +431,8 @@ impl FxStackPass {
             off_y: 0,
             jump: 0,
             band: 1.0,
-            _pad: [0.0; 2],
+            n_segs: 0,
+            _pad: 0.0,
         };
         write_at(&mut blob, total_passes, &resolve);
         gpu.queue.write_buffer(&self.globals, 0, &blob);
@@ -494,7 +455,7 @@ impl FxStackPass {
         for op in ops {
             let input = cur.map_or(&src_view, |k| &work[k].view);
             let next = cur.map_or(0, |k| 1 - k);
-            match plan_of(op) {
+            match plan_of(op, geom.is_empty()) {
                 Plan::Point => {
                     // Pontual: lê a entrada e escreve o resultado — sem intermediário.
                     let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
@@ -509,12 +470,14 @@ impl FxStackPass {
                     dispatch(&mut encoder, &self.pipeline_v, &bg_v, slot + 1, gx, gy);
                     slot += 2;
                 }
-                Plan::Field { jumps } => {
-                    let bg_seed = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
-                    dispatch(&mut encoder, &self.pipeline_seed, &bg_seed, slot, gx, gy);
-                    slot += 1;
-                    // Ping/pong 2 <-> 3: o salto `i` lê de onde o anterior escreveu.
+                Plan::Field { jumps, raster_seed } => {
                     let mut field = 2usize;
+                    if raster_seed {
+                        let bg_seed = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
+                        dispatch(&mut encoder, &self.pipeline_seed, &bg_seed, slot, gx, gy);
+                        slot += 1;
+                    }
+                    // Ping/pong 2 <-> 3: o salto `i` lê de onde o anterior escreveu.
                     for _ in 0..jumps {
                         let to = 5 - field; // 2 <-> 3
                         let bg =
@@ -574,8 +537,36 @@ impl FxStackPass {
                     binding: 3,
                     resource: wgpu::BindingResource::TextureView(dst),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.segs.as_entire_binding(),
+                },
             ],
         })
+    }
+
+    /// Sobe os segmentos da silhueta. **Grow-only**, como as `work` — uma cena com formas de
+    /// complexidades diferentes não paga uma realocação por forma por frame.
+    ///
+    /// ⚠️ O buffer NUNCA encolhe a zero: um `storage` de tamanho 0 é binding inválido, e o layout
+    /// exige a entrada mesmo nos passes que não a leem. Sem geometria o shader olha `n_segs == 0`
+    /// e cai no caminho da cobertura — o buffer fica lá, intocado.
+    fn ensure_segments(&mut self, gpu: &GpuContext, geom: &[[f32; 4]]) {
+        if geom.is_empty() {
+            return;
+        }
+        let need = std::mem::size_of_val(geom) as u64;
+        if need > self.segs_cap {
+            self.segs_cap = need.next_power_of_two();
+            self.segs = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render fx_stack segments"),
+                size: self.segs_cap,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        gpu.queue
+            .write_buffer(&self.segs, 0, bytemuck::cast_slice(geom));
     }
 
     /// As texturas de trabalho, **grow-only**: uma cena com formas de tamanhos diferentes não

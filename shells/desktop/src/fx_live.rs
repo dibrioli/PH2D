@@ -295,8 +295,19 @@ impl FxLive {
         let pfx = self.paths.get_mut(&id).expect("path ensured");
         pfx.ops.clear();
         pfx.ops.extend_from_slice(ops);
+        // A SILHUETA em segmentos, no MESMO transform com que a forma foi rasterizada no scratch
+        // — é ela que dá ao campo de distância o pé exato da fronteira. Vazia (forma com traço,
+        // ou complexa demais) = o campo cai no caminho do raster, que é pior mas nunca trava.
+        let geom = ph2d_vec_render::silhouette_segments(
+            scene,
+            xforms,
+            live,
+            id,
+            camera,
+            Affine::translate((-ex0, -ey0)),
+        );
         let stack = self.stack.get_or_insert_with(|| FxStackPass::new(gpu));
-        stack.run(gpu, src, &pfx.tex, w, h, ops);
+        stack.run(gpu, src, &pfx.tex, w, h, ops, &geom);
         true
     }
 

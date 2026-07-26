@@ -31,6 +31,8 @@ pub mod compressed_pipeline;
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
 pub mod fx_stack;
+/// O CUSTO de uma pilha (saltos do campo, alcance de cada degrau) — irmão pelo LOC cap.
+mod fx_stack_plan;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_shader;
 pub mod game_rt;

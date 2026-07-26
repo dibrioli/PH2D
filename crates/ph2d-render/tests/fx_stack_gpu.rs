@@ -47,7 +47,7 @@ fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
     // Lê a fileira do meio (alfa por coluna) para um dado sigma.
     let alpha_row = |pass: &mut FxStackPass, sigma: f32| -> Vec<u8> {
         let dst = make_output_texture(&gpu, w, h);
-        pass.run(&gpu, &src, &dst, w, h, &[op(0, sigma, BLACK)]);
+        pass.run(&gpu, &src, &dst, w, h, &[op(0, sigma, BLACK)], &[]);
         let bytes = readback(&gpu, &dst, w, h);
         let y = (by0 + by1) / 2;
         (0..w)
@@ -166,6 +166,7 @@ fn the_two_renderer_scratch_blur_register_render_path_does_not_panic() {
         w,
         h,
         &[op(0, 4.0, BLACK)],
+        &[],
     );
 
     // 3. Renderer PRINCIPAL registra a textura borrada e a desenha + renderiza.
@@ -248,7 +249,7 @@ fn the_glow_paints_its_halo_under_the_shape_which_survives() {
     let src = make_src(&gpu, w, h, &src_bytes);
     let mut pass = FxStackPass::new(&gpu);
     let dst = make_output_texture(&gpu, w, h);
-    pass.run(&gpu, &src, &dst, w, h, &[op(1, 2.0, RED)]);
+    pass.run(&gpu, &src, &dst, w, h, &[op(1, 2.0, RED)], &[]);
     let bytes = readback(&gpu, &dst, w, h);
     let px = |x: u32, y: u32| {
         let o = (((y * w) + x) * 4) as usize;
@@ -297,7 +298,7 @@ fn the_order_of_the_stack_changes_the_picture() {
 
     let render = |pass: &mut FxStackPass, ops: &[FxOpGpu]| -> Vec<u8> {
         let dst = make_output_texture(&gpu, w, h);
-        pass.run(&gpu, &src, &dst, w, h, ops);
+        pass.run(&gpu, &src, &dst, w, h, ops, &[]);
         readback(&gpu, &dst, w, h)
     };
     let a = render(&mut pass, &[glow, blur]);
@@ -339,7 +340,7 @@ fn an_empty_stack_is_the_identity() {
     let src = make_src(&gpu, w, h, &src_bytes);
     let mut pass = FxStackPass::new(&gpu);
     let dst = make_output_texture(&gpu, w, h);
-    pass.run(&gpu, &src, &dst, w, h, &[]);
+    pass.run(&gpu, &src, &dst, w, h, &[], &[]);
     let bytes = readback(&gpu, &dst, w, h);
     let o = (((4 * w) + 4) * 4) as usize;
     assert_eq!(
@@ -368,14 +369,14 @@ fn the_cost_of_a_stack_is_linear_in_the_number_of_ops() {
     for n in [0usize, 1, 2, 3, 4, 6] {
         let ops: Vec<FxOpGpu> = std::iter::repeat_n(one, n).collect();
         // Aquece (compilação de pipeline / alocação das temps) antes de medir.
-        pass.run(&gpu, &src, &dst, w, h, &ops);
+        pass.run(&gpu, &src, &dst, w, h, &ops, &[]);
         gpu.device
             .poll(wgpu::PollType::wait_indefinitely())
             .unwrap();
         let t0 = std::time::Instant::now();
         const ITERS: u32 = 20;
         for _ in 0..ITERS {
-            pass.run(&gpu, &src, &dst, w, h, &ops);
+            pass.run(&gpu, &src, &dst, w, h, &ops, &[]);
         }
         gpu.device
             .poll(wgpu::PollType::wait_indefinitely())

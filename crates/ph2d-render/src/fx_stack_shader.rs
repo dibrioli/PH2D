@@ -17,10 +17,14 @@ struct Globals {
     off_y: i32,
     jump: i32,
     band: f32,
+    n_segs: u32,
+    _pad: f32,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
 @group(0) @binding(2) var<uniform> g: Globals;
+// A SILHUETA em segmentos (`x0,y0,x1,y1`), no espaço de texel do scratch. Vazia = `n_segs == 0`.
+@group(0) @binding(4) var<storage, read> segs: array<vec4<f32>>;
 
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
@@ -30,7 +34,46 @@ fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INN
 // eles perguntam: *a que distância estou de deixar de existir*. ⚠️ A diferença aparece na quina
 // CÔNCAVA — a casca de um lado só a estima ~0,6 px pior, e é justamente ali que o modo Contour
 // existe para acertar.
-fn seeds_shell() -> bool { return g.kind == KIND_FEATHER || g.kind == KIND_OUTLINE; }
+fn seeds_shell() -> bool {
+    return g.kind == KIND_FEATHER || g.kind == KIND_OUTLINE || g.kind == KIND_BEVEL;
+}
+
+// **O PÉ EXATO na silhueta**, do centro do texel `p` — o ponto mais próximo sobre os segmentos.
+//
+// ⚠️ É o único lugar onde a geometria entra, e é o que separa esta wave de todas as tentativas de
+// raster que a precederam. A rampa de AA ocupa 1,0–1,41 texel e o estêncil da diferença central
+// ocupa 2, então a estimativa pela COBERTURA sempre inclui amostras saturadas e o recorte é função
+// da FASE do texel na escada de rasterização: medido, até 0,68 px de erro de profundidade e — numa
+// aresta a 4,6°, onde a escada tem passo de 12,4 texels e um 3×3 lê a aresta como horizontal — erro
+// de direção igual ao ÂNGULO INTEIRO. Com o pé exato o ripple medido cai de 42,4 para 1,0 nível.
+//
+// ⚠️ **A regra de QUAIS texels semeiam continua sendo a do raster** (a casca), e isso é deliberado:
+// ela identifica a fronteira da SILHUETA, que numa forma com traço não é o path de preenchimento.
+// Uma aresta de fill coberta por um traço fica a meia-largura dali, então nunca é a mais próxima de
+// um texel de casca — a geometria só responde *onde exatamente*, nunca *se*.
+fn exact_foot(pi: vec2<f32>) -> vec2<f32> {
+    // ⚠️ **O CENTRO do texel, não a quina.** A cobertura que o rasterizador escreve em `(x,y)` é a
+    // do quadrado `[x,x+1]×[y,y+1]`, cujo centro é `(x+0,5, y+0,5)`; medir da quina metia 0,707
+    // texel de erro SISTEMÁTICO entre o campo e o raster que decide o sinal. O `off` devolvido é
+    // relativo ao centro, e é por isso que `round(src + off)` continua indexando o texel certo:
+    // `floor((src + 0,5) + off)` é exatamente isso.
+    let p = pi + vec2<f32>(0.5, 0.5);
+    var best = vec2<f32>(0.0);
+    var bd = 1.0e30;
+    for (var i = 0u; i < g.n_segs; i = i + 1u) {
+        let s = segs[i];
+        let a = s.xy;
+        let b = s.zw;
+        let ab = b - a;
+        let l2 = dot(ab, ab);
+        var t = 0.0;
+        if (l2 > 1.0e-12) { t = clamp(dot(p - a, ab) / l2, 0.0, 1.0); }
+        let q = a + ab * t;
+        let d = dot(p - q, p - q);
+        if (d < bd) { bd = d; best = q; }
+    }
+    return best - p;
+}
 
 // O halo de dentro, aplicado com a lei que NÃO move a cobertura: um efeito de dentro tinge o que
 // já está lá, ele não é uma camada nova. Porta única de TODOS os que moram dentro.
@@ -158,6 +201,9 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
 // 21,8° (a 45° o artefato some por simetria, e foi assim que ele passou pelo primeiro gate). Com a
 // semente sub-texel a distância é contínua, e a correção de meio texel que existia à mão
 // DESAPARECE: ela era o caso particular disto para uma borda dura.
+// ⚠️ **Só o caminho SEM geometria chega aqui.** Havendo silhueta, o finalize computa o pé exato
+// por texel e os passes de semente e salto nem são despachados — deixar um braço de geometria
+// nesta função seria código morto que uma mutação não faz sangrar.
 fn edge_offset(p: vec2<i32>, a: f32) -> vec2<f32> {
     let gx = tap_img(t0, p.x + 1, p.y).a - tap_img(t0, p.x - 1, p.y).a;
     let gy = tap_img(t0, p.x, p.y + 1).a - tap_img(t0, p.x, p.y - 1).a;
@@ -272,7 +318,19 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
     let inside = at.a > 0.5;
     var off = vec2<f32>(0.0);
     var far = true;
-    if (sx >= 0 && sy >= 0 && sx < i32(g.dims.x) && sy < i32(g.dims.y)) {
+    if (g.n_segs > 0u) {
+        // ⚠️ **Com geometria o JFA não responde nada — ele só PROPAGA.** Um texel que herda a
+        // semente do vizinho recebe o vetor até o pé DAQUELE vizinho, não até o seu próprio: o
+        // comprimento erra pouco (a envoltória de cones acerta a distância a menos de `s²/8d`),
+        // mas a DIREÇÃO salta ao trocar de célula, e é dela que o bevel vive. Medido: com o campo
+        // já exato pela semente, o feather caiu para 1,28 níveis e o bevel ficou em 117 — a prova
+        // de que o que sobrava era a direção herdada, não o campo.
+        //
+        // O pé exato POR TEXEL custa o laço de segmentos onde a semente já o custava, e responde
+        // as duas perguntas de uma vez.
+        off = exact_foot(vec2<f32>(f32(sx), f32(sy)));
+        far = false;
+    } else if (sx >= 0 && sy >= 0 && sx < i32(g.dims.x) && sy < i32(g.dims.y)) {
         let f = textureLoad(t1, vec2<i32>(sx, sy), 0);
         if (f.z > 0.5) { off = f.xy; far = false; }
     }
@@ -351,7 +409,12 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
         // para o miolo. `off` aponta para a borda mais próxima, então ele É a normal 2D do rebordo.
         var shade = 0.0;
         if (!far && inside) {
-            let n = field_normal(sx, sy, normalize(off + vec2<f32>(1.0e-6, 0.0)));
+            // ⚠️ **Com o pé exato, a normal NÃO se estima: ela É `off`.** Por definição de ponto
+            // mais próximo, o vetor do texel até o pé é perpendicular à silhueta — então derivar
+            // um gradiente do campo aqui seria estimar por diferenças finitas o que já se tem
+            // exato. O `field_normal` fica para o caminho sem geometria.
+            var n = normalize(off + vec2<f32>(1.0e-6, 0.0));
+            if (g.n_segs == 0u) { n = field_normal(sx, sy, n); }
             let lit = vec2<f32>(f32(g.off_x), f32(g.off_y));
             let l = select(vec2<f32>(0.0, -1.0), normalize(lit), dot(lit, lit) > 0.0);
             shade = dot(n, l) * (1.0 - smoothstep(0.0, w, dist)) * g.opacity;

@@ -75,6 +75,33 @@ fn star_alpha(w: u32, h: u32) -> Vec<f32> {
     out
 }
 
+/// Os dez vértices da estrela, na MESMA ordem e nos MESMOS números que a cobertura usa — se as
+/// duas descrições divergirem, o campo descreve uma forma e o raster desenha outra.
+fn star_poly() -> Vec<(f64, f64)> {
+    let (cx, cy) = (f64::from(W) * 0.5, f64::from(H) * 0.5);
+    let r_out = f64::from(W.min(H)) * 0.40;
+    let r_in = r_out * 0.45;
+    (0..10)
+        .map(|i| {
+            let a = -std::f64::consts::FRAC_PI_2 + f64::from(i) * std::f64::consts::PI / 5.0;
+            let r = if i % 2 == 0 { r_out } else { r_in };
+            (cx + r * a.cos(), cy + r * a.sin())
+        })
+        .collect()
+}
+
+/// A SILHUETA em segmentos, no espaço de texel — o que a wave da semeadura exata alimenta.
+fn star_segments() -> Vec<[f32; 4]> {
+    let p = star_poly();
+    (0..p.len())
+        .map(|i| {
+            let (x0, y0) = p[i];
+            let (x1, y1) = p[(i + 1) % p.len()];
+            [x0 as f32, y0 as f32, x1 as f32, y1 as f32]
+        })
+        .collect()
+}
+
 /// A estrela em RGBA PREMULTIPLICADO — a premissa de toda a pilha.
 fn star_src(gpu: &ph2d_gpu::GpuContext) -> (wgpu::Texture, Vec<f32>) {
     let a = star_alpha(W, H);
@@ -157,7 +184,7 @@ fn probe_fx_render_and_look() {
     ];
     for (name, ops) in scenes {
         let dst = make_output_texture(&gpu, W, H);
-        pass.run(&gpu, &src, &dst, W, H, &ops);
+        pass.run(&gpu, &src, &dst, W, H, &ops, &star_segments());
         let px = readback(&gpu, &dst, W, H);
         write_ppm(&dir, name, &px);
     }

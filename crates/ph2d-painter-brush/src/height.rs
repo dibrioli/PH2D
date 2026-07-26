@@ -304,22 +304,45 @@ pub fn accumulate_dab_height(
     // would have left. A brush with no grain pays nothing.
     let grain_active = dab.grain.is_some();
     let sweep = sweep_axis(dab);
+    // The film's pre-convolved table (plano 26 §9.6), when this brush and radius admit it. Built
+    // AFTER the sweep because the capsule's axis is half the plan: the BAND has its own deformed
+    // basis (`B = A·P/radius`), and a texel that straddles the cap↔band boundary is handed back to
+    // the exact path. Memoised per STROKE — per dab it would cost 9× what it saves.
+    let film_lut = film_aa
+        .as_ref()
+        .and_then(|_| crate::height_film::film_lut_for(spec, radius));
+    let lut = film_lut
+        .as_ref()
+        .map(|l| crate::height_film::FilmLutPlan::new(l, dab.footprint, radius, sweep));
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
         for px in x0..x1 {
             let dx = (px as f32 + 0.5) - cx;
             let (rx, ry) = sweep_residual(dx, dy, sweep);
-            let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
+            // `wv` is the DEFORMED residual and `t` its length — byte-identical to `falloff_t`, which
+            // is exactly `apply` then the same `sqrt`. The vector is kept because the LUT's expansion
+            // lives in that space (see [`crate::height_film::FilmAa::film_at_lut`]).
+            let wv = dab.footprint.apply([rx * inv_radius, ry * inv_radius]);
+            let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
             let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
             // The film at this texel: single-sample `film_of` (byte-identical old path), or the
             // fractional area coverage under Smooth Edges — the SAME fraction `dab.rs` gives the
             // pigment (same door, same grid, the caller's own swept-silhouette chain).
             let film = match &film_aa {
-                Some(aa) => aa.film_at(t, w, |ox, oy| {
-                    let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
-                    spec.falloff_weight(dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius))
-                }),
+                Some(aa) => aa.film_at_planned(
+                    lut.as_ref(),
+                    t,
+                    wv,
+                    [dx, dy],
+                    || w,
+                    |ox, oy| {
+                        let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
+                        spec.falloff_weight(
+                            dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius),
+                        )
+                    },
+                ),
                 None => crate::height_film::film_of(w),
             };
             // A texel wholly outside silhouette AND film lays nothing (with AA a rim texel can carry

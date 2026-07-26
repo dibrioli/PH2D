@@ -271,11 +271,11 @@ fn sweep_lut(falloff: Falloff, radius: f32, geom: Geom) -> (f32, usize, usize, u
                 Geom::CapsuleBand | Geom::CapsuleCap | Geom::CapsuleStraddle => {
                     let proj = dx * ux + dy * uy;
                     let sc = proj.clamp(0.0, back);
-                    // A grade alcança `AA_REACH` texels em cada direção, e `u` é unitário, então uma
-                    // sub-amostra pode mover a projeção por até isso. Um texel cuja projeção está a menos
-                    // disso de 0 ou de `back` tem sub-amostras nas DUAS regiões.
-                    const AA_REACH: f32 = 0.667;
-                    let straddles = (proj - 0.0).abs() < AA_REACH || (proj - back).abs() < AA_REACH;
+                    // A régua vem do PRODUTO (`AA_REACH_PX`, derivado da grade), não de uma segunda
+                    // cópia: `u` é unitário, então uma sub-amostra move a projeção por até isso, e um
+                    // texel a menos disso de 0 ou de `back` tem sub-amostras nas DUAS regiões.
+                    let reach = crate::height_film::AA_REACH_PX;
+                    let straddles = (proj - 0.0).abs() < reach || (proj - back).abs() < reach;
                     let inside = proj > 0.0 && proj < back;
                     let want = match geom {
                         Geom::CapsuleStraddle => straddles,

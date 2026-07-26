@@ -136,6 +136,9 @@ pub(super) struct DabCtx<'a> {
     /// Screen-space AA of the film silhouette (BUGS #16) — `None` = single-sample `film_of`,
     /// byte-identical. Hoisted per dab in [`stamp_dab_pixels`].
     pub(super) film_aa: Option<crate::height_film::FilmAa>,
+    /// The AA's pre-convolved table + deformed basis (plano 26 §9.6), when the brush admits it.
+    /// `None` ⇒ the AA samples the silhouette chain nine times, as it always did.
+    pub(super) lut: Option<crate::height_film::FilmLutPlan<'a>>,
 }
 
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
@@ -157,18 +160,25 @@ pub(super) fn stamp_band(
             // SILHOUETTE — via the shared [`silhouette_at`], which the Impasto height kernel also
             // calls: one definition of a dab's shape, so relief and pigment cannot drift apart.
             let dx = (px as f32 + 0.5) - ctx.cx;
-            let t = ctx
+            // `w` is the DEFORMED point and `t` its length — byte-identical to `falloff_t`, which is
+            // exactly `apply` then the same `sqrt`. The vector itself is what the LUT's expansion
+            // needs (the metric is euclidean in that space), so it is kept instead of thrown away.
+            let wv = ctx
                 .footprint
-                .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
+                .apply([dx * ctx.inv_radius, dy * ctx.inv_radius]);
+            let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
             // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
             // lays no body. Applied to the SILHOUETTE — before the Grain, before the dynamics — so every
             // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.
             // With Smooth Edges ([`crate::height_film::FilmAa`], BUGS #16) the film at a rim texel is
             // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
             let w = match &ctx.film_aa {
-                Some(aa) => aa.film_at(
+                Some(aa) => aa.film_at_planned(
+                    ctx.lut.as_ref(),
                     t,
-                    silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+                    wv,
+                    [dx, dy],
+                    || silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
                     |ox, oy| {
                         ctx.spec.falloff_weight(
                             ctx.footprint
@@ -339,4 +349,107 @@ pub(crate) fn ramp_sample(lut: &[[f32; 4]], s: f32) -> [f32; 4] {
     let n = lut.len();
     let idx = (s.clamp(0.0, 1.0) * (n as f32 - 1.0) + 0.5) as usize;
     lut[idx.min(n - 1)]
+}
+
+#[cfg(test)]
+mod lut_ab_tests {
+    use super::{DabCtx, stamp_band};
+    use crate::height_film::{FilmAa, FilmLutPlan, film_lut_for};
+    use crate::{BrushSpec, Falloff};
+
+    const SIDE: u32 = 256;
+    const RADIUS: f32 = 100.0;
+    const CENTRE: [f32; 2] = [128.0, 128.0];
+
+    /// Carimba um dab inteiro pela `stamp_band` do PRODUTO, com o plano da LUT ou sem ele.
+    fn stamp_once(spec: &BrushSpec, with_lut: bool) -> Vec<u8> {
+        // Este gate não LÊ os contadores, mas DISPARA a estrada rápida — e quem polui é quem dispara.
+        let _guard = crate::height_film_lut::lock_counts();
+        let stride = (SIDE as usize) * 4;
+        let mut dst = vec![0u8; stride * (SIDE as usize)];
+        let film_aa = FilmAa::for_dab(spec, false, RADIUS);
+        assert!(film_aa.is_some(), "o fixture tem de ter o AA ligado");
+        let footprint = spec.dab_footprint([1.0, 0.0]);
+        let held = with_lut.then(|| film_lut_for(spec, RADIUS)).flatten();
+        assert_eq!(
+            held.is_some(),
+            with_lut,
+            "o fixture tem de ser admissivel quando pede a LUT"
+        );
+        let lut = held
+            .as_ref()
+            .map(|l| FilmLutPlan::new(l, footprint, RADIUS, None));
+        let ctx = DabCtx {
+            spec,
+            tex: None,
+            image: None,
+            shape: None,
+            ramp: None,
+            alpha_mode: crate::ramp_alpha::RampAlphaMode::default(),
+            footprint,
+            center: CENTRE,
+            cx: CENTRE[0],
+            cy: CENTRE[1],
+            inv_radius: 1.0 / RADIUS,
+            radius: RADIUS,
+            coverage: 1.0,
+            preserve_alpha: false,
+            x0: 0,
+            x1: i64::from(SIDE),
+            stride,
+            film_aa,
+            lut,
+        };
+        stamp_band(&ctx, &mut dst, None, 0);
+        dst
+    }
+
+    /// **O A/B do PIGMENTO: a MESMA [`stamp_band`], com o plano e sem ele.**
+    ///
+    /// ⚠️ A admissibilidade da LUT é uma afirmação sobre a IMAGEM (é a curvatura da silhueta que decide),
+    /// então **não existe alavanca que a desligue preservando o desenho** — a única A/B honesta é dirigir
+    /// a função do produto duas vezes, diferindo SÓ no campo `lut`, e comparar os bytes que ela escreve.
+    /// É isso que prova que o `w`/`d`/base que a fiação do pigmento passa descrevem a mesma geometria que
+    /// a cadeia de silhueta percorre.
+    ///
+    /// A barra é o template do épsilon do passe de luz: **magnitude E contagem**, nunca uma só.
+    #[test]
+    fn the_pigment_band_paints_the_same_bytes_with_and_without_the_lut() {
+        for falloff in [
+            Falloff::Smooth,
+            Falloff::Smoother,
+            Falloff::Sphere,
+            Falloff::Sharp,
+            Falloff::Pow4,
+            Falloff::Root,
+        ] {
+            let spec = BrushSpec {
+                radius_px: RADIUS,
+                falloff,
+                impasto: true,
+                impasto_depth: 0.5,
+                impasto_smooth_edges: true,
+                ..Default::default()
+            };
+            let with = stamp_once(&spec, true);
+            let without = stamp_once(&spec, false);
+            let (mut worst, mut differing) = (0i32, 0usize);
+            for (a, b) in with.iter().zip(&without) {
+                let d = i32::from(*a) - i32::from(*b);
+                if d != 0 {
+                    differing += 1;
+                    worst = worst.max(d.abs());
+                }
+            }
+            assert!(
+                worst <= 1,
+                "{falloff:?}: pior byte {worst} (limite 1) em {differing} bytes"
+            );
+            assert!(
+                differing <= 256,
+                "{falloff:?}: {differing} bytes divergem (limite 256), pior {worst}"
+            );
+            println!("[lut-pigment] {falloff:?}: {differing} bytes divergem, pior {worst}");
+        }
+    }
 }

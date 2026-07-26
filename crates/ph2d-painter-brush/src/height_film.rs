@@ -246,6 +246,17 @@ pub fn solid_paint(sil: f32, dynamics: f32) -> f32 {
 /// ~1.3 texels reconstructs a sub-texel film step as a soft ramp. `LITERAL-PX-OK`: AA geometry.
 const AA_SS: [f32; 3] = [-0.667, 0.0, 0.667]; // LITERAL-PX-OK
 
+/// O **alcance** da grade em texels — o maior offset de [`AA_SS`], DERIVADO dela em vez de re-digitado.
+///
+/// É a régua do teste de fronteira da cápsula ([`crate::height_film_lut::FilmLutPlan::film_at`]): `u` é
+/// unitário, então uma sub-amostra move a projeção no eixo por até isto, e um texel mais perto que isso
+/// de uma fronteira tem amostras nas DUAS regiões.
+pub const AA_REACH_PX: f32 = AA_SS[2];
+
+/// A tabela do filme e o plano por dab que a lê moram no módulo irmão; re-exportados aqui porque quem
+/// procura o AA do filme procura por eles no mesmo lugar.
+pub use crate::height_film_lut::{FilmLut, FilmLutPlan, film_lut_for};
+
 /// Screen-space anti-aliasing of the film's silhouette, hoisted **once per dab**.
 ///
 /// The film's transition occupies a FIXED interval of `t = distance/radius` (a property of the
@@ -344,6 +355,37 @@ impl FilmAa {
     #[must_use]
     pub fn film_at(&self, t: f32, sil_centre: f32, sil_at: impl Fn(f32, f32) -> f32) -> f32 {
         self.film_at_exact(t, sil_centre, sil_at)
+    }
+
+    /// **A porta que os dois kernels chamam de fato**: pela LUT quando há plano E o texel é admissível,
+    /// pelas nove amostras reais quando não.
+    ///
+    /// `sil_centre` é uma CLOSURE, e isso é o ponto: no caminho rápido a silhueta do centro nunca é
+    /// avaliada — ela é justamente a cadeia de `sqrt` que a LUT existe para não percorrer, e computá-la
+    /// "só para o caso de" devolveria metade do ganho.
+    ///
+    /// ⚠️ **A premissa da tabela é estrutural, não uma condição a conferir aqui:** a LUT tabula
+    /// `film_of(falloff_weight(t))`, ou seja assume que a silhueta É o falloff — e um `FilmAa` só existe
+    /// quando `film_aa_wanted` é verdadeiro, que exige `!shape_active`, que é exatamente quando o
+    /// `silhouette_at` dos dois kernels colapsa em `falloff_weight(t)`. Ligar um Shape ao AA (se algum
+    /// dia isso for pedido) tem de passar por aqui.
+    #[inline]
+    #[must_use]
+    pub fn film_at_planned(
+        &self,
+        plan: Option<&FilmLutPlan<'_>>,
+        t: f32,
+        w: [f32; 2],
+        d: [f32; 2],
+        sil_centre: impl Fn() -> f32,
+        sil_at: impl Fn(f32, f32) -> f32,
+    ) -> f32 {
+        if let Some(p) = plan
+            && let Some(v) = p.film_at(self, t, w, d)
+        {
+            return v;
+        }
+        self.film_at_exact(t, sil_centre(), sil_at)
     }
 
     /// **A LUT pré-convoluída (plano 26 §9.6): a grade sem um único `sqrt`.**
@@ -477,121 +519,6 @@ impl FilmAa {
     #[must_use]
     pub fn pad_px(aa: &Option<Self>) -> f32 {
         if aa.is_some() { 1.0 } else { 0.0 }
-    }
-}
-
-/// **A tabela de `F(t) = film_of(falloff_weight(t))`** — a curva do filme, pré-computada.
-///
-/// Construída **uma vez por traço** (o falloff e a hardness não mudam no meio de um) e emprestada por
-/// referência aos dois kernels: uma alocação por traço, nunca por dab, senão o `hot_path_no_alloc` do
-/// depósito acende — e com razão.
-///
-/// ⚠️ **A tabela cobre `[0, 1]` inteiro, não só a banda**, e isso é decisão: o `film_at_lut` precisa
-/// dela também fora da banda (o early-out do single-sample) e nas amostras que o gradiente joga PARA
-/// fora dela, e uma tabela de banda com clamp nas pontas mentiria exactamente nos texels de borda que o
-/// AA existe para desenhar. A resolução vem do tamanho, não do recorte.
-pub struct FilmLut {
-    /// `N + 1` amostras de `F` em `t = i/N`, para a interpolação linear ter o vizinho da direita sem
-    /// caso especial no último índice.
-    table: Vec<f32>,
-    /// `N` como `f32`, o fator de índice — guardado para o `at` não converter por chamada.
-    n: f32,
-}
-
-impl FilmLut {
-    /// Amostras da tabela. **16384** é o mesmo tamanho que a tabulação da transferência sRGB do doc 24
-    /// escolheu, e pelo mesmo motivo: a resolução em `t` (6,1e-5) fica **abaixo** do erro que a
-    /// linearização da métrica já introduz (~4,4e-5 no aro de um raio 100), então a tabela não é o termo
-    /// dominante do épsilon — o que a torna um detalhe de implementação em vez de um segundo knob.
-    pub const N: usize = 16_384;
-
-    /// Tabela para este pincel. `F` é avaliada com as MESMAS funções do produto (`falloff_weight` e
-    /// `film_of`), então a tabela não pode discordar da curva: ela **é** a curva, amostrada.
-    #[must_use]
-    pub fn new(spec: &crate::BrushSpec) -> Self {
-        let n = Self::N;
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "N = 16384 é exato em f32; o índice é um contador pequeno"
-        )]
-        let inv = 1.0 / (n as f32);
-        let mut table = Vec::with_capacity(n + 1);
-        for i in 0..=n {
-            #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
-            let t = (i as f32) * inv;
-            table.push(film_of(spec.falloff_weight(t)));
-        }
-        #[expect(clippy::cast_precision_loss, reason = "N = 16384 é exato em f32")]
-        let nf = n as f32;
-        Self { table, n: nf }
-    }
-
-    /// **`raio × minor` mínimo para a LUT ser oferecida** — medido, não escolhido.
-    ///
-    /// O erro da expansão é o resto de 3ª ordem, logo escala com a **CURVATURA** da silhueta, e a
-    /// curvatura é governada pelo **menor raio local** ([`crate::FootprintDeform::minor_fraction`]).
-    /// Abaixo deste produto o pior texel passa de meio nível de u8 e o chamador fica no caminho exato.
-    ///
-    /// ⚠️ **E a coincidência que não é coincidência:** é a partir daqui que o AA custa caro (68,7 ms a
-    /// raio 100 contra ~9 a raio 20) — os dois escalam com o tamanho da pegada, então a LUT rende
-    /// exactamente onde o custo está e é recusada exactamente onde erraria.
-    pub const MIN_EFFECTIVE_RADIUS: f32 = 40.0;
-
-    /// **A porta única da admissibilidade** — o chamador pergunta aqui em vez de re-derivar a regra.
-    ///
-    /// Três cláusulas, e a terceira é do CHAMADOR porque é por-texel:
-    ///
-    /// 1. a família de falloff **SUAVE** — `Constant` se exclui por DOIS motivos ao mesmo tempo (é
-    ///    errático, porque um degrau interage com a grade de texels, **e é mais LENTO**, 0,46×, porque a
-    ///    curva dele é a constante 1 e não há raiz a economizar); `Custom` porque a `for_dab` toma o dab
-    ///    inteiro como banda para ele e a tabela seria indexada por uma curva do documento;
-    /// 2. **`raio × minor ≥ `[`Self::MIN_EFFECTIVE_RADIUS`];
-    /// 3. ⚠️ **o texel não pode STRADDLEAR a fronteira calota↔banda da cápsula** — ali o `B` correto muda
-    ///    no meio da grade 3×3 e nenhuma base única serve (medido: 0,77 nível a raio 40, contra 0,06 nas
-    ///    outras regiões). É uma faixa de ~2 linhas de texel por calota, então o caminho exato ali custa
-    ///    quase nada — e é por isso que a cláusula é do chamador, que é quem tem a projeção em mãos.
-    #[must_use]
-    pub fn admissible(spec: &crate::BrushSpec, radius: f32) -> bool {
-        let smooth = matches!(
-            spec.falloff,
-            crate::Falloff::Smooth
-                | crate::Falloff::Smoother
-                | crate::Falloff::Sphere
-                | crate::Falloff::Sharp
-                | crate::Falloff::Pow4
-                | crate::Falloff::Root
-                | crate::Falloff::Linear
-                | crate::Falloff::InvSquare
-        );
-        // Hardness ≥ 1 torna QUALQUER falloff um degrau (`falloff_weight` devolve 1 ou 0), então ela
-        // recai no caso `Constant` e sai pela mesma porta.
-        let hard = spec.hardness >= 1.0;
-        let minor = spec.dab_footprint([1.0, 0.0]).minor_fraction();
-        smooth && !hard && radius * minor >= Self::MIN_EFFECTIVE_RADIUS
-    }
-
-    /// `F(t)` por interpolação linear. Fora de `[0, 1]` clampa — que é o que a curva faz de qualquer
-    /// forma (`falloff_weight` clampa o remap, `weight` devolve 0 em `t >= 1`).
-    #[inline]
-    #[must_use]
-    pub fn at(&self, t: f32) -> f32 {
-        let x = (t * self.n).clamp(0.0, self.n);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "x está clampado em [0, N] logo acima"
-        )]
-        let i = x as usize;
-        let f = x - {
-            #[expect(clippy::cast_precision_loss, reason = "i <= 16384, exato em f32")]
-            let fi = i as f32;
-            fi
-        };
-        // `i + 1` existe: a tabela tem N+1 entradas e `i <= N`. Em `i == N` o `f` é 0, então o vizinho
-        // não é lido — mas o índice tem de ser válido, e é por isso que a tabela leva a entrada extra.
-        let a = self.table[i];
-        let b = self.table[(i + 1).min(self.table.len() - 1)];
-        a + (b - a) * f
     }
 }
 

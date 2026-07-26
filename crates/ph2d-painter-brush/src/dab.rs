@@ -303,6 +303,17 @@ fn stamp_dab_inner(
     // The AA's outermost fractional ring can live one texel past the geometric rim (a texel whose
     // CENTRE is outside can still be partially covered) — pad the bbox so it is not clipped.
     let aa_pad = crate::height_film::FilmAa::pad_px(&film_aa);
+    // The film's PRE-CONVOLVED table (plano 26 §9.6), when this brush and radius admit it: the AA's
+    // nine samples then cost nine table reads instead of nine silhouette chains (up to 18 dependent
+    // `sqrt`). Memoised per STROKE — asking per dab would cost 9× what it saves. `None` ⇒ the exact
+    // path, unchanged. The dab is a plain disc here, so the plan carries no capsule axis.
+    let footprint = spec.dab_footprint(dab_rotation);
+    let film_lut = film_aa
+        .as_ref()
+        .and_then(|_| crate::height_film::film_lut_for(spec, radius));
+    let lut = film_lut
+        .as_ref()
+        .map(|l| crate::height_film::FilmLutPlan::new(l, footprint, radius, None));
 
     // Bounding box of the dab, clamped to the canvas (half-open on the max side).
     let x0 = (cx - radius - aa_pad).floor().max(0.0) as i64;
@@ -326,7 +337,7 @@ fn stamp_dab_inner(
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
         alpha_mode,
-        footprint: spec.dab_footprint(dab_rotation),
+        footprint,
         center,
         cx,
         cy,
@@ -338,6 +349,7 @@ fn stamp_dab_inner(
         x1,
         stride,
         film_aa,
+        lut,
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every

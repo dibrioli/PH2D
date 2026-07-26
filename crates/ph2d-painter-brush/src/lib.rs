@@ -44,6 +44,12 @@ pub mod height_film;
 #[cfg(test)]
 #[path = "height_film_aa_tests.rs"]
 mod height_film_aa_tests; // paridade 5-amostras x 9-amostras do AA (plano 26 §9.5)
+/// **A TABELA do filme** (plano 26 §9.6) — a curva pré-computada, o plano por dab que a lê e o memo
+/// por traço. Irmão do [`height_film`], que guarda a curva e a média sobre a grade.
+pub mod height_film_lut;
+#[cfg(test)]
+#[path = "height_film_lut_wiring_tests.rs"]
+mod height_film_lut_wiring_tests; // a LUT no laço REAL dos dois kernels (plano 26 §9.6.5)
 pub mod height_modes;
 pub mod height_push;
 pub(crate) mod jitter;

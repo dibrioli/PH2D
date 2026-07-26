@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). **LUT pré-convoluída: kernel PROVADO** (§9.6) — 2,3×, épsilon **0,03 nível** e zero texels a r≥20; **a cápsula FECHOU** (§9.6.2 — a banda é EXATA), regra de admissibilidade derivada (§9.6.3), 8 gates e 5 mutações; falta a fiação (§9.6.5) |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). **LUT pré-convoluída: LANDOU** (§9.6) — **a cápsula FECHOU** (§9.6.2, a banda é EXATA), admissibilidade derivada (§9.6.3), 14 gates e 11 mutações. ✅ **FIADA nos dois kernels** (§9.6.5): A/B medido **134,84 → 110,22 ms (−18,3%)** no traço virgem e **167,79 → 142,96 (−14,8%)** sobre tinta. ⚠️ A projeção de 31% era otimista (tratava a substituição como grátis); ⛔ encolher a tabela pelo cache foi MEDIDO e é irrelevante |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -884,20 +884,75 @@ Mais `the_capsule_band_is_exact_not_merely_close` (a afirmação geométrica pin
 `the_straddle_is_excluded_because_it_would_miss` — que exige que a exclusão **CUSTE** (0,77 > 0,50),
 porque *uma exclusão que não custa nada é uma exclusão que alguém vai remover*.
 
-#### 9.6.5 O que falta para SHIPAR
+#### 9.6.5 ✅ A FIAÇÃO LANDOU — e o prêmio real é 18%, não os 31% projetados
 
-O kernel está no produto, derivado para todas as geometrias, e **gateado**. **Ninguém o chama ainda**, e
-são dois passos, os dois mecânicos agora que a matemática fechou:
+Os dois passos que faltavam estão feitos, e o A/B foi medido **na mesma máquina, na mesma sonda**
+(`the_impasto_dab_decomposition`, raio 100, 2048², traço de 600 px), ligando e desligando a LUT por
+mutação de uma linha:
 
-1. **A LUT por TRAÇO, nunca por dab** — 16 384 avaliações de `falloff_weight` contra ~1 800 amostras de
-   banda a raio 20 ⇒ por dab seria **9× mais caro que o que ela substitui**. O desenho é um memo chaveado
-   em `(falloff, hardness)` — 2 words, e `Custom` já está fora, então **a chave é completa** —, o que
-   evita mudar a assinatura dos **15** chamadores de `stamp_dab`.
-2. **Os dois kernels passam `w` e a base `B`** (que eles já computam: o pigmento tem `(dx, dy)`, a altura
-   tem o `(rx, ry)` do `sweep_residual`), consultam a `admissible` uma vez por dab e a cláusula do
-   straddle por texel, e um **gate de bytes no traço REAL** fecha.
+| traço | sem a LUT | **com a LUT** | ganho |
+|---|---|---|---|
+| 1º (tela virgem) | 134,84 ms | **110,22 ms** | **−18,3%** |
+| 2º (sobre tinta) | 167,79 ms | **142,96 ms** | **−14,8%** |
+| 3º | 172,57 ms | **144,92 ms** | **−16,0%** |
 
-Prêmio: **2,3× sobre 68,7 de 127,1 ms ⇒ ~39 ms, 31% do traço**, com o pigmento E a altura cobertos.
+⚠️ **A projeção de "~39 ms, 31%" estava OTIMISTA e o número honesto é ~25 ms, 18%.** Ela vinha de
+*"o AA é 54% e ~91% dele é a cadeia de silhueta"*, e tratava a substituição como se fosse GRÁTIS: as nove
+amostras continuam custando nove leituras de tabela mais ~20 flops de expansão. **O 10,3× medido era a
+razão entre a cadeia e uma closure CONSTANTE, não entre a cadeia e uma tabela.**
+
+**O que a fiação é, em duas peças:**
+
+1. **A LUT por TRAÇO, nunca por dab** (`height_film_lut::film_lut_for`) — memo de UMA entrada chaveado em
+   `(falloff, bits da hardness)`, que é **tudo** que `falloff_weight` lê (o `custom_falloff` fica fora
+   porque `Custom` não é admissível ⇒ a chave é COMPLETA). Por dab seriam 16 384 avaliações contra ~1 800
+   amostras de banda a raio 20 — **9× mais caro que o que ela substitui**. Nenhum dos **15** chamadores de
+   `stamp_dab` mudou de assinatura.
+2. **`FilmLutPlan`, a porta única por dab** — carrega a tabela e as DUAS bases (`B = A/radius` para o
+   disco e as calotas, `B = A·P/radius` para a banda) e escolhe entre elas **por texel**, devolvendo
+   `None` no straddle. A escolha mora ali, e não nos dois kernels, porque duas cópias da mesma pergunta
+   divergiriam só na fronteira — onde ninguém olha.
+
+⚠️ **A premissa da tabela é ESTRUTURAL, não uma condição conferida na porta:** ela tabula
+`film_of(falloff_weight(t))`, ou seja assume que a silhueta É o falloff — e um `FilmAa` só existe quando
+`film_aa_wanted` é verdadeiro, que exige `!shape_active`, que é **exatamente** quando o `silhouette_at`
+dos dois kernels colapsa em `falloff_weight(t)`. Ligar um Shape ao AA teria de passar por aqui.
+
+⛔ **MEDIDO E REFUTADO — não refaça: encolher a tabela pelo cache.** `N = 16384` são 64 KB, que estouram o
+L1, e a teoria óbvia é que os 9 lookups por texel pagam por isso. Medido, mesma sonda: **N = 512 → 110,29 ·
+1024 → 109,99 · 2048 → 111,79 · 16384 → 110,22 ms**. O tamanho é **irrelevante** — texels vizinhos leem `t`
+vizinho, então a tabela fica quente em qualquer tamanho. `N = 16384` fica pela precisão, de graça.
+
+**Os gates da fiação** (`height_film_lut_wiring_tests.rs` + `dab::bands::lut_ab_tests`), que são
+categoria diferente dos de kernel — aqueles medem a FÓRMULA sobre geometria construída à mão, estes
+medem o PRODUTO:
+
+* **a estrada rápida é TOMADA no laço real** (58 322 texels a r=100) e **RECUSADA** onde a regra manda
+  (bico duro 0, raio 20 → 0), com o straddle **disparando** (727) — a lição do ADR-0120: um caminho
+  rápido que nunca roda é código morto com todos os gates verdes, e a única defesa é CONTAR;
+* **os bytes que o depósito escreve** batem com o oráculo das NOVE amostras reais sobre um dab varrido —
+  **0 a 5 bytes divergem, pior 1 nível**, em 8 fixtures (redondo/achatado × r100/r40);
+* **o A/B do PIGMENTO**: a MESMA `stamp_band`, com o plano e sem ele, diferindo só no campo `lut` —
+  **0 bytes divergem em 6 falloffs**. ⚠️ Não existe alavanca que desligue a LUT preservando o desenho (a
+  admissibilidade **é** uma afirmação sobre a imagem), então dirigir a função do produto duas vezes é a
+  única A/B honesta.
+
+**6 mutações, 6 sangram** — e as duas lições foram minhas:
+
+* ⚠️ **os contadores são GLOBAIS e os testes correm em PARALELO**, então a 1ª rodada mediu poluição
+  cruzada (uma mutação na base da banda "matou" o gate que conta hits, que ela não toca). A trava é
+  segurada por **todo gate que RODA a estrada rápida**, não só pelos que a LEEM: quem polui é quem
+  dispara;
+* ⚠️ **a mutação que apaga o `P` da banda sobreviveu a DUAS rodadas, e o buraco era a BARRA, não a
+  fixture.** Eu a pus em 64 bytes por palpite (*"o aro tem ~1300 texels"*) — o limite que só diz "por
+  segurança" que o §0 proíbe. Medido: correto **0..5**, sem o `P` **12..39**; a barra é **8**. Eu havia
+  escrito, no meio do caminho, que *"o raio da fixture é o que decide"* — **falso**, e a medição o disse:
+  a fixture r=100 já movia 28 bytes.
+
+**Aberto, com o teto nomeado:** o que está no produto é uma tabela de `F` **lida nove vezes**, não a
+convolução tabulada que a §9.6 imaginava. A versão de **UM lookup** exigiria uma tabela 2-D em
+`(t, espalhamento)` — mas o espalhamento da grade é anisotrópico (`bx`/`by`), então colapsá-lo num escalar
+é uma aproximação NOVA, com épsilon próprio a medir. Teto: as ~25 ms que a expansão ainda custa.
 
 ### 9.7 A avenida anterior (e é a última deste eixo)
 

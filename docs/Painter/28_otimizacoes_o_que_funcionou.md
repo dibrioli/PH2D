@@ -26,7 +26,7 @@
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
-| L | **As nove amostras da grade** | 🟡 aberto, **e agora com modelo que fecha** | 1,43 ms = 184 ns/texel de banda ≈ 9 leituras em L2. Um lookup em vez de nove vale ~1,27 ms |
+| L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
 ---
 
@@ -374,6 +374,43 @@ restantes sobre 7 758 texels são **184 ns/texel**, consistente com 9 leituras q
 cada). A convolução tabulada de verdade — **um** lookup em vez de nove — vale portanto ~1,27 ms, e agora
 é uma estimativa derivada de um modelo que bate com a medição, não de um palpite.
 
+### 4.6.2 ⛔ E o passo seguinte — colapsar a grade em três leituras — foi MEDIDO e REJEITADO
+
+Com o modelo fechado, a cura óbvia dos 1,43 ms era reduzir a **contagem de leituras**. Uma convolução é
+caracterizada pelos seus **momentos**, e os da grade 3×3 saem em forma fechada (os ímpares são zero por
+simetria):
+
+```text
+  m2 = (2/3)(u² + v²)          m4 = (2/3)(u⁴ + 4u²v² + v⁴)
+```
+
+Uma média de **três** pontos `{−σ, 0, +σ}` casa `m2` com `σ = h·|a|`; com **pesos** ela tem dois graus de
+liberdade e casa `m2` **e** `m4`. Construído nas duas formas e varrido nas MESMAS 55 combinações que
+aprovaram a grade:
+
+| kernel | leituras/texel | pior erro sobre o admissível |
+|---|---|---|
+| a grade de 9 (o que shipou) | 9 | **0,060 nível de u8** |
+| colapso de 3, casando o 2º momento | 3 | **4,949** (`Sphere` r40, elipse — 192 texels) |
+| colapso de 3 PESADO, casando 2º **e** 4º | 3 | **5,344** — *pior ainda* |
+
+⚠️ **É a terceira linha que fecha a questão, não a segunda.** Se o erro fosse dos momentos, casar mais um
+momento melhoraria tudo monotonicamente — e ele **piorou o pior caso**, embora melhorasse as linhas
+fáceis (`Sphere` r100 disco 0,374 → 0,230). Uma quadratura por momentos pressupõe que a função é
+**analítica sobre o suporte**, e `F = film_of ∘ falloff_weight` **tem QUINAS**: os `clamp` do
+`body_profile` e do `film_opacity`. Sobre uma quina, mais momentos não ajudam.
+
+⚠️ **E o pior caso é o caso COMUM:** `Sphere` é o falloff **default do impasto** e a elipse é o Flatten &
+Rotate — não são cantos exóticos do espaço de parâmetros.
+
+⚠️ **Restringir a admissibilidade salvaria os números** (só redondo, só raio ≥ 100) — e seria uma segunda
+regra com **dois limiares tirados de uma tabela**, exactamente o *"limite que só diz por segurança"* que
+o §0 proíbe e que já matou a estimativa de cinco amostras (§3.3). Recusado pelo mesmo motivo.
+
+**É a lição da §3.3 outra vez, numa forma nova: o custo do AA é a contagem de amostras, e a qualidade
+dele também é.** O kernel rejeitado foi removido; o número vive no doc-comment do `film_at_lut`, que é
+onde a próxima pessoa com esta ideia vai ler.
+
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 
 A U1 (undo por delta) resolveu o que sobra **DEPOIS** do traço; isto é o que a cópia custa **DURANTE**
@@ -479,11 +516,12 @@ onde o tempo realmente está.
 
 **A fila, por tamanho medido:**
 
-1. 🎯 **A convolução tabulada de verdade — UM lookup em vez de nove, ~1,27 ms/dab.** O diagnóstico
-   fechou (§4.6.1) e o modelo de custo agora bate com a medição, então esta estimativa é derivada e não
-   um palpite. ⚠️ Segue sendo uma **aproximação NOVA** (o espalhamento da grade é anisotrópico, e
-   colapsá-lo num escalar tem épsilon próprio a medir) num kernel onde a §3.3 registra que aproximações
-   do AA morrem por casos imprevistos — o épsilon se mede ANTES de fiar, como na LUT.
+1. ⛔ **A redução de amostras do AA está ESGOTADA como eixo.** Três tentativas, três medições, três
+   rejeições: cinco amostras (§3.3), três casando o 2º momento e três casando o 4º (§4.6.2). O que
+   sobra do AA (1,43 ms/dab) só cai por um caminho que **não** troque amostragem por aproximação — por
+   exemplo cozinhá-lo no **dispositivo**, onde nove leituras de uma tabela pequena são grátis e o
+   problema é embaraçosamente paralelo. Isso é a avaliação de GPU do [doc 25](25_avaliacao_gpu.md),
+   não uma wave de CPU.
 2. **O fork do canvas no pen-down, 3,4 ms uma vez por traço** — captura do "antes" por REGIÃO. Continua
    sendo a única frente que **cura os quatro modos de uma vez**, porque mora acima do modelo de pintura.
 3. **O setup dos planos do traço, 1,8 ms uma vez por traço** — representá-los por JANELA em vez de por

@@ -449,6 +449,34 @@ impl FilmAa {
     ///
     /// `bx`/`by` são `B·(1,0)` e `B·(0,1)` — **constantes por dab**, e é por isso que a conta por texel é
     /// só duas produtos-internos e uma recíproca.
+    ///
+    /// # ⛔ COLAPSAR a grade em três leituras foi MEDIDO e REJEITADO (plano 26 §9.6.6) — não refaça
+    ///
+    /// As nove leituras custam **1,43 ms/dab** (184 ns por texel de banda), e a ideia óbvia é que uma
+    /// convolução é caracterizada pelos seus MOMENTOS: a grade 2-D tem média e variância em forma
+    /// fechada, e uma média de **três** pontos `{−σ, 0, +σ}` casa a variância com `σ = h·|a|`. Foi
+    /// construído e varrido nas MESMAS 55 combinações que aprovaram esta função:
+    ///
+    /// | kernel | pior erro sobre o admissível |
+    /// |---|---|
+    /// | esta grade de 9 | **0,060 nível de u8** |
+    /// | colapso de 3, casando o 2º momento | **4,949** (`Sphere` r40, elipse — 192 texels) |
+    /// | colapso de 3 PESADO, casando 2º **e** 4º | **5,344** — *pior ainda* |
+    ///
+    /// ⚠️ **É a segunda linha da tabela que fecha a questão, não a primeira.** Se o erro fosse dos
+    /// momentos, casar mais um momento melhoraria tudo monotonicamente — e ele **piorou o pior caso**
+    /// (embora melhorasse as linhas fáceis: `Sphere` r100 disco 0,374 → 0,230). Uma quadratura por
+    /// momentos pressupõe que a função é **analítica sobre o suporte**, e `F = film_of ∘ falloff_weight`
+    /// **tem QUINAS** — os `clamp` do [`body_profile`] e do [`film_opacity`]. Sobre uma quina, mais
+    /// momentos não ajudam e podem atrapalhar.
+    ///
+    /// ⚠️ **E o pior caso é o caso COMUM:** `Sphere` é o falloff **default do impasto**, e a elipse é o
+    /// Flatten & Rotate — não são cantos exóticos do espaço de parâmetros.
+    ///
+    /// É a lição da §9.5 outra vez, numa forma nova: **o custo do AA é a contagem de amostras, e a
+    /// qualidade dele também é.** Restringir a admissibilidade (só redondo, só raio grande) salvaria os
+    /// números — e seria uma segunda regra com dois limiares tirados de uma tabela, exactamente o
+    /// *"limite que só diz por segurança"* que o §0 proíbe e que já matou a estimativa de cinco amostras.
     #[must_use]
     pub fn film_at_lut(
         &self,

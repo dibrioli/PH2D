@@ -73,10 +73,17 @@ mod markers;
 /// a marker can carry a named signal that emits a decoupled event when the play crosses
 /// it. `None` is a pure annotation — byte-for-byte what a v12 marker was.
 ///
+/// v14: **per-track extrapolation** (crown-jewels plan §6) — `ph2d_anim::Track`'s
+/// `pre`/`post` ([`ph2d_anim::Extrap`]), appended to its serde proxy: loopOut / cycle /
+/// pingpong / continue beyond the keyed range. Default [`ph2d_anim::Extrap::Hold`] is
+/// the flat-clamp — a v13 document re-reads as `Hold/Hold` and samples byte-for-byte as
+/// before (the fade fingerprint pin). Postcard is positional, so the appended fields
+/// still force the version bump: a v13 blob is refused on load.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
-pub const DOC_VERSION: u32 = 13;
+pub const DOC_VERSION: u32 = 14;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

@@ -32,10 +32,13 @@ use crate::curve_fit::FitKey;
 use crate::curve_prep::FitChannel;
 use crate::time::RationalTime;
 
+#[path = "extrap.rs"]
+mod extrap;
 #[path = "track_buffer.rs"]
 mod track_buffer;
 #[path = "track_reverse.rs"]
 mod track_reverse;
+pub use extrap::Extrap;
 pub use track_buffer::CurveSnapshot;
 
 /// Stable identity of a key within its [`Track`] — monotonic, never reused, so
@@ -102,6 +105,15 @@ pub struct Track {
     next_id: u64,
     /// Returned when the track is empty (documented explicit default).
     default: AnimValue,
+    /// Extrapolation BEFORE the first key (crown-jewels plan §6). Default
+    /// [`Extrap::Hold`] is the flat-clamp — a Hold/Hold track never enters the
+    /// extrapolation path, so it is byte-identical to the pre-feature engine
+    /// (the fade fingerprint pin). Persistent CONTENT (like `roving`): serializes
+    /// and participates in equality.
+    pre: Extrap,
+    /// Extrapolation AFTER the last key (independent of `pre` — the AE loopIn /
+    /// loopOut, Unreal Pre/Post Infinity).
+    post: Extrap,
     /// Monotonic playback hint (index of the last active segment).
     cursor: AtomicUsize,
 }
@@ -112,7 +124,11 @@ pub struct Track {
 /// ([`crate::TimelineHistory`]).
 impl PartialEq for Track {
     fn eq(&self, other: &Self) -> bool {
-        self.keys == other.keys && self.roving == other.roving && self.default == other.default
+        self.keys == other.keys
+            && self.roving == other.roving
+            && self.default == other.default
+            && self.pre == other.pre
+            && self.post == other.post
     }
 }
 
@@ -128,6 +144,14 @@ struct TrackData {
     /// with `false` on load — tolerant of a pre-roving producer.
     #[serde(default)]
     roving: Vec<bool>,
+    /// Extrapolation before the first key. Appended (postcard positional), so
+    /// this rides on `DOC_VERSION 13 -> 14`; default [`Extrap::Hold`] makes an
+    /// old-shaped document re-read as the flat-clamp it always was.
+    #[serde(default)]
+    pre: Extrap,
+    /// Extrapolation after the last key.
+    #[serde(default)]
+    post: Extrap,
 }
 
 impl From<Track> for TrackData {
@@ -136,6 +160,8 @@ impl From<Track> for TrackData {
             keys: t.keys,
             default: t.default,
             roving: t.roving,
+            pre: t.pre,
+            post: t.post,
         }
     }
 }
@@ -146,6 +172,8 @@ impl From<TrackData> for Track {
         roving.resize(d.keys.len(), false);
         let mut t = Track::new(d.keys).with_default(d.default);
         t.roving = roving;
+        t.pre = d.pre;
+        t.post = d.post;
         t
     }
 }
@@ -167,6 +195,8 @@ impl Track {
             keys,
             ids,
             default,
+            pre: Extrap::Hold,
+            post: Extrap::Hold,
             cursor: AtomicUsize::new(0),
         }
     }
@@ -192,6 +222,29 @@ impl Track {
     #[must_use]
     pub fn default_value(&self) -> AnimValue {
         self.default
+    }
+
+    /// Extrapolation before the first key ([`Extrap::Hold`] by default).
+    #[must_use]
+    pub fn pre(&self) -> Extrap {
+        self.pre
+    }
+
+    /// Extrapolation after the last key ([`Extrap::Hold`] by default).
+    #[must_use]
+    pub fn post(&self) -> Extrap {
+        self.post
+    }
+
+    /// Set the pre-range extrapolation (authoring). Does not touch the keys or
+    /// the playback cursor.
+    pub fn set_pre(&mut self, mode: Extrap) {
+        self.pre = mode;
+    }
+
+    /// Set the post-range extrapolation (authoring).
+    pub fn set_post(&mut self, mode: Extrap) {
+        self.post = mode;
     }
 
     /// The keys, sorted by time.
@@ -614,6 +667,38 @@ impl Track {
             .saturating_sub(1)
             .min(self.keys.len() - 2)
     }
+
+    /// Blend the two keys of segment `idx` at absolute time `t`. The shared tail
+    /// of [`Track::sample`] and [`Track::value_at_in_range`] — one place decides
+    /// what a segment reads, so the cursor path and the extrapolation path can
+    /// never disagree.
+    #[inline]
+    fn segment_value(&self, idx: usize, t: f64) -> AnimValue {
+        let k0 = self.keys[idx];
+        let k1 = self.keys[idx + 1];
+        let t0 = k0.t.to_seconds();
+        let t1 = k1.t.to_seconds();
+        let span = t1 - t0;
+        let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
+        interpolate(k0.value, k1.value, k0.interp, u)
+    }
+
+    /// The value at `t`, assuming `t` lies WITHIN the keyed range — the sampler
+    /// the extrapolation path calls after mapping an out-of-range `t` back into
+    /// `[first_t, last_t]` (Loop/PingPong). Binary-search based, so it does NOT
+    /// touch the forward-play cursor (a wrapped `t` jumps all over the range and
+    /// would only thrash the hint). Exact boundaries return the boundary key.
+    pub(crate) fn value_at_in_range(&self, t: f64) -> AnimValue {
+        let n = self.keys.len();
+        if t <= self.keys[0].t.to_seconds() {
+            return self.keys[0].value;
+        }
+        if t >= self.keys[n - 1].t.to_seconds() {
+            return self.keys[n - 1].value;
+        }
+        let idx = self.search(t);
+        self.segment_value(idx, t)
+    }
 }
 
 impl AttributeEvaluator for Track {
@@ -626,11 +711,23 @@ impl AttributeEvaluator for Track {
             return self.keys[0].value;
         }
 
-        // Flat-clamped ends.
-        if t <= self.keys[0].t.to_seconds() {
+        // Ends. `Extrap::Hold` (the default) is the historical flat-clamp and
+        // returns the boundary key value DIRECTLY — byte-identical to the
+        // pre-extrapolation engine, which is what pins the fade fingerprint. A
+        // non-Hold mode only diverges for a `t` STRICTLY outside the range; an
+        // exact boundary still returns the boundary key.
+        let t0 = self.keys[0].t.to_seconds();
+        let tn = self.keys[n - 1].t.to_seconds();
+        if t <= t0 {
+            if t < t0 && self.pre != Extrap::Hold {
+                return extrap::extrapolate(self, extrap::Side::Pre, self.pre, t, t0, tn);
+            }
             return self.keys[0].value;
         }
-        if t >= self.keys[n - 1].t.to_seconds() {
+        if t >= tn {
+            if t > tn && self.post != Extrap::Hold {
+                return extrap::extrapolate(self, extrap::Side::Post, self.post, t, t0, tn);
+            }
             return self.keys[n - 1].value;
         }
 
@@ -646,14 +743,7 @@ impl AttributeEvaluator for Track {
             self.search(t)
         };
         self.cursor.store(idx, Ordering::Relaxed);
-
-        let k0 = self.keys[idx];
-        let k1 = self.keys[idx + 1];
-        let t0 = k0.t.to_seconds();
-        let t1 = k1.t.to_seconds();
-        let span = t1 - t0;
-        let u = if span > 0.0 { (t - t0) / span } else { 0.0 };
-        interpolate(k0.value, k1.value, k0.interp, u)
+        self.segment_value(idx, t)
     }
 }
 
@@ -665,6 +755,8 @@ impl Clone for Track {
             roving: self.roving.clone(),
             next_id: self.next_id,
             default: self.default,
+            pre: self.pre,
+            post: self.post,
             cursor: AtomicUsize::new(self.cursor.load(Ordering::Relaxed)),
         }
     }

@@ -122,7 +122,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// posicional do v30: dois campos a mais no fim do blob, então um save v31 lido
 /// como v32 leria além do fim dele, e um v32 lido por um binário v31 é recusado
 /// como erro de versão em vez de virar um postcard perdido.
-const PROJECT_SCHEMA: u32 = 32;
+/// v33 (ADR-0131, W-J7 break force): `PhysicsJoint` ganhou `break_enabled` +
+/// `break_force` + `break_torque` APENDADOS — um joint pode ser autorado para
+/// ROMPER sob carga. Mesmo padrão posicional do v30/v32: três campos a mais no
+/// fim do blob. ⚠️ O `∞ = off` NÃO é serializado: o componente guarda um
+/// booleano e dois números finitos, e a ponte é quem os resolve na infinidade
+/// que o solver quer — guardar `f32::INFINITY` faria o painel ter de mostrar
+/// "inf" numa row numérica.
+const PROJECT_SCHEMA: u32 = 33;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

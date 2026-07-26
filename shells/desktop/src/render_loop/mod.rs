@@ -40,6 +40,10 @@ mod hierarchy;
 mod image_edit;
 mod inspector_commits;
 pub(crate) mod inspector_joint;
+/// The BREAK half (W-J7): the switch, the two thresholds, and the fact that
+/// neither is converted. Its own file for the shell's LOC cap.
+#[cfg(test)]
+mod inspector_joint_break_tests;
 /// The MOTOR half of that seam (W-J6): the mode, the two numbers, and the unit
 /// each carries. Its own file for the shell's LOC cap.
 #[cfg(test)]
@@ -1515,6 +1519,11 @@ impl crate::App {
             &mut self.timeline.doc,
             simulate_physics,
         );
+        // A joint that gave way announces itself (W-J7). The overlay shows where
+        // and that; only the event carries the load it broke at.
+        for msg in physics_bridge::break_reports(physics, sim) {
+            toasts.push(Toast::warning(msg));
+        }
         sim_extract::run(
             dt,
             sim,

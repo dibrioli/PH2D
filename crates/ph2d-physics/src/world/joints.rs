@@ -39,7 +39,7 @@ use rapier2d::dynamics::{
 };
 use rapier2d::na::{Isometry2, Point2, UnitVector2, Vector2};
 
-use super::PhysicsWorld;
+use super::{PhysicsWorld, joint_break};
 
 /// How hard a motor corrects its velocity error — rapier's motor `damping`,
 /// with `stiffness` at zero, which is what makes it a *velocity* motor.
@@ -295,6 +295,19 @@ pub struct JointDesc {
     /// they happen to agree. (`anchor_a`/`anchor_b` are two fields for the same
     /// reason, and a Pin's *are* usually the same point.)
     pub axis_b: [f32; 2],
+    /// The linear reaction, in **newtons**, above which this joint gives way —
+    /// `f32::INFINITY` for a joint that never breaks, which is the default (P7).
+    ///
+    /// A force and not an impulse on purpose; [`super::joint_break`] gives the
+    /// reason (an impulse threshold would change meaning with the sub-step count).
+    /// Applies to every kind: what tears a rope apart also tears a pin out.
+    pub break_force: f32,
+    /// The angular reaction, in **newton-metres**, above which it gives way.
+    ///
+    /// Separate from [`Self::break_force`] because they are separate failures —
+    /// a hinge can be twisted off without ever being pulled apart, and Unity ships
+    /// the pair separate for exactly that reason.
+    pub break_torque: f32,
 }
 
 impl Default for JointDesc {
@@ -315,6 +328,11 @@ impl Default for JointDesc {
             // `+X` — a horizontal rail, which is what an unrotated joint means.
             axis_a: [1.0, 0.0],
             axis_b: [1.0, 0.0],
+            // ∞ = off. A joint holds no matter what until someone says otherwise,
+            // and it is what every existing fixture inherits — which is what keeps
+            // this wave byte-identical for every scene that predates it.
+            break_force: f32::INFINITY,
+            break_torque: f32::INFINITY,
         }
     }
 }
@@ -529,6 +547,10 @@ impl PhysicsWorld {
         // reading -80 while the hub ball thrashed inside the plank it was
         // pinned to.
         joint.contacts_enabled = false;
+        // W-J7: the break thresholds ride in the joint's own `user_data`, so a
+        // checkpoint carries them and no side table can fall out of step. `(∞, ∞)`
+        // packs to zero, which is what `GenericJoint::default` already holds.
+        joint.user_data = joint_break::pack_thresholds(desc.break_force, desc.break_torque);
         Some(self.impulse_joints.insert(a, b, joint, true))
     }
 

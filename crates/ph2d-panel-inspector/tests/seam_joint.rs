@@ -53,6 +53,16 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         max_length: 2.0,
         // No pick armed by default — the base fixture is a joint being tuned.
         pick_armed: 0,
+        // Breaking is ON in the base fixture so the thresholds are on screen for
+        // the row sweeps; the switch's own OFF half is asserted by
+        // `the_break_rows_follow_their_switch`.
+        break_enabled: true,
+        break_force: 100.0,
+        break_torque: 50.0,
+        // The engine's answer travels in the snapshot; the fixture states it the
+        // way `build_joint_info` computes it, so a kind that gains the ability
+        // does not silently lose the gate.
+        breaks_on_torque: kind_tag == 0,
     }
 }
 
@@ -479,4 +489,151 @@ fn switching_the_motor_off_takes_its_instruction_off_the_screen() {
             assert!(painted(*id), "o switch Motor existe nos dois estados");
         }
     }
+}
+
+/// **A joint can be torn apart whatever kind it is — but only a Pin can be torn
+/// apart by TORQUE** (W-J7).
+///
+/// Two claims that pull in opposite directions, which is why they share a gate:
+/// the switch and the force row are the section's only widgets offered to ALL
+/// five kinds (every joint has a linear reaction, and it reads exactly), while
+/// the torque row is the narrowest thing in the section. Splitting them would let
+/// one drift into the other's rule.
+///
+/// ⚠️ The narrowing is a MEASUREMENT, not a preference: rapier publishes the
+/// reaction of a limited or motorised angular axis and nothing for a locked one —
+/// a Weld cantilever holds 4.905 N·m and reads `0.0000`.
+///
+/// Mutation: painting the torque row unconditionally — four kinds go red with a
+/// threshold that can never be crossed.
+#[test]
+fn breaking_is_offered_to_every_kind_but_the_torque_row_is_a_pins_alone() {
+    for kind in 0u8..5 {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(joint(kind)));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+        for &id in &ids::INSP_JOINT_BREAK {
+            assert!(
+                painted(id),
+                "kind {kind}: every joint can be pulled apart, so the switch is \
+                 offered to all five"
+            );
+        }
+        assert!(
+            painted(ids::INSP_JOINT_BREAK_FORCE),
+            "kind {kind}: and so is the force threshold"
+        );
+        assert_eq!(
+            painted(ids::INSP_JOINT_BREAK_TORQUE),
+            kind == 0,
+            "kind {kind}: only a hinge can report a torque, so only a hinge is \
+             offered a torque threshold"
+        );
+    }
+}
+
+/// **The thresholds are on screen only when breaking is on** — and the switch
+/// itself is always there.
+#[test]
+fn the_break_rows_follow_their_switch() {
+    for on in [false, true] {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(InspectorJointInfo {
+            break_enabled: on,
+            ..joint(0)
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+        assert!(
+            painted(ids::INSP_JOINT_BREAK[0]),
+            "the switch is always offered — it is how breaking is turned ON"
+        );
+        for id in [ids::INSP_JOINT_BREAK_FORCE, ids::INSP_JOINT_BREAK_TORQUE] {
+            assert_eq!(
+                painted(id),
+                on,
+                "breaking {}: {id:?}",
+                if on { "on" } else { "off" }
+            );
+        }
+    }
+}
+
+/// **The Breakable switch and its two numbers reach the bus**, through a real
+/// pointer for the switch and a real commit for the numbers.
+#[test]
+fn the_break_controls_are_wired() {
+    for (i, want) in [(0usize, false), (1, true)] {
+        expect(
+            &click_real(joint(0), ids::INSP_JOINT_BREAK[i]),
+            JointFieldEdit::BreakEnabled(want),
+            "the Breakable switch",
+        );
+    }
+    expect(
+        &commit(joint(0), ids::INSP_JOINT_BREAK_FORCE, 250.0),
+        JointFieldEdit::BreakForce(250.0),
+        "Break Force",
+    );
+    expect(
+        &commit(joint(0), ids::INSP_JOINT_BREAK_TORQUE, 12.0),
+        JointFieldEdit::BreakTorque(12.0),
+        "Break Torque",
+    );
+}
+
+/// **Selecionar uma joint MOSTRA os tetos que ela carrega** (W-J7).
+///
+/// A outra metade da costura: as rows escrevem (acima), mas seriam WRITE-ONLY se
+/// o `sync_joint_fields` não as espelhasse — voltar à joint mostraria a semente
+/// em vez do que o artista digitou. É exatamente a falha que a família das rows
+/// de área shipou (W-AreaTorque) e que este gate existe para não repetir.
+///
+/// Mutação: tirar as duas linhas do `sync_joint_fields` — os dois assert leem a
+/// semente (100 / 50) em vez de 250 / 12.
+#[test]
+fn selecting_a_joint_shows_the_thresholds_it_carries() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::screens::hero::InspectorTransformInfo;
+    use ph2d_panel_inspector::state::set_current_inspector_transform;
+
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_joint(Some(InspectorJointInfo {
+        break_force: 250.0,
+        break_torque: 12.0,
+        ..joint(0)
+    }));
+    // ⚠️ A borda de "mudou a seleção" que gateia o sync sai do snapshot de
+    // TRANSFORM, não do da joint — toda entidade selecionada tem um.
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: ENTITY,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_joint(None);
+    set_current_inspector_transform(None);
+
+    let val = |id| match host.store().get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        other => panic!("{id:?} nao e um NumberInput registrado: {other:?}"),
+    };
+    assert!(
+        (val(ids::INSP_JOINT_BREAK_FORCE) - 250.0).abs() < 1e-6,
+        "Break Force mostra o autorado, mostra {}",
+        val(ids::INSP_JOINT_BREAK_FORCE)
+    );
+    assert!(
+        (val(ids::INSP_JOINT_BREAK_TORQUE) - 12.0).abs() < 1e-6,
+        "Break Torque idem, mostra {}",
+        val(ids::INSP_JOINT_BREAK_TORQUE)
+    );
 }

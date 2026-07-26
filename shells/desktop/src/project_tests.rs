@@ -428,7 +428,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 31→32: `PhysicsJoint` ganhou `motor_mode`+`motor_target` (W-J6 —
         // o servo, e o motor no Slider/Rope). Campos APENDADOS, o mesmo padrão do
         // v30; `FLIP`/`VEC_SCENE` não se movem porque nada fora da física mudou.
-        (32, 9, 13),
+        // PROJECT 32→33: `PhysicsJoint` ganhou `break_enabled`+`break_force`+
+        // `break_torque` (W-J7 — o joint que rompe sob carga). Três campos
+        // apendados, mesmo padrão.
+        (33, 9, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -187,6 +187,7 @@ mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_joint_bake;
+mod physics_smoke_joint_break;
 mod physics_smoke_joint_draw;
 mod physics_smoke_joint_glyphs;
 mod physics_smoke_joint_handles;

@@ -45,11 +45,13 @@ use ph2d_tool_registry::hash_node_id;
 mod chrome;
 mod gallery;
 mod inspector;
+mod inspector_joint;
 mod menus;
 mod menus_timeline;
 
 pub use chrome::*;
 pub use gallery::*;
 pub use inspector::*;
+pub use inspector_joint::*;
 pub use menus::*;
 pub use menus_timeline::*;

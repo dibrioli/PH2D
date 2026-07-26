@@ -36,6 +36,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_LIMITS);
     register_button_ids(store, &ids::INSP_JOINT_MOTOR);
     register_button_ids(store, &ids::INSP_JOINT_MOTOR_MODE);
+    register_button_ids(store, &ids::INSP_JOINT_BREAK);
     register_button_ids(
         store,
         &[
@@ -68,7 +69,15 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         (ids::INSP_JOINT_REST_LENGTH, 1.0, 0.0, 1000.0, 0.01),     // LITERAL-PX-OK: meters
         (ids::INSP_JOINT_STIFFNESS, 30.0, 0.0, 100000.0, 1.0),     // LITERAL-PX-OK: spring constant
         (ids::INSP_JOINT_DAMPING, 0.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: damping constant
-        (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        // Break thresholds (W-J7). The seed and the span come off the MEASURED
+        // scale (`ph2d-physics/tests/measure_joint_break.rs`): a hanging weight
+        // reads its own weight exactly, so 100 N is "it holds about ten kilos"
+        // and 10 kN is a joint nothing in a scene will reach by accident. Never
+        // negative — a negative threshold is crossed by every load, so the joint
+        // would part on its first frame.
+        (ids::INSP_JOINT_BREAK_FORCE, 100.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newtons
+        (ids::INSP_JOINT_BREAK_TORQUE, 50.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newton-metres
+        (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01),  // LITERAL-PX-OK: meters
     ] {
         store.register(
             id,

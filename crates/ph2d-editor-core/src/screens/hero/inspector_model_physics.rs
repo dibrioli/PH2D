@@ -430,6 +430,24 @@ pub struct InspectorJointInfo {
     /// artist sees the picker is waiting for a click on a body. The shell owns
     /// the armed state (`App.joint_body_pick`); this mirrors it for the paint.
     pub pick_armed: u8,
+    /// Can this joint be torn apart? (W-J7.) Gates the two thresholds below —
+    /// the `∞ = off` of P7, expressed as the checkbox the section already uses
+    /// for limits and for the motor.
+    pub break_enabled: bool,
+    /// The linear reaction, **newtons**, above which it gives way. No unit
+    /// conversion at this boundary: a newton is a newton in both worlds, unlike
+    /// the angle rows above.
+    pub break_force: f32,
+    /// The angular reaction, **newton-metres**.
+    pub break_torque: f32,
+    /// Does the torque threshold have any chance of firing on this kind?
+    ///
+    /// ⚠️ Only a Pin does: rapier reports the reaction of a limited or motorised
+    /// angular axis and NOTHING for a locked one (measured — a Weld cantilever
+    /// holds 4.905 N·m and reads `0.0000`). The section paints the torque row
+    /// only when this is true, because a threshold that can never be reached is
+    /// a control in name only.
+    pub breaks_on_torque: bool,
 }
 
 /// A single editable §12 joint field, dispatched as
@@ -458,6 +476,11 @@ pub enum JointFieldEdit {
     Stiffness(f32),
     Damping(f32),
     MaxLength(f32),
+    BreakEnabled(bool),
+    /// Newtons — no conversion (W-J7).
+    BreakForce(f32),
+    /// Newton-metres.
+    BreakTorque(f32),
     /// ARM a canvas pick for slot A (§12 eyedropper): the next click on a body
     /// re-binds this end. Carries no operand — the shell holds the armed state
     /// and the body is chosen by the click, with nothing pre-selected.

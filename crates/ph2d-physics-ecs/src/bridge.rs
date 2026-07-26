@@ -18,7 +18,8 @@ pub mod contacts;
 mod damping;
 mod diagnostics;
 mod hold;
-mod joints;
+pub mod joint_break;
+pub mod joints;
 mod kinematic;
 mod readback;
 mod rewind;
@@ -165,6 +166,10 @@ pub struct PhysicsBridge {
     contact_since: BTreeMap<(Entity, Entity), contacts::ContactMemo>,
     /// The transitions of this dispatch — cleared at its start, appended to per tick.
     contact_events: Vec<contacts::ContactEvent>,
+    /// The joints that gave way in this dispatch (`bridge::joint_break`). Same
+    /// shape and the same lifetime as `contact_events`, and for the same reason:
+    /// a break is a transition, and a dispatch can owe several ticks.
+    joint_breaks: Vec<joint_break::JointBreakEvent>,
     /// The live begin-flashes (`bridge::contacts`) — the visible half. Seeded from
     /// `Began` transitions and decayed in SIM ticks; PERSISTS across dispatches (a
     /// flash outlives the tick it was born in), so it is not cleared per dispatch, only
@@ -212,6 +217,7 @@ impl PhysicsBridge {
             contacts: Vec::new(),
             contact_since: BTreeMap::new(),
             contact_events: Vec::new(),
+            joint_breaks: Vec::new(),
             flashes: Vec::new(),
             contacts_continuous: true,
         }
@@ -376,6 +382,7 @@ impl PhysicsBridge {
         // Transitions are a fresh list per dispatch; the forward loop appends to it,
         // tick by tick. (Flashes are NOT cleared here — they outlive their tick.)
         self.contact_events.clear();
+        self.joint_breaks.clear();
         match target.cmp(&self.last_stepped) {
             // The clock went BACKWARDS — Reset, or a scrub. rapier has no
             // rewind, so replay from the rest state (see `rewind_to`).
@@ -424,6 +431,10 @@ impl PhysicsBridge {
                     // only place the clock stepped through the transitions, and the one
                     // that catches a touch shorter than a whole tick (W-TickContacts).
                     self.accumulate_contact_events(&by_handle);
+                    // And the joints that parted during that same tick (W-J7) —
+                    // the wrapper clears its own list every `step`, so a break in
+                    // an early tick of a multi-tick dispatch is gone by the last.
+                    self.accumulate_joint_breaks();
                     tick += 1;
                     // Asking is free; capturing costs about one step, which
                     // is why the ring is sparse (see `PhysicsCheckpointRing`).

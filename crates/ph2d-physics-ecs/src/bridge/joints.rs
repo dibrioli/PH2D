@@ -91,7 +91,14 @@ pub(super) fn anchor_points(
 
 /// Translate the component + the already-LOCAL anchors into the plain
 /// [`JointDesc`] the wrapper takes.
-pub(super) fn joint_desc(
+///
+/// `pub` (re-exported from the crate root) because it is the documented place
+/// where "which parameters does this kind actually use?" is answered, and that is
+/// a question a gate needs to ask directly: the alternative is inferring the
+/// answer from a body's motion, which cannot distinguish *the threshold was not
+/// passed* from *the threshold was passed and the reading is structurally zero* —
+/// exactly the pair the torque row exists to keep apart.
+pub fn joint_desc(
     j: &PhysicsJoint,
     local_a: [f32; 2],
     local_b: [f32; 2],
@@ -135,6 +142,26 @@ pub(super) fn joint_desc(
         max_length: j.max_length,
         axis_a: axis.0,
         axis_b: axis.1,
+        // ⚠️ `∞` is what "off" IS (W-J7, P7), so the checkbox is resolved HERE
+        // rather than carried into the solver: the wrapper never learns that a
+        // joint *could* be breakable, only what it can take. A joint with the box
+        // clear packs to the same `user_data` a joint from before this wave has,
+        // which is why every scene that predates it is byte-identical.
+        break_force: if j.break_enabled {
+            j.break_force
+        } else {
+            f32::INFINITY
+        },
+        // The torque threshold is offered on the Pin alone (`breaks_on_torque` —
+        // rapier reports no reaction for a LOCKED angular axis, so a Weld's would
+        // be a control that can never fire). Asked here as well as in the panel,
+        // so a stale value left over from a kind change cannot quietly still be
+        // in force — the same reason `limits` asks `has_limits`.
+        break_torque: if j.break_enabled && j.kind.breaks_on_torque() {
+            j.break_torque
+        } else {
+            f32::INFINITY
+        },
     }
 }
 

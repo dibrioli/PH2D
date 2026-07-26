@@ -5357,3 +5357,107 @@ que nenhum precisava perguntar enquanto só o Pin tinha faixa. É a mesma forma 
 condição.
 
 `PROJECT_SCHEMA` **32**, registro **21**, c9 intocado.
+
+### W-J7 — o joint que PARTE sob carga (2026-07-26, cena `=49`, pendente de smoke)
+
+A linha do plano 02: *"thresholds força/torque separados (Unity), default ∞=off;
+leitura de `impulses` com pico por-substep; ação: Disable (`JointEnabled`) — não
+destrói a entidade; flash no ponto + toast"*. Entregue, e **quatro** coisas dela
+mudaram de forma na medição.
+
+**1. O teto é uma FORÇA, e a calibração saiu exata.** `impulses` é impulso (N·s)
+sobre o passo pequeno do solver; um teto escrito nessa unidade mudaria de
+significado toda vez que o artista mexesse nos sub-passos — a queixa de
+dependência-de-timestep que a pesquisa colheu contra o Godot. Convertido, um peso
+pendurado lê **o próprio peso**: razão `1,0000` em 0,5/1/2/5/10 kg, e **9,8100 N
+em 1, 2, 4, 8 e 16 sub-passos E em 1, 2, 4, 8 e 16 iterações de solver**.
+⚠️ A 1ª versão dividia só pelo `substep_dt` e lia **um quarto** de tudo: o island
+solver do rapier reparte cada sub-passo de novo em `num_solver_iterations`, e a
+razão de exatamente 0,2500 em toda massa foi o que nomeou o fator que faltava.
+
+**2. `ImpulseJoint::impulses` sozinho NÃO é a reação — e isso quase shipou.**
+Medido, 1 kg pendurado: Pin **9,81 N**, Weld **9,81 N**, **Rope 0,00**, **Spring
+0,00**. O rapier modela corda como *limite* e mola como *motor*, então nenhuma das
+duas toca `impulses` (a tensão vive em `data.limits[i].impulse` e
+`data.motors[i].impulse`). Ler só o campo óbvio teria entregue um break force que
+**nunca dispara nos dois tipos que mais o querem**, com todos os gates de Pin
+verdes.
+
+**3. É um teto de CARGA, não de impacto — e isso é o limite honesto da feature.**
+Uma corda de 3 m que para 1 kg vindo a 6,26 m/s **não deixa a separação passar de
+3,0000** (ela para o corpo seco) e ainda assim reporta os mesmos **9,8 N** que
+reporta parada: o writeback do rapier dá o impulso da ÚLTIMA iteração interna de
+cada passo, e a pegada resolve dentro de uma. Subir os sub-passos reparte a
+pegada entre passos observáveis e o pico aparece — **9,8 N a 4 e 8, 11314 a 16,
+24584 a 32, 37485 a 64**. É a mesma distinção que `ContactReport::impulse` × `impact`
+faz, mas ali a cura funcionou (um manifold sobrevive ao sub-passo). Então o que a
+feature faz é *"isto está segurando mais do que aguenta"* — a corrente que não
+segura o peso, a dobradiça arrancada pela porta pesada — e é isso que a cena
+demonstra. *"Arrebenta no tranco"* pediria um pico interno ao solver e está
+**nomeado como não construído**, em vez de shipado como um knob que dispara ao
+acaso.
+
+**4. O teto de TORQUE é do Pin e de mais ninguém, e é medição.** Com uma prancha
+de 1 kg e 1 m segurada na horizontal (`m·g·r` = 4,905 N·m em toda linha): Weld num
+muro estático **0,0000** · Weld em balanço de 5 kg **0,0000** · **Pin no limite
+4,9050** ✓ · **servo segurando 4,9049** ✓. O rapier nunca popula `impulses[2]` de
+um eixo angular TRAVADO em 2D (a prancha está segura — `rot = 0,0000` — e o slot
+fica zerado); um eixo LIMITADO ou MOTORIZADO reporta exato. Logo a row de Break
+Torque é oferecida **só no Pin** (`JointKind::breaks_on_torque`), e num Weld ela
+seria um controle que não pode disparar.
+
+**Onde os tetos moram:** no `user_data` do próprio joint — que o ring de
+checkpoints já clona, então um scrub os carrega sem trabalho nenhum; um mapa
+paralelo teria de ser capturado junto e o modo de falha de esquecer é *um joint que
+rebobina para inquebrável*. **`0` = ∞**, que é exatamente o que um joint anterior a
+esta wave carrega ⇒ *não autorado* e *desligado* são o mesmo estado, e toda cena
+que precede a wave é **byte-idêntica** (c9 `c9d4baee…`, 87 corpos, intocado).
+
+**A ação é DESABILITAR, nunca deletar.** A entidade, os parâmetros e a autoria
+sobrevivem; o que para é a restrição. E nada do rompimento é escrito no componente
+— é por isso que um rewind devolve o joint inteiro e um replay o parte **no mesmo
+tick** (gate).
+
+**A metade visível:** o joint tinge de **VERMELHO** (posse apagada, o resto cheio),
+**perde o envelope** (arco de limite, anel de comprimento e seta de motor não estão
+mais em vigor — desenhá-los descreveria uma regra que o solver deixou de aplicar) e
+ganha um **estouro de seis pontas** no meio das duas âncoras. Seis e não quatro
+porque a cruz de 4 braços já é o contato e o `×` de 45° já é o flash de um toque.
+O estouro é desenhado do **ESTADO** e não do evento: um clarão de seis ticks sobre
+uma cena que segue rompida some antes de o artista olhar. A **CARGA** com que ele
+partiu vai num **toast** — o único canal que pode carregá-la, porque um instante
+depois o joint lê zero.
+
+**UI:** card **Breakable** (switch) + **Break Force (N)** em todos os cinco tipos,
++ **Break Torque (N.m)** só no Pin. Sem conversão de unidade em nenhuma das duas
+rows — o caso excepcional nesta seção, onde limites e motor carregam graus num
+tipo e metros noutro.
+
+⚠️ **12 mutações, 12 sangram — e duas delas expuseram gate fraco MEU:**
+* o controle de *"desmarcar o checkbox desfaz o rompimento"* usava 10 kg, e um
+  joint desmarcado ainda carrega a semente de **100 N**: 98,1 N passa por baixo,
+  então *o checkbox foi honrado* e *a semente era grande o bastante* eram
+  indistinguíveis. Agora o controle carrega **15 kg**;
+* o gate do envelope comparava o total VERMELHO do rompido com o ÂMBAR do que
+  segura — e tirar o `continue` do braço rompido **passava**, porque o arco e o
+  glifo voltam pintados em ÂMBAR e a contagem vermelha não se move. Ele **não podia
+  falhar** pelo motivo que alegava; agora afirma a identidade exata (*o rompido
+  desenha o que um joint sem envelope desenha, mais o estouro*).
+* e uma 3ª mutação "sobreviveu" e era **no-op** — o `replace` não casou o padrão
+  depois do `cargo fmt`. Verificar que a mutação PEGOU antes de rodar
+  ([[feedback_a_negative_search_needs_a_positive_control]]).
+
+**LOC:** dois splits por responsabilidade, os dois abertos pela wave —
+`world.rs` 703→613 (`world/tuning.rs`: *o que se AJUSTA no mundo* × *o que ele
+FAZ*) e `ids/inspector.rs` 712→609 (`ids/inspector_joint.rs`: os ids da §12).
+
+`PROJECT_SCHEMA` **32→33** (três campos apendados ao `PhysicsJoint`), registro
+**21**, c9 **byte-idêntico** (`c9d4baee…`, 87).
+
+**Aberto, nomeado:** o pico de impacto interno ao solver (exigiria patch no rapier)
+· com UM checkbox para os dois tetos, *"inquebrável por força, quebrável por
+torque"* se escreve pondo o teto de força fora de alcance (é o que a cena faz) ·
+`joint_desc` virou `pub` (re-exportado) porque um gate precisa perguntar
+*"que parâmetros este tipo recebe?"* direto, e inferir isso do movimento de um
+corpo não distingue *o teto não foi passado* de *o teto foi passado e a leitura é
+estruturalmente zero*.

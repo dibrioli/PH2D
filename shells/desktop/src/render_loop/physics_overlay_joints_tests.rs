@@ -52,6 +52,10 @@ fn view(kind: JointKind) -> JointView {
         // fixture o dá para TODO kind de propósito — quem ignora, ignora, e o
         // gate do trilho quer o `Some` sem montar uma segunda fixture.
         axis: Some([1.0, 0.0]),
+        // A fixture declara a premissa: TODO gate deste arquivo descreve um joint
+        // que está SEGURANDO. Um rompido tem vocabulário próprio (vermelho, sem
+        // envelope, com estouro) e gates próprios em `physics_overlay_joint_break_tests`.
+        broken: false,
     }
 }
 
@@ -503,3 +507,8 @@ mod pose_tests;
 /// desenha, que é a única cujo alcance é uma DISTÂNCIA e não um ângulo.
 #[path = "physics_overlay_joint_rail_tests.rs"]
 mod rail_tests;
+
+/// Os gates do joint ROMPIDO (W-J7), irmão próprio pelo mesmo cap e pelo mesmo
+/// corte: tudo aqui descreve um joint que **não está segurando**.
+#[path = "physics_overlay_joint_break_tests.rs"]
+mod break_tests;

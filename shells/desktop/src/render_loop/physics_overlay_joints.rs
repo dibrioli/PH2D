@@ -108,10 +108,30 @@ pub(super) fn joint_marks(
     for v in views {
         let a = screen_of(camera, window, v.anchor_a);
         let b = screen_of(camera, window, v.anchor_b);
-        out.push((ownership_lines(v, a, b, camera, window), JOINT_DIM_RGBA));
+        // **Um joint ROMPIDO desenha em vermelho e SEM envelope** (W-J7). Ele
+        // continua na cena, com tudo que o artista autorou — o que parou foi a
+        // restrição —, então a geometria fica e só a cor muda; mas o arco de
+        // limite, o anel de comprimento e a seta do motor são *o que o joint
+        // IMPÕE*, e nada disso está mais em vigor. Desenhá-los descreveria uma
+        // regra que o solver deixou de aplicar, que é exatamente a divergência
+        // desenho×solver que o P2 do plano existe para proibir.
+        let (main, dim) = if v.broken {
+            (JOINT_BROKEN_RGBA, JOINT_BROKEN_DIM_RGBA)
+        } else {
+            (JOINT_RGBA, JOINT_DIM_RGBA)
+        };
+        out.push((ownership_lines(v, a, b, camera, window), dim));
         let (span, glyph) = kind_marks(v, a, b, g_screen, camera, window);
-        out.push((span, JOINT_RGBA));
-        out.push((glyph, JOINT_RGBA));
+        out.push((span, main));
+        out.push((glyph, main));
+        if v.broken {
+            // O ESTOURO: onde ele partiu. Desenhado do ESTADO e não do evento,
+            // de propósito — um clarão de seis ticks sobre uma cena que segue
+            // rompida some antes de o artista olhar, e a pergunta que ele faz
+            // depois (*onde isto arrebentou?*) tem de continuar respondida.
+            out.push((break_burst(a, b), JOINT_BROKEN_RGBA));
+            continue;
+        }
         if let Some(strain) = strain_mark(v, a, b) {
             out.push((strain, JOINT_STRAIN_RGBA));
         }
@@ -147,6 +167,44 @@ pub(super) fn joint_marks(
         }
     }
     out
+}
+
+/// **O joint ROMPEU** (W-J7) — o mesmo vermelho da deformação, porque diz a
+/// mesma família de coisa (*isto não está segurando*), e o desenho o distingue:
+/// a deformação é um traço ENTRE as âncoras, o rompimento é um estouro SOBRE
+/// elas, com o joint inteiro tingido.
+pub(super) const JOINT_BROKEN_RGBA: [f32; 4] = [0.96, 0.32, 0.28, 0.95]; // LITERAL-COLOR-OK: overlay de joint rompido
+/// As linhas de posse de um joint rompido: o mesmo vermelho, apagado — elas
+/// seguem respondendo *quais dois objetos este joint NOMEIA*, que continua
+/// verdadeiro depois que ele deixa de segurá-los.
+pub(super) const JOINT_BROKEN_DIM_RGBA: [f32; 4] = [0.96, 0.32, 0.28, 0.45]; // LITERAL-COLOR-OK: overlay de joint rompido (posse)
+
+/// Meia-largura do estouro, px de tela.
+const BURST_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay
+
+/// **O estouro** — uma estrela de seis pontas no ponto onde o joint partiu.
+///
+/// Seis e não quatro: a cruz de quatro braços já É o contato (W-Contacts,
+/// branca) e o `×` de 45° já é o flash de um toque novo, então um terceiro
+/// membro dessa família leria como um deles. A estrela não colide com nada no
+/// vocabulário do overlay.
+///
+/// O ponto é o MEIO das duas âncoras, a mesma escolha que
+/// [`ph2d_physics::JointBreak::point`] faz e pela mesma razão: num Pin e num
+/// Weld as duas coincidem, num Spring/Rope/Slider são as pontas do vão, então o
+/// meio está sobre o segmento desenhado em todos os casos.
+fn break_burst(a: Point, b: Point) -> BezPath {
+    let (cx, cy) = ((a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
+    let mut path = BezPath::new();
+    // Três diâmetros a 0°, 60° e 120° — seis pontas, sem transcendental no laço
+    // (os cossenos e senos de 60° e 120° são as duas constantes abaixo).
+    const H: f64 = 0.5; // cos 60°
+    const V: f64 = 0.866_025_4; // sin 60°
+    for (dx, dy) in [(1.0, 0.0), (H, V), (-H, V)] {
+        path.move_to(Point::new(cx - dx * BURST_PX, cy - dy * BURST_PX));
+        path.line_to(Point::new(cx + dx * BURST_PX, cy + dy * BURST_PX));
+    }
+    path
 }
 
 /// **O FANTASMA do corpo B** — âmbar quase apagado, a silhueta de onde o limite

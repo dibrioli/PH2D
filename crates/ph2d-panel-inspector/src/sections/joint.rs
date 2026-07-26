@@ -221,6 +221,11 @@ pub(crate) fn paint_joint_section(
         yy = paint_motor_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     }
 
+    // Breaking comes after the parameters and before Delete: it is a property of
+    // the joint as a whole (every kind can be pulled apart), not of one kind's
+    // degree of freedom, so it is asked of ALL five.
+    yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
         .kind(ButtonKind::Default)
@@ -323,6 +328,79 @@ fn paint_motor_rows(
         "Max Force",
         ids::INSP_JOINT_MOTOR_FORCE,
     )
+}
+
+/// **The Breakable card** (W-J7) — the switch, then the thresholds it gates.
+///
+/// Offered for EVERY kind, unlike the Motor card: any joint can be pulled apart,
+/// and the reaction that decides it (the linear one) is reported exactly on all
+/// five (measured — a hanging weight reads its own weight to 1.0000).
+///
+/// ⚠️ **The TORQUE row is a Pin's alone**, and the reason is a measurement, not a
+/// preference: rapier publishes the reaction of a limited or motorised angular
+/// axis and *nothing* for a locked one, so a Weld cantilever holding 4.905 N·m
+/// reads `0.0000`. Painting the row there would be a threshold that can never be
+/// crossed — a control in name only, which is the failure this section's
+/// per-kind rule exists to prevent. The snapshot answers with
+/// `breaks_on_torque`; a seam gate walks all five kinds and pins which one
+/// offers it.
+#[allow(clippy::too_many_arguments)]
+fn paint_break_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorJointInfo,
+) -> f32 {
+    let mut yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        "Breakable",
+        ids::INSP_JOINT_BREAK_GROUP,
+        &ids::INSP_JOINT_BREAK,
+        &SWITCH_LABELS,
+        u8::from(info.break_enabled),
+    );
+    if !info.break_enabled {
+        return yy;
+    }
+    yy = num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Break Force (N)",
+        ids::INSP_JOINT_BREAK_FORCE,
+    );
+    if info.breaks_on_torque {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Break Torque (N.m)",
+            ids::INSP_JOINT_BREAK_TORQUE,
+        );
+    }
+    yy
 }
 
 /// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's

@@ -52,3 +52,33 @@ pub(crate) fn dispatch(
     let mut scene = super::physics_bake::TimelineScene { doc, fixed_dt };
     bridge.dispatch_with_scene(sim, playhead.is_playing(), target, &mut scene);
 }
+
+/// **What to say when a joint gives way** (W-J7) — one line per break, ready for
+/// a toast.
+///
+/// A break is the one thing this module does that the artist did not ask for in
+/// the frame it happens, so it announces itself. The overlay already shows WHERE
+/// (the burst) and THAT it is broken (the red), and neither can carry the number:
+/// a moment later the joint reads a load of zero, because it is not holding
+/// anything. The load AT the break lives only in the event.
+///
+/// Returns messages rather than pushing them, so the caller owns the toast deck
+/// and this stays testable without one.
+pub(crate) fn break_reports(bridge: &PhysicsBridge, sim: &SimWorld) -> Vec<String> {
+    bridge
+        .joint_breaks()
+        .iter()
+        .map(|b| {
+            let name = sim
+                .world()
+                .get::<ph2d_ecs::Name>(b.joint)
+                .map_or_else(|| "Joint".to_string(), |n| n.0.to_string());
+            // The FORCE is the number in the message even when the torque is what
+            // crossed: a joint that reads a torque at all is a hinge, and its
+            // linear reaction is reported next to it — printing whichever
+            // threshold fired would need the wrapper to say which, and the
+            // artist's question is *how hard was it pulled*.
+            format!("{name} broke at {:.0} N", b.force)
+        })
+        .collect()
+}

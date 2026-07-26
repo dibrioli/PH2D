@@ -79,6 +79,14 @@ pub struct JointView {
     /// outro tipo — que não tem eixo, então não oferece um (o padrão do
     /// `length` acima).
     pub axis: Option<[f32; 2]>,
+    /// **Este joint AINDA SEGURA?** `true` depois que ele se rompeu (W-J7).
+    ///
+    /// ESTADO, não transição — o irmão do `JointBreakEvent`, e os dois existem
+    /// porque respondem perguntas diferentes: *ele está segurando?* (todo frame,
+    /// o desenho) e *ele acabou de romper, com que carga?* (uma vez, o toast e o
+    /// estouro). Um joint rompido continua na cena, com os parâmetros que o
+    /// artista autorou — o que parou foi a restrição.
+    pub broken: bool,
 }
 
 /// De volta ao vocabulário AUTORADO.
@@ -139,6 +147,10 @@ impl PhysicsBridge {
                 // pela pose viva de A é uma conversão que só pode existir uma
                 // vez — duas respostas desenhariam um trilho que o solver não
                 // usa (a mesma razão pela qual `limits` sai do `rest`).
+                // Perguntado ao SOLVER, nunca derivado do componente: quem
+                // rompeu foi o mundo, e o componente segue autorado como estava
+                // (é isso que faz um Reset trazer o joint de volta).
+                broken: !self.world.joint_is_enabled(j.handle).unwrap_or(true),
                 axis: (kind == JointKind::Slider).then(|| {
                     let (s, c) = (pose_a.rotation.im, pose_a.rotation.re);
                     let [x, y] = j.rest.axis_a;

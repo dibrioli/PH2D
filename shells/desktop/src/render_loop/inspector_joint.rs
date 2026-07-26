@@ -159,6 +159,14 @@ pub(crate) fn build_joint_info(
         damping: joint.damping,
         max_length: joint.max_length,
         pick_armed,
+        break_enabled: joint.break_enabled,
+        break_force: joint.break_force,
+        break_torque: joint.break_torque,
+        // The panel does not know `ph2d-physics-ecs` (loose-coupled, like every
+        // sibling section), so the ENGINE's answer travels in the snapshot rather
+        // than being re-derived from `kind_tag` on the far side — a second copy of
+        // "which kinds can report a torque" would be a second thing to keep true.
+        breaks_on_torque: joint.kind.breaks_on_torque(),
     })
 }
 
@@ -315,6 +323,12 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // A rope of zero length is a weld nobody asked for, and rapier's own
         // docs require the distance to be strictly positive.
         JointFieldEdit::MaxLength(v) => next.max_length = v.max(1e-3),
+        // W-J7. No unit conversion in either direction: a newton and a
+        // newton-metre mean the same thing on both sides of this boundary, which
+        // is exactly why these two rows need no `limit_in`/`motor_in` twin.
+        JointFieldEdit::BreakEnabled(on) => next.break_enabled = on,
+        JointFieldEdit::BreakForce(v) => next.break_force = v.max(0.0),
+        JointFieldEdit::BreakTorque(v) => next.break_torque = v.max(0.0),
         // The eyedropper ARMS a pick in the action loop (it sets shell state,
         // not a component), and the pick RESOLVES in `input_dispatch` via
         // `set_joint_body`. Neither reaches this per-joint apply; listed so the

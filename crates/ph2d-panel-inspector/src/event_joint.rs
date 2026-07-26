@@ -35,6 +35,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::LimitsEnabled(i == 1))
             } else if let Some(i) = ids::INSP_JOINT_MOTOR.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::MotorEnabled(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_BREAK.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::BreakEnabled(i == 1))
             } else {
                 ids::INSP_JOINT_MOTOR_MODE
                     .iter()
@@ -54,6 +56,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 ids::INSP_JOINT_STIFFNESS => Some(JointFieldEdit::Stiffness(v)),
                 ids::INSP_JOINT_DAMPING => Some(JointFieldEdit::Damping(v)),
                 ids::INSP_JOINT_MAX_LENGTH => Some(JointFieldEdit::MaxLength(v)),
+                ids::INSP_JOINT_BREAK_FORCE => Some(JointFieldEdit::BreakForce(v)),
+                ids::INSP_JOINT_BREAK_TORQUE => Some(JointFieldEdit::BreakTorque(v)),
                 _ => None,
             }
         }

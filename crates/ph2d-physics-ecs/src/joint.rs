@@ -177,6 +177,24 @@ impl JointKind {
     /// says `false`) and its motor is a winch reeling a distance (so this one
     /// says `true`). Sharing one door would have given the winch a target in
     /// degrees.
+    /// **Can a break threshold on this kind ever fire on TORQUE?**
+    ///
+    /// Only where the angular axis is limited or motorised, which in this kind
+    /// set is the Pin alone. rapier reports the reaction of a limited or
+    /// motorised axis exactly (measured: 4.9050 and 4.9049 against `m·g·r` of
+    /// 4.905) and reports **nothing** for a locked one — a Weld cantilever holds
+    /// 4.905 N·m and reads `0.0000`. A Rope and a Spring leave the angular axis
+    /// free, so their torque is genuinely zero.
+    ///
+    /// Asked by the panel to decide whether to paint the row, and by nothing
+    /// else: the wrapper compares whatever threshold it is handed, so a torque
+    /// on a Weld is not *wrong*, it is **unreachable** — which is worse, because
+    /// it looks like a control.
+    #[must_use]
+    pub fn breaks_on_torque(self) -> bool {
+        matches!(self, JointKind::Pin)
+    }
+
     pub fn motor_in_metres(self) -> bool {
         self.translates()
     }
@@ -289,6 +307,26 @@ pub struct PhysicsJoint {
     /// what keeps a future field from being inserted in the middle *without* a
     /// bump.)
     pub motor_target: f32,
+    /// Can this joint be torn apart at all? (W-J7.)
+    ///
+    /// The `∞ = off` of P7, expressed the way the rest of this component already
+    /// expresses optional behaviour (`limits_enabled`, `motor_enabled`): a
+    /// checkbox, with the numbers below it living even while it is clear. The
+    /// alternative — storing `f32::INFINITY` in `break_force` — would put "inf"
+    /// in a numeric row and make the artist type a finite number to *find* the
+    /// control.
+    pub break_enabled: bool,
+    /// The linear reaction, in **newtons**, above which the joint gives way.
+    /// Ignored entirely while [`Self::break_enabled`] is false.
+    pub break_force: f32,
+    /// The angular reaction, in **newton-metres**, above which it gives way.
+    ///
+    /// ⚠️ **Only a Pin can produce an observable one** — rapier reports the
+    /// reaction of a limited or motorised angular axis and *not* of a locked one
+    /// (measured: a Weld cantilever reads 0.0000 while holding 4.905 N·m). The
+    /// §12 row is offered on the Pin alone for that reason; see
+    /// [`ph2d_physics::JointLoad`].
+    pub break_torque: f32,
 }
 
 impl Default for PhysicsJoint {
@@ -322,6 +360,9 @@ impl Default for PhysicsJoint {
             // a hinge, the anchor of a rail, a fully-reeled winch — so unlike
             // `motor_speed` this default needs no per-kind twin.
             motor_target: 0.0,
+            break_enabled: false,
+            break_force: Self::DEFAULT_BREAK_FORCE,
+            break_torque: Self::DEFAULT_BREAK_TORQUE,
         }
     }
 }
@@ -373,6 +414,23 @@ impl PhysicsJoint {
     /// carriage crosses its whole range in **2 s** — long enough to see it go
     /// and come back rather than blink between the ends.
     pub const DEFAULT_LINEAR_MOTOR_SPEED: f32 = 0.5;
+
+    /// What a newly breakable joint is seeded with, **newtons**.
+    ///
+    /// A seed, not a physical constant — the checkbox is off by default (P7), so
+    /// this is only the number the artist finds in the row when they turn
+    /// breaking on, and the one they then tune. Picked off the MEASURED scale
+    /// (`ph2d-physics/tests/measure_joint_break.rs`), where a hanging weight
+    /// reads its own weight exactly: 1 kg = 9.81 N, 10 kg = 98.1 N. **100 N is
+    /// "it holds about ten kilos"** — high enough that a joint does not part the
+    /// instant the box is ticked, low enough to reach by hanging a few crates.
+    pub const DEFAULT_BREAK_FORCE: f32 = 100.0;
+
+    /// The same seed for torque, **newton-metres**, on the same scale: a 1 kg
+    /// arm held out 0.5 m reads 4.905 N·m (measured, on both a hinge at its
+    /// limit and a servo), so **50 N·m is the same "about ten kilos" statement**
+    /// one lever-arm out.
+    pub const DEFAULT_BREAK_TORQUE: f32 = 50.0;
 
     /// The default motor speed for a kind, in **that kind's unit** — rad/s for a
     /// hinge, m/s for a rail or a winch.
@@ -488,6 +546,12 @@ impl PhysicsJoint {
         // the pose exactly as a NaN stiffness does (measured, above).
         self.motor_target = finite(self.motor_target, d.motor_target);
         self.motor_max_force = finite(self.motor_max_force, d.motor_max_force).max(0.0);
+        // A threshold flows into the comparison that decides a break. A NaN there
+        // makes EVERY comparison false — the joint would be silently unbreakable
+        // with the checkbox ticked — and a negative one makes every comparison
+        // true, so it would part on the first frame under its own weight.
+        self.break_force = finite(self.break_force, d.break_force).max(0.0);
+        self.break_torque = finite(self.break_torque, d.break_torque).max(0.0);
         self.rest_length = finite(self.rest_length, d.rest_length).max(0.0);
         self.stiffness = finite(self.stiffness, d.stiffness).max(0.0);
         self.damping = finite(self.damping, d.damping).max(0.0);

@@ -10,7 +10,7 @@
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 
-use crate::state::{self, MarkerRename, TimelinePanelState};
+use crate::state::{self, TimelinePanelState};
 
 /// Interpret one marker gesture at storage `index`. `time_x` is the ruler's left
 /// edge (where `view_start` maps).
@@ -51,22 +51,16 @@ pub(crate) fn apply(
             }
         }
         GesturePhase::DoubleClick => {
-            // A double-click on the pennant opens the inline rename field. The
-            // Begin that preceded this pushed BeginEdit; close that empty bracket
-            // (the rename commits later as its own one-step edit). Alt is the
-            // delete modifier — the first click of the pair already removed the
-            // marker, so an Alt double-click just closes the bracket, no rename.
+            // Unreachable by contract: a marker no longer opts into double-click
+            // (`TimelineHitKind::wants_double_click`, 2026-07-25) — its Rename / Set
+            // Signal / Delete moved to the right-click menu (`marker_menu`), so a
+            // second tap arrives as a plain Click (it re-seeks). Kept exhaustive and
+            // defensive: close the empty bracket the preceding Begin opened, and arm
+            // nothing — if the double-click list ever re-adds the marker, this must
+            // not resurrect the old inline authoring.
+            let _ = index;
             state.marker_drag = None;
             state::push_intent(TimelineIntent::EndEdit);
-            if !g.mods.alt {
-                // Shift+double-click edits the marker's SIGNAL (ADR-0143); a plain
-                // double-click edits its label. One field, two modes.
-                state.marker_rename = Some(MarkerRename {
-                    index,
-                    opened: false,
-                    editing_signal: g.mods.shift,
-                });
-            }
         }
     }
 }

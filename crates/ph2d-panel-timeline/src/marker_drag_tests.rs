@@ -141,11 +141,14 @@ fn dragging_streams_absolute_moves_inside_one_bracket() {
 }
 
 #[test]
-fn a_double_click_arms_the_rename_and_raises_no_edit() {
+fn a_double_click_no_longer_arms_a_rename() {
+    // Authoring (Rename / Set Signal / Delete) moved to the marker's right-click
+    // menu (ADR-0143, 2026-07-25), and the marker left `wants_double_click`, so a
+    // second tap arrives as a plain Click (it re-seeks). The `DoubleClick` arm is
+    // unreachable by contract — this pins that IF one ever arrives it closes the
+    // empty bracket and arms NOTHING, so the old inline authoring cannot resurrect.
     let mut st = TimelinePanelState::default();
     let s = snap();
-    // The pair's second press: Begin opens an empty bracket, DoubleClick closes
-    // it and arms the rename for this marker (paint seeds + focuses next frame).
     apply(
         &mut st,
         0.0,
@@ -167,80 +170,11 @@ fn a_double_click_arms_the_rename_and_raises_no_edit() {
         vec![TimelineIntent::BeginEdit, TimelineIntent::EndEdit],
         "the double-click closes its empty bracket and raises no document edit"
     );
-    assert_eq!(
-        st.marker_rename
-            .map(|m| (m.index, m.opened, m.editing_signal)),
-        Some((0, false, false)),
-        "the rename is armed for marker 0, not yet seeded, in LABEL mode"
-    );
-    assert!(st.marker_drag.is_none());
-}
-
-#[test]
-fn a_shift_double_click_arms_the_signal_editor_not_the_label() {
-    let mut st = TimelinePanelState::default();
-    let s = snap();
-    let shift_double = |phase| TimelineGesture {
-        surface: ph2d_a11y::NodeId(0),
-        kind: TimelineHitKind::Marker { index: 0 },
-        phase,
-        x: 100.0,
-        y: 0.0,
-        button: PointerButton::Primary,
-        mods: GestureMods {
-            shift: true,
-            cmd: false,
-            alt: false,
-        },
-    };
-    apply(
-        &mut st,
-        0.0,
-        100.0,
-        &s,
-        0,
-        shift_double(GesturePhase::Begin),
-    );
-    apply(
-        &mut st,
-        0.0,
-        100.0,
-        &s,
-        0,
-        shift_double(GesturePhase::DoubleClick),
-    );
-    assert_eq!(
-        st.marker_rename.map(|m| (m.index, m.editing_signal)),
-        Some((0, true)),
-        "Shift+double-click arms the SIGNAL editor (ADR-0143), not the label"
-    );
-}
-
-#[test]
-fn an_alt_double_click_deletes_and_never_opens_a_rename() {
-    let mut st = TimelinePanelState::default();
-    let s = snap();
-    apply(
-        &mut st,
-        0.0,
-        100.0,
-        &s,
-        0,
-        gesture(GesturePhase::Begin, 100.0, true),
-    );
-    apply(
-        &mut st,
-        0.0,
-        100.0,
-        &s,
-        0,
-        gesture(GesturePhase::DoubleClick, 100.0, true),
-    );
     assert!(
         st.marker_rename.is_none(),
-        "Alt is the delete modifier — a double-click with it never renames"
+        "a double-click no longer arms the rename — that is the marker menu's job now"
     );
-    let _ = state::drain_intents();
+    assert!(st.marker_drag.is_none());
 }
 
 #[test]

@@ -24,6 +24,11 @@ pub use ph2d_editor_core::ids::{
 pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_AUTO_ORIENT, CTX_MENU_TL_DELETE_TRACK, CTX_MENU_TL_TO_AXES, CTX_MENU_TL_TO_PATH,
 };
+// Marker right-click menu (ADR-0143): the pennant's whole edit surface.
+pub use ph2d_editor_core::ids::{
+    CTX_MENU_TL_DELETE_MARKER, CTX_MENU_TL_RENAME_MARKER, CTX_MENU_TL_SET_SIGNAL,
+    TIMELINE_MARKER_MENU,
+};
 pub use ph2d_editor_core::ids::{
     CTX_MENU_TL_LANE_ADDITIVE, CTX_MENU_TL_LANE_DELETE, CTX_MENU_TL_LANE_OVERRIDE,
     CTX_MENU_TL_LANE_RENAME, TIMELINE_LANE_MENU, TIMELINE_LANE_ROW, TIMELINE_LANE_WEIGHT,

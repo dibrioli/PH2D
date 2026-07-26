@@ -194,6 +194,32 @@ pub const TIMELINE_STRIP_MENU: [(NodeId, &str, Option<[u8; 4]>); 7] = [
     (CTX_MENU_TL_STRIP_RESET_SPEED, "Reset Speed", None),
 ];
 
+// ── Timeline marker menu (ADR-0143) ─────────────────────────────────────────
+// Right-click a marker pennant on the ruler for its whole EDIT surface. What a
+// pointer already SAYS is deliberately NOT here — a plain click seeks the
+// playhead and a drag moves the marker in time — so the menu carries only the
+// three verbs that used to hide behind double-click / Shift+double-click /
+// Alt+click (Enio, 2026-07-25: *"todas as opções de marker no menu do botão
+// direito"*). Same one-table-three-consumers shape as the track/lane menus.
+/// Rename the marker's LABEL — opens the inline field in label mode.
+pub const CTX_MENU_TL_RENAME_MARKER: NodeId = hash_node_id("ctx_menu_tl_rename_marker");
+/// Edit the marker's SIGNAL (ADR-0143) — opens the same inline field in signal
+/// mode; committing a blank name clears the signal.
+pub const CTX_MENU_TL_SET_SIGNAL: NodeId = hash_node_id("ctx_menu_tl_set_signal");
+/// Delete the marker (`TimelineIntent::RemoveMarker`, one undo step).
+pub const CTX_MENU_TL_DELETE_MARKER: NodeId = hash_node_id("ctx_menu_tl_delete_marker");
+
+/// The marker menu, in paint order: the two edits, then the destroy last (the
+/// track/lane convention). One table, three consumers — the overlay paints it,
+/// `pre_populate` registers it, and the timeline panel's `apply_event` resolves
+/// every row (via `marker_menu::route`); a row added here and unhandled there is
+/// a menu item that silently does nothing — the bug this table shape prevents.
+pub const TIMELINE_MARKER_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
+    (CTX_MENU_TL_RENAME_MARKER, "Rename Marker", None),
+    (CTX_MENU_TL_SET_SIGNAL, "Set Signal", None),
+    (CTX_MENU_TL_DELETE_MARKER, "Delete Marker", None),
+];
+
 /// The easing-family submenu, shared by all three modes (the mode rides in the
 /// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
 /// families (overshoot, bounce) last — the order animators scan.

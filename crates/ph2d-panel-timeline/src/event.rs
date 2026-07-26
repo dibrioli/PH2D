@@ -233,6 +233,12 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if crate::event_track_menu::route(host, id).is_some() => {
             EventOutcome::Consumed
         }
+        // O menu do botão direito num MARKER (Rename / Set Signal / Delete, ADR-0143).
+        // Mora no `marker_menu`, que precisa do `state` — as duas edições abrem o campo
+        // inline (`marker_rename`), estado do painel, não intent.
+        WidgetEvent::Click(id) if crate::marker_menu::route(state, host, id).is_some() => {
+            EventOutcome::Consumed
+        }
         // Marker rename field (W4.T3). Enter → Submit, click-away → Blur both
         // commit (the `take` inside makes the Enter→Submit+Blur pair idempotent);
         // Esc → Cancel abandons it.

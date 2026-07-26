@@ -120,6 +120,11 @@ pub(super) fn handle_down_menus(
                         Some(ContextMenuKind::TimelineStrip { lane, strip })
                     }
                     K::LaneHeader { lane } => Some(ContextMenuKind::TimelineLane { lane }),
+                    // A marker pennant: its whole edit surface (Rename / Set Signal /
+                    // Delete, ADR-0143). Down does not CAPTURE the marker on Secondary
+                    // (pointer_down.rs reserves it for exactly this), so the right-click
+                    // reaches here instead of the drag path.
+                    K::Marker { index } => Some(ContextMenuKind::TimelineMarker { index }),
                     _ => None,
                 }
             });

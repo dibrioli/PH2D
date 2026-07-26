@@ -198,6 +198,15 @@ pub enum ContextMenuKind {
         /// a different strip by the time the click arrives.
         strip: u64,
     },
+    /// Right-clicked a marker pennant on the ruler (`ids::TIMELINE_MARKER_MENU`,
+    /// ADR-0143). Menu offers a marker's whole EDIT surface — Rename / Set Signal /
+    /// Delete — the three verbs that used to hide behind double-click,
+    /// Shift+double-click and Alt+click (Enio, 2026-07-25: *"todas as opções de
+    /// marker no menu do botão direito"*). A plain click still seeks and a drag
+    /// still moves, so those stay off the menu. `index` is the marker's storage
+    /// index, opaque here — the timeline panel keys its document by it (like
+    /// [`Self::TimelineLane`] carries a lane index).
+    TimelineMarker { index: usize },
 }
 
 /// What a timeline preset pick applies to. Both variants are opaque here —
@@ -512,12 +521,17 @@ impl TimelineHitKind {
     /// as the Painter's heading warm-up: a reader list far from its variants rots on the
     /// first new reader.
     ///
+    /// ⚠️ The MARKER was dropped from this list (2026-07-25): its double-click / Shift+double-click
+    /// authoring moved to the right-click menu ([`ContextMenuKind::TimelineMarker`], Rename / Set
+    /// Signal / Delete), so a second tap on a pennant is now a plain Click (it re-seeks) — and if it
+    /// still upgraded, `marker_drag` no longer arms anything on `DoubleClick`.
+    ///
     /// Every other surface keeps treating a second tap as a plain Click ON PURPOSE — a key
     /// diamond re-selects, an empty lane re-clears; upgrading them would change behaviour
     /// nobody asked for.
     #[must_use]
     pub fn wants_double_click(self) -> bool {
-        matches!(self, Self::Marker { .. } | Self::ContainerRow { .. })
+        matches!(self, Self::ContainerRow { .. })
     }
 }
 
@@ -576,48 +590,5 @@ pub struct TimelineGesture {
 }
 
 #[cfg(test)]
-mod timeline_hit_kind_tests {
-    use super::TimelineHitKind as K;
-
-    /// **Exactly two surfaces upgrade a second tap, and the list is pinned.**
-    ///
-    /// The marker (double-click renames) and the container bar (double-click enters). Every
-    /// other surface treats the pair as a plain Click on purpose — this gate is what makes
-    /// widening or narrowing that list a decision instead of a drive-by: the container bar
-    /// was dead under the mouse precisely because the list lived inline in `pointer_up.rs`
-    /// where no test enumerated it.
-    #[test]
-    fn exactly_the_marker_and_the_container_bar_want_a_double_click() {
-        let wants = [K::Marker { index: 0 }, K::ContainerRow { index: 0 }];
-        let plain = [
-            K::Lane,
-            K::Key { target: 0, key: 0 },
-            K::SummaryKey { t_bits: 0 },
-            K::Twirl { target: 0 },
-            K::Row {
-                target: 0,
-                menu: super::super::TrackMenuKind::Plain,
-            },
-            K::SummaryLock,
-            K::LabelSplitter,
-            K::CurveAnchor { target: 0, key: 0 },
-            K::CurveHandle {
-                target: 0,
-                key: 0,
-                which: 0,
-            },
-            K::GraphResize,
-            K::LoopBrace { edge: 0 },
-            K::Strip {
-                lane: 0,
-                strip: 0,
-                edge: 2,
-            },
-            K::LaneHeader { lane: 0 },
-            K::ResizeEdge { edges: 0 },
-            K::DurationHandle,
-        ];
-        assert!(wants.iter().all(|k| k.wants_double_click()));
-        assert!(plain.iter().all(|k| !k.wants_double_click()));
-    }
-}
+#[path = "types_tests.rs"]
+mod timeline_hit_kind_tests;

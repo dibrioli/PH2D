@@ -118,10 +118,11 @@ fn update_streams_past_the_rect_edge() {
 }
 
 #[test]
-fn double_clicking_a_marker_emits_a_double_click_gesture() {
-    // Two taps on the same marker within the double-click window (the test clock
-    // is fixed at 0, so any two Downs qualify) upgrade the SECOND tap to
-    // DoubleClick — the phase the panel turns into "open the rename field".
+fn double_clicking_a_marker_is_now_a_plain_click() {
+    // The marker LEFT `wants_double_click` on 2026-07-25: its Rename / Set Signal /
+    // Delete moved to the right-click menu (ADR-0143), so a fast double-tap on a
+    // pennant is TWO plain Clicks (it re-seeks) — the second must NOT upgrade to
+    // DoubleClick, or `marker_drag`'s (now inert) DoubleClick arm would fire.
     let (mut store, hits) = timeline_setup(TimelineHitKind::Marker { index: 0 });
     let arena = Bump::new();
     for _ in 0..2 {
@@ -139,25 +140,22 @@ fn double_clicking_a_marker_emits_a_double_click_gesture() {
         );
     }
     let g: Vec<_> = store.drain_timeline_gestures().collect();
-    assert_eq!(g.len(), 4, "Begin, Click, Begin, DoubleClick");
-    assert_eq!(
-        g[1].phase,
-        GesturePhase::Click,
-        "the first tap is a plain click"
-    );
+    assert_eq!(g.len(), 4, "Begin, Click, Begin, Click");
+    assert_eq!(g[1].phase, GesturePhase::Click, "the first tap is a click");
     assert_eq!(
         g[3].phase,
-        GesturePhase::DoubleClick,
-        "the second tap upgrades to DoubleClick"
+        GesturePhase::Click,
+        "the second tap stays a plain Click — a marker no longer upgrades"
     );
     assert!(matches!(g[3].kind, TimelineHitKind::Marker { index: 0 }));
 }
 
 #[test]
-fn double_clicking_a_key_stays_a_click_double_click_is_markers_only() {
-    // The DoubleClick upgrade is gated to markers: a fast double-tap on a key
-    // diamond must still read as two plain Clicks, so no other timeline surface
-    // changes behaviour from the double-click plumbing.
+fn double_clicking_a_key_stays_a_click() {
+    // The DoubleClick upgrade is gated to the CONTAINER BAR only (the marker left
+    // the list on 2026-07-25): a fast double-tap on a key diamond must still read
+    // as two plain Clicks, so no other timeline surface changes behaviour from the
+    // double-click plumbing.
     let (mut store, hits) = timeline_setup(TimelineHitKind::Key { target: 1, key: 0 });
     let arena = Bump::new();
     for _ in 0..2 {
@@ -414,6 +412,34 @@ fn right_clicking_a_row_label_opens_the_track_menu() {
         store.context_menu().map(|r| r.kind),
         Some(ContextMenuKind::TimelineTrackPath { target: 42 }),
         "uma track de trajetória tem de abrir o menu que tem o Auto-Orient"
+    );
+    assert_eq!(
+        store.drain_timeline_gestures().count(),
+        0,
+        "and must NOT start a drag gesture"
+    );
+    assert_eq!(store.active_id(), None, "nor capture the pointer");
+}
+
+#[test]
+fn right_clicking_a_marker_opens_the_marker_menu() {
+    // A marker pennant owns its whole EDIT menu (Rename / Set Signal / Delete,
+    // ADR-0143), carrying its storage index — the resolver arm that makes the
+    // right-click do anything at all. Never a drag capture (Secondary is reserved
+    // for the menu, mirroring the row label and the segment menu).
+    use crate::interaction::ContextMenuKind;
+    let (mut store, hits) = timeline_setup(TimelineHitKind::Marker { index: 3 });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        rmb(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    assert_eq!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::TimelineMarker { index: 3 }),
+        "right-click on a marker must open the marker menu for that index"
     );
     assert_eq!(
         store.drain_timeline_gestures().count(),

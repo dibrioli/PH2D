@@ -336,10 +336,11 @@ pub struct MarkerRename {
     pub index: usize,
     /// The field has been registered + seeded with the current label + focused.
     pub opened: bool,
-    /// The field is editing the marker's SIGNAL (ADR-0143), not its label — opened
-    /// by Shift+double-click. One field, two modes: same widget id, same seeding
-    /// rule and Enter/Esc/click-away contract, differing only in which value it
-    /// seeds from and which intent it commits (`SetMarkerSignal` vs `RenameMarker`).
+    /// The field is editing the marker's SIGNAL (ADR-0143), not its label — set by
+    /// the marker menu's *Set Signal* row (`marker_menu`), the label mode by *Rename
+    /// Marker*. One field, two modes: same widget id, same seeding rule and
+    /// Enter/Esc/click-away contract, differing only in which value it seeds from and
+    /// which intent it commits (`SetMarkerSignal` vs `RenameMarker`).
     pub editing_signal: bool,
 }
 

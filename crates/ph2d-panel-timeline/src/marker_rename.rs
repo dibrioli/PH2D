@@ -1,7 +1,8 @@
-//! Inline marker-rename field (W4.T3).
+//! Inline marker-rename field (W4.T3; opened from the marker menu, ADR-0143).
 //!
-//! Double-clicking a marker pennant opens a single-line `TextInput` just below
-//! the ruler, seeded with the marker's current label. It mirrors the hierarchy
+//! The marker's right-click menu (`marker_menu`) opens a single-line `TextInput`
+//! just below the ruler — seeded with the marker's LABEL (Rename Marker) or its
+//! SIGNAL (Set Signal), one field, two modes. It mirrors the hierarchy
 //! row rename (the uncoupled template): the field text lives in the `WidgetStore`
 //! like every other text field, so the global focus routing feeds it characters
 //! and — because a focused `TextInput` trips the shell's `vector_text_field_focused`
@@ -48,8 +49,8 @@ pub(crate) fn paint(
         state.marker_rename = None;
         return;
     };
-    // One field, two modes: seed from the marker's SIGNAL in signal mode
-    // (Shift+double-click, ADR-0143), else from its label.
+    // One field, two modes: seed from the marker's SIGNAL in signal mode (the
+    // menu's Set Signal, ADR-0143), else from its label (Rename Marker).
     let seed = if mr.editing_signal {
         signal.clone().unwrap_or_default()
     } else {

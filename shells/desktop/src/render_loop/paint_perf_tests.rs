@@ -3,7 +3,10 @@
 //! ⚠️ O estado do agregador é `thread_local` e cada teste do Rust roda na própria thread, então o
 //! `ON` cacheado e o `AGG` são privados a cada gate — nenhum contamina o outro.
 
-use super::{FrameInfo, end_frame, force_on, latency_samples, pq, record_dispatch, stamp_pointer};
+use super::{
+    FrameInfo, end_frame, force_on, latency_samples, pq, record_dispatch, record_input,
+    stamp_pointer,
+};
 
 /// Arma o agregador para ESTA thread (sem tocar no ambiente — ver [`super::force_on`]).
 fn arm() {
@@ -93,5 +96,38 @@ fn the_event_counter_counts_every_event_not_every_batch() {
         super::events_seen(),
         3,
         "o contador registrou lotes, nao eventos — e lotes o relatorio ja contava em `n`"
+    );
+}
+
+/// **O custo do `on_canvas_pointer` é acumulado POR FRAME, e zerado a cada frame.**
+///
+/// Ele mede o trabalho que acontece **fora** do `run_render_frame` — o `PaintFrameTimer` cobre só
+/// aquele escopo, e carimbar dabs roda no handler de input do winit. Foi por isso que a 1ª leitura com
+/// período real mostrou `frame p50 16,7 ms` contra **99,9 ms de período**: 83 ms por frame que nenhum
+/// dos 17 sub-slots do relatório enxergava.
+///
+/// ⚠️ **Mutação que deve sangrar:** não zerar o acumulador no `end_frame` (`a.input_ms` em vez de
+/// `std::mem::take`) — ele viraria um total corrido e o p50 do relatório subiria sozinho a cada frame.
+#[test]
+fn the_input_cost_is_per_frame_not_a_running_total() {
+    arm();
+    record_input(4.0);
+    record_input(6.0);
+    record_dispatch(FrameInfo::default());
+    end_frame(1.0);
+    record_dispatch(FrameInfo::default());
+    end_frame(1.0); // um frame SEM evento nenhum
+    let hist = super::input_hist();
+    assert_eq!(hist.len(), 2);
+    assert!(
+        (hist[0] - 10.0).abs() < 1e-3,
+        "o 1o frame somou {:.1} ms em vez dos 10 que recebeu",
+        hist[0]
+    );
+    assert!(
+        hist[1].abs() < 1e-3,
+        "o 2o frame nao recebeu evento nenhum e mesmo assim reportou {:.1} ms — o acumulador virou \
+         um total corrido, e o p50 do relatorio sobe sozinho a cada frame",
+        hist[1]
     );
 }

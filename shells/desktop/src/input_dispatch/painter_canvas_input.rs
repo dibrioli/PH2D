@@ -464,7 +464,15 @@ impl App {
         // `evento → frame`. Aqui, e não antes das guardas: um Down fora da pegada do sprite cai para o
         // pan/seleção e nunca vira pixel, então cronometrá-lo mediria uma latência que não existe.
         crate::render_loop::paint_perf::stamp_pointer();
-        painter.on_canvas_pointer(ev)
+        // …e quanto ele CUSTA. ⚠️ Isto roda no handler de input do winit, FORA do `run_render_frame`
+        // que o `PaintFrameTimer` cronometra — então até aqui carimbar dabs a 4096² não aparecia em
+        // `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots do relatório.
+        let t0 = crate::render_loop::paint_perf::on().then(std::time::Instant::now);
+        let consumed = painter.on_canvas_pointer(ev);
+        if let Some(t0) = t0 {
+            crate::render_loop::paint_perf::record_input(t0.elapsed().as_secs_f64() as f32 * 1e3);
+        }
+        consumed
     }
 
     /// Enter: commit the in-progress shape (Curve/Circle — bake the painted stroke). Returns `true`

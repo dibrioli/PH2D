@@ -80,6 +80,17 @@ struct Agg {
     /// real (Enio, 4096², 2026-07-25) deu `p50 34,3 ms` com `frame p50 4,7 ms` — aritmética que só
     /// fecha se uma das duas for verdade, e o relatório não dizia qual.
     events: u32,
+    /// **O trabalho de pintar, que acontece FORA do frame.** Acumulado dentro da janela entre dois
+    /// `end_frame`, em ms.
+    ///
+    /// ⚠️ **O `PaintFrameTimer` cobre o `run_render_frame` inteiro — e o `on_canvas_pointer` NÃO roda
+    /// lá dentro.** Ele roda no handler de input do winit, então carimbar dabs (a 4096², com impasto)
+    /// nunca apareceu em `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots. A 1ª leitura com
+    /// período real mostrou o buraco: `frame p50 16,7 ms` e **período 99,9 ms/frame**, com 8,8 eventos
+    /// por frame — 83 ms por frame fora de tudo que o relatório media.
+    input_ms: f32,
+    /// Por-frame, o acumulado acima.
+    input_hist: Vec<f32>,
     /// Início da janela, para o **PERÍODO** real do frame (`span / frames`).
     ///
     /// ⚠️ O `frame p50` mede o **TRABALHO** dentro do frame, não o intervalo entre frames — e a
@@ -119,8 +130,19 @@ pub(crate) fn stamp_pointer() {
     });
 }
 
+/// **Quanto este evento custou DENTRO do `on_canvas_pointer`** — o trabalho de carimbar dabs.
+///
+/// Irmão do [`stamp_pointer`]: aquele diz quando o evento CHEGOU, este diz quanto ele CUSTOU. Os dois
+/// juntos são a diferença entre *"o frame demora a sair"* e *"pintar é caro e ninguém estava olhando"*.
+pub(crate) fn record_input(ms: f32) {
+    if !on() {
+        return;
+    }
+    AGG.with(|cell| cell.borrow_mut().input_ms += ms);
+}
+
 /// Whether `PH2D_PAINT_PERF` is set (cached — no per-frame syscall).
-pub(super) fn on() -> bool {
+pub(crate) fn on() -> bool {
     ON.with(|c| {
         if c.get() < 0 {
             c.set(i8::from(std::env::var_os("PH2D_PAINT_PERF").is_some()));
@@ -152,6 +174,7 @@ pub(super) fn end_frame(total_ms: f32) {
         }
         a.samples.push(cur);
         a.frame_ms.push(total_ms);
+        a.input_hist.push(std::mem::take(&mut a.input_ms));
         if cur.gpu {
             a.gpu += 1;
         } else {
@@ -162,6 +185,7 @@ pub(super) fn end_frame(total_ms: f32) {
             a.samples.clear();
             a.frame_ms.clear();
             a.latency_ms.clear();
+            a.input_hist.clear();
             a.events = 0;
             a.window_start = None;
             a.gpu = 0;
@@ -268,12 +292,15 @@ fn emit(a: &Agg) {
             .map_or(0.0, |t| t.elapsed().as_secs_f32() * 1e3 / frames);
         eprintln!(
             "[paint-perf]   EVENTO->FRAME p50={:.1} p95={:.1} max={:.1} ms (n={}) · alvo 9 \
-             | periodo real {period:.1} ms/frame · {:.1} eventos/frame",
+             | periodo real {period:.1} ms/frame · {:.1} eventos/frame \
+             | INPUT (fora do frame) p50={:.1} max={:.1} ms",
             pq(&a.latency_ms, 0.5),
             pq(&a.latency_ms, 0.95),
             a.latency_ms.iter().fold(0.0f32, |m, v| m.max(*v)),
             a.latency_ms.len(),
             f32::from(u16::try_from(a.events).unwrap_or(u16::MAX)) / frames,
+            p50(&a.input_hist),
+            a.input_hist.iter().fold(0.0f32, |m, v| m.max(*v)),
         );
     }
 }
@@ -317,6 +344,12 @@ mod tests;
 #[cfg(test)]
 pub(super) fn force_on() {
     ON.with(|c| c.set(1));
+}
+
+/// Só em teste: o custo do input por frame, na janela corrente.
+#[cfg(test)]
+pub(super) fn input_hist() -> Vec<f32> {
+    AGG.with(|a| a.borrow().input_hist.clone())
 }
 
 /// Só em teste: quantos eventos a janela corrente viu.

@@ -60,10 +60,53 @@ pub(crate) struct PainterGpuPreview {
 /// O gatilho é o **bind do documento**: o artista escolhe o sprite, depois leva o mouse até a tela e
 /// clica — há tempo HUMANO nesse vão, e é ali que os 28 ms cabem sem ninguém ver. Fazê-lo no boot
 /// cobraria os mesmos 28 ms de quem nunca pinta; fazê-lo por frame seria pior que o lazy.
-pub(crate) fn prewarm(session_slot: &mut Option<PainterGpuPreview>, gpu: &GpuContext) {
+pub(crate) fn prewarm(
+    session_slot: &mut Option<PainterGpuPreview>,
+    renderer: &mut SpriteRenderer,
+    painter: &PainterTool,
+    selection: u64,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
+) {
     if session_slot.is_none() {
-        *session_slot = Some(PainterGpuPreview::new(gpu));
+        *session_slot = Some(PainterGpuPreview::new(renderer.gpu()));
     }
+    // ⚠️ E os RECURSOS, que é a metade que o smoke isolou. As texturas dos três passes nascem do
+    // TAMANHO DO CANVAS e a primeira execução as aloca e as semeia (upload dos planos por PCIe) —
+    // medido em `ph2d-render/tests/measure_first_stroke_pipelines.rs`, o que só a 1ª execução paga:
+    // **0,76 ms a 1024² · 2,72 a 2048² · 13,21 a 4096²**, que é exactamente a escada que o Enio
+    // descreveu (*"quanto menor o IMG menor o atraso; 1024 nem se percebe"*).
+    //
+    // ⚠️ **A `gpu_eligible` NÃO pode ser consultada aqui, e é isso que fazia o custo cair no 1º traço:**
+    // uma pilha recém-bindada é TRIVIAL e sem relevo, então ela recusa, nada é alocado, e o primeiro
+    // traço com relevo — que a torna não-trivial — aloca tudo de uma vez. O pré-aquecimento passa por
+    // cima dela DE PROPÓSITO e cozinha um frame que ninguém vê, só para as texturas existirem.
+    //
+    // O slot do renderer é liberado no frame seguinte (a pilha ainda é trivial, então o produtor CPU
+    // reassume) e isso está certo: o que precisava sobreviver são as texturas INTERNAS dos passes, que
+    // moram no `session_slot` e que o `release_slot` não toca.
+    let Some((ops, adj_luts)) = super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    else {
+        return;
+    };
+    let (w, h) = painter.source_size();
+    if w == 0 || h == 0 {
+        return;
+    }
+    drive(
+        session_slot,
+        renderer,
+        painter,
+        selection,
+        ops,
+        adj_luts,
+        w,
+        h,
+        (0, 0, w, h),
+        true,
+        painter_preview_gpu,
+        toasts,
+    );
 }
 
 impl PainterGpuPreview {

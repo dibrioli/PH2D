@@ -217,7 +217,14 @@ pub(super) fn dispatch(
             // ⚠️ E COMPILA os shaders do preview GPU agora, no vão humano entre escolher o sprite e
             // levar o mouse à tela — senão os 28 ms de criação de pipeline caem no primeiro traço, que
             // é o gesto em que o artista está esperando (doc 28 §4.8, medido).
-            painter_gpu_preview::prewarm(painter_gpu_preview, renderer.gpu());
+            painter_gpu_preview::prewarm(
+                painter_gpu_preview,
+                renderer,
+                painter,
+                bits,
+                painter_preview_gpu,
+                toasts,
+            );
             // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
             // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
             crate::impasto_smoke::arm_brush_once(painter);

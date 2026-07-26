@@ -25,7 +25,8 @@
 | H | Reusar a alocação para matar o page-fault | ⛔ **refutado por medição** | com o buffer já mapeado a cópia é **11,68 dos 12,35 ms** ⇒ a alocação vale **5%** |
 | I | **Latência do pen-down — o fork SERIAL** | ✅ **fechada** (§4.3) | 4096² digital **10,3 → 3,9 ms** · impasto **18,6 → 12,0** |
 | J | **Latência do pen-down — o resto** | 🟡 aberto, e **menor do que parecia** | contra um MOVE: fork **3,4** + planos **1,8**; o resto (5,5) é **um dab comum** (§4.5) |
-| M | 🎯 **O 1º traço COMPILAVA SHADERS** | ✅ **fechada** (§4.8) | **28,01 ms** de criação de pipeline pagos no primeiro traço; movidos para o bind do documento |
+| M | O 1º traço compilava pipelines | ✅ fechada (§4.8), mas **não era a causa** | ~10-28 ms (varia com a ordem), e **independente da tela** — o smoke refutou (§4.8.1) |
+| N | 🎯 **O 1º traço ALOCAVA as texturas** | ✅ **fechada** (§4.8.1) | **0,76 / 2,72 / 13,21 ms** a 1024²/2048²/4096² — a escada que o Enio descreveu |
 | K | **A tabela lida FORA da banda** | ✅ **fechada** (§4.6.1) | AA **2,60 → 1,43 ms/dab** · traço **110,2 → 96,9** virgem, **143,0 → 130,2** sobre tinta |
 | L | Colapsar a grade em 3 leituras | ⛔ **construído (2 formas) e REJEITADO** | **4,949** e **5,344** níveis contra **0,060** da grade. Casar mais um momento PIOROU ⇒ o erro não é dos momentos, é das QUINAS de `F` (§4.6.2) |
 
@@ -459,6 +460,49 @@ existe nos dois casos e produz os mesmos pixels; o que muda é *quando* ela é c
 comportamento vê isso. A afirmação é **posicional** (o pré-aquecimento vem depois do bind **e dentro da
 mesma cadeia de guards**, contando chaves — senão ele rodaria noutra condição, por exemplo em todo
 frame, que é pior que o lazy). Controle positivo nos dois alvos; **3 mutações, 3 sangram**.
+
+### 4.8.1 ⚠️ E o SMOKE refutou a §4.8 pela metade: pipeline não escala com a tela
+
+> *"primeiro traço ainda com atraso. Quanto menor o IMG menor o atraso. 1024 nem se percebe. Restante da
+> pintura com boa performance"* (Enio, 2026-07-26)
+
+**Uma escada com o tamanho do canvas não pode ser compilação de shader** — um pipeline é compilado uma
+vez e é **independente da tela**; os 28 ms seriam os mesmos a 1024 e a 4096. A §4.8 achou um custo real
+e o moveu, mas ele não era **o** custo.
+
+⚠️ **E a medição da §4.8 também não era estável:** re-rodada com os testes em outra ordem, o total dos
+pipelines saiu **10,43 ms** em vez de 28,01, e o "aquecimento do driver" que eu descartava saiu **8,51 ms**
+em vez de 1 177,84. **Quem roda primeiro paga a inicialização preguiçosa do driver** — o número por-peça
+não é atribuível, só o total é, e mesmo ele varia com a ordem.
+
+**O que escala com a tela são os RECURSOS.** As texturas dos três passes nascem no tamanho do canvas, e a
+**primeira execução** as aloca e as semeia (upload dos planos por PCIe). Medido — o que só a 1ª execução
+paga:
+
+| tela | 1ª execução | 2ª | **diferença** |
+|---|---|---|---|
+| 1024² | 1,87 | 1,11 | **0,76 ms** |
+| 2048² | 7,99 | 5,26 | **2,72** |
+| 4096² | 30,42 | 17,20 | **13,21** |
+
+É exactamente a escada relatada, incluindo o *"1024 nem se percebe"*.
+
+⚠️ **E o GATILHO fecha o relato:** `gpu_eligible` recusa uma pilha **trivial sem relevo**, que é o que um
+documento recém-bindado é ⇒ **nada é alocado**. O **primeiro traço com relevo** a torna não-trivial, o
+caminho GPU engata, e tudo nasce naquele instante. Por isso é o *primeiro* traço, por isso escala com a
+tela, e por isso *"o restante da pintura"* vai bem.
+
+**A cura:** o `prewarm` passou a **cozinhar um frame** no bind, não só construir pipelines — e ele
+**passa por cima da `gpu_eligible` de propósito**, porque consultá-la ali é exatamente o que adiava o
+custo. O slot do renderer é liberado no frame seguinte (a pilha ainda é trivial) e isso está certo: o
+que precisava sobreviver são as texturas **internas** dos passes, que moram no `session_slot` e que o
+`release_slot` não toca.
+
+⚠️ **E um buraco no meu próprio gate, achado por mutação:** a asserção *"o corpo contém `drive(`"* é
+satisfeita por **código morto** — um `return` antes dele deixa o texto no lugar e a chamada
+inalcançável, e essa mutação **SOBREVIVEU**. *"Contém a chamada"* não é *"a chamada roda"*. O gate agora
+também conta as SAÍDAS: o pré-aquecimento pode desistir por **dois** guards documentados (a `flatten`
+recusou · canvas 0×0) e por mais nenhum. **3 mutações, 3 sangram.**
 
 ### 4.7 A metade que FALTA — e por que ela é uma WAVE e não um fix
 

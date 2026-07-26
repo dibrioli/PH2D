@@ -10,7 +10,9 @@
 //! `#[ignore]`: precisa de um adapter real.
 
 use ph2d_gpu::GpuContext;
-use ph2d_render::{ImpastoLightPass, LayerCompositor, PreviewPremul};
+use ph2d_render::{
+    ImpastoLamp, ImpastoLightInput, ImpastoLightPass, LayerCompositor, PreviewPremul, Region,
+};
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -54,4 +56,85 @@ fn what_the_first_stroke_pays_to_build_the_gpu_preview() {
     println!("[first-gpu] ImpastoLightPass::new                {light:>8.2} ms");
     println!("[first-gpu] PreviewPremul::new                   {premul:>8.2} ms");
     println!("[first-gpu] TOTAL pago no 1o traco               {total:>8.2} ms");
+}
+
+/// **E o custo que ESCALA COM A TELA** — o que o smoke do Enio isolou (2026-07-26): *"quanto menor o
+/// IMG menor o atraso; 1024 nem se percebe"*.
+///
+/// ⚠️ **Isso REFUTA a compilação de pipeline como causa principal**: um pipeline é compilado uma vez e
+/// **independe do tamanho do canvas** — os 28 ms seriam os mesmos a 1024 e a 4096. O que escala com a
+/// tela **e** é pago uma vez são os **RECURSOS**: as texturas do passe de luz nascem do tamanho do
+/// canvas e a primeira execução as ALOCA e as SEMEIA (upload dos três planos por PCIe).
+///
+/// E o gatilho é o mesmo do relatório: uma pilha recém-bindada é **trivial**, então o caminho GPU é
+/// recusado e nada é alocado; o **primeiro traço com relevo** a torna não-trivial, e é ali que tudo
+/// nasce. Esta sonda mede a 1ª execução contra a 2ª, por tamanho: a diferença é o que o primeiro traço
+/// paga a mais.
+#[test]
+#[ignore = "perf measurement — needs a real adapter; run with --release --ignored"]
+fn what_the_first_lit_stroke_pays_per_canvas_size() {
+    let Some(gpu) = try_headless_gpu() else {
+        println!("[first-gpu] sem adapter — pulado");
+        return;
+    };
+    println!("[first-gpu] tela | 1a execucao | 2a | DIFERENCA (o que so o 1o traco paga)");
+    for side in [1024u32, 2048, 4096] {
+        let n = (side as usize) * (side as usize);
+        let relief = vec![0.5f32; n];
+        let cover = vec![200u8; n];
+        let mat0 = vec![0u8; n * 4];
+        let mat1 = vec![0u8; n * 4];
+        let spec_lut = vec![0.5f32; 256 * 65];
+        let src = make_rgba(&gpu, side, side);
+        let lamps = [ImpastoLamp {
+            dir: [0.4, 0.4, 0.8],
+            half: [0.2, 0.2, 0.95],
+            tint: [1.0, 1.0, 1.0],
+        }];
+        let mut pass = ImpastoLightPass::new(&gpu);
+        let input = ImpastoLightInput {
+            width: side,
+            height: side,
+            region: Region::full(side, side),
+            plane_region: Region::full(side, side),
+            relief: &relief,
+            cover: &cover,
+            mat0: &mat0,
+            mat1: &mat1,
+            lamps: &lamps,
+            spec_lut: &spec_lut,
+            lut_width: 256,
+            rough_levels: 65,
+        };
+        let first = ms(&mut || {
+            let _ = pass.run(&gpu, &src, &input);
+        });
+        let second = ms(&mut || {
+            let _ = pass.run(&gpu, &src, &input);
+        });
+        println!(
+            "[first-gpu] {side}^2 | {first:>8.2} | {second:>8.2} | {:>8.2} ms",
+            first - second
+        );
+    }
+}
+
+/// Uma textura RGBA do tamanho pedido, para o passe ter o que iluminar.
+fn make_rgba(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
+    gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("first-gpu src"),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::STORAGE_BINDING,
+        view_formats: &[],
+    })
 }

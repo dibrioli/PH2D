@@ -15,9 +15,11 @@
 //! sombra junto com a forma; `Blur → Drop Shadow` projeta a sombra da forma JÁ borrada. São dois
 //! desenhos, e a lista é como se escolhe entre eles.
 //!
-//! Cada linha oferece só os controles que o TIPO dela usa: o offset só existe na Drop Shadow, e a
-//! cor só no Glow / Drop Shadow (o Blur reusa os pixels que recebeu). Um knob morto ensina o
-//! artista a desconfiar dos vivos.
+//! Cada linha oferece só os controles que o TIPO dela usa — e **quem responde é a TABELA publicada
+//! pelo motor** (`FilterKindView`), nunca aritmética de código espalhada por aqui: só as sombras
+//! têm Offset, o Blur não tem cor (reusa os pixels que recebeu), o Color Overlay não tem raio
+//! (é pontual) e o Outline chama o raio de **Width** (a borda dele para exatamente ali). Um knob
+//! morto ensina o artista a desconfiar dos vivos.
 
 use super::*;
 use crate::state::filters as fst;
@@ -64,24 +66,43 @@ impl BodyCtx<'_> {
             return y;
         }
         for (row, fx) in stack.iter().enumerate().take(ids::MAX_FILTER_ROWS) {
-            y = self.filter_card(row, fx, stack.len(), y);
+            // Um `kind` sem spec publicada não é desenhável (a shell publica a tabela inteira; um
+            // buraco aqui seria um card sem nome e sem controles).
+            let Some(spec) = fst::kind_spec(fx.kind) else {
+                continue;
+            };
+            y = self.filter_card(row, fx, &spec, stack.len(), y);
         }
         // Os "Add": um por tipo PUBLICADO pelo motor. Um tipo novo aparece aqui sem este arquivo
         // saber que ele existe.
         if stack.len() < ids::MAX_FILTER_ROWS {
-            for (kind, name) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
-                y = self.action_button(ids::filter_add_id(kind), &format!("Add {name}"), y);
+            for (kind, spec) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
+                let label = format!("Add {}", spec.name);
+                y = self.action_button(ids::filter_add_id(kind), &label, y);
             }
         }
         y
     }
 
     /// Um degrau: o card, o cabeçalho de ícones e os parâmetros dentro dele.
-    fn filter_card(&mut self, row: usize, fx: &fst::FilterRowView, total: usize, y: f32) -> f32 {
+    ///
+    /// **Que rows existem é resposta da TABELA**, nunca do código do tipo — é isto que faz um tipo
+    /// novo nascer com os controles certos sem editar este arquivo.
+    fn filter_card(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        spec: &fst::FilterKindView,
+        total: usize,
+        y: f32,
+    ) -> f32 {
         let pad = Spacing::Sm.px();
         let head_h = self.row_h.max(ICON_PX);
-        // Radius + Opacity sempre; Offset X/Y só no Drop Shadow; Color no Glow / Drop Shadow.
-        let rows = 2 + usize::from(fx.kind == 2) * 2 + usize::from(fx.kind != 0);
+        // Opacity sempre; Radius, Offset X/Y e Color conforme o tipo.
+        let rows = 1
+            + usize::from(spec.radius_label.is_some())
+            + usize::from(spec.has_offset) * 2
+            + usize::from(spec.has_color);
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let card_h = pad + head_h + body_h + pad;
@@ -92,7 +113,13 @@ impl BodyCtx<'_> {
 
         let inner_x = self.inner_x + pad;
         let inner_w = self.inner_w - pad * 2.0;
-        self.filter_header(row, fx, total, Rect::new(inner_x, y + pad, inner_w, head_h));
+        self.filter_header(
+            row,
+            fx,
+            spec,
+            total,
+            Rect::new(inner_x, y + pad, inner_w, head_h),
+        );
 
         // Os parâmetros, indentados dentro do card. Guardo e restauro a coluna: o `slider_row`
         // desenha no `inner_x`/`inner_w` do CONTEXTO.
@@ -100,8 +127,10 @@ impl BodyCtx<'_> {
         self.inner_x = inner_x;
         self.inner_w = inner_w;
         let mut py = y + pad + head_h;
-        py = self.filter_radius_row(row, fx, py);
-        if fx.kind == 2 {
+        if let Some(label) = spec.radius_label {
+            py = self.filter_radius_row(row, fx, label, py);
+        }
+        if spec.has_offset {
             py = self.filter_offset_row(
                 "Offset X",
                 ids::filter_offx_id(row),
@@ -117,7 +146,7 @@ impl BodyCtx<'_> {
                 py,
             );
         }
-        if fx.kind != 0 {
+        if spec.has_color {
             py = self.filter_color_swatch(row, fx, py);
         }
         self.filter_opacity_row(row, fx, py);
@@ -132,7 +161,14 @@ impl BodyCtx<'_> {
     /// **Subir na primeira linha e descer na última não fazem nada — então não são desenhados**
     /// (a posição de cada ícone é contada da DIREITA, então a ausência de uma seta nas bordas não
     /// desloca os outros). Um ícone inerte ensina o artista a desconfiar dos que funcionam.
-    fn filter_header(&mut self, row: usize, fx: &fst::FilterRowView, total: usize, at: Rect) {
+    fn filter_header(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        spec: &fst::FilterKindView,
+        total: usize,
+        at: Rect,
+    ) {
         let (x, w, y, h) = (at.x, at.w, at.y, at.h);
         let dim = if fx.enabled {
             ColorToken::Text1
@@ -142,7 +178,7 @@ impl BodyCtx<'_> {
         paint_text(
             self.text_system,
             self.scene,
-            fx.label,
+            spec.name,
             x,
             y + (h - self.font) * 0.5,
             self.font,
@@ -188,12 +224,19 @@ impl BodyCtx<'_> {
         self.hit_index.register(id, rect);
     }
 
-    /// **Radius** — o `stdDev` do borrão (mundo), presente em todo degrau.
-    fn filter_radius_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+    /// **Radius** — o `stdDev` do borrão (mundo). O RÓTULO vem da tabela: no Outline ele é a
+    /// LARGURA do contorno, e chamá-lo de "Radius" ali prometeria outra coisa.
+    fn filter_radius_row(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        label: &str,
+        y: f32,
+    ) -> f32 {
         let (slider, chip) = (ids::filter_radius_id(row), ids::filter_radius_num_id(row));
         let track = live_track(self.store, slider, (fx.radius / FILTER_RADIUS_MAX) as f32);
         self.slider_row(
-            "Radius",
+            label,
             slider,
             chip,
             track,

@@ -17,7 +17,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_panel_vector::{FilterRowView, VectorPanel, ids};
+use ph2d_panel_vector::{FilterKindView, FilterRowView, VectorPanel, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
@@ -43,11 +43,6 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// Uma linha de pilha para o fixture.
 fn row(kind: u8) -> FilterRowView {
     FilterRowView {
-        label: match kind {
-            1 => "Glow",
-            2 => "Drop Shadow",
-            _ => "Blur",
-        },
         kind,
         enabled: true,
         radius: 0.12,
@@ -58,10 +53,35 @@ fn row(kind: u8) -> FilterRowView {
     }
 }
 
-/// Publica o estado que a shell publicaria: forma selecionada + a pilha dada.
+/// A tabela de tipos que a shell publica — espelho do `ph2d_ecs::FxOp::SPECS`, que este crate
+/// **não alcança** (vive de snapshots).
+///
+/// ⚠️ O que este arquivo prova é que **o painel OBEDECE a tabela** — presença e ausência de cada
+/// controle, para TODO tipo. Que a tabela chegue inteira do motor é outra pergunta, e ela tem uma
+/// resposta estrutural: o publish é uma única `map` sobre `FxOp::SPECS` (e o gate do shell pina
+/// que os TETOS dos dois lados concordam).
+fn kinds_table() -> Vec<FilterKindView> {
+    let k = |name, radius_label, has_offset, has_color| FilterKindView {
+        name,
+        radius_label,
+        has_offset,
+        has_color,
+    };
+    vec![
+        k("Blur", Some("Radius"), false, false),
+        k("Glow", Some("Radius"), false, true),
+        k("Drop Shadow", Some("Radius"), true, true),
+        k("Inner Shadow", Some("Radius"), true, true),
+        k("Inner Glow", Some("Radius"), false, true),
+        k("Outline", Some("Width"), false, true),
+        k("Color Overlay", None, false, true),
+    ]
+}
+
+/// Publica o estado que a shell publicaria: forma selecionada + a tabela + a pilha dada.
 fn publish(rows: Vec<FilterRowView>) {
     ph2d_panel_vector::set_current_filter_can_add(true);
-    ph2d_panel_vector::set_filter_kind_names(vec!["Blur", "Glow", "Drop Shadow"]);
+    ph2d_panel_vector::set_filter_kinds(kinds_table());
     ph2d_panel_vector::set_current_filters(rows);
 }
 
@@ -99,10 +119,14 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 /// tipo publicado pelo motor) têm de existir e despachar — é o único gesto que CRIA uma pilha.
 #[test]
 fn every_add_button_reaches_the_bus_when_clicked() {
-    for kind in 0..3usize {
+    for kind in 0..kinds_table().len() {
         publish(Vec::new());
         click_reaches_bus(ids::filter_add_id(kind), &format!("Add do tipo {kind}"));
     }
+    assert!(
+        kinds_table().len() <= ids::MAX_FILTER_KINDS,
+        "o teto de ids nao cobre a tabela — os ultimos tipos ficariam sem botao, em silencio"
+    );
 }
 
 /// **Os ícones do card chegam ao bus** — ✕ / ↑ / ↓ / 👁. O fixture monta uma
@@ -147,55 +171,62 @@ fn the_arrows_at_the_ends_are_not_painted() {
     );
 }
 
-/// **Cada linha oferece só os controles do TIPO dela.** Um Blur não tem cor nem offset (ele reusa
-/// os pixels que recebeu); um Drop Shadow tem os dois. Presença E ausência, na mesma pilha, para
-/// que a mutação "pinte tudo em toda linha" morra.
+/// **Cada linha oferece só os controles do TIPO dela — TODOS os tipos, presença E ausência.**
+///
+/// ⚠️ O laço varre a tabela inteira e pergunta a ELA o que exigir. A W2 comparava dois tipos
+/// escritos à mão (Blur × Drop Shadow) e teria ficado **verde** sobre os quatro tipos desta wave:
+/// um Color Overlay com slider de Radius (knob morto — o tipo é pontual) ou um Outline sem cor
+/// passariam sem que nada falhasse.
 #[test]
 fn a_row_paints_only_the_controls_its_kind_uses() {
-    // Linha 0 = Blur, linha 1 = Drop Shadow.
-    publish(vec![row(0), row(2)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
-    let painted = |host: &mut MockPanelHost, st: &mut VectorPanelState, id| {
-        host.painted_rect::<VectorPanel>(st, VIEWPORT, id).is_some()
-    };
-    // Radius e Opacity: em TODA linha.
-    for r in 0..2usize {
+    let table = kinds_table();
+    for (kind, spec) in table.iter().enumerate() {
+        publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let painted = |host: &mut MockPanelHost, st: &mut VectorPanelState, id| {
+            host.painted_rect::<VectorPanel>(st, VIEWPORT, id).is_some()
+        };
+        // Opacity: em TODA linha (é o "quanto" de qualquer degrau).
         assert!(
-            painted(&mut host, &mut st, ids::filter_radius_id(r)),
-            "Radius tem de existir na linha {r}"
+            painted(&mut host, &mut st, ids::filter_opacity_id(0)),
+            "Opacity tem de existir no {}",
+            spec.name
         );
-        assert!(
-            painted(&mut host, &mut st, ids::filter_opacity_id(r)),
-            "Opacity tem de existir na linha {r}"
+        assert_eq!(
+            painted(&mut host, &mut st, ids::filter_radius_id(0)),
+            spec.radius_label.is_some(),
+            "o Radius do {} discorda da tabela",
+            spec.name
+        );
+        for id in [ids::filter_offx_id(0), ids::filter_offy_id(0)] {
+            assert_eq!(
+                painted(&mut host, &mut st, id),
+                spec.has_offset,
+                "o Offset do {} discorda da tabela",
+                spec.name
+            );
+        }
+        assert_eq!(
+            painted(&mut host, &mut st, ids::filter_color_id(0)),
+            spec.has_color,
+            "a cor do {} discorda da tabela",
+            spec.name
         );
     }
-    // O Blur não tem offset nem cor.
-    assert!(
-        !painted(&mut host, &mut st, ids::filter_offx_id(0)),
-        "o Blur nao desloca — Offset X nele seria knob morto"
-    );
-    assert!(
-        !painted(&mut host, &mut st, ids::filter_color_id(0)),
-        "o Blur reusa os pixels que recebeu — a cor nele seria knob morto"
-    );
-    // A Drop Shadow tem os dois.
-    assert!(
-        painted(&mut host, &mut st, ids::filter_offy_id(1)),
-        "a Drop Shadow tem de oferecer Offset Y"
-    );
-    assert!(
-        painted(&mut host, &mut st, ids::filter_color_id(1)),
-        "a Drop Shadow tem de oferecer a cor do halo"
-    );
 }
+
+// ⚠️ **Não há gate para "o card usa o nome que a tabela dá".** O testkit de painel não tem oráculo
+// de TEXTO (só rects), e a garantia aqui é melhor que um gate: o `FilterRowView` **não tem campo
+// de rótulo** — o nome só pode vir da tabela, porque não existe outro sítio de onde ele possa vir.
+// Divergência inexprimível > divergência testada.
 
 /// A seção **NÃO** é oferecida sem seleção nem pilha viva — o cabeçalho nem sobe. É a metade
 /// AUSENTE do seam: um botão que aparece sobre a tela vazia editaria a forma errada.
 #[test]
 fn the_filters_section_is_not_offered_without_a_shape() {
     ph2d_panel_vector::set_current_filter_can_add(false);
-    ph2d_panel_vector::set_filter_kind_names(vec!["Blur", "Glow", "Drop Shadow"]);
+    ph2d_panel_vector::set_filter_kinds(kinds_table());
     ph2d_panel_vector::set_current_filters(Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;

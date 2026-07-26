@@ -38,7 +38,11 @@ pub const VECTOR_SECTION_FILTERS: NodeId = hash_node_id("vector.section.filters"
 pub const MAX_FILTER_ROWS: usize = 6;
 
 /// O teto de TIPOS que o menu "Add" oferece. Espelha o `ph2d_ecs::FxOp::KINDS`.
-pub const MAX_FILTER_KINDS: usize = 3;
+///
+/// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
+/// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
+/// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
+pub const MAX_FILTER_KINDS: usize = 7;
 
 /// **Add \<tipo\>** — põe um degrau do tipo `kind` no TOPO da pilha (o fim da lista).
 #[must_use]

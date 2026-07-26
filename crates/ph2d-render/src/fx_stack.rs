@@ -20,8 +20,18 @@
 //! DENTRO do próprio op** (`src_over(entrada, halo)`), em vez de pedir ao compositor que desenhe
 //! algo atrás da forma. Um op que devolvesse *duas* camadas não poderia alimentar o seguinte.
 //!
-//! Cada op custa **dois** dispatches (Gaussiana separável: H, depois V+finalize+composite), mais
-//! **um** `resolve` no fim para a pilha inteira.
+//! Um op que borra custa **dois** dispatches (Gaussiana separável: H, depois V+finalize+composite);
+//! um op **pontual** (o Color Overlay) custa **um**. Mais **um** `resolve` no fim, para a pilha
+//! inteira. Quem responde *"quantos passes?"* é [`passes_of`] — uma porta, dois consumidores (quem
+//! escreve os globals e quem despacha), porque as duas varreduras andam em lockstep sobre a mesma
+//! lista e um `if` duplicado as descasaria em silêncio.
+//!
+//! # Sete tipos, uma tabela
+//!
+//! Os códigos e o que cada tipo É vivem no [`ph2d_ecs::FxOp`] (`SPECS`): o painel lê a tabela para
+//! saber que controles oferecer, este passe lê para saber quanto espalhar e quantos dispatches
+//! gastar, e o **WGSL recebe os códigos GERADOS** ([`kind_consts_wgsl`]) em vez de os repetir do
+//! outro lado da fronteira de linguagem.
 //!
 //! # Os intermediários são `Rgba16Float`, e isso não é luxo
 //!
@@ -31,7 +41,13 @@
 //! custa nem uma feature: paga-se largura de banda em texturas temporárias, que são do tamanho da
 //! forma.
 
+use ph2d_ecs::FxOp;
 use ph2d_gpu::GpuContext;
+
+use crate::fx_stack_shader::{
+    FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, OUTLINE_AA_NUM, OUTLINE_LEVEL,
+    kind_consts_wgsl,
+};
 
 /// Meia-largura MÁXIMA do kernel (o laço do shader é limitado por ela). `96` cobre `sigma ≈ 32`
 /// px com suporte de 3σ — um borrão bem forte na tela. Acima disso o kernel satura no cap (o
@@ -75,6 +91,37 @@ pub fn kernel_half(sigma_px: f32) -> u32 {
     ((3.0 * sigma).ceil() as u32).clamp(1, MAX_HALF)
 }
 
+/// **Quantos dispatches este tipo custa.** Dois para quem borra (a Gaussiana é separável: H e
+/// depois V+finalize), **um** para quem é pontual (o Color Overlay não lê vizinho nenhum, e
+/// fingir uma Gaussiana de σ→0 para ele seria pagar um passe e ainda assim não ser identidade).
+///
+/// Porta única: quem ESCREVE os globals e quem os DESPACHA perguntam à mesma — as duas varreduras
+/// andam em lockstep sobre a mesma lista, e um `if` duplicado as descasaria em silêncio.
+#[must_use]
+fn passes_of(kind: u8) -> usize {
+    usize::from(FxOp::spec(kind).radius_label.is_some()) + 1
+}
+
+/// **Quanto ESTE degrau espalha para fora do que recebeu**, em pixels.
+///
+/// Três respostas, e cada uma é um fato sobre o tipo, não uma margem "por segurança":
+/// - quem não cresce ([`FxKindSpec::grows`](ph2d_ecs::FxKindSpec) falso) espalha **zero** — o
+///   Inner Shadow / Inner Glow desenham só DENTRO da forma, e o Color Overlay não move um texel de
+///   cobertura. Margem para eles seria textura paga a troco de nada;
+/// - o **Outline** espalha a LARGURA dele (`σ`), não o suporte do kernel (`3σ`): o corte é duro em
+///   `Φ(−1)`, então além de `σ` não sobra nada para recortar. (O kernel ainda percorre `3σ` — o
+///   *suporte* e o *alcance* são perguntas diferentes, e é por isso que são duas funções.)
+/// - o resto espalha o suporte da Gaussiana.
+fn op_reach(op: &FxOpGpu) -> u32 {
+    if !FxOp::spec(op.kind).grows {
+        return 0;
+    }
+    if op.kind == FxOp::OUTLINE {
+        return (op.sigma_px.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
+    }
+    kernel_half(op.sigma_px)
+}
+
 /// **Quanto a pilha inteira espalha, em pixels, para cada lado.** Devolve
 /// `(esquerda, cima, direita, baixo)`.
 ///
@@ -82,16 +129,20 @@ pub fn kernel_half(sigma_px: f32) -> u32 {
 /// função da pilha, nunca do maior degrau. O borrão espalha para os quatro lados; o deslocamento
 /// da sombra só para o lado para onde aponta, e é por isso que a margem é assimétrica (uma sombra
 /// longa para a direita não paga textura à esquerda).
+///
+/// ⚠️ O deslocamento de um op de DENTRO não conta: ele desloca o halo *dentro* da silhueta, e a
+/// máscara o corta na borda. Quem decide é a mesma [`FxOp::spec`] que decide as rows do painel.
 #[must_use]
 pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
     let (mut l, mut t, mut r, mut b) = (0u32, 0u32, 0u32, 0u32);
     for op in ops {
-        let half = kernel_half(op.sigma_px);
-        l += half;
-        t += half;
-        r += half;
-        b += half;
-        if op.kind == 2 {
+        let reach = op_reach(op);
+        l += reach;
+        t += reach;
+        r += reach;
+        b += reach;
+        let spec = FxOp::spec(op.kind);
+        if spec.has_offset && spec.grows {
             let (ox, oy) = (op.offset_px[0], op.offset_px[1]);
             l += ox.min(0).unsigned_abs();
             r += ox.max(0).unsigned_abs();
@@ -101,100 +152,6 @@ pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
     }
     (l, t, r, b)
 }
-
-const FX_STACK_WGSL: &str = r#"
-struct Globals {
-    dims: vec2<u32>,
-    half: u32,
-    kind: u32,
-    tint: vec4<f32>,
-    inv_two_sigma2: f32,
-    opacity: f32,
-    off_x: i32,
-    off_y: i32,
-};
-@group(0) @binding(0) var t0: texture_2d<f32>;
-@group(0) @binding(1) var t1: texture_2d<f32>;
-@group(0) @binding(2) var<uniform> g: Globals;
-
-fn gauss(i: f32) -> f32 { return exp(-i * i * g.inv_two_sigma2); }
-
-fn blur_h_at(id: vec3<u32>) -> vec4<f32> {
-    var acc = vec4<f32>(0.0);
-    var wsum = 0.0;
-    let h = i32(g.half);
-    let w = i32(g.dims.x);
-    for (var k = -h; k <= h; k = k + 1) {
-        let sx = clamp(i32(id.x) - g.off_x + k, 0, w - 1);
-        let wt = gauss(f32(k));
-        acc = acc + textureLoad(t0, vec2<i32>(sx, i32(id.y)), 0) * wt;
-        wsum = wsum + wt;
-    }
-    return acc / wsum;
-}
-
-fn blur_v_at(id: vec3<u32>) -> vec4<f32> {
-    var acc = vec4<f32>(0.0);
-    var wsum = 0.0;
-    let h = i32(g.half);
-    let hh = i32(g.dims.y);
-    for (var k = -h; k <= h; k = k + 1) {
-        let sy = clamp(i32(id.y) - g.off_y + k, 0, hh - 1);
-        let wt = gauss(f32(k));
-        acc = acc + textureLoad(t1, vec2<i32>(i32(id.x), sy), 0) * wt;
-        wsum = wsum + wt;
-    }
-    return acc / wsum;
-}
-"#;
-
-/// O corpo dos dois passes que escrevem em `rgba16float` (entre ops).
-const FX_STACK_MID_WGSL: &str = r#"
-@group(0) @binding(3) var dst: texture_storage_2d<rgba16float, write>;
-
-// Horizontal: entrada premultiplicada -> temp premultiplicada (com o deslocamento em X).
-@compute @workgroup_size(8, 8, 1)
-fn cs_blur_h(@builtin(global_invocation_id) id: vec3<u32>) {
-    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), blur_h_at(id));
-}
-
-// Vertical + finalize + composite: temp -> saída do OP, premultiplicada.
-//   Blur  : o borrado, com a opacidade do degrau.
-//   Glow / Drop Shadow: a cor do efeito com o alfa da silhueta borrada, POR BAIXO da entrada.
-@compute @workgroup_size(8, 8, 1)
-fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
-    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let blurred = blur_v_at(id);
-    var outc: vec4<f32>;
-    if (g.kind == 0u) {
-        outc = blurred * g.opacity;
-    } else {
-        // O halo já nasce PREMULTIPLICADO: `rgb = tint.rgb * a`.
-        let a = blurred.a * g.tint.a * g.opacity;
-        let halo = vec4<f32>(g.tint.rgb * a, a);
-        // A entrada, intacta, por CIMA do halo — é isto que faz o op ser imagem -> imagem.
-        let over = textureLoad(t0, vec2<i32>(i32(id.x), i32(id.y)), 0);
-        outc = over + halo * (1.0 - over.a);
-    }
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), outc);
-}
-"#;
-
-/// O passe final, que escreve em `rgba8unorm` com alfa RETO (o que o Vello amostra).
-const FX_STACK_OUT_WGSL: &str = r#"
-@group(0) @binding(3) var dst: texture_storage_2d<rgba8unorm, write>;
-
-@compute @workgroup_size(8, 8, 1)
-fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
-    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let premul = textureLoad(t0, vec2<i32>(i32(id.x), i32(id.y)), 0);
-    var rgb = vec3<f32>(0.0);
-    if (premul.a > 0.0001) { rgb = premul.rgb / premul.a; }
-    let outc = vec4<f32>(rgb, premul.a);
-    textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), clamp(outc, vec4<f32>(0.0), vec4<f32>(1.0)));
-}
-"#;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -207,6 +164,11 @@ struct Globals {
     opacity: f32,
     off_x: i32,
     off_y: i32,
+    /// O nível de corte do Outline (ignorado pelos outros tipos).
+    edge: f32,
+    /// A meia-banda de anti-aliasing desse corte.
+    aa: f32,
+    _pad: [f32; 2],
 }
 
 struct Tex {
@@ -255,6 +217,7 @@ pub fn make_output_texture(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
 pub struct FxStackPass {
     pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
+    pipeline_point: wgpu::ComputePipeline,
     pipeline_out: wgpu::ComputePipeline,
     bgl_mid: wgpu::BindGroupLayout,
     bgl_out: wgpu::BindGroupLayout,
@@ -267,8 +230,9 @@ impl FxStackPass {
     /// Constrói os três pipelines. Barato — nenhuma textura até o 1º [`Self::run`].
     #[must_use]
     pub fn new(gpu: &GpuContext) -> Self {
-        let mid_src = format!("{FX_STACK_WGSL}{FX_STACK_MID_WGSL}");
-        let out_src = format!("{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}");
+        let kinds = kind_consts_wgsl();
+        let mid_src = format!("{kinds}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}");
+        let out_src = format!("{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}");
         let make_shader = |label: &str, src: &str| {
             gpu.device
                 .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -305,6 +269,7 @@ impl FxStackPass {
             };
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
+        let pipeline_point = make_pipe(&layout_mid, &shader_mid, "cs_op_point");
         let pipeline_out = make_pipe(&layout_out, &shader_out, "cs_resolve");
 
         let globals_cap = UNIFORM_STRIDE * 8;
@@ -317,6 +282,7 @@ impl FxStackPass {
         Self {
             pipeline_h,
             pipeline_v,
+            pipeline_point,
             pipeline_out,
             bgl_mid,
             bgl_out,
@@ -387,11 +353,13 @@ impl FxStackPass {
             return;
         }
         self.ensure_work(gpu, w, h);
-        self.ensure_globals(gpu, ops.len());
+        let total_passes: usize = ops.iter().map(|o| passes_of(o.kind)).sum();
+        self.ensure_globals(gpu, total_passes);
 
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
-        let mut blob = vec![0u8; (ops.len() * 2 + 1) * UNIFORM_STRIDE as usize];
-        for (i, op) in ops.iter().enumerate() {
+        let mut blob = vec![0u8; (total_passes + 1) * UNIFORM_STRIDE as usize];
+        let mut slot = 0usize;
+        for op in ops {
             let sigma = op.sigma_px.max(1e-4);
             let g = Globals {
                 dims: [w, h],
@@ -402,15 +370,26 @@ impl FxStackPass {
                 opacity: op.opacity,
                 off_x: op.offset_px[0],
                 off_y: op.offset_px[1],
+                edge: OUTLINE_LEVEL,
+                // Meia banda de ~1 px em distância; num sigma sub-pixel o corte satura (a banda
+                // não pode engolir o próprio nível), e aí o contorno já é mais fino que um texel.
+                aa: (OUTLINE_AA_NUM / sigma).min(OUTLINE_LEVEL * 0.9),
+                _pad: [0.0; 2],
             };
+            if passes_of(op.kind) == 1 {
+                write_at(&mut blob, slot, &g);
+                slot += 1;
+                continue;
+            }
             // O passe H leva o deslocamento em X; o V leva o de Y. Juntos, amostram o halo em
             // `(x - off_x, y - off_y)` — a sombra cai deslocada DENTRO da imagem.
             let mut gh = g;
             gh.off_y = 0;
             let mut gv = g;
             gv.off_x = 0;
-            write_at(&mut blob, i * 2, &gh);
-            write_at(&mut blob, i * 2 + 1, &gv);
+            write_at(&mut blob, slot, &gh);
+            write_at(&mut blob, slot + 1, &gv);
+            slot += 2;
         }
         let resolve = Globals {
             dims: [w, h],
@@ -421,8 +400,11 @@ impl FxStackPass {
             opacity: 1.0,
             off_x: 0,
             off_y: 0,
+            edge: OUTLINE_LEVEL,
+            aa: OUTLINE_LEVEL,
+            _pad: [0.0; 2],
         };
-        write_at(&mut blob, ops.len() * 2, &resolve);
+        write_at(&mut blob, total_passes, &resolve);
         gpu.queue.write_buffer(&self.globals, 0, &blob);
 
         let work = self.work.as_ref().expect("just ensured");
@@ -437,39 +419,27 @@ impl FxStackPass {
 
         // ping/pong entre work[0] e work[1]; work[2] é o temp do passe horizontal.
         let mut cur: Option<usize> = None; // `None` = a fonte é `src`
-        for (i, _) in ops.iter().enumerate() {
+        let mut slot = 0u32;
+        for op in ops {
             let input = cur.map_or(&src_view, |k| &work[k].view);
             let next = cur.map_or(0, |k| 1 - k);
-            let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
-            let bg_v = self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
-            dispatch(
-                &mut encoder,
-                &self.pipeline_h,
-                &bg_h,
-                (i * 2) as u32,
-                gx,
-                gy,
-            );
-            dispatch(
-                &mut encoder,
-                &self.pipeline_v,
-                &bg_v,
-                (i * 2 + 1) as u32,
-                gx,
-                gy,
-            );
+            if passes_of(op.kind) == 1 {
+                // Pontual: lê a entrada e escreve o resultado — sem intermediário.
+                let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
+                dispatch(&mut encoder, &self.pipeline_point, &bg, slot, gx, gy);
+                slot += 1;
+            } else {
+                let bg_h = self.bind(gpu, &self.bgl_mid, input, input, &work[2].view);
+                let bg_v = self.bind(gpu, &self.bgl_mid, input, &work[2].view, &work[next].view);
+                dispatch(&mut encoder, &self.pipeline_h, &bg_h, slot, gx, gy);
+                dispatch(&mut encoder, &self.pipeline_v, &bg_v, slot + 1, gx, gy);
+                slot += 2;
+            }
             cur = Some(next);
         }
         let last = cur.map_or(&src_view, |k| &work[k].view);
         let bg_out = self.bind(gpu, &self.bgl_out, last, last, &dst_view);
-        dispatch(
-            &mut encoder,
-            &self.pipeline_out,
-            &bg_out,
-            (ops.len() * 2) as u32,
-            gx,
-            gy,
-        );
+        dispatch(&mut encoder, &self.pipeline_out, &bg_out, slot, gx, gy);
         gpu.queue.submit([encoder.finish()]);
     }
 
@@ -529,8 +499,8 @@ impl FxStackPass {
         ]);
     }
 
-    fn ensure_globals(&mut self, gpu: &GpuContext, n_ops: usize) {
-        let need = ((n_ops * 2 + 1) as u64) * UNIFORM_STRIDE;
+    fn ensure_globals(&mut self, gpu: &GpuContext, total_passes: usize) {
+        let need = ((total_passes + 1) as u64) * UNIFORM_STRIDE;
         if need <= self.globals_cap {
             return;
         }

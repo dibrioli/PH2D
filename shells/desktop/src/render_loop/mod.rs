@@ -4720,11 +4720,18 @@ impl crate::App {
                     .iter()
                     .find_map(|id| crate::fx_live::spec_of(sim, &self.vec_entities, *id));
                 ph2d_panel_vector::set_current_filter_can_add(!sel.is_empty());
-                // Os nomes dos tipos vêm do MOTOR (o painel não alcança o `ph2d-ecs`) — uma
-                // segunda tabela de nomes discordaria do `kind` na primeira adição.
-                ph2d_panel_vector::set_filter_kind_names(
-                    (0..ph2d_ecs::FxOp::KINDS)
-                        .map(|k| ph2d_ecs::FxOp::kind_name(k as u8))
+                // A TABELA dos tipos vem do MOTOR (o painel não alcança o `ph2d-ecs`) — uma
+                // segunda tabela discordaria do `kind` na primeira adição, e com sete tipos o
+                // modo de falha é um knob morto (ou um que falta) que nenhum gate vê.
+                ph2d_panel_vector::set_filter_kinds(
+                    ph2d_ecs::FxOp::SPECS
+                        .iter()
+                        .map(|s| ph2d_panel_vector::FilterKindView {
+                            name: s.name,
+                            radius_label: s.radius_label,
+                            has_offset: s.has_offset,
+                            has_color: s.has_color,
+                        })
                         .collect(),
                 );
                 ph2d_panel_vector::set_current_filters(
@@ -4732,7 +4739,6 @@ impl crate::App {
                         f.ops
                             .iter()
                             .map(|op| ph2d_panel_vector::FilterRowView {
-                                label: ph2d_ecs::FxOp::kind_name(op.kind),
                                 kind: op.kind,
                                 enabled: op.enabled,
                                 radius: f64::from(op.radius),

@@ -8,128 +8,22 @@
 //! degraus de lugar desenhasse o mesmo, a pilha seria uma lista de coisas independentes e não uma
 //! COMPOSIÇÃO — e não haveria nada aqui que um filtro único não fizesse.
 
-use std::sync::OnceLock;
-
-use ph2d_gpu::GpuContext;
 use ph2d_render::{FxOpGpu, FxStackPass, VelloPass, make_output_texture, stack_reach};
 
-/// Um degrau, resolvido em pixels.
-fn op(kind: u8, sigma_px: f32, tint: [f32; 4]) -> FxOpGpu {
-    FxOpGpu {
-        kind,
-        sigma_px,
-        offset_px: [0, 0],
-        tint,
-        opacity: 1.0,
-    }
-}
-
-const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
-const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
-
-/// Uma textura `Rgba8Unorm` de entrada (`TEXTURE_BINDING | COPY_DST`) com `bytes` (premultiplicado).
-fn make_src(gpu: &GpuContext, w: u32, h: u32, bytes: &[u8]) -> wgpu::Texture {
-    let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("test fx_stack src"),
-        size: wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
-    });
-    gpu.queue.write_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture: &tex,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        bytes,
-        wgpu::TexelCopyBufferLayout {
-            offset: 0,
-            bytes_per_row: Some(w * 4),
-            rows_per_image: Some(h),
-        },
-        wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-    );
-    tex
-}
-
-fn readback(gpu: &GpuContext, tex: &wgpu::Texture, w: u32, h: u32) -> Vec<u8> {
-    let unpadded = w * 4;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded = unpadded.div_ceil(align) * align;
-    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("test fx_stack readback"),
-        size: (padded as u64) * (h as u64),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = gpu
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture: tex,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &staging,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded),
-                rows_per_image: Some(h),
-            },
-        },
-        wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-    );
-    gpu.queue.submit([enc.finish()]);
-    let slice = staging.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    gpu.device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .unwrap();
-    rx.recv().unwrap().unwrap();
-    let view = slice.get_mapped_range();
-    let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
-    for row in 0..h as usize {
-        let s = row * padded as usize;
-        out.extend_from_slice(&view[s..s + unpadded as usize]);
-    }
-    drop(view);
-    staging.unmap();
-    out
-}
+mod fx_stack_common;
+use fx_stack_common::{BLACK, RED, make_src, op, readback, try_headless_gpu};
 
 /// Um degrau opaco→transparente vira uma RAMPA monótona de alfa centrada na fronteira, e ela
 /// ALARGA com o sigma — a propriedade que separa um borrão de um simples corte de alfa (a queixa
 /// que o produto existe para responder). No shader, na GPU, sem CPU no caminho.
+///
+/// ⚠️ **A fixture dá MARGEM à forma, e isso é a premissa do produto, não conforto de teste.** O
+/// scratch é sempre `bbox + stack_reach`, então a forma nunca encosta na borda da textura. Uma
+/// fixture flush contra a borda mede outra coisa: fora da textura não há imagem (o tap devolve
+/// TRANSPARENTE), então o kernel perde peso e o platô cai — medido, 242 em vez de 255 numa barra
+/// que ocupava a altura inteira de uma textura de 8 px. O `clamp` de coordenada que a W2 usava
+/// escondia isso ESTICANDO o texel da borda, e essa resposta é a errada para os degraus de DENTRO
+/// (onde "fora da textura" É "fora da forma", e é ela que lhes dá margem zero).
 #[test]
 #[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
 fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
@@ -137,11 +31,12 @@ fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
         eprintln!("[fx_stack_gpu] sem adapter — skip");
         return;
     };
-    let (w, h) = (64u32, 8u32);
-    // Premultiplicado: metade esquerda branca opaca, direita transparente.
+    // Margem folgada em toda volta (o maior sigma testado é 6, suporte 18 px).
+    let (w, h) = (160u32, 80u32);
+    let (bx0, bx1, by0, by1) = (40u32, 96u32, 24u32, 56u32);
     let mut src_bytes = vec![0u8; (w * h * 4) as usize];
-    for y in 0..h {
-        for x in 0..w / 2 {
+    for y in by0..by1 {
+        for x in bx0..bx1 {
             let o = ((y * w + x) * 4) as usize;
             src_bytes[o..o + 4].copy_from_slice(&[255, 255, 255, 255]);
         }
@@ -154,7 +49,7 @@ fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
         let dst = make_output_texture(&gpu, w, h);
         pass.run(&gpu, &src, &dst, w, h, &[op(0, sigma, BLACK)]);
         let bytes = readback(&gpu, &dst, w, h);
-        let y = h / 2;
+        let y = (by0 + by1) / 2;
         (0..w)
             .map(|x| bytes[(((y * w + x) * 4) + 3) as usize])
             .collect()
@@ -164,16 +59,25 @@ fn a_step_edge_becomes_a_monotone_alpha_ramp_that_widens_with_sigma() {
     let narrow = alpha_row(&mut pass, 2.0);
     let wide = alpha_row(&mut pass, 6.0);
 
+    // A janela do flanco DIREITO: depois do platô, e é onde a rampa vive.
+    let probe = (bx0 + 20) as usize..w as usize;
     for a in [&narrow, &wide] {
         // Monótona não-crescente (opaca → transparente). i32 para não estourar o u8.
-        for pair in a.windows(2) {
+        for pair in a[probe.clone()].windows(2) {
             assert!(
                 i32::from(pair[1]) <= i32::from(pair[0]) + 4,
-                "ramp de alfa nao e monotona: {a:?}"
+                "ramp de alfa nao e monotona: {:?}",
+                &a[probe.clone()]
             );
         }
-        // Centrada: ~127 na fronteira (col 31/32).
-        let mid = i32::from(a[(w / 2 - 1) as usize]);
+        // O miolo da forma continua OPACO — é o que a margem garante.
+        let core = i32::from(a[((bx0 + bx1) / 2) as usize]);
+        assert!(
+            core >= 250,
+            "o miolo da forma deveria ficar opaco (deu {core})"
+        );
+        // Centrada: ~127 na fronteira.
+        let mid = i32::from(a[(bx1 - 1) as usize]);
         assert!(
             (mid - 127).abs() < 40,
             "fronteira nao esta em ~0.5 (deu {mid})"

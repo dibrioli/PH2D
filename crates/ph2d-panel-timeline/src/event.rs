@@ -227,6 +227,11 @@ pub(crate) fn apply_event(
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::Toggle(id, on)));
             EventOutcome::Consumed
         }
+        // Expression\u{2026} (ADR-0144): the menu-open + the inline field's
+        // Submit/Blur/Cancel are one cluster (`expr_edit::route`), owned like the
+        // marker menu. It comes BEFORE the track-menu route so the anti-dead-item
+        // gate sees the "Expression\u{2026}" row consumed.
+        ev if crate::expr_edit::route(state, host, &ev).is_some() => EventOutcome::Consumed,
         // O menu do botão direito numa track row (Delete Track · Auto-Orient), que
         // mora inteiro no `event_track_menu`: as duas linhas fazem a MESMA dança sobre
         // a requisição parqueada, e duas cópias divergiriam na próxima linha do menu.

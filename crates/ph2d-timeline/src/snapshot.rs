@@ -68,6 +68,10 @@ pub struct TrackView {
     pub pre: Extrap,
     /// Extrapolation after the last key — see [`TrackView::pre`].
     pub post: Extrap,
+    /// **The property expression** driving this track (ADR-0144), or `None` when
+    /// the track is keyframe-driven. The panel seeds the inline formula field from
+    /// it and marks the driven row. Set every pass (the row is reused).
+    pub expr: Option<String>,
 }
 
 /// Project one `(key, id, roving)` into the panel's [`KeyView`] — the ONE door for
@@ -555,6 +559,7 @@ impl TimelineViewSnapshot {
                     buffer_ghost: None,
                     pre: Extrap::Hold,
                     post: Extrap::Hold,
+                    expr: None,
                 });
             }
             let row = &mut self.tracks[rows];
@@ -564,6 +569,9 @@ impl TimelineViewSnapshot {
             row.entity = b.entity;
             row.missing = b.missing;
             row.keys.clear();
+            // The expression is the BINDING's (document-wide), not the track's —
+            // set every pass since the row is reused, and `None` on a bare binding.
+            row.expr = b.expr.clone();
             // Default Hold when there is no track yet (a bare binding) — the
             // no-mark case, set every pass since the row is reused.
             (row.pre, row.post) = (Extrap::Hold, Extrap::Hold);

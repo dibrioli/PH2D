@@ -69,6 +69,7 @@ fn a_selection_time_handle_routes_to_scale_not_a_strip_stretch() {
             buffer_ghost: None,
             pre: ph2d_timeline::Extrap::Hold,
             post: ph2d_timeline::Extrap::Hold,
+            expr: None,
             keys: vec![key(0, 0.0), key(1, 1.0)],
         }],
         ..TimelineViewSnapshot::default()
@@ -337,6 +338,7 @@ fn two_key_column() -> TimelineViewSnapshot {
                 buffer_ghost: None,
                 pre: ph2d_timeline::Extrap::Hold,
                 post: ph2d_timeline::Extrap::Hold,
+                expr: None,
                 keys: vec![k(1)],
             },
             TrackView {
@@ -347,6 +349,7 @@ fn two_key_column() -> TimelineViewSnapshot {
                 buffer_ghost: None,
                 pre: ph2d_timeline::Extrap::Hold,
                 post: ph2d_timeline::Extrap::Hold,
+                expr: None,
                 keys: vec![k(7)],
             },
         ],

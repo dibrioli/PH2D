@@ -53,6 +53,51 @@ fn the_snapshot_carries_each_tracks_extrapolation() {
 }
 
 #[test]
+fn the_snapshot_carries_each_tracks_expression() {
+    // The data path for the inline formula field (ADR-0144): a binding's `expr`
+    // reaches the panel through the snapshot so the field can seed from it. Default
+    // is None (keyframe-driven). (Mutation: rebuild not setting `row.expr` -> None.)
+    use ph2d_anim::AnimTarget;
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        Ix::AddKey {
+            entity: 1,
+            prop: PropKind::TranslationX,
+            t: s(0.0),
+            value: AnimValue::Float(0.0),
+            interp: Interp::Linear,
+        },
+    );
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .expect("binding")
+        .target;
+
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.tracks[0].expr, None, "default is keyframe-driven");
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        Ix::SetBindingExpr {
+            target: AnimTarget::new(target.get()),
+            expr: Some("time*10".to_string()),
+        },
+    );
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(
+        snap.tracks[0].expr.as_deref(),
+        Some("time*10"),
+        "the expression reaches the panel through the snapshot"
+    );
+}
+
+#[test]
 fn snapshot_projects_tracks_keys_selection_and_transport() {
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(1.0 / 60.0);

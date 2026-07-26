@@ -145,6 +145,21 @@ pub struct ClipRename {
     pub opened: bool,
 }
 
+/// An open **property-expression** edit (ADR-0144) — the inline formula field
+/// opened from a track menu's "Expression\u{2026}" row. It floats at the click
+/// position (`x`/`y`) rather than over the row, so it needs no row geometry.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ExprEdit {
+    /// The binding target whose expression is being authored.
+    pub target: u64,
+    /// Where the field floats — the menu's click position.
+    pub x: f32,
+    /// See [`ExprEdit::x`].
+    pub y: f32,
+    /// The field has been registered + seeded with the current formula + focused.
+    pub opened: bool,
+}
+
 /// A press that landed on a Summary column.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SummaryPress {

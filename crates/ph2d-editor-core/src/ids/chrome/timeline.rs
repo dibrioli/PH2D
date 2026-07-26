@@ -129,6 +129,11 @@ pub const TIMELINE_DELETE_CLIP: NodeId = hash_node_id("timeline.clip_delete");
 /// The inline clip-rename text field (mirrors [`TIMELINE_MARKER_RENAME_INPUT`]).
 pub const TIMELINE_CLIP_RENAME_INPUT: NodeId = hash_node_id("timeline.clip_rename_input");
 
+/// The inline property-EXPRESSION text field (ADR-0144) — same single-line
+/// `TextInput` shape as the rename fields; opened from the track menu's
+/// "Expression\u{2026}" row, commits `SetBindingExpr`.
+pub const TIMELINE_TRACK_EXPR_INPUT: NodeId = hash_node_id("timeline.track_expr_input");
+
 /// "+ Lane" — append a lane to the clip stack (ADR-0115).
 pub const TIMELINE_ADD_LANE: NodeId = hash_node_id("timeline.add_lane");
 

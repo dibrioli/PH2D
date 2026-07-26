@@ -202,6 +202,10 @@ pub struct TimelinePanelState {
     /// `WidgetStore`, so this only remembers WHICH clip and whether the field has
     /// been seeded (re-seeding every frame would stomp the user's typing).
     pub clip_rename: Option<ClipRename>,
+    /// An open property-expression edit (ADR-0144) — the inline formula field
+    /// opened from a track menu. `None` when none is in flight; same WidgetStore
+    /// text ownership as `clip_rename`.
+    pub expr_edit: Option<ExprEdit>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -290,6 +294,7 @@ impl Default for TimelinePanelState {
             marker_drag: None,
             marker_rename: None,
             clip_rename: None,
+            expr_edit: None,
             box_drag: None,
             box_commit: None,
             rect: None,

@@ -100,6 +100,7 @@ fn track(interp: Interp) -> TrackView {
         buffer_ghost: None,
         pre: ph2d_timeline::Extrap::Hold,
         post: ph2d_timeline::Extrap::Hold,
+        expr: None,
         keys: vec![k0, k1],
     }
 }

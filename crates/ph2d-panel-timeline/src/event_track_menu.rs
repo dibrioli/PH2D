@@ -145,6 +145,22 @@ fn set_extrap(host: &mut dyn PanelHostInternal, mode: Extrap) -> EventOutcome {
     EventOutcome::Consumed
 }
 
+/// **Expression\u{2026}** — abre o campo de fórmula inline (ADR-0144) na posição do
+/// clique, para a track parqueada. Mora aqui (e não no `route`) porque abrir o campo
+/// mexe no `TimelinePanelState`, que o `route(host, id)` não recebe — o `apply_event`,
+/// que tem o state, chama isto ANTES do `route`.
+pub(crate) fn open_expr(
+    state: &mut crate::state::TimelinePanelState,
+    host: &mut dyn PanelHostInternal,
+) -> EventOutcome {
+    if let (Some(target), Some(req)) = (raw_track_target(host), parked(host)) {
+        crate::expr_edit::open(state, target, req.x, req.y);
+        host.store_mut().close_context_menu();
+        host.store_mut().consume_last_context_menu();
+    }
+    EventOutcome::Consumed
+}
+
 /// Encaminha o Click, se ele for de uma linha deste menu. `None` = não é comigo.
 pub(crate) fn route(
     host: &mut dyn PanelHostInternal,

@@ -46,6 +46,7 @@ mod container_list;
 mod duration_drag;
 mod event;
 mod event_track_menu;
+mod expr_edit;
 mod geom;
 mod graph;
 mod graph_paint;

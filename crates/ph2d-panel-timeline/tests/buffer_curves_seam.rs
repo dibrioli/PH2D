@@ -52,6 +52,7 @@ fn snap(ghost: Option<Vec<KeyView>>) -> TimelineViewSnapshot {
             buffer_ghost: ghost,
             pre: ph2d_timeline::Extrap::Hold,
             post: ph2d_timeline::Extrap::Hold,
+            expr: None,
         }],
         ..TimelineViewSnapshot::default()
     }

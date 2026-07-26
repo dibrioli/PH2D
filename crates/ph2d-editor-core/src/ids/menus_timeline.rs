@@ -92,6 +92,12 @@ pub const TIMELINE_SEGMENT_MENU: [(NodeId, &str, Option<[u8; 4]>); 8] = [
 /// one undo step (`TimelineIntent::Unbind`).
 pub const CTX_MENU_TL_DELETE_TRACK: NodeId = hash_node_id("ctx_menu_tl_delete_track");
 
+/// **Expression\u{2026}** — open the inline text field to drive this property by a
+/// formula (ADR-0144). On every track menu except Time Remap (its clock is not a
+/// value to drive). The panel opens the field at the click position and commits
+/// `SetBindingExpr`.
+pub const CTX_MENU_TL_EXPR: NodeId = hash_node_id("ctx_menu_tl_expr");
+
 // ── Timeline per-track EXTRAPOLATION (crown-jewels plan §6) ─────────────────
 // Two cascade rows on every track menu (except Time Remap) REPLACE it with the
 // four-mode submenu, carrying the row's target + the side they stand for — the
@@ -141,8 +147,9 @@ pub const TIMELINE_EXTRAP_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
 /// registers it, and the timeline panel's `apply_event` resolves every row (a row
 /// added here and unhandled there is a menu item that silently does nothing — the
 /// bug this table shape prevents).
-pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
+pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    (CTX_MENU_TL_EXPR, "Expression\u{2026}", None),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
 ];
@@ -170,8 +177,9 @@ pub const CTX_MENU_TL_TO_AXES: NodeId = hash_node_id("ctx_menu_tl_to_axes");
 /// O menu de uma track de **EIXO** (`TranslationX`/`Y`) — o comum mais a conversão
 /// mais as duas cascatas de extrapolação (um eixo de posição cicla/reflete como
 /// qualquer canal).
-pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
+pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    (CTX_MENU_TL_EXPR, "Expression\u{2026}", None),
     (CTX_MENU_TL_TO_PATH, "Convert to Motion Path", None),
     TIMELINE_EXTRAP_CASCADES[0],
     TIMELINE_EXTRAP_CASCADES[1],
@@ -186,8 +194,9 @@ pub const TIMELINE_AXIS_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 4] = [
 /// ⚠️ **O `Delete Track` aparece nas DUAS tabelas, e é o mesmo id de propósito**: é a
 /// mesma ação, e dar-lhe um segundo id seriam duas portas para uma pergunta. O
 /// `node_id_collisions` deduplica por `(id, label)` exatamente por isto.
-pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
+pub const TIMELINE_PATH_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 6] = [
     (CTX_MENU_TL_DELETE_TRACK, "Delete Track", None),
+    (CTX_MENU_TL_EXPR, "Expression\u{2026}", None),
     (CTX_MENU_TL_AUTO_ORIENT, "Auto-Orient", None),
     (CTX_MENU_TL_TO_AXES, "Convert to Separate Axes", None),
     TIMELINE_EXTRAP_CASCADES[0],

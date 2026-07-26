@@ -400,6 +400,9 @@ fn paint_overlays(
             .unwrap_or_else(|| o.clip_dd_chip.map_or(o.body, |c| c.rect)),
         snapshot,
     );
+    // The property-expression field (ADR-0144) floats at its own click position, so
+    // it needs no reported rect — painted last so it overlays the sheet.
+    crate::expr_edit::paint(state, ctx, theme, snapshot);
 }
 
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch

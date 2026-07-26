@@ -191,6 +191,7 @@ mod tests {
                 buffer_ghost: None,
                 pre: ph2d_timeline::Extrap::Hold,
                 post: ph2d_timeline::Extrap::Hold,
+                expr: None,
                 keys: vec![KeyView {
                     id: KeyId::new(key),
                     t_seconds: 0.0,

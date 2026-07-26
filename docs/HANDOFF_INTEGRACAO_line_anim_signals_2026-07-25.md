@@ -1,7 +1,12 @@
-# Handoff de integração — `line/anim`: SINAIS DA TIMELINE (ADR-0143)
+# Handoff de integração — `line/anim`: SINAIS DA TIMELINE (ADR-0143) + `Interp::Nearest`
 
 **Data:** 2026-07-25 · **Linha:** `line/anim` · **Estado:** FECHADA, pendente de smoke + ordem de
 integração. **NÃO integrei nem pushei** (CLAUDE §0.7).
+
+> A linha entrega **três** coisas: (1) os SINAIS da timeline (ADR-0143), (2) a autoria do marker pelo
+> **menu do botão direito** (W3), (3) o **`Interp::Nearest`** (o *Interpolate Mode: Nearest* do Godot).
+> As três são aditivas e não tocam contrato congelado; nenhum `PROJECT_SCHEMA`. Só o `DOC_VERSION` da
+> timeline bumpou (12→13, pelos sinais).
 
 ## O que é
 
@@ -24,9 +29,31 @@ Godot), **play-only**.
   `TIMELINE_MARKER_MENU`, roteado por `marker_menu::route`). Clique = busca · arrasto = move
   (manipulação direta, fora do menu); o marker saiu de `wants_double_click`.
 
-## Commits (tip = `1b4f6af2c`)
+### `Interp::Nearest` — o *Interpolate Mode: Nearest* do Godot (2026-07-25)
+
+Enio pediu paridade com o **Update Mode: Discrete** e o **Interpolate Mode: Nearest** do Godot. A
+avaliação (reportada antes de implementar) concluiu: **Discrete JÁ existe** — é o `Interp::Hold`, no
+menu de presets (step no key FAR, `u=1`); **Nearest** era o único buraco, e cabe no sistema de easing
+como um variant irmão do Hold — um STEP no **MEIO** do segmento (`u≥0.5`), a lei do "fica com o key
+mais próximo". Ours é **por-key** (Godot é por-track) ⇒ mais expressivo (mistura com Hold/Bezier).
+
+- **`ph2d-anim`** (`curve.rs`): `Interp::Nearest`, **apendado por ÚLTIMO** (índices postcard estáveis,
+  precedente do `BezierW`) ⇒ **SEM bump de `DOC_VERSION`** (saves antigos seguem legíveis). `remap`,
+  `slope`=0, `reversed`=self, `handles`=None; `value`/`value_slope`/`interpolate` caem nas vias
+  genéricas. curve.rs ficou **no cap de 700 LOC** ⇒ o gate foi pro sibling `curve_slope_tests.rs`.
+- **Menu + shell:** `CTX_MENU_TL_NEAREST` em `TIMELINE_SEGMENT_MENU` (7→**8**, abaixo de "Hold") ·
+  `Preset::Nearest` + `preset_for`/`absolute` em `timeline_presets.rs` · `path_convert` conta Nearest
+  como step (não ease) junto de Hold/Linear.
+- **Gates mutação-provados:** `nearest_steps_at_the_midpoint_not_the_far_key` (mut `remap`→Hold: RED) ·
+  o par `(NEAREST, Interp::Nearest)` no gate de pick do shell (mut `absolute`→Hold: RED) · o
+  anti-item-morto `every_published_menu_row_resolves_to_a_preset` cobre a row nova de graça.
+- **Sem smoke env-gated** (é um preset de menu): a checagem manual é botão-direito num key →
+  **Nearest** → o valor salta no meio do segmento (Hold salta no fim).
+
+## Commits (tip = `af65ba67e`)
 
 ```
+af65ba67e feat(anim): Interp::Nearest -- o Interpolate Mode: Nearest do Godot
 1b4f6af2c feat(timeline): autoria de sinal do marker vira o menu do botao direito (W3)
 8d4169783 chore(timeline): fechamento -- fmt, elisao, split doc.rs, LITERAL-PX-OK
 edfb135aa feat(timeline): smoke dos sinais -- PH2D_SIGNAL_SMOKE=1

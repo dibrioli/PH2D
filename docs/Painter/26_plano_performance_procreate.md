@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). **LUT pré-convoluída: kernel PROVADO** (§9.6) — 2,3×, épsilon **0,03 nível** e zero texels a r≥20; falta fiar (a cápsula não está validada) |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). **LUT pré-convoluída: kernel PROVADO** (§9.6) — 2,3×, épsilon **0,03 nível** e zero texels a r≥20; **a cápsula FECHOU** (§9.6.2 — a banda é EXATA), regra de admissibilidade derivada (§9.6.3), 8 gates e 5 mutações; falta a fiação (§9.6.5) |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -811,7 +811,95 @@ A varredura desta §9.6 agora **classifica o toe à parte** (`(a==0) != (b==0)` 
 uma cerca própria (≤ 0,5% da banda). Sem essa separação eu estava medindo a cliff do produto e lendo
 "a estimativa é errática".
 
-#### 9.6.2 O que falta para SHIPAR, e a pergunta aberta
+#### 9.6.2 ✅ A CÁPSULA fechou — e a derivação certa é no espaço DEFORMADO
+
+Ordem do Enio: *"siga para o melhor possível, para o estado da arte"*. A incógnita era a cápsula; a
+derivação que a resolve **também consertou um bug meu**.
+
+**Tudo é euclidiano no espaço deformado.** Os dois consumidores computam `t = |A·(r/radius)|`, com `A` o
+afim do footprint. Escrevendo `w = A·(r/radius)` temos `t = |w|` e
+
+```text
+  t(o) = |w + e|  ≈  t + (ŵ·e) + [|e|² − (ŵ·e)²] / (2t),   com e = B·o
+```
+
+⚠️ **A versão anterior expandia `t = |d|/r` como se o espaço fosse euclidiano — e sob Flatten & Rotate
+isso está ERRADO, silenciosamente.** A fixture `Ellipse` do gate existe por isso.
+
+`B` é **linear em cada região**, e é o chamador que sabe qual:
+
+| região | `B` | erro |
+|---|---|---|
+| pigmento (disco) e **CALOTAS** da cápsula | `A/radius` | 2ª ordem |
+| **BANDA** da cápsula | `A·P/radius`, `P = I − uuᵀ` | **EXATAMENTE ZERO** |
+
+⚠️ **A banda é exata, não aproximada:** `P` projeta no complemento de `u`, que em 2D é **1-D**, então
+`P·o` e `P·d` são múltiplos do mesmo vetor e `A` preserva o paralelismo ⇒ `e ∥ w` ⇒ `|e|² = (ŵ·e)²`. É
+*"distância a uma reta é afim"* saindo da álgebra. **A cápsula, que era a incógnita, é o caso mais FÁCIL.**
+
+**Medido, cinco regiões** (pior nível de u8):
+
+| região | r=20 | r=40 | r=100 |
+|---|---|---|---|
+| **CapsuleBand** | **0,02** | **0,00** | **0,00** |
+| Disc | 0,44 | 0,06 | 0,00 |
+| CapsuleCap | 0,66 | 0,06 | 0,00 |
+| CapsuleStraddle | 0,74 | **0,21** | 0,04 |
+| Ellipse (minor 0,45) | 2,68 | 0,30 | 0,01 |
+
+#### 9.6.3 A regra de admissibilidade, e de que RECURSO ela é
+
+**`FilmLut::admissible`** é a porta única, com três cláusulas:
+
+1. **família de falloff SUAVE** — `Constant` sai por DOIS motivos ao mesmo tempo (errático *e* **0,46×,
+   mais lento**: a curva dele é a constante 1, não há raiz a economizar); `Custom` porque a banda dele é
+   o dab inteiro; **`hardness ≥ 1`** porque aí qualquer falloff é um degrau e recai no `Constant`;
+2. **`raio × minor ≥ 40`** — e o `minor` não é decoração: o erro é o resto de 3ª ordem, logo escala com a
+   **CURVATURA**, e a curvatura é do **menor raio local**. A medição confirma a lei: `minor = 0,45` erra
+   **6×** a redonda no mesmo raio, e `1/0,45² = 4,9`;
+3. **o texel não pode STRADDLEAR a fronteira calota↔banda** — ali o `B` correto muda no meio da grade e
+   nenhuma base única serve (0,77 nível a r=40 contra 0,06 nas outras). É uma faixa de **33 texels contra
+   342 do interior**, então devolvê-la ao caminho exato custa quase nada. Cláusula do CHAMADOR, que é
+   quem tem a projeção em mãos.
+
+⚠️ **E a coincidência que não é coincidência:** a LUT é admissível a partir de `raio × minor ≥ 40`, e é
+**a partir daí que o AA custa caro** (68,7 ms a r=100 contra ~9 a r=20). Os dois escalam com o tamanho da
+pegada ⇒ *ela rende exactamente onde o custo está e é recusada exactamente onde erraria.*
+
+#### 9.6.4 Os gates, e os TRÊS buracos que as mutações acharam neles
+
+**8 gates, 5 mutações, 5 sangram.** As três que sobreviveram primeiro eram buracos meus, e cada um vale
+escrito:
+
+1. **`N = 256` sobreviveu** até a varredura cobrir r=200 (onde a resolução da tabela domina).
+2. **Apagar o `minor` da regra sobreviveu** porque nenhuma fixture separava `raio` de `raio × minor` — a
+   elipse de `minor = 0,45` a r=40 dá efetivo 18 e erra só 0,30, **sob a barra**. Nasceu a fixture
+   **`Sliver`** (`minor = 0,2`): a r=40 o efetivo é 8, que a regra correta recusa e a mutante aceita.
+3. **Apagar a cláusula do falloff suave sobreviveu ao gate inteiro** porque ele só varria o regime
+   admissível e **nunca perguntava se a porta FECHA**. Nasceu
+   `the_admissibility_door_refuses_what_it_must`, com as recusas afirmadas na direção da negativa **e um
+   caso admissível de controle** (senão um `admissible` que recusa tudo passaria).
+
+Mais `the_capsule_band_is_exact_not_merely_close` (a afirmação geométrica pinada como aritmética) e
+`the_straddle_is_excluded_because_it_would_miss` — que exige que a exclusão **CUSTE** (0,77 > 0,50),
+porque *uma exclusão que não custa nada é uma exclusão que alguém vai remover*.
+
+#### 9.6.5 O que falta para SHIPAR
+
+O kernel está no produto, derivado para todas as geometrias, e **gateado**. **Ninguém o chama ainda**, e
+são dois passos, os dois mecânicos agora que a matemática fechou:
+
+1. **A LUT por TRAÇO, nunca por dab** — 16 384 avaliações de `falloff_weight` contra ~1 800 amostras de
+   banda a raio 20 ⇒ por dab seria **9× mais caro que o que ela substitui**. O desenho é um memo chaveado
+   em `(falloff, hardness)` — 2 words, e `Custom` já está fora, então **a chave é completa** —, o que
+   evita mudar a assinatura dos **15** chamadores de `stamp_dab`.
+2. **Os dois kernels passam `w` e a base `B`** (que eles já computam: o pigmento tem `(dx, dy)`, a altura
+   tem o `(rx, ry)` do `sweep_residual`), consultam a `admissible` uma vez por dab e a cláusula do
+   straddle por texel, e um **gate de bytes no traço REAL** fecha.
+
+Prêmio: **2,3× sobre 68,7 de 127,1 ms ⇒ ~39 ms, 31% do traço**, com o pigmento E a altura cobertos.
+
+### 9.7 A avenida anterior (e é a última deste eixo)
 
 O kernel (`FilmLut` + `FilmAa::film_at_lut`) está no produto e **gateado**
 (`the_lut_film_is_inside_its_epsilon_where_it_is_admissible`, 2 mutações: `N = 256` sangra; tirar a 2ª
@@ -829,7 +917,7 @@ ordem sangra em `Sharp r=50: 0,53 > 0,50`). **Ninguém o chama ainda**, e são t
 
 Prêmio quando fiado: o AA é 68,7 de 127,1 ms a r=100 ⇒ 2,3× nele corta **~39 ms, 31% do traço**.
 
-### 9.7 A avenida anterior (e é a última deste eixo)
+### 9.9 A avenida original (e era a última deste eixo)
 
 `film_of ∘ falloff_weight` é uma função **1-D FIXA** de `t`, então a média sobre o texel pode sair de uma
 **LUT pré-convoluída em `(t, |∇t|)`**, hoisteada **por dab** — **zero** amostras extras, em vez de cinco

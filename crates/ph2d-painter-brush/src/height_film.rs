@@ -351,55 +351,77 @@ impl FilmAa {
     /// O que a medição (`measure_impasto_cost::is_the_silhouette_chain_the_aa_cost`) disse: **~91% do
     /// custo do `film_at` é a CADEIA de silhueta** — a closure real custa **10,3× a 12,3×** uma closure
     /// que devolve constante, com as nove chamadas de `film_of` e o laço intactos nas duas. E lida a
-    /// cadeia, o que ela tem por amostra é **`sqrt`**: um em `Footprint::falloff_t` (a norma do ponto
-    /// deformado) e, em `Sphere`/`Root`, outro em `Falloff::weight` ⇒ **até 18 `sqrt` dependentes por
-    /// texel da banda**. Não é a curva que é caro; é a RAIZ.
+    /// cadeia, o que ela tem por amostra é **`sqrt`**: um em [`crate::Footprint::falloff_t`] (a norma do
+    /// ponto deformado) e, em `Sphere`/`Root`, outro em `Falloff::weight` ⇒ **até 18 `sqrt` dependentes
+    /// por texel da banda**. Não é a curva que é caro; é a RAIZ.
     ///
-    /// Então esta rota remove as duas, e cada uma por um mecanismo diferente:
+    /// # A derivação, e por que ela vale para TODA geometria que os dois kernels usam
     ///
-    /// * **a curva** sai por LUT: `F(t) = film_of(falloff_weight(t))` é uma função 1-D **FIXA** do
-    ///   `t` (dado o falloff + hardness), tabelada sobre a **BANDA** e não sobre `[0,1]` — fora dela o
-    ///   early-out já responde, e tabelar só a banda multiplica a resolução por ~8×;
-    /// * **a métrica** sai por linearização: `t(o) ≈ t + ĝ·o`, onde `ĝ` é o gradiente de `t` em
-    ///   unidades de texel. O chamador **já o tem** — o de pigmento tem `(dx, dy)` e `t`, o de altura
-    ///   tem o `(rx, ry)` que o `sweep_residual` acabou de devolver — e em ambos
-    ///   `ĝ = (componentes)/(t · radius²)` sem raiz nova.
+    /// Os dois consumidores computam `t = |A·(r/radius)|`, onde `A` é o afim do footprint (rotação +
+    /// flatten) e `r` é o resíduo — o offset ao centro no pigmento, e o resíduo da **CÁPSULA** na altura.
+    /// Escrevendo `w = A·(r/radius)`, temos `t = |w|`, e **no espaço deformado tudo é euclidiano**:
+    ///
+    /// ```text
+    ///   t(o) = |w + e|  ≈  t + (ŵ·e) + [|e|² − (ŵ·e)²] / (2t),   com e = B·o
+    /// ```
+    ///
+    /// onde `B` leva um offset de texel ao espaço deformado. É isso que torna a fórmula geral em vez de
+    /// um caso do disco redondo — a versão anterior desta função assumia `t = |d|/r` euclidiano e
+    /// **errava sob Flatten & Rotate**, silenciosamente.
+    ///
+    /// `B` é linear em CADA região, e é o chamador que sabe qual:
+    ///
+    /// * **pigmento (disco):** `r = d` ⇒ `B = A/radius`;
+    /// * **altura, CALOTAS da cápsula** (`d·u ∉ (0, back)`): `r = d − s·u` com `s` constante ⇒ o mesmo
+    ///   `B = A/radius`, porque uma calota **é** um disco centrado no extremo;
+    /// * **altura, BANDA da cápsula** (`0 < d·u < back`): `r = P·d` com `P = I − uuᵀ` ⇒ `B = A·P/radius`.
+    ///
+    /// ⚠️ **E na BANDA o termo de 2ª ordem é EXATAMENTE ZERO** — não aproximadamente. `P` projeta no
+    /// complemento de `u`, que em 2D é **1-D**, então `P·o` e `P·d` são múltiplos do mesmo vetor; `A`
+    /// preserva o paralelismo ⇒ `e ∥ w` ⇒ `|e|² = (ŵ·e)²`. É a afirmação geométrica *"distância a uma
+    /// reta é afim"*, saindo da álgebra em vez de ser assumida. A cápsula, que era a incógnita desta
+    /// wave, é o caso **mais fácil** dela.
+    ///
+    /// A única fonte de erro que sobra, além da 3ª ordem: um texel cujas sub-amostras **cruzam** a
+    /// fronteira calota↔banda, onde o `B` correto muda no meio da grade. O gate mede esse conjunto.
     ///
     /// ⚠️ **Por que este erro NÃO é o da estimativa separável rejeitada na §9.5:** lá as quinas erravam
     /// o VALOR por `2/9` sempre que o `film_of` era um degrau — estrutural, em todo texel, em todo raio.
     /// Aqui os nove valores continuam vindo da mesma função `F`; o que desloca é a **POSIÇÃO** em que ela
-    /// é lida, por `(|o|² − (ĝ·o)²)/(2|d|)` — a ~4,4e-5 de `t` no aro de um raio 100. Um degrau só erra
-    /// nos texels que caem DENTRO dessa faixa, uma fração que some com o raio, em vez de errar em todos.
+    /// é lida, por um termo de 3ª ordem.
     ///
-    /// A varredura de paridade que a §9.5 deixou pronta mede as duas coisas sem uma linha nova.
+    /// `bx`/`by` são `B·(1,0)` e `B·(0,1)` — **constantes por dab**, e é por isso que a conta por texel é
+    /// só duas produtos-internos e uma recíproca.
     #[must_use]
-    pub fn film_at_lut(&self, lut: &FilmLut, t: f32, gx: f32, gy: f32) -> f32 {
+    pub fn film_at_lut(
+        &self,
+        lut: &FilmLut,
+        t: f32,
+        w: [f32; 2],
+        bx: [f32; 2],
+        by: [f32; 2],
+    ) -> f32 {
         if t <= self.t_lo || t >= self.t_hi {
             // Fora da banda o valor é o single-sample, e a LUT o serve exatamente como a curva serviria.
             return lut.at(t);
         }
-        // ⚠️ **O termo de SEGUNDA ordem, e ele não é refinamento opcional.** A expansão exata de
-        // `t(o) = |d + o|/r` é
-        //   `t + (d̂·o)/r + [|o|² − (d̂·o)²]/(2·|d|·r)`,
-        // e o terceiro termo é a componente PERPENDICULAR ao gradiente, ao quadrado, sobre a distância.
-        // Medido só com os dois primeiros, o pior erro escalava **~1/r²** (Smooth 1,41 → 0,39 → 0,10
-        // nível de u8 a r=25/50/100) e o limiar admissível caía em **r ≥ 90** — estreito demais para
-        // pagar a fiação. Com este termo o mesmo dado cai uma ordem, e o custo são ~3 flops por amostra
-        // (nenhuma raiz: `|d| = t·r` já é conhecido, e `|ĝ| = 1/r`).
-        //
-        // `gx`/`gy` são `d̂/r`, então `|g|² = 1/r²` e `|d|·r = t·r²` — as duas grandezas saem do que o
-        // chamador já tem, o que é o motivo de o termo ser barato aqui e caro em qualquer outro lugar.
-        // A álgebra, uma vez: `|d| = t·r` e `g² = |ĝ|² = 1/r²`, então
-        //   2ª ordem = `[|o|² − (d̂·o)²] / (2·|d|·r)` = `[|o|²·g² − along²] / (2·t)`,
-        // com `along = (d̂·o)/r`. Ou seja: `perp2 / (2t)`, e nada mais.
-        let g2 = gx * gx + gy * gy; // = 1/r²
-        let inv_2t = 0.5 / t.max(1e-6);
+        // Por TEXEL: a normal do campo no espaço deformado, e as projeções da base nela.
+        let inv_t = 1.0 / t.max(1e-6);
+        let (nx, ny) = (w[0] * inv_t, w[1] * inv_t); // ŵ, unitário porque t = |w|
+        let ax = nx * bx[0] + ny * bx[1]; // ŵ·bx
+        let ay = nx * by[0] + ny * by[1]; // ŵ·by
+        // Por DAB (o compilador as hoista do laço de texels; ficam aqui para a fórmula ser legível):
+        let bxx = bx[0] * bx[0] + bx[1] * bx[1];
+        let byy = by[0] * by[0] + by[1] * by[1];
+        let bxy = bx[0] * by[0] + bx[1] * by[1];
+        let half_inv_t = 0.5 * inv_t;
         let mut acc = 0.0;
         for &oy in &AA_SS {
             for &ox in &AA_SS {
-                let along = gx * ox + gy * oy;
-                let perp2 = (ox * ox + oy * oy) * g2 - along * along;
-                acc += lut.at(t + along + perp2 * inv_2t);
+                let along = ox * ax + oy * ay; // ŵ·e
+                // |e|² = ox²·|bx|² + 2·ox·oy·(bx·by) + oy²·|by|²
+                let e2 = ox * ox * bxx + 2.0 * ox * oy * bxy + oy * oy * byy;
+                acc += lut.at(t + along + (e2 - along * along) * half_inv_t);
             }
         }
         Self::toe(acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32))
@@ -502,6 +524,50 @@ impl FilmLut {
         #[expect(clippy::cast_precision_loss, reason = "N = 16384 é exato em f32")]
         let nf = n as f32;
         Self { table, n: nf }
+    }
+
+    /// **`raio × minor` mínimo para a LUT ser oferecida** — medido, não escolhido.
+    ///
+    /// O erro da expansão é o resto de 3ª ordem, logo escala com a **CURVATURA** da silhueta, e a
+    /// curvatura é governada pelo **menor raio local** ([`crate::FootprintDeform::minor_fraction`]).
+    /// Abaixo deste produto o pior texel passa de meio nível de u8 e o chamador fica no caminho exato.
+    ///
+    /// ⚠️ **E a coincidência que não é coincidência:** é a partir daqui que o AA custa caro (68,7 ms a
+    /// raio 100 contra ~9 a raio 20) — os dois escalam com o tamanho da pegada, então a LUT rende
+    /// exactamente onde o custo está e é recusada exactamente onde erraria.
+    pub const MIN_EFFECTIVE_RADIUS: f32 = 40.0;
+
+    /// **A porta única da admissibilidade** — o chamador pergunta aqui em vez de re-derivar a regra.
+    ///
+    /// Três cláusulas, e a terceira é do CHAMADOR porque é por-texel:
+    ///
+    /// 1. a família de falloff **SUAVE** — `Constant` se exclui por DOIS motivos ao mesmo tempo (é
+    ///    errático, porque um degrau interage com a grade de texels, **e é mais LENTO**, 0,46×, porque a
+    ///    curva dele é a constante 1 e não há raiz a economizar); `Custom` porque a `for_dab` toma o dab
+    ///    inteiro como banda para ele e a tabela seria indexada por uma curva do documento;
+    /// 2. **`raio × minor ≥ `[`Self::MIN_EFFECTIVE_RADIUS`];
+    /// 3. ⚠️ **o texel não pode STRADDLEAR a fronteira calota↔banda da cápsula** — ali o `B` correto muda
+    ///    no meio da grade 3×3 e nenhuma base única serve (medido: 0,77 nível a raio 40, contra 0,06 nas
+    ///    outras regiões). É uma faixa de ~2 linhas de texel por calota, então o caminho exato ali custa
+    ///    quase nada — e é por isso que a cláusula é do chamador, que é quem tem a projeção em mãos.
+    #[must_use]
+    pub fn admissible(spec: &crate::BrushSpec, radius: f32) -> bool {
+        let smooth = matches!(
+            spec.falloff,
+            crate::Falloff::Smooth
+                | crate::Falloff::Smoother
+                | crate::Falloff::Sphere
+                | crate::Falloff::Sharp
+                | crate::Falloff::Pow4
+                | crate::Falloff::Root
+                | crate::Falloff::Linear
+                | crate::Falloff::InvSquare
+        );
+        // Hardness ≥ 1 torna QUALQUER falloff um degrau (`falloff_weight` devolve 1 ou 0), então ela
+        // recai no caso `Constant` e sai pela mesma porta.
+        let hard = spec.hardness >= 1.0;
+        let minor = spec.dab_footprint([1.0, 0.0]).minor_fraction();
+        smooth && !hard && radius * minor >= Self::MIN_EFFECTIVE_RADIUS
     }
 
     /// `F(t)` por interpolação linear. Fora de `[0, 1]` clampa — que é o que a curva faz de qualquer

@@ -197,144 +197,205 @@ fn outside_the_band_both_are_the_single_sample() {
     }
 }
 
-/// **A LUT PRÉ-CONVOLUÍDA contra as nove amostras reais** (plano 26 §9.6) — o épsilon, medido.
-///
-/// O gradiente vem de onde os chamadores o têm: para o disco `t = |d|/radius`, logo
-/// `∇t = d̂/radius = d/(t·radius²)`. Nenhuma raiz nova — o `t` já traz a norma.
+/// A base `B·o` no espaço deformado, para uma geometria dada — a MESMA conta que os dois kernels
+/// farão: `B = A·M/radius`, com `M = I` no disco/calota e `M = I − uuᵀ` na banda da cápsula.
+fn deformed_basis(
+    fp: crate::FootprintDeform,
+    radius: f32,
+    axis: Option<[f32; 2]>,
+) -> ([f32; 2], [f32; 2]) {
+    let inv = 1.0 / radius;
+    let m = |o: [f32; 2]| match axis {
+        None => o,
+        Some(u) => {
+            let s = o[0] * u[0] + o[1] * u[1];
+            [o[0] - s * u[0], o[1] - s * u[1]]
+        }
+    };
+    let bx = fp.apply(m([inv, 0.0]));
+    let by = fp.apply(m([0.0, inv]));
+    (bx, by)
+}
+
+/// As QUATRO geometrias que os dois kernels de fato usam, e a quinta que é a fronteira.
+#[derive(Clone, Copy, Debug)]
+enum Geom {
+    /// Disco redondo — a rota do pigmento no caso comum.
+    Disc,
+    /// Disco sob **Flatten & Rotate** — onde a versão euclidiana desta LUT errava EM SILÊNCIO.
+    Ellipse,
+    /// Uma elipse **fortemente** achatada (`minor = 0,2`). Ela existe para separar `raio` de
+    /// `raio × minor`: a r=40 o efetivo é **8**, que a regra correta recusa e uma regra escrita só no
+    /// `raio` aceitaria. Sem ela a mutação que apaga o `minor` SOBREVIVE — aconteceu.
+    Sliver,
+    /// A **BANDA** da cápsula varrida — a rota da altura no meio de um traço.
+    CapsuleBand,
+    /// A **CALOTA** da cápsula — geometricamente um disco no extremo.
+    CapsuleCap,
+    /// O **STRADDLE**: os texels cuja grade 3×3 cruza a fronteira calota↔banda, onde o `B` correto muda
+    /// no meio da grade. É o único lugar onde a expansão não tem uma base única válida, e por isso ele é
+    /// uma REGIÃO nomeada em vez de ruído dentro das outras duas — o produto vai devolvê-lo ao caminho
+    /// exato, e é este gate que diz quanto custa não fazê-lo.
+    CapsuleStraddle,
+}
+
+/// Varre uma geometria e devolve `(pior erro, texels >= 1/255, texels na banda, flips do toe)`.
+fn sweep_lut(falloff: Falloff, radius: f32, geom: Geom) -> (f32, usize, usize, usize) {
+    let mut s = spec(falloff, radius);
+    if matches!(geom, Geom::Ellipse | Geom::Sliver) {
+        // Um bico achatado e girado: exatamente o caso que a fórmula euclidiana não cobria.
+        s.dab_flatten = if matches!(geom, Geom::Sliver) {
+            0.8
+        } else {
+            0.45
+        };
+        s.dab_angle_deg = 31;
+    }
+    let Some(aa) = FilmAa::for_dab(&s, false, radius) else {
+        return (0.0, 0, 0, 0);
+    };
+    let lut = FilmLut::new(&s);
+    let fp = s.dab_footprint([1.0, 0.0]);
+    let inv = 1.0 / radius;
+    // A cápsula: eixo a 27° e uma corda de ~1/5 do raio (a ordem do produto a spacing 0,1).
+    let (ux, uy) = (0.891_f32, 0.454_f32);
+    let back = radius * 0.2;
+    let reach = radius.ceil() as i64 + 3;
+    let (mut worst, mut differing, mut band, mut toe_flips) = (0.0f32, 0usize, 0usize, 0usize);
+    for py in -reach..=reach {
+        for px in -reach..=reach {
+            let (dx, dy) = (px as f32 + 0.5, py as f32 + 0.5);
+            // O resíduo, e a região — exatamente como o `sweep_residual` decide.
+            let (rx, ry, in_band) = match geom {
+                Geom::Disc | Geom::Ellipse | Geom::Sliver => (dx, dy, false),
+                Geom::CapsuleBand | Geom::CapsuleCap | Geom::CapsuleStraddle => {
+                    let proj = dx * ux + dy * uy;
+                    let sc = proj.clamp(0.0, back);
+                    // A grade alcança `AA_REACH` texels em cada direção, e `u` é unitário, então uma
+                    // sub-amostra pode mover a projeção por até isso. Um texel cuja projeção está a menos
+                    // disso de 0 ou de `back` tem sub-amostras nas DUAS regiões.
+                    const AA_REACH: f32 = 0.667;
+                    let straddles = (proj - 0.0).abs() < AA_REACH || (proj - back).abs() < AA_REACH;
+                    let inside = proj > 0.0 && proj < back;
+                    let want = match geom {
+                        Geom::CapsuleStraddle => straddles,
+                        Geom::CapsuleBand => inside && !straddles,
+                        _ => !inside && !straddles,
+                    };
+                    if !want {
+                        continue;
+                    }
+                    (dx - sc * ux, dy - sc * uy, inside)
+                }
+            };
+            let wv = fp.apply([rx * inv, ry * inv]);
+            let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
+            if t <= aa.t_lo_for_test() || t >= aa.t_hi_for_test() {
+                continue;
+            }
+            band += 1;
+            let axis = in_band.then_some([ux, uy]);
+            let (bx, by) = deformed_basis(fp, radius, axis);
+            let a = aa.film_at_lut(&lut, t, wv, bx, by);
+            // O oráculo: as nove amostras REAIS, pela MESMA cadeia que o produto percorre.
+            let b = aa.film_at_exact(t, s.falloff_weight(t), |ox, oy| {
+                let (qx, qy) = (dx + ox, dy + oy);
+                let (r2x, r2y) = match geom {
+                    Geom::Disc | Geom::Ellipse | Geom::Sliver => (qx, qy),
+                    Geom::CapsuleBand | Geom::CapsuleCap | Geom::CapsuleStraddle => {
+                        let sc = (qx * ux + qy * uy).clamp(0.0, back);
+                        (qx - sc * ux, qy - sc * uy)
+                    }
+                };
+                s.falloff_weight(fp.falloff_t(r2x * inv, r2y * inv))
+            });
+            // O corte do TOE e a cliff do PRODUTO, contada a parte (ver o gate).
+            if (a == 0.0) != (b == 0.0) && a.max(b) < 3.0 / 255.0 {
+                toe_flips += 1;
+                continue;
+            }
+            let d = (a - b).abs();
+            if d > worst {
+                worst = d;
+            }
+            if d >= 1.0 / 255.0 {
+                differing += 1;
+            }
+        }
+    }
+    (worst, differing, band, toe_flips)
+}
+
+/// **O ÉPSILON da LUT nas QUATRO geometrias** — a medição que decide o regime admissível.
 ///
 /// Rodar: `cargo test -p ph2d-painter-brush --release measure_the_lut_epsilon -- --ignored --nocapture`
 #[test]
-#[ignore = "medicao: o epsilon da LUT por falloff x raio"]
+#[ignore = "medicao: o epsilon da LUT por geometria x falloff x raio"]
 fn measure_the_lut_epsilon() {
-    println!("[lut-eps] falloff        raio  pior erro  niveis u8  texels>=1/255  de");
-    for falloff in FALLOFFS {
-        for radius in [3.0f32, 5.0, 8.0, 12.0, 20.0, 40.0, 100.0] {
-            let s = spec(falloff, radius);
-            let Some(aa) = FilmAa::for_dab(&s, false, radius) else {
-                continue;
-            };
-            let lut = FilmLut::new(&s);
-            let fp = s.dab_footprint([1.0, 0.0]);
-            let inv = 1.0 / radius;
-            let reach = radius.ceil() as i64 + 2;
-            let (mut worst, mut differing, mut band) = (0.0f32, 0usize, 0usize);
-            for py in -reach..=reach {
-                for px in -reach..=reach {
-                    let (dx, dy) = (px as f32 + 0.5, py as f32 + 0.5);
-                    let t = fp.falloff_t(dx * inv, dy * inv);
-                    if t <= aa.t_lo_for_test() || t >= aa.t_hi_for_test() {
-                        continue;
-                    }
-                    band += 1;
-                    let sil = s.falloff_weight(t);
-                    // ∇t em unidades de texel: d̂/radius, e d̂ = d/(t·radius).
-                    let scale = 1.0 / (t * radius * radius).max(1e-9);
-                    let (gx, gy) = (dx * scale, dy * scale);
-                    let a = aa.film_at_lut(&lut, t, gx, gy);
-                    let b = aa.film_at_exact(t, sil, disc(&s, radius, dx, dy));
-                    let d = (a - b).abs();
-                    if d > worst {
-                        worst = d;
-                    }
-                    if d >= 1.0 / 255.0 {
-                        differing += 1;
-                    }
+    println!("[lut-eps] geom          falloff       raio   niveis u8  >=1/255  banda  toe");
+    for geom in [
+        Geom::Disc,
+        Geom::Ellipse,
+        Geom::Sliver,
+        Geom::CapsuleBand,
+        Geom::CapsuleCap,
+        Geom::CapsuleStraddle,
+    ] {
+        for falloff in FALLOFFS {
+            for radius in [8.0f32, 12.0, 20.0, 40.0, 100.0] {
+                let (worst, differing, band, toe) = sweep_lut(falloff, radius, geom);
+                if band == 0 {
+                    continue;
                 }
+                println!(
+                    "[lut-eps] {geom:<13?} {falloff:<12?} {radius:>5}  {:>9.2}  {differing:>7}  {band:>5}  {toe:>3}",
+                    worst * 255.0
+                );
             }
-            if band == 0 {
-                continue;
-            }
-            println!(
-                "[lut-eps] {falloff:<12?} {radius:>5}  {worst:>9.6}  {:>9.2}  {differing:>10}  {band}",
-                worst * 255.0
-            );
         }
     }
 }
 
-/// **A LUT é mais RÁPIDA?** — a razão contra as nove amostras reais, no mesmo instante.
+/// **O GATE: no regime admissível a LUT é o mesmo filme, nas CINCO regiões.**
 ///
-/// Rodar: `cargo test -p ph2d-painter-brush --release measure_the_lut_speed -- --ignored --nocapture`
+/// # A regra de admissibilidade, e de que RECURSO ela é
+///
+/// **família de falloff SUAVE  ∧  `raio × minor ≥ 40`.** O segundo fator não é um raio escolhido: o erro
+/// é o resto de 3ª ordem da expansão, logo escala com a **CURVATURA** da silhueta, e a curvatura é
+/// governada pelo **menor raio local** — que sob Flatten & Rotate é `raio × minor`, não `raio`. A
+/// medição confirma a lei: a elipse de `minor = 0,45` erra **6×** a versão redonda no mesmo raio, e
+/// `1/0,45² = 4,9`.
+///
+/// Medido (pior nível de u8, por região):
+///
+/// | região | r=20 | r=40 | r=100 |
+/// |---|---|---|---|
+/// | **CapsuleBand** | **0,02** | **0,00** | **0,00** |
+/// | Disc | 0,44 | 0,06 | 0,00 |
+/// | CapsuleCap | 0,66 | 0,06 | 0,00 |
+/// | CapsuleStraddle | 0,74 | 0,21 | 0,04 |
+/// | Ellipse (minor 0,45) | 2,68 | 0,30 | 0,01 |
+///
+/// ⚠️ **E a coincidência que não é coincidência:** a LUT é admissível a partir de `raio × minor ≥ 40`, e
+/// é **a partir daí que o AA custa caro** (68,7 ms a r=100 contra ~9 a r=20). Os dois escalam com o
+/// tamanho da pegada, então *ela rende exactamente onde o custo está e é recusada exactamente onde
+/// erraria*. O pincel default do impasto (40 px de diâmetro = raio 20) fica no caminho EXATO — e é
+/// barato lá.
+///
+/// `Constant` se exclui por DOIS motivos ao mesmo tempo: é errático (o degrau interage com a grade de
+/// texels) **e é mais LENTO** (0,46× — a curva dele é a constante 1, não há raiz a economizar).
+/// `Custom` fica fora porque a `for_dab` toma o dab inteiro como banda para ele e a tabela seria
+/// indexada por uma curva do documento.
+///
+/// ⚠️ **A `Ellipse` pegou um bug MEU:** a primeira versão desta LUT expandia `t = |d|/r` como se o
+/// espaço fosse euclidiano, e sob Flatten & Rotate isso está errado — **silenciosamente**. A derivação
+/// certa é no espaço **deformado**, e é ela que também torna a cápsula trivial.
+///
+/// Mutações: `FilmLut::N = 256` sangra · tirar o termo de 2ª ordem sangra · usar a base **sem** o afim do
+/// footprint (o bug euclidiano) sangra na `Ellipse`.
 #[test]
-#[ignore = "medicao: a razao de velocidade"]
-fn measure_the_lut_speed() {
-    use std::time::Instant;
-    const N: usize = 3_000_000;
-    println!("[lut-perf] falloff      nove reais      LUT      razao");
-    for falloff in [Falloff::Smooth, Falloff::Sphere, Falloff::Constant] {
-        let radius = 100.0f32;
-        let s = spec(falloff, radius);
-        let aa = FilmAa::for_dab(&s, false, radius).expect("banda");
-        let lut = FilmLut::new(&s);
-        let fp = s.dab_footprint([1.0, 0.0]);
-        let inv = 1.0 / radius;
-        // Um texel na banda.
-        let mut t0 = 0.0f32;
-        for k in 1..4000u32 {
-            let t = f32::from(u16::try_from(k).unwrap_or(u16::MAX)) / 4000.0;
-            if t > aa.t_lo_for_test() && t < aa.t_hi_for_test() {
-                t0 = t;
-                break;
-            }
-        }
-        let d = t0 * radius;
-        let sil = s.falloff_weight(t0);
-        let scale = 1.0 / (t0 * radius * radius);
-        let (gx, gy) = (d * scale, 0.0);
-        let mut acc = 0.0f32;
-        let t_ref = Instant::now();
-        for k in 0..N {
-            let j = (k % 7) as f32 * 1e-6;
-            acc += aa.film_at_exact(t0 + j, sil, |ox, oy| {
-                s.falloff_weight(fp.falloff_t((d + ox) * inv, oy * inv))
-            });
-        }
-        let nine = t_ref.elapsed().as_secs_f64() * 1e3;
-        let t_lut = Instant::now();
-        for k in 0..N {
-            let j = (k % 7) as f32 * 1e-6;
-            acc += aa.film_at_lut(&lut, t0 + j, gx, gy);
-        }
-        let l = t_lut.elapsed().as_secs_f64() * 1e3;
-        println!(
-            "[lut-perf] {falloff:<10?} {nine:>10.1} ms {l:>8.1} ms  {:>5.2}x   (acc {acc:.0})",
-            nine / l.max(1e-9)
-        );
-    }
-}
-
-/// **O GATE da LUT: no regime admissível ela é o mesmo filme, dentro do épsilon declarado.**
-///
-/// "Admissível" não é gosto — é a família de falloffs **suaves** com **raio ≥ 20**, e o número saiu da
-/// varredura (`measure_the_lut_epsilon`), não de preferência. O pior caso a r=20 é o `Pow4` com **0,44
-/// nível de u8 e ZERO texels movendo um nível**; a r=40 já é 0,06 e a r=100, 0,00.
-///
-/// ⚠️ **O limiar era r ≥ 90 antes do termo de segunda ordem** — só a expansão de 1ª ordem deixava o
-/// `Pow4` em 1,49 nível a r=50. Os ~4 flops do `perp2/(2t)` derrubaram o erro ~150× e custaram ~20% da
-/// razão de velocidade (2,8× → 2,3×). É a troca certa: sem eles o regime admissível não cobria nem o
-/// pincel default do impasto (40 px de diâmetro = raio 20).
-///
-/// **`Constant` se exclui por DOIS motivos ao mesmo tempo:** é errático (0,00 nível até r=40, mas
-/// **13,25 em 16 texels** a r=100 — o degrau interage com a grade) **e é mais LENTO** (0,46×, porque a
-/// curva dele é a constante 1 e não há raiz a economizar). Um recorte que serve à precisão E à velocidade
-/// não é caso especial: é o domínio da otimização. `Custom` fica fora porque a `for_dab` toma o dab
-/// inteiro como banda para ele e a tabela seria indexada por uma curva do documento.
-///
-/// ⚠️ **E o que este gate NÃO cobre, nomeado:** a geometria é o **DISCO** (a rota do pigmento). A rota
-/// de ALTURA supersampleia a **CÁPSULA VARRIDA**, cujo campo de distância não é `|d|` em torno de um
-/// ponto — a expansão de 2ª ordem acima **não está validada lá**, e é o primeiro passo de qualquer
-/// fiação (plano 26 §9.6).
-///
-/// O gate afirma **as duas** perguntas (quão longe · quantos), a lição do `quantise` do passe de luz.
-///
-/// Mutação: baixar o `FilmLut::N` para 256 ⇒ a resolução em `t` (3,9e-3) passa a dominar o erro da
-/// linearização (~4,4e-5) e o gate acende.
-#[test]
-fn the_lut_film_is_inside_its_epsilon_where_it_is_admissible() {
-    // Meio nível de u8: abaixo dela a estimativa sozinha não pode nem arredondar para outro byte.
+fn the_lut_film_is_inside_its_epsilon_in_every_geometry() {
     const WORST_BAR: f32 = 0.5 / 255.0;
-    // A família SUAVE — `Constant` fora por medição (ver o doc acima), `Custom` fora porque a `for_dab`
-    // toma o dab inteiro como banda para ele e a tabela seria indexada por uma curva do documento.
     const SMOOTH_FAMILY: [Falloff; 5] = [
         Falloff::Smooth,
         Falloff::Sphere,
@@ -343,81 +404,98 @@ fn the_lut_film_is_inside_its_epsilon_where_it_is_admissible() {
         Falloff::Root,
     ];
     let mut worst_overall = 0.0f32;
-    for falloff in SMOOTH_FAMILY {
-        for radius in [50.0f32, 100.0, 200.0] {
-            let s = spec(falloff, radius);
-            let aa = FilmAa::for_dab(&s, false, radius).expect("a banda existe");
-            let lut = FilmLut::new(&s);
-            let fp = s.dab_footprint([1.0, 0.0]);
-            let inv = 1.0 / radius;
-            let reach = radius.ceil() as i64 + 2;
-            let (mut worst, mut differing, mut band) = (0.0f32, 0usize, 0usize);
-            let mut toe_flips = 0usize;
-            for py in -reach..=reach {
-                for px in -reach..=reach {
-                    let (dx, dy) = (px as f32 + 0.5, py as f32 + 0.5);
-                    let t = fp.falloff_t(dx * inv, dy * inv);
-                    if t <= aa.t_lo_for_test() || t >= aa.t_hi_for_test() {
-                        continue;
-                    }
-                    band += 1;
-                    let scale = 1.0 / (t * radius * radius).max(1e-9);
-                    let a = aa.film_at_lut(&lut, t, dx * scale, dy * scale);
-                    let b = aa.film_at_exact(t, s.falloff_weight(t), disc(&s, radius, dx, dy));
-                    let d = (a - b).abs();
-                    // ⚠️ O **corte do TOE** é uma descontinuidade do PRODUTO (`frac < 2/255 ⇒ 0`), não
-                    // erro da estimativa: quando um lado cai um fio abaixo dele e o outro acima, a
-                    // diferença de saída é ~2/255 por construção, vinda de uma diferença de entrada
-                    // ínfima. Contado à parte — misturá-lo com a precisão fez a varredura anterior ler
-                    // "picos em raios arbitrários" onde havia UM mecanismo, e foi por isso que a §9.5
-                    // rejeitou a estimativa separável por uma razão que era metade falsa.
-                    if (a == 0.0) != (b == 0.0) && a.max(b) < 3.0 / 255.0 {
-                        toe_flips += 1;
-                        continue;
-                    }
-                    if d > worst {
-                        worst = d;
-                    }
-                    if d >= 1.0 / 255.0 {
-                        differing += 1;
-                    }
+    let mut checked = 0usize;
+    // ⚠️ O **STRADDLE fica FORA**, e não por conveniência: ele é a cláusula 3 da
+    // [`FilmLut::admissible`] — a região onde nenhuma base única serve, que o chamador devolve ao
+    // caminho exato. O gate irmão `the_straddle_is_excluded_because_it_would_miss` mede o que
+    // aconteceria se alguém a ignorasse, para a exclusão ter um número em vez de uma frase.
+    for geom in [
+        Geom::Disc,
+        Geom::Ellipse,
+        Geom::CapsuleBand,
+        Geom::CapsuleCap,
+    ] {
+        // O `minor` NÃO é derivado aqui: quem o sabe é o footprint do `probe`, e é de lá que a mensagem
+        // de falha o lê. Uma cópia local seria a segunda resposta a *"quão achatado é este bico?"*.
+        for falloff in SMOOTH_FAMILY {
+            // ⚠️ O **20 está aqui de propósito e a regra correta o REJEITA** (efetivo 20 < 40, e 9 na
+            // elipse). Sem ele, uma mutação que apaga o `minor` da regra admite a elipse a r=40
+            // (efetivo 18, que erra só 0,30 nível — sob a barra) e **sobrevive ao gate**: aconteceu. O
+            // raio que separa as duas regras é o que a regra correta recusa e a mutante aceita.
+            for radius in [20.0f32, 40.0, 100.0, 200.0] {
+                // A PORTA do produto decide, não o gate: se as duas discordarem, é a porta que manda.
+                let mut probe = spec(falloff, radius);
+                if matches!(geom, Geom::Ellipse | Geom::Sliver) {
+                    probe.dab_flatten = if matches!(geom, Geom::Sliver) {
+                        0.8
+                    } else {
+                        0.45
+                    };
+                    probe.dab_angle_deg = 31;
                 }
+                if !FilmLut::admissible(&probe, radius) {
+                    continue;
+                }
+                let (worst, differing, band, toe) = sweep_lut(falloff, radius, geom);
+                assert!(
+                    band > 20,
+                    "controle: {geom:?}/{falloff:?} r={radius} varreu {band} texels — poucos para o \
+                     gate significar algo"
+                );
+                checked += 1;
+                worst_overall = worst_overall.max(worst);
+                assert!(
+                    worst <= WORST_BAR,
+                    "{geom:?}/{falloff:?} r={radius} (efetivo {}): pior erro {:.2} nivel > barra 0,50",
+                    radius * probe.dab_footprint([1.0, 0.0]).minor_fraction(),
+                    worst * 255.0
+                );
+                assert_eq!(
+                    differing, 0,
+                    "{geom:?}/{falloff:?} r={radius}: {differing} de {band} texels movem um nivel — a \
+                     barra de MAGNITUDE sozinha nao basta, e esta e a metade da CONTAGEM"
+                );
+                assert!(
+                    toe * 100 <= band.max(100),
+                    "{geom:?}/{falloff:?} r={radius}: {toe} de {band} cruzaram o corte do toe"
+                );
             }
-            assert!(
-                band > 100,
-                "controle: {falloff:?} r={radius} varreu {band} texels de banda — poucos para o gate \
-                 significar algo"
-            );
-            worst_overall = worst_overall.max(worst);
-            assert!(
-                worst <= WORST_BAR,
-                "{falloff:?} r={radius}: pior erro {worst:.6} ({:.2} nivel) > barra {WORST_BAR:.6}",
-                worst * 255.0
-            );
-            assert_eq!(
-                differing, 0,
-                "{falloff:?} r={radius}: {differing} de {band} texels da banda movem um nivel de u8 — \
-                 a barra de MAGNITUDE sozinha nao basta, e esta e a metade da CONTAGEM"
-            );
-            // O toe é a cliff do produto, mas ela não pode virar uma cerca larga: um punhado de texels
-            // a ~1% de opacidade trocando por zero é invisível; centenas seriam outra coisa.
-            assert!(
-                toe_flips * 200 <= band,
-                "{falloff:?} r={radius}: {toe_flips} de {band} texels cruzaram o corte do toe — acima \
-                 de 0,5% da banda isso deixa de ser a cliff do produto e passa a ser a estimativa"
-            );
         }
     }
+    assert!(
+        checked >= 25,
+        "controle: o gate cobriu {checked} combinacoes — poucas para a regra significar algo"
+    );
     println!(
-        "[lut-gate] pior erro no regime admissivel: {:.3} nivel de u8",
+        "[lut-gate] {checked} combinacoes, pior erro {:.3} nivel de u8",
         worst_overall * 255.0
     );
 }
 
-/// **A LUT É a curva, amostrada** — não uma segunda resposta a *"qual é o filme neste `t`"*.
+/// **A BANDA da cápsula é EXATA, não aproximada** — a afirmação geométrica pinada como aritmética.
 ///
-/// Nos nós ela devolve exactamente `film_of(falloff_weight(t))`, ao bit: é o que impede a tabela de
-/// virar um modelo paralelo que deriva do produto (a doença que o doc 24 nomeou ao tabelar o sRGB).
+/// `P = I − uuᵀ` projeta num espaço 1-D (em 2D), então `e ∥ w` e `|e|² − (ŵ·e)² = 0`. Se alguém
+/// "generalizar" a base para não projetar, este gate acende — e é o único que distingue *"a cápsula
+/// funciona"* de *"a cápsula funciona porque o erro é pequeno"*.
+#[test]
+fn the_capsule_band_is_exact_not_merely_close() {
+    for falloff in [Falloff::Smooth, Falloff::Sphere, Falloff::Pow4] {
+        for radius in [40.0f32, 100.0] {
+            let (worst, _, band, _) = sweep_lut(falloff, radius, Geom::CapsuleBand);
+            assert!(
+                band > 20,
+                "controle: {falloff:?} r={radius} varreu {band} texels"
+            );
+            assert!(
+                worst * 255.0 < 0.05,
+                "a banda da capsula tem de ser EXATA: {falloff:?} r={radius} errou {:.4} nivel",
+                worst * 255.0
+            );
+        }
+    }
+}
+
+/// **A LUT É a curva, amostrada** — não uma segunda resposta a *"qual é o filme neste `t`"*.
 #[test]
 fn the_lut_is_the_curve_sampled_not_a_second_answer() {
     for falloff in FALLOFFS {
@@ -442,4 +520,77 @@ fn the_lut_is_the_curve_sampled_not_a_second_answer() {
             );
         }
     }
+}
+
+/// **O STRADDLE é excluído porque ERRARIA — e este é o número.**
+///
+/// A cláusula 3 da [`FilmLut::admissible`] não é cautela: nos texels cuja grade 3×3 cruza a fronteira
+/// calota↔banda da cápsula, o `B` correto muda no meio da grade e **nenhuma base única serve**. O gate
+/// mede o que a LUT faria ali se o chamador ignorasse a cláusula — e exige que seja **pior que a barra**,
+/// porque uma exclusão que não custa nada é uma exclusão que alguém vai remover.
+///
+/// ⚠️ Ele também mede o TAMANHO da faixa: ~2 linhas de texel por calota. É isso que torna o caminho
+/// exato ali barato, e é o que faz da cláusula uma decisão e não um remendo.
+#[test]
+fn the_straddle_is_excluded_because_it_would_miss() {
+    let (worst, _, band, _) = sweep_lut(Falloff::Pow4, 40.0, Geom::CapsuleStraddle);
+    let (_, _, band_interior, _) = sweep_lut(Falloff::Pow4, 40.0, Geom::CapsuleBand);
+    let (_, _, cap_interior, _) = sweep_lut(Falloff::Pow4, 40.0, Geom::CapsuleCap);
+    assert!(band > 10, "controle: a faixa de straddle tem {band} texels");
+    assert!(
+        worst * 255.0 > 0.5,
+        "a exclusao do straddle tem de CUSTAR: ele erra {:.2} nivel, e se isso estivesse sob a barra a \
+         clausula 3 seria remendo em vez de decisao",
+        worst * 255.0
+    );
+    // E a faixa e FINA — o caminho exato ali e barato.
+    assert!(
+        band * 8 < band_interior + cap_interior,
+        "a faixa de straddle ({band}) tem de ser fina contra o interior ({}) — se nao for, devolver ela \
+         ao caminho exato deixa de ser barato",
+        band_interior + cap_interior
+    );
+    println!(
+        "[straddle] {band} texels, pior erro {:.2} nivel (interior: {} texels)",
+        worst * 255.0,
+        band_interior + cap_interior
+    );
+}
+
+/// **A porta RECUSA o que tem de recusar** — as três cláusulas afirmadas na direção da negativa.
+///
+/// Um gate que só varre o regime admissível nunca pergunta se a porta **fecha**, e uma mutação que
+/// apaga a cláusula do falloff suave sobrevive a ele inteiro. Aconteceu; este é o gate que faltava.
+#[test]
+fn the_admissibility_door_refuses_what_it_must() {
+    // `Constant`: errático E mais lento — os dois motivos medidos.
+    assert!(
+        !FilmLut::admissible(&spec(Falloff::Constant, 100.0), 100.0),
+        "Constant tem de ser recusado: o degrau interage com a grade (13,25 nivel a r=100) e a LUT ainda \
+         e mais LENTA que a curva dele (0,46x)"
+    );
+    // `Custom`: a banda é o dab inteiro e a tabela seria indexada por uma curva do documento.
+    assert!(
+        !FilmLut::admissible(&spec(Falloff::Custom, 100.0), 100.0),
+        "Custom tem de ser recusado: a for_dab toma o dab inteiro como banda para ele"
+    );
+    // `hardness >= 1` torna QUALQUER falloff um degrau — recai no caso Constant.
+    let mut hard = spec(Falloff::Smooth, 100.0);
+    hard.hardness = 1.0;
+    assert!(
+        !FilmLut::admissible(&hard, 100.0),
+        "hardness >= 1 faz o falloff_weight devolver 1 ou 0 — e um degrau, e sai pela porta do Constant"
+    );
+    // O raio EFETIVO, não o raio: um bico muito achatado é recusado mesmo grande.
+    let mut sliver = spec(Falloff::Smooth, 100.0);
+    sliver.dab_flatten = 0.8; // minor 0,2 ⇒ efetivo 20 < 40
+    assert!(
+        !FilmLut::admissible(&sliver, 100.0),
+        "raio 100 com minor 0,2 da efetivo 20 — a curvatura e do MENOR raio local, nao do raio"
+    );
+    // E o caso admissível de controle, senão o gate poderia recusar tudo e passar.
+    assert!(
+        FilmLut::admissible(&spec(Falloff::Smooth, 100.0), 100.0),
+        "controle: um Smooth redondo de raio 100 TEM de ser admissivel, senao este gate nao diz nada"
+    );
 }

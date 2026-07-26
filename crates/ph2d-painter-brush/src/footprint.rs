@@ -78,6 +78,17 @@ impl FootprintDeform {
         [ru, rv * self.inv_minor]
     }
 
+    /// A fração do eixo MAIOR que o eixo MENOR mede (`1` = redondo, `1 − Flatten` achatado).
+    ///
+    /// É o número de que a admissibilidade da LUT do filme é feita ([`crate::height_film::FilmLut`]):
+    /// o erro da expansão escala com a **CURVATURA** da silhueta, e a curvatura é governada pelo menor
+    /// raio local — que num bico achatado é `raio × minor`, não `raio`. Medido: uma elipse de
+    /// `minor = 0,45` erra **6×** a redonda no mesmo raio, e `1/0,45² = 4,9`.
+    #[must_use]
+    pub fn minor_fraction(self) -> f32 {
+        1.0 / self.inv_minor
+    }
+
     /// The deformed radial distance `length(apply([u, v]))` — the falloff index for an elliptical dab.
     /// At identity this is the plain `sqrt(u² + v²)`. Rotation alone preserves it (a circle is
     /// rotation-invariant); only the flatten makes it elliptical.

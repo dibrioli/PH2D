@@ -63,6 +63,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_reduce::register(&mut reg).unwrap();
     ph2d_node_value_smooth::register(&mut reg).unwrap();
     ph2d_node_value_pattern::register(&mut reg).unwrap();
+    ph2d_node_value_wrap::register(&mut reg).unwrap();
     // The value-domain combiner + router (the widest-input count law).
     ph2d_node_value_math::register(&mut reg).unwrap();
     ph2d_node_value_switch::register(&mut reg).unwrap();
@@ -3510,6 +3511,81 @@ fn value_pattern_kernel_matches_the_cpu_on_the_device() {
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the pattern drove nothing"
+    );
+}
+
+/// **`value.wrap` runs fully on the GPU and matches the CPU.** The value domain's
+/// address mode: a `floor`-based fold back into `[lo, hi]`. A ramp is first
+/// STRETCHED past the wrap range by a `value.map_range` (to `[−0.9, 4.7]`) so most
+/// of the field runs OUTSIDE `[0.1, 1.3]` and the fold does real work — an
+/// unstretched `[0,1]` ramp inside a `[0,1]` range would be an identity and stay
+/// green with the whole kernel deleted. **Mirror** is the mode under test — it runs
+/// the fullest path (the `floor(r/2w)` fold AND the `m > w` triangle `select`),
+/// where Clamp is just a `clamp`. Every param is un-round so no sample lands on a
+/// cell edge — the one place `floor` could disagree by a whole period (the
+/// `value.quantize`/`field.remap` precedent; a boundary is measure-zero). The
+/// wrapped value drives Y; the device fold matches the CPU term for term.
+/// `is_fully_gpu` PROVES the chain dispatches (no silent CPU fallback).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn value_wrap_kernel_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 24.0);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N-1) in [0,1]
+    connect(&mut g, grid, field);
+    let map = g.add_node("value.map_range");
+    g.set_param(map, "out_lo", -0.9); // stretch past the wrap range so it FOLDS,
+    g.set_param(map, "out_hi", 4.7); // across ~2 periods (un-round endpoints)
+    connect(&mut g, field, map);
+    let wrap = g.add_node("value.wrap");
+    g.set_param(wrap, "lo", 0.1); // un-round range so no sample hits a cell edge
+    g.set_param(wrap, "hi", 1.3);
+    g.set_param(wrap, "mode", 2.0); // Mirror — the fullest fold path
+    connect(&mut g, map, wrap);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive); // geometry into `in`
+    g.connect(Edge {
+        from: (wrap, 0),
+        to: (drive, 1),
+        delayed: false,
+    })
+    .expect("wrapped value into drive");
+
+    g.validate(&reg).expect("well-typed");
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
+    assert!(plan.is_fully_gpu(), "field → map → wrap → drive claimed end to end");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
+    eprintln!("value.wrap → drive(Y): col P, max |d| = {worst:e}");
+    assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
+    assert!(
+        column_is_nonzero(cpu[0].as_stream(), "P"),
+        "fixture check — the wrap drove nothing"
     );
 }
 

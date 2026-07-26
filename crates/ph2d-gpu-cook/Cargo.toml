@@ -101,6 +101,8 @@ ph2d-node-value-unary = { path = "../ph2d-node-value-unary" }
 ph2d-node-value-reduce = { path = "../ph2d-node-value-reduce" }
 ph2d-node-value-smooth = { path = "../ph2d-node-value-smooth" }
 ph2d-node-value-pattern = { path = "../ph2d-node-value-pattern" }
+# The value-domain address mode (Clamp/Repeat/Mirror; floor-based fold, GPU-resident).
+ph2d-node-value-wrap = { path = "../ph2d-node-value-wrap" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

@@ -122,6 +122,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_value_step::register(reg)?;
     ph2d_node_value_switch::register(reg)?;
     ph2d_node_value_unary::register(reg)?;
+    ph2d_node_value_wrap::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

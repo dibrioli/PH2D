@@ -122,6 +122,7 @@ ph2d-node-value-smooth = { path = "../ph2d-node-value-smooth" }
 ph2d-node-value-step = { path = "../ph2d-node-value-step" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
 ph2d-node-value-unary = { path = "../ph2d-node-value-unary" }
+ph2d-node-value-wrap = { path = "../ph2d-node-value-wrap" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

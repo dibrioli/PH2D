@@ -117,6 +117,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_value_normalize::register(reg)?;
     ph2d_node_value_quantize::register(reg)?;
     ph2d_node_value_reduce::register(reg)?;
+    ph2d_node_value_smooth::register(reg)?;
     ph2d_node_value_step::register(reg)?;
     ph2d_node_value_switch::register(reg)?;
     ph2d_node_value_unary::register(reg)?;

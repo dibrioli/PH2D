@@ -99,6 +99,7 @@ ph2d-node-value-step = { path = "../ph2d-node-value-step" }
 ph2d-node-value-normalize = { path = "../ph2d-node-value-normalize" }
 ph2d-node-value-unary = { path = "../ph2d-node-value-unary" }
 ph2d-node-value-reduce = { path = "../ph2d-node-value-reduce" }
+ph2d-node-value-smooth = { path = "../ph2d-node-value-smooth" }
 # The value-domain combiner + router (the widest-input count law).
 ph2d-node-value-math = { path = "../ph2d-node-value-math" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }

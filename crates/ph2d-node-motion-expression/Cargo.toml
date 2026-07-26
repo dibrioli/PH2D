@@ -13,3 +13,4 @@ authors.workspace = true
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-expr = { path = "../ph2d-expr" }
+ph2d-expr-parse = { path = "../ph2d-expr-parse" }

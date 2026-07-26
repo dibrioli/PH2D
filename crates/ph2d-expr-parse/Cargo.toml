@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-expr-parse"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The shared VEX-lite parser: text -> the frozen `ph2d_expr::Expr` IR (ADR-0144).
+# A leaf next to `ph2d-expr` -- it depends on the IR but NOT back, and lives OUTSIDE
+# the frozen `ph2d-expr` crate (ADR-0039) so text-parsing can grow without touching
+# the contract surface. Both the timeline expressions (ADR-0144) and the Motion
+# node's `motion.expression` parse through this ONE door, so the two never drift.
+[dependencies]
+ph2d-expr = { path = "../ph2d-expr" }

@@ -39,8 +39,8 @@
 | N | 🎯 **O 1º traço ALOCAVA as texturas** | ✅ **fechada** (§4.8.1) | **0,76 / 2,72 / 13,21 ms** a 1024²/2048²/4096² — a escada que o Enio descreveu |
 | **O** | 🎯🎯 **O 1º traço dobrava o CANVAS INTEIRO** | ✅ **fechada e CONFIRMADA no smoke** (§4.8.2–§4.8.3) | `dispatch max` **232,7 → 1,1–1,3 ms** no app · `p50` **0,7** (4% de um quadro). O fold **201,53 → 14,55** headless |
 | P | Semear os planos da luz no BIND | 🟡 aberto, **decisão de PRODUTO, e o preço agora é MEDIDO** | vale **12,7 ms** no produto (era estimativa minha de ~31) e cobra **~218 MB de VRAM em TODO bind** — inclusive de quem nunca liga o impasto |
-| **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | 🔴 **a fronteira NOVA** (§4.8.3) | **5,3–8,8 ms/frame** contra 0,7 de dispatch ⇒ **7–12×**. Era invisível atrás dos 232 ms |
-| R | O outlier de **134,8 ms** num evento | 🔴 aberto, **sem causa atribuída** | o maior número que sobrou no log; falta **medição por fase**, não hipótese |
+| **Q** | 🎯 **`INPUT (fora do frame)` — o carimbo de dabs** | 🟡 **DECOMPOSTA** (§5.13) | o pior evento é o **PEN-UP** (38,9 ms a 4096², plane-bound, ~20× um move), não o pen-down nem um move; o impasto acrescenta 32,8 e a aritmética do fork dos 3 planos (28,47) fecha |
+| R | O outlier de **134,8 ms** num evento | 🔴 **segue aberto** (§5.13) | o maior evento REPRODUZÍVEL é o pen-up, **38,9 ms** — não chega lá. ⚠️ mas uma amostra ÚNICA de pen-up já foi medida em **117,76 ms** sem nada estar errado ⇒ o 134,8 é compatível com um pen-up num instante ruim; decide um 2º log |
 | S | `EVENTO→FRAME` 16,8 contra alvo **9** | ⚪ **não é compute** | `p50 ≈ periodo real (16,5)` ⇒ é **cadência**, e o dispatch é 4% dela |
 | **T** | 🎯 **O WARP é 56% do custo da aquarela** | ✅ **medido** (§5.10) | 1,071 ms de um move de 3,082 · 10 avaliações/texel · a tabela trouxe o próprio **controle** (2 knobs já em 0 ⇒ piso de ruído ±0,13) |
 | U | Fatoração exata dos 2 eixos do warp | ✅ shipou, **e não é ganho de PRODUTO** (§5.11) | função **1,20×** (153,4 → 127,9 ms/4 M) · produto 0,12–0,17 ms = **dentro do ruído** |
@@ -959,6 +959,79 @@ eraser de re-stamp), então a troca `Arc`→`Weak` não comprou velocidade com c
 `wetpaint/session.rs` (*o que uma sessão É*) contra o que sobrou (*o que o tool FAZ com ela*: a rota do
 dab, o ciclo do traço, o guard). 585 + 146.
 
+### 5.13 🎯 O PIOR EVENTO DE UM TRAÇO É O **PEN-UP**, e ele é limitado pela TELA (frentes Q e R)
+
+A §7 pedia *"comece medindo por FASE — um número só não nomeia culpado"*. A forma mais barata de fazer
+isso não é instrumentar: é **rodar o ciclo inteiro de um traço e imprimir todo evento**, deixando o pico
+se nomear sozinho (`the_worst_single_event_of_a_stroke_names_itself`, 4096², impasto).
+
+| raio | pen-down | move (mediana) | **pen-up** |
+|---|---|---|---|
+| 20 | 4,34 | 0,76 | **31,50** |
+| 100 | 10,66 | 1,97 | **40,94** |
+
+⚠️ **O pior evento não é o pen-down nem um move: é o PEN-UP**, ~20× um move e ~4× o pen-down. E ele
+**quase não responde ao raio do pincel** (31,5 contra 40,9 para 5× o raio) — a assinatura de trabalho
+limitado pela **TELA**, não pela pegada.
+
+#### Por tela e por meio
+
+`what_the_pen_up_is_made_of` (traço FIXO em px, 8 traços, o 1º descartado, mediana dos sete):
+
+| tela | Digital | **Impasto** |
+|---|---|---|
+| 1024² | 0,72 | 6,5 |
+| 2048² | 1,25 | 11,9 |
+| 4096² | **6,05** | **38,9** |
+
+De 2048² para 4096²: **4,86× e 3,26× para 4× de área** ⇒ **plane-bound nos dois**. O impasto acrescenta
+**32,8 ms** a 4096².
+
+#### A aritmética, TESTADA em vez de afirmada
+
+`commit_stroke_height` é **window-bound de propósito** — o doc-comment dele diz e gateia isso. Exceto
+por uma coisa: ele chama `plane_fork::fork_par` em cada plano de relevo, e **um fork é canvas-sized**,
+porque o `ModelSnapshot` que o pen-down tira para o undo segura um `Arc` de cada plano.
+
+Se o fork for a causa, clonar os três planos tem de casar com os 32,8 ms — e isso é uma **previsão que
+pode dar errado**, que é o que a torna um teste:
+
+| plano | MB @4096² | clone |
+|---|---|---|
+| `covers` (u8) | 16 | 0,40 ms |
+| `heights` (f32) | 64 | 9,94 ms |
+| `mats` (7 B) | **112** | **18,13 ms** |
+| **soma do que o impasto acrescenta** | **192** | **28,47 ms** |
+
+**28,47 contra 32,8 medidos: fecha.** ⚠️ **E a 2048² ela NÃO fecha** (1,37 de clone contra 10,6 de
+acréscimo) — ali os clones pequenos medem **48 GB/s** contra **6,5 GB/s** nos grandes, ou seja o
+microbenchmark pega um caminho favorecido pelo alocador. **A afirmação fica escopada a 4096²**, que é o
+tamanho onde o artista sente.
+
+**O mecanismo, numa frase:** o snapshot de undo tirado no **pen-down** segura um `Arc` de cada plano de
+relevo, então o commit no **pen-up** bifurca os três — ~192 MB de cópia a 4096². É a **mesma família** do
+fork do canvas no pen-down (§4.3 / o gate `the_pen_down_is_still_a_canvas_copy`), e a cura é a mesma:
+**capturar o "antes" por REGIÃO, sob demanda** — o *tile-based undo* do GIMP/Krita, que a §13.12.5 do
+doc 25 já prescreve e que precisa de uma **porta única de escrita de plano** (hoje ~25 sítios chamam
+`Arc::make_mut` direto). Isso é **wave própria**, e agora ela tem a lista de preços completa:
+**pen-down 11,7 ms (canvas) + pen-up 28,5 ms (relevo)**.
+
+#### ⚠️ E DUAS coisas minhas que a medição derrubou
+
+1. **A primeira versão da sonda media UM pen-up por configuração e NÃO REPRODUZIA:** a mesma célula deu
+   **117,76 ms** numa corrida e **28,46** na seguinte. Buffers de 67–117 MB pagam *first-touch* e o
+   alocador tem memória entre chamadas, então um gesto único mede o estado do heap tanto quanto mede o
+   produto. *Um número que não reproduz não é um achado; é ruído com casas decimais.*
+2. **A hipótese que eu montei em cima daquele 117,8 — *"é o first-touch do 1º traço"* — está REFUTADA
+   pela própria sonda:** o 1º traço é **mais barato** (26–29 ms) que a mediana (38–39). Os 117,8 **não
+   têm mecanismo**, e inventar um teria enterrado o número certo debaixo de uma narrativa.
+
+⚠️ **Consequência para a frente R:** o outlier de **134,8 ms** do app **continua sem causa atribuída**.
+O maior evento reprodutível que existe é o pen-up a **38,9 ms**, e ele não chega lá. O que esta wave
+entrega é o candidato NOMEADO e MEDIDO (não o veredito), mais a demonstração de que uma amostra única
+pode passar de 100 ms sem que nada esteja errado — o que torna o 134,8 do log **compatível com um
+pen-up normal medido num instante ruim**, hipótese que só um segundo log com histograma decide.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -1017,6 +1090,11 @@ reconciliadas em vez de estimadas.
     traço não compõe e mede 0,22 ms nas DUAS telas, então o mínimo lia **exactamente a amostra sem o
     fenômeno** e o gate dava 1,00× sobre o defeito reinstalado (§5.12). Antes de confiar num min/max,
     pergunte se alguma amostra é de outra natureza.
+13. **Um número que não reproduz não é um achado — é ruído com casas decimais.** A sonda do pen-up
+    mediu **117,76 ms** numa corrida e **28,46** na seguinte, na mesma célula, com o produto correto
+    (§5.13). Pior: eu já tinha começado a construir um mecanismo em cima do 117,8 (*"é o first-touch do
+    1º traço"*) — e a mesma sonda, repetida, o **refutou** (o 1º traço é o mais BARATO). *Repita antes
+    de explicar*: uma explicação boa para um número errado é mais cara que nenhuma explicação.
 12. **Uma pergunta de IDENTIDADE não se paga com POSSE.** O guard do Wet Paint queria saber *"este ainda
     é o meu canvas?"* e segurava um `Arc` forte para responder — o que fazia `Arc::make_mut` copiar o
     documento a cada movimento do mouse (**9,86 ms a 4096²**). Um `Weak` responde a mesma pergunta por
@@ -1037,13 +1115,19 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 
 **A fila de hoje, por número MEDIDO no produto:**
 
-1. 🎯 **`INPUT (fora do frame)`: 5,3–8,8 ms/frame (frente Q).** É o carimbo de dabs dentro do
-   `on_canvas_pointer`, hoje **7–12× o dispatch**, e é para onde as §4.5/§4.6 sempre apontaram — só que
-   agora ele é o maior custo do caminho quente em vez do segundo. ⚠️ **Comece medindo por FASE**, como o
-   split do frame pior fez aqui: hoje é um número só, e um número só não nomeia culpado.
-2. 🔴 **O outlier de 134,8 ms num único evento (frente R).** O maior número que sobrou. Sem causa
-   atribuída, com dois candidatos nomeados (pen-down canvas-sized · commit de pen-up) que **não somam a
-   134,8 pelo que está medido** ⇒ falta instrumentação, não teoria.
+1. 🎯🎯 **A porta ÚNICA de escrita de plano — e ela tem a lista de preços COMPLETA agora.** A §5.13
+   decompôs a frente Q: o pior evento de um traço é o **pen-up** (38,9 ms a 4096², plane-bound), e o que
+   o impasto acrescenta a ele (32,8 ms) é o **fork dos três planos de relevo** para o snapshot de undo
+   (28,47 ms de clone medido — a previsão fecha). Somado ao fork do canvas no pen-down (**11,7 ms**), é
+   **~40 ms por traço em cópias que existem só porque o "antes" é capturado por PLANO em vez de por
+   REGIÃO.** A cura é uma só e já está prescrita (§13.12.5 do doc 25, o *tile-based undo* do
+   GIMP/Krita); o que ela pede é a **porta única de escrita** que hoje não existe (~25 sítios chamam
+   `Arc::make_mut` direto). ⚠️ **Wave própria, com gates próprios** — e é a única frente que cura os
+   QUATRO modos de uma vez, porque mora acima do modelo de pintura.
+2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13). O maior evento
+   **reprodutível** é o pen-up a 38,9 ms e ele não chega lá. ⚠️ **Mas uma amostra única de pen-up já foi
+   medida em 117,76 ms com o produto correto** — então o 134,8 é compatível com um pen-up normal pego
+   num instante ruim. O que decide é um **segundo log com histograma**, não mais teoria.
 3. 🟡 **Semear os planos da luz no bind (frente P): 12,7 ms contra ~218 MB de VRAM em todo bind.**
    Decisão de produto, e agora com o preço dos dois lados medido em vez de estimado.
 4. ⚪ **`EVENTO→FRAME` 16,8 contra o alvo 9 (frente S) — NÃO é compute.** `p50 ≈ periodo real`, o

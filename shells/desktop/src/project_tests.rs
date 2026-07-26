@@ -425,7 +425,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ A `line/FLIP` escreveu `30` aqui; a `line/physics` reivindicou o MESMO 30 na
         // mesma janela (âncora body-local do joint), então o valor certo é 31 — e ele não
         // estava em nenhum dos dois lados. O número se CONTA, não se escolhe.
-        (31, 9, 13),
+        // PROJECT 31→32: `PhysicsJoint` ganhou `motor_mode`+`motor_target` (W-J6 —
+        // o servo, e o motor no Slider/Rope). Campos APENDADOS, o mesmo padrão do
+        // v30; `FLIP`/`VEC_SCENE` não se movem porque nada fora da física mudou.
+        (32, 9, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

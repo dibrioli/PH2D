@@ -40,6 +40,10 @@ mod hierarchy;
 mod image_edit;
 mod inspector_commits;
 pub(crate) mod inspector_joint;
+/// The MOTOR half of that seam (W-J6): the mode, the two numbers, and the unit
+/// each carries. Its own file for the shell's LOC cap.
+#[cfg(test)]
+mod inspector_joint_motor_tests;
 /// The §11 Physics Body seam's OTHER half: the Inspector click reached the
 /// ECS and the sprite actually falls (panel-side proof lives in
 /// ).

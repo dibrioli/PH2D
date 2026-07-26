@@ -527,7 +527,8 @@ fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
     for (id, v) in [
         (ids::INSP_JOINT_LIMIT_MIN, info.limit_min_ui),
         (ids::INSP_JOINT_LIMIT_MAX, info.limit_max_ui),
-        (ids::INSP_JOINT_MOTOR_SPEED, info.motor_speed_deg),
+        (ids::INSP_JOINT_MOTOR_SPEED, info.motor_speed_ui),
+        (ids::INSP_JOINT_MOTOR_TARGET, info.motor_target_ui),
         (ids::INSP_JOINT_MOTOR_FORCE, info.motor_max_force),
         (ids::INSP_JOINT_REST_LENGTH, info.rest_length),
         (ids::INSP_JOINT_STIFFNESS, info.stiffness),

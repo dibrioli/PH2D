@@ -116,7 +116,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `line/physics` reivindicou o mesmo 30 na MESMA janela, por outro motivo (a âncora body-local
 /// do joint, o parágrafo acima). O valor certo se CONTA, não se escolhe — ele não estava em
 /// nenhum dos dois lados do conflito ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 31;
+/// v32 (ADR-0131, W-J6 servo + guincho): `PhysicsJoint` ganhou `motor_mode` +
+/// `motor_target` APENDADOS — o motor deixou de ser só uma TAXA e passou a poder
+/// mirar um LUGAR, e passou a existir também no Slider e na Rope. Mesmo padrão
+/// posicional do v30: dois campos a mais no fim do blob, então um save v31 lido
+/// como v32 leria além do fim dele, e um v32 lido por um binário v31 é recusado
+/// como erro de versão em vez de virar um postcard perdido.
+const PROJECT_SCHEMA: u32 = 32;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

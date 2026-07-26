@@ -623,12 +623,25 @@ pub const INSP_JOINT_MOTOR: [NodeId; 2] = [
     hash_node_id("insp_joint_motor_on"),
 ];
 
+/// Velocity · Position — what a driven joint is AIMING at (W-J6). Not another
+/// on/off switch: the two carry different instructions (*keep going at this
+/// rate* vs *go to this place and hold*) and each shows its own row underneath.
+pub const INSP_JOINT_MOTOR_MODE_GROUP: NodeId = hash_node_id("insp_joint_motor_mode_group");
+pub const INSP_JOINT_MOTOR_MODE: [NodeId; 2] = [
+    hash_node_id("insp_joint_motor_mode_velocity"),
+    hash_node_id("insp_joint_motor_mode_position"),
+];
+
 /// Pin: the angular range, in DEGREES at this boundary (the component stores
 /// radians, like `Transform::rotation_rad`).
 pub const INSP_JOINT_LIMIT_MIN: NodeId = hash_node_id("insp_joint_limit_min");
 pub const INSP_JOINT_LIMIT_MAX: NodeId = hash_node_id("insp_joint_limit_max");
-/// Pin: the motor.
+/// The motor — a Pin's hinge, a Slider's rail, a Rope's winch. `SPEED` is the
+/// Velocity mode's rate and `TARGET` is the Position mode's place, each in the
+/// free degree of freedom's own unit (degrees on a hinge, metres on the other
+/// two — `JointKind::motor_in_metres`).
 pub const INSP_JOINT_MOTOR_SPEED: NodeId = hash_node_id("insp_joint_motor_speed");
+pub const INSP_JOINT_MOTOR_TARGET: NodeId = hash_node_id("insp_joint_motor_target");
 pub const INSP_JOINT_MOTOR_FORCE: NodeId = hash_node_id("insp_joint_motor_force");
 /// Spring.
 pub const INSP_JOINT_REST_LENGTH: NodeId = hash_node_id("insp_joint_rest_length");

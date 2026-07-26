@@ -190,6 +190,7 @@ mod physics_smoke_joint_bake;
 mod physics_smoke_joint_draw;
 mod physics_smoke_joint_glyphs;
 mod physics_smoke_joint_handles;
+mod physics_smoke_joint_motor;
 mod physics_smoke_joint_pose;
 mod physics_smoke_joint_slider;
 mod physics_smoke_props;

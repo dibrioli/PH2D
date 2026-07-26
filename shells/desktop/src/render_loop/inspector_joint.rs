@@ -10,7 +10,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
-use ph2d_physics_ecs::{JointKind, PhysicsJoint};
+use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
 use super::inspector_ordering::queue_set;
 
@@ -50,6 +50,44 @@ fn limit_in(kind: JointKind, v: f32) -> f32 {
         v
     } else {
         v.to_radians()
+    }
+}
+
+/// A motor quantity **out** of the component, in the unit the Inspector shows.
+///
+/// The twin door of [`limit_out`], and deliberately a SEPARATE one: the question
+/// is `JointKind::motor_in_metres`, not `limits_in_metres`. A Rope has no limit
+/// range at all and still has a linear motor (the winch), so one door for both
+/// would show a winch's target in degrees.
+fn motor_out(kind: JointKind, v: f32) -> f32 {
+    if kind.motor_in_metres() {
+        v
+    } else {
+        v.to_degrees()
+    }
+}
+
+/// A motor quantity **into** the component, from the unit the Inspector typed.
+fn motor_in(kind: JointKind, v: f32) -> f32 {
+    if kind.motor_in_metres() {
+        v
+    } else {
+        v.to_radians()
+    }
+}
+
+fn motor_mode_tag(mode: MotorMode) -> u8 {
+    match mode {
+        MotorMode::Velocity => 0,
+        MotorMode::Position => 1,
+    }
+}
+
+fn motor_mode_of(tag: u8) -> MotorMode {
+    if tag == 1 {
+        MotorMode::Position
+    } else {
+        MotorMode::Velocity
     }
 }
 
@@ -112,7 +150,9 @@ pub(crate) fn build_joint_info(
         limit_min_ui: limit_out(joint.kind, joint.limit_min),
         limit_max_ui: limit_out(joint.kind, joint.limit_max),
         motor_enabled: joint.motor_enabled,
-        motor_speed_deg: joint.motor_speed.to_degrees(),
+        motor_mode_tag: motor_mode_tag(joint.motor_mode),
+        motor_speed_ui: motor_out(joint.kind, joint.motor_speed),
+        motor_target_ui: motor_out(joint.kind, joint.motor_target),
         motor_max_force: joint.motor_max_force,
         rest_length: joint.rest_length,
         stiffness: joint.stiffness,
@@ -240,6 +280,19 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
                 next.limit_min = lo;
                 next.limit_max = hi;
             }
+            // ⚠️ **And the MOTOR's unit is a separate question** — `motor_speed`
+            // and `motor_target` carry radians on a hinge and metres on a rail or
+            // a winch, so a Pin's 2 rad/s reinterpreted as a Slider's is 2 m/s.
+            // Gated on `motor_in_metres` and not on the limits' door because a
+            // Rope flips this one without flipping that one (it has a linear
+            // motor and no limit range at all): sharing the condition would leave
+            // a winch running at 114 m/s under a label reading metres.
+            if next.kind.motor_in_metres() != prev_kind.motor_in_metres() {
+                next.motor_speed = PhysicsJoint::default_motor_speed(next.kind);
+                // Zero is the joint's own zero in either unit, so the target
+                // needs no per-kind default — only the reset.
+                next.motor_target = 0.0;
+            }
         }
         JointFieldEdit::LimitsEnabled(on) => next.limits_enabled = on,
         // The UNIT is the kind's (`limits_in_metres`): degrees→radians for a
@@ -249,7 +302,12 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         JointFieldEdit::LimitMin(v) => next.limit_min = limit_in(next.kind, v),
         JointFieldEdit::LimitMax(v) => next.limit_max = limit_in(next.kind, v),
         JointFieldEdit::MotorEnabled(on) => next.motor_enabled = on,
-        JointFieldEdit::MotorSpeedDeg(v) => next.motor_speed = v.to_radians(),
+        JointFieldEdit::MotorMode(tag) => next.motor_mode = motor_mode_of(tag),
+        // The UNIT is the kind's (`motor_in_metres`), through the same pair of
+        // doors the limits use — and a DIFFERENT pair, because a Rope's answers
+        // differ (no limits, linear motor).
+        JointFieldEdit::MotorSpeed(v) => next.motor_speed = motor_in(next.kind, v),
+        JointFieldEdit::MotorTarget(v) => next.motor_target = motor_in(next.kind, v),
         JointFieldEdit::MotorMaxForce(v) => next.motor_max_force = v.max(0.0),
         JointFieldEdit::RestLength(v) => next.rest_length = v.max(0.0),
         JointFieldEdit::Stiffness(v) => next.stiffness = v.max(0.0),

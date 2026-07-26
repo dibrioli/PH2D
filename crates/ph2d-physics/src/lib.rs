@@ -30,7 +30,7 @@ pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::contacts::{ContactReport, PeakKey, PeakSample};
 pub use world::defaults::BodyDefaults;
 pub use world::effector::{zone_force_world, zone_force_world_at, zone_spin_sign};
-pub use world::joints::{JointDesc, JointKind, MotorDesc};
+pub use world::joints::{JointDesc, JointKind, MotorDesc, MotorMode, motor_axis};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{
     AreaEffect, BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld,

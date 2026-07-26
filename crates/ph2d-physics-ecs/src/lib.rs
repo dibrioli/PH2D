@@ -36,7 +36,7 @@ pub use components::{
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
 };
-pub use joint::{JointKind, PhysicsJoint};
+pub use joint::{JointKind, MotorMode, PhysicsJoint};
 pub use joint_group::jointed_group;
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in

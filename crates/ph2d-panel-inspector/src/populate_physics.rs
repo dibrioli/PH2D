@@ -35,6 +35,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_KIND);
     register_button_ids(store, &ids::INSP_JOINT_LIMITS);
     register_button_ids(store, &ids::INSP_JOINT_MOTOR);
+    register_button_ids(store, &ids::INSP_JOINT_MOTOR_MODE);
     register_button_ids(
         store,
         &[
@@ -56,12 +57,17 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         // that still means something.
         (ids::INSP_JOINT_LIMIT_MIN, -45.0, -360.0, 360.0, 1.0), // LITERAL-PX-OK: degrees
         (ids::INSP_JOINT_LIMIT_MAX, 45.0, -360.0, 360.0, 1.0),  // LITERAL-PX-OK: degrees
-        // Motor speed in degrees/second, either direction.
-        (ids::INSP_JOINT_MOTOR_SPEED, 114.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s
-        (ids::INSP_JOINT_MOTOR_FORCE, 10.0, 0.0, 10000.0, 0.1),     // LITERAL-PX-OK: N·m ceiling
-        (ids::INSP_JOINT_REST_LENGTH, 1.0, 0.0, 1000.0, 0.01),      // LITERAL-PX-OK: meters
-        (ids::INSP_JOINT_STIFFNESS, 30.0, 0.0, 100000.0, 1.0), // LITERAL-PX-OK: spring constant
-        (ids::INSP_JOINT_DAMPING, 0.5, 0.0, 1000.0, 0.1),      // LITERAL-PX-OK: damping constant
+        // Motor speed, either direction. The range has to hold BOTH units the
+        // row can be labelled with (degrees/second on a hinge, metres/second on
+        // a rail or a winch), so it is the wider of the two — a range per kind
+        // would be a second place for the unit to be decided.
+        (ids::INSP_JOINT_MOTOR_SPEED, 114.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s or m/s
+        // The servo's target place: degrees on a hinge, metres on a rail/winch.
+        (ids::INSP_JOINT_MOTOR_TARGET, 0.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: degrees or m
+        (ids::INSP_JOINT_MOTOR_FORCE, 10.0, 0.0, 10000.0, 0.1),    // LITERAL-PX-OK: N·m ceiling
+        (ids::INSP_JOINT_REST_LENGTH, 1.0, 0.0, 1000.0, 0.01),     // LITERAL-PX-OK: meters
+        (ids::INSP_JOINT_STIFFNESS, 30.0, 0.0, 100000.0, 1.0),     // LITERAL-PX-OK: spring constant
+        (ids::INSP_JOINT_DAMPING, 0.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: damping constant
         (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
     ] {
         store.register(

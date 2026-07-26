@@ -209,9 +209,8 @@ impl crate::App {
                   voce quer o trilho** (tente a diagonal). O rumo do arrasto E o\n     \
                   eixo -- o gesto desenha o trilho, em vez de te mandar digitar o\n     \
                   angulo depois.\n\
-             O Slider nao tem MOTOR nesta wave, de proposito: um motor LINEAR (o\n\
-             guincho) chega no W-J6 junto com os modos Position|Velocity, e oferece-lo\n\
-             aqui seria pintar dois knobs que o solver ignora."
+             O Slider GANHOU motor no W-J6 (a cena 48): o card Motor aparece aqui\n\
+             tambem, com os modos Velocity|Position e as rows em m/s e m."
         );
     }
 }

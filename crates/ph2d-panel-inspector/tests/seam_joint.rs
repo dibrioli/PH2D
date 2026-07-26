@@ -43,7 +43,9 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         limit_min_ui: -45.0,
         limit_max_ui: 45.0,
         motor_enabled: true,
-        motor_speed_deg: 114.0,
+        motor_mode_tag: 0,
+        motor_speed_ui: 114.0,
+        motor_target_ui: 0.0,
         motor_max_force: 10.0,
         rest_length: 1.0,
         stiffness: 30.0,
@@ -210,7 +212,7 @@ fn each_number_box_commits_to_its_own_field() {
             0,
             ids::INSP_JOINT_MOTOR_SPEED,
             90.0,
-            JointFieldEdit::MotorSpeedDeg(90.0),
+            JointFieldEdit::MotorSpeed(90.0),
         ),
         (
             0,
@@ -257,13 +259,15 @@ fn each_number_box_commits_to_its_own_field() {
 /// painted here that the solver ignores would be a knob that does nothing.
 #[test]
 fn each_kind_paints_only_the_rows_it_uses() {
-    // ⚠️ **Split quando o Slider chegou** (W-J5): as rows de LIMITE deixaram de
-    // ser do Pin — um Slider tem alcance também (`has_limits`) — e o MOTOR
-    // continua só do Pin (o linear é W-J6). Colapsadas, um Slider ou perderia o
-    // curso que o torna um trilho ou ganharia um motor sem modelo.
+    // ⚠️ **Duas famílias de rows pertencem a MAIS DE UM tipo, e por isso não
+    // cabem na tabela "um dono" abaixo.** As de LIMITE deixaram de ser do Pin
+    // quando o Slider chegou (W-J5, `has_limits`), e as de MOTOR quando o servo
+    // chegou (W-J6, `has_motor`: um trilho e um guincho são dirigidos também).
+    // Cada uma é afirmada com o próprio predicado — colapsá-las na do Pin é o que
+    // deixaria um Slider sem curso ou uma Rope sem guincho, em silêncio.
     const LIMIT_ROWS: [ph2d_a11y::NodeId; 2] =
         [ids::INSP_JOINT_LIMIT_MIN, ids::INSP_JOINT_LIMIT_MAX];
-    const PIN_ONLY: [ph2d_a11y::NodeId; 2] =
+    const MOTOR_ROWS: [ph2d_a11y::NodeId; 2] =
         [ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE];
     const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
         ids::INSP_JOINT_REST_LENGTH,
@@ -272,10 +276,12 @@ fn each_kind_paints_only_the_rows_it_uses() {
     ];
     const ROPE_ONLY: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_MAX_LENGTH];
 
-    // 0..4 includes Weld (kind 3), which owns NO parameter rows: it never
-    // equals an owner below, so every PIN/SPRING/ROPE row must go unpainted for
-    // it. A Weld that leaked a param row (a length, a motor) would fail here.
-    for kind in 0u8..4 {
+    // ⚠️ **0..5, not 0..4.** The range stopped one short of the Slider, so the
+    // `kind == 4` half of the limit assertion below was never executed — written
+    // in W-J5 and green ever since without covering the kind it was written for.
+    // It also covers Weld (kind 3), which owns NO parameter rows at all: it never
+    // equals an owner below, so every family must go unpainted for it.
+    for kind in 0u8..5 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
@@ -299,11 +305,24 @@ fn each_kind_paints_only_the_rows_it_uses() {
                 }
             );
         }
-        for (owner, ids_) in [
-            (0u8, &PIN_ONLY[..]),
-            (1, &SPRING_ONLY[..]),
-            (2, &ROPE_ONLY[..]),
-        ] {
+        // Um motor existe no Pin, no Slider e na Rope — e em mais nenhum. Uma
+        // Spring é excluída por MECÂNICA e não por gosto: o rapier modela mola
+        // COMO motor no mesmo eixo, então um segundo ali comeria a rigidez que o
+        // artista autorou (`ph2d_physics::motor_axis` diz o mesmo ao solver).
+        for &id in &MOTOR_ROWS {
+            let driven = kind == 0 || kind == 2 || kind == 4;
+            assert_eq!(
+                painted(id),
+                driven,
+                "kind {kind} {} {id:?}: um motor existe no Pin, no Slider e na Rope",
+                if driven {
+                    "must paint"
+                } else {
+                    "must not paint"
+                }
+            );
+        }
+        for (owner, ids_) in [(1u8, &SPRING_ONLY[..]), (2, &ROPE_ONLY[..])] {
             for &id in ids_ {
                 assert_eq!(
                     painted(id),
@@ -376,4 +395,88 @@ fn the_joint_arms_are_silent_when_nothing_is_a_joint() {
         host.drained_actions().is_empty(),
         "the §12 arms raised an action with no joint selected"
     );
+}
+
+/// **Os chips de modo do motor são clicáveis e pedem o modo que dizem** (W-J6).
+///
+/// A metade que um sweep de *pintura* não faz: pintado e hit-registrado não é
+/// escolhível — só o clique REAL atravessa a checagem de focabilidade do store.
+/// É o buraco que deixou os chips de kind do §11 nascerem mortos.
+#[test]
+fn the_motor_mode_chips_ask_for_the_mode_they_name() {
+    for (i, &id) in ids::INSP_JOINT_MOTOR_MODE.iter().enumerate() {
+        let acts = click_real(joint(0), id);
+        expect(
+            &acts,
+            JointFieldEdit::MotorMode(i as u8),
+            &format!("chip de modo {i}"),
+        );
+    }
+}
+
+/// **Cada modo pinta a SUA row, e só a sua.**
+///
+/// Velocity mostra Speed, Position mostra Target. Pintar as duas seria dois
+/// números onde só um é lido — o knob-que-não-faz-nada que esta seção recusa em
+/// toda parte —, e pintar nenhuma seria um modo sem instrução.
+///
+/// Mutação: o `if` do modo trocado por `true` (sempre Target) ⇒ a metade Velocity
+/// fica vermelha; por `false` ⇒ a metade Position.
+#[test]
+fn each_motor_mode_paints_only_its_own_number() {
+    for mode in 0u8..2 {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(InspectorJointInfo {
+            motor_mode_tag: mode,
+            ..joint(0)
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+        assert_eq!(
+            painted(ids::INSP_JOINT_MOTOR_SPEED),
+            mode == 0,
+            "modo {mode}: Speed pertence ao Velocity"
+        );
+        assert_eq!(
+            painted(ids::INSP_JOINT_MOTOR_TARGET),
+            mode == 1,
+            "modo {mode}: Target pertence ao Position"
+        );
+        // O controle: o card inteiro não sumiu.
+        assert!(
+            painted(ids::INSP_JOINT_MOTOR_FORCE),
+            "modo {mode}: Max Force existe nos dois"
+        );
+    }
+}
+
+/// **Um motor desligado não pinta nem modo nem número** — e ligado pinta os dois.
+///
+/// Presença E ausência na mesma asserção, porque o card só é honesto se o
+/// desligar realmente recolher a instrução em vez de deixá-la inerte na tela.
+#[test]
+fn switching_the_motor_off_takes_its_instruction_off_the_screen() {
+    for on in [false, true] {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(InspectorJointInfo {
+            motor_enabled: on,
+            ..joint(0)
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+        for id in ids::INSP_JOINT_MOTOR_MODE
+            .iter()
+            .chain(&[ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE])
+        {
+            assert_eq!(painted(*id), on, "motor {on}: {id:?}");
+        }
+        // O interruptor em si está sempre lá — senão não haveria como religar.
+        for id in &ids::INSP_JOINT_MOTOR {
+            assert!(painted(*id), "o switch Motor existe nos dois estados");
+        }
+    }
 }

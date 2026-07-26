@@ -6,7 +6,7 @@
 //! constraint is paired with a claim about the motion it must still allow.
 
 use ph2d_physics::{
-    BodyDesc, JointDesc, JointKind, MotorDesc, PhysicsWorld, RigidBodyType, ShapeDesc,
+    BodyDesc, JointDesc, JointKind, MotorDesc, MotorMode, PhysicsWorld, RigidBodyType, ShapeDesc,
 };
 
 /// Distance between two points.
@@ -308,7 +308,9 @@ fn a_motor_reaches_the_speed_it_was_given() {
             anchor_a: [0.0, 6.0],
             anchor_b: [0.0, 6.0],
             motor: Some(MotorDesc {
+                mode: MotorMode::Velocity,
                 speed: target,
+                target: 0.0,
                 max_force: 100.0,
             }),
             ..JointDesc::default()
@@ -435,7 +437,9 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
                 anchor_a: [0.0, 6.0],
                 anchor_b: [0.0, 6.0],
                 motor: Some(MotorDesc {
+                    mode: MotorMode::Velocity,
                     speed: 4.0,
+                    target: 0.0,
                     max_force,
                 }),
                 ..JointDesc::default()

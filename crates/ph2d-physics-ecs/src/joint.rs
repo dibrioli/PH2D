@@ -99,15 +99,24 @@ pub enum JointKind {
 }
 
 impl JointKind {
-    /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does, and
-    /// it is the only one with limits or a motor.
+    /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does.
     ///
-    /// **One door.** The Inspector asks it to decide which rows to paint, and
-    /// the bridge asks it to decide which parameters to hand the solver. Two
-    /// answers to *"does this joint have a motor?"* is how a knob comes to be
-    /// painted for a kind that ignores it.
+    /// ⚠️ **No longer the same question as *"does it have a motor?"*** — that is
+    /// [`Self::has_motor`], and it grew a Slider and a Rope in W-J6. This one is
+    /// still asked wherever the *angular* nature is the point.
     pub fn is_hinge(self) -> bool {
         matches!(self, JointKind::Pin)
+    }
+
+    /// **Is this kind's free degree of freedom a TRANSLATION?** A Slider slides
+    /// along its axis; a Rope's is the distance between the anchors. A Pin's is
+    /// an angle.
+    ///
+    /// The one underlying fact behind every "metres or radians?" in this file:
+    /// [`Self::limits_in_metres`] and [`Self::motor_in_metres`] both read it
+    /// rather than re-listing the kinds, so a sixth kind states its unit once.
+    pub fn translates(self) -> bool {
+        matches!(self, JointKind::Slider | JointKind::Rope)
     }
 
     /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
@@ -123,6 +132,24 @@ impl JointKind {
         matches!(self, JointKind::Pin | JointKind::Slider)
     }
 
+    /// **Can this kind be DRIVEN?** A Pin's hinge, a Slider's rail and a Rope's
+    /// distance (a winch) all have a free degree of freedom a motor can push
+    /// along. A Spring and a Weld do not.
+    ///
+    /// **One door.** The Inspector asks it to decide whether to paint the Motor
+    /// card, and the bridge asks it before handing a motor to the solver — two
+    /// answers to *"does this joint have a motor?"* is how a knob comes to be
+    /// painted for a kind that ignores it.
+    ///
+    /// ⚠️ **A Spring is excluded for a MECHANICAL reason, not a UI one:** rapier
+    /// models a spring *as* a motor on the same axis, so a second motor there
+    /// would overwrite the stiffness and damping the artist authored and turn the
+    /// spring into a rate-driven rod. The wrapper states the same exclusion in
+    /// `ph2d_physics::motor_axis`, which is what the solver actually reads.
+    pub fn has_motor(self) -> bool {
+        matches!(self, JointKind::Pin | JointKind::Slider | JointKind::Rope)
+    }
+
     /// Are this kind's limits a distance rather than an angle?
     ///
     /// ⚠️ **`limit_min`/`limit_max` carry the unit of the KIND** — radians for a
@@ -132,8 +159,26 @@ impl JointKind {
     /// bridge's hand-off to the solver cannot disagree about what the number
     /// means; and the kind-change re-seeds the range, so `±0.785` rad never
     /// silently becomes `±0.785` m.
+    ///
+    /// Derived from [`Self::translates`] and [`Self::has_limits`] rather than
+    /// listing kinds again: a Rope translates but has no limit range, so it
+    /// answers `false` here and `true` to [`Self::motor_in_metres`] — the two
+    /// questions genuinely differ for it, and deriving both from one fact is
+    /// what keeps them able to.
     pub fn limits_in_metres(self) -> bool {
-        matches!(self, JointKind::Slider)
+        self.has_limits() && self.translates()
+    }
+
+    /// Is this kind's MOTOR linear rather than angular — metres and metres per
+    /// second rather than degrees and degrees per second?
+    ///
+    /// ⚠️ **Not the same question as [`Self::limits_in_metres`], and a Rope is
+    /// the case that proves it:** a Rope has no limit range at all (so that one
+    /// says `false`) and its motor is a winch reeling a distance (so this one
+    /// says `true`). Sharing one door would have given the winch a target in
+    /// degrees.
+    pub fn motor_in_metres(self) -> bool {
+        self.translates()
     }
 
     /// Does this kind have a length the artist tunes? Only Spring and Rope do —
@@ -159,6 +204,24 @@ impl JointKind {
     }
 }
 
+/// What a driven joint is *aiming at* — the editor's mirror of
+/// [`ph2d_physics::MotorMode`]. **Append-only**, for the same postcard reason
+/// [`JointKind`] is.
+///
+/// Its own enum rather than a re-export because this one is a **file format**:
+/// it is `serde`, it travels inside the project, and its discriminants are
+/// pinned by a gate. The wrapper's is a solver adapter with no such promise, and
+/// `joint_desc` maps between them in one place — the same split `JointKind`
+/// already makes.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MotorMode {
+    /// Keep turning / keep sliding at [`PhysicsJoint::motor_speed`], forever.
+    #[default]
+    Velocity,
+    /// Go to [`PhysicsJoint::motor_target`] and HOLD it — the servo.
+    Position,
+}
+
 /// A joint between two named bodies. The entity carrying it also carries a
 /// `Transform`, whose translation is the anchor (module docs).
 ///
@@ -179,12 +242,16 @@ pub struct PhysicsJoint {
     /// converting at the paint/commit boundary like `Transform::rotation_rad`.
     pub limit_min: f32,
     pub limit_max: f32,
-    /// Drive the hinge? (Pin only.)
+    /// Drive the free degree of freedom? ([`JointKind::has_motor`] kinds only:
+    /// Pin, Slider, Rope.)
     pub motor_enabled: bool,
-    /// Target angular velocity, radians/s. Sign picks the direction.
+    /// Target velocity — **radians/s on a hinge, metres/s on a rail or a
+    /// winch** ([`JointKind::motor_in_metres`]). Sign picks the direction. Read
+    /// only in [`MotorMode::Velocity`].
     pub motor_speed: f32,
     /// The force ceiling that makes a motor stoppable — a weak one stalls
-    /// against a heavy load instead of winning.
+    /// against a heavy load instead of winning. In [`MotorMode::Position`] it is
+    /// also what makes a servo *yield* rather than weld.
     pub motor_max_force: f32,
     /// Spring: the length it pulls towards, meters.
     pub rest_length: f32,
@@ -206,6 +273,22 @@ pub struct PhysicsJoint {
     /// flips this true. A reposition gesture sets it false again to re-seed; a
     /// body move never does (the slide fix).
     pub anchored: bool,
+    /// Is the motor chasing a RATE or a PLACE? (W-J6.)
+    pub motor_mode: MotorMode,
+    /// [`MotorMode::Position`]: the place to hold, in the free degree of
+    /// freedom's own unit — **radians on a hinge, metres on a rail or a winch**
+    /// ([`JointKind::motor_in_metres`]), measured from the joint's zero (the
+    /// anchor).
+    ///
+    /// ⚠️ Appended at the END with `motor_mode`, like `local_a`/`local_b`/
+    /// `anchored` before them, because postcard encodes this struct
+    /// **positionally**: a field inserted among the motor fields it reads with
+    /// would shift every field after it, and every joint in every saved project
+    /// would decode as something else. (`PROJECT_SCHEMA` bumps regardless — the
+    /// two new fields make an old blob the wrong length — but the discipline is
+    /// what keeps a future field from being inserted in the middle *without* a
+    /// bump.)
+    pub motor_target: f32,
 }
 
 impl Default for PhysicsJoint {
@@ -234,6 +317,11 @@ impl Default for PhysicsJoint {
             local_a: [0.0, 0.0],
             local_b: [0.0, 0.0],
             anchored: false,
+            motor_mode: MotorMode::Velocity,
+            // Zero is the joint's own zero in EITHER unit — the authored angle of
+            // a hinge, the anchor of a rail, a fully-reeled winch — so unlike
+            // `motor_speed` this default needs no per-kind twin.
+            motor_target: 0.0,
         }
     }
 }
@@ -277,6 +365,32 @@ impl PhysicsJoint {
         [-half, half]
     }
 
+    /// A new LINEAR motor's speed, metres/s — the rail and the winch.
+    ///
+    /// Chosen by the same rule [`Self::DEFAULT_MOTOR_SPEED`] states for the
+    /// hinge (*"slow enough to watch"*), applied to the stroke a new Slider
+    /// gets: `2 · DEFAULT_STROKE` is a metre of travel, so at 0.5 m/s the
+    /// carriage crosses its whole range in **2 s** — long enough to see it go
+    /// and come back rather than blink between the ends.
+    pub const DEFAULT_LINEAR_MOTOR_SPEED: f32 = 0.5;
+
+    /// The default motor speed for a kind, in **that kind's unit** — rad/s for a
+    /// hinge, m/s for a rail or a winch.
+    ///
+    /// The twin of [`Self::default_limits`], and it exists for the same hazard:
+    /// `motor_speed` carries the unit of the free degree of freedom, so a Pin's
+    /// 2 rad/s reinterpreted as a Slider's is **2 m/s** — a carriage crossing
+    /// its default stroke four times a second, a number nobody typed. The kind
+    /// change re-seeds through here whenever [`JointKind::motor_in_metres`]
+    /// flips.
+    pub fn default_motor_speed(kind: JointKind) -> f32 {
+        if kind.motor_in_metres() {
+            Self::DEFAULT_LINEAR_MOTOR_SPEED
+        } else {
+            Self::DEFAULT_MOTOR_SPEED
+        }
+    }
+
     /// This joint with every number forced back into a range the solver can
     /// use. **The door a loaded project file comes through.**
     ///
@@ -310,6 +424,9 @@ impl PhysicsJoint {
             std::mem::swap(&mut self.limit_min, &mut self.limit_max);
         }
         self.motor_speed = finite(self.motor_speed, d.motor_speed);
+        // A servo's target flows into rapier's `target_pos`; a NaN there poisons
+        // the pose exactly as a NaN stiffness does (measured, above).
+        self.motor_target = finite(self.motor_target, d.motor_target);
         self.motor_max_force = finite(self.motor_max_force, d.motor_max_force).max(0.0);
         self.rest_length = finite(self.rest_length, d.rest_length).max(0.0);
         self.stiffness = finite(self.stiffness, d.stiffness).max(0.0);

@@ -5070,3 +5070,103 @@ que o artista queria fazer.
 **M25** (o bug reinstalado — o 5º rótulo removido) sangra nas DUAS camadas: o gate
 de comprimento e o seam. `PROJECT_SCHEMA` **31**, registro **21**, c9 intocado
 (`55fa97c5…`, 85 corpos — nada aqui toca o solver).
+
+### W-J6 — SERVO + GUINCHO: o motor ganha um MODO, e ganha dois tipos novos (2026-07-26, cena `=48`, pendente de smoke)
+
+A linha do plano: *"motor Position|Velocity; motor na Rope"*. Até aqui um motor
+existia **só no Pin** e só sabia dizer *"gire a esta taxa"*.
+
+**As duas metades são separáveis, e cada uma tem porta própria:**
+
+- **QUAIS tipos são dirigidos** — `JointKind::has_motor()` (Pin · Slider · Rope),
+  o irmão exato do `has_limits` que o W-J5 teve de separar do `is_hinge`. Do lado
+  do wrapper a mesma pergunta é **`ph2d_physics::motor_axis`**, que devolve o EIXO
+  (`AngX` numa dobradiça, `LinX` num trilho e num guincho) — e é isso que permitiu
+  aplicar o motor **UMA vez, depois do builder**, em vez de soletrá-lo em três
+  braços de `match` com três chances de esquecer um modo.
+- **QUAL é a instrução** — `MotorMode::{Velocity, Position}`. O rapier exprime as
+  duas pelo MESMO `set_motor(target_pos, target_vel, stiffness, damping)`, e o
+  modo é qual par carrega o sinal.
+
+⚠️ **A Spring é excluída por MECÂNICA, não por gosto:** o rapier modela mola
+**COMO** motor no eixo linear acoplado, então um segundo motor ali **comeria a
+rigidez e o amortecimento que o artista autorou** — a mola viraria uma vara
+dirigida por taxa, com os dois knobs ainda na tela. Gate com oráculo byte-level (a
+MESMA mola, com e sem `MotorDesc`, tem de assentar na pose idêntica).
+
+#### As três constantes, MEDIDAS
+
+`SERVO_STIFFNESS = 10000` e `SERVO_DAMPING = 700` (o braço de 0,2 kg pendurado,
+mandado segurar +45° contra a gravidade, no `max_force` DEFAULT de 10). A rigidez
+não tem joelho verdadeiro — a flexão é `torque_gravidade / stiffness`, e só
+encolhe —, então o que escolhe 10000 é o **par de pontas**: abaixo dela a queda é
+visível (1° a 3000, 4° a 1000) e **acima dela o servo volta a passar do alvo** e
+demora MAIS para chegar (30000 dá 59,7° de overshoot). Resultado: **0,26° de
+flexão, chega em 0,42 s, zero overshoot**. ⚠️ O `2√k` do amortecimento crítico de
+livro erra por **3,5×** aqui (daria 200, que passa 67°) — o motor do rapier é
+acceleration-based e resolvido junto com os contatos.
+
+⚠️ **E o `MOTOR_TRACKING` foi RE-MEDIDO: 100 → 1000.** Um motor de velocidade é um
+termo de amortecimento, então trabalhando contra a gravidade ele assenta um `g /
+tracking` ABAIXO do que mandaram — 2,6% dos 4 rad/s de uma dobradiça e **20% dos
+0,5 m/s de um trilho**, porque os dois defaults são números pequenos em unidades
+diferentes. Medido: 0,4019 m/s a tracking 100, **0,4903 a 1000**, 0,4990 a 10000.
+⚠️ **Isto MOVE a pose de toda cena com motor de dobradiça** (elas agora alcançam a
+velocidade que dizem) e por isso o hash. A coluna de *stall* da tabela antiga
+continua lendo 0,49 a 1000, então o teto `max_force` segue significando o que diz.
+
+#### A UNIDADE segue o grau de liberdade livre — e é uma pergunta SEPARADA da dos limites
+
+`translates()` é o fato único (Slider|Rope); `limits_in_metres()` e
+`motor_in_metres()` o leem. ⚠️ **A Rope é o caso que prova que são duas
+perguntas:** ela **não tem alcance nenhum** (limites → `false`) e tem **motor
+linear** (motor → `true`). Uma porta só teria dado ao guincho um alvo em GRAUS —
+e as duas mutações que sangram (M12, M13) sangram exatamente nessa linha.
+
+Corolário: a troca de tipo re-semeia os números do motor quando `motor_in_metres`
+vira, com `default_motor_speed(kind)` — **`DEFAULT_LINEAR_MOTOR_SPEED = 0,5 m/s`**,
+escolhida pela mesma regra que o default angular declara (*"devagar o bastante
+para ver"*): o curso de um Slider novo é 1 m, então ele o atravessa em **2 s**.
+
+#### A metade visível
+
+O card **Motor** passa a ser oferecido a Pin · Slider · Rope, com uma linha nova
+**Mode** (Velocity | Position) e **uma row por modo** — `Speed` no Velocity,
+`Target` no Position. Pintar as duas seria dois números onde só um é lido; pintar
+nenhuma seria um modo sem instrução. Os rótulos carregam a unidade do tipo
+(`(°/s)`/`(°)` numa dobradiça, `(m/s)`/`(m)` num trilho e num guincho).
+
+**Números:** `PROJECT_SCHEMA` **31→32** (`motor_mode` + `motor_target` APENDADOS ao
+`PhysicsJoint`; postcard é posicional, mesmo padrão do v30), tripla `(32, 9, 13)`;
+registro fica **21**; **c9 85 → 87 corpos**, hash **`c9d4baee…`** (debug ≡ release)
+— MUDA vs main por dois motivos independentes e os dois corretos: a lane do servo
+é nova, e o `MOTOR_TRACKING` moveu.
+
+**13 mutações, 12 sangram.** O sobrevivente é **documentado**: dar eixo a um Weld
+deixa o gate dele VERDE, porque o rapier tem os seis eixos de um fixed joint
+travados e um motor escrito num deles é inerte pela construção do próprio solver —
+a propriedade é defendida DUAS vezes e só a camada de fora é nossa
+([[feedback_layered_defenses_need_per_layer_gates]]).
+
+⚠️ **Duas correções de gate herdadas, as duas minhas:** o
+`each_kind_paints_only_the_rows_it_uses` iterava `0u8..4`, ou seja **parava um
+antes do Slider** — a metade `kind == 4` da asserção de limites, escrita no W-J5,
+nunca foi executada; e as rows de MOTOR saíram da tabela "um dono" para uma
+asserção de família própria, ao lado das de limite.
+
+⚠️ **E a mensagem da cena 47 estava MENTINDO** desde o instante em que esta wave
+compilou (*"o Slider não tem MOTOR nesta wave"*) — corrigida no mesmo commit. Nota
+que promete wave futura apodrece no dia em que a wave chega.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=48`** — braço servo (para a **49,80°** de 50 e
+SEGURA) · o mesmo braço sem motor ao lado (o CONTROLE: cai e balança) · elevador
+subindo a **0,49 m/s** e estacionando em **y = 7,500** no fim do curso · guincho
+segurando a carga em **y = 7,499**, meio metro abaixo do gancho · e um par pelado
+para armar um motor à mão (passos 5-6).
+
+**Aberto:** o motor não tem alça de canvas (a seta de motor arrastável foi
+**DEFERIDA com razão** no W-J3 — uma TAXA não tem lugar, e a row não tem faixa de
+onde tirar a escala; um servo, que mira um LUGAR, **tem**: é candidato natural a
+alça, e é wave própria) · `MotorModel` Force×Acceleration segue não exposto (knob
+de engenheiro) · a Rope não tem row de limite, então o guincho pode recolher além
+do que a cena quer — o `max_length` é o teto, não um piso.

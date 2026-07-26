@@ -383,7 +383,7 @@ pub enum PhysicsFieldEdit {
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorJointInfo {
     pub entity_bits: u64,
-    /// `0` Pin · `1` Spring · `2` Rope · `3` Weld.
+    /// `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider.
     pub kind_tag: u8,
     /// The bodies, resolved for display. Empty means the name no longer
     /// matches any body in the scene — deleted or renamed.
@@ -406,8 +406,20 @@ pub struct InspectorJointInfo {
     pub limit_min_ui: f32,
     pub limit_max_ui: f32,
     pub motor_enabled: bool,
-    /// Degrees per second.
-    pub motor_speed_deg: f32,
+    /// `0` Velocity · `1` Position — what the motor is aiming at (W-J6).
+    pub motor_mode_tag: u8,
+    /// The motor's target RATE, **in the kind's own unit**: degrees per second
+    /// on a hinge, metres per second on a rail or a winch.
+    ///
+    /// ⚠️ Named `_ui` and not `_deg` for the reason [`Self::limit_min_ui`] gives
+    /// at length — an identifier that promises one unit while carrying two is
+    /// the same defect as a label that does. The door is
+    /// `JointKind::motor_in_metres`, which is deliberately NOT the same question
+    /// as `limits_in_metres`: a Rope has no limits and still has a linear motor.
+    pub motor_speed_ui: f32,
+    /// The servo's target PLACE, likewise in the kind's own unit — degrees on a
+    /// hinge, metres on a rail or a winch.
+    pub motor_target_ui: f32,
     pub motor_max_force: f32,
     pub rest_length: f32,
     pub stiffness: f32,
@@ -434,7 +446,13 @@ pub enum JointFieldEdit {
     LimitMin(f32),
     LimitMax(f32),
     MotorEnabled(bool),
-    MotorSpeedDeg(f32),
+    /// `0` Velocity · `1` Position.
+    MotorMode(u8),
+    /// The target rate, in the kind's own unit — see
+    /// [`InspectorJointInfo::motor_speed_ui`].
+    MotorSpeed(f32),
+    /// The servo's target place, in the kind's own unit.
+    MotorTarget(f32),
     MotorMaxForce(f32),
     RestLength(f32),
     Stiffness(f32),

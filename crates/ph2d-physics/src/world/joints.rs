@@ -34,7 +34,7 @@
 //! `ImpulseJointSet`, so a scrub backwards carries joints with no work at all.
 
 use rapier2d::dynamics::{
-    FixedJointBuilder, ImpulseJointHandle, PrismaticJointBuilder, RevoluteJointBuilder,
+    FixedJointBuilder, ImpulseJointHandle, JointAxis, PrismaticJointBuilder, RevoluteJointBuilder,
     RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
 };
 use rapier2d::na::{Isometry2, Point2, UnitVector2, Vector2};
@@ -64,7 +64,90 @@ use super::PhysicsWorld;
 /// The first column is the point: at every tracking value a motor capped at
 /// 0.1 N·m still stalls. Raising this does not make motors unstoppable — it
 /// makes a motor that *is* strong enough actually reach its speed.
-const MOTOR_TRACKING: f32 = 100.0;
+///
+/// ⚠️ **RE-MEASURED at 1000 when the LINEAR motor arrived (W-J6), and the old
+/// 100 was visibly wrong there.** A velocity motor is a damping term, so working
+/// against gravity it settles a fixed `g / tracking` SHORT of what it was told —
+/// a shortfall that is 2.6% of a hinge's 4 rad/s and **20% of a rail's 0.5 m/s**,
+/// because the two defaults are small numbers in different units. Told 0.5 m/s up
+/// a vertical rail:
+///
+/// | tracking | achieved | shortfall |
+/// |---|---|---|
+/// | 100 | 0.4019 m/s | 0.0981 |  ← a fifth of the speed, silently
+/// | 300 | 0.4674 m/s | 0.0326 |
+/// | **1000** | **0.4903 m/s** | **0.0097** |
+/// | 3000 | 0.4967 m/s | 0.0033 |
+/// | 10000 | 0.4990 m/s | 0.0010 |
+///
+/// 1000 is where the shortfall stops being something you can see (2%), and the
+/// angular table above already measured it as *better* on that side too
+/// (19.39/19.97 travelled against 19.21/19.62). Both columns of the stall test
+/// still read 0.49 at 1000, so the `max_force` ceiling keeps meaning what it
+/// says. Reproduce with `cargo test -p ph2d-physics linear_motor_tracking_sweep
+/// -- --ignored --nocapture`.
+///
+/// ⚠️ This MOVES the pose of every existing scene with a hinge motor (they now
+/// reach their stated speed), and therefore the `physics_ecs_c9` hash.
+const MOTOR_TRACKING: f32 = 1000.0;
+
+/// How hard a **servo** pulls towards its target — rapier's motor `stiffness`,
+/// the number that makes [`MotorMode::Position`] a *place* rather than a
+/// suggestion.
+///
+/// **Not a knob, and MEASURED**, for the same reason [`MOTOR_TRACKING`] is not
+/// one: the artist says *where* and *how strong*, and this is the number that
+/// makes those two mean what they say. The rig is the one the `MOTOR_TRACKING`
+/// table already uses — a 0.2 kg, 1 m arm hanging straight down from a pin — told
+/// to hold **+45°**, which gravity spends the whole run pulling it away from, at
+/// the DEFAULT `max_force` of 10 and at the damping chosen below:
+///
+/// | stiffness | settles at | droop | time to ±1° | overshoot |
+/// |---|---|---|---|---|
+/// | 100 | −59.21° | 104.21° | never | 0.00° |  ← cannot lift its own arm
+/// | 300 | 5.78° | 39.22° | never | 0.00° |
+/// | 1000 | 41.02° | 3.98° | never | 0.00° |  ← visibly sags
+/// | 3000 | 44.13° | 0.87° | 1.65 s | 0.00° |
+/// | **10000** | **44.74°** | **0.26°** | **0.42 s** | **0.00°** |
+/// | 30000 | 44.91° | 0.09° | 0.60 s | 59.74° |  ← starts slapping again
+///
+/// The droop is `gravity_torque / stiffness`, so it never has a true knee — it
+/// just gets smaller. What picks 10000 is the pair of ends: below it the sag is
+/// something you can see (a degree at 3000, four at 1000), and above it the
+/// approach starts to overshoot again and takes *longer* to arrive. A quarter of
+/// a degree is held; the arm arrives in under half a second and does not pass.
+///
+/// ⚠️ **The same number serves a Slider and a Rope**, whose error is in metres
+/// rather than radians. A settling time goes as `1/√stiffness` either way, and
+/// the steady-state sag becomes `g / stiffness` ≈ **1 mm** — the units of the
+/// free degree of freedom cancel, which is why there is one constant and not
+/// one per kind.
+///
+/// Reproduce with `cargo test -p ph2d-physics servo_gain_sweep -- --ignored
+/// --nocapture` (the sweep drives `spawn_joint_with_gains`, the product path).
+/// `pub(super)` only so the sweeps in `world::tests` can hold one gain at its
+/// shipped value while varying another.
+pub(super) const SERVO_STIFFNESS: f32 = 10_000.0;
+
+/// How hard a servo resists its own approach — rapier's motor `damping` in
+/// [`MotorMode::Position`]. Also MEASURED, on the same arm and at the stiffness
+/// above, and the quantity it buys is **overshoot**, not accuracy:
+///
+/// | damping | settles at | time to ±1° | overshoot |
+/// |---|---|---|---|
+/// | 50 | 44.77° | 1.08 s | 106.14° |  ← flies past 150° and swings back
+/// | 200 | 44.77° | 0.18 s | 67.58° |
+/// | 400 | 44.76° | 0.40 s | 27.28° |
+/// | 500 | 44.75° | 0.38 s | 11.07° |
+/// | **700** | **44.74°** | **0.42 s** | **0.00°** |  ← lands without passing
+/// | 1000 | 44.72° | 0.58 s | 0.00° |
+///
+/// 700 is where the overshoot reaches zero; past it the servo only takes longer
+/// to arrive, which is not a thing anyone asked for. ⚠️ **The `2√k` of textbook
+/// critical damping is wrong here by 3.5×** (it would be 200, which overshoots
+/// by 67°) — rapier's motor is acceleration-based and solved with the contacts,
+/// so the analytic number is a starting point for a sweep, not an answer.
+pub(super) const SERVO_DAMPING: f32 = 700.0;
 
 /// Which constraint. **Fieldless on purpose** — the parameters live beside it in
 /// [`JointDesc`], flat, so the ECS component that mirrors this is flat too and
@@ -97,14 +180,49 @@ pub enum JointKind {
     Slider,
 }
 
-/// A motor driving a [`JointKind::Pin`].
+/// What a motor is *aiming at*. The two things a driven joint can be told, and
+/// they are genuinely different instructions rather than two settings of one.
+///
+/// rapier expresses both through the same `set_motor(target_pos, target_vel,
+/// stiffness, damping)`, and the mode is which pair carries the signal:
+/// velocity leaves `stiffness` at zero (there is no place to pull towards),
+/// position leaves `target_vel` at zero (the *place* is the instruction).
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum MotorMode {
+    /// **Keep turning / keep sliding at this rate.** A wheel, a conveyor, a
+    /// winch paying out. Has no notion of "arrived" — it is a rate, forever.
+    #[default]
+    Velocity,
+    /// **Go to this place and HOLD it.** The servo: an arm that stops at 45°
+    /// and stays there under load, a lift that parks at a floor, a winch that
+    /// reels to a length. This is the mode that needs a stiffness, because
+    /// holding against gravity is a force proportional to how far off it is.
+    Position,
+}
+
+/// A motor driving whichever degree of freedom the joint left free — the hinge
+/// of a [`JointKind::Pin`], the rail of a [`JointKind::Slider`], the distance of
+/// a [`JointKind::Rope`] (a winch).
+///
+/// ⚠️ **The unit follows the joint, not this struct.** `speed` and `target` are
+/// radians and radians/s on a Pin, metres and metres/s on a Slider or a Rope —
+/// exactly as `JointDesc::limits` is radians on one and metres on the other,
+/// and for the same reason: the number belongs to the free degree of freedom.
+/// The caller that authored it knows which; this one does not have to.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MotorDesc {
-    /// Target angular velocity, radians/s. Sign picks the direction.
+    /// Which instruction this motor carries.
+    pub mode: MotorMode,
+    /// [`MotorMode::Velocity`]: the target rate. Sign picks the direction.
     pub speed: f32,
-    /// Ceiling on the force the motor may use to reach that speed. This is what
-    /// makes a motor *stoppable*: a weak motor stalls against a heavy load
-    /// instead of teleporting it.
+    /// [`MotorMode::Position`]: the place to hold. Measured along the free
+    /// degree of freedom from the joint's own zero — the anchor for a rail, the
+    /// authored angle for a hinge, the anchor distance for a winch.
+    pub target: f32,
+    /// Ceiling on the force the motor may use to get there. This is what makes
+    /// a motor *stoppable*: a weak motor stalls against a heavy load instead of
+    /// teleporting it — and it is what makes a servo *yield*, which is the
+    /// difference between a held arm and a welded one.
     pub max_force: f32,
 }
 
@@ -145,7 +263,10 @@ pub struct JointDesc {
     /// a free hinge. `None` and a range covering a full turn are *not* the same
     /// thing to the solver, so the option is real state, not a sentinel.
     pub limits: Option<[f32; 2]>,
-    /// [`JointKind::Pin`]: the motor, or `None` for a passive hinge.
+    /// The motor, or `None` for a passive joint. Applies to whichever kinds have
+    /// a free degree of freedom to drive — see [`motor_axis`]: a Pin's hinge, a
+    /// Slider's rail, a Rope's distance. Ignored by a Spring (which *is* a motor
+    /// in rapier's model) and a Weld (which has no free axis).
     pub motor: Option<MotorDesc>,
     /// [`JointKind::Spring`]: the length the spring pulls towards, meters.
     pub rest_length: f32,
@@ -241,6 +362,30 @@ fn unit_or_x(v: [f32; 2]) -> UnitVector2<f32> {
     }
 }
 
+/// **Which degree of freedom a motor drives, per kind** — and `None` for the
+/// kinds that have none.
+///
+/// In 2D rapier locks a revolute joint's two linear axes and leaves `AngX`, and
+/// locks a prismatic joint's `LinY`+`AngX` and leaves `LinX`; a rope couples the
+/// linear axes and drives the *distance* through that same `LinX`. So the whole
+/// kind-dependence of a motor is this one axis, which is why the motor is
+/// applied **once, after the builder**, instead of once per arm: three arms each
+/// spelling out a motor is three places for a mode to be forgotten.
+///
+/// ⚠️ **A Spring gets `None` and that is not an omission.** rapier models a
+/// spring *as* a motor on the coupled linear axis (`SpringJointBuilder` sets
+/// one), so writing a second motor there would silently overwrite the spring the
+/// artist authored — the stiffness and damping would vanish and the joint would
+/// become a rate-driven rod. A Weld has no free axis at all.
+#[must_use]
+pub fn motor_axis(kind: JointKind) -> Option<JointAxis> {
+    match kind {
+        JointKind::Pin => Some(JointAxis::AngX),
+        JointKind::Slider | JointKind::Rope => Some(JointAxis::LinX),
+        JointKind::Spring | JointKind::Weld => None,
+    }
+}
+
 impl PhysicsWorld {
     /// Attach `a` to `b`. Returns the handle, or `None` when the joint cannot
     /// exist: a missing body, or a body joined **to itself**.
@@ -255,6 +400,41 @@ impl PhysicsWorld {
         a: RigidBodyHandle,
         b: RigidBodyHandle,
         desc: JointDesc,
+    ) -> Option<ImpulseJointHandle> {
+        self.spawn_joint_with_gains(a, b, desc, SERVO_STIFFNESS, SERVO_DAMPING)
+    }
+
+    /// [`Self::spawn_joint`] with the servo gains handed in rather than taken
+    /// from the measured constants.
+    ///
+    /// **It exists so the tables on [`SERVO_STIFFNESS`] and [`SERVO_DAMPING`]
+    /// are reproducible against the PRODUCT path**, not against a second copy of
+    /// it written in a test file. A sweep that builds its own rapier joint would
+    /// measure a joint nobody ships; the numbers those tables carry are the
+    /// reason two constants have the values they do, so they have to come from
+    /// here. (`world::tests` runs the sweep.)
+    pub(super) fn spawn_joint_with_gains(
+        &mut self,
+        a: RigidBodyHandle,
+        b: RigidBodyHandle,
+        desc: JointDesc,
+        servo_stiffness: f32,
+        servo_damping: f32,
+    ) -> Option<ImpulseJointHandle> {
+        self.spawn_joint_tuned(a, b, desc, servo_stiffness, servo_damping, MOTOR_TRACKING)
+    }
+
+    /// The innermost door: every measured motor gain handed in. Its only
+    /// non-test caller is [`Self::spawn_joint_with_gains`]; it exists so the
+    /// TRACKING table can be swept on the product path too.
+    pub(super) fn spawn_joint_tuned(
+        &mut self,
+        a: RigidBodyHandle,
+        b: RigidBodyHandle,
+        desc: JointDesc,
+        servo_stiffness: f32,
+        servo_damping: f32,
+        tracking: f32,
     ) -> Option<ImpulseJointHandle> {
         if a == b {
             return None;
@@ -274,19 +454,6 @@ impl PhysicsWorld {
                     .local_anchor2(anchor_b);
                 if let Some([min, max]) = desc.limits {
                     builder = builder.limits([min, max]);
-                }
-                if let Some(m) = desc.motor {
-                    // `factor` is the motor's damping — how hard it corrects
-                    // the velocity error — and it is the measured constant
-                    // `MOTOR_TRACKING`, NOT the artist's `max_force`. (An
-                    // earlier comment here claimed the two were tied; they
-                    // never were, and the constant's own docs said so three
-                    // screens up. One of the two had to go.) The two knobs stay
-                    // separate on purpose: speed is what the motor wants,
-                    // max_force is what it is allowed to spend getting there.
-                    builder = builder
-                        .motor_velocity(m.speed, MOTOR_TRACKING)
-                        .motor_max_force(m.max_force);
                 }
                 builder.into()
             }
@@ -327,6 +494,31 @@ impl PhysicsWorld {
                 builder.into()
             }
         };
+        // **The motor, applied ONCE for every kind that has one.** The builders
+        // are three different types with three identical `motor_*` families, so
+        // spelling the motor out per arm would be three chances to forget a
+        // mode; the only kind-dependent part is the axis, and that is a
+        // function (`motor_axis`).
+        //
+        // ⚠️ Byte-identical to the per-arm version it replaced, for the case
+        // that existed before this: `RevoluteJointBuilder::motor_velocity(v, f)`
+        // is `set_motor(AngX, target_pos, v, 0.0, f)` with the fresh builder's
+        // `target_pos` still `0.0` — which is exactly the Velocity arm below.
+        // (Pinned by the `physics_ecs_c9` hash and by a fingerprint gate.)
+        if let (Some(axis), Some(m)) = (motor_axis(desc.kind), desc.motor) {
+            match m.mode {
+                // `damping` here is the measured tracking constant, NOT the
+                // artist's `max_force`. The two stay separate on purpose: speed
+                // is what the motor wants, max_force is what it may spend.
+                MotorMode::Velocity => joint.set_motor(axis, 0.0, m.speed, 0.0, tracking),
+                // A servo pulls towards a place, so it needs a stiffness; the
+                // target velocity is zero because *arriving* is the instruction.
+                MotorMode::Position => {
+                    joint.set_motor(axis, m.target, 0.0, servo_stiffness, servo_damping)
+                }
+            };
+            joint.set_motor_max_force(axis, m.max_force);
+        }
         // ⚠️ **Jointed bodies do not collide with each other**, and rapier's
         // default is the opposite (`contacts_enabled: true`). Box2D
         // (`collideConnected`) and Unity (`enableCollision`) both default to

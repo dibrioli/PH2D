@@ -33,11 +33,13 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::Kind(i as u8))
             } else if let Some(i) = ids::INSP_JOINT_LIMITS.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::LimitsEnabled(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_MOTOR.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::MotorEnabled(i == 1))
             } else {
-                ids::INSP_JOINT_MOTOR
+                ids::INSP_JOINT_MOTOR_MODE
                     .iter()
                     .position(|&o| o == id)
-                    .map(|i| JointFieldEdit::MotorEnabled(i == 1))
+                    .map(|i| JointFieldEdit::MotorMode(i as u8))
             }
         }
         WidgetEvent::ValueChanged(id) => {
@@ -45,7 +47,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             match id {
                 ids::INSP_JOINT_LIMIT_MIN => Some(JointFieldEdit::LimitMin(v)),
                 ids::INSP_JOINT_LIMIT_MAX => Some(JointFieldEdit::LimitMax(v)),
-                ids::INSP_JOINT_MOTOR_SPEED => Some(JointFieldEdit::MotorSpeedDeg(v)),
+                ids::INSP_JOINT_MOTOR_SPEED => Some(JointFieldEdit::MotorSpeed(v)),
+                ids::INSP_JOINT_MOTOR_TARGET => Some(JointFieldEdit::MotorTarget(v)),
                 ids::INSP_JOINT_MOTOR_FORCE => Some(JointFieldEdit::MotorMaxForce(v)),
                 ids::INSP_JOINT_REST_LENGTH => Some(JointFieldEdit::RestLength(v)),
                 ids::INSP_JOINT_STIFFNESS => Some(JointFieldEdit::Stiffness(v)),

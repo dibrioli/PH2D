@@ -115,8 +115,18 @@ pub(super) fn joint_desc(
         // a stroke in metres (`limits_in_metres`) rather than an angle. The
         // Inspector asks the same door to decide which label to paint.
         limits: (j.kind.has_limits() && j.limits_enabled).then_some([j.limit_min, j.limit_max]),
-        motor: (j.kind.is_hinge() && j.motor_enabled).then_some(MotorDesc {
+        // `has_motor`, not `is_hinge`: a Slider's rail and a Rope's distance are
+        // driven too (W-J6). The wrapper asks the SAME question through
+        // `ph2d_physics::motor_axis` — which is where a Spring's exclusion is
+        // load-bearing rather than cosmetic (rapier models a spring AS a motor,
+        // so a second one there would eat its stiffness).
+        motor: (j.kind.has_motor() && j.motor_enabled).then_some(MotorDesc {
+            mode: match j.motor_mode {
+                crate::joint::MotorMode::Velocity => ph2d_physics::MotorMode::Velocity,
+                crate::joint::MotorMode::Position => ph2d_physics::MotorMode::Position,
+            },
             speed: j.motor_speed,
+            target: j.motor_target,
             max_force: j.motor_max_force,
         }),
         rest_length: j.rest_length,

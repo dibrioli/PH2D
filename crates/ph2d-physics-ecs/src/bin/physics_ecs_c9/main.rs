@@ -42,7 +42,7 @@ use ph2d_ecs::{Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics_ecs::{
     BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride, Dominance,
     GravityScale, InitialVelocity, JointKind, LockPositionX, LockRotation, MassOverride,
-    MaterialCombine, OneWayPlatform, PhysicsBridge, PhysicsJoint, RigidBody,
+    MaterialCombine, MotorMode, OneWayPlatform, PhysicsBridge, PhysicsJoint, RigidBody,
 };
 
 const STEPS: u64 = 120; // 2 s @ 60 Hz — long enough for collisions to develop.
@@ -469,6 +469,56 @@ fn main() {
             ..PhysicsJoint::default()
         },
         rail_t,
+    ));
+
+    // Um SERVO (W-J6): a mesma dobradica do resto do repo, mas mirando um LUGAR
+    // em vez de uma taxa. Entra no hash porque o motor de POSICAO e um caminho de
+    // solver proprio -- `set_motor` com stiffness diferente de zero, resolvido
+    // junto com os contatos -- e porque ele SEGURA (o corpo nao dorme), entao
+    // toda divergencia de plataforma continua acumulando ate o fim dos passos em
+    // vez de ser congelada pelo sono no primeiro segundo.
+    sim.world_mut().spawn((
+        Name::new("C9 Servo Hook"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.05 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-64.0, 6.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Servo Arm"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.5,
+                half_y: 0.1,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        // Pendurado: a gravidade puxa para LONGE do alvo o tempo todo, que e o
+        // que torna o servo observavel em vez de coincidente.
+        Transform::from_translation(Vec2::new(-64.0, 5.5)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Servo"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Servo Hook"),
+            body_b: stable_name_id("C9 Servo Arm"),
+            kind: JointKind::Pin,
+            motor_enabled: true,
+            motor_mode: MotorMode::Position,
+            // 1 rad, um angulo que nao e nem 0 nem um multiplo de pi/4.
+            motor_target: 1.0,
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(-64.0, 6.0)),
     ));
 
     // As oito lanes da familia das ZONAS -- irmao proprio pelo cap de 700 LOC.

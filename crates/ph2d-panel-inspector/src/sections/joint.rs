@@ -35,10 +35,43 @@ const KIND_SPRING: u8 = 1;
 /// instead of inheriting the Rope's "Max Length" from a bare `else`.
 const KIND_ROPE: u8 = 2;
 /// Tag of the Slider kind. It shares the **Limits** switch with the Pin (both
-/// have a range) and has no motor of its own yet — W-J6 gives it one — so the
-/// painter asks the two questions separately instead of branching on "is it a
-/// Pin?", which is the same split `JointKind::has_limits` made engine-side.
+/// have a range) and, since W-J6, a motor as well — so the painter asks the two
+/// questions separately instead of branching on "is it a Pin?", which is the
+/// same split `JointKind::has_limits` and `has_motor` made engine-side.
 const KIND_SLIDER: u8 = 4;
+
+/// Can this kind be DRIVEN? A Pin's hinge, a Slider's rail, a Rope's distance
+/// (the winch). A Spring and a Weld cannot.
+///
+/// ⚠️ Second STATEMENT of `JointKind::has_motor`, not a second source of truth —
+/// the panel is loose-coupled and never sees `ph2d-physics-ecs` (the convention
+/// of every sibling section). The bridge asks the engine-side door before handing
+/// a motor to the solver, so a kind that gained a card here without gaining one
+/// there would paint a knob the solver drops; a seam gate walks all five kinds
+/// and pins which ones offer the card.
+const fn kind_has_motor(kind_tag: u8) -> bool {
+    kind_tag == KIND_PIN || kind_tag == KIND_SLIDER || kind_tag == KIND_ROPE
+}
+
+/// The unit pair the motor rows are labelled with, **for this kind**:
+/// `(rate, place)`. Degrees for a hinge, metres for a rail or a winch.
+///
+/// ⚠️ **Deliberately not `limit_unit`, and the Rope is why:** a Rope has no limit
+/// range at all and still has a linear motor, so one function answering both
+/// questions would label a winch's target in degrees. Engine-side the same two
+/// doors are `limits_in_metres` and `motor_in_metres`.
+const fn motor_units(kind_tag: u8) -> (&'static str, &'static str) {
+    if kind_tag == KIND_PIN {
+        ("\u{00b0}/s", "\u{00b0}")
+    } else {
+        ("m/s", "m")
+    }
+}
+
+/// Velocity · Position — the two things a motor can be told.
+const MOTOR_MODE_LABELS: [&str; 2] = ["Velocity", "Position"];
+/// Tag of the Position (servo) mode, named because the painter branches on it.
+const MOTOR_MODE_POSITION: u8 = 1;
 
 /// The unit the limit rows are in, **for this kind**. Degrees for a hinge's
 /// angular range, metres for a slider's stroke.
@@ -146,46 +179,6 @@ pub(crate) fn paint_joint_section(
                 );
             }
         }
-        // ⚠️ **O motor fica só no Pin**, e é a divisão do próprio plano: um motor
-        // LINEAR (o guincho do slider) chega no W-J6 junto com os modos
-        // Position|Velocity, e oferecê-lo aqui seria pintar dois knobs que o
-        // `joint_desc` recusa (`is_hinge`) — botão morto sob um rótulo que convence.
-        if info.kind_tag == KIND_PIN {
-            yy = seg_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                "Motor",
-                ids::INSP_JOINT_MOTOR_GROUP,
-                &ids::INSP_JOINT_MOTOR,
-                &SWITCH_LABELS,
-                u8::from(info.motor_enabled),
-            );
-            if info.motor_enabled {
-                for (label, id) in [
-                    ("Speed (\u{00b0}/s)", ids::INSP_JOINT_MOTOR_SPEED),
-                    ("Max Force", ids::INSP_JOINT_MOTOR_FORCE),
-                ] {
-                    yy = num_row(
-                        scene,
-                        text_system,
-                        theme,
-                        hit_index,
-                        store,
-                        x,
-                        w,
-                        yy,
-                        label,
-                        id,
-                    );
-                }
-            }
-        }
     } else if info.kind_tag == KIND_SPRING {
         for (label, id) in [
             ("Rest Length (m)", ids::INSP_JOINT_REST_LENGTH),
@@ -220,6 +213,14 @@ pub(crate) fn paint_joint_section(
         );
     }
 
+    // The motor comes LAST and is asked of every driven kind, rather than living
+    // inside the Pin's branch as it did until W-J6: a rail and a winch are driven
+    // too, and burying the card in one kind's arm is how the other two would have
+    // been given a knob the solver ignores.
+    if kind_has_motor(info.kind_tag) {
+        yy = paint_motor_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    }
+
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
         .kind(ButtonKind::Default)
@@ -231,6 +232,97 @@ pub(crate) fn paint_joint_section(
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     yy + h + SECTION_BOTTOM_PAD_PX
+}
+
+/// **The Motor card** — offered to every driven kind (`kind_has_motor`).
+///
+/// Three questions, in the order the artist asks them: *is it driven?*, *is it
+/// chasing a rate or a place?*, and then the one number that mode needs plus the
+/// force ceiling. The mode chips are not a second on/off switch: Velocity and
+/// Position carry genuinely different instructions, and each shows its OWN row —
+/// painting both Speed and Target at once would be two numbers where only one is
+/// read, which is the same knob-that-does-nothing this section refuses elsewhere.
+///
+/// Its own fn for the 200-LOC panel-fn cap, and because "what a motor is" is one
+/// subject that three kinds now share.
+#[allow(clippy::too_many_arguments)]
+fn paint_motor_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorJointInfo,
+) -> f32 {
+    let mut yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        "Motor",
+        ids::INSP_JOINT_MOTOR_GROUP,
+        &ids::INSP_JOINT_MOTOR,
+        &SWITCH_LABELS,
+        u8::from(info.motor_enabled),
+    );
+    if !info.motor_enabled {
+        return yy;
+    }
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Mode",
+        ids::INSP_JOINT_MOTOR_MODE_GROUP,
+        &ids::INSP_JOINT_MOTOR_MODE,
+        &MOTOR_MODE_LABELS,
+        info.motor_mode_tag,
+    );
+    let (rate_unit, place_unit) = motor_units(info.kind_tag);
+    let (label, id) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
+        (
+            format!("Target ({place_unit})"),
+            ids::INSP_JOINT_MOTOR_TARGET,
+        )
+    } else {
+        (format!("Speed ({rate_unit})"), ids::INSP_JOINT_MOTOR_SPEED)
+    };
+    yy = num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        &label,
+        id,
+    );
+    num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Max Force",
+        ids::INSP_JOINT_MOTOR_FORCE,
+    )
 }
 
 /// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's

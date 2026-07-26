@@ -115,3 +115,97 @@ fn a_rail_paints_no_limit_arc_because_its_range_is_a_length() {
         envelope(view(JointKind::Pin))
     );
 }
+
+/// **O fantasma de um TRILHO desliza pelo eixo; ele não gira** (W-J6d).
+///
+/// O fantasma é *"onde o corpo B estaria no limite que está sendo arrastado"*, e
+/// o movimento tem de ser o do grau de liberdade LIVRE. Num trilho isso é uma
+/// translação: um curso é uma distância. Girando, ele era a silhueta solta da
+/// foto do Enio (*"um gizmo fantasma rodando que parece não estar relacionado
+/// corretamente ao joint"*) — o **quarto** leitor de `JointView::limits` que o
+/// W-J5 não avisou, girando o corpo por 0,9 *radiano* para um curso de 0,9
+/// *metro*.
+///
+/// O oráculo é geométrico e tem as duas metades: o centro anda **ao longo do
+/// eixo** (o produto vetorial com ele some) a **exatamente** a distância que
+/// falta até o fim de curso — e é isso que uma rotação não pode satisfazer, já
+/// que ela move o corpo por um arco.
+///
+/// Mutação: usar o ramo angular também no trilho — RED, o centro sai 1,17 m fora
+/// da reta do eixo.
+#[test]
+fn a_rails_ghost_slides_along_the_axis_instead_of_turning() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{Name, SimWorld, Transform};
+    use ph2d_physics_ecs::{Collider, ColliderShape};
+
+    let mut sim = SimWorld::new();
+    let car = sim
+        .world_mut()
+        .spawn((
+            Name::new("Car".to_string()),
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.2,
+                    half_y: 0.2,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+    // Trilho a +Y, âncoras coincidentes na origem: o carrinho está no zero do
+    // curso, então o fantasma de um limite `t` tem de andar exatamente `t`.
+    let mut v = view(JointKind::Slider);
+    v.axis = Some([0.0, 1.0]);
+    v.limits = Some([-0.5, 0.9]);
+    v.body_b = car;
+    v.anchor_a = [0.0, 0.0];
+    v.anchor_b = [0.0, 0.0];
+    v.centre_b = [0.0, 0.0];
+    let views = [v];
+
+    // O centro da silhueta, em MUNDO, reconstruído da caixa que ela desenha.
+    let centre = |limit: f32| -> [f64; 2] {
+        let p = crate::render_loop::physics_overlay_joints::limit_ghost(
+            &sim,
+            &views,
+            Some((views[0].entity, limit)),
+            &camera(),
+            window(),
+        )
+        .expect("fantasma");
+        let pts = p
+            .elements()
+            .iter()
+            .filter_map(|e| match e {
+                ph2d_vector::PathEl::MoveTo(q) | ph2d_vector::PathEl::LineTo(q) => Some(*q),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let n = pts.len() as f64;
+        let s = pts.iter().fold((0.0, 0.0), |a, q| (a.0 + q.x, a.1 + q.y));
+        // De volta a mundo: a projeção é linear, então o centroide da silhueta na
+        // tela é a imagem do centroide dela no mundo.
+        let w = camera().screen_to_world(((s.0 / n) as f32, (s.1 / n) as f32), window());
+        [f64::from(w[0]), f64::from(w[1])]
+    };
+
+    let zero = centre(0.0);
+    for limit in [0.9f32, -0.5] {
+        let c = centre(limit);
+        // Sobre a reta do eixo (+Y): x não muda.
+        assert!(
+            (c[0] - zero[0]).abs() < 1e-3,
+            "limite {limit}: o fantasma saiu do eixo, x {} -> {}",
+            zero[0],
+            c[0]
+        );
+        // E andou EXATAMENTE o que falta até o fim de curso.
+        assert!(
+            (c[1] - zero[1] - f64::from(limit)).abs() < 1e-2,
+            "limite {limit}: tinha de andar {limit} m, andou {:.4}",
+            c[1] - zero[1]
+        );
+    }
+}

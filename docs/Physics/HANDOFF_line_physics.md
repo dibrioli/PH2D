@@ -5318,3 +5318,42 @@ motor constraint`), o que não nos alcança porque nenhum tipo nosso usa eixo
 angular acoplado, mas fecha a pergunta.
 
 `PROJECT_SCHEMA` **32**, registro **21**, c9 **byte-idêntico** (`c9d4baee…`, 87).
+
+### W-J6d — o fantasma DESLIZA (2026-07-26, cena `=48`, pendente de re-smoke)
+
+Enio, com foto: *"em slider aparece um gizmo fantasma rodando que parece não estar
+relacionado corretamente ao joint … aparece ao mudar o ângulo da joint. veja o que
+é. se não for útil retire"*.
+
+**Ele é útil — estava fazendo o movimento errado.** É o `limit_ghost` do W-J3: *a
+silhueta do corpo B na pose que o limite sendo arrastado permitiria*. E ele é o
+**QUARTO leitor de `JointView::limits` que o W-J5 não avisou** — os outros três
+(o arco, as alças e a escrita do arrasto) fecharam na W-J6b. Ele girava o corpo em
+torno da âncora por `Δ = (angle_a + limit) − angle_b`, ou seja **0,9 radiano para
+um curso de 0,9 metro**: a silhueta solta e desalinhada da foto.
+
+O movimento tem de ser o do **grau de liberdade LIVRE**. Numa dobradiça o corpo
+gira; num trilho ele **desliza pelo eixo**, e o deslocamento vivo é a separação das
+duas âncoras ao longo dele (é isso que o rapier chama de posição do prismatic), então
+o fantasma anda exatamente o que falta até o fim de curso. Deslizando, ele vira a
+coisa mais útil que este overlay desenha num Slider: **o carrinho onde ele vai
+PARAR, enquanto a alça ainda está na mão.**
+
+⚠️ *"Aparece ao mudar o ângulo da joint"* é literal e é consequência da W-J6c: as
+alças agora miram o trilho, então arrastar uma **é** mudar o ângulo — e é
+exatamente quando o `posed` acende o fantasma. As duas waves se encontraram no
+mesmo gesto.
+
+Gate com oráculo geométrico e duas metades — o centro anda **ao longo do eixo** (o
+`x` não muda num trilho +Y) e anda **exatamente** a distância que falta —, porque
+uma rotação não pode satisfazer a segunda: ela move o corpo por um arco. Mutação:
+o ramo angular no trilho ⇒ anda 0,0000 m.
+
+**Padrão que fecha aqui:** `JointView::limits` teve **quatro** leitores e o W-J5
+avisou **zero**. O que os teria pego de uma vez é a pergunta que agora existe —
+`JointKind::limits_in_metres` — feita em cada um deles; o que os deixou passar é
+que nenhum precisava perguntar enquanto só o Pin tinha faixa. É a mesma forma de
+[[feedback_a_condition_that_enumerates_its_readers_rots]], com o campo no lugar da
+condição.
+
+`PROJECT_SCHEMA` **32**, registro **21**, c9 intocado.

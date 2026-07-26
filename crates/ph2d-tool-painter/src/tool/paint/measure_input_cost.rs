@@ -266,3 +266,43 @@ fn the_pen_down_is_still_a_canvas_copy_and_this_is_its_number() {
          que afirma o contrario"
     );
 }
+
+/// **SONDA: há overhead POR EVENTO a colher?** (a pergunta da coalescência)
+///
+/// O `on_canvas_pointer` roda no handler do winit, FORA do frame, uma vez por evento. Se N eventos
+/// pequenos custarem mais que UM evento cobrindo a mesma distância, a diferença é overhead por-evento —
+/// e o motor já trabalha em lote (`stamp_dabs` recebe uma lista de dabs), então coalescer os eventos
+/// pendentes de um frame seria colher isso sem tocar na arte.
+///
+/// Não afirma nada; IMPRIME.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn is_there_per_event_overhead_to_coalesce() {
+    // ⚠️ 800 px, não 1600: o traço tem de CABER na menor tela. A 1ª versão andava 200→1800 e a 1024²
+    // descartava tudo depois de x=1024 — metade dos dabs fora do canvas, então a linha do 1024 media
+    // meia pincelada e a comparação entre telas era inválida.
+    const DIST: f32 = 800.0;
+    println!("[coalesce] mesma distancia ({DIST} px, cabe em toda tela), repartida em N eventos:");
+    for (side, n) in [1024u32, 2048, 4096]
+        .into_iter()
+        .flat_map(|s| [1usize, 4, 16, 64].map(move |n| (s, n)))
+    {
+        let mut t = tool(side);
+        #[allow(clippy::cast_precision_loss)]
+        let step = DIST / (n as f32);
+        t.on_canvas_pointer(cp([200.0, 300.0], PointerPhase::Down));
+        let total = ms(&mut || {
+            for i in 1..=n {
+                #[allow(clippy::cast_precision_loss)]
+                let x = 200.0 + step * (i as f64) as f32;
+                t.on_canvas_pointer(cp([x, 300.0], PointerPhase::Move));
+            }
+        });
+        t.on_canvas_pointer(cp([200.0 + DIST, 300.0], PointerPhase::Up));
+        #[allow(clippy::cast_precision_loss)]
+        let per = total / (n as f64);
+        println!(
+            "[coalesce]   {side:>4}  {n:>3} eventos: {total:>7.2} ms total · {per:>6.3} ms/evento"
+        );
+    }
+}

@@ -97,7 +97,13 @@ fn flatten_closed(verts: &[VecVertex]) -> Vec<[f64; 2]> {
         for k in 0..FLATTEN_STEPS {
             #[allow(clippy::cast_precision_loss)]
             let t = k as f64 / FLATTEN_STEPS as f64;
-            poly.push(cubic_point(a.anchor, a.out_handle, b.in_handle, b.anchor, t));
+            poly.push(cubic_point(
+                a.anchor,
+                a.out_handle,
+                b.in_handle,
+                b.anchor,
+                t,
+            ));
         }
     }
     poly
@@ -105,11 +111,21 @@ fn flatten_closed(verts: &[VecVertex]) -> Vec<[f64; 2]> {
 
 /// Uma família de linhas horizontais no espaço rodado, recortadas pelos polígonos (even-odd),
 /// devolvidas em MUNDO. `(c, s)` = cosseno/seno de `angle` (o eixo da hachura).
-fn hatch_family(polys: &[Vec<[f64; 2]>], c: f64, s: f64, spacing: f64, out: &mut Vec<[[f64; 2]; 2]>) {
+fn hatch_family(
+    polys: &[Vec<[f64; 2]>],
+    c: f64,
+    s: f64,
+    spacing: f64,
+    out: &mut Vec<[[f64; 2]; 2]>,
+) {
     // Roda os polígonos por −angle ⇒ as linhas da hachura ficam horizontais (y constante).
     let rot: Vec<Vec<[f64; 2]>> = polys
         .iter()
-        .map(|p| p.iter().map(|&[x, y]| [x.mul_add(c, y * s), (-x).mul_add(s, y * c)]).collect())
+        .map(|p| {
+            p.iter()
+                .map(|&[x, y]| [x.mul_add(c, y * s), (-x).mul_add(s, y * c)])
+                .collect()
+        })
         .collect();
     let mut ymin = f64::MAX;
     let mut ymax = f64::MIN;

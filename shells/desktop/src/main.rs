@@ -70,8 +70,6 @@ mod falloff_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod field_gizmo;
-/// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
-mod harmony_smoke;
 mod flip_autokey;
 mod flip_colorize;
 mod flip_colorize_smoke;
@@ -117,9 +115,14 @@ mod flip_tween_torsion_smoke;
 mod forwarding;
 mod fx_bridge;
 mod fx_bridge_dispatch;
+/// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
+/// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
+mod fx_live;
 mod fx_raster_smoke;
 mod fx_smoke;
 mod fx_undo_smoke;
+/// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
+mod harmony_smoke;
 mod hero_bridge;
 mod hero_intents;
 mod image_import;
@@ -134,8 +137,6 @@ mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
 mod ktx2_smoke;
-/// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
-mod sketch_hatch_smoke;
 mod label_live;
 mod mask_smoke;
 mod morph_live;
@@ -146,9 +147,6 @@ mod nest_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
 mod offset_live;
-/// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
-/// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
-mod fx_live;
 /// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
 mod onion_modal;
 mod palette_persist;
@@ -171,6 +169,8 @@ mod render_loop;
 mod shape_build;
 mod shape_build_gesture;
 mod sim_populate;
+/// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
+mod sketch_hatch_smoke;
 mod stack_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;

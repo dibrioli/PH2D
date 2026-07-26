@@ -50,7 +50,11 @@ fn a_neutral_sketch_is_the_path_unchanged() {
         None,
     );
     assert_eq!(out.verts, p.verts, "neutro mudou o contorno");
-    assert_eq!(out.subpaths.len(), p.subpaths.len(), "neutro criou passadas");
+    assert_eq!(
+        out.subpaths.len(),
+        p.subpaths.len(),
+        "neutro criou passadas"
+    );
 }
 
 /// **O Sketch produz o número de passadas pedido** — cada contorno vira `passes` cópias (a 1ª é o
@@ -66,7 +70,11 @@ fn sketch_produces_the_requested_passes() {
     let out = sketch_path(&p, &spec, ref_of(&p), None);
     // 1 primário + 2 subpaths = 3 contornos.
     assert!(!out.verts.is_empty(), "o primário ficou vazio");
-    assert_eq!(out.subpaths.len(), 2, "esperava 3 passadas (1 + 2 subpaths)");
+    assert_eq!(
+        out.subpaths.len(),
+        2,
+        "esperava 3 passadas (1 + 2 subpaths)"
+    );
 }
 
 /// **As passadas DIFEREM entre si** — é a propriedade "à mão". Cada passada tem seed própria
@@ -84,7 +92,11 @@ fn the_passes_differ_from_each_other() {
     assert_eq!(out.subpaths.len(), 1, "esperava 2 passadas");
     let pass0 = &out.verts;
     let pass1 = &out.subpaths[0].verts;
-    assert_eq!(pass0.len(), pass1.len(), "passadas com contagens diferentes");
+    assert_eq!(
+        pass0.len(),
+        pass1.len(),
+        "passadas com contagens diferentes"
+    );
     let max_delta = pass0
         .iter()
         .zip(pass1.iter())
@@ -155,12 +167,18 @@ fn probe_sketch_smoke() {
     for (passes, rough, detail, seed) in [(2.0, 4.0, 6.0, 1u64), (3.0, 7.0, 8.0, 3)] {
         let out = sketch_path(
             &p,
-            &SketchSpec { passes, roughness: rough, detail, seed },
+            &SketchSpec {
+                passes,
+                roughness: rough,
+                detail,
+                seed,
+            },
             rf,
             None,
         );
         let contours = 1 + out.subpaths.len();
-        let verts_total = out.verts.len() + out.subpaths.iter().map(|c| c.verts.len()).sum::<usize>();
+        let verts_total =
+            out.verts.len() + out.subpaths.iter().map(|c| c.verts.len()).sum::<usize>();
         println!(
             "star passes={passes} rough={rough}% -> {contours} passadas, {verts_total} verts totais"
         );

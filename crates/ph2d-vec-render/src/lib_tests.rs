@@ -117,7 +117,7 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
     assert!(plain_n > 0, "a forma nua desenha algo");
 
     let mut fx = FxImages::new();
-    fx.insert(id, one_pixel_image(FxMode::Replace));
+    fx.insert(id, one_pixel_image());
     let mut s = VectorScene::new();
     dispatch(
         &scene,
@@ -135,10 +135,10 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
     );
 }
 
-/// **Um filtro `Below` (Glow / Drop Shadow) MANTÉM a forma desenhada** — a imagem entra ABAIXO,
-/// e a forma segue por cima. Mutação: colapsar `Below` em `Replace` derrubaria a contagem.
+/// **Uma forma SEM filtro desenha-se a si mesma** — o controle do gate acima: a imagem só entra
+/// quando há entrada no mapa, e uma forma alheia na cena não é tocada por um FX que não é dela.
 #[test]
-fn a_below_filter_keeps_the_shape_drawn() {
+fn a_shape_without_a_filter_draws_itself() {
     let (scene, id) = one_square();
     let (view, xf) = (VecViewState::default(), VecXforms::default());
     let mut plain = VectorScene::new();
@@ -153,8 +153,9 @@ fn a_below_filter_keeps_the_shape_drawn() {
     );
     let plain_n = plain.inner().encoding().n_paths;
 
+    // O FX é de OUTRO caminho (id + 1 não existe na cena) — a forma tem de continuar a desenhar-se.
     let mut fx = FxImages::new();
-    fx.insert(id, one_pixel_image(FxMode::Below));
+    fx.insert(id + 1, one_pixel_image());
     let mut s = VectorScene::new();
     dispatch(
         &scene,
@@ -167,8 +168,8 @@ fn a_below_filter_keeps_the_shape_drawn() {
     );
     assert_eq!(
         s.inner().encoding().n_paths,
-        plain_n + 1,
-        "Below ADICIONA a imagem abaixo e MANTÉM a forma (forma + imagem), não a substitui"
+        plain_n,
+        "sem filtro DELA, a forma desenha-se como sempre"
     );
 }
 
@@ -194,13 +195,12 @@ fn path_screen_bounds_covers_the_shape_and_scales_with_the_camera() {
     );
 }
 
-/// Uma `FxImage` mínima de 1×1 para os gates de dispatch — o conteúdo não importa, só o MODO.
-fn one_pixel_image(mode: FxMode) -> FxImage {
+/// Uma `FxImage` mínima de 1×1 para os gates de dispatch — o conteúdo não importa, só a PRESENÇA.
+fn one_pixel_image() -> FxImage {
     FxImage {
         image: ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(vec![0u8; 4]), 1, 1)
             .expect("1x1 image"),
         rect: (0.0, 0.0, 1.0, 1.0),
-        mode,
     }
 }
 

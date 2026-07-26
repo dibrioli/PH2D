@@ -45,7 +45,14 @@ fn hatch_lines(out: &VecPath, original_subpaths: usize) -> Vec<[[f64; 2]; 2]> {
 #[test]
 fn a_neutral_hatch_is_the_path_unchanged() {
     let p = square(R);
-    let out = hatch_path(&p, &HatchSpec { spacing: 0.0, ..HatchSpec::default() }, ref_of(&p));
+    let out = hatch_path(
+        &p,
+        &HatchSpec {
+            spacing: 0.0,
+            ..HatchSpec::default()
+        },
+        ref_of(&p),
+    );
     assert_eq!(out.verts, p.verts);
     assert_eq!(out.subpaths.len(), p.subpaths.len());
 }
@@ -56,7 +63,11 @@ fn a_neutral_hatch_is_the_path_unchanged() {
 #[test]
 fn hatch_fills_the_interior_and_keeps_the_outline() {
     let p = square(R);
-    let spec = HatchSpec { angle: 0.0, spacing: 10.0, cross: false };
+    let spec = HatchSpec {
+        angle: 0.0,
+        spacing: 10.0,
+        cross: false,
+    };
     let out = hatch_path(&p, &spec, ref_of(&p));
     assert_eq!(out.verts, p.verts, "o outline não foi mantido");
     let lines = hatch_lines(&out, 0);
@@ -83,7 +94,11 @@ fn a_hole_splits_the_span() {
         verts: square_verts(R / 2.0),
         closed: true,
     });
-    let spec = HatchSpec { angle: 0.0, spacing: 10.0, cross: false };
+    let spec = HatchSpec {
+        angle: 0.0,
+        spacing: 10.0,
+        cross: false,
+    };
     let out = hatch_path(&p, &spec, ref_of(&p));
     let lines = hatch_lines(&out, 1); // pula o subpath original (o furo)
     // Os segmentos na scanline do CENTRO (y = 0 exato — a grade tem `k*spacing`, e k=0 dá y=0;
@@ -101,7 +116,9 @@ fn a_hole_splits_the_span() {
     );
     // Há um vão entre eles ~ a largura do furo (R): o span da direita começa depois do fim do
     // esquerdo, e o vão cobre o furo `[-R/2, R/2]`.
-    let xr = |seg: &[[f64; 2]; 2]| -> (f64, f64) { (seg[0][0].min(seg[1][0]), seg[0][0].max(seg[1][0])) };
+    let xr = |seg: &[[f64; 2]; 2]| -> (f64, f64) {
+        (seg[0][0].min(seg[1][0]), seg[0][0].max(seg[1][0]))
+    };
     let mut spans: Vec<(f64, f64)> = mid.iter().map(xr).collect();
     spans.sort_by(|a, b| a.0.total_cmp(&b.0));
     let gap = spans[1].0 - spans[0].1;
@@ -115,12 +132,28 @@ fn cross_hatch_doubles_the_lines() {
     let p = square(R);
     let rf = ref_of(&p);
     let plain = hatch_lines(
-        &hatch_path(&p, &HatchSpec { angle: 0.0, spacing: 10.0, cross: false }, rf),
+        &hatch_path(
+            &p,
+            &HatchSpec {
+                angle: 0.0,
+                spacing: 10.0,
+                cross: false,
+            },
+            rf,
+        ),
         0,
     )
     .len();
     let crossed = hatch_lines(
-        &hatch_path(&p, &HatchSpec { angle: 0.0, spacing: 10.0, cross: true }, rf),
+        &hatch_path(
+            &p,
+            &HatchSpec {
+                angle: 0.0,
+                spacing: 10.0,
+                cross: true,
+            },
+            rf,
+        ),
         0,
     )
     .len();
@@ -135,8 +168,20 @@ fn cross_hatch_doubles_the_lines() {
 fn an_open_path_is_not_hatched() {
     let mut p = square(R);
     p.closed = false; // uma poligonal aberta, sem região a encher
-    let out = hatch_path(&p, &HatchSpec { angle: 0.0, spacing: 10.0, cross: false }, ref_of(&p));
-    assert_eq!(out.subpaths.len(), p.subpaths.len(), "hachurou um caminho sem interior");
+    let out = hatch_path(
+        &p,
+        &HatchSpec {
+            angle: 0.0,
+            spacing: 10.0,
+            cross: false,
+        },
+        ref_of(&p),
+    );
+    assert_eq!(
+        out.subpaths.len(),
+        p.subpaths.len(),
+        "hachurou um caminho sem interior"
+    );
     assert_eq!(out.verts, p.verts);
 }
 
@@ -166,10 +211,25 @@ fn probe_hatch_smoke() {
             corner_radius: 0.0,
         })
         .collect();
-    let p = VecPath { verts, closed: true, ..VecPath::default() };
+    let p = VecPath {
+        verts,
+        closed: true,
+        ..VecPath::default()
+    };
     let rf = ref_of(&p);
     for cross in [false, true] {
-        let out = hatch_path(&p, &HatchSpec { angle: 45.0, spacing: 8.0, cross }, rf);
-        println!("disc spacing=8% cross={cross} -> {} linhas de hachura", hatch_lines(&out, 0).len());
+        let out = hatch_path(
+            &p,
+            &HatchSpec {
+                angle: 45.0,
+                spacing: 8.0,
+                cross,
+            },
+            rf,
+        );
+        println!(
+            "disc spacing=8% cross={cross} -> {} linhas de hachura",
+            hatch_lines(&out, 0).len()
+        );
     }
 }

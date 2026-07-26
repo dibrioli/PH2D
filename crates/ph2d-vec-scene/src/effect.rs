@@ -249,11 +249,9 @@ impl PathEffect {
             }
             // Hatch recorta uma região (sem "força" por-ponto que um campo module) ⇒ inerte, como
             // Trim/Repeat/Knot.
-            Self::Trim(_)
-            | Self::Repeat(_)
-            | Self::Falloff(_)
-            | Self::Knot(_)
-            | Self::Hatch(_) => false,
+            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) | Self::Knot(_) | Self::Hatch(_) => {
+                false
+            }
         }
     }
 

@@ -1776,11 +1776,10 @@ impl crate::App {
             let mut pending_contour_join: Option<u8> = None;
             let mut pending_contour_side: Option<u8> = None;
             // Filters (FX raster, plano 24). `Some(Some(k))` arma o tipo `k`; `Some(None)` remove.
-            let mut pending_filter_kind: Option<Option<u8>> = None;
-            let mut pending_filter_radius: Option<f64> = None;
-            let mut pending_filter_offx: Option<f64> = None;
-            let mut pending_filter_offy: Option<f64> = None;
-            let mut pending_filter_opacity: Option<f64> = None;
+            // Filters (a PILHA de FX raster, plano 24): um comando (Add/✕/↑/↓/👁) e um valor de
+            // slider por frame, decodificados pela porta única `fx_live::hit_of`.
+            let mut pending_filter_cmd: Option<crate::fx_live::FilterHit> = None;
+            let mut pending_filter_val: Option<(crate::fx_live::FilterHit, f64)> = None;
             let mut pending_pp_rotation: Option<f64> = None;
             // O Picker de guia (Enio 2026-07-23): o botão só ARMA — a shell captura a fonte e o
             // clique seguinte no canvas escolhe o guia. Um por feature; a fonte é resolvida no drain.
@@ -2003,14 +2002,8 @@ impl crate::App {
                                 pending_contour_join = Some(code);
                             } else if let Some(code) = crate::contour_live::side_code_of_id(*id) {
                                 pending_contour_side = Some(code);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_KIND_NONE {
-                                pending_filter_kind = Some(None);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_KIND_BLUR {
-                                pending_filter_kind = Some(Some(ph2d_ecs::VecFilter::BLUR));
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_KIND_GLOW {
-                                pending_filter_kind = Some(Some(ph2d_ecs::VecFilter::GLOW));
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_KIND_SHADOW {
-                                pending_filter_kind = Some(Some(ph2d_ecs::VecFilter::DROP_SHADOW));
+                            } else if let Some(hit) = crate::fx_live::hit_of(*id) {
+                                pending_filter_cmd = Some(hit);
                             } else if let Some(hit) = crate::fx_bridge_dispatch::classify_click(*id)
                             {
                                 match hit {
@@ -2196,16 +2189,8 @@ impl crate::App {
                                 // A aceleracao da progressao -- o painel ja aplicou o mapa
                                 // GEOMETRICO do trilho; aqui e' valor.
                                 pending_contour_accel = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_RADIUS {
-                                // FX raster (plano 24): o `event.rs` do painel ja converteu o track
-                                // para MUNDO (`t * MAX`); aqui e' valor.
-                                pending_filter_radius = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_OFFX {
-                                pending_filter_offx = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_OFFY {
-                                pending_filter_offy = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_FILTER_OPACITY {
-                                pending_filter_opacity = Some(*v);
+                            } else if let Some(hit) = crate::fx_live::hit_of(*id) {
+                                pending_filter_val = Some((hit, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
@@ -3276,65 +3261,106 @@ impl crate::App {
                     crate::contour_live::edit(sim, &self.vec_entities, &sel, |c| c.to = to);
                 }
             }
-            // Filters (FX raster, plano 24): os chips de tipo armam/removem o `VecFilter`, e os
-            // sliders + o picker afinam o que está armado. Tudo pela porta única `fx_live`; o
-            // `recook` do frame seguinte re-produz as imagens. Age sobre a SELEÇÃO inteira — um
-            // filtro por forma, o mesmo desenho do Contour/Offset.
+            // Filters (a PILHA de FX raster, plano 24): "Add" empurra um degrau, os ícones do card
+            // reordenam/desarmam/apagam, e os sliders + o picker afinam a linha. Tudo pela porta
+            // única `fx_live`; o `recook` do frame seguinte re-produz as imagens. Age sobre a
+            // SELEÇÃO inteira — uma pilha por forma, o mesmo desenho do Contour/Offset.
+            //
+            // ⚠️ **Remover a última linha REMOVE o componente** — e isso mora dentro do
+            // `fx_live::edit`, não aqui: uma regra escrita no chamador é uma regra que o próximo
+            // chamador nasce sem.
             {
+                use crate::fx_live::FilterHit;
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                if let Some(kind_cmd) = pending_filter_kind {
-                    match kind_cmd {
-                        // None REMOVE o componente (a forma volta nua).
-                        None => {
-                            let n =
-                                crate::fx_live::set_filter(sim, &self.vec_entities, &sel, None);
-                            eprintln!("[ph2d-vec] filter: removido de {n} forma(s)");
-                        }
-                        // Armar preserva o filtro existente (só troca o tipo) ou nasce com defaults
-                        // VISÍVEIS — armar no neutro seria um clique que não muda um pixel.
-                        Some(k) => {
+                if let Some(cmd) = pending_filter_cmd {
+                    match cmd {
+                        // Um "Add" numa forma SEM pilha cria a pilha; com pilha, empilha no fim
+                        // (o topo visual). O degrau nasce com defaults VISÍVEIS.
+                        FilterHit::Add(kind) => {
                             for id in &sel {
-                                let want = crate::fx_live::spec_of(sim, &self.vec_entities, *id)
-                                    .map_or_else(
-                                        || crate::fx_live::default_for(k),
-                                        |mut f| {
-                                            f.kind = k;
-                                            f
-                                        },
-                                    );
-                                crate::fx_live::set_filter(
-                                    sim,
-                                    &self.vec_entities,
-                                    std::slice::from_ref(id),
-                                    Some(want),
-                                );
+                                let one = std::slice::from_ref(id);
+                                match crate::fx_live::spec_of(sim, &self.vec_entities, *id) {
+                                    Some(mut f) if f.has_room() => {
+                                        f.ops.push(ph2d_ecs::FxOp::new(kind));
+                                        crate::fx_live::set_filter(
+                                            sim,
+                                            &self.vec_entities,
+                                            one,
+                                            Some(f),
+                                        );
+                                    }
+                                    Some(_) => {}
+                                    None => {
+                                        crate::fx_live::set_filter(
+                                            sim,
+                                            &self.vec_entities,
+                                            one,
+                                            Some(ph2d_ecs::VecFilter::single(ph2d_ecs::FxOp::new(
+                                                kind,
+                                            ))),
+                                        );
+                                    }
+                                }
                             }
                         }
+                        FilterHit::Remove(row) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if row < f.ops.len() {
+                                    f.ops.remove(row);
+                                }
+                            });
+                        }
+                        FilterHit::Up(row) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                f.move_up(row);
+                            });
+                        }
+                        FilterHit::Down(row) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                f.move_down(row);
+                            });
+                        }
+                        FilterHit::Hide(row) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if let Some(op) = f.ops.get_mut(row) {
+                                    op.enabled = !op.enabled;
+                                }
+                            });
+                        }
+                        // A swatch só ABRE o picker (o `register_picker_swatch` faz isso); a cor
+                        // é lida abaixo, do alvo do picker.
+                        FilterHit::Color(_)
+                        | FilterHit::Radius(_)
+                        | FilterHit::OffX(_)
+                        | FilterHit::OffY(_)
+                        | FilterHit::Opacity(_) => {}
                     }
                 }
-                if let Some(v) = pending_filter_radius {
-                    #[allow(clippy::cast_possible_truncation)]
-                    let r = v as f32;
-                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| f.radius = r);
-                }
-                if let Some(v) = pending_filter_offx {
+                if let Some((hit, v)) = pending_filter_val {
                     #[allow(clippy::cast_possible_truncation)]
                     let x = v as f32;
-                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| f.offset[0] = x);
+                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                        let row = match hit {
+                            FilterHit::Radius(r)
+                            | FilterHit::OffX(r)
+                            | FilterHit::OffY(r)
+                            | FilterHit::Opacity(r) => r,
+                            _ => return,
+                        };
+                        let Some(op) = f.ops.get_mut(row) else { return };
+                        match hit {
+                            FilterHit::Radius(_) => op.radius = x,
+                            FilterHit::OffX(_) => op.offset[0] = x,
+                            FilterHit::OffY(_) => op.offset[1] = x,
+                            FilterHit::Opacity(_) => op.opacity = x,
+                            _ => {}
+                        }
+                    });
                 }
-                if let Some(v) = pending_filter_offy {
-                    #[allow(clippy::cast_possible_truncation)]
-                    let yv = v as f32;
-                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| f.offset[1] = yv);
-                }
-                if let Some(v) = pending_filter_opacity {
-                    #[allow(clippy::cast_possible_truncation)]
-                    let o = v as f32;
-                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| f.opacity = o);
-                }
-                // A cor do Glow / Drop Shadow vem do MESMO picker OKLCH partilhado (lido como o
-                // Contour, aqui, porque o alvo é um componente ECS). Straight sRGB `[0,1]`.
-                if hero.store.picker_target() == Some(ph2d_editor::ids::VECTOR_FILTER_COLOR)
+                // A cor do halo vem do MESMO picker OKLCH partilhado (lido como o Contour, aqui,
+                // porque o alvo é um componente ECS). Qual LINHA? A que o alvo do picker nomeia.
+                if let Some(target) = hero.store.picker_target()
+                    && let Some(FilterHit::Color(row)) = crate::fx_live::hit_of(target)
                     && let Some((value, _, _, _)) = hero
                         .store
                         .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
@@ -3346,7 +3372,11 @@ impl crate::App {
                         f32::from(c[2]) / 255.0,
                         f32::from(c[3]) / 255.0,
                     ];
-                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| f.color = col);
+                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                        if let Some(op) = f.ops.get_mut(row) {
+                            op.color = col;
+                        }
+                    });
                 }
             }
             // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
@@ -4681,31 +4711,44 @@ impl crate::App {
                         }
                     }
                 }
-                // Filters (FX raster, plano 24): as MESMAS duas perguntas do Contour — *"esta
-                // seleção pode receber um filtro?"* (há forma) e *"o que está armado?"*. O painel
-                // lê o filtro do PRIMEIRO caminho selecionado que tenha um; a seção some sem
-                // seleção e sem filtro vivo. `radius`/`offset`/`opacity` são MUNDO/normalizados —
+                // Filters (a pilha de FX raster, plano 24): as MESMAS duas perguntas do Contour —
+                // *"esta seleção pode receber um filtro?"* (há forma) e *"o que está armado?"*. O
+                // painel lê a pilha do PRIMEIRO caminho selecionado que tenha uma; a seção some sem
+                // seleção e sem pilha viva. `radius`/`offset`/`opacity` são MUNDO/normalizados —
                 // sem conversão de escala (o raio de mundo é o número que o slider mostra).
                 let filt = sel
                     .iter()
                     .find_map(|id| crate::fx_live::spec_of(sim, &self.vec_entities, *id));
                 ph2d_panel_vector::set_current_filter_can_add(!sel.is_empty());
-                let filt_color = filt.map_or([0, 0, 0, 255], |f| {
-                    [
-                        (f.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                        (f.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                        (f.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                        (f.color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                    ]
-                });
-                ph2d_panel_vector::set_current_filter(
-                    filt.is_some(),
-                    filt.map_or(0, |f| f.kind),
-                    filt.map_or(0.0, |f| f64::from(f.radius)),
-                    filt.map_or(0.0, |f| f64::from(f.offset[0])),
-                    filt.map_or(0.0, |f| f64::from(f.offset[1])),
-                    filt_color,
-                    filt.map_or(1.0, |f| f64::from(f.opacity)),
+                // Os nomes dos tipos vêm do MOTOR (o painel não alcança o `ph2d-ecs`) — uma
+                // segunda tabela de nomes discordaria do `kind` na primeira adição.
+                ph2d_panel_vector::set_filter_kind_names(
+                    (0..ph2d_ecs::FxOp::KINDS)
+                        .map(|k| ph2d_ecs::FxOp::kind_name(k as u8))
+                        .collect(),
+                );
+                ph2d_panel_vector::set_current_filters(
+                    filt.map(|f| {
+                        f.ops
+                            .iter()
+                            .map(|op| ph2d_panel_vector::FilterRowView {
+                                label: ph2d_ecs::FxOp::kind_name(op.kind),
+                                kind: op.kind,
+                                enabled: op.enabled,
+                                radius: f64::from(op.radius),
+                                offx: f64::from(op.offset[0]),
+                                offy: f64::from(op.offset[1]),
+                                color: [
+                                    (op.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                    (op.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                    (op.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                    (op.color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                                ],
+                                opacity: f64::from(op.opacity),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 );
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.

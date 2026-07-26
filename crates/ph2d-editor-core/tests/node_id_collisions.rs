@@ -1114,4 +1114,64 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             "vector_text_axis_id({index}) (id {id:#018x}) collides with another dynamic id",
         );
     }
+    // As DUAS pilhas por-linha do painel Vector, no MESMO conjunto: a de EFEITOS (geometria,
+    // `vector.fx.*`) e a de FILTROS (pixels, `vector.filter.*`). Elas partilham o prefixo
+    // `vector.f…`, então "os nomes são diferentes" é uma afirmação que só vale medida — e um
+    // conjunto por família a deixaria por provar exatamente onde ela é duvidosa.
+    let mut check = |name: String, id: u64| {
+        assert!(
+            !chrome.contains(&id),
+            "{name} (id {id:#018x}) collides with a chrome const",
+        );
+        assert!(
+            seen.insert(id),
+            "{name} (id {id:#018x}) collides with another dynamic id",
+        );
+    };
+    for k in 0..ids::MAX_FX_KINDS {
+        check(format!("vector_fx_add_id({k})"), ids::vector_fx_add_id(k).0);
+    }
+    for r in 0..ids::MAX_FX_ROWS {
+        for (label, id) in [
+            ("remove", ids::vector_fx_remove_id(r)),
+            ("up", ids::vector_fx_up_id(r)),
+            ("down", ids::vector_fx_down_id(r)),
+            ("card", ids::vector_fx_card_id(r)),
+            ("hide", ids::vector_fx_hide_id(r)),
+        ] {
+            check(format!("vector_fx_{label}_id({r})"), id.0);
+        }
+        for prm in 0..ids::MAX_FX_ROW_PARAMS {
+            for (label, id) in [
+                ("param", ids::vector_fx_param_id(r, prm)),
+                ("param_num", ids::vector_fx_param_num_id(r, prm)),
+                ("toggle", ids::vector_fx_toggle_id(r, prm)),
+            ] {
+                check(format!("vector_fx_{label}_id({r},{prm})"), id.0);
+            }
+        }
+    }
+    for k in 0..ids::MAX_FILTER_KINDS {
+        check(format!("filter_add_id({k})"), ids::filter_add_id(k).0);
+    }
+    for r in 0..ids::MAX_FILTER_ROWS {
+        for (label, id) in [
+            ("card", ids::filter_card_id(r)),
+            ("remove", ids::filter_remove_id(r)),
+            ("up", ids::filter_up_id(r)),
+            ("down", ids::filter_down_id(r)),
+            ("hide", ids::filter_hide_id(r)),
+            ("color", ids::filter_color_id(r)),
+            ("radius", ids::filter_radius_id(r)),
+            ("radius_num", ids::filter_radius_num_id(r)),
+            ("offx", ids::filter_offx_id(r)),
+            ("offx_num", ids::filter_offx_num_id(r)),
+            ("offy", ids::filter_offy_id(r)),
+            ("offy_num", ids::filter_offy_num_id(r)),
+            ("opacity", ids::filter_opacity_id(r)),
+            ("opacity_num", ids::filter_opacity_num_id(r)),
+        ] {
+            check(format!("filter_{label}_id({r})"), id.0);
+        }
+    }
 }

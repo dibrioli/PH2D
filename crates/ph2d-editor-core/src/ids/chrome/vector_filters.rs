@@ -1,4 +1,5 @@
-//! **Os ids da seção Filters (FX raster)** — módulo irmão de [`super`] pelo teto de 700 LOC.
+//! **Os ids da seção Filters (a PILHA de FX raster)** — módulo irmão de [`super`] pelo teto de
+//! 700 LOC.
 //!
 //! O corte é por RESPONSABILIDADE, como o do `vector_contour` / `vector_textpath`: estes são os
 //! controles do [`ph2d_ecs::VecFilter`] — o FX RASTER por-forma (Blur / Glow / Drop Shadow, plano
@@ -6,48 +7,129 @@
 //! é a pilha de deformadores VETORIAIS (`VecPath -> VecPath`); um filtro produz PIXELS, não
 //! geometria, e colapsar os dois nomes esconderia a diferença que decide a arquitetura inteira.
 //!
-//! ⚠️ **Bloco APPEND-ONLY**, como os do Conector / Blend / Contour: um id é o hash de uma STRING,
-//! então reordenar não quebra nada — mas renomear uma string quebra tudo o que a referencia por
-//! nome, e é assim que um widget fica órfão em silêncio.
+//! # Por-LINHA, como a pilha de geometria
+//!
+//! A W1 era **um** filtro por forma e os ids eram `const`. A W2 é uma PILHA ordenada (o modelo
+//! AE/Photoshop/Figma), então os ids passam a ser derivados por linha — exatamente o bloco
+//! `vector_fx_*` do ADR-0132, cujo `populate` regista o TETO de linhas e cujo `paint` desenha só
+//! as que existem. Um id derivado em laço é invisível ao `architecture_panel_wiring_parity`, e é
+//! por isso que a costura desta seção depende do seam que CLICA cada controle.
+//!
+//! ⚠️ **Bloco APPEND-ONLY**: um id é o hash de uma STRING, então reordenar não quebra nada — mas
+//! renomear uma string quebra tudo o que a referencia por nome, e é assim que um widget fica órfão
+//! em silêncio.
 
 use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
+use super::painter::fnv_node_id_runtime;
 
-// ── Filters: o FX raster por-forma ──────────────────────────────────────────────
-// O efeito é o componente `ph2d_ecs::VecFilter` na entidade da forma; presença = tem filtro,
-// ausência = forma nua. Estes ids são a única porta do PRODUTO para ele.
-/// Seção **FILTERS** — a forma ganha um FX raster (Blur / Glow / Drop Shadow).
+// ── Filters: a pilha de FX raster por-forma ─────────────────────────────────────
+// A pilha é o componente `ph2d_ecs::VecFilter` na entidade da forma; presença = tem filtros,
+// ausência = forma nua. Estes ids são a única porta do PRODUTO para ela.
+/// Seção **FILTERS** — a forma ganha uma pilha de FX raster (Blur / Glow / Drop Shadow).
 pub const VECTOR_SECTION_FILTERS: NodeId = hash_node_id("vector.section.filters");
 
-/// **Filter: None** — remove o `VecFilter` da seleção (a forma volta nua). É o default, e o
-/// único chip que APAGA em vez de armar.
-pub const VECTOR_FILTER_KIND_NONE: NodeId = hash_node_id("vector.filter.kind.none");
-/// **Filter: Blur** — a própria forma borrada (substitui o desenho).
-pub const VECTOR_FILTER_KIND_BLUR: NodeId = hash_node_id("vector.filter.kind.blur");
-/// **Filter: Glow** — a silhueta borrada e tingida ATRÁS da forma (que segue desenhada por cima).
-pub const VECTOR_FILTER_KIND_GLOW: NodeId = hash_node_id("vector.filter.kind.glow");
-/// **Filter: Drop Shadow** — como o Glow, mas deslocado por um offset.
-pub const VECTOR_FILTER_KIND_SHADOW: NodeId = hash_node_id("vector.filter.kind.shadow");
+/// O teto de degraus numa pilha de filtros — o painel regista este número de blocos de linha,
+/// sempre, e pinta só os que a pilha de facto tem.
+///
+/// ⚠️ Espelha o `ph2d_ecs::VecFilter::MAX_OPS`, que o painel não alcança (ele vive de snapshots);
+/// há gate a exigir que os dois lados concordem.
+pub const MAX_FILTER_ROWS: usize = 6;
 
-/// **Radius** — o `stdDev` do borrão, em unidades de MUNDO (dar zoom aumenta o borrão na tela).
-pub const VECTOR_FILTER_RADIUS: NodeId = hash_node_id("vector.filter.radius");
-/// O campo numérico gêmeo do [`VECTOR_FILTER_RADIUS`].
-pub const VECTOR_FILTER_RADIUS_NUM: NodeId = hash_node_id("vector.filter.radius.num");
+/// O teto de TIPOS que o menu "Add" oferece. Espelha o `ph2d_ecs::FxOp::KINDS`.
+pub const MAX_FILTER_KINDS: usize = 3;
 
-/// **Offset X** — o deslocamento da Drop Shadow em X (mundo). Só no Drop Shadow.
-pub const VECTOR_FILTER_OFFX: NodeId = hash_node_id("vector.filter.offx");
-/// O campo numérico gêmeo do [`VECTOR_FILTER_OFFX`].
-pub const VECTOR_FILTER_OFFX_NUM: NodeId = hash_node_id("vector.filter.offx.num");
-/// **Offset Y** — o deslocamento da Drop Shadow em Y (mundo). Só no Drop Shadow.
-pub const VECTOR_FILTER_OFFY: NodeId = hash_node_id("vector.filter.offy");
-/// O campo numérico gêmeo do [`VECTOR_FILTER_OFFY`].
-pub const VECTOR_FILTER_OFFY_NUM: NodeId = hash_node_id("vector.filter.offy.num");
+/// **Add \<tipo\>** — põe um degrau do tipo `kind` no TOPO da pilha (o fim da lista).
+#[must_use]
+pub fn filter_add_id(kind: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.add.{kind}"))
+}
 
-/// **Color** — a cor do Glow / Drop Shadow (swatch, abre o picker OKLCH). O Blur a ignora.
-pub const VECTOR_FILTER_COLOR: NodeId = hash_node_id("vector.filter.color");
+/// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de apagar
+/// são coisas diferentes para a a11y.
+#[must_use]
+pub fn filter_card_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.card.{row}"))
+}
 
-/// **Opacity** — a opacidade do efeito (0..1).
-pub const VECTOR_FILTER_OPACITY: NodeId = hash_node_id("vector.filter.opacity");
-/// O campo numérico gêmeo do [`VECTOR_FILTER_OPACITY`].
-pub const VECTOR_FILTER_OPACITY_NUM: NodeId = hash_node_id("vector.filter.opacity.num");
+/// **Remove** o degrau da linha `row`. Removida a última linha, o componente inteiro sai da
+/// entidade (a forma volta nua).
+#[must_use]
+pub fn filter_remove_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.remove.{row}"))
+}
+
+/// Sobe o degrau da linha `row`. **A ORDEM é a feature**: `Shadow → Blur` e `Blur → Shadow`
+/// desenham coisas diferentes, e é isso que uma pilha entrega e um filtro único não.
+#[must_use]
+pub fn filter_up_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.up.{row}"))
+}
+
+/// Desce o degrau da linha `row`.
+#[must_use]
+pub fn filter_down_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.down.{row}"))
+}
+
+/// **O olho** da linha `row` — desarma o degrau sem o apagar; os parâmetros ficam.
+#[must_use]
+pub fn filter_hide_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.hide.{row}"))
+}
+
+/// **Radius** da linha `row` — o `stdDev` do borrão, em unidades de MUNDO (dar zoom aumenta o
+/// borrão na tela).
+#[must_use]
+pub fn filter_radius_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.radius.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_radius_id`].
+#[must_use]
+pub fn filter_radius_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.radius.{row}.num"))
+}
+
+/// **Offset X** da linha `row` (mundo). Só no Drop Shadow.
+#[must_use]
+pub fn filter_offx_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.offx.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_offx_id`].
+#[must_use]
+pub fn filter_offx_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.offx.{row}.num"))
+}
+
+/// **Offset Y** da linha `row` (mundo). Só no Drop Shadow.
+#[must_use]
+pub fn filter_offy_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.offy.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_offy_id`].
+#[must_use]
+pub fn filter_offy_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.offy.{row}.num"))
+}
+
+/// **Color** da linha `row` — a cor do halo (swatch, abre o picker OKLCH). O Blur a ignora.
+#[must_use]
+pub fn filter_color_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.color.{row}"))
+}
+
+/// **Opacity** da linha `row` (0..1).
+#[must_use]
+pub fn filter_opacity_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.opacity.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_opacity_id`].
+#[must_use]
+pub fn filter_opacity_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.opacity.{row}.num"))
+}

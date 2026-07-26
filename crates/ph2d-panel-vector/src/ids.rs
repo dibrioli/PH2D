@@ -107,13 +107,14 @@ pub use ph2d_editor_core::ids::{
     VECTOR_CONTOUR_STEPS, VECTOR_CONTOUR_STEPS_NUM, VECTOR_CONTOUR_TO, VECTOR_SECTION_CONTOUR,
 };
 
-/// **Filters** (FX raster, plano 24): a seção + os quatro chips de tipo + os pares
-/// Radius/OffX/OffY/Opacity + a swatch de cor. Distinta de EFFECTS (deformadores vetoriais).
+/// **Filters** (a pilha de FX raster, plano 24): a seção + os "Add" + o bloco de controles de cada
+/// LINHA (card / ✕ / ↑ / ↓ / 👁 / Radius / OffX / OffY / Color / Opacity). Distinta de EFFECTS
+/// (deformadores vetoriais).
 pub use ph2d_editor_core::ids::{
-    VECTOR_FILTER_COLOR, VECTOR_FILTER_KIND_BLUR, VECTOR_FILTER_KIND_GLOW, VECTOR_FILTER_KIND_NONE,
-    VECTOR_FILTER_KIND_SHADOW, VECTOR_FILTER_OFFX, VECTOR_FILTER_OFFX_NUM, VECTOR_FILTER_OFFY,
-    VECTOR_FILTER_OFFY_NUM, VECTOR_FILTER_OPACITY, VECTOR_FILTER_OPACITY_NUM, VECTOR_FILTER_RADIUS,
-    VECTOR_FILTER_RADIUS_NUM, VECTOR_SECTION_FILTERS,
+    MAX_FILTER_KINDS, MAX_FILTER_ROWS, VECTOR_SECTION_FILTERS, filter_add_id, filter_card_id,
+    filter_color_id, filter_down_id, filter_hide_id, filter_offx_id, filter_offx_num_id,
+    filter_offy_id, filter_offy_num_id, filter_opacity_id, filter_opacity_num_id, filter_radius_id,
+    filter_radius_num_id, filter_remove_id, filter_up_id,
 };
 
 /// **Pattern on Path** (plano 23): a seção + os quatro botões + os pares Spacing/Start/End/Slide/Offset.

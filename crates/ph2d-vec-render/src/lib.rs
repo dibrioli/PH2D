@@ -168,19 +168,6 @@ pub fn path_to_screen(xforms: &VecXforms, id: VecPathId, camera: Affine) -> Affi
 /// dois faria a forma reaparecer inteira no instante em que o offset a mata.
 pub type LiveGeometry = std::collections::BTreeMap<VecPathId, Vec<VecPath>>;
 
-/// Como uma [`FxImage`] entra na cena, no z da forma que a produziu.
-///
-/// A distinção é do TIPO de efeito, não uma escolha solta: um **Blur** é a própria forma borrada
-/// (substitui o desenho), uma **Drop Shadow** / **Glow** é uma cópia borrada e tingida que fica
-/// ATRÁS da forma (que segue desenhada por cima). Colapsar os dois faria a sombra comer a forma.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FxMode {
-    /// A imagem SUBSTITUI o desenho da forma (Blur).
-    Replace,
-    /// A imagem entra ABAIXO da forma, que ainda desenha por cima (Drop Shadow / Glow).
-    Below,
-}
-
 /// Uma imagem de FX raster já pronta — pixels que o shell produziu (rasterizou a forma isolada,
 /// borrou, tingiu) e que o [`dispatch`] injeta no z da forma. O `dispatch` **não a computa** (é
 /// encode puro, sem GPU): ele só a desenha, com `rect` já em coordenadas de TELA.
@@ -195,7 +182,6 @@ pub struct FxImage {
     /// O retângulo de destino em pixels de TELA (`x0,y0,x1,y1`) — o shell já cruzou a câmera e
     /// somou a margem do blur (e o deslocamento da sombra).
     pub rect: (f64, f64, f64, f64),
-    pub mode: FxMode,
 }
 
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
@@ -215,10 +201,11 @@ pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
 /// a curva autorada (o modo Node edita os nós DELA) e o que se vê é o resultado, empilhado
 /// exatamente onde a forma sempre esteve.
 ///
-/// `fx` ([`FxImages`]) injeta o FX raster de uma forma **no z dela**: `Below` (sombra/glow) entra
-/// ANTES do desenho da forma, `Replace` (blur) desenha a imagem NO LUGAR da forma. As imagens já
-/// vêm em coordenadas de tela — o `dispatch` só as encoda, sem tocar GPU. Vazio = sem FX (o caminho
-/// comum é byte-idêntico ao mundo pré-FX).
+/// `fx` ([`FxImages`]) injeta o FX raster de uma forma **no z dela**, SUBSTITUINDO o desenho
+/// vetorial: a pilha de filtros já compôs sombra, brilho e forma numa imagem só (o halo entra por
+/// baixo DENTRO do op — ver `ph2d_render::fx_stack`), então não há um "atrás" que o compositor
+/// precise conhecer. As imagens já vêm em coordenadas de tela — o `dispatch` só as encoda, sem
+/// tocar GPU. Vazio = sem FX (o caminho comum é byte-idêntico ao mundo pré-FX).
 pub fn dispatch(
     scene: &VecScene,
     view: &VecViewState,
@@ -232,14 +219,9 @@ pub fn dispatch(
         if view.is_hidden(path.id) {
             continue;
         }
-        // O FX da forma, se houver. A sombra/glow (`Below`) entra ANTES do desenho, no z da forma;
-        // o blur (`Replace`) TOMA o lugar do desenho (a imagem é desenhada, a forma não).
-        let fx_here = fx.get(&path.id);
-        if let Some(img) = fx_here.filter(|i| i.mode == FxMode::Below) {
-            draw_fx_image(img, target);
-        }
-        if let Some(img) = fx_here.filter(|i| i.mode == FxMode::Replace) {
-            // A imagem substitui a forma, no z dela.
+        // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se vê
+        // desta forma (halo incluído) numa imagem só, no z dela.
+        if let Some(img) = fx.get(&path.id) {
             draw_fx_image(img, target);
         } else {
             // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela

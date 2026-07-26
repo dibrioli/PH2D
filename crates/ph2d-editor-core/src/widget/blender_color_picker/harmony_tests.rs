@@ -38,7 +38,11 @@ fn a_neutral_scheme_is_just_the_base() {
 fn the_base_is_always_first() {
     let base = base_at(30.0);
     for scheme in Harmony::ALL {
-        assert_eq!(partners(base, scheme)[0], base, "{scheme:?}: a base não é a 1ª");
+        assert_eq!(
+            partners(base, scheme)[0],
+            base,
+            "{scheme:?}: a base não é a 1ª"
+        );
     }
 }
 
@@ -55,7 +59,11 @@ fn each_scheme_has_the_right_count() {
         (Harmony::Tetrad, 4),
         (Harmony::Monochromatic, 4),
     ] {
-        assert_eq!(partners(base, scheme).len(), n, "{scheme:?}: contagem errada");
+        assert_eq!(
+            partners(base, scheme).len(),
+            n,
+            "{scheme:?}: contagem errada"
+        );
         assert!(n <= Harmony::MAX_COLORS, "{scheme:?} excede MAX_COLORS");
     }
 }
@@ -103,7 +111,11 @@ fn monochromatic_keeps_the_hue_and_varies_value() {
     }
     let vmin = values.iter().cloned().fold(f32::MAX, f32::min);
     let vmax = values.iter().cloned().fold(f32::MIN, f32::max);
-    assert!(vmax - vmin > 0.2, "mono não variou o valor (spread {:.2})", vmax - vmin);
+    assert!(
+        vmax - vmin > 0.2,
+        "mono não variou o valor (spread {:.2})",
+        vmax - vmin
+    );
 }
 
 /// Sonda (não-gate) — imprime as parceiras medidas de uma base laranja saturada

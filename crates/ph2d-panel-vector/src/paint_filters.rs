@@ -1,18 +1,34 @@
-//! A seção **FILTERS** do painel Vector — módulo irmão do [`super`] (teto de 600 LOC).
+//! A seção **FILTERS** do painel Vector — a PILHA de FX raster do caminho selecionado (plano 24).
 //!
-//! O FX raster por-forma (plano 24): Blur / Glow / Drop Shadow. É a única porta do produto para o
-//! [`ph2d_ecs::VecFilter`] — sem ela o produtor GPU existiria, gateado e smokado, e a feature não
+//! Módulo irmão do [`super`] (teto de 600 LOC), par do `populate_filters` (que REGISTRA os
+//! widgets — sem isso ficam pintados e mortos). É a única porta do produto para o
+//! [`ph2d_ecs::VecFilter`]: sem ela o produtor GPU existiria, gateado e smokado, e a feature não
 //! existiria para o artista.
 //!
 //! ⚠️ **Distinta da seção Effects** (`VECTOR_SECTION_EFFECTS`, ADR-0132), que é a pilha de
-//! deformadores VETORIAIS. Um filtro produz PIXELS; um efeito produz geometria. O seletor de tipo
-//! é a porta de armar/desarmar (o *None* remove o componente) — não há botão *Add* separado como
-//! no Contour, porque um filtro TEM tipo, e escolher o tipo É armá-lo.
+//! deformadores VETORIAIS. Um filtro produz PIXELS; um efeito produz geometria.
+//!
+//! # Cada degrau é um CARD, e a ORDEM é a feature
+//!
+//! O mesmo idioma da pilha de Effects (Enio, 2026-07-18) — cabeçalho de ícones (↑ ↓ 👁 ✕) e os
+//! parâmetros dentro. Aqui o motivo de reordenar é ainda mais direto: `Drop Shadow → Blur` borra a
+//! sombra junto com a forma; `Blur → Drop Shadow` projeta a sombra da forma JÁ borrada. São dois
+//! desenhos, e a lista é como se escolhe entre eles.
+//!
+//! Cada linha oferece só os controles que o TIPO dela usa: o offset só existe na Drop Shadow, e a
+//! cor só no Glow / Drop Shadow (o Blur reusa os pixels que recebeu). Um knob morto ensina o
+//! artista a desconfiar dos vivos.
 
 use super::*;
 use crate::state::filters as fst;
 use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
-use ph2d_editor_core::widget::SliderState;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::widget::{
+    Card, IconButtonStyle, IconGlyph, SliderState, paint_card, paint_icon_button,
+};
+
+/// O lado de um botão de ícone do cabeçalho.
+const ICON_PX: f32 = 22.0; // LITERAL-PX-OK: lado do glifo, espelha o do card de Effects
 
 /// A posição do trilho a pintar: **o valor de arrasto do store SÓ enquanto o slider está sendo
 /// arrastado**, senão o track derivado do estado PUBLICADO (que reflete o componente via o
@@ -20,7 +36,11 @@ use ph2d_editor_core::widget::SliderState;
 /// selecionada — sem um "mirror" que re-semeie o store — e ainda seguir o dedo durante o arrasto:
 /// no release, o drain do mesmo frame já atualizou o componente, o publish o leu, e o estado
 /// vence de novo.
-fn live_track(store: &ph2d_editor_core::interaction::WidgetStore, id: ph2d_a11y::NodeId, from_state: f32) -> f32 {
+fn live_track(
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    id: ph2d_a11y::NodeId,
+    from_state: f32,
+) -> f32 {
     match store.slider(id) {
         Some((SliderState::Dragging, v)) => v,
         _ => from_state,
@@ -30,8 +50,9 @@ fn live_track(store: &ph2d_editor_core::interaction::WidgetStore, id: ph2d_a11y:
 impl BodyCtx<'_> {
     /// Seção **FILTERS**.
     pub(crate) fn filters_section(&mut self, y: f32) -> f32 {
-        // Só quando há forma para filtrar (ou um filtro vivo). Fora disso o cabeçalho nem sobe.
-        if !fst::present() && !fst::can_add() {
+        // Só quando há forma para filtrar (ou uma pilha viva). Fora disso o cabeçalho nem sobe.
+        let stack = fst::stack();
+        if stack.is_empty() && !fst::can_add() {
             return y;
         }
         let (mut y, collapsed) = self.section_header(
@@ -42,58 +63,157 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let present = fst::present();
-        let kind = fst::kind();
-        // O seletor de TIPO é a porta de armar/desarmar, sempre visível: None remove, os outros
-        // três armam. O ativo é derivado do estado publicado.
-        y = self.segmented(
-            "Filter",
-            &[
-                (ids::VECTOR_FILTER_KIND_NONE, "None", !present),
-                (ids::VECTOR_FILTER_KIND_BLUR, "Blur", present && kind == 0),
-                (ids::VECTOR_FILTER_KIND_GLOW, "Glow", present && kind == 1),
-                (ids::VECTOR_FILTER_KIND_SHADOW, "Shadow", present && kind == 2),
-            ],
-            y,
-        );
-        if !present {
-            return y;
+        for (row, fx) in stack.iter().enumerate().take(ids::MAX_FILTER_ROWS) {
+            y = self.filter_card(row, fx, stack.len(), y);
         }
-        // Radius — o stdDev do borrão (mundo), presente em todo filtro.
-        let radius = fst::radius();
-        let radius_track = live_track(
-            self.store,
-            ids::VECTOR_FILTER_RADIUS,
-            (radius / FILTER_RADIUS_MAX) as f32,
+        // Os "Add": um por tipo PUBLICADO pelo motor. Um tipo novo aparece aqui sem este arquivo
+        // saber que ele existe.
+        if stack.len() < ids::MAX_FILTER_ROWS {
+            for (kind, name) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
+                y = self.action_button(ids::filter_add_id(kind), &format!("Add {name}"), y);
+            }
+        }
+        y
+    }
+
+    /// Um degrau: o card, o cabeçalho de ícones e os parâmetros dentro dele.
+    fn filter_card(&mut self, row: usize, fx: &fst::FilterRowView, total: usize, y: f32) -> f32 {
+        let pad = Spacing::Sm.px();
+        let head_h = self.row_h.max(ICON_PX);
+        // Radius + Opacity sempre; Offset X/Y só no Drop Shadow; Color no Glow / Drop Shadow.
+        let rows = 2 + usize::from(fx.kind == 2) * 2 + usize::from(fx.kind != 0);
+        #[allow(clippy::cast_precision_loss)]
+        let body_h = rows as f32 * (self.row_h + self.row_gap);
+        let card_h = pad + head_h + body_h + pad;
+        let card_rect = Rect::new(self.inner_x, y, self.inner_w, card_h);
+
+        let card = Card::new(ids::filter_card_id(row));
+        paint_card(&card, card_rect, self.scene, self.text_system, self.theme);
+
+        let inner_x = self.inner_x + pad;
+        let inner_w = self.inner_w - pad * 2.0;
+        self.filter_header(row, fx, total, Rect::new(inner_x, y + pad, inner_w, head_h));
+
+        // Os parâmetros, indentados dentro do card. Guardo e restauro a coluna: o `slider_row`
+        // desenha no `inner_x`/`inner_w` do CONTEXTO.
+        let (keep_x, keep_w) = (self.inner_x, self.inner_w);
+        self.inner_x = inner_x;
+        self.inner_w = inner_w;
+        let mut py = y + pad + head_h;
+        py = self.filter_radius_row(row, fx, py);
+        if fx.kind == 2 {
+            py = self.filter_offset_row(
+                "Offset X",
+                ids::filter_offx_id(row),
+                ids::filter_offx_num_id(row),
+                fx.offx,
+                py,
+            );
+            py = self.filter_offset_row(
+                "Offset Y",
+                ids::filter_offy_id(row),
+                ids::filter_offy_num_id(row),
+                fx.offy,
+                py,
+            );
+        }
+        if fx.kind != 0 {
+            py = self.filter_color_swatch(row, fx, py);
+        }
+        self.filter_opacity_row(row, fx, py);
+        self.inner_x = keep_x;
+        self.inner_w = keep_w;
+
+        y + card_h + Spacing::Sm.px()
+    }
+
+    /// O cabeçalho do card: o nome à esquerda, os ícones à direita.
+    ///
+    /// **Subir na primeira linha e descer na última não fazem nada — então não são desenhados**
+    /// (a posição de cada ícone é contada da DIREITA, então a ausência de uma seta nas bordas não
+    /// desloca os outros). Um ícone inerte ensina o artista a desconfiar dos que funcionam.
+    fn filter_header(&mut self, row: usize, fx: &fst::FilterRowView, total: usize, at: Rect) {
+        let (x, w, y, h) = (at.x, at.w, at.y, at.h);
+        let dim = if fx.enabled {
+            ColorToken::Text1
+        } else {
+            ColorToken::TextDisabled
+        };
+        paint_text(
+            self.text_system,
+            self.scene,
+            fx.label,
+            x,
+            y + (h - self.font) * 0.5,
+            self.font,
+            w,
+            resolve(dim, self.theme),
         );
-        y = self.slider_row(
+        let slot = |i: usize| x + w - ICON_PX * (i as f32 + 1.0) - Spacing::Xs.px() * i as f32;
+        self.filter_icon(ids::filter_remove_id(row), IconId::Close, slot(0), y, h);
+        self.filter_icon(
+            ids::filter_hide_id(row),
+            if fx.enabled {
+                IconId::Eye
+            } else {
+                IconId::EyeClosed
+            },
+            slot(1),
+            y,
+            h,
+        );
+        if row + 1 < total {
+            self.filter_icon(ids::filter_down_id(row), IconId::ChevronDown, slot(2), y, h);
+        }
+        if row > 0 {
+            self.filter_icon(ids::filter_up_id(row), IconId::ChevronUp, slot(3), y, h);
+        }
+    }
+
+    /// Um botão de ícone do cabeçalho: pinta e REGISTRA o hit-rect (sem ele não há Click).
+    fn filter_icon(&mut self, id: ph2d_a11y::NodeId, glyph: IconId, x: f32, y: f32, h: f32) {
+        let rect = Rect::new(x, y + (h - ICON_PX) * 0.5, ICON_PX, ICON_PX);
+        let state = self
+            .store
+            .button_state(id)
+            .unwrap_or(ph2d_editor_core::widget::ButtonState::Normal);
+        paint_icon_button(
+            rect,
+            IconGlyph::Builtin(glyph),
+            IconButtonStyle::Compact,
+            state,
+            self.scene,
+            self.theme,
+        );
+        self.hit_index.register(id, rect);
+    }
+
+    /// **Radius** — o `stdDev` do borrão (mundo), presente em todo degrau.
+    fn filter_radius_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+        let (slider, chip) = (ids::filter_radius_id(row), ids::filter_radius_num_id(row));
+        let track = live_track(self.store, slider, (fx.radius / FILTER_RADIUS_MAX) as f32);
+        self.slider_row(
             "Radius",
-            ids::VECTOR_FILTER_RADIUS,
-            ids::VECTOR_FILTER_RADIUS_NUM,
-            radius_track,
-            radius,
-            &format!("{radius:.2}"),
+            slider,
+            chip,
+            track,
+            fx.radius,
+            &format!("{:.2}", fx.radius),
             y,
-        );
-        // Offset X/Y — só a Drop Shadow tem deslocamento; para Blur/Glow seria controle morto.
-        if kind == 2 {
-            y = self.filter_offset_row("Offset X", ids::VECTOR_FILTER_OFFX, ids::VECTOR_FILTER_OFFX_NUM, fst::offx(), y);
-            y = self.filter_offset_row("Offset Y", ids::VECTOR_FILTER_OFFY, ids::VECTOR_FILTER_OFFY_NUM, fst::offy(), y);
-        }
-        // Color — Glow/Drop Shadow tingem; o Blur ignora a cor (a swatch seria knob morto nele).
-        if kind == 1 || kind == 2 {
-            y = self.filter_color_swatch(y);
-        }
-        // Opacity — todo filtro.
-        let opacity = fst::opacity();
-        let op_track = live_track(self.store, ids::VECTOR_FILTER_OPACITY, opacity as f32);
+        )
+    }
+
+    /// **Opacity** — a intensidade do degrau, presente em todo degrau.
+    fn filter_opacity_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+        let (slider, chip) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
+        let track = live_track(self.store, slider, fx.opacity as f32);
         self.slider_row(
             "Opacity",
-            ids::VECTOR_FILTER_OPACITY,
-            ids::VECTOR_FILTER_OPACITY_NUM,
-            op_track,
-            opacity,
-            &format!("{opacity:.2}"),
+            slider,
+            chip,
+            track,
+            fx.opacity,
+            &format!("{:.2}", fx.opacity),
             y,
         )
     }
@@ -110,12 +230,21 @@ impl BodyCtx<'_> {
     ) -> f32 {
         let from_state = ((stored + FILTER_OFFSET_MAX) / (2.0 * FILTER_OFFSET_MAX)) as f32;
         let track = live_track(self.store, slider, from_state);
-        self.slider_row(label, slider, chip, track, stored, &format!("{stored:.2}"), y)
+        self.slider_row(
+            label,
+            slider,
+            chip,
+            track,
+            stored,
+            &format!("{stored:.2}"),
+            y,
+        )
     }
 
-    /// A fileira da cor do efeito: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
+    /// A fileira da cor do halo: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
     /// swatch de Fill / Contour — a mesma estética para a mesma pergunta *"que cor?"*).
-    fn filter_color_swatch(&mut self, y: f32) -> f32 {
+    fn filter_color_swatch(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+        let id = ids::filter_color_id(row);
         let swatch_w = SwatchSize::Md.px();
         paint_text(
             self.text_system,
@@ -127,11 +256,15 @@ impl BodyCtx<'_> {
             LABEL_COL_W,
             resolve(ColorToken::Text1, self.theme),
         );
-        let rect = Rect::new(self.inner_x + self.inner_w - swatch_w, y, swatch_w, self.row_h);
-        let swatch = ColorSwatch::new(ids::VECTOR_FILTER_COLOR, "Filter effect color", fst::color())
-            .size(SwatchSize::Md);
+        let rect = Rect::new(
+            self.inner_x + self.inner_w - swatch_w,
+            y,
+            swatch_w,
+            self.row_h,
+        );
+        let swatch = ColorSwatch::new(id, "Filter effect color", fx.color).size(SwatchSize::Md);
         paint_color_swatch(&swatch, rect, self.scene, self.theme);
-        self.hit_index.register(ids::VECTOR_FILTER_COLOR, rect);
+        self.hit_index.register(id, rect);
         y + self.row_h + self.row_gap
     }
 }

@@ -1,9 +1,9 @@
-//! **O FX raster VIVO na shell — 100% RESIDENTE NA GPU** (o `ph2d_ecs::VecFilter`, plano 24).
+//! **A PILHA de FX raster VIVA na shell — 100% RESIDENTE NA GPU** (`ph2d_ecs::VecFilter`, plano 24).
 //!
 //! Irmão do [`crate::offset_live`]/[`crate::contour_live`], mas de OUTRA natureza: o offset produz
 //! GEOMETRIA (uma `LiveGeometry` que o `dispatch` desenha), e o FX produz PIXELS. A costura do
 //! plano 24 §2: um FX raster não é `PathEffect` (não é `VecPath -> VecPath`) nem `LiveGeometry` —
-//! ele isola a forma na própria textura, borra e recompõe.
+//! ele isola a forma na própria textura, roda a pilha e recompõe.
 //!
 //! # Por que GPU-resident (Enio: "tudo é para o game em runtime, total performance")
 //!
@@ -15,21 +15,27 @@
 //!
 //! Agora é **tudo na placa**:
 //! 1. a forma isolada é rasterizada num [`VelloPass`] scratch (renderer próprio, **sem readback**);
-//! 2. o [`FxBlurPass`] borra + tinge na GPU (Gaussiana separável) para uma textura de SAÍDA;
-//! 3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL** ([`VelloPass::register_texture`]);
-//!    re-borrar escreve NA MESMA textura, então o Vello reusa o slot do atlas (zero churn de id, zero
-//!    upload de CPU) e o `dispatch` a desenha no z da forma.
+//! 2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU, para uma textura de SAÍDA;
+//! 3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL**
+//!    ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, então o Vello reusa o
+//!    slot do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
 //!
-//! O memo (por `spec + w + h + sigma`) vira OTIMIZAÇÃO — pula o re-blur quando nada muda —, não
-//! requisito de correção: mesmo re-borrando todo frame (forma animada), é um render + 2 passes na
-//! GPU, barato. Vazio = nenhum FX (byte-idêntico ao mundo pré-FX).
+//! O memo (por *pilha resolvida em pixels* + tamanho) vira OTIMIZAÇÃO — pula o re-cook quando nada
+//! muda —, não requisito de correção: mesmo re-cozinhando todo frame (forma animada), é um render
+//! + `2n+1` passes na GPU. Vazio = nenhum FX (byte-idêntico ao mundo pré-FX).
+//!
+//! # A conversão MUNDO → PIXEL mora aqui, e só aqui
+//!
+//! O componente fala MUNDO (resolution-crisp: dar zoom aumenta o borrão na tela, como deve). O
+//! passe fala PIXEL. A câmera é conhecida por esta função e por mais ninguém — uma segunda
+//! conversão noutro sítio seria um segundo sítio a errá-la.
 
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, SimWorld, VecFilter};
 use ph2d_gpu::GpuContext;
-use ph2d_render::{FxBlurPass, VelloPass, make_output_texture};
-use ph2d_vec_render::{FxImage, FxImages, FxMode, LiveGeometry};
+use ph2d_render::{FxOpGpu, FxStackPass, VelloPass, make_output_texture, stack_reach};
+use ph2d_vec_render::{FxImage, FxImages, LiveGeometry};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 use ph2d_vector::{Affine, Color, ImageData, StableImage, VectorScene};
 
@@ -39,19 +45,19 @@ use crate::vec_entities::VecEntityMap;
 /// (8192). Limite de RECURSO (a dimensão de textura garantida), não de gosto.
 const MAX_FX_SIDE: u32 = 8192;
 
-/// Os recursos de GPU PERSISTENTES de uma forma filtrada: a textura de saída (borrada) e o handle
-/// [`ImageData`] estável que a referencia no renderer principal. `tex` fica viva para o re-blur e
-/// para o Vello copiá-la no render (DEPOIS do recook).
+/// Os recursos de GPU PERSISTENTES de uma forma filtrada: a textura de saída (o resultado da
+/// pilha) e o handle [`ImageData`] estável que a referencia no renderer principal. `tex` fica viva
+/// para o re-cook e para o Vello copiá-la no render (DEPOIS do recook).
 struct PathFx {
     /// O handle registrado no renderer principal (id de Blob estável).
     image: ImageData,
-    /// A textura de saída (o FX escreve aqui; o Vello copia daqui). Clone = handle, mesma GPU tex.
+    /// A textura de saída (a pilha escreve aqui; o Vello copia daqui). Clone = handle, mesma tex.
     tex: wgpu::Texture,
     w: u32,
     h: u32,
-    sig_bits: u32,
-    spec: VecFilter,
-    mode: FxMode,
+    /// A pilha JÁ RESOLVIDA em pixels — a chave do memo. Guardá-la resolvida (e não o componente)
+    /// é o que faz o zoom invalidar sozinho: a mesma pilha noutro zoom é outra lista.
+    ops: Vec<FxOpGpu>,
 }
 
 /// O cozimento de todos os FX raster da cena, GPU-resident. Runtime-only: o documento guarda a
@@ -62,8 +68,8 @@ pub(crate) struct FxLive {
     /// Renderer dedicado que rasteriza a forma ISOLADA (separado do principal para não pisar no
     /// intermediate da UI). Criado sob demanda no 1º FX da sessão.
     scratch: Option<VelloPass>,
-    /// O passe de borrão de GPU. Build-once.
-    blur: Option<FxBlurPass>,
+    /// O passe da pilha. Build-once.
+    stack: Option<FxStackPass>,
     /// Os recursos persistentes por forma (textura de saída + handle estável).
     paths: BTreeMap<VecPathId, PathFx>,
     /// Handles a desregistrar do renderer no próximo recook (o `forget` não tem `vello_pass` em mãos).
@@ -102,40 +108,55 @@ impl FxLive {
         }
         self.live.clear();
 
-        let [a, b, c, d, _, _] = camera.as_coeffs();
-        let cam_scale = ((a * a + b * b).sqrt() + (c * c + d * d).sqrt()) as f32 * 0.5;
-
         let perf = std::env::var("PH2D_FX_PERF").is_ok();
         let t0 = std::time::Instant::now();
         let mut misses = 0usize;
         let mut seen: Vec<VecPathId> = Vec::new();
 
         for path in scene.paths() {
-            let Some(spec) = spec_of(sim, map, path.id) else {
+            let Some(filter) = spec_of(sim, map, path.id) else {
                 continue;
             };
+            let ops = resolve_ops(&filter, camera);
+            if ops.is_empty() {
+                continue;
+            }
             let Some((x0, y0, x1, y1)) =
                 ph2d_vec_render::path_screen_bounds(scene, xforms, live, path.id, camera)
             else {
                 continue;
             };
-            let sigma_px = (spec.radius * cam_scale).max(0.0);
-            let margin = (3.0 * sigma_px as f64).ceil();
-            let ex0 = (x0 - margin).floor();
-            let ey0 = (y0 - margin).floor();
-            let w = (((x1 + margin).ceil() - ex0).max(1.0) as u32).min(MAX_FX_SIDE);
-            let h = (((y1 + margin).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
-            let sig_bits = sigma_px.to_bits();
+            // A margem é da PILHA INTEIRA (as reaches somam ao longo dela) e assimétrica (uma
+            // sombra longa para a direita não paga textura à esquerda). Porta única no passe.
+            let (ml, mt, mr, mb) = stack_reach(&ops);
+            let ex0 = (x0 - f64::from(ml)).floor();
+            let ey0 = (y0 - f64::from(mt)).floor();
+            let w = (((x1 + f64::from(mr)).ceil() - ex0).max(1.0) as u32).min(MAX_FX_SIDE);
+            let h = (((y1 + f64::from(mb)).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
             seen.push(path.id);
 
-            // O memo é otimização: re-borra só quando os PIXELS mudam.
-            let cached = self.paths.get(&path.id);
-            let hit = cached
-                .is_some_and(|p| p.spec == spec && p.w == w && p.h == h && p.sig_bits == sig_bits);
-
+            // O memo é otimização: re-coza só quando os PIXELS mudam.
+            let hit = self
+                .paths
+                .get(&path.id)
+                .is_some_and(|p| p.ops == ops && p.w == w && p.h == h);
             if !hit {
                 misses += 1;
-                if !self.recook_one(gpu, surface_format, vello_pass, scene, xforms, live, camera, path.id, spec, ex0, ey0, w, h, sigma_px, sig_bits) {
+                if !self.recook_one(
+                    gpu,
+                    surface_format,
+                    vello_pass,
+                    scene,
+                    xforms,
+                    live,
+                    camera,
+                    path.id,
+                    &ops,
+                    ex0,
+                    ey0,
+                    w,
+                    h,
+                ) {
                     continue;
                 }
             }
@@ -143,26 +164,13 @@ impl FxLive {
             let Some(pfx) = self.paths.get(&path.id) else {
                 continue;
             };
-            // A Drop Shadow desloca no COMPOSITE (vetor de mundo pela parte linear da câmera).
-            let (sox, soy) = if spec.displaces() {
-                let (ox, oy) = (f64::from(spec.offset[0]), f64::from(spec.offset[1]));
-                (a * ox + c * oy, b * ox + d * oy)
-            } else {
-                (0.0, 0.0)
-            };
-            let rect = (
-                ex0 + sox,
-                ey0 + soy,
-                ex0 + f64::from(pfx.w) + sox,
-                ey0 + f64::from(pfx.h) + soy,
-            );
+            let rect = (ex0, ey0, ex0 + f64::from(pfx.w), ey0 + f64::from(pfx.h));
             self.live.insert(
                 path.id,
                 FxImage {
                     // Clone do handle estável = MESMO id de Blob (o slot de atlas do Vello).
                     image: StableImage::from_image_data(pfx.image.clone()),
                     rect,
-                    mode: pfx.mode,
                 },
             );
         }
@@ -183,16 +191,16 @@ impl FxLive {
         if perf && (misses > 0 || self.dbg_frames.is_multiple_of(120)) {
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             eprintln!(
-                "[fx-perf] {} filtro(s), {misses} re-borrado(s), recook {ms:.3} ms",
+                "[fx-perf] {} pilha(s), {misses} re-cozida(s), recook {ms:.3} ms",
                 self.live.len()
             );
         }
         self.dbg_frames = self.dbg_frames.wrapping_add(1);
     }
 
-    /// Cozinha UMA forma: rasteriza isolada no scratch, borra na GPU para a textura de saída
-    /// (realoca + re-registra se o tamanho mudou), e atualiza o `PathFx`. `false` só em falha de
-    /// recurso (pula a forma neste frame).
+    /// Cozinha UMA forma: rasteriza isolada no scratch, roda a pilha na GPU para a textura de
+    /// saída (realoca + re-registra se o tamanho mudou), e atualiza o `PathFx`. `false` só em
+    /// falha de recurso (pula a forma neste frame).
     #[allow(clippy::too_many_arguments)]
     fn recook_one(
         &mut self,
@@ -204,13 +212,11 @@ impl FxLive {
         live: &LiveGeometry,
         camera: Affine,
         id: VecPathId,
-        spec: VecFilter,
+        ops: &[FxOpGpu],
         ex0: f64,
         ey0: f64,
         w: u32,
         h: u32,
-        sigma_px: f32,
-        sig_bits: u32,
     ) -> bool {
         // 1. Rasteriza a forma isolada no scratch (sem readback), na MESMA escala da tela (câmera),
         //    transladada para a origem do scratch (`-ex0,-ey0`).
@@ -254,7 +260,7 @@ impl FxLive {
                 // antigo. ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da
                 // `ImageData` — copiar com as dims velhas de uma textura de tamanho novo ESTOURA
                 // (o Vello avisa isso no doc; foi o "panic ao abrir" pós-resize). Resize é raro
-                // ⇒ churn de id mínimo; o re-blur (comum) não re-registra.
+                // ⇒ churn de id mínimo; o re-cook (comum) não re-registra.
                 Some(pfx) => {
                     let fresh = vello_pass.register_texture(tex.clone());
                     let old = std::mem::replace(&mut pfx.image, fresh);
@@ -273,33 +279,24 @@ impl FxLive {
                             tex,
                             w,
                             h,
-                            sig_bits,
-                            spec,
-                            mode: fx_mode(spec),
+                            ops: ops.to_vec(),
                         },
                     );
                 }
             }
         }
 
-        // 3. Borra + tinge na GPU: scratch intermediate (premul) -> textura de saída (reta).
-        let src = self.scratch.as_ref().expect("scratch ensured").intermediate_texture();
+        // 3. A PILHA na GPU: scratch intermediate (premul) → op₁ → … → textura de saída (reta).
+        let src = self
+            .scratch
+            .as_ref()
+            .expect("scratch ensured")
+            .intermediate_texture();
         let pfx = self.paths.get_mut(&id).expect("path ensured");
-        pfx.sig_bits = sig_bits;
-        pfx.spec = spec;
-        pfx.mode = fx_mode(spec);
-        let blur = self.blur.get_or_insert_with(|| FxBlurPass::new(gpu));
-        blur.run(
-            gpu,
-            src,
-            &pfx.tex,
-            w,
-            h,
-            sigma_px,
-            spec.kind,
-            spec.color,
-            spec.opacity,
-        );
+        pfx.ops.clear();
+        pfx.ops.extend_from_slice(ops);
+        let stack = self.stack.get_or_insert_with(|| FxStackPass::new(gpu));
+        stack.run(gpu, src, &pfx.tex, w, h, ops);
         true
     }
 
@@ -314,24 +311,108 @@ impl FxLive {
     }
 }
 
-/// O modo de composição do filtro: Blur SUBSTITUI a forma; Glow/Drop Shadow entram ABAIXO dela.
-fn fx_mode(spec: VecFilter) -> FxMode {
-    if spec.tints() {
-        FxMode::Below
-    } else {
-        FxMode::Replace
-    }
+/// **A pilha AUTORADA resolvida em pixels de tela.** Os degraus desligados caem aqui (a pilha os
+/// SALTA, como a de geometria salta um `FxEntry` desarmado), então uma pilha toda desligada devolve
+/// vazio e a forma sai nua.
+///
+/// ⚠️ O deslocamento é arredondado a pixel INTEIRO — o passe amostra o halo por `textureLoad`, e
+/// posição sub-pixel numa sombra não é algo que se veja (a textura já é alinhada ao pixel da tela).
+#[must_use]
+pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
+    let [a, b, c, d, _, _] = camera.as_coeffs();
+    let cam_scale = ((a * a + b * b).sqrt() + (c * c + d * d).sqrt()) as f32 * 0.5;
+    filter
+        .ops
+        .iter()
+        .filter(|o| o.is_active())
+        .map(|o| {
+            let (ox, oy) = (f64::from(o.offset[0]), f64::from(o.offset[1]));
+            FxOpGpu {
+                kind: o.kind,
+                sigma_px: (o.radius * cam_scale).max(0.0),
+                offset_px: [
+                    (a * ox + c * oy).round() as i32,
+                    (b * ox + d * oy).round() as i32,
+                ],
+                tint: o.color,
+                opacity: o.opacity,
+            }
+        })
+        .collect()
 }
 
-/// O filtro de `id`, se houver. Porta única: o cozimento e o publish para o painel perguntam AQUI.
+/// **Que controle da pilha um id de painel endereça.** Os ids da seção são derivados por LINHA
+/// (hashes de nome), então não há aritmética que os inverta: decodifica-se varrendo o teto.
+///
+/// Porta única de propósito — a ponte tem TRÊS sítios que perguntam *"este id é da pilha?"* (o
+/// comando, o valor e o alvo do picker), e três varreduras escritas à mão divergiriam na primeira
+/// linha nova.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum FilterHit {
+    /// "Add \<tipo\>" — põe um degrau novo no fim da pilha.
+    Add(u8),
+    /// ✕ — apaga a linha (a última apaga o componente).
+    Remove(usize),
+    /// ↑ / ↓ — a ORDEM é a feature.
+    Up(usize),
+    Down(usize),
+    /// 👁 — desarma sem apagar.
+    Hide(usize),
+    /// A swatch de cor da linha (abre o picker OKLCH partilhado).
+    Color(usize),
+    /// Os sliders.
+    Radius(usize),
+    OffX(usize),
+    OffY(usize),
+    Opacity(usize),
+}
+
+/// Decodifica um id de painel para o controle da pilha que ele endereça.
+pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
+    use ph2d_editor::ids as vid;
+    for k in 0..vid::MAX_FILTER_KINDS {
+        if id == vid::filter_add_id(k) {
+            #[allow(clippy::cast_possible_truncation)]
+            return Some(FilterHit::Add(k as u8));
+        }
+    }
+    for r in 0..vid::MAX_FILTER_ROWS {
+        let hit = if id == vid::filter_remove_id(r) {
+            FilterHit::Remove(r)
+        } else if id == vid::filter_up_id(r) {
+            FilterHit::Up(r)
+        } else if id == vid::filter_down_id(r) {
+            FilterHit::Down(r)
+        } else if id == vid::filter_hide_id(r) {
+            FilterHit::Hide(r)
+        } else if id == vid::filter_color_id(r) {
+            FilterHit::Color(r)
+        } else if id == vid::filter_radius_id(r) {
+            FilterHit::Radius(r)
+        } else if id == vid::filter_offx_id(r) {
+            FilterHit::OffX(r)
+        } else if id == vid::filter_offy_id(r) {
+            FilterHit::OffY(r)
+        } else if id == vid::filter_opacity_id(r) {
+            FilterHit::Opacity(r)
+        } else {
+            continue;
+        };
+        return Some(hit);
+    }
+    None
+}
+
+/// A pilha de `id`, se houver. Porta única: o cozimento e o publish para o painel perguntam AQUI.
 pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecFilter> {
     let &bits = map.get(&id)?;
     sim.world()
         .get::<VecFilter>(Entity::from_bits(bits))
-        .copied()
+        .cloned()
 }
 
-/// **Arma** (ou remove) o filtro de cada caminho de `ids`. `None` remove o componente. Devolve
+/// **Escreve** (ou remove) a pilha de cada caminho de `ids`. Uma pilha VAZIA remove o componente —
+/// a lei do `VecOffset`: um documento não acumula relações inertes que não desenham nada. Devolve
 /// quantas entidades mudaram.
 pub(crate) fn set_filter(
     sim: &mut SimWorld,
@@ -339,20 +420,21 @@ pub(crate) fn set_filter(
     ids: &[VecPathId],
     want: Option<VecFilter>,
 ) -> usize {
+    let want = want.filter(|f| !f.ops.is_empty());
     let mut n = 0;
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
         let e = Entity::from_bits(bits);
-        let cur = sim.world().get::<VecFilter>(e).copied();
+        let cur = sim.world().get::<VecFilter>(e).cloned();
         if cur == want {
             continue;
         }
         let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
             continue;
         };
-        match want {
+        match &want {
             Some(v) => {
-                em.insert(v);
+                em.insert(v.clone());
             }
             None => {
                 em.remove::<VecFilter>();
@@ -363,46 +445,34 @@ pub(crate) fn set_filter(
     n
 }
 
-/// **Edita** um campo do filtro de cada caminho de `ids` que JÁ tenha um (read-modify-write) — o
-/// arrasto de um slider ou a cor do picker. Espelho de `contour_live::edit`.
-pub(crate) fn edit(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], f: impl Fn(&mut VecFilter)) {
+/// **Edita** a pilha de cada caminho de `ids` que JÁ tenha uma (read-modify-write) — o arrasto de
+/// um slider, a cor do picker, o ✕ de uma linha. Espelho de `contour_live::edit`.
+///
+/// Se a edição esvaziar a pilha, o componente é REMOVIDO (a mesma lei do `set_filter`, perguntada
+/// no mesmo lugar: quem remove a última linha não deixa um componente inerte para trás).
+pub(crate) fn edit(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+    f: impl Fn(&mut VecFilter),
+) {
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
         let e = Entity::from_bits(bits);
-        let Some(mut cur) = sim.world().get::<VecFilter>(e).copied() else {
+        let Some(mut cur) = sim.world().get::<VecFilter>(e).cloned() else {
             continue;
         };
         f(&mut cur);
         if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
-            em.insert(cur);
+            if cur.ops.is_empty() {
+                em.remove::<VecFilter>();
+            } else {
+                em.insert(cur);
+            }
         }
     }
 }
 
-/// O filtro que um chip de tipo recém-clicado deve armar, com defaults VISÍVEIS — armar no neutro
-/// seria um clique que não muda um pixel.
-pub(crate) fn default_for(kind: u8) -> VecFilter {
-    match kind {
-        VecFilter::GLOW => VecFilter {
-            kind,
-            radius: 0.18,
-            offset: [0.0, 0.0],
-            color: [1.0, 1.0, 1.0, 1.0],
-            opacity: 1.0,
-        },
-        VecFilter::DROP_SHADOW => VecFilter {
-            kind,
-            radius: 0.1,
-            offset: [0.12, -0.12],
-            color: [0.0, 0.0, 0.0, 1.0],
-            opacity: 0.6,
-        },
-        _ => VecFilter {
-            kind: VecFilter::BLUR,
-            radius: 0.12,
-            offset: [0.0, 0.0],
-            color: [0.0, 0.0, 0.0, 1.0],
-            opacity: 1.0,
-        },
-    }
-}
+#[cfg(test)]
+#[path = "fx_live_tests.rs"]
+mod tests;

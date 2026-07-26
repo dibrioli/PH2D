@@ -31,7 +31,10 @@ fn star(c: [f64; 2], r: f64, rgb: [u8; 3]) -> VecPath {
         verts,
         closed: true,
         fill: None,
-        stroke: Some(StrokeSpec::new(Rgba8::new(rgb[0], rgb[1], rgb[2], 255), STROKE_W)),
+        stroke: Some(StrokeSpec::new(
+            Rgba8::new(rgb[0], rgb[1], rgb[2], 255),
+            STROKE_W,
+        )),
         ..VecPath::default()
     }
 }

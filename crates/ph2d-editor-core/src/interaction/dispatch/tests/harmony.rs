@@ -111,5 +111,9 @@ fn add_all_grows_the_palette_by_the_partner_count() {
         "expected ValueChanged(100) from the add-all button"
     );
     let after = store.blender_palette(NodeId(100)).unwrap().len();
-    assert_eq!(after, before + n, "add-all should append every derived color");
+    assert_eq!(
+        after,
+        before + n,
+        "add-all should append every derived color"
+    );
 }

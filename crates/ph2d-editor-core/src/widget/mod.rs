@@ -62,10 +62,10 @@ pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
 pub use bitmask_grid32::{BITMASK_COLS, BITMASK_ROWS, BitmaskGrid32, paint_bitmask_grid32};
 pub use blender_color_picker::{
     BlenderColorPicker, BlenderSubIds, ChannelMode, ColorPalette, Harmony, InterpolationMode,
-    apply_blender_value_pick, apply_blender_wheel_pick, default_palette,
-    harmony_partners, hsv_to_rgba8, oklch_norm_channels, oklch_set_channel,
-    paint_blender_color_picker, paint_blender_color_picker_with_store,
-    paint_blender_color_picker_with_store_compat, parse_hex, rgba_to_hsv, value_pick, wheel_pick,
+    apply_blender_value_pick, apply_blender_wheel_pick, default_palette, harmony_partners,
+    hsv_to_rgba8, oklch_norm_channels, oklch_set_channel, paint_blender_color_picker,
+    paint_blender_color_picker_with_store, paint_blender_color_picker_with_store_compat, parse_hex,
+    rgba_to_hsv, value_pick, wheel_pick,
 };
 pub use button::{
     Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, flat_button_surface, paint_button,

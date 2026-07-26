@@ -341,7 +341,9 @@ pub use contour::{set_current_contour, set_current_contour_can_add};
 
 #[path = "state_filters.rs"] // Filters (FX raster, plano 24), irmão pelo teto de 600 LOC
 pub(crate) mod filters;
-pub use filters::{set_current_filter, set_current_filter_can_add};
+pub use filters::{
+    FilterRowView, set_current_filter_can_add, set_current_filters, set_filter_kind_names,
+};
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
 pub fn set_current_text_visible(v: bool) {

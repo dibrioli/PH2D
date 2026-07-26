@@ -92,19 +92,19 @@ pub mod state;
 
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
-    FalloffRole, FillKind, FontPreview, FxParamView, FxRowView, PathFillRule, TextAxisSlot,
-    VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h,
+    FalloffRole, FillKind, FilterRowView, FontPreview, FxParamView, FxRowView, PathFillRule,
+    TextAxisSlot, VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h,
     set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
-    set_current_envelope_mode, set_current_envelope_presets, set_current_fill, set_current_filter,
-    set_current_filter_can_add,
-    set_current_fill_rule, set_current_grad_influence, set_current_grad_jitter,
-    set_current_has_envelope, set_current_path_closed, set_current_patternpath,
-    set_current_patternpath_can_link, set_current_patternpath_can_pick, set_current_pivot_edit,
-    set_current_selection_count, set_current_shape_focus, set_current_snap, set_current_text,
-    set_current_text_align, set_current_text_axes, set_current_text_font,
-    set_current_text_font_previews, set_current_text_seed, set_current_text_visible,
-    set_current_textpath, set_current_textpath_can_link, set_current_transform,
-    set_current_vector_style, set_expand_join, set_expand_side, set_selected_vertex_type,
+    set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
+    set_current_fill_rule, set_current_filter_can_add, set_current_filters,
+    set_current_grad_influence, set_current_grad_jitter, set_current_has_envelope,
+    set_current_path_closed, set_current_patternpath, set_current_patternpath_can_link,
+    set_current_patternpath_can_pick, set_current_pivot_edit, set_current_selection_count,
+    set_current_shape_focus, set_current_snap, set_current_text, set_current_text_align,
+    set_current_text_axes, set_current_text_font, set_current_text_font_previews,
+    set_current_text_seed, set_current_text_visible, set_current_textpath,
+    set_current_textpath_can_link, set_current_transform, set_current_vector_style,
+    set_expand_join, set_expand_side, set_filter_kind_names, set_selected_vertex_type,
     take_want_font_previews,
 };
 

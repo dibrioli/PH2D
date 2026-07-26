@@ -300,9 +300,60 @@ impl FilmAa {
     /// over the sub-texel grid** — the texel's fractional area under the film. `sil_at(ox, oy)` is
     /// the caller's own silhouette chain evaluated at the sub-texel offset, so the fraction follows
     /// whatever geometry the caller stamps (disc or swept capsule) with no second formula.
+    ///
+    /// # ⛔ A redução de amostras foi CONSTRUÍDA e REJEITADA por medição (plano 26 §9.5)
+    ///
+    /// O AA é **54% de um traço de impasto** (68,7 de 127,1 ms a raio 100, medido em
+    /// `ph2d-tool-painter`'s `measure_impasto_cost`), porque os DOIS consumidores o pagam sobre a banda
+    /// do aro de CADA dab, e a 0,1 de spacing um texel do aro cai dentro de ~10 bandas. Cortar as nove
+    /// amostras valia ~30% do traço, e o caro é o **`sil_at`** (a cadeia inteira do chamador), não o
+    /// `film_of` (um punhado de multiplicações).
+    ///
+    /// A tentativa: amostrar de verdade só a **cruz** (centro + os quatro vizinhos axiais, 5 chamadas)
+    /// e estimar as quatro **QUINAS** pela extensão separável
+    /// `s(ox,oy) ≈ s00 + [s(ox,0) − s00] + [s(0,oy) − s00]` — a MESMA média de `film_of` sobre a MESMA
+    /// grade, exata para qualquer silhueta separável, com o erro sendo só a derivada segunda MISTA.
+    ///
+    /// A varredura de paridade (`height_film_aa_tests`) a matou em duas frentes:
+    ///
+    /// 1. **`Constant` erra `2/9` EXATO — 56,67 níveis de u8 — em todo raio e em TODOS os texels da
+    ///    banda** (788 de 788 a r=100). Com borda dura o `film_of` é um DEGRAU e a extensão separável
+    ///    erra dois dos nove termos por construção. É o caso pelo qual o AA existe.
+    /// 2. **O erro dos falloffs suaves NÃO é monotônico no raio:** `Sharp` erra 0,13 nível a r=40,
+    ///    **2,02 a r=50**, 0,03 a r=60, **2,01 a r=70**; `Sphere` 0,13 a r=80, **2,01 a r=90**, 0,07 a
+    ///    r=100. Picos isolados em raios arbitrários ⇒ **nenhum limiar de raio limita o erro**, e um
+    ///    limiar tirado da tabela seria o *"limite que só diz por segurança"* que o §0 proíbe.
+    ///
+    /// ⚠️ **E não há troca de quadratura que salve:** com menos amostras a cobertura de um DEGRAU fica
+    /// quantizada mais grosso (4 pontos ⇒ quartos, contra nonos), então uma grade rotacionada de 4 é
+    /// *pior* justamente no caso 1. **O custo do AA é a contagem de amostras, e a qualidade dele
+    /// também é** — não há almoço grátis nesse eixo.
+    ///
+    /// ⛔ E o `clamp(0,5 − f/|∇f|)` dos livros (o AA de SDF) foi rejeitado ANTES, no papel: ele troca a
+    /// *curva* junto com as amostras, assumindo que a cobertura é a área de um lado de uma reta — e
+    /// `film_of` não é isso (é uma S saturando em `W_SOLID`).
+    ///
+    /// A avenida que sobra é OUTRA: `film_of ∘ falloff_weight` é uma função 1-D **fixa** de `t`, então a
+    /// média sobre o texel pode sair de uma **LUT pré-convoluída em `(t, |∇t|)`** hoisteada por dab —
+    /// zero amostras extras, em vez de cinco de nove. Precisa de aceitação própria (o `|∇t|` da cápsula
+    /// varrida não é constante perto das calotas).
+    ///
+    /// [`Self::film_at_exact`] nasceu dessa tentativa e **FICA**: é o oráculo que a varredura de
+    /// paridade mede, e é o que torna a próxima tentativa mensurável em vez de opinável.
     #[inline]
     #[must_use]
     pub fn film_at(&self, t: f32, sil_centre: f32, sil_at: impl Fn(f32, f32) -> f32) -> f32 {
+        self.film_at_exact(t, sil_centre, sil_at)
+    }
+
+    /// The **reference**: the film averaged over the grid with all nine silhouette values SAMPLED.
+    ///
+    /// This is what [`Self::film_at`] approximated until 2026-07-26, kept as the oracle the parity
+    /// gates measure the épsilon against — the same template the impasto light's CPU×GPU parity uses
+    /// (a canonical kernel plus a declared budget, never *"bit-a-bit"*, which is not this project's
+    /// policy).
+    #[must_use]
+    pub fn film_at_exact(&self, t: f32, sil_centre: f32, sil_at: impl Fn(f32, f32) -> f32) -> f32 {
         if t <= self.t_lo || t >= self.t_hi {
             return film_of(sil_centre);
         }
@@ -312,11 +363,30 @@ impl FilmAa {
                 acc += film_of(sil_at(ox, oy));
             }
         }
-        let frac = acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32);
-        // The toe is cut at two u8 quanta, at the DOOR: below it the pigment blend and the film
-        // byte quantize INDEPENDENTLY (one rounds to nothing, the other to 1) and the light shades
-        // bare canvas — the support equality the film exists for, broken by rounding. Both
-        // consumers inherit the same cut, so the supports stay one set.
+        Self::toe(acc * (1.0 / (AA_SS.len() * AA_SS.len()) as f32))
+    }
+
+    /// Os limites da banda, para o gate de paridade construir um `t` no MEIO dela (o único lugar onde
+    /// a estimativa das quinas é exercitada).
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn t_lo_for_test(&self) -> f32 {
+        self.t_lo
+    }
+
+    /// Irmão do [`Self::t_lo_for_test`].
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn t_hi_for_test(&self) -> f32 {
+        self.t_hi
+    }
+
+    /// The toe cut, at the DOOR and shared by both kernels: below two u8 quanta the pigment blend and
+    /// the film byte quantize INDEPENDENTLY (one rounds to nothing, the other to 1) and the light
+    /// shades bare canvas — the support equality the film exists for, broken by rounding. Both
+    /// consumers inherit the same cut, so the supports stay one set.
+    #[inline]
+    fn toe(frac: f32) -> f32 {
         if frac < 2.0 / 255.0 { 0.0 } else { frac }
     }
 

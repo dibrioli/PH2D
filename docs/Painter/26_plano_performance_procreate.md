@@ -282,7 +282,7 @@ O ADR tem de responder **três** perguntas, e cada uma é do produto:
 | 6 | **U1** delta por tile | U0 + T | — | 🔴 toca o undo | 🟢 **EXECUTADA** (§7.5) — 67,8 → 2,36 MB/passo; **não** curou o pen-down, e isso é um achado |
 | 7 | **L2** previsão | ordem do Enio | — | 🔴 conflita com o estabilizador | ⏸ inalterada |
 | 8 | **R** residência | ADR | perfil não aponta | 🔴 arquitetural | ⏸ e o perfil aponta para OUTRO lugar (§7.4) |
-| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). Sobra o AA **analítico** (§9.5) — decisão do Enio |
+| 10 | **I** impasto por-texel (§9) | a decomposição da §9.2 | ⛔ a fusão é impossível (§9.4) | 🔴 kernel mais quente | 🎯 **O AA DO FILME É 54% DO TRAÇO** (68,7 de 127,1 ms a raio 100). Fundir: **premissa falsa** (geometrias diferentes). Gatear por raio: **muda a arte** (105.660 bytes, delta 62). AA com menos amostras: **construído e REJEITADO** (§9.5 — `Constant` erra 2/9 exato em todo raio; o erro dos suaves não é monotônico). Sobra a **LUT pré-convoluída** (§9.6) |
 | 9 | **C** coalescência (§8) | ⚠️ **não estava neste plano** — a medição a achou | razão por-evento÷coalescido ≈ 1 | 🟡 byte-identidade do lote | ⛔ **construída e REVERTIDA** (§8) — o +84% era **+86% de DABS**, não orla de lote; coalescer rende **1,00×** |
 
 **Critério de parada, explícito:** cada frente termina com o número que a abriu, re-medido. Se o número
@@ -710,7 +710,64 @@ a banda de 28 para 12,5 e ganhar 2 ms. Medido (`does_the_film_aa_change_a_pixel`
 raio 5). Não é sub-quantum — é ~1/3 dos texels em até 62 níveis. **Desligá-lo muda a arte**, e isso é
 decisão do Enio, não remoção de desperdício.
 
-### 9.5 ✅ A avenida que SOBRA
+### 9.5 ⛔ O AA COM MENOS AMOSTRAS: construído, medido, REJEITADO
+
+Ordem do Enio: *"AA analítico"*. Construído e rejeitado **pela varredura de paridade**, e as duas
+razões são independentes.
+
+**O desenho** (melhor que o `clamp(0,5 − f/|∇f|)` dos livros, que troca a *curva* junto com as
+amostras e por isso foi descartado no papel): o caro é o **`sil_at`**, não o `film_of` — a closure
+re-entra a cadeia inteira de silhueta do chamador, enquanto o `film_of` é um punhado de multiplicações.
+Então a redução vai nas AMOSTRAS: a **cruz** (centro + 4 vizinhos axiais) é amostrada de verdade e as
+quatro **QUINAS** saem da extensão separável `s(ox,oy) ≈ s00 + [s(ox,0) − s00] + [s(0,oy) − s00]` — a
+MESMA média de `film_of` sobre a MESMA grade, **exata para qualquer silhueta separável**, com o erro
+sendo só a derivada segunda **mista**. 5 amostras de 9 ⇒ ~30% do traço.
+
+**O que a varredura disse** (`ph2d-painter-brush::height_film_aa_tests`, falloff × raio × texel):
+
+| falloff | r=40 | r=50 | r=60 | r=70 | r=80 | r=90 | r=100 |
+|---|---|---|---|---|---|---|---|
+| Smooth | 0,11 | 0,05 | 0,04 | 0,02 | 0,01 | 0,01 | 0,01 |
+| Sharp | 0,13 | **2,02** | 0,03 | **2,01** | 0,01 | 0,01 | 0,00 |
+| Sphere | 2,20 | 2,21 | 2,13 | 0,17 | 0,13 | **2,01** | 0,07 |
+| **Constant** | **56,67** | **56,67** | **56,67** | **56,67** | **56,67** | **56,67** | **56,67** |
+
+*(níveis de u8 do pior texel)*
+
+1. **`Constant` erra `2/9` EXATO — 56,67 níveis — em TODO raio e em TODOS os texels da banda** (788 de
+   788 a r=100). Com borda dura o `film_of` é um **DEGRAU**, e a extensão separável erra dois dos nove
+   termos por construção. **É o caso pelo qual o AA existe.**
+2. **O erro dos suaves NÃO é monotônico no raio** — picos isolados de ~2 níveis em raios arbitrários
+   (Sharp r=50 **e** r=70; Sphere r=50 **e** r=90) ⇒ **nenhum limiar de raio limita o erro**, e um
+   limiar tirado desta tabela seria exactamente o *"limite que só diz por segurança"* do §0.
+
+⚠️ **E não há troca de quadratura que salve:** com menos amostras a cobertura de um DEGRAU fica
+quantizada mais grosso (4 pontos ⇒ quartos, contra nonos), então uma grade rotacionada de 4 — a escolha
+de hardware gráfico — é **pior** justamente no caso 1. **O custo do AA é a contagem de amostras, e a
+qualidade dele também é.**
+
+**O que FICOU:** `FilmAa::film_at_exact` (o oráculo de nove amostras) · a varredura por falloff × raio ×
+texel · a `measure_the_epsilon_by_radius` que produz a tabela acima · e o gate ativo
+**`the_product_film_is_the_nine_sample_reference_to_the_byte`**, que virou **regressão-guard do
+negativo**: hoje o `film_at` DELEGA ao exato, então a paridade é byte-exata, e a mutação que reinstala a
+estimativa acende com `Smooth r=3: 0,054231 > 0,001961 (4 de 24 texels)`. ⚠️ E o **controle** do gate se
+autodestruiu na primeira versão (eu contava "texels da banda" como *"texels onde as duas divergem"*, que
+com a delegação é zero) — agora a banda é `t ∈ (t_lo, t_hi)`, o que ela sempre devia ter sido.
+
+Sem essa maquinaria a próxima tentativa é opinião; com ela é uma rodada de `cargo test`.
+
+### 9.6 ✅ A avenida que sobra (e é a última deste eixo)
+
+`film_of ∘ falloff_weight` é uma função **1-D FIXA** de `t`, então a média sobre o texel pode sair de uma
+**LUT pré-convoluída em `(t, |∇t|)`**, hoisteada **por dab** — **zero** amostras extras, em vez de cinco
+de nove. É a única forma de cortar o custo sem cortar a contagem de amostras, porque ela não amostra: ela
+**pré-computa a convolução**.
+
+⚠️ Aceitação própria: o `|∇t|` da **cápsula varrida** não é constante perto das calotas, então a LUT tem
+de ou aceitar o erro ali (medido pela MESMA varredura desta §9.5) ou indexar em duas dimensões. **Não
+construída sem ordem.**
+
+### 9.7 A avenida ANTERIOR — o que ela era antes da §9.5
 
 **Tornar o AA mais barato pelo mesmo número.** A fração de área de um campo escalar suave tem
 estimativa **analítica** pelo gradiente (`cobertura ≈ clamp(0,5 − f/|∇f|)`, o AA de SDF padrão): ~2
@@ -724,7 +781,7 @@ gate afirma as duas). **Decisão de produto: não construída sem ordem.**
 **Critério de parada:** se o analítico não couber no épsilon, o AA fica, os 68,7 ms viram **o preço
 medido de uma borda de tinta anti-aliasada**, e a frente I fecha com esse número escrito.
 
-### 9.6 A candidata anterior — e por que ela não era palpite
+### 9.8 A candidata original — e por que ela não era palpite
 
 **Fundir as duas varreduras numa só:** a silhueta (falloff × Shape × Grain) é avaliada **uma vez** por
 texel e os planos são escritos juntos, em vez de a rota de altura fazer a própria passada sobre a mesma

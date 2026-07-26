@@ -41,6 +41,9 @@ pub mod heading;
 pub mod height;
 /// **Impasto — volume conservation**: the paint the brush shoves aside, and the ridge it banks it into.
 pub mod height_film;
+#[cfg(test)]
+#[path = "height_film_aa_tests.rs"]
+mod height_film_aa_tests; // paridade 5-amostras x 9-amostras do AA (plano 26 §9.5)
 pub mod height_modes;
 pub mod height_push;
 pub(crate) mod jitter;

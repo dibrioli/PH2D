@@ -100,6 +100,7 @@ fn an_alt_click_without_dragging_collapses_a_preserved_group() {
             prop: PropKind::TranslationX,
             entity: 1,
             missing: false,
+            buffer_ghost: None,
             keys: vec![KeyView {
                 id: KeyId::new(0),
                 t_seconds: 0.0,

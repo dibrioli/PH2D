@@ -394,6 +394,7 @@ mod tests {
                 prop: ph2d_timeline::PropKind::TranslationX,
                 entity: 1,
                 missing: false,
+                buffer_ghost: None,
                 keys: times
                     .iter()
                     .enumerate()

@@ -188,6 +188,7 @@ mod tests {
                 prop: ph2d_timeline::PropKind::TranslationX,
                 entity: 1,
                 missing: false,
+                buffer_ghost: None,
                 keys: vec![KeyView {
                     id: KeyId::new(key),
                     t_seconds: 0.0,

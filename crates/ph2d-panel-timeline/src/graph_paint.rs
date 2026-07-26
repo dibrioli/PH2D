@@ -29,6 +29,12 @@ use crate::state::TimelinePanelState;
 /// resolution for a smooth curve and keeps a wide band under ~500 samples.
 const CURVE_STEP_PX: f32 = 2.0; // LITERAL-PX-OK: curve polyline sample spacing
 const CURVE_W: f32 = 1.5; // LITERAL-PX-OK: curve stroke width
+const GHOST_W: f32 = 1.0; // LITERAL-PX-OK: buffered-curve ghost stroke width (thinner than live)
+
+// The §5 Buffer-Curves chips (Store/Swap) live in a child module under the panel
+// LOC cap; `paint_track` calls its one entry point below.
+#[path = "graph_buffer.rs"]
+mod graph_buffer;
 const ANCHOR_R: f32 = 3.0; // LITERAL-PX-OK: key anchor dot radius
 /// A roving key's anchor draws smaller — its time is derived, not authored
 /// (the dope-sheet strip makes the same distinction with a dot vs a diamond).
@@ -90,7 +96,21 @@ pub(crate) fn paint_track(
         paint_speed_curve(ctx, theme, &band, view, &track.keys);
         paint_speed_handles(ctx, theme, state, &band, view, track);
     } else {
-        paint_curve(ctx, theme, &band, view, &track.keys);
+        // The buffered-curve GHOST first (fainter, thinner), so the live curve
+        // draws on top of its A/B reference. `buffer_ghost` is `Some` only for the
+        // track that owns the buffer (§5) — the same fact that shows the Swap chip.
+        if let Some(ghost) = &track.buffer_ghost {
+            paint_curve(ctx, theme, &band, view, ghost, GHOST_W, ColorToken::Text3);
+        }
+        paint_curve(
+            ctx,
+            theme,
+            &band,
+            view,
+            &track.keys,
+            CURVE_W,
+            ColorToken::TimelineCurve,
+        );
         paint_anchors(ctx, theme, state, &band, view, track);
         paint_handles(ctx, theme, state, &band, view, track);
     }
@@ -103,6 +123,7 @@ pub(crate) fn paint_track(
         anchor_drag::resolve_drag(state, &band, track);
     }
     paint_height_grip(ctx, theme, state, rect, target);
+    graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);
 }
 
 /// The grip along the bottom of an expanded row: a short centred bar plus a
@@ -198,8 +219,18 @@ fn paint_frame(
 }
 
 /// The curve itself: one sample every [`CURVE_STEP_PX`] across the visible span,
-/// through the same sampler the runtime plays.
-fn paint_curve(ctx: &mut PaintCtx, theme: Theme, band: &Band, view: TimeView, keys: &[KeyView]) {
+/// through the same sampler the runtime plays. `width`/`color` let the buffered
+/// GHOST reuse this exact sampler (a fainter, thinner stroke) so it can never
+/// draw a different shape than the live curve would for the same keys (§5).
+fn paint_curve(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    band: &Band,
+    view: TimeView,
+    keys: &[KeyView],
+    width: f32,
+    token: ColorToken,
+) {
     let (left, right) = (band.rect.x, band.rect.x + band.rect.w);
     if right <= left {
         return;
@@ -212,12 +243,7 @@ fn paint_curve(ctx: &mut PaintCtx, theme: Theme, band: &Band, view: TimeView, ke
             points.push((x, band.y(f64::from(v))));
         }
     }
-    stroke_polyline(
-        ctx.scene,
-        &points,
-        CURVE_W,
-        resolve(ColorToken::TimelineCurve, theme),
-    );
+    stroke_polyline(ctx.scene, &points, width, resolve(token, theme));
 }
 
 /// A dot per key, on the curve, each a grab target for the value drag (W3.E5).

@@ -22,6 +22,7 @@ fn snap(sel: &[(u64, u64)]) -> TimelineViewSnapshot {
         prop,
         entity: 1,
         missing: false,
+        buffer_ghost: None,
         keys,
     };
     TimelineViewSnapshot {

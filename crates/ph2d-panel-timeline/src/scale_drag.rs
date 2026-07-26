@@ -14,6 +14,7 @@
 use ph2d_editor_core::interaction::{
     GesturePhase, InteractiveState, TimelineGesture, TimelineHitKind,
 };
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -33,7 +34,7 @@ const GAP: f32 = 9.0; // LITERAL-PX-OK: grip clears the edge diamond (KEY_HIT_HW
 const HIT_PAD: f32 = 3.0; // LITERAL-PX-OK: grip grab padding
 /// The scale floor — a drag can shrink the selection close to a point but never
 /// through it (a factor <= 0 would invert the key order).
-const MIN_FACTOR: f64 = 0.01;
+const MIN_FACTOR: f64 = 0.01; // LITERAL-PX-OK: dimensionless scale-factor floor (not a design value)
 
 /// The `[min, max]` time (seconds) spanned by the SELECTED keys across every
 /// dope-sheet track, or `None` when fewer than two distinct times are selected —
@@ -61,9 +62,9 @@ pub(crate) fn grip_bar_x(right: bool, x_lo: f32, x_hi: f32, time_x: f32, right_e
     let min_x = time_x + geom::SPLIT_GRIP + HIT_PAD;
     let max_x = (right_edge - HANDLE_W - HIT_PAD).max(min_x);
     if right {
-        (x_hi + GAP).clamp(min_x, max_x)
+        safe_clamp(x_hi + GAP, min_x, max_x)
     } else {
-        (x_lo - GAP - HANDLE_W).clamp(min_x, max_x)
+        safe_clamp(x_lo - GAP - HANDLE_W, min_x, max_x)
     }
 }
 

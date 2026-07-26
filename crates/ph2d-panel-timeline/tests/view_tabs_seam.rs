@@ -38,6 +38,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
             prop: PropKind::TranslationX,
             entity: 1,
             missing: false,
+            buffer_ghost: None,
             keys: vec![
                 KeyView {
                     id: KeyId::new(1),

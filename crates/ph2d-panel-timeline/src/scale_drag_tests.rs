@@ -19,6 +19,7 @@ fn snap_selected(times: &[f64]) -> TimelineViewSnapshot {
             prop: PropKind::TranslationX,
             entity: 1,
             missing: false,
+            buffer_ghost: None,
             keys: times
                 .iter()
                 .enumerate()

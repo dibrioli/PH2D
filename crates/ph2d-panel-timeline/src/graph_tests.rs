@@ -97,6 +97,7 @@ fn track(interp: Interp) -> TrackView {
         prop: ph2d_timeline::PropKind::TranslationX,
         entity: 1,
         missing: false,
+        buffer_ghost: None,
         keys: vec![k0, k1],
     }
 }

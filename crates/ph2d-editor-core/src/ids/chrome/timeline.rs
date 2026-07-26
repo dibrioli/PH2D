@@ -469,6 +469,15 @@ pub fn timeline_handle_hit_id(target: u64, key: u64, which: u8) -> NodeId {
     dynamic_id("timeline.handle", &[target, key, u64::from(which)])
 }
 
+/// A stable `NodeId` for a per-band buffer-curve button in the graph editor (§5),
+/// keyed by the track's `AnimTarget` and `action` (`0` = Store, `1` = Swap). Its
+/// own domain, so the Store and Swap chips on the same band never collide with
+/// each other nor with that band's resize/anchor/handle ids.
+#[must_use]
+pub fn timeline_buffer_button_id(target: u64, action: u8) -> NodeId {
+    dynamic_id("timeline.buffer_button", &[target, u64::from(action)])
+}
+
 /// FNV-1a over `parts`' little-endian bytes, seeded from `domain`'s slug hash.
 /// Each dynamic id family gets its own domain, so a twirl for target `7` and a
 /// key hit for target `7` can never land on the same `NodeId` — nor on any

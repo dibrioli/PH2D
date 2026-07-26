@@ -516,6 +516,23 @@ pub enum TimelineHitKind {
         /// Index into `TimelineDoc::containers`.
         index: usize,
     },
+    /// **A per-band buffer-curve button in the graph editor** (§5 crown jewel, the
+    /// Unreal A/B toggle). A CLICK surface (no drag) — the panel routes the `Click`
+    /// to the `StoreTrackBuffer`/`SwapTrackBuffer` intents, exactly as [`Self::Twirl`]
+    /// routes its click to the expand toggle, carrying `target` for the same reason.
+    GraphBufferButton {
+        target: u64,
+        action: BufferAction,
+    },
+}
+
+/// Which per-band buffer-curve button was pressed ([`TimelineHitKind::GraphBufferButton`]):
+/// `Store` captures the track's curve into the A/B buffer; `Swap` flips live <-> buffered
+/// (offered only on the buffer-owning track, so it is never a no-op under the mouse).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BufferAction {
+    Store,
+    Swap,
 }
 
 impl TimelineHitKind {

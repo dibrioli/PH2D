@@ -25,6 +25,27 @@ pub struct CurveSnapshot {
     roving: Vec<bool>,
 }
 
+impl CurveSnapshot {
+    /// The buffered keys, in time order — read by the snapshot builder to draw the
+    /// **ghost** of the buffered curve on its owning track's graph band (§5).
+    #[must_use]
+    pub fn keys(&self) -> &[Key] {
+        &self.keys
+    }
+
+    /// The buffered keys' ids, positionally paired with [`Self::keys`].
+    #[must_use]
+    pub fn ids(&self) -> &[KeyId] {
+        &self.ids
+    }
+
+    /// The buffered roving flags, positionally paired with [`Self::keys`].
+    #[must_use]
+    pub fn roving(&self) -> &[bool] {
+        &self.roving
+    }
+}
+
 impl Track {
     /// Snapshot the whole curve — keys, ids and roving flags — for the graph
     /// editor's buffer. Cheap `Vec` clones of plain `Copy` data; the track is

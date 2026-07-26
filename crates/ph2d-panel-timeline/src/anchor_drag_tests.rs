@@ -34,6 +34,7 @@ fn snap(sel0: bool, sel1: bool) -> TimelineViewSnapshot {
             prop: PropKind::TranslationX,
             entity: 1,
             missing: false,
+            buffer_ghost: None,
             keys: vec![mk(1, 0.0, 0.0, sel0), mk(2, 1.0, 10.0, sel1)],
         }],
         ..TimelineViewSnapshot::default()

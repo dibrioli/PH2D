@@ -4,7 +4,9 @@
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Playhead;
-use ph2d_timeline::{PropKind, SelectedKey, TimelineIntent as I, TimelineState, apply_intent};
+use ph2d_timeline::{
+    PropKind, SelectedKey, TimelineIntent as I, TimelineState, TimelineViewSnapshot, apply_intent,
+};
 
 const DT: f64 = 1.0 / 60.0;
 
@@ -1930,4 +1932,86 @@ fn swapping_a_buffer_stored_from_another_track_is_a_no_op() {
     apply_intent(&mut st, &mut ph, I::SwapTrackBuffer { target: t2 });
     assert_eq!(count(&st, t2), 1, "track 2 is untouched");
     assert_eq!(count(&st, t1), 2, "track 1 is untouched");
+}
+
+#[test]
+fn rebuild_ghosts_the_buffered_curve_on_its_owning_track_only() {
+    // The graph editor draws the buffered curve as a ghost (§5). `rebuild` must set
+    // `TrackView::buffer_ghost = Some(buffered keys)` on the ONE track that owns the
+    // buffer and `None` on every other. Store, then EDIT the live curve — so the
+    // ghost (the buffer) and the live keys DIFFER, proving the ghost is the buffer,
+    // not a re-projection of the live curve.
+    //
+    // (Mutation: force `buffer_ghost` to `None` -> the owner's ghost vanishes -> the
+    // `expect` fires. Ghost every track -> the None assert on track 2 fires. Build
+    // the ghost from the LIVE keys instead of the snapshot -> the "differs from
+    // live" assert fires.)
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    for t in [0.0, 1.0, 2.0] {
+        add_key(
+            &mut st,
+            &mut ph,
+            1,
+            PropKind::TranslationX,
+            t,
+            (t * 3.0) as f32,
+        );
+    }
+    add_key(&mut st, &mut ph, 2, PropKind::TranslationX, 0.0, 9.0);
+    let t1 = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+
+    apply_intent(&mut st, &mut ph, I::StoreTrackBuffer { target: t1 });
+
+    // Edit the live curve: select all of track 1's keys and shift +0.5 s.
+    apply_intent(&mut st, &mut ph, I::ClearSelection);
+    for key in st.doc.active_clip().track(t1).unwrap().ids().to_vec() {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::AddToSelection(SelectedKey { target: t1, key }),
+        );
+    }
+    apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
+
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+
+    let owner = snap
+        .tracks
+        .iter()
+        .find(|t| t.target == t1)
+        .expect("track 1 is a row");
+    let ghost = owner
+        .buffer_ghost
+        .as_ref()
+        .expect("the buffer-owning track ghosts its curve");
+    let ghost_t: Vec<f64> = ghost.iter().map(|k| k.t_seconds).collect();
+    let live_t: Vec<f64> = owner.keys.iter().map(|k| k.t_seconds).collect();
+    assert_eq!(
+        ghost_t,
+        vec![0.0, 1.0, 2.0],
+        "the ghost holds the STORED curve (pre-edit)"
+    );
+    assert_eq!(
+        live_t,
+        vec![0.5, 1.5, 2.5],
+        "the live keys are the edited curve"
+    );
+    assert_ne!(
+        ghost_t, live_t,
+        "the ghost is the buffer, not a re-projection of the live keys"
+    );
+    for t in &snap.tracks {
+        if t.target != t1 {
+            assert!(
+                t.buffer_ghost.is_none(),
+                "only the buffer owner ghosts; a non-owner must be None (it is reused across rebuilds)"
+            );
+        }
+    }
 }

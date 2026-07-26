@@ -71,6 +71,7 @@ fn snap_with(n: usize) -> TimelineViewSnapshot {
                 prop: ph2d_timeline::PropKind::TranslationX,
                 entity: 1,
                 missing: false,
+                buffer_ghost: None,
                 keys: Vec::new(),
             })
             .collect(),

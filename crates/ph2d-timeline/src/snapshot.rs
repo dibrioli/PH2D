@@ -8,7 +8,7 @@
 //! The panel never reaches into the document; it reads this (mirrors
 //! `GraphViewSnapshot`).
 
-use ph2d_anim::{AnimTarget, Interp, KeyId};
+use ph2d_anim::{AnimTarget, Interp, Key, KeyId};
 use ph2d_core::Playhead;
 
 use crate::prop::PropKind;
@@ -51,6 +51,35 @@ pub struct TrackView {
     pub missing: bool,
     /// The row's keys, in time order.
     pub keys: Vec<KeyView>,
+    /// **The buffered curve to draw as a ghost** on this row's graph band (§5) —
+    /// `Some` only for the ONE track that currently owns the A/B buffer, `None`
+    /// otherwise. Its `Some`-ness is the single fact that drives both the ghost
+    /// overlay AND the row's `Swap` button (the panel shows Swap iff a ghost
+    /// exists), so the two can never disagree about who owns the buffer.
+    ///
+    /// ⚠️ `rebuild` reuses `TrackView`s across frames, so it MUST set this every
+    /// pass (to `None` when this row does not own the buffer) — a stale `Some` from
+    /// a previous frame would paint a ghost the buffer no longer holds.
+    pub buffer_ghost: Option<Vec<KeyView>>,
+}
+
+/// Project one `(key, id, roving)` into the panel's [`KeyView`] — the ONE door for
+/// the projection, shared by the live track loop and the buffered-curve ghost, so
+/// the ghost is drawn by exactly the sampler the live curve is (a second copy
+/// would drift the first time the projection changed). `selected` is the caller's
+/// (the ghost's keys are never selected).
+fn key_view(k: &Key, id: KeyId, roving: bool, selected: bool) -> KeyView {
+    KeyView {
+        id,
+        t_seconds: k.t.to_seconds(),
+        value: match k.value {
+            ph2d_anim::AnimValue::Float(v) => v,
+            _ => 0.0,
+        },
+        interp: k.interp,
+        selected,
+        roving,
+    }
 }
 
 /// One clip strip, as the panel draws it: a named rectangle.
@@ -516,6 +545,7 @@ impl TimelineViewSnapshot {
                     entity: 0,
                     missing: false,
                     keys: Vec::new(),
+                    buffer_ghost: None,
                 });
             }
             let row = &mut self.tracks[rows];
@@ -528,22 +558,27 @@ impl TimelineViewSnapshot {
             if let Some(track) = clip.track(b.target) {
                 for ((k, &id), &roving) in track.keys().iter().zip(track.ids()).zip(track.roving())
                 {
-                    row.keys.push(KeyView {
-                        id,
-                        t_seconds: k.t.to_seconds(),
-                        value: match k.value {
-                            ph2d_anim::AnimValue::Float(v) => v,
-                            _ => 0.0,
-                        },
-                        interp: k.interp,
-                        selected: state.selection.contains(SelectedKey {
-                            target: b.target,
-                            key: id,
-                        }),
-                        roving,
+                    let selected = state.selection.contains(SelectedKey {
+                        target: b.target,
+                        key: id,
                     });
+                    row.keys.push(key_view(k, id, roving, selected));
                 }
             }
+            // The buffered-curve ghost — `Some` only for the track that OWNS the
+            // A/B buffer, rebuilt from the snapshot through the SAME projection
+            // door as the live keys. Set every pass (the row is reused): `None`
+            // here is what clears a ghost from a track that no longer owns it.
+            row.buffer_ghost = state.curve_buffer.as_ref().and_then(|(t, snap)| {
+                (*t == b.target).then(|| {
+                    snap.keys()
+                        .iter()
+                        .zip(snap.ids())
+                        .zip(snap.roving())
+                        .map(|((k, &id), &roving)| key_view(k, id, roving, false))
+                        .collect()
+                })
+            });
         }
         self.tracks.truncate(rows);
     }

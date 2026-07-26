@@ -126,7 +126,8 @@ fn jump_count(band_px: f32) -> usize {
 
 fn plan_of(op: &FxOpGpu) -> Plan {
     let spec = FxOp::spec(op.kind);
-    let by_distance = op.kind == FxOp::OUTLINE || (spec.inner && op.mode == FxOp::MODE_CONTOUR);
+    let by_distance = matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER | FxOp::BEVEL)
+        || (spec.inner && op.mode == FxOp::MODE_CONTOUR);
     if by_distance {
         return Plan::Field {
             jumps: jump_count(op.sigma_px),
@@ -152,8 +153,15 @@ fn op_reach(op: &FxOpGpu) -> u32 {
     if !FxOp::spec(op.kind).grows {
         return 0;
     }
-    if op.kind == FxOp::OUTLINE {
-        return (op.sigma_px.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
+    if matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER) {
+        // O contorno alcança a LARGURA dele; o feather alcança METADE dela (a rampa é centrada na
+        // fronteira). Nenhum dos dois paga o suporte do kernel, que é 3×.
+        let span = if op.kind == FxOp::FEATHER {
+            op.sigma_px * 0.5
+        } else {
+            op.sigma_px
+        };
+        return (span.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
     }
     kernel_half(op.sigma_px)
 }
@@ -178,7 +186,7 @@ pub fn stack_reach(ops: &[FxOpGpu]) -> (u32, u32, u32, u32) {
         r += reach;
         b += reach;
         let spec = FxOp::spec(op.kind);
-        if spec.has_offset && spec.grows {
+        if spec.offset_labels.is_some() && spec.grows {
             let (ox, oy) = (op.offset_px[0], op.offset_px[1]);
             l += ox.min(0).unsigned_abs();
             r += ox.max(0).unsigned_abs();

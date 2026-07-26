@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 7;
+pub const MAX_FILTER_KINDS: usize = 9;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta

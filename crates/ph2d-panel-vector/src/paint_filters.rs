@@ -102,8 +102,8 @@ impl BodyCtx<'_> {
         // modo é mais alta (rótulo + chips), como as `segmented` do resto do painel.
         let rows = 1
             + usize::from(spec.radius_label.is_some())
-            + usize::from(spec.has_offset) * 2
-            + usize::from(spec.has_color);
+            + usize::from(spec.offset_labels.is_some()) * 2
+            + usize::from(spec.color_label.is_some());
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let mode_h = if spec.modes.is_empty() {
@@ -153,24 +153,24 @@ impl BodyCtx<'_> {
         if let Some(label) = spec.radius_label {
             py = self.filter_radius_row(row, fx, label, py);
         }
-        if spec.has_offset {
+        if let Some((lx, ly)) = spec.offset_labels {
             py = self.filter_offset_row(
-                "Offset X",
+                lx,
                 ids::filter_offx_id(row),
                 ids::filter_offx_num_id(row),
                 fx.offx,
                 py,
             );
             py = self.filter_offset_row(
-                "Offset Y",
+                ly,
                 ids::filter_offy_id(row),
                 ids::filter_offy_num_id(row),
                 fx.offy,
                 py,
             );
         }
-        if spec.has_color {
-            py = self.filter_color_swatch(row, fx, py);
+        if let Some(label) = spec.color_label {
+            py = self.filter_color_swatch(row, fx, label, py);
         }
         self.filter_opacity_row(row, fx, py);
         self.inner_x = keep_x;
@@ -309,13 +309,19 @@ impl BodyCtx<'_> {
 
     /// A fileira da cor do halo: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
     /// swatch de Fill / Contour — a mesma estética para a mesma pergunta *"que cor?"*).
-    fn filter_color_swatch(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+    fn filter_color_swatch(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        label: &str,
+        y: f32,
+    ) -> f32 {
         let id = ids::filter_color_id(row);
         let swatch_w = SwatchSize::Md.px();
         paint_text(
             self.text_system,
             self.scene,
-            "Color",
+            label,
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,

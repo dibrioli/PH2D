@@ -61,10 +61,12 @@ pub struct FxKindSpec {
     /// O rótulo do raio, ou `None` se o tipo não tem raio nenhum (o Color Overlay é pontual).
     /// `Some` também significa *este op custa DOIS dispatches* (a Gaussiana separável).
     pub radius_label: Option<&'static str>,
-    /// Oferece Offset X/Y? (a direção da luz — Drop Shadow e Inner Shadow.)
-    pub has_offset: bool,
-    /// Oferece a cor? (o Blur reusa os pixels que recebeu.)
-    pub has_color: bool,
+    /// Os rótulos do par de offset, ou `None` se o tipo não desloca nada. ⚠️ **É um par de nomes,
+    /// não um booleano:** o mesmo vetor é *para onde a sombra cai* na Drop Shadow e *de onde a luz
+    /// vem* no Bevel, e um rótulo errado é um knob que mente sobre o que faz.
+    pub offset_labels: Option<(&'static str, &'static str)>,
+    /// O rótulo da cor, ou `None` se o tipo não tinge (o Blur reusa os pixels que recebeu).
+    pub color_label: Option<&'static str>,
     /// **Espalha para FORA da silhueta que recebeu?** É esta a pergunta da MARGEM da textura: um
     /// halo externo cresce a imagem, um efeito de DENTRO não cresce nada.
     pub grows: bool,
@@ -133,11 +135,18 @@ impl FxOp {
     /// Código de painel: o **contorno** — o halo de borda DURA, largura autorada, por baixo da
     /// forma. É o traço de sticker, e é o que uma Gaussiana sozinha não desenha.
     pub const OUTLINE: u8 = 5;
+    /// Código de painel: o **feather** — a borda fica macia SEM borrar o miolo, por uma rampa de
+    /// largura autorada CENTRADA na fronteira. É o headline do Rive, e o que um borrão não faz (ele
+    /// mistura a COR também).
+    pub const FEATHER: u8 = 6;
+    /// Código de painel: o **bevel** — a borda ganha relevo: a face virada para a luz clareia, a
+    /// oposta escurece, e o efeito morre para o miolo. O "3D" do Layer Style.
+    pub const BEVEL: u8 = 7;
     /// Código de painel: repinta o que chegou com uma cor, **sem borrar e sem mover cobertura**.
     /// Pontual ⇒ margem zero e UM dispatch.
-    pub const COLOR_OVERLAY: u8 = 6;
+    pub const COLOR_OVERLAY: u8 = 8;
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    pub const KINDS: usize = 7;
+    pub const KINDS: usize = 9;
 
     /// Modo dos degraus de dentro: **a PROXIMIDADE do lado de fora** (o alfa invertido borrado — o
     /// modelo do Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo
@@ -154,8 +163,8 @@ impl FxOp {
         FxKindSpec {
             name: "Blur",
             radius_label: Some("Radius"),
-            has_offset: false,
-            has_color: false,
+            offset_labels: None,
+            color_label: None,
             grows: true,
             inner: false,
             modes: &[],
@@ -163,8 +172,8 @@ impl FxOp {
         FxKindSpec {
             name: "Glow",
             radius_label: Some("Radius"),
-            has_offset: false,
-            has_color: true,
+            offset_labels: None,
+            color_label: Some("Color"),
             grows: true,
             inner: false,
             modes: &[],
@@ -172,8 +181,8 @@ impl FxOp {
         FxKindSpec {
             name: "Drop Shadow",
             radius_label: Some("Radius"),
-            has_offset: true,
-            has_color: true,
+            offset_labels: Some(("Offset X", "Offset Y")),
+            color_label: Some("Color"),
             grows: true,
             inner: false,
             modes: &[],
@@ -181,8 +190,8 @@ impl FxOp {
         FxKindSpec {
             name: "Inner Shadow",
             radius_label: Some("Radius"),
-            has_offset: true,
-            has_color: true,
+            offset_labels: Some(("Offset X", "Offset Y")),
+            color_label: Some("Color"),
             grows: false,
             inner: true,
             modes: &INNER_MODES,
@@ -190,8 +199,8 @@ impl FxOp {
         FxKindSpec {
             name: "Inner Glow",
             radius_label: Some("Radius"),
-            has_offset: false,
-            has_color: true,
+            offset_labels: None,
+            color_label: Some("Color"),
             grows: false,
             inner: true,
             modes: &INNER_MODES,
@@ -201,17 +210,35 @@ impl FxOp {
             // ⚠️ "Width", não "Radius": o contorno se estende EXATAMENTE este tanto a partir de uma
             // aresta reta (o corte duro mora no nível `Φ(−1)` da Gaussiana — há gate que mede).
             radius_label: Some("Width"),
-            has_offset: false,
-            has_color: true,
+            offset_labels: None,
+            color_label: Some("Color"),
             grows: true,
             inner: false,
             modes: &[],
         },
         FxKindSpec {
+            name: "Feather",
+            radius_label: Some("Feather"),
+            offset_labels: None,
+            color_label: None,
+            grows: true,
+            inner: false,
+            modes: &[],
+        },
+        FxKindSpec {
+            name: "Bevel",
+            radius_label: Some("Depth"),
+            offset_labels: Some(("Light X", "Light Y")),
+            color_label: Some("Shadow"),
+            grows: false,
+            inner: true,
+            modes: &[],
+        },
+        FxKindSpec {
             name: "Color Overlay",
             radius_label: None,
-            has_offset: false,
-            has_color: true,
+            offset_labels: None,
+            color_label: Some("Color"),
             grows: false,
             inner: false,
             modes: &[],
@@ -240,16 +267,16 @@ impl FxOp {
         Self::spec(kind).name
     }
 
-    /// Este degrau tinge (tem cor de halo)? Blur não — ele reusa os pixels que chegaram.
+    /// Este degrau tinge (tem cor)? Blur não — ele reusa os pixels que chegaram.
     #[must_use]
     pub fn tints(self) -> bool {
-        Self::spec(self.kind).has_color
+        Self::spec(self.kind).color_label.is_some()
     }
 
-    /// Este degrau desloca o halo? (Drop Shadow e Inner Shadow — a direção da luz.)
+    /// Este degrau lê o par de offset? (a direção da sombra, ou a da luz.)
     #[must_use]
     pub fn displaces(self) -> bool {
-        Self::spec(self.kind).has_offset
+        Self::spec(self.kind).offset_labels.is_some()
     }
 
     /// Este degrau contribui? Desligado, a pilha o salta (espelho do `FxEntry::is_active`).
@@ -301,6 +328,19 @@ impl FxOp {
             Self::OUTLINE => Self {
                 kind,
                 radius: 0.06,
+                ..BLANK
+            },
+            Self::FEATHER => Self {
+                kind,
+                radius: 0.12,
+                ..BLANK
+            },
+            Self::BEVEL => Self {
+                kind,
+                radius: 0.1,
+                // A luz vem de cima-à-esquerda (a convenção de todo Layer Style).
+                offset: [-0.1, 0.1],
+                opacity: 0.9,
                 ..BLANK
             },
             Self::COLOR_OVERLAY => Self {
@@ -453,7 +493,7 @@ mod tests {
             if s.radius_label.is_some() {
                 assert!(o.radius > 0.0, "raio zero não desenharia nada ({})", s.name);
             }
-            if s.has_offset {
+            if s.offset_labels.is_some() {
                 assert!(
                     o.offset != [0.0, 0.0],
                     "uma sombra sem deslocamento é um glow — o default tem de a mostrar ({})",
@@ -508,6 +548,8 @@ mod tests {
             ("Inner Shadow", FxOp::INNER_SHADOW),
             ("Inner Glow", FxOp::INNER_GLOW),
             ("Outline", FxOp::OUTLINE),
+            ("Feather", FxOp::FEATHER),
+            ("Bevel", FxOp::BEVEL),
             ("Color Overlay", FxOp::COLOR_OVERLAY),
         ] {
             assert_eq!(FxOp::kind_name(kind), name, "o código {kind} é o {name}");
@@ -527,18 +569,34 @@ mod tests {
         for kind in 0..FxOp::KINDS as u8 {
             let o = FxOp::new(kind);
             let s = FxOp::spec(kind);
-            assert_eq!(o.tints(), s.has_color, "tints() do {}", s.name);
-            assert_eq!(o.displaces(), s.has_offset, "displaces() do {}", s.name);
+            assert_eq!(o.tints(), s.color_label.is_some(), "tints() do {}", s.name);
+            assert_eq!(
+                o.displaces(),
+                s.offset_labels.is_some(),
+                "displaces() do {}",
+                s.name
+            );
         }
         // E as duas metades que decidem a MARGEM da textura: quem mora dentro não cresce nada.
-        for kind in [FxOp::INNER_SHADOW, FxOp::INNER_GLOW, FxOp::COLOR_OVERLAY] {
+        for kind in [
+            FxOp::INNER_SHADOW,
+            FxOp::INNER_GLOW,
+            FxOp::BEVEL,
+            FxOp::COLOR_OVERLAY,
+        ] {
             assert!(
                 !FxOp::spec(kind).grows,
                 "{} desenha só dentro do que recebeu — margem seria textura paga a troco de nada",
                 FxOp::kind_name(kind)
             );
         }
-        for kind in [FxOp::BLUR, FxOp::GLOW, FxOp::DROP_SHADOW, FxOp::OUTLINE] {
+        for kind in [
+            FxOp::BLUR,
+            FxOp::GLOW,
+            FxOp::DROP_SHADOW,
+            FxOp::OUTLINE,
+            FxOp::FEATHER,
+        ] {
             assert!(FxOp::spec(kind).grows, "{} espalha", FxOp::kind_name(kind));
         }
         assert!(

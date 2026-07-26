@@ -3333,8 +3333,7 @@ impl crate::App {
                         FilterHit::Mode(row, mode) => {
                             crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
                                 if let Some(op) = f.ops.get_mut(row)
-                                    && (mode as usize)
-                                        < ph2d_ecs::FxOp::spec(op.kind).modes.len()
+                                    && (mode as usize) < ph2d_ecs::FxOp::spec(op.kind).modes.len()
                                 {
                                     op.mode = mode;
                                 }
@@ -4742,8 +4741,8 @@ impl crate::App {
                         .map(|s| ph2d_panel_vector::FilterKindView {
                             name: s.name,
                             radius_label: s.radius_label,
-                            has_offset: s.has_offset,
-                            has_color: s.has_color,
+                            offset_labels: s.offset_labels,
+                            color_label: s.color_label,
                             modes: s.modes,
                         })
                         .collect(),

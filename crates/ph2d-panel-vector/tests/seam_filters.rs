@@ -62,22 +62,27 @@ fn row(kind: u8) -> FilterRowView {
 /// resposta estrutural: o publish é uma única `map` sobre `FxOp::SPECS` (e o gate do shell pina
 /// que os TETOS dos dois lados concordam).
 fn kinds_table() -> Vec<FilterKindView> {
-    let k = |name, radius_label, has_offset, has_color, modes| FilterKindView {
+    let k = |name, radius_label, offset_labels, color_label, modes| FilterKindView {
         name,
         radius_label,
-        has_offset,
-        has_color,
+        offset_labels,
+        color_label,
         modes,
     };
     const INNER: &[&str] = &["Proximity", "Contour"];
+    const OFF: Option<(&str, &str)> = Some(("Offset X", "Offset Y"));
+    const LIGHT: Option<(&str, &str)> = Some(("Light X", "Light Y"));
+    const COL: Option<&str> = Some("Color");
     vec![
-        k("Blur", Some("Radius"), false, false, &[]),
-        k("Glow", Some("Radius"), false, true, &[]),
-        k("Drop Shadow", Some("Radius"), true, true, &[]),
-        k("Inner Shadow", Some("Radius"), true, true, INNER),
-        k("Inner Glow", Some("Radius"), false, true, INNER),
-        k("Outline", Some("Width"), false, true, &[]),
-        k("Color Overlay", None, false, true, &[]),
+        k("Blur", Some("Radius"), None, None, &[]),
+        k("Glow", Some("Radius"), None, COL, &[]),
+        k("Drop Shadow", Some("Radius"), OFF, COL, &[]),
+        k("Inner Shadow", Some("Radius"), OFF, COL, INNER),
+        k("Inner Glow", Some("Radius"), None, COL, INNER),
+        k("Outline", Some("Width"), None, COL, &[]),
+        k("Feather", Some("Feather"), None, None, &[]),
+        k("Bevel", Some("Depth"), LIGHT, Some("Shadow"), &[]),
+        k("Color Overlay", None, None, COL, &[]),
     ]
 }
 
@@ -205,14 +210,14 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
         for id in [ids::filter_offx_id(0), ids::filter_offy_id(0)] {
             assert_eq!(
                 painted(&mut host, &mut st, id),
-                spec.has_offset,
+                spec.offset_labels.is_some(),
                 "o Offset do {} discorda da tabela",
                 spec.name
             );
         }
         assert_eq!(
             painted(&mut host, &mut st, ids::filter_color_id(0)),
-            spec.has_color,
+            spec.color_label.is_some(),
             "a cor do {} discorda da tabela",
             spec.name
         );

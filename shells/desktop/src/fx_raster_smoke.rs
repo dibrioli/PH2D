@@ -3,7 +3,7 @@
 //! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC, como o `falloff_smoke`/`contour_smoke`.
 //!
 //! O FX raster (plano 24) NÃO é um deformador vetorial: ele isola a forma na própria textura, roda
-//! a pilha na GPU e recompõe no z dela — pixels, não geometria. **Catorze estrelas em quatro
+//! a pilha na GPU e recompõe no z dela — pixels, não geometria. **Dezasseis estrelas em quatro
 //! fileiras:**
 //!
 //! 1. **A regressão** (W1/W2): controle nítido · Blur · Glow · Drop Shadow.
@@ -13,8 +13,10 @@
 //!    a volta). Mais Inner Glow e Color Overlay.
 //! 3. **O CONTORNO e a composição:** Outline fino · o STICKER (`Outline → Drop Shadow`) · a PILHA
 //!    INTEIRA · e um Outline GROSSO, onde as pontas mostram que ele é uma dilatação de verdade.
-//! 4. **O par de ordem** (`Glow → Blur` × `Blur → Glow`): os MESMOS dois degraus, trocados. Se a
-//!    ordem não importasse, as duas seriam idênticas — e o ponto da W2 é que não são.
+//! 4. **Os dois que o campo de distância destravou** — `Feather` (a borda amacia, o miolo fica
+//!    intacto: o que um Blur não faz) e `Bevel` (o rebordo ganha luz) — mais **o par de ordem**
+//!    (`Glow → Blur` × `Blur → Glow`): os MESMOS dois degraus, trocados. Se a ordem não importasse,
+//!    as duas seriam idênticas — e o ponto da W2 é que não são.
 //!
 //! ⚠️ **Nada aqui prova o SEAM do painel** — a pilha é armada no componente direto (a seção
 //! *Filters* do painel é a prova do gesto, coberta pelo seam gate). Esta cena existe para o olho
@@ -32,8 +34,8 @@ const STAR_V: &[f64] = &[5.0, 0.45, 0.0];
 const COLS: [f64; 4] = [-3.6, -1.95, -0.3, 1.35];
 const ROWS: [f64; 4] = [2.0, 0.55, -0.9, -2.35];
 const SIDE: f64 = 1.25;
-/// Quantas estrelas a cena monta (a última fileira tem duas).
-const STARS: usize = 14;
+/// Quantas estrelas a cena monta.
+const STARS: usize = 16;
 
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
     match f {
@@ -88,7 +90,9 @@ fn arm(app: &mut crate::App) {
         .map(|p| p.id)
         .collect();
     if ids.len() < STARS {
-        eprintln!("[smoke] fx-raster: as catorze estrelas ainda não existem — o `sync` não correu");
+        eprintln!(
+            "[smoke] fx-raster: as dezasseis estrelas ainda não existem — o `sync` não correu"
+        );
         return;
     }
     let blur = op(FxOp::BLUR, 0.12, BLACK, 1.0);
@@ -111,7 +115,12 @@ fn arm(app: &mut crate::App) {
     let outline = op(FxOp::OUTLINE, 0.07, WHITE, 1.0);
     let overlay = op(FxOp::COLOR_OVERLAY, 0.0, SKY, 1.0);
     // `[0]` é o controle (sem pilha). Depois: a regressão, os de dentro, o contorno, a composição.
-    let stacks: [(usize, Vec<FxOp>); 13] = [
+    let feather = op(FxOp::FEATHER, 0.14, WHITE, 1.0);
+    let bevel = FxOp {
+        offset: [-0.1, 0.1],
+        ..op(FxOp::BEVEL, 0.12, BLACK, 0.9)
+    };
+    let stacks: [(usize, Vec<FxOp>); 15] = [
         (1, vec![blur]),
         (2, vec![glow]),
         (3, vec![shadow]),
@@ -123,8 +132,10 @@ fn arm(app: &mut crate::App) {
         (9, vec![outline, shadow]),
         (10, vec![shadow, blur, glow]),
         (11, vec![op(FxOp::OUTLINE, 0.14, WHITE, 1.0)]),
-        (12, vec![glow, blur]),
-        (13, vec![blur, glow]),
+        (12, vec![feather]),
+        (13, vec![bevel]),
+        (14, vec![glow, blur]),
+        (15, vec![blur, glow]),
     ];
     let map = &app.vec_entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
@@ -133,7 +144,7 @@ fn arm(app: &mut crate::App) {
         crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));
     }
     eprintln!(
-        "[smoke] A PILHA DE FX RASTER — 100% na GPU (plano 24, W3+W4). Catorze estrelas:\n\
+        "[smoke] A PILHA DE FX RASTER — 100% na GPU (plano 24, W3+W4). Dezasseis estrelas:\n\
          \x20 FILEIRA 1 (a regressão): controle nítido · BLUR · GLOW ciano · DROP SHADOW.\n\
          \x20 FILEIRA 2 (os degraus de DENTRO — a comparação da wave):\n\
          \x20  5) INNER SHADOW modo PROXIMITY — o modelo do Photoshop: mede quanto de FORA há por\n\
@@ -150,7 +161,15 @@ fn arm(app: &mut crate::App) {
          \x20     ponta e na aresta. A quina é REDONDA por DERIVAÇÃO — um miter pediria 3,24x a\n\
          \x20     largura numa ponta de estrela, e nenhuma dilatação faz isso (seria 3,24x na\n\
          \x20     aresta também). Miter/bevel sao GEOMETRIA: a pilha de Effects, não esta.\n\
-         \x20 FILEIRA 4: 13) Glow -> Blur · 14) Blur -> Glow — os MESMOS dois degraus, trocados.\n\
+         \x20 FILEIRA 4 (os dois que o campo de distância destravou, e o par de ordem):\n\
+         \x20  13) FEATHER — a borda vira uma RAMPA CENTRADA na fronteira, e o MIOLO fica\n\
+         \x20      INTACTO. É o que um Blur não faz: ele mistura a COR também (medido, com\n\
+         \x20      listras dentro da forma: contraste 195 no feather contra 1 no borrão).\n\
+         \x20  14) BEVEL — a face virada para a LUZ clareia e a oposta escurece, morrendo para o\n\
+         \x20      miolo (medido em cinza: rim 225 / 30 contra miolo 128; trocar a luz troca os\n\
+         \x20      dois). O par Light X/Y é uma DIREÇÃO, não um deslocamento — e é por isso que a\n\
+         \x20      tabela ROTULA cada knob em vez de só dizer que ele existe.\n\
+         \x20  15) Glow -> Blur · 16) Blur -> Glow — os MESMOS dois degraus, trocados.\n\
          \x20\n\
          \x20 O rim claro de 1 px do Inner Shadow MORREU (um degrau de dentro não move mais um\n\
          \x20 texel de cobertura) e opacidade 0 é no-op em TODO tipo (o Blur apagava a forma).\n\

@@ -88,7 +88,7 @@ fn every_kind_draws_something() {
     for kind in 0..FxOp::KINDS as u8 {
         // Um degrau com parâmetros VISÍVEIS: cor forte, raio de verdade, e deslocamento para quem
         // o usa (uma sombra sem offset seria um glow, mas ainda assim desenharia).
-        let offset = if FxOp::spec(kind).has_offset {
+        let offset = if FxOp::spec(kind).offset_labels.is_some() {
             [6, -6]
         } else {
             [0, 0]
@@ -637,5 +637,161 @@ fn the_outline_is_round_at_a_corner_because_a_dilation_cannot_be_anything_else()
         tip_reach < miter * 0.6,
         "a ponta alcançou {tip_reach:.1}, perto dos {miter:.1} de um miter — se isto acontecer, a \
          derivação acima está errada e o comentário deste gate tem de mudar junto"
+    );
+}
+
+/// **O FEATHER amacia a BORDA e não toca o MIOLO — é isso que o separa de um Blur.**
+///
+/// A fixture tem LISTRAS dentro da forma, e é a única razão de o gate poder falhar: numa forma de
+/// cor lisa um borrão também não muda o miolo (não há o que misturar), então uma fixture uniforme
+/// deixaria o Feather e o Blur indistinguíveis. A rampa é CENTRADA na fronteira (a forma ganha
+/// alfa parcial para FORA e perde para dentro), que é o que um feather faz e um recorte não.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_feather_softens_the_edge_and_leaves_the_interior_alone() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let mut bytes = vec![0u8; (W * H * 4) as usize];
+    for y in BY0..BY1 {
+        for x in BX0..BX1 {
+            // Listras de período 4 px: o DETALHE que um borrão destrói e um feather preserva.
+            let v = if (x / 2) % 2 == 0 { 255u8 } else { 60u8 };
+            let o = ((y * W + x) * 4) as usize;
+            bytes[o..o + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+    }
+    let src = make_src(&gpu, W, H, &bytes);
+    let dst = make_output_texture(&gpu, W, H);
+    let mut pass = FxStackPass::new(&gpu);
+    let run = |pass: &mut FxStackPass, ops: &[FxOpGpu]| {
+        pass.run(&gpu, &src, &dst, W, H, ops);
+        readback(&gpu, &dst, W, H)
+    };
+    let plain = run(&mut pass, &[]);
+    let feathered = run(&mut pass, &[one(FxOp::FEATHER, 8.0, RED, [0, 0])]);
+    let blurred = run(&mut pass, &[one(FxOp::BLUR, 8.0, RED, [0, 0])]);
+    // O contraste das listras no MIOLO (longe de qualquer borda).
+    let contrast = |px: &[u8]| {
+        let y = (BY0 + BY1) / 2;
+        let band: Vec<i32> = (BX0 + 20..BX1 - 20).map(|x| rgb_at(px, x, y)[0]).collect();
+        band.iter().max().copied().unwrap_or(0) - band.iter().min().copied().unwrap_or(0)
+    };
+    eprintln!(
+        "[feather] contraste do miolo: nu {} · feather {} · blur {}",
+        contrast(&plain),
+        contrast(&feathered),
+        contrast(&blurred)
+    );
+    assert_eq!(
+        contrast(&feathered),
+        contrast(&plain),
+        "o feather tem de deixar o MIOLO intacto"
+    );
+    assert!(
+        contrast(&blurred) * 3 < contrast(&plain),
+        "o controle falhou: um borrão do mesmo raio tinha de lavar as listras ({} contra {})",
+        contrast(&blurred),
+        contrast(&plain)
+    );
+    // ⚠️ E DENTRO da banda a cor de cada texel continua a DELE — só o alfa muda. Sem esta metade,
+    // "pinte o miolo com a cor da borda" passava: no miolo o campo nem existe (o JFA é limitado),
+    // então a mutação era a identidade exatamente onde a sonda de contraste olhava.
+    let y = (BY0 + BY1) / 2;
+    for x in BX1 - 6..BX1 - 1 {
+        assert_eq!(
+            rgb_at(&feathered, x, y),
+            rgb_at(&plain, x, y),
+            "o feather repintou o texel {x} (dentro da banda) — ele muda a COBERTURA, não a cor"
+        );
+    }
+    // A rampa é CENTRADA: a forma ganha alfa para FORA e perde para dentro.
+    let (out3, edge, in3) = (
+        alpha_at(&feathered, BX1 + 2, y),
+        alpha_at(&feathered, BX1 - 1, y),
+        alpha_at(&feathered, BX1 - 6, y),
+    );
+    eprintln!("[feather] alfa: fora+2 {out3} · na borda {edge} · dentro-6 {in3}");
+    assert!(
+        out3 > 20,
+        "o feather tem de sangrar para FORA da silhueta (deu {out3}) — senão é um recorte, não uma \
+         rampa centrada"
+    );
+    assert!(
+        in3 > edge && edge > out3,
+        "a rampa tem de subir de fora para dentro ({out3} < {edge} < {in3})"
+    );
+    assert_eq!(
+        alpha_at(&feathered, (BX0 + BX1) / 2, y),
+        255,
+        "e o miolo continua opaco"
+    );
+}
+
+/// **O BEVEL acende a face virada para a LUZ e escurece a oposta; trocar a luz TROCA os dois.**
+///
+/// A metade que importa é a inversão: um gate que só olhasse "um lado ficou claro" passaria com um
+/// efeito que clareia sempre o mesmo lado, ignorando o knob de luz.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn the_bevel_lights_the_rim_that_faces_the_light_and_flips_with_it() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx_stack_kinds] sem adapter — skip");
+        return;
+    };
+    let mut pass = FxStackPass::new(&gpu);
+    let y = (BY0 + BY1) / 2;
+    // ⚠️ Forma CINZA, e é a única razão de o gate poder falhar: sobre branco o realce não tem para
+    // onde subir (255 é o teto), e a metade "acende" ficaria verde sobre um efeito que só escurece.
+    let mut bytes = vec![0u8; (W * H * 4) as usize];
+    for yy in BY0..BY1 {
+        for xx in BX0..BX1 {
+            let o = ((yy * W + xx) * 4) as usize;
+            bytes[o..o + 4].copy_from_slice(&[128, 128, 128, 255]);
+        }
+    }
+    let src = make_src(&gpu, W, H, &bytes);
+    let dst = make_output_texture(&gpu, W, H);
+    // Luz vinda da ESQUERDA e depois da DIREITA, no mesmo relevo.
+    let probe = |pass: &mut FxStackPass, light: [i32; 2]| -> (i32, i32, i32, i32) {
+        pass.run(
+            &gpu,
+            &src,
+            &dst,
+            W,
+            H,
+            &[one(FxOp::BEVEL, 8.0, BLACK, light)],
+        );
+        let out = readback(&gpu, &dst, W, H);
+        (
+            rgb_at(&out, BX0 + 2, y)[0],
+            rgb_at(&out, BX1 - 3, y)[0],
+            rgb_at(&out, (BX0 + BX1) / 2, y)[0],
+            // Mais fundo no rebordo: é aqui que se vê o relevo MORRER para o miolo.
+            rgb_at(&out, BX0 + 6, y)[0],
+        )
+    };
+    let (l_left, l_right, l_core, l_deep) = probe(&mut pass, [-8, 0]);
+    let (r_left, r_right, r_core, _) = probe(&mut pass, [8, 0]);
+    eprintln!(
+        "[bevel] luz da ESQUERDA: rim esq {l_left} · rim dir {l_right} · miolo {l_core}\n\
+         [bevel] luz da DIREITA: rim esq {r_left} · rim dir {r_right} · miolo {r_core}"
+    );
+    assert!(
+        l_left > l_core + 10 && l_right + 10 < l_core,
+        "com a luz da esquerda o rim ESQUERDO acende ({l_left}) e o direito escurece ({l_right}), \
+         contra o miolo ({l_core})"
+    );
+    assert!(
+        r_right > r_core + 10 && r_left + 10 < r_core,
+        "e trocar a luz TROCA os dois (esq {r_left}, dir {r_right}, miolo {r_core})"
+    );
+    assert_eq!(l_core, r_core, "o miolo não é tocado por nenhuma das duas");
+    // ⚠️ E o relevo DECAI para dentro. Sem esta metade, um bevel de intensidade constante passava:
+    // no miolo o campo nem existe (o JFA é limitado), então ele já estava intacto de graça.
+    assert!(
+        l_deep < l_left - 20 && l_deep > l_core,
+        "o realce tem de MORRER para o miolo: rim {l_left}, a 6 px {l_deep}, miolo {l_core}"
     );
 }

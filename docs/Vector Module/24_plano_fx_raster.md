@@ -129,16 +129,12 @@ posição do centroide da sombra, e a mensagem traz os números.
 - **W4 — O CAMPO DE DISTÂNCIA (FECHADA, pendente de smoke):** a revisão que as três observações do
   smoke do Enio pediram — o rim de 1 px, o modo `Contour` dos degraus de dentro e o contorno que
   deixou de encolher na quina. Ver §9.
-- **W5 — O FEATHER ANALÍTICO (igualar o Rive onde ele é forte):** soft edge resolution-independent
-  via erf da distância (o Levien `draw_blurred_rounded_rect` generalizado, ou SDF via o JFA in-repo
-  do motion-nodes). O primitivo premium, quando a nitidez em zoom extremo importar. ⚠️ **Reordenado
-  para depois do catálogo, com motivo:** o argumento dele é *resolution-crisp*, e o nosso borrão já
-  o é (o `resolve_ops` re-coze na escala da tela a cada frame, e o gate do zoom o pina). O que a
-  W3 comprou — tipos que a Gaussiana **não desenha** — é delta de produto; o feather é qualidade de
-  um degrau que já existe.
-- **W6 — os tipos que pedem maquinaria NOVA:** Bevel/Emboss (uma altura + uma luz — o `blur(alfa)`
-  já é a altura, e o modelo de luz é parente do impasto), turbulência + deslocamento (o
-  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem), e o
+- **W5 — O FEATHER E O BEVEL (FECHADA, pendente de smoke):** os dois tipos que o campo de distância
+  da W4 destravou (7 → 9). Ver §10. ⚠️ O feather chegou pelo caminho oposto ao previsto: em vez do
+  `erf` analítico de Levien, ele é uma rampa sobre o MESMO campo do JFA — o primitivo já estava
+  construído por outro motivo, e a wave inteira coube num braço de shader.
+- **W6 — o que ainda pede maquinaria NOVA:** turbulência + deslocamento (o
+  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem) e o
   blend mode POR DEGRAU (o Layer Style do Photoshop). Nenhum deles muda a pilha.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
@@ -406,3 +402,65 @@ sangram.** Lições:
   *Stroke* na pilha de Effects, onde `VecOffset { join }` já vive.
 - **O modo `Contour` custa `2 + bits(w)` passes** contra 2 do borrão — 6 para uma banda de 16 px.
   Barato (o JFA lê 9 texels por passe), mas é o tipo mais caro do catálogo.
+
+## §10 — W5: o FEATHER e o BEVEL (o que o campo de distância destravou)
+
+A W4 construiu o campo por um motivo (a sombra que respeita o contorno) e ele pagou dois tipos por
+outro. **Nenhum dos dois precisou de maquinaria nova** — os dois são braços do `cs_op_field`, e o
+painel não mudou uma linha, porque a TABELA o dirige. 7 → **9 tipos**.
+
+### Feather — a borda amacia, o miolo NÃO
+
+É o headline do Rive, e é o que um Blur **não** faz: um borrão mistura a COR também. Medido, com
+listras dentro da forma: **contraste do miolo 195 no feather contra 1 no borrão** (195 nu). A rampa
+é **centrada na fronteira** — a forma ganha alfa para fora e perde para dentro (medido: 24 a 2 px
+fora, 151 na borda, 255 a 6 px dentro) —, e é isso que a separa de um recorte.
+
+⚠️ **Fora da forma o pixel não tem cor própria:** ele herda a do texel de borda mais próximo, que é
+exatamente para onde o campo aponta. E **dentro** da banda cada texel mantém a cor DELE: o feather
+muda a COBERTURA, não a cor (há gate; sem ele, "pinte tudo com a cor da borda" passava).
+
+### Bevel — o rebordo ganha luz
+
+`off` aponta para a borda mais próxima, então **ele É a normal 2D do rebordo**: `dot(n, luz)` acende
+a face virada para a luz e escurece a oposta, com o efeito morrendo para o miolo. Medido sobre
+cinza: **rim 225 / 30 contra miolo 128**, e trocar a luz troca os dois.
+
+⚠️ **O par de offset quer dizer coisas DIFERENTES conforme o tipo** — numa sombra é um
+DESLOCAMENTO (amostra-se o campo mais adiante), num bevel é uma DIREÇÃO. Deslocar por ela moveria o
+relevo inteiro em vez de o iluminar (foi o 1º corte, e o bevel saía inerte). Por isso a tabela
+passou a **ROTULAR** cada knob (`offset_labels`, `color_label`) em vez de só dizer que ele existe:
+o card do Bevel diz **Light X / Light Y** e **Shadow**, o da Drop Shadow diz **Offset X / Y**.
+
+### A semente é escolhida pelo que o op PRECISA
+
+| quem | semente | porquê |
+|---|---|---|
+| Inner Shadow / Glow / Bevel | os texels de FORA | *a que distância estou de deixar de existir* — a medida exata do que eles perguntam |
+| Feather / Outline | a CASCA (a 1ª fileira de dentro) | precisam do campo dos DOIS lados |
+
+⚠️ Tentei unificar tudo na casca e **a medição recusou**: na quina CÔNCAVA a casca de um lado só
+estima ~0,6 px pior, e a reentrância é justamente onde o modo Contour existe para acertar (o gate
+foi de 115 para 132 contra os 104 da aresta). O campo simétrico é melhor para quem sai da forma e
+pior para quem fica dentro — então cada um semeia o seu.
+
+### Gates
+
+12 no catálogo de GPU (2 novos) + os 7 de seam e 7 de modelo, que cobriram os tipos novos
+**sozinhos** (varrem a tabela). **21 mutações na jornada, 21 sangram.** Três lições, todas de
+FIXTURE:
+
+- **Uma forma BRANCA não tem para onde clarear:** o gate do bevel ficou vermelho sobre um produto
+  correto, porque o realce saturava em 255. Fixture cinza.
+- **Além do alcance do JFA o campo não existe**, então duas mutações eram a IDENTIDADE exatamente
+  onde as sondas olhavam (o miolo). As sondas desceram para DENTRO da banda, e as duas metades que
+  faltavam ("a cor não se move" e "o relevo decai") entraram junto.
+- **`signed` é palavra reservada no WGSL** — o shader inteiro falhou a compilar, e o erro só
+  aparece no `create_shader_module` (todos os 10 gates de GPU caíram de uma vez).
+
+### Aberto
+
+- **`MAX_FILTER_KINDS` foi de 7 para 9**, e o gate que o pega é o seam que CLICA cada "Add": o
+  `.take(MAX_FILTER_KINDS)` do paint deixaria os dois últimos tipos sem botão em silêncio.
+- **O bevel não tem "size" separado da profundidade** (o `Depth` governa os dois). O Photoshop tem
+  Size + Soften; se o smoke pedir, é um knob a mais, não um modelo a mais.

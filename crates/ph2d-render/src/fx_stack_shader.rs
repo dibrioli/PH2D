@@ -24,10 +24,18 @@ struct Globals {
 
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
+// **Quem precisa do campo FORA da forma?** O feather (a rampa é centrada na fronteira) e o contorno
+// (ele mora todo lá fora). Esses semeiam a CASCA — a primeira fileira de dentro —, que dá os dois
+// lados de uma vez. Quem só olha para dentro semeia os texels de FORA, que é a medida exata do que
+// eles perguntam: *a que distância estou de deixar de existir*. ⚠️ A diferença aparece na quina
+// CÔNCAVA — a casca de um lado só a estima ~0,6 px pior, e é justamente ali que o modo Contour
+// existe para acertar.
+fn seeds_shell() -> bool { return g.kind == KIND_FEATHER || g.kind == KIND_OUTLINE; }
+
 // O halo de dentro, aplicado com a lei que NÃO move a cobertura: um efeito de dentro tinge o que
-// já está lá, ele não é uma camada nova. Porta única dos DOIS modos.
-fn inner_tint(over: vec4<f32>, strength: f32) -> vec4<f32> {
-    let tinted = vec4<f32>(g.tint.rgb * over.a, over.a);
+// já está lá, ele não é uma camada nova. Porta única de TODOS os que moram dentro.
+fn inner_tint(over: vec4<f32>, colour: vec3<f32>, strength: f32) -> vec4<f32> {
+    let tinted = vec4<f32>(colour * over.a, over.a);
     return mix(over, tinted, clamp(strength, 0.0, 1.0));
 }
 
@@ -117,7 +125,7 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
         // `halo.a = 0,25` dava 0,625, e como o `resolve` des-premultiplica, dividir por um alfa
         // maior CLAREIA — era o rim claro de 1 px em volta da forma. Um efeito de DENTRO tinge o
         // que já está lá; ele não é uma camada nova.
-        outc = inner_tint(over, b.a * g.tint.a * g.opacity);
+        outc = inner_tint(over, g.tint.rgb, b.a * g.tint.a * g.opacity);
     } else {
         let a = b.a * g.tint.a * g.opacity;
         let halo = vec4<f32>(g.tint.rgb * a, a);
@@ -140,13 +148,26 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
 @compute @workgroup_size(8, 8, 1)
 fn cs_sdf_seed(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let a = tap_img(t0, i32(id.x), i32(id.y)).a;
+    let me = vec2<i32>(i32(id.x), i32(id.y));
+    let a = tap_img(t0, me.x, me.y).a;
     var v = vec4<f32>(0.0);
-    // Quem semeia depende da pergunta: um degrau de DENTRO mede a distância ao FORA (semente = os
-    // texels de fora), o CONTORNO mede a distância à FORMA (semente = os texels dela). Fora da
-    // TEXTURA é fora da forma nos dois casos — o `tap_img` devolve transparente.
-    let seed = select(a > 0.5, a <= 0.5, is_inner());
-    if (seed) { v = vec4<f32>(0.0, 0.0, 1.0, 0.0); }
+    // **A CASCA da fronteira**: um texel de DENTRO com algum vizinho de fora. Uma regra só, e ela
+    // dá o campo dos DOIS lados — o sinal vem do alfa de quem pergunta, não de outra semeadura.
+    // (Fora da TEXTURA conta como fora da forma: o `tap_img` devolve transparente, então uma forma
+    // encostada na borda tem casca ali, que é o que mantém o campo certo no limite do scratch.)
+    if (seeds_shell()) {
+        if (a > 0.5) {
+            let l = tap_img(t0, me.x - 1, me.y).a;
+            let r = tap_img(t0, me.x + 1, me.y).a;
+            let u = tap_img(t0, me.x, me.y - 1).a;
+            let d = tap_img(t0, me.x, me.y + 1).a;
+            if (l <= 0.5 || r <= 0.5 || u <= 0.5 || d <= 0.5) {
+                v = vec4<f32>(0.0, 0.0, 1.0, 0.0);
+            }
+        }
+    } else if (a <= 0.5) {
+        v = vec4<f32>(0.0, 0.0, 1.0, 0.0);
+    }
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), v);
 }
 
@@ -165,12 +186,8 @@ fn cs_sdf_jump(@builtin(global_invocation_id) id: vec3<u32>) {
             var off = vec2<f32>(0.0);
             var has = false;
             if (s.x < 0 || s.y < 0 || s.x >= i32(g.dims.x) || s.y >= i32(g.dims.y)) {
-                // ⚠️ Fora da textura é FORA DA FORMA — semente para quem mede a distância ao fora
-                // (os degraus de dentro), e NÃO para quem mede a distância à forma (o contorno).
-                // Semear os dois igual fazia o contorno crescer a partir da borda da textura para
-                // dentro da cena: medido, 63 px de halo numa largura de 4.
-                off = delta;
-                has = is_inner();
+                // Fora da textura não há CASCA (a casca é feita de texels da forma), então não há
+                // semente — a assimetria que a semeadura por-lado exigia morreu com ela.
             } else {
                 let n = textureLoad(t1, s, 0);
                 if (n.z > 0.5) { off = n.xy + delta; has = true; }
@@ -184,38 +201,75 @@ fn cs_sdf_jump(@builtin(global_invocation_id) id: vec3<u32>) {
     textureStore(dst, me, best);
 }
 
-// **O finalize sobre o CAMPO DE DISTÂNCIA** — serve os degraus de dentro em modo Contour E o
-// contorno. Sem borrão nenhum: a largura É a distância, então ela é a MESMA em toda a volta.
+// **O finalize sobre o CAMPO DE DISTÂNCIA** — serve QUATRO tipos: os degraus de dentro em modo
+// Contour, o contorno, o feather e o bevel. Todos perguntam a mesma coisa (*a que distância da
+// borda estou, e de que lado?*) e cada um responde com uma lei diferente.
 @compute @workgroup_size(8, 8, 1)
 fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
     let over = tap_img(t0, i32(id.x), i32(id.y));
-    // A LUZ entra amostrando o campo DESLOCADO — a banda engorda do lado de onde a luz vem, e
-    // encolhe do outro, exatamente como no modo de proximidade.
-    let sx = i32(id.x) - g.off_x;
-    let sy = i32(id.y) - g.off_y;
-    var d = 1.0e6;
-    if (sx < 0 || sy < 0 || sx >= i32(g.dims.x) || sy >= i32(g.dims.y)) {
-        // Mesma assimetria do salto: lá fora não há forma. Para quem mede o FORA a distância é 0
-        // (sombra cheia na borda); para o contorno é infinita (não há o que contornar).
-        if (is_inner()) { d = 0.0; }
-    } else {
+    // ⚠️ O par de offset quer dizer coisas DIFERENTES conforme o tipo, e é por isso que a tabela o
+    // ROTULA: numa sombra ele é um DESLOCAMENTO (amostra-se o campo mais adiante, e a banda anda
+    // para o lado da luz); num bevel é uma DIREÇÃO (a luz), e deslocar por ela moveria o relevo
+    // inteiro em vez de o iluminar.
+    let disp = select(vec2<i32>(g.off_x, g.off_y), vec2<i32>(0), g.kind == KIND_BEVEL);
+    let sx = i32(id.x) - disp.x;
+    let sy = i32(id.y) - disp.y;
+    let at = tap_img(t0, sx, sy);
+    let inside = at.a > 0.5;
+    var off = vec2<f32>(0.0);
+    var far = true;
+    if (sx >= 0 && sy >= 0 && sx < i32(g.dims.x) && sy < i32(g.dims.y)) {
         let f = textureLoad(t1, vec2<i32>(sx, sy), 0);
-        if (f.z > 0.5) { d = length(f.xy); }
+        if (f.z > 0.5) { off = f.xy; far = false; }
     }
-    // ⚠️ MEIO TEXEL, e ele é derivado: o JFA mede até o CENTRO do texel semente, e a fronteira
-    // geométrica está a 0,5 px dele. Sem isto o contorno sai 1 px mais fino do que a largura que o
-    // slider promete — medido, 2,5 px numa largura de 4.
-    let dist = max(d - 0.5, 0.0);
+    // ⚠️ MEIO TEXEL, e ele é DERIVADO: a casca é a primeira fileira DE DENTRO, cujo centro está a
+    // 0,5 px da fronteira. Somando de dentro e subtraindo de fora, os dois lados começam em 0,5 —
+    // o campo fica simétrico, que é o que um feather centrado na borda exige.
+    var dist = 1.0e6;
+    if (!far) {
+        let raw = length(off);
+        // A casca é a 1ª fileira DE DENTRO (centro a 0,5 px da fronteira) ⇒ soma-se de dentro e
+        // subtrai-se de fora, e os dois lados começam em 0,5: o campo fica simétrico, que é o que
+        // um feather centrado na borda exige. Semeando os texels de FORA, só o lado de dentro
+        // existe, e a correção é a subtração.
+        if (seeds_shell()) {
+            dist = select(max(raw - 0.5, 0.0), raw + 0.5, inside);
+        } else {
+            dist = max(raw - 0.5, 0.0);
+        }
+    }
+    let sdist = select(-dist, dist, inside);
     let w = max(g.band, 1.0e-4);
     var outc: vec4<f32>;
-    if (is_inner()) {
-        outc = inner_tint(over, (1.0 - smoothstep(0.0, w, dist)) * g.tint.a * g.opacity);
+    if (g.kind == KIND_FEATHER) {
+        // A borda vira uma RAMPA CENTRADA na fronteira — sem borrar o miolo, que é o que separa
+        // isto de um Blur. Fora da forma o pixel não tem cor própria: ele herda a do texel de
+        // borda mais próximo, que é justamente para onde o campo aponta.
+        let edge = tap_img(t0, i32(id.x) + i32(off.x), i32(id.y) + i32(off.y));
+        let base = select(edge, over, over.a > 0.5);
+        let f = smoothstep(-w * 0.5, w * 0.5, sdist);
+        outc = mix(over, base * f, g.opacity);
+    } else if (g.kind == KIND_BEVEL) {
+        // O relevo da borda: a face virada para a LUZ clareia, a oposta escurece, e o efeito morre
+        // para o miolo. `off` aponta para a borda mais próxima, então ele É a normal 2D do rebordo.
+        var shade = 0.0;
+        if (!far && inside) {
+            let n = normalize(off + vec2<f32>(1.0e-6, 0.0));
+            let lit = vec2<f32>(f32(g.off_x), f32(g.off_y));
+            let l = select(vec2<f32>(0.0, -1.0), normalize(lit), dot(lit, lit) > 0.0);
+            shade = dot(n, l) * (1.0 - smoothstep(0.0, w, dist)) * g.opacity;
+        }
+        let colour = select(g.tint.rgb, vec3<f32>(1.0), shade > 0.0);
+        outc = inner_tint(over, colour, abs(shade) * g.tint.a);
+    } else if (is_inner()) {
+        outc = inner_tint(over, g.tint.rgb, (1.0 - smoothstep(0.0, w, dist)) * g.tint.a * g.opacity);
     } else {
         // CONTORNO: a borda cai exatamente em `w`, com ~1 px de anti-aliasing. Isto é uma DILATAÇÃO
         // de verdade (`d <= w`), ao contrário do corte num campo borrado, que ENCOLHE na quina
         // convexa — medido, uma ponta de 36° não recebia contorno NENHUM.
-        let cov = 1.0 - smoothstep(w - 0.5, w + 0.5, dist);
+        let outward = max(-sdist, 0.0);
+        let cov = 1.0 - smoothstep(w - 0.5, w + 0.5, outward);
         let a = cov * g.tint.a * g.opacity;
         let halo = vec4<f32>(g.tint.rgb * a, a);
         outc = over + halo * (1.0 - over.a);
@@ -267,11 +321,15 @@ pub(crate) fn kind_consts_wgsl() -> String {
          const KIND_INNER_SHADOW: u32 = {}u;\n\
          const KIND_INNER_GLOW: u32 = {}u;\n\
          const KIND_OUTLINE: u32 = {}u;\n\
+         const KIND_FEATHER: u32 = {}u;\n\
+         const KIND_BEVEL: u32 = {}u;\n\
          const MODE_CONTOUR: u32 = {}u;\n",
         FxOp::BLUR,
         FxOp::INNER_SHADOW,
         FxOp::INNER_GLOW,
         FxOp::OUTLINE,
+        FxOp::FEATHER,
+        FxOp::BEVEL,
         FxOp::MODE_CONTOUR,
     )
 }

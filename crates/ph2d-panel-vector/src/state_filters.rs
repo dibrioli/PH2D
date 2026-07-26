@@ -36,10 +36,12 @@ pub struct FilterKindView {
     pub name: &'static str,
     /// O rótulo do raio, ou `None` se o tipo não tem raio (o Color Overlay é pontual).
     pub radius_label: Option<&'static str>,
-    /// Oferece Offset X/Y?
-    pub has_offset: bool,
-    /// Oferece a cor do halo?
-    pub has_color: bool,
+    /// Os rótulos do par de offset, ou `None` se o tipo não desloca nada. ⚠️ São NOMES, não um
+    /// booleano: o mesmo vetor é *para onde a sombra cai* numa Drop Shadow e *de onde a luz vem*
+    /// num Bevel.
+    pub offset_labels: Option<(&'static str, &'static str)>,
+    /// O rótulo da cor, ou `None` se o tipo não tinge.
+    pub color_label: Option<&'static str>,
     /// Os MODOS deste tipo, na ordem dos códigos, ou vazio se ele não tem escolha a fazer.
     pub modes: &'static [&'static str],
 }

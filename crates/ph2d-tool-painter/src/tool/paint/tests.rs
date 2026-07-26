@@ -1,3 +1,5 @@
+#[path = "measure_dirty_overclaim.rs"]
+mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier;
 #[path = "measure_window_premise.rs"]

@@ -290,21 +290,62 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
     let w = max(g.band, 1.0e-4);
     var outc: vec4<f32>;
     if (g.kind == KIND_FEATHER) {
-        // A borda vira uma RAMPA CENTRADA na fronteira — sem borrar o miolo, que é o que separa
-        // isto de um Blur. Fora da forma o pixel não tem cor própria: ele herda a do texel de
-        // borda mais próximo, que é justamente para onde o campo aponta.
-        // A cor da metade de FORA vem do texel de borda mais próximo. ⚠️ Duas cautelas, e as duas
-        // custaram artefato: **arredondar** (truncar um passo de −0,5 devolvia o próprio texel,
-        // transparente, apagando a metade de fora) e **cair DENTRO** — a amostra oblíqua às vezes
-        // pousava num texel ainda transparente, e o buraco resultante é um dente de pente. Se o
-        // primeiro passo falha, anda mais um texel na mesma direção.
-        let here = vec2<f32>(f32(id.x), f32(id.y));
-        let dir = normalize(off + vec2<f32>(1.0e-6, 0.0));
-        var edge = tap_img_at(round(here + off + dir * 0.5));
-        if (edge.a < 0.5) { edge = tap_img_at(round(here + off + dir * 1.5)); }
-        let base = select(edge, over, over.a > 0.5);
+        // A borda vira uma RAMPA CENTRADA na fronteira, sem borrar o miolo — é o que separa isto
+        // de um Blur.
+        //
+        // ⚠️ **O ALFA é função da distância e a COR é RETA.** É a lei das três implementações
+        // canônicas, e nenhuma delas reamostra cor: o feather do GIMP é um blur gaussiano da
+        // MÁSCARA (σ = raio/3,5), o do Krita é uma gaussiana com `channelFlags(false, true)` — só
+        // alfa —, e nos layer styles a cor entra DEPOIS, como fill.
+        //
+        // A lei anterior compunha `base * f` com `base` PREMULTIPLICADO, ou seja o alfa saía
+        // `a_fonte · f` quando devia sair `f`: a cobertura era contada DUAS vezes, e só na fileira
+        // do contorno (a única com `a_fonte` parcial). E a cor da metade de fora era buscada
+        // andando `dir·0,5` a partir de `off`, com `dir` derivado de um `off` quase nulo — perto do
+        // contorno ele desandava (medido: 50° fora) e o passo caía em texel transparente, com o
+        // fallback disparando de forma intermitente. O resultado renderizado não era uma linha
+        // escura: eram **459 texels de alfa ZERO** espalhados por 206 linhas, cercados por forma
+        // dos dois lados. Um FURO, e a intermitência é o que o olho lê como tracejado.
+        //
+        // Agora não há direção a adivinhar: **onde a fonte existe, ela É a resposta** (o contorno
+        // inteiro cai aqui, que é exatamente onde o furo nascia), e só onde não há nada é que se
+        // busca a borda — para onde `off` já aponta, sem passo e sem fallback.
+        let src = vec2<f32>(f32(sx), f32(sy));
+        var straight = vec3<f32>(0.0);
+        if (over.a > 0.1) {
+            straight = over.rgb / over.a;
+        } else {
+            // ⚠️ A busca da cor NÃO pode ter modo de falha: devolver preto e ainda escrever alfa
+            // pinta um DENTE escuro (medido — foi o que a primeira versão desta cura fez, trocando
+            // o furo por um pente). Uma amostra única falha porque o `round` do ponto de fronteira
+            // às vezes cai no vizinho ainda transparente.
+            //
+            // A extensão é a média das cores RETAS da vizinhança do ponto de fronteira, PESADA
+            // pela cobertura — e ela é exatamente `Σ rgb_premultiplicado / Σ alfa`, porque cada
+            // termo já vem multiplicado pelo próprio peso. Basta UM vizinho com tinta para a
+            // resposta existir, e no ponto de fronteira isso é garantido por construção.
+            //
+            // ⚠️ Um peso ao QUADRADO foi construído aqui e REMOVIDO por medição, para ninguém o
+            // reintroduzir: o argumento era que um vizinho de alfa 1/255 carrega uma cor reta
+            // destruída pela quantização (a tinta premultiplicada arredonda para (1,1,0), cuja cor
+            // reta é (255,255,0)). Verdade — e IRRELEVANTE: esse vizinho pesa 1/255 sobre um
+            // `Σ alfa ≈ 4`, ou seja 0,1% de uma cor 4× errada = **1 nível**. A mutação que troca
+            // o quadrado pelo linear NÃO sangra, e foi ela que expôs que o número que eu usara
+            // para justificar o quadrado (7255 níveis) era um defeito do GATE, não do peso.
+            let b = round(src + off);
+            var acc = vec3<f32>(0.0);
+            var wsum = 0.0;
+            for (var dy = -1; dy <= 1; dy = dy + 1) {
+                for (var dx = -1; dx <= 1; dx = dx + 1) {
+                    let s = tap_img_at(b + vec2<f32>(f32(dx), f32(dy)));
+                    acc = acc + s.rgb;
+                    wsum = wsum + s.a;
+                }
+            }
+            if (wsum > 1.0e-4) { straight = acc / wsum; }
+        }
         let f = smoothstep(-w * 0.5, w * 0.5, sdist);
-        outc = mix(over, base * f, g.opacity);
+        outc = mix(over, vec4<f32>(straight * f, f), g.opacity);
     } else if (g.kind == KIND_BEVEL) {
         // O relevo da borda: a face virada para a LUZ clareia, a oposta escurece, e o efeito morre
         // para o miolo. `off` aponta para a borda mais próxima, então ele É a normal 2D do rebordo.

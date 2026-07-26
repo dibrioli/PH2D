@@ -360,7 +360,11 @@ struct UndoEntry {
 
 impl UndoEntry {
     /// Guarda um par de endpoints COMPLETOS, extraindo o delta e esvaziando-os.
-    fn split(mut before: ModelSnapshot, mut after: ModelSnapshot, kind: Option<CoalesceKind>) -> Self {
+    fn split(
+        mut before: ModelSnapshot,
+        mut after: ModelSnapshot,
+        kind: Option<CoalesceKind>,
+    ) -> Self {
         let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after);
         Self {
             before: Box::new(before),
@@ -494,7 +498,10 @@ impl UndoController {
             // O cursor não descreve mais o plano que a entrada deltou (o canvas mudou de forma sob o
             // histórico). Um undo que devolve pixels quase-certos é pior que um que se recusa: descarta.
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado");
-            debug_assert!(false, "cursor incoerente com o delta — ver undo_delta::StoredPlane::side");
+            debug_assert!(
+                false,
+                "cursor incoerente com o delta — ver undo_delta::StoredPlane::side"
+            );
             self.clear();
             return None;
         };
@@ -513,7 +520,10 @@ impl UndoController {
         let cursor = self.cursor.as_deref()?;
         let Some(restore) = entry.materialize(cursor, false) else {
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado (redo)");
-            debug_assert!(false, "cursor incoerente com o delta — ver undo_delta::StoredPlane::side");
+            debug_assert!(
+                false,
+                "cursor incoerente com o delta — ver undo_delta::StoredPlane::side"
+            );
             self.clear();
             return None;
         };
@@ -578,7 +588,8 @@ impl UndoController {
     /// ADR-0117) tem de continuar desfazível, e um cap que come o único passo possível é um histórico
     /// que não existe.
     fn cap(&mut self) {
-        while self.undo.len() > 1 && (self.bytes > self.max_bytes || self.undo.len() > MAX_HISTORY_STEPS)
+        while self.undo.len() > 1
+            && (self.bytes > self.max_bytes || self.undo.len() > MAX_HISTORY_STEPS)
         {
             let dropped = self.undo.remove(0);
             self.bytes -= dropped.heap_bytes();

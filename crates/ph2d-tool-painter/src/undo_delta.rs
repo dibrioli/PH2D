@@ -105,8 +105,15 @@ impl PlaneWindow {
 /// buffers que de fato diferem: o undo perderia a edição, sem erro e sem warning. Os dois casos têm de
 /// ser perguntas separadas, e são.
 fn diff_window<T: PartialEq>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWindow> {
-    debug_assert_eq!(a.len(), b.len(), "diff_window quer dois planos do mesmo tamanho");
-    debug_assert!(fits(a.len(), stride), "diff_window quer um stride que divide o plano");
+    debug_assert_eq!(
+        a.len(),
+        b.len(),
+        "diff_window quer dois planos do mesmo tamanho"
+    );
+    debug_assert!(
+        fits(a.len(), stride),
+        "diff_window quer um stride que divide o plano"
+    );
     let rows = a.len() / stride;
     // As LINHAS primeiro: uma comparação de slice por linha (memcmp vetorizado em `u8`), e a maioria
     // das linhas de um traço não difere.
@@ -149,9 +156,10 @@ fn diff_window<T: PartialEq>(a: &[T], b: &[T], stride: usize) -> Option<PlaneWin
 }
 
 /// Um plano canvas-shaped como o histórico o guarda. Ver o cabeçalho do módulo.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) enum StoredPlane<T> {
     /// Os dois endpoints são o mesmo buffer (ou o mesmo conteúdo) — **zero bytes**, e o caso comum.
+    #[default]
     Unchanged,
     /// Diferem só nesta janela; guarda os DOIS lados dela.
     Patch {
@@ -174,7 +182,7 @@ fn drained<T>() -> Arc<Vec<T>> {
 /// O stride serve para medir este plano? Pergunta SEPARADA de *"os dois lados diferem?"* — ver
 /// [`diff_window`].
 const fn fits(len: usize, stride: usize) -> bool {
-    stride != 0 && len != 0 && len % stride == 0
+    stride != 0 && len != 0 && len.is_multiple_of(stride)
 }
 
 impl<T: Clone + PartialEq> StoredPlane<T> {

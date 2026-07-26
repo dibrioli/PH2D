@@ -134,7 +134,6 @@ fn clear_drops_both_stacks() {
     assert!(!c.can_undo() && !c.can_redo());
 }
 
-
 // ───────────────────────── U1: o histórico guarda um DELTA, capeado em BYTES ─────────────────────────
 
 /// Um snapshot com **os dezenove planos canvas-shaped preenchidos**, todos carimbados com `seed` numa
@@ -165,14 +164,26 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
     let rgba = |s: u8| {
         Arc::new(
             (0..256usize)
-                .map(|i| if i == rgba_i(s) { s } else { u8::try_from(i % 251).unwrap_or(0) })
+                .map(|i| {
+                    if i == rgba_i(s) {
+                        s
+                    } else {
+                        u8::try_from(i % 251).unwrap_or(0)
+                    }
+                })
                 .collect::<Vec<u8>>(),
         )
     };
     let bytes = |s: u8| {
         Arc::new(
             (0..64usize)
-                .map(|i| if i == scal_i(s) { s } else { u8::try_from(i).unwrap_or(0) })
+                .map(|i| {
+                    if i == scal_i(s) {
+                        s
+                    } else {
+                        u8::try_from(i).unwrap_or(0)
+                    }
+                })
                 .collect::<Vec<u8>>(),
         )
     };
@@ -193,7 +204,11 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
         Arc::new(
             (0..64usize)
                 .map(|i| {
-                    [if i == scal_i(s) { s } else { u8::try_from(i).unwrap_or(0) }; 7] as MaterialBytes
+                    [if i == scal_i(s) {
+                        s
+                    } else {
+                        u8::try_from(i).unwrap_or(0)
+                    }; 7] as MaterialBytes
                 })
                 .collect::<Vec<_>>(),
         )
@@ -201,7 +216,13 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
     let disp = |s: u8| {
         Arc::new(
             (0..64usize)
-                .map(|i| if i == scal_i(s) { [f32::from(s), 1.0] } else { [0.0, 0.0] })
+                .map(|i| {
+                    if i == scal_i(s) {
+                        [f32::from(s), 1.0]
+                    } else {
+                        [0.0, 0.0]
+                    }
+                })
                 .collect::<Vec<[f32; 2]>>(),
         )
     };
@@ -250,27 +271,62 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
 /// Iguala dois snapshots **plano a plano**, nomeando qual falhou.
 fn assert_same_planes(got: &ModelSnapshot, want: &ModelSnapshot, what: &str) {
     assert_eq!(got.canvas_rgba, want.canvas_rgba, "{what}: canvas_rgba");
-    assert_eq!(got.images.len(), want.images.len(), "{what}: images (contagem)");
+    assert_eq!(
+        got.images.len(),
+        want.images.len(),
+        "{what}: images (contagem)"
+    );
     for (k, v) in &want.images {
-        assert_eq!(got.images.get(k).map(|i| &i.rgba8), Some(&v.rgba8), "{what}: images[{k:?}]");
+        assert_eq!(
+            got.images.get(k).map(|i| &i.rgba8),
+            Some(&v.rgba8),
+            "{what}: images[{k:?}]"
+        );
     }
     assert_eq!(got.heights, want.heights, "{what}: heights");
     assert_eq!(got.covers, want.covers, "{what}: covers");
     assert_eq!(got.mats, want.mats, "{what}: mats");
     assert_eq!(got.mask_scratch, want.mask_scratch, "{what}: mask_scratch");
-    assert_eq!(got.selection_mask, want.selection_mask, "{what}: selection_mask");
-    assert_eq!(got.selection_crisp, want.selection_crisp, "{what}: selection_crisp");
+    assert_eq!(
+        got.selection_mask, want.selection_mask,
+        "{what}: selection_mask"
+    );
+    assert_eq!(
+        got.selection_crisp, want.selection_crisp,
+        "{what}: selection_crisp"
+    );
     assert_eq!(got.deform.disp, want.deform.disp, "{what}: deform.disp");
     assert_eq!(got.deform.pre, want.deform.pre, "{what}: deform.pre");
     assert_eq!(got.deform.pre_h, want.deform.pre_h, "{what}: deform.pre_h");
-    assert_eq!(got.deform.pre_cover, want.deform.pre_cover, "{what}: deform.pre_cover");
-    assert_eq!(got.deform.pre_mats, want.deform.pre_mats, "{what}: deform.pre_mats");
+    assert_eq!(
+        got.deform.pre_cover, want.deform.pre_cover,
+        "{what}: deform.pre_cover"
+    );
+    assert_eq!(
+        got.deform.pre_mats, want.deform.pre_mats,
+        "{what}: deform.pre_mats"
+    );
     assert_eq!(got.sculpt.pre, want.sculpt.pre, "{what}: sculpt.pre");
-    assert_eq!(got.sculpt.amount, want.sculpt.amount, "{what}: sculpt.amount");
-    assert_eq!(got.sculpt.plane_sum, want.sculpt.plane_sum, "{what}: sculpt.plane_sum");
-    assert_eq!(got.sculpt.pre_cover, want.sculpt.pre_cover, "{what}: sculpt.pre_cover");
-    assert_eq!(got.sculpt.pre_mats, want.sculpt.pre_mats, "{what}: sculpt.pre_mats");
-    assert_eq!(got.sculpt.pre_rgba, want.sculpt.pre_rgba, "{what}: sculpt.pre_rgba");
+    assert_eq!(
+        got.sculpt.amount, want.sculpt.amount,
+        "{what}: sculpt.amount"
+    );
+    assert_eq!(
+        got.sculpt.plane_sum, want.sculpt.plane_sum,
+        "{what}: sculpt.plane_sum"
+    );
+    assert_eq!(
+        got.sculpt.pre_cover, want.sculpt.pre_cover,
+        "{what}: sculpt.pre_cover"
+    );
+    assert_eq!(
+        got.sculpt.pre_mats, want.sculpt.pre_mats,
+        "{what}: sculpt.pre_mats"
+    );
+    assert_eq!(
+        got.sculpt.pre_rgba, want.sculpt.pre_rgba,
+        "{what}: sculpt.pre_rgba"
+    );
 }
 
 /// **O oráculo A7 (o do ADR-0117), por PLANO.** Ida e volta byte-idêntica, com os dezenove planos
@@ -304,7 +360,10 @@ fn every_plane_of_a_snapshot_survives_the_round_trip() {
 fn a_chain_of_deltas_walks_back_through_every_state() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     // Seeds cujas colunas (`seed % 6`) sao todas DISTINTAS: cada estado toca outro lugar.
-    let states: Vec<ModelSnapshot> = [10u8, 21, 32, 43, 54, 65].into_iter().map(model_all_planes).collect();
+    let states: Vec<ModelSnapshot> = [10u8, 21, 32, 43, 54, 65]
+        .into_iter()
+        .map(model_all_planes)
+        .collect();
     for w in states.windows(2) {
         c.record_structural(w[0].clone(), w[1].clone());
     }
@@ -312,9 +371,9 @@ fn a_chain_of_deltas_walks_back_through_every_state() {
         let back = c.undo().expect("passo");
         assert_same_planes(&back, &states[i], &format!("undo até o estado {i}"));
     }
-    for i in 1..states.len() {
+    for (i, want) in states.iter().enumerate().skip(1) {
         let fwd = c.redo().expect("passo");
-        assert_same_planes(&fwd, &states[i], &format!("redo até o estado {i}"));
+        assert_same_planes(&fwd, want, &format!("redo até o estado {i}"));
     }
 }
 
@@ -367,7 +426,11 @@ fn the_byte_ledger_gives_the_memory_back() {
     c.record_structural(model_all_planes(2), model_all_planes(3));
     let two = c.retained_bytes();
     c.undo();
-    assert_eq!(c.retained_bytes(), two, "um undo MOVE bytes de pilha, nao os devolve");
+    assert_eq!(
+        c.retained_bytes(),
+        two,
+        "um undo MOVE bytes de pilha, nao os devolve"
+    );
     // Uma edição nova mata o redo — e os bytes dele.
     c.record_structural(model_all_planes(2), model_all_planes(9));
     assert!(

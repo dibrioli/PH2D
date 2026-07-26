@@ -42,12 +42,6 @@ pub(crate) struct PlaneDeltas {
     sculpt_pre_rgba: StoredPlane<u8>,
 }
 
-impl<T> Default for StoredPlane<T> {
-    fn default() -> Self {
-        Self::Unchanged
-    }
-}
-
 impl PlaneDeltas {
     /// Extrai os deltas dos dois endpoints e **esvazia os dois**: depois disto os `ModelSnapshot`
     /// guardados carregam só metadados, e os pixels vivem aqui.
@@ -187,4 +181,3 @@ impl PlaneDeltas {
             + self.sculpt_pre_rgba.heap_bytes()
     }
 }
-

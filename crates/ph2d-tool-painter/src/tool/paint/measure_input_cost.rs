@@ -119,26 +119,34 @@ fn the_input_cost_without_impasto_is_the_control() {
 /// **`Arc` clonado**. O 1º dab do traço escreve no canvas ⇒ `Arc::make_mut` vê `strong_count == 2` e
 /// **copia o buffer inteiro**. Copy-on-write, uma vez por traço, do tamanho da tela.
 ///
-/// ⚠️ **Isto é o MESMO defeito que a sonda `measure_undo_memory` mede pelo outro lado** — o snapshot
-/// guarda um documento inteiro por passo. Lá ele custa **memória** (1.627 MB em 24 traços); aqui custa
-/// **latência** (11,5 ms no pen-down a 4096²). A cura é a mesma, e é a frente **U1** do plano 26:
-/// histórico por DELTA. Ela deixou de ser só uma questão de orçamento de RAM.
+/// ⚠️ **Isto NASCEU como "o mesmo defeito que `measure_undo_memory` mede pelo outro lado", e a U1
+/// provou que não é** — a nota que estava aqui dizia *"a cura é a mesma, e é a frente U1"*, e ela está
+/// ERRADA. A U1 landou (2026-07-26): o histórico caiu de 1.627 para 242 MB e **este número não se
+/// moveu** (16,49 → 16,07 ms a 4096²).
 ///
-/// ## Medido (2026-07-25)
+/// O raciocínio que falhou é sutil e vale escrito: guardar só a região no HISTÓRICO é uma decisão sobre
+/// o que sobra **depois** do traço. O que força a cópia é precisar do estado anterior **durante** ele —
+/// e enquanto QUALQUER segunda referência ao canvas existir (o snapshot do pen-down, o cursor do
+/// histórico, o `base` de uma sessão de proteção), o primeiro dab paga um `Arc::make_mut`. Tirar uma das
+/// referências não ajuda: basta uma.
+///
+/// ## Medido (2026-07-25, re-medido em 2026-07-26 com a U1 no lugar)
 ///
 /// | tela | copiar o canvas | **pen-down medido (sem impasto)** |
 /// |---|---|---|
-/// | 1024² | 0,70 ms | **0,73** |
-/// | 2048² | 2,54 ms | ~3,2 |
-/// | 4096² | **9,40 ms** | **11,47** |
+/// | 1024² | 0,55 ms | **1,20** |
+/// | 2048² | 2,64 ms | ~3,2 |
+/// | 4096² | **12,35 ms** | **16,07** |
 ///
-/// **O pen-down É a cópia do canvas**, dentro do ruído. E o move é PLANO na tela (0,75 ms a 1024² e a
+/// **O pen-down É a cópia do canvas**, dentro do ruído. E o move é PLANO na tela (0,97 ms a 1024² e a
 /// 4096²) — trabalho honesto por dab, não um defeito.
 ///
-/// ⚠️ **A cura é a frente U1 (histórico por DELTA), e não há atalho:** duas versões do canvas têm de
-/// coexistir enquanto o traço corre, então UMA cópia é irredutível — a menos que o passo de undo
-/// guarde só a REGIÃO que o traço tocou, que é exatamente o que a U1 propõe. Ela deixou de ser uma
-/// questão de orçamento de RAM: ela é também os 9,4 ms do primeiro traço.
+/// ⚠️ **E a DECOMPOSIÇÃO refuta metade da receita escrita.** A §13.12.5 do doc 25 prescrevia *"semeadura
+/// lazy por TILE **+ reuso da alocação** (mata o page-fault)"*. Medido: com o buffer já mapeado a cópia
+/// custa 11,68 dos 12,35 ms ⇒ **a alocação vale 5%**. O page-fault não é o alvo; o memcpy é. Sobra a
+/// outra metade da receita, e ela é a única: **capturar o "antes" por REGIÃO, sob demanda**, na primeira
+/// escrita de cada tile — o *tile-based undo* do GIMP/Krita. Isso quer uma porta única de escrita de
+/// canvas, e hoje há ~25 sítios chamando `Arc::make_mut` direto: é wave própria, com gates próprios.
 ///
 /// Não afirma nada; IMPRIME.
 #[test]
@@ -218,6 +226,39 @@ fn the_delta_history_costs_this_much_to_undo() {
         });
         #[allow(clippy::cast_precision_loss)]
         let held = t.undo_retained_bytes() as f64 / 1_048_576.0;
-        println!("[undo-cost] {side}x{side}: undo {undo:.2} ms · redo {redo:.2} ms  (retido {held:.1} MB)");
+        println!(
+            "[undo-cost] {side}x{side}: undo {undo:.2} ms · redo {redo:.2} ms  (retido {held:.1} MB)"
+        );
     }
+}
+
+/// **O defeito do pen-down SEGUE ABERTO, e este é o número dele.**
+///
+/// Um gate, não uma medição impressa — no molde do
+/// `the_documented_hardening_is_still_there_and_this_is_its_number` (§13.10): quando a wave da captura
+/// por tile chegar, é este teste que vira vermelho e diz que ela funcionou.
+///
+/// ⚠️ **Ele afirma uma RAZÃO, nunca wall-clock** — o `ci-test` compila em `opt-level=1` e uma barra de
+/// tempo mediria o PERFIL, não o produto. A propriedade é: *o pen-down é canvas-proporcional*, e é
+/// exatamente isso que a cura tem de quebrar. Dezesseis vezes a área hoje custa perto de dezesseis
+/// vezes o pen-down; a barra é folgada (≥ 4×) porque o que se quer detectar é a MUDANÇA DE CLASSE, de
+/// proporcional-à-tela para proporcional-à-pegada.
+#[test]
+fn the_pen_down_is_still_canvas_proportional_and_this_is_its_number() {
+    let cost = |side: u32| {
+        let mut t = tool(side);
+        ms(&mut || {
+            t.on_canvas_pointer(cp([100.0, 300.0], PointerPhase::Down));
+        })
+    };
+    let small = cost(1024);
+    let big = cost(4096);
+    let ratio = big / small.max(f64::MIN_POSITIVE);
+    println!("[pen-down] 1024 {small:.2} ms · 4096 {big:.2} ms · razao {ratio:.1}x (16x a area)");
+    assert!(
+        ratio > 4.0,
+        "o pen-down deixou de ser canvas-proporcional (razao {ratio:.1}x para 16x a area) — se isto \
+         foi a wave da captura por REGIAO, apague este gate e escreva o irmao que afirma o contrario; \
+         se nao foi, alguem tornou o primeiro traco mais lento na tela pequena"
+    );
 }

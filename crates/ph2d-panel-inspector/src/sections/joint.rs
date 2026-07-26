@@ -23,7 +23,11 @@ const KIND_LABELS: [&str; 5] = ["Pin", "Spring", "Rope", "Weld", "Slider"];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
-const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
+///
+/// `pub(super)` because the pair cluster next door speaks the same two words —
+/// one list, so an "On"/"Enabled" drift between two halves of one section is not
+/// a thing that can happen.
+pub(super) const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
 
 /// Tag of the Pin kind — named because the painter branches on it and a bare
 /// `0` at a branch survives a refactor pointing at the wrong variant.
@@ -123,9 +127,40 @@ pub(crate) fn paint_joint_section(
     let mut yy = y + header_h;
     let h = ROW_H_PX;
 
-    // One row per body END (label + current name + re-pick eyedropper), in its
-    // own fn for the 200-LOC panel-fn cap.
-    yy = paint_body_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    // **Active comes FIRST** (W-J8) — it qualifies everything below it. The rows
+    // stay painted and stay editable while it is off: an inactive joint is one
+    // you are still authoring, which is the whole difference from a deleted one.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Active",
+        ids::INSP_JOINT_ACTIVE_GROUP,
+        &ids::INSP_JOINT_ACTIVE,
+        &SWITCH_LABELS,
+        u8::from(info.active),
+    );
+
+    // The PAIR cluster: who the two ends are, the gesture that exchanges them,
+    // and the one fact that is about the pair rather than about the constraint.
+    // Its own module (`joint_pair_rows`) — the same cut the section draws on
+    // screen, and the one the 600-LOC panel cap asked for.
+    yy = super::joint_pair_rows::paint_pair_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        info,
+    );
 
     yy = seg_row(
         scene,
@@ -401,107 +436,6 @@ fn paint_break_rows(
         );
     }
     yy
-}
-
-/// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's
-/// name, and an eyedropper to re-pick it. Its own fn for the 200-LOC panel-fn
-/// cap. Shown for any selected joint — no other object needs selecting (the
-/// redesign's whole point). Clicking the eyedropper ARMS a canvas pick; the next
-/// click on a body re-binds that end. A body whose name no longer resolves shows
-/// "(missing)" dimmed — the per-end replacement for the old combined "not
-/// connected" line, which said it once for both ends and could not point at
-/// WHICH end broke.
-#[allow(clippy::too_many_arguments)]
-fn paint_body_rows(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorJointInfo,
-) -> f32 {
-    let mut yy = y;
-    let h = ROW_H_PX;
-    let label_font = TypeToken::Sm.px();
-    let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
-    // "Body A" / "Body B" column, wide enough for the label at this font.
-    let label_w = (label_font * 3.6).min(w * 0.4); // LITERAL-PX-OK: label = 3.6 char-heights, capped at 0.4 of the row
-    let gap = Spacing::Sm.px();
-    for (slot_label, name, id, armed) in [
-        (
-            "Body A",
-            &info.body_a_name,
-            ids::INSP_JOINT_PICK_A,
-            info.pick_armed == 1,
-        ),
-        (
-            "Body B",
-            &info.body_b_name,
-            ids::INSP_JOINT_PICK_B,
-            info.pick_armed == 2,
-        ),
-    ] {
-        let text_y = yy + (h - label_font) * 0.5;
-        paint_text(
-            text_system,
-            scene,
-            slot_label,
-            x,
-            text_y,
-            label_font,
-            label_w,
-            resolve(ColorToken::Text2, theme),
-        );
-        let shown = display_name(name);
-        let name_x = x + label_w;
-        let name_w = (w - label_w - icon_w - gap).max(0.0);
-        paint_text(
-            text_system,
-            scene,
-            shown,
-            name_x,
-            text_y,
-            label_font,
-            name_w,
-            resolve(
-                if name.is_empty() {
-                    ColorToken::Text3
-                } else {
-                    ColorToken::Text1
-                },
-                theme,
-            ),
-        );
-        // The eyedropper, right-aligned. Pressed (accent) while its pick is
-        // ARMED, so the artist sees which end is waiting for a body click.
-        let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
-        let state = if armed {
-            ButtonState::Pressed
-        } else {
-            store.button_state(id).unwrap_or(ButtonState::Normal)
-        };
-        paint_icon_button(
-            brect,
-            IconGlyph::Builtin(IconId::Eyedropper),
-            IconButtonStyle::Compact,
-            state,
-            scene,
-            theme,
-        );
-        hit_index.register(id, brect);
-        yy += h;
-    }
-    yy
-}
-
-/// A body name for display, with a stand-in when it could not be resolved.
-/// The joint stores a hash, and a hash is not something to show a person —
-/// but neither is an empty gap where a name should be.
-fn display_name(name: &str) -> &str {
-    if name.is_empty() { "(missing)" } else { name }
 }
 
 #[cfg(test)]

@@ -104,6 +104,37 @@ pub const INSP_JOINT_BREAK_FORCE: NodeId = hash_node_id("insp_joint_break_force"
 /// (`JointKind::breaks_on_torque`).
 pub const INSP_JOINT_BREAK_TORQUE: NodeId = hash_node_id("insp_joint_break_torque");
 
+/// **Active** (W-J8) — is the constraint in force at all? Off stops the joint
+/// holding without the object going anywhere, which is the thing Delete cannot
+/// give you (*try the rig without this one*). Newton ships the same checkbox.
+///
+/// First in the section because it qualifies everything below it: the parameters
+/// stay authored and stay editable, they are simply not being imposed.
+pub const INSP_JOINT_ACTIVE_GROUP: NodeId = hash_node_id("insp_joint_active_group");
+pub const INSP_JOINT_ACTIVE: [NodeId; 2] = [
+    hash_node_id("insp_joint_active_off"),
+    hash_node_id("insp_joint_active_on"),
+];
+
+/// **Collide Connected** (W-J8) — do the two bodies this joins still bump into
+/// each other? Default off, and the default is the MEASURED one (a chain link
+/// overlaps its neighbour at the pin by construction).
+///
+/// Lives with the two body rows and the swap, because it is a fact about the
+/// PAIR rather than about the constraint.
+pub const INSP_JOINT_COLLIDE_GROUP: NodeId = hash_node_id("insp_joint_collide_group");
+pub const INSP_JOINT_COLLIDE: [NodeId; 2] = [
+    hash_node_id("insp_joint_collide_off"),
+    hash_node_id("insp_joint_collide_on"),
+];
+
+/// **Swap A↔B** (W-J8) — exchange the two ends. Behaviour-preserving by
+/// construction (`PhysicsJoint::swapped` negates every signed quantity measured
+/// between the bodies), so what it changes is which end is called A: the rows,
+/// the anchor dot's owner, the overlay's solid/dashed lines, and which end each
+/// eyedropper re-picks.
+pub const INSP_JOINT_SWAP: NodeId = hash_node_id("insp_joint_swap");
+
 /// Delete the joint object.
 pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 

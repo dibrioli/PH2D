@@ -25,6 +25,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::Click(id) => {
             if id == ids::INSP_JOINT_REMOVE {
                 Some(JointFieldEdit::Remove)
+            } else if id == ids::INSP_JOINT_SWAP {
+                Some(JointFieldEdit::Swap)
             } else if id == ids::INSP_JOINT_PICK_A {
                 Some(JointFieldEdit::PickBodyA)
             } else if id == ids::INSP_JOINT_PICK_B {
@@ -37,6 +39,10 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::MotorEnabled(i == 1))
             } else if let Some(i) = ids::INSP_JOINT_BREAK.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::BreakEnabled(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_ACTIVE.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::Active(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_COLLIDE.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::CollideConnected(i == 1))
             } else {
                 ids::INSP_JOINT_MOTOR_MODE
                     .iter()

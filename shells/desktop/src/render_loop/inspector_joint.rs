@@ -167,6 +167,8 @@ pub(crate) fn build_joint_info(
         // than being re-derived from `kind_tag` on the far side — a second copy of
         // "which kinds can report a torque" would be a second thing to keep true.
         breaks_on_torque: joint.kind.breaks_on_torque(),
+        active: joint.active,
+        collide_connected: joint.collide_connected,
     })
 }
 
@@ -326,6 +328,19 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // W-J7. No unit conversion in either direction: a newton and a
         // newton-metre mean the same thing on both sides of this boundary, which
         // is exactly why these two rows need no `limit_in`/`motor_in` twin.
+        // W-J8. Two plain switches — no conversion, no unit, no gating on kind:
+        // every joint can be turned off, and every joint has a pair.
+        JointFieldEdit::Active(on) => next.active = on,
+        JointFieldEdit::CollideConnected(on) => next.collide_connected = on,
+        // **The pair, exchanged.** The whole operation lives on the component
+        // (`PhysicsJoint::swapped`) because it is arithmetic about the joint and
+        // nothing else: the anchors travel with their bodies and every signed
+        // quantity measured between them is negated, so the joint keeps doing
+        // exactly what it did. ⚠️ Deliberately does NOT clear `anchored` — the
+        // three sites that do are *repositions*, and this is a re-labelling; a
+        // re-seed here would send a Spring's B end back to the body's centre and
+        // throw away where the artist put it.
+        JointFieldEdit::Swap => next = next.swapped(),
         JointFieldEdit::BreakEnabled(on) => next.break_enabled = on,
         JointFieldEdit::BreakForce(v) => next.break_force = v.max(0.0),
         JointFieldEdit::BreakTorque(v) => next.break_torque = v.max(0.0),
@@ -406,7 +421,17 @@ pub(crate) fn create_joint_at(
     if ph2d_ecs::stable_name_id(&name_a) == ph2d_ecs::stable_name_id(&name_b) {
         return None;
     }
-    let label = crate::name_unique::unique_name(sim, "Joint");
+    // **A joint is named after what it joins** (W-J8) — the Unreal Constraints
+    // Graph idiom. "Post : Plank" in the Hierarchy is a joint you can find; the
+    // "Joint (3)" it replaces is a row you have to click to identify, in a rig
+    // where every row looks the same.
+    //
+    // ⚠️ **A snapshot at creation, not a live binding, and that is deliberate.**
+    // Renaming a body does not rewrite this label. The name is the artist's — the
+    // Hierarchy lets them edit it — and a label that rewrote itself would fight a
+    // rename it cannot know was intentional. (What DOES follow a rename is the
+    // BINDING, which travels by name hash and re-attaches by itself.)
+    let label = crate::name_unique::unique_name(sim, &format!("{name_a} : {name_b}"));
     // The authored poses of the two bodies — what a body-local anchor is
     // measured against (the seed uses the same `rest`, and using the LIVE pose
     // would bake a swing into the local; W-AnchorFollow).

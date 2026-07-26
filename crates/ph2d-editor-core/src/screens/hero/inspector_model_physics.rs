@@ -448,6 +448,14 @@ pub struct InspectorJointInfo {
     /// only when this is true, because a threshold that can never be reached is
     /// a control in name only.
     pub breaks_on_torque: bool,
+    /// **Is the constraint in force?** (W-J8.) Off leaves the object, its
+    /// parameters and its anchors exactly where they are and stops it holding —
+    /// the thing Delete cannot do.
+    pub active: bool,
+    /// **Do the two jointed bodies still collide with each other?** (W-J8.)
+    /// Default off, and the default is measured: a chain link overlaps its
+    /// neighbour at the pin by construction.
+    pub collide_connected: bool,
 }
 
 /// A single editable §12 joint field, dispatched as
@@ -488,6 +496,18 @@ pub enum JointFieldEdit {
     /// ARM a canvas pick for slot B — the sibling of
     /// [`PickBodyA`](JointFieldEdit::PickBodyA).
     PickBodyB,
+    /// **Is this joint in force?** (W-J8.) The authored twin of a break: both
+    /// write the same rapier flag, and only this one rides in the descriptor —
+    /// so a Reset brings an inactive joint back inactive and a broken one back
+    /// holding.
+    Active(bool),
+    /// **Do the two jointed bodies collide with each other?** (W-J8.)
+    CollideConnected(bool),
+    /// **Exchange the two ends.** Behaviour-preserving by construction
+    /// (`PhysicsJoint::swapped`): the anchors travel with their bodies and every
+    /// signed quantity measured between them is negated, so the joint does
+    /// exactly what it did and only the labelling changes.
+    Swap,
     /// Delete the joint object.
     Remove,
 }

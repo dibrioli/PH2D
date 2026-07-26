@@ -62,165 +62,11 @@
 use ph2d_ecs::{Component, SimComponent};
 use serde::{Deserialize, Serialize};
 
-/// Which constraint this joint applies. **Append-only** — postcard encodes the
-/// discriminant positionally, so new kinds go at the END or every saved
-/// project reads its joints as the wrong type.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum JointKind {
-    /// The two bodies share a point and turn freely about it. The hinge, the
-    /// pendulum's pivot, the ragdoll's elbow.
-    #[default]
-    Pin,
-    /// A damped spring between the anchors — the distance is a target, not a
-    /// law.
-    Spring,
-    /// The anchors may come as close as they like but never further apart than
-    /// [`PhysicsJoint::max_length`].
-    Rope,
-    /// **Weld** — the two bodies are locked rigidly together at the anchor:
-    /// no relative motion, no rotation. A pin with its rotation frozen. Useful
-    /// for compound bodies and (later) breakable structures. It shares a point
-    /// like a pin but has no motor, no limits, no length.
-    Weld,
-    /// **Slider** — the bodies may only slide along ONE axis and never rotate
-    /// relative to each other. The elevator, the sliding door, the piston.
-    ///
-    /// The **axis is the joint entity's own `Transform::rotation`** — no new
-    /// field, and no second place to keep it. That is the model Godot and
-    /// Unreal use, and it is the one this component already implies: the
-    /// entity's `Transform` is where a joint's *placement* lives (its
-    /// translation is the anchor), so its rotation is where a placement's
-    /// direction lives. It also means the axis is authorable on day one, in the
-    /// Inspector's own Rotation field, with zero widgets added.
-    ///
-    /// Like a Pin it has **limits** — but they are a STROKE, in metres. See
-    /// [`JointKind::limits_in_metres`].
-    Slider,
-}
-
-impl JointKind {
-    /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does.
-    ///
-    /// ⚠️ **No longer the same question as *"does it have a motor?"*** — that is
-    /// [`Self::has_motor`], and it grew a Slider and a Rope in W-J6. This one is
-    /// still asked wherever the *angular* nature is the point.
-    pub fn is_hinge(self) -> bool {
-        matches!(self, JointKind::Pin)
-    }
-
-    /// **Is this kind's free degree of freedom a TRANSLATION?** A Slider slides
-    /// along its axis; a Rope's is the distance between the anchors. A Pin's is
-    /// an angle.
-    ///
-    /// The one underlying fact behind every "metres or radians?" in this file:
-    /// [`Self::limits_in_metres`] and [`Self::motor_in_metres`] both read it
-    /// rather than re-listing the kinds, so a sixth kind states its unit once.
-    pub fn translates(self) -> bool {
-        matches!(self, JointKind::Slider | JointKind::Rope)
-    }
-
-    /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
-    /// range) and a Slider (a stroke) do.
-    ///
-    /// ⚠️ **Split out of `is_hinge` when the Slider arrived**, for the same
-    /// reason `has_length` had to be split out of `!is_hinge` when the Weld did:
-    /// *"is it a hinge?"* and *"does it have limits?"* had the same answer while
-    /// the Pin was the only limited kind, and one of the two questions was
-    /// always going to grow a second member. Collapsed, a Slider would either
-    /// get a motor it has no model for or lose the limits that make it a rail.
-    pub fn has_limits(self) -> bool {
-        matches!(self, JointKind::Pin | JointKind::Slider)
-    }
-
-    /// **Can this kind be DRIVEN?** A Pin's hinge, a Slider's rail and a Rope's
-    /// distance (a winch) all have a free degree of freedom a motor can push
-    /// along. A Spring and a Weld do not.
-    ///
-    /// **One door.** The Inspector asks it to decide whether to paint the Motor
-    /// card, and the bridge asks it before handing a motor to the solver — two
-    /// answers to *"does this joint have a motor?"* is how a knob comes to be
-    /// painted for a kind that ignores it.
-    ///
-    /// ⚠️ **A Spring is excluded for a MECHANICAL reason, not a UI one:** rapier
-    /// models a spring *as* a motor on the same axis, so a second motor there
-    /// would overwrite the stiffness and damping the artist authored and turn the
-    /// spring into a rate-driven rod. The wrapper states the same exclusion in
-    /// `ph2d_physics::motor_axis`, which is what the solver actually reads.
-    pub fn has_motor(self) -> bool {
-        matches!(self, JointKind::Pin | JointKind::Slider | JointKind::Rope)
-    }
-
-    /// Are this kind's limits a distance rather than an angle?
-    ///
-    /// ⚠️ **`limit_min`/`limit_max` carry the unit of the KIND** — radians for a
-    /// Pin, metres for a Slider — which is exactly how rapier models it (one
-    /// `limits` field, belonging to whichever degree of freedom the joint left
-    /// free). One door so the Inspector's label, its conversion, and the
-    /// bridge's hand-off to the solver cannot disagree about what the number
-    /// means; and the kind-change re-seeds the range, so `±0.785` rad never
-    /// silently becomes `±0.785` m.
-    ///
-    /// Derived from [`Self::translates`] and [`Self::has_limits`] rather than
-    /// listing kinds again: a Rope translates but has no limit range, so it
-    /// answers `false` here and `true` to [`Self::motor_in_metres`] — the two
-    /// questions genuinely differ for it, and deriving both from one fact is
-    /// what keeps them able to.
-    pub fn limits_in_metres(self) -> bool {
-        self.has_limits() && self.translates()
-    }
-
-    /// Is this kind's MOTOR linear rather than angular — metres and metres per
-    /// second rather than degrees and degrees per second?
-    ///
-    /// ⚠️ **Not the same question as [`Self::limits_in_metres`], and a Rope is
-    /// the case that proves it:** a Rope has no limit range at all (so that one
-    /// says `false`) and its motor is a winch reeling a distance (so this one
-    /// says `true`). Sharing one door would have given the winch a target in
-    /// degrees.
-    /// **Can a break threshold on this kind ever fire on TORQUE?**
-    ///
-    /// Only where the angular axis is limited or motorised, which in this kind
-    /// set is the Pin alone. rapier reports the reaction of a limited or
-    /// motorised axis exactly (measured: 4.9050 and 4.9049 against `m·g·r` of
-    /// 4.905) and reports **nothing** for a locked one — a Weld cantilever holds
-    /// 4.905 N·m and reads `0.0000`. A Rope and a Spring leave the angular axis
-    /// free, so their torque is genuinely zero.
-    ///
-    /// Asked by the panel to decide whether to paint the row, and by nothing
-    /// else: the wrapper compares whatever threshold it is handed, so a torque
-    /// on a Weld is not *wrong*, it is **unreachable** — which is worse, because
-    /// it looks like a control.
-    #[must_use]
-    pub fn breaks_on_torque(self) -> bool {
-        matches!(self, JointKind::Pin)
-    }
-
-    pub fn motor_in_metres(self) -> bool {
-        self.translates()
-    }
-
-    /// Does this kind have a length the artist tunes? Only Spring and Rope do —
-    /// a Pin's length is zero (the anchors coincide) and a Weld's is too (it is
-    /// rigid). **Not** `!is_hinge()`: a Weld is not a hinge but still has no
-    /// length, so the two questions had to stop sharing an answer.
-    pub fn has_length(self) -> bool {
-        matches!(self, JointKind::Spring | JointKind::Rope)
-    }
-
-    /// Do the two bodies share one point (a Pin, a Weld or a Slider), rather than
-    /// have two separate ends (a Spring or a Rope)? The anchor policy reads this:
-    /// a shared-point joint anchors both bodies at the same world point, a
-    /// two-ended one anchors body B at its own centre.
-    ///
-    /// A Slider shares a point **and that point is the zero of its stroke** —
-    /// rapier measures the prismatic displacement from where the two anchors
-    /// coincide, so authoring them apart would offset the whole range by the
-    /// gap. It falls out of `!has_length()` correctly, but it is stated here
-    /// rather than left to fall out by accident.
-    pub fn shares_a_point(self) -> bool {
-        !self.has_length()
-    }
-}
+/// As perguntas que um TIPO responde (`has_motor`, `limits_in_metres`, …) —
+/// módulo irmão pelo cap de 700 LOC, cortado por assunto: *que espécie de
+/// restrição é esta* × *o estado que este joint guarda*.
+mod kind;
+pub use kind::JointKind;
 
 /// What a driven joint is *aiming at* — the editor's mirror of
 /// [`ph2d_physics::MotorMode`]. **Append-only**, for the same postcard reason
@@ -327,6 +173,33 @@ pub struct PhysicsJoint {
     /// §12 row is offered on the Pin alone for that reason; see
     /// [`ph2d_physics::JointLoad`].
     pub break_torque: f32,
+    /// **Is this joint in force?** (W-J8.) Clear it and the constraint stops
+    /// without the object going anywhere — its parameters, its anchors, its name
+    /// and its place in the Hierarchy all survive.
+    ///
+    /// The thing a Delete cannot give you: *try the rig without this one*. Newton
+    /// ships it as an "Active" checkbox and rapier has the flag natively
+    /// (`JointEnabled`), so this is the editor half of something the solver
+    /// already does.
+    ///
+    /// ⚠️ **Authored, where a BREAK is runtime.** The two write the same rapier
+    /// flag and mean different things: this one rides in the descriptor, so a
+    /// Reset brings the joint back *inactive*; a break is the solver's doing, and
+    /// a Reset brings that joint back **holding**. `JointView` keeps them apart
+    /// for the same reason — one draws dimmed, the other draws red.
+    pub active: bool,
+    /// **Do the two bodies this joins still collide with each other?**
+    ///
+    /// `false` by default, and that default is the measured one: a chain link
+    /// overlaps its neighbour at the pin by construction, so contacts ON hands
+    /// the solver a permanent interpenetration to fight — measured, a hub pinned
+    /// inside the plank it drives has its 4 rad/s motor defeated to a relative
+    /// **0.000**. rapier defaults the other way; Box2D and Unity default as we do.
+    ///
+    /// The ON side is a real case rather than a completeness knob: a crate roped
+    /// to a static block **rests on it** (`y = 0.899`) with contacts on and falls
+    /// straight through it to the rope's full length (`y = −4.000`) with them off.
+    pub collide_connected: bool,
 }
 
 impl Default for PhysicsJoint {
@@ -363,6 +236,11 @@ impl Default for PhysicsJoint {
             break_enabled: false,
             break_force: Self::DEFAULT_BREAK_FORCE,
             break_torque: Self::DEFAULT_BREAK_TORQUE,
+            // A joint holds, and jointed bodies do not collide — the two
+            // defaults the wrapper's `JointDesc` carries, for the reasons
+            // measured there.
+            active: true,
+            collide_connected: false,
         }
     }
 }
@@ -563,6 +441,62 @@ impl PhysicsJoint {
         self.local_a = [finite(self.local_a[0], 0.0), finite(self.local_a[1], 0.0)];
         self.local_b = [finite(self.local_b[0], 0.0), finite(self.local_b[1], 0.0)];
         self
+    }
+
+    /// **This joint with its two ends exchanged** — the *Swap A↔B* gesture
+    /// (W-J8), and a **behaviour-preserving** one.
+    ///
+    /// ## What has to move, and why it is more than the two names
+    ///
+    /// Every per-body fact travels with its body: the two **anchors** are stored
+    /// in each body's own frame, so exchanging the pair without exchanging them
+    /// would re-glue the pin somewhere it never was. (`axis_a`/`axis_b` are not
+    /// stored — the bridge derives them per reconcile from the joint's own
+    /// rotation against each body — so they follow for free.)
+    ///
+    /// ## And every SIGNED quantity is measured from A to B, so it negates
+    ///
+    /// MEASURED (`ph2d-physics/tests/measure_joint_pair.rs`), same rig twice:
+    ///
+    /// | quantity | authored | bare swap | this |
+    /// |---|---|---|---|
+    /// | pin: load y | −1.0000 | −1.0000 | −1.0000 |
+    /// | rope: load y | −2.0000 | −2.0000 | −2.0000 |
+    /// | motor: wheel ω | 4.0000 | **−4.0000** | 4.0000 |
+    /// | servo: wheel rot | 44.9998° | **−44.9998°** | 44.9998° |
+    /// | limit: plank rot | −11.4592° | **−34.3775°** | −11.4592° |
+    /// | slider: carriage y | −0.3000 | **−1.2000** | −0.3000 |
+    ///
+    /// A bare swap reverses the motor and mirrors the range (`[min, max]` is the
+    /// range of `θb − θa`, which becomes `[−max, −min]`). Compensating reproduces
+    /// the authored column in every row — so **a swap changes which end is called
+    /// A, and nothing else**.
+    ///
+    /// ⚠️ **That it changes nothing physical is the point, not a reason to doubt
+    /// the button.** What it changes is real and visible: the two rows exchange,
+    /// the display pivot follows the OTHER body (`sync_joint_pivots` derives it
+    /// from A), the overlay's ownership lines exchange (A solid, B dashed), and
+    /// each eyedropper re-picks the other end. Uncompensated, the button would
+    /// instead be the one that silently reverses a hinge you spent an hour tuning.
+    ///
+    /// ⚠️ **`anchored` stays true.** The locals are still exactly right, only
+    /// re-labelled — marking it un-anchored would send the anchors back through
+    /// the seed policy (a Spring's B end goes to the body's CENTRE) and throw away
+    /// where the artist put them. This is the one authoring gesture on this
+    /// component that must NOT re-seed.
+    #[must_use]
+    pub fn swapped(self) -> Self {
+        Self {
+            body_a: self.body_b,
+            body_b: self.body_a,
+            local_a: self.local_b,
+            local_b: self.local_a,
+            limit_min: -self.limit_max,
+            limit_max: -self.limit_min,
+            motor_speed: -self.motor_speed,
+            motor_target: -self.motor_target,
+            ..self
+        }
     }
 
     /// Is this joint fully specified — does it name two *different* bodies?

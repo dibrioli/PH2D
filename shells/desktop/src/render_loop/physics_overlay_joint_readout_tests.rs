@@ -45,6 +45,7 @@ fn view(load: f32, peak: f32, cap: f32, broken: bool) -> JointView {
         length: Some(1.0),
         axis: None,
         broken,
+        active: true,
         load: JointLoad {
             force: load,
             torque: 0.0,
@@ -183,6 +184,33 @@ fn the_torque_line_exists_only_where_a_torque_threshold_does() {
     );
     v.break_torque = 20.0;
     assert_eq!(texts(&v, false), ["9.8 / 100 N", "4.9 / 20 N.m"]);
+}
+
+/// **Um joint DESLIGADO não imprime carga** (W-J8) — nem o par, nem a marca
+/// d'água.
+///
+/// Ele não segura nada, então o número vivo é zero por construção; e o pico ao
+/// lado descreveria uma corrida que o próprio interruptor encerrou. As duas
+/// coisas juntas — um zero e um pico congelado — são **exatamente** a figura de
+/// um joint ROMPIDO, e duas coisas diferentes não podem imprimir o mesmo par.
+///
+/// Mutação: tirar o `if !v.active { continue }` → um joint desarmado com teto
+/// escreve `0 / 60 N`, indistinguível de um que cedeu.
+#[test]
+fn an_inactive_joint_prints_no_load() {
+    let mut v = view(58.9, 87.2, 60.0, false);
+    v.active = false;
+    assert!(
+        texts(&v, false).is_empty(),
+        "sem teto na tela para um joint que nao esta segurando"
+    );
+    assert!(
+        texts(&v, true).is_empty(),
+        "e selecionar nao o traz de volta — nao ha carga a ler"
+    );
+    // O controle: o MESMO joint em vigor imprime.
+    v.active = true;
+    assert_eq!(texts(&v, false), ["58.9 / 60 N", "max 87.2"]);
 }
 
 /// **O readout obedece ao interruptor do overlay** (tecla `B`), como todo o

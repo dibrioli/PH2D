@@ -115,8 +115,21 @@ pub(super) fn joint_marks(
         // IMPÕE*, e nada disso está mais em vigor. Desenhá-los descreveria uma
         // regra que o solver deixou de aplicar, que é exatamente a divergência
         // desenho×solver que o P2 do plano existe para proibir.
+        //
+        // **Um joint DESLIGADO desenha apagado** (W-J8) — a mesma figura, a
+        // mesma geometria, a mesma cor, com um terço da tinta. Ele não rompeu e
+        // não está errado: o artista o desarmou, e o desenho tem de dizer
+        // *presente, não em vigor* sem tomar emprestado o vermelho, que já
+        // significa *isto não está segurando por acidente*.
+        //
+        // ⚠️ Um joint desligado **nunca é `broken`** — a `JointView` separa as
+        // duas perguntas na fonte, porque as duas escrevem a MESMA flag do
+        // rapier; sem essa separação desarmar um joint o pintaria vermelho, com
+        // estouro de ruptura.
         let (main, dim) = if v.broken {
             (JOINT_BROKEN_RGBA, JOINT_BROKEN_DIM_RGBA)
+        } else if !v.active {
+            (JOINT_OFF_RGBA, JOINT_OFF_DIM_RGBA)
         } else {
             (JOINT_RGBA, JOINT_DIM_RGBA)
         };
@@ -144,15 +157,22 @@ pub(super) fn joint_marks(
         // `slider_rail`'s end-of-travel ticks, not by a circle at 0.5 radians.
         // Without this question a rail painted BOTH, and the arc it painted
         // described a hinge that does not exist.
+        //
+        // ⚠️ **`dim`/`main`, não as constantes acesas** (W-J8): o envelope de um
+        // joint DESLIGADO tem de apagar junto com ele, senão a dobradiça some e o
+        // arco dela fica brilhando sozinho. E ele É desenhado num joint
+        // desligado — ao contrário de um rompido, que sai por `continue` acima —
+        // porque desligar é AUTORIA: o artista continua ajustando o alcance, e
+        // esconder o que ele está ajustando é o oposto do que o botão promete.
         if let Some(arc) = v
             .limits
             .filter(|_| !v.kind.limits_in_metres())
             .map(|l| limit_arc(camera, window, v.anchor_a, v.angle_a, l, v.angle_b))
         {
-            out.push((arc, JOINT_DIM_RGBA));
+            out.push((arc, dim));
         }
         if let Some(len) = v.length {
-            out.push((length_ring(camera, window, v.anchor_a, len), JOINT_DIM_RGBA));
+            out.push((length_ring(camera, window, v.anchor_a, len), dim));
         }
         // O motor reusa o glifo de giro da zona de torque: é a MESMA pergunta
         // (*para que lado isto gira?*), então é a mesma figura, e a cor diz de
@@ -163,7 +183,7 @@ pub(super) fn joint_marks(
             .filter(|s| *s != 0.0)
             .and_then(|s| torque_glyph(v.anchor_a[0], v.anchor_a[1], s, camera, window))
         {
-            out.push((path, JOINT_RGBA));
+            out.push((path, main));
         }
     }
     out
@@ -178,6 +198,18 @@ pub(super) const JOINT_BROKEN_RGBA: [f32; 4] = [0.96, 0.32, 0.28, 0.95]; // LITE
 /// seguem respondendo *quais dois objetos este joint NOMEIA*, que continua
 /// verdadeiro depois que ele deixa de segurá-los.
 pub(super) const JOINT_BROKEN_DIM_RGBA: [f32; 4] = [0.96, 0.32, 0.28, 0.45]; // LITERAL-COLOR-OK: overlay de joint rompido (posse)
+
+/// **O joint está DESLIGADO** (W-J8) — o mesmo âmbar, com um terço da tinta.
+///
+/// Uma cor nova seria um sexto membro da paleta do overlay a aprender; o que
+/// mudou não é *que coisa é esta* e sim *ela está em vigor?*, e a resposta certa
+/// para isso é a mesma figura mais fraca. ⚠️ **Nunca o vermelho**: aquele já diz
+/// *isto não está segurando e não era para ser assim* (deformação e ruptura), e
+/// um joint desarmado está exatamente como o artista o quis.
+pub(super) const JOINT_OFF_RGBA: [f32; 4] = [0.98, 0.75, 0.25, 0.3]; // LITERAL-COLOR-OK: overlay de joint desligado
+/// As linhas de posse de um joint desligado — mais fracas ainda, pela mesma
+/// razão que as de um aceso são (elas são o fundo, não o objeto).
+pub(super) const JOINT_OFF_DIM_RGBA: [f32; 4] = [0.98, 0.75, 0.25, 0.17]; // LITERAL-COLOR-OK: overlay de joint desligado (posse)
 
 /// Meia-largura do estouro, px de tela.
 const BURST_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay

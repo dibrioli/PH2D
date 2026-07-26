@@ -56,6 +56,7 @@ fn view(kind: JointKind) -> JointView {
         // que está SEGURANDO. Um rompido tem vocabulário próprio (vermelho, sem
         // envelope, com estouro) e gates próprios em `physics_overlay_joint_break_tests`.
         broken: false,
+        active: true,
         // W-J7b: a fixture descreve um joint SEM teto e sem carga — o readout é
         // assunto do irmão `physics_overlay_joint_readout_tests`, e um teto aqui
         // faria estes gates contarem um rótulo que não é sobre eles.
@@ -519,3 +520,8 @@ mod rail_tests;
 /// corte: tudo aqui descreve um joint que **não está segurando**.
 #[path = "physics_overlay_joint_break_tests.rs"]
 mod break_tests;
+
+/// Os gates do joint DESLIGADO (W-J8) — o vizinho do anterior, e a distinção
+/// entre os dois é o assunto: um deixou de segurar, o outro foi desarmado.
+#[path = "physics_overlay_joint_active_tests.rs"]
+mod active_tests;

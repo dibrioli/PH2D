@@ -37,10 +37,16 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_MOTOR);
     register_button_ids(store, &ids::INSP_JOINT_MOTOR_MODE);
     register_button_ids(store, &ids::INSP_JOINT_BREAK);
+    // W-J8. Registered in `populate` like every sibling group: a chip the
+    // painter draws and `populate` skips is painted, hit-registered and DEAD
+    // under the mouse (the 36-cell lesson of W2c).
+    register_button_ids(store, &ids::INSP_JOINT_ACTIVE);
+    register_button_ids(store, &ids::INSP_JOINT_COLLIDE);
     register_button_ids(
         store,
         &[
             ids::INSP_JOINT_REMOVE,
+            ids::INSP_JOINT_SWAP,
             ids::INSP_JOINT_PICK_A,
             ids::INSP_JOINT_PICK_B,
             ids::INSP_PHYS_JOIN,

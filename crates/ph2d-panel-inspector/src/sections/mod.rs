@@ -36,6 +36,7 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 mod color_tint;
 mod identity;
 mod joint;
+mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;

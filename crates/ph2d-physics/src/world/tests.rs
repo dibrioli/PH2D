@@ -207,7 +207,7 @@ fn servo_gain_sweep() {
     }
 }
 
-/// **The sweep behind [`super::joints::MOTOR_TRACKING`] on a LINEAR motor** —
+/// **The sweep behind [`super::joint_gains::MOTOR_TRACKING`] on a LINEAR motor** —
 /// the case the original table did not have. A velocity motor is a damping
 /// term, so working against gravity it settles a fixed `g / tracking` SHORT of
 /// the speed it was told: 0.098 m/s at tracking 100, which is a fifth of the
@@ -284,8 +284,8 @@ fn linear_motor_tracking_sweep() {
                 }),
                 ..JointDesc::default()
             },
-            super::joints::SERVO_STIFFNESS,
-            super::joints::SERVO_DAMPING,
+            super::joint_gains::SERVO_STIFFNESS,
+            super::joint_gains::SERVO_DAMPING,
             tracking,
         )
         .expect("joint");

@@ -107,6 +107,17 @@ pub struct JointView {
     /// O teto de torque, newton-metros. `∞` fora do Pin, onde ele não pode
     /// disparar (ver [`ph2d_physics::JointLoad`]).
     pub break_torque: f32,
+    /// **Este joint está EM VIGOR?** (W-J8.) `false` quando o artista o desligou
+    /// — o objeto continua inteiro, com tudo que ele autorou; o que parou foi a
+    /// restrição.
+    ///
+    /// ⚠️ **Irmão do [`Self::broken`], e os dois NÃO são a mesma pergunta** —
+    /// embora escrevam a MESMA flag do rapier. Este é AUTORADO (vem do `desc`,
+    /// então um Reset o traz desligado); aquele é RUNTIME (o solver o pôs, e um
+    /// Reset o traz segurando). Colapsá-los pintaria um joint desligado de
+    /// vermelho, com o estouro de ruptura, dizendo que ele *partiu* quando o
+    /// artista apenas o desarmou.
+    pub active: bool,
 }
 
 /// De volta ao vocabulário AUTORADO.
@@ -170,7 +181,16 @@ impl PhysicsBridge {
                 // Perguntado ao SOLVER, nunca derivado do componente: quem
                 // rompeu foi o mundo, e o componente segue autorado como estava
                 // (é isso que faz um Reset trazer o joint de volta).
-                broken: !self.world.joint_is_enabled(j.handle).unwrap_or(true),
+                //
+                // ⚠️ **`&& j.rest.enabled` (W-J8), e sem isso o botão Active
+                // pintaria RUPTURA.** Um joint desligado pelo artista e um
+                // rompido pelo solver carregam a MESMA flag do rapier; o que os
+                // separa é o `desc`, que só o autorado move. Perguntar apenas ao
+                // solver faria desarmar um joint desenhá-lo vermelho, com o
+                // estouro — a cena dizendo *partiu* onde o artista disse
+                // *desliga*.
+                broken: !self.world.joint_is_enabled(j.handle).unwrap_or(true) && j.rest.enabled,
+                active: j.rest.enabled,
                 // ⚠️ Os dois tetos saem do `rest` — o `JointDesc` que o SOLVER
                 // recebeu — e não do componente, pela MESMA lei que `limits`
                 // segue duas linhas acima: o desenho tem de mostrar o número que

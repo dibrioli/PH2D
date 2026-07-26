@@ -129,7 +129,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// booleano e dois números finitos, e a ponte é quem os resolve na infinidade
 /// que o solver quer — guardar `f32::INFINITY` faria o painel ter de mostrar
 /// "inf" numa row numérica.
-const PROJECT_SCHEMA: u32 = 33;
+/// v34 (ADR-0131, W-J8 higiene do par): `PhysicsJoint` ganhou `active` +
+/// `collide_connected` APENDADOS — desligar a restrição sem apagar o objeto, e
+/// escolher se os dois corpos que ela une ainda se batem. Mesmo padrão
+/// posicional do v30/v32/v33: dois campos a mais no fim do blob. ⚠️ O **Swap
+/// A↔B** da mesma wave NÃO move nada aqui — ele reescreve campos que já
+/// existem (as duas pontas, as duas âncoras, e os sinais medidos entre elas),
+/// que é exatamente por que um bump se CONTA em vez de acompanhar a wave.
+const PROJECT_SCHEMA: u32 = 34;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

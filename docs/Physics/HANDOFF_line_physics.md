@@ -5528,3 +5528,135 @@ então limpar a marca d'água ali passava. Agora ele chama `b.hold(..)` direto.
 
 `PROJECT_SCHEMA` **33** (intocado — o readout é derivado, não autorado), registro
 **21**, c9 **byte-idêntico** (`c9d4baee…`, 87).
+
+---
+
+### W-J8 — a HIGIENE DO PAR (2026-07-26, cena `=50`, pendente de smoke)
+
+A linha do plano 02: *"checkbox Active (`JointEnabled`) — desabilitado esmaece o
+glifo; Collide Connected (default off); botão Swap A↔B; joint novo nasce 'A : B'"*.
+Entregue inteira, e a medição decidiu a única pergunta de desenho que ela tinha.
+
+**1. Active — desligar sem apagar.** `JointEnabled` é nativo do rapier e nunca era
+escrito. Agora `PhysicsJoint.active` viaja no `JointDesc` até o solver, e um joint
+desarmado **continua sendo construído** — o que parou foi a restrição. Isso não é
+detalhe de implementação: pular o spawn o tiraria de `joint_anchors`, de
+`joint_load` e portanto **do canvas**, e *desligado* viraria indistinguível de
+*deletado* para tudo a jusante, que é a única coisa que este interruptor existe
+para não ser. Gate com as duas metades (a carga cai **E** o joint segue no mundo,
+respondendo onde se prende).
+
+⚠️ **O Active e uma RUPTURA escrevem a MESMA flag do rapier, e isso era um bug
+esperando o interruptor.** `JointView::broken` era `!joint_is_enabled()`, ponto —
+uma expressão que respondia *"está desabilitado?"* sob o nome *"rompeu?"*. No
+instante em que um switch autorado pôde desabilitar também, desarmar um joint
+passaria a pintá-lo **VERMELHO, com o estouro de seis pontas**, dizendo ao artista
+que o rig cedeu sob carga quando ele apenas o desarmou. O que separa os dois é o
+`desc`: o autorado viaja nele (um Reset traz o joint de volta **desligado**), o
+runtime não (um Reset traz o rompido de volta **segurando**). `broken` ganhou
+`&& j.rest.enabled` e `JointView` ganhou `active`.
+
+**2. Collide Connected — e as duas medições que justificam o knob E o default.**
+`contacts_enabled` estava cravado em `false` desde o W3. O default continua certo,
+e agora tem número dos dois lados:
+
+| rig | contatos OFF | contatos ON |
+|---|---|---|
+| hub pinado DENTRO do plank que ele gira, 4 rad/s | relativo **4.000** | relativo **0.000** |
+| caixa amarrada a um bloco estático | atravessa, `y = −4.000` | **pousa em cima**, `y = 0.899` |
+
+A primeira linha é por que o default é OFF (o elo de corrente se sobrepõe ao
+vizinho por construção, e ligado ali o solver gasta o orçamento inteiro numa
+interpenetração permanente — o motor é **completamente derrotado**). A segunda é
+por que o ON existe: um par que é jointado e ainda tem de se bater.
+
+**3. Swap A↔B — a medição virou o desenho.** A pergunta era se um swap deve
+compensar. Medido, mesmo rig duas vezes:
+
+| grandeza | autorado | swap CRU | compensado |
+|---|---|---|---|
+| pin: carga y | −1.0000 | −1.0000 | −1.0000 |
+| rope: carga y | −2.0000 | −2.0000 | −2.0000 |
+| **motor: roda ω** | 4.0000 | **−4.0000** | 4.0000 |
+| **servo: roda rot** | 44.9998° | **−44.9998°** | 44.9998° |
+| **limite: plank rot** | −11.4592° | **−34.3775°** | −11.4592° |
+| **slider: carro y** | −0.3000 | **−1.2000** | −0.3000 |
+
+Um swap CRU reverte o motor, reverte o servo e **espelha a faixa de limites**
+(`[min, max]` é a faixa de `θb − θa`, então vira `[−max, −min]`; o plank de
+`[−0.2, 0.6]` rad assenta no outro extremo). A compensação reproduz a coluna
+autorada **em toda linha, ao 4º decimal** — então a lei é: **um swap troca qual
+ponta se chama A, e nada mais.** `PhysicsJoint::swapped()` é a porta única (as
+duas âncoras viajam com seus corpos; os quatro sinais negam), com
+`swapped().swapped() == identity` gateado.
+
+⚠️ **Que ele não mude nada físico é o produto, não motivo de dúvida sobre o
+botão.** O que muda é real e visível: as duas linhas do §12 trocam, o **ponto
+âmbar** passa a seguir o outro corpo (`sync_joint_pivots` deriva de A — medido na
+cena 50: o pivô salta de `y = 8.0` para `y = 6.0` enquanto a carga fica em
+`6.0000`), a linha sólida × tracejada do overlay troca, e cada eyedropper passa a
+re-apontar a outra ponta. **Sem compensar, o botão seria o que reverte em silêncio
+a dobradiça que você passou uma hora afinando.**
+
+⚠️ **`anchored` fica `true` no swap** — é o único gesto de autoria deste
+componente que **não** pode re-semear: as locais seguem exatamente certas, só
+trocaram de rótulo, e um re-seed mandaria a ponta B de uma mola de volta ao
+CENTRO do corpo, jogando fora onde o artista a pôs.
+
+**4. O nome — "Post : Plank", não "Joint (3)".** O idioma do Constraints Graph do
+Unreal. É um retrato na criação, não um vínculo vivo: renomear um corpo **não**
+reescreve o rótulo (o nome é do artista, e a Hierarquia o deixa editar; o que
+segue um rename é o *binding*, que viaja por hash e se recola sozinho). A
+unicidade continua imposta — dois joints entre o mesmo par ainda saem distintos.
+
+**A UI (as 4+1 condições).** §12 na ordem em que se pergunta: **Active** primeiro
+(qualifica tudo abaixo, e as rows continuam pintadas e editáveis com ele em Off —
+um joint inativo é um que você ainda está autorando) · o **cluster do PAR** (as
+duas linhas de corpo, o **Swap A / B** logo sob elas, e o **Collide**) · e então o
+tipo e os parâmetros. Os três são oferecidos em **todo** tipo: nenhum é mais
+desmontável ou mais re-etiquetável que outro. ⚠️ O Swap **sobrevive a uma ponta
+que não resolve** — é justamente quando ele mais serve (o Body A foi apagado e
+você quer que a ponta viva vire A), e um gating em `bound` o tiraria do caso que
+ele conserta.
+
+**Visível:** o joint desligado desenha a **MESMA figura, apagada** (`JOINT_OFF_*`,
+o mesmo âmbar com um terço da tinta) — nunca vermelho, que já significa *isto não
+está segurando e não era para ser assim*. ⚠️ O **envelope acompanha**: o arco de
+limite e o anel de comprimento passaram a usar o par de cores escolhido para a
+view em vez das constantes acesas, senão a dobradiça apagava e o arco dela ficava
+brilhando sozinho. E, ao contrário de um joint rompido, o envelope **é desenhado**
+— desligar é AUTORIA, o artista segue ajustando o alcance, e esconder o que ele
+ajusta é o oposto do que o botão promete. **O readout de carga some** num joint
+desligado: ele não segura nada, então o número vivo é zero por construção e a
+marca d'água ao lado descreveria uma corrida que o próprio interruptor encerrou —
+as duas juntas são **exatamente** a figura de um joint rompido.
+
+**Gates:** 4 no wrapper (`joint_pair.rs`), 7 no ECS (`joint_pair.rs`), 3 de overlay
+(`physics_overlay_joint_active_tests.rs`), 1 de readout, 2 de seam (varrendo os 5
+tipos com `click_at` REAL), 3 na shell (`inspector_joint_pair_tests.rs`).
+**15 mutações, 15 sangram.**
+
+`PROJECT_SCHEMA` **33→34** (`active` + `collide_connected` apendados; o Swap não
+move schema nenhum — ele só reescreve campos que já existem, que é por que um bump
+se CONTA em vez de acompanhar a wave), registro **21**, c9 **byte-idêntico**
+(`c9d4baee…`, 87 — os dois defaults reproduzem o que estava cravado, e nem o swap
+nem os switches acrescentam aritmética sensível a plataforma: são negações exatas
+de `f32` e escolhas entre caminhos que o rapier já roda de forma determinista).
+
+**LOC — três splits, todos pela mesma linha de corte (*o PAR* × *a restrição*, e
+*a medição* × *a construção*):** `sections/joint.rs` 617→479 (+`joint_pair_rows.rs`)
+· `inspector_joint_tests.rs` 614→~500 (+`inspector_joint_pair_tests.rs`) ·
+`ph2d-physics-ecs/src/joint.rs` 723→~570 (+`joint/kind.rs`: *que espécie de
+restrição é esta* × *o estado que este joint guarda*) · `ph2d-physics/src/world/joints.rs`
+719→~600 (+`world/joint_gains.rs`: 120 linhas de tabela de medição não são parte
+de uma função que constrói joints).
+
+**Smoke: `PH2D_PHYSICS_SMOKE=50`** — dois braços idênticos (um desarmado, `y = 7.46`
+contra `0.15`), duas prateleiras idênticas (a caixa que atravessa em `y = 1.00`
+contra a que pousa em `5.65`), e uma corda para trocar as pontas. ⚠️ O passo do
+Swap pede **PAUSA** primeiro: o ponto âmbar só é desenhado com o relógio parado
+(`sync_joint_pivots` é rest-only), e é ele que salta.
+
+**Aberto:** o swap não re-nomeia o joint (o rótulo é um retrato da criação, e
+reescrevê-lo brigaria com um rename do artista) · nada na §12 diz que um joint
+está inativo além do próprio chip (o overlay diz, e é onde o artista está olhando).

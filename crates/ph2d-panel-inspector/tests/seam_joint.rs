@@ -63,6 +63,11 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         // way `build_joint_info` computes it, so a kind that gains the ability
         // does not silently lose the gate.
         breaks_on_torque: kind_tag == 0,
+        // W-J8. The base fixture is a joint that is IN FORCE and whose bodies do
+        // not collide — the two defaults, so a sweep sees the section an artist
+        // actually opens.
+        active: true,
+        collide_connected: false,
     }
 }
 
@@ -635,5 +640,59 @@ fn selecting_a_joint_shows_the_thresholds_it_carries() {
         (val(ids::INSP_JOINT_BREAK_TORQUE) - 12.0).abs() < 1e-6,
         "Break Torque idem, mostra {}",
         val(ids::INSP_JOINT_BREAK_TORQUE)
+    );
+}
+
+/// **A higiene do par é oferecida em TODO tipo** (W-J8) — o Active, o Collide e
+/// o Swap.
+///
+/// Varre os cinco tipos de propósito: nenhum deles é *mais* desmontável ou *mais*
+/// re-etiquetável que outro, então um gating por tipo que aparecesse aqui seria
+/// um controle desaparecendo de um lugar onde ele funciona. É a mesma varredura
+/// que os chips de tipo e o Delete recebem, pelo mesmo motivo.
+///
+/// ⚠️ Dirige `click_at` — o despachante REAL. Um `WidgetEvent` sintético pula a
+/// checagem de focabilidade do store, e foi assim que 36 células nasceram
+/// pintadas, hit-registradas e **mortas sob o mouse** no W2c.
+#[test]
+fn the_pair_controls_are_offered_on_every_kind() {
+    for kind_tag in 0u8..=4 {
+        for (i, &id) in ids::INSP_JOINT_ACTIVE.iter().enumerate() {
+            expect(
+                &click_real(joint(kind_tag), id),
+                JointFieldEdit::Active(i == 1),
+                &format!("kind {kind_tag}: active switch {i}"),
+            );
+        }
+        for (i, &id) in ids::INSP_JOINT_COLLIDE.iter().enumerate() {
+            expect(
+                &click_real(joint(kind_tag), id),
+                JointFieldEdit::CollideConnected(i == 1),
+                &format!("kind {kind_tag}: collide switch {i}"),
+            );
+        }
+        expect(
+            &click_real(joint(kind_tag), ids::INSP_JOINT_SWAP),
+            JointFieldEdit::Swap,
+            &format!("kind {kind_tag}: Swap A/B"),
+        );
+    }
+}
+
+/// **E o Swap continua oferecido quando uma das pontas NÃO resolve.**
+///
+/// A metade que um gating em `bound` teria removido, e é o caso em que o botão é
+/// mais útil: um joint cujo Body A foi apagado é exatamente quando o artista quer
+/// que a ponta sobrevivente passe a ser A. Um controle que some justamente no
+/// estado que ele conserta é pior que um que falta.
+#[test]
+fn the_swap_survives_a_body_that_no_longer_resolves() {
+    let mut info = joint(0);
+    info.body_a_name = String::new();
+    info.bound = false;
+    expect(
+        &click_real(info, ids::INSP_JOINT_SWAP),
+        JointFieldEdit::Swap,
+        "Swap with a missing Body A",
     );
 }

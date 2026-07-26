@@ -431,7 +431,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 32→33: `PhysicsJoint` ganhou `break_enabled`+`break_force`+
         // `break_torque` (W-J7 — o joint que rompe sob carga). Três campos
         // apendados, mesmo padrão.
-        (33, 9, 13),
+        // PROJECT 33→34: `PhysicsJoint` ganhou `active`+`collide_connected`
+        // (W-J8 — a higiene do par). Dois campos apendados; o Swap A↔B da mesma
+        // wave não move schema nenhum, porque só reescreve campos existentes.
+        (34, 9, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

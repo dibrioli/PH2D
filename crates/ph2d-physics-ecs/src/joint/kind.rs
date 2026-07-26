@@ -1,0 +1,172 @@
+//! **As perguntas que um TIPO de joint responde** — o `JointKind` e a família de
+//! portas que decide, por tipo, o que existe e em que unidade.
+//!
+//! Irmão de `joint.rs`, separado dele quando os dois juntos passaram do cap de
+//! 700 LOC, e o corte é o que o arquivo pai já vinha desenhando: aqui *que
+//! espécie de restrição é esta, e o que ela tem*; lá *o estado que ESTE joint
+//! guarda*. Cada porta aqui existe porque duas perguntas parecidas se separaram
+//! ao chegar um tipo novo (`has_length` do `!is_hinge` com o Weld, `has_limits`
+//! do `is_hinge` com o Slider), e o histórico dessas separações mora nos
+//! doc-comments — é ele que impede a próxima de ser colapsada de volta.
+
+use serde::{Deserialize, Serialize};
+
+/// Which constraint this joint applies. **Append-only** — postcard encodes the
+/// discriminant positionally, so new kinds go at the END or every saved
+/// project reads its joints as the wrong type.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum JointKind {
+    /// The two bodies share a point and turn freely about it. The hinge, the
+    /// pendulum's pivot, the ragdoll's elbow.
+    #[default]
+    Pin,
+    /// A damped spring between the anchors — the distance is a target, not a
+    /// law.
+    Spring,
+    /// The anchors may come as close as they like but never further apart than
+    /// [`PhysicsJoint::max_length`].
+    Rope,
+    /// **Weld** — the two bodies are locked rigidly together at the anchor:
+    /// no relative motion, no rotation. A pin with its rotation frozen. Useful
+    /// for compound bodies and (later) breakable structures. It shares a point
+    /// like a pin but has no motor, no limits, no length.
+    Weld,
+    /// **Slider** — the bodies may only slide along ONE axis and never rotate
+    /// relative to each other. The elevator, the sliding door, the piston.
+    ///
+    /// The **axis is the joint entity's own `Transform::rotation`** — no new
+    /// field, and no second place to keep it. That is the model Godot and
+    /// Unreal use, and it is the one this component already implies: the
+    /// entity's `Transform` is where a joint's *placement* lives (its
+    /// translation is the anchor), so its rotation is where a placement's
+    /// direction lives. It also means the axis is authorable on day one, in the
+    /// Inspector's own Rotation field, with zero widgets added.
+    ///
+    /// Like a Pin it has **limits** — but they are a STROKE, in metres. See
+    /// [`JointKind::limits_in_metres`].
+    Slider,
+}
+
+impl JointKind {
+    /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does.
+    ///
+    /// ⚠️ **No longer the same question as *"does it have a motor?"*** — that is
+    /// [`Self::has_motor`], and it grew a Slider and a Rope in W-J6. This one is
+    /// still asked wherever the *angular* nature is the point.
+    pub fn is_hinge(self) -> bool {
+        matches!(self, JointKind::Pin)
+    }
+
+    /// **Is this kind's free degree of freedom a TRANSLATION?** A Slider slides
+    /// along its axis; a Rope's is the distance between the anchors. A Pin's is
+    /// an angle.
+    ///
+    /// The one underlying fact behind every "metres or radians?" in this file:
+    /// [`Self::limits_in_metres`] and [`Self::motor_in_metres`] both read it
+    /// rather than re-listing the kinds, so a sixth kind states its unit once.
+    pub fn translates(self) -> bool {
+        matches!(self, JointKind::Slider | JointKind::Rope)
+    }
+
+    /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
+    /// range) and a Slider (a stroke) do.
+    ///
+    /// ⚠️ **Split out of `is_hinge` when the Slider arrived**, for the same
+    /// reason `has_length` had to be split out of `!is_hinge` when the Weld did:
+    /// *"is it a hinge?"* and *"does it have limits?"* had the same answer while
+    /// the Pin was the only limited kind, and one of the two questions was
+    /// always going to grow a second member. Collapsed, a Slider would either
+    /// get a motor it has no model for or lose the limits that make it a rail.
+    pub fn has_limits(self) -> bool {
+        matches!(self, JointKind::Pin | JointKind::Slider)
+    }
+
+    /// **Can this kind be DRIVEN?** A Pin's hinge, a Slider's rail and a Rope's
+    /// distance (a winch) all have a free degree of freedom a motor can push
+    /// along. A Spring and a Weld do not.
+    ///
+    /// **One door.** The Inspector asks it to decide whether to paint the Motor
+    /// card, and the bridge asks it before handing a motor to the solver — two
+    /// answers to *"does this joint have a motor?"* is how a knob comes to be
+    /// painted for a kind that ignores it.
+    ///
+    /// ⚠️ **A Spring is excluded for a MECHANICAL reason, not a UI one:** rapier
+    /// models a spring *as* a motor on the same axis, so a second motor there
+    /// would overwrite the stiffness and damping the artist authored and turn the
+    /// spring into a rate-driven rod. The wrapper states the same exclusion in
+    /// `ph2d_physics::motor_axis`, which is what the solver actually reads.
+    pub fn has_motor(self) -> bool {
+        matches!(self, JointKind::Pin | JointKind::Slider | JointKind::Rope)
+    }
+
+    /// Are this kind's limits a distance rather than an angle?
+    ///
+    /// ⚠️ **`limit_min`/`limit_max` carry the unit of the KIND** — radians for a
+    /// Pin, metres for a Slider — which is exactly how rapier models it (one
+    /// `limits` field, belonging to whichever degree of freedom the joint left
+    /// free). One door so the Inspector's label, its conversion, and the
+    /// bridge's hand-off to the solver cannot disagree about what the number
+    /// means; and the kind-change re-seeds the range, so `±0.785` rad never
+    /// silently becomes `±0.785` m.
+    ///
+    /// Derived from [`Self::translates`] and [`Self::has_limits`] rather than
+    /// listing kinds again: a Rope translates but has no limit range, so it
+    /// answers `false` here and `true` to [`Self::motor_in_metres`] — the two
+    /// questions genuinely differ for it, and deriving both from one fact is
+    /// what keeps them able to.
+    pub fn limits_in_metres(self) -> bool {
+        self.has_limits() && self.translates()
+    }
+
+    /// Is this kind's MOTOR linear rather than angular — metres and metres per
+    /// second rather than degrees and degrees per second?
+    ///
+    /// ⚠️ **Not the same question as [`Self::limits_in_metres`], and a Rope is
+    /// the case that proves it:** a Rope has no limit range at all (so that one
+    /// says `false`) and its motor is a winch reeling a distance (so this one
+    /// says `true`). Sharing one door would have given the winch a target in
+    /// degrees.
+    /// **Can a break threshold on this kind ever fire on TORQUE?**
+    ///
+    /// Only where the angular axis is limited or motorised, which in this kind
+    /// set is the Pin alone. rapier reports the reaction of a limited or
+    /// motorised axis exactly (measured: 4.9050 and 4.9049 against `m·g·r` of
+    /// 4.905) and reports **nothing** for a locked one — a Weld cantilever holds
+    /// 4.905 N·m and reads `0.0000`. A Rope and a Spring leave the angular axis
+    /// free, so their torque is genuinely zero.
+    ///
+    /// Asked by the panel to decide whether to paint the row, and by nothing
+    /// else: the wrapper compares whatever threshold it is handed, so a torque
+    /// on a Weld is not *wrong*, it is **unreachable** — which is worse, because
+    /// it looks like a control.
+    #[must_use]
+    pub fn breaks_on_torque(self) -> bool {
+        matches!(self, JointKind::Pin)
+    }
+
+    pub fn motor_in_metres(self) -> bool {
+        self.translates()
+    }
+
+    /// Does this kind have a length the artist tunes? Only Spring and Rope do —
+    /// a Pin's length is zero (the anchors coincide) and a Weld's is too (it is
+    /// rigid). **Not** `!is_hinge()`: a Weld is not a hinge but still has no
+    /// length, so the two questions had to stop sharing an answer.
+    pub fn has_length(self) -> bool {
+        matches!(self, JointKind::Spring | JointKind::Rope)
+    }
+
+    /// Do the two bodies share one point (a Pin, a Weld or a Slider), rather than
+    /// have two separate ends (a Spring or a Rope)? The anchor policy reads this:
+    /// a shared-point joint anchors both bodies at the same world point, a
+    /// two-ended one anchors body B at its own centre.
+    ///
+    /// A Slider shares a point **and that point is the zero of its stroke** —
+    /// rapier measures the prismatic displacement from where the two anchors
+    /// coincide, so authoring them apart would offset the whole range by the
+    /// gap. It falls out of `!has_length()` correctly, but it is stated here
+    /// rather than left to fall out by accident.
+    pub fn shares_a_point(self) -> bool {
+        !self.has_length()
+    }
+}

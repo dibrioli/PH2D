@@ -114,6 +114,15 @@ pub(super) fn joint_readouts(
     }
     let mut out = Vec::new();
     for v in views {
+        // **Um joint DESLIGADO não mostra carga** (W-J8), e não é higiene: ele
+        // não está segurando nada, então o número vivo é zero por construção — e
+        // a marca d'água ao lado dele descreveria uma corrida que o próprio
+        // interruptor encerrou, que é exatamente a figura de um joint ROMPIDO.
+        // Duas coisas diferentes não podem imprimir o mesmo par. O glifo apagado
+        // já diz por que não há número.
+        if !v.active {
+            continue;
+        }
         let breakable = v.break_force.is_finite() || v.break_torque.is_finite();
         if !breakable && selected != Some(v.entity) {
             continue;

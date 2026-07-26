@@ -162,6 +162,12 @@ pub fn joint_desc(
         } else {
             f32::INFINITY
         },
+        // W-J8. Both are carried verbatim — they are the same fact on both sides
+        // of this boundary, unlike the break thresholds two lines up (a checkbox
+        // here, an infinity there). An inactive joint is still BUILT and still
+        // reconciled; what stops is the constraint.
+        enabled: j.active,
+        contacts_enabled: j.collide_connected,
     }
 }
 

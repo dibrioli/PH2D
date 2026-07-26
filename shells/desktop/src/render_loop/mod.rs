@@ -48,6 +48,11 @@ mod inspector_joint_break_tests;
 /// each carries. Its own file for the shell's LOC cap.
 #[cfg(test)]
 mod inspector_joint_motor_tests;
+/// The PAIR half (W-J8): the Active switch, Collide Connected, the Swap, and the
+/// name a new joint is born with. Its own file for the shell's LOC cap, cut on
+/// the same line the section draws — *which two, and how they treat each other*.
+#[cfg(test)]
+mod inspector_joint_pair_tests;
 /// The §11 Physics Body seam's OTHER half: the Inspector click reached the
 /// ECS and the sprite actually falls (panel-side proof lives in
 /// ).

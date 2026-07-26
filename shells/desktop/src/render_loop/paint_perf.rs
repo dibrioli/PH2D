@@ -262,6 +262,15 @@ fn emit(a: &Agg) {
         },
         worst.trivial,
     );
+    // ⚠️ **E o SPLIT do frame PIOR, não só a magnitude dele.** O `max=` diz QUANTO o pior frame custou
+    // e as flags dizem em que estado ele estava — mas as fases eram todas p50, ou seja descreviam o
+    // frame TÍPICO. Um custo de UMA VEZ (o primeiro traço alocando as texturas do preview no tamanho
+    // do canvas) é invisível numa mediana por construção: ele é exatamente o outlier que a mediana
+    // existe para descartar. Sem esta linha, "muito delay no primeiro traço" não tem onde ser lido.
+    eprintln!(
+        "[paint-perf] WORST split: dispatch={:.1} [preview {:.1} panel {:.1} overlay {:.1} upload {:.1}]",
+        worst.dispatch_ms, worst.preview_ms, worst.panel_ms, worst.overlay_ms, worst.upload_ms
+    );
     // The two aggregate phases, split by step. Printed on their own lines (and only for the steps that
     // register anything) so the dominant one is named rather than shared.
     let mut panel = String::new();

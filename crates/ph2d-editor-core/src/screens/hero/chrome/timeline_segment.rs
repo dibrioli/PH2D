@@ -55,15 +55,20 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return true;
     }
 
-    // Leaf rows. A family row is only meaningful under a mode — a stray click on
-    // one from the top-level menu (impossible today, but the tables are public)
-    // must not park a pick the shell cannot resolve.
-    let is_leaf = id == ids::CTX_MENU_TL_HOLD
-        || id == ids::CTX_MENU_TL_LINEAR
-        || id == ids::CTX_MENU_TL_CUSTOM
-        || id == ids::CTX_MENU_TL_ROVE;
+    // A top-level leaf is any row of the segment menu that is NOT one of the three
+    // cascade rows (those returned just above). Deriving it from the table the menu
+    // PAINTS — instead of re-listing the ids here — is what keeps a new row from
+    // shipping a menu item that silently does nothing: `Nearest` was added to
+    // `TIMELINE_SEGMENT_MENU` and this hand-list forgot it, so clicking it parked
+    // no pick and the graph never changed (the enumeration rotted the moment the
+    // table grew). A family row is a leaf only under a mode — a stray click on one
+    // from the top-level menu must not park a pick the shell cannot resolve.
+    let is_top_level_leaf = ids::TIMELINE_SEGMENT_MENU
+        .iter()
+        .any(|(row, _, _)| *row == id)
+        && !CASCADES.iter().any(|(cascade, _)| *cascade == id);
     let is_family = ids::TIMELINE_EASE_MENU.iter().any(|(fam, _, _)| *fam == id);
-    if !(is_leaf || (is_family && open_mode != TL_NO_EASE_MODE)) {
+    if !(is_top_level_leaf || (is_family && open_mode != TL_NO_EASE_MODE)) {
         return false;
     }
     hero.pending_timeline_interp = Some(TimelineInterpPick {

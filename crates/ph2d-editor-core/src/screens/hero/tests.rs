@@ -1627,11 +1627,21 @@ fn stage_closed_timeline_menu(hero: &mut HeroScreen, kind: crate::interaction::C
 fn timeline_segment_menu_parks_each_leaf_pick_for_the_shell() {
     crate::test_support::ensure_panel_registry();
     use crate::interaction::{ContextMenuKind, TL_NO_EASE_MODE};
-    for item in [
-        ids::CTX_MENU_TL_HOLD,
-        ids::CTX_MENU_TL_LINEAR,
-        ids::CTX_MENU_TL_CUSTOM,
-    ] {
+    // EVERY non-cascade row of the table the menu paints — walked, not hand-listed,
+    // so a row added to `TIMELINE_SEGMENT_MENU` (this once dropped `Nearest`) is
+    // proven to park a pick instead of shipping a dead item. The three cascade rows
+    // open the submenu instead (covered by the cascade test below).
+    let cascades = [
+        ids::CTX_MENU_TL_EASE_IN,
+        ids::CTX_MENU_TL_EASE_OUT,
+        ids::CTX_MENU_TL_EASE_INOUT,
+    ];
+    let mut leaves = 0;
+    for &(item, _, _) in ids::TIMELINE_SEGMENT_MENU.iter() {
+        if cascades.contains(&item) {
+            continue;
+        }
+        leaves += 1;
         let mut hero = HeroScreen::new(NodeId(1));
         stage_closed_timeline_menu(&mut hero, ContextMenuKind::TimelineSegment { scope: SCOPE });
         assert!(hero.apply_event(WidgetEvent::Click(item)), "not consumed");
@@ -1640,6 +1650,12 @@ fn timeline_segment_menu_parks_each_leaf_pick_for_the_shell() {
         assert_eq!(pick.mode, TL_NO_EASE_MODE, "leaf rows carry no mode");
         assert!(hero.store.last_context_menu().is_none(), "request consumed");
     }
+    // Hold, Nearest, Linear, Custom, Rove — the five today. A guard so the walk
+    // above can never silently cover nothing.
+    assert_eq!(
+        leaves, 5,
+        "the segment menu's non-cascade leaf count changed"
+    );
 }
 
 #[test]

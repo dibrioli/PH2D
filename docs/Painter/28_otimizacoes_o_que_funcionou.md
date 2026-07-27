@@ -1349,6 +1349,48 @@ três famílias, e as três têm cura conhecida:
 O patch da tentativa está preservado fora da árvore. **A árvore está verde e inalterada** — nada disto
 foi commitado, porque uma migração de 41 sítios pela metade é pior que nenhuma.
 
+### 5.19 ✅ S1+S2 LANDARAM — a janela vem de quem escreve; pen-up **37,0 → 24,0 ms** a 4096²
+
+O desenho que sobreviveu **não é o guard da §5.18**: o `Drop` estende o empréstimo até o fim do escopo e
+produziu **14 `E0499`** — o borrow checker recusando a forma. O que ficou é mais simples e faz a mesma
+promessa:
+
+> **`fork_par` ABRE um acesso não-declarado na janela; `PainterTool::declare_wrote(rect)` o FECHA.**
+> Enquanto houver acesso aberto, o commit **varre** — que é exatamente o que ele faz hoje.
+
+Sem guard, sem `Drop`, sem lifetimes acoplados, **sem tocar um único `let buf = …`**. O mecanismo inteiro
+é a contagem: o modo de falha de um sítio novo — ou de um que esquece — é **lento, nunca errado**, e o
+contador zera em cada commit, então um sítio esquecido degrada aquele passo e nada além dele.
+
+**A rede que torna isso conferível:** em build de **DEBUG** o `split` deriva a janela verdadeira mesmo
+quando recebe a declarada e **afirma que ela cabe**. A suíte roda em debug em ~4 s e exercita fill,
+seleção, warp, sculpt, máscara, inpaint, clone, aquarela, Wet Paint e os shape editors ⇒ o invariante é
+**conferido a cada rodada** em vez de assumido. Foi ela que reprovou o atalho da §5.17 na primeira rodada,
+e é ela que aceita as oito declarações de hoje — o que é a prova de que nenhuma sub-declara.
+
+**Os oito sítios quentes:** os cinco de depósito de pigmento (`stamp_cache`, `stamp_color_cache`,
+`stamp_color_dynamic`, `blur_route`, `clone`) declaram o `touched` que já acumulavam, e os três do fold do
+relevo (`impasto_live`) declaram o `rect` do commit.
+
+⚠️ **No fold a declaração é o `rect`, NÃO o `moved`** que o `mark_dirty` usa: o laço escreve `target[i]`
+em toda a janela do kernel e não só onde o relevo passou do `RELIEF_EPS`. *Onde a imagem mudou* e *onde
+bytes foram escritos* são perguntas diferentes — e é exatamente essa diferença que a §5.17 mediu.
+
+| impasto @4096² | antes | agora |
+|---|---|---|
+| commit de undo | 23,72 | **12,16 ms** |
+| **pen-up TOTAL** | 37,00 | **24,03 ms** |
+
+⚠️ **O commit ainda custa 12,16 e não ~1, e o número fica ABERTO, não estimado.** Sobram a **extração**
+dos dois lados da janela (que num traço longo não é pequena) e os planos que nenhum sítio declarou. A
+próxima medição decide se vale atacá-la ou se o **S3** a subsume — ele remove os 11,9 ms do fold *e* a
+extração de uma vez.
+
+⚠️ **E duas vezes nesta sessão a cwd do Bash escorregou para a árvore PRIMÁRIA**, uma delas fazendo cinco
+das oito declarações irem parar na `main` — o commit saiu com 1 arquivo em vez de 6 e a medição disse
+"sem ganho", que eu quase reportei como achado. Nada foi commitado lá e a árvore foi restaurada. *No Modo
+L, todo comando começa com o `cd` da worktree; a regra existe porque a cwd volta sozinha.*
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -1480,8 +1522,10 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
      ⚠️ **O atalho de derivar a janela do `mark_dirty` foi TENTADO e REVERTIDO** (§5.17): ele declara
      *onde a imagem mudou*, não *onde bytes foram escritos*, e a rede de verificação em debug pegou a
      diferença na primeira rodada. Traga a rede junto — ela é barata e pegou o defeito antes dos gates.
-   - **S2 — o commit usa a janela** em vez de a derivar. Mata os 23,7 ms do commit.
-   - **S3 — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
+   - ✅ **S1 e S2 LANDARAM** (§5.19): pen-up **37,0 → 24,0 ms**, commit **23,7 → 12,2**. O desenho final
+     é um CONTADOR de acessos não-declarados, não o guard com `Drop` (14 `E0499`). Sobram **12,2 ms** de
+     extração + planos não declarados — número ABERTO.
+   - 🎯 **S3 (o que falta) — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
      em vez de instalar um snapshot materializado. Aí o `cursor` não precisa mais segurar os planos, a
      contagem de donos cai para **um**, e **o fold e o fork do pen-down somem juntos** — mais o Ctrl+Z,
      que deixa de custar uma cópia de documento (§5.16) e passa a custar a janela.

@@ -157,6 +157,10 @@ pub fn apply_container(
         }
     }
     doc.put_scratch(scratch);
+
+    // ADR-0144 — the expression pass, on the CONTAINER's local clock (`time` inside
+    // a container edit is container-local, matching the poses just composed).
+    crate::expr_pass::run(world, doc, t);
 }
 
 /// Pass 1 — liveness (P6), and the one chance to capture `rest`.

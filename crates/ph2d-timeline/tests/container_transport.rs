@@ -232,3 +232,32 @@ fn set_container_loop_on_a_stale_index_is_a_no_op() {
         "container inexistente: o documento não muda"
     );
 }
+
+/// **The expression pass runs in the CONTAINER edit view too, on the container's
+/// LOCAL clock** (ADR-0144 follow-up). A driven `Y = time*10` on the Mover: at the
+/// container's local second 1 the pass writes Y=10. (Mutation: drop the
+/// `expr_pass::run` call in `apply_container` -> Y stays 0.)
+#[test]
+fn apply_container_runs_expressions_on_the_local_clock() {
+    let (mut sim, mut st, bits, walk) = scene();
+    let tgt = st.doc.bind(bits, PropKind::TranslationY);
+    st.doc
+        .bindings_mut()
+        .iter_mut()
+        .find(|b| b.target == tgt)
+        .unwrap()
+        .expr = Some("time*10".into());
+
+    apply_container(sim.world_mut(), &mut st.doc, walk, 1.0, |_| false);
+    let y = f64::from(
+        sim.world()
+            .get::<Transform>(Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .y,
+    );
+    assert!(
+        (y - 10.0).abs() < 1e-4,
+        "the expr pass runs in the container at local t=1 (Y = time*10 = 10), got {y}"
+    );
+}

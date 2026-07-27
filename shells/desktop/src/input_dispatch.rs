@@ -50,6 +50,7 @@ mod eyedropper;
 pub(crate) mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
+mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;

@@ -675,7 +675,11 @@ fn selecting_a_joint_shows_the_thresholds_it_carries() {
 /// pintadas, hit-registradas e **mortas sob o mouse** no W2c.
 #[test]
 fn the_pair_controls_are_offered_on_every_kind() {
-    for kind_tag in 0u8..=4 {
+    // ⚠️ **`INSP_JOINT_KIND.len()`, não `0..=4`.** A faixa parou em Slider e os
+    // dois tipos seguintes (Rod, Wheel) nunca foram cobertos — o cluster do PAR
+    // é pintado sem olhar o tipo, então ele funcionava, mas nada o dizia. É a
+    // mesma rot das outras três listas escritas à mão desta seção.
+    for kind_tag in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
         for (i, &id) in ids::INSP_JOINT_ACTIVE.iter().enumerate() {
             expect(
                 &click_real(joint(kind_tag), id),

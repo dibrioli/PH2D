@@ -255,7 +255,7 @@ mod tests {
     /// **An EDGE is KEPT razor-sharp** — the median does not soften a step the way
     /// the linear blur does. `[0,0,0,1,1,1]` at radius 1 stays `[0,0,0,1,1,1]`: the
     /// transition is untouched (a box blur would ramp it). This is the property that
-    /// makes the median an edge-preserving de-noiser.
+    /// makes the median an edge-preserving de-noisier.
     #[test]
     fn an_edge_is_kept_sharp() {
         assert_eq!(

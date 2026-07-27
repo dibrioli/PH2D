@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! `value.gain` — the value-domain CONTRAST / GAMMA shaper: push a normalised
 //! `[0,1]` field toward the ends (an S-curve) or toward one end (a gamma bend),
-//! with a single driveable knob (Motion Nodes M2, the value domain — doc 12/72).
+//! with a single drivable knob (Motion Nodes M2, the value domain — doc 12/72).
 //! It is the fourth value SHAPER, alongside `value.map_range` (linear),
 //! `value.curve` (freeform) and `value.quantize` (discrete): where `value.curve`
 //! is a hand-drawn LUT frozen at authoring time, this is the **parametric** one —

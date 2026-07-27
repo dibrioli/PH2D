@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! `value.smooth` — the value-domain FILTER: soften a field by averaging each
 //! element with its index-neighbours, a box blur over the instance order (Motion
-//! Nodes M2, the value domain — doc 12/77). It is the de-noiser: a jagged driver
+//! Nodes M2, the value domain — doc 12/77). It is the de-noisier: a jagged driver
 //! — a `value.noise`, an `instance_field` Random — smoothed into a gradual one.
 //! The Filter/Lag CHOP of TouchDesigner, the Smooth of Cavalry.
 //!

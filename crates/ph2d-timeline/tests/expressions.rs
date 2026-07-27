@@ -319,7 +319,7 @@ fn the_motion_node_delegates_to_the_one_parser() {
 /// three skipped applies must leave it at 5. (Mutation: the driven loop ignores `skip`
 /// -> Y climbs 5, 6, 7, 8.)
 #[test]
-fn a_skipped_entitys_expression_does_not_run_and_cannot_drift() {
+fn a_skipped_entity_expression_does_not_run_and_cannot_drift() {
     use ph2d_timeline::apply_from_doc_except;
     let mut w = World::new();
     let e = w

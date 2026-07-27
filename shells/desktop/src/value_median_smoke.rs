@@ -58,7 +58,7 @@ fn row(g: &mut Graph, kind: Kind, canvas_dy: f32, mark: bool) -> Option<(NodeId,
     g.set_param(mv, "dy", canvas_dy);
     g.set_param(pat, "steps", 8.0);
     for (k, &v) in PATTERN.iter().enumerate() {
-        g.set_param(pat, &format!("v{k}"), v);
+        g.set_param(pat, format!("v{k}"), v);
     }
     g.set_param(drive, "channel", 1.0); // Y
     g.set_param(drive, "mode", 0.0); // Add

@@ -5,6 +5,7 @@
 //! abrem as DUAS zonas de extrapolação numa cena só:
 //!   - **`[0, 1.5)` = zona do PRE** (antes da 1ª key);
 //!   - **`(2.5, 4]` = zona do POST** (depois da última).
+//!
 //! Por padrão (Hold/Hold) o objeto fica em 0 na entrada, sobe 0 -> 3 no meio, e
 //! congela em 3 no fim. Pre e Post são INDEPENDENTES.
 //!

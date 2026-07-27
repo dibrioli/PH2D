@@ -8,7 +8,7 @@
 //! chamador só troca quatro `if … return;` por um `if self.timeline_key(…) { return; }`.
 //!
 //! `true` = **consumi a tecla**. Cair fora de todas devolve `false`, que é o fall-through
-//! que deixa o mesmo Ctrl+Z alcançar o undo do painter/imagem noutros contextos.
+//! que deixa o mesmo Ctrl+Z alcançar o undo do painter/imagem em outros lugares.
 
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};

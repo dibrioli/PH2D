@@ -1190,6 +1190,79 @@ descobertos.*
 **O que esta wave NÃO é:** ela **acelera** o fork, não o remove. Removê-lo é capturar o "antes" por
 REGIÃO (o *tile-based undo*), e a §5.14 mostrou que essa wave tem de alcançar o **histórico** também.
 
+### 5.16 ✅ O CTRL+Z era 46,6 ms — e a otimização que eu ia fazer foi MORTA pela medição
+
+Abrindo a wave da captura por região, a primeira coisa foi a que a §5.13 **não** fez: perguntar de que o
+pen-up é feito **pelas portas do produto**, em vez de atribuir por subtração. A ablação da §5.14 tira duas
+coisas de uma vez (o commit **e** o segundo dono que o snapshot representa), então a diferença dela não é
+o commit. Cronometrando as duas metades separadamente, com o snapshot VIVO, chamando
+`commit_stroke_height` e depois o `Up` na ordem do `close_stroke`
+(`measure_stroke_owners::what_the_two_halves_of_the_pen_up_cost`):
+
+| pen-up impasto (ms)             | 1024² | 2048² | 4096² |
+|---|---|---|---|
+| `commit_stroke_height` (o fold) | 2,85 | 7,62 | **13,28** |
+| o resto (o commit de undo)      | 6,14 | 10,40 | **23,72** |
+| TOTAL                           | 8,99 | 18,01 | **37,00** |
+
+E dentro do commit (`what_the_record_structural_is_made_of`): `PlaneDeltas::split` **é** o
+`record_structural` (9,57 contra 10,64 a 4096²) — a contabilidade do controller custa ~1 ms.
+
+#### ⛔ MEDIDO E REJEITADO — não refaça: paralelizar a EXTRAÇÃO da janela
+
+A hipótese natural era que os ~5,5 ms que sobram entre os scans (4,02 medidos) e o `split` (9,57) fossem
+o `Window::extract`, que copia `2 × janela` por plano num laço serial. **Instrumentando o `split` plano a
+plano, é falso:** o custo é por-plano e proporcional ao TAMANHO DO PLANO, não ao da janela —
+
+```text
+[split] canvas_rgba  3,0–5,5 ms      [split] heights  2,4–5,2 ms
+[split] covers       0,7 ms          [split] mats     4,0–9,0 ms
+```
+
+— enquanto a janela de um traço de 7 movimentos é ~160 linhas de ~280 colunas, isto é **kilobytes**. O
+`split` está **limitado por LARGURA DE BANDA lendo os dois endpoints dos quatro planos** (~470 MB por
+traço a 4096²), e a sonda sintética que media 4,02 ms media os mesmos buffers **quentes**. Uma extração
+paralela renderia **zero**, e eu ia construí-la.
+
+⚠️ **Corolário que decide a wave seguinte:** o único jeito de tirar esses 9,5 ms é **não ler os planos** —
+receber a janela de quem escreveu, em vez de derivá-la do conteúdo. Ver §7.
+
+#### ✅ O que a medição ACHOU no lugar: a materialização de um Ctrl+Z
+
+O outro lado do delta nunca tinha sido medido pela porta. `StoredPlane::side` monta o estado a instalar
+**clonando o plano do cursor** (é ele que serve tudo fora da janela) e depois blita a janela por cima —
+uma cópia de documento **por plano que a entrada tocou**, num `Vec::clone` serial:
+
+| Ctrl+Z (mediana de 7, impasto) | 1024² | 2048² | 4096² |
+|---|---|---|---|
+| antes (serial)                 | 0,42 | 3,12 | **46,56** |
+| agora                          | 0,52 | 3,35 | **23,41** (2,1×) |
+
+⚠️ **O número serial de 4096² não é largura de banda** — 5,8 GB/s é lento demais para isso. É o
+*first-touch* de 67–117 MB recém-alocados, uma falha de página por vez, exatamente o mecanismo que o
+`plane_fork` já tinha documentado; e é por isso que espalhar por threads o conserta.
+
+#### ⚠️ O primitivo virou UM, e o limiar mudou de unidade
+
+A porta de fork e o motor de delta copiam o mesmo tipo de coisa pelo mesmo motivo, então a cópia paralela
+passou a morar em **`crate::plane_copy`** (`par_clone` + `worth_parallel`), com os dois perguntando à
+MESMA função. ⚠️ **E o limiar deixou de ser em ELEMENTOS para ser em BYTES**, porque a medição obrigou: um
+plano de `[u8; 7]` move sete vezes a memória de um de `u8` com a mesma contagem, e com o limiar em
+elementos a 1024² mandava quatro cópias pequenas para o rayon e **dobrava** o Ctrl+Z (0,42 → 0,86 ms). A
+virada medida está entre 29 e 67 MB ⇒ **32 MB**: a 2048² tudo segue serial (onde o serial ganha) e a
+4096² os três planos grandes vão para o paralelo. O pen-down do Blur **não perdeu nada** com isso (0,82 a
+2048² · 3,37 a 4096², contra 0,85/3,66 antes).
+
+**Gates:** a rota serial de materialização ficou **congelada sob `cfg(test)`** como oráculo
+(`serial_side`) — um `pub` sem chamador seria uma segunda resposta esperando alguém chamá-la, a lição que
+o `warp_axis` da §5.11 pagou —, mais o gate de RAZÃO (3,2× num plano de `f32` de 4096²; barra em 1,5×
+porque `ci-test` compila em `opt-level=1`) e um gate que pina a **unidade** do limiar. **4 mutações, 4
+sangram:** voltar `side` ao clone serial ⇒ 1,0× · `worth_parallel` sempre falso ⇒ 1,0× · `par_clone`
+corrompendo ⇒ 3 gates de paridade · o limiar de volta em elementos ⇒ o gate da unidade.
+
+⚠️ **O que esta wave NÃO toca:** o pen-up. O `side` não roda num commit — ele roda num **undo**. O
+pen-up segue em 37 ms a 4096² e a §7 diz o que o desmonta.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -1274,6 +1347,17 @@ reconciliadas em vez de estimadas.
     ÚLTIMA linha — sangra na hora). E a outra sobrevivente da mesma rodada era o oposto: um buraco real,
     escondido por **toda banda larga das fixtures acertar a coluna 0 por acidente**.
 
+17. **Uma sonda SINTÉTICA mede buffers quentes; o produto mede buffers frios — e a diferença foi 3×.** O
+    `what_the_commit_scan_is_made_of` dizia que os quatro planos custam 4,02 ms de varredura; instrumentado
+    **dentro do `split` do produto**, o mesmo trabalho custa 10–20. O custo não era outro código: era a
+    mesma leitura sobre memória que ninguém tocava há um traço. *Uma sonda que constrói os próprios dados
+    logo antes de medi-los mede o cache, não o produto* — e foi essa diferença que quase me fez
+    paralelizar a extração da janela, que rende **zero**.
+18. **Um limiar de paralelização é em BYTES, não em elementos — e o erro só aparece no canvas PEQUENO.** O
+    mesmo `PAR_MIN` que estava certo para o fork de um plano de `f32` a 4096² **dobrou** o custo de um
+    Ctrl+Z a 1024², porque em elementos ele não distingue `u8` de `[u8; 7]`. Otimização medida numa ponta
+    da faixa é regressão silenciosa na outra: **meça as três telas, sempre**.
+
 ---
 
 ## 7. Próxima etapa recomendada
@@ -1288,16 +1372,36 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 
 **A fila de hoje, por número MEDIDO no produto:**
 
-1. 🎯 **A porta ÚNICA de escrita de plano — e a §5.14 CORTOU o preço dela pela metade e mudou o alvo.**
-   A §5.13 dizia que o pen-up custava o **fork dos três planos** (28,47 ms) e a §7 anterior somava
-   *~40 ms por traço em cópias*. Medido: o fork paralelo custa **9,25 ms**, e **91% do pen-up era o
-   COMMIT DE UNDO** — que a §5.14 paralelizou (**25,03 → 10,96 ms**). O que sobra para esta wave é
-   **pen-down 11,7 + pen-up 9,2 ≈ 21 ms por traço**, e ⚠️ **ela tem de alcançar o HISTÓRICO também**: em
-   repouso os quatro planos têm **dois** donos, e o segundo é o `cursor` da U1 — um journal que só
-   substituísse o `paint.stroke_undo` deixaria a contagem em 2 e **não mudaria um milissegundo**. A cura
-   segue prescrita (§13.12.5 do doc 25, o *tile-based undo* do GIMP/Krita) e segue pedindo a **porta
-   única de escrita** que hoje não existe (~25 sítios chamam `Arc::make_mut` direto). ⚠️ **Wave própria,
-   com gates próprios** — e é a única frente que cura os QUATRO modos de uma vez.
+1. 🎯 **A JANELA VEM DE QUEM ESCREVE — a wave que desmonta o pen-up, agora com o preço CERTO.**
+   O pen-up a 4096² com impasto custa **37,00 ms** e ele tem duas metades **medidas pelas portas do
+   produto** (§5.16): o **fold** 13,28 e o **commit** 23,72. E as duas morrem pela mesma mudança:
+
+   - o **commit** é `PlaneDeltas::split`, limitado por **largura de banda lendo ~470 MB** para
+     *derivar* uma janela que o escritor já conhecia. ⚠️ **Paralelizar a extração foi MEDIDO e
+     REJEITADO** (§5.16): o custo é o SCAN, e ele já é paralelo.
+   - o **fold** é uma cópia de 192 MB que só existe porque o `stroke_undo` é um **segundo dono** dos
+     três planos de relevo.
+
+   A cura é a mesma que o doc 25 §13.12.5 prescreve (*tile-based undo* do GIMP/Krita): **o "antes" é
+   capturado por REGIÃO, no momento da escrita**, em vez de ser um `Arc` do plano inteiro. E há uma
+   ordem que a mede em três degraus, cada um verde por si:
+
+   - **S1 — a porta recebe a REGIÃO.** `plane_fork::fork_par` já é o único jeito de um plano
+     canvas-shaped virar escrevível (arch-gate sobre `tool/paint/**`, 41 sítios). Dando-lhe o retângulo,
+     *esquecer é impossível por TIPO* — que é a resposta exata à objeção que o `diff_window` documenta
+     (*"uma janela informada errado não falha: some com texels em silêncio"*). Sítio que não sabe passa
+     "plano inteiro" ⇒ varredura completa ⇒ correto. **Sem isto, S2 e S3 não são seguros.**
+   - **S2 — o commit usa a janela** em vez de a derivar. Mata os 23,7 ms do commit.
+   - **S3 — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
+     em vez de instalar um snapshot materializado. Aí o `cursor` não precisa mais segurar os planos, a
+     contagem de donos cai para **um**, e **o fold e o fork do pen-down somem juntos** — mais o Ctrl+Z,
+     que deixa de custar uma cópia de documento (§5.16) e passa a custar a janela.
+
+   ⚠️ **A contagem de donos é a espinha e já está medida:** em repouso os quatro planos têm **dois**
+   donos, e o segundo é o `cursor` da U1 — um journal que só substituísse o `paint.stroke_undo`
+   deixaria a contagem em 2 e **não mudaria um milissegundo**. ⚠️ **Wave própria, com gates próprios**, e
+   é a única frente que cura os QUATRO modos de uma vez.
+
 2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13/§5.14). O maior evento
    **reprodutível** é o pen-up a 38,9 ms e ele não chega lá. ⚠️ **Mas uma amostra única de pen-up já foi
    medida em 117,76 ms com o produto correto** — então o 134,8 é compatível com um pen-up normal pego

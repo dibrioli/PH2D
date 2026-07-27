@@ -261,3 +261,34 @@ fn apply_container_runs_expressions_on_the_local_clock() {
         "the expr pass runs in the container at local t=1 (Y = time*10 = 10), got {y}"
     );
 }
+
+/// **Past the container's AUTHORED end an expression FREEZES with the keys** — it runs
+/// on `container_cut`, not the raw local clock (the *expressions extrapolate the
+/// container duration* report). With "Walk" cut to 1 s, a driven `Y = time*10` at local
+/// t=3 writes Y=10 (frozen at the cut), not 30. (Mutation: raw `t` in `apply_container`
+/// -> Y=30, extrapolated past the container's end.)
+#[test]
+fn an_expression_freezes_at_the_container_cut() {
+    let (mut sim, mut st, bits, walk) = scene();
+    st.doc.set_container_length_override(walk, Some(1.0));
+    let tgt = st.doc.bind(bits, PropKind::TranslationY);
+    st.doc
+        .bindings_mut()
+        .iter_mut()
+        .find(|b| b.target == tgt)
+        .unwrap()
+        .expr = Some("time*10".into());
+
+    apply_container(sim.world_mut(), &mut st.doc, walk, 3.0, |_| false);
+    let y = f64::from(
+        sim.world()
+            .get::<Transform>(Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .y,
+    );
+    assert!(
+        (y - 10.0).abs() < 1e-4,
+        "expr freezes at the container cut (time*10 clamped to local t=1 -> 10), got {y}"
+    );
+}

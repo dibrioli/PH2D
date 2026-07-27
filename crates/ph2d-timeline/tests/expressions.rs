@@ -310,3 +310,52 @@ fn the_motion_node_delegates_to_the_one_parser() {
         "the Motion node must not carry its own lexer (the single-door rule)"
     );
 }
+
+/// **A SKIPPED entity's expression does not run** — the same ownership boundary the
+/// keyed pass honours. A gizmo-owned or displaced-pinned pose is left un-reset by the
+/// keyed pass; if the expression drove it anyway it would read its OWN output back as
+/// `value` and climb every frame — the *wiggle drifts when paused* report. Here Y is
+/// keyed (so `value` comes from the snapshot = the un-reset world) and starts at 5:
+/// three skipped applies must leave it at 5. (Mutation: the driven loop ignores `skip`
+/// -> Y climbs 5, 6, 7, 8.)
+#[test]
+fn a_skipped_entitys_expression_does_not_run_and_cannot_drift() {
+    use ph2d_timeline::apply_from_doc_except;
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 5.0)),
+            Name::new("Owned"),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    ramp(&mut doc, e, PropKind::TranslationY, 0.0, 0.0, 1.0); // keyed -> value from snapshot
+    drive(&mut doc, e, PropKind::TranslationY, "value + 1");
+    // The user owns `e` this frame (gizmo drag / displaced pin): the keyed pass skips
+    // it, so its Y (5.0) is NOT reset. The expression must skip it too.
+    for _ in 0..3 {
+        apply_from_doc_except(&mut w, &mut doc, 0.0, |bits| bits == e.to_bits());
+    }
+    let y = w.get::<Transform>(e).unwrap().translation.y;
+    assert!(
+        (y - 5.0).abs() < 1e-4,
+        "a skipped entity's expression must not run (Y stays 5.0; a drift reaches 8.0), got {y}"
+    );
+}
+
+/// **Past the SCENE's authored end an expression FREEZES with the keys** — it runs on
+/// `cut_scene`, the same clock the keyed pass composed at, not the raw playhead. Under
+/// a 1 s scene, `time*10` at t=3 is 10 (frozen at the cut), not 30. (Mutation: the raw
+/// `t` -> x = 30, extrapolated past the véu.)
+#[test]
+fn an_expression_freezes_at_the_scene_cut() {
+    let (mut w, e) = one("Cut");
+    let mut doc = TimelineDoc::new();
+    doc.set_scene_length(Some(1.0));
+    drive(&mut doc, e, PropKind::TranslationX, "time*10");
+    let x = x_at(&mut w, e, &mut doc, 3.0);
+    assert!(
+        (x - 10.0).abs() < 1e-4,
+        "expr freezes at the scene cut (time*10 clamped to t=1 -> 10), got {x}"
+    );
+}

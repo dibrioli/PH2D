@@ -106,11 +106,12 @@ pub fn apply_from_doc_except(
 
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 
-    // ADR-0144 — the SEPARATE post-composition pass: after every keyed prop is
-    // written, expressions read the composed values and overwrite the driven
-    // props. Early-out (byte-identical) when no binding carries a formula; never
-    // touches `stack_eval`/the blend, so the fade is untouched by construction.
-    crate::expr_pass::run(world, doc, t);
+    // ADR-0144 — the SEPARATE post-composition pass (never touches `stack_eval`/the
+    // fade; byte-identical with no formula). On the scene's CUT clock (`cut_scene`)
+    // and honouring `skip`, so past the authored end an expression freezes WITH the
+    // keys, and a gizmo-owned / displaced pose never feeds its own output back.
+    let expr_t = doc.cut_scene(t);
+    crate::expr_pass::run(world, doc, expr_t, &skip);
 }
 
 /// **Apply container `container`'s INTERIOR alone, at ITS local clock `t`** — the
@@ -158,9 +159,10 @@ pub fn apply_container(
     }
     doc.put_scratch(scratch);
 
-    // ADR-0144 — the expression pass, on the CONTAINER's local clock (`time` inside
-    // a container edit is container-local, matching the poses just composed).
-    crate::expr_pass::run(world, doc, t);
+    // ADR-0144 — on the CONTAINER's CUT local clock (`container_cut`), honouring
+    // `skip`: past the container's authored end an expression freezes with the keys.
+    let expr_t = doc.container_cut(container, t);
+    crate::expr_pass::run(world, doc, expr_t, &skip);
 }
 
 /// Pass 1 — liveness (P6), and the one chance to capture `rest`.
@@ -263,9 +265,9 @@ pub fn apply_active_clip(
         }
     }
 
-    // ADR-0144 — the expression pass, on the clip's own clock (the same `clip_t`
-    // the keyed props were sampled at). Early-out when nothing is driven.
-    crate::expr_pass::run(world, doc, clip_t);
+    // ADR-0144 — on the clip's own CUT clock (`clip_t`, already clamped) and
+    // honouring `skip`, so an owned pose never feeds its own output back.
+    crate::expr_pass::run(world, doc, clip_t, &skip);
 }
 
 /// Read one property back out of an entity — the exact inverse of

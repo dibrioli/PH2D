@@ -16,6 +16,19 @@
 //! still standing in `current` (the previous frame's at the back-edge), a single
 //! sweep that **cannot explode**. `value` is always the PRE-expression value
 //! (keyed sample or rest), never the map, so a prop never feeds back into itself.
+//!
+//! ⚠️ **Two clock-and-ownership rules the caller upholds, both learned from smoke
+//! reports:**
+//! - It runs on the **CUT clock** — the exact instant the keyed pass composed at
+//!   (`clip_cut`/`container_cut`/`cut_scene`). Past a composition's authored end the
+//!   keys FREEZE at the cut; the expression's `time` must freeze there too, or it
+//!   extrapolates past the container/clip/scene end while everything else stands.
+//! - It honours **`skip`** exactly as pass 3 does. An entity the user owns this
+//!   frame (gizmo drag) or a paused pose pinned off its curve
+//!   (`AutokeyState.displaced`) is NOT rewritten by the keyed pass — so if the
+//!   expression drove it anyway it would read its OWN un-reset output as `value` and
+//!   feed back, a monotonic drift while paused. Skipped entities still appear in the
+//!   snapshot, so a prop-LINK may read their live pose.
 
 use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
@@ -32,9 +45,10 @@ use crate::prop::PropKind;
 /// UI value; a seed spacing.
 const SEED_SPACING: f32 = 100.0;
 
-/// Run the expression pass at clip time `time`. No-op (byte-identical) when no
-/// binding carries a formula.
-pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
+/// Run the expression pass at the composition's CUT clock `time` (see the module
+/// docs). `skip` mirrors the keyed pass: a driven entity it claims is left alone.
+/// No-op (byte-identical) when no binding carries a formula.
+pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64, skip: &dyn Fn(u64) -> bool) {
     // The fade pin: nothing driven -> the pass does not exist.
     if doc.bindings().iter().all(|b| b.expr.is_none()) {
         return;
@@ -73,7 +87,9 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
     // hundreds of expression-driven properties.
     let mut driven: Vec<Driven> = Vec::new();
     for (i, b) in doc.bindings().iter().enumerate() {
-        if b.missing {
+        // Honour `skip` like the keyed pass: a gizmo-owned or displaced-pinned entity
+        // is not driven, or it reads its own un-reset output back (module docs).
+        if b.missing || skip(b.entity) {
             continue;
         }
         let Some(src) = &b.expr else { continue };

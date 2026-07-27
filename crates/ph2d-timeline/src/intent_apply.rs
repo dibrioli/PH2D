@@ -314,10 +314,10 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             }
         }),
         I::SetBindingExpr { target, expr } => edit(state, |doc, _| {
-            if let Some(b) = doc.bindings_mut().iter_mut().find(|b| b.target == target) {
-                // Empty / whitespace-only text clears back to keyframes.
-                b.expr = expr.filter(|s| !s.trim().is_empty());
-            }
+            // ADR-0145 — the formula is authored PER-CLIP (in the active clip, like
+            // keyframes) so a strip that plays the clip windows it. Empty text clears.
+            let active = doc.active_index();
+            doc.set_clip_expr(active, target, expr);
         }),
         I::SetSelectedRove { on } => edit(state, |doc, sel| {
             for_selected_tracks(doc, sel, |track, ids| {

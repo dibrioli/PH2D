@@ -114,14 +114,18 @@ pub fn apply_from_doc_except(
         }
     }
 
-    doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
-
-    // ADR-0144 — the SEPARATE post-composition pass (never touches `stack_eval`/the
-    // fade). On the scene's CUT clock (`cut_scene`), honouring `skip` and the
-    // `composed` coverage, so an expression freezes past the authored end and rides
-    // its strip instead of extrapolating or feeding an owned pose back.
+    // ADR-0144/0145 — the SEPARATE post-composition pass (never touches
+    // `stack_eval`/the fade). GLOBAL drivers run on the scene's CUT clock; per-clip
+    // drivers are windowed by the STRIPS (stacked) or the active clip (non-stacked).
+    // Run BEFORE `put_scratch` so the per-clip window can read the strip layout.
     let expr_t = doc.cut_scene(t);
-    crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
+    let window = if stacked {
+        crate::expr_pass::ExprWindow::Strips(&scratch)
+    } else {
+        crate::expr_pass::ExprWindow::ActiveClip
+    };
+    crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+    doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }
 
 /// Pass 1 — liveness (P6), and the one chance to capture `rest`.

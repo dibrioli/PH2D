@@ -67,13 +67,14 @@ pub fn apply_container(
             write_prop(world, e, b, v, orient);
         }
     }
-    doc.put_scratch(scratch);
 
-    // ADR-0144 — on the CONTAINER's CUT local clock (`container_cut`), honouring
-    // `skip` and the `composed` coverage: past the container's authored end (or where
-    // the container does not key a scene object) an expression freezes with the keys.
+    // ADR-0144/0145 — GLOBAL drivers on the CONTAINER's CUT local clock; per-clip
+    // drivers windowed by the container's STRIPS. Run BEFORE `put_scratch` so the
+    // window can read the strip layout.
     let expr_t = doc.container_cut(container, t);
-    crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
+    let window = crate::expr_pass::ExprWindow::Strips(&scratch);
+    crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+    doc.put_scratch(scratch);
 }
 
 /// **Apply the ACTIVE CLIP ALONE at clip time `clip_t`, ignoring the stack** —
@@ -132,7 +133,9 @@ pub fn apply_active_clip(
         }
     }
 
-    // ADR-0144 — on the clip's own CUT clock (`clip_t`, already clamped), honouring
-    // `skip` and the `composed` coverage.
-    crate::expr_pass::run(world, doc, clip_t, &skip, &composed);
+    // ADR-0144/0145 — on the clip's own CUT clock (`clip_t`, already clamped). The
+    // Keys view has no stack, so a per-clip driver plays throughout the ACTIVE clip
+    // (`ExprWindow::ActiveClip`) — the clip you are editing IS the one that plays.
+    let window = crate::expr_pass::ExprWindow::ActiveClip;
+    crate::expr_pass::run(world, doc, clip_t, &skip, &composed, &window);
 }

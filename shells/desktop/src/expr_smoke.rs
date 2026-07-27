@@ -30,15 +30,14 @@ use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_render::Sprite;
-use ph2d_timeline::{PropKind, TimelineDoc};
+use ph2d_timeline::{PropKind, StackHost, StripSource, TimelineDoc};
 
-/// Bind `(entity, prop)` and stamp `src` as its expression (creating the binding if
-/// the prop has no keys — a pure-expression property).
+/// Bind `(entity, prop)` and author `src` as its PER-CLIP expression in the active clip
+/// (ADR-0145) — the formula lives in the clip like a keyframe, so a strip windows it.
 fn drive(doc: &mut TimelineDoc, bits: u64, prop: PropKind, src: &str) {
     let target = doc.bind(bits, prop);
-    if let Some(b) = doc.bindings_mut().iter_mut().find(|b| b.target == target) {
-        b.expr = Some(src.to_string());
-    }
+    let active = doc.active_index();
+    doc.set_clip_expr(active, target, Some(src.to_string()));
 }
 
 /// Key `(entity, prop)` linearly `v0 -> v1` over `0..dur` (Linear).
@@ -97,6 +96,13 @@ impl crate::App {
         // Follower: a prop-link — follows the Slider offset by 2.5 (no lag).
         drive(doc, follower, PropKind::TranslationX, "Slider.x + 2.5");
 
+        // ADR-0145 — place a strip of clip 0 in the ARRANGE scene over [1,3), so the
+        // SAME per-clip expressions are WINDOWED there: switch to Arrange and the pure
+        // Slider/Time stop OUTSIDE [1,3) and run at the strip-LOCAL time inside it.
+        if let Some(lane) = doc.add_lane("scene".into()) {
+            let _ = doc.add_strip_to(StackHost::Document, lane, StripSource::Clip(0), 1.0, 3.0);
+        }
+
         doc.set_active_loop_for(false, Some((0.0, 4.0)));
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.gizmo.replace_selection(Some(wiggler));
@@ -106,12 +112,13 @@ impl crate::App {
         self.playhead.play();
 
         eprintln!(
-            "[expr-smoke] 3 objetos dirigidos por FORMULA (unidades de mundo ~±6), loop [0,4] \
-             tocando: Slider X=time*1.2 (so-expressao, sem keys, y=3), Wiggler X keyado -4..4 + \
-             Y=value+wiggle(3,1.2) (jitter vertical sobre Y keyada flat, y=0), Follower \
-             X=Slider.x+2.5 (prop-link, sem lag, y=-3). R-CLICK na LABEL de uma track -> \
-             Expression... abre o campo. Nenhum strip/fade se mexe (documento sem expr e \
-             byte-identico)."
+            "[expr-smoke] 3 objetos dirigidos por FORMULA POR-CLIP (ADR-0145; unidades ~±6), \
+             loop [0,4]: Slider X=time*1.2 (PURA, sem keys, y=3), Wiggler X keyado -4..4 + \
+             Y=value+wiggle(3,1.2) (y=0), Follower X=Slider.x+2.5 (prop-link, y=-3). \
+             Na aba KEYS o clip toca por inteiro -> os 3 se movem sempre. \
+             Troque para ARRANGE: um strip do clip 0 esta em [1,3s] -> as expressoes (ate a \
+             Slider PURA) so tocam DENTRO do strip, no tempo LOCAL dele, e ficam QUIETAS fora. \
+             R-CLICK na LABEL de uma track -> Expression... autora no clip ativo."
         );
     }
 }

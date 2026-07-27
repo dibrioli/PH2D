@@ -3,10 +3,12 @@
 //! world. For each binding that carries a formula it reads the composed values,
 //! evaluates the expression, and overwrites the driven property.
 //!
-//! ⚠️ **It never touches `stack_eval` or the blend.** A document with no expression
-//! takes the early-out and does nothing — so it is byte-identical to the pre-feature
-//! engine, and the Clips/Strips/Fade fingerprint is untouched by construction. This
-//! is the whole reason ADR-0144 put the pass HERE rather than inside the evaluator.
+//! ⚠️ **It never enters the BLEND** (`sample_stack`/`eval_frame`) — it only READS the
+//! strip layout (`sole_strip_of`/`strip_source_time`) to window a per-clip expr
+//! (ADR-0145), which reports WHERE a strip plays, never a fade weight. A document with
+//! no expression takes the early-out and does nothing — byte-identical to the
+//! pre-feature engine, the Clips/Strips/Fade fingerprint untouched by construction.
+//! This is the whole reason ADR-0144 put the pass HERE rather than inside the evaluator.
 //!
 //! **Evaluation order** (ADR-0144 §6): the driven bindings are TOPOLOGICALLY
 //! ordered (a dependency before its dependents) and evaluated over a mutable
@@ -30,16 +32,18 @@
 //!   feed back, a monotonic drift while paused. Skipped entities still appear in the
 //!   snapshot, so a prop-LINK may read their live pose.
 //!
-//! ⚠️ **A keyed prop's expression RIDES its strip** (Enio smoke). The caller hands
-//! in `composed` — what the keyed pass just wrote, per `(entity, prop)`. A prop with
-//! keys somewhere is driven by a strip/clip with a WINDOW; where the composition
-//! covers nothing (outside the strip, or a scene object in a container that does not
-//! hold it) the expression goes QUIET with the keys instead of playing on forever,
-//! and `value` is the COMPOSED value there (rest when uncovered), NEVER the stale
-//! world — that is also what kills the paused drift on an uncovered prop. A pure
-//! expression (no keys anywhere) has no strip, so it always runs on the outer clock.
+//! ⚠️ **Two sources of formula, two windows** (ADR-0144 + ADR-0145):
+//! - A **GLOBAL** driver (`binding.expr`, document-wide) runs everywhere on the outer
+//!   CUT clock (the Arrange scene driver). A KEYED prop's global expr rides its strip
+//!   through the `composed` coverage: where the composition covers nothing it goes
+//!   QUIET with the keys, and `value` is the COMPOSED value (rest when uncovered),
+//!   NEVER the stale world (which kills the paused drift on an uncovered prop).
+//! - A **PER-CLIP** driver (`NamedClip.expr`, ADR-0145) lives in the clip like a
+//!   keyframe, so a strip that plays the clip WINDOWS it, at the strip-LOCAL time
+//!   (`clip_expr_clock`). Off the strip the clip is not playing -> quiet. This is what
+//!   makes a PURE expression (no keys at all) obey the strip: the clip is its home.
 
-use ph2d_anim::AnimValue;
+use ph2d_anim::{AnimTarget, AnimValue};
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
 use ph2d_expr::{Bindings, Expr, eval};
 use std::collections::BTreeMap;
@@ -47,6 +51,41 @@ use std::collections::BTreeMap;
 use crate::apply::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
+use crate::stack_eval;
+use crate::stack_frames::StackScratch;
+
+/// Where a PER-CLIP expression (ADR-0145) gets its window and local clock. The
+/// keyed pass composes at one of these; the expression must ride the SAME one, or it
+/// plays where the keys do not ([[feedback_derived_coordinate_seed_must_match_sample]]).
+pub(crate) enum ExprWindow<'a> {
+    /// **Stacked** (Arrange / container): a per-clip expr is windowed by the strip that
+    /// plays its clip, and evaluated at the strip-LOCAL time. Off the strip -> quiet.
+    Strips(&'a StackScratch),
+    /// **Keys solo / non-stacked**: only the ACTIVE clip plays, throughout, at the
+    /// passed clip clock. (Under Time Remap the per-entity clock would differ — a named
+    /// edge; the common case has `time` == the clip clock.)
+    ActiveClip,
+}
+
+/// The clock a per-clip expr on clip `clip` (entity `entity`) evaluates at — the same
+/// window the keys of that clip play in — or `None` when the clip is not playing here.
+fn clip_expr_clock(
+    doc: &TimelineDoc,
+    window: &ExprWindow,
+    clip: usize,
+    entity: u64,
+    time: f64,
+) -> Option<f64> {
+    match window {
+        ExprWindow::Strips(sc) => {
+            // The sole strip playing this clip now; `PlaysTwice`/`NotPlaying` -> quiet
+            // (the same honest verdict the K seed gives — ADR-0145).
+            let strip = stack_eval::sole_strip_of(sc, clip).ok()?;
+            stack_eval::strip_source_time(sc, &strip, entity)
+        }
+        ExprWindow::ActiveClip => (clip == doc.active_index()).then_some(time),
+    }
+}
 
 /// Spread between two bindings' wiggle seeds — large enough that the noise phases
 /// of distinct properties never coincide (the hash decorrelates any distinct
@@ -64,9 +103,13 @@ pub(crate) fn run(
     time: f64,
     skip: &dyn Fn(u64) -> bool,
     composed: &BTreeMap<(u64, PropKind), f32>,
+    window: &ExprWindow,
 ) {
-    // The fade pin: nothing driven -> the pass does not exist.
-    if doc.bindings().iter().all(|b| b.expr.is_none()) {
+    // The fade pin: nothing driven (no global binding.expr AND no per-clip expr) ->
+    // the pass does not exist, and a formula-free document stays byte-identical.
+    let any_global = doc.bindings().iter().any(|b| b.expr.is_some());
+    let any_clip = doc.clips().iter().any(|c| !c.expr.is_empty());
+    if !any_global && !any_clip {
         return;
     }
 
@@ -133,7 +176,52 @@ pub(crate) fn run(
             prop: b.prop,
             value,
             seed: b.target.get() as f32 * SEED_SPACING,
+            // The GLOBAL driver runs on the composition's cut clock, everywhere (the
+            // Arrange scene driver — ADR-0145).
+            time: time as f32,
         });
+    }
+
+    // Per-CLIP expressions (ADR-0145): the formula lives in the clip, so a strip that
+    // plays the clip WINDOWS it, at the strip-LOCAL time. This is what makes a PURE
+    // expression (no keys anywhere) obey the strip. Off the strip -> the clip is not
+    // playing here -> `clip_expr_clock` is None -> quiet, exactly like the keys.
+    let by_target: BTreeMap<AnimTarget, usize> = doc
+        .bindings()
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| !b.missing)
+        .map(|(i, b)| (b.target, i))
+        .collect();
+    for (ci, clip) in doc.clips().iter().enumerate() {
+        for (target, src) in &clip.expr {
+            let Some(&i) = by_target.get(target) else {
+                continue;
+            };
+            let b = &doc.bindings()[i];
+            if skip(b.entity) {
+                continue;
+            }
+            let Ok(ir) = ph2d_expr_parse::parse(src) else {
+                continue;
+            };
+            let Some(local) = clip_expr_clock(doc, window, ci, b.entity, time) else {
+                continue; // the clip is not playing at this instant -> the expr is quiet
+            };
+            let value = composed
+                .get(&(b.entity, b.prop))
+                .copied()
+                .unwrap_or(b.rest.unwrap_or(0.0));
+            driven.push(Driven {
+                idx: i,
+                ir,
+                entity: b.entity,
+                prop: b.prop,
+                value,
+                seed: b.target.get() as f32 * SEED_SPACING,
+                time: local as f32,
+            });
+        }
     }
 
     // Evaluate in dependency order over a MUTABLE `current` (seeded from the
@@ -149,7 +237,7 @@ pub(crate) fn run(
             cur: &current,
             names: &names,
             value: d.value,
-            time: time as f32,
+            time: d.time,
             seed: d.seed,
         };
         let v = eval(&d.ir, &bindings);
@@ -179,6 +267,9 @@ struct Driven {
     value: f32,
     /// This binding's wiggle seed.
     seed: f32,
+    /// The clock this expr evaluates at: the composition cut clock (a GLOBAL driver)
+    /// or the strip-LOCAL time (a per-clip driver) — ADR-0145.
+    time: f32,
 }
 
 /// The [`Bindings`] the pass hands each expression: `time` (the clip clock),

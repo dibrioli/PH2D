@@ -277,23 +277,29 @@ fn a_binding_without_expr_is_untouched_while_the_pass_runs() {
     );
 }
 
-/// **Arch-gate: the expression pass never touches the fade evaluator.** The whole
-/// isolation of ADR-0144 rests on the pass staying out of `stack_eval`/the blend;
-/// a source scan pins it so a future edit that reaches in fails here, loudly.
+/// **Arch-gate: the expression pass never enters the BLEND.** The whole isolation of
+/// ADR-0144 rests on the pass staying out of the fade math — and the fade is computed
+/// by the blend (`sample_stack`/`eval_frame`/`invert_stack`), NOT by the read-only
+/// strip-layout queries (`sole_strip_of`/`strip_source_time`) the pass uses to WINDOW
+/// a per-clip expr (ADR-0145): those report WHERE a strip plays, never a blend weight.
+/// A source scan pins it so a future edit that reaches into the blend fails here,
+/// loudly; the `fade_fingerprint` gate is the real byte-for-byte proof.
 #[test]
-fn the_expression_pass_never_calls_stack_eval() {
+fn the_expression_pass_never_enters_the_blend() {
     let src = include_str!("../src/expr_pass.rs");
-    // Strip the module doc-comment (it NAMES stack_eval to explain the rule) so the
-    // scan tests the CODE, not the prose.
+    // Strip line-comments (the docs NAME these to explain the rule) so the scan tests
+    // the CODE, not the prose.
     let code: String = src
         .lines()
         .filter(|l| !l.trim_start().starts_with("//"))
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(
-        !code.contains("stack_eval"),
-        "the expression pass must not call stack_eval (fade isolation, ADR-0144)"
-    );
+    for banned in ["sample_stack", "eval_frame", "invert_stack"] {
+        assert!(
+            !code.contains(banned),
+            "the expression pass must not enter the blend `{banned}` (fade isolation, ADR-0144)"
+        );
+    }
 }
 
 /// **Arch-gate: ONE parser.** The Motion node must delegate to `ph2d-expr-parse`,

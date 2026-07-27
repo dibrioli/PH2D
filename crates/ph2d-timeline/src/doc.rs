@@ -10,6 +10,8 @@
 //! Targets are **allocated** here (opaque, HR-8) so two entities animating the
 //! same [`PropKind`] get distinct tracks in one clip.
 
+use std::collections::BTreeMap;
+
 use ph2d_anim::{AnimTarget, AnimValue, Clip, Interp, KeyId, RationalTime, Track};
 use serde::{Deserialize, Serialize};
 
@@ -85,11 +87,18 @@ mod markers;
 /// (the default) is byte-identical to v14 (no pass runs), but postcard is positional
 /// so the appended field forces the bump: a v14 blob is refused on load.
 ///
+/// v16: **per-clip expressions** ([ADR-0145]) — `NamedClip.expr:
+/// BTreeMap<AnimTarget, String>`, appended: the formula lives in the CLIP (like
+/// keyframes) so a strip that plays the clip WINDOWS it. Empty (the default) is
+/// byte-identical to v15, but postcard is positional so the appended field forces the
+/// bump: a v15 blob is refused on load.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
-pub const DOC_VERSION: u32 = 15;
+/// [ADR-0145]: ../../../docs/architecture/decisions/0145-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
+pub const DOC_VERSION: u32 = 16;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -172,6 +181,15 @@ pub struct NamedClip {
     /// play — the eval clamps its clock at the cut). `None` = derived from
     /// content, exactly as before. Appended (v11).
     pub length_override: Option<f64>,
+    /// **A EXPRESSÃO por-clip** (ADR-0145) — a fórmula que dirige `target` DENTRO
+    /// deste clip, keyada por `AnimTarget` como os tracks. Um strip que toca este
+    /// clip a JANELA (avaliada no tempo LOCAL do strip); fora do strip ela fica
+    /// quieta com os keys. É o modelo precomp do AE, e é o que faz uma expressão
+    /// PURA (sem keyframes) obedecer o strip. O `binding.expr` (document-wide,
+    /// ADR-0144) segue como o driver GLOBAL. Apêndice posicional ⇒ `DOC_VERSION`
+    /// 15 -> 16.
+    #[serde(default)]
+    pub expr: BTreeMap<AnimTarget, String>,
 }
 
 /// The editable timeline document (see module docs).
@@ -235,6 +253,7 @@ impl TimelineDoc {
                 keys_loop_range: None,
                 keys_loop_ping_pong: false,
                 length_override: None,
+                expr: BTreeMap::new(),
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -368,6 +387,7 @@ impl TimelineDoc {
             keys_loop_range: None,
             keys_loop_ping_pong: false,
             length_override: None,
+            expr: BTreeMap::new(),
         });
         self.clips.len() - 1
     }
@@ -376,6 +396,22 @@ impl TimelineDoc {
     pub fn rename_clip(&mut self, index: usize, name: String) {
         if let Some(c) = self.clips.get_mut(index) {
             c.name = name;
+        }
+    }
+
+    /// **Set (or clear) the per-clip expression** for `target` in clip `index`
+    /// (ADR-0145). A blank formula clears it. Out of range: no-op. The formula lives
+    /// in the clip like a track, so a strip that plays this clip windows it.
+    pub fn set_clip_expr(&mut self, index: usize, target: AnimTarget, expr: Option<String>) {
+        if let Some(c) = self.clips.get_mut(index) {
+            match expr.filter(|s| !s.trim().is_empty()) {
+                Some(s) => {
+                    c.expr.insert(target, s);
+                }
+                None => {
+                    c.expr.remove(&target);
+                }
+            }
         }
     }
 
@@ -407,6 +443,9 @@ impl TimelineDoc {
             keys_loop_ping_pong: src.keys_loop_ping_pong,
             // The explicit duration travels too: it is part of what the clip IS.
             length_override: src.length_override,
+            // The per-clip formulas travel — a variation animates the same targets
+            // (ADR-0145). A copy of "walk" carries walk's expressions.
+            expr: src.expr.clone(),
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)

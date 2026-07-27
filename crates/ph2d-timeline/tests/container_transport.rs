@@ -33,6 +33,16 @@ fn x(sim: &SimWorld, bits: u64) -> f64 {
     )
 }
 
+fn y(sim: &SimWorld, bits: u64) -> f64 {
+    f64::from(
+        sim.world()
+            .get::<Transform>(Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .y,
+    )
+}
+
 /// One object animated by the ACTIVE clip (ramp x: 0 -> 10 over 2 s). A container "Walk"
 /// holds ONE strip of that clip over its interior `[0, 2)`, and the SCENE places the
 /// container instance late, at `[5, 7)`. Returns `(sim, state, bits, container)`.
@@ -333,5 +343,43 @@ fn a_keyed_expression_is_quiet_outside_its_strip_window() {
     assert!(
         (outside - 42.0).abs() < 1e-4,
         "a keyed expr is quiet outside its strip (X holds 42; running it gives rest+100), got {outside}"
+    );
+}
+
+/// **A PURE per-clip expression (no keyframes) obeys its strip — windowed AND at the
+/// strip-LOCAL time** (ADR-0145, the reported "Time/Slider extrapola a strip"). The
+/// formula lives in clip 0 (what the Walk strip plays); the scene places the Walk
+/// container at `[5,7)`, and inside it clip 0's strip is `[0,2)`. So at scene-time 6 the
+/// pure `Y = time*10` runs at the LOCAL time (6 -> 1 -> 10), NOT the raw clock (60); and
+/// before the strip it is QUIET, holding its pose (no play-outside, no drift). (Mutation:
+/// force `clip_expr_clock` to the raw `time` -> inside = 60, before = 40, RED on both.)
+#[test]
+fn a_pure_per_clip_expression_rides_its_strip_windowed_and_local() {
+    let (mut sim, mut st, bits, _walk) = scene();
+    let tgt = st.doc.bind(bits, PropKind::TranslationY); // PURE: Y has no keys
+    st.doc.set_clip_expr(0, tgt, Some("time*10".into())); // clip 0 = what the Walk strip plays
+
+    // Inside the strip: the pure expr runs at the strip-LOCAL time (6 -> local 1 -> 10).
+    apply_from_doc(sim.world_mut(), &mut st.doc, 6.0);
+    let inside = y(&sim, bits);
+    assert!(
+        (inside - 10.0).abs() < 1e-2,
+        "inside the strip the pure expr runs at LOCAL time (scene 6 -> local 1 -> 10), got {inside}"
+    );
+
+    // Before the container `[5,7)`: the clip is not playing, so the pure expr is quiet
+    // and Y holds its pose — repeated to prove no play-outside and no drift.
+    sim.world_mut()
+        .get_mut::<Transform>(Entity::from_bits(bits))
+        .unwrap()
+        .translation
+        .y = 42.0;
+    for _ in 0..3 {
+        apply_from_doc(sim.world_mut(), &mut st.doc, 4.0);
+    }
+    let outside = y(&sim, bits);
+    assert!(
+        (outside - 42.0).abs() < 1e-4,
+        "before the strip the pure expr is quiet (Y holds 42, not time*10), got {outside}"
     );
 }

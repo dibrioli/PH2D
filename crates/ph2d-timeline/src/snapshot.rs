@@ -569,9 +569,14 @@ impl TimelineViewSnapshot {
             row.entity = b.entity;
             row.missing = b.missing;
             row.keys.clear();
-            // The expression is the BINDING's (document-wide), not the track's —
-            // set every pass since the row is reused, and `None` on a bare binding.
-            row.expr = b.expr.clone();
+            // ADR-0145 — show the ACTIVE clip's per-clip formula (where the Keys view
+            // authors), falling back to the binding's GLOBAL one. Set every pass since
+            // the row is reused; `None` on a bare binding with no formula.
+            row.expr = doc
+                .clips()
+                .get(doc.active_index())
+                .and_then(|c| c.expr.get(&b.target).cloned())
+                .or_else(|| b.expr.clone());
             // Default Hold when there is no track yet (a bare binding) — the
             // no-mark case, set every pass since the row is reused.
             (row.pre, row.post) = (Extrap::Hold, Extrap::Hold);

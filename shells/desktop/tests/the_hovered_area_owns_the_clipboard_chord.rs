@@ -65,28 +65,50 @@ fn the_vector_delete_yields_when_the_cursor_is_over_the_timeline() {
 /// Os blocos da TIMELINE vêm DEPOIS dos do vetor — é o fall-through que pega a tecla
 /// quando o vetor cede. Se o de clipboard da timeline subisse para antes do vetorial, o
 /// vetor (que retorna cedo) nunca cederia a vez.
+///
+/// ⚠️ **As travas da timeline MUDARAM DE ARQUIVO em 2026-07-27** (integração `line/anim` +
+/// `line/physics`: o `keyboard.rs` cruzou o cap de 600 LOC na árvore combinada). Elas agora
+/// moram em `keyboard_timeline.rs`, atrás de UMA chamada — e é por isso que a asserção não
+/// pode mais ser *"a substring X vem antes da substring Y no mesmo arquivo"*. A PROPRIEDADE
+/// é a mesma e continua podendo falhar: no `keyboard.rs`, os blocos do vetor têm de vir
+/// antes da **chamada** `self.timeline_key(…)`; mover a chamada para cima dos blocos
+/// vetoriais reinstala exatamente o bug do Enio e deixa este gate VERMELHO.
 #[test]
 fn the_timeline_clipboard_and_delete_blocks_run_after_the_vector_ones() {
     let src = keyboard_src();
+    let call = src
+        .find("self.timeline_key(")
+        .expect("a chamada das travas da timeline mora em keyboard.rs");
+
     let vec_copy = src
         .find("self.vec_copy()")
         .expect("bloco de clipboard do vetor");
-    let tl_copy = src
-        .find("I::CopySelection")
-        .expect("bloco de clipboard da timeline");
     assert!(
-        vec_copy < tl_copy,
+        vec_copy < call,
         "o bloco de clipboard da timeline tem de correr DEPOIS do vetorial (fall-through)"
     );
 
     let vec_del = src
         .find("self.vec_delete_selected_vertex_or_path()")
         .expect("Delete do vetor");
-    let tl_del = src
-        .find("TimelineIntent::DeleteSelection")
-        .expect("Delete da timeline");
     assert!(
-        vec_del < tl_del,
+        vec_del < call,
         "o Delete da timeline tem de correr DEPOIS do do vetor (fall-through)"
+    );
+
+    // …e as travas de fato estão do outro lado da chamada — sem isto o gate acima passaria
+    // apontando para uma função vazia (a chamada existe, o bloco não).
+    let sibling = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/input_dispatch/keyboard_timeline.rs"
+    ))
+    .expect("keyboard_timeline.rs legível");
+    assert!(
+        sibling.contains("I::CopySelection"),
+        "o bloco de clipboard da timeline sumiu do irmão"
+    );
+    assert!(
+        sibling.contains("TimelineIntent::DeleteSelection"),
+        "o Delete da timeline sumiu do irmão"
     );
 }

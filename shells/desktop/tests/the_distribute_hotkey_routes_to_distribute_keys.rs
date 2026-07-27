@@ -11,15 +11,21 @@
 //! Mutation: drop the arm, or point it at a different intent -> the exact
 //! substring vanishes -> RED. This is the same coverage the other five chord
 //! verbs have (their route is smoke-verified behind the same barrier).
+//!
+//! ⚠️ **O bloco MUDOU DE ARQUIVO em 2026-07-27** (integração `line/anim` + `line/physics`):
+//! o `keyboard.rs` cruzou o cap de 600 LOC na árvore combinada e as quatro travas da
+//! timeline saíram para o irmão `keyboard_timeline.rs`. O ARM e a âncora `Copy` viajaram
+//! JUNTOS, então a asserção de ordem intra-bloco continua valendo e continua podendo
+//! falhar — o que este gate afirma é a rota, não o endereço.
 
 use std::fs;
 
 fn keyboard_src() -> String {
     fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/input_dispatch/keyboard.rs"
+        "/src/input_dispatch/keyboard_timeline.rs"
     ))
-    .expect("keyboard.rs legível")
+    .expect("keyboard_timeline.rs legível")
 }
 
 #[test]

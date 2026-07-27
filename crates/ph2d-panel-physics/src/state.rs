@@ -14,7 +14,7 @@
 //! `TimelineIntent`). The shell stays the only thing that touches the
 //! `PhysicsBridge`.
 
-use ph2d_physics_ecs::PhysicsSettings;
+use ph2d_physics_ecs::{InteractionSettings, PhysicsSettings};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -46,6 +46,15 @@ pub struct PhysicsSnapshot {
     /// it is the difference between "gravity is wrong" and "nothing in this
     /// scene has a body yet".
     pub body_count: usize,
+    /// **The interaction tool** (W-Hand) — what the pointer does to a running
+    /// scene.
+    ///
+    /// ⚠️ It rides the same snapshot as the world settings but it is NOT one of
+    /// them: it lives in the shell's `App` and is never persisted (see
+    /// `ph2d_physics_ecs::interaction`). Two different lifetimes, one pipe — which
+    /// is why the panel emits a SEPARATE intent for it rather than folding it into
+    /// `SetSettings`.
+    pub interaction: InteractionSettings,
 }
 
 impl Default for PhysicsSnapshot {
@@ -59,6 +68,7 @@ impl Default for PhysicsSnapshot {
                 .pixels_per_meter,
             show_colliders: true,
             body_count: 0,
+            interaction: InteractionSettings::default(),
         }
     }
 }
@@ -76,6 +86,13 @@ pub enum PhysicsIntent {
     /// Flip the collider overlay — routed to the shell's `App.show_colliders`,
     /// the flag the `B` key owns.
     ToggleColliders,
+    /// Replace the interaction-tool state wholesale (W-Hand).
+    ///
+    /// A SECOND intent rather than a field of `SetSettings`, because the two have
+    /// different lifetimes: the world settings travel in the project file and this
+    /// does not. Folding them would make every knob drag of a runtime tool look
+    /// like a document edit to whatever the shell does with `SetSettings` next.
+    SetInteraction(InteractionSettings),
 }
 
 /// Retained per-instance state. Empty on purpose: the authority is the shell's

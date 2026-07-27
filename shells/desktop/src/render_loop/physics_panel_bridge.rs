@@ -18,7 +18,7 @@
 
 use ph2d_editor::screens::hero::HeroScreen;
 use ph2d_panel_physics::{PhysicsIntent, PhysicsSnapshot};
-use ph2d_physics_ecs::PhysicsBridge;
+use ph2d_physics_ecs::{InteractionSettings, PhysicsBridge};
 
 /// Publish the world state for `paint`, then apply whatever the artist did.
 ///
@@ -29,6 +29,7 @@ pub(crate) fn dispatch(
     hero: &mut HeroScreen,
     physics: &mut PhysicsBridge,
     show_colliders: bool,
+    interaction: &mut InteractionSettings,
 ) -> bool {
     // ── 1. Publish. Every row reads this; the panel keeps no copy. ──
     ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot {
@@ -38,6 +39,11 @@ pub(crate) fn dispatch(
         pixels_per_meter: hero.project.pixels_per_meter,
         show_colliders,
         body_count: physics.body_count(),
+        // The interaction tool (W-Hand). Runtime-only state of the SHELL — it
+        // rides this snapshot because the panel paints it, not because it is a
+        // world setting; `ph2d_physics_ecs::interaction` says why it is never
+        // persisted.
+        interaction: *interaction,
     }));
 
     // ── 2. Apply. The panel queued intents during event dispatch. ──
@@ -49,6 +55,10 @@ pub(crate) fn dispatch(
             // because this runs every frame.
             PhysicsIntent::SetSettings(s) => physics.set_settings(s),
             PhysicsIntent::ToggleColliders => colliders = !colliders,
+            // Clamped on the way in, by the same door the model uses: a NaN
+            // stiffness would reach the solver and poison the pose, the
+            // `Transform` and the determinism hash.
+            PhysicsIntent::SetInteraction(s) => *interaction = s.clamped(),
         }
     }
     colliders

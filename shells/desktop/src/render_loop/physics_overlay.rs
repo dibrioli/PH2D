@@ -52,7 +52,7 @@ use super::physics_overlay_joints::joint_marks;
 
 /// Outline thickness, in screen px. Thinner than the selection halo (2 px):
 /// a collider is standing information, not a thing you just did.
-const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela
+pub(super) const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 
 /// How many segments approximate a circle. 32 is smooth at any zoom a body
 /// is readable at, and the path is rebuilt per frame anyway.
@@ -410,6 +410,15 @@ pub(super) fn draw(
     // W-Grab: a mola da MÃO `(cursor, ponto de pega)` em mundo. Desenhada mesmo
     // com `show` FALSO, pela mesma razão da banda: é gesto, não anotação.
     grab: Option<([f32; 2], [f32; 2])>,
+    // W-Hand: a MIRA das ferramentas de ponto `(centro, alcance)` — onde o próximo
+    // estouro/puxão vai agir. `None` para a mão (que não tem alcance) e sempre que
+    // o gesto está inerte (relógio parado / física desarmada): uma mira que promete
+    // o que o clique não faz é pior que mira nenhuma.
+    aim: Option<([f32; 2], f32)>,
+    // W-Hand: o campo de atração VIVO `(centro, alcance)`, lido da ponte.
+    pull: Option<([f32; 2], f32)>,
+    // W-Hand: o último estouro `(centro, alcance)`, enquanto o flash dura.
+    blast: Option<([f32; 2], f32)>,
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
@@ -496,6 +505,18 @@ pub(super) fn draw(
             &path,
         );
     }
+    // ── As ferramentas de PONTO (W-Hand) ──────────────────────────────────
+    // Sem o gate de `show`, pela mesma razão da banda e da mão: são gesto. O
+    // desenho mora em `physics_overlay_annotations` porque é isso que ele é — uma
+    // anotação — e porque este arquivo tem cap de 600 LOC.
+    super::physics_overlay_annotations::draw_interaction(
+        aim,
+        pull,
+        blast,
+        camera,
+        window,
+        vector_scene,
+    );
     // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
     // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
     if show

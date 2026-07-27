@@ -25,6 +25,7 @@
 //! be visible.
 
 pub mod ids;
+pub mod interact;
 mod paint;
 mod populate;
 pub mod rows;

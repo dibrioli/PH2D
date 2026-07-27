@@ -6002,3 +6002,257 @@ precisa distinguir isso de uma edição REAL feita durante o play — outro dom�
 o **Target Joint AUTORÁVEL** (um joint com UM corpo e um ponto de mundo) continua
 no §8: ele exige `names_two_bodies()` deixar de ser verdade em todo lugar · a mão
 não gira nada (uma 2ª âncora daria torque; ninguém pediu).
+
+---
+
+## W-Hand — A SEÇÃO DA FERRAMENTA: tipos de segurar, explosão e campo de atração (2026-07-26, cena `=53`, pendente de smoke)
+
+> **O pedido (Enio, pós-smoke da 52):** *"Smoke OK! Ficou bom! Mas merece uma seção
+> de ajustes e tipos como vc mesmo sugeriu: Segurar RÍGIDO dentre outros como tipo
+> Rope. A mola está bem dura e merece parâmetros de ajustes manuais. Pense numa
+> seção específica para essa ferramenta de interação com a física e construa o mais
+> completa possível. Dentro dela podemos ter também explosão e campo de atração.
+> Um bug: atualmente ao arrastar corpos estático, a posição do corpo não é
+> atualizada e fica parecendo que tem um collider fantasma."*
+
+### 0. O BUG primeiro: o collider fantasma do corpo ESTÁTICO
+
+Reportado, reproduzido, corrigido — e **o comentário do produto já declarava a
+cobertura completa**. O `drive_kinematic` dizia, sobre o `Static`:
+
+> *"a wall that has been moved by hand is caught by `settle`, **while paused**"*
+
+e nada o pegava com o relógio ANDANDO: o solver não escreve a pose de um estático
+(o `readback` pergunta `solver_owns_pose`), a cena não a empurra por tick (o
+`drive_kinematic` pula), e o `settle` só roda no ramo `Ordering::Equal` **pausado**.
+Arrastar um muro tocando movia o DESENHO e deixava o collider onde estava.
+
+**A lei:** *a pose de um corpo estático tem exatamente UM autor — o `Transform`
+autorado* — logo não há segundo escritor para discordar dela, e honrá-la em TODO
+dispatch não pode ser escrita dupla. `bridge::hold::settle_static`, chamado do
+`prepare` (antes do passo, para o tick ser resolvido contra o muro que o artista
+vê). Dinâmico e kinematic **não** entram: eles têm dono, e um segundo autor
+mid-play é o bug de ordem-de-frame que o W4 documentou.
+
+`follow_authored_pose` virou a **porta única** ("faça este corpo seguir a pose
+autorada"), com o guard `moved_by_hand` que é load-bearing (o `set_body_pose` zera
+a velocidade ⇒ teleportar incondicionalmente re-acordaria toda pilha adormecida,
+todo frame). O `settle` pausado delega a ela.
+
+**Medido** (`static_follows_transform.rs`): bola em repouso sobre uma laje; a laje
+desce 1 m tocando ⇒ a bola desce com ela (0,799 → −0,201). Sem o fix ela fica em
+**0,799** com a laje desenhada um metro abaixo. Três gates, e os dois de CONTROLE
+importam tanto quanto o repro: um estático intocado **não** é perturbado (a
+mutação que teleporta sempre re-acordaria a cena inteira) e um DINÂMICO **não** é
+assentado no play (senão o `Transform` seria um segundo autor da pose que o solver
+possui). ⚠️ **A primeira versão do fixture levantava a laje e estava errada:** o
+vão inteiro dela salta por cima da bola (span `[-0.5,0.5]` → `[1.5,2.5]`, bola em
+0,499) ⇒ sem sobreposição, a bola fica sem chão e cai — resultado CORRETO que o
+oráculo chamava de falha. Para baixo há uma só resposta física.
+
+### 1. Os três modos de SEGURAR
+
+`HoldSpec` (wrapper) é a lei que o solver toma; `HoldMode` (ECS) é a escolha que o
+artista faz; `InteractionSettings::hold_spec` é a **porta única** entre as duas
+(`d = ratio·2·√k` mora ali e em lugar nenhum mais).
+
+**A tabela, medida no caminho do PRODUTO** (`sweep_the_three_hold_modes`): atraso
+em regime a 4 m/s · sobressinal ao parar · giro de um disco pego pela BORDA sob
+gravidade · onde a caixa para com o cursor 5 m DENTRO de uma parede (face em
+`x = 1,0`):
+
+| modo | atraso | sobressinal | giro (rad) | parede |
+|---|---|---|---|---|
+| Spring k=400 (default) | 0,369 | 0,000 | 3,091 | **0,505** (segura) |
+| Spring k=1600 | 0,169 | 0,000 | 3,133 | 0,516 (segura) |
+| **Rigid** | **0,000** | 0,000 | **0,000** | 6,000 (**atravessa**) |
+| Rope slack 0 | 0,000 | 0,000 | 3,104 | 6,000 (**atravessa**) |
+| Rope slack 0,5 | **0,500** | 0,000 | 2,049 | 5,500 (atravessa) |
+| Rope slack 1,5 | **1,500** | 0,000 | 2,481 | 4,500 (atravessa) |
+
+Três coisas que a tabela DECIDE:
+
+1. **Rigid e Rope atravessam geometria; só a mola a respeita.** Uma restrição de
+   distância é tão rígida quanto um weld ⇒ a tabela do teto de `GRAB_STIFFNESS`
+   vale para o *spring* e é inaplicável aos outros dois **por construção**. Não é
+   bug e não tem conserto: é o preço da palavra "rígido", e está dito no doc, no
+   painel (o smoke o exercita) e no `HoldSpec::Rigid`.
+2. **O atraso de um Rope é EXATAMENTE o slack** — forma fechada, não afinação.
+3. **Só o Rigid mantém a ATITUDE**, e é isso que o torna irredutível ao
+   `Rope { slack: 0 }` (os dois têm atraso zero; um só segura o ângulo).
+
+⚠️ **O `local_frame1` do `FixedJoint` carrega a rotação VIVA do corpo**, e omiti-la
+seria um chicote: um `FixedJoint` mantém `pose1∘frame1 == pose2∘frame2`, a âncora
+tem rotação zero, então frame1 identidade EXIGIRIA o corpo em zero — pegar qualquer
+coisa inclinada a endireitaria no instante do press. Gate próprio
+(`a_rigid_hold_keeps_the_angle_the_body_had`, corpo a 0,6 rad) porque o irmão
+**não pega**: ele pega um corpo em rotação 0, onde *manter* e *endireitar* são a
+mesma saída.
+
+### 2. Os dois knobs manuais da mola, e por que o 2º é uma RAZÃO
+
+**Stiffness** `10..6400` e **Damping** `0..2`, `1` = crítico em QUALQUER rigidez.
+
+Uma razão e não um segundo número solto porque o valor certo do amortecimento é
+**função do primeiro** — e "o número certo é função de outro knob" é exatamente a
+falha de ergonomia que o Conserve do Painter pagou
+([[feedback_ergonomics_verdict_is_a_design_bug]]).
+
+Medido (`sweep_the_hands_gains` · `sweep_the_hands_damping_ratio`):
+
+| k | atraso @4 m/s | parede |
+|---|---|---|
+| 10 | 1,582 m | — |
+| 50 | 1,012 | — |
+| 100 | 0,751 | — |
+| **400** (default) | **0,369** | 5 mm |
+| 1600 | 0,169 | 16 mm |
+| **6400** (teto) | **0,069** | **62 mm** |
+| 12800 | — | 122 mm (meia caixa enterrada) |
+| 25600 | — | **atravessa** |
+
+| ratio (k=400) | atraso | sobressinal |
+|---|---|---|
+| 0,00 | −0,152 (passa à frente) | 0,358 |
+| 0,25 | 0,071 | 0,132 |
+| 0,50 | 0,170 | 0,058 |
+| **1,00** | 0,369 | **0,000** |
+| 2,00 | 0,715 | 0,000 |
+
+**O achado ergonômico:** *"a mola está dura"* tem DUAS curas com preços diferentes
+— subir a rigidez custa **geometria** (penetração na parede) e baixar a razão custa
+**sobressinal**. A 0,5 o atraso cai de 0,369 para 0,170 m ao preço de 58 mm de
+passar do cursor. Os dois knobs estão na tela e a tabela está no doc.
+
+**O teto de 6400 nomeia o recurso:** é a PAREDE — o último valor em que uma parede
+ainda lê como parede. Quem quer ignorar geometria de propósito tem o Rigid, que a
+atravessa por construção e diz isso no nome.
+
+### 3. A EXPLOSÃO e o CAMPO DE ATRAÇÃO
+
+Família nova no wrapper (`world/blast.rs`), e a diferença entre as duas **não é o
+sinal**:
+
+- **Explosão** = um **IMPULSO**, uma vez (`N·s`, resistido pela massa, acaba no
+  mesmo tick) ⇒ uma CHAMADA.
+- **Atração** = uma **FORÇA** sustentada (`N`, por sub-passo como o `drag` e os
+  efetores) ⇒ **estado da sessão**, exatamente como a mão.
+
+Força negativa REPELE, e isso não duplica a explosão: um empurrão contínuo segura
+um corpo no ar, um estalo o arremessa.
+
+**A régua é UMA** (`blast_falloff`): linear, 1 no centro, **zero exatamente na
+borda** — o que tira o degrau que o W-AreaFalloff descreve, e o que impede a mira,
+a marca e o solver de discordarem sobre onde o alcance termina.
+
+⚠️ **A atração PRECISA de resistência, e foi MEDIDO** — a mesma descoberta que o
+W-AreaDrag fez do outro lado da cerca (*"zona com força e sem resistência é um
+vácuo que sopra"*). Sem ela o campo é um **oscilador harmônico**: o corpo atravessa
+o foco e volta, e a distância final não é sequer monotônica na força (10 N → 0,68 m,
+20 → 1,61, 100 → 2,47 — mais força chegando MAIS LONGE). `ATTRACT_DAMPING = 4,0` é
+medido (dist @2 s: 0 → **2,342** · 1 → 0,110 · 2 → 0,037 · **4 → 0,012** · 8 →
+0,001) e **não é knob**: o que o artista regula é quão forte ele puxa.
+
+⚠️ **A explosão NÃO impõe torque** (`apply_impulse` no centro de massa, o
+`AddExplosionForce` da Unity) — o ponto de aplicação "certo" seria o ponto do
+collider mais próximo do estouro, uma consulta a mais para produzir um giro que a
+cena já produz sozinha; e uma parede enorme cujo centro está longe **não** é
+atingida, a mesma limitação honesta.
+
+Tetos medidos: `MAX_BLAST_IMPULSE = 100` (dá **83 m/s** a 1 kg, e a varredura do
+W-CCD mediu que a detecção discreta tunela entre 100 e 600 m/s ⇒ acima daqui um
+estouro mais forte **apaga objetos através de paredes**, não espalha mais a cena) ·
+`MAX_ATTRACT_FORCE = 200` · `WORLD_REACH_M = 20` (1920 px a 100 px/m = 19,2 m de
+mundo visível — uma régua, três consumidores).
+
+### 4. Determinismo: as duas regras valem para as TRÊS
+
+As ferramentas são entradas **não-reproduzíveis** (não estão no documento), então
+as regras do W-Grab se estendem, e `is_grabbing` virou **`is_poking`** (mão OU
+campo) — enumerar uma delas é como a segunda nasceria de fora da regra.
+
+- **Regra 1**: pegar/explodir/atrair **descarta o ring**, e nada é gravado enquanto
+  um cutucão SUSTENTADO está em voo. ⚠️ Para a explosão a razão é DIFERENTE da do
+  campo: ela é instantânea, então "não gravar enquanto durar" não diz nada — o que
+  quebraria o scrub é um checkpoint de ANTES dela, que replayaria em frente **sem**
+  o estouro. E um estouro que **não atinge ninguém não é perturbação** (não derruba
+  o cache), espelho exato da recusa da mão.
+- **Regra 2**: um rewind SOLTA. ⚠️ **Mutação SOBREVIVENTE, documentada**: tirar o
+  `stop_attract` do rewind não sangra, porque a regra 1 mantém o ring vazio ⇒ o
+  caminho sempre cai no `rebuild_from_rest`, que constrói um mundo NOVO e o campo
+  morre com o velho. É a MESMA redundância-por-construção do `release_grab` ao lado
+  dele, e fica dita em vez de suposta.
+
+`physics_ecs_c9` saiu **byte-idêntico** (`c9d4baee…`, 87 corpos, debug ≡ release):
+o harness nunca arma uma ferramenta, e o `settle_static` é no-op para um corpo que
+ninguém moveu.
+
+### 5. A UI — a seção INTERACTION do painel de MUNDO
+
+`[Tool: Hand | Blast | Pull]` · `[Hold: Spring | Rigid | Rope]` (Hand-only) · os
+knobs da ferramenta em mãos · uma linha de hint dizendo onde o gesto mora.
+
+⚠️ **Tabela PRÓPRIA** (`interact.rs::IROWS`), irmã de `rows.rs` e separada dela por
+uma razão e não por tamanho: aquela edita `PhysicsSettings` (o MUNDO, que viaja no
+arquivo) e esta edita `InteractionSettings` (o PONTEIRO, runtime-only). A lei de
+**uma lista, quatro consumidores** vale igual.
+
+⚠️ **Uma row tem um `shown`** — a diferença estrutural: estes knobs pertencem a UMA
+ferramenta, e pintar a rigidez da mola com a explosão em mãos seria um controle que
+o solver ignora. O painel pergunta para OFERECER, o wrapper para HONRAR
+(`uses_spring_gains`/`uses_slack`/`needs_a_body`).
+
+⚠️ **NADA disto é persistido, e é decisão**: descreve o ponteiro, não a cena — abrir
+o projeto de outra pessoa não deve armar o raio de explosão dela. `PROJECT_SCHEMA`
+fica em **34**, registro fica em **21**, nenhum componente novo.
+
+**A metade VISÍVEL**: anel de mira apagado no cursor (verde-limão, a cor da mão —
+uma família, uma cor), anel opaco do campo VIVO, e dois anéis concêntricos que
+decaem no estouro (o de meio caminho é a curva de nível `w = 0,5`, pela MESMA lei
+que o solver usou). ⚠️ **A mira honra as MESMAS duas condições do gesto** (relógio
+andando + física armada): uma mira que promete o que o clique não faz é pior que
+mira nenhuma. E o anel é medido em **METROS**, não em pixels de tela — um alcance é
+uma distância do mundo, e um anel de tamanho constante mentiria sobre quem está
+dentro dele.
+
+**A fiação**: a MÃO fica onde estava (dentro do pick de canvas, para a seleção
+seguir acontecendo) e as duas de PONTO são interceptadas **antes** dele — elas
+precisam só de um ponto, e pendurá-las no pick as tornaria inertes no vazio. Quem
+decide de qual família a ferramenta é é `needs_a_body`, uma porta só.
+
+### 6. Gates
+
+- `static_follows_transform.rs` (3): repro + os dois controles.
+- `interaction.rs` (9): cada modo segue à sua maneira · só o Rigid mantém a atitude
+  · o Rigid mantém o ÂNGULO QUE TINHA · o estouro empurra para fora com falloff que
+  chega a zero · o campo junta e para quando desarmado · as duas regras de
+  determinismo do campo · o estouro derruba o cache · um estouro que não atinge
+  ninguém não · a razão significa o mesmo em qualquer rigidez.
+- `seam.rs` do painel (+4): cada row alcança o estado da ferramenta · cada row é
+  pintada SÓ para a sua ferramenta (a metade da AUSÊNCIA é a load-bearing) · os dois
+  rádios selecionam o que nomeiam, por clique REAL · o Hold é da mão.
+- `body_grab_tests.rs` (+4): as duas famílias se recusam · as de ponto precisam do
+  relógio e do toggle · cada uma faz a sua coisa · o flash envelhece.
+- `the_grab_is_wired_to_the_pointer.rs` (+4, arch): o intercept precede o pick · ele
+  pergunta a `needs_a_body` · o press passa relógio e toggle · as três marcas
+  chegam ao overlay e a mira é gateada.
+
+**Mutações: 8 rodadas, 7 sangram** (a 8ª é a do rewind, documentada acima).
+
+### 7. Aberto, nomeado
+
+- A explosão **não gira nada** (sem torque, por decisão medida — ver §3). Um estouro
+  que gira exigiria escolher um ponto de aplicação; ninguém pediu.
+- O campo repelindo **arremessa para fora de quadro** (medido: −20 N abre a nuvem
+  para 9,23 m em 1 s, −50 para 14,63). É força sustentada sem freio fora do alcance;
+  se o smoke reprovar, a cura é o falloff continuar do lado de fora ou um teto de
+  velocidade — decisão de produto.
+- **Rigid e Rope atravessam parede** (§1). Inerente à rigidez infinita; nomeado no
+  smoke.
+- Soltar segue deixando **um passo de undo** (pré-existente de QUALQUER clique no
+  play; a cura mora no roteador de undo, outro domínio).
+- O `blast_flash` é um canal de VISTA e some num scrub — como o `ContactFlash`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=53`** (a cena imprime o roteiro de 9 passos com os
+números medidos). E a **cena 52 teve o passo 5 corrigido**: ele afirmava que
+arrastar o muro estático *"não faz nada"*, o que esta wave tornou FALSO.

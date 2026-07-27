@@ -40,6 +40,23 @@ pub(super) fn paint_sections(
         y += Spacing::Md.px();
     }
 
+    // The Interaction tool (W-Hand). BEFORE the layer matrix and after the world
+    // sliders, on purpose: it is the section an artist reaches for while a scene
+    // is RUNNING, so it should not sit under a 36-cell grid.
+    let (open, next_y) = header(
+        ctx,
+        ids::PHYSICS_SEC_INTERACT,
+        tr("panel.physics.section.interact"),
+        x,
+        w,
+        y,
+    );
+    y = next_y;
+    if open {
+        y = super::interact::paint_interact(ctx, &snapshot.interaction, x, w, y);
+        y += Spacing::Md.px();
+    }
+
     // Collision layers. Its own section because the matrix is a different KIND
     // of control from the sliders above — and because it is tall.
     let (open, next_y) = header(

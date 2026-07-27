@@ -23,6 +23,7 @@ use crate::state::{self, PhysicsPanelState, set_last_content_h, set_last_visible
 use crate::{PhysicsPanel, rows};
 
 mod body;
+mod interact;
 mod matrix;
 
 /// Label gutter. Wider than the padding panel's because these labels are words
@@ -129,6 +130,42 @@ pub(crate) fn paint_row(
     paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, w, ROW_H_PX),
         label,
+        track,
+        display,
+        Some(&text),
+        row.slider,
+        row.chip,
+        LABEL_COL_W,
+        ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    )
+}
+
+/// One Interaction slider+chip row, from the Interaction table. The twin of
+/// [`paint_row`] — the two tables have the same row shape and different owners,
+/// so this is a delegation rather than a second layout.
+pub(crate) fn paint_irow(
+    ctx: &mut PaintCtx,
+    row: &crate::interact::IRow,
+    value: f32,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let theme = ctx.host.theme();
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let track = row.track_of(value);
+    let display = f64::from(value);
+    let text = format!("{display:.*}", row.decimals);
+    paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, w, ROW_H_PX),
+        tr(row.label),
         track,
         display,
         Some(&text),

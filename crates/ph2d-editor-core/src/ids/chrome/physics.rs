@@ -157,3 +157,66 @@ pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
 pub const PHYSICS_SHOW_COLLIDERS: NodeId = hash_node_id("physics.show_colliders");
 /// Restore every world setting to the engine defaults.
 pub const PHYSICS_RESET_DEFAULTS: NodeId = hash_node_id("physics.reset_defaults");
+
+// ── Interaction tool (W-Hand) ───────────────────────────────────────────────
+// What the POINTER does to a running scene: the Hand (hold a body), the Blast
+// (a radial impulse) and the Pull (a sustained field). Its own section because
+// it is the only part of this panel that is NOT a property of the world — it is
+// a property of the tool, and it is therefore runtime-only (never persisted).
+
+/// Interaction section header.
+pub const PHYSICS_SEC_INTERACT: NodeId = hash_node_id("physics.sec.interact");
+
+/// The tool radio group (Hand / Blast / Pull).
+pub const PHYSICS_INTERACT_TOOL: NodeId = hash_node_id("physics.interact.tool");
+/// The three tool options, in `InteractionTool::ALL` order.
+///
+/// ⚠️ A fixed array for the reason [`PHYSICS_LAYER_CELL`] documents: the
+/// segmented helper registers its options in a LOOP, which
+/// `architecture_panel_wiring_parity` cannot see, so the seam test that clicks
+/// each chip is the only thing covering them.
+pub const PHYSICS_INTERACT_TOOL_OPT: [NodeId; 3] = [
+    hash_node_id("physics.interact.tool.hand"),
+    hash_node_id("physics.interact.tool.explode"),
+    hash_node_id("physics.interact.tool.attract"),
+];
+
+/// The hold-mode radio group (Spring / Rigid / Rope) — Hand only.
+pub const PHYSICS_HOLD_MODE: NodeId = hash_node_id("physics.hold.mode");
+/// The three hold options, in `HoldMode::ALL` order.
+pub const PHYSICS_HOLD_MODE_OPT: [NodeId; 3] = [
+    hash_node_id("physics.hold.mode.spring"),
+    hash_node_id("physics.hold.mode.rigid"),
+    hash_node_id("physics.hold.mode.rope"),
+];
+
+/// Hand spring stiffness (acceleration per metre).
+pub const PHYSICS_HOLD_STIFFNESS: NodeId = hash_node_id("physics.hold_stiffness");
+/// Chip linked to [`PHYSICS_HOLD_STIFFNESS`].
+pub const PHYSICS_HOLD_STIFFNESS_NUM: NodeId = hash_node_id("physics.hold_stiffness_num");
+/// Hand damping RATIO (1 = critical, at any stiffness).
+pub const PHYSICS_HOLD_DAMPING: NodeId = hash_node_id("physics.hold_damping");
+/// Chip linked to [`PHYSICS_HOLD_DAMPING`].
+pub const PHYSICS_HOLD_DAMPING_NUM: NodeId = hash_node_id("physics.hold_damping_num");
+/// Rope slack (metres) — the measured trail distance.
+pub const PHYSICS_HOLD_SLACK: NodeId = hash_node_id("physics.hold_slack");
+/// Chip linked to [`PHYSICS_HOLD_SLACK`].
+pub const PHYSICS_HOLD_SLACK_NUM: NodeId = hash_node_id("physics.hold_slack_num");
+
+/// Blast radius (metres).
+pub const PHYSICS_BLAST_RADIUS: NodeId = hash_node_id("physics.blast_radius");
+/// Chip linked to [`PHYSICS_BLAST_RADIUS`].
+pub const PHYSICS_BLAST_RADIUS_NUM: NodeId = hash_node_id("physics.blast_radius_num");
+/// Blast impulse at the centre (N·s).
+pub const PHYSICS_BLAST_FORCE: NodeId = hash_node_id("physics.blast_force");
+/// Chip linked to [`PHYSICS_BLAST_FORCE`].
+pub const PHYSICS_BLAST_FORCE_NUM: NodeId = hash_node_id("physics.blast_force_num");
+
+/// Pull radius (metres).
+pub const PHYSICS_PULL_RADIUS: NodeId = hash_node_id("physics.pull_radius");
+/// Chip linked to [`PHYSICS_PULL_RADIUS`].
+pub const PHYSICS_PULL_RADIUS_NUM: NodeId = hash_node_id("physics.pull_radius_num");
+/// Pull force at the centre (N) — negative REPELS.
+pub const PHYSICS_PULL_FORCE: NodeId = hash_node_id("physics.pull_force");
+/// Chip linked to [`PHYSICS_PULL_FORCE`].
+pub const PHYSICS_PULL_FORCE_NUM: NodeId = hash_node_id("physics.pull_force_num");

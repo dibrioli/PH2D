@@ -7,7 +7,24 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, InteractionSettings, InteractionTool, PhysicsBridge,
+    RigidBody,
+};
+
+/// A ferramenta na configuração DEFAULT — a mão. As portas tomam as settings
+/// agora, e é elas que decidem de qual família a ferramenta é.
+fn hand() -> InteractionSettings {
+    InteractionSettings::default()
+}
+
+/// A ferramenta armada num modo de PONTO (o estouro), para as recusas cruzadas.
+fn blast() -> InteractionSettings {
+    InteractionSettings {
+        tool: InteractionTool::Explode,
+        ..InteractionSettings::default()
+    }
+}
 
 fn scene(kind: BodyKind) -> (SimWorld, PhysicsBridge, Entity) {
     let mut sim = SimWorld::new();
@@ -37,12 +54,12 @@ fn scene(kind: BodyKind) -> (SimWorld, PhysicsBridge, Entity) {
 fn the_hand_only_takes_hold_while_the_clock_runs() {
     let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
     assert!(
-        !crate::body_grab::take_hold(&mut bridge, e, [0.0, 0.0], false, true),
+        !crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], false, true),
         "parado, a mão não pega"
     );
     assert!(!bridge.is_grabbing());
     assert!(
-        crate::body_grab::take_hold(&mut bridge, e, [0.0, 0.0], true, true),
+        crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], true, true),
         "tocando, pega"
     );
     assert!(bridge.is_grabbing());
@@ -56,7 +73,7 @@ fn the_hand_only_takes_hold_while_the_clock_runs() {
 fn the_hand_only_takes_hold_when_physics_is_armed() {
     let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
     assert!(
-        !crate::body_grab::take_hold(&mut bridge, e, [0.0, 0.0], true, false),
+        !crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], true, false),
         "física desarmada, a mão não pega"
     );
     assert!(!bridge.is_grabbing());
@@ -71,7 +88,7 @@ fn the_hand_refuses_a_body_it_could_not_move() {
     for kind in [BodyKind::Static, BodyKind::Kinematic] {
         let (_sim, mut bridge, e) = scene(kind);
         assert!(
-            !crate::body_grab::take_hold(&mut bridge, e, [0.0, 0.0], true, true),
+            !crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], true, true),
             "{kind:?} não é pegável"
         );
         assert!(!bridge.is_grabbing());
@@ -91,7 +108,7 @@ fn both_caller_conditions_are_required() {
     ] {
         let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
         assert_eq!(
-            crate::body_grab::take_hold(&mut bridge, e, [0.0, 0.0], playing, simulating),
+            crate::body_grab::take_hold(&mut bridge, &hand(), e, [0.0, 0.0], playing, simulating),
             expect,
             "playing={playing} simulating={simulating}"
         );
@@ -193,4 +210,98 @@ fn probe_smoke_52() {
         at_release,
         x_of(&sim, ball) - at_release
     );
+}
+
+// ── As ferramentas de PONTO (W-Hand) ────────────────────────────────────────
+
+/// **As duas famílias são EXCLUSIVAS, e a porta de cada uma recusa a outra.**
+///
+/// É a metade estrutural desta wave: a mão pendura no pick de canvas (para a
+/// seleção seguir acontecendo) e as de ponto são interceptadas ANTES dele. Se as
+/// duas portas aceitassem a mesma ferramenta, um press com o estouro em mãos
+/// dispararia o estouro **e** pegaria o corpo debaixo dele.
+#[test]
+fn the_two_tool_families_refuse_each_other() {
+    let (_sim, mut bridge, e) = scene(BodyKind::Dynamic);
+    // A mão recusa quando a ferramenta é de ponto.
+    assert!(
+        !crate::body_grab::take_hold(&mut bridge, &blast(), e, [0.0, 0.0], true, true),
+        "a mão pegou com o ESTOURO em mãos"
+    );
+    assert!(!bridge.is_grabbing());
+    // E a porta de ponto recusa quando a ferramenta é a mão.
+    assert!(
+        crate::body_grab::poke_at(&mut bridge, &hand(), [0.0, 0.0], true, true).is_none(),
+        "a porta de ponto consumiu o press com a MÃO em mãos"
+    );
+    assert!(!bridge.is_poking());
+}
+
+/// **O estouro e o campo honram as MESMAS duas condições de chamador que a mão.**
+///
+/// Sem passo não há força, então um gesto oferecido com o relógio parado (ou com
+/// a física desarmada) é um clique que não faz nada — a assinatura de *"a
+/// ferramenta está quebrada"* em vez de *"a ferramenta não está aqui"*.
+#[test]
+fn the_point_tools_need_the_clock_and_the_toggle() {
+    for tool in [InteractionTool::Explode, InteractionTool::Attract] {
+        let settings = InteractionSettings {
+            tool,
+            ..InteractionSettings::default()
+        };
+        let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+        assert!(
+            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], false, true).is_none(),
+            "{tool:?} disparou com o relógio parado"
+        );
+        assert!(
+            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], true, false).is_none(),
+            "{tool:?} disparou com a física desarmada"
+        );
+        assert!(
+            crate::body_grab::poke_at(&mut bridge, &settings, [0.0, 0.0], true, true).is_some(),
+            "{tool:?} não disparou com as duas condições satisfeitas"
+        );
+    }
+}
+
+/// **A porta de ponto faz o que a ferramenta escolhida diz** — o estouro conta
+/// corpos e NÃO deixa campo armado; a atração arma um campo e não estoura nada.
+///
+/// Um gate que só pedisse `Some(_)` das duas passaria com as duas ligadas no
+/// mesmo braço, que é a regressão mais fácil deste `match`.
+#[test]
+fn each_point_tool_does_its_own_thing() {
+    let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+    let hit = crate::body_grab::poke_at(&mut bridge, &blast(), [0.0, 0.0], true, true);
+    assert_eq!(hit, Some(1), "o estouro não contou o corpo sob ele");
+    assert!(
+        !bridge.is_poking(),
+        "o estouro deixou um cutucão SUSTENTADO em voo — ele é um impulso"
+    );
+
+    let (_sim, mut bridge, _e) = scene(BodyKind::Dynamic);
+    let pull = InteractionSettings {
+        tool: InteractionTool::Attract,
+        ..InteractionSettings::default()
+    };
+    assert!(crate::body_grab::poke_at(&mut bridge, &pull, [0.0, 0.0], true, true).is_some());
+    assert!(
+        bridge.attract_marks().is_some(),
+        "a atração não armou campo nenhum"
+    );
+}
+
+/// **O flash do estouro envelhece e some.** Um canal próprio, então nada no mundo
+/// o apagaria por conta — sem o passo de envelhecimento a marca fica na tela para
+/// sempre, descrevendo um estouro de dez minutos atrás.
+#[test]
+fn the_blast_flash_ages_out() {
+    let mut flash = Some(([1.0_f32, 2.0], 3.0_f32, crate::body_grab::BLAST_FLASH_TICKS));
+    for _ in 0..crate::body_grab::BLAST_FLASH_TICKS - 1 {
+        crate::body_grab::age_blast_flash(&mut flash);
+        assert!(flash.is_some(), "o flash morreu cedo demais");
+    }
+    crate::body_grab::age_blast_flash(&mut flash);
+    assert!(flash.is_none(), "o flash sobreviveu à própria vida");
 }

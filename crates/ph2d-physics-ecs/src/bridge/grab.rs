@@ -38,6 +38,9 @@
 //! do wrapper e o chamador fica livre para deixar o gesto de sempre acontecer.
 
 use ph2d_ecs::Entity;
+use ph2d_physics::HoldSpec;
+
+use crate::interaction::InteractionSettings;
 
 use super::PhysicsBridge;
 
@@ -45,19 +48,76 @@ impl PhysicsBridge {
     /// **Pegar `entity` pelo ponto de MUNDO `world_point`.** `false` quando não
     /// há o que segurar (entidade sem corpo, ou corpo não-dinâmico).
     ///
+    /// Segura pela lei DEFAULT (a mola medida do W-Grab). Quem tem as settings do
+    /// artista em mãos usa [`Self::grab_with`].
+    pub fn grab(&mut self, entity: Entity, world_point: [f32; 2]) -> bool {
+        self.grab_with(entity, world_point, HoldSpec::default())
+    }
+
+    /// [`Self::grab`] com a lei da mão escolhida pelo artista
+    /// ([`InteractionSettings::hold_spec`]).
+    ///
     /// Descarta o ring de checkpoints em caso de sucesso — ver as regras nos docs
     /// do módulo.
-    pub fn grab(&mut self, entity: Entity, world_point: [f32; 2]) -> bool {
+    pub fn grab_with(&mut self, entity: Entity, world_point: [f32; 2], spec: HoldSpec) -> bool {
         let Some(b) = self.bodies.get(&entity) else {
             return false;
         };
-        if !self.world.grab_body(b.handle, world_point) {
+        if !self.world.grab_body_with(b.handle, world_point, spec) {
             return false;
         }
         // Regra 1. Feito DEPOIS do sucesso: uma recusa não é uma perturbação, e
         // derrubar o cache de um gesto que não aconteceu seria custo puro.
         self.ring.clear();
         true
+    }
+
+    /// **A EXPLOSÃO** — um impulso radial em `center`, uma vez. Devolve quantos
+    /// corpos foram atingidos (o número que o toast mostra).
+    ///
+    /// ⚠️ **Descarta o ring pela MESMA regra 1**, e o motivo é o que salva o
+    /// scrub: um checkpoint gravado ANTES do estouro descreve um estado válido, e
+    /// replayar dele seguiria em frente **sem** o estouro (ele não está em
+    /// registro nenhum) — então a resposta para um tick passaria a depender de o
+    /// cache tê-lo ou não. Com o ring vazio as duas rotas concordam: o cutucão se
+    /// perde, sempre.
+    pub fn explode(&mut self, center: [f32; 2], radius: f32, impulse: f32) -> usize {
+        let hit = self.world.explode(center, radius, impulse);
+        if hit > 0 {
+            self.ring.clear();
+        }
+        hit
+    }
+
+    /// **Arma o campo de atração** no ponto dado, com as settings do artista.
+    ///
+    /// Sustentado: fica até [`Self::stop_attract`]. Descarta o ring pela regra 1.
+    pub fn attract(&mut self, settings: &InteractionSettings, center: [f32; 2]) {
+        self.world.set_attract(Some(settings.attract_at(center)));
+        self.ring.clear();
+    }
+
+    /// **Move o campo** para o cursor novo — no-op sem campo armado, para que o
+    /// chamador possa chamar por frame sem perguntar (irmão do `move_grab`).
+    pub fn move_attract(&mut self, center: [f32; 2]) {
+        if let Some(mut a) = self.world.attracting() {
+            a.center = center;
+            self.world.set_attract(Some(a));
+        }
+    }
+
+    /// **Desarma o campo** (no-op se não havia).
+    pub fn stop_attract(&mut self) {
+        self.world.set_attract(None);
+    }
+
+    /// O campo em voo, para o overlay desenhar: `(centro, raio)`.
+    ///
+    /// A fonte ÚNICA do fato é o wrapper — o shell pergunta em vez de guardar uma
+    /// cópia, a lição do `last_painter_pushed_entity`.
+    #[must_use]
+    pub fn attract_marks(&self) -> Option<([f32; 2], f32)> {
+        self.world.attracting().map(|a| (a.center, a.radius))
     }
 
     /// **A mão andou** — no-op sem mão, para que o chamador possa chamar por
@@ -81,6 +141,17 @@ impl PhysicsBridge {
     #[must_use]
     pub fn is_grabbing(&self) -> bool {
         self.world.grabbed_body().is_some()
+    }
+
+    /// **Há um cutucão SUSTENTADO em voo** — uma mão ou um campo de atração.
+    ///
+    /// É esta a pergunta que o laço de ticks faz antes de gravar um checkpoint, e
+    /// não `is_grabbing`: as duas ferramentas sustentadas perturbam a corrida da
+    /// mesma maneira, e enumerar uma delas é como a segunda nasceria de fora da
+    /// regra ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    #[must_use]
+    pub fn is_poking(&self) -> bool {
+        self.is_grabbing() || self.world.attracting().is_some()
     }
 
     /// A mão para DESENHAR: `(cursor, ponto de pega AGORA)`, em mundo.

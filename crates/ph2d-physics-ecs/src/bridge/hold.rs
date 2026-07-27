@@ -6,9 +6,80 @@
 
 use super::PhysicsBridge;
 use super::space;
-use ph2d_ecs::SimWorld;
+use crate::components::BodyKind;
+use ph2d_ecs::{Entity, SimWorld};
+use ph2d_physics::RigidBodyHandle;
 
 impl PhysicsBridge {
+    /// **Make one body track its authored `Transform`** — the comparison and the
+    /// teleport, in one place, because two callers need exactly this and the
+    /// guard below is the load-bearing half of it.
+    ///
+    /// Returns whether it moved. The `moved_by_hand` test is not an
+    /// optimisation: [`set_body_pose`](ph2d_physics::PhysicsWorld::set_body_pose)
+    /// zeroes the velocity, so teleporting unconditionally would make Pause →
+    /// Play restart every fall from a standstill and would re-wake every
+    /// sleeping stack on every frame. The readback writes the body's pose into
+    /// `Transform` exactly, so an untouched pair compares equal; a gizmo drag
+    /// makes them differ.
+    ///
+    /// ⚠️ The authored pose is LOCAL and the body lives in WORLD. Comparing the
+    /// two raw would report every child body as "moved by hand" on every frame.
+    fn follow_authored_pose(&mut self, sim: &SimWorld, e: Entity, handle: RigidBodyHandle) -> bool {
+        let Some(t) = space::world_transform(sim.world(), e, &mut self.chain) else {
+            return false;
+        };
+        let (ax, ay, ar) = (t.translation.x, t.translation.y, t.rotation);
+        let moved_by_hand = match self.world.body_pose(handle) {
+            Some(pose) => {
+                pose.translation.x != ax || pose.translation.y != ay || pose.rotation.angle() != ar
+            }
+            None => false,
+        };
+        if moved_by_hand {
+            self.world.set_body_pose(handle, ax, ay, ar, true);
+        }
+        moved_by_hand
+    }
+
+    /// **A STATIC body is where the artist put it, clock running or not.**
+    ///
+    /// Runs on every dispatch (from [`prepare`](super::PhysicsBridge::prepare)),
+    /// which is the difference between this and [`settle`](Self::settle) — and
+    /// the reason it exists. A static body's pose has exactly **one** author:
+    /// the solver never writes it (`readback` asks `solver_owns_pose`) and the
+    /// scene does not push it per tick (`drive_kinematic` skips it), so there is
+    /// no second writer for this to disagree with, and honouring the authored
+    /// `Transform` on every dispatch cannot be a double write.
+    ///
+    /// ⚠️ Before this, `drive_kinematic`'s own comment declared the coverage
+    /// complete — *"a wall that has been moved by hand is caught by `settle`,
+    /// while paused"* — and nothing caught it with the clock running: dragging a
+    /// wall during play moved the DRAWING and left the collider behind. A
+    /// phantom collider, which is what the artist reported, and the class of bug
+    /// this module is otherwise full of warnings about (two halves of one fact
+    /// disagreeing, silently).
+    ///
+    /// Dynamic and kinematic are deliberately NOT here: they have owners, and a
+    /// second author writing their pose mid-play is the frame-order bug W4
+    /// documented (the write that runs last wins, in silence).
+    pub(super) fn settle_static(&mut self, sim: &SimWorld) {
+        // Collected first: `follow_authored_pose` borrows `self` mutably (the
+        // `chain` scratch), and the map is being iterated. `to_settle` is a
+        // retained buffer for the same zero-alloc reason every other scratch
+        // here is one — empty in a scene with no static bodies moved by hand.
+        self.to_settle.clear();
+        for (&e, b) in self.bodies.iter() {
+            if b.kind == BodyKind::Static {
+                self.to_settle.push((e, b.handle));
+            }
+        }
+        for i in 0..self.to_settle.len() {
+            let (e, handle) = self.to_settle[i];
+            self.follow_authored_pose(sim, e, handle);
+        }
+    }
+
     /// While paused: make every body track the authored `Transform` (and
     /// zero its velocity), so play starts from exactly where the artist
     /// left it. No stepping. Lives here beside [`hold`](Self::hold), its main
@@ -25,33 +96,16 @@ impl PhysicsBridge {
     /// mid-timeline pose *stick* is authoring a keyframe, which is what W4's
     /// bake is for.)
     pub(super) fn settle(&mut self, sim: &SimWorld) {
-        let world = sim.world();
-        // The authored pose is LOCAL; the body lives in WORLD. Comparing the
-        // two directly would report every child body as "moved by hand" on
-        // every paused frame, teleporting it (and zeroing its velocity)
-        // forever.
+        // EVERY body, through the same door `settle_static` uses — one answer to
+        // "make this body track its authored pose", so the paused branch and the
+        // always-on static branch cannot come to mean different things.
+        self.to_settle.clear();
         for (&e, b) in self.bodies.iter() {
-            let Some(t) = space::world_transform(world, e, &mut self.chain) else {
-                continue;
-            };
-            let (ax, ay, ar) = (t.translation.x, t.translation.y, t.rotation);
-            // Only teleport when the AUTHORED pose actually differs from where
-            // the body is. `set_body_pose` zeroes the velocity, so doing this
-            // unconditionally every paused frame would make Pause → Play
-            // restart the fall from a standstill. The readback writes the
-            // body's pose into `Transform` exactly, so an untouched pair
-            // compares equal; a gizmo drag makes them differ.
-            let moved_by_hand = match self.world.body_pose(b.handle) {
-                Some(pose) => {
-                    pose.translation.x != ax
-                        || pose.translation.y != ay
-                        || pose.rotation.angle() != ar
-                }
-                None => false,
-            };
-            if moved_by_hand {
-                self.world.set_body_pose(b.handle, ax, ay, ar, true);
-            }
+            self.to_settle.push((e, b.handle));
+        }
+        for i in 0..self.to_settle.len() {
+            let (e, handle) = self.to_settle[i];
+            self.follow_authored_pose(sim, e, handle);
         }
     }
 

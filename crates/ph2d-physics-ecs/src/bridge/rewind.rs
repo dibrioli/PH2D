@@ -40,6 +40,17 @@ impl PhysicsBridge {
         // replayado na direção de onde o cursor está AGORA. É também o que Reset
         // promete: voltar à cena que o artista autorou.
         self.release_grab();
+        // Regra 2, a outra metade: um salto de relógio encerra TODO cutucão
+        // sustentado, e o campo de atração é o segundo deles.
+        //
+        // ⚠️ **Medido, é a camada de FORA — mutá-la para no-op NÃO sangra**, e é a
+        // MESMA redundância-por-construção que o `release_grab` acima tem: a regra
+        // 1 mantém o ring VAZIO enquanto há cutucão, então este caminho sempre cai
+        // no `rebuild_from_rest`, que constrói um mundo NOVO — e o campo morre com
+        // o velho. Fica porque a redundância é dita em vez de suposta, e porque um
+        // dia o ring pode passar a sobreviver a um cutucão
+        // ([[feedback_layered_defenses_need_per_layer_gates]]).
+        self.stop_attract();
         // The clock jumped, so whatever was touching describes a run that is over.
         // Reporting the difference across the jump would call a scrub a hundred
         // collisions; the rebuild at the end of the dispatch re-baselines in silence.

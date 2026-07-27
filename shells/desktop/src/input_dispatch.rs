@@ -2038,6 +2038,49 @@ impl App {
         }
     }
 
+    /// **O press das ferramentas de PONTO** (W-Hand: explosão e atração).
+    ///
+    /// `true` = consumiu o gesto. A decisão inteira (relógio andando · física
+    /// armada · a ferramenta é de ponto) mora em `body_grab::poke_at`, que é
+    /// testável sem janela; aqui fica só a projeção tela→mundo e a marca que o
+    /// overlay desenha.
+    ///
+    /// ⚠️ **Recusa quando não há mundo sob o cursor** (`vec_world_at` = `None`,
+    /// que é o caso fora do canvas): estourar num ponto que não existe é o gesto
+    /// caindo em silêncio, e sem esta linha ele seria consumido de qualquer jeito.
+    fn poke_press(&mut self, sx: f32, sy: f32) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let window = gfx.surface.size();
+        let world = gfx.camera.screen_to_world((sx, sy), window);
+        let playing = self.playhead.is_playing();
+        let simulating = self.timeline.flags.simulate_physics;
+        let Some(hit) = crate::body_grab::poke_at(
+            &mut gfx.physics,
+            &self.interaction,
+            world,
+            playing,
+            simulating,
+        ) else {
+            return false;
+        };
+        // A metade VISÍVEL. A explosão é instantânea, então a marca é o único
+        // vestígio dela que não é "corpos que se moveram"; a atração é sustentada
+        // e o overlay lê o campo VIVO da ponte (`attract_marks`), sem cópia aqui.
+        if self.interaction.tool == ph2d_physics_ecs::InteractionTool::Explode {
+            let radius = self.interaction.clamped().blast_radius;
+            self.blast_flash = Some((world, radius, crate::body_grab::BLAST_FLASH_TICKS));
+            if hit > 0
+                && let Some(gfx) = self.gfx.as_mut()
+            {
+                gfx.toasts
+                    .push(ph2d_editor::Toast::info(format!("Blast: {hit} bodies")));
+            }
+        }
+        true
+    }
+
     /// **O clique do eyedropper de corpo do joint** (§12): com um pick armado,
     /// resolve o CORPO sob o cursor e religa aquela ponta do joint. Clique no
     /// vazio (ou num não-corpo) desiste; clicar o corpo que já está na outra
@@ -3054,6 +3097,20 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
         {
             self.joint_body_pick_click(evt.x, evt.y);
+            return;
+        }
+        // **A EXPLOSÃO e a ATRAÇÃO** (W-Hand) — modal como os picks acima e pela
+        // MESMA razão estrutural: elas precisam só de um PONTO, então não podem
+        // pendurar no pick de canvas (que só dispara quando há algo sob o cursor).
+        // A MÃO fica onde estava, dentro do pick, para a seleção seguir acontecendo;
+        // quem decide de qual família a ferramenta é é `needs_a_body`, uma porta só.
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && !self.interaction.tool.needs_a_body()
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.poke_press(evt.x, evt.y)
+        {
             return;
         }
         // **O gesto de DESENHAR um joint** (W-J4) — a 2ª rota de criação, e a única
@@ -4452,6 +4509,7 @@ impl App {
                             let grabbed = !locked
                                 && crate::body_grab::take_hold(
                                     &mut gfx.physics,
+                                    &self.interaction,
                                     entity,
                                     world_pos,
                                     self.playhead.is_playing(),

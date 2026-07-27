@@ -301,9 +301,14 @@ fn linear_motor_tracking_sweep() {
     }
 }
 
+/// Uma mola com estes ganhos — o `HoldSpec` que as varreduras abaixo montam.
+fn spring(stiffness: f32, damping: f32) -> grab::HoldSpec {
+    grab::HoldSpec::Spring { stiffness, damping }
+}
+
 /// **A varredura dos ganhos da MÃO** (W-Grab) — a tabela que
 /// [`PhysicsWorld::GRAB_STIFFNESS`] carrega, medida no caminho do PRODUTO
-/// (`grab_body_tuned`, o irmão exato do `spawn_joint_tuned` do servo).
+/// (`grab_body_with`, o irmão exato do `spawn_joint_tuned` do servo).
 ///
 /// Duas grandezas, porque um seguidor tem dois modos de falhar: **atraso** em
 /// regime (o corpo vem atrás do cursor) e **sobressinal** ao parar (o corpo passa
@@ -311,12 +316,14 @@ fn linear_motor_tracking_sweep() {
 #[test]
 fn sweep_the_hands_gains() {
     println!("  k |     d | atraso regime (m) | sobressinal (m)");
-    for k in [100.0_f32, 200.0, 400.0, 800.0, 1600.0] {
+    for k in [
+        10.0_f32, 25.0, 50.0, 100.0, 200.0, 400.0, 800.0, 1600.0, 3200.0, 6400.0,
+    ] {
         let d = 2.0 * k.sqrt();
         let mut w = PhysicsWorld::new();
         w.set_gravity(0.0, 0.0);
         let (ball, _) = w.add_dynamic_circle(0.0, 0.0, 0.3, 1.0);
-        assert!(w.grab_body_tuned(ball, [0.0, 0.0], k, d));
+        assert!(w.grab_body_with(ball, [0.0, 0.0], spring(k, d)));
         // A mão anda a 4 m/s por 0,5 s (a velocidade de um arrasto de mouse
         // atravessando a tela), depois PARA e o corpo tem 0,5 s para assentar.
         let speed = 4.0_f32;
@@ -358,7 +365,7 @@ fn sweep_the_hands_stiffness_against_a_wall() {
         // Parede estática de x=1 a x=3; a caixa começa encostada nela.
         w.add_static_cuboid(2.0, 0.0, 1.0, 2.0);
         let (box_h, _) = w.add_dynamic_circle(0.5, 0.0, 0.5, 1.0);
-        assert!(w.grab_body_tuned(box_h, [0.5, 0.0], k, d));
+        assert!(w.grab_body_with(box_h, [0.5, 0.0], spring(k, d)));
         for _ in 0..30 {
             w.move_grab([6.0, 0.0]);
             w.step();
@@ -426,6 +433,229 @@ fn the_hand_does_not_tunnel_at_any_gap() {
             }
             let x = w.body_pose(ball).unwrap().translation.x;
             println!("{gap:9.2} | {ccd:5} | {x:7.3} | {}", x > 3.0);
+        }
+    }
+}
+
+/// **A varredura dos TRÊS MODOS de segurar** (W-Hand) — atraso, sobressinal,
+/// atitude e o que cada um faz contra uma parede, no caminho do PRODUTO.
+///
+/// É a tabela que [`grab::HoldSpec`] carrega. Quatro grandezas, porque os três
+/// modos falham de maneiras diferentes: um Spring ATRASA, um Rigid ATRAVESSA, e
+/// um Rope só é honesto quando o corpo pode GIRAR livre dentro dele.
+#[test]
+#[ignore = "medição: a tabela dos 3 modos de segurar"]
+fn sweep_the_three_hold_modes() {
+    let modes: [(&str, grab::HoldSpec); 6] = [
+        ("spring k=400", spring(400.0, 40.0)),
+        ("spring k=1600", spring(1600.0, 80.0)),
+        ("rigid", grab::HoldSpec::Rigid),
+        ("rope 0.0", grab::HoldSpec::Rope { max_length: 0.0 }),
+        ("rope 0.5", grab::HoldSpec::Rope { max_length: 0.5 }),
+        ("rope 1.5", grab::HoldSpec::Rope { max_length: 1.5 }),
+    ];
+    println!("         modo | atraso @4m/s | sobressinal | giro (rad) | parede x");
+    for (name, spec) in modes {
+        // (a) atraso e sobressinal, sem gravidade: mede o SEGUIDOR.
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let (ball, _) = w.add_dynamic_circle(0.0, 0.0, 0.3, 1.0);
+        assert!(w.grab_body_with(ball, [0.0, 0.0], spec));
+        let mut cursor = 0.0_f32;
+        for _ in 0..30 {
+            cursor += 4.0 * w.dt();
+            w.move_grab([cursor, 0.0]);
+            w.step();
+        }
+        let lag = cursor - w.body_pose(ball).unwrap().translation.x;
+        let mut overshoot = 0.0_f32;
+        for _ in 0..30 {
+            w.move_grab([cursor, 0.0]);
+            w.step();
+            overshoot = overshoot.max(w.body_pose(ball).unwrap().translation.x - cursor);
+        }
+
+        // (b) a ATITUDE: um disco pego pela BORDA, com gravidade. Um Rigid o
+        // segura na atitude que tinha; um Spring/Rope o deixa girar em torno do
+        // ponto de pega.
+        let mut w2 = PhysicsWorld::new();
+        let (disc, _) = w2.add_dynamic_circle(0.0, 0.0, 0.5, 1.0);
+        assert!(w2.grab_body_with(disc, [-0.5, 0.0], spec));
+        for _ in 0..60 {
+            w2.move_grab([-0.5, 0.0]);
+            w2.step();
+        }
+        let spin = w2.body_pose(disc).unwrap().rotation.angle().abs();
+
+        // (c) a PAREDE: cursor 5 m para dentro dela.
+        let mut w3 = PhysicsWorld::new();
+        w3.set_gravity(0.0, 0.0);
+        w3.add_static_cuboid(2.0, 0.0, 1.0, 2.0);
+        let (bx, _) = w3.add_dynamic_circle(0.5, 0.0, 0.5, 1.0);
+        assert!(w3.grab_body_with(bx, [0.5, 0.0], spec));
+        for _ in 0..30 {
+            w3.move_grab([6.0, 0.0]);
+            w3.step();
+        }
+        let wall = w3.body_pose(bx).unwrap().translation.x;
+
+        println!("{name:>13} | {lag:12.3} | {overshoot:11.3} | {spin:10.3} | {wall:8.3}");
+    }
+}
+
+/// **A varredura da RAZÃO de amortecimento da mão** (W-Hand) — o segundo knob que
+/// o Enio pediu, e a razão de ele ser uma RAZÃO e não um segundo número solto.
+///
+/// `d = ratio · 2·√k`, então `ratio = 1` é o amortecimento CRÍTICO em qualquer
+/// rigidez: quem mexe no primeiro knob não precisa recalcular o segundo. A
+/// tabela mede as duas grandezas que o artista sente — o atraso em regime e o
+/// **sobressinal** ao parar (o corpo passando do cursor, que é o defeito que se
+/// vê).
+#[test]
+#[ignore = "medição: a tabela da razão de amortecimento"]
+fn sweep_the_hands_damping_ratio() {
+    println!("  k | ratio |     d | atraso regime | sobressinal | oscila?");
+    for k in [400.0_f32, 1600.0] {
+        for ratio in [0.0_f32, 0.25, 0.5, 1.0, 1.5, 2.0] {
+            let d = ratio * 2.0 * k.sqrt();
+            let mut w = PhysicsWorld::new();
+            w.set_gravity(0.0, 0.0);
+            let (ball, _) = w.add_dynamic_circle(0.0, 0.0, 0.3, 1.0);
+            assert!(w.grab_body_with(ball, [0.0, 0.0], spring(k, d)));
+            let mut cursor = 0.0_f32;
+            for _ in 0..30 {
+                cursor += 4.0 * w.dt();
+                w.move_grab([cursor, 0.0]);
+                w.step();
+            }
+            let lag = cursor - w.body_pose(ball).unwrap().translation.x;
+            // Depois de PARAR: o pico de excursão além do cursor, e se ainda há
+            // movimento no fim de um segundo inteiro (= oscila).
+            let mut overshoot = 0.0_f32;
+            for _ in 0..60 {
+                w.move_grab([cursor, 0.0]);
+                w.step();
+                overshoot = overshoot.max(w.body_pose(ball).unwrap().translation.x - cursor);
+            }
+            let still_moving = w
+                .body_snapshots()
+                .iter()
+                .find(|s| s.handle_index == ball.into_raw_parts().0)
+                .map(|s| s.linvel_x.abs() + s.linvel_y.abs())
+                .unwrap_or(0.0);
+            println!(
+                "{k:5} | {ratio:5.2} | {d:5.1} | {lag:13.3} | {overshoot:11.3} | {:.3}",
+                still_moving
+            );
+        }
+    }
+}
+
+/// Densidade que dá **1 kg** a um disco de raio 0,5 (`m = ρ·π·r²`). O primeiro
+/// corte destas varreduras usou `1/π` e mediu corpos de 0,25 kg, o que multiplica
+/// toda velocidade por 4 — o número certo sobre a massa errada.
+const MASS_1KG_DENSITY: f32 = 1.0 / (std::f32::consts::PI * 0.25);
+
+/// **A varredura da EXPLOSÃO e da ATRAÇÃO** (W-Hand) — as faixas dos knobs,
+/// medidas no caminho do PRODUTO.
+///
+/// A cena é a que o smoke usa: caixas de 1 kg (1×1, densidade 1) numa fila, com
+/// o estouro no meio. Reporta a velocidade que cada uma leva, porque é isso que
+/// o artista vê — e é ela que diz onde o slider deixa de significar algo novo.
+#[test]
+#[ignore = "medição: as faixas do estouro e da atração"]
+fn sweep_the_blast_and_the_pull() {
+    println!("EXPLOSAO (raio 3 m, caixas de 1 kg a 0,5 / 1,5 / 2,5 m do centro)");
+    println!(" impulso | v @0.5m | v @1.5m | v @2.5m | atingidas");
+    for imp in [1.0_f32, 5.0, 10.0, 25.0, 50.0, 100.0] {
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let mut hs = Vec::new();
+        for d in [0.5_f32, 1.5, 2.5] {
+            let (h, _) = w.add_dynamic_circle(d, 0.0, 0.5, MASS_1KG_DENSITY);
+            hs.push(h);
+        }
+        let hit = w.explode([0.0, 0.0], 3.0, imp);
+        let v: Vec<f32> = hs
+            .iter()
+            .map(|&h| {
+                w.body_snapshots()
+                    .iter()
+                    .find(|s| s.handle_index == h.into_raw_parts().0)
+                    .map(|s| s.linvel_x)
+                    .unwrap_or(0.0)
+            })
+            .collect();
+        println!(
+            "{imp:8} | {:7.2} | {:7.2} | {:7.2} | {hit:9}",
+            v[0], v[1], v[2]
+        );
+    }
+
+    println!("\nATRACAO (raio 3 m, caixa de 1 kg a 2 m, 1 s de puxao, gravidade ON)");
+    println!("   forca | dist final | v final | subiu contra g?");
+    for f in [1.0_f32, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0] {
+        let mut w = PhysicsWorld::new();
+        // O corpo começa 2 m ABAIXO do foco: a atração tem de vencer o peso.
+        let (ball, _) = w.add_dynamic_circle(0.0, -2.0, 0.5, MASS_1KG_DENSITY);
+        w.set_attract(Some(blast::Attract {
+            center: [0.0, 0.0],
+            radius: 3.0,
+            force: f,
+            damping: 0.0,
+        }));
+        for _ in 0..60 {
+            w.step();
+        }
+        let p = w.body_pose(ball).unwrap().translation;
+        let dist = (p.x * p.x + p.y * p.y).sqrt();
+        let v = w
+            .body_snapshots()
+            .iter()
+            .find(|s| s.handle_index == ball.into_raw_parts().0)
+            .map(|s| s.linvel_y)
+            .unwrap_or(0.0);
+        println!("{f:8} | {dist:10.3} | {v:7.2} | {}", p.y > -2.0);
+    }
+}
+
+/// **A varredura da RESISTÊNCIA do campo de atração** (W-Hand) — o número em
+/// [`blast::Attract::damping`], e a prova de que ele não é higiene.
+///
+/// Sem resistência a atração é um oscilador: o corpo atravessa o foco e volta.
+/// A coluna que decide é **`dist` no fim de 2 s** — uma ferramenta que JUNTA tem
+/// de convergir, e a de `damping = 0` não converge nem monotonicamente na força.
+#[test]
+#[ignore = "medição: a resistência que faz da atração uma ferramenta"]
+fn sweep_the_attract_damping() {
+    println!("  forca | damping | dist @1s | dist @2s | v @2s");
+    for f in [10.0_f32, 20.0, 50.0] {
+        for damping in [0.0_f32, 1.0, 2.0, 4.0, 8.0] {
+            let mut w = PhysicsWorld::new();
+            let (ball, _) = w.add_dynamic_circle(0.0, -2.0, 0.5, MASS_1KG_DENSITY);
+            w.set_attract(Some(blast::Attract {
+                center: [0.0, 0.0],
+                radius: 3.0,
+                force: f,
+                damping,
+            }));
+            let mut d1 = 0.0;
+            for i in 0..120 {
+                w.step();
+                if i == 59 {
+                    let p = w.body_pose(ball).unwrap().translation;
+                    d1 = (p.x * p.x + p.y * p.y).sqrt();
+                }
+            }
+            let p = w.body_pose(ball).unwrap().translation;
+            let d2 = (p.x * p.x + p.y * p.y).sqrt();
+            let v = w
+                .body_snapshots()
+                .iter()
+                .find(|s| s.handle_index == ball.into_raw_parts().0)
+                .map(|s| (s.linvel_x * s.linvel_x + s.linvel_y * s.linvel_y).sqrt())
+                .unwrap_or(0.0);
+            println!("{f:7} | {damping:7.1} | {d1:8.3} | {d2:8.3} | {v:5.2}");
         }
     }
 }

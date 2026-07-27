@@ -135,6 +135,11 @@ pub struct PhysicsBridge {
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
     to_remove: Vec<Entity>,
+    /// The bodies a settle pass is about to walk. Collected first because
+    /// `follow_authored_pose` borrows the `chain` scratch mutably while
+    /// `self.bodies` is being iterated; retained for the same zero-alloc reason
+    /// as every other buffer here.
+    to_settle: Vec<(Entity, RigidBodyHandle)>,
     /// The world's authored settings, kept so a rewind can rebuild a fresh
     /// world that still has them: `PhysicsWorld::new` starts from the engine
     /// defaults, so anything not carried here is **silently reset** by a scrub
@@ -216,6 +221,7 @@ impl PhysicsBridge {
             chain: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
+            to_settle: Vec::new(),
             settings: PhysicsSettings::default(),
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
@@ -313,6 +319,13 @@ impl PhysicsBridge {
         self.reconcile_structure(sim);
         self.reconcile_joints(sim);
         self.restamp_damping();
+        // A static body has ONE author — the authored `Transform` — so it tracks
+        // it on every dispatch, not only on the paused ones. Before this, a wall
+        // dragged with the clock running moved the drawing and left the collider
+        // behind (`bridge::hold::settle_static`). Runs BEFORE the step, so the
+        // tick is solved against the wall the artist can see; and it is a no-op
+        // for every body nobody touched, so a settled scene is unaffected.
+        self.settle_static(sim);
     }
 
     /// [`PhysicsBridge::dispatch`], told where the scene's scene-driven bodies
@@ -391,13 +404,14 @@ impl PhysicsBridge {
                     // Asking is free; capturing costs about one step, which
                     // is why the ring is sparse (see `PhysicsCheckpointRing`).
                     //
-                    // ⚠️ **Nada é gravado enquanto uma MÃO está em voo** (W-Grab,
-                    // regra 1 de `bridge::grab`): um checkpoint tirado sob o
+                    // ⚠️ **Nada é gravado enquanto um CUTUCÃO está em voo** (a
+                    // mão do W-Grab ou o campo de atração do W-Hand; regra 1 de
+                    // `bridge::grab`): um checkpoint tirado sob o
                     // cutucão descreve uma corrida que nenhum replay reproduz,
                     // então semear um scrub com ele faria a resposta para um tick
                     // depender de o cache tê-lo ou não. O `grab` já limpou o que
                     // havia; isto impede que a janela se re-encha.
-                    if !self.is_grabbing() && self.ring.should_record(tick) {
+                    if !self.is_poking() && self.ring.should_record(tick) {
                         self.ring.record(tick, self.world.checkpoint());
                     }
                 }

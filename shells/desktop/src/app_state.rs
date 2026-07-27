@@ -499,6 +499,20 @@ pub(crate) struct App {
     /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando
     /// o onion está desligado.
     pub(crate) onion_ghosts: Vec<ph2d_render::RenderInstance>,
+    /// **A ferramenta de INTERAÇÃO com a física** (W-Hand) — o que o ponteiro faz
+    /// a uma cena que está rodando: a MÃO (segura um corpo), a EXPLOSÃO (um
+    /// estouro radial) ou a ATRAÇÃO (um campo sustentado).
+    ///
+    /// Transiente, e é decisão (ver `ph2d_physics_ecs::interaction`): descreve o
+    /// PONTEIRO, não a cena, então nada disto viaja no arquivo de projeto e
+    /// nenhum schema bumpa. Irmã do `show_colliders` acima — e, como ele, o painel
+    /// de física a EXIBE por uma porta só, sem guardar cópia.
+    pub(crate) interaction: ph2d_physics_ecs::InteractionSettings,
+    /// Where the last blast went off and how big it was, plus how many ticks of
+    /// flash it has left. Purely for the overlay: an explosion is instantaneous, so
+    /// without a decaying mark the only visible trace is bodies that moved — the
+    /// same reasoning as the contact flash.
+    pub(crate) blast_flash: Option<([f32; 2], f32, u32)>,
     /// Which pose channels the next physics Bake writes (§11). Transient — a
     /// bake-time preference, not saved: it says how the button behaves, not what
     /// the document is. Default `All`.

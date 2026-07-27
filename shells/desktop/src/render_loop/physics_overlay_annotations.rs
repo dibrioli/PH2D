@@ -15,6 +15,8 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
+use super::physics_overlay_joint_glyphs::{ring_px, screen_of};
+
 /// Chords in the torque glyph's arc — enough that 270° reads as a smooth curve.
 const TORQUE_ARC_SEGS: u32 = 24;
 
@@ -223,4 +225,115 @@ pub(super) fn torque_glyph(
         }
     }
     Some(path)
+}
+
+// ── As ferramentas de INTERAÇÃO (W-Hand) ────────────────────────────────────
+
+/// O **anel de alcance** das ferramentas de ponto — o mesmo verde-limão da mola da
+/// mão, apagado.
+///
+/// Uma cor, uma família: a mão, a explosão e a atração são a MESMA ferramenta
+/// escolhida de três jeitos, e dar uma cor a cada uma diria que são três assuntos.
+/// Apagado porque é uma mira, não um objeto: ele diz *onde isto vai agir*, e a
+/// coisa que age é o que acontece com os corpos.
+pub(super) const AIM_RGBA: [f32; 4] = [0.55, 1.0, 0.30, 0.35]; // LITERAL-COLOR-OK: overlay da mira
+
+/// O anel do **estouro** — o mesmo verde, opaco, porque ele descreve algo que
+/// ACONTECEU e não algo que pode acontecer.
+pub(super) const BLAST_RGBA: [f32; 4] = [0.55, 1.0, 0.30, 0.95]; // LITERAL-COLOR-OK: overlay da explosao
+
+/// **Um anel de raio em METROS**, projetado — o alcance de uma ferramenta de ponto.
+///
+/// ⚠️ Em metros e não em pixels de tela, ao contrário do glifo de torque: um
+/// alcance **é** uma distância do mundo, então ele tem de crescer com o zoom. Um
+/// anel de tamanho constante mentiria sobre quais corpos estão dentro dele — que é
+/// a única pergunta que ele existe para responder.
+///
+/// A projeção usa a MESMA `screen_of` do resto do overlay, e o raio é medido pela
+/// distância projetada entre o centro e um ponto a `radius` dele: assim ele
+/// acompanha zoom e qualquer y-flip sem uma segunda derivação da câmera.
+pub(super) fn reach_ring(
+    centre_w: [f32; 2],
+    radius: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    if radius <= 0.0 {
+        return None;
+    }
+    let c = screen_of(camera, window, centre_w);
+    let edge = screen_of(camera, window, [centre_w[0] + radius, centre_w[1]]);
+    let r_px = (edge.x - c.x).hypot(edge.y - c.y);
+    // Um anel de menos de um pixel não é uma mira, é um ponto — e desenhá-lo
+    // sugeriria um alcance que o artista não consegue ver.
+    if r_px < 1.0 {
+        return None;
+    }
+    let mut p = BezPath::new();
+    ring_px(c, r_px, &mut p);
+    Some(p)
+}
+
+/// **A marca da EXPLOSÃO** — dois anéis concêntricos que desvanecem: o alcance
+/// cheio e a metade dele.
+///
+/// Duas circunferências e não uma, porque um anel só é indistinguível da mira que
+/// já estava ali; e o de meio caminho é a curva de nível onde o falloff vale 0,5,
+/// pela MESMA lei (`blast_falloff`) que o solver usou — a mira e a marca não podem
+/// discordar sobre onde o estouro pesa metade.
+pub(super) fn blast_marks(
+    centre_w: [f32; 2],
+    radius: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let mut p = reach_ring(centre_w, radius, camera, window)?;
+    if let Some(inner) = reach_ring(centre_w, radius * 0.5, camera, window) {
+        p.extend(inner.iter());
+    }
+    Some(p)
+}
+
+/// **As três marcas das ferramentas de ponto**, na ordem em que se sobrepõem.
+///
+/// A MIRA é a mais apagada e a mais frequente (existe o tempo todo enquanto a
+/// ferramenta está em mãos), então vai primeiro; o campo VIVO e o estouro
+/// descrevem coisas que estão de fato acontecendo e ficam por cima dela.
+///
+/// ⚠️ Nenhuma delas passa pelo gate de `show` do overlay, pela mesma razão da
+/// banda de criar joint e da mola da mão: são **gesto**, não anotação de cena.
+pub(super) fn draw_interaction(
+    aim: Option<([f32; 2], f32)>,
+    pull: Option<([f32; 2], f32)>,
+    blast: Option<([f32; 2], f32)>,
+    camera: &Camera2d,
+    window: WindowSize,
+    vector_scene: &mut ph2d_vector::VectorScene,
+) {
+    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    let width = super::physics_overlay::OUTLINE_PX;
+    for (mark, rgba) in [(aim, AIM_RGBA), (pull, BLAST_RGBA)] {
+        if let Some((c, r)) = mark
+            && let Some(path) = reach_ring(c, r, camera, window)
+        {
+            vector_scene.inner_mut().stroke(
+                &Stroke::new(width),
+                Affine::IDENTITY,
+                &Brush::Solid(Color::new(rgba)),
+                None,
+                &path,
+            );
+        }
+    }
+    if let Some((c, r)) = blast
+        && let Some(path) = blast_marks(c, r, camera, window)
+    {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(width),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(BLAST_RGBA)),
+            None,
+            &path,
+        );
+    }
 }

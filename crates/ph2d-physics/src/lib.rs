@@ -26,10 +26,12 @@
 
 pub mod world;
 
+pub use world::blast::{Attract, blast_falloff};
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::contacts::{ContactReport, PeakKey, PeakSample};
 pub use world::defaults::BodyDefaults;
 pub use world::effector::{zone_force_world, zone_force_world_at, zone_spin_sign};
+pub use world::grab::HoldSpec;
 pub use world::joint_break::{JointBreak, JointKey, JointLoad};
 pub use world::joints::{JointDesc, JointKind, MotorDesc, MotorMode, motor_axis};
 pub use world::layers::{LayerMatrix, MAX_LAYERS};

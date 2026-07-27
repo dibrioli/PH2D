@@ -154,3 +154,118 @@ fn the_overlay_reads_the_marks_from_the_bridge() {
         "o overlay tem de receber as marcas da ponte. Chamada:\n{call}"
     );
 }
+
+// ── As ferramentas de PONTO (W-Hand) ────────────────────────────────────────
+
+/// **O intercept das ferramentas de ponto PRECEDE o picking de canvas.**
+///
+/// Elas precisam só de um PONTO, então pendurá-las no pick — que só dispara com
+/// algo sob o cursor — as tornaria inertes no vazio, que é metade de onde um
+/// estouro é útil. A relação afirmada é de ORDEM dentro do `dispatch_pointer`, não
+/// distância: o `poke_press` tem de aparecer antes do sítio onde a mão é
+/// perguntada (`take_hold`), que mora dentro do braço do pick.
+#[test]
+fn the_point_tools_are_intercepted_before_the_canvas_pick() {
+    let src = dispatch_src();
+    let poke = src
+        .find("self.poke_press(")
+        .expect("o intercept das ferramentas de ponto existe");
+    let hand = src
+        .find("crate::body_grab::take_hold(")
+        .expect("o sítio da mão existe");
+    assert!(
+        poke < hand,
+        "o intercept das ferramentas de ponto ({poke}) vem DEPOIS do sítio do \
+         pick onde a mão é perguntada ({hand}): um estouro no vazio nunca \
+         dispararia"
+    );
+}
+
+/// **O intercept é gateado em `needs_a_body`, a porta única** — e não numa lista
+/// de ferramentas escrita aqui.
+///
+/// Uma enumeração (`tool == Explode || tool == Attract`) é o que apodrece quando a
+/// quarta ferramenta chega: ela nasceria fora do intercept, com o gesto caindo no
+/// pick de canvas em silêncio.
+#[test]
+fn the_point_intercept_asks_the_one_door() {
+    let src = dispatch_src();
+    let i = src.find("self.poke_press(").expect("o intercept existe");
+    // A janela é o BLOCO do `if`, achado para trás a partir da chamada — não uma
+    // contagem de bytes.
+    let start = src[..i]
+        .rfind("if mapped_button")
+        .expect("o guard do intercept");
+    let guard = &src[start..i];
+    assert!(
+        guard.contains("!self.interaction.tool.needs_a_body()"),
+        "o guard do intercept não pergunta a `needs_a_body` — ele está \
+         enumerando ferramentas:\n{guard}"
+    );
+}
+
+/// **O press de ponto pergunta à porta com o relógio E o toggle**, os mesmos dois
+/// fatos que a mão recebe. Sem um deles a ferramenta dispara numa cena parada e o
+/// clique não faz nada.
+#[test]
+fn the_poke_press_asks_the_door_with_the_clock_and_the_transport() {
+    let src = dispatch_src();
+    let i = src
+        .find("crate::body_grab::poke_at(")
+        .expect("o press de ponto chama a porta");
+    let call = &src[i..i + 400];
+    for needle in [
+        "&mut gfx.physics",
+        "&self.interaction",
+        "playing",
+        "simulating",
+    ] {
+        assert!(
+            call.contains(needle),
+            "a chamada de `poke_at` não passa `{needle}`:\n{call}"
+        );
+    }
+    // E as duas condições vêm de onde só o shell as tem.
+    let head = &src[..i];
+    assert!(
+        head.contains("let playing = self.playhead.is_playing();")
+            && head.contains("let simulating = self.timeline.flags.simulate_physics;"),
+        "o press de ponto não lê o relógio e o toggle do transporte"
+    );
+}
+
+/// **O overlay recebe as três marcas da ferramenta**, e a MIRA honra as mesmas
+/// duas condições do gesto.
+///
+/// Uma mira desenhada com o relógio parado promete um clique que a porta recusa —
+/// e uma promessa que a ferramenta não cumpre é pior que nenhuma marca.
+#[test]
+fn the_overlay_is_handed_the_tool_marks() {
+    let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
+    let i = src
+        .find("physics_overlay::draw(")
+        .expect("a chamada do overlay existe");
+    let call = &src[i..i + 3000];
+    assert!(
+        call.contains("physics.attract_marks()"),
+        "o campo de atração não chega ao overlay"
+    );
+    assert!(
+        call.contains("self.blast_flash.map("),
+        "o flash do estouro não chega ao overlay"
+    );
+    assert!(
+        call.contains("self.interaction.aim_radius()"),
+        "a mira não chega ao overlay"
+    );
+    // A mira é gateada nas MESMAS duas condições da porta.
+    let aim = call
+        .find("self.interaction.aim_radius()")
+        .expect("checked above");
+    let window = &call[aim.saturating_sub(300)..aim];
+    assert!(
+        window.contains("self.playhead.is_playing()")
+            && window.contains("self.timeline.flags.simulate_physics"),
+        "a mira é desenhada sem honrar o relógio e o toggle:\n{window}"
+    );
+}

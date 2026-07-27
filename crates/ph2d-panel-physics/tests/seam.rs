@@ -19,9 +19,9 @@ use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_physics::state::{PhysicsPanelState, PhysicsSnapshot};
 use ph2d_panel_physics::{
-    PhysicsIntent, PhysicsPanel, drain_intents, ids, rows, set_current_physics,
+    PhysicsIntent, PhysicsPanel, drain_intents, ids, interact, rows, set_current_physics,
 };
-use ph2d_physics_ecs::PhysicsSettings;
+use ph2d_physics_ecs::{HoldMode, InteractionSettings, InteractionTool, PhysicsSettings};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A dock-sized viewport. Tall, because the panel has five sections and a
@@ -35,11 +35,21 @@ const VIEWPORT: Rect = Rect {
 
 /// Put a known world in front of the panel and clear anything queued.
 fn arrange(settings: PhysicsSettings) -> (MockPanelHost, PhysicsPanelState) {
+    arrange_with(settings, InteractionSettings::default())
+}
+
+/// [`arrange`] with the interaction tool in a chosen state — what the W-Hand
+/// sweep needs, because those rows only PAINT for the tool that owns them.
+fn arrange_with(
+    settings: PhysicsSettings,
+    interaction: InteractionSettings,
+) -> (MockPanelHost, PhysicsPanelState) {
     set_current_physics(Some(PhysicsSnapshot {
         settings,
         pixels_per_meter: 100.0,
         show_colliders: true,
         body_count: 3,
+        interaction,
     }));
     let _ = drain_intents();
     (
@@ -455,4 +465,240 @@ fn the_panel_publishes_its_rect() {
         rect.w > 0.0 && rect.h > 0.0,
         "the physics panel published an empty rect ({rect:?})"
     );
+}
+
+// ── The Interaction section (W-Hand) ────────────────────────────────────────
+// Its own sweep, and NOT a widening of the ones above, for a structural reason:
+// these rows only PAINT for the tool that owns them, so a sweep that arranges a
+// single state would find most of them missing and would have to be told to
+// forgive that — a gate that forgives absence proves nothing about presence.
+
+/// A settings state in which `row` is live. Derived from the row's OWN predicate
+/// (`shown`) rather than from a table of row→tool written here: a second copy of
+/// that mapping is exactly what drifts when a row moves tool.
+fn state_showing(row: &interact::IRow) -> InteractionSettings {
+    for tool in InteractionTool::ALL {
+        for hold in HoldMode::ALL {
+            let it = InteractionSettings {
+                tool,
+                hold,
+                ..InteractionSettings::default()
+            };
+            if (row.shown)(&it) {
+                return it;
+            }
+        }
+    }
+    panic!(
+        "no tool/hold combination makes `{}` visible: it is a row nobody can \
+         ever reach",
+        row.label
+    );
+}
+
+/// **Every Interaction row dispatches, and moves ITS field of the tool state.**
+///
+/// Mirror of `every_row_reaches_the_world_settings`, other destination: the
+/// intent is `SetInteraction`, never `SetSettings` — the two have different
+/// lifetimes and only one of them belongs in the project file.
+#[test]
+fn every_interaction_row_reaches_the_tool_state() {
+    for row in interact::IROWS {
+        let base = state_showing(row);
+        let (mut host, mut state) = arrange_with(PhysicsSettings::default(), base);
+        // Drive the slider to a track that is not its current value, so a row
+        // wired to the wrong setter cannot pass by coincidence.
+        let track = 0.75_f32;
+        host.set_slider_value(row.slider, track);
+        let out = host
+            .apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::ValueChanged(row.slider));
+        assert_eq!(
+            out,
+            EventOutcome::Consumed,
+            "`{}` did not consume its own ValueChanged",
+            row.label
+        );
+        let intents = drain_intents();
+        let got = intents
+            .iter()
+            .find_map(|i| match i {
+                PhysicsIntent::SetInteraction(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("`{}` emitted no SetInteraction: {intents:?}", row.label));
+        let want = row.value_of(track);
+        let landed = (row.get)(&got);
+        assert!(
+            (landed - want).abs() < 1e-3,
+            "`{}` landed {landed} for track {track} (wanted {want})",
+            row.label
+        );
+        // And no OTHER field moved: a row wired to a neighbour would still emit.
+        let mut expected = base;
+        (row.set)(&mut expected, want);
+        assert_eq!(
+            got, expected,
+            "`{}` changed a field that is not its own",
+            row.label
+        );
+    }
+}
+
+/// **Every Interaction row is PAINTED and clickable for the tool that owns it —
+/// and absent for the ones that do not.**
+///
+/// The absence half is the load-bearing one: the whole point of `shown` is that
+/// the spring's gains do not appear while the artist is holding the Blast. A gate
+/// that only checked presence would stay green over a section that paints all
+/// seven knobs at once, four of which the solver ignores.
+#[test]
+fn every_interaction_row_is_painted_only_for_its_own_tool() {
+    for row in interact::IROWS {
+        let live = state_showing(row);
+        let (mut host, mut state) = arrange_with(PhysicsSettings::default(), live);
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == row.slider)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| {
+                panic!(
+                    "`{}` is in the table and live for this tool, but the paint \
+                     never registered it",
+                    row.label
+                )
+            });
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert_eq!(
+            host.hit_at(cx, cy),
+            Some(row.slider),
+            "`{}` is painted but something else owns the pixels at its centre",
+            row.label
+        );
+
+        // Now a state where it is NOT live. Every row of this table has one
+        // (each belongs to one tool), and `state_showing`'s panic already proved
+        // the row is reachable at all.
+        let dead = InteractionTool::ALL
+            .iter()
+            .flat_map(|&tool| {
+                HoldMode::ALL.iter().map(move |&hold| InteractionSettings {
+                    tool,
+                    hold,
+                    ..InteractionSettings::default()
+                })
+            })
+            .find(|it| !(row.shown)(it))
+            .expect("every row of this table belongs to one tool");
+        let (mut host2, mut state2) = arrange_with(PhysicsSettings::default(), dead);
+        let painted2 = host2.paint::<PhysicsPanel>(&mut state2, VIEWPORT);
+        assert!(
+            !painted2.iter().any(|(pid, _)| *pid == row.slider),
+            "`{}` is painted for a tool that does not use it — a control the \
+             solver ignores",
+            row.label
+        );
+    }
+}
+
+/// **The two radios select what they name, and their chips answer a real click.**
+///
+/// The options are registered in a LOOP by the segmented helper, so
+/// `architecture_panel_wiring_parity` cannot see them: like the 36 matrix cells,
+/// this gate is the only thing covering those widgets. It uses the REAL pointer
+/// (`click_at`), because a synthetic `WidgetEvent` skips the focusability check in
+/// the store — which is exactly how a painted, hit-indexed, dead chip passes.
+#[test]
+fn the_interaction_radios_select_what_they_name() {
+    for (i, &tool) in InteractionTool::ALL.iter().enumerate() {
+        // Arrange on a DIFFERENT tool, so "already selected" cannot pass for
+        // "selected by the click".
+        let other = InteractionTool::ALL[(i + 1) % InteractionTool::ALL.len()];
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                tool: other,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let id = ids::PHYSICS_INTERACT_TOOL_OPT[i];
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("tool chip {i} was never painted"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let _ = drain_intents();
+        for ev in host.click_at(cx, cy) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+        }
+        let got = drain_intents()
+            .iter()
+            .find_map(|i| match i {
+                PhysicsIntent::SetInteraction(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("clicking tool chip {i} emitted nothing"));
+        assert_eq!(got.tool, tool, "tool chip {i} selected the wrong tool");
+    }
+
+    for (i, &hold) in HoldMode::ALL.iter().enumerate() {
+        let other = HoldMode::ALL[(i + 1) % HoldMode::ALL.len()];
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                tool: InteractionTool::Hand,
+                hold: other,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let id = ids::PHYSICS_HOLD_MODE_OPT[i];
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("hold chip {i} was never painted"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let _ = drain_intents();
+        for ev in host.click_at(cx, cy) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+        }
+        let got = drain_intents()
+            .iter()
+            .find_map(|i| match i {
+                PhysicsIntent::SetInteraction(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("clicking hold chip {i} emitted nothing"));
+        assert_eq!(got.hold, hold, "hold chip {i} selected the wrong mode");
+    }
+}
+
+/// **The Hold radio is offered ONLY for the Hand.** The Blast and the Pull hold
+/// nothing, so a mode chip under them would be a control the solver never reads.
+#[test]
+fn the_hold_radio_belongs_to_the_hand() {
+    for &tool in InteractionTool::ALL.iter() {
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                tool,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let drawn = painted
+            .iter()
+            .any(|(pid, _)| *pid == ids::PHYSICS_HOLD_MODE_OPT[0]);
+        assert_eq!(
+            drawn,
+            tool.needs_a_body(),
+            "the Hold radio's presence disagrees with `needs_a_body` for {tool:?}"
+        );
+    }
 }

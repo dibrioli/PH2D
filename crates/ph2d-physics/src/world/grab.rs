@@ -50,11 +50,93 @@
 //! de outra arena.
 
 use rapier2d::dynamics::{
-    ImpulseJointHandle, MotorModel, RigidBodyBuilder, RigidBodyHandle, SpringJointBuilder,
+    FixedJointBuilder, GenericJoint, ImpulseJointHandle, MotorModel, RigidBodyBuilder,
+    RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
 };
 use rapier2d::na::{Isometry2, Point2, Vector2};
 
 use super::PhysicsWorld;
+
+/// **How the hand holds.** Three laws, and the artist picks one — the request
+/// that opened this was *"the spring deserves manual adjustment parameters"* plus
+/// *"hold RIGIDLY, among others such as Rope"*.
+///
+/// One enum rather than a bag of optional fields: the three are mutually
+/// exclusive by construction, and a `stiffness` that a Rigid hold ignores is a
+/// knob the panel would have to remember not to paint.
+///
+/// # A tabela dos três (MEDIDA: `world::tests::sweep_the_three_hold_modes`)
+///
+/// Quatro grandezas, porque os três falham de maneiras diferentes: atraso em
+/// regime a 4 m/s, sobressinal ao parar, o giro que um disco pego pela BORDA
+/// acumula sob gravidade, e onde a caixa para com o cursor **5 m dentro** de uma
+/// parede estática cuja face está em `x = 1,0`.
+///
+/// | modo | atraso @4 m/s | sobressinal | giro (rad) | parede |
+/// |---|---|---|---|---|
+/// | Spring k=400 (default) | 0,369 | 0,000 | 3,091 | **0,505** (segura) |
+/// | Spring k=1600 | 0,169 | 0,000 | 3,133 | 0,516 (segura) |
+/// | **Rigid** | **0,000** | 0,000 | **0,000** | 6,000 (**atravessa**) |
+/// | Rope slack 0 | 0,000 | 0,000 | 3,104 | 6,000 (**atravessa**) |
+/// | Rope slack 0,5 | **0,500** | 0,000 | 2,049 | 5,500 (atravessa) |
+/// | Rope slack 1,5 | **1,500** | 0,000 | 2,481 | 4,500 (atravessa) |
+///
+/// Três coisas que a tabela DECIDE, e não eram palpite:
+///
+/// 1. **`Rigid` e `Rope` atravessam geometria; só a mola a respeita.** Uma
+///    restrição de distância é tão rígida quanto um weld, então a "parede" da
+///    tabela do teto (`PhysicsWorld::GRAB_STIFFNESS`) vale para o *spring* e é
+///    inaplicável aos outros dois **por construção**. Não é bug e não tem
+///    conserto: o preço da palavra "rígido" é este.
+/// 2. **O atraso de um Rope é EXATAMENTE o slack** (0,5 → 0,500; 1,5 → 1,500):
+///    a restrição é dura, então o corpo é arrastado a exatamente `max_length`
+///    atrás do cursor. Forma fechada, não afinação.
+/// 3. **Só `Rigid` mantém a atitude** (giro 0,000 contra ~π nos outros). É por
+///    isso que ele é o modo pedido para *"segurar RÍGIDO"*, e por que o `Rope`
+///    com slack 0 não o substitui: os dois têm atraso zero, e apenas um segura o
+///    ângulo.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum HoldSpec {
+    /// **A soft spring** — the default, and the law every 2D physics testbed
+    /// uses for its mouse. The body lags the cursor, collides on the way, and
+    /// keeps its velocity when let go.
+    ///
+    /// `damping` is in the same acceleration-per-(metre-per-second) units the
+    /// stiffness is in acceleration-per-metre; the *critical* value for a given
+    /// `k` is `2·√k` (see [`PhysicsWorld::GRAB_DAMPING`]). Turning that into a
+    /// **ratio** is the caller's job on purpose: the wrapper takes the two gains
+    /// the solver takes, and the product decision about how the artist spells
+    /// them lives one level up.
+    Spring { stiffness: f32, damping: f32 },
+    /// **Rigid** — position *and* rotation held, no lag and no swing: the body
+    /// is welded to the cursor at the point it was grabbed, in the attitude it
+    /// had. A plank picked up by one end stays level.
+    ///
+    /// ⚠️ **A rigid hold drags through geometry, and that is the honest cost of
+    /// the word.** Spring and contact are solved by the same solver with a
+    /// finite iteration budget, so a hold stiff enough always wins (the ceiling
+    /// table on [`PhysicsWorld::GRAB_STIFFNESS`] measures exactly where a
+    /// *spring* crosses that line); "rigid" is past it by construction. This is
+    /// the mode for placing something, not for pushing something.
+    Rigid,
+    /// **A rope** — the body may come no further from the cursor than
+    /// `max_length`, and inside that it hangs, swings and spins freely. Pulls,
+    /// never pushes.
+    ///
+    /// `max_length = 0` is the useful degenerate case, not a bug: the grab point
+    /// is pinned to the cursor and the body is free to rotate about it, which is
+    /// what a nail through a plank does.
+    Rope { max_length: f32 },
+}
+
+impl Default for HoldSpec {
+    fn default() -> Self {
+        Self::Spring {
+            stiffness: PhysicsWorld::GRAB_STIFFNESS,
+            damping: PhysicsWorld::GRAB_DAMPING,
+        }
+    }
+}
 
 /// A mão em voo: o que ela segura, por onde, e a tralha que a realiza.
 #[derive(Copy, Clone, Debug)]
@@ -103,11 +185,16 @@ impl PhysicsWorld {
     ///
     /// | k (d = 2√k) | atraso em regime | sobressinal |
     /// |---|---|---|
+    /// | 10 | 1,582 m | 0,000 m |
+    /// | 25 | 1,281 m | 0,000 m |
+    /// | 50 | 1,012 m | 0,000 m |
     /// | 100 | 0,751 m | 0,000 m |
     /// | 200 | 0,532 m | 0,000 m |
     /// | **400** | **0,369 m** | 0,000 m |
     /// | 800 | 0,252 m | 0,000 m |
     /// | 1600 | 0,169 m | 0,000 m |
+    /// | 3200 | 0,110 m | 0,000 m |
+    /// | 6400 | 0,069 m | 0,000 m |
     ///
     /// O atraso em regime de um seguidor criticamente amortecido é `2v/√k`, então
     /// cai como `1/√k`: **quadruplicar a rigidez compra metade do atraso** e
@@ -143,28 +230,22 @@ impl PhysicsWorld {
     /// (duas molas) é uma feature de dois cursores que ninguém pediu, e a
     /// silenciosa (recusar) deixaria o gesto seguinte inerte sem dizer por quê.
     pub fn grab_body(&mut self, handle: RigidBodyHandle, world_point: [f32; 2]) -> bool {
-        self.grab_body_tuned(
-            handle,
-            world_point,
-            Self::GRAB_STIFFNESS,
-            Self::GRAB_DAMPING,
-        )
+        self.grab_body_with(handle, world_point, HoldSpec::default())
     }
 
-    /// [`Self::grab_body`] com os ganhos na mão em vez de tomados das
-    /// constantes medidas.
+    /// [`Self::grab_body`] com a LEI da mão na mão em vez de tomada dos defaults
+    /// medidos ([`HoldSpec`]).
     ///
     /// **Existe para que a tabela em [`Self::GRAB_STIFFNESS`] seja reprodutível
     /// contra o caminho do PRODUTO**, e não contra uma segunda cópia dele escrita
     /// num arquivo de teste — exatamente o mesmo motivo (e o mesmo formato) do
     /// `spawn_joint_tuned`, que existe para as tabelas do servo. A varredura mora
     /// em `world::tests`.
-    pub(super) fn grab_body_tuned(
+    pub fn grab_body_with(
         &mut self,
         handle: RigidBodyHandle,
         world_point: [f32; 2],
-        stiffness: f32,
-        damping: f32,
+        spec: HoldSpec,
     ) -> bool {
         self.release_grab();
         let Some(body) = self.bodies.get(handle) else {
@@ -174,6 +255,7 @@ impl PhysicsWorld {
             return false;
         }
         let pose = *body.position();
+        let body_rot = pose.rotation.angle();
         let local = Self::local_anchor_at_pose(
             [
                 pose.translation.x,
@@ -191,15 +273,7 @@ impl PhysicsWorld {
                 .translation(Vector2::new(world_point[0], world_point[1]))
                 .build(),
         );
-        // `rest_length` ZERO: o alvo é *o ponto de pega EM CIMA do cursor*. Com
-        // a separação exatamente nula o erro é nulo e a mola não empurra, então
-        // não há direção indefinida a produzir NaN — o que o gate de um clique
-        // sem arrasto mede (ele não pode mover o corpo nem um ulp).
-        let joint = SpringJointBuilder::new(0.0, stiffness, damping)
-            .spring_model(MotorModel::AccelerationBased)
-            .local_anchor1(Point2::origin())
-            .local_anchor2(Point2::new(local[0], local[1]))
-            .build();
+        let joint = Self::hold_joint(spec, local, body_rot);
         // ⚠️ `wake_up = true` acorda um corpo adormecido — que são a maioria dos
         // que se quer cutucar. **Medido, é a camada de FORA: mutá-lo para `false`
         // não sangra**, porque o `wake_up` do [`Self::move_grab`] cobre todo caso
@@ -215,6 +289,52 @@ impl PhysicsWorld {
             local,
         });
         true
+    }
+
+    /// **The three laws, in the one place they become a joint.**
+    ///
+    /// `local` is the grab point in the body's frame; `body_rot` its world
+    /// rotation at the moment of the grab. Both anchors are expressed the same
+    /// way in all three: `local_anchor1` is the anchor body's ORIGIN (the anchor
+    /// *is* the cursor) and `local_anchor2` is the grab point.
+    fn hold_joint(spec: HoldSpec, local: [f32; 2], body_rot: f32) -> GenericJoint {
+        let grab = Point2::new(local[0], local[1]);
+        match spec {
+            HoldSpec::Spring { stiffness, damping } => {
+                // `rest_length` ZERO: o alvo é *o ponto de pega EM CIMA do
+                // cursor*. Com a separação exatamente nula o erro é nulo e a mola
+                // não empurra, então não há direção indefinida a produzir NaN — o
+                // que o gate de um clique sem arrasto mede (ele não pode mover o
+                // corpo nem um ulp).
+                SpringJointBuilder::new(0.0, stiffness, damping)
+                    .spring_model(MotorModel::AccelerationBased)
+                    .local_anchor1(Point2::origin())
+                    .local_anchor2(grab)
+                    .build()
+                    .into()
+            }
+            // ⚠️ **The frames carry the body's CURRENT rotation, and leaving that
+            // out would snap it.** A `FixedJoint` holds `pose1 ∘ frame1` equal to
+            // `pose2 ∘ frame2`; the anchor's rotation is zero, so a plain
+            // `local_frame1` of identity would demand the body's rotation be zero
+            // too — grabbing anything tilted would whip it upright at the press.
+            // Putting `body_rot` in frame1 makes the constraint satisfied at t=0
+            // (no jump) and holds the attitude the body HAD, which is what
+            // "rigid" means.
+            HoldSpec::Rigid => FixedJointBuilder::new()
+                .local_frame1(Isometry2::new(Vector2::zeros(), body_rot))
+                .local_frame2(Isometry2::new(Vector2::new(local[0], local[1]), 0.0))
+                .build()
+                .into(),
+            // A rope constrains only the DISTANCE, so rotation stays free — and
+            // `max_length = 0` is the pin-with-free-spin case, not a degenerate
+            // one.
+            HoldSpec::Rope { max_length } => RopeJointBuilder::new(max_length.max(0.0))
+                .local_anchor1(Point2::origin())
+                .local_anchor2(grab)
+                .build()
+                .into(),
+        }
     }
 
     /// **A mão andou.** Move a âncora — e só ela; a mola faz o resto.

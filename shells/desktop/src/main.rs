@@ -189,6 +189,7 @@ mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_grab;
+mod physics_smoke_interact;
 mod physics_smoke_joint_bake;
 mod physics_smoke_joint_break;
 mod physics_smoke_joint_draw;
@@ -442,6 +443,8 @@ impl App {
             physics_smoke_done: false,
             show_colliders: true,
             onion_ghosts: Vec::new(),
+            interaction: ph2d_physics_ecs::InteractionSettings::default(),
+            blast_flash: None,
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),
             gilrs,
             audio,

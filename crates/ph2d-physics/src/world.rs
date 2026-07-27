@@ -4,6 +4,7 @@
 //! add bodies + colliders, then call [`PhysicsWorld::step`] once per
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
+pub mod blast;
 pub mod buoyancy;
 pub mod checkpoint;
 pub mod collider_build;
@@ -140,6 +141,11 @@ pub struct PhysicsWorld {
     /// cache. Quem garante que isso nunca acontece é a ponte (`bridge::grab`), com
     /// gate; ver [`grab`].
     grab: Option<grab::Grab>,
+    /// **O campo de atração em voo** (W-Hand) — irmão exato do `grab` acima, e
+    /// FORA do checkpoint pela mesma razão: um cutucão não está no documento,
+    /// então nenhum replay o reproduz e um `restore` que o trouxesse de volta
+    /// descreveria uma corrida que já acabou.
+    attract: Option<blast::Attract>,
 }
 
 impl PhysicsWorld {
@@ -210,6 +216,7 @@ impl PhysicsWorld {
             joint_peaks: std::collections::BTreeMap::new(),
             joint_breaks: Vec::new(),
             grab: None,
+            attract: None,
         }
     }
 
@@ -493,6 +500,14 @@ impl PhysicsWorld {
                 &self.narrow_phase,
                 &self.effectors,
                 self.gravity,
+                self.integration_parameters.dt,
+            );
+            // The attract field (W-Hand): the artist holding the pointer down with
+            // the Attract tool. Per SUBSTEP for the same reason as the two above,
+            // and a no-op for every world nobody is poking.
+            blast::apply_attract(
+                &mut self.bodies,
+                &self.attract,
                 self.integration_parameters.dt,
             );
             // The one-way platform hook. Installing it is byte-neutral for every scene

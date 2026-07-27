@@ -18,6 +18,7 @@
 pub mod bake;
 mod bridge;
 mod components;
+pub mod interaction;
 mod joint;
 mod joint_group;
 mod scale;
@@ -39,6 +40,10 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
+};
+pub use interaction::{
+    HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
+    MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
 };
 pub use joint::{JointKind, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_group, jointed_rig};

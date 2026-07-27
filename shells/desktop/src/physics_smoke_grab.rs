@@ -175,8 +175,11 @@ impl crate::App {
                   direita e SOLTE em movimento. Ela voa e DERRUBA a pilha -- soltar nao\n     \
                   zera a velocidade.\n     \
                   (medido: soltando a 8 m/s a bola viaja 2,62 m depois do release)\n  \
-               5. O muro cinza e ESTATICO: arrasta-lo nao faz nada (uma mola nao move\n     \
-                  massa infinita). O clique ainda SELECIONA, como sempre.\n  \
+               5. O muro cinza e ESTATICO: a MAO nao o pega (uma mola nao move massa\n     \
+                  infinita) -- o clique cai no caminho de sempre, que SELECIONA e\n     \
+                  ARRASTA. E desde a W-Hand o collider vai junto: arraste o muro e o\n     \
+                  caixote passa a bater onde ele esta AGORA (era o bug do collider\n     \
+                  fantasma; a cena 53 o demonstra com uma testemunha em cima).\n  \
                6. Desmarque 'Physics' no transporte e tente arrastar: a mao NAO aparece\n     \
                   (sem passo de solver ela nao puxaria nada). Marque de novo e volta.\n  \
                7. Pause: em repouso o arrasto volta a ser AUTORIA de pose (e com ALT\n     \

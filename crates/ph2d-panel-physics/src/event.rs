@@ -4,10 +4,10 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_physics_ecs::PhysicsSettings;
+use ph2d_physics_ecs::{InteractionSettings, PhysicsSettings};
 
-use crate::rows;
 use crate::state::{self, PhysicsIntent};
+use crate::{interact, rows};
 
 /// Inverse of `ids::physics_layer_cell_index` — the `(row, col)` a flat cell
 /// index names. Derived by walking the triangle rather than stored, so the two
@@ -45,14 +45,52 @@ pub(crate) fn apply_event(
                     state::push_intent(PhysicsIntent::SetSettings(settings));
                     true
                 }
+            } else if let Some(row) = interact::irow_for(id) {
+                // The SECOND table (W-Hand). Same shape, other destination: a
+                // runtime tool, not the document.
+                if id == row.chip {
+                    true
+                } else {
+                    let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+                    let mut it = state::current().interaction;
+                    (row.set)(&mut it, row.value_of(track));
+                    state::push_intent(PhysicsIntent::SetInteraction(it));
+                    true
+                }
             } else {
                 false
             }
         }
+        // The two radios of the Interaction section. Each option id names exactly
+        // one variant, resolved through `interact::tool_for`/`hold_for` — the
+        // inverse of the ALL-order the painter uses, so the chip that lights up and
+        // the value that lands cannot disagree.
+        WidgetEvent::Click(id) if interact::tool_for(id).is_some() => {
+            seam_reset_button(host, id);
+            let tool = interact::tool_for(id).expect("guard matched");
+            let it = state::current().interaction;
+            state::push_intent(PhysicsIntent::SetInteraction(InteractionSettings {
+                tool,
+                ..it
+            }));
+            true
+        }
+        WidgetEvent::Click(id) if interact::hold_for(id).is_some() => {
+            seam_reset_button(host, id);
+            let hold = interact::hold_for(id).expect("guard matched");
+            let it = state::current().interaction;
+            state::push_intent(PhysicsIntent::SetInteraction(InteractionSettings {
+                hold,
+                ..it
+            }));
+            true
+        }
         // Section headers fold. Panel-local view state, so it never becomes an
         // intent — the shell has no opinion about which sections are open.
         WidgetEvent::Click(id)
-            if id == ids::PHYSICS_SEC_DEBUG || rows::SECTIONS.iter().any(|s| s.id == id) =>
+            if id == ids::PHYSICS_SEC_DEBUG
+                || id == ids::PHYSICS_SEC_INTERACT
+                || rows::SECTIONS.iter().any(|s| s.id == id) =>
         {
             seam_reset_button(host, id);
             let collapsed = host.store().is_collapsed(id);

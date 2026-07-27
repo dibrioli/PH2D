@@ -119,6 +119,7 @@ impl crate::App {
             "50" => self.physics_smoke_joint_pair(),
             "51" => self.physics_smoke_joint_rig(),
             "52" => self.physics_smoke_grab(),
+            "53" => self.physics_smoke_interact(),
             _ => self.physics_smoke_drop(),
         }
 

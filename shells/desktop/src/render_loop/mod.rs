@@ -1525,6 +1525,11 @@ impl crate::App {
             &mut self.timeline.doc,
             simulate_physics,
         );
+        // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
+        // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal
+        // PRÓPRIO, porque uma explosão é um impulso e não deixa estado no mundo
+        // para uma marca derivada ler (o irmão exato do `ContactFlash`).
+        crate::body_grab::age_blast_flash(&mut self.blast_flash);
         // A joint that gave way announces itself (W-J7). The overlay shows where
         // and that; only the event carries the load it broke at.
         for msg in physics_bridge::break_reports(physics, sim) {
@@ -4377,8 +4382,12 @@ impl crate::App {
             //
             // ⚠️ Distinct from `physics_bridge::dispatch` far above, which steps
             // the SIMULATION at the Playhead tick. Two bridges, two phases.
-            self.show_colliders =
-                physics_panel_bridge::dispatch(hero, physics, self.show_colliders);
+            self.show_colliders = physics_panel_bridge::dispatch(
+                hero,
+                physics,
+                self.show_colliders,
+                &mut self.interaction,
+            );
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
             // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
             // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e
@@ -4447,6 +4456,10 @@ impl crate::App {
             // says whether two objects are resting on each other or just overlapping
             // in the artist's eye.
             let contacts = physics.contacts().to_vec();
+            // Onde o cursor está, em mundo — a âncora da mira das ferramentas de
+            // ponto (W-Hand). Derivada aqui e não guardada: o `last_pointer` é a
+            // única fonte, e uma cópia dela desenharia a mira onde o mouse ESTAVA.
+            let pointer_world = camera.screen_to_world(self.last_pointer, window_size);
             // The begin-flashes (`×`) — the visible half of the contact-events channel,
             // a separate list from the standing `+` crosses because a flash marks a
             // BEGINNING and outlives the tick it was born in (W-TickContacts).
@@ -4473,6 +4486,19 @@ impl crate::App {
                 // o ponto de pega é derivado da pose VIVA do corpo, então o
                 // zigzag acompanha o que a mola está de fato puxando.
                 physics.grab_marks(),
+                // W-Hand: a MIRA da ferramenta de ponto em mãos. `aim_radius` é
+                // `None` para a mão; e o gesto só é oferecido com o relógio
+                // ANDANDO e a física ARMADA, então a mira honra as MESMAS duas
+                // condições que `body_grab::poke_at` — uma mira que promete o que
+                // o clique não faz é pior que mira nenhuma.
+                (self.playhead.is_playing() && self.timeline.flags.simulate_physics)
+                    .then(|| self.interaction.aim_radius())
+                    .flatten()
+                    .map(|r| (pointer_world, r)),
+                // O campo VIVO, do ÚNICO dono do fato (a ponte).
+                physics.attract_marks(),
+                // E o último estouro, enquanto o flash dura.
+                self.blast_flash.map(|(c, r, _)| (c, r)),
                 &contacts,
                 &flashes,
                 &waterlines,

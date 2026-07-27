@@ -12,7 +12,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
-use crate::rows;
+use crate::{interact, rows};
 
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
@@ -53,12 +53,51 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_number_range(row.chip, f64::from(row.min), f64::from(row.max), row.step);
     }
 
+    // The Interaction rows (W-Hand) — the SECOND table, registered by the same
+    // loop shape for the same reason. A row that `paint` hit-indexes and nobody
+    // registers is `is_focusable() == false` and its click is dropped in silence.
+    for row in interact::IROWS {
+        store.register(
+            row.slider,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.5,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            row.chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: "0".to_string(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number_mapped(row.slider, row.chip, row.scale(), row.offset());
+        store.set_number_range(row.chip, f64::from(row.min), f64::from(row.max), row.step);
+    }
+
+    // The two radios of the Interaction section. Their OPTIONS are what the
+    // pointer hits, and `paint_segmented_adaptive` registers hit rects but not
+    // store entries — so an unregistered option is painted, hit-indexed and dead
+    // under the mouse (the exact failure the 36 matrix cells taught this panel).
+    for &id in ids::PHYSICS_INTERACT_TOOL_OPT.iter() {
+        button(store, id);
+    }
+    for &id in ids::PHYSICS_HOLD_MODE_OPT.iter() {
+        button(store, id);
+    }
+
     // Section headers are interactive (the chevron folds them), so they are
     // registered like any other control — a painted chevron that nobody
     // registered is an affordance that does nothing.
     for section in rows::SECTIONS {
         button(store, section.id);
     }
+    button(store, ids::PHYSICS_SEC_INTERACT);
     button(store, ids::PHYSICS_SEC_LAYERS);
     button(store, ids::PHYSICS_SEC_DEBUG);
 

@@ -300,3 +300,115 @@ fn a_cursor_of_the_wrong_size_is_refused_not_patched() {
     let wrong = Arc::new(vec![0u8; stride * 4]);
     assert!(p.side(&wrong, true).is_none());
 }
+
+/// A materialização como ela era antes de ir pelo primitivo paralelo — **congelada aqui**, sob
+/// `cfg(test)`, para ser o ORÁCULO da que shipa.
+///
+/// ⚠️ Ela não pode viver no produto: um `pub` sem chamador não é código morto silencioso, é uma **segunda
+/// resposta** esperando alguém chamá-la (a lição que o `warp_axis` do doc 28 §5.11 pagou).
+fn serial_side<T: Clone>(
+    win: &PlaneWindow,
+    patch: &[T],
+    cursor: &std::sync::Arc<Vec<T>>,
+) -> Vec<T> {
+    let mut v = cursor.as_ref().clone();
+    win.blit(patch, &mut v);
+    v
+}
+
+/// **UM CTRL+Z É UMA CÓPIA DO CURSOR MAIS A JANELA — e a cópia agora é paralela.**
+///
+/// O oráculo é a rota serial congelada logo acima: as duas TÊM de dar os mesmos bytes, porque uma cópia
+/// tem uma resposta certa só. Roda sobre um plano que cruza o `PAR_MIN_BYTES` (senão o caminho paralelo
+/// não executa — a armadilha do ADR-0120) e sobre um que não.
+#[test]
+fn the_materialisation_is_byte_identical_to_the_serial_one() {
+    for n in [
+        crate::plane_copy::PAR_MIN_BYTES / size_of::<f32>() + 4_096,
+        4_096,
+    ] {
+        let stride = 64usize;
+        let n = n - n % stride;
+        let cursor = std::sync::Arc::new((0..n).map(|i| i as f32 * 0.5).collect::<Vec<f32>>());
+        let mut after = cursor.as_ref().clone();
+        let rows = n / stride;
+        for r in (rows / 3)..(rows / 3 + 5) {
+            for c in 10..30 {
+                after[r * stride + c] = -1.0;
+            }
+        }
+        let mut b = std::sync::Arc::clone(&cursor);
+        let mut a = std::sync::Arc::new(after);
+        let plane = StoredPlane::split(&mut b, &mut a, stride);
+        let StoredPlane::Patch { win, before, .. } = &plane else {
+            panic!("a fixture nao produziu um Patch (n = {n})");
+        };
+        let expected = serial_side(win, before, &cursor);
+        let got = plane.side(&cursor, true).expect("cursor do tamanho certo");
+        assert_eq!(*got, expected, "n = {n}");
+        // …e o lado `before` é de fato o cursor (a fixture partiu dele), o que torna o gate um oráculo de
+        // COMPORTAMENTO e não só de concordância entre duas rotas.
+        assert_eq!(
+            *got, *cursor,
+            "n = {n}: o undo nao devolveu o estado anterior"
+        );
+    }
+}
+
+/// **E ela é de fato mais rápida** — o único jeito de ver a diferença, porque as duas rotas dão os mesmos
+/// bytes (o gate acima é quem prova isso).
+///
+/// Medido a 4096² sobre os quatro planos que um traço de impasto toca: um Ctrl+Z custava **46,56 ms**
+/// serial e custa **21,86** por aqui (2,1×). Aqui a afirmação é sobre UM plano de `f32` de 64 MB, que é o
+/// caso que cruza o limiar; a barra é **RAZÃO**, nunca wall-clock (`ci-test` compila em `opt-level=1`).
+#[test]
+#[ignore = "perf measurement — run with --release --ignored"]
+fn the_materialisation_is_actually_faster_than_the_serial_one() {
+    use std::time::Instant;
+    let stride = 4096usize;
+    let n = stride * 4096;
+    let cursor = std::sync::Arc::new(vec![0.5f32; n]);
+    let win = PlaneWindow {
+        row: 100,
+        rows: 4,
+        col: 10,
+        cols: 20,
+        stride,
+        plane_len: n,
+    };
+    let patch: Vec<f32> = vec![-1.0; win.elems()];
+    let plane = StoredPlane::Patch {
+        win,
+        before: patch.clone().into_boxed_slice(),
+        after: patch.clone().into_boxed_slice(),
+    };
+    let best = |mut f: Box<dyn FnMut() -> f64>| (0..3).map(|_| f()).fold(f64::MAX, f64::min);
+
+    let (c1, w1, p1) = (std::sync::Arc::clone(&cursor), win, patch.clone());
+    let serial = best(Box::new(move || {
+        let t0 = Instant::now();
+        let v = serial_side(&w1, &p1, &c1);
+        let dt = t0.elapsed().as_secs_f64() * 1000.0;
+        std::hint::black_box(v[0]);
+        dt
+    }));
+    let c2 = std::sync::Arc::clone(&cursor);
+    let parallel = best(Box::new(move || {
+        let t0 = Instant::now();
+        let v = plane.side(&c2, true).expect("cursor do tamanho certo");
+        let dt = t0.elapsed().as_secs_f64() * 1000.0;
+        std::hint::black_box(v[0]);
+        dt
+    }));
+    eprintln!(
+        "[undo] plano f32 de 4096²: serial {serial:.2} ms · paralelo {parallel:.2} ms · {:.1}×",
+        serial / parallel
+    );
+    assert!(
+        serial / parallel > 1.5,
+        "a materializacao comprou {:.1}× (serial {serial:.2} ms, paralelo {parallel:.2} ms). Abaixo \
+         de 1,5× o caminho rapido nao esta rodando — confira se o `PAR_MIN_BYTES` ainda cabe sob um \
+         plano do tamanho do canvas",
+        serial / parallel
+    );
+}

@@ -258,7 +258,7 @@ const fn fits(len: usize, stride: usize) -> bool {
     stride != 0 && len != 0 && len.is_multiple_of(stride)
 }
 
-impl<T: Clone + PartialEq + Sync> StoredPlane<T> {
+impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
     /// Extrai o delta dos dois endpoints e **ESVAZIA os dois** — depois disto os pixels vivem aqui e só
     /// aqui, e o `ModelSnapshot` guardado carrega apenas metadados.
     pub(crate) fn split(before: &mut Arc<Vec<T>>, after: &mut Arc<Vec<T>>, stride: usize) -> Self {
@@ -317,7 +317,11 @@ impl<T: Clone + PartialEq + Sync> StoredPlane<T> {
                 if cursor.len() != win.plane_len {
                     return None;
                 }
-                let mut v = cursor.as_ref().clone();
+                // ⚠️ A materialização começa por uma CÓPIA do plano do cursor — 67 MB a 4096² — e ela
+                // era o custo de um Ctrl+Z (13,37 ms medidos). É a mesma cópia que a porta de fork faz,
+                // então vai pelo mesmo primitivo (`crate::plane_copy`): paralela acima do limiar,
+                // byte-idêntica por construção.
+                let mut v = crate::plane_copy::par_clone(cursor);
                 win.blit(if want_before { before } else { after }, &mut v);
                 Some(Arc::new(v))
             }
@@ -347,7 +351,7 @@ pub(crate) enum StoredEntry<T> {
     OnlyAfter(Arc<Vec<T>>),
 }
 
-impl<T: Clone + PartialEq + Sync> StoredEntry<T> {
+impl<T: Copy + PartialEq + Send + Sync> StoredEntry<T> {
     fn heap_bytes(&self) -> usize {
         match self {
             Self::Both(p) => p.heap_bytes(),
@@ -363,7 +367,7 @@ pub(crate) struct StoredMap<T> {
     entries: BTreeMap<RtLayerId, StoredEntry<T>>,
 }
 
-impl<T: Clone + PartialEq + Sync> StoredMap<T> {
+impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
     /// Extrai o delta dos dois mapas e **esvazia os dois**. `stride` é em elementos por linha do plano
     /// (um por pixel nos três mapas de impasto).
     pub(crate) fn split(

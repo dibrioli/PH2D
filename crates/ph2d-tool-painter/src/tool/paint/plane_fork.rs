@@ -26,14 +26,12 @@
 //! (`heights`, plus `covers`/`mats`/`canvas_rgba` when Inflate moves matter), the **Reshape** warp and the
 //! **Smear** (both re-render the canvas and the three relief planes from a frozen session baseline).
 
-use rayon::prelude::*;
 use std::sync::Arc;
 
-/// Below this many elements the fork is sub-millisecond and the choice cannot matter (measured: 0,54 ms
-/// for 4,2 M elements), so the threshold only exists to keep rayon's fork overhead away from small
-/// canvases. Sibling of `sculpt_close::PAR_MIN`, which exists for the same reason and was measured to make
-/// the Inflate *slower* below it.
-const PAR_MIN: usize = 1 << 20;
+// O limiar mora com a cópia (`crate::plane_copy`), porque a DECISÃO daqui (*vale paralelizar?*) e a
+// execução lá são a mesma pergunta, e duas cópias dela divergiriam. Ele é em BYTES: um plano de `[u8; 7]`
+// move sete vezes a memória de um de `u8` com a mesma contagem.
+use crate::plane_copy::worth_parallel;
 
 /// `Arc::make_mut` for a canvas-sized plane, with the copy parallelised.
 ///
@@ -58,9 +56,8 @@ where
     //
     // A pergunta certa é a que o copiador faz: *há outro dono FORTE?* Ela é um palpite sobre HOW, nunca
     // sobre WHETHER — quem decide de fato continua sendo o `make_mut` da última linha.
-    if Arc::strong_count(arc) > 1 && arc.len() >= PAR_MIN {
-        let fresh: Vec<T> = arc.par_iter().copied().collect();
-        *arc = Arc::new(fresh);
+    if Arc::strong_count(arc) > 1 && worth_parallel::<T>(arc.len()) {
+        *arc = Arc::new(crate::plane_copy::par_clone(arc));
     }
     // Now either uniquely owned (we just replaced it) or small/unshared — so this never copies twice.
     Arc::make_mut(arc)
@@ -69,6 +66,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plane_copy::PAR_MIN_BYTES;
+    use rayon::prelude::*;
 
     /// **A fork is a copy, and a copy has one right answer.** The parallel path must produce exactly what
     /// `Arc::make_mut` produces — value-identical, and uniquely owned afterwards so the caller may write.
@@ -78,7 +77,7 @@ mod tests {
     /// does not.
     #[test]
     fn a_parallel_fork_is_byte_identical_to_the_serial_one() {
-        for n in [PAR_MIN + 1_000, 64] {
+        for n in [PAR_MIN_BYTES / size_of::<f32>() + 1_000, 64] {
             let src: Vec<f32> = (0..n).map(|i| (i as f32) * 0.25 - 3.0).collect();
 
             let mut a = Arc::new(src.clone());
@@ -110,7 +109,7 @@ mod tests {
     /// para o defeito não depender de um relógio para aparecer.
     #[test]
     fn a_live_weak_is_not_an_owner_and_does_not_trigger_a_copy() {
-        let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN + 1_000]);
+        let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let watcher = Arc::downgrade(&a); // o guard de identidade do Wet Paint, em miniatura
         let before = a.as_ptr();
         let got = fork_par(&mut a);
@@ -129,7 +128,7 @@ mod tests {
     /// regression this guards.
     #[test]
     fn an_unshared_plane_is_not_copied() {
-        let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN + 1_000]);
+        let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let before = a.as_ptr();
         let got = fork_par(&mut a);
         assert_eq!(got.as_ptr(), before, "an unshared plane was copied anyway");

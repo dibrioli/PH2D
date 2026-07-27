@@ -24,6 +24,9 @@ pub mod compositor;
 pub mod icon;
 pub mod layers;
 pub mod params;
+/// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta
+/// compartilham.
+mod plane_copy;
 pub mod tool;
 pub mod undo;
 /// Como um passo do histórico é GUARDADO — a janela em vez do documento (U1 do plano 26).

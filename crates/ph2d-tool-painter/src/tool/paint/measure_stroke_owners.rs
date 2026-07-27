@@ -408,3 +408,168 @@ fn what_the_single_door_bought_a_non_pigment_gesture() {
         blur_down_ms(4096)
     );
 }
+
+/// **AS DUAS METADES DO PEN-UP, pelas portas do produto** — a ablação diz o TOTAL do histórico
+/// (27,9 ms a 4096²) e o `record_structural` isolado diz 11,7: faltavam ~16 ms, e esta sonda os nomeia.
+///
+/// ⚠️ **A ablação tira duas coisas de uma vez** (o commit estrutural **e** o segundo dono que o snapshot
+/// representa), então a diferença dela NÃO é o commit. Aqui as duas metades são cronometradas
+/// separadamente **com o snapshot VIVO**, chamando as funções do produto na ordem do produto:
+/// `commit_stroke_height` e depois o `Up` (cujo `close_stroke` re-chama o fold — no-op, ele já drenou o
+/// `stroke_paint` — e roda o `commit_structural_edit`).
+///
+/// Isto não re-implementa laço nenhum: são as duas chamadas que o `close_stroke` faz, na ordem dele.
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_the_two_halves_of_the_pen_up_cost() {
+    use std::time::Instant;
+
+    fn halves(side: u32) -> (f64, f64) {
+        let mut t = armed(side);
+        let (mut fold, mut rest) = (Vec::new(), Vec::new());
+        for k in 0..8u8 {
+            let y = 200.0 + f32::from(k) * 8.0;
+            t.on_canvas_pointer(cp([60.0, y], PointerPhase::Down));
+            for j in 1..=6u8 {
+                t.on_canvas_pointer(cp([60.0 + f32::from(j) * 30.0, y], PointerPhase::Move));
+            }
+            // Metade 1: o fold do relevo, com o `stroke_undo` do pen-down ainda VIVO (o segundo dono).
+            let t0 = Instant::now();
+            t.commit_stroke_height();
+            let a = t0.elapsed().as_secs_f64() * 1000.0;
+            // Metade 2: o resto do pen-up — e o fold que o `close_stroke` re-chama já não tem trabalho.
+            let t1 = Instant::now();
+            t.on_canvas_pointer(cp([260.0, y], PointerPhase::Up));
+            let b = t1.elapsed().as_secs_f64() * 1000.0;
+            if k > 0 {
+                fold.push(a);
+                rest.push(b);
+            }
+        }
+        fold.sort_by(f64::total_cmp);
+        rest.sort_by(f64::total_cmp);
+        (fold[fold.len() / 2], rest[rest.len() / 2])
+    }
+
+    println!(
+        "\n{:<28} {:>10} {:>10} {:>10}",
+        "pen-up impasto (ms)", "1024", "2048", "4096"
+    );
+    let (f1, r1) = halves(1024);
+    let (f2, r2) = halves(2048);
+    let (f4, r4) = halves(4096);
+    println!("commit_stroke_height (fold)  {f1:>10.2} {f2:>10.2} {f4:>10.2}");
+    println!("o resto (commit de undo)     {r1:>10.2} {r2:>10.2} {r4:>10.2}");
+    println!(
+        "TOTAL                        {:>10.2} {:>10.2} {:>10.2}\n",
+        f1 + r1,
+        f2 + r2,
+        f4 + r4
+    );
+}
+
+/// **DE QUE É FEITO o `record_structural`** — os scans somam 4,0 ms a 4096² e ele custa 11,7: a sonda
+/// abre a diferença em vez de a atribuir por subtração.
+///
+/// Cronometra, sobre os MESMOS dois endpoints: (a) o `PlaneDeltas::split` inteiro — a porta que varre e
+/// extrai; (b) o `record_structural` completo, que o embrulha. O que sobrar entre (a) e (b) é a
+/// contabilidade do controller (cursor, cap, pilhas).
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_the_record_structural_is_made_of() {
+    use std::time::Instant;
+
+    println!(
+        "\n{:<30} {:>10} {:>10} {:>10}",
+        "record_structural, impasto (ms)", "1024", "2048", "4096"
+    );
+    let (mut split, mut whole) = (Vec::new(), Vec::new());
+    for side in [1024u32, 2048, 4096] {
+        let mut t = armed(side);
+        stroke(&mut t, 200.0);
+        let (mut lo_s, mut lo_w) = (f64::INFINITY, f64::INFINITY);
+        for k in 0..5u8 {
+            let before = t.snapshot_model();
+            let y = 300.0 + f32::from(k) * 8.0;
+            t.on_canvas_pointer(cp([60.0, y], PointerPhase::Down));
+            for j in 1..=6u8 {
+                t.on_canvas_pointer(cp([60.0 + f32::from(j) * 30.0, y], PointerPhase::Move));
+            }
+            t.paint.stroke_undo = None;
+            t.on_canvas_pointer(cp([260.0, y], PointerPhase::Up));
+            let after = t.snapshot_model();
+
+            // (a) só o motor de delta, sobre CÓPIAS dos endpoints (o split esvazia o que recebe).
+            let (mut b, mut a) = (before.clone(), after.clone());
+            let t0 = Instant::now();
+            let d = crate::undo_planes::PlaneDeltas::split(&mut b, &mut a);
+            let s = t0.elapsed().as_secs_f64() * 1000.0;
+            std::hint::black_box(d.heap_bytes());
+
+            // (b) o commit inteiro, pela porta real.
+            let t1 = Instant::now();
+            t.undo.record_structural(before, after);
+            let w = t1.elapsed().as_secs_f64() * 1000.0;
+            if s < lo_s {
+                lo_s = s;
+            }
+            if w < lo_w {
+                lo_w = w;
+            }
+        }
+        split.push(lo_s);
+        whole.push(lo_w);
+    }
+    println!(
+        "{:<30} {:>10.2} {:>10.2} {:>10.2}",
+        "PlaneDeltas::split", split[0], split[1], split[2]
+    );
+    println!(
+        "{:<30} {:>10.2} {:>10.2} {:>10.2}",
+        "record_structural (total)", whole[0], whole[1], whole[2]
+    );
+    println!();
+}
+
+/// **O QUE UM CTRL+Z CUSTA** — o outro lado do delta, e o preço que a U1 nomeou (0,43 ms a 2048² ·
+/// **13,37 a 4096²**).
+///
+/// A materialização de um `Patch` começa **clonando o plano do cursor** (é ele que serve tudo fora da
+/// janela), então um undo carrega uma cópia de documento por plano que a entrada tocou. A cópia é a mesma
+/// que a porta de fork faz, e agora vai pelo mesmo primitivo paralelo (`crate::plane_copy`).
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_an_undo_costs() {
+    use std::time::Instant;
+
+    fn undo_ms(side: u32) -> f64 {
+        let mut t = armed(side);
+        let mut v = Vec::new();
+        for k in 0..9u8 {
+            stroke(&mut t, 200.0 + f32::from(k) * 8.0);
+        }
+        for k in 0..8u8 {
+            let t0 = Instant::now();
+            let ok = t.undo_last();
+            let dt = t0.elapsed().as_secs_f64() * 1000.0;
+            assert!(ok, "havia o que desfazer");
+            if k > 0 {
+                v.push(dt);
+            }
+        }
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    }
+
+    println!(
+        "\n{:<24} {:>10} {:>10} {:>10}",
+        "undo (mediana, ms)", "1024", "2048", "4096"
+    );
+    println!(
+        "{:<24} {:>10.2} {:>10.2} {:>10.2}\n",
+        "impasto",
+        undo_ms(1024),
+        undo_ms(2048),
+        undo_ms(4096)
+    );
+}

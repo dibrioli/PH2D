@@ -57,6 +57,24 @@ pub(super) fn paint_sections(
         y += Spacing::Md.px();
     }
 
+    // The Joint tool (W-JointTools). Right after Interaction because the two are
+    // the same question asked of opposite transport states — what the POINTER
+    // does — and a reader who found one should find the other without scrolling
+    // past a 36-cell grid.
+    let (open, next_y) = header(
+        ctx,
+        ids::PHYSICS_SEC_JOINT,
+        tr("panel.physics.section.joint"),
+        x,
+        w,
+        y,
+    );
+    y = next_y;
+    if open {
+        y = super::joint::paint_joint(ctx, &snapshot.interaction, x, w, y);
+        y += Spacing::Md.px();
+    }
+
     // Collision layers. Its own section because the matrix is a different KIND
     // of control from the sliders above — and because it is tall.
     let (open, next_y) = header(

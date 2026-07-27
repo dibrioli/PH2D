@@ -14,7 +14,7 @@ use ph2d_i18n::tr;
 use ph2d_physics_ecs::{HoldMode, InteractionSettings, InteractionTool};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
-use crate::interact::IROWS;
+use crate::interact::{IROWS, ISection};
 
 /// Paint the Interaction body (the section header is the caller's). Returns the
 /// `y` it ended at.
@@ -64,29 +64,11 @@ pub(super) fn paint_interact(
         );
     }
 
-    // Does the tip keep its angle? Pose only — the other three have no tip.
-    if it.tool == InteractionTool::Pose {
-        y = seg_row(
-            ctx,
-            x,
-            w,
-            y,
-            tr("panel.physics.ik_angle"),
-            ids::PHYSICS_IK_ANGLE,
-            &ids::PHYSICS_IK_ANGLE_OPT,
-            &[
-                tr("panel.physics.ik_angle.free"),
-                tr("panel.physics.ik_angle.match"),
-            ],
-            usize::from(it.ik_match_angle),
-        );
-    }
-
     // The numbers of whichever tool is in hand — from the ONE table, asking each
     // row whether it is live.
     let row_gap = Spacing::Sm.px();
     for row in IROWS {
-        if !(row.shown)(it) {
+        if row.section != ISection::Sim || !(row.shown)(it) {
             continue;
         }
         let value = (row.get)(it);
@@ -103,15 +85,12 @@ pub(super) fn paint_interact(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        // ⚠️ A dica segue o RELÓGIO da ferramenta, não é uma frase fixa: mandar
-        // "Play + drag" a quem escolheu a Pose é mandar fazer exatamente o que
-        // não funciona. `runs_at_rest` é a porta única, a mesma que a shell usa
-        // para decidir se abre o gesto.
-        if it.tool.runs_at_rest() {
-            tr("panel.physics.pose_hint")
-        } else {
-            tr("panel.physics.interact_hint")
-        },
+        // As TRÊS ferramentas desta seção empurram o solver, então a dica é uma
+        // só. ⚠️ Ela já foi condicional, e deixou de ser quando a Pose saiu
+        // daqui para a seção Joints (W-JointTools): a pergunta *"este gesto
+        // quer Play ou Pause?"* passou a ser respondida pela SEÇÃO em que o
+        // controle mora, que é a forma de não haver resposta a esquecer.
+        tr("panel.physics.interact_hint"),
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -126,7 +105,6 @@ fn tool_label(t: InteractionTool) -> &'static str {
         InteractionTool::Hand => tr("panel.physics.tool.hand"),
         InteractionTool::Explode => tr("panel.physics.tool.explode"),
         InteractionTool::Attract => tr("panel.physics.tool.attract"),
-        InteractionTool::Pose => tr("panel.physics.tool.pose"),
     }
 }
 
@@ -142,7 +120,7 @@ fn hold_label(m: HoldMode) -> &'static str {
 /// deliberately, so the two physics surfaces look like one thing — but a local
 /// copy because that one is private to its crate and the shape is six lines.
 #[allow(clippy::too_many_arguments)]
-fn seg_row(
+pub(super) fn seg_row(
     ctx: &mut PaintCtx,
     x: f32,
     w: f32,

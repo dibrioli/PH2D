@@ -2697,6 +2697,7 @@ impl App {
         // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
         self.advance_body_grab();
         self.advance_body_pose();
+        self.advance_body_fk();
         // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
         // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
         // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
@@ -2769,6 +2770,7 @@ impl App {
         if state == ElementState::Released {
             self.release_body_grab();
             self.release_body_pose();
+            self.release_body_fk();
         }
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
@@ -4636,15 +4638,20 @@ impl App {
                             // regra é como arrastar pela alça passaria a
                             // carregar a corrente e arrastar pelo corpo, não.
                             let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
-                            let carry_rig = matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
-                                && !self.playhead.is_playing()
-                                && self.modifiers.alt_key();
+                            let carry_reach =
+                                if matches!(gkind, ph2d_editor::GizmoDragKind::Translate)
+                                    && !self.playhead.is_playing()
+                                {
+                                    self.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                } else {
+                                    None
+                                };
                             crate::joint_rig_drag::seed_group_drag_starts(
                                 &mut self.group_drag_starts,
                                 &mut gfx.sim,
                                 entity_bits,
                                 &selected,
-                                carry_rig,
+                                carry_reach,
                             );
                         }
                     } else if hero.store.panel_at(evt.x, evt.y).is_none()
@@ -4807,6 +4814,11 @@ impl App {
                             // outro lado. Pegou ⇒ nenhum arrasto de gizmo abre
                             // (`crate::body_grab` explica por que os dois juntos
                             // seriam um gesto inerte cavalgando um vivo).
+                            // W-JointTools: qual gesto de POSE este press abre,
+                            // se algum. Uma pergunta só, feita à porta que também
+                            // decide o alcance do arrasto — é dela que sai o Alt
+                            // significar *leve o rig inteiro* nos cinco modos.
+                            let gesture = self.interaction.joint.gesture(self.modifiers.alt_key());
                             let grabbed = !locked
                                 && (crate::body_grab::take_hold(
                                     &mut gfx.physics,
@@ -4816,17 +4828,27 @@ impl App {
                                     self.playhead.is_playing(),
                                     self.timeline.flags.simulate_physics,
                                 )
-                                // W-IK: e com o relógio PARADO e a ferramenta
-                                // Pose em mãos, o mesmo press é a **cinemática
-                                // inversa** — arrastar a ponta dobra a cadeia. A
-                                // mesma consequência da mão (pegou ⇒ nenhum
-                                // arrasto de gizmo abre), pela mesma razão: dois
-                                // gestos sobre o mesmo `Transform` no mesmo
-                                // frame é o de trás vencendo em silêncio.
+                                // W-IK: e com o relógio PARADO e o modo IK em
+                                // mãos, o mesmo press é a **cinemática inversa**
+                                // — arrastar a ponta dobra a cadeia. A mesma
+                                // consequência da mão (pegou ⇒ nenhum arrasto de
+                                // gizmo abre), pela mesma razão: dois gestos
+                                // sobre o mesmo `Transform` no mesmo frame é o
+                                // de trás vencendo em silêncio.
                                 || crate::body_pose::take_pose(
                                     &mut gfx.physics,
-                                    self.interaction.tool.runs_at_rest(),
+                                    gesture == Some(ph2d_physics_ecs::JointGesture::Ik),
                                     entity,
+                                    self.playhead.is_playing(),
+                                )
+                                // W-FK: e no modo FK o press gira o elo em torno
+                                // da PRÓPRIA junta, levando os descendentes.
+                                || crate::body_fk::take_fk(
+                                    &mut gfx.physics,
+                                    &gfx.sim,
+                                    gesture == Some(ph2d_physics_ecs::JointGesture::Fk),
+                                    entity,
+                                    world_pos,
                                     self.playhead.is_playing(),
                                 ));
                             // Ver a nota gêmea no sítio da alça (W-JG): a semeadura
@@ -4879,14 +4901,17 @@ impl App {
                                 // Translate, então aqui as três condições do
                                 // rig se reduzem às duas do relógio e do Alt.
                                 let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
-                                let carry_rig =
-                                    !self.playhead.is_playing() && self.modifiers.alt_key();
+                                let carry_reach = if self.playhead.is_playing() {
+                                    None
+                                } else {
+                                    self.interaction.joint.drag_reach(self.modifiers.alt_key())
+                                };
                                 crate::joint_rig_drag::seed_group_drag_starts(
                                     &mut self.group_drag_starts,
                                     &mut gfx.sim,
                                     bits,
                                     &selected,
-                                    carry_rig,
+                                    carry_reach,
                                 );
                             }
                         }

@@ -250,3 +250,55 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
 pub fn is_rigid_link(kind: JointKind) -> bool {
     matches!(kind, JointKind::Pin | JointKind::Weld | JointKind::Slider)
 }
+
+/// **O grau de liberdade que uma junta oferece a um gesto de FK.**
+///
+/// A cinemática DIRETA move UMA junta e deixa os descendentes seguirem, então a
+/// pergunta que ela faz a um joint não é *"você é um elo?"* ([`is_rigid_link`])
+/// e sim *"que movimento você permite?"* — e as duas respostas diferem
+/// exatamente no **Weld**, que é elo de árvore e não tem o que mover.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FkDof {
+    /// Dobradiça: o elo **gira** em torno da âncora. A coordenada é um ângulo.
+    Hinge,
+    /// Trilho: o elo **desliza** ao longo do eixo. A coordenada é uma distância.
+    Slide,
+}
+
+/// Ver [`FkDof`]. `None` para quem não tem grau de liberdade nenhum — e é isso
+/// que faz um gesto de FK sobre um filho de **Weld** subir para a junta
+/// seguinte levando a peça soldada inteira, em vez de não fazer nada.
+#[must_use]
+pub fn fk_dof(kind: JointKind) -> Option<FkDof> {
+    match kind {
+        JointKind::Pin => Some(FkDof::Hinge),
+        JointKind::Slider => Some(FkDof::Slide),
+        // Um Weld trava os seis números: os dois corpos são UMA peça rígida.
+        // Spring e Rope nem chegam aqui (não são elos), e a resposta honesta
+        // para eles é a mesma — a pose deles é resultado de forças.
+        JointKind::Weld | JointKind::Spring | JointKind::Rope => None,
+    }
+}
+
+/// **A coordenada desta junta com os dois corpos nas poses dadas.**
+///
+/// A mesma pergunta que [`joint_coordinate`] responde, feita de FORA do wrapper
+/// — e é por isso que ela existe em vez de o chamador reconstruir a álgebra: o
+/// FK precisa saber *em que ponto do curso a junta está* para honrar o limite
+/// autorado, e uma segunda derivação divergiria da que o solver usa no dia em
+/// que a política de frames mudasse.
+///
+/// `parent`/`child` são poses de MUNDO `[x, y, rotação]`, e a orientação do
+/// `desc` tem de ser a do PAR (âncora `a` no pai) — quem alcança o joint pelo
+/// lado B troca as âncoras antes de perguntar.
+///
+/// ⚠️ **Vale para o Slider também**, ao contrário do
+/// [`limit_is_a_coordinate`] — a diferença não é uma inconsistência: aquele
+/// responde *"o ângulo de `local_to_parent` mede o limite?"* (que é o que a
+/// projeção pós-solve tem em mãos, e para o trilho não mede), este DESFAZ os
+/// frames e devolve a distância percorrida de verdade.
+#[must_use]
+pub fn joint_coordinate_at(desc: &JointDesc, parent: [f32; 3], child: [f32; 3]) -> Option<f32> {
+    let iso = |p: [f32; 3]| Isometry2::new(Vector2::new(p[0], p[1]), p[2]);
+    joint_coordinate(desc.kind, desc, &(iso(parent).inverse() * iso(child)))
+}

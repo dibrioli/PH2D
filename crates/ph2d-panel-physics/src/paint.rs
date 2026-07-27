@@ -24,6 +24,7 @@ use crate::{PhysicsPanel, rows};
 
 mod body;
 mod interact;
+mod joint;
 mod matrix;
 
 /// Label gutter. Wider than the padding panel's because these labels are words

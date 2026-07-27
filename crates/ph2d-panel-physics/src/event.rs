@@ -75,6 +75,19 @@ pub(crate) fn apply_event(
             }));
             true
         }
+        // O rádio de modo de joint (W-JointTools). Braço próprio pela mesma
+        // razão dos outros: cada rádio nomeia um fato, e uma função resolvendo
+        // por dois é como o terceiro nasce lendo o array errado.
+        WidgetEvent::Click(id) if interact::joint_for(id).is_some() => {
+            seam_reset_button(host, id);
+            let joint = interact::joint_for(id).expect("guard matched");
+            let it = state::current().interaction;
+            state::push_intent(PhysicsIntent::SetInteraction(InteractionSettings {
+                joint,
+                ..it
+            }));
+            true
+        }
         // O rádio de ângulo da ponta (W-IK). Braço próprio e não um `bool`
         // enfiado no `hold_for`: os dois rádios nomeiam fatos diferentes.
         WidgetEvent::Click(id) if interact::ik_angle_for(id).is_some() => {
@@ -102,6 +115,7 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id)
             if id == ids::PHYSICS_SEC_DEBUG
                 || id == ids::PHYSICS_SEC_INTERACT
+                || id == ids::PHYSICS_SEC_JOINT
                 || rows::SECTIONS.iter().any(|s| s.id == id) =>
         {
             seam_reset_button(host, id);

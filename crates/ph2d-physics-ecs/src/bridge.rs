@@ -17,6 +17,7 @@ pub mod anchors;
 pub mod contacts;
 mod damping;
 mod diagnostics;
+pub mod fk;
 mod grab;
 mod hold;
 pub mod ik;
@@ -112,6 +113,12 @@ pub struct PhysicsBridge {
     /// press e morre num release, e o que sobrevive ao gesto é o `Transform`
     /// autorado que o chamador escreveu.
     pub(super) ik: Option<ik::IkSession>,
+    /// A sessão de CINEMÁTICA DIRETA viva (W-FK), ou `None` fora do gesto.
+    ///
+    /// Irmã do `ik` e, como ela, fora do checkpoint e de tudo que é persistido:
+    /// um gesto de pose é **ferramenta**, e o que sobrevive a ele é o
+    /// `Transform` autorado que o chamador escreveu.
+    pub(super) fk: Option<fk::FkSession>,
     joint_query: Option<JointQuery>,
     // Reusable scratch — cleared+refilled each frame so the steady-state
     // hot path never reallocates (HR-3; proven by the capacity gate).
@@ -218,6 +225,7 @@ impl PhysicsBridge {
             query: None,
             joints: BTreeMap::new(),
             ik: None,
+            fk: None,
             joint_query: None,
             seen: Vec::new(),
             names: BTreeMap::new(),

@@ -12,12 +12,14 @@
 //! `joint_rig_drag`: tocando, a pose é do SOLVER e autorar não faria sentido (o
 //! readback sobrescreve no mesmo frame); parado, a pose é do DOCUMENTO e uma
 //! mola não faria sentido (nada a integra). O predicado é UM
-//! (`InteractionTool::runs_at_rest`) e é a mesma porta que o painel usa para
-//! escrever a dica.
+//! (`JointTool::gesture`) e mora ao lado do que decide o alcance do arrasto,
+//! para as duas metades do Alt não poderem discordar.
 //!
 //! # As condições, e a que NÃO está aqui
 //!
-//! 1. **A ferramenta em mãos é a Pose** — `runs_at_rest()`, a porta única.
+//! 1. **O modo de joint em mãos é o IK** — `JointTool::gesture()`, a porta
+//!    única (e é ela que faz o **Alt** suprimir o gesto: Alt significa *leve o
+//!    rig inteiro*, que é um arrasto).
 //! 2. **O relógio está PARADO.** Ver acima.
 //! 3. **O corpo é dinâmico e pertence a uma cadeia rígida** — respondido pelo
 //!    `ik_plan` da ponte, não por uma cópia da regra aqui.
@@ -62,11 +64,11 @@ use crate::App;
 /// e pelo mesmo motivo: assim a decisão inteira é testável sem janela.
 pub(crate) fn take_pose(
     physics: &mut PhysicsBridge,
-    tool_runs_at_rest: bool,
+    is_ik: bool,
     entity: Entity,
     playing: bool,
 ) -> bool {
-    if playing || !tool_runs_at_rest {
+    if playing || !is_ik {
         return false;
     }
     physics.ik_begin(entity)
@@ -118,7 +120,15 @@ impl App {
 /// Escreve uma pose de MUNDO no `Transform` LOCAL de `e`, preservando escala e
 /// skew. Silencioso quando a entidade não tem `Transform` ou quando o pai é
 /// degenerado — ver o cabeçalho para por que recusar é o certo.
-fn write_world_pose(sim: &mut ph2d_ecs::SimWorld, e: Entity, translation: [f32; 2], rotation: f32) {
+/// ⚠️ `pub(crate)` porque a **FK** escreve pela mesma porta: os dois gestos
+/// produzem pose de mundo e o documento guarda pose local, e duas conversões
+/// divergiriam no primeiro corpo parenteado (a lição do W5).
+pub(crate) fn write_world_pose(
+    sim: &mut ph2d_ecs::SimWorld,
+    e: Entity,
+    translation: [f32; 2],
+    rotation: f32,
+) {
     let parent = parent_world_transform(sim.world(), e);
     let Some(current) = sim.world().get::<Transform>(e).copied() else {
         return;

@@ -175,11 +175,31 @@ pub const PHYSICS_INTERACT_TOOL: NodeId = hash_node_id("physics.interact.tool");
 /// segmented helper registers its options in a LOOP, which
 /// `architecture_panel_wiring_parity` cannot see, so the seam test that clicks
 /// each chip is the only thing covering them.
-pub const PHYSICS_INTERACT_TOOL_OPT: [NodeId; 4] = [
+pub const PHYSICS_INTERACT_TOOL_OPT: [NodeId; 3] = [
     hash_node_id("physics.interact.tool.hand"),
     hash_node_id("physics.interact.tool.explode"),
     hash_node_id("physics.interact.tool.attract"),
-    hash_node_id("physics.interact.tool.pose"),
+];
+
+// ── Joint tool (W-JointTools) ───────────────────────────────────────────────
+// What the pointer does to an articulated CHAIN, with the clock stopped. Its
+// own section because the Interaction one above is about a scene that is
+// RUNNING — the two families need opposite transport states, and a single radio
+// would make every consumer ask which kind it was holding.
+
+/// Joints section header.
+pub const PHYSICS_SEC_JOINT: NodeId = hash_node_id("physics.sec.joint");
+
+/// The joint-tool radio group (Body / Rig / Links / IK / FK).
+pub const PHYSICS_JOINT_TOOL: NodeId = hash_node_id("physics.joint.tool");
+/// The five options, in `JointTool::ALL` order. Fixed array for the reason
+/// [`PHYSICS_INTERACT_TOOL_OPT`] documents.
+pub const PHYSICS_JOINT_TOOL_OPT: [NodeId; 5] = [
+    hash_node_id("physics.joint.tool.body"),
+    hash_node_id("physics.joint.tool.rig"),
+    hash_node_id("physics.joint.tool.links"),
+    hash_node_id("physics.joint.tool.ik"),
+    hash_node_id("physics.joint.tool.fk"),
 ];
 
 /// The hold-mode radio group (Spring / Rigid / Rope) — Hand only.

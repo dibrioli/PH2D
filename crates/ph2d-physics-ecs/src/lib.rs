@@ -21,6 +21,7 @@ mod components;
 pub mod interaction;
 mod joint;
 mod joint_group;
+pub mod joint_tool;
 mod scale;
 pub mod settings;
 
@@ -32,6 +33,7 @@ pub use bridge::contacts::{
 pub use bridge::joint_break::JointBreakEvent;
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
+pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;
 pub use bridge::views::JointView;
@@ -47,7 +49,8 @@ pub use interaction::{
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
 };
 pub use joint::{JointKind, MotorMode, PhysicsJoint};
-pub use joint_group::{jointed_group, jointed_rig};
+pub use joint_group::{jointed_by, jointed_group, jointed_rig};
+pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use ph2d_physics::{IkOptions, JointLoad};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in

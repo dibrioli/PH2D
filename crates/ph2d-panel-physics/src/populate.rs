@@ -94,6 +94,7 @@ pub fn populate(store: &mut WidgetStore) {
         &ids::PHYSICS_INTERACT_TOOL_OPT[..],
         &ids::PHYSICS_HOLD_MODE_OPT[..],
         &ids::PHYSICS_IK_ANGLE_OPT[..],
+        &ids::PHYSICS_JOINT_TOOL_OPT[..],
     ] {
         for &id in group {
             button(store, id);
@@ -107,6 +108,7 @@ pub fn populate(store: &mut WidgetStore) {
         button(store, section.id);
     }
     button(store, ids::PHYSICS_SEC_INTERACT);
+    button(store, ids::PHYSICS_SEC_JOINT);
     button(store, ids::PHYSICS_SEC_LAYERS);
     button(store, ids::PHYSICS_SEC_DEBUG);
 

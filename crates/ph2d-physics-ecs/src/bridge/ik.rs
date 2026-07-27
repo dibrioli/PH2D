@@ -334,7 +334,7 @@ impl PhysicsBridge {
 /// Só isso — limite, motor, comprimento e rigidez são simétricos por natureza,
 /// e o único par lateralizado num `JointDesc` são as duas âncoras e os dois
 /// eixos locais.
-fn swap_anchors(mut d: ph2d_physics::JointDesc) -> ph2d_physics::JointDesc {
+pub(super) fn swap_anchors(mut d: ph2d_physics::JointDesc) -> ph2d_physics::JointDesc {
     std::mem::swap(&mut d.anchor_a, &mut d.anchor_b);
     std::mem::swap(&mut d.axis_a, &mut d.axis_b);
     d

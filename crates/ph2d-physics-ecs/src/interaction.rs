@@ -30,6 +30,8 @@
 
 use ph2d_physics::{Attract, HoldSpec, IkOptions, PhysicsWorld};
 
+use crate::joint_tool::JointTool;
+
 /// **O tamanho do mundo em que se trabalha**, em metros — a régua de todo
 /// alcance desta família (raio de explosão, raio de atração, folga da corda).
 ///
@@ -81,34 +83,13 @@ pub enum InteractionTool {
     Explode,
     /// Um campo sustentado enquanto o botão estiver apertado.
     Attract,
-    /// **Posar** (W-IK): arrastar a ponta de uma cadeia articulada e deixar o
-    /// solver achar os ângulos. ⚠️ A única desta lista que trabalha com o
-    /// relógio **PARADO** — as outras três empurram o solver, e esta AUTORA a
-    /// cena (o resultado é `Transform`, não simulação). Ver `runs_at_rest`.
-    Pose,
 }
 
 impl InteractionTool {
     /// **A pergunta que separa as duas famílias.** Ver os docs do enum.
     #[must_use]
     pub fn needs_a_body(self) -> bool {
-        matches!(self, Self::Hand | Self::Pose)
-    }
-
-    /// **Este gesto acontece com o relógio PARADO?**
-    ///
-    /// A porta única do relógio, perguntada pela shell antes de abrir o gesto e
-    /// pelo painel para escrever a dica. Enumerar *quais* ferramentas são de
-    /// repouso nos dois lugares é como a quinta nasceria de fora da regra —
-    /// exatamente o que o `needs_a_body` já evita para a outra pergunta.
-    ///
-    /// As três primeiras precisam do solver ANDANDO (uma mola que não é
-    /// integrada não puxa nada, um impulso num mundo parado não move nada); a
-    /// Pose precisa dele parado, porque o que ela escreve é a pose autorada e o
-    /// `readback` a sobrescreveria no mesmo frame.
-    #[must_use]
-    pub fn runs_at_rest(self) -> bool {
-        matches!(self, Self::Pose)
+        matches!(self, Self::Hand)
     }
 
     /// Wire string ↔ variante. O mapeamento mora **numa** função por par, porque
@@ -121,7 +102,6 @@ impl InteractionTool {
             Self::Hand => "hand",
             Self::Explode => "explode",
             Self::Attract => "attract",
-            Self::Pose => "pose",
         }
     }
 
@@ -133,13 +113,12 @@ impl InteractionTool {
             "hand" => Some(Self::Hand),
             "explode" => Some(Self::Explode),
             "attract" => Some(Self::Attract),
-            "pose" => Some(Self::Pose),
             _ => None,
         }
     }
 
     /// A ordem em que o painel pinta os chips — a mesma lista, um índice.
-    pub const ALL: [Self; 4] = [Self::Hand, Self::Explode, Self::Attract, Self::Pose];
+    pub const ALL: [Self; 3] = [Self::Hand, Self::Explode, Self::Attract];
 }
 
 /// **Como a mão segura.** A face autorável da [`HoldSpec`] do wrapper: o enum lá
@@ -198,6 +177,15 @@ impl HoldMode {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InteractionSettings {
     pub tool: InteractionTool,
+    /// **A ferramenta de JOINTS** (W-JointTools) — o que o ponteiro faz a uma
+    /// cadeia articulada, com o relógio parado.
+    ///
+    /// ⚠️ Um campo ao lado do `tool` e não uma variante dentro dele: as duas
+    /// famílias são exclusivas *entre si* e não *uma da outra* (a mão é o que
+    /// você tem tocando, o modo de joint é o que você tem parado), e enfiar as
+    /// cinco na mesma lista obrigaria todo consumidor a perguntar de qual
+    /// família a escolha é. Uma struct, duas seções de painel, dois enums.
+    pub joint: JointTool,
     pub hold: HoldMode,
     /// Aceleração-por-metro da mola da mão (não é N/m: o modelo é
     /// `AccelerationBased`, escalado pela massa).
@@ -218,11 +206,11 @@ pub struct InteractionSettings {
     /// Força do campo NO CENTRO, `N`. **Negativa REPELE** — e isso não duplica a
     /// explosão: um empurrão contínuo segura um corpo no ar, um estalo o arremessa.
     pub attract_force: f32,
-    /// [`InteractionTool::Pose`]: o fator de Levenberg do solver de IK.
+    /// [`JointTool::Ik`]: o fator de Levenberg do solver de IK.
     /// Pequeno responde na hora, grande suaviza. Faixa e default são MEDIDOS —
     /// ver [`IkOptions`] no wrapper, que é onde a tabela mora.
     pub ik_damping: f32,
-    /// [`InteractionTool::Pose`]: a ponta também obedece a um ÂNGULO?
+    /// [`JointTool::Ik`]: a ponta também obedece a um ÂNGULO?
     ///
     /// Desligado, o solver resolve só a POSIÇÃO e deixa a atitude cair onde a
     /// cadeia a levar — que é o que se quer arrastando com o mouse, que não tem
@@ -235,6 +223,11 @@ impl Default for InteractionSettings {
     fn default() -> Self {
         Self {
             tool: InteractionTool::Hand,
+            // O default é o comportamento que o editor sempre teve — arrastar
+            // move só o corpo pego. Um modo que se arma sozinho é uma cena que
+            // já mudou quando você olha (a mesma lei do toggle `Physics` do
+            // transporte).
+            joint: JointTool::default(),
             hold: HoldMode::Spring,
             // Os dois defaults da mão vêm do WRAPPER, não transcritos: são as
             // constantes medidas do W-Grab, e o desenho aprovado no smoke é o
@@ -271,6 +264,7 @@ impl InteractionSettings {
         let f = |v: f32, lo: f32, hi: f32| if v.is_finite() { v.clamp(lo, hi) } else { lo };
         Self {
             tool: self.tool,
+            joint: self.joint,
             hold: self.hold,
             ik_damping: f(
                 self.ik_damping,
@@ -340,9 +334,9 @@ impl InteractionSettings {
     pub fn aim_radius(&self) -> Option<f32> {
         let c = self.clamped();
         match c.tool {
-            // As duas que pegam um corpo não têm alcance: elas pegam o que está
-            // sob o cursor.
-            InteractionTool::Hand | InteractionTool::Pose => None,
+            // A que pega um corpo não tem alcance: ela pega o que está sob o
+            // cursor.
+            InteractionTool::Hand => None,
             InteractionTool::Explode => Some(c.blast_radius),
             InteractionTool::Attract => Some(c.attract_radius),
         }

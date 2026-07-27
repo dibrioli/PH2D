@@ -21,7 +21,9 @@ use ph2d_panel_physics::state::{PhysicsPanelState, PhysicsSnapshot};
 use ph2d_panel_physics::{
     PhysicsIntent, PhysicsPanel, drain_intents, ids, interact, rows, set_current_physics,
 };
-use ph2d_physics_ecs::{HoldMode, InteractionSettings, InteractionTool, PhysicsSettings};
+use ph2d_physics_ecs::{
+    HoldMode, InteractionSettings, InteractionTool, JointTool, PhysicsSettings,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A dock-sized viewport. Tall, because the panel has five sections and a
@@ -477,23 +479,40 @@ fn the_panel_publishes_its_rect() {
 /// (`shown`) rather than from a table of row→tool written here: a second copy of
 /// that mapping is exactly what drifts when a row moves tool.
 fn state_showing(row: &interact::IRow) -> InteractionSettings {
-    for tool in InteractionTool::ALL {
-        for hold in HoldMode::ALL {
-            let it = InteractionSettings {
-                tool,
-                hold,
-                ..InteractionSettings::default()
-            };
-            if (row.shown)(&it) {
-                return it;
-            }
+    for it in every_tool_state() {
+        if (row.shown)(&it) {
+            return it;
         }
     }
     panic!(
-        "no tool/hold combination makes `{}` visible: it is a row nobody can \
-         ever reach",
+        "no tool/hold/joint combination makes `{}` visible: it is a row nobody \
+         can ever reach",
         row.label
     );
+}
+
+/// Todo estado alcançável pelos três rádios desta família.
+///
+/// ⚠️ **Os TRÊS, e não dois.** A varredura nasceu com `tool × hold` e ficaria
+/// verde por acidente sobre a seção Joints: a row do IK é governada pelo
+/// terceiro rádio, então uma busca que não o percorresse ou não a acharia
+/// (falha alta, honesta) ou — pior — acharia um estado em que ela é invisível e
+/// afirmaria a metade errada.
+fn every_tool_state() -> Vec<InteractionSettings> {
+    let mut out = Vec::new();
+    for tool in InteractionTool::ALL {
+        for hold in HoldMode::ALL {
+            for joint in JointTool::ALL {
+                out.push(InteractionSettings {
+                    tool,
+                    hold,
+                    joint,
+                    ..InteractionSettings::default()
+                });
+            }
+        }
+    }
+    out
 }
 
 /// **Every Interaction row dispatches, and moves ITS field of the tool state.**
@@ -580,15 +599,8 @@ fn every_interaction_row_is_painted_only_for_its_own_tool() {
         // Now a state where it is NOT live. Every row of this table has one
         // (each belongs to one tool), and `state_showing`'s panic already proved
         // the row is reachable at all.
-        let dead = InteractionTool::ALL
-            .iter()
-            .flat_map(|&tool| {
-                HoldMode::ALL.iter().map(move |&hold| InteractionSettings {
-                    tool,
-                    hold,
-                    ..InteractionSettings::default()
-                })
-            })
+        let dead = every_tool_state()
+            .into_iter()
             .find(|it| !(row.shown)(it))
             .expect("every row of this table belongs to one tool");
         let (mut host2, mut state2) = arrange_with(PhysicsSettings::default(), dead);
@@ -707,10 +719,23 @@ fn each_tool_gets_exactly_its_own_radio() {
             tool == InteractionTool::Hand,
             "the Hold radio is the HAND's, and it disagreed for {tool:?}"
         );
+    }
+    // E o rádio de ângulo da ponta é do modo IK — que agora mora na OUTRA
+    // seção, e é por isso que ele é varrido pelo outro enum.
+    for joint in JointTool::ALL {
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                joint,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let drawn = |id| painted.iter().any(|(pid, _)| *pid == id);
         assert_eq!(
             drawn(ids::PHYSICS_IK_ANGLE_OPT[0]),
-            tool == InteractionTool::Pose,
-            "the Tip Angle radio is the POSE's, and it disagreed for {tool:?}"
+            joint == JointTool::Ik,
+            "the Tip Angle radio is the IK's, and it disagreed for {joint:?}"
         );
     }
 }
@@ -725,7 +750,7 @@ fn the_tip_angle_chips_select_what_they_name() {
         let (mut host, mut state) = arrange_with(
             PhysicsSettings::default(),
             InteractionSettings {
-                tool: InteractionTool::Pose,
+                joint: JointTool::Ik,
                 // Começa no OUTRO valor, senão clicar no chip já selecionado é
                 // indistinguível de um clique que não faz nada.
                 ik_match_angle: !want,
@@ -757,4 +782,130 @@ fn the_tip_angle_chips_select_what_they_name() {
             "tip-angle chip {i} set the wrong value"
         );
     }
+}
+
+/// **Os cinco chips do modo de joint despacham o que nomeiam.**
+///
+/// Clique REAL, não `WidgetEvent` sintético: o sintético pula a checagem de
+/// FOCABILIDADE no store, e é assim que um chip nasce pintado, hit-registrado e
+/// morto sob o mouse (a lição das 36 células, e a razão de este gate existir —
+/// as opções são registradas num LAÇO que o
+/// `architecture_panel_wiring_parity` não enxerga).
+#[test]
+fn the_joint_tool_chips_select_what_they_name() {
+    for (i, &want) in JointTool::ALL.iter().enumerate() {
+        // Arranja em OUTRO modo, senão "já selecionado" passa por "selecionado
+        // pelo clique".
+        let other = JointTool::ALL[(i + 1) % JointTool::ALL.len()];
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                joint: other,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let id = ids::PHYSICS_JOINT_TOOL_OPT[i];
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("joint chip {i} was never painted"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert_eq!(
+            host.hit_at(cx, cy),
+            Some(id),
+            "joint chip {i} is painted but something else owns its pixels"
+        );
+        let _ = drain_intents();
+        for ev in host.click_at(cx, cy) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+        }
+        let got = drain_intents()
+            .iter()
+            .find_map(|it| match it {
+                PhysicsIntent::SetInteraction(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("clicking joint chip {i} emitted nothing"));
+        assert_eq!(got.joint, want, "joint chip {i} selected the wrong mode");
+        // E nada MAIS mudou: um chip fiado no campo vizinho também emitiria.
+        assert_eq!(
+            got,
+            InteractionSettings {
+                joint: want,
+                ..InteractionSettings::default()
+            },
+            "joint chip {i} changed a field that is not its own"
+        );
+    }
+}
+
+/// **As duas seções de interação são independentes: escolher um modo de joint
+/// não mexe na ferramenta de simulação, e vice-versa.**
+///
+/// A mutação que este gate mata é o braço do rádio novo escrever no campo
+/// errado — `tool` e `joint` são dois enums no mesmo struct, e um `..it` sobre o
+/// campo trocado compila perfeitamente.
+#[test]
+fn the_two_interaction_sections_do_not_write_over_each_other() {
+    let base = InteractionSettings {
+        tool: InteractionTool::Attract,
+        joint: JointTool::Fk,
+        ..InteractionSettings::default()
+    };
+    // Clicar em "Hand" preserva o modo de joint.
+    let (mut host, mut state) = arrange_with(PhysicsSettings::default(), base);
+    let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+    let rect = painted
+        .iter()
+        .rev()
+        .find(|(pid, _)| *pid == ids::PHYSICS_INTERACT_TOOL_OPT[0])
+        .map(|(_, r)| *r)
+        .expect("the Hand chip is painted");
+    let _ = drain_intents();
+    for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {
+        let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+    }
+    let got = drain_intents()
+        .iter()
+        .find_map(|it| match it {
+            PhysicsIntent::SetInteraction(s) => Some(*s),
+            _ => None,
+        })
+        .expect("the Hand chip emitted nothing");
+    assert_eq!(got.tool, InteractionTool::Hand);
+    assert_eq!(
+        got.joint,
+        JointTool::Fk,
+        "escolher a ferramenta de simulação apagou o modo de joint"
+    );
+
+    // E o caminho inverso.
+    let (mut host, mut state) = arrange_with(PhysicsSettings::default(), base);
+    let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+    let rect = painted
+        .iter()
+        .rev()
+        .find(|(pid, _)| *pid == ids::PHYSICS_JOINT_TOOL_OPT[0])
+        .map(|(_, r)| *r)
+        .expect("the Body chip is painted");
+    let _ = drain_intents();
+    for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {
+        let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+    }
+    let got = drain_intents()
+        .iter()
+        .find_map(|it| match it {
+            PhysicsIntent::SetInteraction(s) => Some(*s),
+            _ => None,
+        })
+        .expect("the Body chip emitted nothing");
+    assert_eq!(got.joint, JointTool::Body);
+    assert_eq!(
+        got.tool,
+        InteractionTool::Attract,
+        "escolher o modo de joint apagou a ferramenta de simulação"
+    );
 }

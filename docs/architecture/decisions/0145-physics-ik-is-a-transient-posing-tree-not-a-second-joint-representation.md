@@ -206,3 +206,68 @@ varre, e fora da UI porque não há o que escolher.
 - Limites de **Slider** não são honrados ao posar (§6.1).
 - Um segundo braço do rig que não leva à ponta não entra na árvore: a árvore descreve o que o
   gesto move.
+
+---
+
+## 10 — Emenda (2026-07-27): a FK é a irmã que NÃO precisa de árvore
+
+O Enio escalonou a cinemática **direta** logo depois do smoke da inversa, e a pergunta que ela faz
+ao substrato é o contrário da que o §3 respondeu.
+
+**Girar um elo em torno da própria junta e levar os descendentes é um MOVIMENTO RÍGIDO.** Ele
+preserva toda distância e todo ângulo dentro da peça que se move, então nenhuma restrição interna é
+violada — e não há o que resolver. A única coordenada que muda é a da junta escolhida, por
+exatamente o ângulo arrastado. Consequência: **a FK não constrói multibody nenhum**. Ela colhe um
+pivô e um punhado de poses no press, e daí em diante é aritmética.
+
+Três coisas decorrem disso, e as três são melhorias em relação à IK:
+
+- **A sessão é imune ao re-describe.** A árvore de IK guarda handles e teve de aprender a se
+  re-montar quando o `Transform` escrito re-descreve os corpos (§6.3). Aqui não há nada da arena
+  para ficar obsoleto.
+- **É exata**, não iterativa: nenhum resíduo, nenhum `max_iters`, nenhum damping.
+- **O limite do Slider É honrado** — o oposto do §6.1, e não por acaso. Aquele limite falha porque
+  a projeção pós-solve só tem em mãos o ângulo de `local_to_parent`, que num trilho não mede o
+  curso. A FK computa a coordenada pela porta que **desfaz os frames**
+  (`joint_coordinate_at`), então ela mede a distância percorrida de verdade.
+
+### 10.1 — A hierarquia é a MESMA, e isso é a decisão
+
+A FK reusa o `ik_plan`: quem é a raiz, logo quem é pai de quem. Uma segunda política de raiz seria
+uma segunda resposta a *"para que lado desta cadeia é 'para cima'?"*, e as duas discordariam no
+primeiro rig com âncora dos dois lados.
+
+⚠️ **Corolário honesto:** numa cadeia SOLTA a raiz é o corpo mais distante do que você pegou, então
+o pego é sempre uma folha e a FK gira só ele. É consistente (a cadeia não tem "para cima" nenhum) e
+é o que a IK já faz com a mesma cena.
+
+### 10.2 — O clamp mora no MAPEAMENTO, e um gate nasceu vermelho provando isso
+
+A primeira versão clampava o **acumulador** — a intuição do slider que "gruda no fim do curso". Está
+errada, e o gate `coming_back_from_a_limit_is_immediate` a derrubou: isto é manipulação **direta**,
+o ângulo do cursor em torno do pivô *é* o ângulo da junta, então a lei é `junta = clamp(cursor)`.
+Clampando o acumulador o excedente é jogado fora, e voltar para dentro da faixa move a junta em
+relação à **parede** em vez de em relação à mão — o elo sai de sincronia com o cursor e não volta
+mais.
+
+### 10.3 — O que a medição corrigiu sobre o limite de um trilho
+
+O gate `the_slider_coordinate_is_measured_from_the_parents_side` foi escrito esperando que um carro
+em `x = 0.6` com curso `[0, 1]` parasse em `x = 1.0`. Ele para em **1,6**, e está certo: o par de
+âncoras é semeado **em repouso** (W-AnchorFollow), então a coordenada de QUALQUER junta é **0** onde
+o artista a criou, e um curso `[0, 1]` significa *"daqui até um metro adiante"* — que é exatamente o
+que o solver impõe no Play.
+
+⚠️ E esse gate existe porque o irmão dele **não podia** pegar a mutação que apaga o `swap_anchors`:
+num **Pin em repouso** as duas âncoras são o mesmo ponto de mundo e os frames do Pin carregam só
+translação, então nem a troca nem a escolha do lado movem número nenhum. A fixture tem de conter o
+fenômeno — aqui, um trilho com o carro DESLOCADO e o joint autorado filho-primeiro.
+
+### 10.4 — E os cinco modos: o Alt continua sendo o rig inteiro
+
+A FK e a IK entraram numa seção **Joints** própria do painel, junto com as três políticas de
+arrasto (`Body` / `Rig` / `Links`) — ver [plano 04](../../Physics/04_plano_fk_e_modos_de_joint.md).
+A lei que amarra as duas metades: **com o Alt apertado, `drag_reach` devolve `Whole` e `gesture`
+devolve `None`, em qualquer modo.** As duas saem da mesma condição de propósito — *"Alt = leve o rig
+inteiro"* só é verdade se o Alt também suprimir a pose, senão o atalho passa a "não funcionar às
+vezes", que é a forma mais cara de bug de UI porque o artista aprende a não confiar nele.

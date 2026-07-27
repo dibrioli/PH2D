@@ -70,6 +70,7 @@ use ph2d_ecs::{Entity, Name, World, stable_name_id};
 
 use crate::components::{BodyKind, RigidBody};
 use crate::joint::PhysicsJoint;
+use crate::joint_tool::DragReach;
 
 /// `seed` plus every Dynamic body it is coupled to through a chain of joints —
 /// the articulated rig **as a BAKE sees it**. Returned sorted by entity bits
@@ -101,6 +102,27 @@ pub fn jointed_group(world: &mut World, seed: &[Entity]) -> Vec<Entity> {
 #[must_use]
 pub fn jointed_rig(world: &mut World, seed: &[Entity]) -> Vec<Entity> {
     walk(world, seed, |_| true)
+}
+
+/// **A porta única do arrasto** (W-JointTools): o conjunto que um gesto carrega,
+/// escolhido pela política que o artista tem em mãos.
+///
+/// As duas respostas já existiam ([`jointed_rig`] e [`jointed_group`]); o que
+/// esta função acrescenta é que a ESCOLHA entre elas é feita **uma vez**, aqui,
+/// e não num `match` por chamador. O rádio da seção Joints é o que a alimenta —
+/// e o dia em que uma terceira política chegar, ela nasce nesta função em vez de
+/// nascer em cada sítio de press que alguém lembrou de atualizar.
+///
+/// ⚠️ [`DragReach::Dynamic`] delega ao `jointed_group`, que o BAKE também usa —
+/// e é a MESMA pergunta feita por dois motivos (*"quem tem de vir junto para a
+/// cena ficar coerente sem mexer nas âncoras fixas?"*), não uma coincidência de
+/// implementação.
+#[must_use]
+pub fn jointed_by(world: &mut World, seed: &[Entity], reach: DragReach) -> Vec<Entity> {
+    match reach {
+        DragReach::Whole => jointed_rig(world, seed),
+        DragReach::Dynamic => jointed_group(world, seed),
+    }
 }
 
 /// A travessia: BFS pelo grafo de joints AUTORADO, conduzindo (e acrescentando)

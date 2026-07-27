@@ -6339,3 +6339,106 @@ de um vizinho).
 Ver [`03_plano_ik.md`](03_plano_ik.md) §5 — limites de Slider ao posar · joint criado no mesmo
 frame do gesto · sem marca de overlay para a pose (decisão, com o porquê) · sem ghost da pose
 anterior · nada liga posar a keyframe (a timeline já tem AutoKey).
+
+---
+
+## W-FK + W-JointTools — A CINEMÁTICA DIRETA, e os cinco modos numa seção própria (2026-07-27, cena `=55`, pendente de smoke)
+
+**Ordem do Enio**, logo depois do smoke da IK: *"Já temos um belo IK mas creio que ainda não temos
+um FK… FK também é extremamente útil. Isso é tão importante que merece uma seção exclusiva no
+Painel Physics. Deixe a seção Interaction para a simulação da física. Crie outra seção de interação
+exclusiva para Joints. Coloque botões para 5 tipos de interação (3 nós já temos)."*
+
+Plano: [`04_plano_fk_e_modos_de_joint.md`](04_plano_fk_e_modos_de_joint.md).
+Arquitetura: [ADR-0145 §10](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
+(emenda — a FK não pede ADR próprio, ela é o outro lado da mesma decisão).
+
+### O que mudou
+
+**A seção `Joints`** no painel, irmã da `Interaction`, com um rádio de cinco:
+`Body` · `Rig` · `Links` · `IK` · `FK`. Os três primeiros dizem *quanto da cadeia um arrasto
+carrega*; os dois últimos são gestos de pose. A `Interaction` volta a ser só das três ferramentas
+de simulação (a `Pose` saiu do `InteractionTool`), e com isso a dica dela deixa de ser condicional:
+**a pergunta "este gesto quer Play ou Pause?" passou a ser respondida pela SEÇÃO** em que o
+controle mora, que é a forma de não haver resposta a esquecer.
+
+⚠️ **O `Links` não é um modo novo — é uma política que existia e sumiu.** A W-JG (2026-07-26) a
+tinha como v1 (`jointed_group`, só Dynamic conduz) e a decisão do Enio a substituiu pelo rig
+inteiro. Ela volta como **escolha** em vez de default, e agora as duas convivem: `jointed_by` é a
+porta única que resolve qual usar.
+
+### A FK, e por que ela não precisa de árvore
+
+Girar um elo em torno da própria junta e levar os descendentes é um **movimento rígido** — preserva
+toda distância e todo ângulo dentro da peça, logo nenhuma restrição interna é violada e não há nada
+a resolver. A sessão colhe **um pivô e as poses** no press e daí em diante é aritmética exata.
+Consequências:
+
+- **Imune ao re-describe.** A árvore de IK guarda handles do rapier e teve de aprender a se
+  re-montar quando o `Transform` escrito re-descreve os corpos; aqui não há nada da arena.
+- **Exata:** nenhum resíduo, nenhum `max_iters`, nenhum damping.
+- **O limite de um Slider É honrado** — o oposto do ADR §6.1, e não por acaso: aquela projeção só
+  tem em mãos o ângulo de `local_to_parent`, que num trilho não mede o curso; a FK computa a
+  coordenada pela porta que **desfaz os frames** (`joint_coordinate_at`, nova e pública).
+- **Um Weld é uma peça só:** pegar um elo soldado sobe até a junta seguinte e leva a peça inteira.
+
+A **hierarquia é a mesma do IK** (`ik_plan`): quem é a raiz, logo quem é pai de quem. ⚠️ Corolário
+honesto — numa cadeia SOLTA a raiz é o corpo mais distante do pego, então o pego é folha e a FK gira
+só ele.
+
+### Duas medições que derrubaram premissas minhas
+
+1. **O clamp do limite mora no MAPEAMENTO, não no acumulador.** A primeira versão clampava o
+   acumulador (a intuição do slider que "gruda no fim do curso") e o gate
+   `coming_back_from_a_limit_is_immediate` nasceu **vermelho**: isto é manipulação **direta** — o
+   ângulo do cursor em torno do pivô *é* o ângulo da junta —, então a lei é `junta = clamp(cursor)`.
+   Clampando o acumulador o excedente é jogado fora e voltar para dentro da faixa move a junta em
+   relação à **parede** em vez de em relação à mão; medido: o elo ficava em 0,00 rad onde o cursor
+   pedia 0,15 e não voltava mais a sincronizar.
+2. **O curso de um trilho conta a partir do REPOUSO.** O gate do Slider foi escrito esperando que um
+   carro em `x = 0.6` com curso `[0, 1]` parasse em `1.0`; ele para em **1,6**, e está certo — o par
+   de âncoras é semeado em repouso (W-AnchorFollow), então a coordenada de qualquer junta é **0**
+   onde o artista a criou.
+
+### A mutação que sobreviveu, e o que ela acusou
+
+Apagar o `swap_anchors` do `build_fk_session` **passou** na primeira rodada. O código estava certo e
+o gate era fraudulento: num **Pin em repouso** as duas âncoras são o **mesmo ponto de mundo** e os
+frames locais do Pin carregam só translação, então nem a troca de âncoras nem a escolha do lado
+movem número nenhum. O gate que a mata precisa das três coisas de que o fenômeno depende — um
+**Slider**, o carro **deslocado** da origem, e o joint autorado **filho primeiro**; com elas, a
+mutação sangra em **0,4 contra 1,6**.
+
+O gate antigo não foi deletado: ele prova outra coisa real (que o lado B resolve, e
+`joint_anchor_world` devolve `None` para o lado B de um joint não semeado), e agora **diz no
+docstring o que NÃO prova**.
+
+### E três arch-gates expiraram — a lição do próprio arquivo
+
+`the_drag_carries_the_jointed_rig.rs` lia a expressão `let carry_rig = …`, um PROXY que esta wave
+renomeou (`carry_reach`, e a política saiu de lá). As asserções continuavam certas e o produto
+também; o que envelheceu foi o **endereço**. Reescritas sobre a propriedade: cada sítio pergunta o
+alcance à porta única com o Alt **cru**, e o arrasto expande por `jointed_by` — com os dois nomes
+cravados (`jointed_rig`/`jointed_group`) explicitamente **proibidos** ali, porque cravar qualquer um
+apaga metade do rádio.
+
+⚠️ E o scanner novo teve de usar um nome **específico** (`carry_reach`): a primeira versão procurou
+`let reach =` e colheu **três**, porque o `input_dispatch` já tinha um `reach` geométrico sem
+relação nenhuma.
+
+### Estado pinado
+
+- `PROJECT_SCHEMA` **37** · registro `ph2d-ecs` **21** · c9 **`c9d4baee…`, 87 corpos**
+  (byte-idêntico ao main: FK e modos não tocam o solver).
+- Contratos congelados intactos; **nenhum ADR novo** (emenda no 0145).
+- ⚠️ **Dep nova:** `libm = "=0.2.16"` na `ph2d-physics-ecs` — o MESMO pin de `ph2d-ecs`,
+  `ph2d-physics` e `ph2d-editor-core`; o `Cargo.lock` ganha só a aresta. Motivo: `atan2f`/`sincosf`
+  do gesto, e uma pose autorada é um número que vai para o documento.
+- Ids novos: `PHYSICS_SEC_JOINT`, `PHYSICS_JOINT_TOOL`, `PHYSICS_JOINT_TOOL_OPT[5]`.
+  `PHYSICS_INTERACT_TOOL_OPT` voltou de 4 para **3** (a `pose` saiu).
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=55 cargo run -p ph2d-host-desktop --release`** — dois rigs (um braço com
+ombro estático, uma perna com joelho limitado), cena PAUSADA, painel aberto. Os dez passos comparam
+os cinco modos lado a lado; os números da mensagem saem de `probe_smoke_55`.

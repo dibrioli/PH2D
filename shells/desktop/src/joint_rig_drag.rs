@@ -35,7 +35,7 @@
 //!
 //! # Quando o rig é carregado (as três condições)
 //!
-//! Decididas pelo chamador e passadas como `carry_rig`:
+//! Decididas pelo chamador e passadas como `reach` (`None` = só o corpo pego):
 //!
 //! 1. **É um Translate.** *Mover* um corpo é o que a wave trata. Girar/escalar
 //!    um rig precisaria decidir um pivô (o joint? a bbox do grupo?), e a
@@ -46,9 +46,10 @@
 //!    de `sync_joint_pivots`, ou seja: o rig é carregado precisamente quando as
 //!    âncoras seguem os corpos. Tocando, a pose é do SOLVER, o `settle`
 //!    teleporta e a restrição é reimposta no tick seguinte de qualquer forma.
-//! 3. **Alt ESTÁ apertado** (decisão do Enio, 2026-07-26 — a v1 usava Alt como
-//!    escape e a inversão é dele). O default volta a ser *anda só o corpo que
-//!    você pegou*, e o rig inteiro é **opt-in por gesto**. ⚠️ O preço honesto
+//! 3. **O modo pede** — o rádio da seção Joints, ou o **Alt**, que sempre
+//!    significa o rig inteiro (W-JointTools; `JointTool::drag_reach` é a porta
+//!    onde essa lei mora, e ela responde às duas coisas de uma vez). O default
+//!    segue sendo *anda só o corpo que você pegou*. ⚠️ O preço honesto
 //!    dessa escolha: a cura que a wave existe para dar — a pose de repouso não
 //!    ficar violada — passa a valer só **quando o artista pede**; sem Alt, um
 //!    arrasto ainda deixa o joint esticado (o que se VÊ, pelo segmento âmbar).
@@ -90,7 +91,7 @@ pub(crate) fn seed_group_drag_starts(
     sim: &mut SimWorld,
     primary_bits: u64,
     selected: &[u64],
-    carry_rig: bool,
+    reach: Option<ph2d_physics_ecs::DragReach>,
 ) {
     out.clear();
     // A regra de sempre: todo OUTRO selecionado que tenha `Transform`.
@@ -102,13 +103,17 @@ pub(crate) fn seed_group_drag_starts(
             out.push(s);
         }
     }
-    if !carry_rig {
+    let Some(reach) = reach else {
         return;
-    }
+    };
     let mut seed: Vec<Entity> = Vec::with_capacity(out.len() + 1);
     seed.push(Entity::from_bits(primary_bits));
     seed.extend(out.iter().map(|s| Entity::from_bits(s.entity_bits)));
-    let group = ph2d_physics_ecs::jointed_rig(sim.world_mut(), &seed);
+    // ⚠️ **A política vem de FORA e é resolvida numa porta só**
+    // (`jointed_by`): `Whole` leva o rig inteiro, âncoras inclusas; `Dynamic`
+    // deixa Static/Kinematic onde estão. Escolher aqui com um `match` seria a
+    // terceira cópia da pergunta *quem conduz?*, e é ela que apodrece.
+    let group = ph2d_physics_ecs::jointed_by(sim.world_mut(), &seed, reach);
     // O conjunto que VAI se mover, decidido ANTES de empurrar qualquer coisa —
     // sem isso a regra de parentesco dependeria da ordem em que os candidatos
     // aparecem, e a ordem de `jointed_rig` é por bits (id de alocação), que

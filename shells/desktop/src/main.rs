@@ -46,6 +46,7 @@ mod audio;
 /// (re-cook por frame). Espelha `connector_live`.
 mod blend_live;
 mod blend_smoke;
+mod body_fk;
 mod body_grab;
 mod body_pose;
 mod buffer_smoke;
@@ -195,6 +196,7 @@ mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_grab;
+mod physics_smoke_fk;
 mod physics_smoke_ik;
 mod physics_smoke_interact;
 mod physics_smoke_joint_bake;

@@ -121,6 +121,7 @@ impl crate::App {
             "52" => self.physics_smoke_grab(),
             "53" => self.physics_smoke_interact(),
             "54" => self.physics_smoke_ik(),
+            "55" => self.physics_smoke_fk(),
             _ => self.physics_smoke_drop(),
         }
 

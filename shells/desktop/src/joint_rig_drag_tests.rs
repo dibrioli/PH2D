@@ -78,7 +78,13 @@ fn chain() -> (SimWorld, Entity, Entity, Entity, Entity) {
 fn dragging_one_link_carries_the_whole_chain_hook_included() {
     let (mut sim, hook, l1, l2, l3) = chain();
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, l2.to_bits(), &[l2.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        l2.to_bits(),
+        &[l2.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert_eq!(
         seeded(&out),
         sorted(vec![hook.to_bits(), l1.to_bits(), l3.to_bits()]),
@@ -101,7 +107,13 @@ fn every_body_kind_travels_with_the_rig() {
     pin(&mut sim, "J0", "Wall", "Lift");
     pin(&mut sim, "J1", "Lift", "Load");
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, load.to_bits(), &[load.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        load.to_bits(),
+        &[load.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert_eq!(
         seeded(&out),
         sorted(vec![wall.to_bits(), lift.to_bits()]),
@@ -116,7 +128,7 @@ fn every_body_kind_travels_with_the_rig() {
 fn without_the_modifier_only_the_body_you_grabbed_moves() {
     let (mut sim, _hook, _l1, l2, _l3) = chain();
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, l2.to_bits(), &[l2.to_bits()], false);
+    seed_group_drag_starts(&mut out, &mut sim, l2.to_bits(), &[l2.to_bits()], None);
     assert!(
         out.is_empty(),
         "sem o rig, uma seleção de um só corpo não semeia extra nenhum: {:?}",
@@ -140,7 +152,13 @@ fn two_pendulums_on_the_same_hook_are_one_rig() {
     pin(&mut sim, "JA", "Hook", "BobA");
     pin(&mut sim, "JB", "Hook", "BobB");
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, a.to_bits(), &[a.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        a.to_bits(),
+        &[a.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert_eq!(
         seeded(&out),
         sorted(vec![hook.to_bits(), b.to_bits()]),
@@ -170,7 +188,7 @@ fn a_plain_multi_selection_is_still_seeded_as_before() {
         &mut sim,
         a.to_bits(),
         &[a.to_bits(), b.to_bits()],
-        false,
+        None,
     );
     assert_eq!(seeded(&out), vec![b.to_bits()]);
     assert_eq!(out[0].start_transform.translation, [3.0, 4.0]);
@@ -184,7 +202,13 @@ fn a_body_with_no_joints_carries_nothing() {
     let solo = body(&mut sim, "Solo", BodyKind::Dynamic, 0.0);
     let _other = body(&mut sim, "Other", BodyKind::Dynamic, 5.0);
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, solo.to_bits(), &[solo.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        solo.to_bits(),
+        &[solo.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert!(out.is_empty(), "sem aresta não há rig: {:?}", seeded(&out));
 }
 
@@ -208,7 +232,13 @@ fn the_rig_does_not_add_a_body_that_parenthood_already_carries() {
     // Arrastando o PAI: o filho já vem junto por herança.
     let (mut sim, p, c) = build();
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, p.to_bits(), &[p.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        p.to_bits(),
+        &[p.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert!(
         out.is_empty(),
         "o filho anda com o pai por herança; somá-lo o moveria em dobro: {:?} (filho = {})",
@@ -218,7 +248,13 @@ fn the_rig_does_not_add_a_body_that_parenthood_already_carries() {
     // E arrastando o FILHO: mover o pai empurraria o filho de novo.
     let (mut sim, p, c) = build();
     let mut out = Vec::new();
-    seed_group_drag_starts(&mut out, &mut sim, c.to_bits(), &[c.to_bits()], true);
+    seed_group_drag_starts(
+        &mut out,
+        &mut sim,
+        c.to_bits(),
+        &[c.to_bits()],
+        Some(ph2d_physics_ecs::DragReach::Whole),
+    );
     assert!(
         out.is_empty(),
         "mover o pai carregaria o primário uma segunda vez: {:?} (pai = {})",
@@ -250,7 +286,7 @@ fn the_parenthood_rule_does_not_touch_an_explicit_multi_selection() {
         &mut sim,
         p.to_bits(),
         &[p.to_bits(), c.to_bits()],
-        true,
+        Some(ph2d_physics_ecs::DragReach::Whole),
     );
     assert_eq!(seeded(&out), vec![c.to_bits()]);
 }
@@ -266,7 +302,7 @@ fn a_multi_selection_inside_one_rig_seeds_each_body_once() {
         &mut sim,
         l1.to_bits(),
         &[l1.to_bits(), l3.to_bits()],
-        true,
+        Some(ph2d_physics_ecs::DragReach::Whole),
     );
     assert_eq!(
         seeded(&out),
@@ -295,7 +331,13 @@ fn probe_smoke_51() {
     for grabbed in ["Chain L2", "Twin Left", "Free Left"] {
         let e = by_name(&mut sim, grabbed);
         let mut out = Vec::new();
-        seed_group_drag_starts(&mut out, &mut sim, e.to_bits(), &[e.to_bits()], true);
+        seed_group_drag_starts(
+            &mut out,
+            &mut sim,
+            e.to_bits(),
+            &[e.to_bits()],
+            Some(ph2d_physics_ecs::DragReach::Whole),
+        );
         let mut names: Vec<String> = out
             .iter()
             .map(|s| {
@@ -338,7 +380,7 @@ fn the_rig_is_the_whole_selections_rig_not_just_the_grabbed_bodys() {
         &mut sim,
         a1.to_bits(),
         &[a1.to_bits(), b1.to_bits()],
-        true,
+        Some(ph2d_physics_ecs::DragReach::Whole),
     );
     assert_eq!(
         seeded(&out),

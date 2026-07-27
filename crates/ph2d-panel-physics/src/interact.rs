@@ -18,10 +18,25 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_physics_ecs::{
-    HoldMode, IkOptions, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE,
+    HoldMode, IkOptions, InteractionSettings, InteractionTool, JointTool, MAX_ATTRACT_FORCE,
     MAX_BLAST_IMPULSE, MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS,
     WORLD_REACH_M,
 };
+
+/// Em qual das duas seções de interação esta row é pintada.
+///
+/// ⚠️ **Um campo na row, e não uma segunda tabela.** As duas seções editam a
+/// MESMA struct (`InteractionSettings`), então dois arrays seriam duas listas
+/// para `populate`/`event`/o sweep percorrerem — e a segunda é a que nasce sem o
+/// `set_number_range` no dia em que alguém acrescentar uma row nela. Com o campo,
+/// só o PINTOR filtra; todos os outros consumidores seguem vendo uma lista.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ISection {
+    /// A seção **Interaction**: o que o ponteiro faz a uma cena RODANDO.
+    Sim,
+    /// A seção **Joints**: o que o ponteiro faz a uma cadeia articulada, PARADA.
+    Joint,
+}
 
 /// One slider+chip row of the Interaction section. Same shape as
 /// [`crate::rows::Row`] plus the `shown` predicate.
@@ -43,6 +58,8 @@ pub struct IRow {
     pub set: fn(&mut InteractionSettings, f32),
     /// Is this row live for the tool/mode currently in hand?
     pub shown: fn(&InteractionSettings) -> bool,
+    /// Which section paints it. See [`ISection`].
+    pub section: ISection,
 }
 
 impl IRow {
@@ -89,6 +106,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.stiffness,
         set: |s, v| s.stiffness = v,
         shown: |s| s.tool == InteractionTool::Hand && s.hold.uses_spring_gains(),
+        section: ISection::Sim,
     },
     IRow {
         label: "panel.physics.hold_damping",
@@ -101,6 +119,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.damping_ratio,
         set: |s, v| s.damping_ratio = v,
         shown: |s| s.tool == InteractionTool::Hand && s.hold.uses_spring_gains(),
+        section: ISection::Sim,
     },
     IRow {
         label: "panel.physics.hold_slack",
@@ -113,6 +132,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.slack,
         set: |s, v| s.slack = v,
         shown: |s| s.tool == InteractionTool::Hand && s.hold.uses_slack(),
+        section: ISection::Sim,
     },
     // ── The Blast ───────────────────────────────────────────────────────────
     IRow {
@@ -126,6 +146,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.blast_radius,
         set: |s, v| s.blast_radius = v,
         shown: |s| s.tool == InteractionTool::Explode,
+        section: ISection::Sim,
     },
     IRow {
         label: "panel.physics.blast_force",
@@ -138,6 +159,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.blast_impulse,
         set: |s, v| s.blast_impulse = v,
         shown: |s| s.tool == InteractionTool::Explode,
+        section: ISection::Sim,
     },
     // ── The Pull ────────────────────────────────────────────────────────────
     IRow {
@@ -151,6 +173,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.attract_radius,
         set: |s, v| s.attract_radius = v,
         shown: |s| s.tool == InteractionTool::Attract,
+        section: ISection::Sim,
     },
     // ⚠️ The only row of this family whose domain crosses zero, and the sign IS
     // the direction: negative REPELS. So the minimum is `-MAX`, not `0`, and the
@@ -167,6 +190,7 @@ pub static IROWS: &[IRow] = &[
         get: |s| s.attract_force,
         set: |s, v| s.attract_force = v,
         shown: |s| s.tool == InteractionTool::Attract,
+        section: ISection::Sim,
     },
     // ── A Pose (W-IK) ───────────────────────────────────────────────────────
     // ⚠️ **UM knob, e é decisão da MEDIÇÃO.** O solver tem dois números
@@ -186,13 +210,25 @@ pub static IROWS: &[IRow] = &[
         decimals: 2,
         get: |s| s.ik_damping,
         set: |s, v| s.ik_damping = v,
-        shown: |s| s.tool == InteractionTool::Pose,
+        shown: |s| s.joint == JointTool::Ik,
+        section: ISection::Joint,
     },
 ];
 
 /// The row a widget id belongs to, if any (the slider or its chip).
 pub fn irow_for(id: NodeId) -> Option<&'static IRow> {
     IROWS.iter().find(|r| r.slider == id || r.chip == id)
+}
+
+/// The JOINT tool a segmented option id names, if any (W-JointTools).
+///
+/// Its own resolver, like every other radio here: one function answering for two
+/// arrays is how the third one is born reading the wrong one.
+pub fn joint_for(id: NodeId) -> Option<JointTool> {
+    ids::PHYSICS_JOINT_TOOL_OPT
+        .iter()
+        .position(|&o| o == id)
+        .map(|i| JointTool::ALL[i])
 }
 
 /// The tool a segmented option id names, if any.

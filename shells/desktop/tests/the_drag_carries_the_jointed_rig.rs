@@ -11,19 +11,23 @@
 //!    desta wave cada um carregava a sua cópia da semeadura de grupo. Duas
 //!    cópias é como arrastar pela alça passaria a carregar a corrente e
 //!    arrastar pelo corpo, não.
-//! 2. **As condições do `carry_rig`.** Cada uma some em silêncio: sem o
+//! 2. **As condições do alcance.** Cada uma some em silêncio: sem o
 //!    `!is_playing()` o arrasto brigaria com o solver enquanto ele reimpõe a
-//!    restrição; sem o `alt_key()` o rig deixaria de ser **opt-in** e todo
-//!    arrasto passaria a levar a corrente; e sem o `Translate` um scale de grupo
-//!    passaria a arrastar rig. ⚠️ As duas primeiras valem para os DOIS sítios; a
-//!    terceira é só do sítio que pode abrir qualquer gesto — no pick de canvas
-//!    ela não poderia ser falsa, e um gate incapaz de falhar pelo motivo que
-//!    alega é pior que nenhum.
+//!    restrição, e sem o `Translate` um scale de grupo passaria a arrastar rig.
+//!    ⚠️ A primeira vale para os DOIS sítios; a segunda é só do sítio que pode
+//!    abrir qualquer gesto — no pick de canvas ela não poderia ser falsa, e um
+//!    gate incapaz de falhar pelo motivo que alega é pior que nenhum.
 //!
-//! ⚠️ **O sinal do Alt é afirmado, não só a presença dele** (Enio inverteu a
-//! polaridade em 2026-07-26): `alt_key()` casa tanto com `!alt` quanto com `alt`,
-//! então um gate que só procura o nome do modificador passa por cima da
-//! inversão inteira.
+//! ⚠️ **A POLÍTICA saiu daqui** (W-JointTools): quanto da cadeia um arrasto
+//! carrega passou a ser uma escolha do artista (o rádio da seção Joints) mais a
+//! lei do Alt, e as duas moram em `JointTool::drag_reach`, com gate próprio ao
+//! lado. O que a shell tem de provar é que **pergunta àquela porta** em vez de
+//! decidir aqui — o gate do sinal do Alt viajou para junto da lei.
+//!
+//! ⚠️ **Três gates deste arquivo já expiraram uma vez, e é a lição dele mesmo:**
+//! eles liam a expressão `let carry_rig = …`, um PROXY que a wave seguinte
+//! renomeou para `reach`. As asserções continuavam certas e o produto também —
+//! o que envelheceu foi o endereço. Reescritas sobre a propriedade.
 //!
 //! Nada aqui afirma distância em bytes ou vizinhança de linhas: a lição de
 //! `the_dispatch_is_handed_the_live_geometry` (2026-07-23) é que um proxy
@@ -73,51 +77,56 @@ fn both_pointer_down_sites_seed_through_the_one_door() {
     );
 }
 
-/// Cada expressão `let carry_rig = …;` do despacho de ponteiro.
+/// Cada expressão `let carry_reach = …;` do despacho de ponteiro.
 ///
 /// ⚠️ Perguntada por CONTEÚDO e não por posição: qual das duas é a alça e qual
 /// é o pick de canvas é exatamente o tipo de fato que a próxima wave reordena
 /// (`the_dispatch_is_handed_the_live_geometry`, 2026-07-23).
-fn carry_rig_exprs(src: &str) -> Vec<String> {
+///
+/// ⚠️ E o nome é `carry_reach` e não `reach` porque a 1ª versão desta wave usou
+/// o curto e o scanner colheu **três** — o `input_dispatch` já tinha um `reach`
+/// geométrico, sem relação nenhuma. Um scanner por nome herda toda homonímia do
+/// arquivo, e o preço de escolher um nome específico é zero.
+fn reach_exprs(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut rest = src;
-    while let Some(i) = rest.find("let carry_rig =") {
+    while let Some(i) = rest.find("let carry_reach =") {
         let after = &rest[i..];
-        let end = after.find(';').expect("expressão `carry_rig` sem `;`");
+        let end = after.find("};").expect("expressão `reach` sem fechamento");
         out.push(after[..end].to_string());
         rest = &after[end..];
     }
     out
 }
 
-/// **Todo sítio que carrega o rig pergunta pelo relógio E pelo Alt — e o Alt
-/// ARMA, não escapa.**
+/// **Todo sítio pergunta o alcance à porta única, com o relógio e o Alt CRU.**
 ///
-/// As duas condições que valem para os DOIS caminhos: em play a pose é do
-/// solver (que reimpõe a restrição no tick seguinte de qualquer forma), e o rig
-/// inteiro é **opt-in por gesto**.
-///
-/// ⚠️ A metade do SINAL é o que torna este gate capaz de pegar a inversão:
-/// procurar só `alt_key()` casaria com a polaridade antiga (`!alt`, o Alt como
-/// escape) e o gate ficaria verde sobre o comportamento oposto ao pedido.
+/// Três afirmações, cada uma com o seu modo de falha:
+/// - `is_playing()` — em play a pose é do solver, que reimpõe a restrição no
+///   tick seguinte de qualquer forma;
+/// - `drag_reach(...)` — a política é do modelo, e decidi-la aqui é a segunda
+///   cópia da regra (foi assim que o `Links` sumiu quando o Alt virou `Whole`);
+/// - o Alt entra **sem negação** — `!alt_key()` reintroduziria a polaridade que
+///   o Enio inverteu em 2026-07-26, e o gate do SIGNIFICADO dela mora agora na
+///   `JointTool` (`alt_always_means_the_whole_rig_and_never_a_pose`).
 #[test]
-fn every_site_carries_the_rig_only_at_rest_and_with_alt_held() {
+fn every_site_asks_the_reach_door_at_rest_with_the_raw_alt() {
     let src = source();
-    let exprs = carry_rig_exprs(&src);
+    let exprs = reach_exprs(&src);
     assert_eq!(
         exprs.len(),
         2,
-        "esperados 2 `carry_rig`, achados {}",
+        "esperados 2 `carry_reach`, achados {}",
         exprs.len()
     );
     for expr in &exprs {
         assert!(
-            expr.contains("!self.playhead.is_playing()"),
-            "a condição do relógio sumiu de um carry_rig:\n{expr}"
+            expr.contains("self.playhead.is_playing()"),
+            "a condição do relógio sumiu de um `carry_reach`:\n{expr}"
         );
         assert!(
-            expr.contains("&& self.modifiers.alt_key()"),
-            "o Alt tem de ARMAR o rig (`&& self.modifiers.alt_key()`):\n{expr}"
+            expr.contains("self.interaction.joint.drag_reach(self.modifiers.alt_key())"),
+            "o alcance tem de vir da porta única, com o Alt cru:\n{expr}"
         );
         assert!(
             !expr.contains("!self.modifiers.alt_key()"),
@@ -139,36 +148,34 @@ fn every_site_carries_the_rig_only_at_rest_and_with_alt_held() {
 #[test]
 fn the_site_that_can_open_any_gesture_also_asks_for_a_translate() {
     let src = source();
-    let exprs = carry_rig_exprs(&src);
+    let exprs = reach_exprs(&src);
     assert!(
         exprs.iter().any(|e| e.contains("GizmoDragKind::Translate")),
-        "nenhum carry_rig gateia no tipo do gesto; um scale de grupo arrastaria rig"
+        "nenhum `carry_reach` gateia no tipo do gesto; um scale de grupo arrastaria rig"
     );
 }
 
-/// **O arrasto usa a porta do RIG, não a do BAKE.**
+/// **O arrasto expande pela política que RECEBEU, nunca por uma cravada.**
 ///
-/// As duas existem e respondem perguntas diferentes (`jointed_group` = *quem
-/// congela?*, só Dynamic; `jointed_rig` = *quem tem de andar junto?*, todo
-/// corpo). Trocar uma pela outra aqui é o modo de falha que o Enio reportou —
-/// a corrente que não arrasta o gancho — e ele compila em silêncio, porque as
-/// duas têm a MESMA assinatura.
+/// Existem três portas com a MESMA assinatura — `jointed_rig` (todo tipo
+/// conduz), `jointed_group` (só Dynamic, a política do BAKE) e `jointed_by` (a
+/// que pergunta) — então trocar uma pela outra compila em silêncio. Cravar
+/// qualquer uma das duas primeiras aqui apaga metade do rádio: o modo `Links`
+/// passaria a carregar o gancho, ou o `Rig` a deixá-lo para trás, e o artista
+/// veria dois chips fazendo a mesma coisa.
 #[test]
-fn the_drag_asks_the_rig_door_not_the_bake_door() {
+fn the_drag_expands_by_the_policy_it_was_handed() {
     let door = fs::read_to_string("src/joint_rig_drag.rs").expect("joint_rig_drag.rs");
-    let call = door
-        .find("ph2d_physics_ecs::jointed_rig(")
-        .map(|_| "rig")
-        .or_else(|| {
-            door.find("ph2d_physics_ecs::jointed_group(")
-                .map(|_| "group")
-        });
-    assert_eq!(
-        call,
-        Some("rig"),
-        "o arrasto tem de expandir por `jointed_rig` (todo tipo conduz); \
-         `jointed_group` é a política do BAKE e deixaria o gancho para trás"
+    assert!(
+        door.contains("ph2d_physics_ecs::jointed_by(sim.world_mut(), &seed, reach)"),
+        "o arrasto tem de expandir por `jointed_by` com o alcance que recebeu"
     );
+    for hard in ["jointed_rig(", "jointed_group("] {
+        assert!(
+            !door.contains(hard),
+            "`{hard}` cravado no arrasto apaga metade do rádio de modos"
+        );
+    }
 }
 
 /// **`Alt` não tem um segundo dono neste gesto.**

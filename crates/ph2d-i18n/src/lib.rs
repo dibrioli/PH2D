@@ -307,17 +307,30 @@ pub fn tr(key: &str) -> &'static str {
         "panel.physics.blast_force" => "Impulse",
         "panel.physics.pull_radius" => "Radius",
         "panel.physics.pull_force" => "Force",
-        "panel.physics.tool.pose" => "Pose",
         "panel.physics.ik_damping" => "Smoothing",
         "panel.physics.ik_angle" => "Tip Angle",
         "panel.physics.ik_angle.free" => "Free",
         "panel.physics.ik_angle.match" => "Match",
         "panel.physics.interact_hint" => "Play + drag on the canvas",
-        // ⚠️ A dica é OUTRA para a Pose, e não por gosto: as três primeiras
-        // ferramentas empurram o solver e exigem o relógio ANDANDO; a Pose autora
-        // a cena e exige o relógio PARADO. Uma dica só mandaria o artista fazer
-        // exatamente o que não funciona (`InteractionTool::runs_at_rest`).
-        "panel.physics.pose_hint" => "Paused + drag a jointed body",
+        // ── A seção JOINTS (W-JointTools) ──────────────────────────────────
+        // ⚠️ As duas seções de interação existem porque as duas famílias querem
+        // estados OPOSTOS do transporte: aquelas três empurram o solver e pedem
+        // Play, estas cinco autoram a cena e pedem Pause. A dica de cada modo
+        // diz qual — uma dica só mandaria metade dos artistas fazer exatamente
+        // o que não funciona.
+        "panel.physics.section.joint" => "Joints",
+        "panel.physics.joint_tool" => "Drag",
+        "panel.physics.joint_tool.body" => "Body",
+        "panel.physics.joint_tool.rig" => "Rig",
+        "panel.physics.joint_tool.links" => "Links",
+        "panel.physics.joint_tool.ik" => "IK",
+        "panel.physics.joint_tool.fk" => "FK",
+        "panel.physics.joint_hint.body" => "Drag moves only the body you grab",
+        "panel.physics.joint_hint.rig" => "Paused: drag carries the whole rig, anchors included",
+        "panel.physics.joint_hint.links" => "Paused: drag carries the moving links; anchors stay",
+        "panel.physics.joint_hint.ik" => "Paused: drag the tip and the chain bends behind it",
+        "panel.physics.joint_hint.fk" => "Paused: drag a link and it swings about its joint",
+        "panel.physics.joint_hint.alt" => "Alt while dragging always carries the whole rig",
         "panel.physics.show_colliders" => "Show Colliders",
         "panel.physics.reset_defaults" => "Reset to Defaults",
         // The world scale is `ProjectSettings::pixels_per_meter` — a PROJECT

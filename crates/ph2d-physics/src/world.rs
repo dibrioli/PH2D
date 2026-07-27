@@ -15,6 +15,7 @@ pub mod desc;
 pub mod drag;
 pub mod effector;
 pub mod form_drag;
+pub mod grab;
 pub mod joint_break;
 pub mod joint_gains;
 pub mod joints;
@@ -130,6 +131,15 @@ pub struct PhysicsWorld {
     /// by the bridge (W-TickContacts' lesson: a transition is not derivable from the
     /// state that follows it).
     joint_breaks: Vec<joint_break::JointBreak>,
+    /// **A mão** (W-Grab): o corpo que o artista está segurando enquanto a sim
+    /// corre, e a tralha que o realiza. `None` no caso comum.
+    ///
+    /// ⚠️ Deliberadamente **fora** do [`checkpoint`](checkpoint) — e não por
+    /// esquecimento: é a única entrada deste mundo que não vem do documento, então
+    /// um checkpoint que a contivesse tornaria a resposta de um scrub dependente do
+    /// cache. Quem garante que isso nunca acontece é a ponte (`bridge::grab`), com
+    /// gate; ver [`grab`].
+    grab: Option<grab::Grab>,
 }
 
 impl PhysicsWorld {
@@ -199,6 +209,7 @@ impl PhysicsWorld {
             contact_peaks: std::collections::BTreeMap::new(),
             joint_peaks: std::collections::BTreeMap::new(),
             joint_breaks: Vec::new(),
+            grab: None,
         }
     }
 

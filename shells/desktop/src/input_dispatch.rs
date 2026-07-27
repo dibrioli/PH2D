@@ -2563,6 +2563,9 @@ impl App {
         // W-J2: and the joint-anchor drag, which is NOT a gizmo drag — it writes
         // a body-local anchor through the bridge's door, not a `Transform`.
         self.advance_joint_anchor_drag();
+        // W-Grab: e a MÃO, que também não é arrasto de gizmo — ela move a âncora
+        // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
+        self.advance_body_grab();
         // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
         // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
         // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
@@ -2628,6 +2631,13 @@ impl App {
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         self.any_input_this_frame = true;
+        // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
+        // early-returns e uma mão que sobrevive ao release fica colada no cursor
+        // para sempre; e vale para qualquer botão, porque uma mão não é um
+        // modificador (ver `crate::body_grab::release_body_grab`).
+        if state == ElementState::Released {
+            self.release_body_grab();
+        }
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
             ElementState::Released => PointerKind::Up,
@@ -4431,10 +4441,27 @@ impl App {
                             && !is_modifier_click
                         {
                             let entity = ph2d_ecs::Entity::from_bits(bits);
+                            let locked = ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity);
+                            // W-Grab: com o relógio ANDANDO e a física armada, um
+                            // press num corpo dinâmico é a **MÃO**, não um arrasto
+                            // de autoria — o mesmo relógio que decide se o Alt
+                            // carrega o rig (W-JG, condição 2) decide isto, do
+                            // outro lado. Pegou ⇒ nenhum arrasto de gizmo abre
+                            // (`crate::body_grab` explica por que os dois juntos
+                            // seriam um gesto inerte cavalgando um vivo).
+                            let grabbed = !locked
+                                && crate::body_grab::take_hold(
+                                    &mut gfx.physics,
+                                    entity,
+                                    world_pos,
+                                    self.playhead.is_playing(),
+                                    self.timeline.flags.simulate_physics,
+                                );
                             // Ver a nota gêmea no sítio da alça (W-JG): a semeadura
                             // precisa de `&mut gfx.sim` e mora fora do bloco do `t`.
                             let mut opened_drag = false;
-                            if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
+                            if !grabbed
+                                && !locked
                                 && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                             {
                                 let snap_t = ph2d_editor::TransformSnapshot {

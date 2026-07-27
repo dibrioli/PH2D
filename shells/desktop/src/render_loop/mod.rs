@@ -4469,6 +4469,10 @@ impl crate::App {
                 crate::joint_draw::body_alive(sim, self.joint_draw)
                     .then(|| crate::joint_draw::band(self.joint_draw))
                     .flatten(),
+                // W-Grab: a mola da mão, lida do ÚNICO dono do fato (a ponte);
+                // o ponto de pega é derivado da pose VIVA do corpo, então o
+                // zigzag acompanha o que a mola está de fato puxando.
+                physics.grab_marks(),
                 &contacts,
                 &flashes,
                 &waterlines,

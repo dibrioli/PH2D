@@ -300,3 +300,132 @@ fn linear_motor_tracking_sweep() {
         println!("  {tracking:8} | {:12.4} | {:9.4}", b - a, 0.5 - (b - a));
     }
 }
+
+/// **A varredura dos ganhos da MÃO** (W-Grab) — a tabela que
+/// [`PhysicsWorld::GRAB_STIFFNESS`] carrega, medida no caminho do PRODUTO
+/// (`grab_body_tuned`, o irmão exato do `spawn_joint_tuned` do servo).
+///
+/// Duas grandezas, porque um seguidor tem dois modos de falhar: **atraso** em
+/// regime (o corpo vem atrás do cursor) e **sobressinal** ao parar (o corpo passa
+/// do cursor). Sem gravidade, para medir o seguidor e não a queda.
+#[test]
+fn sweep_the_hands_gains() {
+    println!("  k |     d | atraso regime (m) | sobressinal (m)");
+    for k in [100.0_f32, 200.0, 400.0, 800.0, 1600.0] {
+        let d = 2.0 * k.sqrt();
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        let (ball, _) = w.add_dynamic_circle(0.0, 0.0, 0.3, 1.0);
+        assert!(w.grab_body_tuned(ball, [0.0, 0.0], k, d));
+        // A mão anda a 4 m/s por 0,5 s (a velocidade de um arrasto de mouse
+        // atravessando a tela), depois PARA e o corpo tem 0,5 s para assentar.
+        let speed = 4.0_f32;
+        let mut cursor = 0.0_f32;
+        for _ in 0..30 {
+            cursor += speed * w.dt();
+            w.move_grab([cursor, 0.0]);
+            w.step();
+        }
+        let lag = cursor - w.body_pose(ball).unwrap().translation.x;
+        let mut overshoot = 0.0_f32;
+        for _ in 0..30 {
+            w.move_grab([cursor, 0.0]);
+            w.step();
+            overshoot = overshoot.max(w.body_pose(ball).unwrap().translation.x - cursor);
+        }
+        println!("{k:5} | {d:5.1} | {lag:17.3} | {overshoot:15.3}");
+    }
+}
+
+/// **O TETO da rigidez da mão é a PAREDE** (W-Grab) — não é gosto.
+///
+/// Uma mão infinitamente rígida atravessa geometria: a mola e o contato são
+/// resolvidos pelo MESMO solver, com um número finito de iterações, então basta
+/// puxar forte o bastante para a restrição do contato perder. É essa a grandeza
+/// que fixa o limite superior de `GRAB_STIFFNESS`, e o valor escolhido tem de
+/// estar com folga abaixo dela.
+///
+/// Mede o pior caso honesto: cursor **5 m para dentro** de uma parede estática,
+/// mantido por meio segundo. Reporta onde a caixa parou (a face da parede está
+/// em `x = 1.0`).
+#[test]
+fn sweep_the_hands_stiffness_against_a_wall() {
+    println!("  k |     d | x final | passou?");
+    for k in [400.0_f32, 1600.0, 6400.0, 12800.0, 25600.0, 102_400.0] {
+        let d = 2.0 * k.sqrt();
+        let mut w = PhysicsWorld::new();
+        w.set_gravity(0.0, 0.0);
+        // Parede estática de x=1 a x=3; a caixa começa encostada nela.
+        w.add_static_cuboid(2.0, 0.0, 1.0, 2.0);
+        let (box_h, _) = w.add_dynamic_circle(0.5, 0.0, 0.5, 1.0);
+        assert!(w.grab_body_tuned(box_h, [0.5, 0.0], k, d));
+        for _ in 0..30 {
+            w.move_grab([6.0, 0.0]);
+            w.step();
+        }
+        let x = w.body_pose(box_h).unwrap().translation.x;
+        // Passou = o centro está do outro lado da parede.
+        println!("{k:6} | {d:6.1} | {x:7.3} | {}", x > 3.0);
+    }
+}
+
+/// **A mão NÃO tunela** — a varredura que refutou a minha própria hipótese.
+///
+/// Quando a cena 52 mostrou um caixote do outro lado de um muro, a explicação
+/// óbvia era *"com espaço livre a mão acelera o corpo a dezenas de m/s e ele
+/// atravessa entre dois sub-passos"* — o `v·dt` que este módulo já conhece. Esta
+/// varredura foi escrita para MEDIR isso e disse o contrário: vão livre de 0 a
+/// 2 m, com e sem CCD, o corpo para **sempre** em `x = 0,505` (encostado, 5 mm de
+/// penetração). A causa real era da cena — as peças nasciam **fora do chão** e
+/// caíam por baixo do muro.
+///
+/// Fica `#[ignore]` porque é evidência de um NÃO: sem ela, a hipótese errada
+/// voltaria na próxima leitura do mesmo sintoma.
+#[test]
+#[ignore = "medição: prova que a mão não tunela, em nenhum vão"]
+fn the_hand_does_not_tunnel_at_any_gap() {
+    println!("  vao (m) | ccd  | x final | passou?");
+    for gap in [0.0_f32, 0.1, 0.25, 0.5, 1.0, 2.0] {
+        for ccd in [false, true] {
+            let mut w = PhysicsWorld::new();
+            w.set_gravity(0.0, 0.0);
+            // Parede de x=1 a x=3.
+            w.add_static_cuboid(2.0, 0.0, 1.0, 2.0);
+            let r = 0.5;
+            let start = 1.0 - r - gap;
+            let ball = w.spawn_body(BodyDesc {
+                body_type: RigidBodyType::Dynamic,
+                x: start,
+                y: 0.0,
+                rotation: 0.0,
+                density: 1.0,
+                shape: ShapeDesc::Ball { radius: r },
+                restitution: 0.0,
+                friction: 0.5,
+                layer: 0,
+                is_sensor: false,
+                gravity_scale: 1.0,
+                linvel: [0.0, 0.0],
+                angvel: 0.0,
+                ccd,
+                lock_rotation: false,
+                lock_x: false,
+                lock_y: false,
+                mass_override: None,
+                dominance: 0,
+                material: Default::default(),
+                damping: None,
+                one_way: false,
+                effector: None,
+                offset: [0.0, 0.0],
+            });
+            assert!(w.grab_body(ball, [start, 0.0]));
+            for _ in 0..60 {
+                w.move_grab([6.0, 0.0]);
+                w.step();
+            }
+            let x = w.body_pose(ball).unwrap().translation.x;
+            println!("{gap:9.2} | {ccd:5} | {x:7.3} | {}", x > 3.0);
+        }
+    }
+}

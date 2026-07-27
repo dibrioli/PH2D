@@ -17,6 +17,7 @@ pub mod anchors;
 pub mod contacts;
 mod damping;
 mod diagnostics;
+mod grab;
 mod hold;
 mod inspect;
 pub mod joint_break;
@@ -389,7 +390,14 @@ impl PhysicsBridge {
                     tick += 1;
                     // Asking is free; capturing costs about one step, which
                     // is why the ring is sparse (see `PhysicsCheckpointRing`).
-                    if self.ring.should_record(tick) {
+                    //
+                    // ⚠️ **Nada é gravado enquanto uma MÃO está em voo** (W-Grab,
+                    // regra 1 de `bridge::grab`): um checkpoint tirado sob o
+                    // cutucão descreve uma corrida que nenhum replay reproduz,
+                    // então semear um scrub com ele faria a resposta para um tick
+                    // depender de o cache tê-lo ou não. O `grab` já limpou o que
+                    // havia; isto impede que a janela se re-encha.
+                    if !self.is_grabbing() && self.ring.should_record(tick) {
                         self.ring.record(tick, self.world.checkpoint());
                     }
                 }

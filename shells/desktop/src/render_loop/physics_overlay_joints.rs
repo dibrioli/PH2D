@@ -275,6 +275,38 @@ pub(super) fn draw_band(
     Some(p)
 }
 
+/// **A MÃO** (W-Grab) — verde-limão, a única cor livre na paleta deste overlay
+/// (verde=estático · ciano=dinâmico · violeta=kinematic/torque · magenta=sensor ·
+/// âmbar=joint · vermelho=ruptura · branco=contato · laranja=força).
+pub(super) const GRAB_RGBA: [f32; 4] = [0.55, 1.0, 0.30, 0.95]; // LITERAL-COLOR-OK: overlay da mão
+
+/// **A mola da mão**, do cursor até o ponto de pega — desenhada como o **ZIGZAG**
+/// de mola, com um anel no ponto pego.
+///
+/// ⚠️ **A FORMA diz o mecanismo e a COR diz de quem é:** o artista já aprendeu no
+/// W-J1 que zigzag é mola, e a mão **é** uma mola (uma `SpringJoint` de verdade
+/// para uma âncora invisível no cursor). Um traço reto diria *"isto é rígido"*, o
+/// que é exactamente a coisa errada a prometer — ela cede contra parede, e é isso
+/// que a distingue de um teleporte.
+///
+/// ⚠️ **Desenhada mesmo com o overlay DESLIGADO**, pela mesma razão da
+/// [`draw_band`]: é feedback de um gesto em andamento, não anotação.
+pub(super) fn draw_grab(
+    grab: Option<([f32; 2], [f32; 2])>,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> Option<BezPath> {
+    let (cursor, hold) = grab?;
+    let a = screen_of(camera, window, cursor);
+    let b = screen_of(camera, window, hold);
+    let mut p = spring_zigzag(a, b);
+    // O anel marca ONDE no corpo a mão pegou — o ponto que a mola persegue. Sem
+    // ele, um clique sem arrasto (que não move nada, de propósito) não deixaria
+    // marca nenhuma, e o gesto pareceria não ter começado.
+    ring_px(b, JOINT_DOT_PX * 2.0, &mut p);
+    Some(p)
+}
+
 /// A silhueta de B na pose que `limit` permite, ou `None` quando não há arrasto
 /// de limite em voo / o corpo B não tem collider.
 ///

@@ -33,6 +33,13 @@ impl PhysicsBridge {
         target: u64,
         scene: &mut dyn SceneAtTick,
     ) {
+        // ⚠️ **Um salto de relógio SOLTA a mão** (W-Grab, regra 2 de
+        // `bridge::grab`): o cutucão é um gesto sobre a corrida que acabou de
+        // terminar, e o replay abaixo é uma corrida NOVA a partir do estado
+        // AUTORADO — arrastar a tralha da mão para dentro dela puxaria cada tick
+        // replayado na direção de onde o cursor está AGORA. É também o que Reset
+        // promete: voltar à cena que o artista autorou.
+        self.release_grab();
         // The clock jumped, so whatever was touching describes a run that is over.
         // Reporting the difference across the jump would call a scrub a hundred
         // collisions; the rebuild at the end of the dispatch re-baselines in silence.

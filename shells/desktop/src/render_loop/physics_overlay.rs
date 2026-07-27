@@ -407,6 +407,9 @@ pub(super) fn draw(
     // W-J4: a banda elástica do gesto de criar `(de, para)` em mundo. Desenhada
     // mesmo com `show` FALSO — é gesto, não anotação (ver `draw_band`).
     join_band: Option<([f32; 2], [f32; 2])>,
+    // W-Grab: a mola da MÃO `(cursor, ponto de pega)` em mundo. Desenhada mesmo
+    // com `show` FALSO, pela mesma razão da banda: é gesto, não anotação.
+    grab: Option<([f32; 2], [f32; 2])>,
     contacts: &[ph2d_physics_ecs::BodyContact],
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
@@ -478,6 +481,19 @@ pub(super) fn draw(
             &Brush::Solid(Color::new(super::physics_overlay_joints::JOINT_RGBA)),
             None,
             &band,
+        );
+    }
+    // E a MÃO, ao lado da banda e pela mesma razão (gesto em andamento, sem o
+    // gate de `show`). Depois da banda porque as duas nunca coexistem — criar um
+    // joint é gesto de repouso, pegar um corpo é de play — e a ordem entre elas
+    // só teria de ser decidida se algum dia coexistissem.
+    if let Some(path) = super::physics_overlay_joints::draw_grab(grab, camera, window) {
+        vector_scene.inner_mut().stroke(
+            &Stroke::new(OUTLINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(Color::new(super::physics_overlay_joints::GRAB_RGBA)),
+            None,
+            &path,
         );
     }
     // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,

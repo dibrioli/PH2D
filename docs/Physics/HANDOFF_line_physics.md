@@ -5663,7 +5663,7 @@ está inativo além do próprio chip (o overlay diz, e é onde o artista está o
 
 ---
 
-## W-JG — O GRUPO CARREGA O RIG (2026-07-26, cena `=51`, pendente de smoke)
+## W-JG — O GRUPO CARREGA O RIG (2026-07-26, cena `=51`, **smoke APROVADO** 2026-07-26)
 
 A última linha do [plano 02](02_plano_joints_ui_authoring.md), e a conclusão
 natural da **W-AnchorFollow**: ela tornou a âncora de um joint **body-local**
@@ -5838,3 +5838,167 @@ Alt de propósito: é o controle, e é onde o segmento âmbar esticando se vê.
 duplo-movimento pai+filho da multi-seleção explícita (pré-existente) · nada na
 §12 diz "este corpo faz parte de um rig" antes do arrasto (o overlay de joints
 diz, e é onde o artista está olhando).
+
+---
+
+## W-Grab — A MÃO: pegar o corpo no PLAY (2026-07-26, cena `=52`, pendente de smoke)
+
+O primeiro item do **§8 Horizonte** do [plano 02](02_plano_joints_ui_authoring.md)
+(*"Pin-to-world / Target joint — carregar no play"*), e o buraco mais alcançável
+que o módulo tinha: **durante o Play a cena era só de LEITURA.** A pose de um
+corpo dinâmico é escrita pelo `readback` a cada dispatch, então um arrasto de
+gizmo durante o play escreve o `Transform` e é sobrescrito no mesmo frame — o
+artista assiste a simulação e não pode empurrar, puxar nem atirar nada. Todo
+laboratório de física 2D deixa (Algodoo · testbed do Box2D · RUBE · play mode da
+Unity), e é assim que se testa uma cena.
+
+### A LEI: o relógio é o interruptor
+
+**Em repouso**, arrastar um corpo AUTORA a pose dele (e com Alt carrega o rig —
+W-JG). **Tocando**, arrastar um corpo dinâmico é a **MÃO**.
+
+O mesmo gesto, dois significados, decididos pelo MESMO predicado que a condição 2
+do `joint_rig_drag` já usa (`!playhead.is_playing()`) — do outro lado. As duas
+metades são irmãs: em repouso a pose é do DOCUMENTO e a mão não faria sentido;
+tocando a pose é do SOLVER e a autoria não faria.
+
+### A mão é uma MOLA, e é por isso que ela não trapaceia
+
+Segurar não é teleportar. O `set_body_pose` existe e seria a resposta errada (ele
+zera a velocidade e atravessa parede). A mão entra pelo **solver** — uma
+`SpringJoint` entre o ponto pego e um **corpo-âncora fixo invisível que É o
+cursor** — então o corpo **colide no caminho**, **soltar não zera nada** (o
+ARREMESSO cai de graça) e a mola é resolvida junto com as outras restrições, logo
+é estável na rigidez que um arrasto precisa (um PD explícito no mesmo ganho
+explode a 1/60 s).
+
+⚠️ **`MotorModel::AccelerationBased` — a lei do MouseJoint, vinda do rapier.** O
+`JointKind::Spring` do artista é `ForceBased` (uma mola FÍSICA: o pesado afunda,
+o que é correto para ela); a mão não, porque o artista não quer lutar contra a
+massa para reposicionar um caixote. O Box2D resolve com `maxForce ∝ massa`; o
+rapier tem a mesma ideia embutida no modelo de motor. **Duas leis para duas
+coisas**, com gate medindo uma contra a outra — divergência máxima entre as
+trajetórias de 1 kg e 25 kg: **0,0000 m na mão, 1,2 m na mola do artista**.
+
+### Os números, todos MEDIDOS (nenhum escolhido)
+
+O teto da rigidez **não é gosto, é a PAREDE**: a mola e o contato são resolvidos
+pelo mesmo solver com iterações finitas, então uma mão rígida o bastante
+atravessa geometria. Cursor 5 m para DENTRO de um muro, face em `x = 1,0`, bola
+de raio 0,5 encostada:
+
+| k | onde parou | penetração | atravessou? |
+|---|---|---|---|
+| **400** (shipa) | 0,505 | **5 mm** | não |
+| 1600 | 0,516 | 16 mm | não |
+| 6400 | 0,562 | 62 mm | não |
+| 12800 | 0,622 | 122 mm | não |
+| 25600 | 6,000 | — | **SIM** |
+
+E o atraso, cursor a 4 m/s: `k=100` → 0,751 m · `200` → 0,532 · **`400` →
+0,369** · `800` → 0,252 · `1600` → 0,169, **sobressinal 0,000 em toda a faixa**
+(o amortecimento é o crítico, `d = 2√k = 40`). O atraso cai como `1/√k` enquanto
+a penetração sobe 12× por quadruplicação ⇒ **400/40**. As duas varreduras rodam
+no caminho do PRODUTO (`grab_body_tuned`, o irmão exato do `spawn_joint_tuned`).
+
+### Determinismo: a primeira entrada NÃO-REPRODUZÍVEL do módulo
+
+Params vivos são CONFIG (reconciliados do ECS); a pose kinematic é respondida
+pelo `SceneAtTick`. Um puxão não está no documento. Duas regras, cada uma com
+gate:
+
+1. **Pegar DESCARTA o ring, e nada é gravado com a mão em voo** (o precedente é o
+   `hold`). Sem isto a resposta para o MESMO tick dependeria de o cache guardar um
+   estado cutucado — o defeito que a auditoria do W4b nomeou.
+2. **Um rewind SOLTA a mão.** ⚠️ **Medido REDUNDANTE hoje**, e é a Regra 1 que o
+   torna: com o ring sempre vazio sob a mão, todo rewind cai no
+   `rebuild_from_rest`, que constrói um mundo NOVO e leva a tralha com o antigo.
+   Fica por continuar correta se a Regra 1 mudar de forma.
+
+### A metade visível
+
+Um **zigzag VERDE-LIMÃO** do cursor ao ponto de pega, com anel na ponta. A FORMA
+diz o mecanismo (o artista já aprendeu no W-J1 que zigzag é mola, e a mão **é**
+uma mola) e a COR diz de quem é — limão é a única livre na paleta. Desenhado
+**sem** o gate da tecla `B`, como a banda do W-J4: é gesto, não anotação. O ponto
+de pega é derivado da pose **VIVA** (nunca memorizado), então ele viaja com o
+corpo.
+
+### O que a mão NÃO faz, e é decisão
+
+- **Não abre arrasto de gizmo** quando pega (os dois seriam um gesto inerte
+  cavalgando um vivo).
+- **Não muda a seleção** — nem precisa: o mesmo press já seleciona pelo pick de
+  canvas, e um clique sem arrasto **não move nada** (a âncora nasce no ponto
+  pego, erro zero).
+- **Honra a TRAVA** (`Locked`): cutucar não persiste nada, mas a trava é o artista
+  dizendo *não mexa*, e uma exceção aqui seria a única porta do app que a ignora.
+
+### Gates e mutações
+
+23 gates (10 wrapper · 5 ponte · 4 porta · 5 arch de shell) — **17 mutações, 15
+sangram**, as 2 sobreviventes documentadas como camadas externas de defesa
+(`insert(wake_up)` e o release do rewind).
+
+⚠️ **Três defeitos de gate meus, e cada um ensina o mesmo:**
+
+- *"o pesado anda MENOS"* era o oráculo errado — com ganhos force-based a razão
+  `d/m` cai com a massa e o corpo de 25 kg fica **sub-amortecido**: ele passa do
+  alvo (2,52 contra 1,99), então andou **mais**. Mass-dependent não quer dizer
+  *mais lento*, quer dizer **outra trajetória**.
+- O gate do ring scrubava para o tick **35**, abaixo de todo checkpoint da
+  era-da-mão ⇒ os dois caminhos caíam no rebuild e a mutação **sobrevivia**. O
+  alvo tem de ser um tick que a gravação proibida COBRIRIA (55).
+- O gate das marcas media depois de o corpo CHEGAR, onde `hold == cursor` ⇒ a
+  mutação que devolve o cursor passava. Duas grandezas que devem diferir
+  coincidiam por **fase da fixture**.
+
+E um arch-gate nasceu vermelho sobre produto correto porque procurava a palavra
+`return` **dentro do meu próprio comentário** (*"early-returns"*): uma asserção
+sobre ordem de CÓDIGO tem de remover a prosa antes de medir.
+
+### ⚠️ E um bug que EU criei e a mutação devolveu
+
+A mutação *"não acorda o corpo"* sobreviveu, eu medi (sonda amostrando a cada 100
+ticks: *"acordado"*) e **removi a linha como inerte**. Ela não era: a sonda rodava
+sobre o build que **ainda a continha** — era ela que mantinha o corpo acordado.
+Sem ela, um corpo na mão **adormece no tick 119** de mão imóvel e **mover a mão
+não o acorda** (medido: `x = 0,000` com o cursor a 3 m) — segurar quieto por dois
+segundos matava a ferramenta. A linha voltou, e agora tem gate cuja fixture
+reproduz o caso REAL (a shell só chama `move_grab` em evento de Move, então dois
+segundos sem mexer o mouse são dois segundos sem chamada nenhuma).
+
+*Uma medição de inércia tem de rodar sobre o build SEM o suspeito.*
+
+### O que NÃO mudou
+
+`PROJECT_SCHEMA` **34** · registro **21** · c9 **byte-idêntico** (`c9d4baee…`,
+87 corpos — a mão nunca roda no binário) · nenhum componente, nenhum id de
+painel, nenhum contrato congelado. A mão é **runtime puro**: ela não está no
+documento, e é justamente isso que a torna a primeira entrada não-reproduzível.
+
+### Smoke
+
+**`PH2D_PHYSICS_SMOKE=52`** — três estações, e a cena abre **TOCANDO** (as de
+autoria abrem pausadas; a mão existe precisamente enquanto o solver corre). Os
+números da mensagem saíram da sonda `probe_smoke_52`, rodada sobre as MESMAS
+peças: a DUPLA anda **3,00 m e 2,99 m** sob o mesmo gesto (razão 1,004) · o
+caixote da PAREDE para em **x = −6,75**, que é encostado, penetração zero · o
+ARREMESSO viaja **2,62 m** depois do release.
+
+⚠️ **A cena tem chão PRÓPRIO e largo, e a sonda pegou o motivo:** o
+`spawn_floor` compartilhado mede `half_x = 4` e as estações vão de −7,2 a +5,5 ⇒
+duas delas nasciam **fora do chão** e caíam. O sintoma medido era outro (*"o
+caixote atravessa o muro"* — um corpo em queda passa por baixo dele) e eu quase o
+escrevi no doc como *"a mão tunela"*; a varredura do wrapper desmentiu: vão livre
+de 0 a 2 m, com e sem CCD, ela **nunca** tunela (`the_hand_does_not_tunnel_at_any_gap`,
+`#[ignore]`, fica como evidência do NÃO).
+
+**Aberto:** soltar deixa **um passo de undo** cujo diff é a pose de play — a forma
+pré-existente de qualquer clique durante o play (o readback da física e o apply da
+timeline escrevem `Transform` todo frame), não efeito desta wave; a cura é uma lei
+no roteador de undo sobre *pose escrita pelo solver não é estado autorado*, que
+precisa distinguir isso de uma edição REAL feita durante o play — outro domínio ·
+o **Target Joint AUTORÁVEL** (um joint com UM corpo e um ponto de mundo) continua
+no §8: ele exige `names_two_bodies()` deixar de ser verdade em todo lugar · a mão
+não gira nada (uma 2ª âncora daria torque; ninguém pediu).

@@ -13,12 +13,13 @@
 //! fade. That is the clean ADR-0145 separation, gated as one statement
 //! (`a_per_clip_source_fades_and_a_global_transform_does_not`): per-clip fades, global transforms.
 //!
-//! ⚠️ **It never enters the BLEND** (`sample_stack`/`eval_frame`/`invert_stack`) — the whole
-//! reason ADR-0144 put it HERE rather than inside the evaluator. A document with no GLOBAL
-//! formula takes the early-out and does nothing — byte-identical to the pre-feature engine, the
-//! Clips/Strips/Fade fingerprint untouched by construction (arch-gate
-//! `the_expression_pass_never_enters_the_blend`; ADR-0146 W7 retires it in favour of the
-//! fingerprint, now that `#1`/`#2` prove the participation it forbade).
+//! ⚠️ **This GLOBAL post-pass never enters the BLEND** (`sample_stack`/`eval_frame`) — it is a
+//! channel transform on the composed value, which is why a global driver does NOT fade. A
+//! document with no GLOBAL formula takes the early-out and does nothing. The arch-gate that
+//! scanned this file (`the_expression_pass_never_enters_the_blend`) was RETIRED in ADR-0146 W7:
+//! its premise — *no* expression enters the blend — is deliberately false now (per-clip exprs
+//! are lane sources that compose INSIDE the blend), and the fade byte-identity it stood in for
+//! is proven DIRECTLY by the fingerprints (`fade_fingerprint` #1 + the co-resident #5/#6).
 //!
 //! **Evaluation order** (ADR-0144 §6): the driven bindings are TOPOLOGICALLY ordered (a
 //! dependency before its dependents) and evaluated over a mutable `current` map seeded from the

@@ -574,3 +574,177 @@ fn the_onion_ghost_evaluates_a_local_expression() {
         ghost.translation.x
     );
 }
+
+/// **Gate #15 (W7) — the cross-OS hash of a `wiggle` + prop-link scene.** A deterministic
+/// fingerprint of a scene driven by `wiggle` and a prop-link, folded over 121 frames. The
+/// nextest matrix runs this on Linux/macOS/Windows; a divergent hash on any OS fails there,
+/// which is the point — it pins that the driven path is bit-reproducible across platforms.
+///
+/// ⚠️ **ONLY `wiggle` (Noise = an integer hash of the f32 bits) and arithmetic — NEVER
+/// `sin`/`cos`.** The std transcendentals (`ph2d-expr/eval.rs:42-43`) are not bit-identical
+/// across platforms; a fingerprint including them would diverge between OSes (ADR-0146 §5.15).
+#[test]
+fn the_cross_os_hash_of_wiggle_plus_prop_link() {
+    let mut world = World::new();
+    let src = world
+        .spawn((Transform::default(), Name::new("Src")))
+        .id()
+        .to_bits();
+    let follower = world
+        .spawn((Transform::default(), Name::new("Follower")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    // Src wiggles on X and Y; Follower reads Src.x and adds its own wiggle (prop-link + wiggle).
+    set_expr(&mut doc, 0, src, PropKind::TranslationX, "wiggle(3, 20)");
+    set_expr(&mut doc, 0, src, PropKind::TranslationY, "wiggle(5, 8)");
+    set_expr(&mut doc, 0, follower, PropKind::TranslationX, "Src.x + wiggle(2, 5)");
+
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for i in 0..=120 {
+        let t = f64::from(i) * 0.05;
+        apply_from_doc(&mut world, &mut doc, t);
+        for e in [src, follower] {
+            let xf = *world.get::<Transform>(Entity::from_bits(e)).unwrap();
+            for v in [xf.translation.x, xf.translation.y] {
+                for byte in v.to_bits().to_le_bytes() {
+                    h ^= u64::from(byte);
+                    h = h.wrapping_mul(0x0000_0100_0000_01b3);
+                }
+            }
+        }
+    }
+    assert_eq!(
+        h, CROSS_OS_HASH,
+        "the wiggle + prop-link scene diverged (a cross-OS divergence, or a regression)"
+    );
+}
+
+/// Pinned on `line/anim` at ADR-0146 W7. Wiggle is an integer hash (cross-OS); the fold is
+/// integer arithmetic. A divergence on any OS in the nextest matrix is a real defect.
+const CROSS_OS_HASH: u64 = 0x6ed2_84e3_8f4f_28f9;
+
+/// **Gate #6 (W7, Hole B / C4) — a MULTI-CHANNEL keyed fade co-resident with an expression is
+/// byte stable.** Gate #5 pins TranslationY under `scheduled`; the byte-identity fingerprint
+/// (#1/#4) is TranslationX-only. So a mutation that perturbed the KEYED composition — or the
+/// per-channel `write_prop` — of Rotation / Scale ONLY under `scheduled` would slip past all of
+/// them. This folds Rotation, ScaleX, ScaleY (the channels the other fingerprints never touch)
+/// across a crossfade while an X expression forces the two-phase path.
+///
+/// The other half of Hole B (C4): `read_prop` was deliberately NOT extended for Position/Morph
+/// (they seed 0 in a cycle — a documented limitation), so the rest-capture path stays
+/// byte-identical and needs no separate inert-ness gate. Mutation: any change that moves a non-X
+/// keyed crossfade under `scheduled`, incl. swapping the Scale axes in `write_prop`.
+#[test]
+fn a_multi_channel_keyed_fade_co_resident_with_an_expression_is_byte_stable() {
+    let (h, range) = multichannel_coresident_fingerprint();
+    assert!(
+        range > 5.0,
+        "the co-resident scene went inert (range {range}); it must exercise the fade"
+    );
+    assert_eq!(
+        h, MULTICHANNEL_FINGERPRINT,
+        "a non-X keyed crossfade moved WHILE an expression drove X. Re-pin in the same commit if \
+         intended."
+    );
+}
+
+/// Rotation / ScaleX / ScaleY keyed crossfades over [1,2), sampled while X is expression-driven.
+fn multichannel_coresident_fingerprint() -> (u64, f32) {
+    let mut world = World::new();
+    let e = world.spawn(Transform::default()).id().to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.add_clip("B".into()); // clip 1
+
+    // X: expression-driven (forces scheduled == true).
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "time*5");
+    // Rotation / ScaleX / ScaleY: keyed crossfades across two clips.
+    for (prop, a, b) in [
+        (PropKind::Rotation, 0.0, 1.0),
+        (PropKind::ScaleX, 1.0, 2.0),
+        (PropKind::ScaleY, 3.0, 4.0),
+    ] {
+        ramp(&mut doc, 0, e, prop, a, b);
+        ramp(&mut doc, 1, e, prop, a + 10.0, b + 10.0);
+    }
+    let mut lane = ClipLane::new("Base");
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0));
+    doc.stack_mut().push(lane);
+
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for i in 0..=60 {
+        let t = f64::from(i) * 0.05;
+        apply_from_doc(&mut world, &mut doc, t);
+        let xf = *world.get::<Transform>(Entity::from_bits(e)).unwrap();
+        for v in [xf.rotation, xf.scale.x, xf.scale.y] {
+            lo = lo.min(v);
+            hi = hi.max(v);
+            for byte in v.to_bits().to_le_bytes() {
+                h ^= u64::from(byte);
+                h = h.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+    }
+    (h, hi - lo)
+}
+
+/// Pinned on `line/anim` at ADR-0146 W7 (Hole B). Non-X keyed crossfades under `scheduled`.
+const MULTICHANNEL_FINGERPRINT: u64 = 0x97e1_9fe3_ea22_4329;
+
+/// **Cost measurement (ADR-0146 W7, `#[ignore]`).** The named trigger from the plan: HUNDREDS of
+/// prop-link channels. Each frame the scheduler topo-sorts the graph, then re-evaluates every
+/// channel through `solo_source_value` — parsing each expression afresh (~335 ns, caching
+/// measured-and-rejected in `expr_pass.rs`). This builds a CHAIN of `N` prop-links (each reads
+/// the previous — the deepest topo order) and reports ms/frame. The FORMULA-FREE path is
+/// untouched (gate #3 pins zero-alloc). Run:
+/// `cargo test -p ph2d-timeline --test expr_in_blend measure -- --ignored --nocapture`.
+///
+/// **Measured (line/anim, DEBUG, `N = 300`): 1.86 ms/frame** — 11% of a 60 fps frame, for 300
+/// channels each parsing a prop-link + a wiggle every frame and topo-sorted into one deep chain.
+/// A real scene has tens of expression channels, not hundreds in a chain, so this is the ceiling
+/// of the named trigger, not a typical cost; release is several times cheaper. No cap is
+/// warranted — the number is named, and the formula-free path pays nothing (gate #3).
+#[test]
+#[ignore = "cost measurement, run manually"]
+fn measure_hundreds_of_prop_link_channels() {
+    const N: usize = 300;
+    let mut world = World::new();
+    let mut doc = TimelineDoc::new();
+    let src = world
+        .spawn((Transform::default(), Name::new("N0")))
+        .id()
+        .to_bits();
+    set_expr(&mut doc, 0, src, PropKind::TranslationX, "wiggle(2, 5)");
+    for i in 1..N {
+        let e = world
+            .spawn((Transform::default(), Name::new(format!("N{i}"))))
+            .id()
+            .to_bits();
+        // Ni.x = N(i-1).x + wiggle: a chain of prop-links, wiggle-only (no transcendental).
+        set_expr(
+            &mut doc,
+            0,
+            e,
+            PropKind::TranslationX,
+            &format!("N{}.x + wiggle(2, 5)", i - 1),
+        );
+    }
+
+    // Warm one frame, then time 100.
+    apply_from_doc(&mut world, &mut doc, 0.0);
+    let frames = 100u32;
+    let start = std::time::Instant::now();
+    for i in 0..frames {
+        apply_from_doc(&mut world, &mut doc, f64::from(i) * 0.05);
+    }
+    let per_frame_ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    println!("PROP-LINK COST: {N} chained prop-link channels = {per_frame_ms:.3} ms/frame");
+    assert!(world
+        .get::<Transform>(Entity::from_bits(src))
+        .unwrap()
+        .translation
+        .x
+        .is_finite());
+}

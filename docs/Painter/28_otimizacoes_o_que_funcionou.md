@@ -1308,6 +1308,47 @@ sobre um número que outro kernel pode mudar, exatamente o que a §0 do CLAUDE.m
 
 O patch da tentativa está preservado fora da árvore; refazê-lo sobre o `fork_par` é mecânico.
 
+### 5.18 🔧 S1 pela porta de escrita — o DESENHO está certo, e é um GUARD (parcial, parado no borrow checker)
+
+A §5.17 mostrou que a declaração tem de sair de quem escreve. A tentativa seguinte construiu isso, e o
+desenho que ela achou é o certo — fica escrito para a próxima sessão retomar sem redescobri-lo.
+
+**Não é um argumento do `fork_par`, é um GUARD.** A região quase sempre só é conhecida no FIM: os laços
+de dab acumulam o `touched` *enquanto* escrevem, então `fork_par(arc, rect)` não teria o que receber.
+
+```rust
+pub(super) struct PlaneWrite<'a, T> { buf: &'a mut Vec<T>, win: &'a WindowCell, declared: bool }
+impl PlaneWrite {
+    fn wrote(self, r: Option<Region>);   // a região do canvas que este acesso escreveu
+    fn wrote_everywhere(self);           // desiste explicitamente: o commit varre
+}
+impl Drop { if !declared { win.set(WriteWindow::UNKNOWN) } }   // ⚠️ esquecer é SEGURO
+```
+
+⚠️ **Esquecer marca a janela como desconhecida e o commit varre** — que é exatamente o que ele faz hoje.
+O modo de falha de um sítio novo passa a ser *lento*, nunca *errado*: é a resposta à objeção do
+`diff_window` que a §5.17 tentou dar pelo canal errado. E `Deref`/`DerefMut` para `Vec<T>` mantêm os 41
+sítios escrevendo como escrevem hoje.
+
+⚠️ **A janela precisa de `Cell`** (`WindowCell = Cell<WriteWindow>`): um gesto tem vários planos abertos
+ao mesmo tempo — o Inflate escreve altura, cobertura, material e RGBA numa tacada — e com `&mut` os
+guards se excluiriam. Isso torna o tool `!Sync`, o que é **livre**: `Tool: std::any::Any` e nada no editor
+exige `Sync` (conferido).
+
+**Onde parou, e qual é o próximo passo exato.** A migração mecânica dos 41 sítios deixou 104 erros, de
+três famílias, e as três têm cura conhecida:
+
+1. **`E0596` (12+)** — `let buf = …` vira `let mut buf`, porque agora o `DerefMut` precisa do guard
+   mutável. Mecânico.
+2. **`E0499` (14) — a mais interessante, e provavelmente a causa das outras:** `fork_par<'a>(arc: &'a mut
+   …, win: &'a WindowCell)` **amarra os dois empréstimos ao MESMO tempo de vida**, então o compilador
+   deixa de tratá-los como campos disjuntos. A cura é dar-lhes tempos de vida INDEPENDENTES
+   (`fork_par<'a, 'w>` → `PlaneWrite<'a, 'w, T>`).
+3. **`E0308` (15)** — sítios que passam o `&mut Vec<T>` adiante; viram `&mut *guard`.
+
+O patch da tentativa está preservado fora da árvore. **A árvore está verde e inalterada** — nada disto
+foi commitado, porque uma migração de 41 sítios pela metade é pior que nenhuma.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**

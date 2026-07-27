@@ -68,6 +68,21 @@ pub(crate) fn grip_bar_x(right: bool, x_lo: f32, x_hi: f32, time_x: f32, right_e
     }
 }
 
+/// Whether the time-scale box is OFFERED this frame — pure so the gating is
+/// gate-able (the `hit_plan` pattern). It is a **KEYS-tab tool** over a multi-key
+/// selection, and never while a key-move / marquee owns the pointer.
+///
+/// ⚠️ The `snap.keys_mode` clause is what stops a selection made in Keys from keeping
+/// its grips (and their hits) after a tab switch into Arrange or a container (Enio,
+/// 2026-07-27) — the dope-sheet shows OTHER content there, and the box retimes the
+/// active clip's keys, which is a Keys-tab operation.
+pub(crate) fn box_offered(state: &TimelinePanelState, snap: &TimelineViewSnapshot) -> bool {
+    state.key_drag.is_none()
+        && state.box_drag.is_none()
+        && snap.keys_mode
+        && selection_extent(snap).is_some()
+}
+
 /// Paint the selection's time box + its two grips over the rows, and register a
 /// [`TimelineHitKind::SelectionTimeHandle`] per grip. Call AFTER the rows/diamonds
 /// so the grips register last (they win the hit where they sit — though the `GAP`
@@ -81,11 +96,11 @@ pub(crate) fn paint_selection_box(
     state: &TimelinePanelState,
     snap: &TimelineViewSnapshot,
 ) {
-    if state.key_drag.is_some() || state.box_drag.is_some() {
+    if !box_offered(state, snap) {
         return;
     }
     let Some((lo, hi)) = selection_extent(snap) else {
-        return;
+        return; // unreachable: `box_offered` already required an extent
     };
     let rows = g.rows;
     let x_at = |t: f64| view.time_x + ((t - view.view_start) * view.px_per_s) as f32;

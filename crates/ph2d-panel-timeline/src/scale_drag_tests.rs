@@ -69,6 +69,27 @@ fn selection_extent_needs_two_distinct_times() {
     );
 }
 
+/// **The time-scale box is a KEYS-tab tool** (Enio, 2026-07-27) — a selection made in
+/// Keys must NOT keep its retiming grips after a tab switch into Arrange or a
+/// container. `box_offered` gates on `keys_mode`, so the box vanishes off the Keys tab
+/// even though the selection persists. (Mutation: drop the `keys_mode` clause -> the box
+/// is offered in Arrange, RED here.)
+#[test]
+fn the_time_scale_box_is_offered_only_in_the_keys_tab() {
+    let state = state_at_origin();
+    let mut snap = snap_selected(&[0.0, 1.0]); // a multi-key selection = a real extent
+    snap.keys_mode = true;
+    assert!(
+        super::box_offered(&state, &snap),
+        "Keys tab: the box is offered"
+    );
+    snap.keys_mode = false; // the artist switched to Arrange / a container
+    assert!(
+        !super::box_offered(&state, &snap),
+        "off the Keys tab the box must NOT be offered (its grips must not survive the switch)"
+    );
+}
+
 #[test]
 fn dragging_the_right_grip_to_double_the_span_scales_by_two_about_the_left_edge() {
     let mut st = state_at_origin();

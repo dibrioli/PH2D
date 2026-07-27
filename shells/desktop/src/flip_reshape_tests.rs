@@ -336,7 +336,28 @@ fn a_filled_stroke_is_one_geometry_so_sculpting_the_line_moves_the_colour() {
     // Agora esculpe: um Push no meio de uma aresta. A linha anda — e a cor, que é a
     // triangulação DESTES pontos, anda com ela por construção.
     let mut strokes = vec![stroke];
-    let before = strokes[0].positions()[1];
+    // ⚠️ **O ponto se ACHA pela POSIÇÃO, nunca pelo índice** (2026-07-27). Este `before`
+    // era `positions()[1]` — *"o segundo ponto autorado"*, que era a quina em `(4,0)`
+    // enquanto o `stroke_from_samples` entregava os quatro pontos crus. A reamostragem
+    // suave (T2.8) densifica o traço pelo arco (medido: **4 → 73 pontos**), então o índice
+    // 1 virou `(0.167, 0)` — uma amostra no COMEÇO, a 4 unidades do Push de raio 3. O
+    // teste ficou vermelho afirmando o certo sobre o ponto errado.
+    //
+    // O que ele afirma é *"o gesto move a linha, e a cor vem com ela"* — uma propriedade
+    // do ponto **sob o pincel**, não do índice 1. Achá-lo pela distância ao centro do
+    // gesto sobrevive a qualquer densidade de amostragem, hoje e na próxima vez que ela
+    // mudar ([[reference_topic_fixture_discipline]]).
+    let center = Vec2::new(4.0, 0.0);
+    let hit = (0..strokes[0].positions().len())
+        .min_by(|&a, &b| {
+            let d = |i: usize| {
+                let q = strokes[0].positions()[i];
+                (q.x - center.x).powi(2) + (q.y - center.y).powi(2)
+            };
+            d(a).total_cmp(&d(b))
+        })
+        .expect("o traco tem pontos");
+    let before = strokes[0].positions()[hit];
     let p = ReshapeParams {
         kind: ReshapeKind::Push,
         radius: 3.0,
@@ -351,7 +372,7 @@ fn a_filled_stroke_is_one_geometry_so_sculpting_the_line_moves_the_colour() {
     let mut sess = ph2d_flip_reshape::Session::begin(&strokes, &p, &s);
     assert!(sess.apply(&mut strokes, &p, &s), "o gesto tinha de mexer");
     assert!(
-        strokes[0].positions()[1].x > before.x + 1.0,
+        strokes[0].positions()[hit].x > before.x + 1.0,
         "a linha nao andou"
     );
     assert!(

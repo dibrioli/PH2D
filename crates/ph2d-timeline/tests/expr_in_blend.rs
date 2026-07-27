@@ -233,6 +233,40 @@ fn a_lead_out_fades_an_expression_out() {
     );
 }
 
+/// **Gate #16 (C1) — an expression drives a NON-STACKED document.** The common case: a
+/// keyed animation with NO strips at all. Its per-clip expression never reaches the blend
+/// (`eval_frame` iterates an empty stack), so without the SECOND sample site
+/// (`solo_source_value`) it would go undriven in silence. No test before this covered it —
+/// they all `add_lane`/`add_strip_to`.
+///
+/// Mutation: disable the `Expr` arm in `clip_anim_source` -> the non-stacked expression
+/// channel stops driving (`time*10` stays 0; `value + 100` collapses to the bare ramp).
+#[test]
+fn an_expression_drives_a_non_stacked_document() {
+    // A pure expression, no stack and no keys.
+    let (mut world, mut doc, e) = scene(0.0);
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "time*10");
+    assert!(doc.stack().is_empty(), "this gate is the NON-STACKED path");
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    let pure = x_of(&world, e);
+    assert!(
+        (pure - 10.0).abs() < 1e-3,
+        "a pure expression drives a strip-less document; got {pure}"
+    );
+
+    // An expression riding keys, still no stack.
+    let (mut world, mut doc, e) = scene(0.0);
+    ramp(&mut doc, 0, e, PropKind::TranslationX, 0.0, 10.0);
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "value + 100");
+    assert!(doc.stack().is_empty());
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    let riding = x_of(&world, e);
+    assert!(
+        (riding - 105.0).abs() < 1e-3,
+        "value + 100 rides the ramp (5 at t=1) to 105 with no stack; got {riding}"
+    );
+}
+
 /// **Gate #5 (Hole A) — a keyed, faded channel CO-RESIDENT with an expression is byte
 /// stable.** The real-world common case: X is expression-driven (so `scheduled == true`
 /// and the whole two-pass path runs), while Y is a keyed crossfade. Gate #1 only exercises

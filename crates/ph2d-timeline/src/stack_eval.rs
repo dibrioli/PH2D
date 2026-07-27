@@ -95,6 +95,42 @@ fn seed_of(target: AnimTarget) -> f64 {
     f64::from(target.get() as f32 * SEED_SPACING)
 }
 
+/// **The SECOND sample site (ADR-0146 W2, C1).** The value the ACTIVE clip `clip`
+/// contributes to `target` at its own clip time `t`, on the NON-STACKED path — a keyed
+/// sample or a per-clip EXPRESSION over it. `None` when the clip neither keys nor drives
+/// the channel (sparsity), so a just-bound property is never forced to a default.
+///
+/// The blend's [`eval_frame`] resolves this for a STACKED document; a document with no
+/// strips (the common keyed animation) never reaches the blend, so its per-clip expression
+/// would go undriven in silence without this door. Both sites resolve through the SAME
+/// [`clip_anim_source`], so a per-clip expr drives identically whether or not a stack sits
+/// over it.
+pub(crate) fn solo_source_value(
+    doc: &TimelineDoc,
+    clip: usize,
+    target: AnimTarget,
+    t: f64,
+    rest: f32,
+    links: &LinkFrame,
+) -> Option<f32> {
+    let v: f64 = match clip_anim_source(doc, clip, target)? {
+        AnimSource::Track(tr) => as_f64(tr.sample(t))?,
+        AnimSource::Expr { ir, value_track } => {
+            // `value` is the keyed sample of this clip (or rest for a pure expression that
+            // still covers the channel, §4), exactly as the stacked path's Expr arm.
+            let value = value_track
+                .and_then(|tr| as_f64(tr.sample(t)))
+                .unwrap_or_else(|| f64::from(rest));
+            f64::from(eval_expr(&ir, value, t, seed_of(target), links))
+        }
+    };
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the scene value is f32; f64 is the blend's working precision"
+    )]
+    Some(v as f32)
+}
+
 /// The value `q.target` should hold at this instant, blended out of the whole
 /// stack — or `None` when **no lane keys this channel**, in which case nothing is
 /// written and the scene's own value stands (R2).

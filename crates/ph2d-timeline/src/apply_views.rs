@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_anim::{AnimValue, AttributeEvaluator};
+use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, World};
 
 use crate::apply::{refresh_liveness_and_rest, remapped_time, write_prop};
@@ -73,12 +73,11 @@ pub fn apply_container(
         }
     }
 
-    // ADR-0144/0145 — GLOBAL drivers on the CONTAINER's CUT local clock; per-clip
-    // drivers windowed by the container's STRIPS. Run BEFORE `put_scratch` so the
-    // window can read the strip layout.
+    // ADR-0146 W2 — only GLOBAL drivers run in the post-pass now, on the CONTAINER's CUT
+    // local clock; the container's per-clip expressions were resolved as lane sources in the
+    // blend above (`sample_stack` -> `eval_frame`).
     let expr_t = doc.container_cut(container, t);
-    let window = crate::expr_pass::ExprWindow::Strips(&scratch);
-    crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+    crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
     doc.put_scratch(scratch);
 }
 
@@ -109,6 +108,8 @@ pub fn apply_active_clip(
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
     let has_expr = doc.bindings().iter().any(|b| b.expr.is_some());
+    // ADR-0146 W2 — threaded EMPTY (prop-links resolve to 0 until W3 fills it).
+    let links = LinkFrame::default();
 
     for b in doc.bindings() {
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
@@ -118,14 +119,18 @@ pub fn apply_active_clip(
         // and the same door K seeds through, so a soloed pose and a keyed one land
         // at the identical instant.
         let t_entity = remapped_time(doc, b.entity, clip_t);
-        // Skip empty tracks so a just-created binding never forces a default pose.
-        let sampled = doc.active_clip().track(b.target).and_then(|tr| {
-            if tr.is_empty() {
-                None
-            } else {
-                Some(tr.sample(t_entity))
-            }
-        });
+        // The SECOND sample site (ADR-0146 W2, C1): a keyed sample OR a per-clip
+        // expression over it. An empty track with no expression is None, so a just-created
+        // binding never forces a default pose.
+        let sampled = stack_eval::solo_source_value(
+            doc,
+            doc.active_index(),
+            b.target,
+            t_entity,
+            b.rest.unwrap_or(0.0),
+            &links,
+        )
+        .map(AnimValue::Float);
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
             if has_expr && let AnimValue::Float(f) = &v {
                 composed.insert((b.entity, b.prop), *f);
@@ -138,9 +143,8 @@ pub fn apply_active_clip(
         }
     }
 
-    // ADR-0144/0145 — on the clip's own CUT clock (`clip_t`, already clamped). The
-    // Keys view has no stack, so a per-clip driver plays throughout the ACTIVE clip
-    // (`ExprWindow::ActiveClip`) — the clip you are editing IS the one that plays.
-    let window = crate::expr_pass::ExprWindow::ActiveClip;
-    crate::expr_pass::run(world, doc, clip_t, &skip, &composed, &window);
+    // ADR-0146 W2 — on the clip's own CUT clock (`clip_t`, already clamped). Only GLOBAL
+    // drivers run in the post-pass now; the active clip's per-clip expressions were resolved
+    // as lane sources at the sample site above (`solo_source_value`).
+    crate::expr_pass::run(world, doc, clip_t, &skip, &composed);
 }

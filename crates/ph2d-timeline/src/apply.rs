@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_anim::{AnimValue, AttributeEvaluator};
+use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Transform, World};
 
 use crate::doc::TimelineDoc;
@@ -98,15 +98,18 @@ pub fn apply_from_doc_except(
             // clock must be read at the SAME instant it was built at.
             let t_solo = doc.clip_cut(doc.active_index(), t);
             let t_entity = stack_eval::solo_source_time(&scratch, b.entity, t_solo);
-            // Skip empty tracks so a just-created binding never forces the
-            // property to a default value.
-            doc.active_clip().track(b.target).and_then(|tr| {
-                if tr.is_empty() {
-                    None
-                } else {
-                    Some(tr.sample(t_entity))
-                }
-            })
+            // The SECOND sample site (ADR-0146 W2, C1): a keyed sample OR a per-clip
+            // expression over it. An empty track with no expression is None, so a
+            // just-created binding never forces the property to a default value.
+            stack_eval::solo_source_value(
+                doc,
+                doc.active_index(),
+                b.target,
+                t_entity,
+                b.rest.unwrap_or(0.0),
+                &links,
+            )
+            .map(AnimValue::Float)
         };
         // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
         // and `from_bits` would panic rather than tell us so.
@@ -132,12 +135,7 @@ pub fn apply_from_doc_except(
     // was already a no-op internal early-out — so no `snap`/topo is even built (HR-3).
     if scheduled {
         let expr_t = doc.cut_scene(t);
-        let window = if stacked {
-            crate::expr_pass::ExprWindow::Strips(&scratch)
-        } else {
-            crate::expr_pass::ExprWindow::ActiveClip
-        };
-        crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+        crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
     }
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }

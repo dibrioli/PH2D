@@ -49,7 +49,11 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // past, which is the only direction this table is supposed to move.
     ("ph2d-ecs/src/transform.rs", 768),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
-    ("ph2d-editor-core/src/paint.rs", 884),
+    // Aposentada 2026-07-27 (W-FK): `paint.rs` tinha 884 LOC de primitivas de
+    // GEOMETRIA + a família do TEXTO inteira; a segunda saiu para o irmão
+    // `paint_text.rs` (com re-export, então nenhum chamador mudou de endereço) e
+    // o arquivo caiu para 685, sob o teto simples de 700. Entrada DELETADA em vez
+    // de baixada — é a única direção que esta tabela anda.
     ("ph2d-imageio-apng/src/lib.rs", 768),
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     ("ph2d-imageio-tiff/src/lib.rs", 905),

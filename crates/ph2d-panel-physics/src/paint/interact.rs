@@ -80,24 +80,13 @@ pub(super) fn paint_interact(
     // the canvas: without it the section reads like settings for something that
     // never happens (the tool is inert with the clock stopped — the law is in
     // `body_grab`).
-    let font = TypeToken::Sm.px();
-    let theme = ctx.host.theme();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        // As TRÊS ferramentas desta seção empurram o solver, então a dica é uma
-        // só. ⚠️ Ela já foi condicional, e deixou de ser quando a Pose saiu
-        // daqui para a seção Joints (W-JointTools): a pergunta *"este gesto
-        // quer Play ou Pause?"* passou a ser respondida pela SEÇÃO em que o
-        // controle mora, que é a forma de não haver resposta a esquecer.
-        tr("panel.physics.interact_hint"),
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + ROW_H_PX
+    //
+    // As TRÊS ferramentas desta seção empurram o solver, então a dica é uma só.
+    // ⚠️ Ela já foi condicional, e deixou de ser quando a Pose saiu daqui para a
+    // seção Joints (W-JointTools): a pergunta *"este gesto quer Play ou Pause?"*
+    // passou a ser respondida pela SEÇÃO em que o controle mora, que é a forma de
+    // não haver resposta a esquecer.
+    super::paint_hint(ctx, "panel.physics.interact_hint", x, w, y)
 }
 
 fn tool_label(t: InteractionTool) -> &'static str {
@@ -133,7 +122,12 @@ pub(super) fn seg_row(
 ) -> f32 {
     let theme = ctx.host.theme();
     let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
+    // ⚠️ **`Md` e não `Xs`, e o número saiu de um smoke** (Enio, 2026-07-27:
+    // *"ajuste apenas os espaçamentos das labels que ficaram muito apertados"*).
+    // O texto é pintado CENTRADO nesta faixa, então o respiro que sobra abaixo
+    // dele é metade da folga: com `Xs` (4 px) o rótulo encostava nos chips com
+    // 2 px, e o olho lia a palavra como parte do primeiro botão.
+    let label_h = label_font + Spacing::Md.px();
     paint_text(
         ctx.text_system,
         ctx.scene,

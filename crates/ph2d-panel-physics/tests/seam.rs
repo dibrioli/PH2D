@@ -17,6 +17,7 @@
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_physics::state;
 use ph2d_panel_physics::state::{PhysicsPanelState, PhysicsSnapshot};
 use ph2d_panel_physics::{
     PhysicsIntent, PhysicsPanel, drain_intents, ids, interact, rows, set_current_physics,
@@ -907,5 +908,53 @@ fn the_two_interaction_sections_do_not_write_over_each_other() {
         got.tool,
         InteractionTool::Attract,
         "escolher o modo de joint apagou a ferramenta de simulação"
+    );
+}
+
+/// **Uma dica que QUEBRA empurra o que vem depois dela.**
+///
+/// ⚠️ Este gate nasceu de um smoke (Enio, 2026-07-27, com screenshot): as duas
+/// linhas de dica da seção Joints escreviam **uma por cima da outra** e por cima
+/// do cabeçalho seguinte. A causa era um avanço fixo em `ROW_H_PX` para um texto
+/// cujo comprimento é livre — a única coisa deste painel que pode quebrar de
+/// linha —, e a cura é o pintor devolver a altura que gastou
+/// (`paint_text_block`, uma passada de layout para as duas respostas).
+///
+/// **O oráculo isola o fenômeno:** os modos `Body` e `Rig` pintam exatamente os
+/// MESMOS widgets (cinco chips, nenhuma row extra) e diferem só no TEXTO da
+/// dica — a do `Rig` é comprida o bastante para quebrar na largura do dock, a do
+/// `Body` não. Então qualquer diferença de altura entre os dois é a quebra, e só
+/// ela. Medido: **9,04 px**; com o avanço fixo, **0,00**.
+#[test]
+fn a_hint_that_wraps_pushes_what_follows_it_down() {
+    let measure = |joint| {
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                joint,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let header = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == ids::PHYSICS_SEC_LAYERS)
+            .map(|(_, r)| r.y)
+            .expect("o cabeçalho da seção seguinte é pintado");
+        (state::last_content_h(), header)
+    };
+    let (short_h, short_y) = measure(JointTool::Body);
+    let (wrapped_h, wrapped_y) = measure(JointTool::Rig);
+
+    assert!(
+        wrapped_y > short_y + 1.0,
+        "a dica que quebra não empurrou o cabeçalho seguinte ({wrapped_y} contra \
+         {short_y}) — ela está sendo desenhada POR CIMA dele"
+    );
+    assert!(
+        wrapped_h > short_h + 1.0,
+        "a seção não ficou mais alta com a dica quebrada ({wrapped_h} contra \
+         {short_h}): o avanço voltou a ser fixo"
     );
 }

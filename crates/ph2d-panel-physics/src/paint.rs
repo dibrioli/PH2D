@@ -3,7 +3,7 @@
 //! cannot disagree.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::rect_to_vello;
+use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -17,7 +17,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
 use crate::state::{self, PhysicsPanelState, set_last_content_h, set_last_visible_h};
 use crate::{PhysicsPanel, rows};
@@ -180,6 +180,34 @@ pub(crate) fn paint_irow(
         text_system,
         theme,
     )
+}
+
+/// **Uma linha de dica** — texto puro, hit-indexado por ninguém (é um fato, não
+/// um controle, e uma affordance que ele não pode honrar seria pior). Devolve o
+/// `y` seguinte.
+///
+/// ⚠️ **O avanço é MEDIDO, não `ROW_H_PX`.** Uma dica é a única coisa deste
+/// painel cujo comprimento é livre — ela quebra em duas linhas num painel
+/// estreito ou num idioma mais comprido —, e um avanço fixo escreve a linha
+/// seguinte por cima dela (foi exatamente o que o smoke da seção Joints mostrou).
+/// `paint_text_block` pinta e devolve a altura da MESMA passada de layout, então
+/// não há como as duas discordarem.
+pub(crate) fn paint_hint(ctx: &mut PaintCtx, key: &str, x: f32, w: f32, y: f32) -> f32 {
+    let font = TypeToken::Sm.px();
+    let theme = ctx.host.theme();
+    let used = paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr(key),
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    // O piso é a altura de row: uma dica de uma linha continua ocupando o mesmo
+    // espaço que sempre ocupou, e só o excedente da quebra é acrescentado.
+    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + Spacing::Xs.px()
 }
 
 fn paint_scrollbar_and_publish(

@@ -12,11 +12,10 @@
 //! ordem do modelo não podem divergir porque são a mesma.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::{InteractionSettings, JointTool};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::Spacing;
 
 use crate::interact::{IROWS, ISection};
 
@@ -79,26 +78,8 @@ pub(super) fn paint_joint(
     // primeira diz o que ESTE modo faz; a segunda diz que o Alt sempre carrega o
     // rig inteiro — um fato que vale nos cinco modos e que, escondido dentro da
     // frase de um deles, seria lido como propriedade daquele modo.
-    y = hint(ctx, hint_key(it.joint), x, w, y);
-    hint(ctx, "panel.physics.joint_hint.alt", x, w, y)
-}
-
-/// Uma linha de dica. Texto puro, hit-indexado por ninguém: é um fato, não um
-/// controle, e uma affordance que ele não pode honrar seria pior que o texto.
-fn hint(ctx: &mut PaintCtx, key: &str, x: f32, w: f32, y: f32) -> f32 {
-    let font = TypeToken::Sm.px();
-    let theme = ctx.host.theme();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        tr(key),
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + ROW_H_PX
+    y = super::paint_hint(ctx, hint_key(it.joint), x, w, y);
+    super::paint_hint(ctx, "panel.physics.joint_hint.alt", x, w, y)
 }
 
 fn label(t: JointTool) -> &'static str {

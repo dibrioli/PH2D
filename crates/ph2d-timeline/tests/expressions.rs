@@ -163,6 +163,33 @@ fn a_prop_link_follows_a_keyed_source() {
     assert!((dx - sx).abs() < 1e-3, "dst mirrors src, no lag");
 }
 
+/// A driven->driven chain has NO 1-frame lag: `A = B.x`, `B = time*10`, both
+/// driven. A is BOUND FIRST (so it precedes B in the list), yet on a SINGLE apply
+/// at t=0.5 it already reads B's fresh 5 — the topological order evaluates B first.
+/// (Mutation: evaluate in list order instead -> A reads B's not-yet-written 0.)
+#[test]
+fn a_driven_chain_has_no_frame_lag() {
+    let mut w = World::new();
+    let a = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("A")))
+        .id();
+    let b = w
+        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("B")))
+        .id();
+    let mut doc = TimelineDoc::new();
+    drive(&mut doc, a, PropKind::TranslationX, "B.x"); // bound FIRST, depends on B
+    drive(&mut doc, b, PropKind::TranslationX, "time*10");
+
+    apply_from_doc(&mut w, &mut doc, 0.5);
+    let bx = w.get::<Transform>(b).unwrap().translation.x;
+    let ax = w.get::<Transform>(a).unwrap().translation.x;
+    assert!((bx - 5.0).abs() < 1e-4, "B.x = 5 at t=0.5, got {bx}");
+    assert!(
+        (ax - 5.0).abs() < 1e-4,
+        "A reads B FRESH the same frame (no lag), got {ax}"
+    );
+}
+
 /// A cycle reads the pass-start snapshot and NEVER explodes: `A = B.x + 1`,
 /// `B = A.x + 1`, cross-linked. Over many frames every value stays finite (the
 /// Jacobi sweep reads last frame's value at the edge). (Mutation: reading the

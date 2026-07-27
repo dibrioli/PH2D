@@ -8,15 +8,18 @@
 //! engine, and the Clips/Strips/Fade fingerprint is untouched by construction. This
 //! is the whole reason ADR-0144 put the pass HERE rather than inside the evaluator.
 //!
-//! **Cycles** (ADR-0144 §6): a single Gauss-Jacobi sweep over a SNAPSHOT taken at
-//! the start of the pass. Every expression reads the snapshot (the just-composed
-//! keyed values + last frame's driven values), so `A = B.x` with B keyed is exact
-//! and lag-free, and a cycle `A <-> B` reads the previous value at the edge and
-//! **cannot explode**. The only lag is a driven->driven chain (a named follow-up).
+//! **Evaluation order** (ADR-0144 §6): the driven bindings are TOPOLOGICALLY
+//! ordered (a dependency before its dependents) and evaluated over a mutable
+//! `current` map seeded from the composed snapshot — so an acyclic chain
+//! `A = B.x`, `B = time*10` reads FRESH values with **no 1-frame lag**. A cycle
+//! `A <-> B` has no valid order: its members fall to the end and read the value
+//! still standing in `current` (the previous frame's at the back-edge), a single
+//! sweep that **cannot explode**. `value` is always the PRE-expression value
+//! (keyed sample or rest), never the map, so a prop never feeds back into itself.
 
 use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
-use ph2d_expr::{Bindings, eval};
+use ph2d_expr::{Bindings, Expr, eval};
 use std::collections::BTreeMap;
 
 use crate::apply::{read_prop, write_prop};
@@ -59,10 +62,9 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
         }
     }
 
-    // Evaluate each driven binding against the snapshot. Parse per frame (the count
-    // is tiny; caching the IR is a named follow-up). A parse error is a fallback:
-    // the property keeps its keyed value (nothing is written for it).
-    let mut writes: Vec<(usize, f32)> = Vec::new();
+    // Parse the driven bindings. A parse error is a fallback: the property keeps its
+    // keyed value (nothing is collected, so nothing is written for it).
+    let mut driven: Vec<Driven> = Vec::new();
     for (i, b) in doc.bindings().iter().enumerate() {
         if b.missing {
             continue;
@@ -84,19 +86,40 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
         } else {
             b.rest.unwrap_or(0.0)
         };
-        let bindings = ExprBindings {
-            snap: &snap,
-            names: &names,
+        driven.push(Driven {
+            idx: i,
+            ir,
+            entity: b.entity,
+            prop: b.prop,
             value,
-            time: time as f32,
             seed: b.target.get() as f32 * SEED_SPACING,
-        };
-        writes.push((i, eval(&ir, &bindings)));
+        });
     }
 
-    // Write all (Jacobi: reads done, now the writes). `write_prop` takes the whole
-    // binding for the Position trajectory; `doc` and `world` are distinct, so the
-    // immutable binding borrow and the mutable world write do not conflict.
+    // Evaluate in dependency order over a MUTABLE `current` (seeded from the
+    // snapshot): a binding reads `current` and writes its result back, so an acyclic
+    // chain reads fresh values with no lag; cycle members (ordered last) read the
+    // value still standing, non-exploding.
+    let order = topo_order(&driven, &names);
+    let mut current = snap;
+    let mut writes: Vec<(usize, f32)> = Vec::new();
+    for &p in &order {
+        let d = &driven[p];
+        let bindings = ExprBindings {
+            cur: &current,
+            names: &names,
+            value: d.value,
+            time: time as f32,
+            seed: d.seed,
+        };
+        let v = eval(&d.ir, &bindings);
+        current.insert((d.entity, d.prop), v);
+        writes.push((d.idx, v));
+    }
+
+    // Write all. `write_prop` takes the whole binding for the Position trajectory;
+    // `doc` and `world` are distinct, so the immutable binding borrow and the
+    // mutable world write do not conflict.
     for (i, v) in writes {
         let b = &doc.bindings()[i];
         if let Some(e) = Entity::try_from_bits(b.entity) {
@@ -105,13 +128,26 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
     }
 }
 
+/// One driven binding, parsed and ready to evaluate.
+struct Driven {
+    /// Index into `doc.bindings()` (where the write lands).
+    idx: usize,
+    ir: Expr,
+    entity: u64,
+    prop: PropKind,
+    /// The pre-expression value `value` resolves to (keyed sample or rest).
+    value: f32,
+    /// This binding's wiggle seed.
+    seed: f32,
+}
+
 /// The [`Bindings`] the pass hands each expression: `time` (the clip clock),
 /// `value` (this property's PRE-EXPRESSION value — keyed sample or rest, computed
 /// by the caller), `__seed` (this binding's wiggle seed), and `Name.prop`
-/// prop-links resolved against the snapshot. An unknown name is `0.0` (the
-/// evaluator's total contract).
+/// prop-links resolved against `cur` (the value standing this sweep). An unknown
+/// name is `0.0` (the evaluator's total contract).
 struct ExprBindings<'a> {
-    snap: &'a BTreeMap<(u64, PropKind), f32>,
+    cur: &'a BTreeMap<(u64, PropKind), f32>,
     names: &'a BTreeMap<u64, u64>,
     value: f32,
     time: f32,
@@ -124,22 +160,100 @@ impl Bindings for ExprBindings<'_> {
             "time" => self.time,
             "__seed" => self.seed,
             "value" => self.value,
-            dotted => {
-                // `Name.prop` -> the snapshot value of another animated property.
-                if let Some((nm, pr)) = dotted.rsplit_once('.')
-                    && let (Some(&e), Some(prop)) = (
-                        self.names.get(&stable_name_id(nm)),
-                        PropKind::from_expr_name(pr),
-                    )
-                {
-                    return *self.snap.get(&(e, prop)).unwrap_or(&0.0);
-                }
-                0.0
-            }
+            dotted => resolve_link(dotted, self.names)
+                .and_then(|k| self.cur.get(&k).copied())
+                .unwrap_or(0.0),
         }
     }
 
     fn param(&self, _name: &str) -> f32 {
         0.0
     }
+}
+
+/// A `Name.prop` prop-link identifier -> the `(entity, prop)` it names, if the name
+/// resolves to an animated object and the tail is a known property. `None` for a
+/// bare identifier (no dot) or an unresolved name.
+fn resolve_link(name: &str, names: &BTreeMap<u64, u64>) -> Option<(u64, PropKind)> {
+    let (nm, pr) = name.rsplit_once('.')?;
+    Some((
+        *names.get(&stable_name_id(nm))?,
+        PropKind::from_expr_name(pr)?,
+    ))
+}
+
+/// Collect every `(entity, prop)` a driven binding's expression reads through a
+/// prop-link — the dependency edges for the topological order.
+fn collect_links(e: &Expr, names: &BTreeMap<u64, u64>, out: &mut Vec<(u64, PropKind)>) {
+    match e {
+        Expr::Attr(name) => {
+            if let Some(k) = resolve_link(name, names) {
+                out.push(k);
+            }
+        }
+        Expr::Unary(_, a) => collect_links(a, names, out),
+        Expr::Binary(_, a, b) => {
+            collect_links(a, names, out);
+            collect_links(b, names, out);
+        }
+        Expr::Call(_, args) => args.iter().for_each(|a| collect_links(a, names, out)),
+        Expr::Select { cond, a, b } => {
+            collect_links(cond, names, out);
+            collect_links(a, names, out);
+            collect_links(b, names, out);
+        }
+        Expr::Const(_) | Expr::Param(_) => {}
+    }
+}
+
+/// Kahn topological order of the driven bindings — a dependency before its
+/// dependents, so an acyclic chain evaluates fresh. A cycle has no valid order;
+/// its members never reach in-degree 0 and are appended in original order (they
+/// read the value still standing in `current`, non-exploding — ADR-0144 §6).
+fn topo_order(driven: &[Driven], names: &BTreeMap<u64, u64>) -> Vec<usize> {
+    let n = driven.len();
+    let pos_of: BTreeMap<(u64, PropKind), usize> = driven
+        .iter()
+        .enumerate()
+        .map(|(p, d)| ((d.entity, d.prop), p))
+        .collect();
+    let mut indeg = vec![0usize; n];
+    let mut dependents: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut links = Vec::new();
+    for (p, d) in driven.iter().enumerate() {
+        links.clear();
+        collect_links(&d.ir, names, &mut links);
+        let mut seen: Vec<usize> = Vec::new();
+        for k in &links {
+            if let Some(&q) = pos_of.get(k)
+                && q != p
+                && !seen.contains(&q)
+            {
+                seen.push(q);
+                indeg[p] += 1;
+                dependents[q].push(p);
+            }
+        }
+    }
+    let mut queue: Vec<usize> = (0..n).filter(|&p| indeg[p] == 0).collect();
+    let mut order = Vec::with_capacity(n);
+    let mut qi = 0;
+    while qi < queue.len() {
+        let p = queue[qi];
+        qi += 1;
+        order.push(p);
+        for &r in &dependents[p] {
+            indeg[r] -= 1;
+            if indeg[r] == 0 {
+                queue.push(r);
+            }
+        }
+    }
+    // Cycle members (in-degree never hit 0) — append in original order.
+    for p in 0..n {
+        if !order.contains(&p) {
+            order.push(p);
+        }
+    }
+    order
 }

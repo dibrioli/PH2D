@@ -19,16 +19,31 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## Integração — NADA pendente (2026-07-25)
+## Integração — UMA linha pendente (2026-07-27)
 
-**Nenhuma integração em curso.** A jornada de 2026-07-25 integrou **6 linhas**
-(`Painter` · `Vector` · `motion-nodes` · `anim` · `physics` · `FLIP`), shipou e o CI fechou
-**verde nos 3 OSes** (incl. o C9 de determinismo). `main` = `33c21c46c`.
+**A jornada de 2026-07-27 integrou `line/anim` (as joias da coroa) e `line/physics`
+(os joints ganharam mãos).** `main` local **VERDE** (`ship.sh` com paridade EXATA do CI:
+fmt · clippy `--all-targets` · machete · deny · audit · **9990/9990** nextest · typos).
+⚠️ **NÃO foi pushado** — o push é 1× por jornada e é ordem explícita do Enio (§0.7).
 
-> O bloco que vivia aqui avisava de uma "integração pendente" do **cutover Vector de 2026-07-06**
-> — que fechou há três semanas, com a `line/audio` integrada em 14/07 e a `line/imageio` já sem
-> worktree. Um aviso vencido neste arquivo é pior que arquivo vazio: ele é o **primeiro** que um
-> agente novo lê, e mandava rebasear sobre um `main` que não existe mais.
+**Números no `main` de hoje:** `PROJECT_SCHEMA` **34** · `DOC_VERSION` **15** ·
+ADR max **0144** · gizmo id max **968** (próximo livre 969) · registro `ph2d-ecs` **21** ·
+`physics-ecs-c9` **`c9d4baee…`, 87 corpos**.
+
+### ⚠️ `line/FLIP` — 13 commits que NUNCA entraram no `main`
+
+Ela integrou em 2026-07-25 (a tira ganhou mãos) e **continuou trabalhando depois**: o tip
+`3c9e77e2f` (2026-07-25 23:04) carrega **multiplano 2.5D** (ADR-0114 §Decisão 3) · o polish
+canônico dos sliders de camada · **Self Overlap** (smoke APROVADO pelo Enio) · o **Airbrush
+analítico** (Ciallo) · **reamostragem suave** do traço (T2.8) · e a **dinâmica de pressão →
+largura** (T2.6). Handoff: [`HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md`](HANDOFF_INTEGRACAO_line_FLIP_airbrush_2026-07-25.md).
+**Não foi integrada nesta jornada porque o Enio pediu `anim` + `physics`** — integração é
+ordem explícita, nunca iniciativa do integrador. Confira a distância com
+`git rev-list --count main..line/FLIP` (o número é a fonte, não esta linha).
+
+> O bloco anterior dizia *"NADA pendente"* e apontava a `line/motion-value` como a linha
+> com trabalho fora do `main` — ela **integrou em 2026-07-26**. Um aviso vencido aqui é pior
+> que arquivo vazio: é o **primeiro** que um agente novo lê.
 
 ### ⚠️ Ao REABRIR uma linha: rebase primeiro
 

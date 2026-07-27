@@ -15,7 +15,8 @@ use ph2d_anim::{AnimTarget, AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World};
 use ph2d_timeline::{
-    ClipLane, ClipStrip, LaneMode, PropKind, StackHost, StripSource, TimelineDoc, apply_from_doc,
+    ClipLane, ClipStrip, LaneMode, PropKind, StackHost, StripSource, TimelineDoc,
+    apply_active_clip, apply_from_doc,
 };
 
 fn s(t: f64) -> RationalTime {
@@ -458,3 +459,42 @@ fn coresident_fingerprint() -> (u64, Vec<(f64, f32)>) {
 
 /// Pinned on `line/anim` at ADR-0146 W1. Captures Y's keyed crossfade under `scheduled`.
 const CORESIDENT_FINGERPRINT: u64 = 0x7a19_b02a_890c_015b;
+
+/// **Gate #18 (W3 follow-up) — a per-clip PROP-LINK resolves in the KEYS solo view.** Editing
+/// the active clip alone (`apply_active_clip`, the panel's Keys tab): Follower drives its X by
+/// the per-clip expression `Sprite.x`, Sprite keyed flat at 100. The solo now composes in
+/// TOPOLOGICAL order and hands `solo_source_value` a populated `LinkFrame`, so `Sprite.x` reads
+/// Sprite's composed 100 in the SAME frame — the scene apply's double-fade, now reachable while
+/// editing keys. Before this the view threaded an EMPTY `LinkFrame`, so the link read 0.
+///
+/// Follower's binding is created FIRST, so the natural order would compose it before its source;
+/// only the topological order gets it right. Mutation: thread an empty `LinkFrame` (drop
+/// `build_names`/`topo_order` in `apply_active_clip`) -> `Sprite.x` -> 0, RED.
+#[test]
+fn the_keys_solo_resolves_a_per_clip_prop_link() {
+    let mut world = World::new();
+    // Reader FIRST (binding index 0): the natural order would compose it before its source.
+    let follower = world
+        .spawn((Transform::default(), Name::new("Follower")))
+        .id()
+        .to_bits();
+    let sprite = world
+        .spawn((Transform::default(), Name::new("Sprite")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    // Active clip 0: Follower driven by `Sprite.x` (per-clip expr), Sprite keyed flat at 100.
+    set_expr(&mut doc, 0, follower, PropKind::TranslationX, "Sprite.x");
+    flat(&mut doc, 0, sprite, PropKind::TranslationX, 100.0);
+    assert!(doc.stack().is_empty(), "the Keys solo is the NON-STACKED view");
+
+    apply_active_clip(&mut world, &mut doc, 0.0, |_| false);
+    let s = x_of(&world, sprite);
+    assert!((s - 100.0).abs() < 1e-3, "Sprite is keyed flat at 100; got {s}");
+    let f = x_of(&world, follower);
+    assert!(
+        (f - 100.0).abs() < 1e-3,
+        "Follower's per-clip `Sprite.x` reads Sprite's composed 100 in the KEYS solo; got {f} \
+         (0 = the view threaded an empty LinkFrame)"
+    );
+}

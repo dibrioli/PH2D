@@ -272,6 +272,65 @@ fn apply_container_runs_expressions_on_the_local_clock() {
     );
 }
 
+/// **W3 follow-up — a per-clip PROP-LINK resolves in the CONTAINER edit view.** Inside the
+/// container the reader `Fol` drives its X by the PER-CLIP expression `Src.x`, and `Src` is
+/// keyed flat at 100. The container solo now composes in TOPOLOGICAL order (source before
+/// reader) and hands the blend a populated `LinkFrame`, so `Src.x` reads Src's composed 100 in
+/// the SAME frame — the scene apply's double-fade, now reachable while editing a container.
+/// Before this the view threaded an EMPTY `LinkFrame`, so the link read 0.
+///
+/// `Fol`'s binding is created FIRST, so the natural order would compose it before its source;
+/// only the topological order gets it right. Mutation: thread an empty `LinkFrame` (drop
+/// `build_names`/`topo_order` in `apply_container`) -> `Src.x` -> 0, RED.
+#[test]
+fn apply_container_resolves_a_per_clip_prop_link() {
+    let mut sim = SimWorld::new();
+    // Reader FIRST (binding index 0): the natural order would compose it before its source.
+    let fol = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Fol")))
+        .id()
+        .to_bits();
+    let src = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Src")))
+        .id()
+        .to_bits();
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+
+    // Clip 0: Fol driven by `Src.x` (per-clip expr), Src keyed flat at 100.
+    let ftgt = doc.bind(fol, PropKind::TranslationX);
+    doc.set_clip_expr(0, ftgt, Some("Src.x".into()));
+    doc.upsert_key(
+        src,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(100.0),
+        Interp::Hold,
+    );
+
+    // A container "Walk" plays clip 0 over its interior [0,2).
+    let walk = doc.add_container("Walk".into());
+    let host = StackHost::Container(walk);
+    doc.add_lane_in(host, "in".into()).unwrap();
+    doc.add_strip_to(host, 0, StripSource::Clip(0), 0.0, 2.0)
+        .unwrap();
+
+    apply_container(sim.world_mut(), &mut st.doc, walk, 1.0, |_| false);
+    assert!(
+        (x(&sim, src) - 100.0).abs() < 1e-4,
+        "Src is keyed flat at 100; got {}",
+        x(&sim, src)
+    );
+    let f = x(&sim, fol);
+    assert!(
+        (f - 100.0).abs() < 1e-4,
+        "Fol's per-clip `Src.x` reads Src's composed 100 IN THE CONTAINER VIEW; got {f} \
+         (0 = the view threaded an empty LinkFrame)"
+    );
+}
+
 /// **Past the container's AUTHORED end an expression FREEZES with the keys** — it runs
 /// on `container_cut`, not the raw local clock (the *expressions extrapolate the
 /// container duration* report). With "Walk" cut to 1 s, a driven `Y = time*10` at local

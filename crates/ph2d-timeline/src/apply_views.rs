@@ -14,7 +14,7 @@ use ph2d_ecs::{Entity, World};
 
 use crate::apply::{refresh_liveness_and_rest, remapped_time, write_prop};
 use crate::doc::TimelineDoc;
-use crate::frame_solve::LinkFrame;
+use crate::frame_solve::{self, LinkFrame};
 use crate::prop::PropKind;
 use crate::stack_eval;
 
@@ -39,11 +39,23 @@ pub fn apply_container(
     // The coverage mask + pre-expression value the expression pass reads (ADR-0144);
     // built only with a formula present so the no-expression path stays zero-alloc.
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    let has_expr = doc.bindings().iter().any(|b| b.expr.is_some());
-    // ADR-0146 W0 — threaded EMPTY and never read; the blend gains a parameter, not a
-    // float op. W1 makes the container view read the same lane source the scene does.
-    let links = LinkFrame::default();
-    for b in doc.bindings() {
+    // ADR-0146 W3 — the container view composes in TOPOLOGICAL order too, so a per-clip
+    // prop-link (`value + Sprite.x`) inside the container reads the source's already-faded
+    // value in the SAME frame, exactly as the scene apply does (`apply_from_doc_except`).
+    // A formula-free container builds NEITHER the names map nor the order — `order` is
+    // `None`, the loop walks the natural binding order, and nothing allocates (HR-3).
+    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
+        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let mut links = LinkFrame::default();
+    let order = scheduled.then(|| {
+        links.names = frame_solve::build_names(world, doc);
+        frame_solve::seed_links(world, doc, &mut links.links);
+        frame_solve::topo_order(doc, &links.names)
+    });
+    let n = doc.bindings().len();
+    for idx in 0..n {
+        let bi = order.as_ref().map_or(idx, |o| o[idx]);
+        let b = &doc.bindings()[bi];
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
             continue;
         }
@@ -57,11 +69,11 @@ pub fn apply_container(
                 rest: b.rest.unwrap_or(0.0),
             },
             &links,
-        )
-        .map(AnimValue::Float);
-        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            if has_expr && let AnimValue::Float(f) = &v {
-                composed.insert((b.entity, b.prop), *f);
+        );
+        if let (Some(f), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            if scheduled {
+                links.links.insert((b.entity, b.prop), f64::from(f));
+                composed.insert((b.entity, b.prop), f);
             }
             // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
             // `auto_orient` varre os bindings, então fazê-lo por binding tornaria o
@@ -69,7 +81,7 @@ pub fn apply_container(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, v, orient);
+            write_prop(world, e, b, AnimValue::Float(f), orient);
         }
     }
 
@@ -107,11 +119,24 @@ pub fn apply_active_clip(
     // an instance of this clip freeze at the same instant.
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    let has_expr = doc.bindings().iter().any(|b| b.expr.is_some());
-    // ADR-0146 W2 — threaded EMPTY (prop-links resolve to 0 until W3 fills it).
-    let links = LinkFrame::default();
+    // ADR-0146 W3 — the Keys solo composes in TOPOLOGICAL order too, so a per-clip
+    // prop-link (`value + Sprite.x`) reads the source's already-faded value in the SAME
+    // frame while editing the active clip, exactly as the scene apply does. A formula-free
+    // clip builds NEITHER the names map nor the order — `order` is `None`, the loop walks
+    // the natural binding order, and nothing allocates (HR-3).
+    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
+        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let mut links = LinkFrame::default();
+    let order = scheduled.then(|| {
+        links.names = frame_solve::build_names(world, doc);
+        frame_solve::seed_links(world, doc, &mut links.links);
+        frame_solve::topo_order(doc, &links.names)
+    });
 
-    for b in doc.bindings() {
+    let n = doc.bindings().len();
+    for idx in 0..n {
+        let bi = order.as_ref().map_or(idx, |o| o[idx]);
+        let b = &doc.bindings()[bi];
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
             continue;
         }
@@ -129,17 +154,17 @@ pub fn apply_active_clip(
             t_entity,
             b.rest.unwrap_or(0.0),
             &links,
-        )
-        .map(AnimValue::Float);
-        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            if has_expr && let AnimValue::Float(f) = &v {
-                composed.insert((b.entity, b.prop), *f);
+        );
+        if let (Some(f), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            if scheduled {
+                links.links.insert((b.entity, b.prop), f64::from(f));
+                composed.insert((b.entity, b.prop), f);
             }
             // ⚠️ auto_orient: por-binding tornaria o apply quadrático (o mesmo laço
             // que o `clock.rs` curou) — daí o curto-circuito, só para Position.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, v, orient);
+            write_prop(world, e, b, AnimValue::Float(f), orient);
         }
     }
 

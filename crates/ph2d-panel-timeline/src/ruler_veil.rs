@@ -25,13 +25,15 @@ const DUR_ARROW_PAD: f32 = 4.0; // LITERAL-PX-OK: grab padding around the ↔ gl
 /// authored duration whose end is on-screen — same gate as the veil
 /// ([`beyond_end_shade`]).
 ///
-/// **No bar on the edge; the ↔ glyph is the visual cue, the whole veil is the grab**
-/// (Enio, 2026-07-23): the loop brace sits ON the edge when the loop runs to the end,
-/// so a bar there fought it for the pointer. The ↔ is drawn well to the right over the
-/// dark veil, and the grab spans the veil from just past the loop brace to the ruler's
-/// right edge ([`grab_rect`]) — a grab tight on the small glyph was a target most
-/// presses missed. The drag is grab-relative (`duration_drag`), so grabbing anywhere in
-/// the veil does not jump the duration to the pointer.
+/// **No bar on the edge; the ↔ glyph is the visual cue AND the grab** (Enio,
+/// 2026-07-26 — REVERSES the earlier whole-veil grab of `d489f9d67`: *"o clique
+/// para ajustar o véu é só na própria seta … qualquer região à direita dela … é
+/// como se estivesse clicando nela"*). The whole-veil grab stole every press in
+/// the dark dead-zone; now the grab is a tight box on the ↔ glyph only
+/// ([`grab_rect`]), so clicking the veil to the right does nothing. The loop brace
+/// sits ON the edge when the loop runs to the end, so the ↔ is drawn
+/// `DUR_ARROW_OFFSET` to the right (clear of it). The drag is grab-relative
+/// (`duration_drag`), so grabbing the glyph does not jump the duration to the pointer.
 pub(super) fn paint_duration_handle(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -85,11 +87,10 @@ pub(super) fn paint_duration_handle(
         ],
         color,
     );
-    // The grab target: the WHOLE veil past the loop brace, so dragging anywhere in the
-    // dark dead-zone resizes the duration (Enio, `d489f9d67`: *"arrastar o véu na régua
-    // resize a duração"*). A grab tight on the ↔ glyph 40px out was a target most
-    // presses missed — the arrow stays as the visual cue, the grab is forgiving.
-    let hit = grab_rect(edge, region.y, right);
+    // The grab target: ONLY the ↔ glyph (Enio, 2026-07-26 — reversed the whole-veil
+    // grab). Clicking the dark veil to the right must NOT resize the duration; only
+    // the arrow does.
+    let hit = grab_rect(edge, region.y);
     ctx.host.store_mut().register(
         ids::TIMELINE_DUR_HANDLE,
         InteractiveState::TimelineSurface {
@@ -103,46 +104,55 @@ pub(super) fn paint_duration_handle(
         .register(ids::TIMELINE_DUR_HANDLE, hit);
 }
 
-/// The duration handle's grab rect: the veil from just past the loop brace to the
-/// ruler's right edge (`region_right`). It starts a hair right of the edge so the
-/// loop brace at the duration end keeps its own grab, and spans the rest of the dark
-/// dead-zone so the whole veil is the grip. Pure, so the "clear of the edge" rule has
-/// an oracle the paint cannot give it.
-fn grab_rect(edge: f32, region_y: f32, region_right: f32) -> Rect {
-    let hit_left = edge + BRACE_HIT_HW + DUR_ARROW_PAD;
-    Rect::new(
-        hit_left,
-        region_y,
-        (region_right - hit_left).max(0.0),
-        RULER_H,
-    )
+/// The duration handle's grab rect: a tight box on the ↔ glyph ONLY (Enio,
+/// 2026-07-26 — reverses the earlier whole-veil grab). The glyph is centred
+/// `DUR_ARROW_OFFSET` right of the edge and reaches `DUR_ARROW_HALF_W +
+/// DUR_ARROW_HEAD` either side; the grab adds `DUR_ARROW_PAD`. The 40 px offset
+/// keeps it clear of the loop brace at the edge, and it never spills into the dark
+/// veil to the right (the bug). Pure, so the geometry has an oracle the paint cannot give.
+fn grab_rect(edge: f32, region_y: f32) -> Rect {
+    let gx = edge + DUR_ARROW_OFFSET;
+    let reach = DUR_ARROW_HALF_W + DUR_ARROW_HEAD + DUR_ARROW_PAD;
+    Rect::new(gx - reach, region_y, reach * 2.0, RULER_H)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// **The grab is clear of the edge, so the loop brace at the duration end stays
-    /// grabbable** (Enio, 2026-07-23). The loop brace's own grab reaches `BRACE_HIT_HW`
-    /// either side of the edge; the duration grab must start strictly to the RIGHT of
-    /// that, or (registered last, so topmost) it would steal the brace's press when the
-    /// loop runs to the end.
+    /// **The grab is ONLY the ↔ glyph — it covers the arrow, stays clear of the loop
+    /// brace at the edge, and does NOT spill into the veil to the right** (Enio,
+    /// 2026-07-26: clicking the dark veil right of the arrow must not resize the
+    /// duration; only the arrow does). Reverses the earlier whole-veil grab.
     #[test]
-    fn the_grab_does_not_reach_the_edge_where_the_loop_brace_sits() {
+    fn the_grab_is_only_the_arrow_not_the_whole_veil() {
         let (edge, right) = (200.0, 800.0);
-        let g = grab_rect(edge, 0.0, right);
+        let g = grab_rect(edge, 0.0);
+        let gx = edge + DUR_ARROW_OFFSET;
+        // Covers the arrow glyph...
+        assert!(
+            g.x <= gx && gx <= g.x + g.w,
+            "the grab must cover the arrow at {gx} (got x={}..{})",
+            g.x,
+            g.x + g.w
+        );
+        // ...clear of the loop brace at the edge (registered last = topmost)...
         assert!(
             g.x > edge + BRACE_HIT_HW,
             "grab starts at {} but the loop brace reaches to {}",
             g.x,
             edge + BRACE_HIT_HW
         );
-        // And it covers the ↔ glyph AND the rest of the veil (so the whole dead-zone
-        // is the grip, not just the small arrow most presses missed).
-        let gx = edge + DUR_ARROW_OFFSET;
+        // ...and does NOT reach the dark veil to the right (the bug): a click well
+        // right of the arrow misses the grab.
         assert!(
-            g.x < gx && g.x + g.w >= right,
-            "the grab must cover the arrow at {gx} and reach the right edge {right}"
+            g.x + g.w < right,
+            "the grab must NOT cover the veil to the right edge {right} (only the arrow), got {}",
+            g.x + g.w
+        );
+        assert!(
+            gx + 100.0 > g.x + g.w,
+            "a click 100px right of the arrow must miss the grab"
         );
     }
 }

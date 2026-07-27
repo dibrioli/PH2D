@@ -156,6 +156,66 @@ fn move_selected_keys_shifts_only_selection() {
     );
 }
 
+/// **Dragging keys left STOPS at t=0 — no keyframe reaches negative time** (Enio,
+/// 2026-07-26). Two keys at 1 s and 2 s, both selected, dragged −5 s: the earliest
+/// lands EXACTLY on 0 and the group keeps its 1 s spacing (the later at 1, not −3).
+/// (Mutation: skip the clamp -> the earliest key lands at −4.)
+#[test]
+fn dragging_keys_left_stops_at_the_origin_never_negative() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 1.0, 0.0);
+    add_key(&mut st, &mut ph, 1, PropKind::TranslationX, 2.0, 1.0);
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+
+    let ids: Vec<_> = st.doc.active_clip().track(target).unwrap().ids().to_vec();
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SelectSingle(SelectedKey {
+            target,
+            key: ids[0],
+        }),
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddToSelection(SelectedKey {
+            target,
+            key: ids[1],
+        }),
+    );
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::MoveSelectedKeys {
+            delta_seconds: -5.0,
+        },
+    );
+
+    let track = st.doc.active_clip().track(target).unwrap();
+    let mut times: Vec<f64> = track.keys().iter().map(|k| k.t.to_seconds()).collect();
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert!(
+        times.iter().all(|t| *t >= -1e-9),
+        "no key may reach negative time, got {times:?}"
+    );
+    assert!(
+        times[0].abs() < 1e-9,
+        "the earliest key stops EXACTLY at 0, got {}",
+        times[0]
+    );
+    assert!(
+        (times[1] - 1.0).abs() < 1e-9,
+        "the group keeps its 1 s spacing (later key at 1), got {}",
+        times[1]
+    );
+}
+
 #[test]
 fn delete_selection_removes_keys() {
     let mut st = TimelineState::new();

@@ -139,9 +139,13 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             intent_apply_path::convert_mode(state, entity, to_path);
         }
         I::MoveSelectedKeys { delta_seconds } => {
-            // Rationalize the offset ONCE, against the display rate: a whole
-            // number of frames must stay a whole number of frames after the move.
+            // Rationalize the offset ONCE (whole frames stay whole), then clamp the
+            // rigid group so the earliest key stops EXACTLY at t=0, never negative (Enio 07-26).
             let delta = delta_time(delta_seconds, fps, state.flags.frame_snap);
+            let delta = match earliest_selected_time(state) {
+                Some(m) if m + delta < RationalTime::ZERO => RationalTime::ZERO - m,
+                _ => delta,
+            };
             edit(state, |doc, sel| {
                 for_selected_tracks(doc, sel, |track, ids| track.move_keys(ids, delta));
             });

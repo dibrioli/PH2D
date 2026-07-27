@@ -62,7 +62,45 @@ pub enum JointKind {
     Rod,
 }
 
+/// **Em que campo do componente o comprimento de um tipo MORA.**
+///
+/// Existe porque a pergunta tinha **quatro** respostas independentes espalhadas
+/// pelo repo — o `JointView` que o desenho lê, o gesto de criar-arrastando, a
+/// escrita do anel de comprimento e a cena de smoke — e a terceira delas
+/// APODRECEU no dia em que o [`JointKind::Rod`] chegou: ela enumerava
+/// `Spring | Rope` com um `_ => return` cujo comentário afirmava *"Pin/Weld não
+/// têm anel"*. O anel do rod era publicado, o grip pegava, o arrasto abria, e a
+/// escrita voltava **em silêncio**.
+///
+/// ⚠️ Um `match` exaustivo, não uma tabela: o sétimo tipo **não compila** até
+/// dizer onde o comprimento dele mora — que é a única forma de a resposta não
+/// nascer errada de novo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LengthField {
+    /// [`PhysicsJoint::rest_length`] — o alvo de uma mola.
+    Rest,
+    /// [`PhysicsJoint::max_length`] — o teto de uma corda, o comprimento de uma
+    /// barra. Os dois compartilham o campo porque compartilham o **número**: é
+    /// a distância que o vínculo governa, e o tipo é quem diz se ela é um teto
+    /// ou uma igualdade.
+    Max,
+}
+
 impl JointKind {
+    /// Ver [`LengthField`]. `None` para quem não tem comprimento nenhum.
+    ///
+    /// **A porta única** — quem DESENHA, quem CRIA arrastando e quem ESCREVE o
+    /// anel perguntam a ela; três respostas independentes é como duas delas
+    /// passam a discordar sobre qual campo o artista acabou de editar.
+    #[must_use]
+    pub fn length_field(self) -> Option<LengthField> {
+        match self {
+            JointKind::Spring => Some(LengthField::Rest),
+            JointKind::Rope | JointKind::Rod => Some(LengthField::Max),
+            JointKind::Pin | JointKind::Weld | JointKind::Slider => None,
+        }
+    }
+
     /// Does this kind swing about a pivot? Only a [`JointKind::Pin`] does.
     ///
     /// ⚠️ **No longer the same question as *"does it have a motor?"*** — that is
@@ -173,7 +211,7 @@ impl JointKind {
     /// makes [`Self::shares_a_point`] answer `false` for it — correctly, since a
     /// rod's two ends are meant to start apart.
     pub fn has_length(self) -> bool {
-        matches!(self, JointKind::Spring | JointKind::Rope | JointKind::Rod)
+        self.length_field().is_some()
     }
 
     /// Do the two bodies share one point (a Pin, a Weld or a Slider), rather than

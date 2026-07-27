@@ -22,7 +22,7 @@
 
 use ph2d_ecs::Entity;
 
-use crate::joint::JointKind;
+use crate::joint::{JointKind, LengthField};
 
 use super::PhysicsBridge;
 
@@ -169,13 +169,14 @@ impl PhysicsBridge {
                 // filtro **não sangrou**, e foi assim que a duplicata apareceu.
                 limits: j.rest.limits,
                 motor_speed: j.rest.motor.map(|m| m.speed),
-                length: match kind {
-                    JointKind::Spring => Some(j.rest.rest_length),
-                    // Um Rod reusa o `max_length` de propósito (ver o tipo): o
-                    // comprimento dele é UM número autorado, e o desenho lê o
-                    // mesmo campo que o solver recebeu.
-                    JointKind::Rope | JointKind::Rod => Some(j.rest.max_length),
-                    JointKind::Pin | JointKind::Weld | JointKind::Slider => None,
+                // Pela porta única `length_field`: o desenho, o gesto de criar
+                // e a escrita do anel têm de concordar sobre QUAL campo carrega
+                // o comprimento deste tipo, e três respostas independentes é
+                // como duas delas passam a discordar em silêncio.
+                length: match kind.length_field() {
+                    Some(LengthField::Rest) => Some(j.rest.rest_length),
+                    Some(LengthField::Max) => Some(j.rest.max_length),
+                    None => None,
                 },
                 // O eixo do trilho em MUNDO, resolvido aqui e não pelo
                 // desenhista: `rest.axis_a` está no frame de A, e girar aquilo

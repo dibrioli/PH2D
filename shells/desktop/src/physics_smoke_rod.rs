@@ -73,9 +73,10 @@ fn linked(world: &mut World, name: &str, a: &str, b: &str, at: [f32; 2], kind: J
         kind,
         ..PhysicsJoint::of_kind(kind)
     };
-    match kind {
-        JointKind::Spring => j.rest_length = SPAN,
-        _ => j.max_length = SPAN,
+    match kind.length_field() {
+        Some(ph2d_physics_ecs::LengthField::Rest) => j.rest_length = SPAN,
+        Some(ph2d_physics_ecs::LengthField::Max) => j.max_length = SPAN,
+        None => {}
     }
     world.spawn((
         Transform::from_translation(Vec2::new(at[0], at[1])),

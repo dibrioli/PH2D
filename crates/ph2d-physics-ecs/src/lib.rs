@@ -48,7 +48,7 @@ pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
 };
-pub use joint::{JointKind, MotorMode, PhysicsJoint};
+pub use joint::{JointKind, LengthField, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use ph2d_physics::{IkOptions, JointLoad};

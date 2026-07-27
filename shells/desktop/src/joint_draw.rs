@@ -179,14 +179,13 @@ impl App {
                 .world_mut()
                 .get_mut::<ph2d_physics_ecs::PhysicsJoint>(joint)
         {
-            match kind {
-                JointKind::Spring => j.rest_length = span,
-                // Uma barra desenhada com 2 m de arrasto MEDE 2 m — o mesmo
-                // campo da corda, porque engine-side é o mesmo número autorado.
-                JointKind::Rope | JointKind::Rod => j.max_length = span,
+            // A MESMA porta que o desenho e a escrita do anel perguntam.
+            match kind.length_field() {
+                Some(ph2d_physics_ecs::LengthField::Rest) => j.rest_length = span,
+                Some(ph2d_physics_ecs::LengthField::Max) => j.max_length = span,
                 // Um Slider compartilha um ponto, então nunca chega aqui — mas o
                 // arrasto DIZ algo para ele, e é o eixo (logo abaixo).
-                JointKind::Pin | JointKind::Weld | JointKind::Slider => {}
+                None => {}
             }
         }
         // **O arrasto DESENHA O TRILHO.** Para um Slider o gesto não mede um

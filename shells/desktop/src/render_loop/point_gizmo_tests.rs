@@ -402,3 +402,39 @@ fn a_rails_stroke_grips_sit_on_the_rail_not_on_an_arc() {
         );
     }
 }
+
+/// **TODO tipo com comprimento OFERECE o anel** — a metade complementar do gate
+/// de escrita em `joint_anchor_drag_tests`.
+///
+/// As duas metades existem porque cada uma passa sozinha sobre o defeito da
+/// outra: um anel publicado com a escrita morta é o que o **Rod** shipou (o
+/// grip pegava e o arrasto não fazia nada), e uma escrita viva sem anel é uma
+/// capacidade que ninguém alcança. A lista vem dos CHIPS que o painel pinta,
+/// então o sétimo tipo nasce coberto.
+#[test]
+fn every_kind_with_a_length_offers_the_ring_to_grab() {
+    for tag in 0..u8::try_from(ph2d_editor::ids::INSP_JOINT_KIND.len()).expect("cabe") {
+        let kind = crate::render_loop::inspector_joint::kind_of(tag);
+        if kind.length_field().is_none() {
+            continue;
+        }
+        let (mut sim, mut bridge) = param_rig();
+        let joint = sim
+            .world_mut()
+            .query::<(Entity, &Name)>()
+            .iter(sim.world())
+            .find(|(_, n)| n.as_str() == "Hinge")
+            .map(|(e, _)| e)
+            .expect("the hinge");
+        if let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(joint) {
+            c.kind = kind;
+            c.limits_enabled = false;
+        }
+        bridge.dispatch(&mut sim, false, 0);
+        let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+        assert!(
+            hs.iter().any(|h| h.kind == PointHandleKind::Length),
+            "{kind:?} tem comprimento e nao oferece o anel: {hs:?}"
+        );
+    }
+}

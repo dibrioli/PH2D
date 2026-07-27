@@ -200,6 +200,53 @@ fn the_length_ring_writes_rest_for_a_spring_and_max_for_a_rope() {
     }
 }
 
+/// **TODO tipo que PUBLICA um anel de comprimento pode ser ESCRITO pelo arrasto.**
+///
+/// O gate irmão acima cravava a lista `[(Spring, …), (Rope, …)]` à mão, e foi
+/// exatamente assim que o **Rod** shipou com o anel agarrável e a escrita
+/// devolvendo em silêncio: o handle era publicado (o `JointView` carrega o
+/// comprimento), o grip pegava, o arrasto abria — e `write_length` caía num
+/// `_ => return` cujo comentário dizia *"Pin/Weld não têm anel"*, uma
+/// **enumeração dos leitores** que era verdade com cinco tipos.
+///
+/// ⚠️ **A lista vem dos CHIPS que o painel pinta** (`INSP_JOINT_KIND`, via
+/// `kind_of`), não de um vetor escrito aqui: é a mesma amarração do gate de
+/// round-trip do §12, e é o que faz o sétimo tipo nascer coberto em vez de
+/// nascer com o defeito que este gate acabou de pegar.
+#[test]
+fn every_kind_that_offers_a_length_ring_can_have_it_dragged() {
+    for tag in 0..u8::try_from(ph2d_editor::ids::INSP_JOINT_KIND.len()).expect("cabe") {
+        let kind = crate::render_loop::inspector_joint::kind_of(tag);
+        let Some(field) = kind.length_field() else {
+            continue;
+        };
+        let (mut sim, j) = hinge(0.0, 0.0);
+        if let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(j) {
+            c.kind = kind;
+        }
+        let before = *sim.world().get::<PhysicsJoint>(j).expect("joint");
+        write_length(&mut sim, j, 2.5);
+        let after = *sim.world().get::<PhysicsJoint>(j).expect("joint");
+
+        let (wrote, untouched, other) = match field {
+            ph2d_physics_ecs::LengthField::Rest => {
+                (after.rest_length, after.max_length, before.max_length)
+            }
+            ph2d_physics_ecs::LengthField::Max => {
+                (after.max_length, after.rest_length, before.rest_length)
+            }
+        };
+        assert!(
+            (wrote - 2.5).abs() < 1e-4,
+            "o anel de {kind:?} nao escreveu o comprimento: {wrote} em vez de 2.5"
+        );
+        assert!(
+            (untouched - other).abs() < 1e-4,
+            "o arrasto de {kind:?} tocou o campo do OUTRO tipo"
+        );
+    }
+}
+
 /// **A Pin has no ring, so a length drag on one writes nothing.** No grip is
 /// ever published for it; this pins that the write refuses too, so the two
 /// halves cannot drift into a state where a stale drag authors a field the

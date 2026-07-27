@@ -411,12 +411,18 @@ fn write_length(sim: &mut SimWorld, joint: ph2d_ecs::Entity, len: f32) {
     let Some(&current) = sim.world().get::<PhysicsJoint>(joint) else {
         return;
     };
-    let edit = match current.kind {
-        ph2d_physics_ecs::JointKind::Spring => JointFieldEdit::RestLength(len),
-        ph2d_physics_ecs::JointKind::Rope => JointFieldEdit::MaxLength(len),
-        // Pin/Weld have no ring, so no grip is ever published for them; a drag
-        // that got here would be authoring a field the joint does not use.
-        _ => return,
+    // ⚠️ **`length_field`, nunca uma lista de tipos aqui.** A versão anterior
+    // enumerava `Spring | Rope` com um `_ => return` cujo comentário afirmava
+    // *"Pin/Weld não têm anel"* — verdade com cinco tipos, e falsa no instante
+    // em que o Rod chegou: o anel dele era PUBLICADO (o `JointView` carrega o
+    // comprimento), o grip pegava, o arrasto abria, e a escrita voltava em
+    // silêncio. A porta é a mesma que o desenho e o gesto de criar perguntam.
+    let edit = match current.kind.length_field() {
+        Some(ph2d_physics_ecs::LengthField::Rest) => JointFieldEdit::RestLength(len),
+        Some(ph2d_physics_ecs::LengthField::Max) => JointFieldEdit::MaxLength(len),
+        // Sem comprimento não há anel, logo nenhum grip é publicado; um arrasto
+        // que chegasse aqui estaria autorando um campo que o joint não usa.
+        None => return,
     };
     write_edit(sim, joint, current, edit);
 }

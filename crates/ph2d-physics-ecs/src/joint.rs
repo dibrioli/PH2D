@@ -66,7 +66,7 @@ use serde::{Deserialize, Serialize};
 /// módulo irmão pelo cap de 700 LOC, cortado por assunto: *que espécie de
 /// restrição é esta* × *o estado que este joint guarda*.
 mod kind;
-pub use kind::JointKind;
+pub use kind::{JointKind, LengthField};
 
 /// What a driven joint is *aiming at* — the editor's mirror of
 /// [`ph2d_physics::MotorMode`]. **Append-only**, for the same postcard reason

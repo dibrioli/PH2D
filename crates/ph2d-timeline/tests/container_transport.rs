@@ -292,3 +292,46 @@ fn an_expression_freezes_at_the_container_cut() {
         "expr freezes at the container cut (time*10 clamped to local t=1 -> 10), got {y}"
     );
 }
+
+/// **A keyed prop's expression goes QUIET outside its strip window** — it rides the
+/// strip like the keys do, instead of playing on forever (Report B: expressions must
+/// obey the strip's position and size). The Walk strip covers [0,2); a driven
+/// `X = value + 100` on the KEYED X drives INSIDE (t=0.5) and is SKIPPED OUTSIDE
+/// (t=3), where the keys don't play either, so X keeps the pose it had — proven by a
+/// sentinel that survives repeated applies (no drift). (Mutation: drop the
+/// keyed-uncovered gate in `expr_pass` -> the expr runs at t=3, X = rest+100 = 100.)
+#[test]
+fn a_keyed_expression_is_quiet_outside_its_strip_window() {
+    let (mut sim, mut st, bits, walk) = scene();
+    let tgt = st.doc.bind(bits, PropKind::TranslationX); // X is keyed (ramp 0 -> 10)
+    st.doc
+        .bindings_mut()
+        .iter_mut()
+        .find(|b| b.target == tgt)
+        .unwrap()
+        .expr = Some("value + 100".into());
+
+    // Inside the strip [0,2): the expression drives (composed value + 100 > 100).
+    apply_container(sim.world_mut(), &mut st.doc, walk, 0.5, |_| false);
+    let inside = x(&sim, bits);
+    assert!(
+        inside > 100.0,
+        "inside the strip the keyed expr drives (got {inside})"
+    );
+
+    // Outside the strip window: the keyed expr is quiet, so X keeps its pose. A
+    // sentinel must survive repeated applies — no play-outside, no drift.
+    sim.world_mut()
+        .get_mut::<Transform>(Entity::from_bits(bits))
+        .unwrap()
+        .translation
+        .x = 42.0;
+    for _ in 0..3 {
+        apply_container(sim.world_mut(), &mut st.doc, walk, 3.0, |_| false);
+    }
+    let outside = x(&sim, bits);
+    assert!(
+        (outside - 42.0).abs() < 1e-4,
+        "a keyed expr is quiet outside its strip (X holds 42; running it gives rest+100), got {outside}"
+    );
+}

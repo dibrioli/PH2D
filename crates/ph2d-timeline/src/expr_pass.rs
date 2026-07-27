@@ -29,6 +29,15 @@
 //!   expression drove it anyway it would read its OWN un-reset output as `value` and
 //!   feed back, a monotonic drift while paused. Skipped entities still appear in the
 //!   snapshot, so a prop-LINK may read their live pose.
+//!
+//! ⚠️ **A keyed prop's expression RIDES its strip** (Enio smoke). The caller hands
+//! in `composed` — what the keyed pass just wrote, per `(entity, prop)`. A prop with
+//! keys somewhere is driven by a strip/clip with a WINDOW; where the composition
+//! covers nothing (outside the strip, or a scene object in a container that does not
+//! hold it) the expression goes QUIET with the keys instead of playing on forever,
+//! and `value` is the COMPOSED value there (rest when uncovered), NEVER the stale
+//! world — that is also what kills the paused drift on an uncovered prop. A pure
+//! expression (no keys anywhere) has no strip, so it always runs on the outer clock.
 
 use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
@@ -47,8 +56,15 @@ const SEED_SPACING: f32 = 100.0;
 
 /// Run the expression pass at the composition's CUT clock `time` (see the module
 /// docs). `skip` mirrors the keyed pass: a driven entity it claims is left alone.
-/// No-op (byte-identical) when no binding carries a formula.
-pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64, skip: &dyn Fn(u64) -> bool) {
+/// `composed` is what the keyed pass just wrote, per `(entity, prop)` — the coverage
+/// mask and the pre-expression `value`. No-op (byte-identical) when no formula.
+pub(crate) fn run(
+    world: &mut World,
+    doc: &TimelineDoc,
+    time: f64,
+    skip: &dyn Fn(u64) -> bool,
+    composed: &BTreeMap<(u64, PropKind), f32>,
+) {
     // The fade pin: nothing driven -> the pass does not exist.
     if doc.bindings().iter().all(|b| b.expr.is_none()) {
         return;
@@ -96,19 +112,20 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64, skip: &dyn Fn
         let Ok(ir) = ph2d_expr_parse::parse(src) else {
             continue;
         };
-        // `value` is the PRE-EXPRESSION value (AE semantics). For a KEYED prop that
-        // is the composed keyed sample (the snapshot, stable across frames). For a
-        // KEYLESS prop it is the static REST pose — NEVER last frame's own output,
-        // which would feed back into a random walk (`value + wiggle` on a bare prop).
-        let has_keys = doc
-            .active_clip()
-            .track(b.target)
-            .is_some_and(|t| !t.is_empty());
-        let value = if has_keys {
-            snap.get(&(b.entity, b.prop)).copied().unwrap_or(0.0)
-        } else {
-            b.rest.unwrap_or(0.0)
-        };
+        // A KEYED prop's expression rides its strip: outside the window the
+        // composition covers nothing, so it goes quiet WITH the keys (Report B)
+        // rather than playing forever. A pure expression (no keys anywhere) has no
+        // window and always runs. `value` is the COMPOSED pre-expression value (rest
+        // when uncovered), NEVER the world — which could be our own last output.
+        let keyed = doc
+            .clips()
+            .iter()
+            .any(|c| c.clip.track(b.target).is_some_and(|t| !t.is_empty()));
+        let composed_v = composed.get(&(b.entity, b.prop)).copied();
+        if keyed && composed_v.is_none() {
+            continue;
+        }
+        let value = composed_v.unwrap_or(b.rest.unwrap_or(0.0));
         driven.push(Driven {
             idx: i,
             ir,

@@ -14,6 +14,7 @@ use ph2d_ecs::{Entity, World};
 
 use crate::apply::{refresh_liveness_and_rest, remapped_time, write_prop};
 use crate::doc::TimelineDoc;
+use crate::frame_solve::LinkFrame;
 use crate::prop::PropKind;
 use crate::stack_eval;
 
@@ -39,6 +40,9 @@ pub fn apply_container(
     // built only with a formula present so the no-expression path stays zero-alloc.
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
     let has_expr = doc.bindings().iter().any(|b| b.expr.is_some());
+    // ADR-0146 W0 — threaded EMPTY and never read; the blend gains a parameter, not a
+    // float op. W1 makes the container view read the same lane source the scene does.
+    let links = LinkFrame::default();
     for b in doc.bindings() {
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
             continue;
@@ -52,6 +56,7 @@ pub fn apply_container(
                 prop: b.prop,
                 rest: b.rest.unwrap_or(0.0),
             },
+            &links,
         )
         .map(AnimValue::Float);
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {

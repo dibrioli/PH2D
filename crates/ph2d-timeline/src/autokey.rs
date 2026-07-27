@@ -268,6 +268,10 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
         return curve_value(doc, entity, prop, t_secs);
     }
     let b = doc.binding_for(entity, prop)?;
+    // ADR-0146 W0 — threaded EMPTY (the authoring read does not drive expressions yet);
+    // W6 hands the persisted `LinkFrame` here so a prop-linked channel reads what the
+    // scheduler wrote instead of re-deriving it (the seed==sample cure, §4.1 C2).
+    let links = crate::frame_solve::LinkFrame::default();
     crate::stack_eval::sample_stack(
         doc,
         doc.scratch(),
@@ -277,6 +281,7 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
             prop,
             rest: b.rest.unwrap_or(0.0),
         },
+        &links,
     )
 }
 
@@ -323,6 +328,9 @@ pub fn key_value_in_active_clip(
         .binding_for(entity, prop)
         .and_then(|b| b.rest)
         .unwrap_or(want);
+    // ADR-0146 W0 — threaded EMPTY; W5 substitutes the probe INTO the expression as
+    // `value` so `value + g(time)` keys and pre-compensates instead of refusing.
+    let links = crate::frame_solve::LinkFrame::default();
     crate::stack_eval::invert_stack(
         doc,
         scratch,
@@ -335,6 +343,7 @@ pub fn key_value_in_active_clip(
         doc.active_index(),
         t_key,
         want,
+        &links,
     )
 }
 

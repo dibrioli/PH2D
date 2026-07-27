@@ -29,6 +29,7 @@ mod clock;
 pub mod doc;
 pub mod doc_path;
 mod expr_pass;
+mod frame_solve;
 pub mod graph;
 pub mod history;
 pub mod intent;

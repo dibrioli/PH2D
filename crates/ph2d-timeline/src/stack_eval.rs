@@ -27,6 +27,7 @@
 use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Interp, RationalTime, Track};
 
 use crate::doc::TimelineDoc;
+use crate::frame_solve::LinkFrame;
 use crate::prop::{Algebra, PropKind};
 use crate::refusal::KeyRefusal;
 use crate::stack::LaneMode;
@@ -54,8 +55,13 @@ pub(crate) struct Query {
 /// The value `q.target` should hold at this instant, blended out of the whole
 /// stack — or `None` when **no lane keys this channel**, in which case nothing is
 /// written and the scene's own value stands (R2).
-pub(crate) fn sample_stack(doc: &TimelineDoc, scratch: &StackScratch, q: Query) -> Option<f32> {
-    sample_stack_probed(doc, scratch, q, None)
+pub(crate) fn sample_stack(
+    doc: &TimelineDoc,
+    scratch: &StackScratch,
+    q: Query,
+    links: &LinkFrame,
+) -> Option<f32> {
+    sample_stack_probed(doc, scratch, q, None, links)
 }
 
 /// [`sample_stack`], but with one clip's track value **forced** to a probe.
@@ -73,12 +79,13 @@ fn sample_stack_probed(
     scratch: &StackScratch,
     q: Query,
     probe: Option<Probe>,
+    links: &LinkFrame,
 ) -> Option<f32> {
     #[expect(
         clippy::cast_possible_truncation,
         reason = "the scene value is f32; f64 is the blend's working precision"
     )]
-    eval_frame(doc, scratch, 0, q, probe).map(|v| v as f32)
+    eval_frame(doc, scratch, 0, q, probe, links).map(|v| v as f32)
 }
 
 /// One frame's answer for `q.target`, blended out of ITS lanes — or `None` when no lane
@@ -97,6 +104,7 @@ fn eval_frame(
     frame: usize,
     q: Query,
     probe: Option<Probe>,
+    links: &LinkFrame,
 ) -> Option<f64> {
     let Query {
         entity,
@@ -139,7 +147,7 @@ fn eval_frame(
                 ActiveSource::Container { frame: child, .. } => {
                     // The interior IS the value. A container that keys nothing here is
                     // silent, exactly like a clip with no track for this channel.
-                    match eval_frame(doc, scratch, child, q, probe) {
+                    match eval_frame(doc, scratch, child, q, probe, links) {
                         Some(v) => v,
                         None => continue,
                     }
@@ -189,7 +197,7 @@ fn eval_frame(
                     // replaces: `v - v` is an exact zero, so the whole strip went silently
                     // inert (Enio, 2026-07-23).
                     ActiveSource::Container { reference, .. } => reference
-                        .and_then(|r| eval_frame(doc, scratch, r, q, probe))
+                        .and_then(|r| eval_frame(doc, scratch, r, q, probe, links))
                         .unwrap_or_else(|| f64::from(rest)),
                     ActiveSource::Clip(clip) => {
                         let probed = probe.filter(|p| p.clip == clip);
@@ -352,8 +360,11 @@ pub(crate) fn invert_stack(
     clip: usize,
     t_key: f64,
     want: f32,
+    links: &LinkFrame,
 ) -> Option<f32> {
-    let at = |value: f64| sample_stack_probed(doc, scratch, q, Some(Probe { clip, value, t_key }));
+    let at = |value: f64| {
+        sample_stack_probed(doc, scratch, q, Some(Probe { clip, value, t_key }), links)
+    };
     let (b, one) = (f64::from(at(0.0)?), f64::from(at(1.0)?));
     let a = one - b;
     // Not "a != 0": a coefficient this small is a lever too long to pull — the key

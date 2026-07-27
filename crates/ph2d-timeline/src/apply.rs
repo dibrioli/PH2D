@@ -15,6 +15,7 @@ use ph2d_anim::{AnimValue, AttributeEvaluator};
 use ph2d_ecs::{Entity, Transform, World};
 
 use crate::doc::TimelineDoc;
+use crate::frame_solve::LinkFrame;
 use crate::prop::PropKind;
 use crate::sprite::SpriteProp;
 use crate::{stack_eval, stack_frames};
@@ -50,7 +51,15 @@ pub fn apply_from_doc_except(
     // mask + pre-expression `value` (ADR-0144). Built only when a formula exists, so
     // the no-expression hot path stays zero-alloc (HR-3, `no_alloc_bridge`).
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    let has_expr = doc.bindings().iter().any(|b| b.expr.is_some());
+    // ADR-0146 W0 — the fade pin. `scheduled` is WIDENED past the old `has_expr` (which
+    // saw only GLOBAL drivers, `binding.expr`): a PER-CLIP driver (`clip.expr`) also needs
+    // `composed` populated, or its `value` reads `rest` instead of the composed key (the
+    // §4.1 asymmetry). A formula-free document is `!scheduled`: it builds no `composed`,
+    // runs no expression pass, and the `links` it hands the blend stays EMPTY — a
+    // parameter of codegen, not a float op, so the fade fingerprint is byte-for-byte.
+    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
+        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let links = LinkFrame::default();
 
     // Pass 3 — write. Reads the document, writes the world: no `&mut doc` here,
     // so the binding list is a plain slice.
@@ -80,6 +89,7 @@ pub fn apply_from_doc_except(
                     prop: b.prop,
                     rest: b.rest.unwrap_or(0.0),
                 },
+                &links,
             )
             .map(AnimValue::Float)
         } else {
@@ -101,7 +111,7 @@ pub fn apply_from_doc_except(
         // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
         // and `from_bits` would panic rather than tell us so.
         if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            if has_expr && let AnimValue::Float(f) = &v {
+            if scheduled && let AnimValue::Float(f) = &v {
                 composed.insert((b.entity, b.prop), *f);
             }
             // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
@@ -118,13 +128,17 @@ pub fn apply_from_doc_except(
     // `stack_eval`/the fade). GLOBAL drivers run on the scene's CUT clock; per-clip
     // drivers are windowed by the STRIPS (stacked) or the active clip (non-stacked).
     // Run BEFORE `put_scratch` so the per-clip window can read the strip layout.
-    let expr_t = doc.cut_scene(t);
-    let window = if stacked {
-        crate::expr_pass::ExprWindow::Strips(&scratch)
-    } else {
-        crate::expr_pass::ExprWindow::ActiveClip
-    };
-    crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+    // ADR-0146 W0: skipped entirely on the formula-free path (`!scheduled`), where it
+    // was already a no-op internal early-out — so no `snap`/topo is even built (HR-3).
+    if scheduled {
+        let expr_t = doc.cut_scene(t);
+        let window = if stacked {
+            crate::expr_pass::ExprWindow::Strips(&scratch)
+        } else {
+            crate::expr_pass::ExprWindow::ActiveClip
+        };
+        crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &window);
+    }
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }
 

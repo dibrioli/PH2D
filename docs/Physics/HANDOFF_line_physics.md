@@ -5841,7 +5841,7 @@ diz, e é onde o artista está olhando).
 
 ---
 
-## W-Grab — A MÃO: pegar o corpo no PLAY (2026-07-26, cena `=52`, pendente de smoke)
+## W-Grab — A MÃO: pegar o corpo no PLAY (2026-07-26, cena `=52`, **smoke APROVADO** 2026-07-26)
 
 O primeiro item do **§8 Horizonte** do [plano 02](02_plano_joints_ui_authoring.md)
 (*"Pin-to-world / Target joint — carregar no play"*), e o buraco mais alcançável
@@ -6005,7 +6005,7 @@ não gira nada (uma 2ª âncora daria torque; ninguém pediu).
 
 ---
 
-## W-Hand — A SEÇÃO DA FERRAMENTA: tipos de segurar, explosão e campo de atração (2026-07-26, cena `=53`, pendente de smoke)
+## W-Hand — A SEÇÃO DA FERRAMENTA: tipos de segurar, explosão e campo de atração (2026-07-26, cena `=53`, **smoke APROVADO** 2026-07-26)
 
 > **O pedido (Enio, pós-smoke da 52):** *"Smoke OK! Ficou bom! Mas merece uma seção
 > de ajustes e tipos como vc mesmo sugeriu: Segurar RÍGIDO dentre outros como tipo

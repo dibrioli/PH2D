@@ -107,8 +107,10 @@ pub struct TargetBinding {
     /// Ela é avaliada num passe pós-composição SEPARADO ([`crate::expr_pass`]) que
     /// roda DEPOIS de o apply escrever os keyframes: lê os valores JÁ compostos e
     /// sobrescreve esta prop. **Nunca entra em `stack_eval` nem no blend** — é isso
-    /// que mantém o fade intocado. Dentro da fórmula, `value` é o valor keyado desta
-    /// prop (o pré-expressão do AE), então `value + wiggle(...)` é wiggle SOBRE as keys.
+    /// que mantém o fade intocado. Dentro da fórmula, `value` é o valor PRÉ-EXPRESSÃO
+    /// desta prop (o do AE): o sample keyado numa prop com keys, ou o rest numa prop
+    /// SEM keys — nunca a saída do frame anterior; então `value + wiggle(...)` é wiggle
+    /// SOBRE as keys (ou sobre a pose de repouso), sem realimentar.
     ///
     /// Mora no BINDING (document-wide) e não no track/clip: o binding já É "esta prop
     /// desta entidade é animada", e uma prop pode ser expression-driven **sem keys**

@@ -84,6 +84,30 @@ fn value_rides_the_keyframes() {
     assert!((x_at(&mut w, e, &mut doc, 1.0) - 110.0).abs() < 1e-3);
 }
 
+/// `value` on a KEYLESS prop is the static REST pose — NOT last frame's own output.
+/// `value + 5` on a bare Y at rest 2 holds at 7 forever; a feedback would random-walk
+/// (7, 12, 17, …). (Mutation: value from the snapshot -> the hold drifts off.)
+#[test]
+fn value_on_a_keyless_prop_is_the_rest_not_a_feedback() {
+    let mut w = World::new();
+    let e = w
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 2.0)),
+            Name::new("K"),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    drive(&mut doc, e, PropKind::TranslationY, "value + 5"); // Y has no keys
+    for _ in 0..50 {
+        apply_from_doc(&mut w, &mut doc, 0.0); // rest(2) captured frame 0; value = rest
+    }
+    let y = w.get::<Transform>(e).unwrap().translation.y;
+    assert!(
+        (y - 7.0).abs() < 1e-4,
+        "value = rest(2) + 5 = 7, stable across frames (got {y}; a feedback drifts)"
+    );
+}
+
 /// `wiggle` is deterministic (same seed reproduces) AND per-binding (two bindings
 /// with the SAME formula differ — distinct seeds). It also stays inside `[-amp,
 /// amp]`. (Mutation: a constant seed -> the two bindings coincide.)

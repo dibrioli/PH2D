@@ -71,11 +71,23 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
         let Ok(ir) = ph2d_expr_parse::parse(src) else {
             continue;
         };
+        // `value` is the PRE-EXPRESSION value (AE semantics). For a KEYED prop that
+        // is the composed keyed sample (the snapshot, stable across frames). For a
+        // KEYLESS prop it is the static REST pose — NEVER last frame's own output,
+        // which would feed back into a random walk (`value + wiggle` on a bare prop).
+        let has_keys = doc
+            .active_clip()
+            .track(b.target)
+            .is_some_and(|t| !t.is_empty());
+        let value = if has_keys {
+            snap.get(&(b.entity, b.prop)).copied().unwrap_or(0.0)
+        } else {
+            b.rest.unwrap_or(0.0)
+        };
         let bindings = ExprBindings {
             snap: &snap,
             names: &names,
-            this_entity: b.entity,
-            this_prop: b.prop,
+            value,
             time: time as f32,
             seed: b.target.get() as f32 * SEED_SPACING,
         };
@@ -94,14 +106,14 @@ pub(crate) fn run(world: &mut World, doc: &TimelineDoc, time: f64) {
 }
 
 /// The [`Bindings`] the pass hands each expression: `time` (the clip clock),
-/// `value` (this property's keyed value — the AE pre-expression value), `__seed`
-/// (this binding's wiggle seed), and `Name.prop` prop-links resolved against the
-/// snapshot. An unknown name is `0.0` (the evaluator's total contract).
+/// `value` (this property's PRE-EXPRESSION value — keyed sample or rest, computed
+/// by the caller), `__seed` (this binding's wiggle seed), and `Name.prop`
+/// prop-links resolved against the snapshot. An unknown name is `0.0` (the
+/// evaluator's total contract).
 struct ExprBindings<'a> {
     snap: &'a BTreeMap<(u64, PropKind), f32>,
     names: &'a BTreeMap<u64, u64>,
-    this_entity: u64,
-    this_prop: PropKind,
+    value: f32,
     time: f32,
     seed: f32,
 }
@@ -111,10 +123,7 @@ impl Bindings for ExprBindings<'_> {
         match name {
             "time" => self.time,
             "__seed" => self.seed,
-            "value" => *self
-                .snap
-                .get(&(self.this_entity, self.this_prop))
-                .unwrap_or(&0.0),
+            "value" => self.value,
             dotted => {
                 // `Name.prop` -> the snapshot value of another animated property.
                 if let Some((nm, pr)) = dotted.rsplit_once('.')

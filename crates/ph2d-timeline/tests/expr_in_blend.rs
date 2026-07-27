@@ -13,7 +13,7 @@
 
 use ph2d_anim::{AnimTarget, AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
-use ph2d_ecs::{Entity, Transform, World};
+use ph2d_ecs::{Entity, Name, Transform, World};
 use ph2d_timeline::{
     ClipLane, ClipStrip, LaneMode, PropKind, StackHost, StripSource, TimelineDoc, apply_from_doc,
 };
@@ -230,6 +230,133 @@ fn a_lead_out_fades_an_expression_out() {
         fading > 5.0 && fading < 105.0,
         "in the lead_out gap the expression must FADE OUT (5 < x < 105, below the clamped ~110); \
          got {fading}"
+    );
+}
+
+/// **Gate #8 (W3) — a prop-link reads the FADED source, in the same frame.** Sprite.x
+/// crossfades 0 -> 100 (faded to 50 mid-overlap); Follower drives its own X by `Sprite.x`.
+/// The frame composes in TOPOLOGICAL order — the source (Sprite, no prop-link) before its
+/// reader (Follower) — so Follower reads Sprite's ALREADY-composed 50 with no one-frame lag.
+///
+/// Follower's binding is CREATED FIRST, so the NATURAL order would compose it before its
+/// source; only the topological order gets it right. Mutation: make `topo_order` return the
+/// natural order -> Follower composes before Sprite, reads an empty `LinkFrame` -> 0, RED.
+#[test]
+fn a_prop_link_reads_the_faded_source() {
+    let mut world = World::new();
+    let follower = world
+        .spawn((Transform::default(), Name::new("Follower")))
+        .id()
+        .to_bits();
+    let sprite = world
+        .spawn((Transform::default(), Name::new("Sprite")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.add_clip("SpriteB".into()); // clip 1
+    doc.add_clip("Follow".into()); // clip 2
+
+    // Follower's binding first (index 0) — natural order would compose it before Sprite.
+    set_expr(&mut doc, 2, follower, PropKind::TranslationX, "Sprite.x");
+    // Sprite.x crossfades 0 -> 100 on lane A: at the midpoint it is the FADED 50.
+    flat(&mut doc, 0, sprite, PropKind::TranslationX, 0.0);
+    flat(&mut doc, 1, sprite, PropKind::TranslationX, 100.0);
+    let mut lane_a = ClipLane::new("A");
+    lane_a.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    lane_a.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0));
+    doc.stack_mut().push(lane_a);
+    // Follower plays clip 2 at full weight on lane B (so its OWN strip does not fade — this
+    // gate isolates the source fade; the reader's own fade is exercised elsewhere).
+    let mut lane_b = ClipLane::new("B");
+    lane_b.insert(ClipStrip::new(StripSource::Clip(2), 0.0, 3.0, 2.0));
+    doc.stack_mut().push(lane_b);
+
+    apply_from_doc(&mut world, &mut doc, 1.5);
+    let s = x_of(&world, sprite);
+    let f = x_of(&world, follower);
+    assert!(
+        (s - 50.0).abs() < 1e-3,
+        "Sprite crossfades to the faded 50; got {s}"
+    );
+    assert!(
+        (f - 50.0).abs() < 1e-3,
+        "Follower's `Sprite.x` reads Sprite's FADED value (50) IN THE SAME FRAME; got {f} \
+         (0 = the reader composed before its source)"
+    );
+}
+
+/// **Gate #14 (W3) — the scene evaluates in DEPENDENCY order.** An acyclic chain
+/// `A = B.x`, `B = C.x`, `C = 50` composes C then B then A in ONE frame, so A reads B reads
+/// C fresh with no lag; and a re-scrub at the same instant agrees. A genuine CONTRACTIVE
+/// cycle `P = 0.5*Q + 10`, `Q = P` reads its back edge from last frame (the one-frame-delay)
+/// and STABILIZES at its fixed point (20) instead of exploding.
+///
+/// Mutation: `topo_order` returns the natural order -> A composes before its source and reads
+/// 0 on the first frame, RED.
+#[test]
+fn the_scene_evaluates_in_dependency_order() {
+    // Acyclic chain, non-stacked. A's binding is created FIRST, so only the topological
+    // order composes the source (C) before B before A.
+    let mut world = World::new();
+    let a = world
+        .spawn((Transform::default(), Name::new("A")))
+        .id()
+        .to_bits();
+    let b = world
+        .spawn((Transform::default(), Name::new("B")))
+        .id()
+        .to_bits();
+    let c = world
+        .spawn((Transform::default(), Name::new("C")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    set_expr(&mut doc, 0, a, PropKind::TranslationX, "B.x");
+    set_expr(&mut doc, 0, b, PropKind::TranslationX, "C.x");
+    flat(&mut doc, 0, c, PropKind::TranslationX, 50.0);
+
+    apply_from_doc(&mut world, &mut doc, 0.0);
+    assert!((x_of(&world, c) - 50.0).abs() < 1e-3);
+    assert!(
+        (x_of(&world, b) - 50.0).abs() < 1e-3,
+        "B reads C fresh; got {}",
+        x_of(&world, b)
+    );
+    assert!(
+        (x_of(&world, a) - 50.0).abs() < 1e-3,
+        "A reads B reads C fresh in ONE frame, no lag; got {}",
+        x_of(&world, a)
+    );
+    apply_from_doc(&mut world, &mut doc, 0.0);
+    assert!(
+        (x_of(&world, a) - 50.0).abs() < 1e-3,
+        "a re-scrub at the same instant agrees (acyclic)"
+    );
+
+    // A CONTRACTIVE cycle stabilizes at its fixed point, never exploding.
+    let mut world = World::new();
+    let p = world
+        .spawn((Transform::default(), Name::new("P")))
+        .id()
+        .to_bits();
+    let q = world
+        .spawn((Transform::default(), Name::new("Q")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    set_expr(&mut doc, 0, p, PropKind::TranslationX, "0.5 * Q.x + 10");
+    set_expr(&mut doc, 0, q, PropKind::TranslationX, "P.x");
+    for _ in 0..80 {
+        apply_from_doc(&mut world, &mut doc, 0.0);
+    }
+    let pv = x_of(&world, p);
+    assert!(
+        pv.is_finite(),
+        "the cycle stayed finite (did not explode); got {pv}"
+    );
+    assert!(
+        (pv - 20.0).abs() < 0.5,
+        "the contractive cycle converges to its fixed point 20; got {pv}"
     );
 }
 

@@ -15,7 +15,7 @@ use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Transform, World};
 
 use crate::doc::TimelineDoc;
-use crate::frame_solve::LinkFrame;
+use crate::frame_solve::{self, LinkFrame};
 use crate::prop::PropKind;
 use crate::sprite::SpriteProp;
 use crate::{stack_eval, stack_frames};
@@ -59,11 +59,27 @@ pub fn apply_from_doc_except(
     // parameter of codegen, not a float op, so the fade fingerprint is byte-for-byte.
     let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
         || doc.clips().iter().any(|c| !c.expr.is_empty());
-    let links = LinkFrame::default();
+    // ADR-0146 W3 — the frame's channels compose in TOPOLOGICAL order (a prop-link source
+    // before its reader), each writing its already-composed (faded) value into `links`, so
+    // `value + Sprite.x` reads Sprite's FADED value in the SAME frame — the "double fade".
+    // `links` carries the Name->entity map + the values composed so far; a formula-free
+    // document builds NEITHER — `order` is `None`, the loop walks the natural binding order,
+    // and nothing allocates (HR-3), so the fade is byte-for-byte.
+    let mut links = LinkFrame::default();
+    let order = scheduled.then(|| {
+        links.names = frame_solve::build_names(world, doc);
+        // Seed the cycle back-edges from last frame's world; an acyclic channel's seed is
+        // overwritten by its fresh composition below, so this never moves the acyclic result.
+        frame_solve::seed_links(world, doc, &mut links.links);
+        frame_solve::topo_order(doc, &links.names)
+    });
 
-    // Pass 3 — write. Reads the document, writes the world: no `&mut doc` here,
-    // so the binding list is a plain slice.
-    for b in doc.bindings() {
+    // Pass 3 — compose (reading `links`) and write, in dependency order. Reads the
+    // document, writes the world: no `&mut doc` here, so the binding list is a plain slice.
+    let n = doc.bindings().len();
+    for idx in 0..n {
+        let bi = order.as_ref().map_or(idx, |o| o[idx]);
+        let b = &doc.bindings()[bi];
         if b.missing {
             continue;
         }
@@ -91,7 +107,6 @@ pub fn apply_from_doc_except(
                 },
                 &links,
             )
-            .map(AnimValue::Float)
         } else {
             // The active clip's authored duration cuts the solo clock too — the
             // scratch's solo entry was built at the cut (`stack_frames`), and the
@@ -109,13 +124,15 @@ pub fn apply_from_doc_except(
                 b.rest.unwrap_or(0.0),
                 &links,
             )
-            .map(AnimValue::Float)
         };
         // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
         // and `from_bits` would panic rather than tell us so.
-        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
-            if scheduled && let AnimValue::Float(f) = &v {
-                composed.insert((b.entity, b.prop), *f);
+        if let (Some(f), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            if scheduled {
+                // A downstream reader whose prop-link names this channel reads the FADED
+                // value we just composed; the global post-pass reads it as `value` (W4).
+                links.links.insert((b.entity, b.prop), f64::from(f));
+                composed.insert((b.entity, b.prop), f);
             }
             // ⚠️ Perguntado só para Position, e o curto-circuito é o que importa: o
             // `auto_orient` varre os bindings, então fazê-lo por binding tornaria o
@@ -123,7 +140,7 @@ pub fn apply_from_doc_except(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, v, orient);
+            write_prop(world, e, b, AnimValue::Float(f), orient);
         }
     }
 

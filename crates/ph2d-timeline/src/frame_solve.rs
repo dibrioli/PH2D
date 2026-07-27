@@ -17,9 +17,12 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::stable_name_id;
+use ph2d_ecs::{Entity, Name, World, stable_name_id};
 use ph2d_expr::{Bindings, Expr, eval};
 
+use crate::TargetBinding;
+use crate::apply::read_prop;
+use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 
 /// What the blend knows about other channels this frame, for prop-links (ADR-0146).
@@ -109,4 +112,156 @@ pub(crate) fn resolve_link(name: &str, names: &BTreeMap<u64, u64>) -> Option<(u6
         *names.get(&stable_name_id(nm))?,
         PropKind::from_expr_name(pr)?,
     ))
+}
+
+/// Every `(entity, prop)` an expression reads through a `Name.prop` prop-link — the
+/// dependency edges for the topological order. Shared by the frame scheduler (W3) and the
+/// global post-pass (`expr_pass`), so a link contributes the same edge wherever it is read.
+pub(crate) fn collect_links(e: &Expr, names: &BTreeMap<u64, u64>, out: &mut Vec<(u64, PropKind)>) {
+    match e {
+        Expr::Attr(name) => {
+            if let Some(k) = resolve_link(name, names) {
+                out.push(k);
+            }
+        }
+        Expr::Unary(_, a) => collect_links(a, names, out),
+        Expr::Binary(_, a, b) => {
+            collect_links(a, names, out);
+            collect_links(b, names, out);
+        }
+        Expr::Call(_, args) => args.iter().for_each(|a| collect_links(a, names, out)),
+        Expr::Select { cond, a, b } => {
+            collect_links(cond, names, out);
+            collect_links(a, names, out);
+            collect_links(b, names, out);
+        }
+        Expr::Const(_) | Expr::Param(_) => {}
+    }
+}
+
+/// Build the `stable_name_id(Name) -> entity bits` map for every live binding — the name
+/// half of a prop-link resolves through this. First name wins (deterministic under the
+/// `BTreeMap` iteration a binding list already has).
+pub(crate) fn build_names(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64> {
+    let mut names = BTreeMap::new();
+    for b in doc.bindings() {
+        if b.missing {
+            continue;
+        }
+        let Some(e) = Entity::try_from_bits(b.entity) else {
+            continue;
+        };
+        if let Some(name) = world.get::<Name>(e) {
+            names
+                .entry(stable_name_id(name.0.as_str()))
+                .or_insert(b.entity);
+        }
+    }
+    names
+}
+
+/// Seed the frame's `links` from the world — the value each channel held LAST frame — so a
+/// genuine cycle's back edge (`A` reads `B` reads `A`) reads a previous-frame value instead
+/// of 0 (ADR-0146 §2.1, the industry one-frame-delay). An ACYCLIC channel's seed is
+/// immediately overwritten by its fresh composition in topo order, so seeding never changes
+/// the acyclic result — it only gives a cycle something stable to read.
+///
+/// ⚠️ `read_prop` returns `None` for Position (a distance, not a `Transform` field) and Morph
+/// in the base crate, so a cycle back edge naming those seeds 0 — a documented limitation
+/// (C4); the acyclic path, which is every non-cyclic prop-link, is exact regardless.
+pub(crate) fn seed_links(
+    world: &World,
+    doc: &TimelineDoc,
+    out: &mut BTreeMap<(u64, PropKind), f64>,
+) {
+    for b in doc.bindings() {
+        if b.missing {
+            continue;
+        }
+        let Some(e) = Entity::try_from_bits(b.entity) else {
+            continue;
+        };
+        if let Some(v) = read_prop(world, e, b.prop) {
+            out.insert((b.entity, b.prop), f64::from(v));
+        }
+    }
+}
+
+/// Every prop-link a binding's expressions read — its GLOBAL expr and EVERY clip's per-clip
+/// expr for this target. Which clip actually plays is a runtime question the sample site
+/// answers; the dependency order takes the UNION, which is safe because an extra edge only
+/// orders more conservatively (it never drops a real dependency). Parses the exprs (335 ns
+/// each; caching was measured and rejected, `expr_pass.rs`).
+fn binding_links(
+    doc: &TimelineDoc,
+    b: &TargetBinding,
+    names: &BTreeMap<u64, u64>,
+    out: &mut Vec<(u64, PropKind)>,
+) {
+    if let Some(src) = &b.expr
+        && let Ok(ir) = ph2d_expr_parse::parse(src)
+    {
+        collect_links(&ir, names, out);
+    }
+    for clip in doc.clips() {
+        if let Some(src) = clip.expr.get(&b.target)
+            && let Ok(ir) = ph2d_expr_parse::parse(src)
+        {
+            collect_links(&ir, names, out);
+        }
+    }
+}
+
+/// **The order the frame's channels compose in (ADR-0146 W3):** a prop-link SOURCE before
+/// its reader, so `value + Sprite.x` reads Sprite's already-composed (faded) value in the
+/// SAME frame — no one-frame lag. Kahn's algorithm over the binding graph; a genuine cycle
+/// (A reads B reads A) has no valid order, so its members are appended in original order and
+/// read the value STILL STANDING in the `LinkFrame` (the one-frame delay of the industry —
+/// Houdini Feedback CHOP, ADR-0146 §3). Returns binding indices into `doc.bindings()`.
+pub(crate) fn topo_order(doc: &TimelineDoc, names: &BTreeMap<u64, u64>) -> Vec<usize> {
+    let bindings = doc.bindings();
+    let n = bindings.len();
+    let pos_of: BTreeMap<(u64, PropKind), usize> = bindings
+        .iter()
+        .enumerate()
+        .map(|(i, b)| ((b.entity, b.prop), i))
+        .collect();
+    let mut indeg = vec![0usize; n];
+    let mut dependents: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut links = Vec::new();
+    for (i, b) in bindings.iter().enumerate() {
+        links.clear();
+        binding_links(doc, b, names, &mut links);
+        let mut seen: Vec<usize> = Vec::new();
+        for k in &links {
+            if let Some(&q) = pos_of.get(k)
+                && q != i
+                && !seen.contains(&q)
+            {
+                seen.push(q);
+                indeg[i] += 1;
+                dependents[q].push(i);
+            }
+        }
+    }
+    let mut queue: Vec<usize> = (0..n).filter(|&i| indeg[i] == 0).collect();
+    let mut order = Vec::with_capacity(n);
+    let mut qi = 0;
+    while qi < queue.len() {
+        let i = queue[qi];
+        qi += 1;
+        order.push(i);
+        for &r in &dependents[i] {
+            indeg[r] -= 1;
+            if indeg[r] == 0 {
+                queue.push(r);
+            }
+        }
+    }
+    for i in 0..n {
+        if !order.contains(&i) {
+            order.push(i);
+        }
+    }
+    order
 }

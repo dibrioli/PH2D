@@ -50,7 +50,7 @@ use std::collections::BTreeMap;
 
 use crate::apply::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
-use crate::frame_solve::{SEED_SPACING, resolve_link};
+use crate::frame_solve::{SEED_SPACING, collect_links, resolve_link};
 use crate::prop::PropKind;
 
 /// Run the expression pass at the composition's CUT clock `time` (see the module
@@ -221,30 +221,6 @@ impl Bindings for ExprBindings<'_> {
 
     fn param(&self, _name: &str) -> f32 {
         0.0
-    }
-}
-
-/// Collect every `(entity, prop)` a driven binding's expression reads through a
-/// prop-link — the dependency edges for the topological order.
-fn collect_links(e: &Expr, names: &BTreeMap<u64, u64>, out: &mut Vec<(u64, PropKind)>) {
-    match e {
-        Expr::Attr(name) => {
-            if let Some(k) = resolve_link(name, names) {
-                out.push(k);
-            }
-        }
-        Expr::Unary(_, a) => collect_links(a, names, out),
-        Expr::Binary(_, a, b) => {
-            collect_links(a, names, out);
-            collect_links(b, names, out);
-        }
-        Expr::Call(_, args) => args.iter().for_each(|a| collect_links(a, names, out)),
-        Expr::Select { cond, a, b } => {
-            collect_links(cond, names, out);
-            collect_links(a, names, out);
-            collect_links(b, names, out);
-        }
-        Expr::Const(_) | Expr::Param(_) => {}
     }
 }
 

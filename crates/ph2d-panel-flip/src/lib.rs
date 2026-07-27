@@ -28,6 +28,7 @@
 mod event;
 pub mod ids;
 mod paint;
+mod paint_brush;
 mod paint_colorize;
 mod paint_layers;
 mod paint_rows;

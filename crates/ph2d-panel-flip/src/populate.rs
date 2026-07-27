@@ -97,7 +97,29 @@ fn slider_chip(
 }
 
 /// Registra os widgets fixos do painel Flip.
+///
+/// O corpo é uma LISTA — e uma lista que cresce a cada wave (o Airbrush, o Self Overlap e
+/// os dois sliders de pressão entraram em 2026-07-25). Ela vive em quatro helpers por
+/// ASSUNTO em vez de um bloco só: o teto de 200 LOC por função do painel existe para que
+/// a próxima linha acrescente na seção dela, não no fim de um corpo de 216 linhas onde
+/// ninguém acha o que já está registrado.
 pub fn populate(store: &mut WidgetStore) {
+    modes_and_edit(store);
+    brush_sliders(store);
+    fill_and_colorize(store);
+    erase_and_sculpt(store);
+
+    // Layers toolbar.
+    button(store, ids::FLIP_LAYER_ADD);
+    button(store, ids::FLIP_LAYER_DUPLICATE);
+    button(store, ids::FLIP_LAYER_DELETE);
+
+    // Close (X) chrome button.
+    button(store, ids::FLIP_CLOSE);
+}
+
+/// O rádio de MODO, a seção Edit e o grupo de estilo do Draw.
+fn modes_and_edit(store: &mut WidgetStore) {
     // Mode row (Select / Draw / Erase / Fill / Sculpt).
     button(store, ids::FLIP_MODE_SELECT);
     button(store, ids::FLIP_MODE_DRAW);
@@ -116,7 +138,10 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_EDIT_DOM_SEGMENT);
     // Shape · Tip · Self Overlap (Draw) — o grupo de estilo, no módulo-helper.
     draw_style_buttons(store);
+}
 
+/// Os sliders do PINCEL + a dinâmica de pressão (T2.6), semeados nos defaults da tool.
+fn brush_sliders(store: &mut WidgetStore) {
     // Brush sliders — seeded at the tool defaults.
     slider_chip(
         store,
@@ -179,7 +204,10 @@ pub fn populate(store: &mut WidgetStore) {
         0.0,
         1.0, // step: % inteiro
     );
+}
 
+/// Fill / Colorize / Trace: os modos, os sub-modos do balde e os seis sliders deles.
+fn fill_and_colorize(store: &mut WidgetStore) {
     // Fill (W4): modo, sub-modos do balde e os 3 sliders. Registrados sempre (só
     // PINTADOS no modo Fill) — um widget não-registrado não pode ser clicado.
     button(store, ids::FLIP_MODE_FILL);
@@ -262,7 +290,11 @@ pub fn populate(store: &mut WidgetStore) {
         PRECISION_MIN as f32,
         0.1, // LITERAL-PX-OK: passo do dominio (Precision 0,5..4), nao metrica de design
     );
+}
 
+/// A borracha (sub-modos, os links do §4.C, os sliders próprios) + os oito pincéis de
+/// escultura do W5.
+fn erase_and_sculpt(store: &mut WidgetStore) {
     // Erase sub-mode buttons (painted only in Erase mode, registered always).
     button(store, ids::FLIP_ERASE_SOFT);
     button(store, ids::FLIP_ERASE_HARD);
@@ -304,12 +336,4 @@ pub fn populate(store: &mut WidgetStore) {
     for id in ids::FLIP_RESHAPE_KIND_IDS {
         button(store, id);
     }
-
-    // Layers toolbar.
-    button(store, ids::FLIP_LAYER_ADD);
-    button(store, ids::FLIP_LAYER_DUPLICATE);
-    button(store, ids::FLIP_LAYER_DELETE);
-
-    // Close (X) chrome button.
-    button(store, ids::FLIP_CLOSE);
 }

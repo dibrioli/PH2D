@@ -108,6 +108,35 @@ fn value_on_a_keyless_prop_is_the_rest_not_a_feedback() {
     );
 }
 
+/// A multi-octave wiggle stays bounded by `amp·(1 + amp_mult)` and DIFFERS from the
+/// single-octave one (the 2nd octave adds finer detail). `wiggle(2,10,2)` (amp_mult
+/// 0.5) is bounded by 15. (Mutation: octaves ignored -> equals the 1-octave value.)
+#[test]
+fn a_multi_octave_wiggle_is_bounded_and_differs_from_one_octave() {
+    let sample = |src: &str, t: f64| -> f32 {
+        let (mut w, e) = one("Oct");
+        let mut doc = TimelineDoc::new();
+        drive(&mut doc, e, PropKind::TranslationX, src);
+        x_at(&mut w, e, &mut doc, t)
+    };
+    let mut differs = false;
+    for i in 0..24 {
+        let t = f64::from(i) * 0.13;
+        let two = sample("wiggle(2, 10, 2)", t);
+        assert!(
+            two.abs() <= 15.0 + 1e-3,
+            "a 2-octave wiggle stays within amp*(1+mult)=15 at t={t}, got {two}"
+        );
+        if (two - sample("wiggle(2, 10)", t)).abs() > 1e-3 {
+            differs = true;
+        }
+    }
+    assert!(
+        differs,
+        "a 2-octave wiggle must differ from the single-octave one"
+    );
+}
+
 /// `wiggle` is deterministic (same seed reproduces) AND per-binding (two bindings
 /// with the SAME formula differ — distinct seeds). It also stays inside `[-amp,
 /// amp]`. (Mutation: a constant seed -> the two bindings coincide.)

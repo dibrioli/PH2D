@@ -268,32 +268,55 @@ impl Parser {
     }
 }
 
-/// `wiggle(freq, amp)` — smooth pseudo-random motion, the AE staple. It is NOT an
-/// IR `Func` (that would change the frozen `ph2d-expr` contract); it LOWERS at
-/// parse time to the existing `Noise` over `time`, offset by a per-consumer
-/// `__seed` the `Bindings` supplies:
+/// The most octaves `wiggle` unrolls — each is a `Noise` node in the IR, so an
+/// unbounded literal would blow up the tree. AE's practical range is well under this.
+const WIGGLE_MAX_OCTAVES: u32 = 8; // LITERAL-PX-OK: wiggle octave cap (tree size)
+
+/// `wiggle(freq, amp [, octaves [, amp_mult]])` — smooth pseudo-random motion, the
+/// AE staple. NOT an IR `Func` (that would change the frozen `ph2d-expr` contract):
+/// it LOWERS at parse time to a SUM of `Noise` octaves over `time`, offset by a
+/// per-consumer `__seed` the `Bindings` supplies. One octave is
 ///
-/// `amp * 2 * (noise((time + __seed) * freq) - 0.5)`  in `[-amp, amp]`.
+/// `amp * 2 * (noise((time + __seed) * freq) - 0.5)`  in `[-amp, amp]`,
 ///
-/// `noise` is bit-deterministic and seeded, so a wiggle is reproducible for a
-/// given seed and two wiggles with different seeds diverge (ADR-0144). v1 is
-/// single-octave (AE's octaves/amp_mult are a later refinement).
-fn wiggle(freq: Expr, amp: Expr) -> Expr {
-    let phase = Expr::bin(
-        BinOp::Mul,
-        Expr::bin(BinOp::Add, Expr::attr("time"), Expr::attr("__seed")),
-        freq,
-    );
-    let centred = Expr::bin(
-        BinOp::Sub,
-        Expr::call(Func::Noise, vec![phase]),
-        Expr::cnst(0.5),
-    );
-    Expr::bin(
-        BinOp::Mul,
-        Expr::bin(BinOp::Mul, amp, Expr::cnst(2.0)),
-        centred,
-    )
+/// and octave `o` (0-based) adds the same at frequency `freq·2^o`, amplitude
+/// `amp·amp_mult^o`, phase-shifted by `o` so the octaves decorrelate. Total is
+/// bounded by `amp·(1 + amp_mult + … )`. `octaves`/`amp_mult` must be numeric
+/// literals (they size the unrolled tree); defaults are `1` and `0.5` (AE's), and
+/// with `octaves = 1` this is byte-identical to the single-octave lowering.
+///
+/// `noise` is bit-deterministic and seeded, so a wiggle is reproducible for a given
+/// seed and two wiggles with different seeds diverge (ADR-0144).
+fn wiggle(freq: Expr, amp: Expr, octaves: u32, amp_mult: f32) -> Expr {
+    let base = Expr::bin(BinOp::Add, Expr::attr("time"), Expr::attr("__seed"));
+    let mut sum: Option<Expr> = None;
+    let (mut freq_scale, mut amp_scale) = (1.0f32, 1.0f32);
+    for o in 0..octaves {
+        // phase = (time + seed) * (freq · 2^o), shifted by `o` for o > 0 so the
+        // octaves do not sample the same noise (o == 0 stays byte-identical).
+        let f = Expr::bin(BinOp::Mul, freq.clone(), Expr::cnst(freq_scale));
+        let mut phase = Expr::bin(BinOp::Mul, base.clone(), f);
+        if o > 0 {
+            phase = Expr::bin(BinOp::Add, phase, Expr::cnst(o as f32));
+        }
+        let centred = Expr::bin(
+            BinOp::Sub,
+            Expr::call(Func::Noise, vec![phase]),
+            Expr::cnst(0.5),
+        );
+        let term = Expr::bin(
+            BinOp::Mul,
+            Expr::bin(BinOp::Mul, amp.clone(), Expr::cnst(amp_scale * 2.0)),
+            centred,
+        );
+        sum = Some(match sum {
+            Some(s) => Expr::bin(BinOp::Add, s, term),
+            None => term,
+        });
+        freq_scale *= 2.0;
+        amp_scale *= amp_mult;
+    }
+    sum.unwrap_or_else(|| Expr::cnst(0.0))
 }
 
 /// Build a function call node from a name + args (or `select`/`wiggle` sugar).
@@ -326,11 +349,24 @@ fn make_call(name: &str, args: Vec<Expr>) -> Result<Expr, String> {
             });
         }
         "wiggle" => {
-            want(2)?;
+            if args.len() < 2 || args.len() > 4 {
+                return Err(format!("`wiggle` wants 2..4 args, got {}", args.len()));
+            }
             let mut it = args.into_iter();
             let freq = it.next().unwrap();
             let amp = it.next().unwrap();
-            return Ok(wiggle(freq, amp));
+            // octaves/amp_mult size the unrolled tree, so they must be literals.
+            let octaves = match it.next() {
+                None => 1,
+                Some(Expr::Const(n)) if n >= 1.0 => (n as u32).min(WIGGLE_MAX_OCTAVES),
+                Some(_) => return Err("`wiggle` octaves must be a number >= 1".into()),
+            };
+            let amp_mult = match it.next() {
+                None => 0.5,
+                Some(Expr::Const(m)) => m,
+                Some(_) => return Err("`wiggle` amp_mult must be a number".into()),
+            };
+            return Ok(wiggle(freq, amp, octaves, amp_mult));
         }
         other => return Err(format!("unknown function `{other}`")),
     };
@@ -417,6 +453,41 @@ mod tests {
         assert!(s.contains("Noise"), "wiggle uses Noise: {s}");
         assert!(s.contains("\"time\""), "wiggle reads time: {s}");
         assert!(s.contains("\"__seed\""), "wiggle reads the seed: {s}");
-        assert!(parse("wiggle(3)").is_err(), "wiggle wants 2 args");
+        assert!(parse("wiggle(3)").is_err(), "wiggle wants at least 2 args");
+    }
+
+    /// `wiggle(f, a, octaves [, amp_mult])` unrolls to ONE `Noise` per octave
+    /// (AE parity). `octaves`/`amp_mult` must be numeric literals; the octave count
+    /// is capped so the tree cannot explode.
+    #[test]
+    fn wiggle_octaves_unroll_to_one_noise_each() {
+        let count_noise = |src: &str| {
+            format!("{:?}", parse(src).unwrap())
+                .matches("Noise")
+                .count()
+        };
+        assert_eq!(count_noise("wiggle(2, 20)"), 1, "default is one octave");
+        assert_eq!(
+            count_noise("wiggle(2, 20, 3)"),
+            3,
+            "three octaves -> three Noise"
+        );
+        assert_eq!(
+            count_noise("wiggle(2, 20, 4, 0.6)"),
+            4,
+            "amp_mult is the 4th arg"
+        );
+        // Capped, not unbounded.
+        assert_eq!(
+            count_noise("wiggle(2, 20, 99)"),
+            WIGGLE_MAX_OCTAVES as usize,
+            "octaves are capped at WIGGLE_MAX_OCTAVES"
+        );
+        // Non-literal octaves / too many args error.
+        assert!(
+            parse("wiggle(2, 20, t)").is_err(),
+            "octaves must be a literal"
+        );
+        assert!(parse("wiggle(2, 20, 2, 0.5, 1)").is_err(), "at most 4 args");
     }
 }

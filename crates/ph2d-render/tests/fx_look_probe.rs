@@ -248,7 +248,22 @@ fn probe_fx_render_and_look() {
 
     let white = [1.0, 1.0, 1.0, 1.0];
     let black = [0.0, 0.0, 0.0, 1.0];
-    let scenes: [(&str, Vec<FxOpGpu>); 5] = [
+    // ⚠️ A matriz do INNER SHADOW: os DOIS modos × com e sem deslocamento. Uma sombra interna é
+    // exatamente a figura que um único print não decide — o defeito pode estar no modo, no
+    // deslocamento ou no perfil, e só a matriz separa os três.
+    let inner = |mode: u8, off: [i32; 2]| {
+        let mut o = op(FxOp::INNER_SHADOW, 20.0, black, off);
+        o.mode = mode;
+        o
+    };
+    // Os DOIS modos do halo externo, lado a lado: o vão entre pontas da estrela é onde eles
+    // discordam, e é a única figura que decide se a escolha vale a pena existir.
+    let glow = |mode: u8| {
+        let mut o = op(FxOp::GLOW, 20.0, white, [0, 0]);
+        o.mode = mode;
+        o
+    };
+    let scenes: [(&str, Vec<FxOpGpu>); 12] = [
         ("00_plain", vec![]),
         ("01_feather", vec![op(FxOp::FEATHER, 24.0, white, [0, 0])]),
         ("02_bevel", vec![op(FxOp::BEVEL, 20.0, black, [-12, 12])]),
@@ -257,6 +272,28 @@ fn probe_fx_render_and_look() {
             "04_inner_shadow",
             vec![op(FxOp::INNER_SHADOW, 20.0, black, [0, 0])],
         ),
+        (
+            "05_inner_prox_off0",
+            vec![inner(FxOp::MODE_PROXIMITY, [0, 0])],
+        ),
+        (
+            "06_inner_cont_off0",
+            vec![inner(FxOp::MODE_CONTOUR, [0, 0])],
+        ),
+        (
+            "07_inner_prox_off",
+            vec![inner(FxOp::MODE_PROXIMITY, [18, -18])],
+        ),
+        (
+            "08_inner_cont_off",
+            vec![inner(FxOp::MODE_CONTOUR, [18, -18])],
+        ),
+        (
+            "09_inner_glow",
+            vec![op(FxOp::INNER_GLOW, 20.0, white, [0, 0])],
+        ),
+        ("10_glow_prox", vec![glow(FxOp::MODE_PROXIMITY)]),
+        ("11_glow_cont", vec![glow(FxOp::MODE_CONTOUR)]),
     ];
     // A FONTE, como o passe a ve^ — se a premultiplicacao dela nao valer, todo o resto herda.
     write_ppm(&dir, "0_src", &readback(&gpu, src, W, H));

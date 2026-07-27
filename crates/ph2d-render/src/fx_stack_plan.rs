@@ -19,8 +19,12 @@ pub fn jump_count(band_px: f32) -> usize {
 
 pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
     let spec = FxOp::spec(op.kind);
+    // ⚠️ **Quem decide é o MODO, não o ser-de-dentro.** A condição dizia `spec.inner && Contour`, o
+    // que era verdade só enquanto os degraus de dentro fossem os únicos com modos — uma
+    // enumeração disfarçada de regra. Perguntar *"este tipo oferece escolha, e ele escolheu
+    // Contour?"* faz o Glow entrar por construção, e faz o próximo tipo com modos entrar também.
     let by_distance = matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER | FxOp::BEVEL)
-        || (spec.inner && op.mode == FxOp::MODE_CONTOUR);
+        || (!spec.modes.is_empty() && op.mode == FxOp::MODE_CONTOUR);
     if by_distance {
         // ⚠️ **Com geometria não há JFA.** O finalize computa o pé exato POR TEXEL, então a semente
         // e os saltos ficariam a produzir uma textura que ninguém lê — e uma mutação que os
@@ -54,7 +58,10 @@ pub fn op_reach(op: &FxOpGpu) -> u32 {
     if !FxOp::spec(op.kind).grows {
         return 0;
     }
-    if matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER) {
+    // Um Glow em modo Contour é uma BANDA, não um borrão: a queda vale exatamente zero em `w`, e
+    // pagar `3σ` de margem seria textura comprada a troco de nada.
+    let contour_glow = op.kind == FxOp::GLOW && op.mode == FxOp::MODE_CONTOUR;
+    if contour_glow || matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER) {
         // O contorno alcança a LARGURA dele; o feather alcança METADE dela (a rampa é centrada na
         // fronteira). Nenhum dos dois paga o suporte do kernel, que é 3×.
         let span = if op.kind == FxOp::FEATHER {

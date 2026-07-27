@@ -71,7 +71,8 @@ fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INN
 // CÔNCAVA — a casca de um lado só a estima ~0,6 px pior, e é justamente ali que o modo Contour
 // existe para acertar.
 fn seeds_shell() -> bool {
-    return g.kind == KIND_FEATHER || g.kind == KIND_OUTLINE || g.kind == KIND_BEVEL;
+    return g.kind == KIND_FEATHER || g.kind == KIND_OUTLINE || g.kind == KIND_BEVEL
+        || g.kind == KIND_GLOW;
 }
 
 // **O PÉ EXATO na silhueta**, do centro do texel `p` — o ponto mais próximo sobre os segmentos.
@@ -510,7 +511,37 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
         let colour = select(tint_lin(), vec3<f32>(1.0), shade > 0.0);
         outc = inner_tint(over, colour, abs(shade) * g.tint.a);
     } else if (is_inner()) {
-        outc = inner_tint(over, tint_lin(), (1.0 - smoothstep(0.0, w, dist)) * g.tint.a * g.opacity);
+        // ⚠️ **`sdist`, com SINAL — e é aqui que o Inner Shadow deslocado se conserta.**
+        //
+        // Com a distância sem sinal, um texel cujo ponto amostrado cai FORA da forma tem `dist`
+        // grande outra vez, então a sombra DESVANECE justamente do lado onde ela devia estar
+        // saturada: a banda descola do contorno e deixa uma tira clara entre a borda e a sombra.
+        // Medido numa aresta reta com deslocamento 8 (luminância por profundidade, tinta crua 180):
+        // `110 96 81 64 45 24 3 9 31 52 …` — o ponto MAIS ESCURO ficava 7 texels dentro, e a borda
+        // saía 3,6× mais clara que ele. Uma sombra interna é mais escura NA BORDA, sempre.
+        //
+        // Com sinal, o lado de fora satura (`smoothstep` de negativo é 0 ⇒ força 1) e o perfil
+        // volta a ser monótono a partir da borda — que é o que a máscara-invertida-deslocada do
+        // Photoshop desenha, e o que o modo Proximity (que borra uma REGIÃO, não uma distância)
+        // sempre desenhou.
+        //
+        // ⚠️ Sem deslocamento é **byte-idêntico** ao anterior: para um texel de dentro
+        // `sdist == +dist`, e um de fora é morto pelo `over.a` do `inner_tint`.
+        outc = inner_tint(over, tint_lin(), (1.0 - smoothstep(0.0, w, sdist)) * g.tint.a * g.opacity);
+    } else if (g.kind == KIND_GLOW) {
+        // **GLOW em modo Contour**: uma banda de largura constante ao longo de TODO o contorno.
+        //
+        // O irmão Proximity (o borrão da silhueta) mede *quanta forma há por perto*, então o vão
+        // entre duas pontas de uma estrela quase não brilha — o mesmo ângulo-subtendido que faz o
+        // Inner Shadow não escurecer uma reentrância. A distância não tem essa dependência: ela é
+        // zero em todo ponto do contorno.
+        //
+        // A queda vale exatamente 0 em `w` (por isso o `op_reach` deste caso é `w`, não `3σ`), e o
+        // halo entra POR BAIXO da entrada — a mesma composição do irmão e do contorno, porque um
+        // op tem de devolver UMA camada.
+        let a = (1.0 - smoothstep(0.0, w, max(-sdist, 0.0))) * g.tint.a * g.opacity;
+        let halo = vec4<f32>(tint_lin() * a, a);
+        outc = over + halo * (1.0 - over.a);
     } else {
         // CONTORNO: a borda cai exatamente em `w`, com ~1 px de anti-aliasing. Isto é uma DILATAÇÃO
         // de verdade (`d <= w`), ao contrário do corte num campo borrado, que ENCOLHE na quina
@@ -573,6 +604,7 @@ use ph2d_ecs::FxOp;
 pub(crate) fn kind_consts_wgsl() -> String {
     format!(
         "const KIND_BLUR: u32 = {}u;\n\
+         const KIND_GLOW: u32 = {}u;\n\
          const KIND_INNER_SHADOW: u32 = {}u;\n\
          const KIND_INNER_GLOW: u32 = {}u;\n\
          const KIND_OUTLINE: u32 = {}u;\n\
@@ -580,6 +612,7 @@ pub(crate) fn kind_consts_wgsl() -> String {
          const KIND_BEVEL: u32 = {}u;\n\
          const MODE_CONTOUR: u32 = {}u;\n",
         FxOp::BLUR,
+        FxOp::GLOW,
         FxOp::INNER_SHADOW,
         FxOp::INNER_GLOW,
         FxOp::OUTLINE,

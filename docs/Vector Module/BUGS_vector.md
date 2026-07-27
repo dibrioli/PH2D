@@ -1017,6 +1017,193 @@ causa. Família: [[reference_topic_fixture_discipline]].
 
 ---
 
+## Bug #20 — O contorno TRACEJADO do Feather, e a premissa de cor que o módulo afirmava (2026-07-26) — **FECHADO**
+
+### Sintoma
+
+Enio, com screenshot, três rodadas: *"ainda com artefatos"* → *"um pouco melhor mas não é o efeito
+real"* → *"bevel OK / o outro ruim"*. Ao longo do contorno da forma, uma **linha tracejada** clara;
+no bevel, **linhas pretas** no fio da borda.
+
+### Causa
+
+Três causas empilhadas, e cada uma escondia a seguinte.
+
+**(a) O PERFIL do bevel.** `1 − smoothstep(0, w, dist)` vale **1 em `dist = 0`**, ou seja punha o
+valor EXTREMO do sombreado no texel mais externo. Um bevel é uma quina arredondada: a superfície
+começa PLANA na silhueta, e o sombreado é a INCLINAÇÃO dela — logo se anula nas DUAS pontas. O
+perfil certo é `4t(1−t)`, a derivada normalizada de um smoothstep.
+
+**(b) O ESPAÇO de cor.** O `cs_resolve` fazia `rgb/a` sobre bytes sRGB, o que **não é** a
+des-premultiplicação: é ela composta com uma transferência não-linear. E o borrão somava bytes
+codificados, que é a franja escura clássica.
+
+**(c) A CONVENÇÃO DE ALFA DA FONTE — e esta derrubou uma frase do próprio doc do módulo.** O
+`fx_stack` afirmava *"premultiplicada — é o que o Vello escreve"*. Medido no rasterizador REAL:
+**1696 de 1696** texels de cobertura parcial trazem a cor CHEIA `(235,175,60)` com o alfa ao lado.
+Alfa **reto**. O `render_to_intermediate` nunca premultiplicou.
+
+### Por que atravessou dezenas de gates verdes
+
+Num texel **OPACO** e num **VAZIO** as duas convenções de alfa produzem exatamente os mesmos bytes.
+Só a cobertura PARCIAL as separa — e **toda fixture de cobertura parcial do módulo foi escrita pela
+mesma mão que escreveu a premissa**. Nenhum gate perguntava ao Vello.
+
+E o (a) tinha um buraco de oráculo próprio: todos os gates de FX mediam **variação AO LONGO de uma
+aresta** (ondulação, pente, dente). Um defeito **constante ao longo da aresta** — uma linha dura,
+uma cor lavada — é invisível a esse oráculo. Foi o mesmo buraco duas vezes.
+
+### Correção
+
+Perfil `4t(1−t)` no bevel. `cs_ingest` novo faz `sRGB reto → linear → ×α`; `cs_resolve` faz o
+inverso; o `tint` atravessa a porta única `tint_lin`. **O miolo fala linear premultiplicado e só as
+duas pontas falam sRGB reto.**
+
+### Gates
+
+`fx_stack_linear_gpu.rs` (6): a cor de um texel parcialmente coberto é a cor da forma (rampa inteira
+dentro de **2 níveis**) · a média de um borrão na fronteira preto/branco é **187,5**, não 128 ·
+overlay e halo pintam exatamente a cor da swatch · a ida e volta devolve os 256 bytes ·
+**`the_source_carries_straight_alpha_not_premultiplied`**, que interroga o Vello de verdade · e um
+arch-gate que pina o `g.tint.rgb` cru dentro da única porta que o converte. Mais
+`the_relief_vanishes_at_the_silhouette_and_peaks_inside_the_band` para o perfil. **6 mutações, 6
+sangram.**
+
+---
+
+## Bug #21 — A fixture do Feather era uma CÓPIA, e ficou para trás (2026-07-26) — **FECHADO**
+
+### Sintoma
+
+Ao corrigir a fixture oblíqua partilhada, o gate `the_feathered_band_keeps_the_shapes_colour…`
+acusou **149 níveis** de desvio de cor — **sobre um produto correto**.
+
+### Causa
+
+`fx_stack_feather_gpu.rs` carregava a própria `source()`: mesmos números, mesmo ângulo, outra
+função. Quando a partilhada aprendeu a convenção do Vello, a cópia ficou a montar
+`byte · cobertura`, uma fonte que o produto nunca produz.
+
+### Correção
+
+A cópia morreu; o arquivo importa `oblique_source` do `fx_stack_common`. Duas portas para *"como é
+uma aresta antialiasada?"* divergem — e divergiram.
+
+De carona: `make_src` não tinha `COPY_SRC`, então o modo analítico da sonda `fx_look_probe`
+**nunca rodava** (só o `PH2D_FX_VELLO=1`), o que tornava a comparação entre rasterizadores
+impossível — e era exatamente essa comparação que ia nomear a causa (c) do #20.
+
+---
+
+## Bug #22 — A sombra interna DESCOLAVA do contorno quando deslocada (2026-07-26) — **FECHADO**
+
+### Sintoma
+
+Enio: *"reveja Inner Shadow que está bugado"*. Com deslocamento, a banda escura não encosta na
+borda: sobra uma **tira clara** entre o contorno e a sombra, e a sombra tem borda dura dos dois
+lados — lê como recorte, não como sombra.
+
+### Causa
+
+Em modo Contour a força era `1 − smoothstep(0, w, dist)` com `dist` **SEM SINAL**. Um texel cujo
+ponto amostrado cai FORA da forma volta a ter distância grande, então a sombra **desvanece
+justamente do lado onde devia estar saturada**.
+
+Medido numa aresta reta com deslocamento 8 (luminância por profundidade, tinta crua ≈ 180):
+
+```
+110  96  81  64  45  24   3   9  31  52  70 …
+```
+
+O ponto **mais escuro ficava 7 texels dentro**, e a borda saía **3,6× mais clara** que ele. Uma
+sombra interna é mais escura NA BORDA, sempre.
+
+⚠️ O modo **Proximity nunca teve o defeito**: ele borra uma REGIÃO (a máscara invertida), e deslocar
+uma região preenchida continua a cobrir a borda. Deslocar um campo de DISTÂNCIA não.
+
+### Correção
+
+`sdist` — a distância **com sinal**, que o shader já computava duas linhas acima. Fora da forma ela
+é negativa, o `smoothstep` satura em 0 e a força vai a 1. Perfil com o mesmo deslocamento:
+
+```
+0   0   0   0   0   0   0   9  31  52  70 …
+```
+
+⚠️ **Sem deslocamento é byte-idêntico ao anterior** (`sdist == +dist` para todo texel de dentro, e
+um de fora é morto pelo `over.a` do `inner_tint`) — o defeito era só do caso deslocado.
+
+### Gates
+
+`fx_stack_modes_gpu.rs`: `the_inner_shadow_is_darkest_at_the_edge_even_when_offset` varre **três**
+deslocamentos (o zero é metade do gate: ali as duas leis coincidem, e um gate que só o medisse
+ficaria verde sobre o defeito inteiro) e
+`the_offset_saturates_the_shadow_as_far_as_it_pushes` pina o que o artista controla.
+
+⚠️ Este segundo nasceu vermelho **por culpa do oráculo**: eu esperava que um deslocamento de 16
+saturasse 16 texels, e o produto deu 14. O deslocamento é um **VETOR** e a profundidade é medida
+**perpendicular** à aresta — contra uma aresta oblíqua o que satura é a PROJEÇÃO,
+`16 · cos(23,7°) = 14,7`. O gate afirma a projeção.
+
+---
+
+## Bug #23 — O halo externo não tinha a escolha que os de dentro tinham (2026-07-26) — **FECHADO**
+
+### Sintoma
+
+Enio: *"coloque opção em Glow como em inner glow (proximity e contour)"*.
+
+### Causa
+
+Não é bug de cálculo: os modos existiam e chamavam-se `INNER_MODES` porque só os degraus de dentro
+os ofereciam. O nome era um **acidente de quem chegou primeiro**, não uma propriedade da escolha —
+a pergunta *"perto da borda é pouco fora por perto, ou é pouca DISTÂNCIA até ela?"* é a mesma para
+um halo externo. E o roteador dizia `spec.inner && Contour`, uma **enumeração disfarçada de regra**.
+
+### Correção
+
+`INNER_MODES` → `FALLOFF_MODES`; Glow ganha `modes`; o `plan_of` passa a perguntar *"este tipo
+oferece escolha, e ele escolheu Contour?"* — o que faz o Glow entrar por construção, e o próximo
+tipo com modos também. Braço novo no `cs_op_field` (banda externa com queda por distância),
+`seeds_shell` passa a incluir o Glow (sem semente o modo desenharia NADA no caminho do raster) e o
+`op_reach` dele passa a ser a LARGURA, não `3σ`.
+
+⚠️ **O Glow nasce em Proximity, não no Contour do `BLANK`.** Ele SEMPRE foi a silhueta borrada;
+ganhar uma opção não pode repintar o que "Add Glow" quer dizer. Um Glow salvo antes desta wave
+carrega `mode = 0` — que é exatamente este —, então nenhum arquivo muda de aparência, e o
+`PROJECT_SCHEMA` não se move (o campo já existia).
+
+### O que a medição corrigiu na minha prosa
+
+Escrevi o gate copiando o enredo do irmão de dentro (*"a reentrância quase não acende"*) **sem
+medir**. Num halo EXTERNO o sinal se inverte. Medido a 3,5 texels da borda:
+
+| sítio | Proximity | Contour |
+|---|---|---|
+| quina reentrante | 156 | 202 |
+| aresta reta | 110 | 202 |
+| quina **convexa** | **45** | 202 |
+
+Quem fica no escuro num halo externo é a **PONTA**, não o vão — há mais silhueta perto de uma
+reentrância, não menos. A lei que sobrevive à medição é exata: **à mesma distância, o Contour dá o
+mesmo halo (202, 202, 202); o Proximity varia 111 níveis.**
+
+### Gates
+
+`the_contour_glow_is_a_function_of_distance_alone_and_proximity_is_not` (a lei + o controle + o
+ponto fraco da ponta) e `the_contour_glow_reaches_its_width_and_stops`, este nos **DOIS** caminhos
+do campo — sem a metade "sem geometria" a entrada do Glow no `seeds_shell` ficaria sem prova, e
+uma forma com traço (que cai no raster) desenharia nada. `the_falloff_choice_is_offered_where_it_
+means_something` mora na tabela, porque o seam do painel é dirigido por ela e por isso **não pode**
+testemunhar que a capacidade existe. **5 mutações, 5 sangram.**
+
+⚠️ E o gate nasceu vermelho por culpa da fixture: a minha sonda "de aresta reta" caía **DENTRO** do
+braço da cruz e lia o alfa da FORMA (255) em vez do halo. O controle atropelado pelo experimento,
+pela quarta vez neste projeto — agora a premissa (*as três sondas estão FORA*) é **declarada e
+verificada** no próprio gate.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -1080,7 +1267,24 @@ causa. Família: [[reference_topic_fixture_discipline]].
     vocabulário do usuário: *"só apply aplica definitivamente"* é uma frase sobre **quando a
     geometria nasce**, não sobre botões.
 
-13. **Suprimir um overlay globalmente para resolver o caso de UMA forma é grande demais** (#18).
+14. **Uma premissa que só a cobertura PARCIAL pode contradizer não é contradita por fixtures suas**
+    (#20). O módulo afirmava *"a fonte é premultiplicada"*; num texel opaco e num vazio as duas
+    convenções dão os MESMOS bytes, então só a banda macia as separa — e toda fixture de banda macia
+    tinha sido escrita pela mesma mão que escreveu a premissa. **Pergunte ao produtor a montante**,
+    não ao seu modelo dele: o gate que faltava renderiza com o Vello de verdade e conta os texels.
+
+15. **Todo gate de um módulo pode medir o MESMO eixo, e o outro fica cego** (#20). Os gates de FX
+    mediam *variação AO LONGO de uma aresta* — ondulação, pente, dente. Um defeito **constante ao
+    longo dela** (uma linha dura, uma cor lavada) é invisível a esse oráculo, e passou duas vezes.
+    Antes de confiar numa suíte, pergunte de que EIXO ela fala; o defeito seguinte costuma estar no
+    outro.
+
+16. **Copiar o enredo de um gate irmão sem medir** (#23). Escrevi *"a reentrância quase não acende"*
+    para o Glow porque é o que vale no irmão de DENTRO — e num halo EXTERNO o sinal se inverte (há
+    MAIS silhueta perto de uma reentrância; quem morre é a ponta convexa). A asserção passava e a
+    prosa mentia. Mede-se primeiro, escreve-se depois.
+
+17. **Suprimir um overlay globalmente para resolver o caso de UMA forma é grande demais** (#18).
     O raciocínio ("esta geometria é transiente, não a decore") estava certo; o alcance
     (`draw_overlays` inteiro, todas as formas, enquanto a janela vivesse) apagou o modo Node.
     Overlay é política por-ALVO; quando a política nasce global, o gate que falta é o que pergunta

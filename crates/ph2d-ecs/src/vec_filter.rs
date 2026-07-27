@@ -78,9 +78,13 @@ pub struct FxKindSpec {
     pub modes: &'static [&'static str],
 }
 
-/// Os modos dos degraus de DENTRO. Duas leis diferentes sobre *o que é "perto da borda"*, e a
-/// diferença é visível em qualquer forma com reentrância.
-pub const INNER_MODES: [&str; 2] = ["Proximity", "Contour"];
+/// Os modos de QUEDA. Duas leis diferentes sobre *o que é "perto da borda"*, e a diferença é
+/// visível em qualquer forma com reentrância.
+///
+/// ⚠️ Chamavam-se `INNER_MODES` porque só os degraus de dentro os ofereciam — e o nome era um
+/// acidente de quem chegou primeiro, não uma propriedade da escolha: a pergunta *"perto da borda é
+/// pouco fora por perto, ou é pouca DISTÂNCIA até ela?"* é a mesma para um halo externo.
+pub const FALLOFF_MODES: [&str; 2] = ["Proximity", "Contour"];
 
 /// **Um degrau da pilha** — um efeito com os parâmetros dele.
 ///
@@ -148,14 +152,14 @@ impl FxOp {
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
     pub const KINDS: usize = 9;
 
-    /// Modo dos degraus de dentro: **a PROXIMIDADE do lado de fora** (o alfa invertido borrado — o
-    /// modelo do Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo
-    /// nela está perto de fora, e uma reentrância quase não escurece, porque o "fora" ali subtende
+    /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
+    /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
+    /// perto de fora, e uma reentrância quase não recebe efeito, porque o outro lado ali subtende
     /// um ângulo pequeno.
     pub const MODE_PROXIMITY: u8 = 0;
-    /// Modo dos degraus de dentro: **a DISTÂNCIA à borda** — uma banda de largura constante ao
-    /// longo de TODO o contorno, reentrâncias incluídas. É o que "sombra interna" desenha em quem
-    /// olha a forma, e é o default.
+    /// Modo de queda: **a DISTÂNCIA à borda** — uma banda de largura constante ao longo de TODO o
+    /// contorno, reentrâncias incluídas. É o que "sombra interna" desenha em quem olha a forma, e é
+    /// o default dos degraus de DENTRO.
     pub const MODE_CONTOUR: u8 = 1;
 
     /// **A tabela dos tipos.** Indexada pelo `kind`; a ordem É a dos códigos acima (há gate).
@@ -176,7 +180,11 @@ impl FxOp {
             color_label: Some("Color"),
             grows: true,
             inner: false,
-            modes: &[],
+            // O halo externo faz a MESMA escolha que os de dentro: a silhueta borrada (Proximity)
+            // ou uma banda de largura constante ao longo do contorno (Contour). Numa forma com
+            // reentrância elas desenham coisas visivelmente diferentes — a ponta de uma estrela
+            // brilha nas duas, o vão entre pontas só na segunda.
+            modes: &FALLOFF_MODES,
         },
         FxKindSpec {
             name: "Drop Shadow",
@@ -194,7 +202,7 @@ impl FxOp {
             color_label: Some("Color"),
             grows: false,
             inner: true,
-            modes: &INNER_MODES,
+            modes: &FALLOFF_MODES,
         },
         FxKindSpec {
             name: "Inner Glow",
@@ -203,7 +211,7 @@ impl FxOp {
             color_label: Some("Color"),
             grows: false,
             inner: true,
-            modes: &INNER_MODES,
+            modes: &FALLOFF_MODES,
         },
         FxKindSpec {
             name: "Outline",
@@ -302,6 +310,11 @@ impl FxOp {
                 kind,
                 radius: 0.18,
                 color: [1.0, 1.0, 1.0, 1.0],
+                // ⚠️ **Proximity, e não o Contour do `BLANK`.** O Glow SEMPRE foi a silhueta
+                // borrada; ganhar uma opção não pode repintar o que "Add Glow" quer dizer para
+                // quem já o usa. (Um Glow salvo antes desta wave carrega `mode = 0` — que é
+                // exatamente este —, então nenhum arquivo muda de aparência.)
+                mode: Self::MODE_PROXIMITY,
                 ..BLANK
             },
             Self::DROP_SHADOW => Self {
@@ -560,6 +573,36 @@ mod tests {
         assert_eq!(names.len(), FxOp::KINDS, "dois tipos com o mesmo nome");
         // Um código de uma versão futura cai no tipo mais inerte, nunca em pânico.
         assert_eq!(FxOp::kind_name(200), "Blur");
+    }
+
+    /// **QUEM oferece a escolha de queda, e o que cada um arma ao nascer.**
+    ///
+    /// ⚠️ Este gate existe porque o seam do painel é dirigido pela TABELA: apagar os modos do Glow
+    /// deixa-o verde (ele passa a esperar zero chips, coerentemente), então ele não pode testemunhar
+    /// que a capacidade EXISTE. O fato mora aqui, e é aqui que se pina.
+    #[test]
+    fn the_falloff_choice_is_offered_where_it_means_something() {
+        for kind in [FxOp::GLOW, FxOp::INNER_SHADOW, FxOp::INNER_GLOW] {
+            assert_eq!(
+                FxOp::spec(kind).modes,
+                &FALLOFF_MODES,
+                "{} tinha de oferecer Proximity/Contour",
+                FxOp::kind_name(kind)
+            );
+        }
+        // ⚠️ **O Glow nasce em Proximity, e os de DENTRO em Contour.** O Glow SEMPRE foi a silhueta
+        // borrada — ganhar uma opção não pode repintar o que "Add Glow" quer dizer para quem já o
+        // usa —, e um Glow salvo antes desta wave carrega `mode = 0`, que é exatamente este.
+        assert_eq!(FxOp::new(FxOp::GLOW).mode, FxOp::MODE_PROXIMITY);
+        assert_eq!(FxOp::new(FxOp::INNER_SHADOW).mode, FxOp::MODE_CONTOUR);
+        assert_eq!(FxOp::new(FxOp::INNER_GLOW).mode, FxOp::MODE_CONTOUR);
+        // E quem não oferece escolha guarda ZERO — um número que não seleciona nada é a semente do
+        // "este campo quer dizer o quê aqui?".
+        for kind in 0..FxOp::KINDS as u8 {
+            if FxOp::spec(kind).modes.is_empty() {
+                assert_eq!(FxOp::new(kind).mode, 0, "{}", FxOp::kind_name(kind));
+            }
+        }
     }
 
     /// **`tints`/`displaces` são VISTAS da tabela, não uma segunda opinião.** Foi a divergência

@@ -122,9 +122,10 @@ pub(crate) fn poke_at(
     }
     let s = settings.clamped();
     match s.tool {
-        // Já filtrado acima; o braço existe para o `match` ser exaustivo sem um
-        // `_ =>` que engoliria uma ferramenta nova em silêncio.
-        InteractionTool::Hand => None,
+        // Já filtrados acima (`needs_a_body`); os braços existem para o `match`
+        // ser exaustivo sem um `_ =>` que engoliria uma ferramenta nova em
+        // silêncio — e a Pose é exatamente a que teria sido engolida.
+        InteractionTool::Hand | InteractionTool::Pose => None,
         InteractionTool::Explode => {
             Some(physics.explode(world_point, s.blast_radius, s.blast_impulse))
         }

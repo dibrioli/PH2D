@@ -80,15 +80,24 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_number_range(row.chip, f64::from(row.min), f64::from(row.max), row.step);
     }
 
-    // The two radios of the Interaction section. Their OPTIONS are what the
-    // pointer hits, and `paint_segmented_adaptive` registers hit rects but not
-    // store entries — so an unregistered option is painted, hit-indexed and dead
-    // under the mouse (the exact failure the 36 matrix cells taught this panel).
-    for &id in ids::PHYSICS_INTERACT_TOOL_OPT.iter() {
-        button(store, id);
-    }
-    for &id in ids::PHYSICS_HOLD_MODE_OPT.iter() {
-        button(store, id);
+    // Os rádios da seção Interaction. As OPÇÕES são o que o ponteiro acerta, e
+    // o `paint_segmented_adaptive` registra retângulo de hit mas NÃO entrada de
+    // store — então uma opção não registrada fica pintada, hit-indexada e morta
+    // sob o mouse (a falha exata que as 36 células da matriz ensinaram a este
+    // painel).
+    //
+    // ⚠️ **Uma lista de listas, e não três laços.** Eram dois rádios, viraram
+    // três com a Pose (W-IK), e um laço por array é a forma que apodrece: o
+    // quarto nasce fora da regra e o modo de falha é *pintado e morto*, que
+    // nenhum gate de compilação vê.
+    for group in [
+        &ids::PHYSICS_INTERACT_TOOL_OPT[..],
+        &ids::PHYSICS_HOLD_MODE_OPT[..],
+        &ids::PHYSICS_IK_ANGLE_OPT[..],
+    ] {
+        for &id in group {
+            button(store, id);
+        }
     }
 
     // Section headers are interactive (the chevron folds them), so they are

@@ -44,9 +44,10 @@ pub(super) fn paint_interact(
             .unwrap_or(0),
     );
 
-    // How it holds — Hand only, because the other two hold nothing. Offering it
-    // under Blast would be a control the solver never reads.
-    if it.tool.needs_a_body() {
+    // How it holds — the HAND only. `needs_a_body()` would be the wrong door
+    // here even though it reads right: the Pose also takes a body, and it does
+    // not hold it with a spring — it SOLVES for it. Two tools, two questions.
+    if it.tool == InteractionTool::Hand {
         y = seg_row(
             ctx,
             x,
@@ -60,6 +61,24 @@ pub(super) fn paint_interact(
                 .iter()
                 .position(|&m| m == it.hold)
                 .unwrap_or(0),
+        );
+    }
+
+    // Does the tip keep its angle? Pose only — the other three have no tip.
+    if it.tool == InteractionTool::Pose {
+        y = seg_row(
+            ctx,
+            x,
+            w,
+            y,
+            tr("panel.physics.ik_angle"),
+            ids::PHYSICS_IK_ANGLE,
+            &ids::PHYSICS_IK_ANGLE_OPT,
+            &[
+                tr("panel.physics.ik_angle.free"),
+                tr("panel.physics.ik_angle.match"),
+            ],
+            usize::from(it.ik_match_angle),
         );
     }
 
@@ -84,7 +103,15 @@ pub(super) fn paint_interact(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        tr("panel.physics.interact_hint"),
+        // ⚠️ A dica segue o RELÓGIO da ferramenta, não é uma frase fixa: mandar
+        // "Play + drag" a quem escolheu a Pose é mandar fazer exatamente o que
+        // não funciona. `runs_at_rest` é a porta única, a mesma que a shell usa
+        // para decidir se abre o gesto.
+        if it.tool.runs_at_rest() {
+            tr("panel.physics.pose_hint")
+        } else {
+            tr("panel.physics.interact_hint")
+        },
         x,
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -99,6 +126,7 @@ fn tool_label(t: InteractionTool) -> &'static str {
         InteractionTool::Hand => tr("panel.physics.tool.hand"),
         InteractionTool::Explode => tr("panel.physics.tool.explode"),
         InteractionTool::Attract => tr("panel.physics.tool.attract"),
+        InteractionTool::Pose => tr("panel.physics.tool.pose"),
     }
 }
 

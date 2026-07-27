@@ -18,8 +18,9 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_physics_ecs::{
-    HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
-    MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
+    HoldMode, IkOptions, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE,
+    MAX_BLAST_IMPULSE, MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS,
+    WORLD_REACH_M,
 };
 
 /// One slider+chip row of the Interaction section. Same shape as
@@ -167,6 +168,26 @@ pub static IROWS: &[IRow] = &[
         set: |s, v| s.attract_force = v,
         shown: |s| s.tool == InteractionTool::Attract,
     },
+    // ── A Pose (W-IK) ───────────────────────────────────────────────────────
+    // ⚠️ **UM knob, e é decisão da MEDIÇÃO.** O solver tem dois números
+    // (`damping` e `max_iters`), e a varredura mostrou o segundo INERTE: com o
+    // damping default, tudo de 10 iterações para cima dá o mesmo erro. Um knob
+    // que a medição mostra inerte é um knob morto — ele fica no tipo do wrapper
+    // (a varredura o varre) e fora daqui (não há o que escolher).
+    //
+    // A faixa vem do WRAPPER, não transcrita: `IkOptions` é onde a tabela mora.
+    IRow {
+        label: "panel.physics.ik_damping",
+        slider: ids::PHYSICS_IK_DAMPING,
+        chip: ids::PHYSICS_IK_DAMPING_NUM,
+        min: IkOptions::MIN_DAMPING,
+        max: IkOptions::MAX_DAMPING,
+        step: 0.01, // LITERAL-PX-OK: drag step of a dimensionless factor, not a design metric
+        decimals: 2,
+        get: |s| s.ik_damping,
+        set: |s, v| s.ik_damping = v,
+        shown: |s| s.tool == InteractionTool::Pose,
+    },
 ];
 
 /// The row a widget id belongs to, if any (the slider or its chip).
@@ -180,6 +201,18 @@ pub fn tool_for(id: NodeId) -> Option<InteractionTool> {
         .iter()
         .position(|&o| o == id)
         .map(|i| InteractionTool::ALL[i])
+}
+
+/// `true`/`false` for the two options of the tip-angle radio, if `id` is one.
+///
+/// Its own resolver rather than a `bool` squeezed into `hold_for`: the two
+/// radios name different facts, and one function answering for both is how the
+/// third one would be born reading the wrong array.
+pub fn ik_angle_for(id: NodeId) -> Option<bool> {
+    ids::PHYSICS_IK_ANGLE_OPT
+        .iter()
+        .position(|&o| o == id)
+        .map(|i| i == 1)
 }
 
 /// The hold mode a segmented option id names, if any.

@@ -19,6 +19,7 @@ mod damping;
 mod diagnostics;
 mod grab;
 mod hold;
+pub mod ik;
 mod inspect;
 pub mod joint_break;
 pub mod joints;
@@ -104,6 +105,13 @@ pub struct PhysicsBridge {
     /// The joints this bridge holds, keyed by the entity that authors each one.
     /// `BTreeMap` for the determinism reason `bodies` documents.
     joints: BTreeMap<Entity, JointRef>,
+    /// A sessão de POSE viva (W-IK), ou `None` fora de um gesto de IK.
+    ///
+    /// Fora do checkpoint e fora de tudo que é persistido, de propósito: uma
+    /// árvore de multibody é **ferramenta**, não estado da cena — ela nasce num
+    /// press e morre num release, e o que sobrevive ao gesto é o `Transform`
+    /// autorado que o chamador escreveu.
+    pub(super) ik: Option<ik::IkSession>,
     joint_query: Option<JointQuery>,
     // Reusable scratch — cleared+refilled each frame so the steady-state
     // hot path never reallocates (HR-3; proven by the capacity gate).
@@ -209,6 +217,7 @@ impl PhysicsBridge {
             last_stepped: 0,
             query: None,
             joints: BTreeMap::new(),
+            ik: None,
             joint_query: None,
             seen: Vec::new(),
             names: BTreeMap::new(),

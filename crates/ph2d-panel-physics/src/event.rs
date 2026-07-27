@@ -75,6 +75,18 @@ pub(crate) fn apply_event(
             }));
             true
         }
+        // O rádio de ângulo da ponta (W-IK). Braço próprio e não um `bool`
+        // enfiado no `hold_for`: os dois rádios nomeiam fatos diferentes.
+        WidgetEvent::Click(id) if interact::ik_angle_for(id).is_some() => {
+            seam_reset_button(host, id);
+            let ik_match_angle = interact::ik_angle_for(id).expect("guard matched");
+            let it = state::current().interaction;
+            state::push_intent(PhysicsIntent::SetInteraction(InteractionSettings {
+                ik_match_angle,
+                ..it
+            }));
+            true
+        }
         WidgetEvent::Click(id) if interact::hold_for(id).is_some() => {
             seam_reset_button(host, id);
             let hold = interact::hold_for(id).expect("guard matched");

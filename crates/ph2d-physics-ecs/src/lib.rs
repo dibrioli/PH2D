@@ -32,6 +32,7 @@ pub use bridge::contacts::{
 pub use bridge::joint_break::JointBreakEvent;
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
+pub use bridge::ik::{IkPlan, IkSession};
 pub use bridge::joints::joint_desc;
 pub use bridge::views::JointView;
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
@@ -47,7 +48,7 @@ pub use interaction::{
 };
 pub use joint::{JointKind, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_group, jointed_rig};
-pub use ph2d_physics::JointLoad;
+pub use ph2d_physics::{IkOptions, JointLoad};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
 // the shell, which only deps this crate) draws the SAME resolved shape the

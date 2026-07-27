@@ -307,7 +307,17 @@ pub fn tr(key: &str) -> &'static str {
         "panel.physics.blast_force" => "Impulse",
         "panel.physics.pull_radius" => "Radius",
         "panel.physics.pull_force" => "Force",
+        "panel.physics.tool.pose" => "Pose",
+        "panel.physics.ik_damping" => "Smoothing",
+        "panel.physics.ik_angle" => "Tip Angle",
+        "panel.physics.ik_angle.free" => "Free",
+        "panel.physics.ik_angle.match" => "Match",
         "panel.physics.interact_hint" => "Play + drag on the canvas",
+        // ⚠️ A dica é OUTRA para a Pose, e não por gosto: as três primeiras
+        // ferramentas empurram o solver e exigem o relógio ANDANDO; a Pose autora
+        // a cena e exige o relógio PARADO. Uma dica só mandaria o artista fazer
+        // exatamente o que não funciona (`InteractionTool::runs_at_rest`).
+        "panel.physics.pose_hint" => "Paused + drag a jointed body",
         "panel.physics.show_colliders" => "Show Colliders",
         "panel.physics.reset_defaults" => "Reset to Defaults",
         // The world scale is `ProjectSettings::pixels_per_meter` — a PROJECT

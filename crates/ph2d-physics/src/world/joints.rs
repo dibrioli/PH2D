@@ -298,7 +298,7 @@ impl JointDesc {
 /// the readback, and the determinism hash. A joint whose axis was never authored
 /// (or arrived non-finite from a project file) gets the horizontal rail an
 /// unrotated joint means, which is the same value `JointDesc::default` carries.
-fn unit_or_x(v: [f32; 2]) -> UnitVector2<f32> {
+pub(super) fn unit_or_x(v: [f32; 2]) -> UnitVector2<f32> {
     let len = v[0].hypot(v[1]);
     if len.is_finite() && len > 1e-6 {
         UnitVector2::new_normalize(Vector2::new(v[0], v[1]))

@@ -6256,3 +6256,57 @@ decide de qual família a ferramenta é é `needs_a_body`, uma porta só.
 **Smoke: `PH2D_PHYSICS_SMOKE=53`** (a cena imprime o roteiro de 9 passos com os
 números medidos). E a **cena 52 teve o passo 5 corrigido**: ele afirmava que
 arrastar o muro estático *"não faz nada"*, o que esta wave tornou FALSO.
+
+---
+
+## W-IK — POSAR ARRASTANDO A PONTA (2026-07-27, cena `=54`, pendente de smoke)
+
+> **Arquitetura:** [ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
+> **Plano/estado:** [`03_plano_ik.md`](03_plano_ik.md). Aqui fica só o que um agente que
+> RETOMA a linha precisa saber e não deve re-derivar.
+
+O horizonte do plano 02 §8, escalonado pelo Enio em 2026-07-27. Autorar a pose de uma cadeia era
+cinemática DIRETA — gire o ombro, gire o cotovelo, e a mão cai onde cair. Agora arrastar a mão
+dobra a cadeia atrás dela.
+
+### O que existe, para não reconstruir
+
+| onde | o quê |
+|---|---|
+| `ph2d-physics/src/world/ik.rs` | `IkChain` · `IkLink` · `IkPose` · `IkOptions` · `is_rigid_link` · `PhysicsWorld::{ik_chain, ik_solve, ik_solve_stepped}` |
+| `ph2d-physics/src/world/ik_tests.rs` | 15 gates + **5 varreduras `#[ignore]`** (é delas que saíram TODOS os números) |
+| `ph2d-physics-ecs/src/bridge/ik.rs` | `IkPlan` (a política de raiz) · `IkSession` · `PhysicsBridge::{ik_plan, ik_begin, ik_move, ik_end, is_posing, posing_tip, posing_bodies}` |
+| `ph2d-physics-ecs/src/interaction.rs` | `InteractionTool::Pose` · `runs_at_rest()` · `ik_damping` · `ik_match_angle` · `ik_options()` |
+| `ph2d-panel-physics` | chip Pose · slider Smoothing · rádio Tip Angle · dica própria |
+| `shells/desktop/src/body_pose.rs` | `take_pose` · `advance_body_pose` · `release_body_pose` · `write_world_pose` |
+| `shells/desktop/src/physics_smoke_ik.rs` | cena `=54` (braço · perna com joelho limitado · cobra) + sonda `probe_smoke_54` |
+
+### As armadilhas, todas medidas (não re-descubra)
+
+1. **O `inverse_kinematics` do rapier IGNORA limites de junta.** `apply_displacement` é
+   `integrate(1.0, disp)`, aritmética pura sem clamp. A cura é a projeção pós-solve em
+   `project_limits`. ⚠️ Vale para o **Pin**; um Slider limitado posa sem limite (o `local_frame1`
+   dele carrega a rotação do eixo) — nomeado, gateado por `limit_is_a_coordinate`.
+2. **Alvo fora de alcance colapsa a cadeia**, e o teto que a protege **não pode ser em metros** —
+   a instabilidade é relativa ao comprimento do elo. Ver `IK_STEP_LINK_FACTOR`.
+3. **A cadeia esticada para de girar** se o alvo não for trazido para dentro do alcance. ⚠️ O gate
+   de RAIO ficava VERDE sobre isso: `an_unreachable_target_is_pointed_at_not_merely_reached_for` é
+   a metade que faltava.
+4. **`damping` 0,1 e não o 1,0 do rapier** — duas ordens de grandeza de erro, medidas.
+   `max_iters` não tem slider porque a medição o mostrou inerte acima de 10.
+5. ⚠️ **Três gates meus nasceram fracos e a mutação os pegou:** o do rádio Hold do painel afirmava
+   presença por `needs_a_body()` (a Pose separou as perguntas — virou `== Hand`); e o do joelho da
+   cena 54 media rotação de MUNDO num alvo só (o alvo era o lado PERMITIDO), depois um anel a 2,5
+   que está **todo fora do alcance da perna** — só o anel a 1,0 contém o fenômeno.
+
+### Estado dos pins
+
+`PROJECT_SCHEMA` **37** intocado · registro `ph2d-ecs` **21** intocado · c9 **`c9d4baee…`, 87
+corpos, byte-idêntico** · gizmo ids intocados (a pose não tem alça própria) · contrato congelado
+intocado · ADR **0145** (⚠️ número escolhido em linha paralela é PROVISÓRIO até a integração).
+
+### Aberto
+
+Ver [`03_plano_ik.md`](03_plano_ik.md) §5 — limites de Slider ao posar · joint criado no mesmo
+frame do gesto · sem marca de overlay para a pose (decisão, com o porquê) · sem ghost da pose
+anterior · nada liga posar a keyframe (a timeline já tem AutoKey).

@@ -17,6 +17,7 @@ pub mod drag;
 pub mod effector;
 pub mod form_drag;
 pub mod grab;
+pub mod ik;
 pub mod joint_break;
 pub mod joint_gains;
 pub mod joints;

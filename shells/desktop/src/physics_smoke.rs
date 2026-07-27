@@ -29,7 +29,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 /// exatamente o tipo de coisa que só cresce.
 const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
-    "44", "45", "46", "47", "51",
+    "44", "45", "46", "47", "51", "54",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -120,6 +120,7 @@ impl crate::App {
             "51" => self.physics_smoke_joint_rig(),
             "52" => self.physics_smoke_grab(),
             "53" => self.physics_smoke_interact(),
+            "54" => self.physics_smoke_ik(),
             _ => self.physics_smoke_drop(),
         }
 

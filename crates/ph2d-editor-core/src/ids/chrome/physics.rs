@@ -175,10 +175,11 @@ pub const PHYSICS_INTERACT_TOOL: NodeId = hash_node_id("physics.interact.tool");
 /// segmented helper registers its options in a LOOP, which
 /// `architecture_panel_wiring_parity` cannot see, so the seam test that clicks
 /// each chip is the only thing covering them.
-pub const PHYSICS_INTERACT_TOOL_OPT: [NodeId; 3] = [
+pub const PHYSICS_INTERACT_TOOL_OPT: [NodeId; 4] = [
     hash_node_id("physics.interact.tool.hand"),
     hash_node_id("physics.interact.tool.explode"),
     hash_node_id("physics.interact.tool.attract"),
+    hash_node_id("physics.interact.tool.pose"),
 ];
 
 /// The hold-mode radio group (Spring / Rigid / Rope) — Hand only.
@@ -220,3 +221,20 @@ pub const PHYSICS_PULL_RADIUS_NUM: NodeId = hash_node_id("physics.pull_radius_nu
 pub const PHYSICS_PULL_FORCE: NodeId = hash_node_id("physics.pull_force");
 /// Chip linked to [`PHYSICS_PULL_FORCE`].
 pub const PHYSICS_PULL_FORCE_NUM: NodeId = hash_node_id("physics.pull_force_num");
+
+/// IK damping — the Levenberg factor of the posing solver (W-IK).
+pub const PHYSICS_IK_DAMPING: NodeId = hash_node_id("physics.ik_damping");
+/// Chip linked to [`PHYSICS_IK_DAMPING`].
+pub const PHYSICS_IK_DAMPING_NUM: NodeId = hash_node_id("physics.ik_damping_num");
+
+/// The "does the tip keep its angle?" radio — Pose only.
+pub const PHYSICS_IK_ANGLE: NodeId = hash_node_id("physics.ik.angle");
+/// Its two options, in `[Free, Match]` order.
+///
+/// ⚠️ Two options and not a checkbox because this panel says everything with
+/// segmented rows, and a lone checkbox among six of them reads as a different
+/// KIND of setting than it is.
+pub const PHYSICS_IK_ANGLE_OPT: [NodeId; 2] = [
+    hash_node_id("physics.ik.angle.free"),
+    hash_node_id("physics.ik.angle.match"),
+];

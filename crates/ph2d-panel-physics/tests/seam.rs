@@ -679,10 +679,19 @@ fn the_interaction_radios_select_what_they_name() {
     }
 }
 
-/// **The Hold radio is offered ONLY for the Hand.** The Blast and the Pull hold
-/// nothing, so a mode chip under them would be a control the solver never reads.
+/// **O rádio Hold é oferecido só para a MÃO**, e o de ângulo da ponta só para a
+/// POSE. O Blast e o Pull não seguram nada; a Pose segura um corpo mas não com
+/// uma mola — ela RESOLVE por ele.
+///
+/// ⚠️ **A afirmação era `needs_a_body()` e virou `== Hand`, e é correção de
+/// GATE.** Enquanto a mão era a única ferramenta que pega um corpo, os dois
+/// coincidiam; a Pose separou as perguntas, e um gate escrito sobre o proxy
+/// falha sobre produto CORRETO. A propriedade agora é afirmada direto, e o
+/// segundo rádio entra no mesmo laço para as duas presenças serem uma varredura
+/// só — enumerar *qual rádio pertence a quem* em dois testes é como o terceiro
+/// nasce sem nenhum.
 #[test]
-fn the_hold_radio_belongs_to_the_hand() {
+fn each_tool_gets_exactly_its_own_radio() {
     for &tool in InteractionTool::ALL.iter() {
         let (mut host, mut state) = arrange_with(
             PhysicsSettings::default(),
@@ -692,13 +701,60 @@ fn the_hold_radio_belongs_to_the_hand() {
             },
         );
         let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
-        let drawn = painted
-            .iter()
-            .any(|(pid, _)| *pid == ids::PHYSICS_HOLD_MODE_OPT[0]);
+        let drawn = |id| painted.iter().any(|(pid, _)| *pid == id);
         assert_eq!(
-            drawn,
-            tool.needs_a_body(),
-            "the Hold radio's presence disagrees with `needs_a_body` for {tool:?}"
+            drawn(ids::PHYSICS_HOLD_MODE_OPT[0]),
+            tool == InteractionTool::Hand,
+            "the Hold radio is the HAND's, and it disagreed for {tool:?}"
+        );
+        assert_eq!(
+            drawn(ids::PHYSICS_IK_ANGLE_OPT[0]),
+            tool == InteractionTool::Pose,
+            "the Tip Angle radio is the POSE's, and it disagreed for {tool:?}"
+        );
+    }
+}
+
+/// **Os dois chips do ângulo da ponta despacham o que nomeiam.** Clique real,
+/// não `WidgetEvent` sintético: o sintético pula a checagem de FOCABILIDADE no
+/// store, e é assim que um chip nasce pintado, hit-registrado e morto sob o
+/// mouse (a lição das 36 células).
+#[test]
+fn the_tip_angle_chips_select_what_they_name() {
+    for (i, &want) in [false, true].iter().enumerate() {
+        let (mut host, mut state) = arrange_with(
+            PhysicsSettings::default(),
+            InteractionSettings {
+                tool: InteractionTool::Pose,
+                // Começa no OUTRO valor, senão clicar no chip já selecionado é
+                // indistinguível de um clique que não faz nada.
+                ik_match_angle: !want,
+                ..InteractionSettings::default()
+            },
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let id = ids::PHYSICS_IK_ANGLE_OPT[i];
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("tip-angle chip {i} was never painted"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let _ = drain_intents();
+        for ev in host.click_at(cx, cy) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+        }
+        let got = drain_intents()
+            .iter()
+            .find_map(|it| match it {
+                PhysicsIntent::SetInteraction(s) => Some(*s),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("clicking tip-angle chip {i} emitted nothing"));
+        assert_eq!(
+            got.ik_match_angle, want,
+            "tip-angle chip {i} set the wrong value"
         );
     }
 }

@@ -2696,6 +2696,7 @@ impl App {
         // W-Grab: e a MÃO, que também não é arrasto de gizmo — ela move a âncora
         // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
         self.advance_body_grab();
+        self.advance_body_pose();
         // Enio 2026-07-10: snap vetorial em TEMPO REAL — depois de o advance seguir o
         // cursor, gruda a forma arrastada no vizinho mais próximo (ponta p/ aberta,
         // vértice p/ fechada). Roda todo Move, então a forma prende/solta ao vivo.
@@ -2767,6 +2768,7 @@ impl App {
         // modificador (ver `crate::body_grab::release_body_grab`).
         if state == ElementState::Released {
             self.release_body_grab();
+            self.release_body_pose();
         }
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
@@ -4806,14 +4808,27 @@ impl App {
                             // (`crate::body_grab` explica por que os dois juntos
                             // seriam um gesto inerte cavalgando um vivo).
                             let grabbed = !locked
-                                && crate::body_grab::take_hold(
+                                && (crate::body_grab::take_hold(
                                     &mut gfx.physics,
                                     &self.interaction,
                                     entity,
                                     world_pos,
                                     self.playhead.is_playing(),
                                     self.timeline.flags.simulate_physics,
-                                );
+                                )
+                                // W-IK: e com o relógio PARADO e a ferramenta
+                                // Pose em mãos, o mesmo press é a **cinemática
+                                // inversa** — arrastar a ponta dobra a cadeia. A
+                                // mesma consequência da mão (pegou ⇒ nenhum
+                                // arrasto de gizmo abre), pela mesma razão: dois
+                                // gestos sobre o mesmo `Transform` no mesmo
+                                // frame é o de trás vencendo em silêncio.
+                                || crate::body_pose::take_pose(
+                                    &mut gfx.physics,
+                                    self.interaction.tool.runs_at_rest(),
+                                    entity,
+                                    self.playhead.is_playing(),
+                                ));
                             // Ver a nota gêmea no sítio da alça (W-JG): a semeadura
                             // precisa de `&mut gfx.sim` e mora fora do bloco do `t`.
                             let mut opened_drag = false;

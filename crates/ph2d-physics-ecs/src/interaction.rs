@@ -28,7 +28,7 @@
 //! `d = ratio·2·√k` é como o painel e o solver passariam a discordar sobre o que
 //! o slider significa.
 
-use ph2d_physics::{Attract, HoldSpec, PhysicsWorld};
+use ph2d_physics::{Attract, HoldSpec, IkOptions, PhysicsWorld};
 
 /// **O tamanho do mundo em que se trabalha**, em metros — a régua de todo
 /// alcance desta família (raio de explosão, raio de atração, folga da corda).
@@ -81,13 +81,34 @@ pub enum InteractionTool {
     Explode,
     /// Um campo sustentado enquanto o botão estiver apertado.
     Attract,
+    /// **Posar** (W-IK): arrastar a ponta de uma cadeia articulada e deixar o
+    /// solver achar os ângulos. ⚠️ A única desta lista que trabalha com o
+    /// relógio **PARADO** — as outras três empurram o solver, e esta AUTORA a
+    /// cena (o resultado é `Transform`, não simulação). Ver `runs_at_rest`.
+    Pose,
 }
 
 impl InteractionTool {
     /// **A pergunta que separa as duas famílias.** Ver os docs do enum.
     #[must_use]
     pub fn needs_a_body(self) -> bool {
-        matches!(self, Self::Hand)
+        matches!(self, Self::Hand | Self::Pose)
+    }
+
+    /// **Este gesto acontece com o relógio PARADO?**
+    ///
+    /// A porta única do relógio, perguntada pela shell antes de abrir o gesto e
+    /// pelo painel para escrever a dica. Enumerar *quais* ferramentas são de
+    /// repouso nos dois lugares é como a quinta nasceria de fora da regra —
+    /// exatamente o que o `needs_a_body` já evita para a outra pergunta.
+    ///
+    /// As três primeiras precisam do solver ANDANDO (uma mola que não é
+    /// integrada não puxa nada, um impulso num mundo parado não move nada); a
+    /// Pose precisa dele parado, porque o que ela escreve é a pose autorada e o
+    /// `readback` a sobrescreveria no mesmo frame.
+    #[must_use]
+    pub fn runs_at_rest(self) -> bool {
+        matches!(self, Self::Pose)
     }
 
     /// Wire string ↔ variante. O mapeamento mora **numa** função por par, porque
@@ -100,6 +121,7 @@ impl InteractionTool {
             Self::Hand => "hand",
             Self::Explode => "explode",
             Self::Attract => "attract",
+            Self::Pose => "pose",
         }
     }
 
@@ -111,12 +133,13 @@ impl InteractionTool {
             "hand" => Some(Self::Hand),
             "explode" => Some(Self::Explode),
             "attract" => Some(Self::Attract),
+            "pose" => Some(Self::Pose),
             _ => None,
         }
     }
 
     /// A ordem em que o painel pinta os chips — a mesma lista, um índice.
-    pub const ALL: [Self; 3] = [Self::Hand, Self::Explode, Self::Attract];
+    pub const ALL: [Self; 4] = [Self::Hand, Self::Explode, Self::Attract, Self::Pose];
 }
 
 /// **Como a mão segura.** A face autorável da [`HoldSpec`] do wrapper: o enum lá
@@ -195,6 +218,17 @@ pub struct InteractionSettings {
     /// Força do campo NO CENTRO, `N`. **Negativa REPELE** — e isso não duplica a
     /// explosão: um empurrão contínuo segura um corpo no ar, um estalo o arremessa.
     pub attract_force: f32,
+    /// [`InteractionTool::Pose`]: o fator de Levenberg do solver de IK.
+    /// Pequeno responde na hora, grande suaviza. Faixa e default são MEDIDOS —
+    /// ver [`IkOptions`] no wrapper, que é onde a tabela mora.
+    pub ik_damping: f32,
+    /// [`InteractionTool::Pose`]: a ponta também obedece a um ÂNGULO?
+    ///
+    /// Desligado, o solver resolve só a POSIÇÃO e deixa a atitude cair onde a
+    /// cadeia a levar — que é o que se quer arrastando com o mouse, que não tem
+    /// rotação. Ligado, o alvo é a pose inteira e a ponta mantém o ângulo em que
+    /// estava. Não é refinamento: são pedidos diferentes.
+    pub ik_match_angle: bool,
 }
 
 impl Default for InteractionSettings {
@@ -218,6 +252,11 @@ impl Default for InteractionSettings {
             // 50/3 = 16,7 N contra 9,81 N de peso). A 20 N ele cai.
             attract_radius: 3.0,
             attract_force: 50.0,
+            // Do WRAPPER, não transcrito — os defaults de `IkOptions` são os
+            // medidos, e um literal aqui seria a segunda cópia livre para
+            // derivar (o mesmo argumento das duas linhas da mão, acima).
+            ik_damping: IkOptions::default().damping,
+            ik_match_angle: IkOptions::default().match_angle,
         }
     }
 }
@@ -233,6 +272,12 @@ impl InteractionSettings {
         Self {
             tool: self.tool,
             hold: self.hold,
+            ik_damping: f(
+                self.ik_damping,
+                IkOptions::MIN_DAMPING,
+                IkOptions::MAX_DAMPING,
+            ),
+            ik_match_angle: self.ik_match_angle,
             stiffness: f(self.stiffness, MIN_HOLD_STIFFNESS, MAX_HOLD_STIFFNESS),
             damping_ratio: f(self.damping_ratio, 0.0, MAX_HOLD_DAMPING_RATIO),
             slack: f(self.slack, 0.0, WORLD_REACH_M),
@@ -248,6 +293,19 @@ impl InteractionSettings {
     /// `d = ratio · 2·√k` é o amortecimento crítico escalado pela razão, e mora
     /// aqui e em lugar nenhum mais.
     #[must_use]
+    /// A porta única do gesto de POSE: as settings do painel viram as opções que
+    /// o solver lê, já `clamped()`. Espelho exato do [`Self::hold_spec`], e pelo
+    /// mesmo motivo — o painel guarda números do artista, o wrapper quer o tipo
+    /// dele, e a conversão mora numa função só.
+    pub fn ik_options(&self) -> IkOptions {
+        let s = self.clamped();
+        IkOptions {
+            damping: s.ik_damping,
+            match_angle: s.ik_match_angle,
+            ..IkOptions::default()
+        }
+    }
+
     pub fn hold_spec(&self) -> HoldSpec {
         let c = self.clamped();
         match c.hold {
@@ -277,12 +335,14 @@ impl InteractionSettings {
     }
 
     /// O alcance que a ferramenta ATUAL desenha — o anel de mira do overlay.
-    /// `None` para a mão, que não tem alcance (ela pega o que está sob o cursor).
+    /// `None` para as que pegam um corpo, que não têm alcance.
     #[must_use]
     pub fn aim_radius(&self) -> Option<f32> {
         let c = self.clamped();
         match c.tool {
-            InteractionTool::Hand => None,
+            // As duas que pegam um corpo não têm alcance: elas pegam o que está
+            // sob o cursor.
+            InteractionTool::Hand | InteractionTool::Pose => None,
             InteractionTool::Explode => Some(c.blast_radius),
             InteractionTool::Attract => Some(c.attract_radius),
         }

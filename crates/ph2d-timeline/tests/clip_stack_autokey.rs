@@ -159,8 +159,8 @@ fn a_pose_the_active_clip_cannot_express_is_refused_not_faked() {
     );
 
     assert_eq!(
-        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 350.0),
-        None,
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 350.0, 1.0),
+        Err(ph2d_timeline::KeyRefusal::Overridden),
         "the manual K path refuses on the same rule"
     );
 }
@@ -203,8 +203,8 @@ fn with_no_stack_the_authoring_rules_are_exactly_what_they_were() {
     apply_from_doc(&mut world, &mut doc, 1.0);
 
     assert_eq!(
-        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 42.0),
-        Some(42.0),
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 42.0, 1.0),
+        Ok(42.0),
         "the track IS the scene"
     );
     assert_eq!(
@@ -324,8 +324,8 @@ fn an_additive_key_at_the_strips_first_frame_is_refused_not_lost() {
     // The animator drags it to 130. There is no value the clip could hold that
     // would produce 130 here — keying it moves the reference too.
     assert_eq!(
-        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0),
-        None,
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0, 0.0),
+        Err(ph2d_timeline::KeyRefusal::Overridden),
         "no value in the clip reaches this pose: refuse, do not invent one \
          (before the fix it returned Some(30.0), the pose came out at 100 anyway, \
           and every other frame of the lane shifted by -30)"
@@ -370,7 +370,7 @@ fn an_additive_key_away_from_the_reference_still_round_trips_exactly() {
     doc.stack_mut().push(l);
     apply_from_doc(&mut world, &mut doc, 1.0); // mid-strip; the pose is 105
 
-    let stored = key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0)
+    let stored = key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0, 1.0)
         .expect("mid-strip the clip DOES have influence");
     let t_key = key_time(&doc, e, 1.0).expect("and the key has a home");
     doc.insert_key(
@@ -428,5 +428,127 @@ fn soloed_the_same_pose_keys_and_the_on_curve_pose_keys_nothing() {
     assert!(
         !autokey_props(&doc, e, 1.0, &pose_x(100.0), &pose_x(100.0), true, false).is_empty(),
         "sem o fenômeno no fixture, mutar o solo para ler o blend ficaria verde"
+    );
+}
+
+/// Stamp a per-clip expression on clip `clip`'s channel `(e, prop)`, binding the target.
+fn set_expr(doc: &mut TimelineDoc, clip: usize, e: u64, prop: PropKind, src: &str) {
+    let tgt = doc.bind(e, prop);
+    doc.set_clip_expr(clip, tgt, Some(src.to_string()));
+}
+
+/// **Gate #11a (W5) — `value + g(time)` KEYS and PRE-COMPENSATES**, both non-stacked and
+/// stacked. The most-used AE idiom: an expression that offsets the keyed value. Keying `want`
+/// must store the value the offset needs so the composed scene lands EXACTLY on `want` —
+/// `stored = want - g(t)`, not `want` raw (which would show `want + g(t)`).
+///
+/// Non-stacked (C3): `value + time*10` at t=1 has g=10, so keying 50 stores 40, and the scene
+/// round-trips to 50. Stacked: `value + 100` on a full Override lane stores 50 for want 150.
+/// Mutation (revert the probe-through-expr in `eval_frame` / the C3 invert): the solve measures
+/// `p.value` raw and stores `want` un-compensated (40 -> 50 / 50 -> 150), RED.
+#[test]
+fn value_plus_g_of_time_keys_and_pre_compensates() {
+    // ── Non-stacked (C3): the common keyed animation with no strips. ──
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "value + time*10");
+    apply_from_doc(&mut world, &mut doc, 1.0); // scene = rest(0) + 10 = 10
+    let stored = key_value_in_active_clip(&doc, e, PropKind::TranslationX, 50.0, 1.0)
+        .expect("an affine expression keys");
+    assert!(
+        (stored - 40.0).abs() < 1e-3,
+        "value + time*10 pre-compensates g(1)=10: store 50 - 10 = 40, not 50; got {stored}"
+    );
+    // Round-trip: the stored value, composed back through the expression, shows `want`.
+    let t_key = key_time(&doc, e, 1.0).expect("the key has a home");
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(t_key),
+        AnimValue::Float(stored),
+        Interp::Hold,
+    );
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert!(
+        (x_of(&world, e) - 50.0).abs() < 1e-3,
+        "the pre-compensated key round-trips to 50, got {}",
+        x_of(&world, e)
+    );
+
+    // ── Stacked: a full Override lane playing the expression-driven clip. ──
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "value + 100");
+    doc.stack_mut().push(lane(0, LaneMode::Override, 1.0));
+    apply_from_doc(&mut world, &mut doc, 1.0); // scene = rest(0) + 100 = 100
+    let stored = key_value_in_active_clip(&doc, e, PropKind::TranslationX, 150.0, 1.0)
+        .expect("a full Override lane inverts through the expression");
+    assert!(
+        (stored - 50.0).abs() < 1e-3,
+        "value + 100 pre-compensates: store 150 - 100 = 50 through the blend, not 150; got {stored}"
+    );
+}
+
+/// **Gate #11b (W5) — a PURE formula refuses `ExpressionDriven` (not `Overridden`).** A
+/// value-INDEPENDENT expression (`wiggle`) offers no stored value that changes the pose — the
+/// solve is degenerate in `value` (A ~ 0). It must refuse, and the reason is the FORMULA
+/// (clean/rewrite it), never the lane stack — distinct from `Overridden`, whose fix is a lane.
+///
+/// Both non-stacked and stacked. Mutation (`refusal_for` returns `Overridden` unconditionally):
+/// the reason lies about what is wrong, RED.
+#[test]
+#[allow(non_snake_case, reason = "the gate name mirrors the ADR-0146 refusal variant")]
+fn a_pure_formula_refuses_ExpressionDriven() {
+    use ph2d_timeline::KeyRefusal;
+    // Non-stacked: a pure wiggle drives the channel.
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "wiggle(2, 20)");
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert_eq!(
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 42.0, 1.0),
+        Err(KeyRefusal::ExpressionDriven),
+        "a value-independent formula refuses with the FORMULA reason, not Overridden"
+    );
+
+    // Stacked: the same, through a full Override lane — `invert_stack` sees A ~ 0 and, because a
+    // formula drives the clip, names `ExpressionDriven` rather than the lane's `Overridden`.
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "wiggle(2, 20)");
+    doc.stack_mut().push(lane(0, LaneMode::Override, 1.0));
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert_eq!(
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 42.0, 1.0),
+        Err(KeyRefusal::ExpressionDriven),
+        "stacked too: the fix is the formula, not the lane"
+    );
+}
+
+/// **Gate #11c (W5) — a `value`-NON-LINEAR formula refuses.** `value*value` is affine at no
+/// two points, so the two-point solve would draw a confident WRONG line (store `want`, land at
+/// `want*want`). The THIRD probe catches it: `f(0.5)` strays from the line `f(0)..f(1)`, and the
+/// key is refused instead of moving the object somewhere nobody asked for.
+///
+/// Mutation (skip the third probe in `solve_affine`): the non-linear solve returns a bogus
+/// stored value (`Ok`) instead of refusing, RED.
+#[test]
+fn a_value_nonlinear_formula_refuses() {
+    use ph2d_timeline::KeyRefusal;
+    // Non-stacked.
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "value * value");
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert_eq!(
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 4.0, 1.0),
+        Err(KeyRefusal::ExpressionDriven),
+        "a non-linear formula has no single stored value: refuse (the 3rd probe strays)"
+    );
+
+    // Stacked: the same non-affinity through the blend.
+    let (mut world, mut doc, e) = scene();
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "value * value");
+    doc.stack_mut().push(lane(0, LaneMode::Override, 1.0));
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert_eq!(
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 4.0, 1.0),
+        Err(KeyRefusal::ExpressionDriven),
+        "stacked too: the composition is non-affine in the stored value"
     );
 }

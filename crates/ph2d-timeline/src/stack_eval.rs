@@ -242,9 +242,18 @@ fn eval_frame(
                     // nothing — unless it is the probed one, whose whole purpose is to
                     // answer "what if it did".
                     match (probed, &source) {
-                        // Keying (a probe) forces the value directly — the invert path
-                        // measures the raw stack response. W5 substitutes the probe INTO the
-                        // expression instead.
+                        // Keying an EXPRESSION-driven clip substitutes the probe into the
+                        // formula's `value` INPUT and lets `E(value)` enter the blend (ADR-0146
+                        // W5), so `invert_stack` solves for the STORED value: `value + g(time)`
+                        // keys and pre-compensates; `wiggle`/`value*value` refuse (A~0 / the
+                        // 3rd probe). `t_src` is this strip's own source time — the same clock
+                        // the un-probed Expr arm below reads.
+                        (Some(p), Some(AnimSource::Expr { ir, .. })) => {
+                            let t_src = scratch.clocks[i].get(entity, a.t_clip);
+                            f64::from(eval_expr(ir, p.value, t_src, seed_of(target), links))
+                        }
+                        // Keying a keyed/track clip (or one with no track yet) forces the value
+                        // directly — the invert path measures the raw stack response.
                         (Some(p), _) => p.value,
                         (None, Some(AnimSource::Track(tr))) => {
                             let t_src = scratch.clocks[i].get(entity, a.t_clip);
@@ -302,6 +311,16 @@ fn eval_frame(
                         match (probed, &source) {
                             (Some(p), Some(AnimSource::Track(tr))) => {
                                 reference_after(tr, a.src_in, p)
+                            }
+                            // W5: the reference of an expression-driven additive strip under a
+                            // probe is `E` at the strip's FIRST frame, `value` = the (post-key)
+                            // keyed reference there — or the probe value when it has no track.
+                            // Affine in `p.value` iff `E` is affine, the guarantee the solve
+                            // needs; a non-affine one is refused by the third probe.
+                            (Some(p), Some(AnimSource::Expr { ir, value_track })) => {
+                                let ref_val = value_track
+                                    .map_or(p.value, |tr| reference_after(tr, a.src_in, p));
+                                f64::from(eval_expr(ir, ref_val, a.src_in, seed_of(target), links))
                             }
                             (Some(p), _) => p.value, // no track / expr under probe: key IS the curve
                             (None, Some(AnimSource::Track(tr))) => reference(tr, a.src_in),
@@ -470,35 +489,110 @@ pub(crate) fn invert_stack(
     t_key: f64,
     want: f32,
     links: &LinkFrame,
-) -> Option<f32> {
+) -> Result<f32, KeyRefusal> {
     let at = |value: f64| {
         sample_stack_probed(doc, scratch, q, Some(Probe { clip, value, t_key }), links)
+            .map(f64::from)
     };
-    let (b, one) = (f64::from(at(0.0)?), f64::from(at(1.0)?));
-    let a = one - b;
-    // Not "a != 0": a coefficient this small is a lever too long to pull — the key
-    // would be astronomatical and the next frame's rounding would move the object.
-    if a.abs() < 1e-6 {
-        return None;
+    match solve_affine(at, f64::from(want)) {
+        Ok(v) => Ok(cast_f32(v)),
+        // A probe FORCES the clip to contribute, so `NoValue` here means the clip is in no
+        // live lane at all (degenerate) — read as no influence.
+        Err(AffineFail::NoValue) => Err(KeyRefusal::Overridden),
+        // `A ~ 0` or a non-affine composition: the fix is the FORMULA if one drives this
+        // channel (`ExpressionDriven`, ADR-0146 W5), else the lane stack (`Overridden`).
+        Err(AffineFail::NoInfluence | AffineFail::NonAffine) => {
+            Err(refusal_for(doc, clip, q.target))
+        }
     }
-    // **Verify the affinity; do not trust it.** Two points pin a line through ANY
-    // two samples — they cannot tell you the function between them was a line. A
-    // third probe costs one evaluation and refuses every case where it was not:
-    // the same clip on an Override lane and a Ratio lane at once (the composition
-    // is quadratic in `v`), or a Ratio lane whose reference the key itself moves.
-    // Each of those would otherwise hand back a confident, wrong number and put the
-    // object somewhere nobody asked for. A stack with no single answer has no
-    // answer, and R9 says which way to fail.
-    let half = f64::from(at(0.5)?);
+}
+
+/// **Invert the ACTIVE clip's affine expression on the NON-STACKED path (C3, ADR-0146 W5).**
+/// Without a stack the scene value IS the expression `E(stored, t)` (`solo_source_value`), so
+/// keying `want` stores the `v` with `E(v, t) == want` — `value + g(time)` pre-compensates by
+/// `want - g(t)`. `None` when the active clip does not DRIVE `target` by an expression (the
+/// caller then stores `want` verbatim, the track being the scene); `Err(ExpressionDriven)` when
+/// the formula is pure or non-linear. Uses the SAME [`solve_affine`] as the stacked path, so
+/// the two fail and pre-compensate by one rule.
+pub(crate) fn invert_active_clip_expr(
+    doc: &TimelineDoc,
+    target: AnimTarget,
+    t: f64,
+    want: f32,
+    links: &LinkFrame,
+) -> Option<Result<f32, KeyRefusal>> {
+    let AnimSource::Expr { ir, .. } = clip_anim_source(doc, doc.active_index(), target)? else {
+        return None; // a keyed/track channel keys verbatim — the caller's early `Ok(want)`
+    };
+    let e = |v: f64| Some(f64::from(eval_expr(&ir, v, t, seed_of(target), links)));
+    Some(match solve_affine(e, f64::from(want)) {
+        Ok(v) => Ok(cast_f32(v)),
+        Err(_) => Err(KeyRefusal::ExpressionDriven),
+    })
+}
+
+/// The refusal reason when the affine solve is degenerate / non-affine: `ExpressionDriven` if a
+/// FORMULA drives this channel (the fix is the formula, ADR-0146 W5), else `Overridden` (the
+/// fix is the lane stack).
+fn refusal_for(doc: &TimelineDoc, clip: usize, target: AnimTarget) -> KeyRefusal {
+    if matches!(
+        clip_anim_source(doc, clip, target),
+        Some(AnimSource::Expr { .. })
+    ) {
+        KeyRefusal::ExpressionDriven
+    } else {
+        KeyRefusal::Overridden
+    }
+}
+
+/// **Invert an affine-in-`v` sampler by THREE probes** — `B = f(0)`, `A = f(1) - B`, and a
+/// third `f(0.5)` that VERIFIES the line (two points pin a line through ANY two samples; they
+/// cannot tell you the function between them was one). Returns the `v` with `f(v) == want`.
+///
+/// The one solve, shared by the stacked keying ([`invert_stack`]) and the non-stacked
+/// expression keying ([`invert_active_clip_expr`], C3), so both refuse and pre-compensate by
+/// the same rule and there is no second copy to drift ([[feedback_two_doors_to_the_same_question_diverge]]).
+fn solve_affine(mut f: impl FnMut(f64) -> Option<f64>, want: f64) -> Result<f64, AffineFail> {
+    let b = f(0.0).ok_or(AffineFail::NoValue)?;
+    let one = f(1.0).ok_or(AffineFail::NoValue)?;
+    let a = one - b;
+    // Not "a != 0": a coefficient this small is a lever too long to pull — the key would be
+    // astronomical and the next frame's rounding would move the object.
+    if a.abs() < 1e-6 {
+        return Err(AffineFail::NoInfluence);
+    }
+    // **Verify the affinity; do not trust it.** A third probe refuses every case where the
+    // function between the two endpoints was not a line: the same clip on an Override lane and
+    // a Ratio lane at once (quadratic in `v`), a Ratio lane whose reference the key moves, or a
+    // non-linear formula (`value*value`). Each would otherwise hand back a confident, wrong
+    // number and put the object somewhere nobody asked for.
+    let half = f(0.5).ok_or(AffineFail::NoValue)?;
     let scale = 1.0 + b.abs() + one.abs();
     if (half - (0.5 * a + b)).abs() > AFFINE_TOL * scale {
-        return None;
+        return Err(AffineFail::NonAffine);
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "the scene value is f32; f64 is the blend's working precision"
-    )]
-    Some(((f64::from(want) - b) / a) as f32)
+    Ok((want - b) / a)
+}
+
+/// Why [`solve_affine`] could not name a stored value.
+enum AffineFail {
+    /// A probe produced no value: no lane keys the channel even under the probe.
+    NoValue,
+    /// `A ~ 0`: the output does not depend on the stored value (a full Override above, or a
+    /// value-independent formula like `wiggle`).
+    NoInfluence,
+    /// The third probe strayed off the line: the composition is non-affine in the stored value
+    /// (Override + Ratio at once, or a non-linear formula like `value*value`).
+    NonAffine,
+}
+
+/// The scene value is f32; f64 is the blend's working precision.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the scene value is f32; f64 is the blend's working precision"
+)]
+fn cast_f32(v: f64) -> f32 {
+    v as f32
 }
 
 /// How far a three-point probe may stray from the line its two endpoints define

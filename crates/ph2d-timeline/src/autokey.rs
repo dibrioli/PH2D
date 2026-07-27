@@ -27,6 +27,7 @@ use ph2d_anim::AttributeEvaluator;
 use crate::doc::TimelineDoc;
 use crate::path_convert::PositionKeyMode;
 use crate::prop::PropKind;
+use crate::refusal::KeyRefusal;
 
 /// One selected sprite's six animatable values this frame, in [`PropKind::ALL`]
 /// order (`TranslationX, TranslationY, Rotation, ScaleX, ScaleY, Opacity`).
@@ -180,9 +181,11 @@ fn autokey_props_in(
         // no stack, `v` itself. Under a stack, the inverse of the blend — and
         // sometimes there is no inverse (ADR-0115 R9), in which case we refuse.
         // Never write a key that moves the object.
-        match key_value_in_active_clip(doc, entity, prop, v) {
-            Some(stored) => plan.keys.push((prop, stored)),
-            None => plan.refused.push(prop),
+        match key_value_in_active_clip(doc, entity, prop, v, t_secs) {
+            Ok(stored) => plan.keys.push((prop, stored)),
+            // The autokey diff drops the REASON (it just does not write); the manual K path
+            // surfaces it (`KeyRefusal::message`). W5 adds `ExpressionDriven` to the set.
+            Err(_) => plan.refused.push(prop),
         }
     }
     // **The motion-path anchor**, decided once from both axes. A Transform always
@@ -287,50 +290,64 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
 
 /// **The number to store in the active clip's track so the scene shows `want`.**
 ///
-/// Without a stack this is the identity — the track IS the scene. With one, the
-/// track is one voice in a blend, and the key must be pre-compensated for the
-/// rest of it ([`crate::stack_eval::invert_stack`]). `None` = **refuse**: the pose
-/// is not reachable by keying this clip (an `Override` lane at full weight above
-/// owns the channel), and the alternatives are to refuse or to move the object
-/// behind the animator's back.
+/// Without a stack this is the identity — the track IS the scene — UNLESS an affine expression
+/// drives the channel, in which case the key must INVERT it (`value + g(time)` stores
+/// `want - g(t)`, C3). With a stack, the track is one voice in a blend, and the key is
+/// pre-compensated for the rest of it ([`crate::stack_eval::invert_stack`]). `Err` = **refuse**,
+/// with the reason ([`KeyRefusal`]): the pose is not reachable by keying this clip — an
+/// `Override` lane above owns it (`Overridden`), or a pure/non-linear formula drives it
+/// (`ExpressionDriven`, ADR-0146 W5). Never move the object behind the animator's back.
 ///
-/// Every path that authors a key goes through here — auto-key, performing, and
-/// the manual `K` — because a value written by one rule and read by another is
-/// the bug this module has now shipped three times.
-#[must_use]
+/// Every path that authors a key goes through here — auto-key, performing, and the manual `K` —
+/// because a value written by one rule and read by another is the bug this module has now
+/// shipped three times.
 pub fn key_value_in_active_clip(
     doc: &TimelineDoc,
     entity: u64,
     prop: PropKind,
     want: f32,
-) -> Option<f32> {
-    // Root-aware, like `key_home` (the same 2026-07-22 fix): rooted, the blend to
-    // invert is the CONTAINER's, and the scene's emptiness is the wrong question.
-    if doc.scratch().root().is_none() && doc.stack().is_empty() {
-        return Some(want);
-    }
-    let scratch = doc.scratch();
-    // The clip being edited must be playing exactly once right now, or "key it
-    // here" has no single answer (see `stack_eval::sole_strip_of`).
-    let strip = crate::stack_eval::sole_strip_of(scratch, doc.active_index()).ok()?;
-    // WHERE the key lands, in the clip's own time. The probe needs it: on an
-    // additive lane a key can move the reference its own delta is measured against,
-    // and a probe that only substituted a value could not see that.
-    let t_key = crate::stack_eval::strip_source_time(scratch, &strip, entity)?;
-    // An unbound property has no target anywhere yet, so no clip can key it — a
-    // target no clip holds is exactly the right answer, and the probe supplies the
-    // active clip's contribution regardless. Targets are allocated up from 0, so
-    // this one is unreachable by construction.
+    t: f64,
+) -> Result<f32, KeyRefusal> {
+    // An unbound property has no target anywhere yet; a target no clip holds is the right
+    // answer, and the probe supplies the active clip's contribution regardless. Targets are
+    // allocated up from 0, so this one is unreachable by construction.
     let target = doc
         .binding_for(entity, prop)
         .map_or(ph2d_anim::AnimTarget::new(u64::MAX), |b| b.target);
+    // ADR-0146 W0 threaded EMPTY; W5 substitutes the probe INTO the expression as `value` so
+    // `value + g(time)` keys and pre-compensates instead of refusing.
+    let links = crate::frame_solve::LinkFrame::default();
+    // Root-aware, like `key_home` (the same 2026-07-22 fix): rooted, the blend to invert is
+    // the CONTAINER's, and the scene's emptiness is the wrong question.
+    if doc.scratch().root().is_none() && doc.stack().is_empty() {
+        // (C3) A non-stacked clip driven by an AFFINE expression must INVERT it — storing
+        // `want` raw would land the pose at `E(want, t)` (confidently wrong). The scene here IS
+        // `E(stored, t)`, evaluated at the entity's clip clock: the EXACT `clip_cut` +
+        // `remapped_time` composition `key_home` keys the TIME through, so the K value and the K
+        // time share one clock (seed==sample). `t` is the raw playhead, from the same caller.
+        let t_entity = crate::apply::remapped_time(doc, entity, doc.clip_cut(doc.active_index(), t));
+        if let Some(res) =
+            crate::stack_eval::invert_active_clip_expr(doc, target, t_entity, want, &links)
+        {
+            return res;
+        }
+        // A keyed/track channel (or a bare property) keys verbatim — the track IS the scene.
+        return Ok(want);
+    }
+    let scratch = doc.scratch();
+    // The clip being edited must be playing exactly once right now, or "key it here" has no
+    // single answer (see `stack_eval::sole_strip_of`).
+    let strip = crate::stack_eval::sole_strip_of(scratch, doc.active_index())?;
+    // WHERE the key lands, in the clip's own time. The probe needs it: on an additive lane a
+    // key can move the reference its own delta is measured against, and a probe that only
+    // substituted a value could not see that. A live strip has a clock entry, so a `None` here
+    // would be the scratch disagreeing with itself.
+    let t_key = crate::stack_eval::strip_source_time(scratch, &strip, entity)
+        .ok_or(KeyRefusal::NotPlaying)?;
     let rest = doc
         .binding_for(entity, prop)
         .and_then(|b| b.rest)
         .unwrap_or(want);
-    // ADR-0146 W0 — threaded EMPTY; W5 substitutes the probe INTO the expression as
-    // `value` so `value + g(time)` keys and pre-compensates instead of refusing.
-    let links = crate::frame_solve::LinkFrame::default();
     crate::stack_eval::invert_stack(
         doc,
         scratch,

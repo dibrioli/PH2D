@@ -23,6 +23,13 @@ pub enum KeyRefusal {
     /// clip stores (an `Override` lane at full weight), so no value in it produces
     /// the pose that was asked for. The affine solve is degenerate — `A ~ 0`.
     Overridden,
+    /// The channel is driven by a **formula** the key cannot invert (ADR-0146 W5): a
+    /// value-independent one (`wiggle`, `time*10` — the solve is degenerate in the
+    /// stored `value`), or a non-linear one (`value*value` — the affine check fails).
+    /// Distinct from `Overridden`: the fix is the FORMULA, not the lane stack — clean
+    /// or rewrite it, never "delete a lane". `value + g(time)` (the affine idiom) keys
+    /// and pre-compensates instead of refusing.
+    ExpressionDriven,
 }
 
 /// Why a container could not be placed inside another (ADR-0133 §4).
@@ -67,6 +74,7 @@ impl KeyRefusal {
             Self::NotPlaying => "Can't key: the clip you are editing does not play here",
             Self::PlaysTwice => "Can't key: the clip you are editing plays twice here",
             Self::Overridden => "Can't key: a lane above overrides this clip here",
+            Self::ExpressionDriven => "Can't key: an expression drives this channel — clean or rewrite the formula",
         }
     }
 }

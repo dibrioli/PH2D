@@ -66,7 +66,7 @@ pub fn plan(g: &Graph) -> Vec<(NodeId, Pos)> {
     let edges: Vec<(u64, u64, bool)> = g
         .edges()
         .iter()
-        .map(|e| (e.from.0 .0 as u64, e.to.0 .0 as u64, e.delayed))
+        .map(|e| (e.from.0.0 as u64, e.to.0.0 as u64, e.delayed))
         .collect();
     plan_edges(&items, &edges)
         .into_iter()
@@ -400,12 +400,12 @@ mod tests {
 
         // Forward order preserved despite the back-edge; exactly three columns.
         assert!(p[&a].x < p[&b].x && p[&b].x < p[&c].x);
-        assert!((p[&c].x - p[&a].x - 2.0 * DX).abs() < 0.5, "three columns, no more");
+        assert!(
+            (p[&c].x - p[&a].x - 2.0 * DX).abs() < 0.5,
+            "three columns, no more"
+        );
         // One weakly-connected component ⇒ one band: no BAND_GAP jump inside it.
-        let span = [a, b, c]
-            .iter()
-            .map(|n| p[n].y)
-            .fold(f32::MIN, f32::max)
+        let span = [a, b, c].iter().map(|n| p[n].y).fold(f32::MIN, f32::max)
             - [a, b, c].iter().map(|n| p[n].y).fold(f32::MAX, f32::min);
         assert!(span < BAND_GAP, "the feedback loop stays in one band");
     }
@@ -419,7 +419,10 @@ mod tests {
         wire(&mut g, a, b);
         g.set_pos(a, Pos { x: 999.0, y: 999.0 });
         arrange(&mut g);
-        assert!(g.pos(a).expect("pos").x < 100.0, "arrange overwrote the stale position");
+        assert!(
+            g.pos(a).expect("pos").x < 100.0,
+            "arrange overwrote the stale position"
+        );
         assert!(g.pos(a).unwrap().x < g.pos(b).unwrap().x);
     }
 
@@ -433,9 +436,15 @@ mod tests {
         let items = [0u64, CARD, 2u64];
         let edges = [(0u64, CARD, false), (CARD, 2u64, false)];
         let p: BTreeMap<u64, Pos> = plan_edges(&items, &edges).into_iter().collect();
-        assert!(p[&0].x < p[&CARD].x && p[&CARD].x < p[&2].x, "card sits between its neighbours");
+        assert!(
+            p[&0].x < p[&CARD].x && p[&CARD].x < p[&2].x,
+            "card sits between its neighbours"
+        );
         // A clean inline chain: one column apart, same row.
         assert!((p[&CARD].x - p[&0].x - DX).abs() < 0.5);
-        assert!((p[&CARD].y - p[&0].y).abs() < 0.5, "inline, not off to the side");
+        assert!(
+            (p[&CARD].y - p[&0].y).abs() < 0.5,
+            "inline, not off to the side"
+        );
     }
 }

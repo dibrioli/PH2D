@@ -325,7 +325,11 @@ mod tests {
             }
         }
         // The cap: radius 100 behaves as MAX_RADIUS.
-        assert_eq!(percentile(&f, 100, 0.5), percentile(&f, MAX_RADIUS, 0.5), "capped");
+        assert_eq!(
+            percentile(&f, 100, 0.5),
+            percentile(&f, MAX_RADIUS, 0.5),
+            "capped"
+        );
     }
 
     /// A value source emitting a fixed field, so `value.percentile` can be driven

@@ -416,7 +416,10 @@ mod tests {
         for i in 0..200 {
             let v = s.at(i, i as f32 * 0.3);
             assert!(v.is_finite(), "finite at {i}");
-            assert!((6.0..=14.0).contains(&v), "within offset±amplitude: {v} at {i}");
+            assert!(
+                (6.0..=14.0).contains(&v),
+                "within offset±amplitude: {v} at {i}"
+            );
         }
     }
 

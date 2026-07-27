@@ -14,8 +14,8 @@
 //! sits inline among its neighbours; its members are laid out on the group's own
 //! canvas. Positions only — the flat graph the cook sees is untouched.
 
-use crate::subgraph::{holder_at, Holder};
 use crate::MotionDoc;
+use crate::subgraph::{Holder, holder_at};
 use ph2d_nodegraph::graph::NodeId;
 
 /// A collapsed group card is keyed with this bit set — above any node id — so
@@ -134,8 +134,14 @@ mod tests {
         let x0 = doc.graph.pos(n0).expect("n0").x;
         let x3 = doc.graph.pos(n3).expect("n3").x;
         // The card is between its neighbours, and its stale 999 was overwritten.
-        assert!(x0 < card.x && card.x < x3, "the group card sits inline in the chain");
-        assert!(card.x < 500.0, "the stale card position was replaced by the layout");
+        assert!(
+            x0 < card.x && card.x < x3,
+            "the group card sits inline in the chain"
+        );
+        assert!(
+            card.x < 500.0,
+            "the stale card position was replaced by the layout"
+        );
     }
 
     /// The members of a group are laid out on the group's OWN canvas — in chain

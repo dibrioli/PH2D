@@ -53,10 +53,10 @@ fn row(g: &mut Graph, kind: f32, canvas_dy: f32, mark: bool) -> Option<(NodeId, 
 
     let edges = [
         (grid, mv, 0u16),
-        (mv, drive, 0),      // geometry into drive's `in`
-        (grid, field, 0),    // the ramp reads the grid for its count
-        (field, wave, 0),    // the ramp is the PHASE
-        (wave, drive, 1),    // the waveform value into drive's `value` port
+        (mv, drive, 0),   // geometry into drive's `in`
+        (grid, field, 0), // the ramp reads the grid for its count
+        (field, wave, 0), // the ramp is the PHASE
+        (wave, drive, 1), // the waveform value into drive's `value` port
         (drive, out, 0),
     ];
     for (from, to, port) in edges {

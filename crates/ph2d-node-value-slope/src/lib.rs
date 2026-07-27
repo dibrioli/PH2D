@@ -223,7 +223,11 @@ mod tests {
     #[test]
     fn scale_amplifies_and_flips_the_slope() {
         assert_eq!(slope(&[0.0, 1.0, 2.0], 3.0), vec![3.0, 3.0, 3.0], "x3");
-        assert_eq!(slope(&[0.0, 1.0, 2.0], -1.0), vec![-1.0, -1.0, -1.0], "flipped");
+        assert_eq!(
+            slope(&[0.0, 1.0, 2.0], -1.0),
+            vec![-1.0, -1.0, -1.0],
+            "flipped"
+        );
     }
 
     /// **A single element (or empty) has no slope** → `0`, finite, never a divide
@@ -293,7 +297,9 @@ mod tests {
         let mut cook = Cook::new();
         let out = cook.cook(&g, &ops, vsl, 0.0).unwrap();
         match out[0].as_stream().get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![1.0, 1.0, 1.0, 1.0], "the ramp's constant slope"),
+            Column::Scalar(v) => {
+                assert_eq!(v, &vec![1.0, 1.0, 1.0, 1.0], "the ramp's constant slope")
+            }
             _ => panic!("v"),
         }
     }

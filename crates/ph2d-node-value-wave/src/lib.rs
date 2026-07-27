@@ -267,9 +267,15 @@ mod tests {
         let at = |v: f32, freq: f32| waveform(3, v * freq + 0.0); // Saw, easy to read
         // Saw at frequency 2: input 0 → phase 0 → −1; input 0.5 → phase 1 → frac 0 → −1.
         assert_eq!(at(0.0, 2.0), -1.0, "input 0 starts the saw");
-        assert!((at(0.5, 2.0) - (-1.0)).abs() < 1e-6, "input 1/2 restarts the saw (freq 2)");
+        assert!(
+            (at(0.5, 2.0) - (-1.0)).abs() < 1e-6,
+            "input 1/2 restarts the saw (freq 2)"
+        );
         // At frequency 1 the same input ½ is mid-cycle (saw at phase ½ → 0).
-        assert!((at(0.5, 1.0) - 0.0).abs() < 1e-6, "input 1/2 is mid-cycle at freq 1");
+        assert!(
+            (at(0.5, 1.0) - 0.0).abs() < 1e-6,
+            "input 1/2 is mid-cycle at freq 1"
+        );
     }
 
     /// **The output is the bipolar band `[offset − A, offset + A]`** for any input,
@@ -282,7 +288,10 @@ mod tests {
                 let v = k as f32 * 0.13;
                 let o = waveform(kind as i32, v * 2.3 + 0.1) * 1.5 + 0.5;
                 assert!(o.is_finite(), "finite at v={v} kind={kind}");
-                assert!((0.5 - 1.5 - 1e-4..=0.5 + 1.5 + 1e-4).contains(&o), "in band at v={v} kind={kind}");
+                assert!(
+                    (0.5 - 1.5 - 1e-4..=0.5 + 1.5 + 1e-4).contains(&o),
+                    "in band at v={v} kind={kind}"
+                );
             }
         }
     }

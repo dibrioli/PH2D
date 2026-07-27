@@ -64,8 +64,18 @@ fn row(g: &mut Graph, normalized: bool, canvas_dy: f32) -> Option<(NodeId, Optio
         g.set_param(scale, "out_lo", 0.0); // the fitted [0,1] -> [0, ARCH] for Y
         g.set_param(scale, "out_hi", ARCH);
         // raw -> normalize -> scale
-        g.connect(Edge { from: (raw, 0), to: (norm, 0), delayed: false }).ok()?;
-        g.connect(Edge { from: (norm, 0), to: (scale, 0), delayed: false }).ok()?;
+        g.connect(Edge {
+            from: (raw, 0),
+            to: (norm, 0),
+            delayed: false,
+        })
+        .ok()?;
+        g.connect(Edge {
+            from: (norm, 0),
+            to: (scale, 0),
+            delayed: false,
+        })
+        .ok()?;
         (scale, Some(norm))
     } else {
         (raw, None)

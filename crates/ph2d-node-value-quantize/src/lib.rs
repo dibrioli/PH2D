@@ -235,14 +235,24 @@ mod tests {
     /// on a `0.25` grid: floor holds at 0.5, ceil jumps to 0.75, round nears 0.5.
     #[test]
     fn floor_and_ceil_bracket_the_value() {
-        assert_eq!(quantize_one(0.6, 0.25, Mode::Floor), 0.5, "floor snaps down");
+        assert_eq!(
+            quantize_one(0.6, 0.25, Mode::Floor),
+            0.5,
+            "floor snaps down"
+        );
         assert_eq!(quantize_one(0.6, 0.25, Mode::Ceil), 0.75, "ceil snaps up");
         assert_eq!(quantize_one(0.6, 0.25, Mode::Round), 0.5, "round nears 0.5");
         // Floor never exceeds the input; ceil is never below it.
         for k in 0..100 {
             let v = k as f32 * 0.037;
-            assert!(quantize_one(v, 0.25, Mode::Floor) <= v + 1e-6, "floor ≤ v at {v}");
-            assert!(quantize_one(v, 0.25, Mode::Ceil) >= v - 1e-6, "ceil ≥ v at {v}");
+            assert!(
+                quantize_one(v, 0.25, Mode::Floor) <= v + 1e-6,
+                "floor ≤ v at {v}"
+            );
+            assert!(
+                quantize_one(v, 0.25, Mode::Ceil) >= v - 1e-6,
+                "ceil ≥ v at {v}"
+            );
         }
     }
 
@@ -263,9 +273,21 @@ mod tests {
     #[test]
     fn negatives_round_half_away_from_zero() {
         assert_eq!(quantize_one(-0.6, 0.25, Mode::Round), -0.5);
-        assert_eq!(quantize_one(-0.125, 0.25, Mode::Round), -0.25, "0.5 case away from 0");
-        assert_eq!(quantize_one(-0.6, 0.25, Mode::Floor), -0.75, "floor snaps toward -inf");
-        assert_eq!(quantize_one(-0.6, 0.25, Mode::Ceil), -0.5, "ceil snaps toward +inf");
+        assert_eq!(
+            quantize_one(-0.125, 0.25, Mode::Round),
+            -0.25,
+            "0.5 case away from 0"
+        );
+        assert_eq!(
+            quantize_one(-0.6, 0.25, Mode::Floor),
+            -0.75,
+            "floor snaps toward -inf"
+        );
+        assert_eq!(
+            quantize_one(-0.6, 0.25, Mode::Ceil),
+            -0.5,
+            "ceil snaps toward +inf"
+        );
     }
 
     /// A value source emitting a fixed field, so `value.quantize` can be driven

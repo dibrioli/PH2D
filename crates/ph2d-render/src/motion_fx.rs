@@ -82,7 +82,12 @@ impl BloomParams {
     /// `(threshold, threshold-knee, 2·knee, 0.25/knee)` (COD/Karis).
     fn prefilter_curve(&self) -> [f32; 4] {
         let knee = self.knee.max(1e-4);
-        [self.threshold, self.threshold - knee, 2.0 * knee, 0.25 / knee]
+        [
+            self.threshold,
+            self.threshold - knee,
+            2.0 * knee,
+            0.25 / knee,
+        ]
     }
 }
 
@@ -273,10 +278,16 @@ impl MotionFx {
         let downsample_pipeline =
             pipeline("ph2d-render motion-fx downsample", "fs_downsample", None);
         // Upsample accumulates onto the finer mip's existing downsample content.
-        let upsample_pipeline =
-            pipeline("ph2d-render motion-fx upsample", "fs_upsample", Some(additive));
-        let composite_pipeline =
-            pipeline("ph2d-render motion-fx composite", "fs_composite", Some(additive));
+        let upsample_pipeline = pipeline(
+            "ph2d-render motion-fx upsample",
+            "fs_upsample",
+            Some(additive),
+        );
+        let composite_pipeline = pipeline(
+            "ph2d-render motion-fx composite",
+            "fs_composite",
+            Some(additive),
+        );
 
         let sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-render motion-fx sampler"),
@@ -538,9 +549,7 @@ fn build_targets(
     let bg_down: Vec<_> = (0..passes)
         .map(|i| bind(&mips[i].view, &u_down[i]))
         .collect();
-    let bg_up: Vec<_> = (0..passes)
-        .map(|i| bind(&mips[i + 1].view, u_up))
-        .collect();
+    let bg_up: Vec<_> = (0..passes).map(|i| bind(&mips[i + 1].view, u_up)).collect();
     let bg_composite = bind(&mips[0].view, u_composite);
 
     Targets {

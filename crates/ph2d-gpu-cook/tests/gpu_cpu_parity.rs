@@ -2869,7 +2869,10 @@ fn value_noise_kernel_matches_the_cpu_on_the_device() {
     // (mirrors the `drive_kernel_matches...` chain).
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "value.noise → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "value.noise → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -2960,7 +2963,10 @@ fn value_mix_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "lfo/noise/mix → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "lfo/noise/mix → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3026,7 +3032,10 @@ fn value_quantize_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "lfo → quantize → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "lfo → quantize → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3090,7 +3099,10 @@ fn value_gain_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → gain → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → gain → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3156,7 +3168,10 @@ fn value_step_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → step → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → step → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3226,7 +3241,10 @@ fn value_normalize_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → map → normalize → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → map → normalize → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3293,7 +3311,10 @@ fn value_unary_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → map → unary → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → map → unary → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3362,7 +3383,10 @@ fn value_reduce_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → map → reduce → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → map → reduce → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3427,7 +3451,10 @@ fn value_smooth_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → smooth → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → smooth → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3492,7 +3519,10 @@ fn value_pattern_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "grid → pattern → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → pattern → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3567,7 +3597,10 @@ fn value_wrap_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → map → wrap → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → map → wrap → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3632,7 +3665,10 @@ fn value_time_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "grid → time → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → time → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3704,7 +3740,10 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "grid → noise → slope → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → noise → slope → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3782,7 +3821,10 @@ fn value_median_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "grid → pattern → median → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → pattern → median → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3806,7 +3848,10 @@ fn value_median_kernel_matches_the_cpu_on_the_device() {
     // result is bit-identical, tighter than the ε the arithmetic kernels need. A
     // wrong rank (min instead of median) or a lost tie-break would diverge by a
     // whole sample gap, far above 0.
-    assert_eq!(worst, 0.0, "the selected sample must be bit-identical: max |d| = {worst:e}");
+    assert_eq!(
+        worst, 0.0,
+        "the selected sample must be bit-identical: max |d| = {worst:e}"
+    );
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the median drove nothing"
@@ -3857,7 +3902,10 @@ fn value_percentile_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "grid → pattern → percentile → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → pattern → percentile → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -3877,7 +3925,10 @@ fn value_percentile_kernel_matches_the_cpu_on_the_device() {
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
     eprintln!("value.percentile(0.25) → drive(Y): col P, max |d| = {worst:e}");
-    assert_eq!(worst, 0.0, "the selected sample must be bit-identical: max |d| = {worst:e}");
+    assert_eq!(
+        worst, 0.0,
+        "the selected sample must be bit-identical: max |d| = {worst:e}"
+    );
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),
         "fixture check — the percentile drove nothing"
@@ -3924,7 +3975,10 @@ fn value_wave_kernel_matches_the_cpu_on_the_device() {
 
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-    assert!(plan.is_fully_gpu(), "field → wave → drive claimed end to end");
+    assert!(
+        plan.is_fully_gpu(),
+        "field → wave → drive claimed end to end"
+    );
 
     let mut cook = Cook::new();
     let cpu = cook.cook(&g, &reg, drive, PLAYHEAD).expect("cpu cook");
@@ -4010,7 +4064,10 @@ fn time_into_wave_equals_the_lfo() {
         }
     };
     assert_eq!(va.len(), vb.len(), "same count");
-    assert!(va.iter().all(|x| x.is_finite()) && va[0] != off, "the wave actually oscillated");
+    assert!(
+        va.iter().all(|x| x.is_finite()) && va[0] != off,
+        "the wave actually oscillated"
+    );
     assert_eq!(
         bytemuck::cast_slice::<_, u8>(&va),
         bytemuck::cast_slice::<_, u8>(&vb),

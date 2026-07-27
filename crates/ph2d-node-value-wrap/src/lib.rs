@@ -270,11 +270,23 @@ mod tests {
     #[test]
     fn clamp_holds_at_the_edges() {
         let (lo, hi) = (0.0, 1.0);
-        assert_eq!(wrap_one(0.3, lo, hi, Mode::Clamp), 0.3, "inside is identity");
-        assert_eq!(wrap_one(-2.0, lo, hi, Mode::Clamp), 0.0, "below pins to min");
+        assert_eq!(
+            wrap_one(0.3, lo, hi, Mode::Clamp),
+            0.3,
+            "inside is identity"
+        );
+        assert_eq!(
+            wrap_one(-2.0, lo, hi, Mode::Clamp),
+            0.0,
+            "below pins to min"
+        );
         assert_eq!(wrap_one(5.0, lo, hi, Mode::Clamp), 1.0, "above pins to max");
         // A non-`[0,1]` range clamps just the same.
-        assert_eq!(wrap_one(9.0, -2.0, 3.0, Mode::Clamp), 3.0, "clamps to max=3");
+        assert_eq!(
+            wrap_one(9.0, -2.0, 3.0, Mode::Clamp),
+            3.0,
+            "clamps to max=3"
+        );
     }
 
     /// **Repeat tiles the range into a sawtooth** — a value `w` past `min` reads
@@ -284,14 +296,33 @@ mod tests {
     #[test]
     fn repeat_tiles_into_a_sawtooth() {
         let (lo, hi) = (0.0, 1.0); // width 1
-        assert_eq!(wrap_one(0.3, lo, hi, Mode::Repeat), 0.3, "inside is identity");
-        assert!((wrap_one(1.3, lo, hi, Mode::Repeat) - 0.3).abs() < 1e-6, "1.3 wraps to 0.3");
-        assert!((wrap_one(2.3, lo, hi, Mode::Repeat) - 0.3).abs() < 1e-6, "2.3 wraps to 0.3");
-        assert!((wrap_one(-0.3, lo, hi, Mode::Repeat) - 0.7).abs() < 1e-6, "-0.3 wraps to 0.7");
+        assert_eq!(
+            wrap_one(0.3, lo, hi, Mode::Repeat),
+            0.3,
+            "inside is identity"
+        );
+        assert!(
+            (wrap_one(1.3, lo, hi, Mode::Repeat) - 0.3).abs() < 1e-6,
+            "1.3 wraps to 0.3"
+        );
+        assert!(
+            (wrap_one(2.3, lo, hi, Mode::Repeat) - 0.3).abs() < 1e-6,
+            "2.3 wraps to 0.3"
+        );
+        assert!(
+            (wrap_one(-0.3, lo, hi, Mode::Repeat) - 0.7).abs() < 1e-6,
+            "-0.3 wraps to 0.7"
+        );
         assert_eq!(wrap_one(1.0, lo, hi, Mode::Repeat), 0.0, "max wraps to min");
         // A shifted range: [2, 5], width 3. 8 → 2, 6.5 → 3.5.
-        assert!((wrap_one(8.0, 2.0, 5.0, Mode::Repeat) - 2.0).abs() < 1e-6, "8 wraps into [2,5] as 2");
-        assert!((wrap_one(6.5, 2.0, 5.0, Mode::Repeat) - 3.5).abs() < 1e-6, "6.5 -> 3.5");
+        assert!(
+            (wrap_one(8.0, 2.0, 5.0, Mode::Repeat) - 2.0).abs() < 1e-6,
+            "8 wraps into [2,5] as 2"
+        );
+        assert!(
+            (wrap_one(6.5, 2.0, 5.0, Mode::Repeat) - 3.5).abs() < 1e-6,
+            "6.5 -> 3.5"
+        );
     }
 
     /// **Mirror folds back and forth into a triangle** — it rises to `max`, then
@@ -304,12 +335,27 @@ mod tests {
         assert_eq!(wrap_one(0.0, lo, hi, Mode::Mirror), 0.0, "min");
         assert_eq!(wrap_one(1.0, lo, hi, Mode::Mirror), 1.0, "peak at max");
         // 1.3 is 0.3 into the falling half → 1 − 0.3 = 0.7 (Repeat would give 0.3).
-        assert!((wrap_one(1.3, lo, hi, Mode::Mirror) - 0.7).abs() < 1e-6, "1.3 folds to 0.7");
-        assert!((wrap_one(1.7, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6, "1.7 folds to 0.3");
-        assert!((wrap_one(2.0, lo, hi, Mode::Mirror)).abs() < 1e-6, "2.0 back to min (period 2)");
-        assert!((wrap_one(2.3, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6, "2.3 rises again to 0.3");
+        assert!(
+            (wrap_one(1.3, lo, hi, Mode::Mirror) - 0.7).abs() < 1e-6,
+            "1.3 folds to 0.7"
+        );
+        assert!(
+            (wrap_one(1.7, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6,
+            "1.7 folds to 0.3"
+        );
+        assert!(
+            (wrap_one(2.0, lo, hi, Mode::Mirror)).abs() < 1e-6,
+            "2.0 back to min (period 2)"
+        );
+        assert!(
+            (wrap_one(2.3, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6,
+            "2.3 rises again to 0.3"
+        );
         // Negative side mirrors symmetrically: -0.3 folds up to 0.3.
-        assert!((wrap_one(-0.3, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6, "-0.3 folds to 0.3");
+        assert!(
+            (wrap_one(-0.3, lo, hi, Mode::Mirror) - 0.3).abs() < 1e-6,
+            "-0.3 folds to 0.3"
+        );
     }
 
     /// **A degenerate range pins to `min`** — `max ≤ min` has no interval to fold
@@ -320,7 +366,11 @@ mod tests {
         for &m in &[Mode::Clamp, Mode::Repeat, Mode::Mirror] {
             for &v in &[-3.0f32, 0.0, 2.5, 100.0] {
                 // Zero-width and inverted ranges both degenerate.
-                assert_eq!(wrap_one(v, 0.5, 0.5, m), 0.5, "zero width pins to lo ({m:?})");
+                assert_eq!(
+                    wrap_one(v, 0.5, 0.5, m),
+                    0.5,
+                    "zero width pins to lo ({m:?})"
+                );
                 assert_eq!(wrap_one(v, 1.0, 0.0, m), 1.0, "inverted pins to lo ({m:?})");
             }
         }
@@ -338,7 +388,10 @@ mod tests {
                     let o = wrap_one(v, lo, hi, m);
                     assert!(o.is_finite(), "finite at v={v} [{lo},{hi}] {m:?}");
                     // A tiny ε for the floor's fp reconstruction at the seam.
-                    assert!(o >= lo - 1e-4 && o <= hi + 1e-4, "in range at v={v} [{lo},{hi}] {m:?}: {o}");
+                    assert!(
+                        o >= lo - 1e-4 && o <= hi + 1e-4,
+                        "in range at v={v} [{lo},{hi}] {m:?}: {o}"
+                    );
                 }
             }
         }

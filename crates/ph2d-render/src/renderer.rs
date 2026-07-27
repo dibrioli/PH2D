@@ -657,7 +657,6 @@ impl SpriteRenderer {
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
         self.clip_stencil = Some(ClipStencil { view, size });
     }
-
 }
 
 #[path = "renderer_draw.rs"]

@@ -211,7 +211,10 @@ mod tests {
         assert_eq!(out[2], out[3], "the window becomes a plateau, not a peak");
         let before: f32 = f.iter().sum();
         let after: f32 = out.iter().sum();
-        assert!((before - after).abs() < 1e-5, "mass conserved (zero boundaries)");
+        assert!(
+            (before - after).abs() < 1e-5,
+            "mass conserved (zero boundaries)"
+        );
     }
 
     /// **A constant field is unchanged at any radius** — the average of a window of
@@ -294,7 +297,11 @@ mod tests {
         match out[0].as_stream().get(VALUE_COL).unwrap() {
             Column::Scalar(v) => {
                 // i=0: [0,0,3]/3=1 · i=1: [0,3,0]/3=1 · i=2: [3,0,0]/3=1
-                assert_eq!(v, &vec![1.0, 1.0, 1.0], "each edge-extended window averages to 1");
+                assert_eq!(
+                    v,
+                    &vec![1.0, 1.0, 1.0],
+                    "each edge-extended window averages to 1"
+                );
             }
             _ => panic!("v"),
         }

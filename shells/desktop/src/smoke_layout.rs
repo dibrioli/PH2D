@@ -52,6 +52,9 @@ mod tests {
 
         assert_eq!(doc.graph.label(b), Some(MARK), "the hero is marked");
         assert_ne!(doc.graph.label(a), Some(MARK), "a non-hero is not marked");
-        assert!(doc.graph.pos(a).expect("pos").x < 100.0, "the graph was arranged");
+        assert!(
+            doc.graph.pos(a).expect("pos").x < 100.0,
+            "the graph was arranged"
+        );
     }
 }

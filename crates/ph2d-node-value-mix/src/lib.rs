@@ -50,9 +50,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("value.mix"),
     name: "value.mix",
     inputs: &[
-        PortSpec { name: "a", ty: VALUE },
-        PortSpec { name: "b", ty: VALUE },
-        PortSpec { name: "t", ty: VALUE },
+        PortSpec {
+            name: "a",
+            ty: VALUE,
+        },
+        PortSpec {
+            name: "b",
+            ty: VALUE,
+        },
+        PortSpec {
+            name: "t",
+            ty: VALUE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -275,8 +284,16 @@ mod tests {
         let a = [0.0];
         let b = [10.0];
         // t = 1.5 (past b) and t = -0.5 (before a).
-        assert_eq!(blend(&a, &b, &[1.5], true, 0.0, true)[0], 10.0, "clamped to b");
-        assert_eq!(blend(&a, &b, &[-0.5], true, 0.0, true)[0], 0.0, "clamped to a");
+        assert_eq!(
+            blend(&a, &b, &[1.5], true, 0.0, true)[0],
+            10.0,
+            "clamped to b"
+        );
+        assert_eq!(
+            blend(&a, &b, &[-0.5], true, 0.0, true)[0],
+            0.0,
+            "clamped to a"
+        );
         assert_eq!(
             blend(&a, &b, &[1.5], true, 0.0, false)[0],
             15.0,

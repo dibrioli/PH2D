@@ -81,7 +81,14 @@ impl SpriteRenderer {
         // Collect scene instances + the `extra` slice into `scratch` and sort
         // (extracted to keep this file under its LOC cap; M0.T11).
         crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
-        self.draw_scratch(target, camera, window, clear_color, gpu_extra, scene_viewport);
+        self.draw_scratch(
+            target,
+            camera,
+            window,
+            clear_color,
+            gpu_extra,
+            scene_viewport,
+        );
     }
 
     /// Render ONLY `instances` into `target` — the isolation path for Motion's

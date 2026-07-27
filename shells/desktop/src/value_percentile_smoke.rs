@@ -36,7 +36,12 @@ const RADIUS: f32 = 1.0;
 /// `value.pattern` de 8 valores, opcionalmente filtrada por `percentile` em `p`
 /// (`None` = campo cru). `canvas_dy` desloca a fileira; `mark` marca o percentile.
 /// Devolve `(sink, hero)`; o hero (se marcado) é o nó de percentile.
-fn row(g: &mut Graph, p: Option<f32>, canvas_dy: f32, mark: bool) -> Option<(NodeId, Option<NodeId>)> {
+fn row(
+    g: &mut Graph,
+    p: Option<f32>,
+    canvas_dy: f32,
+    mark: bool,
+) -> Option<(NodeId, Option<NodeId>)> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let pat = g.add_node("value.pattern");

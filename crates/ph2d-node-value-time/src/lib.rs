@@ -287,7 +287,10 @@ mod tests {
         let at = |t: f64| time_at(t, false, |g, node| g.set_param(node, "rate", 1.0))[0];
         let a = at(0.5);
         let b = at(10.5); // ten "periods" later — a Saw would read the same
-        assert!(b > a + 9.5, "the clock climbed by ~10, did not fold: {a} -> {b}");
+        assert!(
+            b > a + 9.5,
+            "the clock climbed by ~10, did not fold: {a} -> {b}"
+        );
     }
 
     /// CONNECTED input → the field's length follows the geometry (N=3), and

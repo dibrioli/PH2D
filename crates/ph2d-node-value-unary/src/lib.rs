@@ -237,12 +237,19 @@ mod tests {
         // Sign: explicit, so 0 (and ±0) map to 0 — NOT signum's ±1.
         assert_eq!(unary_one(5.0, Op::Sign), 1.0);
         assert_eq!(unary_one(-5.0, Op::Sign), -1.0);
-        assert_eq!(unary_one(0.0, Op::Sign), 0.0, "sign(0) is 0, not signum's 1");
+        assert_eq!(
+            unary_one(0.0, Op::Sign),
+            0.0,
+            "sign(0) is 0, not signum's 1"
+        );
         assert_eq!(unary_one(-0.0, Op::Sign), 0.0, "sign(-0) is 0");
         assert_eq!(unary_one(2.7, Op::Floor), 2.0);
         assert_eq!(unary_one(-2.3, Op::Floor), -3.0, "floor rounds toward -inf");
         assert!((unary_one(2.7, Op::Fract) - 0.7).abs() < 1e-6);
-        assert!((unary_one(-0.3, Op::Fract) - 0.7).abs() < 1e-6, "fract of negative wraps up");
+        assert!(
+            (unary_one(-0.3, Op::Fract) - 0.7).abs() < 1e-6,
+            "fract of negative wraps up"
+        );
         assert_eq!(unary_one(3.0, Op::Square), 9.0);
         assert_eq!(unary_one(9.0, Op::Sqrt), 3.0);
         assert_eq!(unary_one(4.0, Op::Reciprocal), 0.25);
@@ -252,7 +259,11 @@ mod tests {
     /// Reciprocal guards zero, and every op stays finite for any input.
     #[test]
     fn the_guards_keep_it_finite() {
-        assert_eq!(unary_one(-4.0, Op::Sqrt), 0.0, "sqrt of a negative clamps to 0");
+        assert_eq!(
+            unary_one(-4.0, Op::Sqrt),
+            0.0,
+            "sqrt of a negative clamps to 0"
+        );
         assert_eq!(unary_one(0.0, Op::Reciprocal), 0.0, "1/0 is guarded to 0");
         let ops = [
             Op::Abs,

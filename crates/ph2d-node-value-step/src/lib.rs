@@ -257,9 +257,17 @@ mod tests {
     #[test]
     fn hard_is_a_binary_gate_at_the_threshold() {
         for &w in &[0.0, 0.3, 0.9] {
-            assert_eq!(step_one(0.49, 0.5, w, Mode::Hard), 0.0, "below is 0 (w={w})");
+            assert_eq!(
+                step_one(0.49, 0.5, w, Mode::Hard),
+                0.0,
+                "below is 0 (w={w})"
+            );
             assert_eq!(step_one(0.5, 0.5, w, Mode::Hard), 1.0, "at is 1 (w={w})");
-            assert_eq!(step_one(0.51, 0.5, w, Mode::Hard), 1.0, "above is 1 (w={w})");
+            assert_eq!(
+                step_one(0.51, 0.5, w, Mode::Hard),
+                1.0,
+                "above is 1 (w={w})"
+            );
         }
         // The threshold moves the cut, on any scale.
         assert_eq!(step_one(1.9, 2.0, 0.0, Mode::Hard), 0.0, "below index 2");
@@ -271,9 +279,20 @@ mod tests {
     #[test]
     fn smooth_ramps_across_the_band_and_pins_the_ends() {
         let (th, w) = (0.5, 0.4); // band [0.3, 0.7]
-        assert_eq!(step_one(0.29, th, w, Mode::Smooth), 0.0, "below the band is 0");
-        assert_eq!(step_one(0.71, th, w, Mode::Smooth), 1.0, "above the band is 1");
-        assert!((step_one(0.5, th, w, Mode::Smooth) - 0.5).abs() < 1e-6, "0.5 at the threshold");
+        assert_eq!(
+            step_one(0.29, th, w, Mode::Smooth),
+            0.0,
+            "below the band is 0"
+        );
+        assert_eq!(
+            step_one(0.71, th, w, Mode::Smooth),
+            1.0,
+            "above the band is 1"
+        );
+        assert!(
+            (step_one(0.5, th, w, Mode::Smooth) - 0.5).abs() < 1e-6,
+            "0.5 at the threshold"
+        );
         let mut prev = -1.0;
         for k in 0..=40 {
             let x = 0.3 + 0.4 * (k as f32 / 40.0);
@@ -310,7 +329,10 @@ mod tests {
                         let v = k as f32 * 0.11;
                         let o = step_one(v, th, w, m);
                         assert!(o.is_finite(), "finite at v={v} th={th} w={w} {m:?}");
-                        assert!((0.0..=1.0).contains(&o), "in [0,1] at v={v} th={th} w={w} {m:?}");
+                        assert!(
+                            (0.0..=1.0).contains(&o),
+                            "in [0,1] at v={v} th={th} w={w} {m:?}"
+                        );
                     }
                 }
             }

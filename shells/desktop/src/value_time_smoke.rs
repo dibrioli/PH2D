@@ -40,7 +40,12 @@ const STAGGER: f32 = 0.12;
 /// Monta uma fileira `grid -> move -> drive(Y)`, com o valor vindo de
 /// `value.time(RATE, STAGGER)` -- dobrado por `value.wrap(Repeat)` se `wrap_it`.
 /// `canvas_dy` desloca a fileira; `mark` diz se o `value.time` é o nó a avaliar.
-fn row(g: &mut Graph, wrap_it: bool, canvas_dy: f32, mark: bool) -> Option<(NodeId, Option<NodeId>)> {
+fn row(
+    g: &mut Graph,
+    wrap_it: bool,
+    canvas_dy: f32,
+    mark: bool,
+) -> Option<(NodeId, Option<NodeId>)> {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let time = g.add_node("value.time");
@@ -76,9 +81,9 @@ fn row(g: &mut Graph, wrap_it: bool, canvas_dy: f32, mark: bool) -> Option<(Node
 
     let edges = [
         (grid, mv, 0u16),
-        (mv, drive, 0),         // geometry into drive's `in`
-        (grid, time, 0),        // the clock reads the grid for its count
-        (value_src, drive, 1),  // the clock (raw or wrapped) into drive's `value` port
+        (mv, drive, 0),        // geometry into drive's `in`
+        (grid, time, 0),       // the clock reads the grid for its count
+        (value_src, drive, 1), // the clock (raw or wrapped) into drive's `value` port
         (drive, out, 0),
     ];
     for (from, to, port) in edges {

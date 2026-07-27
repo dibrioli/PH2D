@@ -258,8 +258,16 @@ mod tests {
     fn neutral_strength_is_the_identity_on_the_unit_band() {
         for k in 0..=20 {
             let v = k as f32 / 20.0;
-            assert_eq!(gain_one(v, 0.0, Mode::Gain), v, "gain neutral is identity at {v}");
-            assert_eq!(gain_one(v, 0.0, Mode::Bias), v, "bias neutral is identity at {v}");
+            assert_eq!(
+                gain_one(v, 0.0, Mode::Gain),
+                v,
+                "gain neutral is identity at {v}"
+            );
+            assert_eq!(
+                gain_one(v, 0.0, Mode::Bias),
+                v,
+                "bias neutral is identity at {v}"
+            );
         }
     }
 
@@ -268,23 +276,50 @@ mod tests {
     #[test]
     fn gain_spreads_the_ends_and_pins_the_middle() {
         let s = 0.6;
-        assert!(gain_one(0.25, s, Mode::Gain) < 0.25, "the low quarter drops");
-        assert!(gain_one(0.75, s, Mode::Gain) > 0.75, "the high quarter rises");
-        assert!((gain_one(0.5, s, Mode::Gain) - 0.5).abs() < 1e-6, "0.5 is a fixed point");
+        assert!(
+            gain_one(0.25, s, Mode::Gain) < 0.25,
+            "the low quarter drops"
+        );
+        assert!(
+            gain_one(0.75, s, Mode::Gain) > 0.75,
+            "the high quarter rises"
+        );
+        assert!(
+            (gain_one(0.5, s, Mode::Gain) - 0.5).abs() < 1e-6,
+            "0.5 is a fixed point"
+        );
         // Negative strength does the opposite — flattens toward 0.5.
-        assert!(gain_one(0.25, -s, Mode::Gain) > 0.25, "negative flattens the low quarter up");
-        assert!(gain_one(0.75, -s, Mode::Gain) < 0.75, "negative flattens the high quarter down");
+        assert!(
+            gain_one(0.25, -s, Mode::Gain) > 0.25,
+            "negative flattens the low quarter up"
+        );
+        assert!(
+            gain_one(0.75, -s, Mode::Gain) < 0.75,
+            "negative flattens the high quarter down"
+        );
     }
 
     /// **Bias bends toward an end** — positive strength pushes the whole field up
     /// (toward 1), negative down; the endpoints `0` and `1` are fixed.
     #[test]
     fn bias_pushes_toward_an_end_with_fixed_endpoints() {
-        assert!(gain_one(0.5, 0.6, Mode::Bias) > 0.5, "positive bias pushes 0.5 up");
-        assert!(gain_one(0.5, -0.6, Mode::Bias) < 0.5, "negative bias pushes 0.5 down");
+        assert!(
+            gain_one(0.5, 0.6, Mode::Bias) > 0.5,
+            "positive bias pushes 0.5 up"
+        );
+        assert!(
+            gain_one(0.5, -0.6, Mode::Bias) < 0.5,
+            "negative bias pushes 0.5 down"
+        );
         for &s in &[-1.0, -0.3, 0.4, 1.0] {
-            assert!(gain_one(0.0, s, Mode::Bias).abs() < 1e-6, "0 stays 0 at s={s}");
-            assert!((gain_one(1.0, s, Mode::Bias) - 1.0).abs() < 1e-6, "1 stays 1 at s={s}");
+            assert!(
+                gain_one(0.0, s, Mode::Bias).abs() < 1e-6,
+                "0 stays 0 at s={s}"
+            );
+            assert!(
+                (gain_one(1.0, s, Mode::Bias) - 1.0).abs() < 1e-6,
+                "1 stays 1 at s={s}"
+            );
         }
     }
 
@@ -299,7 +334,10 @@ mod tests {
                     let v = k as f32 * 0.13;
                     let o = gain_one(v, s, m);
                     assert!(o.is_finite(), "finite at v={v} s={s} {m:?}");
-                    assert!((-1e-4..=1.0 + 1e-4).contains(&o), "in [0,1] at v={v} s={s} {m:?}");
+                    assert!(
+                        (-1e-4..=1.0 + 1e-4).contains(&o),
+                        "in [0,1] at v={v} s={s} {m:?}"
+                    );
                 }
             }
         }

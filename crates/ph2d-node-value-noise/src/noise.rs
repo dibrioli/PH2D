@@ -117,7 +117,11 @@ mod tests {
         assert_eq!(n0, fbm_2d(3.5, 1.2, 1, 0.5), "0 octaves clamps up to 1");
         let big = fbm_2d(3.5, 1.2, 999, 0.5);
         assert!((-1.0..=1.0).contains(&big));
-        assert_eq!(big, fbm_2d(3.5, 1.2, MAX_OCTAVES, 0.5), "clamps down to MAX");
+        assert_eq!(
+            big,
+            fbm_2d(3.5, 1.2, MAX_OCTAVES, 0.5),
+            "clamps down to MAX"
+        );
     }
 
     #[test]

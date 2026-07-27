@@ -44,35 +44,14 @@ mod audio;
 /// (re-cook por frame). Espelha `connector_live`.
 mod blend_live;
 mod blend_smoke;
-mod buffer_smoke;
 mod body_grab;
+mod buffer_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
 mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod chrome_hit;
-mod motion_node_path_smoke;
-mod motion_delay_smoke;
-mod motion_fx_smoke;
-mod smoke_layout;
-mod value_curve_smoke;
-mod value_noise_smoke;
-mod value_mix_smoke;
-mod value_gain_smoke;
-mod value_step_smoke;
-mod value_normalize_smoke;
-mod value_unary_smoke;
-mod value_reduce_smoke;
-mod value_smooth_smoke;
-mod value_pattern_smoke;
-mod value_wrap_smoke;
-mod value_time_smoke;
-mod value_slope_smoke;
-mod value_median_smoke;
-mod value_percentile_smoke;
-mod value_wave_smoke;
-mod value_quantize_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
@@ -169,6 +148,9 @@ mod ktx2_smoke;
 mod label_live;
 mod mask_smoke;
 mod morph_live;
+mod motion_delay_smoke;
+mod motion_fx_smoke;
+mod motion_node_path_smoke;
 mod motion_path_smoke;
 mod motion_state;
 mod name_unique;
@@ -212,6 +194,7 @@ mod signal_smoke;
 mod sim_populate;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
+mod smoke_layout;
 mod stack_smoke;
 mod stagger_smoke;
 mod text_fx_smoke;
@@ -229,6 +212,23 @@ mod transport;
 mod twist_smoke;
 mod undo;
 mod undo_route;
+mod value_curve_smoke;
+mod value_gain_smoke;
+mod value_median_smoke;
+mod value_mix_smoke;
+mod value_noise_smoke;
+mod value_normalize_smoke;
+mod value_pattern_smoke;
+mod value_percentile_smoke;
+mod value_quantize_smoke;
+mod value_reduce_smoke;
+mod value_slope_smoke;
+mod value_smooth_smoke;
+mod value_step_smoke;
+mod value_time_smoke;
+mod value_unary_smoke;
+mod value_wave_smoke;
+mod value_wrap_smoke;
 mod vec_blend;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.

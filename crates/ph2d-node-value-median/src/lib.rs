@@ -244,7 +244,10 @@ mod tests {
     /// spike is gone, no bump left behind (a box blur would spread it to `[0,3,3,3,0]`).
     #[test]
     fn a_lone_spike_is_deleted_not_spread() {
-        assert_eq!(median(&[0.0, 0.0, 9.0, 0.0, 0.0], 1), vec![0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(
+            median(&[0.0, 0.0, 9.0, 0.0, 0.0], 1),
+            vec![0.0, 0.0, 0.0, 0.0, 0.0]
+        );
         // Salt-and-pepper: isolated outliers on a constant field, all removed.
         assert_eq!(median(&[5.0, 99.0, 5.0, 5.0, -99.0, 5.0], 1), vec![5.0; 6]);
     }
@@ -283,11 +286,18 @@ mod tests {
             assert_eq!(out.len(), f.len(), "length preserved at radius {r}");
             for o in &out {
                 assert!(o.is_finite(), "finite at radius {r}");
-                assert!(f.contains(o), "the median is an existing sample at radius {r}");
+                assert!(
+                    f.contains(o),
+                    "the median is an existing sample at radius {r}"
+                );
             }
         }
         // The cap: radius 100 behaves exactly as radius MAX_RADIUS (16).
-        assert_eq!(median(&f, 100), median(&f, MAX_RADIUS), "radius is capped at MAX_RADIUS");
+        assert_eq!(
+            median(&f, 100),
+            median(&f, MAX_RADIUS),
+            "radius is capped at MAX_RADIUS"
+        );
     }
 
     /// A value source emitting a fixed field, so `value.median` can be driven

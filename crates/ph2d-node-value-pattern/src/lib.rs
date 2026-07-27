@@ -254,7 +254,10 @@ mod tests {
     fn steps_is_clamped_to_the_slots() {
         let vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         // steps 0 -> clamps to 1 -> every element is v0.
-        assert!((0..5).all(|i| pattern_value(i, 0, &vals) == 1.0), "0 steps is constant v0");
+        assert!(
+            (0..5).all(|i| pattern_value(i, 0, &vals) == 1.0),
+            "0 steps is constant v0"
+        );
         // steps beyond SLOTS clamps to SLOTS (uses all eight, never out of bounds).
         assert_eq!(pattern_value(8, 20, &vals), 1.0, "index 8 wraps to slot 0");
         assert_eq!(pattern_value(7, 20, &vals), 8.0, "the last slot is used");
@@ -327,7 +330,11 @@ mod tests {
         let out = cook.cook(&g, &ops, vp, 0.0).unwrap();
         match out[0].as_stream().get(VALUE_COL).unwrap() {
             Column::Scalar(v) => {
-                assert_eq!(v, &vec![0.0, 1.0, 0.0, 1.0, 0.0], "alternating pattern, length 5");
+                assert_eq!(
+                    v,
+                    &vec![0.0, 1.0, 0.0, 1.0, 0.0],
+                    "alternating pattern, length 5"
+                );
             }
             _ => panic!("v"),
         }

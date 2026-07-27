@@ -365,7 +365,11 @@ mod tests {
         assert_eq!(glow.intensity, 2.5);
         assert_eq!(glow.threshold, 1.5);
         assert_eq!(glow.saturation, 0.0, "a white bloom");
-        assert_eq!(glow.tint, [0.5, 1.0, 1.0, 1.0], "just the red channel moved");
+        assert_eq!(
+            glow.tint,
+            [0.5, 1.0, 1.0, 1.0],
+            "just the red channel moved"
+        );
         assert_eq!(glow.radius, 1.0, "untouched knob keeps its default");
     }
 

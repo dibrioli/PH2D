@@ -343,7 +343,10 @@ mod tests {
         let tent = ph2d_curve::parse(TENT).expect("valid tent");
         fill_curve_lut(TENT, &mut buf);
         for (k, v) in buf.iter().enumerate() {
-            assert!((v - tent.eval(k as f32 / 4.0)).abs() < 1e-6, "tent sample {k}");
+            assert!(
+                (v - tent.eval(k as f32 / 4.0)).abs() < 1e-6,
+                "tent sample {k}"
+            );
         }
         assert!((buf[2] - 1.0).abs() < 1e-6, "the tent peaks at t = 0.5");
     }

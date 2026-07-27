@@ -65,10 +65,10 @@ fn row(g: &mut Graph, gained: bool, canvas_dy: f32) -> Option<(NodeId, Option<No
 
     let mut edges = vec![
         (grid, mv, 0u16),
-        (mv, drive, 0),        // geometry into drive's `in`
-        (grid, field, 0),      // instance_field reads the grid for count
-        (shaped_src, map, 0),  // the (maybe gained) ramp into the map
-        (map, drive, 1),       // the scaled value into drive's `value` port
+        (mv, drive, 0),       // geometry into drive's `in`
+        (grid, field, 0),     // instance_field reads the grid for count
+        (shaped_src, map, 0), // the (maybe gained) ramp into the map
+        (map, drive, 1),      // the scaled value into drive's `value` port
         (drive, out, 0),
     ];
     if let Some(vg) = gain {

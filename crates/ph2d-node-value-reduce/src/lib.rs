@@ -289,7 +289,10 @@ mod tests {
             let agg = aggregate(&field, Mode::Mean);
             let out = vec![agg; field.len()];
             assert_eq!(out.len(), n, "length preserved");
-            assert!(out.iter().all(|&x| x == agg), "every element is the aggregate");
+            assert!(
+                out.iter().all(|&x| x == agg),
+                "every element is the aggregate"
+            );
         }
         // An empty field yields an empty field (nothing to reduce).
         assert!(aggregate(&[], Mode::Sum).is_finite());

@@ -77,11 +77,7 @@ fn normalize_one(v: f32, min: f32, max: f32, mode: Mode) -> f32 {
     match mode {
         Mode::Range => {
             let d = max - min;
-            if d > 0.0 {
-                (v - min) / d
-            } else {
-                0.0
-            }
+            if d > 0.0 { (v - min) / d } else { 0.0 }
         }
         Mode::MaxAbs => {
             // max(|min|, |max|): the field's largest magnitude. Derives from the
@@ -89,11 +85,7 @@ fn normalize_one(v: f32, min: f32, max: f32, mode: Mode) -> f32 {
             // negative, so `-min` is its magnitude. `m == 0` only for an all-zero
             // field (max ≥ min always), and then the field is already centred.
             let m = max.max(-min);
-            if m > 0.0 {
-                v / m
-            } else {
-                0.0
-            }
+            if m > 0.0 { v / m } else { 0.0 }
         }
     }
 }
@@ -261,7 +253,10 @@ mod tests {
     fn norm(field: &[f32], mode: Mode) -> Vec<f32> {
         let min = ReduceOp::Min.cpu(field);
         let max = ReduceOp::Max.cpu(field);
-        field.iter().map(|&v| normalize_one(v, min, max, mode)).collect()
+        field
+            .iter()
+            .map(|&v| normalize_one(v, min, max, mode))
+            .collect()
     }
 
     /// **Range fits the field into `[0,1]` by its own extent** — the min lands on

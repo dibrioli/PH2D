@@ -19,7 +19,7 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 5] = ["Pin", "Spring", "Rope", "Weld", "Slider"];
+const KIND_LABELS: [&str; 6] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod"];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
@@ -38,6 +38,10 @@ const KIND_SPRING: u8 = 1;
 /// (tag 3) — which has no parameter rows at all — falls through to nothing
 /// instead of inheriting the Rope's "Max Length" from a bare `else`.
 const KIND_ROPE: u8 = 2;
+/// Tag of the Rod kind. A rigid bar: ONE number (the length), no limits and no
+/// motor — so it paints exactly one row, and shares `INSP_JOINT_MAX_LENGTH` with
+/// the Rope because engine-side it is the same authored field.
+const KIND_ROD: u8 = 5;
 /// Tag of the Slider kind. It shares the **Limits** switch with the Pin (both
 /// have a range) and, since W-J6, a motor as well — so the painter asks the two
 /// questions separately instead of branching on "is it a Pin?", which is the
@@ -233,7 +237,15 @@ pub(crate) fn paint_joint_section(
                 id,
             );
         }
-    } else if info.kind_tag == KIND_ROPE {
+    } else if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD {
+        // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
+        // barra é o comprimento em si. Um segundo id seria um segundo lugar
+        // para o mesmo campo do componente.
+        let label = if info.kind_tag == KIND_ROD {
+            "Length (m)"
+        } else {
+            "Max Length (m)"
+        };
         yy = num_row(
             scene,
             text_system,
@@ -243,7 +255,7 @@ pub(crate) fn paint_joint_section(
             x,
             w,
             yy,
-            "Max Length (m)",
+            label,
             ids::INSP_JOINT_MAX_LENGTH,
         );
     }

@@ -264,7 +264,23 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   motor speed animado = maquinário). Cross-line com a timeline; pedir decisão do Enio quando as waves J
   fecharem.
 - **Custom/GenericJoint** (lock/limit/motor por eixo — o godot-proposals 15126): só se um caso real pedir.
+  ⚠️ **O Wheel NÃO é esse caso** (ver abaixo): ele quer a *plumbing* do `GenericJoint`, não a UI
+  por-eixo — o artista pede *"uma roda"*, não *"LinY livre com mola"*.
 - **Wheel preset** (prismatic+spring+motor empacotado, idioma Unity/Box2D).
+- **POLIA** — ⚠️ **MEDIDO 2026-07-27, e a resposta muda a forma do item.** `grep -rin pulley` sobre
+  `rapier2d-0.28.0/src` devolve **nada**: o conjunto é Fixed · Generic · Prismatic · Revolute · Rope ·
+  Spherical · Spring, e o `b2PulleyJoint` do Box2D não foi portado. **E não há gancho de constraint do
+  usuário:** `PhysicsHooks` tem exatamente três métodos e os três são sobre CONTATOS
+  (`filter_contact_pair` · `filter_intersection_pair` · `modify_solver_contacts`), então não existe rota
+  para injetar uma restrição de velocidade própria no solver.
+  Logo a polia **não pode ser um joint nem uma restrição dura** — mas é construtível sobre o substrato
+  que esta linha já tem: o passe de impulso **por sub-passo** dos efetores de área (`effector::apply`,
+  `drag`, empuxo). A restrição é `l1 + razão·l2 = L0` com `l1 = |âncora_A − chão_A|`, imposta por
+  impulso corretivo ao longo dos dois ramos ⇒ uma polia **MOLE** (estica sob carga), e isso tem de estar
+  dito no card, não descoberto.
+  ⚠️ **Dependência real:** uma polia tem **QUATRO** pontos (duas âncoras de mundo + dois corpos) e o
+  `PhysicsJoint` **nomeia dois corpos** — ela quer o conceito de **âncora de MUNDO**, que é exatamente a
+  metade autorável do *Pin-to-world* logo abaixo. As duas andam juntas ou nenhuma anda.
 - ~~**Pin-to-world / Target joint**~~ — a metade do **GESTO** FECHOU (**W-Grab**, 2026-07-26, cena `=52`):
   arrastar um corpo dinâmico com o relógio andando é a **MÃO** (uma mola macia para um corpo-âncora
   invisível no cursor). O que resta no horizonte é a metade **AUTORÁVEL** — um joint com UM corpo e um
@@ -274,9 +290,30 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   bakear — diferencial de verdade para animação; arquitetura separada (multibody set), ADR próprio.
 - **Ragdoll wizard** (Fyrox) / **Make chain por protótipo** (RUBE) — depois que a corrente por seleção
   ordenada (W-J4) existir e o uso pedir mais.
-- **Soft weld** (frequency/damping no Fixed, idioma Unity) e **Rod** (rope rígida, min=max).
+- **Soft weld** — ⚠️ **a premissa desta linha estava ERRADA e foi medida (2026-07-27).** *"frequency/damping
+  no Fixed"* supõe que uma mola possa ser posta nos eixos de um `FixedJoint`; `contact_constraints_set.rs:48`
+  faz `let motor_axes = joint.motor_axes.bits() & !locked_axes` ⇒ **um motor num eixo TRAVADO é mascarado**.
+  Um weld macio não é dois knobs no Fixed: é um caminho de builder próprio (**não travar nada** + três
+  molas em alvo 0). Fica por último — nada o pede hoje.
+- ~~**Rod**~~ — **FECHADO (W-Rod, 2026-07-27, cena `=56`).** E a construção que esta linha previa está
+  **MEDIDA E MORTA**: `set_limits(LinX, [len, len])` não segura, porque o limite linear acoplado do rapier
+  é **unilateral** (`// FIXME: handle min limit too.` no solver dele). O que ficou é um **motor de posição
+  no eixo acoplado**, `ROD_STIFFNESS = 1e6` medido. Detalhe no [plano de waves](00_plano_waves.md).
 - **Copy/paste de propriedades de joint** (Unreal PhAT Ctrl+C/V).
 - **Rows de readout tingidas** (RUBE verde=estático/vermelho=dinâmico) — se o §12 ganhar readouts vivos.
+
+### §8.1 — A ordem escolhida (2026-07-27, ordem do Enio: *"o item B primeiro"*)
+
+Não é a ordem da lista; é a que sai das dependências **medidas** acima.
+
+| # | item | por que aqui |
+|---|---|---|
+| ~~1~~ | ~~**Rod**~~ ✅ `=56` | o gap real — hoje **nada** segura dois corpos a distância fixa deixando os dois GIRAREM (o Weld trava o giro, a Rope só o teto). O menor, e estreia a plumbing do `GenericJoint` |
+| 2 | **Wheel preset** | o de maior valor visível (um veículo). Precisa da plumbing por eixo, que o Rod abre |
+| 3 | **Polia** | a primeira que precisa de um passe de restrição PRÓPRIO (rapier não a tem) — depois de esgotadas as nativas. Puxa o *Pin-to-world* junto |
+| 4 | **Ragdoll wizard / make chain** | é um GERADOR: só faz sentido sobre o conjunto de tipos já fechado |
+| 5 | **Copy/paste de propriedades** | vale mais quanto mais propriedades existirem |
+| 6 | **Soft weld** | premissa corrigida acima; nada o pede |
 
 ---
 

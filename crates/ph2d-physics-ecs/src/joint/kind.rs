@@ -45,6 +45,21 @@ pub enum JointKind {
     /// Like a Pin it has **limits** — but they are a STROKE, in metres. See
     /// [`JointKind::limits_in_metres`].
     Slider,
+    /// **Rod** — a rigid bar: the anchors are held at
+    /// [`PhysicsJoint::max_length`] and both ends turn freely. The connecting
+    /// rod, the tie bar, the strut of a four-bar linkage.
+    ///
+    /// The gap it fills is narrow enough to be easy to miss: a Weld holds the
+    /// distance but *also* freezes the rotation, a Rope holds only the ceiling
+    /// (it goes slack), and a Spring is deliberately bouncy.
+    ///
+    /// ⚠️ **The engine builds it as a stiff motor, not as a hard constraint,
+    /// and the measurement is in `ph2d_physics::JointKind::Rod`** — rapier's
+    /// coupled linear *limit* is unilateral (`// FIXME: handle min limit too.`
+    /// in its own solver), so `[d, d]` cannot hold. That is why it reuses
+    /// `max_length` and offers no stiffness of its own: **one authored number,
+    /// the length**.
+    Rod,
 }
 
 impl JointKind {
@@ -148,12 +163,17 @@ impl JointKind {
         self.translates()
     }
 
-    /// Does this kind have a length the artist tunes? Only Spring and Rope do —
+    /// Does this kind have a length the artist tunes? Spring, Rope and Rod do —
     /// a Pin's length is zero (the anchors coincide) and a Weld's is too (it is
     /// rigid). **Not** `!is_hinge()`: a Weld is not a hinge but still has no
     /// length, so the two questions had to stop sharing an answer.
+    ///
+    /// ⚠️ A Rod answers `true` here and `false` to every other door, and that
+    /// combination *is* what a rod is: one number, no limits, no motor. It also
+    /// makes [`Self::shares_a_point`] answer `false` for it — correctly, since a
+    /// rod's two ends are meant to start apart.
     pub fn has_length(self) -> bool {
-        matches!(self, JointKind::Spring | JointKind::Rope)
+        matches!(self, JointKind::Spring | JointKind::Rope | JointKind::Rod)
     }
 
     /// Do the two bodies share one point (a Pin, a Weld or a Slider), rather than

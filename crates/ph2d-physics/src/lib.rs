@@ -35,7 +35,8 @@ pub use world::grab::HoldSpec;
 pub use world::ik::{IkChain, IkLink, IkOptions, IkPose};
 pub use world::ik_coords::{FkDof, fk_dof, is_rigid_link, joint_coordinate_at};
 pub use world::joint_break::{JointBreak, JointKey, JointLoad};
-pub use world::joints::{JointDesc, JointKind, MotorDesc, MotorMode, motor_axis};
+pub use world::joint_desc::{JointDesc, JointKind, MotorDesc, MotorMode};
+pub use world::joints::motor_axis;
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::{
     AreaEffect, BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld,

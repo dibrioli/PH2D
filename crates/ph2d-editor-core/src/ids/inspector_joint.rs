@@ -39,12 +39,13 @@ pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group"
 /// warning. Foi o que aconteceu quando o Slider chegou (W-J5), e o gate de seam
 /// não pegou porque ele iterava justamente a lista CURTA. Há um teste no painel
 /// comparando os dois comprimentos.
-pub const INSP_JOINT_KIND: [NodeId; 5] = [
+pub const INSP_JOINT_KIND: [NodeId; 6] = [
     hash_node_id("insp_joint_kind_pin"),
     hash_node_id("insp_joint_kind_spring"),
     hash_node_id("insp_joint_kind_rope"),
     hash_node_id("insp_joint_kind_weld"),
     hash_node_id("insp_joint_kind_slider"),
+    hash_node_id("insp_joint_kind_rod"),
 ];
 
 /// Off · On, for the two Pin-only switches. Segmented rather than a checkbox

@@ -20,6 +20,7 @@ pub mod grab;
 pub mod ik;
 pub mod ik_coords;
 pub mod joint_break;
+pub mod joint_desc;
 pub mod joint_gains;
 pub mod joints;
 pub mod kinematic;

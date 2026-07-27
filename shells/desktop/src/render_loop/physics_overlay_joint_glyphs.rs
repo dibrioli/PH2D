@@ -38,6 +38,11 @@ pub(super) const PIN_RING_PX: f64 = 6.5; // LITERAL-PX-OK: chrome de overlay
 /// Meia-diagonal do quadrado do WELD, px de tela.
 pub(super) const WELD_HALF_PX: f64 = 5.5; // LITERAL-PX-OK: chrome de overlay
 
+/// Meia-largura da BARRA, px de tela. Menor que o anel do pino (`PIN_RING_PX`)
+/// para as duas paralelas passarem POR DENTRO dos anéis das pontas em vez de
+/// cruzá-los — a barra sai dos olhais, que é o que um elo faz.
+pub(super) const ROD_HALF_PX: f64 = 2.5; // LITERAL-PX-OK: chrome de overlay
+
 /// Raio do arco de LIMITE, px de tela — fora do anel do pino, que ele cerca.
 pub(super) const LIMIT_ARC_PX: f64 = 21.0; // LITERAL-PX-OK: chrome de overlay
 
@@ -316,6 +321,37 @@ pub(super) fn rope_span(
         (a.y + b.y) * 0.5 + gravity_screen.1 * sag,
     );
     p.quad_to(mid, b);
+    p
+}
+
+/// **O glifo da BARRA** — duas linhas PARALELAS entre as âncoras.
+///
+/// A convenção de desenho mecânico para um elo rígido, e ela é escolhida por
+/// GEOMETRIA e não por nome: uma corda tesa desenha uma reta que passa
+/// exatamente sobre o segmento âncora→âncora, e uma barra desenha duas linhas
+/// que **nunca** o tocam. É essa a diferença que um gate consegue medir — a
+/// cicatriz do par `Layer`/`Layers` da timeline, reprovado num smoke por serem a
+/// mesma figura com identificadores diferentes.
+///
+/// As pontas (os anéis) são do chamador, como no Spring e na Rope: um rod é
+/// pinado nas duas extremidades, e é isso que os anéis dizem.
+pub(super) fn rod_bar(a: Point, b: Point) -> BezPath {
+    let (dx, dy) = (b.x - a.x, b.y - a.y);
+    let len = dx.hypot(dy);
+    let mut p = BezPath::new();
+    if len < 1e-6 {
+        // Barra de span zero: as duas paralelas colapsariam numa só. Os anéis do
+        // chamador mantêm o joint visível, exatamente como na mola.
+        return p;
+    }
+    // A perpendicular unitária, em px de TELA — a espessura de uma barra
+    // desenhada é chrome, não uma grandeza do mundo (a lição do traço de 1,5
+    // unidades que virou 150 px no Shape Builder).
+    let (nx, ny) = (-dy / len * ROD_HALF_PX, dx / len * ROD_HALF_PX);
+    for s in [1.0, -1.0] {
+        p.move_to(Point::new(a.x + nx * s, a.y + ny * s));
+        p.line_to(Point::new(b.x + nx * s, b.y + ny * s));
+    }
     p
 }
 

@@ -132,6 +132,7 @@ fn authored_kind(k: ph2d_physics::JointKind) -> JointKind {
         ph2d_physics::JointKind::Rope => JointKind::Rope,
         ph2d_physics::JointKind::Weld => JointKind::Weld,
         ph2d_physics::JointKind::Slider => JointKind::Slider,
+        ph2d_physics::JointKind::Rod => JointKind::Rod,
     }
 }
 
@@ -170,7 +171,10 @@ impl PhysicsBridge {
                 motor_speed: j.rest.motor.map(|m| m.speed),
                 length: match kind {
                     JointKind::Spring => Some(j.rest.rest_length),
-                    JointKind::Rope => Some(j.rest.max_length),
+                    // Um Rod reusa o `max_length` de propósito (ver o tipo): o
+                    // comprimento dele é UM número autorado, e o desenho lê o
+                    // mesmo campo que o solver recebeu.
+                    JointKind::Rope | JointKind::Rod => Some(j.rest.max_length),
                     JointKind::Pin | JointKind::Weld | JointKind::Slider => None,
                 },
                 // O eixo do trilho em MUNDO, resolvido aqui e não pelo

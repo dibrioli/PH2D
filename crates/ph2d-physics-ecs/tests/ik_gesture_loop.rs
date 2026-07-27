@@ -36,7 +36,10 @@ fn a_pose_survives_the_dispatch_that_follows_its_own_write() {
             Name::new(n),
             RigidBody { kind: k },
             Collider {
-                shape: ColliderShape::Cuboid { half_x: 0.5, half_y: 0.1 },
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.5,
+                    half_y: 0.1,
+                },
                 ..Collider::default()
             },
             Transform::from_translation(Vec2::new(x, 0.0)),
@@ -80,6 +83,9 @@ fn a_pose_survives_the_dispatch_that_follows_its_own_write() {
     }
     // E a metade que prova que ela CONTINUOU RESOLVENDO através dos re-describes.
     let d = ((tip_pos[0] - target[0]).powi(2) + (tip_pos[1] - target[1]).powi(2)).sqrt();
-    assert!(d < 0.05, "a ponta parou a {d:.3} m do alvo através do laço real");
+    assert!(
+        d < 0.05,
+        "a ponta parou a {d:.3} m do alvo através do laço real"
+    );
     bridge.ik_end();
 }

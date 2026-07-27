@@ -17,6 +17,7 @@ use ph2d_physics_ecs::{
 
 use super::inspector_joint::{
     apply_joint_edit, build_joint_info, create_joint, joint_with_edit, kind_of, set_joint_body,
+    tag_of,
 };
 
 fn registry() -> ComponentRegistry {
@@ -503,4 +504,36 @@ fn changing_the_limit_unit_re_seeds_the_range_and_nothing_else_does() {
         "Pin->Weld tem de PRESERVAR os angulos, got {}",
         weld.limit_max
     );
+}
+
+/// **Todo chip que o painel oferece resolve para um tipo DISTINTO.**
+///
+/// O painel fala *tags* (ele nunca vê `ph2d-physics-ecs`), então `kind_of` e
+/// `tag_of` são a única conversão — e enquanto ninguém as percorre inteiras, um
+/// tipo novo pode chegar em UM dos lados e o chip entrega outra coisa **em
+/// silêncio**. Foi exatamente o que uma mutação mostrou: mapear o tag do Rod
+/// para `Pin` deixava a workspace inteira verde.
+///
+/// ⚠️ **O comprimento vem de `INSP_JOINT_KIND`, o array que o painel PINTA** —
+/// não de uma lista escrita aqui, que nasceria desatualizada no dia em que o
+/// sétimo tipo chegasse. É essa amarração que faz o gate crescer sozinho.
+#[test]
+fn every_kind_chip_the_panel_offers_round_trips_to_a_distinct_kind() {
+    let chips = ph2d_editor::ids::INSP_JOINT_KIND.len();
+    let mut seen: Vec<JointKind> = Vec::new();
+    for tag in 0..chips {
+        let tag = u8::try_from(tag).expect("a lista de chips cabe num u8");
+        let kind = kind_of(tag);
+        assert_eq!(
+            tag_of(kind),
+            tag,
+            "o chip {tag} resolve para {kind:?}, que o shell devolve como tag {}",
+            tag_of(kind)
+        );
+        assert!(
+            !seen.contains(&kind),
+            "o chip {tag} resolve para {kind:?}, que outro chip já entrega —              dois botões para o mesmo tipo, e um tipo sem botão nenhum"
+        );
+        seen.push(kind);
+    }
 }

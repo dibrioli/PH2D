@@ -181,7 +181,9 @@ impl App {
         {
             match kind {
                 JointKind::Spring => j.rest_length = span,
-                JointKind::Rope => j.max_length = span,
+                // Uma barra desenhada com 2 m de arrasto MEDE 2 m — o mesmo
+                // campo da corda, porque engine-side é o mesmo número autorado.
+                JointKind::Rope | JointKind::Rod => j.max_length = span,
                 // Um Slider compartilha um ponto, então nunca chega aqui — mas o
                 // arrasto DIZ algo para ele, e é o eixo (logo abaixo).
                 JointKind::Pin | JointKind::Weld | JointKind::Slider => {}

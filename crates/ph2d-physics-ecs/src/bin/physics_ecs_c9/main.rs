@@ -471,6 +471,50 @@ fn main() {
         rail_t,
     ));
 
+    // Uma BARRA (W-Rod): entra no hash porque um rod NAO e um readout -- ele
+    // muda a pose, e por um caminho de solver proprio (um motor de POSICAO no
+    // eixo linear ACOPLADO, que nenhuma outra lane exercita: o servo motoriza o
+    // angular, a mola usa a mesma familia mas com rigidez tres ordens menor).
+    // Pendulo: gancho estatico + peso pendurado a 1,5 m, que oscila o tempo todo
+    // e portanto acumula divergencia de plataforma ate o ultimo passo.
+    sim.world_mut().spawn((
+        Name::new("C9 Rod Hook"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.1 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-64.0, 8.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Rod Load"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        // Deslocado de lado, nao pendurado a prumo: a prumo o pendulo nasce em
+        // equilibrio e a lane mede um corpo parado.
+        Transform::from_translation(Vec2::new(-63.0, 6.9)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Rod"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Rod Hook"),
+            body_b: stable_name_id("C9 Rod Load"),
+            kind: JointKind::Rod,
+            max_length: 1.5,
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(-64.0, 8.0)),
+    ));
+
     // Um SERVO (W-J6): a mesma dobradica do resto do repo, mas mirando um LUGAR
     // em vez de uma taxa. Entra no hash porque o motor de POSICAO e um caminho de
     // solver proprio -- `set_motor` com stiffness diferente de zero, resolvido

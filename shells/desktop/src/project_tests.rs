@@ -445,11 +445,6 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // FLIP 11→12 + PROJECT 36→37: o `FlipStroke` ganhou `airbrush` (falloff físico
         // Beer-Lambert por dab esférico, 03 §8) — campo no MEIO do struct (após `self_overlap`),
         // mesmo raciocínio posicional.
-        // PROJECT 37→38: o `ph2d_ecs::FxOp` ganhou `blend` (a LEI DE MISTURA por degrau da pilha
-        // de FX raster, plano 24 W6) — campo APENDADO ao componente `VecFilter`, e postcard é
-        // posicional ⇒ um save v37 leria `blend` além do fim de cada degrau. ⚠️ `FLIP` e
-        // `VEC_SCENE` NÃO se movem: a lei é do componente ECS, não da `VecScene` — a geometria
-        // do caminho não mudou uma vírgula.
         (38, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."

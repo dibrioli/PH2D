@@ -234,10 +234,12 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
             }
             builder.into()
         }
-        JointKind::Weld | JointKind::Spring | JointKind::Rope => FixedJointBuilder::new()
-            .local_anchor1(a)
-            .local_anchor2(b)
-            .into(),
+        JointKind::Weld | JointKind::Spring | JointKind::Rope | JointKind::Rod => {
+            FixedJointBuilder::new()
+                .local_anchor1(a)
+                .local_anchor2(b)
+                .into()
+        }
     }
 }
 
@@ -246,6 +248,21 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
 /// A porta única: o construtor da árvore (na ponte do ECS) pergunta a ELA quais
 /// arestas existem, e enumerar os tipos lá seria a lista que nasce incompleta no
 /// dia em que um tipo novo chegar.
+///
+/// ⚠️ **O [`JointKind::Rod`] responde `false` por DUAS razões independentes, e
+/// cada uma bastaria.** A primeira é a mesma de Spring/Rope: ele é **mole** —
+/// um motor rígido, não uma restrição dura (ver o enum, onde a medição está). A
+/// segunda sobreviveria mesmo que ele fosse rígido: uma árvore de coordenadas
+/// reduzidas não sabe dizer o que ele é, porque ele tira UM grau de liberdade (a
+/// distância) dos três e o catálogo multibody do rapier só tem Fixed (tira 3),
+/// Revolute (tira 2) e Prismatic (tira 2) — nenhuma tira 1. E o caso canônico de
+/// um rod é **fechar um laço** (o quatro-barras), que uma árvore não expressa
+/// por definição.
+///
+/// **Consequência, nomeada em vez de descoberta:** IK e FK **não respeitam um
+/// rod**. Posar através de um estica a barra, e o primeiro tick de Play a
+/// devolve ao comprimento. É a mesma exposição que uma corda tem, com a
+/// diferença de que aqui o retorno é visível — que é melhor do que silencioso.
 #[must_use]
 pub fn is_rigid_link(kind: JointKind) -> bool {
     matches!(kind, JointKind::Pin | JointKind::Weld | JointKind::Slider)
@@ -276,7 +293,15 @@ pub fn fk_dof(kind: JointKind) -> Option<FkDof> {
         // Um Weld trava os seis números: os dois corpos são UMA peça rígida.
         // Spring e Rope nem chegam aqui (não são elos), e a resposta honesta
         // para eles é a mesma — a pose deles é resultado de forças.
-        JointKind::Weld | JointKind::Spring | JointKind::Rope => None,
+        //
+        // ⚠️ **O Rod está aqui por INALCANÇABILIDADE, não por semelhança com o
+        // Weld**, e a diferença importa: `None` faz a subida do gesto de FK
+        // *atravessar* a junta levando a peça rigidamente, e um rod NÃO solda
+        // nada (a ponta de lá gira livre em torno do próprio olhal). O que o
+        // impede de chegar aqui é [`is_rigid_link`], que o recusa como aresta —
+        // então se um dia um rod virar elo de árvore, este braço tem de virar um
+        // terceiro estado ("pare, não sei posar isto"), nunca continuar `None`.
+        JointKind::Weld | JointKind::Spring | JointKind::Rope | JointKind::Rod => None,
     }
 }
 

@@ -27,6 +27,7 @@ pub(crate) fn kind_of(tag: u8) -> JointKind {
         2 => JointKind::Rope,
         3 => JointKind::Weld,
         4 => JointKind::Slider,
+        5 => JointKind::Rod,
         _ => JointKind::Pin,
     }
 }
@@ -91,13 +92,14 @@ fn motor_mode_of(tag: u8) -> MotorMode {
     }
 }
 
-fn tag_of(kind: JointKind) -> u8 {
+pub(crate) fn tag_of(kind: JointKind) -> u8 {
     match kind {
         JointKind::Pin => 0,
         JointKind::Spring => 1,
         JointKind::Rope => 2,
         JointKind::Weld => 3,
         JointKind::Slider => 4,
+        JointKind::Rod => 5,
     }
 }
 

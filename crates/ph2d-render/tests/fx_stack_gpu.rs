@@ -312,9 +312,16 @@ fn the_order_of_the_stack_changes_the_picture() {
         .map(i32::abs)
         .max()
         .unwrap_or(0);
-    // Os dois eram idênticos com a mutação "aplique sempre o primeiro op"; aqui o fosso é grande.
+    // Os dois eram idênticos com a mutação "aplique sempre o primeiro op" — `differing == 0` — e é
+    // a CONTAGEM que tem os dentes; o delta é a segunda perna.
+    //
+    // ⚠️ **O 30 era um número de espaço de GAMA e foi RE-MEDIDO, não abaixado por conveniência.**
+    // Com a pilha a trabalhar em luz linear a mesma diferença de desenho lê menor nos bytes
+    // codificados (a transferência comprime o topo da faixa): medido, 2332 bytes diferentes e pior
+    // delta **28**. A barra fica em 20 — folga abaixo do medido, e ainda a um abismo do zero que a
+    // mutação produz.
     assert!(
-        differing > 200 && worst > 30,
+        differing > 200 && worst > 20,
         "trocar a ordem tem de mudar o desenho (bytes diferentes {differing}, pior delta {worst})"
     );
 }

@@ -78,18 +78,27 @@ impl FxDump {
     }
 }
 
-/// RGB composto sobre o cinza do app. ⚠️ A saída do passe é RGBA **RETO** (o resolve divide pelo
-/// alfa), então o over é `a·rgb + (1−a)·bg` — compor como premultiplicado clareia toda borda
-/// parcial, que é exatamente onde estes efeitos vivem.
+/// RGB composto sobre o cinza do app. ⚠️ A saída do passe é RGBA **RETO** (o resolve
+/// des-premultiplica), então o over é `a·rgb + (1−a)·bg` — compor como premultiplicado clareia
+/// toda borda parcial, que é exatamente onde estes efeitos vivem.
+///
+/// ⚠️ **E o over corre em LUZ LINEAR**, como o Vello faz com esta textura — a mesma razão (e a
+/// mesma transferência do `ph2d_color`) do `write_ppm` da sonda irmã, `fx_look_probe.rs`. Duas
+/// fotos do mesmo pipeline que compõem diferente não são comparáveis, e comparar as duas é
+/// literalmente o trabalho deste despejo.
 fn write_ppm(path: &str, px: &[u8], w: u32, h: u32) {
+    use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
     let bg = [0x2c_u8, 0x2e, 0x33];
     let mut body = Vec::with_capacity((w * h * 3) as usize);
     for i in 0..(w * h) as usize {
         let o = i * 4;
         let a = f32::from(px[o + 3]) / 255.0;
         for c in 0..3 {
-            let v = a.mul_add(f32::from(px[o + c]), (1.0 - a) * f32::from(bg[c]));
-            body.push(v.round().clamp(0.0, 255.0) as u8);
+            let lin = a.mul_add(
+                srgb_to_linear_byte(px[o + c]),
+                (1.0 - a) * srgb_to_linear_byte(bg[c]),
+            );
+            body.push(linear_to_srgb_byte(lin));
         }
     }
     if let Ok(mut f) = std::fs::File::create(path) {

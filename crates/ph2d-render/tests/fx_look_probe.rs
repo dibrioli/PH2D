@@ -125,14 +125,19 @@ fn star_segments() -> Vec<[f32; 4]> {
         .collect()
 }
 
-/// A estrela em RGBA PREMULTIPLICADO — a premissa de toda a pilha.
+/// A estrela em RGBA de alfa **RETO** — que é o que o Vello de facto entrega.
+///
+/// ⚠️ **`byte · cobertura` era o que esta sonda montava, e é uma fonte que o produto nunca
+/// produz.** Foi por isso que ela não reproduzia o contorno tracejado do smoke sob condição
+/// nenhuma: uma sonda cuja FONTE não é a do produto responde perguntas sobre outra coisa. Com
+/// esta forma, o modo `PH2D_FX_VELLO=1` e o analítico concordam texel a texel na banda.
 fn star_src(gpu: &ph2d_gpu::GpuContext) -> (wgpu::Texture, Vec<f32>) {
     let a = star_alpha(W, H);
     let mut bytes = vec![0u8; (W * H * 4) as usize];
     for (i, &cov) in a.iter().enumerate() {
         let o = i * 4;
         for c in 0..3 {
-            bytes[o + c] = (AMBER[c] * cov).round().clamp(0.0, 255.0) as u8;
+            bytes[o + c] = AMBER[c].round().clamp(0.0, 255.0) as u8;
         }
         bytes[o + 3] = (cov * 255.0).round().clamp(0.0, 255.0) as u8;
     }
@@ -141,18 +146,25 @@ fn star_src(gpu: &ph2d_gpu::GpuContext) -> (wgpu::Texture, Vec<f32>) {
 
 /// PPM P6 sobre um fundo cinza-escuro (o do app), para a foto ser lida como o artista a vê.
 ///
-/// ⚠️ A saída do passe é RGBA **RETO** (o `cs_resolve` divide pelo alfa), então o `over` é
+/// ⚠️ A saída do passe é RGBA **RETO** (o `cs_resolve` des-premultiplica), então o `over` é
 /// `a·rgb + (1−a)·bg`. Compor como premultiplicado clareia toda borda parcial — e uma sonda que
 /// mente na borda é uma sonda inútil justamente onde estes efeitos vivem.
+///
+/// ⚠️ **E o `over` corre em LUZ LINEAR**, porque é isso que o Vello faz com esta textura quando o
+/// app a desenha. Compor em sRGB aqui produziria uma foto que ninguém vê — a sonda é um ORÁCULO DE
+/// APARÊNCIA, então ela tem de errar exatamente onde o produto erra e acertar onde ele acerta. A
+/// transferência vem do `ph2d_color`, a mesma que o resto do app usa: uma cópia local seria uma
+/// segunda resposta a *o que é sRGB*.
 fn write_ppm(dir: &str, name: &str, px: &[u8]) {
+    use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
     let bg = [0x2c_u8, 0x2e, 0x33];
     let mut body = Vec::with_capacity((W * H * 3) as usize);
     for i in 0..(W * H) as usize {
         let o = i * 4;
         let a = f32::from(px[o + 3]) / 255.0;
         for c in 0..3 {
-            let v = a * f32::from(px[o + c]) + (1.0 - a) * f32::from(bg[c]);
-            body.push(v.round().clamp(0.0, 255.0) as u8);
+            let lin = a * srgb_to_linear_byte(px[o + c]) + (1.0 - a) * srgb_to_linear_byte(bg[c]);
+            body.push(linear_to_srgb_byte(lin));
         }
     }
     let path = format!("{dir}/{name}.ppm");

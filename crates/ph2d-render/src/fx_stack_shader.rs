@@ -26,6 +26,42 @@ struct Globals {
 // A SILHUETA em segmentos (`x0,y0,x1,y1`), no espaço de texel do scratch. Vazia = `n_segs == 0`.
 @group(0) @binding(4) var<storage, read> segs: array<vec4<f32>>;
 
+// ── A TRANSFERÊNCIA sRGB ──────────────────────────────────────────────────────────────────────
+//
+// **O espaço de trabalho da pilha é LINEAR, premultiplicado; sRGB só nas fronteiras.** É a
+// convenção de toda composição séria (o default `linearRGB` do `color-interpolation-filters` do
+// SVG · o *Blend Colors Using 1.0 Gamma* do AE · Nuke/Fusion/Flame · OpenEXR/ACES) e é a que o
+// próprio Vello já usa a montante: ele compõe em luz linear e codifica em sRGB só para caber em 8
+// bits, então `stored = encode(a · linear(cor))`.
+//
+// ⚠️ **É por isso que `rgb/a` sobre os bytes NÃO era a des-premultiplicação.** Medido em âmbar
+// (235,175,60) a meia cobertura: o byte guardado é (173,128,41) e a divisão ingênua devolvia
+// (255,255,82) — branco lavado no fio da borda, que é onde estes efeitos inteiros vivem.
+//
+// O alfa **nunca** é transferido: ele já é linear por definição.
+fn srgb_to_linear(c: f32) -> f32 {
+    if (c <= 0.04045) { return c / 12.92; }
+    return pow((c + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb(c: f32) -> f32 {
+    if (c <= 0.0031308) { return c * 12.92; }
+    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+
+fn srgb_to_linear3(c: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear(c.r), srgb_to_linear(c.g), srgb_to_linear(c.b));
+}
+
+fn linear_to_srgb3(c: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(linear_to_srgb(c.r), linear_to_srgb(c.g), linear_to_srgb(c.b));
+}
+
+// A cor do degrau, em LINEAR. O `tint` chega do painel em sRGB (é o que a swatch mostra e o que o
+// picker escreve), e o miolo da pilha só fala linear — a conversão mora aqui, na fronteira, e não
+// em cinco sítios de uso.
+fn tint_lin() -> vec3<f32> { return srgb_to_linear3(g.tint.rgb); }
+
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
 // **Quem precisa do campo FORA da forma?** O feather (a rampa é centrada na fronteira) e o contorno
@@ -142,6 +178,43 @@ fn blur_v_at(id: vec3<u32>) -> vec4<f32> {
 pub(crate) const FX_STACK_MID_WGSL: &str = r#"
 @group(0) @binding(3) var dst: texture_storage_2d<rgba16float, write>;
 
+// **A PORTA DE ENTRADA**: a fonte do Vello (sRGB, alfa **RETO**) -> o espaço de trabalho da pilha
+// (LINEAR, **premultiplicado**). Duas conversões, uma porta.
+//
+// ⚠️ **A FONTE NÃO É PREMULTIPLICADA, e a pilha inteira afirmava que era.** Medido no rasterizador
+// REAL, com uma estrela: dos **1696 texels de cobertura parcial, 1696 trazem a cor CHEIA**
+// `(235,175,60)` com o alfa baixo ao lado — zero premultiplicados. O `render_to_intermediate`
+// entrega alfa reto, e o doc deste módulo dizia o contrário.
+//
+// ⚠️ **Por que isso atravessou dezenas de gates verdes:** num texel OPACO e num texel VAZIO as duas
+// convenções dão exatamente os mesmos bytes. Toda fixture com cobertura parcial deste módulo foi
+// escrita pela mesma mão que escreveu a premissa, então nenhuma podia contradizê-la; e a única
+// coisa capaz de arbitrar — comparar com o que o Vello de facto escreve — só passou a existir
+// quando a sonda ganhou o modo `PH2D_FX_VELLO=1`. O sintoma renderizado era o **contorno
+// tracejado** do feather: fora da silhueta a cor reta saía até 40 níveis clara.
+//
+// A álgebra a jusante EXIGE alfa associado — Porter-Duff, o borrão que soma cor com peso, o
+// `inner_tint`, o halo por baixo. Premultiplicar aqui é o que torna tudo isso válido, e fazê-lo
+// DEPOIS de linearizar é o que o torna correto (multiplicar cobertura por INTENSIDADE).
+//
+// ⚠️ **Roda SEMPRE, inclusive para uma pilha vazia.** Um flag lido dentro do `tap_img` custaria um
+// ramo no laço mais interno do borrão E deixaria o `resolve` com duas convenções para escolher.
+// Uma porta, uma resposta: **do `cs_ingest` em diante tudo é linear e premultiplicado**.
+//
+// O `rgba16float` dos intermediários não é luxo aqui: linear em 8 bits BANDEARIA nos tons escuros
+// (a transferência comprime a faixa baixa por um fator ~12,9), e é para isso que meia-precisão em
+// ponto flutuante existe num pipeline de composição.
+@compute @workgroup_size(8, 8, 1)
+fn cs_ingest(@builtin(global_invocation_id) id: vec3<u32>) {
+    if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
+    let s = tap_img(t0, i32(id.x), i32(id.y));
+    textureStore(
+        dst,
+        vec2<i32>(i32(id.x), i32(id.y)),
+        vec4<f32>(srgb_to_linear3(s.rgb) * s.a, s.a),
+    );
+}
+
 // Horizontal: entrada premultiplicada -> temp premultiplicada (com o deslocamento em X).
 @compute @workgroup_size(8, 8, 1)
 fn cs_blur_h(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -172,10 +245,10 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
         // `halo.a = 0,25` dava 0,625, e como o `resolve` des-premultiplica, dividir por um alfa
         // maior CLAREIA — era o rim claro de 1 px em volta da forma. Um efeito de DENTRO tinge o
         // que já está lá; ele não é uma camada nova.
-        outc = inner_tint(over, g.tint.rgb, b.a * g.tint.a * g.opacity);
+        outc = inner_tint(over, tint_lin(), b.a * g.tint.a * g.opacity);
     } else {
         let a = b.a * g.tint.a * g.opacity;
-        let halo = vec4<f32>(g.tint.rgb * a, a);
+        let halo = vec4<f32>(tint_lin() * a, a);
         outc = over + halo * (1.0 - over.a);
     }
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), outc);
@@ -434,10 +507,10 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
             let t = clamp(dist / w, 0.0, 1.0);
             shade = dot(n, l) * (4.0 * t * (1.0 - t)) * g.opacity;
         }
-        let colour = select(g.tint.rgb, vec3<f32>(1.0), shade > 0.0);
+        let colour = select(tint_lin(), vec3<f32>(1.0), shade > 0.0);
         outc = inner_tint(over, colour, abs(shade) * g.tint.a);
     } else if (is_inner()) {
-        outc = inner_tint(over, g.tint.rgb, (1.0 - smoothstep(0.0, w, dist)) * g.tint.a * g.opacity);
+        outc = inner_tint(over, tint_lin(), (1.0 - smoothstep(0.0, w, dist)) * g.tint.a * g.opacity);
     } else {
         // CONTORNO: a borda cai exatamente em `w`, com ~1 px de anti-aliasing. Isto é uma DILATAÇÃO
         // de verdade (`d <= w`), ao contrário do corte num campo borrado, que ENCOLHE na quina
@@ -445,7 +518,7 @@ fn cs_op_field(@builtin(global_invocation_id) id: vec3<u32>) {
         let outward = max(-sdist, 0.0);
         let cov = 1.0 - smoothstep(w - 0.5, w + 0.5, outward);
         let a = cov * g.tint.a * g.opacity;
-        let halo = vec4<f32>(g.tint.rgb * a, a);
+        let halo = vec4<f32>(tint_lin() * a, a);
         outc = over + halo * (1.0 - over.a);
     }
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), outc);
@@ -459,7 +532,7 @@ fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
     let src = tap_img(t0, i32(id.x), i32(id.y));
     let k = clamp(g.tint.a * g.opacity, 0.0, 1.0);
     // Premultiplicado: a cor cheia neste texel é `tint.rgb * src.a`.
-    let rgb = mix(src.rgb, g.tint.rgb * src.a, k);
+    let rgb = mix(src.rgb, tint_lin() * src.a, k);
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), vec4<f32>(rgb, src.a));
 }
 "#;
@@ -468,12 +541,20 @@ fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
 pub(crate) const FX_STACK_OUT_WGSL: &str = r#"
 @group(0) @binding(3) var dst: texture_storage_2d<rgba8unorm, write>;
 
+// **A PORTA DE SAÍDA**: linear premultiplicado -> sRGB reto, que é o que o `register_texture` do
+// Vello amostra.
+//
+// ⚠️ **A divisão pelo alfa acontece em LINEAR, e é a metade que faltava.** Premultiplicar é
+// multiplicar a INTENSIDADE por uma cobertura, então desfazê-lo só é a inversa no espaço em que a
+// multiplicação ocorreu. Feito sobre os bytes sRGB, `rgb/a` sobre-corrige: a cor de um texel de
+// meia cobertura saía ~1,45× clara, e num texel de um quarto saía BRANCA — a lavagem que o smoke
+// leu como dentes na borda do feather.
 @compute @workgroup_size(8, 8, 1)
 fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
     let premul = textureLoad(t0, vec2<i32>(i32(id.x), i32(id.y)), 0);
     var rgb = vec3<f32>(0.0);
-    if (premul.a > 0.0001) { rgb = premul.rgb / premul.a; }
+    if (premul.a > 0.0001) { rgb = linear_to_srgb3(premul.rgb / premul.a); }
     let outc = vec4<f32>(rgb, premul.a);
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), clamp(outc, vec4<f32>(0.0), vec4<f32>(1.0)));
 }

@@ -106,7 +106,7 @@ fn the_relief_is_constant_along_a_straight_edge() {
 ///
 /// ⚠️ **O perfil antigo valia 1 em `dist = 0`**, ou seja punha o valor EXTREMO do sombreado no
 /// texel mais externo: o lado escuro saía preto no fio da borda e o claro saía branco. O smoke
-/// chamou isso de "linhas pretas", e nenhum gate o via — todos mediam ondulação AO LONGO da
+/// chamou isso de "linhas pretas", e nenhum gate o via — todos olhavam a ondulação AO LONGO da
 /// aresta, e uma linha dura é constante ao longo dela.
 #[test]
 #[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]

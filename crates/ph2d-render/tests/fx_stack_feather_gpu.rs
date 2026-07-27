@@ -14,61 +14,28 @@
 //! `(2,5)/√29` — todo texel à mesma distância da aresta é translação de rede de outro, então a
 //! fase da rasterização é a MESMA em todos e o artefato mede zero **por construção**.
 //!
+//! ⚠️ **A fixture vem do `fx_stack_common`, e ISSO É A CORREÇÃO DE UM DEFEITO REAL.** Este arquivo
+//! carregava uma cópia própria dela — mesmos números, outro `fn` — e quando a partilhada aprendeu
+//! que o Vello premultiplica em LUZ LINEAR, a cópia ficou para trás a montar `byte · cobertura`.
+//! O gate ficou vermelho acusando **149 níveis** de desvio de cor sobre um produto correto: uma
+//! fonte que o produto nunca produz responde perguntas sobre outra coisa. Duas portas para
+//! *"como é uma aresta antialiasada?"* divergem, e divergiram.
+//!
 //! Rodar: `cargo test -p ph2d-render --test fx_stack_feather_gpu -- --ignored`.
 
 use ph2d_ecs::FxOp;
 use ph2d_render::{FxOpGpu, FxStackPass, make_output_texture};
 
 mod fx_stack_common;
-use fx_stack_common::{make_src, readback, try_headless_gpu};
+use fx_stack_common::{INK, oblique_signed as signed, oblique_source, readback, try_headless_gpu};
 
 const W: u32 = 96;
 const H: u32 = 96;
-/// A inclinação da aresta. **Irracional** (ver o cabeçalho) e rasa o bastante para a escada de
-/// rasterização ter passo longo, que é onde a fase morde.
-const SLOPE: f64 = 0.438_74;
-/// A aresta passa pelo centro da textura.
-const C: f64 = 48.0;
-/// A cor da forma, em sRGB reto.
-const INK: [f64; 3] = [235.0, 175.0, 60.0];
 /// A largura da banda do feather, em texels.
 const BAND: f32 = 8.0;
 
-/// Distância COM SINAL do centro do texel `(x, y)` à aresta — positiva DENTRO.
-fn signed(x: u32, y: u32) -> f64 {
-    let px = f64::from(x) + 0.5;
-    let py = f64::from(y) + 0.5;
-    (py - (SLOPE * (px - C) + C)) / (1.0 + SLOPE * SLOPE).sqrt()
-}
-
-/// A meia-plano antialiasada, premultiplicada — cobertura por supersampling 8×8.
-fn source(gpu: &ph2d_gpu::GpuContext) -> wgpu::Texture {
-    let mut bytes = vec![0u8; (W * H * 4) as usize];
-    for y in 0..H {
-        for x in 0..W {
-            let mut acc = 0u32;
-            for sy in 0..8u32 {
-                for sx in 0..8u32 {
-                    let px = f64::from(x) + (f64::from(sx) + 0.5) / 8.0;
-                    let py = f64::from(y) + (f64::from(sy) + 0.5) / 8.0;
-                    if py > SLOPE * (px - C) + C {
-                        acc += 1;
-                    }
-                }
-            }
-            let cov = f64::from(acc) / 64.0;
-            let o = ((y * W + x) * 4) as usize;
-            for c in 0..3 {
-                bytes[o + c] = (INK[c] * cov).round() as u8;
-            }
-            bytes[o + 3] = (cov * 255.0).round() as u8;
-        }
-    }
-    make_src(gpu, W, H, &bytes)
-}
-
 fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
-    let src = source(gpu);
+    let src = oblique_source(gpu, W, H);
     let dst = make_output_texture(gpu, W, H);
     let mut pass = FxStackPass::new(gpu);
     pass.run(

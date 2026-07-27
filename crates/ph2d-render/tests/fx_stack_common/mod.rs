@@ -34,7 +34,7 @@ pub fn try_headless_gpu() -> Option<GpuContext> {
         .clone()
 }
 
-/// Uma textura `Rgba8Unorm` de entrada (`TEXTURE_BINDING | COPY_DST`) com `bytes` (premultiplicado).
+/// Uma textura `Rgba8Unorm` de entrada com `bytes` — alfa **RETO**, como o Vello entrega.
 pub fn make_src(gpu: &GpuContext, w: u32, h: u32, bytes: &[u8]) -> wgpu::Texture {
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("test fx_stack src"),
@@ -47,7 +47,12 @@ pub fn make_src(gpu: &GpuContext, w: u32, h: u32, bytes: &[u8]) -> wgpu::Texture
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        // ⚠️ `COPY_SRC` para a sonda poder FOTOGRAFAR a fonte: sem ele o `0_src` da
+        // `fx_look_probe` era erro de validação, e o modo analítico dela nunca rodava — só o
+        // `PH2D_FX_VELLO=1` passava, o que fazia a comparação entre rasterizadores impossível.
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
     gpu.queue.write_texture(
@@ -152,7 +157,13 @@ pub fn oblique_signed(x: u32, y: u32) -> f64 {
     (py - (SLOPE * (px - EDGE_C) + EDGE_C)) / (1.0 + SLOPE * SLOPE).sqrt()
 }
 
-/// O meio-plano antialiasado, premultiplicado — cobertura por supersampling 8×8.
+/// O meio-plano antialiasado — cobertura por supersampling 8×8, **alfa RETO**.
+///
+/// ⚠️ **RETO, e isso foi MEDIDO no rasterizador real, não suposto.** O `render_to_intermediate` do
+/// Vello escreve a cor CHEIA com o alfa ao lado: censo de uma estrela, **1696 de 1696** texels de
+/// cobertura parcial trazem `(235,175,60)`. A premissa "a fonte é premultiplicada" atravessou o
+/// módulo inteiro porque num texel OPACO e num VAZIO as duas convenções coincidem — e toda fixture
+/// de cobertura parcial foi escrita pela mesma mão que escreveu a premissa.
 pub fn oblique_source(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
     let mut bytes = vec![0u8; (w * h * 4) as usize];
     for y in 0..h {
@@ -170,7 +181,7 @@ pub fn oblique_source(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
             let cov = f64::from(acc) / 64.0;
             let o = ((y * w + x) * 4) as usize;
             for c in 0..3 {
-                bytes[o + c] = (INK[c] * cov).round() as u8;
+                bytes[o + c] = INK[c].round() as u8;
             }
             bytes[o + 3] = (cov * 255.0).round() as u8;
         }

@@ -299,7 +299,12 @@ fn the_colour_overlay_repaints_without_moving_coverage() {
         let c = rgb_at(&out, (BX0 + BX1) / 2, y);
         eprintln!("[overlay] forca {strength}: miolo {c:?}");
         // O verde/azul do branco cedem na proporção da força — é o `mix` que a força controla.
-        let want = ((1.0 - strength) * 255.0).round() as i32;
+        //
+        // ⚠️ **E a proporção é de LUZ, não de bytes.** A pilha mistura em espaço linear, então a
+        // expectativa é `encode(1 − força)`: a 0,6 isso dá 170, não 102. O gate aprendeu a lei
+        // certa em vez de afrouxar uma tolerância — e com isso passou a ser uma segunda testemunha
+        // da convenção linear (o número antigo era o de um `mix` sobre bytes codificados).
+        let want = i32::from(ph2d_color::srgb::linear_to_srgb_byte(1.0 - strength));
         assert!(
             c[0] > 240 && (c[1] - want).abs() <= 6 && (c[2] - want).abs() <= 6,
             "a forca {strength} tinha de dar ~[255,{want},{want}] (deu {c:?})"
@@ -378,13 +383,21 @@ fn the_pointwise_op_costs_much_less_than_a_blur() {
         t.elapsed().as_secs_f64() * 1000.0 / 20.0
     };
     let six = |kind: u8, sigma: f32| vec![one(kind, sigma, RED, [0, 0]); 6];
-    let blur = time(&mut pass, &six(FxOp::BLUR, 8.0));
-    let overlay = time(&mut pass, &six(FxOp::COLOR_OVERLAY, 0.0));
-    eprintln!("[custo] 6 blurs {blur:.3} ms · 6 color overlays {overlay:.3} ms");
+    // ⚠️ **O custo MARGINAL, e a subtração é o que torna o gate honesto.** Toda pilha paga um
+    // `ingest` e um `resolve` fixos, então uma razão bruta dilui a diferença que se quer medir — e
+    // dilui MAIS quando o overhead cresce, o que é exatamente o que aconteceu quando o ingest
+    // nasceu. O que este gate afirma é sobre o `plan_of`: quem não borra gasta UM dispatch, não
+    // dois. Medir só os ops isola essa afirmação da moldura.
+    let base = time(&mut pass, &[]);
+    let blur = time(&mut pass, &six(FxOp::BLUR, 8.0)) - base;
+    let overlay = time(&mut pass, &six(FxOp::COLOR_OVERLAY, 0.0)) - base;
+    eprintln!(
+        "[custo] moldura {base:.3} ms · 6 blurs +{blur:.3} ms · 6 color overlays +{overlay:.3} ms"
+    );
     assert!(
         overlay * 2.0 < blur,
-        "seis ops pontuais ({overlay:.3} ms) tinham de custar bem menos que seis borroes \
-         ({blur:.3} ms) — `passes_of` deve estar dando dois passes a quem nao borra"
+        "seis ops pontuais (+{overlay:.3} ms) tinham de custar bem menos que seis borroes \
+         (+{blur:.3} ms) — `passes_of` deve estar dando dois passes a quem nao borra"
     );
 }
 
@@ -466,27 +479,44 @@ fn the_contour_mode_shadows_a_reentrant_corner_and_proximity_barely_does() {
     };
     let (prox_notch, prox_edge) = probe(&mut pass, FxOp::MODE_PROXIMITY);
     let (cont_notch, cont_edge) = probe(&mut pass, FxOp::MODE_CONTOUR);
+    // ⚠️ **A profundidade de uma sombra é uma grandeza de LUZ, e é aí que estas barras moram.**
+    // Em bytes codificados a transferência comprime o topo da faixa, então a MESMA diferença de
+    // sombra lê menor perto do branco — medido, os dois modos separavam 33 contra 19 níveis (fator
+    // 1,7) e em luz linear separam 0,2445 contra 0,0940 (fator **2,6**). Medir na grandeza certa
+    // deixou o gate mais afiado, não mais frouxo.
+    let lin = |b: i32| f64::from(ph2d_color::srgb::srgb_to_linear_byte(b.clamp(0, 255) as u8));
+    let prox_gap = lin(prox_notch) - lin(prox_edge);
+    let cont_gap = (lin(cont_notch) - lin(cont_edge)).abs();
     eprintln!(
-        "[contorno] PROXIMITY reentrancia {prox_notch} vs aresta {prox_edge} · \
-         CONTOUR reentrancia {cont_notch} vs aresta {cont_edge} (0 = sombra cheia, 255 = sem sombra)"
+        "[contorno] PROXIMITY reentrancia {prox_notch} vs aresta {prox_edge} (vao {prox_gap:.4}) · \
+         CONTOUR reentrancia {cont_notch} vs aresta {cont_edge} (vao {cont_gap:.4}) \
+         (0 = sombra cheia, 255 = sem sombra; vaos em luz linear)"
     );
     // A lei do CONTOUR: à mesma distância da borda, a mesma sombra — na quina e na reta.
     assert!(
-        (cont_notch - cont_edge).abs() <= 24,
+        cont_gap <= 0.14,
         "no modo Contour a reentrancia ({cont_notch}) tinha de escurecer como a aresta \
-         ({cont_edge}) — a banda segue o CONTORNO"
+         ({cont_edge}) — a banda segue o CONTORNO (vao {cont_gap:.4} em luz)"
     );
     // E o controle: no PROXIMITY a reentrância é MUITO mais clara — é o defeito reportado, e ele
     // continua lá de propósito (é o outro modo, não um bug).
     assert!(
-        prox_notch > prox_edge + 40,
+        prox_gap >= 0.18,
         "o modo Proximity tinha de deixar a reentrancia bem mais CLARA que a aresta \
-         (deu {prox_notch} contra {prox_edge}) — se os dois modos concordam, um deles nao existe"
+         (deu {prox_notch} contra {prox_edge}, vao {prox_gap:.4} em luz) — se os dois modos \
+         concordam, um deles nao existe"
     );
     // E as duas leis escurecem de verdade a aresta reta (senão o gate acima passaria com tudo claro).
+    //
+    // ⚠️ Também em LUZ, e pela mesma razão — mais o fato que a pilha linear tornou visível: reduzir
+    // metade da LUZ é o byte 188, não 128. Um sombreamento correto lê mais claro em bytes do que a
+    // aritmética de gama fazia crer, e a barra tem de falar da grandeza que a sombra é. Medido:
+    // Contour deixa 0,3185 da luz, Proximity 0,6105.
     assert!(
-        cont_edge < 160 && prox_edge < 160,
-        "a aresta reta tinha de escurecer nos dois modos ({cont_edge} / {prox_edge})"
+        lin(cont_edge) < 0.70 && lin(prox_edge) < 0.70,
+        "a aresta reta tinha de escurecer nos dois modos (luz {:.4} / {:.4})",
+        lin(cont_edge),
+        lin(prox_edge)
     );
 }
 

@@ -288,7 +288,8 @@ impl FxLive {
             }
         }
 
-        // 3. A PILHA na GPU: scratch intermediate (premul) → op₁ → … → textura de saída (reta).
+        // 3. A PILHA na GPU: scratch intermediate (sRGB, alfa RETO) → op₁ → … → textura de saída
+        //    (mesma convenção). Quem converte para o espaço de trabalho é o `cs_ingest`, uma vez.
         let src = self
             .scratch
             .as_ref()

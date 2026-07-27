@@ -1,8 +1,9 @@
 //! **`FxStackPass`** — a PILHA de filtros raster do módulo vetorial (plano 24), 100% na GPU.
 //!
-//! Recebe a forma isolada já rasterizada numa textura (premultiplicada — é o que o Vello escreve)
-//! e devolve a imagem final numa textura de saída (alfa RETO — o que o `register_texture` do Vello
-//! espera), **sem readback e sem uma linha de blur na CPU**. É o que torna o FX viável em RUNTIME
+//! Recebe a forma isolada já rasterizada numa textura (sRGB, alfa **RETO** — é o que o
+//! `render_to_intermediate` do Vello escreve, MEDIDO) e devolve a imagem final numa textura de
+//! saída na mesma convenção (o que o `register_texture` do Vello espera), **sem readback e sem uma
+//! linha de blur na CPU**. É o que torna o FX viável em RUNTIME
 //! de jogo: a forma pode animar todo frame que o custo é um render + alguns passes na placa,
 //! nunca um roundtrip GPU→CPU→GPU.
 //!
@@ -11,10 +12,23 @@
 //! # O fold, e o invariante que o torna possível
 //!
 //! ```text
-//! forma rasterizada → [op₁] → [op₂] → … → [opₙ] → resolve → textura de saída (reta)
+//! forma rasterizada (sRGB) → ingest → [op₁] → [op₂] → … → [opₙ] → resolve → saída (sRGB, reta)
+//!                                     └────────── LINEAR premultiplicado ──────────┘
 //! ```
 //!
-//! **Todo op é imagem → imagem, premultiplicada, do MESMO tamanho** — é por isso que a pilha
+//! **O miolo fala LINEAR PREMULTIPLICADO, e só as duas pontas falam sRGB reto.** As duas
+//! conversões vivem no `cs_ingest` e no `cs_resolve`, e mais em lugar nenhum.
+//!
+//! Linear porque é a convenção de toda composição séria (o `linearRGB` default dos filtros SVG, o
+//! *1.0 Gamma* do AE, OpenEXR/ACES): um borrão feito sobre bytes codificados produz a franja escura
+//! clássica. Premultiplicado porque é o que Porter-Duff exige — o halo por baixo, a soma pesada do
+//! borrão e o `inner_tint` só fecham com alfa associado.
+//!
+//! ⚠️ **Este módulo afirmou por muito tempo que a FONTE já era premultiplicada, e era falso** — o
+//! censo do rasterizador real dá 1696 de 1696 texels parciais com a cor cheia. O sintoma era o
+//! contorno tracejado do feather. Detalhe no `cs_ingest` ([`crate::fx_stack_shader`]).
+//!
+//! **Todo op é imagem → imagem, LINEAR premultiplicada, do MESMO tamanho** — é por isso que a pilha
 //! compõe, e é a mesma frase que governa a pilha de geometria (`ph2d_vec_scene::effect`). A
 //! consequência que decide o desenho: **Glow e Drop Shadow compõem o halo POR BAIXO da entrada
 //! DENTRO do próprio op** (`src_over(entrada, halo)`), em vez de pedir ao compositor que desenhe
@@ -35,7 +49,7 @@
 //!
 //! # Os intermediários são `Rgba16Float`, e isso não é luxo
 //!
-//! Entre ops a imagem é premultiplicada. Guardá-la em `Rgba8Unorm` e des-premultiplicar depois
+//! Entre ops a imagem é linear premultiplicada. Guardá-la em `Rgba8Unorm` e des-premultiplicar depois
 //! **quantiza justamente a borda macia** que o borrão existe para produzir (alfa baixo ⇒ a divisão
 //! amplifica o erro). `rgba16float` é formato de storage do baseline do WebGPU, então isto não
 //! custa nem uma feature: paga-se largura de banda em texturas temporárias, que são do tamanho da
@@ -184,6 +198,7 @@ pub fn make_output_texture(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
 /// O passe da pilha. Pipelines build-once; as três texturas de trabalho (ping/pong/mid) são
 /// **grow-only** — uma cena com formas de tamanhos diferentes não realoca por forma por frame.
 pub struct FxStackPass {
+    pipeline_ingest: wgpu::ComputePipeline,
     pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
     pipeline_point: wgpu::ComputePipeline,
@@ -242,6 +257,7 @@ impl FxStackPass {
                         cache: None,
                     })
             };
+        let pipeline_ingest = make_pipe(&layout_mid, &shader_mid, "cs_ingest");
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
         let pipeline_point = make_pipe(&layout_mid, &shader_mid, "cs_op_point");
@@ -265,6 +281,7 @@ impl FxStackPass {
             mapped_at_creation: false,
         });
         Self {
+            pipeline_ingest,
             pipeline_h,
             pipeline_v,
             pipeline_point,
@@ -335,11 +352,13 @@ impl FxStackPass {
             })
     }
 
-    /// Roda a pilha: `src` (premultiplicada, `w×h`) → `ops` em sequência → `dst` (reta, `w×h`).
+    /// Roda a pilha: `src` (sRGB, alfa RETO, `w×h`) → `ops` em sequência → `dst` (mesma
+    /// convenção, `w×h`).
     ///
-    /// Uma pilha VAZIA ainda resolve (`src` des-premultiplicada em `dst`) — o chamador é quem
-    /// decide não produzir imagem nenhuma para uma forma sem filtro; aqui a operação vazia é a
-    /// identidade, não um caso especial.
+    /// Uma pilha VAZIA ainda faz o par ingest+resolve — o chamador é quem decide não produzir
+    /// imagem nenhuma para uma forma sem filtro; aqui a operação vazia é a identidade, não um caso
+    /// especial. ⚠️ E é identidade **de facto**: a viagem sRGB→linear f16→sRGB devolve o byte de
+    /// entrada (há gate), porque meia-precisão em ponto flutuante tem folga de sobra sobre 8 bits.
     // ⚠️ Oito argumentos, e o oitavo é a GEOMETRIA — o que separa um campo de distância exato de
     // um estimado da cobertura. Agrupá-los num struct de opções esconderia justamente o parâmetro
     // cuja presença muda o número de passes despachados.
@@ -359,15 +378,34 @@ impl FxStackPass {
         }
         self.ensure_work(gpu, w, h);
         self.ensure_segments(gpu, geom);
-        let total_passes: usize = ops
+        // Slot 0 é o INGEST (sempre) · depois os ops · o resolve é o último.
+        let op_passes: usize = ops
             .iter()
             .map(|o| plan_of(o, geom.is_empty()).passes())
             .sum();
-        self.ensure_globals(gpu, total_passes);
+        let total_slots = op_passes + 2;
+        self.ensure_globals(gpu, total_slots);
 
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
-        let mut blob = vec![0u8; (total_passes + 1) * UNIFORM_STRIDE as usize];
-        let mut slot = 0usize;
+        let mut blob = vec![0u8; total_slots * UNIFORM_STRIDE as usize];
+        // O ingest e o resolve só precisam saber as dimensões — nenhum lê tint, sigma ou banda.
+        let edges = Globals {
+            dims: [w, h],
+            half: 1,
+            kind: 0,
+            tint: [0.0; 4],
+            inv_two_sigma2: 1.0,
+            opacity: 1.0,
+            off_x: 0,
+            off_y: 0,
+            jump: 0,
+            band: 1.0,
+            n_segs: 0,
+            _pad: 0.0,
+        };
+        write_at(&mut blob, 0, &edges);
+        write_at(&mut blob, total_slots - 1, &edges);
+        let mut slot = 1usize;
         for op in ops {
             let sigma = op.sigma_px.max(1e-4);
             let g = Globals {
@@ -420,21 +458,11 @@ impl FxStackPass {
                 }
             }
         }
-        let resolve = Globals {
-            dims: [w, h],
-            half: 1,
-            kind: 0,
-            tint: [0.0; 4],
-            inv_two_sigma2: 1.0,
-            opacity: 1.0,
-            off_x: 0,
-            off_y: 0,
-            jump: 0,
-            band: 1.0,
-            n_segs: 0,
-            _pad: 0.0,
-        };
-        write_at(&mut blob, total_passes, &resolve);
+        debug_assert_eq!(
+            slot,
+            total_slots - 1,
+            "as duas varreduras andam em lockstep"
+        );
         gpu.queue.write_buffer(&self.globals, 0, &blob);
 
         let work = self.work.as_ref().expect("just ensured");
@@ -450,11 +478,17 @@ impl FxStackPass {
         // ping/pong da IMAGEM entre work[0] e work[1]; work[2]/work[3] são o temp do passe
         // horizontal e o ping/pong do CAMPO DE DISTÂNCIA (que nunca coexiste com o temp do blur —
         // um op é de um tipo só).
-        let mut cur: Option<usize> = None; // `None` = a fonte é `src`
-        let mut slot = 0u32;
+        //
+        // ⚠️ O INGEST é o que põe a fonte no espaço de trabalho, então depois dele **nenhum op
+        // volta a ler `src`**: `cur` nasce em `Some(0)` e nunca mais é `None`. É isso que garante
+        // que a convenção linear não tem furo — não sobra um caminho que leia sRGB por engano.
+        let bg_in = self.bind(gpu, &self.bgl_mid, &src_view, &src_view, &work[0].view);
+        dispatch(&mut encoder, &self.pipeline_ingest, &bg_in, 0, gx, gy);
+        let mut cur: usize = 0;
+        let mut slot = 1u32;
         for op in ops {
-            let input = cur.map_or(&src_view, |k| &work[k].view);
-            let next = cur.map_or(0, |k| 1 - k);
+            let input = &work[cur].view;
+            let next = 1 - cur;
             match plan_of(op, geom.is_empty()) {
                 Plan::Point => {
                     // Pontual: lê a entrada e escreve o resultado — sem intermediário.
@@ -497,9 +531,9 @@ impl FxStackPass {
                     slot += 1;
                 }
             }
-            cur = Some(next);
+            cur = next;
         }
-        let last = cur.map_or(&src_view, |k| &work[k].view);
+        let last = &work[cur].view;
         let bg_out = self.bind(gpu, &self.bgl_out, last, last, &dst_view);
         dispatch(&mut encoder, &self.pipeline_out, &bg_out, slot, gx, gy);
         gpu.queue.submit([encoder.finish()]);
@@ -590,8 +624,8 @@ impl FxStackPass {
         ]);
     }
 
-    fn ensure_globals(&mut self, gpu: &GpuContext, total_passes: usize) {
-        let need = ((total_passes + 1) as u64) * UNIFORM_STRIDE;
+    fn ensure_globals(&mut self, gpu: &GpuContext, total_slots: usize) {
+        let need = (total_slots as u64) * UNIFORM_STRIDE;
         if need <= self.globals_cap {
             return;
         }

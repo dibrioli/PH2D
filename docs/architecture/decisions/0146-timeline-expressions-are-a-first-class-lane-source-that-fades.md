@@ -1,6 +1,6 @@
 # ADR-0146 — Timeline expressions are a first-class LANE SOURCE that fades (they compose inside the blend, not after it)
 
-Status: **Proposed** (design; the wave is planned in [`docs/Timeline/08_plano_expressoes_no_blend.md`](../../Timeline/08_plano_expressoes_no_blend.md), not yet built)
+Status: **Accepted e CONSTRUÍDO** (`line/anim`, W0–W7 + o follow-up das vistas, todas gateadas e mutação-provadas; aguardando smoke do Enio e ordem de integração). Plano: [`docs/Timeline/08_plano_expressoes_no_blend.md`](../../Timeline/08_plano_expressoes_no_blend.md).
 Supersedes the *isolation* clause of [ADR-0144](0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md); completes [ADR-0145](0145-timeline-expressions-are-per-clip-so-a-strip-windows-them.md).
 Date: 2026-07-27 · Line: `line/anim`
 

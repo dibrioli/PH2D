@@ -117,6 +117,7 @@ mod fx_bridge;
 mod fx_bridge_dispatch;
 /// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):
 /// isola a forma, borra/tinge, e injeta a imagem no z dela via `ph2d_vec_render::FxImages`.
+mod fx_dump;
 mod fx_live;
 mod fx_raster_smoke;
 mod fx_smoke;

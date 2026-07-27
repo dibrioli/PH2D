@@ -246,6 +246,8 @@ fn probe_fx_render_and_look() {
             vec![op(FxOp::INNER_SHADOW, 20.0, black, [0, 0])],
         ),
     ];
+    // A FONTE, como o passe a ve^ — se a premultiplicacao dela nao valer, todo o resto herda.
+    write_ppm(&dir, "0_src", &readback(&gpu, src, W, H));
     for (name, ops) in scenes {
         let dst = make_output_texture(&gpu, W, H);
         let dense = std::env::var("PH2D_FX_DENSE").is_ok();

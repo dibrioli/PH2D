@@ -70,6 +70,8 @@ pub(crate) struct FxLive {
     scratch: Option<VelloPass>,
     /// O passe da pilha. Build-once.
     stack: Option<FxStackPass>,
+    /// O despejo de pixels (`PH2D_FX_DUMP`) — a sonda que só o app pode dar.
+    dump: crate::fx_dump::FxDump,
     /// Os recursos persistentes por forma (textura de saída + handle estável).
     paths: BTreeMap<VecPathId, PathFx>,
     /// Handles a desregistrar do renderer no próximo recook (o `forget` não tem `vello_pass` em mãos).
@@ -314,6 +316,7 @@ impl FxLive {
         }
         let stack = self.stack.get_or_insert_with(|| FxStackPass::new(gpu));
         stack.run(gpu, src, &pfx.tex, w, h, ops, &geom);
+        self.dump.maybe(gpu, id, &pfx.tex, w, h, ops, &geom);
         true
     }
 

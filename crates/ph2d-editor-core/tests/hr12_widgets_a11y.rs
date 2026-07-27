@@ -315,6 +315,19 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-flip/src/paint_tip.rs",
         "delegates to BodyCtx::segmented/slider_row (paint_segmented/paint_slider-backed)",
     ),
+    // Flip BRUSH card (Size / Hardness / Opacity / Smoothing / a dinâmica de pressão) — irmão
+    // exato do `paint_tip.rs` acima: split do `paint_sections.rs` pelo teto de 600 LOC, sem
+    // widget PRÓPRIO. Toda linha dele é `BodyCtx::slider_row` / `slider_row_linked` /
+    // `section_label` (em `paint_rows`), que pintam pelos primitivos a11y-wired.
+    //
+    // ⚠️ **Antes do split isto passava por ACIDENTE**, e vale registrar: o `brush` morava no
+    // `paint_sections.rs` junto do `color`, que chama `paint_color_swatch` — um marcador
+    // canônico em QUALQUER ponto do arquivo satisfaz o scan para o arquivo INTEIRO. A
+    // delegação do brush sempre foi a de uma hop mais funda; o split só a tornou visível.
+    (
+        "ph2d-panel-flip/src/paint_brush.rs",
+        "delegates to BodyCtx::slider_row/slider_row_linked (paint_slider/paint_number_input-backed) in paint_rows",
+    ),
     // Vector connector subsection (Route / Jetty / Spread) — mesmo caso do
     // `paint_arrange` acima: a seção não tem widget PRÓPRIO. As três linhas dela são
     // `BodyCtx::labeled_choice_button` / `labeled_number_field` (em `paint_modes`), que

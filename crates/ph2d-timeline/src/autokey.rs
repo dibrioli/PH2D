@@ -262,18 +262,42 @@ fn position_shown(doc: &TimelineDoc, entity: u64, t_secs: f64, solo: bool) -> Op
         .map(|s| s.point)
 }
 
+/// **The composed value the last apply WROTE for `(entity, prop)`** — from the persisted
+/// `LinkFrame` on the scratch (ADR-0146 W6, C2). The exact number `shown` must equal the world
+/// for a driven channel, so the autokey diff mints no phantom key. `None` for a formula-free
+/// frame (the map is empty, the compose loop never inserted) or a channel the apply left out,
+/// so the caller RE-DERIVES — byte-identical where there was no formula.
+///
+/// ⚠️ It reads the map, it does NOT re-evaluate: a single-entity re-derivation has no prop-link
+/// graph (`Sprite.x` would resolve to 0) and `curve_value` samples the raw track (missing the
+/// expression entirely), so either would differ from the world every frame on a driven channel.
+fn persisted_shown(doc: &TimelineDoc, entity: u64, prop: PropKind) -> Option<f32> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the scene value is f32; the map stores f64 (the blend's working precision)"
+    )]
+    doc.scratch()
+        .composed_links
+        .links
+        .get(&(entity, prop))
+        .map(|&v| v as f32)
+}
+
 /// The value the scene is showing for `prop` right now — the same number the
 /// apply pass wrote. `None` when nothing drives it (the unbound path).
 fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
+    // C2 (W6): read what the apply WROTE, so a prop-linked / driven channel is `shown == world`.
+    if let Some(v) = persisted_shown(doc, entity, prop) {
+        return Some(v);
+    }
     // Root-aware, like `key_home`: a scratch rooted in a container makes the
     // CONTAINER's lanes the stack in question, whatever the scene holds.
     if doc.scratch().root().is_none() && doc.stack().is_empty() {
         return curve_value(doc, entity, prop, t_secs);
     }
     let b = doc.binding_for(entity, prop)?;
-    // ADR-0146 W0 — threaded EMPTY (the authoring read does not drive expressions yet);
-    // W6 hands the persisted `LinkFrame` here so a prop-linked channel reads what the
-    // scheduler wrote instead of re-deriving it (the seed==sample cure, §4.1 C2).
+    // The formula-free re-derivation (byte-identical): a doc with no expression never populated
+    // the persisted map, so control reaches here and the blend is sampled with an empty frame.
     let links = crate::frame_solve::LinkFrame::default();
     crate::stack_eval::sample_stack(
         doc,
@@ -369,6 +393,11 @@ pub fn key_value_in_active_clip(
 /// track — a binding with no keys — counts as unbound: there is nothing to
 /// sample against.
 fn curve_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
+    // C2 (W6): the solo/Keys view too — an expression-driven non-stacked channel shows `E`, but
+    // this samples the RAW track. Read what the apply wrote so `shown == world` (no phantom key).
+    if let Some(v) = persisted_shown(doc, entity, prop) {
+        return Some(v);
+    }
     let target = doc.binding_for(entity, prop)?.target;
     let track = doc.active_clip().track(target)?;
     if track.is_empty() {

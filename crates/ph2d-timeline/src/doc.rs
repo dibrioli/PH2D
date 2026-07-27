@@ -318,6 +318,14 @@ impl TimelineDoc {
         self.scratch = scratch;
     }
 
+    /// **Stash the frame's composed `LinkFrame` onto the scratch** (ADR-0146 W6, C2) — for a
+    /// view that keeps no local scratch ([`crate::apply_active_clip`]). The autokey diff then
+    /// READS it (`shown_value`/`curve_value`) instead of re-deriving. `put_scratch` would
+    /// overwrite it, so the views that DO take a scratch set the field on theirs directly.
+    pub(crate) fn stash_composed_links(&mut self, links: crate::frame_solve::LinkFrame) {
+        self.scratch.composed_links = links;
+    }
+
     /// This frame's resolved strips + clocks, as the apply left them. Key
     /// authoring runs AFTER the apply, on the same playhead, so what it reads
     /// here is exactly what the scene is showing.

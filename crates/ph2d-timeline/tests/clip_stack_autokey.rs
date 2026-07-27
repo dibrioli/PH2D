@@ -15,10 +15,10 @@
 //!    they left it — or the key must be refused. Never a third outcome.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
-use ph2d_ecs::{Entity, Transform, World};
+use ph2d_ecs::{Entity, Name, Transform, World};
 use ph2d_timeline::{
     ClipLane, ClipStrip, LaneMode, PoseSample, PropKind, StripSource, TimelineDoc, apply_from_doc,
-    autokey_props, autokey_props_solo, key_time, key_value_in_active_clip,
+    apply_from_doc_except, autokey_props, autokey_props_solo, key_time, key_value_in_active_clip,
 };
 
 fn s(t: f64) -> RationalTime {
@@ -550,5 +550,107 @@ fn a_value_nonlinear_formula_refuses() {
         key_value_in_active_clip(&doc, e, PropKind::TranslationX, 4.0, 1.0),
         Err(KeyRefusal::ExpressionDriven),
         "stacked too: the composition is non-affine in the stored value"
+    );
+}
+
+/// **Gate #12 (W6, C2) — the autokey mints NO phantom key on a PROP-LINKED channel.** Follower
+/// drives its X by `Sprite.x` (a per-clip prop-link) on a full Override lane; Sprite is keyed to
+/// 30. The apply composes Follower to 30 and PERSISTS it. The autokey diff reads that persisted
+/// value, so `shown == world` and a still, paused scene keys NOTHING.
+///
+/// Why a prop-link and not a local expression: `shown_value`'s stacked re-derivation is
+/// single-entity and has NO graph, so `Sprite.x` resolves to 0 there — `shown` would differ
+/// from the world every frame. Mutation (`persisted_shown` returns `None`): the diff falls back
+/// to that graph-less re-derivation, sees 0 != 30, and mints a phantom key, RED.
+#[test]
+#[allow(non_snake_case, reason = "the gate name mirrors the ADR-0146 W6 gate list")]
+fn auto_key_mints_no_phantom_key_on_a_PROP_LINKED_channel() {
+    let mut world = World::new();
+    let follower = world
+        .spawn((Transform::default(), Name::new("Follower")))
+        .id()
+        .to_bits();
+    let sprite = world
+        .spawn((Transform::default(), Name::new("Sprite")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    // Clip 0: Sprite keyed X = 30, Follower drives X by `Sprite.x`. A full Override lane plays
+    // it, so `shown_value` takes the STACKED branch where the prop-link needs the graph.
+    doc.insert_key(
+        sprite,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(30.0),
+        Interp::Hold,
+    );
+    let ftgt = doc.bind(follower, PropKind::TranslationX);
+    doc.set_clip_expr(0, ftgt, Some("Sprite.x".into()));
+    doc.stack_mut().push(lane(0, LaneMode::Override, 1.0));
+
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    let fx = x_of(&world, follower);
+    assert!(
+        (fx - 30.0).abs() < 1e-3,
+        "the follower composed to Sprite.x = 30, got {fx}"
+    );
+
+    // The live pose IS what the apply wrote: the autokey must key nothing.
+    let live = pose_x(fx);
+    let plan = autokey_props(&doc, follower, 1.0, &live, &live, true, false);
+    assert!(
+        plan.is_empty(),
+        "a prop-linked channel sitting on the composed value keys nothing (a phantom key means \
+         `shown` was re-derived without the graph)"
+    );
+}
+
+/// **Gate #13 (W6, C2) — a SKIPPED entity is left alone but READABLE by a prop-link.** Dragged
+/// is keyed to 10 but the user displaced it to 42 (a gizmo drag), so the apply SKIPS it. Reader
+/// drives its X by `Dragged.x`. The skip must leave Dragged's live 42 untouched AND a prop-link
+/// must read that live 42 (the seed from the world), never Dragged's document 10.
+///
+/// Mutation (the compose loop ignores `skip`): Dragged is composed to its document 10,
+/// overwriting the displaced 42 — it DRIFTS while paused, and the prop-link reads 10, RED.
+#[test]
+fn a_skipped_entity_is_left_alone_but_readable_by_a_prop_link() {
+    let mut world = World::new();
+    let dragged = world
+        .spawn((Transform::default(), Name::new("Dragged")))
+        .id()
+        .to_bits();
+    let reader = world
+        .spawn((Transform::default(), Name::new("Reader")))
+        .id()
+        .to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.insert_key(
+        dragged,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(10.0), // Dragged's DOCUMENT value
+        Interp::Hold,
+    );
+    let rtgt = doc.bind(reader, PropKind::TranslationX);
+    doc.set_clip_expr(0, rtgt, Some("Dragged.x".into())); // Reader.x = Dragged.x
+
+    // The user displaced Dragged to 42 (owns it this frame).
+    world
+        .get_mut::<Transform>(Entity::from_bits(dragged))
+        .unwrap()
+        .translation
+        .x = 42.0;
+
+    apply_from_doc_except(&mut world, &mut doc, 1.0, |bits| bits == dragged);
+
+    assert!(
+        (x_of(&world, dragged) - 42.0).abs() < 1e-3,
+        "a skipped entity is left alone (its displaced 42, not the document 10); got {}",
+        x_of(&world, dragged)
+    );
+    assert!(
+        (x_of(&world, reader) - 42.0).abs() < 1e-3,
+        "a prop-link reads the skipped source's LIVE pose (42), not its document 10; got {}",
+        x_of(&world, reader)
     );
 }

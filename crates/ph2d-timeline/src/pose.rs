@@ -8,7 +8,7 @@
 //! [[feedback_derived_coordinate_seed_must_match_sample]] que este módulo pagou 3×). Um
 //! gate de equivalência prova `pose_at == { apply; read Transform }` campo a campo.
 
-use ph2d_anim::{AnimValue, AttributeEvaluator};
+use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Transform, World};
 
 use crate::binding::TargetBinding;
@@ -81,20 +81,37 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     // O relógio da entidade (Time Remap) é o mesmo para todos os bindings dela.
     let t_entity = remapped_time(doc, entity, clip_t);
+    // **Um `LinkFrame` DEGENERADO** (ADR-0146 W6, §3): os prop-links (`Nome.prop`) resolvem à
+    // pose VIVA da fonte, semeada do mundo. Uma expressão LOCAL (time/wiggle) o ignora e o
+    // fantasma é EXATO; um prop-link entre objetos é APROXIMADO — lê a pose da fonte NESTE
+    // playhead, não no tempo `t_entity` do fantasma, porque o onion não tem o grafo cross-time
+    // (limitação declarada). Semear do mundo pós-apply mantém `pose_at == {apply; read}` para
+    // canal keyado E expressão local, o que o gate de equivalência pina.
+    let mut links = crate::frame_solve::LinkFrame {
+        names: crate::frame_solve::build_names(world, doc),
+        ..Default::default()
+    };
+    crate::frame_solve::seed_links(world, doc, &mut links.links);
     for b in doc.bindings() {
         if b.entity != entity || b.missing || b.prop == PropKind::TimeRemap {
             continue;
         }
-        // Track vazia não força pose default (um binding recém-criado).
-        let Some(v) = doc
-            .active_clip()
-            .track(b.target)
-            .and_then(|tr| (!tr.is_empty()).then(|| tr.sample(t_entity)))
-        else {
+        // A MESMA porta que o apply lê (`solo_source_value`): amostra keyada OU a expressão
+        // per-clip sobre ela, para que um fantasma dirigido case com o que o objeto mostra.
+        // Track vazia sem expressão devolve `None` (esparsidade) — um binding recém-criado não
+        // força pose default.
+        let Some(v) = crate::stack_eval::solo_source_value(
+            doc,
+            doc.active_index(),
+            b.target,
+            t_entity,
+            b.rest.unwrap_or(0.0),
+            &links,
+        ) else {
             continue;
         };
         let orient = b.prop == PropKind::Position && doc.auto_orient(entity) == AutoOrient::Active;
-        set_transform_field(&mut xf, b, v, orient);
+        set_transform_field(&mut xf, b, AnimValue::Float(v), orient);
     }
     Some(xf)
 }

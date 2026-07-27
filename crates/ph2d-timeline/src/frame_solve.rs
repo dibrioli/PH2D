@@ -30,7 +30,7 @@ use crate::prop::PropKind;
 /// Empty on the formula-free path (the common case), where it is never read: an
 /// empty `BTreeMap` never allocates, so carrying one costs nothing. The blend reads it
 /// through [`ExprBindings`] when a per-clip expression names a `Name.prop` link.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct LinkFrame {
     /// The composed value per `(entity, prop)` — what a `Name.prop` link reads. A
     /// source composes *before* its reader (W3's topological order) and writes its

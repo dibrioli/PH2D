@@ -16,7 +16,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World};
 use ph2d_timeline::{
     ClipLane, ClipStrip, LaneMode, PropKind, StackHost, StripSource, TimelineDoc,
-    apply_active_clip, apply_from_doc,
+    apply_active_clip, apply_from_doc, pose_at,
 };
 
 fn s(t: f64) -> RationalTime {
@@ -547,5 +547,30 @@ fn a_per_clip_source_fades_and_a_global_transform_does_not() {
         (mid - 100.0).abs() < 1e-3,
         "the per-clip source fades to 50 and the global transform doubles it at full (100); \
          got {mid} (0 = per-clip stopped fading; 50 = the global did not transform)"
+    );
+}
+
+/// **Gate #20 (W6, §3) — the onion ghost EVALUATES a local expression at its OWN time.** The
+/// object is driven by `time*10`; the live scene sits at t=1 (x=10). The onion samples the
+/// NEIGHBOUR pose at t=3, and must show the expression there (30), not the live pose (10).
+/// `pose_at` reads the SAME door the apply does (`solo_source_value`) with a degenerate
+/// LinkFrame — a LOCAL expression ignores the frame and ghosts EXACTLY.
+///
+/// Mutation (revert `pose_at` to sampling the raw track): the expression-driven channel has no
+/// keyed track, so the loop skips it and `pose_at` returns the live pose (10) at every ghost
+/// time, RED.
+#[test]
+fn the_onion_ghost_evaluates_a_local_expression() {
+    let (mut world, mut doc, e) = scene(0.0);
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "time*10");
+    apply_from_doc(&mut world, &mut doc, 1.0); // the live scene: x = 10
+    assert!((x_of(&world, e) - 10.0).abs() < 1e-3, "live pose is 10");
+
+    let ghost = pose_at(&world, &doc, e, 3.0).expect("the entity has a Transform");
+    assert!(
+        (ghost.translation.x - 30.0).abs() < 1e-3,
+        "the onion ghost evaluates `time*10` at ITS OWN time (3 -> 30), not the live pose (10); \
+         got {} (a raw-track sample would return the live pose)",
+        ghost.translation.x
     );
 }

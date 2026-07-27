@@ -140,6 +140,17 @@ pub(crate) struct StackScratch {
     /// PRIME (`TimelineDoc::prime_stack`) and turns the invisible dependency into
     /// a checked one.
     t: f64,
+    /// **The composed value the apply last WROTE for each `(entity, prop)`** — the persisted
+    /// `LinkFrame` (ADR-0146 W6, C2). The autokey diff READS it (`shown_value`/`curve_value`)
+    /// instead of re-deriving: a single-entity re-derivation has no prop-link graph and would
+    /// differ from the world every frame (a phantom key per paused frame on a prop-linked
+    /// channel), and `curve_value` samples the raw track (missing the expression entirely).
+    /// Reading the exact value the scheduler wrote makes `shown == world` for driven channels.
+    ///
+    /// It rides in the scratch — never serialized, always compares equal (no phantom undo), and
+    /// SURVIVES a rebuild (`prime_rooted` clears the strips/clocks, not this), so the value the
+    /// DRAW apply stashed is still here when the autokey pass primes and reads it, same frame.
+    pub(crate) composed_links: crate::frame_solve::LinkFrame,
 }
 
 /// Scratch is not identity — see [`ClockIndex`]'s own note.
@@ -157,6 +168,7 @@ impl Default for StackScratch {
             frames: Vec::new(),
             t: f64::NAN, // never equal to a real time: the first prime always builds
             root: None,
+            composed_links: crate::frame_solve::LinkFrame::default(),
         }
     }
 }

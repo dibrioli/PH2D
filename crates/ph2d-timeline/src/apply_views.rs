@@ -89,7 +89,9 @@ pub fn apply_container(
     // local clock; the container's per-clip expressions were resolved as lane sources in the
     // blend above (`sample_stack` -> `eval_frame`).
     let expr_t = doc.container_cut(container, t);
-    crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
+    crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &mut links);
+    // Persist the composed map so the container-view autokey reads what the apply wrote (C2, W6).
+    scratch.composed_links = links;
     doc.put_scratch(scratch);
 }
 
@@ -171,5 +173,8 @@ pub fn apply_active_clip(
     // ADR-0146 W2 — on the clip's own CUT clock (`clip_t`, already clamped). Only GLOBAL
     // drivers run in the post-pass now; the active clip's per-clip expressions were resolved
     // as lane sources at the sample site above (`solo_source_value`).
-    crate::expr_pass::run(world, doc, clip_t, &skip, &composed);
+    crate::expr_pass::run(world, doc, clip_t, &skip, &composed, &mut links);
+    // Persist the composed map for the Keys-view autokey (`autokey_props_solo` -> `curve_value`,
+    // C2, W6). This view keeps no local scratch, so stash straight onto the doc's.
+    doc.stash_composed_links(links);
 }

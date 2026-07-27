@@ -59,7 +59,7 @@ use std::collections::BTreeMap;
 
 use crate::apply::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
-use crate::frame_solve::{SEED_SPACING, collect_links, resolve_link};
+use crate::frame_solve::{LinkFrame, SEED_SPACING, collect_links, resolve_link};
 use crate::prop::PropKind;
 
 /// Run the expression pass at the composition's CUT clock `time` (see the module
@@ -72,6 +72,7 @@ pub(crate) fn run(
     time: f64,
     skip: &dyn Fn(u64) -> bool,
     composed: &BTreeMap<(u64, PropKind), f32>,
+    links: &mut LinkFrame,
 ) {
     // ADR-0146 W2 — this pass now handles ONLY GLOBAL drivers (`binding.expr`, the
     // document-wide channel transform of ADR-0144). Per-clip expressions are first-class
@@ -183,6 +184,11 @@ pub(crate) fn run(
         let b = &doc.bindings()[i];
         if let Some(e) = Entity::try_from_bits(b.entity) {
             write_prop(world, e, b, AnimValue::Float(v), false);
+            // C2 (ADR-0146 W6): the persisted map must hold the FINAL world value, so a
+            // globally-transformed channel reads its POST-transform value in `shown_value`
+            // (not the pre-transform composed value the blend loop inserted) — else `shown`
+            // differs from `world` every frame and the autokey mints a phantom key.
+            links.links.insert((b.entity, b.prop), f64::from(v));
         }
     }
 }

@@ -152,8 +152,14 @@ pub fn apply_from_doc_except(
     // was already a no-op internal early-out — so no `snap`/topo is even built (HR-3).
     if scheduled {
         let expr_t = doc.cut_scene(t);
-        crate::expr_pass::run(world, doc, expr_t, &skip, &composed);
+        crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &mut links);
     }
+    // Persist the composed map so the autokey diff reads what the apply WROTE (C2, W6): a
+    // single-entity re-derivation has no prop-link graph and would differ from the world every
+    // paused frame. `scratch` rides on the doc — never serialized, always compares equal (no
+    // phantom undo), survives the autokey's re-prime — and a formula-free frame stashes the
+    // empty map, so `shown_value` falls back to re-deriving (byte-identical).
+    scratch.composed_links = links;
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }
 

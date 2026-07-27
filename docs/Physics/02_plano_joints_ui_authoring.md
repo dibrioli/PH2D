@@ -266,7 +266,13 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
 - **Custom/GenericJoint** (lock/limit/motor por eixo — o godot-proposals 15126): só se um caso real pedir.
   ⚠️ **O Wheel NÃO é esse caso** (ver abaixo): ele quer a *plumbing* do `GenericJoint`, não a UI
   por-eixo — o artista pede *"uma roda"*, não *"LinY livre com mola"*.
-- **Wheel preset** (prismatic+spring+motor empacotado, idioma Unity/Box2D).
+- ~~**Wheel preset**~~ — **FECHADO (W-Wheel, 2026-07-27, cena `=57`).** ⚠️ E o nome do item estava
+  errado em duas frentes: não é *preset* (não empilha joints — é **UM** `GenericJoint` travando
+  `LIN_Y`, e dois joints sobre o mesmo par dariam ao solver duas restrições brigando) e não é
+  *prismatic+revolute*: é o **primeiro tipo do kit a deixar DOIS graus de liberdade livres**. A
+  suspensão é motor de posição em `LinX` (a mola do artista), o giro é o motor dele em `AngX`, e
+  o **curso tem os DOIS batentes** — o que o Rod não conseguiu, porque em rapier o acoplamento é
+  EXPLÍCITO (`coupled_axes`) e aqui nada é acoplado.
 - **POLIA** — ⚠️ **MEDIDO 2026-07-27, e a resposta muda a forma do item.** `grep -rin pulley` sobre
   `rapier2d-0.28.0/src` devolve **nada**: o conjunto é Fixed · Generic · Prismatic · Revolute · Rope ·
   Spherical · Spring, e o `b2PulleyJoint` do Box2D não foi portado. **E não há gancho de constraint do
@@ -309,7 +315,7 @@ Não é a ordem da lista; é a que sai das dependências **medidas** acima.
 | # | item | por que aqui |
 |---|---|---|
 | ~~1~~ | ~~**Rod**~~ ✅ `=56` | o gap real — hoje **nada** segura dois corpos a distância fixa deixando os dois GIRAREM (o Weld trava o giro, a Rope só o teto). O menor, e estreia a plumbing do `GenericJoint` |
-| 2 | **Wheel preset** | o de maior valor visível (um veículo). Precisa da plumbing por eixo, que o Rod abre |
+| ~~2~~ | ~~**Wheel preset**~~ ✅ `=57` | o de maior valor visível (um veículo). Precisou da plumbing por eixo, que o Rod abriu |
 | 3 | **Polia** | a primeira que precisa de um passe de restrição PRÓPRIO (rapier não a tem) — depois de esgotadas as nativas. Puxa o *Pin-to-world* junto |
 | 4 | **Ragdoll wizard / make chain** | é um GERADOR: só faz sentido sobre o conjunto de tipos já fechado |
 | 5 | **Copy/paste de propriedades** | vale mais quanto mais propriedades existirem |

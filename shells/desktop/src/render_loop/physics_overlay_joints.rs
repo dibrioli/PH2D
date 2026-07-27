@@ -41,7 +41,7 @@ use ph2d_vector::{BezPath, Point};
 use super::physics_overlay_annotations::torque_glyph;
 use super::physics_overlay_joint_glyphs::{
     length_ring, limit_arc, pin_glyph, ring_px, rod_bar, rope_span, screen_of, slider_rail,
-    spring_zigzag, weld_glyph,
+    spring_zigzag, weld_glyph, wheel_strut,
 };
 
 /// Raio do anel desenhado em cada âncora, px de tela. Grande o bastante para
@@ -436,6 +436,15 @@ fn kind_marks(
         JointKind::Slider => {
             if let Some(axis) = v.axis {
                 glyph = slider_rail(camera, window, v.anchor_a, axis, v.limits);
+            }
+            ring_px(b, JOINT_DOT_PX, &mut glyph);
+        }
+        // A RODA compartilha um ponto (o cubo), como o Pin e o Slider — então o
+        // span fica vazio e o glifo carrega tudo: o anel do cubo, a mola da
+        // suspensão ao longo do eixo, e os batentes de curso.
+        JointKind::Wheel => {
+            if let Some(axis) = v.axis {
+                glyph = wheel_strut(camera, window, v.anchor_a, axis, v.limits);
             }
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }

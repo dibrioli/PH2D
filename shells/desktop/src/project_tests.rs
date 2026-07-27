@@ -445,7 +445,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // FLIP 11→12 + PROJECT 36→37: o `FlipStroke` ganhou `airbrush` (falloff físico
         // Beer-Lambert por dab esférico, 03 §8) — campo no MEIO do struct (após `self_overlap`),
         // mesmo raciocínio posicional.
-        (38, 12, 13),
+        // PROJECT 37→38: `JointKind` ganhou a variante `Rod` (W-Rod). Apender variante não
+        // move índice; o bump é para o build ANTIGO recusar em vez de ler o discriminante 5
+        // como lixo bem-formado. FLIP/VEC_SCENE ficam.
+        // PROJECT 38→39: `JointKind` ganhou a variante `Wheel` (W-Wheel — o cubo que gira E
+        // cavalga uma suspensão). Mesmo raciocínio, um degrau adiante.
+        (39, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -60,6 +60,23 @@ pub enum JointKind {
     /// `max_length` and offers no stiffness of its own: **one authored number,
     /// the length**.
     Rod,
+    /// **Wheel** — um cubo que ao mesmo tempo **gira** e **cavalga uma
+    /// suspensão**. A roda do carro, o rodízio do carrinho, o rolete suspenso.
+    ///
+    /// É o primeiro tipo desta lista a deixar **DOIS** graus de liberdade
+    /// livres, e é isso que ele é: o cubo desliza ao longo de um eixo (o curso
+    /// da suspensão, com mola e amortecimento) e gira em torno de si para
+    /// sempre (o giro, opcionalmente motorizado). Todo o resto do kit deixa um
+    /// ou nenhum.
+    ///
+    /// Reusa os campos que já existem, e nenhum é emprestado por analogia: a
+    /// mola da suspensão são [`PhysicsJoint::stiffness`]/[`PhysicsJoint::damping`]
+    /// (o mesmo par de uma Spring, porque é a mesma coisa física), o curso são
+    /// os `limit_min`/`limit_max` em METROS (o mesmo par de um Slider), e o
+    /// motor é o do giro, em **graus** — que é o que faz este tipo separar duas
+    /// perguntas que até aqui tinham uma resposta só (ver
+    /// [`JointKind::motor_in_metres`]).
+    Wheel,
 }
 
 /// **Em que campo do componente o comprimento de um tipo MORA.**
@@ -87,6 +104,30 @@ pub enum LengthField {
 }
 
 impl JointKind {
+    /// **Todos os tipos, na ordem do discriminante.**
+    ///
+    /// Existe para um gate poder percorrer o conjunto INTEIRO em vez de uma
+    /// lista escrita à mão — e a diferença não é teórica: o gate das portas de
+    /// unidade (`the_unit_doors_disagree_about_a_rope_and_that_is_the_point`)
+    /// listava cinco tipos, o [`JointKind::Rod`] chegou, **ninguém o
+    /// acrescentou**, e ele passou uma wave inteira sem ter as respostas dele
+    /// conferidas por nada.
+    ///
+    /// ⚠️ **Esta lista também é escrita à mão — o que a mantém honesta é o
+    /// round-trip de TAG na shell** (`every_kind_chip_the_panel_offers_round_trips_
+    /// to_a_distinct_kind`), que é exaustivo por `match` e falha a compilar com
+    /// um tipo novo. Aqui há um gate exigindo que ela tenha um elemento por
+    /// discriminante e nenhum repetido.
+    pub const ALL: [JointKind; 7] = [
+        JointKind::Pin,
+        JointKind::Spring,
+        JointKind::Rope,
+        JointKind::Weld,
+        JointKind::Slider,
+        JointKind::Rod,
+        JointKind::Wheel,
+    ];
+
     /// Ver [`LengthField`]. `None` para quem não tem comprimento nenhum.
     ///
     /// **A porta única** — quem DESENHA, quem CRIA arrastando e quem ESCREVE o
@@ -97,7 +138,9 @@ impl JointKind {
         match self {
             JointKind::Spring => Some(LengthField::Rest),
             JointKind::Rope | JointKind::Rod => Some(LengthField::Max),
-            JointKind::Pin | JointKind::Weld | JointKind::Slider => None,
+            // ⚠️ Um Wheel **não** tem comprimento: a distância cubo↔chassi é
+            // onde o artista o montou, e o que a governa é o par mola/curso.
+            JointKind::Pin | JointKind::Weld | JointKind::Slider | JointKind::Wheel => None,
         }
     }
 
@@ -114,11 +157,21 @@ impl JointKind {
     /// along its axis; a Rope's is the distance between the anchors. A Pin's is
     /// an angle.
     ///
-    /// The one underlying fact behind every "metres or radians?" in this file:
-    /// [`Self::limits_in_metres`] and [`Self::motor_in_metres`] both read it
-    /// rather than re-listing the kinds, so a sixth kind states its unit once.
+    /// ⚠️ **Já foi o fato único por trás de todo "metros ou radianos?" deste
+    /// arquivo, e o [`JointKind::Wheel`] REFUTOU a premissa.** A frase supunha
+    /// que um joint deixa livre **um** grau de liberdade, e uma roda deixa dois:
+    /// o curso da suspensão (metros) e o giro (graus). Com isso
+    /// [`Self::limits_in_metres`] e [`Self::motor_in_metres`] deixaram de poder
+    /// derivar da mesma resposta — a roda diz **sim** para o primeiro e **não**
+    /// para o segundo — e os dois viraram `match` exaustivo, cada um declarando
+    /// a unidade DA PERGUNTA DELE.
+    ///
+    /// Ela sobrevive porque a pergunta ainda tem sentido próprio (*este tipo
+    /// desliza?*) e um gate a pina por tipo; o que ela não pode mais é ser a
+    /// definição de outra coisa. Um Wheel responde **true**: ele desliza — só
+    /// não é *só* isso que ele faz.
     pub fn translates(self) -> bool {
-        matches!(self, JointKind::Slider | JointKind::Rope)
+        matches!(self, JointKind::Slider | JointKind::Rope | JointKind::Wheel)
     }
 
     /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
@@ -130,8 +183,13 @@ impl JointKind {
     /// the Pin was the only limited kind, and one of the two questions was
     /// always going to grow a second member. Collapsed, a Slider would either
     /// get a motor it has no model for or lose the limits that make it a rail.
+    ///
+    /// ⚠️ Um **Wheel** entrou aqui e o limite dele é o CURSO da suspensão — o
+    /// batente de compressão e o de extensão. Ele é o primeiro cujo limite não
+    /// governa o único grau de liberdade que ele tem, e sim **um dos dois**: o
+    /// giro de uma roda não se limita (é isso que uma roda faz).
     pub fn has_limits(self) -> bool {
-        matches!(self, JointKind::Pin | JointKind::Slider)
+        matches!(self, JointKind::Pin | JointKind::Slider | JointKind::Wheel)
     }
 
     /// **Can this kind be DRIVEN?** A Pin's hinge, a Slider's rail and a Rope's
@@ -148,8 +206,16 @@ impl JointKind {
     /// would overwrite the stiffness and damping the artist authored and turn the
     /// spring into a rate-driven rod. The wrapper states the same exclusion in
     /// `ph2d_physics::motor_axis`, which is what the solver actually reads.
+    ///
+    /// ⚠️ Um **Wheel** também, e nele o motor é o do GIRO — a tração. Ele
+    /// carrega uma mola *e* um motor sem que colidam porque estão em **eixos
+    /// diferentes** (`LinX` e `AngX`), que é precisamente o que a exclusão da
+    /// Spring acima diz não ser possível no mesmo eixo.
     pub fn has_motor(self) -> bool {
-        matches!(self, JointKind::Pin | JointKind::Slider | JointKind::Rope)
+        matches!(
+            self,
+            JointKind::Pin | JointKind::Slider | JointKind::Rope | JointKind::Wheel
+        )
     }
 
     /// Are this kind's limits a distance rather than an angle?
@@ -162,13 +228,22 @@ impl JointKind {
     /// means; and the kind-change re-seeds the range, so `±0.785` rad never
     /// silently becomes `±0.785` m.
     ///
-    /// Derived from [`Self::translates`] and [`Self::has_limits`] rather than
-    /// listing kinds again: a Rope translates but has no limit range, so it
-    /// answers `false` here and `true` to [`Self::motor_in_metres`] — the two
-    /// questions genuinely differ for it, and deriving both from one fact is
-    /// what keeps them able to.
+    /// ⚠️ **Era derivada de [`Self::translates`], e o [`JointKind::Wheel`] a
+    /// separou** — ele limita uma translação (o curso) e motoriza uma rotação (o
+    /// giro), então nenhuma das duas unidades é *a* unidade do tipo. Agora cada
+    /// pergunta declara a sua num `match` exaustivo: o sétimo tipo **não
+    /// compila** até dizer em que unidade o limite DELE está, que é a única
+    /// forma de a resposta não nascer errada. (A Rope já mostrava metade disso:
+    /// ela translada e não tem faixa de limite nenhuma.)
     pub fn limits_in_metres(self) -> bool {
-        self.has_limits() && self.translates()
+        match self {
+            JointKind::Slider | JointKind::Wheel => true,
+            JointKind::Pin
+            | JointKind::Spring
+            | JointKind::Rope
+            | JointKind::Weld
+            | JointKind::Rod => false,
+        }
     }
 
     /// Is this kind's MOTOR linear rather than angular — metres and metres per
@@ -181,12 +256,19 @@ impl JointKind {
     /// degrees.
     /// **Can a break threshold on this kind ever fire on TORQUE?**
     ///
-    /// Only where the angular axis is limited or motorised, which in this kind
-    /// set is the Pin alone. rapier reports the reaction of a limited or
-    /// motorised axis exactly (measured: 4.9050 and 4.9049 against `m·g·r` of
-    /// 4.905) and reports **nothing** for a locked one — a Weld cantilever holds
-    /// 4.905 N·m and reads `0.0000`. A Rope and a Spring leave the angular axis
-    /// free, so their torque is genuinely zero.
+    /// Only where the angular axis is limited or motorised. rapier reports the
+    /// reaction of a limited or motorised axis exactly (measured: 4.9050 and
+    /// 4.9049 against `m·g·r` of 4.905) and reports **nothing** for a locked one
+    /// — a Weld cantilever holds 4.905 N·m and reads `0.0000`. A Rope and a
+    /// Spring leave the angular axis free, so their torque is genuinely zero.
+    ///
+    /// ⚠️ **Um [`JointKind::Wheel`] entrou por MEDIÇÃO, e o caso dele é o mais
+    /// fino da lista:** o eixo angular de uma roda é livre *enquanto o motor
+    /// está desligado* e motorizado quando está ligado — medido no mesmo carro,
+    /// **0.0000 N·m sem motor e 0.5125 com** (a força fica em 29-35 N nos dois,
+    /// que é o peso que a suspensão carrega). Quem manda é o estado em que a row
+    /// pode ser alcançada: negar a row deixaria a tração ser o único jeito de
+    /// arrancar um eixo sem que exista o número que a segura.
     ///
     /// Asked by the panel to decide whether to paint the row, and by nothing
     /// else: the wrapper compares whatever threshold it is handed, so a torque
@@ -194,11 +276,23 @@ impl JointKind {
     /// it looks like a control.
     #[must_use]
     pub fn breaks_on_torque(self) -> bool {
-        matches!(self, JointKind::Pin)
+        matches!(self, JointKind::Pin | JointKind::Wheel)
     }
 
+    ///
+    /// ⚠️ **E o [`JointKind::Wheel`] é o caso que a separou de vez:** ele
+    /// translada (a suspensão) e o motor dele é **angular** (a tração). Uma
+    /// resposta derivada de `translates` daria a um carro uma tração em metros
+    /// por segundo — o gêmeo exato do bug que a Rope evitou do outro lado.
     pub fn motor_in_metres(self) -> bool {
-        self.translates()
+        match self {
+            JointKind::Slider | JointKind::Rope => true,
+            JointKind::Pin
+            | JointKind::Spring
+            | JointKind::Weld
+            | JointKind::Rod
+            | JointKind::Wheel => false,
+        }
     }
 
     /// Does this kind have a length the artist tunes? Spring, Rope and Rod do —
@@ -224,6 +318,12 @@ impl JointKind {
     /// coincide, so authoring them apart would offset the whole range by the
     /// gap. It falls out of `!has_length()` correctly, but it is stated here
     /// rather than left to fall out by accident.
+    ///
+    /// ⚠️ **Um Wheel também, e pela mesma razão elevada a duas:** o cubo é o
+    /// ponto, e é dele que a suspensão mede o curso **e** que a roda gira. É
+    /// isso que faz a altura de marcha ser *onde o artista montou o carro* — a
+    /// mola tem alvo zero, então ela quer o cubo exatamente ali, e o que se vê
+    /// depois é o quanto o peso a afunda.
     pub fn shares_a_point(self) -> bool {
         !self.has_length()
     }

@@ -133,6 +133,7 @@ fn authored_kind(k: ph2d_physics::JointKind) -> JointKind {
         ph2d_physics::JointKind::Weld => JointKind::Weld,
         ph2d_physics::JointKind::Slider => JointKind::Slider,
         ph2d_physics::JointKind::Rod => JointKind::Rod,
+        ph2d_physics::JointKind::Wheel => JointKind::Wheel,
     }
 }
 

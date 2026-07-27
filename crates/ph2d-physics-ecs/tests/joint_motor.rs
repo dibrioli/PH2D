@@ -62,34 +62,74 @@ fn arm_y(sim: &mut SimWorld, b: &mut PhysicsBridge, from: u64, ticks: u64) -> f3
     t.translation.y
 }
 
-/// **The four doors, and the Rope is the case that proves they are four.**
+/// **As portas de unidade, uma linha por TIPO — e agora exaustivas.**
 ///
-/// `translates` is the one underlying fact; the other two read it and answer
-/// DIFFERENTLY for a Rope — no limit range at all, and a linear motor. Merged
-/// into one predicate the winch's target would be labelled and converted in
-/// degrees.
+/// A Rope é o caso que prova que `limits_in_metres` e `motor_in_metres` são
+/// perguntas diferentes num sentido (faixa nenhuma + motor linear), e o Wheel é
+/// o que prova no outro (limite em METROS + motor em GRAUS, no mesmo joint,
+/// porque são dois graus de liberdade). Fundidas numa porta só, uma das duas
+/// sempre sai na unidade errada.
+///
+/// ⚠️ **A tabela é um `match` EXAUSTIVO, e a mudança não é cosmética:** a versão
+/// anterior era uma lista de cinco tuplas, o [`JointKind::Rod`] chegou depois e
+/// **ninguém a estendeu** — ele atravessou uma wave sem ter uma única destas
+/// respostas conferida. Agora um tipo novo **não compila** até declarar as cinco.
 #[test]
 fn the_unit_doors_disagree_about_a_rope_and_that_is_the_point() {
     use JointKind::*;
-    for (k, translates, has_limits, limits_m, has_motor, motor_m) in [
-        (Pin, false, true, false, true, false),
-        (Spring, false, false, false, false, false),
-        (Rope, true, false, false, true, true),
-        (Weld, false, false, false, false, false),
-        (Slider, true, true, true, true, true),
-    ] {
+    /// `(translates, has_limits, limits_in_metres, has_motor, motor_in_metres)`
+    fn expected(k: JointKind) -> (bool, bool, bool, bool, bool) {
+        match k {
+            Pin => (false, true, false, true, false),
+            Spring => (false, false, false, false, false),
+            Rope => (true, false, false, true, true),
+            Weld => (false, false, false, false, false),
+            Slider => (true, true, true, true, true),
+            // Uma barra é UM número: nem faixa, nem motor, nem eixo.
+            Rod => (false, false, false, false, false),
+            // A roda: desliza (o curso, em metros) E gira (a tração, em graus).
+            Wheel => (true, true, true, true, false),
+        }
+    }
+    for k in JointKind::ALL {
+        let (translates, has_limits, limits_m, has_motor, motor_m) = expected(k);
         assert_eq!(k.translates(), translates, "{k:?} translates()");
         assert_eq!(k.has_limits(), has_limits, "{k:?} has_limits()");
         assert_eq!(k.limits_in_metres(), limits_m, "{k:?} limits_in_metres()");
         assert_eq!(k.has_motor(), has_motor, "{k:?} has_motor()");
         assert_eq!(k.motor_in_metres(), motor_m, "{k:?} motor_in_metres()");
     }
-    // The claim in one line: for a Rope the two unit questions differ.
+    // As duas afirmações em duas linhas: cada uma sozinha só mostra metade.
     assert_ne!(
         Rope.limits_in_metres(),
         Rope.motor_in_metres(),
-        "a Rope has no limit range and a LINEAR motor — one door for both would \
-         give the winch a target in degrees"
+        "a Rope não tem faixa de limite e tem motor LINEAR — uma porta só daria \
+         ao guincho um alvo em graus"
+    );
+    assert_ne!(
+        Wheel.limits_in_metres(),
+        Wheel.motor_in_metres(),
+        "uma roda limita uma TRANSLAÇÃO (o curso) e motoriza uma ROTAÇÃO (o giro) \
+         — uma porta só daria à tração uma velocidade em metros por segundo"
+    );
+}
+
+/// **A lista [`JointKind::ALL`] cobre cada discriminante exatamente uma vez.**
+///
+/// É ela que o gate acima percorre, então uma lista curta o deixaria verde
+/// sobre um tipo que ninguém conferiu — que é literalmente o que aconteceu com
+/// o Rod.
+#[test]
+fn the_kind_list_covers_every_discriminant_once() {
+    let mut seen: Vec<u8> = JointKind::ALL
+        .iter()
+        .map(|k| postcard::to_allocvec(k).expect("serialisable")[0])
+        .collect();
+    seen.sort_unstable();
+    let expected: Vec<u8> = (0..JointKind::ALL.len() as u8).collect();
+    assert_eq!(
+        seen, expected,
+        "JointKind::ALL tem de ter um elemento por discriminante, sem repetido"
     );
 }
 

@@ -515,6 +515,80 @@ fn main() {
         Transform::from_translation(Vec2::new(-64.0, 8.0)),
     ));
 
+    // Uma RODA (W-Wheel): o unico joint do kit que deixa DOIS graus de liberdade
+    // livres, entao ele e o unico caminho de solver com um motor de posicao (a
+    // suspensao, em `LinX`) e um limite BILATERAL no mesmo joint. Ela roda no
+    // CHAO de proposito -- uma suspensao so comprime quando a roda esta APOIADA e
+    // o peso do chassi desce sobre ela; solta no ar os dois corpos caem juntos e
+    // a lane mediria uma distancia constante.
+    sim.world_mut().spawn((
+        Name::new("C9 Wheel Ground"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 3.0,
+                half_y: 0.25,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-56.0, -0.25)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Wheel Chassis"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.8,
+                half_y: 0.2,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-56.0, 0.8)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Wheel Hub"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-56.0, 0.3)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Wheel"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Wheel Chassis"),
+            body_b: stable_name_id("C9 Wheel Hub"),
+            kind: JointKind::Wheel,
+            // Com curso ARMADO: o batente e um caminho de solver a mais (limite
+            // bilateral nao-acoplado), e ele so percorre se estiver ligado.
+            limits_enabled: true,
+            limit_min: -0.15,
+            limit_max: 0.15,
+            // E com TRACAO: o motor angular e o outro eixo do mesmo joint, e a
+            // roda girando mantem a lane VIVA ate o fim dos passos em vez de
+            // dormir no primeiro segundo.
+            motor_enabled: true,
+            motor_speed: -4.0,
+            ..PhysicsJoint::default()
+        },
+        // A suspensao aponta para CIMA (o eixo e a rotacao do proprio joint).
+        Transform {
+            translation: Vec2::new(-56.0, 0.3),
+            rotation: std::f32::consts::FRAC_PI_2,
+            ..Transform::IDENTITY
+        },
+    ));
+
     // Um SERVO (W-J6): a mesma dobradica do resto do repo, mas mirando um LUGAR
     // em vez de uma taxa. Entra no hash porque o motor de POSICAO e um caminho de
     // solver proprio -- `set_motor` com stiffness diferente de zero, resolvido

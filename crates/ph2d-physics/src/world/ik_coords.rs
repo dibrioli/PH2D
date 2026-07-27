@@ -234,12 +234,14 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
             }
             builder.into()
         }
-        JointKind::Weld | JointKind::Spring | JointKind::Rope | JointKind::Rod => {
-            FixedJointBuilder::new()
-                .local_anchor1(a)
-                .local_anchor2(b)
-                .into()
-        }
+        JointKind::Weld
+        | JointKind::Spring
+        | JointKind::Rope
+        | JointKind::Rod
+        | JointKind::Wheel => FixedJointBuilder::new()
+            .local_anchor1(a)
+            .local_anchor2(b)
+            .into(),
     }
 }
 
@@ -301,7 +303,16 @@ pub fn fk_dof(kind: JointKind) -> Option<FkDof> {
         // impede de chegar aqui é [`is_rigid_link`], que o recusa como aresta —
         // então se um dia um rod virar elo de árvore, este braço tem de virar um
         // terceiro estado ("pare, não sei posar isto"), nunca continuar `None`.
-        JointKind::Weld | JointKind::Spring | JointKind::Rope | JointKind::Rod => None,
+        //
+        // ⚠️ **O Wheel está aqui pela MESMA inalcançabilidade e por um motivo a
+        // mais:** ele tem DOIS graus de liberdade (a suspensão e o giro), e
+        // [`FkDof`] modela **um**. Se ele um dia virar elo, a resposta não é
+        // escolher qual dos dois — é o artista escolher, o que é outro gesto.
+        JointKind::Weld
+        | JointKind::Spring
+        | JointKind::Rope
+        | JointKind::Rod
+        | JointKind::Wheel => None,
     }
 }
 

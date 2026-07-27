@@ -187,22 +187,19 @@ fn extent(marks: &[(BezPath, [f32; 4])], rgba: [f32; 4]) -> (f64, f64) {
 /// dois tipos que passassem a desenhar o mesmo conjunto de pontos falham.
 #[test]
 fn each_joint_kind_draws_a_different_figure() {
-    let mut spring = view(JointKind::Spring);
-    spring.anchor_b = [2.0, 0.0];
-    spring.length = Some(2.0);
-    let mut rope = view(JointKind::Rope);
-    rope.anchor_b = [2.0, 0.0];
-    rope.length = Some(2.0);
-
-    let figures: Vec<(&str, Vec<(f64, f64)>)> = vec![
-        ("Pin", points_of(&marks(&view(JointKind::Pin)), JOINT_RGBA)),
-        (
-            "Weld",
-            points_of(&marks(&view(JointKind::Weld)), JOINT_RGBA),
-        ),
-        ("Spring", points_of(&marks(&spring), JOINT_RGBA)),
-        ("Rope", points_of(&marks(&rope), JOINT_RGBA)),
-    ];
+    // ⚠️ **A lista é `JointKind::ALL`, e não quatro nomes escritos à mão.** A
+    // versão anterior cobria Pin/Weld/Spring/Rope — o Slider, o Rod e o Wheel
+    // chegaram depois e nenhum entrou, então três figuras novas nunca foram
+    // comparadas com nada. É a mesma rot que a tabela de portas do ECS tinha.
+    let figures: Vec<(String, Vec<(f64, f64)>)> = JointKind::ALL
+        .iter()
+        .map(|&k| {
+            (
+                format!("{k:?}"),
+                points_of(&marks(&kind_view(k)), JOINT_RGBA),
+            )
+        })
+        .collect();
     for (i, (na, a)) in figures.iter().enumerate() {
         assert!(
             !a.is_empty(),
@@ -216,6 +213,74 @@ fn each_joint_kind_draws_a_different_figure() {
             );
         }
     }
+}
+
+/// A fixture de UM tipo, com o que aquele tipo precisa para desenhar.
+///
+/// Os que atravessam um vão (Spring/Rope/Rod) precisam das âncoras separadas e
+/// de um comprimento; os que compartilham um ponto (Pin/Weld/Slider/Wheel) não.
+fn kind_view(kind: JointKind) -> JointView {
+    let mut v = view(kind);
+    if matches!(kind, JointKind::Spring | JointKind::Rope | JointKind::Rod) {
+        v.anchor_b = [2.0, 0.0];
+        v.length = Some(2.0);
+    }
+    if matches!(kind, JointKind::Slider | JointKind::Wheel) {
+        v.limits = Some([-0.5, 0.5]);
+    }
+    v
+}
+
+/// **A RODA desenha um cubo E uma mola — nem só o anel de um pino, nem só o
+/// zigue-zague de uma mola.**
+///
+/// ⚠️ **Este gate existe porque a mutação que colapsa o glifo da roda num anel
+/// de pino SOBREVIVEU** a todos os outros: nada media a geometria dela, e o
+/// glifo é a única coisa que diz ao artista qual tipo ele está olhando. As duas
+/// metades são afirmadas separadamente porque cada uma sozinha é satisfeita por
+/// um vizinho: *tem anel fechado* também vale para o Pin, *inverte de lado* também
+/// vale para a Spring.
+#[test]
+fn the_wheel_draws_a_hub_and_a_spring() {
+    let wheel = kind_view(JointKind::Wheel);
+    let flips = direction_flips(&marks(&wheel), JOINT_RGBA);
+    assert!(
+        flips >= 4,
+        "a suspensão inverteu de lado {flips}× — sem as meias-ondas o glifo da \
+         roda é o anel de um pino"
+    );
+    // O CUBO: um anel FECHADO em volta da âncora, que a Spring não tem. Medido
+    // como pontos que cercam a âncora dos QUATRO lados a um raio parecido.
+    let pts = points_of(&marks(&wheel), JOINT_RGBA);
+    let anchor = screen_anchor();
+    let ring: Vec<(f64, f64)> = pts
+        .iter()
+        .copied()
+        .filter(|(x, y)| {
+            let r = (x - anchor.0).hypot(y - anchor.1);
+            (r - super::super::physics_overlay_joint_glyphs::PIN_RING_PX).abs() < 1.0
+        })
+        .collect();
+    let (mut left, mut right, mut up, mut down) = (false, false, false, false);
+    for (x, y) in &ring {
+        left |= *x < anchor.0 - 3.0;
+        right |= *x > anchor.0 + 3.0;
+        up |= *y < anchor.1 - 3.0;
+        down |= *y > anchor.1 + 3.0;
+    }
+    assert!(
+        left && right && up && down,
+        "o cubo tinha de ser um anel FECHADO em volta da âncora; achei {} pontos \
+         no raio dele, cercando esquerda={left} direita={right} cima={up} \
+         baixo={down}",
+        ring.len()
+    );
+}
+
+/// Onde a âncora da fixture cai na tela.
+fn screen_anchor() -> (f64, f64) {
+    let (x, y) = camera().world_to_screen([0.0, 0.0], window());
+    (f64::from(x), f64::from(y))
 }
 
 /// **A mola serpenteia; a corda não.**

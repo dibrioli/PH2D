@@ -34,8 +34,9 @@
 //! `ImpulseJointSet`, so a scrub backwards carries joints with no work at all.
 
 use rapier2d::dynamics::{
-    FixedJointBuilder, ImpulseJointHandle, JointAxis, PrismaticJointBuilder, RevoluteJointBuilder,
-    RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
+    FixedJointBuilder, GenericJointBuilder, ImpulseJointHandle, JointAxesMask, JointAxis,
+    PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder,
+    SpringJointBuilder,
 };
 use rapier2d::na::{Isometry2, Point2, UnitVector2, Vector2};
 
@@ -112,6 +113,13 @@ pub fn motor_axis(kind: JointKind) -> Option<JointAxis> {
         // animal and already has two homes: a Slider with a motor (the ram) and
         // a Rope with one (the winch).
         JointKind::Spring | JointKind::Weld | JointKind::Rod => None,
+        // ⚠️ **A Wheel is the case that proves this function had to be a
+        // function.** It leaves TWO axes free and the motor drives the *spin*,
+        // not the suspension — so the same joint carries a motor on `AngX` and
+        // a spring (which rapier also models as a motor) on `LinX`, and they do
+        // not collide because they are different axes. Driving `LinX` here
+        // instead would overwrite the suspension exactly as it would a Spring's.
+        JointKind::Wheel => Some(JointAxis::AngX),
     }
 }
 
@@ -235,6 +243,34 @@ impl PhysicsWorld {
                     builder = builder.limits([min, max]);
                 }
                 builder.into()
+            }
+            // **The wheel: everything free except sideways.** One axis locked
+            // (`LIN_Y`, the direction the hub may not be pushed), which leaves
+            // the suspension travel on `LinX` and the spin on `AngX`.
+            //
+            // The suspension is a **position motor at zero** — zero because the
+            // anchors coincide where the artist put them (`shares_a_point`), so
+            // "the spring is at rest exactly where you built it" and the car
+            // settles DOWN from the authored pose by however much it sags. The
+            // stiffness and damping are the artist's own, the same two fields a
+            // Spring uses, because it is the same physical thing.
+            //
+            // ⚠️ **`coupled_axes` is left empty and that is what makes the
+            // travel limit real.** A rope or a spring couples its linear axes,
+            // which routes the limit through rapier's `limit_linear_coupled` —
+            // unilateral, the dead end the Rod measured. Here nothing is
+            // coupled, so `[min, max]` is the bump stop and the droop stop.
+            JointKind::Wheel => {
+                let mut builder = GenericJointBuilder::new(JointAxesMask::LIN_Y)
+                    .local_axis1(unit_or_x(desc.axis_a))
+                    .local_axis2(unit_or_x(desc.axis_b))
+                    .local_anchor1(anchor_a)
+                    .local_anchor2(anchor_b)
+                    .motor_position(JointAxis::LinX, 0.0, desc.stiffness, desc.damping);
+                if let Some([min, max]) = desc.limits {
+                    builder = builder.limits(JointAxis::LinX, [min, max]);
+                }
+                builder.build()
             }
         };
         // **The motor, applied ONCE for every kind that has one.** The builders

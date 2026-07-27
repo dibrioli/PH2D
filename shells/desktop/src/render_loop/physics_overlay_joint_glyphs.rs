@@ -178,16 +178,87 @@ pub(super) fn slider_rail(
     // Os tracinhos existem só quando há fim de curso — sem limites não há onde
     // parar, e um tracinho ali afirmaria um limite que não existe.
     if limits.is_some() {
-        for end in [from, to] {
-            p.move_to(Point::new(
-                end.x - perp_x * RAIL_TICK_PX,
-                end.y - perp_y * RAIL_TICK_PX,
-            ));
-            p.line_to(Point::new(
-                end.x + perp_x * RAIL_TICK_PX,
-                end.y + perp_y * RAIL_TICK_PX,
-            ));
-        }
+        end_ticks([from, to], (perp_x, perp_y), &mut p);
+    }
+    p
+}
+
+/// **Os tracinhos de FIM DE CURSO**, perpendiculares ao eixo, em px de tela.
+///
+/// Porta única do trilho ([`slider_rail`]) e da suspensão ([`wheel_strut`]):
+/// os dois dizem a MESMA coisa — *o alcance termina aqui* — e duas cópias
+/// divergiriam no dia em que o comprimento do tracinho mudasse num só.
+fn end_ticks(ends: [Point; 2], perp: (f64, f64), p: &mut BezPath) {
+    for end in ends {
+        p.move_to(Point::new(
+            end.x - perp.0 * RAIL_TICK_PX,
+            end.y - perp.1 * RAIL_TICK_PX,
+        ));
+        p.line_to(Point::new(
+            end.x + perp.0 * RAIL_TICK_PX,
+            end.y + perp.1 * RAIL_TICK_PX,
+        ));
+    }
+}
+
+/// **O glifo da RODA** — o cubo (um anel) mais a MOLA da suspensão ao longo do
+/// eixo, e os batentes de curso quando eles existem.
+///
+/// ⚠️ **É COMPOSTO de propósito, e é isso que o torna legível:** o anel é o
+/// mesmo do [`pin_glyph`] e significa a mesma coisa (*isto gira em torno deste
+/// ponto*), o zigue-zague é o mesmo idioma do [`spring_zigzag`] e diz *isto
+/// cede*, e os tracinhos são os do [`slider_rail`]. Uma roda é literalmente as
+/// três frases juntas, então inventar uma quarta figura seria pedir ao artista
+/// que decorasse um símbolo em vez de ler o que já sabe.
+///
+/// A distinção contra os vizinhos é de GEOMETRIA, não de nome (a cicatriz do
+/// par `Layer`/`Layers`): contra o Pin, existe uma polilinha que oscila fora do
+/// anel; contra a Spring, há um anel FECHADO e o zigue-zague não liga duas
+/// âncoras (as duas coincidem numa roda); contra o Slider, o traço ao longo do
+/// eixo não é reto.
+///
+/// Como o [`slider_rail`], o eixo vem da ponte (`JointView::axis`) e nunca é
+/// re-derivado aqui, e os fins de curso são MUNDO enquanto o resto é chrome.
+pub(super) fn wheel_strut(
+    camera: &Camera2d,
+    window: WindowSize,
+    anchor_w: [f32; 2],
+    axis_w: [f32; 2],
+    limits: Option<[f32; 2]>,
+) -> BezPath {
+    let mut p = BezPath::new();
+    let along = |t: f32| {
+        screen_of(
+            camera,
+            window,
+            [anchor_w[0] + axis_w[0] * t, anchor_w[1] + axis_w[1] * t],
+        )
+    };
+    let c = along(0.0);
+    let ahead = along(1.0);
+    let (dx, dy) = (ahead.x - c.x, ahead.y - c.y);
+    let len = dx.hypot(dy);
+    if len < 1e-9 {
+        return p; // câmera degenerada: nada honesto a desenhar
+    }
+    let (ux, uy) = (dx / len, dy / len);
+    let (perp_x, perp_y) = (-uy, ux);
+    // O CUBO: o mesmo anel do pino, porque é a mesma afirmação.
+    ring_px(c, PIN_RING_PX, &mut p);
+    // A MOLA: da borda do anel para fora, ao longo do eixo, num comprimento de
+    // chrome — o curso de uma suspensão é um número em metros e ele já tem
+    // desenho próprio (os tracinhos); esticar a mola até lá faria a figura
+    // sumir num curso curto.
+    let base = Point::new(c.x + ux * PIN_RING_PX, c.y + uy * PIN_RING_PX);
+    let tip = Point::new(c.x + ux * RAIL_PX, c.y + uy * RAIL_PX);
+    p.extend(spring_zigzag(base, tip).iter());
+    // Os batentes: onde a suspensão de fato PARA, em metros. ⚠️ Comprimir é
+    // POSITIVO neste eixo (o cubo sobe em direção ao chassi), então o `max` é o
+    // batente de compressão e o `min` o de extensão — medido, porque uma faixa
+    // simétrica não distingue as duas convenções. O par inteiro é o que um rod
+    // não podia ter.
+    if let Some([min, max]) = limits {
+        end_ticks([along(min), along(max)], (perp_x, perp_y), &mut p);
     }
     p
 }

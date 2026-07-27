@@ -410,7 +410,7 @@ pub(super) fn paint_collision_rows(
 /// `KIND_LABELS`, and it must list every kind that one does: this is the selector
 /// that decides what gets CREATED, so a kind missing here is a kind the artist
 /// cannot reach at all.
-const JOIN_KIND_LABELS: [&str; 6] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod"];
+const JOIN_KIND_LABELS: [&str; 7] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel"];
 
 /// Paint the joint-creation gesture: the "Join As" kind selector (Pin/Spring/
 /// Rope/Weld) and the "Join Selected Bodies" button. Split here for the panel's
@@ -539,6 +539,25 @@ mod join_label_tests {
             super::JOIN_KIND_LABELS.len(),
             ph2d_editor_core::ids::INSP_PHYS_JOIN_KIND.len(),
             "um rotulo sem id e um chip que o seg_row DESCARTA no zip"
+        );
+    }
+
+    /// **As DUAS listas de tipo têm de ter o mesmo tamanho** — a que CRIA (§11)
+    /// e a que CONVERTE (§12).
+    ///
+    /// ⚠️ É o gate que faltava, e a ausência dele tem nome: o Slider entrou só
+    /// na lista de conversão (W-J5) e o resultado foi um tipo que a simulação
+    /// tinha e o artista **não conseguia criar** (Enio: *"Slider não aparece no
+    /// painel de joints"*). Os dois gates de comprimento existentes conferem
+    /// cada par contra os PRÓPRIOS rótulos, então os dois ficavam verdes com as
+    /// listas divergindo uma da outra — que é exatamente o que aconteceu.
+    #[test]
+    fn the_create_list_and_the_convert_list_know_the_same_kinds() {
+        assert_eq!(
+            ph2d_editor_core::ids::INSP_PHYS_JOIN_KIND.len(),
+            ph2d_editor_core::ids::INSP_JOINT_KIND.len(),
+            "um tipo que só a §12 conhece é um tipo que ninguém consegue CRIAR; \
+             um que só a §11 conhece é um que ninguém consegue AFINAR"
         );
     }
 

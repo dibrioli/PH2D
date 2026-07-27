@@ -65,6 +65,36 @@ pub enum JointKind {
     /// be a *function* of the stiffness to not oscillate. A Rod exposes **one
     /// number, the length**, and derives the rest.
     Rod,
+    /// **Wheel** — a hub that both *spins* and *rides on a suspension*. The
+    /// wheel of a car, the caster of a cart, the sprung roller of a platform.
+    ///
+    /// It is the first kind here that leaves **TWO** degrees of freedom free,
+    /// and that is the whole of it: the hub may slide along one axis (the
+    /// suspension travel, sprung and damped) and may turn about that hub
+    /// forever (the spin, optionally driven). Every other kind in this kit
+    /// leaves one or zero.
+    ///
+    /// ⚠️ **Not a preset stacking three joints, and that distinction is
+    /// load-bearing.** Two bodies joined twice — a prismatic *and* a revolute —
+    /// hand the solver two constraints fighting over the same pair, and the
+    /// artist two objects to keep in step. rapier expresses the whole thing as
+    /// **one** `GenericJoint` locking a single axis (`LIN_Y`), which is what a
+    /// wheel *is*: everything is free except sideways.
+    ///
+    /// ⚠️ **The suspension is a position motor on `LinX`, and the limit is a
+    /// TRUE range** — unlike the [`JointKind::Rod`], whose `[d, d]` could not
+    /// hold. The difference is that coupling in rapier is **explicit**
+    /// (`GenericJoint::coupled_axes`, set by `RopeJointBuilder` and
+    /// `SpringJointBuilder` and by nothing else), so a wheel's `LinX` limit goes
+    /// through the ordinary bilateral `limit_linear` rather than the unilateral
+    /// `limit_linear_coupled` that the rod ran into. A wheel's travel therefore
+    /// has a real floor *and* a real ceiling: the bump stop and the droop stop.
+    ///
+    /// The spin's motor is the artist's ([`JointDesc::motor`], on `AngX`); the
+    /// suspension's is not exposed as a motor at all, it is the
+    /// [`JointDesc::stiffness`]/[`JointDesc::damping`] pair a Spring already
+    /// owns — the same authored fields, because it is the same physical thing.
+    Wheel,
 }
 
 /// What a motor is *aiming at*. The two things a driven joint can be told, and
@@ -320,4 +350,76 @@ impl JointDesc {
     /// gate**, because a bar on a quantity that does not move could not fail for
     /// the reason it would allege.
     pub const ROD_DAMPING: f32 = 2000.0;
+
+    /// Spring constant a new [`JointKind::Wheel`]'s **suspension** is born with.
+    ///
+    /// **MEASURED** on a car — chassis 2.0 × 0.4 m on two wheels, ride height
+    /// 0.5 m — because a suspension only compresses when the wheel is *supported*
+    /// and the chassis presses down on it:
+    ///
+    /// | stiffness | sag, 0.8 kg chassis | sag, 3.2 kg chassis |
+    /// |---|---|---|
+    /// | 100 | 0.257 m | **collapsed** (0.60 = the whole ride height) |
+    /// | 200 | 0.129 m | 0.341 m (68% of travel — reads bottomed out) |
+    /// | **400** | **0.064 m (13%)** | **0.167 m (33%)** |
+    /// | 800 | 0.032 m (6% — reads as a strut) | 0.084 m |
+    ///
+    /// **400**, by the rule the [`Self::DEFAULT_STIFFNESS`] of a spring already
+    /// states: a new one has to *visibly ride*. Below it a heavy body sits on
+    /// its bump stop (or straight through the chassis), above it the suspension
+    /// stops moving enough to see.
+    ///
+    /// ⚠️ **Far stiffer than a Spring's 30, and that is not an inconsistency.**
+    /// A spring is authored to *hang* a body — the sag IS the effect. A
+    /// suspension holds a vehicle up and the sag is a side effect to be kept
+    /// small. Same field, same units, opposite jobs, which is exactly why the
+    /// kind change re-seeds them.
+    pub const WHEEL_STIFFNESS: f32 = 400.0;
+
+    /// Damping a new wheel's suspension is born with. **Under-damped on
+    /// purpose**, the same call the spring's [`Self::DEFAULT_DAMPING`] makes: a
+    /// suspension that does not bounce at all is a rigid strut.
+    ///
+    /// MEASURED at [`Self::WHEEL_STIFFNESS`], dropping the car and watching what
+    /// happens after it lands:
+    ///
+    /// | damping | overshoot (peak ÷ rest) | settles at |
+    /// |---|---|---|
+    /// | 0 | 2.87× | **never** (still moving at 5 s) |
+    /// | 10 | 1.60× | 1.9 s |
+    /// | **20** | **1.35×** | **1.1 s** |
+    /// | 40 | 1.08× | 0.5 s |
+    /// | 80 | 1.00× (no bounce at all) | 0.7 s |
+    ///
+    /// **20** is the value that bounces exactly once and stops. Note that 80 —
+    /// past critical — settles *later* than 40, which is the ordinary
+    /// over-damped result and a check that the sweep is reading real dynamics.
+    pub const WHEEL_DAMPING: f32 = 20.0;
+
+    /// Half-travel a newly limited wheel gets, **metres**: the bump stop at
+    /// −0.15 and the droop stop at +0.15.
+    ///
+    /// ⚠️ **Its own constant instead of the Slider's ±0.5 m stroke**, because a
+    /// half-metre of suspension travel is longer than the whole ride height of
+    /// any vehicle an artist is likely to build — a number nobody typed, which
+    /// is the hazard `default_limits` exists for. Chosen against the sag this
+    /// kind's own defaults produce (0.064 m light, 0.167 m heavy): the light car
+    /// never touches it and the heavy one just does, so switching the limit on
+    /// is *visible* rather than decorative.
+    ///
+    /// ⚠️ **And the sign is not cosmetic — it was MEASURED, and the first note
+    /// here had it backwards.** The travel is the hub's position along the
+    /// suspension axis, and the hub sits BELOW the chassis with the axis
+    /// pointing up, so **compressing is POSITIVE**: the `max` is the bump stop
+    /// and the `min` is the droop stop. Measured directly (`[-0.30, +0.05]`
+    /// sags 0.05; `[-0.05, +0.30]` sags 0.30). ⚠️ A **symmetric** range cannot
+    /// tell the two conventions apart, which is exactly why the wrong note
+    /// survived a green gate — see
+    /// `a_wheels_travel_has_both_stops_and_the_droop_one_proves_it`.
+    ///
+    /// The `min` end is the one a [`JointKind::Rod`] could not have: rapier's
+    /// coupled linear limit reads only `limits[1]` and is unilateral. Here
+    /// nothing is coupled, so both ends hold — and only the DROOP stop proves
+    /// it, because a magnitude limit would honour the `max` too.
+    pub const WHEEL_TRAVEL: f32 = 0.15;
 }

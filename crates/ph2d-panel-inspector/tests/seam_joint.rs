@@ -284,19 +284,22 @@ fn each_kind_paints_only_the_rows_it_uses() {
         [ids::INSP_JOINT_LIMIT_MIN, ids::INSP_JOINT_LIMIT_MAX];
     const MOTOR_ROWS: [ph2d_a11y::NodeId; 2] =
         [ids::INSP_JOINT_MOTOR_SPEED, ids::INSP_JOINT_MOTOR_FORCE];
-    const SPRING_ONLY: [ph2d_a11y::NodeId; 3] = [
-        ids::INSP_JOINT_REST_LENGTH,
-        ids::INSP_JOINT_STIFFNESS,
-        ids::INSP_JOINT_DAMPING,
-    ];
-    const ROPE_ONLY: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_MAX_LENGTH];
+    /// Só de uma Spring: uma roda tem mola mas não tem comprimento de repouso
+    /// (a altura de marcha dela é ONDE o artista montou o carro).
+    const REST_ONLY: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_REST_LENGTH];
+    /// A MOLA — da Spring e da suspensão de um Wheel. Mesmos campos, mesmos
+    /// ids, porque é a mesma coisa física.
+    const SPRING_ROWS: [ph2d_a11y::NodeId; 2] =
+        [ids::INSP_JOINT_STIFFNESS, ids::INSP_JOINT_DAMPING];
+    /// O comprimento — da Rope (um teto) e do Rod (uma igualdade).
+    const LENGTH_ROWS: [ph2d_a11y::NodeId; 1] = [ids::INSP_JOINT_MAX_LENGTH];
 
-    // ⚠️ **0..5, not 0..4.** The range stopped one short of the Slider, so the
-    // `kind == 4` half of the limit assertion below was never executed — written
-    // in W-J5 and green ever since without covering the kind it was written for.
-    // It also covers Weld (kind 3), which owns NO parameter rows at all: it never
-    // equals an owner below, so every family must go unpainted for it.
-    for kind in 0u8..5 {
+    // ⚠️ **A faixa cobre TODOS os chips que o painel pinta, e por duas vezes ela
+    // não cobriu.** Era `0..4` quando o Slider chegou (a metade `kind == 4` da
+    // asserção de limite nunca rodou), virou `0..5` e ficou assim quando o Rod
+    // (5) e o Wheel (6) chegaram. Agora ela é o COMPRIMENTO do array de chips —
+    // um tipo novo entra na varredura sem ninguém lembrar.
+    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
         set_current_inspector_joint(Some(joint(kind)));
@@ -304,15 +307,15 @@ fn each_kind_paints_only_the_rows_it_uses() {
         set_current_inspector_joint(None);
         let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
 
-        // As rows de limite pertencem a DOIS tipos, então não cabem na tabela
+        // As rows de limite pertencem a TRÊS tipos, então não cabem na tabela
         // "um dono" abaixo — são afirmadas à parte.
         for &id in &LIMIT_ROWS {
-            let limited = kind == 0 || kind == 4;
+            let limited = kind == 0 || kind == 4 || kind == 6;
             assert_eq!(
                 painted(id),
                 limited,
-                "kind {kind} {} {id:?}: um alcance existe no Pin e no Slider, e em \
-                 mais nenhum",
+                "kind {kind} {} {id:?}: um alcance existe no Pin, no Slider e no \
+                 Wheel (onde ele é o CURSO da suspensão), e em mais nenhum",
                 if limited {
                     "must paint"
                 } else {
@@ -320,16 +323,19 @@ fn each_kind_paints_only_the_rows_it_uses() {
                 }
             );
         }
-        // Um motor existe no Pin, no Slider e na Rope — e em mais nenhum. Uma
-        // Spring é excluída por MECÂNICA e não por gosto: o rapier modela mola
-        // COMO motor no mesmo eixo, então um segundo ali comeria a rigidez que o
-        // artista autorou (`ph2d_physics::motor_axis` diz o mesmo ao solver).
+        // Um motor existe no Pin, no Slider, na Rope e no Wheel — e em mais
+        // nenhum. Uma Spring é excluída por MECÂNICA e não por gosto: o rapier
+        // modela mola COMO motor no mesmo eixo, então um segundo ali comeria a
+        // rigidez que o artista autorou (`ph2d_physics::motor_axis` diz o mesmo
+        // ao solver). ⚠️ Um Wheel carrega os DOIS e não colidem, porque a mola
+        // dele mora no eixo LINEAR e o motor no ANGULAR.
         for &id in &MOTOR_ROWS {
-            let driven = kind == 0 || kind == 2 || kind == 4;
+            let driven = kind == 0 || kind == 2 || kind == 4 || kind == 6;
             assert_eq!(
                 painted(id),
                 driven,
-                "kind {kind} {} {id:?}: um motor existe no Pin, no Slider e na Rope",
+                "kind {kind} {} {id:?}: um motor existe no Pin, no Slider, na Rope \
+                 e no Wheel",
                 if driven {
                     "must paint"
                 } else {
@@ -337,17 +343,19 @@ fn each_kind_paints_only_the_rows_it_uses() {
                 }
             );
         }
-        for (owner, ids_) in [(1u8, &SPRING_ONLY[..]), (2, &ROPE_ONLY[..])] {
+        // A mola pertence à Spring E ao Wheel; o comprimento à Rope E ao Rod.
+        for (owners, ids_) in [
+            (&[1u8][..], &REST_ONLY[..]),
+            (&[1, 6][..], &SPRING_ROWS[..]),
+            (&[2, 5][..], &LENGTH_ROWS[..]),
+        ] {
             for &id in ids_ {
+                let mine = owners.contains(&kind);
                 assert_eq!(
                     painted(id),
-                    kind == owner,
-                    "kind {kind} {} {id:?}, which belongs to kind {owner}",
-                    if kind == owner {
-                        "must paint"
-                    } else {
-                        "must not paint"
-                    }
+                    mine,
+                    "kind {kind} {} {id:?}, que pertence a {owners:?}",
+                    if mine { "must paint" } else { "must not paint" }
                 );
             }
         }
@@ -512,31 +520,42 @@ fn switching_the_motor_off_takes_its_instruction_off_the_screen() {
 /// Mutation: painting the torque row unconditionally — four kinds go red with a
 /// threshold that can never be crossed.
 #[test]
-fn breaking_is_offered_to_every_kind_but_the_torque_row_is_a_pins_alone() {
-    for kind in 0u8..5 {
-        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
-        let mut state = InspectorState::default();
-        set_current_inspector_joint(Some(joint(kind)));
-        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-        set_current_inspector_joint(None);
-        let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
-        for &id in &ids::INSP_JOINT_BREAK {
+fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
+    // ⚠️ **O painel HONRA a flag; ele não sabe quem a tem.** A versão anterior
+    // deste gate afirmava `kind == 0` — uma segunda cópia da resposta do motor,
+    // que envelheceu na hora em que o Wheel passou a reportar torque (medido:
+    // 0,5125 N.m com tração). Quem tem a flag é gateado onde ela é COMPUTADA
+    // (`ph2d_physics_ecs::JointKind::breaks_on_torque`, mais o gate de snapshot
+    // na shell); aqui fica só a metade que é do painel.
+    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
+        for torque in [false, true] {
+            let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+            let mut state = InspectorState::default();
+            set_current_inspector_joint(Some(InspectorJointInfo {
+                breaks_on_torque: torque,
+                ..joint(kind)
+            }));
+            let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+            set_current_inspector_joint(None);
+            let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+            for &id in &ids::INSP_JOINT_BREAK {
+                assert!(
+                    painted(id),
+                    "kind {kind}: todo joint pode ser arrancado, então o switch é \
+                     oferecido a TODOS"
+                );
+            }
             assert!(
-                painted(id),
-                "kind {kind}: every joint can be pulled apart, so the switch is \
-                 offered to all five"
+                painted(ids::INSP_JOINT_BREAK_FORCE),
+                "kind {kind}: e o limiar de força também"
+            );
+            assert_eq!(
+                painted(ids::INSP_JOINT_BREAK_TORQUE),
+                torque,
+                "kind {kind}: a row de torque segue a flag que o motor mandou, e \
+                 nada mais"
             );
         }
-        assert!(
-            painted(ids::INSP_JOINT_BREAK_FORCE),
-            "kind {kind}: and so is the force threshold"
-        );
-        assert_eq!(
-            painted(ids::INSP_JOINT_BREAK_TORQUE),
-            kind == 0,
-            "kind {kind}: only a hinge can report a torque, so only a hinge is \
-             offered a torque threshold"
-        );
     }
 }
 

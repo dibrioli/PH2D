@@ -212,6 +212,7 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;
+mod physics_smoke_wheel;
 mod physics_smoke_zones;
 mod picker_smoke;
 /// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.

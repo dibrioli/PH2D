@@ -132,6 +132,13 @@ fn the_snapshot_carries_the_engines_answer_about_torque() {
         (JointKind::Rope, false),
         (JointKind::Weld, false),
         (JointKind::Slider, false),
+        // Uma barra deixa os dois olhais girarem: eixo angular LIVRE, torque
+        // estruturalmente zero.
+        (JointKind::Rod, false),
+        // ⚠️ Uma RODA reporta, e foi MEDIDO: o eixo angular dela é livre com o
+        // motor desligado (0,0000 N.m) e motorizado com ele ligado (0,5125) —
+        // e quem manda e o estado em que a row pode ser alcançada.
+        (JointKind::Wheel, true),
     ] {
         let mut sim = SimWorld::new();
         let e = sim

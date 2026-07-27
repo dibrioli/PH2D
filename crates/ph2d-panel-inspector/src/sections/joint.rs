@@ -19,7 +19,7 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 6] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod"];
+const KIND_LABELS: [&str; 7] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel"];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
@@ -47,9 +47,47 @@ const KIND_ROD: u8 = 5;
 /// questions separately instead of branching on "is it a Pin?", which is the
 /// same split `JointKind::has_limits` and `has_motor` made engine-side.
 const KIND_SLIDER: u8 = 4;
+/// Tag of the Wheel kind — a hub that **spins and rides a suspension**, so it
+/// is the first kind to want TWO families of row at once (a travel range like a
+/// Slider, a spring like a Spring). That is what turned the `else if` chain
+/// below into independent questions.
+const KIND_WHEEL: u8 = 6;
+
+/// Does this kind have a limit RANGE? A Pin's angular arc, a Slider's stroke,
+/// a Wheel's suspension travel.
+///
+/// ⚠️ Second STATEMENT of `JointKind::has_limits`, like `kind_has_motor` below —
+/// the panel never sees `ph2d-physics-ecs`, and the bridge asks the engine-side
+/// door before handing limits to the solver.
+const fn kind_has_limits(kind_tag: u8) -> bool {
+    kind_tag == KIND_PIN || kind_tag == KIND_SLIDER || kind_tag == KIND_WHEEL
+}
+
+/// What the limits switch is CALLED for this kind. A Pin and a Slider are
+/// *limited*; a Wheel's range is its suspension **travel**, which is the word
+/// the artist is looking for — the same "same id, different label" the Rope and
+/// the Rod already share for their one number.
+const fn limits_label(kind_tag: u8) -> &'static str {
+    if kind_tag == KIND_WHEEL {
+        "Travel"
+    } else {
+        "Limits"
+    }
+}
+
+/// Does this kind carry a **spring** the artist tunes (stiffness + damping)? A
+/// Spring is one; a Wheel's suspension IS one.
+///
+/// The two share the fields and the ids because they are the same physical
+/// thing — what differs is the SCALE they want (a spring hangs a body, a
+/// suspension holds a vehicle up), which is why the kind change re-seeds them
+/// engine-side (`PhysicsJoint::default_spring`).
+const fn kind_has_spring(kind_tag: u8) -> bool {
+    kind_tag == KIND_SPRING || kind_tag == KIND_WHEEL
+}
 
 /// Can this kind be DRIVEN? A Pin's hinge, a Slider's rail, a Rope's distance
-/// (the winch). A Spring and a Weld cannot.
+/// (the winch), a Wheel's spin (the drive).
 ///
 /// ⚠️ Second STATEMENT of `JointKind::has_motor`, not a second source of truth —
 /// the panel is loose-coupled and never sees `ph2d-physics-ecs` (the convention
@@ -58,7 +96,10 @@ const KIND_SLIDER: u8 = 4;
 /// there would paint a knob the solver drops; a seam gate walks all five kinds
 /// and pins which ones offer the card.
 const fn kind_has_motor(kind_tag: u8) -> bool {
-    kind_tag == KIND_PIN || kind_tag == KIND_SLIDER || kind_tag == KIND_ROPE
+    kind_tag == KIND_PIN
+        || kind_tag == KIND_SLIDER
+        || kind_tag == KIND_ROPE
+        || kind_tag == KIND_WHEEL
 }
 
 /// The unit pair the motor rows are labelled with, **for this kind**:
@@ -69,7 +110,7 @@ const fn kind_has_motor(kind_tag: u8) -> bool {
 /// questions would label a winch's target in degrees. Engine-side the same two
 /// doors are `limits_in_metres` and `motor_in_metres`.
 const fn motor_units(kind_tag: u8) -> (&'static str, &'static str) {
-    if kind_tag == KIND_PIN {
+    if kind_tag == KIND_PIN || kind_tag == KIND_WHEEL {
         ("\u{00b0}/s", "\u{00b0}")
     } else {
         ("m/s", "m")
@@ -90,7 +131,7 @@ const MOTOR_MODE_POSITION: u8 = 1;
 /// shell converts the value, this only names it. A seam gate pins that a slider's
 /// rows say metres, so the two cannot drift apart in silence.
 const fn limit_unit(kind_tag: u8) -> &'static str {
-    if kind_tag == KIND_SLIDER {
+    if kind_tag == KIND_SLIDER || kind_tag == KIND_WHEEL {
         "m"
     } else {
         "\u{00b0}"
@@ -182,83 +223,10 @@ pub(crate) fn paint_joint_section(
         info.kind_tag,
     );
 
-    if info.kind_tag == KIND_PIN || info.kind_tag == KIND_SLIDER {
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Limits",
-            ids::INSP_JOINT_LIMITS_GROUP,
-            &ids::INSP_JOINT_LIMITS,
-            &SWITCH_LABELS,
-            u8::from(info.limits_enabled),
-        );
-        if info.limits_enabled {
-            let unit = limit_unit(info.kind_tag);
-            for (label, id) in [
-                (format!("Min ({unit})"), ids::INSP_JOINT_LIMIT_MIN),
-                (format!("Max ({unit})"), ids::INSP_JOINT_LIMIT_MAX),
-            ] {
-                yy = num_row(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    x,
-                    w,
-                    yy,
-                    &label,
-                    id,
-                );
-            }
-        }
-    } else if info.kind_tag == KIND_SPRING {
-        for (label, id) in [
-            ("Rest Length (m)", ids::INSP_JOINT_REST_LENGTH),
-            ("Stiffness", ids::INSP_JOINT_STIFFNESS),
-            ("Damping", ids::INSP_JOINT_DAMPING),
-        ] {
-            yy = num_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                label,
-                id,
-            );
-        }
-    } else if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD {
-        // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
-        // barra é o comprimento em si. Um segundo id seria um segundo lugar
-        // para o mesmo campo do componente.
-        let label = if info.kind_tag == KIND_ROD {
-            "Length (m)"
-        } else {
-            "Max Length (m)"
-        };
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            ids::INSP_JOINT_MAX_LENGTH,
-        );
-    }
+    // Os parâmetros do tipo escolhido — a família inteira num helper, tanto pelo
+    // cap de 200 LOC desta fn quanto porque *"o que este tipo tem a afinar"* é um
+    // assunto só, e ele cresce a cada tipo novo.
+    yy = paint_kind_params(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
     // The motor comes LAST and is asked of every driven kind, rather than living
     // inside the Pin's branch as it did until W-J6: a rail and a winch are driven
@@ -284,6 +252,128 @@ pub(crate) fn paint_joint_section(
     paint_button(&btn, btn_rect, scene, text_system, theme);
     hit_index.register(ids::INSP_JOINT_REMOVE, btn_rect);
     yy + h + SECTION_BOTTOM_PAD_PX
+}
+
+/// **Os parâmetros do TIPO escolhido** — limites, mola e comprimento.
+///
+/// Fn própria pelo cap de 200 LOC da seção e porque a família cresce por tipo:
+/// o Wheel trouxe a primeira combinação de DUAS famílias (curso + mola), que foi
+/// o que transformou a cadeia `else if` daqui em perguntas independentes.
+#[allow(clippy::too_many_arguments)]
+fn paint_kind_params(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorJointInfo,
+) -> f32 {
+    let mut yy = y;
+    // ⚠️ **Perguntas INDEPENDENTES, não uma cadeia `else if`** — o
+    // [`KIND_WHEEL`] é o primeiro tipo que quer DUAS famílias de linha (o curso,
+    // que era do Pin/Slider, e a mola, que era da Spring), e numa cadeia ele
+    // teria de escolher uma. A cadeia também já era frágil pelo outro lado: o
+    // comentário do [`KIND_ROPE`] registra que um Weld herdaria o "Max Length"
+    // de um `else` nu. Cada família agora se oferece sozinha.
+    if kind_has_limits(info.kind_tag) {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            limits_label(info.kind_tag),
+            ids::INSP_JOINT_LIMITS_GROUP,
+            &ids::INSP_JOINT_LIMITS,
+            &SWITCH_LABELS,
+            u8::from(info.limits_enabled),
+        );
+        if info.limits_enabled {
+            let unit = limit_unit(info.kind_tag);
+            for (label, id) in [
+                (format!("Min ({unit})"), ids::INSP_JOINT_LIMIT_MIN),
+                (format!("Max ({unit})"), ids::INSP_JOINT_LIMIT_MAX),
+            ] {
+                yy = num_row(
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
+                    store,
+                    x,
+                    w,
+                    yy,
+                    &label,
+                    id,
+                );
+            }
+        }
+    }
+    if info.kind_tag == KIND_SPRING {
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Rest Length (m)",
+            ids::INSP_JOINT_REST_LENGTH,
+        );
+    }
+    // A mola: da Spring (que PENDURA um corpo) e do Wheel (cuja suspensão
+    // SUSTENTA um). Mesmos dois campos, mesmos dois ids — é a mesma coisa
+    // física, e por isso a troca de tipo re-semeia a ESCALA deles.
+    if kind_has_spring(info.kind_tag) {
+        for (label, id) in [
+            ("Stiffness", ids::INSP_JOINT_STIFFNESS),
+            ("Damping", ids::INSP_JOINT_DAMPING),
+        ] {
+            yy = num_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                label,
+                id,
+            );
+        }
+    }
+    if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD {
+        // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
+        // barra é o comprimento em si. Um segundo id seria um segundo lugar
+        // para o mesmo campo do componente.
+        let label = if info.kind_tag == KIND_ROD {
+            "Length (m)"
+        } else {
+            "Max Length (m)"
+        };
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            label,
+            ids::INSP_JOINT_MAX_LENGTH,
+        );
+    }
+    yy
 }
 
 /// **The Motor card** — offered to every driven kind (`kind_has_motor`).

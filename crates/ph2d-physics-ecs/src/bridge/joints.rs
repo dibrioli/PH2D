@@ -112,6 +112,7 @@ pub fn joint_desc(
             JointKind::Weld => ph2d_physics::JointKind::Weld,
             JointKind::Slider => ph2d_physics::JointKind::Slider,
             JointKind::Rod => ph2d_physics::JointKind::Rod,
+            JointKind::Wheel => ph2d_physics::JointKind::Wheel,
         },
         anchor_a: local_a,
         anchor_b: local_b,

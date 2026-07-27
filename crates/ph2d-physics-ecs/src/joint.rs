@@ -276,12 +276,59 @@ impl PhysicsJoint {
     /// reverse turns a 0.5 m rail into a 28.6° hinge. Same field, two units, so
     /// the switch has to restate the range.
     pub fn default_limits(kind: JointKind) -> [f32; 2] {
-        let half = if kind.limits_in_metres() {
-            Self::DEFAULT_STROKE
-        } else {
-            Self::DEFAULT_LIMIT
+        let half = match kind {
+            // ⚠️ **Uma roda tem curso PRÓPRIO, não o do trilho.** Meio metro de
+            // suspensão é mais do que a altura de marcha inteira de qualquer
+            // veículo que um artista monte — um número que ninguém digitou, que
+            // é o perigo que esta função existe para evitar. Ver
+            // `JointDesc::WHEEL_TRAVEL`, onde a medição mora.
+            JointKind::Wheel => ph2d_physics::JointDesc::WHEEL_TRAVEL,
+            k if k.limits_in_metres() => Self::DEFAULT_STROKE,
+            _ => Self::DEFAULT_LIMIT,
         };
         [-half, half]
+    }
+
+    /// **A mola com que este tipo nasce** — e ela tem dois DONOS, não um.
+    ///
+    /// `stiffness`/`damping` são um par só de campos, e as duas coisas que os
+    /// usam querem números com uma ordem de grandeza de diferença: uma
+    /// [`JointKind::Spring`] é autorada para **pendurar** um corpo (o
+    /// afundamento *é* o efeito, daí 30) e a suspensão de um
+    /// [`JointKind::Wheel`] segura um veículo de pé (o afundamento é efeito
+    /// colateral a manter pequeno, daí 400 — medido).
+    ///
+    /// ⚠️ **Irmã de [`Self::default_limits`] e [`Self::default_motor_speed`], e
+    /// pelo mesmo perigo com uma diferença:** ali o que muda entre tipos é a
+    /// UNIDADE, aqui é a ESCALA. O sintoma é o mesmo — trocar de tipo deixa no
+    /// campo um número que ninguém digitou, e que naquele tipo significa outra
+    /// coisa: uma Spring virada Wheel com 30 põe o carro sentado no batente ao
+    /// primeiro tick.
+    #[must_use]
+    pub fn default_spring(kind: JointKind) -> [f32; 2] {
+        match kind {
+            JointKind::Wheel => [
+                ph2d_physics::JointDesc::WHEEL_STIFFNESS,
+                ph2d_physics::JointDesc::WHEEL_DAMPING,
+            ],
+            _ => [
+                ph2d_physics::JointDesc::DEFAULT_STIFFNESS,
+                ph2d_physics::JointDesc::DEFAULT_DAMPING,
+            ],
+        }
+    }
+
+    /// **Este tipo usa a mola para SUSPENDER (em vez de pendurar)?**
+    ///
+    /// A porta que decide quando [`Self::default_spring`] tem de ser re-semeada
+    /// numa troca de tipo: não em toda troca (Spring→Weld→Spring devolve o
+    /// número que o artista digitou, que é a promessa que este componente faz),
+    /// e sim quando o **papel** da mola muda — que é quando o valor antigo passa
+    /// a significar outra coisa. Espelha exatamente `limits_in_metres` e
+    /// `motor_in_metres` no papel que elas fazem para as suas trocas.
+    #[must_use]
+    pub fn suspends(kind: JointKind) -> bool {
+        matches!(kind, JointKind::Wheel)
     }
 
     /// A new LINEAR motor's speed, metres/s — the rail and the winch.
@@ -378,11 +425,14 @@ impl PhysicsJoint {
     #[must_use]
     pub fn of_kind(kind: JointKind) -> Self {
         let [lo, hi] = Self::default_limits(kind);
+        let [stiffness, damping] = Self::default_spring(kind);
         Self {
             kind,
             limit_min: lo,
             limit_max: hi,
             motor_speed: Self::default_motor_speed(kind),
+            stiffness,
+            damping,
             ..Self::default()
         }
     }

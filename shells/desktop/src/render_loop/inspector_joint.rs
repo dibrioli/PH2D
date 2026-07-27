@@ -28,6 +28,7 @@ pub(crate) fn kind_of(tag: u8) -> JointKind {
         3 => JointKind::Weld,
         4 => JointKind::Slider,
         5 => JointKind::Rod,
+        6 => JointKind::Wheel,
         _ => JointKind::Pin,
     }
 }
@@ -100,6 +101,7 @@ pub(crate) fn tag_of(kind: JointKind) -> u8 {
         JointKind::Weld => 3,
         JointKind::Slider => 4,
         JointKind::Rod => 5,
+        JointKind::Wheel => 6,
     }
 }
 
@@ -304,6 +306,18 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
                 // Zero is the joint's own zero in either unit, so the target
                 // needs no per-kind default — only the reset.
                 next.motor_target = 0.0;
+            }
+            // ⚠️ **E a MOLA é a terceira, com a diferença de que o que muda nela
+            // não é a unidade e sim a ESCALA.** `stiffness`/`damping` são um par
+            // de campos com dois donos: pendurar um corpo (uma Spring, 30) e
+            // suspender um veículo (a suspensão de um Wheel, 400 — medido). Uma
+            // Spring virada Wheel guardando 30 põe o carro sentado no batente no
+            // primeiro tick, e nada na tela diz por quê. Mesma regra das outras
+            // duas: só quando o PAPEL muda, então Wheel→Pin→Wheel devolve os
+            // números que o artista digitou.
+            if PhysicsJoint::suspends(next.kind) != PhysicsJoint::suspends(prev_kind) {
+                next.stiffness = fresh.stiffness;
+                next.damping = fresh.damping;
             }
         }
         JointFieldEdit::LimitsEnabled(on) => next.limits_enabled = on,

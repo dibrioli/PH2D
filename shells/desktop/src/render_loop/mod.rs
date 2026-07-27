@@ -44,6 +44,13 @@ pub(crate) mod inspector_joint;
 /// neither is converted. Its own file for the shell's LOC cap.
 #[cfg(test)]
 mod inspector_joint_break_tests;
+/// The §11 Physics Body seam's OTHER half: the Inspector click reached the
+/// ECS and the sprite actually falls (panel-side proof lives in
+/// ).
+/// A família de gates sobre o que a troca/criação de TIPO faz com os números —
+/// irmã do `inspector_joint_tests`, separada no cap de 600 LOC.
+#[cfg(test)]
+mod inspector_joint_kind_tests;
 /// The MOTOR half of that seam (W-J6): the mode, the two numbers, and the unit
 /// each carries. Its own file for the shell's LOC cap.
 #[cfg(test)]
@@ -53,9 +60,6 @@ mod inspector_joint_motor_tests;
 /// the same line the section draws — *which two, and how they treat each other*.
 #[cfg(test)]
 mod inspector_joint_pair_tests;
-/// The §11 Physics Body seam's OTHER half: the Inspector click reached the
-/// ECS and the sprite actually falls (panel-side proof lives in
-/// ).
 #[cfg(test)]
 mod inspector_joint_tests;
 mod inspector_ordering;

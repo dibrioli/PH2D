@@ -49,6 +49,14 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_IMAGE_TOOLS,
             TopBarCluster::single("IMG", IconId::Image),
         ),
+        // Physics (world) — abre o painel de física, o mesmo bool que a tecla
+        // `W`. Fica ao lado do IMG por pedido do Enio; um painel de MUNDO não
+        // tem chip no rail (que é de ferramentas), então este pill é o único
+        // abridor visível que ele tem.
+        (
+            ids::TOPBAR_PHYSICS,
+            TopBarCluster::single("PHYS", IconId::Physics),
+        ),
         // Audio Mixer — toggles the floating mixer panel (Master strip:
         // fader + live meter + mute). Left group, next to Image Tools.
         (

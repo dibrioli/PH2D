@@ -6283,6 +6283,27 @@ dobra a cadeia atrás dela.
 
 ### As armadilhas, todas medidas (não re-descubra)
 
+0. ⚠️ **A árvore nasce na configuração ZERO das juntas, e tem de ser SEMEADA.**
+   `Multibody::forward_kinematics` deriva a pose de cada elo das COORDENADAS, e
+   uma junta recém-inserida nasce em zero — a pose dos corpos não é lida (o
+   `true` toma só a da RAIZ). **Treze gates passaram sem isto** porque toda
+   fixture montava a cadeia esticada em +X com âncoras coincidentes, que É a
+   configuração zero. No produto, pegar a ponta de uma cadeia já posada
+   **endireitava a cadeia inteira** antes de o mouse andar um pixel (0,459 m de
+   snap, medido). `seed_coordinates` é a cura, e `ik_coords.rs` é onde a álgebra
+   da coordenada mora — **uma pergunta, três consumidores** (semear · limitar ·
+   construir os frames).
+0b. ⚠️ **A árvore guarda HANDLES, e o gesto os invalida SOZINHO.** Cada Move
+   escreve `Transform` — é o que posar É —, e o dispatch seguinte vê a pose
+   autorada mudada em repouso, que é exatamente quando a ponte **re-descreve** o
+   corpo: handle novo, árvore apontando para uma arena que andou. Medido:
+   `No element at index` dentro do rapier, no SEGUNDO frame do arrasto (o crash
+   que o Enio reportou como SIGSEGV). `ik_move` re-monta quando detecta staleness
+   — custa 0,005-0,015 ms e não perde nada, porque o estado que importa é a POSE
+   e ela está no mundo. ⚠️ **Nenhum gate headless que não passasse o FRAME podia
+   ver isto** — daí `tests/ik_gesture_loop.rs`, que dispara `dispatch` entre os
+   solves.
+
 1. **O `inverse_kinematics` do rapier IGNORA limites de junta.** `apply_displacement` é
    `integrate(1.0, disp)`, aritmética pura sem clamp. A cura é a projeção pós-solve em
    `project_limits`. ⚠️ Vale para o **Pin**; um Slider limitado posa sem limite (o `local_frame1`
@@ -6304,6 +6325,14 @@ dobra a cadeia atrás dela.
 `PROJECT_SCHEMA` **37** intocado · registro `ph2d-ecs` **21** intocado · c9 **`c9d4baee…`, 87
 corpos, byte-idêntico** · gizmo ids intocados (a pose não tem alça própria) · contrato congelado
 intocado · ADR **0145** (⚠️ número escolhido em linha paralela é PROVISÓRIO até a integração).
+
+**Foundational tocado (aditivo):** `IconId::Physics` (SVG novo em
+`docs/design/icons/physics.svg` + o variant em ordem alfabética + `ALL_ICONS`) ·
+`TOPBAR_PHYSICS` · o cluster no `fixture::topbar_clusters` ·
+`chrome/physics_toggle.rs` (sincronizado por `cargo run -p ph2d-chrome-sync`) · o
+`split` do topbar **6 → 7** (⚠️ ele CRESCE com a lista: deixá-lo em 6 empurraria
+o Audio Mixer para o grupo da direita, um pill mudando de lado da tela por causa
+de um vizinho).
 
 ### Aberto
 

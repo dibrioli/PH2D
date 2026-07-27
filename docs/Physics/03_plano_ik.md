@@ -51,6 +51,9 @@ cadeia inteira atrás dele.
 | U1 | 4ª ferramenta + Smoothing + Tip Angle + dica | ✅ |
 | S1 | Gesto no `input_dispatch` (press / move / release) | ✅ |
 | S2 | Cena 54 + sonda medida | ✅ |
+| S3 | Pill **PHYS** no topbar, ao lado do IMG (o painel de mundo não tinha abridor visível) | ✅ |
+| F1 | Semeadura das coordenadas — a árvore nasce na pose REAL | ✅ |
+| F2 | Re-montagem quando os handles ficam obsoletos (o crash do gesto) | ✅ |
 
 **Gates:** 15 no núcleo (+5 varreduras `#[ignore]`) · 6 na ponte · 5 no shell · 4 arch-gates ·
 16 no painel (2 novos) · 2 na cena. **Mutações:** o swap de âncoras, a projeção de limites, o

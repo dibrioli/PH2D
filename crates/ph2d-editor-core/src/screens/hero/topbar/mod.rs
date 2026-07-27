@@ -39,6 +39,7 @@ pub fn populate(store: &mut WidgetStore) {
         // Flip pill — same parity requirement (registered here or dead on click).
         // ADR-0114 W2.
         ids::TOPBAR_FLIP,
+        ids::TOPBAR_PHYSICS,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,
@@ -109,6 +110,7 @@ pub fn populate(store: &mut WidgetStore) {
             ids::TOPBAR_WIDGET_GALLERY,
             "Widget Gallery \u{00b7} reference",
         ),
+        (ids::TOPBAR_PHYSICS, "Physics \u{00b7} W"),
         (ids::TOPBAR_GRID_SETTINGS, "Grid Settings"),
         (
             ids::IMAGE_ACTION_TRIM,
@@ -253,10 +255,15 @@ pub fn paint_top_bar(
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
     let gap = Spacing::Md.px();
-    // Left half now holds 6 clusters: Theme, Project (Level), Save,
-    // Open, Image Tools, Audio Mixer (Project moved here 2026-05-24;
-    // Audio Mixer added 2026-07-05).
-    let split = 6.min(clusters.len());
+    // Left half now holds 7 clusters: Theme, Project (Level), Save,
+    // Open, Image Tools, Physics, Audio Mixer (Project moved here 2026-05-24;
+    // Audio Mixer added 2026-07-05; Physics added 2026-07-27).
+    //
+    // ⚠️ **O número CRESCEU junto com a lista, e não é detalhe:** o pill novo
+    // entra depois do IMG, então deixar o split em 6 empurraria o Audio Mixer
+    // para o grupo da DIREITA — um pill mudando de lado da tela por causa de um
+    // vizinho, que ninguém pediu.
+    let split = 7.min(clusters.len());
     // Single agrupador backdrop spanning ALL left clusters (Enio
     // 2026-05-24: "Os componentes da esquerda devem ter apenas 1
     // fundo"). RailBg + radius Lg, top edge glued to viewport.y so

@@ -72,3 +72,11 @@ pub const TOPBAR_WIDGET_GALLERY: NodeId = hash_node_id("topbar_widget_gallery");
 /// `HeroScreen::panel_visibility["grid_snap"]` via the typed
 /// `GridSnapPanel::apply_event` after ADR-0029 Phase C.4.
 pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
+
+/// **Physics (world)** — abre/fecha o painel de física, o mesmo que a tecla `W`.
+///
+/// ⚠️ Um painel de MUNDO não é tool-gated, então ele não tem chip no rail
+/// esquerdo (que é de FERRAMENTAS); sem um abridor visível ele é uma feature
+/// que só existe para quem sabe o atalho. O pill é esse abridor, e é a MESMA
+/// visibilidade que a tecla escreve — duas portas para o mesmo bool.
+pub const TOPBAR_PHYSICS: NodeId = hash_node_id("topbar_physics");

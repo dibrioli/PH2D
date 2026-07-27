@@ -64,6 +64,7 @@ mod motion_toggle;
 mod new_image;
 mod onion_modal;
 mod palette_rename;
+mod physics_toggle;
 mod radius;
 mod rail_painter_tools;
 mod rail_panels;
@@ -120,6 +121,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)
+        || physics_toggle::apply(hero, event)
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)

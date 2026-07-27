@@ -50,7 +50,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use ph2d_ecs::Entity;
-use ph2d_physics::{IkChain, IkLink, IkOptions, is_rigid_link};
+use ph2d_physics::{IkChain, IkLink, IkOptions, RigidBodyHandle, is_rigid_link};
 
 use crate::components::BodyKind;
 
@@ -69,6 +69,9 @@ pub struct IkSession {
     pub bodies: Vec<Entity>,
     /// `handle → entidade`, para traduzir a resposta do wrapper de volta.
     by_handle: BTreeMap<u32, Entity>,
+    /// **Os handles com que a árvore foi CONSTRUÍDA**, para saber quando ela
+    /// deixou de descrever o mundo — ver [`PhysicsBridge::ik_move`].
+    built_with: Vec<(Entity, RigidBodyHandle)>,
 }
 
 impl IkSession {
@@ -218,27 +221,28 @@ impl PhysicsBridge {
     /// Toda a autoridade sobre *quando* isto pode acontecer é do chamador (a
     /// shell vê o relógio e a ferramenta); aqui a única recusa é estrutural.
     pub fn ik_begin(&mut self, tip: Entity) -> bool {
-        self.ik = None;
-        let Some(plan) = self.ik_plan(tip) else {
-            return false;
-        };
+        self.ik = self.build_ik_session(tip);
+        self.ik.is_some()
+    }
+
+    /// Monta a sessão. Separado do [`Self::ik_begin`] porque o `ik_move` também
+    /// a monta — ver a nota de RE-CONSTRUÇÃO lá.
+    fn build_ik_session(&self, tip: Entity) -> Option<IkSession> {
+        let plan = self.ik_plan(tip)?;
         let mut links = Vec::with_capacity(plan.edges.len());
         let mut by_handle = BTreeMap::new();
         let mut bodies = vec![plan.root];
-        let Some(root_h) = self.bodies.get(&plan.root).map(|b| b.handle) else {
-            return false;
-        };
+        let root_h = self.bodies.get(&plan.root).map(|b| b.handle)?;
+        let mut built_with = vec![(plan.root, root_h)];
         by_handle.insert(root_h.0.into_raw_parts().0, plan.root);
         for &(parent, child, je) in &plan.edges {
             let (Some(ph), Some(ch)) = (
                 self.bodies.get(&parent).map(|b| b.handle),
                 self.bodies.get(&child).map(|b| b.handle),
             ) else {
-                return false;
+                return None;
             };
-            let Some(jr) = self.joints.get(&je) else {
-                return false;
-            };
+            let jr = self.joints.get(&je)?;
             let desc = jr.rest;
             // ⚠️ A ORIENTAÇÃO importa: o `JointDesc` guarda as âncoras na ordem
             // (corpo A, corpo B) do joint AUTORADO, e a árvore precisa delas na
@@ -256,20 +260,17 @@ impl PhysicsBridge {
             });
             by_handle.insert(ch.0.into_raw_parts().0, child);
             bodies.push(child);
+            built_with.push((child, ch));
         }
-        let Some(tip_h) = self.bodies.get(&tip).map(|b| b.handle) else {
-            return false;
-        };
-        let Some(chain) = self.world.ik_chain(root_h, &links, tip_h) else {
-            return false;
-        };
-        self.ik = Some(IkSession {
+        let tip_h = self.bodies.get(&tip).map(|b| b.handle)?;
+        let chain = self.world.ik_chain(root_h, &links, tip_h)?;
+        Some(IkSession {
             chain,
             tip,
             bodies,
             by_handle,
-        });
-        true
+            built_with,
+        })
     }
 
     /// **Resolve para o alvo e devolve a pose de cada corpo da árvore.**
@@ -283,6 +284,30 @@ impl PhysicsBridge {
         angle: f32,
         opts: IkOptions,
     ) -> Vec<(Entity, [f32; 2], f32)> {
+        // ⚠️ **A árvore guarda HANDLES, e o gesto os invalida sozinho.**
+        //
+        // Cada Move escreve o `Transform` dos corpos — é o que posar É —, e o
+        // dispatch do frame seguinte vê a pose AUTORADA mudada em repouso, o que
+        // é exatamente a condição em que a ponte **re-descreve** o corpo. Um
+        // corpo re-descrito ganha handle NOVO, e a árvore fica apontando para
+        // uma arena que andou. Medido: `No element at index`, dentro do rapier,
+        // no segundo frame do arrasto — um PÂNICO no meio de um gesto, que é o
+        // pior lugar possível para um.
+        //
+        // A cura é re-montar em vez de tentar impedir o re-describe: ele é
+        // legítimo (a pose de repouso mudou de fato), e re-montar custa
+        // **0,005–0,015 ms** — medido, um terço do custo de um solve. E não é
+        // uma perda de *warm start*: o estado que importa é a POSE, e ela está
+        // no mundo, que é justamente de onde a árvore nova se semeia.
+        let stale = self.ik.as_ref().is_some_and(|s| {
+            s.built_with
+                .iter()
+                .any(|(e, h)| self.bodies.get(e).map(|b| b.handle) != Some(*h))
+        });
+        if stale {
+            let tip = self.ik.as_ref().map(|s| s.tip);
+            self.ik = tip.and_then(|t| self.build_ik_session(t));
+        }
         let Some(s) = self.ik.as_mut() else {
             return Vec::new();
         };

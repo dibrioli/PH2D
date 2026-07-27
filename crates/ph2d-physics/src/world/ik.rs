@@ -66,12 +66,13 @@
 //! escolhidos.
 
 use rapier2d::dynamics::{
-    FixedJointBuilder, InverseKinematicsOption, JointAxesMask, MultibodyJointHandle,
-    MultibodyJointSet, PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyHandle,
+    InverseKinematicsOption, JointAxesMask, MultibodyJointHandle, MultibodyJointSet,
+    RigidBodyHandle,
 };
-use rapier2d::na::{DVector, Isometry2, Point2, Vector2};
+use rapier2d::na::{DVector, Isometry2, Vector2};
 
-use super::joints::{JointDesc, JointKind};
+use super::ik_coords::{limit_is_a_coordinate, multibody_joint, project_limits, seed_coordinates};
+use super::joints::JointDesc;
 use crate::PhysicsWorld;
 
 /// Uma aresta da árvore de pose: *este joint pendura `child` em `parent`*.
@@ -222,11 +223,11 @@ pub struct IkChain {
 /// bate com o comprimento total (`ndofs`), porque uma soma-prefixo que
 /// discorda escreveria a correção no grau de liberdade do VIZINHO.
 #[derive(Copy, Clone, Debug)]
-struct LimitedDof {
-    link: usize,
-    dof: usize,
-    min: f32,
-    max: f32,
+pub(super) struct LimitedDof {
+    pub(super) link: usize,
+    pub(super) dof: usize,
+    pub(super) min: f32,
+    pub(super) max: f32,
 }
 
 impl IkChain {
@@ -301,6 +302,21 @@ impl PhysicsWorld {
         // chamada em que ler a pose do corpo-raiz é o certo — daqui pra frente a
         // raiz pertence ao solver, e re-lê-la desfaria o que ele resolveu).
         mb.forward_kinematics(&self.bodies, true);
+        // ⚠️ **A ÁRVORE NASCE NA CONFIGURAÇÃO ZERO, e é preciso semeá-la.**
+        //
+        // `forward_kinematics` deriva a pose de cada elo das COORDENADAS das
+        // juntas, e uma junta recém-inserida nasce em zero — a pose dos corpos
+        // não é lida (o `true` acima toma só a da RAIZ). Numa cadeia esticada
+        // com âncoras coincidentes a configuração zero *é* a pose real, e foi
+        // por isso que treze gates passaram sem isto; numa cadeia que já foi
+        // posada, ou que balançou, o primeiro solve **ENDIREITAVA a cadeia
+        // inteira** antes de o mouse andar um pixel (medido: 0,459 m de snap).
+        //
+        // A cura é a mesma da projeção de limites: leia a coordenada que a junta
+        // TEM no mundo, leia a que a árvore acha que ela tem, e aplique a
+        // diferença. Uma passada é exata — a coordenada é linear no
+        // deslocamento, e o `apply_displacements` soma.
+        seed_coordinates(mb, &self.bodies, links);
         let ndofs = mb.ndofs();
         // Onde cada dobradiça LIMITADA mora no vetor de coordenadas. A soma
         // prefixa `ndofs()` na ordem dos elos, que é como o rapier atribui os
@@ -502,113 +518,6 @@ impl PhysicsWorld {
             })
             .collect()
     }
-}
-
-/// **O limite deste tipo de joint É a coordenada da junta?**
-///
-/// Para o Pin sim: `local_frame1`/`local_frame2` que [`multibody_joint`] monta
-/// carregam **só translação**, então o ângulo de `local_to_parent` É a
-/// coordenada, e o limite (radianos) mede exactamente esse número.
-///
-/// ⚠️ Para o **Slider NÃO**, e isso é honesto em vez de silencioso: o
-/// `local_frame1` dele carrega a ROTAÇÃO que leva `+X` ao eixo do trilho, então
-/// a pose relativa não entrega a distância percorrida sem desfazer aquele
-/// frame. Um Slider limitado **posa sem limite** e o Play o traz de volta ao
-/// curso — nomeado no ADR e gateado, para ninguém "descobrir" isso num smoke.
-fn limit_is_a_coordinate(kind: JointKind) -> bool {
-    matches!(kind, JointKind::Pin)
-}
-
-/// **A projeção dos limites, depois do solve.**
-///
-/// ⚠️ **O `inverse_kinematics` do rapier IGNORA limites** — `apply_displacement`
-/// é `integrate(1.0, disp)`, aritmética pura sobre a coordenada, sem clamp
-/// (conferido no source, não suposto). MEDIDO: uma dobradiça limitada a
-/// `[0, 0.3]` rad, puxada para baixo, dobrava até **−90°**. Uma pose que o
-/// solver do Play desfaz no primeiro tick não é uma pose: é uma promessa que o
-/// produto quebra assim que o artista aperta Play.
-///
-/// A cura é uma projeção: leia o ângulo que a junta de fato ficou, clampe, e
-/// aplique a DIFERENÇA como mais um deslocamento. Para uma dobradiça (um grau
-/// de liberdade, e o ângulo é linear na coordenada) **uma passada é exata** —
-/// não é iteração, é uma correção fechada.
-///
-/// O preço, que é o certo: a ponta deixa de alcançar o alvo quando um limite
-/// está no caminho. Um cotovelo que não dobra para trás é um cotovelo que não
-/// dobra para trás.
-fn project_limits(
-    mb: &mut rapier2d::dynamics::Multibody,
-    limits: &[LimitedDof],
-    scratch: &mut DVector<f32>,
-) {
-    scratch.fill(0.0);
-    let mut any = false;
-    for l in limits {
-        let Some(link) = mb.link(l.link) else {
-            continue;
-        };
-        let theta = link.local_to_parent().rotation.angle();
-        let clamped = theta.clamp(l.min, l.max);
-        let delta = clamped - theta;
-        if delta != 0.0 && l.dof < scratch.len() {
-            scratch[l.dof] = delta;
-            any = true;
-        }
-    }
-    if any {
-        mb.apply_displacements(scratch.as_slice());
-    }
-}
-
-/// O joint de coordenadas reduzidas equivalente a um joint autorado.
-///
-/// ⚠️ **Só os rígidos chegam aqui** — o construtor da árvore não gera aresta
-/// para Spring nem Rope (ver a nota do módulo). Os braços existem para o `match`
-/// ser exaustivo sem um `_ =>` que engoliria um tipo novo em silêncio: um Weld é
-/// a resposta conservadora (trava tudo), que é visivelmente errado num smoke em
-/// vez de sutilmente errado.
-fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJoint {
-    let a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
-    let b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
-    match desc.kind {
-        JointKind::Pin => {
-            let mut builder = RevoluteJointBuilder::new()
-                .local_anchor1(a)
-                .local_anchor2(b);
-            // ⚠️ Os limites do joint VALEM na pose: um cotovelo que não dobra
-            // para trás na simulação não pode dobrar para trás ao ser posado, ou
-            // a pose que o artista autora é uma que o Play desfaz no 1º tick.
-            if let Some([min, max]) = desc.limits {
-                builder = builder.limits([min, max]);
-            }
-            builder.into()
-        }
-        JointKind::Slider => {
-            let mut builder = PrismaticJointBuilder::new(super::joints::unit_or_x(desc.axis_a))
-                .local_axis1(super::joints::unit_or_x(desc.axis_a))
-                .local_axis2(super::joints::unit_or_x(desc.axis_b))
-                .local_anchor1(a)
-                .local_anchor2(b);
-            if let Some([min, max]) = desc.limits {
-                builder = builder.limits([min, max]);
-            }
-            builder.into()
-        }
-        JointKind::Weld | JointKind::Spring | JointKind::Rope => FixedJointBuilder::new()
-            .local_anchor1(a)
-            .local_anchor2(b)
-            .into(),
-    }
-}
-
-/// **Este tipo de joint vira elo de uma árvore de pose?**
-///
-/// A porta única: o construtor da árvore (na ponte do ECS) pergunta a ELA quais
-/// arestas existem, e enumerar os tipos lá seria a lista que nasce incompleta no
-/// dia em que um tipo novo chegar.
-#[must_use]
-pub fn is_rigid_link(kind: JointKind) -> bool {
-    matches!(kind, JointKind::Pin | JointKind::Weld | JointKind::Slider)
 }
 
 #[cfg(test)]

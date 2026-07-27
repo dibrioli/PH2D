@@ -10,6 +10,8 @@
 //! cargo test -p ph2d-physics --release sweep_the_ik -- --ignored --nocapture
 //! ```
 
+use super::super::ik_coords::is_rigid_link;
+use super::super::joints::JointKind;
 use super::*;
 use rapier2d::dynamics::RigidBodyBuilder;
 use rapier2d::geometry::ColliderBuilder;
@@ -559,4 +561,56 @@ fn sweep_the_unreachable_direction() {
         );
     }
     let _ = &mut chain;
+}
+
+/// **A árvore nasce na pose em que a CADEIA ESTÁ, não na configuração zero das
+/// juntas.**
+///
+/// ⚠️ Gate red-first, e ele expôs um defeito que **os treze anteriores não
+/// podiam ver**: `Multibody::forward_kinematics` deriva a pose de cada elo das
+/// COORDENADAS das juntas, e uma junta recém-inserida nasce em zero. Todas as
+/// fixtures desta suíte montam a cadeia esticada em +X com âncoras coincidentes
+/// — que é EXATAMENTE a configuração zero —, então "a pose real" e "a pose zero"
+/// eram indistinguíveis nelas.
+///
+/// No produto não são: um pêndulo que já balançou, uma perna que o artista já
+/// posou. Sem semear, pegar a ponta **endireitava a cadeia inteira** no primeiro
+/// solve, antes de o mouse andar um pixel.
+///
+/// O oráculo é o mais forte possível: pedir à ponta que fique **onde ela já
+/// está**. O resíduo é zero por construção, então qualquer movimento é o snap.
+#[test]
+fn the_tree_is_seeded_from_the_pose_the_chain_is_actually_in() {
+    let (mut w, hook, links, tip) = three_link_chain();
+    // Dobra a cadeia à mão: cada elo gira em torno da própria junta.
+    // (0,0) -> L1 a 60 graus -> L2 a 60+(-40) -> L3 a 60-40+30.
+    let bend = [1.047f32, -0.698, 0.524];
+    let mut angle = 0.0f32;
+    let mut origin = [0.0f32, 0.0];
+    for (i, l) in links.iter().enumerate() {
+        angle += bend[i];
+        let (s, c) = angle.sin_cos();
+        // A âncora de entrada fica em `origin`; o centro do elo está meio
+        // comprimento adiante, ao longo do eixo dele.
+        let centre = [origin[0] + 0.5 * c, origin[1] + 0.5 * s];
+        let body = w.bodies_mut().get_mut(l.child).expect("link body");
+        body.set_position(
+            rapier2d::na::Isometry2::new(Vector2::new(centre[0], centre[1]), angle),
+            false,
+        );
+        origin = [origin[0] + c, origin[1] + s];
+    }
+    let before = w.body_pose(tip).expect("tip").translation;
+    let mut chain = w.ik_chain(hook, &links, tip).expect("chain");
+    // Pede a ponta ONDE ELA JÁ ESTÁ.
+    let poses = w.ik_solve(&mut chain, [before.x, before.y], 0.0, IkOptions::default());
+    for p in &poses {
+        let want = w.body_pose(p.body).expect("body").translation;
+        let d = ((p.translation[0] - want.x).powi(2) + (p.translation[1] - want.y).powi(2)).sqrt();
+        assert!(
+            d < 0.02,
+            "a árvore moveu um corpo {d:.3} m sem que o alvo pedisse — ela nasceu \
+             na configuração ZERO em vez da pose real"
+        );
+    }
 }

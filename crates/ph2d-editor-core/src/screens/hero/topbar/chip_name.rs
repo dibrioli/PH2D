@@ -23,6 +23,7 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_RIGHT_ASSETS => "Assets",
         x if x == ids::TOPBAR_RIGHT_SCRIPT => "Script",
         x if x == ids::TOPBAR_WIDGET_GALLERY => "Widget Gallery",
+        x if x == ids::TOPBAR_PHYSICS => "Physics",
         x if x == ids::TOPBAR_GRID_SETTINGS => "Grid Settings",
         x if x == ids::TOPBAR_SETTINGS => "Settings",
         x if x == ids::IMAGE_ACTION_TRIM => "Trim Transparency",

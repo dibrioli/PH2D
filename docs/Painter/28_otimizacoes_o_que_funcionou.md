@@ -1263,6 +1263,51 @@ corrompendo ⇒ 3 gates de paridade · o limiar de volta em elementos ⇒ o gate
 ⚠️ **O que esta wave NÃO toca:** o pen-up. O `side` não roda num commit — ele roda num **undo**. O
 pen-up segue em 37 ms a 4096² e a §7 diz o que o desmonta.
 
+### 5.17 ⛔ S1 TENTADA E REVERTIDA — `mark_dirty` declara onde a IMAGEM mudou, não onde os BYTES foram escritos
+
+A primeira tentativa da wave da janela (§7 item 1) escolheu o caminho de **zero churn**: `mark_dirty`
+recebe o retângulo de toda escrita de canvas e já é atravessado por todas elas, então bastaria uni-los
+numa janela e entregá-la ao commit — sem mexer nos 41 sítios de `fork_par`. A plumbing foi construída
+inteira (`undo::window::WriteWindow` com o contador de proveniência que recusa um `before` anterior ao
+último commit, `PlaneWindow::from_region`, o hint atravessando `record_structural` → `PlaneDeltas` →
+`StoredPlane`), mais a rede que a tornaria segura: **em build de DEBUG o `split` deriva a janela
+verdadeira e afirma que ela cabe na declarada**.
+
+**A rede disparou na PRIMEIRA rodada da suíte** — e o que ela achou mata o desenho:
+
+```text
+a janela declarada nao contem a verdadeira:
+  declarada  row 33  rows 94   col 33  cols 94
+  real       row 32  rows 96   col 32  cols 96
+```
+
+⚠️ **A premissa era falsa, e o próprio código diz por quê.** O `mark_dirty` do Inflate está comentado
+como *"Dirty exactly where the picture changed"* e recebe `moved`, o conjunto dos texels cujo relevo
+**passou do `RELIEF_EPS`**. Mas o kernel escreve `target[gi] = next` em **toda** a janela `kr`,
+incondicionalmente — então há bytes que mudam sem a imagem mudar. *Onde a imagem mudou* e *onde bytes
+foram escritos* são perguntas diferentes, e o undo precisa da segunda.
+
+**Consequência para o plano:** a declaração **tem** de sair de quem escreve, não de quem anuncia o
+repaint — isto é, o S1 original (`fork_par` recebe a região), com o custo de churn que eu tinha tentado
+evitar. ⚠️ E a variante barata não é resgatável com um `grow_region`: um pad arbitrário é um palpite
+sobre um número que outro kernel pode mudar, exatamente o que a §0 do CLAUDE.md proíbe.
+
+**O que fica desta tentativa, e vale mais que o código revertido:**
+
+1. **A rede de verificação é o desenho certo e deve voltar junto com o S1.** Ela é barata (só em debug),
+   roda em ~4 s sobre 866 testes que exercitam fill, seleção, warp, sculpt, máscara, inpaint, clone,
+   aquarela, Wet Paint e os shape editors, e **pegou o defeito antes de qualquer gate especializado**.
+2. **O contador de proveniência** (`hint_for`: aceita a janela só se o `before` for posterior ao último
+   commit ⇒ superconjunto por construção) resolve as transações aninhadas sem enumerar chamadores, e
+   serve igual no S1 original.
+3. ⚠️ **E há um achado LATENTE fora desta wave:** se o `mark_dirty` do Inflate sub-declara o que foi
+   escrito, então a pista de **upload parcial** recebe a mesma reivindicação curta. Aqui isso é
+   invisível (os bytes a mais têm delta abaixo do `RELIEF_EPS`, que é o critério do `moved`), mas é uma
+   sub-declaração real e ninguém a tinha visto. **Não corrigido nesta sessão** — o `moved` é o que dá o
+   custo do repaint, e alargá-lo é decisão do dono do sculpt.
+
+O patch da tentativa está preservado fora da árvore; refazê-lo sobre o `fork_par` é mecânico.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -1391,6 +1436,9 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
      *esquecer é impossível por TIPO* — que é a resposta exata à objeção que o `diff_window` documenta
      (*"uma janela informada errado não falha: some com texels em silêncio"*). Sítio que não sabe passa
      "plano inteiro" ⇒ varredura completa ⇒ correto. **Sem isto, S2 e S3 não são seguros.**
+     ⚠️ **O atalho de derivar a janela do `mark_dirty` foi TENTADO e REVERTIDO** (§5.17): ele declara
+     *onde a imagem mudou*, não *onde bytes foram escritos*, e a rede de verificação em debug pegou a
+     diferença na primeira rodada. Traga a rede junto — ela é barata e pegou o defeito antes dos gates.
    - **S2 — o commit usa a janela** em vez de a derivar. Mata os 23,7 ms do commit.
    - **S3 — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
      em vez de instalar um snapshot materializado. Aí o `cursor` não precisa mais segurar os planos, a

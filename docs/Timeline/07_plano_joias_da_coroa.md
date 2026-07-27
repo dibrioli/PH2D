@@ -307,3 +307,23 @@ Todas despachadas por `edit_at(...)`. **Os edits de key das 6 features usam `edi
 `PROJECT_SCHEMA` **não** muda por conta destes (o `TimelineDoc` viaja como blob
 dentro do `ProjectFile` e carrega a própria versão — o precedente de toda wave desta
 timeline).
+
+---
+
+## §11 — Aberto / fila (Enio 2026-07-26: *"coloque na fila para solução depois"*)
+
+**Expressão PURA (Time/Slider, sem keyframes) extrapola a strip** — toca além da strip
+no container e no arrange. Uma prop com keys obedece a janela da strip (a lei da
+COBERTURA, `expr_pass.rs` + `composed`, fechada em `512c19f9`); uma expressão pura **não
+tem track**, logo nenhuma strip a referencia e não há janela a obedecer — ela roda no
+relógio da cena/container. **Não é bug do fix; é a ausência de um vínculo.** A cura pede
+uma **decisão de produto**: (a) um ESCOPO autorado (a expressão pura só toca enquanto um
+strip/clip apontado está ativo, como o guia do `<textPath>`/pattern do vetor), ou (b) a
+prop pura passa a viver DENTRO de um clip (track vazia que a strip janela). Nenhuma é
+mecânica; as duas provavelmente bumpam `DOC_VERSION`. Detalhe no handoff de integração
+[`../HANDOFF_INTEGRACAO_line_anim_crown_jewels_2026-07-26.md`](../HANDOFF_INTEGRACAO_line_anim_crown_jewels_2026-07-26.md) §6.
+
+**Refino não-fechado do mesmo tema:** dentro da strip, o *valor* de uma prop com keys
+segue a posição da strip (vem da composição), mas a *fase* de um termo `time` puro (o
+jitter do `wiggle`) ainda usa o relógio externo, não o local da strip — sairia de
+`stack_eval` (`sole_strip_of`/`strip_source_time`), com a ressalva do multi-strip.

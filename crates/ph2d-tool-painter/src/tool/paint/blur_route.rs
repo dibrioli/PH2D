@@ -170,6 +170,7 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = tex_rng;
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

@@ -21,10 +21,6 @@ impl PainterTool {
     /// diferentes: o Inflate escreve `target[gi] = next` em toda a janela do kernel e só marca sujo onde
     /// o relevo passou do `RELIEF_EPS`, e foi essa diferença que reprovou o atalho (doc 28 §5.17).
     /// `None` = o acesso não escreveu nada.
-    #[expect(
-        dead_code,
-        reason = "os sítios quentes declaram na wave seguinte — ver doc 28 §7 S1"
-    )]
     pub(super) fn declare_wrote(&self, rect: Option<Region>) {
         let mut w = self.undo_window.get();
         w.mark(rect);

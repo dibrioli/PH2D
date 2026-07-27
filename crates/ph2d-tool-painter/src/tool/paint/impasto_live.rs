@@ -61,6 +61,9 @@ impl PainterTool {
                 dst[i] = dst[i].max(film.get(i).copied().unwrap_or(0));
             });
         }
+        // A janela deste acesso é EXATAMENTE o `rect` do commit (o bloco acima só escreve por
+        // `for_each_in(rect, …)`), então o histórico não precisa varrer o plano para redescobri-la.
+        self.declare_wrote(Some(rect));
         // The MATERIAL rides the same stroke — it is what the paint this stroke laid IS
         // (`ph2d_painter_brush::material`). Deposited from the brush, so Symmetry / Tiling / the shape
         // editors sculpt the material exactly as they sculpt the relief, for free: it is the second
@@ -110,6 +113,7 @@ impl PainterTool {
                 }
             });
         }
+        self.declare_wrote(Some(rect));
         // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
         // Body card re-derives this stroke after the fact — the artist lays a stroke and then dials it
         // in while looking at it, exactly like every other property in this panel.
@@ -257,6 +261,11 @@ impl PainterTool {
         if !any_relief && !self.paint.relief.live_relief_had_entry {
             self.heights.remove(&layer);
         }
+        // ⚠️ O laço acima escreve `target[i]` em TODO o `rect`, e não só onde o relevo de fato mudou — é
+        // por isso que a declaração do undo é o `rect` e não o `moved` que o `mark_dirty` abaixo usa. As
+        // duas perguntas são diferentes (*onde a imagem mudou* × *onde bytes foram escritos*), e confundi-las
+        // foi o que reprovou o atalho do doc 28 §5.17.
+        self.declare_wrote(Some(rect));
 
         if x0 != u32::MAX {
             // Grow by one: the light reads a pixel's NEIGHBOURS (the normal is a central difference), so

@@ -131,6 +131,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -189,6 +190,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -252,6 +254,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -392,6 +395,7 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = dab_rng.finish();
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -505,6 +509,7 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = dab_rng.finish();
+        self.declare_wrote(touched);
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

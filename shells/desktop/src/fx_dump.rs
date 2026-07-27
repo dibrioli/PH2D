@@ -32,6 +32,9 @@ pub(crate) struct FxDump {
 impl FxDump {
     /// Despeja `tex` (a saída do FX, `Rgba8Unorm`) se `PH2D_FX_DUMP` estiver posto e esta forma
     /// ainda não tiver sido despejada.
+    // ⚠️ Oito argumentos porque um despejo honesto precisa do que a GPU recebeu E do que ela
+    // devolveu; agrupá-los esconderia justamente o par (geometria, saída) que se confronta.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn maybe(
         &mut self,
         gpu: &GpuContext,

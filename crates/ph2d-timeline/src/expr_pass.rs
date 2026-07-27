@@ -1,47 +1,56 @@
-//! The **expression pass** (Wave C / ADR-0144). A SEPARATE post-composition pass:
-//! it runs at the END of the apply, after every keyed property is composed into the
-//! world. For each binding that carries a formula it reads the composed values,
-//! evaluates the expression, and overwrites the driven property.
+//! The **expression pass** (Wave C / ADR-0144, NARROWED to global drivers by ADR-0146 W1-W2).
+//! A SEPARATE post-composition pass for the GLOBAL channel transform: it runs at the END of the
+//! apply, after every keyed property AND every per-clip expression is composed into the world.
+//! For each binding that carries a document-wide formula (`binding.expr`) it reads the composed
+//! values, evaluates the expression AS A CHANNEL FORMULA, and overwrites the driven property.
 //!
-//! ⚠️ **It never enters the BLEND** (`sample_stack`/`eval_frame`) — it only READS the
-//! strip layout (`sole_strip_of`/`strip_source_time`) to window a per-clip expr
-//! (ADR-0145), which reports WHERE a strip plays, never a fade weight. A document with
-//! no expression takes the early-out and does nothing — byte-identical to the
-//! pre-feature engine, the Clips/Strips/Fade fingerprint untouched by construction.
-//! This is the whole reason ADR-0144 put the pass HERE rather than inside the evaluator.
+//! ⚠️ **It handles ONLY global drivers now** (ADR-0146). A PER-CLIP expression
+//! (`NamedClip.expr`) is a first-class LANE SOURCE at the blend's sample sites
+//! (`clip_anim_source` -> `eval_frame` / `solo_source_value`), so it FADES with its strip,
+//! crossfades, and sums on additive lanes. The per-clip loop that used to live here — with its
+//! own strip-layout windowing (`sole_strip_of`, `clip_expr_clock`) — is GONE. What remains is
+//! the global transform: applied at FULL wherever the composition covers, NEVER weighted by a
+//! fade. That is the clean ADR-0145 separation, gated as one statement
+//! (`a_per_clip_source_fades_and_a_global_transform_does_not`): per-clip fades, global transforms.
 //!
-//! **Evaluation order** (ADR-0144 §6): the driven bindings are TOPOLOGICALLY
-//! ordered (a dependency before its dependents) and evaluated over a mutable
-//! `current` map seeded from the composed snapshot — so an acyclic chain
-//! `A = B.x`, `B = time*10` reads FRESH values with **no 1-frame lag**. A cycle
-//! `A <-> B` has no valid order: its members fall to the end and read the value
-//! still standing in `current` (the previous frame's at the back-edge), a single
-//! sweep that **cannot explode**. `value` is always the PRE-expression value
-//! (keyed sample or rest), never the map, so a prop never feeds back into itself.
+//! ⚠️ **It never enters the BLEND** (`sample_stack`/`eval_frame`/`invert_stack`) — the whole
+//! reason ADR-0144 put it HERE rather than inside the evaluator. A document with no GLOBAL
+//! formula takes the early-out and does nothing — byte-identical to the pre-feature engine, the
+//! Clips/Strips/Fade fingerprint untouched by construction (arch-gate
+//! `the_expression_pass_never_enters_the_blend`; ADR-0146 W7 retires it in favour of the
+//! fingerprint, now that `#1`/`#2` prove the participation it forbade).
 //!
-//! ⚠️ **Two clock-and-ownership rules the caller upholds, both learned from smoke
-//! reports:**
+//! **Evaluation order** (ADR-0144 §6): the driven bindings are TOPOLOGICALLY ordered (a
+//! dependency before its dependents) and evaluated over a mutable `current` map seeded from the
+//! composed snapshot — so an acyclic global chain `A = B.x`, `B = time*10` reads FRESH values
+//! with **no 1-frame lag**. A cycle `A <-> B` has no valid order: its members fall to the end
+//! and read the value still standing in `current` (the previous frame's at the back-edge), a
+//! single sweep that **cannot explode**. `value` is always the PRE-expression value (composed
+//! key or rest), never the map, so a prop never feeds back into itself.
+//!
+//! ⚠️ **This `snap` + `names` DUPLICATES the frame's [`LinkFrame`]** (`frame_solve.rs`), which
+//! now holds the same composed values + `Name -> entity` map. Retiring them in favour of the
+//! LinkFrame is a candidate one-door cleanup, deferred on purpose: it has correctness edges on
+//! SKIPPED entities (in the world snapshot here, absent from the compose loop's `links`) and on
+//! the driven-reads-driven `current` map (global-transformed values, not the pre-transform
+//! composed ones), and the plan's W4 does not require it.
+//!
+//! ⚠️ **Two clock-and-ownership rules the caller upholds, both learned from smoke reports:**
 //! - It runs on the **CUT clock** — the exact instant the keyed pass composed at
-//!   (`clip_cut`/`container_cut`/`cut_scene`). Past a composition's authored end the
-//!   keys FREEZE at the cut; the expression's `time` must freeze there too, or it
-//!   extrapolates past the container/clip/scene end while everything else stands.
-//! - It honours **`skip`** exactly as pass 3 does. An entity the user owns this
-//!   frame (gizmo drag) or a paused pose pinned off its curve
-//!   (`AutokeyState.displaced`) is NOT rewritten by the keyed pass — so if the
-//!   expression drove it anyway it would read its OWN un-reset output as `value` and
-//!   feed back, a monotonic drift while paused. Skipped entities still appear in the
-//!   snapshot, so a prop-LINK may read their live pose.
+//!   (`clip_cut`/`container_cut`/`cut_scene`). Past a composition's authored end the keys FREEZE
+//!   at the cut; the expression's `time` must freeze there too, or it extrapolates past the
+//!   container/clip/scene end while everything else stands.
+//! - It honours **`skip`** exactly as pass 3 does. An entity the user owns this frame (gizmo
+//!   drag) or a paused pose pinned off its curve (`AutokeyState.displaced`) is NOT rewritten by
+//!   the keyed pass — so if the global expression drove it anyway it would read its OWN un-reset
+//!   output as `value` and feed back, a monotonic drift while paused. Skipped entities still
+//!   appear in the snapshot, so a prop-LINK may read their live pose.
 //!
-//! ⚠️ **Two sources of formula, two windows** (ADR-0144 + ADR-0145):
-//! - A **GLOBAL** driver (`binding.expr`, document-wide) runs everywhere on the outer
-//!   CUT clock (the Arrange scene driver). A KEYED prop's global expr rides its strip
-//!   through the `composed` coverage: where the composition covers nothing it goes
-//!   QUIET with the keys, and `value` is the COMPOSED value (rest when uncovered),
-//!   NEVER the stale world (which kills the paused drift on an uncovered prop).
-//! - A **PER-CLIP** driver (`NamedClip.expr`, ADR-0145) lives in the clip like a
-//!   keyframe, so a strip that plays the clip WINDOWS it, at the strip-LOCAL time
-//!   (`clip_expr_clock`). Off the strip the clip is not playing -> quiet. This is what
-//!   makes a PURE expression (no keys at all) obey the strip: the clip is its home.
+//! **Coverage** (the KEYED-prop half): a KEYED prop's global expr rides its strips through the
+//! `composed` coverage — where the composition covers nothing it goes QUIET with the keys, and
+//! `value` is the COMPOSED value (rest when uncovered), NEVER the stale world (which is what
+//! kills the paused drift on an uncovered prop). A PURE global expr (no keys anywhere) has no
+//! coverage window and runs on the whole cut clock.
 
 use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, Name, World, stable_name_id};
@@ -189,8 +198,9 @@ struct Driven {
     value: f32,
     /// This binding's wiggle seed.
     seed: f32,
-    /// The clock this expr evaluates at: the composition cut clock (a GLOBAL driver)
-    /// or the strip-LOCAL time (a per-clip driver) — ADR-0145.
+    /// The clock this expr evaluates at: the composition CUT clock (the Arrange scene
+    /// driver — ADR-0145). This pass carries only global drivers, so it is always the cut
+    /// clock; the per-clip strip-LOCAL clock lives at the blend now (ADR-0146).
     time: f32,
 }
 

@@ -498,3 +498,54 @@ fn the_keys_solo_resolves_a_per_clip_prop_link() {
          (0 = the view threaded an empty LinkFrame)"
     );
 }
+
+/// **Gate #19 (W4) — the clean separation: a per-clip SOURCE fades, a global TRANSFORM does
+/// not.** ADR-0145's two roles on ONE channel. Clip 0 drives X by the PER-CLIP expression
+/// `100` (a pure lane source); clip 1 keys X flat at 0; the two strips crossfade over [1,2) —
+/// so the COMPOSED X fades to 50 mid-overlap (the per-clip half is a faded lane source). A
+/// GLOBAL `value * 2` (`binding.expr`) then transforms that composed value AS A CHANNEL
+/// FORMULA — applied at FULL wherever the composition covers, on the cut clock, NEVER weighted
+/// by the overlap. Mid-overlap X = 2 * 50 = 100; at full weight X = 2 * 100 = 200.
+///
+/// This is the separation as one statement: the SAME channel carries a faded source and an
+/// un-faded transform, and both land. Mutation A (per-clip stops being a faded source):
+/// disable the `Expr` arm in `clip_anim_source` -> clip 0 contributes nothing -> composed X is
+/// the keyed 0 -> the global gives 0, not 100. Mutation B (the global transform stops running):
+/// drop the `run` body / `Expr` write in `expr_pass` -> X stays the composed 50, not 100.
+#[test]
+fn a_per_clip_source_fades_and_a_global_transform_does_not() {
+    let (mut world, mut doc, e) = scene(0.0);
+    doc.add_clip("Zero".into()); // clip 1
+    // Per-clip lane source on clip 0 (pure expr) + keyed 0 on clip 1 -> composed X crossfades.
+    set_expr(&mut doc, 0, e, PropKind::TranslationX, "100");
+    flat(&mut doc, 1, e, PropKind::TranslationX, 0.0);
+    // A GLOBAL channel transform on the SAME channel: value * 2, applied post-composition.
+    let tgt = doc.bind(e, PropKind::TranslationX);
+    doc.bindings_mut()
+        .iter_mut()
+        .find(|b| b.target == tgt)
+        .unwrap()
+        .expr = Some("value * 2".into());
+
+    let mut lane = ClipLane::new("Base");
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0));
+    doc.stack_mut().push(lane);
+
+    // Full weight (only clip 0 plays): composed = the per-clip 100, the global doubles it -> 200.
+    apply_from_doc(&mut world, &mut doc, 0.5);
+    let full = x_of(&world, e);
+    assert!(
+        (full - 200.0).abs() < 1e-3,
+        "at full weight the global transform doubles the per-clip 100 -> 200; got {full}"
+    );
+
+    // Mid overlap: the per-clip source FADES to 50, the global transform doubles it at FULL -> 100.
+    apply_from_doc(&mut world, &mut doc, 1.5);
+    let mid = x_of(&world, e);
+    assert!(
+        (mid - 100.0).abs() < 1e-3,
+        "the per-clip source fades to 50 and the global transform doubles it at full (100); \
+         got {mid} (0 = per-clip stopped fading; 50 = the global did not transform)"
+    );
+}

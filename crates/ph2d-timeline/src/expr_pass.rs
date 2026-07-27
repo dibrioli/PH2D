@@ -50,6 +50,7 @@ use std::collections::BTreeMap;
 
 use crate::apply::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
+use crate::frame_solve::{SEED_SPACING, resolve_link};
 use crate::prop::PropKind;
 use crate::stack_eval;
 use crate::stack_frames::StackScratch;
@@ -86,12 +87,6 @@ fn clip_expr_clock(
         ExprWindow::ActiveClip => (clip == doc.active_index()).then_some(time),
     }
 }
-
-/// Spread between two bindings' wiggle seeds — large enough that the noise phases
-/// of distinct properties never coincide (the hash decorrelates any distinct
-/// input, so this only needs to keep the numbers apart). `// LITERAL-PX-OK`: not a
-/// UI value; a seed spacing.
-const SEED_SPACING: f32 = 100.0;
 
 /// Run the expression pass at the composition's CUT clock `time` (see the module
 /// docs). `skip` mirrors the keyed pass: a driven entity it claims is left alone.
@@ -186,41 +181,48 @@ pub(crate) fn run(
     // plays the clip WINDOWS it, at the strip-LOCAL time. This is what makes a PURE
     // expression (no keys anywhere) obey the strip. Off the strip -> the clip is not
     // playing here -> `clip_expr_clock` is None -> quiet, exactly like the keys.
-    let by_target: BTreeMap<AnimTarget, usize> = doc
-        .bindings()
-        .iter()
-        .enumerate()
-        .filter(|(_, b)| !b.missing)
-        .map(|(i, b)| (b.target, i))
-        .collect();
-    for (ci, clip) in doc.clips().iter().enumerate() {
-        for (target, src) in &clip.expr {
-            let Some(&i) = by_target.get(target) else {
-                continue;
-            };
-            let b = &doc.bindings()[i];
-            if skip(b.entity) {
-                continue;
+    //
+    // ⚠️ ADR-0146 W1 — the NON-STACKED window ONLY. Under a stack (`ExprWindow::Strips`) a
+    // per-clip expr is now a first-class lane SOURCE inside the blend (`stack_eval`), which
+    // fades/crosses/sums it for free; running it here too would apply it TWICE. The
+    // non-stacked / solo path still routes through here until W2 moves its sample site.
+    if let ExprWindow::ActiveClip = window {
+        let by_target: BTreeMap<AnimTarget, usize> = doc
+            .bindings()
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| !b.missing)
+            .map(|(i, b)| (b.target, i))
+            .collect();
+        for (ci, clip) in doc.clips().iter().enumerate() {
+            for (target, src) in &clip.expr {
+                let Some(&i) = by_target.get(target) else {
+                    continue;
+                };
+                let b = &doc.bindings()[i];
+                if skip(b.entity) {
+                    continue;
+                }
+                let Ok(ir) = ph2d_expr_parse::parse(src) else {
+                    continue;
+                };
+                let Some(local) = clip_expr_clock(doc, window, ci, b.entity, time) else {
+                    continue; // the clip is not playing at this instant -> the expr is quiet
+                };
+                let value = composed
+                    .get(&(b.entity, b.prop))
+                    .copied()
+                    .unwrap_or(b.rest.unwrap_or(0.0));
+                driven.push(Driven {
+                    idx: i,
+                    ir,
+                    entity: b.entity,
+                    prop: b.prop,
+                    value,
+                    seed: b.target.get() as f32 * SEED_SPACING,
+                    time: local as f32,
+                });
             }
-            let Ok(ir) = ph2d_expr_parse::parse(src) else {
-                continue;
-            };
-            let Some(local) = clip_expr_clock(doc, window, ci, b.entity, time) else {
-                continue; // the clip is not playing at this instant -> the expr is quiet
-            };
-            let value = composed
-                .get(&(b.entity, b.prop))
-                .copied()
-                .unwrap_or(b.rest.unwrap_or(0.0));
-            driven.push(Driven {
-                idx: i,
-                ir,
-                entity: b.entity,
-                prop: b.prop,
-                value,
-                seed: b.target.get() as f32 * SEED_SPACING,
-                time: local as f32,
-            });
         }
     }
 
@@ -300,17 +302,6 @@ impl Bindings for ExprBindings<'_> {
     fn param(&self, _name: &str) -> f32 {
         0.0
     }
-}
-
-/// A `Name.prop` prop-link identifier -> the `(entity, prop)` it names, if the name
-/// resolves to an animated object and the tail is a known property. `None` for a
-/// bare identifier (no dot) or an unresolved name.
-fn resolve_link(name: &str, names: &BTreeMap<u64, u64>) -> Option<(u64, PropKind)> {
-    let (nm, pr) = name.rsplit_once('.')?;
-    Some((
-        *names.get(&stable_name_id(nm))?,
-        PropKind::from_expr_name(pr)?,
-    ))
 }
 
 /// Collect every `(entity, prop)` a driven binding's expression reads through a

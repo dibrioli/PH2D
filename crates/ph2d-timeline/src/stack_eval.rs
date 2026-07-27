@@ -25,9 +25,10 @@
 //! get right, because the crossfade weights are complementary (`stack.rs`).
 
 use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Interp, RationalTime, Track};
+use ph2d_expr::Expr;
 
 use crate::doc::TimelineDoc;
-use crate::frame_solve::LinkFrame;
+use crate::frame_solve::{LinkFrame, SEED_SPACING, eval_expr};
 use crate::prop::{Algebra, PropKind};
 use crate::refusal::KeyRefusal;
 use crate::stack::LaneMode;
@@ -50,6 +51,48 @@ pub(crate) struct Query {
     /// position) would fling the sprite to its parent's origin. Rive shipped
     /// without this and had to add Capture Base State; Unreal calls it Base Pose.
     pub rest: f32,
+}
+
+/// What a clip contributes to a channel this frame: its keyed track, or a per-clip
+/// EXPRESSION over it (ADR-0146 W1). Deciding the source ONCE is load-bearing — the value
+/// path and the additive-reference path must read the SAME answer, or a per-clip expr that
+/// faded the value but not the reference would leak on an additive lane.
+enum AnimSource<'a> {
+    /// A non-empty keyed track — sampled directly (the pre-expression behaviour, and the
+    /// only source a formula-free document ever produces, so the fade stays byte-stable).
+    Track(&'a Track),
+    /// A per-clip formula whose `value` is `value_track`'s sample (or rest when the channel
+    /// has no keys — a PURE expression that still covers the channel, §4). The `Expr` is
+    /// owned (parsed this frame); caching was measured and rejected (`expr_pass.rs`).
+    Expr {
+        ir: Expr,
+        value_track: Option<&'a Track>,
+    },
+}
+
+/// Resolve clip `clip`'s source for channel `target`: a per-clip expression if the clip
+/// carries one and it parses, else its non-empty keyed track, else `None` (sparsity — the
+/// clip does not touch this channel). A parse error falls back to the raw track (the
+/// property keeps its keyed value, the same fallback the retired post-pass gave).
+fn clip_anim_source(doc: &TimelineDoc, clip: usize, target: AnimTarget) -> Option<AnimSource<'_>> {
+    let named = doc.clips().get(clip)?;
+    let track = named.clip.track(target).filter(|tr| !tr.is_empty());
+    if let Some(src) = named.expr.get(&target)
+        && let Ok(ir) = ph2d_expr_parse::parse(src)
+    {
+        return Some(AnimSource::Expr {
+            ir,
+            value_track: track,
+        });
+    }
+    track.map(AnimSource::Track)
+}
+
+/// This channel's wiggle seed — the same `target * SEED_SPACING` the retired post-pass
+/// used, so `wiggle` phases identically whether it composes in the blend or (until W4) in
+/// the post-pass.
+fn seed_of(target: AnimTarget) -> f64 {
+    f64::from(target.get() as f32 * SEED_SPACING)
 }
 
 /// The value `q.target` should hold at this instant, blended out of the whole
@@ -154,22 +197,38 @@ fn eval_frame(
                 }
                 ActiveSource::Clip(clip) => {
                     let probed = probe.filter(|p| p.clip == clip);
-                    // `.get`, not `[..]`: the index is cached in the scratch, and a scratch
-                    // that outlived a DeleteClip would panic here rather than go quiet.
-                    let track = doc.clips().get(clip).and_then(|c| c.clip.track(target));
+                    // The clip's source for this channel: its keyed track, or a per-clip
+                    // EXPRESSION over it (ADR-0146 W1). `.get`, not `[..]`: the index is
+                    // cached in the scratch, and a scratch that outlived a DeleteClip would
+                    // panic rather than go quiet.
+                    let source = clip_anim_source(doc, clip, target);
                     // Sparsity (R2): a clip that does not key this channel contributes
                     // nothing — unless it is the probed one, whose whole purpose is to
                     // answer "what if it did".
-                    match (probed, track) {
+                    match (probed, &source) {
+                        // Keying (a probe) forces the value directly — the invert path
+                        // measures the raw stack response. W5 substitutes the probe INTO the
+                        // expression instead.
                         (Some(p), _) => p.value,
-                        (None, Some(tr)) if !tr.is_empty() => {
+                        (None, Some(AnimSource::Track(tr))) => {
                             let t_src = scratch.clocks[i].get(entity, a.t_clip);
                             let Some(v) = as_f64(tr.sample(t_src)) else {
                                 continue;
                             };
                             v
                         }
-                        _ => continue,
+                        (None, Some(AnimSource::Expr { ir, value_track })) => {
+                            // The strip contributes E(t_src), with `value` = this strip's
+                            // keyed sample (or rest). This flows through the SAME num/den
+                            // normalization, crossfade, and additive delta as a track — so
+                            // the expression FADES, crosses, and sums for free.
+                            let t_src = scratch.clocks[i].get(entity, a.t_clip);
+                            let value = value_track
+                                .and_then(|tr| as_f64(tr.sample(t_src)))
+                                .unwrap_or_else(|| f64::from(rest));
+                            f64::from(eval_expr(ir, value, t_src, seed_of(target), links))
+                        }
+                        (None, None) => continue,
                     }
                 }
             };
@@ -201,12 +260,26 @@ fn eval_frame(
                         .unwrap_or_else(|| f64::from(rest)),
                     ActiveSource::Clip(clip) => {
                         let probed = probe.filter(|p| p.clip == clip);
-                        let track = doc.clips().get(clip).and_then(|c| c.clip.track(target));
-                        match (probed, track) {
-                            (Some(p), Some(tr)) => reference_after(tr, a.src_in, p),
-                            (Some(p), None) => p.value, // no track: the key IS the curve
-                            (None, Some(tr)) => reference(tr, a.src_in),
-                            (None, None) => v,
+                        // The SAME source the value path resolved — a per-clip expr must fade
+                        // its reference exactly as it fades its value (ADR-0146).
+                        let source = clip_anim_source(doc, clip, target);
+                        match (probed, &source) {
+                            (Some(p), Some(AnimSource::Track(tr))) => {
+                                reference_after(tr, a.src_in, p)
+                            }
+                            (Some(p), _) => p.value, // no track / expr under probe: key IS the curve
+                            (None, Some(AnimSource::Track(tr))) => reference(tr, a.src_in),
+                            (None, Some(AnimSource::Expr { ir, value_track })) => {
+                                // The reference is E at the strip's FIRST frame, `value` = the
+                                // keyed reference there (or rest). A CONSTANT expression then
+                                // contributes 0 (Sum) / 1 (Ratio) — the additive invariant,
+                                // exactly as a constant track does.
+                                let ref_val = value_track
+                                    .map(|tr| reference(tr, a.src_in))
+                                    .unwrap_or_else(|| f64::from(rest));
+                                f64::from(eval_expr(ir, ref_val, a.src_in, seed_of(target), links))
+                            }
+                            (None, None) => v, // unreachable: the value path continued on None
                         }
                     }
                 };

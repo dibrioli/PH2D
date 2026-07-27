@@ -32,6 +32,7 @@ use std::sync::Arc;
 // execução lá são a mesma pergunta, e duas cópias dela divergiriam. Ele é em BYTES: um plano de `[u8; 7]`
 // move sete vezes a memória de um de `u8` com a mesma contagem.
 use crate::plane_copy::worth_parallel;
+use crate::undo::window::WindowCell;
 
 /// `Arc::make_mut` for a canvas-sized plane, with the copy parallelised.
 ///
@@ -41,7 +42,29 @@ use crate::plane_copy::worth_parallel;
 ///
 /// When there is no second owner it delegates untouched — no allocation, no threads, no cost. When there
 /// is one but the plane is small it also delegates, because rayon's fork would outweigh the memcpy.
-pub(super) fn fork_par<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
+pub(super) fn fork_par<'a, T>(arc: &'a mut Arc<Vec<T>>, win: &WindowCell) -> &'a mut Vec<T>
+where
+    T: Copy + Send + Sync,
+{
+    // ⚠️ **Todo fork nasce NÃO-DECLARADO, e é isso que torna a janela segura.** O histórico paga ~470 MB
+    // de varredura por traço a 4096² para DERIVAR uma janela que quem escreve já conhece (doc 28 §5.16);
+    // quem quiser poupá-la chama `PainterTool::declare_wrote` com a região depois de escrever.
+    //
+    // A contagem é o mecanismo inteiro: enquanto houver um fork sem declaração o commit **varre**, que é
+    // exatamente o que ele faz hoje. Então o modo de falha de um sítio novo — ou de um que esquece — é
+    // *lento*, nunca *errado*. É a resposta à objeção que o `undo_delta::diff_window` documenta, e a
+    // §5.17 mostra o que acontece com quem tenta respondê-la por um canal que não é o da escrita.
+    //
+    // ⚠️ A região quase sempre só é conhecida no FIM (os laços de dab acumulam o `touched` *enquanto*
+    // escrevem), e é por isso que a declaração é uma CHAMADA SEPARADA em vez de um argumento daqui.
+    let mut w = win.get();
+    w.open_write();
+    win.set(w);
+    fork_par_raw(arc)
+}
+
+/// O fork cru — a metade de POSSE, sem a de declaração. Privado: quem escreve passa pelo guard.
+fn fork_par_raw<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
 where
     T: Copy + Send + Sync,
 {
@@ -82,7 +105,7 @@ mod tests {
 
             let mut a = Arc::new(src.clone());
             let keep_a = Arc::clone(&a); // force the second-owner path
-            let forked = fork_par(&mut a).clone();
+            let forked = fork_par(&mut a, &WindowCell::default()).clone();
 
             let mut b = Arc::new(src.clone());
             let keep_b = Arc::clone(&b);
@@ -112,7 +135,7 @@ mod tests {
         let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let watcher = Arc::downgrade(&a); // o guard de identidade do Wet Paint, em miniatura
         let before = a.as_ptr();
-        let got = fork_par(&mut a);
+        let got = fork_par(&mut a, &WindowCell::default());
         assert_eq!(
             got.as_ptr(),
             before,
@@ -130,7 +153,7 @@ mod tests {
     fn an_unshared_plane_is_not_copied() {
         let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let before = a.as_ptr();
-        let got = fork_par(&mut a);
+        let got = fork_par(&mut a, &WindowCell::default());
         assert_eq!(got.as_ptr(), before, "an unshared plane was copied anyway");
     }
 
@@ -172,7 +195,7 @@ mod tests {
             let mut a = Arc::clone(&p);
             let _keep = Arc::clone(&p);
             let t0 = Instant::now();
-            let m = fork_par(&mut a);
+            let m = fork_par(&mut a, &WindowCell::default());
             std::hint::black_box(&m[0]);
             t0.elapsed().as_secs_f64() * 1000.0
         }));
@@ -209,7 +232,9 @@ mod tests {
         let src = include_str!("stamp_cache.rs");
         // Controle positivo: o alvo tem de EXISTIR, senão o gate passa por não achar nada (a falha que o
         // `the_shape_slot_goes_through_the_shape_door` do Flow pegou em si mesmo).
-        let through = src.matches("fork_par(&mut self.canvas_rgba)").count();
+        let through = src
+            .matches("fork_par(&mut self.canvas_rgba, &self.undo_window)")
+            .count();
         assert!(
             through >= 5,
             "controle: o stamp_cache tem de escrever o canvas pela porta paralela ({through} sitios)"
@@ -311,7 +336,9 @@ mod tests {
                 }
                 let src = std::fs::read_to_string(&p).expect("fonte legivel");
                 scanned += 1;
-                through += src.matches("fork_par(&mut self.canvas_rgba)").count();
+                through += src
+                    .matches("fork_par(&mut self.canvas_rgba, &self.undo_window)")
+                    .count();
                 for (i, line) in src.lines().enumerate() {
                     let t = line.trim_start();
                     if t.starts_with("//") {

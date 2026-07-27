@@ -201,7 +201,7 @@ impl PainterTool {
         }
         let src = Arc::clone(&self.paint.warp.pre);
         let disp = Arc::clone(&self.paint.warp.disp);
-        let buf = super::super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {

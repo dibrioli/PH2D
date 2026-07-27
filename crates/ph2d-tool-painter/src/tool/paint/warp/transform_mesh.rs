@@ -174,7 +174,8 @@ impl PainterTool {
         }
         let patch = &fp.patch;
         let base = &fp.base;
-        let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf =
+            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let stride = (w as usize) * 4;
         // Whole-image Warp makes `dirty` the entire canvas — split the rows into disjoint bands across
         // the cores (each band overlays the cells in the same (r,c) order, so the result is bit-identical

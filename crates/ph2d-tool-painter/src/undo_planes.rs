@@ -48,81 +48,117 @@ impl PlaneDeltas {
     pub(crate) fn split(
         before: &mut crate::undo::ModelSnapshot,
         after: &mut crate::undo::ModelSnapshot,
+        hint: Option<crate::compositor::Region>,
     ) -> Self {
         // O stride vem do endpoint que está sendo guardado. Um passo que muda o TAMANHO do canvas cai
         // sozinho no `Whole` (os comprimentos não batem), então basta um dos dois.
         let s = Strides::of(before.canvas_size.0);
+        // A janela chega em PIXELS do canvas e cada plano a mede em ELEMENTOS (o RGBA carrega quatro por
+        // pixel, os escalares um). `Strides` é quem sabe a conversão, então ela é feita aqui e uma vez.
+        let cw = before.canvas_size.0;
+        let win_rgba =
+            hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.rgba));
+        let win_scalar =
+            hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.scalar));
         Self {
             canvas_rgba: StoredPlane::split(
                 &mut before.canvas_rgba,
                 &mut after.canvas_rgba,
                 s.rgba,
+                win_rgba,
             ),
             images: StoredImages::split(&mut before.images, &mut after.images),
-            heights: StoredMap::split(&mut before.heights, &mut after.heights, s.scalar),
-            covers: StoredMap::split(&mut before.covers, &mut after.covers, s.scalar),
-            mats: StoredMap::split(&mut before.mats, &mut after.mats, s.scalar),
+            heights: StoredMap::split(
+                &mut before.heights,
+                &mut after.heights,
+                s.scalar,
+                win_scalar,
+            ),
+            covers: StoredMap::split(&mut before.covers, &mut after.covers, s.scalar, win_scalar),
+            mats: StoredMap::split(&mut before.mats, &mut after.mats, s.scalar, win_scalar),
             mask_scratch: StoredPlane::split(
                 &mut before.mask_scratch,
                 &mut after.mask_scratch,
                 s.rgba,
+                win_rgba,
             ),
             selection_mask: StoredPlane::split(
                 &mut before.selection_mask,
                 &mut after.selection_mask,
                 s.scalar,
+                win_scalar,
             ),
             selection_crisp: StoredPlane::split(
                 &mut before.selection_crisp,
                 &mut after.selection_crisp,
                 s.scalar,
+                win_scalar,
             ),
             deform_disp: StoredPlane::split(
                 &mut before.deform.disp,
                 &mut after.deform.disp,
                 s.scalar,
+                win_scalar,
             ),
-            deform_pre: StoredPlane::split(&mut before.deform.pre, &mut after.deform.pre, s.rgba),
+            deform_pre: StoredPlane::split(
+                &mut before.deform.pre,
+                &mut after.deform.pre,
+                s.rgba,
+                win_rgba,
+            ),
             deform_pre_h: StoredPlane::split(
                 &mut before.deform.pre_h,
                 &mut after.deform.pre_h,
                 s.scalar,
+                win_scalar,
             ),
             deform_pre_cover: StoredPlane::split(
                 &mut before.deform.pre_cover,
                 &mut after.deform.pre_cover,
                 s.scalar,
+                win_scalar,
             ),
             deform_pre_mats: StoredPlane::split(
                 &mut before.deform.pre_mats,
                 &mut after.deform.pre_mats,
                 s.scalar,
+                win_scalar,
             ),
-            sculpt_pre: StoredPlane::split(&mut before.sculpt.pre, &mut after.sculpt.pre, s.scalar),
+            sculpt_pre: StoredPlane::split(
+                &mut before.sculpt.pre,
+                &mut after.sculpt.pre,
+                s.scalar,
+                win_scalar,
+            ),
             sculpt_amount: StoredPlane::split(
                 &mut before.sculpt.amount,
                 &mut after.sculpt.amount,
                 s.scalar,
+                win_scalar,
             ),
             sculpt_plane_sum: StoredPlane::split(
                 &mut before.sculpt.plane_sum,
                 &mut after.sculpt.plane_sum,
                 s.scalar,
+                win_scalar,
             ),
             sculpt_pre_cover: StoredPlane::split(
                 &mut before.sculpt.pre_cover,
                 &mut after.sculpt.pre_cover,
                 s.scalar,
+                win_scalar,
             ),
             sculpt_pre_mats: StoredPlane::split(
                 &mut before.sculpt.pre_mats,
                 &mut after.sculpt.pre_mats,
                 s.scalar,
+                win_scalar,
             ),
             sculpt_pre_rgba: StoredPlane::split(
                 &mut before.sculpt.pre_rgba,
                 &mut after.sculpt.pre_rgba,
                 s.rgba,
+                win_rgba,
             ),
         }
     }

@@ -98,6 +98,13 @@ pub struct ModelSnapshot {
     /// delta ([`crate::undo_delta::Strides`]). Um snapshot que não sabe a largura do que carrega só pode
     /// guardar um intervalo LINEAR, e aí um traço VERTICAL reivindica o canvas inteiro em linhas.
     pub canvas_size: (u32, u32),
+    /// Quantas escritas de canvas o tool tinha registrado quando este snapshot foi tirado.
+    ///
+    /// ⚠️ **Não é conteúdo, é PROVENIÊNCIA** — é o que deixa `window::WriteWindow::hint_for` decidir se a
+    /// janela declarada cobre este endpoint (ela acumula desde o último commit, então só serve a um
+    /// `before` capturado depois dele). Sem ele, uma transação aninhada receberia uma janela pequena
+    /// demais e o undo perderia texels **em silêncio**.
+    pub writes: u64,
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
     /// restores the live overlay TOGETHER with the pixels — the two can never desync. `None` = no shape
@@ -404,8 +411,9 @@ impl UndoEntry {
         mut before: ModelSnapshot,
         mut after: ModelSnapshot,
         kind: Option<CoalesceKind>,
+        hint: Option<crate::compositor::Region>,
     ) -> Self {
-        let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after);
+        let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after, hint);
         Self {
             before: Box::new(before),
             after: Box::new(after),
@@ -481,11 +489,23 @@ impl UndoController {
     /// `after` is the model to roll forward to on redo. Pushing it clears the redo
     /// branch (standard linear-history semantics).
     pub fn record_structural(&mut self, before: ModelSnapshot, after: ModelSnapshot) {
+        self.record_structural_hinted(before, after, None);
+    }
+
+    /// [`Self::record_structural`] com a **janela declarada por quem escreveu** (ver
+    /// [`window::WriteWindow`]): `Some(rect)` poupa o `split` de varrer os planos para derivá-la; `None`
+    /// é sempre correto, só mais caro.
+    pub fn record_structural_hinted(
+        &mut self,
+        before: ModelSnapshot,
+        after: ModelSnapshot,
+        hint: Option<crate::compositor::Region>,
+    ) {
         self.absorb_foreign_writes(&before);
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         self.cursor = Some(Box::new(after.clone()));
-        let entry = UndoEntry::split(before, after, None);
+        let entry = UndoEntry::split(before, after, None, hint);
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         self.drop_redo();
@@ -516,14 +536,14 @@ impl UndoController {
             let old = self.undo.pop().expect("o topo que acabamos de ler");
             self.bytes -= old.heap_bytes();
             self.cursor = Some(Box::new(after.clone()));
-            let entry = UndoEntry::split(*first_before, after, Some(kind));
+            let entry = UndoEntry::split(*first_before, after, Some(kind), None);
             self.bytes += entry.heap_bytes();
             self.undo.push(entry);
             self.cap();
             return;
         }
         self.cursor = Some(Box::new(after.clone()));
-        let entry = UndoEntry::split(before, after, Some(kind));
+        let entry = UndoEntry::split(before, after, Some(kind), None);
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         self.drop_redo();
@@ -645,6 +665,10 @@ impl UndoController {
         }
     }
 }
+
+/// A JANELA que quem escreve declara — o canal que poupa o `split` de derivá-la.
+#[path = "undo_window.rs"]
+pub mod window;
 
 #[path = "undo_absorb.rs"]
 mod absorb; // a reconciliacao com escritas que nao passaram pela historia

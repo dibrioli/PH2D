@@ -14,10 +14,28 @@ pub(super) struct DragPreview {
 
 impl PainterTool {
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
+    /// **Declara a região que um acesso de escrita de plano de fato ESCREVEU** — o canal que poupa o
+    /// commit de undo de derivá-la varrendo os planos (`crate::undo::window`).
+    ///
+    /// ⚠️ Não confundir com [`Self::mark_dirty`], que declara onde a IMAGEM mudou. São perguntas
+    /// diferentes: o Inflate escreve `target[gi] = next` em toda a janela do kernel e só marca sujo onde
+    /// o relevo passou do `RELIEF_EPS`, e foi essa diferença que reprovou o atalho (doc 28 §5.17).
+    /// `None` = o acesso não escreveu nada.
+    #[expect(
+        dead_code,
+        reason = "os sítios quentes declaram na wave seguinte — ver doc 28 §7 S1"
+    )]
+    pub(super) fn declare_wrote(&self, rect: Option<Region>) {
+        let mut w = self.undo_window.get();
+        w.mark(rect);
+        self.undo_window.set(w);
+    }
+
     pub(super) fn mark_dirty(&mut self, rect: Region) {
         #[cfg(test)]
         self.marks.push(rect);
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
+        self.undo_writes = self.undo_writes.wrapping_add(1);
         self.preview_dirty = true;
         self.edited_since_bind = true; // unbaked work — the shell auto-persists on leave/deactivate
         let active = self.layers.active();

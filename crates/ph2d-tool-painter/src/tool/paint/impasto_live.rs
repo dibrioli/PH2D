@@ -50,7 +50,10 @@ impl PainterTool {
         // stroke's paint is zero, and `max(x, 0)` is `x`.
         {
             let n = (w as usize) * (h as usize);
-            let dst = super::plane_fork::fork_par(self.covers.entry(active).or_default());
+            let dst = super::plane_fork::fork_par(
+                self.covers.entry(active).or_default(),
+                &self.undo_window,
+            );
             if dst.len() != n {
                 dst.resize(n, 0);
             }
@@ -76,7 +79,10 @@ impl PainterTool {
             let n = (w as usize) * (h as usize);
             let mat = self.paint.brush.material().to_bytes();
             let neutral = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
-            let dst = super::plane_fork::fork_par(self.mats.entry(active).or_default());
+            let dst = super::plane_fork::fork_par(
+                self.mats.entry(active).or_default(),
+                &self.undo_window,
+            );
             if dst.len() != n {
                 dst.resize(n, neutral);
             }
@@ -203,6 +209,7 @@ impl PainterTool {
             self.heights
                 .entry(layer)
                 .or_insert_with(|| std::sync::Arc::new(vec![0.0; n])),
+            &self.undo_window,
         );
         if target.len() != n {
             target.resize(n, 0.0);

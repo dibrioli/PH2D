@@ -103,7 +103,7 @@ impl PainterTool {
         let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
             return;
         };
-        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
@@ -159,7 +159,7 @@ impl PainterTool {
         };
         let ramp = self.paint.texture_ramp_lut.as_slice();
         let alpha_mode = self.active_ramp_alpha_mode(owner);
-        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
@@ -220,7 +220,7 @@ impl PainterTool {
             return;
         };
         let (tex, ready) = (&mut cache.tex, &mut cache.ready);
-        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {
@@ -321,7 +321,7 @@ impl PainterTool {
                 brush.stroke_method,
             );
         }
-        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
@@ -434,7 +434,7 @@ impl PainterTool {
                 brush.stroke_method,
             );
         }
-        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba);
+        let buf = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;

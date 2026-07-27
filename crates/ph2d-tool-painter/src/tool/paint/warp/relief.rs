@@ -113,7 +113,7 @@ impl PainterTool {
         if let Some(entry) = self.heights.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::super::plane_fork::fork_par(entry);
+            let dst = super::super::plane_fork::fork_par(entry, &self.undo_window);
             for ry in 0..bbox.h {
                 let dy = bbox.y + ry;
                 for rx in 0..bbox.w {
@@ -130,7 +130,7 @@ impl PainterTool {
             && let Some(entry) = self.covers.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::super::plane_fork::fork_par(entry);
+            let dst = super::super::plane_fork::fork_par(entry, &self.undo_window);
             for ry in 0..bbox.h {
                 let dy = bbox.y + ry;
                 for rx in 0..bbox.w {
@@ -146,7 +146,7 @@ impl PainterTool {
             && let Some(entry) = self.mats.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::super::plane_fork::fork_par(entry);
+            let dst = super::super::plane_fork::fork_par(entry, &self.undo_window);
             for ry in 0..bbox.h {
                 let dy = bbox.y + ry;
                 for rx in 0..bbox.w {

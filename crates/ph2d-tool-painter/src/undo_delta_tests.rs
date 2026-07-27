@@ -262,7 +262,7 @@ fn identical_content_costs_nothing_even_with_different_pointers() {
     let mut a = Arc::new(vec![3u8; 64]);
     let mut b = Arc::new(vec![3u8; 64]);
     assert!(!Arc::ptr_eq(&a, &b));
-    let p = StoredPlane::split(&mut a, &mut b, 8);
+    let p = StoredPlane::split(&mut a, &mut b, 8, None);
     assert!(matches!(p, StoredPlane::Unchanged));
     assert_eq!(p.heap_bytes(), 0);
 }
@@ -281,7 +281,7 @@ fn a_window_that_does_not_pay_for_itself_falls_back_to_whole() {
         }
         v
     });
-    let p = StoredPlane::split(&mut a, &mut b, stride);
+    let p = StoredPlane::split(&mut a, &mut b, stride, None);
     assert!(matches!(p, StoredPlane::Whole { .. }), "esperava Whole");
 }
 
@@ -295,7 +295,7 @@ fn a_cursor_of_the_wrong_size_is_refused_not_patched() {
         v[9] = 5;
         v
     });
-    let p = StoredPlane::split(&mut a, &mut b, stride);
+    let p = StoredPlane::split(&mut a, &mut b, stride, None);
     assert!(matches!(p, StoredPlane::Patch { .. }));
     let wrong = Arc::new(vec![0u8; stride * 4]);
     assert!(p.side(&wrong, true).is_none());
@@ -339,7 +339,7 @@ fn the_materialisation_is_byte_identical_to_the_serial_one() {
         }
         let mut b = std::sync::Arc::clone(&cursor);
         let mut a = std::sync::Arc::new(after);
-        let plane = StoredPlane::split(&mut b, &mut a, stride);
+        let plane = StoredPlane::split(&mut b, &mut a, stride, None);
         let StoredPlane::Patch { win, before, .. } = &plane else {
             panic!("a fixture nao produziu um Patch (n = {n})");
         };

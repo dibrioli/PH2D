@@ -71,7 +71,8 @@ impl PainterTool {
         let mut touched: Option<Region> = None;
         {
             let mask = &mut self.paint.inpaint_mask;
-            let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
+            let buf =
+                crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
             if buf.len() != w * h * 4 {
                 return;
             }
@@ -196,7 +197,8 @@ impl PainterTool {
         );
         // Write only the reconstructed (marked) pixels back into the layer.
         {
-            let dst = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
+            let dst =
+                crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
             for cy in 0..ch {
                 for cx in 0..cw {
                     if crop_mask[cy * cw + cx] < 128 {

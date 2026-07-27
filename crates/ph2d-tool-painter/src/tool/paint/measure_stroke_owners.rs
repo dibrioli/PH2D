@@ -288,7 +288,8 @@ fn what_a_plane_fork_costs_through_the_products_own_door() {
             let mut a = Arc::clone(src);
             let _keep = Arc::clone(src); // o segundo dono: é ele que obriga a cópia
             let t0 = Instant::now();
-            let m = super::plane_fork::fork_par(&mut a);
+            let m =
+                super::plane_fork::fork_par(&mut a, &crate::undo::window::WindowCell::default());
             let dt = t0.elapsed().as_secs_f64() * 1000.0;
             std::hint::black_box(&m[0]);
             if dt < lo {
@@ -502,7 +503,7 @@ fn what_the_record_structural_is_made_of() {
             // (a) só o motor de delta, sobre CÓPIAS dos endpoints (o split esvazia o que recebe).
             let (mut b, mut a) = (before.clone(), after.clone());
             let t0 = Instant::now();
-            let d = crate::undo_planes::PlaneDeltas::split(&mut b, &mut a);
+            let d = crate::undo_planes::PlaneDeltas::split(&mut b, &mut a, None);
             let s = t0.elapsed().as_secs_f64() * 1000.0;
             std::hint::black_box(d.heap_bytes());
 

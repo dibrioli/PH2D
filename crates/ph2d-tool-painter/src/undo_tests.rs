@@ -10,6 +10,7 @@ fn model(active_px: u8) -> ModelSnapshot {
         mats: BTreeMap::new(),
         covers: BTreeMap::new(),
         canvas_rgba: Arc::new(vec![active_px; 16]),
+        writes: 0,
         canvas_size: (4, 4),
         selection: BTreeSet::new(),
         shape: None,

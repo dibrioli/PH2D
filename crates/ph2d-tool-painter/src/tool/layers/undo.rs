@@ -26,6 +26,7 @@ impl PainterTool {
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             // A forma do que o snapshot carrega — o stride de cada plano para o motor de delta.
             canvas_size: self.source_size,
+            writes: self.undo_writes,
             selection: self.selection.clone(),
             // Layer ops carry no open shape / live preview; the shape paths override these via
             // `capture_shape_model` (see `tool::paint::shape_snapshot`).
@@ -143,8 +144,14 @@ impl PainterTool {
     /// structural site (add/delete/duplicate layer, mask/adjustment create, active
     /// switch) calls this with the model it snapshotted before mutating.
     pub(crate) fn commit_structural_edit(&mut self, before: crate::undo::ModelSnapshot) {
+        // A janela declarada desde o último commit — aceita só se este `before` for posterior a ele (aí
+        // ela é um SUPERCONJUNTO do que ele não viu) e se nenhum acesso de escrita ficou sem declarar.
+        let hint = self.undo_window.get().hint_for(before.writes);
         let after = self.snapshot_model();
-        self.undo.record_structural(before, after);
+        self.undo.record_structural_hinted(before, after, hint);
+        let mut w = self.undo_window.get();
+        w.reset(self.undo_writes);
+        self.undo_window.set(w);
     }
 
     /// [`Self::commit_structural_edit`] for a COALESCIBLE action (see [`crate::undo::CoalesceKind`]): a run
@@ -156,5 +163,8 @@ impl PainterTool {
     ) {
         let after = self.snapshot_model();
         self.undo.record_structural_coalesced(kind, before, after);
+        let mut w = self.undo_window.get();
+        w.reset(self.undo_writes);
+        self.undo_window.set(w);
     }
 }

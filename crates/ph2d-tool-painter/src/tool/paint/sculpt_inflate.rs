@@ -160,7 +160,7 @@ impl PainterTool {
             if entry.len() != n {
                 return;
             }
-            let target = super::plane_fork::fork_par(entry);
+            let target = super::plane_fork::fork_par(entry, &self.undo_window);
             for y in kr.y..kr.y + kr.h {
                 for x in kr.x..kr.x + kr.w {
                     let ci = ((y - cr.y) as usize) * cw + (x - cr.x) as usize;
@@ -196,9 +196,9 @@ impl PainterTool {
             && cov_e.len() == n
             && mat_e.len() == n
         {
-            let cov = super::plane_fork::fork_par(cov_e);
-            let mat = super::plane_fork::fork_par(mat_e);
-            let rgba = super::plane_fork::fork_par(&mut self.canvas_rgba);
+            let cov = super::plane_fork::fork_par(cov_e, &self.undo_window);
+            let mat = super::plane_fork::fork_par(mat_e, &self.undo_window);
+            let rgba = super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
             for y in kr.y..kr.y + kr.h {
                 for x in kr.x..kr.x + kr.w {
                     let ci = ((y - cr.y) as usize) * cw + (x - cr.x) as usize;

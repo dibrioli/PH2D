@@ -216,6 +216,12 @@ pub struct PainterTool {
     /// Which panel occupies the shared right-dock slot (the layers panel header
     /// toggle). Read by the shell `painter_bridge` to drive `panel_visibility`.
     dock_shows_layers: bool,
+    /// **A janela que o commit de undo usa em vez de derivar** — ver [`crate::undo::window`]. Declarada
+    /// pelos guards de escrita de plano (`tool::paint::plane_fork::PlaneWrite`), zerada em todo commit.
+    undo_window: crate::undo::window::WindowCell,
+    /// Quantas escritas de canvas foram declaradas. Só a ORDEM importa: é o que deixa um snapshot dizer
+    /// se é anterior ou posterior ao último commit (`WriteWindow::hint_for`).
+    undo_writes: u64,
     /// Accumulated dirty bbox for the partial-recompose fast lane (`take_preview_arc`).
     dirty_rect: Option<Region>,
     /// **Só em teste:** os rects que o [`Self::mark_dirty`] recebeu, na ordem, sem união.
@@ -343,6 +349,8 @@ impl Default for PainterTool {
             edited_since_bind: false,
             deferred_bake: false,
             undo: crate::undo::UndoController::default(),
+            undo_window: crate::undo::window::WindowCell::default(),
+            undo_writes: 0,
             dirty_rect: None,
             #[cfg(test)]
             marks: Vec::new(),

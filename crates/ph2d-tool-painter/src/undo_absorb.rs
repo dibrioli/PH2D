@@ -42,7 +42,7 @@ impl UndoController {
         // `split` esvazia o que recebe, então ele come CÓPIAS — e uma cópia de `ModelSnapshot` é um
         // punhado de refcounts.
         let (mut a, mut b) = (cursor.clone(), before.clone());
-        if crate::undo_planes::PlaneDeltas::split(&mut a, &mut b).heap_bytes() == 0 {
+        if crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None).heap_bytes() == 0 {
             return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }
         let Some(top) = self.undo.last() else {
@@ -55,7 +55,7 @@ impl UndoController {
         };
         let old = self.undo.pop().expect("o topo que acabamos de ler");
         self.bytes -= old.heap_bytes();
-        let entry = UndoEntry::split(*first_before, before.clone(), kind);
+        let entry = UndoEntry::split(*first_before, before.clone(), kind, None);
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         // O cursor anda junto: o topo agora termina no estado que este passo encontrou.

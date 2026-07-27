@@ -75,6 +75,55 @@ impl PlaneWindow {
         self.rows * self.cols
     }
 
+    /// A janela em ELEMENTOS que corresponde a uma região do canvas em PIXELS.
+    ///
+    /// `stride` é a largura do plano em elementos e `canvas_w` a do canvas em pixels, então
+    /// `k = stride / canvas_w` é quantos elementos cada pixel carrega (4 no RGBA, 1 nos escalares).
+    /// `None` quando a conta não fecha — e aí o chamador VARRE, que é sempre correto.
+    pub(crate) fn from_region(
+        r: crate::compositor::Region,
+        canvas_w: u32,
+        stride: usize,
+    ) -> Option<Self> {
+        let cw = canvas_w as usize;
+        if cw == 0 || stride == 0 || r.w == 0 || r.h == 0 || !stride.is_multiple_of(cw) {
+            return None;
+        }
+        let k = stride / cw;
+        Some(Self {
+            row: r.y as usize,
+            rows: r.h as usize,
+            col: (r.x as usize) * k,
+            cols: (r.w as usize) * k,
+            stride,
+            plane_len: 0, // ancorado por `fit_to`, que é quem conhece o plano
+        })
+    }
+
+    /// Ancora esta janela num plano concreto — `None` se ela não couber nele.
+    fn fit_to(mut self, plane_len: usize) -> Option<Self> {
+        if !fits(plane_len, self.stride) || self.rows == 0 || self.cols == 0 {
+            return None;
+        }
+        let rows_total = plane_len / self.stride;
+        if self.row >= rows_total || self.col >= self.stride {
+            return None;
+        }
+        self.rows = self.rows.min(rows_total - self.row);
+        self.cols = self.cols.min(self.stride - self.col);
+        self.plane_len = plane_len;
+        Some(self)
+    }
+
+    /// Esta janela contém `other`? A pergunta que o `debug_assert` do [`StoredPlane::split`] faz.
+    #[cfg(debug_assertions)]
+    fn contains(&self, other: &Self) -> bool {
+        self.row <= other.row
+            && self.row + self.rows >= other.row + other.rows
+            && self.col <= other.col
+            && self.col + self.cols >= other.col + other.cols
+    }
+
     /// Copia a janela para fora de um plano completo.
     fn extract<T: Clone>(&self, src: &[T]) -> Box<[T]> {
         let mut out = Vec::with_capacity(self.elems());
@@ -261,7 +310,12 @@ const fn fits(len: usize, stride: usize) -> bool {
 impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
     /// Extrai o delta dos dois endpoints e **ESVAZIA os dois** — depois disto os pixels vivem aqui e só
     /// aqui, e o `ModelSnapshot` guardado carrega apenas metadados.
-    pub(crate) fn split(before: &mut Arc<Vec<T>>, after: &mut Arc<Vec<T>>, stride: usize) -> Self {
+    pub(crate) fn split(
+        before: &mut Arc<Vec<T>>,
+        after: &mut Arc<Vec<T>>,
+        stride: usize,
+        hint: Option<PlaneWindow>,
+    ) -> Self {
         if Arc::ptr_eq(before, after) {
             *before = drained();
             *after = drained();
@@ -275,6 +329,22 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
                 after: std::mem::replace(after, drained()),
             };
         }
+        // ⚠️ **A JANELA DECLARADA poupa a varredura** (`crate::undo::window`): o `split` custava ~470 MB de
+        // comparação por traço a 4096² para DERIVAR o que quem escreveu já sabia. Em build de DEBUG a
+        // derivação roda mesmo assim e AFIRMA que a janela verdadeira cabe na declarada — a suíte desta
+        // crate roda em debug em ~4 s e exercita todos os gestos, então o invariante é **conferido a cada
+        // rodada** em vez de assumido. Foi essa rede que reprovou o atalho da §5.17 na primeira rodada.
+        if let Some(win) = hint.and_then(|h| h.fit_to(before.len())) {
+            #[cfg(debug_assertions)]
+            if let Some(real) = diff_window(before, after, stride) {
+                debug_assert!(
+                    win.contains(&real),
+                    "a janela declarada nao contem a verdadeira: declarada {win:?}, real {real:?} — o \
+                     undo perderia esses texels (ver crate::undo::window)"
+                );
+            }
+            return Self::from_window(win, before, after);
+        }
         match diff_window(before, after, stride) {
             None => {
                 // Ponteiros diferentes, conteúdo igual — acontece sempre que um passe reconstrói um plano
@@ -283,23 +353,30 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
                 *after = drained();
                 Self::Unchanged
             }
-            // O delta guarda DOIS lados, então ele só compensa abaixo de metade do plano. Acima disso o
-            // `Whole` é mais barato E não paga a cópia do cursor na materialização.
-            Some(w) if 2 * w.elems() < before.len() => {
-                let out = Self::Patch {
-                    win: w,
-                    before: w.extract(before),
-                    after: w.extract(after),
-                };
-                *before = drained();
-                *after = drained();
-                out
-            }
-            Some(_) => Self::Whole {
+            Some(w) => Self::from_window(w, before, after),
+        }
+    }
+
+    /// Guarda os dois lados de `win` (ou o plano inteiro, se a janela não compensar) e ESVAZIA os
+    /// endpoints. Porta única: o caminho da janela declarada e o da derivada terminam aqui, então eles
+    /// não podem divergir sobre o que é guardado.
+    fn from_window(win: PlaneWindow, before: &mut Arc<Vec<T>>, after: &mut Arc<Vec<T>>) -> Self {
+        // O delta guarda DOIS lados, então ele só compensa abaixo de metade do plano. Acima disso o
+        // `Whole` é mais barato E não paga a cópia do cursor na materialização.
+        if 2 * win.elems() >= before.len() {
+            return Self::Whole {
                 before: std::mem::replace(before, drained()),
                 after: std::mem::replace(after, drained()),
-            },
+            };
         }
+        let out = Self::Patch {
+            win,
+            before: win.extract(before),
+            after: win.extract(after),
+        };
+        *before = drained();
+        *after = drained();
+        out
     }
 
     /// Materializa um dos lados a partir do **cursor** (o endpoint adjacente).
@@ -374,6 +451,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
         before: &mut BTreeMap<RtLayerId, Arc<Vec<T>>>,
         after: &mut BTreeMap<RtLayerId, Arc<Vec<T>>>,
         stride: usize,
+        hint: Option<PlaneWindow>,
     ) -> Self {
         let mut entries = BTreeMap::new();
         let keys: Vec<RtLayerId> = before.keys().chain(after.keys()).copied().collect();
@@ -383,7 +461,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
             }
             let e = match (before.get(&k).cloned(), after.get(&k).cloned()) {
                 (Some(mut b), Some(mut a)) => {
-                    StoredEntry::Both(StoredPlane::split(&mut b, &mut a, stride))
+                    StoredEntry::Both(StoredPlane::split(&mut b, &mut a, stride, hint))
                 }
                 (Some(b), None) => StoredEntry::OnlyBefore(b),
                 (None, Some(a)) => StoredEntry::OnlyAfter(a),

@@ -231,7 +231,8 @@ impl PainterTool {
         let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         {
-            let buf = crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba);
+            let buf =
+                crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
             let super::stamp_color_cache::PerLayerStroke { pre, cov } =
                 &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;

@@ -187,6 +187,7 @@ fn op(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu {
         } else {
             FxOp::new(kind).mode
         },
+        blend: 0,
     }
 }
 

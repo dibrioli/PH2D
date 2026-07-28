@@ -70,7 +70,7 @@ mod contour;
 
 /// A seção **Filters** (FX raster, plano 24) — módulo irmão (teto de 600 LOC).
 #[path = "paint_filters.rs"]
-mod filters;
+pub(crate) mod filters;
 
 /// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
 #[path = "paint_effects.rs"]

@@ -149,7 +149,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v37 (Flip, Airbrush, 03 §8): o `FlipStroke` ganhou `airbrush` (falloff físico Beer-Lambert por
 /// dab esférico) no MEIO do struct (após `self_overlap`) ⇒ mesmo raciocínio posicional.
 /// `FLIP_SCHEMA_VERSION` 11→12.
-const PROJECT_SCHEMA: u32 = 37;
+/// v38 (Vector, plano 24 W6 — a LEI DE MISTURA por degrau): o `ph2d_ecs::FxOp` ganhou `blend`
+/// APENDADO — um degrau da pilha de FX raster passa a dizer *como a cor dele encosta na que já
+/// está ali* (Inner Shadow em Multiply escurece em vez de lavar; Color Overlay em Color troca a
+/// matiz preservando a luminosidade). O `VecFilter` é componente registado, e postcard é
+/// POSICIONAL, então um save v37 lido como v38 leria `blend` além do fim de cada degrau.
+/// ⚠️ Não há como evitar o bump com `serde(default)`: o postcard não tem NOMES de campo, e um
+/// buffer que acaba cedo é erro de decode, não um default.
+/// ⚠️ O valor se CONTA a partir do `main` do dia — a `line/physics` e a `line/FLIP` já colidiram
+/// DUAS vezes nesta escada (o 30 de 25/07 e o 32 de 27/07). Se a integração encontrar outro dono
+/// para o 38, este é o que anda ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 38;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -18,7 +18,7 @@ struct Globals {
     jump: i32,
     band: f32,
     n_segs: u32,
-    _pad: f32,
+    blend: u32,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -112,10 +112,47 @@ fn exact_foot(pi: vec2<f32>) -> vec2<f32> {
     return best - p;
 }
 
+// **A LEI DE MISTURA de um degrau, aplicada à COR dele.**
+//
+// `B(Cb, Cs)` vem do `blend_modes.wgsl` — o MESMO arquivo que o compositor de camadas compila, e
+// que está pinado bit a bit contra o Rust. Aqui só se resolve o que ele exige: ele fala RETO e
+// LINEAR, e o miolo desta pilha é linear PREMULTIPLICADO.
+//
+// ⚠️ **O peso é o alfa do FUNDO, e é a fórmula do W3C, não uma escolha de gosto:**
+// `Cs' = (1−ab)·Cs + ab·B(Cb,Cs)`. Onde não há nada por baixo (`ab = 0`) não há com que misturar e
+// a lei devolve a própria cor — é isso que faz a rampa de anti-aliasing desvanecer para Normal em
+// vez de ganhar uma orla de cor inventada.
+//
+// ⚠️ **O early-out em Normal é LOAD-BEARING, não higiene.** `mix(x, x, a)` é `x·(1−a) + x·a`, que
+// em ponto flutuante **não é exactamente `x`** — sem este `return` a pilha inteira deixaria de ser
+// byte-idêntica ao mundo pré-blend no caso default, e a wave passaria a mudar a aparência de toda
+// arte já autorada.
+fn fx_blend(backdrop: vec4<f32>, colour: vec3<f32>) -> vec3<f32> {
+    if (g.blend == 0u) { return colour; }
+    let ab = clamp(backdrop.a, 0.0, 1.0);
+    if (ab <= 0.0) { return colour; }
+    let cb = clamp(backdrop.rgb / ab, vec3<f32>(0.0), vec3<f32>(1.0));
+    var b: vec3<f32>;
+    if (is_hsl(g.blend)) {
+        b = blend_hsl(g.blend, cb, colour);
+    } else {
+        b = vec3<f32>(
+            blend_sep(g.blend, cb.r, colour.r),
+            blend_sep(g.blend, cb.g, colour.g),
+            blend_sep(g.blend, cb.b, colour.b),
+        );
+    }
+    return mix(colour, clamp(b, vec3<f32>(0.0), vec3<f32>(1.0)), ab);
+}
+
 // O halo de dentro, aplicado com a lei que NÃO move a cobertura: um efeito de dentro tinge o que
 // já está lá, ele não é uma camada nova. Porta única de TODOS os que moram dentro.
+//
+// ⚠️ **É por ser porta única que o blend chegou aos três de dentro numa linha:** Inner Shadow,
+// Inner Glow e Bevel passam todos por aqui, e o Bevel de graça (a cor dele já é escolhida antes —
+// branco na face iluminada, o tint na oposta — e a lei se aplica à cor que sair).
 fn inner_tint(over: vec4<f32>, colour: vec3<f32>, strength: f32) -> vec4<f32> {
-    let tinted = vec4<f32>(colour * over.a, over.a);
+    let tinted = vec4<f32>(fx_blend(over, colour) * over.a, over.a);
     return mix(over, tinted, clamp(strength, 0.0, 1.0));
 }
 
@@ -563,7 +600,11 @@ fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
     let src = tap_img(t0, i32(id.x), i32(id.y));
     let k = clamp(g.tint.a * g.opacity, 0.0, 1.0);
     // Premultiplicado: a cor cheia neste texel é `tint.rgb * src.a`.
-    let rgb = mix(src.rgb, tint_lin() * src.a, k);
+    //
+    // ⚠️ É aqui que o Color Overlay ganha as vinte leis, e é o que o torna o RECOLORIDOR do módulo:
+    // em `Color` ele troca a matiz preservando a luminosidade (o *tint/duotone* que a fila listava
+    // como item à parte), em `Multiply` tinge sem apagar o sombreado.
+    let rgb = mix(src.rgb, fx_blend(src, tint_lin()) * src.a, k);
     textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), vec4<f32>(rgb, src.a));
 }
 "#;

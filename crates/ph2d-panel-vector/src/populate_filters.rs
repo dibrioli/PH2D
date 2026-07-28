@@ -13,7 +13,8 @@
 use super::{button, slider_chip};
 use crate::ids;
 use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
-use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::widget::DropdownState;
 
 /// Passo dos campos numéricos, no domínio do documento.
 const RADIUS_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
@@ -71,6 +72,24 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
                 -FILTER_OFFSET_MAX as f32,
             );
             store.set_number_range(chip, -FILTER_OFFSET_MAX, FILTER_OFFSET_MAX, OFFSET_STEP);
+        }
+        // A LEI DE MISTURA: o chip é um `Dropdown` (abrir/fechar/roda vêm de graça do dispatch
+        // genérico) + uma opção por lei. Registradas por ÍNDICE, como as pontas do traço: uma lei
+        // nova entra na tabela publicada e já nasce clicável, sem tocar aqui.
+        //
+        // ⚠️ Registram-se as VINTE em TODA linha, mesmo nas que o tipo não oferece o controle — o
+        // `populate` corre antes de a shell publicar o estado, e o `paint` é quem decide o que
+        // registra hit. Um slot a menos é uma opção pintada e morta sob o mouse.
+        store.register_if_absent(
+            ids::filter_blend_id(row),
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+        for i in 0..ids::MAX_FILTER_BLENDS {
+            button(store, ids::filter_blend_option_id(row, i));
         }
         // Opacity: track == valor (`0..1`).
         let (opacity, opacity_num) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));

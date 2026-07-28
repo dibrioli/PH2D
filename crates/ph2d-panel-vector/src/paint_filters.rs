@@ -25,8 +25,12 @@ use super::*;
 use crate::state::filters as fst;
 use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
 use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Card, IconButtonStyle, IconGlyph, SliderState, paint_card, paint_icon_button,
+    Card, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, SliderState,
+    paint_card, paint_dropdown_chip, paint_dropdown_popover_scrolled, paint_icon_button,
+    scrollbar_is_needed, scrollbar_track_rect,
 };
 
 /// O lado de um botão de ícone do cabeçalho.
@@ -103,7 +107,8 @@ impl BodyCtx<'_> {
         let rows = 1
             + usize::from(spec.radius_label.is_some())
             + usize::from(spec.offset_labels.is_some()) * 2
-            + usize::from(spec.color_label.is_some());
+            + usize::from(spec.color_label.is_some())
+            + usize::from(spec.takes_blend);
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let mode_h = if spec.modes.is_empty() {
@@ -171,6 +176,11 @@ impl BodyCtx<'_> {
         }
         if let Some(label) = spec.color_label {
             py = self.filter_color_swatch(row, fx, label, py);
+        }
+        // A LEI DE MISTURA vem logo depois da COR que ela qualifica: as duas respondem à mesma
+        // pergunta em dois tempos — *que cor* e *como ela encosta na que já está ali*.
+        if spec.takes_blend {
+            py = self.filter_blend_row(row, fx, py);
         }
         self.filter_opacity_row(row, fx, py);
         self.inner_x = keep_x;
@@ -307,6 +317,49 @@ impl BodyCtx<'_> {
         )
     }
 
+    /// A fileira da **LEI DE MISTURA**: rótulo + chip de dropdown com o nome da lei armada.
+    ///
+    /// Mesmo desenho da linha de PONTA do traço (rótulo na coluna de rótulos, chip ocupando o
+    /// resto) — a mesma estética para a mesma pergunta *"qual destes?"*. A lista em si é pintada
+    /// no passe DIFERIDO: são vinte leis, e o card mora dentro do scroll da seção.
+    fn filter_blend_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
+        let gap = Spacing::Sm.px();
+        let id = ids::filter_blend_id(row);
+        paint_text(
+            self.text_system,
+            self.scene,
+            "Blend",
+            self.inner_x,
+            y + (self.row_h - self.font) * 0.5,
+            self.font,
+            LABEL_COL_W,
+            resolve(ColorToken::Text1, self.theme),
+        );
+        let chip = Rect::new(
+            self.inner_x + LABEL_COL_W + gap,
+            y,
+            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            self.row_h,
+        );
+        let open = matches!(
+            self.store.get(id),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let dd = Dropdown::new(
+            id,
+            "",
+            vec![DropdownOption::new(id, (), fst::blend_name(fx.blend))],
+        )
+        .selected(())
+        .open(open);
+        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, chip);
+        if open {
+            state::set_pending_blend_dd(Some((row, chip)));
+        }
+        y + self.row_h + self.row_gap
+    }
+
     /// A fileira da cor do halo: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
     /// swatch de Fill / Contour — a mesma estética para a mesma pergunta *"que cor?"*).
     fn filter_color_swatch(
@@ -338,5 +391,74 @@ impl BodyCtx<'_> {
         paint_color_swatch(&swatch, rect, self.scene, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + self.row_gap
+    }
+}
+
+/// **O popover das vinte leis de mistura** de um degrau — pintado no passe DIFERIDO de `paint.rs`,
+/// POR CIMA de todas as seções. Espelho exato do `paint_markers::paint_marker_popover`.
+///
+/// ⚠️ As opções saem da tabela PUBLICADA (`blend_names`), nunca de uma lista escrita aqui: o painel
+/// não alcança o `BlendMode`, e uma cópia derivaria dele na primeira lei nova — com o rótulo a
+/// nomear outra coisa.
+pub(crate) fn paint_blend_popover(ctx: &mut PaintCtx, row: usize, chip: Rect, theme: Theme) {
+    let id = ids::filter_blend_id(row);
+    let names = fst::blend_names();
+    if names.is_empty() {
+        return;
+    }
+    let sel = fst::stack()
+        .get(row)
+        .map_or(0, |fx| usize::from(fx.blend))
+        .min(names.len() - 1);
+    let options: Vec<DropdownOption<usize>> = names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| DropdownOption::new(ids::filter_blend_option_id(row, i), i, *n))
+        .collect();
+    let dd = Dropdown::new(id, "", options).selected(sel).open(true);
+
+    let panel = dd.popover_rect_clamped(chip, ctx.viewport);
+    let content_h = dd.content_height(chip.h);
+    let visible_h = panel.h;
+    let max_scroll = (content_h - visible_h).max(0.0);
+    {
+        let store = ctx.host.store_mut();
+        store.set_dropdown_popover(id, panel);
+        store.set_panel_content_h(id, content_h);
+        store.set_panel_visible_h(id, visible_h);
+        if store.panel_scroll(id) > max_scroll {
+            store.set_panel_scroll(id, max_scroll);
+        }
+    }
+    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
+    let scrollbar_active = matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == id);
+    paint_dropdown_popover_scrolled(
+        &dd,
+        chip,
+        panel,
+        scroll,
+        scrollbar_active,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+
+    // Hit-register só a parte VISÍVEL de cada linha (a barra de rolagem é o alvo do drag).
+    let hit_index = ctx.host.hit_index_mut();
+    for i in 0..names.len() {
+        let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
+        let top = r.y.max(panel.y);
+        let bot = (r.y + r.h).min(panel.y + panel.h);
+        if bot - top >= 1.0 {
+            hit_index.register(
+                ids::filter_blend_option_id(row, i),
+                Rect::new(r.x, top, r.w, bot - top),
+            );
+        }
+    }
+    if scrollbar_is_needed(content_h, visible_h) {
+        ctx.host
+            .hit_index_mut()
+            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
     }
 }

@@ -139,6 +139,27 @@ pub fn filter_color_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.color.{row}"))
 }
 
+/// O teto de LEIS DE MISTURA que um degrau oferece. Espelha o `ph2d_ecs::FxOp::BLEND_KINDS`.
+///
+/// ⚠️ **VINTE, e o `BlendMode` do Rust tem 22** — `Behind` e `Clear` são operações de COBERTURA,
+/// não leis de cor, e um degrau de FX aplica a sua lei onde a cobertura já está decidida. O painel
+/// não alcança nenhuma das duas crates; há gate na shell (o único lugar que vê os dois lados).
+pub const MAX_FILTER_BLENDS: usize = 20;
+
+/// **A LEI DE MISTURA da linha `row`** — o chip que abre a lista. *Como a cor deste degrau se
+/// combina com a que já está ali*: um Inner Shadow em `Multiply` escurece em vez de lavar, um Color
+/// Overlay em `Color` troca a matiz preservando a luminosidade.
+#[must_use]
+pub fn filter_blend_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.blend.{row}"))
+}
+
+/// A opção `mode` no popover de mistura da linha `row`.
+#[must_use]
+pub fn filter_blend_option_id(row: usize, mode: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.blend.{row}.{mode}"))
+}
+
 /// **Opacity** da linha `row` (0..1).
 #[must_use]
 pub fn filter_opacity_id(row: usize) -> NodeId {

@@ -111,6 +111,8 @@ thread_local! {
     /// saber de quem ele é. Só um fica aberto por vez (abrir o outro fecha este, pelo
     /// dispatch genérico do dropdown).
     static PENDING_MARKER_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
+    /// A LINHA da pilha de filtros cujo chip de mistura está aberto, + o rect dele.
+    static PENDING_BLEND_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
 }
 
 /// Which kind of fill the selected path has (published by the shell each frame so
@@ -343,7 +345,7 @@ pub use contour::{set_current_contour, set_current_contour_can_add};
 pub(crate) mod filters;
 pub use filters::{
     FilterKindView, FilterRowView, set_current_filter_can_add, set_current_filters,
-    set_filter_kinds,
+    set_filter_blend_names, set_filter_kinds,
 };
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
@@ -538,6 +540,15 @@ pub(crate) fn set_pending_marker_dd(slot_rect: Option<(usize, Rect)>) {
 
 pub(crate) fn take_pending_marker_dd() -> Option<(usize, Rect)> {
     PENDING_MARKER_DD.with(|c| c.take())
+}
+
+/// Idem para o chip de LEI DE MISTURA de um degrau da pilha de filtros (`row` + o rect do chip).
+pub(crate) fn set_pending_blend_dd(row_rect: Option<(usize, Rect)>) {
+    PENDING_BLEND_DD.with(|c| c.set(row_rect));
+}
+
+pub(crate) fn take_pending_blend_dd() -> Option<(usize, Rect)> {
+    PENDING_BLEND_DD.with(|c| c.take())
 }
 
 /// `(slot, índice)` da opção de ponta cujo id é `id` (`None` se não for uma). Casa contra

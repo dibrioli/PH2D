@@ -93,6 +93,13 @@ pub struct FxOpGpu {
     pub opacity: f32,
     /// O MODO (o índice em `FxKindSpec::modes`). Só os degraus de DENTRO o leem hoje.
     pub mode: u8,
+    /// **A LEI DE MISTURA** — o código de `ph2d_painter_effects::BlendMode`, `0` = Normal.
+    ///
+    /// ⚠️ **Um `u8` cru, sem acoplamento de enum** — o mesmo desenho que o `LayerCompositor` já
+    /// ship (a `ph2d-painter-effects` é dev-dep desta crate, nunca dependência de produção). Quem
+    /// decide se o número é honrado é o `FxOp::blend_code` do lado do produtor: aqui ele já chega
+    /// resolvido.
+    pub blend: u8,
 }
 
 use crate::fx_stack_plan::plan_of;
@@ -151,7 +158,8 @@ struct Globals {
     /// Quantos segmentos de SILHUETA o chamador entregou. `0` = semeia pela cobertura (o caminho
     /// antigo, e o único disponível quando não há geometria — os gates de raster puro).
     n_segs: u32,
-    _pad: f32,
+    /// A LEI DE MISTURA deste degrau (o código de `BlendMode`; `0` = Normal, o neutro).
+    blend: u32,
 }
 
 struct Tex {
@@ -216,13 +224,38 @@ pub struct FxStackPass {
     work: Option<[Tex; 4]>,
 }
 
+/// **Os dois módulos WGSL que a pilha compila** — porta ÚNICA, com dois consumidores: o
+/// [`FxStackPass::new`] (que os manda ao dispositivo) e o gate de naga (que os valida sem GPU).
+///
+/// ⚠️ **É porta única por um motivo que já mordeu este repositório:** um gate que montasse a sua
+/// própria concatenação ficaria VERDE sobre um produto que deixou de prefixar o bloco
+/// compartilhado — validar-se-ia a si mesmo. Aqui o gate valida exactamente a string que o
+/// dispositivo recebe.
+///
+/// ⚠️ **As leis de mistura vêm do MESMO arquivo que o compositor de camadas compila** — o
+/// `blend_modes.wgsl` foi extraído dele quando ganhou este segundo consumidor. *Como duas cores se
+/// combinam* é pergunta já respondida e pinada bit a bit contra o Rust; uma cópia aqui divergiria
+/// no único lugar onde ninguém lê um número: uma captura de tela.
+fn module_sources() -> [(&'static str, String); 2] {
+    let kinds = kind_consts_wgsl();
+    let blend = crate::layer_compositor::BLEND_MODES_WGSL;
+    [
+        (
+            "mid",
+            format!("{blend}\n{kinds}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}"),
+        ),
+        (
+            "out",
+            format!("{blend}\n{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}"),
+        ),
+    ]
+}
+
 impl FxStackPass {
     /// Constrói os três pipelines. Barato — nenhuma textura até o 1º [`Self::run`].
     #[must_use]
     pub fn new(gpu: &GpuContext) -> Self {
-        let kinds = kind_consts_wgsl();
-        let mid_src = format!("{kinds}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}");
-        let out_src = format!("{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}");
+        let [(_, mid_src), (_, out_src)] = module_sources();
         let make_shader = |label: &str, src: &str| {
             gpu.device
                 .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -401,7 +434,7 @@ impl FxStackPass {
             jump: 0,
             band: 1.0,
             n_segs: 0,
-            _pad: 0.0,
+            blend: 0,
         };
         write_at(&mut blob, 0, &edges);
         write_at(&mut blob, total_slots - 1, &edges);
@@ -420,7 +453,7 @@ impl FxStackPass {
                 jump: 0,
                 band: op.sigma_px.max(0.0),
                 n_segs: u32::try_from(geom.len()).unwrap_or(u32::MAX),
-                _pad: 0.0,
+                blend: u32::from(op.blend),
             };
             match plan_of(op, geom.is_empty()) {
                 Plan::Point => {
@@ -661,3 +694,7 @@ fn dispatch(
     pass.set_bind_group(0, bg, &[slot * UNIFORM_STRIDE as u32]);
     pass.dispatch_workgroups(gx, gy, 1);
 }
+
+#[cfg(test)]
+#[path = "fx_stack_tests.rs"]
+mod tests;

@@ -42,6 +42,7 @@ fn beveled(gpu: &ph2d_gpu::GpuContext, geom: &[[f32; 4]]) -> Vec<u8> {
             tint: [0.0, 0.0, 0.0, 1.0],
             opacity: 1.0,
             mode: 0,
+            blend: 0,
         }],
         geom,
     );

@@ -3476,6 +3476,22 @@ impl crate::App {
                                 }
                             });
                         }
+                        // A LEI DE MISTURA — *como a cor deste degrau encosta na que já está ali*.
+                        // Mesma recusa do MODO, pela porta única `FxOp::takes_blend`: um clique
+                        // numa lei que o TIPO não toma é recusado ONDE o valor é escrito, e não só
+                        // onde ele é pintado. (O popover nem chega a existir num tipo que não a
+                        // oferece — mas a segunda metade é o que impede um arquivo, ou um teste,
+                        // de instalar um número órfão.)
+                        FilterHit::Blend(row, blend) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if let Some(op) = f.ops.get_mut(row)
+                                    && op.takes_blend()
+                                    && blend < ph2d_ecs::FxOp::BLEND_KINDS
+                                {
+                                    op.blend = blend;
+                                }
+                            });
+                        }
                         // A swatch só ABRE o picker (o `register_picker_swatch` faz isso); a cor
                         // é lida abaixo, do alvo do picker.
                         FilterHit::Color(_)
@@ -4947,7 +4963,17 @@ impl crate::App {
                             offset_labels: s.offset_labels,
                             color_label: s.color_label,
                             modes: s.modes,
+                            takes_blend: s.takes_blend,
                         })
+                        .collect(),
+                );
+                // …e os NOMES das leis de mistura, pela mesma porta e pelo mesmo motivo: quem
+                // conhece o `BlendMode` é a shell, não o painel. As leis de COBERTURA (`Behind` /
+                // `Clear`) ficam de fora — um degrau aplica a lei dele onde a cobertura já está
+                // decidida, e oferecê-las seria a opção que despacha e mente.
+                ph2d_panel_vector::set_filter_blend_names(
+                    (0..ph2d_ecs::FxOp::BLEND_KINDS)
+                        .map(|m| ph2d_painter_effects::BlendMode::from_u8(m).name())
                         .collect(),
                 );
                 ph2d_panel_vector::set_current_filters(
@@ -4968,6 +4994,7 @@ impl crate::App {
                                     (op.color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
                                 ],
                                 opacity: f64::from(op.opacity),
+                                blend: op.blend_code(),
                             })
                             .collect()
                     })

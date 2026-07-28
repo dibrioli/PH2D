@@ -363,6 +363,11 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 tint: o.color,
                 opacity: o.opacity,
                 mode: o.mode,
+                // ⚠️ **`blend_code`, não `blend`** — é a metade de HONRAR da porta única
+                // `FxOp::takes_blend` (a de OFERECER é do painel). Um arquivo cujo degrau carrega
+                // uma lei de um tipo que deixou de a tomar desenharia uma mistura que a UI não
+                // mostra; aqui ela vira Normal, e o dispositivo nunca vê um número órfão.
+                blend: o.blend_code(),
             }
         })
         .collect()
@@ -389,6 +394,8 @@ pub(crate) enum FilterHit {
     Color(usize),
     /// O chip de MODO da linha (a LEI do degrau).
     Mode(usize, u8),
+    /// Uma opção do popover de MISTURA (a lei de como a cor do degrau encosta na de baixo).
+    Blend(usize, u8),
     /// Os sliders.
     Radius(usize),
     OffX(usize),
@@ -410,6 +417,12 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
             if id == vid::filter_mode_id(r, m) {
                 #[allow(clippy::cast_possible_truncation)]
                 return Some(FilterHit::Mode(r, m as u8));
+            }
+        }
+        for m in 0..vid::MAX_FILTER_BLENDS {
+            if id == vid::filter_blend_option_id(r, m) {
+                #[allow(clippy::cast_possible_truncation)]
+                return Some(FilterHit::Blend(r, m as u8));
             }
         }
         let hit = if id == vid::filter_remove_id(r) {

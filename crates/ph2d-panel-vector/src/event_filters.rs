@@ -25,6 +25,9 @@ pub(super) fn is_filter_button(id: ph2d_a11y::NodeId) -> bool {
                 || id == ids::filter_down_id(r)
                 || id == ids::filter_hide_id(r)
                 || (0..ids::MAX_FILTER_MODES).any(|m| id == ids::filter_mode_id(r, m))
+                // As opções do popover de MISTURA — `Click` puros, como as pontas do traço. O
+                // CHIP não entra: ele é um `Dropdown`, e abrir/fechar é do dispatch genérico.
+                || (0..ids::MAX_FILTER_BLENDS).any(|m| id == ids::filter_blend_option_id(r, m))
         })
 }
 

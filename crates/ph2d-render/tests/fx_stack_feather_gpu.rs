@@ -51,6 +51,7 @@ fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
             tint: [1.0, 1.0, 1.0, 1.0],
             opacity: 1.0,
             mode: 0,
+            blend: 0,
         }],
         &[],
     );

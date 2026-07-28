@@ -76,6 +76,24 @@ pub struct FxKindSpec {
     /// fazer. O painel pinta um chip por modo e o **índice no slice É o código** — como a `SPECS`,
     /// a lista é a tabela.
     pub modes: &'static [&'static str],
+    /// **A COR deste degrau pousa sobre conteúdo que já existe?** É esta a pergunta do BLEND: um
+    /// modo de mistura responde *como a minha cor se combina com a que está aí*, e só faz sentido
+    /// onde há uma cor lá para se combinar.
+    ///
+    /// ⚠️ **Campo próprio, e não `!grows`** — hoje as duas listas coincidem, e coincidem por
+    /// ACIDENTE: `grows` pergunta *preciso de margem na textura?* e este pergunta *a minha cor
+    /// encosta na de baixo?*. Um tipo futuro que espalhe para fora E tinja por dentro (um *Satin*)
+    /// responde SIM às duas, e derivar uma da outra o teria feito nascer sem o controle, em
+    /// silêncio.
+    ///
+    /// ⚠️ **Quem NÃO toma, e por quê** (medido — ver `the_blend_of_an_outer_halo_only_reaches_the_
+    /// antialiased_fringe` na `ph2d-render`): um halo EXTERNO entra **por baixo** da entrada
+    /// (`over + halo·(1−a)`), então onde ele aparece não há nada com que se misturar (`a = 0`) e
+    /// onde há algo ele não aparece (`1−a = 0`). O que sobra é o produto `a·(1−a)`, que pica em
+    /// **0,25 exatamente na rampa de anti-aliasing** — um controle cujo efeito inteiro é uma orla
+    /// de 1 px lê como quebrado. O `Blur` e o `Feather` não têm cor própria nenhuma: a saída deles
+    /// É a entrada transformada.
+    pub takes_blend: bool,
 }
 
 /// Os modos de QUEDA. Duas leis diferentes sobre *o que é "perto da borda"*, e a diferença é
@@ -111,6 +129,18 @@ pub struct FxOp {
     /// `FxEntry::enabled` da pilha de geometria: desarmar não pode custar números que o artista
     /// teria de lembrar.
     pub enabled: bool,
+    /// **A LEI DE MISTURA deste degrau** — o código de `ph2d_painter_effects::BlendMode`
+    /// (`0` = Normal, o neutro). Só os tipos com [`FxKindSpec::takes_blend`] o leem.
+    ///
+    /// ⚠️ **Um `u8` CRU, e não o enum.** É o mesmo desenho que o `LayerCompositor` já ship: o
+    /// `ph2d-ecs` não depende do `ph2d-painter-effects`, e não devia — este componente é um
+    /// DOCUMENTO, e um documento não tem por que arrastar a crate de efeitos de pintura para dentro
+    /// do grafo de dependências de toda cena. O nome de cada código é publicado à UI pela shell,
+    /// que alcança os dois lados (o padrão do `set_filter_kinds`).
+    ///
+    /// ⚠️ **Código desconhecido cai em Normal** (o `from_u8` do enum já o faz), então um arquivo de
+    /// uma versão futura desenha o efeito sem lei exótica em vez de não desenhar nada.
+    pub blend: u8,
 }
 
 /// O degrau neutro sobre o qual os defaults de cada tipo são escritos.
@@ -122,6 +152,7 @@ const BLANK: FxOp = FxOp {
     opacity: 1.0,
     mode: FxOp::MODE_CONTOUR,
     enabled: true,
+    blend: FxOp::BLEND_NORMAL,
 };
 
 impl FxOp {
@@ -162,6 +193,23 @@ impl FxOp {
     /// o default dos degraus de DENTRO.
     pub const MODE_CONTOUR: u8 = 1;
 
+    /// A lei de mistura NEUTRA (`BlendMode::Normal`). Um degrau nasce aqui, e nela o degrau é
+    /// **byte-idêntico** ao mundo pré-blend — é isso que torna esta wave uma adição e não uma
+    /// mudança de aparência.
+    pub const BLEND_NORMAL: u8 = 0;
+
+    /// Quantas leis de mistura um degrau oferece — os códigos `0..BLEND_KINDS`.
+    ///
+    /// ⚠️ **VINTE, e o `BlendMode` do Rust tem 22** — os dois que ficam de fora (`Behind` e
+    /// `Clear`, códigos 20 e 21) não são leis de COR: são operações de **COBERTURA** (o próprio
+    /// `apply` do Rust os desvia antes da função de mistura). Um degrau de FX aplica a sua lei
+    /// exactamente onde a cobertura já está decidida pela lei DELE — o `inner_tint` existe para
+    /// *não mover a cobertura*, e foi um bug real resolvido —, então os dois não teriam onde
+    /// pousar. Oferecê-los e depois os dobrar em Normal no dispositivo seria a opção que despacha
+    /// e mente; há gate na shell (o único lugar que vê os dois lados) a exigir que este número
+    /// continue a ser o dos códigos não-de-cobertura.
+    pub const BLEND_KINDS: u8 = 20;
+
     /// **A tabela dos tipos.** Indexada pelo `kind`; a ordem É a dos códigos acima (há gate).
     pub const SPECS: [FxKindSpec; Self::KINDS] = [
         FxKindSpec {
@@ -172,6 +220,7 @@ impl FxOp {
             grows: true,
             inner: false,
             modes: &[],
+            takes_blend: false,
         },
         FxKindSpec {
             name: "Glow",
@@ -185,6 +234,7 @@ impl FxOp {
             // reentrância elas desenham coisas visivelmente diferentes — a ponta de uma estrela
             // brilha nas duas, o vão entre pontas só na segunda.
             modes: &FALLOFF_MODES,
+            takes_blend: false,
         },
         FxKindSpec {
             name: "Drop Shadow",
@@ -194,6 +244,7 @@ impl FxOp {
             grows: true,
             inner: false,
             modes: &[],
+            takes_blend: false,
         },
         FxKindSpec {
             name: "Inner Shadow",
@@ -203,6 +254,7 @@ impl FxOp {
             grows: false,
             inner: true,
             modes: &FALLOFF_MODES,
+            takes_blend: true,
         },
         FxKindSpec {
             name: "Inner Glow",
@@ -212,6 +264,7 @@ impl FxOp {
             grows: false,
             inner: true,
             modes: &FALLOFF_MODES,
+            takes_blend: true,
         },
         FxKindSpec {
             name: "Outline",
@@ -223,6 +276,7 @@ impl FxOp {
             grows: true,
             inner: false,
             modes: &[],
+            takes_blend: false,
         },
         FxKindSpec {
             name: "Feather",
@@ -232,6 +286,7 @@ impl FxOp {
             grows: true,
             inner: false,
             modes: &[],
+            takes_blend: false,
         },
         FxKindSpec {
             name: "Bevel",
@@ -241,6 +296,7 @@ impl FxOp {
             grows: false,
             inner: true,
             modes: &[],
+            takes_blend: true,
         },
         FxKindSpec {
             name: "Color Overlay",
@@ -250,6 +306,7 @@ impl FxOp {
             grows: false,
             inner: false,
             modes: &[],
+            takes_blend: true,
         },
     ];
 
@@ -285,6 +342,29 @@ impl FxOp {
     #[must_use]
     pub fn displaces(self) -> bool {
         Self::spec(self.kind).offset_labels.is_some()
+    }
+
+    /// **Este degrau tem uma lei de mistura a honrar?** Vista da [`FxKindSpec::takes_blend`].
+    ///
+    /// ⚠️ **Porta ÚNICA, com dois consumidores que fazem perguntas diferentes:** o painel a
+    /// consulta para OFERECER o controle, e o produtor da GPU para o HONRAR. Sem a segunda metade,
+    /// um arquivo com `blend` sobrevivente num tipo que deixou de o tomar desenharia uma lei que
+    /// a UI não mostra — e sem a primeira, um knob morto. (O `is_hinge` dos joints é o precedente
+    /// exato.)
+    #[must_use]
+    pub fn takes_blend(self) -> bool {
+        Self::spec(self.kind).takes_blend
+    }
+
+    /// A lei de mistura que este degrau de facto aplica — [`Self::BLEND_NORMAL`] em todo tipo que
+    /// não a toma. É esta que o produtor manda ao dispositivo.
+    #[must_use]
+    pub fn blend_code(self) -> u8 {
+        if self.takes_blend() {
+            self.blend
+        } else {
+            Self::BLEND_NORMAL
+        }
     }
 
     /// Este degrau contribui? Desligado, a pilha o salta (espelho do `FxEntry::is_active`).

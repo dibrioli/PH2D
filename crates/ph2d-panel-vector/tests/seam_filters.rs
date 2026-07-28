@@ -51,6 +51,7 @@ fn row(kind: u8) -> FilterRowView {
         offy: -0.12,
         color: [0, 0, 0, 255],
         opacity: 1.0,
+        blend: 0,
     }
 }
 
@@ -62,34 +63,49 @@ fn row(kind: u8) -> FilterRowView {
 /// resposta estrutural: o publish é uma única `map` sobre `FxOp::SPECS` (e o gate do shell pina
 /// que os TETOS dos dois lados concordam).
 fn kinds_table() -> Vec<FilterKindView> {
-    let k = |name, radius_label, offset_labels, color_label, modes| FilterKindView {
+    let k = |name, radius_label, offset_labels, color_label, modes, takes_blend| FilterKindView {
         name,
         radius_label,
         offset_labels,
         color_label,
         modes,
+        takes_blend,
     };
     const INNER: &[&str] = &["Proximity", "Contour"];
     const OFF: Option<(&str, &str)> = Some(("Offset X", "Offset Y"));
     const LIGHT: Option<(&str, &str)> = Some(("Light X", "Light Y"));
     const COL: Option<&str> = Some("Color");
     vec![
-        k("Blur", Some("Radius"), None, None, &[]),
-        k("Glow", Some("Radius"), None, COL, &[]),
-        k("Drop Shadow", Some("Radius"), OFF, COL, &[]),
-        k("Inner Shadow", Some("Radius"), OFF, COL, INNER),
-        k("Inner Glow", Some("Radius"), None, COL, INNER),
-        k("Outline", Some("Width"), None, COL, &[]),
-        k("Feather", Some("Feather"), None, None, &[]),
-        k("Bevel", Some("Depth"), LIGHT, Some("Shadow"), &[]),
-        k("Color Overlay", None, None, COL, &[]),
+        k("Blur", Some("Radius"), None, None, &[], false),
+        k("Glow", Some("Radius"), None, COL, &[], false),
+        k("Drop Shadow", Some("Radius"), OFF, COL, &[], false),
+        k("Inner Shadow", Some("Radius"), OFF, COL, INNER, true),
+        k("Inner Glow", Some("Radius"), None, COL, INNER, true),
+        k("Outline", Some("Width"), None, COL, &[], false),
+        k("Feather", Some("Feather"), None, None, &[], false),
+        k("Bevel", Some("Depth"), LIGHT, Some("Shadow"), &[], true),
+        k("Color Overlay", None, None, COL, &[], true),
     ]
+}
+
+/// Os nomes das leis de mistura que a shell publica — espelho dos vinte primeiros códigos do
+/// `BlendMode`, que este crate também não alcança. Só os dois primeiros e o último importam aos
+/// gates; a lista tem de ter o COMPRIMENTO certo, porque é ela que decide quantas opções o popover
+/// oferece.
+fn blend_names_table() -> Vec<&'static str> {
+    let mut v = vec!["Normal", "Multiply"];
+    while v.len() < ph2d_panel_vector::ids::MAX_FILTER_BLENDS - 1 {
+        v.push("…");
+    }
+    v.push("Luminosity");
+    v
 }
 
 /// Publica o estado que a shell publicaria: forma selecionada + a tabela + a pilha dada.
 fn publish(rows: Vec<FilterRowView>) {
     ph2d_panel_vector::set_current_filter_can_add(true);
     ph2d_panel_vector::set_filter_kinds(kinds_table());
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
     ph2d_panel_vector::set_current_filters(rows);
 }
 
@@ -261,6 +277,7 @@ fn every_mode_chip_reaches_the_bus_when_clicked() {
 fn the_filters_section_is_not_offered_without_a_shape() {
     ph2d_panel_vector::set_current_filter_can_add(false);
     ph2d_panel_vector::set_filter_kinds(kinds_table());
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
     ph2d_panel_vector::set_current_filters(Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;

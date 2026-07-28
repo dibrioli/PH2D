@@ -44,6 +44,12 @@ pub struct FilterKindView {
     pub color_label: Option<&'static str>,
     /// Os MODOS deste tipo, na ordem dos códigos, ou vazio se ele não tem escolha a fazer.
     pub modes: &'static [&'static str],
+    /// **A cor deste degrau pousa sobre conteúdo que já existe?** Espelha o
+    /// `ph2d_ecs::FxKindSpec::takes_blend` — é ele que decide se o card oferece a lei de mistura.
+    /// Um halo EXTERNO entra por baixo (nada com que se misturar onde ele aparece) e o Blur/Feather
+    /// não têm cor própria; oferecer-lhes o controle seria um knob cujo efeito inteiro é uma orla
+    /// de 1 px.
+    pub takes_blend: bool,
 }
 
 /// Um degrau da pilha, como o painel o desenha. Espelha o `ph2d_ecs::FxOp` — o painel **não
@@ -69,6 +75,8 @@ pub struct FilterRowView {
     pub color: [u8; 4],
     /// A intensidade deste degrau, `0..1`.
     pub opacity: f64,
+    /// A LEI DE MISTURA armada — o índice na lista publicada por [`set_filter_blend_names`].
+    pub blend: u8,
 }
 
 thread_local! {
@@ -77,6 +85,9 @@ thread_local! {
     static STACK: RefCell<Vec<FilterRowView>> = const { RefCell::new(Vec::new()) };
     /// A tabela dos tipos, indexada pelo `kind` — publicada a partir do motor.
     static KINDS: RefCell<Vec<FilterKindView>> = const { RefCell::new(Vec::new()) };
+    /// Os NOMES das leis de mistura, na ordem dos códigos — publicados pela shell, que é quem
+    /// alcança o `BlendMode`. O painel vive de snapshots e não conhece o enum.
+    static BLENDS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Publica se a seleção corrente permite um filtro (há forma selecionada).
@@ -111,3 +122,30 @@ pub(crate) fn kinds() -> Vec<FilterKindView> {
 pub(crate) fn kind_spec(kind: u8) -> Option<FilterKindView> {
     KINDS.with(|k| k.borrow().get(kind as usize).copied())
 }
+
+/// Publica os nomes das leis de mistura, **na ordem dos códigos** (é ela que o `paint` indexa).
+///
+/// ⚠️ Mesmo padrão do [`set_filter_kinds`]: o nome de um código é fato do motor, e o painel não
+/// alcança nem o `ph2d-ecs` nem o `ph2d-painter-effects`. Uma tabela escrita à mão aqui derivaria
+/// do enum na primeira lei nova, e o modo de falha é um rótulo que nomeia outra coisa.
+pub fn set_filter_blend_names(names: Vec<&'static str>) {
+    BLENDS.with(|b| *b.borrow_mut() = names);
+}
+
+pub(crate) fn blend_names() -> Vec<&'static str> {
+    BLENDS.with(|b| b.borrow().clone())
+}
+
+/// O nome da lei `code`, ou `"Normal"` se a tabela ainda não foi publicada (o neutro nunca mente
+/// sobre o que o degrau faz).
+pub(crate) fn blend_name(code: u8) -> &'static str {
+    BLENDS.with(|b| {
+        b.borrow()
+            .get(code as usize)
+            .copied()
+            .unwrap_or(FALLBACK_BLEND_NAME)
+    })
+}
+
+/// O rótulo que o chip mostra antes de a shell publicar a tabela.
+pub(crate) const FALLBACK_BLEND_NAME: &str = "Normal";

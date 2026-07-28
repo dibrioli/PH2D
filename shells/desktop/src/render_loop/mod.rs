@@ -1607,7 +1607,15 @@ impl crate::App {
         // Match the legacy backdrop value here; the chrome edges
         // composite identically.
         let (r, g, b) = if hero_live.is_some() {
-            (0.047, 0.047, 0.055)
+            // The post-stack smoke needs a BRIGHT, uniform canvas so its vignette reads
+            // as darkened EDGES (on the dark 0.047 backdrop the darkening is invisible,
+            // and a lift would only brighten the centre — the confusion Enio reported).
+            // Gated on the smoke env, so the calibrated editor backdrop is untouched.
+            if crate::post_stack_smoke::is_active() {
+                (0.55, 0.55, 0.55)
+            } else {
+                (0.047, 0.047, 0.055)
+            }
         } else {
             let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
             (

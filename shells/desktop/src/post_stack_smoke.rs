@@ -2,12 +2,16 @@
 //!
 //! ## What it shows
 //!
-//! A frame-wide HDR colour grade applied to `game_rt` before the tonemap: a **strong
-//! vignette** darkening the frame edges, plus a lift in exposure, a warm tint and a
-//! touch of contrast/saturation — the cinematic "look" of a post stack. The default
-//! editor background is a dark neutral grey (`0.047`) filling the whole frame, so the
-//! vignette has something to darken edge-to-edge; the exposure lift brings it up so the
-//! centre-vs-corner falloff reads clearly.
+//! A frame-wide HDR colour grade applied to `game_rt` before the tonemap. This smoke
+//! arms the **vignette alone** (no exposure/tint/contrast), so the effect is
+//! unmistakable: the frame EDGES darken while the CENTRE is left untouched.
+//!
+//! It also overrides the editor clear to a **bright neutral grey** ([`is_active`],
+//! read by `render_loop`): on the usual dark `0.047` backdrop the edge-darkening is
+//! invisible, and lifting it with exposure only brightens the CENTRE — which reads as
+//! the *opposite* of a vignette (Enio: *"clareia o centro"*). A vignette IS darkened
+//! edges, so it must be shown over something already bright, changing nothing but the
+//! corners.
 //!
 //! ```text
 //!   game_rt (whole scene) ──[PostStack grade]──▶ game_rt ──▶ AgX tonemap
@@ -30,6 +34,13 @@ fn on() -> bool {
     *ON.get_or_init(|| std::env::var("PH2D_POST_STACK_SMOKE").is_ok_and(|v| v != "0"))
 }
 
+/// Is this smoke armed? The render loop reads it to brighten the editor clear to a
+/// neutral grey, so the vignette reads as darkened EDGES over an untouched centre —
+/// never as a centre lift (which is what the dark backdrop turned it into).
+pub(crate) fn is_active() -> bool {
+    on()
+}
+
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 impl crate::App {
@@ -39,20 +50,22 @@ impl crate::App {
         if !on() || FRAME.fetch_add(1, Ordering::Relaxed) != 4 {
             return;
         }
-        // A demonstrative cinematic grade: bright enough that the vignette's
-        // centre-vs-corner falloff is unmistakable over the dark editor background.
+        // The VIGNETTE alone, over the bright grey canvas this smoke installs. No
+        // exposure — a lift on the dark backdrop was what made the vignette look like
+        // "brightening the centre" (Enio). Here the centre is untouched and only the
+        // corners fall off, which is what a vignette IS.
         self.grade = ph2d_render::GradeParams {
-            exposure: 2.0, // +2 stops: lift the 0.047 grey so the vignette reads
-            contrast: 1.15,
-            saturation: 1.1,
-            tint: [1.05, 1.0, 0.9], // a warm cast
-            vignette: 0.85,         // a strong, clearly-visible vignette
-            vignette_radius: 0.25,  // darkening starts a quarter of the way out
-            vignette_softness: 0.55,
+            exposure: 0.0,
+            contrast: 1.0,
+            saturation: 1.0,
+            tint: [1.0, 1.0, 1.0],
+            vignette: 0.85,        // a strong, clearly-visible edge darkening
+            vignette_radius: 0.35, // the centre stays clean out to a third of the way
+            vignette_softness: 0.5,
         };
         eprintln!(
-            "[post-stack smoke] grade armada: vinheta 0.85 + exposição +2 stops + tint quente + \
-             contraste/saturação. As BORDAS do frame escurecem (o centro fica claro). \
+            "[post-stack smoke] vinheta 0.85 sobre um campo CLARO: as BORDAS do frame \
+             escurecem e o CENTRO fica intocado (sem brilho no centro). \
              is_neutral={} (deve ser false).",
             self.grade.is_neutral()
         );

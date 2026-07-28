@@ -157,6 +157,60 @@ pub struct WriteState {
     /// o do passo, e o undo devolveria pixels que nunca existiram.
     #[cfg(any(test, debug_assertions))]
     journal_since: std::cell::Cell<Option<u64>>,
+    /// Os bytes velhos dos três planos de RELEVO — ver [`ReliefJournals`].
+    #[cfg(any(test, debug_assertions))]
+    relief: std::cell::RefCell<ReliefJournals>,
+}
+
+/// **Os journals dos três planos de relevo, mais de QUE camada eles falam.**
+///
+/// ⚠️ O relevo não é um plano, é um **mapa por camada** (`heights`/`covers`/`mats` são
+/// `BTreeMap<LayerId, …>`), e dois planos de camadas diferentes têm a mesma FORMA. O `arm` do
+/// [`TileJournal`](crate::undo::journal::TileJournal) descarta a grade quando as dimensões mudam, mas
+/// aqui elas **não** mudam: um passo que tocasse o relevo de duas camadas misturaria os bytes das duas
+/// no mesmo índice, com confiança e em silêncio. Daí a camada ser lembrada, e um segundo dono marcar o
+/// journal como **misturado** em vez de tentar reconciliar.
+///
+/// ⚠️ **`incomplete` é a mesma política do contador de acessos não-declarados do S1**: uma escrita que
+/// passa pela porta GENÉRICA (`fork_par`) não sabe dizer de que plano é, então o journal do relevo não
+/// pode afirmar que descreve o passo. Ele responde `false`, o commit deriva como sempre, e cada sítio
+/// que aprende a sua porta nomeada passa a pagar só a região — *lento, nunca errado*.
+#[cfg(any(test, debug_assertions))]
+#[derive(Debug, Default)]
+struct ReliefJournals {
+    layer: Option<crate::layers::LayerId>,
+    mixed: bool,
+    incomplete: bool,
+    heights: crate::undo::journal::TileJournal<f32>,
+    covers: crate::undo::journal::TileJournal<u8>,
+    mats: crate::undo::journal::TileJournal<ph2d_painter_brush::material::MaterialBytes>,
+}
+
+#[cfg(any(test, debug_assertions))]
+impl ReliefJournals {
+    /// Uma captura chegou para `l`. Se ela é de outra camada, o que estava guardado descreve OUTRO
+    /// plano — e o journal se declara misturado em vez de responder um byte do lugar errado.
+    fn note_layer(&mut self, l: crate::layers::LayerId) {
+        match self.layer {
+            None => self.layer = Some(l),
+            Some(cur) if cur == l => {}
+            Some(_) => {
+                self.mixed = true;
+                self.heights.reset();
+                self.covers.reset();
+                self.mats.reset();
+            }
+        }
+    }
+
+    /// `true` se estes journals podem responder pela camada `l`.
+    fn speaks_for(&self, l: crate::layers::LayerId) -> bool {
+        !self.mixed && !self.incomplete && self.layer == Some(l)
+    }
+
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
 }
 
 impl WriteState {
@@ -226,6 +280,7 @@ impl WriteState {
     #[cfg(any(test, debug_assertions))]
     pub(crate) fn reset_journal(&self) {
         self.canvas.borrow_mut().reset();
+        self.relief.borrow_mut().reset();
         self.journal_since.set(None);
     }
 
@@ -246,6 +301,7 @@ impl WriteState {
     #[cfg(any(test, debug_assertions))]
     pub(crate) fn begin_step(&self, writes: u64) {
         self.canvas.borrow_mut().reset();
+        self.relief.borrow_mut().reset();
         self.journal_since.set(Some(writes));
     }
 
@@ -262,6 +318,160 @@ impl WriteState {
     #[must_use]
     pub(crate) fn journal_describes_step_at(&self, writes: u64) -> bool {
         self.journal_since.get() == Some(writes)
+    }
+
+    /// **Captura o relevo antes de ele ser escrito** — um por plano, porque cada um tem um tipo de
+    /// elemento e o journal é tipado. `area` em ELEMENTOS (o relevo carrega um por pixel).
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn capture_heights(
+        &self,
+        layer: crate::layers::LayerId,
+        buf: &[f32],
+        stride: usize,
+        area: Option<(usize, usize, usize, usize)>,
+    ) {
+        let mut r = self.relief.borrow_mut();
+        r.note_layer(layer);
+        r.heights.capture(buf, stride, area);
+    }
+
+    /// Ver [`Self::capture_heights`].
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn capture_covers(
+        &self,
+        layer: crate::layers::LayerId,
+        buf: &[u8],
+        stride: usize,
+        area: Option<(usize, usize, usize, usize)>,
+    ) {
+        let mut r = self.relief.borrow_mut();
+        r.note_layer(layer);
+        r.covers.capture(buf, stride, area);
+    }
+
+    /// Ver [`Self::capture_heights`].
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn capture_mats(
+        &self,
+        layer: crate::layers::LayerId,
+        buf: &[ph2d_painter_brush::material::MaterialBytes],
+        stride: usize,
+        area: Option<(usize, usize, usize, usize)>,
+    ) {
+        let mut r = self.relief.borrow_mut();
+        r.note_layer(layer);
+        r.mats.capture(buf, stride, area);
+    }
+
+    /// **Uma escrita que os journals de relevo não conseguem contabilizar** — a porta genérica (que não
+    /// sabe de que plano é) ou um plano cuja forma eles não descrevem. Ver [`ReliefJournals::incomplete`].
+    ///
+    /// ⚠️ Não é gateado por `cfg`, pelo mesmo motivo do [`Self::toggle_foreign_plane`]: ele é chamado
+    /// pela porta genérica em qualquer perfil, e um contador que só existisse em debug faria a porta ter
+    /// duas formas.
+    pub(crate) fn note_untracked_write(&self) {
+        #[cfg(any(test, debug_assertions))]
+        {
+            self.relief.borrow_mut().incomplete = true;
+        }
+    }
+
+    /// O que os journals de relevo dizem sobre o elemento `i` da camada `layer`, ou `None` quando eles
+    /// não falam por ela (mistura, plano sem nome, tile não capturado).
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn heights_before(&self, layer: crate::layers::LayerId, i: usize) -> Option<f32> {
+        let r = self.relief.borrow();
+        r.speaks_for(layer).then(|| r.heights.get(i)).flatten()
+    }
+
+    /// Ver [`Self::heights_before`].
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn covers_before(&self, layer: crate::layers::LayerId, i: usize) -> Option<u8> {
+        let r = self.relief.borrow();
+        r.speaks_for(layer).then(|| r.covers.get(i)).flatten()
+    }
+
+    /// Ver [`Self::heights_before`].
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn mats_before(
+        &self,
+        layer: crate::layers::LayerId,
+        i: usize,
+    ) -> Option<ph2d_painter_brush::material::MaterialBytes> {
+        let r = self.relief.borrow();
+        r.speaks_for(layer).then(|| r.mats.get(i)).flatten()
+    }
+
+    /// As três irmãs de release das capturas acima — no-ops, como a do canvas. Sem elas as portas
+    /// nomeadas teriam de carregar o `cfg` dentro do corpo, e uma porta com duas formas é o começo de
+    /// duas respostas.
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn capture_heights(
+        &self,
+        _layer: crate::layers::LayerId,
+        _buf: &[f32],
+        _stride: usize,
+        _area: Option<(usize, usize, usize, usize)>,
+    ) {
+    }
+
+    /// Ver [`Self::capture_heights`].
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn capture_covers(
+        &self,
+        _layer: crate::layers::LayerId,
+        _buf: &[u8],
+        _stride: usize,
+        _area: Option<(usize, usize, usize, usize)>,
+    ) {
+    }
+
+    /// Ver [`Self::capture_heights`].
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn capture_mats(
+        &self,
+        _layer: crate::layers::LayerId,
+        _buf: &[ph2d_painter_brush::material::MaterialBytes],
+        _stride: usize,
+        _area: Option<(usize, usize, usize, usize)>,
+    ) {
+    }
+
+    /// **Por que os journals de relevo não descrevem o passo** — o readout que separa *"não havia o que
+    /// descrever"* de *"havia e eles não sabem"*, e só o segundo é dívida de migração.
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn relief_state(&self) -> &'static str {
+        let r = self.relief.borrow();
+        match () {
+            () if r.mixed => "MISTURADO",            // duas camadas num passo
+            () if r.incomplete => "INCOMPLETO",      // alguém escreveu pela porta genérica
+            () if r.layer.is_none() => "SEM-RELEVO", // o passo não tocou relevo nenhum
+            () => "DESCREVE",
+        }
+    }
+
+    /// **Os journals de relevo descrevem o passo que começou em `writes`, para a camada `layer`?**
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn relief_describes_step_at(
+        &self,
+        writes: u64,
+        layer: crate::layers::LayerId,
+    ) -> bool {
+        self.journal_describes_step_at(writes) && self.relief.borrow().speaks_for(layer)
     }
 }
 

@@ -57,9 +57,91 @@ where
     //
     // ⚠️ A região quase sempre só é conhecida no FIM (os laços de dab acumulam o `touched` *enquanto*
     // escrevem), e é por isso que a declaração é uma CHAMADA SEPARADA em vez de um argumento daqui.
+    open_access(win);
+    // ⚠️ **Uma porta que não sabe nomear o plano deixa o journal de RELEVO incompleto.** Ele é um mapa
+    // por camada e três tipos de elemento, então a captura tem de saber qual; sem isso a única resposta
+    // honesta é *não descrevo este passo*, e o commit deriva como sempre (mesma política do contador de
+    // acessos não-declarados). Cada sítio que passa por uma porta nomeada sai desta conta.
+    win.note_untracked_write();
+    fork_par_raw(arc)
+}
+
+/// A metade de DECLARAÇÃO de toda porta: um acesso de escrita foi aberto e ainda não disse onde
+/// escreveu. Compartilhada pelas quatro portas para que nenhuma nasça sem ela.
+fn open_access(win: &WriteState) {
     let mut w = win.get();
     w.open_write();
     win.set(w);
+}
+
+/// A região de um `Region` (pixels) em ELEMENTOS de um plano de `k` elementos por pixel.
+fn elems(
+    area: Option<crate::compositor::Region>,
+    k: usize,
+) -> Option<(usize, usize, usize, usize)> {
+    area.map(|r| {
+        let (x, y) = (r.x as usize, r.y as usize);
+        (x * k, y, (x + r.w as usize) * k, y + r.h as usize)
+    })
+}
+
+/// **A porta do RELEVO (altura)** — o fork mais a captura no journal daquela CAMADA.
+///
+/// Três portas e não uma genérica porque o journal é **tipado** (`f32` / `u8` / `[u8; 7]`) e keyed por
+/// camada: quem escreve tem de dizer as duas coisas, e dizer é o que separa esta porta da genérica.
+pub(super) fn fork_heights<'a>(
+    arc: &'a mut Arc<Vec<f32>>,
+    win: &WriteState,
+    layer: crate::layers::LayerId,
+    size: (u32, u32),
+    area: Option<crate::compositor::Region>,
+) -> &'a mut Vec<f32> {
+    if arc.len() == (size.0 as usize) * (size.1 as usize) {
+        win.capture_heights(layer, arc, size.0 as usize, elems(area, 1));
+    } else {
+        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
+        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
+        win.note_untracked_write();
+    }
+    open_access(win);
+    fork_par_raw(arc)
+}
+
+/// Ver [`fork_heights`].
+pub(super) fn fork_covers<'a>(
+    arc: &'a mut Arc<Vec<u8>>,
+    win: &WriteState,
+    layer: crate::layers::LayerId,
+    size: (u32, u32),
+    area: Option<crate::compositor::Region>,
+) -> &'a mut Vec<u8> {
+    if arc.len() == (size.0 as usize) * (size.1 as usize) {
+        win.capture_covers(layer, arc, size.0 as usize, elems(area, 1));
+    } else {
+        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
+        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
+        win.note_untracked_write();
+    }
+    open_access(win);
+    fork_par_raw(arc)
+}
+
+/// Ver [`fork_heights`].
+pub(super) fn fork_mats<'a>(
+    arc: &'a mut Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>,
+    win: &WriteState,
+    layer: crate::layers::LayerId,
+    size: (u32, u32),
+    area: Option<crate::compositor::Region>,
+) -> &'a mut Vec<ph2d_painter_brush::material::MaterialBytes> {
+    if arc.len() == (size.0 as usize) * (size.1 as usize) {
+        win.capture_mats(layer, arc, size.0 as usize, elems(area, 1));
+    } else {
+        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
+        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
+        win.note_untracked_write();
+    }
+    open_access(win);
     fork_par_raw(arc)
 }
 
@@ -80,7 +162,8 @@ pub(super) fn fork_canvas<'a>(
     width_px: u32,
 ) -> &'a mut Vec<u8> {
     win.capture_canvas(arc, width_px as usize * 4, None);
-    fork_par(arc, win)
+    open_access(win);
+    fork_par_raw(arc)
 }
 
 /// **A porta da TROCA DE PLANO** — o campo `canvas_rgba` passa a hospedar, por um trecho, um plano
@@ -310,6 +393,74 @@ mod tests {
             "o deposito de pigmento nao pode forkar o canvas SERIALMENTE: {raw} sitio(s) com `make_mut` cru \
              (as duas rotas dao os mesmos bytes, entao isto nao acende em teste de comportamento nenhum \
              -- custa 3x o tempo do pen-down e passa despercebido)"
+        );
+    }
+
+    /// **As portas NOMEADAS ensinam o journal; a genérica declara que não sabe.**
+    ///
+    /// O relevo é um mapa por camada e três tipos de elemento, então a captura tem de saber **qual** —
+    /// e é essa exigência que separa as duas famílias de porta. Quem passa pela genérica não fica
+    /// errado, fica **lento**: o journal se declara incompleto e o commit deriva como sempre.
+    ///
+    /// ⚠️ Mutação que sangra: tirar o `capture_heights` do [`fork_heights`] (o journal não sabe do byte
+    /// velho) · tirar o `note_untracked_write` do [`fork_par`] (o journal jura descrever um passo que
+    /// tem escrita fora dele).
+    #[test]
+    fn the_named_relief_doors_teach_the_journal_and_the_generic_one_does_not() {
+        const W: u32 = 64;
+        let n = (W as usize) * (W as usize);
+        let layer = crate::layers::LayerId(7);
+
+        let w = WriteState::default();
+        let mut h: Arc<Vec<f32>> = Arc::new((0..n).map(|i| i as f32).collect());
+        let keep = Arc::clone(&h); // um segundo dono, como o `stroke_undo` de um passo real
+        fork_heights(&mut h, &w, layer, (W, W), None)[10] = -1.0;
+
+        assert_eq!(w.relief_state(), "DESCREVE");
+        assert_eq!(
+            w.heights_before(layer, 10),
+            Some(10.0),
+            "o journal tem de guardar o valor VELHO, nao o que acabou de ser escrito"
+        );
+        assert_eq!(
+            keep[10], 10.0,
+            "controle: o fork preservou o plano congelado"
+        );
+        assert!(
+            w.heights_before(crate::layers::LayerId(8), 10).is_none(),
+            "o journal nao pode responder por OUTRA camada"
+        );
+
+        let w2 = WriteState::default();
+        let mut h2: Arc<Vec<f32>> = Arc::new(vec![1.0; n]);
+        let _ = fork_par(&mut h2, &w2);
+        assert_eq!(
+            w2.relief_state(),
+            "INCOMPLETO",
+            "a porta generica nao sabe de que plano e — o journal tem de se declarar incompleto"
+        );
+    }
+
+    /// **O FOLD escreve o relevo pelas portas nomeadas** — arch-gate, porque o defeito é invisível ao
+    /// comportamento: as duas rotas produzem os mesmos bytes, e a diferença é só se o journal aprende.
+    ///
+    /// O fold é a metade cara do pen-up (9,25 ms de fork nos três planos) e é o alvo do S3; um sítio
+    /// que voltasse ao `fork_par` deixaria o passo INCOMPLETO e o commit derivando, com toda a suíte
+    /// verde.
+    #[test]
+    fn the_relief_fold_goes_through_the_named_doors() {
+        let src = include_str!("impasto_live.rs");
+        for door in ["fork_heights(", "fork_covers(", "fork_mats("] {
+            assert!(
+                src.contains(door),
+                "controle: o fold tem de escrever o relevo pela porta {door}"
+            );
+        }
+        let generic = src.matches("plane_fork::fork_par(").count();
+        assert_eq!(
+            generic, 0,
+            "o fold tem {generic} escrita(s) de relevo pela porta GENERICA: o journal nao aprende de \
+             que plano sao os bytes e o passo inteiro fica INCOMPLETO"
         );
     }
 

@@ -1796,12 +1796,11 @@ dirige `undo_last`/`redo_last` de verdade. O doc do primeiro afirmava a mutaçã
 **Gates:** 2 novos em `undo_live_base_tests` (a cura · a fiação), **1 mutação, sangra** no de fiação.
 **Nenhum schema, nenhum contrato congelado, nenhum id/token** (`PROJECT_SCHEMA` 29).
 
-⚠️ **FLAKE PRÉ-EXISTENTE, medida e NÃO causada por esta wave:**
-`the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` falha ~1 em 3 rodadas da suíte
-**completa** desta crate, no commit anterior a esta mudança (medido nos dois lados). É o gate de razão
-que o §4.8.2 já retunou uma vez quando o produto ficou rápido demais para o oráculo; sob a carga da
-suíte paralela ele voltou à faixa de ruído. *Um gate que flaka será silenciado em vez de acreditado* —
-está NOMEADO aqui, com o número, para não ser confundido com regressão da próxima wave.
+⚠️ **FLAKE PRÉ-EXISTENTE, medida e NÃO causada por esta wave — ✅ FECHADA na §5.27:**
+`the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` falhava ~1 em 3 rodadas da suíte
+**completa** desta crate, no commit anterior a esta mudança (medido nos dois lados). A causa era de
+FIXTURE (as duas telas cronometradas em fases separadas, cada mínimo de um regime de carga diferente),
+não da barra; ver §5.27 para o conserto e as 12 rodadas limpas.
 
 **O que falta no degrau 3:** o cursor e o `stroke_undo` largarem os planos de fato (a contagem de donos
 3 → 1), com a materialização aplicando o patch ao plano VIVO. É essa metade que mata o fold (11,9 ms), o
@@ -1926,6 +1925,65 @@ Tirar o `begin_undo_step()` do `paint_begin` o deixa **VERMELHO** com o byte pr�
 ⚠️ **Uma ordenação ainda NÃO gateada, e fica dita em vez de contrabandeada:** absorver *antes* de zerar
 só é load-bearing quando a absorção passar a LER o journal (hoje ela compara snapshots e não o toca), então
 inverter as duas linhas não sangra nada agora. Está no doc-comment da porta, onde a próxima edição a lê.
+
+---
+
+### 5.27 🧱 O RELEVO ganhou a mesma porta — e o fold, que é 9,25 dos ms, já é descrito pelo journal
+
+Os números decidiram a ordem. O fork do **canvas** no pen-down custa **3,16 ms** a 4096²; o fork dos
+**três planos de relevo** no fold custa **9,25** (§5.14) — três vezes mais. E fazer a reestruturação
+final **uma vez para os quatro planos** é mais barato e mais seguro que fazê-la duas.
+
+**Três portas nomeadas** (`fork_heights` / `fork_covers` / `fork_mats`) ao lado do `fork_canvas`, e não
+uma genérica: o journal é **tipado** (`f32` / `u8` / `[u8; 7]`) e o relevo é um **mapa por camada**, então
+quem escreve tem de dizer **qual plano e de que camada** — e é essa exigência que separa as duas famílias.
+⚠️ Dois planos de camadas diferentes têm a **mesma forma**, então o descarte-por-dimensão do
+`TileJournal` não os separa: um passo que tocasse duas camadas misturaria os bytes das duas no mesmo
+índice, com confiança e em silêncio. A camada é lembrada, e um segundo dono declara o journal
+**MISTURADO** em vez de tentar reconciliar.
+
+**A política de falha é a do S1, e agora vale para três causas:** a porta **genérica** (que não sabe o
+plano), um plano que **ainda não existe** (a 1ª pincelada da camada — não há "antes" que o journal possa
+descrever) e a **mistura**. Qualquer uma marca o passo como não-descrito, `relief_describes_step_at`
+responde `false`, e o commit deriva como sempre — *lento, nunca errado*.
+
+**O censo, com a razão separada** — e a separação é o que o torna útil, porque *"não havia o que
+descrever"* e *"havia e não sei"* são coisas diferentes e só a segunda é dívida:
+
+```text
+  442  SEM-RELEVO    o passo não tocou relevo (correto, nada a fazer)
+  259  INCOMPLETO    tocou pela porta genérica — a dívida: os 11 sítios de sculpt/warp
+   42  DESCREVE      o FOLD, com 4,6 M elementos conferidos e ZERO divergências
+```
+
+**Gates:** unidade (a porta nomeada guarda o valor **velho**, recusa responder por outra camada, e a
+genérica se declara incompleta) + **arch-gate** sobre o `impasto_live.rs` (o fold escreve pelas três
+portas nomeadas) — arquitetural porque o defeito é **invisível ao comportamento**: as duas rotas dão os
+mesmos bytes e a diferença é só se o journal aprende. **2 mutações, 2 sangram.**
+
+⚠️ **E uma armadilha de build que só aparece em `--release`:** as capturas são `cfg(test/debug)` e as
+portas as chamam incondicionalmente, então elas precisam de **irmãs no-op**, como a do canvas já tinha.
+Sem isso o `cargo clippy -p` (debug) fica verde e o release não compila — a mesma família do miss do
+`file_loc_caps`. **O fechamento roda os dois perfis.**
+
+#### ✅ E a flake do gate de razão do fold FECHOU — a causa era de FIXTURE
+
+A §5.24 registrou `the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` falhando **~1 em 3**
+rodadas da suíte completa e sempre verde isolada. A causa não era a barra: as duas telas eram
+cronometradas em **fases separadas** (todo o 1024², depois todo o 2048²), então cada mínimo vinha de um
+**regime de carga diferente** — sob o runner paralelo, outros testes começam e terminam entre as fases, e
+a razão passava a medir o **escalonador**.
+
+**Intercalar as duas** (uma amostra de cada, alternadas) levou a flake de ~1/3 para ~1/10 — e não a zero,
+porque uma razão de wall-clock entre duas cargas paralelas **sub-milissegundo** é ruidosa por natureza.
+⚠️ **A cura foi REPETIR a medição, não alargar a barra**, e a diferença importa: um fold que anda o
+canvas dá ~4× em **toda** tentativa, então nenhuma rodada o salva — o que a repetição compra é uma
+janela de máquina calma para o fold *correto* se mostrar. Alargar a barra compraria o oposto (a falha
+registrada era **2,95×**, acima de qualquer bar que ainda pegasse a mutação).
+
+**12 rodadas completas seguidas, limpas**, e a mutação documentada (o fold ignorando a janela) sangra a
+**3,57×** — o laço de repetição não a torna infalível, que é a única coisa que poderia ter dado errado
+neste conserto.
 
 ---
 

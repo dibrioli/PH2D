@@ -50,9 +50,12 @@ impl PainterTool {
         // stroke's paint is zero, and `max(x, 0)` is `x`.
         {
             let n = (w as usize) * (h as usize);
-            let dst = super::plane_fork::fork_par(
+            let dst = super::plane_fork::fork_covers(
                 self.covers.entry(active).or_default(),
                 &self.undo.write_state,
+                active,
+                (w, h),
+                Some(rect),
             );
             if dst.len() != n {
                 dst.resize(n, 0);
@@ -82,9 +85,12 @@ impl PainterTool {
             let n = (w as usize) * (h as usize);
             let mat = self.paint.brush.material().to_bytes();
             let neutral = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
-            let dst = super::plane_fork::fork_par(
+            let dst = super::plane_fork::fork_mats(
                 self.mats.entry(active).or_default(),
                 &self.undo.write_state,
+                active,
+                (w, h),
+                Some(rect),
             );
             if dst.len() != n {
                 dst.resize(n, neutral);
@@ -209,11 +215,14 @@ impl PainterTool {
         //     carving a canyon.
         let push = brush.effective_impasto_push();
         let has_push = push > 0.0 && self.paint.relief.live_push.len() == n;
-        let target = super::plane_fork::fork_par(
+        let target = super::plane_fork::fork_heights(
             self.heights
                 .entry(layer)
                 .or_insert_with(|| std::sync::Arc::new(vec![0.0; n])),
             &self.undo.write_state,
+            layer,
+            (w, h),
+            Some(rect),
         );
         if target.len() != n {
             target.resize(n, 0.0);

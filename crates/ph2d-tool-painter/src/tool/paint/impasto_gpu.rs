@@ -402,8 +402,8 @@ mod tests {
     /// samples, because a loaded machine can only ever make a sample slower.
     #[test]
     fn the_fold_costs_what_the_window_costs_not_what_the_canvas_costs() {
-        /// Fastest wall clock of the same window folded on a canvas of `size`.
-        fn window_ms(size: u32) -> f64 {
+        /// A tool with a stroke already carved on a canvas of `size`, plus the window to fold.
+        fn ready(size: u32) -> (PainterTool, (u32, u32, u32, u32)) {
             let mut t = PainterTool::default();
             t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
             let b = BrushSpec {
@@ -429,25 +429,51 @@ mod tests {
             // Contains the stroke (x from 16 to 184) — a window over bare paper agrees trivially,
             // because two cheap early-outs cost the same whatever the canvas is.
             let win = (0u32, (size / 2) - 256, 512, 512);
-            let mut s = Vec::new();
-            for _ in 0..9 {
-                let t0 = std::time::Instant::now();
-                let p = t.impasto_gpu_planes_in(win).expect("sculpted and lit");
-                s.push(t0.elapsed().as_secs_f64() * 1e3);
-                drop(p);
-            }
-            s.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
-            s[0]
+            (t, win)
         }
-        let small = window_ms(1024);
-        let large = window_ms(2048);
-        // 4x the canvas, the same window. Anything that walks the plane shows up as ~4x here; the bar
-        // sits well below that and well above the noise of two sub-millisecond samples.
-        let ratio = large / small.max(1e-6);
-        assert!(
-            ratio < 2.0,
-            "the fold must be bounded by the window: 1024²={small:.4} ms vs 2048²={large:.4} ms \
-             ({ratio:.2}x — a canvas-bound fold quadruples)"
+        /// One timed fold, in milliseconds.
+        fn fold_ms(t: &PainterTool, win: (u32, u32, u32, u32)) -> f64 {
+            let t0 = std::time::Instant::now();
+            let p = t.impasto_gpu_planes_in(win).expect("sculpted and lit");
+            let dt = t0.elapsed().as_secs_f64() * 1e3;
+            drop(p);
+            dt
+        }
+        // ⚠️ **As duas telas são cronometradas INTERCALADAS, e isso é o que tira a flake.** Medir todo o
+        // 1024² e depois todo o 2048² faz cada mínimo vir de um regime de carga diferente — sob a suíte
+        // paralela, outros testes começam e terminam entre as duas fases, e a razão passa a medir o
+        // ESCALONADOR em vez desta propriedade (falhava ~1 em 3 rodadas completas, sempre verde
+        // isolada). Intercalando, as duas amostras veem o mesmo tempo.
+        let (small_t, small_w) = ready(1024);
+        let (large_t, large_w) = ready(2048);
+        let best = |mut v: Vec<f64>| {
+            v.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            v[0]
+        };
+        // ⚠️ **E a medição é REPETIDA, em vez de a barra ser alargada.** Intercalar derrubou a flake de
+        // ~1 em 3 para ~1 em 10, e não a zero: uma razão de wall-clock entre duas cargas paralelas
+        // sub-milissegundo, sob um runner que roda outros testes ao lado, é ruidosa por natureza. Repetir
+        // **não enfraquece a afirmação** — um fold que anda o canvas dá ~4× em TODA tentativa, então
+        // nenhuma rodada o salva; o que a repetição compra é uma janela de máquina calma para o fold
+        // correto se mostrar. Alargar a barra compraria o oposto (a falha registrada era 2,95×).
+        let mut ratio = f64::MAX;
+        for _ in 0..3 {
+            let (mut ss, mut ls) = (Vec::new(), Vec::new());
+            for _ in 0..9 {
+                ss.push(fold_ms(&small_t, small_w));
+                ls.push(fold_ms(&large_t, large_w));
+            }
+            let (small, large) = (best(ss), best(ls));
+            // 4x the canvas, the same window. Anything that walks the plane shows up as ~4x here; the
+            // bar sits well below that and well above the noise of two sub-millisecond samples.
+            ratio = ratio.min(large / small.max(1e-6));
+            if ratio < 2.0 {
+                return;
+            }
+        }
+        panic!(
+            "the fold must be bounded by the window: best ratio over 3 rounds was {ratio:.2}x \
+             (a canvas-bound fold quadruples, and does so in every round)"
         );
     }
 

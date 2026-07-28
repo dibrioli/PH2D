@@ -256,6 +256,7 @@ impl PainterTool {
             .journal_describes_step_at(before.writes)
         {
             self.audit_journal_against("PASSO", &before.canvas_rgba);
+            self.audit_relief_journals(before);
             return;
         }
         if !self.undo.write_state.get().covers(before.writes) {
@@ -268,6 +269,54 @@ impl PainterTool {
             return; // escrita estrangeira: a absorção move o cursor, e só depois dela há o que conferir
         }
         self.audit_journal_against("COMMIT", &cursor.canvas_rgba);
+    }
+
+    /// **A mesma rede, para os TRÊS planos de relevo** — o fold é a metade cara do pen-up (9,25 ms de
+    /// fork), e ele é quem o S3 tem de alcançar depois do canvas.
+    ///
+    /// ⚠️ O relevo é um **mapa por camada**, então a pergunta carrega a camada: os journals recusam
+    /// responder por outra (`speaks_for`), e um passo que tocou duas se declara misturado em vez de
+    /// devolver bytes do plano errado.
+    #[cfg(any(test, debug_assertions))]
+    fn audit_relief_journals(&self, before: &crate::undo::ModelSnapshot) {
+        let Some(layer) = self.layers.active() else {
+            return;
+        };
+        if !self
+            .undo
+            .write_state
+            .relief_describes_step_at(before.writes, layer)
+        {
+            eprintln!("[S3-AUDIT] relevo/{}", self.undo.write_state.relief_state());
+            return;
+        }
+        /// `(conhecidos, divergentes)` de um plano do mapa contra o que o journal diz dele.
+        fn tally<T: Copy + PartialEq>(
+            want: Option<&std::sync::Arc<Vec<T>>>,
+            get: impl Fn(usize) -> Option<T>,
+        ) -> (usize, usize) {
+            let (mut known, mut differ) = (0usize, 0usize);
+            for (i, &w) in want.into_iter().flat_map(|v| v.iter().enumerate()) {
+                if let Some(got) = get(i) {
+                    known += 1;
+                    differ += usize::from(got != w);
+                }
+            }
+            (known, differ)
+        }
+        let w = &self.undo.write_state;
+        let (kh, dh) = tally(before.heights.get(&layer), |i| w.heights_before(layer, i));
+        let (kc, dc) = tally(before.covers.get(&layer), |i| w.covers_before(layer, i));
+        let (km, dm) = tally(before.mats.get(&layer), |i| w.mats_before(layer, i));
+        eprintln!(
+            "[S3-AUDIT] relevo/PASSO: h={kh}/{dh} c={kc}/{dc} m={km}/{dm} (conhecidos/divergem)"
+        );
+        assert!(
+            dh + dc + dm == 0,
+            "os journals de relevo descrevem um passado diferente do `before` do passo: heights {dh}, \
+             covers {dc}, mats {dm} divergem. Algo escreveu num plano de relevo SEM passar pelas portas \
+             `fork_heights`/`fork_covers`/`fork_mats` (doc 28 §7)"
+        );
     }
 
     /// A comparação em si, para os dois alvos — **uma porta**, porque duas cópias dela divergiriam

@@ -7068,7 +7068,6 @@ dependencies = [
  "bevy_ecs",
  "bytemuck",
  "criterion 0.7.0",
- "half",
  "naga",
  "ph2d-asset",
  "ph2d-asset-ktx2",

@@ -56,9 +56,6 @@ pub mod mipgen;
 pub mod motion_fx;
 pub mod picking;
 pub mod pipeline;
-/// The app HDR colour-grade post-process (ADR-0145) — a frame-wide vignette + grade on
-/// `game_rt`, between the Motion glow and the tonemap. Byte-identical when neutral.
-pub mod post_stack;
 pub mod premul;
 /// Straight → premultiplied GPU blit bridging the layer compositor's straight
 /// output into the premultiplied Painter preview slot (ADR-0045 Phase 3).
@@ -113,7 +110,6 @@ pub use picking::{
     selection_bbox_world, sprite_world_to_uv, sprite_world_to_uv_unclamped,
 };
 pub use pipeline::SpritePipeline;
-pub use post_stack::{GradeParams, PostStack, grade_pixel};
 pub use premul::{
     AlphaMode, SpriteImage, premultiply_rgba8, premultiply_rgba8_in_linear, unpremultiply_rgba8,
 };

@@ -696,7 +696,6 @@ impl crate::App {
         self.motion_node_path_smoke();
         self.motion_delay_smoke();
         self.motion_fx_smoke();
-        self.post_stack_smoke();
         self.value_curve_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();
@@ -760,7 +759,6 @@ impl crate::App {
             layout,
             game_rt,
             motion_fx,
-            post_stack,
             tonemap,
             compositor,
             vello_pass,
@@ -1021,8 +1019,6 @@ impl crate::App {
             game_rt.ensure_size(surface.gpu(), dim);
             // doc 67: the Motion glow RT + blur chain track the surface too.
             motion_fx.ensure_size(surface.gpu(), dim);
-            // ADR-0145: the post-stack scratch RT tracks the surface alongside game_rt.
-            post_stack.ensure_size(surface.gpu(), dim);
             tonemap.ensure_size(surface.gpu(), dim);
             tonemap.rebind_game_view(
                 surface.gpu(),
@@ -1607,16 +1603,7 @@ impl crate::App {
         // Match the legacy backdrop value here; the chrome edges
         // composite identically.
         let (r, g, b) = if hero_live.is_some() {
-            // The post-stack smoke needs a LIT, uniform canvas so its vignette reads as
-            // darkened EDGES (on the dark 0.047 backdrop the darkening is invisible).
-            // Middle grey (0.18, the grade pivot) — comfortably lit but not the
-            // "almost white" a bright value became after the AgX tonemap (Enio). Gated
-            // on the smoke env, so the calibrated editor backdrop is untouched.
-            if crate::post_stack_smoke::is_active() {
-                (0.18, 0.18, 0.18)
-            } else {
-                (0.047, 0.047, 0.055)
-            }
+            (0.047, 0.047, 0.055)
         } else {
             let t = self.fixed_step.tick_count() as f64 * self.fixed_step.fixed_dt();
             (

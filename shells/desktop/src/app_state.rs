@@ -101,12 +101,6 @@ pub(crate) struct AppGfx {
     /// authored bloom on the active Motion doc (`fx.bloom.enabled`); otherwise it
     /// is inert and the frame is byte-identical. Sized alongside `game_rt`.
     pub(crate) motion_fx: ph2d_render::MotionFx,
-    /// ADR-0145: the app HDR post-stack — a frame-wide colour grade (vignette, exposure,
-    /// contrast, saturation, tint) on `game_rt`, between the Motion glow and the
-    /// tonemap. Owns an `Rgba16Float` scratch sized alongside `game_rt`. Runs only when
-    /// `App.grade` is non-neutral; otherwise the block is skipped and the frame is
-    /// byte-identical (blast radius zero — the tonemap is untouched).
-    pub(crate) post_stack: ph2d_render::PostStack,
     /// M14.5: AgX tonemap pass — owns its own LDR output texture
     /// (`game_rt_ldr`). Sampled by the compositor as the "game layer"
     /// input. Identity LUT by default; swap in real AgX via
@@ -500,12 +494,6 @@ pub(crate) struct App {
     /// W2's physics panel gets a "Show Colliders" checkbox reading THIS flag —
     /// one door, so the key and the checkbox can never disagree.
     pub(crate) show_colliders: bool,
-    /// ADR-0145: the authored app colour grade (vignette + exposure + contrast +
-    /// saturation + tint). `PostStack.grade` runs it over `game_rt` before the tonemap,
-    /// but ONLY when this is non-neutral (`present.rs` skips the pass at neutral →
-    /// byte-identical). Fatia 1: runtime state the smoke arms; fatia 2 moves it to
-    /// `ProjectSettings.grade` with a Settings UI + persistence.
-    pub(crate) grade: ph2d_render::GradeParams,
     /// Os fantasmas do onion cozidos NESTE frame (bloco de overlay do `run_render_frame`)
     /// e lidos pelo `run_present_phase` para o slot `extra` do passe de sprite — o mesmo
     /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando

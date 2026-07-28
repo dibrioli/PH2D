@@ -34,10 +34,6 @@ impl crate::App {
         // Retirados ANTES do borrow de `self.gfx`; concatenados ao slot `extra` do passe
         // de sprite abaixo. Vazio quando o onion está desligado.
         let onion_ghosts = std::mem::take(&mut self.onion_ghosts);
-        // ADR-0145: the authored app colour grade, copied out before the `self.gfx`
-        // borrow (it drives the Pass 1d post-stack below). Neutral by default → the pass
-        // is skipped and the frame is byte-identical.
-        let grade = self.grade;
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -58,7 +54,6 @@ impl crate::App {
             tools,
             game_rt,
             motion_fx,
-            post_stack,
             tonemap,
             compositor,
             vello_pass,
@@ -250,18 +245,6 @@ impl crate::App {
                             tint: glow.tint,
                         },
                     );
-                }
-                // Pass 1d: the app HDR post-stack (ADR-0145) — a frame-wide colour
-                //   grade (vignette + exposure + contrast + saturation + tint) on
-                //   `game_rt`, in HDR linear light, BEFORE the tonemap (scene-referred:
-                //   grade then display transform, the ACES/AgX idiom). Self-contained
-                //   (copies `game_rt` to a scratch and grades it back) so the tonemap is
-                //   untouched. Skipped entirely when the grade is neutral → the frame is
-                //   byte-identical, blast radius zero. This is the Option A of doc 66 the
-                //   glow (Pass 1c) is NOT: a vignette darkens the whole frame's edges,
-                //   which "only the Motion layer" cannot express.
-                if !grade.is_neutral() {
-                    post_stack.grade(surface.gpu(), game_rt.texture(), game_rt.view(), &grade);
                 }
                 // Pass 2: AgX tonemap
                 //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)

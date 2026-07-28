@@ -209,7 +209,6 @@ mod physics_smoke_zones;
 mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
-mod post_stack_smoke;
 mod project;
 mod project_painter;
 mod render_loop;
@@ -471,9 +470,6 @@ impl App {
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,
-            // ADR-0145: neutral by default — the post-stack pass is skipped (byte-identical)
-            // until the artist (fatia 2 UI) or the smoke authors a grade.
-            grade: ph2d_render::GradeParams::default(),
             onion_ghosts: Vec::new(),
             interaction: ph2d_physics_ecs::InteractionSettings::default(),
             blast_flash: None,

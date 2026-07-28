@@ -1342,3 +1342,125 @@ fn squares_cover_more_area_than_round_dots() {
         "o quadrado cobre >10% mais que o disco: quadrado {squares}, disco {dots}"
     );
 }
+
+// ---------- O laço e a hachura DENSIFICADOS: a classe que a suíte não tinha ----------
+//
+// **A premissa que faltava.** Todo gate de união acima usa polilinhas de 4-6 pontos
+// escritas à mão, e os dois gates de auto-cruzamento cravam `hardness = 1.0` — o
+// ÚNICO regime onde o defeito não pode existir (máscara binária ⇒ o raio de escrita
+// É o raio visível ⇒ o first-wins vira união exata). Mas desde a reamostragem suave
+// (T2.8, 2026-07-27) **todo traço do produto é DENSIFICADO**: o passo é
+// `0.4 × largura = 0.8·r`, então um traço de 4 pontos vira dezenas.
+//
+// **Por que a densidade muda a resposta.** O broadphase de vizinhos alcança
+// `2·r_i + r_j = 3·r` (`neighbors.rs`), e a razão
+//
+//     alcance / passo  =  3·r / 0.8·r  =  3,75
+//
+// é **constante** — as duas grandezas são proporcionais ao raio, então o pincel some
+// da conta. Logo os vizinhos `i±1 … i±4` da PRÓPRIA fita entram na lista em qualquer
+// espessura, antes de existir cruzamento nenhum, e comem os slots de
+// `MAX_EXTRAS_PER_SEGMENT`. Onde o traço de fato volta sobre si mesmo, o segmento que
+// cruza cai FORA da lista e aquele pixel volta ao first-wins: a GPU pinta a cauda
+// macia de uma passagem por cima do NÚCLEO de outra.
+//
+// O par abaixo é o **discriminante**, não mais um verde: o LAÇO (um cruzamento, folga
+// larga) passa; a HACHURA (voltas a meio raio) é a que sangra.
+
+/// O passo de densificação do PRODUTO: `RESAMPLE_STEP_FRACTION = 0.4` × a largura
+/// (`shells/desktop/src/flip_draw.rs::resample_step`), ou seja `0.8 · r`.
+///
+/// Escrito aqui como número e **não importado** de propósito: este gate mede o que o
+/// produto faz *hoje*. Se aquele número mudar, o teste tem de ser **re-lido** — um
+/// gate que acompanha a constante que ele vigia fica verde por construção.
+const PRODUCT_RESAMPLE_STEP_OVER_RADIUS: f32 = 0.8;
+
+/// Reamostra a polilinha por comprimento de arco no passo dado, preservando os
+/// vértices originais. Só a DENSIDADE interessa aqui (a forma da curva é assunto do
+/// `flip_smooth`), então a interpolação é linear.
+fn densify(pts: &[(f32, f32)], step: f32) -> Vec<(f32, f32)> {
+    let mut out = vec![pts[0]];
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let d = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        if d > step {
+            let n = (d / step).floor() as usize;
+            for k in 1..=n {
+                let t = k as f32 * step / d;
+                if t < 1.0 {
+                    out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+                }
+            }
+        }
+        out.push(b);
+    }
+    out
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_densified_soft_loop_matches_the_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // O CONTROLE. Um laço que cruza a si mesmo UMA vez, com folga larga entre as duas
+    // passagens: os segmentos que se cruzam estão longe no índice, mas sobram slots
+    // para eles. Se este ficar vermelho, o problema não é o cap — é a união.
+    const R: f32 = 5.0;
+    let spine = [
+        (12.0, 20.0),
+        (44.0, 20.0),
+        (44.0, 44.0),
+        (20.0, 44.0),
+        (20.0, 12.0),
+    ];
+    let pts = densify(&spine, PRODUCT_RESAMPLE_STEP_OVER_RADIUS * R);
+    let radii = uniform_radii(R, pts.len());
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &radii,
+            closed: false,
+            hardness: 0.7,
+        },
+        "laço macio DENSIFICADO (cruza uma vez, folga larga)",
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_densified_soft_hatching_matches_the_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // O DISCRIMINANTE. Uma serpentina que volta sobre si mesma a **meio raio** de
+    // distância — hachura, o gesto mais comum de quem sombreia. Densificada, cada
+    // segmento tem os 4 vizinhos da própria fita dentro do alcance ANTES de qualquer
+    // vizinho de outra passagem, e a lista satura: o segmento da passagem vizinha não
+    // entra, e o núcleo dela é pintado pela cauda macia desta.
+    const R: f32 = 5.0;
+    const GAP: f32 = 0.5 * R;
+    let (y0, y1) = (14.0, 50.0);
+    let mut spine = Vec::new();
+    for i in 0..5 {
+        let x = 20.0 + i as f32 * GAP;
+        let (from, to) = if i % 2 == 0 { (y0, y1) } else { (y1, y0) };
+        spine.push((x, from));
+        spine.push((x, to));
+    }
+    let pts = densify(&spine, PRODUCT_RESAMPLE_STEP_OVER_RADIUS * R);
+    let radii = uniform_radii(R, pts.len());
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &radii,
+            closed: false,
+            hardness: 0.7,
+        },
+        "hachura macia DENSIFICADA (voltas a meio raio)",
+    );
+}

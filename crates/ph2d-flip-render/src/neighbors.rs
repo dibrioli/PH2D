@@ -229,6 +229,8 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<Vec<u32>> {
     if n < 3 {
         return out; // nada não-adjacente existe
     }
+    let closed = segs[n - 1].b == segs[0].a;
+    let max_radius = segs.iter().fold(0.0f32, |m, s| m.max(s.radius));
     let grid = Grid::build(segs);
     let mut top: Vec<(f32, u32)> = Vec::with_capacity(MAX_EXTRAS_PER_SEGMENT + 1);
     // Dedup por GERAÇÃO (o segmento aparece em várias células da consulta): o carimbo
@@ -243,6 +245,10 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<Vec<u32>> {
         top.clear();
         let si = segs[i];
         let visit = i as u32 + 1;
+        // A FITA LOCAL entra PRIMEIRO, com orçamento PRÓPRIO, e é carimbada — a
+        // consulta do grid abaixo a pula, então os `MAX_EXTRAS_PER_SEGMENT` slots
+        // ficam INTEIROS para os cruzamentos. Ver `push_ribbon_local`.
+        push_ribbon_local(segs, i, closed, max_radius, &mut stamp, visit, &mut out[i]);
         // CONSULTA com pad `2·r_i` — o alcance dos pixels do quad deste segmento.
         let (c0, c1) = grid.cell_range(&si, 2.0 * si.radius);
         for row in c0.1..=c1.1 {
@@ -272,9 +278,106 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<Vec<u32>> {
                 }
             }
         }
-        out[i] = top.iter().map(|&(_, j)| j).collect();
+        out[i].extend(top.iter().map(|&(_, j)| j));
     }
     out
+}
+
+/// Teto de vizinhos da FITA LOCAL por segmento — um orçamento **separado** do
+/// [`MAX_EXTRAS_PER_SEGMENT`] dos cruzamentos, e essa separação é a wave inteira.
+///
+/// **O que quebrou.** O alcance do broadphase é `2·r_i + r_j ≈ 3·r` e o passo da
+/// reamostragem suave é `0.4 × largura = 0.8·r` (`flip_draw::resample_step`). As duas
+/// grandezas são proporcionais ao raio, então a razão `alcance / passo = 3,75` é
+/// **constante**: os vizinhos `i±1 … i±4` da PRÓPRIA fita caem dentro do alcance em
+/// QUALQUER espessura de pincel, antes de existir cruzamento nenhum. Com um orçamento
+/// único e ordenado por distância, eles — que estão a distância ~0 — ganhavam sempre, e
+/// o segmento da passagem que de fato cruza era **cortado**. Aquele pixel voltava ao
+/// first-wins e a GPU pintava a cauda macia de uma passagem sobre o NÚCLEO de outra
+/// (medido: 520 px divergentes, pior desvio −127/255, numa hachura densificada).
+///
+/// **O valor é MEDIDO, não escolhido** (`measure_ribbon_budget`, rode com
+/// `-- --nocapture`), na densidade que o `resample_smooth` de fato produz:
+///
+/// | cenário (raio 5, passo `0.8·r`) | máx | média |
+/// |---|---|---|
+/// | reta | 4 | 3,8 |
+/// | arco raio 10·r | **12** | 9,8 |
+/// | arco raio 2·r (curvatura alta) | 11 | 7,6 |
+/// | arco raio 1·r (o limite do pincel) | 11 | 7,6 |
+/// | hachura gap 0,5·r | 6 | 4,2 |
+///
+/// Pior caso do produto **12** ⇒ teto **16**, 33% de folga. ⚠️ **A degradação, nomeada:**
+/// entrada 4× mais densa que o passo (mão LENTA numa curva, onde o RDP preserva pontos —
+/// a reamostragem só ACRESCENTA, nunca remove) **satura**, e ali a lista guarda os 16 mais
+/// próximos POR ARCO (8 de cada lado), que são os que mais contribuem. Isso nunca é pior
+/// que o mundo pré-esta-wave: o orçamento dos CRUZAMENTOS
+/// ([`MAX_EXTRAS_PER_SEGMENT`]) fica intacto, que é a razão de existir desta separação.
+pub(crate) const MAX_RIBBON_EXTRAS: usize = 16;
+
+/// Os vizinhos da MESMA PASSAGEM: os segmentos alcançáveis **andando pela polilinha**
+/// a partir de `i` dentro do alcance de influência do quad dele.
+///
+/// **A definição se escreve sozinha e não tem constante mágica.** Um segmento que está
+/// perto de `i` ou é (a) a fita continuando — e então o arco até ele é curto — ou (b)
+/// o traço que foi embora e VOLTOU, isto é um cruzamento. O comprimento de arco separa
+/// os dois exatamente, em qualquer densidade de amostragem e qualquer espessura: é a
+/// mesma lei que esta linha já aplicou quatro vezes ao relevo — *a propriedade é do
+/// CAMINHO, nunca de quão fino o motor amostrou o caminho*.
+///
+/// Os adjacentes (`i±1`) são pulados: chegam ao fragment pela janela de sequência
+/// (`p0`/`p3`) e não gastam slot. Traço FECHADO dá a volta; aberto para nas pontas.
+fn push_ribbon_local(
+    segs: &[Seg],
+    i: usize,
+    closed: bool,
+    max_radius: f32,
+    stamp: &mut [u32],
+    visit: u32,
+    out: &mut Vec<u32>,
+) {
+    let n = segs.len();
+    // Cota conservadora do alcance: o raio do dono entra DOBRADO (o teto do esticão do
+    // miter) e o do vizinho é cotado pelo MAIOR do traço — o teste por-par abaixo é o
+    // exato, este só decide quando PARAR de andar.
+    let walk_reach = 2.0 * segs[i].radius + max_radius;
+    stamp[i] = visit;
+    for dir in [1i64, -1i64] {
+        let mut arc = 0.0f32;
+        let mut j = i as i64;
+        for _ in 0..n {
+            // O arco cresce pelo comprimento do segmento que acabamos de deixar para trás.
+            let cur = &segs[j as usize];
+            arc += (cur.pb - cur.pa).length();
+            if arc > walk_reach {
+                break;
+            }
+            j += dir;
+            if j < 0 || j >= n as i64 {
+                if !closed {
+                    break;
+                }
+                j = j.rem_euclid(n as i64);
+            }
+            let ju = j as usize;
+            if ju == i || stamp[ju] == visit {
+                break; // deu a volta inteira num traço fechado curto
+            }
+            let sj = &segs[ju];
+            if is_adjacent(&segs[i], sj) {
+                stamp[ju] = visit; // adjacente: já vem pela janela `p0`/`p3`
+                continue;
+            }
+            if arc > 2.0 * segs[i].radius + sj.radius {
+                break; // fora do alcance REAL deste vizinho — e o arco só cresce
+            }
+            stamp[ju] = visit;
+            out.push(ju as u32);
+            if out.len() >= MAX_RIBBON_EXTRAS {
+                return;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -356,14 +459,25 @@ mod tests {
     }
 
     /// A referência ingênua `O(n²)` — o oráculo do grid.
+    /// O oráculo `O(n²)` do broadphase. ⚠️ **A fita local vem pela MESMA porta do
+    /// produto** (`push_ribbon_local`) em vez de ser re-derivada aqui: o que este teste
+    /// existe para provar é que o GRID não perde um CRUZAMENTO, e uma 2ª cópia da regra
+    /// de fita transformaria uma divergência de partição num falso positivo (foi o que
+    /// aconteceu quando a partição nasceu: o grid achava o vizinho `i±2` por arco e o
+    /// oráculo o descartava por ranking de distância — o oráculo é que estava velho).
     fn brute_force(segs: &[Seg]) -> Vec<Vec<u32>> {
         let n = segs.len();
         let mut out = vec![Vec::new(); n];
+        let closed = segs[n - 1].b == segs[0].a;
+        let max_radius = segs.iter().fold(0.0f32, |m, s| m.max(s.radius));
+        let mut stamp = vec![0u32; n];
         for i in 0..n {
+            let visit = i as u32 + 1;
+            push_ribbon_local(segs, i, closed, max_radius, &mut stamp, visit, &mut out[i]);
             let mut cand: Vec<(f32, u32)> = Vec::new();
             for j in 0..n {
                 let (si, sj) = (segs[i], segs[j]);
-                if i == j || is_adjacent(&si, &sj) {
+                if i == j || is_adjacent(&si, &sj) || stamp[j] == visit {
                     continue;
                 }
                 let d2 = seg_seg_distance_sq(si.pa, si.pb, sj.pa, sj.pb);
@@ -374,7 +488,7 @@ mod tests {
             }
             cand.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             cand.truncate(MAX_EXTRAS_PER_SEGMENT);
-            out[i] = cand.iter().map(|&(_, j)| j).collect();
+            out[i].extend(cand.iter().map(|&(_, j)| j));
         }
         out
     }
@@ -439,6 +553,141 @@ mod tests {
             extras[0].contains(&1) && extras[0].contains(&2),
             "os mais próximos entram: {:?}",
             extras[0]
+        );
+    }
+}
+
+#[cfg(test)]
+mod ribbon_budget_measurement {
+    use super::*;
+
+    /// Constrói os segmentos de uma polilinha com raio uniforme (índices globais
+    /// sequenciais, como o `pack` faz para um traço aberto).
+    fn segs_of(pts: &[(f32, f32)], r: f32) -> Vec<Seg> {
+        (0..pts.len() - 1)
+            .map(|i| Seg {
+                a: i as u32,
+                b: i as u32 + 1,
+                pa: Vec2::new(pts[i].0, pts[i].1),
+                pb: Vec2::new(pts[i + 1].0, pts[i + 1].1),
+                radius: r,
+            })
+            .collect()
+    }
+
+    /// Reamostra no passo do produto (`0.4 × largura = 0.8 · r`).
+    fn densify(pts: &[(f32, f32)], step: f32) -> Vec<(f32, f32)> {
+        let mut out = vec![pts[0]];
+        for w in pts.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let d = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (d / step).floor() as usize;
+            for k in 1..=n {
+                let t = k as f32 * step / d;
+                if t < 1.0 {
+                    out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+                }
+            }
+            out.push(b);
+        }
+        out
+    }
+
+    /// **A MEDIÇÃO que fixa `MAX_RIBBON_EXTRAS`.** Roda com
+    /// `cargo test -p ph2d-flip-render ribbon_budget -- --nocapture`.
+    ///
+    /// A pergunta: quantos vizinhos da PRÓPRIA fita caem dentro do alcance de
+    /// influência, na densidade que o produto de fato produz? O teto tem de ficar
+    /// acima do pior caso REAL — e o pior caso não é uma reta, é a curvatura máxima
+    /// que um pincel consegue desenhar (o raio de curvatura chega ao raio do pincel;
+    /// abaixo disso a fita dobra sobre si mesma e vira cruzamento, não fita).
+    #[test]
+    fn measure_ribbon_budget() {
+        const R: f32 = 5.0;
+        let step = 0.8 * R;
+        // ⚠️ Os arcos são gerados **no passo do produto** (comprimento de ARCO), não por
+        // grau: uma varredura por grau num raio grande fica 4,6× mais densa que o que o
+        // `resample_smooth` de fato produz, e mediria a fixture em vez do produto.
+        let arc = |curv_r: f32, sweep_deg: f32| -> Vec<(f32, f32)> {
+            let total = curv_r * sweep_deg.to_radians();
+            let n = (total / step).max(2.0) as usize;
+            (0..=n)
+                .map(|k| {
+                    let a = (k as f32 / n as f32) * sweep_deg.to_radians();
+                    (curv_r * a.cos(), curv_r * a.sin())
+                })
+                .collect()
+        };
+        let cases: Vec<(&str, Vec<(f32, f32)>, bool)> = vec![
+            ("reta", vec![(0.0, 0.0), (200.0, 0.0)], true),
+            ("arco raio 10·r", arc(10.0 * R, 90.0), true),
+            ("arco raio 2·r (curvatura alta)", arc(2.0 * R, 180.0), true),
+            ("arco raio 1·r (o limite do pincel)", arc(R, 360.0), true),
+            (
+                "hachura gap 0.5·r",
+                (0..5)
+                    .flat_map(|i| {
+                        let x = i as f32 * 0.5 * R;
+                        if i % 2 == 0 {
+                            [(x, 0.0), (x, 80.0)]
+                        } else {
+                            [(x, 80.0), (x, 0.0)]
+                        }
+                    })
+                    .collect(),
+                true,
+            ),
+            // A MÃO LENTA: o RDP preserva pontos numa curva apertada, então a entrada
+            // pode chegar mais densa que o passo da reamostragem (que só ACRESCENTA).
+            (
+                "curva com entrada 4× densa (mão lenta)",
+                (0..=240)
+                    .map(|k| {
+                        let a = (k as f32 / 240.0) * std::f32::consts::PI;
+                        (4.0 * R * a.cos(), 4.0 * R * a.sin())
+                    })
+                    .collect(),
+                false,
+            ),
+        ];
+
+        println!("\n  cenário                                 | pts | máx | média | densidade");
+        println!("  ----------------------------------------|-----|-----|-------|----------");
+        let mut worst_product = 0usize;
+        for (name, spine, product_density) in cases {
+            let pts = densify(&spine, step);
+            let segs = segs_of(&pts, R);
+            let mut stamp = vec![0u32; segs.len()];
+            let (mut max_n, mut sum) = (0usize, 0usize);
+            for i in 0..segs.len() {
+                let mut out = Vec::new();
+                push_ribbon_local(&segs, i, false, R, &mut stamp, i as u32 + 1, &mut out);
+                max_n = max_n.max(out.len());
+                sum += out.len();
+            }
+            if product_density {
+                worst_product = worst_product.max(max_n);
+            }
+            println!(
+                "  {name:<39} | {:>3} | {max_n:>3} | {:>5.1} | {}",
+                segs.len(),
+                sum as f32 / segs.len() as f32,
+                if product_density {
+                    "produto"
+                } else {
+                    "4x densa"
+                }
+            );
+        }
+        println!(
+            "\n  pior caso na densidade do PRODUTO: {worst_product}   \
+             MAX_RIBBON_EXTRAS = {MAX_RIBBON_EXTRAS}\n"
+        );
+        assert!(
+            MAX_RIBBON_EXTRAS >= worst_product,
+            "o teto ({MAX_RIBBON_EXTRAS}) tem de cobrir o pior caso na densidade que o \
+             produto de fato produz ({worst_product}) — abaixo dele a fita local volta a \
+             perder vizinhos e a mordida ressurge no traço NORMAL"
         );
     }
 }

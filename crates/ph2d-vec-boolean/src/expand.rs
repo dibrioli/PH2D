@@ -317,8 +317,14 @@ pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
 /// chamador cai no caminho que tinha antes.
 #[must_use]
 pub fn silhouette_paths(path: &VecPath) -> Vec<VecPath> {
-    if path.stroke.is_none() {
-        // Sem traço a silhueta É o path — devolvê-lo evita um sweep que não decide nada.
+    // Sem traço a silhueta É o path — devolvê-lo evita um sweep que não decide nada.
+    //
+    // ⚠️ **Largura zero conta como "sem traço"** (`StrokeSpec::lays_a_band`, a porta única): é o que
+    // o slider promete e o que o desenho faz. Perguntar `stroke.is_none()` levava a largura zero ao
+    // `outline_stroke`, que devolve tinta VAZIA, e daí a `Vec::new()` — que o chamador lê como *"não
+    // sei responder"* e converte no caminho do raster. O pente do bevel voltava numa forma sem
+    // contorno nenhum (BUGS #24, 2ª rodada).
+    if !path.stroke.as_ref().is_some_and(StrokeSpec::lays_a_band) {
         return vec![path.clone()];
     }
     let ink = outline_stroke(path);

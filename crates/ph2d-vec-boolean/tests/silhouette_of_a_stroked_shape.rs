@@ -167,6 +167,30 @@ fn a_shape_without_a_stroke_is_its_own_silhouette() {
     assert_eq!(sil[0], p, "sem traco a silhueta e a PROPRIA forma, ao bit");
 }
 
+/// **Largura ZERO é "sem traço" — silhueta ao BIT, e sem sweep.**
+///
+/// Report do Enio (2026-07-27, 2ª rodada): *"para stroke maior que 0 funciona. Mas para stroke = 0
+/// linhas aparecem"*. O slider chega a `0`, e `0` significa sem traço — mas `stroke.is_some()`
+/// continua verdadeiro, então a tinta saía VAZIA e esta porta devolvia `Vec::new()`, que o chamador
+/// lê como *"não sei responder"* e converte no caminho do raster.
+///
+/// ⚠️ O gate mede as DUAS metades: a resposta (a forma, ao bit) e o CUSTO (zero sweeps) — sem a
+/// segunda, uma implementação que unisse a forma consigo mesma passaria.
+#[test]
+fn a_zero_width_stroke_is_no_stroke_at_all() {
+    let mut p = star(5.0);
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.0));
+    let before = ph2d_vec_boolean::__sweep_calls();
+    let sil = ph2d_vec_boolean::silhouette_paths(&p);
+    assert_eq!(sil.len(), 1, "largura zero devolveu {} pecas", sil.len());
+    assert_eq!(sil[0], p, "largura zero tem de devolver a forma AO BIT");
+    assert_eq!(
+        ph2d_vec_boolean::__sweep_calls(),
+        before,
+        "largura zero custou um sweep"
+    );
+}
+
 /// **A silhueta CONTÉM a forma.** O gate acima diz que a fronteira se afastou das âncoras; este diz
 /// para que LADO — sem ele, encolher o traço para dentro passaria pelos dois.
 #[test]

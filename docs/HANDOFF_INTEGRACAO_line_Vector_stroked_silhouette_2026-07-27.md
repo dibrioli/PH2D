@@ -155,7 +155,7 @@ LOC: nada perto do teto (o maior novo é `fx_silhouette_tests.rs`, 300).
 
 ## Smoke
 
-**`env PH2D_FX_RASTER_SMOKE=1 cargo run -p ph2d-host-desktop --release`**
+**`env PH2D_BUILD_SMOKE=33 cargo run -p ph2d-host-desktop --release`**
 
 ⚠️ **A cena NÃO continha o fenômeno** — as dezasseis estrelas tinham UMA traçada (a do Outline
 grosso) e uma biselada, e **nenhuma as duas**. A do **BEVEL (14)** agora leva **traço branco**.

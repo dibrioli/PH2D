@@ -111,6 +111,29 @@ fn a_stroked_shape_without_a_filter_is_not_resolved() {
     assert!(fx.live().get(&id).is_none(), "resolveu quem ninguem le");
 }
 
+/// **Largura ZERO não é resolvida — e não precisa ser.** O `silhouette_segments` já responde exato
+/// por ela desde que passou a perguntar `lays_a_band` em vez de `is_some`; resolver aqui pagaria um
+/// sweep para receber a própria forma de volta.
+#[test]
+fn a_zero_width_stroke_costs_nothing_here() {
+    let (mut scene, mut sim, map, id) = scene(true);
+    scene.paths_mut()[0].stroke = scene.paths()[0]
+        .stroke
+        .as_ref()
+        .map(|s| StrokeSpec { width: 0.0, ..*s });
+    arm_filter(&mut sim, &map, id);
+    let mut fx = FxSilhouette::default();
+    fx.recook(
+        &scene,
+        &sim,
+        &map,
+        &VecXforms::default(),
+        &LiveGeometry::new(),
+    );
+    assert!(fx.live().get(&id).is_none(), "resolveu largura zero");
+    assert_eq!(fx.cooks(), 0, "largura zero custou um cozimento");
+}
+
 /// **Sem traço não há SEGUNDA resposta.** O `silhouette_segments` já responde exato pela fonte;
 /// resolver aqui também seria duas portas para a mesma pergunta, e elas divergiriam no dia em que
 /// a booleana mudasse de opinião sobre um caso degenerado.

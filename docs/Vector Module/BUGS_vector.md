@@ -1228,7 +1228,7 @@ forma traçada — e **com razão**: num traço centrado ela passa pelo MEIO da 
 semeá-la poria a fronteira DENTRO da forma. O doc dele já nomeava o item aberto: *"a união exata é
 trabalho da booleana, e entra quando houver quem a peça"*. A estrela do Enio tem contorno branco.
 
-⚠️ **A cena de smoke não continha o fenômeno.** As dezasseis estrelas do `PH2D_FX_RASTER_SMOKE=1`
+⚠️ **A cena de smoke não continha o fenômeno.** As dezasseis estrelas do `PH2D_BUILD_SMOKE=33`
 tinham UMA traçada (a do Outline grosso), e nenhuma era traçada **e** biselada — o bug reportado não
 podia aparecer em nenhuma delas.
 
@@ -1281,10 +1281,40 @@ silhueta resolvida ela dá **zero** segmentos, com ela dá segmentos na borda da
 7 sangram, 2 sobrevivem e estão documentadas** (a normalização, acima; e o `retain` do memo, que é
 higiene de memória — uma entrada órfã nunca é lida).
 
+### 2ª rodada — `stroke = 0` (mesmo dia)
+
+Enio: *"para stroke maior que 0 funciona. Mas para stroke = 0 linhas aparecem"*.
+
+**A mesma doença, com a pergunta errada num lugar a mais.** O slider de Width chega a `0`, e `0`
+significa **sem traço** — o `stroke_zero_tests` da `ph2d-vec-render` já o prova do lado do desenho.
+Mas `stroke.is_some()` continua **verdadeiro** com largura zero, e era isso que o campo perguntava:
+a forma caía no raster **sem sequer haver tinta de contorno** para justificar. Medido: com
+`width = 0` o `outline_stroke` devolve **0 peças** ⇒ `silhouette_paths` devolvia `Vec::new()`, que o
+chamador lê como *"não sei responder"*.
+
+**A pergunta tinha TRÊS respostas espalhadas** e a terceira discordava das outras duas: o desenho
+confiava no Vello (que não encoda nada com largura 0), a booleana devolvia tinta vazia, e o campo
+perguntava pela PRESENÇA. A cura é a porta única **`StrokeSpec::lays_a_band()`**, onde a largura
+mora, com os três consumidores a perguntar a ela.
+
+⚠️ **O escopo da porta é a FAIXA, não a tinta toda** — uma ponta (seta, losango) é desenhada à parte
+pelo `stroke_plan`. Quem pergunta pela silhueta de uma forma **preenchida** pode parar aí, e o
+motivo é geométrico: `stroke_head` devolve `None` para caminho FECHADO (não há extremo onde pôr a
+ponta). Medido, não suposto.
+
+3 gates novos (um por consumidor), **3 mutações, 3 sangram** — cada uma no seu lugar: `push_path` a
+voltar a `is_some` mata o gate do render, `silhouette_paths` a voltar a `is_none` mata o da
+booleana, e `lays_a_band` a mentir mata os dois de fora.
+
+⚠️ **E o comando de smoke que eu tinha passado estava ERRADO** — escrevi `PH2D_FX_RASTER_SMOKE=1`,
+que **não é lido em lugar nenhum**; a cena é `PH2D_BUILD_SMOKE=33`. O Enio testou na cena dele e
+achou os dois bugs assim mesmo, mas um comando errado num handoff é o próximo a perder uma tarde.
+
 ### Smoke
 
-**`PH2D_FX_RASTER_SMOKE=1`** — a estrela do **BEVEL (14)** agora leva **traço branco**. O relevo tem
-de sair **liso**, sem hachura diagonal. O bevel sem traço continua provado pelos gates e pela sonda
+**`PH2D_BUILD_SMOKE=33`** — a estrela do **BEVEL (14)** leva **traço branco** e a do **FEATHER
+(13)** leva traço de **largura ZERO**. O relevo do bevel tem de sair **liso**, sem hachura
+diagonal; a rampa do feather tem de sair lisa e sem contorno visível nenhum. O bevel sem traço continua provado pelos gates e pela sonda
 `fx_look_probe` (cenas 12/13), que é onde as fotos do antes/depois foram tiradas.
 
 ---

@@ -38,7 +38,9 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::SimWorld;
 use ph2d_vec_render::LiveGeometry;
-use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
+use ph2d_vec_scene::{
+    Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of,
+};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -107,9 +109,14 @@ impl FxSilhouette {
                     vec![world]
                 }
             };
-            // Sem traço em nenhuma peça, o `silhouette_segments` já responde exato pela fonte —
-            // resolver aqui seria uma SEGUNDA resposta à mesma pergunta.
-            if input.iter().all(|p| p.stroke.is_none()) {
+            // Nenhuma peça deitando FAIXA de tinta, o `silhouette_segments` já responde exato pela
+            // fonte — resolver aqui seria uma SEGUNDA resposta à mesma pergunta. ⚠️ A pergunta é
+            // `lays_a_band`, não `is_some`: largura zero é sem traço, e perguntar pela presença
+            // pagaria um sweep para receber vazio de volta.
+            if !input
+                .iter()
+                .any(|p| p.stroke.as_ref().is_some_and(StrokeSpec::lays_a_band))
+            {
                 continue;
             }
             let hit = self.memo.get(&path.id).is_some_and(|m| m.input == input);

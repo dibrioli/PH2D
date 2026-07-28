@@ -121,6 +121,26 @@ impl StrokeSpec {
         self.marker_start != Marker::None || self.marker_end != Marker::None
     }
 
+    /// **Este traço deita uma FAIXA de tinta?** `false` em largura zero — e `0` significa *sem
+    /// traço*, não *o traço mais fino que der* (a lei que o slider de Width promete desde
+    /// 2026-07-16; ver `stroke_zero_tests` na `ph2d-vec-render`).
+    ///
+    /// ⚠️ **A pergunta é sobre a FAIXA, não sobre a tinta toda.** Uma ponta (seta, losango) é
+    /// desenhada à parte, e o tamanho dela também escala com a largura — mas quem responde por ela
+    /// é o [`crate::stroke_plan`], não isto. Um caminho FECHADO nunca tem pontas (não há extremo
+    /// onde pô-las), e é por isso que quem pergunta pela SILHUETA de uma forma preenchida pode
+    /// parar aqui.
+    ///
+    /// Existe porque a pergunta tinha **três** respostas espalhadas: o desenho confiava no Vello
+    /// (que não encoda nada com largura 0), a booleana devolvia tinta vazia, e o campo de distância
+    /// perguntava `stroke.is_some()` — que continua **verdadeiro** com largura zero. A terceira
+    /// discordava das outras duas, e o preço foi o pente do bevel voltar numa forma sem contorno
+    /// nenhum (BUGS #24, 2ª rodada).
+    #[must_use]
+    pub fn lays_a_band(&self) -> bool {
+        self.width > 0.0
+    }
+
     /// **O tracejado em COMPRIMENTO** — `[traço, vão]` no mesmo espaço da geometria, ou
     /// `None` para linha contínua.
     ///

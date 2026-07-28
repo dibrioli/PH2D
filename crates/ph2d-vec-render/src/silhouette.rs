@@ -15,7 +15,7 @@
 //! segundo com um pente. Com o pé exato: bevel 59,25 → 2,46 níveis de ondulação, feather 5,56 →
 //! 0,82 (o controle liso dá 2,40 / 0,00).
 
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
+use ph2d_vec_scene::{StrokeSpec, VecPath, VecPathId, VecScene, VecXforms};
 use ph2d_vector::{Affine, PathEl, Point};
 
 use crate::{LiveGeometry, build_fill_bezpath, path_to_screen};
@@ -91,7 +91,11 @@ pub fn silhouette_segments(
 
 /// `false` = esta forma não tem resposta exata barata (ver o doc de [`silhouette_segments`]).
 fn push_path(out: &mut Vec<[f32; 4]>, path: &VecPath, transform: Affine) -> bool {
-    if path.stroke.is_some() || path.fill.is_none() {
+    // ⚠️ **A pergunta é se o traço DEITA TINTA, não se o campo existe.** `stroke.is_some()` continua
+    // verdadeiro com largura zero — e largura zero é *sem traço* (`StrokeSpec::lays_a_band`, a porta
+    // única). Perguntar pela presença mandava ao raster uma forma que não tem contorno nenhum, e o
+    // pente do bevel voltava com ela.
+    if path.stroke.as_ref().is_some_and(StrokeSpec::lays_a_band) || path.fill.is_none() {
         return false;
     }
     // A MESMA porta que o desenho usa para o preenchimento — os contornos ABERTOS ficam de fora lá

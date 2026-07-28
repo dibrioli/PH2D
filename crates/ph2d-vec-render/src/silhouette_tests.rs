@@ -111,6 +111,40 @@ fn a_stroked_shape_gets_an_exact_silhouette_once_someone_resolves_the_union() {
     );
 }
 
+/// **Um traço de largura ZERO não é um traço — e a forma tem silhueta exata sem ninguém resolver
+/// nada.**
+///
+/// Report do Enio (2026-07-27, segunda rodada): *"para stroke maior que 0 funciona. Mas para
+/// stroke = 0 linhas aparecem"*. O slider de Width chega a `0`, e `0` significa **sem traço** — o
+/// `stroke_zero_tests` desta crate já o prova do lado do desenho. Mas o campo perguntava
+/// `stroke.is_some()`, que continua **verdadeiro** com largura zero: a forma caía no raster e o
+/// pente voltava, agora sem sequer haver tinta de contorno para justificar.
+///
+/// ⚠️ Mutação que sangra: `push_path` voltar a perguntar `path.stroke.is_some()`. Zero segmentos.
+#[test]
+fn a_zero_width_stroke_is_not_a_stroke_and_the_shape_keeps_its_exact_silhouette() {
+    let mut p = square(21, 1.0);
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.0));
+    let scene = scene_of(vec![p]);
+    let segs = silhouette_segments(
+        &scene,
+        &VecXforms::default(),
+        &LiveGeometry::new(),
+        &LiveGeometry::new(),
+        id_of(21),
+        Affine::IDENTITY,
+        Affine::IDENTITY,
+    );
+    assert!(
+        !segs.is_empty(),
+        "largura zero mandou a forma para o raster - o pente volta sem haver tinta de contorno"
+    );
+    assert!(
+        worst_off_square(&segs, 1.0) < 1e-6,
+        "a silhueta de largura zero tem de ser a do PREENCHIMENTO, exata"
+    );
+}
+
 /// **A `sil` é consultada PRIMEIRO — na frente da geometria derivada.** Uma forma pode ter offset
 /// vivo *e* traço; a união é feita sobre o que o `dispatch` desenha, então ela é a palavra final.
 #[test]

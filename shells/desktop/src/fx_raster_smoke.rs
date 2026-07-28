@@ -137,24 +137,36 @@ fn arm(app: &mut crate::App) {
         (14, vec![glow, blur]),
         (15, vec![blur, glow]),
     ];
-    // ⚠️ **DUAS estrelas levam TRAÇO de verdade, e cada uma responde a um report diferente.**
+    // ⚠️ **TRÊS estrelas levam TRAÇO armado, e cada uma responde a um report diferente.**
     //
     // A do Outline GROSSO (11): *"com Stroke quebra as pontas"* — a ponta do miter de um traço vai
     // a 3,24 × meia largura do vértice, e o bbox do scratch tem de a conter, senão ela sai CEIFADA.
     //
     // A do BEVEL (13): *"linhas no Bevel"* — uma forma traçada não tinha silhueta exata (a curva
     // autorada passa pelo MEIO da tinta), caía no campo semeado pelo RASTER, e a semente discreta
-    // desenhava um pente de hachuras diagonais. ⚠️ **Sem esta linha a cena NÃO CONTÉM o fenômeno**:
-    // antes dela nenhuma estrela era traçada *e* biselada, então o bug reportado não aparecia em
-    // nenhuma das dezasseis. O bevel sem traço continua provado pelos gates e pela sonda
-    // `fx_look_probe` (cenas 12/13), que é onde as fotos do antes/depois foram tiradas.
-    for (i, rgb) in [(11usize, [40, 70, 220]), (13, [255, 255, 255])] {
+    // desenhava um pente de hachuras diagonais.
+    //
+    // A do FEATHER (12) leva traço de **LARGURA ZERO** — a segunda rodada do mesmo report:
+    // *"para stroke maior que 0 funciona. Mas para stroke = 0 linhas aparecem"*. Largura zero é
+    // **sem traço** (o slider promete isso), mas `stroke.is_some()` continua verdadeiro, então a
+    // forma caía no raster sem sequer haver tinta de contorno. O feather lê a DISTÂNCIA do mesmo
+    // campo, então o erro aparece nele como rampa ondulada em vez de pente.
+    //
+    // ⚠️ **Sem estas linhas a cena NÃO CONTÉM os fenómenos**: antes delas nenhuma estrela era
+    // traçada *e* biselada, e nenhuma tinha traço de largura zero — os bugs reportados não podiam
+    // aparecer em nenhuma das dezasseis. O bevel sem traço continua provado pelos gates e pela
+    // sonda `fx_look_probe` (cenas 12/13), que é onde as fotos do antes/depois foram tiradas.
+    for (i, rgb, w) in [
+        (11usize, [40, 70, 220], 0.06),
+        (13, [255, 255, 255], 0.06),
+        (12, [255, 255, 255], 0.0),
+    ] {
         if let Some(gfx) = app.gfx.as_mut()
             && let Some(path) = gfx.vec_scene.path_mut(ids[i])
         {
             path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
                 ph2d_vec_scene::Rgba8::new(rgb[0], rgb[1], rgb[2], 255),
-                0.06,
+                w,
             ));
         }
     }
@@ -185,9 +197,13 @@ fn arm(app: &mut crate::App) {
          \x20     largura numa ponta de estrela, e nenhuma dilatação faz isso (seria 3,24x na\n\
          \x20     aresta também). Miter/bevel sao GEOMETRIA: a pilha de Effects, não esta.\n\
          \x20 FILEIRA 4 (os dois que o campo de distância destravou, e o par de ordem):\n\
-         \x20  13) FEATHER — a borda vira uma RAMPA CENTRADA na fronteira, e o MIOLO fica\n\
-         \x20      INTACTO. É o que um Blur não faz: ele mistura a COR também (medido, com\n\
-         \x20      listras dentro da forma: contraste 195 no feather contra 1 no borrão).\n\
+         \x20  13) FEATHER **com traço de LARGURA ZERO** — a borda vira uma RAMPA CENTRADA na\n\
+         \x20      fronteira, e o MIOLO fica INTACTO. É o que um Blur não faz: ele mistura a COR\n\
+         \x20      também (medido, com listras dentro da forma: contraste 195 no feather contra 1\n\
+         \x20      no borrão). ⚠️ **O traço de largura zero é o caso da 2a rodada do report**:\n\
+         \x20      zero significa SEM traço, mas 'stroke.is_some()' continua verdadeiro, entao a\n\
+         \x20      forma caia no campo do RASTER sem sequer haver tinta de contorno. A rampa tem\n\
+         \x20      de sair LISA, e a estrela nao pode ter contorno visivel nenhum.\n\
          \x20  14) BEVEL **com TRAÇO branco** — a face virada para a LUZ clareia e a oposta\n\
          \x20      escurece, morrendo para o miolo (medido em cinza: rim 225 / 30 contra miolo\n\
          \x20      128; trocar a luz troca os dois). O par Light X/Y é uma DIREÇÃO, não um\n\

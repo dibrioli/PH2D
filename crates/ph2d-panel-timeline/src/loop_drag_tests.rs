@@ -256,6 +256,47 @@ fn clicking_inside_the_loop_band_scrubs_to_that_time() {
 }
 
 #[test]
+fn dragging_a_brace_inside_a_container_writes_the_container_loop() {
+    // Inside a container the brace is DRAWN from the container's OWN loop
+    // (`container_loop`), so a drag must write there too — a bare `SetLoop`
+    // parks on the clip/Arrange loop (via `keys_mode`), where nothing is read,
+    // and the gizmo jams (Enio: "dentro de um container o gizmo do loop trava").
+    // Mirrors the shell's Loop/PingPong toggle re-route.
+    let mut st = TimelinePanelState::default();
+    let s = TimelineViewSnapshot {
+        container_open: Some(3),
+        ..snap()
+    };
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        1,
+        gesture(1, GesturePhase::Begin, 300.0),
+    );
+    apply(
+        &mut st,
+        0.0,
+        100.0,
+        &s,
+        1,
+        gesture(1, GesturePhase::Update, 250.0),
+    );
+    match state::drain_intents().last() {
+        Some(TimelineIntent::SetContainerLoop {
+            container,
+            range: Some(r),
+            ..
+        }) => {
+            assert_eq!(*container, 3, "the OPEN container, not the scene");
+            assert_eq!(*r, (1.0, 2.5), "end handle to x=250 (t=2.5), start held");
+        }
+        o => panic!("expected SetContainerLoop inside a container, got {o:?}"),
+    }
+}
+
+#[test]
 fn clicking_a_brace_handle_does_not_scrub() {
     // A click on an edge handle is a grab that changed nothing — it must not
     // also seek.

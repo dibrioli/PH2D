@@ -3,9 +3,10 @@
 //!
 //! The time axis is fully known here (`time_x` + `px_per_s` + `view_start`), so —
 //! unlike the graph handle/anchor drags — there is no two-phase resolve: the
-//! gesture maps the pointer straight to a time and streams a `SetLoop`. That
-//! intent drives the `Playhead`, not the document, so it is not undoable and
-//! needs no bracket.
+//! gesture maps the pointer straight to a time and streams a `SetLoop` (or a
+//! `SetContainerLoop` inside a container — see the emit below). That intent
+//! writes the view's loop and re-syncs its clock; it is transport, not
+//! authoring, so it is not undoable and needs no bracket.
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
@@ -40,10 +41,28 @@ pub(crate) fn apply(
                 let range = resolve(&d, state.view_start_s, time_x, px_per_s, g.x, snap);
                 // Carry the CURRENT mode through: dragging a ping-pong's brace
                 // reshapes it, it does not demote it to a plain cycle.
-                state::push_intent(TimelineIntent::SetLoop {
-                    range: Some(range),
-                    ping_pong: snap.loop_ping_pong,
-                });
+                //
+                // **The scope is the VIEW's** (Enio: *"dentro de um container o gizmo
+                // do loop trava"*). Inside a container the brace is DRAWN from the
+                // container's own loop (`container_loop`, snapshot.rs §487), so a bare
+                // `SetLoop` — which the handler parks on the clip/Arrange loop via
+                // `state.keys_mode` — would write where nothing is read and the gizmo
+                // would never move. Same split the Loop/PingPong toggle takes in the
+                // shell (`timeline_bridge.rs`) and the veil drag takes here
+                // (`duration_drag::emit_length`): `container_open` first, everything
+                // else through `SetLoop` (which itself picks Keys vs Arrange).
+                let intent = match snap.container_open {
+                    Some(c) => TimelineIntent::SetContainerLoop {
+                        container: c,
+                        range: Some(range),
+                        ping_pong: snap.loop_ping_pong,
+                    },
+                    None => TimelineIntent::SetLoop {
+                        range: Some(range),
+                        ping_pong: snap.loop_ping_pong,
+                    },
+                };
+                state::push_intent(intent);
             }
             if matches!(g.phase, GesturePhase::End) {
                 state.loop_drag = None;

@@ -51,6 +51,7 @@ mod build_smoke_corner_tools;
 mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
+mod build_smoke_router;
 mod chrome_hit;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
@@ -122,6 +123,7 @@ mod flip_tween_phase_smoke;
 mod flip_tween_smoke;
 mod flip_tween_torsion_smoke;
 mod forwarding;
+mod fx_blend_smoke;
 mod fx_bridge;
 mod fx_bridge_dispatch;
 /// **FX raster VIVO** — o cozimento do `ph2d_ecs::VecFilter` (Blur/Glow/Drop Shadow, plano 24):

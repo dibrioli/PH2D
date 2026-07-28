@@ -34,6 +34,19 @@ fn square(gpu: &ph2d_gpu::GpuContext) -> wgpu::Texture {
     make_src(gpu, W, H, &bytes)
 }
 
+/// Uma Inner Shadow roxa (modo Contour), sob a lei `blend` — o par 3 da cena de smoke.
+fn inner_shadow(blend: u8) -> FxOpGpu {
+    FxOpGpu {
+        kind: FxOp::INNER_SHADOW,
+        sigma_px: 10.0,
+        offset_px: [0, 0],
+        tint: [0.75, 0.60, 0.95, 1.0],
+        opacity: 1.0,
+        mode: FxOp::MODE_CONTOUR,
+        blend,
+    }
+}
+
 /// Um Color Overlay de cor `tint`, opacidade cheia, sob a lei `blend`.
 fn overlay(tint: [f32; 4], blend: u8) -> FxOpGpu {
     FxOpGpu {
@@ -326,6 +339,104 @@ fn a_law_on_a_kind_that_does_not_take_one_moves_nothing_on_the_device() {
             0,
             "{}: a lei alcançou um tipo que não a toma ({differing} bytes)",
             FxOp::kind_name(kind)
+        );
+    }
+}
+
+/// **A SONDA da cena de smoke** — os quatro pares de `PH2D_BUILD_SMOKE=34`, medidos aqui antes de
+/// a mensagem os afirmar.
+///
+/// ⚠️ Não é um gate: é o instrumento que impede a cena de PROMETER o que ela não desenha. Esta
+/// jornada já teve duas cenas cujo texto a medição desmentiu (o Λ do W-Contacts, a caixa de
+/// densidade neutra do W-Buoyancy), e a política do plano de física — *toda wave ganha cena com
+/// números MEDIDOS, e a sonda roda antes de a mensagem ser escrita* — é o que as pegou.
+///
+/// `cargo test -p ph2d-render --release --test fx_stack_blend_gpu -- --ignored measure --nocapture`
+#[test]
+#[ignore = "sonda, não gate — precisa de adaptador GPU"]
+fn measure_the_smoke_scene_pairs() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador — skip");
+        return;
+    };
+    let mut pass = FxStackPass::new(&gpu);
+    // A base que dá ESTRUTURA: um bevel, como na cena.
+    let bevel = FxOpGpu {
+        kind: FxOp::BEVEL,
+        sigma_px: 10.0,
+        offset_px: [-6, 6],
+        tint: [0.0, 0.0, 0.0, 1.0],
+        opacity: 1.0,
+        mode: 0,
+        blend: 0,
+    };
+    const CYAN: [f32; 4] = [0.1, 0.9, 1.0, 1.0];
+    const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+    // O DESVIO-PADRÃO da luminância no miolo: quanto RELEVO sobrevive ao overlay. É o número que
+    // separa "repintou chapado" (≈ 0) de "a lei deixou o relevo atravessar" (> 0).
+    let relief = |px: &[u8]| -> f64 {
+        let mut v = Vec::new();
+        for y in 16..48u32 {
+            for x in 16..48u32 {
+                let o = ((y * W + x) * 4) as usize;
+                v.push(
+                    0.299 * f64::from(px[o])
+                        + 0.587 * f64::from(px[o + 1])
+                        + 0.114 * f64::from(px[o + 2]),
+                );
+            }
+        }
+        let m = v.iter().sum::<f64>() / v.len() as f64;
+        (v.iter().map(|a| (a - m) * (a - m)).sum::<f64>() / v.len() as f64).sqrt()
+    };
+    // ⚠️ **A BORDA, e não o miolo.** Uma Inner Shadow vive na banda junto ao contorno, e o miolo é
+    // exactamente onde ela não faz nada: medida no centro, a lei dela sai IDÊNTICA em Normal e em
+    // Multiply (128,7 contra 128,6 — foi o que a 1ª rodada desta sonda mediu, e teria feito a cena
+    // afirmar uma diferença que ninguém veria). Número no lugar errado diz o contrário da foto.
+    let rim = |px: &[u8]| -> f64 {
+        let mut acc = 0.0;
+        let mut n = 0u32;
+        for y in 12..52u32 {
+            for x in 12..52u32 {
+                // Só a moldura de 4 texels logo dentro da forma.
+                if x > 15 && x < 48 && y > 15 && y < 48 {
+                    continue;
+                }
+                let o = ((y * W + x) * 4) as usize;
+                acc += 0.299 * f64::from(px[o])
+                    + 0.587 * f64::from(px[o + 1])
+                    + 0.114 * f64::from(px[o + 2]);
+                n += 1;
+            }
+        }
+        acc / f64::from(n)
+    };
+    for (label, ops) in [
+        ("base (só o bevel)          ", vec![bevel]),
+        ("1) overlay ciano NORMAL    ", vec![bevel, overlay(CYAN, 0)]),
+        ("2) overlay ciano MULTIPLY  ", vec![bevel, overlay(CYAN, 1)]),
+        (
+            "4) overlay ciano COLOR     ",
+            vec![bevel, overlay(CYAN, 18)],
+        ),
+        (
+            "7) overlay branco NORMAL   ",
+            vec![bevel, overlay(WHITE, 0)],
+        ),
+        (
+            "8) overlay branco OVERLAY  ",
+            vec![bevel, overlay(WHITE, 9)],
+        ),
+        ("5) inner shadow roxa NORMAL", vec![bevel, inner_shadow(0)]),
+        ("6) inner shadow roxa MULTIP", vec![bevel, inner_shadow(1)]),
+    ] {
+        let px = run(&mut pass, &gpu, &ops);
+        eprintln!(
+            "{label} luma {:6.1} · BORDA {:6.1} · relevo(desvio) {:5.2} · luma linear {:.4}",
+            core_luma(&px),
+            rim(&px),
+            relief(&px),
+            core_lum_linear(&px)
         );
     }
 }

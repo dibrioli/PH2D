@@ -118,7 +118,7 @@ fn fixtures() -> [(&'static str, Vec<Vec2>); 4] {
 fn the_resampled_curve_never_bends_harder_than_the_polyline_it_smooths() {
     for (name, pts) in fixtures() {
         let prs = vec![1.0f32; pts.len()];
-        let (out, _) = resample_smooth(&pts, &prs, 2.0);
+        let (out, _) = resample_smooth(&pts, &prs, 2.0, 2.0 * 0.125);
         let turn_in = max_turn_deg(&pts);
         let turn_out = max_turn_deg(&out);
         assert!(
@@ -155,7 +155,7 @@ fn measure_the_uniform_parameterisation_on_uneven_spacing() {
     println!("  caso                                  | desvio max | inflacao | giro max");
     for (name, pts) in cases {
         let prs = vec![1.0f32; pts.len()];
-        let (out, _) = resample_smooth(&pts, &prs, 2.0);
+        let (out, _) = resample_smooth(&pts, &prs, 2.0, 2.0 * 0.125);
         let dev = out
             .iter()
             .map(|&p| dist_to_polyline(p, &pts))
@@ -164,6 +164,66 @@ fn measure_the_uniform_parameterisation_on_uneven_spacing() {
             "  {name:37} | {dev:10.3} | {:8.3} | {:7.1}",
             arc(&out) / arc(&pts),
             max_turn_deg(&out),
+        );
+    }
+}
+
+/// SONDA — **quantos pontos a reamostragem inventa, e quantos deles não dizem nada.**
+///
+/// O passo é FIXO em arco (`0,4 × largura`), então um span RETO é subdividido com a mesma
+/// densidade de uma curva fechada. E span reto longo é o que o RDP DEIXA (ele existe para
+/// colapsar o trecho reto a dois pontos) — ou seja, o par RDP→reamostragem apaga pontos de
+/// uma reta e depois repõe pontos na MESMA reta. Cada um custa um quad na GPU e, pior, um
+/// SLOT na lista de vizinhos (o orçamento da fita local existe porque ela satura).
+///
+/// "Não diz nada" = o ponto está a menos de `1e-3` da corda do span que ele subdivide, isto
+/// é: apagá-lo não moveria a tinta.
+#[test]
+fn measure_how_many_resampled_points_say_nothing() {
+    let mut cases: Vec<(&str, Vec<Vec2>)> = vec![
+        (
+            "reta longa (o que o RDP deixa)",
+            vec![
+                Vec2::new(0.0, 0.0),
+                Vec2::new(50.0, 0.0),
+                Vec2::new(100.0, 0.0),
+            ],
+        ),
+        (
+            "L: duas retas longas + quina",
+            vec![
+                Vec2::new(0.0, 0.0),
+                Vec2::new(60.0, 0.0),
+                Vec2::new(60.0, 60.0),
+            ],
+        ),
+    ];
+    // Um arco de verdade: 9 pontos num quarto de circulo de raio 40 (todo ponto informa).
+    let arc_pts: Vec<Vec2> = (0..=8)
+        .map(|i| {
+            let a = i as f32 / 8.0 * std::f32::consts::FRAC_PI_2;
+            Vec2::new(40.0 * a.cos(), 40.0 * a.sin())
+        })
+        .collect();
+    cases.push(("arco de 90 graus (9 pontos)", arc_pts));
+    cases.extend(fixtures());
+
+    // ⚠️ Os pontos de ENTRADA estão na polilinha por definição, então contam como
+    // "mudos" sempre — o DESPERDÍCIO é o que sobra depois de descontá-los.
+    println!("  caso                                  | entra | sai  | desperdicio");
+    for (name, pts) in cases {
+        let prs = vec![1.0f32; pts.len()];
+        let (out, _) = resample_smooth(&pts, &prs, 2.0, 2.0 * 0.125);
+        // Um ponto de saida e MUDO se cai sobre a corda do span de entrada mais proximo.
+        let mute = out
+            .iter()
+            .filter(|&&p| dist_to_polyline(p, &pts) < 1e-3)
+            .count();
+        println!(
+            "  {name:37} | {:5} | {:4} | {:11}",
+            pts.len(),
+            out.len(),
+            mute.saturating_sub(pts.len()),
         );
     }
 }

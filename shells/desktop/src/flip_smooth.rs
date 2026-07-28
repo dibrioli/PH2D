@@ -165,8 +165,28 @@ fn knot_velocity(prev: Vec2, cur: Vec2, next: Vec2, dt_prev: f32, dt_next: f32) 
 /// sobre a curva suave dá o arredondado. As pressões (largura por-ponto) interpolam LINEARMENTE ao
 /// longo do arco. **Quinas preservadas** (`CORNER_COS`): a curva não suaviza através de um vinco.
 /// `< 3` pontos (ou `step ≤ 0`) devolve o cru — um traço de 2 pontos já é uma reta.
+///
+/// ⚠️ **Um span JÁ RETO não ganha ponto nenhum** (`flat_tol`), e o preço de não ter essa regra foi
+/// MEDIDO (`measure_how_many_resampled_points_say_nothing`): o passo é fixo em ARCO, então uma reta
+/// era subdividida com a mesma densidade de uma curva fechada — **3 pontos entravam e 49 saíam,
+/// 100% deles MUDOS** (a menos de `1e-3` da corda que subdividiam: apagá-los não moveria a tinta).
+/// E span reto longo é precisamente o que o RDP DEIXA — ele existe para colapsar o trecho reto a
+/// dois pontos —, então o par RDP→reamostragem apagava pontos de uma reta e repunha 16× mais na
+/// MESMA reta. Cada um custa um quad na GPU e, pior, um SLOT na lista de vizinhos geométricos
+/// (`neighbors.rs`), cujo orçamento da fita local existe justamente porque ela satura.
+///
+/// **A regra é SUBTRATIVA e não pode facetar nada:** `flat_tol` é a tolerância do RDP (o mesmo
+/// `STROKE_SIMPLIFY_FRACTION × espessura`), e o RDP já garante que todo ponto que ele DESCARTOU
+/// está a menos de `tol` da corda entre os que sobraram. Declarar esse span reto apenas **re-afirma
+/// a decisão que o simplificador acabou de tomar** — a densidade das curvas de verdade fica intacta.
+/// `flat_tol ≤ 0` desliga a regra (todo span subdivide, o comportamento anterior).
 #[must_use]
-pub(crate) fn resample_smooth(pts: &[Vec2], prs: &[f32], step: f32) -> (Vec<Vec2>, Vec<f32>) {
+pub(crate) fn resample_smooth(
+    pts: &[Vec2],
+    prs: &[f32],
+    step: f32,
+    flat_tol: f32,
+) -> (Vec<Vec2>, Vec<f32>) {
     let n = pts.len();
     if n < 3 || step <= 0.0 || pts.len() != prs.len() {
         return (pts.to_vec(), prs.to_vec());
@@ -223,8 +243,22 @@ pub(crate) fn resample_smooth(pts: &[Vec2], prs: &[f32], step: f32) -> (Vec<Vec2
             let d = Vec2::new(p1.x - p0.x, p1.y - p0.y);
             (d.x * d.x + d.y * d.y).sqrt()
         };
+        // **O span já é reto?** Uma cúbica está entre o seu polígono de controle, e o Hermite vira
+        // Bézier por `b1 = p0 + m0/3`, `b2 = p1 − m1/3` — então se os DOIS controles estão a menos
+        // de `flat_tol` da corda, a curva inteira está, e subdividir só produziria pontos MUDOS.
+        // (Uma quina não escapa por aqui: ali as tangentes são as cordas do lado, e num vinco elas
+        // apontam para fora da corda do span — o controle sai da faixa.)
+        let flat = flat_tol > 0.0 && {
+            let b1 = Vec2::new(p0.x + m0.x / 3.0, p0.y + m0.y / 3.0);
+            let b2 = Vec2::new(p1.x - m1.x / 3.0, p1.y - m1.y / 3.0);
+            perp_dist(b1, p0, p1) <= flat_tol && perp_dist(b2, p0, p1) <= flat_tol
+        };
         // Sub-passos: chord/step, capado (span longo não explode; span curto ganha 1 = a reta).
-        let sub = ((chord / step).ceil() as usize).clamp(1, MAX_SUB_PER_SPAN);
+        let sub = if flat {
+            1
+        } else {
+            ((chord / step).ceil() as usize).clamp(1, MAX_SUB_PER_SPAN)
+        };
         for k in 1..=sub {
             let t = k as f32 / sub as f32;
             let (t2, t3) = (t * t, t * t * t);
@@ -249,6 +283,14 @@ const MAX_SUB_PER_SPAN: usize = 24;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A tolerância de planeza NA PROPORÇÃO DO PRODUTO: ele usa
+    /// `STROKE_SIMPLIFY_FRACTION / RESAMPLE_STEP_FRACTION = 0,05 / 0,4 = 0,125` do passo.
+    /// Os testes a usam para exercitar a configuração que de fato shipa, em vez de `0.0`
+    /// (que desliga a regra e testaria um caminho que ninguém roda).
+    fn product_tol(step: f32) -> f32 {
+        step * 0.125
+    }
 
     fn line(n: usize) -> Vec<Vec2> {
         (0..n).map(|i| Vec2::new(i as f32, 0.0)).collect()
@@ -355,24 +397,41 @@ mod tests {
     #[test]
     fn resample_short_stroke_is_identity() {
         let p = vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)];
-        let (rp, rr) = resample_smooth(&p, &[1.0, 1.0], 1.0);
+        let (rp, rr) = resample_smooth(&p, &[1.0, 1.0], 1.0, product_tol(1.0));
         assert_eq!(rp, p, "2 pontos = uma reta, intacta");
         assert_eq!(rr, vec![1.0, 1.0]);
     }
 
+    /// 🔴 **Uma RETA não ganha ponto nenhum** — e este gate substitui um que pinava o
+    /// desperdício como contrato.
+    ///
+    /// Ele afirmava `rp.len() > 3` ("densificou") sobre uma RETA, onde densificar é puro
+    /// desperdício: o passo é fixo em ARCO, então a reta era subdividida com a mesma densidade
+    /// de uma curva fechada. Medido (`measure_how_many_resampled_points_say_nothing`): **3 pontos
+    /// entravam e 49 saíam, 100% deles MUDOS** (a menos de `1e-3` da corda — apagá-los não moveria
+    /// a tinta), e cada um custa um quad na GPU e um SLOT na lista de vizinhos geométricos.
+    /// A metade REAL do teste antigo (todo ponto fica NA reta) continua aqui; o que saiu foi a
+    /// asserção incidental que exigia o lixo.
+    ///
+    /// Mutação que sangra: `flat_tol` chegar como `0.0` (a regra desligada) — voltam os 49.
     #[test]
-    fn resample_keeps_a_straight_line_on_the_line() {
-        // Uma reta amostrada grosso: reamostrar adiciona pontos, mas TODOS na reta.
+    fn resample_adds_nothing_to_a_straight_line_and_never_leaves_it() {
         let p = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(30.0, 0.0),
             Vec2::new(60.0, 0.0),
         ];
-        let (rp, _) = resample_smooth(&p, &[1.0; 3], 5.0);
-        assert!(rp.len() > 3, "densificou: {} pontos", rp.len());
+        let (rp, rr) = resample_smooth(&p, &[1.0; 3], 5.0, product_tol(5.0));
         for q in &rp {
             assert!(q.y.abs() < 1e-3, "ponto fora da reta: {q:?}");
         }
+        assert_eq!(
+            rp,
+            p,
+            "a reta ganhou {} ponto(s) que não dizem nada",
+            rp.len() - p.len()
+        );
+        assert_eq!(rr.len(), rp.len(), "as pressões acompanham os pontos");
     }
 
     /// 🔴 **A curva grossa/esparsa é DENSIFICADA e fica LISA** (T2.8 — o report do Enio). Um arco
@@ -390,7 +449,7 @@ mod tests {
         let coarse_turn = max_turn_deg(&arc);
         assert!(coarse_turn > 40.0, "o arco cru É facetado: {coarse_turn}°");
 
-        let (rp, _) = resample_smooth(&arc, &[1.0; 5], 3.0);
+        let (rp, _) = resample_smooth(&arc, &[1.0; 5], 3.0, product_tol(3.0));
         assert!(rp.len() > 20, "densificou o arco: {} pontos", rp.len());
         let smooth_turn = max_turn_deg(&rp);
         assert!(
@@ -407,7 +466,7 @@ mod tests {
             Vec2::new(10.0, 0.0),
             Vec2::new(10.0, 10.0),
         ];
-        let (rp, _) = resample_smooth(&l, &[1.0; 3], 2.0);
+        let (rp, _) = resample_smooth(&l, &[1.0; 3], 2.0, product_tol(2.0));
         // Algum vértice de saída ainda gira agudo (a quina foi preservada, não suavizada).
         assert!(
             max_turn_deg(&rp) > 60.0,
@@ -430,7 +489,7 @@ mod tests {
             Vec2::new(20.0, 5.0),
             Vec2::new(40.0, 0.0),
         ];
-        let (_, rr) = resample_smooth(&p, &[0.0, 0.5, 1.0], 3.0);
+        let (_, rr) = resample_smooth(&p, &[0.0, 0.5, 1.0], 3.0, product_tol(3.0));
         assert_eq!(*rr.first().unwrap(), 0.0);
         assert_eq!(*rr.last().unwrap(), 1.0);
         assert!(

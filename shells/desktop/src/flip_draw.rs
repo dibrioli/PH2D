@@ -208,7 +208,14 @@ pub(crate) fn stroke_from_samples(
     // pontos = curvas facetadas ("tracejado", Enio 2026-07-25). Interpola uma Catmull-Rom pelos
     // pontos (o traço passa exato por eles) e a densifica — as curvas ficam arredondadas, as quinas
     // ficam. É a MESMA porta do preview e do bake, então os dois seguem idênticos.
-    let (pts, prs) = crate::flip_smooth::resample_smooth(&pts, &prs, resample_step(style));
+    // ⚠️ A 4ª entrada é a tolerância do PRÓPRIO RDP acima: a reamostragem não re-adiciona
+    // pontos num span que o simplificador acabou de declarar reto (ver `resample_smooth`).
+    let (pts, prs) = crate::flip_smooth::resample_smooth(
+        &pts,
+        &prs,
+        resample_step(style),
+        simplify_tolerance(style),
+    );
     build_stroke(style, &pts, &prs, world_to_local)
 }
 

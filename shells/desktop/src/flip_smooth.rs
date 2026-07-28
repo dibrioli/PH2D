@@ -106,10 +106,56 @@ pub(crate) fn simplify_rdp(points: &[Vec2], tol: f32) -> Vec<usize> {
 /// 90° ⇒ dot 0 < 0.5) mantém a ponta. As PONTAS do traço são tratadas como quina (tangente unilateral).
 const CORNER_COS: f32 = 0.5;
 
-/// Tangente para o Hermite num ponto interior LISO: a de Catmull-Rom UNIFORME, `½·(P[i+1]−P[i−1])`.
-/// (Uniforme basta porque as quinas — onde a uniforme dispararia — são tratadas à parte.)
-fn centered_tangent(prev: Vec2, next: Vec2) -> Vec2 {
-    Vec2::new(0.5 * (next.x - prev.x), 0.5 * (next.y - prev.y))
+/// O intervalo de NÓ entre dois pontos da Catmull-Rom: `|Δ|^α` com **`α = ½` — a parametrização
+/// CENTRÍPETA**, a única das três que é provadamente livre de cúspide E de auto-interseção
+/// (Yuksel, Schaefer & Keyser, *Parameterization and Applications of Catmull-Rom Curves*, CAD 2011;
+/// `α = 0` é a uniforme, `α = 1` a cordal). `½` sai como a raiz da distância — **dois `sqrt`, zero
+/// transcendental** (HR-5 limpo), que é também por que α vive aqui na aritmética e não numa
+/// constante: um expoente que ninguém lê é um knob que não gira.
+///
+/// ⚠️ **A uniforme NÃO bastava, e o comentário que dizia o contrário estava errado.** Ele afirmava
+/// que *"as quinas — onde a uniforme dispararia — são tratadas à parte"*, ou seja que o único regime
+/// perigoso era o giro AGUDO. O regime perigoso de verdade é o **ESPAÇAMENTO DESIGUAL com giro
+/// GENTIL** — e espaçamento desigual é exatamente o que o RDP PRODUZ (ele apaga os pontos do trecho
+/// reto e mantém os da curva), então o par RDP→reamostragem *fabricava* o caso ruim.
+///
+/// Medido (`measure_the_uniform_parameterisation_on_uneven_spacing`), sobre uma curva a 45°
+/// (dot 0,71, bem dentro do "liso") cujo span curto tem corda 2,83 — **uniforme → centrípeta**:
+///
+/// | espaçamento | desvio à polilinha | inflação do arco | **giro máx. da saída** |
+/// |---|---|---|---|
+/// | par (CONTROLE) | 0,359 → 0,351 | 1,002 → 1,002 | 4,8° → 4,7° |
+/// | 8:1  | 2,07 → 1,24 | 1,024 → 1,005 | 46,5° → 14,5° |
+/// | 20:1 | 3,30 → 1,32 | 1,059 → 1,004 | 135,3° → 19,4° |
+/// | 50:1 | **5,55 → 1,51** | 1,081 → **1,002** | **158,5° → 29,6°** |
+///
+/// Uma reversão de **158,5°** É uma cúspide: a "suavização" deslocava a tinta **duas vezes o
+/// comprimento do span que ela estava suavizando**, numa barriga que ninguém desenhou.
+///
+/// Distância zero devolve zero, e o chamador nunca chega aqui com pontos coincidentes (o
+/// `is_corner` já os trata como quina, então nenhuma divisão por nó estoura).
+fn knot_step(a: Vec2, b: Vec2) -> f32 {
+    let d = Vec2::new(b.x - a.x, b.y - a.y);
+    (d.x * d.x + d.y * d.y).sqrt().sqrt()
+}
+
+/// A VELOCIDADE de Catmull-Rom num ponto interior liso, no espaço de NÓ (Barry–Goldman):
+///
+/// ```text
+/// v_i = (P_i − P_{i−1})/dt_prev − (P_{i+1} − P_{i−1})/(dt_prev + dt_next) + (P_{i+1} − P_i)/dt_next
+/// ```
+///
+/// Com `dt_prev == dt_next` ela REDUZ, termo a termo, a `½·(P[i+1] − P[i−1])/dt` — ou seja, a
+/// tangente de Hermite sai **matematicamente idêntica** à uniforme quando o espaçamento é par
+/// (⚠️ não *bit*-idêntica: sobra um `/dt` seguido de `·dt` em `f32`).
+fn knot_velocity(prev: Vec2, cur: Vec2, next: Vec2, dt_prev: f32, dt_next: f32) -> Vec2 {
+    let inv_p = 1.0 / dt_prev;
+    let inv_n = 1.0 / dt_next;
+    let inv_s = 1.0 / (dt_prev + dt_next);
+    Vec2::new(
+        (cur.x - prev.x) * inv_p - (next.x - prev.x) * inv_s + (next.x - cur.x) * inv_n,
+        (cur.y - prev.y) * inv_p - (next.y - prev.y) * inv_s + (next.y - cur.y) * inv_n,
+    )
 }
 
 /// **Reamostragem SUAVE do traço** (T2.8): interpola uma **Catmull-Rom** pelos pontos (o traço passa
@@ -141,20 +187,30 @@ pub(crate) fn resample_smooth(pts: &[Vec2], prs: &[f32], step: f32) -> (Vec<Vec2
             _ => true,
         }
     };
+    // Os intervalos de NÓ da parametrização centrípeta — um por span.
+    let knots: Vec<f32> = (0..n - 1).map(|i| knot_step(pts[i], pts[i + 1])).collect();
     // Tangente de SAÍDA em P[i] (m0 do span i→i+1) e de ENTRADA em P[i] (m1 do span i−1→i): numa
-    // quina, a corda do lado respectivo (vinco C0); num ponto liso, a centrada (C1 suave).
+    // quina, a corda do lado respectivo (vinco C0); num ponto liso, a de Catmull-Rom CENTRÍPETA.
+    //
+    // ⚠️ **A velocidade é do PONTO; a tangente é do SPAN.** A base de Hermite roda em `t ∈ [0,1]`,
+    // então a mesma velocidade `v_i` entra escalada pelo intervalo de nó DAQUELE span — e é por
+    // isso que `tan_out` e `tan_in` deixam de ser o mesmo número num ponto liso (na uniforme eram,
+    // porque os dois intervalos valiam 1). Escalar pelo span errado devolve a barriga pela porta
+    // dos fundos: é o span CURTO que precisa da tangente curta.
     let tan_out = |i: usize| -> Vec2 {
         if is_corner(i) {
             Vec2::new(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y)
         } else {
-            centered_tangent(pts[i - 1], pts[i + 1])
+            let v = knot_velocity(pts[i - 1], pts[i], pts[i + 1], knots[i - 1], knots[i]);
+            Vec2::new(v.x * knots[i], v.y * knots[i])
         }
     };
     let tan_in = |i: usize| -> Vec2 {
         if is_corner(i) {
             Vec2::new(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
         } else {
-            centered_tangent(pts[i - 1], pts[i + 1])
+            let v = knot_velocity(pts[i - 1], pts[i], pts[i + 1], knots[i - 1], knots[i]);
+            Vec2::new(v.x * knots[i - 1], v.y * knots[i - 1])
         }
     };
 
@@ -383,3 +439,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "flip_smooth_resample_tests.rs"]
+mod resample_measurement;

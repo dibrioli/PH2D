@@ -263,7 +263,7 @@ fn probe_fx_render_and_look() {
         o.mode = mode;
         o
     };
-    let scenes: [(&str, Vec<FxOpGpu>); 12] = [
+    let scenes: [(&str, Vec<FxOpGpu>); 14] = [
         ("00_plain", vec![]),
         ("01_feather", vec![op(FxOp::FEATHER, 24.0, white, [0, 0])]),
         ("02_bevel", vec![op(FxOp::BEVEL, 20.0, black, [-12, 12])]),
@@ -294,13 +294,27 @@ fn probe_fx_render_and_look() {
         ),
         ("10_glow_prox", vec![glow(FxOp::MODE_PROXIMITY)]),
         ("11_glow_cont", vec![glow(FxOp::MODE_CONTOUR)]),
+        // ⚠️ O bevel do report do Enio cobre a forma INTEIRA — regime que a cena 02 (sigma 20)
+        // nunca exercita. Um bevel largo faz a banda alcançar o EIXO MEDIAL, onde a distância
+        // troca de aresta mais próxima; é o único lugar onde o campo exato tem descontinuidade.
+        ("12_bevel_big", vec![op(FxOp::BEVEL, 90.0, black, [-12, 12])]),
+        ("13_bevel_huge", vec![op(FxOp::BEVEL, 200.0, black, [-12, 12])]),
     ];
     // A FONTE, como o passe a ve^ — se a premultiplicacao dela nao valer, todo o resto herda.
     write_ppm(&dir, "0_src", &readback(&gpu, src, W, H));
     for (name, ops) in scenes {
         let dst = make_output_texture(&gpu, W, H);
         let dense = std::env::var("PH2D_FX_DENSE").is_ok();
-        let segs = if dense {
+        // ⚠️ `PH2D_FX_RASTER=1` NEGA a silhueta — o caminho do JFA sobre o raster, para o qual o
+        // campo cai quando ninguém sabe responder pela geometria. Sem esta chave a sonda nunca o
+        // desenha, e foi por isso que o pente do bevel viveu sem foto: ele **só existe ali**.
+        //
+        // Era onde TODA forma com traço caía, e é o que a wave da silhueta resolvida fechou — mas
+        // o caminho continua vivo (forma complexa demais, silhueta que ninguém resolveu), então a
+        // chave continua sendo a única maneira de o VER.
+        let segs = if std::env::var("PH2D_FX_RASTER").is_ok() {
+            Vec::new()
+        } else if dense {
             star_segments_dense(15)
         } else {
             star_segments()

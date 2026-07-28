@@ -29,7 +29,11 @@ use ph2d_vector::{BezPath, Point};
 
 /// Cordas num arco — o mesmo número que o glifo de torque usa, pela mesma razão
 /// (270° têm de ler como curva, não como polígono).
-const ARC_SEGS: u32 = 24;
+///
+/// ⚠️ Compartilhado com o arco da CORDA na roldana (`physics_overlay_pulley`):
+/// os dois desenham o mesmo círculo, e um arco mais grosseiro que o aro dele
+/// apareceria como a corda descolando da roda.
+pub(super) const ARC_SEGS: u32 = 24;
 
 /// Raio do anel do PINO, px de tela. Maior que a ponta (`JOINT_DOT_PX`) porque
 /// ele é o GLIFO — a figura que diz *dobradiça* — e não a marca de uma ponta.

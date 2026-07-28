@@ -12,7 +12,7 @@ use ph2d_physics_ecs::rope_route::{self, RopeWheel};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
-use super::physics_overlay_joint_glyphs::{ring_px, screen_of};
+use super::physics_overlay_joint_glyphs::{ARC_SEGS, ring_px, screen_of};
 use super::physics_overlay_joints::JOINT_DOT_PX;
 
 /// **A POLIA:** a corda passa na SUPERFÍCIE de cada roldana, e cada roldana é
@@ -69,16 +69,27 @@ pub(super) fn pulley_marks(
             ring_px(centre, JOINT_DOT_PX * 2.0, glyph);
         }
     }
-    // A corda. `route` devolve os trechos entre tangentes; os arcos são o que
-    // sobra dentro de cada roda, e desenhá-los como corda RETA de tangente a
-    // tangente já mostra o que importa (que ela não passa pelo centro).
+    // A corda. `route` devolve os trechos entre TANGENTES; entre o trecho que
+    // chega e o que sai, a corda **abraça** a roda, e esse pedaço é um arco.
+    //
+    // ⚠️ Ligar os dois pontos de tangência por uma reta é o que a v1 fazia, com
+    // um comentário afirmando que *já mostra o que importa* — e é falso na tela:
+    // uma corda entre dois pontos de um círculo é uma CORDA, que atravessa o
+    // disco. Nenhum número mudava (o comprimento no solver sempre incluiu o
+    // arco), então o defeito só existia no desenho, que é onde o artista olha.
     let mut segs = Vec::new();
     let ends = (v.anchor_a, v.anchor_b);
     if rope_route::route(ends.0, ends.1, wheels, &mut segs).is_some() {
         span.move_to(a);
-        for t in &segs {
+        for (i, t) in segs.iter().enumerate() {
             span.line_to(screen_of(camera, window, t.from));
             span.line_to(screen_of(camera, window, t.to));
+            // O trecho `i` CHEGA na roda `i` e o trecho `i+1` LARGA dela; o que
+            // há entre os dois é o enlace. A última perna termina numa âncora,
+            // que não tem roda — daí o par de `get`.
+            if let (Some(w), Some(next)) = (wheels.get(i), segs.get(i + 1)) {
+                arc_on_wheel(w, t.to, t.dir, next.dir, camera, window, span);
+            }
         }
         span.line_to(b);
     } else {
@@ -87,5 +98,48 @@ pub(super) fn pulley_marks(
         // uma geometria que não existe.
         span.move_to(a);
         span.line_to(b);
+    }
+}
+
+/// **O enlace:** do ponto onde a corda ENCOSTA na roda até onde ela LARGA,
+/// pela superfície.
+///
+/// ⚠️ **O ângulo vem da MESMA `turn_angle` que o solver usa** para somar o arco
+/// ao comprimento da corda — o desenho não re-deriva por que lado ela passa.
+/// Uma segunda resposta desenharia um enlace de mais de meia volta pelo lado
+/// curto, e a corda vista discordaria da corda que segura.
+///
+/// O ponto de tangência gira **junto com a direção**: se a corda vira `θ`, o
+/// raio que a toca varre `θ`. É por isso que basta rodar o vetor-raio de
+/// chegada — não há um segundo ângulo a computar, e o último ponto do arco
+/// pousa exatamente onde o trecho seguinte começa.
+///
+/// Roda de raio zero é o modelo de PONTO da v1 (a âncora de regressão da wave):
+/// ali não há superfície a abraçar, e a corda já vira no lugar certo.
+fn arc_on_wheel(
+    w: &RopeWheel,
+    touch: [f32; 2],
+    dir_in: [f32; 2],
+    dir_out: [f32; 2],
+    camera: &Camera2d,
+    window: WindowSize,
+    span: &mut BezPath,
+) {
+    if w.radius <= 0.0 {
+        return;
+    }
+    let sweep = f64::from(rope_route::turn_angle(dir_in, dir_out, w.side));
+    let step = std::f64::consts::TAU / f64::from(ARC_SEGS);
+    let steps = ((sweep.abs() / step).ceil() as u32).max(1);
+    let (cx, cy) = (f64::from(w.centre[0]), f64::from(w.centre[1]));
+    let (rx, ry) = (f64::from(touch[0]) - cx, f64::from(touch[1]) - cy);
+    for k in 1..=steps {
+        let th = sweep * f64::from(k) / f64::from(steps);
+        let (sin, cos) = libm::sincos(th);
+        let p = [
+            (cx + rx * cos - ry * sin) as f32,
+            (cy + rx * sin + ry * cos) as f32,
+        ];
+        span.line_to(screen_of(camera, window, p));
     }
 }

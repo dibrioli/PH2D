@@ -564,3 +564,9 @@ mod joint_tests;
 #[cfg(test)]
 #[path = "physics_overlay_joint_envelope_tests.rs"]
 mod joint_envelope_tests;
+
+/// Os gates da POLIA — o corte é por assunto: a única figura cujo caminho tem
+/// quantos nós o artista quiser, e cada nó é um círculo que a corda abraça.
+#[cfg(test)]
+#[path = "physics_overlay_joint_pulley_tests.rs"]
+mod joint_pulley_tests;

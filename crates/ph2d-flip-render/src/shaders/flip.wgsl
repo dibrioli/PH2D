@@ -499,6 +499,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // segmento — o que estende a união local à UNIÃO GLOBAL da polilinha e mata a
     // mordida de longo alcance (traço que volta sobre si mesmo). `count` é 0 num
     // traço que não se auto-aproxima: o laço nem executa.
+    //
+    // ⚠️ O piso `min_r` é o MESMO das cápsulas própria/anterior/seguinte (`min_r` no
+    // vertex): "qual é o raio desta cápsula?" é UMA pergunta, e este laço já foi a
+    // segunda porta que esquecia a regra (media com piso `0.0`). O regime em que isso
+    // morde é o SUB-PIXEL — que não é exótico, é todo traço depois de um zoom out: a
+    // cápsula do CRUZAMENTO ficava mais fina que a da própria fita, então a união
+    // media MENOS cobertura exatamente onde as duas passagens se encontram.
+    let min_r = MIN_WIDTH_PX * 0.5;
     for (var k = 0u; k < in.extras.y; k = k + 1u) {
         let e = seg_extras[in.extras.x + k];
         let ea = points[e.x];
@@ -507,8 +515,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             frag,
             to_screen(ea.pos),
             to_screen(eb.pos),
-            max(ea.width * 0.5 * cam.px_per_world, 0.0),
-            max(eb.width * 0.5 * cam.px_per_world, 0.0),
+            max(ea.width * 0.5 * cam.px_per_world, min_r),
+            max(eb.width * 0.5 * cam.px_per_world, min_r),
         ));
     }
     // **O *tip* pontilhado** (Dots/Squares, 03 §8): a linha vira CONTAS — cada uma um DISCO

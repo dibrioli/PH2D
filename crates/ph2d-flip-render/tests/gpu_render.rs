@@ -1464,3 +1464,200 @@ fn a_densified_soft_hatching_matches_the_union() {
         "hachura macia DENSIFICADA (voltas a meio raio)",
     );
 }
+
+/// SONDA (não é gate) — **quanto** o piso de largura mínima que FALTA no laço de
+/// `seg_extras` muda a tela.
+///
+/// `MIN_WIDTH_PX` é aplicado ao raio das cápsulas PRÓPRIA/anterior/seguinte
+/// (`flip.wgsl`, `min_r`) e **não** ao das cápsulas de `seg_extras` — os vizinhos
+/// GEOMÉTRICOS, que é por onde um traço que volta sobre si mesmo se enxerga. A mesma
+/// pergunta ("qual é o raio desta cápsula?") com duas portas, e uma delas esqueceu a
+/// regra. O regime em que isso morde é o SUB-PIXEL, que não é exótico: é todo traço
+/// depois de um zoom out.
+///
+/// ⚠️ **Onde o fenômeno VIVE, medido:** uma cápsula de extras só muda a união onde
+/// ela GANHA o `min`, e todo fragment está a no máximo um raio do PRÓPRIO eixo. Num
+/// **X** as duas passagens se cruzam em ângulo e a região em que a outra ganha é um
+/// estilhaço onde as duas já saturam ⇒ o piso que falta é INVISÍVEL (medido:
+/// byte-idêntico). Ele morde onde as duas passagens correm **quase paralelas e a menos
+/// de um raio** — hachura vista de longe, o gesto que a wave anterior curou.
+///
+/// Rode ANTES e DEPOIS do fix e compare as linhas:
+///   cargo test -p ph2d-flip-render --release --test gpu_render \
+///     measure_the_missing_floor -- --ignored --nocapture
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_missing_floor_in_the_extras_loop() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // (a) O X: as duas passagens se cruzam em ângulo reto. Os segmentos que se cruzam
+    //     estão a 44 unidades de arco um do outro, muito além do alcance da fita local
+    //     ⇒ o cruzamento chega pela GRADE, que é exatamente o laço sem piso.
+    let x_spine = [(10.0, 10.0), (54.0, 54.0), (54.0, 10.0), (10.0, 54.0)];
+    // (b) O GRAMPO: ida e volta quase paralelas, a `GAP` px de distância. Com o traço
+    //     sub-pixel a cápsula da OUTRA perna ganha o `min` numa faixa larga — é ali que
+    //     o raio dela decide a tela.
+    const GAP: f32 = 0.4;
+    let hairpin = [
+        (12.0, 32.0),
+        (52.0, 32.0),
+        (52.0, 32.0 + GAP),
+        (12.0, 32.0 + GAP),
+    ];
+    for (name, spine, hardness) in [
+        ("X          ", &x_spine[..], 0.7f32),
+        ("grampo 0.4px", &hairpin[..], 0.9),
+    ] {
+        let at_floor = total_ink(&render_uniform(&device, &queue, spine, 0.65, hardness));
+        println!("\n  {name} (hardness {hardness}) — tinta no piso {at_floor}");
+        println!("  raio | piso? |  npx | soma alfa |  max");
+        for &r in &[0.10f32, 0.20, 0.30, 0.45, 0.65, 1.00] {
+            let mut d = FlipDrawing::new();
+            let mut s = FlipStroke::new();
+            for &(x, y) in spine {
+                s.push_point(Point {
+                    pos: Vec2::new(x, y),
+                    width: r * 2.0,
+                    opacity: 1.0,
+                    color: Rgba::new(1.0, 0.2, 0.1, 1.0),
+                });
+            }
+            s.hardness = hardness;
+            d.strokes.push(s);
+            let px = render(&device, &queue, &d);
+
+            let mut n = 0u32;
+            let mut sum = 0u64;
+            let mut max = 0u8;
+            for y in 0..H {
+                for x in 0..W {
+                    let a = alpha_at(&px, x, y);
+                    if a > 0 {
+                        n += 1;
+                        sum += u64::from(a);
+                        max = max.max(a);
+                    }
+                }
+            }
+            println!(
+                "  {r:.2} | {:5} | {n:4} | {sum:9} | {max:4} | razao {:.4} | fade {:.4}",
+                if r * 2.0 < MIN_WIDTH_PX { "SIM" } else { "nao" },
+                sum as f64 / at_floor as f64,
+                smoothstep01(r * 2.0),
+            );
+        }
+    }
+}
+
+/// A tinta TOTAL de um traço (a soma dos alfas do alvo).
+fn total_ink(px: &[u8]) -> u64 {
+    let mut sum = 0u64;
+    for y in 0..H {
+        for x in 0..W {
+            sum += u64::from(alpha_at(px, x, y));
+        }
+    }
+    sum
+}
+
+/// Rasteriza `spine` como UM traço de largura uniforme `2r`.
+fn render_uniform(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    spine: &[(f32, f32)],
+    r: f32,
+    hardness: f32,
+) -> Vec<u8> {
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    for &(x, y) in spine {
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: r * 2.0,
+            opacity: 1.0,
+            color: Rgba::new(1.0, 0.2, 0.1, 1.0),
+        });
+    }
+    s.hardness = hardness;
+    d.strokes.push(s);
+    render(device, queue, &d)
+}
+
+/// **Um traço abaixo do piso é o traço NO piso, desbotado — e isso vale também onde
+/// ele se enxerga.**
+///
+/// `MIN_WIDTH_PX` é um PAR: a GEOMETRIA é clampada (a fita não afina mais) e a
+/// INTENSIDADE desbota (`smoothstep(0,1,espessura)`) — sem o clamp a linha fina não
+/// cobre o centro de pixel nenhum e PISCA ao mover; sem o fade ela fica grossa demais.
+/// O par É o contrato, e ele tem uma consequência verificável: com largura uniforme o
+/// fade é um ESCALAR, então a tinta total a `r < piso` tem de ser a tinta a `r = piso`
+/// vezes `smoothstep01(2r)`.
+///
+/// O laço de `seg_extras` — os vizinhos GEOMÉTRICOS, por onde um traço que volta sobre
+/// si mesmo se enxerga — media o raio dessas cápsulas com piso `0.0`: a MESMA pergunta
+/// que `min_r` responde no vertex, por uma segunda porta que esquecia a regra. A
+/// cápsula do CRUZAMENTO ficava mais fina que a da própria fita, então a união media
+/// menos cobertura exatamente onde as duas passagens se encontram.
+///
+/// ⚠️ **Onde o fenômeno VIVE, medido** (sonda `measure_the_missing_floor_in_the_extras_loop`):
+/// num **X** ele é INVISÍVEL (byte-idêntico) — as duas passagens se cruzam em ângulo e a
+/// região em que a outra ganha o `min` é um estilhaço onde as duas já saturam. Ele morde
+/// onde elas correm quase **paralelas e a menos de um raio**: hachura vista de longe.
+/// Medido no grampo a 0,4 px — tinta/tinta-no-piso, esperado vs sem o piso:
+/// `r=0,20: 0,352 vs 0,170` · `r=0,30: 0,651 vs 0,454` · `r=0,45: 0,973 vs 0,813`
+/// (até **52% da tinta** sumindo).
+///
+/// O oráculo é a PROPRIEDADE (clamp + fade), nunca a implementação do laço.
+///
+/// ⚠️ **O CONTROLE é o X, não um traço reto** — e a escolha é o achado. Um reto não
+/// tem vizinho geométrico nenhum, então ele prova só que o resto do shader não regrediu;
+/// o X percorre o MESMO laço de extras que o grampo e mesmo assim fica VERDE sob a
+/// mutação. É o par que diz a coisa exata: *o laço é exercitado pelos dois, e só o
+/// quase-paralelo consegue enxergar o piso que falta.*
+///
+/// **A BARRA saiu da medição:** com o piso, o pior desvio dos dois formatos é `0,004`;
+/// sem ele, o grampo erra por `0,18-0,20`. `0,02` deixa 5× de folga sobre o ruído
+/// medido e 9× de fosso até a mutação. `r=0,10` fica FORA de propósito — ali os alfas
+/// caem para ~2/255 e o limiar de discard os come (medido: razão 0,018 contra 0,104
+/// esperados, com o piso no lugar). O regime não é a wave.
+/// Mutação que sangra: piso `0.0` de volta no laço de extras.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_sub_pixel_stroke_is_the_stroke_at_the_floor_faded_even_where_it_meets_itself() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    const FLOOR_R: f32 = 1.3 * 0.5; // MIN_WIDTH_PX * 0.5
+    const GAP: f32 = 0.4;
+    // O CONTROLE: um X de um traço só — as duas passagens se cruzam em ÂNGULO, e a
+    // região em que a cápsula da outra ganha o `min` é um estilhaço onde as duas já
+    // saturam. Percorre o laço de extras e não enxerga o piso.
+    let x_cross = [(10.0, 10.0), (54.0, 54.0), (54.0, 10.0), (10.0, 54.0)];
+    // O DISCRIMINANTE: ida e volta quase PARALELAS a `GAP` px — as duas pernas são
+    // NÃO-adjacentes (a volta as separa), então a outra chega pela GRADE, e ela ganha
+    // o `min` numa faixa larga. É hachura vista de longe.
+    let hairpin = [
+        (12.0, 32.0),
+        (52.0, 32.0),
+        (52.0, 32.0 + GAP),
+        (12.0, 32.0 + GAP),
+    ];
+    for (name, spine) in [
+        ("X que cruza (CONTROLE)", &x_cross[..]),
+        ("grampo 0.4px", &hairpin[..]),
+    ] {
+        let at_floor = total_ink(&render_uniform(&device, &queue, spine, FLOOR_R, 0.9));
+        assert!(at_floor > 1000, "{name}: fixture vazia ({at_floor})");
+        for &r in &[0.20f32, 0.30, 0.45] {
+            let thin = total_ink(&render_uniform(&device, &queue, spine, r, 0.9));
+            let got = thin as f64 / at_floor as f64;
+            let want = f64::from(smoothstep01(r * 2.0));
+            assert!(
+                (got - want).abs() < 0.02,
+                "{name} r={r:.2}: a tinta sub-pixel não é a tinta do piso desbotada \
+                 — razão {got:.3}, esperada {want:.3} (o piso do laço de extras)"
+            );
+        }
+    }
+}

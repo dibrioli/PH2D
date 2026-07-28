@@ -55,6 +55,7 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         max_length: 2.0,
         // No pick armed by default — the base fixture is a joint being tuned.
         pick_armed: 0,
+        wheel_count: 2,
         // Breaking is ON in the base fixture so the thresholds are on screen for
         // the row sweeps; the switch's own OFF half is asserted by
         // `the_break_rows_follow_their_switch`.
@@ -716,6 +717,40 @@ fn the_pair_controls_are_offered_on_every_kind() {
     }
 }
 
+/// **O botão que acrescenta uma roldana existe SÓ na polia, e o clique chega.**
+///
+/// As duas metades num gate só, porque são a mesma decisão vista dos dois lados:
+/// *"Add Wheel"* num Pin seria um controle que não pode fazer nada (um pino não
+/// tem rota), e num Pulley que não despachasse seria a capacidade que o artista
+/// pediu (o item 4) presa atrás de um botão morto.
+#[test]
+fn only_a_pulley_offers_the_add_wheel_button_and_the_click_lands() {
+    const KIND_PULLEY: u8 = 7;
+    for kind_tag in 0..=KIND_PULLEY {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(joint(kind_tag)));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        let painted = rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_ADD_WHEEL);
+        assert_eq!(
+            painted,
+            kind_tag == KIND_PULLEY,
+            "kind {kind_tag}: Add Wheel {} ser pintado",
+            if kind_tag == KIND_PULLEY {
+                "tinha de"
+            } else {
+                "não podia"
+            }
+        );
+    }
+    expect(
+        &click_real(joint(KIND_PULLEY), ids::INSP_JOINT_ADD_WHEEL),
+        JointFieldEdit::AddWheel,
+        "Add Wheel",
+    );
+}
+
 /// **E o Swap continua oferecido quando uma das pontas NÃO resolve.**
 ///
 /// A metade que um gating em `bound` teria removido, e é o caso em que o botão é
@@ -792,6 +827,8 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_JOINT_ACTIVE_GROUP,
         ids::INSP_JOINT_COLLIDE_GROUP,
         ids::INSP_JOINT_SWAP,
+        // O botão que acrescenta uma roldana (W-Pulley W1) — botão, não número.
+        ids::INSP_JOINT_ADD_WHEEL,
         ids::INSP_JOINT_REMOVE,
         ids::INSP_JOINT_PICK_A,
         ids::INSP_JOINT_PICK_B,

@@ -94,3 +94,51 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
          apply@{apply} flush@{flush} (body {open}..{close})"
     );
 }
+
+/// **Os DOIS verbos ESTRUTURAIS da §12 são despachados no MESMO laço** — o que
+/// apaga a corda e o que acrescenta uma roldana.
+///
+/// Nenhum dos dois é uma edição de componente: `Remove` despawna a corda,
+/// `AddWheel` spawna uma roldana. Os dois seguem por `else if` ANTES do
+/// `apply_joint_edit`, e é por isso que este gate existe — um verbo estrutural que
+/// caísse no braço de edição chamaria `joint_with_edit`, que devolve `None` para
+/// ele, e o clique não faria nada em silêncio. Foi assim que a shell tratou o
+/// `Remove` desde o W3, e é a forma que o `AddWheel` copia.
+///
+/// ⚠️ **Arch-gate porque este laço vive no corpo por-frame da render loop**, que
+/// nenhum unit test alcança (precisa de janela). A metade COMPORTAMENTAL de cada
+/// um é gateada onde ela mora: `adding_a_wheel_puts_it_on_the_rope` para o spawn,
+/// e o despawn é o caminho que todo objeto toma.
+///
+/// Mutação: tire o braço do `AddWheel` e o clique cai no `apply_joint_edit`, que
+/// não tem o que fazer com ele — este gate fica vermelho.
+#[test]
+fn the_structural_joint_verbs_are_dispatched_before_the_field_edits() {
+    let (open, close) = joint_loop_body();
+    let body = &SRC[open..close];
+    let apply = body
+        .find("inspector_joint::apply_joint_edit(")
+        .expect("o braço de edição de campo");
+    for (verb, call) in [
+        ("Remove", "despawn("),
+        ("AddWheel", "inspector_joint::add_pulley_wheel("),
+    ] {
+        let arm = body
+            .find(&format!("JointFieldEdit::{verb}"))
+            .unwrap_or_else(|| {
+                panic!(
+                    "`{verb}` não é mais despachado no laço da §12 — ele é ESTRUTURAL \
+                 (spawn/despawn de objeto), não uma edição de campo, e cair no \
+                 `apply_joint_edit` o faria virar um clique sem efeito."
+                )
+            });
+        let done = body.find(call).unwrap_or_else(|| {
+            panic!("`{verb}` é reconhecido mas nada chama `{call}` — o braço ficou vazio")
+        });
+        assert!(
+            arm < apply && done < apply,
+            "`{verb}` tem de ser resolvido ANTES do braço de edição de campo: \
+             arm@{arm} call@{done} apply@{apply}"
+        );
+    }
+}

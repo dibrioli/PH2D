@@ -10,7 +10,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
-use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
+use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsBridge, PhysicsJoint};
 
 use super::inspector_ordering::queue_set;
 
@@ -131,6 +131,19 @@ fn name_for(world: &World, id: u64, q: &mut bevy_ecs::query::QueryState<(&Name,)
 /// `pick_armed` (`0` none / `1` A / `2` B) is the shell's armed-pick state for
 /// THIS joint, mirrored into the snapshot so the painter draws the waiting
 /// eyedropper pressed.
+/// Quantas roldanas apontam para esta corda, no mundo AUTORADO.
+fn rope_wheel_count(sim: &mut SimWorld, joint: Entity) -> u32 {
+    let Some(rope) = sim
+        .world()
+        .get::<Name>(joint)
+        .map(|n| stable_name_id(n.as_str()))
+    else {
+        return 0;
+    };
+    let mut q = sim.world_mut().query::<&ph2d_physics_ecs::PulleyWheel>();
+    u32::try_from(q.iter(sim.world()).filter(|w| w.rope == rope).count()).unwrap_or(u32::MAX)
+}
+
 pub(crate) fn build_joint_info(
     sim: &mut SimWorld,
     entity_bits: u64,
@@ -138,6 +151,11 @@ pub(crate) fn build_joint_info(
 ) -> Option<InspectorJointInfo> {
     let entity = Entity::from_bits(entity_bits);
     let joint = *sim.world().get::<PhysicsJoint>(entity)?;
+    // Quantas roldanas esta corda tem — contadas no estado AUTORADO, não na arena
+    // do solver: é o número que o artista gerencia (ele acabou de criar uma), e
+    // uma corda cujo joint ainda não foi construído mostraria zero se a pergunta
+    // fosse ao solver.
+    let wheel_count = rope_wheel_count(sim, entity);
     let mut q = sim.world_mut().query::<(&Name,)>();
     let world = sim.world();
     let a = name_for(world, joint.body_a, &mut q);
@@ -145,6 +163,7 @@ pub(crate) fn build_joint_info(
     Some(InspectorJointInfo {
         entity_bits,
         kind_tag: tag_of(joint.kind),
+        wheel_count,
         // `bound` is about the NAMES resolving, which is the thing the artist
         // can act on. Whether the solver also built it depends on those bodies
         // having colliders, and saying "not connected" for a body that is
@@ -234,6 +253,61 @@ pub(crate) fn set_joint_body(
 
 /// Apply one [`JointFieldEdit`].
 ///
+/// **Acrescentar uma roldana a uma corda** — o pedido (4) do artista, *"escolher
+/// o número de roldanas, em tempo real"*.
+///
+/// A roda nova entra ao FIM da rota, e **sobre a corda**: no meio do último
+/// trecho que a rota desenha hoje. Duas razões, e as duas são sobre não
+/// surpreender — ali o comprimento quase não muda (a corda já passava por aquele
+/// ponto, e o que ela ganha é a diferença entre o arco e a corda do enlace, que é
+/// pequena), e o artista vê a roda aparecer EM CIMA da corda que ele está
+/// olhando, em vez de num canto que ele teria de ir procurar.
+///
+/// ⚠️ **Sem roldana nenhuma o "último trecho" é a corda inteira**, então a
+/// primeira nasce no meio dela — que é onde uma roldana faria sentido.
+///
+/// O raio herda o da última roldana (ou o default), porque uma corda com rodas de
+/// tamanhos aleatórios não é o que ninguém pede; e o `order` é o seguinte, então
+/// a rota simplesmente cresce por onde ela já ia.
+pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, joint_bits: u64) {
+    let joint = Entity::from_bits(joint_bits);
+    let Some(name) = sim
+        .world()
+        .get::<Name>(joint)
+        .map(|n| n.as_str().to_string())
+    else {
+        return;
+    };
+    let rope = stable_name_id(&name);
+    let Some(v) = physics.joint_views().find(|v| v.entity == joint) else {
+        return;
+    };
+    // A geometria VIVA, pela mesma porta que o desenho usa — uma segunda
+    // derivação poria a roda onde a corda não está.
+    let wheels: Vec<_> = physics.rope_wheels(joint).map(|(_, w)| w).collect();
+    let last = wheels.last().map_or(v.anchor_a, |w| w.centre);
+    let centre = [
+        0.5 * (last[0] + v.anchor_b[0]),
+        0.5 * (last[1] + v.anchor_b[1]),
+    ];
+    let radius = wheels
+        .last()
+        .map_or(ph2d_physics_ecs::PulleyWheel::DEFAULT_RADIUS, |w| w.radius);
+    let order = u16::try_from(wheels.len()).unwrap_or(u16::MAX);
+    let label = crate::name_unique::unique_name(sim, &format!("{name} Wheel {}", order + 1));
+    sim.world_mut().spawn((
+        Name::new(label),
+        ph2d_physics_ecs::PulleyWheel {
+            rope,
+            order,
+            radius,
+            wrap: ph2d_physics_ecs::WrapSide::Auto,
+        },
+        Transform::from_translation(ph2d_core::Vec2::new(centre[0], centre[1])),
+    ));
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
+}
+
 /// Every arm reads the live joint and writes it back changed — a partial write
 /// would drop the fields not being edited, and this component has eleven of
 /// them. `Remove` is not here: deleting a joint is deleting an OBJECT, and the
@@ -370,7 +444,7 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // `set_joint_body`. Neither reaches this per-joint apply; listed so the
         // match stays exhaustive, exactly like `Remove`.
         JointFieldEdit::PickBodyA | JointFieldEdit::PickBodyB => return None,
-        JointFieldEdit::Remove => return None,
+        JointFieldEdit::Remove | JointFieldEdit::AddWheel => return None,
     }
     // Through the SAME clamp the bridge uses on the way to the solver, so the
     // Inspector cannot author a state the loader would have to repair.

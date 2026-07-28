@@ -25,6 +25,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::Click(id) => {
             if id == ids::INSP_JOINT_REMOVE {
                 Some(JointFieldEdit::Remove)
+            } else if id == ids::INSP_JOINT_ADD_WHEEL {
+                Some(JointFieldEdit::AddWheel)
             } else if id == ids::INSP_JOINT_SWAP {
                 Some(JointFieldEdit::Swap)
             } else if id == ids::INSP_JOINT_PICK_A {

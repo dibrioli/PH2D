@@ -6148,6 +6148,11 @@ impl crate::App {
                 if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
                     let e = ph2d_ecs::Entity::from_bits(bits);
                     let _ = sim.world_mut().despawn(e);
+                } else if matches!(edit, ph2d_editor::JointFieldEdit::AddWheel) {
+                    // Estrutural como o `Remove`, do outro lado: SPAWNA um
+                    // objeto. O undo global por-diff o captura como captura
+                    // qualquer outro spawn, sem um passo próprio a inventar.
+                    inspector_joint::add_pulley_wheel(sim, physics, bits);
                 } else {
                     inspector_joint::apply_joint_edit(
                         sim,

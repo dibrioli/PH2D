@@ -148,3 +148,34 @@ pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 /// and re-creating the joint.
 pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
 pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
+
+/// **Acrescentar uma roldana à corda** (W-Pulley W1) — o pedido (4) do artista,
+/// *"escolher o número de roldanas, em tempo real, acrescentando após a criação"*.
+///
+/// Mora na seção da CORDA e não na da roda, porque é a corda que possui a lista —
+/// e porque é ali que o artista está quando pensa *"esta corda precisa de mais
+/// uma"*. A roda nova entra ao FIM da rota (o `order` seguinte) e o gesto de
+/// posicioná-la é o mesmo de qualquer roldana: arrastar o dot dela.
+pub const INSP_JOINT_ADD_WHEEL: NodeId = hash_node_id("insp_joint_add_wheel");
+
+/// **O RAIO da roldana selecionada**, metros (W-Pulley W1).
+///
+/// O número que substituiu o `Ratio`. A alça do aro no canvas edita o MESMO
+/// campo — dois gestos, um valor.
+pub const INSP_WHEEL_RADIUS: NodeId = hash_node_id("insp_wheel_radius");
+
+/// **A POSIÇÃO da roldana ao longo da corda** — 1º nó, 2º nó, … (W-Pulley W1).
+///
+/// Editável porque a rota é uma SEQUÊNCIA: duas roldanas trocadas de ordem
+/// descrevem outra corda, e sem esta row a única forma de reordenar seria apagar
+/// e recriar.
+pub const INSP_WHEEL_ORDER: NodeId = hash_node_id("insp_wheel_order");
+
+/// **De que lado a corda passa nesta roldana** — `Auto | Over | Under`, o escape
+/// manual ao lado do algoritmo (W-Pulley W1, pedido 7).
+pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
+pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
+    hash_node_id("insp_wheel_wrap_auto"),
+    hash_node_id("insp_wheel_wrap_over"),
+    hash_node_id("insp_wheel_wrap_under"),
+];

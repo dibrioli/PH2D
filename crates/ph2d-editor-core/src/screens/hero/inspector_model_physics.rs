@@ -432,6 +432,12 @@ pub struct InspectorJointInfo {
     /// artist sees the picker is waiting for a click on a body. The shell owns
     /// the armed state (`App.joint_body_pick`); this mirrors it for the paint.
     pub pick_armed: u8,
+    /// **Quantas roldanas esta corda atravessa** (W-Pulley W1).
+    ///
+    /// A §12 o mostra ao lado do botão que acrescenta uma — sem ele o artista
+    /// clicaria e não teria como saber que algo aconteceu, porque a roldana nova
+    /// nasce SOBRE a corda (para não dar um puxão) e o desenho quase não muda.
+    pub wheel_count: u32,
     /// Can this joint be torn apart? (W-J7.) Gates the two thresholds below —
     /// the `∞ = off` of P7, expressed as the checkbox the section already uses
     /// for limits and for the motor.
@@ -511,6 +517,10 @@ pub enum JointFieldEdit {
     /// signed quantity measured between them is negated, so the joint does
     /// exactly what it did and only the labelling changes.
     Swap,
+    /// **Acrescentar uma roldana a esta corda** (W-Pulley W1) — o pedido (4) do
+    /// artista. Estrutural, como o `Remove`: a shell SPAWNA um objeto, e o undo
+    /// global por-diff o captura como captura qualquer outro.
+    AddWheel,
     /// Delete the joint object.
     Remove,
 }

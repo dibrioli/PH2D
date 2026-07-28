@@ -399,6 +399,27 @@ fn paint_kind_params(
             ids::INSP_JOINT_MAX_LENGTH,
         );
     }
+    if info.kind_tag == KIND_PULLEY {
+        // **Acrescentar uma roldana** (pedido 4). O botão mora aqui — na seção da
+        // CORDA — porque é a corda que possui a lista, e porque é onde o artista
+        // está quando pensa *"esta corda precisa de mais uma"*. A contagem no
+        // rótulo é o que torna o clique VISÍVEL: a roldana nova nasce SOBRE a
+        // corda, para não dar um puxão, e ali o desenho quase não muda.
+        let rect = Rect::new(x, yy, w, ROW_H_PX);
+        let btn = Button::new(
+            ids::INSP_JOINT_ADD_WHEEL,
+            format!("Add Wheel ({} on this rope)", info.wheel_count),
+        )
+        .kind(ButtonKind::Default)
+        .state(
+            store
+                .button_state(ids::INSP_JOINT_ADD_WHEEL)
+                .unwrap_or(ButtonState::Normal),
+        );
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_JOINT_ADD_WHEEL, rect);
+        yy += ROW_H_PX;
+    }
     yy
 }
 

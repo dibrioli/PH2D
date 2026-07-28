@@ -47,6 +47,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         &[
             ids::INSP_JOINT_REMOVE,
             ids::INSP_JOINT_SWAP,
+            ids::INSP_JOINT_ADD_WHEEL,
             ids::INSP_JOINT_PICK_A,
             ids::INSP_JOINT_PICK_B,
             ids::INSP_PHYS_JOIN,

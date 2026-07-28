@@ -423,3 +423,53 @@ fn a_pulley_is_rigged_by_both_creation_routes() {
         );
     }
 }
+
+/// **"Add Wheel" acrescenta uma roldana À CORDA — e ela nasce SOBRE ela.**
+///
+/// O pedido (4) do artista: *"não podemos escolher o número de roldanas, que
+/// deveria ser em tempo real, acrescentando após a criação da joint"*.
+///
+/// ⚠️ **O oráculo é a DISTÂNCIA da roda nova à corda existente**, e não *"apareceu
+/// uma entidade"*: uma roldana que nasce longe da rota dá um puxão no primeiro
+/// frame e obriga o artista a ir procurá-la. Nascer no meio do último trecho é o
+/// que a torna um acréscimo em vez de uma surpresa.
+#[test]
+fn adding_a_wheel_puts_it_on_the_rope() {
+    let (mut sim, hook, plank) = two_bodies(true);
+    let joint = super::inspector_joint::create_joint_at(
+        &mut sim,
+        hook.to_bits(),
+        plank.to_bits(),
+        JointKind::Pulley,
+        None,
+    )
+    .expect("join");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let before: Vec<_> = bridge.rope_wheels(joint).map(|(_, w)| w).collect();
+    assert_eq!(before.len(), 2, "a criação dá duas");
+
+    // A geometria que a roda nova tem de tocar: o último trecho da rota de hoje.
+    let v = bridge
+        .joint_views()
+        .find(|v| v.entity == joint)
+        .expect("view");
+    let last = before.last().expect("duas").centre;
+    let want = [
+        0.5 * (last[0] + v.anchor_b[0]),
+        0.5 * (last[1] + v.anchor_b[1]),
+    ];
+
+    super::inspector_joint::add_pulley_wheel(&mut sim, &bridge, joint.to_bits());
+    bridge.dispatch(&mut sim, false, 0);
+    let after: Vec<_> = bridge.rope_wheels(joint).map(|(_, w)| w).collect();
+    assert_eq!(after.len(), 3, "o clique tinha de acrescentar UMA");
+    let c = after[2].centre;
+    assert!(
+        (c[0] - want[0]).hypot(c[1] - want[1]) < 1.0e-3,
+        "a roda nova nasceu em {c:?} e o meio do último trecho é {want:?}"
+    );
+    // E ela herda o tamanho da vizinha — uma corda com rodas de tamanhos
+    // aleatórios não é o que ninguém pede.
+    assert!((after[2].radius - before[1].radius).abs() < 1.0e-6);
+}

@@ -323,18 +323,26 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             // vazia para traços que não voltam sobre si mesmos — o caso comum).
             let segs = stroke_segments(g, first_point, pos.len() as u32, s.closed);
             for (i, extras) in neighbors::extras_for_stroke(&segs).into_iter().enumerate() {
-                if extras.is_empty() {
+                if extras.list.is_empty() {
                     continue;
                 }
                 let offset = g.seg_extras.len() as u32;
-                for j in &extras {
+                for j in &extras.list {
                     let sj = segs[*j as usize];
                     g.seg_extras.push(GpuSegRef { a: sj.a, b: sj.b });
                 }
                 // O range é indexado pelo PONTO INICIAL do segmento (a identidade do
                 // segmento no shader é o `gp` do seu primeiro ponto).
+                //
+                // ⚠️ A 2ª palavra carrega DOIS números: `count` nos 16 bits baixos e o
+                // `ribbon` (quantos dos primeiros são da PRÓPRIA passagem) nos altos. Empacotar
+                // em vez de acrescentar um 3º campo mantém o layout do buffer, a BGL e o varying
+                // como estão — e os dois números são ≤ 32 por construção (os dois tetos de
+                // `neighbors`), então 16 bits sobram com folga de mil vezes.
                 let owner = segs[i].a as usize;
-                g.seg_extra_range[owner] = [offset, extras.len() as u32];
+                let count = extras.list.len() as u32;
+                debug_assert!(count <= 0xffff && extras.ribbon <= count);
+                g.seg_extra_range[owner] = [offset, count | (extras.ribbon << 16)];
             }
         }
 

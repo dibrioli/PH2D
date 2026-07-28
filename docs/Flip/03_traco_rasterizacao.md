@@ -537,3 +537,61 @@ CPU×GPU da `line/gpu-nodes`.
 
 **Aberto e nomeado:** o `DEFAULT_HARDNESS` do Flip é **1,0** (herdado do GP) e o do Painter é
 **0,0** — dois produtos, dois defaults; alinhá-los é decisão de produto, não desta wave.
+
+---
+
+## §8.7 — UMA PASSAGEM, UMA COBERTURA: o auto-cruzamento COMPÕE (2026-07-28)
+
+**2º report do Enio**, com foto: *"funcionou muito bem se são dois traços cruzados. Mas se o mesmo
+traço cruza a si mesmo então temos o mesmo aspecto indesejado"*.
+
+⚠️ **O relato separa duas ROTAS DE CÓDIGO, e isso é o diagnóstico inteiro.** Traços distintos têm
+depth diferente ⇒ o mais novo pinta POR CIMA ⇒ **composição `over`**, que é lisa. Um traço que
+cruza a si mesmo tem o MESMO depth, o `GREATER` estrito descarta o 2º quad, e sobra a **UNIÃO**
+(`min` de distâncias) — e `min` de duas funções lisas tem **VINCO** (gradiente descontínuo) na
+bissetriz. Em hardness 1 a máscara é binária e o vinco não existe; com pincel macio ele é a
+costura da foto.
+
+**Medido** (o MESMO X como um traço e como dois, disco de raio 18 no cruzamento):
+
+| hardness | união (era) | composição (é) |
+|---|---|---|
+| 0,7 | **35/255** | **1/255** |
+| 0,4 | **48/255** | **1/255** |
+
+Na bissetriz, saindo do cruzamento (h=0,4): `255 249 212 155 91 36` contra os `255 255 243 203
+131 50` de dois traços — a união é sistematicamente mais **fraca entre os braços**.
+
+**A lei:** a lista de vizinhos vem **particionada por passagem** (`neighbors::SegExtras`, com
+`ribbon` contando quantos são da própria fita) e o fragment faz
+`1 − (1−mask_própria)(1−mask_estranha)`. ⚠️ **Compõe-se a COBERTURA, nunca o ALFA** — a opacidade
+multiplica depois, então no centro do cruzamento as duas coberturas são 1, o composto é 1, e um
+traço a opacity 0,5 **não escurece sobre si mesmo** (a regra do GP, que segue gateada).
+⚠️ **Sem cruzamento é byte-idêntico por construção** (`n_ribbon == n_all` ⇒ o ramo nem roda).
+
+### As três coisas que a medição derrubou no caminho
+
+1. ⛔ **Cortar a passagem por ARCO está ERRADO — não re-derive.** Foi a v1: numa curva fechada a
+   mesma fita volta a ficar perto com arco grande, virava passagem "estranha" e o traço compunha
+   tinta **consigo mesmo** (196 onde a união pede 184). O critério certo é o que o doc sempre
+   afirmou: *alcançável andando pela polilinha **sem sair** do alcance*.
+2. ⚠️ **O TRANSBORDO do teto da fita tem de degradar para a UNIÃO, nunca para composição.** Com o
+   `return` no cap, os excedentes caíam no grid e viravam passagem falsa-estranha ⇒ o teto passava
+   a *adicionar* tinta. Agora o carimbo vem sempre e só o `push` é capeado: perde-se cobertura
+   (a degradação que a lista sempre teve), nunca se inventa.
+3. ⚠️ **O teste espacial só é honesto sobre polilinha REAMOSTRADA.** Dois segmentos enormes têm
+   distância medida pelas PONTAS, então uma ida-e-volta de 2 segmentos nunca "sai" da vizinhança.
+   O produto reamostra tudo (`0.4 × largura`) ⇒ as fixtures dos gates são **densas**.
+
+### Os gates, e por que os antigos não viam nada
+
+- **`a_stroke_crossing_itself_paints_what_two_crossing_strokes_paint`** — o oráculo é o desenho
+  que o Enio APROVOU. ⚠️ O gate irmão `..._is_a_clean_union_without_accumulation` usa
+  `hardness = 1.0`, **disco duro, onde a união é exata por construção**: ele não podia ver isto,
+  e sob a mutação (composição → união) ele fica **VERDE** enquanto o novo sangra em 35.
+- **`a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union`** — a garantia de
+  segurança. ⚠️ Ele **nasceu de uma mutação que sobreviveu**: os 9 gates de união usam **raio 4**,
+  onde a faixa de AA do oráculo (`2/raio = 0,5` em `dn`) engole o OMBRO inteiro e eles viram um
+  teste binário. Com raio 14 o oráculo compara até `dn ≈ 0,86`.
+
+**3 mutações, 3 sangram** (composição→união · partição neutralizada · transbordo virando estranha).

@@ -296,3 +296,57 @@ tabela medida e o residual conhecido da §9.2.
 
 ⚠️ Re-rodar também **`PH2D_FLIP_AIRBRUSH_SMOKE=1`** — o contraste dele mudou de lugar e a
 mensagem foi reescrita; é o smoke que confirma que o airbrush segue distinto.
+
+---
+
+## 10. ⬛ TERCEIRA ONDA — o auto-cruzamento COMPÕE (§8.7 do doc 03)
+
+**2º smoke do Enio, com foto:** *"funcionou muito bem se são dois traços cruzados. Mas se o mesmo
+traço cruza a si mesmo então temos o mesmo aspecto indesejado"*.
+
+⚠️ **O relato separa duas ROTAS DE CÓDIGO — é o diagnóstico inteiro.** Traços distintos têm depth
+diferente ⇒ o mais novo pinta por cima ⇒ **composição `over`** (lisa). Um traço cruzando a si mesmo
+tem o MESMO depth ⇒ o `GREATER` estrito descarta o 2º quad ⇒ **união** (`min`), que tem **VINCO** na
+bissetriz. Hardness 1 esconde (máscara binária); pincel macio mostra.
+
+**Medido** (o MESMO X como um traço e como dois, disco de raio 18 no cruzamento): hardness 0,7
+**35/255 → 1/255**; hardness 0,4 **48/255 → 1/255**, zero pixel fora de 8.
+
+**Cura:** a lista de vizinhos vem **particionada por passagem** (`neighbors::SegExtras`) e o
+fragment faz `1 − (1−mask_própria)(1−mask_estranha)`. **Compõe-se a COBERTURA, nunca o ALFA** ⇒ um
+traço a opacity 0,5 segue sem escurecer sobre si mesmo (a regra do GP, gateada). **Sem cruzamento é
+byte-idêntico por construção.**
+
+### ⚠️ Três coisas que a medição derrubou, e que valem mais que o fix
+
+1. ⛔ **Cortar a passagem por ARCO (a v1) está ERRADO — não re-derive.** Curva fechada volta a
+   ficar perto com arco grande ⇒ a fita compunha consigo mesma (196 onde a união pede 184).
+2. ⚠️ **O transbordo do teto da fita tem de degradar para UNIÃO, nunca para composição** — com o
+   `return` no cap o teto passava a *adicionar* tinta.
+3. ⚠️ **O teste espacial só é honesto sobre polilinha REAMOSTRADA** (segmentos enormes têm
+   distância medida pelas pontas) ⇒ as fixtures dos gates novos são **densas**.
+
+### Gates
+
+- `a_stroke_crossing_itself_paints_what_two_crossing_strokes_paint` — oráculo = o desenho
+  aprovado. ⚠️ O irmão antigo usa `hardness = 1.0` e sob a mutação fica **VERDE**.
+- `a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union` — a garantia de segurança;
+  **nasceu de uma mutação que sobreviveu** (os 9 gates de união usam raio 4, onde a faixa de AA
+  engole o ombro e eles viram teste binário).
+
+**3 mutações, 3 sangram.** ⚠️ **Resíduo NOMEADO:** em `hardness = 1.0` o traço único fica ~11
+níveis mais cheio que dois traços na franja de AA mais externa da bissetriz (240 × 229) — fora do
+disco medido, e na direção de MAIS tinta. É conflação de cobertura correlacionada, inerente a
+compor AA; não perseguido.
+
+### Superfície
+
+`neighbors::extras_for_stroke` passa a devolver `Vec<SegExtras>` (interno à crate) e a 2ª palavra
+de `seg_extra_range` carrega `count | (ribbon << 16)` — **sem campo novo, sem mudar a BGL, sem
+varying novo**. Nenhum schema, contrato congelado, ADR, id ou token.
+
+### Smoke
+
+**`PH2D_FLIP_HARDNESS_SMOKE=1`** — a MESMA cena serve: os três cruzamentos são de **um traço só**.
+O que olhar agora: o cruzamento **funde liso**, sem costura na bissetriz, e desenhar o mesmo X com
+**dois traços separados** tem de dar o mesmo aspecto.

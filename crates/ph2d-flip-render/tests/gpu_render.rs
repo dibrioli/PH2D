@@ -738,6 +738,394 @@ fn the_union_oracle_is_the_painters_law() {
     }
 }
 
+/// **SONDA** — um traço MACIO que cruza a SI MESMO (o report do Enio, 2026-07-28, 2ª foto:
+/// *"se o mesmo traço cruza a si mesmo então temos o mesmo aspecto indesejado"*).
+///
+/// ⚠️ A rota é OUTRA, e é por isso que dois traços cruzados passam: com traços distintos o depth
+/// difere e o mais NOVO pinta por cima (nunca há união). No auto-cruzamento o depth é o MESMO
+/// (por-traço) e o `GREATER` estrito DESCARTA o 2º quad ⇒ o pixel fica com o que o 1º computou,
+/// e só a lista de extras (`seg_extras`) pode fazer os dois concordarem.
+///
+/// ⚠️ O gate `a_stroke_crossing_itself_is_a_clean_union_without_accumulation` usa
+/// `hardness = 1.0` — **disco duro, onde a união é exata por construção fora da franja de AA**
+/// (o §3 do doc 03 diz isso com todas as letras). Ele não pode ver este defeito.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_a_soft_stroke_crossing_itself() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Cada caso: rótulo + polilinha. Todos com pincel GROSSO e MACIO — o regime da foto.
+    let x_detour: Vec<(f32, f32)> = vec![(16.0, 16.0), (48.0, 48.0), (48.0, 16.0), (16.0, 48.0)];
+    let zigzag: Vec<(f32, f32)> = vec![(12.0, 12.0), (46.0, 40.0), (14.0, 40.0), (50.0, 14.0)];
+    let loop_back: Vec<(f32, f32)> = vec![
+        (14.0, 32.0),
+        (34.0, 14.0),
+        (50.0, 32.0),
+        (34.0, 50.0),
+        (24.0, 24.0),
+    ];
+    let cases: [(&str, &Vec<(f32, f32)>); 3] = [
+        ("X com desvio", &x_detour),
+        ("zigzag (a foto)", &zigzag),
+        ("laco que volta", &loop_back),
+    ];
+
+    // ⚠️ A DENSIDADE é a variável: um traço de MÃO passa pelo RDP e depois pela reamostragem
+    // (`0.4 × largura` de arco), então ele chega ao pack com DEZENAS de segmentos por perna, não
+    // com um. Uma fixture de 3 segmentos cabe folgada em qualquer orçamento — ela não contém o
+    // fenômeno. `step` em px de arco: `None` = a polilinha crua.
+    fn densify(pts: &[(f32, f32)], step: f32) -> Vec<(f32, f32)> {
+        let mut out = vec![pts[0]];
+        for w in pts.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (len / step).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+            }
+        }
+        out
+    }
+
+    println!("\n=== TRACO MACIO CRUZANDO A SI MESMO vs a UNIAO analitica ===");
+    // raio 4 ⇒ largura 8 ⇒ o passo do produto é 0.4·8 = 3.2 px de arco.
+    // ⚠️ O RAIO decide o que a sonda consegue VER: o oráculo pula a faixa `aa = 2/raio` em `dn`,
+    // então com raio 4 ele descarta metade do traço e vira um teste BINÁRIO (núcleo sólido vs
+    // fora vazio), cego ao ombro macio — que é exatamente onde o defeito da foto mora. Raio 20
+    // ⇒ `aa = 0.1` ⇒ ele compara até `dn = 0.9`.
+    for radius in [4.0_f32, 12.0, 20.0] {
+        for step in [f32::INFINITY, radius * 0.8] {
+            println!(
+                "\n-- raio {radius} px | passo de reamostragem: {} --",
+                if step.is_finite() {
+                    format!("{step} px")
+                } else {
+                    "cru (3 segmentos)".to_string()
+                }
+            );
+            for hardness in [0.7_f32, 0.4] {
+                for (label, raw) in &cases {
+                    let dense = if step.is_finite() {
+                        densify(raw, step)
+                    } else {
+                        (*raw).clone()
+                    };
+                    let pts = &dense;
+                    let radii: Vec<f32> = vec![radius; pts.len()];
+                    let poly = Polyline {
+                        pts,
+                        radii: &radii,
+                        closed: false,
+                        hardness,
+                    };
+                    let mut d = FlipDrawing::new();
+                    let mut st = FlipStroke::new();
+                    for (&(x, y), &r) in pts.iter().zip(&radii) {
+                        st.push_point(Point {
+                            pos: Vec2::new(x, y),
+                            width: r * 2.0,
+                            opacity: 1.0,
+                            color: Rgba::new(1.0, 0.2, 0.1, 1.0),
+                        });
+                    }
+                    st.hardness = hardness;
+                    d.strokes.push(st);
+                    let px = render(&device, &queue, &d);
+
+                    let (mut worst, mut at, mut pair, mut checked, mut bad) =
+                        (0i32, (0u32, 0u32), (0, 0), 0u32, 0u32);
+                    for y in 0..H {
+                        for x in 0..W {
+                            let Some(exp) =
+                                expected_union_alpha(&poly, (x as f32 + 0.5, y as f32 + 0.5))
+                            else {
+                                continue;
+                            };
+                            let got = i32::from(alpha_at(&px, x, y));
+                            let want = (exp * 255.0).round() as i32;
+                            let diff = (got - want).abs();
+                            checked += 1;
+                            if diff > 8 {
+                                bad += 1;
+                            }
+                            if diff > worst {
+                                worst = diff;
+                                at = (x, y);
+                                pair = (got, want);
+                            }
+                        }
+                    }
+                    println!(
+                        "  h={hardness:.1} {label:>18} ({:3} pts): pior {worst:3} em {at:?} (viu {}, pede {}) | \
+                 {bad} px fora de 8 de {checked}",
+                        pts.len(),
+                        pair.0,
+                        pair.1
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// 🔴 **UM traço que cruza a SI MESMO pinta o que DOIS traços cruzados pintam** — o oráculo é o
+/// desenho que o Enio APROVOU (2026-07-28, 2ª foto: dois traços cruzados certos, o mesmo traço
+/// cruzando a si mesmo errado).
+///
+/// ⚠️ **As duas rotas são código diferente e é por isso que o defeito existia:** traços distintos
+/// têm depth diferente ⇒ o mais novo pinta por cima ⇒ **composição `over`**, lisa. Um traço só tem
+/// o MESMO depth ⇒ o `GREATER` estrito descarta o 2º quad ⇒ **união** (`min` de distâncias), e
+/// `min` de duas funções lisas tem **VINCO** na bissetriz.
+///
+/// **Red-first, medido:** com a composição revertida para a união o pior desvio no disco do
+/// cruzamento é **48/255 em hardness 0.4** e **35/255 em 0.7**; com ela, **1/255** (arredondamento)
+/// e **zero** pixel fora de 8. ⚠️ Em `hardness = 1.0` as duas leis já concordavam (a máscara é
+/// binária) — é por isso que nenhum gate via isto, e é por isso que a fixture é MACIA.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_stroke_crossing_itself_paints_what_two_crossing_strokes_paint() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    for hardness in [0.7_f32, 0.4] {
+        let (one, two) = crossing_pair(hardness);
+        let px_one = render(&device, &queue, &one);
+        let px_two = render(&device, &queue, &two);
+        let (worst, at, bad, checked) = crossing_disc_diff(&px_one, &px_two);
+        assert!(checked > 500, "o disco cobriu pixels de menos ({checked})");
+        assert!(
+            worst <= 4 && bad == 0,
+            "h={hardness}: um traco cruzando a si mesmo difere de dois traços cruzados -- \
+             pior {worst} em {at:?}, {bad} px fora de 8 (de {checked})"
+        );
+    }
+}
+
+/// 🔴 **Um traço DENSO que NÃO cruza a si mesmo é EXATAMENTE a união** — a garantia de segurança
+/// da composição por passagem, e o gate que faltava.
+///
+/// ⚠️ **Ele existe porque uma mutação sobreviveu.** Neutralizar a partição (`ribbon = 0`, que faz
+/// a própria fita contar como passagem ESTRANHA) passou nos 30 gates: as pernas do X do gate
+/// irmão são UM segmento cada — não há fita local para compor — e os 9 gates de união usam
+/// **raio 4**, onde a faixa de AA do oráculo (`2/raio = 0.5` em `dn`) engole o OMBRO inteiro e
+/// eles viram um teste binário (núcleo sólido × fora vazio).
+///
+/// Aqui a curva é **DENSA** (a densidade que o `resample_smooth` produz) e o raio é **14**, então
+/// o oráculo compara até `dn ≈ 0.86` — o ombro entra. Sob a mutação a fita se compõe consigo
+/// mesma e o traço engorda.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Um arco denso: 24 pontos, passo ~2 px de arco num raio de pincel 14 (mais denso que o
+    // produto, de propósito — é onde a fita local enche a lista).
+    let mut pts = Vec::new();
+    for k in 0..24u32 {
+        let a = std::f32::consts::PI * 0.9 * (k as f32 / 23.0);
+        pts.push((32.0 + 22.0 * a.cos(), 34.0 - 22.0 * a.sin()));
+    }
+    let radii = vec![14.0_f32; pts.len()];
+    for hardness in [0.7_f32, 0.4] {
+        assert_matches_union(
+            &device,
+            &queue,
+            &Polyline {
+                pts: &pts,
+                radii: &radii,
+                closed: false,
+                hardness,
+            },
+            &format!("fita densa h={hardness}"),
+        );
+    }
+}
+
+/// O X em duas montagens: `(um traço, dois traços)`. **Porta única** — o gate e a sonda encenam
+/// pela MESMA função, senão eles mediriam figuras diferentes e a sonda deixaria de diagnosticar
+/// o gate.
+fn crossing_pair(hardness: f32) -> (FlipDrawing, FlipDrawing) {
+    let leg_a = [(10.0_f32, 10.0_f32), (54.0, 54.0)];
+    let leg_b = [(54.0_f32, 10.0_f32), (10.0, 54.0)];
+    let r = 14.0_f32;
+    let mk = |p: (f32, f32)| Point {
+        pos: Vec2::new(p.0, p.1),
+        width: r * 2.0,
+        opacity: 1.0,
+        color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+    };
+
+    // ⚠️ **A polilinha é DENSA, e não é capricho.** O produto reamostra todo traço
+    // (`resample_smooth`, passo `0.4 × largura`), então segmentos GIGANTES não existem nele — e
+    // com eles a fixture MENTE: a fronteira de passagem é "a caminhada saiu da vizinhança", e a
+    // distância segmento-a-segmento de dois segmentos enormes vê só as PONTAS, então a caminhada
+    // atravessava o desvio inteiro sem nunca sair, e o braço que cruza virava a mesma passagem.
+    // Com segmentos curtos o desvio é uma fila de segmentos LONGE, a caminhada quebra no primeiro
+    // deles, e o braço de volta é a passagem estranha que ele de fato é.
+    fn densify(a: (f32, f32), b: (f32, f32), out: &mut Vec<(f32, f32)>) {
+        const STEP: f32 = 5.0;
+        let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        let n = (len / STEP).ceil().max(1.0) as usize;
+        for k in 1..=n {
+            let t = k as f32 / n as f32;
+            out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+
+    let mut one = FlipDrawing::new();
+    let mut s1 = FlipStroke::new();
+    // O desvio vai para FORA do quadro (x=120): ele existe só porque um traço SÓ não pode
+    // desenhar um X sem voltar, e dentro do quadro mediria diferença de FORMA em vez de LEI.
+    let mut path = vec![leg_a[0]];
+    for (a, b) in [
+        (leg_a[0], leg_a[1]),
+        (leg_a[1], (120.0, 32.0)),
+        ((120.0, 32.0), leg_b[0]),
+        (leg_b[0], leg_b[1]),
+    ] {
+        densify(a, b, &mut path);
+    }
+    for p in path {
+        s1.push_point(mk(p));
+    }
+    s1.hardness = hardness;
+    one.strokes.push(s1);
+
+    let mut two = FlipDrawing::new();
+    for leg in [leg_a, leg_b] {
+        let mut s = FlipStroke::new();
+        let mut pts = vec![leg[0]];
+        densify(leg[0], leg[1], &mut pts);
+        for p in pts {
+            s.push_point(mk(p));
+        }
+        s.hardness = hardness;
+        two.strokes.push(s);
+    }
+    (one, two)
+}
+
+/// A discordância entre dois renders num DISCO de raio 18 em torno do cruzamento (32,32) —
+/// `(pior, onde, quantos fora de 8, quantos conferidos)`.
+fn crossing_disc_diff(a: &[u8], b: &[u8]) -> (i32, (u32, u32), u32, u32) {
+    let (mut worst, mut at, mut bad, mut checked) = (0i32, (0u32, 0u32), 0u32, 0u32);
+    for y in 14..50u32 {
+        for x in 14..50u32 {
+            if (x as f32 - 32.0).powi(2) + (y as f32 - 32.0).powi(2) > 18.0 * 18.0 {
+                continue;
+            }
+            checked += 1;
+            let d = (i32::from(alpha_at(a, x, y)) - i32::from(alpha_at(b, x, y))).abs();
+            if d > 8 {
+                bad += 1;
+            }
+            if d > worst {
+                worst = d;
+                at = (x, y);
+            }
+        }
+    }
+    (worst, at, bad, checked)
+}
+
+/// **SONDA** — o MESMO X, desenhado como UM traço e como DOIS: a comparação literal da foto do
+/// Enio (2026-07-28, 2ª foto). Ele aprovou o de dois e reprovou o de um.
+///
+/// ⚠️ As duas rotas são código diferente: com traços distintos o depth difere e o mais NOVO pinta
+/// por cima ⇒ **composição `over`**, que é lisa. Com um traço só o depth é o mesmo, o `GREATER`
+/// estrito descarta o 2º quad ⇒ **união** (`profile(min dn)`), e `min` de duas funções lisas tem
+/// **VINCO** (gradiente descontínuo) na bissetriz. Com hardness 1 o vinco é invisível (a máscara
+/// é binária); com pincel macio ele é uma costura na tela.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_one_stroke_crossing_itself_against_two_strokes() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // O X: duas diagonais que se cruzam em (32,32). Como UM traço, a 2ª perna vem depois de um
+    // desvio (duas quinas afiadas) — a única forma de um traço só desenhar um X.
+    let leg_a = [(10.0_f32, 10.0_f32), (54.0, 54.0)];
+    let leg_b = [(54.0_f32, 10.0_f32), (10.0, 54.0)];
+
+    let mk_point = |p: (f32, f32), r: f32| Point {
+        pos: Vec2::new(p.0, p.1),
+        width: r * 2.0,
+        opacity: 1.0,
+        color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+    };
+
+    println!("\n=== UM TRACO CRUZANDO A SI MESMO vs DOIS TRACOS CRUZADOS ===");
+    println!("(alpha ao longo da BISSETRIZ, saindo do cruzamento em (32,32) para o nordeste)");
+    for hardness in [1.0_f32, 0.7, 0.4] {
+        let r = 14.0;
+
+        // (a) UM traço: perna A, desvio, perna B.
+        let mut one = FlipDrawing::new();
+        let mut s1 = FlipStroke::new();
+        // ⚠️ O desvio vai para FORA do quadro (x=120): ele existe só porque um traço SÓ não
+        // pode desenhar um X sem voltar, e dentro do quadro ele mediria diferença de FORMA
+        // (o par de traços não o tem) em vez da diferença de LEI, que é o que se mede aqui.
+        for p in [leg_a[0], leg_a[1], (120.0, 32.0), leg_b[0], leg_b[1]] {
+            s1.push_point(mk_point(p, r));
+        }
+        s1.hardness = hardness;
+        one.strokes.push(s1);
+
+        // (b) DOIS traços independentes — o que o Enio aprovou.
+        let mut two = FlipDrawing::new();
+        for leg in [leg_a, leg_b] {
+            let mut s = FlipStroke::new();
+            for p in leg {
+                s.push_point(mk_point(p, r));
+            }
+            s.hardness = hardness;
+            two.strokes.push(s);
+        }
+
+        let px_one = render(&device, &queue, &one);
+        let px_two = render(&device, &queue, &two);
+
+        // A BISSETRIZ do cruzamento é o eixo +y a partir de (32,32): ali as duas pernas estão
+        // EQUIDISTANTES, que é onde `min` faz o vinco e `over` não faz nada.
+        let mut linha_one = String::new();
+        let mut linha_two = String::new();
+        for d in (0..=28u32).step_by(2) {
+            linha_one.push_str(&format!("{:4}", alpha_at(&px_one, 32, 32 - d)));
+            linha_two.push_str(&format!("{:4}", alpha_at(&px_two, 32, 32 - d)));
+        }
+        println!("  h={hardness:.1}  UM  :{linha_one}");
+        println!("  h={hardness:.1}  DOIS:{linha_two}");
+
+        // O tamanho da discordância — ⚠️ SÓ na metade esquerda (`x < 44`). O traço único tem um
+        // DESVIO até (58,32) que o par de traços não tem; incluí-lo mediria a diferença de FORMA
+        // (255, trivial) em vez da diferença de LEI, que é o que a foto mostra.
+        // ⚠️ Só um DISCO em torno do cruzamento (raio 18): o traço único tem um DESVIO até
+        // (58,32) que o par não tem, e incluí-lo mede diferença de FORMA em vez de LEI.
+        let (mut worst, mut at, mut bad) = (0i32, (0u32, 0u32), 0u32);
+        for y in 14..50u32 {
+            for x in 14..50u32 {
+                if (x as f32 - 32.0).powi(2) + (y as f32 - 32.0).powi(2) > 18.0 * 18.0 {
+                    continue;
+                }
+                let a = i32::from(alpha_at(&px_one, x, y));
+                let b = i32::from(alpha_at(&px_two, x, y));
+                let _ = (a, b);
+                if (a - b).abs() > 8 {
+                    bad += 1;
+                }
+                if (a - b).abs() > worst {
+                    worst = (a - b).abs();
+                    at = (x, y);
+                }
+            }
+        }
+        println!("           pior divergencia {worst} em {at:?} | {bad} px fora de 8\n");
+    }
+}
+
 /// Distância NORMALIZADA (0 = centro, 1 = borda) do ponto `p` à cápsula `a`→`b`
 /// de raios `ra`/`rb` — o raio efetivo é interpolado pelo `t` CLAMPADO (a cápsula
 /// de raio variável). É a definição do objeto; o shader tem de convergir a ela.

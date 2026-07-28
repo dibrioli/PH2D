@@ -63,6 +63,17 @@
 // (`{prev,A,B}`) e a de B (`{A,B,next}`) contêm ambas `{A,B}` → computam o MESMO
 // mínimo → o first-wins volta a ser invisível.
 //
+// ⚠️ **A união é POR PASSAGEM, e entre passagens a lei é COMPOSIÇÃO** (2026-07-28, 2ª foto do
+// Enio): `min` de duas funções lisas tem VINCO na bissetriz do cruzamento — invisível em
+// hardness 1 (máscara binária) e uma costura com pincel macio. Dois traços distintos nunca
+// tiveram o problema porque o depth deles difere e o mais novo pinta POR CIMA, ou seja **já
+// compõe**; um traço cruzando a si mesmo tem o MESMO depth e caía na união. Hoje a lista de
+// vizinhos vem particionada (`neighbors::SegExtras`) e o fragment faz
+// `1 − (1−mask_própria)(1−mask_estranha)` — a hipótese de cobertura independente, exatamente o
+// que o `over` de dois traços produz. Medido: o desvio entre as duas rotas cai de **48/255**
+// (hardness 0,4) e **35/255** (0,7) para **1/255**. Compõe-se a COBERTURA, nunca o ALFA: a
+// opacidade multiplica depois, então um traço a opacity 0,5 segue sem escurecer sobre si mesmo.
+//
 // ⚠️ **A união é GLOBAL, não local — este parágrafo já mentiu e a correção importa.**
 // Ele terminava afirmando *"teto conhecido: sobreposição com vizinhos i±2 e
 // auto-cruzamento NÃO-adjacente seguem first-wins (semântica do GP, pinada em
@@ -556,19 +567,34 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // morde é o SUB-PIXEL — que não é exótico, é todo traço depois de um zoom out: a
     // cápsula do CRUZAMENTO ficava mais fina que a da própria fita, então a união
     // media MENOS cobertura exatamente onde as duas passagens se encontram.
+    //
+    // ⚠️ **E a lista vem PARTICIONADA POR PASSAGEM** (`neighbors::SegExtras`): os primeiros
+    // `n_ribbon` são a PRÓPRIA fita, o resto são OUTRAS passagens (o traço que voltou). A 2ª
+    // palavra do range carrega os dois números (count nos 16 baixos, ribbon nos altos).
+    // Ver o §"UMA PASSAGEM, UMA COBERTURA" abaixo para o porquê de eles não se misturarem.
     let min_r = MIN_WIDTH_PX * 0.5;
-    for (var k = 0u; k < in.extras.y; k = k + 1u) {
+    let n_all = in.extras.y & 0xffffu;
+    let n_ribbon = min(in.extras.y >> 16u, n_all);
+    var dn_ribbon = dn;
+    var dn_cross = 1e9;
+    for (var k = 0u; k < n_all; k = k + 1u) {
         let e = seg_extras[in.extras.x + k];
         let ea = points[e.x];
         let eb = points[e.y];
-        dn = min(dn, capsule_dn(
+        let d = capsule_dn(
             frag,
             to_screen(ea.pos),
             to_screen(eb.pos),
             max(ea.width * 0.5 * cam.px_per_world, min_r),
             max(eb.width * 0.5 * cam.px_per_world, min_r),
-        ));
+        );
+        if (k < n_ribbon) {
+            dn_ribbon = min(dn_ribbon, d);
+        } else {
+            dn_cross = min(dn_cross, d);
+        }
     }
+    dn = min(dn_ribbon, dn_cross);
     // **O *tip* pontilhado** (Dots/Squares, 03 §8): a linha vira CONTAS — cada uma um DISCO
     // (ou QUADRADO) EUCLIDIANO de raio = a meia-espessura, centrado num ponto da linha-de-centro
     // a cada `pitch = dot_spacing × ref_width` de ARCO. A pitch é RELATIVA À ESPESSURA (múltiplo
@@ -617,12 +643,51 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             dn_dot = length(d) / r;
         }
         // A conta é o traço ∩ o disco: `max` = a MENOR cobertura (perfil decrescente em `dn`).
+        // ⚠️ A interseção vale para CADA passagem, não só para a união — senão a passagem
+        // que compõe abaixo entregaria cobertura fora da conta.
+        dn_ribbon = max(dn_ribbon, dn_dot);
+        dn_cross = max(dn_cross, dn_dot);
         dn = max(dn, dn_dot);
     }
     // `dn` é contínuo (os campos coincidem onde trocam de dono), então o `fwidth`
     // do AA só vê um salto de DERIVADA na costura do `min` — nunca um degrau.
     let aa = max(fwidth(dn), 1e-4);
-    var mask = hardness_mask(dn, in.hardness, aa, (in.flags & FLAG_AIRBRUSH) != 0u);
+    // O AA é POR PASSAGEM: `fwidth(dn)` sobre a UNIÃO mede o gradiente do `min`, que salta no
+    // vinco da bissetriz, e cada cobertura deve fechar a própria borda com o próprio gradiente
+    // — que é liso. Calculados FORA do `if`: `fwidth` exige fluxo uniforme.
+    //
+    // ⚠️ **Honestidade sobre este trecho: ele foi MEDIDO INERTE nas fixtures desta wave** (a
+    // sonda `measure_one_stroke_crossing_itself_against_two_strokes` não move um nível com ou
+    // sem ele). Eu o escrevi atribuindo a ele um resíduo de 11 níveis em hardness 1.0 e a
+    // medição REFUTOU a atribuição. Fica por princípio — não porque um número o comprove.
+    let aa_ribbon = max(fwidth(dn_ribbon), 1e-4);
+    let aa_cross = max(fwidth(dn_cross), 1e-4);
+    // **UMA PASSAGEM, UMA COBERTURA — e elas COMPÕEM.**
+    //
+    // Tomar `hardness_mask(min(...))` sobre TODAS as passagens é a UNIÃO, e `min` de duas funções
+    // lisas tem **VINCO** (gradiente descontínuo) na bissetriz do cruzamento. Com hardness 1 a
+    // máscara é binária e o vinco não existe; com pincel macio ele é uma costura visível — o 2º
+    // report do Enio (2026-07-28), e a razão de dois traços cruzados parecerem CERTOS e um traço
+    // cruzando a si mesmo parecer ERRADO: com traços distintos o depth difere e o mais novo pinta
+    // por cima, ou seja **já compõe**.
+    //
+    // Compor as coberturas — `1 − (1−a)(1−b)`, a hipótese de cobertura independente, exatamente o
+    // que o `over` de dois traços produz — é liso e faz as duas rotas desenharem a mesma coisa.
+    //
+    // ⚠️ **Compõe-se a COBERTURA, nunca o ALFA**: a opacidade multiplica DEPOIS. No centro do
+    // cruzamento as duas coberturas são 1, o composto é 1, e o alfa continua sendo `opacity` —
+    // então um traço a opacity 0.5 **não escurece sobre si mesmo** (a regra do GP, *"the stroke
+    // cannot overlap itself"*, que segue gateada). O que muda é só o OMBRO, onde a cobertura
+    // é parcial e a união tinha o vinco.
+    //
+    // ⚠️ **Sem cruzamento é BYTE-IDÊNTICO por construção:** `n_ribbon == n_all` ⇒ o ramo nem roda,
+    // e `dn_ribbon == dn`. Todo traço que não volta sobre si mesmo pinta o que sempre pintou.
+    var mask = hardness_mask(dn_ribbon, in.hardness, aa_ribbon, (in.flags & FLAG_AIRBRUSH) != 0u);
+    if (n_ribbon < n_all) {
+        let m_cross =
+            hardness_mask(dn_cross, in.hardness, aa_cross, (in.flags & FLAG_AIRBRUSH) != 0u);
+        mask = 1.0 - (1.0 - mask) * (1.0 - m_cross);
+    }
     // Fade SUB-PIXEL (`gpencil_frag.glsl:534`): um traço mais fino que um pixel não
     // "afina" — ele perde OPACIDADE. Sem isto, a linha fina pisca e serrilha ao
     // mover/zoomar (o rasterizador acerta ou erra o centro do pixel); com isto, a

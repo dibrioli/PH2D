@@ -110,6 +110,20 @@ pub struct PulleyWheel {
     pub radius: f32,
     /// De que lado a corda passa aqui.
     pub wrap: WrapSide,
+    /// **O MOTOR — esta roldana é um TAMBOR**, em radianos por segundo.
+    ///
+    /// Positivo **RECOLHE** (a corda encurta e o que estiver pendurado sobe);
+    /// negativo **PAGA** corda. `0` é uma roldana livre, que é o que toda roldana
+    /// é até alguém dizer o contrário — não há um segundo booleano *"tem motor?"*
+    /// para discordar do número (a lei P7, a mesma do `∞ = off` da ruptura).
+    ///
+    /// ⚠️ **A grandeza é ANGULAR, e é isso que faz o diâmetro ser o CÂMBIO.** A
+    /// corda anda `ω·r` — então o mesmo motor num tambor grande recolhe mais
+    /// depressa, e é essa a vantagem que o `ratio` prometia e não entregava
+    /// (§3 do plano). Com a corda a `v = ω·r` e a roda girando a `ω = v/r`, o
+    /// desenho do giro que o W1 já faz mostra o tambor **na velocidade em que ele
+    /// foi mandado girar**, sem uma segunda conta.
+    pub motor_speed: f32,
 }
 
 impl Default for PulleyWheel {
@@ -119,6 +133,7 @@ impl Default for PulleyWheel {
             order: 0,
             radius: Self::DEFAULT_RADIUS,
             wrap: WrapSide::Auto,
+            motor_speed: 0.0,
         }
     }
 }
@@ -154,6 +169,14 @@ impl PulleyWheel {
                 self.radius.max(Self::MIN_RADIUS)
             } else {
                 Self::DEFAULT_RADIUS
+            },
+            // Um `NaN` no motor viraria um comprimento de corda `NaN` no primeiro
+            // sub-passo, e daí a pose e o hash C9. Não há teto: um tambor rápido
+            // demais é uma escolha do artista, e a corda que ele puxa é a mesma.
+            motor_speed: if self.motor_speed.is_finite() {
+                self.motor_speed
+            } else {
+                0.0
             },
             ..self
         }

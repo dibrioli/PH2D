@@ -80,6 +80,7 @@ fn wheels(sim: &mut SimWorld, radius: f32) {
                 order: u16::try_from(i).expect("two wheels"),
                 radius,
                 wrap: WrapSide::Auto,
+                motor_speed: 0.0,
             },
             Transform::from_translation(Vec2::new(x, START_Y + lift)),
         ));
@@ -360,5 +361,112 @@ fn a_point_wheel_does_not_spin() {
         bridge.pulley_wheel_spins().iter().all(|a| *a == 0.0),
         "raio zero é um ponto: {:?}",
         bridge.pulley_wheel_spins()
+    );
+}
+
+/// **A `motor_speed` de uma roldana chega à corda como `ω·r` — e as roldanas
+/// SOMAM** (W2).
+///
+/// A conversão mora na colheita porque o RAIO é da roldana e o kernel só conhece
+/// a corda: somar `ω·r` aqui é o que torna *"as taxas somam"* uma soma de metros
+/// por segundo, e não de radianos por segundo de rodas de tamanhos diferentes.
+///
+/// ⚠️ O oráculo é o que a CORDA faz, não o campo — um gate que lesse
+/// `motor_speed` de volta seria o espelho do componente, e o componente não é
+/// quem move a carga.
+#[test]
+fn a_drivens_wheel_speed_reaches_the_rope_as_metres_per_second() {
+    /// O elevador com a roldana `idx` dirigida a `omega`, com o raio `radius`.
+    fn driven(radius: f32, omega: [f32; 2]) -> f32 {
+        let mut sim = rig(JointKind::Pulley, 1.0, 1.0, true);
+        let mut q = sim.world_mut().query::<(&Name, &mut PulleyWheel)>();
+        for (n, mut w) in q.iter_mut(sim.world_mut()) {
+            let i = usize::from(n.as_str() == "Wheel B");
+            w.radius = radius;
+            w.motor_speed = omega[i];
+        }
+        let mut bridge = PhysicsBridge::new();
+        run(&mut sim, &mut bridge, 60);
+        y_of(&mut sim, "Counterweight") - START_Y
+    }
+
+    // Um tambor parado deixa o elevador em equilíbrio (massas iguais).
+    let still = driven(0.3, [0.0, 0.0]);
+    assert!(
+        still.abs() < 0.02,
+        "sem motor o elevador andou {still:.4} m"
+    );
+
+    // Um tambor recolhendo ergue o contrapeso; DOIS recolhem o dobro.
+    //
+    // ⚠️ Cada corpo sobe cerca de METADE do recolhido, e isso é o rig, não o
+    // guincho: aqui os DOIS lados são dinâmicos e de massa igual, então encurtar
+    // a corda os puxa para as respectivas roldanas em partes iguais (0,3 m/s de
+    // corda ⇒ ~0,15 m por lado). O que este gate afirma são as RAZÕES, que não
+    // dependem disso.
+    let one = driven(0.3, [1.0, 0.0]);
+    let two = driven(0.3, [1.0, 1.0]);
+    assert!(one > 0.1, "um tambor ergueu só {one:.4} m em 1 s");
+    assert!(
+        (two / one - 2.0).abs() < 0.15,
+        "dois tambores ergueram {two:.4} contra {one:.4} de um só (razão {:.3})",
+        two / one
+    );
+
+    // E o RAIO é o câmbio: o mesmo ω num tambor duas vezes maior recolhe o dobro.
+    let big = driven(0.6, [1.0, 0.0]);
+    assert!(
+        (big / one - 2.0).abs() < 0.15,
+        "o tambor de raio dobrado ergueu {big:.4} contra {one:.4} (razão {:.3})",
+        big / one
+    );
+
+    // E sentidos opostos se ANULAM — dois guinchos brigando pela mesma corda.
+    let fighting = driven(0.3, [1.0, -1.0]);
+    assert!(
+        fighting.abs() < 0.02,
+        "dois tambores opostos moveram {fighting:.4} m"
+    );
+}
+
+/// **Um rewind rebobina o guincho junto com o mundo.**
+///
+/// O recolhido é uma INTEGRAL, então ele é a única parte da polia que um Reset
+/// tem de esquecer — e ele esquece de graça, porque `rebuild_from_rest` constrói
+/// um `PhysicsWorld` novo. Este gate existe para que ninguém "otimize" o rebuild
+/// preservando o mundo antigo e deixe o guincho a meio caminho.
+#[test]
+fn a_rewind_puts_the_winch_back_where_it_started() {
+    let mut sim = rig(JointKind::Pulley, 1.0, 1.0, true);
+    {
+        let mut q = sim.world_mut().query::<(&Name, &mut PulleyWheel)>();
+        for (n, mut w) in q.iter_mut(sim.world_mut()) {
+            if n.as_str() == "Wheel A" {
+                w.radius = 0.3;
+                w.motor_speed = 1.5;
+            }
+        }
+    }
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 60);
+    let lifted = y_of(&mut sim, "Counterweight") - START_Y;
+    assert!(
+        lifted > 0.1,
+        "a fixture não continha o fenômeno: subiu {lifted:.4}"
+    );
+
+    bridge.dispatch(&mut sim, false, 0);
+    let back = y_of(&mut sim, "Counterweight") - START_Y;
+    assert!(
+        back.abs() < 1.0e-3,
+        "depois do Reset o contrapeso ficou {back:.4} m acima do repouso"
+    );
+
+    // E re-simular do zero reproduz a MESMA subida — o guincho re-arma.
+    run(&mut sim, &mut bridge, 60);
+    let again = y_of(&mut sim, "Counterweight") - START_Y;
+    assert!(
+        (again - lifted).abs() < 1.0e-3,
+        "o replay ergueu {again:.4}, o run original ergueu {lifted:.4}"
     );
 }

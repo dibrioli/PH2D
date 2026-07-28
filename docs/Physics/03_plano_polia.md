@@ -157,7 +157,8 @@ reintegra sozinho.
 |---|---|
 | **W0** ✅ | as quatro correções + os dois gates estruturais |
 | **W1** ✅ | a roldana é entidade (com raio) · rota de N nós com tangentes e arcos · lado automático + override · kernel generalizado · desenho da roldana, da corda na superfície e do giro · "Add Wheel" · `ratio` aposentado · `PROJECT_SCHEMA` 40→41 |
-| **W2** | motor por roldana · ruptura nas duas pontas e em cada centro · readouts |
+| **W2-A** ✅ | **o motor** — a roldana dirigida é um guincho; `ω·r` encurta `L0`, o diâmetro é o câmbio |
+| **W2-B** | ruptura nas duas pontas e em cada centro · readouts |
 | **W3** | a talha de verdade: roldana montada num corpo (a cadernal móvel) |
 | **W4** | *nomeada, não escalonada*: o DIFERENCIAL — dois tambores acoplados num eixo ⇒ `ratio = r₂/r₁` emergente |
 
@@ -208,6 +209,47 @@ estado de colapso descrevendo dois objetos.
 Medido na cena 58 (`probe_wrap_58`): forçar `Under` na 2ª roldana do ziguezague
 leva o lado resolvido de **−1 para +1**, e a corda salta para o outro lado da
 roda.
+
+### W2-A — o MOTOR (FECHADO)
+
+`PulleyWheel.motor_speed` (rad/s, positivo recolhe) faz da roldana um **tambor**.
+Uma linha no kernel: `L0` encolhe a `Σ ω·r`. A row **Motor (°/s)** entra na §13
+ao lado de Radius/Order/Wrap (graus na fronteira, radianos no componente — a
+convenção do motor do Pin).
+
+⚠️ **Um alvo de VELOCIDADE não serviria, e a desigualdade é o motivo:** com
+`λ ≥ 0` a corda só puxa, então um alvo que paga corda é clampado em zero e o
+comprimento nunca muda — um guincho que sobe e não desce. Mexer em `L0` não tem
+esse buraco, porque quem baixa a carga é a gravidade.
+
+⚠️ **O recolhido é ESTADO VIVO** (a integral de uma taxa): mora no
+`PhysicsWorld`, chaveado pelo nome estável da corda, e **entra no
+`PhysicsCheckpoint`** — sem isso um scrub com acerto de ring veria o guincho de
+agora dentro do mundo de então.
+
+**Medido** (`measure_pulley.rs::sweep_the_winch`): a carga sobe a `ω·r` (razão
+0,90–0,97 num segundo, a defasagem de partir do repouso) · **a massa é
+irrelevante** (0,1 kg e 1000 kg sobem os mesmos 0,9624 m — a projeção tem massa
+efetiva exata) · o diâmetro é o câmbio (raio dobrado ⇒ subida dobrada) · as taxas
+de dois tambores **somam**, e sentidos opostos se anulam.
+
+⚠️ **O guincho é ONIPOTENTE, e o que o limita é GEOMETRIA.** Recolhido até o
+gancho alcançar a roldana, a carga orbita o eixo, `L(rota)` fica descontínuo e
+`β·C/dt` a arremessa (medido: 7360 m/s). A cura é o **teto do termo de posição**
+(`PULLEY_CORRECTION_LAG = 6` sub-passos de recolhimento — MEDIDO: 6 é o primeiro
+valor em que o recolhimento normal fica exato, e 218× abaixo do sem-guarda). Uma
+corda **sem tambor tem teto ∞**, o que mantém byte-idêntica toda cena anterior.
+
+⛔ **Três guardas medidos e REJEITADOS** (a tabela completa vive no doc-comment
+da constante): estolar por APERTO (dispara tarde e estrangula cedo) · estolar
+quando o gancho encontra a roldana (*two-blocking*: o estol **piora**, 20,33
+contra 30,66) · dar um collider à roldana **sozinho** (o impulso ilimitado
+atravessa o contato). ✅ **Com o teto, o collider funciona** — a carga assenta na
+roda, que é o que uma cadernal faz.
+
+`PROJECT_SCHEMA` **41→42** (campo apendado a um componente = postcard posicional).
+Cena de smoke: **`PH2D_PHYSICS_SMOKE=59`** (ergue · paga corda · e o par que só
+difere no diâmetro, medido em **3,01×** contra os 3,00 que os raios prometem).
 
 ### Aberto no W1, nomeado
 

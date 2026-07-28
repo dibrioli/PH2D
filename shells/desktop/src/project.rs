@@ -165,7 +165,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// uma suspensão). Mesmo raciocínio do v38, um degrau adiante: apender variante não move
 /// índice nenhum, e o bump existe para o build antigo RECUSAR em vez de ler o discriminante 6
 /// como lixo bem-formado. `FLIP_SCHEMA_VERSION` fica em 12.
-const PROJECT_SCHEMA: u32 = 41;
+/// v42 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`motor_speed`** — a roldana
+/// dirigida, o guincho. Componente NOVO não custa bump (blob-key própria), mas
+/// APENDAR campo a um componente que já existe custa: postcard é **posicional**, e
+/// um blob v41 tem um `f32` a menos, então o load leria lixo bem-formado no lugar
+/// de recusar. Mesmo raciocínio do `is_sensor` (v27) e do `offset` (v29).
+const PROJECT_SCHEMA: u32 = 42;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

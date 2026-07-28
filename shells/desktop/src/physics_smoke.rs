@@ -125,6 +125,7 @@ impl crate::App {
             "56" => self.physics_smoke_rod(),
             "57" => self.physics_smoke_wheel(),
             "58" => self.physics_smoke_pulley(),
+            "59" => self.physics_smoke_winch(),
             _ => self.physics_smoke_drop(),
         }
 

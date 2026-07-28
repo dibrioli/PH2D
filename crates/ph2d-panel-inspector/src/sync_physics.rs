@@ -108,4 +108,6 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
         .set_number_value(ids::INSP_WHEEL_RADIUS, f64::from(info.radius));
     host.store_mut()
         .set_number_value(ids::INSP_WHEEL_ORDER, f64::from(info.order_ui));
+    host.store_mut()
+        .set_number_value(ids::INSP_WHEEL_MOTOR, f64::from(info.motor_deg_per_s));
 }

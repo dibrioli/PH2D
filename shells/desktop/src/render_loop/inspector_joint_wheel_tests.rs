@@ -17,6 +17,7 @@ fn wheel(order: u16) -> PulleyWheel {
         order,
         radius: 0.45,
         wrap: WrapSide::Auto,
+        motor_speed: 0.0,
     }
 }
 
@@ -139,4 +140,53 @@ fn a_body_has_no_wheel_section() {
         .spawn((Name::new("Crate"), Transform::default()))
         .id();
     assert!(build_wheel_info(&mut sim, e.to_bits()).is_none());
+}
+
+/// **Graus na row, radianos no componente** — a fronteira do motor do Pin, e a
+/// conversão acontece uma vez de cada lado.
+///
+/// ⚠️ Os dois sentidos num gate só de propósito: converter só na ida deixaria a
+/// row mostrando o número certo e escrevendo o errado (ou o contrário), e cada
+/// metade sozinha parece funcionar até alguém re-selecionar a roldana.
+#[test]
+fn the_motor_speaks_degrees_at_the_boundary_and_radians_inside() {
+    let w = wheel(0);
+    let next = wheel_with_edit(w, WheelFieldEdit::MotorDegPerS(180.0)).expect("aceita");
+    assert!(
+        (next.motor_speed - std::f32::consts::PI).abs() < 1.0e-5,
+        "180 graus/s viraram {} rad/s",
+        next.motor_speed
+    );
+    // E a volta, pela porta que o snapshot usa.
+    let mut sim = SimWorld::default();
+    sim.world_mut().spawn((
+        Name::new("Rope"),
+        PhysicsJoint::of_kind(JointKind::Pulley),
+        Transform::default(),
+    ));
+    let e = sim
+        .world_mut()
+        .spawn((Name::new("Rope Wheel 1"), next, Transform::default()))
+        .id();
+    let info = build_wheel_info(&mut sim, e.to_bits()).expect("a roldana tem seção");
+    assert!(
+        (info.motor_deg_per_s - 180.0).abs() < 1.0e-3,
+        "o snapshot devolveu {} graus/s",
+        info.motor_deg_per_s
+    );
+    // O sinal atravessa: negativo paga corda.
+    let paying = wheel_with_edit(w, WheelFieldEdit::MotorDegPerS(-90.0)).expect("aceita");
+    assert!(paying.motor_speed < 0.0, "o sinal foi engolido");
+}
+
+/// **Um motor `NaN` é recusado pela MESMA porta de carga do raio** — sem ela um
+/// `NaN` viraria um comprimento de corda `NaN` no primeiro sub-passo, e daí a
+/// pose e o hash C9.
+#[test]
+fn a_non_finite_motor_goes_through_the_same_clamp() {
+    let w = wheel(0);
+    assert_eq!(
+        wheel_with_edit(w, WheelFieldEdit::MotorDegPerS(f32::NAN)).map(|n| n.motor_speed),
+        Some(0.0)
+    );
 }

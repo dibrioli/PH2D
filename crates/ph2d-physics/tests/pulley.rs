@@ -65,7 +65,9 @@ fn rig(mass_a: f32, mass_b: f32, slack: f32) -> (PhysicsWorld, PulleyDesc) {
         local_b: [0.0, 0.0],
         wheel_start: 0,
         wheel_count: 2,
+        id: 1,
         total_length: 2.0 * span + WHEEL_SPAN + slack,
+        motor_rate: 0.0,
     };
     w.set_pulleys(vec![d], point_wheels());
     (w, d)
@@ -164,7 +166,9 @@ fn the_rope_pulls_and_never_pushes() {
                     local_b: [0.0, 0.0],
                     wheel_start: 0,
                     wheel_count: 2,
+                    id: 1,
                     total_length: 2.0 * span + WHEEL_SPAN,
+                    motor_rate: 0.0,
                 }],
                 point_wheels(),
             );
@@ -261,7 +265,9 @@ fn a_frozen_axis_is_infinite_mass_to_the_rope() {
                 local_b: [0.0, 0.0],
                 wheel_start: 0,
                 wheel_count: 2,
+                id: 1,
                 total_length: 2.0 * span + WHEEL_SPAN,
+                motor_rate: 0.0,
             }],
             point_wheels(),
         );
@@ -320,7 +326,9 @@ fn a_wall_is_infinite_mass_to_the_rope() {
             local_b: [0.0, 0.0],
             wheel_start: 0,
             wheel_count: 2,
+            id: 1,
             total_length: 2.0 * span + WHEEL_SPAN,
+            motor_rate: 0.0,
         };
         w.set_pulleys(vec![d], point_wheels());
         run(&mut w, 90);
@@ -358,7 +366,9 @@ fn a_kinematic_body_is_a_winch() {
             local_b: [0.0, 0.0],
             wheel_start: 0,
             wheel_count: 2,
+            id: 1,
             total_length: 2.0 * span + WHEEL_SPAN,
+            motor_rate: 0.0,
         }],
         point_wheels(),
     );
@@ -406,7 +416,9 @@ fn a_taut_rope_that_is_slackening_fast_still_never_pushes() {
                     wheel_count: 2,
                     // Mal esticada: `C = +0,001` no primeiro sub-passo, e os dois
                     // corpos já subindo — a janela em que só o clamp responde.
+                    id: 1,
                     total_length: 2.0 * span + WHEEL_SPAN - 0.001,
+                    motor_rate: 0.0,
                 }],
                 point_wheels(),
             );
@@ -445,7 +457,9 @@ fn the_winch_does_not_lag_further_the_faster_it_reels() {
                 local_b: [0.0, 0.0],
                 wheel_start: 0,
                 wheel_count: 2,
+                id: 1,
                 total_length: 2.0 * span + WHEEL_SPAN,
+                motor_rate: 0.0,
             }],
             point_wheels(),
         );

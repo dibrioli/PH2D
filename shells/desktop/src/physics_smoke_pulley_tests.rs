@@ -161,3 +161,87 @@ fn probe_wrap_58() {
         println!("{wrap:>6?}: lado resolvido {side:?} | carga em 1 tick {drop:+.6} m");
     }
 }
+
+/// A sonda da cena 59 — o guincho.
+///
+/// `cargo test -p ph2d-host-desktop --bins probe_smoke_59 -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate"]
+fn probe_smoke_59() {
+    let mut sim = SimWorld::new();
+    build_winch(sim.world_mut());
+    let mut bridge = PhysicsBridge::new();
+    let start: Vec<f32> = ["Hoist", "Lower", "Gear Big", "Gear Small"]
+        .iter()
+        .map(|t| y_of(&mut sim, &format!("{t} Load")))
+        .collect();
+    println!("\n=== CENA 59 — o guincho ===");
+    println!(
+        "{:>12} | {:>8} | {:>10} | {:>12}",
+        "guincho", "r (m)", "w (graus/s)", "andou em 2 s"
+    );
+    for t in 1..=120 {
+        bridge.dispatch(&mut sim, false, t);
+    }
+    for (i, (tag, radius, omega)) in [
+        ("Hoist", 0.45_f32, 60.0_f32),
+        ("Lower", 0.45, -60.0),
+        ("Gear Big", 0.60, 60.0),
+        ("Gear Small", 0.20, 60.0),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let moved = y_of(&mut sim, &format!("{tag} Load")) - start[i];
+        println!("{tag:>12} | {radius:>8.2} | {omega:>11.0} | {moved:>12.3}");
+    }
+    println!(
+        "  (a corda anda w*r: {:.3} m/s no grande, {:.3} no pequeno — razao {:.2})",
+        60.0_f32.to_radians() * 0.60,
+        60.0_f32.to_radians() * 0.20,
+        0.60 / 0.20
+    );
+}
+
+/// **A cena 59 diz os números que a sim produz** — irmão exato do gate acima.
+///
+/// O terceiro é o que carrega a wave: a mensagem afirma que o tambor GRANDE
+/// recolhe `r_grande / r_pequeno` vezes mais depressa, e essa razão é a
+/// vantagem que o `ratio` aposentado prometia sem entregar. Se ela deixar de
+/// valer, a cena estaria ensinando o oposto do que a física faz.
+#[test]
+fn the_winch_scene_states_the_numbers_the_sim_produces() {
+    let mut sim = SimWorld::new();
+    build_winch(sim.world_mut());
+    let mut bridge = PhysicsBridge::new();
+    let start: Vec<f32> = ["Hoist", "Lower", "Gear Big", "Gear Small"]
+        .iter()
+        .map(|t| y_of(&mut sim, &format!("{t} Load")))
+        .collect();
+    for t in 1..=120 {
+        bridge.dispatch(&mut sim, false, t);
+    }
+    let moved =
+        |sim: &mut SimWorld, i: usize, tag: &str| y_of(sim, &format!("{tag} Load")) - start[i];
+    let hoist = moved(&mut sim, 0, "Hoist");
+    let lower = -moved(&mut sim, 1, "Lower");
+    let big = moved(&mut sim, 2, "Gear Big");
+    let small = moved(&mut sim, 3, "Gear Small");
+
+    for (got, said, what) in [
+        (hoist, MEASURED_HOIST_RISE, "subida do guincho"),
+        (lower, MEASURED_LOWER_DROP, "descida do que paga corda"),
+        (big / small, MEASURED_GEAR_RATIO, "a razao do cambio"),
+    ] {
+        assert!(
+            (got - said).abs() < 0.05,
+            "{what}: a mensagem diz {said:.2} e a sim faz {got:.4}"
+        );
+    }
+    // E a razão é a dos RAIOS, não um número que calhou de bater: 0,60/0,20.
+    assert!(
+        (big / small - 3.0).abs() < 0.1,
+        "o cambio devia ser a razao dos raios (3,00) e saiu {:.3}",
+        big / small
+    );
+}

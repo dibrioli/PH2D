@@ -389,3 +389,97 @@ mod ph2d_physics_ecs_defaults {
     pub const RESTITUTION: f32 = 0.0;
     pub const FRICTION: f32 = 0.5;
 }
+
+/// **O que um guincho RECOLHEU viaja no checkpoint** (W-Pulley W2).
+///
+/// A regra do módulo — *config não é capturada* — poderia ler o recolhido como
+/// config, porque ele nasce de um número autorado (a `motor_speed` da roldana).
+/// Não é: ele é a **INTEGRAL** dessa taxa ao longo do run, estado simulado tanto
+/// quanto uma velocidade. Sem ele no checkpoint, restaurar o tique 40 devolve o
+/// mundo daquele tique com o guincho onde ele está **agora**, e o scrub passa a
+/// depender de o ring ter ou não o âncora — a mesma classe do defeito que o
+/// `SceneAtTick` fechou no W4b.
+///
+/// O oráculo é a **TRAJETÓRIA** e não o destino, pela razão que o gate no topo
+/// deste arquivo pagou: um sistema amortecido esquece a perturbação. Aqui a
+/// carga sobe monotonicamente, então o destino até serviria — e é exatamente por
+/// isso que a trajetória é o hábito, não a exceção.
+#[test]
+fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
+    use ph2d_physics::world::pulley::PulleyDesc;
+    use ph2d_physics::world::rope_route::RopeWheel;
+
+    fn scene() -> (PhysicsWorld, PulleyDesc) {
+        let mut w = PhysicsWorld::new();
+        let (anchor, _) = w.add_static_cuboid(-4.0, 8.0, 0.1, 0.1);
+        let (load, _) = w.add_dynamic_circle(0.0, 2.0, 0.2, 8.0);
+        let wheel = RopeWheel {
+            centre: [0.0, 8.0],
+            radius: 0.5,
+            side: 1,
+        };
+        let probe = PulleyDesc {
+            id: 7,
+            body_a: anchor,
+            body_b: load,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: 1,
+            total_length: 1.0e9,
+            motor_rate: 1.0,
+        };
+        w.set_pulleys(vec![probe], vec![wheel]);
+        let span = w.pulley_span(&probe).expect("rota válida");
+        let d = PulleyDesc {
+            total_length: span,
+            ..probe
+        };
+        w.set_pulleys(vec![d], vec![wheel]);
+        (w, d)
+    }
+
+    const TARGET: u64 = 90;
+    let truth: Vec<[u8; 32]> = {
+        let (mut w, _) = scene();
+        let mut out = vec![w.deterministic_hash()];
+        for _ in 0..TARGET {
+            w.step();
+            out.push(w.deterministic_hash());
+        }
+        out
+    };
+
+    for anchor in [20u64, 45, TARGET] {
+        let (mut w, d) = scene();
+        for _ in 0..anchor {
+            w.step();
+        }
+        let reeled_at_anchor = w.pulley_reeled(&d);
+        let cp = w.checkpoint();
+        // Deixa o mundo correr BEM além do âncora — é o que o produto faz: o
+        // ring guarda o passado e o mundo vivo já está no futuro.
+        for _ in 0..TARGET {
+            w.step();
+        }
+        assert!(
+            w.pulley_reeled(&d) > reeled_at_anchor + 0.5,
+            "a fixture não continha o fenômeno: o guincho não recolheu depois do âncora"
+        );
+        w.restore(&cp);
+        assert!(
+            (w.pulley_reeled(&d) - reeled_at_anchor).abs() < 1.0e-6,
+            "restaurar devolveu {} de corda recolhida, e no âncora era {reeled_at_anchor}",
+            w.pulley_reeled(&d)
+        );
+        for tick in anchor..TARGET {
+            w.step();
+            assert_eq!(
+                w.deterministic_hash(),
+                truth[(tick + 1) as usize],
+                "âncora {anchor}: o tique {} divergiu do replay do zero",
+                tick + 1
+            );
+        }
+    }
+}

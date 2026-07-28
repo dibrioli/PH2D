@@ -40,6 +40,7 @@ fn wheel() -> InspectorWheelInfo {
         radius: 0.45,
         order_ui: 1,
         wrap_tag: 0,
+        motor_deg_per_s: 0.0,
     }
 }
 
@@ -180,12 +181,14 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
     ]);
 
     // Sentinelas distintas entre si e diferentes das sementes do
-    // `populate_wheel` (0,25 e 1), dentro da faixa das duas rows.
+    // `populate_wheel` (0,25 · 1 · 0), dentro da faixa de cada row.
     const RADIUS: f32 = 3.5;
     const ORDER: u32 = 7;
+    const MOTOR: f32 = 42.0;
     let numbered = InspectorWheelInfo {
         radius: RADIUS,
         order_ui: ORDER,
+        motor_deg_per_s: MOTOR,
         ..wheel()
     };
 
@@ -226,9 +229,10 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         .collect();
     assert_eq!(
         rows.len(),
-        2,
-        "a §13 pintou {} caixas de número; ela tem duas (Radius e Order) — se \
-         uma row nova chegou, ela entra nesta varredura sozinha, que é o ponto",
+        3,
+        "a §13 pintou {} caixas de número; ela tem três (Radius, Order e Motor) \
+         — se uma row nova chegou, ela entra nesta varredura sozinha, que é o \
+         ponto",
         rows.len()
     );
 
@@ -242,7 +246,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
             )
         });
         assert!(
-            [f64::from(RADIUS), f64::from(ORDER)].contains(&v),
+            [f64::from(RADIUS), f64::from(ORDER), f64::from(MOTOR)].contains(&v),
             "{id:?} mostra {v}, que não é nenhum valor do snapshot — ela não \
              está em `sync_wheel_fields`, então a caixa é WRITE-ONLY: digitar \
              funciona e re-selecionar mostra a semente"
@@ -265,6 +269,22 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
             ),
             "mudar {id:?} produziu {actions:?} — a row não tem braço no \
              `event_wheel`, então digitar nela não faz nada"
+        );
+    }
+}
+
+/// **O Motor é a ÚNICA porta que existe para o guincho, e ele fala em GRAUS.**
+///
+/// ⚠️ O sinal atravessa: negativo **paga corda** e é uma direção, não um valor
+/// inválido — clampar em zero aqui deixaria metade da ferramenta inalcançável
+/// (a mesma lição do Torque da área, cujo neutro é `== 0.0` e não `<= 0.0`).
+#[test]
+fn the_motor_row_carries_degrees_per_second_with_a_sign() {
+    for deg in [90.0_f64, -90.0, 0.0] {
+        expect(
+            &commit(wheel(), ids::INSP_WHEEL_MOTOR, deg),
+            WheelFieldEdit::MotorDegPerS(deg as f32),
+            "Motor",
         );
     }
 }

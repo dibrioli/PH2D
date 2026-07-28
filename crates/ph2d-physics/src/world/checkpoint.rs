@@ -56,6 +56,19 @@ pub struct PhysicsCheckpoint {
     broad_phase: BroadPhaseBvh,
     narrow_phase: NarrowPhase,
     step_count: u64,
+    /// **Quanto cada guincho já recolheu** (W2) — o nono campo, e o único que não
+    /// veio do rapier.
+    ///
+    /// ⚠️ A regra do módulo acima (*"config não é capturada"*) o **inclui**, e
+    /// não o dispensa: a tabela de polias é config, mas o recolhido é a INTEGRAL
+    /// de uma taxa ao longo do run — estado simulado tanto quanto uma velocidade.
+    /// Sem ele, restaurar um checkpoint devolveria o mundo do tick T com o guincho
+    /// onde ele está AGORA, e o gate de bit-exatidão (*restore + replay* contra
+    /// *replay do zero*) é exatamente quem enxerga isso.
+    ///
+    /// Fora do `approx_bytes`: são ~24 B por CORDA contra 1175 B por corpo, ou
+    /// seja abaixo do arredondamento do [`ACCEL_FACTOR`].
+    pulley_payout: std::collections::BTreeMap<u64, f32>,
 }
 
 impl PhysicsCheckpoint {
@@ -101,6 +114,7 @@ impl PhysicsWorld {
             broad_phase: self.broad_phase.clone(),
             narrow_phase: self.narrow_phase.clone(),
             step_count: self.step_count,
+            pulley_payout: self.pulley_payout.clone(),
         }
     }
 
@@ -119,6 +133,7 @@ impl PhysicsWorld {
         self.broad_phase = cp.broad_phase.clone();
         self.narrow_phase = cp.narrow_phase.clone();
         self.step_count = cp.step_count;
+        self.pulley_payout = cp.pulley_payout.clone();
     }
 }
 

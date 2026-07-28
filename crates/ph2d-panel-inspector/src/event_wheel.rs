@@ -35,6 +35,8 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 // 1 porque a row é 1-based — `0` chegaria à shell como "o nó
                 // anterior ao primeiro", que não existe.
                 ids::INSP_WHEEL_ORDER => Some(WheelFieldEdit::Order(v.round().max(1.0) as u32)),
+                // Graus na row, radianos no componente — a shell converte.
+                ids::INSP_WHEEL_MOTOR => Some(WheelFieldEdit::MotorDegPerS(v as f32)),
                 _ => None,
             }
         }

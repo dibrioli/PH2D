@@ -83,6 +83,22 @@ pub(crate) fn paint_wheel_section(
         "Order",
         ids::INSP_WHEEL_ORDER,
     );
+    // **Motor** — esta roldana é um TAMBOR. Graus por segundo porque a grandeza é
+    // ANGULAR, e é isso que faz o diâmetro ser o câmbio: a corda anda `ω·r`,
+    // então o mesmo motor num tambor maior recolhe mais depressa. Mesma unidade
+    // que o motor do Pin usa na §12.
+    yy = num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Motor (\u{00b0}/s)",
+        ids::INSP_WHEEL_MOTOR,
+    );
     yy = seg_row(
         scene,
         text_system,

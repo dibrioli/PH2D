@@ -342,10 +342,15 @@ impl PhysicsBridge {
                         .map_or(0, |n| stable_name_id(n.as_str()));
                     let start = self.pulley_wheels_to_install.len() as u32;
                     let first = self.rope_wheels.partition_point(|r| r.rope < rope);
+                    // A taxa da corda é a SOMA das taxas dos tambores dela (§6 do
+                    // plano): um só é a própria taxa, dois puxando juntos recolhem
+                    // o dobro, dois em sentidos opostos se anulam.
+                    let mut motor_rate = 0.0;
                     for row in self.rope_wheels[first..]
                         .iter()
                         .take_while(|r| r.rope == rope)
                     {
+                        motor_rate += row.reel_rate;
                         self.pulley_wheels_to_install.push(row.wheel);
                         self.wheel_entities.push(row.entity);
                         // O ângulo que esta roda já tinha: a arena é reconstruída
@@ -382,6 +387,10 @@ impl PhysicsBridge {
                         entity: e,
                         entities: (ea, eb),
                         desc: PulleyDesc {
+                            // A corda é ela mesma através das trocas de tabela
+                            // pelo NOME dela — a mesma chave por que ela aponta os
+                            // corpos e por que as roldanas a apontam.
+                            id: rope,
                             body_a: handles.0,
                             body_b: handles.1,
                             local_a: la,
@@ -389,6 +398,7 @@ impl PhysicsBridge {
                             wheel_start: start,
                             wheel_count: count,
                             total_length,
+                            motor_rate,
                         },
                     });
                 }

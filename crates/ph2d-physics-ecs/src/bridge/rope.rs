@@ -41,6 +41,14 @@ pub(super) struct RopeWheelRow {
     pub(super) wheel: RopeWheel,
     /// O que o artista escolheu sobre o lado.
     pub(super) wrap: crate::WrapSide,
+    /// **Quanto de corda este tambor recolhe por segundo** — `ω·r`, já
+    /// convertido, porque é essa a grandeza que a corda entende (W2).
+    ///
+    /// A conversão mora aqui e não no kernel porque o RAIO é da roldana e o
+    /// kernel só conhece a corda: somar `ω·r` na colheita é o que torna *"as
+    /// taxas somam"* uma soma de metros por segundo, e não de radianos por
+    /// segundo de rodas de tamanhos diferentes.
+    pub(super) reel_rate: f32,
 }
 
 impl PhysicsBridge {
@@ -86,6 +94,10 @@ impl PhysicsBridge {
                     side: 1,
                 },
                 wrap: wheel.wrap,
+                // ⚠️ Raio ZERO não recolhe, e não é um caso especial a lembrar:
+                // uma roldana-PONTO não tem superfície de que a corda se agarre,
+                // e `ω·0` já é zero. A aritmética responde sozinha.
+                reel_rate: wheel.motor_speed * wheel.radius,
             });
         }
         self.wheel_query = Some(wq);

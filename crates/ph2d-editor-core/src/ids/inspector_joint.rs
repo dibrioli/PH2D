@@ -184,6 +184,13 @@ pub const INSP_WHEEL_ORDER: NodeId = hash_node_id("insp_wheel_order");
 
 /// **De que lado a corda passa nesta roldana** — `Auto | Over | Under`, o escape
 /// manual ao lado do algoritmo (W-Pulley W1, pedido 7).
+/// **O MOTOR desta roldana** — graus por segundo, positivo RECOLHE (W2).
+///
+/// A grandeza é angular, e é isso que faz o diâmetro ser o câmbio: a corda anda
+/// `ω·r`, então o mesmo motor num tambor maior recolhe mais depressa. Graus na
+/// fronteira e radianos no componente, a convenção do motor do Pin.
+pub const INSP_WHEEL_MOTOR: NodeId = hash_node_id("insp_wheel_motor");
+
 pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
 pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
     hash_node_id("insp_wheel_wrap_auto"),

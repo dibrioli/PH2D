@@ -558,6 +558,10 @@ pub struct InspectorWheelInfo {
     /// `0` Auto · `1` Over · `2` Under — a ordem de `WrapSide::ALL`, que é a
     /// ordem dos chips que a §13 pinta.
     pub wrap_tag: u8,
+    /// A velocidade do tambor **em GRAUS por segundo** — a unidade da row, já
+    /// convertida pela shell. `0` é uma roldana livre, e não há um segundo
+    /// booleano *"tem motor?"* para discordar do número.
+    pub motor_deg_per_s: f32,
 }
 
 /// Um campo editável da §13, despachado como
@@ -570,4 +574,6 @@ pub enum WheelFieldEdit {
     Order(u32),
     /// `0` Auto · `1` Over · `2` Under.
     Wrap(u8),
+    /// Graus por segundo, como a row fala — a shell converte para radianos.
+    MotorDegPerS(f32),
 }

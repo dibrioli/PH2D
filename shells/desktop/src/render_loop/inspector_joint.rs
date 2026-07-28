@@ -540,6 +540,7 @@ pub(crate) fn create_joint_at(
                     order,
                     radius: w.radius,
                     wrap: ph2d_physics_ecs::WrapSide::Auto,
+                    motor_speed: 0.0,
                 },
                 Transform::from_translation(ph2d_core::Vec2::new(w.centre[0], w.centre[1])),
             ));

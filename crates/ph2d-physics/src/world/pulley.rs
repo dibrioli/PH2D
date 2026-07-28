@@ -75,6 +75,35 @@
 //! uma vez por sub-passo, fora do solver, então ele disputa com os contatos em
 //! vez de ser resolvido junto com eles. O erro residual é medido em
 //! `tests/measure_pulley.rs` e nomeado no `PULLEY_BIAS`.
+//!
+//! # O MOTOR (W2): um tambor dirigido muda o COMPRIMENTO DE REPOUSO
+//!
+//! Uma roldana com motor é um **guincho**, e a lei é uma linha: `L0` encolhe a
+//! `Σ ω·r` (o [`PulleyDesc::motor_rate`]). Recolher encurta a corda e ergue o que
+//! estiver pendurado; pagar corda alonga, e a carga desce **pela gravidade**, com
+//! a corda ainda a segurando.
+//!
+//! ⚠️ **Um alvo de VELOCIDADE não serviria, e a desigualdade é o motivo.** A
+//! forma óbvia seria `λ = (Ċ − v_alvo + β·C/dt)/k`: com a corda esticada e o alvo
+//! recolhendo, `λ > 0` e o guincho ERGUE — mas com o alvo pagando corda `λ` fica
+//! negativo, é clampado em zero, e **o comprimento nunca mudou**: a restrição
+//! `L ≤ L0` continua segurando a carga no ar. Um guincho que sobe e não desce.
+//! Mexer em `L0` não tem esse buraco, porque quem baixa a carga é a gravidade — e
+//! `λ ≥ 0` fica intacta, então nada é EMPURRADO em momento nenhum.
+//!
+//! ⚠️ **O que foi recolhido é ESTADO VIVO, e mora no [`super::PhysicsWorld`]** —
+//! não aqui, e não no componente autorado. Não no componente porque um número
+//! reescrito por frame é um passo de undo por frame (a lei do W1); não na tabela
+//! porque a ponte a reinstala por dispatch. E ele entra no
+//! [`super::checkpoint::PhysicsCheckpoint`] pelo motivo que decide tudo nesta
+//! linha: **o mundo é função do TICK**, e um guincho cujo recolhido não fosse
+//! restaurado faria um scrub com acerto de ring discordar de um replay do zero.
+//!
+//! ⚠️ **Por SUB-PASSO, não por tick** — a mesma lei do arrasto e das zonas. Por
+//! tick, `L0` daria degraus de `rate·dt` que o passe seguinte corrigiria de uma
+//! vez; por sub-passo o degrau é `rate·dt/substeps` e a carga sobe lisa.
+
+use std::collections::BTreeMap;
 
 use super::rope_route::{self, RopeWheel, Tangent};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
@@ -95,6 +124,18 @@ use rapier2d::na::{Point2, Vector2};
 /// além de tirar o `Copy`, que é o que deixa a tabela ser trocada com um `swap`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PulleyDesc {
+    /// **Quem esta corda É, através das trocas de tabela.**
+    ///
+    /// A tabela é reinstalada por dispatch e um índice não sobrevive a acrescentar
+    /// uma corda, então o que a corda RECOLHEU (o `payout` do motor) não pode ser
+    /// guardado por posição. A ponte passa aqui o `stable_name_id` do nome da
+    /// corda — a MESMA chave por que ela aponta os corpos e as roldanas.
+    ///
+    /// `0` é *"sem nome"*, e uma corda sem nome não pode ter motor: as roldanas
+    /// são encontradas pelo nome dela, então ela não tem roldana nenhuma, logo não
+    /// tem tambor. O modo de falha de duas cordas anônimas dividirem uma chave é,
+    /// por construção, duas cordas que recolhem zero.
+    pub id: u64,
     /// O corpo do primeiro ramo.
     pub body_a: RigidBodyHandle,
     /// O corpo do segundo.
@@ -109,8 +150,18 @@ pub struct PulleyDesc {
     /// uma corda reta entre os dois corpos, que é o que uma polia sem roldana
     /// nenhuma de fato é.
     pub wheel_count: u32,
-    /// `L0` — o comprimento total da corda, em metros de rota (trechos + arcos).
+    /// `L0` — o comprimento total da corda, em metros de rota (trechos + arcos),
+    /// **como o artista o autorou**. O que o motor já recolheu vive à parte, no
+    /// [`super::PhysicsWorld`]; ver [`PulleyDesc::motor_rate`].
     pub total_length: f32,
+    /// **A que taxa os TAMBORES desta corda a recolhem**, em metros por segundo —
+    /// a SOMA de `ω·r` sobre as roldanas dela.
+    ///
+    /// Positivo encurta a corda. A soma é a lei certa e degenera sozinha: um
+    /// tambor só é a própria taxa, dois puxando juntos recolhem o dobro, e dois em
+    /// sentidos opostos se anulam — que é o que dois guinchos brigando pela mesma
+    /// corda fazem.
+    pub motor_rate: f32,
 }
 
 impl PulleyDesc {
@@ -180,13 +231,16 @@ pub const PULLEY_BIAS: f32 = 0.2;
 /// byte-neutro para toda cena que já existia. `scratch` é do chamador porque a
 /// rota escreve `N+1` trechos por corda por sub-passo — alocá-los aqui apareceria
 /// no gate de zero-alloc do caminho quente.
+#[allow(clippy::too_many_arguments)] // a tabela, a arena, o recolhido, o scratch e os dois números medidos
 pub fn apply(
     bodies: &mut RigidBodySet,
     pulleys: &[PulleyDesc],
     arena: &[RopeWheel],
+    payout: &mut BTreeMap<u64, f32>,
     scratch: &mut Vec<Tangent>,
     dt: f32,
     bias: f32,
+    lag: f32,
 ) {
     if pulleys.is_empty() || dt <= 0.0 {
         return;
@@ -212,10 +266,22 @@ pub fn apply(
         };
         let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
         let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]);
+        // Os tambores. Avança DEPOIS da rota — ela não depende do recolhido — e
+        // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
+        // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
+        // depois de mandado.
+        let reeled = reel(payout, p, dt);
         // A violação. `C ≤ 0` é corda frouxa: uma corda não empurra, então não
         // há nada a fazer — e sair aqui é o que deixa um contrapeso pousado no
         // chão em paz.
-        let c = route.length - p.total_length;
+        // ⚠️ Sem tambor, sem teto — é o que mantém byte-idêntica toda cena
+        // que já existia (ver [`PULLEY_CORRECTION_LAG`]).
+        let cap = if p.motor_rate == 0.0 {
+            f32::INFINITY
+        } else {
+            lag * p.motor_rate.abs() * dt
+        };
+        let c = route.length - (p.total_length - reeled);
         if c <= 0.0 {
             continue;
         }
@@ -226,13 +292,101 @@ pub fn apply(
         let c_dot = a.rate(dir_a) + b.rate(dir_b);
         // Só PUXA: `λ` negativo seria a corda empurrando o corpo para longe da
         // roldana, que é a única coisa que uma corda não sabe fazer.
-        let lambda = (c_dot + bias * c / dt) / k;
+        let lambda = (c_dot + bias * c.min(cap) / dt) / k;
         if lambda <= 0.0 {
             continue;
         }
         push(bodies, p.body_a, a.point, -lambda, dir_a);
         push(bodies, p.body_b, b.point, -lambda, dir_b);
     }
+}
+
+/// **Quantos SUB-PASSOS de recolhimento a correção pode ficar para trás** — o
+/// teto do termo de posição, e o único guarda que o guincho precisou.
+///
+/// Um guincho é uma projeção de velocidade com massa efetiva exata, então ele é
+/// **onipotente**: MEDIDO, a mesma carga sobe os mesmos 0,9624 m em um segundo
+/// pesando 0,1 kg ou 1000 kg. O que o limita não é força, é **geometria** — e o
+/// modo de falha era violento. Recolhido até o gancho alcançar a roldana, a carga
+/// **orbita** o eixo, `L(rota)` fica **descontínuo** quando a âncora varre por
+/// perto, `C` dá um salto finito num sub-passo e `β·C/dt` o converte em uma
+/// velocidade arbitrária:
+///
+/// | t (s) | \|v\| da carga | y (roldana em 8,0) |
+/// |---|---|---|
+/// | 2,5 | 2,18 m/s | 6,95 |
+/// | 3,0 | 13,3 | 9,55 |
+/// | 4,0 | **1266** | −0,37 |
+/// | 5,0 | **7360** | 55,8 |
+///
+/// A cura é bater no termo que amplifica: `C` entra na correção **capado**. O
+/// termo de VELOCIDADE (`Ċ`) fica exato — é ele que de fato segura a corda —, e o
+/// de POSIÇÃO deixa de tentar apagar num sub-passo um salto que não é erro
+/// acumulado, e sim descontinuidade.
+///
+/// ⚠️ **O teto é relativo à TAXA DO TAMBOR, não ao comprimento da corda** — e a
+/// medição escolheu por mim. O aperto normal é uma **defasagem cinemática** de
+/// 4,1–4,5 sub-passos de recolhimento, que cresce com a velocidade do tambor e
+/// **não** com a massa (0,017201 m nas cinco massas medidas):
+///
+/// | `ω·r` (m/s) | aperto normal | sub-passos de recolhimento |
+/// |---|---|---|
+/// | 0,25 | 0,0047 | 4,5 |
+/// | 0,50 | 0,0089 | 4,3 |
+/// | 1,00 | 0,0172 | 4,1 |
+/// | 2,00 | 0,0339 | 4,1 |
+///
+/// Um teto em metros — ou em fração da corda — **estrangula o tambor rápido e não
+/// guarda o lento**, porque a grandeza que ele tenta capar escala com a taxa.
+/// Varrido no PRODUTO (`sweep_the_winch`), com a carga levada até a roldana:
+///
+/// | `C_LAG` | altura aos 2,5 s | \|v\| MÁXIMO |
+/// |---|---|---|
+/// | 4 | 5,9122 (**15 % lenta**) | 10,0 |
+/// | 5 | 6,8851 (0,9 % lenta) | 23,1 |
+/// | **6** | **6,9461 (exata)** | **20,3** |
+/// | 7 | 6,9461 (exata) | 24,7 |
+/// | 8 | 6,9461 (exata) | 29,1 |
+/// | ∞ | 6,9461 (exata) | **4422** |
+///
+/// **6** é o primeiro valor em que o recolhimento normal é EXATO (idêntico ao sem
+/// teto, casa decimal por casa decimal) e o mais manso entre os exatos — **218×**
+/// abaixo do sem-guarda, com 33 % de folga sobre os 4,5 medidos.
+///
+/// ⚠️ **Uma corda SEM tambor tem teto ∞**, e isso não é conveniência: é o que
+/// mantém esta wave **byte-idêntica** para toda cena que já existia.
+///
+/// ⛔ **MEDIDO E REJEITADO — não refaça, são três.** **(1) Estolar o tambor por
+/// APERTO:** com o teto em 0,5 % da corda o aperto **fica normal até o instante da
+/// explosão** (0,033 no tique anterior) e o estol dispara tarde — `|v|` máximo
+/// 4148, igual a não ter guarda; abaixo disso (0,1 %) ele dispara o tempo todo e a
+/// carga sobe 72 % do que subiria. **(2) Estolar quando o gancho encontra a
+/// roldana** (*two-blocking*, régua = o raio da roda): funciona como enunciado — o
+/// recolhido congela — mas a carga **passa de largo pela inércia** e o estol
+/// PIORA: par casado com o teto em 6, `|v|` máximo **20,33 sem o estol contra
+/// 30,66 com ele**, e a altura aos 2,5 s idêntica (6,9461) nos dois. Guarda que
+/// não guarda é cerca inventada. **(3) Dar um COLLIDER à
+/// roldana** para o gancho bater nela: sem o teto, o impulso da corda é ilimitado
+/// e **atravessa o contato** (7360 m/s). ✅ **Com o teto, aí sim** — a roldana
+/// sólida faz a carga **assentar** nela (`y` oscila em torno de 6,9 com `|v|`
+/// caindo a 5,8 no fim), que é o que uma cadernal de verdade faz. A roldana é uma
+/// ENTIDADE com `Transform`, então isso é um gesto que o artista já tem.
+pub const PULLEY_CORRECTION_LAG: f32 = 6.0;
+
+/// **Avançar os tambores desta corda** e devolver o total recolhido.
+///
+/// ⚠️ Uma corda sem tambor nunca entra no mapa, e é isso que mantém a wave do
+/// motor byte-neutra: sem entrada, `L0` é o autorado ao bit, e toda cena que já
+/// existia continua exatamente onde estava.
+///
+/// O recolhido é **monótono** — um tambor tem catraca e nunca devolve corda.
+fn reel(payout: &mut BTreeMap<u64, f32>, p: &PulleyDesc, dt: f32) -> f32 {
+    if p.motor_rate == 0.0 {
+        return payout.get(&p.id).copied().unwrap_or(0.0);
+    }
+    let slot = payout.entry(p.id).or_insert(0.0);
+    *slot += p.motor_rate * dt;
+    *slot
 }
 
 /// Uma ponta da corda, resolvida contra a pose VIVA do corpo.
@@ -351,6 +505,12 @@ impl super::PhysicsWorld {
         self.pulley_bias = bias;
     }
 
+    /// A porta de varredura de [`PULLEY_CORRECTION_LAG`], irmã da de cima e pelo
+    /// mesmo motivo: a tabela do teto é medida contra o PRODUTO.
+    pub fn set_pulley_correction_lag(&mut self, lag: f32) {
+        self.pulley_lag = lag;
+    }
+
     /// **Trocar a tabela pela do chamador**, devolvendo-lhe a anterior.
     ///
     /// É por aqui que a ponte instala as polias todo dispatch: ela reconstrói a
@@ -372,6 +532,26 @@ impl super::PhysicsWorld {
     #[must_use]
     pub fn pulley_wheels(&self) -> &[RopeWheel] {
         &self.pulley_wheels
+    }
+
+    /// **Quanto de corda os tambores desta corda já recolheram**, em metros —
+    /// zero para uma corda sem motor, que é o estado de toda corda que ninguém
+    /// dirigiu.
+    ///
+    /// É o número que o readout mostra e o que os gates comparam contra `ω·r·t`;
+    /// o comprimento que a restrição de fato segura é
+    /// `total_length − pulley_reeled`.
+    ///
+    /// ⚠️ **O mapa NÃO é podado quando uma corda sai da tabela**, e isso é
+    /// deliberado: uma corda que pisca fora por um dispatch (um `active`
+    /// desmarcado, um rename a caminho) mantém o guincho onde ele estava, em vez
+    /// de o rebobinar em silêncio. O preço, nomeado: apagar uma corda e criar
+    /// outra **com o mesmo nome** no MESMO run herda o recolhido — a mesma
+    /// exposição de toda ligação por nome deste editor, e o Reset a cura, porque
+    /// ele constrói um mundo novo.
+    #[must_use]
+    pub fn pulley_reeled(&self, desc: &PulleyDesc) -> f32 {
+        self.pulley_payout.get(&desc.id).copied().unwrap_or(0.0)
     }
 
     /// A massa efetiva de cada ponta — diagnóstico para as tabelas de

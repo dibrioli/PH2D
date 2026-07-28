@@ -92,6 +92,7 @@ fn wheel(world: &mut World, rope: &str, order: u16, x: f32, y: f32, radius: f32)
             order,
             radius,
             wrap: WrapSide::Auto,
+            motor_speed: 0.0,
         },
         Transform::from_translation(Vec2::new(x, y)),
     ));
@@ -174,6 +175,51 @@ pub(crate) fn build(world: &mut World) {
 impl crate::App {
     /// **Cena 58 (W-Pulley).** Dois elevadores, mesmo par de massas, e a única
     /// diferença é o caminho da corda.
+    /// **Cena 59 (W-Pulley W2).** Quatro guinchos: um que ergue, um que baixa, e
+    /// um PAR que só difere no diâmetro do tambor.
+    ///
+    /// Os números saem da sonda `probe_smoke_59`, rodada sobre ESTA cena.
+    pub(crate) fn physics_smoke_winch(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        build_winch(gfx.sim.world_mut());
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.panel_visibility.insert("physics", true);
+        }
+
+        eprintln!(
+            "[physics-smoke 59] O GUINCHO -- uma roldana com MOTOR.\n  \
+               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+               1. AZUL (esquerda) -- o tambor recolhe e o gancho SOBE, sem ninguem\n     \
+                  puxar nada. A corda encurta a `w*r`: 60 graus/s num tambor de 0,45 m\n     \
+                  sao 0,47 m/s de corda. (medido em 2 s: subiu {hoist:.2} m.)\n  \
+               2. VERMELHO -- o MESMO tambor com o motor NEGATIVO: ele paga corda e a\n     \
+                  carga desce. Quem a baixa e a GRAVIDADE -- a corda so deixa de\n     \
+                  segurar. Ela nunca EMPURRA. (desceu {lower:.2} m.)\n  \
+               3. ROXO e VERDE (direita) -- o CAMBIO, e e o coracao desta wave. Os dois\n     \
+                  motores giram na MESMA velocidade (60 graus/s); o que muda e o\n     \
+                  DIAMETRO do tambor: 0,60 contra 0,20. O roxo sobe {ratio:.2}x mais rapido,\n     \
+                  que e exatamente a razao dos raios. Era isto que o antigo campo\n     \
+                  'Ratio' prometia e nao entregava -- agora ele e uma PECA na cena.\n  \
+               4. SELECIONE um tambor na Hierarquia ('Hoist Rope Wheel 1'). No Inspector,\n     \
+                  na secao 'Pulley Wheel', ha uma row nova: Motor (graus/s). Mude o numero\n     \
+                  COM O RELOGIO ANDANDO -- o guincho responde na hora. Ponha negativo e\n     \
+                  ele inverte; ponha zero e a roldana volta a ser uma roldana livre.\n  \
+               5. ARRASTE o ponto do ARO para mudar o RAIO com o motor ligado: a mesma\n     \
+                  rotacao passa a recolher mais (ou menos) corda. O diametro e o cambio,\n     \
+                  e da para senti-lo com o dedo.\n  \
+               6. SCRUB a regua para tras: o guincho REBOBINA junto com o mundo, porque\n     \
+                  o quanto ele ja recolheu viaja no checkpoint. Reset devolve tudo ao\n     \
+                  comeco.\n  \
+               ⚠️ NAO deixe um guincho recolhendo ate o gancho ALCANCAR o tambor: nao ha\n     \
+                  colisor na roldana, entao a carga passa por ela e a corda a sacode. O\n     \
+                  teto interno limita a violencia (sem ele a carga sai de quadro a\n     \
+                  milhares de m/s), mas o lugar certo de parar e antes.",
+            hoist = MEASURED_HOIST_RISE,
+            lower = MEASURED_LOWER_DROP,
+            ratio = MEASURED_GEAR_RATIO,
+        );
+    }
+
     pub(crate) fn physics_smoke_pulley(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
         build(gfx.sim.world_mut());
@@ -235,3 +281,111 @@ impl crate::App {
 #[cfg(test)]
 #[path = "physics_smoke_pulley_tests.rs"]
 mod tests;
+
+// ---------------------------------------------------------------------------
+// Cena 59 — O GUINCHO (W-Pulley W2).
+// ---------------------------------------------------------------------------
+
+const HOIST: [f32; 4] = [0.45, 0.80, 0.95, 1.0];
+const LOWER: [f32; 4] = [0.95, 0.55, 0.45, 1.0];
+const GEAR_BIG: [f32; 4] = [0.70, 0.55, 0.95, 1.0];
+const GEAR_SMALL: [f32; 4] = [0.55, 0.95, 0.80, 1.0];
+const POST: [f32; 4] = [0.35, 0.36, 0.40, 1.0];
+
+/// A altura do braço do guindaste — onde os tambores ficam.
+const BOOM_Y: f32 = 7.0;
+/// Onde as cargas nascem.
+const HOOK_Y: f32 = 1.0;
+
+/// **Um guincho:** um poste ESTÁTICO amarra uma ponta da corda, a outra segura a
+/// carga, e a roldana no alto é um TAMBOR.
+///
+/// O poste é estático porque é isso que um guincho é: quem recolhe está preso, e
+/// quem sobe é a carga. Com os dois lados dinâmicos o recolhimento é dividido
+/// entre eles, o que é outra máquina (e é o elevador da cena 58).
+fn winch(world: &mut World, tag: &str, x: f32, radius: f32, omega_deg: f32, rgba: [f32; 4]) {
+    let post = format!("{tag} Post");
+    let load = format!("{tag} Load");
+    let rope = format!("{tag} Rope");
+    world.spawn((
+        Name::new(post.clone()),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.15,
+                half_y: 0.15,
+            },
+            ..Collider::default()
+        },
+        Sprite::atlas(WHITE_TILE_KEY, [0.3, 0.3], POST),
+        Transform::from_translation(Vec2::new(x - 2.2, BOOM_Y)),
+    ));
+    ball(world, &load, x, 2.0, rgba, R);
+    {
+        // A carga nasce embaixo, não em `START_Y`.
+        let mut q = world.query::<(&Name, &mut Transform)>();
+        for (n, mut t) in q.iter_mut(world) {
+            if n.as_str() == load {
+                t.translation.y = HOOK_Y;
+            }
+        }
+    }
+    world.spawn((
+        Name::new(rope.clone()),
+        PhysicsJoint {
+            body_a: stable_name_id(&post),
+            body_b: stable_name_id(&load),
+            kind: JointKind::Pulley,
+            ..PhysicsJoint::of_kind(JointKind::Pulley)
+        },
+        Transform::from_translation(Vec2::new(x - 2.2, BOOM_Y)),
+    ));
+    world.spawn((
+        Name::new(format!("{rope} Wheel 1")),
+        PulleyWheel {
+            rope: stable_name_id(&rope),
+            order: 0,
+            radius,
+            wrap: WrapSide::Auto,
+            motor_speed: omega_deg.to_radians(),
+        },
+        Transform::from_translation(Vec2::new(x, BOOM_Y)),
+    ));
+}
+
+/// **Quanto o gancho AZUL sobe em 2 s**, metros — `ω·r` com `ω = 60°/s` e
+/// `r = 0,45` dá 0,942 m/s de corda, e a carga parte do repouso.
+pub(crate) const MEASURED_HOIST_RISE: f32 = 0.93;
+/// **Quanto o VERMELHO desce**, com o mesmo tambor girando ao contrário.
+pub(crate) const MEASURED_LOWER_DROP: f32 = 0.95;
+/// **A razão entre os dois tambores do par ROXO/VERDE** — o câmbio. Os raios
+/// estão em 0,60 e 0,20, então a razão TEM de ser 3, e ela é: 1,245 contra
+/// 0,414 m em 2 s.
+pub(crate) const MEASURED_GEAR_RATIO: f32 = 3.01;
+
+/// Monta a cena 59.
+pub(crate) fn build_winch(world: &mut World) {
+    world.spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 16.0,
+                half_y: 0.3,
+            },
+            ..Collider::default()
+        },
+        Sprite::atlas(WHITE_TILE_KEY, [32.0, 0.6], GROUND),
+        Transform::from_translation(Vec2::new(0.0, -0.6)),
+    ));
+    // Recolhe · paga corda · e o par que mostra o CÂMBIO: mesmo motor, tambores
+    // de raios diferentes.
+    winch(world, "Hoist", -9.0, 0.45, 60.0, HOIST);
+    winch(world, "Lower", -3.0, 0.45, -60.0, LOWER);
+    winch(world, "Gear Big", 3.0, 0.60, 60.0, GEAR_BIG);
+    winch(world, "Gear Small", 9.0, 0.20, 60.0, GEAR_SMALL);
+}

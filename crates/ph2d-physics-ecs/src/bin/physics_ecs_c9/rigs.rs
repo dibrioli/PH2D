@@ -134,7 +134,12 @@ pub fn spawn(sim: &mut SimWorld) {
     // existe), e o arco e o unico ponto do passe que chama um transcendental
     // (`libm::atan2f`, pinado cross-OS pela lei 6). Uma lane de raio ZERO nao
     // exercitaria nenhum dos dois.
-    for (order, x, radius) in [(0_u16, -64.0_f32, 0.4_f32), (1, -60.0, 0.25)] {
+    //
+    // E a SEGUNDA delas e um TAMBOR (W2): `motor_speed` encurta o comprimento de
+    // repouso a `w*r` por segundo, o que move as duas poses -- entao ele TEM de
+    // entrar no hash. Ele tambem e a unica lane que exercita o `pulley_payout`,
+    // a integral que o checkpoint carrega.
+    for (order, x, radius, motor) in [(0_u16, -64.0_f32, 0.4_f32, 0.0_f32), (1, -60.0, 0.25, 1.5)] {
         sim.world_mut().spawn((
             Name::new(format!("C9 Pulley Wheel {}", order + 1)),
             PulleyWheel {
@@ -142,6 +147,7 @@ pub fn spawn(sim: &mut SimWorld) {
                 order,
                 radius,
                 wrap: WrapSide::Auto,
+                motor_speed: motor,
             },
             Transform::from_translation(Vec2::new(x, 9.0)),
         ));

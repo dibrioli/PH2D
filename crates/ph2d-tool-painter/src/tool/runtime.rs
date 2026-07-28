@@ -119,6 +119,46 @@ impl PainterTool {
     #[expect(clippy::unused_self, reason = "no-op em release; a rede é de debug")]
     fn audit_live_is_the_cursor(&self, _tag: &str) {}
 
+    /// **O commit recebeu a janela, ou varreu?** — o readout que separa os dois custos possíveis dos
+    /// 12,2 ms que sobraram do S2 (doc 28 §5.19): *extração* de uma janela pequena contra *varredura*
+    /// dos quatro planos porque algum sítio deixou um acesso sem declarar.
+    ///
+    /// ⚠️ O contador é **um só para todos os planos** (uma `WindowCell` no tool), então um único sítio
+    /// esquecido tira a janela de TODOS eles. É por isso que a pergunta se faz aqui, no consumidor, e
+    /// não por sítio: o que decide é o total.
+    ///
+    /// `PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter -- --nocapture 2>&1 | grep S3-AUDIT`
+    /// (⚠️ o `--nocapture` é parte da medição — o `cargo test` engole o stderr de teste que passa).
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn audit_commit_window(
+        &self,
+        snapshot_writes: u64,
+        hint: Option<crate::compositor::Region>,
+    ) {
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
+            return;
+        }
+        let w = self.undo_window.get();
+        let verdict = match hint {
+            Some(r) => format!("JANELA {}x{} em ({},{})", r.w, r.h, r.x, r.y),
+            None => "VARRE".to_string(),
+        };
+        eprintln!(
+            "[S3-AUDIT] commit: {verdict} · nao-declarados={} · snapshot_writes={snapshot_writes}",
+            w.undeclared()
+        );
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(clippy::unused_self, reason = "no-op em release; a rede é de debug")]
+    pub(crate) fn audit_commit_window(
+        &self,
+        _snapshot_writes: u64,
+        _hint: Option<crate::compositor::Region>,
+    ) {
+    }
+
     /// `true` if there is at least one edit to undo (an open in-flight shape transaction counts).
     #[must_use]
     pub fn can_undo(&self) -> bool {

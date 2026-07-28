@@ -1,3 +1,5 @@
+#[path = "measure_commit_cost.rs"]
+mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, Ctrl+Z (doc 28 §5.13-§5.20)
 #[path = "measure_dirty_overclaim.rs"]
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]

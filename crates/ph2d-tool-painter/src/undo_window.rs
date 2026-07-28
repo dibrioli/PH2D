@@ -57,6 +57,16 @@ impl WriteWindow {
         }
     }
 
+    /// Quantos acessos de escrita seguem abertos sem dizer onde escreveram.
+    ///
+    /// Readout de diagnóstico: enquanto for > 0 o commit **varre**, então este é o número que separa
+    /// *"o commit custa extração"* de *"o commit custa varredura porque alguém não declarou"* — a
+    /// pergunta que decide o próximo degrau do S3 (doc 28 §7).
+    #[must_use]
+    pub const fn undeclared(&self) -> u32 {
+        self.undeclared
+    }
+
     /// Zera a janela: daqui para a frente ela descreve o que vier depois de `writes`.
     pub fn reset(&mut self, writes: u64) {
         self.since = writes;

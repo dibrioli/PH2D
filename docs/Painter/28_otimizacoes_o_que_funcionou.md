@@ -1596,6 +1596,62 @@ reconciliadas em vez de estimadas.
     Ctrl+Z a 1024², porque em elementos ele não distingue `u8` de `[u8; 7]`. Otimização medida numa ponta
     da faixa é regressão silenciosa na outra: **meça as três telas, sempre**.
 
+### 5.21 🔬 O commit hinted custa 11,8 ms — e quase metade é o `free` da geração anterior
+
+O S2 fechou os 12,16 ms restantes como *"extração dos dois lados da janela **+ planos que ninguém
+declarou**"* — número declarado ABERTO. A segunda metade dessa frase é **falsa**, e a rede de auditoria
+a derruba numa linha. Com `PH2D_UNDO_AUDIT=1`, todo commit de traço imprime:
+
+```text
+  [S3-AUDIT] commit: JANELA 338x156 em (0,123) · nao-declarados=0 · snapshot_writes=0
+```
+
+**A janela É oferecida** (`nao-declarados=0`) e o `split` retorna antes de varrer. Logo os 12 ms não são
+varredura — e 338×156 texels sobre 1024² também não são 12 ms de extração. O custo é outra coisa, e ela
+é **proporcional à tela**.
+
+#### A ablação, pela porta
+
+`WriteWindow::open_write` deixa um acesso aberto, e um acesso aberto faz `hint_for` devolver `None` —
+**é exatamente o que um sítio esquecido faz**, então o braço "sem janela" é o produto pré-S2, não um
+harness. O terceiro braço PINA a geração anterior dos planos de relevo (um clone tomado logo após o
+pen-down, antes de o fold forkar), o que impede o commit de ser o último dono deles:
+
+```text
+  commit de undo, impasto (ms)             1024       2048       4096
+  com a JANELA declarada                   4,29       7,02      11,51
+  VARRENDO (um sítio esqueceu)             4,90       9,12      23,02
+  com a janela, geração velha PINADA       3,93       5,53       6,49
+  ─────────────────────────────────────────────────────────────────────
+  o que a janela poupa                     0,61       2,09      11,51
+  o que o `free` custa                     0,36       1,49       5,03
+    (2ª testemunha: `drop` dos 3 planos)   0,00       0,00       2,44
+```
+
+⚠️ **As duas testemunhas concordam que o `free` existe e é o maior termo proporcional à tela, e
+discordam em 2× na magnitude** (2,44 direto contra 5,03 por ablação a 4096²) — a faixa fica escrita
+como faixa. A pinagem também impede o alocador de REUSAR aquelas páginas, então ela mede o `free` *e*
+o que a não-reutilização custa aos vizinhos; o `drop` direto mede só o `free`, mas fora do padrão de
+alocação do produto. Nenhuma das duas é a resposta sozinha, e escolher uma seria inventar precisão.
+
+#### Por que isto RE-PRECIFICA o S3 para cima
+
+O `free` não é um custo independente: **é a outra ponta do fork**. Todo traço aloca uma geração nova
+(o `fork_par` do fold) e solta a anterior no commit — são a mesma decisão de projeto, cobrada duas
+vezes. ⚠️ Então a wave que remove o fork **remove o `free` junto**, e o payoff do S3 é maior do que a
+§7 dizia:
+
+| o que o S3 mata | a 4096², impasto |
+|---|---|
+| o fold do relevo | 11,9 ms |
+| o fork do pen-down | 11,7 ms |
+| o `free` da geração anterior | 2,4–5,0 ms |
+| o resto do commit (extração + contabilidade) | 6,5 ms |
+
+⚠️ **E o que sobra depois de pinar — 6,49 ms a 4096² contra 3,93 a 1024² — segue número ABERTO.** Ele
+cresce com a tela devagar demais para ser um passe de plano inteiro e depressa demais para ser só a
+janela; atribuí-lo é a próxima medição, não a próxima hipótese.
+
 ---
 
 ## 7. Próxima etapa recomendada
@@ -1633,8 +1689,12 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
      *onde a imagem mudou*, não *onde bytes foram escritos*, e a rede de verificação em debug pegou a
      diferença na primeira rodada. Traga a rede junto — ela é barata e pegou o defeito antes dos gates.
    - ✅ **S1 e S2 LANDARAM** (§5.19): pen-up **37,0 → 24,0 ms**, commit **23,7 → 12,2**. O desenho final
-     é um CONTADOR de acessos não-declarados, não o guard com `Drop` (14 `E0499`). Sobram **12,2 ms** de
-     extração + planos não declarados — número ABERTO.
+     é um CONTADOR de acessos não-declarados, não o guard com `Drop` (14 `E0499`).
+     ⚠️ **E os 12,2 que sobraram foram DECOMPOSTOS (§5.21), derrubando a explicação registrada aqui:**
+     não são "planos não declarados" — a rede de auditoria mostra `nao-declarados=0` em todo commit de
+     traço, a janela É oferecida e o `split` retorna antes de varrer. **2,4–5,0 ms deles são o `free` da
+     geração anterior dos planos**, que é a outra ponta do fork e portanto morre com ele; os **6,5 ms**
+     restantes seguem número ABERTO.
    - 🎯 **S3 (o que falta) — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
      em vez de instalar um snapshot materializado. Segue sendo a maior frente aberta (fold 11,9 + fork do
      pen-down ~11,7 + os 12,2 do commit + o Ctrl+Z).

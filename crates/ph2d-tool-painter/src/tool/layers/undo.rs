@@ -147,6 +147,7 @@ impl PainterTool {
         // A janela declarada desde o último commit — aceita só se este `before` for posterior a ele (aí
         // ela é um SUPERCONJUNTO do que ele não viu) e se nenhum acesso de escrita ficou sem declarar.
         let hint = self.undo_window.get().hint_for(before.writes);
+        self.audit_commit_window(before.writes, hint);
         let after = self.snapshot_model();
         self.undo.record_structural_hinted(before, after, hint);
         let mut w = self.undo_window.get();

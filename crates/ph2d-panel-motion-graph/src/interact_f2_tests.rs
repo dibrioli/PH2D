@@ -160,6 +160,38 @@ fn the_backdrop_chip_wraps_the_selection() {
     }
 }
 
+/// **The Arrange chip asks the shell to lay the graph out.** Clicking it pushes ONE
+/// `ArrangeLayout` intent and nothing else — the panel never touches positions
+/// itself (the shell owns the document and the undo bracket). FALSIFIED by dropping
+/// the dispatch arm (the chip becomes a dead button — painted, hittable, inert).
+#[test]
+fn the_arrange_chip_asks_the_shell_to_lay_the_graph_out() {
+    let _ = drain_intents();
+    let snap = two_node_snapshot();
+    let mut st = MotionGraphPanelState::default();
+
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Chrome {
+                id: crate::paint_chrome::CHROME_ARRANGE,
+            },
+            GesturePhase::Click,
+            0.0,
+            0.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::ArrangeLayout],
+        "the arrange chip emits exactly one layout intent"
+    );
+}
+
 /// With nothing selected the chip drops a default block instead (the same button,
 /// the second behaviour) — never a zero-size region at the origin.
 #[test]

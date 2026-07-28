@@ -203,4 +203,11 @@ pub enum GraphIntent {
         x: f32,
         y: f32,
     },
+    /// **Auto-arrange the whole document** (the Hierarchy chip) — lay every node out
+    /// in a left-to-right layered flow: a chain becomes one straight horizontal line,
+    /// branches stack, and disconnected components go in their own bands (the
+    /// Sugiyama layout already proven in `ph2d-nodegraph::layout`). It rewrites only
+    /// POSITIONS, which are UI-only (they never touch the cook), so the shell applies
+    /// it as ONE undo step with no `mark_dirty` — the same class as the backdrops.
+    ArrangeLayout,
 }

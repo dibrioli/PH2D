@@ -119,6 +119,10 @@ mod plumbing_tests;
 mod backdrop_tests;
 
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_arrange_tests.rs"]
+mod arrange_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_edit_tests.rs"]
 mod edit_tests;
 

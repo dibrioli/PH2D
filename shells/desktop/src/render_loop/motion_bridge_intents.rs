@@ -264,6 +264,20 @@ pub(super) fn apply_graph_intents(
                     motion.history.push_undo(pre);
                 }
             }
+            // **Auto-arrange** (the Hierarchy chip) — the subgraph-aware layered
+            // layout, laying the root and every group's interior out left-to-right.
+            // Positions are UI-only (they never touch the cook, like a node drag), so
+            // this is ONE undo step and deliberately does NOT `mark_dirty`. The push
+            // is guarded on an actual change: arranging an already-tidy graph is not
+            // an edit, and an undo queue that fills with those is one the artist
+            // cannot use (the same rule as `SetBackdropColor` above).
+            GraphIntent::ArrangeLayout => {
+                let pre = motion.doc.clone();
+                ph2d_motion_doc::layout::arrange(&mut motion.doc);
+                if motion.doc != pre {
+                    motion.history.push_undo(pre);
+                }
+            }
         }
     }
 }

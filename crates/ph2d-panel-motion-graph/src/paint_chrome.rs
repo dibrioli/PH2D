@@ -44,6 +44,10 @@ pub(crate) const CHROME_PROBE: u16 = 5;
 /// reads ACTIVE while there is something to collapse, so the artist can see that the
 /// gesture has a subject; with an empty selection it is inert (and says so).
 pub(crate) const CHROME_GROUP: u16 = 6;
+/// **Auto-arrange** — lay the whole document out in a left-to-right layered flow (a
+/// chain becomes one horizontal line). A momentary action, like Fit: it never reads
+/// active, it just tidies on press.
+pub(crate) const CHROME_ARRANGE: u16 = 7;
 /// **Breadcrumb crumbs start here** — crumb `i` is `CHROME_CRUMB_BASE + i`. They ride
 /// the same `Chrome` hit kind as the toolbar chips (an ordinal the panel alone
 /// interprets), so navigation costs the foundational interaction vocabulary NOTHING:
@@ -143,6 +147,9 @@ pub(crate) fn draw_split_chrome(
             },
             group_verb != GroupVerb::Inert,
         ),
+        // Auto-arrange (the layered flow). Never active — it is a momentary tidy, not
+        // a mode; the Hierarchy glyph reads as "lay this out as a tree".
+        (CHROME_ARRANGE, IconId::Hierarchy, false),
     ];
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {

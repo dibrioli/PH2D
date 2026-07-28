@@ -204,6 +204,9 @@ fn apply_gesture(
             crate::paint_chrome::CHROME_KNIFE => state.knife_armed = !state.knife_armed,
             crate::paint_chrome::CHROME_PROBE => state.probe_armed = !state.probe_armed,
             crate::paint_chrome::CHROME_GROUP => subgraph_gesture::chip(state, snap),
+            // Auto-arrange: a document edit (positions), so it crosses as an intent —
+            // the shell owns the doc and the undo bracket.
+            crate::paint_chrome::CHROME_ARRANGE => push_intent(GraphIntent::ArrangeLayout),
             // The breadcrumb (doc 57): crumb `i` rides the ordinal `CHROME_CRUMB_BASE + i`.
             id if id >= crate::paint_chrome::CHROME_CRUMB_BASE => {
                 subgraph_gesture::go_to_crumb(

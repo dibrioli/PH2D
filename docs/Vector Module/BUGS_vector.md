@@ -1204,6 +1204,91 @@ verificada** no próprio gate.
 
 ---
 
+## Bug #24 — "Linhas no Bevel": o PENTE era o caminho do raster, e toda forma com traço caía nele (2026-07-27) — **FECHADO**
+
+### Sintoma
+
+Enio, com foto (estrela roxa, contorno branco, bevel cobrindo a forma inteira): *"problemas voltaram
+a aparecer no main: Linhas no Bevel"*. Cada faceta do relevo vem hachurada por um **pente** de
+linhas diagonais finas.
+
+### Causa
+
+Duas coisas, e só a segunda é o bug.
+
+**(1) O pente é o caminho do RASTER, e ele é real.** O campo de distância tem duas rotas: semeado
+pela GEOMETRIA (o pé exato sai de um laço sobre os segmentos da silhueta) ou pelo **JFA sobre o
+raster**, quando não há geometria. O raster semeia em texels DISCRETOS ⇒ a direção salta na fronteira
+de célula de Voronoi e a distância escadeia. O bevel lê a DIREÇÃO, então o erro sai como hachura.
+Reproduzido lado a lado na sonda (`PH2D_FX_RASTER=1`, cena 13): a mesma estrela sai **com a hachura
+da foto** pelo raster e **lisa** pela geometria.
+
+**(2) Toda forma com TRAÇO caía no raster.** O `silhouette_segments` recusa a curva autorada de uma
+forma traçada — e **com razão**: num traço centrado ela passa pelo MEIO da faixa de tinta, então
+semeá-la poria a fronteira DENTRO da forma. O doc dele já nomeava o item aberto: *"a união exata é
+trabalho da booleana, e entra quando houver quem a peça"*. A estrela do Enio tem contorno branco.
+
+⚠️ **A cena de smoke não continha o fenômeno.** As dezasseis estrelas do `PH2D_FX_RASTER_SMOKE=1`
+tinham UMA traçada (a do Outline grosso), e nenhuma era traçada **e** biselada — o bug reportado não
+podia aparecer em nenhuma delas.
+
+### Correção
+
+Três peças, uma porta cada:
+
+1. **`ph2d_vec_boolean::silhouette_paths`** — a união `preenchimento ∪ contorno-do-traço`. Sem traço
+   devolve o próprio caminho **ao bit** (zero sweeps).
+2. **`shells/desktop/src/fx_silhouette.rs`** — resolve por forma, com memo. Mora na shell porque o
+   `ph2d-vec-render` **não depende** da booleana (skew de kurbo, declarado no `Cargo.toml` dele) e a
+   cerca é boa: o desenhista não precisa saber resolver interseção.
+3. **`silhouette_segments` ganha `sil: &LiveGeometry`**, consultada PRIMEIRO. Mapa vazio =
+   byte-idêntico ao mundo pré-wave.
+
+**Medido antes de adotar** (§0): **0,19–0,31 ms** numa estrela de 5 pontas (10 âncoras) · **0,46–0,67
+ms** com 12 · **1,67–2,54 ms** com 40 (80 âncoras) — linear, ~0,02 ms por âncora. O memo é chaveado
+na geometria de **MUNDO**, que é função da POSE e não da câmera ⇒ acerta durante todo pan e zoom: a
+união é paga por **EDIÇÃO**, não por frame (gate que **conta** os cozimentos).
+
+### O que a medição corrigiu em mim — três vezes
+
+**O primeiro oráculo falhou sobre produto CORRETO.** Ele exigia meia-largura de folga em TODA
+âncora; num espeto o join **clampa** (miter vira bevel) e a corda passa a **0,0101** da ponta numa
+estrela de 12 pontas — legítimo, e é o que o rasterizador desenha também. A pergunta certa é *"a
+âncora está DENTRO?"*; a folga exata só vale longe das quinas. São **dois** gates.
+
+**Uma mutação sobreviveu a quatro gates.** `return ink` (a tinta sem unir com o preenchimento) deixa
+um **ANEL**, e o furo do anel é uma fronteira correndo pelo meio da forma — literalmente o defeito
+que a união existe para apagar. Os quatro gates não a viam porque medem **perto da curva autorada**,
+e ela fica dentro da faixa de tinta nos dois casos. O oráculo que faltava é o **MIOLO**.
+
+**O instrumento do gate de custo não podia falhar.** Eu usei `ph2d_vec_boolean::__sweep_calls`, que
+conta entradas em `offset_path` — caminho que a união **não percorre**. O gate media zero contra zero.
+Trocado por um contador do próprio módulo, que mede a frase que ele afirma.
+
+### E um doc-comment FALSO que eu ia shipar
+
+Escrevi *"a normalização não é cosmética"* sobre o `regions_of` (que zera `stroke` e põe `fill`). A
+mutação que a remove **sobreviveu**, e a medição diz por quê: a booleana já devolve região sem traço
+e com preenchimento. Ela **fica** — o `push_path` recusa peça estilizada **em silêncio**, e a forma
+voltaria ao raster com tudo verde —, mas como **cinto**, e o fato de hoje está PINADO num gate
+(`the_boolean_already_hands_back_regions_and_this_normalisation_is_a_belt`).
+
+### Gates
+
+5 na booleana + 5 no `ph2d-vec-render` + 9 na shell, incluindo a **costura ponta a ponta** com a
+estrela do report (`the_reported_stroked_star_reaches_the_exact_field_instead_of_the_raster`): sem a
+silhueta resolvida ela dá **zero** segmentos, com ela dá segmentos na borda da TINTA. **9 mutações;
+7 sangram, 2 sobrevivem e estão documentadas** (a normalização, acima; e o `retain` do memo, que é
+higiene de memória — uma entrada órfã nunca é lida).
+
+### Smoke
+
+**`PH2D_FX_RASTER_SMOKE=1`** — a estrela do **BEVEL (14)** agora leva **traço branco**. O relevo tem
+de sair **liso**, sem hachura diagonal. O bevel sem traço continua provado pelos gates e pela sonda
+`fx_look_probe` (cenas 12/13), que é onde as fotos do antes/depois foram tiradas.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -1289,3 +1374,13 @@ verificada** no próprio gate.
     (`draw_overlays` inteiro, todas as formas, enquanto a janela vivesse) apagou o modo Node.
     Overlay é política por-ALVO; quando a política nasce global, o gate que falta é o que pergunta
     pelas formas que **não** são o alvo.
+
+18. **Um caminho de fallback que ninguém consegue FOTOGRAFAR acumula bugs** (#24). O campo tem duas
+    rotas e a sonda desenhava só a boa; o pente vivia na outra havia meses, e o que o revelou foi uma
+    chave de ambiente de três linhas (`PH2D_FX_RASTER=1`). Quando um módulo diz *"pior, mas nunca
+    trava"* sobre uma rota, pergunte como se OLHA para ela — senão *"pior"* é uma palavra sem imagem.
+
+19. **A cena de smoke tem de conter o fenômeno, e a lista de fixtures apodrece sozinha** (#24). O
+    smoke tinha dezasseis estrelas, uma traçada e uma biselada — **nenhuma as duas**. Cada wave
+    acrescentou o seu caso e ninguém perguntou pelas COMBINAÇÕES; o bug reportado não podia aparecer
+    ali. Ao fechar um bug, o passo final não é o gate: é pôr o caso na cena que alguém olha.

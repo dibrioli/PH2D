@@ -18,6 +18,8 @@ fn wheel(order: u16) -> PulleyWheel {
         radius: 0.45,
         wrap: WrapSide::Auto,
         motor_speed: 0.0,
+        break_enabled: false,
+        break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
     }
 }
 
@@ -188,5 +190,34 @@ fn a_non_finite_motor_goes_through_the_same_clamp() {
     assert_eq!(
         wheel_with_edit(w, WheelFieldEdit::MotorDegPerS(f32::NAN)).map(|n| n.motor_speed),
         Some(0.0)
+    );
+}
+
+/// **O par switch/limiar do eixo atravessa a fronteira intacto**, e o limiar
+/// passa pela MESMA porta de carga que o raio e o motor.
+///
+/// ⚠️ Um limiar NEGATIVO partiria a roldana antes de a corda tocá-la, e um `NaN`
+/// **nunca compara verdadeiro** — ou seja, seria um eixo indestrutível com a
+/// caixa marcada, que é o pior dos dois erros porque não parece um erro.
+#[test]
+fn the_axle_threshold_goes_through_the_same_clamp() {
+    let w = wheel(0);
+    assert_eq!(
+        wheel_with_edit(w, WheelFieldEdit::BreakEnabled(true)).map(|n| n.break_enabled),
+        Some(true)
+    );
+    assert_eq!(
+        wheel_with_edit(w, WheelFieldEdit::BreakForce(250.0)).map(|n| n.break_force),
+        Some(250.0)
+    );
+    assert_eq!(
+        wheel_with_edit(w, WheelFieldEdit::BreakForce(-5.0)).map(|n| n.break_force),
+        Some(0.0),
+        "um limiar negativo é clampado, não guardado"
+    );
+    assert_eq!(
+        wheel_with_edit(w, WheelFieldEdit::BreakForce(f32::NAN)).map(|n| n.break_force),
+        Some(PulleyWheel::DEFAULT_BREAK_FORCE),
+        "NaN nunca compara verdadeiro: seria um eixo indestrutível com a caixa marcada"
     );
 }

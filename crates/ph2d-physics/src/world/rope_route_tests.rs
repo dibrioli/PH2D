@@ -97,11 +97,15 @@ fn a_zero_radius_wheel_is_the_point_model_to_the_versor() {
             centre: wa,
             radius: 0.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: wb,
             radius: 0.0,
             side: -1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ];
     let mut scratch = Vec::new();
@@ -152,6 +156,8 @@ fn a_half_wrap_adds_pi_r_of_rope() {
         centre: c,
         radius: r,
         side: -1,
+        id: 0,
+        break_force: f32::INFINITY,
     }];
     let mut scratch = Vec::new();
     let mut guessed = wheels;
@@ -183,6 +189,8 @@ fn a_wheel_the_rope_barely_grazes_adds_almost_nothing() {
         centre: [0.0, r],
         radius: r,
         side: 1,
+        id: 0,
+        break_force: f32::INFINITY,
     }];
     let mut scratch = Vec::new();
     let out = route([-10.0, 0.0], [10.0, 0.0], &wheels, &mut scratch).expect("rota");
@@ -201,6 +209,8 @@ fn a_route_through_an_impossible_tangent_is_refused() {
         centre: [0.0, 0.0],
         radius: 1.0,
         side: 1,
+        id: 0,
+        break_force: f32::INFINITY,
     }];
     let mut scratch = Vec::new();
     // A âncora está DENTRO da roda.
@@ -211,11 +221,15 @@ fn a_route_through_an_impossible_tangent_is_refused() {
             centre: [0.0, 0.0],
             radius: 1.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [0.5, 0.0],
             radius: 1.0,
             side: -1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ];
     assert!(route([-5.0, 0.0], [5.0, 0.0], &pair, &mut scratch).is_none());
@@ -236,6 +250,8 @@ fn the_side_is_discovered_from_where_the_wheel_sits() {
             // Chute deliberadamente ERRADO nos dois casos, para o gate medir a
             // descoberta e não o valor que entrou.
             side: if expected > 0 { -1 } else { 1 },
+            id: 0,
+            break_force: f32::INFINITY,
         }];
         resolve_sides([-4.0, 0.0], [4.0, 0.0], &mut wheels, &mut scratch);
         assert_eq!(
@@ -259,16 +275,22 @@ fn the_resolved_sides_agree_with_the_route_they_produce() {
             centre: [-2.0, 3.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [0.0, 4.5],
             radius: 0.3,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [2.5, 2.0],
             radius: 0.7,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ];
     let (a, b) = ([-4.0_f32, 0.0], [4.0_f32, 0.0]);

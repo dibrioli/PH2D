@@ -9,6 +9,7 @@
 //! o solver deixou de aplicar, que é a divergência desenho×solver que o P2 do
 //! plano proíbe).
 
+use super::joint_tests::*;
 use super::*;
 use crate::render_loop::physics_overlay_joints::{JOINT_BROKEN_DIM_RGBA, JOINT_BROKEN_RGBA};
 

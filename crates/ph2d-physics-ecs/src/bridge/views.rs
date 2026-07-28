@@ -260,31 +260,31 @@ impl PhysicsBridge {
                 wheel_start: r.desc.wheel_start,
                 wheel_count: r.desc.wheel_count,
                 axis: None,
-                // Uma polia não parte (`JointKind::can_break`): nada mede a
-                // reação dela, então não há ruptura a desenhar.
-                broken: false,
+                // W2: a polia PARTE, e o readout do overlay é o mesmo dos
+                // outros tipos. `broken` congela o pico na carga que cruzou —
+                // é para isso que o leitor troca `load` por `peak`.
+                broken: !self.world.pulley_is_intact(r.desc.id),
                 // Uma polia inativa não é sequer instalada, então toda view
                 // que existe descreve uma corda que está segurando.
                 active: true,
-                // Nada mede a carga de algo que não está no `ImpulseJointSet`;
-                // zero aqui é *não há leitura*, e a §12 não pinta a row porque
-                // `can_break` já a recusa.
+                // A TENSÃO da corda, em newtons — `λ/dt` do passe próprio dela.
+                // ⚠️ **Torque zero não é lacuna:** uma corda não transmite
+                // torque nenhum, e é por isso que `breaks_on_torque` segue
+                // recusando a polia enquanto `can_break` deixou de recusá-la.
                 load: ph2d_physics::JointLoad {
-                    force: 0.0,
+                    force: self.world.pulley_tension(r.desc.id),
                     torque: 0.0,
                 },
                 peak: ph2d_physics::JointLoad {
-                    force: 0.0,
+                    force: self.pulley_peak(r.entity),
                     torque: 0.0,
                 },
                 // ⚠️ **`∞` é o que "não parte" É** — a mesma lei que o
-                // `joint_desc` aplica ao checkbox desarmado. Aqui estava `0.0`,
+                // `joint_desc` aplica ao checkbox desarmado. Aqui esteve `0.0`,
                 // e o leitor do readout decide por `is_finite()`: zero não
                 // significava *sem limiar*, significava **parte a 0 N**, então
-                // toda polia na tela carregava um `0 / 0 N` permanente — um par
-                // de números que não responde a nada, sobre um tipo que
-                // `can_break()` já recusa.
-                break_force: f32::INFINITY,
+                // toda polia na tela carregava um `0 / 0 N` permanente.
+                break_force: r.desc.break_force,
                 break_torque: f32::INFINITY,
             })
         })

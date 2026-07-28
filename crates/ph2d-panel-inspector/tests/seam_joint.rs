@@ -546,11 +546,12 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_joint(None);
             let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
-            // ⚠️ **Menos a POLIA**, e a exceção é medida, não estética: ela não
-            // vive no `ImpulseJointSet`, então nada publica a reação que decidiria
-            // a ruptura, e a caixa seria um limiar que nunca pode ser cruzado.
-            // Antes dela a frase "todo joint pode ser arrancado" valia para todos.
-            let breakable = kind != KIND_PULLEY;
+            // ⚠️ **TODOS, incluindo a POLIA.** Ela foi a exceção enquanto nada
+            // publicava a reação dela — não vive no `ImpulseJointSet` —, e o
+            // W-Pulley W2 fechou isso: o passe próprio dela publica a tensão
+            // (`λ/dt`), medida contra `m·g` com razão 0,9999. A frase *"todo
+            // joint pode ser arrancado"* voltou a valer para todos.
+            let breakable = true;
             for &id in &ids::INSP_JOINT_BREAK {
                 assert_eq!(
                     painted(id),

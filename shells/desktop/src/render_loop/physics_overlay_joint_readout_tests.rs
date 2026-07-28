@@ -232,40 +232,53 @@ fn the_readout_respects_the_overlay_switch() {
     );
 }
 
-/// **Um tipo que NÃO PARTE não imprime carga nenhuma** — nem selecionado.
+/// **Uma POLIA imprime a carga dela como qualquer outro tipo** — e um limiar
+/// `∞` segue não imprimindo nada.
 ///
-/// A polia não vive no `ImpulseJointSet`: nada mede a reação dela, então o par
-/// de números é estruturalmente zero para sempre. Foi o que o artista
-/// fotografou — um `0 / 0 N` fixo por cima de uma corda —, e ele tinha **duas**
-/// causas somadas, cada uma bastando sozinha:
+/// ⚠️ Este gate já disse o CONTRÁRIO, e a virada é a wave: a polia não vive no
+/// `ImpulseJointSet`, então nada media a reação dela e o par de números era
+/// estruturalmente zero. Era o que o artista fotografou — um `0 / 0 N` fixo por
+/// cima de uma corda —, e aquilo tinha **duas** causas somadas:
 ///
 /// 1. a view da polia nascia com `break_force: 0.0`, e o leitor decide por
 ///    `is_finite()` ⇒ zero não significava *sem limiar*, significava *parte a
-///    0 N*. `∞` é o que "não parte" É, e é o que o `joint_desc` já escrevia
-///    para um checkbox desarmado;
-/// 2. o readout nunca perguntava `can_break()` — a MESMA porta que a §12 usa
-///    para não pintar a caixa Breakable daquele tipo.
+///    0 N*. `∞` é o que "não parte" É;
+/// 2. nada media a carga, então o numerador era zero para sempre.
 ///
-/// ⚠️ **Defesa em camadas ⇒ um gate por camada** ([[feedback_layered_defenses_need_per_layer_gates]]):
-/// este fixa a segunda pela raiz, dando um teto FINITO a uma polia — se só a
-/// correção (1) existisse, ele sangraria.
+/// O W-Pulley W2 fechou a (2) — o passe publica a própria tensão — e a (1)
+/// **continua load-bearing**: uma corda sem Breakable marcado carrega `∞`, e é
+/// isso que a mantém fora da tela. ⚠️ **Defesa em camadas ⇒ um gate por camada**
+/// ([[feedback_layered_defenses_need_per_layer_gates]]): as duas metades estão
+/// aqui, e a de cima é a que sangraria se alguém voltasse a escrever `0.0` ali.
 #[test]
-fn a_kind_that_cannot_break_prints_no_load() {
-    let pulley = JointView {
+fn a_pulley_prints_its_load_and_an_infinite_threshold_prints_nothing() {
+    let breakable = JointView {
         kind: JointKind::Pulley,
-        // Um teto finito, de propósito: sem ele o gate passaria pela metade
-        // errada (o `breakable` já seria falso) e não diria nada sobre a porta.
+        ..view(9.8, 9.8, 100.0, false)
+    };
+    assert_eq!(
+        texts(&breakable, false),
+        ["9.8 / 100 N"],
+        "uma corda com limiar mostra o que ela segura, como todo outro tipo"
+    );
+    // A metade (1), pela raiz: `∞` é *não há limiar*, e não *parte a zero*.
+    let unbreakable = JointView {
+        kind: JointKind::Pulley,
+        break_force: f32::INFINITY,
+        break_torque: f32::INFINITY,
         ..view(9.8, 9.8, 100.0, false)
     };
     assert!(
-        texts(&pulley, false).is_empty(),
-        "uma polia não selecionada não tem carga a mostrar"
+        texts(&unbreakable, false).is_empty(),
+        "sem limiar não há par de números a mostrar"
     );
-    assert!(
-        texts(&pulley, true).is_empty(),
-        "e selecioná-la não inventa uma: o readout pergunta `can_break()`, \
-         como a §12 faz para não pintar a caixa Breakable"
+    // ⚠️ Mas SELECIONADA ela mostra a carga viva — sem denominador —, e isso é
+    // a feature, não uma brecha: é assim que se afina um limiar (rode, faça a
+    // coisa, leia o número, digite acima dele). Antes desta wave o número seria
+    // um zero permanente; agora ele é a tensão de verdade.
+    assert_eq!(
+        texts(&unbreakable, true),
+        ["9.8 N"],
+        "selecionada, a corda mostra o que ela está segurando"
     );
-    // O controle: o MESMO estado num tipo que parte imprime.
-    assert_eq!(texts(&view(9.8, 9.8, 100.0, false), false), ["9.8 / 100 N"]);
 }

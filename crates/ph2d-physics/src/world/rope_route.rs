@@ -71,6 +71,22 @@ pub struct RopeWheel {
     pub radius: f32,
     /// `+1` = a corda vira à ESQUERDA aqui; `−1` = à direita.
     pub side: i8,
+    /// **Quem esta roldana É, através das trocas de arena** — o `stable_name_id`
+    /// do nome dela (W2).
+    ///
+    /// A arena é reconstruída por dispatch, então o que uma roldana ACUMULOU (a
+    /// carga de pico do eixo) e o fato de ela ter ROMPIDO não podem ser guardados
+    /// por posição: acrescentar uma roldana deslocaria os índices e o eixo partido
+    /// migraria para a vizinha. Mesma chave, mesmo motivo, que o `id` da corda.
+    pub id: u64,
+    /// **O que este EIXO aguenta**, newtons — `∞` é uma roldana que não parte, e
+    /// é também o que uma roldana que ninguém dimensionou carrega.
+    ///
+    /// A carga aqui **não é a tensão da corda**: é a RESULTANTE que o desvio
+    /// produz (`T·|u_saída − u_entrada|`), então um enlace de 180° carrega `2T` e
+    /// um que quase não desvia a corda carrega quase nada. É a mesma conta do
+    /// Jacobiano — uma conta, dois consumidores.
+    pub break_force: f32,
 }
 
 /// O que a rota entrega ao kernel de impulso.

@@ -191,6 +191,16 @@ pub const INSP_WHEEL_ORDER: NodeId = hash_node_id("insp_wheel_order");
 /// fronteira e radianos no componente, a convenção do motor do Pin.
 pub const INSP_WHEEL_MOTOR: NodeId = hash_node_id("insp_wheel_motor");
 
+/// **Este eixo pode ceder?** — o par switch/limiar da §13 (W2).
+pub const INSP_WHEEL_BREAK_GROUP: NodeId = hash_node_id("insp_wheel_break_group");
+/// Os dois chips do switch acima.
+pub const INSP_WHEEL_BREAK: [NodeId; 2] = [
+    hash_node_id("insp_wheel_break_off"),
+    hash_node_id("insp_wheel_break_on"),
+];
+/// **O que este eixo aguenta**, newtons.
+pub const INSP_WHEEL_BREAK_FORCE: NodeId = hash_node_id("insp_wheel_break_force");
+
 pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
 pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
     hash_node_id("insp_wheel_wrap_auto"),

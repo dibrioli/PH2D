@@ -120,7 +120,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // dirigida, o guincho). Componente NOVO não custaria bump; APENDAR campo a um
         // que já existe custa, porque postcard é posicional e um blob v41 tem um `f32`
         // a menos — o load leria lixo bem-formado em vez de recusar.
-        (42, 12, 13),
+        // PROJECT 42→43: a `PulleyWheel` ganhou `break_enabled`+`break_force` (W2 —
+        // o eixo que cede). Dois campos apendados, mesmo raciocínio posicional.
+        (43, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

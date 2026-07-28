@@ -79,6 +79,8 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
             radius,
             wrap: ph2d_physics_ecs::WrapSide::Auto,
             motor_speed: 0.0,
+            break_enabled: false,
+            break_force: ph2d_physics_ecs::PulleyWheel::DEFAULT_BREAK_FORCE,
         },
         Transform::from_translation(ph2d_core::Vec2::new(centre[0], centre[1])),
     ));
@@ -114,6 +116,8 @@ pub(crate) fn build_wheel_info(sim: &mut SimWorld, entity_bits: u64) -> Option<I
         // Radianos no componente, GRAUS na row — a fronteira do motor do Pin,
         // e a conversão mora aqui e no `wheel_with_edit`, uma vez de cada lado.
         motor_deg_per_s: wheel.motor_speed.to_degrees(),
+        break_enabled: wheel.break_enabled,
+        break_force: wheel.break_force,
     })
 }
 
@@ -163,6 +167,8 @@ pub(crate) fn wheel_with_edit(
         WheelFieldEdit::Wrap(tag) => next.wrap = ph2d_physics_ecs::WrapSide::from_tag(tag)?,
         // Graus na row, radianos no componente.
         WheelFieldEdit::MotorDegPerS(v) => next.motor_speed = v.to_radians(),
+        WheelFieldEdit::BreakEnabled(on) => next.break_enabled = on,
+        WheelFieldEdit::BreakForce(v) => next.break_force = v,
     }
     // A MESMA porta de carga que o load usa: raio negativo inverteria a
     // tangente, `NaN` envenenaria a pose e o hash C9.

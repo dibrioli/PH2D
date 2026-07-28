@@ -80,6 +80,8 @@ fn how_many_passes_the_side_fixpoint_needs() {
                         ],
                         radius: 0.2 + 0.3 * (i % 3) as f32,
                         side: 1,
+                        id: 0,
+                        break_force: f32::INFINITY,
                     }
                 })
                 .collect();

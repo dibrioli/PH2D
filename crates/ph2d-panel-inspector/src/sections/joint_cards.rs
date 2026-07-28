@@ -102,10 +102,11 @@ pub(super) fn paint_motor_rows(
 
 /// **The Breakable card** (W-J7) — the switch, then the thresholds it gates.
 ///
-/// ⚠️ **Menos a POLIA** (`kind_can_break`), e a exceção é medida, não estética:
-/// ela não vive no `ImpulseJointSet`, então não há reação publicada a comparar —
-/// a caixa seria um limiar que nunca pode ser cruzado. Antes dela a frase abaixo
-/// valia para todos os tipos.
+/// ⚠️ **A POLIA era a exceção, e deixou de ser** (W-Pulley W2): ela não vive no
+/// `ImpulseJointSet`, então não havia reação publicada a comparar e a caixa
+/// seria um limiar que nunca podia ser cruzado. Hoje o passe dela publica a
+/// própria tensão (`λ/dt`, medida contra `m·g` com razão 0,9999), e a frase
+/// abaixo voltou a valer para todos os tipos.
 ///
 /// Offered for every OTHER kind, unlike the Motor card: any joint can be pulled apart,
 /// and the reaction that decides it (the linear one) is reported exactly on all

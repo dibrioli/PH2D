@@ -105,6 +105,7 @@
 
 use std::collections::BTreeMap;
 
+use super::rope_load::{PulleyBreak, PulleyLedger, ledger_axles};
 use super::rope_route::{self, RopeWheel, Tangent};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::na::{Point2, Vector2};
@@ -162,6 +163,17 @@ pub struct PulleyDesc {
     /// sentidos opostos se anulam — que é o que dois guinchos brigando pela mesma
     /// corda fazem.
     pub motor_rate: f32,
+    /// **O que a CORDA aguenta**, newtons — `∞` é uma corda que não parte (W2).
+    ///
+    /// ⚠️ **UM número para as DUAS pontas, e isso não é economia:** a corda é
+    /// inextensível, então a tensão é **uniforme** ao longo dela — as duas
+    /// amarrações sentem exatamente a mesma carga. Dois limites contra a mesma
+    /// carga são um limite (o menor) e um controle inerte ao lado dele, e o §7 do
+    /// plano pedia dois antes de esta wave medir a uniformidade.
+    ///
+    /// O que difere de ponto para ponto é o **EIXO de cada roldana**, que carrega
+    /// a RESULTANTE do desvio — e esse número mora em [`RopeWheel::break_force`].
+    pub break_force: f32,
 }
 
 impl PulleyDesc {
@@ -231,12 +243,13 @@ pub const PULLEY_BIAS: f32 = 0.2;
 /// byte-neutro para toda cena que já existia. `scratch` é do chamador porque a
 /// rota escreve `N+1` trechos por corda por sub-passo — alocá-los aqui apareceria
 /// no gate de zero-alloc do caminho quente.
-#[allow(clippy::too_many_arguments)] // a tabela, a arena, o recolhido, o scratch e os dois números medidos
+#[allow(clippy::too_many_arguments)] // a tabela, a arena, o livro-razão, o scratch e os dois números medidos
 pub fn apply(
     bodies: &mut RigidBodySet,
     pulleys: &[PulleyDesc],
     arena: &[RopeWheel],
-    payout: &mut BTreeMap<u64, f32>,
+    led: &mut PulleyLedger<'_>,
+    live: &mut Vec<RopeWheel>,
     scratch: &mut Vec<Tangent>,
     dt: f32,
     bias: f32,
@@ -246,6 +259,22 @@ pub fn apply(
         return;
     }
     for p in pulleys {
+        // Uma corda que já rompeu não segura mais nada, e não volta sem um
+        // rebuild — como um joint desabilitado (W-J7), e pelo mesmo motivo: a
+        // ruptura nunca é escrita no estado AUTORADO.
+        if led.broken_ropes.contains(&p.id) {
+            continue;
+        }
+        // As roldanas VIVAS desta corda. Um eixo que cedeu **sai da rota**, o que
+        // encurta o caminho ⇒ `C < 0` ⇒ folga, e a carga cai. Sem estouro, por
+        // construção. O scratch é do chamador porque isto roda por sub-passo.
+        live.clear();
+        live.extend(
+            p.wheels(arena)
+                .iter()
+                .filter(|w| !led.broken_wheels.contains(&w.id))
+                .copied(),
+        );
         let Some(a) = end(bodies, p.body_a, p.local_a) else {
             continue;
         };
@@ -259,7 +288,7 @@ pub fn apply(
         let Some(route) = rope_route::route(
             [a.point.x, a.point.y],
             [b.point.x, b.point.y],
-            p.wheels(arena),
+            live,
             scratch,
         ) else {
             continue;
@@ -270,7 +299,7 @@ pub fn apply(
         // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
         // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
         // depois de mandado.
-        let reeled = reel(payout, p, dt);
+        let reeled = reel(led.payout, p, dt);
         // A violação. `C ≤ 0` é corda frouxa: uma corda não empurra, então não
         // há nada a fazer — e sair aqui é o que deixa um contrapeso pousado no
         // chão em paz.
@@ -298,6 +327,25 @@ pub fn apply(
         }
         push(bodies, p.body_a, a.point, -lambda, dir_a);
         push(bodies, p.body_b, b.point, -lambda, dir_b);
+        // A TENSÃO. `λ` é um impulso sobre o sub-passo, então a carga em newtons
+        // é `λ/dt` — a mesma conversão que o `joint_impulse_to_force` faz para os
+        // joints do rapier, e pela mesma razão: um limiar escrito em impulsos
+        // mudaria de significado a cada troca da contagem de sub-passos.
+        let tension = lambda / dt;
+        let slot = led.tension.entry(p.id).or_insert(0.0);
+        *slot = slot.max(tension);
+        ledger_axles(led, live, scratch, tension);
+        if tension > p.break_force {
+            led.broken_ropes.insert(p.id);
+            led.breaks.push(PulleyBreak {
+                id: p.id,
+                is_wheel: false,
+                // O meio da rota: o ponto que está SOBRE a corda desenhada em
+                // qualquer montagem, que é onde o artista está olhando.
+                point: [(a.point.x + b.point.x) * 0.5, (a.point.y + b.point.y) * 0.5],
+                load: tension,
+            });
+        }
     }
 }
 

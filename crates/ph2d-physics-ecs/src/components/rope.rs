@@ -124,6 +124,23 @@ pub struct PulleyWheel {
     /// desenho do giro que o W1 já faz mostra o tambor **na velocidade em que ele
     /// foi mandado girar**, sem uma segunda conta.
     pub motor_speed: f32,
+    /// **Este EIXO pode ceder?** (W2.)
+    ///
+    /// O `∞ = off` do P7 na forma que o resto da física já usa (`break_enabled`
+    /// do joint, `limits_enabled`, `motor_enabled`): um checkbox, com o número
+    /// vivo embaixo dele mesmo enquanto está desmarcado. Guardar `f32::INFINITY`
+    /// no número poria *"inf"* numa row numérica e obrigaria o artista a digitar
+    /// um finito para ACHAR o controle.
+    pub break_enabled: bool,
+    /// **O que este eixo aguenta**, newtons. Ignorado com
+    /// [`Self::break_enabled`] desmarcado.
+    ///
+    /// ⚠️ **A carga aqui NÃO é a tensão da corda.** O eixo carrega a RESULTANTE
+    /// do desvio — `T·|u_saída − u_entrada|` —, então um enlace de 180° sente
+    /// `2T` e uma roldana que quase não desvia a corda sente quase nada. É por
+    /// isso que este número é POR RODA enquanto o da corda é um só: a tensão é
+    /// uniforme, a resultante não.
+    pub break_force: f32,
 }
 
 impl Default for PulleyWheel {
@@ -134,6 +151,8 @@ impl Default for PulleyWheel {
             radius: Self::DEFAULT_RADIUS,
             wrap: WrapSide::Auto,
             motor_speed: 0.0,
+            break_enabled: false,
+            break_force: Self::DEFAULT_BREAK_FORCE,
         }
     }
 }
@@ -157,6 +176,16 @@ impl PulleyWheel {
     /// oposto da roda, sem nada na tela dizendo por quê.
     pub const MIN_RADIUS: f32 = 0.0;
 
+    /// **O que um eixo aguenta quando o artista marca a caixa sem digitar nada**,
+    /// newtons.
+    ///
+    /// Não é um teto nem um limite físico: é um ponto de partida VISÍVEL. 500 N é
+    /// pouco mais que o peso de 50 kg, então a primeira coisa que o artista faz
+    /// depois de marcar a caixa — pendurar algo — já tem chance de partir a
+    /// roldana, que é como ele descobre que o controle funciona. O mesmo
+    /// raciocínio do `DEFAULT_BREAK_FORCE` do joint.
+    pub const DEFAULT_BREAK_FORCE: f32 = 500.0;
+
     /// Um componente que chegou de um arquivo (ou de um teste) com números que a
     /// rota não sabe usar.
     ///
@@ -177,6 +206,14 @@ impl PulleyWheel {
                 self.motor_speed
             } else {
                 0.0
+            },
+            // Um limiar negativo partiria a roldana antes de a corda tocá-la, e
+            // um `NaN` nunca compara verdadeiro — ou seja, seria um eixo
+            // indestrutível com a caixa marcada.
+            break_force: if self.break_force.is_finite() {
+                self.break_force.max(0.0)
+            } else {
+                Self::DEFAULT_BREAK_FORCE
             },
             ..self
         }

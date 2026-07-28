@@ -27,11 +27,15 @@ fn point_wheels() -> Vec<RopeWheel> {
             centre: [-1.0, 4.0],
             radius: 0.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [1.0, 4.0],
             radius: 0.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ]
 }
@@ -53,6 +57,7 @@ fn atwood(mass_a: f32, mass_b: f32) -> (PhysicsWorld, PulleyDesc, ph2d_physics::
         id: 1,
         total_length: 4.0,
         motor_rate: 0.0,
+        break_force: f32::INFINITY,
     };
     w.set_pulleys(vec![desc], point_wheels());
     (w, desc, a)
@@ -180,6 +185,7 @@ fn sweep_the_bias_against_a_contact() {
             id: 1,
             total_length: 4.6,
             motor_rate: 0.0,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![d], point_wheels());
         // ⚠️ SEM esta linha as oito corridas sao a MESMA corrida, e a tabela
@@ -266,6 +272,7 @@ fn what_a_frozen_axis_looks_like_to_the_rope() {
             id: 1,
             total_length: 4.0,
             motor_rate: 0.0,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![d], point_wheels());
         for _ in 0..90 {
@@ -338,6 +345,7 @@ fn what_the_rate_term_of_a_non_dynamic_body_buys() {
             id: 1,
             total_length: 4.0,
             motor_rate: 0.0,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![d], point_wheels());
         let dt = 1.0 / 60.0;
@@ -386,6 +394,8 @@ fn sweep_the_winch() {
             centre: [0.0, 8.0],
             radius,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         };
         let probe = PulleyDesc {
             id: 1,
@@ -399,6 +409,7 @@ fn sweep_the_winch() {
             // ROTA, que nao depende de `total_length`.
             total_length: 1.0e9,
             motor_rate: omega * radius,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
@@ -510,6 +521,8 @@ fn sweep_the_winch() {
             centre: [0.0, 8.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         };
         let probe = PulleyDesc {
             id: 1,
@@ -521,6 +534,7 @@ fn sweep_the_winch() {
             wheel_count: 1,
             total_length: 1.0e9,
             motor_rate: 4.0 * 0.5,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
@@ -604,4 +618,153 @@ fn sweep_the_winch() {
             );
         }
     }
+}
+
+/// **A RUPTURA** (W2-B) — o que a corda e os eixos de fato carregam.
+///
+/// Tres perguntas que precisam de numero antes de qualquer limiar: uma carga
+/// pendurada faz a corda ler o proprio PESO? o eixo de um enlace de 180 graus
+/// carrega mesmo 2T? e o que acontece com a cena quando algo parte?
+#[test]
+#[ignore = "measurement, not a gate"]
+fn sweep_the_break() {
+    /// Poste estatico -> roldana -> carga pendurada sob ela, com o enlace que o
+    /// angulo `deflect` pedir: a segunda ancora fica a esse angulo do topo.
+    fn rig(mass: f32, wheel_radius: f32) -> (PhysicsWorld, PulleyDesc) {
+        let mut w = PhysicsWorld::new();
+        const R: f32 = 0.2;
+        let area = std::f32::consts::PI * R * R;
+        let (anchor, _) = w.add_static_cuboid(-4.0, 8.0, 0.1, 0.1);
+        let (load, _) = w.add_dynamic_circle(0.0, 2.0, R, mass / area);
+        let wheel = RopeWheel {
+            centre: [0.0, 8.0],
+            radius: wheel_radius,
+            side: 1,
+            id: 77,
+            break_force: f32::INFINITY,
+        };
+        let probe = PulleyDesc {
+            id: 1,
+            body_a: anchor,
+            body_b: load,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: 1,
+            total_length: 1.0e9,
+            motor_rate: 0.0,
+            break_force: f32::INFINITY,
+        };
+        w.set_pulleys(vec![probe], vec![wheel]);
+        let span = w.pulley_span(&probe).expect("rota valida");
+        let d = PulleyDesc {
+            total_length: span,
+            ..probe
+        };
+        w.set_pulleys(vec![d], vec![wheel]);
+        (w, d)
+    }
+
+    println!("\n=== A CORDA LE O PESO QUE SEGURA (assentada, 2 s) ===");
+    println!(
+        "{:>10} | {:>12} | {:>12} | {:>10} | {:>12}",
+        "massa (kg)", "m*g (N)", "tensao (N)", "razao", "eixo (N)"
+    );
+    for mass in [0.5_f32, 1.0, 2.0, 5.0, 10.0] {
+        let (mut w, d) = rig(mass, 0.5);
+        for _ in 0..120 {
+            w.step();
+        }
+        let t = w.pulley_tension(d.id);
+        println!(
+            "{mass:>10.1} | {:>12.4} | {t:>12.4} | {:>10.4} | {:>12.4}",
+            mass * 9.81,
+            t / (mass * 9.81),
+            w.pulley_axle_load(77)
+        );
+    }
+
+    println!("\n=== O EIXO CARREGA A RESULTANTE, NAO A TENSAO ===");
+    println!(
+        "{:>14} | {:>12} | {:>12} | {:>10}",
+        "ancora em x", "tensao (N)", "eixo (N)", "eixo/tensao"
+    );
+    // Movendo a ancora fixa, o angulo do enlace muda: bem longe na horizontal e
+    // ~90 graus (fator sqrt(2)); logo ao lado da carga e ~180 (fator 2).
+    // ⚠️ A ancora a `-0.2` fica DENTRO da roda de raio 0,5: nao ha tangente, a
+    // rota recusa, e o `pulley_span` devolve `None`. E o guarda de degeneracao
+    // fazendo o que ele existe para fazer -- a linha foi tirada, nao o guarda.
+    //
+    // A ultima linha e a ancora la EMBAIXO, quase ao lado da carga: os dois
+    // ramos descem, o enlace e de ~180 graus, e o fator tem de ir a 2.
+    for (ax, ay) in [(-8.0_f32, 8.0_f32), (-4.0, 8.0), (-1.0, 8.0), (-0.6, 2.0)] {
+        let mut w = PhysicsWorld::new();
+        const R: f32 = 0.2;
+        let area = std::f32::consts::PI * R * R;
+        let (anchor, _) = w.add_static_cuboid(ax, ay, 0.1, 0.1);
+        let (load, _) = w.add_dynamic_circle(0.6, 2.0, R, 1.0 / area);
+        let wheel = RopeWheel {
+            centre: [0.0, 8.0],
+            radius: 0.5,
+            side: 1,
+            id: 77,
+            break_force: f32::INFINITY,
+        };
+        let probe = PulleyDesc {
+            id: 1,
+            body_a: anchor,
+            body_b: load,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: 1,
+            total_length: 1.0e9,
+            motor_rate: 0.0,
+            break_force: f32::INFINITY,
+        };
+        w.set_pulleys(vec![probe], vec![wheel]);
+        let span = w.pulley_span(&probe).expect("rota valida");
+        let d = PulleyDesc {
+            total_length: span,
+            ..probe
+        };
+        w.set_pulleys(vec![d], vec![wheel]);
+        for _ in 0..120 {
+            w.step();
+        }
+        let (t, axle) = (w.pulley_tension(d.id), w.pulley_axle_load(77));
+        println!(
+            "{ax:>7.1},{ay:>6.1} | {t:>12.4} | {axle:>12.4} | {:>10.4}",
+            if t > 0.0 { axle / t } else { f32::NAN }
+        );
+    }
+
+    println!("\n=== QUANDO PARTE (corda de 5 N, carga de 1 kg = 9,81 N) ===");
+    let (mut w, d) = rig(1.0, 0.5);
+    let weak = PulleyDesc {
+        break_force: 5.0,
+        ..d
+    };
+    w.set_pulleys(
+        vec![weak],
+        vec![RopeWheel {
+            centre: [0.0, 8.0],
+            radius: 0.5,
+            side: 1,
+            id: 77,
+            break_force: f32::INFINITY,
+        }],
+    );
+    for tick in 1..=60 {
+        w.step();
+        if !w.pulley_breaks().is_empty() {
+            let b = w.pulley_breaks()[0];
+            println!(
+                "  rompeu no tique {tick}: is_wheel={} load={:.4} N em ({:.2}, {:.2})",
+                b.is_wheel, b.load, b.point[0], b.point[1]
+            );
+            break;
+        }
+    }
+    println!("  intacta depois: {}", w.pulley_is_intact(weak.id));
 }

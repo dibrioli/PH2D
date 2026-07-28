@@ -68,6 +68,7 @@ fn rig(mass_a: f32, mass_b: f32, slack: f32) -> (PhysicsWorld, PulleyDesc) {
         id: 1,
         total_length: 2.0 * span + WHEEL_SPAN + slack,
         motor_rate: 0.0,
+        break_force: f32::INFINITY,
     };
     w.set_pulleys(vec![d], point_wheels());
     (w, d)
@@ -84,11 +85,15 @@ fn point_wheels() -> Vec<RopeWheel> {
             centre: [-1.0, WHEEL_Y],
             radius: 0.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [1.0, WHEEL_Y],
             radius: 0.0,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ]
 }
@@ -169,6 +174,7 @@ fn the_rope_pulls_and_never_pushes() {
                     id: 1,
                     total_length: 2.0 * span + WHEEL_SPAN,
                     motor_rate: 0.0,
+                    break_force: f32::INFINITY,
                 }],
                 point_wheels(),
             );
@@ -268,6 +274,7 @@ fn a_frozen_axis_is_infinite_mass_to_the_rope() {
                 id: 1,
                 total_length: 2.0 * span + WHEEL_SPAN,
                 motor_rate: 0.0,
+                break_force: f32::INFINITY,
             }],
             point_wheels(),
         );
@@ -329,6 +336,7 @@ fn a_wall_is_infinite_mass_to_the_rope() {
             id: 1,
             total_length: 2.0 * span + WHEEL_SPAN,
             motor_rate: 0.0,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![d], point_wheels());
         run(&mut w, 90);
@@ -369,6 +377,7 @@ fn a_kinematic_body_is_a_winch() {
             id: 1,
             total_length: 2.0 * span + WHEEL_SPAN,
             motor_rate: 0.0,
+            break_force: f32::INFINITY,
         }],
         point_wheels(),
     );
@@ -419,6 +428,7 @@ fn a_taut_rope_that_is_slackening_fast_still_never_pushes() {
                     id: 1,
                     total_length: 2.0 * span + WHEEL_SPAN - 0.001,
                     motor_rate: 0.0,
+                    break_force: f32::INFINITY,
                 }],
                 point_wheels(),
             );
@@ -460,6 +470,7 @@ fn the_winch_does_not_lag_further_the_faster_it_reels() {
                 id: 1,
                 total_length: 2.0 * span + WHEEL_SPAN,
                 motor_rate: 0.0,
+                break_force: f32::INFINITY,
             }],
             point_wheels(),
         );

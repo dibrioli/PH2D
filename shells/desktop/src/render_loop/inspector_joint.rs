@@ -541,6 +541,8 @@ pub(crate) fn create_joint_at(
                     radius: w.radius,
                     wrap: ph2d_physics_ecs::WrapSide::Auto,
                     motor_speed: 0.0,
+                    break_enabled: false,
+                    break_force: ph2d_physics_ecs::PulleyWheel::DEFAULT_BREAK_FORCE,
                 },
                 Transform::from_translation(ph2d_core::Vec2::new(w.centre[0], w.centre[1])),
             ));

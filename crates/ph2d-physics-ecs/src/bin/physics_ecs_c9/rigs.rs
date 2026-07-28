@@ -148,6 +148,8 @@ pub fn spawn(sim: &mut SimWorld) {
                 radius,
                 wrap: WrapSide::Auto,
                 motor_speed: motor,
+                break_enabled: false,
+                break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
             },
             Transform::from_translation(Vec2::new(x, 9.0)),
         ));

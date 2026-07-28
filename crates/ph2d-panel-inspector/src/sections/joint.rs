@@ -97,16 +97,19 @@ const fn kind_has_spring(kind_tag: u8) -> bool {
     kind_tag == KIND_SPRING || kind_tag == KIND_WHEEL
 }
 
-/// **Este tipo pode PARTIR sob carga?** Todo joint do rapier pode; uma POLIA
-/// não, porque ela não é um joint do rapier — o passe de impulso dela roda fora
-/// do solver, então nada publica a reação que decidiria a ruptura.
+/// **Este tipo pode PARTIR sob carga?** Todos, hoje.
+///
+/// A POLIA era a exceção — ela não é um joint do rapier, e nada publicava a
+/// reação que decidiria a ruptura. O W-Pulley W2 fez o passe publicar a tensão
+/// (`λ/dt`), então a exceção caiu.
 ///
 /// ⚠️ Segundo ENUNCIADO de `JointKind::can_break`, não uma segunda fonte de
-/// verdade (o painel é loose-coupled, a convenção de toda seção irmã). Pintar a
-/// caixa aqui para um tipo que o motor não mede seria exatamente o controle-em-
-/// nome-só que a regra por-tipo desta seção existe para impedir.
-const fn kind_can_break(kind_tag: u8) -> bool {
-    kind_tag != KIND_PULLEY
+/// verdade (o painel é loose-coupled, a convenção de toda seção irmã) — e a
+/// função FICA, constante, pelo mesmo motivo que a do motor: ela é o lugar onde
+/// a pergunta é feita, e o próximo tipo que não puder partir volta a ter onde
+/// dizê-lo.
+const fn kind_can_break(_kind_tag: u8) -> bool {
+    true
 }
 
 /// Can this kind be DRIVEN? A Pin's hinge, a Slider's rail, a Rope's distance

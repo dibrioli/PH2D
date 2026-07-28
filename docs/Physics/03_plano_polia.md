@@ -158,7 +158,7 @@ reintegra sozinho.
 | **W0** ✅ | as quatro correções + os dois gates estruturais |
 | **W1** ✅ | a roldana é entidade (com raio) · rota de N nós com tangentes e arcos · lado automático + override · kernel generalizado · desenho da roldana, da corda na superfície e do giro · "Add Wheel" · `ratio` aposentado · `PROJECT_SCHEMA` 40→41 |
 | **W2-A** ✅ | **o motor** — a roldana dirigida é um guincho; `ω·r` encurta `L0`, o diâmetro é o câmbio |
-| **W2-B** | ruptura nas duas pontas e em cada centro · readouts |
+| **W2-B** ✅ | **a ruptura** — a corda parte pela tensão, o eixo cede pela resultante, e o readout do overlay volta a dizer alguma coisa |
 | **W3** | a talha de verdade: roldana montada num corpo (a cadernal móvel) |
 | **W4** | *nomeada, não escalonada*: o DIFERENCIAL — dois tambores acoplados num eixo ⇒ `ratio = r₂/r₁` emergente |
 
@@ -250,6 +250,44 @@ roda, que é o que uma cadernal faz.
 `PROJECT_SCHEMA` **41→42** (campo apendado a um componente = postcard posicional).
 Cena de smoke: **`PH2D_PHYSICS_SMOKE=59`** (ergue · paga corda · e o par que só
 difere no diâmetro, medido em **3,01×** contra os 3,00 que os raios prometem).
+
+### W2-B — a RUPTURA (FECHADA)
+
+O passe publica a própria tensão (`λ/dt`) e compara com um limiar em newtons,
+exatamente como todo joint do rapier faz — o que revoga a exceção que o
+`JointKind::can_break` carregava com a nota *"dá para acumular o λ do passe e
+comparar, e isso é wave própria"*.
+
+⚠️ **UM limiar para as DUAS pontas, e o §7 do plano pedia dois.** A corda é
+inextensível ⇒ a tensão é **uniforme**, então as duas amarrações sentem a mesma
+carga; dois números contra uma carga são um limite (o menor) e um controle
+inerte ao lado dele. O que difere de ponto para ponto é o **EIXO de cada
+roldana**, e esse ganhou limiar próprio (`PulleyWheel.break_enabled/break_force`).
+
+**Medido** (`measure_pulley.rs::sweep_the_break`): uma carga pendurada faz a
+corda ler o próprio peso com razão **0,9999** (o mesmo padrão-ouro do W-J7) · o
+eixo carrega `T·|u_saída − u_entrada|`, medido em **1,99× num enlace de 180°**,
+**1,43× num de 90°** e 1,12× num desvio pequeno.
+
+**Romper é seguro por construção:** uma roldana que cede **sai da rota**, o
+caminho ENCURTA ⇒ `C < 0` ⇒ folga ⇒ nenhum impulso. A carga cai; nada é
+arremessado (gate com teto de velocidade, não só *"caiu"*).
+
+⚠️ **Duas camadas, dois gates:** o passe filtra a roldana rompida (é o que mantém
+o `PhysicsWorld` correto sozinho) **e** a ponte não a instala na arena — porque a
+arena é a lista que o **DESENHO** lê, e sem essa metade o overlay desenharia a
+corda passando por uma roldana que o solver já ignorou.
+
+O readout do overlay volta a dizer alguma coisa: a view da polia carregava
+`load: 0` e `break_force: ∞` porque nada media a reação dela — era o `0 / 0 N`
+permanente que o W0 corrigiu pela metade honesta (`∞` em vez de `0`). Agora o
+numerador é real. O guard `can_break()` **saiu do leitor** (uma pergunta sem
+resposta NÃO é um guard que não pode disparar).
+
+`PROJECT_SCHEMA` **42→43**. Cena de smoke: **`PH2D_PHYSICS_SMOKE=60`** — a corda
+que segura, a que parte sob um TRANCO (**5202 N contra 29,4 N de peso: 177×**, a
+física honesta de uma corda inextensível parando uma massa em movimento), e o
+eixo que cede a **52,4 N** enquanto a corda nem sente.
 
 ### Aberto no W1, nomeado
 

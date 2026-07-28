@@ -170,7 +170,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// APENDAR campo a um componente que já existe custa: postcard é **posicional**, e
 /// um blob v41 tem um `f32` a menos, então o load leria lixo bem-formado no lugar
 /// de recusar. Mesmo raciocínio do `is_sensor` (v27) e do `offset` (v29).
-const PROJECT_SCHEMA: u32 = 42;
+/// v43 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`break_enabled`** e
+/// **`break_force`** — o eixo que cede sob carga. Dois campos apendados, mesmo
+/// raciocínio posicional do v42.
+const PROJECT_SCHEMA: u32 = 43;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -251,6 +251,10 @@ pub struct PhysicsBridge {
     /// (`bridge::joint_break`) — the number a break threshold is TUNED against.
     /// Unlike `joint_breaks` this is not per-dispatch: it is the memory of the run.
     joint_peaks: BTreeMap<Entity, ph2d_physics::JointLoad>,
+    /// O mesmo, para as CORDAS (W-Pulley W2): elas não vivem no `joints`, então
+    /// o laço de cima não passa por elas. Newtons; só a linear, porque uma corda
+    /// não transmite torque.
+    pulley_peaks: BTreeMap<Entity, f32>,
     /// The live begin-flashes (`bridge::contacts`) — the visible half. Seeded from
     /// `Began` transitions and decayed in SIM ticks; PERSISTS across dispatches (a
     /// flash outlives the tick it was born in), so it is not cleared per dispatch, only
@@ -312,6 +316,7 @@ impl PhysicsBridge {
             contact_events: Vec::new(),
             joint_breaks: Vec::new(),
             joint_peaks: BTreeMap::new(),
+            pulley_peaks: BTreeMap::new(),
             flashes: Vec::new(),
             contacts_continuous: true,
         }
@@ -443,10 +448,12 @@ impl PhysicsBridge {
                     // the wrapper clears its own list every `step`, so a break in
                     // an early tick of a multi-tick dispatch is gone by the last.
                     self.accumulate_joint_breaks();
+                    self.accumulate_pulley_breaks();
                     // And the high-water mark of the RUN (the tuning signal): the
                     // wrapper's peak is per-TICK and a yank is over before it can
                     // be read.
                     self.accumulate_joint_peaks();
+                    self.accumulate_pulley_peaks();
                     // E o GIRO das roldanas, que é o que torna uma roda uma roda
                     // na tela (`bridge::rope`). Por TICK, como tudo aqui: o
                     // ângulo é a integral de uma taxa, e integrá-lo por FRAME

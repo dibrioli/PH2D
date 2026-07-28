@@ -113,6 +113,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
 /// isso que eles não podem ser o que impede uma corda de ter cem roldanas.
 pub(super) fn populate_wheel(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_WHEEL_WRAP);
+    register_button_ids(store, &ids::INSP_WHEEL_BREAK);
     for (id, value, min, max, step, rate) in [
         // Metros. O seed é o `PulleyWheel::DEFAULT_RADIUS`.
         (ids::INSP_WHEEL_RADIUS, 0.25, 0.0, 100.0, 0.01, 0.01), // LITERAL-PX-OK: meters
@@ -122,6 +123,10 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
         // do motor do Pin (`INSP_JOINT_MOTOR_SPEED`): dez voltas por segundo em
         // cada sentido, que é o que aquele knob já oferece.
         (ids::INSP_WHEEL_MOTOR, 0.0, -3600.0, 3600.0, 1.0, 1.0), // LITERAL-PX-OK: deg/s
+        // Newtons, com o mesmo default do joint: um ponto de partida que a
+        // primeira coisa pendurada já tem chance de cruzar, que é como o artista
+        // descobre que o controle funciona.
+        (ids::INSP_WHEEL_BREAK_FORCE, 500.0, 0.0, 1.0e9, 1.0, 1.0), // LITERAL-PX-OK: newtons
     ] {
         store.register(
             id,

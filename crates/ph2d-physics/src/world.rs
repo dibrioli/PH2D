@@ -28,6 +28,7 @@ pub mod layers;
 pub mod oneway;
 pub mod pulley;
 pub mod queries;
+pub mod rope_load;
 pub mod rope_route;
 pub mod sensors;
 pub mod shape;
@@ -140,6 +141,29 @@ pub struct PhysicsWorld {
     ///
     /// **Vazio em toda cena sem tambor**, o que mantém esta wave byte-neutra.
     pulley_payout: std::collections::BTreeMap<u64, f32>,
+    /// **A maior tensão que cada corda segurou neste tique**, newtons (W2) — o
+    /// readout, e o número que decide a ruptura.
+    ///
+    /// Limpo no topo de cada `step`, como o `joint_peaks`: a carga de um tique é
+    /// um fato sobre aquele tique, e o *high-water* de uma CORRIDA é acumulado
+    /// pela ponte (que é quem sabe quando uma corrida começa).
+    pulley_tension: std::collections::BTreeMap<u64, f32>,
+    /// O mesmo, por EIXO de roldana — a resultante do desvio, que não é a tensão.
+    pulley_axle: std::collections::BTreeMap<u64, f32>,
+    /// **O que já rompeu.** Estado SIMULADO, não config: a ruptura nunca é
+    /// escrita no componente autorado (senão desfazê-la seria trabalho do artista
+    /// em vez de um Reset), e por isso ela viaja no checkpoint junto com o
+    /// recolhido. Um `rebuild_from_rest` constrói um mundo novo e a desfaz.
+    pulley_broken_ropes: std::collections::BTreeSet<u64>,
+    /// Idem, por roldana: um eixo partido **sai da rota**.
+    pulley_broken_wheels: std::collections::BTreeSet<u64>,
+    /// O que rompeu no tique que acabou de rodar — canal de TRANSIÇÃO, vazio em
+    /// quase todo tique, e é esse o ponto.
+    pulley_breaks: Vec<rope_load::PulleyBreak>,
+    /// As roldanas VIVAS da corda que o passe está resolvendo (as não-rompidas).
+    /// Campo pelo mesmo motivo do `route_scratch`: o passe roda por sub-passo, e
+    /// alocar aqui apareceria no gate de zero-alloc do caminho quente.
+    pulley_live: Vec<rope_route::RopeWheel>,
     /// Os trechos da rota da corda que o passe está resolvendo. Buffer PRÓPRIO
     /// e persistente porque a rota escreve `N+1` trechos por corda por sub-passo
     /// — alocá-los por chamada apareceria no gate de zero-alloc do caminho
@@ -269,6 +293,12 @@ impl PhysicsWorld {
             pulleys: Vec::new(),
             pulley_wheels: Vec::new(),
             pulley_payout: std::collections::BTreeMap::new(),
+            pulley_tension: std::collections::BTreeMap::new(),
+            pulley_axle: std::collections::BTreeMap::new(),
+            pulley_broken_ropes: std::collections::BTreeSet::new(),
+            pulley_broken_wheels: std::collections::BTreeSet::new(),
+            pulley_breaks: Vec::new(),
+            pulley_live: Vec::new(),
             route_scratch: Vec::new(),
             pulley_bias: pulley::PULLEY_BIAS,
             pulley_lag: pulley::PULLEY_CORRECTION_LAG,

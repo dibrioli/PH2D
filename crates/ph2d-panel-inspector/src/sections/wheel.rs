@@ -114,7 +114,64 @@ pub(crate) fn paint_wheel_section(
         &WRAP_LABELS,
         info.wrap_tag,
     );
+    yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy + SECTION_BOTTOM_PAD_PX
+}
+
+/// **O card de ruptura do EIXO** — o switch, o limiar que ele gateia, e a carga
+/// que torna o limiar afinável.
+///
+/// ⚠️ **O limiar é por-RODA enquanto o da corda é um só**, e a razão é física: a
+/// tensão é uniforme ao longo da corda, mas a carga do eixo depende do ÂNGULO do
+/// enlace — 2T num enlace de 180°, quase nada numa roldana que só encosta na
+/// corda.
+///
+/// ⚠️ **A CARGA VIVA não está aqui, de propósito.** Ela é uma anotação de
+/// OVERLAY, ao lado da roda, exatamente como a do joint — o `publish` do
+/// snapshot não recebe a ponte (está escrito lá), e um segundo lugar mostrando o
+/// mesmo número seria a segunda resposta que diverge.
+#[allow(clippy::too_many_arguments)]
+fn paint_break_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorWheelInfo,
+) -> f32 {
+    let mut yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        "Axle Breaks",
+        ids::INSP_WHEEL_BREAK_GROUP,
+        &ids::INSP_WHEEL_BREAK,
+        &["Off", "On"],
+        u8::from(info.break_enabled),
+    );
+    if !info.break_enabled {
+        return yy;
+    }
+    num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Break Force (N)",
+        ids::INSP_WHEEL_BREAK_FORCE,
+    )
 }
 
 /// **A que corda esta roldana pertence** — nome, e um aviso quando ele não
@@ -134,35 +191,62 @@ fn paint_rope_row(
     y: f32,
     info: &InspectorWheelInfo,
 ) -> f32 {
+    let shown = if info.bound {
+        info.rope_name.as_str()
+    } else {
+        "(no rope)"
+    };
+    paint_readout_row_in(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "Rope",
+        shown,
+        info.bound,
+    )
+}
+
+/// Uma row de LEITURA, com o valor APAGADO quando ele não descreve nada — a diferença
+/// entre *"o número é este"* e *"não há número"*, que um zero não conta.
+#[allow(clippy::too_many_arguments)]
+fn paint_readout_row_in(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    value: &str,
+    live: bool,
+) -> f32 {
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
-    let label_w = (font * 3.0).min(w * 0.4); // LITERAL-PX-OK: label = 3 char-heights, capped at 0.4 of the row
+    let label_w = (font * 4.0).min(w * 0.5); // LITERAL-PX-OK: label = 4 char-heights, capped at half the row
     let text_y = y + (h - font) * 0.5;
     paint_text(
         text_system,
         scene,
-        "Rope",
+        label,
         x,
         text_y,
         font,
         label_w,
         resolve(ColorToken::Text2, theme),
     );
-    let shown = if info.bound {
-        info.rope_name.as_str()
-    } else {
-        "(no rope)"
-    };
     paint_text(
         text_system,
         scene,
-        shown,
+        value,
         x + label_w,
         text_y,
         font,
         (w - label_w).max(0.0),
         resolve(
-            if info.bound {
+            if live {
                 ColorToken::Text1
             } else {
                 ColorToken::Text3

@@ -5,6 +5,7 @@
 //! os três gates aqui pinam: o trilho corre pelo eixo, os tracinhos ficam nos
 //! fins de curso, e o arco angular — que W-J5 esqueceu de gatear — não é dele.
 
+use super::joint_tests::*;
 use super::*;
 
 /// **O trilho de um Slider corre pelo EIXO, e os tracinhos ficam nos fins de

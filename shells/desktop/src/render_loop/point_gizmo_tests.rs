@@ -483,6 +483,8 @@ fn a_pulley_offers_no_length_ring_and_its_wheels_are_the_wheels_own_handles() {
                 radius: 0.4,
                 wrap: ph2d_physics_ecs::WrapSide::Auto,
                 motor_speed: 0.0,
+                break_enabled: false,
+                break_force: ph2d_physics_ecs::PulleyWheel::DEFAULT_BREAK_FORCE,
             },
             Transform::from_translation(Vec2::new(-2.0, 4.0)),
         ))

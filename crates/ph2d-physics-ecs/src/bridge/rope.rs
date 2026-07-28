@@ -89,6 +89,17 @@ impl PhysicsBridge {
                 wheel: RopeWheel {
                     centre: [t.translation.x, t.translation.y],
                     radius: wheel.radius,
+                    // A roldana é apontada pelo NOME dela, a mesma chave por que
+                    // a corda aponta os corpos — bits de entidade mudam a cada
+                    // undo, e o eixo partido migraria para a vizinha.
+                    id: world
+                        .get::<Name>(we)
+                        .map_or(0, |n| stable_name_id(n.as_str())),
+                    break_force: if wheel.break_enabled {
+                        wheel.break_force
+                    } else {
+                        f32::INFINITY
+                    },
                     // Substituído pela resolução de lado, que precisa da corda
                     // inteira para responder. Este é só o valor de partida.
                     side: 1,
@@ -161,6 +172,8 @@ pub fn pulley_rig(
         centre: c,
         radius: lift * WHEEL_RADIUS_FRACTION,
         side: 1,
+        id: 0,
+        break_force: f32::INFINITY,
     };
     let mut wheels = [
         wheel([rest_a[0], rest_a[1] + lift]),

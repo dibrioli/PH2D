@@ -25,7 +25,13 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::Click(id) => ids::INSP_WHEEL_WRAP
             .iter()
             .position(|&o| o == id)
-            .map(|i| WheelFieldEdit::Wrap(i as u8)),
+            .map(|i| WheelFieldEdit::Wrap(i as u8))
+            .or_else(|| {
+                ids::INSP_WHEEL_BREAK
+                    .iter()
+                    .position(|&o| o == id)
+                    .map(|i| WheelFieldEdit::BreakEnabled(i == 1))
+            }),
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0);
             match id {
@@ -37,6 +43,7 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 ids::INSP_WHEEL_ORDER => Some(WheelFieldEdit::Order(v.round().max(1.0) as u32)),
                 // Graus na row, radianos no componente — a shell converte.
                 ids::INSP_WHEEL_MOTOR => Some(WheelFieldEdit::MotorDegPerS(v as f32)),
+                ids::INSP_WHEEL_BREAK_FORCE => Some(WheelFieldEdit::BreakForce(v as f32)),
                 _ => None,
             }
         }

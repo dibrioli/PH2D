@@ -390,17 +390,25 @@ impl JointKind {
         }
     }
 
-    /// **Este tipo pode PARTIR sob carga?**
+    /// **Este tipo pode PARTIR sob carga?** Todos, hoje.
     ///
-    /// Todo joint do rapier pode: o `joint_break` lê a reação que o
-    /// `ImpulseJointSet` publica. Uma [`JointKind::Pulley`] **não está lá** — ela
-    /// é um passe de impulso próprio, fora do solver — então nada mede a reação
-    /// dela, e oferecer a caixa de Break seria pintar um controle morto.
+    /// Nos joints do rapier o `joint_break` lê a reação que o `ImpulseJointSet`
+    /// publica. Uma [`JointKind::Pulley`] **não está lá** — ela é um passe de
+    /// impulso próprio, fora do solver —, e por isso esta porta a excluía com uma
+    /// limitação nomeada: *"dá para acumular o `λ` do passe e comparar, e isso é
+    /// wave própria"*.
     ///
-    /// ⚠️ É limitação NOMEADA, não descuido: dá para acumular o `λ` do passe e
-    /// comparar, e isso é wave própria. Enquanto não for, a row não existe.
+    /// ⚠️ **O W-Pulley W2 é essa wave**, e ela fechou: o passe publica a tensão
+    /// (`λ/dt`, MEDIDA — uma carga pendurada lê o próprio peso com razão 0,9999)
+    /// e rompe pelo mesmo limiar em newtons que todo joint carrega. A função
+    /// ficou constante, e fica **como função** de propósito: ela é o lugar onde a
+    /// pergunta é feita, e o próximo tipo que não puder partir volta a ter onde
+    /// dizê-lo.
+    ///
+    /// Não confundir com [`Self::breaks_on_torque`], que segue recusando a polia:
+    /// uma corda não transmite torque nenhum.
     #[must_use]
     pub fn can_break(self) -> bool {
-        !matches!(self, JointKind::Pulley)
+        true
     }
 }

@@ -69,6 +69,16 @@ pub struct PhysicsCheckpoint {
     /// Fora do `approx_bytes`: são ~24 B por CORDA contra 1175 B por corpo, ou
     /// seja abaixo do arredondamento do [`ACCEL_FACTOR`].
     pulley_payout: std::collections::BTreeMap<u64, f32>,
+    /// **O que já rompeu** (W2) — pelo MESMO motivo do recolhido: uma ruptura é
+    /// um fato sobre a corrida, não sobre o documento. Sem isto, restaurar o
+    /// tique 40 devolveria o mundo daquele tique com a corda partida de agora.
+    ///
+    /// ⚠️ Os PICOS (`pulley_tension`/`pulley_axle`) **não** entram, e a
+    /// assimetria é deliberada: eles são zerados no topo de todo `step`, então
+    /// eles não sobrevivem ao passo seguinte nem no mundo vivo — não há o que
+    /// restaurar. Só o que ATRAVESSA um passo é estado.
+    pulley_broken_ropes: std::collections::BTreeSet<u64>,
+    pulley_broken_wheels: std::collections::BTreeSet<u64>,
 }
 
 impl PhysicsCheckpoint {
@@ -115,6 +125,8 @@ impl PhysicsWorld {
             narrow_phase: self.narrow_phase.clone(),
             step_count: self.step_count,
             pulley_payout: self.pulley_payout.clone(),
+            pulley_broken_ropes: self.pulley_broken_ropes.clone(),
+            pulley_broken_wheels: self.pulley_broken_wheels.clone(),
         }
     }
 
@@ -134,6 +146,8 @@ impl PhysicsWorld {
         self.narrow_phase = cp.narrow_phase.clone();
         self.step_count = cp.step_count;
         self.pulley_payout = cp.pulley_payout.clone();
+        self.pulley_broken_ropes = cp.pulley_broken_ropes.clone();
+        self.pulley_broken_wheels = cp.pulley_broken_wheels.clone();
     }
 }
 

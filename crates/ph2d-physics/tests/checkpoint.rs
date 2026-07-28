@@ -390,6 +390,75 @@ mod ph2d_physics_ecs_defaults {
     pub const FRICTION: f32 = 0.5;
 }
 
+/// **Uma corda PARTIDA viaja no checkpoint** (W-Pulley W2).
+///
+/// Mesma pergunta do gate abaixo, no outro campo simulado da polia: uma ruptura
+/// é um fato sobre a CORRIDA, e restaurar um tique anterior tem de devolver a
+/// corda inteira. Sem isso um scrub para antes do rompimento veria a cena
+/// pendurada... por uma corda que o mundo ainda considera partida.
+///
+/// ⚠️ E o inverso é o que torna o gate honesto: depois de replayar até DEPOIS do
+/// tique da ruptura, ela tem de estar partida **de novo** — o mundo é função do
+/// tique, então a corda rompe sempre no mesmo lugar.
+#[test]
+fn a_snapped_rope_comes_back_when_the_clock_does() {
+    use ph2d_physics::world::pulley::PulleyDesc;
+    use ph2d_physics::world::rope_route::RopeWheel;
+
+    let mut w = PhysicsWorld::new();
+    let (anchor, _) = w.add_static_cuboid(-4.0, 8.0, 0.1, 0.1);
+    let (load, _) = w.add_dynamic_circle(0.0, 2.0, 0.2, 8.0);
+    let wheel = RopeWheel {
+        centre: [0.0, 8.0],
+        radius: 0.5,
+        side: 1,
+        id: 77,
+        break_force: f32::INFINITY,
+    };
+    let probe = PulleyDesc {
+        id: 3,
+        body_a: anchor,
+        body_b: load,
+        local_a: [0.0, 0.0],
+        local_b: [0.0, 0.0],
+        wheel_start: 0,
+        wheel_count: 1,
+        total_length: 1.0e9,
+        motor_rate: 0.0,
+        // Fraca de propósito: ela não aguenta a carga que ela mesma segura.
+        break_force: 3.0,
+    };
+    w.set_pulleys(vec![probe], vec![wheel]);
+    let span = w.pulley_span(&probe).expect("rota válida");
+    let d = PulleyDesc {
+        total_length: span,
+        ..probe
+    };
+    w.set_pulleys(vec![d], vec![wheel]);
+
+    // Um checkpoint ANTES do primeiro passo: a corda ainda está inteira.
+    let before = w.checkpoint();
+    assert!(w.pulley_is_intact(d.id));
+    for _ in 0..30 {
+        w.step();
+    }
+    assert!(
+        !w.pulley_is_intact(d.id),
+        "a fixture não continha o fenômeno"
+    );
+
+    w.restore(&before);
+    assert!(
+        w.pulley_is_intact(d.id),
+        "restaurar antes da ruptura devolveu uma corda ainda partida"
+    );
+    // E ela rompe de novo, porque o mundo é função do tique.
+    for _ in 0..30 {
+        w.step();
+    }
+    assert!(!w.pulley_is_intact(d.id));
+}
+
 /// **O que um guincho RECOLHEU viaja no checkpoint** (W-Pulley W2).
 ///
 /// A regra do módulo — *config não é capturada* — poderia ler o recolhido como
@@ -417,6 +486,8 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
             centre: [0.0, 8.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         };
         let probe = PulleyDesc {
             id: 7,
@@ -428,6 +499,7 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
             wheel_count: 1,
             total_length: 1.0e9,
             motor_rate: 1.0,
+            break_force: f32::INFINITY,
         };
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota válida");

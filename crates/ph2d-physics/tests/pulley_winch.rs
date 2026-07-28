@@ -55,6 +55,8 @@ fn winch(radius: f32, omega: f32, mass: f32) -> (PhysicsWorld, PulleyDesc, Rigid
         centre: [0.0, 8.0],
         radius,
         side: 1,
+        id: 0,
+        break_force: f32::INFINITY,
     };
     let probe = PulleyDesc {
         id: 1,
@@ -68,6 +70,7 @@ fn winch(radius: f32, omega: f32, mass: f32) -> (PhysicsWorld, PulleyDesc, Rigid
         // depende de `total_length`.
         total_length: 1.0e9,
         motor_rate: omega * radius,
+        break_force: f32::INFINITY,
     };
     w.set_pulleys(vec![probe], vec![wheel]);
     let span = w.pulley_span(&probe).expect("rota valida");
@@ -184,6 +187,7 @@ fn two_drums_on_one_rope_sum_their_rates() {
     // A ponte somaria 0,5 + 0,5 = 1,0 m/s; aqui a soma e escrita a mao.
     let doubled = PulleyDesc {
         motor_rate: 0.5 + 0.5,
+        break_force: f32::INFINITY,
         ..d1
     };
     two.set_pulleys(
@@ -196,6 +200,8 @@ fn two_drums_on_one_rope_sum_their_rates() {
             centre: [0.0, 8.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         }],
     );
     let b = rise_after(&mut two, l2, 60);

@@ -31,7 +31,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-const GROUND: [f32; 4] = [0.42, 0.42, 0.46, 1.0];
+pub(crate) const GROUND: [f32; 4] = [0.42, 0.42, 0.46, 1.0];
 const SIMPLE: [f32; 4] = [0.45, 0.9, 0.45, 1.0];
 const ZIGZAG: [f32; 4] = [0.95, 0.75, 0.30, 1.0];
 const WEIGHT: [f32; 4] = [0.30, 0.32, 0.40, 1.0];
@@ -65,9 +65,9 @@ pub(crate) const MEASURED_ZIGZAG_LOAD_DROP: f32 = 4.18;
 /// dois — o que muda é só o caminho da corda, que é o ponto da cena.
 const LOAD_KG: f32 = 3.0;
 const COUNTERWEIGHT_KG: f32 = 1.0;
-const R: f32 = 0.25;
+pub(crate) const R: f32 = 0.25;
 
-fn ball(world: &mut World, name: &str, x: f32, mass: f32, rgba: [f32; 4], half: f32) {
+pub(crate) fn ball(world: &mut World, name: &str, x: f32, mass: f32, rgba: [f32; 4], half: f32) {
     world.spawn((
         Name::new(name),
         RigidBody {
@@ -93,6 +93,8 @@ fn wheel(world: &mut World, rope: &str, order: u16, x: f32, y: f32, radius: f32)
             radius,
             wrap: WrapSide::Auto,
             motor_speed: 0.0,
+            break_enabled: false,
+            break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
         },
         Transform::from_translation(Vec2::new(x, y)),
     ));
@@ -290,12 +292,12 @@ const HOIST: [f32; 4] = [0.45, 0.80, 0.95, 1.0];
 const LOWER: [f32; 4] = [0.95, 0.55, 0.45, 1.0];
 const GEAR_BIG: [f32; 4] = [0.70, 0.55, 0.95, 1.0];
 const GEAR_SMALL: [f32; 4] = [0.55, 0.95, 0.80, 1.0];
-const POST: [f32; 4] = [0.35, 0.36, 0.40, 1.0];
+pub(crate) const POST: [f32; 4] = [0.35, 0.36, 0.40, 1.0];
 
 /// A altura do braço do guindaste — onde os tambores ficam.
-const BOOM_Y: f32 = 7.0;
+pub(crate) const BOOM_Y: f32 = 7.0;
 /// Onde as cargas nascem.
-const HOOK_Y: f32 = 1.0;
+pub(crate) const HOOK_Y: f32 = 1.0;
 
 /// **Um guincho:** um poste ESTÁTICO amarra uma ponta da corda, a outra segura a
 /// carga, e a roldana no alto é um TAMBOR.
@@ -350,6 +352,8 @@ fn winch(world: &mut World, tag: &str, x: f32, radius: f32, omega_deg: f32, rgba
             radius,
             wrap: WrapSide::Auto,
             motor_speed: omega_deg.to_radians(),
+            break_enabled: false,
+            break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));

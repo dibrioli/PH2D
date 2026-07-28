@@ -562,6 +562,12 @@ pub struct InspectorWheelInfo {
     /// convertida pela shell. `0` é uma roldana livre, e não há um segundo
     /// booleano *"tem motor?"* para discordar do número.
     pub motor_deg_per_s: f32,
+    /// **Este eixo pode ceder?** (W2.) Gateia o limiar abaixo — o `∞ = off` do
+    /// P7, na forma de checkbox que a §12 já usa para limites, motor e ruptura.
+    pub break_enabled: bool,
+    /// **O que ele aguenta**, newtons. Sem conversão nesta fronteira: um newton
+    /// é um newton nos dois mundos, ao contrário das rows de ângulo.
+    pub break_force: f32,
 }
 
 /// Um campo editável da §13, despachado como
@@ -576,4 +582,8 @@ pub enum WheelFieldEdit {
     Wrap(u8),
     /// Graus por segundo, como a row fala — a shell converte para radianos.
     MotorDegPerS(f32),
+    /// O switch de ruptura do EIXO.
+    BreakEnabled(bool),
+    /// O limiar dele, newtons.
+    BreakForce(f32),
 }

@@ -406,6 +406,8 @@ fn a_pulley_is_rigged_by_both_creation_routes() {
                     centre,
                     radius,
                     side: 1,
+                    id: 0,
+                    break_force: f32::INFINITY,
                 },
             )
             .collect();

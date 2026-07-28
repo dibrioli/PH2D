@@ -123,14 +123,14 @@ pub(super) fn joint_readouts(
         if !v.active {
             continue;
         }
-        // **E um tipo que NÃO PARTE não tem carga a mostrar** — a mesma porta
-        // que a §12 pergunta para não pintar a caixa Breakable (`can_break`).
-        // Uma polia não vive no `ImpulseJointSet`, então nada mede a reação
-        // dela: o par de números seria estruturalmente zero para sempre, e um
-        // zero permanente é a forma de readout que não responde a nada.
-        if !v.kind.can_break() {
-            continue;
-        }
+        // ⚠️ Aqui havia um `if !v.kind.can_break() { continue }`, e ele existia
+        // porque a POLIA não vivia no `ImpulseJointSet`: nada media a reação
+        // dela, o par de números era estruturalmente zero, e um zero permanente
+        // é a forma de readout que não responde a nada. O W-Pulley W2 fez o
+        // passe dela publicar a própria tensão, então a pergunta deixou de ter
+        // um NÃO — e um guard que não pode disparar é o que apodrece calado.
+        // Quem gateia de verdade é o `breakable` abaixo, que é a pergunta certa:
+        // *há um limiar a mostrar ao lado da carga?*
         let breakable = v.break_force.is_finite() || v.break_torque.is_finite();
         if !breakable && selected != Some(v.entity) {
             continue;

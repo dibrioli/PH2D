@@ -26,6 +26,12 @@ impl PhysicsWorld {
         // simulation. Capacity kept for the same zero-alloc reason.
         self.joint_peaks.clear();
         self.joint_breaks.clear();
+        // W-Pulley W2: a mesma forma, uma família adiante — a carga de uma corda
+        // vive ENTRE os sub-passos, e uma ruptura decidida um quadro depois é
+        // outra simulação. Capacidade mantida (zero-alloc).
+        self.pulley_tension.clear();
+        self.pulley_axle.clear();
+        self.pulley_breaks.clear();
         for sub in 0..self.substeps {
             // Kinematic bodies advance a SLICE of their tick per sub-step, for
             // the same reason the drag below is applied per sub-step: rapier
@@ -75,7 +81,15 @@ impl PhysicsWorld {
                 &mut self.bodies,
                 &self.pulleys,
                 &self.pulley_wheels,
-                &mut self.pulley_payout,
+                &mut super::rope_load::PulleyLedger {
+                    payout: &mut self.pulley_payout,
+                    tension: &mut self.pulley_tension,
+                    axle: &mut self.pulley_axle,
+                    broken_ropes: &mut self.pulley_broken_ropes,
+                    broken_wheels: &mut self.pulley_broken_wheels,
+                    breaks: &mut self.pulley_breaks,
+                },
+                &mut self.pulley_live,
                 &mut self.route_scratch,
                 self.integration_parameters.dt,
                 self.pulley_bias,

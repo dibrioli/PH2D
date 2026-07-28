@@ -561,6 +561,29 @@ fn gravity_on_screen(gravity: [f32; 2], camera: &Camera2d, window: WindowSize) -
 #[path = "physics_overlay_joints_tests.rs"]
 mod joint_tests;
 
+/// Os gates do TRILHO (Slider) — a única figura cujo alcance é uma DISTÂNCIA e
+/// não um ângulo.
+///
+/// ⚠️ Estes três eram declarados DENTRO do `joint_tests`, e subiram para cá: as
+/// declarações de módulo de teste passam a viver todas no mesmo lugar, em vez de
+/// algumas no pai e algumas aninhadas num arquivo de teste — o que também é o
+/// que devolve ao `joint_tests` a folga que ele tinha perdido para o cap.
+#[cfg(test)]
+#[path = "physics_overlay_joint_rail_tests.rs"]
+mod joint_rail_tests;
+
+/// Os gates do joint ROMPIDO (W-J7): tudo aqui descreve um joint que **não está
+/// segurando**.
+#[cfg(test)]
+#[path = "physics_overlay_joint_break_tests.rs"]
+mod joint_break_tests;
+
+/// Os gates do joint DESLIGADO (W-J8) — o vizinho do anterior, e a distinção
+/// entre os dois é o assunto: um deixou de segurar, o outro foi desarmado.
+#[cfg(test)]
+#[path = "physics_overlay_joint_active_tests.rs"]
+mod joint_active_tests;
+
 #[cfg(test)]
 #[path = "physics_overlay_joint_envelope_tests.rs"]
 mod joint_envelope_tests;

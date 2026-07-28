@@ -350,6 +350,17 @@ impl PhysicsBridge {
                         .iter()
                         .take_while(|r| r.rope == rope)
                     {
+                        // ⚠️ **Um eixo que cedeu não entra na arena**, e a arena
+                        // é a lista que o DESENHO lê: sem isto o overlay
+                        // desenharia a corda passando por uma roldana que o
+                        // solver já ignorou — a segunda opinião que o doc do
+                        // `physics_overlay_pulley` proíbe em voz alta. O passe
+                        // tem o próprio filtro (é o que mantém o `PhysicsWorld`
+                        // correto sozinho); esta é a outra camada, e ela tem
+                        // gate próprio.
+                        if !self.world.pulley_wheel_is_intact(row.wheel.id) {
+                            continue;
+                        }
                         motor_rate += row.reel_rate;
                         self.pulley_wheels_to_install.push(row.wheel);
                         self.wheel_entities.push(row.entity);
@@ -399,6 +410,14 @@ impl PhysicsBridge {
                             wheel_count: count,
                             total_length,
                             motor_rate,
+                            // O MESMO campo que todo joint carrega (W-J7), agora
+                            // honrado por um vínculo que não é do rapier: a §12
+                            // deixou de excluir a polia do card de ruptura.
+                            break_force: if joint.break_enabled {
+                                joint.clamped().break_force
+                            } else {
+                                f32::INFINITY
+                            },
                         },
                     });
                 }

@@ -51,11 +51,15 @@ fn elevator() -> (ph2d_physics_ecs::JointView, Vec<RopeWheel>) {
             centre: [-1.5, 2.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
         RopeWheel {
             centre: [1.5, 2.0],
             radius: 0.5,
             side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
         },
     ];
     // ⚠️ Os lados vêm da MESMA porta que a ponte usa. Cravá-los à mão faria a

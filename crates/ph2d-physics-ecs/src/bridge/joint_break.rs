@@ -113,6 +113,10 @@ impl PhysicsBridge {
     /// Forget every high-water mark — a new run starts here.
     pub(super) fn discard_joint_peaks(&mut self) {
         self.joint_peaks.clear();
+        // As cordas na MESMA porta: uma corrida nova começa para todos os
+        // vínculos ao mesmo tempo, e uma segunda porta seria a que alguém
+        // esquece de chamar.
+        self.pulley_peaks.clear();
     }
 
     /// The joints that gave way during this dispatch. Empty in almost every
@@ -125,5 +129,85 @@ impl PhysicsBridge {
     #[must_use]
     pub fn joint_breaks(&self) -> &[JointBreakEvent] {
         &self.joint_breaks
+    }
+}
+
+impl PhysicsBridge {
+    /// **O que rompeu numa POLIA neste dispatch**, no MESMO canal dos joints.
+    ///
+    /// ⚠️ Um mesmo evento serve para as duas coisas que podem ceder — a corda e
+    /// o eixo de uma roldana —, e o consumidor (o toast, o overlay) não precisa
+    /// distinguir: os dois são *"isto aqui deu"*, e os dois apontam um lugar de
+    /// mundo. Quem quiser distinguir olha QUAL entidade veio.
+    pub(super) fn accumulate_pulley_breaks(&mut self) {
+        if self.world.pulley_breaks().is_empty() {
+            return;
+        }
+        // Id estável → entidade. As cordas saem do registro de polias, as
+        // roldanas da arena viva — as duas listas que a ponte já mantém, e
+        // nenhum mapa novo para sair de passo com elas.
+        for b in self.world.pulley_breaks() {
+            let entity = if b.is_wheel {
+                self.world
+                    .pulley_wheels()
+                    .iter()
+                    .position(|w| w.id == b.id)
+                    .and_then(|i| self.wheel_entities.get(i).copied())
+            } else {
+                self.pulley_records
+                    .iter()
+                    .find(|r| r.desc.id == b.id)
+                    .map(|r| r.entity)
+            };
+            if let Some(entity) = entity {
+                self.joint_breaks.push(JointBreakEvent {
+                    joint: entity,
+                    point: b.point,
+                    force: b.load,
+                    // Uma corda não transmite torque, e um eixo que cede não o
+                    // faz por torção: zero aqui é a resposta, não uma lacuna.
+                    torque: 0.0,
+                });
+            }
+        }
+    }
+
+    /// **O high-water da CORDA nesta corrida**, newtons (W-Pulley W2).
+    ///
+    /// Irmão exato do `accumulate_joint_peaks` acima, e separado dele por um
+    /// motivo estrutural: uma polia não vive no `self.joints`, então ela não tem
+    /// handle de joint por onde aquele laço passe. A chave é a ENTIDADE, como
+    /// lá, e o descarte é o mesmo `discard_joint_peaks` — uma corrida nova
+    /// começa para os dois ao mesmo tempo.
+    pub(super) fn accumulate_pulley_peaks(&mut self) {
+        for r in &self.pulley_records {
+            let t = self.world.pulley_tension(r.desc.id);
+            let slot = self.pulley_peaks.entry(r.entity).or_insert(0.0);
+            *slot = slot.max(t);
+        }
+    }
+
+    /// O pico desta corda nesta corrida. `0.0` para uma que nunca deu um passo —
+    /// que é também o que uma corda frouxa carrega, e as duas respostas são a
+    /// mesma frase: ela não está segurando nada.
+    #[must_use]
+    pub(super) fn pulley_peak(&self, entity: Entity) -> f32 {
+        self.pulley_peaks.get(&entity).copied().unwrap_or(0.0)
+    }
+
+    /// **A carga do EIXO de cada roldana**, por entidade de roldana — o que a
+    /// §13 mostra.
+    ///
+    /// Vem direto do mundo (o pico do TIQUE), sem high-water próprio: o número
+    /// que o artista quer da roldana é *"quanto ela está segurando AGORA"*, e o
+    /// que ele quer da corda é *"o pior que ela já segurou"*, porque é isso que
+    /// decide um limiar. Duas perguntas, duas respostas.
+    #[must_use]
+    pub fn pulley_axle_load(&self, wheel: Entity) -> f32 {
+        self.wheel_entities
+            .iter()
+            .position(|&e| e == wheel)
+            .and_then(|i| self.world.pulley_wheels().get(i))
+            .map_or(0.0, |w| self.world.pulley_axle_load(w.id))
     }
 }

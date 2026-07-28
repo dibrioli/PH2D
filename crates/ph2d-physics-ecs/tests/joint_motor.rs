@@ -345,8 +345,12 @@ fn a_joint_is_born_with_its_own_kinds_numbers() {
 ///
 /// As quatro tinham uma resposta derivada de outra até a polia chegar —
 /// `shares_a_point` era `!has_length()`, e o anel de canvas saía direto do
-/// `length_field`. Uma polia tem comprimento (a corda), pontas separadas, nenhum
-/// raio a desenhar, e nada que meça a reação dela.
+/// `length_field`. Uma polia tem comprimento (a corda), pontas separadas e
+/// nenhum raio a desenhar.
+///
+/// ⚠️ A quarta coluna já foi o contra-exemplo e deixou de ser: até o W2 nada
+/// media a reação de uma polia. Ela fica na tabela porque a pergunta continua
+/// sendo por-tipo — o próximo tipo que não puder partir aparece aqui.
 #[test]
 fn the_length_and_break_doors_are_declared_per_kind() {
     use JointKind::*;
@@ -361,9 +365,10 @@ fn the_length_and_break_doors_are_declared_per_kind() {
             Slider => (None, false, true, true),
             Rod => (Some(LengthField::Max), true, false, true),
             Wheel => (None, false, true, true),
-            // A corda tem comprimento, não tem raio, tem pontas separadas, e não
-            // parte: ela não está no `ImpulseJointSet`, então nada mede a reação.
-            Pulley => (Some(LengthField::Max), false, false, false),
+            // A corda tem comprimento, não tem raio e tem pontas separadas —
+            // e PARTE, desde o W2: o passe dela publica a própria tensão
+            // (`λ/dt`), então a exceção que a excluía caiu.
+            Pulley => (Some(LengthField::Max), false, false, true),
         }
     }
     for k in JointKind::ALL {

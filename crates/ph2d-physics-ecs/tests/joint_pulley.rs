@@ -81,6 +81,8 @@ fn wheels(sim: &mut SimWorld, radius: f32) {
                 radius,
                 wrap: WrapSide::Auto,
                 motor_speed: 0.0,
+                break_enabled: false,
+                break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
             },
             Transform::from_translation(Vec2::new(x, START_Y + lift)),
         ));
@@ -468,5 +470,133 @@ fn a_rewind_puts_the_winch_back_where_it_started() {
     assert!(
         (again - lifted).abs() < 1.0e-3,
         "o replay ergueu {again:.4}, o run original ergueu {lifted:.4}"
+    );
+}
+
+/// **Um eixo que cede sai da ARENA, e não só da conta** (W2).
+///
+/// ⚠️ Duas camadas, e esta é a de fora. O passe tem o próprio filtro — é o que
+/// mantém o `PhysicsWorld` correto sozinho —, mas a **arena é a lista que o
+/// DESENHO lê**: sem esta metade o overlay desenharia a corda passando por uma
+/// roldana que o solver já ignorou, e o doc do `physics_overlay_pulley` proíbe
+/// exatamente isso em voz alta (*"a corda desenhada e a corda que segura são a
+/// mesma corda"*). Camada própria, gate próprio.
+#[test]
+fn a_broken_axle_leaves_the_arena_the_drawing_reads() {
+    let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+    {
+        // A roldana A com um eixo que não aguenta o que ela vai carregar.
+        let mut q = sim.world_mut().query::<(&Name, &mut PulleyWheel)>();
+        for (n, mut w) in q.iter_mut(sim.world_mut()) {
+            if n.as_str() == "Wheel A" {
+                w.radius = 0.3;
+                w.break_enabled = true;
+                w.break_force = 1.0;
+            }
+        }
+    }
+    let mut bridge = PhysicsBridge::new();
+    // ⚠️ O canal de eventos é uma TRANSIÇÃO — esvaziado no topo de cada dispatch
+    // —, então ele tem de ser colhido ENQUANTO a corrida anda; ler
+    // `joint_breaks()` no fim seria ler uma lista já esvaziada sessenta vezes.
+    // ⚠️ E a colheita começa no PRIMEIRO tique: com este eixo (1 N contra uma
+    // carga de 4 kg) o rompimento acontece já ali, e um laço que começasse no
+    // segundo perderia o evento e falharia sobre um produto correto.
+    let mut reported = 0;
+    let mut arena_at_first = 0;
+    for t in 1..=60 {
+        bridge.dispatch(&mut sim, false, t);
+        if t == 1 {
+            arena_at_first = bridge.pulley_wheel_arena().len();
+        }
+        reported += bridge.joint_breaks().len();
+    }
+    assert_eq!(arena_at_first, 2, "as duas roldanas têm de nascer na arena");
+    assert_eq!(
+        bridge.pulley_wheel_arena().len(),
+        1,
+        "o eixo que cedeu tinha de sair da arena que o desenho lê"
+    );
+    assert_eq!(
+        reported, 1,
+        "o rompimento tinha de ser reportado UMA vez no canal de eventos"
+    );
+}
+
+/// **A corda publica a TENSÃO que ela segura, e o overlay a lê pela mesma
+/// porta dos outros tipos** (W2).
+///
+/// Antes desta wave a view da polia nascia com `load: 0` e `break_force: ∞`
+/// porque nada media a reação de um vínculo fora do `ImpulseJointSet`. Agora
+/// mede — e este gate é o que impede a view de voltar a mentir em silêncio.
+#[test]
+fn the_rope_view_carries_the_tension_it_is_holding() {
+    let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 60);
+    let view = bridge
+        .joint_views()
+        .find(|v| v.wheel_count > 0)
+        .expect("a polia tem uma view");
+    assert!(
+        view.load.force > 1.0,
+        "a corda está segurando 4 kg contra 1 e a view lê {:.4} N",
+        view.load.force
+    );
+    assert_eq!(view.load.torque, 0.0, "uma corda não transmite torque");
+    assert!(
+        view.peak.force >= view.load.force,
+        "o pico não pode ser menor"
+    );
+    assert!(!view.broken, "ela não devia ter partido");
+}
+
+/// **O limiar AUTORADO da corda chega ao passe** — e o checkbox o gateia (W2).
+///
+/// ⚠️ Este gate nasceu de uma mutação SOBREVIVENTE: cortar o `break_force` do
+/// componente na ponte (mandando `∞` sempre) deixava os treze gates ao lado
+/// verdes. O kernel prova que o passe honra *um* limiar; nada provava que o
+/// limiar que o ARTISTA digitou é o que chega lá — e as duas frases são
+/// diferentes exatamente onde a fiação pode se perder.
+#[test]
+fn the_authored_rope_threshold_reaches_the_pass() {
+    /// `Some(carga)` no tique em que a corda partiu.
+    fn run_until_break(enabled: bool, force: f32) -> Option<f32> {
+        let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+        {
+            let mut q = sim.world_mut().query::<(&Name, &mut PhysicsJoint)>();
+            for (n, mut j) in q.iter_mut(sim.world_mut()) {
+                if n.as_str() == "Rope" {
+                    j.break_enabled = enabled;
+                    j.break_force = force;
+                }
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        for t in 1..=60 {
+            bridge.dispatch(&mut sim, false, t);
+            if let Some(b) = bridge.joint_breaks().first() {
+                return Some(b.force);
+            }
+        }
+        None
+    }
+
+    // Uma corda de 5 N não segura 4 kg contra 1 (a tensão passa de 10 N).
+    let load = run_until_break(true, 5.0).expect("a corda tinha de partir");
+    assert!(
+        load > 5.0,
+        "o rompimento reportou {load:.4} N, abaixo do próprio limiar"
+    );
+    // O MESMO limiar com a caixa desmarcada não parte nada — é o checkbox
+    // gateando, e não o número sendo alto.
+    assert!(
+        run_until_break(false, 5.0).is_none(),
+        "com o Breakable desmarcado a corda não pode partir"
+    );
+    // E um limiar generoso também não: o número é lido, não ignorado.
+    assert!(
+        run_until_break(true, 1.0e6).is_none(),
+        "um limiar de 1 MN não pode ser cruzado por 4 kg"
     );
 }

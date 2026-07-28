@@ -41,6 +41,8 @@ fn wheel() -> InspectorWheelInfo {
         order_ui: 1,
         wrap_tag: 0,
         motor_deg_per_s: 0.0,
+        break_enabled: true,
+        break_force: 500.0,
     }
 }
 
@@ -173,7 +175,9 @@ fn no_wheel_selected_paints_no_wheel_section() {
 #[test]
 fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
     let mut not_a_number: Vec<ph2d_a11y::NodeId> = ids::INSP_WHEEL_WRAP.to_vec();
+    not_a_number.extend(ids::INSP_WHEEL_BREAK);
     not_a_number.extend_from_slice(&[
+        ids::INSP_WHEEL_BREAK_GROUP,
         ids::INSP_WHEEL_WRAP_GROUP,
         ids::INSP_LIVE_WHEEL_SECTION,
         ids::INSP_LIVE_WHEEL_COLOR,
@@ -185,10 +189,12 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
     const RADIUS: f32 = 3.5;
     const ORDER: u32 = 7;
     const MOTOR: f32 = 42.0;
+    const BREAK: f32 = 137.0;
     let numbered = InspectorWheelInfo {
         radius: RADIUS,
         order_ui: ORDER,
         motor_deg_per_s: MOTOR,
+        break_force: BREAK,
         ..wheel()
     };
 
@@ -229,10 +235,10 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         .collect();
     assert_eq!(
         rows.len(),
-        3,
-        "a §13 pintou {} caixas de número; ela tem três (Radius, Order e Motor) \
-         — se uma row nova chegou, ela entra nesta varredura sozinha, que é o \
-         ponto",
+        4,
+        "a §13 pintou {} caixas de número; ela tem quatro (Radius, Order, Motor \
+         e Break Force) — se uma row nova chegou, ela entra nesta varredura \
+         sozinha, que é o ponto",
         rows.len()
     );
 
@@ -246,7 +252,13 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
             )
         });
         assert!(
-            [f64::from(RADIUS), f64::from(ORDER), f64::from(MOTOR)].contains(&v),
+            [
+                f64::from(RADIUS),
+                f64::from(ORDER),
+                f64::from(MOTOR),
+                f64::from(BREAK),
+            ]
+            .contains(&v),
             "{id:?} mostra {v}, que não é nenhum valor do snapshot — ela não \
              está em `sync_wheel_fields`, então a caixa é WRITE-ONLY: digitar \
              funciona e re-selecionar mostra a semente"
@@ -287,4 +299,47 @@ fn the_motor_row_carries_degrees_per_second_with_a_sign() {
             "Motor",
         );
     }
+}
+
+/// **O switch de ruptura do EIXO arma, e o limiar só existe com ele ligado.**
+///
+/// As duas metades num gate só: um switch que não gateia nada é um checkbox
+/// decorativo, e um limiar que aparece sempre é um controle que mente sobre
+/// estar em vigor.
+#[test]
+fn the_axle_break_switch_gates_its_own_threshold() {
+    for (i, &id) in ids::INSP_WHEEL_BREAK.iter().enumerate() {
+        expect(
+            &click_real(wheel(), id),
+            WheelFieldEdit::BreakEnabled(i == 1),
+            &format!("chip de ruptura {i}"),
+        );
+    }
+    expect(
+        &commit(wheel(), ids::INSP_WHEEL_BREAK_FORCE, 250.0),
+        WheelFieldEdit::BreakForce(250.0),
+        "Break Force",
+    );
+
+    // Desarmado, a row do limiar não é pintada.
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_wheel(Some(InspectorWheelInfo {
+        break_enabled: false,
+        ..wheel()
+    }));
+    let painted: Vec<_> = host
+        .paint::<InspectorPanel>(&mut state, VIEWPORT)
+        .into_iter()
+        .map(|(n, _)| n)
+        .collect();
+    set_current_inspector_wheel(None);
+    assert!(
+        painted.contains(&ids::INSP_WHEEL_BREAK[0]),
+        "o switch tem de existir mesmo desarmado"
+    );
+    assert!(
+        !painted.contains(&ids::INSP_WHEEL_BREAK_FORCE),
+        "o limiar não pode ser pintado com o switch desarmado"
+    );
 }

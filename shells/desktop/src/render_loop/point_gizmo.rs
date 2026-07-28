@@ -163,12 +163,27 @@ pub(super) fn joint_param_handles(
                 out.push(PointHandle { key, kind, world });
             }
         }
-        if let Some(len) = v.length {
+        // ⚠️ **`length_is_a_radius`, não `v.length.is_some()`** — e a diferença
+        // nasceu com a polia: ela TEM comprimento (a corda) e ele **não** é a
+        // distância entre as âncoras, então um anel de raio `L0` em volta de A
+        // descreveria uma distância que não existe na cena, com um grip que
+        // autoraria a corda arrastando um círculo que não a mede. É a mesma
+        // classe do bug do trilho de 2026-07-26, uma porta adiante.
+        if let Some(len) = v.length.filter(|_| v.kind.length_is_a_radius()) {
             out.push(PointHandle {
                 key,
                 kind: PointHandleKind::Length,
                 world: length_handle_world(v.anchor_a, v.anchor_b, len),
             });
+        }
+        // As ROLDANAS. Sem elas os dois pontos de mundo de uma polia seriam
+        // semeados na criação e nunca mais alcançáveis — não há row de Inspector
+        // para eles (o `Transform` do joint é a ÂNCORA), então o canvas é o único
+        // gesto que existe.
+        if let Some((wa, wb)) = v.wheels {
+            for (kind, world) in [(PointHandleKind::WheelA, wa), (PointHandleKind::WheelB, wb)] {
+                out.push(PointHandle { key, kind, world });
+            }
         }
     }
     out.sort_by_key(|h| (h.key, h.kind));

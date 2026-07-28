@@ -74,6 +74,15 @@ pub enum PointHandleKind {
     LimitMax,
     /// The length ring — a spring's rest length, a rope's maximum.
     Length,
+    /// **A roldana do ramo A de uma polia** (W-Pulley).
+    ///
+    /// Não é uma âncora e não é um parâmetro: é um ponto pregado no CENÁRIO, e
+    /// é o único da lista que não pertence a corpo nenhum. Sem ele as duas
+    /// roldanas seriam semeadas na criação e nunca mais editáveis — um número
+    /// do modelo sem nenhum gesto que o alcance.
+    WheelA,
+    /// A roldana do ramo B, idem.
+    WheelB,
 }
 
 impl PointHandleKind {
@@ -84,6 +93,13 @@ impl PointHandleKind {
     #[must_use]
     pub fn is_anchor(self) -> bool {
         matches!(self, Self::AnchorA | Self::AnchorB)
+    }
+
+    /// True para as duas alças de ROLDANA — a terceira família, e a única cujo
+    /// ponto não vive no frame de um corpo.
+    #[must_use]
+    pub fn is_wheel(self) -> bool {
+        matches!(self, Self::WheelA | Self::WheelB)
     }
 }
 
@@ -184,6 +200,10 @@ const fn hit_half_px(kind: PointHandleKind) -> f32 {
         PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
             JOINT_PARAM_GRIP_PX + 2.0
         }
+        // Uma roldana é desenhada MAIOR que uma âncora (é uma roda, não um
+        // ponto de amarração), e o alvo acompanha o desenho pela mesma razão
+        // que o resto desta tabela existe.
+        PointHandleKind::WheelA | PointHandleKind::WheelB => JOINT_ANCHOR_RING_PX * 2.0,
     }
 }
 
@@ -206,6 +226,8 @@ pub fn point_handle_id(key: u64, kind: PointHandleKind) -> NodeId {
         PointHandleKind::LimitMin => (ids::GIZMO_JOINT_LIMIT_MIN, 0x_A24B_AF11_9E37_79B1_u64),
         PointHandleKind::LimitMax => (ids::GIZMO_JOINT_LIMIT_MAX, 0x_8F51_2C6D_B3A7_45C9_u64),
         PointHandleKind::Length => (ids::GIZMO_JOINT_LENGTH, 0x_F1B7_39D5_6C82_A0E3_u64),
+        PointHandleKind::WheelA => (ids::GIZMO_JOINT_WHEEL_A, 0x_9E37_79B9_7F4A_7C15_u64),
+        PointHandleKind::WheelB => (ids::GIZMO_JOINT_WHEEL_B, 0x_BF58_476D_1CE4_E5B9_u64),
     };
     NodeId(canonical.0 ^ key.wrapping_mul(mul))
 }
@@ -293,6 +315,19 @@ pub fn paint_point_gizmo(
                     let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX));
                     scene.inner_mut().stroke(
                         &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
+                        Affine::IDENTITY,
+                        handle_color(view.inert),
+                        None,
+                        &ring,
+                    );
+                }
+                // As ROLDANAS: anéis GROSSOS, do dobro do raio de uma âncora —
+                // uma roda, não um ponto de amarração. Mesmo âmbar, porque são
+                // parte do mesmo vínculo.
+                PointHandleKind::WheelA | PointHandleKind::WheelB => {
+                    let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX * 2.0));
+                    scene.inner_mut().stroke(
+                        &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX * 1.5),
                         Affine::IDENTITY,
                         handle_color(view.inert),
                         None,

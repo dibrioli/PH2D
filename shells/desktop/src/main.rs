@@ -210,6 +210,7 @@ mod physics_smoke_joint_pose;
 mod physics_smoke_joint_rig;
 mod physics_smoke_joint_slider;
 mod physics_smoke_props;
+mod physics_smoke_pulley;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;
 mod physics_smoke_wheel;

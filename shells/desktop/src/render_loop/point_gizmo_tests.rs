@@ -438,3 +438,53 @@ fn every_kind_with_a_length_offers_the_ring_to_grab() {
         );
     }
 }
+
+/// **Uma polia oferece DUAS roldanas e NENHUM anel de comprimento.**
+///
+/// As duas metades são a mesma decisão vista dos dois lados: uma polia tem
+/// comprimento (a corda) que **não** é a distância entre as âncoras, então o
+/// anel — que é um raio em volta de A — descreveria uma distância que não existe
+/// na cena; e as roldanas, que são o que a corda de fato mede, precisam de alça
+/// porque não há row de Inspector que as alcance.
+#[test]
+fn a_pulley_offers_two_wheels_and_no_length_ring() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    for (name, x) in [("Load", -2.0_f32), ("Counterweight", 2.0)] {
+        sim.world_mut().spawn((
+            Name::new(name),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.2 },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(x, 2.0)),
+        ));
+    }
+    sim.world_mut().spawn((
+        Name::new("Rope"),
+        PhysicsJoint {
+            body_a: stable_name_id("Load"),
+            body_b: stable_name_id("Counterweight"),
+            kind: JointKind::Pulley,
+            ..PhysicsJoint::of_kind(JointKind::Pulley)
+        },
+        Transform::from_translation(Vec2::new(-2.0, 2.0)),
+    ));
+    let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+    assert_eq!(
+        kinds(&hs),
+        vec![PointHandleKind::WheelA, PointHandleKind::WheelB],
+        "got {hs:?}"
+    );
+    // E elas nascem ONDE a corda passa: acima de cada corpo.
+    for h in &hs {
+        assert!(
+            h.world[1] > 2.0,
+            "uma roldana fica ACIMA do corpo dela: {h:?}"
+        );
+    }
+}

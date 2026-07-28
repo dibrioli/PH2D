@@ -29,6 +29,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_editor::gizmo::PointHandleKind;
 use ph2d_host::WindowSize;
+use ph2d_physics_ecs::JointSide;
 use ph2d_physics_ecs::{PhysicsBridge, ShapeDesc};
 use ph2d_render::Camera2d;
 
@@ -123,6 +124,13 @@ pub(crate) fn open_drag(
     let grab = if let Some(side) = anchor_side(kind) {
         let anchor = physics.joint_anchor_world(sim, joint, side)?;
         Grab::World([anchor[0] - cursor[0], anchor[1] - cursor[1]])
+    } else if let Some(side) = wheel_side(kind) {
+        // A roldana VIVA, lida da mesma view que o overlay desenhou — nunca do
+        // componente, que ainda pode não ter sido semeado.
+        let v = physics.joint_views().find(|v| v.entity == joint)?;
+        let (wa, wb) = v.wheels?;
+        let w = if matches!(side, JointSide::A) { wa } else { wb };
+        Grab::World([w[0] - cursor[0], w[1] - cursor[1]])
     } else {
         // A parameter grip measures against the joint's LIVE geometry, which is
         // the same `JointView` the overlay drew the arc and the ring from.
@@ -164,7 +172,26 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
         PointHandleKind::LimitMin => v.limits.map(|l| l[0]),
         PointHandleKind::LimitMax => v.limits.map(|l| l[1]),
         PointHandleKind::Length => v.length,
-        PointHandleKind::AnchorA | PointHandleKind::AnchorB => None,
+        // Nem âncora nem parâmetro: uma roldana é um ponto de MUNDO, e o grab
+        // dela é o offset até o cursor, como o de uma âncora.
+        PointHandleKind::AnchorA
+        | PointHandleKind::AnchorB
+        | PointHandleKind::WheelA
+        | PointHandleKind::WheelB => None,
+    }
+}
+
+/// A ponta de polia que esta alça autora, ou `None` se ela não for uma roldana.
+///
+/// Irmã de [`anchor_side`], e as duas juntas cobrem toda alça que segura um
+/// PONTO DE MUNDO. O que as separa é onde a escrita pousa: uma âncora é
+/// convertida para o frame de um corpo (ela tem de seguir o corpo), uma roldana
+/// é guardada como veio (ela é pregada no cenário).
+pub(crate) fn wheel_side(kind: PointHandleKind) -> Option<JointSide> {
+    match kind {
+        PointHandleKind::WheelA => Some(JointSide::A),
+        PointHandleKind::WheelB => Some(JointSide::B),
+        _ => None,
     }
 }
 
@@ -230,23 +257,34 @@ impl App {
         drag.snap = match drag.grab {
             Grab::World(off) => {
                 let free = [cursor[0] + off[0], cursor[1] + off[1]];
-                let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
-                let (target, snap) = if ctrl {
-                    let mut cands = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
-                    let n = gfx
-                        .physics
-                        .joint_snap_targets(&gfx.sim, entity, side, &mut cands);
-                    let threshold = SNAP_PX * gfx.camera.height_world / window_size.height as f32;
-                    match nearest_within(&cands[..n], free, threshold) {
-                        Some(p) => (p, Some(p)),
-                        None => (free, None),
-                    }
+                // ⚠️ **Uma roldana sai antes do ÍMÃ, e não é atalho:** o ímã cola
+                // a alça nos pontos do COLLIDER do corpo daquela ponta, e uma
+                // roldana não pertence a corpo nenhum — não há a que colar. Um
+                // ímã aqui puxaria a roda para a superfície da carga.
+                if let Some(side) = wheel_side(drag.kind) {
+                    gfx.physics
+                        .set_joint_wheel_world(&mut gfx.sim, entity, side, free);
+                    None
                 } else {
-                    (free, None)
-                };
-                gfx.physics
-                    .set_joint_anchor_world(&mut gfx.sim, entity, side, target);
-                snap
+                    let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
+                    let (target, snap) = if ctrl {
+                        let mut cands = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
+                        let n = gfx
+                            .physics
+                            .joint_snap_targets(&gfx.sim, entity, side, &mut cands);
+                        let threshold =
+                            SNAP_PX * gfx.camera.height_world / window_size.height as f32;
+                        match nearest_within(&cands[..n], free, threshold) {
+                            Some(p) => (p, Some(p)),
+                            None => (free, None),
+                        }
+                    } else {
+                        (free, None)
+                    };
+                    gfx.physics
+                        .set_joint_anchor_world(&mut gfx.sim, entity, side, target);
+                    snap
+                }
             }
             // ⚠️ No magnet on a parameter grip, and that is a gap with a name
             // rather than an omission: an angle would want a STEP (15°, say) and

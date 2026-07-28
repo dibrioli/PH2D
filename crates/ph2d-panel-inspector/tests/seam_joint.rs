@@ -124,6 +124,10 @@ fn expect(actions: &[EditorAction], edit: JointFieldEdit, what: &str) {
 }
 
 /// **Every kind chip is clickable and picks its own kind.**
+/// Tag da POLIA — o único tipo que NÃO pode partir (ela não vive no
+/// `ImpulseJointSet`, então nada mede a reação dela).
+const KIND_PULLEY: u8 = 7;
+
 #[test]
 fn the_kind_chips_each_pick_their_own_kind() {
     for (i, &id) in ids::INSP_JOINT_KIND.iter().enumerate() {
@@ -343,11 +347,14 @@ fn each_kind_paints_only_the_rows_it_uses() {
                 }
             );
         }
-        // A mola pertence à Spring E ao Wheel; o comprimento à Rope E ao Rod.
+        // A mola pertence à Spring E ao Wheel; o comprimento à Rope, ao Rod E à
+        // Pulley (nela o número é a CORDA inteira — o mesmo campo, outro rótulo);
+        // e a razão é só da Pulley.
         for (owners, ids_) in [
             (&[1u8][..], &REST_ONLY[..]),
             (&[1, 6][..], &SPRING_ROWS[..]),
-            (&[2, 5][..], &LENGTH_ROWS[..]),
+            (&[2, 5, 7][..], &LENGTH_ROWS[..]),
+            (&[7][..], &[ids::INSP_JOINT_RATIO][..]),
         ] {
             for &id in ids_ {
                 let mine = owners.contains(&kind);
@@ -538,20 +545,27 @@ fn breaking_is_offered_to_every_kind_and_the_torque_row_follows_the_flag() {
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_joint(None);
             let painted = |id: ph2d_a11y::NodeId| rects.iter().any(|(n, _)| *n == id);
+            // ⚠️ **Menos a POLIA**, e a exceção é medida, não estética: ela não
+            // vive no `ImpulseJointSet`, então nada publica a reação que decidiria
+            // a ruptura, e a caixa seria um limiar que nunca pode ser cruzado.
+            // Antes dela a frase "todo joint pode ser arrancado" valia para todos.
+            let breakable = kind != KIND_PULLEY;
             for &id in &ids::INSP_JOINT_BREAK {
-                assert!(
+                assert_eq!(
                     painted(id),
-                    "kind {kind}: todo joint pode ser arrancado, então o switch é \
-                     oferecido a TODOS"
+                    breakable,
+                    "kind {kind}: o switch de ruptura é oferecido a todo tipo cuja \
+                     reação o solver PUBLICA — e só a esses"
                 );
             }
-            assert!(
+            assert_eq!(
                 painted(ids::INSP_JOINT_BREAK_FORCE),
-                "kind {kind}: e o limiar de força também"
+                breakable,
+                "kind {kind}: e o limiar de força segue o switch"
             );
             assert_eq!(
                 painted(ids::INSP_JOINT_BREAK_TORQUE),
-                torque,
+                torque && breakable,
                 "kind {kind}: a row de torque segue a flag que o motor mandou, e \
                  nada mais"
             );

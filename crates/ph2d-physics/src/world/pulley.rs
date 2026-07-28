@@ -82,9 +82,17 @@ pub struct PulleyDesc {
     pub wheel_a: [f32; 2],
     /// A roldana do ramo B, em **mundo**.
     pub wheel_b: [f32; 2],
-    /// A vantagem mecânica: `l1 + razão·l2 = L0`. `1` é a polia simples (um lado
-    /// desce o que o outro sobe); `2` é a talha (o lado B anda o dobro para o
-    /// mesmo movimento de A, e ergue metade da força).
+    /// **A vantagem mecânica da talha:** `l1 + razão·l2 ≤ L0`.
+    ///
+    /// A regra em uma frase: **o lado B anda `1/razão` do que A anda, e por isso
+    /// precisa pesar `razão` vezes mais para equilibrá-lo.** A vantagem de B é
+    /// portanto `1/razão`, e ela vem de uma razão **menor** que 1 —
+    /// `0,25` faz um contrapeso de 1 kg erguer 3 kg descendo quatro vezes mais
+    /// caminho, que é exatamente o que uma talha troca.
+    ///
+    /// ⚠️ **Escrevi isto ao contrário na primeira versão** (*"2 é a talha, o lado A
+    /// anda o dobro e ergue o dobro"*) e a cena de smoke mediu o oposto: com razão 2
+    /// a carga pesada não só ganhava como caía o DOBRO. `1` é a polia simples.
     pub ratio: f32,
     /// `L0` — o comprimento total da corda, em metros de `l1 + razão·l2`.
     pub total_length: f32,

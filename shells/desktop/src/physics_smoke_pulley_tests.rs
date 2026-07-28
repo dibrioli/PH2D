@@ -30,7 +30,7 @@ fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
 fn probe_smoke_58() {
     let (mut sim, _) = run(180);
     println!("\n=== CENA 58 — o elevador (3 s) ===");
-    for tag in ["Simple", "Tackle"] {
+    for tag in ["Simple", "Zigzag"] {
         let load = START_Y - y_of(&mut sim, &format!("{tag} Load"));
         let cw = y_of(&mut sim, &format!("{tag} Counterweight")) - START_Y;
         println!("{tag:>8}: carga desceu {load:>7.4} m | contrapeso subiu {cw:>7.4} m");
@@ -41,13 +41,14 @@ fn probe_smoke_58() {
 ///
 /// O molde do irmão da cena 57: uma cena que diz *"a talha ergue a carga"* e uma
 /// simulação que a deixa cair é uma demonstração que ensina o oposto do que a
-/// wave construiu — e nada além deste gate reconferiria isso.
+/// wave construiu — e nada além deste gate reconferiria isso. Foi ele que pegou a
+/// razão invertida da primeira versão desta cena.
 #[test]
 fn the_scene_message_states_the_numbers_the_sim_produces() {
     let (mut sim, _) = run(180);
     let simple_drop = START_Y - y_of(&mut sim, "Simple Load");
     let simple_rise = y_of(&mut sim, "Simple Counterweight") - START_Y;
-    let tackle_drop = START_Y - y_of(&mut sim, "Tackle Load");
+    let zig_drop = START_Y - y_of(&mut sim, "Zigzag Load");
 
     for (got, said, what) in [
         (
@@ -57,9 +58,9 @@ fn the_scene_message_states_the_numbers_the_sim_produces() {
         ),
         (simple_rise, MEASURED_SIMPLE_CW_RISE, "subida do contrapeso"),
         (
-            tackle_drop,
-            MEASURED_TACKLE_LOAD_DROP,
-            "queda da carga na talha",
+            zig_drop,
+            MEASURED_ZIGZAG_LOAD_DROP,
+            "queda da carga no ziguezague",
         ),
     ] {
         assert!(
@@ -69,30 +70,58 @@ fn the_scene_message_states_the_numbers_the_sim_produces() {
     }
 
     // **A corda é inextensível**, e é isso que o par de números do rig simples
-    // diz junto — um afirmando 2,5 m sem o outro descreveria uma queda livre.
+    // diz junto — um afirmando 1,5 m sem o outro descreveria uma queda livre.
     assert!(
         (simple_drop - simple_rise).abs() < 0.05,
-        "razão 1: desceu {simple_drop:.4} e subiu {simple_rise:.4}"
+        "o que um lado desce o outro sobe: desceu {simple_drop:.4} e subiu {simple_rise:.4}"
     );
 
-    // **E a TALHA inverte quem ganha.** Mesmo par de massas nos dois rigs: com
-    // razão 0,25 o contrapeso mais leve ergue a carga mais pesada, que é a
-    // vantagem mecânica e o motivo de a razão existir.
+    // **E o ZIGUEZAGUE não muda a mecânica** — é a afirmação inteira do item 3 da
+    // mensagem, e o que substituiu a talha falsa. Quatro roldanas em vez de duas,
+    // raios diferentes, e o mesmo par de massas anda o mesmo tanto: numa corda
+    // única a tensão é uniforme. Se este gate abrir, a cena voltou a ensinar que
+    // roldanas dão vantagem mecânica.
     assert!(
-        simple_drop > 0.5 && tackle_drop < -0.5,
-        "a razão tem de inverter o resultado: {simple_drop:.4} contra {tackle_drop:.4}"
+        (simple_drop - zig_drop).abs() < 0.05,
+        "mais roldanas não podem mudar o resultado: {simple_drop:.4} contra {zig_drop:.4}"
     );
+}
 
-    // **E o PREÇO da vantagem é a distância**: o lado leve anda `1/r` = 4 vezes
-    // o que a carga anda. Sem esta metade a cena venderia energia de graça.
-    let tackle_cw_drop = START_Y - y_of(&mut sim, "Tackle Counterweight");
-    assert!(
-        (tackle_cw_drop - MEASURED_TACKLE_CW_DROP).abs() < 0.05,
-        "queda do contrapeso da talha: a mensagem diz {MEASURED_TACKLE_CW_DROP:.2} e a sim faz {tackle_cw_drop:.4}"
-    );
-    let travel_ratio = tackle_cw_drop / -tackle_drop;
-    assert!(
-        (travel_ratio - 4.0).abs() < 0.15,
-        "o lado leve tem de andar 1/0,25 = 4x: mediu {travel_ratio:.3}"
-    );
+/// **A corda passa na SUPERFÍCIE da roldana, não pelo centro** — o pedido (5) do
+/// artista, afirmado sobre a rota que o SOLVER usa.
+///
+/// ⚠️ O oráculo é a DISTÂNCIA do centro da roda ao ponto onde a corda a toca: ela
+/// tem de ser o raio, e não zero. Um gate que só perguntasse *"a rota existe?"*
+/// ficaria verde sobre o modelo de ponto, que é exatamente o que esta wave
+/// substituiu.
+#[test]
+fn the_rope_touches_the_rim_and_not_the_centre() {
+    let (mut sim, bridge) = run(1);
+    let rope = {
+        let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+        q.iter(sim.world())
+            .find(|(_, n)| n.as_str() == "Simple Rope")
+            .map(|(e, _)| e)
+            .expect("a corda existe")
+    };
+    let wheels: Vec<_> = bridge.rope_wheels(rope).map(|(_, w)| w).collect();
+    assert_eq!(wheels.len(), 2, "a corda verde tem duas roldanas");
+    let v = bridge
+        .joint_views()
+        .find(|v| v.entity == rope)
+        .expect("a corda tem view");
+    let mut segs = Vec::new();
+    ph2d_physics_ecs::rope_route::route(v.anchor_a, v.anchor_b, &wheels, &mut segs)
+        .expect("a rota existe");
+    // O trecho `i` CHEGA na roldana `i`: o ponto de toque é o `to` dele.
+    for (i, w) in wheels.iter().enumerate() {
+        let t = segs[i].to;
+        let d = (t[0] - w.centre[0]).hypot(t[1] - w.centre[1]);
+        assert!(
+            (d - w.radius).abs() < 1.0e-3,
+            "roldana {i}: a corda toca a {d:.4} m do centro, e o raio é {:.4}",
+            w.radius
+        );
+        assert!(w.radius > 0.1, "a cena tem de ter roda com tamanho visível");
+    }
 }

@@ -36,6 +36,7 @@
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics::world::pulley::PulleyDesc;
+use ph2d_physics::world::rope_route;
 use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
 
 use super::BodyRef;
@@ -87,62 +88,6 @@ pub(super) fn anchor_points(
         } else {
             body_b_centre
         },
-    )
-}
-
-/// **Onde nascem as roldanas de uma polia recém-montada, e que comprimento a
-/// corda tem.**
-///
-/// As roldanas ficam **diretamente acima** de cada corpo — que é o que uma
-/// roldana faz — e a altura é METADE da distância entre os dois, derivada da
-/// geometria que o artista já montou em vez de uma constante que não escala com
-/// a cena. `PhysicsJoint::MIN_WHEEL_LIFT` é só o piso do caso degenerate (dois
-/// corpos quase no mesmo lugar), onde os ramos nasceriam sem direção.
-///
-/// O comprimento é o vão que a montagem tem AGORA (`l1 + razão·l2`), então a
-/// corda nasce exatamente esticada e o primeiro frame não dá um puxão.
-///
-/// ## Por que ela é `pub`: DOIS chamadores, uma resposta
-///
-/// O semeio do reconcile (logo abaixo) é gateado em `anchored`, e esse sentinela
-/// responde *"as âncoras estão autoradas?"*. O gesto de criação pelo CANVAS
-/// (press no corpo A → arrasta → solta no B) **sabe** onde as âncoras vão e por
-/// isso nasce `anchored: true` — deliberadamente, senão a política de semeio
-/// jogaria fora o ponto que o artista apontou.
-///
-/// ⚠️ **E aí um sentinela respondia DUAS perguntas.** A rota que aprendeu a
-/// responder a primeira pulava a segunda em silêncio: uma polia criada pelo
-/// canvas ficava com as duas roldanas em `[0, 0]`, ou seja **na origem do
-/// mundo**, com a corda saindo de cada corpo até lá. Foi o que o artista
-/// fotografou. A rota por SELEÇÃO ("Join Selected Bodies") não tinha o defeito
-/// — ela deixa `anchored: false` —, e é por isso que a cena do smoke funcionava
-/// e a criação à mão não.
-///
-/// A cura não é um segundo sentinela: é o gesto de criação **estabelecer a
-/// geometria autorada INTEIRA**, chamando esta mesma função. Uma segunda cópia
-/// da regra de montagem — no shell, perto do gesto — divergiria desta na
-/// primeira vez que qualquer uma das duas mudasse.
-pub fn pulley_rig(
-    j: &PhysicsJoint,
-    rest_a: [f32; 2],
-    rest_b: [f32; 2],
-    attach_a: [f32; 2],
-    attach_b: [f32; 2],
-) -> ([f32; 2], [f32; 2], f32) {
-    let dx = rest_a[0] - rest_b[0];
-    let dy = rest_a[1] - rest_b[1];
-    let lift = (0.5 * (dx * dx + dy * dy).sqrt()).max(PhysicsJoint::MIN_WHEEL_LIFT);
-    let wheel_a = [rest_a[0], rest_a[1] + lift];
-    let wheel_b = [rest_b[0], rest_b[1] + lift];
-    let branch = |p: [f32; 2], w: [f32; 2]| {
-        let (dx, dy) = (p[0] - w[0], p[1] - w[1]);
-        (dx * dx + dy * dy).sqrt()
-    };
-    let ratio = j.clamped().ratio;
-    (
-        wheel_a,
-        wheel_b,
-        branch(attach_a, wheel_a) + ratio * branch(attach_b, wheel_b),
     )
 }
 
@@ -283,6 +228,8 @@ impl PhysicsBridge {
         self.joints_to_remove.clear();
         self.joints_to_seed.clear();
         self.pulley_records.clear();
+        self.harvest_rope_wheels(world);
+        self.wheel_entities.clear();
 
         for (e, joint, _local) in q.iter(world) {
             self.joints_seen.push(e);
@@ -334,6 +281,10 @@ impl PhysicsBridge {
                 continue;
             };
             let handles = (ba.handle, bb.handle);
+            // As poses de REPOUSO, copiadas aqui: tudo abaixo fala delas, e
+            // segurar as referências de `self.bodies` até lá colidiria com o
+            // `drop_if_live`, que precisa de `&mut self`.
+            let (rest_a, rest_b) = (rest_pose(ba), rest_pose(bb));
             // The body-local anchors. Authored state once seeded; the whole
             // slide fix is that a body move reads them UNCHANGED (the anchor
             // follows the body) instead of re-deriving against the world point.
@@ -346,43 +297,24 @@ impl PhysicsBridge {
             // runs once and the result is persisted. Converting against the rest
             // pose (not the live one) is why the pin does not walk across a
             // Reset — the lesson that cost **1.771 m** of drift before it.
-            let (la, lb, rig) = if joint.anchored {
-                (
-                    joint.local_a,
-                    joint.local_b,
-                    (joint.wheel_a, joint.wheel_b, joint.max_length),
-                )
+            let (la, lb) = if joint.anchored {
+                (joint.local_a, joint.local_b)
             } else {
                 // Body B's centre for the spring/rope policy — its **rest**
                 // centre, for the same reason the anchor uses the rest pose.
-                let centre_b = [bb.rest.x, bb.rest.y];
+                let centre_b = [rest_b[0], rest_b[1]];
                 let (wa, wb) = anchor_points(
                     joint,
                     [transform.translation.x, transform.translation.y],
                     centre_b,
                 );
-                let la = PhysicsWorld::local_anchor_at_pose(rest_pose(ba), wa);
-                let lb = PhysicsWorld::local_anchor_at_pose(rest_pose(bb), wb);
-                // As roldanas e o comprimento da corda de uma POLIA nascem da
-                // mesma pose de repouso, pelo mesmo sentinela: uma polia é
-                // "montada" onde o artista pôs os corpos.
-                let rig = pulley_rig(
-                    joint,
-                    [ba.rest.x, ba.rest.y],
-                    [bb.rest.x, bb.rest.y],
-                    wa,
-                    wb,
-                );
+                let la = PhysicsWorld::local_anchor_at_pose(rest_a, wa);
+                let lb = PhysicsWorld::local_anchor_at_pose(rest_b, wb);
                 // Persist after the query borrow releases (below), and flip
                 // `anchored` so the next reconcile — and every body move — reads
                 // these instead of re-deriving.
-                self.joints_to_seed.push((
-                    e,
-                    la,
-                    lb,
-                    (joint.kind == JointKind::Pulley).then_some(rig),
-                ));
-                (la, lb, rig)
+                self.joints_to_seed.push((e, la, lb, None));
+                (la, lb)
             };
             // ⚠️ **A POLIA sai daqui**, antes do `joint_desc`: ela não é um joint
             // do rapier, então não tem descritor, não entra no `ImpulseJointSet` e
@@ -392,7 +324,50 @@ impl PhysicsBridge {
             if joint.kind == JointKind::Pulley {
                 drop_if_live(self);
                 if joint.active {
-                    let j = joint.clamped();
+                    // As âncoras em REPOUSO. A rota da corda é resolvida contra
+                    // elas — e não contra a pose viva — porque é isso que congela
+                    // o LADO de cada roldana durante o play: uma corda real não
+                    // troca de lado da polia no meio da corrida, e um lado
+                    // recomputado por frame pisca perto do degenerado, o que muda
+                    // o comprimento e dá um puxão. Ao mesmo tempo, mover um corpo
+                    // COM O RELÓGIO PARADO re-resolve, que é o que autoria quer.
+                    let wa = PhysicsWorld::world_from_local_at_pose(rest_a, la);
+                    let wb = PhysicsWorld::world_from_local_at_pose(rest_b, lb);
+                    // A corda é apontada pelo NOME dela, que é a mesma chave
+                    // por que ela aponta os corpos. Uma corda sem nome não pode
+                    // ser apontada — e uma roldana com `rope: 0` não aponta nada.
+                    let rope = world
+                        .get::<Name>(e)
+                        .map_or(0, |n| stable_name_id(n.as_str()));
+                    let start = self.pulley_wheels_to_install.len() as u32;
+                    let first = self.rope_wheels.partition_point(|r| r.rope < rope);
+                    for row in self.rope_wheels[first..]
+                        .iter()
+                        .take_while(|r| r.rope == rope)
+                    {
+                        self.pulley_wheels_to_install.push(row.wheel);
+                        self.wheel_entities.push(row.entity);
+                    }
+                    let count = self.pulley_wheels_to_install.len() as u32 - start;
+                    let wheels = &mut self.pulley_wheels_to_install[start as usize..];
+                    rope_route::resolve_sides(wa, wb, wheels, &mut self.route_scratch);
+                    // O que o artista escolheu vence o que o algoritmo achou — o
+                    // escape manual que a lição do Flip exige ao lado de todo
+                    // matcher automático.
+                    for (w, row) in wheels.iter_mut().zip(&self.rope_wheels[first..]) {
+                        w.side = super::rope::wrap_side(row.wrap, w.side, w.centre, wa, wb);
+                    }
+                    // O comprimento da corda: autorado, ou semeado da rota que a
+                    // montagem tem em REPOUSO — a corda nasce esticada, e o
+                    // primeiro frame não dá um puxão.
+                    let total_length = if joint.anchored {
+                        joint.clamped().max_length
+                    } else {
+                        let l0 = rope_route::route(wa, wb, wheels, &mut self.route_scratch)
+                            .map_or(joint.clamped().max_length, |r| r.length);
+                        self.joints_to_seed.push((e, la, lb, Some(l0)));
+                        l0
+                    };
                     self.pulley_records.push(super::views::PulleyRecord {
                         entity: e,
                         entities: (ea, eb),
@@ -401,10 +376,9 @@ impl PhysicsBridge {
                             body_b: handles.1,
                             local_a: la,
                             local_b: lb,
-                            wheel_a: rig.0,
-                            wheel_b: rig.1,
-                            ratio: j.ratio,
-                            total_length: rig.2,
+                            wheel_start: start,
+                            wheel_count: count,
+                            total_length,
                         },
                     });
                 }
@@ -417,7 +391,7 @@ impl PhysicsBridge {
                 &joint.clamped(),
                 la,
                 lb,
-                PhysicsWorld::axis_locals(transform.rotation, ba.rest.rotation, bb.rest.rotation),
+                PhysicsWorld::axis_locals(transform.rotation, rest_a[2], rest_b[2]),
             ) else {
                 drop_if_live(self);
                 continue;
@@ -447,8 +421,12 @@ impl PhysicsBridge {
         // capacidade: zero alocação em regime.
         self.pulleys_to_install
             .extend(self.pulley_records.iter().map(|r| r.desc));
-        self.world.swap_pulleys(&mut self.pulleys_to_install);
+        self.world.swap_pulleys(
+            &mut self.pulleys_to_install,
+            &mut self.pulley_wheels_to_install,
+        );
         self.pulleys_to_install.clear();
+        self.pulley_wheels_to_install.clear();
 
         // Joints whose entity is gone.
         for &e in self.joints.keys() {
@@ -499,13 +477,13 @@ impl PhysicsBridge {
         // component write does not alias the read; `anchored = true` so a body
         // move never re-derives them — the seed is once, the follow is forever.
         for i in 0..self.joints_to_seed.len() {
-            let (e, la, lb, rig) = self.joints_to_seed[i];
+            let (e, la, lb, rope_length) = self.joints_to_seed[i];
             if let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(e) {
                 j.local_a = la;
                 j.local_b = lb;
-                if let Some((wa, wb, l0)) = rig {
-                    j.wheel_a = wa;
-                    j.wheel_b = wb;
+                // Só uma POLIA tem comprimento a semear, e ele vem da rota que as
+                // roldanas de fato desenham — não de uma segunda regra aqui.
+                if let Some(l0) = rope_length {
                     j.max_length = l0;
                 }
                 j.anchored = true;

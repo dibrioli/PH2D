@@ -400,6 +400,8 @@ pub(super) fn draw(
     show_velocity: bool,
     sim: &mut SimWorld,
     joint_views: &[ph2d_physics_ecs::JointView],
+    // A arena de roldanas que as views indexam (W-Pulley W1).
+    joint_wheels: &[ph2d_physics_ecs::rope_route::RopeWheel],
     joint_gravity: [f32; 2],
     // O limite sendo POSADO agora `(joint, rad relativo)` — desenha o fantasma
     // de B (W-J3). `None` sem arrasto de limite em voo.
@@ -536,7 +538,14 @@ pub(super) fn draw(
             &ghost,
         );
     }
-    for (path, rgba) in joint_marks(show, joint_views, joint_gravity, camera, window) {
+    for (path, rgba) in joint_marks(
+        show,
+        joint_views,
+        joint_wheels,
+        joint_gravity,
+        camera,
+        window,
+    ) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,

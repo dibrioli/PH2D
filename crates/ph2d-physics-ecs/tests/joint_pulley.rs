@@ -16,7 +16,8 @@
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,
+    BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, PulleyWheel,
+    RigidBody, WrapSide,
 };
 
 /// Onde os dois corpos nascem: lado a lado, na mesma altura.
@@ -56,7 +57,33 @@ fn rig(kind: JointKind, load: f32, counterweight: f32, active: bool) -> SimWorld
         },
         Transform::from_translation(Vec2::new(-SPAN / 2.0, START_Y)),
     ));
+    wheels(&mut sim, 0.0);
     sim
+}
+
+/// As duas roldanas, uma sobre cada corpo — **entidades**, como no produto.
+///
+/// ⚠️ **Raio ZERO por default, e é a âncora de regressão da wave**: uma roldana de
+/// raio zero é o modelo de PONTO que a v1 shipou, e a rota o reproduz
+/// exatamente. Os gates que medem dinâmica herdam os números de antes; quem quer
+/// medir o raio o pede.
+fn wheels(sim: &mut SimWorld, radius: f32) {
+    let lift = SPAN / 2.0;
+    for (i, (name, x)) in [("Wheel A", -SPAN / 2.0), ("Wheel B", SPAN / 2.0)]
+        .into_iter()
+        .enumerate()
+    {
+        sim.world_mut().spawn((
+            Name::new(name),
+            PulleyWheel {
+                rope: stable_name_id("Rope"),
+                order: u16::try_from(i).expect("two wheels"),
+                radius,
+                wrap: WrapSide::Auto,
+            },
+            Transform::from_translation(Vec2::new(x, START_Y + lift)),
+        ));
+    }
 }
 
 fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
@@ -117,37 +144,70 @@ fn the_bridge_folds_a_pulley_and_the_counterweight_rises() {
 /// Mesmo sentinela das âncoras (`anchored`): a polia é *montada* onde o artista
 /// pôs os corpos, uma vez, e depois disso mover um corpo não re-deriva nada.
 #[test]
-fn a_fresh_pulley_seeds_its_wheels_and_its_rope_from_the_rest_pose() {
+fn a_fresh_pulley_seeds_its_rope_from_the_route_the_wheels_draw() {
     let mut sim = rig(JointKind::Pulley, 1.0, 1.0, true);
-    let before = joint_of(&mut sim);
-    assert!(!before.anchored, "uma polia nova nasce por semear");
-    assert_eq!(before.wheel_a, [0.0, 0.0], "zero é 'ainda não semeado'");
+    assert!(
+        !joint_of(&mut sim).anchored,
+        "uma polia nova nasce por semear"
+    );
 
     let mut bridge = PhysicsBridge::new();
     run(&mut sim, &mut bridge, 1);
     let j = joint_of(&mut sim);
     assert!(j.anchored, "o primeiro reconcile tinha de semear");
-    // As roldanas ficam DIRETAMENTE ACIMA de cada corpo, meia distância acima.
+    // ⚠️ **O comprimento inclui o trecho ENTRE as roldanas**, que o modelo de
+    // ponto da v1 ignorava (ele somava só os dois ramos). É uma CONSTANTE para
+    // roldanas paradas, então a dinâmica é a mesma — o que muda é que o número
+    // agora descreve a corda inteira, que é o que uma corda é.
     let lift = SPAN / 2.0;
+    let want = 2.0 * lift + SPAN;
     assert!(
-        (j.wheel_a[0] - (-SPAN / 2.0)).abs() < 1.0e-4
-            && (j.wheel_a[1] - (START_Y + lift)).abs() < 1.0e-4,
-        "roldana A em {:?}",
-        j.wheel_a
+        (j.max_length - want).abs() < 1.0e-3,
+        "a corda nasceu com {:.4} m, e a rota mede {want:.4}",
+        j.max_length
+    );
+}
+
+/// **O RAIO acrescenta ARCO à corda** — o pedido (3) do artista, no número que a
+/// polia guarda.
+///
+/// Duas roldanas de meia-volta cada (a corda sobe, atravessa, desce) somam
+/// `2·π·r/2 = π·r` de corda que não existia no modelo de ponto. É esse mesmo arco
+/// que o desenho vai mostrar e que a roda vai girar.
+#[test]
+fn a_wheel_with_a_radius_puts_arc_into_the_rope() {
+    let mut point = rig(JointKind::Pulley, 1.0, 1.0, true);
+    let mut with_radius = rig_with_wheels(1.0, 1.0, 0.4);
+    let mut b1 = PhysicsBridge::new();
+    let mut b2 = PhysicsBridge::new();
+    run(&mut point, &mut b1, 1);
+    run(&mut with_radius, &mut b2, 1);
+    let (thin, thick) = (
+        joint_of(&mut point).max_length,
+        joint_of(&mut with_radius).max_length,
     );
     assert!(
-        (j.wheel_b[0] - (SPAN / 2.0)).abs() < 1.0e-4
-            && (j.wheel_b[1] - (START_Y + lift)).abs() < 1.0e-4,
-        "roldana B em {:?}",
-        j.wheel_b
+        thick > thin,
+        "a roldana com raio tem de somar arco: {thin:.4} vs {thick:.4}"
     );
-    // E a corda nasce EXATAMENTE esticada: os dois ramos medem o levante.
-    assert!(
-        (j.max_length - 2.0 * lift).abs() < 1.0e-3,
-        "a corda nasceu com {:.4} m, e o vão é {:.4}",
-        j.max_length,
-        2.0 * lift
-    );
+}
+
+/// O rig com roldanas de raio `r`.
+fn rig_with_wheels(load: f32, counterweight: f32, radius: f32) -> SimWorld {
+    let mut sim = rig(JointKind::Pulley, load, counterweight, true);
+    // Trocar o raio das que o rig já criou.
+    let mut q = sim.world_mut().query::<(Entity, &Name)>();
+    let ids: Vec<Entity> = q
+        .iter(sim.world())
+        .filter(|(_, n)| n.as_str().starts_with("Wheel"))
+        .map(|(e, _)| e)
+        .collect();
+    for e in ids {
+        if let Some(mut w) = sim.world_mut().get_mut::<PulleyWheel>(e) {
+            w.radius = radius;
+        }
+    }
+    sim
 }
 
 /// **Um rewind re-arma a polia.** A tabela é reconstruída do estado autorado

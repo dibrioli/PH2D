@@ -27,6 +27,7 @@ pub mod joints;
 mod kinematic;
 mod readback;
 mod rewind;
+pub mod rope;
 /// As settings de MUNDO — módulo irmão pelo cap de 700 LOC.
 mod settings;
 mod space;
@@ -90,13 +91,8 @@ pub(super) struct BodyRef {
 }
 
 /// O semeio de um joint: a entidade, as duas âncoras body-local e — só para uma
-/// polia — as duas roldanas e o comprimento da corda.
-type JointSeed = (
-    Entity,
-    [f32; 2],
-    [f32; 2],
-    Option<([f32; 2], [f32; 2], f32)>,
-);
+/// polia — o comprimento da corda, que sai da ROTA que as roldanas desenham.
+type JointSeed = (Entity, [f32; 2], [f32; 2], Option<f32>);
 
 /// The ECS ↔ rapier bridge. One per document, held on `AppGfx.physics`.
 pub struct PhysicsBridge {
@@ -131,6 +127,9 @@ pub struct PhysicsBridge {
     /// `Transform` autorado que o chamador escreveu.
     pub(super) fk: Option<fk::FkSession>,
     joint_query: Option<JointQuery>,
+    /// A query das roldanas. Separada da dos joints porque uma roldana é uma
+    /// ENTIDADE própria (W-Pulley W1) — a corda a aponta pelo nome.
+    wheel_query: Option<rope::WheelQuery>,
     // Reusable scratch — cleared+refilled each frame so the steady-state
     // hot path never reallocates (HR-3; proven by the capacity gate).
     /// Entities carrying physics components this frame (for stale detection).
@@ -155,6 +154,23 @@ pub struct PhysicsBridge {
     /// diff de spawn/remove a fazer — e é por isso que ela nunca invalida o ring
     /// de checkpoints).
     pulleys_to_install: Vec<ph2d_physics::world::pulley::PulleyDesc>,
+    /// **A arena de roldanas** que as faixas de `pulleys_to_install` indexam —
+    /// uma lista só para todas as cordas do mundo, pelo motivo escrito no
+    /// `PulleyDesc`: um `Vec` por corda alocaria por frame.
+    pulley_wheels_to_install: Vec<ph2d_physics::world::rope_route::RopeWheel>,
+    /// As roldanas colhidas do mundo neste dispatch, ORDENADAS por
+    /// `(corda, order, desempate por nome)` — a chave inteira é estável através
+    /// do undo, ao contrário dos bits de entidade, que são id de ALOCAÇÃO.
+    ///
+    /// Scratch: limpa e repreenchida por dispatch, então o regime não realoca.
+    rope_wheels: Vec<rope::RopeWheelRow>,
+    /// A entidade de cada roldana da arena, na MESMA ordem — é por ela que o
+    /// desenho e as alças sabem QUEM é a roda sob o cursor. Paralela em vez de um
+    /// campo dentro do `RopeWheel` porque aquele tipo é do motor, que não conhece
+    /// entidade nenhuma (e não deve conhecer).
+    wheel_entities: Vec<Entity>,
+    /// Os trechos que a resolução de LADO escreve. Scratch pelo mesmo motivo.
+    route_scratch: Vec<ph2d_physics::world::rope_route::Tangent>,
     /// **A lista de polias VIVAS**, reconstruída todo reconcile — a fonte única
     /// de que tanto a tabela do solver quanto as views de desenho saem. Uma
     /// polia não vive no `ImpulseJointSet`, então sem este registro ela seria
@@ -254,6 +270,7 @@ impl PhysicsBridge {
             ik: None,
             fk: None,
             joint_query: None,
+            wheel_query: None,
             seen: Vec::new(),
             names: BTreeMap::new(),
             joints_seen: Vec::new(),
@@ -261,6 +278,10 @@ impl PhysicsBridge {
             joints_to_remove: Vec::new(),
             joints_to_seed: Vec::new(),
             pulleys_to_install: Vec::new(),
+            pulley_wheels_to_install: Vec::new(),
+            rope_wheels: Vec::new(),
+            wheel_entities: Vec::new(),
+            route_scratch: Vec::new(),
             pulley_records: Vec::new(),
             joints_to_sync: Vec::new(),
             kin_start: Vec::new(),
@@ -296,6 +317,7 @@ impl PhysicsBridge {
         self.last_stepped = 0;
         self.query = None; // re-bind to the (possibly fresh) world
         self.joint_query = None;
+        self.wheel_query = None;
         self.ring.clear(); // cached states belong to the document being left
     }
 
@@ -323,6 +345,9 @@ impl PhysicsBridge {
         }
         if self.joint_query.is_none() {
             self.joint_query = Some(sim.world_mut().query());
+        }
+        if self.wheel_query.is_none() {
+            self.wheel_query = Some(sim.world_mut().query());
         }
         self.reconcile_structure(sim);
         self.reconcile_joints(sim);

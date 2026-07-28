@@ -1725,6 +1725,15 @@ impl crate::App {
                         self.show_colliders,
                         at_rest,
                     ));
+                    // E as alças da RODA selecionada (W-Pulley W1). Terceira
+                    // família, e a única que lê a SELEÇÃO: uma corda com seis
+                    // roldanas publicaria doze alças sobrepostas.
+                    hs.extend(point_gizmo::wheel_handles(
+                        sim,
+                        hero.gizmo.selection,
+                        self.show_colliders,
+                        at_rest,
+                    ));
                     hs
                 },
                 // The candidate a live anchor drag has caught (the crosshair).
@@ -4698,6 +4707,9 @@ impl crate::App {
             // length) plus the live poses, so the glyph cannot describe a joint
             // the solver is not enforcing.
             let joint_views: Vec<ph2d_physics_ecs::JointView> = physics.joint_views().collect();
+            // A arena que as faixas das views indexam (W-Pulley W1) — a MESMA
+            // fatia que o solver está usando neste frame.
+            let joint_wheels = physics.pulley_wheel_arena().to_vec();
             // A corda frouxa pendura para onde as coisas caem — a MESMA fonte
             // que decide a superfície de uma poça (W-Buoyancy).
             let joint_gravity = {
@@ -4734,6 +4746,7 @@ impl crate::App {
                 velocity_at_rest,
                 sim,
                 &joint_views,
+                &joint_wheels,
                 joint_gravity,
                 // W-J3: o limite que o arrasto está posando AGORA, para o
                 // fantasma de B. Lido do componente (o arrasto já escreveu nele

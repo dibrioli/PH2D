@@ -34,6 +34,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
+use ph2d_physics_ecs::rope_route::{self, RopeWheel};
 use ph2d_physics_ecs::{JointKind, JointView};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
@@ -94,6 +95,10 @@ pub(super) const JOINT_STRAIN_RGBA: [f32; 4] = [0.96, 0.32, 0.28, 0.95]; // LITE
 pub(super) fn joint_marks(
     show: bool,
     views: &[JointView],
+    // A arena que as faixas das views indexam (W-Pulley W1) — a MESMA fatia que
+    // o solver está usando, para o desenho não descrever uma corda que não é a
+    // que segura.
+    wheels: &[RopeWheel],
     gravity: [f32; 2],
     camera: &Camera2d,
     window: WindowSize,
@@ -134,7 +139,7 @@ pub(super) fn joint_marks(
             (JOINT_RGBA, JOINT_DIM_RGBA)
         };
         out.push((ownership_lines(v, a, b, camera, window), dim));
-        let (span, glyph) = kind_marks(v, a, b, g_screen, camera, window);
+        let (span, glyph) = kind_marks(v, wheels, a, b, g_screen, camera, window);
         out.push((span, main));
         out.push((glyph, main));
         if v.broken {
@@ -398,10 +403,77 @@ pub(super) fn limit_ghost(
     ))
 }
 
+/// **A POLIA:** a corda passa na SUPERFÍCIE de cada roldana, e cada roldana é
+/// uma roda desenhada no tamanho que ela tem.
+///
+/// ⚠️ **A rota é a MESMA função que o solver roda** (`rope_route::route`), não uma
+/// re-derivação: a corda desenhada e a corda que segura são a mesma corda, ou o
+/// desenho vira uma segunda opinião que ninguém consegue conferir numa
+/// screenshot. É a lei que o overlay já segue para as âncoras.
+///
+/// Antes desta wave a corda ia até o CENTRO da roldana — o pedido (5) do artista
+/// — porque uma roldana era um ponto e não tinha superfície onde passar.
+///
+/// O raio é desenhado no espaço do MUNDO (ele é uma medida da cena e escala com
+/// o zoom, ao contrário do anel de uma âncora, que é uma marca de tela).
+#[allow(clippy::too_many_arguments)]
+fn pulley_marks(
+    v: &JointView,
+    arena: &[RopeWheel],
+    a: Point,
+    b: Point,
+    camera: &Camera2d,
+    window: WindowSize,
+    span: &mut BezPath,
+    glyph: &mut BezPath,
+) {
+    let start = v.wheel_start as usize;
+    let wheels = arena
+        .get(start..start + v.wheel_count as usize)
+        .unwrap_or(&[]);
+    // As rodas, no tamanho que elas TÊM.
+    for w in wheels {
+        let centre = screen_of(camera, window, w.centre);
+        let rim = screen_of(camera, window, [w.centre[0] + w.radius, w.centre[1]]);
+        let r = (rim.x - centre.x).abs();
+        // Uma roldana de raio zero é um PONTO — modelo legítimo (foi o da v1), e
+        // ali o anel de tela é a única coisa que se pode desenhar.
+        if r > 1.0 {
+            ring_px(centre, r, glyph);
+            // O raio-guia: sem ele uma roda girando é idêntica a uma parada — a
+            // mesma lição que o contorno de um collider redondo pagou no W2a.
+            glyph.move_to(centre);
+            glyph.line_to(rim);
+        } else {
+            ring_px(centre, JOINT_DOT_PX * 2.0, glyph);
+        }
+    }
+    // A corda. `route` devolve os trechos entre tangentes; os arcos são o que
+    // sobra dentro de cada roda, e desenhá-los como corda RETA de tangente a
+    // tangente já mostra o que importa (que ela não passa pelo centro).
+    let mut segs = Vec::new();
+    let ends = (v.anchor_a, v.anchor_b);
+    if rope_route::route(ends.0, ends.1, wheels, &mut segs).is_some() {
+        span.move_to(a);
+        for t in &segs {
+            span.line_to(screen_of(camera, window, t.from));
+            span.line_to(screen_of(camera, window, t.to));
+        }
+        span.line_to(b);
+    } else {
+        // Rota degenerada — a mesma recusa do solver, e ali a corda de fato não
+        // está segurando. Uma linha reta diz *há um vínculo aqui* sem afirmar
+        // uma geometria que não existe.
+        span.move_to(a);
+        span.line_to(b);
+    }
+}
+
 /// O span + o glifo de um tipo. Devolve os dois separados porque o span pode
 /// ser vazio (Pin/Weld não vão a lugar nenhum) sem apagar o glifo.
 fn kind_marks(
     v: &JointView,
+    wheels: &[RopeWheel],
     a: Point,
     b: Point,
     g_screen: (f64, f64),
@@ -427,18 +499,7 @@ fn kind_marks(
         // A→B descreveria uma corda que não existe na cena, e é por isso que
         // este é o único tipo cuja view carrega pontos de MUNDO próprios.
         JointKind::Pulley => {
-            if let Some((wa, wb)) = v.wheels {
-                let pa = screen_of(camera, window, wa);
-                let pb = screen_of(camera, window, wb);
-                span.move_to(a);
-                span.line_to(pa);
-                span.line_to(pb);
-                span.line_to(b);
-                // As roldanas são ANÉIS — rodas, e maiores que uma âncora, que é
-                // o que as separa dos dois pontos de amarração ao lado.
-                ring_px(pa, JOINT_DOT_PX * 2.0, &mut glyph);
-                ring_px(pb, JOINT_DOT_PX * 2.0, &mut glyph);
-            }
+            pulley_marks(v, wheels, a, b, camera, window, &mut span, &mut glyph);
             ring_px(a, JOINT_DOT_PX, &mut glyph);
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }

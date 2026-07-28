@@ -53,7 +53,6 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         stiffness: 30.0,
         damping: 0.5,
         max_length: 2.0,
-        ratio: 1.0,
         // No pick armed by default — the base fixture is a joint being tuned.
         pick_armed: 0,
         // Breaking is ON in the base fixture so the thresholds are on screen for
@@ -351,13 +350,11 @@ fn each_kind_paints_only_the_rows_it_uses() {
             );
         }
         // A mola pertence à Spring E ao Wheel; o comprimento à Rope, ao Rod E à
-        // Pulley (nela o número é a CORDA inteira — o mesmo campo, outro rótulo);
-        // e a razão é só da Pulley.
+        // Pulley (nela o número é a CORDA inteira — o mesmo campo, outro rótulo).
         for (owners, ids_) in [
             (&[1u8][..], &REST_ONLY[..]),
             (&[1, 6][..], &SPRING_ROWS[..]),
             (&[2, 5, 7][..], &LENGTH_ROWS[..]),
-            (&[7][..], &[ids::INSP_JOINT_RATIO][..]),
         ] {
             for &id in ids_ {
                 let mine = owners.contains(&kind);
@@ -823,7 +820,6 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         stiffness: SENTINELS[6],
         damping: SENTINELS[7],
         max_length: SENTINELS[8],
-        ratio: SENTINELS[9],
         break_force: SENTINELS[10],
         break_torque: SENTINELS[11],
         ..joint(kind)

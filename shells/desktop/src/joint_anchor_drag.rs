@@ -29,7 +29,6 @@
 use ph2d_ecs::SimWorld;
 use ph2d_editor::gizmo::PointHandleKind;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::JointSide;
 use ph2d_physics_ecs::{PhysicsBridge, ShapeDesc};
 use ph2d_render::Camera2d;
 
@@ -124,13 +123,22 @@ pub(crate) fn open_drag(
     let grab = if let Some(side) = anchor_side(kind) {
         let anchor = physics.joint_anchor_world(sim, joint, side)?;
         Grab::World([anchor[0] - cursor[0], anchor[1] - cursor[1]])
-    } else if let Some(side) = wheel_side(kind) {
-        // A roldana VIVA, lida da mesma view que o overlay desenhou — nunca do
-        // componente, que ainda pode não ter sido semeado.
-        let v = physics.joint_views().find(|v| v.entity == joint)?;
-        let (wa, wb) = v.wheels?;
-        let w = if matches!(side, JointSide::A) { wa } else { wb };
-        Grab::World([w[0] - cursor[0], w[1] - cursor[1]])
+    } else if kind.is_wheel() {
+        // ⚠️ **`joint` aqui é a RODA, não a corda** — uma roldana é uma entidade
+        // própria (W-Pulley W1), e é o `Transform` dela que estas duas alças
+        // autoram. O campo do drag guarda *a entidade que este gesto escreve*,
+        // que era o joint enquanto o joint era o único que tinha alças.
+        let t = sim.world().get::<ph2d_ecs::Transform>(joint)?;
+        let centre = [t.translation.x, t.translation.y];
+        if matches!(kind, PointHandleKind::WheelRim) {
+            let r = sim
+                .world()
+                .get::<ph2d_physics_ecs::PulleyWheel>(joint)?
+                .radius;
+            Grab::Radius(r - distance(centre, cursor))
+        } else {
+            Grab::World([centre[0] - cursor[0], centre[1] - cursor[1]])
+        }
     } else {
         // A parameter grip measures against the joint's LIVE geometry, which is
         // the same `JointView` the overlay drew the arc and the ring from.
@@ -176,22 +184,8 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
         // dela é o offset até o cursor, como o de uma âncora.
         PointHandleKind::AnchorA
         | PointHandleKind::AnchorB
-        | PointHandleKind::WheelA
-        | PointHandleKind::WheelB => None,
-    }
-}
-
-/// A ponta de polia que esta alça autora, ou `None` se ela não for uma roldana.
-///
-/// Irmã de [`anchor_side`], e as duas juntas cobrem toda alça que segura um
-/// PONTO DE MUNDO. O que as separa é onde a escrita pousa: uma âncora é
-/// convertida para o frame de um corpo (ela tem de seguir o corpo), uma roldana
-/// é guardada como veio (ela é pregada no cenário).
-pub(crate) fn wheel_side(kind: PointHandleKind) -> Option<JointSide> {
-    match kind {
-        PointHandleKind::WheelA => Some(JointSide::A),
-        PointHandleKind::WheelB => Some(JointSide::B),
-        _ => None,
+        | PointHandleKind::WheelCentre
+        | PointHandleKind::WheelRim => None,
     }
 }
 
@@ -261,9 +255,14 @@ impl App {
                 // a alça nos pontos do COLLIDER do corpo daquela ponta, e uma
                 // roldana não pertence a corpo nenhum — não há a que colar. Um
                 // ímã aqui puxaria a roda para a superfície da carga.
-                if let Some(side) = wheel_side(drag.kind) {
-                    gfx.physics
-                        .set_joint_wheel_world(&mut gfx.sim, entity, side, free);
+                if drag.kind.is_wheel() {
+                    // Uma roldana é uma entidade: mover é escrever o `Transform`
+                    // dela, e o undo global por-diff captura como captura o de
+                    // qualquer objeto.
+                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity)
+                    {
+                        t.translation = ph2d_core::Vec2::new(free[0], free[1]);
+                    }
                     None
                 } else {
                     let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
@@ -298,9 +297,31 @@ impl App {
                 None
             }
             Grab::Radius(off) => {
-                let (anchor_a, _) = anchor_of(&gfx.physics, entity);
-                let len = distance(anchor_a, cursor) + off;
-                write_length(&mut gfx.sim, entity, len);
+                // Duas alças, uma aritmética: o raio é a distância do cursor ao
+                // CENTRO daquilo que se dimensiona. O que muda é de quem é o
+                // centro e onde o número pousa — o anel de comprimento mede da
+                // âncora e escreve no joint; o aro mede do centro da roda e
+                // escreve no componente dela.
+                if matches!(drag.kind, PointHandleKind::WheelRim) {
+                    let centre = gfx
+                        .sim
+                        .world()
+                        .get::<ph2d_ecs::Transform>(entity)
+                        .map(|t| [t.translation.x, t.translation.y]);
+                    if let Some(centre) = centre
+                        && let Some(mut w) = gfx
+                            .sim
+                            .world_mut()
+                            .get_mut::<ph2d_physics_ecs::PulleyWheel>(entity)
+                    {
+                        w.radius = (distance(centre, cursor) + off)
+                            .max(ph2d_physics_ecs::PulleyWheel::MIN_RADIUS);
+                    }
+                } else {
+                    let (anchor_a, _) = anchor_of(&gfx.physics, entity);
+                    let len = distance(anchor_a, cursor) + off;
+                    write_length(&mut gfx.sim, entity, len);
+                }
                 None
             }
             Grab::Rail(off) => {

@@ -360,33 +360,65 @@ fn a_pulley_is_rigged_by_both_creation_routes() {
         let mut bridge = PhysicsBridge::new();
         bridge.dispatch(&mut sim, false, 1);
         let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
-
-        // 1. As roldanas NÃO estão na origem do mundo — o sintoma, direto.
-        assert!(
-            j.wheel_a != [0.0, 0.0] && j.wheel_b != [0.0, 0.0],
-            "{route}: roldanas em {:?} / {:?} — não semeadas",
-            j.wheel_a,
-            j.wheel_b
+        let rope_id = ph2d_ecs::stable_name_id(
+            sim.world()
+                .get::<ph2d_ecs::Name>(joint)
+                .expect("a corda tem nome")
+                .as_str(),
         );
-        // 2. Cada uma fica ACIMA do seu corpo, que é o que uma roldana faz.
-        for (w, body, tag) in [(j.wheel_a, pa, "A"), (j.wheel_b, pb, "B")] {
+
+        // 1. As roldanas EXISTEM como objetos — o sintoma, direto: elas eram dois
+        //    campos que ficavam em `[0, 0]`, e agora são duas entidades que o
+        //    gesto tem de SPAWNAR.
+        let wheels: Vec<([f32; 2], f32)> = {
+            let mut q = sim
+                .world_mut()
+                .query::<(&ph2d_physics_ecs::PulleyWheel, &ph2d_ecs::Transform)>();
+            let mut v: Vec<_> = q
+                .iter(sim.world())
+                .filter(|(w, _)| w.rope == rope_id)
+                .map(|(w, t)| (w.order, [t.translation.x, t.translation.y], w.radius))
+                .collect();
+            v.sort_by_key(|(o, _, _)| *o);
+            v.into_iter().map(|(_, c, r)| (c, r)).collect()
+        };
+        assert_eq!(
+            wheels.len(),
+            2,
+            "{route}: o gesto tem de criar duas roldanas"
+        );
+        // 2. Cada uma fica ACIMA do seu corpo, que é o que uma roldana faz, e tem
+        //    tamanho VISÍVEL — um raio zero seria o modelo de ponto de volta.
+        for ((w, r), body, tag) in [(wheels[0], pa, "A"), (wheels[1], pb, "B")] {
             assert!(
                 (w[0] - body[0]).abs() < 1.0e-4 && w[1] > body[1],
                 "{route}: a roldana {tag} ({w:?}) não está acima do corpo {body:?}"
             );
+            assert!(r > 0.0, "{route}: a roldana {tag} nasceu sem raio");
         }
-        // 3. E a corda nasce EXATAMENTE esticada — medido aqui, dos números do
-        //    componente, sem re-chamar a função que os produziu.
+        // 3. E a corda nasce EXATAMENTE esticada — medida aqui pela rota, dos
+        //    números que ficaram guardados, sem re-chamar a `pulley_rig`.
         let world = |p: [f32; 2], local: [f32; 2]| [p[0] + local[0], p[1] + local[1]];
-        let branch = |p: [f32; 2], w: [f32; 2]| {
-            let (dx, dy) = (p[0] - w[0], p[1] - w[1]);
-            (dx * dx + dy * dy).sqrt()
-        };
-        let taut = branch(world(pa, j.local_a), j.wheel_a)
-            + j.ratio * branch(world(pb, j.local_b), j.wheel_b);
+        let route_wheels: Vec<_> = wheels
+            .iter()
+            .map(
+                |&(centre, radius)| ph2d_physics_ecs::rope_route::RopeWheel {
+                    centre,
+                    radius,
+                    side: 1,
+                },
+            )
+            .collect();
+        let mut segs = Vec::new();
+        let mut w = route_wheels.clone();
+        let (ea, eb) = (world(pa, j.local_a), world(pb, j.local_b));
+        ph2d_physics_ecs::rope_route::resolve_sides(ea, eb, &mut w, &mut segs);
+        let taut = ph2d_physics_ecs::rope_route::route(ea, eb, &w, &mut segs)
+            .expect("a rota existe")
+            .length;
         assert!(
             (taut - j.max_length).abs() < 1.0e-3,
-            "{route}: a corda mede {:.4} e o vão montado é {taut:.4}",
+            "{route}: a corda mede {:.4} e a rota montada é {taut:.4}",
             j.max_length
         );
     }

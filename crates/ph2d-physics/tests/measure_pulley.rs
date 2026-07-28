@@ -9,6 +9,7 @@
 
 use ph2d_physics::PhysicsWorld;
 use ph2d_physics::world::pulley::PulleyDesc;
+use ph2d_physics::world::rope_route::RopeWheel;
 
 /// Uma balança de Atwood: duas roldanas no alto, um corpo pendurado sob cada
 /// uma, ligados por uma corda que passa pelas duas.
@@ -17,6 +18,24 @@ use ph2d_physics::world::pulley::PulleyDesc;
 /// estático, e portanto a única em que "quanto a corda estica em regime" é uma
 /// pergunta com resposta. Com massas diferentes o sistema acelera para sempre
 /// (é o que uma máquina de Atwood faz) e o esticamento nunca assenta.
+/// As duas roldanas de raio ZERO — o modelo de PONTO, que a rota reproduz
+/// exatamente. As tabelas desta sonda foram medidas com ele, e é ele que as
+/// mantém comparáveis.
+fn point_wheels() -> Vec<RopeWheel> {
+    vec![
+        RopeWheel {
+            centre: [-1.0, 4.0],
+            radius: 0.0,
+            side: 1,
+        },
+        RopeWheel {
+            centre: [1.0, 4.0],
+            radius: 0.0,
+            side: 1,
+        },
+    ]
+}
+
 fn atwood(mass_a: f32, mass_b: f32) -> (PhysicsWorld, PulleyDesc, ph2d_physics::RigidBodyHandle) {
     let mut w = PhysicsWorld::new();
     const R: f32 = 0.2;
@@ -28,13 +47,12 @@ fn atwood(mass_a: f32, mass_b: f32) -> (PhysicsWorld, PulleyDesc, ph2d_physics::
         body_b: b,
         local_a: [0.0, 0.0],
         local_b: [0.0, 0.0],
-        wheel_a: [-1.0, 4.0],
-        wheel_b: [1.0, 4.0],
-        ratio: 1.0,
+        wheel_start: 0,
+        wheel_count: 2,
         // l1 = l2 = 2 na pose de repouso.
         total_length: 4.0,
     };
-    w.set_pulleys(vec![desc]);
+    w.set_pulleys(vec![desc], point_wheels());
     (w, desc, a)
 }
 
@@ -124,51 +142,6 @@ fn the_atwood_machine_accelerates() {
 
 #[test]
 #[ignore = "measurement, not a gate"]
-fn the_ratio_is_a_block_and_tackle() {
-    println!("\n=== A RAZAO (a talha): quanto cada lado anda, mesma massa ===");
-    println!(
-        "{:>7} | {:>10} | {:>10} | {:>10}",
-        "razao", "dy_a (m)", "dy_b (m)", "dy_a/dy_b"
-    );
-    for ratio in [1.0_f32, 2.0, 3.0] {
-        let mut w = PhysicsWorld::new();
-        const R: f32 = 0.2;
-        let area = std::f32::consts::PI * R * R;
-        // O lado A é pesado o bastante para vencer: o que se mede é a RAZAO
-        // entre os deslocamentos, que é o que uma talha promete.
-        let (a, _) = w.add_dynamic_circle(-1.0, 2.0, R, 4.0 / area);
-        let (b, _) = w.add_dynamic_circle(1.0, 2.0, R, 1.0 / area);
-        let d = PulleyDesc {
-            body_a: a,
-            body_b: b,
-            local_a: [0.0, 0.0],
-            local_b: [0.0, 0.0],
-            wheel_a: [-1.0, 4.0],
-            wheel_b: [1.0, 4.0],
-            ratio,
-            total_length: 2.0 + ratio * 2.0,
-        };
-        w.set_pulleys(vec![d]);
-        for _ in 0..60 {
-            w.step();
-        }
-        let pa = w.body_pose(a).unwrap().translation;
-        let pb = w.body_pose(b).unwrap().translation;
-        let dya = 2.0 - pa.y;
-        let dyb = pb.y - 2.0;
-        println!(
-            "{ratio:>7.1} | {dya:>10.4} | {dyb:>10.4} | {:>10.4}",
-            if dyb.abs() > 1e-6 {
-                dya / dyb
-            } else {
-                f32::NAN
-            }
-        );
-    }
-}
-
-#[test]
-#[ignore = "measurement, not a gate"]
 fn sweep_the_bias_against_a_contact() {
     // A varredura livre (`sweep_the_pulley_bias`) melhora monotonicamente com
     // beta e nunca treme — mas ela nao contem o fenomeno que de fato limita uma
@@ -195,9 +168,8 @@ fn sweep_the_bias_against_a_contact() {
             body_b: b,
             local_a: [0.0, 0.0],
             local_b: [0.0, 0.0],
-            wheel_a: [-1.0, 4.0],
-            wheel_b: [1.0, 4.0],
-            ratio: 1.0,
+            wheel_start: 0,
+            wheel_count: 2,
             // ⚠️ EXATAMENTE esticada na pose inicial (l1 = 3,6 · l2 = 1,0): o
             // contrapeso de 1 kg puxa a corda o tempo todo tentando erguer uma
             // carga de 4 kg que o chao segura. Uma corda que ja nasce curta
@@ -205,7 +177,7 @@ fn sweep_the_bias_against_a_contact() {
             // outro fenomeno — e foi o que a primeira versao mediu.
             total_length: 4.6,
         };
-        w.set_pulleys(vec![d]);
+        w.set_pulleys(vec![d], point_wheels());
         // ⚠️ SEM esta linha as oito corridas sao a MESMA corrida, e a tabela
         // sai com oito linhas identicas dizendo nada. Aconteceu.
         w.set_pulley_bias(beta);
@@ -285,12 +257,11 @@ fn what_a_frozen_axis_looks_like_to_the_rope() {
             body_b: b,
             local_a: [0.0, 0.0],
             local_b: [0.0, 0.0],
-            wheel_a: [-1.0, 4.0],
-            wheel_b: [1.0, 4.0],
-            ratio: 1.0,
+            wheel_start: 0,
+            wheel_count: 2,
             total_length: 4.0,
         };
-        w.set_pulleys(vec![d]);
+        w.set_pulleys(vec![d], point_wheels());
         for _ in 0..90 {
             w.step();
         }
@@ -356,12 +327,11 @@ fn what_the_rate_term_of_a_non_dynamic_body_buys() {
             body_b: b,
             local_a: [0.0, 0.0],
             local_b: [0.0, 0.0],
-            wheel_a: [-1.0, 4.0],
-            wheel_b: [1.0, 4.0],
-            ratio: 1.0,
+            wheel_start: 0,
+            wheel_count: 2,
             total_length: 4.0,
         };
-        w.set_pulleys(vec![d]);
+        w.set_pulleys(vec![d], point_wheels());
         let dt = 1.0 / 60.0;
         for tick in 0..60 {
             w.set_next_kinematic_pose(a, -1.0, 2.0 - speed * dt * (tick + 1) as f32, 0.0);

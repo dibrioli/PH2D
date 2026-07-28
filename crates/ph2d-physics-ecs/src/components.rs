@@ -240,6 +240,7 @@ impl SimComponent for Collider {}
 /// friends keep working: this is a LOC split, not a new address for the types.
 mod area;
 mod overrides;
+mod rope;
 
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
@@ -248,3 +249,4 @@ pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
+pub use rope::{PulleyWheel, WrapSide};

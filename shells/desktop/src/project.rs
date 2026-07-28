@@ -154,11 +154,18 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// antigo lendo um arquivo novo veria o discriminante 5 e devolveria lixo bem-formado em vez
 /// de recusar. É o mesmo raciocínio do Weld (v27→28) e do Slider, e é por isso que a recusa
 /// tem de ser ALTA. `FLIP_SCHEMA_VERSION` fica em 12.
+/// v41 (physics, W-Pulley W1): o `PhysicsJoint` **PERDEU** `wheel_a`/`wheel_b`/`ratio` — uma
+/// roldana virou ENTIDADE (`PulleyWheel` + `Transform`), o que remove o teto de duas e dá ao
+/// artista contar/posicionar/dimensionar cada uma. Componente NOVO não custa bump (blob-key
+/// própria); o que custa é a REMOÇÃO dos três campos, porque postcard é posicional e um blob
+/// v40 traz três a mais. E o `ratio` saiu por ser FÍSICA ERRADA: numa corda única sobre
+/// roldanas livres a tensão é uniforme, então não há vantagem mecânica a ganhar de diâmetro
+/// nenhum. `FLIP_SCHEMA_VERSION` fica em 12.
 /// v39 (physics, W-Wheel): `JointKind` ganhou a variante **`Wheel`** (o cubo que gira E cavalga
 /// uma suspensão). Mesmo raciocínio do v38, um degrau adiante: apender variante não move
 /// índice nenhum, e o bump existe para o build antigo RECUSAR em vez de ler o discriminante 6
 /// como lixo bem-formado. `FLIP_SCHEMA_VERSION` fica em 12.
-const PROJECT_SCHEMA: u32 = 40;
+const PROJECT_SCHEMA: u32 = 41;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

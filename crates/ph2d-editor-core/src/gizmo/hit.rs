@@ -129,8 +129,10 @@ pub mod ids {
     pub const GIZMO_JOINT_LIMIT_MAX: NodeId = NodeId(967);
     pub const GIZMO_JOINT_LENGTH: NodeId = NodeId(968);
 
-    /// As duas ROLDANAS de uma polia (W-Pulley) — pontos de mundo que não
-    /// pertencem a corpo nenhum, e por isso a única família de alça sem ímã.
-    pub const GIZMO_JOINT_WHEEL_A: NodeId = NodeId(969);
-    pub const GIZMO_JOINT_WHEEL_B: NodeId = NodeId(970);
+    /// As duas alças de uma RODA de polia (W-Pulley W1) — o centro (onde ela
+    /// está) e o aro (que tamanho ela tem). Elas autoram a ENTIDADE da roldana,
+    /// não o joint, e são a única família de alça sem ímã: uma roldana não
+    /// pertence a corpo nenhum, então não há collider a que colar.
+    pub const GIZMO_WHEEL_CENTRE: NodeId = NodeId(969);
+    pub const GIZMO_WHEEL_RIM: NodeId = NodeId(970);
 }

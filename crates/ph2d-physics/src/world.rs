@@ -118,6 +118,16 @@ pub struct PhysicsWorld {
     /// table the bridge just installed rather than resurrecting one from a run
     /// that ended.
     pulleys: Vec<pulley::PulleyDesc>,
+    /// As roldanas que as faixas de `pulleys` indexam — uma arena só para todas
+    /// as cordas, pelo motivo escrito no [`pulley::PulleyDesc`]: um `Vec` por
+    /// corda alocaria por frame e tiraria o `Copy` que deixa a tabela ser
+    /// trocada com um `swap`.
+    pulley_wheels: Vec<rope_route::RopeWheel>,
+    /// Os trechos da rota da corda que o passe está resolvendo. Buffer PRÓPRIO
+    /// e persistente porque a rota escreve `N+1` trechos por corda por sub-passo
+    /// — alocá-los por chamada apareceria no gate de zero-alloc do caminho
+    /// quente, do mesmo jeito que os scratches de contato apareceriam.
+    route_scratch: Vec<rope_route::Tangent>,
     /// The Baumgarte fraction the pulley pass corrects per sub-step. A field
     /// rather than the constant read inline **so the measured table on
     /// [`pulley::PULLEY_BIAS`] is reproducible against the PRODUCT path** and not
@@ -234,6 +244,8 @@ impl PhysicsWorld {
             kinematic_targets: Vec::new(),
             effectors: Vec::new(),
             pulleys: Vec::new(),
+            pulley_wheels: Vec::new(),
+            route_scratch: Vec::new(),
             pulley_bias: pulley::PULLEY_BIAS,
             contact_peaks: std::collections::BTreeMap::new(),
             joint_peaks: std::collections::BTreeMap::new(),
@@ -544,6 +556,8 @@ impl PhysicsWorld {
             pulley::apply(
                 &mut self.bodies,
                 &self.pulleys,
+                &self.pulley_wheels,
+                &mut self.route_scratch,
                 self.integration_parameters.dt,
                 self.pulley_bias,
             );

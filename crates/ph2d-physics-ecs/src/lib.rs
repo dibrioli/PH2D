@@ -35,14 +35,18 @@ pub use bridge::joint_break::JointBreakEvent;
 // não depende de `ph2d-physics` direto.
 pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
-pub use bridge::joints::{joint_desc, pulley_rig};
+pub use bridge::joints::joint_desc;
+pub use bridge::rope::pulley_rig;
+// A geometria da corda de uma polia. Re-exportada porque a shell **não depende
+// de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o
+// desenho tem de rodar a MESMA rota que o solver roda.
 pub use bridge::views::JointView;
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, RigidBody,
+    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, WrapSide,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -51,6 +55,7 @@ pub use interaction::{
 pub use joint::{JointKind, LengthField, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
+pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
@@ -91,6 +96,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<MassOverride>("ph2d::physics::MassOverride");
     reg.register::<Dominance>("ph2d::physics::Dominance");
     reg.register::<MaterialCombine>("ph2d::physics::MaterialCombine");
+    reg.register::<PulleyWheel>("ph2d::physics::PulleyWheel");
     reg.register::<DampingOverride>("ph2d::physics::DampingOverride");
     reg.register::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
     reg.register::<AreaEffector>("ph2d::physics::AreaEffector");
@@ -113,7 +119,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 21);
+        assert_eq!(reg.len(), 22);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -132,6 +138,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::AreaDrag").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaBuoyancy").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaFormDrag").is_some());
+        assert!(reg.get_by_name("ph2d::physics::PulleyWheel").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaTorque").is_some());
         assert!(
             reg.get_by_name("ph2d::physics::AreaForceWorldAxes")

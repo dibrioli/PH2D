@@ -376,22 +376,6 @@ fn paint_kind_params(
             );
         }
     }
-    if info.kind_tag == KIND_PULLEY {
-        // A talha. Antes do comprimento, porque é ela que diz o que o
-        // comprimento MEDE (`l1 + razão·l2`).
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "Ratio",
-            ids::INSP_JOINT_RATIO,
-        );
-    }
     if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD || info.kind_tag == KIND_PULLEY {
         // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
         // barra é o comprimento em si, e numa polia é a corda INTEIRA (a soma

@@ -427,9 +427,6 @@ pub struct InspectorJointInfo {
     pub stiffness: f32,
     pub damping: f32,
     pub max_length: f32,
-    /// **A razão da talha de uma polia** (W-Pulley): quanto o ramo B conta no
-    /// comprimento da corda. Adimensional — nenhuma conversão nesta fronteira.
-    pub ratio: f32,
     /// Which body slot has an ARMED canvas pick right now: `0` none, `1` A,
     /// `2` B. The §12 draws that slot's eyedropper pressed (accent) so the
     /// artist sees the picker is waiting for a click on a body. The shell owns
@@ -490,9 +487,6 @@ pub enum JointFieldEdit {
     Stiffness(f32),
     Damping(f32),
     MaxLength(f32),
-    /// **A razão da talha** — quanto o ramo B conta no comprimento da corda
-    /// (`l1 + razão·l2`). Adimensional, sem conversão.
-    Ratio(f32),
     BreakEnabled(bool),
     /// Newtons — no conversion (W-J7).
     BreakForce(f32),

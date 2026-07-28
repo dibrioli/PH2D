@@ -6,7 +6,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform, stable_name_id};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, JointKind, PhysicsJoint, PulleyWheel, RigidBody, WrapSide,
+};
 
 /// Monta as duas lanes.
 pub fn spawn(sim: &mut SimWorld) {
@@ -127,4 +129,21 @@ pub fn spawn(sim: &mut SimWorld) {
         },
         Transform::from_translation(Vec2::new(-64.0, 6.0)),
     ));
+    // As ROLDANAS (W-Pulley W1): entidades, com raio. O raio entra no hash por
+    // DOIS caminhos -- a tangencia (por onde a corda passa) e o ARCO (quanto dela
+    // existe), e o arco e o unico ponto do passe que chama um transcendental
+    // (`libm::atan2f`, pinado cross-OS pela lei 6). Uma lane de raio ZERO nao
+    // exercitaria nenhum dos dois.
+    for (order, x, radius) in [(0_u16, -64.0_f32, 0.4_f32), (1, -60.0, 0.25)] {
+        sim.world_mut().spawn((
+            Name::new(format!("C9 Pulley Wheel {}", order + 1)),
+            PulleyWheel {
+                rope: stable_name_id("C9 Pulley"),
+                order,
+                radius,
+                wrap: WrapSide::Auto,
+            },
+            Transform::from_translation(Vec2::new(x, 9.0)),
+        ));
+    }
 }

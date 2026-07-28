@@ -5,6 +5,7 @@
 //! `measure_pulley.rs`.
 
 use ph2d_physics::world::pulley::PulleyDesc;
+use ph2d_physics::world::rope_route::RopeWheel;
 use ph2d_physics::{BodyDesc, PhysicsWorld, RigidBodyHandle, ShapeDesc};
 use rapier2d::dynamics::RigidBodyType;
 
@@ -43,7 +44,16 @@ fn ball(x: f32, mass: f32) -> BodyDesc {
 
 /// Duas roldanas no alto, um corpo pendurado sob cada uma. `slack` alonga a
 /// corda além do vão para pedir uma corda FROUXA.
-fn rig(mass_a: f32, mass_b: f32, ratio: f32, slack: f32) -> (PhysicsWorld, PulleyDesc) {
+///
+/// ⚠️ **Roldanas de raio ZERO** — o modelo de PONTO que a v1 desta wave shipou, e
+/// que a rota reproduz exatamente. É a âncora de regressão: estes gates mediam a
+/// polia antes de ela ter raio, e continuam medindo os mesmos números.
+///
+/// O comprimento inclui o trecho ENTRE as roldanas (`2.0`, a distância entre
+/// elas), que o modelo de ponto não contava. É uma constante para roldanas
+/// paradas, então a dinâmica é a mesma — o número é que passou a descrever a
+/// corda inteira.
+fn rig(mass_a: f32, mass_b: f32, slack: f32) -> (PhysicsWorld, PulleyDesc) {
     let mut w = PhysicsWorld::new();
     let a = w.spawn_body(ball(-1.0, mass_a));
     let b = w.spawn_body(ball(1.0, mass_b));
@@ -53,13 +63,32 @@ fn rig(mass_a: f32, mass_b: f32, ratio: f32, slack: f32) -> (PhysicsWorld, Pulle
         body_b: b,
         local_a: [0.0, 0.0],
         local_b: [0.0, 0.0],
-        wheel_a: [-1.0, WHEEL_Y],
-        wheel_b: [1.0, WHEEL_Y],
-        ratio,
-        total_length: span + ratio * span + slack,
+        wheel_start: 0,
+        wheel_count: 2,
+        total_length: 2.0 * span + WHEEL_SPAN + slack,
     };
-    w.set_pulleys(vec![d]);
+    w.set_pulleys(vec![d], point_wheels());
     (w, d)
+}
+
+/// A distância entre as duas roldanas — corda que a rota conta e o modelo de
+/// ponto ignorava.
+const WHEEL_SPAN: f32 = 2.0;
+
+/// As duas roldanas do rig, como a arena as recebe.
+fn point_wheels() -> Vec<RopeWheel> {
+    vec![
+        RopeWheel {
+            centre: [-1.0, WHEEL_Y],
+            radius: 0.0,
+            side: 1,
+        },
+        RopeWheel {
+            centre: [1.0, WHEEL_Y],
+            radius: 0.0,
+            side: 1,
+        },
+    ]
 }
 
 fn y(w: &PhysicsWorld, h: RigidBodyHandle) -> f32 {
@@ -76,7 +105,7 @@ fn run(w: &mut PhysicsWorld, ticks: usize) {
 /// é o mesmo rig sem polia, onde os dois simplesmente caem.
 #[test]
 fn what_one_side_gains_the_other_loses() {
-    let (mut w, d) = rig(2.0, 1.0, 1.0, 0.0);
+    let (mut w, d) = rig(2.0, 1.0, 0.0);
     run(&mut w, 60);
     let fell = START_Y - y(&w, d.body_a);
     let rose = y(&w, d.body_b) - START_Y;
@@ -88,8 +117,8 @@ fn what_one_side_gains_the_other_loses() {
     );
 
     // O controle: sem polia os DOIS caem, e o lado leve nunca sobe.
-    let (mut c, cd) = rig(2.0, 1.0, 1.0, 0.0);
-    c.set_pulleys(Vec::new());
+    let (mut c, cd) = rig(2.0, 1.0, 0.0);
+    c.set_pulleys(Vec::new(), Vec::new());
     run(&mut c, 60);
     assert!(
         y(&c, cd.body_b) < START_Y,
@@ -101,9 +130,9 @@ fn what_one_side_gains_the_other_loses() {
 /// mundo que não tem polia nenhuma.
 #[test]
 fn a_slack_rope_leaves_the_bodies_in_free_fall() {
-    let (mut w, d) = rig(2.0, 1.0, 1.0, 10.0);
-    let (mut c, cd) = rig(2.0, 1.0, 1.0, 10.0);
-    c.set_pulleys(Vec::new());
+    let (mut w, d) = rig(2.0, 1.0, 10.0);
+    let (mut c, cd) = rig(2.0, 1.0, 10.0);
+    c.set_pulleys(Vec::new(), Vec::new());
     run(&mut w, 60);
     run(&mut c, 60);
     assert_eq!(
@@ -127,16 +156,18 @@ fn the_rope_pulls_and_never_pushes() {
         let b = w.spawn_body(ball(1.0, 1.0));
         if pulley {
             let span = WHEEL_Y - START_Y;
-            w.set_pulleys(vec![PulleyDesc {
-                body_a: a,
-                body_b: b,
-                local_a: [0.0, 0.0],
-                local_b: [0.0, 0.0],
-                wheel_a: [-1.0, WHEEL_Y],
-                wheel_b: [1.0, WHEEL_Y],
-                ratio: 1.0,
-                total_length: 2.0 * span,
-            }]);
+            w.set_pulleys(
+                vec![PulleyDesc {
+                    body_a: a,
+                    body_b: b,
+                    local_a: [0.0, 0.0],
+                    local_b: [0.0, 0.0],
+                    wheel_start: 0,
+                    wheel_count: 2,
+                    total_length: 2.0 * span + WHEEL_SPAN,
+                }],
+                point_wheels(),
+            );
         }
         run(&mut w, 20);
         (y(&w, a), y(&w, b))
@@ -148,21 +179,40 @@ fn the_rope_pulls_and_never_pushes() {
     );
 }
 
-/// **A razão é uma talha:** com `ratio = 2` o lado A anda o dobro do lado B.
+/// **A tensão numa corda única é UNIFORME — não há vantagem mecânica a ganhar de
+/// roldanas livres, e é por isso que o `ratio` saiu.**
+///
+/// A v1 desta wave tinha um `ratio` vendido como talha (`l1 + razão·l2 ≤ L0`) e
+/// ele descrevia uma corda que não existe: com uma corda só passando por rodas
+/// que giram soltas, os dois corpos sentem a MESMA força, quaisquer que sejam os
+/// diâmetros. Este gate afirma a física que ficou no lugar dele — **massas iguais
+/// se equilibram, e o que um lado desce o outro sobe na razão 1:1** —, e é o
+/// controle que denunciaria qualquer volta do multiplicador escondido.
+///
+/// ⚠️ A vantagem mecânica volta por onde ela vem no mundo: uma roldana montada
+/// num corpo que se MOVE (a cadernal móvel, W3) ou um tambor DIRIGIDO (W2). As
+/// duas são peças na cena, não um número no painel.
 #[test]
-fn the_ratio_is_a_block_and_tackle() {
-    for (ratio, tol) in [(1.0_f32, 0.01_f32), (2.0, 0.05), (3.0, 0.05)] {
-        let (mut w, d) = rig(4.0, 1.0, ratio, 0.0);
-        run(&mut w, 45);
-        let dya = START_Y - y(&w, d.body_a);
-        let dyb = y(&w, d.body_b) - START_Y;
-        assert!(dyb > 0.2, "razão {ratio}: o lado leve tem de subir: {dyb}");
-        let got = dya / dyb;
-        assert!(
-            (got - ratio).abs() < tol,
-            "razão {ratio}: mediu {got:.4} (A andou {dya:.4}, B andou {dyb:.4})"
-        );
-    }
+fn a_single_rope_over_free_wheels_has_no_mechanical_advantage() {
+    let (mut w, d) = rig(4.0, 1.0, 0.0);
+    run(&mut w, 45);
+    let dya = START_Y - y(&w, d.body_a);
+    let dyb = y(&w, d.body_b) - START_Y;
+    assert!(dyb > 0.2, "o lado leve tem de subir: {dyb}");
+    let ratio = dya / dyb;
+    assert!(
+        (ratio - 1.0).abs() < 0.01,
+        "um lado tem de andar o que o outro anda: {ratio:.4} (A {dya:.4}, B {dyb:.4})"
+    );
+    // E o equilíbrio: massas IGUAIS não se movem, o que uma talha de razão ≠ 1
+    // não faria.
+    let (mut balanced, bd) = rig(1.0, 1.0, 0.0);
+    run(&mut balanced, 45);
+    let drift = (START_Y - y(&balanced, bd.body_a)).abs();
+    assert!(
+        drift < 0.02,
+        "massas iguais numa corda única se equilibram: derivou {drift:.4} m"
+    );
 }
 
 /// **O esticamento não depende da CARGA** — a assinatura da massa efetiva exata.
@@ -173,7 +223,7 @@ fn the_ratio_is_a_block_and_tackle() {
 #[test]
 fn the_stretch_is_the_same_for_a_feather_and_for_a_ton() {
     let stretch = |m: f32| {
-        let (mut w, d) = rig(m, m, 1.0, 0.0);
+        let (mut w, d) = rig(m, m, 0.0);
         run(&mut w, 90);
         w.pulley_span(&d).unwrap() - d.total_length
     };
@@ -203,16 +253,18 @@ fn a_frozen_axis_is_infinite_mass_to_the_rope() {
         let a = w.spawn_body(fixed_side);
         let b = w.spawn_body(ball(1.0, 3.0));
         let span = WHEEL_Y - START_Y;
-        w.set_pulleys(vec![PulleyDesc {
-            body_a: a,
-            body_b: b,
-            local_a: [0.0, 0.0],
-            local_b: [0.0, 0.0],
-            wheel_a: [-1.0, WHEEL_Y],
-            wheel_b: [1.0, WHEEL_Y],
-            ratio: 1.0,
-            total_length: 2.0 * span,
-        }]);
+        w.set_pulleys(
+            vec![PulleyDesc {
+                body_a: a,
+                body_b: b,
+                local_a: [0.0, 0.0],
+                local_b: [0.0, 0.0],
+                wheel_start: 0,
+                wheel_count: 2,
+                total_length: 2.0 * span + WHEEL_SPAN,
+            }],
+            point_wheels(),
+        );
         run(&mut w, 45);
         (y(&w, a), y(&w, b))
     };
@@ -232,7 +284,7 @@ fn a_frozen_axis_is_infinite_mass_to_the_rope() {
 /// nomeando um handle morto que a arena pode reciclar.
 #[test]
 fn a_pulley_whose_body_is_gone_is_dropped() {
-    let (mut w, d) = rig(2.0, 1.0, 1.0, 0.0);
+    let (mut w, d) = rig(2.0, 1.0, 0.0);
     assert_eq!(w.pulleys().len(), 1);
     w.remove_body(d.body_b);
     assert!(w.pulleys().is_empty(), "a polia tem de cair com o corpo");
@@ -266,12 +318,11 @@ fn a_wall_is_infinite_mass_to_the_rope() {
             body_b: b,
             local_a: [0.0, 0.0],
             local_b: [0.0, 0.0],
-            wheel_a: [-1.0, WHEEL_Y],
-            wheel_b: [1.0, WHEEL_Y],
-            ratio: 1.0,
-            total_length: 2.0 * span,
+            wheel_start: 0,
+            wheel_count: 2,
+            total_length: 2.0 * span + WHEEL_SPAN,
         };
-        w.set_pulleys(vec![d]);
+        w.set_pulleys(vec![d], point_wheels());
         run(&mut w, 90);
         w.pulley_span(&d).unwrap() - d.total_length
     };
@@ -299,16 +350,18 @@ fn a_kinematic_body_is_a_winch() {
     let a = w.spawn_body(drum);
     let b = w.spawn_body(ball(1.0, 1.0));
     let span = WHEEL_Y - START_Y;
-    w.set_pulleys(vec![PulleyDesc {
-        body_a: a,
-        body_b: b,
-        local_a: [0.0, 0.0],
-        local_b: [0.0, 0.0],
-        wheel_a: [-1.0, WHEEL_Y],
-        wheel_b: [1.0, WHEEL_Y],
-        ratio: 1.0,
-        total_length: 2.0 * span,
-    }]);
+    w.set_pulleys(
+        vec![PulleyDesc {
+            body_a: a,
+            body_b: b,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: 2,
+            total_length: 2.0 * span + WHEEL_SPAN,
+        }],
+        point_wheels(),
+    );
     // A bobina DESCE: o ramo dela alonga, então a corda tem de encurtar o outro
     // — a carga sobe.
     for tick in 0..60 {
@@ -343,18 +396,20 @@ fn a_taut_rope_that_is_slackening_fast_still_never_pushes() {
         let b = w.spawn_body(up_b);
         if pulley {
             let span = WHEEL_Y - START_Y;
-            w.set_pulleys(vec![PulleyDesc {
-                body_a: a,
-                body_b: b,
-                local_a: [0.0, 0.0],
-                local_b: [0.0, 0.0],
-                wheel_a: [-1.0, WHEEL_Y],
-                wheel_b: [1.0, WHEEL_Y],
-                ratio: 1.0,
-                // Mal esticada: `C = +0,001` no primeiro sub-passo, e os dois
-                // corpos já subindo — a janela em que só o clamp responde.
-                total_length: 2.0 * span - 0.001,
-            }]);
+            w.set_pulleys(
+                vec![PulleyDesc {
+                    body_a: a,
+                    body_b: b,
+                    local_a: [0.0, 0.0],
+                    local_b: [0.0, 0.0],
+                    wheel_start: 0,
+                    wheel_count: 2,
+                    // Mal esticada: `C = +0,001` no primeiro sub-passo, e os dois
+                    // corpos já subindo — a janela em que só o clamp responde.
+                    total_length: 2.0 * span + WHEEL_SPAN - 0.001,
+                }],
+                point_wheels(),
+            );
         }
         run(&mut w, 20);
         (y(&w, a), y(&w, b))
@@ -382,16 +437,18 @@ fn the_winch_does_not_lag_further_the_faster_it_reels() {
         let a = w.spawn_body(drum);
         let b = w.spawn_body(ball(1.0, 1.0));
         let span = WHEEL_Y - START_Y;
-        w.set_pulleys(vec![PulleyDesc {
-            body_a: a,
-            body_b: b,
-            local_a: [0.0, 0.0],
-            local_b: [0.0, 0.0],
-            wheel_a: [-1.0, WHEEL_Y],
-            wheel_b: [1.0, WHEEL_Y],
-            ratio: 1.0,
-            total_length: 2.0 * span,
-        }]);
+        w.set_pulleys(
+            vec![PulleyDesc {
+                body_a: a,
+                body_b: b,
+                local_a: [0.0, 0.0],
+                local_b: [0.0, 0.0],
+                wheel_start: 0,
+                wheel_count: 2,
+                total_length: 2.0 * span + WHEEL_SPAN,
+            }],
+            point_wheels(),
+        );
         let dt = 1.0 / 60.0;
         for tick in 0..60 {
             w.set_next_kinematic_pose(a, -1.0, START_Y - speed * dt * (tick + 1) as f32, 0.0);

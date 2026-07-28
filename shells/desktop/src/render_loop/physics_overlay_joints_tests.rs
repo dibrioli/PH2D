@@ -48,10 +48,13 @@ pub(super) fn view(kind: JointKind) -> JointView {
         limits: None,
         motor_speed: None,
         length: None,
-        // Uma polia precisa das duas roldanas; todo outro tipo não tem nenhuma.
-        // Dadas para TODO kind pela mesma razão que o eixo abaixo: quem ignora,
-        // ignora, e o gate da corda quer o `Some` sem uma segunda fixture.
-        wheels: Some(([-1.0, 2.0], [1.0, 2.0])),
+        // Uma polia atravessa roldanas; todo outro tipo não tem nenhuma. A
+        // fixture declara DUAS para TODO kind pela mesma razão que o eixo abaixo:
+        // quem ignora, ignora, e o gate da corda as quer sem uma segunda fixture.
+        // A geometria delas vem do `WHEELS` abaixo, que é a arena que as views
+        // indexam.
+        wheel_start: 0,
+        wheel_count: 2,
         // Um Slider precisa do eixo resolvido; todo outro tipo não tem um. A
         // fixture o dá para TODO kind de propósito — quem ignora, ignora, e o
         // gate do trilho quer o `Some` sem montar uma segunda fixture.
@@ -71,8 +74,36 @@ pub(super) fn view(kind: JointKind) -> JointView {
     }
 }
 
+/// A arena de roldanas da fixture — duas rodas de raio VISÍVEL, acima dos dois
+/// corpos.
+///
+/// ⚠️ Raio ≠ 0 de propósito: com raio zero a corda passaria pelo centro, e o gate
+/// que afirma *ela toca a superfície* ficaria verde sobre o modelo que esta wave
+/// substituiu.
+pub(super) fn wheels() -> Vec<ph2d_physics_ecs::rope_route::RopeWheel> {
+    vec![
+        ph2d_physics_ecs::rope_route::RopeWheel {
+            centre: [-1.0, 2.0],
+            radius: 0.3,
+            side: -1,
+        },
+        ph2d_physics_ecs::rope_route::RopeWheel {
+            centre: [1.0, 2.0],
+            radius: 0.3,
+            side: -1,
+        },
+    ]
+}
+
 pub(super) fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
-    joint_marks(true, std::slice::from_ref(v), G, &camera(), window())
+    joint_marks(
+        true,
+        std::slice::from_ref(v),
+        &wheels(),
+        G,
+        &camera(),
+        window(),
+    )
 }
 
 /// Todos os pontos desenhados numa cor.
@@ -334,8 +365,16 @@ fn a_length_scales_with_the_world_and_an_angle_does_not() {
         height_world: 5.0, // metade da altura = 2× o zoom
         ..camera()
     };
-    let zoom_marks =
-        |v: &JointView| joint_marks(true, std::slice::from_ref(v), G, &zoomed, window());
+    let zoom_marks = |v: &JointView| {
+        joint_marks(
+            true,
+            std::slice::from_ref(v),
+            &wheels(),
+            G,
+            &zoomed,
+            window(),
+        )
+    };
 
     // ⚠️ O anel se mede pela ASSINATURA — MUITOS pontos a UM raio — e não pelo
     // raio máximo da banda. A 1ª versão pegava o máximo, e no fixture a linha
@@ -476,6 +515,7 @@ fn a_slack_rope_sags_along_gravity_and_a_taut_one_is_straight() {
     let zero_g = joint_marks(
         true,
         std::slice::from_ref(&slack),
+        &wheels(),
         [0.0, 0.0],
         &camera(),
         window(),
@@ -490,13 +530,23 @@ fn a_slack_rope_sags_along_gravity_and_a_taut_one_is_straight() {
 /// **Desligado desenha NADA** — o mesmo toggle que os colliders obedecem.
 #[test]
 fn the_toggle_silences_the_joint_marks_too() {
-    assert!(joint_marks(false, &[view(JointKind::Pin)], G, &camera(), window()).is_empty());
+    assert!(
+        joint_marks(
+            false,
+            &[view(JointKind::Pin)],
+            &wheels(),
+            G,
+            &camera(),
+            window()
+        )
+        .is_empty()
+    );
 }
 
 /// **Uma cena sem joints não custa nada.**
 #[test]
 fn no_joints_no_paths() {
-    assert!(joint_marks(true, &[], G, &camera(), window()).is_empty());
+    assert!(joint_marks(true, &[], &wheels(), G, &camera(), window()).is_empty());
 }
 
 /// **Um pino em repouso ainda desenha alguma coisa.**

@@ -148,10 +148,3 @@ pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 /// and re-creating the joint.
 pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
 pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
-
-/// **A vantagem mecânica de uma POLIA** (W-Pulley) — `l1 + razão·l2 ≤ L0`.
-///
-/// Só uma [`ph2d_physics_ecs::JointKind::Pulley`] a pinta. `1` é a polia simples
-/// (o que um lado desce o outro sobe); `2` é a talha, em que o lado A anda o
-/// dobro e ergue o dobro.
-pub const INSP_JOINT_RATIO: NodeId = hash_node_id("insp_joint_ratio");

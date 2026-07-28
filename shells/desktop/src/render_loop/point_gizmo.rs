@@ -176,15 +176,10 @@ pub(super) fn joint_param_handles(
                 world: length_handle_world(v.anchor_a, v.anchor_b, len),
             });
         }
-        // As ROLDANAS. Sem elas os dois pontos de mundo de uma polia seriam
-        // semeados na criação e nunca mais alcançáveis — não há row de Inspector
-        // para eles (o `Transform` do joint é a ÂNCORA), então o canvas é o único
-        // gesto que existe.
-        if let Some((wa, wb)) = v.wheels {
-            for (kind, world) in [(PointHandleKind::WheelA, wa), (PointHandleKind::WheelB, wb)] {
-                out.push(PointHandle { key, kind, world });
-            }
-        }
+        // ⚠️ **As roldanas NÃO são alças do joint** (W-Pulley W1): cada uma é
+        // uma entidade, e as alças dela — centro e aro — são publicadas quando
+        // ELA está selecionada, por `wheel_handles`. Eram alças da corda enquanto
+        // eram dois campos dela.
     }
     out.sort_by_key(|h| (h.key, h.kind));
     out
@@ -227,6 +222,55 @@ pub(super) fn build_point_view(
         ),
         inert,
     })
+}
+
+/// **As duas alças da roldana SELECIONADA** — o centro e o aro.
+///
+/// O pedido (6) do artista: *"um ponto central para deslocamento e um ponto no
+/// raio externo para definir o tamanho"*. Uma roldana não tem sprite, então o
+/// gizmo de caixa não a alcança — é o mesmo vão que o dot da âncora de joint
+/// cobre, e por isso o primitivo é o mesmo.
+///
+/// ⚠️ **Só a roldana SELECIONADA**, ao contrário das alças de joint, que todo
+/// joint publica: uma corda com seis roldanas publicaria doze alças, e o aro de
+/// uma cairia sobre o centro da vizinha. Selecionar é o que diz *qual*.
+///
+/// A geometria vem do estado AUTORADO (o `Transform` e o componente), não da
+/// arena do solver, e aqui isso é o certo: estas alças autoram aqueles dois
+/// números, e ler a cópia do solver poria um frame de atraso entre o dedo e o
+/// desenho.
+#[must_use]
+pub(super) fn wheel_handles(
+    sim: &SimWorld,
+    selection: Option<u64>,
+    show_overlay: bool,
+    at_rest: bool,
+) -> Vec<PointHandle> {
+    let mut out = Vec::new();
+    if !show_overlay || !at_rest {
+        return out;
+    }
+    if let Some(e) = selection.map(Entity::from_bits)
+        && let (Some(w), Some(t)) = (
+            sim.world().get::<ph2d_physics_ecs::PulleyWheel>(e),
+            sim.world().get::<ph2d_ecs::Transform>(e),
+        )
+    {
+        let centre = [t.translation.x, t.translation.y];
+        out.push(PointHandle {
+            key: e.to_bits(),
+            kind: PointHandleKind::WheelCentre,
+            world: centre,
+        });
+        // O aro à DIREITA do centro: uma direção fixa, para a alça não saltar
+        // quando o raio passa por zero (o ângulo de um raio nulo é indefinido).
+        out.push(PointHandle {
+            key: e.to_bits(),
+            kind: PointHandleKind::WheelRim,
+            world: [centre[0] + w.clamped().radius, centre[1]],
+        });
+    }
+    out
 }
 
 /// The joint a hit id belongs to, and which end — read back from the map the

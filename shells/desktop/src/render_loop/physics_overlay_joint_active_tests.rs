@@ -29,7 +29,8 @@ fn view(active: bool) -> JointView {
         limits: Some([-0.7, 0.7]),
         motor_speed: Some(2.0),
         length: None,
-        wheels: None,
+        wheel_start: 0,
+        wheel_count: 0,
         axis: None,
         broken: false,
         active,
@@ -49,7 +50,14 @@ fn segments(paths: &[(BezPath, [f32; 4])], rgba: [f32; 4]) -> usize {
 }
 
 fn marks(active: bool) -> Vec<(BezPath, [f32; 4])> {
-    joint_marks(true, &[view(active)], [0.0, -9.81], &camera(), window())
+    joint_marks(
+        true,
+        &[view(active)],
+        &wheels(),
+        [0.0, -9.81],
+        &camera(),
+        window(),
+    )
 }
 
 /// **Um joint desligado desenha a MESMA figura, apagada — e nada dele fica

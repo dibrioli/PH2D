@@ -1,8 +1,20 @@
-//! **A POLIA** — a corda que passa por duas roldanas (ADR-0131, W-Pulley).
+//! **A POLIA** — a corda que passa por N roldanas (ADR-0131, W-Pulley).
 //!
-//! Dois corpos, dois pontos fixos de mundo (as roldanas) e uma corda que os une:
-//! `l1 + razão·l2 ≤ L0`. Puxar um lado ergue o outro; com `razão ≠ 1` é uma
-//! talha, e o lado de razão maior anda menos e levanta mais.
+//! Dois corpos, uma corda, e no meio dela qualquer número de roldanas com raio
+//! próprio: `L(rota) ≤ L0`. Puxar um lado ergue o outro. A geometria da rota —
+//! por onde a corda passa, quanto dela existe — mora inteira em
+//! [`super::rope_route`]; aqui fica só a **dinâmica**.
+//!
+//! # Não há `ratio`, e a razão é física
+//!
+//! A v1 desta wave carregava um `ratio` (`l1 + razão·l2 ≤ L0`) vendido como
+//! vantagem mecânica. **Ele descrevia uma corda que não existe:** numa corda
+//! única sobre roldanas livres a tensão é **uniforme**, então os dois corpos
+//! sentem a MESMA força e a vantagem é **1**, quaisquer que sejam os diâmetros.
+//! Aquela lei é, de fato, a de uma talha **diferencial** (dois tambores de raios
+//! diferentes no mesmo eixo) *com os tambores invisíveis* — um número sem peça
+//! na cena. A vantagem verdadeira volta por onde ela vem no mundo: uma roldana
+//! **montada num corpo que se move** (W3) ou um **tambor dirigido** (W2).
 //!
 //! # Por que isto NÃO é um joint do rapier, e não foi escolha
 //!
@@ -27,13 +39,19 @@
 //! exata** do Jacobiano — não de um ganho afinado à mão:
 //!
 //! ```text
-//! C     = l1 + razão·l2 − L0                        (a violação, em metros)
-//! Ċ     = u1·v(p1) + razão·u2·v(p2)                  (a taxa dela)
-//! k     = uᵀ M⁻¹ u  +  razão²·(uᵀ M⁻¹ u)  +  I⁻¹(r×u)² …
+//! C     = L(rota) − L0                              (a violação, em metros)
+//! Ċ     = u1·v(p1) + u2·v(p2)                        (a taxa dela)
+//! k     = uᵀ M⁻¹ u  +  uᵀ M⁻¹ u  +  I⁻¹(r×u)² …
 //! λ     = (Ċ + β·C/dt) / k                           , λ ≥ 0
 //! ```
 //!
-//! e o impulso é `−λ·u1` em `p1` e `−razão·λ·u2` em `p2`. Como `λ` é dividido
+//! ⚠️ **`u` é o versor do TRECHO que chega ao corpo, e o ARCO não entra no
+//! Jacobiano** — o ponto de tangência desliza quando a âncora se move, e a
+//! variação do arco cancela a do trecho (teorema do envelope; a derivação está
+//! no cabeçalho da [`super::rope_route`]). É por isso que N roldanas COM raio
+//! custam ao kernel exatamente o que duas de raio zero custavam.
+//!
+//! e o impulso é `−λ·u1` em `p1` e `−λ·u2` em `p2`. Como `λ` é dividido
 //! pela massa efetiva **verdadeira**, um passo o zera: não há ganho a estourar,
 //! e a corda segura igual com um corpo de 0,1 kg ou de 100 kg. É a mesma razão
 //! pela qual a mão é um joint e não um laço de força — só que aqui o solver não
@@ -58,16 +76,23 @@
 //! vez de ser resolvido junto com eles. O erro residual é medido em
 //! `tests/measure_pulley.rs` e nomeado no `PULLEY_BIAS`.
 
+use super::rope_route::{self, RopeWheel, Tangent};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::na::{Point2, Vector2};
 
-/// Uma polia viva: os dois corpos, onde a corda se prende em cada um, onde estão
-/// as duas roldanas, a vantagem mecânica e o comprimento da corda.
+/// Uma polia viva: os dois corpos, onde a corda se prende em cada um, quais
+/// roldanas ela atravessa e quanto de corda existe.
 ///
 /// Os pontos de amarração são **body-local** pela mesma razão que as âncoras de
 /// joint são (W-AnchorFollow): guardar mundo faria o nó caminhar pelo corpo
 /// conforme ele gira. As **roldanas são mundo** porque é isso que uma roldana é —
 /// um ponto pregado no cenário.
+///
+/// ⚠️ **As roldanas vivem numa ARENA à parte** (`wheel_start`/`wheel_count`
+/// indexam o `&[RopeWheel]` que anda junto com a tabela), e não num `Vec` aqui
+/// dentro: o passe roda por sub-passo sobre uma tabela que a ponte re-instala
+/// todo dispatch, e um `Vec` por polia seria uma alocação por corda por frame —
+/// além de tirar o `Copy`, que é o que deixa a tabela ser trocada com um `swap`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PulleyDesc {
     /// O corpo do primeiro ramo.
@@ -78,24 +103,30 @@ pub struct PulleyDesc {
     pub local_a: [f32; 2],
     /// Onde a corda se amarra em B, no frame local dele.
     pub local_b: [f32; 2],
-    /// A roldana do ramo A, em **mundo**.
-    pub wheel_a: [f32; 2],
-    /// A roldana do ramo B, em **mundo**.
-    pub wheel_b: [f32; 2],
-    /// **A vantagem mecânica da talha:** `l1 + razão·l2 ≤ L0`.
-    ///
-    /// A regra em uma frase: **o lado B anda `1/razão` do que A anda, e por isso
-    /// precisa pesar `razão` vezes mais para equilibrá-lo.** A vantagem de B é
-    /// portanto `1/razão`, e ela vem de uma razão **menor** que 1 —
-    /// `0,25` faz um contrapeso de 1 kg erguer 3 kg descendo quatro vezes mais
-    /// caminho, que é exatamente o que uma talha troca.
-    ///
-    /// ⚠️ **Escrevi isto ao contrário na primeira versão** (*"2 é a talha, o lado A
-    /// anda o dobro e ergue o dobro"*) e a cena de smoke mediu o oposto: com razão 2
-    /// a carga pesada não só ganhava como caía o DOBRO. `1` é a polia simples.
-    pub ratio: f32,
-    /// `L0` — o comprimento total da corda, em metros de `l1 + razão·l2`.
+    /// Índice da primeira roldana desta corda na arena.
+    pub wheel_start: u32,
+    /// Quantas roldanas ela atravessa, na ordem A → B. **Zero é legítimo** — é
+    /// uma corda reta entre os dois corpos, que é o que uma polia sem roldana
+    /// nenhuma de fato é.
+    pub wheel_count: u32,
+    /// `L0` — o comprimento total da corda, em metros de rota (trechos + arcos).
     pub total_length: f32,
+}
+
+impl PulleyDesc {
+    /// As roldanas desta corda dentro da arena.
+    ///
+    /// Uma faixa fora do fim devolve vazio em vez de entrar em pânico: a tabela e
+    /// a arena são instaladas juntas pela ponte, então isto não deveria acontecer
+    /// — e *deveria* é a palavra que precede um índice fora de faixa no caminho
+    /// quente.
+    #[must_use]
+    pub fn wheels<'a>(&self, arena: &'a [RopeWheel]) -> &'a [RopeWheel] {
+        let start = self.wheel_start as usize;
+        arena
+            .get(start..start + self.wheel_count as usize)
+            .unwrap_or(&[])
+    }
 }
 
 /// Fração do erro de posição corrigida por sub-passo (Baumgarte).
@@ -143,99 +174,114 @@ pub struct PulleyDesc {
 /// que ninguém re-mede.
 pub const PULLEY_BIAS: f32 = 0.2;
 
-/// Abaixo disto um ramo não tem direção definida (o corpo está EM CIMA da
-/// roldana), e normalizar produziria `NaN` que envenenaria a pose e o hash C9.
-/// O ramo é simplesmente pulado — uma corda de comprimento zero não puxa para
-/// lado nenhum, o que é a resposta certa e não um caso especial.
-const MIN_BRANCH: f32 = 1.0e-4;
-
 /// **Impor as polias**, uma vez por sub-passo.
 ///
 /// No-op para todo mundo sem polia (o laço não roda), que é o que mantém isto
-/// byte-neutro para toda cena que já existia.
-pub fn apply(bodies: &mut RigidBodySet, pulleys: &[PulleyDesc], dt: f32, bias: f32) {
+/// byte-neutro para toda cena que já existia. `scratch` é do chamador porque a
+/// rota escreve `N+1` trechos por corda por sub-passo — alocá-los aqui apareceria
+/// no gate de zero-alloc do caminho quente.
+pub fn apply(
+    bodies: &mut RigidBodySet,
+    pulleys: &[PulleyDesc],
+    arena: &[RopeWheel],
+    scratch: &mut Vec<Tangent>,
+    dt: f32,
+    bias: f32,
+) {
     if pulleys.is_empty() || dt <= 0.0 {
         return;
     }
     for p in pulleys {
-        let Some(branch_a) = branch(bodies, p.body_a, p.local_a, p.wheel_a) else {
+        let Some(a) = end(bodies, p.body_a, p.local_a) else {
             continue;
         };
-        let Some(branch_b) = branch(bodies, p.body_b, p.local_b, p.wheel_b) else {
+        let Some(b) = end(bodies, p.body_b, p.local_b) else {
             continue;
         };
-        let ratio = p.ratio;
+        // A rota inteira, contra a pose VIVA dos dois corpos. `None` = algum
+        // trecho é degenerado (o corpo está em cima de uma roldana, duas rodas se
+        // tocam) — a corda inteira é pulada, e essa é a MESMA recusa que o modelo
+        // de ponto fazia, pela mesma razão: meia rota é pior que nenhuma.
+        let Some(route) = rope_route::route(
+            [a.point.x, a.point.y],
+            [b.point.x, b.point.y],
+            p.wheels(arena),
+            scratch,
+        ) else {
+            continue;
+        };
+        let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
+        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]);
         // A violação. `C ≤ 0` é corda frouxa: uma corda não empurra, então não
         // há nada a fazer — e sair aqui é o que deixa um contrapeso pousado no
         // chão em paz.
-        let c = branch_a.length + ratio * branch_b.length - p.total_length;
+        let c = route.length - p.total_length;
         if c <= 0.0 {
             continue;
         }
-        // A massa efetiva do Jacobiano. `ratio²` no segundo ramo porque é assim
-        // que ele entra em `C`.
-        let k = branch_a.k + ratio * ratio * branch_b.k;
+        let k = a.k(dir_a) + b.k(dir_b);
         if k <= f32::EPSILON {
             continue;
         }
-        let c_dot = branch_a.rate + ratio * branch_b.rate;
+        let c_dot = a.rate(dir_a) + b.rate(dir_b);
         // Só PUXA: `λ` negativo seria a corda empurrando o corpo para longe da
         // roldana, que é a única coisa que uma corda não sabe fazer.
         let lambda = (c_dot + bias * c / dt) / k;
         if lambda <= 0.0 {
             continue;
         }
-        push(bodies, p.body_a, branch_a.point, -lambda, branch_a.dir);
-        push(
-            bodies,
-            p.body_b,
-            branch_b.point,
-            -lambda * ratio,
-            branch_b.dir,
-        );
+        push(bodies, p.body_a, a.point, -lambda, dir_a);
+        push(bodies, p.body_b, b.point, -lambda, dir_b);
     }
 }
 
-/// Um ramo da corda, resolvido contra a pose VIVA do corpo.
-struct Branch {
+/// Uma ponta da corda, resolvida contra a pose VIVA do corpo.
+///
+/// ⚠️ **Ela não conhece direção nenhuma**, e é isso que a separa do `Branch` do
+/// modelo de ponto: com raio, quem decide a direção do trecho é a ROTA (o ponto
+/// de tangência, não o centro da roldana), então a ponta guarda só o que é fato
+/// do CORPO e responde `rate`/`k` para o versor que a rota entregar.
+struct End {
     /// Onde a corda se prende, em mundo.
     point: Point2<f32>,
-    /// Da roldana para o ponto de amarração, unitário.
-    dir: Vector2<f32>,
-    /// `|point − roldana|`.
-    length: f32,
-    /// A contribuição deste ramo para `Ċ`.
-    rate: f32,
-    /// A contribuição deste ramo para a massa efetiva.
-    k: f32,
+    /// Do centro de massa para o ponto de amarração — o braço de alavanca.
+    r: Vector2<f32>,
+    /// A velocidade DO PONTO (`v + ω × r`), não a do corpo.
+    v: Vector2<f32>,
+    /// A inversa de massa efetiva, por eixo. Zero para corpo não-dinâmico.
+    inv_m: Vector2<f32>,
+    /// A inversa de inércia efetiva. Zero para corpo não-dinâmico.
+    inv_i: f32,
 }
 
-/// Resolver um ramo. `None` quando o corpo sumiu ou quando o ramo é curto demais
-/// para ter direção.
-fn branch(
-    bodies: &RigidBodySet,
-    handle: RigidBodyHandle,
-    local: [f32; 2],
-    wheel: [f32; 2],
-) -> Option<Branch> {
+impl End {
+    /// A contribuição desta ponta para `Ċ`.
+    fn rate(&self, dir: Vector2<f32>) -> f32 {
+        self.v.dot(&dir)
+    }
+
+    /// A contribuição desta ponta para a massa efetiva.
+    ///
+    /// ⚠️ Forma QUADRÁTICA sobre a inversa de massa por-eixo, porque é o
+    /// `effective_inv_mass` que carrega o Freeze X/Y (cabeçalho do módulo).
+    fn k(&self, dir: Vector2<f32>) -> f32 {
+        let cross = self.r.x * dir.y - self.r.y * dir.x;
+        dir.x * dir.x * self.inv_m.x + dir.y * dir.y * self.inv_m.y + self.inv_i * cross * cross
+    }
+}
+
+/// Resolver uma ponta. `None` quando o corpo sumiu.
+fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Option<End> {
     let body = bodies.get(handle)?;
     let point = body.position() * Point2::new(local[0], local[1]);
-    let d = point - Point2::new(wheel[0], wheel[1]);
-    let length = d.norm();
-    if length < MIN_BRANCH {
-        return None;
-    }
-    let dir = d / length;
     // `r` é medido do CENTRO DE MASSA, não da origem do corpo: é em torno dele
     // que o corpo gira, e usar a origem daria o braço de alavanca errado em todo
     // corpo cujo collider tem offset (W-Offset).
-    let com = body.center_of_mass();
-    let r = point - com;
+    let r = point - body.center_of_mass();
     let angvel = body.angvel();
     // A velocidade do PONTO, não a do corpo: `v + ω × r` (em 2D, `ω × r` é
     // `(−ω·r.y, ω·r.x)`).
-    let v_point = body.linvel() + Vector2::new(-angvel * r.y, angvel * r.x);
-    let rate = v_point.dot(&dir);
+    let v = body.linvel() + Vector2::new(-angvel * r.y, angvel * r.x);
     // ⚠️ **Um corpo não-dinâmico é massa INFINITA para a corda, e o rapier não
     // diz isso pelas mass properties.** Um corpo `Fixed` guarda o
     // `effective_inv_mass` que os colliders dele deram — medido, uma parede de
@@ -246,27 +292,25 @@ fn branch(
     // do eixo congelado nasceu VERMELHO exatamente por isso — o caso `lock_y`
     // estava certo e o caso PAREDE, errado.
     //
-    // A velocidade do ponto (`rate`) NÃO é zerada junto, e a diferença é uma
+    // A velocidade do ponto (`v`) NÃO é zerada junto, e a diferença é uma
     // feature: um corpo **kinematic** é massa infinita (a corda não o move) mas
     // TEM movimento próprio, então uma bobina animada por curva vira um guincho
     // de graça.
-    let k = if body.is_dynamic() {
+    let (inv_m, inv_i) = if body.is_dynamic() {
         let mp = body.mass_properties();
-        // ⚠️ Forma QUADRÁTICA sobre a inversa de massa por-eixo, porque é o
-        // `effective_inv_mass` que carrega o Freeze X/Y (cabeçalho do módulo).
-        let inv_m = mp.effective_inv_mass;
-        let inv_i = mp.effective_world_inv_inertia_sqrt * mp.effective_world_inv_inertia_sqrt;
-        let cross = r.x * dir.y - r.y * dir.x;
-        dir.x * dir.x * inv_m.x + dir.y * dir.y * inv_m.y + inv_i * cross * cross
+        (
+            mp.effective_inv_mass,
+            mp.effective_world_inv_inertia_sqrt * mp.effective_world_inv_inertia_sqrt,
+        )
     } else {
-        0.0
+        (Vector2::zeros(), 0.0)
     };
-    Some(Branch {
+    Some(End {
         point,
-        dir,
-        length,
-        rate,
-        k,
+        r,
+        v,
+        inv_m,
+        inv_i,
     })
 }
 
@@ -297,8 +341,9 @@ impl super::PhysicsWorld {
     /// the bridge re-derives the whole set from the authored components every
     /// dispatch (the same shape the joint reconcile has), so an incremental API
     /// would need a removal door whose only caller would be a diff nobody keeps.
-    pub fn set_pulleys(&mut self, pulleys: Vec<PulleyDesc>) {
+    pub fn set_pulleys(&mut self, pulleys: Vec<PulleyDesc>, wheels: Vec<RopeWheel>) {
         self.pulleys = pulleys;
+        self.pulley_wheels = wheels;
     }
 
     /// Sweep door for the table on [`PULLEY_BIAS`] — see the field's own note.
@@ -312,8 +357,9 @@ impl super::PhysicsWorld {
     /// lista num scratch próprio e troca, então o caso comum não aloca nada — o
     /// que o gate de zero-alloc do caminho quente exige. `set_pulleys` fica para
     /// fixtures, onde a alocação não importa e a leitura é mais direta.
-    pub fn swap_pulleys(&mut self, other: &mut Vec<PulleyDesc>) {
+    pub fn swap_pulleys(&mut self, other: &mut Vec<PulleyDesc>, wheels: &mut Vec<RopeWheel>) {
         std::mem::swap(&mut self.pulleys, other);
+        std::mem::swap(&mut self.pulley_wheels, wheels);
     }
 
     /// The live pulleys — what the overlay draws the rope from.
@@ -322,27 +368,52 @@ impl super::PhysicsWorld {
         &self.pulleys
     }
 
-    /// A massa efetiva de cada ramo — diagnóstico para as tabelas de
+    /// A arena de roldanas que as faixas de [`PulleyDesc`] indexam.
+    #[must_use]
+    pub fn pulley_wheels(&self) -> &[RopeWheel] {
+        &self.pulley_wheels
+    }
+
+    /// A massa efetiva de cada ponta — diagnóstico para as tabelas de
     /// `measure_pulley.rs`, que precisam distinguir *quanto* cada lado absorve
     /// do *onde* ele está.
     #[must_use]
     pub fn pulley_branch_k(&self, desc: &PulleyDesc) -> Option<(f32, f32)> {
-        let a = branch(&self.bodies, desc.body_a, desc.local_a, desc.wheel_a)?;
-        let b = branch(&self.bodies, desc.body_b, desc.local_b, desc.wheel_b)?;
-        Some((a.k, b.k))
+        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
+        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
+        let mut scratch = Vec::new();
+        let r = rope_route::route(
+            [a.point.x, a.point.y],
+            [b.point.x, b.point.y],
+            desc.wheels(&self.pulley_wheels),
+            &mut scratch,
+        )?;
+        Some((
+            a.k(Vector2::new(r.dir_a[0], r.dir_a[1])),
+            b.k(Vector2::new(r.dir_b[0], r.dir_b[1])),
+        ))
     }
 
-    /// `l1 + ratio·l2` for a pulley **as it stands now**, so a caller can seed
-    /// `total_length` from the rest pose instead of asking the artist to measure
-    /// a rope with a ruler.
+    /// O comprimento de rota de uma polia **como ela está agora**, para o
+    /// chamador semear `total_length` da pose de repouso em vez de pedir ao
+    /// artista que meça uma corda com régua.
     ///
-    /// `None` when either branch is degenerate — the same refusal `apply` makes,
-    /// asked through the same door so a seed can never name a length the pass
-    /// would then decline to hold.
+    /// `None` quando a rota é degenerada — a mesma recusa que o `apply` faz,
+    /// perguntada pela mesma porta, para que um semeio nunca nomeie um
+    /// comprimento que o passe depois se recuse a segurar.
     #[must_use]
     pub fn pulley_span(&self, desc: &PulleyDesc) -> Option<f32> {
-        let a = branch(&self.bodies, desc.body_a, desc.local_a, desc.wheel_a)?;
-        let b = branch(&self.bodies, desc.body_b, desc.local_b, desc.wheel_b)?;
-        Some(a.length + desc.ratio * b.length)
+        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
+        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
+        let mut scratch = Vec::new();
+        Some(
+            rope_route::route(
+                [a.point.x, a.point.y],
+                [b.point.x, b.point.y],
+                desc.wheels(&self.pulley_wheels),
+                &mut scratch,
+            )?
+            .length,
+        )
     }
 }

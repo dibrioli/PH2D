@@ -455,7 +455,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // CAMPOS apendados a um struct que o postcard codifica POSICIONALMENTE, então um
         // blob v39 tem o comprimento errado e todo joint de todo projeto salvo decodificaria
         // como outra coisa. A variante `Pulley` viaja junto e seria só cortesia sozinha.
-        (40, 12, 13),
+        // PROJECT 40→41: os MESMOS três campos SAÍRAM (W-Pulley W1). Uma roldana virou
+        // ENTIDADE (`PulleyWheel`), e um componente novo não custaria bump nenhum — o que
+        // custa é a REMOÇÃO: postcard é posicional, então um blob v40 tem três campos a
+        // mais e todo joint salvo leria os seguintes deslocados. Bump por remover, pelo
+        // mesmo motivo que se bumpa por apendar.
+        (41, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

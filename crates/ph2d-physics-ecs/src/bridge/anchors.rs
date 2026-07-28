@@ -146,36 +146,6 @@ impl PhysicsBridge {
         }
     }
 
-    /// **Mover uma ROLDANA de polia** para um ponto de MUNDO.
-    ///
-    /// Irmã de [`Self::set_joint_anchor_world`], e a diferença entre as duas é o
-    /// que uma roldana É: um ponto pregado no cenário, que não pertence a corpo
-    /// nenhum. Por isso não há conversão para o frame de um corpo aqui — o ponto
-    /// é guardado como veio — e por isso o gesto **não tem ímã** para os pontos
-    /// do collider: não há collider a que ela se cole.
-    ///
-    /// Escrever a roldana também **não** re-arma o `anchored`: mover uma roldana
-    /// não é repor o pivô, e re-semear jogaria fora exatamente o número que o
-    /// artista acabou de autorar.
-    ///
-    /// `false` quando a entidade não é um joint.
-    pub fn set_joint_wheel_world(
-        &self,
-        sim: &mut SimWorld,
-        joint: Entity,
-        side: JointSide,
-        world: [f32; 2],
-    ) -> bool {
-        let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(joint) else {
-            return false;
-        };
-        match side {
-            JointSide::A => j.wheel_a = world,
-            JointSide::B => j.wheel_b = world,
-        }
-        true
-    }
-
     /// **Put this side's anchor at a world point.** Returns whether it landed.
     ///
     /// Converts against the body's **rest** pose — the same conversion the seed

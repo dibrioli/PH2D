@@ -75,12 +75,21 @@ pub struct JointView {
     /// Dois campos seriam duas respostas para uma geometria, e o desenhista
     /// teria de escolher entre elas por um `match` que o `kind` já fez.
     pub length: Option<f32>,
-    /// **Pulley:** as duas roldanas em MUNDO, ou `None` para todo outro tipo.
+    /// **Pulley:** quantas roldanas esta corda atravessa.
     ///
-    /// Sem elas o desenho não teria como mostrar uma polia: a corda dela não vai
-    /// de âncora a âncora, ela SOBE até uma roldana, atravessa, e desce até a
-    /// outra ponta. Um span reto A→B descreveria uma corda que não existe.
-    pub wheels: Option<([f32; 2], [f32; 2])>,
+    /// ⚠️ **A view não CARREGA as roldanas**, e a razão é que elas deixaram de
+    /// ser duas: com N delas um campo aqui seria um `Vec` numa struct `Copy` que
+    /// é iterada por frame. Quem quer a geometria pergunta a
+    /// [`PhysicsBridge::rope_wheels`], que devolve a fatia que o SOLVER está
+    /// usando — uma lista, uma verdade, como o `pulley_records` já é para o resto
+    /// da polia.
+    ///
+    /// A FAIXA fica aqui — dois inteiros, que mantêm a struct `Copy` — e a
+    /// geometria vem do [`PhysicsBridge::pulley_wheel_arena`], que é a mesma
+    /// fatia que o SOLVER está usando.
+    pub wheel_start: u32,
+    /// Quantas roldanas esta corda atravessa. `0` é uma corda reta.
+    pub wheel_count: u32,
     /// **Slider:** a direção do trilho em MUNDO (unitária), ou `None` para todo
     /// outro tipo — que não tem eixo, então não oferece um (o padrão do
     /// `length` acima).
@@ -171,6 +180,47 @@ impl PhysicsBridge {
         self.joint_views_of_joints().chain(self.pulley_views())
     }
 
+    /// **A arena de roldanas** que as faixas das views indexam.
+    ///
+    /// A fatia que o SOLVER está usando — não uma re-derivação a partir dos
+    /// componentes —, pelo mesmo motivo que as âncoras vêm do solver e não do
+    /// `Transform` autorado: um segundo cálculo desenharia a corda onde ela
+    /// **não** está, e ninguém lê número numa screenshot.
+    #[must_use]
+    pub fn pulley_wheel_arena(&self) -> &[ph2d_physics::world::rope_route::RopeWheel] {
+        self.world.pulley_wheels()
+    }
+
+    /// **As roldanas desta corda** — a entidade de cada uma e a geometria que o
+    /// SOLVER está usando.
+    ///
+    /// A porta única do desenho e das alças. Ela devolve a fatia da arena que a
+    /// ponte acabou de instalar (não uma re-derivação a partir dos componentes),
+    /// pelo mesmo motivo que as âncoras vêm do solver e não do `Transform`
+    /// autorado: um segundo cálculo desenharia a corda onde ela **não** está, e
+    /// ninguém lê número numa screenshot.
+    ///
+    /// Vazio para toda entidade que não é uma polia viva.
+    pub fn rope_wheels(
+        &self,
+        rope: ph2d_ecs::Entity,
+    ) -> impl Iterator<Item = (ph2d_ecs::Entity, ph2d_physics::world::rope_route::RopeWheel)> + '_
+    {
+        let range = self
+            .pulley_records
+            .iter()
+            .find(|r| r.entity == rope)
+            .map_or(0..0, |r| {
+                let s = r.desc.wheel_start as usize;
+                s..s + r.desc.wheel_count as usize
+            });
+        let arena = self.world.pulley_wheels();
+        let entities = &self.wheel_entities;
+        range
+            .filter(move |&i| i < arena.len() && i < entities.len())
+            .map(move |i| (entities[i], arena[i]))
+    }
+
     /// As views das POLIAS, que não vivem no `ImpulseJointSet`.
     ///
     /// Encadeada na `joint_views` em vez de exposta à parte porque para quem
@@ -207,7 +257,8 @@ impl PhysicsBridge {
                 limits: None,
                 motor_speed: None,
                 length: Some(r.desc.total_length),
-                wheels: Some((r.desc.wheel_a, r.desc.wheel_b)),
+                wheel_start: r.desc.wheel_start,
+                wheel_count: r.desc.wheel_count,
                 axis: None,
                 // Uma polia não parte (`JointKind::can_break`): nada mede a
                 // reação dela, então não há ruptura a desenhar.
@@ -267,7 +318,8 @@ impl PhysicsBridge {
                 limits: j.rest.limits,
                 motor_speed: j.rest.motor.map(|m| m.speed),
                 // Só uma polia tem roldanas — o padrão do `axis`/`length`.
-                wheels: None,
+                wheel_start: 0,
+                wheel_count: 0,
                 // Pela porta única `length_field`: o desenho, o gesto de criar
                 // e a escrita do anel têm de concordar sobre QUAL campo carrega
                 // o comprimento deste tipo, e três respostas independentes é

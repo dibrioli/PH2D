@@ -439,15 +439,16 @@ fn every_kind_with_a_length_offers_the_ring_to_grab() {
     }
 }
 
-/// **Uma polia oferece DUAS roldanas e NENHUM anel de comprimento.**
+/// **Uma polia NÃO oferece anel de comprimento, e as alças dela são da RODA.**
 ///
-/// As duas metades são a mesma decisão vista dos dois lados: uma polia tem
-/// comprimento (a corda) que **não** é a distância entre as âncoras, então o
-/// anel — que é um raio em volta de A — descreveria uma distância que não existe
-/// na cena; e as roldanas, que são o que a corda de fato mede, precisam de alça
-/// porque não há row de Inspector que as alcance.
+/// Duas decisões vistas de um lugar só. O anel é um raio em volta da âncora A, e
+/// o comprimento de uma polia é a CORDA — que não é a distância entre as âncoras
+/// —, então ele descreveria uma medida que não existe na cena. E as roldanas
+/// deixaram de ser alças do joint quando viraram entidades (W-Pulley W1): quem as
+/// publica é `wheel_handles`, para a roda SELECIONADA, e é ele que impede uma
+/// corda de seis rodas de publicar doze alças sobrepostas.
 #[test]
-fn a_pulley_offers_two_wheels_and_no_length_ring() {
+fn a_pulley_offers_no_length_ring_and_its_wheels_are_the_wheels_own_handles() {
     let mut sim = ph2d_ecs::SimWorld::new();
     for (name, x) in [("Load", -2.0_f32), ("Counterweight", 2.0)] {
         sim.world_mut().spawn((
@@ -472,19 +473,40 @@ fn a_pulley_offers_two_wheels_and_no_length_ring() {
         },
         Transform::from_translation(Vec2::new(-2.0, 2.0)),
     ));
+    let wheel = sim
+        .world_mut()
+        .spawn((
+            Name::new("Rope Wheel 1"),
+            ph2d_physics_ecs::PulleyWheel {
+                rope: stable_name_id("Rope"),
+                order: 0,
+                radius: 0.4,
+                wrap: ph2d_physics_ecs::WrapSide::Auto,
+            },
+            Transform::from_translation(Vec2::new(-2.0, 4.0)),
+        ))
+        .id();
     let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
     bridge.dispatch(&mut sim, false, 0);
-    let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
+    assert!(
+        joint_param_handles(&bridge, &camera(), window(), true, true).is_empty(),
+        "uma polia não tem parâmetro agarrável na corda"
+    );
+
+    // Sem seleção, nenhuma alça de roda — senão uma corda de seis publicaria
+    // doze, e o aro de uma cairia sobre o centro da vizinha.
+    assert!(wheel_handles(&sim, None, true, true).is_empty());
+    let hs = wheel_handles(&sim, Some(wheel.to_bits()), true, true);
     assert_eq!(
         kinds(&hs),
-        vec![PointHandleKind::WheelA, PointHandleKind::WheelB],
+        vec![PointHandleKind::WheelCentre, PointHandleKind::WheelRim],
         "got {hs:?}"
     );
-    // E elas nascem ONDE a corda passa: acima de cada corpo.
-    for h in &hs {
-        assert!(
-            h.world[1] > 2.0,
-            "uma roldana fica ACIMA do corpo dela: {h:?}"
-        );
-    }
+    // O centro está ONDE a roda está; o aro, a um raio dele.
+    assert!((hs[0].world[0] - (-2.0)).abs() < 1e-4 && (hs[0].world[1] - 4.0).abs() < 1e-4);
+    let d = (hs[1].world[0] - hs[0].world[0]).hypot(hs[1].world[1] - hs[0].world[1]);
+    assert!(
+        (d - 0.4).abs() < 1e-4,
+        "o aro tem de ficar a um RAIO do centro: {d:.4}"
+    );
 }

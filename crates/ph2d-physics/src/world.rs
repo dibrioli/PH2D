@@ -28,6 +28,7 @@ pub mod layers;
 pub mod oneway;
 pub mod pulley;
 pub mod queries;
+pub mod rope_route;
 pub mod sensors;
 pub mod shape;
 pub mod tuning;

@@ -56,6 +56,17 @@ impl PainterTool {
         // the overlay together with the pixels — they can never desync (Enio 2026-06-28). First close any
         // coalesced Offset drag still in flight so it undoes as its own step.
         self.flush_shape_txn();
+        // **A cadeia é estabelecida aqui também, não só no commit** (doc 28 §5.24).
+        //
+        // O delta se sustenta em *`entry[topo].after` == o estado que este passo encontra*. O
+        // `absorb_foreign_writes` estabelecia isso na entrada dos `record_*`; o UNDO é o **segundo**
+        // consumidor do mesmo invariante e o assumia. Medido: 92 undos/redos na suíte, **duas** em que
+        // o vivo não era o cursor (o re-stamp do shape · o escorrido do Wet Paint) — e absorver aqui as
+        // leva a **zero**.
+        //
+        // ⚠️ **Custo zero no caso comum, por construção:** a pergunta usa o MESMO `PlaneDeltas::split`,
+        // que começa por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte.
+        self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("undo");
         if let Some(model) = self.undo.undo() {
             self.restore_model(*model);
@@ -78,6 +89,17 @@ impl PainterTool {
             return false;
         }
         self.flush_shape_txn();
+        // **A cadeia é estabelecida aqui também, não só no commit** (doc 28 §5.24).
+        //
+        // O delta se sustenta em *`entry[topo].after` == o estado que este passo encontra*. O
+        // `absorb_foreign_writes` estabelecia isso na entrada dos `record_*`; o UNDO é o **segundo**
+        // consumidor do mesmo invariante e o assumia. Medido: 92 undos/redos na suíte, **duas** em que
+        // o vivo não era o cursor (o re-stamp do shape · o escorrido do Wet Paint) — e absorver aqui as
+        // leva a **zero**.
+        //
+        // ⚠️ **Custo zero no caso comum, por construção:** a pergunta usa o MESMO `PlaneDeltas::split`,
+        // que começa por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte.
+        self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("redo");
         if let Some(model) = self.undo.redo() {
             self.restore_model(*model);
@@ -85,6 +107,16 @@ impl PainterTool {
         } else {
             false
         }
+    }
+
+    /// **Reconcilia a história com escritas estrangeiras, AGORA** — a porta única dos dois consumidores
+    /// do invariante da cadeia (o commit tem a sua no `commit_structural_edit`).
+    ///
+    /// O snapshot é feito de clones de `Arc`, então ele custa refcounts; e o `split` que responde
+    /// *"alguém escreveu?"* começa por `Arc::ptr_eq`, então no caso comum nada é lido.
+    pub(crate) fn absorb_foreign_writes_now(&mut self) {
+        let live = self.snapshot_model();
+        self.undo.absorb_foreign_writes(&live);
     }
 
     /// **O RE-CENSO da premissa do S3** — *o estado vivo serve de base para o delta?* (doc 28 §7).

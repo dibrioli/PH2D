@@ -1766,6 +1766,48 @@ release segue byte-idêntico.
 fonte do undo** — os planos seguem com os mesmos três donos, e o fork, o fold e o `free` seguem sendo
 pagos. O que ele compra é a **licença** para o degrau 3.
 
+### 5.24 🔑 S3, degrau 3a — a CHAVE: a cadeia é estabelecida no undo também, e as 2 divergências vão a zero
+
+O §5.20 mediu a premissa do S3 e achou o obstáculo: o plano vivo **é** o do cursor em **79 de 81**
+undos, e em **dois** não é — o re-stamp do shape e o **escorrido do Wet Paint**. Enquanto isso for
+verdade o cursor não pode largar os planos, porque escrever a janela DENTRO do plano vivo **preservaria
+o que está fora dela**, e fora dela está a divergência.
+
+⚠️ **A cura não é código novo — é a porta que já existia, chamada no segundo consumidor.** O invariante
+da cadeia (*`entry[topo].after` == o estado que este passo encontra*) tem **dois** consumidores: o
+commit, que o estabelece desde 2026-07-26 (`absorb_foreign_writes`), e o **undo**, que o **assumia**.
+Absorver também na entrada do `undo_last`/`redo_last` leva o censo a **92 chamadas, 0 divergências**
+(era 2), e os três gates pinados de `undo_live_base_tests` seguem verdes.
+
+⚠️ **Custo zero no caso comum, por construção:** a pergunta usa o MESMO `PlaneDeltas::split`, que começa
+por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte. O snapshot que ela recebe
+é feito de clones de `Arc`.
+
+**E há uma consequência de PRODUTO, nomeada em vez de contrabandeada:** a gota que a sim desenha depois
+do pen-up passa a **pertencer ao traço que a causou**, então desfazer a remove *e refazer a devolve*.
+Antes o redo trazia o traço **sem** o escorrido — o artista perdia tinta que o produto tinha desenhado.
+
+#### A lição de gate: *a cura existe* e *a cura está ligada* são dois gates
+
+O gate da propriedade chama a porta **direto**, então tirar a chamada do `undo_last` o deixa **VERDE** —
+ele prova que a função funciona, não que o produto a usa. Quem sangra é o irmão de COMPORTAMENTO, que
+dirige `undo_last`/`redo_last` de verdade. O doc do primeiro afirmava a mutação errada e foi corrigido.
+
+**Gates:** 2 novos em `undo_live_base_tests` (a cura · a fiação), **1 mutação, sangra** no de fiação.
+**Nenhum schema, nenhum contrato congelado, nenhum id/token** (`PROJECT_SCHEMA` 29).
+
+⚠️ **FLAKE PRÉ-EXISTENTE, medida e NÃO causada por esta wave:**
+`the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` falha ~1 em 3 rodadas da suíte
+**completa** desta crate, no commit anterior a esta mudança (medido nos dois lados). É o gate de razão
+que o §4.8.2 já retunou uma vez quando o produto ficou rápido demais para o oráculo; sob a carga da
+suíte paralela ele voltou à faixa de ruído. *Um gate que flaka será silenciado em vez de acreditado* —
+está NOMEADO aqui, com o número, para não ser confundido com regressão da próxima wave.
+
+**O que falta no degrau 3:** o cursor e o `stroke_undo` largarem os planos de fato (a contagem de donos
+3 → 1), com a materialização aplicando o patch ao plano VIVO. É essa metade que mata o fold (11,9 ms), o
+fork do pen-down (11,7) e o `free` (2,4-5,0). ⚠️ Continua **tudo-ou-nada**: remover um dono de três não
+compra milissegundo nenhum (§5.14).
+
 ---
 
 ## 7. Próxima etapa recomendada

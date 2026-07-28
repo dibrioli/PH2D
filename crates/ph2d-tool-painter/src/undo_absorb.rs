@@ -35,7 +35,7 @@ impl UndoController {
     /// em cada plano, então **sem escrita estrangeira ele não lê um byte**. Reusar essa porta em vez de
     /// escrever uma segunda lista de planos é deliberado: uma segunda lista é a que nasce incompleta
     /// quando o vigésimo plano aparecer.
-    pub(super) fn absorb_foreign_writes(&mut self, before: &ModelSnapshot) {
+    pub(crate) fn absorb_foreign_writes(&mut self, before: &ModelSnapshot) {
         let Some(cursor) = self.cursor.as_deref() else {
             return; // história vazia: não há topo a corrigir
         };

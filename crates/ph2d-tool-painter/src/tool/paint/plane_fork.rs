@@ -42,6 +42,18 @@ use crate::undo::window::WriteState;
 ///
 /// When there is no second owner it delegates untouched — no allocation, no threads, no cost. When there
 /// is one but the plane is small it also delegates, because rayon's fork would outweigh the memcpy.
+///
+/// ⚠️ **SEM CHAMADOR DE PRODUÇÃO, e por isso `cfg(test)`: ela é a REFERÊNCIA CONGELADA.** Todo sítio do
+/// produto passa hoje por uma porta que sabe **nomear** o plano (`fork_canvas` / `fork_heights` /
+/// `fork_covers` / `fork_mats`) — e nomear é o que separa um journal completo de um incompleto. Um
+/// `pub(super)` órfão não é código morto silencioso: é uma **segunda resposta** esperando alguém
+/// chamá-la, a lição que o `warp_axis` (doc 28 §5.11) e o `serial_side` (§5.16) já pagaram nesta linha.
+///
+/// Sob `cfg(test)` ela vira a coisa certa: o oráculo dos gates de byte-identidade e do `Weak`, e o corpo
+/// que a sonda de custo mede — a metade de FORK que as quatro portas compartilham, sem a captura. E o
+/// compilador passa a ser o guarda: um sítio de produto que a chame **não compila**, o que é mais forte
+/// que qualquer arch-gate contando ocorrências.
+#[cfg(test)]
 pub(super) fn fork_par<'a, T>(arc: &'a mut Arc<Vec<T>>, win: &WriteState) -> &'a mut Vec<T>
 where
     T: Copy + Send + Sync,
@@ -441,26 +453,73 @@ mod tests {
         );
     }
 
-    /// **O FOLD escreve o relevo pelas portas nomeadas** — arch-gate, porque o defeito é invisível ao
-    /// comportamento: as duas rotas produzem os mesmos bytes, e a diferença é só se o journal aprende.
+    /// **NENHUM sítio da crate escreve um plano de RELEVO por fora das portas** — arch-gate, porque o
+    /// defeito é invisível ao comportamento: as duas rotas produzem os mesmos bytes, e a diferença é só
+    /// se o journal aprende.
     ///
-    /// O fold é a metade cara do pen-up (9,25 ms de fork nos três planos) e é o alvo do S3; um sítio
-    /// que voltasse ao `fork_par` deixaria o passo INCOMPLETO e o commit derivando, com toda a suíte
-    /// verde.
+    /// ⚠️ **Ele nasceu estreito (só `impasto_live.rs`) e o alargamento ACHOU um sítio**: o
+    /// `impasto_material.rs` escrevia o `mats` com um `Arc::make_mut` cru, e as três metades pesavam —
+    /// journal cego ao byte velho, fork serial, e **acesso não aberto**, que é o grave: o contador de
+    /// acessos não-declarados é o que faz o modo de falha de um sítio esquecido ser *lento em vez de
+    /// errado*, e ele só enxerga quem passa por uma porta. Um gate por-arquivo protege o arquivo que
+    /// alguém lembrou de listar.
+    ///
+    /// ⚠️ **A metade que contava a porta GENÉRICA morreu, e de propósito:** o `fork_par` é `cfg(test)`
+    /// agora, então um sítio de produto que o chame **não compila**. Uma asserção que não pode falhar é
+    /// pior que asserção nenhuma — a lição que a `line/Vector` deixou em 2026-07-23.
+    ///
+    /// **Prosa é isenta, código não** (mesma política do irmão do canvas): o literal aparece em
+    /// doc-comments que explicam justamente esta diferença.
     #[test]
-    fn the_relief_fold_goes_through_the_named_doors() {
-        let src = include_str!("impasto_live.rs");
-        for door in ["fork_heights(", "fork_covers(", "fork_mats("] {
-            assert!(
-                src.contains(door),
-                "controle: o fold tem de escrever o relevo pela porta {door}"
-            );
+    fn no_site_in_the_crate_writes_relief_outside_the_doors() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tool/paint");
+        let (mut scanned, mut through) = (0usize, 0usize);
+        let mut offenders: Vec<String> = Vec::new();
+        let mut stack = vec![root];
+        while let Some(dir) = stack.pop() {
+            for e in std::fs::read_dir(&dir).expect("src/tool/paint existe") {
+                let p = e.expect("entrada legivel").path();
+                if p.is_dir() {
+                    stack.push(p);
+                    continue;
+                }
+                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+                if !name.ends_with(".rs")
+                    || name.contains("test")
+                    || name.starts_with("measure_")
+                    || name == "plane_fork.rs"
+                {
+                    continue; // gates e sondas chamam a rota crua DE PROPOSITO
+                }
+                let src = std::fs::read_to_string(&p).expect("fonte legivel");
+                scanned += 1;
+                for door in ["fork_heights(", "fork_covers(", "fork_mats("] {
+                    through += src.matches(door).count();
+                }
+                for (i, line) in src.lines().enumerate() {
+                    let t = line.trim_start();
+                    if t.starts_with("//") {
+                        continue; // prosa: explicar a rota crua e o que as portas FAZEM
+                    }
+                    for plane in ["self.heights", "self.covers", "self.mats"] {
+                        if t.contains(&format!("make_mut({plane}")) {
+                            offenders.push(format!("{name}:{}", i + 1));
+                        }
+                    }
+                }
+            }
         }
-        let generic = src.matches("plane_fork::fork_par(").count();
-        assert_eq!(
-            generic, 0,
-            "o fold tem {generic} escrita(s) de relevo pela porta GENERICA: o journal nao aprende de \
-             que plano sao os bytes e o passo inteiro fica INCOMPLETO"
+        // Controle positivo nas DUAS pontas: sem ele o gate passa por não ter achado arquivo nenhum.
+        assert!(scanned > 20, "controle: so {scanned} arquivos varridos");
+        assert!(
+            through >= 11,
+            "controle: so {through} escritas de relevo pelas portas nomeadas — o scanner esta cego"
+        );
+        assert!(
+            offenders.is_empty(),
+            "estes sitios escrevem um plano de RELEVO por fora da porta: o journal nao aprende de que \
+             plano sao os bytes (passo INCOMPLETO), o fork e serial, e o acesso nao e aberto — entao o \
+             commit acredita que a janela declarada cobre o que este sitio escreveu: {offenders:?}"
         );
     }
 

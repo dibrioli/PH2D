@@ -456,8 +456,18 @@ impl WriteState {
     pub(crate) fn relief_state(&self) -> &'static str {
         let r = self.relief.borrow();
         match () {
-            () if r.mixed => "MISTURADO",            // duas camadas num passo
-            () if r.incomplete => "INCOMPLETO",      // alguém escreveu pela porta genérica
+            () if r.mixed => "MISTURADO", // duas camadas num passo
+            // ⚠️ **A causa deste estado MUDOU e a frase que morava aqui virou falsa.** Ela dizia
+            // *"alguém escreveu pela porta genérica"*, e a porta genérica é `cfg(test)` desde que os
+            // dez sítios de sculpt/warp migraram: em produção ela não existe. O único produtor que
+            // sobrou é o `else` das três portas nomeadas — o plano não tinha forma de canvas na hora
+            // da escrita (a primeira pincelada de uma camada, ou um plano de outro documento).
+            //
+            // ⚠️ Medido: **202 passos da suíte**, todos por essa via. Não é a mesma coisa que a antiga,
+            // e a diferença decide o S3: um plano que **não existia** no começo do passo não tem
+            // *antes* a descrever — o motor de delta já chama isso de `OnlyAfter`. Separar as duas é o
+            // próximo degrau; enquanto elas dividem um estado, este número parece dívida e não é.
+            () if r.incomplete => "INCOMPLETO",
             () if r.layer.is_none() => "SEM-RELEVO", // o passo não tocou relevo nenhum
             () => "DESCREVE",
         }

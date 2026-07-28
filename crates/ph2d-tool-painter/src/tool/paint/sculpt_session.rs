@@ -90,7 +90,13 @@ impl PainterTool {
         if let Some(entry) = self.heights.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::plane_fork::fork_par(entry, &self.undo.write_state);
+            let dst = super::plane_fork::fork_heights(
+                entry,
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
             super::impasto_settle::for_each_in(rect, w, |i| dst[i] = pre[i]);
         }
         let cover = Arc::clone(&self.paint.sculpt.pre_cover);
@@ -98,7 +104,13 @@ impl PainterTool {
             && let Some(entry) = self.covers.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::plane_fork::fork_par(entry, &self.undo.write_state);
+            let dst = super::plane_fork::fork_covers(
+                entry,
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
             super::impasto_settle::for_each_in(rect, w, |i| dst[i] = cover[i]);
         }
         let mats = Arc::clone(&self.paint.sculpt.pre_mats);
@@ -106,7 +118,13 @@ impl PainterTool {
             && let Some(entry) = self.mats.get_mut(&layer)
             && entry.len() == n
         {
-            let dst = super::plane_fork::fork_par(entry, &self.undo.write_state);
+            let dst = super::plane_fork::fork_mats(
+                entry,
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
             super::impasto_settle::for_each_in(rect, w, |i| dst[i] = mats[i]);
         }
         let rgba = Arc::clone(&self.paint.sculpt.pre_rgba);

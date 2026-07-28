@@ -65,7 +65,18 @@ impl PainterTool {
         let mat = self.paint.brush.material().to_bytes();
         let neutral = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
         {
-            let dst = std::sync::Arc::make_mut(self.mats.entry(layer).or_default());
+            // ⚠️ Pela PORTA, e as três metades dela importam aqui. Este sítio escrevia o `mats` com um
+            // `Arc::make_mut` cru: o journal não aprendia o byte velho (passo INCOMPLETO), o fork era
+            // SERIAL, e — o pior — ele não **abria acesso**, então o commit acreditava que a janela
+            // declarada cobria tudo. O modo de falha que o contador promete é *lento, nunca errado*, e
+            // ele só vale para quem passa por uma porta: quem não passa é invisível ao contador.
+            let dst = super::plane_fork::fork_mats(
+                self.mats.entry(layer).or_default(),
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
             if dst.len() != n {
                 dst.resize(n, neutral);
             }

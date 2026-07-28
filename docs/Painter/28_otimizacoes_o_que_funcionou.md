@@ -2054,6 +2054,67 @@ passa a reconstruir o cursor em vez de o ler, e o journal sai do `cfg(debug)` pa
 
 ---
 
+### 5.29 🚪 TODO plano de relevo passa por uma porta que sabe NOMEÁ-LO — e o alargamento achou um sítio
+
+A troca do S3 é **tudo-ou-nada por plano**: se o cursor larga os planos com o journal incompleto, o undo
+devolve pixels errados **em silêncio**. Então o pré-requisito não era paralelo à troca, era anterior a
+ela — e o que faltava eram os **dez sítios de sculpt/warp** que ainda escreviam relevo pela porta
+genérica (`fork_par`), a que não sabe dizer *de que plano* são os bytes.
+
+A migração é mecânica: cada sítio tem `layer`, `source_size` e a região de escrita em escopo, e em todos
+os dez ela **limita** a escrita. ⚠️ **Declarar um superconjunto é seguro; um subconjunto é o bug
+silencioso** — capturar tiles a mais guarda bytes que nunca mudaram (`journal.get(i) == live[i]` ali),
+capturar de menos perde o *antes* de texels que o undo depois não restaura.
+
+**⚠️ E o alargamento do gate achou um sítio que nenhum grep de porta acharia, porque ele não passava por
+porta nenhuma:** o `impasto_material.rs` escrevia o plano `mats` com um `Arc::make_mut` **cru**. As três
+metades pesam, e a terceira é a grave:
+
+| metade | consequência |
+|---|---|
+| journal cego | o passo fica `INCOMPLETO` — o byte velho do material não é guardado |
+| fork **serial** | a cópia de plano do §5.15, no caminho de um knob que o artista arrasta |
+| **acesso não aberto** | o commit acredita que a **janela declarada cobre tudo** |
+
+A terceira contradiz a promessa que o S1 fez: *"o modo de falha de um sítio novo — ou de um que esquece —
+é **lento, nunca errado**"*. Ela vale para quem passa por **uma porta**, porque é a porta que incrementa
+o contador de acessos não-declarados. Quem não passa é **invisível ao contador**, e aí a degradação
+honesta vira perda silenciosa. O gate estreito (só `impasto_live.rs`) não podia vê-lo: *um gate
+por-arquivo protege o arquivo que alguém lembrou de listar.*
+
+**⚠️ `fork_par` ficou sem chamador de produção, e virou `cfg(test)`.** É a terceira vez que esta linha
+encontra a mesma forma (`warp_axis` na §5.11, `serial_side` na §5.16): um `pub(super)` órfão não é código
+morto silencioso, é uma **segunda resposta** esperando alguém chamá-la. Sob `cfg(test)` ela vira a coisa
+certa — o oráculo dos gates de byte-identidade e do `Weak`, e o corpo que a sonda de custo mede.
+
+⚠️ **E a metade do arch-gate que CONTAVA a porta genérica morreu junto, de propósito:** com o `cfg`, um
+sítio de produto que a chame **não compila**. O compilador é o guarda mais forte, e uma asserção que não
+pode falhar é pior que asserção nenhuma. O que sobrou no gate é o que ainda **pode** falhar: nenhum
+`make_mut` cru sobre `self.heights`/`self.covers`/`self.mats`, varrido em `tool/paint/**` inteiro, com
+controle positivo nas duas pontas. Mutação (o `make_mut` cru de volta): **RED**, nomeando o arquivo e a
+linha.
+
+**O censo, com a rede armada sobre a suíte inteira** (`PH2D_UNDO_AUDIT=1`, 891 testes):
+
+| medida | antes | depois |
+|---|---|---|
+| passos com relevo `INCOMPLETO` | 260 | **202** |
+| passos que **DESCREVEM** o relevo | 42 | **100** |
+| divergências (relevo · cursor · canvas) | 0 | **0 · 0 · 0** (100 · 231 · 880 conferências) |
+
+⚠️ **Os 202 que sobram têm agora UMA causa, e ela não é dívida — é uma distinção que falta.** O único
+produtor restante de `INCOMPLETO` é o `else` das três portas nomeadas: *o plano não tinha forma de canvas
+na hora da escrita* (a primeira pincelada de uma camada, um plano de outro documento). E um plano que
+**não existia** no começo do passo **não tem *antes* a descrever** — o motor de delta já chama isso de
+`OnlyAfter`. Enquanto as duas coisas dividem um estado, este número parece dívida e não é; separá-las
+(`TileJournal::is_untouched` decide qual das duas o `else` significa) é o próximo degrau, e é barato.
+
+⚠️ O comentário que nomeava a causa deste estado (*"alguém escreveu pela porta genérica"*) **virou falso
+neste commit** e foi reescrito no mesmo commit: *um comentário que contradiz o código shipado é pior que
+comentário nenhum.*
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

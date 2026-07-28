@@ -147,6 +147,18 @@ impl crate::App {
             // object from 4-6 s while the playhead ran on, which reads as a bug — the veil and
             // the content must agree.)
             doc.set_scene_length(Some(6.0));
+            // Every clip opens with an AUTHORED duration — exactly what the AddClip
+            // authoring intent stamps on a user-made clip (`intent_apply.rs`). The raw
+            // `doc.add_clip` above is the DATA layer and stays DERIVED, so without this
+            // the Keys tab shows the active clip with NO veil, and the smoke misrepresents
+            // the product (Enio: *"o véu deve estar visível antes de tocar na caixa de
+            // duração do clip"* — plain boot and user-made clips already carry 4 s; only a
+            // smoke's raw clips were bare). 6 s matches the [0,6) content and the scene, so
+            // nothing is cut in Arrange while the Keys veil is there from the first frame.
+            let clip_count = doc.clips().len();
+            for i in 0..clip_count {
+                doc.set_clip_length_override(i, Some(6.0));
+            }
             doc.set_active_loop_for(false, Some((0.0, 6.0))); // the ARRANGE loop
             add_lane
         };

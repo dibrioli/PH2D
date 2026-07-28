@@ -155,9 +155,14 @@ impl crate::App {
                   B e vale 1/razao, entao razao MAIOR que 1 handicapa aquele lado. E note o que NAO esta la: nao ha 'Breakable'. Uma polia nao\n     \
                   vive no solver do rapier, entao nada mede a reacao dela, e uma caixa que\n     \
                   nunca pode disparar seria um controle so no nome.\n  \
-               6. E o gesto de CRIAR: selecione dois corpos, va na secao Physics Body,\n     \
-                  escolha 'Pulley' no seletor 'Join As' e clique em Join. As roldanas\n     \
-                  nascem acima de cada corpo e a corda ja nasce esticada.",
+               6. E o gesto de CRIAR, pelas DUAS rotas -- a segunda era a quebrada:\n     \
+                  (a) selecione dois corpos, escolha 'Pulley' no seletor 'Join As' da\n     \
+                      secao Physics Body e clique em Join;\n     \
+                  (b) OU aperte sobre um corpo no canvas, arraste e solte sobre o outro.\n     \
+                  Nas duas, as roldanas nascem ACIMA de cada corpo e a corda ja nasce\n     \
+                  esticada. Pela rota (b) elas nasciam as duas na ORIGEM do mundo, com a\n     \
+                  corda saindo de cada corpo ate la -- se voltar a ver isso, o rig nao\n     \
+                  foi semeado.",
             simple_drop = MEASURED_SIMPLE_LOAD_DROP,
             simple_rise = MEASURED_SIMPLE_CW_RISE,
             tackle_rise = -MEASURED_TACKLE_LOAD_DROP,

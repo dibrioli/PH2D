@@ -10,10 +10,16 @@
 //! # A base de todo delta é o CURSOR, nunca o estado vivo
 //!
 //! Um delta precisa de um lado completo para partir. A escolha óbvia — *o estado vivo do tool* — foi
-//! **descartada**, e a razão é uma armadilha real deste módulo: `restore_model` termina em
-//! `restore_shape_overlay`, que **RE-CARIMBA a figura inteira**, então o estado vivo depois de um undo
-//! não é byte-a-byte o snapshot que se instalou. Encadeie deltas sobre ele e o segundo undo escreve a
-//! janela certa sobre um fundo errado — sem erro, sem warning, e nada no sistema pisca.
+//! **descartada**, e a razão é uma armadilha real deste módulo: encadeie deltas sobre ele e o segundo
+//! undo escreve a janela certa sobre um fundo errado — sem erro, sem warning, e nada no sistema pisca.
+//!
+//! ⚠️ **Quanto disso é verdade foi MEDIDO em 2026-07-27, e a frase que morava aqui era larga demais.**
+//! Ela dizia que o `restore_shape_overlay` re-carimba *"a figura inteira"*, e portanto que o vivo nunca
+//! serve. O censo (`PH2D_UNDO_AUDIT=1`, a suíte inteira desta crate) diz **81 undos/redos · 79 em que o
+//! vivo É o cursor, pelo MESMO buffer · 2 em que não é**: o re-stamp de um shape com preview vivo (o
+//! caso que a frase descrevia) e o **escorrido do Wet Paint** (a sim compositando depois do pen-up, sem
+//! entrada). Duas exceções com NOME valem mais que uma proibição geral — são exatamente elas que o S3
+//! (doc 28 §7) tem de fechar. `paint::undo_live_base_tests` as pina.
 //!
 //! O [`UndoController`](crate::undo::UndoController) guarda em vez disso **um cursor**: o endpoint
 //! adjacente ao topo, materializado. É **UM documento, constante** — e em regime custa **zero bytes**,

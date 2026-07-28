@@ -30,9 +30,15 @@
 //! O delta precisa de um lado completo do qual partir, e ele é o [`cursor`](UndoController):
 //! o endpoint adjacente ao topo, materializado. **UM documento, constante** — e em
 //! regime custa zero, porque compartilha os `Arc`s do tool enquanto ninguém escreve.
-//! ⚠️ O estado VIVO do tool não serve para isso: `restore_model` termina em
-//! `restore_shape_overlay`, que RE-CARIMBA a figura, então o vivo depois de um undo
-//! não é byte-a-byte o snapshot instalado.
+//! ⚠️ **E o estado VIVO do tool não pode substituí-lo — mas a razão foi MEDIDA, não herdada.** Esta doc
+//! afirmava a coisa larga (*"`restore_shape_overlay` RE-CARIMBA a figura, então o vivo depois de um undo
+//! não é byte-a-byte o snapshot instalado"*); o censo de 2026-07-27 (`PH2D_UNDO_AUDIT=1` sobre a suíte
+//! inteira) diz **81 chamadas de undo/redo, 79 em que o vivo É o cursor — pelo mesmo buffer** e **duas em
+//! que não é**: o re-stamp do shape (a frase acima, real) e o **escorrido do Wet Paint**. As duas estão
+//! pinadas em `paint::undo_live_base_tests`, e são elas que o S3 (doc 28 §7) tem de fechar antes de o
+//! cursor largar os planos — porque escrever a janela DENTRO do plano vivo preservaria o que está fora
+//! dela. Hoje nada disso é bug: a materialização constrói um snapshot COMPLETO e o `restore_model` o
+//! instala por atacado.
 //!
 //! # ⚠️ O invariante que o delta consome — e que agora é ESTABELECIDO, não assumido
 //!
@@ -619,6 +625,14 @@ impl UndoController {
     #[must_use]
     pub fn redo_depth(&self) -> usize {
         self.redo.len()
+    }
+
+    /// O **cursor** — só para a rede de verificação do S3 (ver
+    /// [`crate::undo_planes::PlaneDeltas::divergences`]). Ele é a base de todo delta, e a pergunta que a
+    /// rede faz é se o estado VIVO do tool poderia sê-lo no lugar dele.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn cursor_for_audit(&self) -> Option<&ModelSnapshot> {
+        self.cursor.as_deref()
     }
 
     /// Drop the controller's history (e.g. on `set_source` of a fresh canvas).

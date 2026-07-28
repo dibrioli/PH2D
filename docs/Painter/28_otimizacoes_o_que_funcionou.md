@@ -1391,6 +1391,97 @@ das oito declarações irem parar na `main` — o commit saiu com 1 arquivo em v
 "sem ganho", que eu quase reportei como achado. Nada foi commitado lá e a árvore foi restaurada. *No Modo
 L, todo comando começa com o `cd` da worktree; a regra existe porque a cwd volta sozinha.*
 
+### 5.20 🎯 S3 — a premissa foi MEDIDA, e ela re-precifica a wave em três lugares
+
+O plano dizia: *"o journal guarda os PIXELS e o Ctrl+Z aplica o patch ao plano VIVO ⇒ o cursor larga os
+planos, a contagem de donos cai para **um**, e o fold e o fork do pen-down somem juntos"*. Antes de
+construir em cima disso, as três frases foram perguntadas ao produto. **As três voltaram diferentes.**
+
+#### (1) *"O estado vivo não serve de base"* — verdade em **2 de 81**, e as duas exceções têm NOME
+
+O `undo_delta` proíbe usar o vivo como base do delta (*"`restore_shape_overlay` RE-CARIMBA a figura"*).
+Uma afirmação sobre o produto não se cita: mede-se. A rede é
+`PlaneDeltas::divergences` — o **terceiro consumidor** da lista dos dezenove planos, ao lado do `split` e
+do `side` — chamada no instante de **todo** undo/redo, com a suíte inteira em debug (~4 s; ela exercita
+fill, seleção, warp, sculpt, máscara, inpaint, clone, aquarela, Wet Paint e os shape editors).
+
+```text
+  81 chamadas de undo/redo   ·   79 concordam   ·   2 divergem, as duas no canvas_rgba
+```
+
+E nos 79 o vivo não é meramente *igual*: é o **MESMO buffer** (`Arc::ptr_eq`), porque o commit toma o
+cursor como `after.clone()`. Isso torna a comparação barata **e imune à armadilha do ADR-0124**
+(endereço igual com conteúdo diferente): escrever no lugar exige dono único, e a referência forte do
+cursor o impede.
+
+As duas exceções, com o teste que as atribuiu:
+
+| # | onde | o quê |
+|---|---|---|
+| 1 | `apply_and_keep_…` (no **redo**) | o **re-stamp do shape** — a frase do doc, real: o `restore_shape_overlay` re-carimba o editor sobre a base pristina |
+| 2 | `undoing_a_wet_stroke_…` (no **undo**) | o **escorrido do Wet Paint** — a sim composita depois do pen-up sem gravar entrada |
+
+⚠️ **Nenhuma das duas é bug hoje**, e o porquê é o que o S3 revogaria: a materialização constrói um
+snapshot **completo** e o `restore_model` o instala **por atacado** (`self.canvas_rgba = m.canvas_rgba`),
+então o resíduo é substituído em vez de sobreviver. Sob o S3 — que escreveria a janela *dentro* do plano
+vivo — o que está **fora** da janela fica, e as duas viram corrupção silenciosa.
+
+Pinado em `paint::undo_live_base_tests` (3 gates, 3 mutações, 3 sangram: o cursor com cópia própria mata
+o de identidade · a rede cega mata o do escorrido · **o restore ficando com o plano vivo — o S3 no
+extremo — mata o da instalação por atacado**).
+
+⚠️ **Lição de método:** a 1ª rodada do censo imprimiu **nada**, e *nada parecia concordância* — o
+`cargo test` **captura o stderr de teste que passa**. Foi o controle positivo (imprimir também quando
+NÃO diverge) que separou *"zero divergências"* de *"a sonda nunca rodou"*
+([[feedback_a_negative_search_needs_a_positive_control]]). Re-censar:
+`PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter -- --nocapture 2>&1 | grep S3-AUDIT`.
+
+#### (2) *"A contagem de donos cai para UM"* — ela cai para **três**, e ≥2 já copia
+
+O §7 já registrava que um journal substituindo só o `stroke_undo` deixaria a contagem em 2. **A recíproca
+também vale, e é pior que o esperado.** Medido pela sonda que já existia
+(`who_holds_the_planes_when_a_stroke_begins`):
+
+```text
+  REGIME (2 traços commitados, nenhum gesto aberto)   canvas 2 · heights 2 · covers 2 · mats 2
+  depois de LIMPAR o histórico                        canvas 1 · heights 1 · covers 1 · mats 1
+  DENTRO do gesto (logo após o pen-down)              canvas 1 · heights 4 · covers 4 · mats 4
+```
+
+Os planos de **relevo** têm **QUATRO** donos dentro do gesto. Largar o cursor os leva a **três** — e o
+`make_mut` copia com qualquer coisa acima de um. ⚠️ **Logo o S3 é tudo-ou-nada:** não existe versão
+parcial que ganhe o fork do pen-down. (O `canvas_rgba` marca 1 ali porque o fork **já aconteceu** — é o
+custo que se quer remover, não a ausência dele.) **Quem são os quatro é número ABERTO** — a sonda conta,
+não identifica.
+
+#### (3) *"Capturar por região"* precisa da região **antes** da escrita — e 47 sítios não a têm
+
+O S1 deu à porta de escrita um **contador** de acessos não-declarados, não a região por tipo, e a §5.18
+diz por quê (o guard com `Drop` morreu no borrow checker; passar o retângulo tocaria todo sítio).
+Contado hoje: **47 chamadas de `fork_par` em 25 arquivos**, contra **12** que declaram região — e a
+declaração é **depois** da escrita, por construção.
+
+Para capturar o "antes" por região é preciso tê-la **antes**. Os dois caminhos quentes podem dá-la:
+
+- **o fold** (`impasto_live.rs`) já computa o `rect` **acima** do fork — a região está na mão. ✅
+- **o depósito** (`stamp_cache.rs`) acumula `touched` **durante** o laço de blit, mas a lista de dabs
+  está toda na mão antes: o bbox dela é um **superconjunto** de `touched`, e superconjunto é
+  exatamente o que o S1 já declarou seguro. ✅
+
+Os outros ~39 passariam "não sei" ⇒ varredura/fork completo ⇒ **correto, só lento** — a mesma política
+de falha do contador. Isso torna a migração incremental, **não** trivial.
+
+#### O veredito
+
+O S3 continua sendo a maior frente aberta (fold 11,9 + fork do pen-down ~11,7 + os 12,2 do commit + o
+Ctrl+Z), **mas ele não é a wave que o plano descrevia**: é *região-na-porta de escrita* + *journal por
+tile* + *fechar as duas exceções da tabela acima*, com a instalação por atacado deixando de ser a rede de
+segurança que hoje é. ⚠️ **A meia-versão barata — "patchar o plano vivo mantendo tudo o mais" — foi
+avaliada e NÃO construída**: ela compra só o Ctrl+Z (23,4 ms, ação user-paced e deliberada) ao preço de
+mover os planos para fora do tool nos caminhos de falha, onde um `undo()` que devolve `None` deixaria o
+documento **sem pixels**. Trocar risco de perder o documento por 1,4 quadro numa ação que o artista faz
+de propósito é o trade errado, e fica registrado como recusa medida, não como esquecimento.
+
 ### 5.8 ✅ E a fronteira NOVA (§4.8.3) é dos QUATRO modos, não do impasto
 
 O `INPUT (fora do frame)` mede o tempo dentro de `on_canvas_pointer` — que é a porta por onde **todo**
@@ -1526,14 +1617,21 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
      é um CONTADOR de acessos não-declarados, não o guard com `Drop` (14 `E0499`). Sobram **12,2 ms** de
      extração + planos não declarados — número ABERTO.
    - 🎯 **S3 (o que falta) — o journal guarda os PIXELS da região** e o Ctrl+Z passa a **aplicar o patch ao plano vivo**
-     em vez de instalar um snapshot materializado. Aí o `cursor` não precisa mais segurar os planos, a
-     contagem de donos cai para **um**, e **o fold e o fork do pen-down somem juntos** — mais o Ctrl+Z,
-     que deixa de custar uma cópia de documento (§5.16) e passa a custar a janela.
+     em vez de instalar um snapshot materializado. Segue sendo a maior frente aberta (fold 11,9 + fork do
+     pen-down ~11,7 + os 12,2 do commit + o Ctrl+Z).
 
-   ⚠️ **A contagem de donos é a espinha e já está medida:** em repouso os quatro planos têm **dois**
-   donos, e o segundo é o `cursor` da U1 — um journal que só substituísse o `paint.stroke_undo`
-   deixaria a contagem em 2 e **não mudaria um milissegundo**. ⚠️ **Wave própria, com gates próprios**, e
-   é a única frente que cura os QUATRO modos de uma vez.
+   ⚠️ **AS TRÊS PREMISSAS DESTE ITEM FORAM MEDIDAS EM 2026-07-27 E AS TRÊS VOLTARAM DIFERENTES — leia a
+   §5.20 antes de abrir a wave.** Em resumo: *(a)* o estado vivo **é** o cursor em **79 de 81** undos, e
+   as 2 exceções têm nome (o re-stamp do shape · o escorrido do Wet Paint) — hoje inofensivas **só**
+   porque a instalação é por atacado, que é justamente o que o S3 revoga; *(b)* a contagem de donos
+   **não cai para um**: dentro do gesto os planos de relevo têm **QUATRO** donos, largar o cursor os leva
+   a três, e `make_mut` copia com qualquer coisa acima de um ⇒ **o S3 é tudo-ou-nada**; *(c)* capturar
+   por região exige a região **antes** da escrita, e são **47 sítios de `fork_par` contra 12 que
+   declaram** — os dois quentes conseguem dá-la (o fold já tem o `rect`; o depósito tem o bbox dos dabs
+   como superconjunto seguro), o resto passa "não sei" e segue no caminho completo.
+   ⚠️ **A meia-versão barata foi avaliada e RECUSADA com motivo** (§5.20): compra só o Ctrl+Z ao preço de
+   um caminho de falha que deixa o documento sem pixels. **Wave própria, com gates próprios**, e é a
+   única frente que cura os QUATRO modos de uma vez.
 
 2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13/§5.14). O maior evento
    **reprodutível** é o pen-up a 38,9 ms e ele não chega lá. ⚠️ **Mas uma amostra única de pen-up já foi

@@ -56,6 +56,7 @@ impl PainterTool {
         // the overlay together with the pixels — they can never desync (Enio 2026-06-28). First close any
         // coalesced Offset drag still in flight so it undoes as its own step.
         self.flush_shape_txn();
+        self.audit_live_is_the_cursor("undo");
         if let Some(model) = self.undo.undo() {
             self.restore_model(*model);
             true
@@ -77,6 +78,7 @@ impl PainterTool {
             return false;
         }
         self.flush_shape_txn();
+        self.audit_live_is_the_cursor("redo");
         if let Some(model) = self.undo.redo() {
             self.restore_model(*model);
             true
@@ -84,6 +86,38 @@ impl PainterTool {
             false
         }
     }
+
+    /// **O RE-CENSO da premissa do S3** — *o estado vivo serve de base para o delta?* (doc 28 §7).
+    ///
+    /// Chamado no instante de todo undo/redo, com `PH2D_UNDO_AUDIT=1` a suíte inteira desta crate vira
+    /// a rede: ela roda em debug em ~4 s e exercita fill, seleção, warp, sculpt, máscara, inpaint,
+    /// clone, aquarela, Wet Paint e os shape editors, então o censo cobre **todo gesto que algum teste
+    /// encena**. A medição de 2026-07-27 deu **81 chamadas · 79 concordam · 2 divergem**, e as duas
+    /// exceções estão pinadas em `paint::undo_live_base_tests`.
+    ///
+    /// ⚠️ **`cargo test` CAPTURA o stderr de teste que passa** — sem `--nocapture` o censo sai vazio e
+    /// *vazio parece concordância*. O controle positivo (imprimir também quando não diverge) é o que
+    /// separou as duas coisas na primeira rodada.
+    ///
+    /// ```text
+    /// PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter -- --nocapture 2>&1 | grep S3-AUDIT
+    /// ```
+    #[cfg(any(test, debug_assertions))]
+    fn audit_live_is_the_cursor(&self, tag: &str) {
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
+            return;
+        }
+        let Some(cursor) = self.undo.cursor_for_audit() else {
+            return;
+        };
+        let d = crate::undo_planes::PlaneDeltas::divergences(&self.snapshot_model(), cursor);
+        eprintln!("[S3-AUDIT] {tag}: divergencias={} {d:?}", d.len());
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(clippy::unused_self, reason = "no-op em release; a rede é de debug")]
+    fn audit_live_is_the_cursor(&self, _tag: &str) {}
 
     /// `true` if there is at least one edit to undo (an open in-flight shape transaction counts).
     #[must_use]

@@ -8,6 +8,9 @@
 use crate::undo_delta::{StoredImages, StoredMap, StoredPlane, Strides};
 use ph2d_painter_brush::material::MaterialBytes;
 
+#[cfg(any(test, debug_assertions))]
+use crate::layers::LayerId as RtLayerId;
+
 /// **Os DEZENOVE planos canvas-shaped de um `ModelSnapshot`, guardados como delta.**
 ///
 /// ⚠️ A lista é uma só, e os dois lados dela ([`Self::split`] e [`Self::side`]) andam juntos por
@@ -192,6 +195,122 @@ impl PlaneDeltas {
         out.sculpt.pre_mats = self.sculpt_pre_mats.side(&cursor.sculpt.pre_mats, b)?;
         out.sculpt.pre_rgba = self.sculpt_pre_rgba.side(&cursor.sculpt.pre_rgba, b)?;
         Some(())
+    }
+
+    /// **Onde dois snapshots DIFEREM, plano a plano** — o TERCEIRO consumidor desta lista, e ele existe
+    /// para conferir a premissa do S3 (doc 28 §7): *o estado VIVO do tool serve de base para o delta?*
+    ///
+    /// O `undo_delta` afirma que não (*"`restore_shape_overlay` RE-CARIMBA a figura, então o vivo depois
+    /// de um undo não é byte-a-byte o snapshot instalado"*), e essa frase decide se o `cursor` — hoje um
+    /// segundo dono PERMANENTE dos quatro planos canvas-shaped — pode largá-los. Uma afirmação sobre o
+    /// produto não se cita: mede-se. A suíte desta crate roda em debug em ~4 s e exercita fill, seleção,
+    /// warp, sculpt, máscara, inpaint, clone, aquarela, Wet Paint e os shape editors, então chamar isto
+    /// no instante de todo undo/redo pergunta a **todo gesto que algum teste encena**.
+    ///
+    /// Mora aqui pela mesma razão que o `split` e o `side`: é a lista dos dezenove, e um quarto
+    /// consumidor que a enumerasse de novo nasceria com dezoito.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn divergences(
+        a: &crate::undo::ModelSnapshot,
+        b: &crate::undo::ModelSnapshot,
+    ) -> Vec<&'static str> {
+        fn plane<T: PartialEq>(
+            out: &mut Vec<&'static str>,
+            name: &'static str,
+            x: &std::sync::Arc<Vec<T>>,
+            y: &std::sync::Arc<Vec<T>>,
+        ) {
+            if !std::sync::Arc::ptr_eq(x, y) && **x != **y {
+                out.push(name);
+            }
+        }
+        fn map<T: PartialEq>(
+            out: &mut Vec<&'static str>,
+            name: &'static str,
+            x: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
+            y: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
+        ) {
+            if x.len() != y.len() || x.keys().ne(y.keys()) {
+                out.push(name);
+                return;
+            }
+            for (k, xv) in x {
+                let yv = &y[k];
+                if !std::sync::Arc::ptr_eq(xv, yv) && **xv != **yv {
+                    out.push(name);
+                    return;
+                }
+            }
+        }
+        let mut d = Vec::new();
+        plane(&mut d, "canvas_rgba", &a.canvas_rgba, &b.canvas_rgba);
+        map(&mut d, "heights", &a.heights, &b.heights);
+        map(&mut d, "covers", &a.covers, &b.covers);
+        map(&mut d, "mats", &a.mats, &b.mats);
+        plane(&mut d, "mask_scratch", &a.mask_scratch, &b.mask_scratch);
+        plane(
+            &mut d,
+            "selection_mask",
+            &a.selection_mask,
+            &b.selection_mask,
+        );
+        plane(
+            &mut d,
+            "selection_crisp",
+            &a.selection_crisp,
+            &b.selection_crisp,
+        );
+        plane(&mut d, "deform.disp", &a.deform.disp, &b.deform.disp);
+        plane(&mut d, "deform.pre", &a.deform.pre, &b.deform.pre);
+        plane(&mut d, "deform.pre_h", &a.deform.pre_h, &b.deform.pre_h);
+        plane(
+            &mut d,
+            "deform.pre_cover",
+            &a.deform.pre_cover,
+            &b.deform.pre_cover,
+        );
+        plane(
+            &mut d,
+            "deform.pre_mats",
+            &a.deform.pre_mats,
+            &b.deform.pre_mats,
+        );
+        plane(&mut d, "sculpt.pre", &a.sculpt.pre, &b.sculpt.pre);
+        plane(&mut d, "sculpt.amount", &a.sculpt.amount, &b.sculpt.amount);
+        plane(
+            &mut d,
+            "sculpt.plane_sum",
+            &a.sculpt.plane_sum,
+            &b.sculpt.plane_sum,
+        );
+        plane(
+            &mut d,
+            "sculpt.pre_cover",
+            &a.sculpt.pre_cover,
+            &b.sculpt.pre_cover,
+        );
+        plane(
+            &mut d,
+            "sculpt.pre_mats",
+            &a.sculpt.pre_mats,
+            &b.sculpt.pre_mats,
+        );
+        plane(
+            &mut d,
+            "sculpt.pre_rgba",
+            &a.sculpt.pre_rgba,
+            &b.sculpt.pre_rgba,
+        );
+        let images_differ = a.images.len() != b.images.len()
+            || a.images.keys().ne(b.images.keys())
+            || a.images.iter().any(|(k, x)| {
+                let y = &b.images[k];
+                !std::sync::Arc::ptr_eq(x, y) && (x.width != y.width || x.rgba8 != y.rgba8)
+            });
+        if images_differ {
+            d.push("images");
+        }
+        d
     }
 
     /// O que esta entrada retém — o número que o cap em BYTES conta.

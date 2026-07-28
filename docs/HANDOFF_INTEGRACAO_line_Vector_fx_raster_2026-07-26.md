@@ -488,6 +488,10 @@ rasterizador, e foi a divergência entre os dois que nomeou a causa da W7.
 - **`MAX_HALF = 96`** (sigma ≈ 32 px de tela): acima, o borrão satura — limite de CUSTO do passe.
 - **A pilha de filtros não compõe com a de Effects numa ordem escolhida** (o filtro roda sempre
   DEPOIS da geometria cozida). É decisão de produto se um dia precisar.
+- ~~⚠️ **Uma forma com TRAÇO cai no caminho do RASTER**~~ — **FECHADO em 2026-07-27** pela wave da
+  silhueta resolvida (handoff `HANDOFF_INTEGRACAO_line_Vector_stroked_silhouette_2026-07-27.md`,
+  BUGS #24). Era a causa do *"Linhas no Bevel"* que o Enio fotografou. O texto original fica abaixo,
+  porque descreve corretamente o mecanismo:
 - ⚠️ **Uma forma com TRAÇO cai no caminho do RASTER** (`silhouette_segments` devolve vazio): a
   silhueta desenhada é `preenchimento ∪ contorno-do-traço`, e a borda INTERNA do traço **não é
   fronteira de silhueta nenhuma** — semeá-la poria a fronteira no meio da forma. A união exata é

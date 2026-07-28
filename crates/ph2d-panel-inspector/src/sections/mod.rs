@@ -47,6 +47,7 @@ mod sampling;
 mod sprite_sheet;
 mod transform;
 mod visibility;
+mod wheel;
 
 pub(crate) use color_tint::paint_color_tint_section;
 pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
@@ -60,3 +61,4 @@ pub(crate) use sampling::paint_sampling_section;
 pub(crate) use sprite_sheet::paint_sprite_sheet_section;
 pub(crate) use transform::paint_transform_section;
 pub(crate) use visibility::paint_visibility_section;
+pub(crate) use wheel::paint_wheel_section;

@@ -131,8 +131,9 @@ pub use screens::{
     InspectorOrderingMixed, InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSamplingMixed,
     InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo,
     InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
-    JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, RequestedSpriteStrategy,
-    SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind, VisibilityFieldEdit, paint_hero_screen,
+    InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit,
+    RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
+    VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

@@ -47,14 +47,15 @@ pub(crate) fn begin_section(
     hit_index.register(section_id, Rect::new(inner_x, y_before, inner_w, header_h));
 }
 
-/// §11 Physics Body + §12 Physics Joint, frame and all.
+/// §11 Physics Body + §12 Physics Joint + §13 Pulley Wheel, frame and all.
 ///
 /// Lifted out of `paint_inspector` for the same reason the section frame and
 /// phase B were lifted before it: that orchestrator is under a ratcheting LOC
 /// cap, and §12 pushed it past the line §11 had already ratcheted down to. The
-/// two live here together because they are one family — the joint section's
-/// creation gesture is a button in the body section — and because keeping them
-/// adjacent is what makes their two note slots obviously distinct.
+/// three live here together because they are one family — the joint section's
+/// creation gesture is a button in the body section, and the wheel's is a button
+/// in the joint section — and because keeping them adjacent is what makes their
+/// three note slots obviously distinct.
 ///
 /// Returns the new `y`.
 #[allow(clippy::too_many_arguments)]
@@ -72,9 +73,14 @@ pub(crate) fn paint_physics_sections(
     header_h: f32,
     physics: Option<&ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     joint: Option<&ph2d_editor_core::screens::hero::InspectorJointInfo>,
-    notes_body: &[(usize, NoteData)],
-    notes_joint: &[(usize, NoteData)],
+    wheel: Option<&ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+    // Os slots de nota da PANELA inteira: a família indexa os seus (9, 10, 11)
+    // aqui dentro, em vez de o orquestrador passar um por seção. É o mesmo
+    // corte que trouxe a pintura para cá — quem é dono das três seções é dono
+    // dos três slots.
+    notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
+    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
     // §11 Physics Body — offered for ANY Transform-bearing entity, with or
     // without a body: the empty state is the Add button, and without it a
     // sprite could never become physical (ADR-0131 D8).
@@ -112,7 +118,7 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_PHYSICS_SECTION,
             y_before,
             new_y,
-            notes_body,
+            slot(9),
         );
     }
     // §12 Physics Joint — only for an entity that IS a joint. Unlike §11 it has
@@ -153,7 +159,48 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_JOINT_SECTION,
             y_before,
             new_y,
-            notes_joint,
+            slot(10),
+        );
+    }
+    // §13 Pulley Wheel — só para uma entidade que É uma roldana. Como a §12 e
+    // pelo mesmo motivo, ela não tem face vazia: não há o que oferecer num
+    // objeto que não é roldana, e o gesto que cria uma mora na §12, onde está a
+    // corda que vai atravessá-la.
+    if let Some(wh) = wheel {
+        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        let y_before = y;
+        begin_section(
+            section_tops_y,
+            hit_index,
+            inner_x,
+            inner_w,
+            body_top_y,
+            y_before,
+            ids::INSP_LIVE_WHEEL_SECTION,
+            header_h,
+        );
+        let new_y = crate::sections::paint_wheel_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+            wh,
+        );
+        y = finish_section(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            ids::INSP_LIVE_WHEEL_SECTION,
+            y_before,
+            new_y,
+            slot(11),
         );
     }
     y
@@ -216,8 +263,28 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 9]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 10]) -> bool {
     flags.iter().any(|&b| b)
+}
+
+/// Os três snapshots da FAMÍLIA de física, buscados de uma vez.
+///
+/// Mora aqui pelo mesmo argumento que trouxe a pintura deles: §11, §12 e §13 são
+/// uma família, e o orquestrador de seções está num cap de LOC com catraca (o
+/// `architecture_panel_loc_cap` diz, textualmente, *"a próxima seção divide de
+/// novo"*). Buscar os três numa linha é o que paga a §13 sem pedir uma exceção.
+pub(crate) type PhysicsFamilyInfos = (
+    Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
+    Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
+    Option<ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+);
+
+pub(crate) fn physics_family_infos() -> PhysicsFamilyInfos {
+    (
+        crate::state::current_inspector_physics(),
+        crate::state::current_inspector_joint(),
+        crate::state::current_inspector_wheel(),
+    )
 }
 
 /// The per-frame numbers `publish_and_finish` needs, bundled — sixteen loose

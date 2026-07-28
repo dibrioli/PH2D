@@ -30,6 +30,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_blend(store);
     super::populate_physics::populate_physics(store);
     super::populate_physics::populate_joint(store);
+    super::populate_physics::populate_wheel(store);
 }
 
 /// W3 §8 Visibility section: register the segmented + bitmask + toggle ids

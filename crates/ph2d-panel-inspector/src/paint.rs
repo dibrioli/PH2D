@@ -196,8 +196,7 @@ fn paint_inspector(
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
     let blend_info = current_inspector_blend();
-    let physics_info = crate::state::current_inspector_physics();
-    let joint_info = crate::state::current_inspector_joint();
+    let (physics_info, joint_info, wheel_info) = crate::paint_frame::physics_family_infos();
     let name_present = current_inspector_name_is_some();
     let any_section = any_live_section([
         transform_info.is_some(),
@@ -208,15 +207,16 @@ fn paint_inspector(
         blend_info.is_some(),
         physics_info.is_some(),
         joint_info.is_some(),
+        wheel_info.is_some(),
         name_present,
     ]);
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    // One slot per live section; §11 Physics Body made it ten and §12 Physics
-    // Joint made it eleven. Sized wrong, a note anchored to the last section
-    // silently falls into `trailing_notes` instead of where its author put it.
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 11] = Default::default();
+    // One slot per live section; §11/§12/§13 (physics) made it twelve. Sized
+    // wrong, a note anchored to the last section silently falls into
+    // `trailing_notes` instead of where its author put it.
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 12] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -428,8 +428,8 @@ fn paint_inspector(
         SECTION_HEAD_H,
         physics_info.as_ref(),
         joint_info.as_ref(),
-        &notes_per_section[9],
-        &notes_per_section[10],
+        wheel_info.as_ref(),
+        &notes_per_section,
     );
     if any_section {
         for (slot, note) in &trailing_notes {

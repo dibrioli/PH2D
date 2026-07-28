@@ -203,19 +203,27 @@ impl crate::App {
                   DOIS pontos ambar: o do CENTRO (arraste e ela se muda de lugar) e o do\n     \
                   ARO, a direita (arraste e ela muda de TAMANHO). Em qualquer um dos dois\n     \
                   a corda re-roteia na hora, e Ctrl+Z desfaz.\n  \
-               5. ACRESCENTE uma roldana: selecione a corda ('Simple Rope') na Hierarquia\n     \
+               5. E no Inspector abre a secao 'Pulley Wheel', com tres coisas:\n     \
+                  Radius (o MESMO numero que a alca do aro -- dois gestos, um valor),\n     \
+                  Order (a posicao dela ao longo da corda, contando de 1) e Wrap.\n     \
+                  EXPERIMENTE: selecione 'Zigzag Rope Wheel 2' e marque 'Under' --\n     \
+                  a corda salta para o outro lado daquela roldana (medido: o lado\n     \
+                  resolvido vai de -1 para +1). 'Auto' e o algoritmo decidindo;\n     \
+                  Over/Under sao o escape manual, e ate esta secao eles nao tinham\n     \
+                  gesto nenhum -- eram estado salvo em arquivo que nada alcancava.\n  \
+               6. ACRESCENTE uma roldana: selecione a corda ('Simple Rope') na Hierarquia\n     \
                   e clique 'Add Wheel' no fim da secao do joint. Ela nasce SOBRE a corda\n     \
                   (no meio do ultimo trecho, para nao dar um puxao) e vira um objeto na\n     \
                   Hierarquia -- arraste o dot dela para onde a corda tem de passar.\n     \
                   Para tirar uma, delete o objeto: uma roldana e um objeto como outro\n     \
                   qualquer, entao Delete e Ctrl+Z ja funcionam.\n  \
-               6. E o gesto de CRIAR, pelas DUAS rotas:\n     \
+               7. E o gesto de CRIAR, pelas DUAS rotas:\n     \
                   (a) selecione dois corpos, escolha 'Pulley' no seletor 'Join As' da\n     \
                       secao Physics Body e clique em Join;\n     \
                   (b) OU aperte sobre um corpo no canvas, arraste e solte sobre o outro.\n     \
                   Nas duas, DUAS roldanas nascem como objetos na Hierarquia, acima de cada\n     \
                   corpo, e a corda ja nasce esticada.\n  \
-               7. E o que NAO esta mais la: o campo 'Ratio'. Ele vendia uma talha que a\n     \
+               8. E o que NAO esta mais la: o campo 'Ratio'. Ele vendia uma talha que a\n     \
                   fisica nao tem -- ver o item 3.",
             simple_drop = MEASURED_SIMPLE_LOAD_DROP,
             simple_rise = MEASURED_SIMPLE_CW_RISE,

@@ -143,6 +143,11 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
     if crate::event_joint::apply_joint_event(host, ev) {
         return true;
     }
+    // §13 Pulley Wheel — irmã da §12, e no mesmo lugar da cadeia pelo mesmo
+    // motivo.
+    if crate::event_wheel::apply_wheel_event(host, ev) {
+        return true;
+    }
     if crate::event_physics::apply_physics_event(host, ev) {
         return true;
     }

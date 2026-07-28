@@ -7,8 +7,14 @@
 //! entidade, e a próxima wave da polia (motor por roda, ruptura no centro) chega
 //! aqui.
 
+use super::inspector_ordering::queue_set;
+use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_editor::{InspectorWheelInfo, WheelFieldEdit};
 use ph2d_physics_ecs::PhysicsBridge;
+
+/// O nome de tipo do componente, como o registry o conhece.
+const WHEEL: &str = "ph2d::physics::PulleyWheel";
 
 /// Quantas roldanas apontam para esta corda, no mundo AUTORADO.
 pub(crate) fn rope_wheel_count(sim: &mut SimWorld, joint: Entity) -> u32 {
@@ -76,4 +82,83 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
         Transform::from_translation(ph2d_core::Vec2::new(centre[0], centre[1])),
     ));
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
+}
+
+/// **O snapshot da §13.** `None` para qualquer coisa que não seja uma roldana —
+/// como a §12 e pelo mesmo motivo, esta seção não tem face vazia.
+pub(crate) fn build_wheel_info(sim: &mut SimWorld, entity_bits: u64) -> Option<InspectorWheelInfo> {
+    let entity = Entity::from_bits(entity_bits);
+    let wheel = *sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity)?;
+    // A corda a que ela pertence, resolvida do HASH para o nome. ⚠️ Exige um
+    // `PhysicsJoint`, não só um nome que bate: uma roldana só entra numa rota se
+    // o nome for o de uma CORDA, e um sprite homônimo não a põe em lugar nenhum.
+    let mut q = sim
+        .world_mut()
+        .query::<(&Name, &ph2d_physics_ecs::PhysicsJoint)>();
+    let world = sim.world();
+    let rope_name = q
+        .iter(world)
+        .find(|(n, _)| stable_name_id(n.as_str()) == wheel.rope)
+        .map(|(n, _)| n.as_str().to_string())
+        .unwrap_or_default();
+    Some(InspectorWheelInfo {
+        entity_bits,
+        bound: !rope_name.is_empty(),
+        rope_name,
+        radius: wheel.radius,
+        // O componente conta de zero e a pessoa conta de um. A conversão mora
+        // aqui e no `wheel_with_edit`, uma vez de cada lado.
+        order_ui: u32::from(wheel.order) + 1,
+        wrap_tag: wheel.wrap.tag(),
+    })
+}
+
+/// Aplica um [`WheelFieldEdit`], pelo mesmo funil do irmão `apply_joint_edit`:
+/// lê a roldana viva e a escreve de volta mudada, porque uma escrita parcial
+/// derrubaria os campos que não estão sendo editados.
+pub(crate) fn apply_wheel_edit(
+    sim: &SimWorld,
+    entity_bits: u64,
+    edit: WheelFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) {
+    let entity = Entity::from_bits(entity_bits);
+    let Some(&current) = sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity) else {
+        return;
+    };
+    let Some(next) = wheel_with_edit(current, edit) else {
+        return;
+    };
+    if next != current {
+        queue_set(queue, registry, entity_bits, WHEEL, &next);
+    }
+}
+
+/// **Uma edição aplicada a uma roldana** — a metade pura, e o funil único.
+///
+/// `None` quando a edição não é uma escrita de componente: um tag de `Wrap` que
+/// não nomeia variante nenhum é **recusado**, nunca dobrado em `Auto`. Dobrar o
+/// desconhecido no primeiro variant é o defeito que o `BodyKind` do W4 pagou —
+/// com dois variants é redundante, com o terceiro vira um chip que seleciona
+/// outra coisa.
+#[must_use]
+pub(crate) fn wheel_with_edit(
+    current: ph2d_physics_ecs::PulleyWheel,
+    edit: WheelFieldEdit,
+) -> Option<ph2d_physics_ecs::PulleyWheel> {
+    let mut next = current;
+    match edit {
+        WheelFieldEdit::Radius(v) => next.radius = v,
+        // 1-based na row, 0-based no componente. `saturating_sub` e não `- 1`:
+        // a fronteira do painel já põe o piso em 1, e um zero que escapasse por
+        // outra rota viraria `u16::MAX` num wrap silencioso.
+        WheelFieldEdit::Order(v) => {
+            next.order = u16::try_from(v.saturating_sub(1)).unwrap_or(u16::MAX);
+        }
+        WheelFieldEdit::Wrap(tag) => next.wrap = ph2d_physics_ecs::WrapSide::from_tag(tag)?,
+    }
+    // A MESMA porta de carga que o load usa: raio negativo inverteria a
+    // tangente, `NaN` envenenaria a pose e o hash C9.
+    Some(next.clamped())
 }

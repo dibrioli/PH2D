@@ -14,7 +14,7 @@
 use ph2d_editor_core::screens::hero::{
     InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
     InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSpriteInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -67,6 +67,11 @@ thread_local! {
     /// §12 Physics Joint. A `RefCell`, unlike its `Cell` siblings, because the
     /// info carries the two bodies' NAMES and so is not `Copy`.
     pub(crate) static CURRENT_INSPECTOR_JOINT: std::cell::RefCell<Option<InspectorJointInfo>> =
+        const { std::cell::RefCell::new(None) };
+
+    /// §13 Pulley Wheel (W-Pulley W1). `RefCell` pelo mesmo motivo da irmã
+    /// acima: carrega o NOME da corda.
+    pub(crate) static CURRENT_INSPECTOR_WHEEL: std::cell::RefCell<Option<InspectorWheelInfo>> =
         const { std::cell::RefCell::new(None) };
 
     /// W3 §7: live ordering/sorting snapshot for the Ordering section.
@@ -177,6 +182,14 @@ pub fn set_current_inspector_joint(info: Option<InspectorJointInfo>) {
 
 pub(crate) fn current_inspector_joint() -> Option<InspectorJointInfo> {
     CURRENT_INSPECTOR_JOINT.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_wheel(info: Option<InspectorWheelInfo>) {
+    CURRENT_INSPECTOR_WHEEL.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_wheel() -> Option<InspectorWheelInfo> {
+    CURRENT_INSPECTOR_WHEEL.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {

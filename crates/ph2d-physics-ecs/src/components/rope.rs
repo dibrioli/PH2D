@@ -49,6 +49,30 @@ pub enum WrapSide {
     Under,
 }
 
+impl WrapSide {
+    /// A ordem dos chips da §13 — e a MESMA lista que o painel pinta.
+    pub const ALL: [Self; 3] = [Self::Auto, Self::Over, Self::Under];
+
+    /// O tag que atravessa a fronteira do painel, que não conhece este enum.
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            Self::Auto => 0,
+            Self::Over => 1,
+            Self::Under => 2,
+        }
+    }
+
+    /// A volta. ⚠️ **`None` para tag desconhecido, nunca um default silencioso** —
+    /// dobrar o desconhecido no primeiro variant é o defeito que o `BodyKind` do
+    /// W4 pagou: com dois variants é redundante, com o terceiro vira um chip que
+    /// seleciona outra coisa.
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Option<Self> {
+        Self::ALL.get(tag as usize).copied()
+    }
+}
+
 /// **Uma roldana de uma polia — componente de uma entidade própria.**
 ///
 /// Presente numa entidade com `Transform`, ela entra na rota da corda cujo nome

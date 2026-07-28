@@ -578,7 +578,7 @@ pub const SECTION_IDS: [NodeId; 11] = [
 /// ⚠️ `finish_section` reads `store.section_outline_color(<section id>)` for
 /// EVERY live section, so a section missing from this list has an outline the
 /// paint path is ready to draw and no gesture that can ever set it.
-pub const LIVE_SECTION_IDS: [NodeId; 11] = [
+pub const LIVE_SECTION_IDS: [NodeId; 12] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,
     INSP_LIVE_TRANSFORM_SECTION,
@@ -590,6 +590,7 @@ pub const LIVE_SECTION_IDS: [NodeId; 11] = [
     INSP_LIVE_BLEND_SECTION,
     INSP_LIVE_PHYSICS_SECTION,
     INSP_LIVE_JOINT_SECTION,
+    INSP_LIVE_WHEEL_SECTION,
 ];
 
 /// Grid-snap floating panel root id.

@@ -779,6 +779,12 @@ pub(super) fn publish(
         };
         super::inspector_joint::build_joint_info(sim, b, pick_armed)
     });
+    // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
+    // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
+    let inspector_wheel = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_joint_wheel::build_wheel_info(sim, b));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -799,6 +805,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
+        ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);
         ph2d_panel_inspector::set_current_inspector_visibility_section(
             inspector_visibility_section,
         );

@@ -63,6 +63,10 @@ mod inspector_joint_pair_tests;
 #[cfg(test)]
 mod inspector_joint_tests;
 pub(crate) mod inspector_joint_wheel;
+/// A metade de SHELL da §13 Pulley Wheel: o snapshot que ela lê e a edição que
+/// ela aplica ao componente.
+#[cfg(test)]
+mod inspector_joint_wheel_tests;
 mod inspector_ordering;
 mod inspector_physics;
 mod inspector_physics_apply;
@@ -2037,6 +2041,7 @@ impl crate::App {
             // signature is already the length its own doc-comment warns about,
             // and these two are applied in one short block below.
             let mut joint_edits: Vec<(u64, ph2d_editor::JointFieldEdit)> = Vec::new();
+            let mut wheel_edits: Vec<(u64, ph2d_editor::WheelFieldEdit)> = Vec::new();
             // The pair to join, at most one per frame — it is a click, not a
             // per-entity edit.
             let mut bake_request: Option<Vec<u64>> = None;
@@ -2815,6 +2820,11 @@ impl crate::App {
                             }
                             _ => joint_edits.push((entity_bits, edit)),
                         }
+                    }
+                    // §13 Pulley Wheel. Sem fan-out, e pela razão da §12: a
+                    // seção descreve UMA roldana, a que está selecionada.
+                    EditorAction::InspectorWheelEdit { entity_bits, edit } => {
+                        wheel_edits.push((entity_bits, edit));
                     }
                     EditorAction::InspectorVisibilitySectionEdit { entity_bits, edit } => {
                         // BulkSelect fan-out, same shape as the sampling edit.
@@ -6186,6 +6196,31 @@ impl crate::App {
                             "Joint commit failed: {e}"
                         )));
                     }
+                }
+            }
+            // §13 Pulley Wheel (W-Pulley W1). Toda edição é de COMPONENTE — não
+            // há aqui o par estrutural da §12 (criar/apagar uma roldana é criar
+            // ou apagar um OBJETO, e a Hierarquia já sabe fazer os dois).
+            for &(bits, edit) in &wheel_edits {
+                inspector_joint_wheel::apply_wheel_edit(
+                    sim,
+                    bits,
+                    edit,
+                    editor_queue,
+                    component_registry,
+                );
+                // FLUSH por edição, pela razão que o laço do joint documenta ao
+                // lado: o apply lê-modifica-escreve o componente INTEIRO, então
+                // uma segunda edição no mesmo frame que lesse a primeira ainda
+                // não aplicada a descartaria em silêncio.
+                if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
+                    sim.world_mut(),
+                    editor_queue,
+                    component_registry,
+                ) {
+                    toasts.push(ph2d_editor::Toast::error(format!(
+                        "Wheel commit failed: {e}"
+                    )));
                 }
             }
             if join_draw_arm {

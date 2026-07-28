@@ -397,6 +397,14 @@ pub enum EditorAction {
         edit: crate::screens::hero::JointFieldEdit,
     },
 
+    /// Inspector → shell channel for a §13 Pulley Wheel field (W-Pulley W1).
+    /// The `entity_bits` are the WHEEL object's — a roldana é uma entidade, e
+    /// esta seção descreve ELA, não a corda que a atravessa.
+    InspectorWheelEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::WheelFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

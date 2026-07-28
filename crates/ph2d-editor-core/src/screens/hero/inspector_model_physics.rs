@@ -524,3 +524,50 @@ pub enum JointFieldEdit {
     /// Delete the joint object.
     Remove,
 }
+
+/// §13 Pulley Wheel snapshot (W-Pulley W1) — a **roldana** selecionada.
+///
+/// Seção própria porque uma roldana é uma ENTIDADE: ela é o objeto selecionado
+/// quando estas rows importam, e a §12 ao lado só existe com a CORDA
+/// selecionada. Não é `Copy`, como a irmã §12 e pelo mesmo motivo: carrega o
+/// NOME da corda, e o componente guarda um hash — que não é coisa de mostrar a
+/// uma pessoa.
+///
+/// ⚠️ **A posição não está aqui.** O centro da roldana É o
+/// `Transform.translation`, que a §2 já pinta para toda entidade — uma row de
+/// posição aqui seria a segunda porta para o mesmo fato.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorWheelInfo {
+    pub entity_bits: u64,
+    /// A corda a que ela pertence, resolvida para exibição. Vazio = o nome não
+    /// casa com nenhuma corda na cena (apagada ou renomeada).
+    pub rope_name: String,
+    /// Essa corda existe agora? A seção o diz em voz alta: uma roldana órfã é
+    /// inerte, não quebrada, e mostrar os parâmetros dela como se ela estivesse
+    /// na rota seria mentira — a mesma escolha do `bound` da §12.
+    pub bound: bool,
+    /// O raio, metros. A alça do aro no canvas edita o MESMO campo.
+    pub radius: f32,
+    /// A posição ao longo da corda, **1-based** — 1º nó, 2º nó, …
+    ///
+    /// ⚠️ Sufixo `_ui` pela razão que o `limit_min_ui` da §12 dá por extenso: o
+    /// componente conta de zero e a pessoa conta de um, e um identificador que
+    /// promete uma convenção carregando outra é o mesmo defeito de um rótulo que
+    /// faz isso. A conversão mora nas duas fronteiras, uma vez cada.
+    pub order_ui: u32,
+    /// `0` Auto · `1` Over · `2` Under — a ordem de `WrapSide::ALL`, que é a
+    /// ordem dos chips que a §13 pinta.
+    pub wrap_tag: u8,
+}
+
+/// Um campo editável da §13, despachado como
+/// [`EditorAction::InspectorWheelEdit`](crate::action_bus::EditorAction).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum WheelFieldEdit {
+    /// Metros.
+    Radius(f32),
+    /// **1-based**, como a row mostra — ver [`InspectorWheelInfo::order_ui`].
+    Order(u32),
+    /// `0` Auto · `1` Over · `2` Under.
+    Wrap(u8),
+}

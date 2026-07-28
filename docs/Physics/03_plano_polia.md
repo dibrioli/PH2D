@@ -187,12 +187,34 @@ que o geral não quebrou o particular.
 | 7. algoritmo de cima/baixo | ponto fixo automático (1 passada medida) + `WrapSide::{Auto,Over,Under}` |
 | 8. motor e break por roldana | **W2** — o componente já tem onde |
 
+(As três rows da roldana — raio numérico, ordem e lado — fecharam na W1-E,
+abaixo.)
+
+### W1-E — a §13 Pulley Wheel (FECHADA)
+
+A roldana ganhou **seção própria** no Inspector: `Rope` (leitura), **Radius**,
+**Order** e **Wrap** `Auto | Over | Under`.
+
+⚠️ **Duas das três rows são o ÚNICO gesto que existe.** Até aqui, `Over`/`Under`
+(o escape manual do pedido 7) e a `order` eram estado **autorado, serializado,
+que muda a rota** — e que nenhum gesto do editor alcançava. O raio é o caso
+oposto: a alça do aro já o editava, e as duas portas escrevem o MESMO campo.
+
+Seção própria e não rows na §12 porque **uma roldana é uma entidade**: ela é o
+objeto SELECIONADO quando estas rows importam, e a §12 só existe com a CORDA
+selecionada. Uma seção que trocasse de assunto conforme a seleção teria um
+estado de colapso descrevendo dois objetos.
+
+Medido na cena 58 (`probe_wrap_58`): forçar `Under` na 2ª roldana do ziguezague
+leva o lado resolvido de **−1 para +1**, e a corda salta para o outro lado da
+roda.
+
 ### Aberto no W1, nomeado
 
-- **A seção de Inspector da RODA não existe** — o raio é autorável pela alça do
-  aro e o `wrap` só pelo default `Auto`. As duas rows (Radius numérico, Wrap
-  `Auto|Over|Under`) e a de `order` são a próxima fatia; os ids já estão cunhados
-  (`INSP_WHEEL_RADIUS`/`_ORDER`/`_WRAP`).
+- **A corda de uma roldana é escolhida só na CRIAÇÃO** — a §13 mostra o nome e
+  não o re-escolhe. Uma roldana órfã (corda renomeada) é inerte e o diz em voz
+  alta, mas a volta é apagar e refazer. É a mesma exposição de toda binding por
+  nome do editor; um eyedropper de corda, se vier, é o irmão exato do da §12.
 - **Um corpo que passa da própria roldana inverte o ramo** — a corda passa a
   puxar do outro lado e a cena dá um tranco. A cena de smoke evita o caso
   levantando as roldanas; o que uma polia REAL faz ali é a carga encostar na

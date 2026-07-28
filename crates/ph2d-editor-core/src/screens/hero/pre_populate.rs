@@ -563,6 +563,8 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         // a fold that could not happen and `is_collapsed` was pinned false.
         ids::INSP_LIVE_PHYSICS_SECTION,
         ids::INSP_LIVE_JOINT_SECTION,
+        // §13 Pulley Wheel (W-Pulley W1) — a irmã das duas acima.
+        ids::INSP_LIVE_WHEEL_SECTION,
         // Widget Gallery showcase sections.
         ids::INSP_SECTION_INPUTS,
         ids::INSP_SECTION_SLIDER,

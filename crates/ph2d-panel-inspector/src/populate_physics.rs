@@ -85,10 +85,6 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         (ids::INSP_JOINT_BREAK_FORCE, 100.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newtons
         (ids::INSP_JOINT_BREAK_TORQUE, 50.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newton-metres
         (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01),  // LITERAL-PX-OK: meters
-                                                                 // A razão da talha (W-Pulley) — adimensional. ⚠️ **O modelo não tem teto
-                                                                 // próprio**: a razão multiplica o ramo B no comprimento da corda e nada
-                                                                 // se esgota quando ela cresce, então este máximo é conveniência de
-                                                                 // arrasto e não um recurso medido. O MÍNIMO é: `PhysicsJoint::MIN_RATIO`
     ] {
         store.register(
             id,
@@ -102,6 +98,40 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
             },
         );
         store.set_number_range(id, min, max, step);
+    }
+}
+
+/// §13 Pulley Wheel (W-Pulley W1) — o mesmo dever da irmã acima.
+///
+/// ⚠️ **Alcance E taxa de arrasto, nos dois números.** Os dois têm PISO e não
+/// têm TETO — um raio não tem máximo natural (`MIN_RADIUS` é 0, e raio zero é a
+/// roldana-ponto que a rota reproduz exata) e a ordem é `u16`. A combinação é a
+/// receita documentada em `set_number_drag_rate` para exatamente esse caso: o
+/// alcance dá `step` e piso ao stepper, a taxa dá ao arrasto uma escala
+/// calibrada em vez de uma proporção sobre um intervalo que não termina. Os
+/// máximos abaixo são conveniência do stepper, **não recurso medido** — e é por
+/// isso que eles não podem ser o que impede uma corda de ter cem roldanas.
+pub(super) fn populate_wheel(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_WHEEL_WRAP);
+    for (id, value, min, max, step, rate) in [
+        // Metros. O seed é o `PulleyWheel::DEFAULT_RADIUS`.
+        (ids::INSP_WHEEL_RADIUS, 0.25, 0.0, 100.0, 0.01, 0.01), // LITERAL-PX-OK: meters
+        // 1-based, como a row mostra.
+        (ids::INSP_WHEEL_ORDER, 1.0, 1.0, 99.0, 1.0, 0.1), // LITERAL-PX-OK: ordinal
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, min, max, step);
+        store.set_number_drag_rate(id, rate);
     }
 }
 

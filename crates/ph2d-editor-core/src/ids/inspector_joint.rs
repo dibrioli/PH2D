@@ -158,6 +158,17 @@ pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 /// posicioná-la é o mesmo de qualquer roldana: arrastar o dot dela.
 pub const INSP_JOINT_ADD_WHEEL: NodeId = hash_node_id("insp_joint_add_wheel");
 
+/// **O cabeçalho da §13 — Pulley Wheel** (dono do estado de colapso) e o
+/// círculo de cor dele.
+///
+/// ⚠️ Seção PRÓPRIA, e não mais rows na §12: uma roldana é uma ENTIDADE (a
+/// espinha do W1), então ela é o objeto SELECIONADO quando estas rows importam,
+/// e a §12 só existe com a CORDA selecionada. Uma seção que trocasse de assunto
+/// conforme o que está selecionado teria um estado de colapso descrevendo dois
+/// objetos diferentes.
+pub const INSP_LIVE_WHEEL_SECTION: NodeId = hash_node_id("insp_live_wheel_section");
+pub const INSP_LIVE_WHEEL_COLOR: NodeId = hash_node_id("insp_live_wheel_color");
+
 /// **O RAIO da roldana selecionada**, metros (W-Pulley W1).
 ///
 /// O número que substituiu o `Ratio`. A alça do aro no canvas edita o MESMO

@@ -19,6 +19,7 @@ mod event;
 mod event_joint;
 mod event_ordering;
 mod event_physics;
+mod event_wheel;
 mod paint;
 mod paint_frame;
 mod populate;
@@ -26,6 +27,7 @@ mod populate_physics;
 mod sections;
 pub mod state;
 mod sync;
+mod sync_physics;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
@@ -36,6 +38,7 @@ pub use state::{
     set_current_inspector_ordering, set_current_inspector_physics, set_current_inspector_sampling,
     set_current_inspector_sprite, set_current_inspector_transform,
     set_current_inspector_visibility, set_current_inspector_visibility_section,
+    set_current_inspector_wheel,
 };
 
 use ph2d_a11y::NodeId;

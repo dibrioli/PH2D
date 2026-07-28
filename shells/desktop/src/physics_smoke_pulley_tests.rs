@@ -2,7 +2,7 @@
 
 use super::*;
 use ph2d_ecs::SimWorld;
-use ph2d_physics_ecs::PhysicsBridge;
+use ph2d_physics_ecs::{PhysicsBridge, PulleyWheel, WrapSide};
 
 fn run(ticks: u64) -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
@@ -123,5 +123,41 @@ fn the_rope_touches_the_rim_and_not_the_centre() {
             w.radius
         );
         assert!(w.radius > 0.1, "a cena tem de ter roda com tamanho visível");
+    }
+}
+
+/// **O que forçar `Over`/`Under` numa roldana faz com a corda** (W-Pulley W1-E).
+///
+/// A §13 é o único gesto que alcança este campo, então a cena de smoke pede que
+/// o artista o exercite — e o número que ela cita sai daqui.
+///
+/// `cargo test -p ph2d-host-desktop --bins probe_wrap_58 -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate"]
+fn probe_wrap_58() {
+    println!("\n=== CENA 58 — o lado da corda na 2a roldana do ziguezague ===");
+    for wrap in [WrapSide::Auto, WrapSide::Over, WrapSide::Under] {
+        let mut sim = SimWorld::new();
+        build(sim.world_mut());
+        {
+            let mut q = sim.world_mut().query::<(&Name, &mut PulleyWheel)>();
+            for (n, mut w) in q.iter_mut(sim.world_mut()) {
+                if n.as_str() == "Zigzag Rope Wheel 2" {
+                    w.wrap = wrap;
+                }
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        bridge.dispatch(&mut sim, false, 1);
+        let rope = {
+            let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+            q.iter(sim.world())
+                .find(|(_, n)| n.as_str() == "Zigzag Rope")
+                .map(|(e, _)| e)
+                .expect("a corda existe")
+        };
+        let side = bridge.rope_wheels(rope).nth(1).map(|(_, w)| w.side);
+        let drop = START_Y - y_of(&mut sim, "Zigzag Load");
+        println!("{wrap:>6?}: lado resolvido {side:?} | carga em 1 tick {drop:+.6} m");
     }
 }

@@ -1661,3 +1661,83 @@ fn a_sub_pixel_stroke_is_the_stroke_at_the_floor_faded_even_where_it_meets_itsel
         }
     }
 }
+
+/// SONDA — **quanto** o `self_overlap` erra hoje. Com o bit, a profundidade vira
+/// por-SEGMENTO e as faces sobrepostas BLENDam; mas cada face computa a **UNIÃO
+/// GLOBAL** (`min` sobre TODAS as cápsulas alcançáveis), então as `N` faces que
+/// cobrem o pixel compõem `1−(1−u)^N` com o MESMO `u` — a cobertura da passagem mais
+/// próxima, contada `N` vezes. `N` é o número de QUADS sobrepostos, não o de
+/// PASSAGENS.
+///
+/// A lei certa é a de TINTA: `α = 1 − Π_passagem (1 − mask(min das cápsulas DAQUELA
+/// passagem))`. Num pixel a `dn=0,5` de uma passagem e `dn=0,9` da outra, o modelo de
+/// hoje credita a segunda com `m(0,5)` em vez de `m(0,9)`.
+///
+///   cargo test -p ph2d-flip-render --release --test gpu_render \
+///     measure_the_self_overlap -- --ignored --nocapture
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_self_overlap_double_count() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    const OPACITY: f32 = 0.5;
+    const HARDNESS: f32 = 0.7;
+    const R: f32 = 6.0;
+    // Um X de UM traço. A passagem A é o segmento 0, a B é o segmento 2; o segmento 1
+    // (a vertical da direita) é o conector e fica longe do cruzamento.
+    let spine = [(10.0, 10.0), (54.0, 54.0), (54.0, 10.0), (10.0, 54.0)];
+    let render_flag = |on: bool| {
+        let mut d = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        for &(x, y) in &spine {
+            s.push_point(Point {
+                pos: Vec2::new(x, y),
+                width: R * 2.0,
+                opacity: OPACITY,
+                color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+            });
+        }
+        s.hardness = HARDNESS;
+        s.self_overlap = on;
+        d.strokes.push(s);
+        render(&device, &queue, &d)
+    };
+    let off = render_flag(false);
+    let on = render_flag(true);
+
+    // A lei de TINTA, na CPU: uma passagem = um segmento do X.
+    let passage_alpha = |p: (f32, f32), seg: (usize, usize)| -> f32 {
+        let dn = capsule_dn(p, spine[seg.0], spine[seg.1], R, R);
+        cpu_mask(dn, HARDNESS) * OPACITY
+    };
+    println!("  pixel      | dnA   dnB   |  OFF |  ON  | lei de tinta | erro do ON");
+    let mut worst = 0i32;
+    for &(x, y) in &[
+        (32u32, 32u32),
+        (32, 34),
+        (32, 36),
+        (30, 36),
+        (34, 36),
+        (32, 38),
+        (28, 32),
+        (36, 32),
+    ] {
+        let p = (x as f32 + 0.5, y as f32 + 0.5);
+        let (ma, mb) = (passage_alpha(p, (0, 1)), passage_alpha(p, (2, 3)));
+        let ink = 1.0 - (1.0 - ma) * (1.0 - mb);
+        let want = (ink * 255.0).round() as i32;
+        let got_on = i32::from(alpha_at(&on, x, y));
+        let err = (got_on - want).abs();
+        worst = worst.max(err);
+        println!(
+            "  ({x:2},{y:2})    | {:.2}  {:.2}  | {:4} | {:4} | {want:12} | {:+}",
+            capsule_dn(p, spine[0], spine[1], R, R),
+            capsule_dn(p, spine[2], spine[3], R, R),
+            alpha_at(&off, x, y),
+            got_on,
+            got_on - want,
+        );
+    }
+    println!("  pior erro do modelo de hoje contra a lei de tinta: {worst}/255");
+}

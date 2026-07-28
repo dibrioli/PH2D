@@ -28,6 +28,21 @@
 //    de material, não o default. Aqui ele é o bit `FLAG_SELF_OVERLAP` por-traço
 //    (`FlipStroke::self_overlap`, 03 §8): a depth vira por-SEGMENTO e as faces
 //    sobrepostas passam a BLENDAR — a tinta escurece no cruzamento (opt-in).
+//
+//    ⚠️ **DEFEITO ABERTO E MEDIDO neste modo — `self_overlap` CONTA DUAS VEZES.**
+//    Cada face que passa o depth computa a **UNIÃO GLOBAL** (o `min` sobre TODAS as
+//    cápsulas alcançáveis), então as `N` faces sobrepostas compõem `1−(1−u)^N` com o
+//    MESMO `u` — e `u` é a cobertura da passagem mais PRÓXIMA, creditada `N` vezes.
+//    `N` é o número de QUADS sobrepostos, não o de PASSAGENS. A lei certa é a de
+//    TINTA: `α = 1 − Π_passagem (1 − mask(min das cápsulas DAQUELA passagem))`.
+//    Medido (`measure_the_self_overlap_double_count`, X macio, opacidade 0,5): erro de
+//    até **43/255 (17%)**, e a assinatura é exata — todo pixel sai em `1−(1−OFF)²`,
+//    inclusive onde a 2ª passagem está a `dn = 0,82` e deveria contribuir ~nada.
+//    ⚠️ O default é `self_overlap: false`, então isto **não** é o artefato de
+//    cruzamento que o pincel comum mostra (esse era a lista de vizinhos, já curada).
+//    A cura pede a lista de extras PARTICIONADA por passagem (a fita local já é
+//    separada desde o orçamento próprio) + depth de volta a por-TRAÇO — o que mata
+//    junto a colisão de `f32` do degrau por-segmento em `sid` alto. Wave própria.
 // 3. **Discard de fragmento ~transparente** (`gpencil_frag.glsl`: `a < 0.001`):
 //    sem ele, o canto transparente de um quad escreve depth e FURA a geometria
 //    que chega depois (era o "escamado"/corrente-de-ovais do stadium+GREATER).
@@ -41,13 +56,28 @@
 // default hardness=1.0 + SMAA o escondem lá, mas aqui o pincel macio é o caso
 // comum). Portanto **divergimos do GP de propósito**, na direção que o próprio
 // shader dele aponta (ele já passa p0/p3 ao fragment, e os usa nas cunhas
-// BEVEL/MITER): a cobertura do fragment é a **UNIÃO LOCAL das 3 cápsulas**
-// (`min(dn_prev, dn_own, dn_next)` — o perfil é monótono decrescente, logo
+// BEVEL/MITER): a cobertura do fragment é a **UNIÃO** das cápsulas alcançáveis
+// (`min` das distâncias normalizadas — o perfil é monótono decrescente, logo
 // min-distância ⇔ max-cobertura). Na sobreposição de uma quina, a janela de A
 // (`{prev,A,B}`) e a de B (`{A,B,next}`) contêm ambas `{A,B}` → computam o MESMO
-// mínimo → o first-wins volta a ser invisível. Teto conhecido: sobreposição com
-// vizinhos i±2 e auto-cruzamento NÃO-adjacente seguem first-wins (semântica do
-// GP, pinada em teste). Spec + análise: `docs/Flip/03_traco_rasterizacao.md`.
+// mínimo → o first-wins volta a ser invisível.
+//
+// ⚠️ **A união é GLOBAL, não local — este parágrafo já mentiu e a correção importa.**
+// Ele terminava afirmando *"teto conhecido: sobreposição com vizinhos i±2 e
+// auto-cruzamento NÃO-adjacente seguem first-wins (semântica do GP, pinada em
+// teste)"*. As três partes estavam erradas: a união alcança os vizinhos i±k E o
+// auto-cruzamento não-adjacente (é para isso que existe `seg_extras`, o 4º binding
+// deste shader, cheio por `neighbors.rs`), e **o teste que ela citava nunca foi
+// escrito**. Um comentário que contradiz o código shipado é pior que comentário
+// nenhum: ele mandou a investigação do artefato de cruzamento para a hipótese
+// errada antes de a medição a derrubar.
+//
+// **O teto REAL, medido:** a lista de vizinhos é capeada (`MAX_RIBBON_EXTRAS` +
+// o orçamento da grade em `neighbors.rs`), e a fita local tem orçamento SEPARADO
+// justamente porque ela saturava a lista antes de qualquer cruzamento entrar —
+// razão alcance/passo constante, ~6 vizinhos da própria passagem sempre presentes.
+// Acima do teto, aqueles pixels voltam ao first-wins do GP.
+// Spec + análise: `docs/Flip/03_traco_rasterizacao.md`.
 
 struct Camera {
     world_to_clip: mat4x4<f32>,

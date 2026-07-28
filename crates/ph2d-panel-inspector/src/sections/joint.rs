@@ -19,7 +19,9 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 7] = ["Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel"];
+const KIND_LABELS: [&str; 8] = [
+    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley",
+];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
 /// the widget this section already speaks.
@@ -52,6 +54,11 @@ const KIND_SLIDER: u8 = 4;
 /// Slider, a spring like a Spring). That is what turned the `else if` chain
 /// below into independent questions.
 const KIND_WHEEL: u8 = 6;
+/// Tag da POLIA — uma corda por duas roldanas. É o primeiro tipo que **não é um
+/// joint do rapier** (a ponte o roteia para um passe de impulso próprio), e o
+/// primeiro que não pode PARTIR: nada mede a reação de algo que não está no
+/// `ImpulseJointSet`, então a caixa de Break não é oferecida a ele.
+const KIND_PULLEY: u8 = 7;
 
 /// Does this kind have a limit RANGE? A Pin's angular arc, a Slider's stroke,
 /// a Wheel's suspension travel.
@@ -84,6 +91,18 @@ const fn limits_label(kind_tag: u8) -> &'static str {
 /// engine-side (`PhysicsJoint::default_spring`).
 const fn kind_has_spring(kind_tag: u8) -> bool {
     kind_tag == KIND_SPRING || kind_tag == KIND_WHEEL
+}
+
+/// **Este tipo pode PARTIR sob carga?** Todo joint do rapier pode; uma POLIA
+/// não, porque ela não é um joint do rapier — o passe de impulso dela roda fora
+/// do solver, então nada publica a reação que decidiria a ruptura.
+///
+/// ⚠️ Segundo ENUNCIADO de `JointKind::can_break`, não uma segunda fonte de
+/// verdade (o painel é loose-coupled, a convenção de toda seção irmã). Pintar a
+/// caixa aqui para um tipo que o motor não mede seria exatamente o controle-em-
+/// nome-só que a regra por-tipo desta seção existe para impedir.
+const fn kind_can_break(kind_tag: u8) -> bool {
+    kind_tag != KIND_PULLEY
 }
 
 /// Can this kind be DRIVEN? A Pin's hinge, a Slider's rail, a Rope's distance
@@ -239,7 +258,9 @@ pub(crate) fn paint_joint_section(
     // Breaking comes after the parameters and before Delete: it is a property of
     // the joint as a whole (every kind can be pulled apart), not of one kind's
     // degree of freedom, so it is asked of ALL five.
-    yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    if kind_can_break(info.kind_tag) {
+        yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    }
 
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_JOINT_REMOVE, "Delete Joint")
@@ -351,14 +372,31 @@ fn paint_kind_params(
             );
         }
     }
-    if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD {
+    if info.kind_tag == KIND_PULLEY {
+        // A talha. Antes do comprimento, porque é ela que diz o que o
+        // comprimento MEDE (`l1 + razão·l2`).
+        yy = num_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Ratio",
+            ids::INSP_JOINT_RATIO,
+        );
+    }
+    if info.kind_tag == KIND_ROPE || info.kind_tag == KIND_ROD || info.kind_tag == KIND_PULLEY {
         // O MESMO id, rótulo diferente: numa corda o número é um TETO, numa
-        // barra é o comprimento em si. Um segundo id seria um segundo lugar
-        // para o mesmo campo do componente.
-        let label = if info.kind_tag == KIND_ROD {
-            "Length (m)"
-        } else {
-            "Max Length (m)"
+        // barra é o comprimento em si, e numa polia é a corda INTEIRA (a soma
+        // dos dois ramos). Um segundo id seria um segundo lugar para o mesmo
+        // campo do componente.
+        let label = match info.kind_tag {
+            KIND_ROD => "Length (m)",
+            KIND_PULLEY => "Rope Length (m)",
+            _ => "Max Length (m)",
         };
         yy = num_row(
             scene,
@@ -469,7 +507,12 @@ fn paint_motor_rows(
 
 /// **The Breakable card** (W-J7) — the switch, then the thresholds it gates.
 ///
-/// Offered for EVERY kind, unlike the Motor card: any joint can be pulled apart,
+/// ⚠️ **Menos a POLIA** (`kind_can_break`), e a exceção é medida, não estética:
+/// ela não vive no `ImpulseJointSet`, então não há reação publicada a comparar —
+/// a caixa seria um limiar que nunca pode ser cruzado. Antes dela a frase abaixo
+/// valia para todos os tipos.
+///
+/// Offered for every OTHER kind, unlike the Motor card: any joint can be pulled apart,
 /// and the reaction that decides it (the linear one) is reported exactly on all
 /// five (measured — a hanging weight reads its own weight to 1.0000).
 ///

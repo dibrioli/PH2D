@@ -89,6 +89,9 @@ fn the_unit_doors_disagree_about_a_rope_and_that_is_the_point() {
             Rod => (false, false, false, false, false),
             // A roda: desliza (o curso, em metros) E gira (a tração, em graus).
             Wheel => (true, true, true, true, false),
+            // A polia translada (a corda) e nada mais: a faixa dela É o
+            // comprimento, e um guincho seria motor de outra wave.
+            Pulley => (true, false, false, false, false),
         }
     }
     for k in JointKind::ALL {
@@ -334,4 +337,46 @@ fn a_joint_is_born_with_its_own_kinds_numbers() {
     let hinge = PhysicsJoint::of_kind(JointKind::Pin);
     assert!((hinge.limit_max - PhysicsJoint::DEFAULT_LIMIT).abs() < 1e-6);
     assert!((hinge.motor_speed - PhysicsJoint::DEFAULT_MOTOR_SPEED).abs() < 1e-6);
+}
+
+/// **As três portas que a [`JointKind::Pulley`] SEPAROU**, exaustivas pela mesma
+/// razão da tabela acima: onde o comprimento MORA, se ele é um RAIO em volta de
+/// uma âncora, se as duas pontas partilham um ponto, e se o tipo pode PARTIR.
+///
+/// As quatro tinham uma resposta derivada de outra até a polia chegar —
+/// `shares_a_point` era `!has_length()`, e o anel de canvas saía direto do
+/// `length_field`. Uma polia tem comprimento (a corda), pontas separadas, nenhum
+/// raio a desenhar, e nada que meça a reação dela.
+#[test]
+fn the_length_and_break_doors_are_declared_per_kind() {
+    use JointKind::*;
+    use ph2d_physics_ecs::LengthField;
+    fn expected(k: JointKind) -> (Option<LengthField>, bool, bool, bool) {
+        // (length_field, length_is_a_radius, shares_a_point, can_break)
+        match k {
+            Pin => (None, false, true, true),
+            Spring => (Some(LengthField::Rest), true, false, true),
+            Rope => (Some(LengthField::Max), true, false, true),
+            Weld => (None, false, true, true),
+            Slider => (None, false, true, true),
+            Rod => (Some(LengthField::Max), true, false, true),
+            Wheel => (None, false, true, true),
+            // A corda tem comprimento, não tem raio, tem pontas separadas, e não
+            // parte: ela não está no `ImpulseJointSet`, então nada mede a reação.
+            Pulley => (Some(LengthField::Max), false, false, false),
+        }
+    }
+    for k in JointKind::ALL {
+        let (field, radius, shares, breaks) = expected(k);
+        assert_eq!(k.length_field(), field, "{k:?} length_field()");
+        assert_eq!(k.length_is_a_radius(), radius, "{k:?} length_is_a_radius()");
+        assert_eq!(k.shares_a_point(), shares, "{k:?} shares_a_point()");
+        assert_eq!(k.can_break(), breaks, "{k:?} can_break()");
+    }
+    // A afirmação que a polia tornou necessária, dita direto: ter comprimento
+    // deixou de implicar que um anel o autora.
+    assert!(
+        Pulley.has_length() && !Pulley.length_is_a_radius(),
+        "a polia é exatamente o caso em que as duas perguntas divergem"
+    );
 }

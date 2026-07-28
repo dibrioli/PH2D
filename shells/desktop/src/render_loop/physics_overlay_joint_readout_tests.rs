@@ -43,6 +43,7 @@ fn view(load: f32, peak: f32, cap: f32, broken: bool) -> JointView {
         limits: None,
         motor_speed: None,
         length: Some(1.0),
+        wheels: None,
         axis: None,
         broken,
         active: true,

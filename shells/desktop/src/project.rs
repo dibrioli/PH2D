@@ -158,7 +158,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// uma suspensão). Mesmo raciocínio do v38, um degrau adiante: apender variante não move
 /// índice nenhum, e o bump existe para o build antigo RECUSAR em vez de ler o discriminante 6
 /// como lixo bem-formado. `FLIP_SCHEMA_VERSION` fica em 12.
-const PROJECT_SCHEMA: u32 = 39;
+const PROJECT_SCHEMA: u32 = 40;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

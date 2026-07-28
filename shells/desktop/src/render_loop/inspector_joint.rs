@@ -29,6 +29,7 @@ pub(crate) fn kind_of(tag: u8) -> JointKind {
         4 => JointKind::Slider,
         5 => JointKind::Rod,
         6 => JointKind::Wheel,
+        7 => JointKind::Pulley,
         _ => JointKind::Pin,
     }
 }
@@ -102,6 +103,7 @@ pub(crate) fn tag_of(kind: JointKind) -> u8 {
         JointKind::Slider => 4,
         JointKind::Rod => 5,
         JointKind::Wheel => 6,
+        JointKind::Pulley => 7,
     }
 }
 

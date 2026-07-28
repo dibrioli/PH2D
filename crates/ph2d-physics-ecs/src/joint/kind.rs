@@ -77,6 +77,22 @@ pub enum JointKind {
     /// perguntas que até aqui tinham uma resposta só (ver
     /// [`JointKind::motor_in_metres`]).
     Wheel,
+    /// **Pulley** — uma corda que passa por **duas roldanas**: `l1 + razão·l2 ≤
+    /// L0`. O elevador com contrapeso, a ponte levadiça, a talha.
+    ///
+    /// É o primeiro tipo do kit que **não é um joint do rapier** — ele não tem
+    /// polia e não oferece gancho de restrição do usuário, então a ponte roteia
+    /// este tipo para o passe de impulso por sub-passo de
+    /// `ph2d_physics::world::pulley` em vez do `ImpulseJointSet`. Tudo o mais
+    /// (a entidade, o nome, a hierarquia, o undo, o save, o grupo articulado) é
+    /// igual, porque em AUTORIA um vínculo entre dois corpos é um joint.
+    ///
+    /// Também é o primeiro que precisa de pontos de MUNDO próprios: as duas
+    /// roldanas (`PhysicsJoint::wheel_a`/`wheel_b`) são pregadas no cenário, não
+    /// em corpo nenhum.
+    ///
+    /// ⚠️ **Não parte sob carga** — ver [`JointKind::can_break`].
+    Pulley,
 }
 
 /// **Em que campo do componente o comprimento de um tipo MORA.**
@@ -118,7 +134,7 @@ impl JointKind {
     /// to_a_distinct_kind`), que é exaustivo por `match` e falha a compilar com
     /// um tipo novo. Aqui há um gate exigindo que ela tenha um elemento por
     /// discriminante e nenhum repetido.
-    pub const ALL: [JointKind; 7] = [
+    pub const ALL: [JointKind; 8] = [
         JointKind::Pin,
         JointKind::Spring,
         JointKind::Rope,
@@ -126,6 +142,7 @@ impl JointKind {
         JointKind::Slider,
         JointKind::Rod,
         JointKind::Wheel,
+        JointKind::Pulley,
     ];
 
     /// Ver [`LengthField`]. `None` para quem não tem comprimento nenhum.
@@ -137,7 +154,11 @@ impl JointKind {
     pub fn length_field(self) -> Option<LengthField> {
         match self {
             JointKind::Spring => Some(LengthField::Rest),
-            JointKind::Rope | JointKind::Rod => Some(LengthField::Max),
+            // ⚠️ Uma **Pulley** guarda aqui o comprimento da CORDA (`l1 +
+            // razão·l2`), que é uma distância governada como as outras — mas
+            // **não é a distância entre as âncoras**, e é por isso que o anel de
+            // canvas deixou de sair desta porta: ver [`Self::length_is_a_radius`].
+            JointKind::Rope | JointKind::Rod | JointKind::Pulley => Some(LengthField::Max),
             // ⚠️ Um Wheel **não** tem comprimento: a distância cubo↔chassi é
             // onde o artista o montou, e o que a governa é o par mola/curso.
             JointKind::Pin | JointKind::Weld | JointKind::Slider | JointKind::Wheel => None,
@@ -171,7 +192,10 @@ impl JointKind {
     /// definição de outra coisa. Um Wheel responde **true**: ele desliza — só
     /// não é *só* isso que ele faz.
     pub fn translates(self) -> bool {
-        matches!(self, JointKind::Slider | JointKind::Rope | JointKind::Wheel)
+        matches!(
+            self,
+            JointKind::Slider | JointKind::Rope | JointKind::Wheel | JointKind::Pulley
+        )
     }
 
     /// Does this kind have a limit RANGE the artist tunes? A Pin (an angular
@@ -242,7 +266,8 @@ impl JointKind {
             | JointKind::Spring
             | JointKind::Rope
             | JointKind::Weld
-            | JointKind::Rod => false,
+            | JointKind::Rod
+            | JointKind::Pulley => false,
         }
     }
 
@@ -254,6 +279,24 @@ impl JointKind {
     /// says `false`) and its motor is a winch reeling a distance (so this one
     /// says `true`). Sharing one door would have given the winch a target in
     /// degrees.
+    ///
+    /// ⚠️ **E o [`JointKind::Wheel`] é o caso que a separou de vez:** ele
+    /// translada (a suspensão) e o motor dele é **angular** (a tração). Uma
+    /// resposta derivada de `translates` daria a um carro uma tração em metros
+    /// por segundo — o gêmeo exato do bug que a Rope evitou do outro lado.
+    #[must_use]
+    pub fn motor_in_metres(self) -> bool {
+        match self {
+            JointKind::Slider | JointKind::Rope => true,
+            JointKind::Pin
+            | JointKind::Spring
+            | JointKind::Weld
+            | JointKind::Rod
+            | JointKind::Wheel
+            | JointKind::Pulley => false,
+        }
+    }
+
     /// **Can a break threshold on this kind ever fire on TORQUE?**
     ///
     /// Only where the angular axis is limited or motorised. rapier reports the
@@ -277,22 +320,6 @@ impl JointKind {
     #[must_use]
     pub fn breaks_on_torque(self) -> bool {
         matches!(self, JointKind::Pin | JointKind::Wheel)
-    }
-
-    ///
-    /// ⚠️ **E o [`JointKind::Wheel`] é o caso que a separou de vez:** ele
-    /// translada (a suspensão) e o motor dele é **angular** (a tração). Uma
-    /// resposta derivada de `translates` daria a um carro uma tração em metros
-    /// por segundo — o gêmeo exato do bug que a Rope evitou do outro lado.
-    pub fn motor_in_metres(self) -> bool {
-        match self {
-            JointKind::Slider | JointKind::Rope => true,
-            JointKind::Pin
-            | JointKind::Spring
-            | JointKind::Weld
-            | JointKind::Rod
-            | JointKind::Wheel => false,
-        }
     }
 
     /// Does this kind have a length the artist tunes? Spring, Rope and Rod do —
@@ -324,7 +351,56 @@ impl JointKind {
     /// isso que faz a altura de marcha ser *onde o artista montou o carro* — a
     /// mola tem alvo zero, então ela quer o cubo exatamente ali, e o que se vê
     /// depois é o quanto o peso a afunda.
+    ///
+    /// ⚠️ **Deixou de ser `!has_length()` quando a [`JointKind::Pulley`]
+    /// chegou** — a terceira vez que este arquivo separa duas perguntas que
+    /// compartilhavam uma resposta. Uma polia tem comprimento (a corda) e pontas
+    /// que nascem separadas, então a derivação acerta por acaso; o que ela **não**
+    /// sobreviveria é à tentação oposta — negar-lhe o comprimento para o anel de
+    /// canvas não aparecer teria feito a derivação responder `true`, e a política
+    /// de âncora poria as duas pontas da corda no MESMO ponto. A porta agora
+    /// declara, e o nono tipo não compila sem dizer a sua.
     pub fn shares_a_point(self) -> bool {
-        !self.has_length()
+        match self {
+            JointKind::Pin | JointKind::Weld | JointKind::Slider | JointKind::Wheel => true,
+            JointKind::Spring | JointKind::Rope | JointKind::Rod | JointKind::Pulley => false,
+        }
+    }
+
+    /// **O comprimento deste tipo é a distância entre as ÂNCORAS**, de modo que
+    /// um ANEL em volta de uma delas o autore?
+    ///
+    /// Separada de [`Self::length_field`] pela [`JointKind::Pulley`]: as duas
+    /// perguntas tinham a mesma resposta enquanto todo comprimento era um raio
+    /// (a mola, a corda, a barra), e o de uma polia é a soma dos DOIS ramos — um
+    /// anel de raio `L0` em volta de uma âncora descreveria uma distância que
+    /// não existe na cena.
+    ///
+    /// Quem PUBLICA a alça de comprimento e quem ESCREVE por ela perguntam a
+    /// esta; onde o número MORA segue sendo a outra.
+    #[must_use]
+    pub fn length_is_a_radius(self) -> bool {
+        match self {
+            JointKind::Spring | JointKind::Rope | JointKind::Rod => true,
+            JointKind::Pin
+            | JointKind::Weld
+            | JointKind::Slider
+            | JointKind::Wheel
+            | JointKind::Pulley => false,
+        }
+    }
+
+    /// **Este tipo pode PARTIR sob carga?**
+    ///
+    /// Todo joint do rapier pode: o `joint_break` lê a reação que o
+    /// `ImpulseJointSet` publica. Uma [`JointKind::Pulley`] **não está lá** — ela
+    /// é um passe de impulso próprio, fora do solver — então nada mede a reação
+    /// dela, e oferecer a caixa de Break seria pintar um controle morto.
+    ///
+    /// ⚠️ É limitação NOMEADA, não descuido: dá para acumular o `λ` do passe e
+    /// comparar, e isso é wave própria. Enquanto não for, a row não existe.
+    #[must_use]
+    pub fn can_break(self) -> bool {
+        !matches!(self, JointKind::Pulley)
     }
 }

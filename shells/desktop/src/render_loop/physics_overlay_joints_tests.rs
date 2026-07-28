@@ -48,6 +48,10 @@ fn view(kind: JointKind) -> JointView {
         limits: None,
         motor_speed: None,
         length: None,
+        // Uma polia precisa das duas roldanas; todo outro tipo não tem nenhuma.
+        // Dadas para TODO kind pela mesma razão que o eixo abaixo: quem ignora,
+        // ignora, e o gate da corda quer o `Some` sem uma segunda fixture.
+        wheels: Some(([-1.0, 2.0], [1.0, 2.0])),
         // Um Slider precisa do eixo resolvido; todo outro tipo não tem um. A
         // fixture o dá para TODO kind de propósito — quem ignora, ignora, e o
         // gate do trilho quer o `Some` sem montar uma segunda fixture.

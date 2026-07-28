@@ -29,6 +29,7 @@ fn view(active: bool) -> JointView {
         limits: Some([-0.7, 0.7]),
         motor_speed: Some(2.0),
         length: None,
+        wheels: None,
         axis: None,
         broken: false,
         active,

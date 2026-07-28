@@ -200,6 +200,27 @@ pub struct PhysicsJoint {
     /// to a static block **rests on it** (`y = 0.899`) with contacts on and falls
     /// straight through it to the rope's full length (`y = −4.000`) with them off.
     pub collide_connected: bool,
+    /// **A roldana do ramo A**, em coordenadas de MUNDO. Só uma
+    /// [`JointKind::Pulley`] a lê.
+    ///
+    /// ⚠️ **Mundo, e não body-local — a exceção que confirma a regra do
+    /// W-AnchorFollow.** Toda âncora deste componente é local porque tem de
+    /// seguir o corpo; uma roldana é pregada no CENÁRIO e não pertence a corpo
+    /// nenhum, então guardá-la local seria escolher arbitrariamente um dos dois
+    /// corpos como dono de um ponto que não é dele.
+    ///
+    /// ⚠️ Apendado ao FIM junto com `wheel_b`/`ratio`, pela razão de sempre:
+    /// postcard codifica este struct **posicionalmente**, e um campo inserido no
+    /// meio faria todo joint de todo projeto salvo decodificar como outra coisa.
+    pub wheel_a: [f32; 2],
+    /// A roldana do ramo B, idem.
+    pub wheel_b: [f32; 2],
+    /// **A vantagem mecânica da talha:** `l1 + razão·l2 ≤ L0`.
+    ///
+    /// `1` é a polia simples — o que um lado desce o outro sobe. `2` é a talha:
+    /// o lado A anda o dobro do B, e em troca ergue o dobro do peso. Só uma
+    /// [`JointKind::Pulley`] a lê.
+    pub ratio: f32,
 }
 
 impl Default for PhysicsJoint {
@@ -241,6 +262,13 @@ impl Default for PhysicsJoint {
             // measured there.
             active: true,
             collide_connected: false,
+            // Uma polia recém-criada semeia as roldanas e o comprimento da corda
+            // a partir das poses de REPOUSO, pelo mesmo sentinela `anchored` que
+            // semeia as âncoras — então o zero aqui é "ainda não semeado", nunca
+            // uma roldana na origem.
+            wheel_a: [0.0, 0.0],
+            wheel_b: [0.0, 0.0],
+            ratio: 1.0,
         }
     }
 }
@@ -257,6 +285,22 @@ impl PhysicsJoint {
     /// wrapper measured a 0.2 kg arm needing ~1 N·m), so a motor switched on
     /// visibly does something rather than looking broken.
     pub const DEFAULT_MOTOR_MAX_FORCE: f32 = 10.0;
+    /// **Quanto acima dos corpos uma polia recém-criada põe as roldanas**, como
+    /// piso.
+    ///
+    /// A altura de fato é METADE da distância entre os dois corpos — derivada da
+    /// geometria que o artista já montou, então ela escala com a cena e não é um
+    /// número mágico. Este piso só existe para o caso degenerado de dois corpos
+    /// quase no mesmo lugar, onde os ramos nasceriam de comprimento zero e a
+    /// polia não teria direção nenhuma para puxar.
+    pub const MIN_WHEEL_LIFT: f32 = 0.5;
+
+    /// **A menor razão de talha aceita.** Abaixo disto o segundo ramo some da
+    /// restrição (razão zero) ou se inverte (negativa), e nos dois casos a corda
+    /// deixa de ser uma corda. Não é afinação: é o piso em que a lei ainda diz
+    /// alguma coisa.
+    pub const MIN_RATIO: f32 = 0.01;
+
     /// The shortest rope the solver accepts. A rope of zero length is a weld
     /// nobody asked for.
     pub const MIN_LENGTH: f32 = 1e-3;
@@ -490,6 +534,14 @@ impl PhysicsJoint {
         // caused above). Guard each component back to the body's centre.
         self.local_a = [finite(self.local_a[0], 0.0), finite(self.local_a[1], 0.0)];
         self.local_b = [finite(self.local_b[0], 0.0), finite(self.local_b[1], 0.0)];
+        // Uma roldana com NaN faria o ramo inteiro sair NaN e envenenaria a pose
+        // dos dois corpos — a mesma falha que `stiffness = NaN` causava.
+        self.wheel_a = [finite(self.wheel_a[0], 0.0), finite(self.wheel_a[1], 0.0)];
+        self.wheel_b = [finite(self.wheel_b[0], 0.0), finite(self.wheel_b[1], 0.0)];
+        // Uma razão zero ou negativa não é uma talha: ela apagaria o segundo ramo
+        // da restrição (ou o inverteria, e a corda passaria a EMPURRAR aquele
+        // lado). O piso é o mesmo da lei — um ramo tem de contar.
+        self.ratio = finite(self.ratio, d.ratio).max(Self::MIN_RATIO);
         self
     }
 

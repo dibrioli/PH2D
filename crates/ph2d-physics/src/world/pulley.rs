@@ -298,6 +298,16 @@ impl super::PhysicsWorld {
         self.pulley_bias = bias;
     }
 
+    /// **Trocar a tabela pela do chamador**, devolvendo-lhe a anterior.
+    ///
+    /// É por aqui que a ponte instala as polias todo dispatch: ela reconstrói a
+    /// lista num scratch próprio e troca, então o caso comum não aloca nada — o
+    /// que o gate de zero-alloc do caminho quente exige. `set_pulleys` fica para
+    /// fixtures, onde a alocação não importa e a leitura é mais direta.
+    pub fn swap_pulleys(&mut self, other: &mut Vec<PulleyDesc>) {
+        std::mem::swap(&mut self.pulleys, other);
+    }
+
     /// The live pulleys — what the overlay draws the rope from.
     #[must_use]
     pub fn pulleys(&self) -> &[PulleyDesc] {

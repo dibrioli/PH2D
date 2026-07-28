@@ -30,7 +30,7 @@ pub const INSP_JOINT_KIND_GROUP: NodeId = hash_node_id("insp_joint_kind_group");
 pub const INSP_JOINT_LIMITS_GROUP: NodeId = hash_node_id("insp_joint_limits_group");
 pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group");
 
-/// Pin · Spring · Rope · Weld · Slider · Rod · Wheel. Indexed by the
+/// Pin · Spring · Rope · Weld · Slider · Rod · Wheel · Pulley. Indexed by the
 /// `JointKind` tag the snapshot carries.
 ///
 /// ⚠️ **Este array e o `KIND_LABELS` do painel têm de ter o MESMO tamanho.** O
@@ -39,7 +39,7 @@ pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group"
 /// warning. Foi o que aconteceu quando o Slider chegou (W-J5), e o gate de seam
 /// não pegou porque ele iterava justamente a lista CURTA. Há um teste no painel
 /// comparando os dois comprimentos.
-pub const INSP_JOINT_KIND: [NodeId; 7] = [
+pub const INSP_JOINT_KIND: [NodeId; 8] = [
     hash_node_id("insp_joint_kind_pin"),
     hash_node_id("insp_joint_kind_spring"),
     hash_node_id("insp_joint_kind_rope"),
@@ -47,6 +47,7 @@ pub const INSP_JOINT_KIND: [NodeId; 7] = [
     hash_node_id("insp_joint_kind_slider"),
     hash_node_id("insp_joint_kind_rod"),
     hash_node_id("insp_joint_kind_wheel"),
+    hash_node_id("insp_joint_kind_pulley"),
 ];
 
 /// Off · On, for the two Pin-only switches. Segmented rather than a checkbox
@@ -147,3 +148,10 @@ pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 /// and re-creating the joint.
 pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
 pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
+
+/// **A vantagem mecânica de uma POLIA** (W-Pulley) — `l1 + razão·l2 ≤ L0`.
+///
+/// Só uma [`ph2d_physics_ecs::JointKind::Pulley`] a pinta. `1` é a polia simples
+/// (o que um lado desce o outro sobe); `2` é a talha, em que o lado A anda o
+/// dobro e ergue o dobro.
+pub const INSP_JOINT_RATIO: NodeId = hash_node_id("insp_joint_ratio");

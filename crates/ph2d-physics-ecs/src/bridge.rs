@@ -87,6 +87,15 @@ pub(super) struct BodyRef {
     pub(super) rest: BodyDesc,
 }
 
+/// O semeio de um joint: a entidade, as duas âncoras body-local e — só para uma
+/// polia — as duas roldanas e o comprimento da corda.
+type JointSeed = (
+    Entity,
+    [f32; 2],
+    [f32; 2],
+    Option<([f32; 2], [f32; 2], f32)>,
+);
+
 /// The ECS ↔ rapier bridge. One per document, held on `AppGfx.physics`.
 pub struct PhysicsBridge {
     world: PhysicsWorld,
@@ -132,7 +141,23 @@ pub struct PhysicsBridge {
     /// Joints whose body-local anchors were just derived from their world
     /// `Transform` (the seed) — written back after the query borrow releases so
     /// a body move never re-derives them again. Scratch: cleared per reconcile.
-    joints_to_seed: Vec<(Entity, [f32; 2], [f32; 2])>,
+    /// O terceiro elemento é o semeio de POLIA — as duas roldanas e o
+    /// comprimento da corda — presente só para uma [`crate::JointKind::Pulley`]
+    /// que ainda não foi ancorada. Viaja no mesmo scratch das âncoras porque é o
+    /// MESMO sentinela (`anchored`) que governa os dois: uma polia com roldanas
+    /// em `[0,0]` é uma que nunca foi semeada, e o semeio acontece uma vez, das
+    /// poses de REPOUSO.
+    joints_to_seed: Vec<JointSeed>,
+    /// A tabela de polias a instalar neste dispatch, reconstruída inteira todo
+    /// frame (uma polia não é dona de nada nas arenas do rapier, então não há
+    /// diff de spawn/remove a fazer — e é por isso que ela nunca invalida o ring
+    /// de checkpoints).
+    pulleys_to_install: Vec<ph2d_physics::world::pulley::PulleyDesc>,
+    /// **A lista de polias VIVAS**, reconstruída todo reconcile — a fonte única
+    /// de que tanto a tabela do solver quanto as views de desenho saem. Uma
+    /// polia não vive no `ImpulseJointSet`, então sem este registro ela seria
+    /// invisível na tela.
+    pulley_records: Vec<views::PulleyRecord>,
     /// (joint, derived world pivot) pairs — `sync_joint_pivots` writes each into
     /// the joint's `Transform.translation` so the anchor dot follows the body.
     /// Scratch: taken out and refilled per sync, so the steady state never allocs.
@@ -233,6 +258,8 @@ impl PhysicsBridge {
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
             joints_to_seed: Vec::new(),
+            pulleys_to_install: Vec::new(),
+            pulley_records: Vec::new(),
             joints_to_sync: Vec::new(),
             kin_start: Vec::new(),
             chain: Vec::new(),

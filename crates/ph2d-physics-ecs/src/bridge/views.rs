@@ -75,6 +75,12 @@ pub struct JointView {
     /// Dois campos seriam duas respostas para uma geometria, e o desenhista
     /// teria de escolher entre elas por um `match` que o `kind` já fez.
     pub length: Option<f32>,
+    /// **Pulley:** as duas roldanas em MUNDO, ou `None` para todo outro tipo.
+    ///
+    /// Sem elas o desenho não teria como mostrar uma polia: a corda dela não vai
+    /// de âncora a âncora, ela SOBE até uma roldana, atravessa, e desce até a
+    /// outra ponta. Um span reto A→B descreveria uma corda que não existe.
+    pub wheels: Option<([f32; 2], [f32; 2])>,
     /// **Slider:** a direção do trilho em MUNDO (unitária), ou `None` para todo
     /// outro tipo — que não tem eixo, então não oferece um (o padrão do
     /// `length` acima).
@@ -137,6 +143,24 @@ fn authored_kind(k: ph2d_physics::JointKind) -> JointKind {
     }
 }
 
+/// Uma polia VIVA, com o que o desenho precisa dela.
+///
+/// Ela não está no `ImpulseJointSet` (o rapier não tem polia), então
+/// [`PhysicsBridge::joint_views`] não a encontraria pela rota dos outros tipos —
+/// e uma polia invisível é uma polia que o artista não pode autorar. Este é o
+/// registro que o reconcile deixa para o desenho, e é também de onde a tabela
+/// que vai ao solver é derivada: **uma lista, duas leituras**.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct PulleyRecord {
+    /// A entidade que AUTORA a polia (a que a Hierarquia lista).
+    pub entity: Entity,
+    /// As entidades dos dois corpos — `body_b` alimenta o fantasma, como no
+    /// resto das views.
+    pub entities: (Entity, Entity),
+    /// A corda como o solver a recebeu.
+    pub desc: ph2d_physics::world::pulley::PulleyDesc,
+}
+
 impl PhysicsBridge {
     /// Todo joint VIVO, com o que o desenho precisa (W-J1).
     ///
@@ -144,6 +168,71 @@ impl PhysicsBridge {
     /// para quem só quer o par de pontos. Um joint que o reconcile não
     /// conseguiu construir não aparece aqui — ver a nota do módulo.
     pub fn joint_views(&self) -> impl Iterator<Item = JointView> + '_ {
+        self.joint_views_of_joints().chain(self.pulley_views())
+    }
+
+    /// As views das POLIAS, que não vivem no `ImpulseJointSet`.
+    ///
+    /// Encadeada na `joint_views` em vez de exposta à parte porque para quem
+    /// DESENHA um vínculo é um vínculo — dois iteradores no chamador seria a
+    /// segunda lista que nasce esquecida quando o desenho ganha um passo.
+    fn pulley_views(&self) -> impl Iterator<Item = JointView> + '_ {
+        self.pulley_records.iter().filter_map(|r| {
+            let pose_a = self.world.body_pose(r.desc.body_a)?;
+            let pose_b = self.world.body_pose(r.desc.body_b)?;
+            // Pela MESMA porta que a mão usa para desenhar onde ela pegou: o
+            // ponto de amarração é body-local e tem de girar com o corpo.
+            // Pela MESMA porta que a mão usa para desenhar onde ela pegou.
+            let pa = [
+                pose_a.translation.x,
+                pose_a.translation.y,
+                pose_a.rotation.angle(),
+            ];
+            let pb = [
+                pose_b.translation.x,
+                pose_b.translation.y,
+                pose_b.rotation.angle(),
+            ];
+            use ph2d_physics::PhysicsWorld;
+            Some(JointView {
+                entity: r.entity,
+                kind: JointKind::Pulley,
+                anchor_a: PhysicsWorld::world_from_local_at_pose(pa, r.desc.local_a),
+                anchor_b: PhysicsWorld::world_from_local_at_pose(pb, r.desc.local_b),
+                centre_a: [pose_a.translation.x, pose_a.translation.y],
+                centre_b: [pose_b.translation.x, pose_b.translation.y],
+                body_b: r.entities.1,
+                angle_a: pose_a.rotation.angle(),
+                angle_b: pose_b.rotation.angle(),
+                limits: None,
+                motor_speed: None,
+                length: Some(r.desc.total_length),
+                wheels: Some((r.desc.wheel_a, r.desc.wheel_b)),
+                axis: None,
+                // Uma polia não parte (`JointKind::can_break`): nada mede a
+                // reação dela, então não há ruptura a desenhar.
+                broken: false,
+                // Uma polia inativa não é sequer instalada, então toda view
+                // que existe descreve uma corda que está segurando.
+                active: true,
+                // Nada mede a carga de algo que não está no `ImpulseJointSet`;
+                // zero aqui é *não há leitura*, e a §12 não pinta a row porque
+                // `can_break` já a recusa.
+                load: ph2d_physics::JointLoad {
+                    force: 0.0,
+                    torque: 0.0,
+                },
+                peak: ph2d_physics::JointLoad {
+                    force: 0.0,
+                    torque: 0.0,
+                },
+                break_force: 0.0,
+                break_torque: 0.0,
+            })
+        })
+    }
+
+    fn joint_views_of_joints(&self) -> impl Iterator<Item = JointView> + '_ {
         self.joints.iter().filter_map(|(&entity, j)| {
             let (anchor_a, anchor_b) = self.world.joint_anchors(j.handle)?;
             let pose_a = self.world.body_pose(j.bodies.0)?;
@@ -170,6 +259,8 @@ impl PhysicsBridge {
                 // filtro **não sangrou**, e foi assim que a duplicata apareceu.
                 limits: j.rest.limits,
                 motor_speed: j.rest.motor.map(|m| m.speed),
+                // Só uma polia tem roldanas — o padrão do `axis`/`length`.
+                wheels: None,
                 // Pela porta única `length_field`: o desenho, o gesto de criar
                 // e a escrita do anel têm de concordar sobre QUAL campo carrega
                 // o comprimento deste tipo, e três respostas independentes é

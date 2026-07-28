@@ -28,6 +28,7 @@ fn broken_view(broken: bool) -> JointView {
         limits: Some([-0.7, 0.7]),
         motor_speed: Some(2.0),
         length: None,
+        wheels: None,
         axis: None,
         broken,
         active: true,

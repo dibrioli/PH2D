@@ -35,6 +35,7 @@
 //! only a genuine edit does (gate `an_unedited_joint_does_not_churn_the_scrub_cache`).
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_physics::world::pulley::PulleyDesc;
 use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
 
 use super::BodyRef;
@@ -89,6 +90,41 @@ pub(super) fn anchor_points(
     )
 }
 
+/// **Onde nascem as roldanas de uma polia recém-montada, e que comprimento a
+/// corda tem.**
+///
+/// As roldanas ficam **diretamente acima** de cada corpo — que é o que uma
+/// roldana faz — e a altura é METADE da distância entre os dois, derivada da
+/// geometria que o artista já montou em vez de uma constante que não escala com
+/// a cena. `PhysicsJoint::MIN_WHEEL_LIFT` é só o piso do caso degenerate (dois
+/// corpos quase no mesmo lugar), onde os ramos nasceriam sem direção.
+///
+/// O comprimento é o vão que a montagem tem AGORA (`l1 + razão·l2`), então a
+/// corda nasce exatamente esticada e o primeiro frame não dá um puxão.
+fn pulley_rig(
+    j: &PhysicsJoint,
+    rest_a: [f32; 2],
+    rest_b: [f32; 2],
+    attach_a: [f32; 2],
+    attach_b: [f32; 2],
+) -> ([f32; 2], [f32; 2], f32) {
+    let dx = rest_a[0] - rest_b[0];
+    let dy = rest_a[1] - rest_b[1];
+    let lift = (0.5 * (dx * dx + dy * dy).sqrt()).max(PhysicsJoint::MIN_WHEEL_LIFT);
+    let wheel_a = [rest_a[0], rest_a[1] + lift];
+    let wheel_b = [rest_b[0], rest_b[1] + lift];
+    let branch = |p: [f32; 2], w: [f32; 2]| {
+        let (dx, dy) = (p[0] - w[0], p[1] - w[1]);
+        (dx * dx + dy * dy).sqrt()
+    };
+    let ratio = j.clamped().ratio;
+    (
+        wheel_a,
+        wheel_b,
+        branch(attach_a, wheel_a) + ratio * branch(attach_b, wheel_b),
+    )
+}
+
 /// Translate the component + the already-LOCAL anchors into the plain
 /// [`JointDesc`] the wrapper takes.
 ///
@@ -98,14 +134,22 @@ pub(super) fn anchor_points(
 /// answer from a body's motion, which cannot distinguish *the threshold was not
 /// passed* from *the threshold was passed and the reading is structurally zero* —
 /// exactly the pair the torque row exists to keep apart.
+///
+/// ⚠️ **`None` para uma [`JointKind::Pulley`]**, e não é um caso de erro: o
+/// rapier não tem polia, então aquele tipo não tem `JointDesc` nenhum a
+/// produzir — ele é roteado para o passe de impulso de
+/// `ph2d_physics::world::pulley`. Devolver `Option` em vez de mapear a polia
+/// para o tipo "mais parecido" é o que impede uma corda de virar uma corda-de-
+/// rapier em silêncio.
 pub fn joint_desc(
     j: &PhysicsJoint,
     local_a: [f32; 2],
     local_b: [f32; 2],
     axis: ([f32; 2], [f32; 2]),
-) -> JointDesc {
-    JointDesc {
+) -> Option<JointDesc> {
+    Some(JointDesc {
         kind: match j.kind {
+            JointKind::Pulley => return None,
             JointKind::Pin => ph2d_physics::JointKind::Pin,
             JointKind::Spring => ph2d_physics::JointKind::Spring,
             JointKind::Rope => ph2d_physics::JointKind::Rope,
@@ -170,7 +214,7 @@ pub fn joint_desc(
         // reconciled; what stops is the constraint.
         enabled: j.active,
         contacts_enabled: j.collide_connected,
-    }
+    })
 }
 
 impl PhysicsBridge {
@@ -217,6 +261,7 @@ impl PhysicsBridge {
         self.joints_to_spawn.clear();
         self.joints_to_remove.clear();
         self.joints_to_seed.clear();
+        self.pulley_records.clear();
 
         for (e, joint, _local) in q.iter(world) {
             self.joints_seen.push(e);
@@ -280,8 +325,12 @@ impl PhysicsBridge {
             // runs once and the result is persisted. Converting against the rest
             // pose (not the live one) is why the pin does not walk across a
             // Reset — the lesson that cost **1.771 m** of drift before it.
-            let (la, lb) = if joint.anchored {
-                (joint.local_a, joint.local_b)
+            let (la, lb, rig) = if joint.anchored {
+                (
+                    joint.local_a,
+                    joint.local_b,
+                    (joint.wheel_a, joint.wheel_b, joint.max_length),
+                )
             } else {
                 // Body B's centre for the spring/rope policy — its **rest**
                 // centre, for the same reason the anchor uses the rest pose.
@@ -293,21 +342,65 @@ impl PhysicsBridge {
                 );
                 let la = PhysicsWorld::local_anchor_at_pose(rest_pose(ba), wa);
                 let lb = PhysicsWorld::local_anchor_at_pose(rest_pose(bb), wb);
+                // As roldanas e o comprimento da corda de uma POLIA nascem da
+                // mesma pose de repouso, pelo mesmo sentinela: uma polia é
+                // "montada" onde o artista pôs os corpos.
+                let rig = pulley_rig(
+                    joint,
+                    [ba.rest.x, ba.rest.y],
+                    [bb.rest.x, bb.rest.y],
+                    wa,
+                    wb,
+                );
                 // Persist after the query borrow releases (below), and flip
                 // `anchored` so the next reconcile — and every body move — reads
                 // these instead of re-deriving.
-                self.joints_to_seed.push((e, la, lb));
-                (la, lb)
+                self.joints_to_seed.push((
+                    e,
+                    la,
+                    lb,
+                    (joint.kind == JointKind::Pulley).then_some(rig),
+                ));
+                (la, lb, rig)
             };
+            // ⚠️ **A POLIA sai daqui**, antes do `joint_desc`: ela não é um joint
+            // do rapier, então não tem descritor, não entra no `ImpulseJointSet` e
+            // não toca as arenas — e é por isso que ela nunca invalida o ring de
+            // checkpoints. `drop_if_live` cobre a troca de tipo: quem era um Pin
+            // e virou polia tem de sair do solver.
+            if joint.kind == JointKind::Pulley {
+                drop_if_live(self);
+                if joint.active {
+                    let j = joint.clamped();
+                    self.pulley_records.push(super::views::PulleyRecord {
+                        entity: e,
+                        entities: (ea, eb),
+                        desc: PulleyDesc {
+                            body_a: handles.0,
+                            body_b: handles.1,
+                            local_a: la,
+                            local_b: lb,
+                            wheel_a: rig.0,
+                            wheel_b: rig.1,
+                            ratio: j.ratio,
+                            total_length: rig.2,
+                        },
+                    });
+                }
+                continue;
+            }
             // `clamped()` here and not only in the Inspector: a component is
             // serde and arrives from the project file too, and this is the last
             // door before rapier.
-            let desc = joint_desc(
+            let Some(desc) = joint_desc(
                 &joint.clamped(),
                 la,
                 lb,
                 PhysicsWorld::axis_locals(transform.rotation, ba.rest.rotation, bb.rest.rotation),
-            );
+            ) else {
+                drop_if_live(self);
+                continue;
+            };
             match self.joints.get(&e) {
                 None => self.joints_to_spawn.push((e, desc, handles, (ea, eb))),
                 // Re-described whenever `desc` changed — a parameter or anchor
@@ -326,6 +419,15 @@ impl PhysicsBridge {
             }
         }
         self.joint_query = Some(q);
+
+        // Instalar as polias deste frame. A tabela do solver é DERIVADA do
+        // registro — uma lista, duas leituras (a outra é o DESENHO) — e a troca
+        // devolve a do frame anterior ao scratch, que é limpo mantendo a
+        // capacidade: zero alocação em regime.
+        self.pulleys_to_install
+            .extend(self.pulley_records.iter().map(|r| r.desc));
+        self.world.swap_pulleys(&mut self.pulleys_to_install);
+        self.pulleys_to_install.clear();
 
         // Joints whose entity is gone.
         for &e in self.joints.keys() {
@@ -376,10 +478,15 @@ impl PhysicsBridge {
         // component write does not alias the read; `anchored = true` so a body
         // move never re-derives them — the seed is once, the follow is forever.
         for i in 0..self.joints_to_seed.len() {
-            let (e, la, lb) = self.joints_to_seed[i];
+            let (e, la, lb, rig) = self.joints_to_seed[i];
             if let Some(mut j) = sim.world_mut().get_mut::<PhysicsJoint>(e) {
                 j.local_a = la;
                 j.local_b = lb;
+                if let Some((wa, wb, l0)) = rig {
+                    j.wheel_a = wa;
+                    j.wheel_b = wb;
+                    j.max_length = l0;
+                }
                 j.anchored = true;
             }
         }

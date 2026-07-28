@@ -406,6 +406,26 @@ fn kind_marks(
             glyph = weld_glyph(camera, window, v.anchor_a, v.angle_a);
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }
+        // **A POLIA:** a corda NÃO vai de âncora a âncora — ela sobe até uma
+        // roldana, atravessa por cima, e desce até a outra ponta. Um span reto
+        // A→B descreveria uma corda que não existe na cena, e é por isso que
+        // este é o único tipo cuja view carrega pontos de MUNDO próprios.
+        JointKind::Pulley => {
+            if let Some((wa, wb)) = v.wheels {
+                let pa = screen_of(camera, window, wa);
+                let pb = screen_of(camera, window, wb);
+                span.move_to(a);
+                span.line_to(pa);
+                span.line_to(pb);
+                span.line_to(b);
+                // As roldanas são ANÉIS — rodas, e maiores que uma âncora, que é
+                // o que as separa dos dois pontos de amarração ao lado.
+                ring_px(pa, JOINT_DOT_PX * 2.0, &mut glyph);
+                ring_px(pb, JOINT_DOT_PX * 2.0, &mut glyph);
+            }
+            ring_px(a, JOINT_DOT_PX, &mut glyph);
+            ring_px(b, JOINT_DOT_PX, &mut glyph);
+        }
         JointKind::Spring => {
             span = spring_zigzag(a, b);
             ring_px(a, JOINT_DOT_PX, &mut glyph);

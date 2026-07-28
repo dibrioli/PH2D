@@ -589,6 +589,50 @@ fn main() {
         },
     ));
 
+    // W-Pulley: um elevador com contrapeso. A POLIA e o primeiro vinculo que NAO
+    // e um joint do rapier -- ela e um passe de impulso por sub-passo, com massa
+    // efetiva computada a partir do `effective_inv_mass` (por eixo) e do
+    // `effective_world_inv_inertia_sqrt` do proprio rapier. Entra no hash porque
+    // MOVE corpos: se aquela aritmetica divergisse entre OSes, e aqui que se ve.
+    //
+    // Massas DIFERENTES (4 kg contra 1) de proposito: com massas iguais a lane
+    // fica parada e o hash nao veria a corda trabalhar.
+    for (name, x, density) in [
+        (
+            "C9 Pulley Load",
+            -64.0_f32,
+            4.0_f32 / (std::f32::consts::PI * 0.04),
+        ),
+        (
+            "C9 Pulley Counterweight",
+            -60.0,
+            1.0 / (std::f32::consts::PI * 0.04),
+        ),
+    ] {
+        sim.world_mut().spawn((
+            Name::new(name),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.2 },
+                density,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(x, 6.0)),
+        ));
+    }
+    sim.world_mut().spawn((
+        Name::new("C9 Pulley"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Pulley Load"),
+            body_b: stable_name_id("C9 Pulley Counterweight"),
+            kind: JointKind::Pulley,
+            ..PhysicsJoint::of_kind(JointKind::Pulley)
+        },
+        Transform::from_translation(Vec2::new(-64.0, 6.0)),
+    ));
+
     // Um SERVO (W-J6): a mesma dobradica do resto do repo, mas mirando um LUGAR
     // em vez de uma taxa. Entra no hash porque o motor de POSICAO e um caminho de
     // solver proprio -- `set_motor` com stiffness diferente de zero, resolvido

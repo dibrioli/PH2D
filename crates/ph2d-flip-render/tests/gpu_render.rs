@@ -459,9 +459,15 @@ fn an_airbrush_has_a_flatter_core_than_the_standard_brush() {
     let std_outer = i32::from(alpha_at(&std, 32, 41));
     let air_outer = i32::from(alpha_at(&air, 32, 41));
 
-    // Medido (RTX, hardness 0.5): std 255/255/255/255/255/248/200/127/**55**/**7**/0 de y=32 a 42;
-    // air 252/252/252/251/250/249/247/242/**231**/**192**/0. Os dois têm núcleo cheio — o que os
-    // separa é o ARO.
+    // Medido (RTX, hardness 0.5, raio 10) de dn=0 a 1,1:
+    //   padrão   255 255 255 255 255 255 254 230 **125** **12** 0 0
+    //   airbrush 252 252 252 251 250 249 247 242 **231** **192** 0 0
+    // Os dois têm núcleo cheio — o que os separa é o ARO.
+    //
+    // ⚠️ Os números do PADRÃO mudaram em 2026-07-28, quando o perfil dele virou o do TRAÇO do
+    // Painter (era 55 e 7 em dn 0,8/0,9). O gate afirmava `std_rim < 100` em dn=0,8 e passou a
+    // ser FALSO por o padrão ficar mais cheio — não por o airbrush regredir. O discriminante
+    // honesto é onde os dois de fato se separam, e ele ficou mais forte, não mais fraco.
     //
     // O airbrush NÃO é totalmente opaco nem no eixo (`1−exp(−4.5) = 0.989` → 252): a névoa mais
     // densa ainda deixa passar. É o que o torna uma névoa e não um disco.
@@ -472,16 +478,17 @@ fn an_airbrush_has_a_flatter_core_than_the_standard_brush() {
     // O padrão a hardness 0.5 é CHEIO no eixo (o platô) — a metade que prova que a lei do Painter
     // chegou, e que o gate NÃO está medindo dois pincéis macios quaisquer.
     assert!(std_axis > 250, "o padrao tem PLATO no eixo: {std_axis}");
-    // ⚠️ O DISCRIMINANTE: no aro o padrão já é resíduo e o airbrush ainda pinta quase cheio.
-    // Fosso de ~4× em dn≈0.8 e ~27× em dn≈0.9 — nenhum ajuste de hardness fecha isso, porque a
-    // forma do domo (`√(1−dn²)`) só chega a zero EXATAMENTE no aro.
+    // No aro (dn≈0,8) o padrão já cruzou a meia-tinta e o domo do airbrush segue quase cheio.
     assert!(
-        air_rim > 200 && std_rim < 100,
-        "no aro (dn≈0.8) o domo segura e o padrao ja caiu: air={air_rim} std={std_rim}"
+        air_rim > 200 && std_rim < 160,
+        "no aro (dn≈0.8) o domo segura e o padrao ja cruzou meia-tinta: air={air_rim} std={std_rim}"
     );
+    // ⚠️ **O DISCRIMINANTE está em dn≈0,9**, onde o padrão é resíduo (12) e o airbrush ainda
+    // pinta quase cheio (192): fosso de **16×**, que nenhum ajuste de hardness fecha — a forma do
+    // domo (`√(1−dn²)`) só chega a zero EXATAMENTE no aro, enquanto a do traço cai antes.
     assert!(
         air_outer > 150 && std_outer < 40,
-        "e um pixel adiante o fosso ABRE: air={air_outer} std={std_outer}"
+        "um pixel adiante o fosso ABRE: air={air_outer} std={std_outer}"
     );
     // E a borda do airbrush é SEMPRE macia: rola suave a zero em dn=1, nunca um corte.
     assert!(
@@ -696,17 +703,34 @@ fn smoothstep01(x: f32) -> f32 {
 /// caíram de uma vez, e é assim que essa dívida se cobra. Quem mexer no `hardness_mask` mexe aqui,
 /// e a paridade termo-a-termo com `ph2d_painter_brush` vive em `tests/hardness_law.rs`.
 ///
-/// A LEI: platô cheio até `hardness`, e a curva `Falloff::Smooth` (`3p²−2p³`) na faixa restante.
-/// Sem transcendental, e sem a restrição de expoente inteiro que a lei do GP exigia.
+/// A LEI: o perfil que o **TRAÇO** do Painter deixa — a fileira de dabs a `spacing × diâmetro`
+/// de arco, composta por `over`. Cada dab é `BrushSpec::falloff_weight` + `Falloff::Smooth`
+/// (platô até `hardness`, `3p²−2p³` na faixa restante), e o perfil é o PRODUTO deles.
+///
+/// ⚠️ Até 2026-07-28 esta função era a queda de **UM DAB**, e era essa a distância entre o Flip e
+/// o Painter na tela: em hardness 0,4 e `dn = 0,70` um dab pesa 0,500 e o traço pesa 0,916.
 fn cpu_mask(dn: f32, hardness: f32) -> f32 {
     let h = hardness.clamp(0.0, 1.0);
     if h >= 1.0 {
         return f32::from(dn < 1.0);
     }
-    let remapped = ((dn - h) / (1.0 - h)).clamp(0.0, 1.0);
-    let p = 1.0 - remapped;
-    3.0 * p * p - 2.0 * p * p * p
+    let mut keep = 1.0_f32;
+    for k in -DEPOSIT_HALF..=DEPOSIT_HALF {
+        let along = k as f32 * DEPOSIT_STEP;
+        let d = (dn * dn + along * along).sqrt();
+        if d < 1.0 {
+            let remapped = ((d - h) / (1.0 - h)).clamp(0.0, 1.0);
+            let p = 1.0 - remapped;
+            keep *= 1.0 - (3.0 * p * p - 2.0 * p * p * p);
+        }
+    }
+    1.0 - keep
 }
+
+/// Espelho das constantes do `flip.wgsl` — o passo da fileira de dabs do Painter, EM RAIOS
+/// (o `spacing` default dele é 0,10 do DIÂMETRO), e a meia-largura do laço.
+const DEPOSIT_STEP: f32 = 0.2;
+const DEPOSIT_HALF: i32 = 4;
 
 /// 🔴 **O oráculo de união FALA a lei do Painter** — o elo que fecha a cadeia de prova.
 ///
@@ -718,23 +742,80 @@ fn cpu_mask(dn: f32, hardness: f32) -> f32 {
 /// Não precisa de adapter: é aritmética.
 #[test]
 fn the_union_oracle_is_the_painters_law() {
+    // Um dab do Painter, pela função REAL dele.
+    let dab = |d: f32, h: f32| {
+        let remapped = ((d - h) / (1.0 - h)).clamp(0.0, 1.0);
+        ph2d_painter_brush::Falloff::Smooth.weight(remapped)
+    };
     for hi in 0..=20 {
         let h = hi as f32 / 20.0;
         for di in 0..=200 {
             let dn = di as f32 / 200.0;
-            // `BrushSpec::falloff_weight`: o platô remapeia, o preset avalia.
             let expected = if h >= 1.0 {
                 f32::from(dn < 1.0)
             } else {
-                let remapped = ((dn - h) / (1.0 - h)).clamp(0.0, 1.0);
-                ph2d_painter_brush::Falloff::Smooth.weight(remapped)
+                // O TRAÇO: a fileira de dabs composta por `over`.
+                let mut keep = 1.0_f32;
+                for k in -DEPOSIT_HALF..=DEPOSIT_HALF {
+                    let along = k as f32 * DEPOSIT_STEP;
+                    let d = (dn * dn + along * along).sqrt();
+                    if d < 1.0 {
+                        keep *= 1.0 - dab(d, h);
+                    }
+                }
+                1.0 - keep
             };
             let got = cpu_mask(dn, h);
             assert!(
                 (got - expected).abs() < 1e-6,
-                "hardness {h} dn {dn}: oraculo {got} != Painter {expected}"
+                "hardness {h} dn {dn}: oraculo {got} != deposito do Painter {expected}"
             );
         }
+    }
+}
+
+/// 🔴 **O TRAÇO NÃO É O DAB — e este é o número que os separa.**
+///
+/// O gate acima prova a IGUALDADE com o depósito; sem este, trocar o depósito de volta pela queda
+/// de um dab **em ambos os lados** deixaria os dois concordando na lei errada, que é exatamente o
+/// que aconteceu até 2026-07-28 (com a lei do GP) e de novo depois (com a lei do dab).
+///
+/// A hardness 0,4 e `dn = 0,70`: um dab pesa **0,500**, o traço pesa **0,916**. Era essa a
+/// distância entre as duas fotos do Enio.
+///
+/// ⚠️ E em `hardness ≥ 1` os dois modelos são a MESMA função (todo dab é disco duro), que é o que
+/// mantém o traço PADRÃO do Flip (`DEFAULT_HARDNESS = 1`) byte-idêntico.
+#[test]
+fn the_stroke_profile_is_fuller_than_a_single_dab() {
+    let dab = |d: f32, h: f32| {
+        if h >= 1.0 {
+            return f32::from(d < 1.0);
+        }
+        let remapped = ((d - h) / (1.0 - h)).clamp(0.0, 1.0);
+        ph2d_painter_brush::Falloff::Smooth.weight(remapped)
+    };
+    let (one, stroke) = (dab(0.70, 0.4), cpu_mask(0.70, 0.4));
+    assert!(
+        (one - 0.500).abs() < 0.005 && (stroke - 0.916).abs() < 0.005,
+        "os numeros medidos mudaram: dab {one} traco {stroke}"
+    );
+    // Nunca MENOS cheio que um dab, em lugar nenhum: compor `over` só acrescenta.
+    for hi in 0..=20 {
+        let h = hi as f32 / 20.0;
+        for di in 0..=200 {
+            let dn = di as f32 / 200.0;
+            assert!(
+                cpu_mask(dn, h) >= dab(dn, h) - 1e-6,
+                "hardness {h} dn {dn}: traco {} < dab {}",
+                cpu_mask(dn, h),
+                dab(dn, h)
+            );
+        }
+    }
+    // E em hardness 1 as duas leis COINCIDEM (o default do Flip nao se move).
+    for di in 0..=200 {
+        let dn = di as f32 / 200.0;
+        assert!((cpu_mask(dn, 1.0) - dab(dn, 1.0)).abs() < 1e-6);
     }
 }
 

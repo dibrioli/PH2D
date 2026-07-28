@@ -235,17 +235,12 @@ mesmo app é falha de duas-portas, silenciosa porque nenhum número aparece na t
 mesmas operações na mesma ordem. ⚠️ **`hardness ≥ 1` é byte-idêntico nas duas** e
 `DEFAULT_HARDNESS = 1.0` ⇒ **o traço padrão do Flip não se move**.
 
-### 9.2 O que NÃO foi igualado, medido e decidido
+### 9.2 ⚠️ ESTA SEÇÃO ESTAVA ERRADA — ver §11
 
-O Painter compõe dabs por `over` (`1 − Π(1−a_k)`, pitch `0.2·raio`), então o que ele **deposita**
-é mais cheio que o falloff de um dab: pior delta **0,47 em hardness 0** · **0,41 em 0,5** ·
-**0,20 em 0,9** (só no aro). O Flip compõe por **UNIÃO**, então a secção dele **é** o perfil.
-
-⛔ **Casar o DEPÓSITO foi considerado e REJEITADO por medição:** o acumulado depende do SPACING e
-**não tem limite livre dele** — com spacing → 0 o produto satura num disco DURO. Assá-lo no Flip
-seria assar o *spacing default do Painter* (0,10) num módulo que não tem spacing, e ele deixaria
-de valer no primeiro ajuste que o artista fizesse lá. **O smoke decide** se o residual do ombro
-importa; a curva alternativa está pronta na sonda (`painter_deposited`) e trocar é uma linha.
+Ela dizia que casar o **DEPÓSITO** do Painter fora *"considerado e REJEITADO por medição"*, porque
+o acumulado depende do spacing. O argumento é verdadeiro e a conclusão era errada: o residual que
+ela mandou o smoke decidir valia **−112 de 255** contra o depósito real, e o smoke o reprovou duas
+vezes. A correção completa está em **§11**.
 
 ### 9.3 A cadeia de prova, e o elo que faltava
 
@@ -374,3 +369,93 @@ por `walked` o devolve à própria passagem.
 defeito**. Um gate para cada (`a_sharp_corner_that_crosses_itself_never_loses_ink` ·
 `a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union`); **2 mutações, cada uma
 derruba só o SEU gate**. Corolário: o teto do laço do fragment é a SOMA dos dois orçamentos (32).
+
+
+---
+
+## 11. ⬛ QUARTA ONDA — o perfil é o do **TRAÇO** do Painter, não o de um **DAB** dele
+
+**Ordem do Enio** (4ª rodada, com foto anotada de um rabisco em estrela): *"É assustador como vc
+não consegue resolver. Tudo que quero é que tenha o aspecto do traço do nosso próprio módulo
+painter digital"* — setas vermelhas sobre cunhas ESCURAS nas quinas.
+
+### 11.1 O que a medição disse (a sonda que faltava)
+
+⚠️ **Toda sonda desta linha comparava o Flip com a UNIÃO** (`expected_union_alpha`) — e a união
+era exatamente a coisa sob suspeita. A sonda nova (`tests/painter_look.rs`) compara com o
+**DEPÓSITO DO PAINTER**: dabs a `spacing × diâmetro` de arco compostos por `over`, com o `Falloff`
+REAL da crate dele, na figura da foto (a estrela de UM traço: quina de 36° em cada ponta, cinco
+auto-cruzamentos).
+
+| perfil do Flip | falta de tinta | px fora de 16 |
+|---|---|---|
+| a queda de UM DAB (ondas 2-3) | **−112 de 255** | 613 |
+| o perfil de TRAÇO (esta) | **−4** | 166, **todos de SOBRA** |
+
+A cura cabe numa frase: **o Flip desenha um TRAÇO, então o perfil dele é o perfil de TRAÇO do
+Painter, nunca o de um DAB dele.** Em hardness 0,4 e `dn = 0,70` um dab pesa **0,500** e o traço
+pesa **0,916** — era essa a distância entre as duas fotos.
+
+### 11.2 Por que "assar o spacing do Painter" está certo aqui
+
+A regra que esta linha pagou quatro vezes é *a lei é função do CAMINHO, nunca de quão fino o MOTOR
+amostrou o caminho*, e ela segue honrada: a máscara continua função **pura** da distância ao
+caminho. O `spacing` é propriedade do **pincel que estamos igualando**, e o pedido nomeia esse
+pincel. Preço NOMEADO: `DEPOSIT_STEP` é espelho de `spec_default.rs:29`.
+
+### 11.3 Três coisas que a medição entregou de brinde
+
+- **A composição por passagem deixou de ser heurística** — o produto sobre todos os dabs **fatora
+  por passagem**, então o `1 − (1−P₁)(1−P₂)` da §10 virou a fatoração exata.
+- **Num traço RETO o Flip É o depósito do Painter, ao ±1 de 255.**
+- **A fase da grade de dabs é irrelevante, e foi MEDIDA:** meio passo move o perfil em **0,003**.
+
+### 11.4 Resíduo NOMEADO (o único)
+
+No canto **CONVEXO** os dabs do Painter **recuam** em vez de correr paralelos e o perfil de traço
+os superestima: a ponta do Flip fica mais cheia (**+122/255** no vértice de 36°; +13 em hardness
+0,8, **zero** em 0,9). É a direção **oposta** à queixa. Medido em toda a faixa de hardness:
+**ZERO** pixel com menos tinta que o Painter. Fechá-lo exige o produto de dabs por posição de arco
+no fragment — wave própria.
+
+### 11.5 Gates (5 elos) e mutações
+
+1. `shader ≡ cpu_mask` — os 9 gates de união.
+2. `cpu_mask ≡ o DEPÓSITO de ph2d_painter_brush` — `the_union_oracle_is_the_painters_law`.
+3. `o depósito ≠ um dab, e este é o número` — **`the_stroke_profile_is_fuller_than_a_single_dab`**.
+4. `o laço ±4 é a fileira INTEIRA` — **`the_shaders_dab_row_is_the_whole_row`**, que **parseia as
+   constantes do `flip.wgsl`** em vez de repeti-las.
+5. `o produto pinta o que o Painter deposita` — **`the_flip_paints_what_the_painters_digital_brush_deposits`**,
+   na figura da FOTO.
+
+**Mutações:** (M1) o shader volta à queda de um dab ⇒ 3 gates de união sangram e (5) acusa **796 px
+com menos tinta, pior −122**. (M2) apertar o laço para ±2 nos DOIS lados da paridade ⇒ a paridade
+GPU fica **VERDE** e só (4) sangra — a prova de que (4) não é redundante.
+
+### 11.6 ⚠️ Duas armadilhas de ORÁCULO, as duas minhas
+
+1. **Superamostrar o oráculo 4×4 foi tentado e REVERTIDO.** Ele mede uma verdade que *nenhum dos
+   dois produtos calcula* — o Painter também avalia a queda no centro do texel. Com 4×4, em
+   hardness 0,8 a faixa de queda mede 1,4 px e a média de área discorda da amostra pontual por
+   **−67/255**, penalizando o Flip por algo que o Painter faz igual. *O oráculo tem de amostrar
+   como o produto amostra.*
+2. **A franja da silhueta é pulada:** o Flip fecha a borda com AA, o depósito não tem termo de AA
+   nenhum. Comparar ali mede convenção de borda, não a lei.
+
+### 11.7 Superfície
+
+`flip.wgsl` (`hardness_mask` + 2 consts) · `tests/gpu_render.rs` (`cpu_mask` + 2 gates) ·
+`tests/hardness_law.rs` (header corrigido + 1 gate) · `tests/painter_look.rs` (NOVO) ·
+`flip_hardness_smoke.rs` (a cena passou a encenar **a foto**: a estrela de um traço) ·
+`docs/Flip/03` §8.6. **Nenhum schema, nenhum contrato congelado, nenhum ADR, nenhum id/token.**
+
+### 11.8 Smoke
+
+```bash
+env PH2D_FLIP_HARDNESS_SMOKE=1 cargo run -p ph2d-host-desktop --release
+```
+
+A cena tem **três** grupos: X duro (o CONTROLE, byte-idêntico), X macio, e **a ESTRELA de UM
+traço** — a foto encenada. ⚠️ As ondas anteriores só encenavam X de DOIS traços, e dois traços
+cruzados **nunca** tiveram o defeito (o depth difere e o mais novo já compõe): por isso ele só
+aparecia quando o Enio desenhava à mão.

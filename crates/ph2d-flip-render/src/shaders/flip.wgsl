@@ -10,9 +10,9 @@
 // segmento dá **junções e tampas REDONDAS de graça** — sem spikes, e (crucial) com
 // cobertura CONSISTENTE onde dois quads cobrem o mesmo pixel (ambos medem a
 // distância ao MESMO ponto de junção), então o depth só escolhe um. O perfil de
-// hardness é a do PAINTER (platô até `hardness`, curva `Smooth` na faixa restante —
-// ver `hardness_mask`; **NÃO** é a do GP), com AA de ~1px por `fwidth` (o GP conta
-// com MSAA; aqui não há).
+// hardness é a do PAINTER — e é a do **TRAÇO** dele, não a de um **DAB** (o Painter
+// carimba uma fileira de dabs e os compõe por `over`; ver `hardness_mask`). **NÃO** é a
+// do GP. Com AA de ~1px por `fwidth` (o GP conta com MSAA; aqui não há).
 //
 // **O tripé anti-artefato (estado EXATO do GP 2D — cada perna é obrigatória):**
 // 1. **Fita CONECTADA por miter + `miter_break`** (`gpencil_vertex`, ~l.705):
@@ -449,6 +449,14 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 const AIRBRUSH_K_MIN: f32 = 1.0;
 const AIRBRUSH_K_MAX: f32 = 8.0;
 
+// O passo da fileira de dabs do Painter, **em raios**: o `spacing` default dele é 0,10 do
+// DIÂMETRO (`ph2d-painter-brush/src/spec_default.rs:29`) ⇒ 0,20 do raio.
+const DEPOSIT_STEP: f32 = 0.2;
+// Meia-largura do laço. Um dab a `|k|·STEP ≥ 1` está fora do disco para qualquer `dn ≥ 0`
+// (`d = √(dn² + along²) ≥ along`), então `k = 5` já não contribui: 4 basta, e o `if` interno
+// cobre o resto sem depender deste número estar apertado.
+const DEPOSIT_HALF: i32 = 4;
+
 fn hardness_mask(dn: f32, hardness: f32, aa: f32, airbrush: bool) -> f32 {
     var profile: f32;
     if (airbrush) {
@@ -462,14 +470,41 @@ fn hardness_mask(dn: f32, hardness: f32, aa: f32, airbrush: bool) -> f32 {
     } else if (hardness > 0.999) {
         profile = 1.0; // borda dura: o núcleo é chapado; a borda é o AA abaixo
     } else {
-        // `BrushSpec::falloff_weight`: o platô empurra a queda para fora, e a curva é o
-        // preset `Falloff::Smooth` avaliado em `p = 1 − remapped` (a convenção do Blender
-        // que a crate do Painter porta). Escrito com as MESMAS operações na MESMA ordem
-        // que o Rust (`3.0*p*p - 2.0*p*p*p`) — "termo a termo", não "parecido".
+        // **O PERFIL É O DO TRAÇO DO PAINTER, NÃO O DE UM DAB DELE.**
+        //
+        // O Painter não pinta um dab: ele carimba uma FILEIRA deles a cada `spacing × diâmetro`
+        // de arco e os compõe por `over`. O que o artista vê na tela é o PRODUTO, e ele é muito
+        // mais cheio que a queda de um dab sozinho — medido em hardness 0,4: em `dn = 0,70` um
+        // dab pesa **0,500** e o traço pesa **0,916**. Era essa a distância entre as duas fotos
+        // do Enio (2026-07-28): com a queda do dab, a cunha escura da quina media **−138 de 255**
+        // contra o depósito real; com esta, **−43**.
+        //
+        // ⚠️ **Isto NÃO reintroduz dependência de amostragem** (a doença que esta linha curou
+        // quatro vezes): `DEPOSIT_STEP` é uma propriedade do PINCEL DO PAINTER (o `spacing`
+        // default dele, `spec_default.rs:29`), não de quão fino o motor amostrou o caminho. A
+        // máscara continua sendo função PURA da distância ao caminho.
+        //
+        // ⚠️ **A fase da grade de dabs é IRRELEVANTE e isso foi medido**, não suposto: deslocar
+        // a fileira de meio passo move o perfil em **0,003** (sonda `deposit_profile`). Por isso
+        // a fase é 0 e não há ondulação a modelar.
+        //
+        // ⚠️ **Em `hardness ≥ 1` os dois modelos são a MESMA função** (todo dab é disco duro ⇒
+        // o produto satura em `dn < 1` e some em `dn ≥ 1`), e `DEFAULT_HARDNESS` é 1 ⇒ o traço
+        // padrão do Flip não se move um bit. O ramo acima já o resolve sem entrar no laço.
         let h = clamp(hardness, 0.0, 1.0);
-        let remapped = clamp((dn - h) / (1.0 - h), 0.0, 1.0);
-        let p = 1.0 - remapped;
-        profile = 3.0 * p * p - 2.0 * p * p * p;
+        var keep = 1.0;
+        for (var k = -DEPOSIT_HALF; k <= DEPOSIT_HALF; k = k + 1) {
+            let along = f32(k) * DEPOSIT_STEP;
+            let d = sqrt(dn * dn + along * along);
+            if (d < 1.0) {
+                // A queda de UM dab: `BrushSpec::falloff_weight` + o preset `Falloff::Smooth`,
+                // com as MESMAS operações na MESMA ordem que o Rust — "termo a termo".
+                let remapped = clamp((d - h) / (1.0 - h), 0.0, 1.0);
+                let p = 1.0 - remapped;
+                keep = keep * (1.0 - (3.0 * p * p - 2.0 * p * p * p));
+            }
+        }
+        profile = 1.0 - keep;
     }
     // AA da borda = a FRAÇÃO DO PIXEL coberta pelo disco: a distância (com sinal) do
     // pixel à borda, medida em pixels (`aa = fwidth(dn)` é o tamanho de 1 px em

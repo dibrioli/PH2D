@@ -1,25 +1,23 @@
 //! **A cena pronta para o smoke da DUREZA** (`PH2D_FLIP_HARDNESS_SMOKE=1`, 03 §8.6).
 //!
-//! É a foto do Enio (2026-07-28) encenada: *"o cruzamento de cima é o FLIP, o de baixo é do
-//! Painter. O correto é o aspecto do cruzamento de baixo e o flip deveria ser idêntico"*.
+//! É a foto do Enio encenada: *"Tudo que quero é que tenha o aspecto do traço do nosso próprio
+//! módulo painter digital"* (2026-07-28, 4ª rodada, com setas vermelhas sobre cunhas ESCURAS nas
+//! quinas de um rabisco que cruza a si mesmo).
 //!
-//! O `hardness_mask` do `flip.wgsl` era o `gpencil_stroke_round_cap_mask` ao pé da letra —
-//! `smoothstep(0,1, pow(1−dn, mix(0,10,1−h)))` — fiel ao Blender e **incompatível com o resto do
-//! app**: sem platô, o traço **ENCOLHE ao amaciar**. Agora a lei é a do Painter
-//! (`BrushSpec::falloff_weight` + `Falloff::Smooth`): núcleo CHEIO até `hardness`, queda na faixa
-//! restante.
+//! ⚠️ **A cura foi UMA frase:** o Flip desenha um **TRAÇO**, então o perfil dele tem de ser o
+//! perfil de **TRAÇO** do Painter (a fileira de dabs a `spacing × diâmetro` de arco, composta por
+//! `over`), nunca o de um **DAB** dele. As duas rodadas anteriores igualaram a lei do dab — que é
+//! muito mais RALA — e é isso que abria as cunhas.
 //!
-//! **Números MEDIDOS** (`ph2d-flip-render/tests/hardness_law.rs`, o `dn` onde a tinta cruza
-//! meia-tinta — ou seja a metade VISÍVEL da largura pedida):
+//! **Números MEDIDOS** (`ph2d-flip-render/tests/painter_look.rs`, contra o depósito de verdade,
+//! numa estrela de um traço só):
 //!
-//! | hardness | era (GP) | é (Painter) |
+//! | | falta de tinta | px fora de 16 |
 //! |---|---|---|
-//! | 0,9 | 0,500 | 0,951 |
-//! | 0,7 | 0,207 | 0,850 |
-//! | 0,5 | **0,130** | 0,751 |
+//! | lei do DAB (o que a foto mostra) | **−112 de 255** | 613 |
+//! | lei do TRAÇO (agora) | **−4** | 166, TODOS de SOBRA |
 //!
-//! Em hardness 0,5 a largura visível era **13% da pedida** — o resto era névoa, e é isso que
-//! aparecia como um filete brilhante dentro de um borrão nos cruzamentos.
+//! E num traço RETO o Flip virou o depósito do Painter ao **±1 de 255**.
 //!
 //! ⚠️ **`hardness = 1.0` é byte-idêntico nas duas leis** (disco duro), e é o default do Flip ⇒
 //! o X da ESQUERDA é o CONTROLE: se ele mudou, quebrei outra coisa.
@@ -36,12 +34,12 @@ fn enabled() -> bool {
     *ON.get_or_init(|| std::env::var_os("PH2D_FLIP_HARDNESS_SMOKE").is_some())
 }
 
-/// As três durezas encenadas. A 1ª é o CONTROLE (byte-idêntica nas duas leis).
+/// As durezas encenadas. A 1ª é o CONTROLE (byte-idêntica nas duas leis).
 const HARDNESS: [f32; 3] = [1.0, 0.7, 0.4];
-/// O `dn` de meia-tinta sob a lei NOVA, medido em `hardness_law.rs` — o que a mensagem promete.
-const HALF_INK_NOW: [f32; 3] = [1.000, 0.850, 0.701];
-/// O mesmo número sob a lei ANTIGA (o que o Enio fotografou).
-const HALF_INK_WAS: [f32; 3] = [1.000, 0.207, 0.110];
+/// O `dn` de meia-tinta sob a lei de TRAÇO (a de hoje), medido — a metade VISÍVEL da largura.
+const HALF_INK_NOW: [f32; 3] = [1.000, 0.899, 0.824];
+/// O mesmo número sob a lei de DAB (a rodada anterior, que o Enio reprovou).
+const HALF_INK_WAS: [f32; 3] = [1.000, 0.850, 0.700];
 
 /// **UM cruzamento** — duas retas que se cortam no centro `(cx, 0)`, exatamente a figura da foto.
 /// O X é a fixture certa porque é onde o defeito lia pior: a cauda macia de uma passagem sobre o
@@ -67,18 +65,50 @@ fn crossing(cx: f32, hardness: f32) -> [FlipStroke; 2] {
     [it.next().expect("perna 1"), it.next().expect("perna 2")]
 }
 
-/// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos três centros.
+/// **A ESTRELA DE UM TRAÇO** — a figura da foto: quinas de 36° em cada ponta e cinco
+/// auto-cruzamentos no miolo, desenhada **sem levantar a caneta**.
+///
+/// ⚠️ **É esta a cena que faltava.** As rodadas anteriores encenavam cada cruzamento como DOIS
+/// traços, e dois traços cruzados nunca tiveram o defeito (o depth deles difere e o mais novo
+/// pinta por cima, ou seja **já compõe**). O caso do Enio — um traço só, com quina — exigia
+/// desenhar à mão para aparecer.
+fn one_stroke_star(cx: f32, hardness: f32) -> FlipStroke {
+    let ink = Rgba::new(0.92, 0.92, 0.95, 1.0);
+    let outer = 0.80_f32;
+    let mut corners = Vec::new();
+    for k in 0..5 {
+        // Passo de 2/5 de volta = a estrela de um traço só.
+        let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+        corners.push((cx + outer * a.cos(), outer * a.sin()));
+    }
+    corners.push(corners[0]);
+    let mut s = FlipStroke::new();
+    for &(x, y) in &corners {
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: 0.42,
+            opacity: 1.0,
+            color: ink,
+        });
+    }
+    s.hardness = hardness;
+    s
+}
+
+/// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos três grupos.
 pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 3] {
     obj.fps = 12.0;
     obj.onion.enabled = false; // um quadro só; o onion sujaria a leitura do perfil.
 
-    let xs = [-1.7_f32, 0.0, 1.7];
+    let xs = [-2.2_f32, -0.3, 1.9];
     let layer = obj.add_layer("Hardness");
     if let Some(d) = obj.insert_frame(layer, 0, Hold::Implicit, KeyKind::Keyframe) {
         let strokes = &mut obj.drawing_mut(d).expect("desenho").strokes;
-        for (x, h) in xs.iter().zip(HARDNESS) {
-            strokes.extend(crossing(*x, h));
-        }
+        // Dois X de DOIS traços: o controle duro e o macio.
+        strokes.extend(crossing(xs[0], HARDNESS[0]));
+        strokes.extend(crossing(xs[1], HARDNESS[2]));
+        // E a ESTRELA de UM traço — a foto.
+        strokes.push(one_stroke_star(xs[2], HARDNESS[2]));
     }
     xs
 }
@@ -103,10 +133,10 @@ impl crate::App {
         self.playhead.pause();
 
         eprintln!(
-            "\n[hardness-smoke] cena montada: 3 cruzamentos em x={:?}, hardness {:?}. \
-             Ferramenta flip ativa: {}.",
+            "\n[hardness-smoke] cena montada: 2 cruzamentos + 1 ESTRELA DE UM TRACO em \
+             x={:?}, hardness {:?}. Ferramenta flip ativa: {}.",
             xs,
-            HARDNESS,
+            [HARDNESS[0], HARDNESS[2], HARDNESS[2]],
             if tool_ok {
                 "sim"
             } else {
@@ -115,9 +145,9 @@ impl crate::App {
         );
 
         let mut tabela = String::new();
-        for i in 0..3 {
+        for i in [0usize, 1, 2] {
             tabela.push_str(&format!(
-                "                 {:>4.1}        {:>5.3}         {:>5.3}\n",
+                "                 {:>4.1}         {:>5.3}          {:>5.3}\n",
                 HARDNESS[i], HALF_INK_WAS[i], HALF_INK_NOW[i]
             ));
         }
@@ -130,42 +160,52 @@ impl crate::App {
              o smoke nao rodou (arvore ou variavel de ambiente errada).\n\
              ============================================================\n\
              \n\
-             A FOTO, ENCENADA. Tres cruzamentos identicos, so a hardness\n\
-             muda -- da mais dura (esquerda) para a mais macia (direita):\n\
-               - ESQUERDA (1.0) : o CONTROLE. As duas leis sao byte-\n\
-                                  identicas aqui, e este e o default do\n\
-                                  Flip. Se ele mudou, algo mais quebrou.\n\
-               - MEIO     (0.7) : nucleo CHEIO ate 70% do raio, depois cai.\n\
-               - DIREITA  (0.4) : nucleo CHEIO ate 40%, queda mais longa.\n\
+             A CENA, da esquerda para a direita:\n\
+               1. X duro (hardness 1.0) -- o CONTROLE. As duas leis sao\n\
+                  byte-identicas aqui, e este e o default do Flip. Se ele\n\
+                  mudou, algo mais quebrou.\n\
+               2. X macio (hardness 0.4), DOIS tracos cruzados.\n\
+               3. ESTRELA de UM traco (hardness 0.4) -- **A SUA FOTO**:\n\
+                  quina afiada em cada ponta e cinco auto-cruzamentos.\n\
+                  As rodadas anteriores so encenavam o item 2, e dois\n\
+                  tracos cruzados NUNCA tiveram o defeito -- por isso ele\n\
+                  so aparecia quando voce desenhava a mao.\n\
              \n\
              O QUE OLHAR -- e e so isso:\n\
-               1. Cada traco tem um MIOLO SOLIDO com uma borda macia.\n\
-                  NAO pode ser um filete brilhante dentro de um borrao.\n\
-               2. No CRUZAMENTO, o miolo de uma passagem nao pode ficar\n\
-                  mais claro nem mais escuro: as duas se fundem lisas.\n\
-               3. Abra o PAINTER, pincel normal, mesma hardness, e cruze\n\
-                  dois tracos. O aspecto tem de ser o MESMO -- e a razao\n\
-                  desta wave existir.\n\
+               1. Na ESTRELA, nenhuma cunha ESCURA mordendo a tinta nas\n\
+                  quinas nem nos cruzamentos. Era isso que as setas\n\
+                  vermelhas apontavam.\n\
+               2. Abra o PAINTER, pincel digital normal, MESMA hardness, e\n\
+                  rabisque uma estrela sem levantar a caneta. O aspecto\n\
+                  tem de ser o MESMO -- e a razao desta wave existir.\n\
+               3. O X da esquerda nao pode ter mudado.\n\
              \n\
              ------------------------------------------------------------\n\
-             Medido (sonda `hardness_law.rs`): o dn onde a tinta cruza\n\
-             meia-tinta = a metade VISIVEL da largura pedida.\n\
+             A CURA, numa frase: o Flip desenha um TRACO, entao o perfil\n\
+             dele e o perfil de TRACO do Painter (a fileira de dabs\n\
+             composta por `over`), nunca o de um DAB dele. As duas\n\
+             rodadas anteriores igualaram a lei do DAB, que e muito mais\n\
+             rala -- em hardness 0.4 e dn 0.70 um dab pesa 0.500 e o\n\
+             traco pesa 0.916.\n\
              \n\
-             hardness      era (GP)      e (Painter)\n\
+             Medido: o dn onde a tinta cruza meia-tinta (= a metade\n\
+             VISIVEL da largura pedida).\n\
+             \n\
+             hardness      lei do DAB      lei do TRACO\n\
              {tabela}\
-             Em 0.4 a largura visivel era 11% da pedida. O resto,\n\
-             que voce fotografou, era nevoa.\n\
              ------------------------------------------------------------\n\
              \n\
-             ⚠️ O QUE ESTA WAVE **NAO** IGUALA, e o smoke decide se\n\
-             importa: o Painter carimba dabs e os compoe por `over`, e\n\
-             o que ele DEPOSITA e mais cheio que o falloff de um dab\n\
-             (delta maximo medido 0.47 em hardness 0 / 0.41 em 0.5 /\n\
-             0.20 em 0.9, so no aro). O Flip compoe por UNIAO, entao a\n\
-             seccao dele E o perfil. Casar o deposito foi medido e\n\
-             REJEITADO: ele depende do SPACING do Painter e nao tem\n\
-             limite livre dele. Se o ombro ainda parecer fino ao lado do\n\
-             Painter, ISSO e o residual -- reporte e a curva muda.\n"
+             Contra o deposito REAL do Painter (sonda `painter_look.rs`,\n\
+             a mesma estrela): ZERO pixel com MENOS tinta que o Painter,\n\
+             em toda a faixa de hardness, e num traco RETO o Flip virou\n\
+             o deposito dele ao +-1 de 255.\n\
+             \n\
+             ⚠️ RESIDUO NOMEADO: na PONTA de uma quina muito afiada os\n\
+             dabs do Painter RECUAM em vez de correr paralelos, e o Flip\n\
+             pinta ali um pouco mais cheio (+122 de 255 no vertice de\n\
+             36 graus; some conforme a hardness sobe). E a direcao\n\
+             OPOSTA a queixa -- a ponta fica mais redonda, nao mordida.\n\
+             Se ISSO incomodar, reporte: e outra wave.\n"
         );
     }
 }

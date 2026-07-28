@@ -490,35 +490,76 @@ O `hardness_mask` era o `gpencil_stroke_round_cap_mask` ao pé da letra — `smo
 pow(1−dn, mix(0,10,1−h)))` — **fiel ao Blender e incompatível com o resto do app**. Sem platô, o
 traço **ENCOLHE ao amaciar**; o `dn` onde a tinta cruza meia-tinta, medido:
 
-| hardness | GP (era) | Painter (é) |
-|---|---|---|
-| 0,9 | 0,500 | 0,951 |
-| 0,7 | 0,207 | 0,850 |
-| 0,5 | **0,130** | 0,751 |
-| 0,3 | 0,095 | 0,651 |
+| hardness | GP (era) | dab do Painter (1ª rodada) | **traço do Painter (é)** |
+|---|---|---|---|
+| 0,9 | 0,500 | 0,950 | 0,959 |
+| 0,7 | 0,207 | 0,850 | **0,899** |
+| 0,5 | **0,130** | 0,750 | 0,848 |
+| 0,4 | 0,110 | 0,700 | **0,824** |
 
 Em hardness 0,5 a **largura VISÍVEL era 13% da pedida** e o resto era névoa — não é "mais macio",
 é outro traço. E a mesma palavra "Hardness" governava duas leis em dois módulos do mesmo app: uma
 falha de duas-portas, silenciosa porque nenhum número aparece na tela.
 
-**A lei agora é `BrushSpec::falloff_weight` + `Falloff::Smooth`:** platô CHEIO até `hardness`, e
-`3p²−2p³` sobre `p = 1 − (dn−h)/(1−h)` na faixa restante. ⚠️ `hardness ≥ 1` é **byte-idêntico**
+**A lei agora é o DEPÓSITO de `BrushSpec::falloff_weight` + `Falloff::Smooth`:** cada dab tem
+platô CHEIO até `hardness` e `3p²−2p³` sobre `p = 1 − (dn−h)/(1−h)` na faixa restante, e o perfil
+do traço é o **produto `over`** de uma fileira deles a `0,2·raio` (§8.6.1 abaixo). ⚠️ `hardness ≥ 1` é **byte-idêntico**
 nas duas leis (disco duro) e `DEFAULT_HARDNESS = 1.0` ⇒ **o traço padrão do Flip não se move**.
 
-### O que esta wave NÃO iguala, e por quê
+### ⚠️ 2ª RODADA — a lei é a do **TRAÇO**, não a de um **DAB** (a correção)
 
-O Painter carimba dabs e os compõe por `over` (`1 − Π(1−a_k)`, pitch `0.2·raio`), então o que ele
-DEPOSITA é mais cheio que o falloff de um dab: pior delta **0,47 em hardness 0** · **0,41 em 0,5**
-· **0,20 em 0,9** (só no aro). O Flip compõe por **UNIÃO** (`min` de distância — a joia que custou
-uma semana de bugs), e a secção dele **é** o perfil do dab.
+Esta seção dizia *"o que esta wave iguala é a LEI, não o DEPÓSITO"* e rejeitava casar o depósito
+porque *"o acumulado depende do SPACING e não tem limite livre dele"*. **As duas metades do
+argumento são verdadeiras e a conclusão era errada.** O Enio reprovou de novo, com foto anotada:
+*"Tudo que quero é que tenha o aspecto do traço do nosso próprio módulo painter digital"*.
 
-⛔ **Casar o DEPÓSITO foi considerado e REJEITADO por medição:** o acumulado depende do SPACING e
-**não tem limite livre dele** — conforme o spacing → 0 o produto satura num disco DURO em toda a
-pegada. Assar uma curva de depósito no Flip seria assar o *spacing default do Painter* (0,10) num
-módulo que não tem spacing, e ela deixaria de valer no primeiro ajuste que o artista fizesse lá.
-A LEI é a única resposta estável, e é ela que a palavra "Hardness" nomeia nos dois lugares.
-**O smoke decide** se o residual do ombro importa; se importar, a curva de depósito é
-`painter_deposited` na sonda, e trocar é uma linha — com o preço acima escrito.
+**O que a medição disse** (sonda `painter_look.rs`: a MESMA estrela de um traço no Flip e no
+depósito real do Painter, dabs a `spacing × diâmetro` compostos por `over` com o `Falloff` real):
+
+| perfil do Flip | falta de tinta | px fora de 16 |
+|---|---|---|
+| a queda de UM DAB (1ª rodada) | **−112 de 255** | 613 |
+| o perfil de TRAÇO (agora) | **−4** | 166, **todos de SOBRA** |
+
+O residual que a nota antiga mandou o smoke decidir era **mais de metade da tinta**. O smoke
+decidiu — duas vezes, com foto.
+
+**A frase que fica:** *o Flip desenha um **TRAÇO**, então o perfil dele é o perfil de **TRAÇO** do
+Painter (`1 − Π(1−dab_k)`, pitch `0,2·raio`), nunca o de um **DAB** dele.* Medido em hardness 0,4
+e `dn = 0,70`: um dab pesa **0,500**, o traço pesa **0,916**.
+
+**Por que "assar o spacing do Painter" está certo aqui.** A regra que esta linha pagou quatro
+vezes é *a lei é função do CAMINHO, nunca de quão fino o MOTOR amostrou o caminho* — e ela segue
+honrada: a máscara continua função **pura** da distância ao caminho, sem nenhuma dependência de
+como o traço foi amostrado. O `spacing` é propriedade do **pincel que estamos igualando**, e o
+pedido nomeia esse pincel. Preço NOMEADO: `DEPOSIT_STEP` no `flip.wgsl` é espelho de
+`spec_default.rs:29`; se o default do Painter mudar, os dois divergem — e a constante cita a
+origem por isso.
+
+**Três coisas que a medição entregou de brinde:**
+
+- **A composição por passagem deixou de ser heurística.** O produto sobre TODOS os dabs **fatora
+  por passagem**, então o `1 − (1−P₁)(1−P₂)` que o cruzamento já usava virou a fatoração exata.
+- **Num traço RETO o Flip É o depósito do Painter, ao ±1 de 255.**
+- **A fase da grade de dabs é irrelevante, e isso foi MEDIDO:** deslocar a fileira de meio passo
+  move o perfil em **0,003**. Não há ondulação a modelar.
+
+**Resíduo NOMEADO, e é o único:** no **canto CONVEXO** os dabs do Painter **recuam** em vez de
+correr paralelos, e o perfil de traço os superestima — a ponta do Flip fica mais cheia (+122 de
+255 no vértice de uma estrela de 36°, e some conforme a hardness sobe: +13 em 0,8, zero em 0,9).
+É a direção **oposta** à queixa, e discutivelmente a mais correta: a junção redonda é a forma
+ideal e o afinamento do Painter é artefato da discretização **dele**. Fechá-lo exige rodar o
+produto de dabs por posição de arco no fragment — wave própria, não afinação.
+
+⚠️ **Duas armadilhas de ORÁCULO nesta wave, as duas minhas:**
+
+1. **Superamostrar o oráculo 4×4 foi tentado e REVERTIDO.** Ele mede uma verdade que *nenhum dos
+   dois produtos calcula* — o Painter também avalia a queda no centro do texel. Com 4×4, em
+   hardness 0,8 a faixa de queda mede 1,4 px e a média de área discorda da amostra pontual por
+   **−67/255**, penalizando o Flip por algo que o Painter faz igual. *O oráculo tem de amostrar
+   como o produto amostra.*
+2. **A franja da silhueta é pulada**, porque o Flip fecha a borda com AA e o depósito não tem
+   termo de AA nenhum: comparar ali mede convenção de borda, não a lei.
 
 ### A cadeia de prova (e o elo que faltava)
 
@@ -526,11 +567,24 @@ A lei existe em **dois idiomas** (WGSL no device, Rust no Painter) e o oráculo 
 tinha uma **terceira** cópia (`cpu_mask`). A cadeia é:
 
 1. `shader ≡ cpu_mask` — os 9 gates de união, numericamente, em milhares de pixels.
-2. `cpu_mask ≡ ph2d_painter_brush` — **`the_union_oracle_is_the_painters_law`**, o gate NOVO.
+2. `cpu_mask ≡ o DEPÓSITO de ph2d_painter_brush` — **`the_union_oracle_is_the_painters_law`**.
+3. `o depósito ≠ um dab, e este é o número` — **`the_stroke_profile_is_fuller_than_a_single_dab`**.
+   Sem (3), trocar o depósito de volta pela queda de um dab **nos dois lados** deixaria (1) e (2)
+   verdes sobre a lei errada, que é exatamente o que aconteceu **duas vezes** nesta linha.
+4. `o laço do shader (±4) é a fileira INTEIRA` — **`the_shaders_dab_row_is_the_whole_row`**, que
+   **parseia `DEPOSIT_STEP`/`DEPOSIT_HALF` do `flip.wgsl`** em vez de repetir os números: um gate
+   que os cravasse ficaria CEGO ao shader apertar o laço, e apertá-lo nos dois lados é a mesma
+   forma sempre-verde. A referência `±64` é a âncora que nenhum dos dois pode mover.
+5. `o produto pinta o que o Painter deposita` — **`the_flip_paints_what_the_painters_digital_brush_deposits`**,
+   na figura da FOTO (a estrela de um traço). É o único que fala de aparência: **zero** pixel com
+   menos tinta que o Painter, em toda a faixa de hardness.
 
-⚠️ **Sem (2) os dois lados podiam derivar JUNTOS e tudo ficava verde** — foi literalmente o estado
-até esta wave (shader e oráculo concordando na lei do GP). **Provado por mutação:** revertendo os
-DOIS ao GP, os 9 gates de união passam e só (2) — mais o gate do airbrush — sangram.
+⚠️ **Sem (2)+(3) os dois lados podiam derivar JUNTOS e tudo ficava verde** — foi literalmente o
+estado até esta wave, duas vezes seguidas (shader e oráculo concordando primeiro na lei do GP,
+depois na lei do dab). **Provado por mutação:** (M1) o shader volta à queda de um dab ⇒ 3 gates de
+união sangram e (5) acusa **796 px com menos tinta, pior −122**; (M2) apertar o laço para ±2 nos
+DOIS lados da paridade ⇒ a paridade GPU fica **verde** e só (4) sangra — a prova de que (4) não é
+redundante.
 `ph2d-painter-brush` entra em **`[dev-dependencies]`** da `ph2d-flip-render` (crate FOLHA,
 `[dependencies]` vazio; o `src/` não a toca ⇒ machete-safe), o precedente do gate de paridade
 CPU×GPU da `line/gpu-nodes`.

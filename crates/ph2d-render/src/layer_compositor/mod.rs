@@ -48,7 +48,21 @@ pub use ops::{
 };
 use ops::{distinct_layer_count, op_mask, validate_op_list};
 
-pub(crate) const LAYER_COMPOSITE_WGSL: &str = include_str!("../shaders/layer_composite.wgsl");
+/// **As 22 leis de mistura**, extraídas quando ganharam o SEGUNDO consumidor (a pilha de FX raster
+/// do módulo vetorial, plano 24 W6). Prefixo de módulo — não parseia sozinho, de propósito.
+pub(crate) const BLEND_MODES_WGSL: &str = include_str!("../shaders/blend_modes.wgsl");
+
+/// O corpo do compositor de camadas, SEM as leis de mistura (elas moram no [`BLEND_MODES_WGSL`]).
+pub(crate) const LAYER_COMPOSITE_BODY_WGSL: &str =
+    include_str!("../shaders/layer_composite.wgsl");
+
+/// **O módulo que o compositor de facto compila.** Porta única: o pipeline e os gates leem esta,
+/// nunca as duas metades soltas — um gate que lesse só o corpo ficaria verde sobre uma deriva na
+/// metade compartilhada, que é exatamente a metade que agora tem dois donos.
+#[must_use]
+pub(crate) fn composite_source() -> String {
+    format!("{BLEND_MODES_WGSL}\n{LAYER_COMPOSITE_BODY_WGSL}")
+}
 
 /// Workgroup edge (mirrors the `@workgroup_size(8, 8, 1)` in the shader).
 const WORKGROUP_EDGE: u32 = 8;

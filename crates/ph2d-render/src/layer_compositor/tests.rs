@@ -81,7 +81,7 @@ fn gpu_pod_sizes_match_wgsl() {
 /// `shader_blend_modes_bit_identical_with_rust`.
 #[test]
 fn gpu_op_field_order_matches_the_wgsl_struct() {
-    let src = LAYER_COMPOSITE_WGSL;
+    let src = &composite_source();
     let start = src
         .find("struct Op {")
         .expect("the WGSL declares `struct Op`");
@@ -126,7 +126,7 @@ fn srgb_lut_matches_cpu_transfer() {
     // The shader recovers the byte index via `round(raw * 255)`; assert the
     // WGSL still indexes the table that way (guards a refactor that breaks
     // the unorm→byte recovery).
-    assert!(LAYER_COMPOSITE_WGSL.contains("srgb_lut[u32(raw.r * 255.0 + 0.5)]"));
+    assert!(composite_source().contains("srgb_lut[u32(raw.r * 255.0 + 0.5)]"));
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn distinct_layer_count_dedupes() {
 
 #[test]
 fn layer_composite_wgsl_parses_via_naga() {
-    let r = naga::front::wgsl::parse_str(LAYER_COMPOSITE_WGSL);
+    let r = naga::front::wgsl::parse_str(&composite_source());
     assert!(
         r.is_ok(),
         "layer_composite.wgsl failed naga parse: {:?}",
@@ -278,7 +278,7 @@ fn layer_composite_wgsl_parses_via_naga() {
 
 #[test]
 fn layer_composite_wgsl_validates_via_naga() {
-    let module = naga::front::wgsl::parse_str(LAYER_COMPOSITE_WGSL).expect("must parse");
+    let module = naga::front::wgsl::parse_str(&composite_source()).expect("must parse");
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::empty(),
@@ -293,7 +293,7 @@ fn layer_composite_wgsl_validates_via_naga() {
 
 #[test]
 fn shader_workgroup_size_is_8x8x1() {
-    let module = naga::front::wgsl::parse_str(LAYER_COMPOSITE_WGSL).expect("must parse");
+    let module = naga::front::wgsl::parse_str(&composite_source()).expect("must parse");
     // Both entry points (flat + grouped) must use the 8×8 tiling.
     for name in ["cs_flat", "cs_grouped"] {
         let ep = module
@@ -307,7 +307,7 @@ fn shader_workgroup_size_is_8x8x1() {
 
 fn wgsl_struct_span(name: &str) -> usize {
     use naga::TypeInner;
-    let module = naga::front::wgsl::parse_str(LAYER_COMPOSITE_WGSL).expect("must parse");
+    let module = naga::front::wgsl::parse_str(&composite_source()).expect("must parse");
     for (_, ty) in module.types.iter() {
         if let TypeInner::Struct { span, .. } = ty.inner
             && ty.name.as_deref() == Some(name)
@@ -352,10 +352,10 @@ fn shader_struct_sizes_match_rust_abi() {
 fn shader_op_kind_discriminants_match_wgsl() {
     // The Rust `OP_*` and WGSL `OP_*` must agree, and the WGSL `switch`
     // arms (`case 0u/1u/2u`) dispatch on them.
-    assert!(LAYER_COMPOSITE_WGSL.contains("const OP_LAYER: u32 = 0u;"));
-    assert!(LAYER_COMPOSITE_WGSL.contains("const OP_PUSH_GROUP: u32 = 1u;"));
-    assert!(LAYER_COMPOSITE_WGSL.contains("const OP_POP_GROUP: u32 = 2u;"));
-    assert!(LAYER_COMPOSITE_WGSL.contains("const OP_ADJUSTMENT: u32 = 3u;"));
+    assert!(composite_source().contains("const OP_LAYER: u32 = 0u;"));
+    assert!(composite_source().contains("const OP_PUSH_GROUP: u32 = 1u;"));
+    assert!(composite_source().contains("const OP_POP_GROUP: u32 = 2u;"));
+    assert!(composite_source().contains("const OP_ADJUSTMENT: u32 = 3u;"));
     assert_eq!(OP_LAYER, 0);
     assert_eq!(OP_PUSH_GROUP, 1);
     assert_eq!(OP_POP_GROUP, 2);
@@ -400,7 +400,7 @@ fn shader_blend_modes_bit_identical_with_rust() {
     for (lit, expected) in pairs {
         // Verbatim presence.
         assert!(
-            LAYER_COMPOSITE_WGSL.contains(lit),
+            composite_source().contains(lit),
             "literal `{lit}` not found verbatim in layer_composite.wgsl"
         );
         // Bit-exact parse of the leading numeric token of the literal.
@@ -450,7 +450,7 @@ fn shader_adjustment_coefficients_bit_identical_with_rust() {
     ];
     for (lit, expected) in pairs {
         assert!(
-            LAYER_COMPOSITE_WGSL.contains(lit),
+            composite_source().contains(lit),
             "adjustment literal `{lit}` not found verbatim in layer_composite.wgsl"
         );
         let parsed: f32 = lit
@@ -474,21 +474,21 @@ fn shader_dispatches_hsl_and_specials_by_canonical_discriminant() {
     // HSL group = 16..=19 (Hue/Saturation/Color/Luminosity).
     for code in ["case 16u", "case 17u", "case 18u", "case 19u"] {
         assert!(
-            LAYER_COMPOSITE_WGSL.contains(code),
+            composite_source().contains(code),
             "missing HSL arm {code}"
         );
     }
     // Specials: Behind=20, Clear=21 (handled before the blend switch).
     assert!(
-        LAYER_COMPOSITE_WGSL.contains("if mode == 20u"),
+        composite_source().contains("if mode == 20u"),
         "missing Behind special"
     );
     assert!(
-        LAYER_COMPOSITE_WGSL.contains("if mode == 21u"),
+        composite_source().contains("if mode == 21u"),
         "missing Clear special"
     );
     // is_hsl must match exactly the 16..=19 set.
     assert!(
-        LAYER_COMPOSITE_WGSL.contains("mode == 16u || mode == 17u || mode == 18u || mode == 19u")
+        composite_source().contains("mode == 16u || mode == 17u || mode == 18u || mode == 19u")
     );
 }

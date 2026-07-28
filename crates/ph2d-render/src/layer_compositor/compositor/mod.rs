@@ -36,7 +36,7 @@ impl LayerCompositor {
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("ph2d-render layer_composite shader"),
-                source: wgpu::ShaderSource::Wgsl(LAYER_COMPOSITE_WGSL.into()),
+                source: wgpu::ShaderSource::Wgsl(composite_source().into()),
             });
 
         let bgl = gpu

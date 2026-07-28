@@ -16,7 +16,7 @@ impl RasterEditTool for PainterTool {
         // (open shape, pending Fill ColorDrop, Mask scratch, Drag-Dot restore, armed Eyedropper); abandon
         // them so nothing floods / corrupts the freshly-bound sprite. See `paint::lifecycle`.
         self.reset_transient_edit_state();
-        self.canvas_rgba = Arc::new(rgba);
+        self.replace_canvas(Arc::new(rgba));
         self.source_size = (width, height);
         self.preview_dirty = true;
         self.edited_since_bind = false; // fresh bind = no unbaked edits (canvas mirrors the sprite)
@@ -138,7 +138,7 @@ impl RasterEditTool for PainterTool {
     }
 
     fn deactivate(&mut self) {
-        self.canvas_rgba = Arc::new(Vec::new());
+        self.replace_canvas(Arc::new(Vec::new()));
         self.source_size = (0, 0);
         self.preview_dirty = false;
         self.pending_commit = false;

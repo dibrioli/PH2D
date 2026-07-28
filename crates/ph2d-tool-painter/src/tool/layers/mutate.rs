@@ -199,7 +199,7 @@ impl PainterTool {
                 .and_then(|a| self.images.remove(&a))
                 .map(|img| own_image(img).rgba8)
                 .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
-            self.canvas_rgba = Arc::new(buf);
+            self.replace_canvas(Arc::new(buf));
         }
         self.prune_selection(); // drop the deleted subtree + mask from the highlight
         self.commit_structural_edit(undo_before);
@@ -232,7 +232,7 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         let new_id = self.layers.duplicate(id)?; // sets active = new_id
         self.images.remove(&new_id); // active lives in canvas_rgba
-        self.canvas_rgba = Arc::new(src_pixels);
+        self.replace_canvas(Arc::new(src_pixels));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_id);
         self.invalidate_composite();
@@ -275,7 +275,7 @@ impl PainterTool {
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
-        self.canvas_rgba = Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]);
+        self.replace_canvas(Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
         self.invalidate_composite();
@@ -304,7 +304,7 @@ impl PainterTool {
         // fresh opaque-WHITE buffer (full visible).
         self.flush_active_to_images();
         self.images.remove(&mask); // active lives in canvas_rgba, not images
-        self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
+        self.replace_canvas(Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]));
         self.layers.set_active(mask);
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(mask);
@@ -406,7 +406,7 @@ impl PainterTool {
             .remove(&new_active)
             .map(|img| own_image(img).rgba8)
             .unwrap_or_else(|| vec![0u8; n * 4]);
-        self.canvas_rgba = Arc::new(buf);
+        self.replace_canvas(Arc::new(buf));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_active);
         self.invalidate_composite();
@@ -446,7 +446,7 @@ impl PainterTool {
             .remove(&id)
             .map(|img| own_image(img).rgba8)
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
-        self.canvas_rgba = Arc::new(buf);
+        self.replace_canvas(Arc::new(buf));
         self.layers.set_active(id);
         self.commit_structural_edit(undo_before);
         self.invalidate_composite();

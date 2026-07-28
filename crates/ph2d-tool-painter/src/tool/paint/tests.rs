@@ -1,3 +1,5 @@
+#[path = "journal_tests.rs"]
+mod journal_tests; // o journal descreve a TELA, e só ela (doc 28 §5.23, os 3 mecanismos do degrau 2)
 #[path = "measure_commit_cost.rs"]
 mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, Ctrl+Z (doc 28 §5.13-§5.20)
 #[path = "measure_dirty_overclaim.rs"]

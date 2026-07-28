@@ -220,7 +220,11 @@ impl PainterTool {
             .selection_restricts_paint()
             .then(|| (*self.paint.mask_scratch_rgba).clone());
         // Swap the scratch into `canvas_rgba` so the stamp pipeline edits the SCRATCH, then swap back.
-        std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut self.paint.mask_scratch_rgba,
+            &self.undo.write_state,
+        );
         match self.mask_brush() {
             2 => {
                 let (w, h) = self.source_size;
@@ -261,7 +265,11 @@ impl PainterTool {
         if let Some(orig) = scratch_before.as_ref() {
             self.clip_canvas_to_selection(orig);
         }
-        std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut self.paint.mask_scratch_rgba,
+            &self.undo.write_state,
+        );
     }
 
     /// **Smear** route: drag the canvas content along the stroke — as an accumulated **displacement

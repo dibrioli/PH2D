@@ -83,6 +83,53 @@ pub(super) fn fork_canvas<'a>(
     fork_par(arc, win)
 }
 
+/// **A porta da TROCA DE PLANO** — o campo `canvas_rgba` passa a hospedar, por um trecho, um plano
+/// que **não é a tela**.
+///
+/// Dois sítios fazem isso, e pelo mesmo motivo: pintar por todo o pipeline de stamp sem tocar a tela.
+/// A **máscara** troca o seu scratch para dentro do campo; o **gate de proteção** troca o plano
+/// `free`. Enquanto a troca está de pé, um `fork_canvas` captura bytes do plano ERRADO — e como *a
+/// primeira captura de cada tile é a que vale*, a poluição é **permanente**: a projeção que escreve a
+/// tela logo depois encontra o tile já tomado, não recaptura, e o journal jura que a tela começou o
+/// passo com os bytes do scratch. Foi exatamente isso que o censo do degrau 1 pegou (11 dos 12).
+///
+/// A cura é um contador de profundidade, não um guard com `Drop`: os dois sítios seguram `&mut self`
+/// por dentro do trecho trocado, e um `Drop` estenderia o empréstimo até o fim do escopo (os 14
+/// `E0499` que o S1 já mediu). Cada chamada é **uma** troca, então a paridade das chamadas é a
+/// própria paridade das trocas.
+pub(crate) fn swap_canvas_plane(
+    canvas: &mut Arc<Vec<u8>>,
+    other: &mut Arc<Vec<u8>>,
+    w: &WriteState,
+) {
+    std::mem::swap(canvas, other);
+    w.toggle_foreign_plane();
+}
+
+/// **A porta da SUBSTITUIÇÃO** — o plano inteiro é trocado por outro (Fill, crop, resize, o Reset do
+/// warp, um bind de documento), em vez de escrito no lugar.
+///
+/// Um fork não tem o que capturar aqui: não há escrita incremental, o plano simplesmente deixa de
+/// existir. O journal tem de guardar o plano velho **inteiro** antes de ele ir embora, senão o passo
+/// perde tudo que não foi capturado até então — e perde em silêncio, que é o modo de falha que o
+/// `diff_window` documenta e teme.
+///
+/// ⚠️ **Custa exatamente o que o fork custa hoje**, então nunca é regressão; e é debug-only enquanto
+/// o journal for rede de verificação.
+///
+/// ⚠️ Uma substituição que muda a FORMA (crop/resize) é recusada pelo journal (o stride não mede o
+/// plano velho) — e é correto: um plano de outra forma já força `Whole` no motor de delta, então não
+/// há janela a preservar. Fazer o journal *saber* que não sabe é o próximo degrau.
+impl crate::tool::PainterTool {
+    pub(crate) fn replace_canvas(&mut self, new: Arc<Vec<u8>>) {
+        let stride = self.source_size.0 as usize * 4;
+        self.undo
+            .write_state
+            .capture_canvas(&self.canvas_rgba, stride, None);
+        self.canvas_rgba = new;
+    }
+}
+
 /// O fork cru — a metade de POSSE, sem a de declaração. Privado: quem escreve passa pelo guard.
 fn fork_par_raw<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
 where

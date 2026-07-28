@@ -187,7 +187,7 @@ impl PainterTool {
             return;
         }
         let before = self.snapshot_model();
-        self.canvas_rgba = Arc::clone(&self.paint.warp.pre);
+        self.replace_canvas(Arc::clone(&self.paint.warp.pre));
         // The body goes back with the pixels — unconditionally (not gated on the toggle: it may have
         // been flipped mid-session, and a restore that asks the current knob asks the wrong question).
         self.deform_restore_relief_planes();

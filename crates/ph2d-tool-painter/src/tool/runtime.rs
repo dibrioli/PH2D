@@ -170,12 +170,16 @@ impl PainterTool {
     /// ele estar errado enquanto captura o plano inteiro, e é justamente o que precisa estar provado
     /// antes de ele virar a FONTE do undo em vez de uma rede.
     ///
-    /// ⚠️ **ELE AINDA NÃO ESTÁ LIMPO, e é por isso que é um CENSO (`PH2D_UNDO_AUDIT=1`) e não um
-    /// gate.** Na rodada de 2026-07-27 ele acusa um punhado de commits em que o journal descreve a
-    /// tela VIRGEM contra um cursor já pintado — ou seja há escritores de canvas que ainda não passam
-    /// por [`super::paint::plane_fork::fork_canvas`]. **Enquanto essa lista não for zero, o journal
-    /// não pode virar a FONTE do undo** (doc 28 §5.22). Um gate que falha não pode entrar verde nem
-    /// pode entrar vermelho: entra como censo, com o número à vista e a lista por fechar.
+    /// ⚠️ **A rede só se aplica a um passo que COMEÇA no cursor**, e a razão está no
+    /// [`crate::undo::UndoController::absorb_foreign_writes`]: se o `before` que chega não é o
+    /// cursor, alguém escreveu no meio — e o histórico responde a isso **re-partindo a entrada do
+    /// topo e movendo o cursor**. Até essa reconciliação acontecer o journal está ancorado num
+    /// commit que deixou de descrever a tela, então a pergunta que ele responderia é sobre outro
+    /// passado. Perguntar mesmo assim seria afirmar mais do que o produto promete.
+    ///
+    /// O discriminante é o MESMO fato que a absorção usa (o `before` é o cursor?), perguntado por
+    /// **identidade de `Arc`**: no caso comum nada escreveu desde o commit, então o `before` clona o
+    /// ponteiro do cursor e a igualdade é exata e barata.
     ///
     /// ```text
     /// PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter --lib 2>&1 | grep "journal do canvas"
@@ -192,6 +196,9 @@ impl PainterTool {
         let Some(cursor) = self.undo.cursor_for_audit() else {
             return; // história vazia: não há "último commit" com que comparar
         };
+        if !std::sync::Arc::ptr_eq(&before.canvas_rgba, &cursor.canvas_rgba) {
+            return; // escrita estrangeira: a absorção move o cursor, e só depois dela há o que conferir
+        }
         let mut differ = 0usize;
         let mut first = None;
         for (i, &want) in cursor.canvas_rgba.iter().enumerate() {

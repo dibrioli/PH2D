@@ -1696,6 +1696,76 @@ dois e *"devolveu o velho"* era indistinguível de *"devolveu o novo"*) + os 2 a
 **Nenhum schema, nenhum contrato congelado, nenhum id/token** (`PROJECT_SCHEMA` 29); release é
 byte-idêntico (a captura é `cfg(any(test, debug_assertions))`).
 
+### 5.23 🔩 S3, degrau 2 — o censo foi a ZERO, e os 12 eram TRÊS mecanismos
+
+⚠️ **Nenhum dos 12 era um escritor que esqueceu a porta**, que era a hipótese que o degrau 1 registrou.
+Todos os três casos passam (ou passariam) pela porta; o que estava errado era **de que plano** os bytes
+capturados eram, e **quando** o journal deixa de descrever a tela.
+
+**(A) A TROCA de plano — 11 dos 12.** `stamp_dabs_mask` troca o scratch da máscara para dentro do campo
+`canvas_rgba`, e `stamp_dabs_gated` faz o mesmo com o plano `free` da proteção: os dois pintam por todo
+o pipeline de stamp **sem tocar a tela**. Enquanto a troca está de pé, um `fork_canvas` captura bytes do
+plano ERRADO — e como *a primeira captura de cada tile é a que vale*, a poluição é **permanente**: a
+projeção que escreve a tela logo depois encontra o tile já tomado, não recaptura, e o journal jura que a
+tela começou o passo com os bytes do scratch (medido: **196.608 bytes**, o branco `255` do scratch onde
+a tela é `(200,30,30)`).
+
+⚠️ **A cura é um CONTADOR de profundidade, não um guard com `Drop`** — os dois sítios seguram `&mut self`
+por dentro do trecho trocado, e um `Drop` estenderia o empréstimo até o fim do escopo (os 14 `E0499` que
+o S1 já mediu). Porta única `swap_canvas_plane(canvas, other, write_state)`: **três empréstimos disjuntos
+de campo numa chamada só**, então uma chamada é uma troca e a paridade das chamadas **é** a paridade das
+trocas.
+
+**(B) A SUBSTITUIÇÃO de plano — 13 sítios.** `Fill`, crop, resize, o Reset do warp, todo bind: o `Arc` é
+trocado por outro, e **um fork não tem o que capturar** porque não há escrita incremental — o plano
+simplesmente deixa de existir. Porta única `PainterTool::replace_canvas(new)`, que captura o plano velho
+**inteiro** antes de o soltar. ⚠️ Custa exatamente o que o fork custa hoje ⇒ **nunca é regressão**, e uma
+substituição que muda a FORMA é recusada pelo journal (o stride não mede o plano velho) — o que é
+correto, porque forma diferente já força `Whole` no motor de delta.
+
+**(C) A REINSTALAÇÃO de modelo — os 3 últimos.** `restore_model` troca TODO plano de uma vez, e depois de
+(B) ela passa pela porta ⇒ ela **CAPTURA o estado de antes do undo**, que é exatamente o que o undo está
+desfazendo. Uma linha no fim dela: o journal esquece o passo. *O que ele guardava descreve planos que já
+não existem.*
+
+#### A rede não pode viver dentro do relógio da coisa que observa
+
+Com o censo em zero eu tirei o `PH2D_UNDO_AUDIT` para ele virar gate permanente — e **dois gates de
+razão caíram na hora** (`the_fold_costs_what_the_window_costs_not_what_the_canvas_costs` e o irmão do
+gate de proteção). A rede varre o canvas INTEIRO por commit, então ela é **canvas-proporcional** e entra
+no numerador exato que aqueles gates medem; a suíte também foi de 4,2 s para 11,4 s. ⚠️ É a versão
+espelhada da lição do §4.8.2 (*"um gate cujo oráculo se dissolve quando a coisa que ele vigia melhora"*):
+aqui é o **instrumento** que corrompe o oráculo alheio. A varredura fica **opt-in**; a PROPRIEDADE fica
+em quatro gates próprios, sem relógio nenhum.
+
+⚠️ **E a rede ganhou uma pré-condição que faltava:** ela só se aplica a um passo que COMEÇA no cursor. Se
+o `before` não é o cursor, alguém escreveu no meio — e o histórico responde a isso **re-partindo a
+entrada do topo e movendo o cursor** (`absorb_foreign_writes`). Perguntar antes dessa reconciliação seria
+afirmar mais do que o produto promete. O discriminante é o MESMO fato que a absorção usa, por identidade
+de `Arc`: no caso comum nada escreveu desde o commit, o `before` clona o ponteiro do cursor, e a
+igualdade é exata e barata.
+
+#### Duas lições de gate, as duas minhas
+
+⚠️ **O gate da máscara nasceu VAZIO e a mutação passou por cima dele.** Ele media o journal **depois** do
+traço — e o pen-up commita, e um commit **zera o journal** (`set_cursor`) ⇒ *"nada divergente"* era
+verdadeiro por construção, com o journal sempre vazio. A sonda que o pegou imprimiu `capturado=0`. O
+traço agora fica **ABERTO**, e o mesmo defeito reinstalado sangra em 196.608 bytes. *Zero não falha a
+menos que você o faça falhar* — a mesma forma que o `live_stroke_envelope` já custou a esta linha.
+
+⚠️ **A fixture precisou de um controle explícito:** o scratch (branco) e a tela (vermelha) TÊM de diferir,
+senão capturar do plano errado é indistinguível de capturar do certo. Está afirmado dentro do gate.
+
+**Gates:** 4 em `journal_tests.rs` (a máscara não ensina o scratch · a substituição guarda o plano velho ·
+a reinstalação esquece · a troca é PAREADA), **4 mutações, 4 sangram** — e a da troca desbalanceada sangra
+**duas**, porque deixar a troca aberta faz toda escrita seguinte capturar do plano errado. **Censo: 12 →
+0** em 894 commits. **Nenhum schema, nenhum contrato congelado, nenhum id/token** (`PROJECT_SCHEMA` 29);
+release segue byte-idêntico.
+
+⚠️ **O que este degrau NÃO é:** ele não compra um milissegundo. O journal é escrito e conferido, **não é a
+fonte do undo** — os planos seguem com os mesmos três donos, e o fork, o fold e o `free` seguem sendo
+pagos. O que ele compra é a **licença** para o degrau 3.
+
 ---
 
 ## 7. Próxima etapa recomendada

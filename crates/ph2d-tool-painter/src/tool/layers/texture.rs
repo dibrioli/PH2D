@@ -30,7 +30,7 @@ impl PainterTool {
         let buf = render_texture_buffer(&spec, w, h);
         let id = self.layers.add_texture(spec)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
-        self.canvas_rgba = Arc::new(buf);
+        self.replace_canvas(Arc::new(buf));
         self.bump_layer_pixels(Some(id));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
@@ -68,7 +68,7 @@ impl PainterTool {
         };
         let buf = render_texture_buffer(&spec, w, h);
         if self.layers.active() == Some(id) {
-            self.canvas_rgba = Arc::new(buf);
+            self.replace_canvas(Arc::new(buf));
         } else {
             self.images.insert(
                 id,

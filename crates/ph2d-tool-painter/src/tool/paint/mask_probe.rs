@@ -28,7 +28,7 @@ use ph2d_editor_core::tool::{
 /// (radius 25, hardness 0, Smooth falloff, spacing 10 %, strength/flow 1) — the fixture must contain
 /// the phenomenon, so nothing here hardens the tip (the reverted gate's `hardness = 1` disk could not
 /// grow a feather at all, so it could not see a feather collapse).
-pub(super) fn mask_tool(size: u32) -> PainterTool {
+pub(in crate::tool::paint) fn mask_tool(size: u32) -> PainterTool {
     let mut t = PainterTool::default();
     let mut px = vec![0u8; (size * size * 4) as usize];
     for c in px.chunks_exact_mut(4) {
@@ -56,7 +56,7 @@ pub(super) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 
 /// One straight vertical stroke at `x`, from `y0` to `y1`, delivered as `steps` Moves (the shell's
 /// per-frame delivery), then drained like a frame would.
-pub(super) fn vstroke(t: &mut PainterTool, x: f32, y0: f32, y1: f32, steps: u32) {
+pub(in crate::tool::paint) fn vstroke(t: &mut PainterTool, x: f32, y0: f32, y1: f32, steps: u32) {
     t.on_canvas_pointer(cp([x, y0], PointerPhase::Down));
     for i in 1..=steps {
         let y = y0 + (y1 - y0) * (i as f32) / (steps as f32);

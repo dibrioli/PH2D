@@ -135,6 +135,13 @@ const fn union(a: Region, b: Region) -> Region {
 #[derive(Debug, Default)]
 pub struct WriteState {
     win: std::cell::Cell<WriteWindow>,
+    /// Quantas trocas de plano estão de pé — enquanto for ímpar, o campo `canvas_rgba` do tool hospeda
+    /// um plano que **não é a tela** e o journal do canvas não pode capturar dele.
+    ///
+    /// Contador e não booleano porque a paridade é o invariante: cada
+    /// [`swap_canvas_plane`](crate::tool::paint::plane_fork::swap_canvas_plane) é **uma** troca, e
+    /// aninhá-las (o gate por dentro da máscara) tem de voltar ao plano certo na ordem inversa.
+    foreign_plane: std::cell::Cell<u32>,
     /// Os bytes velhos do CANVAS, por tile. ⚠️ **Só em debug/test** enquanto o journal for uma REDE de
     /// verificação e não a fonte do undo: capturar *e* forkar seria pagar as duas coisas (doc 28 §7).
     #[cfg(any(test, debug_assertions))]
@@ -153,6 +160,23 @@ impl WriteState {
         self.win.set(w);
     }
 
+    /// Uma troca de plano começou — ou terminou. Ver
+    /// [`swap_canvas_plane`](crate::tool::paint::plane_fork::swap_canvas_plane), a única porta.
+    pub(crate) fn toggle_foreign_plane(&self) {
+        self.foreign_plane.set(self.foreign_plane.get() ^ 1);
+    }
+
+    /// `true` enquanto o campo `canvas_rgba` hospeda um plano que não é a tela.
+    ///
+    /// Consumidor: a captura, que é debug-only — daí o `cfg`. O `toggle` acima **não** é gateado: ele é
+    /// chamado pela porta de troca em qualquer perfil, e um contador que só existe em debug faria a
+    /// porta ter duas formas.
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn on_foreign_plane(&self) -> bool {
+        self.foreign_plane.get() & 1 == 1
+    }
+
     /// **Captura o canvas antes de ele ser escrito** — `area` em ELEMENTOS (`x*4` para RGBA), `None`
     /// quando o sítio não sabe onde vai escrever.
     #[cfg(any(test, debug_assertions))]
@@ -162,6 +186,9 @@ impl WriteState {
         stride: usize,
         area: Option<(usize, usize, usize, usize)>,
     ) {
+        if self.on_foreign_plane() {
+            return; // estes bytes são do scratch da máscara / do plano `free` — não da tela
+        }
         self.canvas.borrow_mut().capture(buf, stride, area);
     }
 

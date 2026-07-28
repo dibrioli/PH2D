@@ -269,9 +269,17 @@ impl PainterTool {
             region,
             super::region::region_pixels(&sess.free, region, self.source_size.0),
         ));
-        std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut sess.free,
+            &self.undo.write_state,
+        );
         self.stamp_dabs_routed(dabs);
-        std::mem::swap(&mut self.canvas_rgba, &mut sess.free);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut sess.free,
+            &self.undo.write_state,
+        );
         self.project_gate_region(&sess, region, mask_gate, sel_gate);
         // The witness is taken AFTER our own writes, so the clock movement this batch caused is absorbed
         // and only somebody ELSE's write can make the next batch see a mismatch.
@@ -548,7 +556,7 @@ fn mask_op_from_u8(op: u8) -> Option<MaskCanvasOp> {
 mod mask_gate_tests;
 #[cfg(test)]
 #[path = "mask_probe.rs"]
-mod mask_probe;
+pub(super) mod mask_probe; // a fixture de mascara serve tambem os gates do journal (doc 28 §5.23)
 #[cfg(test)]
 #[path = "mask_probe_gate.rs"]
 mod mask_probe_gate;

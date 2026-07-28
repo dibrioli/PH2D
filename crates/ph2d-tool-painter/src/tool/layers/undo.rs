@@ -78,7 +78,7 @@ impl PainterTool {
         // undone ones. The canvas is replaced on the very next line, so nothing here could survive as a
         // valid base — dropping it makes the next gated batch re-seed from the restored truth.
         self.end_gate_session();
-        self.canvas_rgba = m.canvas_rgba;
+        self.replace_canvas(m.canvas_rgba);
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the
         // live mask-in-progress in lock-step with the pixels (the composite rebuild below reads it).
@@ -137,6 +137,14 @@ impl PainterTool {
         // longer matches). Tear it down so undo/redo clears the wetness (Enio 2026-07-11). No-op when dry.
         self.dry_session_now();
         self.preview_dirty = true;
+        // **O journal esquece o passo** — e é a reinstalação inteira que o exige, não uma cortesia.
+        //
+        // Todo plano acabou de ser trocado por outro, então os bytes que o journal guardava descrevem um
+        // passado que não existe mais. Pior: as substituições acima passaram pela porta
+        // ([`crate::tool::paint::plane_fork`]), então elas CAPTURARAM os planos de antes do undo — que
+        // são exatamente o estado que o undo está desfazendo. Sem esta linha o journal jura que o passo
+        // seguinte começou no estado desfeito (o censo do degrau 2 pegou as 3 últimas divergências aqui).
+        self.undo.write_state.reset_journal();
     }
 
     /// Record a STRUCTURAL transition from `before` (captured at the edit's start)

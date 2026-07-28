@@ -191,7 +191,7 @@ impl PainterTool {
         // Restoring a stashed sprite is a rebind too — abandon any in-progress edit tied to the outgoing
         // canvas (open shape, pending Fill, Mask scratch, …) before swapping. See `paint::lifecycle`.
         self.reset_transient_edit_state();
-        self.canvas_rgba = doc.canvas_rgba;
+        self.replace_canvas(doc.canvas_rgba);
         self.layers = doc.layers;
         self.images = doc.images;
         // The relief comes back WITH its document. Note this is a REPLACE, not a merge: together with

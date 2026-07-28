@@ -196,6 +196,25 @@ pub(crate) fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String
     // `Entity::try_from_bits`: o `from_bits(0)` **entra em pânico**. O apply do frame seguinte
     // faria isso com cada binding recém-carregada, e o Ctrl+O virava um crash.
     resolve_entities(&mut timeline.doc, |_| None);
+    // **Um projeto LEGADO (salvo antes do padrão de 4 s) abre com 4 s + véu, não com Dur 0**
+    // (Enio, 2026-07-28: *"deixe a duração em 4 seg e o véu visível mesmo sem nenhum clip na
+    // timeline"*). Se o documento carregado não tem NENHUMA duração autorada — nem no clip 0,
+    // nem na cena — ele é da era derivada-0, e Autokey num clip desses cai num clip SEM véu (o
+    // que o artista reportou). Estampa o mesmo 4 s que o boot e o caso vazio acima instalam.
+    //
+    // ⚠️ Só dispara na assinatura LEGADA (clip 0 E cena derivados). Todo clip/cena criado a
+    // partir de 2026-07-23 já carrega uma duração autorada, então isto nunca clobbera uma
+    // composição autorada — nem uma que o artista deixou INFINITA de propósito, porque uma
+    // timeline infinita autorada limpa o clip OU a cena de forma DELIBERADA, e o outro escopo
+    // segue autorado. Uma timeline com AMBOS derivados nunca foi autorada: é legado.
+    if timeline.doc.clip_length_override(0).is_none() && timeline.doc.scene_length.is_none() {
+        timeline
+            .doc
+            .set_clip_length_override(0, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS));
+        timeline
+            .doc
+            .set_scene_length(Some(ph2d_timeline::DEFAULT_DURATION_SECONDS));
+    }
     Ok(timeline)
 }
 
@@ -227,6 +246,65 @@ mod tests {
                 value: ph2d_anim::AnimValue::Float(1.0),
                 interp: ph2d_anim::Interp::Linear,
             },
+        );
+    }
+
+    /// **Um projeto LEGADO (sem duração autorada) abre com 4 s + véu** (Enio, 2026-07-28:
+    /// *"4 seg e véu visível mesmo sem nenhum clip na timeline"*) — o clip 0 derivado-0 de um
+    /// save pré-2026-07-23 (o que o Autokey pegava e ficava sem véu) vira a mesma composição de
+    /// 4 s do boot. (Mutação: tirar o stamp legado do `install_from_project` ⇒ clip 0 volta a
+    /// `None`, a caixa abre em ∞/sem véu — RED.)
+    #[test]
+    fn a_legacy_project_without_authored_durations_opens_at_four_seconds() {
+        let mut legacy = ph2d_timeline::TimelineDoc::new();
+        assert_eq!(legacy.clip_length_override(0), None, "o doc legado e derivado");
+        assert_eq!(legacy.scene_length, None);
+        legacy.insert_key(
+            1,
+            PropKind::TranslationX,
+            ph2d_anim::RationalTime::from_seconds(0.0),
+            ph2d_anim::AnimValue::Float(0.0),
+            ph2d_anim::Interp::Linear,
+        );
+        let bytes = legacy.to_bytes().expect("serializa");
+
+        let opened = install_from_project(&bytes).expect("carrega");
+        assert_eq!(
+            opened.doc.clip_length_override(0),
+            Some(ph2d_timeline::DEFAULT_DURATION_SECONDS),
+            "abrir um projeto legado (tudo derivado) instala 4 s no clip 0, nao Dur 0"
+        );
+        assert_eq!(
+            opened.doc.scene_length,
+            Some(ph2d_timeline::DEFAULT_DURATION_SECONDS),
+            "e 4 s na cena"
+        );
+    }
+
+    /// **Uma composição AUTORADA é preservada no load — incluindo uma deixada INFINITA de
+    /// propósito.** O stamp legado só dispara quando clip 0 E cena são derivados; um clip 0
+    /// deixado infinito tem a CENA autorada, então o infinito sobrevive. (Mutação: disparar o
+    /// stamp sempre ⇒ o clip 0 infinito vira 4 s — RED.)
+    #[test]
+    fn an_authored_duration_including_an_infinite_clip_survives_load() {
+        let mut doc = ph2d_timeline::TimelineDoc::new();
+        doc.set_scene_length(Some(6.0)); // cena AUTORADA -> nao e a assinatura legada
+        doc.set_clip_length_override(0, None); // clip 0 deixado INFINITO de proposito
+        doc.insert_key(
+            1,
+            PropKind::TranslationX,
+            ph2d_anim::RationalTime::from_seconds(0.0),
+            ph2d_anim::AnimValue::Float(0.0),
+            ph2d_anim::Interp::Linear,
+        );
+        let bytes = doc.to_bytes().expect("serializa");
+
+        let opened = install_from_project(&bytes).expect("carrega");
+        assert_eq!(opened.doc.scene_length, Some(6.0), "a cena autorada e preservada");
+        assert_eq!(
+            opened.doc.clip_length_override(0),
+            None,
+            "um clip 0 deixado INFINITO (com a cena autorada) NAO e clobbered"
         );
     }
 

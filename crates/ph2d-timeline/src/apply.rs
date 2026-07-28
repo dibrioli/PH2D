@@ -34,11 +34,36 @@ pub fn apply_from_doc(world: &mut World, doc: &mut TimelineDoc, t: f64) {
 /// still refreshed; only the write is skipped. With auto-key armed the drag
 /// records keys, so once the gesture ends `apply_from_doc` resumes on the newly
 /// recorded pose and the entity holds.
+///
+/// **Empty stack = the single-clip solo** (the common keyed animation, and the
+/// Keys tab): a document with no lanes plays its active clip. Use [`apply_scene`]
+/// for the Arrange view, where an empty stack must play NOTHING.
 pub fn apply_from_doc_except(
     world: &mut World,
     doc: &mut TimelineDoc,
     t: f64,
     skip: impl Fn(u64) -> bool,
+) {
+    apply_inner(world, doc, t, skip, false);
+}
+
+/// The **ARRANGE** apply: the scene stack, ALWAYS taken as a stack — so an empty
+/// Arrange (no strip placed) blends toward `rest` and plays NOTHING, instead of
+/// soloing the active clip (Enio, 2026-07-27: *"o painel arrange vazio toca clips
+/// sem limite de tempo. Se ele está vazio não pode tocar nada"*). Arrange is a
+/// first-class scope, independent of any clip — a clip previews on the Keys tab
+/// until it is arranged. With a NON-empty stack this is byte-for-byte
+/// [`apply_from_doc_except`]; only the empty case differs (solo → rest).
+pub fn apply_scene(world: &mut World, doc: &mut TimelineDoc, t: f64, skip: impl Fn(u64) -> bool) {
+    apply_inner(world, doc, t, skip, true);
+}
+
+fn apply_inner(
+    world: &mut World,
+    doc: &mut TimelineDoc,
+    t: f64,
+    skip: impl Fn(u64) -> bool,
+    scene_mode: bool,
 ) {
     refresh_liveness_and_rest(world, doc);
 
@@ -46,7 +71,10 @@ pub fn apply_from_doc_except(
     // Never one per binding: that was the quadratic (`clock.rs`).
     let mut scratch = doc.take_scratch();
     scratch.rebuild(doc, t);
-    let stacked = !doc.stack().is_empty();
+    // `scene_mode` (the Arrange view) FORCES the stack path even when empty, so an
+    // Arrange with nothing arranged blends toward `rest` (plays nothing) instead of
+    // soloing the active clip. Everywhere else an empty stack IS the single-clip solo.
+    let stacked = scene_mode || !doc.stack().is_empty();
     // What the keyed pass writes, per (entity, prop): the expression pass's coverage
     // mask + pre-expression `value` (ADR-0144). Built only when a formula exists, so
     // the no-expression hot path stays zero-alloc (HR-3, `no_alloc_bridge`).
@@ -93,8 +121,9 @@ pub fn apply_from_doc_except(
         if b.prop == PropKind::TimeRemap {
             continue;
         }
-        // THE branch (ADR-0115 §6): an empty stack is the single-clip path, on
-        // the same code it always ran. A stack blends its lanes instead.
+        // THE branch (ADR-0115 §6): an empty stack is the single-clip path — UNLESS
+        // `scene_mode` forced `stacked` true (the Arrange view, where empty = rest).
+        // A stack blends its lanes instead.
         let sampled = if stacked {
             stack_eval::sample_stack(
                 doc,

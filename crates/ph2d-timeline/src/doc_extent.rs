@@ -54,20 +54,16 @@ impl TimelineDoc {
     /// the playhead), `None` when the end is merely derived and the timeline stays
     /// open-ended.
     ///
-    /// This is the *authored* companion of [`Self::view_end_seconds`], and it MUST
-    /// fall through the same way that value does, or the two disagree about the same
-    /// timeline. In particular **without a stack the clip IS the timeline**
-    /// (`ruler_clock`: both tabs rule the one clock there is), so a clip's authored
-    /// `length_override` closes the scene view too — the exact case the veil and the
-    /// playhead clamp missed by keying on `keys_mode`, which the panel publishes as
-    /// `shows_keys() && stacked()` and so reads FALSE on the Keys tab when nothing is
-    /// arranged. The Dur(s) box (via `clip_end_seconds`) already showed the right
-    /// number; only the two consumers that decide *is it authored* were asking a
-    /// different door ([[feedback_two_doors_to_the_same_question_diverge]], Enio
-    /// 2026-07-23).
+    /// This is the *authored* companion of [`Self::view_end_seconds`], and each scope owns
+    /// its own answer (Enio, 2026-07-27): the Keys tab reads the CLIP's `length_override`,
+    /// Arrange reads the SCENE's `scene_length`, a container its own — INDEPENDENT, so
+    /// editing the duration in one place never moves another's veil. The panel decides which
+    /// scope by the TAB (`keys_mode = shows_keys()`), no longer collapsing the two without a
+    /// stack. (Earlier this fell back to the clip's override on Arrange when no lane held a
+    /// strip — the "single clip is the timeline" shortcut; removed with it.)
     ///
     /// - `container`: `Some(c)` inside a container's editing view → its own override.
-    /// - `keys_mode`: the panel's published flag (soloing a clip out of a stack).
+    /// - `keys_mode`: the panel's published flag (the Keys tab → the clip's scope).
     #[must_use]
     pub fn view_authored_end(&self, container: Option<usize>, keys_mode: bool) -> Option<f64> {
         if let Some(c) = container {
@@ -76,15 +72,9 @@ impl TimelineDoc {
         if keys_mode {
             return self.clip_length_override(self.active_clip);
         }
-        // Arrange / no-solo: the scene's authored length, or — when NO lane holds a
-        // strip — the active clip's (the clip is the timeline). With a real stack
-        // `stack_end_seconds` is `Some`, so the clip override never leaks in.
-        self.scene_length.or_else(|| {
-            self.stack_end_seconds()
-                .is_none()
-                .then(|| self.clip_length_override(self.active_clip))
-                .flatten()
-        })
+        // Arrange: the scene's OWN authored length, and only that — the scene is a
+        // first-class scope, independent of any clip. No override = no veil (open timeline).
+        self.scene_length
     }
 
     /// The last timeline second any strip occupies, across every lane, or `None`

@@ -194,30 +194,29 @@ fn a_key_authored_beyond_the_cut_lands_on_the_boundary() {
     );
 }
 
-/// **Without a stack a clip's authored duration CLOSES the view** (Enio, 2026-07-23):
-/// the veil asks `view_authored_end` (the playhead clamp that also asked it was REMOVED
-/// 2026-07-25 — the playhead is free so the timeline can drive physics past its end), and
-/// it must return the clip override even with `keys_mode = false` — which is what the panel publishes on
-/// the Keys tab when nothing is arranged (`shows_keys() && stacked()`). The Dur(s) box
-/// already showed the number (via `clip_end_seconds`); this is the door that makes the
-/// two consumers agree. A REAL stack keeps the clip override out (the scene decides).
+/// **A clip's authored duration closes ONLY the Keys view, not Arrange** (Enio, 2026-07-27):
+/// the Keys tab is the clip's scope and Arrange the scene's, INDEPENDENT. `keys_mode =
+/// shows_keys()` now, so Keys asks `view_authored_end(.., true)` (the clip's override) and
+/// Arrange asks `(.., false)` (the scene's `scene_length`, and only that). The old rule
+/// (`shows_keys() && stacked()`) collapsed them without a stack, and a clip-Dur fallback
+/// closed the Arrange view too — the coupling this pins is gone.
 #[test]
-fn a_no_stack_clip_duration_closes_the_view_regardless_of_keys_mode() {
+fn a_clip_duration_closes_only_the_keys_scope_not_arrange() {
     let (_, mut doc, _) = scene();
-    // No stack, no scene_length, a clip override — the screenshot's state.
+    // No stack, no scene_length, a clip override.
     doc.set_clip_length_override(0, Some(2.0));
-    // The reported bug: keys_mode is FALSE (no stack), and the door must still close.
+    // Keys (keys_mode true) reads the clip's own scope → closed at 2.
+    assert_eq!(doc.view_authored_end(None, true), Some(2.0));
+    // Arrange (keys_mode false) reads the scene's OWN length, unset here → stays OPEN.
     assert_eq!(
         doc.view_authored_end(None, false),
-        Some(2.0),
-        "no stack: the clip IS the timeline, so its Dur closes the view even when \
-         keys_mode is false"
+        None,
+        "Arrange is independent — a clip Dur is the Keys scope, not the scene's"
     );
-    // And on the stacked Keys path (keys_mode true) it was always right.
-    assert_eq!(doc.view_authored_end(None, true), Some(2.0));
-    // Clear it → open-ended again (a derived end never darkens).
+    // Clear the clip override → Keys is open-ended again (a derived end never darkens).
     doc.set_clip_length_override(0, None);
-    assert_eq!(doc.view_authored_end(None, false), None);
+    assert_eq!(doc.view_authored_end(None, true), None);
+    doc.set_clip_length_override(0, Some(2.0)); // restore for the stacked part below
 
     // A REAL stack: the scene decides, and an UN-authored scene stays open even
     // though the clip below carries an override (the override never leaks up).

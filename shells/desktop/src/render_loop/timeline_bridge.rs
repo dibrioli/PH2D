@@ -15,7 +15,7 @@ use ph2d_core::Playhead;
 use ph2d_ecs::World;
 use ph2d_editor::tool::PanelEvent;
 use ph2d_timeline::{
-    PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_from_doc_except, apply_intent,
+    PropKind, TimelineIntent, TimelineSignal, TimelineState, apply_intent, apply_scene,
 };
 
 /// The timeline's signal outbox (ADR-0143). When forward SCENE play crosses a marker
@@ -137,14 +137,18 @@ pub(crate) fn run(
     //   exact curves you edit, stack out of the way.
     // - Inside a container, solo the CONTAINER's interior at ITS clock
     //   (`apply_container`) — the playback the animator is editing IS the container's.
-    // - Arrange blends the scene stack at the timeline clock.
+    // - Arrange blends the scene stack at the timeline clock — and an EMPTY Arrange
+    //   plays NOTHING (`apply_scene`, not `apply_from_doc_except`): Arrange is a
+    //   first-class scope independent of any clip, so a clip previews on Keys until
+    //   it is arranged (Enio, 2026-07-27). `apply_scene` forces the stack path, so
+    //   with nothing arranged every entity blends toward `rest`.
     // All honour `skip` (the gizmo-dragged entity, the displaced pin).
     if let Some(c) = container {
         ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
     } else if solo {
         ph2d_timeline::apply_active_clip(world, &mut timeline.doc, playhead.time(), skip);
     } else {
-        apply_from_doc_except(world, &mut timeline.doc, playhead.time(), skip);
+        apply_scene(world, &mut timeline.doc, playhead.time(), skip);
         // Arrange is the ONLY view where the scene plays and markers live, so it is
         // the only view that emits signals (ADR-0143). Here `playhead` IS the scene
         // clock (the caller passes `self.playhead` only in this branch). The other

@@ -343,28 +343,28 @@ fn the_clip_rename_field_opens_over_the_dropdown_it_renames() {
     );
 }
 
-/// **The panel publishes `keys_mode` = Keys tab AND a stack exists.** This is the
-/// shell's trigger to solo the active clip on its own clock. Without a stack there is
-/// nothing to solo (the clip IS the timeline), so a fresh document on the Keys tab —
-/// the DEFAULT — must NOT flip the shell into solo, or a document that never touched
-/// the feature would drive a separate clip playhead and drift from Motion (Enio,
-/// 2026-07-16).
+/// **The panel publishes `keys_mode` = the Keys tab, REGARDLESS of a stack** (Enio,
+/// 2026-07-27). The Keys tab is the clip's own scope — the shell solos the active clip on
+/// its own clock, and the Dur/veil read the clip's duration — whether or not anything is
+/// arranged. Arrange is the scene's scope and is never solo. The old rule (`&& stacked()`)
+/// collapsed the two without a stack ("the clip IS the timeline"), which coupled the clip's
+/// and scene's durations and made an empty Arrange play the active clip.
 #[test]
-fn keys_mode_is_published_only_on_the_keys_tab_and_only_under_a_stack() {
+fn keys_mode_follows_the_keys_tab_regardless_of_a_stack() {
     use ph2d_panel_timeline::state::keys_mode;
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    // Keys tab (default) WITHOUT a stack: not solo.
+    // Keys tab (default) WITHOUT a stack: solo the clip anyway — it is the clip's scope.
     let mut no_stack = keys_and_a_stack(Some(1.5), 1.5);
     no_stack.lanes.clear();
     paint(&mut host, &mut state, no_stack.clone());
     assert!(
-        !keys_mode(),
-        "a fresh document on the Keys tab must not solo — there is no stack"
+        keys_mode(),
+        "the Keys tab is the clip's scope even with nothing arranged (independent scopes)"
     );
 
-    // Keys tab WITH a stack: solo.
+    // Keys tab WITH a stack: still solo.
     paint(&mut host, &mut state, keys_and_a_stack(Some(1.5), 1.5));
     assert!(keys_mode(), "Keys tab + a stack = solo the active clip");
 
@@ -372,6 +372,12 @@ fn keys_mode_is_published_only_on_the_keys_tab_and_only_under_a_stack() {
     state.tab = Tab::Arrange;
     paint(&mut host, &mut state, keys_and_a_stack(Some(1.5), 1.5));
     assert!(!keys_mode(), "the Arrange tab is never solo");
+
+    // Arrange tab WITHOUT a stack: still not solo (the scene's scope, empty = plays nothing).
+    let mut arrange_no_stack = keys_and_a_stack(Some(1.5), 1.5);
+    arrange_no_stack.lanes.clear();
+    paint(&mut host, &mut state, arrange_no_stack);
+    assert!(!keys_mode(), "the Arrange tab is never solo, stack or not");
 
     // (The hidden-panel case — keys_mode false when the panel is not visible — is
     // covered by `paint`'s early `publish_keys_mode(false)` on the not-visible branch;

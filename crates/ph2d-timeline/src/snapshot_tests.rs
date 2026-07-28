@@ -129,12 +129,11 @@ fn snapshot_projects_tracks_keys_selection_and_transport() {
 }
 
 #[test]
-fn a_no_stack_clip_duration_makes_the_snapshot_explicit() {
-    // The veil reads `view_length_explicit`; the panel publishes `keys_mode` as
-    // `shows_keys() && stacked()`, so with no stack it hands `rebuild` FALSE even
-    // on the Keys tab. The snapshot must STILL report the clip's authored Dur as
-    // explicit (the clip is the timeline) so the dead zone darkens — the exact
-    // gap of the re-smoke (Enio, 2026-07-23).
+fn the_clip_and_scene_veils_are_independent_scopes() {
+    // Bug 8 (Enio, 2026-07-27): editing the CLIP's duration must NOT move the SCENE's veil,
+    // and vice versa. `keys_mode = shows_keys()` now (not `&& stacked()`), so the Keys tab
+    // reads the clip's scope and Arrange reads the scene's — INDEPENDENT. The old rule
+    // collapsed them without a stack, and a clip-Dur fallback closed the Arrange view too.
     let mut st = TimelineState::new();
     let mut ph = Playhead::new(1.0 / 60.0);
     apply_intent(
@@ -149,23 +148,33 @@ fn a_no_stack_clip_duration_makes_the_snapshot_explicit() {
         },
     );
     let mut snap = TimelineViewSnapshot::default();
-    // keys_mode FALSE (no stack), no authored Dur yet → open-ended, no veil.
-    snap.rebuild(&mut st, &ph, false);
-    assert!(
-        !snap.view_length_explicit,
-        "a derived end never darkens the view"
-    );
-    // Author the CLIP's duration (the Keys-tab scope) → the snapshot closes even
-    // with keys_mode false.
+    // A derived doc: neither scope is authored → no veil on either tab.
+    snap.rebuild(&mut st, &ph, true); // Keys
+    assert!(!snap.view_length_explicit, "Keys: a derived clip end never darkens");
+    snap.rebuild(&mut st, &ph, false); // Arrange
+    assert!(!snap.view_length_explicit, "Arrange: a derived scene end never darkens");
+
+    // Author ONLY the CLIP's duration (the Keys scope).
     st.doc.set_clip_length_override(0, Some(2.0));
-    snap.rebuild(&mut st, &ph, false);
-    assert!(
-        snap.view_length_explicit,
-        "an authored clip Dur must darken the no-stack view"
-    );
+    snap.rebuild(&mut st, &ph, true); // Keys sees it
+    assert!(snap.view_length_explicit, "Keys: the clip's authored Dur closes the Keys view");
     assert!(
         (snap.view_length_seconds - 2.0).abs() < 1e-9,
-        "and the veil starts at the authored end the box shows"
+        "and the veil starts at the clip Dur (2)"
+    );
+    snap.rebuild(&mut st, &ph, false); // Arrange must NOT see it — independent scopes
+    assert!(
+        !snap.view_length_explicit,
+        "Arrange stays open — a clip Dur is the Keys scope, not Arrange's (the coupling is gone)"
+    );
+
+    // Author the SCENE's duration → Arrange closes, at ITS number, independently of the clip.
+    st.doc.set_scene_length(Some(5.0));
+    snap.rebuild(&mut st, &ph, false); // Arrange
+    assert!(snap.view_length_explicit, "Arrange: the scene's authored Dur closes the Arrange view");
+    assert!(
+        (snap.view_length_seconds - 5.0).abs() < 1e-9,
+        "and the Arrange veil is at the SCENE Dur (5), independent of the clip Dur (2)"
     );
 }
 

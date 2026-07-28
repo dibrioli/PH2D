@@ -41,11 +41,16 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_keys_tab_request() {
         state::set_tab(state, crate::tab::Tab::Keys);
     }
-    // On the Keys tab AND under a stack, the shell drives the CLIP playhead and solos the
-    // active clip. **Without a stack there is nothing to solo** — the clip IS the timeline —
-    // so keys_mode stays false and a fresh document behaves exactly as it always has (one
-    // playhead, Motion and the timeline on the same clock).
-    state::publish_keys_mode(state.tab.shows_keys() && snapshot.stacked());
+    // **`keys_mode` follows the TAB, not `&& stacked()`** (Enio, 2026-07-27): the Keys tab
+    // is the CLIP's scope and Arrange is the SCENE's, INDEPENDENT — each edits its own
+    // duration, each plays its own thing. The old `&& stacked()` collapsed them without a
+    // stack ("one clip is the timeline"), so a clip's Dur edit wrote the scene's and an empty
+    // Arrange played the active clip. Now Keys drives the CLIP (solo `apply_active_clip`) and
+    // reads/writes the clip's Dur; Arrange drives the SCENE (`apply_scene`, empty = nothing)
+    // and reads/writes the scene's. A single clip previews on Keys until it is arranged.
+    // (The ruler CLOCK still coincides without a stack — `clip_playhead` is identity there;
+    // that is a separate truth from the duration scope.)
+    state::publish_keys_mode(state.tab.shows_keys());
     // Arrange is always the SCENE's stack, so the breadcrumb trail does not apply there
     // however deep the animator walked (`tab::Tab::scene_root`).
     state::publish_scene_root(state.tab.scene_root());

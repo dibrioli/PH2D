@@ -92,6 +92,8 @@ Quatro reports, **três eram um por-linha e um por-composicao**:
 
 - A 1ª tentativa (2ª rodada) clampava uma expressão pura em 4s no `clip_cut`. O Enio deu a decisão de produto que a **reverte**: uma duração apagada (`length_override == None`) é **INFINITA**, não zero-length — sem véu, sem corte, e na caixa Dur o `0` vira o **símbolo de infinito**. Por padrão o clip nasce com 4s + véu; a regra vale igual para clip, container e cena; o FADE fica intocado. Detalhe no item corrigido abaixo. **Pendente de smoke.**
 
+- **Autokey / o clip padrão** (`de8715353`, `a90161d87`): MEDIDO headless — um app NOVO (`App::new` → `with_default_duration`) abre com clip 0 = 4 s, e o Autokey só faz `upsert_key`, que **preserva** os 4 s (`clips=1, active=0`). O único caminho reproduzível para um clip 0 derivado no app é **carregar um projeto LEGADO** (salvo antes do padrão de 4 s): o caso vazio já instalava 4 s, o caso não-vazio legado não. `install_from_project` agora estampa 4 s quando o doc carregado é TODO derivado (clip 0 E cena) — a assinatura legada, que nunca clobbera uma composição autorada nem um ∞ deliberado. Os clips do smoke passaram de 6 s para o default de 4 s (a cena fica 6 s). **State.rs intocado** (mudar o `Default` da crate quebra 22 testes que dependem de *fresh = derived*). **Pendente de smoke.**
+
 ## Impacto de integração — **LIMPO**
 
 - **Nenhum `DOC_VERSION`, nenhum `PROJECT_SCHEMA`.** A per-clip expr usa `NamedClip.expr` (já existe desde ADR-0144); o `composed_links` mora na **scratch** (não serializada, `PartialEq` sempre igual → sem passo de undo espúrio). `KeyRefusal::ExpressionDriven` é runtime.

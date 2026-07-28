@@ -5196,6 +5196,7 @@ dependencies = [
  "ph2d-flip-colorize",
  "ph2d-flip-fill",
  "ph2d-gpu",
+ "ph2d-painter-brush",
  "ph2d-painter-effects",
  "ph2d-render",
  "pollster",

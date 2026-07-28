@@ -38,7 +38,7 @@ pub const FLAG_END_FLAT: u32 = 1 << 2;
 /// byte-idêntico ao traço de sempre. **Cabe no bitfield `flags` — nenhum campo novo no GpuStroke.**
 pub const FLAG_SELF_OVERLAP: u32 = 1 << 3;
 /// **Pincel AIRBRUSH analítico** (`FlipStroke::airbrush`, 03 §8). Com o bit, o `hardness_mask`
-/// do shader troca o falloff `pow`+smoothstep pela transmitância física de um dab esférico
+/// do shader troca o falloff do Painter (platô+`Smooth`) pela transmitância física de um dab esférico
 /// (`A = 1 − exp(−k·√(1−dn²))`, `k` da hardness) — um domo largo de borda sempre macia. Sem o
 /// bit é byte-idêntico. **Cabe no bitfield `flags` — nenhum campo novo no GpuStroke.**
 pub const FLAG_AIRBRUSH: u32 = 1 << 4;

@@ -95,6 +95,7 @@ mod flip_fill_smoke;
 mod flip_fill_target;
 mod flip_gap_live;
 mod flip_gizmo_view;
+mod flip_hardness_smoke;
 mod flip_layers;
 mod flip_multiframe;
 mod flip_multiplane_smoke;

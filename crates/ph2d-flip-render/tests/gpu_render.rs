@@ -425,58 +425,68 @@ fn airbrush_horizontal(width: f32, hard: f32) -> FlipDrawing {
     d
 }
 
-/// 🔴 **O pincel AIRBRUSH tem um núcleo CHATO (domo largo), o padrão tem um PICO estreito** (03 §8).
+/// 🔴 **O pincel AIRBRUSH carrega tinta ATÉ O ARO; o padrão já parou lá** (03 §8).
 /// O falloff do airbrush é a transmitância física de um dab esférico `A = 1 − exp(−k·√(1−dn²))`,
-/// `k` da hardness — um domo que cobre quase todo o raio antes de cair. O padrão (`pow`+smoothstep)
-/// a hardness 0.5 já é ~0 no meio do raio (`pow(0.5,5) ≈ 0.03`). Na MESMA hardness, meço o perfil
-/// através da banda (eixo · meio-raio · perto da borda): o airbrush fica CHEIO no meio-raio onde o
-/// padrão já sumiu — é o que distingue os dois pincéis.
+/// `k` da hardness — um domo que cobre quase todo o raio antes de cair.
 ///
-/// **Red-first:** com o ramo do airbrush revertido (a flag ignorada → cai no `pow`) o airbrush
-/// vira o padrão, o meio-raio desaba para ~0 e a asserção `air_mid > 200` fica VERMELHA. A mutação
-/// que sangra é `hardness_mask` ignorar o parâmetro `airbrush`.
+/// ⚠️ **O DISCRIMINANTE MUDOU DE LUGAR em 2026-07-28, e o gate antigo teria ficado ao CONTRÁRIO.**
+/// Ele comparava o **eixo** e o **meio-raio**, porque o padrão era o `pow`+smoothstep do GP — um
+/// PICO que já caía a um pixel do centro (medido então: `std_axis=222`, `std_mid=0`). Com a lei do
+/// Painter o padrão tem PLATÔ: agora `std_axis=255` (MAIOR que os 252 do airbrush, invertendo a
+/// asserção `air_axis > std_axis + 15`) e `std_mid=248` (o meio-raio é exatamente o fim do platô
+/// em hardness 0.5, então "o padrão desaba no meio-raio" virou FALSO por projeto).
+/// A diferença entre os dois pincéis não sumiu — ela MUDOU DE LUGAR, do centro para o ARO
+/// (delta máximo medido 0,76 sobre `dn`, `tests/hardness_law.rs`).
+///
+/// **Red-first:** com o ramo do airbrush revertido (a flag ignorada) os dois perfis viram o MESMO,
+/// e as asserções de aro (`air` alto onde `std` já é resíduo) ficam VERMELHAS. A mutação que sangra
+/// é `hardness_mask` ignorar o parâmetro `airbrush`.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
 fn an_airbrush_has_a_flatter_core_than_the_standard_brush() {
     let Some((device, queue)) = device() else {
         return;
     };
-    // Banda de 20px (raio 10) no meio, opacity 1, hardness 0.5. Eixo em y=32; meio-raio em y=37
-    // (dn≈0.5); perto da borda em y=40 (dn≈0.8).
+    // Banda de 20px (raio 10) no meio, opacity 1, hardness 0.5. Eixo em y=32; o ARO em y=40
+    // (dn≈0.8) e y=41 (dn≈0.9) — é lá que os dois perfis discordam sob a lei do Painter.
     let std = render(&device, &queue, &horizontal_stroke(20.0, 0.5));
     let air = render(&device, &queue, &airbrush_horizontal(20.0, 0.5));
 
     let std_axis = i32::from(alpha_at(&std, 32, 32));
-    let std_mid = i32::from(alpha_at(&std, 32, 37));
     let air_axis = i32::from(alpha_at(&air, 32, 32));
-    let air_mid = i32::from(alpha_at(&air, 32, 37));
-    let air_edge = i32::from(alpha_at(&air, 32, 40));
+    let std_rim = i32::from(alpha_at(&std, 32, 40));
+    let air_rim = i32::from(alpha_at(&air, 32, 40));
+    let std_outer = i32::from(alpha_at(&std, 32, 41));
+    let air_outer = i32::from(alpha_at(&air, 32, 41));
 
-    // Medido (RTX, hardness 0.5): std_axis=222 std_mid=0 air_axis=252 air_mid=249 air_edge=231.
-    // O airbrush é opaco no centro do dab (domo cheio).
-    assert!(air_axis > 240, "airbrush opaco no eixo: {air_axis}");
-    // ⚠️ Já a UM pixel do eixo, o pico do padrão CAIU (222) enquanto o domo do airbrush SEGURA
-    // (252) — o falloff `pow` a hardness 0.5 é agudo; a diferença aparece na 1ª amostra fora do
-    // centro. É a assinatura pico×domo já no eixo.
+    // Medido (RTX, hardness 0.5): std 255/255/255/255/255/248/200/127/**55**/**7**/0 de y=32 a 42;
+    // air 252/252/252/251/250/249/247/242/**231**/**192**/0. Os dois têm núcleo cheio — o que os
+    // separa é o ARO.
+    //
+    // O airbrush NÃO é totalmente opaco nem no eixo (`1−exp(−4.5) = 0.989` → 252): a névoa mais
+    // densa ainda deixa passar. É o que o torna uma névoa e não um disco.
     assert!(
-        air_axis > std_axis + 15,
-        "o domo segura perto do eixo onde o pico ja caiu: air={air_axis} std={std_axis}"
+        (240..255).contains(&air_axis),
+        "airbrush denso mas nao opaco no eixo: {air_axis}"
     );
-    // O padrão a hardness 0.5 DESABA no meio-raio (pico estreito) — quase nada.
+    // O padrão a hardness 0.5 é CHEIO no eixo (o platô) — a metade que prova que a lei do Painter
+    // chegou, e que o gate NÃO está medindo dois pincéis macios quaisquer.
+    assert!(std_axis > 250, "o padrao tem PLATO no eixo: {std_axis}");
+    // ⚠️ O DISCRIMINANTE: no aro o padrão já é resíduo e o airbrush ainda pinta quase cheio.
+    // Fosso de ~4× em dn≈0.8 e ~27× em dn≈0.9 — nenhum ajuste de hardness fecha isso, porque a
+    // forma do domo (`√(1−dn²)`) só chega a zero EXATAMENTE no aro.
     assert!(
-        std_mid < 20,
-        "o padrão a hardness 0.5 e um PICO: meio-raio {std_mid}"
+        air_rim > 200 && std_rim < 100,
+        "no aro (dn≈0.8) o domo segura e o padrao ja caiu: air={air_rim} std={std_rim}"
     );
-    // O airbrush fica CHEIO no meio-raio (domo largo) — O DISCRIMINANTE (249 vs 0).
     assert!(
-        air_mid > 200,
-        "o airbrush e um DOMO: o meio-raio tem de ficar cheio: {air_mid} (padrão la e {std_mid})"
+        air_outer > 150 && std_outer < 40,
+        "e um pixel adiante o fosso ABRE: air={air_outer} std={std_outer}"
     );
-    // E a borda do airbrush é SEMPRE macia: ainda pinta perto da borda, mas menos que o eixo (rola
-    // suave a zero em dn=1). Nunca o corte duro do padrão.
+    // E a borda do airbrush é SEMPRE macia: rola suave a zero em dn=1, nunca um corte.
     assert!(
-        air_edge > 120 && air_edge < air_axis,
-        "borda do airbrush macia (rola a zero): edge={air_edge} axis={air_axis}"
+        air_outer < air_rim && air_rim < air_axis,
+        "a nevoa do airbrush cai MONOTONICA ate zero: {air_axis} > {air_rim} > {air_outer}"
     );
 }
 
@@ -678,17 +688,54 @@ fn smoothstep01(x: f32) -> f32 {
 }
 
 /// O perfil de hardness (a queda do pincel), sem o termo de AA da borda — os
-/// pixels da faixa de AA são pulados por `expected_union_alpha`. Os hardness
-/// usados aqui dão expoente INTEIRO (`10·(1-h)`: 0.8 → 2, 0.7 → 3) — `powi`,
-/// nada transcendental.
+/// pixels da faixa de AA são pulados por `expected_union_alpha`.
+///
+/// ⚠️ Esta é a **SEGUNDA cópia** da lei do perfil (a 1ª é o `hardness_mask` do `flip.wgsl`), e ela
+/// é o preço de o oráculo ser independente: um oráculo que chamasse o shader não provaria nada.
+/// Ela ficou para trás quando a lei virou a do Painter em 2026-07-28 — **nove** gates de união
+/// caíram de uma vez, e é assim que essa dívida se cobra. Quem mexer no `hardness_mask` mexe aqui,
+/// e a paridade termo-a-termo com `ph2d_painter_brush` vive em `tests/hardness_law.rs`.
+///
+/// A LEI: platô cheio até `hardness`, e a curva `Falloff::Smooth` (`3p²−2p³`) na faixa restante.
+/// Sem transcendental, e sem a restrição de expoente inteiro que a lei do GP exigia.
 fn cpu_mask(dn: f32, hardness: f32) -> f32 {
-    let inv = (1.0 - dn).clamp(0.0, 1.0);
-    let exp = 10.0 * (1.0 - hardness);
-    assert!(
-        (exp - exp.round()).abs() < 1e-4,
-        "use hardness com expoente inteiro no oráculo"
-    );
-    smoothstep01(inv.powi(exp.round() as i32))
+    let h = hardness.clamp(0.0, 1.0);
+    if h >= 1.0 {
+        return f32::from(dn < 1.0);
+    }
+    let remapped = ((dn - h) / (1.0 - h)).clamp(0.0, 1.0);
+    let p = 1.0 - remapped;
+    3.0 * p * p - 2.0 * p * p * p
+}
+
+/// 🔴 **O oráculo de união FALA a lei do Painter** — o elo que fecha a cadeia de prova.
+///
+/// Os 9 gates de união provam `shader ≡ cpu_mask` (numericamente, em milhares de pixels); este
+/// prova `cpu_mask ≡ ph2d_painter_brush`, a função que o Painter de fato roda. Sem ele os dois
+/// lados podiam derivar JUNTOS e todo gate de união ficaria verde sobre a lei errada — foi
+/// exatamente o que aconteceu até 2026-07-28, com o shader e o oráculo concordando na lei do GP.
+///
+/// Não precisa de adapter: é aritmética.
+#[test]
+fn the_union_oracle_is_the_painters_law() {
+    for hi in 0..=20 {
+        let h = hi as f32 / 20.0;
+        for di in 0..=200 {
+            let dn = di as f32 / 200.0;
+            // `BrushSpec::falloff_weight`: o platô remapeia, o preset avalia.
+            let expected = if h >= 1.0 {
+                f32::from(dn < 1.0)
+            } else {
+                let remapped = ((dn - h) / (1.0 - h)).clamp(0.0, 1.0);
+                ph2d_painter_brush::Falloff::Smooth.weight(remapped)
+            };
+            let got = cpu_mask(dn, h);
+            assert!(
+                (got - expected).abs() < 1e-6,
+                "hardness {h} dn {dn}: oraculo {got} != Painter {expected}"
+            );
+        }
+    }
 }
 
 /// Distância NORMALIZADA (0 = centro, 1 = borda) do ponto `p` à cápsula `a`→`b`

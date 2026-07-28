@@ -41,3 +41,9 @@ ph2d-flip-fill = { path = "../ph2d-flip-fill" }
 # O Colorize: a sonda visual do zíper (6º smoke) rasteriza as regiões que o colorize
 # devolve numa arte de MÃO (densa + ruidosa) — o pixel é o oráculo.
 ph2d-flip-colorize = { path = "../ph2d-flip-colorize" }
+# SÓ o gate de paridade da DUREZA (`tests/hardness_law.rs`): o perfil que o `flip.wgsl`
+# pinta é a lei do Painter, e o oráculo tem de ser a função REAL dele — uma reescrita local
+# seria a segunda porta da mesma pergunta. Crate FOLHA (`[dependencies]` vazio) e dev-only:
+# o `src/` do flip-render não a toca (machete-safe), como as crates-nó do gate de paridade
+# CPU×GPU da `line/gpu-nodes`.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }

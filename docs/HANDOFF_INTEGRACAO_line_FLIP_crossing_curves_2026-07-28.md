@@ -5,6 +5,10 @@
 > Mais: ir ao fonte do Blender 5.2 e apps GP-like, e estudar os 13 pincéis para trazê-los.
 >
 > **5 commits, todos medidos, todos com mutação.** Estado: `line/FLIP`, tip `c0589697a`.
+>
+> ⚠️ **LEIA A §9 ANTES DE QUALQUER COISA.** O smoke do Enio REPROVOU esta wave (*"não vejo
+> nenhuma diferença nesses smokes"*) e a causa era outra, achada com foto lado a lado do
+> Painter. A §9 é a wave que de fato responde ao que ele fotografou.
 
 ---
 
@@ -191,3 +195,104 @@ cargo test -p ph2d-host-desktop --release --bins measure_ -- --nocapture
   pontos mudos. A metade real dele sobreviveu; a asserção incidental morreu.
 - **Meça no lugar certo:** eu quase reportei "sem ganho" por medir a razão de tinta num par de
   telas onde a cópia é ruído.
+
+---
+
+## 9. ⬛ SEGUNDA ONDA — a LEI DA DUREZA (o que a foto de fato mostrava)
+
+**O smoke do Enio reprovou as §1-§8:** *"Não entendi nada. Vc mudou alguma coisa? Não vejo
+nenhuma diferença nesses smokes."* — com uma foto nova, empilhando o MESMO cruzamento nos dois
+módulos: *"o cruzamento de cima é o FLIP, o de baixo é do Painter. O correto é o aspecto do
+cruzamento de baixo e o flip deveria ser idêntico"*.
+
+Ele estava certo, e as §1-§8 não estão erradas: elas curaram *quais segmentos competem pelo pixel*
+e *onde os vértices caem* — coisas que aparecem em hachura densa e em zoom-out sub-pixel, e que
+um X largo não exercita. **O perfil da tinta eu não tinha tocado**, e era ele a foto.
+
+### 9.1 A causa — duas leis com o mesmo nome
+
+| | `t < h` (miolo) | como cai |
+|---|---|---|
+| **Painter** `falloff_weight` | **1.0 — platô sólido** | curva `Smooth` só em `[h, 1]` |
+| **Flip** `hardness_mask` | *nada* — sem platô | `smoothstep(0,1, (1−dn)^(10·(1−h)))` desde o centro |
+
+O `dn` onde a tinta cruza meia-tinta — a metade **VISÍVEL** da largura pedida:
+
+| hardness | Flip (era) | Painter |
+|---|---|---|
+| 0,9 | 0,500 | 0,951 |
+| 0,7 | 0,207 | 0,850 |
+| 0,5 | **0,130** | 0,751 |
+| 0,3 | 0,095 | 0,651 |
+
+Em hardness 0,5 a largura visível era **13% da pedida**; o resto era névoa, e é isso que lia como
+um filete brilhante dentro de um borrão. ⚠️ **O Flip estava FIEL ao Grease Pencil** (é o
+`gpencil_stroke_round_cap_mask` ao pé da letra) — a ordem do Enio **sobrepõe a fidelidade ao GP**,
+e a razão técnica concorda: a mesma palavra "Hardness" governando duas leis em dois módulos do
+mesmo app é falha de duas-portas, silenciosa porque nenhum número aparece na tela.
+
+**A lei agora é a do Painter** (`BrushSpec::falloff_weight` + `Falloff::Smooth`), escrita com as
+mesmas operações na mesma ordem. ⚠️ **`hardness ≥ 1` é byte-idêntico nas duas** e
+`DEFAULT_HARDNESS = 1.0` ⇒ **o traço padrão do Flip não se move**.
+
+### 9.2 O que NÃO foi igualado, medido e decidido
+
+O Painter compõe dabs por `over` (`1 − Π(1−a_k)`, pitch `0.2·raio`), então o que ele **deposita**
+é mais cheio que o falloff de um dab: pior delta **0,47 em hardness 0** · **0,41 em 0,5** ·
+**0,20 em 0,9** (só no aro). O Flip compõe por **UNIÃO**, então a secção dele **é** o perfil.
+
+⛔ **Casar o DEPÓSITO foi considerado e REJEITADO por medição:** o acumulado depende do SPACING e
+**não tem limite livre dele** — com spacing → 0 o produto satura num disco DURO. Assá-lo no Flip
+seria assar o *spacing default do Painter* (0,10) num módulo que não tem spacing, e ele deixaria
+de valer no primeiro ajuste que o artista fizesse lá. **O smoke decide** se o residual do ombro
+importa; a curva alternativa está pronta na sonda (`painter_deposited`) e trocar é uma linha.
+
+### 9.3 A cadeia de prova, e o elo que faltava
+
+A lei vive em **dois idiomas** (WGSL no device · Rust no Painter) e o oráculo de união dos testes
+tinha uma **terceira** cópia (`cpu_mask`). A cadeia é `shader ≡ cpu_mask ≡ Painter`:
+
+1. Os **9 gates de união** provam (1) — e todos os 9 caíram de uma vez quando só o shader mudou,
+   que é como essa dívida se cobra.
+2. **`the_union_oracle_is_the_painters_law`** (gate NOVO, sem adapter) prova (2).
+
+⚠️ **Sem (2) os dois lados podiam derivar JUNTOS e tudo ficava verde** — foi literalmente o estado
+até esta wave. **Provado por mutação:** revertendo os DOIS ao GP, **os 9 gates de união passam** e
+só (2) + o gate do airbrush sangram.
+
+### 9.4 O gate do airbrush foi RE-DERIVADO (não afrouxado)
+
+Ele afirmava *"o padrão DESABA no meio-raio"* — **falso por projeto** com o platô — e comparava o
+EIXO, onde a asserção `air_axis > std_axis + 15` **inverteu** (medido: padrão **255**, airbrush
+**252**). O discriminante **mudou de lugar, do centro para o ARO**, e **não encolheu**: `dn≈0.8`
+**55 vs 231** · `dn≈0.9` **7 vs 192** (delta máximo 0,76 sobre `dn`). Mutação: a flag ignorada ⇒
+os dois perfis viram o mesmo ⇒ RED.
+
+### 9.5 Superfície
+
+- ⚠️ **Um `Cargo.toml` tocado** (a §4 dizia zero): `ph2d-painter-brush` entra em
+  **`[dev-dependencies]`** da `ph2d-flip-render`. Crate **FOLHA** (`[dependencies]` vazio), o
+  `src/` não a toca ⇒ **machete-safe** (conferido: `cargo machete` limpo) — o precedente do gate
+  de paridade CPU×GPU da `line/gpu-nodes`.
+- **Nenhum schema** (`PROJECT_SCHEMA` 37 · `FLIP_SCHEMA` 12), **nenhum contrato congelado**,
+  **nenhum ADR**, **nenhum id/token/i18n**.
+- Arquivo novo: `shells/desktop/src/flip_hardness_smoke.rs` (+ `mod` no `main.rs` e a chamada no
+  prólogo, ao lado dos outros smokes).
+- **SEIS notas corrigidas** que descreviam o airbrush como *"o oposto do pico do `pow`"* — o
+  default mudou, então a frase virou falsa; os números do doc 03 §8 e do smoke do airbrush foram
+  **refeitos com medição**, não reescritos por analogia.
+
+### 9.6 Smoke
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP
+env PH2D_FLIP_HARDNESS_SMOKE=1 cargo run -p ph2d-host-desktop --release
+```
+
+Três cruzamentos, hardness **1.0 (o CONTROLE, byte-idêntico) · 0.7 · 0.4**. O que olhar: cada
+traço tem **miolo sólido com borda macia** (nunca um filete dentro de um borrão); o cruzamento
+funde liso; e **o mesmo gesto no Painter, na mesma hardness, tem de ler igual**. A cena imprime a
+tabela medida e o residual conhecido da §9.2.
+
+⚠️ Re-rodar também **`PH2D_FLIP_AIRBRUSH_SMOKE=1`** — o contraste dele mudou de lugar e a
+mensagem foi reescrita; é o smoke que confirma que o airbrush segue distinto.

@@ -618,7 +618,9 @@ mod ribbon_budget_measurement {
                 })
                 .collect()
         };
-        let cases: Vec<(&str, Vec<(f32, f32)>, bool)> = vec![
+        /// Um caso da sonda: rótulo, o caminho, e se ele deve ficar dentro do orçamento.
+        type Case = (&'static str, Vec<(f32, f32)>, bool);
+        let cases: Vec<Case> = vec![
             ("reta", vec![(0.0, 0.0), (200.0, 0.0)], true),
             ("arco raio 10·r", arc(10.0 * R, 90.0), true),
             ("arco raio 2·r (curvatura alta)", arc(2.0 * R, 180.0), true),

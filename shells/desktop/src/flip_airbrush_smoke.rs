@@ -1,22 +1,26 @@
 //! **A cena pronta para o smoke do AIRBRUSH** (`PH2D_FLIP_AIRBRUSH_SMOKE=1`, 03 §8).
 //!
-//! O pincel airbrush analítico (Ciallo): o falloff da borda deixa de ser o `pow`+smoothstep e vira
+//! O pincel airbrush analítico (Ciallo): o falloff da borda deixa de ser o do Painter e vira
 //! a **transmitância física** da tinta por um dab esférico (Beer-Lambert): `A = 1 − exp(−k·√(1−dn²))`,
-//! `k = mix(1, 8, hardness)`. É um **domo largo** de núcleo chato e borda SEMPRE macia — o oposto do
-//! pico estreito do `pow`. O slider Hardness vira a densidade da névoa.
+//! `k = mix(1, 8, hardness)`. É um **domo largo** de núcleo chato e borda SEMPRE macia. O slider
+//! Hardness vira a densidade da névoa.
 //!
 //! A cena põe o MESMO traço grosso lado a lado, na MESMA hardness (0.5):
 //!
-//! - **ESQUERDA (padrão)** — `airbrush = false`, o `pow`+smoothstep de sempre: um **pico** — o
-//!   núcleo fino é opaco e a tinta some rápido do eixo. É o default, byte-idêntico ao Flip de sempre.
+//! - **ESQUERDA (padrão)** — `airbrush = false`, o falloff do Painter: núcleo CHEIO até `hardness`
+//!   e queda `Smooth` na faixa restante, com a borda terminando em zero. É o default.
+//!   ⚠️ Antes de 2026-07-28 era o `pow`+smoothstep do GP, um PICO estreito; o contraste desta
+//!   cena era com ele. Hoje o discriminante é OUTRO — o airbrush fica muito mais CHEIO perto da
+//!   BORDA (delta máximo medido 0,76 em hardness 0,5), em vez de meramente mais largo.
 //! - **DIREITA (airbrush)** — `airbrush = true`: um **domo** — a tinta cobre quase toda a largura
 //!   antes de rolar suave a zero na borda.
 //!
 //! **Números MEDIDOS** (a sonda headless é o gate GPU `an_airbrush_has_a_flatter_core_than_the_
-//! standard_brush`, banda de raio 10 a hardness 0.5): no EIXO os dois ficam ~255; no MEIO-RAIO
-//! (dn≈0.5) o padrão DESABA para **~1** (pico estreito) e o airbrush fica CHEIO em **~250** (domo);
-//! perto da borda (dn≈0.8) o airbrush ainda pinta **~238** e rola a zero. Casa com o Self Overlap:
-//! a acumulação `over` de airbrush é a multiplicação de transmitâncias (o build-up físico).
+//! standard_brush`, banda de raio 10 a hardness 0.5): no EIXO **255 padrão / 252 airbrush** — o
+//! padrão é MAIOR, porque tem platô, e o airbrush nem no centro é opaco (`1−exp(−4.5) = 0.989`).
+//! O discriminante está no ARO: `dn≈0.8` **55 / 231** · `dn≈0.9` **7 / 192**. Casa com o Self
+//! Overlap: a acumulação `over` de airbrush é a multiplicação de transmitâncias (o build-up
+//! físico).
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -102,17 +106,18 @@ impl crate::App {
              \n\
              O que esta na tela: o MESMO traco grosso, a MESMA hardness\n\
              (0.5), desenhado DUAS vezes:\n\
-               - ESQUERDA : Airbrush OFF -- o pincel padrao (pow): um\n\
-                            PICO, nucleo fino opaco, some rapido do eixo.\n\
+               - ESQUERDA : Airbrush OFF -- o pincel padrao (a lei do\n\
+                            Painter): nucleo CHEIO ate a hardness, depois\n\
+                            cai ate zero na borda.\n\
                - DIREITA  : Airbrush ON  -- um DOMO largo: a tinta cobre\n\
                             quase toda a largura antes de rolar suave a\n\
                             zero na borda (borda SEMPRE macia).\n\
              \n\
              ------------------------------------------------------------\n\
              Medido (sonda headless, banda raio 10 a hardness 0.5):\n\
-                 eixo (centro)     ~255  nos dois\n\
-                 meio-raio (dn.5)  ~1 padrao   vs  ~250 airbrush\n\
-                 borda (dn.8)      ~0 padrao   vs  ~238 airbrush\n\
+                 eixo (centro)     255 padrao  vs  252 airbrush\n\
+                 aro  (dn ~0.8)     55 padrao  vs  231 airbrush\n\
+                 aro  (dn ~0.9)      7 padrao  vs  192 airbrush\n\
              ------------------------------------------------------------\n\
              \n\
              O AJUSTE: no painel Flip (modo DRAW), abaixo do toggle Self\n\

@@ -705,6 +705,7 @@ impl crate::App {
         self.sculpt3d_smoke();
         self.flip_self_overlap_smoke();
         self.flip_airbrush_smoke();
+        self.flip_hardness_smoke();
         self.flip_resample_smoke();
         self.flip_pressure_smoke();
         self.flip_selection_smoke();

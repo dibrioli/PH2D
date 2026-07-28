@@ -10,7 +10,8 @@
 // segmento dá **junções e tampas REDONDAS de graça** — sem spikes, e (crucial) com
 // cobertura CONSISTENTE onde dois quads cobrem o mesmo pixel (ambos medem a
 // distância ao MESMO ponto de junção), então o depth só escolhe um. O perfil de
-// hardness é o do GP (`pow` + smoothstep), com AA de ~1px por `fwidth` (o GP conta
+// hardness é a do PAINTER (platô até `hardness`, curva `Smooth` na faixa restante —
+// ver `hardness_mask`; **NÃO** é a do GP), com AA de ~1px por `fwidth` (o GP conta
 // com MSAA; aqui não há).
 //
 // **O tripé anti-artefato (estado EXATO do GP 2D — cada perna é obrigatória):**
@@ -144,8 +145,8 @@ const FLAG_END_FLAT: u32 = 4u;
 // vertex) e as faces sobrepostas do mesmo traço BLENDam em vez de serem descartadas.
 const FLAG_SELF_OVERLAP: u32 = 8u;
 // Pincel AIRBRUSH analítico (`FlipStroke::airbrush`, 03 §8) — TÊM de bater com
-// `pack.rs::FLAG_AIRBRUSH`. Com o bit, o `hardness_mask` troca o falloff `pow`+smoothstep pela
-// transmitância física de um dab esférico (Beer-Lambert). Lido no FRAGMENT (via o varying `flags`).
+// `pack.rs::FLAG_AIRBRUSH`. Com o bit, o `hardness_mask` troca o falloff do Painter (platô+`Smooth`)
+// pela transmitância física de um dab esférico (Beer-Lambert). Lido no FRAGMENT (via o varying `flags`).
 const FLAG_AIRBRUSH: u32 = 16u;
 // `miter_break` do GP (`gpencil_vertex` ~l.696): a quina deixa de mitrar quando
 // `cos_angle > 0.5` (virada > 120°). cos_angle = -dot(dir_in, dir_out): -1 numa
@@ -411,10 +412,24 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     return out;
 }
 
-// Perfil redondo do Grease Pencil (`gpencil_stroke_hardess_mask`): núcleo cheio até
-// `hardness`, queda `pow`+smoothstep até a borda. `dn` = distância normalizada à
-// linha-de-centro (0 centro, 1 borda). `aa` (~1px) fecha a borda com AA — o GP usa
-// MSAA; aqui a cobertura é analítica, então o AA sai do `fwidth`.
+// Perfil redondo: **a LEI DO PAINTER** (`BrushSpec::falloff_weight` + `Falloff::Smooth`) —
+// núcleo CHEIO até `hardness`, e a curva `3p²−2p³` corre na faixa `[hardness, 1]`.
+// `dn` = distância normalizada à linha-de-centro (0 centro, 1 borda). `aa` (~1px) fecha
+// a borda com AA — o GP usa MSAA; aqui a cobertura é analítica, então o AA sai do `fwidth`.
+//
+// ⚠️ Isto NÃO é o Grease Pencil, e a divergência é DELIBERADA (Enio, 2026-07-28, com foto
+// lado a lado: *"o correto é o aspecto do cruzamento de baixo [o Painter] e o flip deveria
+// ser idêntico"*). O que morava aqui era o `gpencil_stroke_round_cap_mask` ao pé da letra —
+// `smoothstep(0,1, pow(1−dn, mix(0,10, 1−hardness)))` — fiel ao Blender e **incompatível com
+// o resto do app**: sem platô, o traço ENCOLHE ao amaciar (medido, o `dn` onde a tinta cruza
+// meia-tinta: hardness 0,9 → 0,500 contra 0,951 do Painter · 0,7 → 0,207 contra 0,850 ·
+// 0,5 → 0,130 contra 0,751). Em hardness 0,5 a largura VISÍVEL era 13% da pedida e o resto
+// era névoa; a mesma palavra "Hardness" governava duas leis em dois módulos do mesmo app.
+//
+// ⚠️ `hardness ≥ 1` é BYTE-IDÊNTICO nas duas leis (disco duro), e `DEFAULT_HARDNESS = 1.0`
+// ⇒ o traço padrão do Flip não se move. A paridade termo-a-termo com a função Rust REAL do
+// Painter é gateada em `tests/hardness_law.rs` — a lei vive em dois idiomas e duas escritas
+// de uma lei só divergem, então o oráculo é `ph2d_painter_brush`, nunca uma cópia local.
 // Densidade óptica do airbrush no CENTRO (`k = 2·μ·R`): o slider Hardness a controla. Faixa
 // ESTÉTICA (quão densa a névoa mais forte), não limite de recurso — a borda do airbrush é
 // SEMPRE macia (mesmo em `k = K_MAX`, os últimos %% rolam suave a zero), que é a razão de ele
@@ -424,7 +439,6 @@ const AIRBRUSH_K_MIN: f32 = 1.0;
 const AIRBRUSH_K_MAX: f32 = 8.0;
 
 fn hardness_mask(dn: f32, hardness: f32, aa: f32, airbrush: bool) -> f32 {
-    let inv = clamp(1.0 - dn, 0.0, 1.0); // 1 no centro, 0 na borda
     var profile: f32;
     if (airbrush) {
         // Airbrush analítico (Ciallo, 03 §8): a transmitância de Beer-Lambert por um dab
@@ -437,8 +451,14 @@ fn hardness_mask(dn: f32, hardness: f32, aa: f32, airbrush: bool) -> f32 {
     } else if (hardness > 0.999) {
         profile = 1.0; // borda dura: o núcleo é chapado; a borda é o AA abaixo
     } else {
-        let soft = 1.0 - hardness;
-        profile = smoothstep(0.0, 1.0, pow(inv, mix(0.0, 10.0, soft)));
+        // `BrushSpec::falloff_weight`: o platô empurra a queda para fora, e a curva é o
+        // preset `Falloff::Smooth` avaliado em `p = 1 − remapped` (a convenção do Blender
+        // que a crate do Painter porta). Escrito com as MESMAS operações na MESMA ordem
+        // que o Rust (`3.0*p*p - 2.0*p*p*p`) — "termo a termo", não "parecido".
+        let h = clamp(hardness, 0.0, 1.0);
+        let remapped = clamp((dn - h) / (1.0 - h), 0.0, 1.0);
+        let p = 1.0 - remapped;
+        profile = 3.0 * p * p - 2.0 * p * p * p;
     }
     // AA da borda = a FRAÇÃO DO PIXEL coberta pelo disco: a distância (com sinal) do
     // pixel à borda, medida em pixels (`aa = fwidth(dn)` é o tamanho de 1 px em

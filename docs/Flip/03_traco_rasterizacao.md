@@ -71,7 +71,7 @@ Referência viva: `source/blender/draw/` no recorte. Números = arquivo:linha do
 |---|---|---|
 | Expansão da fita | `draw_grease_pencil_lib.glsl:669-727` | miter compartilhado = bissetriz exata; `miter_break` a 120° com clamp do limite a `cos(60°)` (esticão máx 2r — o "miter infinito" de SVG não existe no GP); extensão `line*x` em break E round-caps (1 bit de sinal por cap) |
 | Máscara analítica | `lib:65-146` | cápsula clampada; `both_round` (default!) **ignora p0/p3** e retorna o campo do próprio segmento; cunhas BEVEL/MITER usam p0/p3 p/ consistência |
-| Perfil de hardness | `lib:29-41` | `hard>0.999 → step(1e-8, d)`; senão `smoothstep(0,1, d^mix(0,10,1-hard))` |
+| Perfil de hardness | `lib:29-41` | `hard>0.999 → step(1e-8, d)`; senão `smoothstep(0,1, d^mix(0,10,1-hard))`. ⚠️ **NÓS DIVERGIMOS DISTO desde 2026-07-28** — ver §8.6: a lei do nosso `hardness_mask` é a do PAINTER (platô + `Falloff::Smooth`), por ordem do Enio. Esta linha descreve o BLENDER, e continua correta como tal |
 | Depth 2D | `gpencil_vert.glsl:81-97,144` | por-stroke `(sid+2)·2e-7`; **fill em `(sid+1)` — 1 quantum atrás do próprio traço**; flag `GP_STROKE_OVERLAP` troca p/ por-PONTO (auto-overlap com acúmulo — opção de material) |
 | Estado do passe | `gpencil_cache_utils.cc:447-453` + `gpencil_engine_c.cc:821` | `WRITE_DEPTH \| BLEND_ALPHA_PREMUL \| DEPTH_GREATER` estrito; **depth clear = 0.0** (2D). Clear 1.0/LESS no 3D — inverter só um dos dois = tela vazia |
 | Discard e ordem | `gpencil_frag.glsl:549-582` | alpha → scene-depth → mask → `gl_FragDepth` constante. A ordem importa (mask depois do depth-write escreveria depth onde a máscara obliterou). `frag_depth` mata early-Z (custo aceito) |
@@ -451,7 +451,9 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   `flags` do `GpuStroke` (sem resize) → um ramo em `hardness_mask`. O falloff da borda vira a
   transmitância física de um dab esférico (Beer-Lambert): `A(dn) = 1 − exp(−k·√(1−dn²))`,
   `k = mix(1, 8, hardness)` (o slider Hardness vira a densidade). Um **domo largo** de núcleo chato
-  e borda SEMPRE macia — o oposto do pico do `pow`+smoothstep. Casa com o Self Overlap: a
+  e borda SEMPRE macia — muito mais CHEIO perto da borda que o falloff do Painter (delta máximo
+  medido 0,76 em hardness 0,5; ⚠️ este contraste era com o `pow`+smoothstep do GP, o default até
+  2026-07-28). Casa com o Self Overlap: a
   acumulação `over` de airbrush é a multiplicação de transmitâncias, o build-up físico. Toggle-chip
   na seção Brush(Draw), abaixo do Self Overlap. `FLIP_SCHEMA` 11→12, `PROJECT_SCHEMA` 33→34.
   - ⚠️ **A flag chega ao FRAGMENT por um varying flat `flags` novo** (loc 14) — antes o fragment não
@@ -460,10 +462,13 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   - ⚠️ **`exp`/`sqrt` no shader são display path, não determinismo** (o `pow` já estava lá; o raster
     do Flip é re-rasterizado por frame, não replayado bit-exato como o `physics_ecs_c9`).
   - ⚠️ **`k∈[1,8]` é ESTÉTICO** (quão densa a névoa mais forte), não limite de recurso — a borda do
-    airbrush é sempre macia mesmo em `K_MAX`. Medido (banda raio 10, hardness 0.5): eixo 222 padrão
-    / 252 airbrush · meio-raio 0 / 249 (o discriminante) · borda 0 / 231. Gate GPU red-first
-    `an_airbrush_has_a_flatter_core_than_the_standard_brush` (a flag ignorada → o meio-raio desaba
-    para o pico → RED). Código do CialloResearch é GPL-3 — só comportamento, a fórmula é do paper.
+    airbrush é sempre macia mesmo em `K_MAX`. ⚠️ **Os números medidos aqui eram contra o padrão do
+    GP e foram REFEITOS quando a lei virou a do Painter (§8.6)** — hoje, banda raio 10, hardness
+    0.5: eixo **255 padrão / 252 airbrush** (o padrão é MAIOR: tem platô) · aro `dn≈0.8`
+    **55 / 231** · `dn≈0.9` **7 / 192**. O discriminante MUDOU DE LUGAR, do centro para o ARO, e
+    não encolheu (delta máximo 0,76 sobre `dn`). Gate GPU red-first
+    `an_airbrush_has_a_flatter_core_than_the_standard_brush` (a flag ignorada → os dois perfis
+    viram o mesmo → RED). Código do CialloResearch é GPL-3 — só comportamento, a fórmula é do paper.
 - **Variante SDF do caminho (b)** — hardness re-editável por uniform (scratch de distância +
   MIN). Interessante quando houver "estilo de traço" re-aplicável.
 - **Budget de depth:** quantum 2e-7 ≈ 5M índices por alvo. O Flip rasteriza POR CAMADA/frame
@@ -472,3 +477,63 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
 - **Perf de referência:** a lição das 3 ordens de magnitude do GP pré-2.83 (T57829) foi
   **1 batch por objeto, nunca estado por-stroke** — a nossa arquitetura (1 upload SoA por
   drawing + draw por camada) já nasce do lado certo; manter.
+
+---
+
+## §8.6 — A LEI DA DUREZA É A DO PAINTER, não a do Grease Pencil (2026-07-28)
+
+**Ordem do Enio**, com foto lado a lado do MESMO cruzamento nos dois módulos: *"o cruzamento de
+cima é o FLIP, o de baixo é do Painter. O correto é o aspecto do cruzamento de baixo e o flip
+deveria ser idêntico"*.
+
+O `hardness_mask` era o `gpencil_stroke_round_cap_mask` ao pé da letra — `smoothstep(0,1,
+pow(1−dn, mix(0,10,1−h)))` — **fiel ao Blender e incompatível com o resto do app**. Sem platô, o
+traço **ENCOLHE ao amaciar**; o `dn` onde a tinta cruza meia-tinta, medido:
+
+| hardness | GP (era) | Painter (é) |
+|---|---|---|
+| 0,9 | 0,500 | 0,951 |
+| 0,7 | 0,207 | 0,850 |
+| 0,5 | **0,130** | 0,751 |
+| 0,3 | 0,095 | 0,651 |
+
+Em hardness 0,5 a **largura VISÍVEL era 13% da pedida** e o resto era névoa — não é "mais macio",
+é outro traço. E a mesma palavra "Hardness" governava duas leis em dois módulos do mesmo app: uma
+falha de duas-portas, silenciosa porque nenhum número aparece na tela.
+
+**A lei agora é `BrushSpec::falloff_weight` + `Falloff::Smooth`:** platô CHEIO até `hardness`, e
+`3p²−2p³` sobre `p = 1 − (dn−h)/(1−h)` na faixa restante. ⚠️ `hardness ≥ 1` é **byte-idêntico**
+nas duas leis (disco duro) e `DEFAULT_HARDNESS = 1.0` ⇒ **o traço padrão do Flip não se move**.
+
+### O que esta wave NÃO iguala, e por quê
+
+O Painter carimba dabs e os compõe por `over` (`1 − Π(1−a_k)`, pitch `0.2·raio`), então o que ele
+DEPOSITA é mais cheio que o falloff de um dab: pior delta **0,47 em hardness 0** · **0,41 em 0,5**
+· **0,20 em 0,9** (só no aro). O Flip compõe por **UNIÃO** (`min` de distância — a joia que custou
+uma semana de bugs), e a secção dele **é** o perfil do dab.
+
+⛔ **Casar o DEPÓSITO foi considerado e REJEITADO por medição:** o acumulado depende do SPACING e
+**não tem limite livre dele** — conforme o spacing → 0 o produto satura num disco DURO em toda a
+pegada. Assar uma curva de depósito no Flip seria assar o *spacing default do Painter* (0,10) num
+módulo que não tem spacing, e ela deixaria de valer no primeiro ajuste que o artista fizesse lá.
+A LEI é a única resposta estável, e é ela que a palavra "Hardness" nomeia nos dois lugares.
+**O smoke decide** se o residual do ombro importa; se importar, a curva de depósito é
+`painter_deposited` na sonda, e trocar é uma linha — com o preço acima escrito.
+
+### A cadeia de prova (e o elo que faltava)
+
+A lei existe em **dois idiomas** (WGSL no device, Rust no Painter) e o oráculo de união dos testes
+tinha uma **terceira** cópia (`cpu_mask`). A cadeia é:
+
+1. `shader ≡ cpu_mask` — os 9 gates de união, numericamente, em milhares de pixels.
+2. `cpu_mask ≡ ph2d_painter_brush` — **`the_union_oracle_is_the_painters_law`**, o gate NOVO.
+
+⚠️ **Sem (2) os dois lados podiam derivar JUNTOS e tudo ficava verde** — foi literalmente o estado
+até esta wave (shader e oráculo concordando na lei do GP). **Provado por mutação:** revertendo os
+DOIS ao GP, os 9 gates de união passam e só (2) — mais o gate do airbrush — sangram.
+`ph2d-painter-brush` entra em **`[dev-dependencies]`** da `ph2d-flip-render` (crate FOLHA,
+`[dependencies]` vazio; o `src/` não a toca ⇒ machete-safe), o precedente do gate de paridade
+CPU×GPU da `line/gpu-nodes`.
+
+**Aberto e nomeado:** o `DEFAULT_HARDNESS` do Flip é **1,0** (herdado do GP) e o do Painter é
+**0,0** — dois produtos, dois defaults; alinhá-los é decisão de produto, não desta wave.

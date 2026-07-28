@@ -131,11 +131,12 @@ pub struct FlipStroke {
     /// opacidade < 1 (a tinta opaca já satura). Ver `docs/Flip/03_traco_rasterizacao.md` §8 e
     /// `flip.wgsl`.
     pub self_overlap: bool,
-    /// **Pincel AIRBRUSH analítico** (Ciallo, 03 §8) — o falloff deixa de ser o `pow`+smoothstep
+    /// **Pincel AIRBRUSH analítico** (Ciallo, 03 §8) — o falloff deixa de ser o do Painter
     /// e vira a **transmitância física** da tinta por um dab esférico (Beer-Lambert):
     /// `A(dn) = 1 − exp(−k·√(1−dn²))`, onde `dn` é a distância normalizada à linha-de-centro e
     /// `k = mix(1, 8, hardness)` é a densidade (o slider Hardness vira a densidade da névoa). É um
-    /// **domo largo** de núcleo chato e borda SEMPRE macia — o oposto do pico estreito do `pow`. Casa
+    /// **domo largo** de núcleo chato e borda SEMPRE macia — bem mais CHEIO perto da borda que o
+    /// falloff do Painter (delta máximo medido 0,76 em hardness 0,5; `tests/hardness_law.rs`). Casa
     /// com [`Self::self_overlap`]: a acumulação `over` de airbrush é a multiplicação de transmitâncias,
     /// que é o build-up físico correto. Atributo POR-CURVA (o pincel decide), como [`Self::tip`].
     ///

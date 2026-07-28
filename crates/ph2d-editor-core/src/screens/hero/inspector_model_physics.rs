@@ -383,7 +383,9 @@ pub enum PhysicsFieldEdit {
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorJointInfo {
     pub entity_bits: u64,
-    /// `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider.
+    /// `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider · `5` Rod ·
+    /// `6` Wheel · `7` Pulley — a ordem de `JointKind::ALL`, que é a ordem dos
+    /// chips que a §12 pinta.
     pub kind_tag: u8,
     /// The bodies, resolved for display. Empty means the name no longer
     /// matches any body in the scene — deleted or renamed.
@@ -425,6 +427,9 @@ pub struct InspectorJointInfo {
     pub stiffness: f32,
     pub damping: f32,
     pub max_length: f32,
+    /// **A razão da talha de uma polia** (W-Pulley): quanto o ramo B conta no
+    /// comprimento da corda. Adimensional — nenhuma conversão nesta fronteira.
+    pub ratio: f32,
     /// Which body slot has an ARMED canvas pick right now: `0` none, `1` A,
     /// `2` B. The §12 draws that slot's eyedropper pressed (accent) so the
     /// artist sees the picker is waiting for a click on a body. The shell owns
@@ -465,7 +470,8 @@ pub struct InspectorJointInfo {
 /// holds a radian and the component never holds a degree.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum JointFieldEdit {
-    /// `JointKind` tag: `0` Pin · `1` Spring · `2` Rope · `3` Weld · `4` Slider.
+    /// `JointKind` tag — a ordem de `JointKind::ALL`, a mesma de
+    /// [`InspectorJointInfo::kind_tag`].
     Kind(u8),
     LimitsEnabled(bool),
     /// The limit range in the kind's own unit — see [`InspectorJointInfo::limit_min_ui`].
@@ -484,6 +490,9 @@ pub enum JointFieldEdit {
     Stiffness(f32),
     Damping(f32),
     MaxLength(f32),
+    /// **A razão da talha** — quanto o ramo B conta no comprimento da corda
+    /// (`l1 + razão·l2`). Adimensional, sem conversão.
+    Ratio(f32),
     BreakEnabled(bool),
     /// Newtons — no conversion (W-J7).
     BreakForce(f32),

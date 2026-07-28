@@ -35,7 +35,7 @@ pub use bridge::joint_break::JointBreakEvent;
 // não depende de `ph2d-physics` direto.
 pub use bridge::fk::FkSession;
 pub use bridge::ik::{IkPlan, IkSession};
-pub use bridge::joints::joint_desc;
+pub use bridge::joints::{joint_desc, pulley_rig};
 pub use bridge::views::JointView;
 pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
 pub use components::{

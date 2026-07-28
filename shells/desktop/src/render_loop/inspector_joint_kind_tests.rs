@@ -325,3 +325,69 @@ fn every_kind_chip_the_panel_offers_round_trips_to_a_distinct_kind() {
         seen.push(kind);
     }
 }
+
+/// **Uma POLIA nasce ARMADA pelas DUAS rotas de criação** — a por seleção e a do
+/// canvas.
+///
+/// ## O defeito que este gate reproduz
+///
+/// O gesto do canvas (press em A → arrasta → solta em B) nomeia as âncoras, e
+/// por isso nasce `anchored: true` — deliberado, senão a política de semeio
+/// jogaria fora o ponto apontado. Mas o mesmo sentinela gateia o semeio do
+/// RIG da polia, então uma polia criada assim ficava com `wheel_a == wheel_b ==
+/// [0, 0]`: **as duas roldanas na origem do mundo**, com a corda saindo de cada
+/// corpo até lá. Era o que o artista via, e a rota por seleção — que deixa
+/// `anchored: false` — funcionava, o que fez o defeito parecer aleatório.
+///
+/// ⚠️ **O gate anterior (`a_fresh_pulley_seeds_its_wheels…`) monta o joint À MÃO
+/// com `anchored: false`**: a fixture não continha o fenômeno, porque não
+/// passava pelo gesto. Este passa pelos dois.
+#[test]
+fn a_pulley_is_rigged_by_both_creation_routes() {
+    // A pose que a fixture monta: `Hook` em (0, 6), `Plank` em (0, 5).
+    let (pa, pb) = ([0.0f32, 6.0], [0.0f32, 5.0]);
+    for at in [None, Some((pa, pb))] {
+        let route = if at.is_some() { "canvas" } else { "seleção" };
+        let (mut sim, hook, plank) = two_bodies(true);
+        let joint = super::inspector_joint::create_joint_at(
+            &mut sim,
+            hook.to_bits(),
+            plank.to_bits(),
+            JointKind::Pulley,
+            at,
+        )
+        .expect("join");
+        let mut bridge = PhysicsBridge::new();
+        bridge.dispatch(&mut sim, false, 1);
+        let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+
+        // 1. As roldanas NÃO estão na origem do mundo — o sintoma, direto.
+        assert!(
+            j.wheel_a != [0.0, 0.0] && j.wheel_b != [0.0, 0.0],
+            "{route}: roldanas em {:?} / {:?} — não semeadas",
+            j.wheel_a,
+            j.wheel_b
+        );
+        // 2. Cada uma fica ACIMA do seu corpo, que é o que uma roldana faz.
+        for (w, body, tag) in [(j.wheel_a, pa, "A"), (j.wheel_b, pb, "B")] {
+            assert!(
+                (w[0] - body[0]).abs() < 1.0e-4 && w[1] > body[1],
+                "{route}: a roldana {tag} ({w:?}) não está acima do corpo {body:?}"
+            );
+        }
+        // 3. E a corda nasce EXATAMENTE esticada — medido aqui, dos números do
+        //    componente, sem re-chamar a função que os produziu.
+        let world = |p: [f32; 2], local: [f32; 2]| [p[0] + local[0], p[1] + local[1]];
+        let branch = |p: [f32; 2], w: [f32; 2]| {
+            let (dx, dy) = (p[0] - w[0], p[1] - w[1]);
+            (dx * dx + dy * dy).sqrt()
+        };
+        let taut = branch(world(pa, j.local_a), j.wheel_a)
+            + j.ratio * branch(world(pb, j.local_b), j.wheel_b);
+        assert!(
+            (taut - j.max_length).abs() < 1.0e-3,
+            "{route}: a corda mede {:.4} e o vão montado é {taut:.4}",
+            j.max_length
+        );
+    }
+}

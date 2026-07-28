@@ -534,6 +534,7 @@ fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_JOINT_STIFFNESS, info.stiffness),
         (ids::INSP_JOINT_DAMPING, info.damping),
         (ids::INSP_JOINT_MAX_LENGTH, info.max_length),
+        (ids::INSP_JOINT_RATIO, info.ratio),
         // W-J7. Without these two the rows would be WRITE-ONLY — the failure
         // the area rows shipped with (W-AreaTorque): typing works, and then
         // re-selecting the joint shows the seed instead of what was authored.

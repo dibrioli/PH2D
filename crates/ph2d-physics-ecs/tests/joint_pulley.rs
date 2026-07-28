@@ -220,3 +220,27 @@ fn a_pulley_conducts_the_jointed_group() {
     let group = ph2d_physics_ecs::jointed_group(sim.world_mut(), &[load]);
     assert_eq!(group.len(), 2, "a corda liga os dois corpos: {group:?}");
 }
+
+/// **A view de uma polia diz que ela NÃO PARTE, e `∞` é como isso se diz.**
+///
+/// O campo é lido por `is_finite()` rio abaixo (o readout do overlay), então
+/// `0.0` não significa *sem limiar* — significa **parte a 0 N**, e era isso que
+/// punha um `0 / 0 N` permanente sobre toda corda na tela. É a mesma lei que o
+/// `joint_desc` aplica a um checkbox desarmado, agora no tipo que não tem
+/// checkbox nenhum.
+#[test]
+fn a_pulley_view_reports_no_break_threshold() {
+    let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 1);
+    let v = bridge
+        .joint_views()
+        .find(|v| v.kind == JointKind::Pulley)
+        .expect("a polia tem view");
+    assert!(
+        v.break_force.is_infinite() && v.break_torque.is_infinite(),
+        "os dois tetos: {} / {}",
+        v.break_force,
+        v.break_torque
+    );
+}

@@ -230,3 +230,41 @@ fn the_readout_respects_the_overlay_switch() {
         .is_empty()
     );
 }
+
+/// **Um tipo que NÃO PARTE não imprime carga nenhuma** — nem selecionado.
+///
+/// A polia não vive no `ImpulseJointSet`: nada mede a reação dela, então o par
+/// de números é estruturalmente zero para sempre. Foi o que o artista
+/// fotografou — um `0 / 0 N` fixo por cima de uma corda —, e ele tinha **duas**
+/// causas somadas, cada uma bastando sozinha:
+///
+/// 1. a view da polia nascia com `break_force: 0.0`, e o leitor decide por
+///    `is_finite()` ⇒ zero não significava *sem limiar*, significava *parte a
+///    0 N*. `∞` é o que "não parte" É, e é o que o `joint_desc` já escrevia
+///    para um checkbox desarmado;
+/// 2. o readout nunca perguntava `can_break()` — a MESMA porta que a §12 usa
+///    para não pintar a caixa Breakable daquele tipo.
+///
+/// ⚠️ **Defesa em camadas ⇒ um gate por camada** ([[feedback_layered_defenses_need_per_layer_gates]]):
+/// este fixa a segunda pela raiz, dando um teto FINITO a uma polia — se só a
+/// correção (1) existisse, ele sangraria.
+#[test]
+fn a_kind_that_cannot_break_prints_no_load() {
+    let pulley = JointView {
+        kind: JointKind::Pulley,
+        // Um teto finito, de propósito: sem ele o gate passaria pela metade
+        // errada (o `breakable` já seria falso) e não diria nada sobre a porta.
+        ..view(9.8, 9.8, 100.0, false)
+    };
+    assert!(
+        texts(&pulley, false).is_empty(),
+        "uma polia não selecionada não tem carga a mostrar"
+    );
+    assert!(
+        texts(&pulley, true).is_empty(),
+        "e selecioná-la não inventa uma: o readout pergunta `can_break()`, \
+         como a §12 faz para não pintar a caixa Breakable"
+    );
+    // O controle: o MESMO estado num tipo que parte imprime.
+    assert_eq!(texts(&view(9.8, 9.8, 100.0, false), false), ["9.8 / 100 N"]);
+}

@@ -101,7 +101,28 @@ pub(super) fn anchor_points(
 ///
 /// O comprimento é o vão que a montagem tem AGORA (`l1 + razão·l2`), então a
 /// corda nasce exatamente esticada e o primeiro frame não dá um puxão.
-fn pulley_rig(
+///
+/// ## Por que ela é `pub`: DOIS chamadores, uma resposta
+///
+/// O semeio do reconcile (logo abaixo) é gateado em `anchored`, e esse sentinela
+/// responde *"as âncoras estão autoradas?"*. O gesto de criação pelo CANVAS
+/// (press no corpo A → arrasta → solta no B) **sabe** onde as âncoras vão e por
+/// isso nasce `anchored: true` — deliberadamente, senão a política de semeio
+/// jogaria fora o ponto que o artista apontou.
+///
+/// ⚠️ **E aí um sentinela respondia DUAS perguntas.** A rota que aprendeu a
+/// responder a primeira pulava a segunda em silêncio: uma polia criada pelo
+/// canvas ficava com as duas roldanas em `[0, 0]`, ou seja **na origem do
+/// mundo**, com a corda saindo de cada corpo até lá. Foi o que o artista
+/// fotografou. A rota por SELEÇÃO ("Join Selected Bodies") não tinha o defeito
+/// — ela deixa `anchored: false` —, e é por isso que a cena do smoke funcionava
+/// e a criação à mão não.
+///
+/// A cura não é um segundo sentinela: é o gesto de criação **estabelecer a
+/// geometria autorada INTEIRA**, chamando esta mesma função. Uma segunda cópia
+/// da regra de montagem — no shell, perto do gesto — divergiria desta na
+/// primeira vez que qualquer uma das duas mudasse.
+pub fn pulley_rig(
     j: &PhysicsJoint,
     rest_a: [f32; 2],
     rest_b: [f32; 2],

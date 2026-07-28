@@ -16,9 +16,11 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
-use ph2d_editor_core::screens::hero::{InspectorJointInfo, JointFieldEdit};
+use ph2d_editor_core::screens::hero::{InspectorJointInfo, InspectorNameInfo, JointFieldEdit};
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_joint};
+use ph2d_panel_inspector::{
+    InspectorPanel, InspectorState, set_current_inspector_joint, set_current_inspector_name,
+};
 use ph2d_ui_testkit::MockPanelHost;
 
 const ENTITY: u64 = 0x5EED_0042;
@@ -51,6 +53,7 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         stiffness: 30.0,
         damping: 0.5,
         max_length: 2.0,
+        ratio: 1.0,
         // No pick armed by default — the base fixture is a joint being tuned.
         pick_armed: 0,
         // Breaking is ON in the base fixture so the thresholds are on screen for
@@ -123,11 +126,11 @@ fn expect(actions: &[EditorAction], edit: JointFieldEdit, what: &str) {
     );
 }
 
-/// **Every kind chip is clickable and picks its own kind.**
 /// Tag da POLIA — o único tipo que NÃO pode partir (ela não vive no
 /// `ImpulseJointSet`, então nada mede a reação dela).
 const KIND_PULLEY: u8 = 7;
 
+/// **Every kind chip is clickable and picks its own kind.**
 #[test]
 fn the_kind_chips_each_pick_their_own_kind() {
     for (i, &id) in ids::INSP_JOINT_KIND.iter().enumerate() {
@@ -732,4 +735,183 @@ fn the_swap_survives_a_body_that_no_longer_resolves() {
         JointFieldEdit::Swap,
         "Swap with a missing Body A",
     );
+}
+
+/// **Toda row NUMÉRICA que a §12 pinta é SEMEADA, ESPELHADA e ROTEADA** — as
+/// três metades que fazem uma caixa de número ser um controle e não um enfeite.
+///
+/// ## Por que este gate existe
+///
+/// A row **Ratio** da polia (W-Pulley) shipou com as três faltando de uma vez:
+/// nunca foi registrada no `populate_physics` (logo, morta sob o mouse), nunca
+/// entrou no `sync_joint_fields` (logo, a caixa mostrava a semente em vez do
+/// valor autorado — foi o que o artista reportou), e não tinha braço no
+/// `event_joint` nem variante em `JointFieldEdit` (logo, digitar nela não fazia
+/// **nada**). O doc-comment do `sync_joint_fields` **já avisava** contra
+/// exatamente isto, nomeando a wave anterior que o cometeu (W-AreaTorque) — e a
+/// wave seguinte o cometeu de novo, porque um aviso em prosa não falha.
+///
+/// O seam de PRESENÇA ao lado ficou verde o tempo todo: ele pergunta *a row está
+/// na tela?*, e a row estava.
+///
+/// ## Como ele acha as rows sem uma lista à mão
+///
+/// A lista de rows numéricas **não é escrita aqui** — ela é a DIFERENÇA entre o
+/// que o Inspector pinta com uma joint selecionada e o que ele pinta sem
+/// nenhuma, menos os chips e botões enumerados abaixo. Uma row nova entra na
+/// varredura sem ninguém lembrar dela, que é a propriedade que a lista à mão não
+/// tem (a faixa `0..4` deste mesmo arquivo apodreceu duas vezes).
+///
+/// ⚠️ **Um chip novo esquecido em `NOT_A_NUMBER` faz o gate exigir um número
+/// dele e FALHAR** — a direção segura. É a lista de números que não pode ficar
+/// incompleta, e ela é derivada.
+///
+/// ⚠️ **O que ele NÃO prova:** que cada id espelha o campo CERTO do snapshot.
+/// Ele prova que o valor veio do snapshot (está na faixa das sentinelas) e que
+/// duas rows não mostram o mesmo campo; o pareamento id↔campo é afirmado pelos
+/// gates de escrita (`commit`/`expect`) row a row.
+#[test]
+fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
+    // Os ids da §12 que NÃO são caixas de número: os chips segmentados, os
+    // botões e os ids de GRUPO que eles carregam.
+    let mut not_a_number: Vec<ph2d_a11y::NodeId> = Vec::new();
+    for group in [
+        &ids::INSP_JOINT_KIND[..],
+        &ids::INSP_JOINT_LIMITS[..],
+        &ids::INSP_JOINT_MOTOR[..],
+        &ids::INSP_JOINT_MOTOR_MODE[..],
+        &ids::INSP_JOINT_BREAK[..],
+        &ids::INSP_JOINT_ACTIVE[..],
+        &ids::INSP_JOINT_COLLIDE[..],
+    ] {
+        not_a_number.extend_from_slice(group);
+    }
+    not_a_number.extend_from_slice(&[
+        ids::INSP_JOINT_KIND_GROUP,
+        ids::INSP_JOINT_LIMITS_GROUP,
+        ids::INSP_JOINT_MOTOR_GROUP,
+        ids::INSP_JOINT_MOTOR_MODE_GROUP,
+        ids::INSP_JOINT_BREAK_GROUP,
+        ids::INSP_JOINT_ACTIVE_GROUP,
+        ids::INSP_JOINT_COLLIDE_GROUP,
+        ids::INSP_JOINT_SWAP,
+        ids::INSP_JOINT_REMOVE,
+        ids::INSP_JOINT_PICK_A,
+        ids::INSP_JOINT_PICK_B,
+        ids::INSP_LIVE_JOINT_SECTION,
+        ids::INSP_LIVE_JOINT_COLOR,
+        // ⚠️ A BARRA DE ROLAGEM do Inspector, e ela não é da §12: a seção só a
+        // faz aparecer porque o conteúdo passa a não caber. O gate a acusou
+        // sozinho, que é a direção segura de falha desta lista.
+        ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
+    ]);
+
+    // As sentinelas: distintas entre si, nenhuma igual a uma semente do
+    // `populate_physics` (-45 · 45 · 114 · 0 · 10 · 1 · 30 · 0,5 · 100 · 50),
+    // e todas dentro da faixa MAIS ESTREITA de todas as rows (a razão, 0,01..100)
+    // — uma sentinela fora da faixa seria clampada e o gate mediria o clamp.
+    const SENTINELS: [f32; 12] = [
+        61.0, 62.0, 63.0, 64.0, 65.0, 66.0, 67.0, 68.0, 69.0, 70.0, 71.0, 72.0,
+    ];
+    let numbered = |kind: u8| InspectorJointInfo {
+        limit_min_ui: SENTINELS[0],
+        limit_max_ui: SENTINELS[1],
+        motor_speed_ui: SENTINELS[2],
+        motor_target_ui: SENTINELS[3],
+        motor_max_force: SENTINELS[4],
+        rest_length: SENTINELS[5],
+        stiffness: SENTINELS[6],
+        damping: SENTINELS[7],
+        max_length: SENTINELS[8],
+        ratio: SENTINELS[9],
+        break_force: SENTINELS[10],
+        break_torque: SENTINELS[11],
+        ..joint(kind)
+    };
+
+    // ⚠️ O `Name` entra nos DOIS passes, e é o que torna o controle um
+    // controle: ele existe porque o `entity_changed` do sync — a porta que
+    // decide re-semear as caixas — só dispara com uma entidade selecionada, e
+    // pô-lo só no experimento faria a seção NOME inteira aparecer na diferença.
+    // (Foi o que aconteceu: o gate nasceu acusando um id do nome.)
+    let name = || {
+        set_current_inspector_name(Some(InspectorNameInfo {
+            entity_bits: ENTITY,
+            name: "Hook : Plank".into(),
+        }));
+    };
+
+    for kind in 0u8..ids::INSP_JOINT_KIND.len() as u8 {
+        // O que o Inspector pinta SEM joint nenhuma — o controle que isola os
+        // ids da §12 dos das outras seções.
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        name();
+        let base: Vec<_> = host
+            .paint::<InspectorPanel>(&mut state, VIEWPORT)
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect();
+        set_current_inspector_name(None);
+
+        // E com ela.
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        name();
+        set_current_inspector_joint(Some(numbered(kind)));
+        let painted: Vec<_> = host
+            .paint::<InspectorPanel>(&mut state, VIEWPORT)
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect();
+
+        let rows: Vec<_> = painted
+            .iter()
+            .copied()
+            .filter(|id| !base.contains(id) && !not_a_number.contains(id))
+            .collect();
+        assert!(
+            !rows.is_empty(),
+            "kind {kind}: a §12 não pintou caixa de número nenhuma — ou o \
+             controle sem joint passou a pintar a seção, e aí este gate está cego"
+        );
+
+        let mut seen: Vec<f64> = Vec::new();
+        for &id in &rows {
+            let v = host.store().number_value(id).unwrap_or_else(|| {
+                panic!(
+                    "kind {kind}: {id:?} é pintada e registrada no hit index mas o \
+                     store não a conhece como número — ela não está no \
+                     `populate_physics`, logo está morta sob o mouse"
+                )
+            });
+            assert!(
+                SENTINELS.iter().any(|s| (v - f64::from(*s)).abs() < 1e-6),
+                "kind {kind}: {id:?} mostra {v}, que não é nenhum valor do \
+                 snapshot — ela não está em `sync_joint_fields`, então a caixa é \
+                 WRITE-ONLY: digitar funciona e re-selecionar mostra a semente"
+            );
+            assert!(
+                !seen.iter().any(|s| (s - v).abs() < 1e-6),
+                "kind {kind}: {id:?} mostra {v}, o MESMO campo que outra row — \
+                 duas caixas espelhando um valor só"
+            );
+            seen.push(v);
+        }
+        set_current_inspector_joint(None);
+        set_current_inspector_name(None);
+
+        // E a terceira metade: digitar nela chega ao barramento.
+        for &id in &rows {
+            let actions = commit(numbered(kind), id, 7.0);
+            assert!(
+                matches!(
+                    actions.as_slice(),
+                    [EditorAction::InspectorJointEdit { .. }]
+                ),
+                "kind {kind}: mudar {id:?} produziu {actions:?} — a row não tem \
+                 braço no `event_joint`, então digitar nela não faz nada"
+            );
+        }
+    }
 }

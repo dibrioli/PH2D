@@ -123,6 +123,14 @@ pub(super) fn joint_readouts(
         if !v.active {
             continue;
         }
+        // **E um tipo que NÃO PARTE não tem carga a mostrar** — a mesma porta
+        // que a §12 pergunta para não pintar a caixa Breakable (`can_break`).
+        // Uma polia não vive no `ImpulseJointSet`, então nada mede a reação
+        // dela: o par de números seria estruturalmente zero para sempre, e um
+        // zero permanente é a forma de readout que não responde a nada.
+        if !v.kind.can_break() {
+            continue;
+        }
         let breakable = v.break_force.is_finite() || v.break_torque.is_finite();
         if !breakable && selected != Some(v.entity) {
             continue;

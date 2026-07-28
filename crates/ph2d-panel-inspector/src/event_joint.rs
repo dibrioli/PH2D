@@ -62,6 +62,7 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 ids::INSP_JOINT_STIFFNESS => Some(JointFieldEdit::Stiffness(v)),
                 ids::INSP_JOINT_DAMPING => Some(JointFieldEdit::Damping(v)),
                 ids::INSP_JOINT_MAX_LENGTH => Some(JointFieldEdit::MaxLength(v)),
+                ids::INSP_JOINT_RATIO => Some(JointFieldEdit::Ratio(v)),
                 ids::INSP_JOINT_BREAK_FORCE => Some(JointFieldEdit::BreakForce(v)),
                 ids::INSP_JOINT_BREAK_TORQUE => Some(JointFieldEdit::BreakTorque(v)),
                 _ => None,

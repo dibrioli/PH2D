@@ -16,14 +16,14 @@ use ph2d_physics_ecs::{JointKind, JointView};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, PathEl};
 
-fn window() -> WindowSize {
+pub(super) fn window() -> WindowSize {
     WindowSize {
         width: 1000,
         height: 1000,
     }
 }
 
-fn camera() -> Camera2d {
+pub(super) fn camera() -> Camera2d {
     Camera2d {
         center: [0.0, 0.0],
         height_world: 10.0,
@@ -32,9 +32,9 @@ fn camera() -> Camera2d {
 }
 
 /// Gravidade padrão (Y-down no mundo Y-up): o que faz uma corda frouxa pendurar.
-const G: [f32; 2] = [0.0, -9.81];
+pub(super) const G: [f32; 2] = [0.0, -9.81];
 
-fn view(kind: JointKind) -> JointView {
+pub(super) fn view(kind: JointKind) -> JointView {
     JointView {
         entity: ph2d_ecs::Entity::from_bits(1),
         kind,
@@ -71,7 +71,7 @@ fn view(kind: JointKind) -> JointView {
     }
 }
 
-fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
+pub(super) fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
     joint_marks(true, std::slice::from_ref(v), G, &camera(), window())
 }
 
@@ -83,7 +83,7 @@ fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
 /// frouxa e a tesa com a mesma altura (6,0 px, as duas pontas) sobre um desenho
 /// correto. O polígono de controle limita a curva e fica do mesmo lado dela
 /// (propriedade do fecho convexo), que é o que um oráculo de FORMA precisa.
-fn points_of(marks: &[(BezPath, [f32; 4])], rgba: [f32; 4]) -> Vec<(f64, f64)> {
+pub(super) fn points_of(marks: &[(BezPath, [f32; 4])], rgba: [f32; 4]) -> Vec<(f64, f64)> {
     marks
         .iter()
         .filter(|(_, c)| *c == rgba)
@@ -141,7 +141,7 @@ fn radii_from(
 /// O quanto de ÂNGULO os pontos de uma cor cobrem numa faixa de raio — como se
 /// mede um ARCO. Uma linha reta que atravessa a faixa contribui uma direção só;
 /// um arco cobre a faixa inteira do limite.
-fn angular_spread(
+pub(super) fn angular_spread(
     marks: &[(BezPath, [f32; 4])],
     rgba: [f32; 4],
     centre_w: [f32; 2],
@@ -437,58 +437,6 @@ fn each_end_says_which_body_it_belongs_to() {
         w > 1.0,
         "as linhas de posse não alcançam os corpos (largura {w:.1} px): elas \
          existem justamente para ligar a âncora ao objeto"
-    );
-}
-
-/// **Um limite autorado é um limite DESENHADO** — e um pino livre não inventa
-/// paredes.
-#[test]
-fn a_limited_hinge_draws_its_arc_and_a_free_one_does_not() {
-    let mut limited = view(JointKind::Pin);
-    limited.limits = Some([-0.7, 0.7]);
-    let free = view(JointKind::Pin);
-
-    // ⚠️ O oráculo é ANGULAR, não de extensão: a caixa da banda apagada é
-    // dominada pelas linhas de posse (2 m = 200 px), e o arco de 21 px cabe
-    // inteiro dentro dela — a 1ª versão deste gate mediu 200,0 px nos dois
-    // casos e não podia falhar. Um arco é a única coisa que COBRE ângulo à
-    // distância fixa da âncora.
-    let band = (LIMIT_ARC_PX - 3.0, LIMIT_ARC_PX + 3.0);
-    let with = angular_spread(&marks(&limited), JOINT_DIM_RGBA, limited.anchor_a, band);
-    let without = angular_spread(&marks(&free), JOINT_DIM_RGBA, free.anchor_a, band);
-    assert!(
-        with > 1.0,
-        "o alcance autorado cobriu {with:.2} rad a {LIMIT_ARC_PX} px da âncora \
-         — o limite segue sendo número cego no §12"
-    );
-    assert!(
-        without < 0.2,
-        "um pino LIVRE desenhou {without:.2} rad de arco: paredes que ninguém \
-         autorou, que é pior que nenhuma parede"
-    );
-}
-
-/// **Um motor autorado gira na tela** — e o glifo é o MESMO da zona de torque,
-/// porque a pergunta é a mesma (*para que lado?*); a cor é que diz de quem.
-#[test]
-fn a_motor_is_visible_and_its_direction_is_the_sign() {
-    let mut cw = view(JointKind::Pin);
-    cw.motor_speed = Some(-2.0);
-    let mut ccw = view(JointKind::Pin);
-    ccw.motor_speed = Some(2.0);
-    let passive = view(JointKind::Pin);
-
-    let n = |v: &JointView| points_of(&marks(v), JOINT_RGBA).len();
-    assert!(
-        n(&cw) > n(&passive) && n(&ccw) > n(&passive),
-        "um pino motorizado desenhou o mesmo que um passivo: o motor é \
-         invisível na cena"
-    );
-    assert_ne!(
-        points_of(&marks(&cw), JOINT_RGBA),
-        points_of(&marks(&ccw), JOINT_RGBA),
-        "motor horário e anti-horário desenham igual — o SINAL é a informação \
-         inteira do glifo"
     );
 }
 

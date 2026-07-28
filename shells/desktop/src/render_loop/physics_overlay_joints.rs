@@ -164,14 +164,30 @@ pub(super) fn joint_marks(
         // desligado — ao contrário de um rompido, que sai por `continue` acima —
         // porque desligar é AUTORIA: o artista continua ajustando o alcance, e
         // esconder o que ele está ajustando é o oposto do que o botão promete.
+        // ⚠️ **`has_limits` E `!limits_in_metres`, as duas portas.** A segunda
+        // sempre esteve aqui; a primeira era herdada da PONTE, que só põe
+        // `Some` num tipo limitável — uma premissa correta e não declarada, do
+        // mesmo formato da que o anel de comprimento acabou de pagar. O desenho
+        // responde por si.
         if let Some(arc) = v
             .limits
-            .filter(|_| !v.kind.limits_in_metres())
+            .filter(|_| v.kind.has_limits() && !v.kind.limits_in_metres())
             .map(|l| limit_arc(camera, window, v.anchor_a, v.angle_a, l, v.angle_b))
         {
             out.push((arc, dim));
         }
-        if let Some(len) = v.length {
+        // ⚠️ **`length_is_a_radius`, não `length.is_some()`** — e a diferença é
+        // um bug que chegou à tela. Uma Spring/Rope/Rod nomeia um comprimento
+        // que É uma distância a partir da âncora, e o anel o desenha. Uma POLIA
+        // nomeia a corda INTEIRA (a soma dos dois ramos, que passam por
+        // roldanas em outro lugar): o mesmo campo, medindo outra coisa. Pintado
+        // como raio, ele vira um círculo gigante em volta da âncora,
+        // descrevendo uma distância que não existe na cena.
+        //
+        // A porta existia e estava aplicada a UM consumidor (o handle
+        // arrastável do `point_gizmo`); esta era a segunda cópia da pergunta, e
+        // duas cópias divergem — é a irmã exata do bug do trilho de 26/07.
+        if let Some(len) = v.length.filter(|_| v.kind.length_is_a_radius()) {
             out.push((length_ring(camera, window, v.anchor_a, len), dim));
         }
         // O motor reusa o glifo de giro da zona de torque: é a MESMA pergunta
@@ -543,3 +559,7 @@ fn gravity_on_screen(gravity: [f32; 2], camera: &Camera2d, window: WindowSize) -
 #[cfg(test)]
 #[path = "physics_overlay_joints_tests.rs"]
 mod joint_tests;
+
+#[cfg(test)]
+#[path = "physics_overlay_joint_envelope_tests.rs"]
+mod joint_envelope_tests;

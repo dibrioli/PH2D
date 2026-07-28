@@ -164,6 +164,7 @@ pub(crate) fn build_joint_info(
         stiffness: joint.stiffness,
         damping: joint.damping,
         max_length: joint.max_length,
+        ratio: joint.ratio,
         pick_armed,
         break_enabled: joint.break_enabled,
         break_force: joint.break_force,
@@ -343,6 +344,10 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // A rope of zero length is a weld nobody asked for, and rapier's own
         // docs require the distance to be strictly positive.
         JointFieldEdit::MaxLength(v) => next.max_length = v.max(1e-3),
+        // Sem piso aqui: o `clamped()` na saída desta função é a porta única
+        // que conhece o `MIN_RATIO`, e repeti-lo seria o segundo lugar onde a
+        // razão mínima é decidida.
+        JointFieldEdit::Ratio(v) => next.ratio = v,
         // W-J7. No unit conversion in either direction: a newton and a
         // newton-metre mean the same thing on both sides of this boundary, which
         // is exactly why these two rows need no `limit_in`/`motor_in` twin.
@@ -466,13 +471,31 @@ pub(crate) fn create_joint_at(
             ph2d_physics_ecs::PhysicsWorld::local_anchor_at_pose(pose(a)?, wa),
             ph2d_physics_ecs::PhysicsWorld::local_anchor_at_pose(pose(b)?, wb),
             wa,
+            wb,
         ))
     });
     // The display pivot: the A anchor when the gesture named one (the value
     // `sync_joint_pivots` will keep deriving), the midpoint otherwise.
-    let origin = anchored.map_or((pa + pb) * 0.5, |(_, _, wa)| {
+    let origin = anchored.map_or((pa + pb) * 0.5, |(_, _, wa, _)| {
         ph2d_core::Vec2::new(wa[0], wa[1])
     });
+    let base = PhysicsJoint::of_kind(kind);
+    // ⚠️ **A geometria autorada de uma POLIA é MAIS que as duas âncoras** — ela
+    // tem duas roldanas e um comprimento de corda —, e `anchored: true` diz ao
+    // reconcile *"leia o que está guardado, não semeie"*. Uma polia criada por
+    // este gesto saía com as roldanas em `[0, 0]`: as duas na **origem do
+    // mundo**, com a corda indo de cada corpo até lá (o que o artista
+    // fotografou). A rota por SELEÇÃO nunca teve o defeito, porque ela deixa
+    // `anchored: false` e o semeio do reconcile roda.
+    //
+    // Um sentinela, duas perguntas — então o gesto estabelece as DUAS metades,
+    // pela MESMA `pulley_rig` que o reconcile chama. Uma cópia da regra de
+    // montagem aqui divergiria dela na primeira vez que qualquer uma mudasse.
+    let rig = anchored
+        .filter(|_| kind == JointKind::Pulley)
+        .map(|(_, _, wa, wb)| {
+            ph2d_physics_ecs::pulley_rig(&base, [pa.x, pa.y], [pb.x, pb.y], wa, wb)
+        });
     let joint = sim
         .world_mut()
         .spawn((
@@ -480,15 +503,18 @@ pub(crate) fn create_joint_at(
             PhysicsJoint {
                 body_a: stable_name_id(&name_a),
                 body_b: stable_name_id(&name_b),
-                local_a: anchored.map_or([0.0, 0.0], |(la, _, _)| la),
-                local_b: anchored.map_or([0.0, 0.0], |(_, lb, _)| lb),
+                local_a: anchored.map_or([0.0, 0.0], |(la, _, _, _)| la),
+                local_b: anchored.map_or([0.0, 0.0], |(_, lb, _, _)| lb),
                 anchored: anchored.is_some(),
+                wheel_a: rig.map_or(base.wheel_a, |r| r.0),
+                wheel_b: rig.map_or(base.wheel_b, |r| r.1),
+                max_length: rig.map_or(base.max_length, |r| r.2),
                 // ⚠️ `of_kind`, not `default()` + `kind` — the numbers that carry
                 // a unit have to be seeded in THIS kind's unit. Built the other
                 // way, "Join As = Slider" gave a rail +-0.785 METRES of stroke
                 // (the Pin's +-45 deg read as a length) while making a Pin and
                 // switching it to Slider gave +-0.5. Same door for both routes.
-                ..PhysicsJoint::of_kind(kind)
+                ..base
             },
             Transform::from_translation(origin),
         ))

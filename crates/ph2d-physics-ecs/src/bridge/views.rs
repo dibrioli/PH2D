@@ -226,8 +226,15 @@ impl PhysicsBridge {
                     force: 0.0,
                     torque: 0.0,
                 },
-                break_force: 0.0,
-                break_torque: 0.0,
+                // ⚠️ **`∞` é o que "não parte" É** — a mesma lei que o
+                // `joint_desc` aplica ao checkbox desarmado. Aqui estava `0.0`,
+                // e o leitor do readout decide por `is_finite()`: zero não
+                // significava *sem limiar*, significava **parte a 0 N**, então
+                // toda polia na tela carregava um `0 / 0 N` permanente — um par
+                // de números que não responde a nada, sobre um tipo que
+                // `can_break()` já recusa.
+                break_force: f32::INFINITY,
+                break_torque: f32::INFINITY,
             })
         })
     }

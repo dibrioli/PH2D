@@ -84,6 +84,12 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         (ids::INSP_JOINT_BREAK_FORCE, 100.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newtons
         (ids::INSP_JOINT_BREAK_TORQUE, 50.0, 0.0, 10000.0, 1.0), // LITERAL-PX-OK: newton-metres
         (ids::INSP_JOINT_MAX_LENGTH, 1.0, 0.001, 1000.0, 0.01),  // LITERAL-PX-OK: meters
+        // A razão da talha (W-Pulley) — adimensional. ⚠️ **O modelo não tem teto
+        // próprio**: a razão multiplica o ramo B no comprimento da corda e nada
+        // se esgota quando ela cresce, então este máximo é conveniência de
+        // arrasto e não um recurso medido. O MÍNIMO é: `PhysicsJoint::MIN_RATIO`
+        // (0,01) existe porque razão zero apaga o ramo B da corda.
+        (ids::INSP_JOINT_RATIO, 1.0, 0.01, 100.0, 0.05), // LITERAL-PX-OK: adimensional
     ] {
         store.register(
             id,

@@ -175,10 +175,18 @@ pub(crate) fn serialize(timeline: &mut TimelineState, world: &World) -> Result<V
 /// Selection / history / clipboard não são persistidos: nascem limpos em volta do documento
 /// carregado, então um undo depois do load não alcança a sessão anterior.
 pub(crate) fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
-    let mut timeline = TimelineState::new();
     if bytes.is_empty() {
-        return Ok(timeline); // projeto sem animação: a sessão fica com o documento vazio
+        // **Projeto SEM animação abre com o padrão do PRODUTO** (4 s autorados), não com o
+        // documento derivado-0 (Enio: *"a duração padrão do clip deve ser 4seg, mas ao abrir a
+        // timeline está 0"* / *"o véu deve ficar visível sempre"*). Um Ctrl+O de um arquivo
+        // velho (sem timeline) ou de um projeto salvo antes de tocar a animação instalava um
+        // `TimelineState::new()` DERIVADO — `scene_length: None`, clips sem override —, e a
+        // sessão abria com Dur 0, sem véu, e com as expressões PURAS extrapolando (nada as
+        // cortava: `cut_scene`/`clip_cut` só clampam quando há duração autorada). É a MESMA
+        // composição de 4 s que o boot instala (`main.rs`), agora também na porta de load.
+        return Ok(TimelineState::with_default_duration());
     }
+    let mut timeline = TimelineState::new();
     timeline.doc = ph2d_timeline::TimelineDoc::from_bytes(bytes)?;
     // `entity_of` sempre `None` ⇒ `entity = 0` + `missing` em TODA binding (contrato do
     // `resolve_entities`). O `wire_id` — que é o que importa — vem do arquivo, intacto.
@@ -428,6 +436,29 @@ mod tests {
         assert!(
             install_from_project(&[]).unwrap().doc.bindings().is_empty(),
             "…e um projeto SEM animação abre com o documento vazio, sem erro"
+        );
+    }
+
+    /// **Um projeto SEM timeline abre com a composição-padrão de 4 s** (Enio, 2026-07-27:
+    /// *"a duração padrão do clip deve ser 4seg, mas ao abrir a timeline está 0"* / *"o véu
+    /// deve ficar visível sempre"*), não com o `new()` DERIVADO-0 — que deixava Dur 0, sem
+    /// véu, e as expressões PURAS extrapolando (nada as cortava). O MESMO padrão que o boot
+    /// instala (`main.rs` → `with_default_duration`).
+    ///
+    /// Mutação: `install_from_project(&[])` voltar a `TimelineState::new()` → `view_authored_end`
+    /// = None → RED.
+    #[test]
+    fn an_empty_project_opens_with_the_default_four_second_composition() {
+        let st = install_from_project(&[]).expect("empty is Ok");
+        assert_eq!(
+            st.doc.view_authored_end(None, false),
+            Some(4.0),
+            "sem timeline no arquivo, a cena abre com 4 s autorados (o véu é visível desde o 1º frame)"
+        );
+        assert_eq!(
+            st.doc.clip_length_override(0),
+            Some(4.0),
+            "e o clip 0 (a aba Keys) também abre com 4 s autorados"
         );
     }
 }

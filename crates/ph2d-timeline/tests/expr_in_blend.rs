@@ -748,3 +748,49 @@ fn measure_hundreds_of_prop_link_channels() {
         .x
         .is_finite());
 }
+
+/// **A per-clip expression FREEZES at the clip's authored cut** (Enio: *"expressões não estão
+/// obedecendo a duração dos clips e tocam fora da área válida"*). A clip authored to 2 s,
+/// driving X by the pure expression `time*10` over a strip `[0,5)`: within the cut `time`
+/// advances; PAST the cut it holds the cut's `time` (2 s) — the SAME `cut_source` (`clip_cut`)
+/// the keyed pass rides (`stack_frames::collect_frame`), so the formula respects the veil that
+/// darkens the dead zone. With NO authored duration there is no cut, and it plays the strip.
+///
+/// This is why Bug 5 was a consequence of Bug 4: the leak is a clip with `length_override:
+/// None` (nothing cuts it), not an expr that ignores the cut.
+///
+/// Mutation: drop the `cut_source` clamp in `collect_frame` -> the expr extrapolates past the
+/// cut (30, not the frozen 20), and the first assert on the authored clip fails.
+#[test]
+fn a_per_clip_expression_freezes_at_the_clips_authored_cut() {
+    let build = |dur: Option<f64>| {
+        let (world, mut doc, e) = scene(0.0);
+        set_expr(&mut doc, 0, e, PropKind::TranslationX, "time*10");
+        doc.set_clip_length_override(0, dur);
+        doc.set_scene_length(Some(5.0)); // the scene does not cut first
+        let mut lane = ClipLane::new("Base");
+        lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 5.0, 5.0));
+        doc.stack_mut().push(lane);
+        (world, doc, e)
+    };
+
+    // Authored to 2 s: t=1 -> 10; t=3 (past the cut) -> FROZEN at the 2 s pose = 20.
+    let (mut w, mut doc, e) = build(Some(2.0));
+    apply_from_doc(&mut w, &mut doc, 1.0);
+    assert!((x_of(&w, e) - 10.0).abs() < 1e-3, "within the cut: time*10 = 10");
+    apply_from_doc(&mut w, &mut doc, 3.0);
+    assert!(
+        (x_of(&w, e) - 20.0).abs() < 1e-3,
+        "past the 2 s cut the expr FREEZES at time=2 (-> 20), never extrapolates: {}",
+        x_of(&w, e)
+    );
+
+    // No authored duration -> no cut -> the whole strip plays (t=3 -> 30).
+    let (mut w2, mut doc2, e2) = build(None);
+    apply_from_doc(&mut w2, &mut doc2, 3.0);
+    assert!(
+        (x_of(&w2, e2) - 30.0).abs() < 1e-3,
+        "no override = no cut, the expr plays the strip: {}",
+        x_of(&w2, e2)
+    );
+}

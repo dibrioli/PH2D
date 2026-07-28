@@ -142,6 +142,11 @@ impl crate::App {
             }
 
             doc.set_active(base); // the Keys tab shows the always-on objects
+            // The scene is a 6 s composition — matching the [0,6) content and the loop below.
+            // (`with_default_duration` opens at 4 s; left there, `cut_scene` would FREEZE every
+            // object from 4-6 s while the playhead ran on, which reads as a bug — the veil and
+            // the content must agree.)
+            doc.set_scene_length(Some(6.0));
             doc.set_active_loop_for(false, Some((0.0, 6.0))); // the ARRANGE loop
             add_lane
         };

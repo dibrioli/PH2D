@@ -135,9 +135,11 @@ posição do centroide da sombra, e a mensagem traz os números.
   construído por outro motivo, e a wave inteira coube num braço de shader.
 - **W5b — OS ARTEFATOS DO CAMPO (FECHADA, pendente de smoke):** o pente do feather/bevel, a serrilha
   do contorno e a ponta ceifada pelo traço. Ver §11.
-- **W6 — o que ainda pede maquinaria NOVA:** turbulência + deslocamento (o
-  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem) e o
-  blend mode POR DEGRAU (o Layer Style do Photoshop). Nenhum deles muda a pilha.
+- **W6a — A LEI DE MISTURA POR DEGRAU (FECHADA, pendente de smoke):** o blend mode do Layer Style,
+  em **quatro** dos nove tipos. Ver §12.
+- **W6b — o que ainda pede maquinaria NOVA:** turbulência + deslocamento (o
+  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem).
+  Não muda a pilha.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -521,3 +523,109 @@ scratch.
 
 +2 de GPU (o bucket do contorno dos dois lados) e +1 puro na `ph2d-vec-render` (a ponta do miter
 cabe no bbox, com a ponta calculada ANALITICAMENTE). **22 mutações na jornada, 22 sangram.**
+
+
+## §12 — W6a: a LEI DE MISTURA por degrau
+
+**Multiplicador, não um décimo tipo.** As vinte leis vezes os degraus que já existem: Inner Shadow
+em `Multiply` escurece em vez de lavar, Inner Glow em `Screen` acende, Bevel em `Overlay` lê como
+material, e Color Overlay em `Color` troca a matiz preservando a luminosidade — **o tint/duotone que
+esta própria fila listava como item à parte, e que sai daqui sem uma linha de kernel nova**.
+
+### A lei vem do arquivo que o compositor de camadas compila
+
+`blend_sep`/`blend_hsl` (W3C Compositing L1, 22 modos) viviam dentro do `layer_composite.wgsl`,
+pinados bit a bit contra o Rust. Ganharam um SEGUNDO consumidor ⇒ saíram para
+`shaders/blend_modes.wgsl`, e a `composite_source()` os re-concatena. **Movimento de código puro**
+— os 16 gates do compositor, incluindo os dois de naga, passaram sem uma alteração de asserção.
+
+⚠️ **A porta de montagem é ÚNICA dos dois lados** (`composite_source` no compositor,
+`module_sources` na pilha de FX): um gate que montasse a própria concatenação validaria a si mesmo
+e ficaria verde sobre um produto que deixou de prefixar o bloco. Mutação: `blend = ""` ⇒ os dois
+gates de naga vermelhos.
+
+### QUEM toma a lei, e por que os outros não (medido)
+
+A lei pesa pelo alfa do FUNDO — a fórmula do W3C, `Cs' = (1−ab)·Cs + ab·B(Cb,Cs)`. Um halo
+**EXTERNO** entra POR BAIXO da entrada (`over + halo·(1−ab)`), então:
+
+| onde | `ab` | a lei alcança | o halo aparece |
+|---|---|---|---|
+| fora da forma | 0 | nada (não há com que misturar) | sim |
+| rampa de AA | ~0,5 | **0,25** (o pico) | metade |
+| dentro | 1 | tudo | **nada** |
+
+O produto `ab·(1−ab)` pica em **0,25 exatamente na rampa de anti-aliasing**. Um controle cujo
+efeito inteiro é uma orla de 1 px lê como quebrado — e quem TINGE alcança **1,0** no MIOLO, quatro
+vezes mais. Daí a lista: **Inner Shadow · Inner Glow · Bevel · Color Overlay**. Blur e Feather não
+têm cor própria (a saída deles É a entrada transformada).
+
+⚠️ **`takes_blend` é campo PRÓPRIO da `FxKindSpec`, e não `!grows`** — hoje as duas listas
+coincidem, e coincidem por ACIDENTE: uma pergunta *preciso de margem na textura?*, a outra *a minha
+cor encosta na de baixo?*. Um *Satin* futuro (espalha para fora E tinge por dentro) responderia sim
+às duas, e derivar uma da outra o faria nascer sem o controle, em silêncio. Há gate que pina a
+coincidência **como coincidência**, com a mensagem a dizer que divergir é legítimo.
+
+### VINTE leis, e o `BlendMode` tem 22
+
+`Behind` e `Clear` (20/21) são operações de **COBERTURA** — o próprio `apply` do Rust as desvia
+antes da função de mistura. Um degrau aplica a lei dele exactamente onde a cobertura já está
+decidida pela lei DELE (o `inner_tint` existe *para não a mover*, e foi um bug real resolvido).
+Oferecê-las e depois dobrá-las em Normal no dispositivo seria a opção que despacha e mente.
+
+### As portas
+
+| pergunta | porta | consumidores |
+|---|---|---|
+| este tipo tem lei a honrar? | `FxOp::takes_blend` | o painel (OFERECER) · o produtor (HONRAR) |
+| que código vai ao dispositivo? | `FxOp::blend_code` | `resolve_ops` |
+| como duas cores se combinam? | `blend_modes.wgsl` | o compositor de camadas · a pilha de FX |
+| como a lei entra num degrau? | `fx_blend` (WGSL) | `inner_tint` (os três de dentro) · Color Overlay |
+
+⚠️ **`inner_tint` ser porta única deu o blend aos três de dentro numa linha** — o Bevel de graça (a
+cor dele já é escolhida antes: branco na face iluminada, o tint na oposta).
+
+### Normal é byte-idêntico, e o early-out é load-bearing
+
+`mix(x, x, a)` é `x·(1−a) + x·a`, que em ponto flutuante **não é exactamente `x`** (gate
+`the_normal_early_out_is_load_bearing_because_mix_is_not_the_identity` — medido, diverge em muito
+mais que 1% dos pares). Sem o `return` antecipado no `fx_blend`, o caminho default da pilha inteira
+deixaria de ser byte-idêntico e a wave passaria a mexer na aparência de toda arte já autorada, um
+nível de cada vez.
+
+### O que o processo de mutação achou (três coisas, todas por não sangrar)
+
+1. **Neutralizar `is_hsl` deixava tudo verde** — as quatro leis não-separáveis não tinham cobertura
+   nenhuma, e `Color` é a que justifica a wave. Gate novo.
+2. **Jogar fora o peso do fundo (`mix → b`) também** — a fixture era um quadrado de borda DURA, sem
+   cobertura parcial, e o peso só é observável onde `ab` varre `(0,1)`. **A fixture não continha o
+   fenômeno**; agora há uma RAMPA (252 → 204 → 128).
+3. **O oráculo do HSL nasceu VERMELHO sobre produto CORRETO** — media Rec.709 sobre bytes sRGB, e a
+   lei preserva `0,3/0,59/0,11` sobre LINEAR. Dois pesos, dois espaços; preservar um não preserva o
+   outro. Medido certo: base **0,2159** → Color **0,2163**.
+
+E um gate que **não podia falhar** (comparava blend 0 com blend 0) foi deletado em vez de
+contrabandeado.
+
+### Schema
+
+**`PROJECT_SCHEMA` 37→38** — `FxOp` ganhou `blend` APENDADO, e postcard é posicional.
+`serde(default)` não salva: o formato não tem NOMES de campo, e um buffer que acaba cedo é erro de
+decode. `FLIP_SCHEMA_VERSION`/`VEC_SCENE_SCHEMA_VERSION` **intactos** (a lei é do componente ECS; a
+geometria do caminho não mudou uma vírgula). ⚠️ O número se CONTA a partir do `main` do dia.
+
+### Smoke
+
+**`PH2D_BUILD_SMOKE=34`** — quatro PARES, em cada um a mesma cor e a mesma opacidade, só a lei
+diferente. Números medidos pela sonda `measure_the_smoke_scene_pairs` antes de a mensagem os
+afirmar (ver o commit da cena: o par do Inner Shadow foi medido no lugar errado e depois com uma
+cor errada, e as duas rodadas estão registadas).
+
+### Aberto
+
+- **A lei de um halo EXTERNO contra a CENA** (o Drop Shadow em Multiply do Photoshop) exigiria que
+  a textura de saída do FX carregasse uma lei para o composite da cena — outra camada, outro dono.
+  Nomeado, não construído.
+- **O Bevel tem UMA lei para as duas faces.** O Photoshop tem duas (Highlight: Screen · Shadow:
+  Multiply). Uma só já é coerente (Multiply mata o realce e mantém a sombra; Screen o inverso), e o
+  par é refino de produto.

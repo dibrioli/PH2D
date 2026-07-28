@@ -39,7 +39,43 @@ d880fe3a5 W4  -- global = transformação do canal (NÃO fadeia); doc do expr_pa
 149ed53ef W6  -- autokey/onion lê o LinkFrame PERSISTIDO (cura do fantasma, C2)
 1865ac27f W7  -- corpus (#15 cross-OS, #6 Hole B) + aposenta #17 + mede o custo
 546a14cf2     -- split doc_scratch.rs (LOC cap)
+82ead2be5     -- cena de smoke PH2D_EXPR_BLEND_SMOKE
 + 1 docs: ADR-0146 Accepted e CONSTRUÍDO
+```
+
+## Correções pós-smoke (Enio, 2026-07-27 — reports do 1º smoke da wave)
+
+```
+81a5f1b95  fix: o gizmo do loop obedece o CONTAINER aberto (nao trava)
+7358c19cc  fix: projeto sem timeline abre com 4s autorados (veu + corte das expressoes)
+```
+
+Quatro reports, **três eram um por-linha e um por-composicao**:
+
+- **Loop gizmo TRAVA dentro de um container** (`81a5f1b95`): a brace do loop e DESENHADA
+  do `container_loop` (snapshot §487), mas o drag streamava `SetLoop`, cujo handler parkeia
+  no loop do clip/Arrange via `keys_mode` — escrevia onde nada e lido. Agora o drag ramifica
+  em `snap.container_open` → `SetContainerLoop`, o MESMO split do toggle Loop/PingPong
+  (`timeline_bridge.rs`) e do `duration_drag` (`length_scope`). Gate + mutacao no `loop_drag`.
+- **"Duracao padrao do clip deve ser 4s mas abre em 0 / veu so aparece se digitar" + "expressoes
+  tocam fora da area valida do clip"** (`7358c19cc`): eram **UM** — uma composicao de duracao 0.
+  Um `Ctrl+O` de projeto sem animacao instalava `TimelineState::new()` DERIVADO (`scene_length`
+  None, clips sem override), e a sessao abria Dur 0, sem veu, e as expressoes PURAS extrapolando
+  (nada as cortava). `install_from_project` agora usa `with_default_duration()` no caso vazio,
+  a MESMA composicao de 4s do boot. **MEDIDO:** uma expressao per-clip JA congela no corte
+  autorado (t=3 sobre clip de 2s → 20, nao 30) via `cut_source`/`stack_frames` — o vazamento
+  era so a AUSENCIA de duracao. Gate novo (`a_per_clip_expression_freezes_at_the_clips_authored_cut`)
+  + gate do load (`an_empty_project_opens_with_the_default_four_second_composition`), 2 mutacoes.
+  A cena de smoke tambem autora `scene_length=6s` (casava conteudo [0,6) com scene de 4s).
+- **"Ao deletar as strips de Arrange as expressoes dos clips foram deletadas" — SEM defeito, SEM
+  data loss (verdict b).** `remove_strip` (`stack_edit.rs:133`) so tira a strip da lane; NAO toca
+  `NamedClip.expr`. A formula continua no clip (o campo Expression da track a mostra) — ela apenas
+  PARA de dirigir porque uma expressao per-clip so dirige enquanto uma strip toca o clip (o design
+  da wave, ADR-0145/0146: *"value virou per-STRIP"*). So a **lixeira Delete Clip** (`transport_clips`)
+  apaga a expressao (dropa o clip inteiro). **Decisao de PRODUTO do Enio:** manter o per-strip
+  (uma expressao e uma camada, fadeia com a strip) ou querer uma expressao GLOBAL que sobrevive
+  (a UI hoje so autora per-clip via `SetBindingExpr` → `set_clip_expr`). Nada a corrigir sem essa
+  ordem — nao ha perda de dados.
 ```
 
 ## Impacto de integração — **LIMPO**

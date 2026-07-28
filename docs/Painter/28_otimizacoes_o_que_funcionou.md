@@ -2025,6 +2025,25 @@ escrita pela porta (sem entrada de undo) e um **controle** que exige que o vivo 
 difiram — senão o gate afirmaria `x == x`. Tirar o `capture_canvas` do `fork_canvas` o deixa **VERMELHO**
 (e derruba o irmão do §5.26 junto).
 
+#### ⛔ E a MESMA pergunta feita no COMMIT não é respondível ali — a tentativa, e o porquê
+
+A identidade tem dois regimes de âncora (o journal ancorado no *commit* e ancorado no *passo*), e o
+segundo pedia medição própria. Feita: **4083 bytes divergentes**, numa única família de gesto (o
+re-stamp do Deform), 588 de 589 chamadas concordando.
+
+⚠️ **E a divergência não refuta a identidade — ela é a razão de existir da absorção, dita de novo.** No
+`commit_structural_edit` o `absorb_foreign_writes` **ainda não rodou** (ele mora dentro do `record_*`,
+uma linha abaixo), então o cursor ali é o de **antes** da reconciliação: perguntar se ele é reconstruível
+é perguntar sobre um estado que a linha seguinte vai mover. O rastro do caso divergente mostra isso
+literalmente — ele é o único que **não** imprime `journal/COMMIT`, ou seja o `before` não é o cursor, ou
+seja a absorção ia disparar.
+
+⚠️ **É o MESMO erro que a §5.24 já registrou** (*"o censo estava medindo do lado errado do absorb"*), e
+ele reincidiu no mesmo dia, no mesmo módulo. A chamada foi **removida** e o motivo ficou escrito no
+sítio, porque uma rede que faz a pergunta certa no lugar errado é pior que rede nenhuma: ela produz um
+número que parece refutação. O lugar onde a pergunta cabe é `begin_undo_step` — **antes** do passo, que
+é o instante em que a absorção de fato consome o cursor —, e é lá que ela está.
+
 **O que isto autoriza, e o que ainda falta.** Autoriza a última troca: o `cursor` e o `stroke_undo`
 largam os planos, o `split` toma o lado `before` do journal e a materialização parte do plano VIVO —
 e com isso morrem o fork do pen-down (**3,16 ms**), o fold (**9,25**) e o `free` da geração anterior

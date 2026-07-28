@@ -157,6 +157,13 @@ impl PainterTool {
         let hint = self.undo.write_state.get().hint_for(before.writes);
         self.audit_commit_window(before.writes, hint);
         self.audit_journal_matches_the_before(&before);
+        // ⚠️ **A identidade do §5.28 NÃO é perguntável aqui, e a tentativa está registrada.** Neste
+        // ponto o `absorb_foreign_writes` ainda não rodou (ele mora dentro do `record_*` abaixo),
+        // então o cursor é o de ANTES da reconciliação — perguntar se ele é reconstruível é
+        // perguntar sobre um estado que a linha seguinte vai mover. Medido: 588 de 589 chamadas
+        // concordam e a exceção é o re-stamp do Deform, exatamente o caso que a absorção existe
+        // para consertar. O lugar onde a pergunta cabe é `begin_undo_step`, ANTES do passo (doc
+        // 28 §5.28), e é lá que ela está.
         let after = self.snapshot_model();
         self.undo.record_structural_hinted(before, after, hint);
         let mut w = self.undo.write_state.get();

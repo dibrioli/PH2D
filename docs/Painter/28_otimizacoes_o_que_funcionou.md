@@ -1872,6 +1872,63 @@ wave** — e o número diz que ela vale.
 
 ---
 
+### 5.26 ⚓ O journal é ancorado no PASSO, não no último commit — e o censo diz 742 de 878, zero divergências
+
+Autorizada a wave (§5.25), a peça seguinte é de **ciclo de vida**, não de custo: para o journal ser o
+lado `before` de um passo, ele tem de descrever *o que aquele passo encontrou*. Ancorado no último
+**commit** — como estava — ele descreve outra coisa, e a diferença tem nome desde 2026-07-26.
+
+**O mecanismo, em três estados.** Sejam `S0` o canvas no commit `N-1`, `S1` no pen-down de `N`, `S2` no
+commit `N`. Entre `S0` e `S1` pode haver escrita **sem entrada de undo** — a sim do Wet Paint
+compositando depois do pen-up, que é literalmente o que um *escorrido* é. O journal ancorado no commit
+guarda `S0` em **todo** tile que alguém tocou desde então, e *a primeira captura é a que vale*: nos
+tiles que a gota **e** o traço tocam, ele guarda `S0`. Mas o lado `before` do passo `N` é `S1`. Usá-lo
+assim daria ao undo uma tela do passo **anterior**, nos texels exatos em que os dois se sobrepõem.
+
+**A porta é `PainterTool::begin_undo_step()`**, chamada onde o `before` é capturado, e a ordem das duas
+metades carrega o peso:
+
+1. **a cadeia primeiro** (`absorb_foreign_writes_now`): a gota pertence ao passo anterior — foi ele que
+   a causou — e tem de entrar nele **antes** de o journal esquecer que a viu;
+2. **e só então o journal passa a descrever este passo** (`WriteState::begin_step`).
+
+⚠️ **A migração é incremental por PROVENIÊNCIA, não por lista de chamadores.** `WriteState` guarda o
+contador de escritas em que o journal foi zerado, e
+`journal_describes_step_at(before.writes)` só diz `true` quando os dois batem **exatamente**. Um sítio
+que ainda não abre passo deixa o journal ancorado num ponto mais velho, a pergunta responde `false`, e o
+commit cai no caminho de sempre — ***lento, nunca errado***. É a mesma política do contador de acessos
+não-declarados do S1, e é ela que impede que "esqueci um sítio" vire *"o undo devolveu pixels que nunca
+existiram"*. Dois sítios abrem passo hoje (o pen-down de traço e o Fill); o resto cai no fallback.
+
+**O censo, com a rede mirando o alvo FORTE** (o `before` do passo, em vez do cursor):
+
+```text
+  auditados        878 commits
+    PASSO          742   dos quais VAZIOS 106   com bytes 636   (181,3 M bytes conferidos)
+    COMMIT         136   dos quais VAZIOS  58   com bytes  78
+  DIVERGENCIAS       0
+```
+
+**85% dos commits da suíte já têm o journal ancorado no passo, e em 181,3 milhões de bytes ele reproduz
+o `before` do canvas byte a byte.** É a prova que faltava para ele virar a FONTE em vez da rede.
+
+⚠️ **A comparação é UMA função para os dois alvos** (`audit_journal_against`) — duas cópias divergiriam
+sobre o que *"o journal está certo"* significa, e o alvo forte nasceria com a asserção fraca. E ela
+conta **quantos elementos o journal de fato responde**: um journal vazio concorda com qualquer coisa, e
+*zero divergências sobre zero bytes* é exatamente o gate vazio que a §5.23 já pagou uma vez — daí os 106
+"VAZIOS" aparecerem separados no readout em vez de somarem ao sucesso.
+
+**Gate + mutação:** `a_foreign_write_between_two_steps_does_not_leak_into_the_second_ones_before` — uma
+gota escrita pela porta entre dois traços, e o traço seguinte deixado **ABERTO** (o pen-up commitaria e
+um commit zera o journal, tornando a asserção vacuosa — a armadilha que o gate da máscara já pagou).
+Tirar o `begin_undo_step()` do `paint_begin` o deixa **VERMELHO** com o byte pré-gota no lugar do pós.
+
+⚠️ **Uma ordenação ainda NÃO gateada, e fica dita em vez de contrabandeada:** absorver *antes* de zerar
+só é load-bearing quando a absorção passar a LER o journal (hoje ela compara snapshots e não o toca), então
+inverter as duas linhas não sangra nada agora. Está no doc-comment da porta, onde a próxima edição a lê.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

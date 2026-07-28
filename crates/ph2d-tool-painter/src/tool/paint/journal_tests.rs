@@ -119,6 +119,70 @@ fn reinstalling_a_model_forgets_what_the_step_had_captured() {
     );
 }
 
+/// **O journal é ancorado no PASSO, não no último commit** — e é isso que o torna utilizável como lado
+/// `before` (doc 28 §5.26).
+///
+/// Entre dois passos pode haver uma escrita de canvas **sem entrada de undo**: é o que a sim do Wet
+/// Paint faz a cada tick depois do pen-up, e é literalmente o que um *escorrido* é. Ancorado no último
+/// **commit**, o journal captura os bytes de antes da gota; o passo seguinte então encontraria, nos
+/// tiles que os dois tocam, um `before` do passo **anterior** — e o undo devolveria uma tela que nunca
+/// existiu. Ancorado no **passo** (`begin_undo_step`), ele descreve o que aquele passo de fato encontrou.
+///
+/// ⚠️ **Mutação que sangra:** tirar o `self.begin_undo_step()` do `paint_begin` — o journal segue com a
+/// captura de antes da gota e o gate acusa o byte pré-gota onde deveria estar o pós.
+#[test]
+fn a_foreign_write_between_two_steps_does_not_leak_into_the_second_ones_before() {
+    let mut t = armed(256);
+    stroke(&mut t, 100.0); // passo 1, commitado — o commit zera o journal
+
+    // **A gota**: escrita de canvas pela porta, sem entrada de undo nenhuma.
+    let (w, _h) = t.source_size;
+    let stride = w as usize * 4;
+    let probes: Vec<usize> = (96usize..112)
+        .map(|x| 200 * stride + x * 4) // pixels (96..112, 200) — dentro do traço 2 E da gota
+        .collect();
+    let pre: Vec<u8> = probes.iter().map(|&i| t.canvas_rgba[i]).collect();
+    {
+        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w);
+        for &i in &probes {
+            buf[i] = 33; // a tinta que a sim composita depois do pen-up
+        }
+    }
+    t.mark_dirty(crate::compositor::Region {
+        x: 96,
+        y: 200,
+        w: 16,
+        h: 1,
+    });
+    assert!(
+        pre.iter().all(|&b| b != 33),
+        "controle: a gota tem de mudar os bytes, senao pre e pos sao indistinguiveis"
+    );
+
+    // **Passo 2**, deixado ABERTO — o pen-up commitaria e um commit zera o journal, e aí a asserção
+    // seria verdadeira por vacuidade (a armadilha que o gate da máscara já pagou).
+    t.on_canvas_pointer(cp([60.0, 200.0], PointerPhase::Down));
+    for k in 1..=6u8 {
+        t.on_canvas_pointer(cp([60.0 + f32::from(k) * 30.0, 200.0], PointerPhase::Move));
+    }
+
+    let mut known = 0usize;
+    for &i in &probes {
+        if let Some(got) = journal_at(&t, i) {
+            known += 1;
+            assert_eq!(
+                got, 33,
+                "elemento {i}: o journal do passo 2 devolveu o byte de ANTES da gota — ele esta \
+                 ancorado no ultimo commit, nao neste passo"
+            );
+        }
+    }
+    assert!(
+        known > 0,
+        "controle: o traco 2 tem de tocar os tiles da gota, senao o gate nao pergunta nada"
+    );
+}
+
 /// **A troca de plano é PAREADA, e um traço comum nunca a deixa de pé.**
 ///
 /// O contador é a única coisa entre o journal e o plano errado; se um sítio trocasse e não voltasse, a

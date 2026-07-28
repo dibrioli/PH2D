@@ -119,6 +119,27 @@ impl PainterTool {
         self.undo.absorb_foreign_writes(&live);
     }
 
+    /// **Um passo de undo COMEÇA aqui** — a porta única do ciclo de vida de um passo, chamada onde o
+    /// `before` é capturado.
+    ///
+    /// A ordem das duas metades carrega o peso:
+    ///
+    /// 1. **a cadeia primeiro.** Se alguém escreveu desde o último commit (a gota que a sim do Wet Paint
+    ///    composita depois do pen-up), aquilo pertence ao passo **anterior** — foi ele que a causou — e
+    ///    tem de entrar nele **antes** de o journal esquecer que a viu.
+    /// 2. **e só então o journal passa a descrever ESTE passo.** Ancorado no último *commit* ele mistura
+    ///    as duas coisas, e nos tiles que ambas tocam a primeira captura é a da gota: o lado `before`
+    ///    sairia do passo anterior. Ancorado no *passo*, ele responde a pergunta certa.
+    ///
+    /// ⚠️ **Um sítio que ainda não a chama não fica errado, fica lento:** a proveniência
+    /// ([`crate::undo::window::WriteState::journal_describes_step_at`]) recusa o journal e o commit cai
+    /// no caminho de sempre. É a mesma política do contador de acessos não-declarados do S1, e é ela que
+    /// torna a migração incremental em vez de tudo-ou-nada.
+    pub(crate) fn begin_undo_step(&mut self) {
+        self.absorb_foreign_writes_now();
+        self.undo.write_state.begin_step(self.undo_writes);
+    }
+
     /// **O RE-CENSO da premissa do S3** — *o estado vivo serve de base para o delta?* (doc 28 §7).
     ///
     /// Chamado no instante de todo undo/redo, com `PH2D_UNDO_AUDIT=1` a suíte inteira desta crate vira
@@ -213,6 +234,12 @@ impl PainterTool {
     /// **identidade de `Arc`**: no caso comum nada escreveu desde o commit, então o `before` clona o
     /// ponteiro do cursor e a igualdade é exata e barata.
     ///
+    /// ⚠️ **E há agora um alvo MAIS FORTE, quando o sítio abre o passo** (doc 28 §5.26): com o journal
+    /// ancorado no início do passo (`begin_undo_step`) ele descreve o **`before` daquele passo**, que é
+    /// exatamente o lado que o commit precisa. Aí a rede compara contra o `before` — sem a escapatória
+    /// do `ptr_eq`, porque não há mais um vão entre o commit e o passo em que a gota pudesse morar.
+    /// Enquanto o sítio não abrir o passo, cai no alvo antigo (o cursor) e o commit segue derivando.
+    ///
     /// ```text
     /// PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter --lib 2>&1 | grep "journal do canvas"
     /// ```
@@ -220,6 +247,15 @@ impl PainterTool {
     pub(crate) fn audit_journal_matches_the_before(&self, before: &crate::undo::ModelSnapshot) {
         static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
+            return;
+        }
+        // O alvo FORTE: o journal foi zerado no início DESTE passo, então ele descreve o `before` dele.
+        if self
+            .undo
+            .write_state
+            .journal_describes_step_at(before.writes)
+        {
+            self.audit_journal_against("PASSO", &before.canvas_rgba);
             return;
         }
         if !self.undo.write_state.get().covers(before.writes) {
@@ -231,22 +267,34 @@ impl PainterTool {
         if !std::sync::Arc::ptr_eq(&before.canvas_rgba, &cursor.canvas_rgba) {
             return; // escrita estrangeira: a absorção move o cursor, e só depois dela há o que conferir
         }
-        let mut differ = 0usize;
-        let mut first = None;
-        for (i, &want) in cursor.canvas_rgba.iter().enumerate() {
-            if let Some(got) = self.undo.write_state.canvas_before(i)
-                && got != want
-            {
-                differ += 1;
-                first.get_or_insert((i, got, want));
+        self.audit_journal_against("COMMIT", &cursor.canvas_rgba);
+    }
+
+    /// A comparação em si, para os dois alvos — **uma porta**, porque duas cópias dela divergiriam
+    /// sobre o que "o journal está certo" significa, e o alvo forte nasceria com a asserção fraca.
+    ///
+    /// Conta também **quantos elementos o journal de fato responde**: um journal vazio concorda com
+    /// qualquer coisa, e *zero divergências sobre zero bytes* é o gate vazio que a §5.23 já pagou uma
+    /// vez. O readout separa as duas leituras.
+    #[cfg(any(test, debug_assertions))]
+    fn audit_journal_against(&self, tag: &str, want: &[u8]) {
+        let (mut differ, mut known, mut first) = (0usize, 0usize, None);
+        for (i, &w) in want.iter().enumerate() {
+            if let Some(got) = self.undo.write_state.canvas_before(i) {
+                known += 1;
+                if got != w {
+                    differ += 1;
+                    first.get_or_insert((i, got, w));
+                }
             }
         }
+        eprintln!("[S3-AUDIT] journal/{tag}: conhecidos={known} divergem={differ}");
         assert!(
             differ == 0,
-            "o journal do canvas descreve um passado diferente do estado do ULTIMO COMMIT: {differ} \
-             byte(s) divergem, o 1o em {first:?} (indice, journal, cursor). Isso significa que algo \
-             escreveu no canvas SEM passar pela porta `fork_canvas` — o journal capturou bytes ja \
-             modificados, e como FONTE do undo ele devolveria um estado que nunca existiu (doc 28 §7)"
+            "o journal do canvas descreve um passado diferente do alvo {tag}: {differ} byte(s) \
+             divergem, o 1o em {first:?} (indice, journal, alvo). Isso significa que algo escreveu no \
+             canvas SEM passar pela porta `fork_canvas` — o journal capturou bytes ja modificados, e \
+             como FONTE do undo ele devolveria um estado que nunca existiu (doc 28 §7)"
         );
     }
 

@@ -44,6 +44,9 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
             self.paint.wetpaint.live_gesture = true;
         }
+        // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
+        // descrever este traço em vez do intervalo desde o último commit.
+        self.begin_undo_step();
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;

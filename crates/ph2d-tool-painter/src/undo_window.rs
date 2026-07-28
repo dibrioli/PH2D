@@ -146,6 +146,17 @@ pub struct WriteState {
     /// verificação e não a fonte do undo: capturar *e* forkar seria pagar as duas coisas (doc 28 §7).
     #[cfg(any(test, debug_assertions))]
     canvas: std::cell::RefCell<crate::undo::journal::TileJournal<u8>>,
+    /// **A PROVENIÊNCIA do journal** — o valor do contador de escritas quando ele foi zerado, ou `None`
+    /// se ninguém abriu passo desde o último commit.
+    ///
+    /// ⚠️ É ela que torna a migração segura, e pela mesma política do `undeclared`: o journal só serve
+    /// de lado `before` de um passo se tiver sido zerado **exatamente** onde aquele passo começou. Um
+    /// sítio que ainda não abre passo deixa o journal ancorado num ponto mais VELHO, a pergunta
+    /// [`Self::journal_describes_step_at`] responde `false`, e o commit cai no caminho de sempre —
+    /// *lento, nunca errado*. Sem ela, um sítio esquecido daria o lado `before` de um passado que não é
+    /// o do passo, e o undo devolveria pixels que nunca existiram.
+    #[cfg(any(test, debug_assertions))]
+    journal_since: std::cell::Cell<Option<u64>>,
 }
 
 impl WriteState {
@@ -215,6 +226,7 @@ impl WriteState {
     #[cfg(any(test, debug_assertions))]
     pub(crate) fn reset_journal(&self) {
         self.canvas.borrow_mut().reset();
+        self.journal_since.set(None);
     }
 
     #[cfg(not(any(test, debug_assertions)))]
@@ -223,6 +235,34 @@ impl WriteState {
         reason = "no-op em release; o journal é rede de debug"
     )]
     pub(crate) fn reset_journal(&self) {}
+
+    /// **Um passo de undo COMEÇA aqui** — o journal esquece o intervalo anterior e passa a descrever
+    /// exatamente o que vier a partir de `writes`.
+    ///
+    /// ⚠️ A distinção que isto instala é o que separa o journal-como-rede do journal-como-FONTE. Ancorado
+    /// no último **commit**, ele mistura as escritas estrangeiras (o escorrido do Wet Paint) com as do
+    /// passo, e nos tiles que as duas tocam a primeira captura é a da gota — o lado `before` sairia do
+    /// passo *anterior*. Ancorado no **passo**, ele responde a pergunta certa.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn begin_step(&self, writes: u64) {
+        self.canvas.borrow_mut().reset();
+        self.journal_since.set(Some(writes));
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn begin_step(&self, _writes: u64) {}
+
+    /// **O journal descreve o passo que começou em `writes`?** — a pergunta que autoriza usá-lo como
+    /// lado `before`. Ver [`Self::journal_since`].
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn journal_describes_step_at(&self, writes: u64) -> bool {
+        self.journal_since.get() == Some(writes)
+    }
 }
 
 #[cfg(test)]

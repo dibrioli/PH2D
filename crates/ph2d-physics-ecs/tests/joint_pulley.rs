@@ -304,3 +304,61 @@ fn a_pulley_view_reports_no_break_threshold() {
         v.break_torque
     );
 }
+
+/// **A roldana GIRA, e a grande gira MAIS DEVAGAR** — a segunda metade do pedido
+/// (3) do artista (*"nem a representação da polia e sua rotação"*).
+///
+/// ⚠️ **O oráculo é a RAZÃO entre os dois ângulos, e não *"girou"***: uma corda
+/// inextensível corre na mesma taxa por todas as suas roldanas, então o que o
+/// diâmetro decide é `ω = s/r` — e sem esta razão o raio seria um número que muda
+/// o desenho e não muda nada mais. Duas rodas de raios 2:1 na MESMA corda têm de
+/// medir ângulos na razão 1:2.
+#[test]
+fn the_wheels_spin_and_the_big_one_spins_slower() {
+    let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+    // Raios diferentes na mesma corda: 0,4 e 0,2 — dois para um.
+    let ids: Vec<Entity> = {
+        let mut q = sim.world_mut().query::<(Entity, &Name)>();
+        let mut v: Vec<_> = q
+            .iter(sim.world())
+            .filter(|(_, n)| n.as_str().starts_with("Wheel"))
+            .map(|(e, n)| (n.as_str().to_string(), e))
+            .collect();
+        v.sort();
+        v.into_iter().map(|(_, e)| e).collect()
+    };
+    for (e, r) in ids.iter().zip([0.4_f32, 0.2]) {
+        if let Some(mut w) = sim.world_mut().get_mut::<PulleyWheel>(*e) {
+            w.radius = r;
+        }
+    }
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 20);
+    let spins = bridge.pulley_wheel_spins().to_vec();
+    assert_eq!(spins.len(), 2, "duas roldanas, dois ângulos");
+    let (big, small) = (spins[0].abs(), spins[1].abs());
+    assert!(
+        big > 1.0e-3 && small > 1.0e-3,
+        "as duas tinham de girar: {big:.4} e {small:.4}"
+    );
+    let ratio = small / big;
+    assert!(
+        (ratio - 2.0).abs() < 0.05,
+        "a roda de raio METADE gira o DOBRO: mediu {ratio:.4} (grande {big:.4}, pequena {small:.4})"
+    );
+}
+
+/// **Uma roldana de raio ZERO não gira** — e não é caso especial, é o que um
+/// PONTO é: não há superfície para a corda arrastar, e `s/0` seria o infinito que
+/// envenena a pose de desenho.
+#[test]
+fn a_point_wheel_does_not_spin() {
+    let mut sim = rig(JointKind::Pulley, 4.0, 1.0, true);
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 20);
+    assert!(
+        bridge.pulley_wheel_spins().iter().all(|a| *a == 0.0),
+        "raio zero é um ponto: {:?}",
+        bridge.pulley_wheel_spins()
+    );
+}

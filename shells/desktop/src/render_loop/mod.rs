@@ -62,6 +62,7 @@ mod inspector_joint_motor_tests;
 mod inspector_joint_pair_tests;
 #[cfg(test)]
 mod inspector_joint_tests;
+pub(crate) mod inspector_joint_wheel;
 mod inspector_ordering;
 mod inspector_physics;
 mod inspector_physics_apply;
@@ -139,6 +140,7 @@ mod physics_overlay_contacts;
 mod physics_overlay_joint_glyphs;
 mod physics_overlay_joint_readout;
 mod physics_overlay_joints;
+mod physics_overlay_pulley;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
@@ -4710,6 +4712,8 @@ impl crate::App {
             // A arena que as faixas das views indexam (W-Pulley W1) — a MESMA
             // fatia que o solver está usando neste frame.
             let joint_wheels = physics.pulley_wheel_arena().to_vec();
+            // E o ângulo de cada uma — o giro que faz uma roda parecer uma roda.
+            let joint_spins = physics.pulley_wheel_spins().to_vec();
             // A corda frouxa pendura para onde as coisas caem — a MESMA fonte
             // que decide a superfície de uma poça (W-Buoyancy).
             let joint_gravity = {
@@ -4747,6 +4751,7 @@ impl crate::App {
                 sim,
                 &joint_views,
                 &joint_wheels,
+                &joint_spins,
                 joint_gravity,
                 // W-J3: o limite que o arrasto está posando AGORA, para o
                 // fantasma de B. Lido do componente (o arrasto já escreveu nele
@@ -6152,7 +6157,7 @@ impl crate::App {
                     // Estrutural como o `Remove`, do outro lado: SPAWNA um
                     // objeto. O undo global por-diff o captura como captura
                     // qualquer outro spawn, sem um passo próprio a inventar.
-                    inspector_joint::add_pulley_wheel(sim, physics, bits);
+                    inspector_joint_wheel::add_pulley_wheel(sim, physics, bits);
                 } else {
                     inspector_joint::apply_joint_edit(
                         sim,

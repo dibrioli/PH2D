@@ -217,3 +217,77 @@ pub(super) fn wrap_side(
     };
     if above == wanted_above { -1 } else { 1 }
 }
+
+impl PhysicsBridge {
+    /// **Girar as roldanas** — um tick de `ω = s·lado/r`.
+    ///
+    /// O pedido (3) do artista tinha duas metades: *"não temos o diâmetro da
+    /// roldana na simulação nem a representação dela e sua ROTAÇÃO"*. O diâmetro é
+    /// o raio; isto é a rotação, e sem ela uma roda grande e uma pequena giram
+    /// igual — que é dizer que o diâmetro não faz nada.
+    ///
+    /// ⚠️ **Uma velocidade por CORDA, não por roda:** a corda é inextensível,
+    /// então ela corre na mesma taxa por todas as roldanas dela, e é o RAIO de cada
+    /// uma que decide quanto ela gira (`ω = s/r`). **A roda grande gira mais
+    /// devagar, e é isso que se vê.**
+    ///
+    /// ⚠️ **Por TICK, nunca por frame** — o ângulo é a integral de uma taxa, e
+    /// integrá-lo no frame faria a roda girar mais rápido numa máquina mais
+    /// rápida. É a mesma lei que o `drag` segue uma porta acima.
+    ///
+    /// Raio zero não gira: uma roldana-PONTO não tem superfície para a corda
+    /// arrastar, e `s/0` seria o infinito que envenena a pose de desenho.
+    pub(super) fn spin_rope_wheels(&mut self) {
+        if self.pulley_records.is_empty() {
+            return;
+        }
+        let dt = self.world.substep_dt() * self.world.substeps() as f32;
+        for r in &self.pulley_records {
+            let Some(speed) = self.world.pulley_rope_speed(&r.desc) else {
+                continue;
+            };
+            let start = r.desc.wheel_start as usize;
+            for i in start..start + r.desc.wheel_count as usize {
+                let (Some(w), Some(&e)) = (
+                    self.world.pulley_wheels().get(i),
+                    self.wheel_entities.get(i),
+                ) else {
+                    continue;
+                };
+                if w.radius <= 0.0 {
+                    continue;
+                }
+                let d = speed * f32::from(w.side) / w.radius * dt;
+                let a = self.wheel_spin_by_entity.entry(e).or_insert(0.0);
+                // Enrolado em ±π: um ângulo que cresce sem parar perde precisão de
+                // `f32` num take longo, e o desenho só quer a direção do raio-guia.
+                *a = wrap_pi(*a + d);
+                if let Some(slot) = self.wheel_spin.get_mut(i) {
+                    *slot = *a;
+                }
+            }
+        }
+    }
+
+    /// O ângulo de cada roldana da arena, na MESMA ordem — o que o desenho gira o
+    /// raio-guia por.
+    #[must_use]
+    pub fn pulley_wheel_spins(&self) -> &[f32] {
+        &self.wheel_spin
+    }
+}
+
+/// `a` trazido para `(−π, π]`.
+///
+/// Sem transcendental: o ângulo de giro é estado de DESENHO e não alcança o hash,
+/// mas a lei 6 vale para o módulo inteiro e um `%` com `TAU` é exato o bastante.
+fn wrap_pi(a: f32) -> f32 {
+    let tau = std::f32::consts::TAU;
+    let mut x = a % tau;
+    if x > std::f32::consts::PI {
+        x -= tau;
+    } else if x <= -std::f32::consts::PI {
+        x += tau;
+    }
+    x
+}

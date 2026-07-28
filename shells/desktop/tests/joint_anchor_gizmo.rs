@@ -257,14 +257,32 @@ fn the_paint_pass_draws_the_point_gizmo_last() {
 #[test]
 fn the_published_handles_come_from_the_bridge_door_for_every_joint() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
-    let start = src
-        .find("self.joint_body_pick,")
-        .expect("the publish call's joint arguments are gone");
-    let block = &src[start..(start + 1600).min(src.len())];
-    let end = block
-        .find("hs\n")
-        .expect("the publish site no longer builds a handle list");
-    let block = &block[..end];
+    // ⚠️ **O bloco é delimitado por CHAVES, não por uma distância em bytes.** A
+    // primeira versão lia 1600 bytes depois do primeiro argumento e caiu na wave
+    // seguinte, quando a terceira família de alças (as da RODA, W-Pulley W1)
+    // entrou no meio: um gate sobre *de onde as alças vêm* ficou vermelho por um
+    // acréscimo sobre o qual ele não tem opinião. Uma âncora em bytes é um proxy
+    // que expira; a extensão do próprio bloco é a propriedade.
+    let head = src
+        .find("let at_rest = !self.playhead.is_playing();")
+        .expect("o bloco que monta as alças sumiu do publish");
+    let open = src[..head].rfind('{').expect("o bloco abre uma chave");
+    let mut depth = 0usize;
+    let mut end = src.len();
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = open + i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let block = &src[open..end];
     for needle in [
         "joint_anchor_handles(",
         "joint_param_handles(",
@@ -278,10 +296,31 @@ fn the_published_handles_come_from_the_bridge_door_for_every_joint() {
              each one is holding up:\n{block}"
         );
     }
-    assert!(
-        !block.contains("selection"),
-        "the publish site still narrows the handles by selection — a joint has no \
-         sprite, so that makes them reachable only by finding it in the Hierarchy \
-         first:\n{block}"
-    );
+    // ⚠️ **A regra é por FAMÍLIA, e o gate diz qual.** As duas famílias do JOINT
+    // não podem ser estreitadas por seleção (um joint não tem sprite, então isso
+    // as tornaria alcançáveis só pela Hierarquia); as da RODA **têm** de ser (uma
+    // corda de seis roldanas publicaria doze alças, e o aro de uma cairia sobre o
+    // centro da vizinha). Afirmar *"a palavra `selection` não aparece"* dizia as
+    // duas coisas erradas de uma vez.
+    for (call, wants_selection) in [
+        ("joint_anchor_handles(", false),
+        ("joint_param_handles(", false),
+        ("wheel_handles(", true),
+    ] {
+        let i = block
+            .find(call)
+            .unwrap_or_else(|| panic!("`{call}` não é mais chamado no publish:\n{block}"));
+        let args_end = block[i..].find(");").map_or(block.len(), |j| i + j);
+        let args = &block[i..args_end];
+        assert_eq!(
+            args.contains("selection"),
+            wants_selection,
+            "`{call}` {} ser estreitada pela seleção — ver a doc deste gate:\n{args}",
+            if wants_selection {
+                "TEM de"
+            } else {
+                "não pode"
+            }
+        );
+    }
 }

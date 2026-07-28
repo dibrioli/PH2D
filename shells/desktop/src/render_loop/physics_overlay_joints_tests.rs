@@ -100,6 +100,7 @@ pub(super) fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
         true,
         std::slice::from_ref(v),
         &wheels(),
+        &[0.0; 2],
         G,
         &camera(),
         window(),
@@ -370,6 +371,7 @@ fn a_length_scales_with_the_world_and_an_angle_does_not() {
             true,
             std::slice::from_ref(v),
             &wheels(),
+            &[0.0; 2],
             G,
             &zoomed,
             window(),
@@ -516,6 +518,7 @@ fn a_slack_rope_sags_along_gravity_and_a_taut_one_is_straight() {
         true,
         std::slice::from_ref(&slack),
         &wheels(),
+        &[0.0; 2],
         [0.0, 0.0],
         &camera(),
         window(),
@@ -535,6 +538,7 @@ fn the_toggle_silences_the_joint_marks_too() {
             false,
             &[view(JointKind::Pin)],
             &wheels(),
+            &[0.0; 2],
             G,
             &camera(),
             window()
@@ -546,7 +550,7 @@ fn the_toggle_silences_the_joint_marks_too() {
 /// **Uma cena sem joints não custa nada.**
 #[test]
 fn no_joints_no_paths() {
-    assert!(joint_marks(true, &[], &wheels(), G, &camera(), window()).is_empty());
+    assert!(joint_marks(true, &[], &wheels(), &[0.0; 2], G, &camera(), window()).is_empty());
 }
 
 /// **Um pino em repouso ainda desenha alguma coisa.**

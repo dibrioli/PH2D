@@ -54,6 +54,7 @@ fn marks(active: bool) -> Vec<(BezPath, [f32; 4])> {
         true,
         &[view(active)],
         &wheels(),
+        &[0.0; 2],
         [0.0, -9.81],
         &camera(),
         window(),

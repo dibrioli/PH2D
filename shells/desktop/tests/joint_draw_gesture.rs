@@ -100,9 +100,26 @@ fn the_band_is_drawn_even_with_the_outline_off() {
     let band_at = overlay
         .find("draw_band(join_band")
         .expect("o overlay não desenha mais a banda");
+    // ⚠️ **O 1º argumento é procurado pelo NOME, não pelo literal `"(show,"`.**
+    // Aquele literal era um proxy da FORMATAÇÃO: quando a chamada ganhou
+    // argumentos (a arena de roldanas do W-Pulley W1) o `cargo fmt` a quebrou em
+    // várias linhas e o gate ficou vermelho sobre produto correto, dizendo que "o
+    // gate de `show` sumiu". A propriedade é *o primeiro argumento é o `show`*.
     let show_at = overlay
-        .find("joint_marks(show,")
-        .expect("o gate de `show` das marcas de joint sumiu");
+        .find("joint_marks(")
+        .expect("o overlay não desenha mais as marcas de joint");
+    let first_arg = overlay[show_at + "joint_marks(".len()..]
+        .trim_start()
+        .split(&[',', ')'][..])
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    assert_eq!(
+        first_arg, "show",
+        "as marcas de joint deixaram de ser gateadas em `show` — a tecla B tem de \
+         apagar a anotação (e só ela: a banda do gesto continua)"
+    );
     assert!(
         band_at < show_at,
         "a banda é desenhada depois das marcas gateadas em `show` — ela tem de \

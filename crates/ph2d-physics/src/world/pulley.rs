@@ -394,6 +394,28 @@ impl super::PhysicsWorld {
         ))
     }
 
+    /// **A que velocidade a corda CORRE**, em m/s, positiva no sentido A → B.
+    ///
+    /// É o que faz uma roldana girar (`ω = s·lado/r`), e é UM número por corda e
+    /// não um por roda: a corda é inextensível, então ela passa por todas as
+    /// roldanas na mesma taxa. Derivar por roda seria N respostas para um fato.
+    ///
+    /// Sai do ramo A: se ele se ALONGA, a corda está sendo puxada de B para A,
+    /// logo ela corre no sentido B → A — daí o sinal trocado.
+    #[must_use]
+    pub fn pulley_rope_speed(&self, desc: &PulleyDesc) -> Option<f32> {
+        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
+        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
+        let mut scratch = Vec::new();
+        let r = rope_route::route(
+            [a.point.x, a.point.y],
+            [b.point.x, b.point.y],
+            desc.wheels(&self.pulley_wheels),
+            &mut scratch,
+        )?;
+        Some(-a.rate(Vector2::new(r.dir_a[0], r.dir_a[1])))
+    }
+
     /// O comprimento de rota de uma polia **como ela está agora**, para o
     /// chamador semear `total_length` da pose de repouso em vez de pedir ao
     /// artista que meça uma corda com régua.

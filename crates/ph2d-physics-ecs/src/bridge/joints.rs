@@ -230,6 +230,7 @@ impl PhysicsBridge {
         self.pulley_records.clear();
         self.harvest_rope_wheels(world);
         self.wheel_entities.clear();
+        self.wheel_spin.clear();
 
         for (e, joint, _local) in q.iter(world) {
             self.joints_seen.push(e);
@@ -347,6 +348,15 @@ impl PhysicsBridge {
                     {
                         self.pulley_wheels_to_install.push(row.wheel);
                         self.wheel_entities.push(row.entity);
+                        // O ângulo que esta roda já tinha: a arena é reconstruída
+                        // todo dispatch, então sem esta memória por ENTIDADE toda
+                        // roldana voltaria a zero a cada frame.
+                        self.wheel_spin.push(
+                            self.wheel_spin_by_entity
+                                .get(&row.entity)
+                                .copied()
+                                .unwrap_or(0.0),
+                        );
                     }
                     let count = self.pulley_wheels_to_install.len() as u32 - start;
                     let wheels = &mut self.pulley_wheels_to_install[start as usize..];

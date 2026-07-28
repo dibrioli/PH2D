@@ -24,11 +24,18 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 4] = [
+const WRITERS: [&str; 6] = [
     "src/render_loop/inspector_physics_apply.rs",
     "src/render_loop/inspector_physics_area.rs",
     "src/render_loop/inspector_physics_markers.rs",
     "src/render_loop/inspector_joint.rs",
+    // ⚠️ **Nem todo caminho de autoria é uma ROW.** A roldana (W-Pulley W1) é
+    // criada por um botão que SPAWNA um objeto e dimensionada por uma ALÇA de
+    // canvas — dois gestos que não passam por `apply_physics_edit`, e é por isso
+    // que os dois arquivos entram na lista. Um componente cuja única UI é uma
+    // alça continua sendo alcançável no produto, que é o que este gate mede.
+    "src/render_loop/inspector_joint_wheel.rs",
+    "src/joint_anchor_drag.rs",
 ];
 
 #[test]
@@ -50,16 +57,27 @@ fn every_registered_physics_component_has_a_ui_writer() {
         .collect();
     registered.sort_unstable();
     assert!(
-        registered.len() >= 21,
+        registered.len() >= 22,
         "o registry encolheu ({} nomes) — ou o parse quebrou, e um gate que não lê nada \
          passa sempre",
         registered.len()
     );
 
+    // ⚠️ **Duas formas contam como escrever, e a segunda não é frouxidão.** O
+    // caminho comum é `queue_set` com o NOME CANÔNICO (a string que acha o
+    // `type_id`), e é ele que a primeira metade procura. Mas um componente
+    // autorado por um GESTO — uma alça de canvas que escreve no lugar, um botão
+    // que SPAWNA o objeto — nunca nomeia aquela string, porque ela existe para a
+    // fila de comandos; ele nomeia o TIPO. Exigir só a string diria *"a roldana é
+    // órfã"* sobre um componente que o artista cria com um clique e dimensiona
+    // arrastando, que é o oposto do que este gate mede.
     let orphans: Vec<&str> = registered
         .iter()
         .copied()
-        .filter(|name| !written.contains(name))
+        .filter(|name| {
+            let ty = name.rsplit("::").next().unwrap_or(name);
+            !written.contains(name) && !written.contains(ty)
+        })
         .collect();
     assert!(
         orphans.is_empty(),

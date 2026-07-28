@@ -184,9 +184,11 @@ impl crate::App {
         eprintln!(
             "[physics-smoke 58] A POLIA -- uma corda por roldanas de verdade.\n  \
                Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
-               1. OLHE AS RODAS, e depois a corda. Cada roldana e um CIRCULO do tamanho que\n     \
-                  ela tem, com um raio-guia; a corda toca a SUPERFICIE dela e nao passa pelo\n     \
-                  centro. No verde as duas rodas tem tamanhos diferentes de proposito.\n  \
+               1. OLHE AS RODAS, e depois a corda. Cada roldana e um CIRCULO do tamanho\n     \
+                  que ela tem, com um raio-guia; a corda toca a SUPERFICIE dela e nao passa\n     \
+                  pelo centro. No verde as duas rodas tem tamanhos MUITO diferentes de\n     \
+                  proposito -- de PLAY e olhe os raios-guia girando: a roda GRANDE gira mais\n     \
+                  devagar, porque a mesma corda por um raio maior a faz dar menos voltas.\n  \
                2. VERDE (esquerda) -- o elevador. A carga de 3 kg ganha do contrapeso de\n     \
                   1 kg e desce; o que um lado desce o outro sobe, porque a corda nao\n     \
                   estica. (medido em 3 s: desceu {simple_drop:.2} m ate o chao e o contrapeso\n     \

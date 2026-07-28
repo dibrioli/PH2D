@@ -121,7 +121,7 @@ fn the_structural_joint_verbs_are_dispatched_before_the_field_edits() {
         .expect("o braço de edição de campo");
     for (verb, call) in [
         ("Remove", "despawn("),
-        ("AddWheel", "inspector_joint::add_pulley_wheel("),
+        ("AddWheel", "inspector_joint_wheel::add_pulley_wheel("),
     ] {
         let arm = body
             .find(&format!("JointFieldEdit::{verb}"))

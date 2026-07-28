@@ -460,7 +460,7 @@ fn adding_a_wheel_puts_it_on_the_rope() {
         0.5 * (last[1] + v.anchor_b[1]),
     ];
 
-    super::inspector_joint::add_pulley_wheel(&mut sim, &bridge, joint.to_bits());
+    super::inspector_joint_wheel::add_pulley_wheel(&mut sim, &bridge, joint.to_bits());
     bridge.dispatch(&mut sim, false, 0);
     let after: Vec<_> = bridge.rope_wheels(joint).map(|(_, w)| w).collect();
     assert_eq!(after.len(), 3, "o clique tinha de acrescentar UMA");

@@ -337,3 +337,26 @@ pub(super) fn draw_interaction(
         );
     }
 }
+
+/// **A lateralidade do frame desta zona** — o sinal de cada eixo da escala de mundo, na
+/// forma que as duas portas do kernel tomam (W-AreaMirror). Espelha a `sign_of` do
+/// `ph2d_physics_ecs::scale`, que é onde o solver a calcula.
+pub(super) fn zone_mirror(scale: ph2d_core::Vec2) -> [f32; 2] {
+    let s = |v: f32| if v < 0.0 { -1.0 } else { 1.0 };
+    [s(scale.x), s(scale.y)]
+}
+
+/// **Esta zona empurra alguma coisa?** — força ou torque, os dois EMPURRÕES que o falloff
+/// pesa (e exatamente eles: arrasto e empuxo descrevem um meio, e o fator não os alcança).
+///
+/// Existe como função porque a pergunta é uma só e o anel do falloff é o único que precisa
+/// dela; escrita inline no laço de pintura ela seria uma condição que nenhum gate consegue
+/// nomear.
+pub(super) fn zone_pushes(world: &bevy_ecs::world::World, e: ph2d_ecs::Entity) -> bool {
+    world
+        .get::<ph2d_physics_ecs::AreaEffector>(e)
+        .is_some_and(|a| a.force != [0.0, 0.0])
+        || world
+            .get::<ph2d_physics_ecs::AreaTorque>(e)
+            .is_some_and(|t| t.0 != 0.0)
+}

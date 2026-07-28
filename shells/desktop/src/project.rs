@@ -543,3 +543,7 @@ impl crate::App {
 #[cfg(test)]
 #[path = "project_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "project_schema_tests.rs"]
+mod schema_tests;

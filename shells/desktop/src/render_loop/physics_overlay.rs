@@ -42,7 +42,7 @@ use ph2d_vector::{BezPath, Point, VectorScene};
 
 use super::physics_overlay_annotations::{
     EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA, VELOCITY_RGBA, effector_arrow,
-    torque_glyph, velocity_arrow,
+    torque_glyph, velocity_arrow, zone_mirror, zone_pushes,
 };
 use super::physics_overlay_contacts::{
     CONTACT_FLASH_RGBA, CONTACT_RGBA, WATERLINE_RGBA, contact_flashes, contact_marks,
@@ -370,29 +370,6 @@ pub(crate) fn outlines(
     out
 }
 
-/// **A lateralidade do frame desta zona** — o sinal de cada eixo da escala de mundo, na
-/// forma que as duas portas do kernel tomam (W-AreaMirror). Espelha a `sign_of` do
-/// `ph2d_physics_ecs::scale`, que é onde o solver a calcula.
-fn zone_mirror(scale: ph2d_core::Vec2) -> [f32; 2] {
-    let s = |v: f32| if v < 0.0 { -1.0 } else { 1.0 };
-    [s(scale.x), s(scale.y)]
-}
-
-/// **Esta zona empurra alguma coisa?** — força ou torque, os dois EMPURRÕES que o falloff
-/// pesa (e exatamente eles: arrasto e empuxo descrevem um meio, e o fator não os alcança).
-///
-/// Existe como função porque a pergunta é uma só e o anel do falloff é o único que precisa
-/// dela; escrita inline no laço de pintura ela seria uma condição que nenhum gate consegue
-/// nomear.
-fn zone_pushes(world: &bevy_ecs::world::World, e: ph2d_ecs::Entity) -> bool {
-    world
-        .get::<ph2d_physics_ecs::AreaEffector>(e)
-        .is_some_and(|a| a.force != [0.0, 0.0])
-        || world
-            .get::<ph2d_physics_ecs::AreaTorque>(e)
-            .is_some_and(|t| t.0 != 0.0)
-}
-
 /// Paint them. No-op when [`outlines`] returns nothing.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw(
@@ -402,6 +379,8 @@ pub(super) fn draw(
     joint_views: &[ph2d_physics_ecs::JointView],
     // A arena de roldanas que as views indexam (W-Pulley W1).
     joint_wheels: &[ph2d_physics_ecs::rope_route::RopeWheel],
+    // O ângulo de cada roldana, paralelo à arena (W-Pulley W1).
+    joint_spins: &[f32],
     joint_gravity: [f32; 2],
     // O limite sendo POSADO agora `(joint, rad relativo)` — desenha o fantasma
     // de B (W-J3). `None` sem arrasto de limite em voo.
@@ -542,6 +521,7 @@ pub(super) fn draw(
         show,
         joint_views,
         joint_wheels,
+        joint_spins,
         joint_gravity,
         camera,
         window,

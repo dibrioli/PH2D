@@ -43,21 +43,36 @@ pub const MAX_SEGMENTS: usize = 4096;
 /// Vazio significa *"não sei responder com exatidão"*, e o chamador cai no caminho do raster. Hoje
 /// isso acontece em dois casos, os dois deliberados:
 ///
-/// - **forma com TRAÇO** — a silhueta desenhada é `preenchimento ∪ contorno-do-traço`, e a borda
-///   INTERNA do traço não é fronteira de silhueta nenhuma: semeá-la poria a fronteira no meio da
-///   forma. A união exata é trabalho da booleana, e entra quando houver quem a peça.
+/// - **forma com TRAÇO cuja silhueta ninguém resolveu** — a silhueta desenhada é
+///   `preenchimento ∪ contorno-do-traço`, e a borda INTERNA do traço não é fronteira de silhueta
+///   nenhuma: semeá-la poria a fronteira no meio da forma. Quem sabe unir é a booleana, que esta
+///   crate **não** conhece (ver o `Cargo.toml`) — então quem chama traz a resposta pronta em
+///   `sil`, e sem ela a forma cai no raster como caía.
 /// - **estouro do teto** de segmentos.
+///
+/// # `sil` — as regiões já RESOLVIDAS, em espaço de MUNDO
+///
+/// É consultada PRIMEIRO e por id, exatamente como `live`. O que ela guarda são regiões fechadas
+/// sem traço (a união já foi feita), então elas atravessam o mesmo `offset * camera` que a
+/// geometria derivada — nunca o `path_to_screen`, cuja pose já está assada dentro delas.
 #[must_use]
 pub fn silhouette_segments(
     scene: &VecScene,
     xforms: &VecXforms,
     live: &LiveGeometry,
+    sil: &LiveGeometry,
     id: VecPathId,
     camera: Affine,
     offset: Affine,
 ) -> Vec<[f32; 4]> {
     let mut out = Vec::new();
-    if let Some(items) = live.get(&id) {
+    if let Some(regions) = sil.get(&id) {
+        for region in regions {
+            if !push_path(&mut out, region, offset * camera) {
+                return Vec::new();
+            }
+        }
+    } else if let Some(items) = live.get(&id) {
         for item in items {
             if !push_path(&mut out, item, offset * camera) {
                 return Vec::new();
@@ -173,3 +188,8 @@ where
     }
     prev
 }
+
+/// Os gates da porta `sil` — arquivo irmão (o teto de LOC).
+#[cfg(test)]
+#[path = "silhouette_tests.rs"]
+mod tests;

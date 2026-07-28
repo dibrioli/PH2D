@@ -389,6 +389,7 @@ impl crate::App {
         self.contour_live.forget();
         // O FX raster vivo (plano 24) pela MESMA razão (id reciclado entre documentos).
         self.fx_live.forget();
+        self.fx_silhouette.forget();
         self.vec_offset_mirrored = None;
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;

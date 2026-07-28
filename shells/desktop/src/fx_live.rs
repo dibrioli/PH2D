@@ -99,6 +99,7 @@ impl FxLive {
         map: &VecEntityMap,
         xforms: &VecXforms,
         live: &LiveGeometry,
+        sil: &LiveGeometry,
         camera: Affine,
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
@@ -151,6 +152,7 @@ impl FxLive {
                     scene,
                     xforms,
                     live,
+                    sil,
                     camera,
                     path.id,
                     &ops,
@@ -212,6 +214,7 @@ impl FxLive {
         scene: &VecScene,
         xforms: &VecXforms,
         live: &LiveGeometry,
+        sil: &LiveGeometry,
         camera: Affine,
         id: VecPathId,
         ops: &[FxOpGpu],
@@ -299,12 +302,14 @@ impl FxLive {
         pfx.ops.clear();
         pfx.ops.extend_from_slice(ops);
         // A SILHUETA em segmentos, no MESMO transform com que a forma foi rasterizada no scratch
-        // — é ela que dá ao campo de distância o pé exato da fronteira. Vazia (forma com traço,
-        // ou complexa demais) = o campo cai no caminho do raster, que é pior mas nunca trava.
+        // — é ela que dá ao campo de distância o pé exato da fronteira. Vazia (forma complexa
+        // demais, ou traçada sem união resolvida) = o campo cai no caminho do raster, que semeia
+        // em texels discretos: pior — é o pente do bevel — mas nunca trava.
         let geom = ph2d_vec_render::silhouette_segments(
             scene,
             xforms,
             live,
+            sil,
             id,
             camera,
             Affine::translate((-ex0, -ey0)),

@@ -137,16 +137,26 @@ fn arm(app: &mut crate::App) {
         (14, vec![glow, blur]),
         (15, vec![blur, glow]),
     ];
-    // ⚠️ A estrela do Outline GROSSO leva um TRAÇO de verdade: é o caso que o smoke reportou
-    // ("com Stroke quebra as pontas"), e a ponta do miter dele vai a 3,24 × meia largura do
-    // vértice — o bbox do scratch tem de a conter, senão ela sai CEIFADA.
-    if let Some(gfx) = app.gfx.as_mut()
-        && let Some(path) = gfx.vec_scene.path_mut(ids[11])
-    {
-        path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-            ph2d_vec_scene::Rgba8::new(40, 70, 220, 255),
-            0.06,
-        ));
+    // ⚠️ **DUAS estrelas levam TRAÇO de verdade, e cada uma responde a um report diferente.**
+    //
+    // A do Outline GROSSO (11): *"com Stroke quebra as pontas"* — a ponta do miter de um traço vai
+    // a 3,24 × meia largura do vértice, e o bbox do scratch tem de a conter, senão ela sai CEIFADA.
+    //
+    // A do BEVEL (13): *"linhas no Bevel"* — uma forma traçada não tinha silhueta exata (a curva
+    // autorada passa pelo MEIO da tinta), caía no campo semeado pelo RASTER, e a semente discreta
+    // desenhava um pente de hachuras diagonais. ⚠️ **Sem esta linha a cena NÃO CONTÉM o fenômeno**:
+    // antes dela nenhuma estrela era traçada *e* biselada, então o bug reportado não aparecia em
+    // nenhuma das dezasseis. O bevel sem traço continua provado pelos gates e pela sonda
+    // `fx_look_probe` (cenas 12/13), que é onde as fotos do antes/depois foram tiradas.
+    for (i, rgb) in [(11usize, [40, 70, 220]), (13, [255, 255, 255])] {
+        if let Some(gfx) = app.gfx.as_mut()
+            && let Some(path) = gfx.vec_scene.path_mut(ids[i])
+        {
+            path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+                ph2d_vec_scene::Rgba8::new(rgb[0], rgb[1], rgb[2], 255),
+                0.06,
+            ));
+        }
     }
     let map = &app.vec_entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
@@ -178,10 +188,14 @@ fn arm(app: &mut crate::App) {
          \x20  13) FEATHER — a borda vira uma RAMPA CENTRADA na fronteira, e o MIOLO fica\n\
          \x20      INTACTO. É o que um Blur não faz: ele mistura a COR também (medido, com\n\
          \x20      listras dentro da forma: contraste 195 no feather contra 1 no borrão).\n\
-         \x20  14) BEVEL — a face virada para a LUZ clareia e a oposta escurece, morrendo para o\n\
-         \x20      miolo (medido em cinza: rim 225 / 30 contra miolo 128; trocar a luz troca os\n\
-         \x20      dois). O par Light X/Y é uma DIREÇÃO, não um deslocamento — e é por isso que a\n\
-         \x20      tabela ROTULA cada knob em vez de só dizer que ele existe.\n\
+         \x20  14) BEVEL **com TRAÇO branco** — a face virada para a LUZ clareia e a oposta\n\
+         \x20      escurece, morrendo para o miolo (medido em cinza: rim 225 / 30 contra miolo\n\
+         \x20      128; trocar a luz troca os dois). O par Light X/Y é uma DIREÇÃO, não um\n\
+         \x20      deslocamento. ⚠️ **O traço é o caso do report 'linhas no Bevel'**: uma forma\n\
+         \x20      traçada não tinha silhueta exata e caía no campo do RASTER, cuja semente\n\
+         \x20      discreta desenhava um PENTE de hachuras diagonais finas. Agora a silhueta é\n\
+         \x20      'preenchimento uniao contorno-do-traco', resolvida pela booleana — o relevo\n\
+         \x20      tem de sair LISO, sem hachura, e as pontas com contorno inteiro.\n\
          \x20  15) Glow -> Blur · 16) Blur -> Glow — os MESMOS dois degraus, trocados.\n\
          \x20\n\
          \x20 O rim claro de 1 px do Inner Shadow MORREU (um degrau de dentro não move mais um\n\

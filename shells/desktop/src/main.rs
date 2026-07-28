@@ -129,6 +129,7 @@ mod fx_bridge_dispatch;
 mod fx_dump;
 mod fx_live;
 mod fx_raster_smoke;
+mod fx_silhouette;
 mod fx_smoke;
 mod fx_undo_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
@@ -553,6 +554,7 @@ impl App {
             contour_live: crate::contour_live::ContourLive::default(),
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
+            fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
             vec_contour_mirrored: None,

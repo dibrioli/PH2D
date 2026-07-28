@@ -5274,6 +5274,12 @@ impl crate::App {
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),
             );
+            // A SILHUETA resolvida das formas TRAÇADAS: `preenchimento ∪ contorno-do-traço`,
+            // pela booleana, memoizada na geometria de MUNDO. Sem ela o campo de distância de uma
+            // forma com traço cai no caminho do raster, cuja semente discreta desenha o pente que
+            // o Enio fotografou no bevel. Roda DEPOIS de `vec_live` (a união é do que se DESENHA).
+            self.fx_silhouette
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &vec_live);
             // O FX raster por-forma (plano 24 — Blur/Glow/Drop Shadow). O produtor
             // (`fx_live`) rasteriza a forma isolada num scratch de GPU, lê de volta e borra na CPU,
             // injetando as imagens no z da forma. Roda DEPOIS de `vec_live` porque honra a geometria
@@ -5284,6 +5290,7 @@ impl crate::App {
                 &self.vec_entities,
                 &vec_xf,
                 &vec_live,
+                self.fx_silhouette.live(),
                 cam_affine,
                 surface.gpu(),
                 surface.format(),

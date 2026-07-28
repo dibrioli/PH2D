@@ -945,6 +945,9 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.
     pub(crate) fx_live: crate::fx_live::FxLive,
+    /// A silhueta resolvida das formas TRAÇADAS que carregam filtro — a união
+    /// `preenchimento ∪ traço` que o campo de distância dos FX consome. Ver [`crate::fx_silhouette`].
+    pub(crate) fx_silhouette: crate::fx_silhouette::FxSilhouette,
     /// Os knobs `(Corner, Side)` do painel no frame ANTERIOR. É o que distingue *"o artista
     /// clicou um chip"* (retunar os offsets vivos da seleção) de *"o painel está no valor de
     /// sempre"* — sem a borda, todo frame reescreveria o componente de toda forma selecionada.

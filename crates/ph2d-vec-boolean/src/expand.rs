@@ -298,6 +298,43 @@ pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
     }
 }
 
+/// **A SILHUETA de um path** — a região que ele de facto cobre na tela.
+///
+/// Sem traço é o preenchimento e mais nada; **com** traço é `preenchimento ∪ contorno-do-traço`,
+/// porque é isso que o olho vê e é isso que um campo de distância tem de medir.
+///
+/// ⚠️ **Por que a união é obrigatória, e não bastam os dois contornos soltos.** Um traço centrado
+/// cobre `[−w/2, +w/2]` em volta do caminho, então o caminho do PREENCHIMENTO fica no MEIO da
+/// faixa de tinta — dentro da região. Alimentar um campo de distância com ele poria uma fronteira
+/// no meio da forma, e todo consumidor (bevel, feather, contorno) desenharia uma segunda borda
+/// ali. A união apaga as fronteiras internas; nada mais apaga.
+///
+/// ⚠️ **Isto NÃO é o `outline_stroke`**, que é um comando de EDIÇÃO e de propósito não traz o
+/// preenchimento junto (traço e miolo têm cores diferentes porque são coisas diferentes). Aqui a
+/// pergunta é outra — *que região esta forma ocupa?* — e a resposta é uma só.
+///
+/// Devolve **vazio** quando não sabe responder (traço degenerado, sweep que não fecha); o
+/// chamador cai no caminho que tinha antes.
+#[must_use]
+pub fn silhouette_paths(path: &VecPath) -> Vec<VecPath> {
+    if path.stroke.is_none() {
+        // Sem traço a silhueta É o path — devolvê-lo evita um sweep que não decide nada.
+        return vec![path.clone()];
+    }
+    let ink = outline_stroke(path);
+    if ink.is_empty() {
+        return Vec::new();
+    }
+    if path.fill.is_none() {
+        // Só traço (uma linha, um contorno aberto): a tinta É a silhueta.
+        return ink;
+    }
+    let mut all: Vec<&VecPath> = Vec::with_capacity(ink.len() + 1);
+    all.push(path);
+    all.extend(ink.iter());
+    crate::apply_many(&all, crate::BoolOp::Union)
+}
+
 /// O estilo de uma forma que **É** o traço: preenchida com a cor dele, e sem traço.
 ///
 /// Deixar o traço no resultado o desenharia uma segunda vez, agora em volta de si mesmo,

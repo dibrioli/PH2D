@@ -27,6 +27,7 @@ pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 pub mod expand;
 pub use expand::{
     __sweep_calls, MIN_OFFSET, offset_path, offset_ring, outline_stroke, power_stroke,
+    silhouette_paths,
 };
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};

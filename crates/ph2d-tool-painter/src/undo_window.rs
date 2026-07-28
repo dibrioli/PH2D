@@ -41,9 +41,10 @@ pub struct WriteWindow {
 }
 
 impl WriteWindow {
-    /// A janela que não sabe de nada — o commit varre. É o estado em que um guard largado sem declarar
-    /// deixa tudo, e por isso esquecer custa tempo em vez de custar texels.
     /// Um acesso de escrita foi aberto e ainda não disse onde escreveu.
+    ///
+    /// É este contador que faz de "esquecer" um custo em TEMPO em vez de um custo em TEXELS: enquanto
+    /// ele for > 0 a janela não é oferecida e o commit varre, como sempre fez.
     pub const fn open_write(&mut self) {
         self.undeclared = self.undeclared.saturating_add(1);
     }

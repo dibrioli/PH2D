@@ -53,8 +53,7 @@ use ops::{distinct_layer_count, op_mask, validate_op_list};
 pub(crate) const BLEND_MODES_WGSL: &str = include_str!("../shaders/blend_modes.wgsl");
 
 /// O corpo do compositor de camadas, SEM as leis de mistura (elas moram no [`BLEND_MODES_WGSL`]).
-pub(crate) const LAYER_COMPOSITE_BODY_WGSL: &str =
-    include_str!("../shaders/layer_composite.wgsl");
+pub(crate) const LAYER_COMPOSITE_BODY_WGSL: &str = include_str!("../shaders/layer_composite.wgsl");
 
 /// **O módulo que o compositor de facto compila.** Porta única: o pipeline e os gates leem esta,
 /// nunca as duas metades soltas — um gate que lesse só o corpo ficaria verde sobre uma deriva na

@@ -32,6 +32,12 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
         FxOp::KINDS,
         "o teto de TIPOS do painel tem de bater com o `FxOp::KINDS`"
     );
+    assert_eq!(
+        ph2d_editor::ids::MAX_FILTER_BLENDS,
+        usize::from(FxOp::BLEND_KINDS),
+        "o teto de LEIS DE MISTURA do painel tem de bater com o `FxOp::BLEND_KINDS` — um teto \
+         menor deixa as ultimas leis sem opcao no popover, em silencio"
+    );
     let widest = FxOp::SPECS.iter().map(|s| s.modes.len()).max().unwrap_or(0);
     assert!(
         widest <= ph2d_editor::ids::MAX_FILTER_MODES,
@@ -139,4 +145,55 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
     // Nem o campo NUMÉRICO gêmeo (ele viaja por outro canal, e confundi-lo com o slider faria a
     // ponte editar duas vezes o mesmo valor).
     assert_eq!(hit_of(vid::filter_radius_num_id(0)), None);
+}
+
+/// **A LEI DE MISTURA atravessa o produtor, e a que não é tomada vira Normal.**
+///
+/// É a metade de HONRAR da porta única `FxOp::takes_blend` — o painel tem a de OFERECER. Sem esta,
+/// um degrau cuja lei sobreviveu a uma mudança de tipo (ou um arquivo de outra versão) mandaria ao
+/// dispositivo um número que a UI não mostra, e a forma desenharia uma mistura que o artista não
+/// pediu nem consegue ver de onde veio.
+#[test]
+fn the_law_reaches_the_pass_only_for_a_kind_that_takes_one() {
+    // Screen (6) em TODO tipo — os que tomam a lei a levam, os outros a perdem.
+    for kind in 0..FxOp::KINDS as u8 {
+        let mut o = op(kind, 0.2);
+        o.blend = 6;
+        let f = VecFilter { ops: vec![o] };
+        let got = crate::fx_live::resolve_ops(&f, Affine::IDENTITY);
+        assert_eq!(got.len(), 1, "{}", FxOp::kind_name(kind));
+        let want = if FxOp::spec(kind).takes_blend { 6 } else { 0 };
+        assert_eq!(
+            got[0].blend,
+            want,
+            "{}: takes_blend={} mas o passe recebeu {}",
+            FxOp::kind_name(kind),
+            FxOp::spec(kind).takes_blend,
+            got[0].blend
+        );
+    }
+}
+
+/// **O decodificador conhece as opções de mistura, e só elas.** Espelho do irmão que varre os
+/// controles de linha: um id que ele não decodifica é um clique que a ponte descarta em silêncio.
+#[test]
+fn hit_of_decodes_every_blend_option() {
+    use crate::fx_live::{FilterHit, hit_of};
+    for r in 0..ph2d_editor::ids::MAX_FILTER_ROWS {
+        for m in 0..ph2d_editor::ids::MAX_FILTER_BLENDS {
+            let id = ph2d_editor::ids::filter_blend_option_id(r, m);
+            assert_eq!(
+                hit_of(id),
+                Some(FilterHit::Blend(r, m as u8)),
+                "a opcao {m} da linha {r} nao decodifica"
+            );
+        }
+        // ⚠️ O CHIP nao e uma opcao — ele e um `Dropdown`, e abrir/fechar e do dispatch generico.
+        // Decodifica-lo aqui faria o clique de ABRIR virar uma edicao da pilha.
+        assert_eq!(
+            hit_of(ph2d_editor::ids::filter_blend_id(r)),
+            None,
+            "o CHIP de mistura da linha {r} nao pode decodificar como edicao"
+        );
+    }
 }

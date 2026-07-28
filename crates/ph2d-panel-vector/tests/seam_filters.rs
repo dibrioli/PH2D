@@ -237,6 +237,14 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
             "a cor do {} discorda da tabela",
             spec.name
         );
+        // A LEI DE MISTURA: o chip existe exactamente onde a tabela diz que a cor do degrau
+        // pousa em conteúdo que já existe — e em mais lugar nenhum.
+        assert_eq!(
+            painted(&mut host, &mut st, ids::filter_blend_id(0)),
+            spec.takes_blend,
+            "o chip de mistura do {} discorda da tabela",
+            spec.name
+        );
         // Os chips de MODO: um por modo publicado, e NENHUM em quem não tem escolha a fazer.
         for m in 0..ids::MAX_FILTER_MODES {
             assert_eq!(
@@ -311,4 +319,86 @@ fn the_colour_swatch_is_painted_and_is_a_picker_target() {
         host.store().is_picker_swatch(id),
         "a swatch tem de estar no conjunto de picker (senao o Down nao abre o OKLCH)"
     );
+}
+
+/// **A lista de leis de mistura ABRE, e cada opção chega ao bus.** As quatro condições da política
+/// de UI, no gesto REAL: o chip existe · é registrado (`populate`) · o clique nele ABRE a lista ·
+/// e o clique numa opção sai como `Click` para a ponte traduzir.
+///
+/// ⚠️ **Sem abrir o chip primeiro, as opções não existem** — o popover é pintado no passe DIFERIDO
+/// e só com o `Dropdown` aberto. Um gate que clicasse a opção direto mediria um retângulo que
+/// ninguém pinta e passaria sobre uma lista que nunca abre.
+#[test]
+fn the_blend_list_opens_and_every_law_reaches_the_bus() {
+    // O Color Overlay é o card mais MAGRO que toma a lei (sem raio, sem offset) — se o chip
+    // sobrevive nele, sobrevive nos outros três.
+    const COLOR_OVERLAY: u8 = 8;
+    assert!(
+        kinds_table()[COLOR_OVERLAY as usize].takes_blend,
+        "a fixture tem de conter o fenômeno: este tipo TEM de tomar a lei"
+    );
+
+    // 1) O CHIP: clicá-lo abre a lista. É o dispatch genérico do `Dropdown`, então o que se prova
+    //    aqui é que ele foi REGISTRADO como um (e não como botão, que abriria coisa nenhuma).
+    publish(vec![row(COLOR_OVERLAY)]);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let chip = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::filter_blend_id(0))
+        .expect("o chip de mistura tem de ser PINTADO com área clicável");
+    let (cx, cy) = (chip.x + chip.w * 0.5, chip.y + chip.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert_eq!(
+        host.dropdown_is_open(ids::filter_blend_id(0)),
+        Some(true),
+        "o clique no chip não abriu a lista — ele não está registrado como `Dropdown`"
+    );
+
+    // 2) Com a lista ABERTA, cada opção é pintada E chega ao bus.
+    let names = blend_names_table();
+    for m in [0usize, 1, names.len() - 1] {
+        publish(vec![row(COLOR_OVERLAY)]);
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.set_dropdown_open(ids::filter_blend_id(0), true);
+        let id = ids::filter_blend_option_id(0, m);
+        let r = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("a lei {m} ({}) não é pintada com a lista aberta", names[m]));
+        let (ox, oy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, ox, oy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, ox, oy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre a lei {m} não virou Click — falta `button()` no `populate`"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(
+                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id)
+            ),
+            "o Click na lei {m} não chegou ao bus — falta o id no `is_filter_button` do \
+             `event_filters.rs` (a opção é clicável e MORTA)"
+        );
+    }
+}
+
+/// **Nenhuma opção de mistura é pintada com a lista FECHADA** — a metade AUSENTE. Sem ela o gate
+/// acima passaria sobre um popover que vive sempre aberto por cima do resto do painel.
+#[test]
+fn the_blend_list_paints_nothing_while_it_is_closed() {
+    publish(vec![row(8)]);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for m in [0usize, 1, ids::MAX_FILTER_BLENDS - 1] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::filter_blend_option_id(0, m))
+                .is_none(),
+            "a lei {m} foi pintada com a lista fechada"
+        );
+    }
 }

@@ -298,8 +298,14 @@ fn probe_fx_render_and_look() {
         // ⚠️ O bevel do report do Enio cobre a forma INTEIRA — regime que a cena 02 (sigma 20)
         // nunca exercita. Um bevel largo faz a banda alcançar o EIXO MEDIAL, onde a distância
         // troca de aresta mais próxima; é o único lugar onde o campo exato tem descontinuidade.
-        ("12_bevel_big", vec![op(FxOp::BEVEL, 90.0, black, [-12, 12])]),
-        ("13_bevel_huge", vec![op(FxOp::BEVEL, 200.0, black, [-12, 12])]),
+        (
+            "12_bevel_big",
+            vec![op(FxOp::BEVEL, 90.0, black, [-12, 12])],
+        ),
+        (
+            "13_bevel_huge",
+            vec![op(FxOp::BEVEL, 200.0, black, [-12, 12])],
+        ),
     ];
     // A FONTE, como o passe a ve^ — se a premultiplicacao dela nao valer, todo o resto herda.
     write_ppm(&dir, "0_src", &readback(&gpu, src, W, H));

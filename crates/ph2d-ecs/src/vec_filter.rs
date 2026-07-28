@@ -728,6 +728,93 @@ mod tests {
         );
     }
 
+    /// **QUEM toma a lei de mistura, e por quê os outros não.**
+    ///
+    /// ⚠️ Este gate existe porque a lista é uma DECISÃO, não uma dedução — e a dedução tentadora
+    /// (`!grows`) dá hoje exactamente o mesmo conjunto. Se alguém a "simplificar" assim, um tipo
+    /// futuro que espalhe para fora E tinja por dentro nasce sem o controle, em silêncio. O
+    /// número que justifica a lista é medido na `ph2d-render`
+    /// (`the_blend_of_an_outer_halo_only_reaches_the_antialiased_fringe`).
+    #[test]
+    fn the_blend_is_offered_where_a_colour_lands_on_something() {
+        for kind in [
+            FxOp::INNER_SHADOW,
+            FxOp::INNER_GLOW,
+            FxOp::BEVEL,
+            FxOp::COLOR_OVERLAY,
+        ] {
+            assert!(
+                FxOp::spec(kind).takes_blend,
+                "{} tinge o que já está lá — tem de tomar a lei",
+                FxOp::kind_name(kind)
+            );
+        }
+        for kind in [
+            FxOp::BLUR,
+            FxOp::GLOW,
+            FxOp::DROP_SHADOW,
+            FxOp::OUTLINE,
+            FxOp::FEATHER,
+        ] {
+            assert!(
+                !FxOp::spec(kind).takes_blend,
+                "{} entra por baixo (ou não tem cor própria) — a lei seria uma orla de 1 px",
+                FxOp::kind_name(kind)
+            );
+        }
+        // …e a coincidência com `!grows` está PINADA como coincidência: se um dia deixarem de
+        // coincidir, é este `assert` que cai, e a mensagem diz que isso é ESPERADO.
+        let same = (0..FxOp::KINDS as u8).all(|k| FxOp::spec(k).takes_blend != FxOp::spec(k).grows);
+        assert!(
+            same,
+            "as duas listas divergiram — isto é LEGÍTIMO (são perguntas diferentes: margem de              textura × a cor encosta na de baixo). Apague este assert, não o campo."
+        );
+    }
+
+    /// **Um degrau nasce em Normal, e Normal é o neutro.** Uma lei exótica por default repintaria
+    /// toda arte já autorada no primeiro load.
+    #[test]
+    fn a_new_op_is_born_in_the_neutral_law() {
+        for kind in 0..FxOp::KINDS as u8 {
+            assert_eq!(
+                FxOp::new(kind).blend,
+                FxOp::BLEND_NORMAL,
+                "{} nasceu com lei de mistura",
+                FxOp::kind_name(kind)
+            );
+        }
+        assert_eq!(
+            FxOp::BLEND_NORMAL,
+            0,
+            "o neutro é o código 0 (`BlendMode::Normal`)"
+        );
+    }
+
+    /// **`blend_code` é a metade de HONRAR da porta única.** Um degrau que carrega uma lei num tipo
+    /// que não a toma — um arquivo antigo, uma mudança de tipo, um teste — manda **Normal** ao
+    /// dispositivo. Sem isto o produtor desenharia uma mistura que a UI não mostra.
+    #[test]
+    fn a_law_on_a_kind_that_does_not_take_one_never_reaches_the_device() {
+        for kind in 0..FxOp::KINDS as u8 {
+            let mut op = FxOp::new(kind);
+            op.blend = 6; // Screen — bem longe do neutro.
+            let want = if FxOp::spec(kind).takes_blend {
+                6
+            } else {
+                FxOp::BLEND_NORMAL
+            };
+            assert_eq!(
+                op.blend_code(),
+                want,
+                "{}: takes_blend={} mas blend_code deu {}",
+                FxOp::kind_name(kind),
+                FxOp::spec(kind).takes_blend,
+                op.blend_code()
+            );
+            assert_eq!(op.takes_blend(), FxOp::spec(kind).takes_blend);
+        }
+    }
+
     /// O teto é respondido pela pilha, não contado no chamador.
     #[test]
     fn the_ceiling_is_the_stacks_own_answer() {

@@ -473,10 +473,7 @@ fn shader_adjustment_coefficients_bit_identical_with_rust() {
 fn shader_dispatches_hsl_and_specials_by_canonical_discriminant() {
     // HSL group = 16..=19 (Hue/Saturation/Color/Luminosity).
     for code in ["case 16u", "case 17u", "case 18u", "case 19u"] {
-        assert!(
-            composite_source().contains(code),
-            "missing HSL arm {code}"
-        );
+        assert!(composite_source().contains(code), "missing HSL arm {code}");
     }
     // Specials: Behind=20, Clear=21 (handled before the blend switch).
     assert!(

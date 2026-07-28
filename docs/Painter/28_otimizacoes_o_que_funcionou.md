@@ -2106,8 +2106,17 @@ linha.
 produtor restante de `INCOMPLETO` é o `else` das três portas nomeadas: *o plano não tinha forma de canvas
 na hora da escrita* (a primeira pincelada de uma camada, um plano de outro documento). E um plano que
 **não existia** no começo do passo **não tem *antes* a descrever** — o motor de delta já chama isso de
-`OnlyAfter`. Enquanto as duas coisas dividem um estado, este número parece dívida e não é; separá-las
-(`TileJournal::is_untouched` decide qual das duas o `else` significa) é o próximo degrau, e é barato.
+`OnlyAfter`. Enquanto as duas coisas dividem um estado, este número parece dívida e não é.
+
+⚠️ **Separá-las é barato de escrever e NÃO é barato de provar, e essa distinção decide a ordem.** O
+mecanismo é uma linha (`TileJournal::is_empty` já existe: journal vazio ⇒ o plano não existia; journal
+com tiles ⇒ ele existia e a escrita seguinte perdeu a forma, aí sim é incompletude). O problema é o
+**oráculo**: a rede de verificação compara o journal contra o **cursor**, e um plano ausente no `before`
+**não tem chave no cursor** — então ela não olha para ele. Marcar esses 202 como `DESCREVE` seria uma
+afirmação que a rede **não pode contradizer**, que é a forma exata do gate vazio (§5.23: *conte os
+conhecidos ao lado dos divergentes*). O degrau, então, é **oráculo primeiro**: a rede tem de afirmar
+`journal vazio ⟺ o cursor não tem a chave` antes de o estado ser promovido. Sem isso a promoção é uma
+melhora de número, não de conhecimento.
 
 ⚠️ O comentário que nomeava a causa deste estado (*"alguém escreveu pela porta genérica"*) **virou falso
 neste commit** e foi reescrito no mesmo commit: *um comentário que contradiz o código shipado é pior que

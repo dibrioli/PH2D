@@ -522,6 +522,28 @@ impl PhysicsJoint {
     /// the authored column in every row — so **a swap changes which end is called
     /// A, and nothing else**.
     ///
+    /// ⚠️ **"Every row" is the table above, and it was measured before the
+    /// [`JointKind::Wheel`] existed.** On a DRIVEN wheel with ground contact the
+    /// preservation is of SENSE, not bit-exact: the car still drives the same way
+    /// (that is gated), but it travels 5.60 m where the authored one travels 7.92
+    /// in 4 s, and the relative spin differs by ~1.5% in 1 s. rapier's solver is
+    /// not symmetric in body order, and friction amplifies the difference. A bare
+    /// swap, by contrast, is the EXACT mirror at every horizon tried — which is
+    /// what makes "the compensation only flips the drive back" a measured claim
+    /// rather than a reading of this code.
+    ///
+    /// ⚠️ **And on a Wheel the swap is the least visible it ever is**, which is
+    /// how a smoke reported it as *"não funcionou"*: the anchors coincide, so the
+    /// pivot dot does not move; the constraint is symmetric in A/B, so nothing
+    /// physical changes; and what is left is the two name rows exchanging and the
+    /// overlay's solid/dashed ownership lines swapping. ⛔ **The obvious answer —
+    /// *let the swap actually move the motor to the other body* — is MEASURED and
+    /// impossible:** a wheel joint does not designate a wheel (both anchors are
+    /// one point, the axis is the same world direction in both frames), so which
+    /// body spins is decided by mass and ground contact. Uncompensated, the
+    /// button's only effect is to drive the car backwards, which is the sign of
+    /// `motor_speed` under a name that does not say so.
+    ///
     /// ⚠️ **That it changes nothing physical is the point, not a reason to doubt
     /// the button.** What it changes is real and visible: the two rows exchange,
     /// the display pivot follows the OTHER body (`sync_joint_pivots` derives it

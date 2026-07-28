@@ -2118,6 +2118,37 @@ conhecidos ao lado dos divergentes*). O degrau, então, é **oráculo primeiro**
 `journal vazio ⟺ o cursor não tem a chave` antes de o estado ser promovido. Sem isso a promoção é uma
 melhora de número, não de conhecimento.
 
+**✅ E foi assim que ela foi feita, na mesma sessão — oráculo primeiro, promoção depois.** O `else` das
+três portas deixou de dizer *"não sei"* e passa a dizer **qual** das duas coisas aconteceu
+(`ReliefJournals::note_absent`, decidido por `TileJournal::is_empty`): journal vazio ⇒ o plano não
+existia, registra-se `absent` e o passo segue descrevendo; journal **com tiles** ⇒ o plano existia e
+perdeu a forma no meio, e aí `incomplete` como antes. A rede então **confere a afirmação nova**, antes do
+tally e por isso mesmo:
+
+> *o journal declarou o plano P AUSENTE no começo do passo, mas o `before` o tem em forma de canvas*
+
+| medida | antes | depois |
+|---|---|---|
+| passos que **DESCREVEM** o relevo | 100 | **302** |
+| passos `INCOMPLETO` | 202 | **0** |
+| passos `MISTURADO` | 0 | 0 |
+| divergências (relevo · cursor · canvas) | 0 · 0 · 0 | **0 · 0 · 0** |
+
+**O journal agora descreve o relevo de TODO passo que tem relevo**, e é isso que a troca do S3 precisava.
+
+⚠️ **A mutação não sangrou no run comum, e isso é o desenho, não um buraco:** a rede é opt-in
+(`PH2D_UNDO_AUDIT=1`) porque *uma rede de verificação não pode viver no relógio do que ela observa*
+(§5.23). Armada, ela nomeia o plano e o tamanho. Mas por isso a **propriedade** ganhou gate próprio, sem
+relógio e sem env (`a_plane_that_never_existed_is_absent_not_incomplete`) — dois casos num teste, e a
+mutação *"marque ausente sempre"* mata o segundo.
+
+⚠️ **Duas coisas seguiram a porta genérica para o `cfg(test)`, e as duas por doc que virou falso:**
+`note_untracked_write` (era a metade de declaração dela — *"não é gateado porque a porta genérica o chama
+em qualquer perfil"* morreu com a porta) e, no caminho inverso, `TileJournal::is_empty` **saiu** do
+`cfg(test)` porque ganhou um consumidor de produto. ⚠️ E o `ReliefPlane` **não pode** ser gateado: ele
+atravessa a assinatura de uma porta que roda em qualquer perfil — a tentativa quebrou **só em
+`--release`**, e `cargo clippy -p` roda em **debug**. *O gate de fechamento roda os dois perfis.*
+
 ⚠️ O comentário que nomeava a causa deste estado (*"alguém escreveu pela porta genérica"*) **virou falso
 neste commit** e foi reescrito no mesmo commit: *um comentário que contradiz o código shipado é pior que
 comentário nenhum.*

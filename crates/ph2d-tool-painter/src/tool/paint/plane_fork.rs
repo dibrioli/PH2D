@@ -111,9 +111,10 @@ pub(super) fn fork_heights<'a>(
     if arc.len() == (size.0 as usize) * (size.1 as usize) {
         win.capture_heights(layer, arc, size.0 as usize, elems(area, 1));
     } else {
-        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
-        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
-        win.note_untracked_write();
+        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma. **Isso não é o mesmo que
+        // o journal estar incompleto** — um plano que não existia não tem *antes* a descrever, e o motor
+        // de delta já chama isso de `OnlyAfter`. Quem decide qual das duas é `ReliefJournals::note_absent`.
+        win.note_absent_relief(layer, crate::undo::window::ReliefPlane::Heights);
     }
     open_access(win);
     fork_par_raw(arc)
@@ -130,9 +131,8 @@ pub(super) fn fork_covers<'a>(
     if arc.len() == (size.0 as usize) * (size.1 as usize) {
         win.capture_covers(layer, arc, size.0 as usize, elems(area, 1));
     } else {
-        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
-        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
-        win.note_untracked_write();
+        // Ver o `else` de [`fork_heights`].
+        win.note_absent_relief(layer, crate::undo::window::ReliefPlane::Covers);
     }
     open_access(win);
     fork_par_raw(arc)
@@ -149,9 +149,8 @@ pub(super) fn fork_mats<'a>(
     if arc.len() == (size.0 as usize) * (size.1 as usize) {
         win.capture_mats(layer, arc, size.0 as usize, elems(area, 1));
     } else {
-        // O plano ainda não existe (1ª pincelada da camada) ou tem outra forma: não há "antes" que o
-        // journal possa descrever, e afirmar que descreve seria pior que não capturar.
-        win.note_untracked_write();
+        // Ver o `else` de [`fork_heights`].
+        win.note_absent_relief(layer, crate::undo::window::ReliefPlane::Mats);
     }
     open_access(win);
     fork_par_raw(arc)
@@ -450,6 +449,61 @@ mod tests {
             w2.relief_state(),
             "INCOMPLETO",
             "a porta generica nao sabe de que plano e — o journal tem de se declarar incompleto"
+        );
+    }
+
+    /// **AUSENTE e INCOMPLETO são coisas diferentes, e o `else` da porta distingue as duas.**
+    ///
+    /// Um plano que **não existia** no começo do passo não tem *antes* a descrever — o motor de delta já
+    /// chama isso de `OnlyAfter`, e não descrever o que não existe é a resposta certa. Um plano que
+    /// **existia**, foi capturado, e perdeu a forma no meio do passo é a outra coisa: aí a escrita atual
+    /// é genuinamente indescritível e o passo inteiro se declara incompleto.
+    ///
+    /// ⚠️ **Este gate existe porque a rede que confere a promoção é opt-in** (`PH2D_UNDO_AUDIT=1`) — uma
+    /// rede de verificação não pode viver no relógio do que ela observa (§5.23), e por isso a
+    /// PROPRIEDADE ganha um gate próprio, sem relógio e sem env. Sem ele a distinção seria provada só
+    /// por uma varredura que ninguém roda por padrão.
+    ///
+    /// ⚠️ Mutação que sangra: `note_absent` marcar ausente sempre (o segundo caso vira DESCREVE, e o
+    /// journal jura conhecer bytes velhos que ele não guardou).
+    #[test]
+    fn a_plane_that_never_existed_is_absent_not_incomplete() {
+        const W: u32 = 64;
+        let n = (W as usize) * (W as usize);
+        let layer = crate::layers::LayerId(3);
+
+        // (1) A 1ª pincelada de uma camada: o plano nasce VAZIO, então não há "antes".
+        let w = WriteState::default();
+        let mut fresh: Arc<Vec<f32>> = Arc::new(Vec::new());
+        let _ = fork_heights(&mut fresh, &w, layer, (W, W), None);
+        assert_eq!(
+            w.relief_state(),
+            "DESCREVE",
+            "um plano que nao existia nao tem *antes* a descrever — declarar o passo INCOMPLETO por \
+             causa dele e confundir 'nada a dizer' com 'nao sei dizer'"
+        );
+        assert!(
+            w.relief_absent()[0],
+            "o fato tem de ficar registrado para a rede o conferir"
+        );
+
+        // (2) O plano EXISTIA e foi capturado; perder a forma depois é incompletude de verdade.
+        let w2 = WriteState::default();
+        let mut real: Arc<Vec<f32>> = Arc::new(vec![7.0; n]);
+        let _keep = Arc::clone(&real);
+        fork_heights(&mut real, &w2, layer, (W, W), None)[0] = -1.0;
+        assert_eq!(
+            w2.relief_state(),
+            "DESCREVE",
+            "controle: a captura normal descreve"
+        );
+        let mut odd: Arc<Vec<f32>> = Arc::new(vec![0.0; n + 1]);
+        let _ = fork_heights(&mut odd, &w2, layer, (W, W), None);
+        assert_eq!(
+            w2.relief_state(),
+            "INCOMPLETO",
+            "o plano ja tinha tiles no journal: perder a forma no meio do passo deixa bytes velhos sem \
+             dono, e isso NAO e a mesma coisa que um plano que nunca existiu"
         );
     }
 

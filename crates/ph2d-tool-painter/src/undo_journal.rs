@@ -118,8 +118,12 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
         self.whole = None;
     }
 
-    /// `true` se nada foi capturado neste passo. Consumidor: os gates deste módulo.
-    #[cfg(test)]
+    /// `true` se nada foi capturado neste passo.
+    ///
+    /// ⚠️ **Ela decide o sentido de uma escrita a um plano sem forma de canvas** — o `else` das três
+    /// portas (`ReliefJournals::note_absent`): journal vazio ⇒ o plano não existia no começo do passo e
+    /// não há *antes* a descrever; journal com tiles ⇒ ele existia, perdeu a forma no meio, e aí a
+    /// escrita é genuinamente indescritível. Era `cfg(test)` enquanto o único consumidor eram os gates.
     pub(crate) fn is_empty(&self) -> bool {
         self.whole.is_none() && self.taken == 0
     }

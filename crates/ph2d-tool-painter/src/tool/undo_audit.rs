@@ -243,6 +243,30 @@ impl PainterTool {
             (known, differ)
         }
         let w = &self.undo.write_state;
+        // ⚠️ **O ORÁCULO DA AUSÊNCIA, e ele vem ANTES do tally por um motivo:** um plano marcado
+        // *ausente* não tem chave no `before`, então o `tally` devolve `(0, 0)` para ele — **zero
+        // divergências sobre zero bytes**, o gate vazio que a §5.23 já pagou uma vez. A promoção de
+        // INCOMPLETO para DESCREVE (202 passos da suíte) só é honesta se a rede puder CONTRADIZÊ-LA, e é
+        // isto que ela afirma: *journal vazio para este plano ⟺ o `before` não o tem em forma de canvas*.
+        //
+        // Um `else` que disparasse sobre um plano que o `before` DE FATO tem é a falha que importa: ali o
+        // journal calaria sobre bytes velhos que existem, e o S3 instalaria pixels que ninguém autorou.
+        let (sw, sh) = self.source_size;
+        let n = (sw as usize) * (sh as usize);
+        let absent = w.relief_absent();
+        let real: [Option<usize>; 3] = [
+            before.heights.get(&layer).map(|v| v.len()),
+            before.covers.get(&layer).map(|v| v.len()),
+            before.mats.get(&layer).map(|v| v.len()),
+        ];
+        for (i, name) in ["heights", "covers", "mats"].iter().enumerate() {
+            assert!(
+                !absent[i] || real[i] != Some(n),
+                "o journal declarou o plano {name} AUSENTE no comeco do passo, mas o `before` o tem em \
+                 forma de canvas ({n} elementos): os bytes velhos existiam e nao foram guardados (doc \
+                 28 §5.29)"
+            );
+        }
         let (kh, dh) = tally(before.heights.get(&layer), |i| w.heights_before(layer, i));
         let (kc, dc) = tally(before.covers.get(&layer), |i| w.covers_before(layer, i));
         let (km, dm) = tally(before.mats.get(&layer), |i| w.mats_before(layer, i));

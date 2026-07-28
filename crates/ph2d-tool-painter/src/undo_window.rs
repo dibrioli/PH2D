@@ -181,6 +181,19 @@ struct ReliefJournals {
     layer: Option<crate::layers::LayerId>,
     mixed: bool,
     incomplete: bool,
+    /// **Este plano foi escrito quando ainda não tinha forma de canvas** — a 1ª pincelada de uma camada,
+    /// ou um plano de outro documento.
+    ///
+    /// ⚠️ **Não é o mesmo que incompleto, e conflatá-los custava 202 passos da suíte.** Um plano que não
+    /// existia no começo do passo **não tem *antes* a descrever**; o motor de delta já chama isso de
+    /// `OnlyAfter` e nunca consulta janela nenhuma. Incompleto é a outra coisa: alguém escreveu bytes
+    /// cujo valor velho o journal não guardou.
+    ///
+    /// ⚠️ **A promoção só é honesta porque a rede a confere** (`audit_relief_absence`): *journal vazio
+    /// para este plano ⟺ o `before` do passo não o tem em forma de canvas*. Sem esse ⟺, marcar estes
+    /// passos como DESCREVE seria uma afirmação que o oráculo **não pode contradizer** — a forma exata
+    /// do gate vazio da §5.23.
+    absent: [bool; 3],
     heights: crate::undo::journal::TileJournal<f32>,
     covers: crate::undo::journal::TileJournal<u8>,
     mats: crate::undo::journal::TileJournal<ph2d_painter_brush::material::MaterialBytes>,
@@ -201,6 +214,30 @@ impl ReliefJournals {
                 self.mats.reset();
             }
         }
+    }
+
+    /// **Uma escrita chegou a um plano SEM forma de canvas.** Duas coisas cabem aqui e só uma é dívida.
+    ///
+    /// Se o journal daquele plano ainda está **vazio**, o plano não existia no começo do passo: não há
+    /// *antes*, e não descrever o que não existe é a resposta certa (o `absent` registra o fato para a
+    /// rede o conferir). Se ele **já tem tiles**, o plano ERA canvas-shaped mais cedo neste passo e
+    /// perdeu a forma no meio — aí a escrita atual é genuinamente indescritível, e o passo inteiro se
+    /// declara incompleto, como antes.
+    fn note_absent(&mut self, l: crate::layers::LayerId, which: ReliefPlane) {
+        let empty = match which {
+            ReliefPlane::Heights => self.heights.is_empty(),
+            ReliefPlane::Covers => self.covers.is_empty(),
+            ReliefPlane::Mats => self.mats.is_empty(),
+        };
+        if !empty {
+            self.incomplete = true;
+            return;
+        }
+        // O passo TOCOU o relevo desta camada (ele criou o plano), então a camada é registrada: sem
+        // isso `speaks_for` recusaria, e um passo cujo único relevo é um plano novo cairia em
+        // SEM-RELEVO — que descreve outra coisa.
+        self.note_layer(l);
+        self.absent[which as usize] = true;
     }
 
     /// `true` se estes journals podem responder pela camada `l`.
@@ -366,14 +403,56 @@ impl WriteState {
     /// **Uma escrita que os journals de relevo não conseguem contabilizar** — a porta genérica (que não
     /// sabe de que plano é) ou um plano cuja forma eles não descrevem. Ver [`ReliefJournals::incomplete`].
     ///
-    /// ⚠️ Não é gateado por `cfg`, pelo mesmo motivo do [`Self::toggle_foreign_plane`]: ele é chamado
-    /// pela porta genérica em qualquer perfil, e um contador que só existisse em debug faria a porta ter
-    /// duas formas.
+    /// ⚠️ **`cfg(test)`, e ela SEGUE a porta genérica** — era a metade de declaração dela, e o
+    /// `fork_par` virou referência congelada quando os dez sítios migraram (§5.29). O doc que morava
+    /// aqui dizia *"não é gateado por `cfg` porque a porta genérica o chama em qualquer perfil"*, e essa
+    /// frase morreu junto com a porta: em produção o único caminho até `incomplete` é o
+    /// [`ReliefJournals::note_absent`], quando um plano que **existia** perde a forma no meio do passo.
+    #[cfg(test)]
     pub(crate) fn note_untracked_write(&self) {
+        self.relief.borrow_mut().incomplete = true;
+    }
+}
+
+/// Qual dos três planos de relevo — o índice que [`ReliefJournals::absent`] usa.
+///
+/// Existe porque as três portas fazem a MESMA pergunta sobre planos de tipos diferentes, e um enum é o
+/// que deixa a resposta ser dada uma vez em vez de três.
+///
+/// ⚠️ **NÃO é gateado por `cfg`**, e a tentativa de gateá-lo não compilou em `--release`: ele atravessa a
+/// assinatura de [`WriteState::note_absent_relief`], que as portas chamam em **qualquer** perfil. Um tipo
+/// que só existe em debug daria duas formas às portas — o mesmo motivo do `note_untracked_write`.
+/// ⚠️ E `cargo clippy -p` roda em **debug**: só o check de release pega isto.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ReliefPlane {
+    Heights = 0,
+    Covers = 1,
+    Mats = 2,
+}
+
+impl WriteState {
+    /// **O plano `which` da camada `layer` foi escrito sem ter forma de canvas.** Ver
+    /// [`ReliefJournals::note_absent`], que decide qual das duas coisas isso significa.
+    ///
+    /// ⚠️ Não é gateado por `cfg` pela mesma razão do [`Self::note_untracked_write`]: as três portas o
+    /// chamam em qualquer perfil, e um canal que só existisse em debug daria duas formas às portas.
+    pub(crate) fn note_absent_relief(&self, layer: crate::layers::LayerId, which: ReliefPlane) {
         #[cfg(any(test, debug_assertions))]
         {
-            self.relief.borrow_mut().incomplete = true;
+            self.relief.borrow_mut().note_absent(layer, which);
         }
+        #[cfg(not(any(test, debug_assertions)))]
+        {
+            let _ = (layer, which);
+        }
+    }
+
+    /// Quais planos de relevo este passo escreveu **sem que houvesse um antes** — o que a rede confere
+    /// contra o `before` (`audit_relief_absence`). Índices de [`ReliefPlane`].
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn relief_absent(&self) -> [bool; 3] {
+        self.relief.borrow().absent
     }
 
     /// O que os journals de relevo dizem sobre o elemento `i` da camada `layer`, ou `None` quando eles

@@ -60,6 +60,9 @@ postcard = { version = "=1.1.3", features = ["alloc"] }
 rect_packer = "0.2"
 
 [dev-dependencies]
+# The post-stack GPU parity gate (ADR-0145) reads Rgba16Float back and decodes f16 to
+# compare the grade shader against the CPU `grade_pixel` reference. Test-only.
+half = "2"
 # The impasto light's GPU parity gate reconciles the shader against the CANONICAL CPU pass
 # (`PainterTool::apply_impasto_light`) rather than a re-implementation of it — the same shape as the
 # `ph2d-painter-effects` dev-dep below, which the Bloom / Shadows-Highlights gates use. No cycle:

@@ -262,6 +262,9 @@ pub(crate) fn build_initial_state(
     // doc 67: the Motion module's own HDR glow pass, sized to the surface like
     // game_rt. Inert until the artist authors bloom on the active Motion doc.
     let motion_fx = ph2d_render::MotionFx::new(surface.gpu(), (size.width, size.height));
+    // ADR-0145: the app HDR post-stack (frame-wide colour grade), sized to the surface
+    // like game_rt. Inert until `App.grade` is non-neutral.
+    let post_stack = ph2d_render::PostStack::new(surface.gpu(), (size.width, size.height));
     let tonemap = Tonemap::new(
         surface.gpu(),
         game_rt
@@ -424,6 +427,7 @@ pub(crate) fn build_initial_state(
         layout,
         game_rt,
         motion_fx,
+        post_stack,
         tonemap,
         compositor,
         vello_pass,

@@ -696,6 +696,7 @@ impl crate::App {
         self.motion_node_path_smoke();
         self.motion_delay_smoke();
         self.motion_fx_smoke();
+        self.post_stack_smoke();
         self.value_curve_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();
@@ -759,6 +760,7 @@ impl crate::App {
             layout,
             game_rt,
             motion_fx,
+            post_stack,
             tonemap,
             compositor,
             vello_pass,
@@ -1019,6 +1021,8 @@ impl crate::App {
             game_rt.ensure_size(surface.gpu(), dim);
             // doc 67: the Motion glow RT + blur chain track the surface too.
             motion_fx.ensure_size(surface.gpu(), dim);
+            // ADR-0145: the post-stack scratch RT tracks the surface alongside game_rt.
+            post_stack.ensure_size(surface.gpu(), dim);
             tonemap.ensure_size(surface.gpu(), dim);
             tonemap.rebind_game_view(
                 surface.gpu(),

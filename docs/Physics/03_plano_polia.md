@@ -1,6 +1,7 @@
 # A POLIA — plano de redesenho
 
-> Report do Enio, 2026-07-28, com foto. Estado: **W0 fechado e smokado**; W1 em curso.
+> Report do Enio, 2026-07-28, com foto. Estado: **W0 fechado e smokado**; **W1 fechado,
+> pendente de smoke**; W2 aberto.
 > O tracker da linha é [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md); o mapa de
 > waves é [`00_plano_waves.md`](00_plano_waves.md). Este doc é o **porquê** do redesenho.
 
@@ -155,7 +156,7 @@ reintegra sozinho.
 | wave | entrega |
 |---|---|
 | **W0** ✅ | as quatro correções + os dois gates estruturais |
-| **W1** | a roldana é entidade (com raio) · rota de N nós com tangentes e arcos · lado automático + override · kernel generalizado · desenho da roldana, da corda na superfície e do giro · `ratio` aposentado · bump de schema |
+| **W1** ✅ | a roldana é entidade (com raio) · rota de N nós com tangentes e arcos · lado automático + override · kernel generalizado · desenho da roldana, da corda na superfície e do giro · "Add Wheel" · `ratio` aposentado · `PROJECT_SCHEMA` 40→41 |
 | **W2** | motor por roldana · ruptura nas duas pontas e em cada centro · readouts |
 | **W3** | a talha de verdade: roldana montada num corpo (a cadernal móvel) |
 | **W4** | *nomeada, não escalonada*: o DIFERENCIAL — dois tambores acoplados num eixo ⇒ `ratio = r₂/r₁` emergente |
@@ -172,3 +173,27 @@ que o geral não quebrou o particular.
 - os **guardas de degeneração** — âncora dentro de uma roldana, roldanas
   sobrepostas, `|C₂−C₁| < |r₁±r₂|` — cada um com decisão explícita em vez de
   `NaN` silencioso.
+
+## 11. O que o W1 entregou, item por item
+
+| pedido | onde ficou |
+|---|---|
+| 1. Ratio sem valor na caixa | **o campo saiu** — ver §3 |
+| 2. criação pelo canvas não funciona | W0, `pulley_rig` como porta única |
+| 3. diâmetro · representação · rotação | `PulleyWheel.radius` · o círculo do tamanho que tem · `ω = s/r` com raio-guia |
+| 4. nº de roldanas em tempo real | botão **Add Wheel** na §12; tirar uma é apagar o objeto |
+| 5. a corda passa no centro | a rota tangencia a SUPERFÍCIE (`rope_route`) |
+| 6. selecionar e posicionar | a roda é entidade: dot de CENTRO + dot de ARO quando selecionada |
+| 7. algoritmo de cima/baixo | ponto fixo automático (1 passada medida) + `WrapSide::{Auto,Over,Under}` |
+| 8. motor e break por roldana | **W2** — o componente já tem onde |
+
+### Aberto no W1, nomeado
+
+- **A seção de Inspector da RODA não existe** — o raio é autorável pela alça do
+  aro e o `wrap` só pelo default `Auto`. As duas rows (Radius numérico, Wrap
+  `Auto|Over|Under`) e a de `order` são a próxima fatia; os ids já estão cunhados
+  (`INSP_WHEEL_RADIUS`/`_ORDER`/`_WRAP`).
+- **Um corpo que passa da própria roldana inverte o ramo** — a corda passa a
+  puxar do outro lado e a cena dá um tranco. A cena de smoke evita o caso
+  levantando as roldanas; o que uma polia REAL faz ali é a carga encostar na
+  roda, que é contato, não corda.

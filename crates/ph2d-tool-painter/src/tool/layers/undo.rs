@@ -146,13 +146,14 @@ impl PainterTool {
     pub(crate) fn commit_structural_edit(&mut self, before: crate::undo::ModelSnapshot) {
         // A janela declarada desde o último commit — aceita só se este `before` for posterior a ele (aí
         // ela é um SUPERCONJUNTO do que ele não viu) e se nenhum acesso de escrita ficou sem declarar.
-        let hint = self.undo_window.get().hint_for(before.writes);
+        let hint = self.undo.write_state.get().hint_for(before.writes);
         self.audit_commit_window(before.writes, hint);
+        self.audit_journal_matches_the_before(&before);
         let after = self.snapshot_model();
         self.undo.record_structural_hinted(before, after, hint);
-        let mut w = self.undo_window.get();
+        let mut w = self.undo.write_state.get();
         w.reset(self.undo_writes);
-        self.undo_window.set(w);
+        self.undo.write_state.set(w);
     }
 
     /// [`Self::commit_structural_edit`] for a COALESCIBLE action (see [`crate::undo::CoalesceKind`]): a run
@@ -164,8 +165,8 @@ impl PainterTool {
     ) {
         let after = self.snapshot_model();
         self.undo.record_structural_coalesced(kind, before, after);
-        let mut w = self.undo_window.get();
+        let mut w = self.undo.write_state.get();
         w.reset(self.undo_writes);
-        self.undo_window.set(w);
+        self.undo.write_state.set(w);
     }
 }

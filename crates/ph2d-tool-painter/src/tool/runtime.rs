@@ -123,7 +123,7 @@ impl PainterTool {
     /// 12,2 ms que sobraram do S2 (doc 28 §5.19): *extração* de uma janela pequena contra *varredura*
     /// dos quatro planos porque algum sítio deixou um acesso sem declarar.
     ///
-    /// ⚠️ O contador é **um só para todos os planos** (uma `WindowCell` no tool), então um único sítio
+    /// ⚠️ O contador é **um só para todos os planos** (uma `WriteState` no tool), então um único sítio
     /// esquecido tira a janela de TODOS eles. É por isso que a pergunta se faz aqui, no consumidor, e
     /// não por sítio: o que decide é o total.
     ///
@@ -139,7 +139,7 @@ impl PainterTool {
         if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
             return;
         }
-        let w = self.undo_window.get();
+        let w = self.undo.write_state.get();
         let verdict = match hint {
             Some(r) => format!("JANELA {}x{} em ({},{})", r.w, r.h, r.x, r.y),
             None => "VARRE".to_string(),
@@ -149,6 +149,71 @@ impl PainterTool {
             w.undeclared()
         );
     }
+
+    /// **A REDE DO JOURNAL — todo escritor de canvas passa pela porta?** (doc 28 §7, degrau S3).
+    ///
+    /// O journal captura os bytes velhos do canvas na primeira vez que a porta
+    /// ([`super::paint::plane_fork::fork_canvas`]) é atravessada, e é zerado em cada commit. Logo o
+    /// que ele guarda é, por construção, **o canvas como ele estava no ÚLTIMO COMMIT** — e quem
+    /// carrega esse estado hoje é o `cursor` do histórico. Esta função afirma essa igualdade.
+    ///
+    /// ⚠️ **O alvo é o `cursor`, não o `before` do passo, e a primeira versão errou isso.** Mirado no
+    /// `before` a rede disparou em 16 testes na 1ª rodada, com o journal em 255 (tela virgem) contra
+    /// um `before` já pintado: o journal descreve um passado *mais antigo*, porque escritas entre dois
+    /// commits (um preview re-stampado, um tick de água) o armam antes de o passo abrir. Isso **não é
+    /// defeito** — é a mesma reconciliação que o
+    /// [`crate::undo::UndoController::absorb_foreign_writes`] faz hoje por diff, e que o journal
+    /// passa a fazer **por construção**: ele capturou aquelas escritas também.
+    ///
+    /// ⚠️ **O que ela pega é o escritor que escreve sem passar pela porta**: aí a captura pega bytes
+    /// já modificados e o journal passa a descrever um passado que nunca existiu. É a única forma de
+    /// ele estar errado enquanto captura o plano inteiro, e é justamente o que precisa estar provado
+    /// antes de ele virar a FONTE do undo em vez de uma rede.
+    ///
+    /// ⚠️ **ELE AINDA NÃO ESTÁ LIMPO, e é por isso que é um CENSO (`PH2D_UNDO_AUDIT=1`) e não um
+    /// gate.** Na rodada de 2026-07-27 ele acusa um punhado de commits em que o journal descreve a
+    /// tela VIRGEM contra um cursor já pintado — ou seja há escritores de canvas que ainda não passam
+    /// por [`super::paint::plane_fork::fork_canvas`]. **Enquanto essa lista não for zero, o journal
+    /// não pode virar a FONTE do undo** (doc 28 §5.22). Um gate que falha não pode entrar verde nem
+    /// pode entrar vermelho: entra como censo, com o número à vista e a lista por fechar.
+    ///
+    /// ```text
+    /// PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter --lib 2>&1 | grep "journal do canvas"
+    /// ```
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn audit_journal_matches_the_before(&self, before: &crate::undo::ModelSnapshot) {
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
+            return;
+        }
+        if !self.undo.write_state.get().covers(before.writes) {
+            return; // um `before` anterior ao último reset: o journal não fala do passado dele
+        }
+        let Some(cursor) = self.undo.cursor_for_audit() else {
+            return; // história vazia: não há "último commit" com que comparar
+        };
+        let mut differ = 0usize;
+        let mut first = None;
+        for (i, &want) in cursor.canvas_rgba.iter().enumerate() {
+            if let Some(got) = self.undo.write_state.canvas_before(i)
+                && got != want
+            {
+                differ += 1;
+                first.get_or_insert((i, got, want));
+            }
+        }
+        assert!(
+            differ == 0,
+            "o journal do canvas descreve um passado diferente do estado do ULTIMO COMMIT: {differ} \
+             byte(s) divergem, o 1o em {first:?} (indice, journal, cursor). Isso significa que algo \
+             escreveu no canvas SEM passar pela porta `fork_canvas` — o journal capturou bytes ja \
+             modificados, e como FONTE do undo ele devolveria um estado que nunca existiu (doc 28 §7)"
+        );
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(clippy::unused_self, reason = "no-op em release; a rede é de debug")]
+    pub(crate) fn audit_journal_matches_the_before(&self, _before: &crate::undo::ModelSnapshot) {}
 
     #[cfg(not(any(test, debug_assertions)))]
     #[expect(clippy::unused_self, reason = "no-op em release; a rede é de debug")]

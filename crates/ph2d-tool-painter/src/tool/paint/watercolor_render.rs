@@ -271,8 +271,11 @@ impl PainterTool {
         let alock_on = gate_alock.is_some();
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
-        let out =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let out = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         // PARALLEL composite over OUTPUT rows (ADR-0109 exception): each pixel is a pure
         // function of immutable inputs — no cross-pixel reduction, no shared mutable state, no
         // RNG — so disjoint rows over the pool are BYTE-IDENTICAL to the serial loop (IEEE-754

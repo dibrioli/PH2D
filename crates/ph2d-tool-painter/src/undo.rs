@@ -454,6 +454,15 @@ impl UndoEntry {
 /// returns the [`ModelSnapshot`] the caller must reinstall).
 #[derive(Debug)]
 pub struct UndoController {
+    /// **O estado de ESCRITA desde o último commit** — a janela declarada e o journal dos bytes
+    /// velhos (ver [`window::WriteState`]).
+    ///
+    /// ⚠️ Ele mora AQUI, e não no tool, porque *"o que mudou desde o último commit"* é um conceito da
+    /// HISTÓRIA. Enquanto era um campo do tool, zerá-lo era responsabilidade de cada sítio que move o
+    /// cursor — e são **21, em 11 arquivos**. Um deles esquecer não falha: o journal simplesmente
+    /// passa a descrever um passado velho demais, em silêncio. Aqui o reset é estrutural: acontece na
+    /// mesma função que empurra a entrada.
+    pub write_state: window::WriteState,
     undo: Vec<UndoEntry>,
     redo: Vec<UndoEntry>,
     /// **A base de todo delta**: o endpoint adjacente ao topo, materializado — o `after` da entrada no
@@ -479,6 +488,7 @@ impl UndoController {
     #[must_use]
     pub fn new(max_bytes: usize) -> Self {
         Self {
+            write_state: window::WriteState::default(),
             undo: Vec::new(),
             redo: Vec::new(),
             cursor: None,
@@ -496,64 +506,6 @@ impl UndoController {
     /// branch (standard linear-history semantics).
     pub fn record_structural(&mut self, before: ModelSnapshot, after: ModelSnapshot) {
         self.record_structural_hinted(before, after, None);
-    }
-
-    /// [`Self::record_structural`] com a **janela declarada por quem escreveu** (ver
-    /// [`window::WriteWindow`]): `Some(rect)` poupa o `split` de varrer os planos para derivá-la; `None`
-    /// é sempre correto, só mais caro.
-    pub fn record_structural_hinted(
-        &mut self,
-        before: ModelSnapshot,
-        after: ModelSnapshot,
-        hint: Option<crate::compositor::Region>,
-    ) {
-        self.absorb_foreign_writes(&before);
-        // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
-        // um clone de `Arc`s, não de pixels.
-        self.cursor = Some(Box::new(after.clone()));
-        let entry = UndoEntry::split(before, after, None, hint);
-        self.bytes += entry.heap_bytes();
-        self.undo.push(entry);
-        self.drop_redo();
-        self.cap();
-    }
-
-    /// Record a COALESCIBLE structural transition: when the newest undo entry carries the SAME
-    /// [`CoalesceKind`] (and no redo branch intervenes), the run extends — the top entry keeps its
-    /// original `before` and adopts this `after` — so N repeated same-kind actions undo as ONE step.
-    /// Otherwise it pushes a fresh entry (which starts a new run).
-    pub fn record_structural_coalesced(
-        &mut self,
-        kind: CoalesceKind,
-        before: ModelSnapshot,
-        after: ModelSnapshot,
-    ) {
-        self.absorb_foreign_writes(&before);
-        if self.redo.is_empty()
-            && let Some(top) = self.undo.last()
-            && top.kind == Some(kind)
-            // ⚠️ Estender o run RECOMPÕE o delta: o `before` da entrada está esvaziado, então ele é
-            // materializado do cursor ANTIGO (que é o `after` de que o delta partiu) e re-partido contra
-            // o `after` novo. Concatenar os dois deltas seria a alternativa, e ela erra quando as duas
-            // janelas se sobrepõem — o segundo passo escreveria por cima do primeiro na ordem errada.
-            && let Some(cursor) = self.cursor.as_deref()
-            && let Some(first_before) = top.materialize(cursor, true)
-        {
-            let old = self.undo.pop().expect("o topo que acabamos de ler");
-            self.bytes -= old.heap_bytes();
-            self.cursor = Some(Box::new(after.clone()));
-            let entry = UndoEntry::split(*first_before, after, Some(kind), None);
-            self.bytes += entry.heap_bytes();
-            self.undo.push(entry);
-            self.cap();
-            return;
-        }
-        self.cursor = Some(Box::new(after.clone()));
-        let entry = UndoEntry::split(before, after, Some(kind), None);
-        self.bytes += entry.heap_bytes();
-        self.undo.push(entry);
-        self.drop_redo();
-        self.cap();
     }
 
     /// Undo the most recent structural edit: roll back to its `before` model and
@@ -576,7 +528,7 @@ impl UndoController {
         let entry = self.undo.pop().expect("o topo que acabamos de ler");
         self.redo.push(entry);
         // O cursor ANDA com a história: o estado que acabamos de instalar é o adjacente do novo topo.
-        self.cursor = Some(restore.clone());
+        self.set_cursor((*restore).clone());
         Some(restore)
     }
 
@@ -597,7 +549,7 @@ impl UndoController {
         };
         let entry = self.redo.pop().expect("o topo que acabamos de ler");
         self.undo.push(entry);
-        self.cursor = Some(restore.clone());
+        self.set_cursor((*restore).clone());
         Some(restore)
     }
 
@@ -640,6 +592,7 @@ impl UndoController {
         self.undo.clear();
         self.redo.clear();
         self.cursor = None;
+        self.write_state.reset_journal();
         self.bytes = 0;
     }
 
@@ -683,6 +636,13 @@ impl UndoController {
 /// A JANELA que quem escreve declara — o canal que poupa o `split` de derivá-la.
 #[path = "undo_window.rs"]
 pub mod window;
+
+/// O JOURNAL por tile — os bytes velhos capturados na hora da escrita (doc 28 §7, degrau S3).
+#[path = "undo_journal.rs"]
+pub(crate) mod journal;
+
+#[path = "undo_record.rs"]
+mod record; // como uma ENTRADA nasce: o cursor anda, o delta e partido, o cap morde
 
 #[path = "undo_absorb.rs"]
 mod absorb; // a reconciliacao com escritas que nao passaram pela historia

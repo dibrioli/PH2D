@@ -1652,6 +1652,50 @@ vezes. ⚠️ Então a wave que remove o fork **remove o `free` junto**, e o pay
 cresce com a tela devagar demais para ser um passe de plano inteiro e depressa demais para ser só a
 janela; atribuí-lo é a próxima medição, não a próxima hipótese.
 
+### 5.22 🔨 S3, degrau 1 — o journal por tile existe, a porta do canvas existe, e o censo diz 12 de 894
+
+O primeiro degrau da wave, construído pelo método que o S1 estabeleceu: **a rede antes da mudança**. O
+journal é escrito e verificado contra a verdade de hoje, **sem ser autoritativo** — em release ele é um
+no-op, porque capturar *e* forkar seria pagar as duas coisas.
+
+**O que landou:** `undo_journal.rs` (`TileJournal`, grade de 128 elementos, *a primeira captura de cada
+tile é a que vale*) · a porta **`fork_canvas`** com os **28 sítios** de canvas migrados · e o censo
+`PH2D_UNDO_AUDIT=1`, que compara o journal com o estado do último commit.
+
+#### As três coisas que a rede ensinou, todas contra premissas minhas
+
+**(A) O journal não se alinha ao `before` do passo — alinha-se ao ÚLTIMO COMMIT.** Mirada no `before`,
+a rede disparou em **16 testes** na 1ª rodada, com o journal na tela virgem (255) contra um `before` já
+pintado (200). Não era defeito: escritas entre dois commits (um preview re-stampado, um tick de água)
+armam o journal antes de o passo abrir. É a mesma reconciliação que o `absorb_foreign_writes` faz hoje
+por diff — e que o journal passa a fazer **por construção**, porque capturou aquelas escritas também.
+
+**(B) O passo não tinha fronteira única: 21 sítios, em 11 arquivos, movem o cursor.** Enquanto o estado
+de escrita foi um campo do TOOL, zerar o journal era responsabilidade de cada um deles — e esquecer não
+falha, só faz o journal descrever um passado velho demais, em silêncio. ⚠️ **A cura é estrutural e é
+uma correção de posse:** *"o que mudou desde o último commit"* é conceito da HISTÓRIA, então
+`WriteState` mudou-se para dentro do `UndoController`, e **`set_cursor` virou a porta única** — o cursor
+andar e o journal zerar são o MESMO fato, e agora estão na mesma linha.
+
+**(C) O censo: 12 divergências em 894 commits auditados — 98,7% já limpo.** Sobram escritores de canvas
+que não passam pela porta. ⚠️ **Enquanto essa lista não for zero o journal não pode virar a FONTE do
+undo**, e por isso ele entrou como **censo opt-in, não como gate**: um gate que falha não pode entrar
+verde nem vermelho. O número fica à vista e a lista é finita.
+
+#### E uma lição de gate que se pagou na hora
+
+O arch-gate da porta casava a chamada INTEIRA (`fork_canvas(&mut self.canvas_rgba, …)`) e **morreu no
+`cargo fmt`**, que quebra três argumentos em quatro linhas: ele passou a achar **zero** sítios. Quem o
+salvou de virar verde-sobre-nada foi o **controle positivo**. *Gate ancorado em LAYOUT é proxy que
+expira* — o literal virou o nome da porta, e a mutação (um sítio de volta ao `make_mut` cru) sangra os
+dois gates com o arquivo e a linha do ofensor.
+
+**Gates:** 8 no `TileJournal` (**3 mutações, 3 sangram** — ⚠️ a do reshape **sobreviveu à 1ª rodada por
+FIXTURE**: os dois planos eram preenchidos por `i % 251`, então o byte no índice sondado era o MESMO nos
+dois e *"devolveu o velho"* era indistinguível de *"devolveu o novo"*) + os 2 arch-gates da porta.
+**Nenhum schema, nenhum contrato congelado, nenhum id/token** (`PROJECT_SCHEMA` 29); release é
+byte-idêntico (a captura é `cfg(any(test, debug_assertions))`).
+
 ---
 
 ## 7. Próxima etapa recomendada

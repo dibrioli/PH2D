@@ -249,7 +249,7 @@ impl PainterTool {
                 self.paint.sculpt.memo = memo;
                 return;
             };
-            let target = super::plane_fork::fork_par(entry, &self.undo_window);
+            let target = super::plane_fork::fork_par(entry, &self.undo.write_state);
             // `!= n`, NOT `!= pre.len()`: `pre` is the session's, and the whole hazard is a session that
             // outlived the canvas it was measured against. The family's own target must describe the canvas
             // too — a family switch sizes it (`ensure_family_target`), and if that has not happened yet

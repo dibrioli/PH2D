@@ -253,8 +253,11 @@ impl PainterTool {
         let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         {
-            let buf =
-                crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+            let buf = crate::tool::paint::plane_fork::fork_canvas(
+                &mut self.canvas_rgba,
+                &self.undo.write_state,
+                self.source_size.0,
+            );
             let PerLayerStroke { pre, cov } = &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             let wus = w as usize;
@@ -599,8 +602,11 @@ impl PainterTool {
         let Some((stamp, _)) = self.paint.ramp_color_stamp_cache.as_ref() else {
             return;
         };
-        let buf =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {

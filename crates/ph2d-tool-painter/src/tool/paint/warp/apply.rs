@@ -52,7 +52,11 @@ impl PainterTool {
         // blur, and cross-stroke it still samples the pristine source).
         let src = Arc::clone(&self.paint.warp.pre);
         let disp = Arc::make_mut(&mut self.paint.warp.disp);
-        let buf = super::super::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = super::super::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {

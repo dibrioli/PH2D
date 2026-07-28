@@ -172,8 +172,11 @@ impl PainterTool {
             return;
         }
         let mask = Arc::clone(&self.paint.selection_mask);
-        let buf =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         let n = mask.len().min(buf.len() / 4).min(orig.len() / 4);
         for i in 0..n {
             let keep = f32::from(mask[i]) / 255.0;

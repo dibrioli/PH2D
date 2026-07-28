@@ -67,6 +67,17 @@ impl WriteWindow {
         self.undeclared
     }
 
+    /// `true` se esta janela (e o journal ao lado dela) descrevem um passado **posterior** a
+    /// `snapshot_writes` — a metade de PROVENIÊNCIA do [`Self::hint_for`], perguntada sozinha.
+    ///
+    /// Um `before` mais VELHO que o último commit vê escritas que a janela já esqueceu, então nada do
+    /// que ela diz vale para ele; a rede de verificação precisa exatamente desta pergunta, sem a
+    /// metade de "alguém deixou acesso aberto".
+    #[must_use]
+    pub const fn covers(&self, snapshot_writes: u64) -> bool {
+        snapshot_writes >= self.since
+    }
+
     /// Zera a janela: daqui para a frente ela descreve o que vier depois de `writes`.
     pub fn reset(&mut self, writes: u64) {
         self.since = writes;
@@ -109,12 +120,83 @@ const fn union(a: Region, b: Region) -> Region {
     }
 }
 
-/// A janela do undo com **mutabilidade interior** — porque um mesmo gesto tem vários planos abertos ao
-/// mesmo tempo (o Inflate escreve altura, cobertura, material e RGBA numa tacada) e cada um carrega um
-/// guard vivo. Com `&mut` os guards se excluiriam; com `Cell` eles compartilham a mesma declaração.
+/// **O estado de ESCRITA de um passo**, com mutabilidade interior — a janela declarada e, ao lado
+/// dela, o [`journal`](crate::undo::journal) que captura os bytes velhos na hora da escrita.
 ///
-/// `Cell` torna o tool `!Sync`, o que é livre: `Tool: std::any::Any` e nada no editor exige `Sync`.
-pub type WindowCell = std::cell::Cell<WriteWindow>;
+/// A mutabilidade interior não é conveniência: um mesmo gesto tem vários planos abertos ao mesmo tempo
+/// (o Inflate escreve altura, cobertura, material e RGBA numa tacada) e cada um carrega um acesso vivo.
+/// Com `&mut` eles se excluiriam; com `Cell`/`RefCell` compartilham a mesma declaração.
+///
+/// Isto torna o tool `!Sync`, o que é livre: `Tool: std::any::Any` e nada no editor exige `Sync`.
+///
+/// ⚠️ **Os dois campos respondem à MESMA pergunta por dois caminhos** (*o que este passo escreveu?*) —
+/// a janela responde ONDE, o journal responde O QUÊ ESTAVA LÁ. Ficam juntos de propósito: separá-los
+/// em dois campos do tool seria abrir espaço para um sítio declarar num e esquecer o outro.
+#[derive(Debug, Default)]
+pub struct WriteState {
+    win: std::cell::Cell<WriteWindow>,
+    /// Os bytes velhos do CANVAS, por tile. ⚠️ **Só em debug/test** enquanto o journal for uma REDE de
+    /// verificação e não a fonte do undo: capturar *e* forkar seria pagar as duas coisas (doc 28 §7).
+    #[cfg(any(test, debug_assertions))]
+    canvas: std::cell::RefCell<crate::undo::journal::TileJournal<u8>>,
+}
+
+impl WriteState {
+    /// A janela declarada até agora.
+    #[must_use]
+    pub fn get(&self) -> WriteWindow {
+        self.win.get()
+    }
+
+    /// Reescreve a janela.
+    pub fn set(&self, w: WriteWindow) {
+        self.win.set(w);
+    }
+
+    /// **Captura o canvas antes de ele ser escrito** — `area` em ELEMENTOS (`x*4` para RGBA), `None`
+    /// quando o sítio não sabe onde vai escrever.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn capture_canvas(
+        &self,
+        buf: &[u8],
+        stride: usize,
+        area: Option<(usize, usize, usize, usize)>,
+    ) {
+        self.canvas.borrow_mut().capture(buf, stride, area);
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn capture_canvas(
+        &self,
+        _buf: &[u8],
+        _stride: usize,
+        _area: Option<(usize, usize, usize, usize)>,
+    ) {
+    }
+
+    /// O byte que o elemento `i` do canvas tinha no início do passo, se o tile dele foi capturado.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn canvas_before(&self, i: usize) -> Option<u8> {
+        self.canvas.borrow().get(i)
+    }
+
+    /// O passo fechou: o journal esquece o que capturou.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn reset_journal(&self) {
+        self.canvas.borrow_mut().reset();
+    }
+
+    #[cfg(not(any(test, debug_assertions)))]
+    #[expect(
+        clippy::unused_self,
+        reason = "no-op em release; o journal é rede de debug"
+    )]
+    pub(crate) fn reset_journal(&self) {}
+}
 
 #[cfg(test)]
 mod tests {

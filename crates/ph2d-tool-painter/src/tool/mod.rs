@@ -218,7 +218,6 @@ pub struct PainterTool {
     dock_shows_layers: bool,
     /// **A janela que o commit de undo usa em vez de derivar** — ver [`crate::undo::window`]. Declarada
     /// pelos guards de escrita de plano (`tool::paint::plane_fork::PlaneWrite`), zerada em todo commit.
-    undo_window: crate::undo::window::WindowCell,
     /// Quantas escritas de canvas foram declaradas. Só a ORDEM importa: é o que deixa um snapshot dizer
     /// se é anterior ou posterior ao último commit (`WriteWindow::hint_for`).
     undo_writes: u64,
@@ -349,7 +348,6 @@ impl Default for PainterTool {
             edited_since_bind: false,
             deferred_bake: false,
             undo: crate::undo::UndoController::default(),
-            undo_window: crate::undo::window::WindowCell::default(),
             undo_writes: 0,
             dirty_rect: None,
             #[cfg(test)]

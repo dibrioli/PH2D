@@ -98,8 +98,11 @@ impl PainterTool {
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
         let gate_on = gsel.is_some() || gprot.is_some();
         let alock_on = gate_alock.is_some();
-        let canvas =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let canvas = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         for cy in cy0..=cy1 {
             for cx in cx0..=cx1 {
                 let o = ((cy - 1) * w + (cx - 1)) * 4;

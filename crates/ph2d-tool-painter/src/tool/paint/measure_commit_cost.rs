@@ -173,7 +173,7 @@ fn what_a_plane_fork_costs_through_the_products_own_door() {
             let _keep = Arc::clone(src); // o segundo dono: é ele que obriga a cópia
             let t0 = Instant::now();
             let m =
-                super::plane_fork::fork_par(&mut a, &crate::undo::window::WindowCell::default());
+                super::plane_fork::fork_par(&mut a, &crate::undo::window::WriteState::default());
             let dt = t0.elapsed().as_secs_f64() * 1000.0;
             std::hint::black_box(&m[0]);
             if dt < lo {
@@ -330,9 +330,9 @@ fn what_the_hinted_commit_is_made_of() {
             t.commit_stroke_height(); // a metade do fold, fora do relógio
             if kill_hint {
                 // A ablação: um acesso de escrita que nunca declara — o sítio esquecido, encenado.
-                let mut w = t.undo_window.get();
+                let mut w = t.undo.write_state.get();
                 w.open_write();
-                t.undo_window.set(w);
+                t.undo.write_state.set(w);
             }
             let t0 = Instant::now();
             t.on_canvas_pointer(cp([260.0, y], PointerPhase::Up));

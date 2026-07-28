@@ -149,8 +149,11 @@ impl PainterTool {
         };
 
         let mut tex_rng = self.paint.tex_rng;
-        let buf =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         let mut touched: Option<Region> = None;
         for d in dabs {
             let amount = strength * d.coverage;

@@ -32,7 +32,7 @@ use std::sync::Arc;
 // execução lá são a mesma pergunta, e duas cópias dela divergiriam. Ele é em BYTES: um plano de `[u8; 7]`
 // move sete vezes a memória de um de `u8` com a mesma contagem.
 use crate::plane_copy::worth_parallel;
-use crate::undo::window::WindowCell;
+use crate::undo::window::WriteState;
 
 /// `Arc::make_mut` for a canvas-sized plane, with the copy parallelised.
 ///
@@ -42,7 +42,7 @@ use crate::undo::window::WindowCell;
 ///
 /// When there is no second owner it delegates untouched — no allocation, no threads, no cost. When there
 /// is one but the plane is small it also delegates, because rayon's fork would outweigh the memcpy.
-pub(super) fn fork_par<'a, T>(arc: &'a mut Arc<Vec<T>>, win: &WindowCell) -> &'a mut Vec<T>
+pub(super) fn fork_par<'a, T>(arc: &'a mut Arc<Vec<T>>, win: &WriteState) -> &'a mut Vec<T>
 where
     T: Copy + Send + Sync,
 {
@@ -61,6 +61,26 @@ where
     w.open_write();
     win.set(w);
     fork_par_raw(arc)
+}
+
+/// **A porta do CANVAS** — o fork, mais a captura dos bytes velhos no journal do passo.
+///
+/// Existe separada do [`fork_par`] genérico porque o journal precisa saber **de que plano** são os
+/// bytes, e o canvas é o único plano com dono único no tool (os de relevo são mapas por camada). É
+/// também a porta que o arch-gate mira: um sítio novo que chame o `fork_par` cru para o canvas fica
+/// vermelho.
+///
+/// ⚠️ **Captura o plano INTEIRO** (`None`), porque nenhum sítio conhece a sua região no momento do
+/// fork — os laços de dab acumulam o `touched` *enquanto* escrevem. Isso é correto por construção (a
+/// primeira captura de cada tile é a que vale) e, sendo debug-only, não custa nada em release. Quando
+/// os sítios quentes aprenderem a passar a região, esta chamada é o lugar onde ela entra.
+pub(super) fn fork_canvas<'a>(
+    arc: &'a mut Arc<Vec<u8>>,
+    win: &WriteState,
+    width_px: u32,
+) -> &'a mut Vec<u8> {
+    win.capture_canvas(arc, width_px as usize * 4, None);
+    fork_par(arc, win)
 }
 
 /// O fork cru — a metade de POSSE, sem a de declaração. Privado: quem escreve passa pelo guard.
@@ -105,7 +125,7 @@ mod tests {
 
             let mut a = Arc::new(src.clone());
             let keep_a = Arc::clone(&a); // force the second-owner path
-            let forked = fork_par(&mut a, &WindowCell::default()).clone();
+            let forked = fork_par(&mut a, &WriteState::default()).clone();
 
             let mut b = Arc::new(src.clone());
             let keep_b = Arc::clone(&b);
@@ -135,7 +155,7 @@ mod tests {
         let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let watcher = Arc::downgrade(&a); // o guard de identidade do Wet Paint, em miniatura
         let before = a.as_ptr();
-        let got = fork_par(&mut a, &WindowCell::default());
+        let got = fork_par(&mut a, &WriteState::default());
         assert_eq!(
             got.as_ptr(),
             before,
@@ -153,7 +173,7 @@ mod tests {
     fn an_unshared_plane_is_not_copied() {
         let mut a: Arc<Vec<f32>> = Arc::new(vec![1.0; PAR_MIN_BYTES / size_of::<f32>() + 1_000]);
         let before = a.as_ptr();
-        let got = fork_par(&mut a, &WindowCell::default());
+        let got = fork_par(&mut a, &WriteState::default());
         assert_eq!(got.as_ptr(), before, "an unshared plane was copied anyway");
     }
 
@@ -195,7 +215,7 @@ mod tests {
             let mut a = Arc::clone(&p);
             let _keep = Arc::clone(&p);
             let t0 = Instant::now();
-            let m = fork_par(&mut a, &WindowCell::default());
+            let m = fork_par(&mut a, &WriteState::default());
             std::hint::black_box(&m[0]);
             t0.elapsed().as_secs_f64() * 1000.0
         }));
@@ -232,9 +252,7 @@ mod tests {
         let src = include_str!("stamp_cache.rs");
         // Controle positivo: o alvo tem de EXISTIR, senão o gate passa por não achar nada (a falha que o
         // `the_shape_slot_goes_through_the_shape_door` do Flow pegou em si mesmo).
-        let through = src
-            .matches("fork_par(&mut self.canvas_rgba, &self.undo_window)")
-            .count();
+        let through = src.matches("fork_canvas(").count();
         assert!(
             through >= 5,
             "controle: o stamp_cache tem de escrever o canvas pela porta paralela ({through} sitios)"
@@ -308,6 +326,12 @@ mod tests {
     /// ⚠️ Um gate por-arquivo protege o arquivo que alguém lembrou de listar. Este varre `tool/paint/**`
     /// inteiro, então o sítio 24 nasce coberto — que é exatamente como os 23 nasceram descobertos.
     ///
+    /// ⚠️ **O literal é só o NOME da porta, e isso é deliberado.** A primeira versão casava a chamada
+    /// inteira (`fork_canvas(&mut self.canvas_rgba, &self.undo.write_state, self.source_size.0)`) e
+    /// morreu no `cargo fmt`, que quebra três argumentos em quatro linhas: o gate passou a achar ZERO
+    /// e só o controle positivo o salvou de virar verde-sobre-nada. Um gate ancorado em LAYOUT é um
+    /// proxy que expira; o que ele tem de afirmar é a PORTA.
+    ///
     /// **Prosa é isenta, código não.** O literal aparece em doc-comments explicando a diferença entre as
     /// duas rotas, e um gate que os proibisse mandaria apagar a explicação; ele conta só linhas de código.
     /// Arquivos de teste e de medição também são isentos — eles CHAMAM `make_mut` de propósito, para
@@ -336,9 +360,7 @@ mod tests {
                 }
                 let src = std::fs::read_to_string(&p).expect("fonte legivel");
                 scanned += 1;
-                through += src
-                    .matches("fork_par(&mut self.canvas_rgba, &self.undo_window)")
-                    .count();
+                through += src.matches("fork_canvas(").count();
                 for (i, line) in src.lines().enumerate() {
                     let t = line.trim_start();
                     if t.starts_with("//") {

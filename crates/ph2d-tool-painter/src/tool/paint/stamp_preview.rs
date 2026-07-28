@@ -22,9 +22,9 @@ impl PainterTool {
     /// o relevo passou do `RELIEF_EPS`, e foi essa diferença que reprovou o atalho (doc 28 §5.17).
     /// `None` = o acesso não escreveu nada.
     pub(super) fn declare_wrote(&self, rect: Option<Region>) {
-        let mut w = self.undo_window.get();
+        let mut w = self.undo.write_state.get();
         w.mark(rect);
-        self.undo_window.set(w);
+        self.undo.write_state.set(w);
     }
 
     pub(super) fn mark_dirty(&mut self, rect: Region) {

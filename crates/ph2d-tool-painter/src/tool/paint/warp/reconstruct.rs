@@ -47,8 +47,11 @@ impl PainterTool {
         // Pass 2 (mutable): shrink the displacement toward zero and re-render from `pre`.
         let src = Arc::clone(&self.paint.warp.pre);
         let disp = Arc::make_mut(&mut self.paint.warp.disp);
-        let buf =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {

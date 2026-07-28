@@ -184,8 +184,11 @@ impl PainterTool {
         // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
         let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
             .then(|| self.selection_component_at(sx, sy, w, h));
-        let buf =
-            crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+        );
         if buf.len() != w * h * 4 {
             return;
         }
@@ -330,8 +333,11 @@ impl PainterTool {
         }
         let n = self.paint.fill_snapshot.len();
         if n > 0 && self.canvas_rgba.len() == n {
-            let buf =
-                crate::tool::paint::plane_fork::fork_par(&mut self.canvas_rgba, &self.undo_window);
+            let buf = crate::tool::paint::plane_fork::fork_canvas(
+                &mut self.canvas_rgba,
+                &self.undo.write_state,
+                self.source_size.0,
+            );
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
         if let Some(rect) = self.paint.fill_last_rect {

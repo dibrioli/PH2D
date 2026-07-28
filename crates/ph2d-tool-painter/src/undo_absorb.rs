@@ -59,6 +59,6 @@ impl UndoController {
         self.bytes += entry.heap_bytes();
         self.undo.push(entry);
         // O cursor anda junto: o topo agora termina no estado que este passo encontrou.
-        self.cursor = Some(Box::new(before.clone()));
+        self.set_cursor(before.clone());
     }
 }

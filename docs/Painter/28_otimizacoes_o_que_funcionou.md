@@ -1987,6 +1987,54 @@ neste conserto.
 
 ---
 
+### 5.28 🔓 O ÚLTIMO BLOQUEIO CAIU — o cursor é RECONSTRUÍVEL, logo não precisa ser segurado
+
+O `cursor` é um dono **permanente** do canvas (§5.20: dois donos em repouso) e `make_mut` copia com
+qualquer coisa acima de um — é ele, junto com o `stroke_undo`, que faz a **primeira escrita de todo
+gesto** pagar uma cópia do documento. Ele existe por **dois** motivos, e os dois agora se dissolveram:
+
+1. **ser a BASE do delta** — dissolvido pelo 3a (§5.24): o vivo **é** o cursor em **92 de 92** undos;
+2. **ser o ALVO da absorção** — que era o que sobrava, e é o que esta seção fecha.
+
+**A observação que fecha:** o cursor é o estado do **último commit**, e o journal é zerado *naquele
+mesmo commit* (`set_cursor`) e guarda os bytes velhos de **toda** escrita desde então. As duas frases
+juntas dão uma identidade:
+
+```text
+    cursor[i]  ==  journal.get(i).unwrap_or(vivo[i])
+```
+
+Ou seja: **o cursor não é um estado que precisa ser guardado, é uma função de dois que já existem** — e
+no caso comum (journal vazio) ela é o próprio `Arc` vivo, de graça.
+
+⚠️ **Isso não se afirma, mede-se.** Rede em `begin_undo_step`, com a suíte inteira:
+
+```text
+  aberturas de passo com cursor   233
+    RECONSTRUIDO                  233   dos quais com escrita estrangeira REAL   2
+    bytes vindos do JOURNAL       192.000
+    DIVERGENCIAS                    0
+```
+
+⚠️ **E os dois casos com escrita estrangeira são o que separa isto de um censo vácuo:** nos outros 231 o
+journal está vazio e a identidade degenera em *"o vivo é o cursor"* (a propriedade do 3a, já provada);
+são os **2** que exercitam a metade nova — 192.000 bytes reconstruídos do journal, zero divergentes.
+
+**Gate + mutação:** `the_cursor_is_reconstructible_from_the_live_plane_and_the_journal`, com a gota
+escrita pela porta (sem entrada de undo) e um **controle** que exige que o vivo e o cursor de fato
+difiram — senão o gate afirmaria `x == x`. Tirar o `capture_canvas` do `fork_canvas` o deixa **VERMELHO**
+(e derruba o irmão do §5.26 junto).
+
+**O que isto autoriza, e o que ainda falta.** Autoriza a última troca: o `cursor` e o `stroke_undo`
+largam os planos, o `split` toma o lado `before` do journal e a materialização parte do plano VIVO —
+e com isso morrem o fork do pen-down (**3,16 ms**), o fold (**9,25**) e o `free` da geração anterior
+(**2,4–5,0**). ⚠️ Falta **construir** essa troca, e ela é uma edição de ciclo de vida do `ModelSnapshot`,
+não uma otimização local: os quatro planos têm de sair **juntos** (tudo-ou-nada por plano), a absorção
+passa a reconstruir o cursor em vez de o ler, e o journal sai do `cfg(debug)` para o release. Os
+**pré-requisitos estão todos medidos e gateados**; o que sobra é a troca.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

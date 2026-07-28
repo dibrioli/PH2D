@@ -183,6 +183,67 @@ fn a_foreign_write_between_two_steps_does_not_leak_into_the_second_ones_before()
     );
 }
 
+/// **O CURSOR é reconstruível de `vivo + journal`** — o fato que autoriza o último degrau do S3.
+///
+/// O `cursor` do histórico é um dono **permanente** do canvas, e `make_mut` copia com qualquer coisa
+/// acima de um: é ele, junto com o `stroke_undo`, que faz a primeira escrita de todo gesto pagar uma
+/// cópia do documento. Ele existe por dois motivos, e os dois se dissolveram: ser a **base do delta**
+/// (o 3a mediu o vivo como sendo o cursor em 92 de 92 undos) e ser o **alvo da absorção** — que é o que
+/// este gate fecha.
+///
+/// O cursor é o estado do último commit; o journal é zerado *naquele mesmo commit* e guarda os bytes
+/// velhos de toda escrita desde então. Logo `cursor[i] == journal.get(i).unwrap_or(vivo[i])` — e no caso
+/// comum (journal vazio) a reconstrução é o próprio `Arc` vivo, de graça.
+///
+/// ⚠️ **A fixture TEM de conter uma escrita estrangeira**, senão os dois lados são o mesmo buffer e o
+/// gate afirma `x == x`. A gota é escrita pela porta, sem entrada de undo — o que a sim do Wet Paint faz
+/// a cada tick depois do pen-up.
+///
+/// ⚠️ **Mutação que sangra:** tirar o `capture_canvas` de [`super::plane_fork::fork_canvas`] — o journal
+/// deixa de conhecer a gota e a reconstrução devolve o byte do VIVO onde o cursor tem o velho.
+#[test]
+fn the_cursor_is_reconstructible_from_the_live_plane_and_the_journal() {
+    let mut t = armed(256);
+    stroke(&mut t, 100.0); // um commit: há cursor, e ele zerou o journal
+
+    let (w, _h) = t.source_size;
+    let stride = w as usize * 4;
+    let probes: Vec<usize> = (96usize..112).map(|x| 200 * stride + x * 4).collect();
+    {
+        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w);
+        for &i in &probes {
+            buf[i] = 33;
+        }
+    }
+
+    let cursor = t
+        .undo
+        .cursor_for_audit()
+        .expect("um traco commitado deixa cursor")
+        .canvas_rgba
+        .clone();
+    assert_ne!(
+        *cursor, *t.canvas_rgba,
+        "controle: sem escrita estrangeira o gate afirmaria x == x"
+    );
+
+    // A reconstrução, elemento a elemento — dentro da gota E fora dela.
+    let mut differ = 0usize;
+    for (i, &want) in cursor.iter().enumerate() {
+        let got = t
+            .undo
+            .write_state
+            .canvas_before(i)
+            .unwrap_or(t.canvas_rgba[i]);
+        differ += usize::from(got != want);
+    }
+    assert_eq!(
+        differ, 0,
+        "o cursor NAO e reconstruivel de vivo+journal — enquanto isso nao valer ele tem de SEGURAR o \
+         canvas, e segura-lo e o que faz a 1a escrita de todo gesto copiar o documento"
+    );
+}
+
 /// **A troca de plano é PAREADA, e um traço comum nunca a deixa de pé.**
 ///
 /// O contador é a única coisa entre o journal e o plano errado; se um sítio trocasse e não voltasse, a

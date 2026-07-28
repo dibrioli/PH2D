@@ -74,6 +74,7 @@ mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
 mod expr_smoke;
+mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
@@ -489,6 +490,7 @@ impl App {
             buffer_smoke_done: false,
             extrap_smoke_done: false,
             expr_smoke_done: false,
+            expr_blend_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

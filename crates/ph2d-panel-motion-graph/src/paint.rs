@@ -107,10 +107,14 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // showing a corner of it, or nothing at all. Blender and Houdini both re-frame
     // on the way in; so does this.
     state.sync_level(snap.level);
-    // Fit the graph on first sight (then the user owns pan/zoom; F re-fits).
+    // Fit on first sight (then the user owns pan/zoom; F re-fits). A MANUAL fit with
+    // a selection frames it, not the whole graph (`fit_selection`); every auto-fit
+    // (first sight, level change) leaves that flag false and so frames everything.
     if !state.fitted && !snap.nodes.is_empty() {
-        state.view = fit(&snap, rect);
+        let scope = state.fit_selection.then_some(&state.selected);
+        state.view = fit(&snap, rect, scope);
         state.fitted = true;
+        state.fit_selection = false;
     }
 
     // The scene half of the center split — the divider drag maps the pointer to a
@@ -288,14 +292,33 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     crate::rename::paint(state, ctx, rect, &snap, &view);
 }
 
-/// Auto-fit: scale + center the node bounding box into `rect`.
-fn fit(snap: &GraphViewSnapshot, rect: Rect) -> ViewState {
+/// Scale + center a bounding box into `rect`. `selection = Some(ids)` frames only
+/// those nodes (Frame Selected); `None` frames the whole graph. A selection that
+/// matches no VISIBLE node (stale, or on another level) falls back to the whole
+/// graph — a Fit that framed empty space would strand the artist looking at nothing.
+pub(crate) fn fit(
+    snap: &GraphViewSnapshot,
+    rect: Rect,
+    selection: Option<&std::collections::BTreeSet<u32>>,
+) -> ViewState {
     let (mut min_x, mut min_y, mut max_x, mut max_y) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    let mut framed = 0usize;
     for n in &snap.nodes {
+        if let Some(sel) = selection
+            && !sel.contains(&n.id)
+        {
+            continue;
+        }
         min_x = min_x.min(n.x);
         min_y = min_y.min(n.y);
         max_x = max_x.max(n.x + geom::CARD_W);
         max_y = max_y.max(n.y + card_h(n));
+        framed += 1;
+    }
+    // The selection named nothing on this level: frame the whole graph instead of a
+    // degenerate empty box.
+    if framed == 0 && selection.is_some() {
+        return fit(snap, rect, None);
     }
     let bw = (max_x - min_x).max(1.0);
     let bh = (max_y - min_y).max(1.0);

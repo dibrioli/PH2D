@@ -197,7 +197,7 @@ fn apply_gesture(
             crate::paint_chrome::CHROME_SPLIT_V => {
                 push_intent(GraphIntent::SetSplitVertical { vertical: true })
             }
-            crate::paint_chrome::CHROME_FIT => state.fitted = false,
+            crate::paint_chrome::CHROME_FIT => state.request_fit(),
             crate::paint_chrome::CHROME_BACKDROP => {
                 backdrop_gesture::add_backdrop(state, rect, snap)
             }

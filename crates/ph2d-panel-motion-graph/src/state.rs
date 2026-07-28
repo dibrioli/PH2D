@@ -227,6 +227,11 @@ pub struct MotionGraphPanelState {
     pub(crate) view: ViewState,
     /// `false` until the first paint auto-fits the graph (then user-controlled).
     pub(crate) fitted: bool,
+    /// A MANUAL fit (the chip or `F`) asked to frame the SELECTION, not the whole
+    /// graph. Set only by [`Self::request_fit`] when there is a selection; the
+    /// auto-fits (first sight, level change) leave it `false`, so they always frame
+    /// everything. Consumed and reset by the paint's fit pass.
+    pub(crate) fit_selection: bool,
     /// Selected node ids (`NodeId.0`).
     pub(crate) selected: BTreeSet<u32>,
     /// The selected backdrop, if any. Mutually exclusive with `selected`: the
@@ -302,6 +307,16 @@ impl MotionGraphPanelState {
         self.fitted = false;
         true
     }
+
+    /// **Request a re-frame** (the Fit chip / `F`) — the draw pass owns the fit math,
+    /// this only asks for it. It frames the SELECTION when there is one and the whole
+    /// graph otherwise: the universal node-editor `F` (Blender/Nuke/Houdini frame the
+    /// selection), and the same "one gesture, two behaviours" the Backdrop chip uses.
+    /// ONE door, so the chip and the key can never diverge on the rule.
+    pub(crate) fn request_fit(&mut self) {
+        self.fitted = false;
+        self.fit_selection = !self.selected.is_empty();
+    }
 }
 
 #[cfg(test)]
@@ -332,5 +347,30 @@ mod tests {
 
         assert!(st.sync_level(None), "walked the breadcrumb back out");
         assert!(!st.fitted);
+    }
+
+    /// **Fit is selection-aware.** With a selection, a manual fit asks to frame it
+    /// (the universal `F`); with nothing selected it frames the whole graph. Both
+    /// drop `fitted` so the next paint re-frames. FALSIFIED by a `request_fit` that
+    /// ignores the selection (always frames all, or always frames "selection").
+    #[test]
+    fn request_fit_frames_the_selection_only_when_there_is_one() {
+        let mut st = MotionGraphPanelState {
+            fitted: true,
+            ..Default::default()
+        };
+
+        st.request_fit();
+        assert!(!st.fitted, "an empty-selection fit still re-frames");
+        assert!(!st.fit_selection, "nothing selected: frame the whole graph");
+
+        st.selected.insert(7);
+        st.fitted = true;
+        st.request_fit();
+        assert!(!st.fitted);
+        assert!(
+            st.fit_selection,
+            "a selection is present: frame it, not everything"
+        );
     }
 }

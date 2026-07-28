@@ -21,8 +21,9 @@ pub(super) fn apply_key(
         // one (doc 57). Blender's and Nuke's chords, in both cases.
         GraphKey::Group => subgraph_gesture::group(state),
         GraphKey::Ungroup => subgraph_gesture::ungroup(state, snap),
-        // Re-fit on the next paint (the draw pass owns the fit math).
-        GraphKey::Fit => state.fitted = false,
+        // Re-fit on the next paint (the draw pass owns the fit math): the SELECTION
+        // when there is one, the whole graph otherwise — the universal `F`.
+        GraphKey::Fit => state.request_fit(),
         GraphKey::Escape => {
             state.selected.clear();
             state.selected_backdrop = None;

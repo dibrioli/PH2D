@@ -192,6 +192,94 @@ fn the_arrange_chip_asks_the_shell_to_lay_the_graph_out() {
     );
 }
 
+/// **Frame Selected.** `fit(_, Some(ids))` centres the view on those nodes alone,
+/// where `fit(_, None)` centres it on the whole graph — two visibly different views.
+/// The oracle is clamp-independent: node 2's card centre maps to the view centre
+/// under the selection fit but NOT under the whole-graph fit (which centres the
+/// PAIR). And a selection that names no visible node falls back to framing all —
+/// never an empty box. FALSIFIED by a `fit` that ignores the selection (the two
+/// views coincide, so node 2 is not centred).
+#[test]
+fn fit_frames_the_selection_when_there_is_one() {
+    let snap = two_node_snapshot(); // node 1 @ x=0, node 2 @ x=200
+    let all = crate::paint::fit(&snap, RECT, None);
+    let sel: std::collections::BTreeSet<u32> = [2].into_iter().collect();
+    let one = crate::paint::fit(&snap, RECT, Some(&sel));
+
+    // Node 2's card centre, in graph space → its rect-local screen x under a view.
+    let c2 = 200.0 + crate::geom::CARD_W * 0.5;
+    let screen_x = |zoom: f32, pan: f32| c2 * zoom + pan;
+
+    assert!(
+        (screen_x(one.zoom, one.pan_x) - RECT.w * 0.5).abs() < 0.5,
+        "Frame Selected centres node 2 in the view"
+    );
+    assert!(
+        (screen_x(all.zoom, all.pan_x) - RECT.w * 0.5).abs() > 1.0,
+        "Frame All centres the PAIR, not node 2 — the two fits differ"
+    );
+
+    let ghost: std::collections::BTreeSet<u32> = [999].into_iter().collect();
+    let fallback = crate::paint::fit(&snap, RECT, Some(&ghost));
+    assert_eq!(
+        (fallback.zoom, fallback.pan_x, fallback.pan_y),
+        (all.zoom, all.pan_x, all.pan_y),
+        "a stale selection frames the whole graph, not nothing"
+    );
+}
+
+/// The Fit CHIP routes through `request_fit`, so with a node selected it asks to
+/// frame the selection (the universal `F`), and with none it frames everything.
+/// FALSIFIED by the chip going straight to `fitted = false` (bypassing the routing),
+/// which would leave `fit_selection` false and frame the whole graph regardless.
+#[test]
+fn the_fit_chip_frames_the_selection_when_one_is_present() {
+    let snap = two_node_snapshot();
+
+    let click = |st: &mut MotionGraphPanelState| {
+        apply_gesture(
+            st,
+            gesture(
+                GraphHitKind::Chrome {
+                    id: crate::paint_chrome::CHROME_FIT,
+                },
+                GesturePhase::Click,
+                0.0,
+                0.0,
+            ),
+            RECT,
+            CENTER,
+            &snap,
+        );
+    };
+
+    let mut with_sel = MotionGraphPanelState {
+        fitted: true,
+        ..Default::default()
+    };
+    with_sel.selected.insert(2);
+    click(&mut with_sel);
+    assert!(!with_sel.fitted, "the chip requests a re-frame");
+    assert!(
+        with_sel.fit_selection,
+        "with a node selected, the chip frames the selection"
+    );
+
+    let mut no_sel = MotionGraphPanelState {
+        fitted: true,
+        ..Default::default()
+    };
+    click(&mut no_sel);
+    assert!(
+        !no_sel.fitted,
+        "the chip still re-frames with nothing selected"
+    );
+    assert!(
+        !no_sel.fit_selection,
+        "nothing selected: the chip frames the whole graph"
+    );
+}
+
 /// With nothing selected the chip drops a default block instead (the same button,
 /// the second behaviour) — never a zero-size region at the origin.
 #[test]

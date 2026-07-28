@@ -153,11 +153,14 @@ impl crate::App {
             // the Keys tab shows the active clip with NO veil, and the smoke misrepresents
             // the product (Enio: *"o véu deve estar visível antes de tocar na caixa de
             // duração do clip"* — plain boot and user-made clips already carry 4 s; only a
-            // smoke's raw clips were bare). 6 s matches the [0,6) content and the scene, so
-            // nothing is cut in Arrange while the Keys veil is there from the first frame.
+            // smoke's raw clips were bare). **4 s = o padrão do produto** (Enio, 2026-07-28:
+            // *"todo clip criado é criado com dur 4 e com véu visível"*): a cena fica em 6 s
+            // (o arranjo é [0,6)), mas cada CLIP mostra o mesmo 4 s + véu que um clip criado
+            // pelo botão "+". Arrange usa o corte da CENA + as fatias das strips, não o
+            // override do clip, então nada muda no crossfade — só a régua da aba Keys.
             let clip_count = doc.clips().len();
             for i in 0..clip_count {
-                doc.set_clip_length_override(i, Some(6.0));
+                doc.set_clip_length_override(i, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS));
             }
             doc.set_active_loop_for(false, Some((0.0, 6.0))); // the ARRANGE loop
             add_lane

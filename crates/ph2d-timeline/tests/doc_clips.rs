@@ -17,6 +17,46 @@ fn a_fresh_document_has_exactly_one_clip() {
     assert_eq!(st.doc.active_index(), 0);
 }
 
+/// **Todo clip criado nasce com 4 s de duração e o véu visível** (Enio, 2026-07-28: *"todo clip
+/// criado é criado com dur 4 e com véu visível"*). O `+` (AddClip) e o Add Container são a camada
+/// de AUTORIA e estampam o padrão do produto — o `doc.add_clip` cru (a camada de DADOS) fica
+/// derivado (usado por smokes/testes). A fixture parte de `new()` (cena `None`), então o véu
+/// medido abaixo só pode ser o do CLIP, não o da cena. (Mutação: tirar o
+/// `set_clip_length_override(i, Some(DEFAULT_DURATION_SECONDS))` do braço `AddClip` ⇒ o clip
+/// abre derivado/ilimitado — o override RED e o véu RED.)
+#[test]
+fn an_added_clip_opens_at_four_seconds_with_a_veil() {
+    use ph2d_timeline::{DEFAULT_DURATION_SECONDS, TimelineViewSnapshot};
+    let (mut st, mut ph) = state(); // new(): scene None, so the veil below can ONLY be the clip's
+    apply_intent(&mut st, &mut ph, I::AddClip);
+    let n = st.doc.clips().len() - 1;
+    assert_eq!(st.doc.active_index(), n, "o clip criado vira o ativo");
+    assert_eq!(
+        st.doc.clip_length_override(n),
+        Some(DEFAULT_DURATION_SECONDS),
+        "todo clip criado abre com a duração padrão de 4 s"
+    );
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, true); // Keys tab -> o escopo do CLIP (a cena e None aqui)
+    assert!(
+        snap.view_length_explicit,
+        "e o véu do clip aparece desde o 1º frame (nao e a cena: ela e None)"
+    );
+    assert!(
+        (snap.view_length_seconds - DEFAULT_DURATION_SECONDS).abs() < 1e-9,
+        "a caixa Dur le 4 s, leu {}",
+        snap.view_length_seconds
+    );
+    // Um container criado tambem nasce com 4 s.
+    apply_intent(&mut st, &mut ph, I::AddContainer);
+    let c = st.doc.containers().len() - 1;
+    assert_eq!(
+        st.doc.container_length_override(c),
+        Some(DEFAULT_DURATION_SECONDS),
+        "um container criado tambem abre com 4 s + veu"
+    );
+}
+
 #[test]
 fn adding_a_clip_makes_it_active_and_names_it_uniquely() {
     let (mut st, mut ph) = state();

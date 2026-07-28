@@ -28,12 +28,15 @@ const SMOKE: &str = include_str!("../src/expr_blend_smoke.rs");
 /// isso a aba Keys abre o clip ativo SEM veil (o defeito reportado).
 ///
 /// **Mutação que deve sangrar:** apagar o laço `for i in 0..clip_count {
-/// doc.set_clip_length_override(i, Some(6.0)); }` da cena runtime — os clips voltam a derivados e a
-/// veil some na aba Keys.
+/// doc.set_clip_length_override(i, Some(DEFAULT_DURATION_SECONDS)); }` da cena runtime — os clips
+/// voltam a derivados e a veil some na aba Keys.
+///
+/// ⚠️ Os clips abrem em **4 s** (o padrão do produto, Enio 2026-07-28: *"todo clip criado = 4 s"*),
+/// não mais 6 s — a CENA continua 6 s (o arranjo é [0,6)), só os clips seguem o default.
 #[test]
 fn the_runtime_scene_authors_its_clip_durations() {
     assert!(
-        SMOKE.contains("set_clip_length_override(i, Some(6.0))"),
+        SMOKE.contains("set_clip_length_override(i, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS))"),
         "a cena runtime do expr-blend smoke não autora mais a duração dos seus clips — o `doc.add_clip` \
          cru deixa cada clip DERIVADO, e a aba Keys abre o clip ativo sem veil (o defeito das três \
          rodadas do Enio). Estampe `set_clip_length_override` em cada clip que a cena cria."

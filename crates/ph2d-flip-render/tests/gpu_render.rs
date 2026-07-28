@@ -944,7 +944,277 @@ fn a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union() {
     }
 }
 
-/// O X em duas montagens: `(um traço, dois traços)`. **Porta única** — o gate e a sonda encenam
+/// 🔴 **Uma QUINA AFIADA que também cruza a si mesma não perde TINTA** — a cunha escura da 3ª
+/// foto do Enio (2026-07-28: *"melhor mas não completamente; principalmente na quina do traço o
+/// problema aparece"*, setas vermelhas sobre buracos na tinta).
+///
+/// ⚠️ **O oráculo é a FALTA, não a diferença.** Sobrar tinta sobre a união é a lei nova (as
+/// passagens compõem no cruzamento); FALTAR é sempre defeito — é cobertura que a geometria manda
+/// existir e a tela não tem.
+///
+/// ⚠️ **As duas sondas anteriores não podiam ver isto**: a de quina não cruzava, a de cruzamento
+/// tinha a quina fora do quadro. O defeito vive na INTERAÇÃO — a quina afiada faz a caminhada da
+/// fita ser longa, o teto satura, e o destino do transbordo decide tudo. **Red-first medido, e as
+/// duas versões anteriores erram para lados OPOSTOS:** carimbar todo o transbordo o tira das duas
+/// listas e abre buraco (**pintou 0 onde a união pede 252**, 167 px fora de 8); não carimbar nada
+/// o faz virar passagem estranha e o fragment ADICIONA tinta (**+63**). Com o transbordo indo ao
+/// grid MARCADO como própria passagem: falta **−1**, sobra **+4**, **zero** px fora de 8.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_sharp_corner_that_crosses_itself_never_loses_ink() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    for hardness in [0.7_f32, 0.4] {
+        let (pts, radii) = corner_crossing_path();
+        let poly = Polyline {
+            pts: &pts,
+            radii: &radii,
+            closed: false,
+            hardness,
+        };
+        let mut d = FlipDrawing::new();
+        let mut st = FlipStroke::new();
+        for (&(x, y), &r) in pts.iter().zip(&radii) {
+            st.push_point(Point {
+                pos: Vec2::new(x, y),
+                width: r * 2.0,
+                opacity: 1.0,
+                color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+            });
+        }
+        st.hardness = hardness;
+        d.strokes.push(st);
+        let px = render(&device, &queue, &d);
+
+        let (mut lo, mut at, mut missing, mut checked) = (0i32, (0u32, 0u32), 0u32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let Some(exp) = expected_union_alpha(&poly, (x as f32 + 0.5, y as f32 + 0.5))
+                else {
+                    continue;
+                };
+                checked += 1;
+                let diff = i32::from(alpha_at(&px, x, y)) - (exp * 255.0).round() as i32;
+                if diff < -8 {
+                    missing += 1;
+                }
+                if diff < lo {
+                    lo = diff;
+                    at = (x, y);
+                }
+            }
+        }
+        assert!(
+            checked > 1000,
+            "o oráculo cobriu pixels de menos ({checked})"
+        );
+        assert!(
+            missing == 0 && lo >= -8,
+            "h={hardness}: a quina que cruza PERDEU tinta -- falta maxima {lo} em {at:?}, \
+             {missing} px de {checked} (a cunha escura da foto)"
+        );
+    }
+}
+
+/// O "4": desce, sobe em espeto (quina bem além do `miter_break` de 120°) e cruza a própria
+/// descida. **Porta única** — o gate e a sonda encenam pela MESMA função. Densa (passo 4 px),
+/// porque a fronteira de passagem só é honesta sobre polilinha reamostrada.
+fn corner_crossing_path() -> (Vec<(f32, f32)>, Vec<f32>) {
+    let path = [
+        (14.0_f32, 54.0_f32),
+        (34.0, 14.0),
+        (40.0, 50.0),
+        (10.0, 28.0),
+    ];
+    let r = 11.0_f32;
+    let mut pts = vec![path[0]];
+    for w in path.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        let n = (len / 4.0).ceil().max(1.0) as usize;
+        for k in 1..=n {
+            let t = k as f32 / n as f32;
+            pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+    let radii = vec![r; pts.len()];
+    (pts, radii)
+}
+
+/// **SONDA** — a figura da 3ª foto: um traço que tem QUINA AFIADA **e** cruza a si mesmo.
+///
+/// ⚠️ As sondas anteriores testavam uma coisa de cada vez — a de quina não cruzava, a de
+/// cruzamento tinha o desvio FORA do quadro. A foto tem as duas juntas, e o defeito pode viver
+/// só na interação (a quina afiada é onde o `miter_break` desliga o miter e o quad ESTENDE ao
+/// longo da linha, e é ali que a lista de extras de um quad difere mais da do vizinho).
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_a_sharp_corner_that_also_crosses_itself() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    println!("\n=== QUINA AFIADA + AUTO-CRUZAMENTO vs a UNIAO ===");
+    // Um "4": desce, sobe em espeto, e cruza a própria descida.
+    let path = [
+        (14.0_f32, 54.0_f32),
+        (34.0, 14.0),
+        (40.0, 50.0), // espeto: giro forte
+        (10.0, 28.0), // cruza o 1º trecho
+    ];
+    let r = 11.0_f32;
+    let mut pts = vec![path[0]];
+    for w in path.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        let n = (len / 4.0).ceil().max(1.0) as usize;
+        for k in 1..=n {
+            let t = k as f32 / n as f32;
+            pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+    let radii = vec![r; pts.len()];
+    for hardness in [0.7_f32, 0.4] {
+        let poly = Polyline {
+            pts: &pts,
+            radii: &radii,
+            closed: false,
+            hardness,
+        };
+        let mut d = FlipDrawing::new();
+        let mut st = FlipStroke::new();
+        for &(x, y) in &pts {
+            st.push_point(Point {
+                pos: Vec2::new(x, y),
+                width: r * 2.0,
+                opacity: 1.0,
+                color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+            });
+        }
+        st.hardness = hardness;
+        d.strokes.push(st);
+        let px = render(&device, &queue, &d);
+
+        // ⚠️ SINAL preservado: negativo = FALTA tinta (a cunha ESCURA da foto);
+        // positivo = SOBRA (a composição indo além da união, que é o esperado no cruzamento).
+        let (mut lo, mut lo_at, mut hi, mut hi_at, mut bad, mut checked) =
+            (0i32, (0u32, 0u32), 0i32, (0u32, 0u32), 0u32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let Some(exp) = expected_union_alpha(&poly, (x as f32 + 0.5, y as f32 + 0.5))
+                else {
+                    continue;
+                };
+                let diff = i32::from(alpha_at(&px, x, y)) - (exp * 255.0).round() as i32;
+                checked += 1;
+                if diff.abs() > 8 {
+                    bad += 1;
+                }
+                if diff < lo {
+                    lo = diff;
+                    lo_at = (x, y);
+                }
+                if diff > hi {
+                    hi = diff;
+                    hi_at = (x, y);
+                }
+            }
+        }
+        println!(
+            "  h={hardness:.1}: FALTA maxima {lo:+4} em {lo_at:?} | SOBRA maxima {hi:+4} em \
+             {hi_at:?} | {bad} px fora de 8 de {checked}"
+        );
+    }
+}
+
+/// **SONDA** — a QUINA com pincel GROSSO (3º report do Enio, 2026-07-28: *"melhor mas não
+/// completamente; principalmente na quina do traço o problema aparece"*, com setas vermelhas
+/// sobre **cunhas ESCURAS** mordendo a tinta na quina).
+///
+/// ⚠️ Os gates de quina existentes usam **raio 4**, onde a faixa de AA do oráculo (`2/raio = 0.5`
+/// em `dn`) engole o OMBRO inteiro — a mesma cegueira que já escondeu dois defeitos hoje. Aqui o
+/// raio é 14 e o oráculo compara até `dn ≈ 0.86`.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_a_thick_soft_corner() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    println!("\n=== QUINA GROSSA E MACIA vs a UNIAO analitica ===");
+    // Ângulos: 150° (suave, mitra) · 90° · 45° · 25° (espeto, bem além do miter_break de 120°).
+    for turn_deg in [150.0_f32, 90.0, 45.0, 25.0] {
+        let r = 14.0_f32;
+        let arm = 26.0_f32;
+        let a = (180.0 - turn_deg).to_radians();
+        // Vértice no centro; um braço para a esquerda, o outro girado por `turn`.
+        let v = (32.0_f32, 32.0);
+        let p0 = (v.0 - arm, v.1);
+        let p2 = (v.0 - arm * a.cos(), v.1 + arm * a.sin());
+        // DENSO (o regime do produto): passo 5 px.
+        let mut pts = vec![p0];
+        for (s0, s1) in [(p0, v), (v, p2)] {
+            let len = ((s1.0 - s0.0).powi(2) + (s1.1 - s0.1).powi(2)).sqrt();
+            let n = (len / 5.0).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                pts.push((s0.0 + (s1.0 - s0.0) * t, s0.1 + (s1.1 - s0.1) * t));
+            }
+        }
+        let radii = vec![r; pts.len()];
+        for hardness in [0.7_f32, 0.4] {
+            let poly = Polyline {
+                pts: &pts,
+                radii: &radii,
+                closed: false,
+                hardness,
+            };
+            let mut d = FlipDrawing::new();
+            let mut st = FlipStroke::new();
+            for &(x, y) in &pts {
+                st.push_point(Point {
+                    pos: Vec2::new(x, y),
+                    width: r * 2.0,
+                    opacity: 1.0,
+                    color: Rgba::new(1.0, 1.0, 1.0, 1.0),
+                });
+            }
+            st.hardness = hardness;
+            d.strokes.push(st);
+            let px = render(&device, &queue, &d);
+
+            let (mut worst, mut at, mut pair, mut bad, mut checked) =
+                (0i32, (0u32, 0u32), (0, 0), 0u32, 0u32);
+            for y in 0..H {
+                for x in 0..W {
+                    let Some(exp) = expected_union_alpha(&poly, (x as f32 + 0.5, y as f32 + 0.5))
+                    else {
+                        continue;
+                    };
+                    let got = i32::from(alpha_at(&px, x, y));
+                    let want = (exp * 255.0).round() as i32;
+                    checked += 1;
+                    // SINAL preservado: negativo = FALTA tinta (a cunha escura da foto).
+                    let diff = got - want;
+                    if diff.abs() > 8 {
+                        bad += 1;
+                    }
+                    if diff.abs() > worst.abs() {
+                        worst = diff;
+                        at = (x, y);
+                        pair = (got, want);
+                    }
+                }
+            }
+            println!(
+                "  giro {turn_deg:5.0} deg  h={hardness:.1}: pior {worst:+4} em {at:?} \
+                 (pintou {}, uniao pede {}) | {bad} px fora de 8 de {checked}",
+                pair.0, pair.1
+            );
+        }
+    }
+}
+
+/// O X em duas montagens: `(um traço, dois traços)`./// O X em duas montagens: `(um traço, dois traços)`. **Porta única** — o gate e a sonda encenam
 /// pela MESMA função, senão eles mediriam figuras diferentes e a sonda deixaria de diagnosticar
 /// o gate.
 fn crossing_pair(hardness: f32) -> (FlipDrawing, FlipDrawing) {

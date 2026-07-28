@@ -237,6 +237,8 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<SegExtras> {
     // é o `i+1` da iteração — nada a limpar entre iterações, e a classe de bug
     // "limpeza incompleta do visitado" deixa de existir.
     let mut stamp = vec![0u32; n];
+    // *A caminhada chegou aqui* — separado do `stamp` (*já está na lista*). Ver `push_ribbon_local`.
+    let mut walked = vec![0u32; n];
     let mut budget = PAIR_BUDGET;
     for i in 0..n {
         if budget == 0 {
@@ -254,6 +256,7 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<SegExtras> {
             closed,
             max_radius,
             &mut stamp,
+            &mut walked,
             visit,
             &mut out[i].list,
         );
@@ -290,7 +293,17 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<SegExtras> {
                 }
             }
         }
-        out[i].list.extend(top.iter().map(|&(_, j)| j));
+        // ⚠️ O que o grid trouxe se PARTICIONA: o que a caminhada tinha alcançado (o transbordo
+        // do teto da fita) é a MESMA passagem e vai para a FRENTE, contando no `ribbon`; o resto
+        // é cruzamento de verdade. Sem isto o transbordo viraria passagem estranha e o fragment
+        // comporia tinta da fita consigo mesma.
+        let (same, foreign): (Vec<u32>, Vec<u32>) = top
+            .iter()
+            .map(|&(_, j)| j)
+            .partition(|&j| walked[j as usize] == visit);
+        out[i].ribbon += same.len() as u32;
+        out[i].list.extend(same);
+        out[i].list.extend(foreign);
     }
     out
 }
@@ -369,12 +382,17 @@ pub(crate) struct SegExtras {
 ///
 /// Os adjacentes (`i±1`) são pulados: chegam ao fragment pela janela de sequência
 /// (`p0`/`p3`) e não gastam slot. Traço FECHADO dá a volta; aberto para nas pontas.
+// ⚠️ Oito argumentos: os dois carimbos (`stamp` = *já está na lista* · `walked` = *a caminhada
+// chegou aqui*) são estado do CHAMADOR reusado entre iterações — juntá-los num struct só
+// para agradar o lint esconderia justamente a distinção que esta wave existe para fazer.
+#[allow(clippy::too_many_arguments)]
 fn push_ribbon_local(
     segs: &[Seg],
     i: usize,
     closed: bool,
     max_radius: f32,
     stamp: &mut [u32],
+    walked: &mut [u32],
     visit: u32,
     out: &mut Vec<u32>,
 ) {
@@ -384,6 +402,7 @@ fn push_ribbon_local(
     // exato, este só decide quando PARAR de andar.
     let _ = max_radius;
     stamp[i] = visit;
+    walked[i] = visit;
     for dir in [1i64, -1i64] {
         let mut j = i as i64;
         for _ in 0..n {
@@ -401,6 +420,7 @@ fn push_ribbon_local(
             let sj = &segs[ju];
             if is_adjacent(&segs[i], sj) {
                 stamp[ju] = visit; // adjacente: já vem pela janela `p0`/`p3`
+                walked[ju] = visit;
                 continue;
             }
             // ⚠️ **A passagem acaba onde a caminhada SAI da vizinhança** — teste ESPACIAL, não
@@ -413,14 +433,20 @@ fn push_ribbon_local(
             if seg_seg_distance_sq(segs[i].pa, segs[i].pb, sj.pa, sj.pb) > reach * reach {
                 break;
             }
-            // ⚠️ O carimbo vem SEMPRE, mesmo depois do teto — e é isso que decide o modo de
-            // FALHA. Carimbado, o grid pula o segmento; sem carimbo ele o recolheria e o
-            // fragment o trataria como passagem ESTRANHA, ou seja o transbordo da fita
-            // ADICIONARIA tinta (composição) em vez de apenas perder um vizinho (união).
-            // Perder cobertura é a degradação que esta lista sempre teve; inventar cobertura
-            // seria uma nova, e pior: ela aparece na curva DENSA, que é o caso comum.
-            stamp[ju] = visit;
+            // ⚠️ **DOIS carimbos, e a distinção é o que impede as duas falhas opostas.**
+            // `walked` diz *a caminhada CHEGOU aqui* (⇒ é a MESMA passagem, sempre); `stamp` diz
+            // *já está na lista* (⇒ o grid não duplica). Acima do teto o segmento fica sem
+            // `stamp` — então o grid PODE recolhê-lo — mas com `reach`, então ele entra como
+            // PRÓPRIA passagem e não como estranha.
+            //
+            // As duas versões anteriores erraram para lados opostos, as duas medidas na sonda
+            // `measure_a_sharp_corner_that_also_crosses_itself`: carimbar tudo tirava o
+            // transbordo das DUAS listas e abria **BURACO** (pintou 0 onde a união pede 252 — a
+            // cunha escura da 3ª foto do Enio); não carimbar nada o fazia virar passagem
+            // estranha e o fragment **ADICIONAVA** tinta (+63).
+            walked[ju] = visit;
             if out.len() < MAX_RIBBON_EXTRAS {
+                stamp[ju] = visit;
                 out.push(ju as u32);
             }
         }

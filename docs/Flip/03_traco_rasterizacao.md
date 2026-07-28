@@ -595,3 +595,33 @@ traço a opacity 0,5 **não escurece sobre si mesmo** (a regra do GP, que segue 
   teste binário. Com raio 14 o oráculo compara até `dn ≈ 0,86`.
 
 **3 mutações, 3 sangram** (composição→união · partição neutralizada · transbordo virando estranha).
+
+### §8.7.1 — A QUINA: o transbordo do teto tem DOIS destinos errados (3º report)
+
+*"Melhor mas não completamente; principalmente na quina do traço o problema aparece"* — com setas
+vermelhas sobre **cunhas ESCURAS** mordendo a tinta.
+
+⚠️ **Nenhuma sonda anterior podia ver isto:** a de quina não cruzava, a de cruzamento tinha a quina
+fora do quadro. O defeito vive na **INTERAÇÃO** — a quina afiada faz a caminhada da fita ser longa,
+o teto (`MAX_RIBBON_EXTRAS`) satura, e **o destino do transbordo decide tudo**. Medido no "4"
+(desce · espeto · cruza a própria descida), contra a união:
+
+| destino do transbordo | falta | sobra | px fora de 8 |
+|---|---|---|---|
+| **carimbado** (some das 2 listas) | **−252** ⚠️ buraco | +4 | 167 |
+| **não carimbado** (vira estranho) | −1 | **+63** ⚠️ tinta a mais | 109 |
+| **ao grid, MARCADO como própria** | **−1** | **+4** | **0** |
+
+**A lei: DOIS carimbos.** `walked` = *a caminhada chegou aqui* (⇒ é a mesma passagem, sempre);
+`stamp` = *já está na lista* (⇒ o grid não duplica). Acima do teto o segmento fica sem `stamp` — o
+grid pode recolhê-lo — mas com `walked`, então entra como **própria** passagem. O que o grid traz
+é particionado por `walked` e a parte própria vai para a FRENTE, contando no `ribbon`.
+
+⚠️ **Faltar tinta e sobrar tinta não são o mesmo erro, e cada um tem gate próprio:** sobrar sobre a
+união é a lei nova (as passagens compõem); **faltar é sempre defeito**. Gates:
+`a_sharp_corner_that_crosses_itself_never_loses_ink` (oráculo = a FALTA) e
+`a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union` (a sobra). **2 mutações, uma
+para cada direção, as duas sangram** — e cada uma derruba **só o seu** gate.
+
+⚠️ Corolário: o teto TOTAL do laço do fragment é a SOMA dos dois orçamentos
+(`MAX_RIBBON_EXTRAS + MAX_EXTRAS_PER_SEGMENT`), não um deles.

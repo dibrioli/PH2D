@@ -350,3 +350,27 @@ varying novo**. Nenhum schema, contrato congelado, ADR, id ou token.
 **`PH2D_FLIP_HARDNESS_SMOKE=1`** — a MESMA cena serve: os três cruzamentos são de **um traço só**.
 O que olhar agora: o cruzamento **funde liso**, sem costura na bissetriz, e desenhar o mesmo X com
 **dois traços separados** tem de dar o mesmo aspecto.
+
+### 10.1 — A QUINA: o transbordo do teto tem DOIS destinos errados (3º smoke)
+
+*"Melhor mas não completamente; principalmente na quina do traço o problema aparece"* — setas
+vermelhas sobre **cunhas ESCURAS** mordendo a tinta.
+
+⚠️ **Nenhuma sonda anterior podia ver isto** (a de quina não cruzava; a de cruzamento tinha a quina
+fora do quadro): o defeito vive na **INTERAÇÃO**. A quina afiada alonga a caminhada da fita, o teto
+`MAX_RIBBON_EXTRAS` satura, e **o destino do transbordo decide tudo**. Medido no "4":
+
+| destino do transbordo | falta | sobra | px fora de 8 |
+|---|---|---|---|
+| carimbado (some das 2 listas) — **a §10 shipou isto** | **−252** buraco | +4 | 167 |
+| não carimbado (vira estranho) | −1 | **+63** | 109 |
+| ao grid, **MARCADO** como própria | **−1** | **+4** | **0** |
+
+**DOIS carimbos:** `walked` (*a caminhada chegou aqui* ⇒ mesma passagem) e `stamp` (*já está na
+lista* ⇒ o grid não duplica). O transbordo perde só o `stamp`, então o grid o recolhe e a partição
+por `walked` o devolve à própria passagem.
+
+⚠️ **Faltar e sobrar não são o mesmo erro:** sobrar sobre a união é a lei nova; **faltar é sempre
+defeito**. Um gate para cada (`a_sharp_corner_that_crosses_itself_never_loses_ink` ·
+`a_dense_soft_ribbon_that_never_crosses_itself_is_exactly_the_union`); **2 mutações, cada uma
+derruba só o SEU gate**. Corolário: o teto do laço do fragment é a SOMA dos dois orçamentos (32).

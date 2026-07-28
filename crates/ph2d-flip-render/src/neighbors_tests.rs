@@ -97,9 +97,19 @@ fn brute_force(segs: &[Seg]) -> Vec<Vec<u32>> {
     let closed = segs[n - 1].b == segs[0].a;
     let max_radius = segs.iter().fold(0.0f32, |m, s| m.max(s.radius));
     let mut stamp = vec![0u32; n];
+    let mut walked = vec![0u32; n];
     for i in 0..n {
         let visit = i as u32 + 1;
-        push_ribbon_local(segs, i, closed, max_radius, &mut stamp, visit, &mut out[i]);
+        push_ribbon_local(
+            segs,
+            i,
+            closed,
+            max_radius,
+            &mut stamp,
+            &mut walked,
+            visit,
+            &mut out[i],
+        );
         let mut cand: Vec<(f32, u32)> = Vec::new();
         for j in 0..n {
             let (si, sj) = (segs[i], segs[j]);
@@ -173,10 +183,14 @@ fn the_extras_list_is_capped_and_sorted_by_proximity() {
         ));
     }
     let extras = extras_for_stroke(&segs);
+    // ⚠️ O teto TOTAL é a soma dos DOIS orçamentos — a fita própria (`MAX_RIBBON_EXTRAS`) e os
+    // cruzamentos (`MAX_EXTRAS_PER_SEGMENT`) —, e é isso que o fragment itera. Este teste dizia
+    // só `MAX_EXTRAS_PER_SEGMENT`, de quando a lista era uma só; o que ele PROVA continua sendo
+    // o que importa: o laço do fragment nunca é ilimitado.
     assert_eq!(
         extras[0].list.len(),
-        MAX_EXTRAS_PER_SEGMENT,
-        "a lista é capada"
+        MAX_RIBBON_EXTRAS + MAX_EXTRAS_PER_SEGMENT,
+        "a lista é capada pelos dois orçamentos"
     );
     // Os escolhidos são os mais PRÓXIMOS (os primeiros do pente).
     assert!(
@@ -288,10 +302,20 @@ mod ribbon_budget_measurement {
             let pts = densify(&spine, step);
             let segs = segs_of(&pts, R);
             let mut stamp = vec![0u32; segs.len()];
+            let mut walked = vec![0u32; segs.len()];
             let (mut max_n, mut sum) = (0usize, 0usize);
             for i in 0..segs.len() {
                 let mut out = Vec::new();
-                push_ribbon_local(&segs, i, false, R, &mut stamp, i as u32 + 1, &mut out);
+                push_ribbon_local(
+                    &segs,
+                    i,
+                    false,
+                    R,
+                    &mut stamp,
+                    &mut walked,
+                    i as u32 + 1,
+                    &mut out,
+                );
                 max_n = max_n.max(out.len());
                 sum += out.len();
             }

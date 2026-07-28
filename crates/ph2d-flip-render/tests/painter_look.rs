@@ -44,9 +44,9 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
     Some((device, queue))
 }
 
-fn pixel_camera() -> CameraRaw {
-    let sx = 2.0 / W as f32;
-    let sy = -2.0 / H as f32;
+fn pixel_camera_sized(w: u32, h: u32) -> CameraRaw {
+    let sx = 2.0 / w as f32;
+    let sy = -2.0 / h as f32;
     CameraRaw::new(
         [
             [sx, 0.0, 0.0, 0.0],
@@ -54,7 +54,7 @@ fn pixel_camera() -> CameraRaw {
             [0.0, 0.0, 1.0, 0.0],
             [-1.0, 1.0, 0.0, 1.0],
         ],
-        [W as f32, H as f32],
+        [w as f32, h as f32],
         1.0,
     )
 }
@@ -62,21 +62,25 @@ fn pixel_camera() -> CameraRaw {
 /// Rasteriza no MESMO harness do `gpu_render.rs` — copiado verbatim porque um 2o caminho
 /// de render mediria outro produto.
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> Vec<u8> {
-    render_with(device, queue, drawing, pixel_camera())
+    render_sized(device, queue, drawing, W, H)
 }
 
-fn render_with(
+/// ⚠️ **UM caminho de render, com o tamanho como PARÂMETRO.** A sonda de imagem precisa de escala
+/// real (768²) e os gates medem em 64²; um 2º harness mediria outro produto.
+fn render_sized(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     drawing: &FlipDrawing,
-    camera: CameraRaw,
+    w: u32,
+    h: u32,
 ) -> Vec<u8> {
+    let camera = pixel_camera_sized(w, h);
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-flip test target"),
         size: wgpu::Extent3d {
-            width: W,
-            height: H,
+            width: w,
+            height: h,
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
@@ -90,7 +94,7 @@ fn render_with(
 
     let mut fr = FlipRenderer::new(device, format);
     fr.upload(device, queue, &camera, &pack_drawing(drawing));
-    fr.ensure_depth(device, (W, H));
+    fr.ensure_depth(device, (w, h));
 
     let mut encoder =
         device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
@@ -123,16 +127,22 @@ fn render_with(
         fr.draw(&mut pass);
     }
     queue.submit([encoder.finish()]);
-    readback(device, queue, &texture)
+    readback(device, queue, &texture, w, h)
 }
 
-fn readback(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture) -> Vec<u8> {
-    let unpadded = W * 4;
+fn readback(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    w: u32,
+    h: u32,
+) -> Vec<u8> {
+    let unpadded = w * 4;
     let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let padded = unpadded.div_ceil(align) * align;
     let staging = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("ph2d-flip readback"),
-        size: (padded as u64) * (H as u64),
+        size: (padded as u64) * (h as u64),
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -150,12 +160,12 @@ fn readback(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture)
             layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(padded),
-                rows_per_image: Some(H),
+                rows_per_image: Some(h),
             },
         },
         wgpu::Extent3d {
-            width: W,
-            height: H,
+            width: w,
+            height: h,
             depth_or_array_layers: 1,
         },
     );
@@ -170,8 +180,8 @@ fn readback(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture)
     rx.recv().unwrap().unwrap();
 
     let mapped = slice.get_mapped_range();
-    let mut out = Vec::with_capacity((unpadded as usize) * (H as usize));
-    for row in 0..H as usize {
+    let mut out = Vec::with_capacity((unpadded as usize) * (h as usize));
+    for row in 0..h as usize {
         let start = row * padded as usize;
         out.extend_from_slice(&mapped[start..start + unpadded as usize]);
     }
@@ -245,6 +255,17 @@ fn painter_weight(dn: f32, hardness: f32) -> f32 {
 /// **O DEPÓSITO DO PAINTER** — dabs a cada `spacing × diâmetro` de arco, compostos por `over`.
 /// Não é a união: cada dab compõe com o que já está lá, e é isso que o Enio vê na tela do Painter.
 fn painter_deposit(pts: &[(f32, f32)], r: f32, hardness: f32) -> Vec<f32> {
+    painter_deposit_sized(pts, r, hardness, W, H)
+}
+
+/// O mesmo, com o tamanho do alvo como parâmetro (a sonda de imagem usa 768²).
+fn painter_deposit_sized(
+    pts: &[(f32, f32)],
+    r: f32,
+    hardness: f32,
+    w_img: u32,
+    h_img: u32,
+) -> Vec<f32> {
     let pitch = (PAINTER_SPACING * 2.0 * r).max(0.25);
     // Reamostra o caminho no passo do Painter.
     let mut dabs: Vec<(f32, f32)> = vec![pts[0]];
@@ -269,12 +290,12 @@ fn painter_deposit(pts: &[(f32, f32)], r: f32, hardness: f32) -> Vec<f32> {
     // (`dn in [0,8, 1]`) mede 1,4 px e a media de area discorda da amostra pontual por
     // **-67/255**, penalizando o Flip por algo que o Painter faz IGUAL. O oraculo tem de
     // amostrar como o produto amostra.
-    let mut cov = vec![0.0_f32; (W * H) as usize];
+    let mut cov = vec![0.0_f32; (w_img * h_img) as usize];
     for &(dx, dy) in &dabs {
         let x0 = ((dx - r).floor().max(0.0)) as u32;
-        let x1 = ((dx + r).ceil().min(W as f32 - 1.0)) as u32;
+        let x1 = ((dx + r).ceil().min(w_img as f32 - 1.0)) as u32;
         let y0 = ((dy - r).floor().max(0.0)) as u32;
-        let y1 = ((dy + r).ceil().min(H as f32 - 1.0)) as u32;
+        let y1 = ((dy + r).ceil().min(h_img as f32 - 1.0)) as u32;
         for y in y0..=y1 {
             for x in x0..=x1 {
                 let px = x as f32 + 0.5;
@@ -284,7 +305,7 @@ fn painter_deposit(pts: &[(f32, f32)], r: f32, hardness: f32) -> Vec<f32> {
                     continue;
                 }
                 let w = painter_weight(dn, hardness);
-                let c = &mut cov[(y * W + x) as usize];
+                let c = &mut cov[(y * w_img + x) as usize];
                 *c = 1.0 - (1.0 - *c) * (1.0 - w);
             }
         }
@@ -747,5 +768,200 @@ fn measure_the_convex_tip_residual() {
             }
         }
         println!("  {hardness:.1}   {lo:+5}   {nlo:5}   {hi_d:+5}   {nhi:5}");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// A SONDA DE IMAGEM — para o Enio e eu olharmos os MESMOS pixels
+// ---------------------------------------------------------------------------
+
+/// Escreve um BMP 24-bit (sem compressão, linhas de baixo para cima, padding de 4 bytes).
+///
+/// ⚠️ **À mão, de propósito:** um encoder de PNG entraria como dependência nova num
+/// `Cargo.toml` só para uma sonda de diagnóstico. BMP abre em qualquer visualizador do
+/// Linux e custa zero superfície.
+fn write_bmp(path: &std::path::Path, w: u32, h: u32, rgb: &[u8]) {
+    let row = (w * 3).next_multiple_of(4) as usize;
+    let pixels = row * h as usize;
+    let mut out = Vec::with_capacity(54 + pixels);
+    out.extend_from_slice(b"BM");
+    out.extend_from_slice(&((54 + pixels) as u32).to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&54u32.to_le_bytes());
+    out.extend_from_slice(&40u32.to_le_bytes());
+    out.extend_from_slice(&(w as i32).to_le_bytes());
+    out.extend_from_slice(&(h as i32).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&24u16.to_le_bytes());
+    for _ in 0..6 {
+        out.extend_from_slice(&0u32.to_le_bytes());
+    }
+    for y in (0..h).rev() {
+        let start = out.len();
+        for x in 0..w {
+            let i = ((y * w + x) * 3) as usize;
+            out.push(rgb[i + 2]); // BGR
+            out.push(rgb[i + 1]);
+            out.push(rgb[i]);
+        }
+        out.resize(start + row, 0);
+    }
+    std::fs::write(path, out).expect("escrever bmp");
+}
+
+/// Tinta branca sobre o cinza do canvas — a mesma leitura da foto do Enio.
+fn over_dark(alpha: f32) -> [u8; 3] {
+    const BG: f32 = 56.0;
+    const INK: f32 = 245.0;
+    let v = (BG + (INK - BG) * alpha.clamp(0.0, 1.0)).round() as u8;
+    [v, v, v]
+}
+
+/// 🖼️ **AS IMAGENS.** O que o Flip pinta e o que o pincel digital do Painter deposita, na MESMA
+/// figura e na MESMA escala — para pararmos de trafegar foto-de-tela contra fixture.
+///
+/// ⚠️ **A figura é a do report:** a estrela de UM traço (quina afiada em cada ponta, cinco
+/// auto-cruzamentos), pincel macio e GROSSO. Dois traços cruzados nunca tiveram o defeito.
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_the_two_side_by_side() {
+    let Some((device, queue)) = device() else {
+        println!("sem adapter -- nada a escrever");
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_vs_painter");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    const S: u32 = 768;
+    let r = 80.0_f32;
+
+    // ⚠️ O 3º par usa polilinha DENSA de propósito: é o modo de falha do orçamento de vizinhos,
+    // e a pergunta que ele responde é *"o defeito da sua foto é ESTE?"*.
+    for (nome, hardness, passo) in [
+        ("macio_h0.4", 0.4_f32, 0.8_f32),
+        ("medio_h0.7", 0.7, 0.8),
+        ("DENSO_h0.4_orcamento_estourado", 0.4, 0.08),
+    ] {
+        // A estrela, na escala da imagem.
+        let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.5, 300.0_f32);
+        let mut corners = Vec::new();
+        for k in 0..5 {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            corners.push((cx + outer * a.cos(), cy + outer * a.sin()));
+        }
+        corners.push(corners[0]);
+        // ⚠️ **A DENSIDADE É A DO PRODUTO** (`RESAMPLE_STEP_FRACTION = 0.4` × largura = `0.8·r`,
+        // `flip_draw.rs::resample_step`). A 1ª versão desta sonda usou passo FIXO de 6 px com
+        // r = 80 — **10× mais densa que a realidade** — e isso satura o orçamento de vizinhos
+        // (`MAX_RIBBON_EXTRAS`) por conta própria, pintando estilhaços pretos que o produto NÃO
+        // tem. Fixture que contém um fenômeno que o produto não contém mente igual à que não
+        // contém o que ele tem.
+        let step = passo * r;
+        let mut pts = vec![corners[0]];
+        for w in corners.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (len / step).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+            }
+        }
+
+        let px = render_sized(&device, &queue, &flip_drawing(&pts, r, hardness), S, S);
+        let dep = painter_deposit_sized(&pts, r, hardness, S, S);
+
+        let mut flip_rgb = vec![0u8; (S * S * 3) as usize];
+        let mut paint_rgb = vec![0u8; (S * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let i = ((y * S + x) * 3) as usize;
+                let a_flip = f32::from(px[((y * S + x) * 4 + 3) as usize]) / 255.0;
+                flip_rgb[i..i + 3].copy_from_slice(&over_dark(a_flip));
+                paint_rgb[i..i + 3].copy_from_slice(&over_dark(dep[(y * S + x) as usize]));
+            }
+        }
+        write_bmp(&dir.join(format!("1_FLIP_{nome}.bmp")), S, S, &flip_rgb);
+        write_bmp(&dir.join(format!("2_PAINTER_{nome}.bmp")), S, S, &paint_rgb);
+
+        // E o lado-a-lado, para uma janela so.
+        let mut both = vec![0u8; (S * 2 * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let src = ((y * S + x) * 3) as usize;
+                let l = ((y * S * 2 + x) * 3) as usize;
+                let rr = ((y * S * 2 + S + x) * 3) as usize;
+                both[l..l + 3].copy_from_slice(&flip_rgb[src..src + 3]);
+                both[rr..rr + 3].copy_from_slice(&paint_rgb[src..src + 3]);
+            }
+            // divisória
+            let d = ((y * S * 2 + S) * 3) as usize;
+            both[d..d + 3].copy_from_slice(&[200, 60, 60]);
+        }
+        write_bmp(
+            &dir.join(format!("3_LADO_A_LADO_{nome}.bmp")),
+            S * 2,
+            S,
+            &both,
+        );
+    }
+    println!("\nimagens escritas em {}", dir.display());
+    for e in std::fs::read_dir(dir).expect("ler dir") {
+        println!("  {}", e.expect("entrada").path().display());
+    }
+}
+
+/// **SONDA** — ONDE está o penhasco: o defeito aparece quando a polilinha fica mais densa que o
+/// orçamento de vizinhos (`MAX_RIBBON_EXTRAS`) consegue cobrir.
+///
+/// O produto reamostra a `0,8·r` (`RESAMPLE_STEP_FRACTION = 0.4` da largura), mas o **RDP** roda
+/// ANTES com tolerância `0,1·r` e a reamostragem **só acrescenta** pontos — nunca remove. Numa
+/// curva de raio `R` o RDP guarda cordas de `≈ √(0,8·R·r)`, que fica ABAIXO do passo quando
+/// `R < 0,8·r`: **um rabisco mais fechado que o próprio pincel**.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_where_the_neighbour_budget_breaks() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let hardness = 0.4_f32;
+    let r = 7.0_f32;
+    println!("\n=== O PENHASCO: falta de tinta por DENSIDADE da polilinha ===");
+    println!("  passo/raio   segmentos   falta   n_falta");
+    for frac in [0.8_f32, 0.4, 0.2, 0.1, 0.05] {
+        let (cx, cy, outer) = (32.0_f32, 32.0_f32, 26.0_f32);
+        let mut corners = Vec::new();
+        for k in 0..5 {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            corners.push((cx + outer * a.cos(), cy + outer * a.sin()));
+        }
+        corners.push(corners[0]);
+        let step = frac * r;
+        let mut pts = vec![corners[0]];
+        for w in corners.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (len / step).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+            }
+        }
+        let px = render(&device, &queue, &flip_drawing(&pts, r, hardness));
+        let dep = painter_deposit(&pts, r, hardness);
+        let (mut lo, mut nlo) = (0i32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let d = i32::from(alpha_at(&px, x, y))
+                    - (dep[(y * W + x) as usize] * 255.0).round() as i32;
+                if d < -16 {
+                    nlo += 1;
+                }
+                lo = lo.min(d);
+            }
+        }
+        println!("  {frac:8.2}   {:9}   {lo:+5}   {nlo:5}", pts.len() - 1);
     }
 }

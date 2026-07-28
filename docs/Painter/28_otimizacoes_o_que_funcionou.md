@@ -1436,23 +1436,42 @@ NÃO diverge) que separou *"zero divergências"* de *"a sonda nunca rodou"*
 ([[feedback_a_negative_search_needs_a_positive_control]]). Re-censar:
 `PH2D_UNDO_AUDIT=1 cargo test -p ph2d-tool-painter -- --nocapture 2>&1 | grep S3-AUDIT`.
 
-#### (2) *"A contagem de donos cai para UM"* — ela cai para **três**, e ≥2 já copia
+#### (2) *"A contagem de donos cai para UM"* — cai, **mas só se o journal alcançar as TRÊS referências**
 
-O §7 já registrava que um journal substituindo só o `stroke_undo` deixaria a contagem em 2. **A recíproca
-também vale, e é pior que o esperado.** Medido pela sonda que já existia
-(`who_holds_the_planes_when_a_stroke_begins`):
+O §7 já registrava que um journal substituindo só o `stroke_undo` deixaria a contagem em 2. Medido pela
+sonda que já existia (`who_holds_the_planes_when_a_stroke_begins`), agora com a **atribuição** por
+ablação — a pergunta que a 1ª rodada não fez, e sem a qual o número sozinho engana:
 
 ```text
   REGIME (2 traços commitados, nenhum gesto aberto)   canvas 2 · heights 2 · covers 2 · mats 2
   depois de LIMPAR o histórico                        canvas 1 · heights 1 · covers 1 · mats 1
-  DENTRO do gesto (logo após o pen-down)              canvas 1 · heights 4 · covers 4 · mats 4
+
+  DENTRO do gesto — após 1 traço                      canvas 1 · heights 4 · covers 4 · mats 4
+  DENTRO do gesto — após 2 traços                     canvas 1 · heights 3 · covers 3 · mats 3
+  DENTRO do gesto — após 4 traços                     canvas 1 · heights 3 · covers 3 · mats 3
+
+  … sem o snapshot de pen-down                        canvas 1 · heights 3 · covers 3 · mats 3
+  … e sem o histórico INTEIRO                         canvas 1 · heights 1 · covers 1 · mats 1
 ```
 
-Os planos de **relevo** têm **QUATRO** donos dentro do gesto. Largar o cursor os leva a **três** — e o
-`make_mut` copia com qualquer coisa acima de um. ⚠️ **Logo o S3 é tudo-ou-nada:** não existe versão
-parcial que ganhe o fork do pen-down. (O `canvas_rgba` marca 1 ali porque o fork **já aconteceu** — é o
-custo que se quer remover, não a ausência dele.) **Quem são os quatro é número ABERTO** — a sonda conta,
-não identifica.
+**São três donos em regime, e cada um tem nome:** o **tool** (irredutível) · o **`cursor`** da U1 · o
+**`paint.stroke_undo`** (o `ModelSnapshot` do pen-down, cujo `snapshot_model` clona os `BTreeMap` ⇒ um
+`Arc` por plano). O **quarto** do primeiro traço é a ENTRADA dele: o traço que **cria** os planos de
+relevo não tem lado `before` a diferenciar, então o `split` grava `Whole { before, after }` — e `after`
+é um `Arc` do plano vivo, para sempre. Do segundo em diante a entrada é `Patch` e não segura plano
+nenhum.
+
+⚠️ **Duas consequências, e a segunda corrige a leitura anterior desta seção:**
+
+1. **O S3 é tudo-ou-nada** — `make_mut` copia com qualquer coisa acima de um, então remover UMA das três
+   não compra milissegundo nenhum. Não existe versão parcial que ganhe o fork.
+2. **Mas ele CHEGA a um.** Ablacionar o histórico inteiro (`undo.clear()`, que leva cursor **e** as
+   entradas `Whole`) mais o `stroke_undo` deixa exatamente o tool. A leitura de que *"a contagem para em
+   três"* saiu de ablacionar só o cursor — o alvo do S3 são as três referências, e o journal de pixels
+   substitui as três: `stroke_undo` some com a captura-na-escrita, `cursor` e `Whole` somem com o journal.
+
+(O `canvas_rgba` marca 1 dentro do gesto porque o fork **já aconteceu** — é o custo que se quer remover,
+não a ausência dele.)
 
 #### (3) *"Capturar por região"* precisa da região **antes** da escrita — e 47 sítios não a têm
 
@@ -1623,9 +1642,10 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
    ⚠️ **AS TRÊS PREMISSAS DESTE ITEM FORAM MEDIDAS EM 2026-07-27 E AS TRÊS VOLTARAM DIFERENTES — leia a
    §5.20 antes de abrir a wave.** Em resumo: *(a)* o estado vivo **é** o cursor em **79 de 81** undos, e
    as 2 exceções têm nome (o re-stamp do shape · o escorrido do Wet Paint) — hoje inofensivas **só**
-   porque a instalação é por atacado, que é justamente o que o S3 revoga; *(b)* a contagem de donos
-   **não cai para um**: dentro do gesto os planos de relevo têm **QUATRO** donos, largar o cursor os leva
-   a três, e `make_mut` copia com qualquer coisa acima de um ⇒ **o S3 é tudo-ou-nada**; *(c)* capturar
+   porque a instalação é por atacado, que é justamente o que o S3 revoga; *(b)* a contagem de donos cai
+   para um **apenas se o journal alcançar as TRÊS referências** (tool · `cursor` · `stroke_undo`; mais a
+   entrada `Whole` do 1º traço da camada), e `make_mut` copia com qualquer coisa acima de um ⇒ **o S3 é
+   tudo-ou-nada, e não há meio-passo que compre um milissegundo**; *(c)* capturar
    por região exige a região **antes** da escrita, e são **47 sítios de `fork_par` contra 12 que
    declaram** — os dois quentes conseguem dá-la (o fold já tem o `rect`; o depósito tem o bbox dos dabs
    como superconjunto seguro), o resto passa "não sei" e segue no caminho completo.

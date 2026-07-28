@@ -14,6 +14,15 @@
 //! pen-down"*) descrevia só metade. Consequência de projeto: um journal que substituísse apenas o
 //! `paint.stroke_undo` deixaria a contagem em 2 e **não mudaria um milissegundo**.
 //!
+//! ### 1b. DENTRO do gesto são TRÊS, e cada um tem nome (doc 28 §5.20)
+//!
+//! `tool` (irredutível) · `cursor` · `paint.stroke_undo` — este último porque `snapshot_model` clona os
+//! `BTreeMap`, o que bumpa um `Arc` por plano. O **quarto** que aparece logo após o PRIMEIRO traço é a
+//! entrada dele: um traço que **cria** os planos de relevo não tem lado `before` a diferenciar, então o
+//! delta grava `Whole { before, after }` e segura o plano vivo; do segundo traço em diante a entrada é
+//! `Patch` e não segura nada. ⚠️ **`make_mut` copia com qualquer coisa acima de um** ⇒ remover UMA das
+//! três não compra milissegundo nenhum: o S3 é tudo-ou-nada, e o alvo são as três.
+//!
 //! ## 2. O fork custa um TERÇO do que a aritmética dizia
 //!
 //! `Vec::clone` é um memcpy **serial**; o produto usa [`super::plane_fork::fork_par`], que é paralelo.
@@ -117,12 +126,44 @@ fn who_holds_the_planes_when_a_stroke_begins() {
     eprintln!("  canvas_rgba {c2} · heights {h2} · covers {cv2} · mats {m2}");
 
     // E dentro do gesto: quantos donos o primeiro dab encontra?
+    //
+    // ⚠️ A contagem depende de QUANTOS traços vieram antes, e não por acaso: o PRIMEIRO traço numa
+    // camada CRIA os planos de relevo, então o `split` não tem janela a diferenciar (o lado `before`
+    // é vazio) e a entrada guarda `Whole { before, after }` — um `Arc` do plano VIVO, para sempre.
+    // Do segundo em diante a entrada é `Patch` e não segura plano nenhum.
+    for warm in [1usize, 2, 4] {
+        let mut t2 = armed(1024);
+        for k in 0..warm {
+            stroke(&mut t2, 200.0 + (k as f32) * 40.0);
+        }
+        t2.on_canvas_pointer(cp([60.0, 600.0], PointerPhase::Down));
+        let (c, h, cv, m) = owners(&t2);
+        eprintln!(
+            "[donos] apos {warm} traco(s), dentro do gesto: canvas {c} · heights {h} · covers {cv} · mats {m}"
+        );
+    }
+
     let mut t2 = armed(1024);
     stroke(&mut t2, 200.0);
     t2.on_canvas_pointer(cp([60.0, 300.0], PointerPhase::Down));
     let (c3, h3, cv3, m3) = owners(&t2);
     eprintln!("[donos] DENTRO do gesto (logo apos o pen-down)");
-    eprintln!("  canvas_rgba {c3} · heights {h3} · covers {cv3} · mats {m3}\n");
+    eprintln!("  canvas_rgba {c3} · heights {h3} · covers {cv3} · mats {m3}");
+
+    // …e de QUEM são, um a um. A ordem é a das duas referências que o S3 removeria (§7 do doc 28):
+    // primeiro o snapshot de pen-down, depois o `cursor` do histórico. O que sobrar depois das duas
+    // é o que decide se a wave é viável — `make_mut` copia com qualquer coisa acima de um.
+    t2.paint.stroke_undo = None;
+    let (c4, h4, cv4, m4) = owners(&t2);
+    eprintln!(
+        "  - sem o snapshot de pen-down:  canvas {c4} · heights {h4} · covers {cv4} · mats {m4}"
+    );
+    t2.undo.clear();
+    let (c5, h5, cv5, m5) = owners(&t2);
+    eprintln!(
+        "  - …e sem o historico:          canvas {c5} · heights {h5} · covers {cv5} · mats {m5}"
+    );
+    eprintln!("  (sobra 1 = o TOOL, irredutivel ⇒ o S3 chega la, mas so alcancando as tres)\n");
 }
 
 /// **De que é feito o PEN-UP, por ABLAÇÃO** — a sonda que nomeou a causa (ver o cabeçalho, §3).

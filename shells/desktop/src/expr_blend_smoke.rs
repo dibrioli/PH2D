@@ -189,7 +189,11 @@ impl crate::App {
              (y=+1.5) X=Cross.x -> segue o valor FADEADO (duplo fade). Wiggle (y=-0.5) X rampa \
              -4..4 + Y=value+wiggle(3,0.8). Add (y=-2.5) X flat 0 + lane ADITIVA time*0.8 (delta). \
              Pare o playhead dentro de [2,3s] e arraste a regua: Cross/Follow variam continuo. \
-             AutoKey armado + cena parada -> ZERO chave fantasma. K num canal wiggle -> RECUSA."
+             AutoKey armado + cena parada -> ZERO chave fantasma. K num canal wiggle -> RECUSA. \
+             5. DURACAO 0 = INFINITO (Enio 2026-07-28): a caixa Dur mostra o simbolo de infinito \
+             e o veu SOME quando a duracao e apagada (digite 0). Digite um numero > 0 -> veu \
+             volta com a mascara pos-fim. Criar clip/container (+) ou abrir o app: nasce com 4 s \
+             + veu. A regra vale igual para clip, container e a cena (Arrange)."
         );
     }
 }

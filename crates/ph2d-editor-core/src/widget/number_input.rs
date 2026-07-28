@@ -312,6 +312,13 @@ pub fn paint_number_input_with_buffer(
 }
 
 pub fn format_number(v: f64) -> String {
+    // An UNBOUNDED quantity reads as the infinity glyph, not a saturated `i64` or "inf". The
+    // timeline's Dur box hands INFINITY here when a composition has no authored duration (0 =
+    // infinite, Enio 2026-07-28); no other number input passes an infinite value. `\u{221E}`
+    // keeps this source ASCII (the value is the `∞` char at runtime, past the tofu-glyph gate).
+    if v.is_infinite() {
+        return "\u{221E}".to_string();
+    }
     if (v - v.round()).abs() < 1e-6 {
         format!("{}", v as i64)
     } else {
@@ -322,6 +329,21 @@ pub fn format_number(v: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **An unbounded value reads as the infinity glyph, not a saturated integer or "inf"**
+    /// (Enio, 2026-07-28: the timeline's Dur box shows ∞ for a `0` = infinite composition,
+    /// and the box formats the value it is handed). Finite values are untouched. (Mutation:
+    /// drop the `is_infinite` branch ⇒ `f64::INFINITY as i64` saturates to `i64::MAX`, so the
+    /// box would read "9223372036854775807", RED.)
+    #[test]
+    fn an_infinite_value_reads_as_the_infinity_glyph() {
+        assert_eq!(format_number(f64::INFINITY), "\u{221E}");
+        assert_eq!(format_number(f64::NEG_INFINITY), "\u{221E}");
+        // Finite values are byte-identical to before (the branch is inert off the infinite path).
+        assert_eq!(format_number(4.0), "4");
+        assert_eq!(format_number(2.5), "2.500");
+        assert_eq!(format_number(0.0), "0");
+    }
 
     #[test]
     fn defaults_match_spec() {

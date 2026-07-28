@@ -87,6 +87,16 @@ pub(crate) fn dead_icon_button(
 /// dispensa o clamp do arrasto. É essa precedência que deixa o alcance servir só de
 /// `step` + piso enquanto o arrasto ganha uma escala em que dá para pousar. O texto do
 /// store foi corrigido junto.
+/// The value the box DISPLAYS for a (possibly unbounded) chip. An `unbounded` chip — a
+/// composition with no authored duration (`0` = infinite, Enio 2026-07-28) — reads as ∞
+/// (`f64::INFINITY` → the infinity glyph via [`format_number`]); everything else reads its
+/// own value. Pure, so the ∞ decision has an oracle the paint cannot give. The EDITABLE
+/// value stays the finite `value` (mirrored below), so focusing/dragging works from the
+/// derived length and typing `0` clears back to infinite.
+pub(crate) fn chip_display_value(value: f64, unbounded: bool) -> f64 {
+    if unbounded { f64::INFINITY } else { value }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn chip(
     ctx: &mut PaintCtx,
@@ -97,10 +107,13 @@ pub(crate) fn chip(
     value: f64,
     step: f64,
     decimals: usize,
+    unbounded: bool,
 ) -> f32 {
     let rect = Rect::new(x, y, CHIP_W, ROW_H_PX);
     {
         let store = ctx.host.store_mut();
+        // The store keeps the FINITE `value` even when unbounded — focusing the box edits the
+        // derived length, and a typed/dragged `0` clears the override back to infinite.
         mirror_number(store, id, value, decimals);
         // Piso e `step` do stepper; teto ABERTO.
         store.set_number_range(id, 0.0, f64::INFINITY, step);
@@ -113,7 +126,11 @@ pub(crate) fn chip(
     }
     let (state, _v, buf, caret, anchor) = read_number_input(ctx.host.store(), id);
     let buf = buf.to_string();
-    let input = NumberInput::new(id, "", value).step(step).state(state);
+    // Unbounded → the UNFOCUSED display is ∞ (the widget formats `input.value` when not
+    // focused); the finite store value above still drives editing when focused.
+    let input = NumberInput::new(id, "", chip_display_value(value, unbounded))
+        .step(step)
+        .state(state);
     paint_number_input_with_buffer(
         &input,
         Some(&buf),
@@ -225,5 +242,34 @@ pub(crate) fn mirror_number(
         buffer.push_str(&text);
         *caret = buffer.len();
         *last_committed = value;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **An unbounded chip DISPLAYS infinity; a bounded one displays its value** (Enio,
+    /// 2026-07-28: `0` = infinite reads as ∞ in the Dur box). The infinite display flows to
+    /// the box only through [`format_number`], which renders `f64::INFINITY` as the ∞ glyph
+    /// (gated there); here we pin the DECISION. The bounded case is byte-identical to before —
+    /// Time/Frame pass `unbounded = false` and their value is untouched. (Mutation: return
+    /// `value` regardless of `unbounded` ⇒ the unbounded case is finite, the box shows a
+    /// number instead of ∞, RED.)
+    #[test]
+    fn an_unbounded_chip_displays_infinity_a_bounded_one_its_value() {
+        assert!(
+            chip_display_value(4.0, true).is_infinite(),
+            "an unbounded (0 = infinite) chip hands INFINITY to the box, so it reads infinity"
+        );
+        assert!(
+            chip_display_value(0.0, true).is_infinite(),
+            "even a derived 0 reads as infinity when the composition is unbounded"
+        );
+        assert_eq!(
+            chip_display_value(4.0, false),
+            4.0,
+            "a bounded chip (Time/Frame, or a Dur with an authored duration) shows its value"
+        );
     }
 }

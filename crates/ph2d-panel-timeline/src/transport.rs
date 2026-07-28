@@ -293,6 +293,13 @@ pub(crate) fn length_scope(container_open: Option<usize>, keys_mode: bool) -> Le
 /// The Dur(s) chip: **the view's own duration** (`view_length_seconds` is
 /// stamped per view — clip in Keys, scene in Arrange, the open container
 /// inside one). The router writes the same scope (`length_scope`).
+///
+/// **No authored duration reads ∞** (Enio, 2026-07-28): a composition with no
+/// `length_override` is UNBOUNDED (`0` = infinite), so the box shows the infinity glyph
+/// rather than a derived number — the same `!view_length_explicit` that removes the veil
+/// (`ruler_veil`). This is why it is the ONLY chip that can be `unbounded`; Time/Frame
+/// always show a finite number. Typing/dragging a positive value authors a finite end;
+/// typing `0` clears back to infinite.
 fn paint_length_chip(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -310,6 +317,7 @@ fn paint_length_chip(
         snap.view_length_seconds,
         DUR_STEP_SECONDS,
         2,
+        !snap.view_length_explicit,
     );
 }
 
@@ -327,6 +335,7 @@ fn labeled_chip(
     value: f64,
     step: f64,
     decimals: usize,
+    unbounded: bool,
 ) {
     let half = Spacing::Sm.px() * 0.5;
     label(ctx, theme, ph2d_i18n::tr(key), x, y, CHIP_LABEL_W);
@@ -339,6 +348,7 @@ fn labeled_chip(
         value,
         step,
         decimals,
+        unbounded,
     );
 }
 
@@ -417,11 +427,11 @@ fn paint_item(
         Item::AddMarker => add_marker_button(ctx, theme, x, y),
         // The three chips share one drawing (label + numeric), so they share one
         // painter — a fourth copy of the pair is how the label and the chip come
-        // to disagree about the half-gap between them. `LengthChip` is the view's
-        // EFFECTIVE duration (Enio, 2026-07-23): derived from content, or the
-        // authored override when one is set; typing writes the scope on screen
-        // (clip in Keys, the open container inside one, the scene in Arrange)
-        // and 0 clears back to derived.
+        // to disagree about the half-gap between them. Time/Frame are never
+        // unbounded (`false`); only `LengthChip` reads ∞ when no duration is
+        // authored (Enio, 2026-07-28: `0` = infinite), typing the scope on screen
+        // (clip in Keys, the open container inside one, the scene in Arrange) and
+        // `0` clearing back to infinite.
         Item::TimeChip => labeled_chip(
             ctx,
             theme,
@@ -432,6 +442,7 @@ fn paint_item(
             snap.time_seconds,
             1.0 / fps,
             2,
+            false,
         ),
         Item::FrameChip => labeled_chip(
             ctx,
@@ -443,6 +454,7 @@ fn paint_item(
             snap.frame as f64,
             1.0,
             0,
+            false,
         ),
         Item::LengthChip => paint_length_chip(ctx, theme, x, y, snap),
         // Loop and PingPong are the SAME loop seen two ways, so exactly one can

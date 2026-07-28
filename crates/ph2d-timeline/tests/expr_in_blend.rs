@@ -595,13 +595,10 @@ fn the_cross_os_hash_of_wiggle_plus_prop_link() {
         .id()
         .to_bits();
     let mut doc = TimelineDoc::new();
-    // This gate sweeps `t` to 6.0 to fold 121 DISTINCT wiggle frames. A pure-expression clip
-    // now defaults to a 4 s composition (ADR-0145 — the "pure expression rides its strip"
-    // close cuts the solo clock at [`ph2d_timeline::DEFAULT_DURATION_SECONDS`]), which would
-    // freeze frames 81-120 at t=4 and shrink this determinism gate's coverage. Author a
-    // duration past the sweep so all 121 frames stay distinct — this gate is about cross-OS
-    // determinism, not the window; the window has its own gate (`a_pure_expression_is_windowed_*`).
-    doc.set_clip_length_override(0, Some(8.0));
+    // This gate sweeps `t` to 6.0 to fold 121 DISTINCT wiggle frames. A clip with NO authored
+    // duration is UNBOUNDED (0 = infinite, Enio 2026-07-28): `clip_cut` never clamps the solo
+    // clock, so all 121 frames stay distinct on their own. No override is authored here on
+    // purpose — that is the very behaviour the hash pins.
     // Src wiggles on X and Y; Follower reads Src.x and adds its own wiggle (prop-link + wiggle).
     set_expr(&mut doc, 0, src, PropKind::TranslationX, "wiggle(3, 20)");
     set_expr(&mut doc, 0, src, PropKind::TranslationY, "wiggle(5, 8)");

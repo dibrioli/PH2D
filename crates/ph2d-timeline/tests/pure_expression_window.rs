@@ -1,23 +1,24 @@
-//! **A PURE per-clip expression obeys the composition window** (ADR-0145, the "pure
-//! expression rides its strip" close — Enio's "vincular a expressão pura").
+//! **A PURE per-clip expression obeys its AUTHORED duration; with none it is INFINITE**
+//! (Enio, 2026-07-28: *"se o usuário coloca zero na duração … ele é infinito"* — `0` = ∞).
 //!
-//! A per-clip expression has no last key to end it, so a clip that keys NOTHING but drives
-//! a channel by formula had a derived content-end of `0`. Two symptoms, one root (measured
-//! headless, 2026-07-28):
+//! A per-clip expression has no last key to end it, so a clip that keys NOTHING but drives a
+//! channel by formula has no content length. Two questions, two answers:
 //!
-//! - **Keys/solo:** `clip_cut` used only `length_override`, so a pure-expression clip with
-//!   no explicit duration ran the formula on the RAW playhead forever (`x(6) = 600` for
-//!   `time*100`).
-//! - **Arrange:** `clip_end_seconds` (== `source_length`) was `0`, so a strip placed on the
-//!   clip got a zero-length source slice and read clip-time `0` forever (`E(0) = 0`).
+//! - **The CUT (`clip_cut`, the solo/Keys clock):** an authored `length_override` clamps the
+//!   playhead at the composition end (freeze); NO override is UNBOUNDED — the formula runs
+//!   forever (`x(6) = 600` for `time*100`). That is what `0` = infinite means at playback, and
+//!   it matches a keyed clip (whose track holds its last key past the end) and the scene and
+//!   container, which never clamp an un-authored clock either.
+//! - **The DERIVED length (`clip_end_seconds`, strip-sizing + go-to-end):** an unbounded
+//!   pure-expression clip still needs a finite window to place in a strip and a ruler extent,
+//!   so it falls back to [`DEFAULT_DURATION_SECONDS`]. This is the length only — NOT a cut.
 //!
-//! The composition-duration model already gives every AUTHORED clip a 4 s default
-//! (`with_default_duration`), which windows a pure expression in both views — so the product
-//! was correct. This makes it correct BY CONSTRUCTION: a clip that carries a per-clip
-//! expression and keys nothing gets [`DEFAULT_DURATION_SECONDS`] as its composition end even
-//! without an explicit override, so clearing the Dur (or a legacy save) can never reopen the
-//! hole. The change is inert for a formula-free clip (`!expr.is_empty()` never fires ⇒ the
-//! fade fingerprint is byte-identical) and for a keyed clip (its keyed end wins).
+//! The PRODUCT never hits the unbounded cut by accident: every authored clip carries 4 s
+//! (`with_default_duration`, `AddClip`), so a pure expression is windowed by that override
+//! (freeze + veil). Clearing the Dur to `0` is the artist asking for infinite — no veil, ∞ in
+//! the box, formula forever. The rules are inert for a formula-free clip (`!expr.is_empty()`
+//! never fires ⇒ the fade fingerprint is byte-identical) and for a keyed clip (its keyed end
+//! wins).
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Transform, World};
@@ -41,18 +42,21 @@ fn frozen_at_cut() -> f32 {
     v
 }
 
-/// **Keys/solo: a pure expression is bounded by the composition default, not extrapolated.**
+/// **The CUT: an authored 4 s duration freezes a pure expression at the composition end.**
 ///
-/// Inside the composition the formula runs; past its end it FREEZES at `E(end)` — exactly
-/// as a keyed track holds at its last key. (Mutation: revert `clip_cut` to the
-/// `length_override`-only cut ⇒ `x(6) = 600`, extrapolating past the composition end, RED.)
+/// The product default (`with_default_duration`/`AddClip` stamp 4 s) windows the formula
+/// exactly as it windows a keyed track: inside the composition it runs, past the authored end
+/// it FREEZES at `E(4)`. (Mutation: make `clip_cut` ignore `length_override` ⇒ `x(6) = 600`,
+/// running past the authored end, RED.)
 #[test]
-fn a_pure_expression_is_windowed_by_the_solo_composition_default() {
+fn a_pure_expression_with_an_authored_duration_is_cut_at_the_end() {
     let mut w = World::new();
     let e = w.spawn(Transform::default()).id();
     let mut doc = TimelineDoc::new();
     let tgt = doc.bind(e.to_bits(), PropKind::TranslationX);
-    doc.set_clip_expr(0, tgt, Some("time*100".into())); // PURE: no keyed track, no duration
+    doc.set_clip_expr(0, tgt, Some("time*100".into()));
+    // The product default: an AUTHORED composition duration (what boot/AddClip stamp).
+    doc.set_clip_length_override(0, Some(DEFAULT_DURATION_SECONDS));
 
     apply_from_doc(&mut w, &mut doc, 1.0);
     assert!(
@@ -63,9 +67,36 @@ fn a_pure_expression_is_windowed_by_the_solo_composition_default() {
     apply_from_doc(&mut w, &mut doc, 6.0);
     assert!(
         (x_of(&w, e) - frozen_at_cut()).abs() < 1e-2,
-        "past the composition end (4 s) the pure expression FREEZES at E(4)={}, \
-         never extrapolating to E(6)=600; got {}",
+        "past the AUTHORED end (4 s) the pure expression FREEZES at E(4)={}, never E(6)=600; got {}",
         frozen_at_cut(),
+        x_of(&w, e)
+    );
+}
+
+/// **No authored duration is UNBOUNDED — the formula runs forever (`0` = infinite).**
+///
+/// A cleared Dur (`length_override == None`) is the artist asking for no time limit, so
+/// `clip_cut` does NOT clamp: `time*100` reaches `E(6) = 600`. The Dur box reads ∞ and the veil
+/// is absent (`view_authored_end` is `None`). (Mutation: re-add the pure-expression clamp
+/// [`clip_cut` cutting an un-authored formula clip at `clip_end_seconds`] ⇒ `x(6) = 400`, the
+/// old 4 s freeze, RED — the exact behaviour "0 = infinite" reverses.)
+#[test]
+fn a_pure_expression_with_no_duration_runs_forever() {
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let mut doc = TimelineDoc::new();
+    let tgt = doc.bind(e.to_bits(), PropKind::TranslationX);
+    doc.set_clip_expr(0, tgt, Some("time*100".into())); // PURE, and NO duration → infinite
+
+    assert_eq!(
+        doc.view_authored_end(None, true),
+        None,
+        "no override → the view is unbounded (no veil, the box reads infinity)"
+    );
+    apply_from_doc(&mut w, &mut doc, 6.0);
+    assert!(
+        (x_of(&w, e) - 600.0).abs() < 1e-2,
+        "an unbounded pure expression runs forever (t=6 -> 600), never frozen at 4 s; got {}",
         x_of(&w, e)
     );
 }
@@ -117,6 +148,43 @@ fn a_pure_expression_plays_windowed_inside_an_arrange_strip() {
         "past the strip the pure expr is quiet (sentinel 42 holds, not E), got {}",
         x_of(&w, e)
     );
+}
+
+/// **`0` = infinite is the SAME law for a clip, a container, and the scene** (Enio,
+/// 2026-07-28: *"a regra do infinito também deve se aplicar a strips e containers"*). With no
+/// authored duration each scope is UNBOUNDED — [`TimelineDoc::view_authored_end`] is `None` (no
+/// veil, the box reads ∞) and the cut leaves the clock untouched; author one and it clamps; a
+/// typed `0` clears back to infinite. (Mutation: make any `*_cut` clamp an un-authored clock ⇒
+/// the "runs on" assert RED; or make `set_clip_length_override` keep `Some(0.0)` ⇒ the `0`
+/// clears back to infinite assert RED.)
+#[test]
+fn zero_is_infinite_for_clip_container_and_scene() {
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("C".into());
+
+    // No override anywhere → every scope is unbounded: no authored end, and no cut.
+    assert_eq!(doc.view_authored_end(None, true), None, "clip: unbounded (no veil, box reads infinity)");
+    assert_eq!(doc.view_authored_end(Some(c), false), None, "container: unbounded");
+    assert_eq!(doc.scene_length, None, "scene: unbounded");
+    assert_eq!(doc.clip_cut(0, 9.0), 9.0, "clip: the clock runs on (infinite)");
+    assert_eq!(doc.container_cut(c, 9.0), 9.0, "container: the clock runs on");
+    assert_eq!(doc.cut_scene(9.0), 9.0, "scene: the clock runs on");
+
+    // Author 4 s on each → each becomes finite: an authored end AND a cut at 4 s.
+    doc.set_clip_length_override(0, Some(4.0));
+    doc.set_container_length_override(c, Some(4.0));
+    doc.set_scene_length(Some(4.0));
+    assert_eq!(doc.view_authored_end(None, true), Some(4.0), "clip: finite (veil at 4)");
+    assert_eq!(doc.view_authored_end(Some(c), false), Some(4.0), "container: finite");
+    assert_eq!(doc.scene_length, Some(4.0), "scene: finite");
+    assert_eq!(doc.clip_cut(0, 9.0), 4.0, "clip: cut at the authored end");
+    assert_eq!(doc.container_cut(c, 9.0), 4.0, "container: cut at the authored end");
+    assert_eq!(doc.cut_scene(9.0), 4.0, "scene: cut at the authored end");
+
+    // And a typed `0` clears back to infinite (the numeric-box gesture).
+    doc.set_clip_length_override(0, Some(0.0));
+    assert_eq!(doc.clip_length_override(0), None, "0 clears the override -> infinite again");
+    assert_eq!(doc.clip_cut(0, 9.0), 9.0, "and the clock runs on again");
 }
 
 /// **A KEYED clip keeps its keyed end — the pure-expression default fires only with no

@@ -1810,6 +1810,68 @@ compra milissegundo nenhum (§5.14).
 
 ---
 
+### 5.25 📐 A troca do S3, MEDIDA — a região é 15-73× mais barata que o fork, e o *fallback* não era
+
+Antes de mexer no ciclo de vida dos snapshots, a pergunta que precede a construção: **o S3 troca uma
+cópia do plano inteiro por uma cópia dos tiles escritos — troca por quanto?** Sonda
+`measure_journal_cost::what_a_region_journal_costs_against_the_fork_it_replaces`, com a geometria REAL
+de um traço (a pegada de cada dab, evento a evento) em vez de um palpite:
+
+```text
+                          captura        retém      fork do plano
+  4096²  traço curto       0,04 ms       1,6 MB     3,16 ms · 64 MB   ⇒ 73× mais barato
+  4096²  traço na tela     0,20 ms       7,3 MB     3,16 ms           ⇒ 15× mais barato
+  2048²  traço curto       0,03 ms       1,6 MB     0,32 ms · 16 MB   ⇒  9× mais barato
+  2048²  traço na tela     0,09 ms       3,9 MB     0,32 ms           ⇒  4× mais barato
+```
+
+A premissa do S3 é **sólida**, e por margem larga. ⚠️ **Mas a terceira linha da tabela derrubou uma
+afirmação que era minha**, escrita no cabeçalho do próprio journal: *"quem não sabe onde escreve passa
+`None`, e isso custa exatamente o que o fork custa ⇒ nunca é regressão"*. Medido:
+
+```text
+  4096²  None (não sei)   12,08 ms      64 MB      3,24 ms   ⇒ 3,73× PIOR que o fork
+  2048²  None (não sei)    0,86 ms      16 MB      0,39 ms   ⇒ 2,20× PIOR
+```
+
+O mecanismo é banal e por isso mesmo invisível a olho: um plano inteiro em tiles são **1024 alocações de
+16 KB montadas em série**, contra **uma** cópia contígua e paralela. E isso não é canto de tabela — a
+§5.20 conta **39 dos 47 sítios** que passariam `None`, então o fallback *era* o caso comum da migração.
+Uma política de falha que diz *"lento nunca, errado jamais"* não sobrevive a um fallback 3,7× pior que a
+coisa que ele substitui.
+
+**Duas correções, cada uma atacando um regime diferente:**
+
+1. **Captura paralela por tile** (acima do limiar de `plane_copy`, o MESMO que a porta de fork consulta):
+   os tiles são **disjuntos** e a leitura do buffer é **pura** — a forma que o ADR-0109 sanciona e que
+   esta crate já usa em quatro lugares. Fecha o 4096²: **12,08 → 3,14 ms**.
+2. **O caminho CONTÍGUO para a grade virgem**: `None` numa grade em que nenhum tile foi tomado copia o
+   plano de uma vez (`plane_copy::par_clone`) em vez de o picar. Fecha o 2048², onde a cópia fica
+   **abaixo** do limiar do rayon e o paralelo não tem o que salvar: **0,86 → 0,32 ms**.
+
+⚠️ **A segunda tem uma metade load-bearing:** o atalho só vale numa grade **virgem**, porque ele copia o
+buffer *de agora* — numa grade que já tomou tiles, o "agora" daqueles tiles já traz bytes que o passo
+escreveu, e usá-lo apagaria a primeira captura. É o invariante do módulo (*a primeira captura é a que
+vale*) chegando por outra porta, e ele tem gate próprio.
+
+**Resultado: `None` custa 1,00× o fork nas DUAS telas** — a política volta a ser verdadeira onde estava
+escrita. **3 gates novos, 3 mutações, 3 sangram** (tirar o guard de grade virgem ⇒ o byte modificado no
+lugar do original · trocar `ty`/`tx` no filtro paralelo ⇒ só o gate de cima do limiar morde, e os outros
+nove ficam verdes porque **nenhum plano pequeno percorre aquela rota** · `get` ignorar o buffer contíguo
+⇒ dois gates).
+
+⚠️ **E uma dívida LATENTE do degrau 1 fechou junto:** o `mod journal` era declarado incondicionalmente
+enquanto o único campo que o constrói é `cfg(any(test, debug_assertions))` ⇒ **4 warnings de dead-code
+que só aparecem em `--release`** (`cargo clippy -p` roda em debug, e foi por isso que ninguém os viu por
+três commits). O módulo passou a carregar o MESMO `cfg` do campo, com a nota de que os dois saem na
+mesma edição quando o journal virar a fonte do `before`.
+
+⚠️ **Isto NÃO é ganho de produto e não se vende como tal:** o journal segue sendo rede de verificação e
+o commit segue derivando o `before` de dois snapshots. O que a sonda entrega é o **número que autoriza a
+wave** — e o número diz que ela vale.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

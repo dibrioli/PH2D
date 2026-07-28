@@ -10,6 +10,8 @@ mod measure_gpu_frontier;
 mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]
 mod measure_input_cost;
+#[path = "measure_journal_cost.rs"]
+mod measure_journal_cost; // captura por REGIÃO x fork do PLANO — o número que decide o S3 (doc 28 §7)
 #[path = "measure_pendown_cost.rs"]
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
 #[path = "measure_stroke_owners.rs"]

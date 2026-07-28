@@ -638,6 +638,13 @@ impl UndoController {
 pub mod window;
 
 /// O JOURNAL por tile — os bytes velhos capturados na hora da escrita (doc 28 §7, degrau S3).
+///
+/// ⚠️ **Gateado no MESMO `cfg` do único campo que o constrói** ([`window::WriteState`]): enquanto ele
+/// for rede de verificação e não a fonte do undo, um build de release não o instancia — e um módulo
+/// vivo que ninguém constrói vira quatro warnings de dead-code que só aparecem em `--release` (latentes
+/// desde o degrau 1: `cargo clippy -p` roda em debug). Quando o journal virar a fonte do `before`, este
+/// `cfg` sai junto com o do campo, e os dois têm de sair na mesma edição.
+#[cfg(any(test, debug_assertions))]
 #[path = "undo_journal.rs"]
 pub(crate) mod journal;
 

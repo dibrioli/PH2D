@@ -159,6 +159,65 @@ fn a_reshaped_plane_drops_what_was_captured_for_the_old_shape() {
     assert_eq!(j.get(1), Some(b[1]), "e o tile 0 descreve o plano NOVO");
 }
 
+/// **O atalho contíguo do `None` só vale numa grade VIRGEM** — e é esta a metade que o torna seguro.
+///
+/// O caminho rápido copia o buffer **de agora**. Numa grade que já tomou tiles, o "agora" daqueles tiles
+/// já traz bytes que o passo escreveu, então usá-lo apagaria a primeira captura — exatamente o
+/// invariante do módulo, por outra porta.
+///
+/// ⚠️ Mutação: tirar o `&& self.taken == 0` do `capture` faz este gate ficar VERMELHO com o byte
+/// **modificado** no lugar do original.
+#[test]
+fn the_contiguous_shortcut_is_refused_once_a_tile_was_taken() {
+    let (stride, rows) = (2 * TILE, 2 * TILE);
+    let mut buf = plane(stride, rows);
+    let mut j = TileJournal::default();
+    j.capture(&buf, stride, Some((0, 0, 4, 4))); // toma o tile (0,0)
+
+    let i = 2 * stride + 2;
+    let original = buf[i];
+    buf[i] = original.wrapping_add(90); // o dono do passo escreve nele
+    let far = (TILE + 1) * stride + TILE + 1; // um tile que ninguém tomou
+    j.capture(&buf, stride, None); // e agora alguém não sabe onde vai escrever
+
+    assert_eq!(
+        j.get(i),
+        Some(original),
+        "o atalho contiguo copiou o buffer JA MODIFICADO por cima da 1a captura"
+    );
+    assert_eq!(j.get(far), Some(buf[far]), "o resto do plano entrou agora");
+}
+
+/// **Acima do limiar a captura é PARALELA, e ela toma exatamente os mesmos tiles.**
+///
+/// O que a rota paralela pode errar não é o conteúdo de um tile — as duas terminam em `tile_bytes`, a
+/// porta única — e sim **quais** tiles ela toma: o filtro converte um índice plano em `(ty, tx)`, e um
+/// `tiles_x` trocado por `tiles_y` ou um `/` por `%` acerta a contagem e erra o lugar.
+///
+/// ⚠️ Por isso a fixture é grande: o limiar mora em BYTES (32 MB), então nenhum plano pequeno percorre
+/// esta rota — um gate barato aqui seria o caminho serial medido contra ele mesmo. O plano é
+/// `vec![]`-uniforme de propósito: a pergunta é sobre o CONJUNTO tomado, e o conteúdo já tem gates.
+#[test]
+fn above_the_threshold_the_parallel_route_takes_the_same_tiles() {
+    let (stride, rows) = (64 * TILE, 64 * TILE); // 67 MB; a região abaixo cobre 33,5 MB
+    let buf = vec![9u8; stride * rows];
+    let mut j = TileJournal::default();
+    j.capture(&buf, stride, Some((0, 0, stride, rows / 2)));
+
+    // Dentro: a metade de cima, inclusive as bordas dos tiles.
+    for y in [0, TILE - 1, TILE, rows / 2 - 1] {
+        for x in [0, TILE + 7, stride - 1] {
+            assert_eq!(j.get(y * stride + x), Some(9), "dentro ({x},{y})");
+        }
+    }
+    // Fora: a metade de baixo não foi pedida, e um índice mal convertido a teria tomado.
+    for y in [rows / 2, rows / 2 + TILE, rows - 1] {
+        for x in [0, stride / 2, stride - 1] {
+            assert_eq!(j.get(y * stride + x), None, "fora ({x},{y})");
+        }
+    }
+}
+
 /// `reset` esquece tudo — o passo fechou.
 #[test]
 fn a_reset_forgets_the_step() {

@@ -26,6 +26,7 @@ pub mod joints;
 pub mod kinematic;
 pub mod layers;
 pub mod oneway;
+pub mod pulley;
 pub mod queries;
 pub mod sensors;
 pub mod shape;
@@ -106,6 +107,22 @@ pub struct PhysicsWorld {
     /// the zone's config record, and asking rapier's `Shape` trait instead would be a
     /// second vocabulary for a silhouette `ShapeDesc` already names exactly.
     effectors: Vec<(RigidBodyHandle, desc::AreaEffect, shape::ShapeDesc)>,
+    /// The live pulleys (W-Pulley) — rope constraints rapier does not have, so
+    /// they are imposed from outside by a per-substep impulse pass, exactly like
+    /// the drag and the force zones above it.
+    ///
+    /// CONFIG, not solver state: the bridge re-stamps the whole table every
+    /// dispatch from the authored components, which is why it is absent from the
+    /// checkpoint ring for the same reason `effectors` is — a restore keeps the
+    /// table the bridge just installed rather than resurrecting one from a run
+    /// that ended.
+    pulleys: Vec<pulley::PulleyDesc>,
+    /// The Baumgarte fraction the pulley pass corrects per sub-step. A field
+    /// rather than the constant read inline **so the measured table on
+    /// [`pulley::PULLEY_BIAS`] is reproducible against the PRODUCT path** and not
+    /// against a second copy of the pass living in a test file — the same reason
+    /// (and the same shape) as `grab_body_with` and `spawn_joint_tuned`.
+    pulley_bias: f32,
     /// The **impact peak** of each touching pair over the current tick's
     /// sub-steps (W-ImpactForce): body pair (lower handle first) → the hardest
     /// summed normal impulse it reached at any single sub-step.
@@ -215,6 +232,8 @@ impl PhysicsWorld {
             air_drag: 0.0,
             kinematic_targets: Vec::new(),
             effectors: Vec::new(),
+            pulleys: Vec::new(),
+            pulley_bias: pulley::PULLEY_BIAS,
             contact_peaks: std::collections::BTreeMap::new(),
             joint_peaks: std::collections::BTreeMap::new(),
             joint_breaks: Vec::new(),
@@ -426,6 +445,11 @@ impl PhysicsWorld {
         // lookup fails), and exactly the kind of stale table that stops being
         // harmless the moment the arena reuses the index.
         self.effectors.retain(|(h, _, _)| *h != handle);
+        // A pulley whose body is gone has no branch to pull on; `branch` would
+        // already answer `None`, but a table that keeps naming dead handles is
+        // the stale table the comment above is about.
+        self.pulleys
+            .retain(|p| p.body_a != handle && p.body_b != handle);
         self.bodies.remove(
             handle,
             &mut self.island_manager,
@@ -512,6 +536,15 @@ impl PhysicsWorld {
                 &mut self.bodies,
                 &self.attract,
                 self.integration_parameters.dt,
+            );
+            // The pulleys (W-Pulley): a rope through two wheels, imposed as a
+            // velocity projection. Per SUBSTEP for the same reason as the three
+            // above, and a no-op for every world without one.
+            pulley::apply(
+                &mut self.bodies,
+                &self.pulleys,
+                self.integration_parameters.dt,
+                self.pulley_bias,
             );
             // The one-way platform hook. Installing it is byte-neutral for every scene
             // without a one-way collider: rapier only calls `modify_solver_contacts`

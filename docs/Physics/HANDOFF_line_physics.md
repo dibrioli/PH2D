@@ -7037,3 +7037,63 @@ ESTICA*, 14,846584 → 14,847183 no tique 2).
 **Smoke: `PH2D_PHYSICS_SMOKE=63`** — clique **Add Wheel**, e depois digite um
 `Rope Length` absurdamente curto: nenhum dos dois pode dar tranco, e a row tem de
 mostrar o comprimento que a geometria mede.
+
+## A ROTA QUE NÃO RESOLVE — os guardas de degeneração, medidos (2026-07-29, cena `=63`, pendente de smoke)
+
+O item do §10 do plano pedia *"cada um com decisão explícita em vez de `NaN`
+silencioso"*. A medição (`crates/ph2d-physics-ecs/tests/measure_pulley_degenerate.rs`)
+**corrigiu o item em duas metades**: o `NaN` já estava barrado no kernel
+(`rope_route::tangent` recusa com `inner <= 0`, `route` pula a corda inteira, e o
+cabeçalho do módulo já dizia por quê), e **uma das três configurações não
+degenera** — duas roldanas sobrepostas do MESMO lado têm tangente externa (`rr` é a
+diferença dos raios), então a rota existe e só encurta (9,9109 contra 11,9650).
+
+| configuração | rota | carga (controle −0,460) | finito |
+|---|---|---|---|
+| âncora dentro da roldana | `None` | −1,237 | sim |
+| roldanas sobrepostas | **9,9109** | −1,021 | sim |
+| roldana dentro da outra | `None` | −2,910 | sim |
+
+**A volta é limpa** (desfazer devolve −0,460, o controle, nas três) e o **caso que
+nasce degenerado é resgatado pelo PISO** — medido SEM ele: consertar a geometria não
+conserta o rig (`L0` preso em 1,0 sobre rota 11,965, carga em **−6,528**, ou
+arremessada a **+2,926**). O resíduo teórico (rig com rota menor que o default de
+1 m) foi procurado e **não se materializa** (elevador de bolso: rota 1,9621, folga
++0,0000).
+
+**O que de fato faltava era a metade VISÍVEL:** a corda parava de segurar e o
+desenho era uma **reta ÂMBAR** — a figura de uma corda que funciona. Agora veste o
+**vermelho do não-segura**, a cor que o `JOINT_STRAIN_RGBA` já define como *isto não
+está segurando por acidente*; distingue-se de um ROMPIDO pelo **estouro** (só a
+ruptura o desenha) e pela corda reta em vez de roteada.
+
+⚠️ **A fonte é a rota derivada em REPOUSO, e a premissa foi MEDIDA:** a sim **não
+consegue** puxar uma âncora para dentro de uma roldana (a corda puxa pela
+**tangente**, que fica fora do círculo) — com um guincho enrolando 240 tiques ela
+chega a **0,6789 m** de um centro de raio 0,5 e nunca entra. Logo a degeneração é
+alcançável só por AUTORIA, em repouso. **Gate próprio**: se ele sangrar, a decisão
+de desenho tem de ser revisitada, porque o solver pula com um `continue` e **não
+publica** que pulou.
+
+⚠️ **Afirmação FALSA corrigida no `views.rs`:** *"toda view que existe descreve uma
+corda que está segurando"* — o passe pula a corda degenerada e nada disso aparecia
+no `active`.
+
+**O fato sai da MESMA chamada que desenha** (`pulley_marks -> bool`) e o
+`kind_marks` roda ANTES da escolha de cor, com a ordem de empilhamento preservada.
+**6 gates, 2 mutações, 2 sangram** — as duas metades (a fonte e o CONECTOR) são
+gateadas separadamente de propósito.
+
+**Aberto e nomeado:** o readout da §12 de uma corda degenerada mostra `0 N` em âmbar
+(a tensão É zero) sem dizer por quê — texto ali quer i18n e canal próprio.
+
+**LOC:** `physics_overlay_joints.rs` bateu 612 > 600 ⇒ corte pela linha que o
+arquivo articula (**anotação × gesto em andamento**): `draw_band` e `draw_grab`
+foram para **`physics_overlay_gesture.rs`** (553 + 77).
+
+**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
+96 corpos).
+
+**Smoke: `PH2D_PHYSICS_SMOKE=63`** — arraste o CENTRO de uma roldana sobre a âncora
+de uma ponta: a corda tem de ficar **vermelha**; arrastar de volta devolve o âmbar
+e a simulação.

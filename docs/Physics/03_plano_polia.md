@@ -715,6 +715,88 @@ nunca dispara lá.
 depois digite um `Rope Length` absurdamente curto: em nenhum dos dois o rig pode
 dar tranco, e a row tem de mostrar o comprimento que a geometria de fato mede.
 
+### A ROTA QUE NÃO RESOLVE — os guardas de degeneração, medidos
+
+O item do §10 pedia *"cada um com decisão explícita em vez de `NaN` silencioso"*.
+A medição (`tests/measure_pulley_degenerate.rs`) o corrigiu em **duas** metades:
+
+**(1) O `NaN` já estava barrado.** `rope_route::tangent` recusa quando
+`inner <= 0` e `route` pula a corda inteira — está escrito no cabeçalho do módulo,
+com o porquê (*"recusar aqui é o que impede um `NaN` de chegar ao
+`physics_ecs_c9`"*). Nada a construir; agora há gate pinando (o `NaN` num
+`Transform` envenena o `GlobalTransform` da subárvore inteira).
+
+**(2) Uma das três configurações NÃO degenera.** Duas roldanas sobrepostas **do
+mesmo lado** têm tangente externa (`rr` é a DIFERENÇA dos raios), então a rota
+existe e só encurta — medido, **9,9109 m** contra 11,9650. Quem recusa é a
+sobreposição em lados OPOSTOS, onde `rr` é a soma. A lista tratava as três como
+iguais.
+
+| configuração | rota | carga (controle −0,460) | finito |
+|---|---|---|---|
+| âncora dentro da roldana | `None` | −1,237 | sim |
+| roldanas sobrepostas | **9,9109** | −1,021 | sim |
+| roldana dentro da outra | `None` | −2,910 | sim |
+
+**E a VOLTA é limpa:** desfazer o gesto devolve a carga a **−0,460**, o número do
+controle, nas três — a recusa é transitória e não deixa estado podre atrás dela.
+
+⚠️ **O caso FEIO, e o piso o resgata:** uma cena que **nasce** degenerada (um
+projeto salvo, um undo) sela o `L0` no default de 1 m com `anchored = true` — um
+número derivado que ninguém pôde derivar. Medido **sem** o piso: consertar a
+geometria depois **não conserta o rig** (o `L0` fica preso em 1,0 sobre uma rota de
+11,965 e a carga acaba em **−6,528**, ou é arremessada a **+2,926**). Com o piso,
+volta a −0,460. ⚠️ **O resíduo teórico** — um rig cuja rota seja MENOR que o default
+— foi procurado e **não se materializa**: num elevador de bolso (0,8 m entre as
+roldanas) a rota ainda mede **1,9621 m** e a folga é **+0,0000**.
+
+**A metade VISÍVEL, que era o que de fato faltava:** uma corda que não roteia
+**para de segurar** e o desenho era uma **reta ÂMBAR** — exactamente a figura de uma
+corda que funciona. O único sinal na tela era a carga caindo. Agora ela veste o
+**vermelho do não-segura**, que o vocabulário desta linha já define como *isto não
+está segurando por acidente* (o comentário do `JOINT_STRAIN_RGBA`, palavra por
+palavra) — e se distingue de um joint ROMPIDO pelo **estouro**, que só a ruptura
+desenha, e pela corda sair reta em vez de roteada.
+
+⚠️ **A fonte do fato é a rota derivada em REPOUSO, e isso foi MEDIDO em vez de
+assumido:** a sim **não consegue** puxar uma âncora para dentro de uma roldana,
+porque a corda puxa ao longo da **tangente**, que por construção fica fora do
+círculo. Com um GUINCHO enrolando por 240 tiques — o único jeito de a corda
+arrastar a âncora, já que subir só afrouxa —, ela chega a **0,6789 m** de um centro
+de raio 0,5 e nunca entra. Logo a degeneração é alcançável **só por autoria**, que
+acontece em repouso, onde a rota de repouso É a rota viva. **Gate próprio**, porque
+se essa premissa cair a decisão de desenho tem de ser revisitada (o solver hoje
+pula com um `continue` e **não publica** que pulou).
+
+⚠️ **E uma afirmação do `views.rs` era FALSA:** *"toda view que existe descreve uma
+corda que está segurando"* — o passe pula a corda degenerada e nada disso aparecia
+no `active`. Corrigida no lugar onde estava.
+
+**O fato sai da MESMA chamada que desenha** (`pulley_marks -> bool`): quem pinta e
+quem colore leem a mesma resposta, então não podem discordar — e o `kind_marks`
+passou a rodar ANTES da escolha de cor, com a ordem de EMPILHAMENTO preservada.
+**6 gates, 2 mutações, 2 sangram** (o laço ignorando o fato ⇒ a corda degenerada
+volta ao âmbar; a função mentindo que roteou ⇒ a 1ª metade cai) — as duas metades
+são independentes de propósito, porque gatear só a fonte deixaria o fato correto e
+a tela igual.
+
+⚠️ **NÃO feito, e nomeado:** o **readout** da §12 de uma corda degenerada mostra
+`0 N` em âmbar (a tensão É zero — honesto), sem dizer *por que*. Um texto ali quer
+i18n e canal próprio; a cor já responde *"não está segurando"*.
+
+**LOC:** `physics_overlay_joints.rs` bateu **612 > 600** com os comentários desta
+wave ⇒ corte pela linha que o próprio arquivo articula — **anotação × gesto em
+andamento**: `draw_band` (a banda elástica de criar) e `draw_grab` (a mola da mão)
+são *"feedback de um gesto em voo, desenhado mesmo com o overlay DESLIGADO"* e
+foram para o irmão **`physics_overlay_gesture.rs`** (553 + 77).
+
+**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
+96 corpos) — nada aqui toca o solver.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=63`** — arraste o CENTRO de uma roldana para cima da
+âncora de uma ponta: a corda tem de ficar **vermelha** (ela parou de segurar), e
+arrastar de volta tem de devolver o âmbar **e** a simulação.
+
 ### Aberto no W6, nomeado
 
 - **Nenhuma alça de roldana tem ÍMÃ**, e é decisão herdada do W1: o ímã cola nos
@@ -735,9 +817,11 @@ dar tranco, e a row tem de mostrar o comprimento que a geometria de fato mede.
 - `PULLEY_BIAS` de novo (com raio, a geometria mudou);
 - ~~quantas iterações o ponto fixo do lado leva~~ **MEDIDO: 1**, em 18 montagens de 1 a 6 roldanas (o chute pela poligonal já É o ponto fixo);
 - custo por sub-passo × nº de roldanas, contra o HR-4;
-- os **guardas de degeneração** — âncora dentro de uma roldana, roldanas
+- ~~os **guardas de degeneração** — âncora dentro de uma roldana, roldanas
   sobrepostas, `|C₂−C₁| < |r₁±r₂|` — cada um com decisão explícita em vez de
-  `NaN` silencioso.
+  `NaN` silencioso~~ — **MEDIDO, e o item estava obsoleto em duas metades: o `NaN`
+  já estava barrado, e uma das três configurações não degenera.** Ver §*A rota que
+  não resolve* abaixo.
 
 ## 11. O que o W1 entregou, item por item
 

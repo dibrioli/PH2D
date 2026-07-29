@@ -642,9 +642,78 @@ ao lado do funil.
 (`7cb7728d…`, 96 corpos) — a correção é de autoria e nenhuma cena do hash autora
 raio.
 
-**Re-smoke: `PH2D_PHYSICS_SMOKE=63`** — as alças no tamanho padrão; arraste o aro
-de SAÍDA para fora e o rig **não** deve dar tranco; a row `Rope Length (m)` da §12
-tem de **acompanhar** o número enquanto você arrasta.
+**Re-smoke: `PH2D_PHYSICS_SMOKE=63` — APROVADO** (2026-07-29, *"Funciona muito
+bem"*): alças no tamanho padrão, o aro de saída sem tranco, a row `Rope Length (m)`
+acompanhando.
+
+### O PISO — uma corda não pode ser mais curta que o caminho que ela enfia
+
+A correção (2) acima instalou a cura numa **PORTA**, chamada pelos três gestos que
+a conhecem. Mas o `L0` é derivado da rota, e *uma condição que enumera seus
+leitores apodrece* — então a primeira coisa foi perguntar **quantos gestos mudam a
+rota**, com o `L0` parado (sonda `tests/measure_pulley_route_gestures.rs`):
+
+| gesto | violação | maior salto num tique |
+|---|---|---|
+| **controle** (ninguém tocou) | +0,0000 | 0,0817 m |
+| **acrescentar** uma roldana (o botão Add Wheel) | **+2,8816** | **13,97 m** (raio 0,60: **55,45**) |
+| **mover** o centro dela para o lado (commit de Position) | **+4,1908** | **25,27 m** |
+| **digitar** `Rope Length = 5` numa rota de 11,97 | **+6,9650** | **46,58 m** |
+| mover o centro para BAIXO | −1,3832 | 0,0813 m |
+| **apagar** uma roldana | −2,1953 | 0,0785 m |
+
+⚠️ **Três gestos não cobertos produziam a MESMA explosão** — e **um deles nunca
+poderia passar por uma porta**: o delete da Hierarquia não sabe o que é uma corda,
+e ensinar-lhe seria acoplar o delete genérico a este domínio.
+
+⚠️ **A ASSIMETRIA é o desenho, e ela foi MEDIDA, não escolhida:** violação
+POSITIVA explode; a negativa é **folga** e mede exatamente o salto do CONTROLE
+(0,0785 contra 0,0817). Então a cura é um **PISO** — `L0 ≥ L(rota)` no estado
+autorado —, nunca uma re-derivação: para baixo ela **clobbaria a row
+`Rope Length (m)`**, que é editável numa polia. Quem quer a corda mais curta move a
+geometria; encurtar abaixo do próprio caminho é **impossível**, não uma escolha.
+
+**Ele mora onde a resposta já mora** — o `reconcile`, que já computa a rota para
+semear: UMA derivação servindo as duas metades, em vez de um quarto chamador. E
+**sem porta de relógio**, porque a rota é função do estado AUTORADO inteiro (as
+âncoras saem de `world_from_local_at_pose(rest_a, …)`, os centros da pose de
+repouso — o próprio código já dizia isso na linha acima), logo é constante durante
+o play e a escrita é idempotente lá. Isso ainda fecha o caso *digitar-e-dar-Play-no-
+mesmo-frame*, que uma porta rest-only reabriria.
+
+**Resultado:** violação **+0,0000** nos três gestos explosivos, salto **0,0918 ·
+0,0933 · 0,0817** contra 0,0817 do controle — e o caso do comprimento digitado
+volta **exatamente** ao número do controle (0,0817), porque o piso devolve o `L0`
+para a rota semeada: a cena fica indistinguível de uma que ninguém tocou.
+
+⚠️ **As duas camadas NÃO são redundantes:** a porta dá o número EXATO nos dois
+sentidos para os gestos que ela conhece (encolher um raio re-tensiona), o piso
+garante o invariante para os gestos que ninguém enumerou. Gate cada.
+
+**4 gates, 4 mutações, 3 sangram** — piso removido ⇒ os três números da sonda de
+volta · piso vira re-derivação ⇒ a corda de 20 m clobbada para 11,97 **e** apagar
+uma roldana reescrevendo o comprimento · a rota lendo a pose **VIVA** ⇒ *a corda
+ESTICA durante a corrida* (14,846584 → 14,847183 no tique 2), pego **só** pelo gate
+que roda o relógio. ⛔ **E uma mutação era INVÁLIDA, não um buraco:** uma margem de
+segurança (`r * 1.001`) **não** caminha — o valor gravado já é maior que a rota,
+então a condição fecha no dispatch seguinte. Ela ficou registrada no gate para
+ninguém a repetir, e o gate foi **reescrito** por causa dela: ele vigiava
+convergência (onde nada podia falhar) e agora vigia o play, onde a premissa do
+desenho de fato vive.
+
+⚠️ **Uma afirmação minha foi corrigida pela mutação:** o gate se chamava *"o piso
+escreve no máximo uma vez"* e ele **não pode ver contagem de escrita** — observa o
+VALOR. Renomeado, e o doc agora diz por que observar o valor é o certo: o diff do
+undo também compara bytes, então uma escrita idempotente é invisível exactamente
+onde ela importaria.
+
+**`PROJECT_SCHEMA` fica 34**, registro fica **21**, **c9 BYTE-IDÊNTICO**
+(`7cb7728d…`, 96 corpos) — as polias do hash são semeadas normalmente, então o piso
+nunca dispara lá.
+
+**Re-smoke: `PH2D_PHYSICS_SMOKE=63`** — clique **Add Wheel** com o rig montado, e
+depois digite um `Rope Length` absurdamente curto: em nenhum dos dois o rig pode
+dar tranco, e a row tem de mostrar o comprimento que a geometria de fato mede.
 
 ### Aberto no W6, nomeado
 

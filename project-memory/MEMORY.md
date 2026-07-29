@@ -125,6 +125,7 @@
 - [Contrato congelado ESCOLHE a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md)
 - [Tipo em N sítios → componente opcional](feedback_widely_constructed_type_favors_optional_component_over_appended_field.md)
 - [A REPRESENTAÇÃO apaga o caso especial](feedback_the_representation_can_delete_the_special_case.md)
+- [Invariante na DERIVAÇÃO, não em cada gesto](feedback_enforce_the_invariant_at_the_derivation_not_at_each_gesture.md) — conte os gestos; meça qual LADO machuca (piso ≠ re-derivação)
 - [Marca de EVENTO é canal próprio](feedback_a_transient_event_marker_is_its_own_channel.md) — event-sourced, não derivada do estado; teste onde o evento é mais curto que o estado
 - [Blindagem — Fase 0](project_blindagem_phase0_2026_06_20.md) — `ph2d-ui-testkit`
 - [Pintura VOLTOU](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)

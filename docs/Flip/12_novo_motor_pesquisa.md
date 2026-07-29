@@ -681,11 +681,13 @@ e o defeito da CLASSE deste gate é o C. ⚠️ **A 1ª versão do C usava teto 
 TODA densidade) — ela fazia a BARRA disparar, não a invariância; com **64** o retrato é o do defeito
 histórico (`0,8 → −31 · 0,4 → −31 · 0,2 → −255 · …`) e **as duas** asserções sangram.
 
-⚠️ **E a mutação D achou uma RESTRIÇÃO DE PROJETO para o passo 5, não só um verde:** um cap ingênuo
-nas pontas **quebra a identidade da §9.1** (cinco traços têm dez pontas, um traço tem duas) — o gate
-`the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes` fica vermelho. Qualquer
-primitivo de cap tem de ser **invariante à partição do caminho**, ou paga a joia que esta wave
-acabou de comprar.
+⚠️ **E a mutação D achou que um cap ingênuo quebra a identidade da §9.1** (cinco traços têm dez
+pontas, um traço tem duas). ⛔ **A conclusão que eu tirei disso — *"qualquer cap tem de ser
+invariante à partição do caminho"* — está ERRADA, e quem a refutou foi a própria referência**
+(§13.3): o depósito do Painter **não é invariante** (medido: −59/255 em 178 px · −102 em 123 ·
+−255 em 17, sempre NOS CANTOS). A identidade que a §9.1 mediu em zero era artefato de o motor
+**ainda não ter cap nenhum**. Ela vale onde o caminho é o MESMO — o CRUZAMENTO, que é o que o
+oráculo do Enio de fato pergunta — e o gate foi re-escopado para dizer isso.
 
 ---
 
@@ -888,18 +890,85 @@ arquitetura.
 
 ---
 
-## 13. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+## 13. ⭐ O CAP — e ele é um TERMO DE FRONTEIRA, não uma geometria nova
+
+### 13.1 A conta
+
+O Painter **SOMA** dabs; nós **INTEGRAMOS**. Euler-Maclaurin diz exatamente em que elas diferem:
+
+```text
+  Σ_{k=0}^{N} g(k) = ∫_0^N g(u) du + [g(0) + g(N)]/2 + …
+```
+
+⚠️ **No MEIO do caminho os termos de fronteira estão no infinito, onde `g = 0`** — e é por isso que
+o corpo já concordava (+1/255 contra o depósito, **+0** contra o motor que shipa em dureza 1).
+**Na PONTA o termo sobrevive, e ele é meio dab.** Não houve forma nova a desenhar: a silhueta
+redonda já vinha do `t` clampado do `closest_on_seg`.
+
+### 13.2 ⚠️ Só no COMEÇO — e a assimetria é da REFERÊNCIA
+
+O depósito do Painter carimba um dab **exatamente** no primeiro ponto e depois anda por `pitch`,
+então o percurso dele **acaba ANTES do último**, num lugar que depende do comprimento total: a
+fronteira do começo é exata (o termo sobrevive), a do fim é fracionária (o termo médio é **zero**).
+Medido nas duas pontas de um traço reto, erro médio contra o depósito:
+
+| dureza | INÍCIO | FIM com meio dab | FIM sem |
+|---|---|---|---|
+| 0,4 | 2,3 | 13,6 | **1,2** |
+| 0,7 | 3,3 | 14,9 | **1,8** |
+| 0,2 | 1,9 | 12,7 | **1,3** |
+
+⚠️ **A FORMA do cap continua simétrica** (a silhueta redonda está nas duas pontas); o que é
+assimétrico é a **correção de quadratura**, e ela é invisível na geometria. `FLAG_CLOSED` não tem
+ponta; `FLAG_START_FLAT` corta o termo — um cap Flat é exatamente a ausência do arredondamento.
+
+**Resultado na região da ponta** (erro médio contra o árbitro): dureza 1 **1,7 → 0,9** (contra a
+ÁREA) · 0,4 **16,7 → 2,3** · 0,7 **16,8 → 3,3** · 0,2 **15,7 → 1,9**.
+
+### 13.3 ⛔ A CORREÇÃO: a §9.5 concluiu errado, e a referência a refutou
+
+A §9.5 dizia *"qualquer primitivo de cap tem de ser invariante à partição do caminho"*. Fui medir a
+referência antes de contorcer o desenho para satisfazê-la — **o depósito do Painter não é
+invariante**: um caminho contra cinco pernas compostas por `over` difere em **−59/255 em 178 px**
+(dureza 0,4), **−102 em 123** (0,7) e **−255 em 17** (1,0), **sempre nos CANTOS** (cada perna abre
+com um dab em `pts[0]`).
+
+A identidade que a §9.1 mediu em ZERO era artefato de o motor **não ter cap**. Ela vale onde o
+caminho é o MESMO — os CRUZAMENTOS, que é o que o oráculo do Enio pergunta — e é ali que o gate
+agora a afirma (as pontas de perna saem, como saem no depósito de referência).
+
+### 13.4 A tripwire disparou e o gate se INVERTEU
+
+O `..._deficit_is_the_endpoint_and_the_corner_...` afirmava que a PONTA dominava (−36 total contra
+−27 cego a ela) com uma terceira asserção escrita para ficar vermelha quando o cap fechasse. Ela
+ficou. O gate virou `..._only_deficit_is_the_convex_corner_...`, e agora exige o OPOSTO:
+
+> esconder as pontas **não pode mudar nada** — `pior_tudo == pior_cego` e `n_tudo == n_cego`.
+
+O que sobra é só a **quina convexa** (−27, ≤3 px): a discreteza dos dabs do Painter, não a nossa
+quadratura (SUB 4→16 move ≤1/255; **abaixo** de 4 piora — SUB=2 leva a −30 em 11 px).
+
+**2 mutações, 2 sangram:** tirar o termo (o cap reabre, o gate invertido falha) · torná-lo simétrico
+(a ponta transborda, o gate de overshoot falha).
+
+⚠️ **Ponto para o SMOKE:** o oráculo não carimba dab de **cauda** no pen-up e o Painter do produto
+carimba. Se o Enio vir a ponta final fina demais, o termo do fim volta — e o número dele já está
+medido na tabela acima.
+
+---
+
+## 14. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
 
 1. ~~**ANTI-ALIASING**~~ — **FECHADO no §11.**
 2. ~~**As features do §8**~~ — **AUDITADAS no §12.4**: um item de projeto (o cap) e quatro
    mecânicos; nada pede outra arquitetura.
-3. **O cap da ponta** (§9.3 · §12.1), com a restrição que a mutação D descobriu: tem de ser
-   **invariante à partição do caminho**. É o único item de projeto que sobra.
-4. **O port para compute**, que é o único lugar onde o custo do §10 vira um número de produto.
+3. ~~**O cap da ponta**~~ — **FECHADO no §13** (um termo de fronteira, não uma geometria).
+4. **O port para compute**, que é o único lugar onde o custo do §10 vira um número de produto —
+   e, com o cap fechado, é **o único item de projeto que resta**.
 
 ---
 
-## 14. Fontes
+## 15. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

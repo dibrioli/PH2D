@@ -1016,6 +1016,22 @@ fn the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes() {
             for x in 0..W {
                 let i = (y * W + x) as usize;
                 let d = (a1[i] * 255.0).round() as i32 - (a5[i] * 255.0).round() as i32;
+                // ⚠️ **As PONTAS DE PERNA saem, e a referência é quem manda.** A §9.5 do doc 12
+                // concluiu da mutação D que *"qualquer cap tem de ser invariante à partição"* —
+                // e isso está **ERRADO**, refutado pelo próprio oráculo: o depósito do Painter
+                // abre cada caminho com um dab em `pts[0]`, então CINCO pernas carimbam cinco
+                // dabs de ponta que UM caminho não carimba. Medido no depósito REAL: **−59/255 em
+                // 178 px** (dureza 0,4), **−102 em 123** (0,7), **−255 em 17** (1,0) — e sempre
+                // NOS CANTOS. A identidade que a §9.1 mediu em ZERO era um artefato de o motor
+                // ainda **não ter cap nenhum**; ela vale onde o caminho é o MESMO, que é o que o
+                // oráculo do Enio de fato pergunta: o CRUZAMENTO.
+                let pc0 = (x as f32 + 0.5, y as f32 + 0.5);
+                if corners
+                    .iter()
+                    .any(|c| (pc0.0 - c.0).powi(2) + (pc0.1 - c.1).powi(2) <= (r + 1.5).powi(2))
+                {
+                    continue;
+                }
                 // ⚠️ **Toda silhueta sai, não só a da UNIÃO — e "toda" custou duas rodadas.**
                 // CINCO traços têm silhuetas INTERNAS que o traço único não tem: cada perna
                 // carrega a sua ao longo do FLANCO inteiro, e onde esse flanco está enterrado
@@ -1315,32 +1331,30 @@ fn the_new_engine_has_no_convex_tip_overshoot() {
     }
 }
 
-/// ⚠️ **O QUE SOBRA, E DE QUE É FEITO** — o negativo desta wave, com o número.
+/// ⚠️ **O QUE SOBRA DEPOIS DO CAP — e a PONTA não é mais parte disso.**
 ///
-/// Trocar a ficção pelo caminho real matou o excedente e **deixou um déficit** que o motor de hoje
-/// não tinha. Ele é de DUAS coisas, e a medição as separa:
+/// Este gate nasceu afirmando o contrário: que o déficit contra o depósito do Painter era
+/// dominado pela **PONTA** (−36 no total contra −27 cego a ela), com a terceira asserção servindo
+/// de **tripwire** — *"no dia em que o passo 5 fechar o cap, ela fica vermelha pedindo os números
+/// novos"*. O cap fechou (o meio dab de fronteira, `tau::end_dab`), a tripwire disparou, e o gate
+/// se **inverte**: agora ele pina que a ponta NÃO contribui mais.
 ///
-/// | zona | pior | n | o que é |
-/// |---|---|---|---|
-/// | tudo | **−36** | 16 px | inclui a PONTA do traço |
-/// | cego a um disco `r` nas PONTAS | **−27** | ≤3 px | só as quinas convexas |
+/// | | pior | n |
+/// |---|---|---|
+/// | tudo | **−27** | ≤3 px |
+/// | cego a um disco `r` nas PONTAS | **−27** | ≤3 px — **o MESMO** |
 ///
-/// 1. **A PONTA (o cap).** O depósito do Painter carimba um dab **no primeiro ponto**
-///    (`painter_deposit_sized` abre com `vec![pts[0]]`); a integral não tem nada além do fim do
-///    caminho. É o item que o handoff §5.5 nomeia como primitivo explícito — **passo 5**.
-/// 2. **A QUINA convexa.** O Painter compõe **dabs discretos** a `0,1·diâmetro`; a integral é o
-///    limite denso dessa mesma composição, e numa quina de 36° a discretização dele deposita um
-///    pouco mais. ⚠️ **NÃO é a minha quadratura, e isto foi MEDIDO:** subindo `SUB` de 4 para 16
-///    o número anda ≤1/255 (−20→−19, −24→−24, −27→−26). Casar isto exigiria reproduzir a
-///    discreteza do Painter, que é outro motor (o candidato C1, o buffer de dabs).
-///
-/// Este gate existe para o número não virar folclore: ele **pina o defeito**, e o dia em que o
-/// passo 5 fechar o cap ele fica vermelho pedindo os números novos.
+/// O que sobra é a **QUINA CONVEXA**, e só ela: o Painter compõe **dabs discretos** a
+/// `0,1·diâmetro`, a integral é o limite denso dessa mesma composição, e numa quina de 36° a
+/// discretização dele deposita um pouco mais. ⚠️ **NÃO é a quadratura, e isto foi MEDIDO:**
+/// subindo `SUB` de 4 para 16 o número anda ≤1/255 (−20→−19 · −24→−24 · −27→−26); **abaixo** de 4
+/// ele piora (SUB=2 leva a −30 em 11 px), e é por isso que 4 é o joelho. Casar isto exigiria
+/// reproduzir a discreteza do Painter, que é **outro motor** (o candidato C1, o buffer de dabs).
 #[test]
-fn the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numbers() {
+fn the_new_engines_only_deficit_is_the_convex_corner_and_this_is_its_number() {
     let mut pior_tudo = 0i32;
     let mut pior_cego = 0i32;
-    let mut n_cego = 0u32;
+    let (mut n_tudo, mut n_cego) = (0u32, 0u32);
     for hi in 1..=9 {
         let hardness = hi as f32 / 10.0;
         let (pts, r) = star_path(7.0);
@@ -1355,11 +1369,14 @@ fn the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numb
                 let i = (y * W + x) as usize;
                 let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
                 pior_tudo = pior_tudo.min(d);
+                if d < -16 {
+                    n_tudo += 1;
+                }
                 let p = (x as f32 + 0.5, y as f32 + 0.5);
-                let na_ponta = ends
+                if !ends
                     .iter()
-                    .any(|e| (p.0 - e.0).powi(2) + (p.1 - e.1).powi(2) <= r * r);
-                if !na_ponta {
+                    .any(|e| (p.0 - e.0).powi(2) + (p.1 - e.1).powi(2) <= r * r)
+                {
                     pior_cego = pior_cego.min(d);
                     if d < -16 {
                         n_cego += 1;
@@ -1369,18 +1386,16 @@ fn the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numb
         }
     }
     assert!(
-        pior_tudo >= -40,
-        "o deficit TOTAL passou do medido (-36): {pior_tudo}"
+        pior_tudo >= -30 && n_tudo <= 8,
+        "o deficit da quina convexa passou do medido (-27 em <=3 px): {pior_tudo} em {n_tudo} px"
     );
+    // ⚠️ **A INVERSÃO:** antes o gate exigia que a ponta DOMINASSE; agora exige que ela seja
+    // INDISTINGUÍVEL. Esconder as pontas não pode mudar nada — é isso que "o cap fechou"
+    // significa em número, e é o que fica vermelho se alguém desfizer o `end_dab`.
     assert!(
-        pior_cego >= -30 && n_cego <= 8,
-        "fora das PONTAS o deficit e' da quina convexa e foi medido em -27/<=3 px: \
-         {pior_cego} em {n_cego} px"
-    );
-    assert!(
-        pior_tudo < pior_cego,
-        "a PONTA tem de ser a metade DOMINANTE do deficit (medido -36 contra -27); \
-         total {pior_tudo}, cego {pior_cego} -- se ela deixou de ser, o passo 5 mudou de alvo"
+        pior_tudo == pior_cego && n_tudo == n_cego,
+        "esconder as PONTAS nao pode mais mudar o deficit (o cap fechou): tudo {pior_tudo}/{n_tudo} \
+         contra cego {pior_cego}/{n_cego}"
     );
 }
 
@@ -2138,6 +2153,7 @@ fn measure_who_is_closer_to_the_truth_where_the_engines_disagree() {
     let (mut novo_ganha, mut shipa_ganha, mut empate) = (0u32, 0u32, 0u32);
     let (mut som_novo, mut som_shipa) = (0i64, 0i64);
     let (mut cap_px, mut corpo_px) = (0u32, 0u32);
+    let (mut cap_novo, mut cap_shipa, mut cap_ganha) = (0i64, 0i64, 0u32);
     for y in 0..H {
         for x in 0..W {
             let i = (y * W + x) as usize;
@@ -2152,6 +2168,12 @@ fn measure_who_is_closer_to_the_truth_where_the_engines_disagree() {
                 .any(|e| (pc.0 - e.0).powi(2) + (pc.1 - e.1).powi(2) <= (r + 1.5).powi(2))
             {
                 cap_px += 1;
+                let t = (area[i] * 255.0).round() as i32;
+                cap_novo += i64::from((a - t).abs());
+                cap_shipa += i64::from((s - t).abs());
+                if (a - t).abs() < (s - t).abs() {
+                    cap_ganha += 1;
+                }
                 continue;
             }
             corpo_px += 1;
@@ -2176,4 +2198,115 @@ fn measure_who_is_closer_to_the_truth_where_the_engines_disagree() {
         som_novo as f64 / f64::from(corpo_px.max(1)),
         som_shipa as f64 / f64::from(corpo_px.max(1))
     );
+    println!(
+        "  NO CAP ({cap_px} px): NOVO ganha {cap_ganha} | erro NOVO {:.1}/255  SHIPA {:.1}/255",
+        cap_novo as f64 / f64::from(cap_px.max(1)),
+        cap_shipa as f64 / f64::from(cap_px.max(1))
+    );
+}
+
+/// **SONDA** — o que EXATAMENTE falta na ponta, por dureza e contra o árbitro certo.
+///
+/// Em `hardness = 1` o árbitro é a ÁREA (o que a união dura cobre). Em dureza macia é o DEPÓSITO
+/// do Painter, que carimba um dab no primeiro ponto — e é ali que a integral, que acaba com o
+/// caminho, pode ficar devendo.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_what_the_cap_actually_owes() {
+    let r = 7.0_f32;
+    let pts: Vec<(f32, f32)> = (0..=20).map(|k| (20.0 + k as f32 * 1.5, 32.0)).collect();
+    println!("\n=== O QUE A PONTA DEVE (traco reto, r={r}) ===");
+    println!("  ⚠️ as DUAS pontas, separadas: o Painter carimba um dab no PRIMEIRO ponto e o");
+    println!("     percurso dele acaba ANTES do ultimo -- as duas nao sao simetricas.");
+    println!("  hardness   arbitro          INICIO(pior/n/med)      FIM(pior/n/med)");
+    for hi in [10_u32, 4, 7, 2] {
+        let hardness = hi as f32 / 10.0;
+        let got = new_engine_alpha(&pts, r, hardness, W, H);
+        let (nome, want) = if hi == 10 {
+            ("AREA          ", union_area_coverage(&pts, r, W, H))
+        } else {
+            ("deposito Pintr", painter_deposit(&pts, r, hardness))
+        };
+        let mut linha = String::new();
+        for (ini, ponta) in [(true, pts[0]), (false, pts[pts.len() - 1])] {
+            let (mut pior, mut n, mut som, mut cnt) = (0i32, 0u32, 0i64, 0u32);
+            for y in 0..H {
+                for x in 0..W {
+                    let pc = (x as f32 + 0.5, y as f32 + 0.5);
+                    // Só o disco da PONTA, e só a metade que fica ALÉM dela (a região de cap).
+                    let d2 = (pc.0 - ponta.0).powi(2) + (pc.1 - ponta.1).powi(2);
+                    let alem = if ini { pc.0 < ponta.0 } else { pc.0 > ponta.0 };
+                    if d2 > (r + 1.0).powi(2) || !alem {
+                        continue;
+                    }
+                    let i = (y * W + x) as usize;
+                    let d = (got[i] * 255.0).round() as i32 - (want[i] * 255.0).round() as i32;
+                    if d.abs() > 16 {
+                        n += 1;
+                    }
+                    if d.abs() > pior.abs() {
+                        pior = d;
+                    }
+                    som += i64::from(d.abs());
+                    cnt += 1;
+                }
+            }
+            linha.push_str(&format!(
+                "  {pior:+5} {n:3} {:5.1}  ",
+                som as f64 / f64::from(cnt.max(1))
+            ));
+        }
+        println!("  {hardness:.1}        {nome} {linha}");
+    }
+}
+
+/// **SONDA** — o DEPÓSITO DO PAINTER é invariante à partição do caminho?
+///
+/// A §9.5 do doc 12 concluiu, da mutação D, que *"qualquer primitivo de cap tem de ser invariante
+/// à partição"*. A conclusão veio de uma identidade que o motor exibia **por não ter cap nenhum**.
+/// Esta sonda pergunta ao ÁRBITRO: o depósito do Painter — a referência — satisfaz a identidade?
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_whether_the_painters_own_deposit_is_partition_invariant() {
+    let r = 7.0_f32;
+    println!("\n=== O DEPOSITO DO PAINTER: UM caminho vs CINCO (a referencia e' invariante?) ===");
+    println!("  hardness   pior   n(>8)   onde");
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        let (_, _, um, corners) = star_one_and_five(r, hardness);
+        let d1 = painter_deposit(&um, r, hardness);
+        // CINCO caminhos separados, compostos por `over` — como o oráculo do Enio os desenha.
+        let mut d5 = vec![0.0_f32; (W * H) as usize];
+        for w in corners.windows(2) {
+            let len = ((w[1].0 - w[0].0).powi(2) + (w[1].1 - w[0].1).powi(2)).sqrt();
+            let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+            let perna: Vec<(f32, f32)> = (0..=n)
+                .map(|k| {
+                    let t = k as f32 / n as f32;
+                    (
+                        w[0].0 + (w[1].0 - w[0].0) * t,
+                        w[0].1 + (w[1].1 - w[0].1) * t,
+                    )
+                })
+                .collect();
+            let dk = painter_deposit(&perna, r, hardness);
+            for (o, v) in d5.iter_mut().zip(&dk) {
+                *o = 1.0 - (1.0 - *o) * (1.0 - v);
+            }
+        }
+        let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let d = (d1[i] * 255.0).round() as i32 - (d5[i] * 255.0).round() as i32;
+                if d.abs() > 8 {
+                    n += 1;
+                }
+                if d.abs() > pior.abs() {
+                    pior = d;
+                    onde = (x, y);
+                }
+            }
+        }
+        println!("  {hardness:.1}       {pior:+5}   {n:5}   {onde:?}");
+    }
 }

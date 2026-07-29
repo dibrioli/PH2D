@@ -31,7 +31,7 @@
 //! em 6 densidades de polilinha (60 → 1155 segmentos).
 
 use crate::binning::{BinSeg, ScreenSpace};
-use crate::pack::FlipGpuData;
+use crate::pack::{FLAG_CLOSED, FLAG_START_FLAT, FlipGpuData};
 
 /// O `spacing` do pincel do Painter (`spec_default.rs`): 0,10 × **diâmetro**.
 pub const PAINTER_SPACING: f32 = 0.10;
@@ -162,6 +162,7 @@ pub(crate) fn stroke_tau(
             acc[3] += (pa.color[3] * (1.0 - t) + pb.color[3] * t) * op * d_tau;
         }
     }
+    end_dab(run, data, screen, hardness, p, &mut tau, &mut acc);
     if tau <= 0.0 {
         return None;
     }
@@ -169,4 +170,75 @@ pub(crate) fn stroke_tau(
         *c /= tau;
     }
     Some((tau, acc))
+}
+
+/// **O CAP — e ele é UM TERMO DE FRONTEIRA, não uma geometria nova.**
+///
+/// O Painter **SOMA** dabs (`Σ_k g(k)`, a partir de um dab no primeiro ponto); nós **INTEGRAMOS**
+/// (`∫ g du`). Euler-Maclaurin diz em que elas diferem:
+///
+/// ```text
+///   Σ_{k=0}^{N} g(k) = ∫_0^N g(u) du + [g(0) + g(N)] / 2 + …
+/// ```
+///
+/// ⚠️ **No MEIO do caminho os termos de fronteira estão no infinito, onde `g = 0`** — por isso a
+/// soma e a integral já concordavam ali (o corpo do traço reto mede +1/255 contra o depósito, e
+/// **+0** contra o motor que shipa em dureza 1). **Na PONTA o termo sobrevive**, e ele é
+/// exatamente **meio dab**. Não há forma nova a desenhar: a silhueta redonda já vem do `t`
+/// clampado do `closest_on_seg`, e o que faltava era este meio termo.
+///
+/// Medido, na região da ponta de um traço reto contra o depósito do Painter: **−66/255 (dureza
+/// 0,4) · −102 (0,7) · −52 (0,2)**, média ~16/255 — e em `hardness = 1` a ponta **já estava boa**
+/// (média 1,7/255 contra a ÁREA), porque ali a saturação carrega.
+///
+/// ⚠️ **Traço FECHADO não tem ponta** (`FLAG_CLOSED`) e ponta CHATA não tem meio dab
+/// (`FLAG_START_FLAT`): um cap Flat corta a tinta no plano da ponta, e o termo de fronteira é
+/// justamente o que a arredonda.
+fn end_dab(
+    run: &[BinSeg],
+    data: &FlipGpuData,
+    screen: &ScreenSpace,
+    hardness: f32,
+    p: [f32; 2],
+    tau: &mut f32,
+    acc: &mut [f32; 4],
+) {
+    let Some(first) = run.first() else { return };
+    let st = data.strokes[first.stroke as usize];
+    if st.flags & FLAG_CLOSED != 0 || st.point_count == 0 {
+        return;
+    }
+    // ⚠️ **SÓ NO COMEÇO, e a assimetria é da REFERÊNCIA, não uma escolha de estética.** O
+    // depósito do Painter carimba um dab **exatamente** no primeiro ponto e depois anda por
+    // `pitch`, então o percurso dele **acaba ANTES do último ponto**, num lugar que depende do
+    // comprimento total: a fronteira do começo é exata (⇒ o termo `g(0)/2` sobrevive) e a do fim
+    // é fracionária (⇒ o termo médio é ZERO). Medido nas DUAS pontas de um traço reto, erro médio
+    // contra o depósito: com meio dab nos dois lados o FIM sai **13,6 · 14,9 · 12,7** (durezas
+    // 0,4 · 0,7 · 0,2); só no começo, **1,2 · 1,8 · 1,3**. O começo fica igual (2,3 · 3,3 · 1,9).
+    //
+    // ⚠️ **A FORMA do cap continua simétrica** — a silhueta redonda vem do `t` clampado do
+    // `closest_on_seg`, nas duas pontas. O que é assimétrico é a **correção de quadratura**, e ela
+    // é invisível na geometria.
+    //
+    // ⚠️ **Ponto para o smoke:** o oráculo (`painter_deposit_sized`) não carimba dab de CAUDA no
+    // pen-up, e o Painter do produto carimba. Se o Enio vir a ponta final fina demais, o termo do
+    // fim volta — o número dele está medido aqui do lado.
+    for (idx, flat) in [(st.first_point, st.flags & FLAG_START_FLAT != 0)] {
+        if flat || idx as usize >= data.points.len() {
+            continue;
+        }
+        let pt = data.points[idx as usize];
+        let s = screen.point_px(pt.pos);
+        let r = screen.radius_px(pt.width).max(1e-4);
+        let dn = ((p[0] - s[0]).powi(2) + (p[1] - s[1]).powi(2)).sqrt() / r;
+        let d_tau = 0.5 * f_of(dn, hardness);
+        if d_tau <= 0.0 {
+            continue;
+        }
+        *tau += d_tau;
+        for (dst, c) in acc.iter_mut().zip(&pt.color).take(3) {
+            *dst += c * d_tau;
+        }
+        acc[3] += pt.color[3] * pt.opacity * d_tau;
+    }
 }

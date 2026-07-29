@@ -31,7 +31,7 @@
 //! silently broadcast a global zero into a per-element slot, which is worse: it looks like it
 //! worked.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, ReadChannel, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -104,22 +104,61 @@ impl NodeOp for ValueAttribute {
     }
 }
 
+/// The artist-facing channels (plan §1.1): a human word, the column it reads, and
+/// whether that column is a scalar (`0`) or a Vec2 whose MAGNITUDE we want (`1`, e.g.
+/// `vel` read as *speed*). Seven of them + the panel's "Custom…" = 8 = the segmented
+/// selector's ceiling. Custom keeps the arbitrary-column reach the node was built for.
+const READ_CHANNELS: &[ReadChannel] = &[
+    ReadChannel {
+        label: "Speed",
+        column: "vel",
+        mode: MODE_LENGTH,
+    },
+    ReadChannel {
+        label: "Opacity",
+        column: "opacity",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Rotation",
+        column: "rot",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Size",
+        column: "size",
+        mode: MODE_LENGTH,
+    },
+    ReadChannel {
+        label: "Age",
+        column: "age",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Life",
+        column: "life",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Seed",
+        column: "seed",
+        mode: 0,
+    },
+];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ONE picker: the artist chooses a named channel; the panel writes both the column
+    // (`attr`) and the `mode` behind it. "mode" gets no row of its own — folded in.
     ParamUiHint {
         param: ATTR_KEY,
-        label: "Attribute",
+        label: "Read",
         min: 0.0,
         max: 0.0,
         step: 0.0,
-        widget: ParamWidget::Text,
-    },
-    ParamUiHint {
-        param: "mode",
-        label: "mode",
-        min: 0.0,
-        max: 1.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::Channels {
+            mode_param: "mode",
+            channels: READ_CHANNELS,
+        },
     },
 ];
 

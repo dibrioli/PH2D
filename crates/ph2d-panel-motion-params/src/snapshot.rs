@@ -29,6 +29,30 @@ pub enum ParamRow {
     Seed(SeedRow),
     Text(TextRow),
     Curve(CurveRow),
+    Channels(ChannelsRow),
+}
+
+/// A **named-channel picker** row (plan §1.1) — segmented channel buttons plus a
+/// trailing "Custom…", the artist-facing face of a stream-column TEXT param.
+///
+/// `selected` is the channel index, or `channels.len()` for **Custom** (the live
+/// value matches no channel, so the raw text field is shown to edit `custom`).
+/// Picking channel `i` writes `text_param = channels[i].column` and `mode_param =
+/// channels[i].mode` (two intents); Custom writes only `text_param` (from the field).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChannelsRow {
+    pub label: String,
+    /// The text param the chosen column lands in (`Graph::set_text_param`).
+    pub text_param: &'static str,
+    /// The sibling f32 param a channel also sets (`Graph::set_param`).
+    pub mode_param: &'static str,
+    /// One `(label, column, mode)` per channel — resolved primitives, so the panel
+    /// stays registry-free. "Custom…" is appended by the paint, not stored here.
+    pub channels: Vec<(&'static str, &'static str, i32)>,
+    /// `channels.len()` = Custom (no channel matches the live column + mode).
+    pub selected: usize,
+    /// The live text-param value — shown in (and edited via) the Custom field.
+    pub custom: String,
 }
 
 /// An interactive **transfer-curve editor** (A1) — a `ph2d-curve` serialized in a

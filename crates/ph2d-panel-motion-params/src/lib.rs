@@ -29,8 +29,9 @@ use number_rows::{
     paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
-    AngleRow, ColorRow, CurveRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow,
-    SeedRow, TextRow, ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
+    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, MotionParamIntent, ParamRow,
+    ParamsSnapshot, ScalarRow, SeedRow, TextRow, ToggleRow, drain_param_intents, param_swatch_id,
+    set_current_params,
 };
 use snapshot::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
@@ -411,6 +412,38 @@ fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
                     }
                 }
             }
+            ParamRow::Channels(row) => {
+                // Channel segments reuse the enum-option ids; Custom is the n-th.
+                let n = row.channels.len();
+                for opt in 0..(n + 1).min(MAX_ENUM_OPTIONS) {
+                    if id != param_enum_id(slot, opt) {
+                        continue;
+                    }
+                    if opt < n {
+                        // A named channel writes BOTH the column and its mode.
+                        let (_, column, mode) = row.channels[opt];
+                        push_param_intent(MotionParamIntent::SetTextParam {
+                            node: snap.node,
+                            param: row.text_param,
+                            value: column.to_string(),
+                        });
+                        push_param_intent(MotionParamIntent::SetParam {
+                            node: snap.node,
+                            param: row.mode_param,
+                            value: mode as f64,
+                        });
+                    } else if row.selected < n {
+                        // Switch INTO Custom: clear the column so the raw field opens
+                        // empty. (Already Custom → no-op, so a typed value survives.)
+                        push_param_intent(MotionParamIntent::SetTextParam {
+                            node: snap.node,
+                            param: row.text_param,
+                            value: String::new(),
+                        });
+                    }
+                    return EventOutcome::Consumed;
+                }
+            }
             _ => {}
         }
     }
@@ -423,12 +456,16 @@ fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
 fn on_text_commit(id: NodeId, host: &dyn PanelHostInternal, snap: &ParamsSnapshot) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
         if id == param_text_id(slot) {
-            let ParamRow::Text(row) = &snap.rows[slot] else {
-                return EventOutcome::Ignored;
+            // Both a plain Text row and a Channels row's Custom field write the same
+            // text channel — only the param name differs.
+            let param = match &snap.rows[slot] {
+                ParamRow::Text(row) => row.name,
+                ParamRow::Channels(row) => row.text_param,
+                _ => return EventOutcome::Ignored,
             };
             push_param_intent(MotionParamIntent::SetTextParam {
                 node: snap.node,
-                param: row.name,
+                param,
                 value: text_value(host.store(), id),
             });
             return EventOutcome::Consumed;

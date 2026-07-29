@@ -132,6 +132,9 @@ pub(super) fn try_insert_adapter(
     reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
+    // Select the new adapter so its params show at once — the artist lands on the
+    // channel picker ("Read: Speed / Opacity / …"), ready to say what to convert.
+    ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
     toasts.push(Toast::info("Inserted an adapter to convert the types"));
     true
 }

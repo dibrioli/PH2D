@@ -229,6 +229,95 @@ fn a_typed_value_inside_the_sliders_range_is_still_the_sliders_to_report() {
     );
 }
 
+/// A `value.attribute`-style channel picker snapshot: two channels (Speed, Opacity),
+/// `selected` the current segment (2 = Custom), `custom` the live column text.
+fn channels_snapshot(selected: usize, custom: &str) -> ParamsSnapshot {
+    ParamsSnapshot {
+        node: 7,
+        title: "Attribute".into(),
+        rows: vec![ParamRow::Channels(ChannelsRow {
+            label: "Read".into(),
+            text_param: "attr",
+            mode_param: "mode",
+            channels: vec![("Speed", "vel", 1), ("Opacity", "opacity", 0)],
+            selected,
+            custom: custom.into(),
+        })],
+    }
+}
+
+/// **Picking a named channel writes BOTH the column and its mode** — the whole point:
+/// the artist reads "Speed", the editor sets `attr = vel` AND `mode = 1` in one
+/// gesture. FALSIFIED by a click that emits only one of the two (the magnitude would
+/// be lost, and `vel` would read as zeros).
+#[test]
+fn picking_a_channel_writes_the_column_and_its_mode() {
+    let _ = drain_param_intents();
+    set_current_params(Some(channels_snapshot(1, "opacity"))); // Opacity currently
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    // Segment 0 is "Speed".
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(param_enum_id(0, 0)),
+    );
+    assert_eq!(
+        drain_param_intents(),
+        vec![
+            MotionParamIntent::SetTextParam {
+                node: 7,
+                param: "attr",
+                value: "vel".into(),
+            },
+            MotionParamIntent::SetParam {
+                node: 7,
+                param: "mode",
+                value: 1.0,
+            },
+        ],
+        "a named channel writes both the column and its mode"
+    );
+    set_current_params(None);
+}
+
+/// **Custom clears the column so the raw field opens** — but only when a channel is
+/// currently selected. Clicking Custom while already Custom keeps the typed value
+/// (no-op), so a power user's column survives a stray tap.
+#[test]
+fn the_custom_segment_switches_in_but_never_stomps_a_typed_column() {
+    // From a channel (Speed) → Custom clears the column.
+    let _ = drain_param_intents();
+    set_current_params(Some(channels_snapshot(0, "vel")));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    // Custom is segment n = channels.len() = 2.
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(param_enum_id(0, 2)),
+    );
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::SetTextParam {
+            node: 7,
+            param: "attr",
+            value: String::new(),
+        }],
+        "switching to Custom clears the column so the field opens empty"
+    );
+
+    // Already Custom (a typed column) → clicking Custom does nothing.
+    set_current_params(Some(channels_snapshot(2, "id")));
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(param_enum_id(0, 2)),
+    );
+    assert!(
+        drain_param_intents().is_empty(),
+        "clicking Custom while already Custom keeps the typed column"
+    );
+    set_current_params(None);
+}
+
 fn curve_snapshot(value: &str) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 9,

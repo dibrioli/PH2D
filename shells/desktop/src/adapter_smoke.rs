@@ -48,9 +48,11 @@ impl crate::App {
             "[adapter smoke] dois nós no grafo: 'motion.grid' (saída = STREAM) à \
              esquerda, 'value.gain' (entrada = VALOR) à direita. Arraste da SAÍDA do \
              grid para a ENTRADA do gain: os tipos não batem, então um adapter \
-             'Attribute' é inserido AUTOMATICAMENTE no fio (grid -> attribute -> gain). \
-             Ctrl+Z desfaz o splice inteiro. (Sem a env, ou entre portas do MESMO tipo, \
-             nada muda.)"
+             'Attribute' é inserido AUTOMATICAMENTE no fio (grid -> attribute -> gain) e \
+             já nasce SELECIONADO. O painel de params mostra o PICKER DE CANAIS \
+             (Read: Speed / Opacity / Rotation / Size / Age / Life / Seed / Custom) -- \
+             zero jargão, zero fórmula; escolha um canal com uma PALAVRA. Ctrl+Z desfaz \
+             o splice inteiro. (Sem a env, ou entre portas do MESMO tipo, nada muda.)"
         );
     }
 }

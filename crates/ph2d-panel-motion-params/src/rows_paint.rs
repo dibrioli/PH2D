@@ -256,6 +256,67 @@ pub(crate) fn paint_rows(
                 );
                 y += used + row_gap;
             }
+            ParamRow::Channels(row) => {
+                // Named-channel picker (plan §1.1): the channel LABELS as segmented
+                // buttons + a trailing "Custom" — the artist reads "Speed", not a
+                // column name and a magic mode. Custom reveals the raw text field.
+                paint_text(
+                    text_system,
+                    scene,
+                    &row.label,
+                    inner_x,
+                    y,
+                    TypeToken::Sm.px(),
+                    inner_w,
+                    resolve(ColorToken::Text2, theme),
+                );
+                y += TypeToken::Sm.px() + Spacing::Xs.px();
+                let n = row.channels.len(); // Custom is the n-th button
+                let k = (n + 1).min(MAX_ENUM_OPTIONS);
+                let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
+                let gap = Spacing::Sm.px();
+                let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+                for opt in 0..k {
+                    let caption = if opt < n {
+                        row.channels[opt].0
+                    } else {
+                        "Custom"
+                    };
+                    let bid = param_enum_id(i, opt);
+                    let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
+                    let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
+                    let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+                    let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+                    paint_segmented_button(
+                        brect,
+                        caption,
+                        opt == row.selected,
+                        bstate,
+                        scene,
+                        text_system,
+                        theme,
+                    );
+                    hit_index.register(bid, brect);
+                }
+                let seg_rows = k.div_ceil(cols) as f32;
+                y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
+                // Custom selected: the raw text field, for an arbitrary column (the
+                // power-user escape — honest placeholder, never "e.g. sin(t)").
+                if row.selected >= n {
+                    let used = paint_text_row(
+                        Rect::new(inner_x, y, inner_w, ROW_H_PX),
+                        "Column",
+                        "e.g. inv_mass, id",
+                        param_text_id(i),
+                        store,
+                        hit_index,
+                        scene,
+                        text_system,
+                        theme,
+                    );
+                    y += used + row_gap;
+                }
+            }
             ParamRow::Curve(row) => {
                 // The interactive Curve editor — a graph with draggable handles. Its
                 // `CurvePoint`/`Button` store states ride back in `curve_widgets` (this

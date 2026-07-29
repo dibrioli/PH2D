@@ -317,8 +317,8 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        AngleRow, ColorRow, CurveRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow,
-        TextRow, ToggleRow,
+        AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow,
+        SeedRow, TextRow, ToggleRow,
     };
 
     // The params panel shows the properties of whatever ONE subject is selected.
@@ -355,8 +355,9 @@ pub(super) fn build_params_snapshot(
             .map_or(0.0, |p| p.default)
     };
 
-    // Channels folded into a colour swatch — suppress their standalone rows.
-    let consumed: Vec<&'static str> = color_groups(&motion.registry, type_id)
+    // Channels folded into a colour swatch (or into a `Channels` picker's `mode`) —
+    // suppress their standalone rows.
+    let mut consumed: Vec<&'static str> = color_groups(&motion.registry, type_id)
         .into_iter()
         .flatten()
         .collect();
@@ -378,6 +379,42 @@ pub(super) fn build_params_snapshot(
     // `Curve` rides the SAME text channel as `Text` but paints an interactive curve editor
     // (A1-ui): draggable handles over the serialized curve, never the string.
     for h in hints.into_iter().flatten() {
+        // A named-channel picker (plan §1.1): the artist-facing face of a stream-column
+        // TEXT param. It reads the live column (a text param) + its `mode` (an f32
+        // param), matches them to a channel, and folds `mode` in (consumed, so it gets
+        // no row of its own). Custom = no match → the raw text field is offered.
+        if let ParamWidget::Channels {
+            mode_param,
+            channels,
+        } = h.widget
+        {
+            let attr = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            let mode = value_of(mode_param).round() as i32;
+            let selected = channels
+                .iter()
+                .position(|c| c.column == attr && c.mode == mode)
+                .unwrap_or(channels.len());
+            rows.push(ParamRow::Channels(ChannelsRow {
+                label: h.label.to_string(),
+                text_param: h.param,
+                mode_param,
+                // Resolve to primitives so the panel needs no registry dependency.
+                channels: channels
+                    .iter()
+                    .map(|c| (c.label, c.column, c.mode))
+                    .collect(),
+                selected,
+                custom: attr,
+            }));
+            consumed.push(mode_param);
+            continue;
+        }
         if h.widget == ParamWidget::Text || h.widget == ParamWidget::Curve {
             let value = motion
                 .doc

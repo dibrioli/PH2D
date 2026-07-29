@@ -58,6 +58,18 @@ pub struct NodeUiManifest {
     pub silhouette: NodeSilhouette,
 }
 
+/// One named read-channel for a [`ParamWidget::Channels`] picker (M1.P1 · plan §1.1).
+/// `label` is the human word the artist picks; `column` is the stream column the text
+/// param is set to; `mode` is the sibling f32 param's value (for `value.attribute`,
+/// `0` = read the scalar column, `1` = the magnitude of a Vec2 column). `i32` so the
+/// enclosing [`ParamWidget`] can stay `Eq`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ReadChannel {
+    pub label: &'static str,
+    pub column: &'static str,
+    pub mode: i32,
+}
+
 /// Which widget a param row renders in the params panel (M1.P1). The frozen
 /// [`ph2d_nodegraph::node::ParamSpec`] only carries `{name, default: f32}`, so
 /// the editable range + control + label live here as additive side-metadata.
@@ -93,6 +105,17 @@ pub enum ParamWidget {
     /// stores the selected option **index** as its `f32` value (`0..labels.len()`).
     /// Reusable by every enum-valued param (channel, waveform, easing, …).
     Enum { labels: &'static [&'static str] },
+    /// A **named-channel picker** for a TEXT param that names a stream column, with a
+    /// sibling f32 `mode_param` folded in (plan §1.1). The panel paints the channel
+    /// LABELS as a segmented selector plus a trailing "Custom…"; picking a channel sets
+    /// the text param to its `column` and the mode param to its `mode`, and only Custom
+    /// reveals the raw text field (the power-user escape). It is artist-facing sugar
+    /// over [`Self::Text`] — the substrate is untouched, the text param stays the source
+    /// of truth — so an artist reads "Speed" instead of typing `vel` and a magic mode.
+    Channels {
+        mode_param: &'static str,
+        channels: &'static [ReadChannel],
+    },
     /// A free-text field editing a **text param** (a `motion.expression` formula) —
     /// NOT a `ParamSpec` (which is f32-only). The hint's `param` names the text-param
     /// key (`Graph::set_text_param`), read/written through the additive text channel

@@ -22,6 +22,7 @@ use std::collections::BTreeMap;
 mod ui;
 pub use ui::{
     NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamHardMax, ParamUiHint, ParamWidget,
+    ReadChannel,
 };
 
 /// A registered set of node operations, keyed by their stable type id.

@@ -2368,6 +2368,17 @@ impl crate::App {
                                 parts.next().map(str::parse::<f32>),
                             ) {
                                 pending_filter_stop = Some((row, idx, x));
+                                // ⚠️ **Diagnóstico de UM elo, atrás de env.** O report *"não é
+                                // possível arrastar os pontos de cor"* não reproduz headless — o
+                                // gate de seam dirige o gesto REAL e chega ao barramento —, então o
+                                // que falta medir é o que só o app vivo tem: se esta linha imprime,
+                                // o painel entregou e o defeito está a jusante; se não imprime, o
+                                // evento nunca chegou (e o `[hero] unhandled event` o dirá).
+                                if std::env::var_os("PH2D_FX_RAMP_DIAG").is_some() {
+                                    eprintln!(
+                                        "[ramp] painel entregou: linha {row} stop {idx} -> x {x:.4}"
+                                    );
+                                }
                             }
                         }
                         // ADR-0114 C2: Colorize Apply/Clear — mexem no buffer de rabiscos do
@@ -3433,12 +3444,28 @@ impl crate::App {
                 // AUTORIA (quem ordena é o consumidor), então arrastar por cima do vizinho não
                 // re-liga o dedo a outro stop.
                 if let Some((row, idx, x)) = pending_filter_stop {
+                    let diag = std::env::var_os("PH2D_FX_RAMP_DIAG").is_some();
+                    if diag {
+                        eprintln!(
+                            "[ramp] shell aplica: {} forma(s) selecionada(s), linha {row} stop {idx}",
+                            sel.len()
+                        );
+                    }
                     crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
                         if let Some(op) = f.ops.get_mut(row)
                             && usize::from(idx) < usize::from(op.stop_count)
                             && let Some(slot) = op.stop_pos.get_mut(usize::from(idx))
                         {
                             *slot = x.clamp(0.0, 1.0);
+                            if diag {
+                                eprintln!("[ramp] stop_pos escrito: {:?}", op.stop_pos);
+                            }
+                        } else if diag {
+                            eprintln!(
+                                "[ramp] RECUSADO: ops={} stop_count={:?}",
+                                f.ops.len(),
+                                f.ops.get(row).map(|o| o.stop_count)
+                            );
                         }
                     });
                 }

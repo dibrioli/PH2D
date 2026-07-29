@@ -287,6 +287,135 @@ fn every_stop_handle_is_reachable_and_the_grabs_do_not_overlap() {
     );
 }
 
+/// A tabela com um tipo que espelha o **Gradient Map REAL**: sem raio, sem cores, com blend, com
+/// DOIS modos, e com rampa.
+///
+/// ⚠️ **A fixture do irmão forçava `takes_ramp` num tipo que TEM raio**, e é um card de outra altura
+/// e outra ordem de rows — exactamente a classe de fixture que não contém o fenômeno.
+fn kinds_table_real_gradient_map() -> Vec<FilterKindView> {
+    let mut t = kinds_table();
+    if let Some(k) = t.get_mut(0) {
+        k.name = "Gradient Map";
+        k.radius_label = None;
+        k.offset_labels = None;
+        k.color_label = None;
+        k.color_b_label = None;
+        k.modes = &["Linear", "Smooth"];
+        k.takes_blend = true;
+        k.takes_ramp = true;
+    }
+    t
+}
+
+/// **ARRASTAR um punho chega ao bus, no card do Gradient Map REAL.**
+#[test]
+fn dragging_a_stop_handle_works_on_the_real_gradient_map_card() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    ph2d_panel_vector::set_current_filter_can_add(true);
+    ph2d_panel_vector::set_filter_kinds(kinds_table_real_gradient_map());
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+    ph2d_panel_vector::set_current_filters(vec![row(0)]);
+    let id = ph2d_panel_vector::ids::filter_stop_id(0, 1);
+    let r = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        .expect("o punho do stop 1 nao foi PINTADO no card do Gradient Map real");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    evs.extend(host.dispatch_pointer_event(pointer(
+        PointerKind::Move,
+        cx + 40.0,
+        cy,
+        SEC + SEC / 100,
+    )));
+    let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),
+        "o arrasto no punho nao virou `ValueChanged` do TRILHO no card REAL — algum widget vizinho \
+         roubou o hit, ou o `CurvePoint` nao esta no store"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(
+            |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::SelectOption(c, _)) if c == ramp)
+        ),
+        "o arrasto nao chegou ao bus no card REAL"
+    );
+}
+
+/// **ARRASTAR um punho chega ao bus como uma posição nova.**
+///
+/// ⚠️ **Este gate faltava, e o report do Enio ("não é possível arrastar os pontos de cor") é
+/// exactamente o vão que ele deixou:** os irmãos provavam que os punhos são PINTADOS e que os dois
+/// botões despacham, e nenhum dirigia o GESTO. Um punho pintado, hit-registrado e sem estado de
+/// arrasto no store é *desenhado e morto sob o mouse* — a quarta condição da regra de UI (a
+/// SEQUÊNCIA leva a algum lugar) não é implicada pelas outras três.
+#[test]
+fn dragging_a_stop_handle_reaches_the_bus_with_a_new_position() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    ph2d_panel_vector::set_current_filter_can_add(true);
+    ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(0));
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+    ph2d_panel_vector::set_current_filters(vec![row(0)]);
+    // O punho do MEIO (posição 0,5) — nem a primeira nem a última, senão um off-by-one no índice
+    // acertaria por acidente.
+    let id = ph2d_panel_vector::ids::filter_stop_id(0, 1);
+    let r = host
+        .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        .expect("o punho do stop 1 nao foi PINTADO com area clicavel");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    // Down no punho, e ARRASTA para a direita — o Down já aplica a posição (click-to-move).
+    let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    evs.extend(host.dispatch_pointer_event(pointer(
+        PointerKind::Move,
+        cx + 40.0,
+        cy,
+        SEC + SEC / 100,
+    )));
+    let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),
+        "o arrasto no punho nao virou `ValueChanged` do TRILHO — o `InteractiveState::CurvePoint` \
+         nao esta no store, entao o punho esta desenhado e MORTO sob o mouse"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut st, ev);
+    }
+    let sent: Vec<String> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(c, v)) if c == ramp => Some(v),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !sent.is_empty(),
+        "o arrasto nao chegou ao bus — o painel nao encaminha o `ValueChanged` do trilho, e a shell \
+         nunca move o stop"
+    );
+    // O formato é `linha:idx:x`, e o `idx` tem de ser o do punho AGARRADO.
+    let last = sent.last().expect("ha pelo menos um");
+    let parts: Vec<&str> = last.split(':').collect();
+    assert_eq!(parts.len(), 3, "o formato do arrasto mudou: {last:?}");
+    assert_eq!(parts[0], "0", "a LINHA errada: {last:?}");
+    assert_eq!(
+        parts[1], "1",
+        "o INDICE errado ({last:?}) — o arrasto moveria OUTRO stop, e o punho escaparia do dedo"
+    );
+    let x: f32 = parts[2].parse().expect("o x e um numero");
+    assert!(
+        x > 0.5,
+        "arrastar para a DIREITA devolveu x={x} (o stop estava em 0,5) — o gesto move o stop para o \
+         lado errado, ou nao o move"
+    );
+}
+
 /// **O `+` e o `−` do trilho chegam ao bus.** Sem isto o artista clica e a rampa nunca ganha (nem
 /// perde) um stop, com tudo pintado.
 #[test]

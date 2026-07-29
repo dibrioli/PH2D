@@ -235,6 +235,18 @@ impl Panel for MotionParamsPanel {
                     },
                 );
             }
+            // The live-column chips of a Channels row's Custom picker reuse the
+            // enum-button pool from a base ABOVE the curated segments — register them
+            // here too, or they paint + hit-register yet stay DEAD under the mouse
+            // (the dispatch only routes a click to a widget `populate` registered).
+            for j in 0..MAX_ENUM_OPTIONS {
+                store.register(
+                    param_enum_id(slot, CHANNELS_EXTRA_BASE + j),
+                    InteractiveState::Button {
+                        state: ButtonState::Normal,
+                    },
+                );
+            }
         }
     }
 }

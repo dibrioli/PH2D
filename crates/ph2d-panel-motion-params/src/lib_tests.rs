@@ -369,6 +369,28 @@ fn clicking_a_live_column_chip_writes_that_column_with_scalar_mode() {
     set_current_params(None);
 }
 
+/// **The live-column chips must be REGISTERED by `populate`** — or they paint and
+/// hit-register yet stay DEAD under the mouse, because the dispatch only routes a
+/// click to a widget the store knows (the exact seam the synthetic-Click gate above
+/// cannot see: a synthetic event skips the store's focus check). FALSIFIED by
+/// dropping the extra-chip registration loop.
+#[test]
+fn the_live_column_chips_are_registered_so_a_click_reaches_them() {
+    let host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    assert!(
+        host.store()
+            .button_state(param_enum_id(0, CHANNELS_EXTRA_BASE))
+            .is_some(),
+        "the first live-column chip is a registered (clickable) button"
+    );
+    assert!(
+        host.store()
+            .button_state(param_enum_id(0, CHANNELS_EXTRA_BASE + 1))
+            .is_some(),
+        "the second live-column chip is registered too"
+    );
+}
+
 fn curve_snapshot(value: &str) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 9,

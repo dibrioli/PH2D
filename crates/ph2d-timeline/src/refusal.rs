@@ -74,7 +74,9 @@ impl KeyRefusal {
             Self::NotPlaying => "Can't key: the clip you are editing does not play here",
             Self::PlaysTwice => "Can't key: the clip you are editing plays twice here",
             Self::Overridden => "Can't key: a lane above overrides this clip here",
-            Self::ExpressionDriven => "Can't key: an expression drives this channel — clean or rewrite the formula",
+            Self::ExpressionDriven => {
+                "Can't key: an expression drives this channel — clean or rewrite the formula"
+            }
         }
     }
 }

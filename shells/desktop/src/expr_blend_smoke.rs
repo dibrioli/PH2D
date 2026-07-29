@@ -119,7 +119,13 @@ impl crate::App {
             // Wiggle: keyed X ramp (-4 -> 4) + Y = value + wiggle over a KEYED flat Y.
             ramp(doc, base, wiggle, PropKind::TranslationX, -4.0, 4.0, 4.0);
             key_flat(doc, base, wiggle, PropKind::TranslationY, 0.0);
-            expr(doc, base, wiggle, PropKind::TranslationY, "value + wiggle(3, 0.8)");
+            expr(
+                doc,
+                base,
+                wiggle,
+                PropKind::TranslationY,
+                "value + wiggle(3, 0.8)",
+            );
 
             // Add: keyed flat X=0 in the base; the ADDITIVE lane adds time*0.8 (a moving delta).
             key_flat(doc, base, add, PropKind::TranslationX, 0.0);

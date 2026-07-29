@@ -349,7 +349,8 @@ pub fn key_value_in_active_clip(
         // `E(stored, t)`, evaluated at the entity's clip clock: the EXACT `clip_cut` +
         // `remapped_time` composition `key_home` keys the TIME through, so the K value and the K
         // time share one clock (seed==sample). `t` is the raw playhead, from the same caller.
-        let t_entity = crate::apply::remapped_time(doc, entity, doc.clip_cut(doc.active_index(), t));
+        let t_entity =
+            crate::apply::remapped_time(doc, entity, doc.clip_cut(doc.active_index(), t));
         if let Some(res) =
             crate::stack_eval::invert_active_clip_expr(doc, target, t_entity, want, &links)
         {

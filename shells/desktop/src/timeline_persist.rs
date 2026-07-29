@@ -267,7 +267,11 @@ mod tests {
     #[test]
     fn a_legacy_project_without_authored_durations_opens_at_four_seconds() {
         let mut legacy = ph2d_timeline::TimelineDoc::new();
-        assert_eq!(legacy.clip_length_override(0), None, "o doc legado e derivado");
+        assert_eq!(
+            legacy.clip_length_override(0),
+            None,
+            "o doc legado e derivado"
+        );
         assert_eq!(legacy.scene_length, None);
         legacy.insert_key(
             1,
@@ -310,7 +314,11 @@ mod tests {
         let bytes = doc.to_bytes().expect("serializa");
 
         let opened = install_from_project(&bytes).expect("carrega");
-        assert_eq!(opened.doc.scene_length, Some(6.0), "a cena autorada e preservada");
+        assert_eq!(
+            opened.doc.scene_length,
+            Some(6.0),
+            "a cena autorada e preservada"
+        );
         assert_eq!(
             opened.doc.clip_length_override(0),
             None,

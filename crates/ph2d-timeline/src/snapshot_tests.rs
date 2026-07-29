@@ -150,14 +150,23 @@ fn the_clip_and_scene_veils_are_independent_scopes() {
     let mut snap = TimelineViewSnapshot::default();
     // A derived doc: neither scope is authored → no veil on either tab.
     snap.rebuild(&mut st, &ph, true); // Keys
-    assert!(!snap.view_length_explicit, "Keys: a derived clip end never darkens");
+    assert!(
+        !snap.view_length_explicit,
+        "Keys: a derived clip end never darkens"
+    );
     snap.rebuild(&mut st, &ph, false); // Arrange
-    assert!(!snap.view_length_explicit, "Arrange: a derived scene end never darkens");
+    assert!(
+        !snap.view_length_explicit,
+        "Arrange: a derived scene end never darkens"
+    );
 
     // Author ONLY the CLIP's duration (the Keys scope).
     st.doc.set_clip_length_override(0, Some(2.0));
     snap.rebuild(&mut st, &ph, true); // Keys sees it
-    assert!(snap.view_length_explicit, "Keys: the clip's authored Dur closes the Keys view");
+    assert!(
+        snap.view_length_explicit,
+        "Keys: the clip's authored Dur closes the Keys view"
+    );
     assert!(
         (snap.view_length_seconds - 2.0).abs() < 1e-9,
         "and the veil starts at the clip Dur (2)"
@@ -171,7 +180,10 @@ fn the_clip_and_scene_veils_are_independent_scopes() {
     // Author the SCENE's duration → Arrange closes, at ITS number, independently of the clip.
     st.doc.set_scene_length(Some(5.0));
     snap.rebuild(&mut st, &ph, false); // Arrange
-    assert!(snap.view_length_explicit, "Arrange: the scene's authored Dur closes the Arrange view");
+    assert!(
+        snap.view_length_explicit,
+        "Arrange: the scene's authored Dur closes the Arrange view"
+    );
     assert!(
         (snap.view_length_seconds - 5.0).abs() < 1e-9,
         "and the Arrange veil is at the SCENE Dur (5), independent of the clip Dur (2)"

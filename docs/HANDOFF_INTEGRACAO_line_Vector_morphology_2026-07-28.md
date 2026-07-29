@@ -4,6 +4,9 @@
 **Commits desta wave:** 2 (`0f729608e` · `6c3359f4d`)
 **Estado:** fechada, **pendente de smoke**
 
+⚠️ **Uma QUARTA wave veio depois desta** — o *Color Adjust* (o `feColorMatrix`), handoff em
+[`HANDOFF_INTEGRACAO_line_Vector_colour_adjust_2026-07-28.md`](HANDOFF_INTEGRACAO_line_Vector_colour_adjust_2026-07-28.md). As quatro compartilham o bump de schema e integram juntas.
+
 ⚠️ **Esta é a TERCEIRA wave da mesma abertura de linha.** As duas primeiras têm handoff próprio —
 [`HANDOFF_INTEGRACAO_line_Vector_fx_blend_2026-07-28.md`](HANDOFF_INTEGRACAO_line_Vector_fx_blend_2026-07-28.md)
 (a lei de mistura) e

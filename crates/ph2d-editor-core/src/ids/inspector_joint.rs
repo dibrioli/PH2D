@@ -201,6 +201,13 @@ pub const INSP_WHEEL_BREAK: [NodeId; 2] = [
 /// **O que este eixo aguenta**, newtons.
 pub const INSP_WHEEL_BREAK_FORCE: NodeId = hash_node_id("insp_wheel_break_force");
 
+/// **Em que CORPO esta roldana se monta** (W3) — o eyedropper que ARMA o pick de
+/// canvas, irmão exato dos `INSP_JOINT_PICK_A/B`.
+pub const INSP_WHEEL_MOUNT_PICK: NodeId = hash_node_id("insp_wheel_mount_pick");
+/// **Desmontar**: a roldana volta a ser um ponto do cenário. Pintado só quando há
+/// o que desmontar — um botão que não faz nada é pior que um botão que falta.
+pub const INSP_WHEEL_UNMOUNT: NodeId = hash_node_id("insp_wheel_unmount");
+
 pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
 pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
     hash_node_id("insp_wheel_wrap_auto"),

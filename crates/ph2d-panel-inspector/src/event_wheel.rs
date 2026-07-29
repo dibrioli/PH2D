@@ -22,6 +22,13 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         return false;
     };
     let edit = match ev {
+        // W3: o eyedropper ARMA o pick (o alvo vem do clique no canvas) e a
+        // lixeira DESMONTA — dois botões porque são dois gestos: montar noutro
+        // corpo não é o mesmo que voltar ao cenário.
+        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_MOUNT_PICK => {
+            Some(WheelFieldEdit::PickMountBody)
+        }
+        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_UNMOUNT => Some(WheelFieldEdit::Unmount),
         WidgetEvent::Click(id) => ids::INSP_WHEEL_WRAP
             .iter()
             .position(|&o| o == id)

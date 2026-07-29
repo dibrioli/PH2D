@@ -52,6 +52,11 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
             ids::INSP_JOINT_PICK_B,
             ids::INSP_PHYS_JOIN,
             ids::INSP_PHYS_JOIN_DRAW,
+            // §13 (W3): o eyedropper que arma o pick do corpo de montagem, e a
+            // lixeira que desmonta. Sem o registro eles nascem pintados,
+            // hit-registrados e MORTOS sob o mouse.
+            ids::INSP_WHEEL_MOUNT_PICK,
+            ids::INSP_WHEEL_UNMOUNT,
         ],
     );
     // The join-kind selector's four chips (Pin/Spring/Rope/Weld). Registered in a

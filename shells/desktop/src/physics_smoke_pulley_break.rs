@@ -112,6 +112,7 @@ fn breaker(
             motor_speed: 0.0,
             break_enabled: axle_break.is_some(),
             break_force: axle_break.unwrap_or(PulleyWheel::DEFAULT_BREAK_FORCE),
+            ..Default::default()
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));

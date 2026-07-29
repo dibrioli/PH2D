@@ -14,7 +14,7 @@ use ph2d_physics::world::rope_route::{self, RopeWheel};
 use super::PhysicsBridge;
 use crate::joint::PhysicsJoint;
 use bevy_ecs::query::QueryState;
-use ph2d_ecs::Transform;
+use ph2d_ecs::{SimWorld, Transform};
 
 /// As roldanas — entidades com [`crate::PulleyWheel`] e uma pose (W-Pulley W1).
 ///
@@ -63,6 +63,7 @@ impl PhysicsBridge {
     /// tudo, então ordenar por eles faria a corda trocar de rota ao desfazer.
     pub(super) fn harvest_rope_wheels(&mut self, world: &ph2d_ecs::World) {
         self.rope_wheels.clear();
+        self.wheels_to_seed.clear();
         let mut wq = self.wheel_query.take().expect("query built in dispatch");
         for (we, wheel, _local) in wq.iter(world) {
             // `rope: 0` não casa com nome nenhum: uma roldana órfã é inerte, e
@@ -77,6 +78,44 @@ impl PhysicsBridge {
                 continue;
             };
             let wheel = wheel.clamped();
+            // **A MONTAGEM (W3):** em que corpo o eixo desta roldana está.
+            //
+            // ⚠️ **Semeia o local UMA vez**, do `Transform` autorado contra a pose
+            // de REPOUSO do corpo — a MESMA conversão que a âncora de joint faz, e
+            // pela mesma razão que ela a faz uma vez só: re-derivar contra a pose
+            // VIVA todo reconcile é o que fazia o pino DESLIZAR pelo corpo
+            // (W-AnchorFollow, medido em 2 m). Depois de semeado, mover o corpo lê
+            // o local inalterado e o eixo o acompanha.
+            //
+            // Corpo que não resolve (apagado, renomeado, ainda não spawnado) deixa
+            // a roldana no CENÁRIO — inerte e não quebrada, a mesma cura que a
+            // corda órfã e as bindings da timeline recebem.
+            let mount = self
+                .names
+                .get(&wheel.body)
+                .and_then(|e| self.bodies.get(e))
+                .map(|b| {
+                    let rest = [b.rest.x, b.rest.y, b.rest.rotation];
+                    let local = if wheel.mounted {
+                        wheel.local
+                    } else {
+                        let l = ph2d_physics::PhysicsWorld::local_anchor_at_pose(
+                            rest,
+                            [t.translation.x, t.translation.y],
+                        );
+                        self.wheels_to_seed.push((we, l));
+                        l
+                    };
+                    // ⚠️ **O centro de uma roldana montada é DERIVADO**, mesmo em
+                    // repouso: `corpo · local`. Ler o `Transform` dela aqui faria
+                    // o eixo ficar onde o artista o largou enquanto o bloco anda —
+                    // e é este número que o `sync_mounted_wheels` devolve ao
+                    // `Transform` para o dot seguir o bloco. Em play o
+                    // `refresh_mounts` reescreve o MESMO campo da pose VIVA: uma
+                    // pergunta, uma fórmula, duas poses.
+                    let centre = ph2d_physics::PhysicsWorld::world_from_local_at_pose(rest, local);
+                    (b.handle, local, centre)
+                });
             self.rope_wheels.push(RopeWheelRow {
                 rope: wheel.rope,
                 key: (
@@ -87,11 +126,11 @@ impl PhysicsBridge {
                 ),
                 entity: we,
                 wheel: RopeWheel {
-                    centre: [t.translation.x, t.translation.y],
-                    // W3-B costura a montagem aqui; até lá toda roldana colhida é
-                    // do CENÁRIO, e o kernel a trata como sempre tratou.
-                    body: None,
-                    local: [0.0, 0.0],
+                    // Sem montagem o `Transform` da roldana É o centro — ela é um
+                    // ponto pregado no cenário, e não há de onde derivar nada.
+                    centre: mount.map_or([t.translation.x, t.translation.y], |(_, _, c)| c),
+                    body: mount.map(|(h, _, _)| h),
+                    local: mount.map_or([0.0, 0.0], |(_, l, _)| l),
                     radius: wheel.radius,
                     // A roldana é apontada pelo NOME dela, a mesma chave por que
                     // a corda aponta os corpos — bits de entidade mudam a cada
@@ -326,4 +365,47 @@ fn wrap_pi(a: f32) -> f32 {
         x += tau;
     }
     x
+}
+
+impl PhysicsBridge {
+    /// **O centro de DESENHO de uma roldana montada** — o `Transform.translation`
+    /// dela — levado para onde o eixo autorado agora está (`corpo_repouso ·
+    /// local`).
+    ///
+    /// É isto que faz o dot de centro e a §2 Position **seguirem o bloco**: mover
+    /// o corpo não muda o `local` guardado, então o centro derivado — e o dot
+    /// desenhado ali — anda com ele. Irmão exato do `sync_joint_pivots`, e a
+    /// prosa dele vale palavra por palavra.
+    ///
+    /// Rest-only (o chamador gateia em `!playing`): em play a ARENA carrega o
+    /// centro vivo, refrescado por sub-passo, e é dela que o desenho lê.
+    ///
+    /// A escrita é condicional para não fabricar diff: o `post_frame_undo`
+    /// registra por DIFF, e um `Transform` reescrito com o mesmo número todo
+    /// frame seria um passo de undo por frame.
+    pub(super) fn sync_mounted_wheels(&mut self, sim: &mut SimWorld) {
+        if self.rope_wheels.is_empty() {
+            return;
+        }
+        let mut scratch = std::mem::take(&mut self.wheels_to_seed);
+        scratch.clear();
+        for row in &self.rope_wheels {
+            // A roldana de CENÁRIO não tem de onde derivar centro nenhum: o
+            // `Transform` dela É o centro, e reescrevê-lo seria a segunda porta.
+            if row.wheel.body.is_none() {
+                continue;
+            }
+            scratch.push((row.entity, row.wheel.centre));
+        }
+        for &(e, centre) in scratch.iter() {
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e)
+                && (t.translation.x != centre[0] || t.translation.y != centre[1])
+            {
+                t.translation.x = centre[0];
+                t.translation.y = centre[1];
+            }
+        }
+        scratch.clear();
+        self.wheels_to_seed = scratch;
+    }
 }

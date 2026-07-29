@@ -541,6 +541,13 @@ pub(crate) fn create_joint_at(
                     radius: w.radius,
                     wrap: ph2d_physics_ecs::WrapSide::Auto,
                     motor_speed: 0.0,
+                    // Uma roldana nasce no CENÁRIO: montá-la num corpo (a cadernal
+                    // móvel do W3) é um SEGUNDO gesto, e não um default. Nomeado e não
+                    // `..default()` porque estes são sítios de PRODUTO — o campo da
+                    // próxima wave nasceria neutro aqui em silêncio.
+                    body: 0,
+                    local: [0.0, 0.0],
+                    mounted: false,
                     break_enabled: false,
                     break_force: ph2d_physics_ecs::PulleyWheel::DEFAULT_BREAK_FORCE,
                 },

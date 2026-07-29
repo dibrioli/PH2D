@@ -891,6 +891,13 @@ pub(crate) struct App {
     /// selection/gizmo. Runtime-only: the pick is not the document, the binding
     /// it writes is.
     pub(crate) joint_body_pick: Option<(u64, bool)>,
+    /// **O eyedropper de MONTAGEM da §13 está armado, e para qual roldana**
+    /// (W-Pulley W3) — irmão exato do de cima, uma família adiante.
+    ///
+    /// Armado, o próximo Down no canvas escolhe o CORPO sob o cursor e monta o
+    /// eixo daquela roldana nele. Runtime-only: um pick pela metade não é
+    /// documento, é um gesto em andamento.
+    pub(crate) wheel_body_pick: Option<u64>,
     /// **The open joint-anchor drag** (W-J2), or `None`. Both canvas handles — the
     /// filled A dot and the hollow B ring — open this one gesture, which writes
     /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime

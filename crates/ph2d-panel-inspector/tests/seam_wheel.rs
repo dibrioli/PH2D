@@ -43,6 +43,19 @@ fn wheel() -> InspectorWheelInfo {
         motor_deg_per_s: 0.0,
         break_enabled: true,
         break_force: 500.0,
+        // ⚠️ Do CENÁRIO, e a premissa é declarada: é o estado de toda roldana até
+        // alguém montá-la. Uma fixture que chegasse montada por acidente deixaria
+        // os gates de ausência da lixeira verdes pelo motivo errado.
+        mount_name: String::new(),
+        mount_pick_armed: false,
+    }
+}
+
+/// A MESMA roldana, montada num corpo — a cadernal móvel do W3.
+fn mounted() -> InspectorWheelInfo {
+    InspectorWheelInfo {
+        mount_name: "Block".into(),
+        ..wheel()
     }
 }
 
@@ -181,6 +194,12 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_WHEEL_WRAP_GROUP,
         ids::INSP_LIVE_WHEEL_SECTION,
         ids::INSP_LIVE_WHEEL_COLOR,
+        // W3: os dois botões de ícone da row de montagem. Declarados aqui, e não
+        // silenciados — a varredura os PEGOU no minuto em que nasceram, que é
+        // exatamente o que ela existe para fazer; o que ela cobra é que alguém
+        // diga o que eles são, e um eyedropper não é uma caixa de número.
+        ids::INSP_WHEEL_MOUNT_PICK,
+        ids::INSP_WHEEL_UNMOUNT,
         ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
     ]);
 
@@ -341,5 +360,51 @@ fn the_axle_break_switch_gates_its_own_threshold() {
     assert!(
         !painted.contains(&ids::INSP_WHEEL_BREAK_FORCE),
         "o limiar não pode ser pintado com o switch desarmado"
+    );
+}
+
+/// **A row de montagem (W3): o eyedropper ARMA, a lixeira DESMONTA.**
+///
+/// O eyedropper é oferecido SEMPRE — é por ele que uma roldana de cenário vira
+/// uma cadernal móvel, então gateá-lo em *já estar montada* o tornaria alcançável
+/// só onde já não é preciso, o mesmo defeito que a §11 vazia do W2a corrigiu.
+///
+/// A lixeira é o oposto: ela só existe quando há o que desmontar. Um botão que
+/// não faz nada é pior que um botão que falta.
+#[test]
+fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
+    expect(
+        &click_real(wheel(), ids::INSP_WHEEL_MOUNT_PICK),
+        WheelFieldEdit::PickMountBody,
+        "o eyedropper de montagem numa roldana de cenário",
+    );
+    expect(
+        &click_real(mounted(), ids::INSP_WHEEL_MOUNT_PICK),
+        WheelFieldEdit::PickMountBody,
+        "o eyedropper de montagem numa roldana já montada",
+    );
+    expect(
+        &click_real(mounted(), ids::INSP_WHEEL_UNMOUNT),
+        WheelFieldEdit::Unmount,
+        "a lixeira de desmontar",
+    );
+
+    // Presença E ausência: do cenário não há o que desmontar.
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_wheel(Some(wheel()));
+    let painted: Vec<_> = host
+        .paint::<InspectorPanel>(&mut state, VIEWPORT)
+        .into_iter()
+        .map(|(n, _)| n)
+        .collect();
+    set_current_inspector_wheel(None);
+    assert!(
+        painted.contains(&ids::INSP_WHEEL_MOUNT_PICK),
+        "o eyedropper tem de existir mesmo no cenário — é por ele que se monta"
+    );
+    assert!(
+        !painted.contains(&ids::INSP_WHEEL_UNMOUNT),
+        "a lixeira não pode ser pintada quando não há montagem para desfazer"
     );
 }

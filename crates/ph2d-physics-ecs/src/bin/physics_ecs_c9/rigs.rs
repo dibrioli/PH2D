@@ -148,6 +148,12 @@ pub fn spawn(sim: &mut SimWorld) {
                 radius,
                 wrap: WrapSide::Auto,
                 motor_speed: motor,
+                // Roldanas de CENARIO: a lane da talha (W3) e a de baixo, e
+                // separa-las e o que torna esta a linha de regressao do modelo
+                // antigo -- ela tem de deixar o hash onde estava.
+                body: 0,
+                local: [0.0, 0.0],
+                mounted: false,
                 break_enabled: false,
                 break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
             },

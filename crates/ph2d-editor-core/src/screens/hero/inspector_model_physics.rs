@@ -568,6 +568,17 @@ pub struct InspectorWheelInfo {
     /// **O que ele aguenta**, newtons. Sem conversão nesta fronteira: um newton
     /// é um newton nos dois mundos, ao contrário das rows de ângulo.
     pub break_force: f32,
+    /// **Em que CORPO o eixo está montado**, resolvido para exibição (W3). Vazio
+    /// = roldana pregada no CENÁRIO, que é o que toda roldana é até alguém dizer
+    /// o contrário.
+    ///
+    /// Montada num corpo que se move, ela é a *cadernal móvel* de uma talha, e o
+    /// corpo passa a ser sustentado por DOIS ramos da corda.
+    pub mount_name: String,
+    /// O pick de canvas desta roldana está ARMADO? O eyedropper pinta `Pressed`
+    /// enquanto espera o clique no corpo — a mesma máquina do re-pick de corpo do
+    /// joint (W-JointAuthoring), agora para o eixo.
+    pub mount_pick_armed: bool,
 }
 
 /// Um campo editável da §13, despachado como
@@ -586,4 +597,14 @@ pub enum WheelFieldEdit {
     BreakEnabled(bool),
     /// O limiar dele, newtons.
     BreakForce(f32),
+    /// **ARMA** o pick de canvas do corpo em que esta roldana se monta — sem
+    /// operando, como o `PickBodyA` do joint: o clique escolhe o alvo, não este
+    /// evento.
+    PickMountBody,
+    /// **DESMONTA** a roldana: ela volta a ser um ponto do cenário.
+    ///
+    /// Existe porque montar é um gesto e desmontar tem de ser outro — sem ele a
+    /// única saída seria apagar a roldana e refazê-la, que é a mesma queixa que
+    /// abriu esta wave (o pedido 4 do artista).
+    Unmount,
 }

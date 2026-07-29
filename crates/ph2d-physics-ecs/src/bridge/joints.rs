@@ -529,6 +529,19 @@ impl PhysicsBridge {
             }
         }
         self.joints_to_seed.clear();
+
+        // W-Pulley W3: o mesmo, uma família adiante. O eixo de uma roldana
+        // montada foi convertido para o frame do corpo na colheita; persistir com
+        // `mounted = true` é o que faz um move de corpo LER o local em vez de o
+        // re-derivar — o eixo segue o bloco em vez de deslizar por ele.
+        for i in 0..self.wheels_to_seed.len() {
+            let (e, local) = self.wheels_to_seed[i];
+            if let Some(mut wheel) = sim.world_mut().get_mut::<crate::PulleyWheel>(e) {
+                wheel.local = local;
+                wheel.mounted = true;
+            }
+        }
+        self.wheels_to_seed.clear();
     }
 
     /// Sync each joint's DISPLAY pivot — its `Transform.translation` — to where

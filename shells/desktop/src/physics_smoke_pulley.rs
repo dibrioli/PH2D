@@ -95,6 +95,7 @@ fn wheel(world: &mut World, rope: &str, order: u16, x: f32, y: f32, radius: f32)
             motor_speed: 0.0,
             break_enabled: false,
             break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
+            ..Default::default()
         },
         Transform::from_translation(Vec2::new(x, y)),
     ));
@@ -354,6 +355,7 @@ fn winch(world: &mut World, tag: &str, x: f32, radius: f32, omega_deg: f32, rgba
             motor_speed: omega_deg.to_radians(),
             break_enabled: false,
             break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
+            ..Default::default()
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));

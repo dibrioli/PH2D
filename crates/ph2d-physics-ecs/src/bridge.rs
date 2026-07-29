@@ -150,6 +150,13 @@ pub struct PhysicsBridge {
     /// em `[0,0]` é uma que nunca foi semeada, e o semeio acontece uma vez, das
     /// poses de REPOUSO.
     joints_to_seed: Vec<JointSeed>,
+    /// **As roldanas cujo eixo local acaba de ser semeado** (W-Pulley W3), com o
+    /// local derivado da pose de REPOUSO do corpo em que estão montadas.
+    ///
+    /// Scratch, limpo a cada colheita. Irmão exato do `joints_to_seed` e pelo
+    /// MESMO motivo: a conversão mundo→local acontece uma vez e é persistida,
+    /// senão um move de corpo re-derivaria e o eixo deslizaria pelo bloco.
+    wheels_to_seed: Vec<(Entity, [f32; 2])>,
     /// A tabela de polias a instalar neste dispatch, reconstruída inteira todo
     /// frame (uma polia não é dona de nada nas arenas do rapier, então não há
     /// diff de spawn/remove a fazer — e é por isso que ela nunca invalida o ring
@@ -293,6 +300,7 @@ impl PhysicsBridge {
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
             joints_to_seed: Vec::new(),
+            wheels_to_seed: Vec::new(),
             pulleys_to_install: Vec::new(),
             pulley_wheels_to_install: Vec::new(),
             rope_wheels: Vec::new(),
@@ -506,6 +514,12 @@ impl PhysicsBridge {
         // value for no reader. `!playing` also covers a scrub that lands paused.
         if !playing {
             self.sync_joint_pivots(sim);
+            // W-Pulley W3: e o mesmo para o EIXO de uma roldana montada, pela
+            // razão idêntica — o dot de centro e a §2 Position leem o
+            // `Transform`, então mover o BLOCO tem de levar a roldana junto. Em
+            // play a arena já carrega o centro vivo (`refresh_mounts`) e é dela
+            // que o desenho lê, então escrever aqui seria trabalho sem leitor.
+            self.sync_mounted_wheels(sim);
         }
     }
 }

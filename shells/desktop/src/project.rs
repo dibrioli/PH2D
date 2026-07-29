@@ -173,7 +173,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v43 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`break_enabled`** e
 /// **`break_force`** — o eixo que cede sob carga. Dois campos apendados, mesmo
 /// raciocínio posicional do v42.
-const PROJECT_SCHEMA: u32 = 43;
+/// v44 (physics, W-Pulley W3): a `PulleyWheel` ganhou **`body`**, **`local`** e
+/// **`mounted`** — a roldana montada num corpo que se move, a *cadernal móvel* de
+/// uma talha, e com ela a vantagem mecânica que o `ratio` prometia e não
+/// entregava. Três campos apendados, mesmo raciocínio posicional do v42/v43. O
+/// par `local`/`mounted` é o do W-AnchorFollow: o eixo é guardado no frame do
+/// CORPO e convertido uma vez, senão mover o bloco o faz deslizar por ele.
+const PROJECT_SCHEMA: u32 = 44;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

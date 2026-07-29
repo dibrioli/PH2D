@@ -1709,6 +1709,8 @@ impl crate::App {
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
+                // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
+                self.wheel_body_pick,
                 // W-J4: o gesto de desenhar está armado?
                 self.joint_draw_armed,
                 // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
@@ -2824,7 +2826,14 @@ impl crate::App {
                     // §13 Pulley Wheel. Sem fan-out, e pela razão da §12: a
                     // seção descreve UMA roldana, a que está selecionada.
                     EditorAction::InspectorWheelEdit { entity_bits, edit } => {
-                        wheel_edits.push((entity_bits, edit));
+                        // W3: o eyedropper ARMA aqui (onde `self` é mutável), como
+                        // o do joint e pela mesma razão — o pick é estado da
+                        // shell, não uma escrita de componente.
+                        if matches!(edit, ph2d_editor::WheelFieldEdit::PickMountBody) {
+                            self.wheel_body_pick = Some(entity_bits);
+                        } else {
+                            wheel_edits.push((entity_bits, edit));
+                        }
                     }
                     EditorAction::InspectorVisibilitySectionEdit { entity_bits, edit } => {
                         // BulkSelect fan-out, same shape as the sampling edit.

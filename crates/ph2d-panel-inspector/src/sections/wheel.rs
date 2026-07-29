@@ -55,6 +55,7 @@ pub(crate) fn paint_wheel_section(
 
     let mut yy = y + header_h;
     yy = paint_rope_row(scene, text_system, theme, x, w, yy, info);
+    yy = paint_mount_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy = num_row(
         scene,
         text_system,
@@ -172,6 +173,109 @@ fn paint_break_rows(
         "Break Force (N)",
         ids::INSP_WHEEL_BREAK_FORCE,
     )
+}
+
+/// **Em que CORPO esta roldana se monta** (W3) — o nome vigente, o eyedropper que
+/// arma o pick de canvas, e o botão de desmontar.
+///
+/// ⚠️ **É a row que traz a vantagem mecânica**, e ela não tem número nenhum: uma
+/// roldana montada num corpo que se move é a *cadernal móvel* de uma talha, e o
+/// corpo passa a ser sustentado por DOIS ramos da mesma corda. O "2" não é
+/// autorado em lugar nenhum — ele é a geometria do enlace.
+///
+/// ⚠️ **O eyedropper ARMA**, ele não escolhe: o alvo vem do próximo clique no
+/// canvas, o idiom de pick deste app (o eyedropper de cor, o `vec_path_pick`, o
+/// re-pick de corpo do joint). Ele pinta `Pressed` enquanto espera.
+///
+/// ⚠️ **O botão de desmontar só existe quando há o que desmontar** — a lei do
+/// botão-morto. Sem ele a única saída de uma montagem errada seria apagar a
+/// roldana e refazê-la, que é a queixa (4) que abriu esta wave.
+#[allow(clippy::too_many_arguments)]
+fn paint_mount_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorWheelInfo,
+) -> f32 {
+    let h = ROW_H_PX;
+    let font = TypeToken::Sm.px();
+    let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
+    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
+    let gap = Spacing::Sm.px();
+    let mounted = !info.mount_name.is_empty();
+    let icons = if mounted { 2.0 } else { 1.0 };
+    let text_y = y + (h - font) * 0.5;
+    paint_text(
+        text_system,
+        scene,
+        "Mounted On",
+        x,
+        text_y,
+        font,
+        label_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    // "(scenery)" e não um vazio: *pregada no cenário* é uma resposta, e uma
+    // lacuna onde devia haver um nome não é.
+    paint_text(
+        text_system,
+        scene,
+        if mounted {
+            info.mount_name.as_str()
+        } else {
+            "(scenery)"
+        },
+        x + label_w,
+        text_y,
+        font,
+        (w - label_w - icons * (icon_w + gap)).max(0.0),
+        resolve(
+            if mounted {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text3
+            },
+            theme,
+        ),
+    );
+    let mut bx = x + w - icon_w;
+    if mounted {
+        let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
+        paint_icon_button(
+            brect,
+            IconGlyph::Builtin(IconId::Trash),
+            IconButtonStyle::Compact,
+            store
+                .button_state(ids::INSP_WHEEL_UNMOUNT)
+                .unwrap_or(ButtonState::Normal),
+            scene,
+            theme,
+        );
+        hit_index.register(ids::INSP_WHEEL_UNMOUNT, brect);
+        bx -= icon_w + gap;
+    }
+    let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
+    paint_icon_button(
+        brect,
+        IconGlyph::Builtin(IconId::Eyedropper),
+        IconButtonStyle::Compact,
+        if info.mount_pick_armed {
+            ButtonState::Pressed
+        } else {
+            store
+                .button_state(ids::INSP_WHEEL_MOUNT_PICK)
+                .unwrap_or(ButtonState::Normal)
+        },
+        scene,
+        theme,
+    );
+    hit_index.register(ids::INSP_WHEEL_MOUNT_PICK, brect);
+    y + h
 }
 
 /// **A que corda esta roldana pertence** — nome, e um aviso quando ele não

@@ -20,6 +20,7 @@ fn wheel(order: u16) -> PulleyWheel {
         motor_speed: 0.0,
         break_enabled: false,
         break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
+        ..Default::default()
     }
 }
 
@@ -112,7 +113,7 @@ fn the_snapshot_names_the_rope_and_only_a_rope_counts() {
         .world_mut()
         .spawn((Name::new("Rope Wheel 1"), wheel(2), Transform::default()))
         .id();
-    let info = build_wheel_info(&mut sim, w.to_bits()).expect("a roldana tem seção");
+    let info = build_wheel_info(&mut sim, w.to_bits(), false).expect("a roldana tem seção");
     assert!(info.bound);
     assert_eq!(info.rope_name, "Rope");
     assert_eq!(info.order_ui, 3, "o componente conta de zero, a row de um");
@@ -126,7 +127,7 @@ fn the_snapshot_names_the_rope_and_only_a_rope_counts() {
         .world_mut()
         .spawn((Name::new("Rope Wheel 1"), wheel(0), Transform::default()))
         .id();
-    let info = build_wheel_info(&mut sim, w.to_bits()).expect("a roldana tem seção");
+    let info = build_wheel_info(&mut sim, w.to_bits(), false).expect("a roldana tem seção");
     assert!(
         !info.bound && info.rope_name.is_empty(),
         "um sprite chamado 'Rope' não é uma corda"
@@ -141,7 +142,7 @@ fn a_body_has_no_wheel_section() {
         .world_mut()
         .spawn((Name::new("Crate"), Transform::default()))
         .id();
-    assert!(build_wheel_info(&mut sim, e.to_bits()).is_none());
+    assert!(build_wheel_info(&mut sim, e.to_bits(), false).is_none());
 }
 
 /// **Graus na row, radianos no componente** — a fronteira do motor do Pin, e a
@@ -170,7 +171,7 @@ fn the_motor_speaks_degrees_at_the_boundary_and_radians_inside() {
         .world_mut()
         .spawn((Name::new("Rope Wheel 1"), next, Transform::default()))
         .id();
-    let info = build_wheel_info(&mut sim, e.to_bits()).expect("a roldana tem seção");
+    let info = build_wheel_info(&mut sim, e.to_bits(), false).expect("a roldana tem seção");
     assert!(
         (info.motor_deg_per_s - 180.0).abs() < 1.0e-3,
         "o snapshot devolveu {} graus/s",

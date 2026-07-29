@@ -83,6 +83,7 @@ fn wheels(sim: &mut SimWorld, radius: f32) {
                 motor_speed: 0.0,
                 break_enabled: false,
                 break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
+                ..Default::default()
             },
             Transform::from_translation(Vec2::new(x, START_Y + lift)),
         ));

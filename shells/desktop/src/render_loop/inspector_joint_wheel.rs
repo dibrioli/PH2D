@@ -79,6 +79,13 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
             radius,
             wrap: ph2d_physics_ecs::WrapSide::Auto,
             motor_speed: 0.0,
+            // Uma roldana nasce no CENÁRIO: montá-la num corpo (a cadernal
+            // móvel do W3) é um SEGUNDO gesto, e não um default. Nomeado e não
+            // `..default()` porque estes são sítios de PRODUTO — o campo da
+            // próxima wave nasceria neutro aqui em silêncio.
+            body: 0,
+            local: [0.0, 0.0],
+            mounted: false,
             break_enabled: false,
             break_force: ph2d_physics_ecs::PulleyWheel::DEFAULT_BREAK_FORCE,
         },
@@ -89,9 +96,28 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
 
 /// **O snapshot da §13.** `None` para qualquer coisa que não seja uma roldana —
 /// como a §12 e pelo mesmo motivo, esta seção não tem face vazia.
-pub(crate) fn build_wheel_info(sim: &mut SimWorld, entity_bits: u64) -> Option<InspectorWheelInfo> {
+pub(crate) fn build_wheel_info(
+    sim: &mut SimWorld,
+    entity_bits: u64,
+    mount_pick_armed: bool,
+) -> Option<InspectorWheelInfo> {
     let entity = Entity::from_bits(entity_bits);
     let wheel = *sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity)?;
+    // W3: o CORPO em que o eixo está montado, resolvido do hash para o nome.
+    // ⚠️ Exige um `RigidBody`, não só um nome que bate — uma roldana montada num
+    // sprite sem corpo não está montada em coisa alguma, e mostrar o nome dele
+    // seria a mesma mentira que o `bound` da corda existe para não contar.
+    let mut mq = sim
+        .world_mut()
+        .query::<(&Name, &ph2d_physics_ecs::RigidBody)>();
+    let mount_name = if wheel.body == 0 {
+        String::new()
+    } else {
+        mq.iter(sim.world())
+            .find(|(n, _)| stable_name_id(n.as_str()) == wheel.body)
+            .map(|(n, _)| n.as_str().to_string())
+            .unwrap_or_default()
+    };
     // A corda a que ela pertence, resolvida do HASH para o nome. ⚠️ Exige um
     // `PhysicsJoint`, não só um nome que bate: uma roldana só entra numa rota se
     // o nome for o de uma CORDA, e um sprite homônimo não a põe em lugar nenhum.
@@ -118,6 +144,8 @@ pub(crate) fn build_wheel_info(sim: &mut SimWorld, entity_bits: u64) -> Option<I
         motor_deg_per_s: wheel.motor_speed.to_degrees(),
         break_enabled: wheel.break_enabled,
         break_force: wheel.break_force,
+        mount_name,
+        mount_pick_armed,
     })
 }
 
@@ -169,8 +197,57 @@ pub(crate) fn wheel_with_edit(
         WheelFieldEdit::MotorDegPerS(v) => next.motor_speed = v.to_radians(),
         WheelFieldEdit::BreakEnabled(on) => next.break_enabled = on,
         WheelFieldEdit::BreakForce(v) => next.break_force = v,
+        // ⚠️ **ARMA e não escreve**: o alvo vem do próximo clique no canvas. O
+        // `None` diz *"isto não é uma escrita de componente"*, exatamente como o
+        // tag de Wrap desconhecido — e é por ele que o `apply_wheel_edit` não
+        // enfileira nada.
+        WheelFieldEdit::PickMountBody => return None,
+        // Voltar ao CENÁRIO. ⚠️ `mounted` volta a `false` junto: o local guardado
+        // descreve um frame que não é mais o de ninguém, e deixá-lo semeado faria
+        // a próxima montagem herdar o eixo da anterior em silêncio.
+        WheelFieldEdit::Unmount => {
+            next.body = 0;
+            next.local = [0.0, 0.0];
+            next.mounted = false;
+        }
     }
     // A MESMA porta de carga que o load usa: raio negativo inverteria a
     // tangente, `NaN` envenenaria a pose e o hash C9.
     Some(next.clamped())
+}
+
+/// **Montar o eixo desta roldana no corpo `body`** (W-Pulley W3) — a porta que o
+/// eyedropper da §13 termina.
+///
+/// Escreve IN PLACE, como o `set_joint_body` do W-JointAuthoring e pela mesma
+/// razão: o pick resolve no meio do frame, dentro do handler de ponteiro, e o
+/// undo global por-diff captura o resultado no fim dele.
+///
+/// ⚠️ **`mounted: false` de propósito.** O local do eixo NÃO é derivado aqui: ele
+/// é semeado pela ponte, no próximo reconcile, contra a pose de REPOUSO do corpo
+/// — a mesma conversão, no mesmo lugar, para toda rota de autoria. Derivá-lo aqui
+/// seria a segunda porta, e ela discordaria da primeira em qualquer corpo que o
+/// artista tivesse acabado de mover.
+///
+/// ⚠️ **Um corpo sem `Name` não pode ser apontado**, então ele ganha um — a
+/// mesma cura que o `create_joint` aplica: a montagem viaja pelo NOME, e um corpo
+/// anônimo seria uma montagem que o próximo reconcile esquece.
+pub(crate) fn set_wheel_mount(sim: &mut SimWorld, wheel_bits: u64, body: Entity) {
+    let name = match sim.world().get::<Name>(body) {
+        Some(n) => n.as_str().to_string(),
+        None => {
+            let n = format!("Body {}", body.index());
+            sim.world_mut().entity_mut(body).insert(Name::new(&n));
+            n
+        }
+    };
+    let entity = Entity::from_bits(wheel_bits);
+    if let Some(mut w) = sim
+        .world_mut()
+        .get_mut::<ph2d_physics_ecs::PulleyWheel>(entity)
+    {
+        w.body = stable_name_id(&name);
+        w.local = [0.0, 0.0];
+        w.mounted = false;
+    }
 }

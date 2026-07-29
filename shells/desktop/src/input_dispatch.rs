@@ -2132,6 +2132,39 @@ impl App {
         }
     }
 
+    /// **O clique do eyedropper de MONTAGEM** (§13, W3): com um pick armado,
+    /// resolve o CORPO sob o cursor e monta o eixo daquela roldana nele. Clique
+    /// no vazio (ou num não-corpo) desiste. Consome o press, então nunca cai no
+    /// picking/gizmo.
+    fn wheel_mount_pick_click(&mut self, sx: f32, sy: f32) {
+        let Some(wheel) = self.wheel_body_pick else {
+            return;
+        };
+        self.any_input_this_frame = true;
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let window_size = gfx.surface.size();
+        let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
+        // O sprite mais ao topo sob o cursor que é um CORPO físico e não é a
+        // própria roldana — montar uma roldana nela mesma não descreve nada.
+        let target = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos)
+            .into_iter()
+            .find(|&bits| {
+                bits != wheel
+                    && gfx
+                        .sim
+                        .world()
+                        .get::<ph2d_physics_ecs::RigidBody>(ph2d_ecs::Entity::from_bits(bits))
+                        .is_some()
+            })
+            .map(ph2d_ecs::Entity::from_bits);
+        if let Some(t) = target {
+            crate::render_loop::inspector_joint_wheel::set_wheel_mount(&mut gfx.sim, wheel, t);
+        }
+        self.wheel_body_pick = None;
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -3188,6 +3221,18 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
         {
             self.joint_body_pick_click(evt.x, evt.y);
+            return;
+        }
+        // **O eyedropper de MONTAGEM da roldana** (§13, W-Pulley W3) — a mesma
+        // classe de pick modal, uma família adiante: armado, o próximo Down
+        // escolhe o CORPO em que o eixo daquela roldana se monta.
+        if self.wheel_body_pick.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+        {
+            self.wheel_mount_pick_click(evt.x, evt.y);
             return;
         }
         // **A EXPLOSÃO e a ATRAÇÃO** (W-Hand) — modal como os picks acima e pela

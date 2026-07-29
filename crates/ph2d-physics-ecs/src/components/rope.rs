@@ -132,6 +132,34 @@ pub struct PulleyWheel {
     /// no número poria *"inf"* numa row numérica e obrigaria o artista a digitar
     /// um finito para ACHAR o controle.
     pub break_enabled: bool,
+    /// **Em que CORPO esta roldana está montada** — o `stable_name_id` do nome
+    /// dele; `0` é uma roldana pregada no cenário (W3).
+    ///
+    /// Montada num corpo que se move, ela é a **cadernal móvel** de uma talha, e o
+    /// corpo passa a ser sustentado por DOIS ramos da mesma corda — a vantagem
+    /// mecânica que o `ratio` prometia e não entregava (§3 do plano). Medido: um
+    /// bloco de 2 kg equilibra com **1 kg** de contrapeso.
+    ///
+    /// Apontada pelo NOME, a mesma chave por que a corda aponta os corpos e por
+    /// que esta roldana aponta a corda — bits de entidade são id de ALOCAÇÃO e o
+    /// undo respawna tudo com bits novos.
+    pub body: u64,
+    /// Onde no corpo o EIXO está, no frame local dele. Ignorado com
+    /// [`Self::body`] em `0`.
+    ///
+    /// ⚠️ **Local e nunca mundo, e o preço já foi pago uma vez:** a âncora do
+    /// joint era um ponto de mundo re-derivado contra a pose viva, e mover a
+    /// prancha 2 m **arrastava o pino 2 m** pelo corpo (W-AnchorFollow). Um eixo
+    /// guardado em mundo caminharia pelo bloco do mesmo jeito.
+    pub local: [f32; 2],
+    /// **O [`Self::local`] já foi semeado?**
+    ///
+    /// O sentinela existe porque `[0, 0]` é um eixo legítimo (no centro do corpo)
+    /// e não se distingue de *"nunca convertido"*. Uma roldana que chega com
+    /// `mounted: false` tem o local derivado UMA vez, do `Transform` autorado
+    /// contra a pose de REPOUSO do corpo; a partir daí um move de corpo lê o local
+    /// **inalterado**, que é o fix inteiro.
+    pub mounted: bool,
     /// **O que este eixo aguenta**, newtons. Ignorado com
     /// [`Self::break_enabled`] desmarcado.
     ///
@@ -151,6 +179,9 @@ impl Default for PulleyWheel {
             radius: Self::DEFAULT_RADIUS,
             wrap: WrapSide::Auto,
             motor_speed: 0.0,
+            body: 0,
+            local: [0.0, 0.0],
+            mounted: false,
             break_enabled: false,
             break_force: Self::DEFAULT_BREAK_FORCE,
         }
@@ -214,6 +245,15 @@ impl PulleyWheel {
                 self.break_force.max(0.0)
             } else {
                 Self::DEFAULT_BREAK_FORCE
+            },
+            // Um `NaN` no eixo montado viraria um centro `NaN`, e daí uma rota
+            // `NaN`, a pose de dois corpos e o hash C9. Sem clamp de faixa: um
+            // eixo longe do centro do corpo é uma escolha do artista (é assim que
+            // se pendura uma roldana num braço).
+            local: if self.local[0].is_finite() && self.local[1].is_finite() {
+                self.local
+            } else {
+                [0.0, 0.0]
             },
             ..self
         }

@@ -122,7 +122,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // a menos — o load leria lixo bem-formado em vez de recusar.
         // PROJECT 42→43: a `PulleyWheel` ganhou `break_enabled`+`break_force` (W2 —
         // o eixo que cede). Dois campos apendados, mesmo raciocínio posicional.
-        (43, 12, 13),
+        // PROJECT 43→44: a `PulleyWheel` ganhou `body`+`local`+`mounted` (W-Pulley W3 — a
+        // roldana montada num corpo que se move, e com ela a vantagem mecânica). Três
+        // campos apendados, mesmo raciocínio posicional; o par `local`/`mounted` é o do
+        // W-AnchorFollow, para o eixo não deslizar pelo bloco quando o bloco se move.
+        (44, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

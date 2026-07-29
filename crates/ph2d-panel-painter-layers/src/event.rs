@@ -18,6 +18,7 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
+mod curve_drag;
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod dab_gizmo;
 mod decode;
@@ -227,34 +228,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 /// sliders (opacity, the layer's Impasto depth, the adjustment param slots). Split out of
 /// `apply_event_impl` for the panel's per-function LOC cap — a pure move, no behaviour.
 fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
-    // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` → drain it.
-    if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
-        if let Some(stack) = state::current_layers() {
-            if let Some(layer) = stack
-                .all_ids()
-                .find(|l| painter_curve_editor_id(l.0) == parent)
-            {
-                // Remember the touched point so the "−" button knows what to drop.
-                state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
-                host.bus_mut()
-                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_CURVE_EDIT,
-                        format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
-                    )));
-            } else if let Some(layer) = stack
-                .all_ids()
-                .find(|l| painter_gradient_editor_id(l.0) == parent)
-            {
-                // Gradient Map stop drag — `x` is the new offset; selecting the
-                // dragged stop drives its color sliders + the "−" button.
-                state::set_selected_gradient_stop(layer.0, usize::from(idx));
-                host.bus_mut()
-                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_GRADIENT_EDIT,
-                        format!("{}:{idx}:{x}", layer.0),
-                    )));
-            }
-        }
+    if curve_drag::drain_own_curve_drag(host) {
         return true;
     }
     let Some(stack) = state::current_layers() else {
@@ -519,7 +493,10 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         WidgetEvent::Click(id) => option_route::route_brush_dropdown_option(host, id),
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
-            if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
+            if let Some((_parent, _ch, idx, x, y)) = host
+                .store_mut()
+                .take_curve_point_drag_if(|p| p == core_ids::PAINTER_BRUSH_FALLOFF_EDIT)
+            {
                 // `idx` is the point's STABLE id (panel-registered), valid across a drag-past re-sort.
                 state::set_selected_falloff_point(Some(idx));
                 host.bus_mut()

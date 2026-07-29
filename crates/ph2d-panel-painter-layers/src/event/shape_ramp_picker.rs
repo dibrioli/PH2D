@@ -34,7 +34,10 @@ pub(super) fn on_swatch_click(host: &mut dyn PanelHostInternal) {
 pub(super) fn on_shape_ramp_value_changed(host: &mut dyn PanelHostInternal, id: NodeId) {
     if id == core_ids::PAINTER_SHAPE_RAMP_EDIT {
         // Bar-stop drag: the `CurvePoint` stashed `(_, _, stop_id, x, _)` → select it + forward `id:x`.
-        if let Some((_p, _c, stop_id, x, _y)) = host.store_mut().take_curve_point_drag() {
+        if let Some((_p, _c, stop_id, x, _y)) = host
+            .store_mut()
+            .take_curve_point_drag_if(|p| p == core_ids::PAINTER_SHAPE_RAMP_EDIT)
+        {
             state::set_selected_shape_ramp_stop(stop_id);
             forward(
                 host,

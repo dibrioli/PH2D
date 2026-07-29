@@ -216,12 +216,11 @@ pub(crate) fn paint_curve_row(
 /// curve and emit the new serialized value. Returns `None` if the slot is empty (no
 /// handle was dragged this frame). Sets the dragged point as SELECTED.
 pub(crate) fn drain_drag(store: &mut WidgetStore, slot: usize, value: &str) -> Option<String> {
-    let (parent, _channel, index, x, y) = store.take_curve_point_drag()?;
-    if parent != param_curve_editor_id(slot) {
-        // Not our editor — put it back is impossible (take), but the caller only reaches
-        // here for the matching parent, so this is a defensive no-op.
-        return None;
-    }
+    // The stash is a GLOBAL channel: the ownership question is part of the call, so a drag that
+    // belongs to another panel is LEFT for it (a `take` would be irreversible — see
+    // `WidgetStore::take_curve_point_drag_if`).
+    let (_parent, _channel, index, x, y) =
+        store.take_curve_point_drag_if(|p| p == param_curve_editor_id(slot))?;
     let mut curve = working(value);
     let i = index as usize;
     if i >= curve.points.len() {
@@ -391,6 +390,10 @@ mod tests {
             c.points.iter().map(|p| p.x).collect::<Vec<_>>()
         );
         // The slot is drained (a second call sees nothing).
-        assert!(store.take_curve_point_drag().is_none());
+        assert!(
+            store
+                .take_curve_point_drag_if(|p| p == param_curve_editor_id(slot))
+                .is_none()
+        );
     }
 }

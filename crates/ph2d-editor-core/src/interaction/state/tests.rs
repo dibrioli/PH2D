@@ -209,3 +209,29 @@ fn hierarchy_set_parent_none_detaches() {
     assert_eq!(store.hierarchy_parent_of(NodeId(11)), None);
     assert_eq!(store.hierarchy_depth_of(NodeId(11)), 0);
 }
+
+/// **A drenagem do arrasto de `CurvePoint` PERGUNTA de quem é o gesto — e recusar deixa o stash
+/// INTACTO.**
+///
+/// O stash é um canal GLOBAL (um `Option` só) com muitos donos possíveis, e o
+/// [`WidgetStore::take_curve_point_drag_if`] é a única porta — não existe forma de tomar o gesto
+/// sem responder à pergunta. A metade que importa é a **recusa não destrutiva**: um `take`
+/// incondicional é irreversível, então um painel que drena antes de perguntar rouba o arrasto de
+/// outro e o dono não tem o que drenar (medido 2026-07-29 no trilho de rampa do painel de vetor).
+#[test]
+fn a_curve_point_drag_is_only_taken_by_the_editor_it_belongs_to() {
+    let mut store = WidgetStore::with_capacity(2);
+    let mine = NodeId(700);
+    let theirs = NodeId(701);
+    store.set_curve_point_drag(mine, 1, 2, 0.25, 0.75);
+
+    // Um estranho pergunta e leva NADA — e o stash sobrevive para o dono.
+    assert!(store.take_curve_point_drag_if(|p| p == theirs).is_none());
+    assert_eq!(
+        store.take_curve_point_drag_if(|p| p == mine),
+        Some((mine, 1, 2, 0.25, 0.75)),
+        "a recusa tem de ser NAO-DESTRUTIVA: o dono ainda tem de encontrar o gesto dele"
+    );
+    // Drenado uma vez.
+    assert!(store.take_curve_point_drag_if(|p| p == mine).is_none());
+}

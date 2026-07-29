@@ -343,6 +343,6 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // Idem para a LEI DE MISTURA de um degrau da pilha de filtros. O card vive dentro do scroll da
     // seção, então sem o passe diferido a lista de vinte leis seria cortada na borda dele.
     if let Some((row, chip_rect)) = state::take_pending_blend_dd() {
-        crate::paint_sections::filters::paint_blend_popover(ctx, row, chip_rect, theme);
+        crate::paint_sections::filters_blend::paint_blend_popover(ctx, row, chip_rect, theme);
     }
 }

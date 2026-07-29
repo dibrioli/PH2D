@@ -307,6 +307,23 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
+    // O TRILHO da rampa do Gradient Map — split de `paint_filters.rs` pelo teto de 600 LOC.
+    //
+    // Os controles dele DELEGAM: o `+`/`−` vão por `BodyCtx::filter_icon` (→ `paint_icon_button`) e
+    // a cor do stop por `BodyCtx::filter_color_swatch` (→ `paint_color_swatch`), ambos no irmão.
+    //
+    // **A dívida real, nomeada:** os PUNHOS (um por stop) não têm nó AccessKit nenhum — eles são
+    // `InteractiveState::CurvePoint` desenhados como círculos. Isso é PRÉ-EXISTENTE e compartilhado
+    // com o editor de rampa do próprio Painter (`paint_ramp_widget.rs`, cujo único a11y é um `use
+    // ph2d_a11y::NodeId` — import de TIPO, que satisfaz este scan sem registrar nada), e não
+    // apareceu com este split: fechá-la é dar nó + rect próprios a cada punho, no primitivo
+    // compartilhado, para os dois consumidores de uma vez. Um `use ph2d_a11y` decorativo aqui
+    // silenciaria o scanner sem tornar um punho mais alcançável do que é hoje.
+    (
+        "ph2d-panel-vector/src/paint_filters_ramp.rs",
+        "trilho: +/− e swatch delegam a filter_icon/filter_color_swatch no irmão; os punhos de \
+         arrasto não têm a11y (gap pré-existente, igual ao ramp widget do Painter)",
+    ),
     // Flip *tip* selector (Line/Dots/Squares + Spacing) — a thin section painter split from
     // `paint_sections.rs` for the 600-LOC cap. It owns no widget: it delegates to
     // `BodyCtx::segmented` / `slider_row` (in paint_rows/paint_sections), which paint via the

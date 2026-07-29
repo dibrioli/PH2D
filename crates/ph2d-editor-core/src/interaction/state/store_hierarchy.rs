@@ -206,9 +206,42 @@ impl WidgetStore {
             Some((parent, channel, index, x.clamp(0.0, 1.0), y.clamp(0.0, 1.0)));
     }
 
-    /// Take the pending curve-point drag `(parent, channel, index, x01, y01)`,
-    /// if any. Drained once per frame by the curve editor panel.
-    pub fn take_curve_point_drag(&mut self) -> Option<(NodeId, u8, u8, f32, f32)> {
+    /// Take the pending curve-point drag `(parent, channel, index, x01, y01)`
+    /// **if the gesture is YOURS** — `mine` is asked the stash's `parent` id, and
+    /// the stash is left **untouched** when it answers `false`.
+    ///
+    /// # Why the question is part of the call
+    ///
+    /// The stash is a **GLOBAL** channel with many possible owners (the Painter's
+    /// adjustment curves, its two ramp bars, the falloff editor, the dab gizmo,
+    /// the wet-paint tilt pad, the motion-params curves, the vector FX gradient
+    /// rail), and [`crate::screens::hero::HeroScreen::apply_event`] asks **every**
+    /// registered panel — visible or not — stopping at the first `Consumed`. So a
+    /// panel that drains before asking *"is this mine?"* silently steals another
+    /// panel's gesture, and `take` is **irreversible**: the owner has nothing left
+    /// to drain. The `motion-params` drain carried the confession in a comment
+    /// (*"Not our editor — put it back is impossible (take)"*).
+    ///
+    /// Measured 2026-07-29: the layers panel's `route_value_changed` drained on
+    /// **any** `ValueChanged` and returned `Consumed` even when no layer matched,
+    /// so the vector panel's Gradient Map **ramp handles would not move** — the FX
+    /// panel painted them, the dispatch computed the new position, and a panel that
+    /// was not even on screen ate the gesture. No error, no warning, and the
+    /// isolated gates of both panels green.
+    ///
+    /// This is why there is no door that hands over the gesture without answering
+    /// the ownership question: the compiler is the gate. A predicate that answers
+    /// `true` unconditionally re-opens the hole, and
+    /// `crates/ph2d-editor-core/tests/architecture_curve_drag_asks_whose_gesture.rs`
+    /// refuses that shape in panel crates.
+    pub fn take_curve_point_drag_if(
+        &mut self,
+        mine: impl FnOnce(NodeId) -> bool,
+    ) -> Option<(NodeId, u8, u8, f32, f32)> {
+        let parent = self.curve_point_drag?.0;
+        if !mine(parent) {
+            return None;
+        }
         self.curve_point_drag.take()
     }
 

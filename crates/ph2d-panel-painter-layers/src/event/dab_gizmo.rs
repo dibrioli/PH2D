@@ -14,7 +14,10 @@ use ph2d_tool_painter::TEX_ANGLE_MAX_DEG;
 /// flatten (channel 0) or rotation (channel 1). The dispatch normalises the pointer in `[0,1]` within
 /// the (square) gizmo canvas, y-UP (canvas top = `1.0`), centre at `(0.5, 0.5)`.
 pub(super) fn on_dab_gizmo_value_changed(host: &mut dyn PanelHostInternal) {
-    let Some((_p, channel, _idx, x, y)) = host.store_mut().take_curve_point_drag() else {
+    let Some((_p, channel, _idx, x, y)) = host
+        .store_mut()
+        .take_curve_point_drag_if(|p| p == core_ids::PAINTER_BRUSH_DAB_GIZMO)
+    else {
         return;
     };
     let (dx, dy) = (x - 0.5, y - 0.5);

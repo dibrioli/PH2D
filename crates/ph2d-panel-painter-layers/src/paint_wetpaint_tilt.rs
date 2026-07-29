@@ -119,7 +119,10 @@ pub(crate) fn paint_tilt_card(
 pub(crate) fn forward_tilt_pad_drag(host: &mut dyn ph2d_editor_core::panel::PanelHostInternal) {
     use ph2d_editor_core::action_bus::EditorAction;
     use ph2d_editor_core::tool::PanelEvent;
-    if let Some((_p, _ch, _idx, x, y)) = host.store_mut().take_curve_point_drag() {
+    if let Some((_p, _ch, _idx, x, y)) = host
+        .store_mut()
+        .take_curve_point_drag_if(|p| p == core_ids::PAINTER_WETPAINT_TILT_PAD)
+    {
         let (ring, spoke) = drag_to_ring_spoke(x, y);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

@@ -389,6 +389,21 @@ fn both_handles_of_the_two_stop_default_are_draggable_including_the_right_edge()
              fora da area util do card",
             if stop == 0 { "0,0" } else { "1,0" }
         );
+        // ⚠️ E o painel tem de ENCAMINHAR. As duas metades são defeitos diferentes: o `ValueChanged`
+        // acima é do DISPATCH (o punho está vivo sob o mouse), este é do painel (o gesto chega à
+        // shell). Uma mutação de 2026-07-29 — o painel perguntando pela LINHA errada ao drenar o
+        // stash — deixava a 1ª metade verde e este gate PASSAVA, sobre um punho que não move nada.
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SelectOption(c, _)) if c == ramp
+            )),
+            "o arrasto do punho {stop} do default nao chegou ao bus — o punho responde ao mouse e a \
+             shell nunca move o stop"
+        );
     }
 }
 

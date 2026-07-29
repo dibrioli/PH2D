@@ -31,7 +31,10 @@ pub(super) fn ramp_drag(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId)
     let Some(row) = (0..ids::MAX_FILTER_ROWS).find(|r| id == ids::filter_ramp_id(*r)) else {
         return false;
     };
-    if let Some((_parent, _ch, idx, x, _y)) = host.store_mut().take_curve_point_drag() {
+    if let Some((_parent, _ch, idx, x, _y)) = host
+        .store_mut()
+        .take_curve_point_drag_if(|p| p == ids::filter_ramp_id(row))
+    {
         crate::state::filters::set_selected_stop(row, idx);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(

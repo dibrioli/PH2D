@@ -72,12 +72,14 @@ mod tests {
         // Pointer at canvas mid-x, top quarter → x = 0.5, y = 0.75 (inverted).
         let parent = apply_curve_point_drag(&mut store, handle, 110.0, 45.0).expect("CurvePoint");
         assert_eq!(parent, editor);
-        let (p, ch, idx, x, y) = store.take_curve_point_drag().expect("drag stashed");
+        let (p, ch, idx, x, y) = store
+            .take_curve_point_drag_if(|p| p == editor)
+            .expect("drag stashed");
         assert_eq!((p, ch, idx), (editor, 1, 2));
         assert!((x - 0.5).abs() < 1e-5, "x = {x}");
         assert!((y - 0.75).abs() < 1e-5, "y = {y}");
         // Drained once.
-        assert!(store.take_curve_point_drag().is_none());
+        assert!(store.take_curve_point_drag_if(|p| p == editor).is_none());
     }
 
     #[test]
@@ -96,7 +98,7 @@ mod tests {
         );
         // Far below-right of the canvas → clamps to x=1, y=0.
         apply_curve_point_drag(&mut store, handle, 999.0, 999.0).expect("CurvePoint");
-        let (_, _, _, x, y) = store.take_curve_point_drag().unwrap();
+        let (_, _, _, x, y) = store.take_curve_point_drag_if(|p| p == editor).unwrap();
         assert_eq!((x, y), (1.0, 0.0));
         // A non-CurvePoint id is a no-op.
         store.register(NodeId(202), InteractiveState::Plain);

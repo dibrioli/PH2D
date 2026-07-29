@@ -44,7 +44,7 @@ fn curve_point_down_then_move_drags() {
         store.active_rect().is_some(),
         "Down must set active_rect — the Move-drag gate depends on it"
     );
-    let _ = store.take_curve_point_drag(); // drain the Down's stash
+    let _ = store.take_curve_point_drag_if(|p| p == editor); // drain the Down's stash
 
     // Move to canvas mid-x / top quarter → the drag MUST fire (x=0.5, y=0.75).
     let _ = dispatch_pointer(
@@ -53,7 +53,7 @@ fn curve_point_down_then_move_drags() {
         pointer(PointerKind::Move, 110.0, 45.0),
         &arena,
     );
-    let drag = store.take_curve_point_drag();
+    let drag = store.take_curve_point_drag_if(|p| p == editor);
     assert!(
         drag.is_some(),
         "Move must drag the active CurvePoint (regression: was None without active_rect)"

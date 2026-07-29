@@ -7219,3 +7219,72 @@ corpos) — a wave não alcança o solver.
 graça (não medido, não gateado) · o eyedropper de **corda** (re-escolher a corda de
 uma roldana; hoje só na criação) · a **Weston** (topologia, 2ª restrição por corda —
 não é afinação).
+
+---
+
+## W-DrivenSheave — a cadernal dirigida por curva é um guincho de vantagem 2 (2026-07-29, sem cena nova)
+
+O item que o plano trazia como *"não medido, não gateado"*, e medir **corrigiu a
+nota**.
+
+### A conclusão estava certa; o MECANISMO citado, errado
+
+A nota dizia *"uma roldana montada num corpo KINEMATIC vira um guincho de graça (o
+`end` não zera a velocidade do ponto, só a massa)"*. A 1ª metade é verdade; a
+segunda descreve a **PONTA** da corda — o caso que `pulley.rs` já gateia duas vezes
+(1:1, atraso < 2 mm) —, não um eixo montado.
+
+**E a vantagem não é 1, é 2:** uma cadernal móvel de enlace 180° muda a rota por
+`2d` quando o eixo anda `d`.
+
+| `d` | cadernal MÓVEL | a PONTA (controle) | razão |
+|---|---|---|---|
+| 0,20 | 1,907 | 0,952 | **2,003** |
+| 0,50 | 1,917 | 0,958 | **2,001** |
+| 1,00 | 1,928 | 0,964 | **2,000** |
+
+⚠️ **Os dois absolutos são `cos θ` da perna** — a perna mede `(0,9; 2,8)`, cuja
+componente vertical é `2,8/2,941 = 0,952`, **exatamente** o controle. Não é atraso
+de solver: é geometria. Por isso o oráculo do gate é a **RAZÃO entre os dois rigs**,
+que cancela o ângulo e deixa só a vantagem mecânica; cravar `1,907` pinaria o ângulo
+da fixture junto com a física.
+
+Pedágio de velocidade, no MESMO percurso de 0,5 m: **1,913** quase-estático (600
+tiques) · 1,903 · 1,890 · 1,836 · **1,756** a 2,0 m/s.
+
+### As duas mutações são o que corrigiu a nota
+
+| mutação | cadernal | controle |
+|---|---|---|
+| baseline | 1,907 | 0,952 |
+| zerar `v` de corpo não-dinâmico no `end` | **1,881 — SOBREVIVE** | 0,939 (cai junto ⇒ razão 2) |
+| `refresh_mounts` não carrega o eixo | **0,012** | 0,952 (intocado) |
+
+**Quem iça é a GEOMETRIA:** o eixo andando na arena faz a rota crescer e o termo
+posicional cobra. O `v` é um refino da TAXA (~1,4% do alcance), não a causa — e a
+frase foi corrigida no `end`, onde ela mora.
+
+### Gates
+
+`crates/ph2d-physics/tests/pulley_kinematic_sheave.rs` (irmão de `pulley.rs`, que
+está em 682/700): a razão 2 em três percursos, **com o controle asserido primeiro**
+(sem ele a razão não pode falhar pelo motivo que alega), e *a carga não move a
+cadernal dirigida* (0,000000 m — `inv_m = 0` para não-dinâmico).
+
+⚠️ **Sem cena nova, e é decisão:** a 61 já é a talha e ensina a vantagem 2 com o
+bloco DINÂMICO; a versão dirigida por curva é a mesma física com a timeline no lugar
+da gravidade, e uma cena a mais repetiria a lição cobrando um smoke. A capacidade
+está gateada e nomeada.
+
+⚠️ **Erro de processo, registrado:** o backup do `cp` de mutação saiu de um arquivo
+**já mutado** (a 1ª tentativa do comando abortou por parse error *depois* de o
+python rodar), então o restore reinstalou a mutação e a 2ª mutação foi medida **com
+a 1ª em pé**. Os números foram refeitos numa árvore verificada por `git diff --stat`
+vazio. *Um backup de mutação vale o que vale a árvore de onde saiu: confira-a antes,
+e confira o `git diff` depois de restaurar.*
+
+**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
+
+**Aberto na W-Pulley agora:** o eyedropper de **corda** (re-escolher a corda de uma
+roldana; hoje só na criação) · a **Weston** (topologia, 2ª restrição por corda — não
+é afinação).

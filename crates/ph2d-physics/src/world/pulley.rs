@@ -478,6 +478,18 @@ fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Optio
     // feature: um corpo **kinematic** é massa infinita (a corda não o move) mas
     // TEM movimento próprio, então uma bobina animada por curva vira um guincho
     // de graça.
+    //
+    // ⚠️ **E essa frase vale para a PONTA da corda, não para um eixo MONTADO** —
+    // a distinção foi medida em 2026-07-29 (`measure_pulley_kinematic_sheave`),
+    // porque o plano a estendia a *"uma roldana montada num corpo kinematic vira
+    // um guincho de graça (o `end` não zera a velocidade do ponto, só a massa)"*.
+    // A conclusão é certa e o mecanismo citado, não: **zerar `v` aqui não para o
+    // içamento** de uma cadernal dirigida (razão 1,907 → 1,881, e o controle cai
+    // junto ⇒ a vantagem fica 2), enquanto **neutralizar o `refresh_mounts` o
+    // mata** (1,907 → 0,012, com o controle intocado em 0,952). Quem iça uma
+    // cadernal montada é a GEOMETRIA — o eixo andando na arena faz a rota crescer,
+    // e o termo posicional cobra. Este `v` é um refino da TAXA (o guincho
+    // *antecipado* do gate irmão), ~1,4% do alcance, não a causa.
     let (inv_m, inv_i) = if body.is_dynamic() {
         let mp = body.mass_properties();
         (

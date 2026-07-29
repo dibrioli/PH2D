@@ -1174,5 +1174,37 @@ tique e reintroduz o atraso do sub-passo (0,0227 m).
   > custa isso: *uma lista de pendências velha não é ruído — ela faz a próxima LLM
   > propor construir o que existe.* O antídoto usado aqui: **rodar os gates do
   > assunto antes de acreditar na lista.**
-- **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end`
-  não zera a velocidade do ponto, só a massa) — não medido, não gateado.
+- ~~**Uma roldana montada num corpo KINEMATIC vira um guincho de graça**~~ —
+  **MEDIDO E GATEADO** (2026-07-29). A conclusão estava certa e **o mecanismo
+  citado, errado**: a nota dizia *"o `end` não zera a velocidade do ponto, só a
+  massa"*, e essa frase descreve a **PONTA** da corda (o caso que `pulley.rs` já
+  gateia 1:1), não um eixo montado.
+
+  **A vantagem medida é 2, não 1** (`measure_pulley_kinematic_sheave`), porque uma
+  cadernal móvel de enlace 180° muda a rota por `2d` quando o eixo anda `d`:
+
+  | `d` | cadernal MÓVEL | a PONTA (controle) | razão |
+  |---|---|---|---|
+  | 0,20 | 1,907 | 0,952 | **2,003** |
+  | 0,50 | 1,917 | 0,958 | **2,001** |
+  | 1,00 | 1,928 | 0,964 | **2,000** |
+
+  ⚠️ **Os absolutos são `cos θ` da perna** (`2,8/2,941 = 0,952`, exato), então o
+  oráculo do gate é a **RAZÃO entre os dois rigs**: ela cancela o ângulo e deixa só
+  a vantagem mecânica. E a vantagem **paga pedágio de velocidade**, medido no mesmo
+  percurso: 1,913 quase-estático · 1,890 a 0,33 m/s · **1,756 a 2,0 m/s**.
+
+  ⚠️ **As duas mutações corrigiram a nota:** zerar `v` para corpo não-dinâmico no
+  `end` **SOBREVIVE** (1,907 → 1,881, o controle cai junto ⇒ razão ainda 2 — é um
+  refino de ~1,4% da taxa, não a causa); neutralizar o `refresh_mounts` **mata**
+  (1,907 → 0,012, controle intocado em 0,952). **Quem iça é a GEOMETRIA:** o eixo
+  andando na arena faz a rota crescer e o termo posicional cobra. A frase foi
+  corrigida no `end`, onde ela mora.
+
+  ⚠️ **E o erro de processo que isto custou:** o backup do `cp` de mutação foi
+  tirado de um arquivo **já mutado** (a 1ª tentativa do comando abortou por parse
+  error *depois* de o python rodar), então o "restore" reinstalou a mutação e a M2
+  foi medida **com a M1 em pé** — os dois números tiveram de ser refeitos numa
+  árvore verificada por `git diff --stat` vazio. *Um backup de mutação vale o que
+  vale a árvore de onde foi tirado; confira-a antes, e confira o `git diff` depois
+  de restaurar.*

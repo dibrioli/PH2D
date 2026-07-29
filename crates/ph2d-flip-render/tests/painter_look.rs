@@ -1155,6 +1155,120 @@ fn the_new_engines_edge_is_the_area_the_silhouette_covers() {
     );
 }
 
+/// 🔴🔴 **O CONTROLE INEGOCIÁVEL DO §8: `hardness = 1.0` byte-idêntico.**
+///
+/// `DEFAULT_HARDNESS = 1.0` é o default do produto e **todo o acervo já desenhado passa por ele**
+/// — o handoff §8 exige que o traço duro fique byte-idêntico *ou venha a medição que justifique a
+/// diferença*. Este gate compara o motor novo com o que SHIPA, no pior lugar possível: a estrela
+/// de um traço, que **cruza a si mesma cinco vezes** e tem cinco quinas de 36°.
+///
+/// ⚠️ **Aqui a franja NÃO é excluída.** Nos oráculos contra o Painter ela sai porque o depósito
+/// não tem AA nenhum; aqui os DOIS lados têm AA, e a borda é justamente metade do que "idêntico"
+/// significa. É o §11 que tornou esta comparação possível.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn the_new_engine_leaves_the_hard_default_where_the_shipping_engine_put_it() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    for (reto, nome, pts) in [
+        (
+            true,
+            "reto",
+            (0..=24)
+                .map(|k| (8.0 + k as f32 * 2.0, 32.0))
+                .collect::<Vec<_>>(),
+        ),
+        (false, "estrela (5 cruzamentos)", star_path(7.0).0),
+    ] {
+        let r = 7.0_f32;
+        let px = render(&device, &queue, &flip_drawing(&pts, r, 1.0));
+        let got = new_engine_alpha(&pts, r, 1.0, W, H);
+        let ends = [pts[0], pts[pts.len() - 1]];
+        let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        let (mut pior_cap, mut n_cap) = (0i32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let d = (got[i] * 255.0).round() as i32 - i32::from(alpha_at(&px, x, y));
+                let pc = (x as f32 + 0.5, y as f32 + 0.5);
+                // ⚠️ O CAP fica separado, não perdoado: o que shipa desenha ponta REDONDA e o
+                // motor novo ainda não desenha nenhuma, então incluí-lo aqui reportaria o item do
+                // passo 5 com o nome da lei.
+                if ends
+                    .iter()
+                    .any(|e| (pc.0 - e.0).powi(2) + (pc.1 - e.1).powi(2) <= (r + 1.5).powi(2))
+                {
+                    if d.abs() > 8 {
+                        n_cap += 1;
+                    }
+                    if d.abs() > pior_cap.abs() {
+                        pior_cap = d;
+                    }
+                    continue;
+                }
+                if d.abs() > 8 {
+                    n += 1;
+                }
+                if d.abs() > pior.abs() {
+                    pior = d;
+                    onde = (x, y);
+                }
+            }
+        }
+        println!("  {nome:24} corpo {pior:+5} ({n:3} px)   CAP {pior_cap:+5} ({n_cap:3} px)");
+        // Num traço RETO o corpo é BYTE-IDÊNTICO — é ali que "não mexer no acervo" se verifica.
+        if reto {
+            assert!(
+                pior == 0 && n == 0,
+                "reto: em hardness 1 o corpo tem de ser byte-identico ao que shipa -- pior \
+                 {pior:+} em {onde:?}, {n} px fora de 8 (o cap mede {pior_cap:+} em {n_cap} px e \
+                 e' o passo 5)"
+            );
+            continue;
+        }
+        // ⚠️ **Numa figura que CRUZA, eles divergem — e o §8 do handoff prevê exatamente isto:**
+        // *"byte-idêntico, **ou** trazer a medição que justifique a diferença"*. A medição é o
+        // ÁRBITRO: a área que a união dura de fato cobre. Onde os dois discordam por mais de
+        // 8/255, o motor novo tem de estar MAIS PERTO dela — senão a diferença não é melhoria,
+        // é regressão vestida de melhoria.
+        let area = union_area_coverage(&pts, r, W, H);
+        let (mut novo, mut shipa, mut som_n, mut som_s) = (0u32, 0u32, 0i64, 0i64);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let a = (got[i] * 255.0).round() as i32;
+                let sh = i32::from(alpha_at(&px, x, y));
+                let pc = (x as f32 + 0.5, y as f32 + 0.5);
+                let no_cap = ends
+                    .iter()
+                    .any(|e| (pc.0 - e.0).powi(2) + (pc.1 - e.1).powi(2) <= (r + 1.5).powi(2));
+                if (a - sh).abs() <= 8 || no_cap {
+                    continue;
+                }
+                let t = (area[i] * 255.0).round() as i32;
+                som_n += i64::from((a - t).abs());
+                som_s += i64::from((sh - t).abs());
+                if (a - t).abs() < (sh - t).abs() {
+                    novo += 1;
+                } else {
+                    shipa += 1;
+                }
+            }
+        }
+        let (mn, ms) = (
+            som_n as f64 / f64::from((novo + shipa).max(1)),
+            som_s as f64 / f64::from((novo + shipa).max(1)),
+        );
+        println!("  {nome:24} arbitro: NOVO ganha {novo}, SHIPA {shipa} | erro {mn:.1} vs {ms:.1}");
+        assert!(
+            novo >= shipa * 8 && mn * 2.0 < ms,
+            "{nome}: onde os dois discordam o motor novo tem de estar mais perto da AREA -- \
+             NOVO ganha {novo}, SHIPA {shipa}; erro medio NOVO {mn:.1} vs SHIPA {ms:.1}"
+        );
+    }
+}
+
 /// 🔴 **A PONTA CONVEXA: +140/255 → +14.**
 ///
 /// O `the_flip_paints_what_the_painters_digital_brush_deposits` (o gate do motor de hoje) precisa
@@ -1927,5 +2041,139 @@ fn render_the_slow_hand_star() {
         "escrito {}/{tag}.bmp ({} segmentos)",
         dir.display(),
         pts.len() - 1
+    );
+}
+
+/// **SONDA** — uma janela dos dois motores lado a lado, para um desvio nomeado parar de ser teoria.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_two_engines_side_by_side_in_a_window() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let (pts, r) = star_path(7.0);
+    let px = render(&device, &queue, &flip_drawing(&pts, r, 1.0));
+    let got = new_engine_alpha(&pts, r, 1.0, W, H);
+    // ⚠️ O ARBITRO e' a AREA da uniao dura -- comparar os dois motores entre si so' diz que eles
+    // discordam, nunca QUEM esta' errado.
+    let area = union_area_coverage(&pts, r, W, H);
+    println!("\n=== janela em torno de (11,57), hardness 1 ===");
+    println!(
+        "      SHIPA (o que shipa)         |   NOVO                        |   AREA (arbitro)"
+    );
+    for y in 52..62 {
+        let (mut a, mut b, mut c) = (String::new(), String::new(), String::new());
+        for x in 8..18 {
+            a.push_str(&format!("{:4}", alpha_at(&px, x, y)));
+            b.push_str(&format!(
+                "{:4}",
+                (got[(y * W + x) as usize] * 255.0).round() as i32
+            ));
+            c.push_str(&format!(
+                "{:4}",
+                (area[(y * W + x) as usize] * 255.0).round() as i32
+            ));
+        }
+        println!("  y={y:2} |{a}  |{b}  |{c}");
+    }
+}
+
+/// **SONDA** — o ladrilho de um pixel tem o segmento que o cobre?
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_whether_the_tile_holds_the_segment_that_covers_the_pixel() {
+    let (pts, r) = star_path(7.0);
+    let data = pack_drawing(&flip_drawing(&pts, r, 1.0));
+    let sc = ScreenSpace::from_camera(&pixel_camera_sized(W, H));
+    let bins = bin_segments(&data, &sc, DEFAULT_TILE);
+    println!("\n=== o ladrilho tem o segmento que cobre? ===");
+    println!("  pixel(mundo)   tile   n_segs   min(d-r) NA LISTA   min(d-r) EM TUDO");
+    for (x, y) in [(11u32, 57u32), (12, 58), (12, 57), (11, 54)] {
+        let p = sc.point_px([x as f32 + 0.5, y as f32 + 0.5]);
+        let ti = bins.tile_of_pixel(p[0], p[1]).expect("tile");
+        let lista = bins.segs_of(ti);
+        let sd_de = |segs: &[ph2d_flip_render::BinSeg]| -> f32 {
+            let mut best = f32::MAX;
+            for s in segs {
+                let (pa, pb) = (data.points[s.a as usize], data.points[s.b as usize]);
+                let (sa, sb) = (sc.point_px(pa.pos), sc.point_px(pb.pos));
+                let (vx, vy) = (sb[0] - sa[0], sb[1] - sa[1]);
+                let l2 = vx * vx + vy * vy;
+                let t = if l2 <= 1e-12 {
+                    0.0
+                } else {
+                    (((p[0] - sa[0]) * vx + (p[1] - sa[1]) * vy) / l2).clamp(0.0, 1.0)
+                };
+                let (dx, dy) = (p[0] - (sa[0] + vx * t), p[1] - (sa[1] + vy * t));
+                let rr = sc.radius_px(pa.width) * (1.0 - t) + sc.radius_px(pb.width) * t;
+                best = best.min((dx * dx + dy * dy).sqrt() - rr);
+            }
+            best
+        };
+        let todos: Vec<ph2d_flip_render::BinSeg> = bins.segs.clone();
+        println!(
+            "  ({x:2},{y:2})        {ti:3}   {:6}   {:17.3}   {:17.3}",
+            lista.len(),
+            sd_de(lista),
+            sd_de(&todos)
+        );
+    }
+}
+
+/// **SONDA** — onde os dois motores discordam, QUEM está mais perto da área?
+///
+/// Comparar dois motores entre si só diz que eles discordam. O árbitro é a **área da união dura**,
+/// que em `hardness = 1` é o que a tinta de fato cobre.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_who_is_closer_to_the_truth_where_the_engines_disagree() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let (pts, r) = star_path(7.0);
+    let px = render(&device, &queue, &flip_drawing(&pts, r, 1.0));
+    let got = new_engine_alpha(&pts, r, 1.0, W, H);
+    let area = union_area_coverage(&pts, r, W, H);
+    let ends = [pts[0], pts[pts.len() - 1]];
+    let (mut novo_ganha, mut shipa_ganha, mut empate) = (0u32, 0u32, 0u32);
+    let (mut som_novo, mut som_shipa) = (0i64, 0i64);
+    let (mut cap_px, mut corpo_px) = (0u32, 0u32);
+    for y in 0..H {
+        for x in 0..W {
+            let i = (y * W + x) as usize;
+            let a = (got[i] * 255.0).round() as i32;
+            let s = i32::from(alpha_at(&px, x, y));
+            if (a - s).abs() <= 8 {
+                continue;
+            }
+            let pc = (x as f32 + 0.5, y as f32 + 0.5);
+            if ends
+                .iter()
+                .any(|e| (pc.0 - e.0).powi(2) + (pc.1 - e.1).powi(2) <= (r + 1.5).powi(2))
+            {
+                cap_px += 1;
+                continue;
+            }
+            corpo_px += 1;
+            let t = (area[i] * 255.0).round() as i32;
+            let (en, es) = ((a - t).abs(), (s - t).abs());
+            som_novo += i64::from(en);
+            som_shipa += i64::from(es);
+            match en.cmp(&es) {
+                std::cmp::Ordering::Less => novo_ganha += 1,
+                std::cmp::Ordering::Greater => shipa_ganha += 1,
+                std::cmp::Ordering::Equal => empate += 1,
+            }
+        }
+    }
+    println!("\n=== ONDE OS DOIS DISCORDAM (>8/255), quem esta' mais perto da AREA? ===");
+    println!("  pixels no corpo: {corpo_px}   (no cap, excluidos: {cap_px})");
+    println!(
+        "  NOVO mais perto: {novo_ganha}   SHIPA mais perto: {shipa_ganha}   empate: {empate}"
+    );
+    println!(
+        "  erro MEDIO contra a area -- NOVO {:.1}/255   SHIPA {:.1}/255",
+        som_novo as f64 / f64::from(corpo_px.max(1)),
+        som_shipa as f64 / f64::from(corpo_px.max(1))
     );
 }

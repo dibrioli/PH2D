@@ -349,15 +349,27 @@ fn stroke_deposit(
     // serem duas leis. Empurrar o ponto para logo dentro da silhueta reproduz os DOIS regimes
     // com um mecanismo só: em dureza 1 o perfil ali é 1 (⇒ a máscara vira o `edge`, como no
     // shader) e num pincel macio ele já é ~0 (⇒ a máscara continua ~0, como no shader).
-    // ⚠️ **Meio pixel, e o número TEM significado:** é a meia-largura do próprio filtro-caixa —
-    // a média que ele quer é a do perfil na metade INTERNA do pixel. Varrido, `0,25 · 0,5 · 0,75 ·
-    // 1,0` dão o mesmo (−9/255 contra a área) porque em dureza 1 o perfil é chapado; o que NÃO
-    // funciona é empurrar de leve: com `1e-3` a corda amostrada fica quase tangente (meio
-    // comprimento `√(2rε)` ≈ 0,12 px contra um passo de quadratura de 0,35) e a integral **não
-    // pega amostra nenhuma** — medido, −98/255. O valor não foi afinado até passar; ele é o que
-    // a geometria do filtro pede, e a varredura só confirmou que a vizinhança concorda.
-    let p_eval = if sd > 0.0 && dist > 1e-6 {
-        let f = (sd + 0.5) / dist;
+    // ⚠️ **A faixa é `sd > −0,5`, não `sd > 0`, e a diferença foi MEDIDA:** dentro da silhueta,
+    // mas a menos de meio pixel dela, o arco que o disco cobre fica **mais curto que meio passo de
+    // quadratura** e a única amostra cai FORA do disco ⇒ `τ = 0` num pixel genuinamente coberto.
+    // Medido na estrela em dureza 1: `(11, 57)` tem `sd = −0,132` (dentro), a área diz **169/255**
+    // e o motor devolvia **0** — dois pixels do tip inteiros perdidos, com o binning inocente (a
+    // lista do ladrilho tinha o segmento certo). É o mesmo modo de falha da corda quase tangente,
+    // do outro lado do zero, e a mesma regra o cobre.
+    //
+    // ⚠️ **A profundidade é DERIVADA, não varrida.** O que o filtro-caixa quer é a média do perfil
+    // sobre o pixel: `C = ∫_{−½}^{½} P(sd + v) dv`. Com o pixel atravessando a silhueta, a parte
+    // COBERTA é `v ∈ [sd − ½, 0]` — comprimento `½ − sd`, que **é** o `edge` — e o seu ponto médio
+    // está em `u* = (sd − ½)/2`. Logo `C ≈ edge · P(u*)`, e o empurrão é `sd − u* = (sd + ½)/2`.
+    // A fórmula acerta os dois regimes por construção: com o perfil CHAPADO (dureza 1) `P(u*) = 1`
+    // e a máscara vira o `edge`; com o perfil suave ela vira a média certa.
+    //
+    // ⚠️ **Empurrar meio pixel INTEIRO era o dobro disto, e a medição pegou:** num pincel macio o
+    // perfil em `u = −½` é bem maior que a média, e o gate contra o perfil que shipa acusou
+    // **24,19/255 em `dn = 0,98`** com dureza 0,8 (e o desvio crescendo com a dureza — a
+    // assinatura de um perfil íngreme amostrado fundo demais).
+    let p_eval = if sd > -0.5 && dist > 1e-6 {
+        let f = (sd + 0.5) * 0.5 / dist;
         [p[0] + (near[0] - p[0]) * f, p[1] + (near[1] - p[1]) * f]
     } else {
         p

@@ -349,7 +349,16 @@ fn the_new_engine_reproduces_the_shipping_profile_on_a_straight_stroke() {
         let (mut worst, mut worst_at) = (0.0_f32, 0.0_f32);
         // Corta perpendicular no meio do traço, longe das pontas (que estão fora da tela).
         for k in 0..=40 {
-            let dn = k as f32 / 40.0 * 0.98; // até 0,98: a borda exata é o AA, outra pergunta
+            // ⚠️ **Até a fronteira da FAIXA de AA, e ela é derivada do raio.** Este gate mede a
+            // LEI; a borda é convenção e tem oráculo próprio (a ÁREA, em `painter_look`). A faixa
+            // onde o AA age é `sd > −½ px`, ou seja `dn > 1 − 0,5/r` — aqui `1 − 0,5/12 = 0,958`.
+            // O `0,98` que estava aqui foi escrito quando o motor **não tinha AA nenhum**, e a
+            // própria linha já dizia *"a borda exata é o AA, outra pergunta"*: a intenção estava
+            // certa e o número envelheceu junto com o motor. Dentro da faixa as duas fórmulas
+            // divergem por construção — a nossa é a MÉDIA de caixa, a do shader é `P(centro)·edge`
+            // — e a diferença cresce com a dureza (medido: 8,62/255 em `dn = 0,98`, dureza 0,8).
+            let dn_max = 1.0 - 0.5 / r;
+            let dn = k as f32 / 40.0 * dn_max;
             let p = [w * 0.5, h * 0.5 + dn * r];
             let got = ph2d_flip_render::walk_pixel(&bins, &g, &sc, p)[3];
             let want = painter_deposited(dn, hardness);

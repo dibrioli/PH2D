@@ -809,19 +809,97 @@ não é tocado). Líquido: frame de 200 gestos **1594 → 1811 ms (+14%)**, pixe
 
 ---
 
-## 12. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+## 12. ⭐ O CONTROLE DO §8 E A AUDITORIA DA SUPERFÍCIE
+
+### 12.1 `hardness = 1.0` — byte-idêntico no corpo, e MELHOR no cruzamento
+
+O §8 do handoff exige que o traço duro fique byte-idêntico **ou venha a medição que justifique a
+diferença**. Medido contra o motor que SHIPA, sem excluir a franja (o §11 tornou isso possível):
+
+| figura | corpo | cap |
+|---|---|---|
+| reto | **+0 (0 px)** | −53 (40 px) |
+| estrela, 5 cruzamentos | +127 (178 px) | −71 (14 px) |
+
+⚠️ **O corpo do traço reto é BYTE-IDÊNTICO** — é ali que *"não mexer no acervo"* se verifica. Numa
+figura que CRUZA eles divergem, e a diferença foi levada ao **ÁRBITRO** (a área que a união dura de
+fato cobre, super-amostrada):
+
+> **NOVO mais perto em 164 px · SHIPA em 14 · erro médio 8,1/255 contra 30,8.**
+
+O motor novo não reproduz o que shipa: ele é **~4× mais fiel** ao que a tinta cobre. O gate afirma
+essa RELAÇÃO (novo ganha ≥ 8:1 e com metade do erro), não uma barra — uma barra admitiria a
+diferença ser regressão vestida de melhoria. **O veredito visual continua sendo do Enio.**
+
+⚠️ **O CAP é o que sobra, e agora tem número no regime do controle:** −53/255 em 40 px num traço
+reto. Ele é o passo 5.
+
+### 12.2 ⚠️ E o controle achou um BUG do motor novo — a quadratura pula a lasca
+
+`(11, 57)` da estrela: `sd = −0,132` (**dentro** da silhueta), a área diz **169/255** e o motor
+devolvia **0**. O binning estava inocente (a lista do ladrilho tinha o segmento certo, verificado).
+A causa é a quadratura: junto da silhueta o arco que o disco cobre fica **mais curto que meio passo
+de amostragem**, a única amostra cai fora do disco e `τ = 0` num pixel genuinamente coberto — o
+mesmo modo de falha da corda quase tangente do §11.2, do outro lado do zero.
+
+A cura é a MESMA regra com o domínio certo (`sd > −½` em vez de `sd > 0`), e depois dela o motor
+novo dá **161** onde a área diz 169 e o que shipa dá 152.
+
+### 12.3 ⚠️ E aí a profundidade do empurrão teve de ser DERIVADA, não varrida
+
+Empurrar meio pixel inteiro **super-estima um perfil suave**: o gate do passo 3 acusou
+**24,19/255 em `dn = 0,98`** com dureza 0,8, e o desvio crescendo com a dureza — a assinatura de um
+perfil íngreme amostrado fundo demais. A conta que resolve:
+
+```text
+  C = ∫_{−½}^{½} P(sd + v) dv ;  a parte COBERTA é v ∈ [sd − ½, 0]
+  comprimento = ½ − sd = edge   ·   ponto médio u* = (sd − ½)/2
+  ⇒ C ≈ edge · P(u*)   ⇒   empurrão = sd − u* = (sd + ½)/2      ← METADE do que eu tinha
+```
+
+Acerta os dois regimes **por construção**: perfil chapado ⇒ `P(u*) = 1` e a máscara vira o `edge`;
+perfil suave ⇒ vira a média certa. 24,19 → **8,62**, e o resíduo que sobra é estrutural (dentro da
+faixa de AA a nossa fórmula é a média de caixa e a do shader é `P(centro)·edge` — **elas discordam
+de propósito**, e a média é a certa).
+
+⚠️ **Isso mudou o escopo de um gate, e a razão estava escrita nele desde o passo 3:** o
+`the_new_engine_reproduces_the_shipping_profile_on_a_straight_stroke` amostrava até `dn = 0,98` com
+o comentário *"a borda exata é o AA, outra pergunta"* — a intenção certa, e um número escolhido
+quando o motor **não tinha AA nenhum**. Agora a fronteira é **derivada do raio** (`dn ≤ 1 − ½/r`).
+
+### 12.4 A superfície do §8, item a item
+
+| item | veredito | evidência |
+|---|---|---|
+| posição · largura · opacidade · cor | ✅ | a integral carrega os quatro; largura em MUNDO |
+| `closed` | ✅ | `a_closed_stroke_gets_its_seam_binned` |
+| `hardness` | ✅ | §9.2 · §12.1 · o gate de perfil do passo 3 |
+| `self_overlap` **OFF** (o default) | ✅ | `opacity_scales_the_ink_and_never_darkens_the_crossing` — a opacidade entra na COR, nunca no `f`, e é isso que preserva a regra do GP |
+| `self_overlap` **ON** | 🔧 uma linha | é a opacidade entrar no `f`; a lei já é uma soma, então acumular é o caso natural |
+| `airbrush` | 🔧 mecânico | outro perfil de dab dentro do MESMO `f_of`; a lei (soma) não muda |
+| `tip` Dots/Squares + `dot_spacing` | 🔧 mecânico | dabs discretos são `τ = Σ f(d_k)` **sem** o peso de arco — já é a forma da lei |
+| `cap` Flat/Round | ⛔ **passo 5** | medido: −53/255 em 40 px (§12.1). ⚠️ com a restrição do §9.5: **invariante à partição** |
+| `material` · `fill`+`holes` · `hide_stroke` · `selected` | ✅ fora do rasterizador | `fill.rs`/`composite.rs` não são tocados |
+| multiplano · ghost tint · overlay do colorize · dobra do preview | ✅ fora do rasterizador | vivem no `flip_pass.rs`/pipeline |
+| fade sub-pixel | 🔧 mecânico | multiplica a cobertura, como no shader |
+
+**Sobra UM item de projeto** (o cap) e quatro mecânicos. Nada na superfície do §8 pede outra
+arquitetura.
+
+---
+
+## 13. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
 
 1. ~~**ANTI-ALIASING**~~ — **FECHADO no §11.**
-2. **As features do §8 do handoff**, cada uma com a pergunta *"isto sobrevive à troca de lei?"* —
-   airbrush · self-overlap (que provavelmente **desaparece**: ele existe para forçar acúmulo que
-   agora é automático) · tip pontilhado · pressão · multiplano.
-3. **O cap da ponta** (§9.3), com a restrição que a mutação D descobriu: tem de ser **invariante à
-   partição do caminho**.
+2. ~~**As features do §8**~~ — **AUDITADAS no §12.4**: um item de projeto (o cap) e quatro
+   mecânicos; nada pede outra arquitetura.
+3. **O cap da ponta** (§9.3 · §12.1), com a restrição que a mutação D descobriu: tem de ser
+   **invariante à partição do caminho**. É o único item de projeto que sobra.
 4. **O port para compute**, que é o único lugar onde o custo do §10 vira um número de produto.
 
 ---
 
-## 13. Fontes
+## 14. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

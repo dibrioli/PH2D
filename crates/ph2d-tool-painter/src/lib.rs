@@ -29,6 +29,7 @@ pub mod params;
 mod plane_copy;
 pub mod tool;
 pub mod undo;
+pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_PROFILE)
 /// Como um passo do histórico é GUARDADO — a janela em vez do documento (U1 do plano 26).
 mod undo_delta;
 /// A LISTA dos planos que o delta cobre — o irmão de `undo_delta` (o motor).

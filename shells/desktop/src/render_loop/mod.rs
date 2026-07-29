@@ -6436,14 +6436,23 @@ impl crate::App {
                     &FRAME_PROF_STAMP_MAX_US,
                     &FRAME_PROF_STAMP_N,
                 );
+                // E o SPLIT do tick da água: um pico no `tool-tick` não diz se foi um passo de
+                // sim caro ou um composite sobre um casco grande, e as curas são outras.
+                let ((sim_sum, sim_max, sim_n), (comp_sum, comp_max, comp_n)) =
+                    ph2d_tool_painter::wet_diag::take_window();
+                let per = |sum: f64, n: u64| if n > 0 { sum / n as f64 } else { 0.0 };
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
                      | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
                      | hero-paint={hero_ms:.2}ms\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
-                     | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120",
+                     | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120\n\
+                     [frame]   agua: sim media {:.2}ms pico {sim_max:.2}ms x{sim_n} \
+                     | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n}",
                     1000.0 / f64::from(total).max(0.001),
                     (f64::from(total) - f64::from(encode)).max(0.0),
+                    per(sim_sum, sim_n),
+                    per(comp_sum, comp_n),
                 );
             }
         }

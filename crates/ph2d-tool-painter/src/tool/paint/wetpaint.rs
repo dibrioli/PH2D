@@ -89,7 +89,20 @@ const WET_STEP_S: f32 = 1.0 / 40.0;
 /// ⚠️ **O trade é deliberado e tem precedente no repo:** sob carga a água passa a simular MENOS tempo
 /// (câmera lenta) em vez de derrubar o frame. É exatamente a política do `max_substeps` da física, cujo
 /// `warn: dropped Xs of sim time` aparece no mesmo log — ela se protege assim, e a água não se protegia.
-const WET_MAX_STEPS: usize = 2;
+///
+/// # ⚠️ E por que ele virou **1** (2026-07-29)
+///
+/// A análise acima é de quando a contagem era o ÚNICO teto. Com o orçamento de tempo
+/// ([`budget::SimBudget`]) racionando os milissegundos, um cap de 2 não protege mais nada — ele só
+/// permite **empilhar dois passos baratos num tick só**, e o smoke do Enio mostrou o preço:
+/// `tool-tick: media 5,70 ms pico 54,95` com a água sozinha (`stamps: 0/120`). Um pico de 55-71 ms é
+/// uma travada visível.
+///
+/// E a conta diz que 1 basta: a sim é 40 Hz e o display 60, então o regime pede **0,67 passo por
+/// frame** — com `acc` crescendo 16,6 ms/frame e um passo consumindo 25, sai um passo a cada 1,5
+/// frames, que é **exatamente a taxa nominal**. O cap de 2 só chegava a morder com `dt > 50 ms`, e
+/// nesse regime empilhar passos é o que produz a travada em vez de curá-la.
+const WET_MAX_STEPS: usize = 1;
 
 /// **O ORÇAMENTO DE TEMPO da simulação, por frame, em milissegundos** — e ele existe porque
 /// [`WET_MAX_STEPS`] é um cap de **CONTAGEM**, que é a forma de teto que este repo já descobriu ser um
@@ -615,13 +628,19 @@ impl PainterTool {
                 // custo estimado erraria, e o erro se acumularia no bucket.
                 let t0 = std::time::Instant::now();
                 sess.engine.step_simulation();
-                sess.budget.spend(t0.elapsed().as_secs_f32() * 1e3);
+                let spent = t0.elapsed().as_secs_f32() * 1e3;
+                sess.budget.spend(spent);
+                crate::wet_diag::note_step(spent);
             }
         }
         // Clamp semantics: a stall never owes a burst of catch-up steps.
         sess.acc = sess.acc.min(WET_STEP_S);
         if steps > 0 {
+            let t_comp = std::time::Instant::now();
             self.wetpaint_composite();
+            // Diagnóstico (`PH2D_FLUID_PROFILE`): a metade COMPOSITE do tick. Sem o split, um pico
+            // de 71 ms no `tool-tick` não diz se foi um passo caro ou um composite de casco.
+            crate::wet_diag::note_composite(t_comp.elapsed().as_secs_f32() * 1e3);
         }
         // A conta da ÁGUA neste frame é o tick INTEIRO — passos E composite. É ela que a
         // atribuição do orçamento usa para decidir de quem é a culpa de um frame lento.

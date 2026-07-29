@@ -80,6 +80,7 @@ fn the_field_pass_is_linear_in_the_segment_count_and_the_cap_fits_a_frame() {
         noise_scale_px: 0.0,
         detail: 1,
         seed: 0,
+        grow_px: 0.0,
     };
     let time = |pass: &mut FxStackPass, segs: &[[f32; 4]]| -> f64 {
         // Aquece (compila pipelines, aloca) e só então mede — e o readback força o fim do trabalho,

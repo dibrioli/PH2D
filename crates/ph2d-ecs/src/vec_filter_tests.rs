@@ -1,6 +1,8 @@
 //! Gates do [`super`] — irmão por `#[path]`, e portanto FILHO: `use super::*` alcança os
 //! privados, e o `vec_filter.rs` volta para debaixo do teto de 700 LOC.
 use super::*;
+// O vocabulário dos MODOS mora no catálogo, que é quem o consome (a `SPECS`).
+use crate::vec_filter_kinds::FALLOFF_MODES;
 
 fn stack(kinds: &[u8]) -> VecFilter {
     VecFilter {

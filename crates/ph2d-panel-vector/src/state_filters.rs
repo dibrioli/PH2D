@@ -41,6 +41,9 @@ pub const FILTER_DETAIL_MAX: f64 = 6.0; // LITERAL-PX-OK: contagem de oitavas, e
 /// Quantas realizações o slider de **Seed** oferece — a faixa do `u8` que as guarda. Não é um teto
 /// escolhido: é a REPRESENTAÇÃO.
 pub(crate) const FILTER_SEED_MAX: f64 = 255.0; // LITERAL-PX-OK: a faixa do u8 que guarda a semente
+/// Faixa BIPOLAR do slider de **Amount** do Grow / Shrink (mundo), `0.5` = zero. A mesma régua do
+/// raio nos dois sentidos: é a mesma grandeza (um comprimento no documento).
+pub(crate) const FILTER_GROW_MAX: f64 = 2.0;
 
 /// **O que um tipo de degrau é**, como o painel precisa de saber. Espelha o `ph2d_ecs::FxKindSpec`
 /// — o painel **não alcança** o `ph2d-ecs` (vive de snapshots), e é a shell que traduz na
@@ -69,6 +72,9 @@ pub struct FilterKindView {
     /// não lê campo nenhum. Espelha o `ph2d_ecs::FxKindSpec::noise_labels`, e é UM campo para os
     /// três porque eles não existem em separado: descrevem *qual ruído*, em três tempos.
     pub noise_labels: Option<(&'static str, &'static str, &'static str)>,
+    /// O rótulo do CRESCIMENTO, ou `None` se este tipo não engorda nem afina nada. Espelha o
+    /// `ph2d_ecs::FxKindSpec::grow_label`.
+    pub grow_label: Option<&'static str>,
 }
 
 /// Um degrau da pilha, como o painel o desenha. Espelha o `ph2d_ecs::FxOp` — o painel **não
@@ -102,6 +108,8 @@ pub struct FilterRowView {
     pub detail: u8,
     /// Qual realização do ruído.
     pub seed: u8,
+    /// Quanto a silhueta engorda (mundo), **com sinal**.
+    pub grow: f64,
 }
 
 thread_local! {

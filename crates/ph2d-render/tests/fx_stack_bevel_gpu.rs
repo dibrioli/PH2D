@@ -46,6 +46,7 @@ fn beveled(gpu: &ph2d_gpu::GpuContext, geom: &[[f32; 4]]) -> Vec<u8> {
             noise_scale_px: 0.0,
             detail: 1,
             seed: 0,
+            grow_px: 0.0,
         }],
         geom,
     );

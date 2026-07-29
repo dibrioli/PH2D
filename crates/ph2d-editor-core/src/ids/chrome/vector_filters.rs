@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 10;
+pub const MAX_FILTER_KINDS: usize = 11;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
@@ -209,4 +209,20 @@ pub fn filter_seed_id(row: usize) -> NodeId {
 #[must_use]
 pub fn filter_seed_num_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.seed.{row}.num"))
+}
+
+/// **Amount** da linha `row` — quanto a silhueta ENGORDA, **com sinal** (o Grow / Shrink).
+///
+/// ⚠️ Id próprio, e não o do raio: a régua deste slider é BIPOLAR (`0,5` no meio = zero), e o mapa
+/// track→valor é registado por LINHA, não por tipo. Uma linha muda de tipo em runtime, então
+/// emprestar a régua do raio faria o Blur ler metade da faixa dele como negativa.
+#[must_use]
+pub fn filter_grow_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.grow.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_grow_id`].
+#[must_use]
+pub fn filter_grow_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.grow.{row}.num"))
 }

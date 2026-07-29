@@ -156,11 +156,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// POSICIONAL, então um save v37 lido como v38 leria `blend` além do fim de cada degrau.
 /// ⚠️ Não há como evitar o bump com `serde(default)`: o postcard não tem NOMES de campo, e um
 /// buffer que acaba cedo é erro de decode, não um default.
-/// ⚠️ **E o 38 carrega TAMBÉM a turbulência (plano 24 W6b), de propósito:** o mesmo `FxOp` ganhou
-/// `scale`/`detail`/`seed` (o campo de ruído que deforma a imagem) na MESMA janela, e um save v37
-/// já é recusado pelo 38 — pôr a segunda leva num 39 jogaria fora exatamente os mesmos arquivos e
-/// custaria mais um degrau para ninguém. **Uma linha, um bump**; o que não pode acontecer é o
-/// número não subir.
+/// ⚠️ **E o 38 carrega TAMBÉM a turbulência (plano 24 W6b) e o Grow / Shrink (W7), de propósito:**
+/// o mesmo `FxOp` ganhou `scale`/`detail`/`seed` (o campo de ruído que deforma a imagem) e depois
+/// `grow` (quanto a silhueta engorda, com sinal) na MESMA janela, e um save v37 já é recusado pelo
+/// 38 — pôr cada leva num número próprio jogaria fora exatamente os mesmos arquivos e custaria mais
+/// dois degraus para ninguém. **Uma linha, um bump**; o que não pode acontecer é o número não subir.
 /// ⚠️ O valor se CONTA a partir do `main` do dia — a `line/physics` e a `line/FLIP` já colidiram
 /// DUAS vezes nesta escada (o 30 de 25/07 e o 32 de 27/07). Se a integração encontrar outro dono
 /// para o 38, este é o que anda ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).

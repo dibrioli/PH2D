@@ -78,6 +78,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::fx_turbulence_smoke::frame(app, f);
         return true;
     }
+    // GROW / SHRINK (=36, plano 24 W7) — a mesma família: quatro pares, uma coisa de diferença.
+    if level == 36 {
+        crate::fx_morphology_smoke::frame(app, f);
+        return true;
+    }
     if matches!(level, 13 | 14) {
         crate::fx_smoke::frame(app, f, level);
         return true;

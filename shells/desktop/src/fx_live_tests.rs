@@ -250,3 +250,36 @@ fn hit_of_decodes_the_three_noise_knobs() {
         }
     }
 }
+
+/// **O crescimento atravessa a câmera COM O SINAL.** Ele é um comprimento de MUNDO como o raio, e
+/// o zoom o converte em pixels — mas ao contrário do raio ele pode ser negativo, e é o sinal que
+/// diz se a silhueta engorda ou afina. Um `max(0.0)` no caminho (a forma como todo outro
+/// comprimento desta pilha é resolvido) apagaria metade da operação em silêncio.
+#[test]
+fn the_grow_crosses_the_camera_with_its_sign() {
+    let mut o = op(FxOp::MORPHOLOGY, 0.0);
+    for world in [-0.5_f32, -0.06, 0.0, 0.06, 0.5] {
+        o.grow = world;
+        let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::scale(3.0));
+        let want = world * 3.0;
+        assert!(
+            (got[0].grow_px - want).abs() < 1e-4,
+            "grow {world} sob zoom 3 devia chegar como {want}, chegou {}",
+            got[0].grow_px
+        );
+    }
+}
+
+/// **O decodificador conhece o Amount do Grow / Shrink.** Um id que ele não decodifica é um arrasto
+/// que a ponte descarta em silêncio — o slider anda e o documento não.
+#[test]
+fn hit_of_decodes_the_grow_knob() {
+    use crate::fx_live::{FilterHit, hit_of};
+    for r in 0..ph2d_editor::ids::MAX_FILTER_ROWS {
+        assert_eq!(
+            hit_of(ph2d_editor::ids::filter_grow_id(r)),
+            Some(FilterHit::Grow(r)),
+            "o Amount da linha {r} nao e' decodificado"
+        );
+    }
+}

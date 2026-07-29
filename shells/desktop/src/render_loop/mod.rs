@@ -3501,7 +3501,8 @@ impl crate::App {
                         | FilterHit::Opacity(_)
                         | FilterHit::Scale(_)
                         | FilterHit::Detail(_)
-                        | FilterHit::Seed(_) => {}
+                        | FilterHit::Seed(_)
+                        | FilterHit::Grow(_) => {}
                     }
                 }
                 if let Some((hit, v)) = pending_filter_val {
@@ -3515,7 +3516,8 @@ impl crate::App {
                             | FilterHit::Opacity(r)
                             | FilterHit::Scale(r)
                             | FilterHit::Detail(r)
-                            | FilterHit::Seed(r) => r,
+                            | FilterHit::Seed(r)
+                            | FilterHit::Grow(r) => r,
                             _ => return,
                         };
                         let Some(op) = f.ops.get_mut(row) else { return };
@@ -3534,6 +3536,7 @@ impl crate::App {
                             }
                             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                             FilterHit::Seed(_) => op.seed = x.clamp(0.0, 255.0).round() as u8,
+                            FilterHit::Grow(_) => op.grow = x,
                             _ => {}
                         }
                     });
@@ -4981,6 +4984,7 @@ impl crate::App {
                             modes: s.modes,
                             takes_blend: s.takes_blend,
                             noise_labels: s.noise_labels,
+                            grow_label: s.grow_label,
                         })
                         .collect(),
                 );
@@ -5018,6 +5022,7 @@ impl crate::App {
                                 // o dispositivo de facto soma.
                                 detail: op.detail_clamped(),
                                 seed: op.seed,
+                                grow: f64::from(op.grow),
                             })
                             .collect()
                     })

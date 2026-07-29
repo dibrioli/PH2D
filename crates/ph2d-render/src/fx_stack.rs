@@ -40,12 +40,12 @@
 //! escreve os globals e quem despacha), porque as duas varreduras andam em lockstep sobre a mesma
 //! lista e um `if` duplicado as descasaria em silêncio.
 //!
-//! # Sete tipos, uma tabela
+//! # Uma tabela, e o número de tipos não se escreve aqui
 //!
 //! Os códigos e o que cada tipo É vivem no [`ph2d_ecs::FxOp`] (`SPECS`): o painel lê a tabela para
 //! saber que controles oferecer, este passe lê para saber quanto espalhar e quantos dispatches
-//! gastar, e o **WGSL recebe os códigos GERADOS** ([`kind_consts_wgsl`]) em vez de os repetir do
-//! outro lado da fronteira de linguagem.
+//! gastar, e o **WGSL recebe os códigos GERADOS** ([`kind_consts_wgsl`]). (Este título dizia *"Sete
+//! tipos"* e envelheceu quatro vezes — um número numa prosa é uma cópia que ninguém atualiza.)
 //!
 //! # Os intermediários são `Rgba16Float`, e isso não é luxo
 //!
@@ -57,6 +57,7 @@
 
 use ph2d_gpu::GpuContext;
 
+use crate::fx_stack_field::FIELD_WGSL;
 use crate::fx_stack_noise::{NOISE_WGSL, WARP_WGSL};
 use crate::fx_stack_res::{Globals, Tex, make_tex, write_at};
 use crate::fx_stack_shader::{
@@ -109,20 +110,13 @@ pub struct FxOpGpu {
     pub detail: u8,
     /// Qual realização do ruído.
     pub seed: u8,
+    /// **Quanto a silhueta engorda, em pixels de tela — COM SINAL** (positivo cresce, negativo
+    /// afina, zero não faz nada). Só a morfologia o lê.
+    pub grow_px: f32,
 }
 
 use crate::fx_stack_plan::plan_of;
-/// A meia-largura do kernel que o shader de facto percorre para um dado sigma.
-///
-/// **Porta única**: quem calcula a MARGEM da textura ([`stack_reach`]) e quem a preenche (o
-/// shader) têm de concordar, senão o borrão é recortado na borda por uma margem que mentiu.
-pub use crate::fx_stack_plan::{jump_count, op_reach, stack_reach};
-
-#[must_use]
-pub fn kernel_half(sigma_px: f32) -> u32 {
-    let sigma = sigma_px.max(1e-4);
-    ((3.0 * sigma).ceil() as u32).clamp(1, MAX_HALF)
-}
+pub use crate::fx_stack_plan::{jump_count, kernel_half, op_reach, stack_reach};
 
 /// **Como este degrau é executado.** Porta única: quem ESCREVE os globals e quem os DESPACHA
 /// perguntam à mesma — as duas varreduras andam em lockstep sobre a mesma lista, e um `if`
@@ -195,7 +189,9 @@ fn module_sources() -> [(&'static str, String); 2] {
             "mid",
             // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
             // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
-            format!("{blend}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{WARP_WGSL}"),
+            format!(
+                "{blend}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}"
+            ),
         ),
         (
             "out",
@@ -397,7 +393,8 @@ impl FxStackPass {
             seed: 0,
             mode: 0,
             org: [0.0, 0.0],
-            _pad: [0.0, 0.0],
+            grow_px: 0.0,
+            _pad: [0.0],
         };
         write_at(&mut blob, 0, &edges);
         write_at(&mut blob, total_slots - 1, &edges);
@@ -412,6 +409,21 @@ impl FxStackPass {
         let mut slot = 1usize;
         for op in ops {
             let sigma = op.sigma_px.max(1e-4);
+            let plan = plan_of(op, geom.is_empty());
+            // ⚠️ **A pergunta *"contra o QUE este degrau mede?"* tem UMA resposta, e ela é o PLANO.**
+            // O finalize do campo escolhe entre o pé exato dos segmentos e a textura semeada
+            // olhando `n_segs`, então semear o raster e deixar `n_segs` a apontar para a geometria
+            // construiria um campo que ninguém lê e responderia pela FORMA a um degrau que
+            // perguntou pela IMAGEM — sem erro nenhum, e com todo gate de unidade verde.
+            //
+            // Isto **preserva** o que já se fazia: `raster_seed` era `geom.is_empty()`, logo os dois
+            // já coincidiam. O que ele impede é o quinto tipo do campo divergir em silêncio.
+            let n_segs = match plan {
+                Plan::Field {
+                    raster_seed: true, ..
+                } => 0,
+                _ => u32::try_from(geom.len()).unwrap_or(u32::MAX),
+            };
             let g = Globals {
                 dims: [w, h],
                 half: kernel_half(op.sigma_px),
@@ -423,16 +435,17 @@ impl FxStackPass {
                 off_y: op.offset_px[1],
                 jump: 0,
                 band: op.sigma_px.max(0.0),
-                n_segs: u32::try_from(geom.len()).unwrap_or(u32::MAX),
+                n_segs,
                 blend: u32::from(op.blend),
                 noise_scale: op.noise_scale_px.max(1e-3),
                 octaves: u32::from(op.detail.max(1)),
                 seed: u32::from(op.seed),
                 mode: u32::from(op.mode),
                 org,
-                _pad: [0.0, 0.0],
+                grow_px: op.grow_px,
+                _pad: [0.0],
             };
-            match plan_of(op, geom.is_empty()) {
+            match plan {
                 Plan::Point | Plan::Warp => {
                     write_at(&mut blob, slot, &g);
                     slot += 1;

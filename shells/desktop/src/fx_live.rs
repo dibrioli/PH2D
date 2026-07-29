@@ -377,6 +377,10 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 // caro) que a UI não oferece.
                 detail: o.detail_clamped(),
                 seed: o.seed,
+                // O crescimento atravessa a MESMA conversão do raio (mundo → pixels de tela pelo
+                // zoom): engordar 0,06 tem de engordar a mesma fração da forma em qualquer escala.
+                // ⚠️ **Sem `max(0.0)`** — aqui o sinal É a operação.
+                grow_px: o.grow * cam_scale,
             }
         })
         .collect()
@@ -414,6 +418,8 @@ pub(crate) enum FilterHit {
     Scale(usize),
     Detail(usize),
     Seed(usize),
+    /// O Amount do Grow / Shrink (bipolar).
+    Grow(usize),
 }
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
@@ -462,6 +468,8 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
             FilterHit::Detail(r)
         } else if id == vid::filter_seed_id(r) {
             FilterHit::Seed(r)
+        } else if id == vid::filter_grow_id(r) {
+            FilterHit::Grow(r)
         } else {
             continue;
         };

@@ -7,7 +7,7 @@
 
 use ph2d_ecs::FxOp;
 
-use crate::fx_stack::{FxOpGpu, MAX_HALF, Plan, kernel_half};
+use crate::fx_stack::{FxOpGpu, MAX_HALF, Plan};
 
 /// **Quantos saltos o JFA precisa para uma banda de `band_px`.** Os saltos são `K, K/2, …, 1` com
 /// `K = 2^(n-1)`, e o alcance do JFA é a SOMA deles (`2K-1`), logo `n = bits(w)` cobre `w`.
@@ -15,6 +15,20 @@ pub fn jump_count(band_px: f32) -> usize {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let w = band_px.max(1.0).ceil() as u32;
     (u32::BITS - w.leading_zeros()) as usize
+}
+
+/// A meia-largura do kernel que o shader de facto percorre para um dado sigma.
+///
+/// **Porta única**: quem calcula a MARGEM da textura ([`stack_reach`]) e quem a preenche (o
+/// shader) têm de concordar, senão o borrão é recortado na borda por uma margem que mentiu.
+///
+/// ⚠️ Ela mora AQUI, e não no fold: a pergunta é *quanto este passe percorre*, que é a mesma
+/// família do [`op_reach`] e do [`jump_count`]. Do outro lado ela obrigava este módulo a importar
+/// de volta do arquivo que o importa.
+#[must_use]
+pub fn kernel_half(sigma_px: f32) -> u32 {
+    let sigma = sigma_px.max(1e-4);
+    ((3.0 * sigma).ceil() as u32).clamp(1, MAX_HALF)
 }
 
 pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
@@ -27,6 +41,17 @@ pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
     // não apodrece quando o 3º tipo com modos chegar.
     if op.kind == FxOp::TURBULENCE {
         return Plan::Warp;
+    }
+    // ⚠️ **A morfologia é da família do CAMPO e mede a IMAGEM** — as duas metades da frase importam.
+    // Ela pergunta *a que distância da borda estou* como o contorno e o feather, mas a borda de que
+    // ela fala é a do que ela RECEBEU, não a da silhueta autorada (`FxOp::measures_the_image`).
+    // Logo o campo é semeado pela cobertura **sempre**, mesmo quando há geometria a oferecer o pé
+    // exato — e o `n_segs` do uniform acompanha, senão o finalize responderia pela forma.
+    if FxOp::measures_the_image(op.kind) {
+        return Plan::Field {
+            jumps: jump_count(op.grow_px.abs()),
+            raster_seed: true,
+        };
     }
     // ⚠️ **Quem decide é o MODO, não o ser-de-dentro.** A condição dizia `spec.inner && Contour`, o
     // que era verdade só enquanto os degraus de dentro fossem os únicos com modos — uma
@@ -74,6 +99,17 @@ pub fn op_reach(op: &FxOpGpu) -> u32 {
     if op.kind == FxOp::TURBULENCE {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         return (op.sigma_px.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
+    }
+    // **A morfologia alcança o que ela ENGORDA, e só na direção em que engorda.** Um `grow`
+    // negativo AFINA: a silhueta anda para DENTRO, então ele não pede um texel de margem — pedir
+    // seria textura comprada para desenhar o que já lá estava, e é a mesma resposta que os degraus
+    // de dentro já dão pelo `!grows`. O `+1` do lado positivo cobre a rampa de anti-aliasing.
+    if FxOp::measures_the_image(op.kind) {
+        if op.grow_px <= 0.0 {
+            return 0;
+        }
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        return (op.grow_px.ceil() as u32 + 1).clamp(1, MAX_HALF);
     }
     // Um Glow em modo Contour é uma BANDA, não um borrão: a queda vale exatamente zero em `w`, e
     // pagar `3σ` de margem seria textura comprada a troco de nada.

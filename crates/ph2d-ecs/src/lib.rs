@@ -106,6 +106,7 @@ mod vec_blend;
 pub use vec_blend::VecBlend;
 mod vec_contour;
 mod vec_filter;
+mod vec_filter_kinds;
 mod vec_offset;
 mod vec_pattern_path;
 mod vec_pattern_rotation;

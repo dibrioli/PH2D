@@ -48,7 +48,9 @@ pub(crate) struct Globals {
     /// A ORIGEM da grade de ruído, em texels do scratch — a margem que a pilha reservou. É ela que
     /// prega o padrão na FORMA em vez de na textura.
     pub(crate) org: [f32; 2],
-    pub(crate) _pad: [f32; 2],
+    /// Quanto a silhueta engorda, em pixels — **com sinal** (só a morfologia o lê).
+    pub(crate) grow_px: f32,
+    pub(crate) _pad: [f32; 1],
 }
 
 pub(crate) struct Tex {

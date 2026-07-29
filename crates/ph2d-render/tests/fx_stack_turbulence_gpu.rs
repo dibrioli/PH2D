@@ -38,6 +38,7 @@ fn turb(amount_px: f32, scale_px: f32, detail: u8, seed: u8, mode: u8) -> FxOpGp
         noise_scale_px: scale_px,
         detail,
         seed,
+        grow_px: 0.0,
     }
 }
 
@@ -58,6 +59,7 @@ fn inert_glow(sigma_px: f32) -> FxOpGpu {
         noise_scale_px: 0.0,
         detail: 1,
         seed: 0,
+        grow_px: 0.0,
     }
 }
 

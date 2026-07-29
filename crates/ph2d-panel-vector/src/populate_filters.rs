@@ -13,7 +13,8 @@
 use super::{button, slider_chip, slider_chip_int};
 use crate::ids;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
+    FILTER_SEED_MAX,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::DropdownState;
@@ -124,6 +125,19 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
         let (seed, seed_num) = (ids::filter_seed_id(row), ids::filter_seed_num_id(row));
         slider_chip_int(store, seed, seed_num, 0.0, 0.0, FILTER_SEED_MAX as f32, 0.0);
         store.set_number_range(seed_num, 0.0, FILTER_SEED_MAX, COUNT_STEP);
+        // **Amount** do Grow / Shrink: BIPOLAR `−MAX..MAX`, `0.5` = zero — a mesma régua do par de
+        // offset, e pela mesma razão: o número tem SINAL, e o meio do curso é o neutro.
+        let (grow, grow_num) = (ids::filter_grow_id(row), ids::filter_grow_num_id(row));
+        slider_chip(
+            store,
+            grow,
+            grow_num,
+            0.5,
+            0.0,
+            (2.0 * FILTER_GROW_MAX) as f32,
+            -FILTER_GROW_MAX as f32,
+        );
+        store.set_number_range(grow_num, -FILTER_GROW_MAX, FILTER_GROW_MAX, RADIUS_STEP);
         // Opacity: track == valor (`0..1`).
         let (opacity, opacity_num) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
         slider_chip(store, opacity, opacity_num, 1.0, 1.0, 1.0, 0.0);

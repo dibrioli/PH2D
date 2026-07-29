@@ -53,9 +53,19 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
             FxOp::new(kind).mode
         },
         blend: 0,
-        noise_scale_px: 0.0,
-        detail: 1,
+        // Um campo de ruído que se veja, para quem lê ruído (nos outros o shader nem olha).
+        noise_scale_px: 24.0,
+        detail: 3,
         seed: 0,
+        // ⚠️ **O knob VISÍVEL de um tipo é resposta da TABELA, não do nome do parâmetro.** Este
+        // construtor dava `sigma_px` a todo mundo, e o Grow / Shrink não tem raio nenhum: o
+        // comprimento dele é o `grow`, então ele entrava na varredura no ponto NEUTRO e "não
+        // desenhava nada". A pergunta é a mesma que a linha do `offset` já faz.
+        grow_px: if FxOp::spec(kind).grow_label.is_some() {
+            sigma_px
+        } else {
+            0.0
+        },
     }
 }
 

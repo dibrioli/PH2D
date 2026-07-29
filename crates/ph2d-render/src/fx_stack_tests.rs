@@ -254,6 +254,7 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             noise_scale_px: 24.0,
             detail: 3,
             seed: 0,
+            grow_px: 0.0,
         };
         for raster_seeded in [false, true] {
             assert_eq!(
@@ -283,6 +284,7 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         noise_scale_px: 24.0,
         detail: 3,
         seed: 0,
+        grow_px: 0.0,
     };
     for amount in [1.0f32, 4.0, 10.5, 30.0] {
         let reach = op_reach(&op(amount));
@@ -297,4 +299,71 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
             "o alcance voltou a ser o suporte de um kernel gaussiano"
         );
     }
+}
+
+/// Um degrau de morfologia, para os gates de plano e de margem.
+fn morph_op(grow_px: f32) -> FxOpGpu {
+    FxOpGpu {
+        kind: FxOp::MORPHOLOGY,
+        sigma_px: 0.0,
+        offset_px: [0, 0],
+        tint: [0.0; 4],
+        opacity: 1.0,
+        mode: 0,
+        blend: 0,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
+        grow_px,
+    }
+}
+
+/// **A morfologia é do CAMPO, e semeia pelo RASTER mesmo quando há geometria a oferecer.**
+///
+/// ⚠️ É a decisão de desenho da wave num teste: as outras quatro do campo são efeitos de BORDA DA
+/// FORMA e querem o pé exato da silhueta; esta é definida sobre a IMAGEM (o `feMorphology` dilata a
+/// entrada DELE), e é isso que faz `Outline → Grow` engordar o contorno em vez de o recortar de
+/// volta. Com geometria disponível o produtor resolveria pela forma — a resposta certa para quatro
+/// tipos e a errada para o quinto, sem erro nenhum.
+#[test]
+fn the_morphology_is_a_field_op_that_always_seeds_from_the_raster() {
+    for grow in [-8.0_f32, -1.0, 1.0, 8.0] {
+        for raster_seeded in [false, true] {
+            let plan = crate::fx_stack_plan::plan_of(&morph_op(grow), raster_seeded);
+            let Plan::Field { jumps, raster_seed } = plan else {
+                panic!("a morfologia tem de ser um op de CAMPO, saiu {plan:?}");
+            };
+            assert!(
+                raster_seed,
+                "com geometria ({raster_seeded}) ela ainda tem de medir a IMAGEM"
+            );
+            assert_eq!(
+                jumps,
+                crate::fx_stack_plan::jump_count(grow.abs()),
+                "os saltos têm de cobrir o alcance PEDIDO, nos dois sinais"
+            );
+        }
+    }
+}
+
+/// **A margem é paga só na direção que CRESCE.** Encolher anda para dentro: zero textura nova.
+#[test]
+fn the_morphology_only_pays_margin_for_the_direction_that_grows() {
+    for shrink in [-30.0_f32, -8.0, -0.5] {
+        assert_eq!(
+            op_reach(&morph_op(shrink)),
+            0,
+            "afinar {shrink} não pede margem nenhuma"
+        );
+    }
+    for grow in [0.5_f32, 4.0, 10.5, 30.0] {
+        let want = grow.ceil() as u32 + 1;
+        assert_eq!(
+            op_reach(&morph_op(grow)),
+            want,
+            "crescer {grow} devia pedir {want} texels"
+        );
+    }
+    // E o zero — o neutro — não paga nada.
+    assert_eq!(op_reach(&morph_op(0.0)), 0);
 }

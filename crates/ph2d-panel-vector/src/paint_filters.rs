@@ -24,7 +24,8 @@
 use super::*;
 use crate::state::filters as fst;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
+    FILTER_SEED_MAX,
 };
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -111,7 +112,8 @@ impl BodyCtx<'_> {
             + usize::from(spec.offset_labels.is_some()) * 2
             + usize::from(spec.color_label.is_some())
             + usize::from(spec.takes_blend)
-            + usize::from(spec.noise_labels.is_some()) * 3;
+            + usize::from(spec.noise_labels.is_some()) * 3
+            + usize::from(spec.grow_label.is_some());
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let mode_h = if spec.modes.is_empty() {
@@ -165,6 +167,10 @@ impl BodyCtx<'_> {
         // depois *segundo que campo*.
         if let Some((size, detail, seed)) = spec.noise_labels {
             py = self.filter_noise_rows(row, fx, (size, detail, seed), py);
+        }
+        // O **Amount** do Grow / Shrink: o único número do tipo, logo no topo do corpo.
+        if let Some(label) = spec.grow_label {
+            py = self.filter_grow_row(row, fx, label, py);
         }
         if let Some((lx, ly)) = spec.offset_labels {
             py = self.filter_offset_row(
@@ -325,6 +331,25 @@ impl BodyCtx<'_> {
         let k = f64::from(fx.seed);
         let k_track = live_track(self.store, k_ids.0, (k / FILTER_SEED_MAX) as f32);
         self.slider_row(seed, k_ids.0, k_ids.1, k_track, k, &format!("{k:.0}"), py)
+    }
+
+    /// **Amount** do Grow / Shrink — BIPOLAR, e é o que o distingue do raio.
+    ///
+    /// ⚠️ O readout traz o SINAL explícito (`+0,06` / `−0,06`): num slider cujo neutro é o meio do
+    /// curso, um número sem sinal deixa as duas metades a ler igual.
+    fn filter_grow_row(&mut self, row: usize, fx: &fst::FilterRowView, label: &str, y: f32) -> f32 {
+        let (slider, chip) = (ids::filter_grow_id(row), ids::filter_grow_num_id(row));
+        let t = ((fx.grow + FILTER_GROW_MAX) / (2.0 * FILTER_GROW_MAX)) as f32;
+        let track = live_track(self.store, slider, t);
+        self.slider_row(
+            label,
+            slider,
+            chip,
+            track,
+            fx.grow,
+            &format!("{:+.2}", fx.grow),
+            y,
+        )
     }
 
     /// **Opacity** — a intensidade do degrau, presente em todo degrau.

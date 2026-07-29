@@ -32,6 +32,7 @@ pub mod compressed_pipeline;
 pub mod cooked_texture;
 pub mod fx_stack;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
+mod fx_stack_field;
 mod fx_stack_noise;
 /// O CUSTO de uma pilha (saltos do campo, alcance de cada degrau) — irmão pelo LOC cap.
 mod fx_stack_plan;

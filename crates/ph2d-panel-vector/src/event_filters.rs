@@ -11,7 +11,8 @@
 
 use crate::ids;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
+    FILTER_SEED_MAX,
 };
 use ph2d_editor_core::panel::PanelHostInternal;
 
@@ -64,6 +65,12 @@ pub(super) fn filters_slider_event(
         if id == ids::filter_seed_id(row) {
             return Some(super::forward_track(host, id, 0.0, |t| {
                 (t * FILTER_SEED_MAX).round()
+            }));
+        }
+        // BIPOLAR: o MESMO mapa que o `populate` deu ao chip (`0,5` = zero).
+        if id == ids::filter_grow_id(row) {
+            return Some(super::forward_track(host, id, 0.5, |t| {
+                t.mul_add(2.0 * FILTER_GROW_MAX, -FILTER_GROW_MAX)
             }));
         }
         if id == ids::filter_offx_id(row) || id == ids::filter_offy_id(row) {

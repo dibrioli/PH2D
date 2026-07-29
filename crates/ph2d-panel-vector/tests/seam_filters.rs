@@ -55,6 +55,7 @@ fn row(kind: u8) -> FilterRowView {
         scale: 0.25,
         detail: 3,
         seed: 0,
+        grow: 0.06,
     }
 }
 
@@ -74,6 +75,7 @@ fn kinds_table() -> Vec<FilterKindView> {
         modes,
         takes_blend,
         noise_labels: None,
+        grow_label: None,
     };
     const INNER: &[&str] = &["Proximity", "Contour"];
     const OFF: Option<(&str, &str)> = Some(("Offset X", "Offset Y"));
@@ -94,6 +96,12 @@ fn kinds_table() -> Vec<FilterKindView> {
         FilterKindView {
             noise_labels: NOISE,
             ..k("Turbulence", Some("Amount"), None, None, NOISE_MODES, false)
+        },
+        FilterKindView {
+            // ⚠️ SEM `radius_label`: o único comprimento deste tipo é o Amount BIPOLAR, e é ele
+            // que a linha oferece.
+            grow_label: Some("Amount"),
+            ..k("Grow / Shrink", None, None, None, &[], false)
         },
     ]
 }
@@ -270,6 +278,13 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
                 spec.name
             );
         }
+        // O **Amount** do Grow / Shrink: exactamente onde a tabela diz que o tipo engorda algo.
+        assert_eq!(
+            painted(&mut host, &mut st, ids::filter_grow_id(0)),
+            spec.grow_label.is_some(),
+            "o Amount do {} discorda da tabela",
+            spec.name
+        );
         // Os chips de MODO: um por modo publicado, e NENHUM em quem não tem escolha a fazer.
         for m in 0..ids::MAX_FILTER_MODES {
             assert_eq!(
@@ -472,6 +487,46 @@ fn the_three_noise_knobs_reach_the_bus_when_dragged() {
             reached,
             "arrastar o {what} nao emitiu valor nenhum ao barramento — o slider esta pintado e \
              inerte"
+        );
+    }
+}
+
+/// **O Amount do Grow / Shrink chega ao bus quando arrastado** — e o mapa é BIPOLAR.
+///
+/// ⚠️ O `ValueChanged` sai no DOWN (a lição do gate irmão do ruído), e o meio do curso é o ZERO:
+/// arrastar para a esquerda tem de emitir NEGATIVO. Um mapa unipolar herdado do raio faria a
+/// metade esquerda do slider ler como um crescimento pequeno em vez de um encolhimento.
+#[test]
+fn the_grow_knob_reaches_the_bus_with_a_bipolar_map_when_dragged() {
+    let table = kinds_table();
+    let kind = table
+        .iter()
+        .position(|s| s.grow_label.is_some())
+        .expect("a tabela tem um tipo que engorda");
+    publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
+    let id = ids::filter_grow_id(0);
+    // 15% do trilho (bem à esquerda do meio) tem de virar um valor NEGATIVO; 85%, positivo.
+    for (frac, want_negative) in [(0.15_f32, true), (0.85, false)] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let rect = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .expect("o slider Amount nao foi PINTADO");
+        let (x, y) = (rect.x + rect.w * frac, rect.y + rect.h * 0.5);
+        let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
+        evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, x, y, SEC + SEC / 100)));
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        }
+        let value = host.drained_actions().into_iter().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => Some(v),
+            _ => None,
+        });
+        let v = value.expect("arrastar o Amount nao emitiu valor nenhum ao barramento");
+        assert_eq!(
+            v < 0.0,
+            want_negative,
+            "a {frac:.0}% do trilho o Amount saiu {v:.3} — a régua deixou de ser bipolar"
         );
     }
 }

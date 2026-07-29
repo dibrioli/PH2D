@@ -18,6 +18,9 @@
 
 use super::{NodeId, hash_node_id};
 
+/// The card's title band — a `TimelineSurface` whose gestures MOVE the card.
+/// Stops short of the close X so the two hit rects never share a pixel.
+pub const EXPR_MODAL_HANDLE: NodeId = hash_node_id("expr_modal.handle");
 /// Close X. Discards the sheet — the same as Cancel, because a card you can
 /// dismiss two ways must dismiss the same way twice.
 pub const EXPR_MODAL_CLOSE: NodeId = hash_node_id("expr_modal.close");

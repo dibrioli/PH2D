@@ -27,7 +27,9 @@
 //! tenant's slider positions. `reseed` makes the next paint clobber instead of
 //! `register_if_absent`.
 
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{
+    GesturePhase, InteractiveState, TimelineGesture, WidgetEvent, WidgetStore,
+};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_expr_recipes::{
     CATALOG, Family, Knob, KnobKind, KnobValue, RecipeStack, Row, by_id, fmt_num,
@@ -53,8 +55,13 @@ pub struct ExprModal {
     pub target: u64,
     /// `"Ball · Position Y"` — what the title band says.
     pub title: String,
-    pub x: f32,
-    pub y: f32,
+    /// Top-left of the card. ⚠️ `None` until the first paint CENTRES it in the
+    /// viewport — the panel that opens the card does not know how big the window
+    /// is, and the first smoke found the card pinned half off the bottom of the
+    /// screen because it opened at the click instead.
+    pub pos: Option<(f32, f32)>,
+    /// Card position and pointer at the start of a title-band drag.
+    pub drag: Option<(f32, f32, f32, f32)>,
     pub page: GalleryPage,
     pub stack: RecipeStack,
     /// The clock the result readouts evaluate at — the playhead when the card was
@@ -73,13 +80,14 @@ pub struct ExprModal {
     pub preview_frame: u32,
 }
 
-/// Open the card for `target` at `(x, y)`.
-pub(crate) fn open(state: &mut TimelinePanelState, target: u64, x: f32, y: f32) {
+/// Open the card for `target`. It places itself on the first paint (see
+/// [`ExprModal::pos`]).
+pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
     state.expr_modal = Some(ExprModal {
         target,
         title: String::new(),
-        x,
-        y,
+        pos: None,
+        drag: None,
         page: GalleryPage::Families,
         stack: RecipeStack::new(),
         time: 0.0,
@@ -283,5 +291,29 @@ pub(crate) fn route(
             ours.then_some(EventOutcome::Consumed)
         }
         _ => None,
+    }
+}
+
+/// Move the card by its title band.
+///
+/// The delta is taken against the position captured at `Begin`, never
+/// accumulated per Update — accumulating is how a drag drifts from the pointer
+/// (the lesson the exposure drag on the Flip strip paid for). The paint clamps
+/// the result, so a card dragged at the edge cannot be pushed out of reach.
+pub(crate) fn apply_drag(state: &mut TimelinePanelState, g: TimelineGesture) {
+    let Some(m) = state.expr_modal.as_mut() else {
+        return;
+    };
+    match g.phase {
+        GesturePhase::Begin => {
+            let (x, y) = m.pos.unwrap_or((g.x, g.y));
+            m.drag = Some((x, y, g.x, g.y));
+        }
+        GesturePhase::Update => {
+            if let Some((x0, y0, px, py)) = m.drag {
+                m.pos = Some((x0 + (g.x - px), y0 + (g.y - py)));
+            }
+        }
+        _ => m.drag = None,
     }
 }

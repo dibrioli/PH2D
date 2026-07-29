@@ -438,3 +438,121 @@ fn the_card_paints_the_preview_column() {
         "control: the scanner is looking at the real call"
     );
 }
+
+// ─────────────────── the first smoke: reachable, and movable ───────────────────
+
+const SMOKE_VIEWPORT: ph2d_editor_core::zones::Rect =
+    ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1249.0, 709.0);
+
+/// **The card opens fully INSIDE the viewport, wherever the menu was clicked.**
+///
+/// ⚠️ Red-first against the first smoke (Enio): the card opened at the click, the
+/// click is by construction down in the timeline, and the bottom two thirds of it
+/// hung off the screen — *"o painel está fixo embaixo da tela, não posso vê-lo"*.
+/// Opening at the pointer is the wrong rule for a card this size; it centres.
+#[test]
+fn the_card_opens_fully_inside_the_viewport() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(20, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    let regs = host.paint::<TimelinePanel>(&mut state, SMOKE_VIEWPORT);
+    let band = regs
+        .iter()
+        .find(|(id, _)| *id == ids::EXPR_MODAL_HANDLE)
+        .map(|(_, r)| *r)
+        .expect("the title band is painted");
+    let (x, y) = state.expr_modal.as_ref().unwrap().pos.expect("placed");
+    let (w, h) = (
+        ph2d_panel_timeline::expr_modal_paint::card_w(),
+        ph2d_panel_timeline::expr_modal_paint::card_h(),
+    );
+    assert!(
+        x >= SMOKE_VIEWPORT.x
+            && y >= SMOKE_VIEWPORT.y
+            && x + w <= SMOKE_VIEWPORT.x + SMOKE_VIEWPORT.w + 0.5
+            && y + h <= SMOKE_VIEWPORT.y + SMOKE_VIEWPORT.h + 0.5,
+        "the whole card must be on screen: ({x}, {y}) + ({w} x {h}) in {SMOKE_VIEWPORT:?}"
+    );
+    assert!(band.y >= SMOKE_VIEWPORT.y, "…including its title band");
+
+    // ⚠️ And it opens CENTRED, which the clamp alone does not give: the clamp
+    // rescues any bad position, so "on screen" stays true for a card that opens
+    // jammed in a corner. Centring is the product decision the smoke asked for,
+    // so it is asserted on its own.
+    let (ccx, ccy) = (x + w * 0.5, y + h * 0.5);
+    let (vcx, vcy) = (
+        SMOKE_VIEWPORT.x + SMOKE_VIEWPORT.w * 0.5,
+        SMOKE_VIEWPORT.y + SMOKE_VIEWPORT.h * 0.5,
+    );
+    assert!(
+        (ccx - vcx).abs() < 1.0 && (ccy - vcy).abs() < 1.0,
+        "the card opens centred in the viewport: ({ccx}, {ccy}) vs ({vcx}, {vcy})"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// **The title band MOVES the card, and cannot push it off screen.**
+///
+/// The delta is taken against the position captured at Begin — never accumulated
+/// per Update, which is how a drag drifts away from the pointer.
+#[test]
+fn the_title_band_drags_the_card_and_the_clamp_keeps_it_reachable() {
+    use ph2d_editor_core::interaction::{
+        GestureMods, GesturePhase, TimelineGesture, TimelineHitKind,
+    };
+    use ph2d_host::PointerButton;
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(21, ph2d_timeline::PropKind::TranslationY);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+    host.paint::<TimelinePanel>(&mut state, SMOKE_VIEWPORT);
+    let (x0, y0) = state.expr_modal.as_ref().unwrap().pos.unwrap();
+
+    let g = |phase, x: f32, y: f32| TimelineGesture {
+        surface: ids::EXPR_MODAL_HANDLE,
+        kind: TimelineHitKind::ExprModalHandle,
+        phase,
+        x,
+        y,
+        button: PointerButton::Primary,
+        mods: GestureMods::default(),
+    };
+    ph2d_panel_timeline::interact_for_test(&mut state, g(GesturePhase::Begin, x0, y0));
+    // ⚠️ TWO updates, and the second is what matters: with one, "delta from the
+    // Begin position" and "accumulate each step" give the SAME answer, so a
+    // one-update fixture stays green over a drag that drifts. The second step
+    // separates them — accumulation would land at 2x the offset.
+    for (dx, dy) in [(-40.0_f32, -30.0_f32), (-60.0, -45.0)] {
+        ph2d_panel_timeline::interact_for_test(
+            &mut state,
+            g(GesturePhase::Update, x0 + dx, y0 + dy),
+        );
+        let moved = state.expr_modal.as_ref().unwrap().pos.unwrap();
+        assert!(
+            (moved.0 - (x0 + dx)).abs() < 0.5 && (moved.1 - (y0 + dy)).abs() < 0.5,
+            "the card follows the pointer 1:1, every step: {moved:?} vs {:?}",
+            (x0 + dx, y0 + dy)
+        );
+    }
+
+    // Shove it far past the corner; the paint's clamp has to bring it back.
+    ph2d_panel_timeline::interact_for_test(
+        &mut state,
+        g(GesturePhase::Update, x0 + 9_000.0, y0 + 9_000.0),
+    );
+    host.paint::<TimelinePanel>(&mut state, SMOKE_VIEWPORT);
+    let (x, y) = state.expr_modal.as_ref().unwrap().pos.unwrap();
+    let (w, h) = (
+        ph2d_panel_timeline::expr_modal_paint::card_w(),
+        ph2d_panel_timeline::expr_modal_paint::card_h(),
+    );
+    assert!(
+        x + w <= SMOKE_VIEWPORT.w + 0.5 && y + h <= SMOKE_VIEWPORT.h + 0.5,
+        "a card dragged past the corner is pulled back on screen, not lost: ({x}, {y})"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

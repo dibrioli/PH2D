@@ -153,8 +153,11 @@ pub(crate) fn open_expr(
     state: &mut crate::state::TimelinePanelState,
     host: &mut dyn PanelHostInternal,
 ) -> EventOutcome {
-    if let (Some(target), Some(req)) = (raw_track_target(host), parked(host)) {
-        crate::expr_modal::open(state, target, req.x, req.y);
+    // ⚠️ The parked request is still REQUIRED (it is what proves a menu was
+    // open for this row), but its position is no longer used: the card places
+    // itself in the middle of the viewport.
+    if let (Some(target), Some(_req)) = (raw_track_target(host), parked(host)) {
+        crate::expr_modal::open(state, target);
         host.store_mut().close_context_menu();
         host.store_mut().consume_last_context_menu();
     }

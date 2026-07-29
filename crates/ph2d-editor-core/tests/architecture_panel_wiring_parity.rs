@@ -93,6 +93,13 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // by the timeline-surface pointer path, not by widget events — same shape as
     // `TIMELINE_LABEL_SPLIT`, so no `populate.rs` entry by design.
     ("ph2d-panel-timeline", "TIMELINE_SUMMARY_LOCK"),
+    // Expression modal title band: `store.register`-ed in `expr_modal_paint.rs`
+    // as a `TimelineSurface` (kind `ExprModalHandle`) and DRAGGED by the
+    // timeline-surface pointer path, not by widget events — same shape as
+    // `TIMELINE_LABEL_SPLIT`. ⚠️ It is deliberately not a `Button`: the first
+    // smoke found the card unreachable at the bottom of the screen, and what it
+    // needs is a 2-D gesture, not a click.
+    ("ph2d-panel-timeline", "EXPR_MODAL_HANDLE"),
     // Inline marker-rename `TextInput`: registered in `marker_rename.rs` only
     // while a rename is open (double-click a marker), seeded + focused there and
     // committed via the Submit/Blur/Cancel arms in `event.rs`. Same shape as

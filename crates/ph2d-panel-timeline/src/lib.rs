@@ -47,7 +47,8 @@ mod duration_drag;
 mod event;
 mod event_track_menu;
 pub mod expr_modal;
-mod expr_modal_paint;
+pub mod expr_modal_columns;
+pub mod expr_modal_paint;
 pub mod expr_modal_preview;
 mod geom;
 mod graph;
@@ -115,4 +116,23 @@ impl Panel for TimelinePanel {
     fn populate(store: &mut WidgetStore) {
         populate::populate(store);
     }
+}
+
+/// Feed one timeline gesture straight into the panel's router — the seam a gate
+/// needs to drive a drag, since `WidgetEvent` has no drag variant and the real
+/// stream is built by the shell's pointer dispatch.
+#[doc(hidden)]
+pub fn interact_for_test(
+    state: &mut state::TimelinePanelState,
+    g: ph2d_editor_core::interaction::TimelineGesture,
+) {
+    // The modal's band is the one surface whose drag needs neither the ruler's
+    // scale nor the snapshot, so the gate can reach it directly.
+    interact::dispatch_primary(
+        state,
+        0.0,
+        1.0,
+        &ph2d_timeline::TimelineViewSnapshot::default(),
+        g,
+    );
 }

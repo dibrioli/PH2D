@@ -275,6 +275,12 @@ pub enum TimelineHitKind {
     /// The vertical splitter between the track-name column and the time area;
     /// dragging it horizontally widens or narrows the names.
     LabelSplitter,
+    /// The Expression modal's title band (plano 10 W1 follow-up). A grab here
+    /// MOVES the card. ⚠️ It is a gesture surface and not a `Button` because a
+    /// card that cannot be moved is a card that will sit over the very thing the
+    /// artist opened it to look at — the first smoke found it pinned off the
+    /// bottom of the screen with no way to reach it.
+    ExprModalHandle,
     /// A key's anchor dot in an expanded track's graph. Dragging it edits the key
     /// in the `(time, value)` plane: sideways moves the selection in time,
     /// up/down retunes the value. `target`/`key` are the raw `AnimTarget`/`KeyId`.

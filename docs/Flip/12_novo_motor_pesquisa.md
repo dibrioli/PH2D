@@ -421,7 +421,79 @@ no `pack` (o `7ca83d6fb` já funde cápsulas hoje), e ela **não é pré-requisi
 
 ---
 
-## 7. Fontes
+## 7. ⭐ O ESQUELETO BINADO (passo 2 executado — `src/binning.rs`, CPU, sem adapter)
+
+O §6.3 desenhou; isto constrói. `binning.rs` (410 linhas) + os 11 gates do irmão.
+
+### 7.1 O que existe agora
+
+| peça | o que faz |
+|---|---|
+| `ScreenSpace` | mundo → px, espelhando os 3 números da `CameraRaw`; **porta única do RAIO** (com o piso do shader) |
+| `bin_segments` | percorre traços em ordem de `sid` e segmentos em ordem de caminho, depositando cada um nos ladrilhos que ele **alcança** |
+| `TileBins` | `[offset, count]` por ladrilho + a lista concatenada; ordem **(traço, segmento)** estável |
+| `walk_pixel` | lê a lista do ladrilho, **agrupa por traço com um scan de run** e compõe `over` em ordem de z |
+
+**Duas decisões que apagam casos especiais:**
+
+1. **O alcance é medido da CAIXA do ladrilho, nunca do centro.** A caixa contém todo pixel do
+   ladrilho ⇒ `dist(seg, caixa) ≤ r` já inclui todo segmento capaz de influenciar qualquer pixel
+   dali ⇒ **o percurso não precisa de halo**: nenhuma lista de vizinho, nenhum caso de borda.
+   (Este é literalmente o buraco que o `neighbors.rs` inteiro existe para tapar.)
+2. **A ordem de saída sai de graça.** Os `sid` já crescem com o z e os segmentos já vêm em ordem
+   de caminho; o depósito é um **counting-sort**, que é estável ⇒ **zero ordenação**, e o
+   agrupamento por traço é um scan de run.
+
+### 7.2 As duas propriedades do §3 que MORRERAM aqui
+
+- **(B) o teto:** gate `the_bin_has_no_fixed_ceiling` — 24 traços atravessando o MESMO ladrilho, e
+  os 24 estão na lista (o `MAX_EXTRAS_PER_SEGMENT = 16` de hoje truncaria em 16).
+- **(C) a eleição:** gate `the_walk_composes_the_later_stroke_on_top` — a ordem é o percurso, não
+  um depth test. ⚠️ A mutação que reinstala *first-wins* (o `DEPTH_GREATER` estrito) sangra nele.
+
+### 7.3 O oráculo, e o que ele NÃO afirma
+
+O gate central é **`the_binned_walk_is_the_brute_force_walk`**: a lista acelerada tem de dar a
+**mesma imagem** que a lista completa, pixel a pixel. Um binning é estrutura de aceleração — a
+única coisa que ele pode fazer de errado é mudar a resposta.
+
+⚠️ **Não há lei de tinta aqui, de propósito.** O `stroke_deposit` resolve a **união dura**
+(`dist ≤ r`) = a semântica de `hardness = 1` **sem anti-aliasing**. O passo 3 substitui **só essa
+função** pela integral `τ` da §5; binning, agrupamento e composição não mudam.
+
+### 7.4 ⚠️ Duas mutações sobreviveram, e as duas expuseram o LADRILHO como anestésico
+
+Das 9 mutações, 7 sangraram de primeira. As 2 que passaram são a lição desta wave:
+
+| mutação | por que sobreviveu |
+|---|---|
+| alcance `min` em vez de `max` | o traço que afina corria **ao longo** de uma linha de ladrilhos ⇒ distância 0 à caixa ⇒ os dois raios binam **exatamente as mesmas tiles** |
+| binner contorna a porta do raio (perde o piso 0,65 px) | as fronteiras de ladrilho mais próximas estavam a 6 e 10 px; a janela onde 0,65 e 0,1 px **diferem** tem **0,14 px** |
+
+**Um ladrilho de 16 px engole toda diferença de alcance menor que ele** — então um gate de
+comportamento sobre a lista é *cego* a erros sub-ladrilho, por construção.
+
+As curas são **diferentes**, e é isso que importa:
+
+- a do `min`/`max` **é fixture**: o traço que afina foi para **4 px de uma fronteira**, onde o raio
+  grosso (6) alcança a coluna vizinha e o fino (0,65) não. Agora sangra.
+- a do piso **não é fixture** — seria um gate cujo oráculo vive numa janela de 0,14 px, exatamente
+  a classe que este repo já aprendeu a desconfiar. Virou **arch-gate**
+  (`the_binner_asks_the_screen_for_the_radius`: o binner tem de PERGUNTAR à porta única e não pode
+  conter `px_per_world`) + um gate direto do piso. As duas mutações sangram agora.
+
+**9 mutações, 9 sangram.**
+
+### 7.5 O que falta (passo 3)
+
+Trocar `stroke_deposit` pela integral: `τ += f(dn) · Δs/pitch` sobre os segmentos do run,
+`α = 1 − exp(−τ)`, com `sub = 4` (§5.4). O agrupamento já entrega exatamente a lista certa: **os
+segmentos daquele traço que alcançam aquele pixel**, sem teto e sem ordem imposta — que é
+precisamente o que a lei aditiva precisa e o que o motor de hoje não consegue entregar.
+
+---
+
+## 8. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

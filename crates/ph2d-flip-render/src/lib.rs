@@ -16,6 +16,7 @@
 //! W1 incremental: **T1.1 = packing** (este módulo, headless). Vertex/fragment
 //! shader + passe entram a seguir.
 
+mod binning;
 mod composite;
 mod fill;
 mod fill_holes;
@@ -23,6 +24,9 @@ mod neighbors;
 mod pack;
 mod pipeline;
 
+pub use binning::{
+    BinSeg, DEFAULT_TILE, MIN_WIDTH_PX, ScreenSpace, TileBins, bin_segments, walk_pixel,
+};
 pub use composite::{FlipCompose, SLICE_FORMAT};
 pub use fill::{FillVertex, triangulate};
 pub use pack::{

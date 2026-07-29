@@ -263,7 +263,95 @@ beading (§2.4 — o ponto fixo dele é o `max` que já foi reprovado na tela).
 
 ---
 
-## 5. Fontes
+## 5. ⭐ A LEI, MEDIDA (passo 1 executado — `tests/integral_law.rs`, CPU, sem adapter)
+
+O passo 1 do §4 era o que podia **matar o C4 antes de uma linha de GPU**: a integral contínua
+reproduz o depósito FINITO do Painter, que é o oráculo? Rodei. O resultado decide, e não é o que o
+número agregado sugere.
+
+`cargo test -p ph2d-flip-render --release --test integral_law -- --ignored --nocapture`
+
+### 5.1 O agregado assusta — e mente sobre onde o erro mora
+
+Contra `painter_deposit`, o pior desvio global vai de **−47 a −101** (reta, quina, cruz), e cresce com
+a dureza. Se eu tivesse parado aqui, teria reprovado a lei.
+
+### 5.2 A separação que responde: TAMPA · JUNTA · **CORPO**
+
+| figura | h | TAMPA | JUNTA | **CORPO** |
+|---|---|---|---|---|
+| reta | 0,0 / 0,4 / 0,7 | −47 / −66 / −101 | +0 / +0 / +0 | **+0 / −1 / −1** |
+| quina | 0,0 / 0,4 / 0,7 | −47 / −65 / −100 | +2 / +4 / +11 | **−1 / +1 / +2** |
+| **cruz** | 0,0 / 0,4 / 0,7 | −47 / −63 / −100 | +5 / +9 / +31 | **−1 / +1 / −1** |
+| estrela | 0,0 / 0,4 / 0,7 | −11 / −18 / −45 | +5 / +9 / +31 | **+1 / −1 / −1** |
+
+⭐ **O CORPO do traço bate o depósito do Painter em ±2/255 — na reta, na curva, na quina e no
+AUTO-CRUZAMENTO.** O cruzamento é o defeito que custou a saga inteira, e a integral o acerta **por
+construção**: não há partição de passagem, não há dicotomia união/composição, não há lista de
+vizinhos. A soma simplesmente soma.
+
+### 5.3 A lei é fato do CAMINHO — exatamente, não aproximadamente
+
+A MESMA estrela, de `0,80·r` a `0,04·r` de passo (60 → 1155 segmentos):
+
+```
+h=0.4:  -18  -18  -18  -18  -18  -18      ← constante, 6 densidades
+h=0.7:  -45  -45  -45  -45  -45  -45
+```
+
+**Zero variação.** É a propriedade que o `sampling_invariance.rs` pina e que o penhasco do motor
+atual quebrou. Aqui ela não é um conserto: é o que a integral por arco **é**. (Os −18/−45 são o
+resíduo de tampa+junta da §5.2, que não se movem com a densidade.)
+
+### 5.4 Quadratura: `sub = 4` já satura
+
+`quina h=0,4`: `1→−73 · 2→−67 · 4→−65 · 8→−65 · 16→−65 · 32→−65 · 64→−65`. **Quatro sub-amostras por
+pitch** bastam — é o custo do kernel, medido e não escolhido.
+
+### 5.5 ⚠️ A TAMPA é GEOMETRIA, não um termo — e a medição matou minha própria hipótese
+
+Euler–Maclaurin prevê `Σ g(kh) = (1/h)∫g + ½(g(0)+g(L))`, ou seja **meio dab em cada extremo**.
+Implementei. **Overshoot:** −101 → **+87**; −47 → +39.
+
+Varri o coeficiente `k` medindo **na região da tampa** (o pior global muda de lugar quando o termo
+entra — medir o global aqui mentiria):
+
+```
+reta   h \ k    0.00    0.15    0.25    0.35    0.50
+       0.4       -66     -46     -34     +40     +54
+       0.7      -101     -70     -54     +68     +87
+```
+
+⚠️ **O erro salta de −54 para +40 sem passar por zero.** Não existe `k` que feche: o pior pixel
+está **trocando de lugar**, não encolhendo. A conclusão é estrutural, não numérica — **a fileira
+FINITA do Painter põe um DISCO no primeiro dab, e a integral contínua tem uma ponta MACIA. São
+formas diferentes, não amplitudes diferentes.**
+
+**E isto não é dívida nova do C4.** É a MESMA pergunta que (a) o módulo já tem na fila como wave
+dedicada de **joins & caps** (`03 §8`) e (b) o motor ATUAL também erra hoje — a baseline da §1 mede
+o resíduo dele exatamente ali: **+140 no tip convexo, 166 px, com 0 px faltando no corpo**.
+
+### 5.6 O que isto muda no plano
+
+| | antes | depois da medição |
+|---|---|---|
+| a LEI | hipótese | ✅ **validada no corpo a ±2/255, cruzamento incluso** |
+| densidade | hipótese | ✅ **exatamente constante** em 6 densidades |
+| quadratura | desconhecida | ✅ `sub = 4` |
+| caps | "risco 2, medir" | ⚠️ **escopo explícito**: cap é primitivo geométrico, entra na wave |
+| juntas | não previsto | ⚠️ **+31 em h=0,7** — aberto, mesma família do cap |
+
+⚠️ **Um número que ainda não tem explicação e não vou vender como se tivesse:** a junta cresce com a
+dureza (+2 → +11 → +31). Cai na mesma investigação do cap.
+
+⚠️ **E um defeito do ORÁCULO que a varredura expôs de graça:** em `h = 0,9` os desvios explodem
+(+170, +250) em pixels na PONTA do caminho. O `painter_deposit` caminha por `pitch` e o último dab
+cai **até um pitch antes do fim do caminho** — então o oráculo não pinta a ponta que o caminho tem.
+Não é a lei: é a fronteira do oráculo, e qualquer gate de aceitação em `h ≥ 0,9` tem de saber disso.
+
+---
+
+## 6. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

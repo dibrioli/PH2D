@@ -11,7 +11,7 @@
 //! `#[ignore]` — precisa de adapter GPU (roda com `--ignored`; skip gracioso sem).
 
 use ph2d_core::Vec2;
-use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
+use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba, StrokeTip};
 use ph2d_flip_render::{
     CameraRaw, DEFAULT_TILE, FlipCompose, FlipRenderer, ScreenSpace, bin_segments, pack_drawing,
     walk_pixel,
@@ -736,5 +736,113 @@ fn measure_the_airbrush_profile_in_both_engines() {
                 a(41)
             );
         }
+    }
+}
+
+/// As FRONTEIRAS dos blocos acesos ao longo de uma linha da fatia — `alpha > 128` em runs.
+/// Comparar fronteiras (e não alfa pixel a pixel) é o que torna o rasterizador um oráculo de
+/// POSIÇÃO utilizável: os dois motores divergem na rampa da borda **por projeto**, e nada disso
+/// move onde uma conta começa.
+fn runs_along(px: &[u8], y: u32) -> Vec<(u32, u32)> {
+    let mut v = Vec::new();
+    let mut open: Option<u32> = None;
+    for x in 0..W {
+        let on = px[((y * W + x) * 4 + 3) as usize] > 128;
+        match (on, open) {
+            (true, None) => open = Some(x),
+            (false, Some(s)) => {
+                v.push((s, x - 1));
+                open = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(s) = open {
+        v.push((s, W - 1));
+    }
+    v
+}
+
+/// 🔴 **O PINCEL PONTILHADO CHEGOU AO PERCURSO** — e o oráculo é o rasterizador, que é quem sabe
+/// ONDE cada conta fica (o `arc_len` que ele lê é o mesmo, mas a lei dele é outra).
+///
+/// Três metades, e a segunda é a que mata um no-op:
+/// 1. o percurso desenha **CONTAS**: `n` blocos separados por vãos, `n ≥ 3`;
+/// 2. as contas estão **NO MESMO LUGAR** que as do raster (fronteira a fronteira, folga 1 px);
+/// 3. o MESMO traço em `Continuous` é **UM** bloco — sem isto, um `TipShape::of` que devolvesse
+///    sempre `Continuous` passaria em (1) e (2) sobre uma linha cheia comparada com ela mesma.
+///
+/// ⚠️ **`dot_spacing` 2,0 é o default do produto** (vão de um diâmetro) e a `hardness` é 1,0: este
+/// gate fala de POSIÇÃO, e na borda macia os dois motores divergem por projeto — isso é assunto dos
+/// gates de forma. A pitch é `dot_spacing × ref_width` = 2 × 8 = 16 px de arco, e o traço mede 48,
+/// então as contas caem em `x = 8, 24, 40, 56` — a última **exatamente no fim do traço**, que é o
+/// caso que a convenção meio-aberta do `bead_range` perderia sem a exceção da ponta.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_dotted_tip_reaches_the_walk_and_the_beads_land_where_the_raster_puts_them() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o tip pontilhado");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    let fileira = |gpu: &GpuContext,
+                   fr: &mut FlipRenderer,
+                   fc: &mut FlipCompose,
+                   tip: StrokeTip,
+                   armado: bool| {
+        let mut st = FlipStroke::new();
+        for &x in &[8.0_f32, 56.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: 8.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        st.tip = tip;
+        st.dot_spacing = 2.0;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        fc.set_walk_engine(&gpu.device, armado);
+        let slice = fc.stage_layer(&gpu.device, &gpu.queue, fr, &cam, &data, (W, H));
+        runs_along(&readback_slice(gpu, slice), 32)
+    };
+
+    let raster = fileira(&gpu, &mut fr, &mut fc, StrokeTip::Dots, false);
+    let walk = fileira(&gpu, &mut fr, &mut fc, StrokeTip::Dots, true);
+    let cheia = fileira(&gpu, &mut fr, &mut fc, StrokeTip::Continuous, true);
+    println!("\n  raster contas {raster:?}\n  walk   contas {walk:?}\n  walk   cheia  {cheia:?}");
+
+    // (1) são CONTAS.
+    assert!(
+        walk.len() >= 3,
+        "o percurso nao desenhou contas: {} bloco(s) em {walk:?}",
+        walk.len()
+    );
+    // (3) e o mesmo traço contínuo é UM bloco — o discriminante.
+    assert_eq!(
+        cheia.len(),
+        1,
+        "a fixture nao contem o fenomeno: a linha CHEIA tambem saiu em pedacos ({cheia:?})"
+    );
+    // (2) e elas estão onde o raster as põe.
+    assert_eq!(
+        walk.len(),
+        raster.len(),
+        "contagem de contas divergiu: raster {raster:?} vs percurso {walk:?}"
+    );
+    for (i, (r, w)) in raster.iter().zip(walk.iter()).enumerate() {
+        let (d0, d1) = (
+            (i64::from(r.0) - i64::from(w.0)).abs(),
+            (i64::from(r.1) - i64::from(w.1)).abs(),
+        );
+        assert!(
+            d0 <= 1 && d1 <= 1,
+            "a conta {i} nao esta onde o raster a poe: raster {r:?} vs percurso {w:?}"
+        );
     }
 }

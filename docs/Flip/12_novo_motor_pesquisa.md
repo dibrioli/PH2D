@@ -1191,8 +1191,8 @@ Smoke do §18 aprovado. O §16 dizia *"não sobra item de projeto, resta integra
 |---|---|---|---|
 | `closed` · largura · cor · opacidade · `hardness` | ✅ | ✅ | — |
 | `FLAG_AIRBRUSH` | ✅ | ✅ | **FECHADO no §19.1** |
-| `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ❌ | **próximo** |
-| `fade` sub-pixel | ✅ | ❌ | wave B |
+| `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ✅ | **FECHADO no §19.3** |
+| `fade` sub-pixel | ✅ | ❌ | **próximo** |
 | `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ❌ | wave C |
 | `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | wave C |
 
@@ -1257,6 +1257,81 @@ Gate **`the_airbrush_reaches_the_walk_and_matches_the_closed_form`**, em duas me
 casa com a forma fechada (barra 5/255) **e** o airbrush não é o perfil padrão (borda 189 contra 12).
 Sem a segunda, um `d_tau_of` que ignorasse a flag passaria na primeira. **2 mutações, 2 sangram**
 (a corda por dab · ignorar a flag).
+
+### 19.3 O TIP PONTILHADO — a outra lista de dabs, e o quadrado que a janela recortava
+
+**Não há kernel novo, e isso é o desenho inteiro.** A lei já é uma SOMA de dabs; uma linha cheia é a
+soma sobre dabs tão juntos que ela converge para a integral de arco (é a definição do `pitch`,
+§5.1), e uma fileira de contas é a MESMA soma com os dabs longe um do outro. Só a **lista** muda:
+
+- **contínuo:** `dτ = f(dn) · step/pitch` — a medida é o CAMINHO;
+- **contas:** `τ = Σ_k f_bead(dn_k)` — **sem peso de arco**, porque uma conta é UM carimbo.
+
+E `f_bead` reconcilia as duas medidas que o §19.2 separou: num carimbo o airbrush volta a ser a
+**corda** `k·√(1−dn²)` (a projeção de Abel de um dab), que é exatamente `1 − exp(−…)` = o
+`hardness_mask` do `flip.wgsl`. A fórmula que a wave anterior mediu e reprovou estava certa — só
+estava na medida errada.
+
+**O canal:** `TipShape` (`Continuous` | `Beads{pitch, square}`) ao lado do `DabProfile`, e os dois
+viajam no **`StrokeStyle`**, com UMA `of(&stroke)` — dois tipos soltos deixam um chamador construir
+um e esquecer o outro, que é o modo de falha que a auditoria por grep achou. `arc_len` (o buffer que
+o rasterizador já lia) virou a **binding 7** do kernel: o arco é cumulativo, não se deriva de um
+segmento solto.
+
+**Três decisões que não são detalhe:**
+
+1. **A silhueta passa a ser a das CONTAS.** Um disco é uma cápsula degenerada, então é a mesma
+   fórmula com outra lista — sem isso o `edge` mediria a borda da FITA (1 em toda a extensão dela) e
+   as contas sairiam sem anti-aliasing, com o `p_eval` empurrado para a linha-de-centro em vez de
+   para dentro do carimbo.
+2. **A posse de cada conta é meio-aberta** (`arc_a ≤ k·pitch < arc_b`): a conta de uma JUNÇÃO tem de
+   ter UM dono, senão ela entra na soma duas vezes e a junção escurece. ⚠️ **Com uma exceção: a
+   PONTA.** O último ponto de um traço aberto não tem segmento seguinte para adotá-la, e sem a
+   exceção o carimbo da ponta **desaparece** sempre que o arco total é múltiplo da pitch — o caso de
+   todo traço em números redondos, e o da própria fixture do gate.
+3. **Conta mais junta que o dab do pincel É a linha cheia** (`dot_spacing ≤ PAINTER_SPACING`). O
+   limiar sai da LEI, não de um palpite, e é ele que **limita o laço**: a janela de um pixel mede
+   `2r` de arco ⇒ no máximo `1/PAINTER_SPACING = 10` contas nela. Sem cap escolhido a dedo, e sem
+   contagem que dispara quando o slider vai a zero.
+
+#### O defeito que a paridade expôs sem poder achar
+
+A paridade CPU×device nasceu **VERMELHA nos quadrados** (`pior |Δ| 1,0`, 384 canais) e verde nos
+discos. A causa não era o espelho: **a janela da quadratura é um DISCO de raio `rmax`, e a quina de
+um carimbo QUADRADO fica a `r√2`** — então os dois motores perdiam a quina IGUAL, e a comparação
+entre eles deveria ser verde. O que a denunciou foi o defeito cair **em cima** da fronteira
+`disc <= 0`, onde a GPU contrai em FMA e o ulp discordava: um sintoma de *precisão* apontando para um
+buraco de *geometria*. Medido, uma fileira de quadrados antes/depois: as linhas de fora saíam
+**9 px** de largura contra 10 das de dentro; agora todas as linhas medem o mesmo.
+
+Fix: **`tau::dab_reach`** — a porta única de *quão longe da linha-de-centro este pincel põe tinta* —
+perguntada pelo **binner** E pela janela, porque um ladrilho que listasse o segmento por `r` deixaria
+a quina sem o segmento que a pinta. `pior |Δ| 4,883e-4` (o quantum do formato), **0 canais acima de
+1/255**.
+
+⚠️ **E o lado da quina é parte da FIXTURE:** a janela é clampada ao SEGMENTO, e a conta pertence ao
+segmento que COMEÇA nela — um pixel adiante do começo mantém a janela aberta mesmo com alcance
+curto, enquanto o pixel ATRÁS colapsa `t1 ≤ t0` e o segmento é descartado inteiro. Medido: com a
+quina da frente a mutação do `dab_reach` **passa**; com a de trás ela sangra.
+
+#### Gates — e a lição de que a lei do tip tem UMA CÓPIA POR MOTOR
+
+Produto: **`the_dotted_tip_reaches_the_walk_and_the_beads_land_where_the_raster_puts_them`** (na
+fatia que o compositor recebe): as contas do percurso caem nas fronteiras do raster **exatamente**
+(`(4,11) (20,27) (36,43) (52,59)`, incluindo a da ponta), e o MESMO traço em `Continuous` sai em UM
+bloco — sem essa metade, um `TipShape::of` que devolvesse sempre `Continuous` passaria comparando
+uma linha cheia com ela mesma.
+
+Unidade (o que a paridade **não pode** ver, porque é erro que os dois motores cometem igual): a conta
+da junção é carimbada uma vez · a conta da ponta existe · o vão entre contas é ZERO onde a linha
+cheia tem tinta · **um carimbo quadrado é um quadrado** (a quina tem tinta; a mesma quina com conta
+REDONDA é vazia).
+
+**7 mutações, 7 sangram.** ⚠️ E uma delas ensinou a estrutura: o `TipShape::of` do **Rust** mutado
+para `Continuous` sangra 3 gates de unidade e a paridade, e **NÃO** sangra o gate do produto — porque
+a decisão que o produto executa mora no `bead_pitch_of` do **WGSL**. A lei do tip tem uma cópia por
+motor (é o espelho declarado no topo do `walk.wgsl`), então **um gate por lado**, e a paridade é o
+que os amarra.
 
 ## 17. Fontes
 

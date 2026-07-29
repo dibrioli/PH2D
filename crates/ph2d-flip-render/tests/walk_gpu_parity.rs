@@ -70,9 +70,11 @@ fn stroke(pts: &[(f32, f32)], width: f32, hardness: f32, col: [f32; 3], op: f32)
     s
 }
 
-/// A cena de paridade: **cinco perguntas diferentes num desenho só** — a estrela que cruza a si
+/// A cena de paridade: **sete perguntas diferentes num desenho só** — a estrela que cruza a si
 /// mesma (a topologia da foto do Enio), um traço duro, um macio, um de opacidade < 1 (a regra do
-/// GP) e um afilado (largura variando ⇒ o raio interpolado da quadratura).
+/// GP), um afilado (largura variando ⇒ o raio interpolado da quadratura) e **dois pontilhados**
+/// (Dots e Squares), que exercitam a OUTRA lista de dabs: o `arc_len`, o dono meio-aberto de cada
+/// conta e a conta da PONTA.
 fn scene() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let (cx, cy, outer) = (60.0_f32, 60.0, 44.0);
@@ -116,6 +118,19 @@ fn scene() -> FlipDrawing {
     }
     cone.hardness = 0.5;
     d.strokes.push(cone);
+    // **O TIP PONTILHADO**, os dois sabores. `dot_spacing` default (2,0 = vão de um diâmetro) na
+    // fileira de discos e apertado na de quadrados, para as duas caírem em regimes diferentes de
+    // `bead_range`. Dureza < 1 de propósito: é o `f_bead_of` que a borda macia exercita.
+    let contas: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 220.0)).collect();
+    let mut dots = stroke(&contas, 12.0, 0.5, [0.9, 0.7, 0.1], 1.0);
+    dots.tip = ph2d_flip::StrokeTip::Dots;
+    dots.dot_spacing = 2.0;
+    d.strokes.push(dots);
+    let quad: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 245.0)).collect();
+    let mut squares = stroke(&quad, 12.0, 0.8, [0.1, 0.8, 0.8], 1.0);
+    squares.tip = ph2d_flip::StrokeTip::Squares;
+    squares.dot_spacing = 1.25;
+    d.strokes.push(squares);
     d
 }
 
@@ -127,7 +142,7 @@ fn the_device_walk_is_the_cpu_walk() {
         println!("sem adapter -- skip");
         return;
     };
-    let (w, h) = (128_u32, 216);
+    let (w, h) = (128_u32, 264);
     let sc = ScreenSpace::from_camera(&camera(w, h));
     let data = pack_drawing(&scene());
     let bins = bin_segments(&data, &sc, DEFAULT_TILE);
@@ -291,5 +306,70 @@ fn measure_what_a_frame_costs_on_the_device() {
             ms * 1e6 / px,
             cpu / ms
         );
+    }
+}
+
+/// **SONDA** — os dois percursos sobre uma fileira de CONTAS, lado a lado em ASCII. É ela que
+/// nomeia *qual* conta discorda em vez de deixar o gate apontar um pixel solto.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_bead_row_in_both_walks() {
+    let Some((device, queue)) = device() else {
+        println!("sem adapter -- skip");
+        return;
+    };
+    for (nome, tip, spacing, hard) in [
+        ("DOTS   ", ph2d_flip::StrokeTip::Dots, 2.0_f32, 0.5_f32),
+        ("SQUARES", ph2d_flip::StrokeTip::Squares, 1.25, 0.8),
+    ] {
+        let (w, h) = (128_u32, 32_u32);
+        let sc = ScreenSpace::from_camera(&camera(w, h));
+        let pts: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 16.0)).collect();
+        let mut st = stroke(&pts, 12.0, hard, [0.1, 0.8, 0.8], 1.0);
+        st.tip = tip;
+        st.dot_spacing = spacing;
+        let mut d = FlipDrawing::new();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        let bins = bin_segments(&data, &sc, DEFAULT_TILE);
+        let gpu = WalkPass::new(&device).run(&device, &queue, &data, &sc, &bins);
+        let glyph = |a: f32| match (a * 9.0).round() as i32 {
+            0 => '.',
+            n if n >= 9 => '#',
+            n => char::from_digit(n as u32, 10).unwrap(),
+        };
+        println!("\n  {nome}  spacing {spacing}");
+        // Os RUNS acesos por linha: `start..=end` de cada bloco com alfa > 0,5. Um mapa em ASCII
+        // engana o olho na contagem de colunas; um par de números não.
+        let runs = |row: &[f32]| {
+            let mut v: Vec<(u32, u32)> = Vec::new();
+            let mut open: Option<u32> = None;
+            for (x, a) in row.iter().enumerate() {
+                match (*a > 0.5, open) {
+                    (true, None) => open = Some(x as u32),
+                    (false, Some(s)) => {
+                        v.push((s, x as u32 - 1));
+                        open = None;
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(s) = open {
+                v.push((s, row.len() as u32 - 1));
+            }
+            v
+        };
+        for y in [11_u32, 13, 16, 19, 21] {
+            let c: Vec<f32> = (0..w)
+                .map(|x| walk_pixel(&bins, &data, &sc, [x as f32 + 0.5, y as f32 + 0.5])[3])
+                .collect();
+            let g: Vec<f32> = (0..w).map(|x| gpu[(y * w + x) as usize][3]).collect();
+            let (rc, rg) = (runs(&c), runs(&g));
+            println!("    y={y:2}  cpu {rc:?}");
+            if rc != rg {
+                println!("          gpu {rg:?}   <-- DIVERGE");
+            }
+        }
+        let _ = glyph;
     }
 }

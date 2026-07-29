@@ -260,11 +260,19 @@ pub fn bin_segments(data: &FlipGpuData, screen: &ScreenSpace, tile: u32) -> Tile
 
     let mut pairs: Vec<(u32, BinSeg)> = Vec::new();
     for sid in 0..data.strokes.len() as u32 {
+        // ⚠️ **O alcance é do PINCEL, não do raio** — a MESMA porta que a janela da quadratura usa
+        // (`tau::dab_reach`): um carimbo quadrado chega a `r√2` na diagonal, então um ladrilho que
+        // o listasse por `r` deixaria a quina do carimbo sem o segmento que a pinta. Lido do traço
+        // UMA vez, fora do laço de segmentos.
+        let tip = crate::tau::TipShape::of(&data.strokes[sid as usize]);
         for (a, b) in stroke_segs(data, sid) {
             let (pa, pb) = (data.points[a as usize], data.points[b as usize]);
             let sa = screen.point_px(pa.pos);
             let sb = screen.point_px(pb.pos);
-            let r = screen.radius_px(pa.width).max(screen.radius_px(pb.width));
+            let r = crate::tau::dab_reach(
+                tip,
+                screen.radius_px(pa.width).max(screen.radius_px(pb.width)),
+            );
             // Rejeição barata: a faixa de ladrilhos da bbox da cápsula.
             let lo_x = ((sa[0].min(sb[0]) - r) / tile as f32).floor();
             let hi_x = ((sa[0].max(sb[0]) + r) / tile as f32).floor();
@@ -331,8 +339,8 @@ fn stroke_deposit(
     screen: &ScreenSpace,
     p: [f32; 2],
 ) -> Option<Deposit> {
-    let prof = crate::tau::DabProfile::of(&data.strokes[run.first()?.stroke as usize]);
-    let (sd, near, dist) = stroke_silhouette(run, data, screen, p)?;
+    let style = crate::tau::StrokeStyle::of(&data.strokes[run.first()?.stroke as usize]);
+    let (sd, near, dist) = stroke_silhouette(run, data, screen, style.tip, p)?;
     // **O ANTI-ALIASING** — a fração do pixel coberta pela silhueta, por filtro-caixa.
     //
     // ⚠️ Espelha o `edge` do `flip.wgsl` TERMO A TERMO: lá é `clamp(0.5 + (1 − dn)/aa, 0, 1)` com
@@ -381,7 +389,7 @@ fn stroke_deposit(
     } else {
         p
     };
-    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, prof, p_eval)?;
+    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, style, p_eval)?;
     let cover = (1.0 - (-tau).exp()) * edge.min(1.0);
     (cover > 0.0).then_some(Deposit { cover, rgba })
 }
@@ -394,24 +402,57 @@ fn stroke_deposit(
 /// `dn` (`aa = fwidth(dn)`) e o próprio comentário dele registra o preço: sobre a UNIÃO o `fwidth`
 /// mede o gradiente de um `min`, que **salta na costura**, e por isso o AA de lá é por-PASSAGEM.
 /// Aqui não há derivada de tela envolvida, e por isso não há costura para saltar.
+///
+/// ⚠️ **Com o tip pontilhado a silhueta é a das CONTAS**, e é a MESMA fórmula com outra lista: um
+/// disco é uma cápsula degenerada. Sem isto o `edge` mediria a borda da FITA — 1 em toda a extensão
+/// dela — e as contas sairiam sem anti-aliasing, com o `p_eval` empurrado para a linha-de-centro em
+/// vez de para dentro do carimbo.
 fn stroke_silhouette(
     run: &[BinSeg],
     data: &FlipGpuData,
     screen: &ScreenSpace,
+    tip: crate::tau::TipShape,
     p: [f32; 2],
 ) -> Option<(f32, [f32; 2], f32)> {
+    let tail = crate::tau::tail_point(data, run);
     let mut best: Option<(f32, [f32; 2], f32)> = None;
+    let mut keep = |sd: f32, near: [f32; 2], dist: f32| {
+        if best.is_none_or(|(prev, _, _)| sd < prev) {
+            best = Some((sd, near, dist));
+        }
+    };
     for seg in run {
         let (pa, pb) = (data.points[seg.a as usize], data.points[seg.b as usize]);
         let sa = screen.point_px(pa.pos);
         let sb = screen.point_px(pb.pos);
         let (t, cx, cy) = closest_on_seg(p, sa, sb);
         let dist = ((p[0] - cx).powi(2) + (p[1] - cy).powi(2)).sqrt();
-        let r = screen.radius_px(pa.width) * (1.0 - t) + screen.radius_px(pb.width) * t;
-        let sd = dist - r;
-        if best.is_none_or(|(prev, _, _)| sd < prev) {
-            best = Some((sd, [cx, cy], dist));
+        let ra = screen.radius_px(pa.width);
+        let rb = screen.radius_px(pb.width);
+        if let crate::tau::TipShape::Beads { pitch, square } = tip {
+            // A conta mais próxima DESTE segmento é uma das duas que cercam o arco do ponto mais
+            // próximo, clampadas às que o segmento possui — as de fora são de um vizinho, que
+            // também está na lista e responde por elas.
+            let arc_a = data.arc_len[seg.a as usize];
+            let dw = [pb.pos[0] - pa.pos[0], pb.pos[1] - pa.pos[1]];
+            let wlen = (dw[0] * dw[0] + dw[1] * dw[1]).sqrt();
+            let (o0, o1) = crate::tau::bead_range(arc_a, arc_a + wlen, pitch, tail == Some(seg.b));
+            if o0 > o1 {
+                continue;
+            }
+            let base = ((arc_a + t * wlen) / pitch).floor() as i32;
+            for k in [base.clamp(o0, o1), (base + 1).clamp(o0, o1)] {
+                let bead = crate::tau::bead_at((sa, sb), (ra, rb), (arc_a, wlen), (k, pitch));
+                // A "distância" é `dn·r`: no disco isso É `|p − c|`, e no quadrado é a Chebyshev no
+                // frame da tangente — a mesma grandeza que o `dn` normaliza, então o `edge` e o
+                // empurrão do `p_eval` falam a unidade certa nos dois.
+                let dist = crate::tau::bead_dn(p, bead, square) * bead.r;
+                keep(dist - bead.r, bead.c, dist);
+            }
+            continue;
         }
+        let r = ra * (1.0 - t) + rb * t;
+        keep(dist - r, [cx, cy], dist);
     }
     best
 }

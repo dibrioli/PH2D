@@ -122,6 +122,7 @@ impl WalkPass {
                     },
                     count: None,
                 },
+                entry(7, true),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -300,6 +301,7 @@ impl WalkPass {
         let strs = storage("walk strokes", bytemuck::cast_slice(&data.strokes));
         let rng = storage("walk ranges", bytemuck::cast_slice(&bins.ranges));
         let sgs = storage("walk segs", bytemuck::cast_slice(&bins.segs));
+        let arcs = storage("walk arc_len", bytemuck::cast_slice(&data.arc_len));
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("walk bg"),
             layout: &self.layout,
@@ -331,6 +333,10 @@ impl WalkPass {
                 wgpu::BindGroupEntry {
                     binding: 6,
                     resource: wgpu::BindingResource::TextureView(fills),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: arcs.as_entire_binding(),
                 },
             ],
         });

@@ -2387,6 +2387,78 @@ agora sangra em **15,64 ms/frame**.
 
 ---
 
+### 5.32 ✅ E O ORÇAMENTO VIROU ADAPTATIVO — a água sai de 6 Hz para 38, no MESMO frame de 60 fps
+
+> Enio, depois da §5.31: ***"o FPS não caiu abaixo de 60 mas a animação estava tão lenta e travada
+> como se o FPS fosse 6"***.
+
+E o log que ele mandou junto **diz a causa inteira**:
+
+```text
+[frame] total=16.03ms (~62 fps) | cpu-encode(raw)=4.32ms
+        | present/acquire-stall=11.71ms | painter-dispatch(cpu)=0.01ms
+        | tool-tick=0.00ms | stamps=0.00ms | hero-paint=0.33ms
+```
+
+⚠️ **A CPU passa 11,7 dos 16,0 ms PARADA esperando o vsync.** O orçamento **fixo** de 4 ms da §5.31
+não protegia nada num frame com 12 ms de folga ociosa — ele **deixava o hardware parado** e punha a
+água em `4 × 60 ÷ 40 ≈ 6` passos por segundo. **O "FPS 6" era a ÁGUA, não o app.**
+
+A §0 já dizia por que o número estava errado: *o teto é o do HARDWARE, nunca o do caminho lento* — e
+um orçamento fixo é um **palpite sobre um recurso que se mede a cada frame**.
+
+#### 5.32.1 O controlador
+
+`wetpaint/budget.rs` — AIMD sobre o `dt` que o próprio `on_tick` recebe. ⚠️ O `Tool` é **contrato
+congelado** (§6), então não há parâmetro novo a pedir ao shell: o período do frame é o sinal
+disponível, e ele basta.
+
+| peça | o quê | por quê |
+|---|---|---|
+| **período** | EWMA do `dt` nos ticks em que a sim **não trabalhou** | é a régua, e ela é MEDIDA — 60 Hz, 144 Hz ou CPU-bound, o número é o do artista |
+| **cresce** | +0,5 ms/frame enquanto o frame cabe em `período + 2` | num app com vsync a folga é o *present stall*, e gastá-la é **de graça** |
+| **encolhe** | ×0,5 no instante em que estoura | o frame tem prioridade |
+| **teto** | 60% do período | é ele que segura o frame quando a sim não alcança o relógio |
+
+**Medido** (fixture do produto a 4096², `dt` pinado em 16,6 — o regime do vsync):
+
+| | taxa da sim | tick médio |
+|---|---|---|
+| horizontal | **13,0 → 38,0 Hz** | 5,06 → 9,41 ms |
+| diagonal | **11,0 → 36,5 Hz** | 5,26 → 11,38 ms |
+
+Os ms **sobem de propósito**: a água passou a gastar a folga que estava ociosa. O frame não muda,
+porque quem encolhe é o *stall*, não o trabalho.
+
+#### 5.32.2 Três camadas, três gates — e as duas mutações que sobreviveram primeiro
+
+| camada | gate | mutação |
+|---|---|---|
+| crescimento | o orçamento SOBE acima da semente sob `dt` pinado | `grow = 0` ⇒ fica em 4,00 ms |
+| recuo | num app **CPU-bound** (overhead 20 ms) o frame assenta no próprio overhead | sem recuo ⇒ **1,75×** o overhead |
+| teto | numa poça que a sim **não alcança**, ele estrangula | sem teto ⇒ **30 Hz e 37,74 ms/frame** |
+
+⚠️ **A primeira rodada teve DUAS sobreviventes, e o motivo era estrutural:** as três metades se cobrem
+mutuamente, então um gate só por cima não isola nenhuma
+([[feedback_layered_defenses_need_per_layer_gates]]). Cada fixture agora **neutraliza as outras
+camadas por REGIME**:
+
+- com vsync o **piso de 16,6 ms ABSORVE** tudo que a água gasta ⇒ `dt` nunca passa do alvo ⇒ o recuo
+  nunca dispara ⇒ o gate do recuo tem de rodar num app CPU-bound;
+- numa poça leve o **`acc` já limita a sim a 40 Hz** ⇒ um teto infinito não muda um milissegundo ⇒ o
+  gate do teto precisa de uma poça que a sim não alcance.
+
+#### 5.32.3 E o oráculo do mecanismo deixou de ser um relógio
+
+O gate do crescimento afirma **ESTADO** (`o orçamento subiu acima da semente`), que é determinístico.
+Duas versões anteriores usavam wall-clock e **reprovaram sob a suíte carregada**: Hz absolutos
+(25,5 contra piso 28) e depois uma razão entre janelas da mesma corrida (1,21× contra piso 1,3).
+*Um gate cujo oráculo se dissolve quando a máquina está carregada será silenciado em vez de
+acreditado.* O que restou de relógio é **controle** (piso folgado) ou não tem alternativa — e esses
+**pulam em debug**, onde um passo de sim é ~16× mais lento e o número mediria o perfil de compilação.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

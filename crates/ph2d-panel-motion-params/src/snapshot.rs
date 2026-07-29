@@ -417,6 +417,12 @@ pub(crate) fn param_grad_interp_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/grad/{slot}/interp"))
 }
 
+/// The `slot`-th Gradient row's `p`-th **preset seed** chip (Rainbow / Heat / Ice /
+/// Grayscale) — clicking it LOADS that preset's stops into the editable ramp (doc 85).
+pub(crate) fn param_grad_preset_id(slot: usize, p: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/preset/{p}"))
+}
+
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).
 fn fnv_id(key: &str) -> NodeId {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;

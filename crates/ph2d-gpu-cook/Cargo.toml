@@ -21,6 +21,8 @@ ph2d-render = { path = "../ph2d-render" }
 naga = { version = "28", features = ["wgsl-in"] }
 # The parity gates cook a REAL motion chain on both paths.
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# The gradient presets (doc 85) the color_ramp LUT-parity gate drives, serialized.
+ph2d-color = { path = "../ph2d-color" }
 ph2d-eval-motion = { path = "../ph2d-eval-motion" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }

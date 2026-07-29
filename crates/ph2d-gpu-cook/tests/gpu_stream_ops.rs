@@ -69,8 +69,15 @@ fn grid(g: &mut Graph, rows: f32, cols: f32) -> NodeId {
 }
 
 /// The family's comparator. Counts are EXACT (a compaction that filtered a
-/// different set is not an ε); floats within the parity suite's budgets.
+/// different set is not an ε); floats within the parity suite's budgets. `tint` is exact
+/// (`1e-5`) for the callers whose colour is a solid or a direct field; a caller whose colour
+/// comes from `motion.color_ramp` passes the LUT's ε via [`assert_parity_tint`] (doc 85: the
+/// ramp bakes to a 256-sample LUT on the device, so the tint carries ~one sample-step).
 fn assert_parity(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance]) {
+    assert_parity_tint(label, cpu, gpu, 1e-5);
+}
+
+fn assert_parity_tint(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance], tint_tol: f32) {
     assert_eq!(cpu.len(), gpu.len(), "{label}: instance count");
     for (i, (c, g)) in cpu.iter().zip(gpu).enumerate() {
         for k in 0..2 {
@@ -81,7 +88,7 @@ fn assert_parity(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance]) {
         }
         for k in 0..4 {
             let d = (c.tint[k] - g.tint[k]).abs();
-            assert!(d <= 1e-5, "{label} instance {i} tint[{k}]: |Δ| {d}");
+            assert!(d <= tint_tol, "{label} instance {i} tint[{k}]: |Δ| {d}");
         }
         let d = (c.opacity - g.opacity).abs();
         assert!(d <= 1e-5, "{label} instance {i} opacity: |Δ| {d}");
@@ -118,7 +125,14 @@ fn cpu_frame(
 /// asserting the plan claimed everything and that the populations agree at
 /// EVERY tick (the trajectory, not the endpoint: a wrong compaction can
 /// re-converge — the W1.5 lesson, applied to counts).
-fn parity_over_ticks(label: &str, g: &Graph, reg: &NodeRegistry, out: NodeId, ticks: u64) {
+fn parity_over_ticks(
+    label: &str,
+    g: &Graph,
+    reg: &NodeRegistry,
+    out: NodeId,
+    ticks: u64,
+    tint_tol: f32,
+) {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
@@ -155,7 +169,7 @@ fn parity_over_ticks(label: &str, g: &Graph, reg: &NodeRegistry, out: NodeId, ti
         );
     }
     let gpu_out = read_instances(&gpu, gc.instances().expect("cooked"));
-    assert_parity(label, &cpu_last, &gpu_out);
+    assert_parity_tint(label, &cpu_last, &gpu_out, tint_tol);
 }
 
 /// `motion.cull`, all four shapes: fraction / fraction inverted / falloff
@@ -202,7 +216,7 @@ fn the_cull_survivors_match_the_cpu_in_every_mode() {
             cpu.len(),
             48 * 48
         );
-        parity_over_ticks(label, &g, &reg, out, 0);
+        parity_over_ticks(label, &g, &reg, out, 0, 1e-5);
     }
 }
 
@@ -224,7 +238,6 @@ fn the_lifetime_reaps_the_same_flakes_and_writes_the_same_life() {
     let attr = g.add_node("value.attribute");
     g.set_text_param(attr, "attr", "life");
     let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 1.0); // heat: life = 0 black → 1 white
     let out = g.add_node("motion.output");
     connect(&mut g, em, lt, 0, false);
     connect(&mut g, lt, attr, 0, false);
@@ -247,7 +260,7 @@ fn the_lifetime_reaps_the_same_flakes_and_writes_the_same_life() {
     // bare `ticks: 0` the emitter is EMPTY and the parity is vacuous — the
     // rows-scatter mutation survived exactly that way (a fixture only proves
     // what it contains).
-    parity_over_ticks("lifetime+life→ramp", &g, &reg, out, 96);
+    parity_over_ticks("lifetime+life→ramp", &g, &reg, out, 96, 6e-3);
 }
 
 /// `sim.spawn` marched across ticks, both slot modes. Sequential on BOTH sides
@@ -329,7 +342,7 @@ fn the_combine_lays_the_streams_end_to_end_with_zero_fill() {
     // first cook a missing zero-fill still reads zeros and passes. Only after
     // the pool RECYCLES buffers (cook 2+, the emitter growing between them)
     // does a skipped `clear_buffer` surface as stale bytes.
-    parity_over_ticks("combine", &g, &reg, out, 3);
+    parity_over_ticks("combine", &g, &reg, out, 3, 1e-5);
 }
 
 /// `value.attribute`'s whole ladder, each arm visible in the ramp's tint:
@@ -364,7 +377,6 @@ fn the_attribute_projects_scalar_length_and_missing_alike() {
         g.set_text_param(attr, "attr", name);
         g.set_param(attr, "mode", mode);
         let ramp = g.add_node("motion.color_ramp");
-        g.set_param(ramp, "preset", 0.0);
         let out = g.add_node("motion.output");
         connect(&mut g, src, attr, 0, false);
         connect(&mut g, src, ramp, 0, false);
@@ -388,7 +400,7 @@ fn the_attribute_projects_scalar_length_and_missing_alike() {
         }
         // 66 ticks = the 1.1 s of the fixture check — an emitter-fed arm at
         // tick 0 is empty and proves nothing.
-        parity_over_ticks(label, &g, &reg, out, 66);
+        parity_over_ticks(label, &g, &reg, out, 66, 6e-3);
     }
 }
 
@@ -404,7 +416,6 @@ fn the_ramp_t_broadcasts_a_length_one_field() {
     let lfo = g.add_node("value.lfo");
     g.set_param(lfo, "period", 5.9);
     let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 0.0);
     let out = g.add_node("motion.output");
     connect(&mut g, gr, ramp, 0, false);
     connect(&mut g, lfo, ramp, 1, false);
@@ -422,7 +433,6 @@ fn the_ramp_t_broadcasts_a_length_one_field() {
     let mut positional = Graph::new();
     let gr2 = grid(&mut positional, 12.0, 12.0);
     let ramp2 = positional.add_node("motion.color_ramp");
-    positional.set_param(ramp2, "preset", 0.0);
     let out2 = positional.add_node("motion.output");
     connect(&mut positional, gr2, ramp2, 0, false);
     connect(&mut positional, ramp2, out2, 0, false);
@@ -433,7 +443,7 @@ fn the_ramp_t_broadcasts_a_length_one_field() {
         pos.iter().any(|c| c.tint != pos[0].tint),
         "control: the positional key varies"
     );
-    parity_over_ticks("ramp-broadcast-t", &g, &reg, out, 54);
+    parity_over_ticks("ramp-broadcast-t", &g, &reg, out, 54, 6e-3);
 }
 
 /// **The price of the compaction seam, measured** (ADR-0136 §2 promises this
@@ -648,5 +658,5 @@ fn the_birth_zone_loop_lives_and_dies_on_the_device_matching_the_cpu() {
         "fixture: the population must both grow and shrink: {counts:?}"
     );
 
-    parity_over_ticks("birth-zone", &g, &reg, out, 90);
+    parity_over_ticks("birth-zone", &g, &reg, out, 90, 1e-5);
 }

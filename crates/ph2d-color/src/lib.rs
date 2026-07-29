@@ -41,6 +41,7 @@
 
 pub mod color_ramp;
 pub mod color_ramp_text;
+pub mod gradient_preset;
 pub mod linear;
 pub mod oklab;
 pub mod oklch;
@@ -52,6 +53,7 @@ pub mod value_ramp;
 
 pub use color_ramp::{ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInterp, RampStop};
 pub use color_ramp_text::{parse_gradient, serialize_gradient};
+pub use gradient_preset::{GradientPreset, default_gradient};
 pub use linear::LinearRgba;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;

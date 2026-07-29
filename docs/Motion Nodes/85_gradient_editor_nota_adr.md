@@ -4,12 +4,20 @@
 
 ## O que é
 
-O `motion.color_ramp` Custom deixa de ser **seis sliders crus `0..1`** (`a_r`…`b_b`, dois stops
-fixos) e vira um **gradiente MULTI-STOP** autorado por um editor direto no painel — a barra, os
-stops arrastáveis, um swatch OKLCH por stop, `+`/`−` e o interp. É o **item I9 do plano 63**
-(§7 W-I, ordem do Enio 2026-07-25) e o **irmão de COR do editor de curva** (doc 68, A1): a
-mesma arquitetura *text param → editor arrastável → LUT de GPU*, na coluna `tint` em vez da
-máscara.
+O `motion.color_ramp` deixa de ser **seis sliders crus `0..1`** (`a_r`…`b_b`, dois stops fixos)
++ um enum de preset e vira **UM gradiente MULTI-STOP, sempre editável**, autorado por um editor
+direto no painel — a barra, os stops arrastáveis, um swatch OKLCH por stop, `+`/`−`, o interp e
+os **chips de preset**. É o **item I9 do plano 63** (§7 W-I, ordem do Enio 2026-07-25) e o
+**irmão de COR do editor de curva** (doc 68, A1): a mesma arquitetura *text param → editor
+arrastável → LUT de GPU*, na coluna `tint` em vez da máscara.
+
+**Não há modo "preset vs custom".** O 1º corte tinha um enum `preset` (Rainbow/Heat/Ice/Grayscale
+/Custom): o preset renderizava por WGSL inline enquanto o editor mostrava um preto→branco solto —
+o render e o editor discordavam sobre "qual é o gradiente" (report do Enio: *"as cores dos presets
+deveriam aparecer no colorramp e ser editáveis e arrastáveis"*). A cura foi **unificar**: a rampa é
+o text param, sempre; os presets são **sementes** (`ph2d_color::GradientPreset`) que o editor
+CARREGA nos stops. O nó não tem mais os params `preset`/`interp` (`params: &[]`); o interp é um
+token na string.
 
 ## Pesquisa (regra-ouro — porto por SEMÂNTICA)
 
@@ -38,17 +46,21 @@ artista arrasta os stops e escolhe as cores num picker.
    + marcadores de posição (o MESMO `InteractiveState::CurvePoint` x-drag da curva, y ignorado)
    + um swatch OKLCH por stop (`register_picker_swatch`).
 
-3. **A COR de um stop vai ao DEVICE por 3 LUTs escalares** (r/g/b), via o canal `luts` que a
+3. **A rampa inteira vai ao DEVICE por 3 LUTs escalares** (r/g/b), via o canal `luts` que a
    curva já criou. Uma LUT de cor **é** três LUTs escalares ⇒ **zero mudança foundational** de
-   GPU (o `LutSpec` continua escalar). A branch Custom da WGSL amostra as 3; os presets ficam
-   inline (stops constantes). Alpha implícito 1.0 (stops opacos — todo preset já é).
+   GPU (o `LutSpec` continua escalar). A WGSL é **UMA branch** — amostra as 3 LUTs; não há mais
+   tabela de preset inline (os presets são sementes da string, então cozinham pela MESMA LUT).
+   Alpha implícito 1.0 (stops opacos).
 
-4. **Curva não-desenhada = default preto→branco.** Um `color_ramp` Custom recém-largado com
-   string vazia/malformada abre no `ColorRamp::default()` — seguro largar antes de editar.
+4. **Os presets são SEMENTES em `ph2d-color`** (`GradientPreset`, cor é dado, não pertence a um
+   nó): os chips do editor CARREGAM a rampa do preset nos stops (`serialize_gradient(preset.ramp())`
+   → `SetTextParam`), universais para qualquer param de gradiente. Rampa não-autorada = o
+   `default_gradient()` (**Rainbow**), compartilhado pelo eval da CPU, o fill da LUT e o painel —
+   um nó novo é colorido do 1º frame, e as três rotas concordam no fallback.
 
-5. **A POSIÇÃO/add/remove/interp saem por `SetTextParam`** (como a curva, painel-side); a **COR
-   sai pela pinça OKLCH do bridge** (como a `ColorRow`, re-serializando a string). Uma edição,
-   dois canais — cada um pelo mecanismo que já existe.
+5. **A POSIÇÃO/add/remove/interp/preset saem por `SetTextParam`** (como a curva, painel-side); a
+   **COR sai pela pinça OKLCH do bridge** (como a `ColorRow`, re-serializando a string). Uma
+   edição, dois canais — cada um pelo mecanismo que já existe.
 
 ## Alternativas rejeitadas
 
@@ -65,19 +77,22 @@ artista arrasta os stops e escolhe as cores num picker.
 
 ## O preço (medido)
 
-- A LUT (3× 256 amostras) é reconstruída por frame para todo `color_ramp` Custom (parse + bake,
-  sub-µs) — a mesma decisão do `value.curve`; um cache por-string é otimização futura.
-- Paridade CPU×GPU na RTX: presets 0..3 exatos, Custom dentro de `6e-3` (o corte do canto do
-  stop por ~um passo de amostra da LUT, o trade documentado).
+- A LUT (3× 256 amostras) é reconstruída por frame para todo `color_ramp` (parse + bake, sub-µs)
+  — a mesma decisão do `value.curve`; um cache por-string é otimização futura.
+- Paridade CPU×GPU na RTX: TODA rampa (presets + gradiente arbitrário) dentro de `6e-3` (o corte
+  do canto do stop por ~um passo de amostra da LUT, a convenção do `field.remap` Curve) — não há
+  mais rota exata inline, então o `1e-5` do `gpu_stream_ops` para o tint dos casos com
+  `color_ramp` subiu para o ε da LUT (por-caller, os outros seguem exatos).
 
 ## Onde vive
 
-- **`ph2d-color`**: `color_ramp_text.rs` (`serialize_gradient`/`parse_gradient`).
+- **`ph2d-color`**: `color_ramp_text.rs` (`serialize_gradient`/`parse_gradient`) + `gradient_preset.rs`
+  (`GradientPreset` + `default_gradient()` = Rainbow).
 - **`ph2d-node-registry`**: `ParamWidget::Gradient`.
-- **`ph2d-node-motion-color-ramp`**: Custom lê o text param; 3 `LutSpec` (`cr_grad_r/g/b`); a
-  WGSL Custom amostra as LUTs.
-- **`ph2d-panel-motion-params`**: `gradient_row.rs` (o editor) + `shaper_dispatch.rs` (o
-  despacho drag/click da curva E do gradiente).
+- **`ph2d-node-motion-color-ramp`**: `params: &[]`; o eval lê o text param sempre (empty →
+  `default_gradient`); 3 `LutSpec` (`cr_grad_r/g/b`), a WGSL amostra as LUTs (uma branch).
+- **`ph2d-panel-motion-params`**: `gradient_row.rs` (o editor + os chips de preset) +
+  `shaper_dispatch.rs` (o despacho drag/click da curva E do gradiente, incl. o load do preset).
 - **shell**: `motion_bridge_params.rs` monta a `GradientRow`; `motion_bridge_color.rs` faz a
   pinça (`picker_session`/`apply_picker_readback`/`gradient_picker_stop`/`apply_gradient_stop_pick`).
 
@@ -85,5 +100,6 @@ artista arrasta os stops e escolhe as cores num picker.
 
 `env PH2D_GRADIENT_SMOKE=1 cargo run -p ph2d-host-desktop --release` — uma fileira de 24 pontos
 num sweep vermelho→verde→azul, o `Color Ramp` selecionado, o editor de gradiente no painel.
-Arraste um marcador (re-colore ao vivo), clique um swatch (o picker OKLCH abre), `+`/`−`
-adiciona/remove. Roda igual com `PH2D_GPU_COOK=1` (default) e `=0`.
+**Clique um chip de preset → as cores dele carregam nos stops (a fileira re-colore) e ficam
+arrastáveis.** Arraste um marcador (re-colore ao vivo), clique um swatch (o picker OKLCH abre),
+`+`/`−` adiciona/remove. Roda igual com `PH2D_GPU_COOK=1` (default) e `=0`.

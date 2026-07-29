@@ -1242,105 +1242,109 @@ fn two_nodes_of_one_type_at_different_column_presence_get_different_pipelines() 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
-    // `grid → color_ramp → output`, every preset × both interpolations. The ramp
-    // is keyed on the POSITIONAL index (`t` unconnected — the only shape the
-    // kernel claims), which is precisely the identity a constant
-    // `ColumnBinding.identity` could not express and the generated `HAS_<col>`
-    // now can.
+    // `grid → color_ramp → output`, every PRESET, keyed on the POSITIONAL index (`t`
+    // unconnected — the only shape the kernel claims), which is precisely the identity a
+    // constant `ColumnBinding.identity` could not express and the generated `HAS_<col>` now
+    // can.
     //
-    // Every preset, because they are different STOP TABLES (7 / 5 / 3 / 2 / 2)
-    // and the bracket search is what a fixture of one table would never
-    // exercise. `interp` is rounded, so it goes through the half-away helper —
-    // WGSL's `round` is half-even and would pick the other branch at x.5.
+    // Every preset, because they are different STOP TABLES (7 / 5 / 3 / 2) and the LUT
+    // bracket search is what a fixture of one table would never exercise. Since doc 85 the
+    // presets are NOT inline WGSL — they are `GradientPreset` ramps serialized into the same
+    // `ramp` text param the artist edits, so they cook on the device through the per-channel
+    // LUTs like any custom gradient. Compared within the LUT's ε (256 samples + lerp round
+    // the stop corners by ~one sample-step, the `field.remap` Curve convention) — the tint is
+    // the only field the ramp touches.
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
     };
     let reg = registry();
-    // Presets 0..3 only — their stops are WGSL constants and `cr_eval` matches the
-    // CPU to ULPs. Custom (preset 4) rides the per-channel LUTs (doc 85), a 256-sample
-    // table + lerp with a bounded ε, so it is proven separately by
-    // `color_ramp_custom_gradient_matches_the_cpu_on_the_device` (the `field.remap`
-    // Curve LUT convention) — the exact `1e-5` tint bound here cannot hold a LUT.
-    for preset in 0..4 {
-        for interp in 0..2 {
-            let mut g = Graph::new();
-            let grid = grid_node(&mut g, 160.0);
-            let cr = g.add_node("motion.color_ramp");
-            g.set_param(cr, "preset", preset as f32);
-            g.set_param(cr, "interp", interp as f32);
-            let out = g.add_node("motion.output");
-            for (a, b) in [(grid, cr), (cr, out)] {
-                g.connect(Edge {
-                    from: (a, 0),
-                    to: (b, 0),
-                    delayed: false,
-                })
-                .unwrap();
-            }
-            g.validate(&reg).expect("well-typed");
-
-            let mut cook = Cook::new();
-            let mut cpu = Vec::new();
-            ph2d_eval_motion::evaluate_motion_into(
-                &mut cook,
-                &g,
-                &reg,
-                out,
-                PLAYHEAD,
-                DEFAULT_UV,
-                DEFAULT_SIZE,
-                &mut cpu,
-            )
-            .expect("cpu cook");
-
-            let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-            assert!(
-                plan.is_fully_gpu(),
-                "preset {preset}: {:?}",
-                plan.boundaries
-            );
-            assert_eq!(plan.dispatching_stages(&reg), 2, "grid + the ramp");
-            let mut gc = ph2d_gpu_cook::GpuCook::new();
-            gc.cook(
-                &gpu,
-                &g,
-                &reg,
-                &reg,
-                &plan,
-                &[],
-                CookClock::at(PLAYHEAD),
-                DEFAULT_UV,
-                DEFAULT_SIZE,
-            )
-            .expect("gpu cook");
-            let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
-
-            // The ramp must actually COLOUR: a fixture where every instance came
-            // out the same would compare two flat fields and pass with the
-            // bracket search dead.
-            let spread = cpu
-                .iter()
-                .flat_map(|c| (0..3).map(move |k| c.tint[k]))
-                .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
-            assert!(
-                spread.1 - spread.0 > 0.5,
-                "preset {preset} must span colours, got {spread:?}"
-            );
-            eprintln!("color_ramp preset {preset} interp {interp}: spread {spread:?}");
-            assert_parity(&cpu, &gpu_out);
+    const LUT_TOL: f32 = 6e-3;
+    for preset in ph2d_color::GradientPreset::ALL {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 160.0);
+        let cr = g.add_node("motion.color_ramp");
+        g.set_text_param(cr, "ramp", ph2d_color::serialize_gradient(&preset.ramp()));
+        let out = g.add_node("motion.output");
+        for (a, b) in [(grid, cr), (cr, out)] {
+            g.connect(Edge {
+                from: (a, 0),
+                to: (b, 0),
+                delayed: false,
+            })
+            .unwrap();
         }
+        g.validate(&reg).expect("well-typed");
+
+        let mut cook = Cook::new();
+        let mut cpu = Vec::new();
+        ph2d_eval_motion::evaluate_motion_into(
+            &mut cook,
+            &g,
+            &reg,
+            out,
+            PLAYHEAD,
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            &mut cpu,
+        )
+        .expect("cpu cook");
+
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+        assert!(
+            plan.is_fully_gpu(),
+            "preset {}: {:?}",
+            preset.name(),
+            plan.boundaries
+        );
+        assert_eq!(plan.dispatching_stages(&reg), 2, "grid + the ramp");
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+        // The ramp must actually COLOUR: a fixture where every instance came out the same
+        // would compare two flat fields and pass with the bracket search dead.
+        let spread = cpu
+            .iter()
+            .flat_map(|c| (0..3).map(move |k| c.tint[k]))
+            .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+        assert!(
+            spread.1 - spread.0 > 0.5,
+            "preset {} must span colours, got {spread:?}",
+            preset.name()
+        );
+        let mut max_tint = 0.0f32;
+        for (c, gg) in cpu.iter().zip(&gpu_out) {
+            for k in 0..4 {
+                max_tint = max_tint.max((c.tint[k] - gg.tint[k]).abs());
+                assert_close("tint", 0, c.tint[k], gg.tint[k], LUT_TOL);
+            }
+        }
+        eprintln!(
+            "color_ramp preset {}: spread {spread:?}, max |Δtint| = {max_tint:e}",
+            preset.name()
+        );
     }
 }
 
-/// doc 85, the DEVICE half of the Custom gradient. A red→green→blue multi-stop gradient
-/// (a shape the two-stop `a/b` params never had) is keyed on the positional index and
-/// must colour the set red→green→blue on the device. The colour reaches the render as the
-/// `tint` column directly (the node writes it). Compared within the LUT's ε — WIDER than
-/// the ULP parity of the presets, because the three 256-sample channel LUTs + lerp round
-/// the stop corners by ~one sample-step (the documented trade, the `value.curve` /
-/// `field.remap` Curve convention). Dropping a LUT (a flat channel) diverges by the whole
-/// gradient span, ~a hundredfold over this bound.
+/// doc 85, the DEVICE half of an arbitrary gradient. A red→green→blue multi-stop gradient
+/// (a shape no preset makes) is keyed on the positional index and must colour the set
+/// red→green→blue on the device. The colour reaches the render as the `tint` column directly
+/// (the node writes it). Compared within the LUT's ε — the three 256-sample channel LUTs +
+/// lerp round the stop corners by ~one sample-step (the documented trade, the `value.curve` /
+/// `field.remap` Curve convention; the sibling preset gate uses the same bound). Dropping a
+/// LUT (a flat channel) diverges by the whole gradient span, ~a hundredfold over this bound.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
@@ -1352,7 +1356,6 @@ fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
     let mut g = Graph::new();
     let grid = grid_node(&mut g, 160.0);
     let cr = g.add_node("motion.color_ramp");
-    g.set_param(cr, "preset", 4.0); // Custom
     // A three-stop gradient with non-round channels (interp 2 = Linear).
     g.set_text_param(
         cr,
@@ -1373,7 +1376,14 @@ fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
     ph2d_eval_motion::evaluate_motion_into(
-        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
     )
     .expect("cpu cook");
 

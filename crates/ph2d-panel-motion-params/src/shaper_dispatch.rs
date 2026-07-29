@@ -7,7 +7,8 @@
 use crate::snapshot::{
     MAX_PARAM_ROWS, MotionParamIntent, ParamRow, ParamsSnapshot, param_curve_add_id,
     param_curve_editor_id, param_curve_interp_id, param_curve_remove_id, param_grad_add_id,
-    param_grad_editor_id, param_grad_interp_id, param_grad_remove_id, push_param_intent,
+    param_grad_editor_id, param_grad_interp_id, param_grad_preset_id, param_grad_remove_id,
+    push_param_intent,
 };
 use crate::{curve_row, gradient_row};
 use ph2d_a11y::NodeId;
@@ -105,6 +106,11 @@ pub(crate) fn on_gradient_click(id: NodeId, snap: &ParamsSnapshot) -> Option<Eve
             gradient_row::remove_stop(&row.value, slot)
         } else if id == param_grad_interp_id(slot) {
             gradient_row::cycle_interp(&row.value, slot)
+        } else if let Some(p) =
+            (0..gradient_row::PRESET_COUNT).find(|&p| id == param_grad_preset_id(slot, p))
+        {
+            // A preset chip LOADS that preset into the editable ramp (doc 85).
+            gradient_row::preset_gradient(p)
         } else {
             continue;
         };

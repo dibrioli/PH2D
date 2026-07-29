@@ -15,11 +15,13 @@
 
 use crate::snapshot::{
     GradientRow, MAX_GRADIENT_STOPS, param_grad_add_id, param_grad_editor_id, param_grad_interp_id,
-    param_grad_remove_id, param_grad_stop_id, param_grad_swatch_id,
+    param_grad_preset_id, param_grad_remove_id, param_grad_stop_id, param_grad_swatch_id,
 };
 use ph2d_a11y::NodeId;
 use ph2d_color::srgb::linear_to_srgb_byte;
-use ph2d_color::{ColorRamp, RampInterp, RampStop, parse_gradient, serialize_gradient};
+use ph2d_color::{
+    ColorRamp, GradientPreset, RampInterp, RampStop, parse_gradient, serialize_gradient,
+};
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
@@ -33,6 +35,7 @@ use std::cell::Cell;
 
 const BAR_H: f32 = 24.0; // LITERAL-PX-OK: gradient-bar height
 const SWATCH_H: f32 = 18.0; // LITERAL-PX-OK: per-stop swatch strip height
+const PRESET_H: f32 = 14.0; // LITERAL-PX-OK: preset seed-chip strip height
 const MARKER_R: f32 = 5.0; // LITERAL-PX-OK: position-marker dot radius
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a marker's pointer grab box
 const GRID_W: f32 = 1.0; // LITERAL-PX-OK: border / ring stroke width
@@ -78,6 +81,7 @@ pub(crate) struct GradientWidgets {
     pub markers: Vec<(NodeId, NodeId, u8, Rect)>,
     /// `(swatch id, srgb)` — registered as a picker swatch + seeded with the colour.
     pub swatches: Vec<(NodeId, [u8; 4])>,
+    /// `+`/`−`/interp buttons + the preset-seed chips — all registered as plain buttons.
     pub buttons: Vec<NodeId>,
 }
 
@@ -88,6 +92,26 @@ impl GradientWidgets {
             swatches: Vec::new(),
             buttons: Vec::new(),
         }
+    }
+}
+
+/// Paint a gradient bar into `rect` as adjacent vertical strips of `ramp.eval(t)` (linear→sRGB).
+/// Shared by the main editor bar and the small preset-seed chips — the colours are DATA (the
+/// swatch precedent), not tokens.
+fn paint_gradient_bar(scene: &mut VectorScene, rect: Rect, ramp: &ColorRamp) {
+    let strips = (rect.w * 0.5).clamp(8.0, 128.0) as usize; // LITERAL-PX-OK: strip-count clamp
+    for k in 0..strips {
+        let t = (k as f32 + 0.5) / strips as f32;
+        let [r, g, b, _a] = ramp.eval(t);
+        let col = Color::from_rgba8(
+            linear_to_srgb_byte(r),
+            linear_to_srgb_byte(g),
+            linear_to_srgb_byte(b),
+            255,
+        ); // LITERAL-COLOR-OK: the ramp's OWN colour is data (the swatch precedent), not a token
+        let sx = rect.x + (k as f32 / strips as f32) * rect.w;
+        let sw = rect.w / strips as f32 + 1.0; // +1: overlap so no seam gap between strips
+        fill_rounded_rect(scene, Rect::new(sx, rect.y, sw, rect.h), 0.0, col);
     }
 }
 
@@ -153,20 +177,7 @@ pub(crate) fn paint_gradient_row(
     // ── Gradient bar: adjacent vertical strips filled with eval(t) ──
     let by0 = y + ROW_H_PX + gap;
     let bar = Rect::new(x, by0, w.max(1.0), BAR_H);
-    let strips = (bar.w * 0.5).clamp(32.0, 128.0) as usize; // LITERAL-PX-OK: strip-count clamp
-    for k in 0..strips {
-        let t = (k as f32 + 0.5) / strips as f32;
-        let [r, g, b, _a] = ramp.eval(t);
-        let col = Color::from_rgba8(
-            linear_to_srgb_byte(r),
-            linear_to_srgb_byte(g),
-            linear_to_srgb_byte(b),
-            255,
-        ); // LITERAL-COLOR-OK: the ramp's OWN colour is data (the swatch precedent), not a token
-        let sx = bar.x + (k as f32 / strips as f32) * bar.w;
-        let sw = bar.w / strips as f32 + 1.0; // +1: overlap so no seam gap between strips
-        fill_rounded_rect(scene, Rect::new(sx, bar.y, sw, bar.h), 0.0, col);
-    }
+    paint_gradient_bar(scene, bar, &ramp);
     stroke_rounded_rect(
         scene,
         bar,
@@ -234,8 +245,36 @@ pub(crate) fn paint_gradient_row(
         out.swatches.push((sid, srgb));
     }
 
-    // Content height (header + gap + bar + gap + swatch strip); the caller adds the inter-row gap.
-    (sy0 + SWATCH_H) - y
+    // ── Preset seeds: a row of mini gradient chips (Rainbow / Heat / Ice / Grayscale). Clicking
+    // one LOADS its stops into the editable ramp (doc 85) — the presets appear IN the editor and
+    // become draggable/recolourable, not a separate immutable mode. The colours ARE the identity
+    // (rainbow / warm / cool / grey), so no label is needed. ──
+    let py0 = sy0 + SWATCH_H + gap;
+    let pcell = (w / GradientPreset::ALL.len() as f32).max(1.0);
+    for (i, preset) in GradientPreset::ALL.into_iter().enumerate() {
+        let id = param_grad_preset_id(slot, i);
+        let pad = 2.0; // LITERAL-PX-OK: chip inner padding within its cell
+        let prect = Rect::new(
+            x + i as f32 * pcell + pad,
+            py0,
+            (pcell - pad * 2.0).max(1.0),
+            PRESET_H,
+        );
+        paint_gradient_bar(scene, prect, &preset.ramp());
+        stroke_rounded_rect(
+            scene,
+            prect,
+            Radius::Sm.px(),
+            GRID_W,
+            resolve(ColorToken::TextDisabled, theme),
+        );
+        hit_index.register(id, prect);
+        out.buttons.push(id);
+    }
+
+    // Content height (header + gap + bar + gap + swatches + gap + preset chips); the caller adds
+    // the inter-row gap.
+    (py0 + PRESET_H) - y
 }
 
 /// A dragged marker landed in the store's `curve_point_drag` slot — fold its x into the
@@ -303,6 +342,14 @@ pub(crate) fn remove_stop(value: &str, slot: usize) -> String {
     ramp.remove_stop(idx);
     SELECTED.with(|s| s.set(None));
     serialize_gradient(&ramp)
+}
+
+/// How many preset seed chips the editor offers (Rainbow / Heat / Ice / Grayscale).
+pub(crate) const PRESET_COUNT: usize = GradientPreset::ALL.len();
+
+/// The `i`-th preset (doc 85) serialized — what clicking its chip LOADS into the ramp.
+pub(crate) fn preset_gradient(i: usize) -> String {
+    serialize_gradient(&GradientPreset::ALL[i.min(PRESET_COUNT - 1)].ramp())
 }
 
 /// Cycle the ramp's global interpolation (Linear → Ease → Constant → Cardinal → B-Spline).

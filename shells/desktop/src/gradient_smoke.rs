@@ -1,26 +1,29 @@
 //! **A cena pronta para o smoke do editor de GRADIENTE** (`PH2D_GRADIENT_SMOKE=1`, doc 85).
 //!
-//! O irmão de COR do `value_curve_smoke`: o `motion.color_ramp` Custom pinta uma fileira de
+//! O irmão de COR do `value_curve_smoke`: o `motion.color_ramp` pinta uma fileira de
 //! instâncias pela sua rampa, e o editor de gradiente (a barra + os stops arrastáveis + os
-//! swatches OKLCH) fica no painel de params, já com o nó SELECIONADO.
+//! swatches OKLCH + os chips de PRESET) fica no painel de params, já com o nó SELECIONADO.
 //!
 //! ```text
-//! motion.grid → motion.scale → motion.color_ramp(Custom) → motion.output
+//! motion.grid → motion.scale → motion.color_ramp → motion.output
 //! ```
 //!
-//! O `t` da rampa fica DESconectado, então cada instância é colorida pelo índice
+//! **Não há modo "preset vs custom"** (doc 85): a rampa É o text param `ramp`, sempre
+//! editável; os presets (Rainbow / Heat / Ice / Grayscale) são chips que CARREGAM suas cores
+//! nos stops. O `t` da rampa fica DESconectado, então cada instância é colorida pelo índice
 //! normalizado `i/(N−1)` — a rampa deitada ao longo da fileira: um SWEEP contínuo de cor.
 //! Com a rampa vermelho→verde→azul, a fileira sai vermelha à esquerda, verde no meio, azul à
 //! direita. Selecionado o `Color Ramp`, o painel mostra:
 //!
 //! - a **barra** de gradiente (a rampa desenhada) com **3 marcadores** de posição na base;
-//! - um **swatch por stop** embaixo, cada um abre o picker OKLCH;
+//! - um **swatch por stop**, cada um abre o picker OKLCH;
+//! - os **chips de preset** embaixo (as cores de cada preset aparecem);
 //! - **`+` / `−` / interp** no cabeçalho.
 //!
-//! TESTE: arraste um marcador → o stop anda e a fileira re-colore ao vivo; clique um swatch →
-//! o picker abre naquela cor, escolha outra e o stop (e a fileira) muda; `+` insere um stop no
-//! maior vão, `−` remove o selecionado. O nó cozinha **100% na GPU** (as 3 LUTs de canal do
-//! doc 85), então o sweep é o mesmo com `PH2D_GPU_COOK=1` (default) e `=0`.
+//! TESTE: clique um chip de preset → suas cores CARREGAM nos stops (a fileira re-colore) e
+//! ficam arrastáveis/editáveis; arraste um marcador → o stop anda ao vivo; clique um swatch →
+//! o picker OKLCH abre, escolha outra cor; `+`/`−` add/remove. O nó cozinha **100% na GPU**
+//! (as 3 LUTs de canal do doc 85), então o sweep é o mesmo com `PH2D_GPU_COOK=1` e `=0`.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
@@ -42,7 +45,8 @@ fn row(g: &mut Graph) -> (NodeId, NodeId) {
     g.set_param(grid, "cols", 24.0);
     g.set_param(grid, "gap_x", 0.9);
     g.set_param(scale, "amount", 0.34);
-    g.set_param(cr, "preset", 4.0); // Custom — lê a string abaixo
+    // The gradient IS the `ramp` text param (doc 85) — there is no preset/mode param; presets
+    // are editor seeds. Load a red→green→blue sweep so the row is unambiguous.
     g.set_text_param(cr, "ramp", GRAD.to_string());
 
     for (from, to, port) in [(grid, scale, 0u16), (scale, cr, 0), (cr, out, 0)] {
@@ -82,11 +86,12 @@ impl crate::App {
             "[gradient smoke] Uma fileira de 24 pontos colorida por um SWEEP \
              vermelho->verde->azul (a rampa deitada ao longo da fileira). O no 'Color Ramp' \
              ja esta selecionado e o painel de params (a direita) mostra o EDITOR DE \
-             GRADIENTE: a barra, 3 marcadores de posicao na base, e um swatch por stop.\n  \
-             TESTE: arraste um marcador -> o stop anda e a fileira re-colore ao vivo. Clique \
-             um swatch -> o picker OKLCH abre naquela cor; escolha outra e o stop (e a \
-             fileira) muda. '+' insere um stop no maior vao, '-' remove o selecionado. \
-             (Roda igual com PH2D_GPU_COOK=1 e =0 -- as 3 LUTs de canal cozinham na GPU.)"
+             GRADIENTE: a barra, 3 marcadores de posicao na base, um swatch por stop, e os \
+             CHIPS DE PRESET (Rainbow/Heat/Ice/Grayscale) embaixo.\n  \
+             TESTE: clique um chip de preset -> as cores dele CARREGAM nos stops (a fileira \
+             re-colore) e ficam arrastaveis. Arraste um marcador -> o stop anda ao vivo. \
+             Clique um swatch -> o picker OKLCH abre; escolha outra cor. '+' insere um stop, \
+             '-' remove o selecionado. (Roda igual com PH2D_GPU_COOK=1 e =0.)"
         );
     }
 }
@@ -119,7 +124,7 @@ mod tests {
         let tint = cook
             .cook(&g, &reg, out, 0.0)
             .expect("scene cooks")
-            .into_iter()
+            .iter()
             .next()
             .and_then(|s| match s.as_stream().get("tint") {
                 Some(Column::Vec4(v)) => Some(v.clone()),

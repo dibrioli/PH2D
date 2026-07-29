@@ -93,8 +93,6 @@ const SEA_WAVE_LEN: f32 = 2.4;
 const SEA_WAVE_SPEED: f32 = 0.5;
 /// The column the fade is driven by (`sim.lifetime` writes it: 0 at birth, 1 at the end).
 const SNOW_ATTR: &str = "life";
-/// `motion.color_ramp`'s presets: 0 Rainbow · 1 Heat · **2 Ice** · 3 Grayscale · 4 Custom.
-const SNOW_RAMP_ICE: f32 = 2.0;
 /// What a flake is worth at the very end of its life: a tenth of its size and a tenth of its
 /// opacity. Not zero — a flake that shrank to nothing a frame before dying reads as a pop.
 const SNOW_FADE_FLOOR: f32 = 0.1;
@@ -278,7 +276,13 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     g.set_text_param(attr, "attr", SNOW_ATTR);
     g.set_param(life, "life", SNOW_LIFE);
     g.set_param(life, "variance", SNOW_LIFE_VARIANCE);
-    g.set_param(ramp, "preset", SNOW_RAMP_ICE);
+    // Colour the flakes by the Ice gradient (doc 85: the ramp is the `ramp` text param;
+    // presets are editor seeds, so we load Ice's stops directly).
+    g.set_text_param(
+        ramp,
+        "ramp",
+        ph2d_color::serialize_gradient(&ph2d_color::GradientPreset::Ice.ramp()),
+    );
     // The ground: the flakes land on it, hop once, slide, and melt where they lie. A collision
     // is a BOUNCE and not a shove, and only a zone could have one — outside it there is no
     // velocity to reflect (doc 52).

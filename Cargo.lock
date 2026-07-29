@@ -5225,6 +5225,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "naga",
+ "ph2d-color",
  "ph2d-eval-motion",
  "ph2d-gpu",
  "ph2d-node-field-box",

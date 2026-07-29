@@ -534,7 +534,7 @@ fn the_box_is_ranged_to_the_hard_limit_and_the_slider_to_the_soft_one() {
 /// (the rect) AND live-under-the-mouse (the store state the dispatcher needs).
 #[test]
 fn the_gradient_editor_is_reachable_and_wired() {
-    use crate::snapshot::{param_grad_add_id, param_grad_stop_id};
+    use crate::snapshot::{param_grad_add_id, param_grad_preset_id, param_grad_stop_id};
     let _ = drain_param_intents();
     // A two-stop black→white gradient in the "ramp" text param.
     set_current_params(Some(ParamsSnapshot {
@@ -599,9 +599,41 @@ fn the_gradient_editor_is_reachable_and_wired() {
     });
     let value = added.expect("clicking + emits a SetTextParam on the ramp");
     assert_eq!(
-        ph2d_color::parse_gradient(value).expect("valid gradient").len(),
+        ph2d_color::parse_gradient(value)
+            .expect("valid gradient")
+            .len(),
         3,
-        "the + button added a stop (2 → 3)"
+        "the + button added a stop (2 -> 3)"
+    );
+
+    // A preset chip LOADS that preset into the editable ramp (doc 85) — the presets appear
+    // in the editor and become draggable stops. Click Rainbow (index 0) → the ramp string
+    // becomes the 7-stop rainbow.
+    let rainbow = rects
+        .iter()
+        .find(|(id, r)| *id == param_grad_preset_id(0, 0) && r.w > 0.0 && r.h > 0.0)
+        .map(|(_, r)| *r)
+        .expect("the Rainbow preset chip paints a hittable rect");
+    for ev in host.click_at(rainbow.x + rainbow.w * 0.5, rainbow.y + rainbow.h * 0.5) {
+        host.apply_panel_event::<MotionParamsPanel>(&mut state, ev);
+    }
+    let seeded = drain_param_intents()
+        .into_iter()
+        .find_map(|it| match it {
+            MotionParamIntent::SetTextParam {
+                param: "ramp",
+                value,
+                ..
+            } => Some(value),
+            _ => None,
+        })
+        .expect("clicking Rainbow seeds the ramp");
+    assert_eq!(
+        ph2d_color::parse_gradient(&seeded)
+            .expect("valid gradient")
+            .len(),
+        ph2d_color::GradientPreset::Rainbow.ramp().len(),
+        "the Rainbow chip loaded the 7-stop rainbow into the editable ramp"
     );
     set_current_params(None);
 }

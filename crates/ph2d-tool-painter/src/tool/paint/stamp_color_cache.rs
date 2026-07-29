@@ -257,6 +257,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
+                super::region::dabs_bounds(dabs, w, h),
             );
             let PerLayerStroke { pre, cov } = &mut self.paint.per_layer_stroke;
             let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -606,6 +607,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let mut touched: Option<Region> = None;
         for d in dabs {

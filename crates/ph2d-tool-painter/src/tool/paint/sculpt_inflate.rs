@@ -220,6 +220,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
+                None,
             );
             for y in kr.y..kr.y + kr.h {
                 for x in kr.x..kr.x + kr.w {

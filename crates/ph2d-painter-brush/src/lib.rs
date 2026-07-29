@@ -105,7 +105,7 @@ pub use sampler::MAX_INPUT_SAMPLES;
 pub use smear::smear_dab;
 pub use smear_field::{SmearOut, accumulate_dab_smear};
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
-pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
+pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, render_stamp_mask};
 pub use stamp_color::{
     ColorStampMask, DynDab, FusedDab, accumulate_color_stamp_coverage,
     accumulate_color_stamps_fused, accumulate_color_stamps_fused_batch,

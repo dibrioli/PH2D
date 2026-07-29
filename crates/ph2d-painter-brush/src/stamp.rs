@@ -182,6 +182,58 @@ pub fn blit_stamp(
     })
 }
 
+/// **O maior retângulo que um dab pode escrever** — o superconjunto que as DUAS rotas de blit honram,
+/// respondido **antes** da escrita.
+///
+/// # Por que ela existe
+///
+/// O journal de undo captura os bytes velhos de uma região **antes** de ela ser escrita, e para isso
+/// precisa da região *antes*. As duas rotas do produto só a devolvem **depois**: [`blit_stamp`] a
+/// calcula com `radius` e [`crate::stamp_dab`] com `radius + aa_pad`, e as duas só retornam quando o
+/// blit acabou. Um sítio que não sabe onde vai escrever captura o plano INTEIRO — medido em 67 MB a
+/// 4096² (doc 28 §7), o que torna a troca do S3 lateral em vez de positiva.
+///
+/// ⚠️ **Ela é declaradamente um SUPERCONJUNTO, não uma terceira resposta.** As duas rotas seguem donas
+/// da própria aritmética exata (elas diferem, e devem diferir); esta função promete apenas *contê-las*,
+/// e é isso que um gate afirma comparando o que elas DEVOLVEM com o que ela prevê. Superconjunto é a
+/// direção segura para o journal: capturar um tile a mais guarda bytes que não mudaram — capturar um a
+/// menos perde a edição em silêncio, que é o modo de falha que o `diff_window` documenta e teme.
+///
+/// ⚠️ O `pad` é o teto de [`crate::height_film::FilmAa::pad_px`] (0 ou 1 px). Ele é uma **constante**,
+/// não um palpite: se aquele teto subir, este número tem de subir junto, e o gate de contenção falha
+/// primeiro.
+#[must_use]
+pub fn dab_write_bounds(
+    center: [f32; 2],
+    radius: f32,
+    width: u32,
+    height: u32,
+) -> Option<DirtyRect> {
+    /// O teto do pad de AA da rota per-pixel — ver o doc acima.
+    const AA_PAD_MAX: f32 = 1.0;
+    if width == 0 || height == 0 || radius <= 0.0 || !radius.is_finite() {
+        return None;
+    }
+    if !center[0].is_finite() || !center[1].is_finite() {
+        return None;
+    }
+    let (cx, cy) = (center[0], center[1]);
+    let reach = radius + AA_PAD_MAX;
+    let x0 = (cx - reach).floor().max(0.0) as i64;
+    let y0 = (cy - reach).floor().max(0.0) as i64;
+    let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
+    Some(DirtyRect {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0) as u32,
+        h: (y1 - y0) as u32,
+    })
+}
+
 /// Blit the cached mask into the full-width row band `dst` (first row `band_y0`).
 fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
     let mut touched = false;

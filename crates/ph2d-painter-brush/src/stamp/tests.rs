@@ -438,3 +438,76 @@ fn dab_default_flatten_is_byte_identical_round() {
         "default flatten/angle is the identity round dab"
     );
 }
+
+/// **A porta de região CONTÉM as duas rotas de blit** — o gate que torna [`dab_write_bounds`] um
+/// superconjunto declarado em vez de uma terceira aritmética solta.
+///
+/// O journal de undo captura os bytes velhos **antes** da escrita, então precisa da região antes; as
+/// duas rotas só a devolvem depois, e com fórmulas que **diferem de propósito** ([`blit_stamp`] usa
+/// `radius`, [`crate::stamp_dab`] usa `radius + aa_pad`). Este gate não pede que elas concordem — pede
+/// que a porta as **contenha**, que é a única direção segura: um tile a mais guarda bytes que não
+/// mudaram, um tile a menos perde a edição em silêncio.
+///
+/// ⚠️ A varredura inclui dab **no canto**, **cruzando a borda** e **inteiramente fora** — é ali que o
+/// clamp de uma das três pode divergir das outras, e um fixture centrado nunca o mostraria.
+#[test]
+fn the_write_bounds_door_contains_what_both_blit_routes_touch() {
+    let (w, h) = (64u32, 64u32);
+    let contains = |big: DirtyRect, small: DirtyRect| -> bool {
+        big.x <= small.x
+            && big.y <= small.y
+            && big.x + big.w >= small.x + small.w
+            && big.y + big.h >= small.y + small.h
+    };
+    let mut checked = 0usize;
+    for impasto in [false, true] {
+        for &radius in &[1.0f32, 3.5, 9.0, 40.0] {
+            for &center in &[
+                [32.0f32, 32.0],
+                [0.0, 0.0],
+                [63.9, 63.9],
+                [-5.0, 20.0],
+                [70.0, 70.0],
+                [2.25, 61.75],
+            ] {
+                let spec = BrushSpec {
+                    radius_px: radius,
+                    color: [0.0, 0.0, 0.0],
+                    blend: BrushBlend::Mix,
+                    falloff: Falloff::Smooth,
+                    impasto,
+                    ..Default::default()
+                };
+                let promised = dab_write_bounds(center, radius, w, h);
+
+                let mask = render_stamp_mask(&spec, None, None, None, 64);
+                let mut a = solid(w, h, [255, 255, 255, 255]);
+                let cached = blit_stamp(&mut a, w, h, center, radius, &mask, &spec, 1.0, false);
+
+                let mut b = solid(w, h, [255, 255, 255, 255]);
+                let per_pixel = stamp_dab(&mut b, w, h, center, &spec, 1.0, false);
+
+                for (name, got) in [("blit_stamp", cached), ("stamp_dab", per_pixel)] {
+                    let Some(got) = got else { continue };
+                    let promised = promised.unwrap_or_else(|| {
+                        panic!(
+                            "{name} escreveu {got:?} e a porta disse que NADA seria escrito \
+                             (r={radius}, c={center:?}, impasto={impasto})"
+                        )
+                    });
+                    assert!(
+                        contains(promised, got),
+                        "{name} escreveu {got:?} FORA da porta {promised:?} \
+                         (r={radius}, c={center:?}, impasto={impasto})"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+    }
+    // Controle positivo: sem isto o gate passaria com todas as rotas devolvendo `None`.
+    assert!(
+        checked >= 40,
+        "o gate exercitou pouco: {checked} pares (rota, dab) de fato escreveram"
+    );
+}

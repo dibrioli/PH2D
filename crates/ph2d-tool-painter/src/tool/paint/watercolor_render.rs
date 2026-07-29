@@ -275,6 +275,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         // PARALLEL composite over OUTPUT rows (ADR-0109 exception): each pixel is a pure
         // function of immutable inputs — no cross-pixel reduction, no shared mutable state, no

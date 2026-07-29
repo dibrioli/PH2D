@@ -143,7 +143,7 @@ fn a_foreign_write_between_two_steps_does_not_leak_into_the_second_ones_before()
         .collect();
     let pre: Vec<u8> = probes.iter().map(|&i| t.canvas_rgba[i]).collect();
     {
-        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w);
+        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w, None);
         for &i in &probes {
             buf[i] = 33; // a tinta que a sim composita depois do pen-up
         }
@@ -210,7 +210,7 @@ fn the_cursor_is_reconstructible_from_the_live_plane_and_the_journal() {
     let stride = w as usize * 4;
     let probes: Vec<usize> = (96usize..112).map(|x| 200 * stride + x * 4).collect();
     {
-        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w);
+        let buf = super::plane_fork::fork_canvas(&mut t.canvas_rgba, &t.undo.write_state, w, None);
         for &i in &probes {
             buf[i] = 33;
         }
@@ -265,5 +265,70 @@ fn the_plane_swap_is_balanced() {
     assert!(
         !t.undo.write_state.on_foreign_plane(),
         "um traco comum deixou uma troca de plano aberta"
+    );
+}
+
+/// **Todo texel que o traço mudou está no journal** — o gate que o pré-requisito (c) existe para ter.
+///
+/// ⚠️ **Com TILING ligado, e é essa a premissa sob teste.** O Tiling replica um dab que cruza a borda
+/// numa cópia deslocada para a borda OPOSTA, e a região que [`super::region::dabs_bounds`] soma só a cobre porque a
+/// replicação acontece **na lista** (`tiling::tiled_dabs_grouped`, em `stamp_route`), antes de a rota de
+/// depósito ser chamada. Se algum dia alguém mover o wrap para *dentro* do blit, esta função passa a
+/// devolver um subconjunto — e é este gate que falha, em vez de o undo passar a esquecer a borda oposta
+/// em silêncio.
+///
+/// ⚠️ **O traço fica ABERTO.** O pen-up commita, e um commit **zera o journal** (`set_cursor`) — medir
+/// depois dele mede um journal vazio, e "nenhum texel divergente" seria verdade por construção. Foi
+/// exatamente esse o defeito da primeira versão da sonda de memória (doc 28 §7).
+#[test]
+fn every_texel_the_stroke_changed_is_described_by_the_journal() {
+    let side = 256u32;
+    let mut t = armed(side);
+    t.paint.tiling = [true, true]; // wrap nos dois eixos: as cópias vão para as bordas opostas
+    let before: Vec<u8> = (*t.canvas_rgba).clone();
+
+    // Um traço COLADO na borda esquerda, para o Tiling de fato produzir cópias do outro lado.
+    //
+    // ⚠️ **UM salto longo, não seis passos curtos** — e a diferença decide o gate. Cada evento de
+    // ponteiro é um BATCH, e cada batch faz o seu próprio fork; com passos de 18 px os dabs de um
+    // batch caem todos no mesmo tile, e uma região que cobrisse **só o primeiro dab** ainda os
+    // conteria. A mutação sobreviveu exatamente assim. Um salto de 200 px emite a fila inteira de
+    // dabs num batch só, e aí a região tem de somá-los.
+    t.on_canvas_pointer(cp([4.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([4.0, 230.0], PointerPhase::Move));
+
+    let after: &[u8] = &t.canvas_rgba;
+    let mut changed = 0usize;
+    let mut undescribed = 0usize;
+    let mut wrapped_changed = 0usize;
+    for (i, (&a, &b)) in before.iter().zip(after.iter()).enumerate() {
+        if a == b {
+            continue;
+        }
+        changed += 1;
+        // O texel mudou ⇒ o journal TEM de saber o valor velho dele.
+        match t.undo.write_state.canvas_before(i) {
+            Some(got) if got == a => {}
+            _ => undescribed += 1,
+        }
+        // A metade direita da tela só pode ter mudado pelas cópias do Tiling.
+        let x = (i / 4) % (side as usize);
+        if x > (side as usize) * 3 / 4 {
+            wrapped_changed += 1;
+        }
+    }
+
+    // Controles: sem eles o gate passa sobre um traço que não pintou nada, ou sobre um Tiling inerte.
+    assert!(
+        changed > 500,
+        "controle: o traco mal pintou ({changed} texels)"
+    );
+    assert!(
+        wrapped_changed > 0,
+        "controle: o Tiling nao produziu copia na borda oposta — a premissa nao esta sob teste"
+    );
+    assert_eq!(
+        undescribed, 0,
+        "{undescribed} de {changed} texels mudaram e o journal nao guardou o valor velho deles"
     );
 }

@@ -107,6 +107,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            super::region::dabs_bounds(dabs, w, h),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -168,6 +169,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            super::region::dabs_bounds(dabs, w, h),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -234,6 +236,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            super::region::dabs_bounds(dabs, w, h),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
@@ -340,6 +343,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            super::region::dabs_bounds(dabs, w, h),
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
@@ -458,6 +462,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            super::region::dabs_bounds(dabs, w, h),
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());

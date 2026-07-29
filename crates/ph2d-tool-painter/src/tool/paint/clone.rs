@@ -153,6 +153,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let mut touched: Option<Region> = None;
         for d in dabs {

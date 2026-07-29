@@ -102,6 +102,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         for cy in cy0..=cy1 {
             for cx in cx0..=cx1 {

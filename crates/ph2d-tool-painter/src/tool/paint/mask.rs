@@ -354,6 +354,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let n = buf.len() / 4;
         for ry in 0..region.h {

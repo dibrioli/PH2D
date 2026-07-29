@@ -188,6 +188,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         if buf.len() != w * h * 4 {
             return;
@@ -338,6 +339,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
+                None,
             );
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }

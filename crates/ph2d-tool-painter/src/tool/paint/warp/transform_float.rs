@@ -199,6 +199,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let stride = (w as usize) * 4;
         // Whole-image transforms make `dirty` the entire canvas (~4.2M px @ 2048²) — a serial per-texel

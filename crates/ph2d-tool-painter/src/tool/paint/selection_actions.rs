@@ -63,6 +63,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let n = mask.len().min(buf.len() / 4);
         for i in 0..n {
@@ -161,6 +162,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         for y in 0..ch {
             for x in 0..cw {

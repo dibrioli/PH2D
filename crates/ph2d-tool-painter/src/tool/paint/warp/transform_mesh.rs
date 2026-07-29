@@ -178,6 +178,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
+            None,
         );
         let stride = (w as usize) * 4;
         // Whole-image Warp makes `dirty` the entire canvas — split the rows into disjoint bands across

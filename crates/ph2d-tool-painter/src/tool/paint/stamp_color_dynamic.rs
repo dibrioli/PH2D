@@ -235,6 +235,7 @@ impl PainterTool {
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
+                Some(bb),
             );
             let super::stamp_color_cache::PerLayerStroke { pre, cov } =
                 &mut self.paint.per_layer_stroke;

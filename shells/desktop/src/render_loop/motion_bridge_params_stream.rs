@@ -23,43 +23,82 @@ pub(super) fn driven_value(
     ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
 }
 
-/// The scalar columns the stream feeding `node`'s input port 0 carries RIGHT NOW
-/// (from the cook memo, `Cook::peek`) — the live options for the `value.attribute`
-/// Custom picker (the roadmap's *dropdown populated at runtime*). Curated `covered`
-/// columns and the value/sim/mask transients an artist never reads are excluded; the
-/// current pick `keep` is always kept so its chip stays put between cooks.
+/// The scalar columns the stream feeding `node`'s input port 0 carries — the live
+/// options for the `value.attribute` Custom picker (the roadmap's *dropdown populated
+/// at runtime*). Curated `covered` columns and the value/sim/mask transients an artist
+/// never reads are excluded; the current pick `keep` is always kept so its chip stays
+/// put between cooks.
 pub(super) fn upstream_scalar_columns(
     motion: &MotionState,
     node: ph2d_nodegraph::graph::NodeId,
     covered: &std::collections::BTreeSet<&str>,
     keep: &str,
 ) -> Vec<String> {
-    use ph2d_nodegraph::attr::Column;
     // The edge feeding input port 0 (the stream in); a delayed feedback edge is not it.
-    let src = motion
+    let Some((sn, sp)) = motion
         .doc
         .graph
         .edges()
         .iter()
         .find(|e| e.to == (node, 0) && !e.delayed)
-        .map(|e| e.from);
-    let stream = src.and_then(|(sn, sp)| {
-        motion
-            .pump
-            .cook
-            .peek(sn)
-            .and_then(|o| o.get(sp as usize))
-            .map(|v| v.as_stream())
-    });
-    let mut names: Vec<&str> = Vec::new();
-    if let Some(stream) = stream {
-        for (name, col) in stream.columns() {
-            if matches!(col, Column::Scalar(_)) {
-                names.push(name.as_str());
-            }
-        }
+        .map(|e| e.from)
+    else {
+        // `attr` is unwired — nothing upstream to read; the chip for the current pick
+        // (if any) is all the picker can offer.
+        return keep_extra_columns(std::iter::empty(), covered, keep);
+    };
+    let names = upstream_columns(motion, sn, sp);
+    keep_extra_columns(names.iter().map(String::as_str), covered, keep)
+}
+
+/// The scalar-column NAMES the stream at `(sn, sp)` carries, **owned** so they outlive
+/// either source.
+///
+/// Preferred from the pump's memo (`Cook::peek`) — a zero-cost lookup that is populated
+/// whenever the graph cooks on the CPU. But the graph cooks on the **GPU by default**
+/// (`PH2D_GPU_COOK=1`), and then the CPU memo is EMPTY: `motion_bridge::cook_gpu`
+/// returns `Handled` and the sink loop that fills the memo is skipped. When the memo
+/// misses, DISCOVER the columns with a fresh single-node cook. Column membership is
+/// **structural** — which columns a node emits is a fact about the graph, not the tick
+/// (a `motion.grid` carries `Index`/`Count` at every tick) — so `playhead = 0` is
+/// enough, and it is exactly what the reference gate cooks.
+///
+/// Without the fallback the Custom picker showed NO "From stream" chips in the default
+/// (GPU) env, even though the columns were right there upstream — the bug the Enio
+/// reported. The cost is one CPU cook of the selected node's upstream, per frame, only
+/// while a stream-column picker is on screen (an interactive, single-node situation).
+fn upstream_columns(
+    motion: &MotionState,
+    sn: ph2d_nodegraph::graph::NodeId,
+    sp: u16,
+) -> Vec<String> {
+    if let Some(stream) = motion
+        .pump
+        .cook
+        .peek(sn)
+        .and_then(|o| o.get(sp as usize))
+        .map(|v| v.as_stream())
+    {
+        return scalar_names(stream);
     }
-    keep_extra_columns(names.into_iter(), covered, keep)
+    let mut scratch = ph2d_nodegraph::cook::Cook::new();
+    match scratch.cook(&motion.doc.graph, &motion.registry, sn, 0.0) {
+        Ok(out) => out
+            .get(sp as usize)
+            .map(|v| scalar_names(v.as_stream()))
+            .unwrap_or_default(),
+        Err(_) => Vec::new(),
+    }
+}
+
+/// The names of the `Scalar` columns of `stream`, owned.
+fn scalar_names(stream: &ph2d_nodegraph::attr::Stream) -> Vec<String> {
+    use ph2d_nodegraph::attr::Column;
+    stream
+        .columns()
+        .filter(|(_, c)| matches!(c, Column::Scalar(_)))
+        .map(|(n, _)| n.to_string())
+        .collect()
 }
 
 /// The PURE filter behind the picker: drop the curated columns and the internal /
@@ -118,5 +157,50 @@ mod tests {
             keep_extra_columns(["id"].into_iter(), &covered, "id"),
             vec!["id"]
         );
+    }
+
+    /// **The bug the Enio reported** (`esse env não tem Index e count`). With the graph
+    /// cooked on the GPU (the default, `PH2D_GPU_COOK=1`) the CPU pump never runs, so its
+    /// cook memo is empty and the old `peek`-only picker offered NO "From stream" chips.
+    /// An UNPUMPED `MotionState` reproduces exactly that empty memo; the picker must still
+    /// discover `Index`/`Count` via the fresh-cook fallback in [`upstream_columns`].
+    /// RED-first: `peek`-only returns `[]` and both asserts fail.
+    #[test]
+    fn the_picker_offers_columns_when_the_cpu_memo_is_empty() {
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        let attr = crate::picker_smoke::build_picker_scene(&mut motion.doc.graph);
+        // No pump: the CPU cook memo is empty, exactly as when the graph cooks on the GPU.
+        let covered: BTreeSet<&str> = BTreeSet::new();
+        let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
+        assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");
+        assert!(cols.iter().any(|c| c == "Count"), "offers Count: {cols:?}");
+    }
+
+    /// The other route: when the CPU pump DID cook the graph, the picker reads the same
+    /// columns straight from its memo (`peek`) — so the fallback did not become the only
+    /// working path.
+    #[test]
+    fn the_picker_offers_columns_from_the_cpu_pump_memo() {
+        use ph2d_nodegraph::graph::NodeId;
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        let attr = crate::picker_smoke::build_picker_scene(&mut motion.doc.graph);
+        let sinks: Vec<NodeId> = motion
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.output")
+            .map(|n| n.id)
+            .collect();
+        let (uv, size) = (motion.default_uv_rect, motion.default_size);
+        motion
+            .pump
+            .pump(&motion.doc.graph, &motion.registry, &sinks, 0, 0.0, uv, size);
+        let covered: BTreeSet<&str> = BTreeSet::new();
+        let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
+        assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");
+        assert!(cols.iter().any(|c| c == "Count"), "offers Count: {cols:?}");
     }
 }

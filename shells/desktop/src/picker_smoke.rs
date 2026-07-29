@@ -38,7 +38,8 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 
 /// Build the grid → attribute → drive(Size, Add) scene. Returns the `Attribute`
 /// node so the caller can pre-select it (the picker only shows for a selected node).
-fn build_picker_scene(g: &mut Graph) -> NodeId {
+/// `pub(crate)` so the params-bridge gate drives the SAME scene the smoke shows.
+pub(crate) fn build_picker_scene(g: &mut Graph) -> NodeId {
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", 6.0);
     g.set_param(grid, "cols", 6.0);

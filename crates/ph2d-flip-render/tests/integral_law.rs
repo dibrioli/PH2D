@@ -93,17 +93,20 @@ fn f_of(dn: f32, hardness: f32) -> f32 {
 /// **A LEI PROPOSTA** — `α = 1 − exp(−τ)`, `τ` integrado por arco com `sub` amostras por pitch.
 /// Quadratura do ponto médio (a que um kernel de GPU faria por segmento).
 ///
-/// `caps`: liga o **TERMO DE FRONTEIRA**. A soma de dabs do Painter e a integral não são a mesma
-/// coisa nas PONTAS, e a diferença tem nome — Euler–Maclaurin:
+/// `caps`: liga o **TERMO DE FRONTEIRA**, e ⚠️ **a medição REPROVOU a hipótese que ele encarna** —
+/// esta doc registra o resultado, não a expectativa.
 ///
-/// ```text
-/// Σ_{k=0}^{N} g(k·h)  =  (1/h)·∫ g ds  +  ½·(g(0) + g(L))  +  O(h)
-/// ```
+/// A hipótese era Euler–Maclaurin: `Σ_{k=0}^{N} g(k·h) = (1/h)·∫g ds + ½·(g(0)+g(L)) + O(h)`, ou
+/// seja **meio dab em cada extremo**, já que uma ponta só tem arco de UM lado.
 ///
-/// O `½·(g(0)+g(L))` é **meio dab em cada extremo**, e é exatamente o que falta: uma ponta só
-/// tem arco de UM lado, então a integral pura conta ~metade da espessura óptica que a fileira
-/// de dabs deposita ali. Não é fudge — é o termo que a fórmula prevê, e ele é `O(1)` por
-/// TRAÇO (dois termos), não por segmento.
+/// **Medido (`measure_whether_one_boundary_coefficient_fits_every_hardness`): não fecha.** Com
+/// `k = 0,5` a tampa faz OVERSHOOT (−101 → +87). Varrendo `k` e medindo **na região da tampa**, o
+/// erro salta de −54 para +40 **sem passar por zero** — o pior pixel TROCA DE LUGAR em vez de
+/// encolher. Logo não é um coeficiente errado: a fileira FINITA põe um **disco** na ponta e a
+/// integral contínua tem ponta **macia**; são formas diferentes, não amplitudes diferentes.
+///
+/// ⇒ O cap é **primitivo geométrico**, e vai para a wave de caps/joins (`03 §8`). Este parâmetro
+/// fica só como a sonda que provou isso.
 fn integral_law_caps(pts: &[(f32, f32)], r: f32, hardness: f32, sub: u32, caps: bool) -> Vec<f32> {
     integral_law_k(pts, r, hardness, sub, if caps { 0.5 } else { 0.0 })
 }
@@ -121,9 +124,9 @@ fn integral_law_k(pts: &[(f32, f32)], r: f32, hardness: f32, sub: u32, k: f32) -
         }
         let n = (seg / ds).ceil().max(1.0) as u32;
         let step = seg / n as f32;
-        for k in 0..n {
-            // ponto médio da k-ésima sub-amostra
-            let t = (k as f32 + 0.5) * step / seg;
+        for i in 0..n {
+            // ponto médio da i-ésima sub-amostra (⚠️ `k` é o coeficiente de fronteira — não sombrear)
+            let t = (i as f32 + 0.5) * step / seg;
             let (sx, sy) = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
             let x0 = ((sx - r).floor().max(0.0)) as u32;
             let x1 = ((sx + r).ceil().min(W as f32 - 1.0)) as u32;

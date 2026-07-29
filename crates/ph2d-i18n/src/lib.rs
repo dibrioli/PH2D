@@ -134,7 +134,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.expr_apply" => "Apply",
         "panel.timeline.expr_cancel" => "Cancel",
         "panel.timeline.expr_empty" => "Pick a recipe to start.",
-        "panel.timeline.expr_stage" => "Stage",
+        "panel.timeline.expr_waiting" => "waiting",
         "panel.timeline.onion_opacity" => "Opacity",
         "panel.timeline.onion_before" => "Ghosts Before",
         "panel.timeline.onion_after" => "Ghosts After",

@@ -133,6 +133,17 @@ pub(crate) fn commit(state: &mut TimelinePanelState) {
 /// family of bug this codebase has paid for repeatedly.
 #[must_use]
 pub(crate) fn row_result(stack: &RecipeStack, i: usize, time: f64, base: f32) -> String {
+    // ⚠️ **A recusa é VISÍVEL.** Uma linha que espera um alvo é inerte no fold
+    // (`Row::waiting_for`, a porta única), e sem esta linha a única pista disso seria
+    // um número que não muda — o artista escolhe `Follow`, nada acontece, e não há
+    // nada na tela dizendo por quê. Antes desta wave era pior: a linha inacabada
+    // descia como `0` e TELEPORTAVA o objeto.
+    //
+    // ⚠️ A linha NÃO é dimmed: o knob vazio é exatamente o que ele precisa clicar, e
+    // um controle apagado que ainda despacha mente. O readout fala, o resto fica vivo.
+    if stack.rows.get(i).and_then(Row::waiting_for).is_some() {
+        return ph2d_i18n::tr("panel.timeline.expr_waiting").to_string();
+    }
     let partial = RecipeStack {
         rows: stack.rows.iter().take(i + 1).cloned().collect(),
     };

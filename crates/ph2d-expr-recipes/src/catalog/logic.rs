@@ -49,13 +49,49 @@ pub const IF_LESS: Recipe = Recipe {
 pub const IF_EQUAL: Recipe = Recipe {
     id: "if-equal",
     family: Family::Logic,
-    label: "If Equal",
-    blurb: "Pick one of two values depending on whether the value matches a mark.",
-    aliases: &["equals", "is", "match", "same as", "condition"],
+    label: "If Near",
+    blurb: "Pick one of two values depending on whether the value comes close to a mark.",
+    aliases: &[
+        "equals",
+        "is",
+        "match",
+        "same as",
+        "near",
+        "close to",
+        "condition",
+    ],
     knobs: &[
-        Knob::num("threshold", "Equals", 0.5, (-40.0, 40.0)),
+        Knob::num("threshold", "Near", 0.5, (-40.0, 40.0)),
         Knob::num("then", "Then", 1.0, (-40.0, 40.0)),
         Knob::num("else", "Else", 0.0, (-40.0, 40.0)),
+        // ⚠️ **A BANDA, e é ela que faz a receita existir.** Isto emitia
+        // `select(x == k, ..)` — igualdade EXATA de `f32` sobre um sinal contínuo,
+        // que praticamente nunca dispara: medido no censo, era a única receita que
+        // continuava parada mesmo sob um gerador. Um rótulo tem de prometer o que o
+        // modelo entrega, então ela deixou de dizer "Equal" e ganhou a tolerância que
+        // a torna verdadeira.
+        //
+        // ⚠️ O default saiu de uma MEDIÇÃO, não de gosto — fração do tempo em que um
+        // `Sway` de 1 m passa dentro de ±tol de uma marca no meio da faixa:
+        // `0,01 m → 1,7%` (um lampejo que lê como nada) · `0,05 → 7,5%` ·
+        // **`0,10 → 13,3%`** (pulso inequívoco, e ainda significa *perto*) ·
+        // `0,20 → 26,2%` · `0,40 → 61,2%` (a banda é a maior parte do tempo, e a
+        // condição deixa de dizer coisa alguma).
+        //
+        // ⚠️ A comparação é `<` ESTRITO porque é o único que existe: o `ph2d-expr` é
+        // CONGELADO (ADR-0039) e só tem `Lt`/`Gt`, então `<=` não desce — o gate
+        // `every_recipe_emits_a_formula_the_one_parser_accepts` pegou isso na primeira
+        // rodada, com o erro `unexpected char '='`, que é exatamente para o que ele
+        // existe. Num sinal contínuo a fronteira tem medida zero, então estrito e
+        // não-estrito são indistinguíveis na tela.
+        //
+        // Corolário que o `<` traz e que fica escrito porque é o que o CÓDIGO faz:
+        // tolerância **0 = banda vazia**, logo a linha toma sempre o Else. É o
+        // degenerado que o artista alcança digitando zero (uma faixa de knob é faixa de
+        // ARRASTO, não afirmação de validade), e é visível — o readout mostra a
+        // constante. Ainda assim é melhor que o `==` de antes, que também nunca
+        // disparava e se vendia como feature.
+        Knob::num("tolerance", "Tolerance", 0.1, (0.0, 4.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,
@@ -63,9 +99,10 @@ pub const IF_EQUAL: Recipe = Recipe {
     pair: None,
     emit: |c| {
         format!(
-            "select({} == {}, {}, {})",
+            "select(abs({} - {}) < {}, {}, {})",
             c.tight(),
             c.n(0),
+            c.n(3),
             c.n(1),
             c.n(2)
         )

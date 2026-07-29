@@ -391,7 +391,7 @@ fn census_second_reading_modifiers_over_a_generator() {
             .fold((f32::MAX, f32::MIN), |(l, h), &x| (l.min(x), h.max(x)));
         hi - lo
     };
-    let (mut woke, mut still_dead) = (vec![], vec![]);
+    let (mut woke, mut still_dead, mut inert) = (vec![], vec![], vec![]);
     println!(
         "\n{:<22} {:<9} {:>10} {:>10}",
         "id", "família", "sozinho", "sob Sway"
@@ -405,15 +405,24 @@ fn census_second_reading_modifiers_over_a_generator() {
         let a = |st: &RecipeStack| trajectory(&st.to_formula(), 0.7).map_or(f32::NAN, |t| amp(&t));
         let (s, o) = (a(&solo), a(&over));
         if s <= f32::EPSILON {
+            // ⚠️ Uma linha que ESPERA UM ALVO é inerte no fold, então "acordou sob o
+            // gerador" mediria a variação do GERADOR e não a dela — sucesso VAZIO, do
+            // mesmo formato que esta sessão já pegou duas vezes. Ela é contada à parte,
+            // e o que se afirma dela é só o que foi medido: não congela mais a
+            // propriedade (gate `a_row_waiting_for_a_target_leaves_the_property_alone`).
+            let waiting = row_with(r.id, Knobs::Default).waiting_for();
             println!(
-                "{:<22} {:<9} {s:>10.4} {o:>10.4}",
+                "{:<22} {:<9} {s:>10.4} {o:>10.4}  {}",
                 r.id,
-                format!("{:?}", r.family)
+                format!("{:?}", r.family),
+                waiting.unwrap_or("")
             );
-            if o > f32::EPSILON {
-                woke.push(r.id)
+            if let Some(k) = waiting {
+                inert.push((r.id, k));
+            } else if o > f32::EPSILON {
+                woke.push(r.id);
             } else {
-                still_dead.push((r.id, over.to_formula()))
+                still_dead.push((r.id, over.to_formula()));
             }
         }
     }
@@ -423,10 +432,100 @@ fn census_second_reading_modifiers_over_a_generator() {
         woke.join(" ")
     );
     println!(
+        "\n== INERTES até escolherem alvo (não congelam mais a propriedade): {} ==",
+        inert.len()
+    );
+    for (id, k) in &inert {
+        println!("  {id:<22} espera: {k}");
+    }
+    println!(
         "\n== CONTINUAM PARADAS (defeito de verdade): {} ==",
         still_dead.len()
     );
     for (id, src) in &still_dead {
         println!("  {id:<22} {src}");
+    }
+}
+
+/// **Uma linha que espera um alvo é INERTE — ela não substitui a propriedade.**
+///
+/// ⚠️ Red-first contra o smoke (*"alguns não funcionam em nada"*). Um knob de link
+/// nasce VAZIO e o `EmitCtx::link` o desce como o literal `0` — de propósito, por uma
+/// razão que continua certa (a fórmula tem de parsear em toda tecla, senão o card
+/// apaga ao adicionar a linha). O que nunca foi precificado é a consequência: `0`
+/// parseia **e substitui a propriedade por uma constante**. Medido nos defaults, antes
+/// desta correção:
+///
+/// ```text
+/// follow            0*1 + 0     -> o objeto TELEPORTA para a origem e congela
+/// offset-copy       0 + 0.2     -> e estaciona em 0,2
+/// fade-by-distance  mix(1,0,..) -> preso em 1
+/// ```
+///
+/// Quatorze receitas, UMA causa — e é a mesma de *"não produz a curva do grafo"*,
+/// porque uma constante desenha uma reta. Um defeito, dois sintomas.
+///
+/// O oráculo é a IDENTIDADE, não a ausência do `0`: a fórmula de uma linha inacabada
+/// tem de ser exatamente o que uma planilha VAZIA produz. Procurar `"0"` no texto
+/// passaria com qualquer receita que só mudasse a aritmética do teleporte.
+#[test]
+fn a_row_waiting_for_a_target_leaves_the_property_alone() {
+    let empty = RecipeStack::new().to_formula();
+    for r in CATALOG {
+        let row = row_with(r.id, Knobs::Default);
+        let Some(missing) = row.waiting_for() else {
+            continue;
+        };
+        let mut st = RecipeStack::new();
+        st.push(row);
+        assert_eq!(
+            st.to_formula(),
+            empty,
+            "{}: espera o knob {missing:?} e mesmo assim reescreve a propriedade",
+            r.id
+        );
+        // …e continua parseável, que é a razão pela qual o `0` existia.
+        assert!(parse(&st.to_formula()).is_ok(), "{}: não parseia", r.id);
+    }
+}
+
+/// **E o que ela espera é dito por UMA função** — a mesma que decide o fold.
+#[test]
+fn the_missing_knob_is_named_by_the_door_that_skips_the_row() {
+    let follow = row_with("follow", Knobs::Default);
+    assert!(
+        follow.waiting_for().is_some(),
+        "um link vazio é uma linha inacabada"
+    );
+    assert!(
+        !follow.is_live(),
+        "…e uma linha inacabada não entra no fold"
+    );
+    let mut filled = follow.clone();
+    assert!(filled.set("target", KnobValue::Link("Ball.x".into())));
+    assert_eq!(
+        filled.waiting_for(),
+        None,
+        "com o alvo escolhido, a linha está pronta"
+    );
+    assert!(filled.is_live() && filled.waiting_for().is_none());
+}
+
+#[test]
+#[ignore = "sonda: a medicao por tras do default de tolerancia do If Near"]
+fn measure_the_tolerance_band_of_if_near() {
+    // Sob um gerador tipico (Sway, amplitude 1 m), que fracao do tempo o sinal passa
+    // dentro de +-tol de uma marca no meio da faixa?
+    let wave = "value + sin((time + 0)*3)*0.5";
+    for tol in [0.01_f32, 0.02, 0.05, 0.1, 0.2, 0.4] {
+        let src = format!("select(abs(({wave}) - 0.5) < {tol}, 1, 0)");
+        let t = trajectory(&src, 0.7).unwrap();
+        let fired = t.iter().filter(|v| **v > 0.5).count();
+        println!(
+            "tol {tol:>5.2} m ({:>5.1} px)  dispara em {:>5.1}% do tempo  ({fired}/{} amostras)",
+            tol * 100.0,
+            100.0 * fired as f32 / t.len() as f32,
+            t.len()
+        );
     }
 }

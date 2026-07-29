@@ -56,6 +56,50 @@ impl Row {
     pub fn set_num(&mut self, key: &str, v: f32) -> bool {
         self.set(key, KnobValue::Num(v))
     }
+
+    /// **The knob this row is still waiting for** — the label of the first empty
+    /// link or text knob, or `None` when the row is ready to run.
+    ///
+    /// ⚠️ This exists because of a measured defect, and the mechanism is worth
+    /// keeping written down. A link knob is born EMPTY, and [`EmitCtx::link`] lowers
+    /// an empty link to the literal `0` — deliberately, for a reason that is still
+    /// correct: the formula bar and the preview render on every keystroke, so a row
+    /// that emitted `.x` would blank the whole card the moment a `Follow` was added.
+    ///
+    /// What was never priced is the CONSEQUENCE. `0` parses, and it also **replaces
+    /// the property with a constant**: measured across the catalog at defaults,
+    /// `follow` lowers to `0*1 + 0`, so picking it from the gallery teleported the
+    /// object to the origin and froze it there; `offset-copy` parked it at `0.2`;
+    /// `fade-by-distance` pinned it at `1`. Fourteen recipes, one cause — and it is
+    /// the same cause as *"não produz a curva do grafo de preview"*, because a
+    /// constant draws a flat line. One defect, two symptoms.
+    ///
+    /// ⚠️ The answer is NOT to make the lowering emit something else: it is that a
+    /// row nobody has finished should not be in the fold at all. That keeps the
+    /// original invariant (the formula always parses — an empty stack is `"value"`)
+    /// and drops the teleport, and it is a rule the sheet already has a shape for,
+    /// because it is exactly what `bypass` does.
+    ///
+    /// One door: [`RecipeStack::to_formula`] asks it to decide whether to fold the
+    /// row, and the panel asks it to say what is missing. Two answers to *"is this
+    /// row finished?"* would let the picture and the label disagree.
+    #[must_use]
+    pub fn waiting_for(&self) -> Option<&'static str> {
+        let r = by_id(self.recipe)?;
+        r.knobs.iter().enumerate().find_map(|(i, k)| {
+            let empty = matches!(
+                self.knobs.get(i),
+                Some(KnobValue::Link(s) | KnobValue::Text(s)) if s.trim().is_empty()
+            );
+            empty.then_some(k.label)
+        })
+    }
+
+    /// Whether this row contributes to the fold at all.
+    #[must_use]
+    pub fn is_live(&self) -> bool {
+        !self.bypass && self.waiting_for().is_none()
+    }
 }
 
 /// The sheet: rows applied **top to bottom**.
@@ -104,7 +148,12 @@ impl RecipeStack {
         let mut acc = SEED_VALUE.to_string();
         let mut clock = SEED_CLOCK.to_string();
         for row in &self.rows {
-            if row.bypass {
+            // ⚠️ A muted row and an UNFINISHED row are skipped by the same `continue`,
+            // and that is the whole fix for the fourteen link recipes that used to
+            // teleport the object (see [`Row::waiting_for`]). Both are "this row does
+            // not contribute", and giving them one door is what keeps the eye, the
+            // readout and the picture from disagreeing about it.
+            if !row.is_live() {
                 continue;
             }
             let Some(r) = by_id(row.recipe) else { continue };

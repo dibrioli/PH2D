@@ -70,12 +70,13 @@ fn stroke(pts: &[(f32, f32)], width: f32, hardness: f32, col: [f32; 3], op: f32)
     s
 }
 
-/// A cena de paridade: **oito perguntas diferentes num desenho só** — a estrela que cruza a si
+/// A cena de paridade: **nove perguntas diferentes num desenho só** — a estrela que cruza a si
 /// mesma (a topologia da foto do Enio), um traço duro, um macio, um de opacidade < 1 (a regra do
 /// GP), um afilado (largura variando ⇒ o raio interpolado da quadratura) e **dois pontilhados**
 /// (Dots e Squares), que exercitam a OUTRA lista de dabs: o `arc_len`, o dono meio-aberto de cada
 /// conta e a conta da PONTA — mais um **sub-pixel** que afina atravessando 1 px, o unico regime
-/// onde o fade nao e' a identidade.
+/// onde o fade nao e' a identidade, e um de **tampa CHATA** que se enrola de volta sobre o proprio
+/// comeco (o unico jeito de provar que a truncagem e' por-SEGMENTO e nao um semi-plano global).
 fn scene() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let (cx, cy, outer) = (60.0_f32, 60.0, 44.0);
@@ -148,6 +149,23 @@ fn scene() -> FlipDrawing {
     }
     fino.hardness = 1.0;
     d.strokes.push(fino);
+    // **A TAMPA CHATA**, e a forma importa: um "J" que volta e passa POR CIMA do próprio começo
+    // cortado. Um semi-plano global apagaria a tinta da volta; a truncagem por-segmento a deixa.
+    let mut chato = stroke(
+        &[
+            (30.0, 282.0),
+            (30.0, 300.0),
+            (55.0, 300.0),
+            (55.0, 278.0),
+            (18.0, 278.0),
+        ],
+        13.0,
+        0.7,
+        [0.9, 0.4, 0.6],
+        1.0,
+    );
+    chato.cap = (ph2d_flip::Cap::Flat, ph2d_flip::Cap::Flat);
+    d.strokes.push(chato);
     d
 }
 
@@ -159,7 +177,7 @@ fn the_device_walk_is_the_cpu_walk() {
         println!("sem adapter -- skip");
         return;
     };
-    let (w, h) = (128_u32, 288);
+    let (w, h) = (128_u32, 312);
     let sc = ScreenSpace::from_camera(&camera(w, h));
     let data = pack_drawing(&scene());
     let bins = bin_segments(&data, &sc, DEFAULT_TILE);

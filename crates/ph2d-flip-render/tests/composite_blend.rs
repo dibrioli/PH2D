@@ -1050,3 +1050,114 @@ fn measure_the_sub_pixel_bead_in_both_engines() {
         );
     }
 }
+
+/// 🔴 **A TAMPA CHATA CHEGOU AO PERCURSO** — e o rasterizador é oráculo **exato**: onde a tinta
+/// acaba é geometria, não quadratura.
+///
+/// ⚠️ **No raster a tampa chata não é um campo de distância, é a AUSÊNCIA de geometria** — o vertex
+/// estende o quad por `r` numa tampa Round e por **zero** numa Flat, e o `capsule_dn` do fragment é
+/// sempre o redondo. O percurso **não tem quad**, então a truncagem tem de morar no SDF (interseção
+/// com um semi-plano = um `max`). É a mesma imagem por dois mecanismos diferentes, e é por isso que
+/// este gate compara CONTRA O RASTER em vez de contra uma fórmula.
+///
+/// Três metades, e a terceira é a que mata o no-op:
+/// 1. com tampa **chata** os dois motores acabam no MESMO pixel (medido `[(16, 47)]`);
+/// 2. com tampa **redonda** também (`[(10, 53)]`) — a truncagem não pode vazar para quem não pediu;
+/// 3. as duas **DIFEREM** entre si por ~6 px de cada lado (o raio). Sem esta metade, um percurso que
+///    ignorasse a flag passaria em (1) e (2) se o raster também a ignorasse.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_flat_cap_reaches_the_walk_and_ends_where_the_raster_ends() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a tampa chata");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    let mut medido = Vec::new();
+    for cap in [
+        (ph2d_flip::Cap::Round, ph2d_flip::Cap::Round),
+        (ph2d_flip::Cap::Flat, ph2d_flip::Cap::Flat),
+    ] {
+        let mut st = FlipStroke::new();
+        for &x in &[16.0_f32, 48.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: 12.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        st.cap = cap;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        let mut lados = [Vec::new(), Vec::new()];
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            lados[i] = runs_along(&readback_slice(&gpu, slice), 32);
+        }
+        println!("  {cap:?}  raster {:?}  percurso {:?}", lados[0], lados[1]);
+        assert_eq!(
+            lados[0].len(),
+            1,
+            "a fixture nao contem o fenomeno: o raster nao pintou uma faixa unica em {cap:?}"
+        );
+        assert_eq!(
+            lados[0], lados[1],
+            "os motores discordam de onde a tinta acaba em {cap:?}"
+        );
+        medido.push(lados[1][0]);
+    }
+    // A metade que mata o no-op: chata e redonda TÊM de diferir, e por ~um raio de cada lado.
+    let (redonda, chata) = (medido[0], medido[1]);
+    assert!(
+        chata.0 >= redonda.0 + 4 && chata.1 + 4 <= redonda.1,
+        "a tampa chata nao truncou nada: chata {chata:?} contra redonda {redonda:?}"
+    );
+}
+
+/// 📏 **SONDA — onde a tinta ACABA, com tampa redonda e com tampa chata, nos dois motores.**
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_where_the_cap_ends_in_both_engines() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a sonda da tampa");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    for (nome, cap) in [
+        ("ROUND", (ph2d_flip::Cap::Round, ph2d_flip::Cap::Round)),
+        ("FLAT ", (ph2d_flip::Cap::Flat, ph2d_flip::Cap::Flat)),
+    ] {
+        let mut st = FlipStroke::new();
+        for &x in &[16.0_f32, 48.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: 12.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        st.cap = cap;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            println!(
+                "  {nome} {}  y=32 {:?}",
+                if i == 0 { "raster  " } else { "percurso" },
+                runs_along(&px, 32)
+            );
+        }
+    }
+}

@@ -59,6 +59,7 @@ struct Screen {
 // `pack.rs`
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
+const FLAG_END_FLAT: u32 = 4u;
 const FLAG_AIRBRUSH: u32 = 16u;
 // `pack.rs::tip_code` (a porta única CPU→GPU) — TÊM de bater com o `flip.wgsl` e o `tau.rs`.
 const TIP_DOTS: u32 = 1u;
@@ -267,8 +268,22 @@ fn bead_window(lo: f32, hi: f32, pitch: f32) -> vec2<i32> {
 fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -> vec4<f32> {
     var best = vec4<f32>(1e30, 0.0, 0.0, 0.0);
     var tail = 0xffffffffu;
+    // `tau.rs::flat_caps` — os pontos onde a fita é CORTADA em vez de arredondada. `0xffffffff` = sem
+    // tampa. Num traço FECHADO não há ponta (o `flip.wgsl` gateia em `!closed` pelo mesmo motivo).
+    var cap_head = 0xffffffffu;
+    var cap_tail = 0xffffffffu;
     if (hi > lo) {
-        tail = tail_point(segs[lo].stroke);
+        let sid = segs[lo].stroke;
+        tail = tail_point(sid);
+        let st = strokes[sid];
+        if ((st.flags & FLAG_CLOSED) == 0u && st.point_count > 0u) {
+            if ((st.flags & FLAG_START_FLAT) != 0u) {
+                cap_head = st.first_point;
+            }
+            if ((st.flags & FLAG_END_FLAT) != 0u) {
+                cap_tail = st.first_point + st.point_count - 1u;
+            }
+        }
     }
     for (var k = lo; k < hi; k = k + 1u) {
         let s = segs[k];
@@ -279,6 +294,22 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
         let tc = closest_on_seg(p, sa, sb);
         let ra = radius_px(pa.width);
         let rb = radius_px(pb.width);
+        // O CORTE deste segmento (`-1e30` = sem tampa; `max` com ele é a identidade exata, então
+        // todo traço de tampa redonda é byte-intocado). A normal aponta para FORA.
+        var cut = -1e30;
+        if (s.a == cap_head || s.b == cap_tail) {
+            let v = sb - sa;
+            let vlen = length(v);
+            if (vlen > 1e-6) {
+                let dir = v / vlen;
+                if (s.a == cap_head) {
+                    cut = max(cut, cap_sd(p, sa, -dir));
+                }
+                if (s.b == cap_tail) {
+                    cut = max(cut, cap_sd(p, sb, dir));
+                }
+            }
+        }
         if (pitch > 0.0) {
             let arc_a = arc_len[s.a];
             let wlen = length(pb.pos - pa.pos);
@@ -292,7 +323,7 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
                 let b = bead_at(sa, sb, ra, rb, arc_a, wlen, kb, pitch);
                 // A "distância" é `dn·r`: no disco isso É `|p − c|`, e no quadrado é a Chebyshev.
                 let dist = bead_dn(p, b, square) * b.r;
-                let sd = dist - b.r;
+                let sd = max(dist - b.r, cut);
                 if (sd < best.x) {
                     best = vec4<f32>(sd, b.c.x, b.c.y, dist);
                 }
@@ -301,12 +332,18 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
         }
         let dist = length(p - vec2<f32>(tc.y, tc.z));
         let r = ra * (1.0 - tc.x) + rb * tc.x;
-        let sd = dist - r;
+        let sd = max(dist - r, cut);
         if (sd < best.x) {
             best = vec4<f32>(sd, tc.y, tc.z, dist);
         }
     }
     return best;
+}
+
+// `tau.rs::cap_sd` — o SDF (px, positivo = FORA) do corte de uma tampa chata. Interseção com a
+// cápsula = `max`, e é isso que dá anti-aliasing à borda reta de graça.
+fn cap_sd(p: vec2<f32>, q: vec2<f32>, n: vec2<f32>) -> f32 {
+    return dot(p - q, n);
 }
 
 // `tau.rs::end_dab` — o termo de fronteira, SÓ no começo (a assimetria da referência).

@@ -31,7 +31,7 @@
 //! em 6 densidades de polilinha (60 → 1155 segmentos).
 
 use crate::binning::{BinSeg, ScreenSpace};
-use crate::pack::{FLAG_CLOSED, FLAG_START_FLAT, FlipGpuData};
+use crate::pack::{FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData};
 
 /// O `spacing` do pincel do Painter (`spec_default.rs`): 0,10 × **diâmetro**.
 pub const PAINTER_SPACING: f32 = 0.10;
@@ -335,6 +335,43 @@ pub(crate) fn bead_range(arc_a: f32, arc_b: f32, pitch: f32, end_inclusive: bool
         (arc_b / pitch).ceil() as i32 - 1
     };
     (k0, k1)
+}
+
+/// **AS TAMPAS CHATAS deste traço** — os pontos onde a fita é CORTADA em vez de arredondada.
+///
+/// ⚠️ **No rasterizador uma tampa chata não é um campo de distância, é a AUSÊNCIA de geometria:** o
+/// vertex estende o quad por `r` ao longo da reta numa tampa Round (`ext_a = r_a`) e por **zero**
+/// numa Flat, então a meia-lua simplesmente não é rasterizada — o `capsule_dn` do fragment é sempre
+/// o redondo. O percurso **não tem quad**: todo pixel do ladrilho pergunta à silhueta, então a
+/// truncagem tem de morar no SDF, como a interseção com um semi-plano (um `max`).
+///
+/// ⚠️ **É por-SEGMENTO, e a diferença é visível:** a tampa é a ausência da extensão no quad do
+/// PRIMEIRO (ou último) segmento, e os quads dos outros seguem cobrindo o que cobrem. Um traço que se
+/// enrola de volta sobre o próprio começo **pinta** ali, pelo segmento de volta — um semi-plano
+/// global apagaria essa tinta.
+///
+/// Devolve `(ponto inicial cortado, ponto final cortado)`, cada um `Some(índice do ponto)` só quando
+/// o traço é ABERTO e a flag daquela ponta está marcada (num traço fechado não há ponta, e o
+/// `flip.wgsl` gateia em `!closed` pelo mesmo motivo).
+pub(crate) fn flat_caps(data: &FlipGpuData, run: &[BinSeg]) -> (Option<u32>, Option<u32>) {
+    let Some(first) = run.first() else {
+        return (None, None);
+    };
+    let st = data.strokes[first.stroke as usize];
+    if st.flags & FLAG_CLOSED != 0 || st.point_count == 0 {
+        return (None, None);
+    }
+    (
+        (st.flags & FLAG_START_FLAT != 0).then_some(st.first_point),
+        (st.flags & FLAG_END_FLAT != 0).then(|| st.first_point + st.point_count - 1),
+    )
+}
+
+/// O SDF (px, positivo = FORA) do corte de uma tampa chata no ponto `q`, cuja normal para fora é
+/// `n` — o `dot` de sempre. Interseção com a cápsula = `max`, e é isso que dá anti-aliasing à borda
+/// reta de graça: o `edge = 0,5 − sd` do chamador não sabe nem se importa de onde o `sd` veio.
+pub(crate) fn cap_sd(p: [f32; 2], q: [f32; 2], n: [f32; 2]) -> f32 {
+    (p[0] - q[0]) * n[0] + (p[1] - q[1]) * n[1]
 }
 
 /// O último ponto de um traço ABERTO — quem responde ao `end_inclusive` do [`bead_range`].

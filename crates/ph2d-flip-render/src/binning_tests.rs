@@ -425,3 +425,8 @@ fn the_binner_asks_the_screen_for_the_radius() {
 // `push_tapered` — são as do binning, e uma segunda cópia delas seria uma segunda cena.
 #[path = "tau_tests.rs"]
 mod tau_tests;
+
+/// Os DOIS FATORES FORA DO `τ` — o fade sub-pixel e a tampa chata. Irmão do `tau_tests`, e pendurado
+/// aqui pelo mesmo motivo: as fixtures são as do binning.
+#[path = "cover_tests.rs"]
+mod cover_tests;

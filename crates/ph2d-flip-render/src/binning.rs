@@ -428,6 +428,12 @@ fn stroke_deposit(
 /// disco é uma cápsula degenerada. Sem isto o `edge` mediria a borda da FITA — 1 em toda a extensão
 /// dela — e as contas sairiam sem anti-aliasing, com o `p_eval` empurrado para a linha-de-centro em
 /// vez de para dentro do carimbo.
+///
+/// ⚠️ **E é aqui que a TAMPA CHATA mora** ([`crate::tau::flat_caps`]): no rasterizador ela é a
+/// ausência de geometria (o quad não estende), e o percurso não tem quad — então ela é a interseção
+/// com um semi-plano, um `max` sobre o `sd`. Só o PRIMEIRO e o ÚLTIMO segmento a honram; os do meio
+/// cobrem o que cobrem, e é isso que deixa um traço que se enrola de volta pintar sobre o próprio
+/// começo cortado.
 fn stroke_silhouette(
     run: &[BinSeg],
     data: &FlipGpuData,
@@ -436,6 +442,7 @@ fn stroke_silhouette(
     p: [f32; 2],
 ) -> Option<(f32, [f32; 2], f32)> {
     let tail = crate::tau::tail_point(data, run);
+    let (cap_head, cap_tail) = crate::tau::flat_caps(data, run);
     let mut best: Option<(f32, [f32; 2], f32)> = None;
     let mut keep = |sd: f32, near: [f32; 2], dist: f32| {
         if best.is_none_or(|(prev, _, _)| sd < prev) {
@@ -450,6 +457,24 @@ fn stroke_silhouette(
         let dist = ((p[0] - cx).powi(2) + (p[1] - cy).powi(2)).sqrt();
         let ra = screen.radius_px(pa.width);
         let rb = screen.radius_px(pb.width);
+        // O CORTE deste segmento, em px (`NEG_INFINITY` = sem tampa, e `max` com ele é a identidade
+        // exata ⇒ todo traço de tampa redonda é byte-intocado). A normal aponta para FORA: `−dir` no
+        // começo, `+dir` no fim — perpendicular ao PRIMEIRO/ÚLTIMO segmento, que é onde o `miter_a`
+        // do rasterizador cai quando não há vizinho.
+        let mut cut = f32::NEG_INFINITY;
+        if cap_head == Some(seg.a) || cap_tail == Some(seg.b) {
+            let v = [sb[0] - sa[0], sb[1] - sa[1]];
+            let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
+            if len > 1e-6 {
+                let dir = [v[0] / len, v[1] / len];
+                if cap_head == Some(seg.a) {
+                    cut = cut.max(crate::tau::cap_sd(p, sa, [-dir[0], -dir[1]]));
+                }
+                if cap_tail == Some(seg.b) {
+                    cut = cut.max(crate::tau::cap_sd(p, sb, dir));
+                }
+            }
+        }
         if let crate::tau::TipShape::Beads { pitch, square } = tip {
             // A conta mais próxima DESTE segmento é uma das duas que cercam o arco do ponto mais
             // próximo, clampadas às que o segmento possui — as de fora são de um vizinho, que
@@ -468,12 +493,12 @@ fn stroke_silhouette(
                 // frame da tangente — a mesma grandeza que o `dn` normaliza, então o `edge` e o
                 // empurrão do `p_eval` falam a unidade certa nos dois.
                 let dist = crate::tau::bead_dn(p, bead, square) * bead.r;
-                keep(dist - bead.r, bead.c, dist);
+                keep((dist - bead.r).max(cut), bead.c, dist);
             }
             continue;
         }
         let r = ra * (1.0 - t) + rb * t;
-        keep(dist - r, [cx, cy], dist);
+        keep((dist - r).max(cut), [cx, cy], dist);
     }
     best
 }

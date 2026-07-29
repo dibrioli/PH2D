@@ -1193,8 +1193,8 @@ Smoke do §18 aprovado. O §16 dizia *"não sobra item de projeto, resta integra
 | `FLAG_AIRBRUSH` | ✅ | ✅ | **FECHADO no §19.1** |
 | `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ✅ | **FECHADO no §19.3** |
 | `fade` sub-pixel | ✅ | ✅ | **FECHADO no §19.4** |
-| `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ❌ | **próximo** |
-| `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | wave C |
+| `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ✅ | **FECHADO no §19.5** |
+| `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | **próximo** |
 
 ⚠️ **Armado, o motor novo apagava CINCO features em silêncio — três delas integradas dois dias
 antes** (airbrush, tip pontilhado, pressão; a pressão é largura, que o percurso já lê). Enquanto
@@ -1400,6 +1400,66 @@ raster de propósito — desaparecer ao dar zoom out é o modo de falha que o pa
 remover, e adotar a regra do raster só nas contas seria uma segunda regra dentro de um motor. Acima
 de 1,3 px os dois convergem, que é onde todo pincel pontilhado do produto vive. **O smoke decide**;
 a sonda que mede está em `measure_the_sub_pixel_bead_in_both_engines`.
+
+### §19.5 — A TAMPA CHATA: a feature que o percurso tem de expressar por OUTRO mecanismo
+
+Um extremo `Cap::Flat` **corta** a fita no ponto em vez de arredondá-la, e o percurso arredondava
+sempre. As duas primeiras waves do §19 foram ports (a mesma fórmula, outra medida); esta **não é**:
+
+**No rasterizador uma tampa chata não é um campo de distância — é a AUSÊNCIA de geometria.** O
+vertex estende o quad por `r` ao longo da reta numa tampa Round (`ext_a = r_a`) e por **zero** numa
+Flat, então a meia-lua simplesmente não é rasterizada; o `capsule_dn` do fragment é sempre o
+redondo. **O percurso não tem quad** — todo pixel do ladrilho pergunta à silhueta —, então a
+truncagem tem de morar no SDF: interseção com um semi-plano, ou seja um `max` sobre o `sd`.
+
+Medido no produto, a faixa de tinta de um traço reto de raio 6 (`x = 16` a `48`):
+
+```text
+                 raster        percurso ANTES   percurso DEPOIS
+  tampa Round    (10, 53)      (10, 53)         (10, 53)
+  tampa Flat     (16, 47)      (10, 53)         (16, 47)
+```
+
+**Três decisões, e nenhuma é detalhe.**
+
+**(1) A truncagem é por-SEGMENTO, nunca um semi-plano global** — e a diferença é arte que
+desaparece. No raster só o quad do PRIMEIRO (ou último) segmento não estende; os outros cobrem o que
+cobrem. Um traço que se enrola de volta e passa **por cima do próprio começo cortado** pinta ali
+(medido: α 0,9595 atrás do plano, sobre a perna de volta). Um plano global apagaria a volta inteira.
+
+**(2) A tampa é dos EXTREMOS, e de mais nada.** Uma mutação sobreviveu — `cap_head.is_some()` em vez
+de `cap_head == Some(seg.a)` — e o que ela produz **não** é o plano global: é um **entalhe em toda
+quina**, porque no lado de fora da curva os dois semi-planos vizinhos se somam e abrem uma fatia. Os
+dois probes que eu tinha não passavam por junção nenhuma; o gate que faltava mede a quina externa de
+um "L".
+
+**(3) `cut` nasce em `NEG_INFINITY`, e o `max` com ele é a identidade EXATA** ⇒ todo traço de tampa
+redonda é byte-intocado. A mutação que o troca por `0.0` sangra **dez** gates.
+
+**⚠️ Uma segunda mutação sobreviveu, e a resolução dela é fixture, não código:** tirar o gate
+`!closed` do `flat_caps` passou num anel CONTÍNUO — e não por buraco de gate, por **álgebra**: o
+meio-disco que o plano tira do primeiro segmento está inteiro dentro do disco que a **tampa redonda
+do segmento de FECHO** cobre no mesmo ponto, então o `min` sobre os segmentos devolve o mesmo número.
+Nas **CONTAS** não: a conta do arco 0 pertence ao primeiro segmento e o de fecho não a possui (o
+`bead_range` dele é meio-aberto e `tail` é `None` num anel), então metade dela desapareceria. O gate
+do anel agora roda nas duas versões, contínua e pontilhada, e a mutação sangra.
+
+**⚠️ E o percurso fica MELHOR que o raster num ponto, de graça:** lá a borda reta da tampa é a
+fronteira do quad, ou seja **serrilhada**; aqui ela sai do mesmo `edge = 0,5 − sd` de sempre, com
+anti-aliasing. O `max` de dois SDFs não sabe nem se importa de onde cada um veio.
+
+**Gates:** o do PRODUTO compara contra o raster nas DUAS tampas e exige que elas **difiram** entre si
+por ~um raio de cada lado (sem essa terceira metade, um percurso que ignorasse a flag passaria se o
+raster também a ignorasse). Mais quatro de unidade: o corte de um traço reto com as pontas
+**independentes**, a perna de volta, a quina sem entalhe, e o anel inerte (contínuo + pontilhado).
+**7 mutações, 7 sangram** — duas só depois dos gates que as sobreviventes nomearam.
+
+⚠️ **A cena de paridade ganhou a NONA pergunta** (um "J" de tampa chata que volta sobre o próprio
+começo — a única forma que prova o por-segmento no device também).
+
+⚠️ **LOC:** o `tau_tests.rs` bateu 736 > 700 e o corte foi por responsabilidade, não por tamanho:
+`cover = (1 − exp(−τ)) · edge · fade`, e os dois termos que **não** são o `τ` (o fade e a tampa)
+saíram para o irmão **`cover_tests.rs`**. Contagem de gates antes e depois do split: **57 e 57**.
 
 ## 17. Fontes
 

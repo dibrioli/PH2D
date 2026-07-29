@@ -26,7 +26,11 @@
 
 ---
 
-## ⬛ O BUG REPORTADO (Enio, 2026-07-28) — **FIXADO em `2695bdcc5`, PENDENTE DE SMOKE**
+## ⬛ O BUG REPORTADO (Enio, 2026-07-28) — **FIXADO em `2695bdcc5`, SMOKE APROVADO**
+
+> ✅ **Smoke OK (Enio, 2026-07-28):** *"smoke pendente da rodada de hoje OK"*. Deletar o
+> último objeto animado e criar outro devolve a timeline em **4 s + véu**. Esta rodada
+> fechou; o que segue abaixo é o registro do mecanismo.
 
 **Repro do Enio:** *"Deletei os objetos da cena, criei outro, mas a timeline ficou com dur
 infinita. Deveria estar com dur 4 e véu visível."*
@@ -44,8 +48,8 @@ bindings e **resetava o documento com `timeline.doc = TimelineDoc::new()` — DE
 (`timeline_persist.rs` tests): anima → despawn → apply marca `missing` → `upkeep` purga+reseta →
 clip 0 = `Some(4.0)` + cena `Some(4.0)`. Mutação (resetar sem estampar) → RED.
 
-> ⚠️ **Você DEVE smokar isto** (o Enio não smokou ainda): no app, anime um objeto (Autokey +
-> pose), delete-o, crie outro → a timeline tem de abrir em **4 s + véu**, não ∞.
+> ✅ Smokado e aprovado pelo Enio em 2026-07-28 (o gesto: animar um objeto com Autokey,
+> deletá-lo, criar outro → a timeline abre em **4 s + véu**, não ∞).
 
 ---
 

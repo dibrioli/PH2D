@@ -14,15 +14,28 @@
 //! CPU no caminho.
 //!
 //! Agora é **tudo na placa**:
-//! 1. a forma isolada é rasterizada num [`VelloPass`] scratch (renderer próprio, **sem readback**);
-//! 2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU, para uma textura de SAÍDA;
+//! 1. **todas** as formas que erraram o memo são rasterizadas num [`VelloPass`] scratch, **numa
+//!    passagem só**, cada uma na célula que o [`crate::fx_atlas`] lhe deu (renderer próprio, **sem
+//!    readback**);
+//! 2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU para cada forma, lendo a
+//!    célula dela, para uma textura de SAÍDA;
 //! 3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL**
 //!    ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, então o Vello reusa o
 //!    slot do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
 //!
+//! # Por que UM render, e não `n`
+//!
+//! ⚠️ Um render do Vello custa **~0,12 ms antes de desenhar coisa alguma** — ele corre a cadeia de
+//! binning/tiling inteira e submete, seja qual for o conteúdo. Com um render por forma, uma cena
+//! de 32 formas filtradas gastava **4,0 ms só em raster**; a MESMA área de arte numa passagem só
+//! custa **0,39 ms** (medido na RTX: `ph2d-render/tests/fx_scene_scale_cost.rs`). Num editor isso
+//! é invisível — o artista mexe numa forma de cada vez —, mas o eixo é o do Enio: *"performance em
+//! tempo real em runtime para games"*, e num jogo as formas filtradas **animam**, logo erram o
+//! memo **todas, todo frame**. O que multiplica é o fixo, não o filtro.
+//!
 //! O memo (por *pilha resolvida em pixels* + tamanho) vira OTIMIZAÇÃO — pula o re-cook quando nada
-//! muda —, não requisito de correção: mesmo re-cozinhando todo frame (forma animada), é um render
-//! + `2n+1` passes na GPU. Vazio = nenhum FX (byte-idêntico ao mundo pré-FX).
+//! muda —, não requisito de correção: mesmo re-cozinhando todo frame (cena inteira animada), é UM
+//! render + `2n+1` passes por forma. Vazio = nenhum FX (byte-idêntico ao mundo pré-FX).
 //!
 //! # A conversão MUNDO → PIXEL mora aqui, e só aqui
 //!
@@ -37,7 +50,7 @@ use ph2d_gpu::GpuContext;
 use ph2d_render::{FxOpGpu, FxStackPass, VelloPass, make_output_texture, stack_reach};
 use ph2d_vec_render::{FxImage, FxImages, LiveGeometry};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
-use ph2d_vector::{Affine, Color, ImageData, StableImage, VectorScene};
+use ph2d_vector::{Affine, Color, ImageData, Rect, StableImage, VectorScene};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -58,6 +71,22 @@ struct PathFx {
     /// A pilha JÁ RESOLVIDA em pixels — a chave do memo. Guardá-la resolvida (e não o componente)
     /// é o que faz o zoom invalidar sozinho: a mesma pilha noutro zoom é outra lista.
     ops: Vec<FxOpGpu>,
+}
+
+/// **O que uma forma filtrada precisa neste frame**, resolvido pela 1ª varredura do `recook`.
+///
+/// Existe porque a decisão do ATLAS é sobre a CENA: só depois de conhecer o tamanho de todas as
+/// formas que erraram o memo é que se sabe em quantos renders elas cabem. Sem isto o laço teria de
+/// resolver cada forma duas vezes — e a 2ª resposta é a que poderia divergir.
+struct Job {
+    id: VecPathId,
+    /// A pilha JÁ RESOLVIDA em pixels de tela.
+    ops: Vec<FxOpGpu>,
+    /// O canto do scratch desta forma, em pixels de tela (a caixa dela mais a margem da pilha).
+    ex0: f64,
+    ey0: f64,
+    w: u32,
+    h: u32,
 }
 
 /// O cozimento de todos os FX raster da cena, GPU-resident. Runtime-only: o documento guarda a
@@ -91,6 +120,14 @@ impl FxLive {
     /// dos outros `recook` (o FX honra a geometria DERIVADA via `live`). `vello_pass` é o renderer
     /// PRINCIPAL (o que desenha `vector_scene`) — os handles de FX têm de ser registrados NELE, ou
     /// o Vello entra em pânico ao desenhá-los.
+    ///
+    /// ⚠️ **O frame tem DUAS varreduras, e é a divisão que paga a cena:** a primeira resolve o que
+    /// cada forma precisa (a pilha em pixels, a caixa, o tamanho do scratch) e decide o memo; a
+    /// segunda rasteriza **todas as que erraram numa passagem só**, num ATLAS. Antes era um render
+    /// do Vello por forma, e um render custa **~0,12 ms antes de desenhar coisa alguma** — numa
+    /// cena de jogo, onde as formas filtradas animam e erram o memo todas, era esse fixo que
+    /// multiplicava (medido: 32 formas = 4,0 ms só de raster, contra 0,39 ms para a MESMA área
+    /// numa passagem).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn recook(
         &mut self,
@@ -113,9 +150,10 @@ impl FxLive {
 
         let perf = std::env::var("PH2D_FX_PERF").is_ok();
         let t0 = std::time::Instant::now();
-        let mut misses = 0usize;
-        let mut seen: Vec<VecPathId> = Vec::new();
 
+        // 1ª varredura — o que cada forma precisa, e quem errou o memo.
+        let mut jobs: Vec<Job> = Vec::new();
+        let mut miss: Vec<usize> = Vec::new();
         for path in scene.paths() {
             let Some(filter) = spec_of(sim, map, path.id) else {
                 continue;
@@ -136,16 +174,31 @@ impl FxLive {
             let ey0 = (y0 - f64::from(mt)).floor();
             let w = (((x1 + f64::from(mr)).ceil() - ex0).max(1.0) as u32).min(MAX_FX_SIDE);
             let h = (((y1 + f64::from(mb)).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
-            seen.push(path.id);
-
             // O memo é otimização: re-coza só quando os PIXELS mudam.
             let hit = self
                 .paths
                 .get(&path.id)
                 .is_some_and(|p| p.ops == ops && p.w == w && p.h == h);
             if !hit {
-                misses += 1;
-                if !self.recook_one(
+                miss.push(jobs.len());
+            }
+            jobs.push(Job {
+                id: path.id,
+                ops,
+                ex0,
+                ey0,
+                w,
+                h,
+            });
+        }
+
+        // 2ª varredura — o ATLAS. Zero formas a re-cozinhar = zero renders: uma cena parada não
+        // paga nada, que é a outra metade do que o memo sempre prometeu.
+        let mut renders = 0usize;
+        if !miss.is_empty() {
+            let sizes: Vec<(u32, u32)> = miss.iter().map(|&i| (jobs[i].w, jobs[i].h)).collect();
+            for batch in crate::fx_atlas::pack(&sizes, MAX_FX_SIDE) {
+                if self.cook_batch(
                     gpu,
                     surface_format,
                     vello_pass,
@@ -154,23 +207,36 @@ impl FxLive {
                     live,
                     sil,
                     camera,
-                    path.id,
-                    &ops,
-                    ex0,
-                    ey0,
-                    w,
-                    h,
+                    &jobs,
+                    &miss,
+                    &batch,
                 ) {
-                    continue;
+                    renders += 1;
                 }
             }
+        }
 
-            let Some(pfx) = self.paths.get(&path.id) else {
+        // O que o `dispatch` injeta no z de cada forma.
+        //
+        // ⚠️ A textura só é publicada se ela for do TAMANHO que este frame pediu — uma falha de
+        // recurso a meio do lote deixaria para trás a textura da era anterior, e desenhá-la seria
+        // mostrar a forma com a caixa errada em vez de a deixar sem filtro por um frame.
+        for job in &jobs {
+            let Some(pfx) = self
+                .paths
+                .get(&job.id)
+                .filter(|p| p.w == job.w && p.h == job.h)
+            else {
                 continue;
             };
-            let rect = (ex0, ey0, ex0 + f64::from(pfx.w), ey0 + f64::from(pfx.h));
+            let rect = (
+                job.ex0,
+                job.ey0,
+                job.ex0 + f64::from(pfx.w),
+                job.ey0 + f64::from(pfx.h),
+            );
             self.live.insert(
-                path.id,
+                job.id,
                 FxImage {
                     // Clone do handle estável = MESMO id de Blob (o slot de atlas do Vello).
                     image: StableImage::from_image_data(pfx.image.clone()),
@@ -183,7 +249,7 @@ impl FxLive {
         let dead: Vec<VecPathId> = self
             .paths
             .keys()
-            .filter(|id| !seen.contains(id))
+            .filter(|id| !jobs.iter().any(|j| j.id == **id))
             .copied()
             .collect();
         for id in dead {
@@ -192,21 +258,24 @@ impl FxLive {
             }
         }
 
-        if perf && (misses > 0 || self.dbg_frames.is_multiple_of(120)) {
+        if perf && (renders > 0 || self.dbg_frames.is_multiple_of(120)) {
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             eprintln!(
-                "[fx-perf] {} pilha(s), {misses} re-cozida(s), recook {ms:.3} ms",
-                self.live.len()
+                "[fx-perf] {} pilha(s), {} re-cozida(s) em {renders} render(es), recook {ms:.3} ms",
+                self.live.len(),
+                miss.len()
             );
         }
         self.dbg_frames = self.dbg_frames.wrapping_add(1);
     }
 
-    /// Cozinha UMA forma: rasteriza isolada no scratch, roda a pilha na GPU para a textura de
-    /// saída (realoca + re-registra se o tamanho mudou), e atualiza o `PathFx`. `false` só em
-    /// falha de recurso (pula a forma neste frame).
+    /// Cozinha um LOTE: **um** render do Vello com todas as formas dele, cada uma na célula que o
+    /// empacotador lhe deu, e depois a pilha de cada uma lendo a própria célula.
+    ///
+    /// Devolve se o render aconteceu (`false` = falha de recurso; as formas do lote ficam sem
+    /// filtro neste frame, e o próximo tenta de novo — elas continuam a errar o memo).
     #[allow(clippy::too_many_arguments)]
-    fn recook_one(
+    fn cook_batch(
         &mut self,
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
@@ -216,28 +285,46 @@ impl FxLive {
         live: &LiveGeometry,
         sil: &LiveGeometry,
         camera: Affine,
-        id: VecPathId,
-        ops: &[FxOpGpu],
-        ex0: f64,
-        ey0: f64,
-        w: u32,
-        h: u32,
+        jobs: &[Job],
+        miss: &[usize],
+        batch: &crate::fx_atlas::Batch,
     ) -> bool {
-        // 1. Rasteriza a forma isolada no scratch (sem readback), na MESMA escala da tela (câmera),
-        //    transladada para a origem do scratch (`-ex0,-ey0`).
+        // 1. UMA cena com as formas do lote, cada uma transladada para a origem da CÉLULA dela.
+        //    (`-ex0,-ey0` põe a forma na origem do scratch dela; `+org` põe o scratch na célula.)
         let mut scratch_scene = VectorScene::new();
-        ph2d_vec_render::draw_path_isolated(
-            scene,
-            xforms,
-            live,
-            id,
-            camera,
-            Affine::translate((-ex0, -ey0)),
-            &mut scratch_scene,
-        );
+        for cell in &batch.cells {
+            let job = &jobs[miss[cell.index]];
+            // ⚠️ **A célula é RECORTADA, e isso repõe um limite que já existia.** Com um render por
+            // forma, a textura tinha exactamente o tamanho do scratch dela — arte que passasse da
+            // caixa (um traço mais largo do que os limites calculados, uma junta miter comprida)
+            // era descartada pelo rasterizador, na borda. Partilhando a textura, essa mesma arte
+            // cairia **dentro da célula da vizinha**, e o resultado ainda pareceria arte. O clip
+            // não é otimização: é o que mantém o desenho igual ao de antes.
+            scratch_scene.push_clip(&Rect::new(
+                f64::from(cell.org[0]),
+                f64::from(cell.org[1]),
+                f64::from(cell.org[0]) + f64::from(job.w),
+                f64::from(cell.org[1]) + f64::from(job.h),
+            ));
+            ph2d_vec_render::draw_path_isolated(
+                scene,
+                xforms,
+                live,
+                job.id,
+                camera,
+                Affine::translate((
+                    f64::from(cell.org[0]) - job.ex0,
+                    f64::from(cell.org[1]) - job.ey0,
+                )),
+                &mut scratch_scene,
+            );
+            scratch_scene.pop_layer();
+        }
+
+        // 2. UM render — o número que esta wave existe para levar a um.
         let scratch = match self.scratch.as_mut() {
             Some(p) => p,
-            None => match VelloPass::new(gpu, surface_format, (w, h)) {
+            None => match VelloPass::new(gpu, surface_format, (batch.w, batch.h)) {
                 Ok(p) => self.scratch.insert(p),
                 Err(e) => {
                     eprintln!("[fx] scratch VelloPass::new: {e}");
@@ -248,7 +335,7 @@ impl FxLive {
         if let Err(e) = scratch.render_to_intermediate(
             gpu,
             scratch_scene.inner(),
-            (w, h),
+            (batch.w, batch.h),
             Color::TRANSPARENT,
             false,
         ) {
@@ -256,74 +343,102 @@ impl FxLive {
             return false;
         }
 
-        // 2. (Re)aloca a textura de saída por forma e mantém o id ESTÁVEL no renderer principal.
-        let need_alloc = !matches!(self.paths.get(&id), Some(p) if p.w == w && p.h == h);
-        if need_alloc {
-            let tex = make_output_texture(gpu, w, h);
-            match self.paths.get_mut(&id) {
-                // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do
-                // antigo. ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da
-                // `ImageData` — copiar com as dims velhas de uma textura de tamanho novo ESTOURA
-                // (o Vello avisa isso no doc; foi o "panic ao abrir" pós-resize). Resize é raro
-                // ⇒ churn de id mínimo; o re-cook (comum) não re-registra.
-                Some(pfx) => {
-                    let fresh = vello_pass.register_texture(tex.clone());
-                    let old = std::mem::replace(&mut pfx.image, fresh);
-                    self.pending_unregister.push(old);
-                    pfx.tex = tex;
-                    pfx.w = w;
-                    pfx.h = h;
-                }
-                // Forma nova: registra a textura e ganha um id estável.
-                None => {
-                    let image = vello_pass.register_texture(tex.clone());
-                    self.paths.insert(
-                        id,
-                        PathFx {
-                            image,
-                            tex,
-                            w,
-                            h,
-                            ops: ops.to_vec(),
-                        },
-                    );
-                }
-            }
+        // 3. As texturas de SAÍDA, por forma. Numa varredura própria porque ela **registra** no
+        //    renderer principal (`&mut vello_pass`), e é a única parte do lote que o toca.
+        for cell in &batch.cells {
+            let job = &jobs[miss[cell.index]];
+            self.ensure_output(gpu, vello_pass, job);
         }
 
-        // 3. A PILHA na GPU: scratch intermediate (sRGB, alfa RETO) → op₁ → … → textura de saída
-        //    (mesma convenção). Quem converte para o espaço de trabalho é o `cs_ingest`, uma vez.
-        let src = self
-            .scratch
+        // 4. A PILHA de cada forma, lendo a CÉLULA dela do atlas. Tudo a jusante do ingest fala em
+        //    coordenadas locais da forma — inclusive os segmentos de silhueta, que por isso
+        //    continuam a ser construídos com `-ex0,-ey0` e nada sabem do atlas.
+        let Self {
+            scratch,
+            stack,
+            paths,
+            dump,
+            ..
+        } = self;
+        let src = scratch
             .as_ref()
             .expect("scratch ensured")
             .intermediate_texture();
-        let pfx = self.paths.get_mut(&id).expect("path ensured");
-        pfx.ops.clear();
-        pfx.ops.extend_from_slice(ops);
-        // A SILHUETA em segmentos, no MESMO transform com que a forma foi rasterizada no scratch
-        // — é ela que dá ao campo de distância o pé exato da fronteira. Vazia (forma complexa
-        // demais, ou traçada sem união resolvida) = o campo cai no caminho do raster, que semeia
-        // em texels discretos: pior — é o pente do bevel — mas nunca trava.
-        let geom = ph2d_vec_render::silhouette_segments(
-            scene,
-            xforms,
-            live,
-            sil,
-            id,
-            camera,
-            Affine::translate((-ex0, -ey0)),
-        );
-        if std::env::var("PH2D_FX_DIAG").is_ok() {
-            eprintln!(
-                "[fx-diag] path {id:?}: {} segmentos, scratch {w}x{h}",
-                geom.len()
+        let stack = stack.get_or_insert_with(|| FxStackPass::new(gpu));
+        for cell in &batch.cells {
+            let job = &jobs[miss[cell.index]];
+            let Some(pfx) = paths.get_mut(&job.id) else {
+                continue;
+            };
+            pfx.ops.clear();
+            pfx.ops.extend_from_slice(&job.ops);
+            let geom = ph2d_vec_render::silhouette_segments(
+                scene,
+                xforms,
+                live,
+                sil,
+                job.id,
+                camera,
+                Affine::translate((-job.ex0, -job.ey0)),
             );
+            if std::env::var("PH2D_FX_DIAG").is_ok() {
+                eprintln!(
+                    "[fx-diag] path {:?}: {} segmentos, celula {}x{} em ({},{}) do atlas {}x{}",
+                    job.id,
+                    geom.len(),
+                    job.w,
+                    job.h,
+                    cell.org[0],
+                    cell.org[1],
+                    batch.w,
+                    batch.h
+                );
+            }
+            let org = [
+                i32::try_from(cell.org[0]).unwrap_or(0),
+                i32::try_from(cell.org[1]).unwrap_or(0),
+            ];
+            stack.run_from(gpu, src, org, &pfx.tex, job.w, job.h, &job.ops, &geom);
+            dump.maybe(gpu, job.id, &pfx.tex, job.w, job.h, &job.ops, &geom);
         }
-        let stack = self.stack.get_or_insert_with(|| FxStackPass::new(gpu));
-        stack.run(gpu, src, &pfx.tex, w, h, ops, &geom);
-        self.dump.maybe(gpu, id, &pfx.tex, w, h, ops, &geom);
         true
+    }
+
+    /// (Re)aloca a textura de saída de uma forma e mantém o id ESTÁVEL no renderer principal.
+    fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) {
+        if matches!(self.paths.get(&job.id), Some(p) if p.w == job.w && p.h == job.h) {
+            return;
+        }
+        let tex = make_output_texture(gpu, job.w, job.h);
+        match self.paths.get_mut(&job.id) {
+            // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do antigo.
+            // ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da `ImageData` —
+            // copiar com as dims velhas de uma textura de tamanho novo ESTOURA (o Vello avisa isso
+            // no doc; foi o "panic ao abrir" pós-resize). Resize é raro ⇒ churn de id mínimo; o
+            // re-cook (comum) não re-registra.
+            Some(pfx) => {
+                let fresh = vello_pass.register_texture(tex.clone());
+                let old = std::mem::replace(&mut pfx.image, fresh);
+                self.pending_unregister.push(old);
+                pfx.tex = tex;
+                pfx.w = job.w;
+                pfx.h = job.h;
+            }
+            // Forma nova: registra a textura e ganha um id estável.
+            None => {
+                let image = vello_pass.register_texture(tex.clone());
+                self.paths.insert(
+                    job.id,
+                    PathFx {
+                        image,
+                        tex,
+                        w: job.w,
+                        h: job.h,
+                        ops: job.ops.clone(),
+                    },
+                );
+            }
+        }
     }
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os `VecPathId`

@@ -31,6 +31,8 @@ struct Globals {
     bright: f32,
     _pad2: f32,
     tint_b: vec4<f32>,
+    src_org: vec2<i32>,
+    _pad3: vec2<i32>,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -195,6 +197,23 @@ fn tap_img(t: texture_2d<f32>, x: i32, y: i32) -> vec4<f32> {
     return textureLoad(t, vec2<i32>(x, y), 0);
 }
 
+// **A leitura da FONTE**, e ela tem um limite PRÓPRIO — o do `cs_ingest`, e de mais ninguém.
+//
+// ⚠️ **Não dá para reusar o `tap_img` aqui, e a razão é um invariante do módulo:** aquele limita-se
+// a `g.dims`, que é o tamanho da FORMA. Isso é *correto* para as work textures — o `ensure_work`
+// CRESCE e nunca encolhe, então fora de `dims` moram os pixels de uma forma maior de um frame
+// anterior, e é exactamente esse limite que os torna invisíveis. E é *errado* para a fonte: a
+// célula desta forma vive em `src_org .. src_org + dims`, logo metade dela cai fora de `dims` e
+// seria lida como vazio. (Foi o que o gate `a_cell_of_the_atlas_filters_exactly_like_the_shape_alone`
+// apanhou: 8806 bytes diferentes, a forma cortada na coluna `dims.x`.)
+//
+// O limite verdadeiro de uma textura é o tamanho DELA, e o WGSL sabe dizê-lo — nenhum uniform novo.
+fn tap_src(x: i32, y: i32) -> vec4<f32> {
+    let d = vec2<i32>(textureDimensions(t0));
+    if (x < 0 || y < 0 || x >= d.x || y >= d.y) { return vec4<f32>(0.0); }
+    return textureLoad(t0, vec2<i32>(x, y), 0);
+}
+
 // **A FONTE do borrão.** Os ops de fora borram a imagem; os de DENTRO borram o alfa INVERTIDO —
 // alto onde não há forma —, e é isso que faz a sombra nascer na borda e morrer para o miolo.
 fn source_of(s: vec4<f32>) -> vec4<f32> {
@@ -268,10 +287,19 @@ pub(crate) const FX_STACK_MID_WGSL: &str = r#"
 // O `rgba16float` dos intermediários não é luxo aqui: linear em 8 bits BANDEARIA nos tons escuros
 // (a transferência comprime a faixa baixa por um fator ~12,9), e é para isso que meia-precisão em
 // ponto flutuante existe num pipeline de composição.
+//
+// ⚠️ **O `src_org` é lido AQUI e em mais lado nenhum, e isso não é economia — é o que torna o
+// ATLAS possível.** Um frame com `n` formas filtradas pagava `n` renders do Vello, cujo custo é
+// quase todo FIXO (medido: 0,12 ms por render, contra 0,39 ms para desenhar a área INTEIRA das 32
+// formas de uma vez). Rasterizá-las todas numa passagem só exige que a pilha de cada forma saiba
+// onde, na textura partilhada, começa a CÉLULA dela — e o comentário do `run` já garantia a outra
+// metade: depois do ingest **nenhum passe volta a ler `src`**. Logo há exactamente um sítio a
+// deslocar, e o resto do módulo continua a falar em coordenadas locais da forma (as work textures,
+// os segmentos de silhueta, a origem do ruído).
 @compute @workgroup_size(8, 8, 1)
 fn cs_ingest(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
-    let s = tap_img(t0, i32(id.x), i32(id.y));
+    let s = tap_src(i32(id.x) + g.src_org.x, i32(id.y) + g.src_org.y);
     textureStore(
         dst,
         vec2<i32>(i32(id.x), i32(id.y)),

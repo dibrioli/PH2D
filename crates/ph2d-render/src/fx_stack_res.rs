@@ -73,6 +73,15 @@ pub(crate) struct Globals {
     /// 16 bytes, e a fileira `hue`/`sat`/`bright`/`_pad2` fecha exactamente uma. Encaixado no meio,
     /// ele empurraria padding implícito que o Rust não escreve e o `min_binding_size` recusaria.
     pub(crate) tint_b: [f32; 4],
+    /// **Onde, na textura de FONTE, começa a célula desta forma.** Só o `cs_ingest` o lê — e é
+    /// isso que faz dele a porta única do ATLAS de raster (ver o comentário lá).
+    ///
+    /// `[0, 0]` = a fonte É a forma, o mundo de antes do atlas, byte-idêntico.
+    pub(crate) src_org: [i32; 2],
+    /// ⚠️ Padding explícito, pelo mesmo motivo do `_pad`: o WGSL arredonda o tamanho do struct ao
+    /// alinhamento dele (16, por causa do `vec4`), e sem isto o Rust reportaria 136 contra os 144
+    /// do WGSL — o `min_binding_size` recusaria o bind group.
+    pub(crate) _pad3: [i32; 2],
 }
 
 pub(crate) struct Tex {

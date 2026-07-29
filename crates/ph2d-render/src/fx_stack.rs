@@ -324,6 +324,28 @@ impl FxStackPass {
         ops: &[FxOpGpu],
         geom: &[[f32; 4]],
     ) {
+        self.run_from(gpu, src, [0, 0], dst, w, h, ops, geom);
+    }
+
+    /// A mesma pilha, lendo a fonte a partir de `src_org` — a forma vive numa **CÉLULA** de uma
+    /// textura partilhada por todas as formas filtradas do frame.
+    ///
+    /// ⚠️ **Só o ingest desloca.** Tudo a jusante (as work textures, os segmentos de silhueta, a
+    /// origem do ruído, o `dst`) fala em coordenadas LOCAIS da forma, exactamente como antes —
+    /// então esta porta não é um segundo sistema de coordenadas a correr em paralelo, é uma
+    /// tradução feita uma vez, na fronteira.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_from(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        src_org: [i32; 2],
+        dst: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        ops: &[FxOpGpu],
+        geom: &[[f32; 4]],
+    ) {
         if w == 0 || h == 0 {
             return;
         }
@@ -365,8 +387,14 @@ impl FxStackPass {
             bright: 0.0,
             _pad2: [0.0],
             tint_b: [0.0; 4],
+            src_org: [0, 0],
+            _pad3: [0, 0],
         };
-        write_at(&mut blob, 0, &edges);
+        // ⚠️ O INGEST leva a origem da célula; o RESOLVE, não. Os dois compartilham este `edges`
+        // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
+        // dar-lhe a origem seria escrever um número que ninguém lê hoje e que o próximo leitor
+        // interpretaria como verdade.
+        write_at(&mut blob, 0, &Globals { src_org, ..edges });
         write_at(&mut blob, total_slots - 1, &edges);
         // **A ORIGEM da grade de ruído é a MARGEM da pilha** — a mesma `stack_reach` que
         // dimensionou o scratch, perguntada aqui em vez de recebida por parâmetro: quem reserva a
@@ -419,6 +447,9 @@ impl FxStackPass {
                 bright: op.bright,
                 _pad2: [0.0],
                 tint_b: op.tint_b,
+                // Nenhum op lê a fonte — o ingest já a trouxe para o espaço de trabalho.
+                src_org: [0, 0],
+                _pad3: [0, 0],
             };
             match plan {
                 Plan::Point | Plan::Warp => {

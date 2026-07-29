@@ -121,13 +121,14 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
         rust, wgsl,
         "os membros do `Globals` do WGSL derivaram do do Rust"
     );
-    // 128 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
+    // 144 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
     // que hospeda também o `grow_px` da morfologia) + os 16 do ajuste de cor + os 16 da SEGUNDA
-    // cor (a ponta clara da rampa do Duotone).
+    // cor (a ponta clara da rampa do Duotone) + os 16 da ORIGEM DA CÉLULA na fonte (o atlas de
+    // raster — dois `i32` mais o padding que a fileira de 16 exige).
     //
     // ⚠️ O número é MEDIDO, não escolhido: ele é a soma das linhas de 16 bytes que o `vec4` do
     // `tint` impõe, e o `UNIFORM_STRIDE` (256) segue a acomodar com folga.
-    assert_eq!(core::mem::size_of::<Globals>(), 128);
+    assert_eq!(core::mem::size_of::<Globals>(), 144);
 }
 
 /// Os NOMES dos campos de um `struct` declarado em `src`, na ordem — serve o Rust e o WGSL, cuja

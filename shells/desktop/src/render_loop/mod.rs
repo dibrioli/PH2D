@@ -700,6 +700,7 @@ impl crate::App {
         self.attribute_demo_smoke();
         self.picker_smoke();
         self.value_curve_smoke();
+        self.gradient_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();
         self.value_quantize_smoke();

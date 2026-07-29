@@ -239,6 +239,7 @@ mod transport;
 mod twist_smoke;
 mod undo;
 mod undo_route;
+mod gradient_smoke;
 mod value_curve_smoke;
 mod value_gain_smoke;
 mod value_median_smoke;

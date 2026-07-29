@@ -90,6 +90,49 @@ const WET_STEP_S: f32 = 1.0 / 40.0;
 /// `warn: dropped Xs of sim time` aparece no mesmo log — ela se protege assim, e a água não se protegia.
 const WET_MAX_STEPS: usize = 2;
 
+/// **O ORÇAMENTO DE TEMPO da simulação, por frame, em milissegundos** — e ele existe porque
+/// [`WET_MAX_STEPS`] é um cap de **CONTAGEM**, que é a forma de teto que este repo já descobriu ser um
+/// MULTIPLICADOR três vezes (ADR-0117 no histórico do editor de áudio, o plano 26 no histórico de undo
+/// do Painter): capar a contagem só limita o custo se o custo POR unidade for limitado, e o custo de um
+/// passo de água não é — ele é linear na área molhada, que o artista escolhe com a mão.
+///
+/// # O número, medido
+///
+/// Um passo a 4096², traço de 2400 px (`measure_the_two_halves_of_a_wet_tick`, `measure_pass_cost`):
+///
+/// ```text
+///   forma        passo p50   celulas ativas
+///   horizontal      8,6 ms           94 523
+///   diagonal       12,7 ms          111 283
+/// ```
+///
+/// A sim é 40 Hz, então sustentar tempo real custa `40 × 12,7 = 508 ms/s` — **meio núcleo**, dentro de
+/// um frame de 16,6 ms que tem outros inquilinos. Nenhuma contagem de passos conserta isso: com o cap
+/// em 2 o pior frame paga 25 ms de água, e com o cap em 1 paga 12,7 — os dois são função da poça.
+///
+/// **4 ms/frame** é 24% do quadro de 60 fps e compra `4 × 60 = 240 ms/s` de simulação. O que isso
+/// significa por regime:
+///
+/// ```text
+///   passo    frames por passo   taxa da sim    veredito
+///    1 ms                 0,25     40 Hz (cheia)  o cap é INERTE (poça pequena)
+///    4 ms                    1     40 Hz (cheia)  inerte
+///   12,7 ms                  3     ~20 Hz         a água escorre em meia velocidade
+///  100 ms                   25     ~2,4 Hz        a água rasteja, o app segue a 60 fps
+/// ```
+///
+/// ⚠️ **O trade é o do `max_substeps` da física, e é deliberado:** sob carga a água simula MENOS
+/// tempo em vez de derrubar o frame — e agora o custo por-frame é **independente do tamanho da poça**,
+/// que é a propriedade que o cap de contagem nunca teve.
+pub(super) const WET_STEP_BUDGET_MS: f32 = 4.0;
+
+/// Teto da DÍVIDA (ms). Sem ele um passe patológico congelaria a água por dezenas de frames; com ele
+/// a água volta a andar em no máximo `WET_MAX_DEBT_MS / WET_STEP_BUDGET_MS` = 25 frames (~0,4 s).
+///
+/// ⚠️ O teto é **fundo**, não conforto: enquanto a dívida não bate nele, o custo amortizado por frame é
+/// EXATAMENTE o orçamento — é o clamp que quebraria essa igualdade, e é por isso que ele é fundo.
+const WET_MAX_DEBT_MS: f32 = -100.0;
+
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
     /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the
@@ -579,12 +622,21 @@ impl PainterTool {
         // tilt are sim forces): the tick reconciles with the stamp's door.
         sess.reconcile_facts(facts);
         sess.acc += dt_s;
+        // Crédito do frame. O teto é UM frame de orçamento: um bucket que
+        // entesoura devolve exatamente a rajada que ele existe para impedir.
+        sess.sim_credit_ms = (sess.sim_credit_ms + WET_STEP_BUDGET_MS).min(WET_STEP_BUDGET_MS);
         let mut steps = 0;
-        while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS {
+        while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS && sess.sim_credit_ms > 0.0 {
             sess.acc -= WET_STEP_S;
             steps += 1;
             if sess.engine.sim_should_run() {
+                // O passo é ATÔMICO — o orçamento decide se ele ROLA, nunca o
+                // interrompe no meio. O que ele custou é o que ele DEBITA: um
+                // custo estimado erraria, e o erro se acumularia no bucket.
+                let t0 = std::time::Instant::now();
                 sess.engine.step_simulation();
+                let spent = t0.elapsed().as_secs_f32() * 1e3;
+                sess.sim_credit_ms = (sess.sim_credit_ms - spent).max(WET_MAX_DEBT_MS);
             }
         }
         // Clamp semantics: a stall never owes a burst of catch-up steps.

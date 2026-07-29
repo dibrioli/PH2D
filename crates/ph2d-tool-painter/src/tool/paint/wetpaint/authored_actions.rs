@@ -36,6 +36,8 @@ impl PainterTool {
             canvas: Arc::downgrade(&self.canvas_rgba),
             pigment: vec![0u8; w as usize * h as usize * 4],
             acc: 0.0,
+            // Nasce com um frame de crédito: o primeiro passo nunca espera.
+            sim_credit_ms: super::WET_STEP_BUDGET_MS,
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,

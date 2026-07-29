@@ -58,6 +58,16 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) pigment: Vec<u8>,
     /// Fixed-step accumulator for [`PainterTool::wetpaint_tick`].
     pub(super) acc: f32,
+    /// **O orçamento de TEMPO da simulação, em milissegundos** — o token
+    /// bucket que decide se este frame pode pagar mais um passo.
+    ///
+    /// Cada tick credita [`super::WET_STEP_BUDGET_MS`] (teto: sem entesourar —
+    /// um bucket que acumula devolve exatamente a rajada que ele existe para
+    /// impedir) e cada passo DEBITA o que ele de fato custou. Crédito negativo
+    /// é dívida: o passo seguinte espera os frames necessários para pagá-la, e
+    /// é isso que torna o custo por-frame da água **independente do tamanho da
+    /// poça** — que é a propriedade que o cap de CONTAGEM não tinha.
+    pub(super) sim_credit_ms: f32,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last
     /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.

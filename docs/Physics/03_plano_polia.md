@@ -814,9 +814,51 @@ arrastar de volta tem de devolver o âmbar **e** a simulação.
 
 ## 10. O que MEDIR antes de escrever número
 
-- `PULLEY_BIAS` de novo (com raio, a geometria mudou);
+> **A lista FECHOU** (2026-07-29). Os quatro itens têm número; nenhum pediu mudança
+> de código, e dois deles corrigiram uma NOTA em vez de um constante. Sondas:
+> `measure_pulley_bias_radius.rs` · `measure_pulley_budget.rs` ·
+> `measure_pulley_degenerate.rs`. Gates: `pulley.rs`
+> (`the_bias_holds_its_accuracy_when_the_wheels_have_radius`,
+> `the_route_cost_is_linear_in_the_wheel_count`) · `pulley_degenerate.rs`.
+
+- ~~`PULLEY_BIAS` de novo (com raio, a geometria mudou)~~ — **MEDIDO: sobrevive.** As
+  tabelas do `PULLEY_BIAS` foram medidas no modelo de PONTO (`radius: 0.0`), e com
+  raio o comprimento passa a incluir os ARCOS (raio 0,3 acrescenta **0,9876 m** a uma
+  corda de 6 m; raio 1,0 acrescenta 3,65) e os pontos de tangência DESLIZAM. O
+  esticamento em regime saiu **idêntico a 4 decimais em raio 0,00 / 0,30 / 1,00, em
+  todo β** — β=0,20 dá 0,0011 m nos três, abaixo da tolerância de repouso do rapier
+  (1,3 mm). A previsão do teorema do envelope que o cabeçalho da rota afirmava
+  (*a variação do arco CANCELA a do trecho*) está **confirmada por medição, não só
+  escrita**. O único efeito novo do raio é um tremor minúsculo que CRESCE com ele e
+  CAI com β: 0,00000 em raio 0 · 0,00003 em 0,3 · **0,00017 em 1,0** (β=0,2), 8×
+  abaixo da tolerância. ⚠️ Gate com mutação dupla, e a segunda é a que importa:
+  apontar o versor da perna para o CENTRO em vez da TANGÊNCIA deixa raio 0,00 e 0,30
+  verdes e sangra **só em 1,00** — a linha do raio grande é que carrega o gate.
 - ~~quantas iterações o ponto fixo do lado leva~~ **MEDIDO: 1**, em 18 montagens de 1 a 6 roldanas (o chute pela poligonal já É o ponto fixo);
-- custo por sub-passo × nº de roldanas, contra o HR-4;
+- ~~custo por sub-passo × nº de roldanas, contra o HR-4~~ — **MEDIDO, e a resposta é
+  que NENHUM cap se justifica.** O HR-4 dá **1,5 ms** a *Physics rígidos*. Uma
+  roldana custa **~0,00001 ms/tique (10 ns)**, e o crescimento é LINEAR:
+
+  | roldanas numa corda | ms/tique | % HR-4 |
+  |---|---|---|
+  | (sem corda) | 0,0033 | 0,22% |
+  | 2 | 0,0035 | 0,24% |
+  | 64 | 0,0039 | 0,26% |
+  | 256 | 0,0052 | 0,35% |
+  | **1024** | **0,0109** | **0,73%** |
+
+  Para comer o orçamento inteiro com roldanas seriam **~150.000** — ninguém alcança
+  isso clicando `Add Wheel`, e escrever um cap "por segurança" seria exactamente o
+  palpite que o §0 do CLAUDE.md proíbe. **O que escala é o número de CORDAS** (isto
+  é, de corpos): 64 cordas = 3,87% · 128 = 7,09% · **256 = 14,4%** — e a contagem de
+  roldanas quase não entra (64 cordas de 8 roldanas custam 0,0552, menos que 64 de 2
+  a 0,0580, dentro do ruído). ⚠️ O gate é uma **RAZÃO** (512× as roldanas por < 20×
+  o custo), porque uma barra de wall-clock mediria o perfil de compilação; a mutação
+  que a faz sangrar é a rota virar **quadrática** (202,7×).
+  ⚠️ **Meu CONTROLE nasceu errado:** o bloco sem-corda reusava UM mundo entre as
+  corridas enquanto os casos com corda reconstruíam a cena, e ele saiu **mais caro**
+  que uma corda de 2 roldanas (0,0063 contra 0,0034), com a coluna de delta
+  **negativa**. O controle atropelado pelo experimento, pela quinta vez nesta linha.
 - ~~os **guardas de degeneração** — âncora dentro de uma roldana, roldanas
   sobrepostas, `|C₂−C₁| < |r₁±r₂|` — cada um com decisão explícita em vez de
   `NaN` silencioso~~ — **MEDIDO, e o item estava obsoleto em duas metades: o `NaN`

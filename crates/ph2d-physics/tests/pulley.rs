@@ -491,3 +491,190 @@ fn the_winch_does_not_lag_further_the_faster_it_reels() {
         );
     }
 }
+
+/// **A rota é LINEAR no número de roldanas** — o item do §10 do plano que pedia o
+/// custo contra o HR-4.
+///
+/// Medido (`measure_pulley_budget`, release): **~0,00001 ms por roldana** (10 ns), e
+/// **1024 roldanas numa corda só custam 0,0109 ms/tique = 0,73%** do 1,5 ms que o
+/// HR-4 dá a *Physics rígidos*. Para comer o orçamento inteiro com roldanas seriam
+/// ~150.000 delas, o que ninguém alcança clicando `Add Wheel` — e é por isso que
+/// **nenhum cap se justifica**, a resposta que o §0 do CLAUDE.md exige que venha da
+/// medição e não da cautela.
+///
+/// ⚠️ **O gate é uma RAZÃO, não wall-clock:** o `ci-test` compila em `opt-level=1`
+/// e uma barra de milissegundos mediria o PERFIL. A razão pega o que de fato pode
+/// dar errado — a rota virar **quadrática** no número de nós —, e ali ela não é 3×,
+/// é ~500.000×.
+#[test]
+fn the_route_cost_is_linear_in_the_wheel_count() {
+    use std::time::Instant;
+
+    /// Uma corda com `n` roldanas espalhadas num arco, nunca sobrepostas.
+    fn rope_with(n: usize) -> (PhysicsWorld, PulleyDesc) {
+        let mut w = PhysicsWorld::new();
+        const R: f32 = 0.2;
+        let area = std::f32::consts::PI * R * R;
+        let (a, _) = w.add_dynamic_circle(-1.5, 2.0, R, 3.0 / area);
+        let (b, _) = w.add_dynamic_circle(1.5, 2.0, R, 1.0 / area);
+        let mut arena = Vec::new();
+        for i in 0..n {
+            let t = if n == 1 {
+                0.5
+            } else {
+                i as f32 / (n - 1) as f32
+            };
+            arena.push(RopeWheel {
+                centre: [-1.5 + 3.0 * t, 6.0],
+                radius: 0.3,
+                side: 1,
+                id: 1,
+                break_force: f32::INFINITY,
+                ..RopeWheel::default()
+            });
+        }
+        ph2d_physics::world::rope_route::resolve_sides(
+            [-1.5, 2.0],
+            [1.5, 2.0],
+            &mut arena,
+            &mut Vec::new(),
+        );
+        let desc = PulleyDesc {
+            body_a: a,
+            body_b: b,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: u32::try_from(n).expect("cabe"),
+            id: 1,
+            total_length: 40.0,
+            motor_rate: 0.0,
+            break_force: f32::INFINITY,
+        };
+        w.set_pulleys(vec![desc], arena);
+        (w, desc)
+    }
+
+    /// Mediana de 3 corridas, mundo reconstruído a cada uma. ⚠️ O MÍNIMO seria o
+    /// redutor errado aqui: a 1ª corrida paga *first-touch* e é estruturalmente
+    /// diferente das outras.
+    fn ms(n: usize) -> f64 {
+        let mut s = Vec::new();
+        for run in 0..=3 {
+            let (mut w, _) = rope_with(n);
+            let t0 = Instant::now();
+            for _ in 0..60 {
+                w.step();
+            }
+            if run > 0 {
+                s.push(t0.elapsed().as_secs_f64() * 1000.0 / 60.0);
+            }
+        }
+        s.sort_by(f64::total_cmp);
+        s[s.len() / 2]
+    }
+
+    let small = ms(2);
+    let big = ms(1024);
+    let ratio = big / small;
+    // 512× as roldanas por ~3× o custo (medido em release). O bar é folgado de
+    // propósito: ele existe para pegar uma ORDEM de crescimento errada, não para
+    // pinar o número desta máquina.
+    assert!(
+        ratio < 20.0,
+        "512x as roldanas custaram {ratio:.1}x (2 roldanas {small:.4} ms, 1024 \
+         {big:.4} ms) — a rota deixou de ser linear no numero de nos"
+    );
+}
+
+/// **E o `PULLEY_BIAS` sobrevive ao RAIO** — o outro item do §10.
+///
+/// As tabelas que o `PULLEY_BIAS` cita foram medidas no modelo de PONTO. Com raio o
+/// comprimento passa a incluir os ARCOS e os pontos de tangência DESLIZAM, e o
+/// cabeçalho da rota previa que o Jacobiano não mudaria (o teorema do envelope: a
+/// variação do arco cancela a do trecho). Medido em raio 0,00 / 0,30 / 1,00, o
+/// esticamento em regime é **idêntico a 4 decimais em todo β** — a previsão
+/// confirmada, não só afirmada.
+///
+/// ⚠️ **O bar é o da ENGINE, não um literal desta tabela:** o
+/// `normalized_allowed_linear_error` do rapier é 1,3 mm, e uma corda mais exata que
+/// todo contato da cena é precisão que ninguém pode ver.
+///
+/// ⚠️ **A linha do RAIO 1,0 é a que carrega o gate, e isso foi provado por
+/// mutação:** apontar o versor da perna para o CENTRO da roldana em vez do ponto de
+/// TANGÊNCIA — exactamente a quebra do cancelamento do envelope — deixa raio 0,00 e
+/// 0,30 VERDES (em raio 0 os dois pontos coincidem ao bit; em 0,30 o erro fica
+/// abaixo da tolerância) e sangra **só em 1,00** (0,00325 m). Tirar o raio grande da
+/// lista tornaria o gate cego ao defeito que ele nomeia. Uma segunda mutação — o
+/// `PULLEY_BIAS` a 0,02 — sangra já no raio 0,00 (0,01064 m), e é ela que prova que
+/// o bar não é decorativo.
+#[test]
+fn the_bias_holds_its_accuracy_when_the_wheels_have_radius() {
+    /// A tolerância de repouso do próprio rapier, metros.
+    const RAPIER_TOLERANCE_M: f32 = 0.0013;
+    for radius in [0.0_f32, 0.3, 1.0] {
+        let mut w = PhysicsWorld::new();
+        const R: f32 = 0.2;
+        let area = std::f32::consts::PI * R * R;
+        let (a, _) = w.add_dynamic_circle(-1.0, 2.0, R, 1.0 / area);
+        let (b, _) = w.add_dynamic_circle(1.0, 2.0, R, 1.0 / area);
+        let mut arena = vec![
+            RopeWheel {
+                centre: [-1.0, 4.0],
+                radius,
+                side: 1,
+                id: 1,
+                break_force: f32::INFINITY,
+                ..RopeWheel::default()
+            },
+            RopeWheel {
+                centre: [1.0, 4.0],
+                radius,
+                side: 1,
+                id: 1,
+                break_force: f32::INFINITY,
+                ..RopeWheel::default()
+            },
+        ];
+        ph2d_physics::world::rope_route::resolve_sides(
+            [-1.0, 2.0],
+            [1.0, 2.0],
+            &mut arena,
+            &mut Vec::new(),
+        );
+        // O comprimento é a rota MEDIDA: com raio a corda é mais longa (raio 0,3
+        // acrescenta 0,9876 m a uma corda de 6 m), e cravar 4,0 a faria nascer
+        // violada.
+        let total_length = ph2d_physics::world::rope_route::route(
+            [-1.0, 2.0],
+            [1.0, 2.0],
+            &arena,
+            &mut Vec::new(),
+        )
+        .expect("a rota de repouso resolve")
+        .length;
+        let desc = PulleyDesc {
+            body_a: a,
+            body_b: b,
+            local_a: [0.0, 0.0],
+            local_b: [0.0, 0.0],
+            wheel_start: 0,
+            wheel_count: 2,
+            id: 1,
+            total_length,
+            motor_rate: 0.0,
+            break_force: f32::INFINITY,
+        };
+        w.set_pulleys(vec![desc], arena);
+        for _ in 0..120 {
+            w.step();
+        }
+        let stretch = w.pulley_span(&desc).expect("span") - total_length;
+        assert!(
+            stretch < RAPIER_TOLERANCE_M,
+            "raio {radius:.2}: a corda esticou {stretch:.5} m, acima da tolerancia de \
+             repouso do rapier ({RAPIER_TOLERANCE_M} m) — o PULLEY_BIAS deixou de \
+             valer com a geometria de hoje"
+        );
+    }
+}

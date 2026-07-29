@@ -7097,3 +7097,49 @@ foram para **`physics_overlay_gesture.rs`** (553 + 77).
 **Smoke: `PH2D_PHYSICS_SMOKE=63`** — arraste o CENTRO de uma roldana sobre a âncora
 de uma ponta: a corda tem de ficar **vermelha**; arrastar de volta devolve o âmbar
 e a simulação.
+
+## O §10 FECHOU — os dois números que faltavam (2026-07-29, sem mudança de código)
+
+Os dois últimos itens de *"o que MEDIR antes de escrever número"* têm número, e
+**nenhum pediu mudança de código** — os dois corrigiram uma NOTA.
+
+**(1) `PULLEY_BIAS` com RAIO** (`measure_pulley_bias_radius.rs`). As tabelas do
+constante foram medidas no modelo de PONTO (`radius: 0.0`), e o arquivo era explícito
+sobre isso. Com raio o comprimento passa a incluir os ARCOS — raio 0,3 acrescenta
+**0,9876 m** a uma corda de 6 m, raio 1,0 acrescenta 3,65 — e os pontos de tangência
+DESLIZAM. Medido: o esticamento em regime é **idêntico a 4 decimais em raio 0,00 /
+0,30 / 1,00, em todo β**; β=0,20 dá 0,0011 m nos três, abaixo da tolerância de
+repouso do rapier (1,3 mm). A previsão do teorema do envelope que o cabeçalho da rota
+já afirmava está **confirmada por medição**. Novo: um tremor que cresce com o raio e
+cai com β — 0,00000 / 0,00003 / **0,00017** m, 8× abaixo da tolerância.
+
+**(2) O custo contra o HR-4** (`measure_pulley_budget.rs`). Uma roldana custa
+**~10 ns/tique**, linear:
+
+| roldanas | ms/tique | % HR-4 (1,5 ms) |
+|---|---|---|
+| (sem corda) | 0,0033 | 0,22% |
+| 2 | 0,0035 | 0,24% |
+| 64 | 0,0039 | 0,26% |
+| 1024 | **0,0109** | **0,73%** |
+
+⇒ **nenhum cap de roldanas se justifica** (seriam ~150.000 para comer o orçamento), e
+inventar um "por segurança" é o palpite que o §0 proíbe. O que escala é o número de
+CORDAS: 64 → 3,87% · 128 → 7,09% · 256 → 14,4%.
+
+**Gates** (em `crates/ph2d-physics/tests/pulley.rs`):
+`the_bias_holds_its_accuracy_when_the_wheels_have_radius` (bar = a tolerância da
+ENGINE, não um literal da tabela) e `the_route_cost_is_linear_in_the_wheel_count`
+(RAZÃO, não wall-clock). **3 mutações, 3 sangram:** rota quadrática ⇒ 202,7× · bias a
+0,02 ⇒ 0,01064 m já no raio 0 · **o versor apontando para o CENTRO em vez da
+TANGÊNCIA ⇒ sangra SÓ no raio 1,00** (0,00325 m), o que prova que a linha do raio
+grande é a que carrega o gate.
+
+⚠️ **Meu CONTROLE da sonda de custo nasceu errado:** o bloco sem-corda reusava UM
+mundo entre corridas enquanto os casos com corda reconstruíam a cena ⇒ o controle saiu
+**mais caro** que uma corda de 2 roldanas (0,0063 contra 0,0034) e a coluna de delta
+veio **negativa**. O controle atropelado pelo experimento, pela quinta vez nesta
+linha.
+
+**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
+Nada aqui toca o produto — são sondas, gates e notas.

@@ -38,6 +38,12 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
         "o teto de LEIS DE MISTURA do painel tem de bater com o `FxOp::BLEND_KINDS` — um teto \
          menor deixa as ultimas leis sem opcao no popover, em silencio"
     );
+    assert_eq!(
+        ph2d_panel_vector::FILTER_DETAIL_MAX,
+        f64::from(FxOp::MAX_DETAIL),
+        "o teto de OITAVAS do painel tem de bater com o `FxOp::MAX_DETAIL` — um teto maior deixa \
+         o artista pedir oitavas que o produtor clampa em silencio, e o slider mente"
+    );
     let widest = FxOp::SPECS.iter().map(|s| s.modes.len()).max().unwrap_or(0);
     assert!(
         widest <= ph2d_editor::ids::MAX_FILTER_MODES,
@@ -195,5 +201,52 @@ fn hit_of_decodes_every_blend_option() {
             None,
             "o CHIP de mistura da linha {r} nao pode decodificar como edicao"
         );
+    }
+}
+
+/// **Os três knobs do RUÍDO atravessam a fronteira, e o Detail atravessa CLAMPADO.**
+///
+/// O `detail_clamped` é a metade de HONRAR da porta única (a de OFERECER é do painel): um arquivo
+/// — ou um teste — com detalhe `0` faria o laço do `fbm` não correr uma vez, e a turbulência
+/// desenharia NADA com todos os knobs preenchidos.
+#[test]
+fn the_noise_knobs_reach_the_pass_and_the_detail_arrives_clamped() {
+    let mut o = op(FxOp::TURBULENCE, 0.2);
+    o.scale = 0.5;
+    o.seed = 42;
+    for (given, want) in [(0u8, 1u8), (1, 1), (3, 3), (200, FxOp::MAX_DETAIL)] {
+        o.detail = given;
+        let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::IDENTITY);
+        assert_eq!(
+            got[0].detail, want,
+            "detalhe {given} chegou ao passe como {}",
+            got[0].detail
+        );
+        assert_eq!(got[0].seed, 42, "a semente nao atravessou");
+        assert!(
+            (got[0].noise_scale_px - 0.5).abs() < 1e-6,
+            "o tamanho nao atravessou: {}",
+            got[0].noise_scale_px
+        );
+    }
+}
+
+/// **O decodificador conhece os três knobs do ruído.** Um id que ele não decodifica é um arrasto
+/// que a ponte descarta em silêncio — o slider vivo, o valor no lixo.
+#[test]
+fn hit_of_decodes_the_three_noise_knobs() {
+    use crate::fx_live::{FilterHit, hit_of};
+    for r in 0..ph2d_editor::ids::MAX_FILTER_ROWS {
+        for (id, want) in [
+            (ph2d_editor::ids::filter_scale_id(r), FilterHit::Scale(r)),
+            (ph2d_editor::ids::filter_detail_id(r), FilterHit::Detail(r)),
+            (ph2d_editor::ids::filter_seed_id(r), FilterHit::Seed(r)),
+        ] {
+            assert_eq!(
+                hit_of(id),
+                Some(want),
+                "a linha {r} perdeu um knob de ruido"
+            );
+        }
     }
 }

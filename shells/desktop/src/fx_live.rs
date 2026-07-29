@@ -410,6 +410,10 @@ pub(crate) enum FilterHit {
     OffX(usize),
     OffY(usize),
     Opacity(usize),
+    /// Os três knobs do RUÍDO (só a turbulência os oferece).
+    Scale(usize),
+    Detail(usize),
+    Seed(usize),
 }
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
@@ -452,6 +456,12 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
             FilterHit::OffY(r)
         } else if id == vid::filter_opacity_id(r) {
             FilterHit::Opacity(r)
+        } else if id == vid::filter_scale_id(r) {
+            FilterHit::Scale(r)
+        } else if id == vid::filter_detail_id(r) {
+            FilterHit::Detail(r)
+        } else if id == vid::filter_seed_id(r) {
+            FilterHit::Seed(r)
         } else {
             continue;
         };

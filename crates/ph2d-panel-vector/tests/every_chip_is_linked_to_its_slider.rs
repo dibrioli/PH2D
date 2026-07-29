@@ -105,6 +105,56 @@ fn every_number_chip_is_linked_to_its_slider_in_both_directions() {
         }
     }
 
+    // ⚠️ **Os pares por-LINHA do Filters não cabem numa lista `const`** — os ids são derivados do
+    // índice da linha —, e é por isso que a seção inteira estava FORA deste gate desde que ela
+    // existe. Uma lista escrita à mão só protege o que alguém lembrou de listar; o laço protege o
+    // par que a próxima wave acrescentar.
+    for r in 0..ids::MAX_FILTER_ROWS {
+        for (name, slider, chip) in [
+            (
+                "Filter Radius",
+                ids::filter_radius_id(r),
+                ids::filter_radius_num_id(r),
+            ),
+            (
+                "Filter Off X",
+                ids::filter_offx_id(r),
+                ids::filter_offx_num_id(r),
+            ),
+            (
+                "Filter Off Y",
+                ids::filter_offy_id(r),
+                ids::filter_offy_num_id(r),
+            ),
+            (
+                "Filter Opacity",
+                ids::filter_opacity_id(r),
+                ids::filter_opacity_num_id(r),
+            ),
+            (
+                "Filter Size",
+                ids::filter_scale_id(r),
+                ids::filter_scale_num_id(r),
+            ),
+            (
+                "Filter Detail",
+                ids::filter_detail_id(r),
+                ids::filter_detail_num_id(r),
+            ),
+            (
+                "Filter Seed",
+                ids::filter_seed_id(r),
+                ids::filter_seed_num_id(r),
+            ),
+        ] {
+            if store.linked_slider(chip) != Some(slider)
+                || store.linked_number(slider) != Some(chip)
+            {
+                dead.push(name);
+            }
+        }
+    }
+
     assert!(
         dead.is_empty(),
         "a caixa numérica destes controlos NÃO está ligada ao slider: {dead:?}\n\

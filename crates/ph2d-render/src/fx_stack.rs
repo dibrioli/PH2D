@@ -57,6 +57,8 @@
 
 use ph2d_gpu::GpuContext;
 
+use crate::fx_stack_noise::{NOISE_WGSL, WARP_WGSL};
+use crate::fx_stack_res::{Globals, Tex, make_tex, write_at};
 use crate::fx_stack_shader::{
     FX_STACK_MID_WGSL, FX_STACK_OUT_WGSL, FX_STACK_WGSL, kind_consts_wgsl,
 };
@@ -69,7 +71,7 @@ pub const MAX_HALF: u32 = 96;
 /// O alinhamento mínimo de offset dinâmico de uniform buffer no WebGPU. A pilha escreve os
 /// globals de TODOS os passes de uma vez e indexa por offset — senão um `write_buffer` por passe
 /// antes de um único `submit` deixaria o último a valer para todos.
-const UNIFORM_STRIDE: u64 = 256;
+pub(crate) const UNIFORM_STRIDE: u64 = 256;
 
 /// **Um degrau da pilha, já resolvido em PIXELS DE TELA.**
 ///
@@ -151,85 +153,6 @@ impl Plan {
     }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct Globals {
-    dims: [u32; 2],
-    half: u32,
-    kind: u32,
-    tint: [f32; 4],
-    inv_two_sigma2: f32,
-    opacity: f32,
-    off_x: i32,
-    off_y: i32,
-    /// O passo do salto do JFA (só os passes de campo de distância o leem).
-    jump: i32,
-    /// A largura da banda (modo Contour) / do contorno, em pixels.
-    band: f32,
-    /// Quantos segmentos de SILHUETA o chamador entregou. `0` = semeia pela cobertura (o caminho
-    /// antigo, e o único disponível quando não há geometria — os gates de raster puro).
-    n_segs: u32,
-    /// A LEI DE MISTURA deste degrau (o código de `BlendMode`; `0` = Normal, o neutro).
-    blend: u32,
-    /// O tamanho das ondulações do ruído, em pixels (só a turbulência o lê).
-    noise_scale: f32,
-    /// Quantas oitavas o ruído soma.
-    octaves: u32,
-    /// Qual realização do ruído.
-    seed: u32,
-    /// O MODO do degrau — o índice em `FxKindSpec::modes`.
-    ///
-    /// ⚠️ **O `mode` chega ao DEVICE pela primeira vez aqui.** Os modos anteriores (Proximity vs
-    /// Contour) escolhem o PLANO, então nunca precisaram de um ramo no shader; os do ruído
-    /// escolhem a lei da soma de oitavas, que só existe lá dentro.
-    mode: u32,
-    /// A ORIGEM da grade de ruído, em texels do scratch — a margem que a pilha reservou. É ela que
-    /// prega o padrão na FORMA em vez de na textura.
-    org: [f32; 2],
-    _pad: [f32; 2],
-}
-
-struct Tex {
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    w: u32,
-    h: u32,
-}
-
-fn make_tex(gpu: &GpuContext, w: u32, h: u32, format: wgpu::TextureFormat) -> Tex {
-    let (w, h) = (w.max(1), h.max(1));
-    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("ph2d-render fx_stack tex"),
-        size: wgpu::Extent3d {
-            width: w,
-            height: h,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::STORAGE_BINDING
-            | wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    Tex {
-        texture,
-        view,
-        w,
-        h,
-    }
-}
-
-/// Cria uma textura de SAÍDA para o FX (o chamador a mantém viva por-forma — o Vello a copia no
-/// render, DEPOIS do recook). `Rgba8Unorm` com os usos que o `register_texture` exige.
-#[must_use]
-pub fn make_output_texture(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
-    make_tex(gpu, w, h, wgpu::TextureFormat::Rgba8Unorm).texture
-}
-
 /// O passe da pilha. Pipelines build-once; as três texturas de trabalho (ping/pong/mid) são
 /// **grow-only** — uma cena com formas de tamanhos diferentes não realoca por forma por frame.
 pub struct FxStackPass {
@@ -270,10 +193,14 @@ fn module_sources() -> [(&'static str, String); 2] {
     [
         (
             "mid",
-            format!("{blend}\n{kinds}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}"),
+            // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
+            // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
+            format!("{blend}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{WARP_WGSL}"),
         ),
         (
             "out",
+            // O módulo de SAÍDA escreve noutro formato de storage e não tem o `dst` que o warp
+            // usa — ele não recebe o passe, só o campo de que o resto do fold não depende.
             format!("{blend}\n{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}"),
         ),
     ]
@@ -727,12 +654,6 @@ impl FxStackPass {
         });
         self.globals_cap = need;
     }
-}
-
-fn write_at(blob: &mut [u8], slot: usize, g: &Globals) {
-    let off = slot * UNIFORM_STRIDE as usize;
-    let bytes = bytemuck::bytes_of(g);
-    blob[off..off + bytes.len()].copy_from_slice(bytes);
 }
 
 fn dispatch(

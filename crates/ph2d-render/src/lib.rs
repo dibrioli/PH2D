@@ -31,9 +31,11 @@ pub mod compressed_pipeline;
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
 pub mod fx_stack;
+/// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
+mod fx_stack_noise;
 /// O CUSTO de uma pilha (saltos do campo, alcance de cada degrau) — irmão pelo LOC cap.
 mod fx_stack_plan;
-/// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
+mod fx_stack_res;
 mod fx_stack_shader;
 pub mod game_rt;
 pub mod image_filter;
@@ -82,7 +84,8 @@ pub use compressed_pipeline::{
     MipUploadLayout, UploadedCompressedTexture, compressed_size_per_format,
 };
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
-pub use fx_stack::{FxOpGpu, FxStackPass, make_output_texture, stack_reach};
+pub use fx_stack::{FxOpGpu, FxStackPass, stack_reach};
+pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use impasto_light::{

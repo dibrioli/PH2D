@@ -10,7 +10,9 @@
 //! não há aritmética que os inverta. É barato, e é o mesmo padrão do bloco `vector_fx_*`.
 
 use crate::ids;
-use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
+use crate::state::filters::{
+    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+};
 use ph2d_editor_core::panel::PanelHostInternal;
 
 /// Este id é um BOTÃO da pilha de filtros (Add / Remove / Up / Down / Hide)?
@@ -45,6 +47,24 @@ pub(super) fn filters_slider_event(
         if id == ids::filter_opacity_id(row) {
             // Track == valor (`0..1`); a fronteira não converte nada.
             return Some(super::forward_track(host, id, 1.0, |t| t));
+        }
+        if id == ids::filter_scale_id(row) {
+            return Some(super::forward_track(host, id, 0.0, |t| {
+                t * FILTER_SCALE_MAX
+            }));
+        }
+        // ⚠️ Detail e Seed atravessam a fronteira como CONTAGEM — o arredondamento mora aqui, no
+        // MESMO mapa que o `populate` deu ao chip, senão o slider e o campo diriam números
+        // diferentes sobre a mesma oitava.
+        if id == ids::filter_detail_id(row) {
+            return Some(super::forward_track(host, id, 0.0, |t| {
+                t.mul_add(FILTER_DETAIL_MAX - 1.0, 1.0).round()
+            }));
+        }
+        if id == ids::filter_seed_id(row) {
+            return Some(super::forward_track(host, id, 0.0, |t| {
+                (t * FILTER_SEED_MAX).round()
+            }));
         }
         if id == ids::filter_offx_id(row) || id == ids::filter_offy_id(row) {
             return Some(super::forward_track(host, id, 0.5, |t| {

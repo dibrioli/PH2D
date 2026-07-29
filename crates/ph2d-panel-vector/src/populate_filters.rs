@@ -10,9 +10,11 @@
 //! ⚠️ Ids derivados em LAÇO são invisíveis ao `architecture_panel_wiring_parity` (ele só coleta
 //! `.register(ids::LITERAL`), então quem cobre esta seção é o seam que CLICA cada controle.
 
-use super::{button, slider_chip};
+use super::{button, slider_chip, slider_chip_int};
 use crate::ids;
-use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
+use crate::state::filters::{
+    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::DropdownState;
 
@@ -20,6 +22,9 @@ use ph2d_editor_core::widget::DropdownState;
 const RADIUS_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
 const OFFSET_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
 const OPACITY_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (0..1)
+const SCALE_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
+/// Detail e Seed são CONTAGENS: o passo é a unidade, não uma fração dela.
+const COUNT_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento (contagem)
 
 /// Os botões "Add" (um por tipo) + o bloco de controles de cada linha do teto.
 pub(super) fn populate_filters(store: &mut WidgetStore) {
@@ -91,6 +96,34 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
         for i in 0..ids::MAX_FILTER_BLENDS {
             button(store, ids::filter_blend_option_id(row, i));
         }
+        // Os três knobs do RUÍDO. Registrados em TODA linha, como as leis de mistura: o
+        // `populate` corre antes de a shell publicar o estado, e um slot a menos é um controle
+        // pintado e morto sob o mouse.
+        let (scale, scale_num) = (ids::filter_scale_id(row), ids::filter_scale_num_id(row));
+        slider_chip(
+            store,
+            scale,
+            scale_num,
+            0.0,
+            0.0,
+            FILTER_SCALE_MAX as f32,
+            0.0,
+        );
+        store.set_number_range(scale_num, 0.0, FILTER_SCALE_MAX, SCALE_STEP);
+        let (detail, detail_num) = (ids::filter_detail_id(row), ids::filter_detail_num_id(row));
+        slider_chip_int(
+            store,
+            detail,
+            detail_num,
+            0.0,
+            1.0,
+            (FILTER_DETAIL_MAX - 1.0) as f32,
+            1.0,
+        );
+        store.set_number_range(detail_num, 1.0, FILTER_DETAIL_MAX, COUNT_STEP);
+        let (seed, seed_num) = (ids::filter_seed_id(row), ids::filter_seed_num_id(row));
+        slider_chip_int(store, seed, seed_num, 0.0, 0.0, FILTER_SEED_MAX as f32, 0.0);
+        store.set_number_range(seed_num, 0.0, FILTER_SEED_MAX, COUNT_STEP);
         // Opacity: track == valor (`0..1`).
         let (opacity, opacity_num) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
         slider_chip(store, opacity, opacity_num, 1.0, 1.0, 1.0, 0.0);

@@ -68,7 +68,7 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
     // escrita à mão — uma TERCEIRA cópia do mesmo fato, que quem acrescenta um campo atualiza no
     // mesmo commit em que introduz a divergência. Lendo o `Globals` do Rust, o gate afirma
     // exatamente o que o doc dele promete: os dois lados do uniform concordam.
-    let rust = struct_fields(include_str!("fx_stack.rs"), "struct Globals {");
+    let rust = struct_fields(include_str!("fx_stack_res.rs"), "struct Globals {");
     let wgsl = struct_fields(FX_STACK_WGSL, "struct Globals {");
     // Controle positivo: um parser quebrado devolveria vazio, e vazio == vazio passa. A afirmação
     // só vale porque as duas listas de fato contêm o que se espera de um `Globals`.
@@ -76,7 +76,10 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
         rust.len() >= 12 && rust.contains(&"dims") && wgsl.contains(&"blend"),
         "o parser do gate quebrou: rust={rust:?} wgsl={wgsl:?}"
     );
-    assert_eq!(rust, wgsl, "os membros do `Globals` do WGSL derivaram do do Rust");
+    assert_eq!(
+        rust, wgsl,
+        "os membros do `Globals` do WGSL derivaram do do Rust"
+    );
     // 96 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade).
     assert_eq!(core::mem::size_of::<Globals>(), 96);
 }
@@ -91,6 +94,10 @@ fn struct_fields<'a>(src: &'a str, header: &str) -> Vec<&'a str> {
         .map(str::trim)
         .filter(|l| !l.starts_with("//") && !l.starts_with('#'))
         .filter_map(|l| l.split(':').next())
+        // ⚠️ Um qualificador de visibilidade faz parte da DECLARAÇÃO, não do nome — sem esta
+        // linha o lado do Rust vira `pub(crate) dims` e o gate falha sobre um struct correto (foi
+        // o que o controle positivo pegou quando o `Globals` mudou de arquivo).
+        .map(|n| n.rsplit(' ').next().unwrap_or(n))
         .filter(|n| !n.is_empty() && !n.starts_with("//"))
         .collect()
 }
@@ -281,7 +288,10 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         let reach = op_reach(&op(amount));
         // O `+1` cobre o vizinho que a interpolação bilinear lê; mais que isso é desperdício.
         let want = amount.ceil() as u32 + 1;
-        assert_eq!(reach, want, "o alcance de Amount {amount} deixou de ser o próprio Amount");
+        assert_eq!(
+            reach, want,
+            "o alcance de Amount {amount} deixou de ser o próprio Amount"
+        );
         assert!(
             reach < kernel_half(amount) || amount < 1.5,
             "o alcance voltou a ser o suporte de um kernel gaussiano"

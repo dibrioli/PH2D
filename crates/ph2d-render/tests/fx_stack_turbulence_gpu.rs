@@ -79,7 +79,13 @@ fn half_plane(gpu: &ph2d_gpu::GpuContext, w: u32, h: u32, edge: f64) -> wgpu::Te
 }
 
 /// Roda a pilha e devolve os bytes (sRGB, alfa reto).
-fn run(gpu: &ph2d_gpu::GpuContext, src: &wgpu::Texture, w: u32, h: u32, ops: &[FxOpGpu]) -> Vec<u8> {
+fn run(
+    gpu: &ph2d_gpu::GpuContext,
+    src: &wgpu::Texture,
+    w: u32,
+    h: u32,
+    ops: &[FxOpGpu],
+) -> Vec<u8> {
     let mut pass = FxStackPass::new(gpu);
     let dst = make_output_texture(gpu, w, h);
     pass.run(gpu, src, &dst, w, h, ops, &[]);
@@ -179,12 +185,14 @@ fn a_zero_amount_is_byte_identical_to_no_turbulence_at_all() {
     };
     let src = half_plane(&gpu, W, H, f64::from(EDGE));
     let none = run(&gpu, &src, W, H, &[]);
-    let zero = run(&gpu, &src, W, H, &[turb(0.0, 24.0, 3, 0, FxOp::MODE_SMOOTH)]);
-    let diff = none
-        .iter()
-        .zip(&zero)
-        .filter(|(a, b)| a != b)
-        .count();
+    let zero = run(
+        &gpu,
+        &src,
+        W,
+        H,
+        &[turb(0.0, 24.0, 3, 0, FxOp::MODE_SMOOTH)],
+    );
+    let diff = none.iter().zip(&zero).filter(|(a, b)| a != b).count();
     assert_eq!(
         diff, 0,
         "Amount 0 tem de ser no-op AO BYTE — é o que faz um degrau recém-criado, ou um knob \
@@ -240,7 +248,13 @@ fn the_size_is_the_size_of_the_ripples() {
     // UMA oitava: com várias, a estrutura fina acrescenta cruzamentos e a razão mede a soma em vez
     // do tamanho. A fixture tem de conter o fenômeno E MAIS NADA.
     let n = |scale: f32| {
-        let px = run(&gpu, &src, W, H, &[turb(8.0, scale, 1, 0, FxOp::MODE_SMOOTH)]);
+        let px = run(
+            &gpu,
+            &src,
+            W,
+            H,
+            &[turb(8.0, scale, 1, 0, FxOp::MODE_SMOOTH)],
+        );
         crossings(&defined(&edge_curve(&px, W, H)))
     };
     let (fine, coarse) = (n(16.0), n(48.0));
@@ -305,7 +319,10 @@ fn another_seed_is_another_drawing_of_the_same_kind() {
     let (aa, ab) = (amplitude(&a), amplitude(&b));
     eprintln!("semente 0 vs 7 -> distância média {apart:.3} px · amplitudes {aa:.3} / {ab:.3}");
     // OUTRO desenho…
-    assert!(apart > aa * 0.5, "as duas sementes desenharam quase o mesmo");
+    assert!(
+        apart > aa * 0.5,
+        "as duas sementes desenharam quase o mesmo"
+    );
     // …do MESMO tipo: a semente não é um segundo controle de intensidade.
     assert!(
         (aa - ab).abs() < aa * 0.5,
@@ -354,7 +371,13 @@ fn the_warp_reads_between_texels_instead_of_snapping_to_one() {
         }
     }
     let src = make_src(&gpu, W, H, &bytes);
-    let px = run(&gpu, &src, W, H, &[turb(8.0, 32.0, 3, 0, FxOp::MODE_SMOOTH)]);
+    let px = run(
+        &gpu,
+        &src,
+        W,
+        H,
+        &[turb(8.0, 32.0, 3, 0, FxOp::MODE_SMOOTH)],
+    );
     let mid = px
         .chunks_exact(4)
         .filter(|p| p[3] > 8 && p[3] < 247)
@@ -500,7 +523,10 @@ fn measure_the_turbulence_octave_cost() {
         }
         let _ = readback(&gpu, &dst, N, N);
         let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(REPS);
-        eprintln!("  detail {detail:>2} -> {ms:7.4} ms/passe   (+{:.4})", ms - prev);
+        eprintln!(
+            "  detail {detail:>2} -> {ms:7.4} ms/passe   (+{:.4})",
+            ms - prev
+        );
         prev = ms;
     }
 }

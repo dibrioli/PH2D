@@ -3498,7 +3498,10 @@ impl crate::App {
                         | FilterHit::Radius(_)
                         | FilterHit::OffX(_)
                         | FilterHit::OffY(_)
-                        | FilterHit::Opacity(_) => {}
+                        | FilterHit::Opacity(_)
+                        | FilterHit::Scale(_)
+                        | FilterHit::Detail(_)
+                        | FilterHit::Seed(_) => {}
                     }
                 }
                 if let Some((hit, v)) = pending_filter_val {
@@ -3509,7 +3512,10 @@ impl crate::App {
                             FilterHit::Radius(r)
                             | FilterHit::OffX(r)
                             | FilterHit::OffY(r)
-                            | FilterHit::Opacity(r) => r,
+                            | FilterHit::Opacity(r)
+                            | FilterHit::Scale(r)
+                            | FilterHit::Detail(r)
+                            | FilterHit::Seed(r) => r,
                             _ => return,
                         };
                         let Some(op) = f.ops.get_mut(row) else { return };
@@ -3518,6 +3524,16 @@ impl crate::App {
                             FilterHit::OffX(_) => op.offset[0] = x,
                             FilterHit::OffY(_) => op.offset[1] = x,
                             FilterHit::Opacity(_) => op.opacity = x,
+                            FilterHit::Scale(_) => op.scale = x,
+                            // As duas CONTAGENS chegam já arredondadas da fronteira do painel; o
+                            // clamp aqui é a recusa de um número órfão (um arquivo, um teste),
+                            // não uma segunda régua.
+                            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                            FilterHit::Detail(_) => {
+                                op.detail = (x.round() as u8).clamp(1, ph2d_ecs::FxOp::MAX_DETAIL);
+                            }
+                            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                            FilterHit::Seed(_) => op.seed = x.clamp(0.0, 255.0).round() as u8,
                             _ => {}
                         }
                     });
@@ -4964,6 +4980,7 @@ impl crate::App {
                             color_label: s.color_label,
                             modes: s.modes,
                             takes_blend: s.takes_blend,
+                            noise_labels: s.noise_labels,
                         })
                         .collect(),
                 );
@@ -4995,6 +5012,12 @@ impl crate::App {
                                 ],
                                 opacity: f64::from(op.opacity),
                                 blend: op.blend_code(),
+                                scale: f64::from(op.scale),
+                                // ⚠️ **`detail_clamped`, não `detail`** — a mesma metade de
+                                // HONRAR que o produtor da GPU usa. O painel mostra o número que
+                                // o dispositivo de facto soma.
+                                detail: op.detail_clamped(),
+                                seed: op.seed,
                             })
                             .collect()
                     })

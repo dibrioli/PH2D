@@ -52,6 +52,9 @@ fn row(kind: u8) -> FilterRowView {
         color: [0, 0, 0, 255],
         opacity: 1.0,
         blend: 0,
+        scale: 0.25,
+        detail: 3,
+        seed: 0,
     }
 }
 
@@ -70,11 +73,14 @@ fn kinds_table() -> Vec<FilterKindView> {
         color_label,
         modes,
         takes_blend,
+        noise_labels: None,
     };
     const INNER: &[&str] = &["Proximity", "Contour"];
     const OFF: Option<(&str, &str)> = Some(("Offset X", "Offset Y"));
     const LIGHT: Option<(&str, &str)> = Some(("Light X", "Light Y"));
     const COL: Option<&str> = Some("Color");
+    const NOISE_MODES: &[&str] = &["Smooth", "Creased"];
+    const NOISE: Option<(&str, &str, &str)> = Some(("Size", "Detail", "Seed"));
     vec![
         k("Blur", Some("Radius"), None, None, &[], false),
         k("Glow", Some("Radius"), None, COL, &[], false),
@@ -85,6 +91,10 @@ fn kinds_table() -> Vec<FilterKindView> {
         k("Feather", Some("Feather"), None, None, &[], false),
         k("Bevel", Some("Depth"), LIGHT, Some("Shadow"), &[], true),
         k("Color Overlay", None, None, COL, &[], true),
+        FilterKindView {
+            noise_labels: NOISE,
+            ..k("Turbulence", Some("Amount"), None, None, NOISE_MODES, false)
+        },
     ]
 }
 
@@ -245,6 +255,21 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
             "o chip de mistura do {} discorda da tabela",
             spec.name
         );
+        // Os TRÊS knobs do ruído aparecem em BLOCO, exactamente onde a tabela diz que há um
+        // campo de ruído a descrever — e em mais lugar nenhum. Um Size sem Detail (ou num tipo
+        // que não lê ruído) é um controle que não descreve nada.
+        for id in [
+            ids::filter_scale_id(0),
+            ids::filter_detail_id(0),
+            ids::filter_seed_id(0),
+        ] {
+            assert_eq!(
+                painted(&mut host, &mut st, id),
+                spec.noise_labels.is_some(),
+                "um knob de ruído do {} discorda da tabela",
+                spec.name
+            );
+        }
         // Os chips de MODO: um por modo publicado, e NENHUM em quem não tem escolha a fazer.
         for m in 0..ids::MAX_FILTER_MODES {
             assert_eq!(
@@ -399,6 +424,54 @@ fn the_blend_list_paints_nothing_while_it_is_closed() {
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::filter_blend_option_id(0, m))
                 .is_none(),
             "a lei {m} foi pintada com a lista fechada"
+        );
+    }
+}
+
+/// **Os três knobs do RUÍDO chegam ao barramento** — e é o gesto inteiro da turbulência: sem eles
+/// o card desenha três sliders que o artista arrasta e que não mudam um pixel.
+///
+/// ⚠️ Um slider não chega por `Click`, e sim por `ValueChanged` — é por isso que este gate não usa
+/// o [`click_reaches_bus`] dos botões: ele arrasta o trilho de verdade e confere que o valor
+/// atravessa a fronteira `forward_track` com o MESMO mapa que o `populate` deu ao chip.
+#[test]
+fn the_three_noise_knobs_reach_the_bus_when_dragged() {
+    // O índice do tipo que lê ruído, perguntado à TABELA — nunca um número escrito à mão, que é o
+    // que passa a endereçar outro tipo quando um tipo novo entra no meio da lista.
+    let table = kinds_table();
+    let kind = table
+        .iter()
+        .position(|s| s.noise_labels.is_some())
+        .expect("a tabela tem um tipo que lê ruído");
+    publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
+    for (what, id) in [
+        ("Size", ids::filter_scale_id(0)),
+        ("Detail", ids::filter_detail_id(0)),
+        ("Seed", ids::filter_seed_id(0)),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let rect = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o slider {what} nao foi PINTADO"));
+        // Arrasta ate ~70% do trilho: longe do valor publicado, para o evento nao poder ser
+        // confundido com o estado que ja estava la.
+        let (x, y) = (rect.x + rect.w * 0.7, rect.y + rect.h * 0.5);
+        // ⚠️ **O `ValueChanged` sai no DOWN**, não no Up — um gate que aplicasse só os eventos do
+        // Up ficaria vermelho sobre um slider perfeitamente vivo (foi o que esta função fez na 1ª
+        // versão).
+        let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
+        evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, x, y, SEC + SEC / 100)));
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut st, ev);
+        }
+        let reached = host.drained_actions().into_iter().any(|a| {
+            matches!(a, EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, _)) if got == id)
+        });
+        assert!(
+            reached,
+            "arrastar o {what} nao emitiu valor nenhum ao barramento — o slider esta pintado e \
+             inerte"
         );
     }
 }

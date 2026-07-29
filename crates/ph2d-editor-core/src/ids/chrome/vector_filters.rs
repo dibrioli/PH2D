@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 9;
+pub const MAX_FILTER_KINDS: usize = 10;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
@@ -170,4 +170,43 @@ pub fn filter_opacity_id(row: usize) -> NodeId {
 #[must_use]
 pub fn filter_opacity_num_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.opacity.{row}.num"))
+}
+
+/// **Size** da linha `row` — o TAMANHO das ondulações do ruído, em unidades de MUNDO. É o
+/// `baseFrequency` do SVG pelo avesso: ali é frequência, aqui é comprimento, porque o artista
+/// pensa em *quão grandes são os caroços* e não em quantos cabem por unidade.
+#[must_use]
+pub fn filter_scale_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.scale.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_scale_id`].
+#[must_use]
+pub fn filter_scale_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.scale.{row}.num"))
+}
+
+/// **Detail** da linha `row` — quantas OITAVAS o ruído soma (o `numOctaves`).
+#[must_use]
+pub fn filter_detail_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.detail.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_detail_id`].
+#[must_use]
+pub fn filter_detail_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.detail.{row}.num"))
+}
+
+/// **Seed** da linha `row` — qual das infinitas realizações do ruído. Não muda a estatística do
+/// campo, só qual desenho ele é.
+#[must_use]
+pub fn filter_seed_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.seed.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_seed_id`].
+#[must_use]
+pub fn filter_seed_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.seed.{row}.num"))
 }

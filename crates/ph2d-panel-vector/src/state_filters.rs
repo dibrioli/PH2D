@@ -26,6 +26,21 @@ use std::cell::{Cell, RefCell};
 pub(crate) const FILTER_RADIUS_MAX: f64 = 2.0;
 /// Faixa BIPOLAR do slider de **Offset** da Drop Shadow (mundo), `0.5` = zero.
 pub(crate) const FILTER_OFFSET_MAX: f64 = 2.0;
+/// Faixa do slider de **Size** do ruído, em unidades de MUNDO — a mesma do raio, porque é a mesma
+/// grandeza (um comprimento no documento) e duas réguas diferentes para a mesma unidade é o que
+/// faz um artista aprender dois números.
+pub(crate) const FILTER_SCALE_MAX: f64 = 2.0;
+/// Quantas OITAVAS o slider de **Detail** oferece. Espelha o `ph2d_ecs::FxOp::MAX_DETAIL`, que o
+/// painel não alcança.
+///
+/// ⚠️ **`pub` de propósito, ao contrário das irmãs**: é a única faixa desta seção cujo número tem
+/// um dono do outro lado da fronteira, e um teto MAIOR aqui deixa o artista pedir oitavas que o
+/// produtor clampa em silêncio — o slider anda e o desenho para. O gate que compara os dois mora
+/// na shell, o único lugar que alcança as duas crates.
+pub const FILTER_DETAIL_MAX: f64 = 6.0;
+/// Quantas realizações o slider de **Seed** oferece — a faixa do `u8` que as guarda. Não é um teto
+/// escolhido: é a REPRESENTAÇÃO.
+pub(crate) const FILTER_SEED_MAX: f64 = 255.0;
 
 /// **O que um tipo de degrau é**, como o painel precisa de saber. Espelha o `ph2d_ecs::FxKindSpec`
 /// — o painel **não alcança** o `ph2d-ecs` (vive de snapshots), e é a shell que traduz na
@@ -50,6 +65,10 @@ pub struct FilterKindView {
     /// não têm cor própria; oferecer-lhes o controle seria um knob cujo efeito inteiro é uma orla
     /// de 1 px.
     pub takes_blend: bool,
+    /// Os rótulos dos três knobs do RUÍDO — `(tamanho, detalhe, semente)` —, ou `None` se este tipo
+    /// não lê campo nenhum. Espelha o `ph2d_ecs::FxKindSpec::noise_labels`, e é UM campo para os
+    /// três porque eles não existem em separado: descrevem *qual ruído*, em três tempos.
+    pub noise_labels: Option<(&'static str, &'static str, &'static str)>,
 }
 
 /// Um degrau da pilha, como o painel o desenha. Espelha o `ph2d_ecs::FxOp` — o painel **não
@@ -77,6 +96,12 @@ pub struct FilterRowView {
     pub opacity: f64,
     /// A LEI DE MISTURA armada — o índice na lista publicada por [`set_filter_blend_names`].
     pub blend: u8,
+    /// O TAMANHO das ondulações do ruído, em MUNDO.
+    pub scale: f64,
+    /// Quantas OITAVAS o ruído soma.
+    pub detail: u8,
+    /// Qual realização do ruído.
+    pub seed: u8,
 }
 
 thread_local! {

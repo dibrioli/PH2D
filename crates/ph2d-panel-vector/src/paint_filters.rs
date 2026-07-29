@@ -23,7 +23,9 @@
 
 use super::*;
 use crate::state::filters as fst;
-use crate::state::filters::{FILTER_OFFSET_MAX, FILTER_RADIUS_MAX};
+use crate::state::filters::{
+    FILTER_DETAIL_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
+};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PaintCtx;
@@ -108,7 +110,8 @@ impl BodyCtx<'_> {
             + usize::from(spec.radius_label.is_some())
             + usize::from(spec.offset_labels.is_some()) * 2
             + usize::from(spec.color_label.is_some())
-            + usize::from(spec.takes_blend);
+            + usize::from(spec.takes_blend)
+            + usize::from(spec.noise_labels.is_some()) * 3;
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let mode_h = if spec.modes.is_empty() {
@@ -157,6 +160,11 @@ impl BodyCtx<'_> {
         }
         if let Some(label) = spec.radius_label {
             py = self.filter_radius_row(row, fx, label, py);
+        }
+        // Os três knobs do RUÍDO vêm logo depois do Amount que eles qualificam: *quanto anda* e
+        // depois *segundo que campo*.
+        if let Some((size, detail, seed)) = spec.noise_labels {
+            py = self.filter_noise_rows(row, fx, (size, detail, seed), py);
         }
         if let Some((lx, ly)) = spec.offset_labels {
             py = self.filter_offset_row(
@@ -277,6 +285,46 @@ impl BodyCtx<'_> {
             &format!("{:.2}", fx.radius),
             y,
         )
+    }
+
+    /// **Os três knobs do RUÍDO** — Size (mundo), Detail (oitavas) e Seed (a realização).
+    ///
+    /// Uma função para os três porque eles são UMA pergunta em três tempos (*qual ruído?*), e a
+    /// tabela os oferece ou não em bloco: um Size sem Detail descreve metade de um campo.
+    fn filter_noise_rows(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        labels: (&str, &str, &str),
+        y: f32,
+    ) -> f32 {
+        let (size, detail, seed) = labels;
+        let s_ids = (ids::filter_scale_id(row), ids::filter_scale_num_id(row));
+        let track = live_track(self.store, s_ids.0, (fx.scale / FILTER_SCALE_MAX) as f32);
+        let mut py = self.slider_row(
+            size,
+            s_ids.0,
+            s_ids.1,
+            track,
+            fx.scale,
+            &format!("{:.2}", fx.scale),
+            y,
+        );
+        // ⚠️ Detail e Seed são CONTAGENS: o chip mostra inteiro, e o `populate` os liga por
+        // `slider_chip_int` — sem isso, digitar "3,5" deixa o campo em 3,5 sob um painel que
+        // desenha "4".
+        let d_ids = (ids::filter_detail_id(row), ids::filter_detail_num_id(row));
+        let d = f64::from(fx.detail).max(1.0);
+        let d_track = live_track(
+            self.store,
+            d_ids.0,
+            ((d - 1.0) / (FILTER_DETAIL_MAX - 1.0)) as f32,
+        );
+        py = self.slider_row(detail, d_ids.0, d_ids.1, d_track, d, &format!("{d:.0}"), py);
+        let k_ids = (ids::filter_seed_id(row), ids::filter_seed_num_id(row));
+        let k = f64::from(fx.seed);
+        let k_track = live_track(self.store, k_ids.0, (k / FILTER_SEED_MAX) as f32);
+        self.slider_row(seed, k_ids.0, k_ids.1, k_track, k, &format!("{k:.0}"), py)
     }
 
     /// **Opacity** — a intensidade do degrau, presente em todo degrau.

@@ -4,6 +4,10 @@
 **Commits desta wave:** 4 (`29edb4380` · `15c3bdd52` · `489be1ba7` · `0d0d319a8`)
 **Estado:** fechada, **pendente de smoke**
 
+⚠️ **A linha tem uma TERCEIRA wave** — o Grow / Shrink (W7), handoff
+[`HANDOFF_INTEGRACAO_line_Vector_morphology_2026-07-28.md`](HANDOFF_INTEGRACAO_line_Vector_morphology_2026-07-28.md).
+As três partilham o bump de schema; integre as três juntas.
+
 ⚠️ **Esta é a SEGUNDA wave da mesma abertura de linha.** A primeira (a **lei de mistura**, W6a) tem
 handoff próprio — [`HANDOFF_INTEGRACAO_line_Vector_fx_blend_2026-07-28.md`](HANDOFF_INTEGRACAO_line_Vector_fx_blend_2026-07-28.md)
 — e as duas **compartilham o bump de schema** (ver a seção *Schema*). Integre as duas juntas: o

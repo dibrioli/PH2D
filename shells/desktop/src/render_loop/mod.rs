@@ -5498,7 +5498,17 @@ impl crate::App {
                 vector_active,
             );
 
-            let cam_affine = camera.world_to_screen_affine(window_size);
+            // Motion drift fix (2026-07-25 continuação): sob o split da tool Motion a CENA
+            // renderiza num sub-retângulo (present.rs, `CenterSplit::scene_viewport`) e as
+            // instâncias/grade projetam com as dims DA CENA (a porta única). As formas VETORIAIS
+            // ficaram de fora daquele fix e projetavam a JANELA CHEIA — então um `motion.path`
+            // andava numa cópia da curva deslocada+encolhida (o report do Enio: "objetos afastados
+            // do path, com drift em relação ao canvas"). Projetá-las com as MESMAS dims casa a
+            // curva desenhada com os walkers. Fora do split = janela cheia, byte-idêntico.
+            let cam_affine = camera.world_to_screen_affine(crate::field_gizmo::scene_camera_window(
+                hero.view.center_split,
+                window_size,
+            ));
             // A geometria DERIVADA deste frame — hoje, os offsets vivos. Cozida aqui (depois
             // do `sync`, senão uma forma recém-criada ainda não tem entidade e o componente
             // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.

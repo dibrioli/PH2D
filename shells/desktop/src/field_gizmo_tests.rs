@@ -232,6 +232,30 @@ fn scene_window_wh_is_the_subrect_under_a_split_full_window_without() {
     );
 }
 
+/// The SCENE camera the vector shapes project through follows the same split band — the fix
+/// that puts a `motion.path`'s walkers on the drawn curve instead of a shifted, shrunken copy
+/// (the Enio's "objetos afastados do path"). The shapes feed this `WindowSize` to
+/// `world_to_screen_affine`, the SAME dims the motion instances (`set_viewport`) and the grid
+/// use. RED-first: return the full window and the split cases fail.
+#[test]
+fn scene_camera_window_follows_the_motion_split_so_vectors_meet_the_scene() {
+    let win = WindowSize::new(800, 600);
+    assert_eq!(
+        scene_camera_window(CenterSplit::None, win),
+        win,
+        "no split -> full window (byte-identical)"
+    );
+    // 🔴 The top band the motion scene fills — mata "as formas vetoriais ignoram o split".
+    assert_eq!(
+        scene_camera_window(CenterSplit::Horizontal { t: 0.5 }, win),
+        WindowSize::new(800, 300),
+    );
+    assert_eq!(
+        scene_camera_window(CenterSplit::Vertical { t: 0.5 }, win),
+        WindowSize::new(400, 600),
+    );
+}
+
 // Um `FieldGizmoDrag` de teste com um gizmo genérico já semeado — o mínimo para dirigir
 // `apply_field_drag` sem uma janela.
 #[allow(clippy::too_many_arguments)] // a fixture mirrors the drag's own fields

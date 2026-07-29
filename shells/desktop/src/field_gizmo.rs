@@ -57,6 +57,20 @@ pub(crate) fn scene_window_wh(center_split: CenterSplit, window: WindowSize) -> 
         .map_or((w, h), |r| (r[2], r[3]))
 }
 
+/// **The [`WindowSize`] the SCENE's world→screen camera must project into** — the porta
+/// única for any WORLD geometry drawn into the Vello scene (the vector shapes, above all).
+///
+/// Under the Motion split the scene fills a top-left sub-rectangle (`scene_viewport` is
+/// always `[0, 0, w, h·t]`), and the motion instances (`set_viewport`) and the world grid
+/// already project it. A vector shape projected with the FULL window drifts off them —
+/// shifted and shrunk — which is why a `motion.path`'s walkers sat on a displaced copy of
+/// the drawn curve. Feed this to `Camera2d::world_to_screen_affine` and the curve lands
+/// under its walkers. Not split ⇒ the full window ⇒ byte-identical.
+pub(crate) fn scene_camera_window(center_split: CenterSplit, window: WindowSize) -> WindowSize {
+    let (w, h) = scene_window_wh(center_split, window);
+    WindowSize::new(w as u32, h as u32)
+}
+
 /// Como a caixa do gizmo mapeia para os params de TAMANHO de um field — a única parte da
 /// spec que varia por FORMA. `Rect` (a box) tem duas extensões cheias independentes;
 /// `Disk` (o radial sweep) tem um `radius` (meia-extensão, isotrópico) e a caixa do gizmo

@@ -100,6 +100,136 @@ pub(super) fn seed_color_swatches(
     }
 }
 
+/// Is a colour-swatch or gradient-stop picker open on this node right now? The undo-bracket
+/// edge — a whole colour/stop pick coalesces into ONE step (like a slider drag). Read-only;
+/// the caller opens the history bracket, THEN calls [`apply_picker_readback`] (writes must
+/// land inside the bracket).
+pub(super) fn picker_session(
+    motion: &MotionState,
+    sel: Option<ph2d_nodegraph::graph::NodeId>,
+    groups: &[[&'static str; 4]],
+    grad_params: &[&'static str],
+    store: &ph2d_editor::interaction::WidgetStore,
+) -> bool {
+    use ph2d_panel_motion_params::param_swatch_id;
+    let color = groups
+        .iter()
+        .any(|ch| store.picker_target() == Some(param_swatch_id(ch[0])));
+    let grad = sel.is_some_and(|nid| {
+        grad_params
+            .iter()
+            .any(|p| gradient_picker_stop(motion, nid, p, store).is_some())
+    });
+    color || grad
+}
+
+/// Feed the live OKLCH pick into the node it targets — a colour group's 4 channel params
+/// ([`apply_color_to_node`]) or a gradient stop's colour in the ramp string
+/// ([`apply_gradient_stop_pick`]). No-op when no picker is open. Must run INSIDE the undo
+/// bracket [`picker_session`] opened.
+pub(super) fn apply_picker_readback(
+    motion: &mut MotionState,
+    sel: Option<ph2d_nodegraph::graph::NodeId>,
+    groups: &[[&'static str; 4]],
+    grad_params: &[&'static str],
+    store: &ph2d_editor::interaction::WidgetStore,
+) {
+    use ph2d_panel_motion_params::param_swatch_id;
+    let Some(nid) = sel else { return };
+    let pick = || store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER);
+    for ch in groups {
+        if store.picker_target() == Some(param_swatch_id(ch[0]))
+            && let Some((value, _, _, _)) = pick()
+        {
+            apply_color_to_node(motion, nid, *ch, value.rgba);
+        }
+    }
+    for p in grad_params {
+        if let Some(stop) = gradient_picker_stop(motion, nid, p, store)
+            && let Some((value, _, _, _)) = pick()
+        {
+            apply_gradient_stop_pick(motion, nid, p, stop, value.rgba);
+        }
+    }
+}
+
+/// The text params of a node type edited by a [`ParamWidget::Gradient`] (doc 85) — the
+/// `ColorRamp` string keys whose per-stop swatches the picker read-back writes into.
+pub(super) fn gradient_params(
+    registry: &ph2d_node_registry::NodeRegistry,
+    type_id: ph2d_nodegraph::node::NodeTypeId,
+) -> Vec<&'static str> {
+    use ph2d_node_registry::ParamWidget;
+    registry
+        .param_ui(type_id)
+        .into_iter()
+        .flatten()
+        .filter_map(|h| (h.widget == ParamWidget::Gradient).then_some(h.param))
+        .collect()
+}
+
+/// If the OKLCH picker open right now targets a stop swatch of this node's `param` gradient,
+/// the stop's index — else `None`. The stop count comes from parsing the current string, and
+/// its swatch id is [`ph2d_panel_motion_params::param_grad_swatch_id`] — the SAME id the
+/// panel registers, so the two agree without sharing row order.
+pub(super) fn gradient_picker_stop(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+    store: &ph2d_editor::interaction::WidgetStore,
+) -> Option<usize> {
+    let target = store.picker_target()?;
+    let ramp = current_gradient(motion, nid, param);
+    (0..ramp.len()).find(|&i| ph2d_panel_motion_params::param_grad_swatch_id(param, i) == target)
+}
+
+/// The current `ColorRamp` of a node's gradient text param (override, else the default
+/// black→white ramp) — shared by the read-back's stop lookup + its re-serialize so the
+/// swatch and the string agree.
+fn current_gradient(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+) -> ph2d_color::ColorRamp {
+    motion
+        .doc
+        .graph
+        .node_text_param_overrides(nid)
+        .and_then(|m| m.get(param))
+        .and_then(|s| ph2d_color::parse_gradient(s))
+        .unwrap_or_default()
+}
+
+/// Write a picked sRGB colour into `stop` of a node's gradient text param (RGB via the sRGB
+/// transfer, alpha forced opaque — doc 85 stops carry no alpha), re-serializing the string
+/// and re-cooking only when the colour actually changed (the picker stays open across idle
+/// frames). The mirror of [`apply_color_to_node`] for a stop-in-a-string.
+pub(super) fn apply_gradient_stop_pick(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &'static str,
+    stop: usize,
+    srgb: [u8; 4],
+) {
+    let mut ramp = current_gradient(motion, nid, param);
+    let Some(cur) = ramp.stops().get(stop).copied() else {
+        return;
+    };
+    // Compare in sRGB8 — the space the pick lives in — so merely OPENING the picker on a
+    // colour that is not an exact 8-bit round-trip does not quantize the doc (the exact
+    // guard `apply_color_to_node` documents). A stop is opaque (alpha 1.0 → byte 255).
+    if srgb == linear_rgba_to_srgb8(cur.color) {
+        return;
+    }
+    let lin = srgb8_to_linear_rgba(srgb);
+    ramp.set_color(stop, [lin[0], lin[1], lin[2], 1.0]);
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, param, ph2d_color::serialize_gradient(&ramp));
+    motion.pump.mark_dirty();
+}
+
 /// sRGB8 (straight) → linear-straight RGBA `[0,1]` (the Motion wire space): RGB
 /// through the sRGB transfer function, alpha a plain `/255`.
 fn srgb8_to_linear_rgba(srgb: [u8; 4]) -> [f32; 4] {
@@ -122,4 +252,59 @@ pub(super) fn linear_rgba_to_srgb8(lin: [f32; 4]) -> [u8; 4] {
         linear_to_srgb_byte(lin[2]),
         (lin[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor::interaction::WidgetStore;
+    use ph2d_panel_motion_params::param_grad_swatch_id;
+
+    /// **The gradient read-back writes a stop's OKLCH pick back into the string** (doc 85).
+    /// The bridge sees the `motion.color_ramp` Custom gradient (`gradient_params`), locates
+    /// which stop the open picker targets (`gradient_picker_stop`, keyed by the SAME
+    /// `param_grad_swatch_id` the panel registers), and re-serializes the `ColorRamp` with the
+    /// picked colour (sRGB→linear). RED-first: drop the `set_text_param` in
+    /// `apply_gradient_stop_pick` and stop 0 stays black.
+    #[test]
+    fn a_gradient_stop_pick_re_serializes_the_string() {
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        let nid = motion.doc.graph.add_node("motion.color_ramp");
+        motion
+            .doc
+            .graph
+            .set_text_param(nid, "ramp", "g1 2 0:0,0,0 1:1,1,1".to_string());
+
+        // The bridge recognizes the Gradient widget as a colour text param.
+        let tid = motion.doc.graph.node(nid).unwrap().type_id();
+        assert_eq!(gradient_params(&motion.registry, tid), vec!["ramp"]);
+
+        // Open the picker on stop 0's swatch — the SAME id the panel would register.
+        let mut store = WidgetStore::with_capacity(4);
+        store.set_picker_target(Some(param_grad_swatch_id("ramp", 0)));
+        assert_eq!(
+            gradient_picker_stop(&motion, nid, "ramp", &store),
+            Some(0),
+            "the picker targets stop 0"
+        );
+
+        // Pick pure red → the string's stop 0 becomes red (sRGB 255 → linear 1.0).
+        apply_gradient_stop_pick(&mut motion, nid, "ramp", 0, [255, 0, 0, 255]);
+        let value = motion
+            .doc
+            .graph
+            .node_text_param_overrides(nid)
+            .and_then(|m| m.get("ramp"))
+            .cloned()
+            .expect("ramp text param written");
+        let ramp = ph2d_color::parse_gradient(&value).expect("valid gradient");
+        assert!(
+            ramp.stops()[0].color[0] > 0.9 && ramp.stops()[0].color[1] < 0.05,
+            "stop 0 is red now: {:?}",
+            ramp.stops()[0].color
+        );
+        // Stop 1 (white) is untouched — the pick lands on ONE stop.
+        assert!(ramp.stops()[1].color[0] > 0.9 && ramp.stops()[1].color[2] > 0.9);
+    }
 }

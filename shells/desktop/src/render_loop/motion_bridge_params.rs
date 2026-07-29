@@ -7,7 +7,7 @@
 //! the same `all(panel-motion-graph, panel-motion-params)` cfg — so the helpers
 //! carry no per-fn gate. All entry points are `pub(super)` for `dispatch`.
 
-use super::color::{apply_color_to_node, color_groups, linear_rgba_to_srgb8};
+use super::color::{color_groups, linear_rgba_to_srgb8};
 use crate::motion_state::MotionState;
 
 /// The peek/stream-reading helpers (the live number a wire drives, the live columns
@@ -64,41 +64,36 @@ pub(super) fn apply_param_edits(
     store: &ph2d_editor::interaction::WidgetStore,
 ) {
     use ph2d_nodegraph::graph::NodeId;
-    use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing, param_swatch_id};
+    use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing};
     use std::sync::atomic::{AtomicBool, Ordering};
     static PARAM_EDITING: AtomicBool = AtomicBool::new(false);
 
     // The selected node + its colour groups (each = 4 RGBA channel params driven
     // by one swatch → OKLCH picker).
     let sel = selected_motion_node().map(NodeId);
-    let groups = sel
-        .and_then(|nid| motion.doc.graph.node(nid).map(|i| i.type_id()))
+    let type_id = sel.and_then(|nid| motion.doc.graph.node(nid).map(|i| i.type_id()));
+    let groups = type_id
         .map(|tid| color_groups(&motion.registry, tid))
         .unwrap_or_default();
+    // The gradient text params (doc 85) — each stop's swatch feeds the SAME OKLCH picker.
+    let grad_params = type_id
+        .map(|tid| super::color::gradient_params(&motion.registry, tid))
+        .unwrap_or_default();
 
-    // A colour pick is an editing session (like a slider drag): its live param
-    // writes coalesce into ONE undo step, opened here + committed on close.
-    let color_session = groups
-        .iter()
-        .any(|ch| store.picker_target() == Some(param_swatch_id(ch[0])));
-    let editing = any_param_editing(store) || color_session;
+    // A colour-swatch OR gradient-stop pick is an editing session (like a slider drag): its
+    // live writes coalesce into ONE undo step, opened here + committed on close. Detected
+    // BEFORE the bracket; the read-back writes go INSIDE it.
+    let session = super::color::picker_session(motion, sel, &groups, &grad_params, store);
+    let editing = any_param_editing(store) || session;
     let was = PARAM_EDITING.swap(editing, Ordering::Relaxed);
     if editing && !was {
         motion.history.begin(&motion.doc);
     }
 
-    // Colour read-back: while a swatch's picker is open, feed the live pick into
-    // its 4 channel params (sRGB→linear), re-cooking only on an actual change.
-    if let Some(nid) = sel {
-        for ch in &groups {
-            if store.picker_target() == Some(param_swatch_id(ch[0]))
-                && let Some((value, _, _, _)) =
-                    store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
-            {
-                apply_color_to_node(motion, nid, *ch, value.rgba);
-            }
-        }
-    }
+    // Colour + gradient-stop read-back: feed the live pick into the params/string it targets
+    // (sRGB→linear), re-cooking only on an actual change (the picker stays open across idle
+    // frames). One door in `color.rs` (the sRGB↔linear boundary).
+    super::color::apply_picker_readback(motion, sel, &groups, &grad_params, store);
 
     // Scalar slider / chip + enum edits.
     let intents = ph2d_panel_motion_params::drain_param_intents();
@@ -269,8 +264,8 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow,
-        SeedRow, SourceRow, TextRow, ToggleRow,
+        AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, ParamRow, ParamsSnapshot,
+        ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow,
     };
 
     // The params panel shows the properties of whatever ONE subject is selected.
@@ -393,6 +388,24 @@ pub(super) fn build_params_snapshot(
                 param: h.param,
                 options,
                 current,
+            }));
+            continue;
+        }
+        // A Gradient editor (doc 85) — a `ColorRamp` in a text param (`serialize_gradient`),
+        // the colour sibling of the Curve. The panel draws the bar + draggable stops from the
+        // string; a stop's COLOUR is read back through the OKLCH picker below.
+        if h.widget == ParamWidget::Gradient {
+            let value = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            rows.push(ParamRow::Gradient(GradientRow {
+                name: h.param,
+                label: h.label.to_string(),
+                value,
             }));
             continue;
         }

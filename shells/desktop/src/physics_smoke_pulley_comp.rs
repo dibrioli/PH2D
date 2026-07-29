@@ -249,7 +249,10 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 63] A COMPOSICAO -- as duas vantagens MULTIPLICAM.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
+               aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
+               primeiro (o ultimo bloco); o PLAY vem por ultimo (o toggle Physics ja\n  \
+               esta armado).\n\n  \
                Os DOIS sarilhos tem a MESMA carga ({load:.0} kg) e o MESMO contrapeso\n  \
                ({counter:.0} kg), e os DOIS tem uma cadernal MOVEL pendurada na carga.\n  \
                A unica diferenca e o SEGUNDO diametro do tambor -- e eles andam para\n  \

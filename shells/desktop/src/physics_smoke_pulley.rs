@@ -191,7 +191,8 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 59] O GUINCHO -- uma roldana com MOTOR.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+               O contorno JA ESTA LIGADO (B o alterna). De PLAY para os passos 1-4 e 6\n  \
+               (o toggle Physics ja esta armado); o passo 5 pede o relogio PARADO.\n\n  \
                1. AZUL (esquerda) -- o tambor recolhe e o gancho SOBE, sem ninguem\n     \
                   puxar nada. A corda encurta a `w*r`: 60 graus/s num tambor de 0,45 m\n     \
                   sao 0,47 m/s de corda. (medido em 2 s: subiu {hoist:.2} m.)\n  \
@@ -207,9 +208,10 @@ impl crate::App {
                   na secao 'Pulley Wheel', ha uma row nova: Motor (graus/s). Mude o numero\n     \
                   COM O RELOGIO ANDANDO -- o guincho responde na hora. Ponha negativo e\n     \
                   ele inverte; ponha zero e a roldana volta a ser uma roldana livre.\n  \
-               5. ARRASTE o ponto do ARO para mudar o RAIO com o motor ligado: a mesma\n     \
-                  rotacao passa a recolher mais (ou menos) corda. O diametro e o cambio,\n     \
-                  e da para senti-lo com o dedo.\n  \
+               5. PAUSE e ARRASTE o ponto do ARO para mudar o RAIO -- alca de ponto so\n     \
+                  existe em REPOUSO (tocando, o overlay desenha a geometria do SOLVER).\n     \
+                  Volte a tocar: a mesma rotacao passa a recolher mais (ou menos) corda.\n     \
+                  O diametro e o cambio, e da para senti-lo com o dedo.\n  \
                6. SCRUB a regua para tras: o guincho REBOBINA junto com o mundo, porque\n     \
                   o quanto ele ja recolheu viaja no checkpoint. Reset devolve tudo ao\n     \
                   comeco.\n  \
@@ -232,7 +234,9 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 58] A POLIA -- uma corda por roldanas de verdade.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+               A cena nasce PARADA e o contorno JA ESTA LIGADO -- B o ALTERNA, entao\n  \
+               aperta-lo aqui o DESLIGA e as alcas somem junto. Faca o passo das ALCAS\n  \
+               primeiro; o PLAY vem por ultimo (o toggle Physics ja esta armado).\n\n  \
                1. OLHE AS RODAS, e depois a corda. Cada roldana e um CIRCULO do tamanho\n     \
                   que ela tem, com um raio-guia; a corda toca a SUPERFICIE dela e nao passa\n     \
                   pelo centro. No verde as duas rodas tem tamanhos MUITO diferentes de\n     \

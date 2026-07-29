@@ -272,7 +272,10 @@ impl crate::App {
                   passam a dizer (m)/(m/s) e os numeros sao RE-SEMEADOS. Sem isso os\n     \
                   90 graus (1,57 rad) virariam 1,57 METROS de guincho -- um numero\n     \
                   que ninguem digitou.\n  \
-               7. **O TRILHO SE MIRA PELAS ALCAS** (W-J6c): aperte B, selecione\n     \
+               7. **O TRILHO SE MIRA PELAS ALCAS** (W-J6c): PAUSE primeiro -- alca de\n     \
+                  ponto so existe em REPOUSO (tocando, o overlay desenha a geometria\n     \
+                  do SOLVER, e ela autora a AUTORADA). O contorno ja esta ligado (B o\n     \
+                  alterna). Entao selecione\n     \
                   'Shaft Rail' e repare nas DUAS alcas sobre a reta, nos fins de\n     \
                   curso. Elas sao livres em x e y: arraste uma para o lado e o\n     \
                   trilho INTEIRO gira para apontar nela, com a outra ponta viajando\n     \

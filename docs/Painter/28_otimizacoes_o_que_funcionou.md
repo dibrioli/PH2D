@@ -2607,6 +2607,54 @@ que o EWMA reescreve duas linhas abaixo. A válida usa campo próprio
 
 ---
 
+### 5.36 ⛔ E AQUI O AGENDAMENTO ACABA — o teto passa a ser FÍSICO, medido e nomeado
+
+O smoke confirmou a §5.35: **`agua: sim ... x54`** contra `x8` ⇒ a água saiu de **4 para 27 Hz
+(6,75×)**. O app foi a **55 fps** com `present/acquire-stall=0.00` — não sobrou folga nenhuma.
+
+#### 5.36.1 De que um passo de 33 ms é feito
+
+⚠️ A sonda mede na **escala do produto**, porque a cena diagonal de 2400 px dá 12,7 ms/passo e **não
+contém o fenômeno** — decompor ali otimizaria o passe errado.
+
+| passe | ms | % |
+|---|---|---|
+| `build_flow_field` | 10,258 | 26,5 |
+| `rebuild_active_region` | 7,631 | 19,7 |
+| `advect` | 7,513 | 19,4 |
+| `project` | 7,379 | 19,0 |
+| `drying_pass` | 3,069 | 7,9 |
+| `smooth_velocity` | 2,671 | 6,9 |
+| `apply_boundaries` | 0,226 | 0,6 |
+| **total** | **38,747** | |
+
+⚠️ **274.238 células ATIVAS para 46.067 com água — a região ativa é 6× a água.** E **não é gordura**:
+é a dilatação 3×3 que a física exige (o campo de fluxo lê os vizinhos, o advect precisa de destino),
+escrita no `rebuild_active_region`. Todo passe paga esse fator **por construção**.
+
+#### 5.36.2 E paralelizar está fora, por decisão com mecanismo nomeado
+
+O **ADR-0134** não diz *"é serial"* e para: ele nomeia as dependências — *o brake do flow lê `wet`
+**vivo** escrito por células anteriores do mesmo passe, e o drying lê o vizinho esquerdo pós-update* ⇒
+a lei de bandas do ADR-0109 é **inaplicável**. (Lido, não re-derivado.)
+
+#### 5.36.3 O teto físico, e as três saídas com o valor MEDIDO de cada uma
+
+`40 passos/s × 33,4 ms = 1336 ms/s > 1000` ⇒ **a taxa cheia não cabe em UM núcleo naquela poça, nem
+num dedicado.**
+
+| saída | o que compra | custo |
+|---|---|---|
+| **nada** | 27 Hz + 55 fps num pincel extremo a 4096² | ⚠️ **em pincel comum a água JÁ roda cheia** (fixture: 12,7 ms/passo ⇒ 40 Hz) |
+| **sim fora da thread do frame** | o **app** volta a 60 fps; a água vai a ~30 Hz (+11%) | concorrência, não paralelismo (o passo segue serial) — refatorar quem POSSUI o grid: composite, undo, depósito, o guard de identidade |
+| **GPU** | o único caminho aos 40 Hz nessa escala | wave própria, com o precedente do `ph2d-gpu-cook` |
+
+⚠️ **E o `cpu-encode(raw)=21,71ms` do log NÃO é custo novo:** com o stall em `0.00` a espera do
+swapchain **migra para dentro do encode** (`gpu-busy=0,87 ms` prova que a GPU está ociosa). Perseguir
+aquele número seria otimizar uma espera.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

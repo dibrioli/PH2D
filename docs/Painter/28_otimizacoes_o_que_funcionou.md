@@ -2514,6 +2514,49 @@ custou`). *Uma fixture que não fecha a própria conta acusa o código errado.*
 
 ---
 
+### 5.34 ✅ E O PASSO ATÔMICO CATRACAVA O ORÇAMENTO — a água a 40 Hz, a taxa nominal cheia
+
+> Enio, quarto smoke, **mesmo veredito**: ***"simulação muitíssimo mais devagar"*** — com
+> `tool-tick=17.31ms` numa amostra e `0.00` em todas as outras.
+
+**O mecanismo é aritmético.** Um passo de sim custa 12-17 ms e um quadro de 60 Hz tem 16,6 ⇒ **o
+frame que contém um passo estoura por construção**. Decidindo pelo `dt` **instantâneo**, o recuo
+disparava em TODO passo — e sendo ×0,5 contra +1 de subida, o orçamento **catracava até o piso de
+1 ms**. Eu construí um controlador que punia a água por fazer a única coisa indivisível que ela tem
+a fazer.
+
+#### 5.34.1 As quatro correções
+
+| # | o quê | por quê |
+|---|---|---|
+| 1 | `dt` e `non_sim` viram **EWMA** (0,05) | a decisão é sobre carga **sustentada**; um passo isolado quase não move a média |
+| 2 | a conta da água é o **TICK INTEIRO** | o composite é custo dela — atribuí-lo ao "outro inquilino" a fazia parecer inocente **em toda medição** (`non_sim` 25 contra alvo 20,4 ⇒ o recuo nunca disparava) |
+| 3 | o ramo do inquilino estrangeiro **CRESCE** | *segurar* num piso é ficar preso nele: a sonda mostrou o orçamento parado em **1,04 ms por 80 frames** |
+| 4 | teto = **um frame inteiro** (era 0,6) | o `acc` já limita a sim a 0,67 passo/frame ⇒ orçamento maior **não** compra mais simulação; com 0,6 o teto era 10 ms contra um passo de 12-17 e **todo passo era adiado** |
+
+#### 5.34.2 E uma decisão de PRODUTO, declarada em vez de embutida
+
+`WET_FRAME_SLACK_MS` **2 → 8 ms**. O Enio reportou **três vezes o mesmo veredito** — *"o FPS não caiu
+abaixo de 60 mas a animação estava lenta"* — ou seja **a água tem prioridade sobre os últimos quadros
+por segundo**. Com 2 ms de folga o controlador cedia metade da taxa da água para segurar o vsync
+(medido em laço fechado: orçamento **7,0 ms ⇒ sim em ~25 Hz** com o frame a 60 fps). Com 8 ms o alvo
+vira ~24,6 ms (40 fps): a água roda **40 Hz cheios** e o frame vai a ~20 ms enquanto ela está viva.
+
+**A escada inteira:** `13,0 / 11,0` → `38,0 / 36,5` → **`40,0 / 40,0 Hz`**.
+
+#### 5.34.3 Os dois gates do laço fechado viraram UNIDADE
+
+⚠️ **Um gate de wall-clock não consegue separar o produto correto da mutação aqui:** sob máquina
+carregada um passo custa mais, o frame estoura **de verdade**, e o recuo dispara **com razão**. Medido:
+o produto dá 16,6 ms em repouso e **4,16 sob a suíte inteira**, contra 5,2-6,5 da mutação — *as faixas
+se sobrepõem, e nenhum limiar as separa*. A versão anterior era **flake por construção**.
+
+Os dois gates agora simulam o laço fechado sobre o `SimBudget` com o custo do passo como um **NÚMERO**
+(zero relógio): *um passo de 17 ms não catraca* e *um passo de 120 ms ainda faz recuar* — o par, porque
+sem o segundo o primeiro fica verde com o controlador desarmado.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

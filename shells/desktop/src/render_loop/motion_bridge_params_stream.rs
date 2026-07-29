@@ -6,21 +6,35 @@
 use crate::motion_state::MotionState;
 
 /// **The live number a wire is putting into `param`** (doc 58), or `None` if nothing
-/// drives it — read from the cook's MEMO (`Cook::peek`), so showing it costs a lookup
-/// and never a second evaluation.
-///
-/// It is the SAME reduction the cook itself does (`driven_value`: the first value of
-/// the `"v"` column) — a second one here would be a number that agrees with the wire
-/// on most frames and disagrees on the frame that matters
+/// drives it — read from the cook's MEMO (`Cook::peek`) on a CPU frame, and from the
+/// GPU **tap** on a device frame (the memo is empty then). Both are a lookup, never a
+/// second evaluation, and both are one frame behind — the memo because `peek` runs
+/// before this frame's cook, the tap by construction — so they agree
 /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
+///
+/// It is the SAME reduction the cook does (the first `v` scalar): the memo path is
+/// `param_source::driven_value`, the tap path is `readout::reading_of` — the one
+/// already-unified "what a wire is worth" the readout row and the probe share, so a
+/// third copy is never minted ([[feedback_two_doors_to_the_same_question_diverge]]).
 pub(super) fn driven_value(
     motion: &MotionState,
     node: ph2d_nodegraph::graph::NodeId,
     param: &str,
 ) -> Option<f32> {
     let (src, port) = *motion.doc.graph.param_sources(node)?.get(param)?;
-    let cooked = motion.pump.cook.peek(src)?;
-    ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
+    // CPU-cooked frame: the memo holds the real thing.
+    if let Some(cooked) = motion.pump.cook.peek(src) {
+        return ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?);
+    }
+    // GPU-cooked frame: the memo is empty. The tap carries one subsampled stream per
+    // STAGED node — port 0 only, which is what a value driver has — so a driver off a
+    // higher output port is honestly unavailable here (rare; the row shows the
+    // override instead). Row 0 of the tap IS element 0, so `v[0]` matches the memo.
+    let stream = motion.gpu_tap.as_ref()?.get(&src).filter(|_| port == 0)?;
+    match super::super::readout::reading_of(stream, stream.count() as u32) {
+        super::super::readout::Reading::Value(v) => Some(v),
+        super::super::readout::Reading::Instances(_) => None,
+    }
 }
 
 /// The scalar columns the stream feeding `node`'s input port 0 carries — the live
@@ -54,19 +68,18 @@ pub(super) fn upstream_scalar_columns(
 /// The scalar-column NAMES the stream at `(sn, sp)` carries, **owned** so they outlive
 /// either source.
 ///
-/// Preferred from the pump's memo (`Cook::peek`) — a zero-cost lookup that is populated
-/// whenever the graph cooks on the CPU. But the graph cooks on the **GPU by default**
-/// (`PH2D_GPU_COOK=1`), and then the CPU memo is EMPTY: `motion_bridge::cook_gpu`
-/// returns `Handled` and the sink loop that fills the memo is skipped. When the memo
-/// misses, DISCOVER the columns with a fresh single-node cook. Column membership is
-/// **structural** — which columns a node emits is a fact about the graph, not the tick
-/// (a `motion.grid` carries `Index`/`Count` at every tick) — so `playhead = 0` is
-/// enough, and it is exactly what the reference gate cooks.
-///
-/// Without the fallback the Custom picker showed NO "From stream" chips in the default
-/// (GPU) env, even though the columns were right there upstream — the bug the Enio
-/// reported. The cost is one CPU cook of the selected node's upstream, per frame, only
-/// while a stream-column picker is on screen (an interactive, single-node situation).
+/// The pump's memo (`Cook::peek`) on a CPU frame — a zero-cost lookup. But the graph
+/// cooks on the **GPU by default** (`PH2D_GPU_COOK=1`), and then the memo is EMPTY:
+/// `motion_bridge::cook_gpu` returns `Handled` and the sink loop that fills the memo is
+/// skipped. On a device frame, read the SAME tap the graph panel's readouts read
+/// (`motion.gpu_tap`) — the one door, not a private second cook
+/// ([[feedback_two_doors_to_the_same_question_diverge]]). The tap is a 48-row subsample
+/// per STAGED node, and column MEMBERSHIP is what the picker needs — a subsample carries
+/// the same columns as the full stream, so 48 rows discover the names as well as four
+/// million. Port 0 only (the tap stages one output per node); a source off a higher port
+/// is honestly empty here (rare). Without this the Custom picker showed NO "From stream"
+/// chips in the default (GPU) env, even though the columns were right there upstream —
+/// the bug the Enio reported.
 fn upstream_columns(
     motion: &MotionState,
     sn: ph2d_nodegraph::graph::NodeId,
@@ -81,13 +94,9 @@ fn upstream_columns(
     {
         return scalar_names(stream);
     }
-    let mut scratch = ph2d_nodegraph::cook::Cook::new();
-    match scratch.cook(&motion.doc.graph, &motion.registry, sn, 0.0) {
-        Ok(out) => out
-            .get(sp as usize)
-            .map(|v| scalar_names(v.as_stream()))
-            .unwrap_or_default(),
-        Err(_) => Vec::new(),
+    match motion.gpu_tap.as_ref().and_then(|t| t.get(&sn)) {
+        Some(stream) if sp == 0 => scalar_names(stream),
+        _ => Vec::new(),
     }
 }
 
@@ -159,18 +168,36 @@ mod tests {
         );
     }
 
-    /// **The bug the Enio reported** (`esse env não tem Index e count`). With the graph
-    /// cooked on the GPU (the default, `PH2D_GPU_COOK=1`) the CPU pump never runs, so its
-    /// cook memo is empty and the old `peek`-only picker offered NO "From stream" chips.
-    /// An UNPUMPED `MotionState` reproduces exactly that empty memo; the picker must still
-    /// discover `Index`/`Count` via the fresh-cook fallback in [`upstream_columns`].
-    /// RED-first: `peek`-only returns `[]` and both asserts fail.
+    /// **The bug the Enio reported** (`esse env não tem Index e count`), by its ROOT
+    /// cause. On a GPU-cooked frame (the default, `PH2D_GPU_COOK=1`) the CPU pump never
+    /// runs, so `pump.cook` is empty; the picker must read the columns from the SAME tap
+    /// the graph readouts read (`motion.gpu_tap`). Here the memo is empty and the tap
+    /// carries the upstream node's subsample — the picker still offers `Index`/`Count`.
+    /// RED-first: neuter the tap branch of [`upstream_columns`] and both asserts fail.
     #[test]
-    fn the_picker_offers_columns_when_the_cpu_memo_is_empty() {
+    fn the_picker_offers_columns_from_the_gpu_tap() {
+        use ph2d_nodegraph::attr::{Column, Stream};
+        use ph2d_nodegraph::graph::NodeId;
+        use std::collections::BTreeMap;
         let mut motion = crate::motion_state::MotionState::new();
         motion.doc = ph2d_motion_doc::MotionDoc::new();
         let attr = crate::picker_smoke::build_picker_scene(&mut motion.doc.graph);
-        // No pump: the CPU cook memo is empty, exactly as when the graph cooks on the GPU.
+        // The node feeding attr's input port 0 (tint) — the one the tap must carry.
+        let src: NodeId = motion
+            .doc
+            .graph
+            .edges()
+            .iter()
+            .find(|e| e.to == (attr, 0))
+            .map(|e| e.from.0)
+            .expect("attr has an input");
+        // A GPU frame: no pump (empty memo) + a tap holding a 48-row subsample with the
+        // SAME columns the full stream carries.
+        let sub = Stream::new(2)
+            .with("Index", Column::Scalar(vec![0.0, 1.0]))
+            .with("Count", Column::Scalar(vec![2.0, 2.0]))
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]));
+        motion.gpu_tap = Some(BTreeMap::from([(src, sub)]));
         let covered: BTreeSet<&str> = BTreeSet::new();
         let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
         assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");
@@ -178,8 +205,8 @@ mod tests {
     }
 
     /// The other route: when the CPU pump DID cook the graph, the picker reads the same
-    /// columns straight from its memo (`peek`) — so the fallback did not become the only
-    /// working path.
+    /// columns straight from its memo (`peek`) — so the tap did not become the only
+    /// working path (the two are not redundant; each covers a different cook).
     #[test]
     fn the_picker_offers_columns_from_the_cpu_pump_memo() {
         use ph2d_nodegraph::graph::NodeId;
@@ -202,5 +229,34 @@ mod tests {
         let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
         assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");
         assert!(cols.iter().any(|c| c == "Count"), "offers Count: {cols:?}");
+    }
+
+    /// **The driven-value readout (doc 58) works under GPU too.** A param driven by a
+    /// wire shows the number the WIRE puts in; on a GPU frame that number lives only in
+    /// the tap, and `driven_value` must read it there (the memo is empty). `b.strength`
+    /// is driven by `a`, whose tapped `v` is 42. RED-first: neuter the tap branch → the
+    /// row falls back to the override and this returns `None`.
+    #[test]
+    fn a_driven_param_reads_its_value_from_the_gpu_tap() {
+        use ph2d_nodegraph::attr::{Column, Stream};
+        use std::collections::BTreeMap;
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        let a = motion.doc.graph.add_node("value.gain");
+        let b = motion.doc.graph.add_node("value.gain");
+        motion
+            .doc
+            .graph
+            .drive_param(b, "strength", (a, 0))
+            .expect("drive strength from a");
+        motion.gpu_tap = Some(BTreeMap::from([(
+            a,
+            Stream::new(1).with("v", Column::Scalar(vec![42.0])),
+        )]));
+        assert_eq!(
+            super::driven_value(&motion, b, "strength"),
+            Some(42.0),
+            "the driven value comes from the tap when the memo is empty"
+        );
     }
 }

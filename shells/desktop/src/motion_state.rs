@@ -138,6 +138,14 @@ pub(crate) struct MotionState {
     /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL
     /// path either way (replay-hash, parity oracles — ADR-0126).
     pub(crate) gpu_enabled: bool,
+    /// **This frame's GPU tap** — the same `BTreeMap<NodeId, Stream>` the graph
+    /// panel's readouts read (`readout::take_tap`), stashed so the PARAMS panel
+    /// reads a GPU-cooked frame through the SAME door. On a GPU frame the CPU
+    /// memo (`pump.cook`) is empty, so `build_params_snapshot`'s driven-value and
+    /// the `value.attribute` column picker fall back to this (48-row subsample per
+    /// staged node). `None` on a CPU-driven frame (the memo holds the real thing)
+    /// and one frame behind — exactly as the memo is (`readout::stamp`'s note).
+    pub(crate) gpu_tap: Option<std::collections::BTreeMap<NodeId, ph2d_nodegraph::attr::Stream>>,
 }
 
 /// **Is the GPU cook path on?** — the policy, as a pure function of the env var,
@@ -303,6 +311,9 @@ impl MotionState {
             // suspected device-path bug against the canonical path, which stays
             // the CPU's (ADR-0126 — the replay-hash never runs on a GPU).
             gpu_enabled: gpu_enabled_from_env(std::env::var("PH2D_GPU_COOK").ok().as_deref()),
+            // Filled each active frame by the bridge from the GPU tap (`None` until
+            // then, and on every CPU-cooked frame).
+            gpu_tap: None,
         }
     }
 
@@ -353,6 +364,9 @@ impl MotionState {
         // The GPU path re-plans against the new graph next frame; until then
         // its instance buffer describes the OLD document, so it must not draw.
         self.gpu_live = false;
+        // …and last frame's tap samples the OLD graph's nodes — drop it so the
+        // params panel never reads a stranger's columns for one frame.
+        self.gpu_tap = None;
         // …and its SIMULATION state (last tick's `pre` columns, keyed by node id)
         // is the old document's — a new graph that reuses those ids for a `pre`
         // source would read a stranger's flakes-in-the-air. Forget it, exactly as

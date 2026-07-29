@@ -291,29 +291,17 @@ pub(super) fn dispatch(
             snap.now = cook_time as f32;
             snap
         }));
+        // Stash this frame's tap so the PARAMS panel reads a GPU frame through the
+        // SAME door the readouts above just did — one tap, two consumers. `None` on
+        // a CPU frame (the memo serves) and one frame behind, matching the memo.
+        motion.gpu_tap = tapped;
     }
 
-    // ── Params panel (M1.P1): apply the selected node's param edits, then
-    // publish its params snapshot ────────────────────────────────────────────
-    // Needs BOTH panels: the selection comes from the graph panel, the rows go
-    // to the params panel. Apply BEFORE the cook so a param change shows this
-    // frame; publish the freshly-mutated doc so the panel reflects it.
+    // ── Params panel (M1.P1) — published by the params bridge, kept out of the
+    // dispatch so this file stays under the shell LOC cap. Needs BOTH panels:
+    // the selection comes from the graph, the rows go to params. ──────────────
     #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
-    {
-        if motion_active {
-            // Apply this frame's edits (colour picks + scalar sliders) BEFORE
-            // rebuilding, so the panel reflects them; then seed each colour
-            // swatch's picker colour from the freshly-mutated snapshot.
-            params::apply_param_edits(motion, &hero.store);
-            let snap = params::build_params_snapshot(motion);
-            if let Some(s) = &snap {
-                color::seed_color_swatches(&mut hero.store, s);
-            }
-            ph2d_panel_motion_params::set_current_params(snap);
-        } else {
-            ph2d_panel_motion_params::set_current_params(None);
-        }
-    }
+    params::publish(motion, &mut hero.store, motion_active);
 
     if !motion_active {
         return;

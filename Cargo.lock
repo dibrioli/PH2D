@@ -6879,6 +6879,7 @@ name = "ph2d-panel-motion-params"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-curve",
  "ph2d-editor-core",
  "ph2d-text",

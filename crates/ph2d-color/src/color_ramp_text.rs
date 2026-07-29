@@ -117,7 +117,10 @@ mod tests {
     #[test]
     fn malformed_and_degenerate_return_none() {
         assert!(parse_gradient("").is_none(), "empty");
-        assert!(parse_gradient("c1 0 0:0,0,0 1:1,1,1").is_none(), "wrong tag");
+        assert!(
+            parse_gradient("c1 0 0:0,0,0 1:1,1,1").is_none(),
+            "wrong tag"
+        );
         assert!(parse_gradient("g1 0 0.5:0.5,0.5,0.5").is_none(), "one stop");
         assert!(
             parse_gradient("g1 0 0:1,0,0,9 1:0,0,1").is_none(),

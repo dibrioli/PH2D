@@ -18,8 +18,8 @@ use crate::snapshot::{
     param_grad_remove_id, param_grad_stop_id, param_grad_swatch_id,
 };
 use ph2d_a11y::NodeId;
-use ph2d_color::{ColorRamp, RampInterp, RampStop, parse_gradient, serialize_gradient};
 use ph2d_color::srgb::linear_to_srgb_byte;
+use ph2d_color::{ColorRamp, RampInterp, RampStop, parse_gradient, serialize_gradient};
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
@@ -381,9 +381,10 @@ mod tests {
         // Drag the MIDDLE stop (index 1) far right (x=2.0). It must clamp strictly below
         // its right neighbour's position — stops never cross.
         store.set_curve_point_drag(param_grad_editor_id(slot), 0, 1, 2.0, 0.5);
-        let r =
-            parse_gradient(&drain_drag(&mut store, slot, "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1").unwrap())
-                .unwrap();
+        let r = parse_gradient(
+            &drain_drag(&mut store, slot, "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1").unwrap(),
+        )
+        .unwrap();
         assert!(
             r.stops()[0].pos < r.stops()[1].pos && r.stops()[1].pos < r.stops()[2].pos,
             "position order preserved: {:?}",

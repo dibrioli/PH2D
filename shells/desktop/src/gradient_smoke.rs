@@ -90,3 +90,50 @@ impl crate::App {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_node_registry::NodeRegistry;
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+
+    /// The smoke scene is well-typed and the Color Ramp really carries the Custom gradient +
+    /// colours the set — cooked through the real registry, so a typo'd scene (or a Custom that
+    /// forgot the string) would show a FLAT row, which is what the artist would report as
+    /// "the smoke is broken". FALSIFIED if the ramp did not span colours.
+    #[test]
+    fn the_smoke_row_colours_the_set_by_the_custom_gradient() {
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+        let mut g = Graph::new();
+        let (out, cr) = row(&mut g);
+        g.validate(&reg).expect("smoke scene is well-typed");
+        // The Color Ramp is Custom and carries the gradient string.
+        assert_eq!(
+            g.node_text_param_overrides(cr).and_then(|m| m.get("ramp")),
+            Some(&GRAD.to_string())
+        );
+
+        let mut cook = Cook::new();
+        let tint = cook
+            .cook(&g, &reg, out, 0.0)
+            .expect("scene cooks")
+            .into_iter()
+            .next()
+            .and_then(|s| match s.as_stream().get("tint") {
+                Some(Column::Vec4(v)) => Some(v.clone()),
+                _ => None,
+            })
+            .expect("the output stream carries a tint column");
+        // The gradient spans colours across the row (a flat row would be a broken smoke):
+        // red at the start, blue at the end.
+        assert!(
+            tint[0][0] > 0.9 && tint[0][2] < 0.1,
+            "first point red: {:?}",
+            tint[0]
+        );
+        let last = tint.last().expect("non-empty row");
+        assert!(last[2] > 0.9 && last[0] < 0.1, "last point blue: {last:?}");
+    }
+}

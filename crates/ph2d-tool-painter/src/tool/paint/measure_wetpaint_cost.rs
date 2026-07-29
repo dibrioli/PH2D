@@ -432,3 +432,63 @@ fn the_wet_tick_does_not_feed_back_on_a_slow_frame() {
          {fast:.2} ms a 60 Hz = {ratio:.1}x (teto {MAX_RATIO:.0}x)"
     );
 }
+
+/// **O CUSTO DO TICK CONTRA A ÁREA MOLHADA** — o que sobrou depois do cap de passos (2026-07-28).
+///
+/// O cap fechou o laço de realimentação (a contagem), e o re-smoke mostrou 60 FPS em duas janelas e
+/// **`frame p50 = 88,2 ms` numa terceira**, com o dispatch em 3,4. O que muda entre elas é quanta água
+/// existe: a queixa é *"uma pincelada GRANDE e molhada"*, e a fixture do gate molha 380 px.
+///
+/// Esta tabela varre o COMPRIMENTO do traço — a área molhada — com a tela e o raio fixos, para dizer se
+/// o tick é limitado pela poça (e quanto), em vez de o adivinharmos.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_how_the_tick_scales_with_the_wet_area() {
+    println!(
+        "\n{:<10} {:>10} {:>12} {:>12} {:>12}",
+        "traco px", "dabs", "tick p50 ms", "tick max ms", "sujo/tela"
+    );
+    let side = 4096u32;
+    for span in [400.0f32, 1000.0, 2000.0, 3600.0] {
+        let mut t = wetted(side, 100.0);
+        let mid = (side / 2) as f32;
+        let x0 = 140.0;
+        let x1 = x0 + span;
+        t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+        let mut x = x0 + 40.0;
+        let mut dabs = 0usize;
+        while x <= x1 {
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            let _ = t.take_preview_arc();
+            dabs += 1;
+            x += 40.0;
+        }
+        t.on_canvas_pointer(cp([x1, mid], PointerPhase::Up));
+
+        let mut ms = Vec::new();
+        let mut areas = Vec::new();
+        for _ in 0..10 {
+            t.marks.clear();
+            let t0 = Instant::now();
+            ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let a: u64 = t
+                .marks
+                .iter()
+                .map(|r| u64::from(r.w) * u64::from(r.h))
+                .sum();
+            areas.push(a as f64);
+            let _ = t.take_preview_arc();
+        }
+        ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        areas.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        let full = f64::from(side) * f64::from(side);
+        println!(
+            "{span:<10.0} {dabs:>10} {:>12.2} {:>12.2} {:>11.1}%",
+            ms[ms.len() / 2],
+            ms[ms.len() - 1],
+            100.0 * areas[areas.len() / 2] / full
+        );
+    }
+    println!();
+}

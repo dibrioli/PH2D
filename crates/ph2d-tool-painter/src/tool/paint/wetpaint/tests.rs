@@ -1541,3 +1541,56 @@ fn a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs() {
          ({ratio:.2}x para 4x a área) — algo no caminho passou a percorrer o plano"
     );
 }
+
+/// **O COMPOSITE POUSA A TINTA NA LINHA CERTA** — o gate que a paralelização do OVER exigia, e que
+/// nenhum dos 895 existentes dava.
+///
+/// O laço virou `par_chunks_mut` por linha (ADR-0109), e o que uma fan-out por linhas pode quebrar não
+/// é a aritmética — é o **mapeamento linha → offset global**. Trocar `gb = (cy0 - 1 + k) * stride` por
+/// `gb = k * stride` (perder o offset da região suja) **passou na suíte inteira**: as fixtures irmãs
+/// pintam com a região começando na linha 1, onde os dois são o MESMO número.
+///
+/// É o ponto cego que o fold da luz já documentou (doc 28 §4.8.2): *door-contra-door não vê erro que
+/// desloca os dois lados igual*. Aqui a cura é a mesma — **pintar longe do topo**.
+///
+/// ⚠️ Mutação que sangra: a de cima. Com ela o composite lê o pigmento das linhas do TOPO (vazias) e
+/// escreve a base verbatim onde o traço está — a tinta não aparece.
+#[test]
+fn the_wet_composite_lands_the_paint_on_the_row_it_belongs_to() {
+    const W: u32 = 200;
+    let mut t = tool_in_mode("wetpaint");
+    // ⚠️ LONGE do topo: é o offset da região suja que está sob teste, e na linha 1 ele é zero.
+    let y = 95.0f32;
+    t.on_canvas_pointer(cp([60.0, y], PointerPhase::Down));
+    for k in 1..=4u8 {
+        t.on_canvas_pointer(cp([60.0 + f32::from(k) * 20.0, y], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([140.0, y], PointerPhase::Up));
+    for _ in 0..6 {
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+    }
+
+    let px = |x: u32, yy: u32| -> [u8; 4] {
+        let o = ((yy * W + x) * 4) as usize;
+        [
+            t.canvas_rgba[o],
+            t.canvas_rgba[o + 1],
+            t.canvas_rgba[o + 2],
+            t.canvas_rgba[o + 3],
+        ]
+    };
+    let painted = |c: [u8; 4]| c[0] < 200 || c[1] < 200 || c[2] < 200;
+
+    // A tinta está NA linha do traço…
+    let on_row = (60..=140).filter(|&x| painted(px(x, y as u32))).count();
+    assert!(
+        on_row > 40,
+        "a tinta nao chegou a linha do traco: {on_row} texels pintados de 81"
+    );
+    // …e NÃO nas linhas do topo, que é onde a mutação a mandaria.
+    let up_top = (0..W).filter(|&x| painted(px(x, 2))).count();
+    assert_eq!(
+        up_top, 0,
+        "{up_top} texels pintados na linha 2 — o composite escreveu no offset errado"
+    );
+}

@@ -104,44 +104,61 @@ impl PainterTool {
             self.source_size.0,
             None,
         );
-        for cy in cy0..=cy1 {
-            for cx in cx0..=cx1 {
-                let o = ((cy - 1) * w + (cx - 1)) * 4;
-                let pa = sess.pigment[o + 3] as f32 / 255.0;
-                if pa <= 0.0 {
-                    // Base verbatim — the gates keep-lerp TOWARD the base, so
-                    // they are exact no-ops on this branch.
-                    canvas[o..o + 4].copy_from_slice(&sess.base[o..o + 4]);
-                    continue;
-                }
-                let ba = sess.base[o + 3] as f32 / 255.0;
-                let oa = pa + ba * (1.0 - pa);
-                for ch in 0..3 {
-                    let pc = sess.pigment[o + ch] as f32;
-                    let bc = sess.base[o + ch] as f32;
-                    canvas[o + ch] = ((pc * pa + bc * ba * (1.0 - pa)) / oa).round() as u8;
-                }
-                canvas[o + 3] = (oa * 255.0).round() as u8;
-                if gate_on {
-                    let keep = super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
-                    if keep < 1.0 {
-                        for c in 0..4 {
-                            let painted = f32::from(canvas[o + c]);
-                            let orig = f32::from(sess.base[o + c]);
-                            canvas[o + c] = (painted * keep + orig * (1.0 - keep))
-                                .round()
-                                .clamp(0.0, 255.0)
-                                as u8;
+        // ROW-PARALLEL, pelo MESMO ADR-0109 e pela mesma razão do render acima: um map puro por-pixel
+        // cujas linhas são independentes — cada uma lê `pigment`/`base` no seu próprio offset e escreve
+        // só o seu, e nenhuma lê a saída de outra. **Byte-idêntico por construção**: muda qual thread
+        // avalia qual linha, nunca o que a linha diz.
+        //
+        // ⚠️ **Ele era o que sobrava serial no tick**, e o tick é O(ÁREA MOLHADA) — medido a 4096²,
+        // traço de 3600 px: **sim 10,06 ms + composite 6,11**, com 3% da tela molhada. Um frame de
+        // 60 fps inteiro. O `WET_MAX_STEPS` fechou o LAÇO (a contagem); isto ataca o custo por passo.
+        //
+        // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
+        // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
+        let (pigment, base) = (&sess.pigment, &sess.base);
+        canvas[(cy0 - 1) * stride..cy1 * stride]
+            .par_chunks_mut(stride)
+            .enumerate()
+            .for_each(|(k, row)| {
+                let gb = (cy0 - 1 + k) * stride;
+                for cx in cx0..=cx1 {
+                    let lo = (cx - 1) * 4; // dentro da linha
+                    let o = gb + lo; // global, para os planos e os gates
+                    let pa = pigment[o + 3] as f32 / 255.0;
+                    if pa <= 0.0 {
+                        // Base verbatim — the gates keep-lerp TOWARD the base, so
+                        // they are exact no-ops on this branch.
+                        row[lo..lo + 4].copy_from_slice(&base[o..o + 4]);
+                        continue;
+                    }
+                    let ba = base[o + 3] as f32 / 255.0;
+                    let oa = pa + ba * (1.0 - pa);
+                    for ch in 0..3 {
+                        let pc = pigment[o + ch] as f32;
+                        let bc = base[o + ch] as f32;
+                        row[lo + ch] = ((pc * pa + bc * ba * (1.0 - pa)) / oa).round() as u8;
+                    }
+                    row[lo + 3] = (oa * 255.0).round() as u8;
+                    if gate_on {
+                        let keep = super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
+                        if keep < 1.0 {
+                            for c in 0..4 {
+                                let painted = f32::from(row[lo + c]);
+                                let orig = f32::from(base[o + c]);
+                                row[lo + c] = (painted * keep + orig * (1.0 - keep))
+                                    .round()
+                                    .clamp(0.0, 255.0)
+                                    as u8;
+                            }
                         }
                     }
+                    if alock_on {
+                        // Alpha-lock: the α reference IS `sess.base` (the gate's
+                        // buffer, served by `wet_splat_gates`' wet-session arm).
+                        row[lo + 3] = base[o + 3];
+                    }
                 }
-                if alock_on {
-                    // Alpha-lock: the α reference IS `sess.base` (the gate's
-                    // buffer, served by `wet_splat_gates`' wet-session arm).
-                    canvas[o + 3] = sess.base[o + 3];
-                }
-            }
-        }
+            });
         if veil {
             // Show-wet: the damp overlay, display-only (never baked). Reads
             // the ACTIVE grid's wetness byte + film exactly like the model;

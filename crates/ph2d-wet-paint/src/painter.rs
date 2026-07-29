@@ -492,6 +492,7 @@ impl Engine {
     /// PRODUCT door (the host owns undo; a capture here would clone every
     /// grid plane per press, the ADR-0117 disease). ONE body serves both.
     pub fn wet_canvas_now(&mut self) {
+        self.drain_step();
         wet_canvas(self.active_grid_mut());
         self.mark_dirty_full(); // show-wet overlay may change everywhere
     }
@@ -503,6 +504,7 @@ impl Engine {
 
     /// [`Self::action_dry_canvas`] without the history capture (product door).
     pub fn dry_canvas_now(&mut self) {
+        self.drain_step();
         let mix = self.sim.gather_params(&self.tuning).mix;
         let g = self.active_grid_mut();
         dry_canvas(g, mix);
@@ -517,12 +519,14 @@ impl Engine {
 
     /// [`Self::action_fast_dry`] without the history capture (product door).
     pub fn fast_dry_now(&mut self) {
+        self.drain_step();
         let idx = self.active_layer;
         sim_fast_dry(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.mark_dirty_full();
     }
 
     pub fn action_clear(&mut self) {
+        self.drain_step();
         self.capture_history();
         clear_canvas(self.active_grid_mut());
         self.mark_dirty_full();
@@ -575,6 +579,7 @@ impl Engine {
     // -----------------------------------------------------------------------
 
     pub fn capture_history(&mut self) {
+        self.drain_step();
         let layer = &mut self.layers[self.active_layer];
         layer.undo.push(snapshot_grid(&layer.grid));
         if layer.undo.len() > HISTORY_DEPTH {
@@ -592,6 +597,7 @@ impl Engine {
     }
 
     pub fn undo(&mut self) -> bool {
+        self.drain_step();
         let layer = &mut self.layers[self.active_layer];
         let Some(snap) = layer.undo.pop() else {
             return false;
@@ -672,3 +678,4 @@ impl Engine {
 }
 
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
+mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split

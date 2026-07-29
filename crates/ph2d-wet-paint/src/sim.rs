@@ -26,6 +26,12 @@ pub const SIM_HZ: f64 = 40.0;
 /// Snapshot of every knob the solver reads, taken once per step so inner
 /// loops never touch the registry (the JS `gatherParams`), plus the color
 /// mixer routing.
+///
+/// `Clone` porque um passo INTERROMPIDO o carrega ([`StepCursor`]): os params são
+/// capturados **uma vez por passo**, e retomar um passo tem de continuar com os
+/// mesmos — se ele os re-colhesse no meio, um knob mexido entre dois frames
+/// aplicaria metade de um passo com a lei nova.
+#[derive(Clone)]
 pub struct Params {
     values: [f64; KNOB_COUNT],
     pub mix: ColorMix,
@@ -62,6 +68,35 @@ pub struct Sim {
     pub km_mixing: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
+    /// **Um passo INTERROMPIDO** — ver [`StepCursor`] e [`sim_step_stage`].
+    pending: Option<StepCursor>,
+}
+
+/// **Onde um passo interrompido parou.**
+///
+/// Um passo é uma sequência de sete estágios com cadências próprias, e na escala do produto ele custa
+/// **38,7 ms** (medido, `ph2d-wet-paint/tests/measure_pass_cost.rs`) — mais que **dois quadros** de
+/// 60 Hz. Enquanto ele era ATÔMICO, o frame que o continha estourava por construção, e nenhum
+/// orçamento conserta isso: o smoke do Enio mediu `tool-tick pico 73,70ms` com o app a 55 fps.
+///
+/// O maior estágio SOZINHO custa 10,26 ms (`build_flow_field`), que **cabe** na folga de um quadro.
+/// Então o passo deixou de ser atômico: o chamador roda estágios enquanto tem orçamento e retoma no
+/// frame seguinte.
+///
+/// ⚠️ **Byte-idêntico por CONSTRUÇÃO, e é o desenho inteiro:** os mesmos estágios, na mesma ordem, com
+/// os MESMOS params — quem os capturou foi o início do passo, não cada estágio. [`sim_step`] passou a
+/// ser *o laço sobre os estágios*, então não existe uma segunda implementação para divergir.
+#[derive(Clone)]
+pub struct StepCursor {
+    /// Os params CAPTURADOS no início do passo (a razão de [`Params`] ser `Clone`).
+    p: Params,
+    grav: [f64; 2],
+    /// O `sim.frame` deste passo — as cadências (`n % 2`, `n % 3`, `n % 4`) o leem.
+    n: u64,
+    /// O próximo estágio a rodar (ver [`sim_step_stage`]).
+    stage: u8,
+    /// O `vmax` que o `advect` devolveu — o estágio final o converte em cadência de secagem.
+    vmax: f64,
 }
 
 impl Default for Sim {
@@ -78,6 +113,26 @@ impl Default for Sim {
             gravity_override: None,
             km_mixing: false,
             ext_bypass: false,
+            pending: None,
+        }
+    }
+}
+
+impl Sim {
+    /// Há um passo interrompido em voo?
+    #[must_use]
+    pub const fn step_pending(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    /// **Termina um passo em voo** — a porta que toda operação de CANVAS chama primeiro.
+    ///
+    /// O grid entre dois estágios é intermediário: `wet_canvas`/`dry_canvas`/`fast_dry`/`clear` e o
+    /// `capture_history` do engine agem sobre a folha INTEIRA, e fazê-lo no meio de um passo
+    /// misturaria meia física com a ação. Sem passo em voo é um `if` e nada mais.
+    pub fn drain_step(&mut self, g: &mut Grid, tuning: &Tuning) {
+        while self.pending.is_some() {
+            sim_step_stage(self, g, tuning);
         }
     }
 }
@@ -130,7 +185,124 @@ impl Sim {
 }
 
 /// Advance one fixed 40 Hz step. Returns false when the sim is idle (no fluid).
+/// **UM passo, atomicamente** — o laço sobre [`sim_step_stage`].
+///
+/// ⚠️ Ele é o LAÇO e não uma segunda implementação: a suíte de aceitação e o fingerprint pinado
+/// entram por aqui, então não existe caminho paralelo para divergir do que o produto roda por
+/// estágios.
 pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
+    loop {
+        if let Some(ran) = sim_step_stage(sim, g, tuning) {
+            return ran;
+        }
+    }
+}
+
+/// Roda **UM estágio** do passo corrente (começando um, se não houver).
+///
+/// - `Some(ran)` — o passo COMPLETOU nesta chamada; `ran` é o que [`sim_step`] devolveria.
+/// - `None` — um estágio rodou e o passo continua no próximo chamado.
+///
+/// O chamador roda estágios enquanto tem orçamento de frame; ver [`StepCursor`] para o porquê.
+///
+/// ⚠️ **Um passo em voo é estado do `Sim`, e quem faz uma operação de CANVAS tem de drená-lo**
+/// ([`Sim::drain_step`] / `Engine::drain_step`) — o grid entre dois estágios é intermediário, e um
+/// `wet_canvas`/`dry_canvas`/`fast_dry`/`capture_history` sobre ele misturaria meia física com a ação.
+pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bool> {
+    let mut c = match sim.pending.take() {
+        Some(c) => c,
+        None => {
+            // Começo de passo: o guard, os params (UMA vez — ver `StepCursor`) e o relógio.
+            if !g.has_fluid {
+                return Some(false);
+            }
+            let p = sim.gather_params(tuning);
+            let grav = sim.gravity(tuning);
+            sim.frame += 1;
+            StepCursor {
+                p,
+                grav,
+                n: sim.frame,
+                stage: 0,
+                vmax: 0.0,
+            }
+        }
+    };
+    let n = c.n;
+    match c.stage {
+        0 => {
+            if n.is_multiple_of(2) {
+                rebuild_active_region(g);
+                if !g.has_fluid {
+                    // Aborta o passo: nada de cadência, nada de cursor.
+                    return Some(false);
+                }
+            }
+        }
+        1 => {
+            if n.is_multiple_of(sim.dry_every) {
+                // The evaporation / re-wet knobs are straight multipliers on the
+                // cadence-adaptive scales.
+                drying_pass(
+                    g,
+                    &c.p,
+                    sim.evap_scale * c.p.k(Knob::Evaporation),
+                    sim.rewet_base * c.p.k(Knob::Rewet),
+                    sim.ext_bypass,
+                );
+            }
+        }
+        2 => {
+            if n.is_multiple_of(4) {
+                build_flow_field(g, &c.p, c.grav[0], c.grav[1], sim.ext_bypass);
+            } else {
+                smooth_velocity(g, &c.p);
+                if !sim.ext_bypass && c.p.k(Knob::ExtDiffusion) > 0.0 {
+                    diffusion_pass(g, &c.p);
+                }
+            }
+        }
+        3 => c.vmax = advect(g, &c.p, c.grav[0], c.grav[1]),
+        4 => apply_boundaries(g, false),
+        5 => {
+            if n.is_multiple_of(3) {
+                project(g, &c.p);
+                apply_boundaries(g, true);
+            }
+        }
+        _ => {
+            // Adaptive drying cadence for the NEXT frames, from this advection's max
+            // velocity component: calm water dries faster per pass, flowing water is
+            // dried gently but often.
+            if c.vmax < 0.5 {
+                sim.dry_every = 6;
+                sim.evap_scale = 0.001;
+                sim.rewet_base = 0.0001;
+            } else {
+                sim.dry_every = 3;
+                sim.evap_scale = 0.00025;
+                sim.rewet_base = 0.000025;
+            }
+            return Some(true);
+        }
+    }
+    c.stage += 1;
+    sim.pending = Some(c);
+    None
+}
+
+/// **A ROTA ATÔMICA CONGELADA** — o `sim_step` que shipava antes de o passo ser retomável, verbatim.
+///
+/// ⚠️ **Ela existe porque o gate de identidade não pode ser `sim_step` contra `sim_step_stage`:**
+/// `sim_step` **É** o laço sobre os estágios, então os dois lados passam pelo MESMO código, e uma
+/// mutação dentro do estágio move os dois — *razão entre dois doentes, verde por construção*. Medido:
+/// três mutações (params re-colhidos por estágio · relógio por estágio · um estágio pulado)
+/// **sobreviveram** ao gate escrito daquele jeito.
+///
+/// `#[cfg(test)]` de propósito: um `pub fn` sem chamador não é código morto silencioso, é uma
+/// **segunda resposta** esperando alguém chamá-la (a lição do `warp_axis` / do `serial_side`).
+#[cfg(test)]
+fn sim_step_atomic_reference(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
     if !g.has_fluid {
         return false;
     }
@@ -146,8 +318,6 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
         }
     }
     if n.is_multiple_of(sim.dry_every) {
-        // The evaporation / re-wet knobs are straight multipliers on the
-        // cadence-adaptive scales.
         drying_pass(
             g,
             &p,
@@ -164,20 +334,12 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
             diffusion_pass(g, &p);
         }
     }
-    // A rede da faixa viva, em debug: os três invariantes que o
-    // estreitamento por-linha consome, afirmados sobre o estado que os passes
-    // deste passo acabaram de produzir e que o `advect` vai consumir.
-    #[cfg(debug_assertions)]
-    crate::grid::verify_spans(g);
     let vmax = advect(g, &p, grav[0], grav[1]);
     apply_boundaries(g, false);
     if n.is_multiple_of(3) {
         project(g, &p);
         apply_boundaries(g, true);
     }
-    // Adaptive drying cadence for the NEXT frames, from this advection's max
-    // velocity component: calm water dries faster per pass, flowing water is
-    // dried gently but often.
     if vmax < 0.5 {
         sim.dry_every = 6;
         sim.evap_scale = 0.001;
@@ -189,6 +351,10 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
     }
     true
 }
+
+#[cfg(test)]
+#[path = "sim_resumable_tests.rs"]
+mod sim_resumable_tests;
 
 /// Fast dry action (SPEC §12), routed here so it shares params.
 pub fn sim_fast_dry(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) {

@@ -618,21 +618,7 @@ impl PainterTool {
         // O controlador do orçamento (ver [`budget::SimBudget`]): a água gasta a
         // FOLGA do frame, medida, em vez de um número que alguém escolheu.
         sess.budget.open_frame(dt_s * 1e3);
-        let mut steps = 0;
-        while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS && sess.budget.can_step() {
-            sess.acc -= WET_STEP_S;
-            steps += 1;
-            if sess.engine.sim_should_run() {
-                // O passo é ATÔMICO — o orçamento decide se ele ROLA, nunca o
-                // interrompe no meio. O que ele custou é o que ele DEBITA: um
-                // custo estimado erraria, e o erro se acumularia no bucket.
-                let t0 = std::time::Instant::now();
-                sess.engine.step_simulation();
-                let spent = t0.elapsed().as_secs_f32() * 1e3;
-                sess.budget.spend(spent);
-                crate::wet_diag::note_step(spent);
-            }
-        }
+        let steps = Self::wet_run_stages(sess);
         // Clamp semantics: a stall never owes a burst of catch-up steps.
         sess.acc = sess.acc.min(WET_STEP_S);
         if steps > 0 {
@@ -665,6 +651,7 @@ impl PainterTool {
     }
 }
 
+mod stages; // o laço de ESTÁGIOS do tick — filho por LOC
 pub(super) mod budget; // o orçamento de TEMPO da sim (o controlador AIMD) — filho por LOC
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod composite; // the composite half (visual terms + veil) — child file (LOC cap)

@@ -178,6 +178,35 @@ pub(crate) const MEASURED_PLAIN_DROP: f32 = 0.75;
 /// a carga sobe, e é o número que se vê de longe.
 pub(crate) const MEASURED_GEARED_COUNTER_DROP: f32 = 2.22;
 
+/// **O ENQUADRAMENTO que esta cena precisa** — o centro e a altura de mundo da
+/// câmera.
+///
+/// ⚠️ **A câmera padrão mostra `y ∈ [−5, +5]`** (`center = (0,0)`,
+/// `height_world = 10`; o `main.rs` diz isso na definição do `WORLD_HALF`), e o
+/// tambor desta cena está em **y = 10** — *cinco metros acima do topo da tela*.
+/// Sem enquadrar, o rig inteiro acima da carga é invisível: os postes, os
+/// contrapesos e os dois tambores.
+///
+/// ⚠️ **E o preço não é cosmético.** As alças de roldana são desenhadas ONDE a
+/// roldana está: o artista seleciona `Geared Rope Drum` na Hierarquia, o
+/// publicador entrega as três alças corretamente, e nada aparece — porque elas
+/// estão fora do quadro. Foi exatamente esse o report que abriu este fix, e a
+/// medição separou as duas hipóteses: o publicador devolve `["Centre", "Rim",
+/// "RimOut"]` para este tambor, então o defeito nunca esteve nele.
+///
+/// **A lei:** *uma cena de smoke enquadra o que ela pede que se olhe.* Um número
+/// de geometria escolhido por motivo físico (a pista do contrapeso, W5) não sabe
+/// nada sobre o que cabe na tela, e as duas coisas têm de ser reconciliadas por
+/// alguém — aqui, e com gate.
+pub(crate) const CAMERA_CENTRE: [f32; 2] = [0.0, 5.0];
+/// A altura de mundo que cobre do chão ao topo dos tambores com folga.
+pub(crate) const CAMERA_HEIGHT: f32 = 13.0;
+
+/// ⚠️ **Enquadrar não é AFASTAR a câmera até tudo caber** — o modo de "consertar"
+/// um gate de fit que o esvazia. Compile-time de propósito: mexer na const acima
+/// para além disto quebra o BUILD, não um teste que alguém pode filtrar.
+const _: () = assert!(CAMERA_HEIGHT < 20.0);
+
 /// Monta a cena 63.
 pub(crate) fn build_composition(world: &mut World) {
     world.spawn((
@@ -209,6 +238,11 @@ impl crate::App {
     pub(crate) fn physics_smoke_composition(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
         build_composition(gfx.sim.world_mut());
+        // O rig sobe a 10 m e a câmera padrão mostra até 5: sem isto, tudo acima
+        // das cargas — inclusive os dois tambores e as alças deles — nasce fora
+        // do quadro. Ver o doc de `CAMERA_CENTRE`.
+        gfx.camera.center = CAMERA_CENTRE;
+        gfx.camera.height_world = CAMERA_HEIGHT;
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.panel_visibility.insert("physics", true);
         }

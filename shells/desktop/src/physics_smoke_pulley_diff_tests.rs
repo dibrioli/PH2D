@@ -140,3 +140,26 @@ fn typing_an_out_radius_turns_a_plain_wheel_into_a_drum() {
         R_IN / R_OUT
     );
 }
+
+/// **A cena 62 cabe no quadro que ela define** — irmão do gate da cena 63, pela
+/// MESMA porta.
+///
+/// Ela é o caso mais agudo da família: a mensagem manda *selecionar o tambor* e
+/// *olhar o segundo anel aparecer*, e com a câmera padrão ele nascia 7 m acima do
+/// topo da tela.
+#[test]
+fn the_scene_fits_the_frame_it_sets() {
+    let mut sim = SimWorld::new();
+    build_differential(sim.world_mut());
+    let worst = crate::physics_smoke_pulley::outside_frame(
+        sim.world_mut(),
+        CAMERA_CENTRE,
+        CAMERA_HEIGHT,
+        &["Floor"],
+    );
+    assert!(
+        worst.is_none(),
+        "a cena spawna algo fora do quadro que ela define: {worst:?} — o artista o \
+         seleciona na Hierarquia e as alças dele são desenhadas fora da tela"
+    );
+}

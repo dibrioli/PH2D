@@ -395,3 +395,48 @@ pub(crate) fn build_winch(world: &mut World) {
     winch(world, "Gear Big", 3.0, 0.60, 60.0, GEAR_BIG);
     winch(world, "Gear Small", 9.0, 0.20, 60.0, GEAR_SMALL);
 }
+
+/// **O que a cena spawna FORA do quadro** — `None` quando tudo cabe.
+///
+/// ⚠️ **Esta porta nasceu de um report:** *"selecionar Geared Rope Drum não mostra
+/// três alças âmbar"*. A medição inocentou o publicador de alças (ele devolvia as
+/// três) e a causa era o ENQUADRAMENTO — a câmera padrão mostra `y ∈ [−5, +5]`
+/// (`center = (0,0)`, `height_world = 10`; o `main.rs` o diz na definição do
+/// `WORLD_HALF`) e os tambores destas cenas moram entre **7 e 12 metros**. As
+/// alças eram desenhadas metros acima do topo da tela, e a feature parecia morta.
+///
+/// **A lei que a porta carrega:** *uma cena de smoke enquadra o que ela pede que
+/// se olhe.* As alturas de um rig são escolhidas por motivo FÍSICO (a pista de que
+/// um contrapeso precisa) e um número desses não sabe nada sobre o que cabe na
+/// tela — as duas coisas têm de ser reconciliadas por alguém, e um gate é quem
+/// lembra.
+///
+/// Só o eixo Y: a largura visível depende do aspecto da janela, que a cena não
+/// conhece. `skip` são os nomes cujo `Transform` é o CENTRO de algo feito para ser
+/// atravessado (o chão), não para ser visto inteiro.
+///
+/// ⚠️ **`cfg(test)`:** os dois chamadores são gates. Um `pub(crate)` sem chamador
+/// de produto não é código morto silencioso — é uma **segunda resposta** esperando
+/// alguém chamá-la (a lição do `warp_axis` e do `serial_side`).
+#[cfg(test)]
+#[must_use]
+pub(crate) fn outside_frame(
+    world: &mut World,
+    centre: [f32; 2],
+    height: f32,
+    skip: &[&str],
+) -> Option<(String, f32)> {
+    let (top, bottom) = (centre[1] + height * 0.5, centre[1] - height * 0.5);
+    let mut q = world.query::<(&Name, &Transform)>();
+    let mut worst = None;
+    for (n, t) in q.iter(world) {
+        if skip.contains(&n.as_str()) {
+            continue;
+        }
+        let y = t.translation.y;
+        if y > top || y < bottom {
+            worst = Some((n.as_str().to_string(), y));
+        }
+    }
+    worst
+}

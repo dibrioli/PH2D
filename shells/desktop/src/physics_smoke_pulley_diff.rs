@@ -116,6 +116,22 @@ pub(crate) const MEASURED_GEARED_RISE: f32 = 0.64;
 /// encontra o CHÃO, não porque a corda a pegou.
 pub(crate) const MEASURED_PLAIN_DROP: f32 = 2.70;
 
+/// **O ENQUADRAMENTO desta cena** — ver `physics_smoke_pulley::outside_frame`
+/// para a lei e o report que a produziu.
+///
+/// ⚠️ **A mensagem desta cena manda selecionar o tambor e OLHAR o segundo anel
+/// aparecer** — e com a câmera padrão (`y ∈ [−5, +5]`) o tambor a 12 m nunca
+/// esteve na tela. A instrução era inverificável, e ninguém notou porque o que a
+/// cena demonstra (as cargas indo para lados opostos) acontece embaixo.
+pub(crate) const CAMERA_CENTRE: [f32; 2] = [0.0, 6.5];
+/// A altura de mundo que cobre do chão ao topo dos tambores com folga.
+pub(crate) const CAMERA_HEIGHT: f32 = 15.0;
+
+/// ⚠️ **Enquadrar não é AFASTAR a câmera até tudo caber** — o modo de "consertar"
+/// um gate de fit que o esvazia. Compile-time de propósito: mexer na const acima
+/// para além disto quebra o BUILD, não um teste que alguém pode filtrar.
+const _: () = assert!(CAMERA_HEIGHT < 20.0);
+
 /// Monta a cena 62.
 pub(crate) fn build_differential(world: &mut World) {
     world.spawn((
@@ -147,6 +163,10 @@ impl crate::App {
     pub(crate) fn physics_smoke_differential(&mut self) {
         let gfx = self.gfx.as_mut().expect("gfx");
         build_differential(gfx.sim.world_mut());
+        // Sem isto o tambor — que a mensagem manda selecionar — nasce 7 m acima
+        // do topo da tela. Ver o doc de `CAMERA_CENTRE`.
+        gfx.camera.center = CAMERA_CENTRE;
+        gfx.camera.height_world = CAMERA_HEIGHT;
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.panel_visibility.insert("physics", true);
         }

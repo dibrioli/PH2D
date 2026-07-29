@@ -140,3 +140,48 @@ fn the_counterweight_never_reaches_its_drum() {
          caber na pista que ela mesma da"
     );
 }
+
+/// **A cena CABE no quadro que ela mesma define** — e este gate existe porque a
+/// cena NÃO cabia no quadro padrão.
+///
+/// ⚠️ **O report que o abriu:** *"selecionar Geared Rope Drum não mostra três
+/// alças âmbar"*. A medição inocentou o publicador na primeira sonda (ele devolve
+/// as três para aquele tambor) e a causa estava no ENQUADRAMENTO: a câmera padrão
+/// mostra `y ∈ [−5, +5]` e o tambor está em **y = 10** — as alças eram desenhadas
+/// cinco metros acima do topo da tela.
+///
+/// ⚠️ **A lição é sobre a ORIGEM dos números.** O `DRUM_Y` foi escolhido por
+/// motivo FÍSICO (a pista de que o contrapeso precisa, W5) e um número desses não
+/// sabe nada sobre o que cabe na tela; as duas coisas têm de ser reconciliadas por
+/// alguém, e um gate é quem lembra. Uma cena de smoke **enquadra o que ela pede
+/// que se olhe** — senão ela mostra outra coisa e o artista relata a feature como
+/// quebrada.
+///
+/// O oráculo é a POSE de tudo que a cena spawna com `Transform`, contra o
+/// retângulo vertical que a câmera cobre. A largura fica de fora de propósito: ela
+/// depende do aspecto da janela, que a cena não conhece.
+#[test]
+fn the_scene_fits_the_frame_it_sets() {
+    let mut sim = SimWorld::new();
+    build_composition(sim.world_mut());
+    let (top, bottom) = (
+        CAMERA_CENTRE[1] + CAMERA_HEIGHT * 0.5,
+        CAMERA_CENTRE[1] - CAMERA_HEIGHT * 0.5,
+    );
+    let worst = crate::physics_smoke_pulley::outside_frame(
+        sim.world_mut(),
+        CAMERA_CENTRE,
+        CAMERA_HEIGHT,
+        // O chão é uma faixa de 32 m e o `Transform` dele é o CENTRO: ele existe
+        // para ser atravessado, não para ser visto inteiro.
+        &["Floor"],
+    );
+    assert!(
+        worst.is_none(),
+        "a cena spawna algo fora do quadro que ela define ({bottom:.1}..{top:.1}): \
+         {worst:?} — o artista o seleciona na Hierarquia e as alças dele sao \
+         desenhadas fora da tela"
+    );
+    // E o quadro tem de ser APERTADO o bastante para valer a pena: uma altura
+    // enorme faria o gate passar mostrando tudo do tamanho de um grão.
+}

@@ -524,6 +524,27 @@ impl super::PhysicsWorld {
         std::mem::swap(&mut self.pulley_wheels, wheels);
     }
 
+    /// **Pôr os eixos MONTADOS onde os corpos deles estão AGORA** (W-Pulley W3).
+    ///
+    /// A [`mount::refresh_mounts`] tem DOIS chamadores e eles pedem coisas
+    /// diferentes, então nenhum dos dois é redundante:
+    ///
+    /// - o `step` a roda por SUB-PASSO, para o SOLVER: geometria de um sub-passo
+    ///   atrás puxa numa direção que já não é a da corda;
+    /// - a PONTE a roda uma vez no fim de todo dispatch, para o DESENHO — e essa
+    ///   é a metade que faltava. A arena é reinstalada a cada dispatch com o
+    ///   centro derivado da pose de REPOUSO (é o que a colheita do ECS sabe), e
+    ///   um quadro mais rápido que o tique não dá passo nenhum ⇒ ele desenhava a
+    ///   roldana **onde ela foi autorada**. Medido num bloco que viaja: salto de
+    ///   **1,27 m** entre um quadro e o seguinte, com a simulação correta o tempo
+    ///   todo — o tremor que o smoke da talha reportou.
+    ///
+    /// No-op para toda roldana pregada no cenário, que é o que toda roldana era
+    /// antes do W3.
+    pub fn refresh_mounted_wheels(&mut self) {
+        mount::refresh_mounts(&self.bodies, &mut self.pulley_wheels);
+    }
+
     /// The live pulleys — what the overlay draws the rope from.
     #[must_use]
     pub fn pulleys(&self) -> &[PulleyDesc] {

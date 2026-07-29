@@ -181,3 +181,153 @@ fn an_unresolved_mount_leaves_the_wheel_in_the_scenery() {
         "o centro autorado foi reescrito por uma montagem que não existe"
     );
 }
+
+/// Onde a arena diz que o eixo da roldana montada está.
+fn arena_centre(bridge: &PhysicsBridge) -> [f32; 2] {
+    bridge
+        .pulley_wheel_arena()
+        .first()
+        .expect("a roldana está na arena")
+        .centre
+}
+
+/// **Um quadro que não deve tique nenhum publica o eixo ONDE ELE ESTÁ** — o
+/// tremor do gizmo que o smoke da talha reportou (W-Pulley W3).
+///
+/// ⚠️ **Era só DESENHO, e a forma do defeito é a razão:** `prepare` reinstala a
+/// arena a cada dispatch com o centro derivado da pose de **REPOUSO** (é o que a
+/// colheita do ECS conhece), e o único lugar que a punha na pose VIVA era o laço
+/// de sub-passos, DENTRO do `step`. Um quadro mais rápido que o tique — que é o
+/// caso normal a 60 Hz de tique com o monitor à frente — não dá passo nenhum, e
+/// publicava a roldana **onde o artista a autorou**. O solver nunca leu esse
+/// número: quem o lê é o pintor.
+///
+/// Medido com o defeito de volta: **1,27 m** de salto entre um quadro e o
+/// seguinte, crescendo conforme o bloco viaja.
+///
+/// O oráculo é o SALTO entre os dois quadros, não um valor absoluto: o que o
+/// artista vê é a roldana ir e voltar, e um limiar sobre a posição não distingue
+/// *parada no lugar certo* de *parada no lugar errado*.
+#[test]
+fn a_frame_that_owes_no_tick_publishes_the_axle_where_it_is() {
+    let mut sim = rig("Block");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let authored = arena_centre(&bridge);
+
+    let mut worst = 0.0_f32;
+    let mut travelled = 0.0_f32;
+    for t in 1..=40_u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let stepped = arena_centre(&bridge);
+        // O MESMO alvo outra vez: o quadro que chegou antes do tique seguinte.
+        bridge.dispatch(&mut sim, true, t);
+        let held = arena_centre(&bridge);
+        worst = worst.max(dist(stepped, held));
+        travelled = travelled.max(dist(authored, stepped));
+    }
+    // ⚠️ A fixture TEM de conter o fenômeno: sem o bloco viajar, a pose de
+    // repouso e a viva coincidem e o defeito é invisível por construção.
+    assert!(
+        travelled > 0.5,
+        "o bloco mal saiu do lugar ({travelled:.3} m): esta fixture não pode \
+         provar nada sobre um eixo que ANDA"
+    );
+    assert!(
+        worst < 1.0e-4,
+        "o eixo SALTOU {worst:.4} m num quadro que não avançou tique nenhum — a \
+         arena publicou o centro derivado da pose de REPOUSO"
+    );
+}
+
+/// **E o eixo publicado é onde o corpo ESTÁ ao fim do tique** — a outra metade da
+/// mesma pergunta, e ela sozinha não bastaria: um centro congelado no lugar certo
+/// passaria pelo gate do salto e ainda estaria errado.
+///
+/// ⚠️ **Este gate fecha, de carona, o atraso de um SUB-PASSO que o W3 deixou
+/// aberto.** O laço de sub-passos refresca os eixos ANTES de aplicar o passe (é o
+/// que o solver precisa), então ao fim do `step` a arena descreve a pose do
+/// começo do último sub-passo — o desenho ia atrasado. Medido antes do refresco de
+/// fim de dispatch: **4,8 mm a 22,7 mm**, crescendo com a velocidade (a sonda
+/// `probe_axle_lag_after_a_stepping_frame`); depois dele, **0,00000 m**.
+///
+/// Por isso a leitura é logo APÓS o quadro que deu tique, e não depois de um
+/// quadro parado: é ali que o atraso vivia.
+#[test]
+fn the_published_axle_rides_the_body_not_the_authored_pose() {
+    let mut sim = rig("Block");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    for t in 1..=40_u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let published = arena_centre(&bridge);
+
+    // O bloco, e o eixo local que a ponte semeou nele.
+    let e = entity_of(&mut sim, "Block");
+    let block = *sim.world().get::<Transform>(e).expect("o bloco tem pose");
+    let local = wheel_of(&mut sim).local;
+    let (sin, cos) = (block.rotation.sin(), block.rotation.cos());
+    let expected = [
+        block.translation.x + local[0] * cos - local[1] * sin,
+        block.translation.y + local[0] * sin + local[1] * cos,
+    ];
+    assert!(
+        dist(published, expected) < 1.0e-3,
+        "a arena publicou {published:?}; o corpo mais o eixo local dizem {expected:?}"
+    );
+}
+
+fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
+    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt()
+}
+
+/// **Arrastar o bloco PAUSADO leva o eixo no MESMO quadro** — e este gate existe
+/// para pinar ONDE o refresco mora.
+///
+/// ⚠️ Pôr a chamada junto da INSTALAÇÃO da arena (em `prepare`) cura o quadro sem
+/// tique e **estraga este caso**: ali o `settle` ainda não rodou, então a pose
+/// viva do corpo é a do quadro anterior e o refresco sobrescreveria o centro
+/// derivado do repouso — que, pausado, é o CERTO — por um atrasado. O fim do
+/// dispatch é o único ponto por onde as quatro saídas passam.
+#[test]
+fn dragging_a_body_while_paused_carries_the_axle_in_the_same_frame() {
+    let mut sim = rig("Block");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let before = arena_centre(&bridge);
+
+    move_body(&mut sim, "Block", 2.0, -0.5);
+    bridge.dispatch(&mut sim, false, 0);
+    let after = arena_centre(&bridge);
+
+    assert!(
+        dist(after, [before[0] + 2.0, before[1] - 0.5]) < 1.0e-3,
+        "o bloco andou (2, -0.5) e a arena publicou {after:?} contra {before:?} — \
+         o eixo ficou um quadro atrás do corpo que o carrega"
+    );
+}
+
+#[test]
+#[ignore = "measurement, not a gate"]
+fn probe_axle_lag_after_a_stepping_frame() {
+    let mut sim = rig("Block");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    println!("\n=== o eixo publicado x o corpo, LOGO APOS um quadro que deu tique ===");
+    for t in 1..=40_u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let published = arena_centre(&bridge);
+        let e = entity_of(&mut sim, "Block");
+        let b = *sim.world().get::<Transform>(e).unwrap();
+        let local = wheel_of(&mut sim).local;
+        let (s, c) = (b.rotation.sin(), b.rotation.cos());
+        let expected = [
+            b.translation.x + local[0] * c - local[1] * s,
+            b.translation.y + local[0] * s + local[1] * c,
+        ];
+        if t % 8 == 0 {
+            println!("t={t:>3} atraso = {:.5} m", dist(published, expected));
+        }
+    }
+}

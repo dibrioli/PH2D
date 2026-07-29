@@ -495,6 +495,24 @@ impl PhysicsBridge {
                 }
             }
         }
+        // W-Pulley W3: e os eixos das roldanas MONTADAS onde os corpos delas
+        // ficaram — **incondicional, e é essa a correção**.
+        //
+        // ⚠️ A arena é reinstalada por `prepare` a cada dispatch com o centro
+        // derivado da pose de REPOUSO (o único que a colheita do ECS conhece), e
+        // até aqui só o laço de sub-passos a refrescava. Um quadro mais rápido
+        // que o tique não dá passo nenhum ⇒ ele publicava a roldana **onde ela
+        // foi autorada**: medido em **1,27 m** de salto num bloco que viaja, com
+        // a simulação correta o tempo todo. Era o tremor do smoke da talha, e o
+        // fato de ser só-desenho é exatamente o que se espera de uma lista que o
+        // solver refresca e o pintor lê.
+        //
+        // Aqui, e não junto da instalação: este é o único ponto por onde as
+        // QUATRO saídas passam (replay, laço de tiques, `settle` pausado, e o
+        // quadro que não deve tique nenhum), então a arena publicada descreve
+        // onde as roldanas ESTÃO sem ninguém ter de enumerar os ramos. Nos que
+        // dão passo é idempotente com o que o `step` já fez.
+        self.world.refresh_mounted_wheels();
         // Read the sensor overlaps of the world in its final state for this
         // frame, whichever branch produced it (`bridge::triggers`). No-op (and
         // no alloc) when the scene has no sensors.

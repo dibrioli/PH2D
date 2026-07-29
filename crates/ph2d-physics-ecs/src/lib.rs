@@ -47,7 +47,7 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
     MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, WrapSide,
-    reseat_mounted_axle,
+    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,

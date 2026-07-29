@@ -156,23 +156,29 @@ pub(crate) fn build_wheel_info(
 /// Aplica um [`WheelFieldEdit`], pelo mesmo funil do irmão `apply_joint_edit`:
 /// lê a roldana viva e a escreve de volta mudada, porque uma escrita parcial
 /// derrubaria os campos que não estão sendo editados.
+/// Devolve **`true` se a ROTA da corda mudou** — o chamador usa isso para re-abrir
+/// o `L0`, que é derivado da rota e ficava congelado (ver
+/// `ph2d_physics_ecs::reseat_wheel_geometry`). ⚠️ **Não é *"o componente mudou"***:
+/// autorar o motor durante o PLAY não pode re-derivar comprimento de corda, e a
+/// cena `=59` autora o motor tocando de propósito.
 pub(crate) fn apply_wheel_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: WheelFieldEdit,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
-) {
+) -> bool {
     let entity = Entity::from_bits(entity_bits);
     let Some(&current) = sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity) else {
-        return;
+        return false;
     };
     let Some(next) = wheel_with_edit(current, edit) else {
-        return;
+        return false;
     };
     if next != current {
         queue_set(queue, registry, entity_bits, WHEEL, &next);
     }
+    next.route_differs(&current)
 }
 
 /// **Uma edição aplicada a uma roldana** — a metade pura, e o funil único.
@@ -256,5 +262,48 @@ pub(crate) fn set_wheel_mount(sim: &mut SimWorld, wheel_bits: u64, body: Entity)
         w.body = stable_name_id(&name);
         w.local = [0.0, 0.0];
         w.mounted = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wheel() -> ph2d_physics_ecs::PulleyWheel {
+        ph2d_physics_ecs::PulleyWheel {
+            rope: 7,
+            radius: 0.3,
+            ..Default::default()
+        }
+    }
+
+    /// **A pergunta é sobre a ROTA, não sobre a igualdade do componente.**
+    ///
+    /// É o predicado que decide se o `L0` da corda é re-aberto (2026-07-29). Ele
+    /// tem de dizer SIM ao raio — o gesto que o Enio reportou — e **NÃO** ao
+    /// motor: a cena `=59` autora o motor com o relógio ANDANDO de propósito, e
+    /// re-derivar comprimento de corda ali prenderia a restrição na configuração
+    /// do instante.
+    ///
+    /// Mutação: `route_differs` sempre `false` ⇒ as duas metades de raio caem;
+    /// sempre `true` ⇒ a do motor cai.
+    #[test]
+    fn only_a_route_change_reopens_the_rope_length() {
+        let base = wheel();
+        for (name, edit, expected) in [
+            ("Radius", WheelFieldEdit::Radius(0.9), true),
+            ("RadiusOut", WheelFieldEdit::RadiusOut(0.2), true),
+            ("Order", WheelFieldEdit::Order(3), true),
+            ("Motor", WheelFieldEdit::MotorDegPerS(60.0), false),
+            ("BreakForce", WheelFieldEdit::BreakForce(9.0), false),
+        ] {
+            let next = wheel_with_edit(base, edit).expect("edição de componente");
+            assert_eq!(
+                next.route_differs(&base),
+                expected,
+                "{name}: o predicado da rota respondeu {} e a geometria diz {expected}",
+                next.route_differs(&base)
+            );
+        }
     }
 }

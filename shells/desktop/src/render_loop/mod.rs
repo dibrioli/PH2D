@@ -6217,7 +6217,7 @@ impl crate::App {
             // há aqui o par estrutural da §12 (criar/apagar uma roldana é criar
             // ou apagar um OBJETO, e a Hierarquia já sabe fazer os dois).
             for &(bits, edit) in &wheel_edits {
-                inspector_joint_wheel::apply_wheel_edit(
+                let route_changed = inspector_joint_wheel::apply_wheel_edit(
                     sim,
                     bits,
                     edit,
@@ -6236,6 +6236,17 @@ impl crate::App {
                     toasts.push(ph2d_editor::Toast::error(format!(
                         "Wheel commit failed: {e}"
                     )));
+                }
+                // ⚠️ **DEPOIS do flush, e só quando a ROTA mudou.** O `L0` da corda
+                // é derivado da rota e era semeado UMA vez; digitar um raio maior
+                // deixava a restrição `L(rota) <= L0` violada e o solver comia a
+                // diferença num salto (medido: 14,12 m a raio 0,90). É a mesma
+                // porta que o arrasto da alça usa — uma resposta, dois gestos.
+                if route_changed {
+                    ph2d_physics_ecs::reseat_wheel_geometry(
+                        sim.world_mut(),
+                        ph2d_ecs::Entity::from_bits(bits),
+                    );
                 }
             }
             if join_draw_arm {

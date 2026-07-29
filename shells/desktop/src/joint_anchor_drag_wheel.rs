@@ -72,7 +72,7 @@ pub(super) fn move_wheel(sim: &mut SimWorld, wheel: ph2d_ecs::Entity, to: [f32; 
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(wheel) {
         t.translation = ph2d_core::Vec2::new(to[0], to[1]);
     }
-    ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), wheel);
+    ph2d_physics_ecs::reseat_wheel_geometry(sim.world_mut(), wheel);
 }
 
 /// **Dimensionar um raio** — o de entrada ou o de saída, pela porta acima.
@@ -96,16 +96,24 @@ pub(super) fn resize_wheel(
     else {
         return;
     };
-    let Some(mut w) = sim
-        .world_mut()
-        .get_mut::<ph2d_physics_ecs::PulleyWheel>(wheel)
-    else {
-        return;
-    };
-    let r = (distance(centre, cursor) + off).max(ph2d_physics_ecs::PulleyWheel::MIN_RADIUS);
-    if matches!(kind, PointHandleKind::WheelRimOut) {
-        w.radius_out = r;
-    } else {
-        w.radius = r;
+    {
+        let Some(mut w) = sim
+            .world_mut()
+            .get_mut::<ph2d_physics_ecs::PulleyWheel>(wheel)
+        else {
+            return;
+        };
+        let r = (distance(centre, cursor) + off).max(ph2d_physics_ecs::PulleyWheel::MIN_RADIUS);
+        if matches!(kind, PointHandleKind::WheelRimOut) {
+            w.radius_out = r;
+        } else {
+            w.radius = r;
+        }
     }
+    // ⚠️ **Crescer o raio CRESCE a rota** (o abraço é maior), e o `L0` da corda
+    // era semeado UMA vez e congelado ⇒ a restrição `L(rota) <= L0` nascia
+    // VIOLADA e o solver comia a diferença num tick: medido **14,12 m de salto**
+    // a raio 0,90 e **50,43 m** a 1,50, com a carga arremessada para fora de
+    // quadro. A porta re-abre o que depende da geometria desta roldana.
+    ph2d_physics_ecs::reseat_wheel_geometry(sim.world_mut(), wheel);
 }

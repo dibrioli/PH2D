@@ -323,3 +323,103 @@ pub fn reseat_mounted_axle(
     w.mounted = false;
     true
 }
+
+/// **O artista autorou a GEOMETRIA desta roldana — re-derive o que depende dela.**
+///
+/// Duas coisas dependem, e as duas eram congeladas por um sentinela:
+///
+/// 1. **O eixo de uma roldana MONTADA** ([`reseat_mounted_axle`]) — o centro é
+///    `corpo · local`, e o `sync_mounted_wheels` o reescreve todo frame.
+/// 2. **O COMPRIMENTO da corda** (`PhysicsJoint::max_length`, o `L0`), semeado
+///    UMA vez da rota que a montagem tem em repouso e depois congelado por
+///    `anchored = true`.
+///
+/// ⚠️ **O (2) era o *salto explosivo*** (Enio, 2026-07-29: *"aumentar o diâmetro
+/// da polia … na simulação ocorre aqueles saltos explosivos"*). A restrição é
+/// `L(rota) ≤ L0`, e crescer o raio CRESCE a rota — o abraço é maior — então com
+/// o `L0` parado ela nasce **violada**, e o solver come a diferença de uma vez.
+/// **Medido** (`tests/measure_pulley_radius.rs`, elevador de 2 roldanas, `L0`
+/// semeado em 11,9650 m):
+///
+/// | raio | rota | violação | maior salto num tick |
+/// |---|---|---|---|
+/// | 0,30 (controle) | 11,9650 | +0,0000 | 0,0817 m |
+/// | 0,45 | 12,2184 | +0,2535 | — |
+/// | 0,60 | 12,4851 | +0,5201 | 0,3097 m |
+/// | 0,90 | 13,0581 | +1,0931 | **14,1247 m** |
+/// | 1,50 | 14,3667 | +2,4018 | **50,4327 m** (a carga sai a +53 m) |
+///
+/// **É a MESMA doença que o W-AnchorFollow curou na âncora**, e a cura é a mesma
+/// lei: *autorar re-deriva, o runtime congela*. Uma porta só, porque as duas
+/// re-derivações nascem do MESMO gesto — quem chamasse metade deixaria o rig
+/// estável e errado.
+///
+/// ⚠️ **Limpar `anchored` re-deriva TAMBÉM as âncoras**, e isso é idempotente em
+/// repouso de propósito: o `sync_joint_pivots` mantém `Transform = bodyA·local_a`,
+/// então a re-derivação devolve o MESMO local. Um flag próprio para o `L0` custaria
+/// um campo no `PhysicsJoint` — postcard é posicional ⇒ bump de `PROJECT_SCHEMA`
+/// ⇒ **todo projeto salvo recusado**, para separar dois fatos que hoje mudam
+/// juntos.
+///
+/// Devolve `true` se algo foi re-aberto (para o chamador saber que houve efeito).
+pub fn reseat_wheel_geometry(
+    world: &mut bevy_ecs::world::World,
+    wheel: bevy_ecs::entity::Entity,
+) -> bool {
+    let axle = reseat_mounted_axle(world, wheel);
+    let Some(e) = rope_joint_of(world, wheel) else {
+        return axle;
+    };
+    let Some(mut j) = world.get_mut::<crate::PhysicsJoint>(e) else {
+        return axle;
+    };
+    if !j.anchored {
+        return axle;
+    }
+    j.anchored = false;
+    true
+}
+
+/// **De que CORDA é esta roldana?** — a resposta única.
+///
+/// Uma roldana aponta a corda pelo **NOME** (`stable_name_id`), a mesma chave por
+/// que o reconcile a resolve — nunca por bits de entidade, que o undo troca. Dois
+/// consumidores fazem esta pergunta ([`reseat_wheel_geometry`] e a §13 do
+/// Inspector, que autora o raio pela fila de comandos), e duas buscas seriam duas
+/// respostas capazes de discordar sobre qual joint re-abrir.
+#[must_use]
+pub fn rope_joint_of(
+    world: &mut bevy_ecs::world::World,
+    wheel: bevy_ecs::entity::Entity,
+) -> Option<bevy_ecs::entity::Entity> {
+    let rope = world.get::<PulleyWheel>(wheel).map(|w| w.rope)?;
+    if rope == 0 {
+        return None;
+    }
+    let mut q = world.query::<(
+        bevy_ecs::entity::Entity,
+        &ph2d_ecs::Name,
+        &crate::PhysicsJoint,
+    )>();
+    q.iter(world)
+        .find(|(_, n, _)| ph2d_ecs::stable_name_id(n.as_str()) == rope)
+        .map(|(e, _, _)| e)
+}
+
+impl PulleyWheel {
+    /// **Esta edição muda a ROTA da corda?** — e portanto o `L0` dela.
+    ///
+    /// Compara só os campos que a rota consome: raio, 2º raio, ordem, lado do
+    /// abraço e em que corpo o eixo está montado. `motor_speed`, a ruptura e o
+    /// sentinela `mounted` ficam de fora **porque não movem a corda** — re-abrir o
+    /// `L0` por causa deles seria re-derivar por um fato que não mudou nada.
+    #[must_use]
+    pub fn route_differs(&self, other: &Self) -> bool {
+        self.radius != other.radius
+            || self.radius_out != other.radius_out
+            || self.order != other.order
+            || self.wrap != other.wrap
+            || self.body != other.body
+            || self.local != other.local
+    }
+}

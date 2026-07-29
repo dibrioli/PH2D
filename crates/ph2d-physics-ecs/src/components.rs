@@ -249,4 +249,4 @@ pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
-pub use rope::{PulleyWheel, WrapSide, reseat_mounted_axle};
+pub use rope::{PulleyWheel, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of};

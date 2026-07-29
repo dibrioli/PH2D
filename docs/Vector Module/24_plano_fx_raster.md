@@ -142,6 +142,13 @@ posição do centroide da sombra, e a mensagem traz os números.
 - **W7 — GROW / SHRINK (FECHADA, pendente de smoke):** o `feMorphology` (dilate/erode) num knob
   **com sinal** — 10 → **onze** tipos. Nenhum kernel novo: é um LIMIAR no campo de distância do W4.
   Ver §14.
+- **W8 — COLOR ADJUST (FECHADA, smoke aprovado):** o `feColorMatrix` — e a lei **não era nova**, a
+  wave é uma EXTRAÇÃO. Ver §15.
+- **W9 — DUOTONE + LUMA TO ALPHA (FECHADA, smoke aprovado 2026-07-29):** as duas leis que leem o
+  BRILHO da arte. Ver §16.
+- **W10 — O ATLAS DE RASTER (FECHADA, pendente de smoke):** a primeira wave que não acrescenta um
+  tipo — ela responde *"quanto custa uma CENA de formas filtradas?"*, que é o eixo que o Enio
+  nomeou. Ver §17.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -1031,3 +1038,125 @@ congelado intacto.
 
 **9 gates** no arquivo novo (oráculo em CPU independente: pior delta **1 nível de byte**), **10
 mutações, 9 sangram**. Smoke: **`PH2D_BUILD_SMOKE=38`**.
+
+---
+
+## §17 — W10: o ATLAS DE RASTER — de `n` renders do Vello para UM
+
+A primeira wave deste plano que **não acrescenta um tipo**. Ela responde a pergunta que o eixo do
+Enio faz — *"performance em tempo real em runtime para games"* — e que nenhum número deste
+documento tinha respondido: **todos eles são de UMA pilha sobre UMA forma.**
+
+### §17.1 — A medição veio antes do desenho, e derrubou a minha hipótese
+
+Num editor o artista mexe numa forma de cada vez, então o memo protege tudo. **Numa cena de jogo as
+formas filtradas ANIMAM**, logo erram o memo **todas, todo frame** — e o que multiplica é o custo
+por-FORMA, que nunca tinha sido medido (`ph2d-render/tests/fx_scene_scale_cost.rs`, RTX):
+
+| N formas | frame (ms) | só o raster | por forma |
+|---|---|---|---|
+| 1 | 0,30 | 0,20 | 0,27 |
+| 4 | 0,80 | 0,54 | 0,20 |
+| 16 | 3,14 | 2,23 | 0,20 |
+| **32** | **6,40** | **4,03** | **0,20** |
+
+⚠️ **A minha hipótese estava errada, e a medição a matou numa linha.** O `VelloPass::ensure_size`
+compara por **igualdade** (`size == self.last_size`) enquanto o irmão dele, o
+`FxStackPass::ensure_work`, **cresce e guarda** (`>=`) — então uma cena de formas de tamanhos
+diferentes realocaria a textura intermediária uma vez por forma. Medido: formas **uniformes** e
+**variadas** custam o **mesmo** (6,16 contra 6,40 a N=32). A realocação não é o custo.
+
+**A causa é o custo FIXO de um render do Vello** — ele corre a cadeia de binning/tiling inteira e
+submete, seja qual for o conteúdo. A **mesma área de arte**, medida dos dois jeitos:
+
+| N | `n` renders | **1 render (atlas)** |
+|---|---|---|
+| 32 | **3,82 ms** | **0,39 ms** |
+
+O fixo é **~0,12 ms por render** e não depende do conteúdo (0,20/0,21/0,39 ms para 4/16/32 estrelas
+num atlas só).
+
+**E o segundo eixo foi medido junto:** uma corrida da PILHA custa **0,031–0,042 ms** com o degrau
+mais BARATO que existe (um pontual, onde o trabalho real é ~0,003) ⇒ **~0,03 ms de fixo** por forma
+(encode + bind groups + `submit`). Somando: **73 % do frame de FX de uma cena de 32 formas era
+overhead fixo por-forma.**
+
+### §17.2 — O que shipou, e a porta única que já existia
+
+Todas as formas que erram o memo são rasterizadas **numa passagem só**, num ATLAS, cada uma na
+célula que o empacotador lhe deu; a pilha de cada uma lê a **própria célula**.
+
+⚠️ **O comentário do `run` já tinha metade da resposta escrita:** *"o INGEST é o que põe a fonte no
+espaço de trabalho, então depois dele **nenhum op volta a ler `src`**"*. Logo há exactamente **um**
+sítio a deslocar — o `cs_ingest` — e o resto do módulo continua a falar em coordenadas **locais da
+forma** (as work textures, os segmentos de silhueta, a origem do ruído, o `dst`).
+
+| Pergunta | Porta |
+|---|---|
+| *onde, na fonte, começa a célula desta forma?* | `Globals.src_org`, lido **só** pelo `cs_ingest` |
+| *como a pilha lê uma célula?* | `FxStackPass::run_from` (o `run` delega com `[0,0]` ⇒ byte-idêntico) |
+| *onde cabe cada célula?* | `shells/desktop/src/fx_atlas.rs::pack` — pura, sem `wgpu` |
+
+O empacotador é de **prateleiras**, determinista, com textura **apertada** (área desperdiçada custa
+preenchimento, que é a metade barata; o que se compra é o número de RENDERS) e **divide em lotes**
+quando não cabe — devolver *"não coube"* faria a forma **desaparecer**, que é o modo de falha errado
+para um limite de recurso.
+
+**Medido ponta a ponta, o mesmo trabalho pelos dois caminhos:**
+
+| N | ontem | hoje | ganho |
+|---|---|---|---|
+| 4 | 0,79 | 0,45 | 1,76× |
+| 16 | 3,26 | 1,16 | **2,81×** |
+| 32 | 6,00 | 2,22 | **2,7×** (2,58–2,82 em quatro corridas) |
+
+**32 formas filtradas: 39 % de um quadro de 60 fps → 14 %.**
+
+### §17.3 — Os três defeitos que os gates acharam, todos meus
+
+1. ⚠️ **O `tap_img` limita-se a `g.dims`**, que é o tamanho da **FORMA**. Isso é *correto* para as
+   work textures — o `ensure_work` **cresce e nunca encolhe**, então fora de `dims` moram os pixels
+   de uma forma maior de um frame anterior, e é exactamente esse limite que os torna invisíveis — e
+   *errado* para a fonte, onde a célula vive em `src_org .. src_org + dims`, logo **metade dela cai
+   fora de `dims`** e era lida como vazio. O gate de paridade nasceu **VERMELHO com 8806 bytes
+   diferentes**, a forma cortada na coluna `dims.x`. Cura: `tap_src`, com limite **próprio**
+   (`textureDimensions(t0)`) — nenhum uniform novo.
+2. ⚠️ **Uma forma maior que o teto era posta na prateleira corrente** e espalhava o próprio excesso
+   pela textura do **lote inteiro**: os vizinhos, que cabiam, passavam a viver numa textura que o
+   device recusa (`lote 9000x104 passou do teto 8192`). Agora ela vai sozinha, e a textura sai do
+   tamanho dela.
+3. ⚠️ **O atlas introduz um modo de falha NOVO e MUDO:** arte que passe da caixa calculada (um traço
+   mais largo, uma junta miter comprida) cairia **dentro da célula da vizinha** — com um render por
+   forma, a borda da textura a descartava. Cada célula é **RECORTADA**; **não é otimização, é a
+   reposição de um limite que já existia**, e o que apareceria é arte a mais numa forma que não a
+   pediu, no z dela, com a cor dela.
+
+### §17.4 — Gates
+
+- **2 de paridade de GPU** (`fx_stack_atlas_gpu`) — ⚠️ **o oráculo é o PRODUTO ANTIGO**, byte a
+  byte: **0 de 27648 bytes diferem**. Um limiar de tolerância aceitaria justamente a classe de erro
+  que um deslocamento errado produz (a forma inteira arrastada por alguns texels). A fixture tem
+  **cobertura parcial** de propósito — num texel opaco ou vazio um deslocamento errado ainda pode
+  acertar por acaso; é na RAMPA da borda que ele se denuncia.
+- **6 no empacotador** (headless, sem GPU) — duas células sobrepostas pintam uma forma dentro da
+  outra e **o resultado ainda parece arte**, que é o que uma foto não mostra.
+- **2 arch-gates de shell** — o `cook_batch` exige janela + device + um renderer do Vello, e nenhum
+  teste de unidade o alcança.
+
+**8 mutações, 8 sangram.**
+
+### §17.5 — Estado, e o que fica aberto com o número
+
+`Globals` 128 → **144 bytes** (pin atualizado). `PROJECT_SCHEMA` **fica em 38**, contrato congelado
+intacto, **zero `Cargo.toml`**, zero crate nova, zero ADR.
+
+⚠️ **ABERTO, com o preço medido:** o **segundo eixo** — um encoder/`submit` para as `n` pilhas, que
+vale **~1,0 ms numa cena de 32** — exige que os globals de **todas** as formas vivam no MESMO blob
+indexado por offset, senão o `write_buffer` da última vence para todas. Isso é *precisamente* o que
+o doc do `write_at` já descreve um nível abaixo (*"um `write_buffer` por passe antes de um único
+`submit` deixaria o ÚLTIMO a valer para todos"*), e o buffer de **segmentos** de silhueta tem o
+mesmo problema. **Wave própria** — e ela é sobre *quando o trabalho é submetido*, enquanto esta foi
+sobre *o que a fonte É*.
+
+**Smoke:** `PH2D_BUILD_SMOKE=33` (as 16 estrelas filtradas) com **`PH2D_FX_PERF=1`** — a linha tem de
+dizer **`em 1 render(es)`**, e o desenho tem de ficar **igual ao de antes**.

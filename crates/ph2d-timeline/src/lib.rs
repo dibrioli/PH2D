@@ -21,6 +21,7 @@
 
 pub mod apply;
 mod apply_path;
+mod apply_prop;
 mod apply_views;
 pub mod autokey;
 pub mod binding;

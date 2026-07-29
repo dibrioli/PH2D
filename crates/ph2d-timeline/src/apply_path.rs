@@ -13,18 +13,24 @@ use ph2d_ecs::{Entity, Transform, World};
 
 use crate::binding::TargetBinding;
 
-/// **Where along the path the authored pose sits** — a Position binding's `rest`.
+/// **Where along the path the object currently sits** — a Position binding read back
+/// out of the world, in the TRACK's units.
 ///
-/// The base a partially-covering clip lane fades in FROM (ADR-0115 R5), and it has
-/// to be in the *track's* units, which for this kind is distance. Reading a
-/// coordinate here, or defaulting to `0.0`, would put the base at the START of the
-/// trajectory and hurl the sprite there on the first frame of a fade — the very
-/// failure `rest` was introduced to prevent, one channel over.
+/// ⚠️ It was called `read_rest` while `rest` capture was its only caller. It is now
+/// the Position arm of [`crate::apply::read_prop`], so it also answers a
+/// `Nome.position` prop-link — and a name that describes one of two callers is a
+/// comment that lies (ADR-0146 C4). What it computes never changed.
+///
+/// For rest capture it is the base a partially-covering clip lane fades in FROM
+/// (ADR-0115 R5), and it has to be in the *track's* units, which for this kind is
+/// distance. Reading a coordinate here, or defaulting to `0.0`, would put the base at
+/// the START of the trajectory and hurl the sprite there on the first frame of a fade
+/// — the very failure `rest` was introduced to prevent, one channel over.
 ///
 /// `None` while the binding has no path yet (a Position track before its first key),
 /// which leaves `rest` uncaptured and lets the next frame try again — exactly what
 /// an unresolvable scalar does.
-pub(crate) fn read_rest(world: &World, entity: Entity, b: &TargetBinding) -> Option<f32> {
+pub(crate) fn read_distance(world: &World, entity: Entity, b: &TargetBinding) -> Option<f32> {
     let path = b.path.as_ref()?;
     let xf = world.get::<Transform>(entity)?;
     let s = path.project([xf.translation.x, xf.translation.y])?;

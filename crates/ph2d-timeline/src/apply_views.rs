@@ -12,7 +12,8 @@ use std::collections::BTreeMap;
 use ph2d_anim::AnimValue;
 use ph2d_ecs::{Entity, World};
 
-use crate::apply::{refresh_liveness_and_rest, remapped_time, write_prop};
+use crate::apply::{refresh_liveness_and_rest, remapped_time};
+use crate::apply_prop::write_prop;
 use crate::doc::TimelineDoc;
 use crate::frame_solve::{self, LinkFrame};
 use crate::prop::PropKind;

@@ -21,7 +21,7 @@ use ph2d_ecs::{Entity, Name, World, stable_name_id};
 use ph2d_expr::{Bindings, Expr, eval};
 
 use crate::TargetBinding;
-use crate::apply::read_prop;
+use crate::apply_prop::read_prop;
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 
@@ -166,9 +166,9 @@ pub(crate) fn build_names(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64
 /// immediately overwritten by its fresh composition in topo order, so seeding never changes
 /// the acyclic result — it only gives a cycle something stable to read.
 ///
-/// ⚠️ `read_prop` returns `None` for Position (a distance, not a `Transform` field) and Morph
-/// in the base crate, so a cycle back edge naming those seeds 0 — a documented limitation
-/// (C4); the acyclic path, which is every non-cyclic prop-link, is exact regardless.
+/// ⚠️ The C4 hole is CLOSED: `read_prop` takes the binding now, so Position (a distance
+/// read through the trajectory) and Morph seed like every other kind, and a cycle back
+/// edge naming them reads a real previous-frame value instead of 0.
 pub(crate) fn seed_links(
     world: &World,
     doc: &TimelineDoc,
@@ -181,7 +181,7 @@ pub(crate) fn seed_links(
         let Some(e) = Entity::try_from_bits(b.entity) else {
             continue;
         };
-        if let Some(v) = read_prop(world, e, b.prop) {
+        if let Some(v) = read_prop(world, e, b) {
             out.insert((b.entity, b.prop), f64::from(v));
         }
     }

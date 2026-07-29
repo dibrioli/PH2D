@@ -12,12 +12,12 @@
 use std::collections::BTreeMap;
 
 use ph2d_anim::AnimValue;
-use ph2d_ecs::{Entity, Transform, World};
+use ph2d_ecs::{Entity, World};
 
+use crate::apply_prop::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
 use crate::frame_solve::{self, LinkFrame};
 use crate::prop::PropKind;
-use crate::sprite::SpriteProp;
 use crate::{stack_eval, stack_frames};
 
 /// Sample every binding in `doc`'s active clip at time `t` (seconds) and write
@@ -227,40 +227,15 @@ pub(crate) fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc
             && doc.bindings()[i].rest.is_none()
             && prop != PropKind::TimeRemap
         {
-            // Position's `rest` is a DISTANCE along its path — the track's units —
-            // so it is read through the trajectory, never off a Transform field.
-            let rest = if prop == PropKind::Position {
-                crate::apply_path::read_rest(world, entity, &doc.bindings()[i])
-            } else {
-                read_prop(world, entity, prop)
-            };
+            // ⚠️ The Position special case that used to live HERE is gone: `read_prop`
+            // takes the binding now, so "what does this channel hold in the world?"
+            // has ONE answer for every kind. While the exception lived in this caller
+            // it was knowledge the other two readers did not have — and they gave a
+            // different answer (ADR-0146 C4).
+            let rest = read_prop(world, entity, &doc.bindings()[i]);
             doc.bindings_mut()[i].rest = rest;
         }
     }
-}
-
-/// Read one property back out of an entity — the exact inverse of
-/// [`write_prop`], and the reason `rest` can be captured without the shell's
-/// help. Also what the inverse-blend key authoring will need (ADR-0115 R9).
-pub(crate) fn read_prop(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
-    if let Some(sp) = prop.as_sprite_transform() {
-        let xf = world.get::<Transform>(entity)?;
-        return Some(match sp {
-            SpriteProp::TranslationX => xf.translation.x,
-            SpriteProp::TranslationY => xf.translation.y,
-            SpriteProp::Rotation => xf.rotation,
-            SpriteProp::ScaleX => xf.scale.x,
-            SpriteProp::ScaleY => xf.scale.y,
-        });
-    }
-    #[cfg(feature = "render")]
-    if prop == PropKind::Opacity {
-        return world
-            .get::<ph2d_render::Sprite>(entity)
-            .map(|sprite| sprite.tint[3]);
-    }
-    let _ = (world, entity);
-    None
 }
 
 /// The time `entity`'s tracks sample at: its Time Remap track's value at the
@@ -387,54 +362,10 @@ fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
     );
 }
 
-/// Write one resolved property value into an entity, via the sprite resolver.
-///
-/// Takes the whole BINDING, not just the kind: [`PropKind::Position`]'s value is a
-/// distance, and turning it back into a place needs that binding's trajectory.
-pub(crate) fn write_prop(
-    world: &mut World,
-    entity: Entity,
-    b: &crate::TargetBinding,
-    v: AnimValue,
-    orient: bool,
-) {
-    let prop = b.prop;
-    // Position (uma distância → ponto, ADR-0141) e os cinco de sprite-transform são POSE:
-    // vão pela porta única `pose::set_transform_field`, a MESMA que o `pose_at` do onion
-    // usa, para que não haja uma 2ª derivação da pose a divergir (ADR-0142).
-    if prop == PropKind::Position || prop.as_sprite_transform().is_some() {
-        if let Some(mut xf) = world.get_mut::<Transform>(entity) {
-            crate::pose::set_transform_field(&mut xf, b, v, orient);
-        }
-        return;
-    }
-    // The Morph `t` (the Vector line's animatable channel). `VecMorph` lives in `ph2d-ecs`, which
-    // this crate already depends on for `Transform`/`World` — no feature gate, no new dep. The
-    // clamp is the motor's (`Plan::at`), so an ease with overshoot (back/elastic) touches the end
-    // and stops instead of breaking the shape.
-    if prop == PropKind::Morph
-        && let AnimValue::Float(f) = v
-        && let Some(mut m) = world.get_mut::<ph2d_ecs::VecMorph>(entity)
-    {
-        m.t = f;
-        return;
-    }
-    // Non-Transform properties. `Opacity` needs the render crate (Sprite lives
-    // there); gated so the base timeline runtime stays GPU-free.
-    #[cfg(feature = "render")]
-    if prop == PropKind::Opacity
-        && let AnimValue::Float(f) = v
-        && let Some(mut sprite) = world.get_mut::<ph2d_render::Sprite>(entity)
-    {
-        sprite.tint[3] = f.clamp(0.0, 1.0);
-    }
-    #[cfg(not(feature = "render"))]
-    let _ = (world, entity, prop);
-}
-
 #[cfg(test)]
 mod time_remap_tests {
     use super::*;
+    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
     use ph2d_core::Vec2;
@@ -580,6 +511,7 @@ mod time_remap_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
     use ph2d_core::Vec2;
@@ -629,6 +561,7 @@ mod tests {
 #[cfg(all(test, feature = "render"))]
 mod render_tests {
     use super::*;
+    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
     use ph2d_render::Sprite;

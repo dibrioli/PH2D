@@ -58,7 +58,7 @@ use ph2d_ecs::{Entity, Name, World, stable_name_id};
 use ph2d_expr::{Bindings, Expr, eval};
 use std::collections::BTreeMap;
 
-use crate::apply::{read_prop, write_prop};
+use crate::apply_prop::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
 use crate::frame_solve::{LinkFrame, SEED_SPACING, collect_links, resolve_link};
 use crate::prop::PropKind;
@@ -95,7 +95,7 @@ pub(crate) fn run(
         let Some(e) = Entity::try_from_bits(b.entity) else {
             continue;
         };
-        if let Some(v) = read_prop(world, e, b.prop) {
+        if let Some(v) = read_prop(world, e, b) {
             snap.insert((b.entity, b.prop), v);
         }
         if let Some(name) = world.get::<Name>(e) {

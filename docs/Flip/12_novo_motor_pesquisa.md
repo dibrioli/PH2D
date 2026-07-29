@@ -1133,6 +1133,43 @@ Os dois vivem em `tests/composite_blend.rs`, o arquivo que já dirigia o seam RE
 - **`the_new_engine_keeps_the_fill_under_the_stroke`** — oráculo no **INTERIOR**, longe de qualquer
   borda, onde nenhum dos dois motores tem opinião. Mutação (não desenhar o piso) sangra `alpha = 0`.
 
+### 18.4b ⚠️ O SMOKE ACHOU O QUE 23 GATES VERDES NÃO PODIAM VER — o Y do `point_px`
+
+1º smoke (Enio): *"o traço do novo parece bom, mas o canvas está todo bugado, invertido, o pincel não
+pinta no lugar certo"*. **Uma causa, três sintomas.**
+
+`ScreenSpace::point_px` mapeava clip → pixel com `y = (cy/2 + 0,5)·h`. Mas **clip `+1` é o TOPO** da
+imagem e **a linha 0 de uma textura é o topo** — o correto é `y = (0,5 − cy/2)·h`. Com o sinal
+errado o desenho inteiro sai **espelhado na horizontal-média**; e como o traço é simétrico, a forma
+parecia certa e o LUGAR não (daí *"o pincel não pinta no lugar certo"*: a tinta aparece espelhada).
+
+⚠️ **Nenhum gate podia pegar isso, e vale como lei:** o percurso da CPU (`walk_pixel`, o oráculo) e
+o do device leem **a MESMA** `point_px`, então um erro de convenção ali **move os dois lados igual**
+e a paridade segue verde. Os 23 gates do `painter_look` também passavam — todos comparam FORMA, ou
+comparam o percurso contra um oráculo que atravessa a mesma porta. É a cegueira door-contra-door que
+o fold da luz do Painter já tinha documentado (doc 28 §4.8.2), aqui num sinal que o olho vê na hora.
+
+**O único oráculo possível é o RASTERIZADOR** — ele passa pelo pipeline gráfico, que é quem define o
+que "linha 0" significa. Foi ele que nomeou o defeito em uma medição:
+
+```
+traço em MUNDO: x 8..28, y ~6 (perto do topo, à esquerda)
+RASTER    linhas 3..8    colunas 5..30
+PERCURSO  linhas 55..60  colunas 5..30      ← 55 = 64−1−8: espelho vertical exato
+```
+
+Gate novo **`both_engines_put_the_ink_in_the_same_place`** (caixa da tinta ±2 px + **centroide**
+±1,5, que pega um espelho mesmo se a caixa der simétrica por acaso). Fixture **assimétrica de
+propósito** — um traço centrado é invariante ao espelho e o gate passaria sobre o bug — e
+`hardness = 1.0`, porque este gate fala de POSIÇÃO: na borda macia os dois motores divergem por
+projeto, e isso é assunto dos gates de forma. Mutação (reinstalar o sinal) sangra imprimindo o
+diagnóstico: *"espelho vertical? SIM — o Y do point_px"*.
+
+⚠️ **E uma FIXTURE codificava o bug:** `the_bin_has_no_fixed_ceiling` cravava o ladrilho no pixel
+`(34, 36)` porque *"linha == y de mundo"* era verdade — e era verdade só por causa do Y invertido.
+Ela **sobreviveu ao bug e caiu junto com a correção**. Agora ela **PERGUNTA** ao `point_px` onde as
+linhas caem: uma fixture que crava coordenada de tela codifica a convenção em vez de testá-la.
+
 ### 18.5 Rodar
 
 ```

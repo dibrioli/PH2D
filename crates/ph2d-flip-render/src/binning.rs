@@ -122,9 +122,16 @@ impl ScreenSpace {
         let cy = m[0][1] * w[0] + m[1][1] * w[1] + m[3][1];
         let cw = m[0][3] * w[0] + m[1][3] * w[1] + m[3][3];
         let inv = if cw == 0.0 { 1.0 } else { 1.0 / cw };
+        // ⚠️ **O Y INVERTE, e não é convenção: é o que o framebuffer É.** Clip `+1` é o TOPO da
+        // imagem, e a linha 0 de uma textura é o topo — então `y_px = (0,5 − cy/2)·h`. O sinal
+        // errado espelha o desenho inteiro na horizontal-média, e **nenhum gate de paridade pode
+        // ver isso**: o percurso da CPU e o do device leem ESTA função, então um erro aqui move os
+        // dois lados igual e a comparação segue verde (a cegueira door-contra-door que o fold da
+        // luz do Painter já documentou). O oráculo é o RASTERIZADOR — ele passa pelo pipeline
+        // gráfico, que é quem define o que "linha 0" significa.
         [
             (cx * inv * 0.5 + 0.5) * self.viewport[0],
-            (cy * inv * 0.5 + 0.5) * self.viewport[1],
+            (0.5 - cy * inv * 0.5) * self.viewport[1],
         ]
     }
 

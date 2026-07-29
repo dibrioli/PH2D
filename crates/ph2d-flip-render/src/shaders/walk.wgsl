@@ -73,9 +73,10 @@ fn point_px(w: vec2<f32>) -> vec2<f32> {
     if (cw != 0.0) {
         inv = 1.0 / cw;
     }
+    // O Y inverte: clip +1 é o TOPO, e a linha 0 da textura é o topo (ver o irmão em Rust).
     return vec2<f32>(
         (cx * inv * 0.5 + 0.5) * sc.view.x,
-        (cy * inv * 0.5 + 0.5) * sc.view.y,
+        (0.5 - cy * inv * 0.5) * sc.view.y,
     );
 }
 

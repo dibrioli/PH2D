@@ -210,7 +210,15 @@ fn the_bin_has_no_fixed_ceiling() {
     let g = art(&specs);
     let bins = bin_segments(&g, &sc, 16);
 
-    let ti = bins.tile_of_pixel(34.0, 36.0).expect("tile central");
+    // ⚠️ **PERGUNTE onde a tinta cai, não suponha.** A versão anterior cravava o pixel `(34, 36)`
+    // porque `linha == y de mundo` era verdade — e era verdade só porque o `point_px` tinha o Y
+    // invertido. Uma fixture que crava coordenada de tela **codifica a convenção**, então ela
+    // sobrevive ao bug e cai junto com a correção. Derivar do `point_px` deixa o gate falar do que
+    // ele é: *a lista de um ladrilho não tem teto*.
+    let mid = sc.point_px([32.0, 34.0 + 23.0 * 0.15 / 2.0]);
+    let ti = bins
+        .tile_of_pixel(mid[0], mid[1])
+        .expect("o ladrilho onde as 24 linhas passam");
     let list = bins.segs_of(ti);
     assert!(
         list.len() > OLD_CEILING,

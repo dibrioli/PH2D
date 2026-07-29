@@ -509,3 +509,112 @@ fn the_new_engine_keeps_the_fill_under_the_stroke() {
         alpha(2, 2)
     );
 }
+
+/// 🔴 **O GATE QUE FALTAVA** — os dois motores põem a tinta no MESMO lugar do framebuffer.
+///
+/// ⚠️ **Nenhum gate de paridade pode afirmar isto, e o smoke do Enio provou.** O percurso da CPU
+/// (`walk_pixel`, o oráculo) e o do device leem o MESMO `ScreenSpace::point_px`, então um erro de
+/// convenção ali move os DOIS lados igual e a comparação segue verde — a cegueira door-contra-door
+/// que o fold da luz do Painter já documentou, aqui num sinal que o olho vê na hora. Os 23 gates
+/// do `painter_look` também passavam: todos comparam FORMA, ou comparam o percurso contra um
+/// oráculo que atravessa a mesma porta.
+///
+/// **O único oráculo possível é o RASTERIZADOR:** ele passa pelo pipeline gráfico, e é o pipeline
+/// gráfico que define o que "linha 0 de uma textura" significa. Foi ele que nomeou o defeito —
+/// raster nas linhas 3..8, percurso em 55..60, com `55 = 64−1−8`: espelho vertical exato, colunas
+/// idênticas (o sintoma que o Enio reportou como *"canvas invertido, o pincel não pinta no lugar
+/// certo"* — UMA causa, três sintomas).
+///
+/// ⚠️ **A fixture é ASSIMÉTRICA de propósito** (perto do topo, à esquerda): um traço centrado é
+/// invariante ao espelho, e o gate passaria sobre o bug. E `hardness = 1.0` porque este gate fala
+/// de POSIÇÃO — na borda macia os dois motores divergem por projeto, e essa divergência é assunto
+/// dos gates de forma, não deste.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn both_engines_put_the_ink_in_the_same_place() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a posição da tinta");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    let mut st = FlipStroke::new();
+    for &(x, y) in &[(8.0, 6.0), (28.0, 6.0)] {
+        st.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: 6.0,
+            opacity: 1.0,
+            color: Rgba::new(0.1, 0.1, 0.1, 1.0),
+        });
+    }
+    st.hardness = 1.0;
+    let mut d = FlipDrawing::default();
+    d.strokes.push(st);
+    let data = pack_drawing(&d);
+
+    // `(linha0, linha1, coluna0, coluna1, centroide_y, n)` da tinta de cada motor.
+    let mut medida = [[0.0_f32; 5]; 2];
+    for (i, armado) in [false, true].into_iter().enumerate() {
+        fc.set_walk_engine(&gpu.device, armado);
+        let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+        let px = readback_slice(&gpu, slice);
+        let (mut r0, mut r1, mut c0, mut c1) = (u32::MAX, 0u32, u32::MAX, 0u32);
+        let (mut soma_y, mut n) = (0.0_f64, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                if px[((y * W + x) * 4 + 3) as usize] > 32 {
+                    r0 = r0.min(y);
+                    r1 = r1.max(y);
+                    c0 = c0.min(x);
+                    c1 = c1.max(x);
+                    soma_y += f64::from(y);
+                    n += 1;
+                }
+            }
+        }
+        assert!(
+            n > 100,
+            "{} nao pintou o bastante ({n} px) — a fixture nao contem o fenomeno",
+            if armado { "o percurso" } else { "o raster" }
+        );
+        medida[i] = [
+            r0 as f32,
+            r1 as f32,
+            c0 as f32,
+            c1 as f32,
+            (soma_y / f64::from(n)) as f32,
+        ];
+        println!(
+            "  {} linhas {r0}..{r1}  colunas {c0}..{c1}  centro_y {:.2}  ({n} px)",
+            if armado { "PERCURSO" } else { "RASTER  " },
+            soma_y / f64::from(n)
+        );
+    }
+    let [raster, percurso] = medida;
+    // A caixa: 2 px de folga (a borda de união dura ainda difere em sub-pixel entre os motores).
+    for (k, nome) in ["linha0", "linha1", "coluna0", "coluna1"]
+        .iter()
+        .enumerate()
+    {
+        assert!(
+            (percurso[k] - raster[k]).abs() <= 2.0,
+            "os motores discordam de LUGAR em {nome}: raster {} vs percurso {} \
+             (espelho vertical? {})",
+            raster[k],
+            percurso[k],
+            if (percurso[0] - (H as f32 - 1.0 - raster[1])).abs() <= 2.0 {
+                "SIM — o Y do point_px"
+            } else {
+                "nao"
+            }
+        );
+    }
+    // O centroide pega um espelho mesmo se a caixa por acaso ficar simétrica.
+    assert!(
+        (percurso[4] - raster[4]).abs() <= 1.5,
+        "o centro da tinta discorda: raster {:.2} vs percurso {:.2}",
+        raster[4],
+        percurso[4]
+    );
+}

@@ -6817,3 +6817,26 @@ sangram**, cada uma nomeando o culpado (`"Plain Post" 10.0` · `"Plain Rope Drum
 ⚠️ **Nomeado e NÃO corrigido:** as cenas 58-61 têm tambores em `BOOM_Y = 7,0`, também acima do topo
 padrão — elas não pedem que se selecione uma roldana, e mexer no enquadramento de cenas já aprovadas
 mudaria o que o artista validou. A porta está pronta para quando uma delas passar a pedir.
+
+### E o segundo report expôs a causa REAL: alça é rest-only (2026-07-29)
+
+*"Nada visível ainda"* (Enio), depois do fix de enquadramento. **A hipótese da câmera era um FATO
+medido, não a causa** — precisava ser corrigida de qualquer forma, mas não era o que escondia as alças.
+
+**A causa:** alça de ponto é publicada **rest-only** (`at_rest = !playhead.is_playing()`) — durante o
+play o overlay desenha a geometria do SOLVER e estas alças autoram a AUTORADA. A cena 63 manda agarrar
+três alças e **nascia tocando**. ⚠️ A mensagem dela já se contradizia (*"aperte B e depois PLAY"*).
+
+⚠️ **`PAUSED_SCENES` é enumeração escrita à mão** — as cenas de alça de joint (43-47) estavam lá desde o
+começo, a minha não, e nada disse nada. O gate de classe (`handle_scenes_start_paused`) lê o que as
+cenas **DIZEM** e exige que quem manda arrastar uma ALÇA esteja na lista; ele achou um **segundo caso
+PRÉ-EXISTENTE**: a **`=58`**, a cena que introduziu as alças no W1, cujo passo 4 (o pedido (6) do
+artista) **nunca pôde ter sido smokado**.
+
+⚠️ **Duas falhas do meu proxy, corrigidas antes de shipar:** `"arraste"` sozinho acusou 26 cenas
+(inclusive a `=52`, a MÃO, que arrasta um **corpo** no play de propósito — o par *verbo+substantivo* é o
+discriminador) e `"alca"` como **substring** casa dentro de *alcance* (⇒ palavra inteira).
+
+**2 gates, 2 mutações, 2 sangram**, e não são redundantes: o de classe depende da REDAÇÃO, o específico
+só da lista. ⚠️ **Nomeado e não corrigido:** seis cenas (56, 57, 59, 60, 61, 62) dizem *"depois PLAY"* e
+nascem tocando — nenhuma pede gesto de alça, então a imprecisão é de texto, e são cenas já aprovadas.

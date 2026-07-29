@@ -428,6 +428,50 @@ que demonstram acontece embaixo —, e mexer no enquadramento de cenas já aprov
 em smoke mudaria o que o artista já validou. A porta está pronta para quando uma
 delas passar a pedir.
 
+#### E o segundo report expôs a causa REAL: alça é rest-only
+
+*"Nada visível ainda"* (Enio), depois do fix de enquadramento. **A hipótese da
+câmera era um FATO medido, não a causa** — o tambor está mesmo a `y = 10` e a
+câmera padrão mostra até `y = 5`, e isso precisava ser corrigido de qualquer
+forma; mas não era o que escondia as alças.
+
+**A causa:** as alças de ponto — a âncora de um joint, o centro e os aros de uma
+roldana — são publicadas **rest-only** (`at_rest = !playhead.is_playing()`),
+porque durante o play o overlay desenha a geometria do **SOLVER** e estas alças
+autoram a **AUTORADA**. A cena 63 manda agarrar três alças e **nascia tocando**:
+elas não podiam existir. ⚠️ E a mensagem dela **já se contradizia** — dizia
+*"aperte B e depois PLAY"*, o que só faz sentido numa cena parada.
+
+⚠️ **`PAUSED_SCENES` é uma ENUMERAÇÃO escrita à mão**, e as cenas de alça de joint
+(43-47) estavam nela desde o começo. A minha não estava, e **nada disse nada** —
+uma enumeração é exatamente o que a próxima cena nasce fora.
+
+**E o gate de classe achou um SEGUNDO caso, pré-existente:** a **`=58`**, a cena
+que *introduziu* as alças no W1. O passo 4 dela manda *"SELECIONE uma roldana…
+aparecem DOIS pontos âmbar: o do CENTRO (arraste…) e o do ARO (arraste…)"* e ela
+nasce tocando — ou seja **aquele passo, que é o pedido (6) do artista (*selecionar
+e posicionar uma roldana*), nunca pôde ter sido smokado**.
+
+⚠️ **Duas falhas do meu próprio proxy, as duas corrigidas antes de shipar** — e as
+duas são a mesma doença, *um gate que acusa pelo motivo errado é tão inútil quanto
+um que não acusa*:
+
+1. **`"arraste"` sozinho acusou 26 cenas**, entre elas a `=52` (a MÃO), que manda
+   arrastar um **CORPO** durante o play **de propósito**. Arrastar um corpo é gesto
+   de play; arrastar uma alça é gesto de repouso — o par *verbo + substantivo* é o
+   discriminador.
+2. **`"alca"` como SUBSTRING casa dentro de `alcance`**, e acusou a `=53` por isso
+   ⇒ comparação por **palavra inteira**.
+
+**2 gates, 2 mutações, 2 sangram** — e os dois não são redundantes: o de **classe**
+depende da REDAÇÃO da mensagem, o **específico** da 63 depende só da lista, então
+reescrever a mensagem silencia um e não o outro.
+
+⚠️ **Nomeado e NÃO corrigido:** seis cenas (**56, 57, 59, 60, 61, 62**) dizem
+*"depois PLAY"* e nascem tocando. Nenhuma delas pede gesto de alça, então a
+imprecisão é de **texto** e não quebra o que elas demonstram — e são cenas já
+aprovadas em smoke.
+
 ### Aberto no W6, nomeado
 
 - **Nenhuma alça de roldana tem ÍMÃ**, e é decisão herdada do W1: o ímã cola nos

@@ -2655,6 +2655,54 @@ aquele número seria otimizar uma espera.
 
 ---
 
+### 5.37 ✅ O PASSO VIROU INTERROMPÍVEL — o bloco atômico de 38 ms deixou de existir
+
+> Enio: ***"vamos ao estado da arte, ao padrão ouro, vamos pintar 4k com pincel grande. Resolva."***
+
+O teto da §5.36 é aritmético e **nenhum agendamento o move**: um passo custa 38,7 ms contra 16,6 de um
+quadro, então o frame que o continha estourava **por construção**. Duas saídas foram medidas e
+descartadas antes desta — **paralelizar** (proibido com mecanismo nomeado no ADR-0134) e **a região
+ativa** (o fator 6 é a dilatação 3×3 que a física exige).
+
+**A cura: o maior ESTÁGIO sozinho custa 10,26 ms, e ele CABE na folga do quadro.** `sim_step_stage`
+roda **um** estágio; o `StepCursor` carrega os params **capturados no início do passo**, o `grav`, o
+`n` e o `vmax`. **`sim_step` virou O LAÇO sobre os estágios** — uma implementação, zero divergência —
+e a correção é **byte-idêntica por construção**.
+
+| | atômico | por estágios | |
+|---|---|---|---|
+| pior tick | 35,3 / 42,0 ms | **26,5 / 28,7** | −25% / −32% |
+| tick médio | 9,9 / 12,1 | **7,9 / 9,7** | −20% |
+| taxa da sim | 40,0 / 40,0 Hz | **43,5 / 44,5** | +10% |
+
+Poça **pesada** (~38,7 ms/passo, a escala do log do Enio): sim **9,5 → 13,0 Hz**.
+
+⚠️ **Os três melhoram juntos** porque o orçamento passou a ser gasto INTEIRO: antes, um passo que não
+cabia no crédito era **adiado por um frame todo**.
+
+⚠️ **Três leis, cada uma um bug se invertida:** o `acc` gateia COMEÇAR um passo, nunca CONTINUAR um ·
+o composite roda **só quando um passo COMPLETA** (o artista vê estados inteiros) · toda ação de CANVAS
+**drena** o passo em voo (`Engine::drain_step`).
+
+#### 5.37.1 O oráculo tem de ser a rota atômica CONGELADA
+
+⚠️ **O gate não pode ser `sim_step` contra `sim_step_stage`:** `sim_step` **É** o laço sobre os
+estágios, então os dois lados passam pelo MESMO código e uma mutação dentro do estágio move os dois —
+*razão entre dois doentes, verde por construção*. Medido: com o gate escrito daquele jeito, **três
+mutações sobreviveram** (params re-colhidos por estágio · relógio andando por estágio · o
+`apply_boundaries` pulado). Contra a referência congelada sob `cfg(test)`, duas sangram.
+
+⚠️ **E uma mutação sobrevive, documentada em vez de escondida:** re-colher os params em cada estágio
+não é pego. Duas fixtures tentadas (`Gravity` — inválida, ela vira o `grav` capturado à parte;
+`ExtDiffusion` — o controle prova que o knob **não** é inerte e a mutação passou de todo modo). A lei
+continua escrita no `StepCursor` e é real, mas está **sem oráculo** — e um gate que não pode falhar
+pelo motivo que alega é pior que gate nenhum, então ele **não foi shipado**; o caminho para fechá-la
+está escrito no lugar onde ele estaria.
+
+**Fingerprint do engine INTACTO**, suíte de aceitação verde nos dois perfis.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

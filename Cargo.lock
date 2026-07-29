@@ -5159,6 +5159,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-expr-recipes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-expr",
+ "ph2d-expr-parse",
+]
+
+[[package]]
 name = "ph2d-flip"
 version = "0.0.0"
 dependencies = [

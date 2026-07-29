@@ -84,6 +84,20 @@ produziria: isso **não é parser**, é comparação contra `to_formula()` dos c
 Exato, sem deriva. (É o que o Blender faz: o *popover* trata o driver simples, o editor
 completo trata o *scripted*.)
 
+⚠️ **CORREÇÃO da W0 — o mecanismo desta frase estava VAGO e não fecha como escrito.**
+"Comparar contra os candidatos" pressupõe **enumerar** candidatos, e o espaço de knobs
+é contínuo: não existe lista. O que fecha são duas coisas, e a **W5 constrói as duas**:
+
+1. **Na MESMA sessão** a pilha é lembrada num mapa `AnimTarget -> RecipeStack` em
+   runtime (não persistido) — reabrir devolve as linhas exatas.
+2. **Depois de um load**, o contrato é a **verificação por ida-e-volta byte-exata**:
+   `recover(f)` só é aceito se `to_formula(recover(f)) == f` **caractere a caractere**.
+   O casador por trás pode ser incompleto ou até bugado — ele **não consegue** produzir
+   uma pilha mentirosa, porque uma pilha cuja fórmula difere é **recusada** e cai em
+   modo texto. *A verificação é o contrato; o casador é só um gerador de palpites.*
+   E é por isso que a W0 **não** shipou um `recover` que devolve sempre `None`: função
+   morta é pior que função ausente.
+
 **P3 — A PREVIEW roda o avaliador do PRODUTO.**
 `ph2d_expr::eval` + as MESMAS `ExprBindings` que o passe monta. Um mini-avaliador de
 preview é a família de bug que este repo já pagou várias vezes (*seed ≠ sample*).
@@ -205,8 +219,12 @@ metade de um círculo.
 **Custom Formula** — a saída de emergência **como item do catálogo** (Lei 4 da
 pesquisa: o C4D, o Cavalry e o Rive todos a põem no catálogo, não num modo escondido).
 
-> **Total tier A: 6+8+9+10+7+5+3+4+1 = 53 receitas**, que emitem **55 fórmulas**
-> (Orbit escreve duas, Gate tem dois modos).
+> **Total tier A: 55 receitas.** ⚠️ O plano dizia *"53 receitas, 55 fórmulas"*; na
+> construção a `Orbit` virou **duas entradas** (`orbit-x`/`orbit-y`, ligadas por
+> `Recipe::pair`) e o `Gate` **duas** (`gate-and`/`gate-or`), porque **uma receita
+> emite exatamente uma fórmula** — colapsá-las exigiria um segundo modelo só para
+> dois casos. A galeria ainda mostra **um** cartão de Orbit, que insere as duas
+> linhas.
 
 ### ✅ MEDIDO, não afirmado
 
@@ -462,3 +480,57 @@ onda ser escrita — nunca estimados.
   desenho tem de saber disso antes.
 - ⚠️ **Com 53 cartões a busca É a interface.** Se G7 (aliases) não existir, o catálogo
   grande fica pior que o pequeno.
+
+---
+
+## §12 — W0 FECHADA (2026-07-29): o que a construção corrigiu no plano
+
+Crate folha **`ph2d-expr-recipes`**, **55 receitas**, **10 recusas**, **15 gates + 2
+unit**, **11 mutações — 11 sangram**. `src/` **não referencia `ph2d_expr`**: o parser e
+o IR são `[dev-dependencies]`, usados só pelos gates (a forma machete-safe da
+`ph2d-gpu-cook`). Clippy 0, LOC folgado, `PROJECT_SCHEMA` e contrato congelado
+intactos.
+
+### O que o plano não sabia
+
+**(a) `KnobKind::Literal` é o ÚNICO kind cuja faixa é uma afirmação de VALIDADE.**
+Para os demais a faixa é de ARRASTO — digitar fora dela é decisão do artista e não se
+clampa. Mas o parser **recusa** `wiggle` com octaves < 1 (*"octaves must be a number
+>= 1"*), então um 0 digitado emitia texto que **não parseia**: a barra de fórmula
+apagaria no instante em que o artista seleciona o campo e aperta Delete. Nasceu
+`EmitCtx::lit`, que clampa **só** os literais, e o `EmitCtx` passou a receber as
+DEFINIÇÕES dos knobs além dos valores.
+
+**(b) A busca tem de normalizar, e o gate achou isso na 1ª execução.** O artista digita
+o **identificador** que leu no outro produto (`posterizeTime`, `loopOut`), e um catálogo
+é escrito em prosa (`posterize time`). `norm()` derruba tudo que não é letra ou dígito
+dos DOIS lados. Sem isso o cartão existe e é invisível — que é o modo de falha exato
+que o catálogo grande cria.
+
+**(c) `Neutrality::Replacing` virou `NoNeutral`.** O nome do plano descrevia mal o
+`Limit`, que **não** substitui o valor — ele o restringe, e simplesmente não tem
+neutro alcançável.
+
+### As duas mutações que SOBREVIVERAM, e as duas eram fixture minha
+
+⚠️ **M1 — tirar o `paren` do `Multiply / Add` passou pelo gate de composição.** O G6
+compunha os pares nos **defaults**, e `Multiply / Add` é a **identidade** nos defaults
+(`value*1 + 0`): o gate compunha duas identidades e não podia observar precedência.
+Agora os pares correm com knobs **perturbados** (60% da faixa) e a mesma mutação
+sangra — junto com a irmã no `Negate`.
+
+⚠️ **M7 — devolver o número cru no `nz` (divisão por zero) passou pelo G1.** As sondas
+andavam pelas **pontas da faixa**, e a ponta baixa do `step` é `0.001`, não zero. Mas
+uma faixa é de arrasto: o artista **digita** 0. Nasceu a 4ª sonda, `Knobs::Zero`, que
+zera todo número — e ela é a única que alcança os denominadores (`Quantize`,
+`Stepped Time`, um `Remap` de largura zero) **e** o piso do parser que gerou (a).
+
+⚠️ **M3 sobreviveu ao G2a POR DESENHO** e o G2b sangrou — é exatamente o par que o
+plano §8 previu: um gate que só *pula* as receitas sem neutro é satisfeito declarando
+tudo sem neutro.
+
+### O que fica NOMEADO para a W1
+
+`RecipeStack::recover` **não existe** (ver a correção da P2 acima) · o mapa de sessão
+`AnimTarget -> RecipeStack` é da W5 · a preview e o modal são W1/W2 · o `pair` do Orbit
+já está no dado, mas quem **oferece um cartão e insere duas linhas** é a W4.

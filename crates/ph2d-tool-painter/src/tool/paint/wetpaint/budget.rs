@@ -29,12 +29,31 @@
 //! AIMD sobre o `dt` que o próprio `on_tick` recebe. ⚠️ O `Tool` é contrato **CONGELADO** (§6), então
 //! não há parâmetro novo a pedir ao shell: o período do frame É o sinal disponível.
 //!
-//! - **o período** = EWMA do `dt` nos ticks em que a sim **não trabalhou** — o período natural do
-//!   app, seja ele 60 Hz, 144 Hz ou CPU-bound. É a régua, e ela é MEDIDA.
+//! - **o período** = o PISO do `dt` observado (com decaimento lento para cima) — com vsync ele é o
+//!   intervalo do monitor, seja 60 Hz ou 144. É a régua, e ela é MEDIDA.
 //! - **cresce** devagar ([`WET_BUDGET_GROW_MS`]) enquanto o frame cabe em `período + folga`;
-//! - **encolhe** pela metade no instante em que estoura — o frame tem prioridade;
+//! - **encolhe** pela metade quando estoura **E a culpa é da água** — ver abaixo;
 //! - **teto** em [`WET_BUDGET_MAX_FRACTION`] do período, que é o que impede a água de comer o quadro
 //!   inteiro quando a sim não consegue alcançar o relógio.
+//!
+//! # ⚠️ A ATRIBUIÇÃO, e o segundo smoke que a exigiu
+//!
+//! A primeira versão do controlador recuava sempre que o frame estourava — e o smoke seguinte (Enio,
+//! 2026-07-29) reportou **o mesmo sintoma de novo**: 60 fps com a simulação parada. O log mostrou
+//! `tool-tick=0.00ms` em TODA amostra e a causa ao lado:
+//!
+//! ```text
+//! [frame] total=19.15ms | stamps=13.96ms  | tool-tick=0.00ms
+//! [frame] total=32.90ms | stamps=116.03ms | tool-tick=0.00ms
+//! ```
+//!
+//! **O `stamps` é o carimbo de dabs dentro do `on_canvas_pointer`** — outro inquilino do frame, que a
+//! água não causa e não controla. O controlador lia o `dt` INTEIRO, concluía *"não há espaço"* e
+//! estrangulava a sim até ~2 Hz. **Ele punia a água por uma conta que era de outro.**
+//!
+//! A regra agora separa as duas: `non_sim = dt − o que a sim gastou`. O recuo só dispara quando **o
+//! frame teria cabido sem nós** — se `non_sim` já estourou sozinho, encolher a água não salva o frame
+//! e só congela a tinta. Aí o orçamento **segura**, não desce.
 //!
 //! No log acima o controlador sobe até `0,6 × 16,6 ≈ 10 ms/frame` — **600 ms/s de simulação**, os
 //! 40 Hz cheios — gastando a folga do vsync, e o frame continua a 60 fps porque quem encolhe é o
@@ -62,12 +81,12 @@ const WET_BUDGET_MIN_MS: f32 = 1.0;
 const WET_BUDGET_GROW_MS: f32 = 0.5;
 /// A folga sobre o período natural que ainda conta como *"o frame coube"*.
 const WET_FRAME_SLACK_MS: f32 = 2.0;
-/// Peso do EWMA do período, amostrado só nos ticks SEM trabalho de sim — são eles que mostram quanto
-/// o app custa **sem** a água.
-const WET_PERIOD_EWMA: f32 = 0.1;
-/// Abaixo disto o tick não trabalhou de verdade (água parada / sem fluido) e o `dt` seguinte é uma
-/// amostra limpa do período natural.
-const WET_IDLE_MS: f32 = 0.5;
+/// Decaimento do PISO do período, por frame. O período é o `min` do `dt` observado — um frame lento
+/// por culpa de outro inquilino não pode movê-lo —, e este creep para cima (0,05%/frame ≈ 3%/s) é o
+/// que o deixa seguir um display que de fato mudou de taxa.
+const WET_PERIOD_DECAY: f32 = 1.0005;
+/// Piso do período: abaixo disto seria um monitor de 500 Hz, e mais provavelmente um `dt` espúrio.
+const WET_PERIOD_MIN_MS: f32 = 2.0;
 /// Teto da DÍVIDA (ms). Sem ele um passo patológico congelaria a água por dezenas de frames.
 ///
 /// ⚠️ É **fundo**, não conforto: enquanto a dívida não bate nele o custo amortizado por frame é
@@ -108,17 +127,28 @@ impl SimBudget {
 
     /// Abre o frame: amostra o período, move o orçamento e credita.
     pub(in crate::tool::paint) fn open_frame(&mut self, dt_ms: f32) {
-        if self.last_sim_ms < WET_IDLE_MS {
-            self.period_ms += (dt_ms - self.period_ms) * WET_PERIOD_EWMA;
-        }
+        // O período é o PISO do `dt`: com vsync ele é o intervalo do monitor, e um frame lento por
+        // culpa de outro inquilino (o `stamps` do log) não o move. O creep para cima é o que o
+        // deixa seguir um display que de fato mudou.
+        self.period_ms = (self.period_ms * WET_PERIOD_DECAY)
+            .min(dt_ms.max(WET_PERIOD_MIN_MS))
+            .max(WET_PERIOD_MIN_MS);
+        let target = self.period_ms + WET_FRAME_SLACK_MS;
         let ceiling = self.period_ms * WET_BUDGET_MAX_FRACTION;
-        if dt_ms <= self.period_ms + WET_FRAME_SLACK_MS {
+        // O que este frame custou SEM a água. É ele que decide de quem é a culpa.
+        let non_sim = dt_ms - self.last_sim_ms;
+        if dt_ms <= target {
             // O frame coube: há folga (num app com vsync ela é o present stall, e gastá-la é DE
             // GRAÇA). Sobe devagar.
             self.per_frame_ms = (self.per_frame_ms + WET_BUDGET_GROW_MS).min(ceiling);
-        } else {
-            // Estourou: o frame tem prioridade. Desce pela metade.
+        } else if non_sim <= target {
+            // Estourou E o frame teria cabido sem nós: a culpa é da água. Desce pela metade.
             self.per_frame_ms = (self.per_frame_ms * 0.5).max(WET_BUDGET_MIN_MS);
+        } else {
+            // Estourou por conta de OUTRO inquilino (o carimbo de dabs, um load, um painel):
+            // encolher a água não salva o frame e só congela a tinta. Segura onde está — mas nunca
+            // acima do teto, que segue sendo do período.
+            self.per_frame_ms = self.per_frame_ms.min(ceiling);
         }
         // O teto do crédito é UM frame de orçamento: um bucket que entesoura devolve exatamente a
         // rajada que ele existe para impedir.

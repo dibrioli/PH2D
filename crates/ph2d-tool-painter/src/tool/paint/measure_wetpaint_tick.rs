@@ -155,6 +155,80 @@ fn the_wet_sim_spends_the_frames_idle_slack() {
     }
 }
 
+/// **UM FRAME LENTO POR CULPA DE OUTRO INQUILINO NÃO ESTRANGULA A ÁGUA** — a atribuição, e o
+/// segundo smoke que a exigiu.
+///
+/// Enio, 2026-07-29 (a segunda vez com o MESMO sintoma): 60 fps e a simulação parada, com o log
+/// dizendo de quem era a conta —
+///
+/// ```text
+/// [frame] total=19.15ms | stamps=13.96ms  | tool-tick=0.00ms
+/// [frame] total=32.90ms | stamps=116.03ms | tool-tick=0.00ms
+/// ```
+///
+/// O `stamps` é o carimbo de dabs dentro do `on_canvas_pointer` — **outro inquilino do frame**. O
+/// controlador lia o `dt` inteiro, via *"não há espaço"* e estrangulava a sim. Aqui o `dt` fica
+/// lento por um custo que a água **não** produz, e o orçamento tem de SEGURAR.
+#[test]
+fn a_frame_slowed_by_another_tenant_does_not_starve_the_water() {
+    /// O custo do inquilino ESTRANGEIRO por frame — o `stamps` do log, bem acima
+    /// do vsync.
+    const FOREIGN_MS: f64 = 60.0;
+    const FRAMES: usize = 80;
+    /// O orçamento tem de continuar acima da semente: o inquilino estrangeiro é
+    /// caro, mas a culpa não é da água. Sem a atribuição ele desaba no piso
+    /// (`WET_BUDGET_MIN_MS`, 1 ms) e a sim vai a ~2 Hz — o sintoma reportado.
+    const MIN_BUDGET_MS: f32 = 3.0;
+    /// E o teto: a régua é o PISO do `dt` (o vsync, ~16,6), então o orçamento fica
+    /// preso a `0,6 × 16,6 ≈ 10 ms` por mais lento que o frame fique. Com uma
+    /// média no lugar do piso ele sobe para ~60.
+    const MAX_BUDGET_MS: f32 = 15.0;
+
+    let mut t = big_puddle(true);
+    // Aquece com frames NORMAIS para o controlador medir o período do vsync.
+    for _ in 0..40 {
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+        let _ = t.take_preview_arc();
+    }
+    // Agora todo frame chega lento — e a água não é a causa.
+    //
+    // ⚠️ O `dt` é REALIMENTADO (`estrangeiro + o que o tick custou`), não um número
+    // fixo: a primeira versão deste gate passava `dt = 60` enquanto o próprio tick
+    // custava ~40, o que descreve um frame impossível — e nele o `non_sim` caía
+    // abaixo do alvo, o recuo disparava com razão e o gate reprovava sobre produto
+    // correto. *Uma fixture que não fecha a própria conta acusa o código errado.*
+    let mut dt = FOREIGN_MS;
+    for _ in 0..FRAMES {
+        let t0 = Instant::now();
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, dt as f32);
+        dt = FOREIGN_MS + t0.elapsed().as_secs_f64() * 1e3;
+        let _ = t.take_preview_arc();
+    }
+    let budget = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessao de agua existe apos o traco")
+        .budget
+        .per_frame_ms;
+    assert!(
+        budget >= MIN_BUDGET_MS,
+        "o orcamento desabou para {budget:.2} ms sob um frame lento por culpa de OUTRO inquilino \
+         (piso {MIN_BUDGET_MS}) — o controlador punia a agua por uma conta que nao era dela"
+    );
+    // ⚠️ **E a outra metade, que é a do PISO do período:** a régua é o `min` do
+    // `dt` (o intervalo do vsync), não uma média dele. Com uma média, um frame
+    // lento por culpa alheia LEVANTA a régua — o teto vira `0,6 × 100 ms` e a
+    // água passa a ter licença para comer 60 ms de quadro. As duas metades vivem
+    // no mesmo gate porque é a mesma fixture que as separa das outras camadas.
+    assert!(
+        budget <= MAX_BUDGET_MS,
+        "o orcamento CRESCEU para {budget:.2} ms porque o app ficou lento (teto {MAX_BUDGET_MS}) — \
+         a regua do periodo deixou de ser o piso do `dt`"
+    );
+}
+
 /// **E NUMA POÇA QUE A SIM NÃO ALCANÇA, O TETO SEGURA O FRAME** — a camada que o gate da folga
 /// não consegue ver.
 ///

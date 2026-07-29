@@ -545,3 +545,55 @@ fn measure_the_heavy_puddle_regime() {
         (sim_frame(&t) - before) as f64 / 2.0
     );
 }
+
+/// **DE QUE É FEITO O `stamps` DO LOG** — o eixo que nenhuma sonda de água mediu.
+///
+/// Smoke do Enio (2026-07-29), com o tick já orçado: `tool-tick=0.00ms` em TODA amostra e
+/// **`stamps=13.96ms` e depois `stamps=116.03ms`**. O `stamps` é `last_paint_stamp_us`: o custo dos
+/// dabs dirigidos pelo PONTEIRO, dentro do `on_canvas_pointer` — fora do frame, e portanto fora de
+/// tudo que o orçamento do tick governa.
+///
+/// Esta sonda cronometra CADA chamada de `on_canvas_pointer` de um traço, pela porta do produto.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_what_a_wet_stamp_costs() {
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+    println!(
+        "\n{:<10} {:>8} {:>10} {:>10} {:>10} {:>10}",
+        "tela", "raio", "down ms", "move p50", "move p90", "move MAX"
+    );
+    for side in [2048u32, 4096] {
+        for radius in [100.0f32, 300.0] {
+            let mut t = wetted(side, radius);
+            let x0 = 300.0f32;
+            let y0 = 300.0f32;
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            let down = t0.elapsed().as_secs_f64() * 1e3;
+            let _ = t.take_preview_arc();
+            let mut ms = Vec::new();
+            for k in 1..=60 {
+                let d = 40.0 * k as f32;
+                let t0 = Instant::now();
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                let _ = t.take_preview_arc();
+                // O produto TICKA entre eventos de ponteiro; sem isso a sonda
+                // mede um traço que nunca simula, que é outra coisa.
+                ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+                let _ = t.take_preview_arc();
+            }
+            let d = 40.0 * 60.0;
+            t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+            ms.sort_by(f64::total_cmp);
+            println!(
+                "{:<10} {radius:>8.0} {down:>10.2} {:>10.2} {:>10.2} {:>10.2}",
+                format!("{side}x{side}"),
+                ms[ms.len() / 2],
+                ms[ms.len() * 9 / 10],
+                ms[ms.len() - 1],
+            );
+        }
+    }
+    println!();
+}

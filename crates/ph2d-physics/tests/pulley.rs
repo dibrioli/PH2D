@@ -87,6 +87,7 @@ fn point_wheels() -> Vec<RopeWheel> {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         },
         RopeWheel {
             centre: [1.0, WHEEL_Y],
@@ -94,6 +95,7 @@ fn point_wheels() -> Vec<RopeWheel> {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         },
     ]
 }

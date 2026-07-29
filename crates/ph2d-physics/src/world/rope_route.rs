@@ -61,11 +61,33 @@
 /// lado da polia no meio da corrida sem sair da canaleta, e um lado recomputado
 /// por frame pisca perto da configuração degenerada, o que muda o comprimento e
 /// dá um puxão.
+///
+/// ⚠️ **Nem todo campo daqui é geometria**, e isso é deliberado: `id`,
+/// `break_force` e o par `body`/`local` do W3 são *o que a rota consome sobre uma
+/// roldana*, não o que ela desenha. O MÓDULO é a geometria pura; a STRUCT é a
+/// roldana. As funções deste arquivo leem `centre`/`radius`/`side` e mais nada.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct RopeWheel {
-    /// O centro, em **mundo**. É isto que uma roldana é: um ponto pregado no
-    /// cenário (ou, no W3, num corpo).
+    /// O centro, em **mundo** — e para uma roldana MONTADA (W3) ele é
+    /// **derivado**, não autorado: [`super::pulley::refresh_mounts`] o reescreve
+    /// da pose viva do corpo uma vez por sub-passo, na ARENA, que é a mesma lista
+    /// que o desenho lê. Uma segunda cópia refrescada à parte faria o solver e o
+    /// overlay discordarem sobre onde a roldana está.
     pub centre: [f32; 2],
+    /// **Em que corpo esta roldana está MONTADA** (W3) — `None` é uma roldana
+    /// pregada no cenário, e é isso que toda roldana era até aqui.
+    ///
+    /// É este campo que traz a vantagem mecânica de volta: uma roldana montada
+    /// num corpo que se move é a **cadernal móvel** de uma talha, e o corpo passa
+    /// a ser sustentado por DOIS ramos da mesma corda. Ver o Jacobiano em
+    /// [`wheel_jacobian`].
+    pub body: Option<rapier2d::dynamics::RigidBodyHandle>,
+    /// Onde no corpo o EIXO está, no frame local dele.
+    ///
+    /// Local e nunca mundo, pela mesma razão que as âncoras de joint são locais
+    /// (W-AnchorFollow): guardar mundo faria o eixo **caminhar pelo corpo**
+    /// conforme ele gira. Ignorado quando [`Self::body`] é `None`.
+    pub local: [f32; 2],
     /// O raio, em metros. `0` reduz ao modelo de ponto do W-Pulley v1 — e essa
     /// redução é **exata**, o que a torna a âncora de regressão da wave.
     pub radius: f32,
@@ -87,6 +109,31 @@ pub struct RopeWheel {
     /// um que quase não desvia a corda carrega quase nada. É a mesma conta do
     /// Jacobiano — uma conta, dois consumidores.
     pub break_force: f32,
+}
+
+impl Default for RopeWheel {
+    /// **A roldana neutra: um PONTO pregado no cenário, que não parte.**
+    ///
+    /// Não é conveniência — é a redução exata ao modelo do W-Pulley v1 (raio zero,
+    /// sem eixo montado, sem limiar), que é a âncora de regressão desta família
+    /// inteira. `side: 1` é só o valor de partida; quem responde de que lado a
+    /// corda passa é o [`resolve_sides`].
+    ///
+    /// ⚠️ **Para FIXTURES.** Um sítio de PRODUTO nomeia todo campo: com `..default()`
+    /// o campo seguinte nasce neutro **em silêncio**, e o compilador deixa de ser a
+    /// lista de quem precisa aprender sobre ele. As duas rotas de produto (a
+    /// colheita e o `pulley_rig` da ponte) escrevem os seis.
+    fn default() -> Self {
+        Self {
+            centre: [0.0, 0.0],
+            body: None,
+            local: [0.0, 0.0],
+            radius: 0.0,
+            side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
+        }
+    }
 }
 
 /// O que a rota entrega ao kernel de impulso.
@@ -180,6 +227,39 @@ pub fn turn_angle(u_in: [f32; 2], u_out: [f32; 2], side: i8) -> f32 {
         t -= std::f32::consts::TAU;
     }
     t
+}
+
+/// **O Jacobiano de uma roldana montada** — `∂L/∂C`, o quanto a rota se alonga
+/// quando o EIXO dela se move (W3).
+///
+/// ⚠️ **Duas leituras da mesma expressão, e é preciso saber que são a mesma**,
+/// senão alguém "corrige" uma na outra:
+///
+/// - no vocabulário deste módulo, onde [`Tangent::dir`] aponta **para a frente ao
+///   longo da corda**, é `u_entra − u_sai` — mover a roda ao longo do trecho que
+///   chega o alonga, e ao longo do que sai o encurta;
+/// - no vocabulário da FÍSICA, onde os dois versores apontam **para fora do
+///   eixo** (as duas direções em que a corda puxa), é `−(u_in + u_out)`, que é
+///   como o cabeçalho deste módulo e o do [`super::rope_load`] a escrevem.
+///
+/// São a mesma conta porque o versor de fora do trecho que chega é `−u_entra`.
+///
+/// ⚠️ **O ARCO não entra** — o ponto de tangência desliza e a variação do arco
+/// cancela a do trecho (teorema do envelope, o cabeçalho deste módulo). É por isso
+/// que uma roldana montada custa ao kernel exatamente uma linha.
+///
+/// **Uma conta, TRÊS consumidores:** o impulso no eixo (`pulley::apply`), a massa
+/// efetiva dele, e a carga de ruptura daquele centro (`rope_load::ledger_axles`),
+/// que é `T·|∂L/∂C|`. `None` quando a lista de trechos não descreve a roda `i`.
+#[must_use]
+pub fn wheel_jacobian(legs: &[Tangent], i: usize) -> Option<[f32; 2]> {
+    // O trecho que CHEGA nesta roda é o `i`, o que SAI é o `i+1`.
+    let inbound = legs.get(i)?;
+    let outbound = legs.get(i + 1)?;
+    Some([
+        inbound.dir[0] - outbound.dir[0],
+        inbound.dir[1] - outbound.dir[1],
+    ])
 }
 
 /// **Resolver a rota inteira**, escrevendo os `wheels.len() + 1` trechos em

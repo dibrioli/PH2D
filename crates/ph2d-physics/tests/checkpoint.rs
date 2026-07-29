@@ -414,6 +414,7 @@ fn a_snapped_rope_comes_back_when_the_clock_does() {
         side: 1,
         id: 77,
         break_force: f32::INFINITY,
+        ..RopeWheel::default()
     };
     let probe = PulleyDesc {
         id: 3,
@@ -488,6 +489,7 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         };
         let probe = PulleyDesc {
             id: 7,

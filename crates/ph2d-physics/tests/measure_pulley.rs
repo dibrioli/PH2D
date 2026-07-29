@@ -29,6 +29,7 @@ fn point_wheels() -> Vec<RopeWheel> {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         },
         RopeWheel {
             centre: [1.0, 4.0],
@@ -36,6 +37,7 @@ fn point_wheels() -> Vec<RopeWheel> {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         },
     ]
 }
@@ -396,6 +398,7 @@ fn sweep_the_winch() {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         };
         let probe = PulleyDesc {
             id: 1,
@@ -523,6 +526,7 @@ fn sweep_the_winch() {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         };
         let probe = PulleyDesc {
             id: 1,
@@ -642,6 +646,7 @@ fn sweep_the_break() {
             side: 1,
             id: 77,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         };
         let probe = PulleyDesc {
             id: 1,
@@ -709,6 +714,7 @@ fn sweep_the_break() {
             side: 1,
             id: 77,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         };
         let probe = PulleyDesc {
             id: 1,
@@ -753,6 +759,7 @@ fn sweep_the_break() {
             side: 1,
             id: 77,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         }],
     );
     for tick in 1..=60 {

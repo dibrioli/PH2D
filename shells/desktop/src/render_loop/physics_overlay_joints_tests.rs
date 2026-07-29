@@ -88,6 +88,7 @@ pub(super) fn wheels() -> Vec<ph2d_physics_ecs::rope_route::RopeWheel> {
             side: -1,
             id: 0,
             break_force: f32::INFINITY,
+            ..ph2d_physics_ecs::rope_route::RopeWheel::default()
         },
         ph2d_physics_ecs::rope_route::RopeWheel {
             centre: [1.0, 2.0],
@@ -95,6 +96,7 @@ pub(super) fn wheels() -> Vec<ph2d_physics_ecs::rope_route::RopeWheel> {
             side: -1,
             id: 0,
             break_force: f32::INFINITY,
+            ..ph2d_physics_ecs::rope_route::RopeWheel::default()
         },
     ]
 }

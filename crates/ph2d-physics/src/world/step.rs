@@ -74,6 +74,11 @@ impl PhysicsWorld {
                 &self.attract,
                 self.integration_parameters.dt,
             );
+            // W-Pulley W3: onde as roldanas MONTADAS estão AGORA. Antes do passe,
+            // e por SUB-PASSO, porque uma cadernal móvel se move junto com o corpo
+            // que a carrega — geometria de um sub-passo atrás puxaria numa direção
+            // que já não é a da corda. No-op para toda roldana pregada no cenário.
+            pulley::refresh_mounts(&self.bodies, &mut self.pulley_wheels);
             // The pulleys (W-Pulley): a rope through two wheels, imposed as a
             // velocity projection. Per SUBSTEP for the same reason as the three
             // above, and a no-op for every world without one.

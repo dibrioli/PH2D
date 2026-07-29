@@ -82,6 +82,7 @@ fn how_many_passes_the_side_fixpoint_needs() {
                         side: 1,
                         id: 0,
                         break_force: f32::INFINITY,
+                        ..RopeWheel::default()
                     }
                 })
                 .collect();

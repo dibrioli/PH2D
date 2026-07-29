@@ -32,6 +32,7 @@ fn rig(
         side: 1,
         id: WHEEL_ID,
         break_force: wheel_break,
+        ..RopeWheel::default()
     };
     let probe = PulleyDesc {
         id: ROPE_ID,

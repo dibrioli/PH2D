@@ -69,17 +69,19 @@ pub(super) fn ledger_axles(
     tension: f32,
 ) {
     for (i, w) in live.iter().enumerate() {
-        // O trecho que CHEGA nesta roda é o `i`, o que SAI é o `i+1`. A última
-        // roda tem os dois; uma lista curta demais não descreve roda nenhuma.
-        let (Some(inbound), Some(outbound)) = (legs.get(i), legs.get(i + 1)) else {
+        // ⚠️ **A MESMA porta que o impulso do W3 usa** (`∂L/∂C`), e não uma
+        // segunda subtração escrita aqui: a resultante no eixo É a magnitude do
+        // Jacobiano daquele centro. Enquanto isto era uma cópia local ela dizia
+        // `u_sai − u_entra`, o NEGATIVO do que a porta devolve — e as duas
+        // magnitudes são bit-idênticas (o IEEE-754 faz `a−b` exatamente `−(b−a)`),
+        // então a troca é livre e o que se ganha é não haver duas respostas.
+        let Some(j) = super::rope_route::wheel_jacobian(legs, i) else {
             continue;
         };
-        let dx = outbound.dir[0] - inbound.dir[0];
-        let dy = outbound.dir[1] - inbound.dir[1];
         // `sqrt`, nunca `hypot`: o IEEE-754 especifica o primeiro exatamente e o
         // segundo é a libm da plataforma — e este número decide uma ruptura, que
         // move poses e alcança o hash C9 (a lei que o W-AreaFalloff escreveu).
-        let load = tension * (dx * dx + dy * dy).sqrt();
+        let load = tension * (j[0] * j[0] + j[1] * j[1]).sqrt();
         let slot = led.axle.entry(w.id).or_insert(0.0);
         *slot = slot.max(load);
         if load > w.break_force {

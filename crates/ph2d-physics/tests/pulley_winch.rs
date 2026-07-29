@@ -57,6 +57,7 @@ fn winch(radius: f32, omega: f32, mass: f32) -> (PhysicsWorld, PulleyDesc, Rigid
         side: 1,
         id: 0,
         break_force: f32::INFINITY,
+        ..RopeWheel::default()
     };
     let probe = PulleyDesc {
         id: 1,
@@ -202,6 +203,7 @@ fn two_drums_on_one_rope_sum_their_rates() {
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+            ..RopeWheel::default()
         }],
     );
     let b = rise_after(&mut two, l2, 60);

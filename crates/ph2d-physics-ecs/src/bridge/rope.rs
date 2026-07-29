@@ -88,6 +88,10 @@ impl PhysicsBridge {
                 entity: we,
                 wheel: RopeWheel {
                     centre: [t.translation.x, t.translation.y],
+                    // W3-B costura a montagem aqui; até lá toda roldana colhida é
+                    // do CENÁRIO, e o kernel a trata como sempre tratou.
+                    body: None,
+                    local: [0.0, 0.0],
                     radius: wheel.radius,
                     // A roldana é apontada pelo NOME dela, a mesma chave por que
                     // a corda aponta os corpos — bits de entidade mudam a cada
@@ -168,8 +172,15 @@ pub fn pulley_rig(
     let dx = rest_a[0] - rest_b[0];
     let dy = rest_a[1] - rest_b[1];
     let lift = (0.5 * (dx * dx + dy * dy).sqrt()).max(PhysicsJoint::MIN_WHEEL_LIFT);
+    // Sítio de PRODUTO: nomeia os seis. Com `..default()` o campo que a próxima
+    // wave acrescentar nasceria neutro aqui em silêncio, e uma polia recém-criada
+    // é exatamente onde isso não pode acontecer (o §0 do plano tem a foto).
     let wheel = |c: [f32; 2]| RopeWheel {
         centre: c,
+        // Uma polia recém-montada nasce com as duas roldanas no CENÁRIO — a
+        // cadernal móvel do W3 é um segundo gesto, não um default.
+        body: None,
+        local: [0.0, 0.0],
         radius: lift * WHEEL_RADIUS_FRACTION,
         side: 1,
         id: 0,

@@ -431,38 +431,7 @@ impl FxStackPass {
                 } => 0,
                 _ => u32::try_from(geom.len()).unwrap_or(u32::MAX),
             };
-            let g = Globals {
-                dims: [w, h],
-                half: kernel_half(op.sigma_px),
-                kind: u32::from(op.kind),
-                tint: op.tint,
-                inv_two_sigma2: 1.0 / (2.0 * sigma * sigma),
-                opacity: op.opacity,
-                off_x: op.offset_px[0],
-                off_y: op.offset_px[1],
-                jump: 0,
-                band: op.sigma_px.max(0.0),
-                n_segs,
-                blend: u32::from(op.blend),
-                noise_scale: op.noise_scale_px.max(1e-3),
-                octaves: u32::from(op.detail.max(1)),
-                seed: u32::from(op.seed),
-                mode: u32::from(op.mode),
-                org,
-                grow_px: op.grow_px,
-                _pad: [0.0],
-                hue: op.hue,
-                sat: op.sat,
-                bright: op.bright,
-                _pad2: [0.0],
-                tint_b: op.tint_b,
-                // Nenhum op lê a fonte — o ingest já a trouxe para o espaço de trabalho.
-                src_org: [0, 0],
-                stop_count: op.stop_count,
-                _pad3: 0,
-                stops: op.stops,
-                stop_pos: op.stop_pos,
-            };
+            let g = Globals::for_op(op, [w, h], org, n_segs);
             match plan {
                 Plan::Point | Plan::Warp => {
                     write_at(&mut blob, slot, &g);

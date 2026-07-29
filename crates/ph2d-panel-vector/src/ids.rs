@@ -111,14 +111,16 @@ pub use ph2d_editor_core::ids::{
 /// LINHA (card / ✕ / ↑ / ↓ / 👁 / Radius / OffX / OffY / Color / Opacity). Distinta de EFFECTS
 /// (deformadores vetoriais).
 pub use ph2d_editor_core::ids::{
-    MAX_FILTER_BLENDS, MAX_FILTER_KINDS, MAX_FILTER_MODES, MAX_FILTER_ROWS, VECTOR_SECTION_FILTERS,
-    filter_add_id, filter_blend_id, filter_blend_option_id, filter_bright_id, filter_bright_num_id,
-    filter_card_id, filter_color_b_id, filter_color_id, filter_detail_id, filter_detail_num_id,
-    filter_down_id, filter_grow_id, filter_grow_num_id, filter_hide_id, filter_hue_id,
-    filter_hue_num_id, filter_mode_id, filter_offx_id, filter_offx_num_id, filter_offy_id,
-    filter_offy_num_id, filter_opacity_id, filter_opacity_num_id, filter_radius_id,
-    filter_radius_num_id, filter_remove_id, filter_sat_id, filter_sat_num_id, filter_scale_id,
-    filter_scale_num_id, filter_seed_id, filter_seed_num_id, filter_up_id,
+    MAX_FILTER_BLENDS, MAX_FILTER_KINDS, MAX_FILTER_MODES, MAX_FILTER_ROWS, MAX_FILTER_STOPS,
+    VECTOR_SECTION_FILTERS, filter_add_id, filter_blend_id, filter_blend_option_id,
+    filter_bright_id, filter_bright_num_id, filter_card_id, filter_color_b_id, filter_color_id,
+    filter_detail_id, filter_detail_num_id, filter_down_id, filter_grow_id, filter_grow_num_id,
+    filter_hide_id, filter_hue_id, filter_hue_num_id, filter_mode_id, filter_offx_id,
+    filter_offx_num_id, filter_offy_id, filter_offy_num_id, filter_opacity_id,
+    filter_opacity_num_id, filter_radius_id, filter_radius_num_id, filter_ramp_id,
+    filter_remove_id, filter_sat_id, filter_sat_num_id, filter_scale_id, filter_scale_num_id,
+    filter_seed_id, filter_seed_num_id, filter_stop_add_id, filter_stop_color_id, filter_stop_id,
+    filter_stop_remove_id, filter_up_id,
 };
 
 /// **Pattern on Path** (plano 23): a seção + os quatro botões + os pares Spacing/Start/End/Slide/Offset.

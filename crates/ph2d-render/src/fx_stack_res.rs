@@ -11,7 +11,7 @@
 
 use ph2d_gpu::GpuContext;
 
-use crate::fx_stack::UNIFORM_STRIDE;
+use crate::fx_stack::{UNIFORM_STRIDE, kernel_half};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -101,6 +101,53 @@ pub(crate) struct Globals {
     /// ⚠️ **Empacotadas de propósito:** o WGSL dá stride **16** a um `array<f32>` no address space
     /// de uniform, então oito floats soltos custariam 128 bytes para carregar 32.
     pub(crate) stop_pos: [[f32; 4]; 2],
+}
+
+impl Globals {
+    /// **Os globals de UM degrau.**
+    ///
+    /// ⚠️ Mora aqui, e não no fold, porque o arquivo que é DONO do uniform é quem tem de saber
+    /// preenchê-lo: os dois lados do layout (este struct e o WGSL) já vivem juntos por um gate de
+    /// paridade, e a terceira metade — *com que números cada campo é escrito* — divergia num arquivo
+    /// separado. O fold decide QUAIS passes correm; este decide o que cada um LÊ.
+    ///
+    /// O `n_segs` chega RESOLVIDO do plano de propósito: *"contra o quê este degrau mede?"* tem uma
+    /// resposta, e ela é o plano — derivá-la aqui outra vez seria a segunda porta.
+    pub(crate) fn for_op(op: &crate::FxOpGpu, dims: [u32; 2], org: [f32; 2], n_segs: u32) -> Self {
+        let sigma = op.sigma_px.max(1e-4);
+        Self {
+            dims,
+            half: kernel_half(op.sigma_px),
+            kind: u32::from(op.kind),
+            tint: op.tint,
+            inv_two_sigma2: 1.0 / (2.0 * sigma * sigma),
+            opacity: op.opacity,
+            off_x: op.offset_px[0],
+            off_y: op.offset_px[1],
+            jump: 0,
+            band: op.sigma_px.max(0.0),
+            n_segs,
+            blend: u32::from(op.blend),
+            noise_scale: op.noise_scale_px.max(1e-3),
+            octaves: u32::from(op.detail.max(1)),
+            seed: u32::from(op.seed),
+            mode: u32::from(op.mode),
+            org,
+            grow_px: op.grow_px,
+            _pad: [0.0],
+            hue: op.hue,
+            sat: op.sat,
+            bright: op.bright,
+            _pad2: [0.0],
+            tint_b: op.tint_b,
+            // Nenhum op lê a fonte — o ingest já a trouxe para o espaço de trabalho.
+            src_org: [0, 0],
+            stop_count: op.stop_count,
+            _pad3: 0,
+            stops: op.stops,
+            stop_pos: op.stop_pos,
+        }
+    }
 }
 
 pub(crate) struct Tex {

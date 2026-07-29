@@ -44,12 +44,191 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
         "o teto de OITAVAS do painel tem de bater com o `FxOp::MAX_DETAIL` — um teto maior deixa \
          o artista pedir oitavas que o produtor clampa em silencio, e o slider mente"
     );
+    // ⚠️ **O teto de STOPS: esta asserção NÃO é a defesa primária, e dizer o contrário seria vender
+    // um gate que não pode falhar.** Medido: baixar o `MAX_FILTER_STOPS` para 4 **não compila** — o
+    // snapshot do painel declara `[f32; MAX_FILTER_STOPS]` e a shell o preenche de um
+    // `[_; MAX_GRADIENT_STOPS]`, então os dois tamanhos são o MESMO tipo e o compilador os casa. Ela
+    // fica como cinto: se o snapshot algum dia virar `Vec` (desacoplando os tamanhos), é ela que
+    // nomeia o porquê — um teto menor deixa os últimos stops sem punho (autorados e inalcançáveis),
+    // um maior faz o painel pintar punhos que o uniform não carrega.
+    assert_eq!(
+        ph2d_editor::ids::MAX_FILTER_STOPS,
+        FxOp::MAX_GRADIENT_STOPS,
+        "os tetos de STOPS divergiram — e como os arrays sao tipados por eles, isto so e alcancavel \
+         se o snapshot deixou de ser um array de tamanho fixo"
+    );
     let widest = FxOp::SPECS.iter().map(|s| s.modes.len()).max().unwrap_or(0);
     assert!(
         widest <= ph2d_editor::ids::MAX_FILTER_MODES,
         "o teto de MODOS do painel ({}) nao cobre o tipo mais largo ({widest}) — os ultimos \
          modos ficariam sem chip, em silencio",
         ph2d_editor::ids::MAX_FILTER_MODES
+    );
+}
+
+/// **Cada slot de cor recebe a escolha do picker, e SÓ ele.**
+///
+/// ⚠️ **Este gate existe porque o arch-gate irmão não conseguia prová-lo.** A rota morava dentro do
+/// `render_frame` (window-gated), então o que a cobria era uma varredura do FONTE — e uma varredura
+/// vê forma, não comportamento: a mutação que dobrava o stop na ponta escura **manteve o nome
+/// `ColourSlot::SelectedStop` num braço inalcançável** e passou verde. Extraída para uma função
+/// pura, a rota é observável e a mutação sangra aqui.
+#[test]
+fn each_colour_slot_gets_the_picked_colour_and_only_it() {
+    use crate::fx_live::{ColourSlot, apply_picked_colour};
+    const PICKED: [f32; 4] = [0.25, 0.5, 0.75, 1.0];
+    let base = {
+        let mut op = FxOp::new(FxOp::GRADIENT_MAP);
+        op.stop_count = 3;
+        op.color = [1.0, 0.0, 0.0, 1.0];
+        op.color_b = [0.0, 1.0, 0.0, 1.0];
+        op.stops[0] = [0.1, 0.1, 0.1, 1.0];
+        op.stops[1] = [0.2, 0.2, 0.2, 1.0];
+        op.stops[2] = [0.3, 0.3, 0.3, 1.0];
+        op
+    };
+    // O stop em foco é o do MEIO — nem 0 nem o último, senão um off-by-one acertaria por acidente.
+    let mut op = base;
+    apply_picked_colour(&mut op, ColourSlot::SelectedStop, 1, PICKED);
+    assert_eq!(op.stops[1], PICKED, "o stop em foco nao recebeu a cor");
+    assert_eq!(op.color, base.color, "pintar um STOP mexeu na ponta escura");
+    assert_eq!(
+        op.color_b, base.color_b,
+        "pintar um STOP mexeu na ponta clara"
+    );
+    assert_eq!(
+        op.stops[0], base.stops[0],
+        "pintar o stop 1 mexeu no stop 0"
+    );
+    assert_eq!(
+        op.stops[2], base.stops[2],
+        "pintar o stop 1 mexeu no stop 2"
+    );
+
+    let mut op = base;
+    apply_picked_colour(&mut op, ColourSlot::First, 1, PICKED);
+    assert_eq!(op.color, PICKED);
+    assert_eq!(
+        op.stops[1], base.stops[1],
+        "a ponta escura escreveu num STOP"
+    );
+
+    let mut op = base;
+    apply_picked_colour(&mut op, ColourSlot::Second, 1, PICKED);
+    assert_eq!(op.color_b, PICKED);
+    assert_eq!(
+        op.stops[1], base.stops[1],
+        "a ponta clara escreveu num STOP"
+    );
+
+    // E um foco OBSOLETO (a rampa encolheu desde o clique) pousa no último stop VIVO, nunca fora.
+    let mut op = base;
+    apply_picked_colour(&mut op, ColourSlot::SelectedStop, 7, PICKED);
+    assert_eq!(
+        op.stops[2], PICKED,
+        "um foco obsoleto nao foi clampado a contagem viva — a cor cairia num slot que a rampa \
+         nao usa, e o artista veria o picker nao fazer nada"
+    );
+}
+
+/// **Acrescentar um stop NÃO muda o desenho** — a lei do `+`, e a razão de ele nascer no maior vão
+/// com a cor que a rampa já tem ali.
+///
+/// O oráculo é a rampa AMOSTRADA (`ramp_preview`), que é a mesma função que o trilho pinta e cujo
+/// acordo com o dispositivo já está medido em 1 nível de byte. Se o `+` mudasse a arte, o artista
+/// clicaria para ganhar um ponto de controle e receberia uma edição que não pediu.
+#[test]
+fn adding_a_stop_does_not_change_the_ramp() {
+    let mut op = FxOp::new(FxOp::GRADIENT_MAP);
+    // Uma rampa de três, com vãos DESIGUAIS: o `+` tem de escolher o maior, e com vãos iguais o
+    // gate não distinguiria "o maior" de "o primeiro".
+    op.stop_count = 3;
+    op.stops[0] = [0.0, 0.0, 0.0, 1.0];
+    op.stops[1] = [0.9, 0.2, 0.2, 1.0];
+    op.stops[2] = [1.0, 1.0, 1.0, 1.0];
+    op.stop_pos = [0.0, 0.2, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let before = crate::fx_live::ramp_preview(&op);
+    crate::fx_live::add_stop(&mut op);
+    assert_eq!(op.stop_count, 4, "o `+` nao acrescentou um stop");
+    // O vão maior é `0,2..1,0` ⇒ o stop novo cai em 0,6.
+    assert!(
+        (op.stop_pos[3] - 0.6).abs() < 1e-6,
+        "o stop novo caiu em {} — nao no meio do MAIOR vao (0,2..1,0), entao ele pode nascer \
+         debaixo de outro punho e ficar inalcancavel",
+        op.stop_pos[3]
+    );
+    let after = crate::fx_live::ramp_preview(&op);
+    let worst = before
+        .iter()
+        .zip(&after)
+        .flat_map(|(a, b)| (0..3).map(move |c| i32::from(a[c]).abs_diff(i32::from(b[c]))))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        worst <= 1,
+        "acrescentar um stop moveu a rampa em {worst} nivel(is) — o `+` esta a EDITAR a arte, e o \
+         artista so pediu um ponto de controle"
+    );
+    // ⚠️ **E em SMOOTH ele NÃO é neutro — por construção, não por defeito.** O easing é por
+    // SEGMENTO, então dividir um segmento reforma a curva; nenhuma escolha de cor conserta isso.
+    // Este meio-gate existe para o número ficar MEDIDO em vez de ser descoberto como bug, e porque
+    // foi ele que expôs o default errado: o `BLANK` compartilhado nasce em `MODE_CONTOUR` (= 1), e
+    // `1` aqui é *Smooth* — o Gradient Map nascia com easing que ninguém pediu.
+    let mut eased = FxOp::new(FxOp::GRADIENT_MAP);
+    eased.mode = 1;
+    eased.stop_count = 3;
+    eased.stops[0] = [0.0, 0.0, 0.0, 1.0];
+    eased.stops[1] = [0.9, 0.2, 0.2, 1.0];
+    eased.stops[2] = [1.0, 1.0, 1.0, 1.0];
+    eased.stop_pos = [0.0, 0.2, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let smooth_before = crate::fx_live::ramp_preview(&eased);
+    crate::fx_live::add_stop(&mut eased);
+    let smooth_after = crate::fx_live::ramp_preview(&eased);
+    let smooth_worst = smooth_before
+        .iter()
+        .zip(&smooth_after)
+        .flat_map(|(a, b)| (0..3).map(move |c| i32::from(a[c]).abs_diff(i32::from(b[c]))))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        smooth_worst > 8,
+        "em Smooth o `+` moveu a rampa em apenas {smooth_worst} nivel(is) — se ele passou a ser \
+         neutro ali, o easing deixou de ser por-SEGMENTO, e o modo perdeu o que o distingue"
+    );
+    assert_eq!(
+        FxOp::new(FxOp::GRADIENT_MAP).mode,
+        0,
+        "um Gradient Map novo nasceu em Smooth — o `BLANK` compartilhado tem `MODE_CONTOUR` (= 1) e \
+         aqui `1` e outro modo; o default TEM de ser declarado, senao o artista ganha um easing \
+         que nao pediu e o `+` deixa de ser neutro"
+    );
+}
+
+/// **O `−` tem PISO em dois, e o piso é a definição** — abaixo dele a rampa cai numa lei diferente
+/// (o ramo vazio do `gradient_sample`, 73 níveis de byte distante do default de dois stops), e o
+/// artista atravessaria uma descontinuidade que nada na tela explica.
+#[test]
+fn removing_stops_stops_at_two() {
+    let mut op = FxOp::new(FxOp::GRADIENT_MAP);
+    op.stop_count = 3;
+    op.stop_pos = [0.0, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    op.stops[1] = [0.9, 0.2, 0.2, 1.0];
+    // Remover o do MEIO desloca os de cima para baixo — o índice de autoria dos que sobram muda, e
+    // é por isso que a seleção do painel é clampada.
+    crate::fx_live::remove_stop(&mut op, 1);
+    assert_eq!(op.stop_count, 2);
+    assert!(
+        (op.stop_pos[1] - 1.0).abs() < 1e-6,
+        "o stop que sobrou nao desceu de slot ({}) — o array deixou um buraco",
+        op.stop_pos[1]
+    );
+    // E agora o piso morde: mais nenhum sai.
+    for _ in 0..3 {
+        crate::fx_live::remove_stop(&mut op, 0);
+    }
+    assert_eq!(
+        op.stop_count, 2,
+        "o `-` furou o piso de dois — abaixo dele a rampa muda de LEI, nao de forma"
     );
 }
 
@@ -163,16 +342,25 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
 /// modo de falha de errar é mudo: escolher a segunda ponta escreveria na primeira, com a UI a
 /// mostrar a cor certa no card errado. A resposta vem do ID do alvo, nunca do `kind` do degrau.
 #[test]
-fn the_two_ramp_swatches_are_distinct_picker_targets() {
+fn the_three_colour_swatches_are_distinct_picker_targets() {
+    use crate::fx_live::ColourSlot;
     use ph2d_editor::ids as vid;
     for r in 0..VecFilter::MAX_OPS {
         assert_eq!(
             crate::fx_live::colour_target(vid::filter_color_id(r)),
-            Some((r, false))
+            Some((r, ColourSlot::First))
         );
         assert_eq!(
             crate::fx_live::colour_target(vid::filter_color_b_id(r)),
-            Some((r, true))
+            Some((r, ColourSlot::Second))
+        );
+        // ⚠️ **A TERCEIRA, e é a que o comentário do readback já previa:** *"derivar a ponta do
+        // `kind` faria a segunda escrever na primeira em qualquer tipo que ganhasse uma rampa
+        // depois"*. Ela existe agora, e o slot é o que a distingue — um `bool` dobraria o stop na
+        // ponta escura em silêncio.
+        assert_eq!(
+            crate::fx_live::colour_target(vid::filter_stop_color_id(r)),
+            Some((r, ColourSlot::SelectedStop))
         );
     }
     // Um controle que NÃO é cor não é alvo de picker — senão arrastar um slider abriria o OKLCH.

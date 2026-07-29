@@ -111,6 +111,25 @@ fn seed_and_publish(
         // vigente da linha: a marca é idempotente, e uma marca condicionada ao tipo chegaria tarde
         // no frame em que o artista TROCA o tipo da linha.
         store.register_picker_swatch(ids::filter_color_b_id(row));
+        // A cor do stop SELECIONADO da rampa (Gradient Map) passa pela MESMA porta — uma swatch por
+        // linha, cujo alvo é a seleção, porque o picker é modal e só pode ter um alvo.
+        store.register_picker_swatch(ids::filter_stop_color_id(row));
+        // E os PUNHOS da rampa: cada um é um `InteractiveState::CurvePoint` cujo `canvas` é a barra
+        // que o paint do frame anterior publicou — o primitivo de arrasto 2D que o editor de falloff
+        // do Painter e a curva do motion-params já usam. Sem barra pintada não há o que registrar.
+        if let Some([bx, by, bw, bh]) = state::filters::ramp_bar(row) {
+            for stop in 0..ids::MAX_FILTER_STOPS {
+                store.register(
+                    ids::filter_stop_id(row, stop),
+                    ph2d_editor_core::interaction::InteractiveState::CurvePoint {
+                        parent: ids::filter_ramp_id(row),
+                        channel: 0,
+                        index: stop as u8,
+                        canvas: Rect::new(bx, by, bw, bh),
+                    },
+                );
+            }
+        }
     }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {

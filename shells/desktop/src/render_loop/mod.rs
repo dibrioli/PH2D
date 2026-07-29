@@ -1900,6 +1900,10 @@ impl crate::App {
             // Filters (a PILHA de FX raster, plano 24): um comando (Add/✕/↑/↓/👁) e um valor de
             // slider por frame, decodificados pela porta única `fx_live::hit_of`.
             let mut pending_filter_cmd: Option<crate::fx_live::FilterHit> = None;
+            // O arrasto de um punho da rampa: `(linha, índice de AUTORIA do stop, posição 0..1)`.
+            // Um `pending`, como o `FilterHit`, e pelo MESMO motivo: a edição do documento mora no
+            // bloco que tem o `sim` em mãos, e o drain do barramento não o tem.
+            let mut pending_filter_stop: Option<(usize, u8, f32)> = None;
             let mut pending_filter_val: Option<(crate::fx_live::FilterHit, f64)> = None;
             let mut pending_pp_rotation: Option<f64> = None;
             // O Picker de guia (Enio 2026-07-23): o botão só ARMA — a shell captura a fonte e o
@@ -2349,6 +2353,22 @@ impl crate::App {
                             && *id == ph2d_editor::ids::VECTOR_TEXT_FONT_DD
                         {
                             pending_vec_font_pick = val.parse::<usize>().ok();
+                        }
+                        // O punho de um stop da rampa: `SelectOption(trilho, "linha:idx:x")` — o
+                        // dispatch de 2D já converteu o ponteiro contra a barra, então o `x` chega
+                        // normalizado. O formato espelha o do editor de falloff do Painter.
+                        if let ph2d_editor::tool::PanelEvent::SelectOption(id, val) = &ev
+                            && (0..ph2d_editor::ids::MAX_FILTER_ROWS)
+                                .any(|r| *id == ph2d_editor::ids::filter_ramp_id(r))
+                        {
+                            let mut parts = val.split(':');
+                            if let (Some(Ok(row)), Some(Ok(idx)), Some(Ok(x))) = (
+                                parts.next().map(str::parse::<usize>),
+                                parts.next().map(str::parse::<u8>),
+                                parts.next().map(str::parse::<f32>),
+                            ) {
+                                pending_filter_stop = Some((row, idx, x));
+                            }
                         }
                         // ADR-0114 C2: Colorize Apply/Clear — mexem no buffer de rabiscos do
                         // shell + no doc, e o `self.gfx` está preso pelo borrow deste bloco;
@@ -3409,6 +3429,19 @@ impl crate::App {
             {
                 use crate::fx_live::FilterHit;
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                // O punho arrastado move APENAS a posição — a cor é da swatch, e o índice é o de
+                // AUTORIA (quem ordena é o consumidor), então arrastar por cima do vizinho não
+                // re-liga o dedo a outro stop.
+                if let Some((row, idx, x)) = pending_filter_stop {
+                    crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                        if let Some(op) = f.ops.get_mut(row)
+                            && usize::from(idx) < usize::from(op.stop_count)
+                            && let Some(slot) = op.stop_pos.get_mut(usize::from(idx))
+                        {
+                            *slot = x.clamp(0.0, 1.0);
+                        }
+                    });
+                }
                 if let Some(cmd) = pending_filter_cmd {
                     match cmd {
                         // Um "Add" numa forma SEM pilha cria a pilha; com pilha, empilha no fim
@@ -3494,7 +3527,25 @@ impl crate::App {
                         }
                         // A swatch só ABRE o picker (o `register_picker_swatch` faz isso); a cor
                         // é lida abaixo, do alvo do picker.
+                        // O trilho da rampa: `+` põe um stop no maior vão com a cor que já está
+                        // ali (não muda o desenho), `−` tira o SELECIONADO com piso em dois.
+                        FilterHit::StopAdd(row) => {
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if let Some(op) = f.ops.get_mut(row) {
+                                    crate::fx_live::add_stop(op);
+                                }
+                            });
+                        }
+                        FilterHit::StopRemove(row) => {
+                            let sel_stop = usize::from(ph2d_panel_vector::selected_stop(row));
+                            crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
+                                if let Some(op) = f.ops.get_mut(row) {
+                                    crate::fx_live::remove_stop(op, sel_stop);
+                                }
+                            });
+                        }
                         FilterHit::Color(_)
+                        | FilterHit::StopColor(_)
                         | FilterHit::ColorB(_)
                         | FilterHit::Radius(_)
                         | FilterHit::OffX(_)
@@ -3557,7 +3608,7 @@ impl crate::App {
                 // A cor do halo vem do MESMO picker OKLCH partilhado (lido como o Contour, aqui,
                 // porque o alvo é um componente ECS). Qual LINHA? A que o alvo do picker nomeia.
                 if let Some(target) = hero.store.picker_target()
-                    && let Some((row, second)) = crate::fx_live::colour_target(target)
+                    && let Some((row, slot)) = crate::fx_live::colour_target(target)
                     && let Some((value, _, _, _)) = hero
                         .store
                         .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
@@ -3569,17 +3620,14 @@ impl crate::App {
                         f32::from(c[2]) / 255.0,
                         f32::from(c[3]) / 255.0,
                     ];
+                    // ⚠️ **A rota mora numa função PURA** (`apply_picked_colour`), e não aqui: a
+                    // decisão de QUAL cor recebe a escolha é o que um arch-gate sobre o fonte NÃO
+                    // consegue provar — a mutação que dobrava o stop na ponta escura manteve o nome
+                    // do slot num braço inalcançável e passou verde. Lá ela é observável.
+                    let sel_stop = usize::from(ph2d_panel_vector::selected_stop(row));
                     crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
                         if let Some(op) = f.ops.get_mut(row) {
-                            // ⚠️ A escolha de QUAL campo vem do id do ALVO, não do tipo do degrau:
-                            // as duas swatches existem lado a lado no mesmo card, e derivar a ponta
-                            // do `kind` faria a segunda escrever na primeira em qualquer tipo que
-                            // ganhasse uma rampa depois.
-                            if second {
-                                op.color_b = col;
-                            } else {
-                                op.color = col;
-                            }
+                            crate::fx_live::apply_picked_colour(op, slot, sel_stop, col);
                         }
                     });
                 }
@@ -5005,6 +5053,7 @@ impl crate::App {
                             color_b_label: s.color_b_label,
                             modes: s.modes,
                             takes_blend: s.takes_blend,
+                            takes_ramp: s.takes_ramp,
                             noise_labels: s.noise_labels,
                             grow_label: s.grow_label,
                             adjust_labels: s.adjust_labels,
@@ -5050,6 +5099,17 @@ impl crate::App {
                                 hue: f64::from(op.hue) * 360.0,
                                 sat: f64::from(op.sat),
                                 bright: f64::from(op.bright),
+                                stop_pos: op.stop_pos,
+                                stop_colors: op.stops.map(crate::fx_live::colour_bytes),
+                                stop_count: op.stop_count,
+                                // ⚠️ **A rampa é amostrada AQUI, pela função que é o ORÁCULO dos
+                                // gates de paridade** (`gradient_map_lut` do
+                                // `ph2d-painter-effects`) — o bar é o que o artista lê para prever
+                                // o render, então ele TEM de sair da mesma lei que o device honra.
+                                // Um lerp de conveniência no painel divergiria em gama justo nos
+                                // meios-tons, e o único lugar onde isso apareceria é uma
+                                // screenshot. Medido: device vs esta função, **1 nível de byte**.
+                                ramp_preview: crate::fx_live::ramp_preview(op),
                             })
                             .collect()
                     })

@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 14;
+pub const MAX_FILTER_KINDS: usize = 15;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
@@ -144,6 +144,56 @@ pub fn filter_color_id(row: usize) -> NodeId {
 #[must_use]
 pub fn filter_color_b_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.colorb.{row}"))
+}
+
+/// O teto de STOPS de uma rampa. **Espelha o `ph2d_ecs::FxOp::MAX_GRADIENT_STOPS`** (há gate na
+/// shell, o único lugar que vê as duas crates).
+///
+/// ⚠️ **O recurso de que este teto é: o TRILHO, não a memória.** Os punhos têm caixa de agarre, e
+/// stops mais juntos que ela deixam de ser alcançáveis pelo ponteiro — o gate mede a largura REAL
+/// do card. O uniform não aperta (medido no stride: 512 B custa 2,345 ms contra 2,332 do de 256).
+pub const MAX_FILTER_STOPS: usize = 8;
+
+/// **O trilho da rampa** da linha `row` — o PAI dos arrastos de stop.
+///
+/// ⚠️ Ele não é um widget clicável: é o alvo que o `InteractiveState::CurvePoint` de cada punho
+/// carrega, e é por ele que o dispatch de 2D sabe a que rampa o gesto pertence. O primitivo é o
+/// MESMO que o editor de falloff do Painter e a curva do motion-params já usam.
+#[must_use]
+pub fn filter_ramp_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.ramp.{row}"))
+}
+
+/// O punho do stop `stop` da rampa da linha `row` — arrastável na horizontal (a POSIÇÃO), e
+/// clicável para selecionar (a cor do selecionado é o que a swatch edita).
+#[must_use]
+pub fn filter_stop_id(row: usize, stop: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.stop.{row}.{stop}"))
+}
+
+/// **A COR do stop SELECIONADO** da rampa da linha `row` (swatch, abre o MESMO picker OKLCH das
+/// duas cores do Duotone).
+///
+/// ⚠️ **Uma swatch, e o alvo dela é a SELEÇÃO** — não uma swatch por stop. Oito swatches empilhadas
+/// diriam ao artista que ele edita oito cores de uma vez, quando o gesto real é *escolha o punho,
+/// depois a cor*; e o picker é modal, então ele só pode ter um alvo de qualquer forma.
+#[must_use]
+pub fn filter_stop_color_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.stop.color.{row}"))
+}
+
+/// **+** — acrescenta um stop na rampa da linha `row`.
+#[must_use]
+pub fn filter_stop_add_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.stop.add.{row}"))
+}
+
+/// **−** — remove o stop SELECIONADO da rampa da linha `row`. O piso é DOIS (uma rampa com menos
+/// de duas pontas não é uma rampa, e o degenerado de zero stops é outra lei — ver o gate
+/// `no_stops_is_the_painters_empty_ramp_which_is_not_the_two_stop_default`).
+#[must_use]
+pub fn filter_stop_remove_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.stop.remove.{row}"))
 }
 
 /// O teto de LEIS DE MISTURA que um degrau oferece. Espelha o `ph2d_ecs::FxOp::BLEND_KINDS`.

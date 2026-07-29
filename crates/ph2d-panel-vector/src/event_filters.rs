@@ -14,7 +14,33 @@ use crate::state::filters::{
     FILTER_ADJUST_MAX, FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_HUE_MAX, FILTER_OFFSET_MAX,
     FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::tool::PanelEvent;
+
+/// **O ARRASTO de um punho da rampa** — o `CurvePoint` que o dispatch de 2D converteu.
+///
+/// ⚠️ **O `idx` é o índice de AUTORIA do stop, e é isso que o torna estável no meio do gesto:** o
+/// dispatch o devolve verbatim do que o painel registrou, então arrastar um stop por cima do vizinho
+/// **não** re-liga o dedo a outro punho (quem ordena é o consumidor, `FxOp::ramp_for_device`). É a
+/// mesma garantia que o editor de falloff do Painter afirma sobre o re-sort.
+///
+/// ⚠️ **Arrastar também SELECIONA** — o punho que o dedo pegou é o que a swatch edita, senão o
+/// artista arrasta um stop e pinta outro.
+pub(super) fn ramp_drag(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    let Some(row) = (0..ids::MAX_FILTER_ROWS).find(|r| id == ids::filter_ramp_id(*r)) else {
+        return false;
+    };
+    if let Some((_parent, _ch, idx, x, _y)) = host.store_mut().take_curve_point_drag() {
+        crate::state::filters::set_selected_stop(row, idx);
+        host.bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                id,
+                format!("{row}:{idx}:{x}"),
+            )));
+    }
+    true
+}
 
 /// Este id é um BOTÃO da pilha de filtros (Add / Remove / Up / Down / Hide)?
 ///
@@ -31,6 +57,10 @@ pub(super) fn is_filter_button(id: ph2d_a11y::NodeId) -> bool {
                 // As opções do popover de MISTURA — `Click` puros, como as pontas do traço. O
                 // CHIP não entra: ele é um `Dropdown`, e abrir/fechar é do dispatch genérico.
                 || (0..ids::MAX_FILTER_BLENDS).any(|m| id == ids::filter_blend_option_id(r, m))
+                // O `+` / `−` do trilho da rampa. Os PUNHOS não entram: eles são arrasto
+                // (`CurvePoint`), não `Click`, e chegam como `ValueChanged` do trilho.
+                || id == ids::filter_stop_add_id(r)
+                || id == ids::filter_stop_remove_id(r)
         })
 }
 

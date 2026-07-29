@@ -49,6 +49,11 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
             ids::filter_up_id(row),
             ids::filter_down_id(row),
             ids::filter_hide_id(row),
+            // O `+` / `−` do trilho da rampa. ⚠️ Os PUNHOS não entram: eles são `CurvePoint`, e um
+            // id só pode ter UM tipo de widget no store — registá-los como botão faria o Down
+            // consumir o arrasto e nenhum stop se moveria.
+            ids::filter_stop_add_id(row),
+            ids::filter_stop_remove_id(row),
         ] {
             button(store, id);
         }

@@ -141,6 +141,11 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if let Some(consumed) = contour::contour_slider_event(host, id) {
         return Some(consumed);
     }
+    // O arrasto de um punho da rampa chega como `ValueChanged` do TRILHO (o pai que cada
+    // `CurvePoint` carrega) — antes dos sliders, porque não é um slider.
+    if (0..ids::MAX_FILTER_ROWS).any(|r| id == ids::filter_ramp_id(r)) {
+        return Some(filters::ramp_drag(host, id));
+    }
     if let Some(consumed) = filters::filters_slider_event(host, id) {
         return Some(consumed);
     }

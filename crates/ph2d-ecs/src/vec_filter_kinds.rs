@@ -43,6 +43,12 @@ pub struct FxKindSpec {
     /// fazer. O painel pinta um chip por modo e o **índice no slice É o código** — como a `SPECS`,
     /// a lista é a tabela.
     pub modes: &'static [&'static str],
+    /// **Este tipo carrega uma RAMPA de N stops?** É a porta única de *"o card oferece o trilho?"*
+    /// (o painel) e de *"este degrau tem stops a mandar ao device?"* (a shell).
+    ///
+    /// ⚠️ **Um `bool`, e não um rótulo como as duas cores** — a rampa não tem nome a mostrar: ela é
+    /// o próprio controle, e um `Option<&str>` prometeria um cabeçalho que o trilho não usa.
+    pub takes_ramp: bool,
     /// **A COR deste degrau pousa sobre conteúdo que já existe?** É esta a pergunta do BLEND: um
     /// modo de mistura responde *como a minha cor se combina com a que está aí*, e só faz sentido
     /// onde há uma cor lá para se combinar.
@@ -120,6 +126,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
@@ -138,6 +145,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         // reentrância elas desenham coisas visivelmente diferentes — a ponta de uma estrela
         // brilha nas duas, o vão entre pontas só na segunda.
         modes: &FALLOFF_MODES,
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
@@ -152,6 +160,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
@@ -166,6 +175,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: true,
         modes: &FALLOFF_MODES,
+        takes_ramp: false,
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
@@ -180,6 +190,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: true,
         modes: &FALLOFF_MODES,
+        takes_ramp: false,
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
@@ -196,6 +207,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
@@ -210,6 +222,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
@@ -224,6 +237,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: true,
         modes: &[],
+        takes_ramp: false,
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
@@ -238,6 +252,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
@@ -258,6 +273,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &NOISE_MODES,
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: Some(("Size", "Detail", "Seed")),
         grow_label: None,
@@ -278,6 +294,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: true,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         takes_blend: false,
         noise_labels: None,
         grow_label: Some("Amount"),
@@ -296,6 +313,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         // Sem cor própria, logo sem lei de mistura a aplicar — o argumento do Blur e do Feather:
         // a saída DELE é a entrada transformada.
         takes_blend: false,
@@ -316,6 +334,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         // ⚠️ **TOMA a lei de mistura, ao contrário do Color Adjust ao lado** — e a distinção é a
         // mesma que separa o Color Overlay do ajuste: este degrau produz uma COR PRÓPRIA (a rampa
         // que o artista autorou), e uma cor própria tem como encostar na que já está ali. O Color
@@ -339,6 +358,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grows: false,
         inner: false,
         modes: &[],
+        takes_ramp: false,
         // Sem cor própria — a saída DELE é a entrada transformada, o argumento do Blur/Feather.
         takes_blend: false,
         noise_labels: None,
@@ -360,6 +380,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         // A INTERPOLAÇÃO entre stops. Os dois modos que o Gradient Map do Painter já tem — e o
         // vocabulário é o dele, porque é a mesma lei.
         modes: &["Linear", "Smooth"],
+        takes_ramp: true,
         takes_blend: true,
         noise_labels: None,
         grow_label: None,

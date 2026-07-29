@@ -20,6 +20,77 @@
 
 use std::cell::{Cell, RefCell};
 
+use crate::ids::{MAX_FILTER_ROWS, MAX_FILTER_STOPS};
+
+/// Quantas amostras o bar de preview carrega. Não é resolução de imagem: é o número de fatias que o
+/// trilho pinta, e acima disto o olho não distingue (a barra tem ~200 px).
+pub const RAMP_PREVIEW_N: usize = 64;
+
+thread_local! {
+    /// **Qual stop está selecionado em cada linha** — estado de VISTA, não do documento.
+    ///
+    /// ⚠️ **Não serializado, e não é descuido:** *"qual punho está em foco"* é a mesma classe do
+    /// `speed_view` da timeline e do `selected_gradient_stop` do Painter. Salvá-lo faria um projeto
+    /// reabrir com um foco que o artista não pôs.
+    static SELECTED_STOP: RefCell<[u8; MAX_FILTER_ROWS]> = const { RefCell::new([0; MAX_FILTER_ROWS]) };
+}
+
+thread_local! {
+    /// **Onde a BARRA da rampa de cada linha foi pintada** — `[x, y, w, h]`.
+    ///
+    /// ⚠️ **Ela existe porque o `store` é IMUTÁVEL enquanto o corpo pinta**, e o
+    /// `InteractiveState::CurvePoint` de cada punho carrega o retângulo contra o qual o dispatch
+    /// converte o ponteiro. O corpo PUBLICA onde a barra está e o passe de sementes registra contra
+    /// ela.
+    ///
+    /// ⚠️ **E NÃO há lag de frame** — eu escrevi que havia. O `seed_and_publish` é a **Fase B do
+    /// MESMO `paint`** (o `store` só fica mutável depois de o corpo fechar), então o retângulo que a
+    /// semente lê é o deste frame. A nota anterior invocava o lag de um frame que aquele passe
+    /// aceita para os campos do Transform; ali o lag é do COMMIT do documento, não da fase.
+    ///
+    /// ⚠️ **Derivar o retângulo no passe de sementes seria a SEGUNDA resposta** a *"onde está a
+    /// barra?"* — ele teria de refazer a aritmética de layout do card (que depende de quais rows o
+    /// tipo vigente oferece), e as duas divergiriam no primeiro controle novo.
+    static RAMP_BAR: RefCell<[[f32; 4]; MAX_FILTER_ROWS]> =
+        const { RefCell::new([[0.0; 4]; MAX_FILTER_ROWS]) };
+}
+
+/// Publica o retângulo da barra da linha `row` (chamado pelo paint).
+pub fn set_ramp_bar(row: usize, rect: [f32; 4]) {
+    RAMP_BAR.with(|b| {
+        if let Some(slot) = b.borrow_mut().get_mut(row) {
+            *slot = rect;
+        }
+    });
+}
+
+/// O retângulo da barra da linha `row`, ou `None` se ela ainda não foi pintada (largura zero).
+#[must_use]
+pub fn ramp_bar(row: usize) -> Option<[f32; 4]> {
+    RAMP_BAR.with(|b| {
+        b.borrow()
+            .get(row)
+            .copied()
+            .filter(|r| r[2] > 0.0 && r[3] > 0.0)
+    })
+}
+
+/// O stop selecionado da linha `row` — clampado à contagem VIVA pelo chamador (a rampa pode ter
+/// encolhido desde o último clique).
+#[must_use]
+pub fn selected_stop(row: usize) -> u8 {
+    SELECTED_STOP.with(|s| s.borrow().get(row).copied().unwrap_or(0))
+}
+
+/// Seleciona o stop `stop` da linha `row`.
+pub fn set_selected_stop(row: usize, stop: u8) {
+    SELECTED_STOP.with(|s| {
+        if let Some(slot) = s.borrow_mut().get_mut(row) {
+            *slot = stop;
+        }
+    });
+}
+
 /// Faixa do slider de **Radius**, em unidades de MUNDO. NÃO é um limite físico — o produtor capa a
 /// textura em `MAX_FX_SIDE`; é só o alcance do controle. (Fração-do-tamanho seria mais robusto para
 /// formas de tamanhos diferentes — refino futuro, a mesma nota que o Contour faz do Offset.)
@@ -72,6 +143,10 @@ pub struct FilterKindView {
     pub color_b_label: Option<&'static str>,
     /// Os MODOS deste tipo, na ordem dos códigos, ou vazio se ele não tem escolha a fazer.
     pub modes: &'static [&'static str],
+    /// **Este tipo carrega uma RAMPA de N stops?** Espelha o `ph2d_ecs::FxKindSpec::takes_ramp` — é
+    /// ele que decide se o card oferece o TRILHO. Um `bool` e não um rótulo, porque a rampa não tem
+    /// cabeçalho a mostrar: ela é o próprio controle.
+    pub takes_ramp: bool,
     /// **A cor deste degrau pousa sobre conteúdo que já existe?** Espelha o
     /// `ph2d_ecs::FxKindSpec::takes_blend` — é ele que decide se o card oferece a lei de mistura.
     /// Um halo EXTERNO entra por baixo (nada com que se misturar onde ele aparece) e o Blur/Feather
@@ -137,6 +212,26 @@ pub struct FilterRowView {
     pub sat: f64,
     /// O BRILHO, `-1..1` — `-1` é preto exacto, `+1` é branco exacto.
     pub bright: f64,
+    /// **As POSIÇÕES dos stops** em `[0,1]`, na ordem de AUTORIA (não a de desenho).
+    ///
+    /// ⚠️ **A ordem de autoria é o que faz o punho não escapar do dedo:** ela dá índice ESTÁVEL a
+    /// cada alça, então arrastar um stop por cima do vizinho não re-liga o gesto a outro stop. Quem
+    /// consome ordena uma cópia (`FxOp::ramp_for_device`), e é o precedente que o Gradient Map do
+    /// Painter já ship.
+    pub stop_pos: [f32; MAX_FILTER_STOPS],
+    /// As CORES dos stops (RGBA sRGB) — o alfa é a FORÇA daquele stop.
+    pub stop_colors: [[u8; 4]; MAX_FILTER_STOPS],
+    /// Quantos stops valem.
+    pub stop_count: u8,
+    /// **A rampa JÁ AMOSTRADA pela shell**, para o trilho a pintar.
+    ///
+    /// ⚠️ **O painel NÃO reamostra a rampa, e é a decisão que importa aqui.** O bar é o que o
+    /// artista lê para prever o render, então ele tem de sair da MESMA função que o device honra —
+    /// e é a shell que a alcança (`gradient_map_lut`, a crate que é o oráculo dos gates de
+    /// paridade). Um lerp de conveniência no painel seria uma SEGUNDA resposta a *"que cor vive em
+    /// `t`"*, divergindo em gama justo nos meios-tons, e o único lugar onde a divergência
+    /// apareceria é uma screenshot.
+    pub ramp_preview: [[u8; 3]; RAMP_PREVIEW_N],
 }
 
 thread_local! {

@@ -27,6 +27,12 @@ pub(crate) enum FilterHit {
     Color(usize),
     /// A SEGUNDA swatch — a ponta CLARA da rampa do Duotone. Mesmo picker, outro campo.
     ColorB(usize),
+    /// **A swatch do stop SELECIONADO** da rampa de N stops. Mesmo picker; o campo é escolhido pela
+    /// SELEÇÃO do painel, não pelo id (há uma swatch por linha, não uma por stop).
+    StopColor(usize),
+    /// `+` / `−` do trilho da rampa — acrescenta um stop no maior vão, remove o selecionado.
+    StopAdd(usize),
+    StopRemove(usize),
     /// O chip de MODO da linha (a LEI do degrau).
     Mode(usize, u8),
     /// Uma opção do popover de MISTURA (a lei de como a cor do degrau encosta na de baixo).
@@ -79,6 +85,12 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
             FilterHit::Down(r)
         } else if id == vid::filter_hide_id(r) {
             FilterHit::Hide(r)
+        } else if id == vid::filter_stop_add_id(r) {
+            FilterHit::StopAdd(r)
+        } else if id == vid::filter_stop_remove_id(r) {
+            FilterHit::StopRemove(r)
+        } else if id == vid::filter_stop_color_id(r) {
+            FilterHit::StopColor(r)
         } else if id == vid::filter_color_id(r) {
             FilterHit::Color(r)
         } else if id == vid::filter_color_b_id(r) {
@@ -133,10 +145,160 @@ pub(crate) fn colour_bytes(c: [f32; 4]) -> [u8; 4] {
 /// Porta única do readback do picker, e ela existe porque o picker é o ÚNICO consumidor que precisa
 /// distinguir as duas swatches: para todo o resto (o dispatch, a varredura de seam) as duas são o
 /// mesmo tipo de controle. Escrita aqui, a shell não repete a enumeração dos dois variants.
-pub(crate) fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, bool)> {
+pub(crate) fn colour_target(id: ph2d_editor::NodeId) -> Option<(usize, ColourSlot)> {
     match hit_of(id)? {
-        FilterHit::Color(r) => Some((r, false)),
-        FilterHit::ColorB(r) => Some((r, true)),
+        FilterHit::Color(r) => Some((r, ColourSlot::First)),
+        FilterHit::ColorB(r) => Some((r, ColourSlot::Second)),
+        FilterHit::StopColor(r) => Some((r, ColourSlot::SelectedStop)),
         _ => None,
     }
+}
+
+/// **QUAL cor de um degrau uma swatch nomeia.**
+///
+/// ⚠️ **Era um `bool` (*"é a segunda?"*), e o comentário do readback já previa esta wave:** *"derivar
+/// a ponta do `kind` faria a segunda escrever na primeira em qualquer tipo que ganhasse uma rampa
+/// depois"*. Com três alvos o booleano deixa de ser expressivo — e um terceiro caso dobrado num
+/// `else` escreveria na ponta escura toda vez que o artista pintasse um stop.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ColourSlot {
+    /// A cor do halo / a ponta ESCURA.
+    First,
+    /// A ponta CLARA da rampa do Duotone.
+    Second,
+    /// O stop que o trilho da rampa tem em foco.
+    SelectedStop,
+}
+
+/// **A cor escolhida no picker pousa no slot que o artista abriu.**
+///
+/// ⚠️ **Ela é uma função PURA de propósito, e a razão é um gate que falhou.** A decisão morava dentro
+/// do `render_frame` — a função que exige janela e dispositivo, que nenhum teste de unidade alcança
+/// — então o que a cobria era um arch-gate sobre o FONTE. E um arch-gate só vê FORMA: a mutação que
+/// dobrava o stop na ponta escura **manteve o nome `SelectedStop` num braço inalcançável** e passou
+/// verde. Aqui a rota é observável, e a mutação sangra num `assert_eq!`.
+///
+/// O `selected` é clampado à contagem VIVA: a rampa pode ter encolhido desde o último clique.
+pub(crate) fn apply_picked_colour(
+    op: &mut ph2d_ecs::FxOp,
+    slot: ColourSlot,
+    selected: usize,
+    col: [f32; 4],
+) {
+    match slot {
+        ColourSlot::First => op.color = col,
+        ColourSlot::Second => op.color_b = col,
+        ColourSlot::SelectedStop => {
+            let n = usize::from(op.stop_count).min(ph2d_ecs::FxOp::MAX_GRADIENT_STOPS);
+            if let Some(stop) = op.stops.get_mut(selected.min(n.saturating_sub(1))) {
+                *stop = col;
+            }
+        }
+    }
+}
+
+/// **Acrescenta um stop — e a lei é que isso NÃO muda o desenho.**
+///
+/// ⚠️ **No maior VÃO, com a cor que a rampa já tem ali.** As duas metades são a mesma decisão: um
+/// stop novo que caísse em cima de outro seria inalcançável pelo ponteiro (a caixa de agarre é o
+/// recurso de que o teto é), e um stop novo de cor arbitrária faria o `+` **editar a arte** — o
+/// artista clica para ganhar um ponto de controle, não para mudar a cor. É o que Photoshop e
+/// Illustrator fazem, e é o análogo exacto do *"um degrau novo não muda o desenho antes de o artista
+/// tocar nele"* que o resto desta pilha honra.
+///
+/// ⚠️ **Apenda na ordem de AUTORIA** (índice `stop_count`), nunca na posição ordenada: o índice de
+/// cada punho tem de ficar estável, senão o `+` re-liga os gestos abertos a outros stops.
+///
+/// No-op no teto.
+pub(crate) fn add_stop(op: &mut ph2d_ecs::FxOp) {
+    let n = usize::from(op.stop_count).min(ph2d_ecs::FxOp::MAX_GRADIENT_STOPS);
+    if n >= ph2d_ecs::FxOp::MAX_GRADIENT_STOPS {
+        return;
+    }
+    // O maior vão, medido sobre a rampa ORDENADA (a que se vê), com as bordas 0 e 1 contando: uma
+    // rampa que começa em 0,3 tem o vão de entrada como candidato legítimo.
+    let (_, pos, count) = op.ramp_for_device();
+    let at = |i: usize| pos[i / 4][i % 4];
+    let mut best = (0.5_f32, 0.0_f32);
+    let mut prev = 0.0_f32;
+    for i in 0..count as usize {
+        let p = at(i);
+        if p - prev > best.1 {
+            best = ((prev + p) * 0.5, p - prev);
+        }
+        prev = p;
+    }
+    if 1.0 - prev > best.1 {
+        best = ((prev + 1.0) * 0.5, 1.0 - prev);
+    }
+    let offset = best.0.clamp(0.0, 1.0);
+    // A cor que a rampa JÁ tem ali — amostrada pela mesma lei que o device honra.
+    let preview = ramp_preview(op);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let slot = (offset * (ph2d_panel_vector::RAMP_PREVIEW_N - 1) as f32).round() as usize;
+    let rgb = preview[slot.min(ph2d_panel_vector::RAMP_PREVIEW_N - 1)];
+    op.stops[n] = [
+        f32::from(rgb[0]) / 255.0,
+        f32::from(rgb[1]) / 255.0,
+        f32::from(rgb[2]) / 255.0,
+        // Força cheia: um stop novo que nascesse transparente seria um ponto de controle que não
+        // controla nada, e o artista concluiria que o `+` está quebrado.
+        1.0,
+    ];
+    op.stop_pos[n] = offset;
+    op.stop_count = (n + 1) as u8;
+}
+
+/// **Remove o stop `sel`** — com PISO em dois.
+///
+/// ⚠️ **O piso não é cautela: é a definição.** Uma rampa com um stop é uma cor sólida (e o Color
+/// Overlay já é isso), e com zero stops cai numa lei DIFERENTE — o ramo vazio do `gradient_sample`,
+/// que difere do default de dois stops em 73 níveis de byte (gate
+/// `no_stops_is_the_painters_empty_ramp_which_is_not_the_two_stop_default`). Deixar o `−` chegar lá
+/// faria o artista atravessar uma descontinuidade que nada na tela explica.
+pub(crate) fn remove_stop(op: &mut ph2d_ecs::FxOp, sel: usize) {
+    let n = usize::from(op.stop_count).min(ph2d_ecs::FxOp::MAX_GRADIENT_STOPS);
+    if n <= 2 || sel >= n {
+        return;
+    }
+    for i in sel..n - 1 {
+        op.stops[i] = op.stops[i + 1];
+        op.stop_pos[i] = op.stop_pos[i + 1];
+    }
+    op.stop_count = (n - 1) as u8;
+}
+
+/// **A rampa AMOSTRADA**, para o trilho do painel pintar.
+///
+/// ⚠️ **Pela `gradient_map_lut` do `ph2d-painter-effects` — a MESMA função que é o oráculo dos gates
+/// de paridade da GPU** (medido: device vs esta lei, 1 nível de byte). O bar é o que o artista lê
+/// para prever o render; amostrá-lo por um lerp de conveniência seria uma SEGUNDA resposta a *"que
+/// cor vive em `t`"*, divergindo em gama nos meios-tons — e o único lugar onde a divergência
+/// apareceria é uma screenshot.
+///
+/// ⚠️ **Os stops são ordenados pela porta única do componente** (`FxOp::ramp_for_device`), porque a
+/// ordem de autoria é livre e o `gradient_sample` do Painter assume ASCENDENTE.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub(crate) fn ramp_preview(op: &ph2d_ecs::FxOp) -> [[u8; 3]; ph2d_panel_vector::RAMP_PREVIEW_N] {
+    use ph2d_painter_effects::adjustments::{ColorStop, GradientInterp, GradientMapParams};
+    let (stops, pos, n) = op.ramp_for_device();
+    let params = GradientMapParams {
+        stops: (0..n as usize)
+            .map(|i| ColorStop {
+                offset: pos[i / 4][i % 4],
+                color: colour_bytes(stops[i]),
+            })
+            .collect(),
+        interpolation: if op.mode == 1 {
+            GradientInterp::Smooth
+        } else {
+            GradientInterp::Linear
+        },
+    };
+    let lut = ph2d_painter_effects::adjustments::gradient_map_lut(&params);
+    core::array::from_fn(|i| {
+        let t = i as f32 / (ph2d_panel_vector::RAMP_PREVIEW_N - 1).max(1) as f32;
+        let c = lut[(t * 255.0).round() as usize];
+        core::array::from_fn(|ch| ph2d_color::srgb::linear_to_srgb_byte(c[ch]))
+    })
 }

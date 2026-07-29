@@ -60,6 +60,22 @@ fn row(kind: u8) -> FilterRowView {
         hue: 0.0,
         sat: 0.0,
         bright: 0.0,
+        // Uma rampa de TRÊS stops: as duas pontas mais um do meio. ⚠️ O do meio é o que faz o
+        // fixture conter o fenômeno — com só as pontas, um trilho que só desenhasse as bordas
+        // passaria, e é entre stops que uma rampa de N pontos pode estar errada.
+        stop_pos: [0.0, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        stop_colors: [
+            [0, 0, 0, 255],
+            [200, 60, 60, 255],
+            [255, 255, 255, 255],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+        ],
+        stop_count: 3,
+        ramp_preview: [[128; 3]; ph2d_panel_vector::RAMP_PREVIEW_N],
     }
 }
 
@@ -79,6 +95,7 @@ fn kinds_table() -> Vec<FilterKindView> {
         color_b_label: None,
         modes,
         takes_blend,
+        takes_ramp: false,
         noise_labels: None,
         grow_label: None,
         adjust_labels: None,
@@ -176,6 +193,115 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
         reached,
         "o Click em {what} nao chegou ao bus — falta o id no `forwards_plain_click` do \
          `event.rs` (o controle e clicavel e MORTO, e o drain da shell nunca edita a pilha)"
+    );
+}
+
+/// A tabela com a rampa ARMADA no tipo `kind` — o publish real a traz do `FxKindSpec::takes_ramp`.
+fn kinds_table_with_ramp(kind: usize) -> Vec<FilterKindView> {
+    let mut t = kinds_table();
+    if let Some(k) = t.get_mut(kind) {
+        k.takes_ramp = true;
+    }
+    t
+}
+
+/// **O TRILHO da rampa: oferecido por quem carrega uma, e por mais ninguém.** Presença E ausência no
+/// mesmo gate, porque uma metade sozinha é verde por acidente.
+#[test]
+fn the_ramp_rail_is_offered_only_by_the_kind_that_carries_one() {
+    const RAMPED: usize = 0;
+    const PLAIN: usize = 1;
+    for (kind, want) in [(RAMPED, true), (PLAIN, false)] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        ph2d_panel_vector::set_current_filter_can_add(true);
+        ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(RAMPED));
+        ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+        #[allow(clippy::cast_possible_truncation)]
+        ph2d_panel_vector::set_current_filters(vec![row(kind as u8)]);
+        // Os quatro controles do trilho: os dois botões, um punho, e a swatch do stop.
+        for (id, what) in [
+            (
+                ph2d_panel_vector::ids::filter_stop_add_id(0),
+                "o + do trilho",
+            ),
+            (
+                ph2d_panel_vector::ids::filter_stop_remove_id(0),
+                "o - do trilho",
+            ),
+            (
+                ph2d_panel_vector::ids::filter_stop_id(0, 1),
+                "o punho do stop do meio",
+            ),
+            (
+                ph2d_panel_vector::ids::filter_stop_color_id(0),
+                "a swatch do stop",
+            ),
+        ] {
+            let painted = host
+                .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some();
+            assert_eq!(
+                painted, want,
+                "{what}: pintado={painted} para um tipo com takes_ramp={want} — um controle que \
+                 aparece onde o tipo não tem rampa é um knob morto, e um que falta onde tem é a \
+                 feature inalcançável"
+            );
+        }
+    }
+}
+
+/// **Os punhos são ALCANÇÁVEIS e não se sobrepõem** — e é isto que mede o recurso de que o teto de
+/// stops é (a caixa de agarre), em vez de o afirmar em prosa.
+#[test]
+fn every_stop_handle_is_reachable_and_the_grabs_do_not_overlap() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    ph2d_panel_vector::set_current_filter_can_add(true);
+    ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(0));
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+    ph2d_panel_vector::set_current_filters(vec![row(0)]);
+    let mut rects = Vec::new();
+    for stop in 0..3 {
+        let id = ph2d_panel_vector::ids::filter_stop_id(0, stop);
+        let r = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o punho do stop {stop} nao foi PINTADO com area clicavel"));
+        rects.push(r);
+    }
+    for (i, a) in rects.iter().enumerate() {
+        for b in rects.iter().skip(i + 1) {
+            let overlap = a.x < b.x + b.w && b.x < a.x + a.w;
+            assert!(
+                !overlap,
+                "duas caixas de agarre se sobrepõem ({a:?} e {b:?}) — o punho de baixo fica \
+                 inalcançável, que é exactamente o recurso de que o teto de stops é"
+            );
+        }
+    }
+    // E o punho do stop do MEIO fica no meio da barra: sem isto, três punhos empilhados na borda
+    // passariam no teste de sobreposição por acidente.
+    assert!(
+        rects[1].x > rects[0].x && rects[1].x < rects[2].x,
+        "os punhos não estão na ordem das posições ({rects:?}) — a barra não os está a mapear"
+    );
+}
+
+/// **O `+` e o `−` do trilho chegam ao bus.** Sem isto o artista clica e a rampa nunca ganha (nem
+/// perde) um stop, com tudo pintado.
+#[test]
+fn the_plus_and_minus_of_the_rail_reach_the_bus() {
+    ph2d_panel_vector::set_current_filter_can_add(true);
+    ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(0));
+    ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+    ph2d_panel_vector::set_current_filters(vec![row(0)]);
+    click_reaches_bus(
+        ph2d_panel_vector::ids::filter_stop_add_id(0),
+        "o + do trilho",
+    );
+    click_reaches_bus(
+        ph2d_panel_vector::ids::filter_stop_remove_id(0),
+        "o - do trilho",
     );
 }
 

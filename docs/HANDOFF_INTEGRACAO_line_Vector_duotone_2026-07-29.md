@@ -3,7 +3,7 @@
 **Linha:** `line/Vector` · **Worktree:** `Worktrees/line-Vector` · **Base:** `78d770370`
 **Estado:** fechada, **pendente de smoke**
 
-⚠️ **Esta é a QUINTA wave da mesma abertura de linha,** e as cinco **compartilham o bump de schema**
+⚠️ **Esta é a QUINTA de SEIS waves da mesma abertura de linha,** e as seis **compartilham o bump de schema**
 (`PROJECT_SCHEMA` 38). Integre-as juntas — o `main` nunca viu nenhuma:
 
 1. [`…_fx_blend_…`](HANDOFF_INTEGRACAO_line_Vector_fx_blend_2026-07-28.md) — a lei de mistura
@@ -11,6 +11,7 @@
 3. [`…_morphology_…`](HANDOFF_INTEGRACAO_line_Vector_morphology_2026-07-28.md) — Grow / Shrink
 4. [`…_colour_adjust_…`](HANDOFF_INTEGRACAO_line_Vector_colour_adjust_2026-07-28.md) — Color Adjust
 5. **esta** — Duotone + Luma to Alpha
+6. [`…_atlas_…`](HANDOFF_INTEGRACAO_line_Vector_atlas_2026-07-29.md) — o atlas de raster
 
 ⚠️ **O handoff da W8 diz que *"com esta, o catálogo do plano 24 FECHA"*.** Era verdade para as
 quatro famílias que o `apply_op` da W2 nomeou; estes dois vieram **por pedido do Enio**, fora

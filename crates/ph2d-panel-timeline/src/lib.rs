@@ -48,6 +48,7 @@ mod event;
 mod event_track_menu;
 pub mod expr_modal;
 mod expr_modal_paint;
+pub mod expr_modal_preview;
 mod geom;
 mod graph;
 mod graph_paint;

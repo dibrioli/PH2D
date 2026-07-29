@@ -294,3 +294,147 @@ fn a_gallery_card_is_reachable_by_a_real_pointer() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+// ─────────────────────────── W2 — the live preview ───────────────────────────
+
+/// **The preview evaluates the window through the PRODUCT's evaluator** (P3), and
+/// what the curve strip plots is what the puppet stands on.
+///
+/// ⚠️ ONE door, checked as one: the puppet indexes the SAME vector the strip
+/// draws. A puppet that sampled on its own would drift from the curve beside it,
+/// and the artist would have no way to tell which of the two lies.
+#[test]
+fn the_preview_samples_the_window_once_and_both_views_read_it() {
+    use ph2d_expr_recipes::RecipeStack;
+    use ph2d_panel_timeline::expr_modal_preview as pv;
+
+    // A Sway is a sine: over a 2 s window it must leave the baseline in BOTH
+    // directions, which a constant or a clamped-to-zero evaluation cannot do.
+    let stack = RecipeStack::of(&["sway"]);
+    let s = pv::sample_window(&stack);
+    assert_eq!(s.len(), pv::PREVIEW_SAMPLES);
+    assert!(
+        s.iter().any(|v| *v > pv::PREVIEW_VALUE) && s.iter().any(|v| *v < pv::PREVIEW_VALUE),
+        "a Sway crosses the baseline both ways: {:?}..{:?}",
+        s.iter().cloned().fold(f32::INFINITY, f32::min),
+        s.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
+    );
+    assert!(s.iter().all(|v| v.is_finite()), "no sample is non-finite");
+}
+
+/// **A flat curve still has a span.** The empty sheet projects to `value`, which
+/// is the most common thing the column will ever be asked to draw — and
+/// normalising by a zero extent is how a preview goes blank on it.
+#[test]
+fn a_flat_curve_still_has_a_span_to_draw_in() {
+    use ph2d_expr_recipes::RecipeStack;
+    use ph2d_panel_timeline::expr_modal_preview as pv;
+
+    let flat = pv::sample_window(&RecipeStack::new());
+    let (lo, hi) = pv::extent(&flat);
+    assert!(hi > lo, "a flat curve must still have a non-zero span");
+    assert!(
+        lo <= pv::PREVIEW_VALUE && pv::PREVIEW_VALUE <= hi,
+        "the dashed baseline has to sit INSIDE the span it is drawn in"
+    );
+}
+
+/// **The preview animates, and it loops.**
+///
+/// ⚠️ A frame counter, not wall-clock: that is the house convention for chrome
+/// (`ToastQueue::tick`), and it is what makes this assertion possible at all.
+#[test]
+fn the_preview_phase_advances_and_wraps() {
+    use ph2d_panel_timeline::expr_modal_preview as pv;
+    assert_eq!(pv::phase(0), 0.0);
+    assert!(
+        pv::phase(1) > pv::phase(0),
+        "the phase advances with the frame"
+    );
+    assert_eq!(pv::phase(0), pv::phase(120), "and the window loops");
+}
+
+/// **The puppet follows the PROPERTY.** A rotation gets a needle, an opacity a
+/// fading square — one function answers it, so the frame and the strip can never
+/// disagree about what is being previewed.
+#[test]
+fn the_puppet_is_chosen_by_the_property_being_driven() {
+    use ph2d_panel_timeline::expr_modal_preview::{Puppet, puppet_for};
+    use ph2d_timeline::PropKind;
+    assert_eq!(puppet_for(PropKind::Rotation), Puppet::Needle);
+    assert_eq!(puppet_for(PropKind::Opacity), Puppet::Fade);
+    assert_eq!(puppet_for(PropKind::TranslationX), Puppet::SlideX);
+    assert_eq!(puppet_for(PropKind::TranslationY), Puppet::SlideY);
+    assert_ne!(
+        puppet_for(PropKind::ScaleX),
+        puppet_for(PropKind::ScaleY),
+        "the two scale axes are different figures, or the preview lies about which"
+    );
+}
+
+/// **The card advances its own preview while it is open**, driven by the real
+/// paint pass rather than by a test poking the counter.
+#[test]
+fn painting_the_card_advances_its_preview() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(15, ph2d_timeline::PropKind::Rotation);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let first = state.expr_modal.as_ref().unwrap().preview_frame;
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let second = state.expr_modal.as_ref().unwrap().preview_frame;
+    assert!(
+        second > first,
+        "each paint advances the preview: {first} -> {second}"
+    );
+    assert_eq!(
+        state.expr_modal.as_ref().unwrap().prop,
+        ph2d_timeline::PropKind::Rotation,
+        "and the card learns which property it is previewing"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// **The card actually PAINTS the preview column.**
+///
+/// ⚠️ This gate exists because its absence bit during W2: the wiring edit silently
+/// missed its anchor, the column was never drawn, and every preview gate above
+/// stayed green — they exercise the preview MODULE, and a module can be perfect
+/// while nothing calls it. The two failures that did surface were an unused
+/// binding and an unused constant, which is a compiler warning, not a gate.
+///
+/// It asserts the PROPERTY (the painter is handed the window this frame sampled
+/// and the puppet this property chose), never a byte offset — the proxy that
+/// expired twice on the Vector line.
+#[test]
+fn the_card_paints_the_preview_column() {
+    let src = include_str!("../src/expr_modal_paint.rs");
+    let call = src
+        .find("expr_modal_preview::paint(")
+        .expect("the card must call the preview painter");
+    let body = &src[call..];
+    let end = body.find(");").expect("the call terminates");
+    let args = &body[..end];
+    assert!(
+        args.contains("&samples"),
+        "the preview must be handed THIS frame's samples, not its own: {args}"
+    );
+    assert!(
+        args.contains("puppet_for(m.prop)"),
+        "…and the puppet the driven property chose: {args}"
+    );
+    assert!(
+        args.contains("m.preview_frame"),
+        "…at the card's own phase, or it never animates: {args}"
+    );
+    // Positive control: the scanner finds the real thing, not any old text.
+    assert!(
+        !src.contains("expr_modal_preview::paint(/* unwired */"),
+        "control: the scanner is looking at the real call"
+    );
+}

@@ -46,6 +46,10 @@ use ph2d_timeline::TimelineViewSnapshot;
 const GALLERY_W: f32 = 190.0; // LITERAL-PX-OK: expression gallery column width
 /// Sheet column width — a knob label column plus a slider track plus a readout.
 const SHEET_W: f32 = 320.0; // LITERAL-PX-OK: expression sheet column width
+/// Preview column width (plano 10 W2).
+const PREVIEW_W: f32 = 190.0; // LITERAL-PX-OK: expression preview column width
+/// Rows the puppet frame takes; the curve strip gets the rest of the body.
+const PUPPET_SLOTS: f32 = 7.0; // LITERAL-PX-OK: CONTAGEM de linhas do quadro, nao medida
 /// Knob label column inside a sheet row.
 const KNOB_LABEL_W: f32 = 84.0; // LITERAL-PX-OK: expression knob label column
 /// Numeric readout column at the right of a knob row.
@@ -71,7 +75,7 @@ const CHROME_ROWS: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM das tres linhas nomeada
 
 /// Total card width.
 pub(crate) fn card_w() -> f32 {
-    Spacing::Md.px() * 2.0 + GALLERY_W + Spacing::Sm.px() + SHEET_W
+    Spacing::Md.px() * 2.0 + GALLERY_W + SHEET_W + PREVIEW_W + Spacing::Sm.px() * 2.0
 }
 
 /// Total card height: title · body · formula · footer, plus the paddings.
@@ -120,6 +124,7 @@ pub(crate) fn paint(
         }
         // ⚠️ The SAME label the track row shows (`tracks::prop_label`), so the card
         // and the row it was opened from never name the property differently.
+        m.prop = track.prop;
         m.title = format!(
             "{}  #{}",
             crate::tracks::prop_label(track.prop),
@@ -132,6 +137,11 @@ pub(crate) fn paint(
     // formula bar and every readout describe the same instant.
     sync_from_store(m, ctx.host.store());
     let reseed = core::mem::take(&mut m.reseed);
+    // ⚠️ ONE evaluation of the window per frame, shared by the strip and the
+    // puppet — a puppet that sampled on its own would drift from the curve drawn
+    // beside it.
+    let samples = crate::expr_modal_preview::sample_window(&m.stack);
+    m.preview_frame = m.preview_frame.wrapping_add(1);
     let m = &*m;
 
     let rect = Rect::new(m.x, m.y, card_w(), card_h());
@@ -178,13 +188,21 @@ pub(crate) fn paint(
 
     let body_y = cy;
     paint_gallery(m, ctx, theme, inner_x, body_y);
-    paint_sheet(
-        m,
-        ctx,
+    let sheet_x = inner_x + GALLERY_W + Spacing::Sm.px();
+    paint_sheet(m, ctx, theme, sheet_x, body_y, reseed);
+
+    // ── The preview column (W2): the puppet above, the curve strip below. ──
+    let pv_x = sheet_x + SHEET_W + Spacing::Sm.px();
+    let puppet_h = ROW_H_PX * PUPPET_SLOTS;
+    let strip_h = ROW_H_PX * (BODY_SLOTS as f32 - PUPPET_SLOTS) - gap;
+    crate::expr_modal_preview::paint(
+        ctx.scene,
         theme,
-        inner_x + GALLERY_W + Spacing::Sm.px(),
-        body_y,
-        reseed,
+        Rect::new(pv_x, body_y, PREVIEW_W, puppet_h),
+        Rect::new(pv_x, body_y + puppet_h + gap, PREVIEW_W, strip_h),
+        &samples,
+        crate::expr_modal_preview::puppet_for(m.prop),
+        m.preview_frame,
     );
     cy += ROW_H_PX * BODY_SLOTS as f32 + gap;
 

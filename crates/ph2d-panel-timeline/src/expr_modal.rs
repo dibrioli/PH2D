@@ -67,6 +67,10 @@ pub struct ExprModal {
     /// First paint has run: the title and the clock are seeded from the snapshot
     /// there, because the menu that OPENS the card does not have one.
     pub opened: bool,
+    /// The property being driven — what the preview's puppet follows.
+    pub prop: ph2d_timeline::PropKind,
+    /// The preview's frame counter (see `expr_modal_preview`).
+    pub preview_frame: u32,
 }
 
 /// Open the card for `target` at `(x, y)`.
@@ -81,6 +85,8 @@ pub(crate) fn open(state: &mut TimelinePanelState, target: u64, x: f32, y: f32) 
         time: 0.0,
         reseed: true,
         opened: false,
+        prop: ph2d_timeline::PropKind::TranslationX,
+        preview_frame: 0,
     });
 }
 
@@ -130,14 +136,6 @@ pub(crate) fn track_value(k: &Knob, track: f32) -> f32 {
     lo + track.clamp(0.0, 1.0) * (hi - lo)
 }
 
-/// The synthetic `value` the result readouts evaluate against.
-///
-/// ⚠️ Declared, not discovered (plano 10 P3): the composed value of the property
-/// is not in the panel's snapshot, so W1 reads the recipes against zero and W2 —
-/// which brings the live preview and its bindings — replaces both this and the
-/// frozen clock with the real pair.
-const PREVIEW_VALUE: f32 = 0.0;
-
 /// What the stack produces at and including row `i`, formatted for the readout.
 ///
 /// ⚠️ Evaluated through `ph2d_expr::eval` — the PRODUCT's evaluator (plano 10 P3).
@@ -156,7 +154,7 @@ pub(crate) fn row_result(stack: &RecipeStack, i: usize, time: f64) -> String {
     impl ph2d_expr::Bindings for B {
         fn attr(&self, name: &str) -> f32 {
             match name {
-                "value" => PREVIEW_VALUE,
+                "value" => crate::expr_modal_preview::PREVIEW_VALUE,
                 "time" => self.0 as f32,
                 _ => 0.0,
             }

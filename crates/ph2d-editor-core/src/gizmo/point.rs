@@ -227,11 +227,15 @@ const fn hit_half_px(kind: PointHandleKind) -> f32 {
         PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
             JOINT_PARAM_GRIP_PX + 2.0
         }
-        // Uma roldana é desenhada MAIOR que uma âncora (é uma roda, não um
-        // ponto de amarração), e o alvo acompanha o desenho pela mesma razão
-        // que o resto desta tabela existe.
+        // ⚠️ **A alça de roldana usa o tamanho PADRÃO de joint** (Enio,
+        // 2026-07-29: *"os círculos do gizmo estão muito grandes"*). A v1
+        // desenhava no DOBRO (`* 2.0`) sob o racional *"uma roldana é uma roda,
+        // não um ponto de amarração"* — e essa cerca é decisão de produto, não
+        // de geometria: o artista a derrubou. Ir ao padrão em vez de a um número
+        // novo é o que apaga o caso especial: a alça de roldana passa a ser a
+        // MESMA marca que toda outra alça de joint, sem uma constante bespoke.
         PointHandleKind::WheelCentre | PointHandleKind::WheelRim | PointHandleKind::WheelRimOut => {
-            JOINT_ANCHOR_RING_PX * 2.0
+            JOINT_ANCHOR_RING_PX
         }
     }
 }
@@ -358,15 +362,15 @@ pub fn paint_point_gizmo(
                         &ring,
                     );
                 }
-                // As alças de ROLDANA: anéis GROSSOS, do dobro do raio de uma
-                // âncora — uma roda, não um ponto de amarração. Mesmo âmbar,
-                // porque são parte do mesmo vínculo.
+                // As alças de ROLDANA: o MESMO anel da âncora B — mesmo raio,
+                // mesma espessura, mesmo âmbar. Ver [`hit_half_px`] para por que
+                // o dobro da v1 caiu.
                 PointHandleKind::WheelCentre
                 | PointHandleKind::WheelRim
                 | PointHandleKind::WheelRimOut => {
-                    let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX * 2.0));
+                    let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX));
                     scene.inner_mut().stroke(
-                        &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX * 1.5),
+                        &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
                         Affine::IDENTITY,
                         handle_color(view.inert),
                         None,

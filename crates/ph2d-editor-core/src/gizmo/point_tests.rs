@@ -211,6 +211,21 @@ fn the_hit_rects_are_never_smaller_than_the_marks() {
         "the snap crosshair must reach past the outermost handle, or the mark that explains \
          the magnet is hidden under the marks it explains"
     );
+    // ⚠️ **As três de RODLANA usam o tamanho PADRÃO** (Enio, 2026-07-29: *"os
+    // círculos do gizmo estão muito grandes"*). A v1 desenhava no DOBRO, e este
+    // gate é o que impede alguém de re-inflá-las sem também mover o alvo — a
+    // mesma pergunta que o resto desta tabela faz, agora com o número pinado.
+    for k in [
+        PointHandleKind::WheelCentre,
+        PointHandleKind::WheelRim,
+        PointHandleKind::WheelRimOut,
+    ] {
+        assert!(
+            (hit_half_px(k) - JOINT_ANCHOR_RING_PX).abs() < f32::EPSILON,
+            "{k:?} deixou de usar o anel padrão de joint — se o desenho cresceu, o \
+             alvo tem de crescer com ele, e se foi o alvo, o desenho"
+        );
+    }
 }
 
 /// **The snap crosshair draws and takes no hit.** It is a readout — a mark that

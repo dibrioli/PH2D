@@ -19,6 +19,15 @@ pub fn jump_count(band_px: f32) -> usize {
 
 pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
     let spec = FxOp::spec(op.kind);
+    // ⚠️ **O TIPO decide antes do MODO, e a ordem é load-bearing.** O `mode` é um índice na lista
+    // DO TIPO, então o mesmo `1` quer dizer coisas diferentes em tipos diferentes: `MODE_CONTOUR`
+    // no Inner Shadow e `MODE_CREASED` na turbulência. A regra abaixo pergunta *"tem modos, e
+    // escolheu o 1?"* — o que mandaria uma turbulência *Creased* para o campo de distância, um
+    // efeito completamente outro, sem erro nenhum. Perguntar o tipo primeiro é a única forma que
+    // não apodrece quando o 3º tipo com modos chegar.
+    if op.kind == FxOp::TURBULENCE {
+        return Plan::Warp;
+    }
     // ⚠️ **Quem decide é o MODO, não o ser-de-dentro.** A condição dizia `spec.inner && Contour`, o
     // que era verdade só enquanto os degraus de dentro fossem os únicos com modos — uma
     // enumeração disfarçada de regra. Perguntar *"este tipo oferece escolha, e ele escolheu
@@ -57,6 +66,14 @@ pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
 pub fn op_reach(op: &FxOpGpu) -> u32 {
     if !FxOp::spec(op.kind).grows {
         return 0;
+    }
+    // **A turbulência alcança exatamente o que ela desloca.** O ruído vive em `[-1,1]` (o `fbm`
+    // normaliza pela soma das amplitudes), então nenhum texel viaja mais que `Amount` — e um `3σ`
+    // aqui seria margem paga por um borrão que não existe. O `+1` cobre o vizinho que a
+    // interpolação bilinear lê.
+    if op.kind == FxOp::TURBULENCE {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        return (op.sigma_px.max(0.0).ceil() as u32 + 1).clamp(1, MAX_HALF);
     }
     // Um Glow em modo Contour é uma BANDA, não um borrão: a queda vale exatamente zero em `w`, e
     // pagar `3σ` de margem seria textura comprada a troco de nada.

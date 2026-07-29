@@ -53,6 +53,9 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
             FxOp::new(kind).mode
         },
         blend: 0,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
     }
 }
 

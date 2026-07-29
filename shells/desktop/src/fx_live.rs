@@ -368,6 +368,15 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 // uma lei de um tipo que deixou de a tomar desenharia uma mistura que a UI não
                 // mostra; aqui ela vira Normal, e o dispositivo nunca vê um número órfão.
                 blend: o.blend_code(),
+                // O tamanho das ondulações atravessa a mesma conversão do raio — é ela que torna
+                // o padrão zoom-invariante (o `noise_p` do shader divide por este número, e o
+                // numerador também escala com o zoom, então ele cancela).
+                noise_scale_px: (o.scale * cam_scale).max(0.0),
+                // ⚠️ **`detail_clamped`, não `detail`** — a metade de HONRAR da porta única, como
+                // o `blend_code`: um arquivo com detalhe 0 (ou 200) desenharia um laço vazio (ou
+                // caro) que a UI não oferece.
+                detail: o.detail_clamped(),
+                seed: o.seed,
             }
         })
         .collect()

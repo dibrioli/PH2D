@@ -44,6 +44,9 @@ fn inner_shadow(blend: u8) -> FxOpGpu {
         opacity: 1.0,
         mode: FxOp::MODE_CONTOUR,
         blend,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
     }
 }
 
@@ -57,6 +60,9 @@ fn overlay(tint: [f32; 4], blend: u8) -> FxOpGpu {
         opacity: 1.0,
         mode: 0,
         blend,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
     }
 }
 
@@ -329,6 +335,9 @@ fn a_law_on_a_kind_that_does_not_take_one_moves_nothing_on_the_device() {
             opacity: authored.opacity,
             mode: authored.mode,
             blend: 0,
+            noise_scale_px: 0.0,
+            detail: 1,
+            seed: 0,
         };
         let plain = run(&mut pass, &gpu, &[op]);
         op.blend = 1; // Multiply — a lei mais destrutiva que há sobre um fundo escuro.
@@ -369,6 +378,9 @@ fn measure_the_smoke_scene_pairs() {
         opacity: 1.0,
         mode: 0,
         blend: 0,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
     };
     const CYAN: [f32; 4] = [0.1, 0.9, 1.0, 1.0];
     const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];

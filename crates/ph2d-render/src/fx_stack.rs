@@ -100,6 +100,13 @@ pub struct FxOpGpu {
     /// decide se o número é honrado é o `FxOp::blend_code` do lado do produtor: aqui ele já chega
     /// resolvido.
     pub blend: u8,
+    /// O TAMANHO das ondulações do ruído, em pixels de tela (`escala_mundo × zoom`, como o
+    /// `sigma_px`).
+    pub noise_scale_px: f32,
+    /// Quantas OITAVAS o ruído soma — já clampado pelo produtor (`FxOp::detail_clamped`).
+    pub detail: u8,
+    /// Qual realização do ruído.
+    pub seed: u8,
 }
 
 use crate::fx_stack_plan::plan_of;
@@ -127,12 +134,16 @@ pub(crate) enum Plan {
     /// Campo de distância: semente + `n` saltos do JFA + finalize. Serve os degraus de dentro em
     /// modo Contour **e o CONTORNO** — os dois pedem uma distância, não um borrão.
     Field { jumps: usize, raster_seed: bool },
+    /// Um dispatch que lê a imagem numa posição DESLOCADA (a turbulência). Um passe só, como o
+    /// `Point`, mas **não** pontual — o nome do outro mentiria sobre o que ele faz, e é ele que
+    /// escolhe o pipeline.
+    Warp,
 }
 
 impl Plan {
     fn passes(self) -> usize {
         match self {
-            Self::Point => 1,
+            Self::Point | Self::Warp => 1,
             Self::Blur => 2,
             // Com geometria não há semente nem saltos: só o finalize.
             Self::Field { jumps, raster_seed } => jumps + usize::from(raster_seed) + 1,
@@ -160,6 +171,22 @@ struct Globals {
     n_segs: u32,
     /// A LEI DE MISTURA deste degrau (o código de `BlendMode`; `0` = Normal, o neutro).
     blend: u32,
+    /// O tamanho das ondulações do ruído, em pixels (só a turbulência o lê).
+    noise_scale: f32,
+    /// Quantas oitavas o ruído soma.
+    octaves: u32,
+    /// Qual realização do ruído.
+    seed: u32,
+    /// O MODO do degrau — o índice em `FxKindSpec::modes`.
+    ///
+    /// ⚠️ **O `mode` chega ao DEVICE pela primeira vez aqui.** Os modos anteriores (Proximity vs
+    /// Contour) escolhem o PLANO, então nunca precisaram de um ramo no shader; os do ruído
+    /// escolhem a lei da soma de oitavas, que só existe lá dentro.
+    mode: u32,
+    /// A ORIGEM da grade de ruído, em texels do scratch — a margem que a pilha reservou. É ela que
+    /// prega o padrão na FORMA em vez de na textura.
+    org: [f32; 2],
+    _pad: [f32; 2],
 }
 
 struct Tex {
@@ -210,6 +237,7 @@ pub struct FxStackPass {
     pipeline_h: wgpu::ComputePipeline,
     pipeline_v: wgpu::ComputePipeline,
     pipeline_point: wgpu::ComputePipeline,
+    pipeline_warp: wgpu::ComputePipeline,
     pipeline_seed: wgpu::ComputePipeline,
     pipeline_jump: wgpu::ComputePipeline,
     pipeline_field: wgpu::ComputePipeline,
@@ -294,6 +322,7 @@ impl FxStackPass {
         let pipeline_h = make_pipe(&layout_mid, &shader_mid, "cs_blur_h");
         let pipeline_v = make_pipe(&layout_mid, &shader_mid, "cs_op_v");
         let pipeline_point = make_pipe(&layout_mid, &shader_mid, "cs_op_point");
+        let pipeline_warp = make_pipe(&layout_mid, &shader_mid, "cs_op_warp");
         let pipeline_seed = make_pipe(&layout_mid, &shader_mid, "cs_sdf_seed");
         let pipeline_jump = make_pipe(&layout_mid, &shader_mid, "cs_sdf_jump");
         let pipeline_field = make_pipe(&layout_mid, &shader_mid, "cs_op_field");
@@ -318,6 +347,7 @@ impl FxStackPass {
             pipeline_h,
             pipeline_v,
             pipeline_point,
+            pipeline_warp,
             pipeline_seed,
             pipeline_jump,
             pipeline_field,
@@ -435,9 +465,23 @@ impl FxStackPass {
             band: 1.0,
             n_segs: 0,
             blend: 0,
+            noise_scale: 1.0,
+            octaves: 1,
+            seed: 0,
+            mode: 0,
+            org: [0.0, 0.0],
+            _pad: [0.0, 0.0],
         };
         write_at(&mut blob, 0, &edges);
         write_at(&mut blob, total_slots - 1, &edges);
+        // **A ORIGEM da grade de ruído é a MARGEM da pilha** — a mesma `stack_reach` que
+        // dimensionou o scratch, perguntada aqui em vez de recebida por parâmetro: quem reserva a
+        // margem e quem ancora o padrão têm de dar a MESMA resposta, e um argumento a mais seria
+        // uma segunda oportunidade de discordar. Assim `(pixel − org)` é a posição relativa à
+        // caixa da FORMA, e o padrão não anda quando outro degrau muda de raio.
+        let (ml, mt, _, _) = stack_reach(ops);
+        #[allow(clippy::cast_precision_loss)]
+        let org = [ml as f32, mt as f32];
         let mut slot = 1usize;
         for op in ops {
             let sigma = op.sigma_px.max(1e-4);
@@ -454,9 +498,15 @@ impl FxStackPass {
                 band: op.sigma_px.max(0.0),
                 n_segs: u32::try_from(geom.len()).unwrap_or(u32::MAX),
                 blend: u32::from(op.blend),
+                noise_scale: op.noise_scale_px.max(1e-3),
+                octaves: u32::from(op.detail.max(1)),
+                seed: u32::from(op.seed),
+                mode: u32::from(op.mode),
+                org,
+                _pad: [0.0, 0.0],
             };
             match plan_of(op, geom.is_empty()) {
-                Plan::Point => {
+                Plan::Point | Plan::Warp => {
                     write_at(&mut blob, slot, &g);
                     slot += 1;
                 }
@@ -527,6 +577,13 @@ impl FxStackPass {
                     // Pontual: lê a entrada e escreve o resultado — sem intermediário.
                     let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
                     dispatch(&mut encoder, &self.pipeline_point, &bg, slot, gx, gy);
+                    slot += 1;
+                }
+                Plan::Warp => {
+                    // Deforma: lê a entrada numa posição deslocada pelo ruído. Um dispatch, como o
+                    // pontual, mas cada texel lê os VIZINHOS — daí o pipeline próprio.
+                    let bg = self.bind(gpu, &self.bgl_mid, input, input, &work[next].view);
+                    dispatch(&mut encoder, &self.pipeline_warp, &bg, slot, gx, gy);
                     slot += 1;
                 }
                 Plan::Blur => {

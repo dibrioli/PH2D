@@ -94,6 +94,15 @@ pub struct FxKindSpec {
     /// de 1 px lê como quebrado. O `Blur` e o `Feather` não têm cor própria nenhuma: a saída deles
     /// É a entrada transformada.
     pub takes_blend: bool,
+    /// **Este degrau lê um campo de RUÍDO PROCEDURAL?** — e, se lê, como se chamam os três knobs
+    /// dele: `(tamanho, detalhe, semente)`.
+    ///
+    /// ⚠️ **Um campo só para os três, e não três campos**, porque eles não existem em separado:
+    /// *que tamanho têm as ondulações*, *quantas oitavas somam* e *qual das infinitas realizações
+    /// é esta* são a MESMA pergunta (*qual ruído?*) em três tempos. Oferecer um sem os outros é um
+    /// controle que não descreve nada. É o idioma do [`Self::offset_labels`], que também é um par
+    /// de NOMES em vez de um booleano — pela mesma razão: o rótulo é parte do fato.
+    pub noise_labels: Option<(&'static str, &'static str, &'static str)>,
 }
 
 /// Os modos de QUEDA. Duas leis diferentes sobre *o que é "perto da borda"*, e a diferença é
@@ -103,6 +112,17 @@ pub struct FxKindSpec {
 /// acidente de quem chegou primeiro, não uma propriedade da escolha: a pergunta *"perto da borda é
 /// pouco fora por perto, ou é pouca DISTÂNCIA até ela?"* é a mesma para um halo externo.
 pub const FALLOFF_MODES: [&str; 2] = ["Proximity", "Contour"];
+
+/// Os modos do RUÍDO — as duas leis de soma de oitavas, e são exactamente os dois `type` do
+/// `feTurbulence` do SVG.
+///
+/// - **Smooth** (`fractalNoise`): a soma COM SINAL, `Σ n_i/2^i`. Ondulações macias, tipo nuvem.
+/// - **Creased** (`turbulence`): a soma dos MÓDULOS, `Σ |n_i|/2^i`, recentrada. Onde cada oitava
+///   cruza o zero fica um VINCO — é a textura de fumaça/mármore, e o que dá aspecto de rasgado.
+///
+/// ⚠️ Os nomes do SVG (`fractalNoise`/`turbulence`) não sobem à UI de propósito: o degrau já se
+/// chama *Turbulence*, e um modo com o mesmo nome do tipo não distingue nada.
+pub const NOISE_MODES: [&str; 2] = ["Smooth", "Creased"];
 
 /// **Um degrau da pilha** — um efeito com os parâmetros dele.
 ///
@@ -141,6 +161,20 @@ pub struct FxOp {
     /// ⚠️ **Código desconhecido cai em Normal** (o `from_u8` do enum já o faz), então um arquivo de
     /// uma versão futura desenha o efeito sem lei exótica em vez de não desenhar nada.
     pub blend: u8,
+    /// **O TAMANHO das ondulações do ruído**, em unidades de MUNDO (o `baseFrequency` do SVG, pelo
+    /// avesso: ali é frequência, aqui é comprimento — um artista pensa em *quão grandes são os
+    /// caroços*, não em quantos cabem por unidade).
+    ///
+    /// ⚠️ **Em MUNDO como o `radius`, e é isso que torna o padrão zoom-invariante:** a coordenada
+    /// de ruído é `pixel/escala_px` com `escala_px = escala_mundo × zoom`, ou seja o zoom cancela.
+    /// Guardado em pixels, dar zoom re-sortearia a textura.
+    pub scale: f32,
+    /// **Quantas OITAVAS** o ruído soma (o `numOctaves`). Cada uma tem metade do tamanho e metade
+    /// da amplitude da anterior: 1 é uma ondulação limpa, 4 já tem grão fino dentro dos caroços.
+    pub detail: u8,
+    /// **Qual das infinitas realizações** — o `seed`. Não muda a estatística do campo, só qual
+    /// desenho ele é; é o botão *"me dá outro"* que todo artista de AE aperta primeiro.
+    pub seed: u8,
 }
 
 /// O degrau neutro sobre o qual os defaults de cada tipo são escritos.
@@ -153,6 +187,9 @@ const BLANK: FxOp = FxOp {
     mode: FxOp::MODE_CONTOUR,
     enabled: true,
     blend: FxOp::BLEND_NORMAL,
+    scale: 0.25,
+    detail: 3,
+    seed: 0,
 };
 
 impl FxOp {
@@ -180,8 +217,13 @@ impl FxOp {
     /// Código de painel: repinta o que chegou com uma cor, **sem borrar e sem mover cobertura**.
     /// Pontual ⇒ margem zero e UM dispatch.
     pub const COLOR_OVERLAY: u8 = 8;
+    /// Código de painel: a **turbulência** — a imagem é DEFORMADA por um campo de ruído
+    /// procedural. Amount pequeno = borda rasgada/orgânica (o *Roughen*); Amount grande = a forma
+    /// inteira liquefaz. É o `feTurbulence` + `feDisplacementMap` do SVG **num degrau só**, que é
+    /// como o AE (*Turbulent Displace*) e todo mundo depois dele o embrulharam.
+    pub const TURBULENCE: u8 = 9;
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    pub const KINDS: usize = 9;
+    pub const KINDS: usize = 10;
 
     /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
     /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
@@ -192,6 +234,42 @@ impl FxOp {
     /// contorno, reentrâncias incluídas. É o que "sombra interna" desenha em quem olha a forma, e é
     /// o default dos degraus de DENTRO.
     pub const MODE_CONTOUR: u8 = 1;
+
+    /// Modo de ruído: a soma COM SINAL das oitavas (o `fractalNoise` do SVG) — ondulações macias.
+    pub const MODE_SMOOTH: u8 = 0;
+    /// Modo de ruído: a soma dos MÓDULOS (o `turbulence` do SVG) — vincos onde as oitavas cruzam
+    /// o zero.
+    ///
+    /// ⚠️ **Colide numericamente com [`Self::MODE_CONTOUR`], e a colisão é REAL, não teórica.** O
+    /// `mode` é um índice na lista do TIPO, então o mesmo `1` quer dizer coisas diferentes em
+    /// tipos diferentes — e o `plan_of` da `ph2d-render` roteava por `mode == MODE_CONTOUR` para
+    /// QUALQUER tipo com modos, o que mandaria uma turbulência *Creased* para o campo de
+    /// distância. Quem pergunta *"como este degrau é executado?"* tem de olhar o TIPO primeiro;
+    /// há gate lá a exigir isso nos dois modos.
+    pub const MODE_CREASED: u8 = 1;
+
+    /// **Quantas oitavas o ruído pode somar.**
+    ///
+    /// ⚠️ **Não é teto de CUSTO — isso foi medido e é falso.** Na RTX, a 512², somar de 1 a 12
+    /// oitavas move o passe de 0,058 para 0,12 ms, o que é a própria dispersão da medição: o laço
+    /// é aritmética pura sobre um registro, e ela desaparece ao lado da largura de banda da
+    /// textura (`measure_the_turbulence_octave_cost`).
+    ///
+    /// O teto é de **REPRESENTAÇÃO**: cada oitava tem metade do tamanho e metade da amplitude da
+    /// anterior, então a `n`-ésima desenha detalhe de `Size/2ⁿ⁻¹` com peso `1/2ⁿ⁻¹`. Medido no que
+    /// o artista vê — quanto a BORDA anda ao acrescentar a oitava, com Size 40 px
+    /// (`measure_what_an_extra_octave_still_moves`):
+    ///
+    /// | oitava | a borda anda |
+    /// |---|---|
+    /// | 4 → 5 | 0,072 px |
+    /// | 5 → 6 | 0,044 px |
+    /// | **6 → 7** | **0,019 px** |
+    /// | 9 → 10 | 0,002 px |
+    ///
+    /// A partir da sétima o desenho muda menos de um cinquenta avos de pixel, e o detalhe que ela
+    /// acrescenta já é menor que o texel que o amostra — ele não aparece, ele **serrilha**.
+    pub const MAX_DETAIL: u8 = 6;
 
     /// A lei de mistura NEUTRA (`BlendMode::Normal`). Um degrau nasce aqui, e nela o degrau é
     /// **byte-idêntico** ao mundo pré-blend — é isso que torna esta wave uma adição e não uma
@@ -221,6 +299,7 @@ impl FxOp {
             inner: false,
             modes: &[],
             takes_blend: false,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Glow",
@@ -235,6 +314,7 @@ impl FxOp {
             // brilha nas duas, o vão entre pontas só na segunda.
             modes: &FALLOFF_MODES,
             takes_blend: false,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Drop Shadow",
@@ -245,6 +325,7 @@ impl FxOp {
             inner: false,
             modes: &[],
             takes_blend: false,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Inner Shadow",
@@ -255,6 +336,7 @@ impl FxOp {
             inner: true,
             modes: &FALLOFF_MODES,
             takes_blend: true,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Inner Glow",
@@ -265,6 +347,7 @@ impl FxOp {
             inner: true,
             modes: &FALLOFF_MODES,
             takes_blend: true,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Outline",
@@ -277,6 +360,7 @@ impl FxOp {
             inner: false,
             modes: &[],
             takes_blend: false,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Feather",
@@ -287,6 +371,7 @@ impl FxOp {
             inner: false,
             modes: &[],
             takes_blend: false,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Bevel",
@@ -297,6 +382,7 @@ impl FxOp {
             inner: true,
             modes: &[],
             takes_blend: true,
+            noise_labels: None,
         },
         FxKindSpec {
             name: "Color Overlay",
@@ -307,6 +393,24 @@ impl FxOp {
             inner: false,
             modes: &[],
             takes_blend: true,
+            noise_labels: None,
+        },
+        FxKindSpec {
+            name: "Turbulence",
+            // ⚠️ "Amount", não "Radius": este número é *quão longe um pixel anda*, e é ele que
+            // define a margem (o alcance de um deslocamento É a amplitude dele). Chamá-lo de raio
+            // prometeria um borrão.
+            radius_label: Some("Amount"),
+            offset_labels: None,
+            // Não tinge: a saída É a entrada deformada, como o Blur e o Feather. Logo também não
+            // tem lei de mistura a aplicar — não há cor DELE que encoste na de baixo.
+            color_label: None,
+            // Empurra pixels para fora da silhueta que recebeu, até `Amount`.
+            grows: true,
+            inner: false,
+            modes: &NOISE_MODES,
+            takes_blend: false,
+            noise_labels: Some(("Size", "Detail", "Seed")),
         },
     ];
 
@@ -365,6 +469,21 @@ impl FxOp {
         } else {
             Self::BLEND_NORMAL
         }
+    }
+
+    /// **Este degrau lê um campo de ruído procedural?** Vista da [`FxKindSpec::noise_labels`], e a
+    /// mesma porta com dois consumidores do [`Self::takes_blend`]: o painel a consulta para
+    /// OFERECER os três knobs, o produtor da GPU para os HONRAR.
+    #[must_use]
+    pub fn reads_noise(self) -> bool {
+        Self::spec(self.kind).noise_labels.is_some()
+    }
+
+    /// As oitavas que este degrau de facto soma — pelo menos uma, no máximo [`Self::MAX_DETAIL`].
+    /// **Porta única**: o painel mostra este número e o produtor manda este número.
+    #[must_use]
+    pub fn detail_clamped(self) -> u8 {
+        self.detail.clamp(1, Self::MAX_DETAIL)
     }
 
     /// Este degrau contribui? Desligado, a pilha o salta (espelho do `FxEntry::is_active`).
@@ -440,6 +559,19 @@ impl FxOp {
                 kind,
                 // Sem raio (o tipo é pontual) e numa cor FORTE: o clique tem de mudar a tela.
                 color: [0.95, 0.25, 0.35, 1.0],
+                ..BLANK
+            },
+            Self::TURBULENCE => Self {
+                kind,
+                // Amount e Size **MEDIDOS** no smoke (`=35`): ondulações da ordem de um quinto da
+                // forma, deslocando ~6% dela. Menos que isto lê como borda suja; mais, e o "Add"
+                // já entrega a forma liquefeita.
+                radius: 0.08,
+                scale: 0.25,
+                detail: 3,
+                // Smooth: o `fractalNoise` do SVG, a lei que não tem vinco. Um default com vinco
+                // seria escolher o efeito mais dramático como ponto de partida.
+                mode: Self::MODE_SMOOTH,
                 ..BLANK
             },
             _ => Self {

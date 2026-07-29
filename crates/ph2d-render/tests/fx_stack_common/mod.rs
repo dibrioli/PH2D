@@ -22,6 +22,9 @@ pub fn op(kind: u8, sigma_px: f32, tint: [f32; 4]) -> FxOpGpu {
         opacity: 1.0,
         mode: 0,
         blend: 0,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
     }
 }
 

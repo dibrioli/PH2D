@@ -8,6 +8,7 @@
 //! vão deixava passar até a máquina do smoke.
 
 use super::*;
+use ph2d_ecs::FxOp;
 
 /// **Os dois módulos da pilha PARSEIAM e VALIDAM.** Parse pega sintaxe; validação pega o resto (um
 /// tipo que não fecha, um builtin com aridade errada, um nome que não existe) — e é a validação que
@@ -63,36 +64,35 @@ fn the_blend_laws_come_from_the_shared_file_not_a_copy() {
 /// lugar nenhum. O `size_of` sozinho é cego a isso (os dois são `u32`).
 #[test]
 fn the_wgsl_globals_members_match_the_rust_struct() {
-    let start = FX_STACK_WGSL
-        .find("struct Globals {")
-        .expect("o WGSL declara `struct Globals`");
-    let body = &FX_STACK_WGSL[start..][..FX_STACK_WGSL[start..].find('}').expect("fecha")];
-    let fields: Vec<&str> = body
-        .lines()
-        .skip(1)
-        .filter_map(|l| l.trim().split(':').next())
-        .filter(|n| !n.is_empty() && !n.starts_with("//"))
-        .collect();
-    assert_eq!(
-        fields,
-        vec![
-            "dims",
-            "half",
-            "kind",
-            "tint",
-            "inv_two_sigma2",
-            "opacity",
-            "off_x",
-            "off_y",
-            "jump",
-            "band",
-            "n_segs",
-            "blend",
-        ],
-        "os membros do `Globals` do WGSL derivaram do struct do Rust"
+    // ⚠️ **Os DOIS lados saem do FONTE.** Este gate comparava o WGSL contra uma lista literal
+    // escrita à mão — uma TERCEIRA cópia do mesmo fato, que quem acrescenta um campo atualiza no
+    // mesmo commit em que introduz a divergência. Lendo o `Globals` do Rust, o gate afirma
+    // exatamente o que o doc dele promete: os dois lados do uniform concordam.
+    let rust = struct_fields(include_str!("fx_stack.rs"), "struct Globals {");
+    let wgsl = struct_fields(FX_STACK_WGSL, "struct Globals {");
+    // Controle positivo: um parser quebrado devolveria vazio, e vazio == vazio passa. A afirmação
+    // só vale porque as duas listas de fato contêm o que se espera de um `Globals`.
+    assert!(
+        rust.len() >= 12 && rust.contains(&"dims") && wgsl.contains(&"blend"),
+        "o parser do gate quebrou: rust={rust:?} wgsl={wgsl:?}"
     );
-    // 64 bytes de propósito (o `min_binding_size` do layout) — o `blend` ocupou o padding.
-    assert_eq!(core::mem::size_of::<Globals>(), 64);
+    assert_eq!(rust, wgsl, "os membros do `Globals` do WGSL derivaram do do Rust");
+    // 96 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade).
+    assert_eq!(core::mem::size_of::<Globals>(), 96);
+}
+
+/// Os NOMES dos campos de um `struct` declarado em `src`, na ordem — serve o Rust e o WGSL, cuja
+/// gramática de declaração coincide no que importa aqui (`nome: tipo,`).
+fn struct_fields<'a>(src: &'a str, header: &str) -> Vec<&'a str> {
+    let start = src.find(header).expect("o fonte declara o struct");
+    let body = &src[start..][..src[start..].find('}').expect("fecha")];
+    body.lines()
+        .skip(1)
+        .map(str::trim)
+        .filter(|l| !l.starts_with("//") && !l.starts_with('#'))
+        .filter_map(|l| l.split(':').next())
+        .filter(|n| !n.is_empty() && !n.starts_with("//"))
+        .collect()
 }
 
 /// **O NÚMERO que decide quem toma a lei de mistura** — a medição que o `FxKindSpec::takes_blend`
@@ -224,4 +224,67 @@ fn the_normal_early_out_is_load_bearing_because_mix_is_not_the_identity() {
         "só {pct:.2}% dos casos divergem — confira se a conta ainda é a que o shader faz"
     );
     eprintln!("mix(x,x,a) != x em {differing}/{total} ({pct:.1}%)");
+}
+
+/// **O TIPO decide o plano ANTES do modo — nos DOIS modos do ruído.**
+///
+/// O `mode` é um índice na lista DO TIPO, então o mesmo `1` é `MODE_CONTOUR` num degrau de dentro e
+/// `MODE_CREASED` na turbulência. A regra geral do `plan_of` pergunta *"tem modos, e escolheu o
+/// 1?"* — e mandaria uma turbulência *Creased* para o campo de distância, que desenha outra coisa
+/// inteira, sem um erro em lugar nenhum. Este gate é o que impede a colisão de renascer quando o
+/// 3º tipo com modos chegar.
+#[test]
+fn the_turbulence_warps_in_both_of_its_modes() {
+    for mode in [FxOp::MODE_SMOOTH, FxOp::MODE_CREASED] {
+        let op = FxOpGpu {
+            kind: FxOp::TURBULENCE,
+            sigma_px: 8.0,
+            offset_px: [0, 0],
+            tint: [0.0; 4],
+            opacity: 1.0,
+            mode,
+            blend: 0,
+            noise_scale_px: 24.0,
+            detail: 3,
+            seed: 0,
+        };
+        for raster_seeded in [false, true] {
+            assert_eq!(
+                crate::fx_stack_plan::plan_of(&op, raster_seeded),
+                Plan::Warp,
+                "modo {mode} caiu noutro plano — a colisão `MODE_CREASED == MODE_CONTOUR` voltou"
+            );
+        }
+    }
+}
+
+/// **A turbulência alcança o que ela DESLOCA, não o suporte de um kernel que ela não tem.**
+///
+/// O campo vive em `[-1,1]` (o `fbm` normaliza pela soma das amplitudes), então nenhum texel viaja
+/// mais que `Amount` — e uma margem de `3σ` seria textura comprada para um borrão inexistente,
+/// paga em toda forma turbulenta da cena.
+#[test]
+fn the_turbulence_reach_is_the_amount_it_displaces() {
+    let op = |amount: f32| FxOpGpu {
+        kind: FxOp::TURBULENCE,
+        sigma_px: amount,
+        offset_px: [0, 0],
+        tint: [0.0; 4],
+        opacity: 1.0,
+        mode: FxOp::MODE_SMOOTH,
+        blend: 0,
+        noise_scale_px: 24.0,
+        detail: 3,
+        seed: 0,
+    };
+    for amount in [1.0f32, 4.0, 10.5, 30.0] {
+        let reach = op_reach(&op(amount));
+        // O `+1` cobre o vizinho que a interpolação bilinear lê; mais que isso é desperdício.
+        let want = amount.ceil() as u32 + 1;
+        assert_eq!(reach, want, "o alcance de Amount {amount} deixou de ser o próprio Amount");
+        assert!(
+            reach < kernel_half(amount) || amount < 1.5,
+            "o alcance voltou a ser o suporte de um kernel gaussiano"
+        );
+    }
 }

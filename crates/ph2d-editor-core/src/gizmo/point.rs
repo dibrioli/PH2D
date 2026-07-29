@@ -227,15 +227,26 @@ const fn hit_half_px(kind: PointHandleKind) -> f32 {
         PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
             JOINT_PARAM_GRIP_PX + 2.0
         }
-        // ⚠️ **A alça de roldana usa o tamanho PADRÃO de joint** (Enio,
-        // 2026-07-29: *"os círculos do gizmo estão muito grandes"*). A v1
-        // desenhava no DOBRO (`* 2.0`) sob o racional *"uma roldana é uma roda,
-        // não um ponto de amarração"* — e essa cerca é decisão de produto, não
-        // de geometria: o artista a derrubou. Ir ao padrão em vez de a um número
-        // novo é o que apaga o caso especial: a alça de roldana passa a ser a
-        // MESMA marca que toda outra alça de joint, sem uma constante bespoke.
+        // ⚠️ **A alça de roldana usa o DIÂMETRO PADRÃO de gizmo — o do PONTO**
+        // (Enio, 2026-07-29, com screenshot: *"veja o ponto amarelo. aquele é o
+        // diâmetro padrão dos gizmos"*).
+        //
+        // Duas correções em cima da minha, e a 2ª é a que importa: a v1 desenhava
+        // no DOBRO (`RING * 2.0` = raio 30) sob o racional *"uma roldana é uma
+        // roda, não um ponto de amarração"* — cerca de produto, derrubada; e a v2
+        // foi ao **anel B** (`RING` = 15), que é a marca ERRADA. O padrão que o
+        // artista aponta é o **ponto cheio da âncora A** (`DOT` = 9, diâmetro 18),
+        // e é ele que faz a alça de roldana medir o que toda alça mede.
+        //
+        // ⚠️ **Isto reconcilia as duas opções que ele deu na 1ª rodada:** *"1/4 do
+        // diâmetro atual"* dos 60 px originais são 15 px, e o padrão dá 18 —
+        // ir ao `RING` era o meio do caminho, não o padrão.
+        //
+        // O DESENHO fica **oco** de propósito: o diâmetro é o padrão, mas uma
+        // alça de roldana e uma âncora fazem coisas diferentes, e um disco cheio
+        // no mesmo tamanho as tornaria a mesma marca.
         PointHandleKind::WheelCentre | PointHandleKind::WheelRim | PointHandleKind::WheelRimOut => {
-            JOINT_ANCHOR_RING_PX
+            JOINT_ANCHOR_DOT_PX
         }
     }
 }
@@ -362,13 +373,24 @@ pub fn paint_point_gizmo(
                         &ring,
                     );
                 }
-                // As alças de ROLDANA: o MESMO anel da âncora B — mesmo raio,
-                // mesma espessura, mesmo âmbar. Ver [`hit_half_px`] para por que
-                // o dobro da v1 caiu.
+                // As alças de ROLDANA: anel OCO no diâmetro PADRÃO de gizmo (o
+                // do ponto da âncora A). Ver [`hit_half_px`] para as duas
+                // correções que trouxeram o número até aqui.
                 PointHandleKind::WheelCentre
                 | PointHandleKind::WheelRim
                 | PointHandleKind::WheelRimOut => {
-                    let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX));
+                    // ⚠️ **O desenho LÊ a tabela de alvo** (`half`, já computado
+                    // acima) em vez de repetir a constante. Numa alça de roldana
+                    // desenho e alvo são o MESMO número por desenho, e uma
+                    // mutação real provou que duas cópias divergem em silêncio:
+                    // crescer só o desenho passava pelo gate, que pinava a tabela
+                    // e afirmava — sem poder verificar — que os dois andam juntos.
+                    // Com uma cópia só, a divergência fica INEXPRIMÍVEL.
+                    //
+                    // O grip de parâmetro é a exceção declarada (desenha 6, pega
+                    // 8): ele fica sobre uma linha fina e os dois números são
+                    // diferentes de propósito.
+                    let ring = Circle::new(centre, f64::from(half));
                     scene.inner_mut().stroke(
                         &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX),
                         Affine::IDENTITY,

@@ -211,19 +211,31 @@ fn the_hit_rects_are_never_smaller_than_the_marks() {
         "the snap crosshair must reach past the outermost handle, or the mark that explains \
          the magnet is hidden under the marks it explains"
     );
-    // ⚠️ **As três de RODLANA usam o tamanho PADRÃO** (Enio, 2026-07-29: *"os
-    // círculos do gizmo estão muito grandes"*). A v1 desenhava no DOBRO, e este
-    // gate é o que impede alguém de re-inflá-las sem também mover o alvo — a
-    // mesma pergunta que o resto desta tabela faz, agora com o número pinado.
+    // ⚠️ **As três de RODLANA medem o DIÂMETRO PADRÃO de gizmo — o do PONTO.**
+    // Enio, 2026-07-29, com screenshot: *"veja o ponto amarelo. aquele é o
+    // diâmetro padrão dos gizmos"*. Duas rodadas chegaram aqui: a v1 desenhava
+    // no DOBRO (raio 30) e a v2 no anel B (15), que é a marca errada — o padrão
+    // é o ponto da âncora A (9, diâmetro 18).
+    //
+    // ⚠️ **Este gate afirma a TABELA, e só ela.** A 1ª versão dele dizia *"se o
+    // desenho cresceu, o alvo tem de crescer com ele"* — uma afirmação que ele
+    // **não pode** verificar: o raio DESENHADO não é observável por este harness
+    // (`n_paths` conta paths, não mede um). A mutação que cresce só o desenho
+    // passava por ele.
+    //
+    // O que impede a divergência é a REPRESENTAÇÃO, não um gate: o braço de
+    // desenho das três alças usa o `half` desta mesma tabela, então há **uma
+    // cópia do número**. Um `* 2.0` deliberado ali segue invisível, e isto está
+    // dito aqui em vez de vendido como coberto.
     for k in [
         PointHandleKind::WheelCentre,
         PointHandleKind::WheelRim,
         PointHandleKind::WheelRimOut,
     ] {
         assert!(
-            (hit_half_px(k) - JOINT_ANCHOR_RING_PX).abs() < f32::EPSILON,
-            "{k:?} deixou de usar o anel padrão de joint — se o desenho cresceu, o \
-             alvo tem de crescer com ele, e se foi o alvo, o desenho"
+            (hit_half_px(k) - JOINT_ANCHOR_DOT_PX).abs() < f32::EPSILON,
+            "{k:?} deixou de medir o diâmetro PADRÃO de gizmo (o do ponto da \
+             âncora A)"
         );
     }
 }

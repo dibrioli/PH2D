@@ -67,3 +67,13 @@ pub fn expr_bypass_id(row: usize) -> NodeId {
 pub fn expr_remove_id(row: usize) -> NodeId {
     super::painter::fnv_node_id_runtime(&format!("expr_modal.remove.{row}"))
 }
+
+/// A sheet row's **combine mode** chip (`+` / `x` / `=`) — how the row lands on the
+/// value the rows above it produced.
+///
+/// Offered only for a SOURCE row; a modifier folds the value itself and has nothing to
+/// choose, so the id is simply never registered for one.
+#[must_use]
+pub fn expr_combine_id(row: usize) -> NodeId {
+    super::painter::fnv_node_id_runtime(&format!("expr_modal.combine.{row}"))
+}

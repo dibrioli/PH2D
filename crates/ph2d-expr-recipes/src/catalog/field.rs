@@ -6,7 +6,7 @@
 //! spatial idea, not an arithmetic one.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const FADE_BY_DISTANCE: Recipe = Recipe {
     id: "fade-by-distance",
@@ -31,6 +31,7 @@ pub const FADE_BY_DISTANCE: Recipe = Recipe {
         Knob::num("far", "Far Value", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -69,6 +70,7 @@ pub const SCALE_BY_PROXIMITY: Recipe = Recipe {
         Knob::num("far", "Far Value", 0.5, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -100,6 +102,7 @@ pub const GRADIENT_BY_VALUE: Recipe = Recipe {
         Knob::num("out_hi", "Up To", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,

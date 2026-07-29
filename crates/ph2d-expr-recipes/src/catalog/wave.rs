@@ -6,7 +6,7 @@
 //! [`Recipe::pair`] and the gallery offers them as one card.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const SWAY: Recipe = Recipe {
     id: "sway",
@@ -27,19 +27,11 @@ pub const SWAY: Recipe = Recipe {
         Knob::num("phase", "Phase", 0.0, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| {
-        format!(
-            "{} + sin(({} + {})*{})*{}",
-            c.inner,
-            c.clock,
-            c.n(2),
-            c.n(0),
-            c.n(1)
-        )
-    },
+    emit: |c| format!("sin(({} + {})*{})*{}", c.clock, c.n(2), c.n(0), c.n(1)),
 };
 
 pub const SWAY_COSINE: Recipe = Recipe {
@@ -54,19 +46,11 @@ pub const SWAY_COSINE: Recipe = Recipe {
         Knob::num("phase", "Phase", 0.0, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| {
-        format!(
-            "{} + cos(({} + {})*{})*{}",
-            c.inner,
-            c.clock,
-            c.n(2),
-            c.n(0),
-            c.n(1)
-        )
-    },
+    emit: |c| format!("cos(({} + {})*{})*{}", c.clock, c.n(2), c.n(0), c.n(1)),
 };
 
 pub const BOUNCE: Recipe = Recipe {
@@ -80,10 +64,11 @@ pub const BOUNCE: Recipe = Recipe {
         Knob::num("height", "Height", 0.5, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("height", 0.0)]),
     pair: None,
-    emit: |c| format!("{} + abs(sin({}*{}))*{}", c.inner, c.clock, c.n(0), c.n(1)),
+    emit: |c| format!("abs(sin({}*{}))*{}", c.clock, c.n(0), c.n(1)),
 };
 
 pub const PING_PONG: Recipe = Recipe {
@@ -104,6 +89,7 @@ pub const PING_PONG: Recipe = Recipe {
         Knob::num("high", "High", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -130,6 +116,7 @@ pub const RAMP_LOOP: Recipe = Recipe {
         Knob::num("high", "High", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -149,6 +136,7 @@ pub const BLINK: Recipe = Recipe {
         Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -177,6 +165,7 @@ pub const PULSE: Recipe = Recipe {
         Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -204,6 +193,7 @@ pub const ORBIT_X: Recipe = Recipe {
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: Some("orbit-y"),
@@ -222,6 +212,7 @@ pub const ORBIT_Y: Recipe = Recipe {
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: Some("orbit-x"),

@@ -138,9 +138,15 @@ pub fn paren(s: &str) -> String {
 }
 
 /// An atom binds tighter than any operator, so it never needs wrapping: a bare
-/// identifier (`value`, `Ball.x`) or a bare number. Deliberately conservative —
-/// `(a+b)` starts with a paren but a leading paren does not prove the whole string
-/// is one group (`(a+b)*c` is not), so we do not try to be clever.
+/// identifier (`value`, `Ball.x`), a bare number, or **one whole function call**
+/// (`mix(a, b, c)`). Deliberately conservative about everything else — `(a+b)`
+/// starts with a paren but a leading paren does not prove the whole string is one
+/// group (`(a+b)*c` is not), so we do not try to be clever.
+///
+/// ⚠️ The call arm is what keeps `Combine::Multiply` byte-identical to the operator
+/// `Flicker` used to bake into its own text. A call is an atom by the grammar — the
+/// argument list is bracketed, so `mix(a,b,c)*k` cannot re-associate — and
+/// [`is_one_call`] proves the brackets close exactly once, at the end.
 fn is_atom(s: &str) -> bool {
     let s = s.trim();
     if s.is_empty() {
@@ -150,19 +156,83 @@ fn is_atom(s: &str) -> bool {
         .chars()
         .enumerate()
         .all(|(i, c)| c.is_ascii_alphanumeric() || c == '_' || c == '.' || (i == 0 && c == '-'));
-    ident && !s.contains(' ')
+    (ident && !s.contains(' ')) || is_one_call(s)
+}
+
+/// `name(...)` where the bracket opened after the name closes on the LAST character.
+///
+/// ⚠️ The depth walk is the whole point: `f(a)+g(b)` also starts with an identifier
+/// and ends with `)`, and it is NOT an atom — its first bracket closes in the middle,
+/// which is exactly what this rejects.
+fn is_one_call(s: &str) -> bool {
+    let Some(open) = s.find('(') else {
+        return false;
+    };
+    let name = &s[..open];
+    if name.is_empty()
+        || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        || name.starts_with(|c: char| c.is_ascii_digit())
+    {
+        return false;
+    }
+    // ⚠️ Bytes, not chars: `open` came from `find`, which is a BYTE index. Walking
+    // `char_indices().skip(open)` would skip `open` CHARACTERS and silently look at
+    // the wrong place the moment a link carries a non-ASCII object name.
+    let mut depth = 0usize;
+    for (i, c) in s.bytes().enumerate().skip(open) {
+        match c {
+            b'(' => depth += 1,
+            b')' => {
+                depth = match depth.checked_sub(1) {
+                    Some(d) => d,
+                    None => return false,
+                };
+                if depth == 0 {
+                    return i + 1 == s.len();
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// ⚠️ `min(a, b)` moved from the "needs wrapping" list to the atom list when
+    /// [`Combine::Multiply`] arrived, and that is a CORRECTION, not a relaxation: a
+    /// call's arguments are bracketed, so no operator outside it can re-associate
+    /// into it. The old behaviour was merely conservative — it produced `(mix(..))`
+    /// where `mix(..)` was already unambiguous.
+    ///
+    /// [`Combine::Multiply`]: crate::Combine::Multiply
     #[test]
     fn atoms_are_left_alone_and_compounds_are_wrapped() {
-        for a in ["value", "Ball.x", "12", "0.5", "-10", "time"] {
+        for a in [
+            "value",
+            "Ball.x",
+            "12",
+            "0.5",
+            "-10",
+            "time",
+            "min(a, b)",
+            "mix(0.3, 1, smoothnoise(time*8)*0.5 + 0.5)",
+            "wiggle(2, 30)",
+        ] {
             assert_eq!(paren(a), a, "{a} is an atom");
         }
-        for c in ["value + 1", "a*b", "min(a, b)", "value + wiggle(2, 30)"] {
+        for c in [
+            "value + 1",
+            "a*b",
+            "value + wiggle(2, 30)",
+            // The two shapes `is_one_call` must refuse: a bracket that closes in the
+            // middle, and a leading paren that is not the whole group.
+            "f(a)+g(b)",
+            "(a+b)*c",
+            "2*f(a)",
+        ] {
             assert_eq!(paren(c), format!("({c})"), "{c} needs wrapping");
         }
     }

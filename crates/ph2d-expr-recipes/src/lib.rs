@@ -49,7 +49,9 @@
 //! is deliberately NOT offered: a recogniser of "canonical fragments" starts LYING
 //! the day someone edits one character. Re-opening a formula that is byte-identical
 //! to what some stack would produce is not a parser, it is a comparison
-//! ([`RecipeStack::recover`]).
+//! — and it is NOT built. ⚠️ Two doc-comments cited a `RecipeStack::recover` that has
+//! never existed (grepped): the sheet lives in the panel's state for as long as the card
+//! is open, and closing it keeps the FORMULA, not the rows.
 //!
 //! # Three kinds of row
 //!
@@ -98,7 +100,7 @@ mod stack;
 pub use catalog::{CATALOG, by_id};
 pub use emit::{EmitCtx, fmt_num, paren};
 pub use knob::{Knob, KnobKind, KnobValue};
-pub use recipe::{ClockUse, Family, Neutrality, Recipe, RecipeId, RowKind};
+pub use recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RecipeId, RowKind};
 pub use refusal::{Destination, REFUSALS, Refusal};
 pub use search::{SearchHit, search};
 pub use stack::{RecipeStack, Row, SEED_CLOCK, SEED_VALUE};

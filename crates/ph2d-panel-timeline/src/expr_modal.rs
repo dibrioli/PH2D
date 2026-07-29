@@ -272,6 +272,19 @@ pub(crate) fn route(
                     m.reseed = true;
                     return Some(EventOutcome::Consumed);
                 }
+                // The combine chip cycles, guarded by the SAME `combines()` the paint asks.
+                //
+                // ⚠️ The guard is HYGIENE, not correctness, and the mutation proved it:
+                // removing it leaves every gate green, because `RecipeStack::to_formula`
+                // does not consult `row.combine` for a modifier at all — the field would
+                // move and nothing would read it. The real guarantee is in the FOLD; this
+                // keeps the state from carrying a value that means nothing, and keeps the
+                // chip and the router asking one question.
+                if id == ids::expr_combine_id(ri) && m.stack.rows[ri].combines() {
+                    sync_from_store(m, host.store());
+                    m.stack.rows[ri].combine = m.stack.rows[ri].combine.next();
+                    return Some(EventOutcome::Consumed);
+                }
             }
             None
         }

@@ -7,7 +7,7 @@
 //! lands; until then these four are honest about being approximations.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const PENDULUM: Recipe = Recipe {
     id: "pendulum",
@@ -21,13 +21,13 @@ pub const PENDULUM: Recipe = Recipe {
         Knob::num("decay", "Decay", 0.3, (0.0, 5.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
     emit: |c| {
         format!(
-            "{} + sin({}*{})*max(0, 1 - {}*{})*{}",
-            c.inner,
+            "sin({}*{})*max(0, 1 - {}*{})*{}",
             c.clock,
             c.n(0),
             c.clock,
@@ -45,10 +45,11 @@ pub const FREE_FALL: Recipe = Recipe {
     aliases: &["gravity", "drop", "fall", "accelerate", "parabola"],
     knobs: &[Knob::num("gravity", "Gravity", 9.8, (0.0, 50.0))],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("gravity", 0.0)]),
     pair: None,
-    emit: |c| format!("{} - 0.5*{}*{}*{}", c.inner, c.n(0), c.clock, c.clock),
+    emit: |c| format!("-0.5*{}*{}*{}", c.n(0), c.clock, c.clock),
 };
 
 pub const THROW: Recipe = Recipe {
@@ -62,13 +63,13 @@ pub const THROW: Recipe = Recipe {
         Knob::num("gravity", "Gravity", 9.8, (0.0, 50.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("speed", 0.0), ("gravity", 0.0)]),
     pair: None,
     emit: |c| {
         format!(
-            "{} + {}*{} - 0.5*{}*{}*{}",
-            c.inner,
+            "{}*{} - 0.5*{}*{}*{}",
             c.n(0),
             c.clock,
             c.n(1),
@@ -98,13 +99,13 @@ pub const WAVE_ALONG_CHAIN: Recipe = Recipe {
         Knob::num("amount", "Amount", 0.5, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
     emit: |c| {
         format!(
-            "{} + sin(({} - {}*{})*{})*{}",
-            c.inner,
+            "sin(({} - {}*{})*{})*{}",
             c.clock,
             c.link(0),
             c.n(1),

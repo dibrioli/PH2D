@@ -24,6 +24,7 @@ pub const CUSTOM: Recipe = Recipe {
     ],
     knobs: &[Knob::text("formula", "Formula")],
     kind: RowKind::Raw,
+    combine: None,
     // ⚠️ `None`, and it is a lie we accept: the artist's text may well read the
     // clock. Declaring `Explicit` would promise that a Time row above reaches it,
     // and it does not — we substitute the clock into OUR emits, never into text we

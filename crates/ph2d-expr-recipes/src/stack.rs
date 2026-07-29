@@ -3,7 +3,7 @@
 use crate::catalog::by_id;
 use crate::emit::EmitCtx;
 use crate::knob::KnobValue;
-use crate::recipe::{RecipeId, RowKind};
+use crate::recipe::{Combine, RecipeId, RowKind};
 
 /// One row of the sheet.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +15,16 @@ pub struct Row {
     /// merely zeroes a knob leaves the row's arithmetic in the formula, and the
     /// artist toggling it would see the eye change and the picture not.
     pub bypass: bool,
+    /// **How this row's contribution lands on the value the rows above produced.**
+    ///
+    /// Seeded from [`Recipe::combine`] and only CONSULTED for a source (a recipe
+    /// whose `combine` is `Some`); a modifier folds `inner` itself and this field is
+    /// inert for it. Keeping the field unconditional — rather than an `Option`
+    /// mirroring the recipe — means the chip can be re-offered for a row whose
+    /// recipe changes without a second place to keep in step.
+    ///
+    /// [`Recipe::combine`]: crate::Recipe::combine
+    pub combine: Combine,
 }
 
 impl Row {
@@ -26,6 +36,7 @@ impl Row {
             recipe,
             knobs: r.default_knobs(),
             bypass: false,
+            combine: r.combine.unwrap_or_default(),
         })
     }
 
@@ -37,7 +48,18 @@ impl Row {
             recipe,
             knobs: r.neutral_knobs()?,
             bypass: false,
+            combine: r.combine.unwrap_or_default(),
         })
+    }
+
+    /// Whether this row's [`Row::combine`] is the artist's to choose — true exactly
+    /// for a SOURCE. The card asks it to decide whether to paint the chip, and
+    /// [`RecipeStack::to_formula`] asks it to decide whether to honour the field: two
+    /// answers to *"does this row have a mode?"* would let the picture and the chip
+    /// disagree.
+    #[must_use]
+    pub fn combines(&self) -> bool {
+        by_id(self.recipe).is_some_and(|r| r.combine.is_some())
     }
 
     /// Overwrite one knob by key. Returns `false` when the recipe has no such knob.
@@ -164,9 +186,13 @@ impl RecipeStack {
                 clock: &clock,
             };
             let out = (r.emit)(&ctx);
-            match r.kind {
-                RowKind::Value | RowKind::Raw => acc = out,
-                RowKind::Time => clock = out,
+            match (r.kind, r.combine) {
+                (RowKind::Time, _) => clock = out,
+                // A MODIFIER already folded `inner` — `Limit` clamped it, `Quantize`
+                // rounded it. There is nothing to choose, and `row.combine` is inert.
+                (RowKind::Value | RowKind::Raw, None) => acc = out,
+                // A SOURCE emitted its contribution ALONE; the row says how it lands.
+                (RowKind::Value | RowKind::Raw, Some(_)) => acc = row.combine.fold(&acc, &out),
             }
         }
         acc

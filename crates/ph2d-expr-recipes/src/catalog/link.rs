@@ -10,7 +10,7 @@
 //! a row that emitted `.x` would blank the modal the moment it was added.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const FOLLOW: Recipe = Recipe {
     id: "follow",
@@ -24,6 +24,7 @@ pub const FOLLOW: Recipe = Recipe {
         Knob::num("offset", "Offset", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -38,6 +39,7 @@ pub const MIRROR: Recipe = Recipe {
     aliases: &["negate link", "flip", "invert follow", "reflect"],
     knobs: &[Knob::link("target", "Target")],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -55,6 +57,7 @@ pub const OPPOSITE: Recipe = Recipe {
         Knob::num("pivot", "Pivot", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -72,6 +75,7 @@ pub const OFFSET_COPY: Recipe = Recipe {
         Knob::num("offset", "Offset", 0.2, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -98,6 +102,7 @@ pub const DISTANCE_2D: Recipe = Recipe {
         Knob::link("b_y", "B · Y"),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -115,6 +120,7 @@ pub const DISTANCE_1D: Recipe = Recipe {
     aliases: &["difference", "abs difference", "gap axis", "separation"],
     knobs: &[Knob::link("a", "A"), Knob::link("b", "B")],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -129,6 +135,7 @@ pub const MIDPOINT: Recipe = Recipe {
     aliases: &["average", "centre", "mean", "between", "average two"],
     knobs: &[Knob::link("a", "A"), Knob::link("b", "B")],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -147,6 +154,7 @@ pub const BLEND_TWO: Recipe = Recipe {
         Knob::num("blend", "Blend", 0.5, (0.0, 1.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -166,6 +174,7 @@ pub const SWITCH: Recipe = Recipe {
         Knob::num("below", "Below", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,

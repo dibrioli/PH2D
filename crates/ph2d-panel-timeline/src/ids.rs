@@ -18,10 +18,10 @@ pub use ph2d_editor_core::ids::{
     TIMELINE_RESIZE_T, TIMELINE_RESIZE_TL, TIMELINE_RESIZE_TR, TIMELINE_RULER,
     TIMELINE_SCALE_HANDLE_L, TIMELINE_SCALE_HANDLE_R, TIMELINE_SCROLLBAR, TIMELINE_SNAP,
     TIMELINE_SPEED, TIMELINE_SUMMARY_LOCK, TIMELINE_TIME_NUM, expr_bypass_id, expr_chip_id,
-    expr_gallery_id, expr_knob_id, expr_refusal_id, expr_remove_id, timeline_anchor_hit_id,
-    timeline_buffer_button_id, timeline_graph_resize_id, timeline_handle_hit_id,
-    timeline_key_hit_id, timeline_loop_brace_id, timeline_marker_hit_id, timeline_row_id,
-    timeline_strip_hit_id, timeline_summary_hit_id, timeline_twirl_id,
+    expr_combine_id, expr_gallery_id, expr_knob_id, expr_refusal_id, expr_remove_id,
+    timeline_anchor_hit_id, timeline_buffer_button_id, timeline_graph_resize_id,
+    timeline_handle_hit_id, timeline_key_hit_id, timeline_loop_brace_id, timeline_marker_hit_id,
+    timeline_row_id, timeline_strip_hit_id, timeline_summary_hit_id, timeline_twirl_id,
 };
 
 pub use ph2d_editor_core::ids::{

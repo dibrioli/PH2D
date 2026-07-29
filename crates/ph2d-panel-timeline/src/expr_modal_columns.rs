@@ -6,10 +6,10 @@
 //! goes INSIDE it. The card's geometry constants stay there and are shared, so
 //! there is one answer to how wide a column is.
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{
     Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, TextInput, TextInputState,
     paint_button, paint_icon_button, paint_number_input_with_buffer, paint_text_input_with_buffer,
@@ -367,6 +367,30 @@ pub(crate) fn paint_sheet(
         let rm_id = ids::expr_remove_id(ri);
         expr_icon_button(ctx, theme, rm_id, IconId::Close, rm);
 
+        // **The combine chip** — how this row lands on the rows above it.
+        //
+        // ⚠️ Painted for a SOURCE and for nothing else. A modifier folds the value
+        // itself (`Limit` clamps it), so a mode chip on one would be a control with no
+        // meaning — and `Row::combines` is the SAME question the fold asks, so the chip
+        // and the picture cannot disagree about whether the row has a mode.
+        //
+        // ⚠️ It is a glyph and not a word because it sits inside a 28 px row next to the
+        // eye; the label is in the tooltip's vocabulary (`Combine::label`), and the
+        // three are the operators an artist already reads in the formula bar.
+        let label_x = if row.combines() {
+            let mode = Rect::new(x + ROW_BTN_W, cy, ROW_BTN_W, ROW_H_PX);
+            expr_button(
+                ctx,
+                theme,
+                ids::expr_combine_id(ri),
+                row.combine.glyph(),
+                mode,
+            );
+            mode.x + ROW_BTN_W + Spacing::Xs.px()
+        } else {
+            x + ROW_BTN_W + Spacing::Xs.px()
+        };
+
         // ⚠️ The result readout is the payload of the spreadsheet metaphor: in a
         // spreadsheet you never wonder what a formula IS, you see what it GIVES.
         let result = row_result(&m.stack, ri, m.time, base);
@@ -374,10 +398,10 @@ pub(crate) fn paint_sheet(
             ctx.text_system,
             ctx.scene,
             rec.label,
-            eye.x + ROW_BTN_W + Spacing::Xs.px(),
+            label_x,
             cy + (ROW_H_PX - font) * 0.5,
             font,
-            SHEET_W - ROW_BTN_W * 2.0 - KNOB_READOUT_W,
+            (x + SHEET_W - ROW_BTN_W - KNOB_READOUT_W - label_x).max(0.0),
             resolve(
                 if row.bypass {
                     ColorToken::Text2

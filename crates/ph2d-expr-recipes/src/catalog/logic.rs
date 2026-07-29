@@ -1,7 +1,7 @@
 //! **Logic** — conditionals over the value, another object, or the clock.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const IF_GREATER: Recipe = Recipe {
     id: "if-greater",
@@ -22,6 +22,7 @@ pub const IF_GREATER: Recipe = Recipe {
         Knob::num("else", "Else", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: None,
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -40,6 +41,7 @@ pub const IF_LESS: Recipe = Recipe {
         Knob::num("else", "Else", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: None,
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -94,6 +96,7 @@ pub const IF_EQUAL: Recipe = Recipe {
         Knob::num("tolerance", "Tolerance", 0.1, (0.0, 4.0)),
     ],
     kind: RowKind::Value,
+    combine: None,
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -124,6 +127,7 @@ pub const GATE_AND: Recipe = Recipe {
         Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -155,6 +159,7 @@ pub const GATE_OR: Recipe = Recipe {
         Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::None,
     neutral: Neutrality::NoNeutral,
     pair: None,
@@ -190,6 +195,7 @@ pub const AFTER_TIME: Recipe = Recipe {
         Knob::num("after", "After", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Replace),
     clock: ClockUse::Explicit,
     neutral: Neutrality::NoNeutral,
     pair: None,

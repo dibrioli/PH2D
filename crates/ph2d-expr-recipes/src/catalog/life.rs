@@ -16,7 +16,7 @@
 //! wobble — and it is the reason `noise` stays in the grammar.
 
 use crate::knob::Knob;
-use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
+use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
 pub const SHAKE: Recipe = Recipe {
     id: "shake",
@@ -29,10 +29,11 @@ pub const SHAKE: Recipe = Recipe {
         Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Own,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| format!("{} + wiggle({}, {})", c.inner, c.n(0), c.n(1)),
+    emit: |c| format!("wiggle({}, {})", c.n(0), c.n(1)),
 };
 
 pub const TURBULENCE: Recipe = Recipe {
@@ -55,19 +56,11 @@ pub const TURBULENCE: Recipe = Recipe {
         Knob::lit("roughness", "Roughness", 0.5, (0.0, 1.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Own,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| {
-        format!(
-            "{} + wiggle({}, {}, {}, {})",
-            c.inner,
-            c.n(0),
-            c.n(1),
-            c.lit(2),
-            c.lit(3)
-        )
-    },
+    emit: |c| format!("wiggle({}, {}, {}, {})", c.n(0), c.n(1), c.lit(2), c.lit(3)),
 };
 
 pub const DRIFT: Recipe = Recipe {
@@ -81,18 +74,11 @@ pub const DRIFT: Recipe = Recipe {
         Knob::num("amount", "Amount", 0.2, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| {
-        format!(
-            "{} + smoothnoise({}*{})*{}",
-            c.inner,
-            c.clock,
-            c.n(0),
-            c.n(1)
-        )
-    },
+    emit: |c| format!("smoothnoise({}*{})*{}", c.clock, c.n(0), c.n(1)),
 };
 
 pub const JITTER: Recipe = Recipe {
@@ -106,10 +92,11 @@ pub const JITTER: Recipe = Recipe {
         Knob::num("amount", "Amount", 0.2, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::None,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| format!("{} + noise({})*{}", c.inner, c.n(0), c.n(1)),
+    emit: |c| format!("noise({})*{}", c.n(0), c.n(1)),
 };
 
 pub const BREATHE: Recipe = Recipe {
@@ -123,18 +110,11 @@ pub const BREATHE: Recipe = Recipe {
         Knob::num("amount", "Amount", 0.15, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Add),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| {
-        format!(
-            "{} + (sin({}*{})*0.5 + 0.5)*{}",
-            c.inner,
-            c.clock,
-            c.n(0),
-            c.n(1)
-        )
-    },
+    emit: |c| format!("(sin({}*{})*0.5 + 0.5)*{}", c.clock, c.n(0), c.n(1)),
 };
 
 pub const FLICKER: Recipe = Recipe {
@@ -149,13 +129,13 @@ pub const FLICKER: Recipe = Recipe {
         Knob::num("min", "Min", 0.3, (0.0, 1.0)),
     ],
     kind: RowKind::Value,
+    combine: Some(Combine::Multiply),
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("min", 1.0)]),
     pair: None,
     emit: |c| {
         format!(
-            "{}*mix({}, 1, smoothnoise({}*{})*0.5 + 0.5)",
-            c.tight(),
+            "mix({}, 1, smoothnoise({}*{})*0.5 + 0.5)",
             c.n(1),
             c.clock,
             c.n(0)

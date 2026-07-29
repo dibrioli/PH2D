@@ -712,3 +712,110 @@ fn a_card_that_stops_being_painted_stops_driving_the_scene() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+/// **The combine chip is alive under a real pointer, it cycles, and the formula follows.**
+///
+/// ⚠️ Red-first against a report: *"Expressões não podem ser somadas, multiplicadas,
+/// etc."* Measured before the fix, a sheet of `Sway` then `Blink` projected to
+/// `select(fract(time*4) < 0.5, 1, 0)` — the Sway **silently gone**, because 29 of the
+/// 55 recipes ignored the value above them.
+///
+/// The pointer is a real pixel and not a synthetic `WidgetEvent`: the physics panel's
+/// 36 collision cells were painted, hit-registered and dead under the mouse while a
+/// synthetic-event gate stayed green.
+#[test]
+fn the_combine_chip_cycles_under_a_real_pointer_and_the_formula_follows() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(21, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    // Two SOURCES: the second one used to eat the first.
+    for r in ["sway", "blink"] {
+        host.apply_panel_event::<TimelinePanel>(
+            &mut state,
+            WidgetEvent::Click(ids::expr_gallery_id(r)),
+        );
+    }
+    let before = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    assert!(
+        !before.contains("sin("),
+        "Blink's own default is Replace, so the Sway is dropped — that is the recipe's \
+         honest default and the chip is what changes it: {before}"
+    );
+
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let chip = ids::expr_combine_id(1);
+    let rect = regs
+        .iter()
+        .find(|(id, _)| *id == chip)
+        .map(|(_, r)| *r)
+        .expect("row 1 is a SOURCE, so its combine chip is painted and hit-registered");
+
+    let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == chip)),
+        "a pointer over the chip must produce its Click; got {evs:?}"
+    );
+    for ev in evs {
+        host.apply_panel_event::<TimelinePanel>(&mut state, ev);
+    }
+    let after = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    assert_ne!(before, after, "the click must reach the fold");
+    assert!(
+        after.contains("sin(") && after.contains("select("),
+        "and now BOTH rows are in the answer — the report's fix: {after}"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// **A MODIFIER row is offered no chip** — presence and ABSENCE, in one gate.
+///
+/// ⚠️ The absent half is the one that rots: `Limit` folds the value itself, so a mode
+/// on it would be a control that means nothing, and the day someone paints the chip
+/// unconditionally every other gate here stays green.
+#[test]
+fn a_modifier_row_has_no_combine_chip() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(22, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    // Row 0 a source, row 1 a modifier — so the same paint proves both halves.
+    for r in ["shake", "limit"] {
+        host.apply_panel_event::<TimelinePanel>(
+            &mut state,
+            WidgetEvent::Click(ids::expr_gallery_id(r)),
+        );
+    }
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(
+        regs.iter().any(|(id, _)| *id == ids::expr_combine_id(0)),
+        "the SOURCE row keeps its chip"
+    );
+    assert!(
+        !regs.iter().any(|(id, _)| *id == ids::expr_combine_id(1)),
+        "the MODIFIER row must have none"
+    );
+
+    // …and a synthetic click on the chip it does not have changes nothing, so the mode
+    // of a modifier cannot be moved by something the artist never sees.
+    let before = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_combine_id(1)),
+    );
+    assert_eq!(
+        before,
+        state.expr_modal.as_ref().unwrap().stack.to_formula(),
+        "a modifier has no mode to cycle"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

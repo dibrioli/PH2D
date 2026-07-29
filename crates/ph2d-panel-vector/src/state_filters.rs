@@ -37,10 +37,10 @@ pub(crate) const FILTER_SCALE_MAX: f64 = 2.0;
 /// um dono do outro lado da fronteira, e um teto MAIOR aqui deixa o artista pedir oitavas que o
 /// produtor clampa em silêncio — o slider anda e o desenho para. O gate que compara os dois mora
 /// na shell, o único lugar que alcança as duas crates.
-pub const FILTER_DETAIL_MAX: f64 = 6.0;
+pub const FILTER_DETAIL_MAX: f64 = 6.0; // LITERAL-PX-OK: contagem de oitavas, espelha o FxOp::MAX_DETAIL
 /// Quantas realizações o slider de **Seed** oferece — a faixa do `u8` que as guarda. Não é um teto
 /// escolhido: é a REPRESENTAÇÃO.
-pub(crate) const FILTER_SEED_MAX: f64 = 255.0;
+pub(crate) const FILTER_SEED_MAX: f64 = 255.0; // LITERAL-PX-OK: a faixa do u8 que guarda a semente
 
 /// **O que um tipo de degrau é**, como o painel precisa de saber. Espelha o `ph2d_ecs::FxKindSpec`
 /// — o painel **não alcança** o `ph2d-ecs` (vive de snapshots), e é a shell que traduz na

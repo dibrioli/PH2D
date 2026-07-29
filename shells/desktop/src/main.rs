@@ -73,8 +73,8 @@ mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
-mod expr_smoke;
 mod expr_blend_smoke;
+mod expr_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
@@ -171,6 +171,7 @@ mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
 mod mask_smoke;
+mod morph_fade_smoke;
 mod morph_live;
 mod motion_delay_smoke;
 mod motion_fx_smoke;
@@ -491,6 +492,7 @@ impl App {
             extrap_smoke_done: false,
             expr_smoke_done: false,
             expr_blend_smoke_done: false,
+            morph_fade_smoke_done: false,
             nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,

@@ -331,11 +331,7 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         key(doc, e, prop, 0.0, v);
         key(doc, e, prop, 3.0, v);
         if prop == PropKind::Position {
-            let i = doc
-                .bindings()
-                .iter()
-                .position(|b| b.prop == prop)
-                .unwrap();
+            let i = doc.bindings().iter().position(|b| b.prop == prop).unwrap();
             doc.bindings_mut()[i].path = Some(MotionPath::new(vec![
                 PathAnchor::corner([0.0, 0.0]),
                 PathAnchor::corner([10.0, 0.0]),

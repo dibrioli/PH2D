@@ -25,9 +25,7 @@
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Name, Transform, VecMorph, World};
-use ph2d_timeline::{
-    MotionPath, PathAnchor, PropKind, TimelineDoc, TimelineState, apply_from_doc,
-};
+use ph2d_timeline::{MotionPath, PathAnchor, PropKind, TimelineDoc, TimelineState, apply_from_doc};
 
 fn key(doc: &mut TimelineDoc, clip: usize, bits: u64, p: PropKind, t: f64, v: f32) {
     let was = doc.active_index();
@@ -158,9 +156,9 @@ fn the_fade_surface_is_byte_stable_on_morph_and_position() {
     // Guard de inércia POR CANAL — ver o doc do módulo. Cada canal tem de EXERCITAR
     // o fade sozinho; um canal que emudece não pode ser coberto pela variação do outro.
     let span = |f: fn(&Sample) -> f32| {
-        samples
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(lo, hi), s| (lo.min(f(s)), hi.max(f(s))))
+        samples.iter().fold((f32::MAX, f32::MIN), |(lo, hi), s| {
+            (lo.min(f(s)), hi.max(f(s)))
+        })
     };
     for (name, (lo, hi), floor) in [
         ("morph", span(|s| s.morph), 0.5_f32),
@@ -175,7 +173,8 @@ fn the_fade_surface_is_byte_stable_on_morph_and_position() {
     }
 
     assert_eq!(
-        h, CHANNEL_FINGERPRINT,
+        h,
+        CHANNEL_FINGERPRINT,
         "\nO FADE MOVEU EM MORPH/POSITION. Este gate e o IRMAO do fade_fingerprint: \
          ele cobre os canais que aquele nao ve (ADR-0146 C4).\n\
          Se a mudanca foi intencional, re-pine CHANNEL_FINGERPRINT no MESMO commit \

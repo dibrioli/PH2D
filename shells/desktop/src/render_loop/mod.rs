@@ -690,6 +690,7 @@ impl crate::App {
         self.extrap_smoke();
         self.expr_smoke();
         self.expr_blend_smoke();
+        self.morph_fade_smoke();
         self.nest_smoke();
         self.physics_smoke();
         self.flip_pose_smoke();

@@ -79,11 +79,7 @@ pub(crate) fn write_prop(
 /// pair is an inverse, and the gate
 /// `reading_a_property_back_is_the_inverse_of_writing_it` asserts it over EVERY
 /// kind rather than over a list someone maintains.
-pub(crate) fn read_prop(
-    world: &World,
-    entity: Entity,
-    b: &crate::TargetBinding,
-) -> Option<f32> {
+pub(crate) fn read_prop(world: &World, entity: Entity, b: &crate::TargetBinding) -> Option<f32> {
     let prop = b.prop;
     // Position — read THROUGH the trajectory (the inverse of the pose door's
     // Position arm). `None` while the binding has no path yet, which is what an

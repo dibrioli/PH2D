@@ -365,10 +365,10 @@ fn debug_assert_scratch_at(scratch: &stack_frames::StackScratch, t: f64) {
 #[cfg(test)]
 mod time_remap_tests {
     use super::*;
-    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
     use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
 
     /// A world with one sprite entity whose TranslationX is keyed 0 → 10 over
     /// `0..4 s` (linear: `x(t_source) = 2.5·t_source`).
@@ -511,10 +511,10 @@ mod time_remap_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
     use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
 
     /// The live-dragged entity keeps its manipulated transform; every other
     /// bound entity is still driven from the document.
@@ -561,9 +561,9 @@ mod tests {
 #[cfg(all(test, feature = "render"))]
 mod render_tests {
     use super::*;
-    use ph2d_ecs::Transform;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
+    use ph2d_ecs::Transform;
     use ph2d_render::Sprite;
 
     #[test]

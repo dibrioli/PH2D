@@ -492,3 +492,71 @@ fn measure_how_the_tick_scales_with_the_wet_area() {
     }
     println!();
 }
+
+/// **A SIM VARRE A REGIÃO OU A BBOX DELA?** — a pergunta que decide se há ganho barato (2026-07-28).
+///
+/// O log do produto (`PH2D_FLUID_PROFILE=1`) diz **`tool-tick = 57,49 ms` de `total = 69,99`**: 82% do
+/// frame, com o `dispatch` em 2,5. Depois do composite paralelo a sim é ~86% do tick, e ela é serial
+/// por semântica — então antes de propor GPU vale saber se o custo é da ÁGUA ou da CAIXA.
+///
+/// Dois traços do MESMO comprimento e a MESMA água: um horizontal (bbox fina) e um diagonal (bbox
+/// quadrada, ~N× maior). Se o diagonal custar muito mais, o motor paga a caixa e não a poça — e aí um
+/// varrimento por tiles é ganho barato. Se custarem igual, o custo É a água e a saída é o dispositivo.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
+    /// O passo por eixo que mantém o COMPRIMENTO do caminho igual ao do horizontal.
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+    let side = 4096u32;
+    println!(
+        "\n{:<14} {:>10} {:>12} {:>12}",
+        "forma", "dabs", "tick p50 ms", "bbox/tela"
+    );
+    for (name, diagonal) in [("horizontal", false), ("diagonal", true)] {
+        let mut t = wetted(side, 100.0);
+        let x0 = 200.0f32;
+        let y0 = if diagonal { 200.0 } else { 2048.0 };
+        let n = 60;
+        t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+        for k in 1..=n {
+            let d = 40.0 * k as f32;
+            // Mesmo COMPRIMENTO de caminho nos dois: o diagonal anda `d/√2` em cada eixo.
+            let (x, y) = if diagonal {
+                (x0 + d * DIAG, y0 + d * DIAG)
+            } else {
+                (x0 + d, y0)
+            };
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            let _ = t.take_preview_arc();
+        }
+        let (lx, ly) = if diagonal {
+            (x0 + 40.0 * n as f32 * DIAG, y0 + 40.0 * n as f32 * DIAG)
+        } else {
+            (x0 + 40.0 * n as f32, y0)
+        };
+        t.on_canvas_pointer(cp([lx, ly], PointerPhase::Up));
+
+        let mut ms = Vec::new();
+        let mut bbox = 0.0f64;
+        for _ in 0..10 {
+            t.marks.clear();
+            let t0 = Instant::now();
+            ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let a: u64 = t
+                .marks
+                .iter()
+                .map(|r| u64::from(r.w) * u64::from(r.h))
+                .sum();
+            bbox = bbox.max(a as f64);
+            let _ = t.take_preview_arc();
+        }
+        ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        println!(
+            "{name:<14} {n:>10} {:>12.2} {:>11.1}%",
+            ms[ms.len() / 2],
+            100.0 * bbox / (f64::from(side) * f64::from(side))
+        );
+    }
+    println!();
+}

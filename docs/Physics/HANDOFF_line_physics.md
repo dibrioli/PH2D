@@ -6891,3 +6891,79 @@ ela que denunciou as agulhas mortas.
 
 **Re-smoke:** `PH2D_PHYSICS_SMOKE=63` (as três alças) · `=58` (o pedido (6), executável pela 1ª vez) ·
 `=48` e `=59` (o passo de alça agora manda PAUSAR).
+
+### E O SMOKE APROVOU AS ALÇAS E DERRUBOU TRÊS COISAS (2026-07-29)
+
+*"Apareceu!"* (Enio) — e com ele três reports, que a medição separou em três
+defeitos independentes.
+
+**(1) O TAMANHO.** *"Os círculos do gizmo estão muito grandes. Coloque no tamanho
+padrão de todas as joints ou 1/4 do diâmetro atual."* A v1 desenhava no **DOBRO**
+(`JOINT_ANCHOR_RING_PX * 2.0`, raio 30) sob o racional *"uma roldana é uma roda,
+não um ponto de amarração"* — e essa cerca é decisão de **produto**, não de
+geometria. Foi ao **padrão** (raio 15, mesma espessura de traço), porque ir ao
+padrão em vez de a um número novo é o que **apaga o caso especial**: a alça de
+roldana passa a ser a MESMA marca que toda outra alça de joint. O ALVO acompanha
+(`hit_half_px`), e o gate `the_hit_rects_are_never_smaller_than_the_marks` pina a
+igualdade nos três kinds.
+
+**(2) OS SALTOS EXPLOSIVOS — a metade grave, e ela estava MEDIDA antes de eu
+tocar em nada** (`tests/measure_pulley_radius.rs`). O `L0` da corda
+(`PhysicsJoint::max_length`) é semeado UMA vez da rota que a montagem tem em
+repouso e depois **congelado** por `anchored = true`. Crescer o raio **CRESCE a
+rota** — o abraço é maior —, então a restrição `L(rota) ≤ L0` nascia **violada**:
+
+| raio | rota | violação | maior salto num tick |
+|---|---|---|---|
+| 0,30 (controle) | 11,9650 | +0,0000 | 0,0817 m |
+| 0,60 | 12,4851 | +0,5201 | 0,3097 m |
+| 0,90 | 13,0581 | +1,0931 | **14,1247 m** |
+| 1,50 | 14,3667 | +2,4018 | **50,4327 m** — a carga de 3 kg sai de +2 m para **+53 m** |
+
+**É a MESMA doença que o W-AnchorFollow curou na âncora**, e a cura é a mesma lei:
+***autorar re-deriva, o runtime congela***. Porta única
+**`reseat_wheel_geometry`** — ela re-abre as DUAS coisas que a geometria de uma
+roldana decide (o eixo de uma montada, que o `reseat_mounted_axle` já fazia, e o
+`L0` da corda), porque as duas nascem do MESMO gesto: quem chamasse metade
+deixaria o rig **estável e errado**. `rope_joint_of` responde *"de que corda é
+esta roldana?"* uma vez, para os dois consumidores. Depois: violação **+0,0000 em
+todo raio**, maior salto **0,0820** (r=0,90) e **0,0840** (r=1,50) contra 0,0817
+do controle, e a carga volta a DESCER.
+
+⚠️ **DUAS portas de autoria, as duas costuradas:** o arrasto da alça (raio e
+centro) e a row **Radius/Out Radius** da §13 — esta escreve por **FILA** de
+comandos, então a re-abertura vai **DEPOIS do flush**, e o `apply_wheel_edit`
+devolve *"a rota mudou?"* para o chamador saber quando. ⚠️ **NÃO é "o componente
+mudou"**, e a diferença é load-bearing: a cena `=59` autora o **MOTOR** com o
+relógio ANDANDO de propósito, e re-derivar comprimento de corda ali prenderia a
+restrição na configuração do instante.
+
+⚠️ **MEDIDO E REFUTADO:** *"afasta a ponta da corda dos objetos"* **não** é o
+desenho descolando — o vão entre a corda desenhada e a âncora é **`0.000000` em
+todo raio**. O que se via era a **consequência** do arremesso: a carga saía de
+quadro, e a corda ia atrás dela.
+
+**(3) O NÚMERO QUE NÃO APARECIA.** *"Não mostra o tamanho real da corda."* A row
+**existe** e o campo **é** sincado — mas sob `entity_changed`, o contrato certo
+para um número que só o artista muda, e **é exactamente esse contrato que um
+número derivado pelo PRODUTO quebra**: a seleção não muda quando a ponte semeia o
+`L0`. Medido pela mutação que reinstala o defeito: **a row mostra 1,00 sobre uma
+corda de 11,965 m**. ⚠️ **E a correção (2) PIORAVA isto se ficasse sozinha** — ela
+re-deriva o `L0` a cada arrasto, então a row ficaria permanentemente velha; as
+duas metades pertencem à mesma sessão. O guard é o **FOCO**, e ele é load-bearing
+(caixa focada tem edição parcial que o componente ainda não viu).
+
+**6 gates, 6 mutações, 6 sangram.** ⚠️ **A 1ª versão do arch-gate da §13
+SOBREVIVEU** à mutação `if false && route_changed`, porque pinava a **PRESENÇA**
+da chamada — a MESMA lição que o `wheel_radius_of` pagou nesta linha há poucas
+horas, e eu a repeti: *um gate que pina a CHAMADA não pina a RESPOSTA*. Agora ele
+pina a **FORMA** da guarda, e a metade comportamental (o predicado da rota) mora
+ao lado do funil.
+
+**`PROJECT_SCHEMA` fica 34**, registro fica **21**, **c9 BYTE-IDÊNTICO**
+(`7cb7728d…`, 96 corpos) — a correção é de autoria e nenhuma cena do hash autora
+raio.
+
+**Re-smoke: `PH2D_PHYSICS_SMOKE=63`** — as alças no tamanho padrão; arraste o aro
+de SAÍDA para fora e o rig **não** deve dar tranco; a row `Rope Length (m)` da §12
+tem de **acompanhar** o número enquanto você arrasta.

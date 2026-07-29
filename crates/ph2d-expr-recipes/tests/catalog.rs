@@ -122,7 +122,7 @@ fn the_living_families_all_declare_a_neutral() {
         // the value outright; they are named here rather than excused by family.
         let generator = matches!(
             r.id,
-            "ping-pong" | "ramp-loop" | "blink" | "pulse" | "orbit-x" | "orbit-y"
+            "ping-pong" | "blink" | "pulse" | "orbit-x" | "orbit-y"
         );
         if living && !generator {
             assert!(
@@ -317,7 +317,13 @@ fn every_recipe_is_findable_by_its_industry_name() {
         ("range mapper", "remap"),
         ("pick whip", "follow"),
         ("strobe", "blink"),
-        ("sawtooth", "ramp-loop"),
+        // ⚠️ The word survives its recipe: `Ramp Loop` was retired as a MEASURED duplicate
+        // and `Pulse` inherited its aliases, so the term an artist knows still lands.
+        ("sawtooth", "pulse"),
+        ("cosine", "sway"),
+        ("midpoint", "blend-two"),
+        ("negate", "multiply-add"),
+        ("mirror", "opposite"),
         ("boomerang", "ping-pong-time"),
         ("follow through", "wave-along-chain"),
         ("falloff", "fade-by-distance"),
@@ -452,7 +458,18 @@ fn every_declared_neutral_names_a_knob_the_recipe_has() {
 /// — a family that shipped empty would be a drawer that opens onto nothing.
 #[test]
 fn the_catalog_covers_every_family() {
-    assert_eq!(CATALOG.len(), 55, "plano 10 §4 ships 55 recipes");
+    // ⚠️ The number is COUNTED, not chosen. It was 55; five entries were retired after a
+    // report (*"muitas expressões não passam de mais do mesmo"*) once each had been MEASURED
+    // identical to a survivor at some knob setting — `Sway (Cosine)` = Sway with Phase a
+    // quarter period, `Ramp Loop` = Pulse at Decay 1 with On/Off swapped, `Mirror` =
+    // Opposite at Pivot 0, `Midpoint` = Blend Two at 0.5, `Negate` = Multiply/Add at -1.
+    // Each survivor INHERITED the retired one's search words, so no term the artist knows
+    // went dead with it.
+    assert_eq!(
+        CATALOG.len(),
+        50,
+        "plano 10 §4, menos as cinco duplicatas MEDIDAS"
+    );
     for f in Family::ALL {
         assert!(
             CATALOG.iter().any(|r| r.family == f),

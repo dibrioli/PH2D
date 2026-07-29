@@ -81,12 +81,37 @@ pub const DRIFT: Recipe = Recipe {
     emit: |c| format!("smoothnoise({}*{})*{}", c.clock, c.n(0), c.n(1)),
 };
 
+/// **A fixed random offset that differs PER OBJECT.**
+///
+/// ⚠️ Red-first against a report (*"Jitter não funciona"*), and the measurement was
+/// brutal: at its defaults it emitted `value + noise(7)*0.2` — a **CONSTANT** `+0.197`,
+/// excursion `0.0000` forever. It did not animate, it drew a flat curve in the preview
+/// strip, and worst of all it was a WORSE version of typing an Offset: the number it
+/// produced was unpredictable and the same on every object, so the one thing its own
+/// blurb promised — *"stagger"* — was the one thing it could not do.
+///
+/// The fix is the `__seed` the evaluator already binds. It is derived from the BINDING
+/// (`SEED_SPACING` apart per target), so it is a different number for every object and
+/// every property, and `noise(__seed + seed)` is what *"a random offset per object,
+/// reroll with Seed"* actually means. It is the same channel `wiggle` uses internally,
+/// so this is not a new capability — it is the one Jitter was written to have.
+///
+/// ⚠️ Still constant IN TIME, and that is the whole point: this is the one recipe in
+/// `Life` that must NOT move. A group of objects each nudged a different fixed amount is
+/// what an animator reaches for before anything is animated at all.
 pub const JITTER: Recipe = Recipe {
     id: "jitter",
     family: Family::Life,
     label: "Jitter",
-    blurb: "A fixed random offset. Same every frame; change Seed to reroll.",
-    aliases: &["random offset", "seed", "vary", "randomize", "stagger"],
+    blurb: "A fixed random offset, different on every object. Seed rerolls it.",
+    aliases: &[
+        "random offset",
+        "seed",
+        "vary",
+        "randomize",
+        "stagger",
+        "per object",
+    ],
     knobs: &[
         Knob::num("seed", "Seed", 7.0, (0.0, 1000.0)),
         Knob::num("amount", "Amount", 0.2, (0.0, 40.0)),
@@ -96,7 +121,7 @@ pub const JITTER: Recipe = Recipe {
     clock: ClockUse::None,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| format!("noise({})*{}", c.n(0), c.n(1)),
+    emit: |c| format!("noise(__seed + {})*{}", c.n(0), c.n(1)),
 };
 
 pub const BREATHE: Recipe = Recipe {

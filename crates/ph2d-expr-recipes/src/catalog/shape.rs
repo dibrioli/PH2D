@@ -129,7 +129,18 @@ pub const MULTIPLY_ADD: Recipe = Recipe {
     family: Family::Shape,
     label: "Multiply / Add",
     blurb: "Scale the value, then shift it.",
-    aliases: &["scale", "gain", "offset", "times plus", "linear transform"],
+    aliases: &[
+        "scale",
+        "gain",
+        "offset",
+        "times plus",
+        "linear transform",
+        // Inherited from the retired `Negate`, which was EXACTLY this with Multiply -1.
+        "negate",
+        "invert sign",
+        "minus",
+        "opposite sign",
+    ],
     knobs: &[
         Knob::num("multiply", "Multiply", 1.0, (-10.0, 10.0)),
         Knob::num("offset", "Offset", 0.0, (-40.0, 40.0)),
@@ -145,21 +156,6 @@ pub const MULTIPLY_ADD: Recipe = Recipe {
     // unparenthesised form means `value + (wiggle*m) + o` — a different animation
     // that parses. This is the row the pairwise-composition gate exists for.
     emit: |c| format!("{}*{} + {}", c.tight(), c.n(0), c.n(1)),
-};
-
-pub const NEGATE: Recipe = Recipe {
-    id: "negate",
-    family: Family::Shape,
-    label: "Negate",
-    blurb: "Flip the sign.",
-    aliases: &["invert sign", "minus", "opposite", "reverse sign"],
-    knobs: &[],
-    kind: RowKind::Value,
-    combine: None,
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("-{}", c.tight()),
 };
 
 pub const INVERT_RANGE: Recipe = Recipe {

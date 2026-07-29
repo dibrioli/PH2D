@@ -104,13 +104,31 @@ include!(concat!(
 #[test]
 fn the_catalog_is_value_identical_to_the_pre_combine_world() {
     const TEXT_MOVED: &[&str] = &["free-fall"];
+    // ⚠️ Retired as MEASURED duplicates of a survivor, each named with the setting that
+    // reproduces it. Listed rather than deleted from the table so that removing a recipe
+    // stays a DECISION with a reason attached, and so a re-added id is caught.
+    const RETIRED: &[&str] = &["sway-cosine", "ramp-loop", "mirror", "midpoint", "negate"];
+    // ⚠️ `Jitter` is the one recipe whose VALUE moved on purpose: it emitted a constant
+    // (`noise(7)` = +0.197 forever, excursion 0.0000) and now reads the per-binding
+    // `__seed`, so a group of objects each gets a different offset — which is what its own
+    // blurb promised and what the report said it did not do.
+    const VALUE_MOVED: &[&str] = &["jitter"];
     assert_eq!(
         PRE_COMBINE.len(),
-        CATALOG.len(),
-        "the frozen table must cover the catalog — a recipe added without a line here \
-         is a recipe whose default nobody pinned"
+        CATALOG.len() + RETIRED.len(),
+        "the frozen table must cover the catalog plus the retired — a recipe added without \
+         a line here is a recipe whose default nobody pinned"
     );
+    for r in RETIRED {
+        assert!(
+            ph2d_expr_recipes::by_id(r).is_none(),
+            "{r} is listed as retired but is still in the catalog"
+        );
+    }
     for (id, before) in PRE_COMBINE {
+        if RETIRED.contains(id) || VALUE_MOVED.contains(id) {
+            continue;
+        }
         let now = formula_of(vec![row_at_defaults(id)]);
         let (ok, worst) = agree(before, &now);
         assert!(
@@ -125,10 +143,13 @@ fn the_catalog_is_value_identical_to_the_pre_combine_world() {
         }
     }
     // …and the exception really is one, so nobody "tidies" the list by adding to it.
-    for id in TEXT_MOVED {
+    for id in TEXT_MOVED.iter().chain(VALUE_MOVED) {
         let now = formula_of(vec![row_at_defaults(id)]);
         let before = PRE_COMBINE.iter().find(|(i, _)| i == id).unwrap().1;
-        assert_ne!(&now, before, "{id} is listed as text-moved but did not move");
+        assert_ne!(
+            &now, before,
+            "{id} is listed as text-moved but did not move"
+        );
     }
 }
 
@@ -150,7 +171,10 @@ fn stacking_two_sources_keeps_both_under_add_and_multiply() {
         "an Add row must not swallow the rows above it — this is the reported bug:\n  {sum}"
     );
     let (matches_sum, worst) = agree(&sum, &format!("({sway}) + ({blink_only})"));
-    assert!(matches_sum, "Add must be the sum of the two (worst {worst})\n  {sum}");
+    assert!(
+        matches_sum,
+        "Add must be the sum of the two (worst {worst})\n  {sum}"
+    );
 
     blink.combine = Combine::Multiply;
     let product = formula_of(vec![row_at_defaults("sway"), blink]);
@@ -245,7 +269,11 @@ fn a_row_combines_exactly_when_its_recipe_is_a_source() {
             r.id
         );
         if let Some(c) = r.combine {
-            assert_eq!(row.combine, c, "{}: a new row starts at the recipe's mode", r.id);
+            assert_eq!(
+                row.combine, c,
+                "{}: a new row starts at the recipe's mode",
+                r.id
+            );
         }
     }
 }

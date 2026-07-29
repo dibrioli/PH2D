@@ -31,27 +31,23 @@ pub const FOLLOW: Recipe = Recipe {
     emit: |c| format!("{}*{} + {}", c.link(0), c.n(1), c.n(2)),
 };
 
-pub const MIRROR: Recipe = Recipe {
-    id: "mirror",
-    family: Family::Link,
-    label: "Mirror",
-    blurb: "The opposite of another object's property.",
-    aliases: &["negate link", "flip", "invert follow", "reflect"],
-    knobs: &[Knob::link("target", "Target")],
-    kind: RowKind::Value,
-    combine: Some(Combine::Replace),
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("-{}", c.link(0)),
-};
-
 pub const OPPOSITE: Recipe = Recipe {
     id: "opposite",
     family: Family::Link,
     label: "Opposite",
     blurb: "Mirror another object around a pivot.",
-    aliases: &["reflect about", "symmetry", "mirror pivot", "counterweight"],
+    aliases: &[
+        "reflect about",
+        "symmetry",
+        "mirror pivot",
+        "counterweight",
+        // Inherited from the retired `Mirror`, which was EXACTLY this with Pivot 0.
+        "negate link",
+        "flip",
+        "invert follow",
+        "reflect",
+        "mirror",
+    ],
     knobs: &[
         Knob::link("target", "Target"),
         Knob::num("pivot", "Pivot", 0.0, (-40.0, 40.0)),
@@ -127,27 +123,25 @@ pub const DISTANCE_1D: Recipe = Recipe {
     emit: |c| format!("abs({} - {})", c.link(0), c.link(1)),
 };
 
-pub const MIDPOINT: Recipe = Recipe {
-    id: "midpoint",
-    family: Family::Link,
-    label: "Midpoint",
-    blurb: "Halfway between two objects.",
-    aliases: &["average", "centre", "mean", "between", "average two"],
-    knobs: &[Knob::link("a", "A"), Knob::link("b", "B")],
-    kind: RowKind::Value,
-    combine: Some(Combine::Replace),
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("({} + {})*0.5", c.link(0), c.link(1)),
-};
-
 pub const BLEND_TWO: Recipe = Recipe {
     id: "blend-two",
     family: Family::Link,
     label: "Blend Two",
     blurb: "Slide between two objects' properties.",
-    aliases: &["mix", "lerp", "interpolate", "weighted", "crossfade"],
+    aliases: &[
+        "mix",
+        "lerp",
+        "interpolate",
+        "weighted",
+        "crossfade",
+        // Inherited from the retired `Midpoint`, which was EXACTLY this at Blend 0.5.
+        "midpoint",
+        "average",
+        "centre",
+        "mean",
+        "between",
+        "average two",
+    ],
     knobs: &[
         Knob::link("a", "A"),
         Knob::link("b", "B"),

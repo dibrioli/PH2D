@@ -70,6 +70,10 @@ mod rewire;
 mod connect;
 
 #[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_adapt.rs"]
+mod adapt;
+
+#[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_fold.rs"]
 mod fold;
 

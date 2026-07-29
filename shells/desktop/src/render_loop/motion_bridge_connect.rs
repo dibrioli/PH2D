@@ -60,11 +60,29 @@ pub(super) fn apply_connect(
             toasts.push(Toast::warning(connect_err_msg(e)));
         }
         Ok(()) => {
-            let rejected = match trial.validate(&motion.registry) {
-                Ok(()) => false,
-                Err(viols) => viols.iter().any(|v| violation_blocks_edge(v, edge)),
-            };
+            let viols = trial.validate(&motion.registry).err().unwrap_or_default();
+            let rejected = viols.iter().any(|v| violation_blocks_edge(v, edge));
             if rejected {
+                // A pure TYPE mismatch on the forward wire is the one refusal the
+                // editor can heal: splice an adapter node (`from -> adapter -> to`) if
+                // one is registered for the two port types (plan §1.1 item 2). A
+                // membrane crossing or a feedback (`pre`) wire is left to the refusal —
+                // an adapter node fixes neither.
+                let type_mismatch = viols.iter().any(|v| {
+                    matches!(
+                        v,
+                        ph2d_nodegraph::graph::Violation::TypeMismatch { from, to }
+                            if *from == edge.from && *to == edge.to
+                    )
+                });
+                if type_mismatch
+                    && !edge.delayed
+                    && super::adapt::try_insert_adapter(
+                        motion, toasts, from_node, from_port, to_node, to_port,
+                    )
+                {
+                    return;
+                }
                 toasts.push(Toast::warning("Can't connect: incompatible ports"));
             } else if scopes_a_sequential_node(&trial) {
                 // A spring / integrate upstream of a Time Remap would be asked

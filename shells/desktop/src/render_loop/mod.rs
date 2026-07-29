@@ -696,6 +696,7 @@ impl crate::App {
         self.motion_node_path_smoke();
         self.motion_delay_smoke();
         self.motion_fx_smoke();
+        self.adapter_smoke();
         self.value_curve_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();

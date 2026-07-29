@@ -283,6 +283,7 @@ pub(crate) fn paint_sheet(
     x: f32,
     y: f32,
     reseed: bool,
+    base: f32,
 ) {
     let font = TypeToken::Sm.px();
     let mut cy = y;
@@ -319,7 +320,7 @@ pub(crate) fn paint_sheet(
 
         // ⚠️ The result readout is the payload of the spreadsheet metaphor: in a
         // spreadsheet you never wonder what a formula IS, you see what it GIVES.
-        let result = row_result(&m.stack, ri, m.time);
+        let result = row_result(&m.stack, ri, m.time, base);
         paint_text(
             ctx.text_system,
             ctx.scene,

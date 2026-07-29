@@ -41,12 +41,10 @@ use ph2d_timeline::TimelineViewSnapshot;
 
 /// Gallery column width — fits `"▾ Physics  (4)"` and the longest recipe label.
 pub(crate) const GALLERY_W: f32 = 190.0; // LITERAL-PX-OK: expression gallery column width
-/// Sheet column width — a knob label column plus a slider track plus a readout.
+/// Sheet column width — a knob label column plus a number box plus a readout.
 pub(crate) const SHEET_W: f32 = 320.0; // LITERAL-PX-OK: expression sheet column width
-/// Preview column width (plano 10 W2).
-const PREVIEW_W: f32 = 190.0; // LITERAL-PX-OK: expression preview column width
-/// Rows the puppet frame takes; the curve strip gets the rest of the body.
-const PUPPET_SLOTS: f32 = 7.0; // LITERAL-PX-OK: CONTAGEM de linhas do quadro, nao medida
+/// Rows the wave strip takes, under the body and across the whole card.
+const STRIP_SLOTS: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM de linhas da fita, nao medida
 /// Knob label column inside a sheet row.
 pub(crate) const KNOB_LABEL_W: f32 = 84.0; // LITERAL-PX-OK: expression knob label column
 /// Numeric readout column at the right of a knob row.
@@ -75,13 +73,15 @@ const CHROME_ROWS: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM das tres linhas nomeada
 
 /// Total card width.
 pub fn card_w() -> f32 {
-    Spacing::Md.px() * 2.0 + GALLERY_W + SHEET_W + PREVIEW_W + Spacing::Sm.px() * 2.0
+    Spacing::Md.px() * 2.0 + GALLERY_W + SHEET_W + Spacing::Sm.px()
 }
 
-/// Total card height: title · body · formula · footer, plus the paddings.
+/// Total card height: title · body · wave strip · formula · footer, plus paddings.
 pub fn card_h() -> f32 {
     let gap = Spacing::Xs.px();
-    Spacing::Sm.px() * 2.0 + ROW_H_PX * (BODY_SLOTS as f32 + CHROME_ROWS) + gap * CHROME_ROWS
+    Spacing::Sm.px() * 2.0
+        + ROW_H_PX * (BODY_SLOTS as f32 + STRIP_SLOTS + CHROME_ROWS)
+        + gap * (CHROME_ROWS + 1.0)
 }
 
 pub(crate) fn button_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ButtonState {
@@ -137,10 +137,20 @@ pub(crate) fn paint(
     // formula bar and every readout describe the same instant.
     sync_from_store(m, ctx.host.store());
     let reseed = core::mem::take(&mut m.reseed);
+    // ⚠️ The fallback is resolved HERE, in the one crate that can see the project's
+    // own default: a `0` on the snapshot means nobody filled it (every gate builds a
+    // `Default` one), and `ph2d-timeline` has no business carrying a copy of `100`.
+    let px_per_m = if snap.pixels_per_meter > 0.0 {
+        snap.pixels_per_meter
+    } else {
+        ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER
+    };
     // ⚠️ ONE evaluation of the window per frame, shared by the strip and the
     // puppet — a puppet that sampled on its own would drift from the curve drawn
     // beside it.
-    let samples = crate::expr_modal_preview::sample_window(&m.stack);
+    // The resting value of THIS property — 0 for a translation, 1 for a scale.
+    let base = crate::expr_modal_preview::preview_value(m.prop);
+    let samples = crate::expr_modal_preview::sample_window(&m.stack, base);
     m.preview_frame = m.preview_frame.wrapping_add(1);
     // ── Place the card, and KEEP it reachable. ──
     //
@@ -166,6 +176,10 @@ pub(crate) fn paint(
         ch,
     );
     m.pos = Some((rect.x, rect.y));
+    // The stage opens to the RIGHT of the card, once, and is an offset from here on.
+    if m.stage_offset == (0.0, 0.0) {
+        m.stage_offset = crate::expr_modal_stage::default_offset(cw);
+    }
     let m = &*m;
 
     let radius = Radius::Md.px();
@@ -182,8 +196,97 @@ pub(crate) fn paint(
     let gap = Spacing::Xs.px();
     let font = TypeToken::Sm.px();
     let inner_x = rect.x + pad;
-    let mut cy = rect.y + Spacing::Sm.px();
+    let cy = rect.y + Spacing::Sm.px();
 
+    let mut cy = paint_title_band(m, ctx, theme, rect, cy);
+
+    let body_y = cy;
+    crate::expr_modal_columns::paint_gallery(m, ctx, theme, inner_x, body_y);
+    let sheet_x = inner_x + GALLERY_W + Spacing::Sm.px();
+    crate::expr_modal_columns::paint_sheet(m, ctx, theme, sheet_x, body_y, reseed, base);
+
+    cy += ROW_H_PX * BODY_SLOTS as f32 + gap;
+
+    // ── The wave strip: the value across the window, the WHOLE card wide. ──
+    //
+    // ⚠️ The puppet that used to sit beside it moved OUT of the card, to the stage
+    // (Enio, smoke de 2026-07-29: *"vamos nos desfazer do preview do objeto (sphere)
+    // no painel … o preview da onda (grafo) pode ficar no painel"*). What is left is
+    // a plot of value against time, and a time plot wants WIDTH — the 190 px column
+    // it shared was the wrong shape for it, and is now nobody's.
+    let strip = Rect::new(
+        inner_x,
+        cy,
+        rect.w - pad * 2.0,
+        ROW_H_PX * STRIP_SLOTS - gap,
+    );
+    crate::expr_modal_preview::paint_strip(
+        ctx.scene,
+        theme,
+        strip,
+        &samples,
+        base,
+        m.preview_frame,
+    );
+    cy += ROW_H_PX * STRIP_SLOTS + gap;
+
+    // ── The formula bar: the PROJECTION of the sheet, never a stored copy. ──
+    let bar = Rect::new(inner_x, cy, rect.w - pad * 2.0, ROW_H_PX);
+    stroke_rounded_rect(
+        ctx.scene,
+        bar,
+        Radius::Xs.px(),
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        &format!("fx  {}", m.stack.to_formula()),
+        bar.x + Spacing::Sm.px(),
+        bar.y + (ROW_H_PX - font) * 0.5,
+        font,
+        bar.w - Spacing::Sm.px() * 2.0,
+        resolve(ColorToken::Text2, theme),
+    );
+    cy += ROW_H_PX + gap;
+
+    // ── Footer: Cancel · Apply. ──
+    let apply_x = rect.x + rect.w - pad - FOOT_BTN_W;
+    let cancel_x = apply_x - FOOT_BTN_W - Spacing::Sm.px();
+    for (id, key, x) in [
+        (
+            ids::EXPR_MODAL_CANCEL,
+            "panel.timeline.expr_cancel",
+            cancel_x,
+        ),
+        (ids::EXPR_MODAL_APPLY, "panel.timeline.expr_apply", apply_x),
+    ] {
+        let r = Rect::new(x, cy, FOOT_BTN_W, ROW_H_PX);
+        expr_button(ctx, theme, id, ph2d_i18n::tr(key), r);
+    }
+
+    // ── The STAGE, on its own card beside this one. ──
+    //
+    // Painted LAST so it overlays nothing of the card it is linked to, and handed
+    // the SAME sample vector the wave strip just plotted.
+    crate::expr_modal_stage::paint(m, ctx, theme, rect, &samples, base, px_per_m);
+}
+
+/// The title band — the drag handle and the close X — and the `y` the body starts at.
+///
+/// Split out when `paint` crossed the 200-LOC function cap; the cut is by BAND, so
+/// each piece is one horizontal thing the card has.
+fn paint_title_band(
+    m: &crate::expr_modal::ExprModal,
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    rect: Rect,
+    cy: f32,
+) -> f32 {
+    let pad = Spacing::Md.px();
+    let font = TypeToken::Sm.px();
+    let inner_x = rect.x + pad;
     // ── Title band = the drag handle, then the close X. ──
     //
     // ⚠️ The band is a GESTURE surface, not a button: it streams the panel's own
@@ -229,61 +332,5 @@ pub(crate) fn paint(
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, ROW_H_PX);
     expr_button(ctx, theme, ids::EXPR_MODAL_CLOSE, "X", close_rect);
-    cy += ROW_H_PX + gap;
-
-    let body_y = cy;
-    crate::expr_modal_columns::paint_gallery(m, ctx, theme, inner_x, body_y);
-    let sheet_x = inner_x + GALLERY_W + Spacing::Sm.px();
-    crate::expr_modal_columns::paint_sheet(m, ctx, theme, sheet_x, body_y, reseed);
-
-    // ── The preview column (W2): the puppet above, the curve strip below. ──
-    let pv_x = sheet_x + SHEET_W + Spacing::Sm.px();
-    let puppet_h = ROW_H_PX * PUPPET_SLOTS;
-    let strip_h = ROW_H_PX * (BODY_SLOTS as f32 - PUPPET_SLOTS) - gap;
-    crate::expr_modal_preview::paint(
-        ctx.scene,
-        theme,
-        Rect::new(pv_x, body_y, PREVIEW_W, puppet_h),
-        Rect::new(pv_x, body_y + puppet_h + gap, PREVIEW_W, strip_h),
-        &samples,
-        crate::expr_modal_preview::puppet_for(m.prop),
-        m.preview_frame,
-    );
-    cy += ROW_H_PX * BODY_SLOTS as f32 + gap;
-
-    // ── The formula bar: the PROJECTION of the sheet, never a stored copy. ──
-    let bar = Rect::new(inner_x, cy, rect.w - pad * 2.0, ROW_H_PX);
-    stroke_rounded_rect(
-        ctx.scene,
-        bar,
-        Radius::Xs.px(),
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("fx  {}", m.stack.to_formula()),
-        bar.x + Spacing::Sm.px(),
-        bar.y + (ROW_H_PX - font) * 0.5,
-        font,
-        bar.w - Spacing::Sm.px() * 2.0,
-        resolve(ColorToken::Text2, theme),
-    );
-    cy += ROW_H_PX + gap;
-
-    // ── Footer: Cancel · Apply. ──
-    let apply_x = rect.x + rect.w - pad - FOOT_BTN_W;
-    let cancel_x = apply_x - FOOT_BTN_W - Spacing::Sm.px();
-    for (id, key, x) in [
-        (
-            ids::EXPR_MODAL_CANCEL,
-            "panel.timeline.expr_cancel",
-            cancel_x,
-        ),
-        (ids::EXPR_MODAL_APPLY, "panel.timeline.expr_apply", apply_x),
-    ] {
-        let r = Rect::new(x, cy, FOOT_BTN_W, ROW_H_PX);
-        expr_button(ctx, theme, id, ph2d_i18n::tr(key), r);
-    }
+    cy + ROW_H_PX + Spacing::Xs.px()
 }

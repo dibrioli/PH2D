@@ -173,6 +173,7 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Row { .. } => {}
         TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
         TimelineHitKind::ExprModalHandle => crate::expr_modal::apply_drag(state, g),
+        TimelineHitKind::ExprStageHandle => crate::expr_modal_stage::apply_drag(state, g),
         TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
         TimelineHitKind::CurveAnchor { target, key } => {
             anchor_drag::apply_gesture(state, px_per_s, snap, target, key, g);

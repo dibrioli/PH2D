@@ -1563,6 +1563,12 @@ impl crate::App {
         // The Motion Path toggle reflects the SELECTED object's position mode, so
         // switching objects updates it (ADR-0141). Filled here because the document
         // has no selection; fresh / no single selection → Path (the default).
+        // How big a metre is on this canvas — a PROJECT setting, so it is filled
+        // here for the same reason `position_is_path` is: the document has no
+        // opinion about it. The Expression stage draws a metric window with it.
+        self.timeline_view.pixels_per_meter = hero_screen
+            .as_ref()
+            .map_or(0.0, |h| h.project.pixels_per_meter);
         self.timeline_view.position_is_path = selected_now.is_none_or(|e| {
             matches!(
                 self.timeline.doc.position_key_mode(e, true),

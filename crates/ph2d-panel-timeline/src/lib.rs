@@ -50,6 +50,7 @@ pub mod expr_modal;
 pub mod expr_modal_columns;
 pub mod expr_modal_paint;
 pub mod expr_modal_preview;
+pub mod expr_modal_stage;
 mod geom;
 mod graph;
 mod graph_paint;

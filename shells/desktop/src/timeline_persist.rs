@@ -143,11 +143,21 @@ fn purge_the_dead(
     if !timeline.doc.bindings().is_empty() {
         return false; // other objects still animated: their work is untouchable
     }
-    // Last animated object gone ⇒ the timeline resets. The display fps is a
-    // project-ish setting, not the dead object's animation — it survives.
+    // Last animated object gone ⇒ the timeline resets to a fresh **4 s composition** — the
+    // boot default (clip 0 + scene authored), NOT a derived-0 doc (Enio, 2026-07-28: *"deletei
+    // os objetos da cena, criei outro, mas a timeline ficou com dur infinita — deveria estar com
+    // dur 4 e véu visível"*). Without this the next object the artist creates opens the timeline
+    // at Dur ∞ / no veil: the reported bug. The display fps is a project-ish setting, not the
+    // dead object's animation — it survives.
     let fps = timeline.doc.fps_display;
     timeline.doc = ph2d_timeline::TimelineDoc::new();
     timeline.doc.fps_display = fps;
+    timeline
+        .doc
+        .set_clip_length_override(0, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS));
+    timeline
+        .doc
+        .set_scene_length(Some(ph2d_timeline::DEFAULT_DURATION_SECONDS));
     timeline.edit_path.clear();
     true
 }
@@ -305,6 +315,41 @@ mod tests {
             opened.doc.clip_length_override(0),
             None,
             "um clip 0 deixado INFINITO (com a cena autorada) NAO e clobbered"
+        );
+    }
+
+    /// **Deletar o último objeto animado reseta a timeline para 4 s + véu — NÃO para
+    /// derivado-0** (Enio, 2026-07-28: *"deletei os objetos da cena, criei outro, mas a timeline
+    /// ficou com dur infinita — deveria estar com dur 4 e véu visível"*). O purge esvazia as
+    /// bindings e reseta o doc; o reset tem de dar a mesma composição de 4 s do boot, senão o
+    /// próximo objeto criado abre a timeline em ∞ / sem véu. (Mutação: resetar para
+    /// `TimelineDoc::new()` sem estampar 4 s ⇒ clip 0 volta a `None` — RED.)
+    #[test]
+    fn deleting_the_last_animated_object_resets_the_timeline_to_four_seconds() {
+        let mut sim = SimWorld::new();
+        let hero = sim.world_mut().spawn(Name::new("hero")).id();
+        let mut timeline = TimelineState::with_default_duration();
+        key(&mut timeline, hero.to_bits()); // anima o objeto -> cria uma binding
+        assert_eq!(timeline.doc.bindings().len(), 1);
+
+        // O objeto morre; o apply do frame marca a binding missing.
+        sim.world_mut().despawn(hero);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
+        assert!(timeline.doc.bindings()[0].missing);
+
+        // O upkeep purga a binding morta; era a última -> a timeline reseta.
+        let reset = upkeep(&mut timeline, sim.world_mut());
+        assert!(reset, "a ultima binding morta -> a timeline reseta");
+        assert!(timeline.doc.bindings().is_empty(), "a binding foi purgada");
+        assert_eq!(
+            timeline.doc.clip_length_override(0),
+            Some(ph2d_timeline::DEFAULT_DURATION_SECONDS),
+            "o reset da 4 s no clip 0 (nao derivado-0) -> o proximo objeto abre em 4 s + veu"
+        );
+        assert_eq!(
+            timeline.doc.scene_length,
+            Some(ph2d_timeline::DEFAULT_DURATION_SECONDS),
+            "e 4 s na cena"
         );
     }
 

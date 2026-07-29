@@ -290,3 +290,36 @@ impl PulleyWheel {
 }
 
 impl SimComponent for PulleyWheel {}
+
+/// **O artista RE-COLOCOU o eixo desta roldana** — desarma o sentinela para que o
+/// próximo reconcile derive o `local` da pose que ela tem AGORA (W-Pulley W6).
+///
+/// ⚠️ **Sem isto o gesto é MORTO, e o modo de morrer é silencioso:** o centro de
+/// uma roldana montada é **derivado** (`corpo · local`), e o `sync_mounted_wheels`
+/// devolve esse número ao `Transform` a cada frame de repouso. Escrever o
+/// `Transform` — pelo dot de canvas ou pela row Position — e não desarmar o
+/// sentinela é escrever num campo que o frame seguinte reescreve: a alça anda com
+/// o dedo e volta ao soltar, sem erro e sem aviso.
+///
+/// ⚠️ **É a lei do W-AnchorFollow, e a exceção que o JOINT tem aqui não vale.**
+/// Lá o sentinela `anchored` re-deriva **DUAS** âncoras, então limpá-lo ao editar
+/// a ponta A jogaria fora a ponta B que o artista acabou de posicionar — por isso
+/// o joint passa pela porta de âncora em vez do sentinela. Uma roldana tem **UM**
+/// eixo: não há segunda metade a perder, e o sentinela é a resposta certa.
+///
+/// Devolve `true` quando de fato desarmou. Roldana de cenário (`body == 0`) não
+/// tem eixo derivado — o `Transform` dela É o centro — e a chamada é inerte, o que
+/// deixa os chamadores livres de perguntar *"esta roldana está montada?"* antes.
+pub fn reseat_mounted_axle(
+    world: &mut bevy_ecs::world::World,
+    wheel: bevy_ecs::entity::Entity,
+) -> bool {
+    let Some(mut w) = world.get_mut::<PulleyWheel>(wheel) else {
+        return false;
+    };
+    if w.body == 0 || !w.mounted {
+        return false;
+    }
+    w.mounted = false;
+    true
+}

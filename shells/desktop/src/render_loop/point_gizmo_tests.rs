@@ -513,4 +513,35 @@ fn a_pulley_offers_no_length_ring_and_its_wheels_are_the_wheels_own_handles() {
         (d - 0.4).abs() < 1e-4,
         "o aro tem de ficar a um RAIO do centro: {d:.4}"
     );
+
+    // **O SEGUNDO diâmetro** (W6): a roldana comum acima NÃO o oferece — é a
+    // metade de AUSÊNCIA, e ela é o gate, não decoração. Duas alças no mesmo
+    // pixel seriam uma alça que às vezes faz outra coisa.
+    if let Some(mut w) = sim
+        .world_mut()
+        .get_mut::<ph2d_physics_ecs::PulleyWheel>(wheel)
+    {
+        w.radius_out = 0.1;
+    }
+    let hs = wheel_handles(&sim, Some(wheel.to_bits()), true, true);
+    assert_eq!(
+        kinds(&hs),
+        vec![
+            PointHandleKind::WheelCentre,
+            PointHandleKind::WheelRim,
+            PointHandleKind::WheelRimOut
+        ],
+        "got {hs:?}"
+    );
+    // ⚠️ Do lado OPOSTO ao aro de entrada: com os dois raios próximos, sair do
+    // mesmo lado poria as duas alças a poucos pixels uma da outra.
+    assert!(
+        hs[2].world[0] < hs[0].world[0] && hs[1].world[0] > hs[0].world[0],
+        "os dois aros saem de lados opostos do centro: {hs:?}"
+    );
+    let d_out = (hs[2].world[0] - hs[0].world[0]).hypot(hs[2].world[1] - hs[0].world[1]);
+    assert!(
+        (d_out - 0.1).abs() < 1e-4,
+        "o aro de saída tem de ficar ao raio de SAÍDA do centro: {d_out:.4}"
+    );
 }

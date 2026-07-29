@@ -206,7 +206,8 @@ pub(super) fn dispatch(
         }
         // ⚠️ **The joint tail moved out (W-J2).** A joint's Position edit still
         // repositions its A anchor, but it now goes through the bridge's anchor
-        // door in `mod.rs` (`reseat_joint_pivot_after_position_commit`) rather
+        // door in `mod.rs` (the `joint_pivot_commit` block — never extracted
+        // into the function this comment used to name) rather
         // than clearing `PhysicsJoint::anchored` here — that sentinel re-derives
         // BOTH locals, so typing a new X for the pivot would have thrown away a
         // body-B anchor the artist placed with the second handle. The door needs

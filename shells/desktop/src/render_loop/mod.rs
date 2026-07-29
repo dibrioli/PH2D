@@ -6160,6 +6160,12 @@ impl crate::App {
                 {
                     physics.set_joint_anchor_world(sim, e, ph2d_physics_ecs::JointSide::A, world);
                 }
+                // W6: e o mesmo commit numa RODLANA montada precisa do sentinela
+                // desarmado — o centro dela também é derivado, e o
+                // `sync_mounted_wheels` o reescreveria. Pela MESMA porta do dot de
+                // canvas; ⚠️ aqui o sentinela É a resposta certa (uma roldana tem
+                // UM eixo, então não há segunda metade a perder como no joint).
+                ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), e);
             }
             // §12 Physics Joint (W3) — the joint edits and the one gesture that
             // creates a joint. Deletion is NOT here: a joint is an object, so

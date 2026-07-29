@@ -124,21 +124,7 @@ pub(crate) fn open_drag(
         let anchor = physics.joint_anchor_world(sim, joint, side)?;
         Grab::World([anchor[0] - cursor[0], anchor[1] - cursor[1]])
     } else if kind.is_wheel() {
-        // ⚠️ **`joint` aqui é a RODA, não a corda** — uma roldana é uma entidade
-        // própria (W-Pulley W1), e é o `Transform` dela que estas duas alças
-        // autoram. O campo do drag guarda *a entidade que este gesto escreve*,
-        // que era o joint enquanto o joint era o único que tinha alças.
-        let t = sim.world().get::<ph2d_ecs::Transform>(joint)?;
-        let centre = [t.translation.x, t.translation.y];
-        if matches!(kind, PointHandleKind::WheelRim) {
-            let r = sim
-                .world()
-                .get::<ph2d_physics_ecs::PulleyWheel>(joint)?
-                .radius;
-            Grab::Radius(r - distance(centre, cursor))
-        } else {
-            Grab::World([centre[0] - cursor[0], centre[1] - cursor[1]])
-        }
+        wheel::open_grab(sim, joint, kind, cursor)?
     } else {
         // A parameter grip measures against the joint's LIVE geometry, which is
         // the same `JointView` the overlay drew the arc and the ring from.
@@ -185,7 +171,8 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
         PointHandleKind::AnchorA
         | PointHandleKind::AnchorB
         | PointHandleKind::WheelCentre
-        | PointHandleKind::WheelRim => None,
+        | PointHandleKind::WheelRim
+        | PointHandleKind::WheelRimOut => None,
     }
 }
 
@@ -256,13 +243,7 @@ impl App {
                 // roldana não pertence a corpo nenhum — não há a que colar. Um
                 // ímã aqui puxaria a roda para a superfície da carga.
                 if drag.kind.is_wheel() {
-                    // Uma roldana é uma entidade: mover é escrever o `Transform`
-                    // dela, e o undo global por-diff captura como captura o de
-                    // qualquer objeto.
-                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity)
-                    {
-                        t.translation = ph2d_core::Vec2::new(free[0], free[1]);
-                    }
+                    wheel::move_wheel(&mut gfx.sim, entity, free);
                     None
                 } else {
                     let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
@@ -302,21 +283,8 @@ impl App {
                 // centro e onde o número pousa — o anel de comprimento mede da
                 // âncora e escreve no joint; o aro mede do centro da roda e
                 // escreve no componente dela.
-                if matches!(drag.kind, PointHandleKind::WheelRim) {
-                    let centre = gfx
-                        .sim
-                        .world()
-                        .get::<ph2d_ecs::Transform>(entity)
-                        .map(|t| [t.translation.x, t.translation.y]);
-                    if let Some(centre) = centre
-                        && let Some(mut w) = gfx
-                            .sim
-                            .world_mut()
-                            .get_mut::<ph2d_physics_ecs::PulleyWheel>(entity)
-                    {
-                        w.radius = (distance(centre, cursor) + off)
-                            .max(ph2d_physics_ecs::PulleyWheel::MIN_RADIUS);
-                    }
+                if drag.kind.is_wheel_radius() {
+                    wheel::resize_wheel(&mut gfx.sim, entity, drag.kind, cursor, off);
                 } else {
                     let (anchor_a, _) = anchor_of(&gfx.physics, entity);
                     let len = distance(anchor_a, cursor) + off;
@@ -560,6 +528,9 @@ impl JointAnchorDrag {
         }
     }
 }
+
+#[path = "joint_anchor_drag_wheel.rs"]
+mod wheel;
 
 #[cfg(test)]
 #[path = "joint_anchor_drag_tests.rs"]

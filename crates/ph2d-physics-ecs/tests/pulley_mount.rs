@@ -331,3 +331,78 @@ fn probe_axle_lag_after_a_stepping_frame() {
         }
     }
 }
+
+/// **Reposicionar o eixo de uma roldana MONTADA é um gesto que PEGA** (W6).
+///
+/// O dot de centro escreve o `Transform` da roldana — e numa montada esse
+/// `Transform` é **derivado** (`corpo · local`), então o `sync_mounted_wheels` do
+/// frame seguinte o reescreve e o arrasto some. É o mesmo vão que o
+/// W-AnchorFollow fechou para a âncora de um joint, e a cura é a mesma: uma
+/// autoria explícita **desarma o sentinela** (`mounted = false`), e o próximo
+/// reconcile re-semeia o local do `Transform` novo.
+///
+/// ⚠️ **O oráculo é o LOCAL, não o `Transform`.** Um gate que só lesse o
+/// `Transform` de volta ficaria verde sobre um eixo que não se moveu no corpo —
+/// e o que decide para onde a corda puxa é o local.
+#[test]
+fn re_authoring_a_mounted_axle_sticks() {
+    let mut sim = rig("Block");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let before = wheel_of(&mut sim).local;
+
+    // O gesto: o dot é arrastado meio metro para a direita.
+    let wheel = entity_of(&mut sim, "Rope Wheel 1");
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(wheel) {
+        t.translation.x += 0.5;
+    }
+    // ...e a autoria passa pela PORTA que os dois gestos compartilham.
+    assert!(
+        ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), wheel),
+        "a porta tinha de desarmar o sentinela de uma roldana montada"
+    );
+    bridge.dispatch(&mut sim, false, 0);
+
+    let after = wheel_of(&mut sim).local;
+    assert!(
+        (after[0] - before[0] - 0.5).abs() < 1.0e-4,
+        "o eixo tinha de andar 0,5 m NO CORPO; foi de {before:?} para {after:?}"
+    );
+    // E o desenho tem de concordar: o `Transform` derivado do local novo é o
+    // lugar de onde o artista largou o dot.
+    let drawn = sim
+        .world()
+        .get::<Transform>(wheel)
+        .map(|t| t.translation.x)
+        .expect("transform vivo");
+    assert!(
+        (drawn - 0.75).abs() < 1.0e-4,
+        "o dot tinha de ficar onde foi largado (x = 0,75); ele desenhou em {drawn:.4}"
+    );
+}
+
+/// **A porta recusa o que não tem eixo derivado.**
+///
+/// Uma roldana de CENÁRIO não tem `local` nenhum — o `Transform` dela É o centro —
+/// e uma que ainda não foi semeada já vai ser derivada no próximo reconcile. Nos
+/// dois casos a chamada é inerte, e é isso que permite aos chamadores não
+/// perguntarem *"esta roldana está montada?"* antes: a pergunta é feita **uma**
+/// vez, dentro da porta.
+#[test]
+fn the_reseat_door_is_inert_where_there_is_no_derived_axle() {
+    let mut sim = rig("NoSuchBody");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let wheel = entity_of(&mut sim, "Rope Wheel 1");
+    assert!(
+        !ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), wheel),
+        "roldana de cenário não tem eixo a re-derivar"
+    );
+
+    let mut sim = rig("Block");
+    let wheel = entity_of(&mut sim, "Rope Wheel 1");
+    assert!(
+        !ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), wheel),
+        "antes do primeiro reconcile ela ainda não foi semeada — não há o que desarmar"
+    );
+}

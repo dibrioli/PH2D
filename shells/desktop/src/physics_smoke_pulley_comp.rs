@@ -236,7 +236,18 @@ impl crate::App {
                por 7 kg sai voando, e subir afrouxa a corda em vez de a esticar.\n\n  \
                AUTORE VOCE MESMO: selecione 'Plain Rope Drum' na Hierarquia e digite\n  \
                {r_out:.3} na row 'Out Radius (m)' da secao Pulley Wheel. O segundo anel\n  \
-               aparece e, no Play, a carga da direita para de cair.",
+               aparece e, no Play, a carga da direita para de cair.\n\n  \
+               E AGORA SEM DIGITAR NADA (W6, com B ligado e o relogio PARADO):\n  \
+               - selecione 'Geared Rope Drum': ele tem TRES alcas ambar. O centro o\n    \
+                 move; o aro da DIREITA e o raio de entrada; o da ESQUERDA e o de\n    \
+                 SAIDA -- e so ele existe porque este tambor tem um segundo raio.\n    \
+                 Arraste o da esquerda para FORA: a vantagem cai (2R/r encolhe) e no\n    \
+                 Play a carga sobe menos. Puxe-o para DENTRO e ela sobe mais.\n  \
+               - selecione 'Geared Rope Sheave' (a cadernal montada na carga) e arraste\n    \
+                 o CENTRO dela: o eixo se re-coloca NO BLOCO e FICA. Antes desta wave\n    \
+                 ele voltava sozinho ao soltar -- o centro de uma roldana montada e\n    \
+                 derivado, e quem nao desarma o sentinela escreve num campo que o\n    \
+                 frame seguinte reescreve.",
             load = LOAD_MASS,
             counter = COUNTER_MASS,
             r_in = R_IN,

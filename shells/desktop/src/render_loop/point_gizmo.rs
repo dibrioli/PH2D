@@ -264,11 +264,29 @@ pub(super) fn wheel_handles(
         });
         // O aro à DIREITA do centro: uma direção fixa, para a alça não saltar
         // quando o raio passa por zero (o ângulo de um raio nulo é indefinido).
+        let w = w.clamped();
         out.push(PointHandle {
             key: e.to_bits(),
             kind: PointHandleKind::WheelRim,
-            world: [centre[0] + w.clamped().radius, centre[1]],
+            world: [centre[0] + w.radius, centre[1]],
         });
+        // **O segundo diâmetro** (W6) — e ele é oferecido SÓ quando existe.
+        //
+        // ⚠️ **Numa roldana comum ele cairia exatamente sobre o de entrada**, e
+        // duas alças no mesmo pixel são uma alça que às vezes faz outra coisa:
+        // qual das duas o hit-test devolve vira acidente de ordem de registro. É
+        // a mesma lei que fez o W4 desenhar o segundo anel só quando ele difere.
+        //
+        // À ESQUERDA do centro, e não à direita: o de entrada já ocupa aquele
+        // raio, e um tambor cujos dois raios são próximos porá as duas alças a
+        // poucos pixels uma da outra se as duas saírem do mesmo lado.
+        if w.radius_out > 0.0 {
+            out.push(PointHandle {
+                key: e.to_bits(),
+                kind: PointHandleKind::WheelRimOut,
+                world: [centre[0] - w.radius_out, centre[1]],
+            });
+        }
     }
     out
 }

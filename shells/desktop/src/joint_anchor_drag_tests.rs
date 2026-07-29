@@ -439,3 +439,37 @@ fn a_grip_dropped_on_the_anchor_leaves_the_axis_alone() {
         "e acima de tudo tem de ser finito"
     );
 }
+
+/// **Cada alça de raio mede o raio DELA** (W-Pulley W6).
+///
+/// ⚠️ **Este gate nasceu de uma mutação que o arch-gate NÃO pegou.** Aquele afirma
+/// que o `open_drag` e o apply chamam a porta; o corpo da porta ele não vê, e
+/// trocá-lo por `w.radius` deixava os três arch-gates verdes. O defeito seria
+/// mudo e caro: agarrar o aro de SAÍDA mediria o deslocamento contra o raio de
+/// ENTRADA, então a alça saltaria no instante do clique pela diferença dos dois
+/// raios — num tambor 0,5 → 0,125 isso é 0,375 m de salto — e o número escrito
+/// sairia errado pela mesma quantia.
+///
+/// *Um gate que pina a CHAMADA não pina a RESPOSTA.*
+#[test]
+fn each_radius_handle_measures_its_own_radius() {
+    let plain = ph2d_physics_ecs::PulleyWheel {
+        radius: 0.5,
+        ..Default::default()
+    };
+    let drum = ph2d_physics_ecs::PulleyWheel {
+        radius: 0.5,
+        radius_out: 0.125,
+        ..Default::default()
+    };
+    assert!((super::wheel::wheel_radius_of(&drum, PointHandleKind::WheelRim) - 0.5).abs() < 1e-6);
+    assert!(
+        (super::wheel::wheel_radius_of(&drum, PointHandleKind::WheelRimOut) - 0.125).abs() < 1e-6
+    );
+    // Numa roldana COMUM o aro de saída não é oferecido; se um chegar aqui, ele
+    // mede o raio sobre o qual está desenhado — nunca zero, que faria o agarre
+    // nascer com um offset do tamanho do raio inteiro.
+    assert!(
+        (super::wheel::wheel_radius_of(&plain, PointHandleKind::WheelRimOut) - 0.5).abs() < 1e-6
+    );
+}

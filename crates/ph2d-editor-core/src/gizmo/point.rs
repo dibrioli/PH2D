@@ -87,6 +87,18 @@ pub enum PointHandleKind {
     /// e um ponto no raio externo para definir o tamanho"*. Arrastar para fora
     /// engorda a roda, o que muda por onde a corda passa e quanto dela existe.
     WheelRim,
+    /// **O aro de SAÍDA de um tambor diferencial** (W-Pulley W6) — o segundo
+    /// diâmetro, o que a corda LARGA.
+    ///
+    /// ⚠️ **Ele é o denominador da vantagem mecânica**, então esta alça é a única
+    /// do app cujo arrasto muda quanta força a máquina faz: `2·R/r` no rig
+    /// composto do W5. Até aqui o número só era digitável, e uma vantagem que se
+    /// digita é uma vantagem que não se descobre desenhando.
+    ///
+    /// Oferecida **só** quando a roldana tem um segundo raio. Numa comum ele
+    /// cairia exatamente sobre o de entrada — duas alças no mesmo pixel são uma
+    /// alça que às vezes faz outra coisa.
+    WheelRimOut,
 }
 
 impl PointHandleKind {
@@ -103,7 +115,18 @@ impl PointHandleKind {
     /// autora uma ENTIDADE que não é o joint.
     #[must_use]
     pub fn is_wheel(self) -> bool {
-        matches!(self, Self::WheelCentre | Self::WheelRim)
+        matches!(self, Self::WheelCentre | Self::WheelRim | Self::WheelRimOut)
+    }
+
+    /// **Esta alça dimensiona um RAIO da roldana?** — as duas que medem do centro
+    /// dela, contra a que a MOVE.
+    ///
+    /// Porta única: o `open_drag` pergunta para escolher a aritmética de agarre e
+    /// o apply pergunta para escolher onde o número pousa. Enumerar os dois lados
+    /// à mão é como o terceiro raio nasceria mexendo em metade dos sítios.
+    #[must_use]
+    pub fn is_wheel_radius(self) -> bool {
+        matches!(self, Self::WheelRim | Self::WheelRimOut)
     }
 }
 
@@ -207,7 +230,9 @@ const fn hit_half_px(kind: PointHandleKind) -> f32 {
         // Uma roldana é desenhada MAIOR que uma âncora (é uma roda, não um
         // ponto de amarração), e o alvo acompanha o desenho pela mesma razão
         // que o resto desta tabela existe.
-        PointHandleKind::WheelCentre | PointHandleKind::WheelRim => JOINT_ANCHOR_RING_PX * 2.0,
+        PointHandleKind::WheelCentre | PointHandleKind::WheelRim | PointHandleKind::WheelRimOut => {
+            JOINT_ANCHOR_RING_PX * 2.0
+        }
     }
 }
 
@@ -232,6 +257,7 @@ pub fn point_handle_id(key: u64, kind: PointHandleKind) -> NodeId {
         PointHandleKind::Length => (ids::GIZMO_JOINT_LENGTH, 0x_F1B7_39D5_6C82_A0E3_u64),
         PointHandleKind::WheelCentre => (ids::GIZMO_WHEEL_CENTRE, 0x_9E37_79B9_7F4A_7C15_u64),
         PointHandleKind::WheelRim => (ids::GIZMO_WHEEL_RIM, 0x_BF58_476D_1CE4_E5B9_u64),
+        PointHandleKind::WheelRimOut => (ids::GIZMO_WHEEL_RIM_OUT, 0x_94D0_49BB_1331_11EB_u64),
     };
     NodeId(canonical.0 ^ key.wrapping_mul(mul))
 }
@@ -328,7 +354,9 @@ pub fn paint_point_gizmo(
                 // As alças de ROLDANA: anéis GROSSOS, do dobro do raio de uma
                 // âncora — uma roda, não um ponto de amarração. Mesmo âmbar,
                 // porque são parte do mesmo vínculo.
-                PointHandleKind::WheelCentre | PointHandleKind::WheelRim => {
+                PointHandleKind::WheelCentre
+                | PointHandleKind::WheelRim
+                | PointHandleKind::WheelRimOut => {
                     let ring = Circle::new(centre, f64::from(JOINT_ANCHOR_RING_PX * 2.0));
                     scene.inner_mut().stroke(
                         &Stroke::new(JOINT_ANCHOR_RING_STROKE_PX * 1.5),

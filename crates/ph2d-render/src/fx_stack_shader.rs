@@ -30,6 +30,7 @@ struct Globals {
     sat: f32,
     bright: f32,
     _pad2: f32,
+    tint_b: vec4<f32>,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -72,6 +73,11 @@ fn linear_to_srgb3(c: vec3<f32>) -> vec3<f32> {
 // picker escreve), e o miolo da pilha só fala linear — a conversão mora aqui, na fronteira, e não
 // em cinco sítios de uso.
 fn tint_lin() -> vec3<f32> { return srgb_to_linear3(g.tint.rgb); }
+
+// A SEGUNDA cor do degrau, em LINEAR — a ponta clara da rampa do Duotone. Mesma fronteira, mesma
+// conversão: as duas pontas TÊM de atravessá-la pela mesma função, senão a rampa nasce torta num
+// lado só.
+fn tint_b_lin() -> vec3<f32> { return srgb_to_linear3(g.tint_b.rgb); }
 
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
@@ -337,6 +343,64 @@ fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
+    // **O DUOTONE** — a luminância de cada texel escolhe um ponto entre as DUAS pontas da rampa.
+    // Preserva a MODELAGEM (o sombreado, o volume) e troca só a paleta em que ela é lida; é a
+    // `Gradient Map` de dois stops, e é o que o Color Overlay ao lado **não** faz (ele substitui a
+    // cor por UMA, e o volume some).
+    //
+    // ⚠️ **A régua é o `L` do OKLab, e NÃO o `lum()` das leis de mistura.** As duas existem e
+    // respondem a perguntas diferentes: o `lum` é a luminosidade do W3C, definida para os modos
+    // `Color`/`Luminosity` do blend; esta rampa pergunta *onde neste eixo claro↔escuro o texel
+    // senta*, que é literalmente a definição de `L`. Medido num cinza sRGB 128: `lum` sobre luz
+    // LINEAR dá **0,216** (o meio-tom cairia a um quinto do caminho, empilhando a arte inteira na
+    // ponta escura) contra **0,600** do `L` — e é o segundo que casa com o que Photoshop / AE
+    // desenham. As duas pontas são exactas nos extremos (os coeficientes do `L` somam 1).
+    if (g.kind == KIND_DUOTONE) {
+        var rgb = src.rgb;
+        var k = clamp(g.opacity, 0.0, 1.0);
+        if (src.a > 0.0001) {
+            let straight = src.rgb / src.a;
+            let t = clamp(oklab_from_linear(straight).x, 0.0, 1.0);
+            let ramp = mix(tint_lin(), tint_b_lin(), t);
+            // ⚠️ **O alfa das DUAS swatches entra, e lerpa com a rampa.** O Color Overlay usa
+            // `tint.a` como força; aqui há duas pontas, então a força é a da ponta em que este
+            // texel caiu — senão a swatch clara teria um canal alfa que não faz nada, e um knob
+            // morto ensina a desconfiar dos vivos. Com as duas opacas isto reduz a `g.opacity`.
+            k = k * clamp(mix(g.tint.a, g.tint_b.a, t), 0.0, 1.0);
+            rgb = fx_blend(src, ramp) * src.a;
+        }
+        let mixed = mix(src.rgb, rgb, k);
+        textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), vec4<f32>(mixed, src.a));
+        return;
+    }
+
+    // **LUMA TO ALPHA** — o brilho vira COBERTURA. É o `type="luminanceToAlpha"` do `feColorMatrix`
+    // e o único pontual que move alfa.
+    //
+    // ⚠️ **Divergência DELIBERADA do SVG, e ela é a metade que faz o efeito servir:** a matriz do
+    // SVG zera o RGB e escreve `A' = luma(reto)` **ignorando o alfa que estava lá**, o que num
+    // pipeline premultiplicado ENDURECE a borda anti-aliased (a cor reta na orla é a mesma do
+    // miolo, então a rampa de cobertura vira um degrau na luminância daquela cor). Aqui o alfa é
+    // ESCALADO (`A' = A·luma`), o que preserva a rampa — e a cor é preservada em vez de zerada,
+    // porque **encadear recupera o SVG e o contrário é impossível**: um Color Adjust com Brightness
+    // −1 logo abaixo dá o matte preto exacto, enquanto nenhum degrau devolve a cor que já foi
+    // apagada. A lei que guarda informação é a que compõe.
+    //
+    // Em premultiplicado escalar o alfa é escalar o vetor INTEIRO: a cor RETA fica exactamente
+    // onde estava e só a cobertura muda.
+    if (g.kind == KIND_LUMA_TO_ALPHA) {
+        var outc = src;
+        if (src.a > 0.0001) {
+            outc = src * clamp(oklab_from_linear(src.rgb / src.a).x, 0.0, 1.0);
+        }
+        textureStore(
+            dst,
+            vec2<i32>(i32(id.x), i32(id.y)),
+            mix(src, outc, clamp(g.opacity, 0.0, 1.0)),
+        );
+        return;
+    }
+
     let k = clamp(g.tint.a * g.opacity, 0.0, 1.0);
     // Premultiplicado: a cor cheia neste texel é `tint.rgb * src.a`.
     //
@@ -372,9 +436,6 @@ fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 "#;
 
-/// ⚠️ **64 bytes de propósito.** O `min_binding_size` do layout é `size_of::<Globals>()`, e o
-/// WGSL arredonda o tamanho de um struct de uniform ao alinhamento dele (16, por causa do `vec4`).
-/// Sem o padding explícito o Rust diria 56 e o wgpu recusaria o bind group.
 use ph2d_ecs::FxOp;
 
 /// Os códigos de tipo, **gerados a partir do `ph2d_ecs::FxOp`** e prefixados ao shader.
@@ -393,6 +454,8 @@ pub(crate) fn kind_consts_wgsl() -> String {
          const KIND_BEVEL: u32 = {}u;\n\
          const KIND_MORPHOLOGY: u32 = {}u;\n\
          const KIND_COLOR_ADJUST: u32 = {}u;\n\
+         const KIND_DUOTONE: u32 = {}u;\n\
+         const KIND_LUMA_TO_ALPHA: u32 = {}u;\n\
          const MODE_CONTOUR: u32 = {}u;\n\
          const MODE_CREASED: u32 = {}u;\n",
         FxOp::BLUR,
@@ -404,6 +467,8 @@ pub(crate) fn kind_consts_wgsl() -> String {
         FxOp::BEVEL,
         FxOp::MORPHOLOGY,
         FxOp::COLOR_ADJUST,
+        FxOp::DUOTONE,
+        FxOp::LUMA_TO_ALPHA,
         FxOp::MODE_CONTOUR,
         FxOp::MODE_CREASED,
     )

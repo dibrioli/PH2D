@@ -74,6 +74,7 @@ fn the_field_pass_is_linear_in_the_segment_count_and_the_cap_fits_a_frame() {
         sigma_px: 20.0,
         offset_px: [-12, 12],
         tint: [0.0, 0.0, 0.0, 1.0],
+        tint_b: [1.0; 4],
         opacity: 1.0,
         mode: 0,
         blend: 0,

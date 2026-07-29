@@ -181,6 +181,7 @@ fn op(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu {
         sigma_px,
         offset_px,
         tint,
+        tint_b: [1.0; 4],
         opacity: 1.0,
         mode: if FxOp::spec(kind).modes.is_empty() {
             0

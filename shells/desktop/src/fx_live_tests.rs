@@ -137,6 +137,10 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
         assert_eq!(hit_of(vid::filter_down_id(r)), Some(FilterHit::Down(r)));
         assert_eq!(hit_of(vid::filter_hide_id(r)), Some(FilterHit::Hide(r)));
         assert_eq!(hit_of(vid::filter_color_id(r)), Some(FilterHit::Color(r)));
+        assert_eq!(
+            hit_of(vid::filter_color_b_id(r)),
+            Some(FilterHit::ColorB(r))
+        );
         assert_eq!(hit_of(vid::filter_radius_id(r)), Some(FilterHit::Radius(r)));
         assert_eq!(hit_of(vid::filter_offx_id(r)), Some(FilterHit::OffX(r)));
         assert_eq!(hit_of(vid::filter_offy_id(r)), Some(FilterHit::OffY(r)));
@@ -151,6 +155,59 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
     // Nem o campo NUMÉRICO gêmeo (ele viaja por outro canal, e confundi-lo com o slider faria a
     // ponte editar duas vezes o mesmo valor).
     assert_eq!(hit_of(vid::filter_radius_num_id(0)), None);
+}
+
+/// **As duas pontas da rampa são alvos de picker DISTINTOS, e a porta única as separa.**
+///
+/// ⚠️ O readback do picker é o ÚNICO consumidor que precisa saber QUAL swatch o artista abriu — e o
+/// modo de falha de errar é mudo: escolher a segunda ponta escreveria na primeira, com a UI a
+/// mostrar a cor certa no card errado. A resposta vem do ID do alvo, nunca do `kind` do degrau.
+#[test]
+fn the_two_ramp_swatches_are_distinct_picker_targets() {
+    use ph2d_editor::ids as vid;
+    for r in 0..VecFilter::MAX_OPS {
+        assert_eq!(
+            crate::fx_live::colour_target(vid::filter_color_id(r)),
+            Some((r, false))
+        );
+        assert_eq!(
+            crate::fx_live::colour_target(vid::filter_color_b_id(r)),
+            Some((r, true))
+        );
+    }
+    // Um controle que NÃO é cor não é alvo de picker — senão arrastar um slider abriria o OKLCH.
+    assert_eq!(
+        crate::fx_live::colour_target(vid::filter_radius_id(0)),
+        None
+    );
+    assert_eq!(
+        crate::fx_live::colour_target(vid::VECTOR_STROKE_SWATCH),
+        None
+    );
+}
+
+/// **A SEGUNDA cor atravessa o produtor sem passar pela câmara.**
+///
+/// Uma cor não é um comprimento: dar zoom não pode mudar a paleta. É a mesma afirmação que o irmão
+/// dos três knobs de ajuste faz, e ela existe porque o `resolve_ops` multiplica por `cam_scale`
+/// TUDO o que é comprimento — e a linha de cima (`tint`) fica ao lado.
+#[test]
+fn the_second_colour_crosses_the_camera_unscaled() {
+    let mut op = FxOp::new(FxOp::DUOTONE);
+    op.color = [0.1, 0.2, 0.3, 1.0];
+    op.color_b = [0.7, 0.8, 0.9, 0.5];
+    let f = VecFilter::single(op);
+    for zoom in [0.25f64, 1.0, 4.0] {
+        let out = resolve_ops(&f, Affine::scale(zoom));
+        assert_eq!(
+            out[0].tint, op.color,
+            "a ponta escura mudou com o zoom {zoom}"
+        );
+        assert_eq!(
+            out[0].tint_b, op.color_b,
+            "a ponta clara mudou com o zoom {zoom}"
+        );
+    }
 }
 
 /// **A LEI DE MISTURA atravessa o produtor, e a que não é tomada vira Normal.**

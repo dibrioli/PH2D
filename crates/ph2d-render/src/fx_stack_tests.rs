@@ -121,12 +121,13 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
         rust, wgsl,
         "os membros do `Globals` do WGSL derivaram do do Rust"
     );
-    // 112 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
-    // que hospeda também o `grow_px` da morfologia) + os 16 do ajuste de cor.
+    // 128 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
+    // que hospeda também o `grow_px` da morfologia) + os 16 do ajuste de cor + os 16 da SEGUNDA
+    // cor (a ponta clara da rampa do Duotone).
     //
     // ⚠️ O número é MEDIDO, não escolhido: ele é a soma das linhas de 16 bytes que o `vec4` do
     // `tint` impõe, e o `UNIFORM_STRIDE` (256) segue a acomodar com folga.
-    assert_eq!(core::mem::size_of::<Globals>(), 112);
+    assert_eq!(core::mem::size_of::<Globals>(), 128);
 }
 
 /// Os NOMES dos campos de um `struct` declarado em `src`, na ordem — serve o Rust e o WGSL, cuja
@@ -293,6 +294,7 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             sigma_px: 8.0,
             offset_px: [0, 0],
             tint: [0.0; 4],
+            tint_b: [1.0; 4],
             opacity: 1.0,
             mode,
             blend: 0,
@@ -326,6 +328,7 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         sigma_px: amount,
         offset_px: [0, 0],
         tint: [0.0; 4],
+        tint_b: [1.0; 4],
         opacity: 1.0,
         mode: FxOp::MODE_SMOOTH,
         blend: 0,
@@ -359,6 +362,7 @@ fn morph_op(grow_px: f32) -> FxOpGpu {
         sigma_px: 0.0,
         offset_px: [0, 0],
         tint: [0.0; 4],
+        tint_b: [1.0; 4],
         opacity: 1.0,
         mode: 0,
         blend: 0,

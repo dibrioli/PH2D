@@ -1162,6 +1162,11 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ("down", ids::filter_down_id(r)),
             ("hide", ids::filter_hide_id(r)),
             ("color", ids::filter_color_id(r)),
+            // ⚠️ **Esta lista tinha APODRECIDO, e a wave da segunda cor a encontrou assim:** as
+            // waves da turbulência, da morfologia e do ajuste acrescentaram catorze ids de linha e
+            // nenhuma entrou aqui, então o único gate que vigia colisões de id derivado estava
+            // cego a metade da seção. Acrescentar só o `color_b` teria continuado a rotina.
+            ("color_b", ids::filter_color_b_id(r)),
             ("radius", ids::filter_radius_id(r)),
             ("radius_num", ids::filter_radius_num_id(r)),
             ("offx", ids::filter_offx_id(r)),
@@ -1170,8 +1175,35 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ("offy_num", ids::filter_offy_num_id(r)),
             ("opacity", ids::filter_opacity_id(r)),
             ("opacity_num", ids::filter_opacity_num_id(r)),
+            ("blend", ids::filter_blend_id(r)),
+            ("scale", ids::filter_scale_id(r)),
+            ("scale_num", ids::filter_scale_num_id(r)),
+            ("detail", ids::filter_detail_id(r)),
+            ("detail_num", ids::filter_detail_num_id(r)),
+            ("seed", ids::filter_seed_id(r)),
+            ("seed_num", ids::filter_seed_num_id(r)),
+            ("grow", ids::filter_grow_id(r)),
+            ("grow_num", ids::filter_grow_num_id(r)),
+            ("hue", ids::filter_hue_id(r)),
+            ("hue_num", ids::filter_hue_num_id(r)),
+            ("sat", ids::filter_sat_id(r)),
+            ("sat_num", ids::filter_sat_num_id(r)),
+            ("bright", ids::filter_bright_id(r)),
+            ("bright_num", ids::filter_bright_num_id(r)),
         ] {
             check(format!("filter_{label}_id({r})"), id.0);
+        }
+        for m in 0..ids::MAX_FILTER_MODES {
+            check(
+                format!("filter_mode_id({r},{m})"),
+                ids::filter_mode_id(r, m).0,
+            );
+        }
+        for m in 0..ids::MAX_FILTER_BLENDS {
+            check(
+                format!("filter_blend_option_id({r},{m})"),
+                ids::filter_blend_option_id(r, m).0,
+            );
         }
     }
 }

@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 12;
+pub const MAX_FILTER_KINDS: usize = 14;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
@@ -137,6 +137,13 @@ pub fn filter_offy_num_id(row: usize) -> NodeId {
 #[must_use]
 pub fn filter_color_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.color.{row}"))
+}
+
+/// **A SEGUNDA cor** da linha `row` — a ponta CLARA da rampa do Duotone (swatch, abre o MESMO
+/// picker OKLCH). Só os tipos com `FxKindSpec::color_b_label` a oferecem.
+#[must_use]
+pub fn filter_color_b_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.colorb.{row}"))
 }
 
 /// O teto de LEIS DE MISTURA que um degrau oferece. Espelha o `ph2d_ecs::FxOp::BLEND_KINDS`.

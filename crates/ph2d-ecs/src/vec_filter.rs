@@ -65,6 +65,14 @@ pub struct FxOp {
     pub offset: [f32; 2],
     /// A cor do halo, RGBA reta em `[0,1]` (o Blur a ignora — ele borra os próprios pixels).
     pub color: [f32; 4],
+    /// **A SEGUNDA cor** — a ponta CLARA da rampa do Duotone (a [`Self::color`] é a escura).
+    ///
+    /// ⚠️ **Campo próprio, e não um par no [`Self::color`]** — as duas pontas são autoradas
+    /// SEPARADAMENTE (cada uma abre o picker por conta própria), ao contrário do `offset`, que é UM
+    /// vetor. É por isso que o rótulo delas também são dois campos na tabela
+    /// ([`FxKindSpec::color_label`] + [`FxKindSpec::color_b_label`]) em vez de uma tupla: a segunda
+    /// swatch é a PRIMEIRA outra vez, pela mesma função, com outro id.
+    pub color_b: [f32; 4],
     /// A intensidade/opacidade DESTE degrau, em `[0,1]`.
     pub opacity: f32,
     /// O MODO deste degrau — o índice em [`FxKindSpec::modes`]. Zero (o 1º modo) para todo tipo
@@ -130,6 +138,7 @@ const BLANK: FxOp = FxOp {
     radius: 0.0,
     offset: [0.0, 0.0],
     color: [0.0, 0.0, 0.0, 1.0],
+    color_b: [1.0, 1.0, 1.0, 1.0],
     opacity: 1.0,
     mode: FxOp::MODE_CONTOUR,
     enabled: true,
@@ -191,12 +200,29 @@ impl FxOp {
     /// um arquivo compartilhado quando ganhou este segundo consumidor. Uma segunda resposta a
     /// *"o que o slider de matiz faz?"* divergiria no único lugar onde ninguém lê um número.
     ///
-    /// ⚠️ **O que NÃO entrou, e por quê:** o `luminanceToAlpha` do SVG converte luminância em
-    /// COBERTURA, e a pista pontual existe precisamente para não mover cobertura — é outro verbo,
-    /// não um quarto slider.
+    /// ⚠️ **O `luminanceToAlpha` do SVG não é um quarto slider daqui — é um VERBO próprio**, e
+    /// existe: [`Self::LUMA_TO_ALPHA`]. (Uma nota anterior aqui dizia que ele estava fora *porque*
+    /// move cobertura; move mesmo, e é essa a razão de ser um tipo em vez de um knob deste.)
     pub const COLOR_ADJUST: u8 = 11;
+    /// Código de painel: **Duotone** — a imagem é remapeada para uma rampa de DUAS pontas: a
+    /// luminância de cada texel escolhe entre a cor ESCURA e a CLARA. É a `Gradient Map` de dois
+    /// stops do Photoshop, o *Tint* do AE (`Map Black To` / `Map White To`) e o duotone de
+    /// impressão que dá nome à coisa.
+    ///
+    /// ⚠️ **Duas pontas, e é isso que o separa do Color Overlay:** o Overlay SUBSTITUI a cor por
+    /// UMA; este preserva a MODELAGEM (o sombreado, o volume, o degradê) e só troca a paleta em
+    /// que ela é lida. Pontual ⇒ margem zero, um dispatch, cobertura intacta.
+    pub const DUOTONE: u8 = 12;
+    /// Código de painel: **Luma to Alpha** — o BRILHO vira COBERTURA: o que é claro fica opaco, o
+    /// que é escuro fica transparente. É o `type="luminanceToAlpha"` do `feColorMatrix`, e o modo
+    /// de fazer uma máscara a partir da própria arte.
+    ///
+    /// ⚠️ **É o único tipo PONTUAL que move cobertura**, e por isso é um verbo e não um slider do
+    /// Color Adjust ao lado. Ele nunca CRIA cobertura (a luminância vive em `[0,1]` e um texel
+    /// vazio é preto ⇒ segue vazio), então a margem continua zero.
+    pub const LUMA_TO_ALPHA: u8 = 13;
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    pub const KINDS: usize = 12;
+    pub const KINDS: usize = 14;
 
     /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
     /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
@@ -269,6 +295,20 @@ impl FxOp {
     /// A spec de um `kind`. **Porta única** — quem pergunta *"este tipo tem offset / cresce / borra?"*
     /// pergunta aqui, nunca por aritmética de índice espalhada pelos consumidores.
     ///
+    /// ⚠️ **Não há uma família `reads_noise` / `reads_grow` / `reads_adjust` / `reads_color_b`, e
+    /// ela EXISTIU** — quatro acessores `pub` sobre a [`Self::SPECS`], cada um com um doc-comment a
+    /// afirmar *"porta única com dois consumidores: o painel a consulta para OFERECER, o produtor da
+    /// GPU para HONRAR"*. **Nenhum dos quatro tinha um único chamador**, e a frase era falsa nos dois
+    /// lados: o painel **não alcança esta crate** (vive de snapshots, e lê os rótulos do
+    /// `FilterKindView` que a shell publica a partir da `SPECS`), e o produtor copia os campos
+    /// incondicionalmente — quem HONRA é o ramo por `kind` dentro do shader.
+    ///
+    /// Foram removidos. Um `pub fn` sem chamador não é código morto silencioso: é uma **segunda
+    /// resposta** à espera de quem acredite no doc-comment, e ela pode divergir da tabela publicada
+    /// no dia em que alguém a chamar. (Descoberto por uma mutação que SOBREVIVEU — `reads_color_b`
+    /// cravado em `false` não moveu um gate. Os que ficam — [`Self::tints`], [`Self::displaces`],
+    /// [`Self::takes_blend`] — têm chamador, e é essa a diferença.)
+    ///
     /// Um código desconhecido (arquivo de uma versão futura) cai no Blur, que é o tipo mais inerte:
     /// borra o que chegou e não inventa cor nenhuma.
     #[must_use]
@@ -321,30 +361,6 @@ impl FxOp {
         } else {
             Self::BLEND_NORMAL
         }
-    }
-
-    /// **Este degrau lê um campo de ruído procedural?** Vista da [`FxKindSpec::noise_labels`], e a
-    /// mesma porta com dois consumidores do [`Self::takes_blend`]: o painel a consulta para
-    /// OFERECER os três knobs, o produtor da GPU para os HONRAR.
-    #[must_use]
-    pub fn reads_noise(self) -> bool {
-        Self::spec(self.kind).noise_labels.is_some()
-    }
-
-    /// **Este degrau engorda/afina a silhueta?** Vista da [`FxKindSpec::grow_label`], e a mesma
-    /// porta com dois consumidores do [`Self::takes_blend`]: o painel a consulta para OFERECER o
-    /// knob, o produtor da GPU para o HONRAR.
-    #[must_use]
-    pub fn reads_grow(self) -> bool {
-        Self::spec(self.kind).grow_label.is_some()
-    }
-
-    /// **Este degrau AJUSTA a cor que recebeu?** Vista da [`FxKindSpec::adjust_labels`], e a mesma
-    /// porta com dois consumidores do [`Self::reads_noise`]: o painel a consulta para OFERECER os
-    /// três knobs, o produtor da GPU para os HONRAR.
-    #[must_use]
-    pub fn reads_adjust(self) -> bool {
-        Self::spec(self.kind).adjust_labels.is_some()
     }
 
     /// **Este degrau está no ponto NEUTRO do ajuste de cor?** — e nele a lei devolve a entrada AO
@@ -493,6 +509,16 @@ impl FxOp {
                 hue: 0.25,
                 ..BLANK
             },
+            Self::DUOTONE => Self {
+                kind,
+                // O par clássico de duotone — sombra FRIA, luz QUENTE. "Add" tem de mudar a tela, e
+                // duas pontas neutras (preto→branco) seriam a identidade em cinza: o degrau
+                // desenharia a própria entrada dessaturada e leria como quebrado.
+                color: [0.10, 0.12, 0.35, 1.0],
+                color_b: [1.0, 0.86, 0.62, 1.0],
+                ..BLANK
+            },
+            Self::LUMA_TO_ALPHA => Self { kind, ..BLANK },
             _ => Self {
                 kind: Self::BLUR,
                 radius: 0.12,

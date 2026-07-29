@@ -50,6 +50,7 @@ fn row(kind: u8) -> FilterRowView {
         offx: 0.12,
         offy: -0.12,
         color: [0, 0, 0, 255],
+        color_b: [255, 255, 255, 255],
         opacity: 1.0,
         blend: 0,
         scale: 0.25,
@@ -75,6 +76,7 @@ fn kinds_table() -> Vec<FilterKindView> {
         radius_label,
         offset_labels,
         color_label,
+        color_b_label: None,
         modes,
         takes_blend,
         noise_labels: None,
@@ -113,6 +115,16 @@ fn kinds_table() -> Vec<FilterKindView> {
             adjust_labels: Some(("Hue", "Saturation", "Brightness")),
             ..k("Color Adjust", None, None, None, &[], false)
         },
+        FilterKindView {
+            // ⚠️ DUAS swatches: a rampa tem duas pontas, e cada uma abre o picker por conta
+            // própria. É o único tipo com `color_b_label`, e é o que este fixture prova que o
+            // painel oferece — presença E ausência, como todo o resto da tabela.
+            color_b_label: Some("Highlights"),
+            ..k("Duotone", None, None, Some("Shadows"), &[], true)
+        },
+        // ⚠️ NADA além da Opacity: o Luma to Alpha não tem knob nenhum, e um card com uma linha
+        // só é exactamente o que a tabela manda desenhar.
+        k("Luma to Alpha", None, None, None, &[], false),
     ]
 }
 
@@ -265,6 +277,15 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
             "a cor do {} discorda da tabela",
             spec.name
         );
+        // A SEGUNDA ponta da rampa: existe exactamente onde a tabela diz, e em mais lugar
+        // nenhum. ⚠️ A pergunta é separada da primeira de propósito — um tipo com `color_b_label`
+        // e sem `color_label` seria meia rampa, e é a comparação com a TABELA que o proíbe.
+        assert_eq!(
+            painted(&mut host, &mut st, ids::filter_color_b_id(0)),
+            spec.color_b_label.is_some(),
+            "a segunda cor do {} discorda da tabela",
+            spec.name
+        );
         // A LEI DE MISTURA: o chip existe exactamente onde a tabela diz que a cor do degrau
         // pousa em conteúdo que já existe — e em mais lugar nenhum.
         assert_eq!(
@@ -383,6 +404,36 @@ fn the_colour_swatch_is_painted_and_is_a_picker_target() {
         host.store().is_picker_swatch(id),
         "a swatch tem de estar no conjunto de picker (senao o Down nao abre o OKLCH)"
     );
+}
+
+/// **A SEGUNDA ponta da rampa é uma swatch de picker POR CONTA PRÓPRIA.**
+///
+/// ⚠️ Não basta ela ser pintada: se o id não estiver no conjunto de picker, o Down cai no dispatch
+/// genérico e o OKLCH **nunca abre** — a swatch fica desenhada, hit-registrada e morta sob o mouse.
+/// É a mesma metade que o irmão da primeira ponta prova, e ela é registada num LAÇO pelo teto de
+/// linhas, então o gate é o único a vê-la.
+#[test]
+fn the_second_swatch_of_the_ramp_is_its_own_picker_target() {
+    let duotone = kinds_table()
+        .iter()
+        .position(|k| k.color_b_label.is_some())
+        .expect("a tabela tem de ter um tipo de rampa");
+    publish(vec![row(u8::try_from(duotone).expect("kind cabe em u8"))]);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    let (a, b) = (ids::filter_color_id(0), ids::filter_color_b_id(0));
+    assert_ne!(a, b, "as duas pontas nao podem partilhar o id");
+    for (which, id) in [("escura", a), ("clara", b)] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some(),
+            "a ponta {which} da rampa tem de ser pintada com area clicavel"
+        );
+        assert!(
+            host.store().is_picker_swatch(id),
+            "a ponta {which} tem de estar no conjunto de picker (senao o Down nao abre o OKLCH)"
+        );
+    }
 }
 
 /// **A lista de leis de mistura ABRE, e cada opção chega ao bus.** As quatro condições da política

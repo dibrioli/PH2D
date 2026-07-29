@@ -361,6 +361,10 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                     (b * ox + d * oy).round() as i32,
                 ],
                 tint: o.color,
+                // A SEGUNDA ponta da rampa, pelo MESMO caminho da primeira: também não atravessa a
+                // câmara (uma cor não é um comprimento), pela razão que os três do ajuste já dão
+                // mais abaixo.
+                tint_b: o.color_b,
                 opacity: o.opacity,
                 mode: o.mode,
                 // ⚠️ **`blend_code`, não `blend`** — é a metade de HONRAR da porta única
@@ -391,109 +395,6 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
             }
         })
         .collect()
-}
-
-/// **Que controle da pilha um id de painel endereça.** Os ids da seção são derivados por LINHA
-/// (hashes de nome), então não há aritmética que os inverta: decodifica-se varrendo o teto.
-///
-/// Porta única de propósito — a ponte tem TRÊS sítios que perguntam *"este id é da pilha?"* (o
-/// comando, o valor e o alvo do picker), e três varreduras escritas à mão divergiriam na primeira
-/// linha nova.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum FilterHit {
-    /// "Add \<tipo\>" — põe um degrau novo no fim da pilha.
-    Add(u8),
-    /// ✕ — apaga a linha (a última apaga o componente).
-    Remove(usize),
-    /// ↑ / ↓ — a ORDEM é a feature.
-    Up(usize),
-    Down(usize),
-    /// 👁 — desarma sem apagar.
-    Hide(usize),
-    /// A swatch de cor da linha (abre o picker OKLCH partilhado).
-    Color(usize),
-    /// O chip de MODO da linha (a LEI do degrau).
-    Mode(usize, u8),
-    /// Uma opção do popover de MISTURA (a lei de como a cor do degrau encosta na de baixo).
-    Blend(usize, u8),
-    /// Os sliders.
-    Radius(usize),
-    OffX(usize),
-    OffY(usize),
-    Opacity(usize),
-    /// Os três knobs do RUÍDO (só a turbulência os oferece).
-    Scale(usize),
-    Detail(usize),
-    Seed(usize),
-    /// O Amount do Grow / Shrink (bipolar).
-    Grow(usize),
-    /// Os três knobs do AJUSTE DE COR (bipolares). ⚠️ O `Hue` chega em GRAUS — a conversão para
-    /// voltas mora no `apply`, ao lado da que o publica.
-    Hue(usize),
-    Sat(usize),
-    Bright(usize),
-}
-
-/// Decodifica um id de painel para o controle da pilha que ele endereça.
-pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
-    use ph2d_editor::ids as vid;
-    for k in 0..vid::MAX_FILTER_KINDS {
-        if id == vid::filter_add_id(k) {
-            #[allow(clippy::cast_possible_truncation)]
-            return Some(FilterHit::Add(k as u8));
-        }
-    }
-    for r in 0..vid::MAX_FILTER_ROWS {
-        for m in 0..vid::MAX_FILTER_MODES {
-            if id == vid::filter_mode_id(r, m) {
-                #[allow(clippy::cast_possible_truncation)]
-                return Some(FilterHit::Mode(r, m as u8));
-            }
-        }
-        for m in 0..vid::MAX_FILTER_BLENDS {
-            if id == vid::filter_blend_option_id(r, m) {
-                #[allow(clippy::cast_possible_truncation)]
-                return Some(FilterHit::Blend(r, m as u8));
-            }
-        }
-        let hit = if id == vid::filter_remove_id(r) {
-            FilterHit::Remove(r)
-        } else if id == vid::filter_up_id(r) {
-            FilterHit::Up(r)
-        } else if id == vid::filter_down_id(r) {
-            FilterHit::Down(r)
-        } else if id == vid::filter_hide_id(r) {
-            FilterHit::Hide(r)
-        } else if id == vid::filter_color_id(r) {
-            FilterHit::Color(r)
-        } else if id == vid::filter_radius_id(r) {
-            FilterHit::Radius(r)
-        } else if id == vid::filter_offx_id(r) {
-            FilterHit::OffX(r)
-        } else if id == vid::filter_offy_id(r) {
-            FilterHit::OffY(r)
-        } else if id == vid::filter_opacity_id(r) {
-            FilterHit::Opacity(r)
-        } else if id == vid::filter_scale_id(r) {
-            FilterHit::Scale(r)
-        } else if id == vid::filter_detail_id(r) {
-            FilterHit::Detail(r)
-        } else if id == vid::filter_seed_id(r) {
-            FilterHit::Seed(r)
-        } else if id == vid::filter_grow_id(r) {
-            FilterHit::Grow(r)
-        } else if id == vid::filter_hue_id(r) {
-            FilterHit::Hue(r)
-        } else if id == vid::filter_sat_id(r) {
-            FilterHit::Sat(r)
-        } else if id == vid::filter_bright_id(r) {
-            FilterHit::Bright(r)
-        } else {
-            continue;
-        };
-        return Some(hit);
-    }
-    None
 }
 
 /// A pilha de `id`, se houver. Porta única: o cozimento e o publish para o painel perguntam AQUI.
@@ -565,6 +466,11 @@ pub(crate) fn edit(
         }
     }
 }
+
+/// A tradução id→controle mora no irmão [`crate::fx_live_hit`] (teto de LOC), e é re-exportada
+/// aqui porque `fx_live::hit_of` é a porta que a ponte chama: mover a função não pode mover o
+/// caminho de quem a usa.
+pub(crate) use crate::fx_live_hit::{FilterHit, colour_bytes, colour_target, hit_of};
 
 #[cfg(test)]
 #[path = "fx_live_tests.rs"]

@@ -111,6 +111,7 @@ impl BodyCtx<'_> {
             + usize::from(spec.radius_label.is_some())
             + usize::from(spec.offset_labels.is_some()) * 2
             + usize::from(spec.color_label.is_some())
+            + usize::from(spec.color_b_label.is_some())
             + usize::from(spec.takes_blend)
             + usize::from(spec.noise_labels.is_some()) * 3
             + usize::from(spec.grow_label.is_some())
@@ -195,7 +196,12 @@ impl BodyCtx<'_> {
             );
         }
         if let Some(label) = spec.color_label {
-            py = self.filter_color_swatch(row, fx, label, py);
+            py = self.filter_color_swatch(ids::filter_color_id(row), fx.color, label, py);
+        }
+        // A SEGUNDA ponta da rampa, logo abaixo da primeira: as duas descrevem o mesmo objeto (o
+        // degradê) e leem-se de cima para baixo, escuro → claro.
+        if let Some(label) = spec.color_b_label {
+            py = self.filter_color_swatch(ids::filter_color_b_id(row), fx.color_b, label, py);
         }
         // A LEI DE MISTURA vem logo depois da COR que ela qualifica: as duas respondem à mesma
         // pergunta em dois tempos — *que cor* e *como ela encosta na que já está ali*.
@@ -494,14 +500,17 @@ impl BodyCtx<'_> {
 
     /// A fileira da cor do halo: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
     /// swatch de Fill / Contour — a mesma estética para a mesma pergunta *"que cor?"*).
+    ///
+    /// ⚠️ **Recebe o id e a cor, em vez de os derivar da `row`** — é o que faz a SEGUNDA ponta do
+    /// Duotone ser esta mesma função outra vez, em vez de um caminho de desenho paralelo que
+    /// divergiria na primeira mudança de estética.
     fn filter_color_swatch(
         &mut self,
-        row: usize,
-        fx: &fst::FilterRowView,
+        id: ph2d_a11y::NodeId,
+        colour: [u8; 4],
         label: &str,
         y: f32,
     ) -> f32 {
-        let id = ids::filter_color_id(row);
         let swatch_w = SwatchSize::Md.px();
         paint_text(
             self.text_system,
@@ -519,7 +528,7 @@ impl BodyCtx<'_> {
             swatch_w,
             self.row_h,
         );
-        let swatch = ColorSwatch::new(id, "Filter effect color", fx.color).size(SwatchSize::Md);
+        let swatch = ColorSwatch::new(id, "Filter effect color", colour).size(SwatchSize::Md);
         paint_color_swatch(&swatch, rect, self.scene, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + self.row_gap

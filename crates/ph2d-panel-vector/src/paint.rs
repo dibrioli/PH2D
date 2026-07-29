@@ -107,6 +107,10 @@ fn seed_and_publish(
     // shell publicar a pilha do frame.
     for row in 0..ids::MAX_FILTER_ROWS {
         store.register_picker_swatch(ids::filter_color_id(row));
+        // A SEGUNDA ponta (a rampa do Duotone) passa pela MESMA porta — pelo teto, e não pelo tipo
+        // vigente da linha: a marca é idempotente, e uma marca condicionada ao tipo chegaria tarde
+        // no frame em que o artista TROCA o tipo da linha.
+        store.register_picker_swatch(ids::filter_color_b_id(row));
     }
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {

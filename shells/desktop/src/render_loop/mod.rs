@@ -3495,6 +3495,7 @@ impl crate::App {
                         // A swatch só ABRE o picker (o `register_picker_swatch` faz isso); a cor
                         // é lida abaixo, do alvo do picker.
                         FilterHit::Color(_)
+                        | FilterHit::ColorB(_)
                         | FilterHit::Radius(_)
                         | FilterHit::OffX(_)
                         | FilterHit::OffY(_)
@@ -3556,7 +3557,7 @@ impl crate::App {
                 // A cor do halo vem do MESMO picker OKLCH partilhado (lido como o Contour, aqui,
                 // porque o alvo é um componente ECS). Qual LINHA? A que o alvo do picker nomeia.
                 if let Some(target) = hero.store.picker_target()
-                    && let Some(FilterHit::Color(row)) = crate::fx_live::hit_of(target)
+                    && let Some((row, second)) = crate::fx_live::colour_target(target)
                     && let Some((value, _, _, _)) = hero
                         .store
                         .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
@@ -3570,7 +3571,15 @@ impl crate::App {
                     ];
                     crate::fx_live::edit(sim, &self.vec_entities, &sel, |f| {
                         if let Some(op) = f.ops.get_mut(row) {
-                            op.color = col;
+                            // ⚠️ A escolha de QUAL campo vem do id do ALVO, não do tipo do degrau:
+                            // as duas swatches existem lado a lado no mesmo card, e derivar a ponta
+                            // do `kind` faria a segunda escrever na primeira em qualquer tipo que
+                            // ganhasse uma rampa depois.
+                            if second {
+                                op.color_b = col;
+                            } else {
+                                op.color = col;
+                            }
                         }
                     });
                 }
@@ -4993,6 +5002,7 @@ impl crate::App {
                             radius_label: s.radius_label,
                             offset_labels: s.offset_labels,
                             color_label: s.color_label,
+                            color_b_label: s.color_b_label,
                             modes: s.modes,
                             takes_blend: s.takes_blend,
                             noise_labels: s.noise_labels,
@@ -5021,12 +5031,8 @@ impl crate::App {
                                 radius: f64::from(op.radius),
                                 offx: f64::from(op.offset[0]),
                                 offy: f64::from(op.offset[1]),
-                                color: [
-                                    (op.color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                    (op.color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                    (op.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                    (op.color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                ],
+                                color: crate::fx_live::colour_bytes(op.color),
+                                color_b: crate::fx_live::colour_bytes(op.color_b),
                                 opacity: f64::from(op.opacity),
                                 blend: op.blend_code(),
                                 scale: f64::from(op.scale),

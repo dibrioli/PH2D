@@ -50,6 +50,13 @@ pub(crate) struct Globals {
     pub(crate) org: [f32; 2],
     /// Quanto a silhueta engorda, em pixels — **com sinal** (só a morfologia o lê).
     pub(crate) grow_px: f32,
+    /// ⚠️ **O padding é EXPLÍCITO de propósito.** O `min_binding_size` do layout é
+    /// `size_of::<Globals>()`, e o WGSL arredonda o tamanho de um struct de uniform ao alinhamento
+    /// dele (16, por causa do `vec4`); sem estes campos o Rust reportaria um tamanho MENOR que o do
+    /// WGSL e o wgpu recusaria o bind group. Há gate a pinar o número (`fx_stack_tests`).
+    ///
+    /// ⚠️ Esta nota morava, obsoleta, num doc-comment órfão sobre um `use` no `fx_stack_shader` —
+    /// ela ainda dizia "64 bytes" com o struct em 112.
     pub(crate) _pad: [f32; 1],
     /// A MATIZ em VOLTAS, a saturação e o brilho em `-1..1` — só o Color Adjust os lê.
     ///
@@ -60,6 +67,12 @@ pub(crate) struct Globals {
     pub(crate) sat: f32,
     pub(crate) bright: f32,
     pub(crate) _pad2: [f32; 1],
+    /// A SEGUNDA cor RETA do degrau — a ponta CLARA da rampa do Duotone. Só ele a lê.
+    ///
+    /// ⚠️ **Um `vec4` inteiro, alinhado**, e é por isso que ele vem no FIM: o WGSL alinha `vec4` a
+    /// 16 bytes, e a fileira `hue`/`sat`/`bright`/`_pad2` fecha exactamente uma. Encaixado no meio,
+    /// ele empurraria padding implícito que o Rust não escreve e o `min_binding_size` recusaria.
+    pub(crate) tint_b: [f32; 4],
 }
 
 pub(crate) struct Tex {

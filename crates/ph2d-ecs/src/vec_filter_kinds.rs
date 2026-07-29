@@ -26,6 +26,14 @@ pub struct FxKindSpec {
     pub offset_labels: Option<(&'static str, &'static str)>,
     /// O rótulo da cor, ou `None` se o tipo não tinge (o Blur reusa os pixels que recebeu).
     pub color_label: Option<&'static str>,
+    /// O rótulo da SEGUNDA cor, ou `None` — e hoje só o Duotone a tem.
+    ///
+    /// ⚠️ **Campo próprio, e não uma tupla como o [`Self::offset_labels`]**, e a diferença é o
+    /// GESTO: um offset é UM vetor autorado por dois números que só fazem sentido juntos, enquanto
+    /// as duas pontas de uma rampa são duas swatches, cada uma abrindo o picker por conta própria.
+    /// Escrito assim, a segunda ponta é a PRIMEIRA outra vez — mesma função de pintura, mesmo
+    /// registro de picker, outro id — em vez de um caminho de desenho paralelo.
+    pub color_b_label: Option<&'static str>,
     /// **Espalha para FORA da silhueta que recebeu?** É esta a pergunta da MARGEM da textura: um
     /// halo externo cresce a imagem, um efeito de DENTRO não cresce nada.
     pub grows: bool,
@@ -108,6 +116,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Radius"),
         offset_labels: None,
         color_label: None,
+        color_b_label: None,
         grows: true,
         inner: false,
         modes: &[],
@@ -121,6 +130,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Radius"),
         offset_labels: None,
         color_label: Some("Color"),
+        color_b_label: None,
         grows: true,
         inner: false,
         // O halo externo faz a MESMA escolha que os de dentro: a silhueta borrada (Proximity)
@@ -138,6 +148,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Radius"),
         offset_labels: Some(("Offset X", "Offset Y")),
         color_label: Some("Color"),
+        color_b_label: None,
         grows: true,
         inner: false,
         modes: &[],
@@ -151,6 +162,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Radius"),
         offset_labels: Some(("Offset X", "Offset Y")),
         color_label: Some("Color"),
+        color_b_label: None,
         grows: false,
         inner: true,
         modes: &FALLOFF_MODES,
@@ -164,6 +176,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Radius"),
         offset_labels: None,
         color_label: Some("Color"),
+        color_b_label: None,
         grows: false,
         inner: true,
         modes: &FALLOFF_MODES,
@@ -179,6 +192,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Width"),
         offset_labels: None,
         color_label: Some("Color"),
+        color_b_label: None,
         grows: true,
         inner: false,
         modes: &[],
@@ -192,6 +206,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Feather"),
         offset_labels: None,
         color_label: None,
+        color_b_label: None,
         grows: true,
         inner: false,
         modes: &[],
@@ -205,6 +220,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: Some("Depth"),
         offset_labels: Some(("Light X", "Light Y")),
         color_label: Some("Shadow"),
+        color_b_label: None,
         grows: false,
         inner: true,
         modes: &[],
@@ -218,6 +234,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         radius_label: None,
         offset_labels: None,
         color_label: Some("Color"),
+        color_b_label: None,
         grows: false,
         inner: false,
         modes: &[],
@@ -236,6 +253,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         // Não tinge: a saída É a entrada deformada, como o Blur e o Feather. Logo também não
         // tem lei de mistura a aplicar — não há cor DELE que encoste na de baixo.
         color_label: None,
+        color_b_label: None,
         // Empurra pixels para fora da silhueta que recebeu, até `Amount`.
         grows: true,
         inner: false,
@@ -254,6 +272,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         // Não tinge: a saída É a entrada engordada, e a cor da orla nova vem da borda mais
         // próxima (a mesma extensão que o Feather já faz). Logo também não tem lei de mistura.
         color_label: None,
+        color_b_label: None,
         // Cresce até `grow`, e SÓ quando ele é positivo — quem responde é o `op_reach`, que
         // olha o número; aqui a resposta é *pode crescer*.
         grows: true,
@@ -273,6 +292,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         // artista escolhe; este AJUSTA a que já está lá, relativamente. Uma swatch aqui seria a
         // segunda porta para *"recolorir"*.
         color_label: None,
+        color_b_label: None,
         grows: false,
         inner: false,
         modes: &[],
@@ -282,5 +302,47 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         noise_labels: None,
         grow_label: None,
         adjust_labels: Some(("Hue", "Saturation", "Brightness")),
+    },
+    FxKindSpec {
+        name: "Duotone",
+        // Pontual: sem raio, sem vizinho, um dispatch, margem zero.
+        radius_label: None,
+        offset_labels: None,
+        // ⚠️ **As DUAS pontas, e os rótulos dizem o que cada uma é.** "Shadows"/"Highlights" é o
+        // vocabulário do duotone de impressão e o do Gradient Map; "Color 1"/"Color 2" obrigaria o
+        // artista a descobrir por tentativa qual ponta é a escura.
+        color_label: Some("Shadows"),
+        color_b_label: Some("Highlights"),
+        grows: false,
+        inner: false,
+        modes: &[],
+        // ⚠️ **TOMA a lei de mistura, ao contrário do Color Adjust ao lado** — e a distinção é a
+        // mesma que separa o Color Overlay do ajuste: este degrau produz uma COR PRÓPRIA (a rampa
+        // que o artista autorou), e uma cor própria tem como encostar na que já está ali. O Color
+        // Adjust não tem cor nenhuma: a saída dele é a entrada transformada.
+        takes_blend: true,
+        noise_labels: None,
+        grow_label: None,
+        adjust_labels: None,
+    },
+    FxKindSpec {
+        name: "Luma to Alpha",
+        // Pontual, e **sem controle nenhum além da Opacity** — que aqui é exatamente *quanto deste
+        // efeito*, o mesmo que todo degrau já tem. Um knob de "amount" próprio seria a segunda
+        // resposta a uma pergunta que a Opacity responde.
+        radius_label: None,
+        offset_labels: None,
+        color_label: None,
+        color_b_label: None,
+        // Nunca CRIA cobertura: a luminância vive em `[0,1]` e um texel vazio é preto ⇒ segue
+        // vazio. Margem zero, como todo pontual.
+        grows: false,
+        inner: false,
+        modes: &[],
+        // Sem cor própria — a saída DELE é a entrada transformada, o argumento do Blur/Feather.
+        takes_blend: false,
+        noise_labels: None,
+        grow_label: None,
+        adjust_labels: None,
     },
 ];

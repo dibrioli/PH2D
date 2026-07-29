@@ -67,6 +67,9 @@ pub struct FilterKindView {
     pub offset_labels: Option<(&'static str, &'static str)>,
     /// O rótulo da cor, ou `None` se o tipo não tinge.
     pub color_label: Option<&'static str>,
+    /// O rótulo da SEGUNDA cor (a ponta CLARA da rampa do Duotone), ou `None`. Espelha o
+    /// `ph2d_ecs::FxKindSpec::color_b_label`.
+    pub color_b_label: Option<&'static str>,
     /// Os MODOS deste tipo, na ordem dos códigos, ou vazio se ele não tem escolha a fazer.
     pub modes: &'static [&'static str],
     /// **A cor deste degrau pousa sobre conteúdo que já existe?** Espelha o
@@ -107,8 +110,10 @@ pub struct FilterRowView {
     pub offx: f64,
     /// O deslocamento em Y (mundo) — só o Drop Shadow o lê.
     pub offy: f64,
-    /// A cor do halo (RGBA sRGB) — Glow / Drop Shadow.
+    /// A cor do halo (RGBA sRGB) — Glow / Drop Shadow. No Duotone, a ponta ESCURA da rampa.
     pub color: [u8; 4],
+    /// A SEGUNDA cor (RGBA sRGB) — a ponta CLARA da rampa do Duotone.
+    pub color_b: [u8; 4],
     /// A intensidade deste degrau, `0..1`.
     pub opacity: f64,
     /// A LEI DE MISTURA armada — o índice na lista publicada por [`set_filter_blend_names`].

@@ -156,10 +156,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// POSICIONAL, então um save v37 lido como v38 leria `blend` além do fim de cada degrau.
 /// ⚠️ Não há como evitar o bump com `serde(default)`: o postcard não tem NOMES de campo, e um
 /// buffer que acaba cedo é erro de decode, não um default.
-/// ⚠️ **E o 38 carrega TAMBÉM a turbulência (plano 24 W6b), o Grow / Shrink (W7) e o Color Adjust
-/// (W8), de propósito:** o mesmo `FxOp` ganhou `scale`/`detail`/`seed` (o campo de ruído que
-/// deforma a imagem), depois `grow` (quanto a silhueta engorda, com sinal) e por fim
-/// `hue`/`sat`/`bright` (o ajuste de cor) na MESMA janela, e um save v37 já é recusado pelo 38 —
+/// ⚠️ **E o 38 carrega TAMBÉM a turbulência (plano 24 W6b), o Grow / Shrink (W7), o Color Adjust
+/// (W8) e o Duotone (W9), de propósito:** o mesmo `FxOp` ganhou `scale`/`detail`/`seed` (o campo de
+/// ruído que deforma a imagem), depois `grow` (quanto a silhueta engorda, com sinal), depois
+/// `hue`/`sat`/`bright` (o ajuste de cor) e por fim `color_b` (a segunda ponta da rampa) na MESMA
+/// janela, e um save v37 já é recusado pelo 38 —
 /// pôr cada leva num número próprio jogaria fora exatamente os mesmos arquivos e custaria mais três
 /// degraus para ninguém. **Uma linha, um bump**; o que não pode acontecer é o número não subir.
 /// ⚠️ O valor se CONTA a partir do `main` do dia — a `line/physics` e a `line/FLIP` já colidiram

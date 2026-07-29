@@ -24,6 +24,7 @@ fn one(kind: u8, sigma: f32, tint: [f32; 4], off: [i32; 2], mode: u8) -> FxOpGpu
         sigma_px: sigma,
         offset_px: off,
         tint,
+        tint_b: [1.0; 4],
         opacity: 1.0,
         mode,
         blend: 0,

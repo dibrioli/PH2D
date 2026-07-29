@@ -39,12 +39,46 @@ fn source(gpu: &ph2d_gpu::GpuContext) -> wgpu::Texture {
     make_src(gpu, W, H, &bytes)
 }
 
+/// **A fixture da VARREDURA** — a mesma forma, mas em DEGRADÊ (preto à esquerda, branco à direita)
+/// em vez da chapa branca das outras.
+///
+/// ⚠️ **Uma chapa não pode conter o fenômeno de um tipo cuja lei é função da PRÓPRIA arte.** O Luma
+/// to Alpha mapeia brilho → cobertura, e sobre branco puro a luminância é 1: ele é a IDENTIDADE
+/// ali, então a varredura o reportaria como *"não desenha nada"* sobre um produto perfeitamente
+/// correto — exactamente a falha que ela existe para produzir, com o sinal trocado. O Duotone tem o
+/// mesmo problema pelo outro lado (branco cai na ponta clara da rampa e mais nada varia).
+///
+/// Trocar a chapa por um degradê teria mudado o que TODOS os outros gates deste arquivo medem, e
+/// os comentários deles estão calibrados no branco; a varredura ganha a fixture DELA.
+fn source_ramp(gpu: &ph2d_gpu::GpuContext) -> wgpu::Texture {
+    let mut bytes = vec![0u8; (W * H * 4) as usize];
+    for y in BY0..BY1 {
+        for x in BX0..BX1 {
+            let o = ((y * W + x) * 4) as usize;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let v = (255.0 * f32::from(u8::try_from(x - BX0).unwrap_or(255))
+                / f32::from(u8::try_from(BX1 - BX0 - 1).unwrap_or(1))) as u8;
+            bytes[o..o + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+    }
+    make_src(gpu, W, H, &bytes)
+}
+
 fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu {
     FxOpGpu {
         kind,
         sigma_px,
         offset_px,
         tint,
+        // ⚠️ **A mesma pergunta à TABELA que o `grow_px` e o `hue` fazem mais abaixo.** Deixar a
+        // segunda ponta no branco neutro enquanto a primeira é forte é meia rampa autorada — e no
+        // extremo claro da fixture o Duotone cairia exactamente nela, ou seja no ponto onde a lei
+        // devolve a entrada.
+        tint_b: if FxOp::spec(kind).color_b_label.is_some() {
+            [0.0, 0.35, 1.0, 1.0]
+        } else {
+            [1.0; 4]
+        },
         opacity: 1.0,
         // O modo default do TIPO — é o que o produto arma, e é o que o gate tem de medir.
         mode: if FxOp::spec(kind).modes.is_empty() {
@@ -71,11 +105,13 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
         // (onde a lei devolve a entrada AO BIT, de propósito) e ele entraria na varredura "sem
         // desenhar nada".
         //
-        // ⚠️ **E o BRILHO tem de ir para BAIXO, medido: a fixture desta suíte é BRANCA.** Um
-        // ajuste pontual tem pontos FIXOS por construção — matiz e saturação não movem um pixel
-        // sem croma, e `+brilho` é `out + (1−out)·b`, que em branco é exactamente branco. Escrevi
-        // aqui que o brilho *"move um pixel de qualquer cor"* e a varredura mediu **0 de 12800**.
-        // Para baixo (`out · (1+b)`) o branco anda; só o preto puro fica, e a fixture não é preta.
+        // ⚠️ **E o BRILHO vai para BAIXO, por uma lição MEDIDA.** Um ajuste pontual tem pontos
+        // FIXOS por construção — matiz e saturação não movem um pixel sem croma, e `+brilho` é
+        // `out + (1−out)·b`, que em BRANCO é exactamente branco. Quando a varredura corria sobre a
+        // chapa branca eu escrevi aqui que o brilho *"move um pixel de qualquer cor"* e ela mediu
+        // **0 de 12800**. Hoje a fixture da varredura é um degradê (`source_ramp`), então os dois
+        // sinais moveriam a maior parte dela; para baixo continua sendo a escolha certa, porque só
+        // o preto puro é ponto fixo e ele é UMA coluna da rampa.
         hue: if FxOp::spec(kind).adjust_labels.is_some() {
             0.25
         } else {
@@ -123,7 +159,14 @@ fn every_kind_draws_something() {
         return;
     };
     let mut pass = FxStackPass::new(&gpu);
-    let plain = render(&gpu, &mut pass, &[]);
+    // A fixture da varredura é o DEGRADÊ — ver `source_ramp`.
+    let render_ramp = |pass: &mut FxStackPass, ops: &[FxOpGpu]| {
+        let src = source_ramp(&gpu);
+        let dst = make_output_texture(&gpu, W, H);
+        pass.run(&gpu, &src, &dst, W, H, ops, &[]);
+        readback(&gpu, &dst, W, H)
+    };
+    let plain = render_ramp(&mut pass, &[]);
     for kind in 0..FxOp::KINDS as u8 {
         // Um degrau com parâmetros VISÍVEIS: cor forte, raio de verdade, e deslocamento para quem
         // o usa (uma sombra sem offset seria um glow, mas ainda assim desenharia).
@@ -132,7 +175,7 @@ fn every_kind_draws_something() {
         } else {
             [0, 0]
         };
-        let out = render(&gpu, &mut pass, &[one(kind, 5.0, RED, offset)]);
+        let out = render_ramp(&mut pass, &[one(kind, 5.0, RED, offset)]);
         let differ = plain
             .chunks_exact(4)
             .zip(out.chunks_exact(4))

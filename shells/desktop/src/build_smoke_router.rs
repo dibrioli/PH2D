@@ -88,6 +88,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::fx_adjust_smoke::frame(app, f);
         return true;
     }
+    // DUOTONE + LUMA TO ALPHA (=38, plano 24 W9) — as duas leis que leem o BRILHO da arte: uma
+    // manda a resposta para a COR, a outra para a COBERTURA.
+    if level == 38 {
+        crate::fx_duotone_smoke::frame(app, f);
+        return true;
+    }
     if matches!(level, 13 | 14) {
         crate::fx_smoke::frame(app, f, level);
         return true;

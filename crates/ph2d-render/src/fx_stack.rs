@@ -364,6 +364,7 @@ impl FxStackPass {
             sat: 0.0,
             bright: 0.0,
             _pad2: [0.0],
+            tint_b: [0.0; 4],
         };
         write_at(&mut blob, 0, &edges);
         write_at(&mut blob, total_slots - 1, &edges);
@@ -417,6 +418,7 @@ impl FxStackPass {
                 sat: op.sat,
                 bright: op.bright,
                 _pad2: [0.0],
+                tint_b: op.tint_b,
             };
             match plan {
                 Plan::Point | Plan::Warp => {

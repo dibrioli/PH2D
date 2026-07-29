@@ -23,6 +23,9 @@ pub struct FxOpGpu {
     pub offset_px: [i32; 2],
     /// A cor RETA do halo, `[0,1]`.
     pub tint: [f32; 4],
+    /// A SEGUNDA cor RETA — a ponta CLARA da rampa do Duotone (a [`Self::tint`] é a escura). Só ele
+    /// a lê; nos outros tipos ela é inerte.
+    pub tint_b: [f32; 4],
     /// A intensidade deste degrau, `[0,1]`.
     pub opacity: f32,
     /// O MODO (o índice em `FxKindSpec::modes`). Só os degraus de DENTRO o leem hoje.

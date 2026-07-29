@@ -24,6 +24,7 @@ mod neighbors;
 mod pack;
 mod pipeline;
 mod tau;
+mod walk_gpu;
 
 pub use binning::{
     BinSeg, DEFAULT_TILE, MIN_WIDTH_PX, ScreenSpace, TileBins, bin_segments, walk_pixel,
@@ -36,3 +37,4 @@ pub use pack::{
 };
 pub use pipeline::{CameraRaw, FlipRenderer};
 pub use tau::{PAINTER_SPACING, SUB, dab_weight, f_of};
+pub use walk_gpu::{WalkJob, WalkPass};

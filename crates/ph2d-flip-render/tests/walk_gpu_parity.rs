@@ -1,0 +1,252 @@
+//! **O PERCURSO NO DEVICE É O PERCURSO DA CPU** — a paridade do port de compute
+//! ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md) §14).
+//!
+//! ⚠️ **"Bit-a-bit" NÃO é a política deste projeto** — o compositor do Painter já declara que
+//! runtime não é bit-idêntico entre backends (FMA), e o template do repo é *literais exatos por
+//! gate CPU-only + épsilon documentado por gate `#[ignore]` contra o kernel canônico*. Aqui o
+//! kernel canônico é o [`ph2d_flip_render::walk_pixel`], e o épsilon está MEDIDO abaixo.
+//!
+//! ⚠️ **A saída é `f32`, não uma textura de 8 bits** — senão o gate mediria a quantização junto
+//! com a divergência e não saberia dizer qual é qual.
+//!
+//! ```text
+//! cargo test -p ph2d-flip-render --release --test walk_gpu_parity -- --ignored --nocapture
+//! ```
+
+use ph2d_core::Vec2;
+use ph2d_flip::{FlipDrawing, FlipStroke, Point, Rgba};
+use ph2d_flip_render::{
+    CameraRaw, DEFAULT_TILE, ScreenSpace, WalkPass, bin_segments, pack_drawing, walk_pixel,
+};
+
+fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
+    let instance = wgpu::Instance::default();
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+    }))
+    .ok()?;
+    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        label: Some("ph2d-flip walk parity"),
+        required_features: wgpu::Features::empty(),
+        required_limits: wgpu::Limits::default(),
+        experimental_features: wgpu::ExperimentalFeatures::default(),
+        memory_hints: wgpu::MemoryHints::Performance,
+        trace: wgpu::Trace::Off,
+    }))
+    .expect("request_device");
+    Some((device, queue))
+}
+
+fn camera(w: u32, h: u32) -> CameraRaw {
+    let sx = 2.0 / w as f32;
+    let sy = -2.0 / h as f32;
+    CameraRaw::new(
+        [
+            [sx, 0.0, 0.0, 0.0],
+            [0.0, sy, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [-1.0, 1.0, 0.0, 1.0],
+        ],
+        [w as f32, h as f32],
+        1.0,
+    )
+}
+
+fn stroke(pts: &[(f32, f32)], width: f32, hardness: f32, col: [f32; 3], op: f32) -> FlipStroke {
+    let mut s = FlipStroke::new();
+    for &(x, y) in pts {
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width,
+            opacity: op,
+            color: Rgba::new(col[0], col[1], col[2], 1.0),
+        });
+    }
+    s.hardness = hardness;
+    s
+}
+
+/// A cena de paridade: **cinco perguntas diferentes num desenho só** — a estrela que cruza a si
+/// mesma (a topologia da foto do Enio), um traço duro, um macio, um de opacidade < 1 (a regra do
+/// GP) e um afilado (largura variando ⇒ o raio interpolado da quadratura).
+fn scene() -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    let (cx, cy, outer) = (60.0_f32, 60.0, 44.0);
+    let mut corners: Vec<(f32, f32)> = (0..5)
+        .map(|k| {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            (cx + outer * a.cos(), cy + outer * a.sin())
+        })
+        .collect();
+    corners.push(corners[0]);
+    let mut estrela = Vec::new();
+    for w in corners.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let n = 12;
+        for k in 0..=n {
+            let t = k as f32 / n as f32;
+            estrela.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+    d.strokes
+        .push(stroke(&estrela, 14.0, 0.45, [0.1, 0.1, 0.1], 1.0));
+    let reta: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 120.0)).collect();
+    d.strokes
+        .push(stroke(&reta, 16.0, 1.0, [0.9, 0.2, 0.1], 1.0));
+    let macio: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 145.0)).collect();
+    d.strokes
+        .push(stroke(&macio, 16.0, 0.1, [0.1, 0.5, 0.9], 1.0));
+    let meio: Vec<(f32, f32)> = (0..=20).map(|k| (10.0 + k as f32 * 5.0, 170.0)).collect();
+    d.strokes
+        .push(stroke(&meio, 16.0, 0.6, [0.2, 0.8, 0.3], 0.5));
+    // Afilado: a largura varia ponto a ponto.
+    let mut cone = FlipStroke::new();
+    for k in 0..=20 {
+        let t = k as f32 / 20.0;
+        cone.push_point(Point {
+            pos: Vec2::new(10.0 + k as f32 * 5.0, 195.0),
+            width: 3.0 + 18.0 * t,
+            opacity: 1.0,
+            color: Rgba::new(0.6, 0.2, 0.8, 1.0),
+        });
+    }
+    cone.hardness = 0.5;
+    d.strokes.push(cone);
+    d
+}
+
+/// 🔴 **O GATE.** O mesmo desenho, os dois percursos.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn the_device_walk_is_the_cpu_walk() {
+    let Some((device, queue)) = device() else {
+        println!("sem adapter -- skip");
+        return;
+    };
+    let (w, h) = (128_u32, 216);
+    let sc = ScreenSpace::from_camera(&camera(w, h));
+    let data = pack_drawing(&scene());
+    let bins = bin_segments(&data, &sc, DEFAULT_TILE);
+    let gpu = WalkPass::new(&device).run(&device, &queue, &data, &sc, &bins);
+
+    let (mut pior, mut onde, mut n_alto, mut som, mut n_tinta) = (0.0_f32, (0, 0), 0u32, 0.0, 0u32);
+    for y in 0..h {
+        for x in 0..w {
+            let i = (y * w + x) as usize;
+            let cpu = walk_pixel(&bins, &data, &sc, [x as f32 + 0.5, y as f32 + 0.5]);
+            for c in 0..4 {
+                let d = (gpu[i][c] - cpu[c]).abs();
+                if d > pior {
+                    pior = d;
+                    onde = (x, y);
+                }
+                if d > 1.0 / 255.0 {
+                    n_alto += 1;
+                }
+            }
+            if cpu[3] > 0.0 {
+                som += (gpu[i][3] - cpu[3]).abs();
+                n_tinta += 1;
+            }
+        }
+    }
+    println!(
+        "\n  pior |Δ| {:.3e} em {onde:?}   |   {n_alto} canais acima de 1/255   |   \
+         erro medio no alfa com tinta {:.3e} ({n_tinta} px)",
+        pior,
+        som / n_tinta.max(1) as f32
+    );
+    // **MEDIDO na RTX: pior |Δ| 4,05e-6**, ZERO canais acima de 1/255, erro médio no alfa 6,8e-8.
+    // ⚠️ A barra é **1e-4** e não `1/255`: meio nível de byte (3,9e-3) seria folga de 1000× — larga
+    // demais para pegar uma divergência real de kernel. 1e-4 deixa **25×** sobre o medido, o que
+    // cobre outra implementação de transcendental, e ainda é **39× mais apertada** que meio byte.
+    assert!(
+        pior <= 1e-4,
+        "o percurso do device divergiu do da CPU: pior |Δ| {pior:.3e} em {onde:?} \
+         ({n_alto} canais acima de 1/255)"
+    );
+}
+
+/// **SONDA** — o número que decide: quanto custa um frame de 1080p NO DEVICE.
+///
+/// ⚠️ **Mede o que o PRODUTO faz:** `prepare` uma vez + `record` N vezes num submit só, **sem
+/// readback nenhum**. O readback de 33 MB que o `run` faz é do harness — incluí-lo mediria o
+/// PCIe, não o percurso.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_what_a_frame_costs_on_the_device() {
+    let Some((device, queue)) = device() else {
+        println!("sem adapter -- skip");
+        return;
+    };
+    let (w, h) = (1920_u32, 1080);
+    let sc = ScreenSpace::from_camera(&camera(w, h));
+    println!("\n=== O CUSTO DE UM FRAME NO DEVICE (1920x1080) ===");
+    println!("  tracos   segs   bin(CPU) ms   walk(GPU) ms   ns/px   vs CPU serial");
+    for n in [1_usize, 10, 50, 200] {
+        let mut d = FlipDrawing::new();
+        let mut seed = 0x85EB_CA6B_u32;
+        let mut rnd = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            (seed >> 8) as f32 / (1 << 24) as f32
+        };
+        for _ in 0..n {
+            let (x0, y0) = (rnd() * w as f32 * 0.2, rnd() * h as f32);
+            let (x1, y1) = (w as f32 * 0.8 + rnd() * w as f32 * 0.2, rnd() * h as f32);
+            let bow = (rnd() - 0.5) * h as f32 * 0.6;
+            let pts: Vec<(f32, f32)> = (0..40)
+                .map(|k| {
+                    let t = k as f32 / 39.0;
+                    (
+                        x0 + (x1 - x0) * t,
+                        y0 + (y1 - y0) * t + bow * (std::f32::consts::PI * t).sin(),
+                    )
+                })
+                .collect();
+            d.strokes
+                .push(stroke(&pts, 12.0, 0.5, [0.1, 0.1, 0.1], 1.0));
+        }
+        let data = pack_drawing(&d);
+        let t0 = std::time::Instant::now();
+        let bins = bin_segments(&data, &sc, DEFAULT_TILE);
+        let bin_ms = t0.elapsed().as_secs_f64() * 1e3;
+        let pass = WalkPass::new(&device);
+        let job = pass.prepare(&device, &data, &sc, &bins).expect("job");
+        // Aquece (compilação de pipeline, primeira submissão) e depois mede REPS dispatches.
+        {
+            let mut enc =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            pass.record(&mut enc, &job);
+            queue.submit(Some(enc.finish()));
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        }
+        const REPS: u32 = 16;
+        let t1 = std::time::Instant::now();
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        for _ in 0..REPS {
+            pass.record(&mut enc, &job);
+        }
+        queue.submit(Some(enc.finish()));
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        let ms = t1.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+        let px = f64::from(w) * f64::from(h);
+        // Os números seriais de CPU do doc 12 §10.2, para a razão ficar ao lado.
+        let cpu = match n {
+            1 => 18.4,
+            10 => 93.4,
+            50 => 412.8,
+            _ => 1593.7,
+        };
+        println!(
+            "  {n:6}   {:4}   {bin_ms:11.2}   {ms:12.2}   {:5.1}   {:8.0}x",
+            data.points.len() - data.strokes.len(),
+            ms * 1e6 / px,
+            cpu / ms
+        );
+    }
+}

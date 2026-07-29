@@ -957,18 +957,72 @@ medido na tabela acima.
 
 ---
 
-## 14. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+## 14. ⭐⭐ O PORT PARA COMPUTE — **2,16 ms** num frame de 1080p com 200 gestos
+
+O §10 mediu o percurso serial de CPU e disse o que ele NÃO era: *"o número serial não é o número do
+produto; o que ele responde é a FORMA"*. A forma estava certa (o custo é local). Este é o número.
+
+### 14.1 O kernel
+
+`src/shaders/walk.wgsl` + `src/walk_gpu.rs` — **o primeiro compute desta crate**. Um workgroup de
+**16×16 É um ladrilho** (`DEFAULT_TILE`, o número que a §6.2 mediu): as 256 threads leem a MESMA
+lista, que é a razão inteira de o binning existir.
+
+⚠️ **O binning fica na CPU, e é MEDIDO, não conveniência:** ele é 1× por frame; o percurso é
+por-PIXEL. Portar o binner é a wave seguinte, e a tabela abaixo já diz quanto ela vale.
+
+⚠️ **A superfície é `prepare` + `record`, não um `run` monolítico** — é a forma que o produto quer
+(gravar no encoder do frame, sem readback). O `run` existe para o gate, e **medir com ele mediria o
+PCIe**: o readback é de **33 MB** a 1080p.
+
+### 14.2 A paridade
+
+| | |
+|---|---|
+| pior \|Δ\| contra o `walk_pixel` | **4,05e-6** |
+| canais acima de 1/255 | **0** |
+| erro médio no alfa com tinta | **6,8e-8** |
+
+Cena com **cinco perguntas num desenho só**: a estrela que cruza a si mesma · duro · macio ·
+opacidade < 1 (a regra do GP) · **afilado** (largura variando ⇒ o raio interpolado da quadratura).
+
+⚠️ **A saída é `vec4<f32>`, não uma textura de 8 bits** — senão o gate mediria a quantização junto
+com a divergência e não saberia dizer qual é qual. ⚠️ **A barra é `1e-4`, não `1/255`:** meio nível
+de byte (3,9e-3) seria folga de 1000×, larga demais para pegar divergência real de kernel; 1e-4
+deixa **25×** sobre o medido e ainda é 39× mais apertada que meio byte.
+
+### 14.3 O CUSTO
+
+| traços | segs | bin (CPU) | **walk (GPU)** | ns/px | vs CPU serial |
+|---|---|---|---|---|---|
+| 1 | 39 | 0,03 ms | **0,12 ms** | 0,1 | 159× |
+| 10 | 390 | 0,09 | **0,16** | 0,1 | 568× |
+| 50 | 1950 | 0,45 | **0,57** | 0,3 | 723× |
+| 200 | 7800 | 1,76 | **2,16** | 1,0 | **739×** |
+
+**200 gestos a 1080p custam 2,16 ms de device — 13% de um quadro de 60 fps.** O desenho fecha.
+
+⚠️ **E a fronteira MUDOU DE LADO:** o binning de CPU (1,76 ms) agora é **45% do total**. A próxima
+alavanca não é mais o percurso — é portar o binner, ou incrementá-lo (a lista só muda onde o traço
+em curso mexe).
+
+---
+
+## 15. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
 
 1. ~~**ANTI-ALIASING**~~ — **FECHADO no §11.**
 2. ~~**As features do §8**~~ — **AUDITADAS no §12.4**: um item de projeto (o cap) e quatro
    mecânicos; nada pede outra arquitetura.
 3. ~~**O cap da ponta**~~ — **FECHADO no §13** (um termo de fronteira, não uma geometria).
-4. **O port para compute**, que é o único lugar onde o custo do §10 vira um número de produto —
-   e, com o cap fechado, é **o único item de projeto que resta**.
+4. ~~**O port para compute**~~ — **FECHADO no §14: 2,16 ms, paridade 4e-6.**
+
+**Não sobra item de PROJETO.** O que resta é integração: os quatro mecânicos do §12.4 (self_overlap
+ON · airbrush · tip Dots/Squares · fade sub-pixel), trocar a saída para textura, ligar o passe no
+`flip_pass.rs` no lugar do `flip.wgsl`, e **o smoke do Enio** — que é quem decide.
 
 ---
 
-## 15. Fontes
+## 16. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

@@ -1,7 +1,7 @@
 # A POLIA — plano de redesenho
 
-> Report do Enio, 2026-07-28, com foto. Estado: **W0 fechado e smokado**; **W1 fechado,
-> pendente de smoke**; W2 aberto.
+> Report do Enio, 2026-07-28, com foto. Estado: **W0/W1/W2 fechados e smokados**;
+> **W3 fechado, pendente de smoke** (cena 61).
 > O tracker da linha é [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md); o mapa de
 > waves é [`00_plano_waves.md`](00_plano_waves.md). Este doc é o **porquê** do redesenho.
 
@@ -159,7 +159,7 @@ reintegra sozinho.
 | **W1** ✅ | a roldana é entidade (com raio) · rota de N nós com tangentes e arcos · lado automático + override · kernel generalizado · desenho da roldana, da corda na superfície e do giro · "Add Wheel" · `ratio` aposentado · `PROJECT_SCHEMA` 40→41 |
 | **W2-A** ✅ | **o motor** — a roldana dirigida é um guincho; `ω·r` encurta `L0`, o diâmetro é o câmbio |
 | **W2-B** ✅ | **a ruptura** — a corda parte pela tensão, o eixo cede pela resultante, e o readout do overlay volta a dizer alguma coisa |
-| **W3** | a talha de verdade: roldana montada num corpo (a cadernal móvel) |
+| **W3** ✅ | **a talha de verdade** — a roldana montada num corpo, e a vantagem mecânica de volta |
 | **W4** | *nomeada, não escalonada*: o DIFERENCIAL — dois tambores acoplados num eixo ⇒ `ratio = r₂/r₁` emergente |
 
 ⚠️ **Âncora de regressão do W1:** a polia de hoje é o caso especial *2 roldanas,
@@ -299,3 +299,65 @@ eixo que cede a **52,4 N** enquanto a corda nem sente.
   puxar do outro lado e a cena dá um tranco. A cena de smoke evita o caso
   levantando as roldanas; o que uma polia REAL faz ali é a carga encostar na
   roda, que é contato, não corda.
+
+### W3 — a TALHA (FECHADA, pendente de smoke)
+
+`RopeWheel` ganhou `body`/`local` e uma roldana pode estar montada num **corpo que
+se move**: a *cadernal móvel*. O corpo passa a ser sustentado por DOIS ramos da
+mesma corda, e é assim que a vantagem mecânica volta — **sem um número**.
+
+⚠️ **O kernel custou uma linha, e o §5 já dizia por quê:** o arco não entra no
+Jacobiano, então `∂L/∂C = u_entra − u_sai`. O eixo montado vira **mais uma ponta da
+mesma restrição** — entra no `k`, no `Ċ` e no impulso, pelo MESMO `End` que as duas
+amarrações usam (`End::k` é forma quadrática e `End::rate` é projeção: nenhum dos
+dois pede versor). O "2" de um enlace de 180° é a magnitude daquele Jacobiano.
+
+**MEDIDO** (`measure_pulley_tackle.rs`, bloco de 2 kg):
+
+| contrapeso | talha (2 ramos) | 1:1 (um ramo) |
+|---|---|---|
+| 1 kg | **equilíbrio** (−0,009 m) | cai (−1,65 m) |
+| 2 kg | **ergue** (+0,97 m) | **equilíbrio** (−0,019 m) |
+
+Exatamente 2×. A resultante nos eixos mede **1,989–1,998 T** (o desvio dos 2,000 é
+o ângulo dos ramos, que não são exatamente paralelos no rig).
+
+⚠️ **A primeira fixture não tinha a cadernal FIXA e a medição a derrubou:** com a
+ponta morta e a mão as duas ACIMA do bloco, descer o bloco alonga os dois ramos e a
+mão desce `2d` junto — os dois lados liberam energia e **não existe equilíbrio**. A
+tabela dizia *"desce"* em toda linha, para toda massa. A vantagem precisa da
+cadernal fixa para INVERTER o sentido da mão: é isso que uma talha é.
+
+⚠️ **`mounted_axle` é porta única.** A massa efetiva e o impulso percorrem a mesma
+lista em DOIS momentos (`k` tem de estar completo antes de `λ` existir), e se cada
+laço decidisse sozinho quem está montado o sistema ficaria **estável E errado**.
+Medido: sem o `k` do eixo a corda **ARREMESSA** o bloco a +3,75 m (contra excursão
+para cima de 0,0000 no produto) — o passe deixa de ser projeção e vira ganho.
+
+⚠️ **O centro é refrescado na ARENA**, não numa cópia: a arena é a lista que o
+DESENHO lê. E por SUB-PASSO, não por dispatch — geometria de um tique atrás puxaria
+numa direção que já não é a da corda.
+
+**A autoria** é a row **Mounted On** na §13 (conta-gotas que arma um pick de
+canvas + lixeira que desmonta), com `local`/`mounted` seguindo a lei do
+W-AnchorFollow: converte UMA vez contra a pose de REPOUSO, e daí em diante mover o
+bloco **carrega** o eixo em vez de o deslizar por ele.
+
+`PROJECT_SCHEMA` **43→44**; registro do `ph2d-ecs` intocado; **c9 byte-idêntico**
+(`52767c92f7…`, 94 corpos) — nenhuma lane dele monta, e é isso que prova que os
+campos novos são inertes sem montagem.
+
+Cena de smoke: **`PH2D_PHYSICS_SMOKE=61`** — dois rigs com a MESMA carga (2 kg) e o
+MESMO contrapeso (1 kg): a talha segura (**0,008 m** em 2 s), o controle 1:1 cai
+**3,15 m**.
+
+### Aberto no W3, nomeado
+
+- **O eixo não tem alça própria no canvas.** O dot de centro edita o `Transform` da
+  roldana, que numa montada é DERIVADO — arrastá-lo é escrever num número que o
+  próximo reconcile reescreve. A alça honesta editaria o `local`, e é a mesma
+  conversa que a 2ª alça de âncora do joint teve.
+- **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end`
+  não zera a velocidade do ponto, só a massa) — não medido, não gateado.
+- **A folga do desenho é de um sub-passo** (~8–19 mm a 3 m/s): a arena é refrescada
+  no topo do sub-passo e o rapier integra o corpo depois dele.

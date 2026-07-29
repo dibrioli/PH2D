@@ -6442,3 +6442,115 @@ relação nenhuma.
 **`env PH2D_PHYSICS_SMOKE=55 cargo run -p ph2d-host-desktop --release`** — dois rigs (um braço com
 ombro estático, uma perna com joelho limitado), cena PAUSADA, painel aberto. Os dez passos comparam
 os cinco modos lado a lado; os números da mensagem saem de `probe_smoke_55`.
+
+## W-Pulley W3 — A TALHA: a roldana montada num corpo (2026-07-28, cena `=61`, pendente de smoke)
+
+O `ratio` da v1 prometia vantagem mecânica e **descrevia uma corda que não existe**: numa corda
+única sobre roldanas livres a tensão é **uniforme**, então os dois corpos sentem a MESMA força e a
+vantagem é **1**, quaisquer que sejam os diâmetros (§3 do [plano 03](03_plano_polia.md)). A vantagem
+verdadeira volta por onde ela vem no mundo — uma roldana **montada num corpo que se move** é a
+cadernal móvel de uma talha, e o corpo passa a ser sustentado por **DOIS ramos** da mesma corda.
+
+### O kernel custou uma linha, e o §5 já dizia por quê
+
+O ARCO não entra no Jacobiano (teorema do envelope: o ponto de tangência desliza e a variação do
+arco cancela a do trecho), então `∂L/∂C = u_entra − u_sai` — ou, no vocabulário da física, onde os
+dois versores apontam para FORA do eixo, `−(u_in + u_out)`. São a mesma conta, e `wheel_jacobian` é
+a porta com **três consumidores**: o impulso no eixo, a massa efetiva dele, e a carga de ruptura
+daquele centro (o `ledger_axles` escrevia a mesma subtração com o sinal trocado; as magnitudes são
+**bit-idênticas** porque o IEEE-754 faz `a−b` exatamente `−(b−a)`).
+
+O eixo montado vira **mais uma ponta da mesma restrição** — entra no `k`, no `Ċ` e no impulso, pelo
+MESMO `End` que as duas amarrações usam. `End::k` é a forma quadrática `vᵀM⁻¹v` e `End::rate` é uma
+projeção: **nenhum dos dois pede versor**, e é por isso que a talha não tem caminho de código
+próprio. O "2" de um enlace de 180° é a magnitude daquele Jacobiano — ninguém o escreveu.
+
+### Medido
+
+`measure_pulley_tackle.rs`, bloco de 2 kg, 1 s:
+
+| contrapeso | talha (2 ramos) | 1:1 (um ramo) |
+|---|---|---|
+| 1 kg | **equilíbrio** (−0,0087 m) | cai (−1,65 m) |
+| 2 kg | **ergue** (+0,97 m) | **equilíbrio** (−0,019 m) |
+
+Exatamente 2×. Resultante nos eixos: **1,989–1,998 T** (o desvio dos 2,000 é o ângulo dos ramos, que
+não são exatamente paralelos no rig). Custo: uma roldana montada acrescenta **0,1–0,5 µs/tique**
+sobre uma de cenário (4,09 contra 3,96 com uma roldana; 4,73 contra 4,21 com oito).
+
+⚠️ **A primeira fixture não tinha a cadernal FIXA e a medição a derrubou.** Com a ponta morta e a
+mão as duas ACIMA do bloco, descer o bloco alonga os DOIS ramos e a mão desce `2d` junto — os dois
+lados liberam energia e **não existe equilíbrio nenhum a medir**. A tabela dizia *"desce"* em toda
+linha, para toda massa. A vantagem precisa da cadernal fixa para INVERTER o sentido da mão.
+
+⚠️ **`mounted_axle` é porta ÚNICA.** A massa efetiva e o impulso percorrem a mesma lista em DOIS
+momentos (`k` tem de estar completo antes de `λ` existir), e se cada laço decidisse sozinho quem
+está montado o sistema ficaria **estável E errado**. Medido: sem o `k` do eixo a corda **ARREMESSA**
+o bloco a **+3,75 m** (contra excursão para cima de **0,0000** no produto) — o passe deixa de ser
+projeção e vira ganho, que é precisamente o que o cabeçalho do `pulley.rs` diz que ele não é.
+
+⚠️ **O centro é refrescado na ARENA**, não numa cópia — a arena é a lista que o **DESENHO** lê, e um
+clone deixaria o solver na pose viva com o overlay desenhando a corda passando por onde a roldana
+não está. E **por SUB-PASSO**, não por dispatch. Corpo que sumiu **DESMONTA** a roldana, para que
+`k`, `Ċ` e o impulso concordem por construção em vez de cada um decidir sozinho.
+
+### A autoria (W3-B)
+
+`PulleyWheel` ganhou `body` (`stable_name_id`) + `local` + `mounted`, e a §13 ganhou a row
+**Mounted On**: o nome vigente, um **conta-gotas** que arma um pick de canvas, e uma **lixeira** que
+desmonta (pintada só quando há o que desmontar).
+
+⚠️ **O par `local`/`mounted` é o do W-AnchorFollow**, e não decoração: aquela wave mediu **2 m** de
+deslize no pino de um joint porque a âncora era um ponto de MUNDO re-derivado contra a pose VIVA a
+cada reconcile. A conversão acontece UMA vez, contra a pose de REPOUSO, e daí em diante um move de
+corpo **LÊ** o local inalterado.
+
+⚠️ **O CENTRO de uma roldana montada é DERIVADO também em repouso** (`corpo · local`). O gate nasceu
+vermelho exatamente aí: a colheita entregava o centro autorado, então mover o bloco deixava a
+roldana para trás **com o local certo**. Uma pergunta, uma fórmula, duas poses — a de repouso para a
+autoria (`sync_mounted_wheels`, irmão do `sync_joint_pivots`), a VIVA por sub-passo para o solver
+(`refresh_mounts`).
+
+⚠️ **O conta-gotas ARMA e não escreve**, e o `set_wheel_mount` deixa `mounted: false` de propósito:
+quem semeia o local é a PONTE, num lugar só. Derivá-lo ali seria a segunda porta, e ela discordaria
+da primeira em qualquer corpo que o artista tivesse acabado de mover. A **lixeira zera o sentinela
+junto com o corpo** — um local semeado descreve um frame que não é mais o de ninguém.
+
+### Estado pinado
+
+- `PROJECT_SCHEMA` **43→44**, tripla `(44, 12, 13)` — três campos APENDADOS a um componente que já
+  existe, e postcard é posicional (o raciocínio do v42/v43).
+- Registro `ph2d-ecs` **21** intocado (nenhum componente novo) · **c9 byte-idêntico**
+  (`52767c92f7…`, 94 corpos, debug ≡ release) — nenhuma lane dele monta, e é isso que prova que os
+  campos novos são inertes sem montagem.
+- Contratos congelados intactos; **nenhum ADR novo**; nenhuma dep nova.
+- Ids novos: `INSP_WHEEL_MOUNT_PICK`, `INSP_WHEEL_UNMOUNT`.
+- `RopeWheel` ganhou `Default` (para FIXTURES — 31 sítios; os dois de PRODUTO nomeiam os seis
+  campos, senão o campo da próxima wave nasce neutro em silêncio).
+- LOC: `pulley.rs` bateu 759 ⇒ dois filhos por ASSUNTO — `pulley_mount.rs` (*o que muda quando o
+  eixo é de um CORPO*) e `pulley_winch.rs` (*o que um TAMBOR faz com a corda*).
+
+### Gates
+
+5 no kernel (`pulley_tackle.rs`) + 3 no ECS (`pulley_mount.rs`) + 3 na shell + 1 de seam.
+**11 mutações, 11 sangram.** ⚠️ Duas lições delas: apagar o `refresh_mounts` **não** derruba o gate
+de equilíbrio (num sistema equilibrado o bloco não anda, então um centro parado quase acerta) —
+quem o pega é o gate de geometria; e o gate estrutural da §13 **PEGOU** os dois botões novos no
+minuto em que nasceram, e foi RESPONDIDO (um conta-gotas não é uma caixa de número), não silenciado.
+
+### Aberto, nomeado
+
+- **O eixo não tem alça própria no canvas.** O dot de centro edita o `Transform` da roldana, que
+  numa montada é DERIVADO — arrastá-lo é escrever num número que o próximo reconcile reescreve. A
+  alça honesta editaria o `local`, e é a mesma conversa que a 2ª alça de âncora do joint teve.
+- **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end` não zera a
+  velocidade do ponto, só a massa) — não medido, não gateado.
+- **A folga do desenho é de um sub-passo** (~8–19 mm a 3 m/s): a arena é refrescada no topo do
+  sub-passo e o rapier integra o corpo depois dele.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=61 cargo run -p ph2d-host-desktop --release`** — dois rigs com a MESMA
+carga (2 kg) e o MESMO contrapeso (1 kg, metade dela); a única diferença é se a roldana está montada
+no bloco. Medido por `probe_smoke_61`: a talha SEGURA (**0,008 m** em 2 s) e o controle 1:1 CAI
+**3,15 m** até o chão. A mensagem também guia a autoria pela UI (conta-gotas → clique no bloco).

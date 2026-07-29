@@ -415,7 +415,6 @@ impl FxStackPass {
         let org = [ml as f32, mt as f32];
         let mut slot = 1usize;
         for op in ops {
-            let sigma = op.sigma_px.max(1e-4);
             let plan = plan_of(op, geom.is_empty());
             // ⚠️ **A pergunta *"contra o QUE este degrau mede?"* tem UMA resposta, e ela é o PLANO.**
             // O finalize do campo escolhe entre o pé exato dos segmentos e a textura semeada

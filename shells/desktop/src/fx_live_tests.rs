@@ -75,7 +75,11 @@ fn the_panel_and_the_engine_agree_on_the_ceilings() {
 /// pura, a rota é observável e a mutação sangra aqui.
 #[test]
 fn each_colour_slot_gets_the_picked_colour_and_only_it() {
-    use crate::fx_live::{ColourSlot, apply_picked_colour};
+    // ⚠️ `ColourSlot` vem do módulo que o DEFINE, não do re-export: o produto recebe um valor dele
+    // (do `colour_target`) e o passa adiante sem nunca nomear o tipo, então um `pub(crate) use` só
+    // para o teste seria um import que o build sem testes reporta como morto.
+    use crate::fx_live::apply_picked_colour;
+    use crate::fx_live_hit::ColourSlot;
     const PICKED: [f32; 4] = [0.25, 0.5, 0.75, 1.0];
     let base = {
         let mut op = FxOp::new(FxOp::GRADIENT_MAP);
@@ -343,7 +347,7 @@ fn hit_of_decodes_every_row_control_and_nothing_else() {
 /// mostrar a cor certa no card errado. A resposta vem do ID do alvo, nunca do `kind` do degrau.
 #[test]
 fn the_three_colour_swatches_are_distinct_picker_targets() {
-    use crate::fx_live::ColourSlot;
+    use crate::fx_live_hit::ColourSlot;
     use ph2d_editor::ids as vid;
     for r in 0..VecFilter::MAX_OPS {
         assert_eq!(

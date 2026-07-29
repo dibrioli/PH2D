@@ -523,8 +523,8 @@ pub(crate) fn edit(
 }
 
 pub(crate) use crate::fx_live_hit::{
-    ColourSlot, FilterHit, add_stop, apply_picked_colour, colour_bytes, colour_target, hit_of,
-    ramp_preview, remove_stop,
+    FilterHit, add_stop, apply_picked_colour, colour_bytes, colour_target, hit_of, ramp_preview,
+    remove_stop,
 };
 /// A tradução id→controle mora no irmão [`crate::fx_live_hit`] (teto de LOC), e é re-exportada
 /// aqui porque `fx_live::hit_of` é a porta que a ponte chama: mover a função não pode mover o

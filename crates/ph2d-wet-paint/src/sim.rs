@@ -164,6 +164,11 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
             diffusion_pass(g, &p);
         }
     }
+    // A rede da faixa viva, em debug: os três invariantes que o
+    // estreitamento por-linha consome, afirmados sobre o estado que os passes
+    // deste passo acabaram de produzir e que o `advect` vai consumir.
+    #[cfg(debug_assertions)]
+    crate::grid::verify_spans(g);
     let vmax = advect(g, &p, grav[0], grav[1]);
     apply_boundaries(g, false);
     if n.is_multiple_of(3) {

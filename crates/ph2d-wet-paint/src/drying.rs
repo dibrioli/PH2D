@@ -86,8 +86,15 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
     // is written back once at the end. Neighbour reads compare in f32
     // directly: widening is exact, so `susp > 10.0f32` == `(f64)susp > 10.0`.
     for y in g.by0..=g.by1 {
-        let mut i = g.bx0 as usize + y as usize * s;
-        for _x in g.bx0..=g.bx1 {
+        // Faixa viva: ela é publicada a partir de `film > 0 || susp > 0` — o
+        // MESMO predicado que gateia este laço —, então fora dela o corpo já
+        // era um `continue`.
+        let (bx0, bx1) = g.span_x(y);
+        if bx0 > bx1 {
+            continue;
+        }
+        let mut i = bx0 as usize + y as usize * s;
+        for _x in bx0..=bx1 {
             let film0 = g.film[i];
             let susp0 = g.susp[i];
             if film0 <= 0.0 && susp0 <= 0.0 {
@@ -221,8 +228,14 @@ pub fn fast_dry(g: &mut Grid, p: &Params, rewet_base: f64, ext_bypass: bool) {
     let mut guard = 0;
     while guard < 40 && g.has_fluid {
         for y in g.by0..=g.by1 {
-            let mut i = g.bx0 as usize + y as usize * s;
-            for _x in g.bx0..=g.bx1 {
+            // Faixa viva: fora dela `film` é 0, e `0.5 * 0` é 0 — a escrita
+            // que pulamos escrevia zero sobre zero.
+            let (bx0, bx1) = g.span_x(y);
+            if bx0 > bx1 {
+                continue;
+            }
+            let mut i = bx0 as usize + y as usize * s;
+            for _x in bx0..=bx1 {
                 g.film[i] = (g.film[i] as f64 * 0.5) as f32;
                 i += 1;
             }

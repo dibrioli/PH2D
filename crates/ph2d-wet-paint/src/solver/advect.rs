@@ -20,13 +20,33 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
     let w = g.w as f64;
     let h = g.h as f64;
     let max_v = p.k(Knob::MaxVelocity);
-    let (bx0, bx1, by0, by1) = (g.bx0, g.bx1, g.by0, g.by1);
+    let (by0, by1) = (g.by0, g.by1);
     let km_mean = p.km_mixing; // route the incoming mean through K–M
     let mut km_colors = [0.0f64; 12];
     let mut km_weights = [0.0f64; 4];
     let mut km_out = [0.0f64; 3];
     let mut vmax = 0.0f64;
     for y in by0..=by1 {
+        // ⚠️ Este é o ÚNICO passe cujo ramo inativo NÃO é um `continue` puro:
+        // ele ZERA a velocidade persistente da célula que deixou de ser água.
+        // Restringi-lo à faixa viva não é, portanto, byte-idêntico "por
+        // construção" como os outros — apoia-se num invariante:
+        //
+        //   **fora da faixa, `vel` já é zero.**
+        //
+        // Ele se sustenta porque `vel` só fica ≠ 0 em célula ATIVA (advect e
+        // project escrevem lá; o anel é escrito pelo `apply_boundaries`), e
+        // uma célula que acabou de sair do ativo continua a ≤1 célula da água
+        // que a deixou — dentro da dilatação de [`crate::grid::SPAN_PAD`] = 5,
+        // com `maxVelocity` = 0,2 célula/frame e rebuild a cada 2 frames.
+        //
+        // O invariante é o que o net de debug [`crate::grid::verify_spans`]
+        // afirma a cada passo, e o gate diferencial (mesma sessão, faixa ON e
+        // OFF, fingerprint idêntico) é o oráculo do produto.
+        let (bx0, bx1) = g.span_x(y);
+        if bx0 > bx1 {
+            continue;
+        }
         let mut i = bx0 as usize + y as usize * s;
         for x in bx0..=bx1 {
             if g.active[i] == 0 {

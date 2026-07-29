@@ -620,3 +620,11 @@ mod tests_doc22; // the doc-22 gates (tuning/tilt/tools/actions/flags)
 #[cfg(test)]
 #[path = "wetpaint/undo_drip_tests.rs"]
 mod undo_drip_tests; // o escorrido que sobrou do Undo (smoke do Enio, 2026-07-26)
+
+/// Porta de MEDIÇÃO para o composite (`super` é privado ao módulo `paint`, e
+/// as sondas moram em `paint::tests`): a metade não-sim do tick, cronometrável
+/// sem re-implementar nada.
+#[cfg(test)]
+pub(in crate::tool::paint) fn composite_for_measure(t: &mut PainterTool) {
+    t.wetpaint_composite();
+}

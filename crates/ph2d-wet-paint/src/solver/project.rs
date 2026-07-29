@@ -14,7 +14,11 @@ pub fn project(g: &mut Grid, p: &Params) {
     let w = g.w as i32;
     let h = g.h as i32;
     let projection = p.k(Knob::Projection);
+    let (gbx0, gbx1, gby0, gby1) = (g.bx0, g.bx1, g.by0, g.by1);
+    let spans_on = g.spans_enabled;
     let Grid {
+        row_lo,
+        row_hi,
         flow_x,
         flow_y,
         vel_x,
@@ -24,19 +28,39 @@ pub fn project(g: &mut Grid, p: &Params) {
     } = g;
     let div = flow_x;
     let prs = flow_y;
-    let zx0 = (g.bx0 - 1).max(0);
-    let zx1 = (g.bx1 + 1).min(w + 1);
-    let zy0 = (g.by0 - 1).max(0);
-    let zy1 = (g.by1 + 1).min(h + 1);
+    // A faixa desta linha, com a margem de 1 que o estêncil pede.
+    let span1 = |y: i32| -> (i32, i32) {
+        let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
+        if lo > hi {
+            (1, 0)
+        } else {
+            ((lo - 1).max(0), (hi + 1).min(s as i32 - 1))
+        }
+    };
+    let zy0 = (gby0 - 1).max(0);
+    let zy1 = (gby1 + 1).min(h + 1);
     for y in zy0..=zy1 {
-        // neighbours of active cells must read 0
+        // neighbours of active cells must read 0 — e "vizinhos de células
+        // ativas" é exatamente a faixa viva com margem 1: `div`/`prs` só são
+        // LIDOS em `i±1` / `i±s` a partir de uma célula ativa (laços 3 e 4),
+        // e `active ⊆ faixa`. O que sobra do rascunho fora daí não é lido por
+        // ninguém — o `flow` é reconstruído todo frame nas células ativas e o
+        // fingerprint da sessão não o inclui, por ser transiente.
+        let (zx0, zx1) = span1(y);
+        if zx0 > zx1 {
+            continue;
+        }
         let base = y as usize * s;
         div[base + zx0 as usize..base + zx1 as usize + 1].fill(0.0);
         prs[base + zx0 as usize..base + zx1 as usize + 1].fill(0.0);
     }
-    for y in g.by0..=g.by1 {
-        let mut i = g.bx0 as usize + y as usize * s;
-        for _x in g.bx0..=g.bx1 {
+    for y in gby0..=gby1 {
+        let (bx0, bx1) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
+        if bx0 > bx1 {
+            continue;
+        }
+        let mut i = bx0 as usize + y as usize * s;
+        for _x in bx0..=bx1 {
             if active[i] != 0 {
                 div[i] = (vel_x[i - 1] as f64 - vel_x[i + 1] as f64 + vel_y[i - s] as f64
                     - vel_y[i + s] as f64) as f32;
@@ -44,9 +68,13 @@ pub fn project(g: &mut Grid, p: &Params) {
             i += 1;
         }
     }
-    for y in g.by0..=g.by1 {
-        let mut i = g.bx0 as usize + y as usize * s;
-        for _x in g.bx0..=g.bx1 {
+    for y in gby0..=gby1 {
+        let (bx0, bx1) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
+        if bx0 > bx1 {
+            continue;
+        }
+        let mut i = bx0 as usize + y as usize * s;
+        for _x in bx0..=bx1 {
             if active[i] != 0 {
                 prs[i] = ((div[i] as f64
                     + 0.25
@@ -59,9 +87,13 @@ pub fn project(g: &mut Grid, p: &Params) {
             i += 1;
         }
     }
-    for y in g.by0..=g.by1 {
-        let mut i = g.bx0 as usize + y as usize * s;
-        for x in g.bx0..=g.bx1 {
+    for y in gby0..=gby1 {
+        let (bx0, bx1) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
+        if bx0 > bx1 {
+            continue;
+        }
+        let mut i = bx0 as usize + y as usize * s;
+        for x in bx0..=bx1 {
             if active[i] == 0 {
                 i += 1;
                 continue;

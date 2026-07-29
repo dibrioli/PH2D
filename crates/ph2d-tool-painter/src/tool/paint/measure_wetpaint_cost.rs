@@ -509,8 +509,99 @@ fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     let side = 4096u32;
     println!(
-        "\n{:<14} {:>10} {:>12} {:>12}",
-        "forma", "dabs", "tick p50 ms", "bbox/tela"
+        "\n{:<14} {:>8} {:>13} {:>13} {:>8} {:>10}",
+        "forma", "dabs", "CAIXA p50 ms", "FAIXA p50 ms", "ganho", "bbox/tela"
+    );
+    // ABLAÇÃO PELA ENTRADA (`Grid::spans_enabled`), nunca por instrumentação:
+    // desligada, a porta devolve a bbox inteira — exatamente o intervalo que o
+    // motor varria antes da faixa viva. Uma linha por FORMA, os dois modos.
+    for (name, diagonal) in [("horizontal", false), ("diagonal", true)] {
+        let mut wide = 0.0f64;
+        for spans in [false, true] {
+            let mut t = wetted(side, 100.0);
+            let x0 = 200.0f32;
+            let y0 = if diagonal { 200.0 } else { 2048.0 };
+            let n = 60;
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            // ⚠️ A sessão nasce no pen-DOWN, então armar o flag antes dele é um
+            // `if let` que não casa — a busca negativa sem controle positivo, que
+            // custou uma rodada inteira de medição mentindo "1,02x".
+            {
+                let sess = t
+                    .paint
+                    .wetpaint
+                    .session
+                    .as_mut()
+                    .expect("a sessao de agua existe apos o pen-down");
+                assert!(!sess.engine.layers.is_empty(), "sem camada, sem grid");
+                for l in &mut sess.engine.layers {
+                    l.grid.spans_enabled = spans;
+                }
+            }
+            for k in 1..=n {
+                let d = 40.0 * k as f32;
+                // Mesmo COMPRIMENTO de caminho nos dois: o diagonal anda `d/√2` em cada eixo.
+                let (x, y) = if diagonal {
+                    (x0 + d * DIAG, y0 + d * DIAG)
+                } else {
+                    (x0 + d, y0)
+                };
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+            }
+            let (lx, ly) = if diagonal {
+                (x0 + 40.0 * n as f32 * DIAG, y0 + 40.0 * n as f32 * DIAG)
+            } else {
+                (x0 + 40.0 * n as f32, y0)
+            };
+            t.on_canvas_pointer(cp([lx, ly], PointerPhase::Up));
+
+            let mut ms = Vec::new();
+            let mut bbox = 0.0f64;
+            for _ in 0..10 {
+                t.marks.clear();
+                let t0 = Instant::now();
+                ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                let a: u64 = t
+                    .marks
+                    .iter()
+                    .map(|r| u64::from(r.w) * u64::from(r.h))
+                    .sum();
+                bbox = bbox.max(a as f64);
+                let _ = t.take_preview_arc();
+            }
+            ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let p50 = ms[ms.len() / 2];
+            if spans {
+                println!(
+                    "{name:<14} {n:>8} {wide:>13.2} {p50:>13.2} {:>7.2}x {:>9.1}%",
+                    wide / p50.max(1e-9),
+                    100.0 * bbox / (f64::from(side) * f64::from(side))
+                );
+            } else {
+                wide = p50;
+            }
+        }
+    }
+    println!();
+}
+
+/// **E de que são os milissegundos que SOBRAM** — as duas metades do tick,
+/// cronometradas pelas portas que o `wetpaint_tick` chama.
+///
+/// O tick é literalmente `N × step_simulation()` + `wetpaint_composite()`.
+/// A faixa viva estreitou a PRIMEIRA metade; esta sonda existe para dizer se a
+/// segunda passou a ser a maior — e ela iterá o retângulo sujo que o ENGINE
+/// declara, que é um casco pela mesma razão que a bbox era.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_two_halves_of_a_wet_tick() {
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+    let side = 4096u32;
+    println!(
+        "\n{:<14} {:>12} {:>14} {:>12}",
+        "forma", "sim p50 ms", "composite p50", "sujo/tela"
     );
     for (name, diagonal) in [("horizontal", false), ("diagonal", true)] {
         let mut t = wetted(side, 100.0);
@@ -520,7 +611,6 @@ fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
         t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
         for k in 1..=n {
             let d = 40.0 * k as f32;
-            // Mesmo COMPRIMENTO de caminho nos dois: o diagonal anda `d/√2` em cada eixo.
             let (x, y) = if diagonal {
                 (x0 + d * DIAG, y0 + d * DIAG)
             } else {
@@ -536,26 +626,39 @@ fn measure_whether_the_sim_pays_for_the_water_or_for_its_bounding_box() {
         };
         t.on_canvas_pointer(cp([lx, ly], PointerPhase::Up));
 
-        let mut ms = Vec::new();
-        let mut bbox = 0.0f64;
+        let (mut sim, mut comp) = (Vec::new(), Vec::new());
+        let mut dirty = 0.0f64;
         for _ in 0..10 {
+            {
+                let sess = t
+                    .paint
+                    .wetpaint
+                    .session
+                    .as_mut()
+                    .expect("a sessao de agua existe apos o traco");
+                let t0 = Instant::now();
+                sess.engine.step_simulation();
+                sim.push(t0.elapsed().as_secs_f64() * 1e3);
+            }
             t.marks.clear();
             let t0 = Instant::now();
-            ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
-            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            super::wetpaint::composite_for_measure(&mut t);
+            comp.push(t0.elapsed().as_secs_f64() * 1e3);
             let a: u64 = t
                 .marks
                 .iter()
                 .map(|r| u64::from(r.w) * u64::from(r.h))
                 .sum();
-            bbox = bbox.max(a as f64);
+            dirty = dirty.max(a as f64);
             let _ = t.take_preview_arc();
         }
-        ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        sim.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        comp.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
         println!(
-            "{name:<14} {n:>10} {:>12.2} {:>11.1}%",
-            ms[ms.len() / 2],
-            100.0 * bbox / (f64::from(side) * f64::from(side))
+            "{name:<14} {:>12.2} {:>14.2} {:>11.1}%",
+            sim[sim.len() / 2],
+            comp[comp.len() / 2],
+            100.0 * dirty / (f64::from(side) * f64::from(side))
         );
     }
     println!();

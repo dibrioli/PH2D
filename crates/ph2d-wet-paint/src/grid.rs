@@ -61,9 +61,75 @@ pub struct Grid {
     pub bx1: i32,
     pub by1: i32,
     pub has_fluid: bool,
+    /// **A FAIXA VIVA, por linha** (inclusiva; `lo > hi` = vazia) — a extensão
+    /// em x que o solver pode precisar tocar naquela linha.
+    ///
+    /// A bbox é o CASCO da água, e um casco mente sobre um traço diagonal: um
+    /// traço de 50 px de largura cruzando a tela tem casco = tela e água =
+    /// 2,4% dele (medido a 4096², `tests/measure_pass_cost.rs`). Todo passe
+    /// itera as linhas da bbox, então 97,6% de cada varredura era desperdício,
+    /// e o tick pagava **pela CAIXA, não pela poça**.
+    ///
+    /// A faixa é um **SUPERCONJUNTO DECLARADO**, mantido em três portas — a
+    /// [`Grid::expand_bbox`] (por onde TODA água nova entra), o
+    /// [`crate::solver::rebuild_active_region`] (que a reaperta a partir do
+    /// que observou) e o snapshot de histórico (que a carrega junto, porque
+    /// ela É estado do grid). O
+    /// invariante que a torna correta é `active ⊆ faixa`, e ele vale **por
+    /// construção**: o rebuild escreve `active` só dentro da própria janela
+    /// de varredura e depois publica a faixa como a extensão viva DILATADA
+    /// por [`SPAN_PAD`], que contém aquelas escritas.
+    ///
+    /// Isso é o que torna a restrição byte-idêntica: todo passe já faz
+    /// early-out por-célula (`active[i] == 0` → `continue`), então pular uma
+    /// célula fora da faixa é pular uma célula que não responderia nada.
+    pub row_lo: Vec<i32>,
+    pub row_hi: Vec<i32>,
+    /// Rascunho do rebuild: a extensão VIVA observada nesta passada, antes da
+    /// dilatação que a publica. Mora no grid para o rebuild não alocar.
+    pub live_lo: Vec<i32>,
+    pub live_hi: Vec<i32>,
+    /// Ablação da faixa: `false` faz [`Grid::span_x`] devolver a bbox inteira,
+    /// isto é, exatamente o que o motor varria antes dela.
+    ///
+    /// ⚠️ Não é uma segunda implementação — é o MESMO laço com um intervalo
+    /// mais largo (a lição do ADR-0120/0124: um caminho lento paralelo é o que
+    /// diverge em silêncio). Serve ao gate diferencial (mesma sessão, os dois
+    /// modos, fingerprint idêntico) e a bissecar em campo.
+    pub spans_enabled: bool,
     // Paper identity (re-baked by paper.rs; part of history snapshots).
     pub paper_preset: PaperPreset,
     pub paper_sheet: u32,
+}
+
+/// Dilatação (em células) que a faixa viva ganha sobre a extensão observada —
+/// o análogo por-linha do pad ±5 que a bbox já carrega.
+///
+/// É folgadíssimo de propósito: `maxVelocity` default é **0,2 célula/frame** e
+/// o rebuild roda a cada 2 frames, então a água anda 0,4 célula entre duas
+/// republicações da faixa. O pad também é o que cobre a célula que ACABOU de
+/// sair do ativo e ainda carrega velocidade (ver o net de debug do `advect`).
+pub const SPAN_PAD: i32 = 5;
+
+/// [`Grid::span_x`] em forma livre — os passes que já desestruturam o `Grid`
+/// (split-borrow, para o compilador provar os índices do estêncil) não podem
+/// chamar o método, e duas cópias da regra divergiriam. Uma implementação,
+/// duas formas de chamada.
+#[inline]
+#[must_use]
+pub fn span_x_of(
+    row_lo: &[i32],
+    row_hi: &[i32],
+    enabled: bool,
+    bx0: i32,
+    bx1: i32,
+    y: i32,
+) -> (i32, i32) {
+    if !enabled {
+        return (bx0, bx1);
+    }
+    let r = y as usize;
+    (bx0.max(row_lo[r]), bx1.min(row_hi[r]))
 }
 
 impl Grid {
@@ -95,8 +161,120 @@ impl Grid {
             bx1: -1,
             by1: -1,
             has_fluid: false,
+            row_lo: vec![i32::MAX; rows],
+            row_hi: vec![i32::MIN; rows],
+            live_lo: vec![i32::MAX; rows],
+            live_hi: vec![i32::MIN; rows],
+            spans_enabled: true,
             paper_preset: PaperPreset::Cold,
             paper_sheet: 0,
+        }
+    }
+
+    /// A faixa a varrer na linha `y`, já intersectada com a bbox — a porta
+    /// ÚNICA por onde todo passe pergunta "até onde vou nesta linha?".
+    ///
+    /// A interseção com a bbox é o que torna a restrição segura em qualquer
+    /// caso: o resultado nunca contém uma célula que o motor não visitava
+    /// antes, então a faixa só pode REMOVER visitas — e as que ela remove têm
+    /// `active == 0` (invariante `active ⊆ faixa`).
+    #[inline]
+    #[must_use]
+    pub fn span_x(&self, y: i32) -> (i32, i32) {
+        span_x_of(
+            &self.row_lo,
+            &self.row_hi,
+            self.spans_enabled,
+            self.bx0,
+            self.bx1,
+            y,
+        )
+    }
+
+    /// Declara que as linhas `y0..=y1` podem ter vida em `x0..=x1` — a porta
+    /// por onde a água NOVA entra na atenção do solver. Só cresce.
+    pub fn note_live(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        if x0 > x1 || y0 > y1 {
+            return;
+        }
+        let y0 = y0.max(0) as usize;
+        let y1 = (y1.max(0) as usize).min(self.rows - 1);
+        for r in y0..=y1 {
+            if x0 < self.row_lo[r] {
+                self.row_lo[r] = x0;
+            }
+            if x1 > self.row_hi[r] {
+                self.row_hi[r] = x1;
+            }
+        }
+    }
+
+    /// Esvazia a faixa viva em toda linha (nada a varrer).
+    pub fn clear_spans(&mut self) {
+        self.row_lo.fill(i32::MAX);
+        self.row_hi.fill(i32::MIN);
+    }
+
+    /// A JANELA de varredura do rebuild: a faixa viva com margem ±2, clampada
+    /// aos índices válidos da linha (inclui o anel de pad). `lo > hi` = vazia.
+    ///
+    /// A margem espelha o `±2` que o `px0/px1` já dá à bbox, e é o que cobre
+    /// as três coisas que o rebuild toca fora da própria faixa: o trio
+    /// horizontal do passe 1, as escritas `active[i±1]` dele, e o trio
+    /// vertical do passe 2.
+    #[inline]
+    #[must_use]
+    pub fn span_window(&self, y: i32) -> (i32, i32) {
+        if !self.spans_enabled {
+            return (0, self.s as i32 - 1);
+        }
+        let r = y as usize;
+        if self.row_lo[r] > self.row_hi[r] {
+            return (1, 0); // vazia
+        }
+        (
+            (self.row_lo[r] - 2).max(0),
+            (self.row_hi[r] + 2).min(self.s as i32 - 1),
+        )
+    }
+
+    /// Zera o rascunho de extensão viva (topo do rebuild).
+    pub fn clear_live(&mut self) {
+        self.live_lo.fill(i32::MAX);
+        self.live_hi.fill(i32::MIN);
+    }
+
+    /// Publica a faixa viva a partir do rascunho: dilatação de [`SPAN_PAD`]
+    /// nos DOIS eixos (a linha `y` herda o que as linhas vizinhas observaram,
+    /// e o intervalo cresce o mesmo pad em x).
+    ///
+    /// É a dilatação que sustenta os dois invariantes que o resto do motor
+    /// assume: `active ⊆ faixa` (as escritas do rebuild ficam a ≤2 células de
+    /// uma célula viva) e "velocidade fora da faixa é zero" (a célula que
+    /// acabou de deixar o ativo está a ≤1 célula da água que a deixou).
+    pub fn publish_spans_from_live(&mut self) {
+        let rows = self.rows as i32;
+        let w = self.w as i32;
+        for y in 0..rows {
+            let mut lo = i32::MAX;
+            let mut hi = i32::MIN;
+            let d0 = (y - SPAN_PAD).max(0);
+            let d1 = (y + SPAN_PAD).min(rows - 1);
+            for r in d0..=d1 {
+                let r = r as usize;
+                if self.live_lo[r] <= self.live_hi[r] {
+                    lo = lo.min(self.live_lo[r]);
+                    hi = hi.max(self.live_hi[r]);
+                }
+            }
+            let r = y as usize;
+            if lo <= hi {
+                self.row_lo[r] = (lo - SPAN_PAD).max(1);
+                self.row_hi[r] = (hi + SPAN_PAD).min(w);
+            } else {
+                self.row_lo[r] = i32::MAX;
+                self.row_hi[r] = i32::MIN;
+            }
         }
     }
 
@@ -107,6 +285,12 @@ impl Grid {
         self.bx1 = -1;
         self.by1 = -1;
         self.has_fluid = false;
+        // ⚠️ A faixa NÃO é zerada aqui, e isso é a indução inteira: a água
+        // pode ter acabado com VELOCIDADE fóssil espalhada pelo rastro, e é a
+        // faixa que lembra onde. Zerá-la aqui quebra o caso base — o próximo
+        // traço traria a bbox de volta sobre aquelas células e o `advect`, que
+        // hoje as zera, não chegaria mais nelas (a rede de debug pegou isto).
+        // Quem zera a faixa é quem zera a velocidade: [`clear_canvas`].
     }
 
     /// Grow the active bbox to include a rect (canvas cell coords), clamped
@@ -139,6 +323,71 @@ impl Grid {
             }
         }
         self.has_fluid = true;
+        // A faixa viva acompanha: esta é a porta por onde a água nova entra.
+        self.note_live(x0, y0, x1, y1);
+    }
+}
+
+/// **A REDE DE DEBUG da faixa viva** — os três invariantes de que a restrição
+/// depende, afirmados a cada passo em build de debug (compilada FORA em
+/// release, onde as sondas de 4096² rodam).
+///
+/// Ela existe porque duas das três afirmações são *por construção* e a
+/// terceira não é, e um leitor futuro não tem como saber qual é qual olhando
+/// um laço. Aqui as três estão escritas, e a suíte inteira do crate —
+/// aceitação SPEC §18, product doors, rewet, flood — as exerce sobre física
+/// real. É o mesmo padrão de rede que a porta única de escrita de plano do
+/// Painter usa: *esquecer é lento, nunca errado*.
+///
+/// 1. `active ⊆ faixa` — por construção (o rebuild publica a faixa como a
+///    extensão viva dilatada por [`SPAN_PAD`], que contém as próprias
+///    escritas dele).
+/// 2. `{film > 0 ∪ susp > 0} ⊆ faixa` — por construção (a faixa é publicada
+///    exatamente desse conjunto; a água nova entra por [`Grid::expand_bbox`]).
+/// 3. **fora da faixa, `vel == 0`** — INVARIANTE, não construção. É a única
+///    afirmação que sustenta o estreitamento do `advect`, cujo ramo inativo
+///    escreve em vez de pular.
+#[cfg(debug_assertions)]
+pub fn verify_spans(g: &Grid) {
+    if !g.spans_enabled {
+        return; // faixa == bbox: nada a afirmar
+    }
+    let s = g.s as i32;
+    for y in 0..g.rows as i32 {
+        let r = y as usize;
+        let (lo, hi) = (g.row_lo[r], g.row_hi[r]);
+        let base = r * g.s;
+        for x in 0..s {
+            let i = base + x as usize;
+            let inside = x >= lo && x <= hi;
+            if inside {
+                continue;
+            }
+            assert!(
+                g.active[i] == 0,
+                "faixa viva nao cobre uma celula ATIVA em ({x}, {y}): faixa [{lo}, {hi}]"
+            );
+            assert!(
+                g.film[i] <= 0.0 && g.susp[i] <= 0.0,
+                "faixa viva nao cobre agua/pigmento em ({x}, {y}): film {} susp {}, faixa [{lo}, {hi}]",
+                g.film[i],
+                g.susp[i]
+            );
+            // O anel de dreno é escrito incondicionalmente pelo
+            // `apply_boundaries` e nunca é visitado pelo advect (a bbox para
+            // em [1, w] × [1, h]), então ele fica de fora da afirmação 3.
+            let ring = x <= 1 || x >= g.w as i32 || y <= 1 || y >= g.h as i32;
+            let in_bbox = x >= g.bx0 && x <= g.bx1 && y >= g.by0 && y <= g.by1;
+            if in_bbox && !ring {
+                assert!(
+                    g.vel_x[i] == 0.0 && g.vel_y[i] == 0.0,
+                    "velocidade sobrevivente fora da faixa em ({x}, {y}): \
+                     ({}, {}) -- o advect nao chegaria mais nela",
+                    g.vel_x[i],
+                    g.vel_y[i]
+                );
+            }
+        }
     }
 }
 
@@ -246,6 +495,8 @@ pub fn clear_canvas(g: &mut Grid) {
     g.active.fill(0);
     g.bloom.fill(0);
     g.empty_bbox();
+    // Aqui a faixa PODE ser zerada: esta é a porta que zerou a velocidade.
+    g.clear_spans();
 }
 
 // ---------------------------------------------------------------------------
@@ -270,6 +521,16 @@ pub struct GridSnapshot {
     pub bx1: i32,
     pub by1: i32,
     pub has_fluid: bool,
+    /// A faixa viva ([`Grid::row_lo`]) viaja no snapshot porque ela É estado
+    /// do grid, não uma vista dele.
+    ///
+    /// ⚠️ A alternativa — abrir a faixa inteira no restore e deixar o próximo
+    /// rebuild reapertá-la — foi MEDIDA e reprovada: a varredura viva do
+    /// rebuild passa a cobrir a folha toda, **0,3 → 17,4 ms a 4096²**, ou
+    /// seja um quadro perdido a cada Ctrl+Z do motor. Um snapshot que já
+    /// carrega dez planos não fica mais caro por dois vetores de `i32`.
+    pub row_lo: Vec<i32>,
+    pub row_hi: Vec<i32>,
     pub paper_preset: PaperPreset,
     pub paper_sheet: u32,
 }
@@ -291,6 +552,8 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         bx1: g.bx1,
         by1: g.by1,
         has_fluid: g.has_fluid,
+        row_lo: g.row_lo.clone(),
+        row_hi: g.row_hi.clone(),
         paper_preset: g.paper_preset,
         paper_sheet: g.paper_sheet,
     }
@@ -316,6 +579,10 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.bx1 = s.bx1;
     g.by1 = s.by1;
     g.has_fluid = s.has_fluid;
+    // A faixa viajou junto: um snapshot descreve o grid INTEIRO, e derivá-la
+    // de volta seria uma segunda resposta à pergunta que o rebuild responde.
+    g.row_lo.copy_from_slice(&s.row_lo);
+    g.row_hi.copy_from_slice(&s.row_hi);
     let paper_changed = g.paper_preset != s.paper_preset || g.paper_sheet != s.paper_sheet;
     g.paper_preset = s.paper_preset;
     g.paper_sheet = s.paper_sheet;

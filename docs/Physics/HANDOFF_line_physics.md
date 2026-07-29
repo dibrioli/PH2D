@@ -6659,7 +6659,7 @@ velocidade; subir o tambor só adia.
 
 ### Aberto, nomeado
 
-- **O segundo diâmetro não tem alça no canvas** — o aro do raio de ENTRADA tem; o de saída é só a row.
+- ~~**O segundo diâmetro não tem alça no canvas**~~ — **FECHADO no W6** (`WheelRimOut`, id 971).
 - ~~**A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO**~~ — **FALSO, e o W5 mediu**: sai `2R/r`.
   As duas fórmulas coincidem só em `R = 2r`, que era o exemplo com que a nota foi escrita. Ver §W5.
 - **O arco do enlace conta pelo raio de ENTRADA** (a corda abraça o tambor em que chegou); num
@@ -6738,3 +6738,60 @@ Medido por `probe_smoke_63`: a carga engrenada **SOBE 0,28 m** enquanto o contra
 2,22 m** (razão **8,05** — a corda é inextensível, e essa razão é o oráculo que não depende de massa
 nenhuma); a carga comum **CAI 0,75 m** até o chão. A mensagem também guia a autoria: digite `0.125` no
 *Out Radius* do tambor da direita.
+
+## W-Pulley W6 — AS ALÇAS que faltavam na roldana (2026-07-29, cena `=63`, pendente de smoke)
+
+Duas dívidas de canvas que o plano nomeou e adiou, e que eram a mesma família: **autorar uma roldana
+com o dedo em vez de digitar**. As duas já tinham precedente — a 2ª alça de âncora de joint, e o
+sentinela `anchored` do W-AnchorFollow —, então o que faltava era fazer.
+
+**(A) O eixo de uma roldana MONTADA era um gesto MORTO, e o silêncio era o defeito.** O centro de uma
+montada é **derivado** (`corpo · local`) e o `sync_mounted_wheels` devolve esse número ao `Transform` a
+cada frame de repouso: arrastar o dot escrevia num campo que o frame seguinte reescrevia — a alça andava
+com o dedo e **voltava ao soltar**, sem erro e sem aviso. São **DOIS** sítios de autoria (o dot de
+canvas · a row Position) e os dois passam agora pela mesma porta nova, `reseat_mounted_axle`.
+
+⚠️ **A exceção que o JOINT tem aqui NÃO se estende**, e a porta diz por quê: lá o `anchored` re-deriva
+**DUAS** âncoras, então limpá-lo ao editar a ponta A jogaria fora a ponta B que o artista acabou de
+posicionar (por isso o joint passa pela porta de âncora). Uma roldana tem **UM** eixo — não há segunda
+metade a perder, e o sentinela é a resposta certa.
+
+**(B) O segundo diâmetro ganhou alça** (`PointHandleKind::WheelRimOut`, id **971**) — a **única alça do
+app cujo arrasto muda quanta força a máquina faz** (`2R/r`, o rig composto do W5). Até aqui a vantagem
+só era digitável, e *uma vantagem que se digita é uma vantagem que não se descobre desenhando*.
+
+⚠️ **Oferecida só quando existe**, e a regra tem consequência medida: numa roldana comum ela cairia
+**exatamente sobre** o aro de entrada (a mutação que remove a regra imprime as duas na MESMA
+coordenada), e duas alças no mesmo pixel são uma alça que às vezes faz outra coisa. Sai do lado
+**OPOSTO** ao de entrada, e o **piso dela é o do irmão, não zero**: `radius_out = 0` é o sentinela de
+*"roldana comum"*, então deixar o arrasto chegar lá **apagaria a própria alça sob o dedo**.
+
+**4 mutações, 4 sangram — e a QUARTA produziu um gate.** O arch-gate afirmava que o `open_drag` e o
+apply **CHAMAM** a porta do raio; trocar o **CORPO** dela por `w.radius` deixava os três arch-gates
+verdes. *Um gate que pina a CHAMADA não pina a RESPOSTA* ⇒ nasceu
+`each_radius_handle_measures_its_own_radius`; sem ele, agarrar o aro de saída mediria contra o raio de
+ENTRADA (0,375 m de salto no clique num tambor 0,5 → 0,125).
+
+⚠️ **Higiene achada no caminho:** um comentário do `inspector_commits` nomeava
+`reseat_joint_pivot_after_position_commit`, função que **não existe em lugar nenhum** — o reseat é um
+bloco inline no `mod.rs`. Corrigido para apontar o que existe.
+
+**Nenhum schema, nenhum componente, nenhum contrato congelado** (`PROJECT_SCHEMA` **45**, registro
+**21**); **c9 byte-idêntico** (`7cb7728d44…`, 96 corpos) — autoria, não solver. LOC:
+`joint_anchor_drag.rs` cruzou 600 e o corte é o que o próprio arquivo já confessava num comentário
+(*"`joint` aqui é a RODA, não a corda"*) — a metade da roldana saiu para o módulo **FILHO**
+`joint_anchor_drag_wheel.rs` (537 + 110).
+
+### Aberto, nomeado
+
+- **Nenhuma alça de roldana tem ÍMÃ** (decisão herdada do W1: o ímã cola nos pontos do collider do corpo
+  daquela ponta, e uma roldana não pertence a corpo nenhum). Numa **montada** haveria a que colar — o
+  collider do corpo que a carrega —, e essa é uma conversa que só agora passou a existir.
+
+### Smoke
+
+A **mesma `PH2D_PHYSICS_SMOKE=63`**, cuja mensagem ganhou os dois gestos: ela já tem um tambor
+diferencial E uma cadernal montada, que é exatamente o palco das duas alças. Com **B** ligado e o
+relógio PARADO — selecione `Geared Rope Drum` (três alças âmbar: o centro, o aro da direita = entrada,
+o da esquerda = saída) e arraste o da esquerda; depois selecione `Geared Rope Sheave` e arraste o
+CENTRO dela: o eixo re-coloca-se no bloco e **FICA**.

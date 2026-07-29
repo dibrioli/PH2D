@@ -120,8 +120,6 @@ fn breaker(
 /// **Quanto a carga do rig VERDE anda em 2 s**, metros — ela fica onde está,
 /// porque 3 kg pesam 29,4 N e a corda aguenta 40.
 pub(crate) const MEASURED_HOLDS_DRIFT: f32 = 0.01;
-/// **Quanto as duas que cedem caem** no mesmo tempo.
-pub(crate) const MEASURED_FALL: f32 = 1.05;
 /// **O TRANCO**, newtons — a carga do meio já chega descendo a 6 m/s, e uma
 /// corda inextensível que a para num sub-passo aplica uma força que **não tem
 /// relação com o peso**: 177× ele.

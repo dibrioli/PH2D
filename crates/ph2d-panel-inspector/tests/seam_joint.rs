@@ -126,8 +126,14 @@ fn expect(actions: &[EditorAction], edit: JointFieldEdit, what: &str) {
     );
 }
 
-/// Tag da POLIA — o único tipo que NÃO pode partir (ela não vive no
-/// `ImpulseJointSet`, então nada mede a reação dela).
+/// Tag da POLIA, e o ÚLTIMO da lista — é por ele que as varreduras por-tipo
+/// deste arquivo sabem onde parar.
+///
+/// ⚠️ O doc daqui dizia *"o único tipo que NÃO pode partir"*, e isso deixou de
+/// ser verdade no W-Pulley W2: o passe próprio dela publica a tensão, então ela
+/// parte como todos. A constante sobreviveu ao fato por um commit, e quem a
+/// pegou foi o aviso de código morto — o uso que a justificava tinha sumido
+/// junto com a exceção.
 const KIND_PULLEY: u8 = 7;
 
 /// **Every kind chip is clickable and picks its own kind.**
@@ -726,7 +732,6 @@ fn the_pair_controls_are_offered_on_every_kind() {
 /// pediu (o item 4) presa atrás de um botão morto.
 #[test]
 fn only_a_pulley_offers_the_add_wheel_button_and_the_click_lands() {
-    const KIND_PULLEY: u8 = 7;
     for kind_tag in 0..=KIND_PULLEY {
         let mut host = MockPanelHost::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();

@@ -142,7 +142,7 @@ fn paint_break_rows(
     y: f32,
     info: &InspectorWheelInfo,
 ) -> f32 {
-    let mut yy = seg_row(
+    let yy = seg_row(
         scene,
         text_system,
         theme,

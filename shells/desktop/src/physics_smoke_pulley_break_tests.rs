@@ -51,6 +51,18 @@ fn probe_smoke_60() {
     }
 }
 
+/// **Quanto as duas que cedem caem em 2 s**, metros — o ORÁCULO deste gate, e
+/// não uma frase da cena.
+///
+/// ⚠️ Ele morava com as constantes `MEASURED_*` do módulo da cena, e um aviso de
+/// código morto o denunciou: aquela família são os números que a MENSAGEM diz, e
+/// a mensagem não diz este. Um número pinado ali sem ser dito ao artista faz o
+/// gate parecer que confere a mensagem quando ele confere só a sim.
+///
+/// O que ele pina de verdade é *"as duas cederam de fato"*: sem um valor, um
+/// `> 0` passaria por uma carga que escorregou dez centímetros.
+const MEASURED_FALL: f32 = 1.05;
+
 /// **A cena 60 diz os números que a sim produz** — o terceiro irmão.
 ///
 /// ⚠️ O que este gate protege é a AFIRMAÇÃO CENTRAL da cena: que o tranco é
@@ -83,7 +95,7 @@ fn the_break_scene_states_the_numbers_the_sim_produces() {
     for (i, tag) in [(1, "Snap"), (2, "Axle")] {
         assert!(
             (moved(&mut sim, i, tag) - MEASURED_FALL).abs() < 0.1,
-            "{tag} caiu {:.4} m e a mensagem diz {MEASURED_FALL:.2}",
+            "{tag} caiu {:.4} m; a queda medida da cena é {MEASURED_FALL:.2}",
             moved(&mut sim, i, tag)
         );
     }

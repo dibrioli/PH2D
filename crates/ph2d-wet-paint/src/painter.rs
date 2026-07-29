@@ -114,7 +114,13 @@ pub struct Engine {
     /// Lazily grown; ended together by [`Self::end_direct_stroke`].
     pub lane_trails: Vec<Trail>,
     /// Test hook: (pressure, dab) per dispatched dab.
-    pub on_dab: Option<Box<dyn FnMut(f64, &Dab)>>,
+    ///
+    /// ⚠️ **`+ Send` porque o `Engine` VIAJA** — a sim roda numa thread própria
+    /// (`wetpaint/offthread.rs`), e sem este bound o motor inteiro deixa de ser
+    /// `Send` por causa de um campo que **nenhum caminho de produto preenche**
+    /// (é sonda). O bound não custa nada a quem o usa: um closure de teste é
+    /// `Send` a menos que capture algo que não seja.
+    pub on_dab: Option<Box<dyn FnMut(f64, &Dab) + Send>>,
     pub dirty: Dirty,
 }
 

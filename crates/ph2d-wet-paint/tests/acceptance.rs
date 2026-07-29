@@ -5,8 +5,11 @@
 
 mod util;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+// `Arc<Mutex<_>>` e não `Rc<RefCell<_>>`: o `on_dab` é `+ Send` porque o
+// `Engine` VIAJA para a thread da sim (`wetpaint/offthread.rs`), e um `Rc` não
+// atravessa thread. O hook é sonda de teste — nenhum caminho de produto o
+// preenche —, então o bound não custa nada além desta troca.
+use std::sync::{Arc, Mutex};
 
 use ph2d_wet_paint::painter::{Engine, Tool};
 use ph2d_wet_paint::paper::{PaperKnobs, PaperPreset, generate_paper_tile, measure_tile_stats};
@@ -21,13 +24,15 @@ use util::{drive_stroke, sweep_nan};
 #[test]
 fn t01_02_pressure_fade_in_and_porous_deposit() {
     let mut e = Engine::new(900, 450);
-    let pressures: Rc<RefCell<Vec<f64>>> = Rc::new(RefCell::new(Vec::new()));
+    let pressures: Arc<Mutex<Vec<f64>>> = Arc::new(Mutex::new(Vec::new()));
     {
         let sink = pressures.clone();
-        e.on_dab = Some(Box::new(move |b, _dab| sink.borrow_mut().push(b)));
+        e.on_dab = Some(Box::new(move |b, _dab| {
+            sink.lock().expect("o mutex da sonda").push(b);
+        }));
     }
     drive_stroke(&mut e, 100.0, 200.0, 360.0, 200.0, 4.0, 0);
-    let p = pressures.borrow();
+    let p = pressures.lock().expect("o mutex da sonda");
     assert!(p.len() > 30, "expected many dabs, got {}", p.len());
     assert_eq!(p[0], 0.0, "first dab pressure = {}, expected 0", p[0]);
     let n = p.len();

@@ -27,8 +27,17 @@ impl WetEngineFacts {
 }
 
 pub(in crate::tool::paint) struct WetSession {
-    /// The engine (grid + sim + tuning), sized to the layer canvas.
-    pub(in crate::tool::paint) engine: Engine,
+    /// O motor (grid + sim + tuning), do tamanho da tela da camada — e **onde
+    /// ele está**: na thread do frame ou com o worker da sim
+    /// ([`super::offthread`]). Pergunte por [`Self::eng`], nunca pelo slot.
+    pub(in crate::tool::paint) engine: EngineSlot,
+    /// A thread da sim, criada no primeiro `hand_off_sim`. `None` = o motor
+    /// nunca saiu daqui (sessão recém-nascida, ou um teste que só dirige).
+    pub(in crate::tool::paint) worker: Option<SimWorker>,
+    /// Quantos passos do worker este tool já COMPOSITOU. É o que responde
+    /// *"há algo novo na tela?"* sem trazer o motor para casa — sem isto o tick
+    /// buscaria o engine a cada frame e o worker perderia o núcleo esperando.
+    pub(in crate::tool::paint) seen_steps: u64,
     /// The canvas frozen at session start — every composite renders over THIS.
     /// `pub(super)` so [`PainterTool::wet_splat_gates`] can serve it as the
     /// alpha-lock's α reference (the frozen base the composite reads).
@@ -56,10 +65,6 @@ pub(in crate::tool::paint) struct WetSession {
     /// Session-persistent pigment scratch (`w*h*4`); the region render fully
     /// overwrites the rect it is asked for, so stale bytes outside are inert.
     pub(super) pigment: Vec<u8>,
-    /// Fixed-step accumulator for [`PainterTool::wetpaint_tick`].
-    pub(super) acc: f32,
-    /// O controlador do orçamento de tempo da sim — ver [`super::budget`].
-    pub(in crate::tool::paint) budget: SimBudget,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last
     /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
@@ -111,31 +116,34 @@ impl WetSession {
             return;
         }
         let a = self.applied;
+        let own_paper = self.paper_key.is_none();
+        self.bring_home();
+        let e = &mut *self.engine;
         if f.knobs.water != a.knobs.water {
-            self.engine.sliders.water = f.knobs.water;
+            e.sliders.water = f.knobs.water;
         }
         if f.knobs.erase != a.knobs.erase {
-            self.engine.sliders.erase = f.knobs.erase;
+            e.sliders.erase = f.knobs.erase;
         }
         let moved = KNOB_DEFS.iter().zip(&f.knobs.knobs).zip(&a.knobs.knobs);
         for ((def, new), old) in moved {
             if new != old {
-                self.engine.set_knob(def.knob, *new);
+                e.set_knob(def.knob, *new);
             }
         }
         if f.tilt != a.tilt {
             let (on, ring, spoke) = f.tilt;
             let d = ph2d_wet_paint::sim::tilt_dir_for_spoke(spoke);
-            self.engine.sim.tilt_on = on;
-            self.engine.sim.tilt_dir_x = d[0];
-            self.engine.sim.tilt_dir_y = d[1];
-            self.engine.sim.tilt_scale = f64::from(ring) / 4.0;
+            e.sim.tilt_on = on;
+            e.sim.tilt_dir_x = d[0];
+            e.sim.tilt_dir_y = d[1];
+            e.sim.tilt_scale = f64::from(ring) / 4.0;
         }
         if f.km_mixing != a.km_mixing {
-            self.engine.sim.km_mixing = f.km_mixing;
+            e.sim.km_mixing = f.km_mixing;
         }
-        if self.paper_key.is_none() && self.engine.paper_dirty() {
-            self.engine.rebake_paper();
+        if own_paper && e.paper_dirty() {
+            e.rebake_paper();
         }
         self.applied = f;
     }

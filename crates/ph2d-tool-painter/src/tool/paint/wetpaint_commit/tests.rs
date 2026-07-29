@@ -310,9 +310,7 @@ fn a_live_session_survives_authoring_and_the_deposit_fuses() {
         t.on_canvas_pointer(cp([30.0 + 10.0 * k as f32, 30.0], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([110.0, 30.0], PointerPhase::Up));
-    for _ in 0..4 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(4);
     let base_ptr = {
         let sess = t.paint.wetpaint.session.as_ref().expect("live water");
         std::sync::Arc::as_ptr(&sess.base)

@@ -47,6 +47,7 @@ impl PainterTool {
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
+        sess.bring_home();
         // Engine dirty (1-based cells, inclusive) → clamped cell rect.
         let (cx0, cy0, cx1, cy1) = match sess.engine.take_dirty() {
             Dirty::Clean => return,

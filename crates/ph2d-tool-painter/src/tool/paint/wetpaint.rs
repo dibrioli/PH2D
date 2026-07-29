@@ -49,82 +49,23 @@
 //! exact failure the ownership split + the route's belt refuse.
 
 use super::*;
-use budget::SimBudget;
+use offthread::{EngineSlot, SimWorker};
 use ph2d_wet_paint::painter::{Dirty, Engine};
 use std::sync::Weak;
 
-/// 40 Hz fixed-step (SPEC §5); at most [`WET_MAX_STEPS`] steps per frame, backlog dropped.
-const WET_STEP_S: f32 = 1.0 / 40.0;
-
-/// **Quantos passos de sim um frame pode pagar** — e o número é MEDIDO, porque o anterior fechava um
-/// laço de realimentação positiva (Enio, smoke de 2026-07-28: *"IMG 4096, 1 pincelada grande e molhada,
-/// FPS para em 4"*).
+/// O estado autorado do Wet Paint — o arm, a sessão viva, os knobs, o tool e o
+/// stash do commit.
 ///
-/// # O mecanismo, e por que ele é invisível a `dt` fixo
-///
-/// O shell chama `on_tick(frame_ms_now)`: **o `dt` é o wall clock do frame ANTERIOR**. Um frame lento
-/// entrega um `dt` grande, o `acc` pede mais passos, o tick fica mais caro — e o frame seguinte fica
-/// ainda mais lento. Toda medição a `dt = 16,6` mostra a água custando ~2 ms e não vê nada disso; a
-/// varredura de `dt` é que a expõe (`measure_whether_the_tick_feeds_back_on_a_slow_frame`), a 4096²:
-///
-/// ```text
-///   dt (ms)      16,6    33,3    57,1     120     250
-///   tick p50     2,08    2,75    6,36   12,36   50,93     ← com o cap em 5
-/// ```
-///
-/// 4 FPS são 250 ms/frame, e ali a água sozinha cobrava **50,93 ms p50 (137 max)**. O log do produto
-/// mostra a escada acontecendo: `periodo real` 16,5 → 25,7 → 29,6 → **57,1 ms**.
-///
-/// # Por que 2, e não 5 nem 1
-///
-/// Ablação do próprio cap, a 4096², `dt = 250`: **1 → 2,69 ms · 2 → 5,79 · 3 → 9,74 · 5 → 50,93**. O
-/// custo é governado pela CONTAGEM (com 1 o tick fica **plano em todo o `dt`**, que é a assinatura de
-/// laço fechado).
-///
-/// A sim é 40 Hz e o display 60, então o regime pede **0,67 passo por frame**: um cap de 2 sustenta o
-/// tempo real com folga de um passo de catch-up, e limita o pior caso a **5,8 ms num orçamento de
-/// 16,6**. Um cap de 1 seria mais barato (2,7 ms) e **mataria todo catch-up** — a água nunca
-/// alcançaria o relógio num frame acima de 25 ms.
-///
-/// ⚠️ **O trade é deliberado e tem precedente no repo:** sob carga a água passa a simular MENOS tempo
-/// (câmera lenta) em vez de derrubar o frame. É exatamente a política do `max_substeps` da física, cujo
-/// `warn: dropped Xs of sim time` aparece no mesmo log — ela se protege assim, e a água não se protegia.
-///
-/// # ⚠️ E por que ele virou **1** (2026-07-29)
-///
-/// A análise acima é de quando a contagem era o ÚNICO teto. Com o orçamento de tempo
-/// ([`budget::SimBudget`]) racionando os milissegundos, um cap de 2 não protege mais nada — ele só
-/// permite **empilhar dois passos baratos num tick só**, e o smoke do Enio mostrou o preço:
-/// `tool-tick: media 5,70 ms pico 54,95` com a água sozinha (`stamps: 0/120`). Um pico de 55-71 ms é
-/// uma travada visível.
-///
-/// E a conta diz que 1 basta: a sim é 40 Hz e o display 60, então o regime pede **0,67 passo por
-/// frame** — com `acc` crescendo 16,6 ms/frame e um passo consumindo 25, sai um passo a cada 1,5
-/// frames, que é **exatamente a taxa nominal**. O cap de 2 só chegava a morder com `dt > 50 ms`, e
-/// nesse regime empilhar passos é o que produz a travada em vez de curá-la.
-const WET_MAX_STEPS: usize = 1;
-
-/// **O ORÇAMENTO DE TEMPO da simulação, por frame, em milissegundos** — e ele existe porque
-/// [`WET_MAX_STEPS`] é um cap de **CONTAGEM**, que é a forma de teto que este repo já descobriu ser um
-/// MULTIPLICADOR três vezes (ADR-0117 no histórico do editor de áudio, o plano 26 no histórico de undo
-/// do Painter): capar a contagem só limita o custo se o custo POR unidade for limitado, e o custo de um
-/// passo de água não é — ele é linear na área molhada, que o artista escolhe com a mão.
-///
-/// # O número, medido
-///
-/// Um passo a 4096², traço de 2400 px (`measure_the_two_halves_of_a_wet_tick`, `measure_pass_cost`):
-///
-/// ```text
-///   forma        passo p50   celulas ativas
-///   horizontal      8,6 ms           94 523
-///   diagonal       12,7 ms          111 283
-/// ```
-///
-/// A sim é 40 Hz, então sustentar tempo real custa `40 × 12,7 = 508 ms/s` — **meio núcleo**, dentro de
-/// um frame de 16,6 ms que tem outros inquilinos. Nenhuma contagem de passos conserta isso: com o cap
-/// em 2 o pior frame paga 25 ms de água, e com o cap em 1 paga 12,7 — os dois são função da poça.
-///
-/// O teto que de fato governa o custo é o de TEMPO, e ele mora em [`budget::SimBudget`].
+/// ⚠️ **Nem o passo nem o orçamento de tempo moram mais aqui.** A sim roda numa
+/// thread própria ([`offthread`]) e o relógio dela é o do WORKER, então este
+/// tool não tem mais `acc`, não tem cap de contagem (`WET_MAX_STEPS`) e não tem
+/// orçamento de milissegundos (`SimBudget`): o frame não paga passo nenhum, ele
+/// MOSTRA o que o worker já fez. Os seis defeitos que a era do agendamento
+/// fechou — realimentação em `dt`, orçamento fixo, atribuição, catraca, régua
+/// pregada e o passo atômico — ficam registrados no doc 28 §5.31-§5.37, e o
+/// passo interrompível que a última delas construiu é **o que torna esta wave
+/// possível**: o worker devolve o motor em fronteira de ESTÁGIO (3-10 ms), não
+/// de passo (33-38).
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
     /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the
@@ -267,6 +208,8 @@ impl PainterTool {
         // checker's eyes); restored before the composite.
         let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
         let sess = &mut taken;
+        // A PORTA: o motor pode estar com o worker desde o fim do último tick.
+        sess.bring_home();
         // ── The artist's PAPER drives the engine's tooth (W2.7) ────────────
         // RECONCILED per batch, not seeded once: paper is substrate under
         // live water, but the SLOT is authored state and the session spans
@@ -578,17 +521,23 @@ impl PainterTool {
         if let Some(sess) = self.paint.wetpaint.session.as_mut()
             && sess.stroke_open
         {
+            sess.bring_home();
             sess.engine.end_direct_stroke();
             sess.stroke_open = false;
             sess.lanes.clear();
         }
     }
 
-    /// Per-frame heartbeat: run the 40 Hz sim (paused while a stroke is down —
-    /// the engine's own gate) and composite whatever it moved. No session = a
-    /// true no-op (the OFF contract: not one byte is looked at).
-    pub(super) fn wetpaint_tick(&mut self, dt_s: f32) {
-        let t_tick = std::time::Instant::now();
+    /// Per-frame heartbeat: **MOSTRA o que o worker já simulou** e devolve o
+    /// motor a ele. No session = a true no-op (the OFF contract: not one byte is
+    /// looked at).
+    ///
+    /// ⚠️ **O frame não dá passo nenhum** — a sim vive em [`offthread`], no
+    /// relógio DELA. O tick faz três coisas: pergunta ao contador se há passo
+    /// novo (atômico, sem trazer o motor), composita se houver, e entrega o
+    /// motor de volta. O `dt` do shell deixou de ser entrada da água: era ele
+    /// que fechava o laço de realimentação da era do agendamento (doc 28 §5.31).
+    pub(super) fn wetpaint_tick(&mut self, _dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none() {
@@ -611,27 +560,52 @@ impl PainterTool {
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
+        // ── Há algo novo a mostrar? ─────────────────────────────────────────
+        //
+        // Perguntado ao CONTADOR de passos do worker (um atômico), NUNCA
+        // trazendo o motor para casa: sem isto o tick buscaria o engine a cada
+        // frame só para descobrir que nada mudou, e o worker perderia ~30% do
+        // núcleo esperando na fronteira de estágio.
+        let done = sess.sim_steps();
+        let fresh = done != sess.seen_steps;
         // Facts land while the water SITS too (Dry Speed / Gravity / the
         // tilt are sim forces): the tick reconciles with the stamp's door.
-        sess.reconcile_facts(facts);
-        sess.acc += dt_s;
-        // O controlador do orçamento (ver [`budget::SimBudget`]): a água gasta a
-        // FOLGA do frame, medida, em vez de um número que alguém escolheu.
-        sess.budget.open_frame(dt_s * 1e3);
-        let steps = Self::wet_run_stages(sess);
-        // Clamp semantics: a stall never owes a burst of catch-up steps.
-        sess.acc = sess.acc.min(WET_STEP_S);
-        if steps > 0 {
-            let t_comp = std::time::Instant::now();
-            self.wetpaint_composite();
-            // Diagnóstico (`PH2D_FLUID_PROFILE`): a metade COMPOSITE do tick. Sem o split, um pico
-            // de 71 ms no `tool-tick` não diz se foi um passo caro ou um composite de casco.
-            crate::wet_diag::note_composite(t_comp.elapsed().as_secs_f32() * 1e3);
+        let facts_moved = sess.applied != facts;
+        if fresh || facts_moved {
+            // ⚠️ **PEDE e não espera.** O tick é a única porta que pode voltar
+            // de mãos vazias (a água corre a ~33 Hz, o display a 60 ⇒ mostrar
+            // um passo no frame seguinte é invisível), e bloquear aqui custava
+            // o estágio inteiro DENTRO do frame — medido, 60,6 ms de pior tick
+            // na poça de três traços. O `seen_steps` só anda quando de fato
+            // compositamos, então nada é perdido: o frame seguinte tenta.
+            //
+            // ⚠️ **Sem `return` no ramo de falha, e a razão é o `hand_off_sim`
+            // abaixo:** quando o pedido falha o motor está **no canal** — nem
+            // aqui, nem com o worker —, e cair no hand-off (que é no-op ali)
+            // mantém a estrutura honesta. ⚠️ **Isto NÃO é o que custou 60× de
+            // taxa**, embora eu tenha escrito isso antes de reler a medição: o
+            // colapso 33,4 → 0,5 Hz foi o `want` sobrevivendo à entrega
+            // (`hand_off_sim`), e consertar o `return` não mudou um Hz. As duas
+            // mutações estão documentadas em `offthread_tests.rs`.
+            if sess.try_bring_home() {
+                sess.seen_steps = done;
+                sess.reconcile_facts(facts);
+                if fresh {
+                    let t_comp = std::time::Instant::now();
+                    self.wetpaint_composite();
+                    // Diagnóstico (`PH2D_FLUID_PROFILE`): a metade COMPOSITE do
+                    // tick. Com a sim fora da thread, ela é a ÚNICA metade que o
+                    // frame ainda paga.
+                    crate::wet_diag::note_composite(t_comp.elapsed().as_secs_f32() * 1e3);
+                }
+            }
         }
-        // A conta da ÁGUA neste frame é o tick INTEIRO — passos E composite. É ela que a
-        // atribuição do orçamento usa para decidir de quem é a culpa de um frame lento.
+        // ⚠️ **O hand-off é INCONDICIONAL** (no-op se o motor já está lá), e não
+        // um `else` do bloco acima: gateá-lo em "houve trabalho" deixaria uma
+        // sessão cujos facts nascem iguais ao boot com o motor em casa para
+        // sempre — água que nunca simula, com todos os gates verdes.
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
-            sess.budget.note_tick(t_tick.elapsed().as_secs_f32() * 1e3);
+            sess.hand_off_sim();
         }
     }
 
@@ -651,11 +625,13 @@ impl PainterTool {
     }
 }
 
-mod stages; // o laço de ESTÁGIOS do tick — filho por LOC
-pub(super) mod budget; // o orçamento de TEMPO da sim (o controlador AIMD) — filho por LOC
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
-mod composite; // the composite half (visual terms + veil) — child file (LOC cap)
+mod composite;
+mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
 
+#[cfg(test)]
+#[path = "wetpaint/offthread_tests.rs"]
+mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
 #[cfg(test)]

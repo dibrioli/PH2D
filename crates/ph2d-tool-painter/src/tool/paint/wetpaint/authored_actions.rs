@@ -27,7 +27,9 @@ impl PainterTool {
             return false;
         }
         self.paint.wetpaint.session = Some(WetSession {
-            engine: Engine::new(w as usize, h as usize),
+            engine: EngineSlot::new_here(Engine::new(w as usize, h as usize)),
+            worker: None,
+            seen_steps: 0,
             base: Arc::clone(&self.canvas_rgba),
             // The identity token is WEAK on purpose ([`WetSession::canvas`]);
             // `base` is the one strong handle the session needs, and it is what
@@ -35,8 +37,6 @@ impl PainterTool {
             // has to survive the write.
             canvas: Arc::downgrade(&self.canvas_rgba),
             pigment: vec![0u8; w as usize * h as usize * 4],
-            acc: 0.0,
-            budget: SimBudget::new(),
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,
@@ -58,6 +58,10 @@ impl PainterTool {
         }
         let facts = self.wet_facts();
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            // A PORTA, explícita. ⚠️ Não delegue ao `reconcile_facts`: ele sai
+            // ANTES de trazer o motor quando os facts não mudaram (o caso
+            // comum), e uma porta que só às vezes abre não é porta.
+            sess.bring_home();
             sess.reconcile_facts(facts);
             sess.engine.wet_canvas_now();
         }
@@ -73,6 +77,10 @@ impl PainterTool {
         self.wetpaint_guard();
         let facts = self.wet_facts();
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            // A PORTA, explícita. ⚠️ Não delegue ao `reconcile_facts`: ele sai
+            // ANTES de trazer o motor quando os facts não mudaram (o caso
+            // comum), e uma porta que só às vezes abre não é porta.
+            sess.bring_home();
             sess.reconcile_facts(facts);
             sess.engine.dry_canvas_now();
             self.wetpaint_composite();
@@ -88,6 +96,10 @@ impl PainterTool {
         self.wetpaint_guard();
         let facts = self.wet_facts();
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            // A PORTA, explícita. ⚠️ Não delegue ao `reconcile_facts`: ele sai
+            // ANTES de trazer o motor quando os facts não mudaram (o caso
+            // comum), e uma porta que só às vezes abre não é porta.
+            sess.bring_home();
             sess.reconcile_facts(facts);
             sess.engine.fast_dry_now();
             self.wetpaint_composite();
@@ -101,6 +113,7 @@ impl PainterTool {
         self.wetpaint_guard();
         let hold = self.wet_authoring_hold();
         if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.bring_home();
             sess.engine.mark_dirty_full();
             if !hold {
                 self.wetpaint_composite();
@@ -116,6 +129,7 @@ impl PainterTool {
         self.wetpaint_guard();
         if self.paint.wetpaint.show_wet && self.paint.wetpaint.session.is_some() {
             if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+                sess.bring_home();
                 sess.engine.mark_dirty_full();
             }
             self.wetpaint_composite_veiled(false);

@@ -2875,3 +2875,41 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
 3. **O setup dos planos do traço, 1,8 ms uma vez por traço** — representá-los por JANELA em vez de por
    tela. ⚠️ Sem atravessar a cerca do `alloc_zeroed` (§4.4), que já custou 17,6 → 47,5 ms a quem tentou
    o atalho óbvio.
+
+## §5.38 — A SIM SAIU DA THREAD DO FRAME: água 15 → 33 Hz, pior tick 73 → 9 ms
+
+O agendamento estava esgotado (§5.31-§5.37): o custo por passo é o piso da física
+(16 ns/célula-passe, zero transcendental, faixa justa), e *a taxa visual da água É
+a taxa de passos*, então enquanto a sim dividia a thread do frame a taxa dela era
+`orçamento ÷ custo do passo` ≈ **15 Hz** numa poça de 4K. O que sobrava não era
+*quanto custa*, era **quem paga**.
+
+Agora a sim roda numa thread própria e o tick **mostra** em vez de simular:
+**33,4 Hz de água** (84% do nominal de 40), **tick p50 0,049 ms**, **pior tick
+9,0 ms** contra os 55-73 de antes. O `acc`, o cap de contagem e o orçamento de
+milissegundos **morreram** — com eles, 4 gates e 2 sondas, que é o resultado
+honesto.
+
+⚠️ **A peça que fez a wave caber foi o `Deref` no slot do motor**, não o canal: os
+**87 sítios** de `sess.engine.…` seguem intactos e o *field splitting* do composite
+sobrevive. O preço é que o `Deref` panica com o motor fora de casa, então dez
+portas chamam `bring_home()` — e o pânico nomeia o conserto.
+
+⚠️ **`TICK_WAIT = 4 ms` é medido e tem mecanismo:** é o `IDLE_SLEEP` do worker, a
+granularidade com que ele responde quando está dormindo. Varredura 0/1/2/4/8 ms →
+sim 23,4/26,9/28,9/**33,4**/33,9 Hz. Bloquear de vez media **60,6 ms** de pior tick.
+
+⚠️ **E a decomposição do passo derrubou uma afirmação do próprio repo:** o header
+do `measure_wetpaint_tick.rs` dizia *"não há paralelismo byte-idêntico a colher (o
+solver é Gauss-Seidel em toda parte — ADR-0134)"*. O ADR nomeia **dois** mecanismos
+sequenciais e eles são **34%** do passo; o `project` é **JACOBI** (quatro laços,
+cada um lê um buffer e escreve OUTRO) e o `smooth_velocity` é gather puro. Os dois
+são row-disjoint. **Não foram feitos** porque o ADR-0109 exige ADR novo para todo
+rayon (decisão do Enio) e o ganho é ~1,3× contra os ~2× desta wave — precificado
+no doc 29 §6.
+
+⚠️ **Três lições de gate, todas sobre mim** (detalhe no doc 29 §5): eu atribuí um
+colapso de 60× ao mecanismo errado **antes de reler a minha própria medição** ·
+encolher uma fixture para matar uma flake tirou os dentes do gate · e
+`reconcile_facts` não era porta (ele sai antes do `bring_home` no caso comum), o
+que o gate da ação de canvas pegou ao vivo.

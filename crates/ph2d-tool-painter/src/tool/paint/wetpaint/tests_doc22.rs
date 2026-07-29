@@ -195,10 +195,12 @@ fn a_tuning_knob_setvalue_reaches_the_live_engine() {
     stroke(&mut t, 60.0);
     set(&mut t, core_ids::wet_tuning_slider_id("leveling"), 1.7);
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     assert_eq!(sess.engine.tuning.get(Knob::Leveling), 1.7);
     set(&mut t, core_ids::wet_tuning_chip_id("brake"), 3.25);
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     assert_eq!(sess.engine.tuning.get(Knob::Brake), 3.25);
     set(&mut t, core_ids::wet_tuning_chip_id("brake"), f64::NAN);
@@ -249,6 +251,7 @@ fn the_tilt_dial_drives_the_sim_vector() {
     set(&mut t, core_ids::PAINTER_WETPAINT_TILT_RING, 8.0);
     set(&mut t, core_ids::PAINTER_WETPAINT_TILT_SPOKE, 0.0);
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     {
         let sess = t.paint.wetpaint.session.as_ref().expect("session");
         assert_eq!(sess.engine.sim.tilt_scale, 2.0);
@@ -258,6 +261,7 @@ fn the_tilt_dial_drives_the_sim_vector() {
     }
     click(&mut t, core_ids::PAINTER_WETPAINT_TILT_TOGGLE);
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     {
         let sess = t.paint.wetpaint.session.as_ref().expect("session");
         assert!(!sess.engine.sim.tilt_on, "toggle must reach the sim");
@@ -556,6 +560,7 @@ fn km_flags_reach_the_sim_and_the_composite() {
     stroke(&mut t, 60.0);
     click(&mut t, core_ids::WET_TUNING_KM_MIXING);
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     {
         let sess = t.paint.wetpaint.session.as_ref().expect("session");
         assert!(sess.engine.sim.km_mixing, "mixing must reach the sim");

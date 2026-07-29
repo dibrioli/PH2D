@@ -140,9 +140,7 @@ fn the_wet_drip_moves_the_live_canvas_past_the_cursor() {
     );
 
     // …e a água segue correndo. Nenhum destes ticks grava entrada de undo.
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     assert_eq!(
         divergences(&t),
         vec!["canvas_rgba"],
@@ -170,9 +168,7 @@ fn the_wholesale_install_is_what_makes_the_divergence_harmless_today() {
     t.paint.wetpaint.knobs.water = 1.0;
 
     stroke(&mut t, 30.0);
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     assert!(t.undo_last(), "havia um traco a desfazer");
     assert_eq!(
         *t.canvas_rgba, pristine,
@@ -207,9 +203,7 @@ fn absorbing_on_the_undo_path_makes_the_live_planes_the_cursor_even_after_a_drip
     t.paint.wetpaint.knobs.water = 1.0;
 
     stroke(&mut t, 30.0);
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     // Controle: a água DE FATO escreveu depois do pen-up — sem isso o gate mede um caso que não contém
     // o fenômeno e fica verde por nada (é o irmão de `the_wet_drip_moves_the_live_canvas_past_the_cursor`).
     assert_eq!(
@@ -243,9 +237,7 @@ fn redo_brings_the_drip_back_now_that_it_belongs_to_the_stroke_that_caused_it() 
     t.paint.wetpaint.knobs.water = 1.0;
 
     stroke(&mut t, 30.0);
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     let with_drip = t.canvas_rgba.as_ref().clone();
 
     assert!(t.undo_last(), "havia um traco a desfazer");

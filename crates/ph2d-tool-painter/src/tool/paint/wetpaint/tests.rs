@@ -1158,6 +1158,7 @@ fn a_turned_knob_reaches_the_live_engine() {
         4.0
     )));
     t.wetpaint_tick(0.05);
+    t.wet_bring_home();
     let sess = t.paint.wetpaint.session.as_ref().expect("session");
     assert_eq!(
         sess.engine.tuning.get(Knob::Evaporation),

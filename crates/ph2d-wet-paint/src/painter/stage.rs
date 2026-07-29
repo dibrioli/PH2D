@@ -33,7 +33,8 @@ impl Engine {
         } else {
             None
         };
-        let done = crate::sim::sim_step_stage(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
+        let done =
+            crate::sim::sim_step_stage(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         // O dirty é marcado a cada estágio: um estágio JÁ mexeu no grid, e o host composita quando o
         // passo completa — mas a bbox pode ter crescido em qualquer um deles.
         if done.is_some_and(|ran| ran) || had_fluid {
@@ -48,5 +49,4 @@ impl Engine {
         }
         done
     }
-
 }

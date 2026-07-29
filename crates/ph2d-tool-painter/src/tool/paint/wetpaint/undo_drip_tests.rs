@@ -72,9 +72,7 @@ fn undoing_a_wet_stroke_takes_the_drip_the_sim_painted_after_the_pen_up() {
     let at_pen_up = t.canvas_rgba.as_ref().clone();
 
     // …e a água segue correndo. É aqui que o escorrido nasce, e nenhuma destas escritas grava undo.
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     let after_drip = t.canvas_rgba.as_ref().clone();
     let dripped = at_pen_up
         .iter()
@@ -132,9 +130,7 @@ fn undoing_back_through_a_drip_that_was_painted_between_two_strokes() {
 
     stroke(&mut t, 30.0);
     let at_pen_up = t.canvas_rgba.as_ref().clone();
-    for _ in 0..240 {
-        t.paint_tick(1.0 / 40.0);
-    }
+    t.wet_step_sync(240);
     let dripped = at_pen_up
         .iter()
         .zip(t.canvas_rgba.as_ref())

@@ -1444,9 +1444,24 @@ Nas **CONTAS** não: a conta do arco 0 pertence ao primeiro segmento e o de fech
 `bead_range` dele é meio-aberto e `tail` é `None` num anel), então metade dela desapareceria. O gate
 do anel agora roda nas duas versões, contínua e pontilhada, e a mutação sangra.
 
-**⚠️ E o percurso fica MELHOR que o raster num ponto, de graça:** lá a borda reta da tampa é a
-fronteira do quad, ou seja **serrilhada**; aqui ela sai do mesmo `edge = 0,5 − sd` de sempre, com
-anti-aliasing. O `max` de dois SDFs não sabe nem se importa de onde cada um veio.
+**⚠️ E o percurso fica MELHOR que o raster num ponto — e o número só apareceu quando a fixture
+parou de mentir.** Lá a borda reta é a fronteira do quad (dentro-ou-fora, sem meio-tom); aqui ela sai
+do mesmo `edge = 0,5 − sd` de sempre, com anti-aliasing — o `max` de dois SDFs não sabe nem se
+importa de onde cada um veio. **Eu escrevi isso por raciocínio e a primeira medição não confirmou
+nada**, porque o traço acabava em `x = 48,0`, uma **fronteira exata de pixel** (os centros ficam em
+47,5 e 48,5), onde a rampa de AA é degenerada e os dois motores dão `…255, 0…`. Movendo o fim para
+`48,4`, meio pixel adentro:
+
+```text
+  tampa Flat, alfa em x = 47,5 … 50,5
+    raster     255,   0, 0, 0     (passo duro: o fim em 48,0 e em 48,4 renderizam IGUAL)
+    percurso   255, 102, 0, 0     (102/255 = 0,40 = a cobertura exata de um corte a 0,1 px do centro)
+```
+
+⚠️ **Isto é uma DIVERGÊNCIA nomeada, não só uma vitória:** numa tampa chata que não cai em fronteira
+de pixel os dois motores diferem em até ~102/255 na coluna da borda. O gate do produto mede **onde a
+tinta acaba** a meia-cobertura, então ele passa; a divergência fica aqui com o número, ao lado da
+conta sub-pixel.
 
 **Gates:** o do PRODUTO compara contra o raster nas DUAS tampas e exige que elas **difiram** entre si
 por ~um raio de cada lado (sem essa terceira metade, um percurso que ignorasse a flag passaria se o

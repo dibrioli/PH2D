@@ -1136,7 +1136,9 @@ fn measure_where_the_cap_ends_in_both_engines() {
         ("FLAT ", (ph2d_flip::Cap::Flat, ph2d_flip::Cap::Flat)),
     ] {
         let mut st = FlipStroke::new();
-        for &x in &[16.0_f32, 48.0] {
+        // ⚠️ O fim em `48.4` cai no MEIO de um pixel (centros em 47,5 e 48,5) — numa fronteira
+        // exata a rampa de anti-aliasing é degenerada e a sonda não mede nada.
+        for &x in &[16.0_f32, 48.4] {
             st.push_point(Point {
                 pos: Vec2::new(x, 32.0),
                 width: 12.0,
@@ -1153,8 +1155,9 @@ fn measure_where_the_cap_ends_in_both_engines() {
             fc.set_walk_engine(&gpu.device, armado);
             let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
             let px = readback_slice(&gpu, slice);
+            let rampa: Vec<u8> = (44..52).map(|x| px[((32 * W + x) * 4 + 3) as usize]).collect();
             println!(
-                "  {nome} {}  y=32 {:?}",
+                "  {nome} {}  y=32 {:?}   rampa x=44..51 {rampa:?}",
                 if i == 0 { "raster  " } else { "percurso" },
                 runs_along(&px, 32)
             );

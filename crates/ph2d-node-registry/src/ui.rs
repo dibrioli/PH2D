@@ -141,6 +141,19 @@ pub enum ParamWidget {
     /// `field.remap` **Curve** contour, and (later) `value.curve` / `force.curve`.
     /// `min/max/step` are inert.
     Curve,
+    /// An interactive **gradient editor** — the colour sibling of [`Self::Curve`],
+    /// on the SAME text channel: the hint's `param` names a text-param key whose
+    /// value is a `ph2d_color::ColorRamp` serialized with `serialize_gradient`
+    /// (`Graph::set_text_param`, doc 32), never a `ParamSpec` (a multi-stop
+    /// gradient is not a fixed set of `f32`s). The panel draws a gradient bar
+    /// with **draggable stops** (position via the same `InteractiveState::CurvePoint`
+    /// x-drag the curve editor uses) and a per-stop **OKLCH swatch** (the canonical
+    /// colour UI, `register_picker_swatch`), plus add/remove and an interp cycle.
+    /// A stop's colour is read back through the shell's sRGB↔linear boundary
+    /// exactly as [`Self::Color`] is — the string stays the source of truth.
+    /// Reusable by every multi-stop-gradient param (`motion.color_ramp` Custom,
+    /// and later any colour-over-value node). `min/max/step` are inert.
+    Gradient,
 }
 
 impl ParamWidget {

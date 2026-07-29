@@ -1257,20 +1257,18 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
         return;
     };
     let reg = registry();
-    for preset in 0..5 {
+    // Presets 0..3 only — their stops are WGSL constants and `cr_eval` matches the
+    // CPU to ULPs. Custom (preset 4) rides the per-channel LUTs (doc 85), a 256-sample
+    // table + lerp with a bounded ε, so it is proven separately by
+    // `color_ramp_custom_gradient_matches_the_cpu_on_the_device` (the `field.remap`
+    // Curve LUT convention) — the exact `1e-5` tint bound here cannot hold a LUT.
+    for preset in 0..4 {
         for interp in 0..2 {
             let mut g = Graph::new();
             let grid = grid_node(&mut g, 160.0);
             let cr = g.add_node("motion.color_ramp");
             g.set_param(cr, "preset", preset as f32);
             g.set_param(cr, "interp", interp as f32);
-            // Custom's two stops: non-round, and NOT the defaults.
-            g.set_param(cr, "a_r", 0.8125);
-            g.set_param(cr, "a_g", 0.1875);
-            g.set_param(cr, "a_b", 0.4375);
-            g.set_param(cr, "b_r", 0.0625);
-            g.set_param(cr, "b_g", 0.9375);
-            g.set_param(cr, "b_b", 0.5625);
             let out = g.add_node("motion.output");
             for (a, b) in [(grid, cr), (cr, out)] {
                 g.connect(Edge {
@@ -1333,6 +1331,96 @@ fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
             assert_parity(&cpu, &gpu_out);
         }
     }
+}
+
+/// doc 85, the DEVICE half of the Custom gradient. A red→green→blue multi-stop gradient
+/// (a shape the two-stop `a/b` params never had) is keyed on the positional index and
+/// must colour the set red→green→blue on the device. The colour reaches the render as the
+/// `tint` column directly (the node writes it). Compared within the LUT's ε — WIDER than
+/// the ULP parity of the presets, because the three 256-sample channel LUTs + lerp round
+/// the stop corners by ~one sample-step (the documented trade, the `value.curve` /
+/// `field.remap` Curve convention). Dropping a LUT (a flat channel) diverges by the whole
+/// gradient span, ~a hundredfold over this bound.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let cr = g.add_node("motion.color_ramp");
+    g.set_param(cr, "preset", 4.0); // Custom
+    // A three-stop gradient with non-round channels (interp 2 = Linear).
+    g.set_text_param(
+        cr,
+        "ramp",
+        "g1 2 0:0.8125,0.1875,0.4375 0.5:0.0625,0.9375,0.5625 1:0.5,0.25,0.75".to_string(),
+    );
+    let out = g.add_node("motion.output");
+    for (a, b) in [(grid, cr), (cr, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+    )
+    .expect("cpu cook");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the Custom gradient chain must cook whole on the device: {:?}",
+        plan.boundaries
+    );
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+    // The gradient must actually SPAN colours (a dropped LUT would paint everything one
+    // flat colour and pass a two-flat-fields comparison with the ramp dead).
+    let spread = cpu
+        .iter()
+        .flat_map(|c| (0..3).map(move |k| c.tint[k]))
+        .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+    assert!(
+        spread.1 - spread.0 > 0.5,
+        "the Custom gradient must span colours, got {spread:?}"
+    );
+
+    const LUT_TOL: f32 = 6e-3;
+    let mut max_tint = 0.0f32;
+    for (i, (c, gg)) in cpu.iter().zip(&gpu_out).enumerate() {
+        for k in 0..4 {
+            max_tint = max_tint.max((c.tint[k] - gg.tint[k]).abs());
+            assert_close("tint", i, c.tint[k], gg.tint[k], LUT_TOL);
+        }
+    }
+    eprintln!(
+        "color_ramp Custom LUT parity: {} instances, max |Δtint| = {max_tint:e}",
+        cpu.len()
+    );
 }
 
 #[test]

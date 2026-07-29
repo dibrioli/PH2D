@@ -8,18 +8,20 @@
 //! **Algorithm — sample a `ph2d-color::ColorRamp` per instance.** The scalar `t` for
 //! element `i` is the `t` value input (`v[i]`, clamped `0..1`) when connected, else the
 //! normalised index `i/(n-1)` (a gradient laid across the set). A `preset` picks a
-//! built-in ramp (Rainbow / Heat / Ice / Grayscale) or a `Custom` two-stop from the
-//! colour params; `interp` is Linear or Ease (smoothstep). The ramp is evaluated in
-//! linear RGB — the same space the `tint` column and the compositor use — so no colour
-//! conversion here. The foundational `ph2d-color` owns the ramp maths; this node is a
-//! thin per-instance map. `Effect::Pure`.
+//! built-in ramp (Rainbow / Heat / Ice / Grayscale); `Custom` reads a **multi-stop
+//! gradient** authored in a TEXT param (doc 32/85 — the `ParamWidget::Gradient` editor),
+//! serialized with `ph2d_color::serialize_gradient` / read with `parse_gradient`. Until
+//! doc 85 this was two fixed stops behind six raw `0..1` sliders (`a_r`…`b_b`); the
+//! gradient string replaces them, so an artist drags coloured stops instead of decoding
+//! channels. The ramp is evaluated in linear RGB — the same space the `tint` column and
+//! the compositor use — so no colour conversion here. `Effect::Pure`.
 
-use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop, parse_gradient};
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, LutSpec};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -33,7 +35,18 @@ const PRESET_RAINBOW: i64 = 0;
 const PRESET_HEAT: i64 = 1;
 const PRESET_ICE: i64 = 2;
 const PRESET_GRAYSCALE: i64 = 3;
-// PRESET_CUSTOM (4) = the two colour params.
+/// The custom multi-stop gradient (read from the [`RAMP_KEY`] text param).
+const PRESET_CUSTOM: i64 = 4;
+
+/// The text-param key for the Custom multi-stop gradient (doc 32/85), read via
+/// [`EvalCtx::text_param`] and sampled by the GPU LUTs ([`LUTS`]). A `ParamWidget::Gradient`
+/// hint names it; the panel edits it as a draggable, swatch-per-stop gradient bar.
+const RAMP_KEY: &str = "ramp";
+
+/// The Custom gradient's LUT resolution (doc 85, mirror of `value.curve` A1-gpu):
+/// samples of the authored ramp over `t ∈ [0,1]`, one table per colour channel.
+/// 256 keeps a smooth gradient within a few thousandths of the CPU `eval`.
+const LUT_RESOLUTION: u32 = 256;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -58,40 +71,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // 0 Rainbow · 1 Heat · 2 Ice · 3 Grayscale · 4 Custom (a→b).
+        // 0 Rainbow · 1 Heat · 2 Ice · 3 Grayscale · 4 Custom (the gradient text param).
         ParamSpec {
             name: "preset",
             default: 0.0,
         },
-        // 0 Linear · 1 Ease (smoothstep).
+        // 0 Linear · 1 Ease (smoothstep) — governs the PRESETS. A Custom gradient
+        // carries its own interp inside the [`RAMP_KEY`] string (the LUT fill can only
+        // read the string, doc 85), so this param is inert while `preset == Custom`.
         ParamSpec {
             name: "interp",
             default: 0.0,
-        },
-        // Custom two-stop colours (linear RGB).
-        ParamSpec {
-            name: "a_r",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "a_g",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "a_b",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "b_r",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "b_g",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "b_b",
-            default: 1.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -101,9 +91,9 @@ fn rgb(r: f32, g: f32, b: f32) -> [f32; 4] {
     [r, g, b, 1.0]
 }
 
-/// Build the ramp for a preset (Rgb space; `interp` Linear or Ease). Custom uses the two
-/// colour params `a`/`b`.
-fn build_ramp(preset: i64, a: [f32; 4], b: [f32; 4], interp: RampInterp) -> ColorRamp {
+/// Build a PRESET ramp (`interp` Linear or Ease). Custom is NOT built here — it is read
+/// from the [`RAMP_KEY`] text param in [`eval`] (and baked into the LUTs on the GPU).
+fn preset_ramp(preset: i64, interp: RampInterp) -> ColorRamp {
     let stops: Vec<[f32; 4]> = match preset {
         PRESET_RAINBOW => vec![
             rgb(1.0, 0.0, 0.0),
@@ -127,7 +117,8 @@ fn build_ramp(preset: i64, a: [f32; 4], b: [f32; 4], interp: RampInterp) -> Colo
             rgb(0.75, 1.0, 1.0),
         ],
         PRESET_GRAYSCALE => vec![rgb(0.0, 0.0, 0.0), rgb(1.0, 1.0, 1.0)],
-        _ => vec![a, b], // Custom
+        // Any unknown preset also lands on grayscale (a safe neutral).
+        _ => vec![rgb(0.0, 0.0, 0.0), rgb(1.0, 1.0, 1.0)],
     };
     let n = stops.len().max(2);
     let ramp_stops: Vec<RampStop> = stops
@@ -136,6 +127,17 @@ fn build_ramp(preset: i64, a: [f32; 4], b: [f32; 4], interp: RampInterp) -> Colo
         .map(|(i, c)| RampStop::new(i as f32 / (n as f32 - 1.0), *c))
         .collect();
     ColorRamp::new(ramp_stops, RampColorMode::Rgb, interp)
+}
+
+/// The ramp for a node's `preset` + `interp` + Custom gradient string. Custom parses the
+/// text param (empty/malformed → `ColorRamp::default()`, a black→white ramp, the safe
+/// drop); a preset is [`preset_ramp`].
+fn ramp_for(preset: i64, interp: RampInterp, custom: Option<&str>) -> ColorRamp {
+    if preset == PRESET_CUSTOM {
+        custom.and_then(parse_gradient).unwrap_or_default()
+    } else {
+        preset_ramp(preset, interp)
+    }
 }
 
 /// Map every instance's scalar through the ramp. `t_field` is the connected value input
@@ -184,24 +186,24 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// const closes it: the body asks whether the column was really there, and takes
 /// the CPU's other branch when it was not (see [`GpuKernel`]).
 ///
-/// **`t` connected rides the broadcast reader** (ADR-0136 — this note used to
-/// refuse it, and the refusal predated the machinery that makes it honest).
-/// `ReadBroadcast` pairs a per-element field positionally and pins a length-1
-/// field to row 0 — the CPU's `0/1/n` ladder — and a field at any OTHER length
-/// is REFUSED at cook time (`BroadcastLengthMismatch`), never silently judged
-/// absent: the exact divergence the old refusal guarded against now has its own
-/// fence, one level down, for every broadcast port at once.
+/// **`t` connected rides the broadcast reader** (ADR-0136). `ReadBroadcast` pairs
+/// a per-element field positionally and pins a length-1 field to row 0 — the CPU's
+/// `0/1/n` ladder — and a field at any OTHER length is REFUSED at cook time
+/// (`BroadcastLengthMismatch`).
 ///
-/// **HR-5:** the interpolation is this crate's `lerp` (`a + (b − a)·t`), NOT
-/// WGSL's `mix` (`a·(1 − t) + b·t`) — same value, different expression, and
-/// therefore different rounding; likewise `smoothstep` is the node's own
-/// polynomial, not the builtin. The stop positions are recomputed as `k/(n − 1)`
-/// rather than derived from `t·(n − 1)`, so the bracket search and the blend
-/// factor are the CPU's arithmetic to the letter.
+/// **Custom rides the LUT channel (doc 85).** A multi-stop gradient is not a fixed
+/// set of params, so the Custom branch samples three scalar LUTs (`cr_grad_r/g/b`,
+/// [`LUTS`]) the sequencer bakes from the `ramp` text param via
+/// [`ColorRamp::bake_into`] — the exact device analog of `value.curve`'s curve LUT.
+/// The presets stay inline (their stops are constants); the `ease` flag applies to
+/// the presets only, because a Custom gradient's interp is baked INTO its LUT (from
+/// the string, the one place the fill can read it).
+///
+/// **HR-5:** the preset interpolation is this crate's `lerp` (`a + (b − a)·t`), NOT
+/// WGSL's `mix`; likewise `smoothstep` is the node's own polynomial. The stop
+/// positions are recomputed as `k/(n − 1)` rather than derived from `t·(n − 1)`.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let cr_a = vec4<f32>(params.a_r, params.a_g, params.a_b, 1.0);\n\
-        let cr_b = vec4<f32>(params.b_r, params.b_g, params.b_b, 1.0);\n\
         // `t` connected → the value field (per-element, or row 0 broadcast);\n\
         // unconnected → the normalised index (the gradient across the set).\n\
         var cr_t = 0.0;\n\
@@ -210,10 +212,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         } else if (params.count > 1u) {\n\
         \x20   cr_t = f32(i) / (f32(params.count) - 1.0);\n\
         }\n\
-        write_tint(i, cr_eval(\n\
-        \x20   i32(cr_round(params.preset)),\n\
-        \x20   i32(cr_round(params.interp)) != 0,\n\
-        \x20   cr_a, cr_b, cr_t));\n",
+        let cr_preset = i32(cr_round(params.preset));\n\
+        if (cr_preset == 4) {\n\
+        \x20   // Custom: the multi-stop gradient, baked to per-channel LUTs.\n\
+        \x20   write_tint(i, vec4<f32>(\n\
+        \x20       cr_grad_r_sample(cr_t),\n\
+        \x20       cr_grad_g_sample(cr_t),\n\
+        \x20       cr_grad_b_sample(cr_t),\n\
+        \x20       1.0));\n\
+        } else {\n\
+        \x20   write_tint(i, cr_eval(cr_preset, i32(cr_round(params.interp)) != 0, cr_t));\n\
+        }\n",
     wgsl_lib: "\
         fn cr_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
@@ -223,10 +232,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             if (preset == 0) { return 7; }\n\
             if (preset == 1) { return 5; }\n\
             if (preset == 2) { return 3; }\n\
-            if (preset == 3) { return 2; }\n\
             return 2;\n\
         }\n\
-        fn cr_stop(preset: i32, k: i32, a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {\n\
+        fn cr_stop(preset: i32, k: i32) -> vec4<f32> {\n\
             if (preset == 0) {\n\
                 if (k == 0) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }\n\
                 if (k == 1) { return vec4<f32>(1.0, 1.0, 0.0, 1.0); }\n\
@@ -248,12 +256,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
                 if (k == 1) { return vec4<f32>(0.0, 0.55, 1.0, 1.0); }\n\
                 return vec4<f32>(0.75, 1.0, 1.0, 1.0);\n\
             }\n\
-            if (preset == 3) {\n\
-                if (k == 0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }\n\
-                return vec4<f32>(1.0, 1.0, 1.0, 1.0);\n\
-            }\n\
-            if (k == 0) { return a; }\n\
-            return b;\n\
+            // Grayscale (preset 3).\n\
+            if (k == 0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }\n\
+            return vec4<f32>(1.0, 1.0, 1.0, 1.0);\n\
         }\n\
         // RampStop::new clamps, and k/(n-1) is already in [0,1].\n\
         fn cr_pos(k: i32, n: i32) -> f32 {\n\
@@ -264,19 +269,19 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             // `a * (1 - t) + b * t`: same value, different rounding.\n\
             return a + (b - a) * t;\n\
         }\n\
-        fn cr_eval(preset: i32, ease: bool, a: vec4<f32>, b: vec4<f32>, t: f32) -> vec4<f32> {\n\
+        fn cr_eval(preset: i32, ease: bool, t: f32) -> vec4<f32> {\n\
             let n = cr_stop_count(preset);\n\
-            let first = cr_stop(preset, 0, a, b);\n\
+            let first = cr_stop(preset, 0);\n\
             if (n == 1 || t <= cr_pos(0, n)) { return first; }\n\
-            let last = cr_stop(preset, n - 1, a, b);\n\
+            let last = cr_stop(preset, n - 1);\n\
             if (t >= cr_pos(n - 1, n)) { return last; }\n\
             // `partition_point(|s| s.pos <= t) - 1`: the last stop at or before t.\n\
             var idx = 0;\n\
             for (var k = 1; k < n; k = k + 1) {\n\
                 if (cr_pos(k, n) <= t) { idx = k; }\n\
             }\n\
-            let ca = cr_stop(preset, idx, a, b);\n\
-            let cb = cr_stop(preset, idx + 1, a, b);\n\
+            let ca = cr_stop(preset, idx);\n\
+            let cb = cr_stop(preset, idx + 1);\n\
             let span = max(cr_pos(idx + 1, n) - cr_pos(idx, n), 1e-8);\n\
             var fac = clamp((t - cr_pos(idx, n)) / span, 0.0, 1.0);\n\
             if (ease) { fac = fac * fac * (3.0 - 2.0 * fac); }\n\
@@ -303,11 +308,64 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["preset", "interp", "a_r", "a_g", "a_b", "b_r", "b_g", "b_b"],
+    params: &["preset", "interp"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
 };
+
+/// The Custom gradient's per-channel LUTs (doc 85): three scalar tables the
+/// sequencer bakes from the `ramp` text param, sampled by the WGSL Custom branch
+/// as `cr_grad_r_sample(t)` etc. A colour LUT is just three scalar LUTs, so this
+/// reuses the existing scalar LUT channel three times — **zero foundational GPU
+/// change** (the exact sibling of `value.curve`'s single LUT).
+static LUTS: &[LutSpec] = &[
+    LutSpec {
+        name: "cr_grad_r",
+        text_key: RAMP_KEY,
+        resolution: LUT_RESOLUTION,
+        fill: fill_grad_r,
+    },
+    LutSpec {
+        name: "cr_grad_g",
+        text_key: RAMP_KEY,
+        resolution: LUT_RESOLUTION,
+        fill: fill_grad_g,
+    },
+    LutSpec {
+        name: "cr_grad_b",
+        text_key: RAMP_KEY,
+        resolution: LUT_RESOLUTION,
+        fill: fill_grad_b,
+    },
+];
+
+/// Sample ONE channel of the authored Custom gradient into `out` at `t = k/(n−1)`
+/// — the node-side half of the LUT channel (`ph2d-nodegraph` stays colour-library
+/// agnostic; the sampling lives here). An unset/malformed string is the default
+/// black→white ramp, matching the CPU `eval`'s fallback.
+fn fill_grad_channel(text: &str, out: &mut [f32], channel: usize) {
+    let ramp = parse_gradient(text).unwrap_or_default();
+    let n = out.len();
+    for (k, slot) in out.iter_mut().enumerate() {
+        let t = if n <= 1 {
+            0.0
+        } else {
+            k as f32 / (n - 1) as f32
+        };
+        *slot = ramp.eval(t)[channel];
+    }
+}
+
+fn fill_grad_r(text: &str, out: &mut [f32]) {
+    fill_grad_channel(text, out, 0);
+}
+fn fill_grad_g(text: &str, out: &mut [f32]) {
+    fill_grad_channel(text, out, 1);
+}
+fn fill_grad_b(text: &str, out: &mut [f32]) {
+    fill_grad_channel(text, out, 2);
+}
 
 struct MotionColorRamp;
 
@@ -323,9 +381,8 @@ impl NodeOp for MotionColorRamp {
         } else {
             RampInterp::Ease
         };
-        let a = rgb(ctx.param("a_r"), ctx.param("a_g"), ctx.param("a_b"));
-        let b = rgb(ctx.param("b_r"), ctx.param("b_g"), ctx.param("b_b"));
-        let ramp = build_ramp(preset, a, b, interp);
+        let custom = ctx.text_param(RAMP_KEY).map(str::to_owned);
+        let ramp = ramp_for(preset, interp, custom.as_deref());
         let t_field = scalar_col(ctx.input(1), VALUE_COL);
         let input = ctx.input(0);
         let n = input.count();
@@ -355,6 +412,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_luts(MANIFEST.id, LUTS);
     Ok(())
 }
 
@@ -381,24 +439,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Linear", "Ease"],
         },
     },
-    chan("a_r", "A R"),
-    chan("a_g", "A G"),
-    chan("a_b", "A B"),
-    chan("b_r", "B R"),
-    chan("b_g", "B G"),
-    chan("b_b", "B B"),
-];
-
-const fn chan(param: &'static str, label: &'static str) -> ParamUiHint {
+    // The Custom multi-stop gradient — a TEXT param (`RAMP_KEY`), not a `ParamSpec`:
+    // doc 85's gradient editor (draggable stops + per-stop OKLCH swatch), the colour
+    // sibling of `value.curve`'s Curve editor. Inert unless `preset == Custom`.
     ParamUiHint {
-        param,
-        label,
+        param: RAMP_KEY,
+        label: "Gradient",
         min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    }
-}
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Gradient,
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -409,7 +461,7 @@ mod tests {
     /// spark (found porting the `t` path to the GPU, ADR-0136).
     #[test]
     fn a_length_one_t_field_broadcasts_to_every_element() {
-        let ramp = super::build_ramp(3, [0.0; 4], [0.0; 4], super::RampInterp::Linear); // grayscale
+        let ramp = super::preset_ramp(3, super::RampInterp::Linear); // grayscale
         let tinted = super::colorize(5, &ramp, &[0.75]);
         for (i, c) in tinted.iter().enumerate() {
             assert_eq!(
@@ -432,12 +484,7 @@ mod tests {
     /// the middle is mid-grey. FALSIFIED if the ramp were a single solid colour.
     #[test]
     fn grayscale_spreads_black_to_white_by_index() {
-        let ramp = build_ramp(
-            PRESET_GRAYSCALE,
-            rgb(0.0, 0.0, 0.0),
-            rgb(1.0, 1.0, 1.0),
-            RampInterp::Linear,
-        );
+        let ramp = preset_ramp(PRESET_GRAYSCALE, RampInterp::Linear);
         let c = colorize(5, &ramp, &[]);
         assert!(c[0][0] < 0.05, "first is black: {:?}", c[0]);
         assert!(c[4][0] > 0.95, "last is white: {:?}", c[4]);
@@ -448,12 +495,7 @@ mod tests {
     /// ramp's end colour (white), regardless of their index.
     #[test]
     fn the_t_field_overrides_the_index() {
-        let ramp = build_ramp(
-            PRESET_GRAYSCALE,
-            rgb(0.0, 0.0, 0.0),
-            rgb(1.0, 1.0, 1.0),
-            RampInterp::Linear,
-        );
+        let ramp = preset_ramp(PRESET_GRAYSCALE, RampInterp::Linear);
         let c = colorize(2, &ramp, &[1.0, 1.0]);
         assert!(c[0][0] > 0.95 && c[1][0] > 0.95, "both white: {c:?}");
     }
@@ -462,12 +504,7 @@ mod tests {
     /// equal (the red channel alone varies a lot).
     #[test]
     fn rainbow_spans_many_colours() {
-        let ramp = build_ramp(
-            PRESET_RAINBOW,
-            rgb(0.0, 0.0, 0.0),
-            rgb(0.0, 0.0, 0.0),
-            RampInterp::Linear,
-        );
+        let ramp = preset_ramp(PRESET_RAINBOW, RampInterp::Linear);
         let c = colorize(12, &ramp, &[]);
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         for col in &c {
@@ -475,6 +512,54 @@ mod tests {
             hi = hi.max(col[2]);
         }
         assert!(hi - lo > 0.8, "the rainbow spans (blue {lo}..{hi})");
+    }
+
+    /// **Custom reads the multi-stop gradient text param** (doc 85). A red→green→blue
+    /// gradient laid across the set colours the first element red, the middle green, the
+    /// last blue — the multi-stop capability the six raw sliders never had. FALSIFIED if
+    /// Custom ignored the string (it would fall back to black→white).
+    #[test]
+    fn custom_reads_the_multi_stop_gradient_string() {
+        let grad = "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1";
+        let ramp = ramp_for(PRESET_CUSTOM, RampInterp::Linear, Some(grad));
+        let c = colorize(3, &ramp, &[]);
+        assert!(c[0][0] > 0.95 && c[0][1] < 0.05, "first red: {:?}", c[0]);
+        assert!(c[1][1] > 0.95 && c[1][0] < 0.05, "middle green: {:?}", c[1]);
+        assert!(c[2][2] > 0.95 && c[2][0] < 0.05, "last blue: {:?}", c[2]);
+    }
+
+    /// Custom with an unset / malformed string falls back to the default black→white
+    /// ramp — never a half-built gradient, never a crash.
+    #[test]
+    fn custom_falls_back_to_black_to_white() {
+        let ramp = ramp_for(PRESET_CUSTOM, RampInterp::Linear, None);
+        let c = colorize(2, &ramp, &[]);
+        assert!(c[0][0] < 0.05, "first black: {:?}", c[0]);
+        assert!(c[1][0] > 0.95, "last white: {:?}", c[1]);
+    }
+
+    /// **The GPU LUT fill mirrors the CPU `eval`** (doc 85, the device half). Baking the
+    /// red channel of a red→green→blue gradient gives red at t=0 and zero red at t=1 —
+    /// the same colour the CPU `colorize` paints. The malformed string bakes the default
+    /// ramp (matching the CPU fallback), so the two paths agree on "nothing authored".
+    #[test]
+    fn the_lut_fill_samples_each_channel_and_falls_back() {
+        let grad = "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1";
+        let mut r = [0.0f32; 256];
+        fill_grad_r(grad, &mut r);
+        assert!(r[0] > 0.95, "red LUT starts at 1.0: {}", r[0]);
+        assert!(r[255] < 0.05, "red LUT ends at 0.0: {}", r[255]);
+        // Parity with the CPU eval at the endpoints.
+        let ramp = parse_gradient(grad).unwrap();
+        assert!((r[0] - ramp.eval(0.0)[0]).abs() < 1e-6, "LUT[0] == eval(0)");
+        assert!(
+            (r[255] - ramp.eval(1.0)[0]).abs() < 1e-6,
+            "LUT[255] == eval(1)"
+        );
+        // Malformed → default black→white: red channel is 0 at t=0, 1 at t=1.
+        let mut bad = [9.0f32; 256];
+        fill_grad_r("nonsense", &mut bad);
+        assert!(bad[0] < 0.05 && bad[255] > 0.95, "fallback ramp baked");
     }
 
     /// Deterministic + cooks through the registry: writes the `tint` column at the full
@@ -541,6 +626,70 @@ mod tests {
             Column::Vec4(v) => {
                 assert_eq!(v.len(), 3, "tint at full count");
                 assert!(v[0][0] < 0.05 && v[2][0] > 0.95, "black to white by index");
+            }
+            _ => panic!("tint"),
+        }
+    }
+
+    /// Custom cooks through the registry from a `set_text_param` gradient — the
+    /// end-to-end path the panel drives. FALSIFIED if the cook ignored the text param.
+    #[test]
+    fn custom_gradient_cooks_through_the_text_param() {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        static SRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.color_ramp.test.src2"),
+            name: "motion.color_ramp.test.src2",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct Src;
+        impl NodeOp for Src {
+            fn manifest(&self) -> &'static NodeManifest {
+                &SRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]])));
+            }
+        }
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == SRC.id => Some(&Src),
+                    t if t == MANIFEST.id => Some(&MotionColorRamp),
+                    _ => None,
+                }
+            }
+        }
+        let mut reg = NodeRegistry::new();
+        register(&mut reg).unwrap();
+
+        let mut g = Graph::new();
+        let src = g.add_node("motion.color_ramp.test.src2");
+        let cr = g.add_node("motion.color_ramp");
+        g.set_param(cr, "preset", PRESET_CUSTOM as f32);
+        g.set_text_param(cr, RAMP_KEY, "g1 2 0:1,0,0 1:0,0,1".to_string());
+        g.connect(Edge {
+            from: (src, 0),
+            to: (cr, 0),
+            delayed: false,
+        })
+        .unwrap();
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, cr, 0.0).unwrap();
+        match out[0].as_stream().get("tint").unwrap() {
+            Column::Vec4(v) => {
+                assert!(v[0][0] > 0.95 && v[0][2] < 0.05, "first red: {:?}", v[0]);
+                assert!(v[1][2] > 0.95 && v[1][0] < 0.05, "last blue: {:?}", v[1]);
             }
             _ => panic!("tint"),
         }

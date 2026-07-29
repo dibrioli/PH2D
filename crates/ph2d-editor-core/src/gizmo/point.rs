@@ -298,8 +298,9 @@ fn handle_color(inert: bool) -> VelloColor {
 /// Order is load-bearing twice. The **snap crosshair first** (it is a backdrop
 /// for the marks that sit on it), then the kinds in [`PAINT_ORDER`] —
 /// `HitIndex::hit` walks backwards, so the last registration wins, and A must
-/// win the square it shares with B on a coincident pair. One pass per kind
-/// rather than per-joint interleaving: with a single pass the next joint's B
+/// win the square it shares with B on a coincident pair. One pass per kind (the
+/// order is [`paint_rank`]) rather than per-joint interleaving: with a single
+/// pass the next joint's B
 /// would be registered after this joint's A and would swallow it wherever two
 /// joints overlap.
 pub fn paint_point_gizmo(
@@ -322,8 +323,14 @@ pub fn paint_point_gizmo(
     if let Some(snap) = view.snap_world {
         paint_snap_cross(scene, project(snap));
     }
-    for kind in PAINT_ORDER {
-        for h in view.handles.iter().filter(|h| h.kind == kind) {
+    // ⚠️ **O último rank sai dos DADOS, e a ordem sai de um `match` exaustivo.**
+    // Nenhuma lista de kinds sobrevive aqui — ver [`paint_rank`] para o defeito
+    // que uma custou. Um passe por rank, como sempre foi: zero alocação, e a
+    // ordem de registro é idêntica ao bit para os kinds que já existiam.
+    let last_rank = view.handles.iter().map(|h| paint_rank(h.kind)).max();
+    for rank in 0..=last_rank.unwrap_or(0) {
+        for h in view.handles.iter().filter(|h| paint_rank(h.kind) == rank) {
+            let kind = h.kind;
             let s = project(h.world);
             let half = hit_half_px(kind);
             let id = point_handle_id(h.key, kind);
@@ -393,19 +400,40 @@ pub fn paint_point_gizmo(
     }
 }
 
-/// Back-to-front paint (and therefore registration) order.
+/// Back-to-front paint (and therefore registration) rank of one kind.
 ///
-/// The **anchors go last**, so where a parameter grip and an anchor overlap the
+/// The **anchors go after the parameter grips**, so where the two overlap the
 /// anchor wins: a limit wall can be dragged from anywhere along its tick, while
 /// the anchor is a single point with nowhere else to go. Within the anchors, A
-/// after B — see [`paint_point_gizmo`].
-const PAINT_ORDER: [PointHandleKind; 5] = [
-    PointHandleKind::LimitMin,
-    PointHandleKind::LimitMax,
-    PointHandleKind::Length,
-    PointHandleKind::AnchorB,
-    PointHandleKind::AnchorA,
-];
+/// after B — see [`paint_point_gizmo`]. The **wheel handles go last**: they are
+/// published only for the *selected* wheel, while every joint's anchors are
+/// published always, so whoever just picked the wheel gets its handles. And
+/// within the wheel, the **centre beats the rims** — they only share a pixel at
+/// a zoom where the radius is sub-pixel, and there *resizing* means nothing
+/// while *moving* still does.
+///
+/// ⚠️ **This was a hand-written `[PointHandleKind; 5]`, and the three wheel
+/// kinds were born outside it.** The paint loop iterated that list, so they were
+/// filtered out — never drawn, never registered — while the `match` arm that
+/// draws them sat there looking handled. The compiler could not say a word: a
+/// `match` must be exhaustive anyway, so adding a variant satisfied it *there*
+/// and left the list untouched. An enumeration is precisely what the next kind
+/// is born outside of ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+///
+/// As an exhaustive `match`, the next kind **does not compile** until it says
+/// where it paints. That is the whole fix; the wheel handles are the symptom.
+const fn paint_rank(kind: PointHandleKind) -> u8 {
+    match kind {
+        PointHandleKind::LimitMin => 0,
+        PointHandleKind::LimitMax => 1,
+        PointHandleKind::Length => 2,
+        PointHandleKind::AnchorB => 3,
+        PointHandleKind::AnchorA => 4,
+        PointHandleKind::WheelRim => 5,
+        PointHandleKind::WheelRimOut => 6,
+        PointHandleKind::WheelCentre => 7,
+    }
+}
 
 /// A crosshair through the snapped candidate — the only thing on screen that
 /// says *the dot stopped here on purpose*. Without it a snap is indistinguishable

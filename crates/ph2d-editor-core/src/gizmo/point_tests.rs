@@ -34,12 +34,24 @@ fn b(key: u64, world: [f32; 2]) -> PointHandle {
     }
 }
 
-/// Paint into a fresh index + map and hand both back.
-fn paint(v: &PointGizmoView) -> (HitIndex, BTreeMap<NodeId, PointHandle>) {
+/// Paint into a fresh index + map + scene and hand all three back.
+///
+/// `n_paths` é o oráculo de *foi mesmo DESENHADO?* que este repo usa
+/// (`progress/tests.rs`, `blend_overlay.rs`) — sem ele um gate de alça mede só
+/// o registro de hit, e **desenhar e registrar são dois fatos**: o report do
+/// Enio é *"não aparece"*, que é a metade que o `HitIndex` não conhece.
+fn paint_counted(v: &PointGizmoView) -> (HitIndex, BTreeMap<NodeId, PointHandle>, u32) {
     let mut scene = VectorScene::new();
     let mut hits = HitIndex::default();
     let mut map = BTreeMap::new();
     paint_point_gizmo(&mut scene, v, Theme::default(), &mut hits, &mut map);
+    let drawn = scene.inner().encoding().n_paths;
+    (hits, map, drawn)
+}
+
+/// Paint into a fresh index + map and hand both back.
+fn paint(v: &PointGizmoView) -> (HitIndex, BTreeMap<NodeId, PointHandle>) {
+    let (hits, map, _) = paint_counted(v);
     (hits, map)
 }
 
@@ -319,4 +331,93 @@ fn the_inert_mark_is_dimmer_but_still_visible() {
         "inerte tem de ser mais apagado: {dim} vs {live}"
     );
     assert!(dim > 0, "e não invisível: {dim}");
+}
+
+/// **As três alças de uma ROLDANA são DESENHADAS e agarráveis** (W-Pulley W6).
+///
+/// ⚠️ **Este gate nasceu VERMELHO sobre o produto shipado**, e ele é o report do
+/// Enio: *"selecionar Geared Rope Drum não mostra três alças âmbar"*, depois
+/// *"nada visível ainda"*. Duas correções reais — o enquadramento da cena e o
+/// relógio parado — não o moveram, porque o defeito estava no terceiro estágio.
+///
+/// A causa era `PAINT_ORDER`, uma lista de kinds **escrita à mão** sobre a qual
+/// o laço de pintura iterava: os três kinds de roldana caíam fora do filtro e
+/// não eram desenhados **nem** registrados. O braço de `match` que os desenha
+/// era código morto, e o compilador não podia denunciá-lo — um `match` precisa
+/// ser exaustivo de qualquer forma, então ele *parecia* tratado.
+///
+/// ⚠️ **Havia gate dos dois lados e nenhum no meio:** `render_loop::point_gizmo`
+/// provava que o publicador produz as três alças, e este arquivo provava que o
+/// pintor desenha âncoras e grips. Ninguém afirmava que a saída de um chega à
+/// entrada do outro — a costura não-testada, outra vez.
+///
+/// Mutação: voltar a ordem a uma lista sem os kinds de roldana ⇒ vermelho nas
+/// **duas** metades (nada desenhado, nada agarrável).
+#[test]
+fn the_wheel_handles_are_painted_and_hittable() {
+    let w = |kind, world| PointHandle {
+        key: 9,
+        kind,
+        world,
+    };
+    let hs = vec![
+        w(PointHandleKind::WheelCentre, [0.0, 0.0]),
+        w(PointHandleKind::WheelRim, [2.0, 0.0]),
+        w(PointHandleKind::WheelRimOut, [-1.0, 0.0]),
+    ];
+    let v = view(hs.clone());
+    let (hits, map, drawn) = paint_counted(&v);
+    assert_eq!(
+        drawn,
+        hs.len() as u32,
+        "cada alça de roldana desenha um anel — o report é 'não aparece', e um \
+         gate que só olhasse o hit ficaria verde sobre uma tela vazia"
+    );
+    for h in &hs {
+        let s = screen(&v, h.world);
+        let id = hits
+            .hit(s[0], s[1])
+            .unwrap_or_else(|| panic!("{:?} não pega o clique onde desenha", h.kind));
+        assert_eq!(
+            map.get(&id).map(|m| m.kind),
+            Some(h.kind),
+            "o mapa tem de devolver a alça que ESTÁ ali: sem isso o arrasto \
+             inteiro de {:?} é inalcançável pelo canvas",
+            h.kind
+        );
+    }
+}
+
+/// **A alça da roldana ganha o pixel que divide com uma âncora, e o CENTRO ganha
+/// do aro.**
+///
+/// As duas metades são a mesma decisão de precedência, e as duas têm razão
+/// própria. Contra a âncora: alça de roldana só é publicada para a roldana
+/// **SELECIONADA**, enquanto toda âncora de joint é publicada sempre — quem
+/// acabou de selecionar a roda quer a alça dela. Centro contra aro: eles só se
+/// tocam num zoom em que o raio é sub-pixel, e ali *redimensionar* não quer
+/// dizer nada enquanto *mover* quer.
+///
+/// Mutação: dar ao centro um rank menor que o do aro ⇒ o aro engole o centro e
+/// a metade de baixo fica vermelha.
+#[test]
+fn a_wheel_handle_beats_an_anchor_and_its_centre_beats_its_rim() {
+    let p = |kind| PointHandle {
+        key: 42,
+        kind,
+        world: [1.0, 1.0],
+    };
+    let v = view(vec![
+        p(PointHandleKind::AnchorA),
+        p(PointHandleKind::WheelRim),
+        p(PointHandleKind::WheelCentre),
+    ]);
+    let (hits, map) = paint(&v);
+    let s = screen(&v, [1.0, 1.0]);
+    let id = hits.hit(s[0], s[1]).expect("something is there");
+    assert_eq!(
+        map[&id].kind,
+        PointHandleKind::WheelCentre,
+        "a roldana selecionada perdeu o próprio pixel"
+    );
 }

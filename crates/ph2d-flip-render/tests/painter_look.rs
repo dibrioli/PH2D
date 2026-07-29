@@ -899,7 +899,11 @@ fn measure_the_new_engines_star_residual() {
 /// A estrela como **UM** traço e como **CINCO** — a MESMA geometria que o oráculo do Enio
 /// (`measure_the_star_one_stroke_against_separate_strokes`) monta, para o motor novo ser medido
 /// na figura DELE e não numa parecida.
-fn star_one_and_five(r: f32, hardness: f32) -> (FlipDrawing, FlipDrawing) {
+/// O que a estrela do oráculo do Enio entrega: o desenho de UM traço, o de CINCO, a polilinha
+/// da união e os cantos (que são as PONTAS de perna).
+type StarPair = (FlipDrawing, FlipDrawing, Vec<(f32, f32)>, Vec<(f32, f32)>);
+
+fn star_one_and_five(r: f32, hardness: f32) -> StarPair {
     let (cx, cy, outer) = (32.0_f32, 32.0, 26.0);
     let mut corners: Vec<(f32, f32)> = (0..5)
         .map(|k| {
@@ -930,7 +934,7 @@ fn star_one_and_five(r: f32, hardness: f32) -> (FlipDrawing, FlipDrawing) {
                 .remove(0),
         );
     }
-    (flip_drawing(&um, r, hardness), sep)
+    (flip_drawing(&um, r, hardness), sep, um, corners)
 }
 
 /// **SONDA** — o oráculo do Enio contra o motor NOVO, headless.
@@ -946,7 +950,7 @@ fn measure_the_new_engine_on_the_star_one_stroke_against_separate_strokes() {
     println!("\n=== MOTOR NOVO: a ESTRELA como UM traco vs CINCO ===");
     let r = 7.0_f32;
     for hardness in [0.4_f32, 0.7, 1.0] {
-        let (d_um, d_sep) = star_one_and_five(r, hardness);
+        let (d_um, d_sep, _, _) = star_one_and_five(r, hardness);
         let a1 = new_engine_alpha_of(&d_um, W, H);
         let a5 = new_engine_alpha_of(&d_sep, W, H);
         let (mut falta, mut ondef) = (0i32, (0u32, 0u32));
@@ -1003,16 +1007,44 @@ fn measure_the_new_engine_on_the_star_one_stroke_against_separate_strokes() {
 fn the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes() {
     let r = 7.0_f32;
     for hardness in [0.4_f32, 0.7, 1.0] {
-        let (d_um, d_sep) = star_one_and_five(r, hardness);
+        let (d_um, d_sep, um, corners) = star_one_and_five(r, hardness);
         let a1 = new_engine_alpha_of(&d_um, W, H);
         let a5 = new_engine_alpha_of(&d_sep, W, H);
-        let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        let (mut pior, mut onde, mut n_miolo) = (0i32, (0u32, 0u32), 0u32);
+        let (mut pior_franja, mut n_franja) = (0i32, 0u32);
         for y in 0..H {
             for x in 0..W {
                 let i = (y * W + x) as usize;
                 let d = (a1[i] * 255.0).round() as i32 - (a5[i] * 255.0).round() as i32;
+                // ⚠️ **Toda silhueta sai, não só a da UNIÃO — e "toda" custou duas rodadas.**
+                // CINCO traços têm silhuetas INTERNAS que o traço único não tem: cada perna
+                // carrega a sua ao longo do FLANCO inteiro, e onde esse flanco está enterrado
+                // dentro da perna vizinha os dois modelos discordam por conflação. Excluir só a
+                // franja da união deixou **−3/255 em 8 px**; excluir também um disco nas PONTAS
+                // de perna (os cantos) deixou **−3 em 4 px**, porque o ofensor medido — (20, 18)
+                // — está a 7,07 px do eixo da perna 4→0, ou seja EM CIMA da silhueta dela, e a
+                // 14 px do canto mais próximo. A regra que fecha é a geométrica: **a menos de
+                // 1,5 px da silhueta de QUALQUER perna**.
+                let pc = (x as f32 + 0.5, y as f32 + 0.5);
+                let na_silhueta_de_alguma_perna = corners.windows(2).any(|w| {
+                    let (a, b) = (w[0], w[1]);
+                    let (vx, vy) = (b.0 - a.0, b.1 - a.1);
+                    let l2 = vx * vx + vy * vy;
+                    let t = (((pc.0 - a.0) * vx + (pc.1 - a.1) * vy) / l2).clamp(0.0, 1.0);
+                    let (dx, dy) = (pc.0 - (a.0 + vx * t), pc.1 - (a.1 + vy * t));
+                    ((dx * dx + dy * dy).sqrt() - r).abs() < 1.5
+                });
+                if na_silhueta_de_alguma_perna || in_the_silhouette_fringe(&um, r, x, y) {
+                    if d != 0 {
+                        n_franja += 1;
+                    }
+                    if d.abs() > pior_franja.abs() {
+                        pior_franja = d;
+                    }
+                    continue;
+                }
                 if d != 0 {
-                    n += 1;
+                    n_miolo += 1;
                 }
                 if d.abs() > pior.abs() {
                     pior = d;
@@ -1020,13 +1052,107 @@ fn the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes() {
                 }
             }
         }
+        // A LEI: no MIOLO a igualdade é exata, ao byte.
         assert!(
-            n == 0,
+            n_miolo == 0,
             "h={hardness:.1}: um traco que cruza a si mesmo TEM de ser identico a tracos \
-             separados -- {n} px diferem, pior {pior:+} em {onde:?} (o motor de hoje mede -64 \
-             em 154 px, e e' esse o defeito)"
+             separados -- {n_miolo} px diferem no miolo, pior {pior:+} em {onde:?} (o motor de \
+             hoje mede -64 em 154 px, e e' esse o defeito)"
         );
+        // ⚠️ **A FRANJA fica FORA, e não é conveniência.** UM e CINCO são cenas DIFERENTES ali:
+        // uma silhueta contra cinco, e `over` de dois alfas com AA **não** é o AA da união — é o
+        // artefato de conflação, e quem está CERTO é o traço único. Medido: ±1/255 em ≤4 px com
+        // pincel macio (onde a queda já fez a borda) e **−51 em 42 px em `hardness = 1`**, onde o
+        // AA É a borda inteira. Comparar ali mede convenção de composição, não a lei — a mesma
+        // razão pela qual todo oráculo deste arquivo exclui a franja. Quem julga a borda é o
+        // `the_new_engines_edge_is_the_area_the_silhouette_covers`, com oráculo de ÁREA.
+        let _ = (pior_franja, n_franja);
     }
+}
+
+/// A fração do pixel de fato coberta pela **união dura** dos discos, por super-amostragem.
+///
+/// ⚠️ **Super-amostrar aqui é legítimo, e o §6 do handoff proíbe outra coisa.** A proibição é
+/// contra super-amostrar o oráculo do **depósito do Painter** — ali o Painter também avalia a
+/// queda no centro do texel, então uma média de área mede uma verdade que **nenhum dos dois**
+/// computa. A pergunta deste gate é outra: *que fração do pixel a silhueta cobre?* — e área **é**
+/// a definição disso, não uma aproximação melhor dela.
+fn union_area_coverage(pts: &[(f32, f32)], r: f32, w: u32, h: u32) -> Vec<f32> {
+    const SS: u32 = 16;
+    let mut out = vec![0.0_f32; (w * h) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let mut hits = 0u32;
+            for sy in 0..SS {
+                for sx in 0..SS {
+                    let p = (
+                        x as f32 + (sx as f32 + 0.5) / SS as f32,
+                        y as f32 + (sy as f32 + 0.5) / SS as f32,
+                    );
+                    if path_dn(pts, r, p) <= 1.0 {
+                        hits += 1;
+                    }
+                }
+            }
+            out[(y * w + x) as usize] = f32::from(hits as u16) / (SS * SS) as f32;
+        }
+    }
+    out
+}
+
+/// 🔴 **A BORDA É A ÁREA QUE A SILHUETA COBRE** — o ponto cego que os oráculos criaram.
+///
+/// Todos os gates contra o depósito do Painter **excluem a franja** (`in_the_silhouette_fringe`),
+/// e com razão: o depósito não tem AA nenhum. O preço disso é que o motor novo **nunca tinha sido
+/// comparado na borda**. Este gate fecha o buraco, e o faz onde ele é MÁXIMO: em `hardness = 1`,
+/// onde o perfil é chapado e o `edge` é a borda inteira — e `hardness = 1` é o default e o
+/// CONTROLE de todos os smokes (§8 do handoff).
+///
+/// A geometria é escolhida para não ser o caso fácil e para isolar UMA pergunta: um traço em
+/// **30°** (uma borda alinhada aos eixos é exata em qualquer filtro-caixa e esconderia o erro),
+/// com as **duas pontas FORA da tela**.
+///
+/// ⚠️ **As pontas ficam fora de propósito, e a 1ª versão deste gate provou por quê:** com elas
+/// dentro, o oráculo de união inclui o **cap redondo** que o motor ainda não tem, e o gate mediu
+/// **−156/255 em (55, 33)** — logo além do fim do traço. Isso é o item do passo 5
+/// (`the_new_engines_deficit_is_the_endpoint_and_the_corner_...`), não o AA; um fixture que mistura
+/// os dois reporta o cap com o nome da borda.
+#[test]
+fn the_new_engines_edge_is_the_area_the_silhouette_covers() {
+    let r = 7.0_f32;
+    let ang = 30.0_f32.to_radians();
+    let pts: Vec<(f32, f32)> = (-20..=60)
+        .map(|k| {
+            let t = k as f32 * 2.0;
+            (-20.0 + t * ang.cos(), -20.0 + t * ang.sin())
+        })
+        .collect();
+    let got = new_engine_alpha(&pts, r, 1.0, W, H);
+    let area = union_area_coverage(&pts, r, W, H);
+    let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+    for y in 0..H {
+        for x in 0..W {
+            let i = (y * W + x) as usize;
+            // Só a BORDA: no miolo e no papel nu os dois são 1 e 0 por construção, e incluí-los
+            // diluiria a média até um gate que não pode falhar.
+            if area[i] <= 0.001 || area[i] >= 0.999 {
+                continue;
+            }
+            let d = (got[i] * 255.0).round() as i32 - (area[i] * 255.0).round() as i32;
+            if d.abs() > 24 {
+                n += 1;
+            }
+            if d.abs() > pior.abs() {
+                pior = d;
+                onde = (x, y);
+            }
+        }
+    }
+    assert!(
+        pior.abs() <= 16 && n == 0,
+        "a borda tem de ser a AREA que a silhueta cobre: pior {pior:+} em {onde:?}, {n} px \
+         fora de 24"
+    );
 }
 
 /// 🔴 **A PONTA CONVEXA: +140/255 → +14.**

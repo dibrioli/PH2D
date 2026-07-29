@@ -325,9 +325,76 @@ fn stroke_deposit(
     p: [f32; 2],
 ) -> Option<Deposit> {
     let hardness = data.strokes[run.first()?.stroke as usize].hardness;
-    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, hardness, p)?;
-    let cover = 1.0 - (-tau).exp();
+    let (sd, near, dist) = stroke_silhouette(run, data, screen, p)?;
+    // **O ANTI-ALIASING** — a fração do pixel coberta pela silhueta, por filtro-caixa.
+    //
+    // ⚠️ Espelha o `edge` do `flip.wgsl` TERMO A TERMO: lá é `clamp(0.5 + (1 − dn)/aa, 0, 1)` com
+    // `aa = fwidth(dn)`; como `dn = d/r` e um pixel vale `1/r` em `dn`, o termo `(1 − dn)/aa` **é**
+    // `r − d`, a distância com sinal em PIXELS. A mesma expressão aqui é `0.5 − sd`, e sem derivada
+    // de tela nenhuma — o percurso tem os segmentos na mão, então o `min` sobre as passagens é
+    // EXATO. (O shader precisa do `fwidth` de um `min`, que salta na costura, e por isso o AA de
+    // lá é por-PASSAGEM; o próprio comentário dele registra o preço.)
+    //
+    // Ele fecha em `sd = 0,5`: além disso o pixel não é tocado, e sair aqui poupa a integral
+    // inteira num pixel que ia devolver zero.
+    let edge = 0.5 - sd;
+    if edge <= 0.0 {
+        return None;
+    }
+    // ⚠️ **O PERFIL É AMOSTRADO DENTRO DA SILHUETA, e é isto que apaga o caso especial do
+    // shader.** Com o centro do pixel FORA (`sd > 0`) a integral não tem amostra nenhuma — a
+    // janela de cada segmento é vazia — e `τ = 0`; a meia-borda de fora ficava em ZERO, e a
+    // medição contra a área disse **−127/255**. O `flip.wgsl` escapa disso com um ramo
+    // (`profile = 1.0` incondicional quando a borda é dura) e paga o preço de o perfil e o AA
+    // serem duas leis. Empurrar o ponto para logo dentro da silhueta reproduz os DOIS regimes
+    // com um mecanismo só: em dureza 1 o perfil ali é 1 (⇒ a máscara vira o `edge`, como no
+    // shader) e num pincel macio ele já é ~0 (⇒ a máscara continua ~0, como no shader).
+    // ⚠️ **Meio pixel, e o número TEM significado:** é a meia-largura do próprio filtro-caixa —
+    // a média que ele quer é a do perfil na metade INTERNA do pixel. Varrido, `0,25 · 0,5 · 0,75 ·
+    // 1,0` dão o mesmo (−9/255 contra a área) porque em dureza 1 o perfil é chapado; o que NÃO
+    // funciona é empurrar de leve: com `1e-3` a corda amostrada fica quase tangente (meio
+    // comprimento `√(2rε)` ≈ 0,12 px contra um passo de quadratura de 0,35) e a integral **não
+    // pega amostra nenhuma** — medido, −98/255. O valor não foi afinado até passar; ele é o que
+    // a geometria do filtro pede, e a varredura só confirmou que a vizinhança concorda.
+    let p_eval = if sd > 0.0 && dist > 1e-6 {
+        let f = (sd + 0.5) / dist;
+        [p[0] + (near[0] - p[0]) * f, p[1] + (near[1] - p[1]) * f]
+    } else {
+        p
+    };
+    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, hardness, p_eval)?;
+    let cover = (1.0 - (-tau).exp()) * edge.min(1.0);
     (cover > 0.0).then_some(Deposit { cover, rgba })
+}
+
+/// A silhueta do traço vista deste pixel: `(distância COM SINAL, ponto mais próximo, distância)`
+/// — a com sinal é **negativa dentro**.
+///
+/// É o `min` sobre as passagens que o `flip.wgsl` também faz — só que aqui **EXATO**, porque o
+/// percurso tem os segmentos na mão. O shader precisa estimar o tamanho de um pixel em unidades de
+/// `dn` (`aa = fwidth(dn)`) e o próprio comentário dele registra o preço: sobre a UNIÃO o `fwidth`
+/// mede o gradiente de um `min`, que **salta na costura**, e por isso o AA de lá é por-PASSAGEM.
+/// Aqui não há derivada de tela envolvida, e por isso não há costura para saltar.
+fn stroke_silhouette(
+    run: &[BinSeg],
+    data: &FlipGpuData,
+    screen: &ScreenSpace,
+    p: [f32; 2],
+) -> Option<(f32, [f32; 2], f32)> {
+    let mut best: Option<(f32, [f32; 2], f32)> = None;
+    for seg in run {
+        let (pa, pb) = (data.points[seg.a as usize], data.points[seg.b as usize]);
+        let sa = screen.point_px(pa.pos);
+        let sb = screen.point_px(pb.pos);
+        let (t, cx, cy) = closest_on_seg(p, sa, sb);
+        let dist = ((p[0] - cx).powi(2) + (p[1] - cy).powi(2)).sqrt();
+        let r = screen.radius_px(pa.width) * (1.0 - t) + screen.radius_px(pb.width) * t;
+        let sd = dist - r;
+        if best.is_none_or(|(prev, _, _)| sd < prev) {
+            best = Some((sd, [cx, cy], dist));
+        }
+    }
+    best
 }
 
 /// ⚠️ **A LEI DO PASSO 2, CONGELADA COMO ORÁCULO** — a união dura (`dist ≤ r`), que é a semântica

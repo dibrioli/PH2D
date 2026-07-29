@@ -744,12 +744,74 @@ O **binning** (1× por frame) é barato: **1,3 ms** para 7800 segmentos. O percu
 
 ---
 
-## 11. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+## 11. ⭐ O ANTI-ALIASING — o ponto cego que os oráculos criaram (fechado)
 
-1. **ANTI-ALIASING — o ponto cego que os oráculos criaram.** Todas as comparações do §9 **excluem a
-   franja da silhueta** (`in_the_silhouette_fringe`), porque o depósito do Painter não tem AA e o
-   motor de hoje tem analítico. Consequência: **o motor novo nunca foi comparado na borda, e ele
-   não tem AA nenhum.** Não é passo 5, é requisito.
+Todos os gates contra o depósito do Painter **excluem a franja da silhueta**, e com razão (o
+depósito não tem AA nenhum). O preço: o motor novo **nunca tinha sido comparado na borda**, e não
+tinha AA. O oráculo novo é a **ÁREA** que a silhueta cobre no pixel (super-amostragem 16×16).
+
+⚠️ **Super-amostrar aqui é legítimo, e a proibição do §6 do handoff é sobre outra coisa:** lá ela
+protege o oráculo do *depósito do Painter*, que também amostra no centro do texel — super-amostrar
+mediria uma verdade que nenhum dos dois computa. Aqui a pergunta **é** *que fração do pixel a
+silhueta cobre*, e área é a definição dela.
+
+### 11.1 O `edge` é o do shader, sem a derivada de tela
+
+O `flip.wgsl` usa `clamp(0.5 + (1 − dn)/aa, 0, 1)` com `aa = fwidth(dn)`. Como `dn = d/r` e um
+pixel vale `1/r` em `dn`, o termo `(1 − dn)/aa` **é** `r − d`: a distância com sinal em PIXELS.
+A mesma expressão aqui é `0.5 − sd` — e o `sd` é **exato**, porque o percurso tem os segmentos na
+mão. (O shader precisa do `fwidth` de um `min`, que **salta na costura**, e por isso o AA de lá é
+por-PASSAGEM; o comentário dele registra o preço.)
+
+### 11.2 ⚠️ E aí o `edge` sozinho não funcionou — o achado da wave
+
+Em `hardness = 1` a integral **morre no instante em que o centro do pixel sai da silhueta** (a
+janela de cada segmento fica vazia ⇒ `τ = 0`), então a meia-borda de FORA ficava em zero:
+**−127/255 contra a área**. O `flip.wgsl` escapa disso com um **ramo** (`profile = 1.0`
+incondicional quando a borda é dura) e paga o preço de o perfil e o AA serem duas leis.
+
+A resposta melhor **apaga o caso especial**: amostre o perfil **meio pixel DENTRO da silhueta**.
+Um mecanismo, os dois regimes — em dureza 1 o perfil ali é 1 (⇒ a máscara vira o `edge`, como no
+shader) e num pincel macio ele já é ~0 (⇒ a máscara continua ~0, como no shader).
+
+⚠️ **E o número 0,5 não foi afinado até passar.** Empurrar *de leve* (`1e-3`) **não funciona**: a
+corda amostrada fica quase tangente (meio comprimento `√(2rε)` ≈ 0,12 px contra um passo de
+quadratura de 0,35) e a integral não pega amostra nenhuma — medido, **−98/255**. O 0,5 é a
+meia-largura do próprio filtro-caixa; a varredura `0,25 · 0,5 · 0,75 · 1,0` só confirma que a
+vizinhança concorda (**−9/255** em todas), porque em dureza 1 o perfil é chapado.
+
+**Resultado: pior desvio −9/255 contra a área, 0 px fora de 24**, num traço a **30°** (borda
+alinhada aos eixos é exata em qualquer filtro-caixa e esconderia o erro) com as pontas **fora da
+tela** — a 1ª versão do fixture as deixou dentro e mediu **−156**, que é o **cap** do passo 5
+reportado com o nome da borda.
+
+### 11.3 ⚠️ O preço: a identidade do §9.1 deixou de valer NA FRANJA
+
+`over` de dois alfas com AA **não** é o AA da união — é o artefato de **conflação**, e quem está
+CERTO é o traço único. O gate da identidade teve de ser re-escopado **duas vezes**, e cada tentativa
+frouxa deixou um resíduo que nomeia a próxima:
+
+| escopo excluído | sobra no "miolo" |
+|---|---|
+| a franja da UNIÃO | −3/255 em 8 px |
+| \+ discos nas PONTAS de perna | −3/255 em 4 px |
+| **a menos de 1,5 px da silhueta de QUALQUER perna** | **0** |
+
+O ofensor final — (20, 18) — está a **7,07 px** do eixo da perna 4→0 (ou seja, EM CIMA da silhueta
+dela) e a 14 px do canto mais próximo: um flanco enterrado dentro da perna vizinha. A lei continua
+exata no miolo; a borda é convenção de composição, e tem oráculo próprio.
+
+### 11.4 Custo e mutações
+
+O AA acrescenta uma distância por segmento e **poupa a integral inteira** onde `sd ≥ 0,5` (o pixel
+não é tocado). Líquido: frame de 200 gestos **1594 → 1811 ms (+14%)**, pixel denso 4147 → 4344
+(+5%), canto vazio inalterado. **2 mutações, 2 sangram** (tirar o `edge` · tirar o empurrão).
+
+---
+
+## 12. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+
+1. ~~**ANTI-ALIASING**~~ — **FECHADO no §11.**
 2. **As features do §8 do handoff**, cada uma com a pergunta *"isto sobrevive à troca de lei?"* —
    airbrush · self-overlap (que provavelmente **desaparece**: ele existe para forçar acúmulo que
    agora é automático) · tip pontilhado · pressão · multiplano.
@@ -759,7 +821,7 @@ O **binning** (1× por frame) é barato: **1,3 ms** para 7800 segmentos. O percu
 
 ---
 
-## 12. Fontes
+## 13. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

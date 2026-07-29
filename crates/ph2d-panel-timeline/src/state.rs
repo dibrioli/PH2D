@@ -205,7 +205,8 @@ pub struct TimelinePanelState {
     /// An open property-expression edit (ADR-0144) — the inline formula field
     /// opened from a track menu. `None` when none is in flight; same WidgetStore
     /// text ownership as `clip_rename`.
-    pub expr_edit: Option<ExprEdit>,
+    /// The open Expression modal (plano 10 W1), if any.
+    pub expr_modal: Option<crate::expr_modal::ExprModal>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -294,7 +295,7 @@ impl Default for TimelinePanelState {
             marker_drag: None,
             marker_rename: None,
             clip_rename: None,
-            expr_edit: None,
+            expr_modal: None,
             box_drag: None,
             box_commit: None,
             rect: None,

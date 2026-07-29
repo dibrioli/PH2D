@@ -127,6 +127,13 @@ pub fn tr(key: &str) -> &'static str {
         // Onion settings modal (ADR-0142 W3b): the floating card's title + row labels. Counts /
         // opacity / colours don't fit the transport bar, so the button opens this card.
         "panel.timeline.onion_settings" => "Onion Settings",
+        // The Expression modal (plano 10 W1) — the card that replaces the inline
+        // formula field with a searchable catalog and a tunable sheet.
+        "panel.timeline.expression" => "Expression",
+        "panel.timeline.expr_search" => "Search",
+        "panel.timeline.expr_apply" => "Apply",
+        "panel.timeline.expr_cancel" => "Cancel",
+        "panel.timeline.expr_empty" => "Pick a recipe to start.",
         "panel.timeline.onion_opacity" => "Opacity",
         "panel.timeline.onion_before" => "Ghosts Before",
         "panel.timeline.onion_after" => "Ghosts After",

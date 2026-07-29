@@ -553,7 +553,7 @@ pub(crate) fn paint_diamond(
 }
 
 /// The display label for a property (the panel's presentation of `PropKind`).
-fn prop_label(p: PropKind) -> &'static str {
+pub(crate) fn prop_label(p: PropKind) -> &'static str {
     match p {
         PropKind::TranslationX => ph2d_i18n::tr("panel.timeline.prop.translate_x"),
         PropKind::TranslationY => ph2d_i18n::tr("panel.timeline.prop.translate_y"),

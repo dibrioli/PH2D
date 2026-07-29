@@ -1,15 +1,18 @@
-//! The property-EXPRESSION field (ADR-0144), driven through the REAL panel seam:
-//! the track menu's "Expression\u{2026}" row OPENS the inline field, and a Submit
-//! raises `SetBindingExpr` with the field text (or `None` to clear). The row is
-//! offered on scene tracks but not on the Time-Remap track (its clock is not a
-//! value to drive).
+//! The property-EXPRESSION seam (ADR-0144 · plano 10 W1), driven through the REAL
+//! panel: the track menu's "Expression\u{2026}" row opens the **modal**, a gallery
+//! card adds a row to the sheet, and Apply raises `SetBindingExpr` with the
+//! formula the sheet projects.
+//!
+//! ⚠️ These gates replace the inline-field ones. The field was DELETED in W1 —
+//! not because it was wrong, but because the modal subsumes it: the catalog's
+//! `Custom Formula` recipe **is** a text field, and the card seeds itself from
+//! whatever formula the track already carries. Keeping a routed, painted widget
+//! with no opener is the rot this repo names; keeping a second menu row for it
+//! would be two doors onto one question.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{
-    ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent,
-};
+use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_editor_core::widget::TextInputState;
 use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::TimelinePanelState;
 use ph2d_ui_testkit::MockPanelHost;
@@ -28,7 +31,7 @@ fn publish_one_track(entity: u64, prop: ph2d_timeline::PropKind) -> u64 {
 }
 
 /// Open+park the track menu for `target`, then click the "Expression\u{2026}" row.
-fn open_field(
+fn open_modal(
     host: &mut MockPanelHost,
     state: &mut TimelinePanelState,
     target: u64,
@@ -42,114 +45,252 @@ fn open_field(
     host.apply_panel_event::<TimelinePanel>(state, WidgetEvent::Click(ids::CTX_MENU_TL_EXPR))
 }
 
-/// Register the field's live text (what typing would leave in the store).
-fn type_into_field(host: &mut MockPanelHost, text: &str) {
-    host.store_mut().register(
-        ids::TIMELINE_TRACK_EXPR_INPUT,
-        InteractiveState::TextInput {
-            state: TextInputState::Focused,
-            text: text.to_string(),
-            caret: text.len(),
-            selection_anchor: None,
-        },
-    );
-}
-
+/// **The menu row opens the card.**
+///
+/// ⚠️ This is the gate that caught the row going dead during W1: the modal's
+/// router guards on "is a card open?", and the menu click is the one event that
+/// arrives when there is none — so routing it after the guard silently orphans
+/// the row that opens the whole feature.
 #[test]
-fn the_expression_menu_row_opens_the_field() {
+fn the_expression_menu_row_opens_the_modal() {
     let _ = ph2d_panel_timeline::drain_intents();
     let target = publish_one_track(7, ph2d_timeline::PropKind::TranslationX);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
 
-    assert_eq!(
-        open_field(&mut host, &mut state, target),
-        EventOutcome::Consumed
+    assert!(
+        state.expr_modal.is_none(),
+        "no card before the row is clicked"
     );
-    let ee = state
-        .expr_edit
-        .expect("the Expression row must open the field");
-    assert_eq!(
-        ee.target, target,
-        "the field edits the clicked row's binding"
-    );
-    ph2d_panel_timeline::set_current_timeline(None);
+    let out = open_modal(&mut host, &mut state, target);
+    assert_eq!(out, EventOutcome::Consumed, "the row is consumed");
+    let m = state
+        .expr_modal
+        .as_ref()
+        .expect("the Expression row opens the card");
+    assert_eq!(m.target, target);
+    assert!(m.stack.rows.is_empty(), "a fresh card starts with no rows");
 }
 
+/// **A gallery card adds its recipe to the sheet, and Apply authors what the
+/// sheet projects.**
 #[test]
-fn committing_the_field_raises_set_binding_expr() {
-    use ph2d_timeline::{AnimTarget, TimelineIntent};
+fn picking_a_recipe_and_applying_raises_the_projected_formula() {
     let _ = ph2d_panel_timeline::drain_intents();
-    let target = publish_one_track(3, ph2d_timeline::PropKind::TranslationY);
+    let target = publish_one_track(8, ph2d_timeline::PropKind::TranslationY);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
 
-    open_field(&mut host, &mut state, target);
-    type_into_field(&mut host, "value + wiggle(3, 20)");
-    let _ = ph2d_panel_timeline::drain_intents(); // opening may have pushed nothing; clear anyway
-    let outcome = host.apply_panel_event::<TimelinePanel>(
+    let out = host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        WidgetEvent::Submit(ids::TIMELINE_TRACK_EXPR_INPUT),
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
     );
-    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(out, EventOutcome::Consumed, "a gallery card is consumed");
+    let want = state
+        .expr_modal
+        .as_ref()
+        .expect("still open")
+        .stack
+        .to_formula();
+    assert!(
+        want.contains("wiggle"),
+        "the sheet holds a Shake row: {want}"
+    );
+
+    let out = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::EXPR_MODAL_APPLY));
+    assert_eq!(out, EventOutcome::Consumed);
+    assert!(state.expr_modal.is_none(), "Apply closes the card");
     assert_eq!(
         ph2d_panel_timeline::drain_intents(),
-        vec![TimelineIntent::SetBindingExpr {
-            target: AnimTarget::new(target),
-            expr: Some("value + wiggle(3, 20)".to_string()),
+        vec![ph2d_timeline::TimelineIntent::SetBindingExpr {
+            target: ph2d_timeline::AnimTarget::new(target),
+            expr: Some(want),
         }],
-        "Submit must raise SetBindingExpr with the field text"
+        "Apply authors exactly what the formula bar showed"
     );
-    ph2d_panel_timeline::set_current_timeline(None);
 }
 
+/// **Opening and cancelling leaves the document untouched** (plano 10 §8, G14).
+///
+/// Both dismissals are checked, because a card you can leave two ways that leaves
+/// differently is a card you cannot learn.
 #[test]
-fn an_empty_field_clears_the_expression() {
-    use ph2d_timeline::{AnimTarget, TimelineIntent};
+fn opening_and_dismissing_the_modal_authors_nothing() {
+    for dismiss in [ids::EXPR_MODAL_CANCEL, ids::EXPR_MODAL_CLOSE] {
+        let _ = ph2d_panel_timeline::drain_intents();
+        let target = publish_one_track(9, ph2d_timeline::PropKind::Rotation);
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        open_modal(&mut host, &mut state, target);
+        host.apply_panel_event::<TimelinePanel>(
+            &mut state,
+            WidgetEvent::Click(ids::expr_gallery_id("shake")),
+        );
+
+        let out = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(dismiss));
+        assert_eq!(out, EventOutcome::Consumed);
+        assert!(state.expr_modal.is_none(), "{dismiss:?} closes the card");
+        assert_eq!(
+            ph2d_panel_timeline::drain_intents(),
+            vec![],
+            "{dismiss:?} must author NOTHING, even with rows on the sheet"
+        );
+    }
+}
+
+/// **An empty sheet clears the expression** (back to keyframes).
+///
+/// The empty stack projects to `"value"` — the identity — and authoring that
+/// would pin a formula that says "leave it alone", which is what having no
+/// formula already means.
+#[test]
+fn applying_an_empty_sheet_clears_the_expression() {
     let _ = ph2d_panel_timeline::drain_intents();
-    let target = publish_one_track(9, ph2d_timeline::PropKind::Rotation);
+    let target = publish_one_track(10, ph2d_timeline::PropKind::ScaleX);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
 
-    open_field(&mut host, &mut state, target);
-    type_into_field(&mut host, "   "); // whitespace only -> clear
-    let _ = ph2d_panel_timeline::drain_intents();
-    host.apply_panel_event::<TimelinePanel>(
-        &mut state,
-        WidgetEvent::Submit(ids::TIMELINE_TRACK_EXPR_INPUT),
-    );
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::EXPR_MODAL_APPLY));
     assert_eq!(
         ph2d_panel_timeline::drain_intents(),
-        vec![TimelineIntent::SetBindingExpr {
-            target: AnimTarget::new(target),
+        vec![ph2d_timeline::TimelineIntent::SetBindingExpr {
+            target: ph2d_timeline::AnimTarget::new(target),
             expr: None,
         }],
-        "an empty field clears the expression (back to keyframes)"
+        "an empty sheet clears the expression"
     );
-    ph2d_panel_timeline::set_current_timeline(None);
 }
 
+/// **A family card walks INTO the family, and `..` walks back out.**
+///
+/// The gallery shows either the nine families or ONE family's recipes — that is
+/// what makes 55 cards fit a card that does not scroll.
 #[test]
-fn the_expression_row_is_offered_on_scene_tracks_but_not_time_remap() {
-    // A table fact: every scene-track menu offers Expression; the Time-Remap menu
-    // does not (a row offered but inert would be the dead-item bug).
-    let has = |menu: &[(ph2d_a11y::NodeId, &str, Option<[u8; 4]>)]| {
-        menu.iter().any(|(row, _, _)| *row == ids::CTX_MENU_TL_EXPR)
-    };
-    assert!(
-        has(&ids::TIMELINE_TRACK_MENU),
-        "plain track offers Expression"
+fn the_gallery_walks_into_a_family_and_back_out() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(11, ph2d_timeline::PropKind::ScaleY);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    let page = |s: &TimelinePanelState| s.expr_modal.as_ref().unwrap().page;
+    assert_eq!(
+        page(&state),
+        ph2d_panel_timeline::expr_modal::GalleryPage::Families,
+        "the card opens on the families"
     );
-    assert!(
-        has(&ids::TIMELINE_AXIS_TRACK_MENU),
-        "axis track offers Expression"
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("Life")),
     );
-    assert!(
-        has(&ids::TIMELINE_PATH_TRACK_MENU),
-        "path track offers Expression"
+    assert_eq!(
+        page(&state),
+        ph2d_panel_timeline::expr_modal::GalleryPage::Family(ph2d_expr_recipes::Family::Life),
     );
-    assert!(
-        !has(&ids::TIMELINE_TIMEREMAP_TRACK_MENU),
-        "the Time-Remap track must NOT offer Expression (its clock is not a value)"
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("..")),
     );
+    assert_eq!(
+        page(&state),
+        ph2d_panel_timeline::expr_modal::GalleryPage::Families,
+        "`..` walks back out"
+    );
+}
+
+/// **A pair recipe inserts BOTH halves.** Half a circle is not a feature.
+#[test]
+fn a_pair_recipe_inserts_both_of_its_rows() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(12, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("orbit-x")),
+    );
+    let rows: Vec<_> = state
+        .expr_modal
+        .as_ref()
+        .unwrap()
+        .stack
+        .rows
+        .iter()
+        .map(|r| r.recipe)
+        .collect();
+    assert_eq!(rows, vec!["orbit-x", "orbit-y"], "one click, both halves");
+}
+
+/// **The bypass eye and the remove button reach the sheet.**
+#[test]
+fn a_row_can_be_bypassed_and_removed() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(13, ph2d_timeline::PropKind::Opacity);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
+    );
+
+    let with = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::expr_bypass_id(0)));
+    let bypassed = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    assert_ne!(with, bypassed, "the eye mutes the row");
+    assert_eq!(bypassed, "value", "a muted row contributes nothing");
+
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::expr_remove_id(0)));
+    assert!(
+        state.expr_modal.as_ref().unwrap().stack.rows.is_empty(),
+        "the X removes the row"
+    );
+}
+
+/// **The gallery cards are alive under a REAL pointer.**
+///
+/// ⚠️ Every gate above dispatches a synthetic `WidgetEvent::Click`, which skips
+/// the store's focusability check — so all of them stay green over a card that is
+/// painted, hit-registered and **dead under the mouse**. That pair is the exact
+/// failure the physics panel paid for with its 36 collision-matrix cells, and it
+/// is why this one paints the card and then clicks a PIXEL.
+#[test]
+fn a_gallery_card_is_reachable_by_a_real_pointer() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(14, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+
+    // Paint once so the card registers its hit rects AND its store entries.
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let life = ids::expr_gallery_id("Life");
+    let rect = regs
+        .iter()
+        .find(|(id, _)| *id == life)
+        .map(|(_, r)| *r)
+        .expect("the Life family card is painted");
+
+    let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == life)),
+        "a pointer over the Life card must produce its Click; got {evs:?}"
+    );
+    for ev in evs {
+        host.apply_panel_event::<TimelinePanel>(&mut state, ev);
+    }
+    assert_eq!(
+        state.expr_modal.as_ref().unwrap().page,
+        ph2d_panel_timeline::expr_modal::GalleryPage::Family(ph2d_expr_recipes::Family::Life),
+        "and the click walks the gallery into that family"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
 }

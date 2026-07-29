@@ -70,4 +70,4 @@ pub use knob::{Knob, KnobKind, KnobValue};
 pub use recipe::{ClockUse, Family, Neutrality, Recipe, RecipeId, RowKind};
 pub use refusal::{Destination, REFUSALS, Refusal};
 pub use search::{SearchHit, search};
-pub use stack::{RecipeStack, Row};
+pub use stack::{RecipeStack, Row, SEED_CLOCK, SEED_VALUE};

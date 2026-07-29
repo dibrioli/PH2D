@@ -9,6 +9,11 @@
 [`…_morphology_…`](HANDOFF_INTEGRACAO_line_Vector_morphology_2026-07-28.md) (o Grow / Shrink) — e
 as quatro **compartilham o bump de schema**. Integre as quatro juntas: o `main` nunca viu nenhuma.
 
+⚠️ **A frase abaixo foi corrigida pela wave seguinte.** Ela vale para as quatro famílias que o
+`apply_op` da W2 nomeou — e a **W9** (Duotone + Luma to Alpha,
+[handoff](HANDOFF_INTEGRACAO_line_Vector_duotone_2026-07-29.md)) veio **por pedido do Enio**, fora
+daquela lista, e integra com estas.
+
 **Com esta, o catálogo do plano 24 FECHA.** O `apply_op` da W2 nomeou quatro famílias
 (*color-matrix · morphology · displacement+turbulence · bevel*); não sobra nenhuma.
 

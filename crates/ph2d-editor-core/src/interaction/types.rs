@@ -281,6 +281,21 @@ pub enum TimelineHitKind {
     /// artist opened it to look at — the first smoke found it pinned off the
     /// bottom of the screen with no way to reach it.
     ExprModalHandle,
+    /// The Expression modal's **background** — everything inside the card's frame
+    /// that is not one of its own widgets.
+    ///
+    /// ⚠️ It exists to be INERT, and that is the whole point: the card is painted
+    /// last (so it is on top) but registered nothing for its own body, which made
+    /// it **transparent to the pointer**. Measured (auditoria 2026-07-29, U1): with
+    /// the card open over the transport, **18 named transport widgets were live
+    /// inside its footprint**, and clicking the centre of the formula bar hit
+    /// `TIMELINE_LENGTH_NUM` — typing there edited the composition's `Dur(s)`.
+    ///
+    /// Registered BEFORE the card's own widgets so they shadow it, and after the
+    /// whole panel so it shadows the panel. This is the pitfall in
+    /// [`crate::interaction::HitIndex::register`] used on purpose: a parent
+    /// registered before its children swallows exactly the gaps between them.
+    ExprModalScrim,
     /// A key's anchor dot in an expanded track's graph. Dragging it edits the key
     /// in the `(time, value)` plane: sideways moves the selection in time,
     /// up/down retunes the value. `target`/`key` are the raw `AnimTarget`/`KeyId`.
@@ -442,6 +457,14 @@ pub struct TimelineWheel {
     pub scroll_delta: f32,
     /// Cursor x (global px) the anchored zoom keeps fixed.
     pub anchor_x: f32,
+    /// Cursor y (global px) — **where** the wheel happened.
+    ///
+    /// ⚠️ Added because carrying only `x` was an accident of what the anchored
+    /// zoom needed, not a statement about what a consumer can ask. A floating card
+    /// over the dope sheet has to refuse a wheel inside its own frame (auditoria
+    /// 2026-07-29, U3: measured `px_per_s` 120 → 326 with the Expression card
+    /// open), and one coordinate of two cannot answer *"inside this rect?"*.
+    pub anchor_y: f32,
 }
 
 /// One timeline dope-sheet pointer gesture, stashed by dispatch and drained by

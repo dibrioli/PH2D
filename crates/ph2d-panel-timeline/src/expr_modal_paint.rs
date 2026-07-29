@@ -24,8 +24,18 @@
 //! ⚠️ Nothing here scrolls, and the geometry says why. The body is
 //! [`BODY_SLOTS`] rows of `ROW_H_PX`; the gallery spends one on the search field
 //! and shows either the NINE families or ONE family's recipes (the largest family
-//! has ten, so a family always fits); the sheet spends `1 + knobs` per row and
+//! has nine, so a family always fits); the sheet spends `1 + knobs` per row and
 //! **says how many rows it could not show** rather than truncating in silence.
+//!
+//! ⚠️⚠️ **That last clause is TRUE and its reassurance is FALSE, measured** (auditoria
+//! 2026-07-29, §4-bis U2): a row past `BODY_SLOTS` prints `+N more rows` **and gets zero
+//! widgets** — no hit rect, no store entry, nothing to click — *while the formula the
+//! object runs still contains it*. Four Turbulence rows leave rows 2-3 driving the scene
+//! and unreachable; one `Fade by Distance` eats nine of the twelve slots. The only way to
+//! reach the buried row is to delete one above it. **Open, and it belongs to FASE C** —
+//! the fix is not scroll by reflex (128 px per knob row are dead, so two columns may
+//! remove the overflow instead), and this note exists so the next reader is not
+//! reassured by the sentence above it.
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
@@ -84,6 +94,30 @@ pub fn card_h() -> f32 {
     Spacing::Sm.px() * 2.0
         + ROW_H_PX * (BODY_SLOTS as f32 + STRIP_SLOTS + CHROME_ROWS)
         + gap * (CHROME_ROWS + 1.0)
+}
+
+/// **Where the card is** — the one door, asked by the painter that places it and by
+/// the wheel guard that has to refuse a zoom inside it.
+///
+/// ⚠️ Two answers to *"where is the card?"* is how the wheel ends up refused over
+/// the rect the card used to occupy. The painter used to compute this inline and the
+/// guard had nothing to ask, so it asked nobody.
+///
+/// `pos` is the card's remembered top-left (`None` before the first paint, when it
+/// CENTRES) and the result is clamped into `vp` — a card dragged half off-screen, or
+/// a window resized under it, still reports the rect the artist can hit.
+#[must_use]
+pub fn card_rect(pos: Option<(f32, f32)>, vp: Rect) -> Rect {
+    let (cw, ch) = (card_w(), card_h());
+    let (px, py) = pos.unwrap_or((vp.x + (vp.w - cw) * CENTRE, vp.y + (vp.h - ch) * CENTRE));
+    let max_x = (vp.x + vp.w - cw).max(vp.x);
+    let max_y = (vp.y + vp.h - ch).max(vp.y);
+    Rect::new(
+        px.clamp(vp.x, max_x), // CLAMP-OK: bounds ordenados (max_x >= vp.x) e nao-NaN
+        py.clamp(vp.y, max_y), // CLAMP-OK: bounds ordenados (max_y >= vp.y) e nao-NaN
+        cw,
+        ch,
+    )
 }
 
 pub(crate) fn button_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ButtonState {
@@ -192,31 +226,9 @@ pub(crate) fn paint(
     //   that opens it is, by construction, down in the timeline;
     // * and the top-left is CLAMPED every frame, so the whole card stays inside
     //   the viewport however it was dragged or however the window was resized.
-    let (cw, ch) = (card_w(), card_h());
-    let vp = ctx.viewport;
-    let (px, py) = m
-        .pos
-        .unwrap_or((vp.x + (vp.w - cw) * CENTRE, vp.y + (vp.h - ch) * CENTRE));
-    let max_x = (vp.x + vp.w - cw).max(vp.x);
-    let max_y = (vp.y + vp.h - ch).max(vp.y);
-    let rect = Rect::new(
-        px.clamp(vp.x, max_x), // CLAMP-OK: bounds ordenados (max_x >= vp.x) e nao-NaN
-        py.clamp(vp.y, max_y), // CLAMP-OK: bounds ordenados (max_y >= vp.y) e nao-NaN
-        cw,
-        ch,
-    );
+    let rect = paint_frame(ctx, theme, m.pos);
     m.pos = Some((rect.x, rect.y));
     let m = &*m;
-
-    let radius = Radius::Md.px();
-    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    stroke_rounded_rect(
-        ctx.scene,
-        rect,
-        radius,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
 
     let pad = Spacing::Md.px();
     let gap = Spacing::Xs.px();
@@ -291,6 +303,61 @@ pub(crate) fn paint(
         let r = Rect::new(x, cy, FOOT_BTN_W, ROW_H_PX);
         expr_button(ctx, theme, id, ph2d_i18n::tr(key), r);
     }
+}
+
+/// The card's own SHELL: where it sits, the pointer it swallows, and the glass it is
+/// drawn on. Returns the placed rect — everything else hangs off it.
+///
+/// Split out of `paint` when the scrim pushed it past the 200-LOC cap; the cut is by
+/// RESPONSIBILITY — *what the card IS* against *what the card CONTAINS* — which is why
+/// the scrim belongs here and not with the bands.
+fn paint_frame(ctx: &mut PaintCtx, theme: Theme, pos: Option<(f32, f32)>) -> Rect {
+    // ── Place the card, and KEEP it reachable. ──
+    //
+    // ⚠️ Both halves came out of the first smoke, which found the card pinned half
+    // off the bottom of the screen with no way to move it: it CENTRES on first paint
+    // (the menu that opens it does not know how big the window is, and the click that
+    // opens it is by construction down in the timeline), and the top-left is CLAMPED
+    // every frame so the whole card stays inside the viewport however it was dragged
+    // or however the window was resized. Both live in `card_rect`, the one door.
+    let rect = card_rect(pos, ctx.viewport);
+
+    // ── The SCRIM: the card eats every pointer inside its own frame. ──
+    //
+    // ⚠️ FIRST, before a single widget of the card's own, and that order is the whole
+    // mechanism (`HitIndex` walks back-to-front, so later wins): the card's buttons
+    // and knobs are registered after and shadow this, and this shadows the transport
+    // underneath — which is registered earlier, by the panel.
+    //
+    // Measured before it existed (auditoria 2026-07-29, U1): clicking (800, 650) —
+    // the centre of the formula bar — returned `TIMELINE_LENGTH_NUM` and emitted
+    // `Focus + Click` on the composition's `Dur(s)` box.
+    //
+    // A `TimelineSurface` rather than a bare hit rect so a Down here BEGINS a capture:
+    // without one, a drag started on the card's background would fall through to the
+    // dope sheet and box-select behind the card.
+    ctx.host.store_mut().register(
+        ids::EXPR_MODAL_SCRIM,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::ExprModalScrim,
+            canvas: rect,
+        },
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(ids::EXPR_MODAL_SCRIM, rect);
+
+    let radius = Radius::Md.px();
+    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(
+        ctx.scene,
+        rect,
+        radius,
+        StrokeToken::Thin.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    rect
 }
 
 /// The title band — the drag handle and the close X — and the `y` the body starts at.

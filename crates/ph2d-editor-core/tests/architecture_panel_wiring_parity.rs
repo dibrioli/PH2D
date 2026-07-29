@@ -100,6 +100,16 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // smoke found the card unreachable at the bottom of the screen, and what it
     // needs is a 2-D gesture, not a click.
     ("ph2d-panel-timeline", "EXPR_MODAL_HANDLE"),
+    // Expression modal SCRIM — the card's whole frame. `store.register`-ed in
+    // `expr_modal_paint.rs` as a `TimelineSurface` (kind `ExprModalScrim`), same
+    // shape as the title band above. ⚠️ Unlike every other entry in this list it is
+    // meant to do NOTHING when hit: it exists so the card is opaque to the pointer,
+    // and the arm that receives it in `interact::dispatch_primary` is empty on
+    // purpose. Measured before it existed (auditoria 2026-07-29, U1): 18 transport
+    // widgets were live inside the card's footprint, and clicking the formula bar
+    // edited the composition's `Dur(s)`. A `populate.rs` entry would make it
+    // FOCUSABLE, which is the one thing a scrim must not be.
+    ("ph2d-panel-timeline", "EXPR_MODAL_SCRIM"),
     // Inline marker-rename `TextInput`: registered in `marker_rename.rs` only
     // while a rename is open (double-click a marker), seeded + focused there and
     // committed via the Submit/Blur/Cancel arms in `event.rs`. Same shape as

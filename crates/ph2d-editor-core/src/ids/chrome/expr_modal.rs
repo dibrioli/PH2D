@@ -24,6 +24,11 @@ pub const EXPR_MODAL_HANDLE: NodeId = hash_node_id("expr_modal.handle");
 /// Close X. Discards the sheet — the same as Cancel, because a card you can
 /// dismiss two ways must dismiss the same way twice.
 pub const EXPR_MODAL_CLOSE: NodeId = hash_node_id("expr_modal.close");
+/// The card's **whole frame**, registered first so it swallows every pointer the
+/// card's own widgets do not claim. Inert by design — see
+/// [`crate::interaction::TimelineHitKind::ExprModalScrim`] for the 18 transport
+/// widgets that were live under the card before it existed.
+pub const EXPR_MODAL_SCRIM: NodeId = hash_node_id("expr_modal.scrim");
 /// The gallery's search field.
 pub const EXPR_MODAL_SEARCH: NodeId = hash_node_id("expr_modal.search");
 /// Commit: the sheet's formula becomes the property's expression.

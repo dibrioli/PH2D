@@ -54,6 +54,23 @@ pub(crate) fn process(
         .host
         .store_mut()
         .take_timeline_wheel(ids::TIMELINE_PANEL)
+        // ⚠️ **The open Expression card refuses the wheel inside its own frame.**
+        // `dispatch_wheel` hit-tests the dope sheet's time-axis rect, which knows
+        // nothing about a card floating over it, so the card was zooming the
+        // timeline behind itself — measured `px_per_s` 120 → 326 (auditoria
+        // 2026-07-29, U3), with `scrollable_panels_intercept_the_wheel` already in
+        // the repo saying a scrollable surface must intercept.
+        //
+        // DROPPED, not forwarded: nothing in the card scrolls yet, and forwarding
+        // it to the sheet would be a second answer to a question the layout wave
+        // (FASE C) has not decided. Refusing is honest; zooming what you cannot see
+        // is not. Same door the painter places the card with.
+        .filter(|w| {
+            state.expr_modal.as_ref().is_none_or(|m| {
+                !crate::expr_modal_paint::card_rect(m.pos, viewport)
+                    .contains(w.anchor_x, w.anchor_y)
+            })
+        })
     {
         view::apply_wheel(state, time_x, w);
     }
@@ -173,6 +190,11 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Row { .. } => {}
         TimelineHitKind::LabelSplitter => resize::apply_label_drag(state, g),
         TimelineHitKind::ExprModalHandle => crate::expr_modal::apply_drag(state, g),
+        // The card's background. Inert ON PURPOSE — reaching this arm is the card
+        // having eaten a pointer that would otherwise have landed on the transport
+        // behind it. The `_ => {}` at the bottom of a match is not the same thing:
+        // this arm is the feature.
+        TimelineHitKind::ExprModalScrim => {}
         TimelineHitKind::GraphResize => resize::apply_graph_resize(state, g),
         TimelineHitKind::CurveAnchor { target, key } => {
             anchor_drag::apply_gesture(state, px_per_s, snap, target, key, g);

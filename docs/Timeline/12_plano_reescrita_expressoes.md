@@ -11,9 +11,89 @@
 > e **manda**. Onde ela contradisser este doc, ela ganha, e a contradição é registrada aqui
 > em vez de apagada.
 >
+> ---
+>
+> ## ⚠️ A AUDITORIA RODOU (2026-07-29) — resultado em [`13_RESULTADO_AUDITORIA_EXPRESSOES.md`](13_RESULTADO_AUDITORIA_EXPRESSOES.md)
+>
+> Duas lentes independentes + medição do catálogo inteiro. **Este plano foi CORRIGIDO no
+> lugar**; toda correção está marcada `⚠️ AUDITORIA` com o número que a produziu. As
+> premissas que ela **falsificou**, e que este doc afirmava:
+>
+> | o plano dizia | a medição diz |
+> |---|---|
+> | *"sobra ~180 px para o nome"* (§5.1) e a cura é um card MAIOR (§5.3) | sobram **198 px**; o defeito nº 1 de layout é que **o card não é modal** — clicar a barra de fórmula edita o `Dur(s)`. Um card maior sobrepõe MAIS widgets |
+> | *"nenhuma receita é inerte no seu default … excursão > 1%"* (§2.2) | **insatisfazível**: todo MODIFICADOR tem excursão 0 por construção. O critério cortaria 12 receitas que este plano MANTÉM |
+> | *"11 valores por knob, incluindo extremos e default"* (§3.1) | **pula o −1** — e é o −1 que prova `speed ~> reverse-time`, uma das fusões que este plano afirma |
+> | Ping-Pong/Pulse/Blink · Distance/Distance 1D · Freeze/Start são *"a mesma"* (§3.2) | **nenhuma contenção medida** entre elas. São decisões de PRODUTO, não cortes por redundância |
+> | Shape tem 10 · Logic tem 7 (§3.2) | **9** e **6** |
+>
+> E **cinco defeitos que este plano não lista em D1..D9** entraram na §1.2 (D10..D14).
+>
 > Este plano **substitui** o [`10_plano_editor_de_expressoes.md`](10_plano_editor_de_expressoes.md)
 > como plano ativo. O 10 fica como histórico: é a fonte das decisões que foram reprovadas, e
 > saber que elas foram TENTADAS vale mais que apagá-las.
+
+---
+
+## §0 — O ESTADO DA ARTE, e as seis decisões que ele toma (2026-07-29)
+
+> Ordem do Enio: *"Decida buscando o estado da arte e comece."* O que segue não é levantamento —
+> é **decisão tomada**, com a fonte ao lado e o efeito sobre este plano. Onde o estado da arte
+> contradiz uma premissa deste doc, ela cai aqui e a §correspondente é corrigida.
+
+Quatro produtos respondem à MESMA pergunta que esta feature (*como um artista dirige uma
+propriedade sem keyframes?*) e **os quatro convergiram na mesma arquitetura**:
+
+| produto | o que é | quantos | o que ele tem que nós não |
+|---|---|---|---|
+| **Blender** — [F-Curve Modifiers](https://docs.blender.org/manual/en/3.3/editors/graph_editor/fcurves/modifiers.html) | pilha de modificadores **no canal** | **9** (Generator · FN Generator · Envelope · Cycles · Noise · Filter · Python · Limits · Stepped) | **Influence** (% de efeito) + **Restrict Frame Range** (start/end + blend in/out) por linha |
+| **Cavalry** — [Behaviours](https://docs.cavalry.scenegroup.co/nodes/behaviours/) | drivers ligados a um **atributo**, empilháveis | **40+** | **[Falloff](https://cavalry.studio/docs/nodes/utilities/falloff/)** atenua qualquer behaviour · **[Common Attributes](https://docs.cavalry.scenegroup.co/nodes/behaviours/common-attributes-behaviours/)** (um cabeçalho igual para todas) · **[Behaviour Mixer](https://cavalry.studio/docs/nodes/behaviours/behaviour-mixer/)** |
+| **Apple Motion** — [Parameter Behaviors](https://support.apple.com/guide/motion/intro-to-parameter-behaviors-motn49eb56eb/mac) | behaviour aplicado a **um parâmetro** | ~14 ([Oscillate](https://support.apple.com/guide/motion/oscillate-behavior-motn13745133/mac) · Randomize · [Wriggle](https://support.apple.com/guide/motion/wriggle-behavior-motn137475d5/mac) · [Rate](https://support.apple.com/guide/motion/rate-behavior-motn13747831/mac) · [Ramp](https://support.apple.com/guide/motion/ramp-behavior-motn137432ba/mac) · [Quantize](https://support.apple.com/guide/motion/quantize-behavior-motn1374610f/mac) · Reverse · Stop · Average · Negate · Track · MIDI · Audio · Custom) | nomes que são **frases de artista**, e a lista inteira cabe num menu |
+| **After Effects** — [expressões](https://helpx.adobe.com/after-effects/using/using-expressions-editor.html) | **texto** + 4 botões | ∞ | o botão nº 2 **plota o resultado no GRAPH EDITOR de verdade** · o nº 3 é o **pick-whip** · o nº 4 é o menu da linguagem |
+
+**D-0.1 — A arquitetura da pilha está CERTA; não há reescrita de modelo.** Blender empilha
+F-Modifiers num canal, Cavalry empilha Behaviours num atributo (*"each layer adds to the result of
+the layers below it so layer order is very important"* — a nossa lei de ordem, escrita por eles), e
+Motion empilha Parameter Behaviors num parâmetro. O `RecipeStack` **é** o modelo da indústria.
+⇒ A FASE E (*reescrever algoritmo por algoritmo*) fica; a **arquitetura sai do banco dos réus**.
+
+**D-0.2 — O TAMANHO do catálogo não é o defeito, e a manchete deste plano estava errada.** Cavalry
+shipa **40+** behaviours e ninguém reclama. ⇒ **A meta "50 → ~21" é ABANDONADA como meta.** O corte
+continua, com o critério da auditoria e não um headcount: sai o que é **INERTE** (23 de 50 não fazem
+nada escolhidas sozinhas) e o que é **PROGRAMAÇÃO** (as 6 de Logic). O alvo cai em **~27-30**, e o
+número é o RESTO da regra, nunca a regra. *Um catálogo grande com tudo vivo é o estado da arte; um
+catálogo pequeno com metade inerte é o que o Enio reprovou.*
+
+**D-0.3 — `RowKind::Time` NÃO vira atributo do bloco.** A recomendação B3 deste plano (um cabeçalho
+*"Clock: normal / stepped / delayed"*) **colapsaria em um relógio por pilha** o que Motion ship como
+**behaviours por-parâmetro empilháveis** (`Rate`, `Reverse`, `Stop`) — dá para acelerar uma coisa e
+reverter outra na mesma pilha, e o cabeçalho proíbe isso. ⇒ **B3 é REESCRITO**: a linha continua uma
+LINHA, o que muda é que o **escopo dela aparece na tela** (*"afeta as linhas abaixo"*) e que uma
+linha de Time **não é oferecida sozinha** (ela não tem o que retimar) — o critério por-KIND da §2.2,
+não um modelo novo. ⚠️ Motion ship `Reverse`/`Stop` sabendo que só fazem sentido sobre um parâmetro
+JÁ animado: o vão não é a existência delas, é **a UI não dizer isso**.
+
+**D-0.4 — A FITA é o botão nº 2 do AE, e a resposta é a ESCALA do graph editor.** O AE plota o
+resultado da expressão **no graph editor de verdade**, na escala real, contra a curva real. A nossa
+normaliza por min/max ⇒ uma constante desenha uma reta no meio, indistinguível de *"não funciona"*
+(D1 + §5.2.6). ⇒ a fita ganha **linha de base + escala em unidades**, e usa o **`__seed` do objeto**
+(D11). Isto **confirma** a §5.3 e dá a ela uma fonte.
+
+**D-0.5 — O knob que falta no catálogo é INFLUENCE por linha** (Blender) / **Falloff** (Cavalry).
+É ele que torna um modificador **dosável** — e é a saída limpa para o `Flicker` multiplicativo numa
+translação de base 0 (§8): não é escolher entre aditivo e multiplicativo, é poder aplicar **30% de
+uma receita**. ⚠️ **Não é FASE 0**: entra como decisão da FASE E, com medição, porque muda a
+aritmética de TODA linha e o neutro tem de sair byte-idêntico.
+
+**D-0.6 — `Restrict Frame Range` (Blender) é a resposta ao item aberto *"expressão PURA extrapola a
+strip"***, aberto por ordem do Enio desde 2026-07-27. O vínculo que aquele item pede *"autorado,
+explícito"* é exatamente o start/end + blend do F-Modifier, **por linha**. ⚠️ **NOMEADO, não
+construído** — é `DOC_VERSION` e decisão de produto; fica registrado aqui para ninguém re-derivar a
+pergunta.
+
+⚠️ **E uma coisa que o estado da arte NÃO nos dá:** nenhum dos quatro tem o problema do **`__seed`**
+(D-J) nem do **card não-modal** (D10), porque em nenhum deles o preview é uma janela flutuante sobre
+o transporte com um avaliador próprio. Esses dois são nossos, e são a **FASE 0**.
 
 ---
 
@@ -58,6 +138,20 @@ critério de aceitação deste plano é a tela ou um número que a descreve.**
 | D8 | *"não atualiza para o novo objeto"* (parcialmente corrigido) | o card não mostra NOME, então seguir a seleção é invisível |
 | D9 | Link inusável | não existe pick-whip; nome digitado que não resolve é 0 silencioso |
 
+⚠️ **AUDITORIA — os cinco que faltavam, todos medidos** (doc 13 §4/§4-bis):
+
+| # | sintoma | mecanismo medido |
+|---|---|---|
+| **D10** | *"Layout absurdo"* — e a causa não é aperto | **o card NÃO É MODAL**: o fundo não registra hit rect ⇒ **18 widgets do transporte vivos sob a pegada**; clicar o centro da barra de fórmula dá `hit_at = TIMELINE_LENGTH_NUM` e **digitar edita o `Dur(s)` da composição**. A roda zooma a timeline atrás (`px_per_s` 120→326) |
+| **D11** | *"não produz a curva do grafo de preview"* | **a FITA usa um `__seed` diferente do objeto** — três respostas para uma pergunta (cena `target*100` · fita **0** · censo `0,96`). O objeto #2 de um Jitter desloca **0,9 px**. O código declara a lei que a fita quebra: *"a preview with its own seed … which is the one thing it must never do"* |
+| **D12** | *"mesmo deletando, ficam atuando"* — a **outra** metade | **esconder o painel deixa o preview dirigindo o objeto para sempre**, ANIMANDO (`x` 100→160→…), com `has_pending_restore() = false` ⇒ a pose nunca volta. Nenhuma UI na tela para parar |
+| **D13** | idem — a metade **medida** | prop **SEM keys**: `value + 250` → DELETE + Apply ⇒ **fica em 250,0000**. Com keys volta a 7,0000. O `take_restore` cobre só o fim do PREVIEW |
+| **D14** | (integração) | **`DOC_VERSION` desta branch é 16**, não 15 — v15 do `main` é RECUSADO no load. Se o B1 redesenhar o per-clip, **voltar a 15 quebra os v16 já salvos** |
+
+⚠️ E **D2 tem um agravante medido**: uma row além da capacidade tem **ZERO widgets** enquanto
+**dirige o objeto** (4 rows de Turbulence ⇒ rows 2-3 sem um pixel de UI, e a fórmula que roda
+contém as quatro). O `+N more rows` não é só falta de scroll: é uma row viva inalcançável.
+
 ---
 
 ## §2 — Princípios da reescrita (os inegociáveis desta feature)
@@ -66,11 +160,29 @@ critério de aceitação deste plano é a tela ou um número que a descreve.**
    isto <verbo> "* que um animador diria, e a receita é a resposta. Se a frase precisa de um
    número que não é uma quantidade da cena (um limiar, uma tolerância, um índice de
    octave), a receita não entra.
-2. **Nenhuma receita é inerte no seu default, em nenhuma propriedade.** Critério executável:
-   pegue a receita sozinha, na prop de translação (base 0) **e** na de escala (base 1), e a
-   excursão em 4 s tem de ser > 1% da faixa da prop. Sem exceção — se o modelo exige um
-   contexto (uma linha acima, um link), a receita **não é oferecida** até o contexto existir
-   (§5.4).
+2. **Nenhuma receita é inerte no seu default, em nenhuma propriedade.** ⚠️ **AUDITORIA — o
+   critério que este plano escreveu é INSATISFAZÍVEL e o erro é o que a CR-3 dele nomeia**
+   (*medir a fórmula e reportar a tela*): *"excursão em 4 s > 1%"* mede **animação**, e **todo
+   MODIFICADOR tem excursão 0 por construção** — ele recebe `value`, e sobre um `value`
+   constante a saída é constante. O critério original cortaria os 9 `Shape` e os 3 `if-*`, e
+   este plano MANTÉM 4 de Shape.
+
+   **O critério é por KIND, e a medição é diferente para cada um:**
+   * **SOURCE** (`combine: Some`): *anima?* — variação no tempo em 4 s > 1% da faixa da prop,
+     na base 0 **e** na base 1.
+   * **MODIFICADOR** (`combine: None`): *muda o valor que entra?* — maior `|receita −
+     identidade|` sobre uma grade `(time, value)` > 1% da faixa. **Nunca** amplitude do stack:
+     o censo de hoje faz isso e por isso reporta *"defeitos de verdade: 0"* enquanto duas
+     receitas são a identidade ao bit.
+   * **`RowKind::Time`**: só é mensurável **com uma linha embaixo**; sozinha ela emite
+     literalmente `value`.
+
+   Medido com esse critério, os únicos reprovados são **`remap` e `multiply-add`** (delta
+   **0,000000** — a identidade exata nos seus defaults), e **este plano mantém os dois** ⇒ ou
+   eles ganham defaults não-identidade, ou a regra os isenta **por escrito**.
+
+   Sem exceção quanto ao resto: se o modelo exige um contexto (uma linha acima, um link), a
+   receita **não é oferecida** até o contexto existir (§5.4).
 3. **O default nunca tira o objeto do quadro.** Canvas 4K a 100 px/m = 40,96 m. Default
    ≤ 1/50 do canvas para uma quantidade de posição.
 4. **Duas receitas que se reproduzem uma à outra por ajuste de knob são UMA.** Provado por
@@ -94,9 +206,21 @@ do handoff). **Sem elas, não comece.**
 
 ### 3.1 — O critério de similaridade, executável
 
-Para cada par `(A, B)`: busca em grade sobre os knobs de A (11 valores por knob, incluindo
-os dois extremos e o default), avaliando ambas as fórmulas em 600 amostras de
-`(time, value)`. Classifique:
+Para cada par `(A, B)`: busca em grade sobre os knobs de A, avaliando ambas as fórmulas em 600
+amostras de `(time, value)`. Classifique:
+
+⚠️ **AUDITORIA — a grade que este plano especificou tem um buraco MEDIDO.** *"11 valores por
+knob, incluindo os dois extremos e o default"* **não basta**: `speed` tem faixa `(−10, 10)`, e
+11 passos uniformes dão `−10, −8, −6 …` — **o −1 nunca cai na grade**, e é exatamente o valor
+que faz `speed` reproduzir `reverse-time`, uma das fusões que a §3.2 abaixo afirma. A grade tem
+de incluir os **valores canônicos** (−1, 0, ½, 1, 2, quando na faixa) **e os pontos NEUTROS
+declarados** pela receita (`Neutrality::Additive`). Efeito medido: **22 → 31 relações**.
+
+⚠️ **E receitas INERTES saem da matriz.** A 1ª corrida da auditoria reportou **74 pares
+"IDÊNTICOS"**, e 72 eram o clique das 9 receitas que produzem a identidade comparando-se entre
+si — **duas coisas inertes são sempre idênticas**: razão entre dois doentes, não redundância.
+Uma receita `RowKind::Time` entra na matriz **com uma linha embaixo**, senão ela é uma das
+inertes.
 
 * **IDÊNTICA** (pior delta < 1e-5): as duas são a mesma; **uma sai**, e a que fica é a que
   tem o knob que expressa a outra.
@@ -134,7 +258,66 @@ confirmar pela tabela da auditoria:
 **Meta: 50 → ~21.** ⚠️ Este quadro é uma proposta; **a tabela da auditoria decide**. O que
 NÃO é negociável é o critério (§2.1/§2.2/§3.1) e o corte da Logic.
 
+⚠️ **ESTADO DA ARTE (§0, D-0.2) — a META "~21" está ABANDONADA.** Cavalry shipa **40+** behaviours;
+o tamanho nunca foi o defeito. O corte fica, com o critério da auditoria (**inerte** ou
+**programação**), e o alvo passa a ser o **RESTO da regra** — medido em **~27-30**, não um headcount.
+Ler este quadro como uma cota é o erro que ele mesmo cometeu.
+
+---
+
+⚠️ **AUDITORIA — a tabela acima corrigida pela medição** (doc 13 §3/§7). Duas contagens estão
+erradas e **três racionais afirmam redundância que não existe.**
+
+**Contagens:** Shape tem **9**, não 10 (a tabela conta `Negate`, já cortada) · Logic tem **6**,
+não 7 (ela lista `If Near` — o id é `if-equal` — e conta `Switch`, que está em **Link**). O
+total é **50**.
+
+**Confirmado por medição — pior delta 0,000000 em todos:**
+`turbulence ~> shake` · `throw ~> free-fall` · `speed ~> reverse-time` · `limit ~> floor-at` ·
+`limit ~> ceiling-at`.
+
+**REFUTADO — nenhuma contenção medida; se forem cortadas, é decisão de PRODUTO e o doc tem de
+dizer isso:**
+
+| o racional afirma | a medição |
+|---|---|
+| *"Ping-Pong e Pulse e Blink são a MESMA pergunta"* | **sem contenção entre as três.** São formas distintas (triangular · quadrada · dente com decaimento). O `Cycle` com chip de forma continua defensável — mas como **produto**, não como corte por redundância |
+| *"Distance / Distance 1D é a mesma com menos eixos"* | **sem contenção.** Leem 4 links contra 2 |
+| *"Freeze / Start são o mesmo clamp em lados opostos"* | **sem contenção** |
+
+**NÃO PREVISTO pela tabela — cinco relações medidas que mudam duas famílias:**
+
+* `offset-copy ~> follow` e `blend-two ~> follow` (delta 0) ⇒ **`follow` é a SUBSUMIDA, não a
+  espinha.** A proposta *"Link → 3: Follow · Offset Copy · Distance"* mantém a receita que sai
+  de graça de outra (Offset 0).
+* `follow ~> opposite` (delta 0) ⇒ `opposite` também sai (multiplicador −1).
+* `limit ~> remap-clamped` **E** `remap-clamped ~> limit` — **MÚTUA** ⇒ são a mesma receita, e
+  `remap ~> invert-range` + `multiply-add ~> invert-range` subsumem `invert-range` **por duas
+  vias**. **Shape cai mais que os 4 propostos.**
+* `if-greater ~> if-less` **MÚTUA** + `gate-and`/`gate-or ~> switch` ⇒ **5 das 6 de Logic
+  colapsam em 2 formas**, o que **REFORÇA** o corte da família inteira.
+* `wave-along-chain ~> sway` (delta 0, em Offset 0) ⇒ a tabela mantém as duas, em grupos
+  diferentes (G1 e G6), sem notar que uma contém a outra.
+
+**Sobre `Flicker`:** a medição confirma o mecanismo (`rng@v0 = 0,0000` · `rng@v1 = 0,3451`) ⇒ a
+bifurcação que o racional propõe é a certa. ⚠️ Mas o §5.4 (a galeria conhece a prop) **não
+basta sozinho**: enquanto a FITA desenhar plano no card vazio (D10/D11), o artista não
+distingue *"esta receita é multiplicativa"* de *"a fita não funciona"*.
+
+**Sobre `free-fall`/`throw`:** o racional só fala de fundir. A medição acrescenta que os
+**defaults** são sadios e a **FAIXA** não é: o topo do knob `gravity` põe o objeto a **9,9
+canvases** (396,7 m contra 40). São dez combinações receita·knob acima de 1 canvas — ver doc 13
+§4 D-E.
+
 ### 3.3 — O que fazer com o que sai
+
+⚠️ **AUDITORIA — o *"já feito para as 5 cortadas"* é 3 de 5.** Medido pela porta do produto
+(`search`): `"ramp"` → **0 hits** · `"ramp loop"` → **0** · `"sway cosine"` → **0**. Os
+SINÔNIMOS foram herdados (`"sawtooth"` → Pulse ✓, `"cosine"` → Sway ✓); os **rótulos** não.
+Controles: `"mirror"` → 4 · `"midpoint"` → 1 · `"negate"` → 3 · `"time remap"` → 1 (a busca
+aceita multi-palavra — `norm()` concatena, então o vão não é do buscador). **É exatamente o que
+esta §3.3 proíbe** (*"cortar sem herdar é esconder capacidade"*), e o gate que falta é *"o
+rótulo de toda receita aposentada ainda acha o sobrevivente"*.
 
 * **Aliases herdados**: o sobrevivente responde às palavras do aposentado. Já feito para as
   5 cortadas; repetir para todas. Com a busca sendo a interface, cortar sem herdar é
@@ -171,10 +354,17 @@ vem primeiro.**
 
 ### B3 — `ClockUse` visível *(fecha D2)*
 * Medir as 7 de Time. As inertes-sozinhas **não podem ser oferecidas como card solto**.
-* Recomendação: uma linha Time deixa de ser uma LINHA e passa a ser um **atributo do bloco**
+* ~~Recomendação: uma linha Time deixa de ser uma LINHA e passa a ser um **atributo do bloco**
   — ou seja o card ganha um cabeçalho *"Clock: normal / stepped / delayed / …"* que vale
-  para a planilha inteira. Isso apaga o caso especial *"age nas linhas abaixo"*, que é a
-  raiz de D2, e apaga a pergunta *"por que meu Stepped Time não faz nada?"*.
+  para a planilha inteira.~~ ⚠️ **RECUSADO pelo ESTADO DA ARTE (§0, D-0.3):** o cabeçalho
+  colapsa em UM relógio por pilha o que o Apple Motion ship como behaviours **por-parâmetro,
+  empilháveis** (`Rate`/`Reverse`/`Stop`) — com ele, acelerar uma linha e reverter outra na mesma
+  pilha fica **inexprimível**.
+* **Recomendação nova:** a linha continua uma LINHA; o que muda é que **o escopo dela aparece na
+  tela** (*"afeta as linhas abaixo"*) e que uma linha de Time **não é oferecida sozinha** (não há o
+  que retimar) — o critério por-KIND da §2.2, sem modelo novo. ⚠️ Motion ship `Reverse`/`Stop`
+  sabendo que só fazem sentido sobre um parâmetro **já animado**: o defeito nunca foi elas
+  existirem, foi **a UI não dizer isso**.
 * ⚠️ `wiggle` continua com relógio PRÓPRIO (fato do parser). Com o clock no cabeçalho, a UI
   pode dizer isso UMA vez (*"Shake tem relógio próprio"*) em vez de por-linha.
 
@@ -207,6 +397,29 @@ itens em vez de 3 blocos.
 3. **Sem rolagem**: conteúdo de tamanho variável em container fixo.
 4. **Sem identidade do alvo**: `#7294` em vez de `Ball · Position X`.
 
+⚠️ **AUDITORIA — o diagnóstico da §5.1 está parcialmente errado, e falta o problema nº 1.**
+Números medidos (doc 13 §4-bis): card **532 × 532**; header da row = olhinho 22 · chip 22 ·
+**NOME 198** · readout 52 · X 22; row de knob = indent 8 · label 84 · caixa 96 · **MORTO 128**.
+
+| a §5.1 diz | a medição diz |
+|---|---|
+| *"sobra ~180 px para o nome"* | **198 px** (~16 chars a 12 px). ⚠️ **A hipótese está REFUTADA**: o aperto do header é **gutter ZERO** entre nome │ readout │ X, não a largura |
+| *"sem respiro"* (2) | ✅ certo, e pior: **128 px MORTOS (40% do sheet) em TODA row de knob** — o `ctrl_w` é computado como 168 e **descartado** no braço `Number\|Literal` (`expr_modal_columns.rs:440` vs `:444`) |
+| *"sem rolagem"* (3) | ✅ certo — e a capacidade vertical é onde de fato aperta: `BODY_SLOTS = 12`, uma row gasta `1 + knobs`, então **`Fade by Distance` (8 knobs) come 9 dos 12 slots** e Turbulence deixa caber **2 rows**. Histograma: `{1:2, 2:11, 3:13, 4:10, 5:9, 6:1, 7:3, 9:1}` |
+| *"sem identidade"* (4) | ✅ certo, e o custo é maior: **nada publica `Name` para o painel timeline** (grep) — o dope-sheet INTEIRO rotula por propriedade. Fechar isso é trabalho na shell |
+
+**5. ⚠️ O PROBLEMA Nº 1, AUSENTE DESTA LISTA: o card não é MODAL.** O fundo dele não registra
+hit rect ⇒ **18 widgets do transporte vivos sob a pegada**; clicar o centro da barra de fórmula
+dá `hit_at = TIMELINE_LENGTH_NUM` e **digitar edita o `Dur(s)`**. A roda zooma a timeline atrás.
+**Um card de 820 × 620 sobrepõe MAIS widgets, não menos** — a §5.3 abaixo, sem isto, piora o
+defeito que ela tenta consertar.
+
+**6. ⚠️ AUSENTE: a fita plana coincide com a linha de base.** `extent()` devolve
+`(base−1, base+1)` numa curva plana ⇒ curva e baseline caem no **MESMO y** (0,5000 as duas),
+**inclusive no card recém-aberto sem rows**. A cura da §5.3 (*"linha de base e escala em
+unidades"*) é a certa; o que ela não sabe é que hoje a referência é apagada exactamente quando
+é mais necessária.
+
 ### 5.3 — O desenho proposto
 
 ```
@@ -238,8 +451,20 @@ itens em vez de 3 blocos.
 
 **As decisões, e o motivo de cada:**
 
+⚠️ **AUDITORIA — a ORDEM desta lista está errada.** Medido, o card maior é **o único item que
+não conserta um defeito medido**, e sem o item novo (0) ele **piora** o pior deles. A ordem que
+a medição sugere para a FASE C:
+
+> **(0) o card ENGOLE o ponteiro na própria pegada + a roda** (D10) — sem isto todo o resto é
+> cosmético, e um card maior sobrepõe mais transporte · **(1) gutters + knobs em 2 COLUNAS**
+> (os 128 px mortos por row; isto mata o overflow **sem** introduzir um 2º eixo de scroll dentro
+> de um painel que já rola) · **(2) a fita distinguível da baseline** (D11 + §5.2.6) · **(3) o
+> nome do objeto**, que arrasta a shell · **(4)** o card maior/redimensionável, por último.
+
 * **CARD MAIOR e redimensionável.** Alvo ~820 × 620. A galeria pode ser 220 e a planilha
   520 — o dobro de hoje. ⚠️ Medir contra o viewport mínimo suportado antes de fixar.
+  ⚠️ **AUDITORIA:** o card é centrado no **viewport EXTERNO** (a janela), não no slot do painel
+  — então crescer o card **aumenta** a sobreposição com o transporte. Faça o (0) primeiro.
 * **A LINHA É UM CARTÃO**, não uma fileira: fundo próprio (`ColorToken` de superfície
   elevada), raio, e os knobs DENTRO dele, indentados. Isso resolve (1) e (2) de uma vez, e é
   o padrão que o `ph2d-panel-wet-tuning` e o `motion-params` já usam neste app — **copiar,
@@ -298,12 +523,25 @@ aprovado.**
 
 1. **Escrever a frase do animador** para as 3 (§2.1). Se não sair, a receita não entra.
 2. **Escrever o algoritmo** e medir, ANTES da UI:
-   * excursão em 4 s, na prop de base 0 e na de base 1;
-   * a fita: plana? qual a forma?
+   * ⚠️ **AUDITORIA — a medida é por KIND** (§2.2 corrigido): SOURCE ⇒ *anima* (variação no
+     tempo, base 0 **e** base 1); MODIFICADOR ⇒ *muda o valor que entra* (delta contra a
+     IDENTIDADE sobre uma grade `(time, value)`) — **nunca** amplitude do stack; `Time` ⇒ só
+     mensurável com uma linha embaixo;
+   * a fita: plana? qual a forma? ⚠️ **AUDITORIA — a fita NÃO SERVE como oráculo até D11 ser
+     consertado**: ela alimenta `__seed = 0` enquanto a cena usa `target * 100`, então para toda
+     receita que lê o seed (`shake`, `turbulence`, `jitter`) **ela desenha outra tinta**. Medir
+     a fita antes disso é medir o instrumento;
    * sensibilidade de CADA knob: varrer 5 valores e reportar como a saída muda. ⚠️ Um knob
      cuja variação não muda a saída é um knob morto — foi assim que *"Shake: mudar os
-     parâmetros não mudava a animação"* nasceu.
-   * o default tira o objeto do quadro? (≤ 1/50 de 40,96 m)
+     parâmetros não mudava a animação"* nasceu. ⚠️ **AUDITORIA — a fixture tem de conter o
+     fenômeno**: um knob que só age através de um LINK parece morto se o link for constante no
+     tempo (o outro objeto está **animado**, é o caso de uso inteiro), e dois links têm de ler
+     números **diferentes** — indexe por hash do nome, nunca por comprimento (`"Ball.x"` e
+     `"Cube.y"` têm 6 caracteres, e isso colapsa todo `mix(a, b, t)`);
+   * o default tira o objeto do quadro? (≤ 1/50 de 40,96 m) ⚠️ **AUDITORIA — julgue a FAIXA
+     também, não só o default**: dez combinações receita·knob de hoje passam de 1 canvas no topo
+     do slider (`gravity` chega a **9,9 canvases**), e o gate existente só olha o default — numa
+     janela de 2 s que faz o `free-fall` passar por **0,563 m**.
 3. **Gates**: neutro (se houver) byte-idêntico · o knob acorda · composição com uma linha
    acima e uma abaixo · o default está na faixa.
 4. **Mutação** por receita: quebrar o termo principal e provar que sangra.
@@ -367,8 +605,20 @@ Não é re-digitar o `format!`. Para cada receita:
 
 ## §9 — Sequência de execução e critério de fim
 
+⚠️ **AUDITORIA — a sequência ganhou uma FASE ZERO, e ela é o pré-requisito de TODAS.** Três
+instrumentos que este plano usa como critério de aceitação estão **quebrados**, e medir com eles
+é medir o instrumento: a **FITA** (mente sobre o seed, D11) · o **CARD** (não engole o ponteiro,
+então "clicar no card" pode acertar o transporte, D10) · a **CENA de smoke** (exercita **zero**
+receitas e o roteiro dela manda usar um widget deletado, doc 13 §4 D-F/D-L).
+
 ```
-AUDITORIA (handoff 11)  →  FASE A (corte)  →  FASE B (motor: B1..B5)
+AUDITORIA (11 + 13)  →  ⚠️ FASE 0: consertar os INSTRUMENTOS
+                            (D10 o card engole o ponteiro+roda ·
+                             D11 a fita usa o seed da cena ·
+                             D12/D13 a pose volta quando a formula sai ·
+                             a cena de smoke abre o CARD e usa RECEITAS)
+                             ↓
+                        FASE A (corte)  →  FASE B (motor: B1..B5)
                                                     ↓
                         FASE C (layout)  ←──────────┘
                              ↓
@@ -377,11 +627,17 @@ AUDITORIA (handoff 11)  →  FASE A (corte)  →  FASE B (motor: B1..B5)
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
 
+* ⚠️ **NENHUMA fase começa antes da FASE 0.** A FASE A decide cortes lendo a fita e a excursão;
+  a FASE C julga layout clicando no card; cada grupo G fecha com um smoke. Os três instrumentos
+  têm de estar honestos primeiro — é a CR-3 deste plano aplicada aos próprios instrumentos.
 * **FASE A e FASE B podem correr em paralelo** com a FASE C (crates diferentes), mas
   **nenhum grupo G começa antes de C**, porque o Enio julga na tela.
 * **Critério de fim da feature**: as ~21 receitas aprovadas em smoke, em grupos de 3, com o
-  card rolável e nomeando o objeto, e **os 9 defeitos D1..D9 com um gate cada**.
+  card rolável e nomeando o objeto, e **os ~~9~~ 14 defeitos D1..D14 com um gate cada**.
 * **Critério de fim de CADA wave**: o Enio disse "aprovado". Não "os gates estão verdes".
+* ⚠️ **AUDITORIA — e um gate a mais no fim de tudo:** os 8 gates que a auditoria provou não
+  provarem o que alegam (doc 13 §5) têm de ser **consertados ou mortos**, incluindo o
+  `no_letter_is_used_as_an_icon`, que **fica verde com o `"O"` do report de volta**.
 
 ---
 

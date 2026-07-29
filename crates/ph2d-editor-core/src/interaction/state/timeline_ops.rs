@@ -83,12 +83,14 @@ impl WidgetStore {
         pan: f32,
         scroll: f32,
         anchor_x: f32,
+        anchor_y: f32,
     ) {
         let w = self.timeline_wheel.entry(surface).or_default();
         w.zoom_delta += zoom;
         w.pan_delta += pan;
         w.scroll_delta += scroll;
         w.anchor_x = anchor_x;
+        w.anchor_y = anchor_y;
     }
 
     /// Drain the accumulated wheel for `surface` (removes the entry).

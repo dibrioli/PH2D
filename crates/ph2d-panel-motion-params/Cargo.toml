@@ -21,6 +21,10 @@ ph2d-a11y = { path = "../ph2d-a11y" }
 # The interactive Curve widget (A1): parse/serialize the curve text param + `eval`
 # to plot it. Leaf, dependency-free (mirror of the field.remap node's use).
 ph2d-curve = { path = "../ph2d-curve" }
+# The interactive Gradient widget (doc 85, the colour sibling of the Curve): parse
+# the `ColorRamp` text param + `eval` it to draw the bar, and the linear->sRGB
+# transfer to paint each stop's swatch. Leaf (mirror of the color_ramp node's use).
+ph2d-color = { path = "../ph2d-color" }
 # Row layout tokens (ROW_H_PX / Spacing) for the param rows (M1.P1).
 ph2d-tokens = { path = "../ph2d-tokens" }
 # Paint handles named explicitly by the Angle/Seed row painters in `number_rows`

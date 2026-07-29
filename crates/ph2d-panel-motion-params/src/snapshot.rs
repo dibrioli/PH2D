@@ -29,6 +29,7 @@ pub enum ParamRow {
     Seed(SeedRow),
     Text(TextRow),
     Curve(CurveRow),
+    Gradient(GradientRow),
     Channels(ChannelsRow),
     Source(SourceRow),
 }
@@ -97,6 +98,27 @@ pub struct CurveRow {
     pub label: String,
     /// The current serialized curve (the text-param override, else empty → the
     /// panel opens on the identity diagonal).
+    pub value: String,
+}
+
+/// An interactive **gradient editor** (doc 85) — the colour sibling of [`CurveRow`]: a
+/// `ph2d_color::ColorRamp` serialized in a text param (`Graph::set_text_param`,
+/// `serialize_gradient`), drawn as a gradient BAR with **draggable position markers** (the
+/// same `InteractiveState::CurvePoint` x-drag the curve editor uses, y ignored) + a
+/// per-stop **OKLCH swatch** (`register_picker_swatch`, the shell reads the pick back into
+/// the string) + add/remove and an interp cycle. Like [`CurveRow`] the value is a `String`,
+/// so a position/add/remove edit rides [`MotionParamIntent::SetTextParam`]; a colour edit
+/// rides the shell's picker read-back (mirror of [`ColorRow`]). The artist never sees the
+/// string — only the bar and the stops.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GradientRow {
+    /// The text-param key (`Graph::set_text_param`) — echoed in the intent + the
+    /// per-stop swatch ids ([`param_grad_swatch_id`]).
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The current serialized gradient (the text-param override, else empty → the
+    /// panel opens on the default black→white ramp).
     pub value: String,
 }
 
@@ -279,6 +301,12 @@ pub(crate) const CHANNELS_EXTRA_BASE: usize = 32;
 /// per-point `CurvePoint` widgets are pooled positionally like the enum options.
 pub(crate) const MAX_CURVE_POINTS: usize = 8;
 
+/// Max stops a single Gradient row's editor offers (doc 85). The model
+/// (`ph2d_color::MAX_RAMP_STOPS`) allows 32, but the panel is narrow and the swatch
+/// strip must stay legible — `+` refuses beyond this, the display ceiling. The
+/// per-stop `CurvePoint` markers are registered per-paint like the Curve handles.
+pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
+
 /// Stable widget id for the `slot`-th param row's slider (pooled, positional —
 /// row `i` of whichever node is selected uses slot `i`).
 pub(crate) fn param_slider_id(slot: usize) -> NodeId {
@@ -352,6 +380,41 @@ pub(crate) fn param_curve_remove_id(slot: usize) -> NodeId {
 /// segment interpolation (Linear → Smooth → Hold).
 pub(crate) fn param_curve_interp_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/curve/{slot}/interp"))
+}
+
+/// The `slot`-th Gradient row's **editor parent** id — the `CurvePoint.parent` every
+/// position marker carries, so `apply_event` routes the drained drag to the right row.
+pub(crate) fn param_grad_editor_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}"))
+}
+
+/// The `slot`-th Gradient row's `stop`-th draggable position marker.
+pub(crate) fn param_grad_stop_id(slot: usize, stop: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/stop/{stop}"))
+}
+
+/// Stable widget id for a Gradient row's `stop`-th colour swatch, keyed by the text-param
+/// **name** + index (NOT positional) — so the shell bridge computes the same id from the
+/// node's hints to seed the swatch colour and read the OKLCH pick back into the string.
+/// `pub` for the bridge, exactly like [`param_swatch_id`].
+pub fn param_grad_swatch_id(name: &str, stop: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad_swatch/{name}/{stop}"))
+}
+
+/// The `slot`-th Gradient row's **add-stop** button.
+pub(crate) fn param_grad_add_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/add"))
+}
+
+/// The `slot`-th Gradient row's **remove-stop** button.
+pub(crate) fn param_grad_remove_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/remove"))
+}
+
+/// The `slot`-th Gradient row's **interp** button — cycles the ramp's global
+/// interpolation (Linear → Ease → Constant → Cardinal → B-Spline).
+pub(crate) fn param_grad_interp_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/interp"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

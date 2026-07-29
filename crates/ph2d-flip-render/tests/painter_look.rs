@@ -844,21 +844,42 @@ fn render_the_two_side_by_side() {
         // (`one_stroke_star` empurra os cantos direto no `FlipStroke`, sem passar pelo
         // `stroke_from_samples` do produto). Segmentos ENORMES contra o alcance.
         ("SMOKE_6_pontos_crus_h0.4", 0.4, 1e9),
+        // ⚠️ **O RABISCO COMPACTO** — a figura do Enio. Braços de ~2,5·r em vez de 3,8·r: o traço
+        // INTEIRO cabe dentro do alcance de si mesmo, então a caminhada da fita nunca "sai" e o
+        // critério ESPACIAL de passagem declara o cruzamento como a MESMA passagem ⇒ união ⇒
+        // vinco. Os fixtures largos não continham o fenômeno.
+        ("COMPACTO_h0.4_a_figura_do_report", 0.4, 0.8),
+        ("A_DO_REPORT_h0.4", 0.4, 0.8),
     ] {
         // A estrela, na escala da imagem.
-        let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.5, 300.0_f32);
-        let mut corners = Vec::new();
-        for k in 0..5 {
-            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
-            corners.push((cx + outer * a.cos(), cy + outer * a.sin()));
-        }
-        corners.push(corners[0]);
-        // ⚠️ **A DENSIDADE É A DO PRODUTO** (`RESAMPLE_STEP_FRACTION = 0.4` × largura = `0.8·r`,
-        // `flip_draw.rs::resample_step`). A 1ª versão desta sonda usou passo FIXO de 6 px com
-        // r = 80 — **10× mais densa que a realidade** — e isso satura o orçamento de vizinhos
-        // (`MAX_RIBBON_EXTRAS`) por conta própria, pintando estilhaços pretos que o produto NÃO
-        // tem. Fixture que contém um fenômeno que o produto não contém mente igual à que não
-        // contém o que ele tem.
+        let outer = if nome.starts_with("COMPACTO") {
+            2.5 * r
+        } else {
+            300.0_f32
+        };
+        let (cx, cy) = (S as f32 * 0.5, S as f32 * 0.5);
+        // A figura: estrela de um traço, ou o "A" da 2ª foto do Enio (um traço só que cruza a si
+        // mesmo em ÂNGULO RASO, com os braços bem separados — é no OMBRO parcialmente coberto
+        // que o vinco da união aparece, e as estrelas saturadas o escondiam).
+        let corners: Vec<(f32, f32)> = if nome.starts_with("A_DO_REPORT") {
+            vec![
+                (140.0, 700.0),
+                (384.0, 150.0),
+                (628.0, 700.0),
+                (250.0, 470.0),
+                (700.0, 430.0),
+            ]
+        } else {
+            let mut c = Vec::new();
+            for k in 0..5 {
+                let a =
+                    -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+                c.push((cx + outer * a.cos(), cy + outer * a.sin()));
+            }
+            c.push(c[0]);
+            c
+        };
+        // A DENSIDADE é a do PRODUTO (`RESAMPLE_STEP_FRACTION = 0.4` × largura = `0.8·r`).
         let step = passo * r;
         let mut pts = vec![corners[0]];
         for w in corners.windows(2) {
@@ -967,5 +988,79 @@ fn measure_where_the_neighbour_budget_breaks() {
             }
         }
         println!("  {frac:8.2}   {:9}   {lo:+5}   {nlo:5}", pts.len() - 1);
+    }
+}
+
+/// 🔴 **O ORÁCULO DO ENIO** (2026-07-28): *"o problema só aparece se o cruzamento é feito com
+/// traço ÚNICO (sem mouse up). Se cruzo vários traços diferentes (após mouse up) esse aspecto 3d
+/// não aparece e o traço fica melhor"*.
+///
+/// ⚠️ **O oráculo dele não é o Painter — é o PRÓPRIO FLIP com traços separados.** Dois traços
+/// distintos têm depth diferente ⇒ o mais novo compõe por `over` ⇒ no ombro onde as duas caudas
+/// se encontram o resultado é `1 − (1−a)(1−b)`. Um traço só cai na UNIÃO (`max`), que no MESMO
+/// ponto dá `max(a,b)` — mais TRANSPARENTE, e o fundo aparecendo por baixo lê como uma DOBRA 3D.
+///
+/// Esta sonda mede a diferença nas duas figuras: a QUINA (dois braços do mesmo traço) e o
+/// CRUZAMENTO (o traço voltando sobre si).
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_one_stroke_against_two_strokes() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    println!("\n=== UM TRACO vs DOIS TRACOS (o oraculo do Enio) ===");
+    let r = 7.0_f32;
+    for (nome, a, b, c) in [
+        (
+            "QUINA 60 graus  ",
+            (8.0_f32, 12.0_f32),
+            (32.0, 40.0),
+            (56.0, 12.0),
+        ),
+        ("QUINA 30 graus  ", (6.0, 20.0), (32.0, 40.0), (58.0, 20.0)),
+        ("CRUZAMENTO raso ", (6.0, 24.0), (40.0, 34.0), (10.0, 44.0)),
+    ] {
+        for hardness in [0.4_f32, 0.7] {
+            // Densifica cada perna no passo do produto.
+            let leg = |p: (f32, f32), q: (f32, f32)| -> Vec<(f32, f32)> {
+                let len = ((q.0 - p.0).powi(2) + (q.1 - p.1).powi(2)).sqrt();
+                let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+                (0..=n)
+                    .map(|k| {
+                        let t = k as f32 / n as f32;
+                        (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+                    })
+                    .collect()
+            };
+            // UM traço: a → b → c.
+            let mut um = leg(a, b);
+            um.extend(leg(b, c).into_iter().skip(1));
+            let d_um = flip_drawing(&um, r, hardness);
+            // DOIS traços: a → b e b → c, separados (depth distinto).
+            let mut d_dois = flip_drawing(&leg(a, b), r, hardness);
+            d_dois
+                .strokes
+                .push(flip_drawing(&leg(b, c), r, hardness).strokes.remove(0));
+
+            let px1 = render(&device, &queue, &d_um);
+            let px2 = render(&device, &queue, &d_dois);
+            let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+            for y in 0..H {
+                for x in 0..W {
+                    let d = i32::from(alpha_at(&px1, x, y)) - i32::from(alpha_at(&px2, x, y));
+                    if d < -8 {
+                        n += 1;
+                    }
+                    if d < pior {
+                        pior = d;
+                        onde = (x, y);
+                    }
+                }
+            }
+            println!(
+                "  {nome} h={hardness:.1}: UM traco tem ate {pior:+4} MENOS tinta que DOIS \
+                 (em {onde:?}), {n} px abaixo de -8"
+            );
+        }
     }
 }

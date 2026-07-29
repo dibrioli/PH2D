@@ -262,3 +262,52 @@ fn measure_what_a_big_sim_step_is_made_of() {
     }
     println!("\n  Os tres maiores somam {:.1}% do passo.", 100.0 * v.iter().take(3).map(|x| x.1).sum::<f64>() / total);
 }
+
+/// **QUANTAS CÉLULAS UM PASSE DE FATO VISITA** — a razão que decide se sobra ganho.
+///
+/// Cada passe varre a FAIXA por linha (`Grid::span_x`), e dentro dela pula célula inativa por um
+/// `continue`. O custo real é o número de VISITAS, não o de células ativas: se a faixa é muito maior
+/// que o conjunto ativo, o passe gasta a maior parte do tempo dizendo "não".
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_how_many_cells_a_pass_actually_visits() {
+    for (label, e) in [
+        ("diagonal 2400px", scene(DIAG, DIAG)),
+        ("POCA GRANDE (produto)", scene_big()),
+    ] {
+        let g = e.active_grid();
+        let mut span = 0u64;
+        let mut active = 0u64;
+        let mut wet = 0u64;
+        let mut rows = 0u64;
+        for y in g.by0..=g.by1 {
+            let (lo, hi) = g.span_x(y);
+            if hi < lo {
+                continue;
+            }
+            rows += 1;
+            span += (hi - lo + 1) as u64;
+            let base = y as usize * g.s;
+            for x in lo..=hi {
+                let i = base + x as usize;
+                if g.active[i] != 0 {
+                    active += 1;
+                }
+                if g.film[i] > 0.0 || g.susp[i] > 0.0 {
+                    wet += 1;
+                }
+            }
+        }
+        let bw = (g.bx1 - g.bx0 + 1).max(0) as u64;
+        let bh = (g.by1 - g.by0 + 1).max(0) as u64;
+        println!(
+            "\n  {label}\n    bbox {} | faixa {span} ({:.1}% da bbox) | ativas {active} | com agua {wet}\n    \
+             VISITAS por celula ATIVA: {:.1}x   |   por celula com AGUA: {:.1}x   |   linhas {rows}",
+            bw * bh,
+            100.0 * span as f64 / (bw * bh).max(1) as f64,
+            span as f64 / active.max(1) as f64,
+            span as f64 / wet.max(1) as f64,
+        );
+    }
+    println!();
+}

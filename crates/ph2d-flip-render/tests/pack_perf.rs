@@ -70,6 +70,10 @@ fn packing_a_realistic_long_stroke_is_cheap() {
     eprintln!("traço real de 4000 pontos: {ms:.2} ms · {extras} vizinhos");
     // Medido ~1,7 ms em release. O par-a-par ingênuo levaria ~1 s aqui.
     //
+    // ⚠️ **A CONTAGEM de vizinhos caiu 4× com as cápsulas fundidas** (2026-07-28): 47.546 →
+    // 11.954 no mesmo traço, com o tempo do pack INALTERADO — e o que a contagem paga não é o
+    // pack, é o LAÇO DO FRAGMENT, que roda por pixel a cada frame.
+    //
     // **O teto é por PERFIL** — pelo MESMO motivo do gate irmão abaixo (leia o comentário
     // dele): o `nextest --workspace` roda em DEBUG e em paralelo, então um teto calibrado
     // em release fica verde isolado e vermelho na suíte cheia — um flaky que não denuncia
@@ -89,6 +93,11 @@ fn packing_a_realistic_long_stroke_is_cheap() {
 fn packing_a_dense_scribble_is_bounded() {
     let (ms, extras) = pack_ms(&dense_scribble(4000));
     eprintln!("rabisco denso de 4000 pontos: {ms:.2} ms · {extras} vizinhos");
+    // ⚠️ **O rabisco PATOLÓGICO ficou ~30 % mais caro no pack** (15,9 → 20,1 ms em release,
+    // 2026-07-28): a fusão colhe TODOS os candidatos antes de agrupá-los em runs, em vez de
+    // rejeitar em O(1) pelos 16 mais próximos. É o preço de o teto ser de CÁPSULAS; o caso
+    // NORMAL não pagou nada (1,6 ms, igual) e o fragment ficou 4× mais barato. Teto 120 ms.
+    //
     // O `PAIR_BUDGET` corta o trabalho: medido ~14 ms em release (sem ele, ~27 ms e
     // crescendo). O teto existe para o frame do preview não desabar.
     //

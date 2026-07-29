@@ -191,3 +191,77 @@ fn a_deliberate_corner_survives_the_simplification() {
         "a quina em (0,59, 0) sumiu — o ponto mais proximo esta a {near}"
     );
 }
+
+/// **SONDA — o PASSO que o pipeline REAL produz, em raios.** O rasterizador tem um penhasco
+/// medido (`ph2d-flip-render/tests/painter_look.rs::measure_where_the_neighbour_budget_breaks`):
+/// abaixo de `0,1875 × raio` o orçamento de vizinhos não cobre o alcance e a tinta some
+/// (−184 de 255 em `0,10·r`; **−255** em `0,05·r`). Esta sonda responde a única pergunta que
+/// decide se o penhasco é do PRODUTO: *que passo `stroke_from_samples` de fato entrega?*
+///
+/// Rode: `cargo test -p ph2d-host-desktop --release the_real_pipeline_step -- --nocapture`
+#[test]
+fn the_real_pipeline_step_in_radii() {
+    let width = ph2d_tool_flip::size_to_world(style().width_px);
+    let r = width * 0.5;
+    println!("\n=== O PASSO REAL DO PIPELINE (penhasco do rasterizador: 0.1875 x raio) ===");
+    println!("  figura                        pts   passo_min/r  passo_med/r  n<0.1875r");
+    // Cada figura é um gesto de mão plausível, com tremor, na densidade que o
+    // `MIN_SAMPLE_PX` do produto produz.
+    let casos: Vec<(&str, Vec<Vec2>)> = vec![
+        ("arco largo (400 amostras)", hand_arc(400).0),
+        ("arco largo (1200, mao LENTA)", hand_arc(1200).0),
+        (
+            "rabisco APERTADO (raio ~ pincel)",
+            (0..900)
+                .map(|i| {
+                    let a = i as f32 / 900.0 * 18.0;
+                    let h = ((i as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+                    Vec2::new(
+                        a.cos() * (0.20 + h * 0.004),
+                        a.sin() * (0.20 + h * 0.004) + a * 0.01,
+                    )
+                })
+                .collect(),
+        ),
+        ("estrela de UM traco (5 quinas)", {
+            let mut c: Vec<Vec2> = (0..5)
+                .map(|k| {
+                    let a = -std::f32::consts::FRAC_PI_2
+                        + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+                    Vec2::new(0.80 * a.cos(), 0.80 * a.sin())
+                })
+                .collect();
+            c.push(c[0]);
+            // Densificado como a mão amostra (2 px de tela ~ passo curto).
+            let mut out = vec![c[0]];
+            for w in c.windows(2) {
+                let (a, b) = (w[0], w[1]);
+                let len = ((b.x - a.x).powi(2) + (b.y - a.y).powi(2)).sqrt();
+                let n = (len / 0.01).ceil() as usize;
+                for k in 1..=n {
+                    let t = k as f32 / n as f32;
+                    out.push(Vec2::new(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t));
+                }
+            }
+            out
+        }),
+    ];
+    for (nome, pts) in casos {
+        let prs = vec![1.0_f32; pts.len()];
+        let s = stroke_from_samples(&style(), &pts, &prs, &Xform::IDENTITY);
+        let out = s.positions();
+        let mut passos: Vec<f32> = out
+            .windows(2)
+            .map(|w| ((w[1].x - w[0].x).powi(2) + (w[1].y - w[0].y).powi(2)).sqrt() / r)
+            .collect();
+        passos.sort_by(f32::total_cmp);
+        let med = passos.iter().sum::<f32>() / passos.len().max(1) as f32;
+        let sob = passos.iter().filter(|&&p| p < 0.1875).count();
+        println!(
+            "  {nome:28}  {:4}   {:9.3}    {:9.3}   {sob:5}",
+            out.len(),
+            passos.first().copied().unwrap_or(0.0),
+            med
+        );
+    }
+}

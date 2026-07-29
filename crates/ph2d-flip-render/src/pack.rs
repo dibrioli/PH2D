@@ -327,9 +327,12 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                     continue;
                 }
                 let offset = g.seg_extras.len() as u32;
-                for j in &extras.list {
-                    let sj = segs[*j as usize];
-                    g.seg_extras.push(GpuSegRef { a: sj.a, b: sj.b });
+                // ⚠️ A lista já vem em índices GLOBAIS de PONTO, e um par pode abranger vários
+                // segmentos consecutivos (`neighbors::MERGE_SAGITTA`) — é o que torna o teto uma
+                // propriedade da geometria em vez da amostragem. O shader monta a cápsula de
+                // `points[a]` a `points[b]` e não precisa saber a diferença.
+                for &(a, b) in &extras.list {
+                    g.seg_extras.push(GpuSegRef { a, b });
                 }
                 // O range é indexado pelo PONTO INICIAL do segmento (a identidade do
                 // segmento no shader é o `gp` do seu primeiro ponto).

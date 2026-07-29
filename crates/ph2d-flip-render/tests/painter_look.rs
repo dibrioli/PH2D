@@ -1064,3 +1064,369 @@ fn measure_one_stroke_against_two_strokes() {
         }
     }
 }
+
+/// 🔴🔴 **O ORÁCULO DO ENIO, NA FIGURA DELE, NOS DOIS SENTIDOS.**
+///
+/// ⚠️ A sonda irmã acima só conta `d < -8` — *um traço tem MENOS tinta*. Mas o que o Enio
+/// aponta na foto é uma **cunha ESCURA**, e escuro é tinta a MAIS. Uma sonda que só olha para
+/// um lado do sinal não pode ver o defeito reportado; esta olha para os dois, na ESTRELA (a
+/// figura da foto: cinco quinas de 36° e cinco auto-cruzamentos) e escreve as duas imagens.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_star_one_stroke_against_separate_strokes() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    println!("\n=== A ESTRELA: UM TRACO vs CINCO TRACOS, NOS DOIS SENTIDOS ===");
+    let r = 7.0_f32;
+    // Os cinco cantos da estrela (passo de 2/5 de volta), fechando no primeiro.
+    let (cx, cy, outer) = (32.0_f32, 32.0_f32, 26.0_f32);
+    let mut corners: Vec<(f32, f32)> = (0..5)
+        .map(|k| {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            (cx + outer * a.cos(), cy + outer * a.sin())
+        })
+        .collect();
+    corners.push(corners[0]);
+    let leg = |p: (f32, f32), q: (f32, f32)| -> Vec<(f32, f32)> {
+        let len = ((q.0 - p.0).powi(2) + (q.1 - p.1).powi(2)).sqrt();
+        let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+        (0..=n)
+            .map(|k| {
+                let t = k as f32 / n as f32;
+                (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+            })
+            .collect()
+    };
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        // UM traço: percorre os cinco cantos sem levantar.
+        let mut um = leg(corners[0], corners[1]);
+        for w in corners.windows(2).skip(1) {
+            um.extend(leg(w[0], w[1]).into_iter().skip(1));
+        }
+        let d_um = flip_drawing(&um, r, hardness);
+        // CINCO traços: uma perna cada, depth distinto ⇒ compõem por `over`.
+        let mut d_sep = FlipDrawing::new();
+        for w in corners.windows(2) {
+            d_sep.strokes.push(
+                flip_drawing(&leg(w[0], w[1]), r, hardness)
+                    .strokes
+                    .remove(0),
+            );
+        }
+        let px1 = render(&device, &queue, &d_um);
+        let px2 = render(&device, &queue, &d_sep);
+        let (mut falta, mut ondef) = (0i32, (0u32, 0u32));
+        let (mut sobra, mut ondes) = (0i32, (0u32, 0u32));
+        let (mut nf, mut ns) = (0u32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let d = i32::from(alpha_at(&px1, x, y)) - i32::from(alpha_at(&px2, x, y));
+                if d < -8 {
+                    nf += 1;
+                }
+                if d > 8 {
+                    ns += 1;
+                }
+                if d < falta {
+                    falta = d;
+                    ondef = (x, y);
+                }
+                if d > sobra {
+                    sobra = d;
+                    ondes = (x, y);
+                }
+            }
+        }
+        println!(
+            "  h={hardness:.1}: FALTA {falta:+4} em {ondef:?} ({nf} px < -8)   \
+             SOBRA {sobra:+4} em {ondes:?} ({ns} px > +8)"
+        );
+    }
+}
+
+/// 🖼️ **AS DUAS IMAGENS DO ORÁCULO** — a MESMA estrela como UM traço e como CINCO, na escala em
+/// que o Enio olha. É a única forma de decidir se o `-63` medido é o que a foto mostra.
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_one_stroke_against_separate_strokes() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_um_vs_varios");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    const S: u32 = 768;
+    let r = 40.0_f32;
+    let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.5, 300.0_f32);
+    let mut corners: Vec<(f32, f32)> = (0..5)
+        .map(|k| {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            (cx + outer * a.cos(), cy + outer * a.sin())
+        })
+        .collect();
+    corners.push(corners[0]);
+    let leg = |p: (f32, f32), q: (f32, f32)| -> Vec<(f32, f32)> {
+        let len = ((q.0 - p.0).powi(2) + (q.1 - p.1).powi(2)).sqrt();
+        let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+        (0..=n)
+            .map(|k| {
+                let t = k as f32 / n as f32;
+                (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+            })
+            .collect()
+    };
+    for hardness in [0.4_f32, 0.7] {
+        let mut um = leg(corners[0], corners[1]);
+        for w in corners.windows(2).skip(1) {
+            um.extend(leg(w[0], w[1]).into_iter().skip(1));
+        }
+        let mut d_sep = FlipDrawing::new();
+        for w in corners.windows(2) {
+            d_sep.strokes.push(
+                flip_drawing(&leg(w[0], w[1]), r, hardness)
+                    .strokes
+                    .remove(0),
+            );
+        }
+        let a = render_sized(&device, &queue, &flip_drawing(&um, r, hardness), S, S);
+        let b = render_sized(&device, &queue, &d_sep, S, S);
+        let mut both = vec![0u8; (S * 2 * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let l = ((y * S * 2 + x) * 3) as usize;
+                let rr = ((y * S * 2 + S + x) * 3) as usize;
+                let i = ((y * S + x) * 4 + 3) as usize;
+                both[l..l + 3].copy_from_slice(&over_dark(f32::from(a[i]) / 255.0));
+                both[rr..rr + 3].copy_from_slice(&over_dark(f32::from(b[i]) / 255.0));
+            }
+            let d = ((y * S * 2 + S) * 3) as usize;
+            both[d..d + 3].copy_from_slice(&[200, 60, 60]);
+        }
+        write_bmp(
+            &dir.join(format!("UM_esquerda__VARIOS_direita_h{hardness:.1}.bmp")),
+            S * 2,
+            S,
+            &both,
+        );
+    }
+    println!("imagens em {}", dir.display());
+}
+
+/// 🔬 **A QUINA E O CRUZAMENTO DE PERTO** — um traço vs dois, MUITO ampliados e macios, que é
+/// onde o "aspecto 3D" do report tem de estar visível. Escreve também o MAPA DE DIFERENÇA.
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_the_corner_and_the_crossing_up_close() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_quina");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    const S: u32 = 512;
+    let r = 55.0_f32;
+    let dense = |p: (f32, f32), q: (f32, f32)| -> Vec<(f32, f32)> {
+        let len = ((q.0 - p.0).powi(2) + (q.1 - p.1).powi(2)).sqrt();
+        let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+        (0..=n)
+            .map(|k| {
+                let t = k as f32 / n as f32;
+                (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+            })
+            .collect()
+    };
+    for (nome, a, b, c, hardness) in [
+        (
+            "quina30_h0.4",
+            (30.0_f32, 60.0_f32),
+            (470.0_f32, 256.0_f32),
+            (30.0_f32, 452.0_f32),
+            0.4_f32,
+        ),
+        (
+            "quina30_h0.7",
+            (30.0, 60.0),
+            (470.0, 256.0),
+            (30.0, 452.0),
+            0.7,
+        ),
+        (
+            "raso15_h0.4",
+            (30.0, 150.0),
+            (470.0, 256.0),
+            (30.0, 362.0),
+            0.4,
+        ),
+    ] {
+        let mut um = dense(a, b);
+        um.extend(dense(b, c).into_iter().skip(1));
+        let mut dois = FlipDrawing::new();
+        dois.strokes
+            .push(flip_drawing(&dense(a, b), r, hardness).strokes.remove(0));
+        dois.strokes
+            .push(flip_drawing(&dense(b, c), r, hardness).strokes.remove(0));
+        let pa = render_sized(&device, &queue, &flip_drawing(&um, r, hardness), S, S);
+        let pb = render_sized(&device, &queue, &dois, S, S);
+        let mut both = vec![0u8; (S * 3 * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let i = ((y * S + x) * 4 + 3) as usize;
+                let (av, bv) = (f32::from(pa[i]) / 255.0, f32::from(pb[i]) / 255.0);
+                let l = ((y * S * 3 + x) * 3) as usize;
+                let m = ((y * S * 3 + S + x) * 3) as usize;
+                let rr = ((y * S * 3 + 2 * S + x) * 3) as usize;
+                both[l..l + 3].copy_from_slice(&over_dark(av));
+                both[m..m + 3].copy_from_slice(&over_dark(bv));
+                // Mapa: vermelho = UM tem menos, verde = UM tem mais, ganho 4x.
+                let d = (av - bv) * 4.0;
+                let up = (d.clamp(0.0, 1.0) * 255.0) as u8;
+                let dn = ((-d).clamp(0.0, 1.0) * 255.0) as u8;
+                both[rr..rr + 3].copy_from_slice(&[dn, up, 40]);
+            }
+            for k in [S, 2 * S] {
+                let d = ((y * S * 3 + k) * 3) as usize;
+                both[d..d + 3].copy_from_slice(&[200, 60, 60]);
+            }
+        }
+        write_bmp(
+            &dir.join(format!("UM__DOIS__DIFF_{nome}.bmp")),
+            S * 3,
+            S,
+            &both,
+        );
+    }
+    println!("imagens em {}", dir.display());
+}
+
+/// 🔬 **FLIP × PAINTER × DIFERENÇA, com o OMBRO à vista.** As fixtures anteriores usavam pincel
+/// GROSSO contra estrela pequena — tudo satura e as duas leis ficam indistinguíveis por
+/// construção. Aqui o pincel é FINO em relação à figura, que é o regime onde o ombro macio
+/// (a metade do traço que não é núcleo) de fato se vê.
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_flip_painter_and_the_difference() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_diff");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    const S: u32 = 640;
+    for (nome, r, hardness) in [
+        ("fino_h0.4", 22.0_f32, 0.4_f32),
+        ("fino_h0.7", 22.0, 0.7),
+        ("medio_h0.4", 45.0, 0.4),
+    ] {
+        let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.52, 260.0_f32);
+        let mut corners: Vec<(f32, f32)> = (0..5)
+            .map(|k| {
+                let a =
+                    -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+                (cx + outer * a.cos(), cy + outer * a.sin())
+            })
+            .collect();
+        corners.push(corners[0]);
+        let mut pts = vec![corners[0]];
+        for w in corners.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+            }
+        }
+        let px = render_sized(&device, &queue, &flip_drawing(&pts, r, hardness), S, S);
+        let dep = painter_deposit_sized(&pts, r, hardness, S, S);
+        let mut trio = vec![0u8; (S * 3 * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let a = f32::from(px[((y * S + x) * 4 + 3) as usize]) / 255.0;
+                let b = dep[(y * S + x) as usize];
+                let l = ((y * S * 3 + x) * 3) as usize;
+                let m = ((y * S * 3 + S + x) * 3) as usize;
+                let rr = ((y * S * 3 + 2 * S + x) * 3) as usize;
+                trio[l..l + 3].copy_from_slice(&over_dark(a));
+                trio[m..m + 3].copy_from_slice(&over_dark(b));
+                let d = (a - b) * 4.0;
+                trio[rr..rr + 3].copy_from_slice(&[
+                    ((-d).clamp(0.0, 1.0) * 255.0) as u8,
+                    (d.clamp(0.0, 1.0) * 255.0) as u8,
+                    30,
+                ]);
+            }
+            for k in [S, 2 * S] {
+                let d = ((y * S * 3 + k) * 3) as usize;
+                trio[d..d + 3].copy_from_slice(&[200, 60, 60]);
+            }
+        }
+        write_bmp(
+            &dir.join(format!("FLIP__PAINTER__DIFF_{nome}.bmp")),
+            S * 3,
+            S,
+            &trio,
+        );
+    }
+    println!("imagens em {}", dir.display());
+}
+
+/// 🖼️ **A MÃO LENTA** — a estrela na densidade que o produto de fato entrega quando o artista
+/// desenha devagar (`0,106 × raio`, medido em `flip_hardness_smoke::tests`), contra o depósito
+/// real do Painter. É a imagem do defeito e da cura.
+///
+/// Escreve em `/home/enio/flip_lenta/<PH2D_TAG>.bmp` para o antes/depois caberem lado a lado.
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_the_slow_hand_star() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_lenta");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    let tag = std::env::var("PH2D_TAG").unwrap_or_else(|_| "atual".into());
+    const S: u32 = 640;
+    let r = 22.0_f32;
+    let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.52, 260.0_f32);
+    let mut corners: Vec<(f32, f32)> = (0..5)
+        .map(|k| {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            (cx + outer * a.cos(), cy + outer * a.sin())
+        })
+        .collect();
+    corners.push(corners[0]);
+    let step = 0.106 * r;
+    let mut pts = vec![corners[0]];
+    for w in corners.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+        let n = (len / step).ceil().max(1.0) as usize;
+        for k in 1..=n {
+            let t = k as f32 / n as f32;
+            pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+        }
+    }
+    let px = render_sized(&device, &queue, &flip_drawing(&pts, r, 0.4), S, S);
+    let dep = painter_deposit_sized(&pts, r, 0.4, S, S);
+    let mut trio = vec![0u8; (S * 2 * S * 3) as usize];
+    for y in 0..S {
+        for x in 0..S {
+            let a = f32::from(px[((y * S + x) * 4 + 3) as usize]) / 255.0;
+            let b = dep[(y * S + x) as usize];
+            let l = ((y * S * 2 + x) * 3) as usize;
+            let rr = ((y * S * 2 + S + x) * 3) as usize;
+            trio[l..l + 3].copy_from_slice(&over_dark(a));
+            let d = (a - b) * 4.0;
+            trio[rr..rr + 3].copy_from_slice(&[
+                ((-d).clamp(0.0, 1.0) * 255.0) as u8,
+                (d.clamp(0.0, 1.0) * 255.0) as u8,
+                30,
+            ]);
+        }
+        let d = ((y * S * 2 + S) * 3) as usize;
+        trio[d..d + 3].copy_from_slice(&[200, 60, 60]);
+    }
+    write_bmp(&dir.join(format!("{tag}.bmp")), S * 2, S, &trio);
+    println!(
+        "escrito {}/{tag}.bmp ({} segmentos)",
+        dir.display(),
+        pts.len() - 1
+    );
+}

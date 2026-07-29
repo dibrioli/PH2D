@@ -13,6 +13,36 @@ fn seg(a: u32, b: u32, pa: (f32, f32), pb: (f32, f32), r: f32) -> Seg {
     }
 }
 
+/// **Expande as CÁPSULAS de volta ao conjunto de SEGMENTOS que elas cobrem.**
+///
+/// ⚠️ Todo oráculo deste arquivo compara **COBERTURA**, nunca empacotamento: uma cápsula fundida
+/// (`neighbors::MERGE_SAGITTA`) é uma decisão sobre como a lista é ESCRITA, e o que o fragment
+/// consome é o pedaço de caminho. Um teste que casasse a lista literal viraria um espelho da
+/// implementação — verde por construção e cego ao que importa.
+fn covered(segs: &[Seg], list: &[Capsule]) -> std::collections::BTreeSet<usize> {
+    let mut out = std::collections::BTreeSet::new();
+    for &(a, b) in list {
+        let start = segs
+            .iter()
+            .position(|s| s.a == a)
+            .expect("cápsula começa num ponto que é início de algum segmento");
+        let mut j = start;
+        for _ in 0..segs.len() {
+            out.insert(j);
+            if segs[j].b == b {
+                break;
+            }
+            j = (j + 1) % segs.len();
+        }
+    }
+    out
+}
+
+/// Açúcar: o conjunto de segmentos que ESTE segmento enxerga.
+fn seen(segs: &[Seg], extras: &[SegExtras], i: usize) -> Vec<usize> {
+    covered(segs, &extras[i].list).into_iter().collect()
+}
+
 #[test]
 fn a_straight_stroke_has_no_geometric_neighbors() {
     // Segmentos consecutivos SÃO adjacentes (a janela de sequência os cobre) e
@@ -41,12 +71,12 @@ fn a_zigzag_that_folds_back_sees_the_far_segment() {
     ];
     let extras = extras_for_stroke(&segs);
     assert_eq!(
-        extras[0].list,
+        seen(&segs, &extras, 0),
         vec![2],
         "o segmento 0 tem de VER o segmento 2"
     );
     assert_eq!(
-        extras[2].list,
+        seen(&segs, &extras, 2),
         vec![0],
         "e vice-versa (o teste é simétrico aqui)"
     );
@@ -80,8 +110,8 @@ fn crossing_segments_are_neighbors() {
         seg(2, 3, (40.0, 0.0), (0.0, 40.0), 4.0),
     ];
     let extras = extras_for_stroke(&segs);
-    assert_eq!(extras[0].list, vec![2]);
-    assert_eq!(extras[2].list, vec![0]);
+    assert_eq!(seen(&segs, &extras, 0), vec![2]);
+    assert_eq!(seen(&segs, &extras, 2), vec![0]);
 }
 
 /// A referência ingênua `O(n²)` — o oráculo do grid.
@@ -91,26 +121,17 @@ fn crossing_segments_are_neighbors() {
 /// de fita transformaria uma divergência de partição num falso positivo (foi o que
 /// aconteceu quando a partição nasceu: o grid achava o vizinho `i±2` por arco e o
 /// oráculo o descartava por ranking de distância — o oráculo é que estava velho).
-fn brute_force(segs: &[Seg]) -> Vec<Vec<u32>> {
+fn brute_force(segs: &[Seg]) -> Vec<std::collections::BTreeSet<usize>> {
     let n = segs.len();
-    let mut out = vec![Vec::new(); n];
+    let mut out = vec![std::collections::BTreeSet::new(); n];
     let closed = segs[n - 1].b == segs[0].a;
-    let max_radius = segs.iter().fold(0.0f32, |m, s| m.max(s.radius));
     let mut stamp = vec![0u32; n];
-    let mut walked = vec![0u32; n];
+    let mut walk = Vec::new();
     for i in 0..n {
         let visit = i as u32 + 1;
-        push_ribbon_local(
-            segs,
-            i,
-            closed,
-            max_radius,
-            &mut stamp,
-            &mut walked,
-            visit,
-            &mut out[i],
-        );
-        let mut cand: Vec<(f32, u32)> = Vec::new();
+        let mut caps: Vec<Capsule> = Vec::new();
+        push_ribbon_local(segs, i, closed, &mut stamp, visit, &mut walk, &mut caps);
+        out[i].extend(covered(segs, &caps));
         for j in 0..n {
             let (si, sj) = (segs[i], segs[j]);
             if i == j || is_adjacent(&si, &sj) || stamp[j] == visit {
@@ -119,12 +140,9 @@ fn brute_force(segs: &[Seg]) -> Vec<Vec<u32>> {
             let d2 = seg_seg_distance_sq(si.pa, si.pb, sj.pa, sj.pb);
             let reach = 2.0 * si.radius + sj.radius;
             if d2 < reach * reach {
-                cand.push((d2, j as u32));
+                out[i].insert(j);
             }
         }
-        cand.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
-        cand.truncate(MAX_EXTRAS_PER_SEGMENT);
-        out[i].extend(cand.iter().map(|&(_, j)| j));
     }
     out
 }
@@ -139,11 +157,19 @@ fn the_grid_finds_exactly_what_the_pairwise_scan_finds() {
         state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
         (state >> 8) as f32 / f32::from(u16::MAX) % 1.0
     };
+    // ⚠️ **Um PASSEIO, não saltos.** A versão anterior sorteava o próximo ponto em qualquer
+    // lugar da caixa, com pincel grosso: TODO segmento alcançava ~160 outros, o teto entrava, e
+    // o oráculo só passava porque ele TAMBÉM cortava em 16 com o mesmo critério — ou seja, era
+    // um ESPELHO do corte, não uma prova do broadphase. Um passeio de passo curto se auto-cruza
+    // bastante (é o que o teste precisa) e mantém a vizinhança dentro do teto.
     let mut segs = Vec::new();
     let mut prev = Vec2::new(32.0, 32.0);
-    for k in 0..180u32 {
-        let next = Vec2::new(rnd() * 60.0 + 2.0, rnd() * 60.0 + 2.0);
-        let r = 2.0 + rnd() * 6.0;
+    for k in 0..140u32 {
+        let next = Vec2::new(
+            (prev.x + (rnd() - 0.5) * 14.0).clamp(3.0, 61.0),
+            (prev.y + (rnd() - 0.5) * 14.0).clamp(3.0, 61.0),
+        );
+        let r = 0.35 + rnd() * 0.45;
         segs.push(seg(k, k + 1, (prev.x, prev.y), (next.x, next.y), r));
         prev = next;
     }
@@ -154,14 +180,33 @@ fn the_grid_finds_exactly_what_the_pairwise_scan_finds() {
         by_pairs.len(),
         "mesma quantidade de segmentos"
     );
+    // ⚠️ **O oráculo diz exatamente o que prova, e o teto é nomeado em vez de espelhado.**
+    // A versão anterior comparava as duas listas JÁ CORTADAS — e o par-a-par cortava em 16 com o
+    // mesmo critério do produto, então metade da igualdade era um espelho do corte, não uma prova
+    // do broadphase. Aqui: o grid **nunca inventa** um vizinho (subconjunto, sempre) e **nunca
+    // perde** um, sempre que o conjunto verdadeiro cabe embaixo do teto.
+    let mut abaixo_do_teto = 0usize;
     for (i, (g, p)) in by_grid.iter().zip(&by_pairs).enumerate() {
-        let (mut g, mut p) = (g.list.clone(), p.clone());
-        g.sort_unstable();
-        p.sort_unstable();
-        assert_eq!(g, p, "segmento {i}: o grid divergiu do par-a-par");
+        let achado = covered(&segs, &g.list);
+        assert!(
+            achado.is_subset(p),
+            "segmento {i}: o grid INVENTOU vizinho: {:?}",
+            &achado - p
+        );
+        if p.len() <= MAX_EXTRAS_PER_SEGMENT {
+            abaixo_do_teto += 1;
+            assert_eq!(achado, *p, "segmento {i}: o grid PERDEU um vizinho");
+        }
     }
+    // E a prova não pode ser vazia: a maioria dos segmentos tem de estar na classe testável.
     assert!(
-        by_pairs.iter().any(|v: &Vec<u32>| !v.is_empty()),
+        abaixo_do_teto * 2 > segs.len(),
+        "só {abaixo_do_teto} de {} segmentos ficaram abaixo do teto: a fixture saturou e o \
+         teste deixou de provar o broadphase",
+        segs.len()
+    );
+    assert!(
+        by_pairs.iter().any(|v| !v.is_empty()),
         "o rabisco tem de produzir vizinhos (senão o teste não prova nada)"
     );
 }
@@ -183,20 +228,26 @@ fn the_extras_list_is_capped_and_sorted_by_proximity() {
         ));
     }
     let extras = extras_for_stroke(&segs);
-    // ⚠️ O teto TOTAL é a soma dos DOIS orçamentos — a fita própria (`MAX_RIBBON_EXTRAS`) e os
-    // cruzamentos (`MAX_EXTRAS_PER_SEGMENT`) —, e é isso que o fragment itera. Este teste dizia
-    // só `MAX_EXTRAS_PER_SEGMENT`, de quando a lista era uma só; o que ele PROVA continua sendo
-    // o que importa: o laço do fragment nunca é ilimitado.
+    // ⚠️ O que este teste PROVA é que **o laço do fragment nunca é ilimitado** — e o teto é a
+    // soma dos dois orçamentos (a fita própria e os cruzamentos). ⚠️ E o pente é de propósito
+    // uma fixture de segmentos DESCONECTADOS: é ela que prova que a fusão confere CONTIGUIDADE
+    // em vez de assumi-la (fundir dois dentes vizinhos desenharia uma cápsula diagonal sobre
+    // tela nua). Cada dente tem de sair como cápsula PRÓPRIA.
+    assert!(
+        extras[0].list.len() <= MAX_RIBBON_EXTRAS + MAX_EXTRAS_PER_SEGMENT,
+        "a lista é capada pelos dois orçamentos: {}",
+        extras[0].list.len()
+    );
+    let vistos = covered(&segs, &extras[0].list);
     assert_eq!(
         extras[0].list.len(),
-        MAX_RIBBON_EXTRAS + MAX_EXTRAS_PER_SEGMENT,
-        "a lista é capada pelos dois orçamentos"
+        vistos.len(),
+        "dentes desconectados NUNCA fundem — uma cápsula por dente"
     );
     // Os escolhidos são os mais PRÓXIMOS (os primeiros do pente).
     assert!(
-        extras[0].list.contains(&1) && extras[0].list.contains(&2),
-        "os mais próximos entram: {:?}",
-        extras[0]
+        vistos.contains(&1) && vistos.contains(&2),
+        "os mais próximos entram: {vistos:?}"
     );
 }
 
@@ -302,7 +353,7 @@ mod ribbon_budget_measurement {
             let pts = densify(&spine, step);
             let segs = segs_of(&pts, R);
             let mut stamp = vec![0u32; segs.len()];
-            let mut walked = vec![0u32; segs.len()];
+            let mut walk = Vec::new();
             let (mut max_n, mut sum) = (0usize, 0usize);
             for i in 0..segs.len() {
                 let mut out = Vec::new();
@@ -310,10 +361,9 @@ mod ribbon_budget_measurement {
                     &segs,
                     i,
                     false,
-                    R,
                     &mut stamp,
-                    &mut walked,
                     i as u32 + 1,
+                    &mut walk,
                     &mut out,
                 );
                 max_n = max_n.max(out.len());

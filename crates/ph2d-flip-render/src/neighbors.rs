@@ -26,12 +26,50 @@
 
 use ph2d_core::Vec2;
 
-/// Teto de vizinhos por segmento. Um traço patológico (rabisco denso rabiscado por
-/// cima de si mesmo dezenas de vezes) não pode fazer o fragment iterar sem fim; os
-/// candidatos são ordenados por proximidade, então o corte descarta os que menos
-/// contribuem. Além do teto o traço volta a ter o first-wins do GP naqueles pixels
-/// (o artefato histórico), nunca algo pior.
+/// Teto de CÁPSULAS de cruzamento por segmento (outras passagens). Um traço patológico
+/// (rabisco denso rabiscado por cima de si mesmo dezenas de vezes) não pode fazer o
+/// fragment iterar sem fim; as cápsulas são ordenadas por proximidade, então o corte
+/// descarta as que menos contribuem. Além do teto o traço volta a ter o first-wins do GP
+/// naqueles pixels (o artefato histórico), nunca algo pior.
+///
+/// ⚠️ **O teto é de CÁPSULAS, não de segmentos, e é essa a diferença que importa.** Uma
+/// cápsula cobre um PEDAÇO DE CAMINHO de comprimento arbitrário (ver [`MERGE_SAGITTA`]),
+/// então o número necessário é função da CURVATURA e do alcance — nunca de quão fino o
+/// motor amostrou o caminho.
 pub(crate) const MAX_EXTRAS_PER_SEGMENT: usize = 16;
+
+/// **A tolerância de FUSÃO de cápsulas, em fração do raio.**
+///
+/// Segmentos consecutivos quase-colineares descrevem o mesmo pedaço de caminho; uma ÚNICA
+/// cápsula ligando as pontas cobre a mesma tinta, com erro igual à FLECHA da corda. Fundir
+/// enquanto a flecha ficar abaixo de `MERGE_SAGITTA × raio` torna o número de cápsulas
+/// função da GEOMETRIA, não da amostragem.
+///
+/// Numa curva de raio de curvatura `R`, a corda que atinge a tolerância mede
+/// `L = √(8·R·tol·r)`; o alcance a cobrir é `≈ 3·r`, então o número de cápsulas por lado é
+/// `3r/L`. Com `tol = 1/32`:
+///
+/// | curvatura | corda fundida | cápsulas por lado |
+/// |---|---|---|
+/// | RETA (`R = ∞`) | o alcance inteiro | **1** |
+/// | `R = 4·r` (curva larga) | `1,00·r` | 3 |
+/// | `R = r` (curva do tamanho do pincel) | `0,50·r` | 6 |
+/// | `R = r/4` (grampo) | `0,25·r` | 12 |
+///
+/// ⚠️ **E numa RETA a fusão é EXATA** (flecha zero), que é o caso da esmagadora maioria do
+/// arco de qualquer traço: o alcance inteiro vira uma cápsula só.
+const MERGE_SAGITTA: f32 = 0.031_25;
+
+/// Teto de PASSOS da caminhada da fita, por direção. Não é um teto de qualidade (as cápsulas
+/// fundidas cobrem o alcance com um punhado): é o guarda contra o rabisco patológico, onde a
+/// caminhada dentro do alcance poderia ter milhares de segmentos. A degradação é a mesma do
+/// [`PAIR_BUDGET`] — e no meio de um borrão sólido de tinta ela é invisível.
+const MAX_RIBBON_WALK: usize = 512;
+
+/// Teto de candidatos de CRUZAMENTO colhidos do grid antes de fundir. Os candidatos crus são
+/// segmentos (muitos, quando o traço é denso); as cápsulas que sobram são poucas. Este teto
+/// existe para o buffer não crescer sem fim num rabisco patológico.
+const MAX_CROSS_CANDIDATES: usize = 1024;
 
 /// Teto de TRABALHO do broadphase (pares candidatos examinados), por traço.
 ///
@@ -93,24 +131,6 @@ fn bbox_far(si: &Seg, sj: &Seg, reach: f32) -> bool {
         || sj.pa.x.min(sj.pb.x) - reach > si.pa.x.max(si.pb.x)
         || si.pa.y.min(si.pb.y) - reach > sj.pa.y.max(sj.pb.y)
         || sj.pa.y.min(sj.pb.y) - reach > si.pa.y.max(si.pb.y)
-}
-
-/// Insere `(d2, j)` na lista dos `MAX_EXTRAS_PER_SEGMENT` mais próximos, mantida
-/// ORDENADA por `(distância², índice)`. O desempate por índice é obrigatório: num
-/// rabisco denso dezenas de segmentos cruzam o mesmo (distância 0), e sem ele o
-/// corte dependeria da ordem de descoberta — o mesmo desenho geraria buffers
-/// diferentes (determinismo é contrato do projeto: replay-hash).
-///
-/// Rejeita em O(1) quem é pior que o último — é o que evita ordenar centenas de
-/// candidatos por segmento.
-fn push_top(top: &mut Vec<(f32, u32)>, d2: f32, j: u32) {
-    let worse_than = |a: (f32, u32), b: (f32, u32)| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)).is_ge();
-    if top.len() == MAX_EXTRAS_PER_SEGMENT && worse_than((d2, j), top[top.len() - 1]) {
-        return;
-    }
-    let at = top.partition_point(|&e| !worse_than(e, (d2, j)));
-    top.insert(at, (d2, j));
-    top.truncate(MAX_EXTRAS_PER_SEGMENT);
 }
 
 fn cross2(o: Vec2, a: Vec2, b: Vec2) -> f32 {
@@ -230,41 +250,41 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<SegExtras> {
         return out; // nada não-adjacente existe
     }
     let closed = segs[n - 1].b == segs[0].a;
-    let max_radius = segs.iter().fold(0.0f32, |m, s| m.max(s.radius));
     let grid = Grid::build(segs);
-    let mut top: Vec<(f32, u32)> = Vec::with_capacity(MAX_EXTRAS_PER_SEGMENT + 1);
     // Dedup por GERAÇÃO (o segmento aparece em várias células da consulta): o carimbo
     // é o `i+1` da iteração — nada a limpar entre iterações, e a classe de bug
     // "limpeza incompleta do visitado" deixa de existir.
     let mut stamp = vec![0u32; n];
-    // *A caminhada chegou aqui* — separado do `stamp` (*já está na lista*). Ver `push_ribbon_local`.
-    let mut walked = vec![0u32; n];
+    // Buffers reusados entre iterações (zero alocação por segmento).
+    let mut walk: Vec<usize> = Vec::with_capacity(MAX_RIBBON_WALK);
+    let mut cand: Vec<(f32, u32)> = Vec::with_capacity(MAX_CROSS_CANDIDATES);
+    let mut caps: Vec<(f32, Capsule)> = Vec::with_capacity(MAX_EXTRAS_PER_SEGMENT + 1);
+    // Buffer da fusão dos cruzamentos — reusado, senão cada segmento aloca por run (medido:
+    // o rabisco patológico de 4000 pontos custou +38 % com a alocação).
+    let mut run: Vec<usize> = Vec::with_capacity(MAX_CROSS_CANDIDATES);
     let mut budget = PAIR_BUDGET;
     for i in 0..n {
         if budget == 0 {
             break; // teto de trabalho — ver PAIR_BUDGET
         }
-        top.clear();
         let si = segs[i];
         let visit = i as u32 + 1;
-        // A FITA LOCAL entra PRIMEIRO, com orçamento PRÓPRIO, e é carimbada — a
-        // consulta do grid abaixo a pula, então os `MAX_EXTRAS_PER_SEGMENT` slots
-        // ficam INTEIROS para os cruzamentos. Ver `push_ribbon_local`.
+        // A FITA LOCAL entra PRIMEIRO e é carimbada por INTEIRO — a consulta do grid abaixo a
+        // pula, então os slots de cruzamento ficam inteiros. Ver `push_ribbon_local`.
         push_ribbon_local(
             segs,
             i,
             closed,
-            max_radius,
             &mut stamp,
-            &mut walked,
             visit,
+            &mut walk,
             &mut out[i].list,
         );
         // ⚠️ TUDO que entrou até aqui é a PRÓPRIA passagem — e é essa fronteira que o fragment
-        // precisa para COMPOR em vez de unir. Ela é gratuita: o `push_ribbon_local` já a define
-        // por comprimento de ARCO, então basta CONTAR o que ele deixou.
+        // precisa para COMPOR em vez de unir.
         out[i].ribbon = out[i].list.len() as u32;
         // CONSULTA com pad `2·r_i` — o alcance dos pixels do quad deste segmento.
+        cand.clear();
         let (c0, c1) = grid.cell_range(&si, 2.0 * si.radius);
         for row in c0.1..=c1.1 {
             for col in c0.0..=c1.0 {
@@ -287,57 +307,163 @@ pub(crate) fn extras_for_stroke(segs: &[Seg]) -> Vec<SegExtras> {
                         continue;
                     }
                     let d2 = seg_seg_distance_sq(si.pa, si.pb, sj.pa, sj.pb);
-                    if d2 < reach * reach {
-                        push_top(&mut top, d2, j as u32);
+                    if d2 < reach * reach && cand.len() < MAX_CROSS_CANDIDATES {
+                        cand.push((d2, j as u32));
                     }
                 }
             }
         }
-        // ⚠️ O que o grid trouxe se PARTICIONA: o que a caminhada tinha alcançado (o transbordo
-        // do teto da fita) é a MESMA passagem e vai para a FRENTE, contando no `ribbon`; o resto
-        // é cruzamento de verdade. Sem isto o transbordo viraria passagem estranha e o fragment
-        // comporia tinta da fita consigo mesma.
-        let (same, foreign): (Vec<u32>, Vec<u32>) = top
-            .iter()
-            .map(|&(_, j)| j)
-            .partition(|&j| walked[j as usize] == visit);
-        out[i].ribbon += same.len() as u32;
-        out[i].list.extend(same);
-        out[i].list.extend(foreign);
+        // ⚠️ **Os cruzamentos também FUNDEM, e pela mesma razão que a fita.** Um cruzamento raso
+        // sobre polilinha densa traz DEZENAS de segmentos da outra passagem; capear isso por
+        // CONTAGEM era a mesma falha, no outro lado. Agrupa-se por índice CONSECUTIVO (é um
+        // pedaço contíguo do caminho) e cada grupo vira as cápsulas que a geometria pedir.
+        // ⚠️ **Tudo que o grid traz agora é OUTRA passagem**, por construção: a caminhada já
+        // carimbou a própria. É isso que mantém a fronteira `ribbon` — a que o fragment usa
+        // para COMPOR em vez de unir — exata sem nenhum segundo carimbo.
+        caps.clear();
+        cand.sort_unstable_by_key(|&(_, j)| j);
+        let mut k = 0usize;
+        while k < cand.len() {
+            run.clear();
+            run.push(cand[k].1 as usize);
+            let mut d2 = cand[k].0;
+            let mut e = k + 1;
+            while e < cand.len() && cand[e].1 == cand[e - 1].1 + 1 {
+                run.push(cand[e].1 as usize);
+                d2 = d2.min(cand[e].0);
+                e += 1;
+            }
+            merge_run(segs, &run, &mut |c| caps.push((d2, c)));
+            k = e;
+        }
+        // Ordena por proximidade e corta — o corte descarta CÁPSULAS (pedaços de caminho
+        // inteiros), não segmentos avulsos de um pedaço que outra fatia já cobre.
+        caps.sort_by(|a, b| a.0.total_cmp(&b.0));
+        caps.truncate(MAX_EXTRAS_PER_SEGMENT);
+        out[i].list.extend(caps.iter().map(|&(_, c)| c));
     }
     out
 }
 
-/// Teto de vizinhos da FITA LOCAL por segmento — um orçamento **separado** do
-/// [`MAX_EXTRAS_PER_SEGMENT`] dos cruzamentos, e essa separação é a wave inteira.
+/// Uma cápsula da lista de vizinhos: o par de índices GLOBAIS de ponto que o fragment usa para
+/// montar a cápsula (`points[a]` → `points[b]`). Pode abranger VÁRIOS segmentos consecutivos —
+/// é isso que torna o teto uma propriedade da geometria em vez da amostragem.
+pub(crate) type Capsule = (u32, u32);
+
+/// **A FUSÃO.** Recebe segmentos em ordem de ARCO (consecutivos) e emite as cápsulas que os
+/// cobrem, cortando onde a corda deixa de descrever o caminho.
 ///
-/// **O que quebrou.** O alcance do broadphase é `2·r_i + r_j ≈ 3·r` e o passo da
-/// reamostragem suave é `0.4 × largura = 0.8·r` (`flip_draw::resample_step`). As duas
-/// grandezas são proporcionais ao raio, então a razão `alcance / passo = 3,75` é
-/// **constante**: os vizinhos `i±1 … i±4` da PRÓPRIA fita caem dentro do alcance em
-/// QUALQUER espessura de pincel, antes de existir cruzamento nenhum. Com um orçamento
-/// único e ordenado por distância, eles — que estão a distância ~0 — ganhavam sempre, e
-/// o segmento da passagem que de fato cruza era **cortado**. Aquele pixel voltava ao
-/// first-wins e a GPU pintava a cauda macia de uma passagem sobre o NÚCLEO de outra
-/// (medido: 520 px divergentes, pior desvio −127/255, numa hachura densificada).
+/// O corte usa a **flecha estimada** `L·θ/8` (a sagitta de um arco de comprimento `L` que virou
+/// `θ`), com `θ` acumulado sem trigonometria (`|cross|/(|d₁||d₂|) ≈ |sin Δθ|`, HR-5) — e uma
+/// virada acima de 90° (`dot < 0`) corta sempre, porque ali o seno volta a cair e a estimativa
+/// deixaria de ser conservadora. A variação de RAIO também corta: a cápsula interpola o raio
+/// linearmente entre as pontas, então uma barriga de pressão no meio ficaria descoberta.
+fn merge_run(segs: &[Seg], run: &[usize], emit: &mut dyn FnMut(Capsule)) {
+    merge_run_capped(segs, run, usize::MAX, emit);
+}
+
+/// Como [`merge_run`], mas emitindo no máximo `room` cápsulas — e devolvendo **quantos
+/// segmentos do `run` de fato ficaram COBERTOS**.
 ///
-/// **O valor é MEDIDO, não escolhido** (`measure_ribbon_budget`, rode com
-/// `-- --nocapture`), na densidade que o `resample_smooth` de fato produz:
+/// ⚠️ O retorno é o que impede a falha silenciosa: quem estoura o teto precisa saber onde a
+/// cobertura parou, para não carimbar como *já resolvido* um pedaço de caminho que ninguém
+/// carrega. É a lição que o par de carimbos desta função pagou duas vezes (carimbar tudo abria
+/// BURACO; não carimbar nada ADICIONAVA tinta).
+fn merge_run_capped(
+    segs: &[Seg],
+    run: &[usize],
+    room: usize,
+    emit: &mut dyn FnMut(Capsule),
+) -> usize {
+    if run.is_empty() || room == 0 {
+        return 0;
+    }
+    let mut start = 0usize;
+    let mut emitted = 0usize;
+    let mut len = 0.0f32;
+    let mut turn = 0.0f32;
+    let (mut r_lo, mut r_hi) = (segs[run[0]].radius, segs[run[0]].radius);
+    let mut prev_dir: Option<Vec2> = None;
+    for (k, &j) in run.iter().enumerate() {
+        let s = segs[j];
+        let d = s.pb - s.pa;
+        let l = (d.x * d.x + d.y * d.y).sqrt();
+        // ⚠️ **CONTIGUIDADE é conferida, nunca assumida.** Índice consecutivo não é o mesmo que
+        // caminho contíguo: fundir dois segmentos que não compartilham ponto desenharia uma
+        // cápsula ao longo de uma reta que o traço nunca percorreu. A polilinha do produto é
+        // contígua por construção, e é exatamente por isso que a premissa passaria despercebida.
+        let mut cut = k > start && segs[run[k - 1]].b != s.a;
+        if let Some(pd) = prev_dir {
+            let denom = (pd.x * pd.x + pd.y * pd.y).sqrt() * l;
+            if denom > 1e-9 {
+                let sin = ((pd.x * d.y - pd.y * d.x) / denom).abs();
+                let straight = pd.x * d.x + pd.y * d.y >= 0.0;
+                turn += sin;
+                // Uma quina (>90°) NUNCA funde: o seno volta a cair e a flecha estimada
+                // mentiria — e uma quina é justamente onde a corda mais se afasta do caminho.
+                cut = cut || !straight;
+            }
+        }
+        let nr_lo = r_lo.min(s.radius);
+        let nr_hi = r_hi.max(s.radius);
+        let tol = MERGE_SAGITTA * segs[run[0]].radius.max(1e-4);
+        // Flecha estimada da corda que iria de `start` até AQUI, e a barriga de raio.
+        cut = cut || (len + l) * turn * 0.125 > tol || (nr_hi - nr_lo) > tol;
+        if cut && k > start {
+            if emitted == room {
+                return start; // o teto: a cobertura parou ONDE a última cápsula terminou
+            }
+            emit((segs[run[start]].a, segs[run[k - 1]].b));
+            emitted += 1;
+            start = k;
+            len = 0.0;
+            turn = 0.0;
+            r_lo = s.radius;
+            r_hi = s.radius;
+        } else {
+            r_lo = nr_lo;
+            r_hi = nr_hi;
+        }
+        len += l;
+        prev_dir = Some(d);
+    }
+    if emitted == room {
+        return start;
+    }
+    emit((segs[run[start]].a, segs[run[run.len() - 1]].b));
+    run.len()
+}
+
+/// Teto de CÁPSULAS da fita local por segmento — separado do [`MAX_EXTRAS_PER_SEGMENT`] dos
+/// cruzamentos, porque as duas listas respondem a perguntas diferentes.
 ///
-/// | cenário (raio 5, passo `0.8·r`) | máx | média |
+/// ⚠️ **A wave de 2026-07-28 trocou a UNIDADE deste teto, e é isso que ele significa hoje.**
+/// Antes ele contava SEGMENTOS, e um teto em segmentos para cobrir um ALCANCE é um
+/// multiplicador disfarçado de teto: a contagem necessária é `alcance / passo`, então o teto
+/// era atravessado assim que a polilinha ficasse mais densa que `3·r/16 = 0,1875·r` — o que o
+/// produto faz **quando a mão desenha devagar** (medido em
+/// `flip_draw_tests::the_real_pipeline_step_in_radii`: passo mínimo 0,137·r num arco de 400
+/// amostras e 0,108·r em 1200, com 125 de 251 segmentos abaixo da cerca). Passando a cerca, a
+/// lista truncava, o pixel voltava ao first-wins do GP e a tinta SUMIA: −184 de 255 em 0,10·r
+/// e −255 (tinta nenhuma) em 0,05·r, medidos contra o depósito real do Painter.
+///
+/// Hoje o teto conta **CÁPSULAS** (ver [`MERGE_SAGITTA`]), e o número necessário é função da
+/// CURVATURA e do alcance — **em qualquer densidade de amostragem**. MEDIDO
+/// (`measure_ribbon_budget`, rode com `-- --nocapture`), contra os números de antes:
+///
+/// | cenário (raio 5) | antes | agora |
 /// |---|---|---|
-/// | reta | 4 | 3,8 |
-/// | arco raio 10·r | **12** | 9,8 |
-/// | arco raio 2·r (curvatura alta) | 11 | 7,6 |
-/// | arco raio 1·r (o limite do pincel) | 11 | 7,6 |
-/// | hachura gap 0,5·r | 6 | 4,2 |
+/// | reta | 4 | **2** |
+/// | arco raio 10·r | 12 | **4** |
+/// | arco raio 2·r | 11 | **6** |
+/// | arco raio 1·r (o limite do pincel) | 11 | **6** |
+/// | hachura gap 0,5·r | 6 | **4** |
+/// | **entrada 4× densa (mão LENTA)** | **16, SATURADO** | **8** |
 ///
-/// Pior caso do produto **12** ⇒ teto **16**, 33% de folga. ⚠️ **A degradação, nomeada:**
-/// entrada 4× mais densa que o passo (mão LENTA numa curva, onde o RDP preserva pontos —
-/// a reamostragem só ACRESCENTA, nunca remove) **satura**, e ali a lista guarda os 16 mais
-/// próximos POR ARCO (8 de cada lado), que são os que mais contribuem. Isso nunca é pior
-/// que o mundo pré-esta-wave: o orçamento dos CRUZAMENTOS
-/// ([`MAX_EXTRAS_PER_SEGMENT`]) fica intacto, que é a razão de existir desta separação.
+/// Pior caso do produto **6** contra o teto **16** — e a linha que importa é a última: era ela
+/// que estourava, e é ela que o artista produz desenhando devagar. O gate que pina a propriedade
+/// é `sampling_invariance::the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled`
+/// (desvio CONSTANTE de −3 de 255 em toda densidade de 0,80·r a 0,04·r).
 pub(crate) const MAX_RIBBON_EXTRAS: usize = 16;
 
 /// Os vizinhos geométricos de UM segmento, **particionados por PASSAGEM**.
@@ -353,10 +479,15 @@ pub(crate) const MAX_RIBBON_EXTRAS: usize = 16;
 /// rotas passam a desenhar a mesma coisa.
 #[derive(Clone, Default, Debug)]
 pub(crate) struct SegExtras {
-    /// Os índices dos vizinhos: **PRIMEIRO os da própria passagem** (a fita local, por arco),
-    /// depois os de OUTRAS passagens (os cruzamentos, pelo grid). A ordem é o contrato.
-    pub(crate) list: Vec<u32>,
-    /// Quantos dos primeiros pertencem à PRÓPRIA passagem.
+    /// As CÁPSULAS vizinhas, como pares de índices GLOBAIS de ponto: **PRIMEIRO as da própria
+    /// passagem** (a fita local, por arco), depois as de OUTRAS passagens (os cruzamentos, pelo
+    /// grid). A ordem é o contrato.
+    ///
+    /// ⚠️ **Um par NÃO é um segmento** — ele pode abranger vários segmentos consecutivos
+    /// (ver [`MERGE_SAGITTA`]). O shader monta a cápsula de `points[a]` a `points[b]` e não
+    /// precisa saber a diferença, então o formato do buffer e a BGL ficaram como estavam.
+    pub(crate) list: Vec<Capsule>,
+    /// Quantas das primeiras pertencem à PRÓPRIA passagem.
     pub(crate) ribbon: u32,
 }
 
@@ -382,30 +513,21 @@ pub(crate) struct SegExtras {
 ///
 /// Os adjacentes (`i±1`) são pulados: chegam ao fragment pela janela de sequência
 /// (`p0`/`p3`) e não gastam slot. Traço FECHADO dá a volta; aberto para nas pontas.
-// ⚠️ Oito argumentos: os dois carimbos (`stamp` = *já está na lista* · `walked` = *a caminhada
-// chegou aqui*) são estado do CHAMADOR reusado entre iterações — juntá-los num struct só
-// para agradar o lint esconderia justamente a distinção que esta wave existe para fazer.
-#[allow(clippy::too_many_arguments)]
 fn push_ribbon_local(
     segs: &[Seg],
     i: usize,
     closed: bool,
-    max_radius: f32,
     stamp: &mut [u32],
-    walked: &mut [u32],
     visit: u32,
-    out: &mut Vec<u32>,
+    walk: &mut Vec<usize>,
+    out: &mut Vec<Capsule>,
 ) {
     let n = segs.len();
-    // Cota conservadora do alcance: o raio do dono entra DOBRADO (o teto do esticão do
-    // miter) e o do vizinho é cotado pelo MAIOR do traço — o teste por-par abaixo é o
-    // exato, este só decide quando PARAR de andar.
-    let _ = max_radius;
     stamp[i] = visit;
-    walked[i] = visit;
     for dir in [1i64, -1i64] {
+        walk.clear();
         let mut j = i as i64;
-        for _ in 0..n {
+        for _ in 0..n.min(MAX_RIBBON_WALK) {
             j += dir;
             if j < 0 || j >= n as i64 {
                 if !closed {
@@ -420,7 +542,6 @@ fn push_ribbon_local(
             let sj = &segs[ju];
             if is_adjacent(&segs[i], sj) {
                 stamp[ju] = visit; // adjacente: já vem pela janela `p0`/`p3`
-                walked[ju] = visit;
                 continue;
             }
             // ⚠️ **A passagem acaba onde a caminhada SAI da vizinhança** — teste ESPACIAL, não
@@ -433,23 +554,28 @@ fn push_ribbon_local(
             if seg_seg_distance_sq(segs[i].pa, segs[i].pb, sj.pa, sj.pb) > reach * reach {
                 break;
             }
-            // ⚠️ **DOIS carimbos, e a distinção é o que impede as duas falhas opostas.**
-            // `walked` diz *a caminhada CHEGOU aqui* (⇒ é a MESMA passagem, sempre); `stamp` diz
-            // *já está na lista* (⇒ o grid não duplica). Acima do teto o segmento fica sem
-            // `stamp` — então o grid PODE recolhê-lo — mas com `reach`, então ele entra como
-            // PRÓPRIA passagem e não como estranha.
+            // ⚠️ **UM carimbo, e o segundo MORREU junto com a causa dele.** Havia um par
+            // (`walked` = *a caminhada chegou aqui* · `stamp` = *já está na lista*) porque a
+            // fita TRUNCAVA: o segmento visitado que não coubesse ficava sem `stamp` para o
+            // grid poder recolhê-lo, e precisava ser lembrado como *própria passagem* — senão
+            // ele voltava como ESTRANHA e o fragment compunha tinta consigo mesma (+63, medido).
             //
-            // As duas versões anteriores erraram para lados opostos, as duas medidas na sonda
-            // `measure_a_sharp_corner_that_also_crosses_itself`: carimbar tudo tirava o
-            // transbordo das DUAS listas e abria **BURACO** (pintou 0 onde a união pede 252 — a
-            // cunha escura da 3ª foto do Enio); não carimbar nada o fazia virar passagem
-            // estranha e o fragment **ADICIONAVA** tinta (+63).
-            walked[ju] = visit;
-            if out.len() < MAX_RIBBON_EXTRAS {
-                stamp[ju] = visit;
-                out.push(ju as u32);
-            }
+            // Com as cápsulas fundidas a caminhada **absorve a passagem inteira** (1 cápsula
+            // numa reta, ~6 numa curva do tamanho do pincel), então não há transbordo a
+            // recolher — e as duas mutações que o par equilibrava passaram a NÃO sangrar em
+            // fixture nenhuma: o mecanismo virou código morto, e código morto MENTE. O que
+            // sobra é a lei simples: **o que a caminhada visitou é da própria passagem, e o
+            // grid não o vê.** Na curvatura extrema em que o teto ainda morde, o arco mais
+            // DISTANTE é descartado (first-wins ali, a degradação de sempre) — nunca composto.
+            stamp[ju] = visit;
+            walk.push(ju);
         }
+        // A caminhada para trás visita em arco DECRESCENTE; a fusão precisa de ordem de arco.
+        if dir < 0 {
+            walk.reverse();
+        }
+        let room = MAX_RIBBON_EXTRAS.saturating_sub(out.len());
+        merge_run_capped(segs, walk, room, &mut |c| out.push(c));
     }
 }
 

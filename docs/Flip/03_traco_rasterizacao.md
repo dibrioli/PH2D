@@ -679,3 +679,78 @@ para cada direção, as duas sangram** — e cada uma derruba **só o seu** gate
 
 ⚠️ Corolário: o teto TOTAL do laço do fragment é a SOMA dos dois orçamentos
 (`MAX_RIBBON_EXTRAS + MAX_EXTRAS_PER_SEGMENT`), não um deles.
+
+### §8.7.2 — O TETO ERA UMA CONTAGEM PARA COBRIR UM ALCANCE (4º report, 2026-07-28)
+
+*"Continua a mesma bosta. Mas o problema só aparece se o cruzamento é feito com traço único (sem
+mouse up). Se cruzo vários traços diferentes esse aspecto 3d não aparece e o traço fica melhor"*
+(Enio).
+
+⚠️ **As três rodadas anteriores atacaram a LEI (o perfil, a composição, o transbordo) e a lei já
+estava certa** — medido: o Flip pinta o depósito do Painter com desvio **−3 de 255** na estrela.
+O que estava errado era **QUANTO CAMINHO chegava ao fragment**.
+
+**O mecanismo, e ele é aritmético.** O alcance de influência de um segmento é `≈ 3 × raio`; a
+lista de vizinhos era capeada por **CONTAGEM** (`MAX_RIBBON_EXTRAS = 16` segmentos). A contagem
+necessária é `alcance ÷ passo`, então o teto era atravessado assim que a polilinha ficasse mais
+densa que `3r/16 = 0,1875·r`. Passando a cerca, a lista **truncava**, o pixel voltava ao
+first-wins do Grease Pencil e a cauda macia de um quad era pintada sobre o NÚCLEO do vizinho.
+
+**Medido contra o depósito REAL do Painter, mesma estrela, variando SÓ a amostragem:**
+
+| passo / raio | antes | agora |
+|---|---|---|
+| 0,80 | −3 | −3 |
+| 0,40 | −3 | −3 |
+| 0,20 | −3 | −3 |
+| **0,10** | **−184** | **−3** |
+| **0,05** | **−255** (a tinta SOME) | **−3** |
+| 0,04 | — | **−3** |
+
+⚠️ **E o produto atravessa a cerca com a MÃO LENTA** — não é caso patológico, é desenhar devagar.
+O RDP tem tolerância `0,05 × espessura = 0,1·r` e a reamostragem **só ACRESCENTA** pontos, então
+(`flip_draw_tests::the_real_pipeline_step_in_radii`) um arco de mão a 400 amostras entrega passo
+mínimo **0,137·r**, a 1200 amostras **0,108·r**, com **125 de 251** segmentos abaixo da cerca.
+
+⚠️ **E é por isso que só doía com traço ÚNICO:** dois traços distintos têm depth diferente e
+compõem por `over` — o parceiro do cruzamento **não precisa estar na lista de extras**. A lista
+só existe para o traço que volta sobre si mesmo. O oráculo do Enio estava apontando exatamente a
+peça quebrada.
+
+**A cura: o teto conta CÁPSULAS, e uma cápsula é um PEDAÇO DE CAMINHO.** Segmentos consecutivos
+quase-colineares descrevem o mesmo pedaço; uma única cápsula ligando as pontas cobre a mesma
+tinta, com erro igual à FLECHA da corda. Fundir enquanto a flecha ficar abaixo de
+`MERGE_SAGITTA × raio` (1/32) torna o número necessário função da **CURVATURA e do alcance**:
+
+| cenário (medido, `measure_ribbon_budget`) | antes | agora |
+|---|---|---|
+| reta | 4 | **2** |
+| arco raio 10·r | 12 | **4** |
+| arco raio 1·r (o limite do pincel) | 11 | **6** |
+| **entrada 4× densa (mão LENTA)** | **16, SATURADO** | **8** |
+
+⚠️ **O shader não mudou um byte, nem a BGL, nem o formato do buffer:** ele já montava a cápsula
+de `points[a]` a `points[b]` e nunca precisou saber se `b = a+1`. A wave inteira mora na CPU.
+
+⚠️ **A CONTIGUIDADE é conferida, nunca assumida:** índice consecutivo não é caminho contíguo, e
+fundir dois segmentos que não compartilham ponto desenharia uma cápsula sobre tela nua. A
+polilinha do produto é contígua por construção — é exatamente por isso que a premissa passaria
+despercebida. A fixture do "pente" (segmentos desconexos) é quem a prova.
+
+⚠️ **E o mecanismo de DOIS CARIMBOS da §8.7.1 MORREU, por medição.** Com as cápsulas fundidas a
+caminhada absorve a passagem inteira, então o grid nunca reencontra um segmento próprio: as duas
+mutações que o par de carimbos equilibrava passaram a **não sangrar em fixture nenhuma**. Código
+morto MENTE, então ele saiu — e a lei que sobra é uma só: *o que a caminhada visitou é da própria
+passagem, e o grid não o vê*. Na curvatura extrema em que o teto ainda morde, o arco mais
+DISTANTE é descartado (first-wins ali, a degradação de sempre) — **nunca composto**, que era o
+`+63` da §8.7.1.
+
+**Gate:** `sampling_invariance::the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled` —
+a MESMA figura, de `0,80·r` a `0,04·r`, contra o depósito do Painter, com a MESMA barra em toda
+densidade. É a quinta vez que esta lei é pinada no projeto (as quatro anteriores no relevo do
+Painter), e a primeira no rasterizador do Flip. **5 mutações, 5 sangram.**
+
+**Custo, medido e nomeado:** o pack do traço NORMAL não mudou (1,6 ms) e a lista encolheu **4×**
+(47.546 → 11.954 vizinhos), o que barateia o **laço do fragment**, que roda por pixel a cada
+frame. O rabisco PATOLÓGICO de 4000 pontos subiu 15,9 → 20,1 ms (teto 120): a fusão colhe todos
+os candidatos antes de agrupá-los em runs, em vez de rejeitar em O(1) pelos 16 mais próximos.

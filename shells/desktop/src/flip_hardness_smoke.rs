@@ -79,15 +79,48 @@ fn crossing(cx: f32, hardness: f32) -> [FlipStroke; 2] {
 /// traços, e dois traços cruzados nunca tiveram o defeito (o depth deles difere e o mais novo
 /// pinta por cima, ou seja **já compõe**). O caso do Enio — um traço só, com quina — exigia
 /// desenhar à mão para aparecer.
-fn one_stroke_star(cx: f32, hardness: f32) -> FlipStroke {
+/// A mesma estrela, com a opção de encená-la como uma **MÃO LENTA**: amostras densas com o
+/// tremor que uma mão real carrega.
+///
+/// ⚠️ **É esta a variante que contém o fenômeno da wave de 2026-07-28.** O RDP tem tolerância
+/// `0,05 × espessura = 0,1·r` e a reamostragem só ACRESCENTA pontos, então desenhar devagar
+/// entrega passo abaixo de `0,1875·r` — a cerca onde a lista de vizinhos (então capeada por
+/// CONTAGEM) truncava e a tinta SUMIA (−184 de 255 em `0,10·r`; −255 em `0,05·r`, medidos
+/// contra o depósito real do Painter). A cena anterior só tinha a versão de mão RÁPIDA, que cai
+/// do lado seguro da cerca — ela não podia mostrar o defeito nem a cura.
+fn one_stroke_star_sampled(cx: f32, hardness: f32, slow_hand: bool) -> FlipStroke {
     let outer = 0.80_f32;
-    let mut corners = Vec::new();
+    let mut pontas = Vec::new();
     for k in 0..5 {
         // Passo de 2/5 de volta = a estrela de um traço só.
         let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
-        corners.push(Vec2::new(cx + outer * a.cos(), outer * a.sin()));
+        pontas.push(Vec2::new(cx + outer * a.cos(), outer * a.sin()));
     }
-    corners.push(corners[0]);
+    pontas.push(pontas[0]);
+    let mut corners = vec![pontas[0]];
+    if slow_hand {
+        // Amostras densas COM TREMOR — sem o tremor o RDP colapsaria a perna numa reta e a
+        // densidade voltaria à da mão rápida (a fixture não conteria o fenômeno).
+        for w in pontas.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            // ⚠️ **A amplitude do tremor tem de PASSAR a tolerância do RDP** (`0,05 × largura`
+            // = `0,1·r`), senão o simplificador o apaga e a polilinha volta à densidade da mão
+            // rápida — a fixture pareceria conter o fenômeno e não conteria. É o mesmo tremor
+            // que uma mão real carrega quando desenha devagar.
+            let n = 160usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                let h = ((k as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5;
+                let g = ((k as u64).wrapping_mul(40_503) % 977) as f32 / 977.0 - 0.5;
+                corners.push(Vec2::new(
+                    a.x + (b.x - a.x) * t + h * 0.05,
+                    a.y + (b.y - a.y) * t + g * 0.05,
+                ));
+            }
+        }
+    } else {
+        corners = pontas;
+    }
 
     // ⚠️ **PELO PIPELINE DE VERDADE** (`stroke_from_samples`: smoothing → RDP → reamostragem
     // suave → `build_stroke`), NÃO por `push_point` cru. A versão anterior desta cena empurrava
@@ -108,36 +141,45 @@ fn one_stroke_star(cx: f32, hardness: f32) -> FlipStroke {
     st
 }
 
-/// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos três grupos.
-pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 3] {
+/// O passo MÍNIMO da polilinha que o pipeline entregou, em raios — o número que diz de que lado
+/// da (hoje extinta) cerca de `0,1875·r` a figura caiu. É o MÍNIMO, não a média: a média de uma
+/// estrela é dominada pelas retas longas e escondia justamente os trechos densos.
+fn min_step_in_radii(st: &FlipStroke) -> f32 {
+    let r = 0.42_f32 * 0.5;
+    (1..st.len())
+        .filter_map(|i| Some((st.point(i)?.pos - st.point(i - 1)?.pos).length() / r))
+        .fold(f32::MAX, f32::min)
+}
+
+/// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos QUATRO grupos.
+pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 4] {
     obj.fps = 12.0;
     obj.onion.enabled = false; // um quadro só; o onion sujaria a leitura do perfil.
 
-    let xs = [-2.2_f32, -0.3, 1.9];
+    let xs = [-2.6_f32, -0.9, 0.8, 2.5];
     let layer = obj.add_layer("Hardness");
     if let Some(d) = obj.insert_frame(layer, 0, Hold::Implicit, KeyKind::Keyframe) {
         let strokes = &mut obj.drawing_mut(d).expect("desenho").strokes;
         // Dois X de DOIS traços: o controle duro e o macio.
         strokes.extend(crossing(xs[0], HARDNESS[0]));
         strokes.extend(crossing(xs[1], HARDNESS[2]));
-        // E a ESTRELA de UM traço — a foto.
-        let star = one_stroke_star(xs[2], HARDNESS[2]);
-        // ⚠️ A DENSIDADE é o que governa o orçamento de vizinhos: o penhasco MEDIDO está em
-        // passo `< 0,1875·r` (`painter_look.rs::measure_where_the_neighbour_budget_breaks`).
-        // Imprimir o passo REAL que o pipeline produziu é a única forma de saber de que lado
-        // da cerca a cena caiu.
-        let n = star.len();
-        let r = 0.42_f32 * 0.5;
-        let arc: f32 = (1..n)
-            .filter_map(|i| Some((star.point(i)?.pos - star.point(i - 1)?.pos).length()))
-            .sum();
-        eprintln!(
-            "[hardness-smoke] estrela pelo pipeline REAL: {n} pontos, passo medio {:.3} = \
-             {:.2} x raio (o penhasco do orcamento fica em 0.19 x raio)",
-            arc / (n.max(2) - 1) as f32,
-            arc / (n.max(2) - 1) as f32 / r
-        );
-        strokes.push(star);
+        // E as DUAS estrelas de UM traço: mão RÁPIDA e mão LENTA.
+        //
+        // ⚠️ A DENSIDADE é o que governava o orçamento de vizinhos, e é por isso que as duas
+        // estão na cena: a rápida cai do lado seguro da (hoje extinta) cerca de `0,1875·r`, a
+        // lenta cai do lado que perdia tinta. Imprimir o passo MÍNIMO real é a única forma de
+        // saber de que lado cada uma caiu — a média escondia (é dominada pelas retas longas).
+        for (i, slow) in [(2usize, false), (3, true)].into_iter() {
+            let star = one_stroke_star_sampled(xs[i], HARDNESS[2], slow);
+            eprintln!(
+                "[hardness-smoke] estrela {} pelo pipeline REAL: {} pontos, passo MINIMO \
+                 {:.3} x raio (a cerca do orcamento antigo ficava em 0.1875)",
+                if slow { "MAO LENTA" } else { "mao rapida" },
+                star.len(),
+                min_step_in_radii(&star)
+            );
+            strokes.push(star);
+        }
     }
     xs
 }
@@ -162,10 +204,10 @@ impl crate::App {
         self.playhead.pause();
 
         eprintln!(
-            "\n[hardness-smoke] cena montada: 2 cruzamentos + 1 ESTRELA DE UM TRACO em \
+            "\n[hardness-smoke] cena montada: 2 cruzamentos + 2 ESTRELAS DE UM TRACO em \
              x={:?}, hardness {:?}. Ferramenta flip ativa: {}.",
             xs,
-            [HARDNESS[0], HARDNESS[2], HARDNESS[2]],
+            [HARDNESS[0], HARDNESS[2], HARDNESS[2], HARDNESS[2]],
             if tool_ok {
                 "sim"
             } else {
@@ -194,23 +236,40 @@ impl crate::App {
                   byte-identicas aqui, e este e o default do Flip. Se ele\n\
                   mudou, algo mais quebrou.\n\
                2. X macio (hardness 0.4), DOIS tracos cruzados.\n\
-               3. ESTRELA de UM traco (hardness 0.4) -- **A SUA FOTO**:\n\
-                  quina afiada em cada ponta e cinco auto-cruzamentos.\n\
-                  As rodadas anteriores so encenavam o item 2, e dois\n\
-                  tracos cruzados NUNCA tiveram o defeito -- por isso ele\n\
-                  so aparecia quando voce desenhava a mao.\n\
+               3. ESTRELA de UM traco, MAO RAPIDA (hardness 0.4).\n\
+               4. ESTRELA de UM traco, MAO LENTA -- **A SUA FOTO**.\n\
+                  Mesma figura, amostrada densa com tremor, que e o que\n\
+                  acontece quando voce desenha devagar. Veja no terminal\n\
+                  acima o passo MINIMO de cada uma.\n\
              \n\
              O QUE OLHAR -- e e so isso:\n\
-               1. Na ESTRELA, nenhuma cunha ESCURA mordendo a tinta nas\n\
-                  quinas nem nos cruzamentos. Era isso que as setas\n\
-                  vermelhas apontavam.\n\
-               2. Abra o PAINTER, pincel digital normal, MESMA hardness, e\n\
+               1. **AS DUAS ESTRELAS TEM DE SER A MESMA FIGURA.** Era\n\
+                  exatamente aqui que o defeito vivia: a da direita\n\
+                  (mao lenta) PERDIA tinta nas quinas e nos cruzamentos,\n\
+                  e o buraco lia como uma dobra 3D. Se as duas estao\n\
+                  iguais, a wave fez o que prometeu.\n\
+               2. Desenhe voce mesmo, DEVAGAR, cruzando o proprio traco\n\
+                  sem levantar a caneta -- o gesto do seu report.\n\
+               3. Abra o PAINTER, pincel digital normal, MESMA hardness, e\n\
                   rabisque uma estrela sem levantar a caneta. O aspecto\n\
                   tem de ser o MESMO -- e a razao desta wave existir.\n\
-               3. O X da esquerda nao pode ter mudado.\n\
+               4. O X da esquerda nao pode ter mudado.\n\
              \n\
              ------------------------------------------------------------\n\
-             A CURA, numa frase: o Flip desenha um TRACO, entao o perfil\n\
+             A CURA DESTA RODADA, numa frase: a lista de vizinhos que o\n\
+             fragment recebe era capeada por CONTAGEM (16 segmentos), mas\n\
+             o que ela precisa cobrir e um ALCANCE (3 x raio). Contagem =\n\
+             alcance / passo, entao desenhar DEVAGAR atravessava o teto,\n\
+             a lista truncava e a tinta SUMIA -- medido contra o deposito\n\
+             real do Painter: -184 de 255 com passo 0,10 x raio e -255\n\
+             (tinta NENHUMA) com 0,05. Agora a lista conta CAPSULAS, e\n\
+             uma capsula cobre um PEDACO DE CAMINHO: 1 numa reta, ~6 numa\n\
+             curva do tamanho do pincel -- em qualquer densidade. O\n\
+             desvio virou CONSTANTE (-3 de 255) de 0,80 ate 0,04 x raio.\n\
+             \n\
+             ------------------------------------------------------------\n\
+             A CURA DA RODADA ANTERIOR, numa frase: o Flip desenha um\n\
+             TRACO, entao o perfil\n\
              dele e o perfil de TRACO do Painter (a fileira de dabs\n\
              composta por `over`), nunca o de um DAB dele. As duas\n\
              rodadas anteriores igualaram a lei do DAB, que e muito mais\n\
@@ -235,6 +294,40 @@ impl crate::App {
              36 graus; some conforme a hardness sobe). E a direcao\n\
              OPOSTA a queixa -- a ponta fica mais redonda, nao mordida.\n\
              Se ISSO incomodar, reporte: e outra wave.\n"
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{min_step_in_radii, one_stroke_star_sampled};
+
+    /// 🔴 **A CENA CONTÉM O FENÔMENO — e isso é conferido, não afirmado.**
+    ///
+    /// A estrela de mão RÁPIDA cai do lado seguro da cerca que o orçamento de vizinhos tinha
+    /// (`3·r / 16 = 0,1875·r`); a de mão LENTA cai do lado que perdia tinta. Sem as duas, o
+    /// smoke não pode mostrar nem o defeito nem a cura — foi exatamente por isso que quatro
+    /// rodadas de smoke passaram por cima do defeito reportado.
+    ///
+    /// ⚠️ O gate vigia a FIXTURE, não o produto: se um dia a reamostragem mudar e a estrela
+    /// lenta subir acima da cerca, esta cena para de provar o que a mensagem dela promete — e
+    /// é melhor ficar vermelho aqui do que verde numa tela que não contém o caso.
+    const OLD_FENCE: f32 = 0.1875;
+
+    #[test]
+    fn the_slow_hand_star_is_denser_than_the_old_neighbour_fence() {
+        let rapida = min_step_in_radii(&one_stroke_star_sampled(0.0, 0.4, false));
+        let lenta = min_step_in_radii(&one_stroke_star_sampled(0.0, 0.4, true));
+        println!("  passo MINIMO: mao rapida {rapida:.3} x raio | mao lenta {lenta:.3} x raio");
+        assert!(
+            lenta < OLD_FENCE,
+            "a estrela de MAO LENTA tem de cair abaixo da cerca ({lenta:.3} x raio): sem isso a \
+             cena não contém o defeito que ela existe para mostrar"
+        );
+        assert!(
+            rapida > OLD_FENCE,
+            "a de mão RÁPIDA tem de ficar ACIMA ({rapida:.3} x raio): ela é o controle, e duas \
+             fixtures do mesmo lado da cerca não comparam nada"
         );
     }
 }

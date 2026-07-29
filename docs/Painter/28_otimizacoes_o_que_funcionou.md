@@ -2459,6 +2459,61 @@ acreditado.* O que restou de relógio é **controle** (piso folgado) ou não tem
 
 ---
 
+### 5.33 ✅ E O CONTROLADOR PUNIA A ÁGUA POR UMA CONTA DE OUTRO — a atribuição
+
+> Enio, terceiro smoke, **mesmo sintoma**: ***"FPS não cai abaixo de 60 mas simulação lenta e travada"***.
+
+O log nomeia a causa inteira:
+
+```text
+[frame] total=19.15ms | stamps=13.96ms  | tool-tick=0.00ms
+[frame] total=32.90ms | stamps=116.03ms | tool-tick=0.00ms
+```
+
+⚠️ **`tool-tick = 0.00` em TODA amostra** — a sim não roda. E o `stamps` ao lado é o carimbo de dabs
+dentro do `on_canvas_pointer`: **outro inquilino do frame**, que a água não causa e não controla. O
+controlador da §5.32 lia o `dt` **inteiro**, concluía *"não há espaço"* e estrangulava a sim até o
+piso de 1 ms (~2 Hz). **Ele punia a água por uma conta que era de outro.**
+
+#### 5.33.1 As duas correções
+
+**(1) Atribuição.** `non_sim = dt − o que a sim gastou`. O recuo só dispara quando **o frame teria
+cabido sem nós**; se `non_sim` já estourou sozinho, encolher a água não salva o frame e só congela a
+tinta — ali o orçamento **segura**.
+
+**(2) A régua virou o PISO.** O período era EWMA do `dt`, então um frame lento por culpa alheia
+**levantava a régua e o teto junto** (`0,6 × 100 ms` = licença para comer 60 ms de quadro). Agora é o
+`min` do `dt` observado com creep lento para cima (0,05%/frame): com vsync ele é o intervalo do
+monitor, e nenhum inquilino estrangeiro o move.
+
+#### 5.33.2 O eixo que nenhuma sonda de água tinha medido: o `stamps`
+
+`measure_what_a_wet_stamp_costs` — cada chamada de `on_canvas_pointer` de um traço:
+
+| tela | raio | down | move p50 | move p90 | move MAX |
+|---|---|---|---|---|---|
+| 2048² | 100 | 23,32 ms | 1,83 | 2,01 | 2,36 |
+| 2048² | 300 | 33,54 | 5,11 | 6,39 | 6,49 |
+| 4096² | 100 | **50,72** | 1,81 | 2,14 | 2,49 |
+| 4096² | 300 | **52,85** | 5,25 | 6,21 | 7,12 |
+
+⚠️ **O pen-down custa ~51 ms a 4096²** — a sessão nasce alocando ~1 GB de planos (o *first-touch* que
+a §5.31 mediu no `measure_density`: `944 MB` de grid) — e cada move 1,8-5,2 ms, vezes os eventos de
+ponteiro que cabem num frame. **É isso o `stamps` do log, e é a fronteira agora.** Fica NOMEADA, não
+consertada nesta wave.
+
+#### 5.33.3 O gate, e a fixture que acusava o código errado
+
+`a_frame_slowed_by_another_tenant_does_not_starve_the_water`, com as **duas metades** (o orçamento não
+desaba **e** não cresce) — porque as duas correções se cobrem numa fixture só.
+
+⚠️ **A primeira versão do gate passava `dt = 60` FIXO enquanto o próprio tick custava ~40** — um frame
+que **não fecha a própria conta**. Nele o `non_sim` caía abaixo do alvo, o recuo disparava *com razão*,
+e o gate reprovava sobre produto **correto**. O `dt` agora é realimentado (`estrangeiro + o que o tick
+custou`). *Uma fixture que não fecha a própria conta acusa o código errado.*
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

@@ -2310,3 +2310,151 @@ fn measure_whether_the_painters_own_deposit_is_partition_invariant() {
         println!("  {hardness:.1}       {pior:+5}   {n:5}   {onde:?}");
     }
 }
+
+/// 🖼️🖼️ **O QUADRO DO VEREDITO** — os TRÊS motores na figura da queixa, lado a lado.
+///
+/// `PAINTER (a referência) | FLIP que SHIPA | FLIP NOVO | a diferença NOVO−PAINTER`
+///
+/// A figura é a estrela de **um traço** desenhada com a **mão LENTA** (o passo mínimo que o
+/// pipeline de autoria produz, `0,106·r` — o lado da cerca em que o defeito vive), com dureza
+/// baixa: exatamente o gesto que o handoff §7 nomeia como o julgamento final.
+///
+/// ⚠️ **Isto não substitui o smoke no app** — substitui *discutir sobre números*. O veredito é do
+/// Enio, e ele precisa de pixels.
+///
+/// ```text
+/// cargo test -p ph2d-flip-render --release --test painter_look render_the_verdict -- --ignored
+/// ```
+#[test]
+#[ignore = "sonda de imagem; roda com --ignored"]
+fn render_the_verdict_three_engines_side_by_side() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let dir = std::path::Path::new("/home/enio/flip_veredito");
+    std::fs::create_dir_all(dir).expect("criar diretorio");
+    const S: u32 = 640;
+    // ⚠️ **A PROPORÇÃO é parte da fixture, e a 1ª versão desta sonda a errou.** O defeito foi
+    // medido numa estrela de raio 26 com traço `r = 7` — razão **0,27**. Com `r = 26` sobre raio
+    // 250 (razão 0,10) as três colunas saem indistinguíveis e o diff sai preto: a imagem diz
+    // *"está tudo bem"* sobre um desenho que **não contém o fenômeno**. `r = 67` sobre 250
+    // reproduz a razão de onde a cunha escura vive.
+    for (nome, r, hardness) in [
+        ("h0.2", 67.0_f32, 0.2_f32),
+        ("h0.4", 67.0, 0.4),
+        ("h0.7", 67.0, 0.7),
+        ("h1.0_controle", 67.0, 1.0),
+    ] {
+        let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.52, 250.0_f32);
+        let mut corners: Vec<(f32, f32)> = (0..5)
+            .map(|k| {
+                let a =
+                    -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+                (cx + outer * a.cos(), cy + outer * a.sin())
+            })
+            .collect();
+        corners.push(corners[0]);
+        // MÃO LENTA: o passo mínimo que a autoria de fato entrega (doc do `sampling_invariance`).
+        let mut pts = vec![corners[0]];
+        for w in corners.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let len = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let n = (len / (0.106 * r)).ceil().max(1.0) as usize;
+            for k in 1..=n {
+                let t = k as f32 / n as f32;
+                pts.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
+            }
+        }
+        let velho = render_sized(&device, &queue, &flip_drawing(&pts, r, hardness), S, S);
+        let novo = new_engine_alpha(&pts, r, hardness, S, S);
+        let dep = painter_deposit_sized(&pts, r, hardness, S, S);
+        let cols = 4;
+        let mut img = vec![0u8; (S * cols * S * 3) as usize];
+        for y in 0..S {
+            for x in 0..S {
+                let i = (y * S + x) as usize;
+                let a_velho = f32::from(velho[i * 4 + 3]) / 255.0;
+                let a_novo = novo[i];
+                let a_dep = dep[i];
+                let put = |img: &mut [u8], col: u32, rgb: [u8; 3]| {
+                    let o = ((y * S * cols + col * S + x) * 3) as usize;
+                    img[o..o + 3].copy_from_slice(&rgb);
+                };
+                put(&mut img, 0, over_dark(a_dep));
+                put(&mut img, 1, over_dark(a_velho));
+                put(&mut img, 2, over_dark(a_novo));
+                let d = (a_novo - a_dep) * 4.0;
+                put(
+                    &mut img,
+                    3,
+                    [
+                        ((-d).clamp(0.0, 1.0) * 255.0) as u8,
+                        (d.clamp(0.0, 1.0) * 255.0) as u8,
+                        30,
+                    ],
+                );
+            }
+            for k in 1..cols {
+                let o = ((y * S * cols + k * S) * 3) as usize;
+                img[o..o + 3].copy_from_slice(&[200, 60, 60]);
+            }
+        }
+        let nome_arq = format!("PAINTER__SHIPA__NOVO__DIFF_{nome}.bmp");
+        write_bmp(&dir.join(&nome_arq), S * cols, S, &img);
+
+        // ⚠️ **E o RECORTE da ponta, ampliado** — sem ele o artefato não mostra o defeito. A tela
+        // inteira faz as três estrelas parecerem iguais (a cunha é local e a figura é grande), e
+        // foi exatamente isso que a 1ª rodada desta sonda produziu: uma imagem dizendo *"está tudo
+        // bem"*. A ampliação é NEAREST de propósito — um filtro suave inventaria a borda que a
+        // comparação existe para julgar.
+        const CW: u32 = 260;
+        const CH: u32 = 210;
+        const Z: u32 = 3;
+        let (ox, oy) = (S / 2 - CW / 2, 6);
+        let mut zoom = vec![0u8; (CW * 3 * Z * CH * Z * 3) as usize];
+        for zy in 0..CH * Z {
+            for col in 0..3u32 {
+                for zx in 0..CW * Z {
+                    let sx = ox + zx / Z + col * S;
+                    let sy = oy + zy / Z;
+                    let src = ((sy * S * cols + sx) * 3) as usize;
+                    let dst = ((zy * CW * 3 * Z + col * CW * Z + zx) * 3) as usize;
+                    zoom[dst..dst + 3].copy_from_slice(&img[src..src + 3]);
+                }
+            }
+            for k in 1..3u32 {
+                let d = ((zy * CW * 3 * Z + k * CW * Z) * 3) as usize;
+                zoom[d..d + 3].copy_from_slice(&[200, 60, 60]);
+            }
+        }
+        write_bmp(
+            &dir.join(format!("PONTA_ampliada_{nome}.bmp")),
+            CW * 3 * Z,
+            CH * Z,
+            &zoom,
+        );
+        // O número ao lado da imagem: quem está mais perto da referência.
+        // ⚠️ **O PICO, não a média.** A queixa do Enio é uma CUNHA — um defeito local sobre uma
+        // tela quase toda vazia —, e a média sobre 640² a dilui até parecer que não existe.
+        let (mut pv, mut pn) = (0i32, 0i32);
+        for y in 0..S {
+            for x in 0..S {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let i = (y * S + x) as usize;
+                let t = (dep[i] * 255.0).round() as i32;
+                let dv = i32::from(velho[i * 4 + 3]) - t;
+                let dn = (novo[i] * 255.0).round() as i32 - t;
+                if dv.abs() > pv.abs() {
+                    pv = dv;
+                }
+                if dn.abs() > pn.abs() {
+                    pn = dn;
+                }
+            }
+        }
+        println!("  {nome_arq}   PICO contra o PAINTER -- SHIPA {pv:+5}/255   NOVO {pn:+5}/255");
+    }
+    println!("\n  escrito em {}", dir.display());
+}

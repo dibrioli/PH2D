@@ -1008,7 +1008,43 @@ em curso mexe).
 
 ---
 
-## 15. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+## 15. ⭐ O QUADRO DO VEREDITO — render-and-look, os três motores lado a lado
+
+`render_the_verdict_three_engines_side_by_side` escreve em `/home/enio/flip_veredito/`:
+
+```
+PAINTER (a referência) | FLIP que SHIPA | FLIP NOVO | diff (NOVO − PAINTER)
+```
+
+mais o recorte **`PONTA_ampliada_*`** (nearest ×3), em quatro durezas, na estrela de **um traço**
+com **mão LENTA** (`0,106·r`, o lado da cerca onde o defeito vive).
+
+**O PICO contra o Painter, fora da franja:**
+
+| dureza | SHIPA | NOVO |
+|---|---|---|
+| 0,2 | **+129** | **−12** |
+| 0,4 | **+131** | **−17** |
+| 0,7 | **+175** | **−46** |
+
+E a imagem diz o mesmo que o número: o Painter faz a ponta **rombuda**, o motor que shipa a faz
+**mais alta e pontuda**, o motor novo **reproduz a forma do Painter**.
+
+### ⚠️ Duas lições de FIXTURE, as duas nesta sonda, as duas minhas
+
+1. **A PROPORÇÃO é parte da fixture.** A 1ª versão usou `r = 26` sobre raio 250 (razão **0,10**)
+   quando o defeito foi medido em `r = 7` sobre 26 (razão **0,27**). As três colunas saíram
+   indistinguíveis e o diff saiu preto: **a imagem dizia "está tudo bem" sobre um desenho que não
+   continha o fenômeno.**
+2. **A MÉDIA dilui um defeito LOCAL.** Com a média sobre 640² os números eram `0,42` contra `0,04`
+   — verdadeiros e inúteis, porque a queixa do Enio é uma **cunha**. O pico conta a história:
+   `+131` contra `−17`.
+
+E a ampliação existe pela MESMA razão: na tela inteira as três estrelas parecem iguais.
+
+---
+
+## 16. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
 
 1. ~~**ANTI-ALIASING**~~ — **FECHADO no §11.**
 2. ~~**As features do §8**~~ — **AUDITADAS no §12.4**: um item de projeto (o cap) e quatro
@@ -1022,7 +1058,7 @@ ON · airbrush · tip Dots/Squares · fade sub-pixel), trocar a saída para text
 
 ---
 
-## 16. Fontes
+## 17. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

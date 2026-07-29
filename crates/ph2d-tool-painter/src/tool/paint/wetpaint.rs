@@ -52,9 +52,43 @@ use super::*;
 use ph2d_wet_paint::painter::{Dirty, Engine};
 use std::sync::Weak;
 
-/// 40 Hz fixed-step (SPEC §5); at most 5 steps per frame, backlog dropped.
+/// 40 Hz fixed-step (SPEC §5); at most [`WET_MAX_STEPS`] steps per frame, backlog dropped.
 const WET_STEP_S: f32 = 1.0 / 40.0;
-const WET_MAX_STEPS: usize = 5;
+
+/// **Quantos passos de sim um frame pode pagar** — e o número é MEDIDO, porque o anterior fechava um
+/// laço de realimentação positiva (Enio, smoke de 2026-07-28: *"IMG 4096, 1 pincelada grande e molhada,
+/// FPS para em 4"*).
+///
+/// # O mecanismo, e por que ele é invisível a `dt` fixo
+///
+/// O shell chama `on_tick(frame_ms_now)`: **o `dt` é o wall clock do frame ANTERIOR**. Um frame lento
+/// entrega um `dt` grande, o `acc` pede mais passos, o tick fica mais caro — e o frame seguinte fica
+/// ainda mais lento. Toda medição a `dt = 16,6` mostra a água custando ~2 ms e não vê nada disso; a
+/// varredura de `dt` é que a expõe (`measure_whether_the_tick_feeds_back_on_a_slow_frame`), a 4096²:
+///
+/// ```text
+///   dt (ms)      16,6    33,3    57,1     120     250
+///   tick p50     2,08    2,75    6,36   12,36   50,93     ← com o cap em 5
+/// ```
+///
+/// 4 FPS são 250 ms/frame, e ali a água sozinha cobrava **50,93 ms p50 (137 max)**. O log do produto
+/// mostra a escada acontecendo: `periodo real` 16,5 → 25,7 → 29,6 → **57,1 ms**.
+///
+/// # Por que 2, e não 5 nem 1
+///
+/// Ablação do próprio cap, a 4096², `dt = 250`: **1 → 2,69 ms · 2 → 5,79 · 3 → 9,74 · 5 → 50,93**. O
+/// custo é governado pela CONTAGEM (com 1 o tick fica **plano em todo o `dt`**, que é a assinatura de
+/// laço fechado).
+///
+/// A sim é 40 Hz e o display 60, então o regime pede **0,67 passo por frame**: um cap de 2 sustenta o
+/// tempo real com folga de um passo de catch-up, e limita o pior caso a **5,8 ms num orçamento de
+/// 16,6**. Um cap de 1 seria mais barato (2,7 ms) e **mataria todo catch-up** — a água nunca
+/// alcançaria o relógio num frame acima de 25 ms.
+///
+/// ⚠️ **O trade é deliberado e tem precedente no repo:** sob carga a água passa a simular MENOS tempo
+/// (câmera lenta) em vez de derrubar o frame. É exatamente a política do `max_substeps` da física, cujo
+/// `warn: dropped Xs of sim time` aparece no mesmo log — ela se protege assim, e a água não se protegia.
+const WET_MAX_STEPS: usize = 2;
 
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio

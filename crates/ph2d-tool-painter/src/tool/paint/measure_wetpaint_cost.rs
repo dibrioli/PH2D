@@ -313,3 +313,122 @@ fn measure_what_a_frame_of_live_water_costs() {
     }
     println!();
 }
+
+/// **O CUSTO DO TICK EM FUNÇÃO DO `dt`** — a pergunta que o log do produto abriu (2026-07-28).
+///
+/// O shell chama `on_tick(frame_ms_now)`: o `dt` **é o wall clock do frame anterior**. Se o custo do
+/// tick crescer com o `dt`, um frame lento pede um tick mais caro, que deixa o frame seguinte mais
+/// lento — **realimentação positiva**, e é assim que 60 FPS viram 4 sem que nenhuma medida a `dt`
+/// FIXO mostre problema. A sonda irmã mede a `dt = 16,6` e vê 3,5 ms; esta varre o `dt`.
+///
+/// ⚠️ O log do Enio traz `frame p50=35,1` com `dispatch p50=1,9` e `periodo real 57,1 ms` — o Painter
+/// é 5% do frame, então o que esta tabela procura é se a água **realimenta** o resto.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_whether_the_tick_feeds_back_on_a_slow_frame() {
+    println!(
+        "\n{:<8} {:>8} {:>12} {:>12}",
+        "tela", "dt ms", "tick p50 ms", "tick max ms"
+    );
+    for side in [2048u32, 4096] {
+        for dt in [16.6f32, 33.3, 57.1, 120.0, 250.0] {
+            let mut t = wetted(side, 100.0);
+            let mid = (side / 2) as f32;
+            let x0 = 120.0;
+            let x1 = ((side as f32) - 120.0).min(x0 + 400.0);
+            t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+            let mut x = x0 + 40.0;
+            while x <= x1 {
+                t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+                x += 40.0;
+            }
+            t.on_canvas_pointer(cp([x1, mid], PointerPhase::Up));
+
+            let mut ticks = Vec::new();
+            for _ in 0..12 {
+                let t1 = Instant::now();
+                ph2d_editor_core::tool::Tool::on_tick(&mut t, dt);
+                ticks.push(t1.elapsed().as_secs_f64() * 1e3);
+                let _ = t.take_preview_arc();
+            }
+            ticks.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            println!(
+                "{side:<8} {dt:>8.1} {:>12.2} {:>12.2}",
+                ticks[ticks.len() / 2],
+                ticks[ticks.len() - 1]
+            );
+        }
+    }
+    println!();
+}
+
+/// **O TICK DA ÁGUA NÃO REALIMENTA UM FRAME LENTO** — a propriedade, não o número.
+///
+/// O shell chama `on_tick(frame_ms_now)`, então o `dt` **é o wall clock do frame anterior**: se o custo
+/// do tick crescer com o `dt`, um frame lento compra um tick caro que compra um frame mais lento. Foi
+/// isso que levou 4096² a **4 FPS** no smoke de 2026-07-28, e nenhuma medida a `dt` FIXO podia vê-lo.
+///
+/// ⚠️ **O oráculo é uma RAZÃO** (`dt` de um frame travado ÷ `dt` de 60 Hz), e não um wall-clock: um
+/// teto absoluto mede o perfil e a carga da máquina, enquanto a razão pergunta a coisa certa — *o custo
+/// deste tick depende de quão lento foi o frame anterior?* Um laço fechado é ilimitado por natureza,
+/// então qualquer teto o pega; a barra fica larga de propósito para não flakar sob suíte carregada.
+///
+/// ⚠️ **Mutação que sangra:** `WET_MAX_STEPS` de volta a 5 — a razão medida vai a **24×**.
+#[test]
+fn the_wet_tick_does_not_feed_back_on_a_slow_frame() {
+    /// O `dt` de um frame de 60 Hz.
+    const FAST_MS: f32 = 16.6;
+    /// O `dt` de um frame travado a 4 FPS — o que o smoke reportou.
+    const STALLED_MS: f32 = 250.0;
+    /// Quantas vezes o tick pode ficar mais caro quando o frame anterior travou.
+    /// Quantas vezes o tick pode ficar mais caro quando o frame anterior travou.
+    ///
+    /// ⚠️ **Medido dos DOIS lados, não escolhido:** com o cap do produto (2) a razão é **2,9×**; com o
+    /// cap antigo (5) ela é **7,8×**. O teto fica no meio, com folga para os dois — um bar colado num
+    /// dos lados vira flake sob suíte carregada, e a 1ª versão deste gate mediu 6,1 contra teto 6,0.
+    ///
+    /// ⚠️ E a razão **não é 1,0**, de propósito: o catch-up de um passo é intencional (sem ele a água
+    /// nunca alcança o relógio num frame acima de 25 ms). A realimentação foi **contida**, não
+    /// eliminada — e o gate afirma exatamente isso.
+    const MAX_RATIO: f64 = 5.0;
+
+    let cost = |dt: f32| -> f64 {
+        // ⚠️ **4096², e a tela é PARTE do fixture.** A 1024² a razão mede 5,4× com o cap velho e o
+        // gate fica VERDE sobre o defeito reportado — a realimentação só domina quando um passo de sim
+        // custa o bastante para empurrar o frame seguinte, e é a 4096² que o Enio a viu. Uma fixture
+        // menor aqui não é "um teste mais barato": é um teste de outra coisa.
+        let mut t = wetted(4096, 100.0);
+        t.on_canvas_pointer(cp([140.0, 2048.0], PointerPhase::Down));
+        let mut x = 180.0f32;
+        while x <= 560.0 {
+            t.on_canvas_pointer(cp([x, 2048.0], PointerPhase::Move));
+            let _ = t.take_preview_arc();
+            x += 40.0;
+        }
+        t.on_canvas_pointer(cp([560.0, 2048.0], PointerPhase::Up));
+        let mut ms = Vec::new();
+        for _ in 0..9 {
+            let t0 = Instant::now();
+            ph2d_editor_core::tool::Tool::on_tick(&mut t, dt);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let _ = t.take_preview_arc();
+        }
+        ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        ms[ms.len() / 2]
+    };
+
+    let fast = cost(FAST_MS);
+    let stalled = cost(STALLED_MS);
+    // Controle: sem trabalho medível a razão não significa nada.
+    assert!(
+        fast > 0.02,
+        "controle: o tick da agua nao custou nada ({fast:.4} ms) — a fixture nao tem agua viva"
+    );
+    let ratio = stalled / fast;
+    assert!(
+        ratio <= MAX_RATIO,
+        "o tick REALIMENTA: {stalled:.2} ms depois de um frame de {STALLED_MS} ms contra \
+         {fast:.2} ms a 60 Hz = {ratio:.1}x (teto {MAX_RATIO:.0}x)"
+    );
+}

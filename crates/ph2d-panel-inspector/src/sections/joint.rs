@@ -62,7 +62,7 @@ const KIND_WHEEL: u8 = 6;
 /// joint do rapier** (a ponte o roteia para um passe de impulso próprio), e o
 /// primeiro que não pode PARTIR: nada mede a reação de algo que não está no
 /// `ImpulseJointSet`, então a caixa de Break não é oferecida a ele.
-const KIND_PULLEY: u8 = 7;
+pub(crate) const KIND_PULLEY: u8 = 7;
 
 /// Does this kind have a limit RANGE? A Pin's angular arc, a Slider's stroke,
 /// a Wheel's suspension travel.

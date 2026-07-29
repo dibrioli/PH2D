@@ -119,3 +119,36 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
     host.store_mut()
         .set_number_value(ids::INSP_WHEEL_BREAK_FORCE, f64::from(info.break_force));
 }
+
+/// **O `Rope Length` de uma POLIA é DERIVADO, então a row tem de acompanhar.**
+///
+/// Enio (2026-07-29): *"diferente das outras joints que mostram o tamanho real da
+/// corda, essa junta não mostra"*.
+///
+/// O `L0` de uma polia não é digitado: a ponte o SEMEIA da rota que as roldanas
+/// desenham (`!joint.anchored`), e agora também o re-deriva a cada vez que o
+/// artista dimensiona uma roldana. Os irmãos rodam sob `entity_changed` — o
+/// contrato certo para um número que só o artista muda —, e é exactamente esse
+/// contrato que um número **derivado pelo produto** quebra: a entidade não muda,
+/// então a caixa guarda o valor de antes da derivação e mostra 1,00 sobre uma
+/// corda de 11,96 m.
+///
+/// ⚠️ **O guard é o FOCO, e ele é load-bearing:** enquanto a caixa está focada o
+/// buffer tem uma edição parcial que o componente ainda não viu, e re-empurrar
+/// ali apagaria o que o artista está digitando. Fora do foco, um re-push com o
+/// MESMO valor é no-op — então isto não briga com o stepper: uma vez autorado,
+/// `anchored` fica `true`, o `info` devolve o número do artista e o push repete o
+/// que já está lá.
+pub(crate) fn sync_derived_rope_length(host: &mut dyn PanelHostInternal) {
+    let Some(info) = state::current_inspector_joint() else {
+        return;
+    };
+    if info.kind_tag != crate::sections::joint::KIND_PULLEY {
+        return;
+    }
+    if host.store().focus_id() == Some(ids::INSP_JOINT_MAX_LENGTH) {
+        return;
+    }
+    host.store_mut()
+        .set_number_value(ids::INSP_JOINT_MAX_LENGTH, f64::from(info.max_length));
+}

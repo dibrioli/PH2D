@@ -16,6 +16,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorJointInfo, InspectorNameInfo, JointFieldEdit};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
@@ -953,4 +954,58 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
             );
         }
     }
+}
+
+/// **O `Rope Length` de uma POLIA acompanha o número que a ponte DERIVOU**
+/// (2026-07-29).
+///
+/// Enio: *"diferente das outras joints que mostram o tamanho real da corda, essa
+/// junta não mostra"*. O `L0` de uma polia não é digitado — a ponte o semeia da
+/// rota, e re-deriva a cada vez que o artista dimensiona uma roldana. Os irmãos
+/// desta família sincam sob `entity_changed`, o contrato certo para um número que
+/// só o artista muda, e é esse contrato que um número **derivado pelo produto**
+/// quebra: a seleção não mudou, então a caixa mostrava o valor de antes.
+///
+/// As duas metades num gate só, porque são uma decisão: **acompanha** quando o
+/// produto muda, e **não atropela** quando o artista está digitando.
+///
+/// Mutação: pôr a chamada de volta dentro do `if entity_changed` ⇒ a 1ª metade
+/// cai (a caixa fica em 2,0); tirar o guard de foco ⇒ a 2ª cai.
+#[test]
+fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
+    const PULLEY: u8 = 7;
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+
+    // A ponte semeou 11,965 na corda; a caixa ainda não sabe.
+    let mut info = joint(PULLEY);
+    info.max_length = 11.965;
+    set_current_inspector_joint(Some(info));
+    // Dois paints: no segundo a SELEÇÃO não mudou, que é exactamente o frame em
+    // que o valor derivado tinha de chegar e não chegava.
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let shown = host
+        .store()
+        .number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH);
+    assert!(
+        matches!(shown, Some(v) if (v - 11.965).abs() < 1.0e-3),
+        "a row mostrou {shown:?} sobre uma corda de 11,965 m — o número derivado \
+         não chegou à caixa, e é isso que *não mostra o tamanho real da corda* é"
+    );
+
+    // E com a caixa FOCADA o sync não pode atropelar a edição em curso.
+    host.store_mut()
+        .set_focus(Some(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH));
+    host.set_number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH, 42.0);
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let typed = host
+        .store()
+        .number_value(ph2d_editor_core::ids::INSP_JOINT_MAX_LENGTH);
+    assert!(
+        matches!(typed, Some(v) if (v - 42.0).abs() < 1.0e-3),
+        "a caixa focada foi sobrescrita ({typed:?} em vez de 42) — o sync apagou o \
+         que o artista estava digitando"
+    );
+    set_current_inspector_joint(None);
 }

@@ -564,11 +564,26 @@ defeitos independentes.
 padrão de todas as joints ou 1/4 do diâmetro atual."* A v1 desenhava no **DOBRO**
 (`JOINT_ANCHOR_RING_PX * 2.0`, raio 30) sob o racional *"uma roldana é uma roda,
 não um ponto de amarração"* — e essa cerca é decisão de **produto**, não de
-geometria. Foi ao **padrão** (raio 15, mesma espessura de traço), porque ir ao
-padrão em vez de a um número novo é o que **apaga o caso especial**: a alça de
-roldana passa a ser a MESMA marca que toda outra alça de joint. O ALVO acompanha
-(`hit_half_px`), e o gate `the_hit_rects_are_never_smaller_than_the_marks` pina a
-igualdade nos três kinds.
+geometria. Foi ao **padrão** — e **em duas rodadas**, porque a 1ª errou de marca: eu fui
+ao **anel da âncora B** (`JOINT_ANCHOR_RING_PX` = 15) escolhendo a constante pelo
+NOME (*"o anel padrão"*), e o padrão que ele aponta na 2ª rodada, com screenshot,
+é o **ponto cheio da âncora A** (`JOINT_ANCHOR_DOT_PX` = 9, **diâmetro 18**):
+*"veja o ponto amarelo. aquele é o diâmetro padrão dos gizmos"*. ⚠️ **Isso
+reconcilia as duas opções que ele deu na 1ª rodada** — *"1/4 do diâmetro atual"*
+dos 60 px originais são 15 px de diâmetro, e o padrão dá 18: o `RING` era o meio
+do caminho. O desenho fica **oco** de propósito (o diâmetro é o padrão, mas alça
+de roldana e âncora fazem coisas diferentes, e um disco cheio no mesmo tamanho as
+tornaria a mesma marca).
+
+⚠️ **E uma mutação SOBREVIVEU, com duas lições.** Crescer só o **desenho**,
+deixando o alvo, passava pelo gate. (1) A **representação** passou a impedir a
+divergência acidental: o braço de desenho lê o `half` da MESMA tabela de alvo,
+então há **uma cópia do número** (o grip de parâmetro segue a exceção declarada —
+desenha 6, pega 8). (2) A **mensagem do gate afirmava** que desenho e alvo andam
+juntos, e ele **não pode** verificar isso — o raio desenhado não é observável por
+este harness (`n_paths` conta paths, não mede um). A afirmação foi corrigida para
+o que ele de fato mede: *vender cobertura que não existe é pior que a cobertura
+faltar.*
 
 **(2) OS SALTOS EXPLOSIVOS — a metade grave, e ela estava MEDIDA antes de eu
 tocar em nada** (`tests/measure_pulley_radius.rs`). O `L0` da corda

@@ -4,6 +4,12 @@
 **Commits desta wave:** 4 (`09cf3e7fe` · `e9a63bed0` · `2f94b0705` · a cena + os splits de LOC)
 **Estado:** fechada, **pendente de smoke**
 
+⚠️ **A linha carrega DUAS waves.** Depois desta veio a **turbulência** (W6b), com handoff próprio —
+[`HANDOFF_INTEGRACAO_line_Vector_turbulence_2026-07-28.md`](HANDOFF_INTEGRACAO_line_Vector_turbulence_2026-07-28.md).
+As duas tocam o MESMO `FxOp` e **compartilham o bump de `PROJECT_SCHEMA` (38)**: um save v37 já é
+recusado por ele, então um segundo degrau jogaria fora exatamente os mesmos arquivos. Integre as
+duas juntas.
+
 Um degrau da pilha de FX raster passa a dizer *como a cor dele encosta na que já está ali*.
 Multiplicador, não um décimo tipo: as **vinte leis** vezes os degraus que já existem.
 

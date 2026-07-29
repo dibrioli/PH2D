@@ -180,9 +180,9 @@ fn a_frame_slowed_by_another_tenant_does_not_starve_the_water() {
     /// (`WET_BUDGET_MIN_MS`, 1 ms) e a sim vai a ~2 Hz — o sintoma reportado.
     const MIN_BUDGET_MS: f32 = 3.0;
     /// E o teto: a régua é o PISO do `dt` (o vsync, ~16,6), então o orçamento fica
-    /// preso a `0,6 × 16,6 ≈ 10 ms` por mais lento que o frame fique. Com uma
-    /// média no lugar do piso ele sobe para ~60.
-    const MAX_BUDGET_MS: f32 = 15.0;
+    /// preso ao próprio período por mais lento que o frame fique. Com uma média no
+    /// lugar do piso ele sobe para ~60.
+    const MAX_BUDGET_MS: f32 = 22.0;
 
     let mut t = big_puddle(true);
     // Aquece com frames NORMAIS para o controlador medir o período do vsync.

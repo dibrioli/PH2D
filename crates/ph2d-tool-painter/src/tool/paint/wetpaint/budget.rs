@@ -72,15 +72,40 @@
 
 /// A semente do orçamento (ms) — de onde o controlador parte antes de medir o frame.
 const WET_BUDGET_SEED_MS: f32 = 4.0;
-/// Quanto do período do frame a simulação pode tomar, no máximo. `0,6 × 16,6 ≈ 10 ms` a 60 Hz e
-/// `0,6 × 6,9 ≈ 4,1` a 144 Hz — a fração é o que faz o teto ser do HARDWARE do artista.
-const WET_BUDGET_MAX_FRACTION: f32 = 0.6;
+/// Quanto do período do frame a simulação pode tomar, no máximo.
+///
+/// ⚠️ **1,0 — um frame INTEIRO — e o número vem de um fato do motor, não de generosidade:** o
+/// acumulador `acc` já limita a sim a `período ÷ 25 ms` passos por frame (0,67 a 60 Hz), então um
+/// orçamento maior **não** compra mais simulação; ele só evita que um passo ATÔMICO seja adiado. Com
+/// `0,6` o teto era 10 ms e um passo custa 12-17 ⇒ **todo passo era adiado ao menos um frame**, e a
+/// água rodava a metade da taxa por um teto que não protegia nada que o `acc` já não protegesse.
+const WET_BUDGET_MAX_FRACTION: f32 = 1.0;
 /// Piso do orçamento: mesmo estourando, a água nunca é completamente congelada.
 const WET_BUDGET_MIN_MS: f32 = 1.0;
-/// Aditivo por frame na subida (AIMD: sobe devagar, desce pela metade).
-const WET_BUDGET_GROW_MS: f32 = 0.5;
+/// Aditivo por frame na subida (AIMD: sobe devagar, desce pela metade). 1 ms leva o orçamento da
+/// semente ao teto em ~13 frames (0,2 s) — rápido o bastante para o artista não ver a água acordar.
+const WET_BUDGET_GROW_MS: f32 = 1.0;
 /// A folga sobre o período natural que ainda conta como *"o frame coube"*.
-const WET_FRAME_SLACK_MS: f32 = 2.0;
+///
+/// ⚠️ **8 ms, e o número é uma DECISÃO DE PRODUTO declarada pelo Enio, não uma folga técnica.** Um
+/// passo de sim custa 12-17 ms e um quadro de 60 Hz tem 16,6 ⇒ **o frame que contém um passo perde o
+/// vsync por construção**. Com uma folga apertada (2 ms) o controlador estabiliza cedendo metade da
+/// taxa da água para segurar os últimos quadros: medido em laço fechado, orçamento **7,0 ms ⇒ a sim
+/// em ~25 Hz** com o frame a 60 fps.
+///
+/// O Enio reportou três vezes o MESMO veredito — *"o FPS não caiu abaixo de 60 mas a animação estava
+/// lenta e travada"* — ou seja, **a água tem prioridade sobre os últimos quadros por segundo**. Com
+/// 8 ms de folga o alvo vira ~24,6 ms (40 fps): a água roda os **40 Hz cheios** e o frame passa a
+/// ~20 ms (50 fps) enquanto ela está viva. O recuo continua guardando o caso patológico (um passo de
+/// 100 ms estoura o alvo com folga e a água desacelera).
+const WET_FRAME_SLACK_MS: f32 = 8.0;
+/// Peso do EWMA do `dt`. ⚠️ **A decisão é sobre carga SUSTENTADA, nunca sobre um frame** — um passo
+/// de sim é ATÔMICO e custa mais que um quadro, então o frame que o contém estoura *sempre*. Decidir
+/// pelo `dt` instantâneo fazia o recuo disparar em TODO passo, e como ele é ×0,5 contra +1 de
+/// subida, o orçamento **catracava até o piso**: foi exactamente isto que o Enio viu como *"simulação
+/// muitíssimo mais devagar"* (log: `tool-tick=17.31ms` numa amostra e `0.00` em todas as outras).
+/// 0,05 dá memória de ~20 frames — um passo isolado quase não a move, carga real move.
+const WET_DT_EWMA: f32 = 0.05;
 /// Decaimento do PISO do período, por frame. O período é o `min` do `dt` observado — um frame lento
 /// por culpa de outro inquilino não pode movê-lo —, e este creep para cima (0,05%/frame ≈ 3%/s) é o
 /// que o deixa seguir um display que de fato mudou de taxa.
@@ -105,8 +130,17 @@ pub(in crate::tool::paint) struct SimBudget {
     pub(in crate::tool::paint) per_frame_ms: f32,
     /// O período NATURAL do app (ms) — a régua, MEDIDA em vez de assumida.
     period_ms: f32,
-    /// Quanto a sim gastou no tick ANTERIOR (ms).
-    last_sim_ms: f32,
+    /// EWMA do `dt` e do `dt` SEM a água: a decisão é sobre carga sustentada, e um passo atômico
+    /// estoura o quadro que o contém por construção.
+    dt_avg_ms: f32,
+    non_sim_avg_ms: f32,
+    /// **Quanto o TICK INTEIRO gastou no frame anterior** (ms) — os passos E o composite.
+    ///
+    /// ⚠️ É o tick inteiro, não só `step_simulation`: o composite é custo da ÁGUA, e atribuí-lo ao
+    /// "outro inquilino" fazia a água parecer inocente em toda medição e crescer sem limite. Medido
+    /// no gate CPU-bound: com só o passo na conta, `non_sim` dava 25 contra um alvo de 20,4 ⇒ o ramo
+    /// do inquilino estrangeiro vencia sempre e o recuo NUNCA disparava (frame em 2,06× o overhead).
+    last_tick_ms: f32,
 }
 
 impl SimBudget {
@@ -121,7 +155,9 @@ impl SimBudget {
             // 60 Hz como semente; o controlador corrige na primeira dúzia de ticks a partir do `dt`
             // REAL, seja qual for o monitor.
             period_ms: 1000.0 / 60.0,
-            last_sim_ms: 0.0,
+            dt_avg_ms: 1000.0 / 60.0,
+            non_sim_avg_ms: 1000.0 / 60.0,
+            last_tick_ms: 0.0,
         }
     }
 
@@ -135,8 +171,13 @@ impl SimBudget {
             .max(WET_PERIOD_MIN_MS);
         let target = self.period_ms + WET_FRAME_SLACK_MS;
         let ceiling = self.period_ms * WET_BUDGET_MAX_FRACTION;
-        // O que este frame custou SEM a água. É ele que decide de quem é a culpa.
-        let non_sim = dt_ms - self.last_sim_ms;
+        // A decisão é sobre carga SUSTENTADA: um passo é atômico e custa mais que um quadro, então o
+        // frame que o contém estoura sempre. `dt` instantâneo aqui faz o recuo disparar em todo
+        // passo e o orçamento catracar até o piso.
+        self.dt_avg_ms += (dt_ms - self.dt_avg_ms) * WET_DT_EWMA;
+        // E o que o frame custou SEM a água — quem decide de quem é a culpa.
+        self.non_sim_avg_ms += ((dt_ms - self.last_tick_ms) - self.non_sim_avg_ms) * WET_DT_EWMA;
+        let (dt_ms, non_sim) = (self.dt_avg_ms, self.non_sim_avg_ms);
         if dt_ms <= target {
             // O frame coube: há folga (num app com vsync ela é o present stall, e gastá-la é DE
             // GRAÇA). Sobe devagar.
@@ -145,15 +186,25 @@ impl SimBudget {
             // Estourou E o frame teria cabido sem nós: a culpa é da água. Desce pela metade.
             self.per_frame_ms = (self.per_frame_ms * 0.5).max(WET_BUDGET_MIN_MS);
         } else {
-            // Estourou por conta de OUTRO inquilino (o carimbo de dabs, um load, um painel):
-            // encolher a água não salva o frame e só congela a tinta. Segura onde está — mas nunca
-            // acima do teto, que segue sendo do período.
-            self.per_frame_ms = self.per_frame_ms.min(ceiling);
+            // Estourou por conta de OUTRO inquilino (o carimbo de dabs, um load, um painel).
+            // Encolher a água não salva o frame e só congela a tinta ⇒ ela CRESCE de volta à sua
+            // parte, como no ramo de cima.
+            //
+            // ⚠️ **Crescer, não "segurar"** — a primeira versão segurava, e segurar num piso é ficar
+            // preso nele para sempre: o diagnóstico mostrou o orçamento parado em **1,04 ms** por 80
+            // frames depois de três recuos que a transição do EWMA disparou. Quem protege o frame
+            // aqui é o TETO, que é do período; o recuo é só para quando a água é a culpada.
+            self.per_frame_ms = (self.per_frame_ms + WET_BUDGET_GROW_MS).min(ceiling);
         }
         // O teto do crédito é UM frame de orçamento: um bucket que entesoura devolve exatamente a
         // rajada que ele existe para impedir.
         self.credit_ms = (self.credit_ms + self.per_frame_ms).min(self.per_frame_ms);
-        self.last_sim_ms = 0.0;
+        self.last_tick_ms = 0.0;
+    }
+
+    /// O que o TICK inteiro custou neste frame — a conta que a atribuição usa.
+    pub(in crate::tool::paint) fn note_tick(&mut self, ms: f32) {
+        self.last_tick_ms = ms;
     }
 
     /// Este frame ainda pode pagar um passo?
@@ -165,6 +216,71 @@ impl SimBudget {
     /// estimativa se acumularia no bucket.
     pub(in crate::tool::paint) fn spend(&mut self, ms: f32) {
         self.credit_ms = (self.credit_ms - ms).max(WET_MAX_DEBT_MS);
-        self.last_sim_ms += ms;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Simula o LAÇO FECHADO do produto com um custo de passo FIXO — sem relógio nenhum.
+    ///
+    /// ⚠️ **Por que unidade e não medição:** a propriedade é *"o recuo não dispara no frame que
+    /// contém um passo atômico"*, e sob máquina carregada um passo custa de fato mais, o frame
+    /// estoura de verdade e o recuo dispara **com razão** — as faixas do produto correto e da
+    /// mutação se sobrepõem, e nenhum limiar de wall-clock as separa. A versão anterior deste gate
+    /// media 16,6 ms em repouso e 4,16 sob a suíte inteira, contra 5,2-6,5 da mutação: *flake por
+    /// construção*. Aqui o custo do passo é um NÚMERO, então só o controlador varia.
+    ///
+    /// Devolve o orçamento em regime.
+    fn closed_loop(step_ms: f32, frames: usize) -> f32 {
+        /// O resto do frame (encode + chrome), do log do produto.
+        const OVERHEAD_MS: f32 = 3.0;
+        /// O piso do vsync: o frame nunca é mais rápido que isso.
+        const VSYNC_MS: f32 = 1000.0 / 60.0;
+        let mut b = SimBudget::new();
+        let mut dt = VSYNC_MS;
+        for _ in 0..frames {
+            b.open_frame(dt);
+            let tick = if b.can_step() {
+                b.spend(step_ms);
+                step_ms
+            } else {
+                0.0
+            };
+            b.note_tick(tick);
+            dt = (OVERHEAD_MS + tick).max(VSYNC_MS);
+        }
+        b.per_frame_ms
+    }
+
+    /// **UM PASSO ATÔMICO NÃO CATRACA O ORÇAMENTO ATÉ O PISO** — o regime que o Enio reportou três
+    /// vezes (*"simulação muitíssimo mais devagar"*, `tool-tick=17.31ms` numa amostra e `0.00` nas
+    /// outras).
+    ///
+    /// Um passo custa mais que um quadro de 60 Hz ⇒ **o frame que o contém estoura por construção**.
+    /// Decidindo pelo `dt` instantâneo o recuo dispara em TODO passo e, sendo ×0,5 contra +1 de
+    /// subida, o orçamento catraca até o piso.
+    #[test]
+    fn an_atomic_step_does_not_ratchet_the_budget_to_the_floor() {
+        // 17 ms: o `tool-tick` que o log do Enio mostrou, e maior que o quadro.
+        let settled = closed_loop(17.0, 400);
+        assert!(
+            settled >= 12.0,
+            "o orcamento CATRACOU ate {settled:.2} ms com um passo de 17 ms (piso 12) — o recuo \
+             esta disparando no frame que contem o passo, que estoura por construcao"
+        );
+    }
+
+    /// **E um passo GENUINAMENTE impagável ainda faz o orçamento recuar** — a outra ponta, no mesmo
+    /// laço: se o recuo nunca disparasse, o gate acima ficaria verde com o controlador desarmado.
+    #[test]
+    fn a_step_the_frame_cannot_afford_still_backs_the_budget_off() {
+        let settled = closed_loop(120.0, 400);
+        assert!(
+            settled < 12.0,
+            "o orcamento ficou em {settled:.2} ms com um passo de 120 ms — o recuo nao disparou, e \
+             sem ele o gate irmao passa com o controlador desarmado"
+        );
     }
 }

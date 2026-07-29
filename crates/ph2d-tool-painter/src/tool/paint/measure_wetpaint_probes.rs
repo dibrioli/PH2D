@@ -597,3 +597,52 @@ fn measure_what_a_wet_stamp_costs() {
     }
     println!();
 }
+
+/// **O REGIME DO INQUILINO ESTRANGEIRO, frame a frame** — a sonda que achou o orçamento preso.
+///
+/// Ela imprime `dt`, custo do tick e ORÇAMENTO ao longo de 80 frames em que outro inquilino domina
+/// o quadro. Foi ela que mostrou o orçamento parado em **1,04 ms por 80 frames** depois de três
+/// recuos: o ramo *"a culpa é de outro"* SEGURAVA o orçamento onde estava, e segurar num piso é
+/// ficar preso nele para sempre. Hoje esse ramo CRESCE, e quem protege o frame é o teto.
+#[test]
+#[ignore = "diagnostico — rode com --release --ignored --nocapture"]
+fn measure_the_tenant_regime() {
+    const FOREIGN_MS: f64 = 60.0;
+    let mut t = big_puddle(true);
+    for _ in 0..40 {
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, 16.6);
+        let _ = t.take_preview_arc();
+    }
+    let mut dt = FOREIGN_MS;
+    println!("\n  {:>5} {:>9} {:>9} {:>9}", "k", "dt", "tick", "orcamento");
+    for k in 0..80 {
+        let t0 = Instant::now();
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, dt as f32);
+        let tick = t0.elapsed().as_secs_f64() * 1e3;
+        dt = FOREIGN_MS + tick;
+        let _ = t.take_preview_arc();
+        if k % 8 == 0 {
+            let b = t.paint.wetpaint.session.as_ref().expect("sessao").budget.per_frame_ms;
+            println!("  {k:>5} {dt:>9.2} {tick:>9.2} {b:>9.2}");
+        }
+    }
+}
+
+/// Quanto o orçamento assenta no regime da CATRACA — o número que o gate irmão vigia, com a máquina
+/// livre e sob carga, para o piso dele ser escolhido em vez de chutado.
+#[test]
+#[ignore = "diagnostico — rode com --release --ignored --nocapture"]
+fn measure_the_ratchet_regime() {
+    const OVERHEAD_MS: f64 = 3.0;
+    const VSYNC_MS: f64 = 16.6;
+    let mut t = big_puddle(true);
+    let mut dt = VSYNC_MS;
+    for _ in 0..200 {
+        let t0 = Instant::now();
+        ph2d_editor_core::tool::Tool::on_tick(&mut t, dt as f32);
+        dt = (OVERHEAD_MS + t0.elapsed().as_secs_f64() * 1e3).max(VSYNC_MS);
+        let _ = t.take_preview_arc();
+    }
+    let b = t.paint.wetpaint.session.as_ref().expect("sessao").budget.per_frame_ms;
+    println!("\n  orcamento em regime: {b:.2} ms\n");
+}

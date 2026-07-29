@@ -575,6 +575,7 @@ impl PainterTool {
     /// the engine's own gate) and composite whatever it moved. No session = a
     /// true no-op (the OFF contract: not one byte is looked at).
     pub(super) fn wetpaint_tick(&mut self, dt_s: f32) {
+        let t_tick = std::time::Instant::now();
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none() {
@@ -621,6 +622,11 @@ impl PainterTool {
         sess.acc = sess.acc.min(WET_STEP_S);
         if steps > 0 {
             self.wetpaint_composite();
+        }
+        // A conta da ÁGUA neste frame é o tick INTEIRO — passos E composite. É ela que a
+        // atribuição do orçamento usa para decidir de quem é a culpa de um frame lento.
+        if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+            sess.budget.note_tick(t_tick.elapsed().as_secs_f32() * 1e3);
         }
     }
 

@@ -162,6 +162,7 @@ reintegra sozinho.
 | **W2-B** ✅ | **a ruptura** — a corda parte pela tensão, o eixo cede pela resultante, e o readout do overlay volta a dizer alguma coisa |
 | **W3** ✅ | **a talha de verdade** — a roldana montada num corpo, e a vantagem mecânica de volta |
 | **W4** ✅ | **o DIFERENCIAL** — uma roldana com DOIS raios, e a vantagem mecânica CONTÍNUA que cai do quociente deles |
+| **W5** ✅ | **a COMPOSIÇÃO** — o tambor e a cadernal na mesma corda: as duas vantagens MULTIPLICAM (e a nota da Weston era falsa) |
 
 ⚠️ **Âncora de regressão do W1:** a polia de hoje é o caso especial *2 roldanas,
 raio 0, estáticas* — os gates atuais têm de ficar **verdes**, e é isso que prova
@@ -249,12 +250,94 @@ livre pelo chão. Encurtar a queda limita a velocidade; subir o tambor só adia.
 
 - **O segundo diâmetro não tem alça no canvas.** O aro do raio de ENTRADA tem; o de
   saída é só a row. A alça honesta é a mesma conversa da 2ª alça de âncora do joint.
-- **A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO e não foi montada numa cena:**
-  é este tambor com a cadernal móvel do W3 no meio da corda. Vale um smoke próprio.
+- ~~**A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO**~~ — **FALSO, e o W5 mediu.**
+  Sai uma composição, e ela vale **`2R/r`**. Ver §W5.
 - **O arco do enlace conta pelo raio de ENTRADA** (a corda abraça o tambor em que
   chegou). Num diferencial ele se reparte entre os dois diâmetros; o que ele
   acrescenta é quase constante e o `L0` o absorve, então quem move a carga — os
   trechos livres — está pesado exatamente.
+
+### W5 — a COMPOSIÇÃO (FECHADA, pendente de smoke)
+
+O W3 e o W4 shiparam com gates fortes e **nenhuma fixture os pôs na mesma corda**.
+O `wheel_jacobian` de um eixo montado passou a pesar os dois ramos pelo peso da
+engrenagem, e todo eixo montado do repo vivia numa rota de peso `1`: aquela
+multiplicação nunca rodou com outro número. **Uma multiplicação por um que ninguém
+viu falhar é uma multiplicação não medida.**
+
+**MEDIDO** (`measure_pulley_composition.rs`; contrapeso de 1 kg, tambor `R = 0,5`,
+cadernal móvel na carga; cada linha testada a −20% e +20% do previsto):
+
+| `r` de saída | engrenagem | previsto `2·R/r` | −20% | +20% |
+|---|---|---|---|---|
+| — (comum) | 1 | **2** | 1,6 kg sobe | 2,4 kg desce |
+| 0,250 | 2 | **4** | 3,2 kg sobe | 4,8 kg desce |
+| 0,125 | 4 | **8** | 6,4 kg sobe | 9,6 kg desce |
+| 0,0625 | 8 | **16** | 12,8 kg sobe | 19,2 kg desce |
+
+As duas vantagens **MULTIPLICAM**: a cadernal dá 2, o tambor dá `R/r`, e 1 kg
+chega a segurar 16 kg sem que ninguém digite um "16".
+
+⚠️ **A nota do W4 sobre a talha de WESTON estava ERRADA, e o modo de errar é
+instrutivo.** A Weston vale `2R/(R−r)`; esta composição vale `2R/r`. As duas
+**coincidem exatamente em `R = 2r`** — e o exemplo natural com que a nota foi
+escrita (`0,5 → 0,25`) é justamente esse ponto. Uma fórmula conferida num único
+exemplo é uma fórmula não conferida.
+
+A Weston de verdade precisa que **o mesmo eixo seja atravessado DUAS vezes com a
+cadernal no meio**: um contato de passagem (que transfere corda de um lado para o
+outro) *mais* a outra ponta enrolada no eixo por um raio diferente. São **duas**
+equações de não-escorregamento, e eliminar o `θ` delas deixa **duas** restrições
+escalares. O nosso nó é um contato de passagem cujos dois lados são **adjacentes na
+rota** por construção: duas equações, um `θ` eliminado, **uma** restrição — que é
+exatamente o `l_entra + (R/r)·l_sai = L₀` do W4. Não é uma peça que falta; é uma
+topologia diferente, e o gate mede a nossa numa fixture com `R = 4r`, onde as duas
+fórmulas **não** podem ser confundidas.
+
+⚠️ **Uma coluna da sonda previu errado e o produto estava certo:** eu esperava
+`eixo / tensão = 2·(R/r)` e a medição deu **2,00 em toda engrenagem**. O motivo já
+estava escrito no `apply` — `pulley_tension` publica o **PICO** (`base ·
+weight_max`) e o eixo recebe a tensão **BASE**, porque o Jacobiano dele já carrega
+os pesos. A razão entre os dois é o fator de **enlace sozinho**. O que multiplica
+está no absoluto: em equilíbrio o eixo carrega **o peso do bloco que ele segura**
+(78,9 N medidos contra 78,5 de `m·g`).
+
+**2 gates + 3 na cena, 5 mutações, 5 sangram** — inclusive a que prova o
+**CONTROLE**: com `gear()` devolvendo 4 para toda corda, as afirmações engrenadas
+passam e só a linha comum morde.
+
+⚠️ **A cena nasceu errada, e foi a MEDIÇÃO que a corrigiu, duas vezes.** (1) Eu
+dimensionei o rig achando que o contrapeso sobe *metade* do que a carga cai — ele
+sobe o **DOBRO** (a carga pende de dois ramos), então ele **passava do próprio
+tambor** em 0,67 s e o rig inteiro entrava em oscilação. (2) Depois de curado, o
+contrapeso ainda saltava acima do previsto, e a segunda medição separou as duas
+explicações possíveis: subir o tambor **1 m inteiro** moveu o pico de 8,086 para
+**8,100** — ou seja, o salto **não é degeneração de rota, é folga de corda**. Uma
+corda só PUXA; quando a carga pousa, o contrapeso leve segue por inércia, e subir
+**encurta** a perna dele. Corolário de projeto: *queda longa* e *contrapeso em
+quadro* são requisitos que brigam, porque o salto é da ordem da subida presa.
+
+**A política de UI (as quatro condições) é honrada sem uma linha de painel nova, e
+isso é o ponto:** os dois controles já existem (`Out Radius` do W4 e `Mounted On`
+do W3), os dois já pintam, registram e despacham, e a **metade VISÍVEL** também
+está pronta — o tambor desenha seus dois anéis concêntricos e a cadernal segue o
+corpo (a arena que o W3 refresca e o tremor de 28/07 curou). A quarta condição — *a
+sequência leva a algum lugar* — é o que a cena 63 demonstra: **compor é uma
+capacidade que já estava lá e ninguém tinha exercitado**.
+
+Cena de smoke: **`PH2D_PHYSICS_SMOKE=63`** — dois sarilhos, MESMA carga (7 kg) e
+MESMO contrapeso (1 kg), os DOIS com cadernal móvel; só o segundo diâmetro difere.
+A carga engrenada **sobe 0,28 m** enquanto o contrapeso dela **desce 2,22 m**
+(razão 8,05 — a corda é inextensível, e essa razão é o oráculo que não depende de
+massa nenhuma); a carga comum **cai 0,75 m** até o chão.
+
+### Aberto no W5, nomeado
+
+- **A Weston não é expressável** hoje — e é topologia, não um número que falta. Ela
+  pediria um nó cujos dois contatos são **separados na rota**, o que é uma segunda
+  restrição por corda; não construída, e não deve ser confundida com afinação.
+- **O salto balístico do contrapeso comum** é física honesta e fica **na tela**. A
+  mensagem da cena o nomeia, para o artista não o ler como defeito.
 
 ## 10. O que MEDIR antes de escrever número
 

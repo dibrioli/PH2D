@@ -6660,8 +6660,8 @@ velocidade; subir o tambor só adia.
 ### Aberto, nomeado
 
 - **O segundo diâmetro não tem alça no canvas** — o aro do raio de ENTRADA tem; o de saída é só a row.
-- **A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO** — este tambor com a cadernal móvel do W3 no
-  meio da corda — e **não foi montada numa cena**. Vale um smoke próprio.
+- ~~**A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO**~~ — **FALSO, e o W5 mediu**: sai `2R/r`.
+  As duas fórmulas coincidem só em `R = 2r`, que era o exemplo com que a nota foi escrita. Ver §W5.
 - **O arco do enlace conta pelo raio de ENTRADA** (a corda abraça o tambor em que chegou); num
   diferencial ele se reparte entre os dois, mas é quase constante e o `L0` o absorve.
 
@@ -6672,3 +6672,69 @@ carga (3 kg) e o MESMO contrapeso (1 kg); só o segundo diâmetro difere, e eles
 **OPOSTOS**. Medido por `probe_smoke_62`: a engrenada SOBE **0,64 m** (o contrapeso desce e a levanta)
 e a comum CAI **2,70 m** até o chão. A mensagem também guia a autoria: digite `0.125` no *Out Radius*
 do tambor da direita e o segundo anel aparece.
+
+## W-Pulley W5 — A COMPOSIÇÃO: o tambor e a cadernal na mesma corda (2026-07-29, cena `=63`, pendente de smoke)
+
+O W3 e o W4 shiparam com gates fortes e **nenhuma fixture os pôs na mesma corda**. O `wheel_jacobian`
+de um eixo montado passou a pesar os dois ramos pelo peso da engrenagem (W4), e todo eixo montado do
+repo vivia numa rota de peso `1`: aquela multiplicação **nunca rodou com outro número**. Uma
+multiplicação por um que ninguém viu falhar é uma multiplicação não medida.
+
+**MEDIDO** (`measure_pulley_composition.rs`; contrapeso 1 kg, tambor `R = 0,5`, cadernal móvel na
+carga; cada linha nos dois lados do equilíbrio previsto):
+
+| `r` de saída | engrenagem | previsto `2·R/r` | −20% | +20% |
+|---|---|---|---|---|
+| — (comum) | 1 | **2** | 1,6 kg sobe | 2,4 kg desce |
+| 0,250 | 2 | **4** | 3,2 kg sobe | 4,8 kg desce |
+| 0,125 | 4 | **8** | 6,4 kg sobe | 9,6 kg desce |
+| 0,0625 | 8 | **16** | 12,8 kg sobe | 19,2 kg desce |
+
+As duas vantagens **MULTIPLICAM** — 1 kg chega a segurar 16 kg, e ninguém digitou um "16".
+
+⚠️ **A nota do W4 sobre a talha de WESTON estava ERRADA.** Ela vale `2R/(R−r)`; a composição vale
+`2R/r`. As duas **coincidem exatamente em `R = 2r`**, e o exemplo natural com que a nota foi escrita
+(`0,5 → 0,25`) é justamente esse ponto — *uma fórmula conferida num único exemplo é uma fórmula não
+conferida*. A Weston pede que o MESMO eixo seja atravessado DUAS vezes com a cadernal no meio, o que
+são **duas** restrições escalares por corda; o nosso nó tem os dois contatos **adjacentes na rota** por
+construção e produz **uma**. Não é peça faltando, é topologia — e o gate mede a nossa numa fixture com
+`R = 4r`, onde as duas fórmulas não podem ser confundidas.
+
+⚠️ **Uma coluna da sonda previu errado e o produto estava certo:** eu esperava `eixo / tensão =
+2·(R/r)` e a medição deu **2,00 em toda engrenagem** — `pulley_tension` publica o **PICO** e o eixo
+recebe a tensão **BASE**, porque o Jacobiano dele já carrega os pesos (o `apply` já dizia isso). A
+razão é o fator de **enlace sozinho**; o que multiplica está no absoluto — em equilíbrio o eixo carrega
+**o peso do bloco** (78,9 N medidos contra 78,5 de `m·g`).
+
+**2 gates no wrapper + 3 na cena; 5 mutações, 5 sangram** — inclusive a que prova o **CONTROLE**
+(`gear()` devolvendo 4 para toda corda passa em tudo que é engrenado e morde só na linha comum).
+
+⚠️ **A cena nasceu errada e a MEDIÇÃO a corrigiu duas vezes.** (1) Eu a dimensionei achando que o
+contrapeso sobe METADE do que a carga cai — ele sobe o **DOBRO** (a carga pende de dois ramos) ⇒ ele
+**passava do próprio tambor** em 0,67 s e o rig entrava em oscilação. (2) Curado isso, ele ainda saltava
+acima do previsto, e a 2ª medição separou as duas explicações: subir o tambor **1 m inteiro** moveu o
+pico de 8,086 para **8,100**, ou seja **o salto é FOLGA DE CORDA, não degeneração de rota** — uma corda
+só PUXA, e quando a carga pousa o contrapeso leve segue por inércia, encurtando a própria perna.
+Corolário: *queda longa* e *contrapeso em quadro* são requisitos que brigam.
+
+**Nenhum componente, id, schema ou registro novo** (`PROJECT_SCHEMA` **45**, registro **21**); o
+**c9 saiu byte-idêntico ao W4** (`7cb7728d44…`, 96 corpos) — a prova de que a wave não tocou o solver.
+LOC: `physics_smoke.rs` estava **exatamente** em 600 e a linha do dispatch obrigou um corte antes — as
+cenas 9 e 10 (a escala do collider e o sensor) saíram para `physics_smoke_collider.rs`, o corte sendo
+*o que o collider É* contra *o mundo e a autoria*.
+
+### Aberto, nomeado
+
+- **A Weston não é expressável** — topologia, não um número que falta: pediria um nó cujos dois
+  contatos são separados na rota, isto é uma segunda restrição por corda. Não construída.
+- **O salto balístico do contrapeso comum** é física honesta e fica na tela; a mensagem da cena o
+  nomeia, para o artista não o ler como defeito.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=63 cargo run -p ph2d-host-desktop --release`** — dois sarilhos com a MESMA
+carga (7 kg), o MESMO contrapeso (1 kg) e os DOIS com cadernal móvel; só o segundo diâmetro difere.
+Medido por `probe_smoke_63`: a carga engrenada **SOBE 0,28 m** enquanto o contrapeso dela **desce
+2,22 m** (razão **8,05** — a corda é inextensível, e essa razão é o oráculo que não depende de massa
+nenhuma); a carga comum **CAI 0,75 m** até o chão. A mensagem também guia a autoria: digite `0.125` no
+*Out Radius* do tambor da direita.

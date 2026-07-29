@@ -2280,6 +2280,113 @@ ADR-0134 declara o solver **serial POR SEMÂNTICA** — não re-derive) ou porte
 
 ---
 
+### 5.31 ✅ E O CAP DE **PASSOS** VIROU UM ORÇAMENTO DE **TEMPO** — 12-25 → 5 ms/frame
+
+> Enio, depois da §5.30: ***"ainda sem melhoras significativas"***.
+
+A §5.30 cortou o custo **por passo** (48,6 → 11,4 ms nos passes) e não a propriedade que faltava. O
+frame continuava pagando **um número de passos**, e `WET_MAX_STEPS = 2` é um cap de **CONTAGEM** —
+que só limita o custo se o custo **por unidade** for limitado.
+
+O custo de um passo de água **não é** limitado: ele é linear na área molhada, e a área molhada é o
+que a mão do artista escolhe. **É a mesma forma de teto que este repo já descobriu ser um
+MULTIPLICADOR duas vezes** — o `MAX_HISTORY = 64` do editor de áudio (ADR-0117) e o
+`DEFAULT_MAX_DEPTH = 300` do undo do Painter (plano 26). O teto tem de estar no **RECURSO**.
+
+#### 5.31.1 A medição que fechou a frente
+
+| forma | passo p50 | células ativas |
+|---|---|---|
+| horizontal | 8,6 ms | 94 523 |
+| diagonal | 12,7 ms | 111 283 |
+
+E o número que decidiu tudo (`ph2d-wet-paint/tests/measure_density.rs`) — a **MESMA água** em quatro
+telas:
+
+| tela | ns por célula (horizontal) | ns por célula (diagonal) | grid |
+|---|---|---|---|
+| 512² | 20,1 | 21,4 | 15 MB |
+| 1024² | 23,5 | 22,1 | 59 MB |
+| 2048² | 21,9 | 23,6 | 236 MB |
+| 4096² | 22,7 | 27,9 | **944 MB** |
+
+⚠️ **`ns/célula` é PLANO de 512² a 4096², sobre um grid que cresce 63×.** O custo **não** é layout,
+**não** é cache, **não** é TLB — é *trabalho por célula*. E o trabalho por célula não tem para onde
+ir: **todo passe é Gauss-Seidel** (o `advect` deplecionA os quatro cantos **in-place**, então uma
+célula posterior puxa de um canto que a anterior já esvaziou; o `drying_pass` conta `susp > 10` na
+vizinhança 3×3 e **escreve o próprio `susp`**, então o vizinho seguinte lê o valor NOVO) ⇒ **não há
+paralelismo byte-idêntico a colher.** O ADR-0134 está certo, e foi conferido passe a passe em vez de
+citado.
+
+**Se não dá para otimizar nem paralelizar, o que resta é ORÇAR.**
+
+#### 5.31.2 O orçamento
+
+`WET_STEP_BUDGET_MS = 4` (24% de um quadro de 60 fps) num **token bucket**: cada tick credita, cada
+passo **debita o que de fato custou** (um custo *estimado* erraria, e o erro se acumularia no
+bucket), crédito negativo é dívida que os frames seguintes pagam.
+
+- **Teto do crédito = UM frame de orçamento.** Um bucket que entesoura devolve exatamente a rajada
+  que ele existe para impedir.
+- **Fundo da dívida = −100 ms.** É *fundo*, não conforto: enquanto a dívida não bate nele o custo
+  amortizado por frame é **exatamente** o orçamento, e é o clamp que quebraria essa igualdade.
+
+| passo | frames por passo | taxa da sim | veredito |
+|---|---|---|---|
+| 1 ms | 0,25 | 40 Hz (cheia) | **INERTE** (poça pequena) |
+| 4 ms | 1 | 40 Hz (cheia) | inerte |
+| 12,7 ms | 3 | ~20 Hz | a água escorre em meia velocidade |
+| 100 ms | 25 | ~2,4 Hz | a água rasteja, **o app segue a 60 fps** |
+
+⚠️ **O trade é o do `max_substeps` da física, e é deliberado:** sob carga a água simula MENOS tempo
+em vez de derrubar o frame — e agora **o custo por frame é independente do tamanho da poça**, que é a
+propriedade que o cap de contagem nunca teve.
+
+**Resultado**, janela de 120 frames a 60 Hz sobre uma poça formada a 4096²: custo **médio** do tick
+**12-25 → 5,06 ms (horizontal) / 5,26 (diagonal)**.
+
+#### 5.31.3 O residual, com número
+
+⚠️ **Um passo é ATÔMICO** — o orçamento decide se ele *rola*, nunca o interrompe no meio. Então um
+tick que **trabalha** ainda custa 16-40 ms (p50 dos ticks com trabalho: **16,7 / 23,5**; máx 74/65).
+A **média** é do orçamento; o **hitch** é do passo. Nenhuma política de agendamento esconde uma
+unidade atômica de 20 ms dentro de um quadro de 16 — **só concorrência a tira do frame** (§7).
+
+#### 5.31.4 Três hipóteses minhas, as três refutadas por medição
+
+1. **"A sessão longa acumula água e por isso encarece"** — falso: o filme total vai de ~470 a **0 em
+   ~40 passos (1 s)**; o passo custa 0,00 ms depois disso. O pico está nos ~30 primeiros passos.
+2. **"'Pincelada GRANDE' = 5× as células"** — falso: de raio 50 a 400 px o tick fica em 5,5-8,2 ms e
+   a região suja em **2,1-2,2% da tela, CONSTANTE**. O `TRAIL_HALF = 61` do engine clipa a janela do
+   traço (item aberto já nomeado no handoff do Wet Paint). Quem move a área molhada é o
+   **COMPRIMENTO**.
+3. **"O composite virou a fronteira"** — falso: 1,03 / 2,88 ms (ele já é row-parallel desde a §5.30).
+
+⚠️ **E uma armadilha de fixture que a sonda longa expôs:** a sim **não roda com o pincel encostado**
+(`sim_should_run() = !stroke_down`), e `drive_stroke` termina com a cauda de release — então
+`sim_after: 0` deixa `sim.frame = 0`, o primeiro passo cai num frame **ÍMPAR** e o
+`rebuild_active_region` (que só roda em pares) nunca rodou: `active` lê **zero** sobre uma poça
+cheia. *O redutor e a fase da amostragem são parte da fixture.*
+
+#### 5.31.5 Os gates, e o defeito que a mutação achou no meu
+
+Dois, mutação-provados:
+
+- **`the_wet_tick_costs_the_frame_a_budget_not_a_puddle`** — o custo por frame é do ORÇAMENTO, nos
+  dois regimes de `dt` (60 Hz e travado a 250 ms). ⚠️ O redutor é a **MÉDIA, não a mediana**: sob
+  orçamento a maioria dos ticks custa ZERO e alguns custam um passo inteiro — a mediana reportaria
+  0,00 e o gate ficaria verde por não medir nada.
+- **`the_sim_time_budget_is_inert_on_a_small_puddle`** — 40 Hz cheios numa poça pequena. É ele que
+  torna **seguro apertar a constante**: sem ele, baixar o orçamento deixaria toda a suíte verde
+  enquanto a água inteira do produto entra em câmera lenta.
+
+⚠️ **A primeira mutação SOBREVIVEU, e o defeito era do gate:** o teto era `WET_STEP_BUDGET_MS × 2,5`
+— **derivado da própria constante que ele existe para vigiar** —, então mandá-la ao infinito levava o
+TETO junto. É o oráculo-espelho que este repo já pagou três vezes. Teto **literal** (9 ms): a mutação
+agora sangra em **15,64 ms/frame**.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

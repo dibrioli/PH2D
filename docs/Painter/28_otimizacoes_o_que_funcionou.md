@@ -2557,6 +2557,56 @@ sem o segundo o primeiro fica verde com o controlador desarmado.
 
 ---
 
+### 5.35 ✅ E A RÉGUA DO ORÇAMENTO PREGAVA NO PISO — a água estava a 4 Hz
+
+O split do tick (§5.34) deu o número no primeiro smoke:
+
+```text
+tool-tick: media 5.44ms pico 49.53ms em 45/120 frames | stamps: 0/120
+agua: sim media 28.70ms pico 47.65ms x8 | composite media 1.91ms pico 2.22ms x8
+```
+
+⚠️ **`x8` — oito passos em 120 frames, 4 Hz.** E `28,70 × 8 + 1,91 × 8` fecha *exatamente* o total do
+tick, então os outros 37 ticks não fizeram nada: o orçamento estava em **~1,9 ms** num app a 60 fps
+com **14 ms de folga ociosa por frame**.
+
+#### 5.35.1 Os dois estimadores que falharam, por motivos opostos
+
+| tentativa | falha |
+|---|---|
+| **EWMA do `dt`** | um frame lento por culpa alheia **levanta** a régua e o teto junto; e com a água rodando a maioria dos frames contém um passo ⇒ a média inclui **o nosso próprio custo** e o laço é auto-realizável |
+| **`min` do `dt`** | **catraca de mão única** — e a premissa era FALSA: `dt` abaixo do vsync **não é espúrio neste app**, é comum (dois frames em sequência depois de um evento dão `dt ≈ 1 ms`). Um único deles pregava a régua no piso ⇒ teto ≈ 2 ms ⇒ **água a 4 Hz**; voltar de 2 a 16,6 com o creep de 0,05%/frame levaria **~70 segundos** |
+
+**O sinal disponível não separa as duas perguntas.** `dt` sozinho (o `Tool` é contrato congelado) não
+distingue *"o display mudou de taxa"* de *"este frame foi rápido/lento por outro motivo"*. Então a
+régua deixou de ser inferência: é o **quadro de 60 fps que o app tem como alvo**, declarado.
+
+⚠️ **A limitação, nomeada:** num display de 144 Hz a água pode tomar 16,6 ms de um quadro de 6,9 ⇒
+**enquanto há água viva o app roda a ~60 fps**, não a 144. É o mesmo trade que o Enio declarou três
+vezes, agora no eixo do monitor. Levantá-lo exige o shell **contar** o período do display ao tool —
+parâmetro novo no `Tool`, ou seja **§6 + ADR**.
+
+#### 5.35.2 E o TETO FÍSICO da sessão dele, nomeado
+
+Um passo custa **28,70 ms** na poça dele. `40 passos/s × 28,70 = 1148 ms/s > 1000` ⇒ **a taxa cheia
+não cabe num núcleo naquela poça.** Com o orçamento em 16,6 ms/frame a água chega a **~35 Hz** (87% do
+nominal), e o resto **não é agendável**: é concorrência (a sim fora da thread do frame) ou GPU.
+
+⚠️ E o `composite` está inocentado pela medição: **1,91 ms médios, pico 2,22** — o casco do retângulo
+sujo que a §5.30 deixou aberto **não é a fronteira**, exatamente como aquela nota dizia.
+
+#### 5.35.3 O gate, e uma mutação inválida minha
+
+`one_fast_frame_does_not_pin_the_ruler_to_the_floor` — unidade sobre o `SimBudget`, zero relógio: um
+frame de 1 ms seguido de 60 de vsync limpo. Nasceu **VERMELHO em 2,06 ms**, e com a catraca
+reinstalada dá **2,00** — o mesmo número que o log do produto implicava.
+
+⚠️ **Uma mutação minha não sangrou por ser INVÁLIDA, não por buraco de gate:** eu mutei `dt_avg_ms`,
+que o EWMA reescreve duas linhas abaixo. A válida usa campo próprio
+([[feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding]]).
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

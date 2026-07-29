@@ -240,8 +240,24 @@ fn measure_what_a_frame_costs_on_the_device() {
             view_formats: &[],
         });
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        // Piso de fills VAZIO — a sonda mede o percurso, não a composição do fill.
+        let floor = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("walk perf empty fills"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: ph2d_flip_render::WALK_TARGET_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let floor_view = floor.create_view(&wgpu::TextureViewDescriptor::default());
         let job = pass
-            .prepare(&device, &data, &sc, &bins, &view)
+            .prepare(&device, &data, &sc, &bins, &view, &floor_view)
             .expect("job");
         // Aquece (compilação de pipeline, primeira submissão) e depois mede REPS dispatches.
         {

@@ -46,6 +46,10 @@ pub struct FlipCompose {
     straight: Option<wgpu::Texture>,
     straight_view: Option<wgpu::TextureView>,
     size: (u32, u32),
+    /// O PISO do motor novo: os fills rasterizados, que o percurso compõe por baixo dos traços.
+    /// `None` até o motor ser armado — quem nunca liga o `PH2D_FLIP_NEW_ENGINE` não paga a VRAM.
+    fills: Option<wgpu::Texture>,
+    fills_view: Option<wgpu::TextureView>,
     /// O MOTOR NOVO ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md)), quando armado.
     ///
     /// ⚠️ **Ele substitui o Pass A e SÓ ele.** O Pass B (premult → straight), o compositor
@@ -112,6 +116,8 @@ impl FlipCompose {
             straight: None,
             straight_view: None,
             size: (0, 0),
+            fills: None,
+            fills_view: None,
             walk: None,
         }
     }
@@ -143,6 +149,9 @@ impl FlipCompose {
             view_formats: &[],
         });
         let hdr_view = hdr.create_view(&wgpu::TextureViewDescriptor::default());
+        // O piso segue o tamanho; é recriado sob demanda no `stage_layer` (só com o motor armado).
+        self.fills = None;
+        self.fills_view = None;
         let straight = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ph2d-flip compose straight slice"),
             size: extent,
@@ -219,11 +228,63 @@ impl FlipCompose {
         if let Some(walk) = self.walk.as_ref() {
             let screen = crate::ScreenSpace::from_camera(camera);
             let bins = crate::bin_segments(data, &screen, crate::DEFAULT_TILE);
+            // O PISO: os fills pelo pipeline que sempre os desenhou, num alvo próprio.
+            if self.fills.is_none() {
+                let tex = device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("ph2d-flip walk fills floor"),
+                    size: wgpu::Extent3d {
+                        width: self.size.0,
+                        height: self.size.1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba16Float,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                });
+                self.fills_view = Some(tex.create_view(&wgpu::TextureViewDescriptor::default()));
+                self.fills = Some(tex);
+            }
+            {
+                let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("ph2d-flip stage: fills floor"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: self.fills_view.as_ref().expect("piso criado acima"),
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    // ⚠️ O pipeline de fill DECLARA depth-stencil, então a passagem tem de
+                    // fornecê-lo — e isso é melhor que o "sem depth" que eu ia justificar: a
+                    // ordem entre fills volta a ser o teste GREATER por sid, o mesmo do `draw`.
+                    depth_stencil_attachment: flip.depth_view().map(|v| {
+                        wgpu::RenderPassDepthStencilAttachment {
+                            view: v,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(0.0),
+                                store: wgpu::StoreOp::Discard,
+                            }),
+                            stencil_ops: None,
+                        }
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                flip.draw_fills(&mut pass);
+            }
             let target = self.hdr_view.as_ref().expect("ensure criou o hdr");
+            let floor = self.fills_view.as_ref().expect("piso criado acima");
             // ⚠️ O percurso escreve TODO pixel (o `acc` nasce zerado), então ele **não precisa** de
             // um clear — mas uma cena sem segmento nenhum retorna `None` do `prepare`, e aí o `hdr`
             // ficaria com a camada ANTERIOR. O clear cobre exatamente esse caso.
-            match walk.prepare(device, data, &screen, &bins, target) {
+            match walk.prepare(device, data, &screen, &bins, target, floor) {
                 Some(job) => walk.record(&mut enc, &job),
                 None => {
                     let _ = enc.begin_render_pass(&wgpu::RenderPassDescriptor {

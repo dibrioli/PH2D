@@ -463,3 +463,49 @@ fn the_staged_slice_comes_from_the_new_engine_when_it_is_armed() {
         pior * 255.0
     );
 }
+
+/// 🔴 **O PISO** — com o motor novo armado, um quadrado PREENCHIDO continua preenchido.
+///
+/// ⚠️ Este gate existe porque o percurso responde por TRAÇOS e nada mais: o fill vem do pipeline
+/// de triângulos que sempre o desenhou, e o kernel o compõe por BAIXO. Sem esta afirmação a
+/// costura pode nascer quebrada em silêncio — e o sintoma (*"o motor novo comeu os fills"*) leria
+/// como um defeito do kernel, que é justamente o que ele não é.
+///
+/// O oráculo é o INTERIOR (longe de qualquer borda, onde nenhum dos dois motores tem opinião):
+/// preenchido é `alpha ≈ 255`, e um piso ausente é `0`. A folga de 2/255 é o round-trip de 8 bits.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_new_engine_keeps_the_fill_under_the_stroke() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o piso de fills");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    let data = pack_drawing(&filled_square(
+        Vec2::new(12.0, 12.0),
+        Vec2::new(52.0, 52.0),
+        Rgba::new(0.6, 0.6, 0.6, 1.0),
+    ));
+
+    fc.set_walk_engine(&gpu.device, true);
+    let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+    let px = readback_slice(&gpu, slice);
+    let alpha = |x: u32, y: u32| px[((y * W + x) * 4 + 3) as usize];
+
+    // O miolo (bem dentro), e um ponto fora para o gate não passar por "tudo opaco".
+    for &(x, y) in &[(32u32, 32u32), (20, 44), (44, 20)] {
+        assert!(
+            alpha(x, y) >= 253,
+            "o fill sumiu sob o motor novo: alpha em ({x},{y}) = {}",
+            alpha(x, y)
+        );
+    }
+    assert_eq!(alpha(2, 2), 0, "fora da forma tem de continuar vazio");
+    println!(
+        "\n  piso OK -- miolo {} / fora {}",
+        alpha(32, 32),
+        alpha(2, 2)
+    );
+}

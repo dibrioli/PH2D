@@ -48,6 +48,9 @@ struct Screen {
 // `FlipCompose`). Uma 2ª saída em buffer daria dois caminhos para o mesmo pixel, e a paridade
 // passaria a medir um deles enquanto o outro shipa.
 @group(0) @binding(5) var out_tex: texture_storage_2d<rgba16float, write>;
+// O PISO: os fills, já rasterizados pelo pipeline que sempre os desenhou (premult, linear). O
+// percurso compõe os traços POR CIMA — fill abaixo, traço em cima, a ordem do `draw`.
+@group(0) @binding(6) var fills_tex: texture_2d<f32>;
 
 // `pack.rs`
 const FLAG_CLOSED: u32 = 1u;
@@ -236,7 +239,7 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<f32>(f32(gid.x) + 0.5, f32(gid.y) + 0.5);
-    var acc = vec4<f32>(0.0);
+    var acc = textureLoad(fills_tex, vec2<i32>(i32(gid.x), i32(gid.y)), 0);
 
     // `TileBins::tile_of_pixel`
     let tile = sc.grid.x;

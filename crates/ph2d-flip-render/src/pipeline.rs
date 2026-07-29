@@ -385,6 +385,30 @@ impl FlipRenderer {
             pass.draw(0..self.vertex_count, 0..1);
         }
     }
+
+    /// Só os FILLS, sem depth — o piso do **motor novo** ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md)).
+    ///
+    /// ⚠️ **O percurso responde por TRAÇOS e só por eles** (é a pergunta que o handoff isolou:
+    /// *dado um `FlipStroke`, quais pixels ele acende?*). O fill é uma malha de triângulos de borda
+    /// dura — nunca foi o defeito, e re-derivá-lo no kernel seria uma segunda resposta a *"onde
+    /// está o interior desta forma?"*. Então ele continua saindo DAQUI e o percurso compõe por cima.
+    ///
+    /// ⚠️ **A passagem do chamador PRECISA de depth-stencil** (este pipeline o declara), e é o
+    /// certo: a ordem entre fills fica sendo o MESMO teste GREATER por sid que o [`Self::draw`]
+    /// usa, em vez de depender da ordem de emissão.
+    pub fn draw_fills(&self, pass: &mut wgpu::RenderPass<'_>) {
+        let Some(bg) = self.bind_group.as_ref() else {
+            return;
+        };
+        if let Some(fb) = self.fill_buf.as_ref()
+            && self.fill_count > 0
+        {
+            pass.set_bind_group(0, bg, &[]);
+            pass.set_pipeline(&self.fill_pipeline);
+            pass.set_vertex_buffer(0, fb.slice(..));
+            pass.draw(0..self.fill_count, 0..1);
+        }
+    }
 }
 
 /// Blend premultiplicado over (src já vem multiplicado por alpha).

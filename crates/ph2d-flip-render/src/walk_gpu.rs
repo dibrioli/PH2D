@@ -112,6 +112,16 @@ impl WalkPass {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -164,7 +174,24 @@ impl WalkPass {
             view_formats: &[],
         });
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let Some(job) = self.prepare(device, data, screen, bins, &view) else {
+        // Piso VAZIO: o harness mede o percurso, e o `walk_pixel` da CPU (o oráculo) também não
+        // conhece fill nenhum — dar-lhe um piso pintado tornaria a paridade uma comparação torta.
+        let empty = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("walk empty fills"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: TARGET_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let empty_view = empty.create_view(&wgpu::TextureViewDescriptor::default());
+        let Some(job) = self.prepare(device, data, screen, bins, &view, &empty_view) else {
             return Vec::new();
         };
         // 8 bytes/px (4 canais de meia precisão), com a linha alinhada em 256.
@@ -238,6 +265,7 @@ impl WalkPass {
         screen: &ScreenSpace,
         bins: &TileBins,
         target: &wgpu::TextureView,
+        fills: &wgpu::TextureView,
     ) -> Option<WalkJob> {
         let (w, h) = (screen.viewport[0] as u32, screen.viewport[1] as u32);
         let n_px = (w as usize) * (h as usize);
@@ -299,6 +327,10 @@ impl WalkPass {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: wgpu::BindingResource::TextureView(target),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(fills),
                 },
             ],
         });

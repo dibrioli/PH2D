@@ -10,14 +10,14 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, Slider, SliderOrientation, SliderState, TextInput, TextInputState,
-    paint_button, paint_slider, paint_text_input_with_buffer,
+    Button, ButtonState, NumberInput, TextInput, TextInputState, paint_button,
+    paint_number_input_with_buffer, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_expr_recipes::{CATALOG, Family, KnobKind, SearchHit, search};
+use ph2d_expr_recipes::{CATALOG, Family, Knob, KnobKind, SearchHit, search};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
-use crate::expr_modal::{ExprModal, GalleryPage, knob_track, row_result};
+use crate::expr_modal::{ExprModal, GalleryPage, row_result};
 use crate::expr_modal_paint::{
     BODY_SLOTS, GALLERY_W, KNOB_LABEL_W, KNOB_READOUT_W, ROW_BTN_W, SHEET_W, button_state,
 };
@@ -188,6 +188,92 @@ pub(crate) fn expr_button(
     paint_button(&b, rect, ctx.scene, ctx.text_system, theme);
 }
 
+/// Width of a knob's number box.
+///
+/// ⚠️ Comfortably over [`NUMBER_INPUT_MIN_W_PX`], which is the app's canon floor
+/// ("não permita que a caixa seja redimensionada para menor que isso"): a value knob
+/// now holds things like `0.05` and `-12.75`, and the stepper column eats the right
+/// end of whatever is left.
+const NUM_W: f32 = 96.0; // LITERAL-PX-OK: largura da caixa numerica de um knob
+
+/// Paint a knob's **number box** and make it live: value, stepper range, drag rate.
+///
+/// ⚠️ **A box, not a slider** (Enio, smoke de 2026-07-29: *"no lugar de sliders,
+/// melhor apenas caixas de input numérico"*). It is also the honest widget: a
+/// knob's range is now the CANVAS (±40 m) while its working magnitude is the OBJECT
+/// (~0.3 m), so a 120 px track spent 0.7 px on the entire useful range — the artist
+/// could not land on a number, only near one. A box is typed, and it still drags
+/// (the dispatch's range-proportional drag) and still steps.
+///
+/// The range is REGISTERED rather than clamped afterwards, because registering is
+/// what makes the arrows step by the knob's own increment instead of the dispatch's
+/// buffer heuristic; the drag rate is that same increment, so **one pixel is worth
+/// one click** and the two agree without anyone calibrating them.
+///
+/// ⚠️ Typing is NOT clamped, by design and by the dispatch: only the arrows and the
+/// drag honour the range. A knob range is where the thumb stops, not where the model
+/// does.
+fn paint_knob_number(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    k: &Knob,
+    value: f32,
+    reseed: bool,
+    rect: Rect,
+) {
+    let step = k.step_value();
+    let seed = InteractiveState::NumberInput {
+        state: TextInputState::Normal,
+        value: f64::from(value),
+        buffer: ph2d_expr_recipes::fmt_num(value),
+        caret: 0,
+        last_committed: f64::from(value),
+        selection_anchor: None,
+    };
+    {
+        let store = ctx.host.store_mut();
+        if reseed {
+            store.register(id, seed);
+        } else {
+            store.register_if_absent(id, seed);
+        }
+        store.set_number_range(
+            id,
+            f64::from(k.range.0),
+            f64::from(k.range.1),
+            f64::from(step),
+        );
+        store.set_number_drag_rate(id, f64::from(step));
+    }
+    let (state, v, buf, caret, anchor) = ctx
+        .host
+        .store()
+        .number_input(id)
+        .map(|(s, v, b, c, a)| (s, v, b.to_string(), c, a))
+        .unwrap_or((
+            TextInputState::Normal,
+            f64::from(value),
+            String::new(),
+            0,
+            None,
+        ));
+    let input = NumberInput::new(id, k.label, v)
+        .step(f64::from(step))
+        .state(state);
+    paint_number_input_with_buffer(
+        &input,
+        Some(&buf),
+        caret,
+        anchor,
+        rect,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, rect);
+}
+
 /// The centre column: the stack, one row per recipe, each with its knobs and the
 /// number it produces RIGHT NOW.
 pub(crate) fn paint_sheet(
@@ -281,37 +367,8 @@ pub(crate) fn paint_sheet(
             let id = ids::expr_knob_id(ri, ki);
             match k.kind {
                 KnobKind::Number | KnobKind::Literal => {
-                    let track = knob_track(k, &row.knobs[ki]);
-                    let seed = InteractiveState::Slider {
-                        state: SliderState::Normal,
-                        value: track,
-                        orientation: SliderOrientation::Horizontal,
-                    };
-                    if reseed {
-                        ctx.host.store_mut().register(id, seed);
-                    } else {
-                        ctx.host.store_mut().register_if_absent(id, seed);
-                    }
-                    let (st, v) = ctx
-                        .host
-                        .store()
-                        .slider(id)
-                        .unwrap_or((SliderState::Normal, track));
-                    let r = Rect::new(ctrl_x, cy, ctrl_w, ROW_H_PX);
-                    ctx.host.hit_index_mut().register(id, r);
-                    let mut s = Slider::new(id, k.label).accent(true).state(st);
-                    s.set_value(v);
-                    paint_slider(&s, r, ctx.scene, theme);
-                    paint_text(
-                        ctx.text_system,
-                        ctx.scene,
-                        &ph2d_expr_recipes::fmt_num(row.knobs[ki].as_num()),
-                        x + SHEET_W - KNOB_READOUT_W,
-                        cy + (ROW_H_PX - font) * 0.5,
-                        font,
-                        KNOB_READOUT_W,
-                        resolve(ColorToken::Text2, theme),
-                    );
+                    let r = Rect::new(ctrl_x, cy, NUM_W, ROW_H_PX);
+                    paint_knob_number(ctx, theme, id, k, row.knobs[ki].as_num(), reseed, r);
                 }
                 KnobKind::Link | KnobKind::Text => {
                     let seed = row.knobs[ki].as_text().to_string();

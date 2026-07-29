@@ -295,6 +295,68 @@ fn a_gallery_card_is_reachable_by_a_real_pointer() {
     ph2d_panel_timeline::set_current_timeline(None);
 }
 
+/// **A knob's NUMBER BOX is alive under a real pointer, and what it commits
+/// reaches the formula.**
+///
+/// ⚠️ Written because the slider→box swap (Enio, smoke de 2026-07-29: *"no lugar
+/// de sliders, melhor apenas caixas de input numérico"*) passed **eighteen green
+/// gates that never touched a knob**. Everything above drives the gallery, the
+/// footer and the title band; the widget the artist spends all their time in had no
+/// gate at all, so replacing it was indistinguishable from deleting it.
+///
+/// The gesture is the stepper ARROW at a real pixel, which is the shortest path
+/// that crosses every seam at once: hit rect → dispatch → the registered range's
+/// `step` → the store's committed value → `sync_from_store` → `to_formula`. It also
+/// pins the step: without a REGISTERED range the dispatch falls back to a buffer
+/// heuristic and one click moves `1.0` — three canvases on an Amount of `0.3`.
+#[test]
+fn a_knob_box_steps_by_its_own_increment_under_a_real_pointer() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let target = publish_one_track(21, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, target);
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
+    );
+
+    // Knob 1 of row 0 is Shake's Amount.
+    let knob = ids::expr_knob_id(0, 1);
+    let amount = ph2d_expr_recipes::by_id("shake").unwrap().knobs[1];
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let rect = regs
+        .iter()
+        .find(|(id, _)| *id == knob)
+        .map(|(_, r)| *r)
+        .expect("the Amount knob paints a box");
+
+    let before = state.expr_modal.as_ref().unwrap().stack.to_formula();
+    // The UP arrow: asked of the widget itself, which is the same door the
+    // dispatch's hit-test uses — a rect derived here would be a second answer.
+    let up = ph2d_editor_core::widget::NumberInput::new(knob, "", 0.0).up_rect(rect);
+    for ev in host.click_at(up.x + up.w * 0.5, up.y + up.h * 0.5) {
+        host.apply_panel_event::<TimelinePanel>(&mut state, ev);
+    }
+    // Repaint: the read-back into the stack happens at the top of the paint.
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let after = state.expr_modal.as_ref().unwrap().stack.to_formula();
+
+    assert_ne!(
+        before, after,
+        "one click on the stepper must reach the formula"
+    );
+    let want = ph2d_expr_recipes::fmt_num(amount.default + amount.step_value());
+    assert!(
+        after.contains(&want),
+        "the box steps by the knob's own increment ({}): wanted {want} in {after}",
+        amount.step_value()
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
 // ─────────────────────────── W2 — the live preview ───────────────────────────
 
 /// **The preview evaluates the window through the PRODUCT's evaluator** (P3), and

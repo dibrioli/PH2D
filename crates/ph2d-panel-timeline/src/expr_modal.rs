@@ -15,7 +15,7 @@
 //! boundary, for nothing.
 //!
 //! ⚠️ **The model is the [`RecipeStack`]; the widgets are a view of it.** The
-//! store holds slider tracks and text, and [`sync_from_store`] reads them back
+//! store holds committed numbers and text, and [`sync_from_store`] reads them back
 //! into the stack ONCE per frame, before anything is painted or projected — so
 //! `to_formula()` and every result readout describe the same instant. The onion
 //! modal does the same thing one crate up; the difference is only who owns the
@@ -24,16 +24,14 @@
 //! ⚠️ **A structural change RESEEDS the widgets.** Row widgets are keyed by row
 //! INDEX (see `ids::expr_knob_id`), so removing row 1 slides row 2 into its
 //! widgets — and without the reseed the new occupant would inherit the old
-//! tenant's slider positions. `reseed` makes the next paint clobber instead of
+//! tenant's numbers. `reseed` makes the next paint clobber instead of
 //! `register_if_absent`.
 
 use ph2d_editor_core::interaction::{
     GesturePhase, InteractiveState, TimelineGesture, WidgetEvent, WidgetStore,
 };
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
-use ph2d_expr_recipes::{
-    CATALOG, Family, Knob, KnobKind, KnobValue, RecipeStack, Row, by_id, fmt_num,
-};
+use ph2d_expr_recipes::{CATALOG, Family, KnobKind, KnobValue, RecipeStack, Row, by_id, fmt_num};
 use ph2d_timeline::{AnimTarget, TimelineIntent};
 
 use crate::ids;
@@ -124,26 +122,6 @@ pub(crate) fn commit(state: &mut TimelinePanelState) {
     });
 }
 
-/// A knob's slider track (`0..=1`) for its current value — and the inverse of
-/// [`track_value`]. ⚠️ Seed and sample are the SAME mapping, the lesson this repo
-/// keeps re-learning.
-#[must_use]
-pub(crate) fn knob_track(k: &Knob, v: &KnobValue) -> f32 {
-    let (lo, hi) = k.range;
-    if hi > lo {
-        ((v.as_num() - lo) / (hi - lo)).clamp(0.0, 1.0)
-    } else {
-        0.0
-    }
-}
-
-/// A slider track (`0..=1`) -> the value it means.
-#[must_use]
-pub(crate) fn track_value(k: &Knob, track: f32) -> f32 {
-    let (lo, hi) = k.range;
-    lo + track.clamp(0.0, 1.0) * (hi - lo)
-}
-
 /// What the stack produces at and including row `i`, formatted for the readout.
 ///
 /// ⚠️ Evaluated through `ph2d_expr::eval` — the PRODUCT's evaluator (plano 10 P3).
@@ -192,10 +170,13 @@ pub(crate) fn sync_from_store(m: &mut ExprModal, store: &WidgetStore) {
         for (ki, k) in rec.knobs.iter().enumerate() {
             let id = ids::expr_knob_id(ri, ki);
             match (k.kind, store.get(id)) {
+                // ⚠️ The COMMITTED value, never the edit buffer: mid-typing the
+                // buffer is `"-"` or `"0."`, and reading it would blank the formula
+                // bar between two keystrokes.
                 (
                     KnobKind::Number | KnobKind::Literal,
-                    Some(InteractiveState::Slider { value, .. }),
-                ) => row.knobs[ki] = KnobValue::Num(track_value(k, *value)),
+                    Some(InteractiveState::NumberInput { value, .. }),
+                ) => row.knobs[ki] = KnobValue::Num(*value as f32),
                 (KnobKind::Link, Some(InteractiveState::TextInput { text, .. })) => {
                     row.knobs[ki] = KnobValue::Link(text.clone());
                 }

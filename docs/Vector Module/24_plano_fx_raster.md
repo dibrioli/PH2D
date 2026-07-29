@@ -137,9 +137,8 @@ posição do centroide da sombra, e a mensagem traz os números.
   do contorno e a ponta ceifada pelo traço. Ver §11.
 - **W6a — A LEI DE MISTURA POR DEGRAU (FECHADA, pendente de smoke):** o blend mode do Layer Style,
   em **quatro** dos nove tipos. Ver §12.
-- **W6b — o que ainda pede maquinaria NOVA:** turbulência + deslocamento (o
-  `feTurbulence`/`feDisplacementMap`, o eixo ORGÂNICO que ninguém no 2D vetorial entrega bem).
-  Não muda a pilha.
+- **W6b — A TURBULÊNCIA (FECHADA, pendente de smoke):** o `feTurbulence` + `feDisplacementMap`
+  num degrau só — o eixo ORGÂNICO. **Não mudou a pilha**, como previsto. Ver §13.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -629,3 +628,80 @@ cor errada, e as duas rodadas estão registadas).
 - **O Bevel tem UMA lei para as duas faces.** O Photoshop tem duas (Highlight: Screen · Shadow:
   Multiply). Uma só já é coerente (Multiply mata o realce e mantém a sombra; Screen o inverso), e o
   par é refino de produto.
+
+
+## §13 — W6b: a TURBULÊNCIA (o eixo orgânico)
+
+**O pedido do plano:** *turbulência + deslocamento, o eixo que ninguém no 2D vetorial entrega bem.*
+
+### A pesquisa decidiu a FORMA da feature, não só a matemática
+
+O `<filter>` do SVG separa **`feTurbulence`** (gera um campo de ruído Perlin, com `baseFrequency`,
+`numOctaves`, `seed` e `type ∈ {fractalNoise, turbulence}`) de **`feDisplacementMap`** (usa dois
+canais dele para deslocar uma imagem). Todo mundo que veio depois **FUNDIU os dois**:
+
+| Ferramenta | Como embrulha |
+|---|---|
+| **After Effects** | *Turbulent Displace* — o ruído mora DENTRO do efeito (Amount · Size · Complexity · Evolution) |
+| **Photoshop** | *Displace* com um mapa em ARQUIVO — a interface que ninguém usa, e o motivo de todos os outros a evitarem |
+| **Illustrator** | *Roughen* é VETORIAL (move âncoras) — outro eixo, que a nossa pilha de LPE já cobre |
+| **Rive** | nada |
+
+**E na nossa arquitetura a fusão não é conveniência, é obrigatória:** a pilha é uma LISTA em que
+*todo op é imagem → imagem*. Um degrau que só GERASSE ruído teria de escrever a saída dele por cima
+da imagem que o degrau seguinte espera receber — ele apagaria o trabalho anterior. Um tipo só.
+
+### O desenho, e as portas únicas
+
+| Pergunta | Porta |
+|---|---|
+| *este degrau lê um campo de ruído?* | `FxKindSpec::noise_labels` (o painel OFERECE, o produtor HONRA — o molde do `takes_blend`) |
+| *quantas oitavas ele de fato soma?* | `FxOp::detail_clamped` |
+| *como este degrau é executado?* | `plan_of` → `Plan::Warp` (**pelo TIPO, antes do modo**) |
+| *quanto ele espalha?* | `op_reach` = o próprio Amount |
+| *onde a grade do ruído está ancorada?* | `stack_reach(ops).0/.1` — a MESMA função que dimensiona o scratch |
+
+**A colisão de modos que isto expôs:** o `mode` é um índice na lista DO TIPO, então `1` é
+`MODE_CONTOUR` num degrau de dentro e `MODE_CREASED` na turbulência. O `plan_of` roteava por
+*"tem modos, e escolheu o 1?"* — uma turbulência *Creased* cairia no campo de distância e desenharia
+outra coisa, sem erro nenhum. O tipo passa a decidir primeiro, com gate nos dois modos.
+
+**A ancoragem é o ponto não-óbvio.** A coordenada do ruído é `(pixel − org)/escala_px`, com `org` = a
+margem que a pilha reservou. Sem esse termo a grade fica presa ao canto do *scratch* — e a margem é
+função de TODA a pilha, então mexer no raio de um Glow faria o padrão inteiro **andar** por baixo da
+forma. Com ele, a coordenada é `(mundo − caixa_da_forma)/escala_mundo`: invariante ao zoom e imune
+aos outros degraus. Gate: `the_noise_is_pinned_to_the_shape_not_to_the_scratch` (**0,0000 px**).
+
+### Os números, medidos (RTX)
+
+- **`MAX_DETAIL = 6` NÃO é teto de custo** — 1 a 12 oitavas movem o passe de 0,058 para 0,12 ms a
+  512², que é a própria dispersão da medição. É teto de **REPRESENTAÇÃO**: a 7ª oitava move a borda
+  **0,019 px** (a 6ª move 0,044; a 10ª, 0,002).
+- **`op_reach` = o Amount**, não `3σ`: o campo vive em `[-1,1]`, então nenhum texel viaja mais que
+  isso — e `3σ` seria margem paga por um borrão que não existe.
+- Amount 4/8/16 px → amplitude de borda 1,03/2,07/2,97 px (o desvio-padrão é uma FRAÇÃO do Amount,
+  porque o campo tem média zero).
+
+### Duas coisas que a medição corrigiu em mim
+
+1. **A fixture continha OUTRA coisa.** As linhas do topo e da base do quadro amostram FORA do
+   scratch (o `dy` puxa de onde não há nada), e os cruzamentos espúrios delas inflavam a amplitude
+   em 3× — `[17,75; 65,28]` com o miolo INTEIRO em 63,3. **Um** defeito de fixture reprovava TRÊS
+   gates, e eu teria "consertado" três coisas certas.
+2. **A semente por-oitava é load-bearing, e o mecanismo que eu escrevera era outro.** Eu dizia que
+   ela impede os zeros de se alinharem — falso (Perlin vale zero em todo nó da própria grade, em
+   qualquer semente). O que ela impede é as oitavas lerem a MESMA tabela de gradientes em células
+   relacionadas: sem ela a rugosidade do modo **Smooth** sobe de 0,419 para 0,609 e **encosta na do
+   Creased** (0,602) — o modo liso deixa de ser liso e os dois modos desenham a mesma coisa.
+
+### Schema
+
+`PROJECT_SCHEMA` fica em **38**, o mesmo bump da W6a: o `FxOp` ganhou `scale`/`detail`/`seed` na
+mesma janela, e um save v37 já é recusado pelo 38 — um 39 jogaria fora exatamente os mesmos arquivos
+e custaria mais um degrau para ninguém. **Uma linha, um bump.**
+
+### Smoke
+
+**`PH2D_BUILD_SMOKE=35`** — quatro pares (Amount · Size · Detail · Modo), cada estrela com um
+CONTORNO por baixo da turbulência: é a linha fina que torna visível um deslocamento de poucos pixels,
+e de quebra é a prova de que o degrau COMPÕE.

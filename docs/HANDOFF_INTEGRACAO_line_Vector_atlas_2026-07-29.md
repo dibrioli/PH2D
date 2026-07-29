@@ -147,12 +147,13 @@ As outras cenas de FX (`=34` a `=38`) servem de regressão pelo mesmo critério:
 
 ## Aberto, com o preço medido
 
-- **O segundo eixo: um encoder/`submit` para as `n` pilhas** — vale **~1,0 ms numa cena de 32**
-  (medido: uma corrida da pilha custa 0,031–0,042 ms com o degrau mais barato que existe, onde o
-  trabalho real é ~0,003). ⚠️ **Não é mecânico:** exige que os globals de TODAS as formas vivam no
-  MESMO blob indexado por offset, senão o `write_buffer` da última vence para todas — que é
-  *precisamente* o que o doc do `write_at` já descreve um nível abaixo; e o buffer de **segmentos**
-  de silhueta tem o mesmo problema. **Wave própria**, e ela é sobre *quando o trabalho é submetido*,
-  enquanto esta foi sobre *o que a fonte É*.
+- ⛔ **O segundo eixo (uma submissão para as `n` pilhas) foi CONSTRUÍDO e REVERTIDO — não refaça.**
+  A estimativa de ~1,0 ms saiu de uma sonda com o degrau **mais barato que existe**, onde encode e
+  submissão *são* a amostra; numa pilha real o fixo sobrepõe-se a trabalho de GPU e deixa de ser
+  aditivo. Medido pelas duas rotas, três corridas: a submissão única é **0,92–0,95× a N=16 e
+  0,75–0,86× a N=32** — **mais lenta**, e pior quanto maior o lote (as work textures são
+  partilhadas, então um encoder só faz o wgpu **serializar** o que `n` submissões deixam o driver
+  pipelinar). Detalhe e tabela no plano 24 §17.6. **Zero código sobreviveu**, de propósito: uma
+  porta pública que ninguém deve chamar é pior que porta nenhuma.
 - **O empacotador é de prateleiras** (desperdiça alguma área contra um exacto). Área desperdiçada
   custa **preenchimento**, que é a metade barata; o que a wave comprou foi o número de RENDERS.

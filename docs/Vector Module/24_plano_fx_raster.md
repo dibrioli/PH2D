@@ -1150,13 +1150,36 @@ para um limite de recurso.
 `Globals` 128 → **144 bytes** (pin atualizado). `PROJECT_SCHEMA` **fica em 38**, contrato congelado
 intacto, **zero `Cargo.toml`**, zero crate nova, zero ADR.
 
-⚠️ **ABERTO, com o preço medido:** o **segundo eixo** — um encoder/`submit` para as `n` pilhas, que
-vale **~1,0 ms numa cena de 32** — exige que os globals de **todas** as formas vivam no MESMO blob
-indexado por offset, senão o `write_buffer` da última vence para todas. Isso é *precisamente* o que
-o doc do `write_at` já descreve um nível abaixo (*"um `write_buffer` por passe antes de um único
-`submit` deixaria o ÚLTIMO a valer para todos"*), e o buffer de **segmentos** de silhueta tem o
-mesmo problema. **Wave própria** — e ela é sobre *quando o trabalho é submetido*, enquanto esta foi
-sobre *o que a fonte É*.
+### §17.6 — ⛔ O SEGUNDO EIXO foi CONSTRUÍDO e REVERTIDO pela medição — não refaça
+
+A §17.1 mediu **~0,03 ms de fixo por corrida da pilha** e a §17.5 anunciou, com esse número, que um
+encoder/`submit` para as `n` formas valeria **~1,0 ms numa cena de 32**. **Está errado, e a wave que
+o testaria já foi escrita inteira** (`FxStackItem` + `run_batch` + `seg_org` nos globals + o lote na
+shell, com gate de paridade byte a byte e 3 mutações a sangrar). Medido pelas duas rotas, o mesmo
+frame:
+
+| N formas | `n` submissões | **1 submissão** | "ganho" |
+|---|---|---|---|
+| 4 | 0,58 ms | 0,47 ms | 1,24× |
+| 16 | 1,25–1,28 | 1,33–1,36 | **0,92–0,95×** |
+| 32 | 2,31–2,41 | 2,80–3,06 | **0,75–0,86×** |
+
+**A submissão única é MAIS LENTA, e pior quanto maior o lote** (três corridas, reprodutível).
+
+⚠️ **Por que o número da §17.1 enganou, e a lição é sobre a SONDA:** ele saiu de uma medição com o
+degrau **mais barato que existe** — escolhido de propósito para isolar o fixo —, onde não há mais
+nada a acontecer, então encode+submissão *são* a amostra. Numa pilha real o fixo **sobrepõe-se a
+trabalho de GPU** e deixa de ser aditivo. *Um custo fixo medido em isolamento não se soma ao custo
+de um sistema que o esconde.*
+
+⚠️ **E o mecanismo do prejuízo é do próprio desenho:** as work textures são partilhadas, então num
+encoder só o wgpu insere barreira entre **cada par de formas** — o lote **serializa** o que `n`
+submissões deixam o driver pipelinar. Dar work textures próprias a cada item removeria a barreira ao
+preço de `n×` a VRAM, e isso é uma wave diferente sobre uma hipótese que **esta medição não
+estabelece** (ninguém mostrou que a GPU está ociosa).
+
+**O que sobreviveu:** nada de código — o experimento foi revertido inteiro para não deixar uma porta
+pública (`run_batch`) que ninguém deve chamar. O que fica é este número.
 
 **Smoke:** `PH2D_BUILD_SMOKE=33` (as 16 estrelas filtradas) com **`PH2D_FX_PERF=1`** — a linha tem de
 dizer **`em 1 render(es)`**, e o desenho tem de ficar **igual ao de antes**.

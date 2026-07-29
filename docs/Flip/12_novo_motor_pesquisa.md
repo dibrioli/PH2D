@@ -1058,6 +1058,92 @@ ON · airbrush · tip Dots/Squares · fade sub-pixel), trocar a saída para text
 
 ---
 
+## 18. ⭐⭐ A FIAÇÃO — o motor novo está NO APP (`PH2D_FLIP_NEW_ENGINE=1`)
+
+O Enio aprovou a forma (*"painter e Novo iguais"*) e pediu o build de smoke. Não existia: o motor
+vivia na crate, atrás de gates e sondas, e nada no shell o chamava.
+
+### 18.1 O ponto de entrada é UM, e é o Pass A do `stage_layer`
+
+`FlipCompose::stage_layer` é a única porta por onde uma camada de Flip vira textura:
+
+```
+Pass A  rasteriza a camada no `hdr` (premult 16F)   ← ISTO é o que troca
+Pass B  resolve premult → straight (Rgba8Unorm)     ← intocado
+        `inject_slice_from_texture` → compositor 22-modos → blit
+```
+
+Trocar só o Pass A é o que mantém a decisão honesta: **compositor, blend por-camada, multiplano,
+tint de fantasma e `inject` não sabem que a tinta mudou de produtor.** A troca passa a ser uma
+afirmação sobre *quais pixels o traço acende* — exatamente o escopo do §1 — e não um segundo
+pipeline de Flip correndo em paralelo com o primeiro.
+
+O interruptor é `PH2D_FLIP_NEW_ENGINE=1`, lido **no shell** (`flip_pass.rs`), UMA vez, num
+`OnceLock`. A crate não lê o ambiente: a escolha em dois lugares é a falha de duas-portas que este
+repo paga toda semana, e um `var()` por frame ainda faria o A/B depender de *quando* o artista olhou.
+
+### 18.2 A saída do kernel virou UMA textura — e a paridade pagou por isso
+
+O kernel escrevia um `array<vec4<f32>>` para o gate poder medir em `f32`. Agora escreve o `hdr` do
+produto (`rgba16float`), e **não há segunda saída**: dois caminhos para o mesmo pixel significam que
+a paridade mede um enquanto o outro shipa.
+
+O preço é exato e a aritmética o nomeia:
+
+| saída | pior \|Δ\| contra `walk_pixel` | o que o número É |
+|---|---|---|
+| buffer `f32` (antes) | **4,05e-6** | divergência do KERNEL |
+| textura `rgba16float` (agora) | **4,883e-4** | **2⁻¹¹** — o arredondamento de meia precisão em magnitude 1 |
+
+⚠️ **O kernel nunca foi o limite:** ele está 120× abaixo do quantum do alvo que o produto usa.
+A barra do gate deixou de ser escolhida e passou a ser **derivada**: `1e-3` ≈ 2× o quantum do
+formato, ainda **3,9× mais apertada** que meio nível de byte (a resolução em que alguém vê).
+
+### 18.3 O FILL é o piso, não trabalho do kernel
+
+`FlipGpuData` carrega os fills como **malha de triângulos** (`fills`), desenhada por um pipeline
+próprio. O percurso os ignorava — e um smoke assim vinha com armadilha: Colorize e toda forma
+fechada perderiam o preenchimento, e o sintoma leria como *"o motor novo comeu os fills"*.
+
+A cura não é ensinar o kernel a preencher (seria uma segunda resposta a *onde está o interior desta
+forma?*, e o fill de borda dura nunca foi o defeito): o fill sai do pipeline que sempre o desenhou,
+para um alvo próprio, e o kernel **inicia o acumulador lendo esse piso** — fill abaixo, traço em
+cima, a ordem do `draw`. A VRAM é paga só por quem arma o motor.
+
+⚠️ Duas coisas que a medição corrigiu no caminho: o pipeline de fill **declara depth-stencil**, logo
+a passagem tem de fornecê-lo — e isso é melhor que o *"sem depth"* que eu ia justificar, porque a
+ordem entre fills volta a ser o MESMO teste GREATER por sid do `draw`; e o harness de paridade
+recebe piso **VAZIO** de propósito, porque o `walk_pixel` da CPU (o oráculo) também não conhece
+fill, e um piso pintado tornaria a comparação torta.
+
+### 18.4 Os dois gates que provam a costura
+
+Os dois vivem em `tests/composite_blend.rs`, o arquivo que já dirigia o seam REAL
+(`stage_layer` → `inject` → compositor → blit) com wgpu de verdade.
+
+- **`the_staged_slice_comes_from_the_new_engine_when_it_is_armed`** — a fatia que o compositor
+  recebe casa com o `walk_pixel` no **ALFA**. O alfa é a escolha certa e não conveniência: o Pass B
+  des-premultiplica o RGB (aritmética própria, outro assunto) e **deixa o alfa em paz**, então ele é
+  a única grandeza que atravessa a costura inteira sem ser transformada — e é literalmente a
+  pergunta do §1. Barra **1,5/255** (derivada: `f32` → meia precisão → 8 bits, e o último domina).
+  ⚠️ O gate compara contra o irmão de **CPU**, nunca contra o rasterizador: os dois motores
+  discordam por PROJETO, então exigir que casem seria um gate que só passa com o trabalho desfeito.
+  Medido: **0,54/255**. Mutação (o `stage_layer` ignorar o motor armado) sangra **255/255 na ponta
+  convexa** — exatamente onde o §11.3 documenta a divergência.
+- **`the_new_engine_keeps_the_fill_under_the_stroke`** — oráculo no **INTERIOR**, longe de qualquer
+  borda, onde nenhum dos dois motores tem opinião. Mutação (não desenhar o piso) sangra `alpha = 0`.
+
+### 18.5 Rodar
+
+```
+cargo build -p ph2d-host-desktop --release
+env PH2D_FLIP_DEMO=1 PH2D_FLIP_NEW_ENGINE=1 cargo run -p ph2d-host-desktop --release   # o motor NOVO
+env PH2D_FLIP_DEMO=1                        cargo run -p ph2d-host-desktop --release   # o CONTROLE
+```
+
+⚠️ **O A/B é o ponto** — a mesma cena, a mesma mão, os dois builds. O que o §11.3 diz que muda:
+o cruzamento com `hardness` (a queixa original), a ponta convexa, e nada mais.
+
 ## 17. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.

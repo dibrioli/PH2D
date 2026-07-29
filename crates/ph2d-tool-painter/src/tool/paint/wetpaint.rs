@@ -49,6 +49,7 @@
 //! exact failure the ownership split + the route's belt refuse.
 
 use super::*;
+use budget::SimBudget;
 use ph2d_wet_paint::painter::{Dirty, Engine};
 use std::sync::Weak;
 
@@ -110,29 +111,7 @@ const WET_MAX_STEPS: usize = 2;
 /// um frame de 16,6 ms que tem outros inquilinos. Nenhuma contagem de passos conserta isso: com o cap
 /// em 2 o pior frame paga 25 ms de água, e com o cap em 1 paga 12,7 — os dois são função da poça.
 ///
-/// **4 ms/frame** é 24% do quadro de 60 fps e compra `4 × 60 = 240 ms/s` de simulação. O que isso
-/// significa por regime:
-///
-/// ```text
-///   passo    frames por passo   taxa da sim    veredito
-///    1 ms                 0,25     40 Hz (cheia)  o cap é INERTE (poça pequena)
-///    4 ms                    1     40 Hz (cheia)  inerte
-///   12,7 ms                  3     ~20 Hz         a água escorre em meia velocidade
-///  100 ms                   25     ~2,4 Hz        a água rasteja, o app segue a 60 fps
-/// ```
-///
-/// ⚠️ **O trade é o do `max_substeps` da física, e é deliberado:** sob carga a água simula MENOS
-/// tempo em vez de derrubar o frame — e agora o custo por-frame é **independente do tamanho da poça**,
-/// que é a propriedade que o cap de contagem nunca teve.
-pub(super) const WET_STEP_BUDGET_MS: f32 = 4.0;
-
-/// Teto da DÍVIDA (ms). Sem ele um passe patológico congelaria a água por dezenas de frames; com ele
-/// a água volta a andar em no máximo `WET_MAX_DEBT_MS / WET_STEP_BUDGET_MS` = 25 frames (~0,4 s).
-///
-/// ⚠️ O teto é **fundo**, não conforto: enquanto a dívida não bate nele, o custo amortizado por frame é
-/// EXATAMENTE o orçamento — é o clamp que quebraria essa igualdade, e é por isso que ele é fundo.
-const WET_MAX_DEBT_MS: f32 = -100.0;
-
+/// O teto que de fato governa o custo é o de TEMPO, e ele mora em [`budget::SimBudget`].
 pub(crate) struct WetPaintState {
     /// The Wet Paint **checkbox** — the authored, persistent ARM (Enio
     /// 2026-07-21, the Watercolor/Impasto pattern): while `true`, the
@@ -622,11 +601,11 @@ impl PainterTool {
         // tilt are sim forces): the tick reconciles with the stamp's door.
         sess.reconcile_facts(facts);
         sess.acc += dt_s;
-        // Crédito do frame. O teto é UM frame de orçamento: um bucket que
-        // entesoura devolve exatamente a rajada que ele existe para impedir.
-        sess.sim_credit_ms = (sess.sim_credit_ms + WET_STEP_BUDGET_MS).min(WET_STEP_BUDGET_MS);
+        // O controlador do orçamento (ver [`budget::SimBudget`]): a água gasta a
+        // FOLGA do frame, medida, em vez de um número que alguém escolheu.
+        sess.budget.open_frame(dt_s * 1e3);
         let mut steps = 0;
-        while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS && sess.sim_credit_ms > 0.0 {
+        while sess.acc >= WET_STEP_S && steps < WET_MAX_STEPS && sess.budget.can_step() {
             sess.acc -= WET_STEP_S;
             steps += 1;
             if sess.engine.sim_should_run() {
@@ -635,8 +614,7 @@ impl PainterTool {
                 // custo estimado erraria, e o erro se acumularia no bucket.
                 let t0 = std::time::Instant::now();
                 sess.engine.step_simulation();
-                let spent = t0.elapsed().as_secs_f32() * 1e3;
-                sess.sim_credit_ms = (sess.sim_credit_ms - spent).max(WET_MAX_DEBT_MS);
+                sess.budget.spend(t0.elapsed().as_secs_f32() * 1e3);
             }
         }
         // Clamp semantics: a stall never owes a burst of catch-up steps.
@@ -662,6 +640,7 @@ impl PainterTool {
     }
 }
 
+pub(super) mod budget; // o orçamento de TEMPO da sim (o controlador AIMD) — filho por LOC
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod composite; // the composite half (visual terms + veil) — child file (LOC cap)
 

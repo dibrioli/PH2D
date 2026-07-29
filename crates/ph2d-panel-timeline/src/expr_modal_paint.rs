@@ -35,7 +35,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::expr_modal::sync_from_store;
-use crate::expr_modal_columns::expr_button;
+use ph2d_editor_core::icons::IconId;
+
+use crate::expr_modal_columns::{expr_button, expr_icon_button};
 use crate::ids;
 use ph2d_timeline::TimelineViewSnapshot;
 
@@ -326,6 +328,8 @@ fn paint_title_band(
         resolve(ColorToken::Text1, theme),
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, ROW_H_PX);
-    expr_button(ctx, theme, ids::EXPR_MODAL_CLOSE, "X", close_rect);
+    // ⚠️ `IconId::Close`, not the letter "X" — see `expr_icon_button` for why the first
+    // cut of this card wore letters and what it cost.
+    expr_icon_button(ctx, theme, ids::EXPR_MODAL_CLOSE, IconId::Close, close_rect);
     cy + ROW_H_PX + Spacing::Xs.px()
 }

@@ -9,9 +9,10 @@
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, NumberInput, TextInput, TextInputState, paint_button,
-    paint_number_input_with_buffer, paint_text_input_with_buffer,
+    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, TextInput, TextInputState,
+    paint_button, paint_icon_button, paint_number_input_with_buffer, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_expr_recipes::{CATALOG, Family, Knob, KnobKind, SearchHit, search};
@@ -188,6 +189,42 @@ pub(crate) fn expr_button(
     paint_button(&b, rect, ctx.scene, ctx.text_system, theme);
 }
 
+/// The same button, wearing an **ICON from the design system** instead of a letter.
+///
+/// ⚠️ This exists because the first cut of the card drew its eye as the letter `"O"`
+/// and its remove as `"X"` (Enio: *"neste app usamos o olhinho para esconder algo. Por
+/// que usou um O?"*). There was no reason — they were placeholders, and the comment on
+/// the line above the eye already CALLED it an eye, which is the tell: prose describing
+/// an icon over code drawing a glyph. Letters also break §3 (zero hardcoded string) and
+/// they do not carry the app's meaning — an artist learns one eye, in every panel.
+///
+/// ⚠️ It registers the hit rect AND seeds the store, exactly like [`expr_button`]: a
+/// painted-but-unregistered widget is dead under the mouse while a synthetic
+/// `WidgetEvent::Click` in a gate sails straight through it.
+pub(crate) fn expr_icon_button(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    glyph: IconId,
+    rect: Rect,
+) {
+    ctx.host.hit_index_mut().register(id, rect);
+    ctx.host.store_mut().register_if_absent(
+        id,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    paint_icon_button(
+        rect,
+        IconGlyph::Builtin(glyph),
+        IconButtonStyle::Compact,
+        button_state(ctx.host.store(), id),
+        ctx.scene,
+        theme,
+    );
+}
+
 /// Width of a knob's number box.
 ///
 /// ⚠️ Comfortably over [`NUMBER_INPUT_MIN_W_PX`], which is the app's canon floor
@@ -310,13 +347,25 @@ pub(crate) fn paint_sheet(
         used += need;
 
         // Row header: bypass eye · label · result · remove.
+        //
+        // ⚠️ The icons follow the Vector line's **effect stack**
+        // (`ph2d-panel-vector/src/paint_effects.rs:160-176`), because that is the same
+        // structure: rows of a stack, each one bypassable, each one removable. Eye when
+        // the row is LIVE and closed eye when it is bypassed is the app's convention in
+        // four places (hierarchy, painter layers, mask rows, vector effects) — an artist
+        // learns one eye, not one per panel.
         let eye = Rect::new(x, cy, ROW_BTN_W, ROW_H_PX);
         let eye_id = ids::expr_bypass_id(ri);
-        expr_button(ctx, theme, eye_id, if row.bypass { "o" } else { "O" }, eye);
+        let eye_glyph = if row.bypass {
+            IconId::EyeClosed
+        } else {
+            IconId::Eye
+        };
+        expr_icon_button(ctx, theme, eye_id, eye_glyph, eye);
 
         let rm = Rect::new(x + SHEET_W - ROW_BTN_W, cy, ROW_BTN_W, ROW_H_PX);
         let rm_id = ids::expr_remove_id(ri);
-        expr_button(ctx, theme, rm_id, "X", rm);
+        expr_icon_button(ctx, theme, rm_id, IconId::Close, rm);
 
         // ⚠️ The result readout is the payload of the spreadsheet metaphor: in a
         // spreadsheet you never wonder what a formula IS, you see what it GIVES.

@@ -300,3 +300,133 @@ fn jitter_rerolls_on_a_fractional_seed_because_it_wants_the_hash() {
         "a Jitter holds still while the clock runs"
     );
 }
+
+/// **O CENSO — receita por receita, nos defaults: parseia? e o valor VARIA?**
+///
+/// Uma SONDA (`#[ignore]`), não um gate: ela imprime a tabela que decide onde
+/// trabalhar, e um gate que falhasse aqui estaria afirmando um veredito de produto
+/// (*"esta receita devia mexer"*) que só o smoke pode dar.
+///
+/// ⚠️ Mede com `value = 0` **E** `value = 0.7` de propósito: com repouso zero toda
+/// receita MULTIPLICATIVA sai plana em zero por aritmética, e isso é indistinguível
+/// de quebrada. A coluna que separa as duas é a única leitura honesta da tabela.
+///
+/// Rodar: `cargo test -p ph2d-expr-recipes --test catalog_scale -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: imprime o censo, não afirma veredito"]
+fn census_of_every_recipe_at_its_defaults() {
+    let amp = |v: &[f32]| {
+        let (lo, hi) = v
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &x| (l.min(x), h.max(x)));
+        hi - lo
+    };
+    println!(
+        "\n{:<22} {:<9} {:>9} {:>9} {:>7}  veredito",
+        "id", "família", "amp@0", "amp@0.7", "cruz/s"
+    );
+    let (mut dead, mut zero_only, mut alive) = (vec![], vec![], vec![]);
+    for r in CATALOG {
+        let mut st = RecipeStack::new();
+        st.push(row_with(r.id, Knobs::Default));
+        let src = st.to_formula();
+        let (a0, a7, cps, verdict) = match (trajectory(&src, 0.0), trajectory(&src, 0.7)) {
+            (Some(t0), Some(t7)) => {
+                let (a0, a7) = (amp(&t0), amp(&t7));
+                let cps = crossings_per_second(&t7);
+                let v = if a7 <= f32::EPSILON {
+                    "CONSTANTE"
+                } else if a0 <= f32::EPSILON {
+                    "ZERO@value=0"
+                } else {
+                    "viva"
+                };
+                (a0, a7, cps, v)
+            }
+            _ => (f32::NAN, f32::NAN, f32::NAN, "PARSE-FAIL"),
+        };
+        println!(
+            "{:<22} {:<9} {a0:>9.4} {a7:>9.4} {cps:>7.2}  {verdict}",
+            r.id,
+            format!("{:?}", r.family)
+        );
+        match verdict {
+            "PARSE-FAIL" => dead.push((r.id, src)),
+            "CONSTANTE" => dead.push((r.id, src)),
+            "ZERO@value=0" => zero_only.push(r.id),
+            _ => alive.push(r.id),
+        }
+    }
+    println!(
+        "\n== NÃO MEXEM (parse-fail ou constantes): {} ==",
+        dead.len()
+    );
+    for (id, src) in &dead {
+        println!("  {id:<22} {src}");
+    }
+    println!(
+        "\n== SÓ ZERADAS COM value=0 (multiplicativas): {} ==",
+        zero_only.len()
+    );
+    println!("  {}", zero_only.join(" "));
+    println!("\n== VIVAS: {} ==\n  {}", alive.len(), alive.join(" "));
+}
+
+/// **Segunda leitura do censo: um MODIFICADOR precisa de uma linha acima dele.**
+///
+/// ⚠️ O censo mede cada receita SOZINHA e chama de constante tudo que é função de
+/// `value` — o que é a verdade sobre a medição, não sobre a receita: `Limit`,
+/// `Speed`, `If Greater` MODIFICAM o que vem antes, e alimentados com um `value`
+/// constante devolvem constante *corretamente*. Esta sonda põe um gerador (`Sway`)
+/// em cima e re-mede: o que ACORDA é modificador sadio; o que continua parado é
+/// defeito de verdade.
+///
+/// Rodar: `cargo test -p ph2d-expr-recipes --test catalog_scale -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: a segunda leitura do censo"]
+fn census_second_reading_modifiers_over_a_generator() {
+    let amp = |v: &[f32]| {
+        let (lo, hi) = v
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &x| (l.min(x), h.max(x)));
+        hi - lo
+    };
+    let (mut woke, mut still_dead) = (vec![], vec![]);
+    println!(
+        "\n{:<22} {:<9} {:>10} {:>10}",
+        "id", "família", "sozinho", "sob Sway"
+    );
+    for r in CATALOG {
+        let mut solo = RecipeStack::new();
+        solo.push(row_with(r.id, Knobs::Default));
+        let mut over = RecipeStack::new();
+        over.push(row_with("sway", Knobs::Default));
+        over.push(row_with(r.id, Knobs::Default));
+        let a = |st: &RecipeStack| trajectory(&st.to_formula(), 0.7).map_or(f32::NAN, |t| amp(&t));
+        let (s, o) = (a(&solo), a(&over));
+        if s <= f32::EPSILON {
+            println!(
+                "{:<22} {:<9} {s:>10.4} {o:>10.4}",
+                r.id,
+                format!("{:?}", r.family)
+            );
+            if o > f32::EPSILON {
+                woke.push(r.id)
+            } else {
+                still_dead.push((r.id, over.to_formula()))
+            }
+        }
+    }
+    println!(
+        "\n== ACORDARAM sob um gerador (modificadores sadios): {} ==\n  {}",
+        woke.len(),
+        woke.join(" ")
+    );
+    println!(
+        "\n== CONTINUAM PARADAS (defeito de verdade): {} ==",
+        still_dead.len()
+    );
+    for (id, src) in &still_dead {
+        println!("  {id:<22} {src}");
+    }
+}

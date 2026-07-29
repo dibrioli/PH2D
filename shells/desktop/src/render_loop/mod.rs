@@ -187,7 +187,20 @@ thread_local! {
     static FRAME_PROF_DISPATCH_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     /// Active tool's `on_tick` µs (the watercolor heartbeat: soak pour + live recomposite) —
     /// the perf-audit phase the original split missed (2026-07-07, "grave FPS drop" hunt).
-    static FRAME_PROF_TICK_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// Acumulado sobre a JANELA, nunca lido de um frame só (ver abaixo).
+    /// ⚠️ **A JANELA, não uma amostra.** A linha `[frame]` sai a cada 120 frames e lia o valor do
+    /// frame SORTEADO — e um traço inteiro cabe entre duas impressões, então `tool-tick` e `stamps`
+    /// liam **0,00 por construção** enquanto o artista pintava (smoke do Enio, 2026-07-29: quatro
+    /// amostras seguidas zeradas num app onde a água estava viva). É a mesma doença que o split de
+    /// fases teve com a mediana (§4.8.2): *um custo intermitente é invisível num redutor que só
+    /// olha um instante.* Estes três acumulam sobre a janela e zeram a cada impressão.
+    static FRAME_PROF_TICK_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_TICK_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_TICK_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// Idem para o carimbo de dabs (`stamps`), que é o outro inquilino intermitente do frame.
+    static FRAME_PROF_STAMP_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_STAMP_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_STAMP_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// `paint_hero_screen` µs (panel/chrome Vello encode — includes the Paper preview).
     static FRAME_PROF_HERO_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
@@ -1046,7 +1059,19 @@ impl crate::App {
             let tick_t0 = frame_prof_on().then(Instant::now);
             t.on_tick(frame_ms_now);
             if let Some(t0) = tick_t0 {
-                FRAME_PROF_TICK_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
+                let us = t0.elapsed().as_micros() as u64;
+                // A janela: soma, pico e quantos frames de fato trabalharam.
+                if us > 0 {
+                    FRAME_PROF_TICK_SUM_US.with(|c| c.set(c.get() + us));
+                    FRAME_PROF_TICK_MAX_US.with(|c| c.set(c.get().max(us)));
+                    FRAME_PROF_TICK_N.with(|c| c.set(c.get() + 1));
+                }
+                let st = self.last_paint_stamp_us;
+                if st > 0 {
+                    FRAME_PROF_STAMP_SUM_US.with(|c| c.set(c.get() + st));
+                    FRAME_PROF_STAMP_MAX_US.with(|c| c.set(c.get().max(st)));
+                    FRAME_PROF_STAMP_N.with(|c| c.set(c.get() + 1));
+                }
             }
             // Fill dwell gesture: a held-still ColorDrop fires the fill + enters live threshold-adjust
             // (see `input_dispatch::fill_drag`). `last_pointer` is disjoint from `self.gfx.tools`.
@@ -6381,13 +6406,42 @@ impl crate::App {
                 // pointer-driven stamps since last frame (Move → apply_watercolor), `hero` = the
                 // panel/chrome Vello encode (includes the Paper preview). `stamp` + `tick` happen
                 // BEFORE cpu_start, so they add to `total` but NOT to `cpu-encode(raw)`.
-                let tick_ms = FRAME_PROF_TICK_US.with(|c| c.get()) as f64 / 1000.0;
-                let stamp_ms = self.last_paint_stamp_us as f64 / 1000.0;
                 let hero_ms = FRAME_PROF_HERO_US.with(|c| c.get()) as f64 / 1000.0;
+                // ⚠️ A JANELA, não a amostra: `média sobre os frames que trabalharam / pico / n`.
+                // Ler um frame sorteado fazia um traço inteiro caber entre duas impressões e as
+                // duas fases intermitentes lerem 0,00 enquanto o artista pintava.
+                let take = |sum: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
+                            mx: &'static std::thread::LocalKey<std::cell::Cell<u64>>,
+                            n: &'static std::thread::LocalKey<std::cell::Cell<u32>>|
+                 -> (f64, f64, u32) {
+                    let (s, m, k) = (
+                        sum.with(std::cell::Cell::take),
+                        mx.with(std::cell::Cell::take),
+                        n.with(std::cell::Cell::take),
+                    );
+                    let avg = if k > 0 {
+                        s as f64 / f64::from(k) / 1000.0
+                    } else {
+                        0.0
+                    };
+                    (avg, m as f64 / 1000.0, k)
+                };
+                let (tick_avg, tick_max, tick_n) = take(
+                    &FRAME_PROF_TICK_SUM_US,
+                    &FRAME_PROF_TICK_MAX_US,
+                    &FRAME_PROF_TICK_N,
+                );
+                let (stamp_avg, stamp_max, stamp_n) = take(
+                    &FRAME_PROF_STAMP_SUM_US,
+                    &FRAME_PROF_STAMP_MAX_US,
+                    &FRAME_PROF_STAMP_N,
+                );
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
                      | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
-                     | tool-tick={tick_ms:.2}ms | stamps={stamp_ms:.2}ms | hero-paint={hero_ms:.2}ms",
+                     | hero-paint={hero_ms:.2}ms\n\
+                     [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
+                     | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120",
                     1000.0 / f64::from(total).max(0.001),
                     (f64::from(total) - f64::from(encode)).max(0.0),
                 );

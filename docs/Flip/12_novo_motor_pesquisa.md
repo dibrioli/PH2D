@@ -247,15 +247,17 @@ Porquê, em três linhas:
 3. É **mais barato** que o C1 em fragmentos, e os dois pagam exatamente o mesmo pedágio de
    arquitetura (o alvo por traço), então o pedágio não é argumento a favor do C1.
 
-**A ordem de execução que eu proponho, se aprovado:**
+**A ordem de execução que eu proponho, se aprovado** — ⚠️ os passos 0 e 1 **já rodaram** (§5, §6) e
+mudaram o resto da tabela:
 
-| # | passo | o que decide |
+| # | passo | estado |
 |---|---|---|
-| 0 | **Medir o pedágio** (§3.3) num protótipo mínimo: N traços, bbox-scissor, 2 passes | **kill-criterion**: se o frame não couber no orçamento a 4K, a forma do motor muda antes de qualquer linha de lei |
-| 1 | Quantificar a diferença **integral × soma finita** contra `painter_deposit_sized` | fixa o critério de aceitação honesto (risco 2 da §3.1) |
-| 2 | O kernel `τ` + resolve, com `hardness = 1` byte-idêntico | o CONTROLE de todos os smokes (§8) |
-| 3 | Reconstruir a bateria do §6 contra o motor novo | os oráculos são de COMPORTAMENTO e sobrevivem (§9 do handoff) |
-| 4 | Só então: caps/joins, tips, e a wave de `self_overlap` que some sozinha | |
+| 0 | **Medir o pedágio** do alvo por-traço | ✅ **FEITO** (§6). A bbox morreu (67 telas/frame); a granularidade é **TILE**, e com ela o alvo por-traço **deixa de existir** |
+| 1 | Quantificar **integral × soma finita** contra `painter_deposit_sized` | ✅ **FEITO** (§5). Corpo a **±2/255**, cruzamento incluso; densidade exatamente constante; `sub = 4` |
+| 2 | O **binning por tile** + o walk por-tile (o esqueleto, sem lei) | o esqueleto que o §6.3 desenhou; é onde o `neighbors.rs` morre |
+| 3 | O kernel `τ` + resolve dentro do walk, com `hardness = 1` byte-idêntico | o CONTROLE de todos os smokes (§8 do handoff) |
+| 4 | Reconstruir a bateria do §6 do handoff contra o motor novo | os oráculos são de COMPORTAMENTO e sobrevivem |
+| 5 | **Caps e joins como primitivo** (§5.5) — deixou de ser risco e virou escopo | + tips; o `self_overlap` some sozinho |
 
 **O que eu NÃO recomendo:** portar o Ciallo esperando a cura (§2.1 — ele declara a limitação),
 continuar na linhagem GP (§2.2 — segue quebrada no 5.0), ou adotar o `Soft` do Drawpile sem medir o
@@ -351,7 +353,75 @@ Não é a lei: é a fronteira do oráculo, e qualquer gate de aceitação em `h 
 
 ---
 
-## 6. Fontes
+## 6. ⭐ O PEDÁGIO, MEDIDO (passo 0 executado — `tests/architecture_toll.rs`, CPU)
+
+O kill-criterion declarado no §4: os dois candidatos precisam de um **alvo intermediário por
+traço**, e o Flip re-rasteriza tudo a cada frame. Cabe no orçamento?
+
+⚠️ **A medição matou a mitigação nº 1 da §3.3 — o `set_scissor_rect` pela bbox do traço, que eu
+tinha proposto como a saída preferida.**
+
+### 6.1 O desperdício da bbox num gesto só (tela 1920×1080, r = 6 px)
+
+| caso | fita (px) | bbox (px) | **bbox/fita** | tile64/fita |
+|---|---|---|---|---|
+| horizontal curto | 2 512 | 2 544 | **1,0×** | 13,0× |
+| **DIAGONAL de canto a canto** | 25 872 | 1 990 384 | **76,9×** | 8,7× |
+| arco amplo (o gesto de animação) | 23 066 | 707 056 | **30,7×** | 8,2× |
+
+**A bbox de um traço diagonal é a tela inteira.** Num traço curto ela é perfeita (1,0×) — e é por
+isso que a ideia parecia boa: ela só falha na figura que o módulo existe para desenhar.
+
+### 6.2 O pedágio agregado, em TELAS CHEIAS por frame
+
+| cena | n | fita | **bbox** | tile64 | **tile16** |
+|---|---|---|---|---|---|
+| curtos (hachura) | 200 | 0,14 | 0,62 | 1,86 | **0,47** |
+| **LONGOS (gesto)** | 10 | 0,10 | **3,39** | 0,86 | **0,28** |
+| **LONGOS (gesto)** | 50 | 0,46 | **16,12** | 4,08 | **1,34** |
+| **LONGOS (gesto)** | 200 | 1,86 | **67,43** | 16,52 | **5,44** |
+
+⛔ **67 telas cheias por frame** com 200 gestos. O alvo por-traço scissorado pela bbox **não é
+viável** — e não é afinável, porque o número é geometria pura.
+
+✅ **Em granularidade de TILE de 16 px o pedágio é ~3× a fita** (5,44 contra 1,86; e 0,47 contra
+0,14 nos curtos), consistente nas duas cenas. Tile de 64 é grosso demais (16,52) — o ladrilho grande
+desperdiça em traço fino.
+
+### 6.3 ⭐ A conclusão que reescreve a arquitetura: **C2 e C4 não são alternativas — o C2 é como o C4 roda**
+
+Se a granularidade tem de ser o TILE, então o alvo intermediário **por-traço deixa de existir**, e
+com ele o kill-criterion inteiro:
+
+> Um renderizador **binado por tile** percorre, para cada ladrilho, a lista de traços que o tocam,
+> **em ordem de z**. Para cada traço ele acumula `τ` sobre os segmentos daquele traço naquele
+> ladrilho, resolve `α = 1 − exp(−τ)` e **compõe `over`** no acumulador do ladrilho — tudo em
+> **registradores**, dentro de **UM dispatch**.
+
+Isso apaga, de uma vez:
+
+- o **alvo por traço** (não há textura de scratch, não há clear, não há N render passes);
+- o **teto (B)** — a lista por tile é limitada por memória, não por uma constante;
+- a **eleição (C)** — dentro do traço a soma é comutativa; entre traços a ordem é o z, que é
+  explícito e não um depth test;
+- e o `neighbors.rs` inteiro (587 linhas + 397 de teste), que existia só para contar ao fragment
+  qual caminho está perto.
+
+**É o modelo do Vello aplicado à nossa lei de tinta** — e é por isso que o §2.3 concluiu que o
+stroke expansion é *"uma peça, não um motor"*: ele é a peça de **execução**, e a lei da tinta
+(§5) é a peça que faltava a ele.
+
+### 6.4 O risco que sobra, nomeado
+
+O custo por pixel passa a ser *"quantos segmentos deste traço estão ao alcance"*, e numa mão lenta
+isso é grande (o `flip_lenta` tem **1065 segmentos**). ⚠️ **Isso afeta a VELOCIDADE, nunca o
+resultado** — a §5.3 mediu o desvio exatamente constante em 6 densidades —, o que já é uma inversão
+do motor atual, onde a densidade corrompia a *tinta*. A mitigação é fundir segmentos quase-colineares
+no `pack` (o `7ca83d6fb` já funde cápsulas hoje), e ela **não é pré-requisito**: é afinação.
+
+---
+
+## 7. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

@@ -60,6 +60,13 @@ gama nos meios-tons, e o único lugar onde isso apareceria é uma screenshot.
 
 ---
 
+4. ⚠️ **E o quarto foi o REPORT do Enio, que não estava no trilho** (*"não é possível arrastar os
+   pontos de cor"* → *"ainda não posso mover"*): o painel de **camadas do Painter** drenava o stash
+   **global** de arrasto para QUALQUER `ValueChanged` e devolvia `Consumed` — então o gesto era
+   engolido por um painel que nem estava na tela, com os gates isolados dos dois painéis **verdes**.
+   Reproduzido por `PH2D_FX_RAMP_DIAG=1`; cura estrutural + 3 gates novos em **§18.9 do plano 24**.
+   ⚠️ **É por isso que esta wave toca três crates fora do vetor** — ver a tabela abaixo.
+
 ## Superfície tocada
 
 | | |
@@ -72,6 +79,9 @@ gama nos meios-tons, e o único lugar onde isso apareceria é uma screenshot.
 | **`ph2d-render`** | `Globals` +rampa (**304 bytes**, pin atualizado) · `ramp_sample` no WGSL · `plan_of` pergunta ao TIPO · **`Globals::for_op`** movido para o dono do uniform (LOC) |
 | **`ph2d-editor-core`** | `MAX_FILTER_KINDS` 14→**15** · `MAX_FILTER_STOPS` · 5 ids do trilho |
 | **`ph2d-panel-vector`** | snapshot +rampa +`takes_ramp` · `RAMP_PREVIEW_N` · `selected_stop` (vista) · o trilho em `paint_filters` |
+| ⚠️ **`ph2d-editor-core`** | **API FOUNDATIONAL REMOVIDA:** `WidgetStore::take_curve_point_drag()` **deixou de existir** → `take_curve_point_drag_if(\|parent\| …)`, que deixa o stash intacto na recusa. É a cura do defeito reportado (§18.9) e o compilador é o gate |
+| ⚠️ **`ph2d-panel-painter-layers`** | **crate de OUTRA linha** — o ladrão do gesto: `route_value_changed` passou a perguntar de quem é o arrasto (drenagem extraída para `event/curve_drag.rs`) + os 4 sítios id-gated migrados + gate novo `seam_curve_drag_ownership.rs` |
+| ⚠️ **`ph2d-panel-motion-params`** | **crate de OUTRA linha** — 1 sítio migrado (o `if parent != …` dele virou o predicado; o comentário *"put it back is impossible"* morreu com o defeito) |
 | **`shells/desktop`** | `ColourSlot` (o `bool` de 2 virou 3) · `apply_picked_colour`/`add_stop`/`remove_stop`/`ramp_preview` · o arrasto por `pending_filter_stop` · **`fx_live_resolve.rs` NOVO** (LOC) · cena `=39` |
 
 ---
@@ -85,6 +95,9 @@ gama nos meios-tons, e o único lugar onde isso apareceria é uma screenshot.
 | `ph2d-panel-vector/tests/seam_filters.rs` | 3 | o trilho é oferecido só por quem tem rampa (presença E ausência) · punhos alcançáveis e **sem sobreposição** · `+`/`−` chegam ao bus |
 | `shells/desktop/src/fx_live_tests.rs` | 4 | a rota por slot · o `+` neutro em Linear **e não-neutro em Smooth** · o piso do `−` · o espelho dos tetos |
 | `shells/desktop/tests/the_picker…rs` | 2 | a shell entrega à porta única com o slot (+ controle positivo do scanner) |
+| `ph2d-panel-painter-layers/tests/seam_curve_drag_ownership.rs` | 2 | **o arrasto de outro painel sobrevive E não é consumido** + o CONTROLE de que o próprio segue drenado |
+| `ph2d-editor-core` (`interaction::state::tests`) | 1 | a recusa do predicado é **não-destrutiva** (é o que torna a recuperação possível) |
+| `ph2d-editor-core/tests/architecture_curve_drag_asks_whose_gesture.rs` | 1 | nenhum painel responde *"é meu"* com **tautologia** (`\|_\| true`), com controle positivo de sítios lidos |
 
 **Mutações: 7 tentadas, 6 sangram, 1 não compila** (o tipo a impede — os arrays do snapshot e do
 componente têm o tamanho tipado pelas duas constantes).
@@ -98,6 +111,10 @@ componente têm o tamanho tipado pelas duas constantes).
 | M5 | o `−` sem piso | RED |
 | M6 | os dois botões do trilho fora do `populate` | RED (*pintados e mortos sob o mouse*) |
 | M7 | `MAX_FILTER_STOPS` = 4 | **não compila** |
+| M8 | o roteador do Painter volta a drenar tudo (`\|_\| true`) | RED (o seam de posse **e** o arch-gate) |
+| M9 | a recusa do predicado deixa de recusar | RED (o gate do primitivo + o seam de posse) |
+| M10 | o vetor pergunta pela **linha errada** ao drenar | RED (os **3** gates de arrasto) |
+| M11 | o id da rampa de textura do Painter trocado pelo da rampa de Shape | ⚠️ **SOBREVIVE** — a suíte daquele módulo não cobre o forward do arrasto de rampa dele (vão **pré-existente**, de outro dono). Os 5 ids escritos lá foram verificados **lendo a registração** (`parent: ids.edit`) |
 
 ---
 
@@ -118,7 +135,15 @@ Oito estrelas em quatro pares, e a cena **imprime o que montou**. O que decide:
    trocar de stop no meio do gesto) · **clique um punho e depois a swatch Stop** (a cor tem de pousar
    NAQUELE stop) · **`+`** (o desenho não pode mudar) · **`−`** (para em dois).
 
+⚠️ **O passo (a) é o que o report do Enio derrubou duas vezes** — se um punho não se mover, rode com
+`PH2D_FX_RAMP_DIAG=1`: `[ramp] linha … · N punho(s) · store armado: true` diz que o punho existe e
+está armado, e `[ramp] painel entregou:` diz que o gesto **atravessou o registry de painéis** (era
+exactamente essa linha que faltava quando um painel alheio roubava o arrasto).
+
 As outras cenas de FX (`=33` a `=38`) servem de regressão pelo mesmo critério: **igual ao de antes**.
+E o **Painter** entra na regressão desta vez, porque a cura tocou a crate dele: as curvas / o Gradient
+Map das camadas de ajuste, o editor de falloff, o dial de tilt do Wet Paint e as duas barras de rampa
+(Grain e Shape) têm de continuar a arrastar.
 
 ---
 

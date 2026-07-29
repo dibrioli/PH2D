@@ -1298,3 +1298,65 @@ Duotone contra a rampa de dois stops: **indistinguíveis**); o 2 traz quatro sto
 **fora de ordem**; o 3 é Linear × Smooth; o 4 é a força por-stop e a rampa **posterizada**. E o
 passo que fecha: **no painel**, arrastar um punho por cima do vizinho, pintar um stop pela swatch, e
 os dois botões.
+
+### §18.9 — O punho não se movia, e o ladrão era outro painel
+
+Report do Enio, duas rodadas: *"não é possível arrastar os pontos de cor"* → *"ainda não posso
+mover"*. **Reproduzido pelo diagnóstico** (`PH2D_FX_RAMP_DIAG=1`), e a causa não estava no trilho.
+
+O log disse tudo em três linhas:
+
+```
+[ramp] linha 1: barra x=1626 w=240 y=431 · 4 punho(s) · store armado: true
+[hero] unhandled event: Click(NodeId(9745551770827700970))
+```
+
+O `NodeId` é `vector.filter.stop.1.3` — o punho da direita. Ele **estava** pintado, hit-registrado e
+com `InteractiveState::CurvePoint` no store; o `Click` no fim é ruído esperado (o `apply_click` cai
+no genérico para um `CurvePoint`). O que **faltava** era o meu `[ramp] painel entregou:` — e não
+havia `unhandled event: ValueChanged`, ou seja **alguém consumiu** o `ValueChanged` do trilho.
+
+**O ladrão:** o `route_value_changed` do `ph2d-panel-painter-layers` drenava o stash de arrasto para
+**qualquer** `ValueChanged` — tomava o gesto e *só então* procurava a camada dona — e devolvia
+`Consumed` mesmo sem achar nenhuma. O `HeroScreen::apply_event` pergunta a **todo** painel do
+registry, visível ou não, e para no primeiro `Consumed`: o painel do FX pintava os punhos, o dispatch
+calculava a posição nova, e o gesto era engolido por um painel de camadas que **nem estava na tela**.
+
+⚠️ **O `take` é irreversível, e o próprio código já o dizia:** o `motion-params` carregava o
+comentário *"Not our editor — put it back is impossible (take)"*. Um canal **global** que se drena
+antes de perguntar de quem é o gesto não tem conserto a jusante.
+
+**A cura é estrutural, não um guard a mais:** a pergunta virou **parte da chamada**.
+`WidgetStore::take_curve_point_drag()` **não existe mais** — só
+`take_curve_point_drag_if(|parent| …)`, que deixa o stash **INTACTO** quando a resposta é não. Os
+nove sítios de drenagem passam a nomear o id do próprio editor (conferidos **contra a registração**
+do `CurvePoint`, não assumidos), e o compilador recusa quem não responde.
+
+**Gates:** `seam_curve_drag_ownership.rs` (RED-first: nasceu `Consumed`) prova que o arrasto de outro
+painel **sobrevive e não é consumido**, com o CONTROLE de que o próprio continua a ser drenado ·
+`a_curve_point_drag_is_only_taken_by_the_editor_it_belongs_to` prova que a recusa é
+**não-destrutiva** · `architecture_curve_drag_asks_whose_gesture.rs` recusa a **tautologia literal**
+(`|_| true`), com controle positivo de sítios lidos.
+
+⚠️ **Duas lições sobre os MEUS gates, e as duas são de medição:**
+
+1. **A quarta condição de UI não é implicada pelas outras três.** Os três gates que eu tinha
+   provavam que os punhos são *pintados* e que `+`/`−` *despacham*; **nenhum dirigia o gesto**. E
+   quando escrevi o que faltava, um deles — `both_handles_…_are_draggable` — media só a metade do
+   **DISPATCH** (o punho responde ao mouse) e **não** que o painel **encaminha**: ele passava com a
+   mutação *"o vetor pergunta pela linha errada"* instalada, sobre um punho que não move nada. Agora
+   afirma as duas metades, e a mutação sangra nos três.
+2. **Uma mutação SOBREVIVEU e está nomeada:** trocar o id da rampa de *textura* do Painter pelo da
+   rampa de *Shape* não sangra gate nenhum — a suíte daquele módulo **não cobre o forward do arrasto
+   de rampa dele**. É vão pré-existente, de outro dono; os cinco ids que esta wave escreveu lá foram
+   verificados **lendo a registração** (`parent: ids.edit`), que é o que se faz quando não há gate.
+
+**Três dívidas latentes dos commits anteriores do trilho, corrigidas junto** — e a família é a mesma
+que já custou caro nesta linha: **estes gates moram na `ph2d-editor-core`, então `cargo test -p
+<painel>` nunca os roda**. O `paint_filters.rs` estava em **760 > 600 LOC já no HEAD** (split por
+responsabilidade: `paint_filters_ramp.rs` = o trilho · `paint_filters_blend.rs` = a lei de mistura) ·
+o `no_literal_color` exige o marcador na **MESMA linha** e o meu estava na de cima (logo, vermelho no
+HEAD também) · e o `hr12_widgets_a11y` ganhou entrada com a dívida **nomeada**: os punhos de rampa
+não têm nó AccessKit — gap pré-existente, compartilhado com o ramp widget do próprio Painter, cujo
+único a11y é um `use ph2d_a11y::NodeId` (import de **tipo**, que satisfaz o scanner sem registrar
+nada).

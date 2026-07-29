@@ -55,6 +55,7 @@ struct Screen {
 // `pack.rs`
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
+const FLAG_AIRBRUSH: u32 = 16u;
 // `binning.rs::MIN_WIDTH_PX`
 const MIN_WIDTH_PX: f32 = 1.3;
 // `tau.rs`
@@ -62,6 +63,9 @@ const PAINTER_SPACING: f32 = 0.10;
 const MIN_PITCH_PX: f32 = 0.25;
 const SUB: f32 = 4.0;
 const F_MAX: f32 = 16.0;
+// `flip.wgsl::AIRBRUSH_K_MIN/MAX`
+const AIRBRUSH_K_MIN: f32 = 1.0;
+const AIRBRUSH_K_MAX: f32 = 8.0;
 
 // `ScreenSpace::point_px`
 fn point_px(w: vec2<f32>) -> vec2<f32> {
@@ -111,13 +115,32 @@ fn dab_weight(dn: f32, hardness: f32) -> f32 {
     return 3.0 * q * q - 2.0 * q * q * q;
 }
 
-// `tau.rs::f_of`
+// `tau.rs::f_of` — só o perfil PADRÃO (o airbrush tem outra medida; ver `d_tau_of`).
 fn f_of(dn: f32, hardness: f32) -> f32 {
     let w = dab_weight(dn, hardness);
     if (w >= 1.0) {
         return F_MAX;
     }
     return min(-log(1.0 - w), F_MAX);
+}
+
+// `tau.rs::d_tau_of` — a porta única, e ela decide a MEDIDA. Padrão: por DAB (`step/pitch`).
+// Airbrush: densidade UNIFORME no disco, por unidade de CAMINHO (`step/2r`) — o `pitch` cancela.
+// A uniformidade é a inversão de Abel da corda `√(1−dn²)` que o `flip.wgsl` escreve (ver o irmão
+// em Rust: `f = k·√(1−dn²)` por dab foi medido e REPROVADO, super-entinta).
+fn d_tau_of(dn: f32, hardness: f32, airbrush: bool, step: f32, r: f32, pitch: f32) -> f32 {
+    if (airbrush) {
+        if (dn >= 1.0) {
+            return 0.0;
+        }
+        let k = mix(AIRBRUSH_K_MIN, AIRBRUSH_K_MAX, clamp(hardness, 0.0, 1.0));
+        return k * step / (2.0 * r);
+    }
+    let fv = f_of(dn, hardness);
+    if (fv <= 0.0) {
+        return 0.0;
+    }
+    return fv * step / pitch;
 }
 
 // `binning.rs::stroke_silhouette` — devolve (sd, near.x, near.y, dist); `sd = 1e30` se vazio.
@@ -141,7 +164,7 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>) -> vec4<f32> {
 }
 
 // `tau.rs::end_dab` — o termo de fronteira, SÓ no começo (a assimetria da referência).
-fn end_dab(sid: u32, hardness: f32, p: vec2<f32>, tau: ptr<function, f32>, acc: ptr<function, vec4<f32>>) {
+fn end_dab(sid: u32, hardness: f32, airbrush: bool, p: vec2<f32>, tau: ptr<function, f32>, acc: ptr<function, vec4<f32>>) {
     let st = strokes[sid];
     if ((st.flags & FLAG_CLOSED) != 0u || st.point_count == 0u) {
         return;
@@ -153,6 +176,10 @@ fn end_dab(sid: u32, hardness: f32, p: vec2<f32>, tau: ptr<function, f32>, acc: 
     let s = point_px(pt.pos);
     let r = max(radius_px(pt.width), 1e-4);
     let dn = length(p - s) / r;
+    // O airbrush não tem termo de fronteira (a medida dele é caminho, não contagem de dabs).
+    if (airbrush) {
+        return;
+    }
     let d_tau = 0.5 * f_of(dn, hardness);
     if (d_tau <= 0.0) {
         return;
@@ -167,7 +194,7 @@ fn end_dab(sid: u32, hardness: f32, p: vec2<f32>, tau: ptr<function, f32>, acc: 
 }
 
 // `tau.rs::stroke_tau` — devolve (tau, acc) com a cor já dividida; tau <= 0 ⇒ sem depósito.
-fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, p: vec2<f32>, out_rgb: ptr<function, vec4<f32>>) -> f32 {
+fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, p: vec2<f32>, out_rgb: ptr<function, vec4<f32>>) -> f32 {
     var tau = 0.0;
     var acc = vec4<f32>(0.0);
     for (var k = lo; k < hi; k = k + 1u) {
@@ -212,19 +239,18 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, p: vec2<f32>, out_rgb: 
             let sp = sa + v * t;
             let r = max(ra * (1.0 - t) + rb * t, 1e-4);
             let dn = length(p - sp) / r;
-            let fv = f_of(dn, hardness);
-            if (fv <= 0.0) {
+            let pitch = max(PAINTER_SPACING * 2.0 * r, MIN_PITCH_PX);
+            let d_tau = d_tau_of(dn, hardness, airbrush, step, r, pitch);
+            if (d_tau <= 0.0) {
                 continue;
             }
-            let pitch = max(PAINTER_SPACING * 2.0 * r, MIN_PITCH_PX);
-            let d_tau = fv * step / pitch;
             tau = tau + d_tau;
             let op = pa.opacity * (1.0 - t) + pb.opacity * t;
             let col = pa.color * (1.0 - t) + pb.color * t;
             acc = acc + vec4<f32>(col.x * d_tau, col.y * d_tau, col.z * d_tau, col.w * op * d_tau);
         }
     }
-    end_dab(sid, hardness, p, &tau, &acc);
+    end_dab(sid, hardness, airbrush, p, &tau, &acc);
     if (tau <= 0.0) {
         return 0.0;
     }
@@ -271,7 +297,8 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
                     p_eval = p + (vec2<f32>(sil.y, sil.z) - p) * f;
                 }
                 var rgba = vec4<f32>(0.0);
-                let tau = stroke_tau(i, j, sid, strokes[sid].hardness, p_eval, &rgba);
+                let airbrush = (strokes[sid].flags & FLAG_AIRBRUSH) != 0u;
+                let tau = stroke_tau(i, j, sid, strokes[sid].hardness, airbrush, p_eval, &rgba);
                 if (tau > 0.0) {
                     let cover = (1.0 - exp(-tau)) * min(edge, 1.0);
                     if (cover > 0.0) {

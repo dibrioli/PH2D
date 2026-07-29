@@ -618,3 +618,123 @@ fn both_engines_put_the_ink_in_the_same_place() {
         percurso[4]
     );
 }
+
+/// 🔴 **O AIRBRUSH CHEGOU AO PERCURSO** — e o oráculo é o rasterizador, que sabe a resposta
+/// FECHADA numa reta (a corda pelo tubo é a projeção de Abel da esfera).
+///
+/// Duas metades, e a segunda é o que impede um no-op de passar:
+/// 1. numa reta os dois motores traçam o MESMO perfil (barra 5/255 — o AA da borda macia mais a
+///    quadratura, onde eles divergem por projeto);
+/// 2. o airbrush **não é** o perfil padrão — em `dn = 0,9` o padrão vale ~12 e o airbrush ~190.
+///    Sem esta metade, um `d_tau_of` que ignorasse a flag passaria na primeira.
+///
+/// ⚠️ **Numa reta os dois coincidem; na CURVA o percurso é mais correto** — a corda fechada do
+/// rasterizador só vale para uma reta infinita, e o percurso integra a densidade ao longo do
+/// caminho de verdade. É por isso que a fixture é reta: é o único lugar onde o raster é oráculo.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_airbrush_reaches_the_walk_and_matches_the_closed_form() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o airbrush");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    // Traço RETO no meio, raio 10 (largura 20), hardness 0,5 — as linhas y = 32+3·dn.
+    let perfil = |gpu: &GpuContext,
+                  fr: &mut FlipRenderer,
+                  fc: &mut FlipCompose,
+                  airbrush: bool,
+                  armado: bool| {
+        let mut st = FlipStroke::new();
+        for &x in &[4.0_f32, 60.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: 20.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 0.5;
+        st.airbrush = airbrush;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        fc.set_walk_engine(&gpu.device, armado);
+        let slice = fc.stage_layer(&gpu.device, &gpu.queue, fr, &cam, &data, (W, H));
+        let px = readback_slice(gpu, slice);
+        [32u32, 35, 37, 39, 41].map(|y| px[((y * W + 32) * 4 + 3) as usize])
+    };
+
+    let raster_air = perfil(&gpu, &mut fr, &mut fc, true, false);
+    let walk_air = perfil(&gpu, &mut fr, &mut fc, true, true);
+    let walk_pad = perfil(&gpu, &mut fr, &mut fc, false, true);
+    println!(
+        "\n  raster airbrush {raster_air:?}\n  walk   airbrush {walk_air:?}\n  walk   padrao   {walk_pad:?}"
+    );
+
+    // (1) o perfil casa com a forma fechada.
+    for (i, (&r, &w)) in raster_air.iter().zip(walk_air.iter()).enumerate() {
+        let d = (i32::from(r) - i32::from(w)).abs();
+        assert!(
+            d <= 5,
+            "o airbrush do percurso divergiu da forma fechada em dn={:.1}: raster {r} vs percurso {w}",
+            i as f32 * 0.3
+        );
+    }
+    // (2) e ele NÃO é o perfil padrão — a borda é o discriminante.
+    assert!(
+        i32::from(walk_air[4]) - i32::from(walk_pad[4]) > 100,
+        "o airbrush nao chegou ao percurso: borda airbrush {} vs padrao {} \
+         (a flag esta sendo ignorada?)",
+        walk_air[4],
+        walk_pad[4]
+    );
+}
+
+/// **SONDA** — o perfil do airbrush, atravessado, nos dois motores.
+#[test]
+#[ignore = "sonda; roda com --ignored"]
+fn measure_the_airbrush_profile_in_both_engines() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    // Traço RETO horizontal no meio, raio 10 (largura 20), hardness 0,5.
+    for airbrush in [false, true] {
+        let mut st = FlipStroke::new();
+        for &x in &[4.0_f32, 60.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: 20.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 0.5;
+        st.airbrush = airbrush;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        println!("\n  airbrush={airbrush}  (dn: 0 = eixo, 1 = borda em y=42)");
+        for armado in [false, true] {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            let a = |y: u32| px[((y * W + 32) * 4 + 3) as usize];
+            println!(
+                "    {}  dn 0.0={:3}  0.3={:3}  0.5={:3}  0.7={:3}  0.9={:3}",
+                if armado { "PERCURSO" } else { "RASTER  " },
+                a(32),
+                a(35),
+                a(37),
+                a(39),
+                a(41)
+            );
+        }
+    }
+}

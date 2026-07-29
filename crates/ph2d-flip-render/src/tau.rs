@@ -69,15 +69,91 @@ pub fn dab_weight(dn: f32, hardness: f32) -> f32 {
     3.0 * p * p - 2.0 * p * p * p
 }
 
+/// **O PERFIL DE UM DAB deste traço** — o que decide a FORMA da queda, lido do traço UMA vez.
+///
+/// ⚠️ **Sem `Default`, e é o ponto.** O rasterizador tem SETE leitores de `Stroke`/flags e o
+/// percurso tinha quatro: cada flag que fica de fora é uma feature apagada em silêncio, com o
+/// motor novo armado e todos os gates verdes (foi o que a auditoria por grep achou depois do
+/// smoke). Um par `(hardness, bool, bool, …)` solto convida a passar `false` onde o traço tinha a
+/// resposta; um tipo sem `Default` obriga a construir do traço — a lei do `ShapeFrame` do Painter.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DabProfile {
+    /// `0` = borda maximamente macia, `1` = disco duro (o default do Flip).
+    pub hardness: f32,
+    /// `FLAG_AIRBRUSH`: a transmitância de Beer-Lambert em vez do perfil do Painter.
+    pub airbrush: bool,
+}
+
+impl DabProfile {
+    /// Do traço — a porta única. Toda flag nova entra AQUI, e o compilador acha os leitores.
+    #[must_use]
+    pub fn of(st: &crate::pack::GpuStroke) -> Self {
+        Self {
+            hardness: st.hardness,
+            airbrush: st.flags & crate::pack::FLAG_AIRBRUSH != 0,
+        }
+    }
+}
+
+/// Os limites do `k` do airbrush — **TÊM de bater com o `flip.wgsl`** (`AIRBRUSH_K_MIN/MAX`).
+pub const AIRBRUSH_K_MIN: f32 = 1.0;
+pub const AIRBRUSH_K_MAX: f32 = 8.0;
+
 /// A densidade `f = −ln(1 − w)`. É ela que troca o **PRODUTO** por uma **SOMA** — e é a soma que
 /// torna a lei comutativa, sem ordem e sem teto.
+///
+/// ⚠️ **NÃO use isto para o airbrush** — ele tem outra MEDIDA; a porta é a [`d_tau_of`].
 #[must_use]
-pub fn f_of(dn: f32, hardness: f32) -> f32 {
-    let w = dab_weight(dn, hardness);
+pub fn f_of(dn: f32, prof: DabProfile) -> f32 {
+    let w = dab_weight(dn, prof.hardness);
     if w >= 1.0 {
         return F_MAX;
     }
     (-(1.0 - w).ln()).min(F_MAX)
+}
+
+/// O `k` de Beer-Lambert deste traço.
+#[must_use]
+pub fn airbrush_k(hardness: f32) -> f32 {
+    AIRBRUSH_K_MIN + (AIRBRUSH_K_MAX - AIRBRUSH_K_MIN) * hardness.clamp(0.0, 1.0)
+}
+
+/// **O incremento de `τ` de uma sub-amostra — a porta ÚNICA, e ela decide a MEDIDA.**
+///
+/// Os dois perfis integram contra medidas DIFERENTES, e isso é a física, não arrumação:
+///
+/// - **padrão:** o pixel conta quantos DABS o cobriram (`step/pitch`), e cada um contribui a
+///   densidade `−ln(1−w)`. Dabs são carimbos discretos compostos por `over`.
+/// - **airbrush:** um spray deposita densidade por unidade de **CAMINHO**, não por dab ⇒ a medida
+///   é `step/(2r)` (comprimento em diâmetros) e o `pitch` **cancela**.
+///
+/// ⚠️ **A densidade do airbrush é UNIFORME dentro do disco, e isso foi DERIVADO, não escolhido.**
+/// O rasterizador escreve `w = 1 − exp(−k·√(1−dn²))` (Ciallo/Beer-Lambert), e esse `√(1−dn²)` é a
+/// **projeção de Abel** da esfera — a corda pelo TUBO varrido, ou seja **já é a resposta do traço
+/// inteiro**, não de um dab. A primeira tentativa desta wave usou `f = k·√(1−dn²)` por dab (o log e
+/// o exp cancelam, o que é bonito e está errado) e a medição a matou: raster `252/251/249/242/192`
+/// contra percurso `255/255/255/255/247` — integrar a corda ao longo do caminho a multiplica pelo
+/// número de dabs. Invertendo a Abel, o kernel aditivo cuja integral de caminho **É** a corda é a
+/// **indicadora do disco** (conferido numericamente a 4 decimais: `∫[√(y²+u²)<1] du = 2√(1−y²)`),
+/// e a normalização sai da igualdade `C·2r·√(1−y²)/pitch = k·√(1−y²)` ⇒ `dτ = k·step/(2r)`.
+///
+/// ⚠️ **E o percurso fica MAIS correto que o rasterizador, não igual:** a corda analítica só vale
+/// numa reta infinita; o percurso integra a densidade **ao longo do caminho de verdade**, então na
+/// curva e no cruzamento ele responde o que a projeção fechada não sabe responder. Numa reta os
+/// dois coincidem — é isso que o gate afirma.
+#[must_use]
+pub fn d_tau_of(dn: f32, prof: DabProfile, step: f32, r: f32, pitch: f32) -> f32 {
+    if prof.airbrush {
+        if dn >= 1.0 {
+            return 0.0;
+        }
+        return airbrush_k(prof.hardness) * step / (2.0 * r);
+    }
+    let fv = f_of(dn, prof);
+    if fv <= 0.0 {
+        return 0.0;
+    }
+    fv * step / pitch
 }
 
 /// O que um traço deposita num pixel: `τ` acumulado e a cor média ponderada por `dτ`.
@@ -94,7 +170,7 @@ pub(crate) fn stroke_tau(
     run: &[BinSeg],
     data: &FlipGpuData,
     screen: &ScreenSpace,
-    hardness: f32,
+    prof: DabProfile,
     p: [f32; 2],
 ) -> Option<(f32, [f32; 4])> {
     let mut tau = 0.0_f32;
@@ -144,12 +220,11 @@ pub(crate) fn stroke_tau(
             let s = [sa[0] + v[0] * t, sa[1] + v[1] * t];
             let r = (ra * (1.0 - t) + rb * t).max(1e-4);
             let dn = ((p[0] - s[0]).powi(2) + (p[1] - s[1]).powi(2)).sqrt() / r;
-            let fv = f_of(dn, hardness);
-            if fv <= 0.0 {
+            let pitch = (PAINTER_SPACING * 2.0 * r).max(MIN_PITCH_PX);
+            let d_tau = d_tau_of(dn, prof, step, r, pitch);
+            if d_tau <= 0.0 {
                 continue;
             }
-            let pitch = (PAINTER_SPACING * 2.0 * r).max(MIN_PITCH_PX);
-            let d_tau = fv * step / pitch;
             tau += d_tau;
             // A cor é a média ponderada por `dτ` — a resposta comutativa, do mesmo tipo da lei.
             // ⚠️ O `opacity` multiplica DEPOIS da cobertura (a regra do GP que o `flip.wgsl`
@@ -162,7 +237,7 @@ pub(crate) fn stroke_tau(
             acc[3] += (pa.color[3] * (1.0 - t) + pb.color[3] * t) * op * d_tau;
         }
     }
-    end_dab(run, data, screen, hardness, p, &mut tau, &mut acc);
+    end_dab(run, data, screen, prof, p, &mut tau, &mut acc);
     if tau <= 0.0 {
         return None;
     }
@@ -198,7 +273,7 @@ fn end_dab(
     run: &[BinSeg],
     data: &FlipGpuData,
     screen: &ScreenSpace,
-    hardness: f32,
+    prof: DabProfile,
     p: [f32; 2],
     tau: &mut f32,
     acc: &mut [f32; 4],
@@ -231,7 +306,13 @@ fn end_dab(
         let s = screen.point_px(pt.pos);
         let r = screen.radius_px(pt.width).max(1e-4);
         let dn = ((p[0] - s[0]).powi(2) + (p[1] - s[1]).powi(2)).sqrt() / r;
-        let d_tau = 0.5 * f_of(dn, hardness);
+        // ⚠️ **O airbrush não tem termo de fronteira.** Euler-Maclaurin corrige uma SOMA discreta
+        // de dabs; a medida do airbrush é comprimento de caminho, e a integral sobre o caminho REAL
+        // já é exata nas pontas — meio dab aqui seria uma correção para um erro que não existe.
+        if prof.airbrush {
+            return;
+        }
+        let d_tau = 0.5 * f_of(dn, prof);
         if d_tau <= 0.0 {
             continue;
         }

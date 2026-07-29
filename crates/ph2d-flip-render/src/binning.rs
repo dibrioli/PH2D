@@ -331,7 +331,7 @@ fn stroke_deposit(
     screen: &ScreenSpace,
     p: [f32; 2],
 ) -> Option<Deposit> {
-    let hardness = data.strokes[run.first()?.stroke as usize].hardness;
+    let prof = crate::tau::DabProfile::of(&data.strokes[run.first()?.stroke as usize]);
     let (sd, near, dist) = stroke_silhouette(run, data, screen, p)?;
     // **O ANTI-ALIASING** — a fração do pixel coberta pela silhueta, por filtro-caixa.
     //
@@ -381,7 +381,7 @@ fn stroke_deposit(
     } else {
         p
     };
-    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, hardness, p_eval)?;
+    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, prof, p_eval)?;
     let cover = (1.0 - (-tau).exp()) * edge.min(1.0);
     (cover > 0.0).then_some(Deposit { cover, rgba })
 }

@@ -520,7 +520,11 @@ fn the_sum_of_f_is_the_product_of_the_dabs() {
         let hardness = hi as f32 / 20.0;
         let dns = [0.05f32, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95];
         let product: f32 = dns.iter().map(|d| 1.0 - dab_weight(*d, hardness)).product();
-        let sum: f32 = dns.iter().map(|d| f_of(*d, hardness)).sum();
+        let prof = crate::tau::DabProfile {
+            hardness,
+            airbrush: false,
+        };
+        let sum: f32 = dns.iter().map(|d| f_of(*d, prof)).sum();
         let (a, b) = (1.0 - product, 1.0 - (-sum).exp());
         assert!(
             (a - b).abs() < 2e-6,
@@ -548,7 +552,17 @@ fn the_crossing_carries_more_tau_than_a_single_arm() {
     let tau_at = |p: [f32; 2]| {
         let ti = bins.tile_of_pixel(p[0], p[1]).unwrap();
         let list = bins.segs_of(ti);
-        crate::tau::stroke_tau(list, &g, &sc, 0.4, p).map_or(0.0, |(t, _)| t)
+        crate::tau::stroke_tau(
+            list,
+            &g,
+            &sc,
+            crate::tau::DabProfile {
+                hardness: 0.4,
+                airbrush: false,
+            },
+            p,
+        )
+        .map_or(0.0, |(t, _)| t)
     };
     let crossing = tau_at([48.0, 48.0]);
     let single_arm = tau_at([48.0, 24.0]);

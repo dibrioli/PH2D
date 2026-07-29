@@ -1181,6 +1181,83 @@ env PH2D_FLIP_DEMO=1                        cargo run -p ph2d-host-desktop --rel
 ⚠️ **O A/B é o ponto** — a mesma cena, a mesma mão, os dois builds. O que o §11.3 diz que muda:
 o cruzamento com `hardness` (a queixa original), a ponta convexa, e nada mais.
 
+## 19. ⭐ O PLANO ATÉ O PADRÃO-OURO — a auditoria por GREP, e o airbrush
+
+Smoke do §18 aprovado. O §16 dizia *"não sobra item de projeto, resta integração"* — mas ele é de
+**antes** da integração de 27/07, e a auditoria por grep (nunca por auto-relato) mostra o vão real:
+**o rasterizador tem SETE leitores de `Stroke`/flags e o percurso tinha QUATRO.**
+
+| item | raster | percurso | estado |
+|---|---|---|---|
+| `closed` · largura · cor · opacidade · `hardness` | ✅ | ✅ | — |
+| `FLAG_AIRBRUSH` | ✅ | ✅ | **FECHADO no §19.1** |
+| `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ❌ | **próximo** |
+| `fade` sub-pixel | ✅ | ❌ | wave B |
+| `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ❌ | wave C |
+| `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | wave C |
+
+⚠️ **Armado, o motor novo apagava CINCO features em silêncio — três delas integradas dois dias
+antes** (airbrush, tip pontilhado, pressão; a pressão é largura, que o percurso já lê). Enquanto
+isso for verdade **não existe conversa sobre default**: ligá-lo seria regredir trabalho aprovado, e
+nenhum gate de paridade pode ver a regressão (todos comparam o percurso contra um oráculo que
+atravessa a mesma porta — a lição do §18.4b).
+
+**Só depois desta lista a perf volta a ser a fronteira** (o binner na CPU é 1,76 ms = 45% do frame,
+§14) — otimizar um motor que não cobre a superfície é otimizar a coisa errada.
+
+### 19.1 O canal: `DabProfile`, e por que ele não tem `Default`
+
+Cada flag que fica de fora é uma feature apagada em silêncio, com tudo verde. Um par
+`(hardness, bool, bool, …)` solto convida a passar `false` onde o traço tinha a resposta ⇒ nasceu
+**`DabProfile`** (`hardness` + as flags), **sem `Default`**, construído por `DabProfile::of(&stroke)`
+— a lei do `ShapeFrame` do Painter: não há como esquecer, e o compilador acha os leitores quando a
+próxima flag entra.
+
+### 19.2 O AIRBRUSH — a fórmula bonita estava errada, e a medição a matou
+
+A primeira tentativa foi elegante e falsa. O rasterizador escreve a transmitância de Beer-Lambert,
+`w = 1 − exp(−k·√(1−dn²))`; na lei do percurso `f = −ln(1−w)`, então
+
+```text
+f = −ln(exp(−k·√(1−dn²))) = k·√(1−dn²)      ← o log e o exp CANCELAM
+```
+
+Medido contra o raster (reta, raio 10, `hardness` 0,5, alfa em `dn` 0/0,3/0,5/0,7/0,9):
+
+```
+RASTER    252 251 249 242 192
+PERCURSO  255 255 255 255 247      ← super-entinta
+```
+
+⚠️ **O `√(1−dn²)` do rasterizador é a projeção de ABEL da esfera — a corda pelo TUBO varrido, já a
+resposta do traço INTEIRO, não de um dab.** Integrá-la ao longo do caminho a multiplica pelo número
+de dabs. A cura sai da **inversão de Abel**: o kernel aditivo cuja integral de caminho **é** a corda
+é a **indicadora do disco** (conferido numericamente a 4 decimais, `∫[√(y²+u²)<1] du = 2√(1−y²)`), e
+a normalização vem de `C·2r·√(1−y²)/pitch = k·√(1−y²)`:
+
+```text
+dτ = k · step / (2r)        dentro do disco — e o PITCH CANCELA
+```
+
+**Isso é a física**: um spray deposita densidade por unidade de **CAMINHO**, não por dab. Os dois
+perfis integram contra **medidas diferentes**, e a porta única `d_tau_of` é onde essa escolha mora
+(`step/pitch` para o padrão · `step/2r` para o airbrush). Corolário: **o airbrush não tem termo de
+fronteira** — Euler-Maclaurin corrige uma soma discreta, e a integral sobre o caminho real já é
+exata nas pontas.
+
+Resultado: **252/251/249/241/189** contra 252/251/249/242/192 do raster — pior **3/255**, o AA da
+borda macia mais a quadratura, onde os dois divergem por projeto.
+
+⚠️ **E o percurso fica MAIS correto que o rasterizador, não igual:** a corda fechada só vale numa
+reta infinita; o percurso integra a densidade ao longo do caminho de verdade, então **na curva e no
+cruzamento ele responde o que a forma fechada não sabe responder**. Numa reta os dois coincidem — e
+é exatamente por isso que a fixture do gate é reta: é o único lugar onde o raster é oráculo.
+
+Gate **`the_airbrush_reaches_the_walk_and_matches_the_closed_form`**, em duas metades — o perfil
+casa com a forma fechada (barra 5/255) **e** o airbrush não é o perfil padrão (borda 189 contra 12).
+Sem a segunda, um `d_tau_of` que ignorasse a flag passaria na primeira. **2 mutações, 2 sangram**
+(a corda por dab · ignorar a flag).
+
 ## 17. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.

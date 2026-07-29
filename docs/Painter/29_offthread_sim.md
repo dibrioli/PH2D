@@ -133,6 +133,10 @@ Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
 
 1. **A água tem de correr LISA** — é a entrega. No log, `agua: sim media` deve
    sumir (o frame não simula mais) e `tool-tick` deve ficar em frações de ms.
+   ⚠️ **Desde o ADR-0145 a TAXA também subiu:** conte os `composite ... xN` na
+   janela de 2 s — `N/2` é a taxa da água em Hz. O passo ficou 1,56× mais barato
+   numa poça de 5 M células, então o número tem de subir na MESMA poça (pincel
+   grande, várias faixas sobrepostas), não numa risca fina.
 2. **Pintar durante o escorrido** — o dab traz o motor para casa; o traço não pode
    engasgar.
 3. **Undo (Ctrl+Z) leva o escorrido** — os gates do drip agora dirigem o motor

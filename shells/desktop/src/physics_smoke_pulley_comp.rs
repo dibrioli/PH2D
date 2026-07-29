@@ -271,7 +271,9 @@ impl crate::App {
                AUTORE VOCE MESMO: selecione 'Plain Rope Drum' na Hierarquia e digite\n  \
                {r_out:.3} na row 'Out Radius (m)' da secao Pulley Wheel. O segundo anel\n  \
                aparece e, no Play, a carga da direita para de cair.\n\n  \
-               E AGORA SEM DIGITAR NADA (W6, com B ligado e o relogio PARADO):\n  \
+               E AGORA SEM DIGITAR NADA (W6) -- a cena nasce PARADA, e e por isso:\n     \
+               as alcas de roldana so existem em REPOUSO (tocando, o overlay desenha a\n     \
+               geometria do SOLVER, e elas autoram a AUTORADA). Com B ligado:\n  \
                - selecione 'Geared Rope Drum': ele tem TRES alcas ambar. O centro o\n    \
                  move; o aro da DIREITA e o raio de entrada; o da ESQUERDA e o de\n    \
                  SAIDA -- e so ele existe porque este tambor tem um segundo raio.\n    \

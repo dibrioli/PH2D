@@ -185,3 +185,33 @@ fn the_scene_fits_the_frame_it_sets() {
     // E o quadro tem de ser APERTADO o bastante para valer a pena: uma altura
     // enorme faria o gate passar mostrando tudo do tamanho de um grão.
 }
+
+/// **As alças só existem em REPOUSO, então a cena que as pede nasce PAUSADA.**
+///
+/// ⚠️ **Este gate nasceu do segundo report do mesmo sintoma** (*"nada visível
+/// ainda"*, depois de a hipótese do enquadramento ser corrigida). O publicador é
+/// `at_rest`-gated — `at_rest = !playhead.is_playing()` — porque durante o play o
+/// overlay desenha a geometria do SOLVER e estas alças autoram a geometria
+/// AUTORADA. A cena 63 pede que o artista agarre três alças **e nascia tocando**:
+/// elas não podiam existir.
+///
+/// A medição, pelo mesmo publicador: com a cena real e o tambor selecionado, ele
+/// devolve **3** alças em repouso e **0** tocando.
+///
+/// ⚠️ **`PAUSED_SCENES` é uma ENUMERAÇÃO escrita à mão**, e uma enumeração é o que
+/// a cena seguinte nasce fora. As cenas de alça de joint (43-47) estão lá; a minha
+/// não estava, e nada me disse. O gate irmão em `shells/desktop/tests/` é quem
+/// fecha a classe — este aqui pina a cena.
+#[test]
+fn the_scene_that_asks_for_handles_starts_paused() {
+    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/physics_smoke.rs"))
+        .expect("physics_smoke.rs");
+    let start = src.find("const PAUSED_SCENES").expect("a lista sumiu");
+    let list = &src[start..start + 400];
+    let end = list.find("];").expect("a lista não fecha");
+    assert!(
+        list[..end].contains("\"63\""),
+        "a cena 63 manda AGARRAR alças, e alça de roldana é rest-only: nascendo \
+         tocando ela não publica nenhuma"
+    );
+}

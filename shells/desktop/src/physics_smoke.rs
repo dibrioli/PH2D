@@ -27,9 +27,18 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 /// Uma TABELA e não uma cadeia de `|`: com vinte e poucas entradas o `matches!`
 /// gastava uma linha por cena e comia o teto de LOC deste arquivo — e a lista é
 /// exatamente o tipo de coisa que só cresce.
+/// ⚠️ **Uma cena que pede um GESTO DE ALÇA tem de estar aqui.** As alças de ponto
+/// (âncora de joint, centro/aro de roldana) são publicadas **rest-only** — durante
+/// o play o overlay desenha a geometria do SOLVER, e elas autoram a AUTORADA —,
+/// então uma cena que nasce tocando simplesmente **não tem alça nenhuma**, e o
+/// artista relata a feature como quebrada (foi o que aconteceu com a 63).
+///
+/// ⚠️ **E isto é uma ENUMERAÇÃO escrita à mão**, ou seja exatamente a forma que a
+/// próxima cena nasce fora. O gate `handle_scenes_start_paused` varre as mensagens
+/// das cenas e exige que quem manda arrastar uma alça esteja nesta lista.
 const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
-    "44", "45", "46", "47", "51", "54",
+    "44", "45", "46", "47", "51", "54", "58", "63",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad

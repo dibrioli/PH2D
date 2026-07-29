@@ -409,3 +409,78 @@ fn measure_what_a_scene_of_filtered_shapes_costs() {
         );
     }
 }
+
+/// **De que é feito o PRIMEIRO frame com FX** — o número que o smoke mostra uma vez e nunca mais.
+///
+/// ⚠️ Existe porque um custo de UMA VEZ é invisível em toda a tabela acima: elas aquecem antes de
+/// medir, de propósito. O log do produto traz `recook 11,8 ms` no frame em que a cena arma os
+/// filtros e `0,012 ms` quando nada muda — e a diferença tem de ser ATRIBUÍDA, não explicada.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn measure_what_the_first_fx_frame_pays_once() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[fx-1o] sem adapter — skip");
+        return;
+    };
+    const CELL: u32 = 256;
+    let t = std::time::Instant::now();
+    let mut scratch = VelloPass::new(&gpu, SURFACE, (CELL, CELL)).expect("scratch");
+    let vello_new = t.elapsed().as_secs_f64() * 1000.0;
+
+    let t = std::time::Instant::now();
+    let mut stack = FxStackPass::new(&gpu);
+    let stack_new = t.elapsed().as_secs_f64() * 1000.0;
+
+    // As 15 texturas de saída de uma cena como a do smoke `=33`.
+    let dims = sizes(false, 15);
+    let t = std::time::Instant::now();
+    let (outs, art) = scene_res(&gpu, &dims);
+    let allocs = t.elapsed().as_secs_f64() * 1000.0;
+
+    // O 1º frame de verdade: um render do atlas + as 15 pilhas, SEM aquecimento.
+    let ops = [op(FxOp::BLUR, 6.0, [0.0, 0.0, 0.0, 1.0])];
+    let (big, aw, ah) = atlas(15, CELL, 8);
+    let t = std::time::Instant::now();
+    frame_batched(
+        &gpu,
+        &mut scratch,
+        &mut stack,
+        &outs,
+        &big,
+        aw,
+        ah,
+        CELL,
+        8,
+        &ops,
+    );
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let first = t.elapsed().as_secs_f64() * 1000.0;
+
+    // E o MESMO frame outra vez, agora quente.
+    let t = std::time::Instant::now();
+    frame_batched(
+        &gpu,
+        &mut scratch,
+        &mut stack,
+        &outs,
+        &big,
+        aw,
+        ah,
+        CELL,
+        8,
+        &ops,
+    );
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let warm = t.elapsed().as_secs_f64() * 1000.0;
+
+    let _ = art;
+    eprintln!("[fx-1o] `VelloPass::new` (o renderer scratch)  {vello_new:8.3} ms");
+    eprintln!("[fx-1o] `FxStackPass::new` (os pipelines)      {stack_new:8.3} ms");
+    eprintln!("[fx-1o] 15 texturas de saida                   {allocs:8.3} ms");
+    eprintln!("[fx-1o] o 1o frame (atlas + 15 pilhas), frio   {first:8.3} ms");
+    eprintln!("[fx-1o] o MESMO frame, quente                  {warm:8.3} ms");
+    eprintln!(
+        "[fx-1o] TOTAL de uma vez: {:.3} ms",
+        vello_new + stack_new + allocs + (first - warm)
+    );
+}

@@ -920,3 +920,114 @@ braço, o degrau cai na pista do Color Overlay, que repinta com o `tint` da varr
   próprio; o que falta é só a PONTA ESCURA ser de outra matiz. É um degrau com uma **segunda cor**,
   não um knob — wave própria, se o uso a pedir.
 - **`luminanceToAlpha`** — muda cobertura (acima).
+
+---
+
+## §16 — W9: DUOTONE (duas pontas) e LUMA TO ALPHA — as duas leis que leem o BRILHO da arte
+
+Pedido do Enio, com o eixo de prioridade nomeado na mesma frase: *"quero boa qualidade, mas quero
+principalmente **performance em tempo real em runtime para games**"* + `duotone de duas pontas` +
+`luminanceToAlpha`.
+
+### §16.1 — A prioridade responde ANTES do desenho
+
+Os dois tipos são **PONTUAIS**: um dispatch, sem vizinho, margem ZERO, sem textura intermediária
+extra. É a classe mais barata da pilha, e o número é medido
+(`the_pointwise_op_costs_much_less_than_a_blur`, RTX):
+
+| | custo |
+|---|---|
+| moldura (a pilha vazia) | 0,058 ms |
+| **6 degraus pontuais** | **+0,022 ms** (≈ 0,004 ms cada) |
+| 6 borrões | +0,575 ms (≈ 0,096 ms cada) |
+
+Um degrau destes custa **0,02 % de um quadro de 60 fps**. A prioridade não teve de ser negociada
+contra a qualidade porque a operação que o pedido descreve já é, por natureza, a barata.
+
+### §16.2 — A pesquisa, e o que ela decidiu
+
+**Duotone.** O `feColorMatrix` do SVG não tem duotone; quem o desenhou como CONTROLE convergiu numa
+**rampa de dois stops**: a *Gradient Map* do Photoshop (o Duotone de impressão é a mesma coisa com
+tintas), o **Tint** do AE (`Map Black To` / `Map White To` + `Amount to Tint`), o *Colorize* do
+Krita. Nenhum deles pede um gradiente completo para o caso de duas pontas — e é o caso de duas
+pontas que o artista usa. Duas swatches, e a "quantidade" é a Opacity que todo degrau já tem.
+
+**Luma to Alpha.** Aqui há uma referência exacta (`type="luminanceToAlpha"`) e nós **divergimos dela
+de propósito** — ver §16.4.
+
+### §16.3 — A RÉGUA: o `L` do OKLab, e não o `lum()` das leis de mistura
+
+As duas leis fazem a MESMA pergunta (*quão claro é este texel?*) e o repo tem **duas** funções que
+parecem respondê-la. Elas não são intercambiáveis:
+
+- `lum()` (`blend_modes.wgsl`) é a **luminosidade do W3C**, definida para os modos `Color` /
+  `Luminosity`. Ela opera em luz LINEAR.
+- `oklab_from_linear(...).x` é a **lightness perceptual**, e é literalmente a definição de *onde
+  neste eixo claro↔escuro o texel senta*.
+
+**Medido** (`measure_the_two_candidate_rulers_for_the_ramp`), no cinza sRGB 128:
+
+| régua | valor |
+|---|---|
+| `lum` sobre luz linear | **0,216** |
+| `L` do OKLab | **0,600** |
+
+Com o `lum`, o meio-tom cairia a **um quinto** do caminho da rampa e a arte inteira se empilharia na
+ponta escura. O `L` casa com o que Photoshop e AE desenham. E os coeficientes do `L` **somam 1**,
+então preto puro vale 0 e branco puro vale 1 — é isso que faz as duas swatches significarem
+exactamente o que o rótulo diz (gate próprio).
+
+### §16.4 — A divergência do SVG, e por que ela é a metade que faz o efeito servir
+
+A matriz do `feColorMatrix` escreve `A' = luma(cor RETA)` e **ignora o alfa que estava lá**. Num
+pipeline premultiplicado isso ENDURECE a orla anti-aliased: a cor reta da orla é a MESMA do miolo,
+então a rampa de cobertura vira um DEGRAU. **Medido** (mutação com a lei literal instalada): um texel
+com **4/255** de cobertura salta para **180/255**.
+
+A nossa lei **ESCALA** (`A' = A · luma`), o que preserva a rampa, e **preserva a cor** em vez de a
+zerar. O argumento decisivo não é estético, é de composição:
+
+> **encadear recupera o SVG, e o contrário é impossível.** `Luma to Alpha` → `Color Adjust
+> (Brightness −1)` dá o matte PRETO exacto da matriz; nenhuma ordem de degraus devolve a cor que já
+> foi apagada. A lei que **guarda informação** é a que compõe.
+
+Há gate para as duas metades (a orla que sobrevive · a cadeia que reproduz o SVG).
+
+### §16.5 — As portas únicas
+
+| pergunta | porta |
+|---|---|
+| que rótulos tem a segunda swatch? | `FxKindSpec::color_b_label` (a tabela, como todo o resto) |
+| qual PONTA o picker abriu? | `fx_live::colour_target(id) -> (linha, é_a_segunda)` |
+| a cor de um degrau em bytes | `fx_live::colour_bytes` (nasceu com a 2ª ponta: dois chamadores) |
+| como desenhar uma swatch de filtro | `filter_color_swatch(id, cor, rótulo, y)` — recebe o id, e é
+  isso que faz a segunda ponta ser a PRIMEIRA outra vez |
+
+### §16.6 — O que a wave encontrou de errado no que já estava lá
+
+1. **Uma família de acessores `pub` sem UM chamador.** `reads_noise` / `reads_grow` / `reads_adjust`
+   (das W6b/W7/W8) — cada um com um doc-comment a afirmar *"porta única com dois consumidores: o
+   painel a consulta para OFERECER, o produtor da GPU para HONRAR"*. **A frase era falsa nos dois
+   lados:** o painel não alcança o `ph2d-ecs` (lê o `FilterKindView` publicado) e o produtor copia
+   os campos incondicionalmente — quem HONRA é o ramo por `kind` dentro do shader. Os três foram
+   **removidos**, e o quarto (o meu) não chegou a existir. Achado por uma **mutação que
+   SOBREVIVEU**.
+2. **O `node_id_collisions` estava cego a metade da seção.** Ele enumera os ids de linha à mão, e as
+   três waves anteriores acrescentaram **catorze** sem entrar na lista. Acrescentar só o meu teria
+   continuado a rotina; agora são 32 por linha + os modos + as opções de mistura.
+3. **Um doc-comment órfão a mentir um número.** *"64 bytes de propósito"*, pendurado num `use`, com o
+   struct em 112. A nota foi para o campo de padding que ela descreve, com o número certo.
+4. **A varredura de tipos não podia conter o fenômeno.** A fixture dela é uma CHAPA branca, e sobre
+   branco puro o Luma to Alpha é a IDENTIDADE — ela reportaria *"não desenha nada"* sobre um produto
+   correto. A varredura ganhou fixture própria (um DEGRADÊ); as outras ficaram na chapa, porque os
+   comentários delas estão calibrados nela.
+
+### §16.7 — Estado
+
+`PROJECT_SCHEMA` **fica em 38** (a política que o próprio 38 declara: uma linha, um bump — ele já
+carrega a turbulência, a morfologia e o ajuste, e um save v37 já é recusado). `MAX_FILTER_KINDS`
+12 → **14**; `Globals` 112 → **128 bytes**. Zero `Cargo.toml`, zero crate nova, zero ADR, contrato
+congelado intacto.
+
+**9 gates** no arquivo novo (oráculo em CPU independente: pior delta **1 nível de byte**), **10
+mutações, 9 sangram**. Smoke: **`PH2D_BUILD_SMOKE=38`**.

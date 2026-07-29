@@ -55,6 +55,31 @@ fn median(v: &mut [f64]) -> f64 {
     v[v.len() / 2]
 }
 
+/// **A poça da SESSÃO DO ENIO** — a que mede um passo em ~33 ms, contra os 12,7 da cena diagonal.
+///
+/// O log do produto (2026-07-29): `agua: sim media 33.43ms x54`. A cena diagonal de 2400 px mede
+/// 12,7 ms/passo, então ela **não contém o fenômeno** — a decomposição precisa da escala real, senão
+/// otimizo o passe errado. Três traços largos e sobrepostos molham ~3× mais células.
+fn scene_big() -> Engine {
+    let mut e = Engine::new(SIDE, SIDE);
+    e.sliders.water = 1.0;
+    e.sliders.size = 1.0;
+    let c = SIDE as f64 * 0.5;
+    for lane in 0..3 {
+        let off = 420.0 * f64::from(lane) - 420.0;
+        drive_stroke(
+            &mut e,
+            c - 1500.0 * DIAG + off,
+            c - 1500.0 * DIAG,
+            c + 1500.0 * DIAG + off,
+            c + 1500.0 * DIAG,
+            120.0,
+            10,
+        );
+    }
+    e
+}
+
 /// Uma cena: traço reto de `len` px na direção dada, com a água já assentada
 /// alguns passos (é o estado em que o artista de fato deixa a tela).
 fn scene(dx: f64, dy: f64) -> Engine {
@@ -119,7 +144,10 @@ fn time_pass(
 }
 
 fn decompose(label: &str, dx: f64, dy: f64) -> Vec<(String, f64)> {
-    let mut e = scene(dx, dy);
+    decompose_engine(label, scene(dx, dy))
+}
+
+fn decompose_engine(label: &str, mut e: Engine) -> Vec<(String, f64)> {
     let p: Params = e.sim.gather_params(&e.tuning);
     let grav = e.sim.gravity(&e.tuning);
     let evap = e.sim.evap_scale * p.k(Knob::Evaporation);
@@ -218,4 +246,19 @@ fn measure_what_a_sim_step_is_made_of() {
          restringido as celulas ATIVAS de forma byte-identica POR CONSTRUCAO.\n  \
          Passe sem early-out (rebuild/drying) precisa de outra prova."
     );
+}
+
+#[test]
+#[ignore = "wall-clock: run with --release -- --ignored --nocapture"]
+fn measure_what_a_big_sim_step_is_made_of() {
+    println!("\n=== A POCA DO PRODUTO (passo ~33 ms): de que ELA e feita ===");
+    let out = decompose_engine("POCA GRANDE (a escala do log do Enio)", scene_big());
+    let total: f64 = out.iter().map(|(_, t)| t).sum();
+    let mut v: Vec<_> = out.into_iter().collect();
+    v.sort_by(|a, b| b.1.total_cmp(&a.1));
+    println!("\n  Ordenado pelo custo:");
+    for (n, t) in &v {
+        println!("    {n:<24} {t:7.3} ms   ({:4.1}%)", 100.0 * t / total);
+    }
+    println!("\n  Os tres maiores somam {:.1}% do passo.", 100.0 * v.iter().take(3).map(|x| x.1).sum::<f64>() / total);
 }

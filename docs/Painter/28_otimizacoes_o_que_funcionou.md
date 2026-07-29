@@ -2913,3 +2913,95 @@ colapso de 60× ao mecanismo errado **antes de reler a minha própria medição*
 encolher uma fixture para matar uma flake tirou os dentes do gate · e
 `reconcile_facts` não era porta (ele sai antes do `bring_home` no caso comum), o
 que o gate da ação de canvas pegou ao vivo.
+
+## §5.39 — O SOLVER NÃO É GAUSS-SEIDEL EM TODA PARTE: um passo 16,08 → 10,34 ms (ADR-0145)
+
+**Ordem do Enio, literal: *"rayon"*.** O que a §5.38 deixou aberto era o **custo por
+passo**, e o repo tinha uma afirmação sobre ele que estava **errada**: o header do
+`measure_wetpaint_tick.rs` dizia *"não há paralelismo byte-idêntico a colher — o
+solver é Gauss-Seidel em toda parte (ADR-0134)"*. O ADR-0134 nomeia **DOIS**
+mecanismos sequenciais e eles somam **34%** do passo, não o passo inteiro.
+
+Lidos um a um (o **mecanismo**, não a nota), três passes são row-disjuntos:
+
+| passe | por que ENTRA |
+|---|---|
+| `project` | é **JACOBI** — quatro laços, cada um lê um buffer e escreve **OUTRO** |
+| `smooth_velocity` | **gather puro** — escreve `flow` no próprio índice, lê `vel`/`film`/`active` |
+| `rebuild_active_region` | **3 de 4** sub-passadas: a limpeza · o scan da extensão viva (um par de escalares POR LINHA) · o passe 1, cujo trio `film[i±1]` é **HORIZONTAL** |
+
+⚠️ **A terceira porta não estava no meu escopo inicial** — eu havia precificado a
+wave em ~1,3× com dois passes; o `rebuild_active_region` a levou a **1,56×**.
+
+⛔ **E quatro ficam SERIAIS por semântica, cada um com o mecanismo escrito:**
+`advect` (SUBTRAI nos 4 cantos-fonte, linhas vizinhas) · `build_flow_field` (o
+freio lê o `wet` VIVO **e** o backrun espalha em `susp[nb]`/`sett[nb]`) ·
+`drying_pass` (lê a vizinhança 3×3 de `susp`, que ele escreve) · a **SAIA** do
+rebuild (*"earlier 2s shape later sums"* — a ordem é load-bearing).
+
+**Medido pela porta do produto, mesmo binário, mesma fixture** (pisos em
+`usize::MAX` = toda rota serial, contra os pisos medidos; poça canônica de 3 faixas
+diagonais a 4096², janela de 5,1 M células):
+
+| um passo inteiro | serial | paralelo | |
+|---|---|---|---|
+| mediana | 16,083 ms (62,2 Hz) | **10,335 ms (96,8 Hz)** | **1,56×** |
+| pior | 26,434 ms (37,8 Hz) | **19,070 ms (52,4 Hz)** | **1,39×** |
+
+⚠️ **Um número que NÃO é o ganho:** comparar duas corridas do `measure_pass_cost`
+(uma antes, uma depois do commit) mostrava o `advect` — que esta wave **não toca**
+— oscilando **12,1 → 7,8 ms**, 36% de deriva de máquina. Uma soma cross-run
+atribuiria isso ao ganho. O A/B tem de ser no MESMO processo, com uma linha de
+diferença.
+
+### O desenho: um corpo, dois walkers
+
+O corpo de cada linha é **UMA** função e as duas rotas apenas a caminham
+(`par::walk_rows`/`walk_rows2`/`walk_rows_reduce`/`walk_row_scalars2`). Não existe
+"versão paralela" do kernel para divergir da serial — `Rows` escolhe o *walker*,
+nunca a aritmética.
+
+⚠️ **E isso LIMITA o que o gate de identidade pode provar, o que é a lição desta
+wave:** um defeito no CORPO aparece nas duas rotas e é **invisível** para
+"paralelo == serial". Provado: a mutação que faz o laço 2 do `project` ler a linha
+errada **sobrevive aos quatro gates de identidade** e sangra o **fingerprint**. Os
+dois conjuntos são complementares e nenhum substitui o outro —
+[[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]].
+
+### O piso é POR-PASSE, e a medição derrubou DUAS versões minhas
+
+Escrevi um número único; a varredura mostrou o `rebuild_active_region` **perdendo
+0,55×** (quase 2× mais lento) até ~200k células — ele varre TODA linha da tela, não
+a bbox, então o número de tarefas é `altura` mesmo numa poça minúscula, e a saia
+serial limita o teto dele a ~2,1× por Amdahl.
+
+⚠️ **E a METODOLOGIA era parte do número:** sem restaurar o estado antes de cada
+amostra a mesma varredura dava `smooth` a **3,01×** onde a honesta dá **0,95×** em
+195k células — repetir um passe sobre o mesmo grid o deixa quente e, no caso do
+`rebuild`, **APERTA a bbox que ele próprio varre**. Eu quase fixei os pisos 4×
+baixos demais. Pisos finais: 256 Ki (project) · 256 Ki (smooth) · 512 Ki (rebuild),
+os dois primeiros iguais **hoje** e mantidos como consts separadas de propósito.
+
+### Gates: 6 + 8 mutações
+
+Identidade byte a byte de todo plano escrito, por rota · a rota paralela repetida
+seis vezes dá sempre o mesmo (um *race* benigno passaria no primeiro e falharia
+aqui) · a fixture **cruza os três pisos** (senão seria a rota serial contra ela
+mesma, a armadilha do `plane_copy`) · e um gate de RELÓGIO, porque identidade não
+vê velocidade.
+
+**Duas mutações não contam, e ficam registradas:** trocar os dois planos no
+`walk_rows2` é **rejeitada pelo compilador** (os tipos genéricos a tornam
+inexprimível), e zerar a identidade da redução da bbox é **semanticamente neutra**
+— os extremos só ALARGAM janelas de varredura, então a mutação é mais lenta, nunca
+errada.
+
+⚠️ **E uma mutação achou um buraco de fixture na hora:** a poça dos gates é
+construída pela porta do PRODUTO (`drive_stroke` → `step_simulation`), então a
+mutação do `reduce` fazia o rebuild chamar `empty_bbox`, as DUAS poças saíam **sem
+água**, e comparar dois grids vazios era verde. `assert!(has_fluid)` é o que torna
+a comparação não-vazia — e com ela a mesma mutação sangra **quatro** gates.
+
+**Aberto:** o passo segue **work-limited**, num número menor. Os 60% que sobram são
+os quatro sequenciais, e eles **não têm caminho de CPU** — a próxima alavanca é a
+**GPU**, que quebra o port 1:1 e o fingerprint pinado, e exige ADR próprio.

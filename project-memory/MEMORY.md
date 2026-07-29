@@ -78,6 +78,7 @@
 - [Âncora em BYTES é proxy que expira](feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires.md) — arch-gate afirma relação posicional, nunca distância/janela no fonte
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [Gate de identidade não vê defeito no CORPO compartilhado](feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body.md) — rota A==rota B só prova o walker; o corpo quer oráculo externo
 - [Gates compostos verdes escondem conector não-provado](feedback_green_composed_gates_can_hide_an_unproven_connector.md) — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra

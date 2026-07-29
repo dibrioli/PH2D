@@ -61,7 +61,10 @@ fn session(label: &str, diagonal: bool, steps: usize) {
     let c = SIDE as f64 * 0.5;
     let half = 1200.0;
     let (dx, dy) = if diagonal {
-        (std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2)
+        (
+            std::f64::consts::FRAC_1_SQRT_2,
+            std::f64::consts::FRAC_1_SQRT_2,
+        )
     } else {
         (1.0, 0.0)
     };

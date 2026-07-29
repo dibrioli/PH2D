@@ -132,6 +132,30 @@ pub fn span_x_of(
     (bx0.max(row_lo[r]), bx1.min(row_hi[r]))
 }
 
+/// A JANELA da faixa viva de uma linha (a faixa dilatada de ±2, que é o alcance
+/// do estêncil que o rebuild usa) — a forma livre do [`Grid::span_window`],
+/// para os passes row-paralelos, que só têm as fatias e não o `&Grid`.
+///
+/// ⚠️ Existe pelo mesmo motivo que o [`span_x_of`]: um segundo cálculo desta
+/// janela dentro de um laço paralelo seria uma **segunda resposta** à mesma
+/// pergunta, e ela divergiria no dia em que o pad mudasse. Uma porta.
+pub fn span_window_of(
+    row_lo: &[i32],
+    row_hi: &[i32],
+    enabled: bool,
+    s: usize,
+    y: i32,
+) -> (i32, i32) {
+    if !enabled {
+        return (0, s as i32 - 1);
+    }
+    let r = y as usize;
+    if row_lo[r] > row_hi[r] {
+        return (1, 0); // vazia
+    }
+    ((row_lo[r] - 2).max(0), (row_hi[r] + 2).min(s as i32 - 1))
+}
+
 impl Grid {
     pub fn new(width: usize, height: usize) -> Self {
         let s = width + 2;
@@ -225,17 +249,7 @@ impl Grid {
     #[inline]
     #[must_use]
     pub fn span_window(&self, y: i32) -> (i32, i32) {
-        if !self.spans_enabled {
-            return (0, self.s as i32 - 1);
-        }
-        let r = y as usize;
-        if self.row_lo[r] > self.row_hi[r] {
-            return (1, 0); // vazia
-        }
-        (
-            (self.row_lo[r] - 2).max(0),
-            (self.row_hi[r] + 2).min(self.s as i32 - 1),
-        )
+        span_window_of(&self.row_lo, &self.row_hi, self.spans_enabled, self.s, y)
     }
 
     /// Zera o rascunho de extensão viva (topo do rebuild).

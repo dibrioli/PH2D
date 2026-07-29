@@ -30,12 +30,15 @@
 //! cada um lendo um buffer e escrevendo **outro** — `div`←`vel`, `prs`←`div`, `vel`←`prs`) e o
 //! `smooth_velocity` é gather puro (lê `vel`, escreve `flow`). Os dois são row-disjoint e
 //! byte-idênticos por construção sob `par_chunks_mut`.
-//! ⚠️ **E não foram feitos, com motivo:** o ADR-0109 §"cerca de contenção" diz textualmente que
-//! *"qualquer novo uso de rayon/threading (nesta ou em outra crate) exige novo ADR"* — decisão do
-//! Enio, com precedente (a exceção da EDT do Flip). O ganho está precificado no doc 29 §6: paralelizar
-//! só o que é provadamente seguro vale **~1,3×**, contra ~2× do off-thread, que não precisa de ADR.
-//! `advect` (7,55 ms) NÃO entra: ele **subtrai** nos cantos-fonte com clamp, então duas células de
-//! linhas diferentes que retro-traçam para o mesmo canto são uma escrita-leitura em conflito.
+//! ⚠️ **E FORAM FEITOS (2026-07-29, ordem do Enio: *"rayon"*) — [ADR-0145]** — mais uma terceira
+//! porta que esta nota não tinha visto: **3 das 4 sub-passadas do `rebuild_active_region`** também são
+//! row-disjuntas (a limpeza, o scan da extensão viva, e o passe 1, cujo trio `film[i±1]` é
+//! **HORIZONTAL**); só a SAIA fica serial, porque ela escreve `active[i±s]` e a ordem é load-bearing.
+//! Medido pela porta do produto, mesmo binário, poça de 5,1 M células: **um passo inteiro 16,08 →
+//! 10,34 ms (1,56×)**, pior caso 26,43 → 19,07. `advect` (7,55 ms) NÃO entra: ele **subtrai** nos
+//! cantos-fonte com clamp, então duas células de linhas diferentes que retro-traçam para o mesmo canto
+//! são uma escrita-leitura em conflito. `build_flow_field` também não, e por DOIS mecanismos — o freio
+//! do ADR-0134 e o backrun, que espalha em `susp[nb]`/`sett[nb]`.
 
 use super::*;
 

@@ -118,11 +118,10 @@ fn frame(t: &mut PainterTool) -> f32 {
 }
 
 fn frame_at(t: &mut PainterTool, period: Duration) -> f32 {
-    let PERIOD = period;
     let a = Instant::now();
     t.paint_tick(1.0 / 60.0);
     let spent = a.elapsed();
-    if let Some(rest) = PERIOD.checked_sub(spent) {
+    if let Some(rest) = period.checked_sub(spent) {
         std::thread::sleep(rest);
     }
     spent.as_secs_f32() * 1e3

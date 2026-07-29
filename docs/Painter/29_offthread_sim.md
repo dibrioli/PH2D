@@ -98,31 +98,29 @@ falha do pedido (o desenho se autocura). Detalhe e as mutações no próprio arq
    facts não mudaram — o caso comum —, e uma porta que só às vezes abre não é
    porta. O gate da ação de canvas pegou isso ao vivo, com o pânico certo.
 
-## 6. A frente seguinte, precificada e NÃO feita
+## 6. A frente seguinte — FEITA (ADR-0145)
 
-O passo tem **dois** passes que o ADR-0134 não cobre e que são paralelizáveis
-byte-identicamente. Medido (4096², um traço, 48,65 ms de soma dos passes):
+O Enio autorizou (*"rayon"*, 2026-07-29) e os passes row-disjuntos foram
+paralelizados: **[ADR-0145](../architecture/decisions/0145-wet-paint-solver-row-parallel-passes-rayon-exception.md)**,
+a 2ª exceção sancionada ao "sem rayon" do repo. Detalhe, tabelas e a prova de
+byte-identidade moram lá; o resumo é:
 
-```text
-  build_flow_field   11,99 ms   SEQUENCIAL (o freio lê o `wet` VIVO — ADR-0134)
-  project            10,72 ms   JACOBI — 4 laços, cada um lê um buffer e escreve OUTRO
-  rebuild_active     10,54 ms   parcial (o clear + o scan de extensão são row-parallel;
-                                a SAIA é sequencial por desenho: "earlier 2s shape later sums")
-  advect              7,55 ms   SEQUENCIAL (subtrai nos cantos-fonte com clamp)
-  drying_pass         4,70 ms   SEQUENCIAL (lê o vizinho esquerdo pós-update — ADR-0134)
-  smooth_velocity     2,77 ms   GATHER puro (lê `vel`, escreve `flow`)
-  apply_boundaries    0,38 ms
-```
+* **três** passes entraram, não dois — o `rebuild_active_region` tem **3 de 4**
+  sub-passadas row-disjuntas (só a saia fica serial), e esta seção não tinha
+  visto isso;
+* **um passo inteiro: 16,08 → 10,34 ms (1,56×)**, pior caso 26,43 → 19,07,
+  medido pela porta do produto no mesmo binário;
+* `advect`, `build_flow_field`, `drying_pass` e a saia do rebuild ficam
+  **seriais por semântica**, cada um com o mecanismo escrito no `src/par.rs`.
 
-⚠️ **O ADR-0134 nomeia dois mecanismos, e eles são 34% do passo — não o passo
-inteiro.** A afirmação *"o solver é Gauss-Seidel em toda parte"* que estava no
-header do `measure_wetpaint_tick.rs` foi **corrigida**.
+⚠️ **A afirmação do repo que caiu no caminho:** o header do
+`measure_wetpaint_tick.rs` dizia *"o solver é Gauss-Seidel em toda parte"* — o
+ADR-0134 nomeia **dois** mecanismos sequenciais e eles somam **34%** do passo, não
+o passo inteiro. O `project` é **Jacobi** e o `smooth_velocity` é gather puro.
 
-⛔ **E não foi feito, com motivo:** o ADR-0109 §"cerca de contenção" diz que
-*"qualquer novo uso de rayon/threading exige novo ADR"* — decisão do Enio, com
-precedente (a exceção da EDT do Flip). Pela cadência real dos passes
-(`project` ⅓ dos frames, `smooth` ¾) o ganho é **~1,3×**, contra ~2× do
-off-thread, que não precisava de ADR. É a próxima alavanca, e ela é do Enio.
+⚠️ **E o que sobra não tem caminho de CPU:** os 60% restantes são os quatro
+sequenciais. A próxima alavanca é a **GPU**, que quebra o port 1:1 e o
+fingerprint pinado — ADR próprio, decisão do Enio.
 
 ## 7. Smoke
 

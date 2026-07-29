@@ -12,6 +12,7 @@
 //! why drips run.
 
 use crate::grid::{Grid, wet_byte_from_paper};
+use crate::par::{self, Rows};
 use crate::rng::hash2_signed;
 use crate::sim::Params;
 use crate::tuning::Knob;
@@ -27,212 +28,6 @@ fn clamp_sym(v: f64, m: f64) -> f64 {
     } else {
         v
     }
-}
-
-// ---------------------------------------------------------------------------
-// §6.1 Active-region rebuild (every 2nd frame)
-// ---------------------------------------------------------------------------
-
-/// Rebuild the active mask + fresh bbox from the water map. Pass 1 marks
-/// horizontal wet triples inside the previous (padded) bbox; pass 2 grows a
-/// vertical "skirt" wherever a vertical triple sums to EXACTLY 1 — and the 2s
-/// it writes count in later sums, which is load-bearing: an isolated front
-/// gets a full skirt and can run 1 cell/frame, while a train of close stripes
-/// starves its own skirt and waits to merge (keeps a wide front from
-/// decomposing into permanent horizontal bands).
-pub fn rebuild_active_region(g: &mut Grid) {
-    let s = g.s;
-    let w = g.w as i32;
-    let h = g.h as i32;
-    if !g.has_fluid || g.bx1 < g.bx0 {
-        g.empty_bbox();
-        return;
-    }
-    // Clear the mask over the previous bbox padded ±2. Extend the clear to
-    // the pad ring when the box touches the sheet edge, so skirt 2s written
-    // on the pad cannot go stale (the [1..W] clamp plus pad writes would
-    // otherwise leak permanent actives on row 0 / row H+1).
-    let px0 = (g.bx0 - 2).max(1);
-    let px1 = (g.bx1 + 2).min(w);
-    let py0 = (g.by0 - 2).max(1);
-    let py1 = (g.by1 + 2).min(h);
-    let cx0 = if px0 == 1 { 0 } else { px0 };
-    let cx1 = if px1 == w { w + 1 } else { px1 };
-    let cy0 = if py0 == 1 { 0 } else { py0 };
-    let cy1 = if py1 == h { h + 1 } else { py1 };
-    // Só a JANELA da faixa viva precisa ser limpa: `active ⊆ faixa` por
-    // construção (invariante publicado por esta mesma função), então uma
-    // célula fora dela já vale 0 e a limpeza seria escrever 0 sobre 0.
-    for y in cy0..=cy1 {
-        let (wl, wh) = g.span_window(y);
-        let (l, hgh) = (wl.max(cx0), wh.min(cx1));
-        if l > hgh {
-            continue;
-        }
-        let base = y as usize * s;
-        g.active[base + l as usize..base + hgh as usize + 1].fill(0);
-    }
-    // A extensão VIVA desta passada — "há algo aqui que o solver ainda tem de
-    // terminar". São TRÊS coisas, e cada uma responde a um passe diferente:
-    //
-    //   `film > 0`  a água (o `advect`, e o próprio passe 1 abaixo)
-    //   `susp > 0`  o pigmento em suspensão — o `drying_pass` é gateado em
-    //               `film/susp`, NÃO na máscara ("paint dries everywhere"),
-    //               então uma faixa que só cobrisse o ativo pararia de secar
-    //               pigmento num pixel que a máscara já largou
-    //   `vel != 0`  a VELOCIDADE sobrevivente: o ramo inativo do `advect`
-    //               zera `vel`, e essa escrita É observável (o fingerprint da
-    //               sessão inclui `vel_x`/`vel_y`). Uma célula que secou e
-    //               ficou com velocidade tem de continuar visível até o
-    //               advect zerá-la — aí ela sai sozinha na próxima passada.
-    //               ⚠️ Isto foi a rede de debug que achou, na PRIMEIRA
-    //               execução da suíte: sem este termo, o rastro de um drip
-    //               que se afasta mais de 5 células fica com velocidade
-    //               fóssil e o estado deriva do motor original.
-    //
-    // O anel de dreno fica FORA do termo de velocidade: o `apply_boundaries`
-    // reescreve os dois componentes lá em todo frame, logo após o advect, e
-    // nada lê `vel` entre um e outro — a zeragem do advect é natimorta ali.
-    // ⚠️ Varre TODA linha cuja janela é não-vazia, não só as da bbox: a faixa
-    // é o que lembra onde há velocidade fóssil, e a bbox de um traço NOVO não
-    // tem por que cobrir o rastro de um antigo. O laço de linhas é O(altura)
-    // e sai na hora nas vazias; o custo real é a janela, que é a faixa.
-    g.clear_live();
-    for y in 0..g.rows as i32 {
-        let (wl, wh) = g.span_window(y);
-        let (l, r) = (wl.max(1), wh.min(w));
-        if l > r {
-            continue;
-        }
-        let vel_rows = y >= 2 && y < h;
-        let base = y as usize * s;
-        let mut lo = i32::MAX;
-        let mut hi = i32::MIN;
-        let mut i = l as usize + base;
-        for x in l..=r {
-            let live = g.film[i] > 0.0
-                || g.susp[i] > 0.0
-                || (vel_rows && x >= 2 && x < w && (g.vel_x[i] != 0.0 || g.vel_y[i] != 0.0));
-            if live {
-                if x < lo {
-                    lo = x;
-                }
-                hi = x;
-            }
-            i += 1;
-        }
-        if lo <= hi {
-            g.live_lo[y as usize] = lo;
-            g.live_hi[y as usize] = hi;
-        }
-    }
-
-    // Pass 1 — wet cells (one row/col inside the brushable area; the drain
-    // ring only ever activates via the skirt).
-    let mut fx0 = w + 1;
-    let mut fx1 = 0;
-    let mut fy0 = h + 1;
-    let mut fy1 = 0;
-    let sx0 = px0.max(2);
-    let sx1 = px1.min(w - 1);
-    let sy0 = py0.max(3);
-    let sy1 = py1.min(h - 2);
-    let mut fired = false;
-    for y in sy0..=sy1 {
-        // A janela cobre `film ⊕ 2`, então o trio horizontal e as escritas
-        // `active[i±1]` cabem nela: fora daqui o trio é 0 + 0 + 0.
-        let (wl, wh) = g.span_window(y);
-        let (rx0, rx1) = (wl.max(sx0), wh.min(sx1));
-        if rx0 > rx1 {
-            continue;
-        }
-        let mut i = rx0 as usize + y as usize * s;
-        for x in rx0..=rx1 {
-            if g.film[i - 1] as f64 + g.film[i] as f64 + g.film[i + 1] as f64 > 0.0 {
-                g.active[i - 1] = 1;
-                g.active[i] = 1;
-                g.active[i + 1] = 1;
-                fired = true;
-                if x < fx0 {
-                    fx0 = x;
-                }
-                if x > fx1 {
-                    fx1 = x;
-                }
-                if y < fy0 {
-                    fy0 = y;
-                }
-                if y > fy1 {
-                    fy1 = y;
-                }
-            }
-            i += 1;
-        }
-    }
-    if !fired {
-        g.empty_bbox();
-        return;
-    }
-
-    // Pass 2 — the skirt, scanned top-to-down so earlier 2s shape later sums.
-    let kx0 = (fx0 - 2).max(1);
-    let kx1 = (fx1 + 2).min(w);
-    let ky0 = (fy0 - 2).max(1);
-    let ky1 = (fy1 + 2).min(h);
-    let mut nx0 = w + 1;
-    let mut nx1 = 0;
-    let mut ny0 = h + 1;
-    let mut ny1 = 0;
-    let mut any_fire = false;
-    for y in ky0..=ky1 {
-        // O trio VERTICAL só pode somar 1 onde alguma das três células é
-        // ativa, e as ativas desta passada saíram do passe 1 — dentro da
-        // janela, que carrega a margem de ±2 nas linhas vizinhas também.
-        let (wl, wh) = g.span_window(y);
-        let (rx0, rx1) = (wl.max(kx0), wh.min(kx1));
-        if rx0 > rx1 {
-            continue;
-        }
-        let mut i = rx0 as usize + y as usize * s;
-        for x in rx0..=rx1 {
-            if g.active[i - s] as u32 + g.active[i] as u32 + g.active[i + s] as u32 == 1 {
-                g.active[i - s] = 2;
-                g.active[i] = 2;
-                if g.active[i + s] == 0 {
-                    g.active[i + s] = 2;
-                }
-                any_fire = true;
-                if x < nx0 {
-                    nx0 = x;
-                }
-                if x > nx1 {
-                    nx1 = x;
-                }
-                if y < ny0 {
-                    ny0 = y;
-                }
-                if y > ny1 {
-                    ny1 = y; // the fire row itself
-                }
-            }
-            i += 1;
-        }
-    }
-    if !any_fire {
-        // defensive: keep the pass-1 extent
-        nx0 = fx0;
-        nx1 = fx1;
-        ny0 = fy0;
-        ny1 = fy1;
-    }
-    g.bx0 = (nx0 - 5).max(1);
-    g.bx1 = (nx1 + 5).min(w);
-    g.by0 = (ny0 - 5).max(1);
-    g.by1 = (ny1 + 5).min(h);
-    g.has_fluid = true;
-    // Publica a faixa por-linha com o MESMO pad ±5 que a bbox acabou de levar
-    // — é o análogo por-linha do casco, e é ele que mantém `active ⊆ faixa`.
-    g.publish_spans_from_live();
 }
 
 // ---------------------------------------------------------------------------
@@ -519,56 +314,96 @@ fn js_round_i64(v: f64) -> i64 {
 // ---------------------------------------------------------------------------
 
 pub fn smooth_velocity(g: &mut Grid, p: &Params) {
+    let rows = (g.by1 - g.by0 + 1).max(0) as usize;
+    let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
+    smooth_velocity_rows(g, p, Rows::pick(rows, span, par::MIN_CELLS_GATHER));
+}
+
+/// [`smooth_velocity`] com a rota de caminhada FORÇADA — a porta dos gates de
+/// identidade (ADR-0145). O produto chama sempre o [`smooth_velocity`].
+///
+/// **É um GATHER puro:** escreve `flow_x`/`flow_y` no próprio índice e lê
+/// `vel_x`/`vel_y` (inclusive das linhas vizinhas), `film` e `active` — nenhum
+/// deles tocado por este passe. Sem redução, sem transcendental, sem RNG.
+pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
     let s = g.s;
     let max_v = p.k(Knob::MaxVelocity);
-    let (by0, by1) = (g.by0, g.by1);
-    for y in by0..=by1 {
-        // Faixa viva: fora dela `active` é 0 e o corpo já era um `continue`.
-        let (bx0, bx1) = g.span_x(y);
-        if bx0 > bx1 {
-            continue;
-        }
-        let mut i = bx0 as usize + y as usize * s;
-        for _x in bx0..=bx1 {
-            if g.active[i] == 0 {
-                i += 1;
-                continue;
-            }
-            let (mut fx, mut fy);
-            if g.film[i] as f64 > 0.05 {
-                fx = 0.2 * g.vel_x[i] as f64
-                    + 0.2
-                        * (g.vel_x[i - 1] as f64
-                            + g.vel_x[i + 1] as f64
-                            + g.vel_x[i - s] as f64
-                            + g.vel_x[i + s] as f64);
-                fy = 0.2 * g.vel_y[i] as f64
-                    + 0.2
-                        * (g.vel_y[i - 1] as f64
-                            + g.vel_y[i + 1] as f64
-                            + g.vel_y[i - s] as f64
-                            + g.vel_y[i + s] as f64);
-            } else {
-                // Whatever gravity the persistent field carries passes
-                // straight through.
-                fx = g.vel_x[i] as f64;
-                fy = g.vel_y[i] as f64;
-            }
-            if fx > max_v {
-                fx = max_v;
-            } else if fx < -max_v {
-                fx = -max_v;
-            }
-            if fy > max_v {
-                fy = max_v;
-            } else if fy < -max_v {
-                fy = -max_v;
-            }
-            g.flow_x[i] = fx as f32;
-            g.flow_y[i] = fy as f32;
-            i += 1;
-        }
+    let (gbx0, gbx1, by0, by1) = (g.bx0, g.bx1, g.by0, g.by1);
+    if by1 < by0 {
+        return;
     }
+    let spans_on = g.spans_enabled;
+    let Grid {
+        row_lo,
+        row_hi,
+        film,
+        vel_x,
+        vel_y,
+        flow_x,
+        flow_y,
+        active,
+        ..
+    } = g;
+    let row_lo: &[i32] = row_lo;
+    let row_hi: &[i32] = row_hi;
+    let film: &[f32] = film;
+    let velx: &[f32] = vel_x;
+    let vely: &[f32] = vel_y;
+    let active: &[u8] = active;
+    let b = by0 as usize * s..(by1 as usize + 1) * s;
+    par::walk_rows2(
+        mode,
+        &mut flow_x[b.clone()],
+        &mut flow_y[b],
+        s,
+        |r, fxr, fyr| {
+            let y = by0 + r as i32;
+            // Faixa viva: fora dela `active` é 0 e o corpo já era um `continue`.
+            let (bx0, bx1) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
+            if bx0 > bx1 {
+                return;
+            }
+            let base = y as usize * s;
+            for x in bx0..=bx1 {
+                let i = x as usize + base;
+                if active[i] == 0 {
+                    continue;
+                }
+                let (mut fx, mut fy);
+                if film[i] as f64 > 0.05 {
+                    fx = 0.2 * velx[i] as f64
+                        + 0.2
+                            * (velx[i - 1] as f64
+                                + velx[i + 1] as f64
+                                + velx[i - s] as f64
+                                + velx[i + s] as f64);
+                    fy = 0.2 * vely[i] as f64
+                        + 0.2
+                            * (vely[i - 1] as f64
+                                + vely[i + 1] as f64
+                                + vely[i - s] as f64
+                                + vely[i + s] as f64);
+                } else {
+                    // Whatever gravity the persistent field carries passes
+                    // straight through.
+                    fx = velx[i] as f64;
+                    fy = vely[i] as f64;
+                }
+                if fx > max_v {
+                    fx = max_v;
+                } else if fx < -max_v {
+                    fx = -max_v;
+                }
+                if fy > max_v {
+                    fy = max_v;
+                } else if fy < -max_v {
+                    fy = -max_v;
+                }
+                fxr[x as usize] = fx as f32;
+                fyr[x as usize] = fy as f32;
+            }
+        },
+    );
 }
 
 /// Diffusion (extension, smoothing frames): Fickian spread of suspended
@@ -630,7 +465,9 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
 // (workspace file-LOC cap); the `solver::` paths are re-exported unchanged.
 // ---------------------------------------------------------------------------
 
+mod active_region;
 mod advect;
 mod project;
+pub use active_region::{rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;
-pub use project::{apply_boundaries, project};
+pub use project::{apply_boundaries, project, project_rows};

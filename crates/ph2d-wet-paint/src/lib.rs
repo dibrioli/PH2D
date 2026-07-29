@@ -36,6 +36,7 @@ pub mod jsmath;
 pub mod opacity;
 pub mod painter;
 pub mod paper;
+pub mod par;
 pub mod render;
 pub mod rng;
 pub mod sim;

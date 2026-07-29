@@ -167,7 +167,10 @@ fn the_history_restore_survives_the_live_span_to_the_byte() {
         e
     };
     assert_eq!(
-        first_difference(&digest(run(false).active_grid()), &digest(run(true).active_grid())),
+        first_difference(
+            &digest(run(false).active_grid()),
+            &digest(run(true).active_grid())
+        ),
         None,
         "a rota de undo divergiu sob a faixa viva"
     );

@@ -30,3 +30,11 @@ authors.workspace = true
 # the sRGB<->linear transfer for Kubelka–Munk). Same pin + rationale as
 # ph2d-ecs: a patch bump can move an ulp and break determinism gates.
 libm = { version = "=0.2.16", default-features = false }
+# Passes row-paralelos do solver (ADR-0145, a 2a excecao ao "sem rayon" do repo;
+# a 1a e o ADR-0109). Entra em EXATAMENTE tres passes -- `project` (Jacobi),
+# `smooth_velocity` (gather) e a metade row-disjunta do `rebuild_active_region`
+# --, todos com escrita por linha disjunta, leitura de buffer que ninguem
+# escreve no passe, e reducao so por min/max/||. `advect`, `build_flow_field`,
+# `drying_pass` e a SAIA do rebuild ficam SERIAIS por semantica (o porque de
+# cada um esta em `src/par.rs`); qualquer uso novo exige ADR novo.
+rayon = "1"

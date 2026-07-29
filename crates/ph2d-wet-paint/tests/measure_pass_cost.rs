@@ -260,7 +260,10 @@ fn measure_what_a_big_sim_step_is_made_of() {
     for (n, t) in &v {
         println!("    {n:<24} {t:7.3} ms   ({:4.1}%)", 100.0 * t / total);
     }
-    println!("\n  Os tres maiores somam {:.1}% do passo.", 100.0 * v.iter().take(3).map(|x| x.1).sum::<f64>() / total);
+    println!(
+        "\n  Os tres maiores somam {:.1}% do passo.",
+        100.0 * v.iter().take(3).map(|x| x.1).sum::<f64>() / total
+    );
 }
 
 /// **QUANTAS CÉLULAS UM PASSE DE FATO VISITA** — a razão que decide se sobra ganho.

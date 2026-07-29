@@ -242,6 +242,7 @@ fn channels_snapshot(selected: usize, custom: &str) -> ParamsSnapshot {
             channels: vec![("Speed", "vel", 1), ("Opacity", "opacity", 0)],
             selected,
             custom: custom.into(),
+            extra: Vec::new(),
         })],
     }
 }
@@ -314,6 +315,56 @@ fn the_custom_segment_switches_in_but_never_stomps_a_typed_column() {
     assert!(
         drain_param_intents().is_empty(),
         "clicking Custom while already Custom keeps the typed column"
+    );
+    set_current_params(None);
+}
+
+/// **The Custom picker offers the LIVE upstream columns as clickable chips** (the
+/// roadmap's dropdown populated at runtime): clicking a chip writes that real
+/// column name + the scalar mode (0), so the artist never guesses a name. The chip
+/// ids live above the curated segments (`CHANNELS_EXTRA_BASE`), so this cannot be a
+/// curated segment misfire. FALSIFIED by a click that emits nothing (dead chip) or
+/// the wrong column.
+#[test]
+fn clicking_a_live_column_chip_writes_that_column_with_scalar_mode() {
+    let _ = drain_param_intents();
+    // Custom is active (selected = channels.len() = 2), with two live columns the
+    // upstream stream carries.
+    set_current_params(Some(ParamsSnapshot {
+        node: 7,
+        title: "Attribute".into(),
+        rows: vec![ParamRow::Channels(ChannelsRow {
+            label: "Read".into(),
+            text_param: "attr",
+            mode_param: "mode",
+            channels: vec![("Speed", "vel", 1), ("Opacity", "opacity", 0)],
+            selected: 2, // Custom
+            custom: String::new(),
+            extra: vec!["id".into(), "inv_mass".into()],
+        })],
+    }));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    // The 2nd live chip is `inv_mass` (base + 1).
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(param_enum_id(0, CHANNELS_EXTRA_BASE + 1)),
+    );
+    assert_eq!(
+        drain_param_intents(),
+        vec![
+            MotionParamIntent::SetTextParam {
+                node: 7,
+                param: "attr",
+                value: "inv_mass".into(),
+            },
+            MotionParamIntent::SetParam {
+                node: 7,
+                param: "mode",
+                value: 0.0,
+            },
+        ],
+        "a live-column chip writes its column name and the scalar mode"
     );
     set_current_params(None);
 }

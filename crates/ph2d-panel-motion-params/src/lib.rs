@@ -34,10 +34,10 @@ pub use snapshot::{
     set_current_params,
 };
 use snapshot::{
-    MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
-    param_curve_add_id, param_curve_editor_id, param_curve_interp_id, param_curve_remove_id,
-    param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
-    push_param_intent,
+    CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id,
+    param_chip_id, param_curve_add_id, param_curve_editor_id, param_curve_interp_id,
+    param_curve_remove_id, param_enum_id, param_number_id, param_reroll_id, param_slider_id,
+    param_text_id, push_param_intent,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 
@@ -441,6 +441,24 @@ fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
                             value: String::new(),
                         });
                     }
+                    return EventOutcome::Consumed;
+                }
+                // Live-column chips (the Custom picker): clicking a real upstream
+                // column writes its name + the scalar mode (0).
+                for j in 0..row.extra.len().min(MAX_ENUM_OPTIONS) {
+                    if id != param_enum_id(slot, CHANNELS_EXTRA_BASE + j) {
+                        continue;
+                    }
+                    push_param_intent(MotionParamIntent::SetTextParam {
+                        node: snap.node,
+                        param: row.text_param,
+                        value: row.extra[j].clone(),
+                    });
+                    push_param_intent(MotionParamIntent::SetParam {
+                        node: snap.node,
+                        param: row.mode_param,
+                        value: 0.0,
+                    });
                     return EventOutcome::Consumed;
                 }
             }

@@ -53,6 +53,12 @@ pub struct ChannelsRow {
     pub selected: usize,
     /// The live text-param value — shown in (and edited via) the Custom field.
     pub custom: String,
+    /// The scalar columns the UPSTREAM stream actually carries right now (minus the
+    /// ones the curated channels already cover) — the roadmap's *dropdown populated
+    /// at runtime*. Shown as clickable chips under the Custom field so the artist
+    /// picks a real column (`id`, `Index`, a custom attribute) by name instead of
+    /// guessing it blind. Empty when nothing upstream cooked → just the text field.
+    pub extra: Vec<String>,
 }
 
 /// An interactive **transfer-curve editor** (A1) — a `ph2d-curve` serialized in a
@@ -240,6 +246,11 @@ pub(crate) const MAX_PARAM_ROWS: usize = 8;
 /// Max named options a single `Enum` row's segmented selector supports (covers
 /// the behaviours' channel / wave / easing sets with headroom).
 pub(crate) const MAX_ENUM_OPTIONS: usize = 8;
+
+/// Option-id base for a [`ChannelsRow`]'s live-column chips (the Custom picker).
+/// Well above `MAX_ENUM_OPTIONS` so a chip's `param_enum_id(slot, BASE + j)` never
+/// collides with a curated segment's `param_enum_id(slot, opt)` (`opt < 9`).
+pub(crate) const CHANNELS_EXTRA_BASE: usize = 32;
 
 /// Max control points a single Curve row's editor supports (matches the field.remap
 /// text param's practical ceiling; a handful of points shape any transfer). The

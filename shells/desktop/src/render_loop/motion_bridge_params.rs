@@ -10,6 +10,11 @@
 use super::color::{apply_color_to_node, color_groups, linear_rgba_to_srgb8};
 use crate::motion_state::MotionState;
 
+/// The peek/stream-reading helpers (the live number a wire drives, the live columns
+/// the Custom picker offers) — a child so `motion_bridge.rs` stays under the cap.
+#[path = "motion_bridge_params_stream.rs"]
+mod params_stream;
+
 /// Apply this frame's params-panel edits to the selected node, bracketed into
 /// undo steps (M1.P1 + colour authoring). Two edit sources, ONE session model:
 ///
@@ -278,26 +283,6 @@ fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<
 
 /// The single selected Motion node's `NodeId.0`, or `None` unless exactly one
 /// node is selected (params edit a single node; multi-select is a later step).
-/// **The live number a wire is putting into `param`** (doc 58), or `None` if nothing drives
-/// it — read from the cook's MEMO (`Cook::peek`), so showing it costs a lookup and never a
-/// second evaluation.
-///
-/// It is the SAME reduction the cook itself does (`driven_value`: the first value of the
-/// `"v"` column) — a second one here would be a number that agrees with the wire on most
-/// frames and disagrees on the frame that matters.
-fn driven_value(
-    motion: &MotionState,
-    node: ph2d_nodegraph::graph::NodeId,
-    param: &str,
-) -> Option<f32> {
-    let (src, port) = *motion.doc.graph.param_sources(node)?.get(param)?;
-    let cooked = motion.pump.cook.peek(src)?;
-    // **The SAME reduction the cook does** (`param_source::driven_value`), not a second one
-    // that agrees with the wire on most frames and disagrees on the frame that matters
-    // ([[feedback_derived_coordinate_seed_must_match_sample]]).
-    ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
-}
-
 pub(crate) fn selected_motion_node() -> Option<u32> {
     match ph2d_panel_motion_graph::current_graph_selection()[..] {
         [only] => Some(only),
@@ -400,6 +385,12 @@ pub(super) fn build_params_snapshot(
                 .iter()
                 .position(|c| c.column == attr && c.mode == mode)
                 .unwrap_or(channels.len());
+            // The live upstream columns the Custom picker offers (roadmap: dropdown
+            // populated at runtime) — everything the curated channels already cover
+            // is excluded, so the chips are the ADVANCED columns, not duplicates.
+            let covered: std::collections::BTreeSet<&str> =
+                channels.iter().map(|c| c.column).collect();
+            let extra = params_stream::upstream_scalar_columns(motion, nid, &covered, &attr);
             rows.push(ParamRow::Channels(ChannelsRow {
                 label: h.label.to_string(),
                 text_param: h.param,
@@ -411,6 +402,7 @@ pub(super) fn build_params_snapshot(
                     .collect(),
                 selected,
                 custom: attr,
+                extra,
             }));
             consumed.push(mode_param);
             continue;
@@ -514,7 +506,7 @@ pub(super) fn build_params_snapshot(
         // **A driven param shows the number the WIRE is putting in** (doc 58), not the
         // override the wire is overriding — the resolution order the cook uses, made visible.
         // Read from the cook's memo (`peek`), never by evaluating anything a second time.
-        let driven = driven_value(motion, nid, spec.name);
+        let driven = params_stream::driven_value(motion, nid, spec.name);
         let value = f64::from(driven.unwrap_or_else(|| value_of(spec.name)));
         let driven = driven.is_some();
         rows.push(ParamRow::Scalar(match hint {

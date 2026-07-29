@@ -6,9 +6,10 @@
 
 use super::curve_row::{self, CurveWidgets};
 use super::{
-    MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, ParamRow, normalized_track, paint_angle_row, paint_seed_row,
-    paint_text_row, param_checkbox_id, param_chip_id, param_enum_id, param_number_id,
-    param_reroll_id, param_slider_id, param_swatch_id, param_text_id, row_value,
+    CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, ParamRow, normalized_track,
+    paint_angle_row, paint_seed_row, paint_text_row, param_checkbox_id, param_chip_id,
+    param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_swatch_id,
+    param_text_id, row_value,
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
@@ -300,9 +301,50 @@ pub(crate) fn paint_rows(
                 }
                 let seg_rows = k.div_ceil(cols) as f32;
                 y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
-                // Custom selected: the raw text field, for an arbitrary column (the
-                // power-user escape — honest placeholder, never "e.g. sin(t)").
+                // Custom selected: the live-column picker (the roadmap's *dropdown
+                // populated at runtime*) + the raw text field as the escape.
                 if row.selected >= n {
+                    // Chips for the columns the UPSTREAM stream actually carries: the
+                    // artist clicks a REAL name instead of guessing. Ids live in a
+                    // range above the curated segments (`CHANNELS_EXTRA_BASE`).
+                    let ext = row.extra.len().min(MAX_ENUM_OPTIONS);
+                    if ext > 0 {
+                        paint_text(
+                            text_system,
+                            scene,
+                            "From stream",
+                            inner_x,
+                            y,
+                            TypeToken::Sm.px(),
+                            inner_w,
+                            resolve(ColorToken::Text2, theme),
+                        );
+                        y += TypeToken::Sm.px() + Spacing::Xs.px();
+                        let ecols = ext.clamp(1, 4); // CLAMP-OK: segmented column count
+                        let egap = Spacing::Sm.px();
+                        let ew = ((inner_w - egap * (ecols as f32 - 1.0)) / ecols as f32).max(1.0);
+                        for j in 0..ext {
+                            let bid = param_enum_id(i, CHANNELS_EXTRA_BASE + j);
+                            let rx = inner_x + (j % ecols) as f32 * (ew + egap);
+                            let ry = y + (j / ecols) as f32 * (ROW_H_PX + egap);
+                            let brect = Rect::new(rx, ry, ew, ROW_H_PX);
+                            let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+                            paint_segmented_button(
+                                brect,
+                                &row.extra[j],
+                                row.extra[j] == row.custom,
+                                bstate,
+                                scene,
+                                text_system,
+                                theme,
+                            );
+                            hit_index.register(bid, brect);
+                        }
+                        let erows = ext.div_ceil(ecols) as f32;
+                        y += erows * ROW_H_PX + (erows - 1.0) * egap + Spacing::Xs.px();
+                    }
+                    // The raw text field for anything not listed (honest placeholder,
+                    // never "e.g. sin(t)").
                     let used = paint_text_row(
                         Rect::new(inner_x, y, inner_w, ROW_H_PX),
                         "Column",

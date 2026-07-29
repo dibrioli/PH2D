@@ -2155,6 +2155,131 @@ comentário nenhum.*
 
 ---
 
+### 5.30 ✅✅ O WET PAINT A 4 FPS — três mecanismos, e o maior era a sim varrendo a CAIXA
+
+**Report do Enio (smoke):** *"IMG 4096, 1 pincelada grande e molhada, FPS cai para 4."* E o log dele,
+com `PH2D_FLUID_PROFILE=1`, nomeou a fase antes de qualquer teoria:
+
+```
+[frame] total=69.99ms (~14 fps) | painter-dispatch(cpu)=2.51 | tool-tick=57.49 | hero-paint=0.54
+```
+
+**`tool-tick` é 82% do frame.** O Painter — a metade que as quinze waves anteriores deste doc curaram —
+custa 2,5 ms. ⚠️ **A instrumentação que responde isso já existia, atrás de outra flag**, e as minhas
+medições do dia mediam o tool com fixture própria (pior caso 11,7 ms) enquanto o produto pagava 57,5.
+
+#### (a) O tick REALIMENTAVA um frame lento — 4 FPS era um laço fechado
+
+`on_tick(frame_ms_now)` recebe o **relógio do frame ANTERIOR**. O acumulador dava `dt / WET_STEP_S`
+passos, capado em `WET_MAX_STEPS = 5`. Então: frame lento ⇒ `dt` grande ⇒ mais passos ⇒ frame mais
+lento. **Realimentação POSITIVA**, e invisível a qualquer sonda de `dt` fixo — que é o que todas as
+minhas eram. Medido a 4096²:
+
+| dt do frame | tick |
+|---|---|
+| 16,6 ms (60 fps) | 2,08 ms |
+| 250 ms | **50,93 ms** |
+
+Ablação do cap: `1 → 2,69 · 2 → 5,79 · 3 → 9,74 · 5 → 50,93`. **Cap = 2**, e o precedente é da física
+(`max_substeps` + `warn: dropped Xs of sim time`): **sacrifica-se tempo SIMULADO, nunca o quadro.**
+
+#### (b) O OVER do composite era o que sobrava serial
+
+Row-parallel pelo ADR-0109 (linhas disjuntas, leitura pura, byte-idêntico por construção) —
+**16,17 → 11,71 ms**. ⚠️ E o gate que faltava não era de aritmética: o fan-out por linha não quebra a
+conta, quebra o **mapeamento linha → offset global** (`gb = (cy0-1+k)*stride`). A mutação `gb = k*stride`
+sobreviveu às **895** existentes porque toda fixture irmã pinta com região suja começando na linha 1.
+Gate novo pinta longe do topo; a mutação sangra 0 de 81 texels.
+
+#### (c) A SIM PAGAVA PELA CAIXA, NÃO PELA POÇA — e este era o grande
+
+A pergunta que separa as duas explicações: **mesma água, mesmo comprimento de traço, só a FORMA muda.**
+
+| forma | dabs | tick p50 | bbox/tela |
+|---|---|---|---|
+| horizontal | 60 | 8,15 ms | 2,1% |
+| diagonal | 60 | **23,53 ms** | 18,6% |
+
+⚠️ **Isto reinterpreta a tabela anterior** (400→3600 px, 2,37→16,17 ms): ali eu variei o COMPRIMENTO de
+um traço *horizontal*, onde a caixa e a água crescem juntas — as duas explicações casavam com os mesmos
+números, e só a forma as separa. Eu não tinha feito esse controle.
+
+**A bbox é o CASCO da água**, e um casco mente sobre um traço diagonal: medido a 4096², a caixa é
+**27,9% da tela** e as células ATIVAS são **2,4% dela**. 97,6% de cada varredura era desperdício. E uma
+pincelada de artista nunca é horizontal.
+
+**A FAIXA VIVA** (`Grid::row_lo`/`row_hi`): um intervalo **por LINHA** no lugar do casco. Todo passe já
+fazia early-out por-célula (`active[i] == 0` → `continue`), então pular uma célula fora da faixa é pular
+uma que não responderia nada — **byte-idêntico POR CONSTRUÇÃO** nos seis passes com essa forma. O
+invariante que sustenta tudo é `active ⊆ faixa`, e ele **também** vale por construção: o rebuild escreve
+`active` só dentro da própria janela e publica a faixa como a extensão viva dilatada por `SPAN_PAD = 5`
+(folgadíssimo — `maxVelocity` default é 0,2 célula/frame e o rebuild roda a cada 2 frames).
+
+⚠️ **O `advect` é a EXCEÇÃO e está escrito como tal:** o ramo inativo dele **escreve** (zera `vel`), então
+o estreitamento se apoia num invariante — *fora da faixa, `vel` já é zero* — e não em construção.
+
+**A rede de debug se pagou na PRIMEIRA execução da suíte:** os invariantes 1 e 2 passaram e o 3 falhou,
+`(26, 22): (0.0069, -0.0044)`. O rastro de um drip que se afasta mais de 5 células ficava com velocidade
+**fóssil** — e o fingerprint da sessão inclui `vel_x`/`vel_y`, ou seja **divergência real** do motor
+original. Cura: `vel != 0` entra na definição de VIVO (a célula sai sozinha na passada seguinte, depois
+de o advect zerá-la).
+
+**Duas fugas do caso BASE da indução, as duas achadas pela mesma rede:**
+
+- `empty_bbox` zerava a faixa — mas a água pode **acabar** com velocidade fóssil espalhada pelo rastro,
+  e é a faixa que lembra onde. Quem zera a faixa passou a ser **quem zera a velocidade**
+  (`clear_canvas`).
+- o rebuild varria só as linhas da bbox, e **a bbox de um traço NOVO não tem por que cobrir o rastro de
+  um antigo**. Agora varre toda linha de janela não-vazia (O(altura), sai na hora nas vazias).
+
+⚠️ **E o SNAPSHOT carrega a faixa.** A alternativa — abrir a faixa inteira no restore e deixar o rebuild
+reapertá-la — foi **MEDIDA e reprovada**: a varredura viva passa a cobrir a folha, **0,3 → 17,4 ms**, um
+quadro perdido a cada Ctrl+Z do motor.
+
+**MEDIDO** (4096², decomposição por passe pelas portas públicas de cada uma):
+
+| passe | antes | depois |
+|---|---|---|
+| `rebuild_active_region` | 31,047 | **1,509** |
+| `project` | 12,663 | **1,394** |
+| `build_flow_field` | 11,935 | **3,072** |
+| `advect` | 10,510 | **2,381** |
+| **SOMA (diagonal)** | **48,607** | **11,354 ms (4,3×)** |
+
+A razão diagonal/horizontal por passe caiu de **20-25×** para **~2×**. ⚠️ O caso horizontal ficou
+**5,388 → 5,859 (+8,7%)**: a varredura viva é um passe a mais, e casco fino é justamente onde ela não
+tem o que economizar. Nomeado, não vendido.
+
+**E no PRODUTO, por ABLAÇÃO** (`Grid::spans_enabled` — o MESMO laço com o intervalo mais largo; não há
+segunda implementação a divergir):
+
+| forma | CAIXA | FAIXA | ganho |
+|---|---|---|---|
+| diagonal 4096² | 31,42 ms | **13,04 ms** | **2,41×** |
+| horizontal 4096² | 9,63 ms | 8,65 ms | 1,11× |
+
+**O gate é DIFERENCIAL, não um valor pinado:** seis sessões (horizontal · diagonal · drip sob gravidade ·
+dois traços com a sim indo a **idle** no meio · Wet+Blend sobre tinta seca · traço em L) rodam nos DOIS
+modos e **todo campo persistente** tem de sair idêntico ao byte — mais o Fast Dry e a rota de undo. E há
+um gate de **PROPRIEDADE** (a faixa é fração pequena da bbox num diagonal), porque uma mudança futura que
+devolvesse a bbox inteira continuaria **correta** e teria jogado fora o ganho inteiro em silêncio.
+
+⚠️ **E o meu gate de ablação no tool NASCEU MENTINDO "1,02×":** a sessão de água nasce no **pen-DOWN**,
+então armar o flag antes dele é um `if let` que não casa. *Busca negativa sem controle positivo*, outra
+vez — agora há `expect`.
+
+**Onde ficou o tick, por metade** (`measure_the_two_halves_of_a_wet_tick`, diagonal 4096²): sim
+**13,84** · composite **2,79** (18,8% da tela suja). A sim segue sendo a metade grande, e agora o custo
+dela é proporcional à **água**, que é a forma correta. Sem realimentação: `dt 16,6 → 1,71 ms`,
+`dt 250 → 5,58`.
+
+**Aberto e NOMEADO:** o retângulo sujo que o engine declara ao composite é um **casco pela mesma razão
+que a bbox era** — mas ele custa 2,79 ms medidos, então **não é a fronteira**; e o resto do custo da sim
+é trabalho honesto sobre 111k células ativas × 7 passes, cuja próxima alavanca é paralelismo (⚠️ o
+ADR-0134 declara o solver **serial POR SEMÂNTICA** — não re-derive) ou porte para GPU.
+
+---
+
 ## 7. Próxima etapa recomendada
 
 ⚠️ **A medição REORDENOU a fila DUAS vezes, e as recomendações anteriores deste doc estão superadas.**

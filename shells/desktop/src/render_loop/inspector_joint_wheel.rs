@@ -77,6 +77,9 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
             rope,
             order,
             radius,
+            // Uma roldana nasce COMUM: o segundo diâmetro (o tambor diferencial
+            // do W4) é um SEGUNDO gesto, pela mesma razão que a montagem é.
+            radius_out: 0.0,
             wrap: ph2d_physics_ecs::WrapSide::Auto,
             motor_speed: 0.0,
             // Uma roldana nasce no CENÁRIO: montá-la num corpo (a cadernal
@@ -135,6 +138,7 @@ pub(crate) fn build_wheel_info(
         bound: !rope_name.is_empty(),
         rope_name,
         radius: wheel.radius,
+        radius_out: wheel.radius_out,
         // O componente conta de zero e a pessoa conta de um. A conversão mora
         // aqui e no `wheel_with_edit`, uma vez de cada lado.
         order_ui: u32::from(wheel.order) + 1,
@@ -186,6 +190,9 @@ pub(crate) fn wheel_with_edit(
     let mut next = current;
     match edit {
         WheelFieldEdit::Radius(v) => next.radius = v,
+        // `0` volta a roldana a ser comum — a mesma regra que a geometria e a
+        // engrenagem seguem, para que as três não possam discordar.
+        WheelFieldEdit::RadiusOut(v) => next.radius_out = v,
         // 1-based na row, 0-based no componente. `saturating_sub` e não `- 1`:
         // a fronteira do painel já põe o piso em 1, e um zero que escapasse por
         // outra rota viraria `u16::MAX` num wrap silencioso.

@@ -169,6 +169,24 @@ pub struct PulleyWheel {
     /// isso que este número é POR RODA enquanto o da corda é um só: a tensão é
     /// uniforme, a resultante não.
     pub break_force: f32,
+    /// **O SEGUNDO diâmetro deste eixo** — o raio por onde a corda SAI, em
+    /// metros. `0` é uma roldana COMUM, que é o que toda roldana era até o W4.
+    ///
+    /// Uma roldana com dois raios é um **tambor diferencial**: a corda chega
+    /// enrolando num diâmetro e sai enrolando noutro, presos ao mesmo eixo. Girar
+    /// o eixo recolhe de um lado e paga do outro em proporções diferentes, e daí
+    /// nasce a **vantagem mecânica contínua** — `r_entra / r_sai`.
+    ///
+    /// ⚠️ **É isto que substitui o `ratio` que o W1 aposentou.** Aquele campo era
+    /// *"uma talha diferencial com o eixo invisível"* (§3 do plano): um número sem
+    /// peça na cena. Aqui as duas circunferências são desenhadas, o artista as
+    /// dimensiona, e o número **cai delas** em vez de ser digitado.
+    ///
+    /// ⚠️ **Não-positivo é *não é um diferencial*, nunca um erro** — a mesma regra
+    /// que a geometria e a engrenagem do `RopeWheel` seguem, para que as três não
+    /// possam discordar. Zero é o default de um componente recém-anexado, e é
+    /// exatamente o que uma roldana comum quer dizer.
+    pub radius_out: f32,
 }
 
 impl Default for PulleyWheel {
@@ -177,6 +195,8 @@ impl Default for PulleyWheel {
             rope: 0,
             order: 0,
             radius: Self::DEFAULT_RADIUS,
+            // Uma roldana nasce COMUM: o segundo diâmetro é um segundo gesto.
+            radius_out: 0.0,
             wrap: WrapSide::Auto,
             motor_speed: 0.0,
             body: 0,
@@ -229,6 +249,15 @@ impl PulleyWheel {
                 self.radius.max(Self::MIN_RADIUS)
             } else {
                 Self::DEFAULT_RADIUS
+            },
+            // ⚠️ `NaN` cai em ZERO e não no default: zero quer dizer *roldana
+            // comum*, que é a leitura segura de um número que não é número. Um
+            // `NaN` aqui viraria uma engrenagem `NaN`, e daí o comprimento da
+            // corda, a pose dos dois corpos e o hash C9.
+            radius_out: if self.radius_out.is_finite() {
+                self.radius_out.max(0.0)
+            } else {
+                0.0
             },
             // Um `NaN` no motor viraria um comprimento de corda `NaN` no primeiro
             // sub-passo, e daí a pose e o hash C9. Não há teto: um tambor rápido

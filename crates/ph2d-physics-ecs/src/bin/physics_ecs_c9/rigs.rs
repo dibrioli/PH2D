@@ -146,6 +146,9 @@ pub fn spawn(sim: &mut SimWorld) {
                 rope: stable_name_id("C9 Pulley"),
                 order,
                 radius,
+                // Roldanas COMUNS: a lane do tambor diferencial (W4) é outra, e
+                // separá-las é o que faz esta seguir sendo a linha de regressão.
+                radius_out: 0.0,
                 wrap: WrapSide::Auto,
                 motor_speed: motor,
                 // Roldanas de CENARIO: a lane da talha (W3) e a de baixo, e
@@ -160,4 +163,58 @@ pub fn spawn(sim: &mut SimWorld) {
             Transform::from_translation(Vec2::new(x, 9.0)),
         ));
     }
+    // A lane do TAMBOR DIFERENCIAL (W-Pulley W4): UMA roldana com DOIS raios, e a
+    // vantagem mecanica que cai do quociente deles. Ela entra no hash porque MOVE
+    // POSES -- o peso da engrenagem escala o Jacobiano da ponta B, entao as duas
+    // massas param em lugares diferentes dos que parariam numa roldana comum.
+    //
+    // Separada da lane acima de proposito: aquela e a linha de REGRESSAO (roldana
+    // comum, `gear() == 1.0` exato), e misturar as duas tiraria a unica coisa que
+    // prova que o W4 nao mexeu no que ja existia.
+    for (name, x, density) in [
+        ("C9 Diff Load", 4.0_f32, 4.0_f32),
+        ("C9 Diff Counterweight", 6.0, 1.0),
+    ] {
+        sim.world_mut().spawn((
+            Name::new(name),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.2 },
+                density,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(x, 6.0)),
+        ));
+    }
+    sim.world_mut().spawn((
+        Name::new("C9 Diff Rope"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Diff Counterweight"),
+            body_b: stable_name_id("C9 Diff Load"),
+            kind: JointKind::Pulley,
+            ..PhysicsJoint::of_kind(JointKind::Pulley)
+        },
+        Transform::from_translation(Vec2::new(6.0, 6.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Diff Drum"),
+        PulleyWheel {
+            rope: stable_name_id("C9 Diff Rope"),
+            order: 0,
+            radius: 0.5,
+            // O segundo diametro: a corda entra em 0,50 e sai em 0,25, entao a
+            // engrenagem e 2 e o lado da carga carrega o dobro da tensao.
+            radius_out: 0.25,
+            wrap: WrapSide::Auto,
+            motor_speed: 0.0,
+            body: 0,
+            local: [0.0, 0.0],
+            mounted: false,
+            break_enabled: false,
+            break_force: PulleyWheel::DEFAULT_BREAK_FORCE,
+        },
+        Transform::from_translation(Vec2::new(5.0, 9.0)),
+    ));
 }

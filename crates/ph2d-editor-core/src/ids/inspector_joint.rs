@@ -174,6 +174,11 @@ pub const INSP_LIVE_WHEEL_COLOR: NodeId = hash_node_id("insp_live_wheel_color");
 /// O número que substituiu o `Ratio`. A alça do aro no canvas edita o MESMO
 /// campo — dois gestos, um valor.
 pub const INSP_WHEEL_RADIUS: NodeId = hash_node_id("insp_wheel_radius");
+/// **O SEGUNDO diâmetro** do tambor diferencial (W4) — `0` é uma roldana comum.
+///
+/// A vantagem mecânica da corda é `Radius / Out Radius`, e ela não é digitada em
+/// lugar nenhum: cai das duas circunferências que o artista dimensiona.
+pub const INSP_WHEEL_RADIUS_OUT: NodeId = hash_node_id("insp_wheel_radius_out");
 
 /// **A POSIÇÃO da roldana ao longo da corda** — 1º nó, 2º nó, … (W-Pulley W1).
 ///

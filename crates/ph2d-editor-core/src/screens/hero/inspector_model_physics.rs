@@ -548,6 +548,12 @@ pub struct InspectorWheelInfo {
     pub bound: bool,
     /// O raio, metros. A alça do aro no canvas edita o MESMO campo.
     pub radius: f32,
+    /// **O segundo diâmetro** (W4), metros — `0` é uma roldana comum.
+    ///
+    /// Com ele a roldana vira um **tambor diferencial** e a corda ganha vantagem
+    /// mecânica `radius / radius_out`. O número não é digitado: ele CAI das duas
+    /// circunferências, e as duas são desenhadas.
+    pub radius_out: f32,
     /// A posição ao longo da corda, **1-based** — 1º nó, 2º nó, …
     ///
     /// ⚠️ Sufixo `_ui` pela razão que o `limit_min_ui` da §12 dá por extenso: o
@@ -587,6 +593,8 @@ pub struct InspectorWheelInfo {
 pub enum WheelFieldEdit {
     /// Metros.
     Radius(f32),
+    /// O SEGUNDO diâmetro, metros (W4). `0` volta a roldana a ser comum.
+    RadiusOut(f32),
     /// **1-based**, como a row mostra — ver [`InspectorWheelInfo::order_ui`].
     Order(u32),
     /// `0` Auto · `1` Over · `2` Under.

@@ -122,6 +122,7 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
     for (id, value, min, max, step, rate) in [
         // Metros. O seed é o `PulleyWheel::DEFAULT_RADIUS`.
         (ids::INSP_WHEEL_RADIUS, 0.25, 0.0, 100.0, 0.01, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_WHEEL_RADIUS_OUT, 0.0, 0.0, 100.0, 0.01, 0.01), // LITERAL-PX-OK: meters
         // 1-based, como a row mostra.
         (ids::INSP_WHEEL_ORDER, 1.0, 1.0, 99.0, 1.0, 0.1), // LITERAL-PX-OK: ordinal
         // Graus por segundo, COM SINAL (negativo paga corda). A faixa é a mesma

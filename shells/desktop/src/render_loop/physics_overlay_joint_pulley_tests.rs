@@ -170,3 +170,79 @@ fn the_rope_wraps_the_wheel_it_does_not_cut_across_it() {
         );
     }
 }
+
+/// **Um TAMBOR DIFERENCIAL desenha DOIS anéis** (W4) — e é deles que o artista lê
+/// a vantagem mecânica.
+///
+/// ⚠️ Sem o segundo anel o tambor seria indistinguível de uma roldana comum na
+/// tela: o número viveria só na §13, e a wave inteira existe justamente porque um
+/// número sem peça na cena (o `ratio` do W-Pulley) não é a resposta.
+///
+/// O oráculo conta CIRCUNFERÊNCIAS distintas em torno do centro — pontos do
+/// glifo agrupados por distância ao eixo —, não elementos de path: um anel é
+/// desenhado com muitos segmentos, e contá-los mediria a tesselação.
+#[test]
+fn a_differential_drum_draws_both_of_its_circles() {
+    let radii = |r_out: Option<f32>| {
+        let (cam, win) = (camera(), window());
+        let mut v = view(JointKind::Pulley);
+        v.anchor_a = [-1.5, -1.0];
+        v.anchor_b = [1.5, -1.0];
+        // ⚠️ A `view()` compartilhada nasce com DUAS roldanas (é o elevador), e
+        // uma faixa que não cabe na arena devolve VAZIO — o desenho sairia sem
+        // roldana nenhuma e o gate leria zero circunferências sobre um produto
+        // correto. A fixture declara a própria contagem.
+        v.wheel_count = 1;
+        let mut wheels = vec![RopeWheel {
+            centre: [0.0, 2.0],
+            radius: 0.5,
+            radius_out: r_out,
+            side: 1,
+            id: 0,
+            break_force: f32::INFINITY,
+            ..RopeWheel::default()
+        }];
+        rope_route::resolve_sides(v.anchor_a, v.anchor_b, &mut wheels, &mut Vec::new());
+        let (a, b) = (
+            screen_of(&cam, win, v.anchor_a),
+            screen_of(&cam, win, v.anchor_b),
+        );
+        let mut span = BezPath::new();
+        let mut glyph = BezPath::new();
+        pulley_marks(&v, &wheels, &[0.0], a, b, &cam, win, &mut span, &mut glyph);
+        let centre = screen_of(&cam, win, [0.0, 2.0]);
+        // As distâncias distintas ao eixo, agrupadas com folga de 1 px.
+        let mut ds: Vec<f64> = glyph
+            .elements()
+            .iter()
+            .filter_map(|el| match el {
+                PathEl::MoveTo(p) | PathEl::LineTo(p) => Some(*p),
+                _ => None,
+            })
+            .map(|p| (p.x - centre.x).hypot(p.y - centre.y))
+            // O raio-guia vai do CENTRO ao aro, então ele deposita pontos em toda
+            // distância intermediária: só as pontas descrevem circunferências.
+            .filter(|d| *d > 1.0)
+            .collect();
+        ds.sort_by(|x, y| x.partial_cmp(y).expect("distâncias finitas"));
+        ds.dedup_by(|x, y| (*x - *y).abs() < 1.0);
+        ds
+    };
+    let plain = radii(None);
+    assert_eq!(
+        plain.len(),
+        1,
+        "uma roldana COMUM tem UMA circunferência; saíram {plain:?}"
+    );
+    let drum = radii(Some(0.125));
+    assert_eq!(
+        drum.len(),
+        2,
+        "um tambor diferencial tem DUAS; saíram {drum:?}"
+    );
+    // E a menor é a de saída: um quarto da de entrada, como os raios dizem.
+    assert!(
+        (drum[0] / drum[1] - 0.25).abs() < 0.05,
+        "os dois anéis estão em {drum:?}; os raios 0,125 e 0,50 pedem razão 0,25"
+    );
+}

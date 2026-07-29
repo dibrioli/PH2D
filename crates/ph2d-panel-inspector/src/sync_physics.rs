@@ -106,6 +106,12 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
     };
     host.store_mut()
         .set_number_value(ids::INSP_WHEEL_RADIUS, f64::from(info.radius));
+    // W4: o SEGUNDO diâmetro. Sem esta linha a row seria WRITE-ONLY — digitar
+    // funcionaria e re-selecionar o tambor mostraria 0, dizendo *roldana comum*
+    // sobre um diferencial. É o gap que a família de zonas já pagou uma vez, e
+    // aqui foi o gate estrutural da §13 que o pegou no minuto em que nasceu.
+    host.store_mut()
+        .set_number_value(ids::INSP_WHEEL_RADIUS_OUT, f64::from(info.radius_out));
     host.store_mut()
         .set_number_value(ids::INSP_WHEEL_ORDER, f64::from(info.order_ui));
     host.store_mut()

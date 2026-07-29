@@ -38,6 +38,11 @@ fn wheel() -> InspectorWheelInfo {
         rope_name: "Simple Rope".into(),
         bound: true,
         radius: 0.45,
+        // ⚠️ Uma roldana COMUM, e a premissa é declarada: zero é o estado de toda
+        // roldana até alguém dar um segundo diâmetro a ela. Uma fixture que
+        // chegasse engrenada por acidente diria *diferencial* onde os gates deste
+        // arquivo falam de uma roldana qualquer.
+        radius_out: 0.0,
         order_ui: 1,
         wrap_tag: 0,
         motor_deg_per_s: 0.0,
@@ -209,8 +214,12 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
     const ORDER: u32 = 7;
     const MOTOR: f32 = 42.0;
     const BREAK: f32 = 137.0;
+    // W4: o SEGUNDO diâmetro. Valor próprio e distinto dos outros quatro — se ele
+    // repetisse um deles a varredura não distinguiria a row certa da vizinha.
+    const RADIUS_OUT: f32 = 0.75;
     let numbered = InspectorWheelInfo {
         radius: RADIUS,
+        radius_out: RADIUS_OUT,
         order_ui: ORDER,
         motor_deg_per_s: MOTOR,
         break_force: BREAK,
@@ -254,10 +263,10 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         .collect();
     assert_eq!(
         rows.len(),
-        4,
-        "a §13 pintou {} caixas de número; ela tem quatro (Radius, Order, Motor \
-         e Break Force) — se uma row nova chegou, ela entra nesta varredura \
-         sozinha, que é o ponto",
+        5,
+        "a §13 pintou {} caixas de número; ela tem cinco (Radius, Out Radius, \
+         Order, Motor e Break Force) — se uma row nova chegou, ela entra nesta \
+         varredura sozinha, que é o ponto",
         rows.len()
     );
 
@@ -273,6 +282,7 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         assert!(
             [
                 f64::from(RADIUS),
+                f64::from(RADIUS_OUT),
                 f64::from(ORDER),
                 f64::from(MOTOR),
                 f64::from(BREAK),
@@ -406,5 +416,21 @@ fn the_mount_row_arms_a_pick_and_offers_unmount_only_when_mounted() {
     assert!(
         !painted.contains(&ids::INSP_WHEEL_UNMOUNT),
         "a lixeira não pode ser pintada quando não há montagem para desfazer"
+    );
+}
+
+/// **Digitar o segundo diâmetro chega ao barramento** — o gesto que faz de uma
+/// roldana comum um TAMBOR DIFERENCIAL (W4).
+///
+/// Irmão do `typing_a_radius_reaches_the_bus`, e ele não é redundante: são dois
+/// números com significados diferentes, e a vantagem mecânica da corda é o
+/// QUOCIENTE dos dois — trocar um pelo outro na rota seria a inversão que os
+/// gates do kernel medem, e esta é a metade de UI dela.
+#[test]
+fn typing_an_out_radius_reaches_the_bus() {
+    expect(
+        &commit(wheel(), ids::INSP_WHEEL_RADIUS_OUT, 0.125),
+        WheelFieldEdit::RadiusOut(0.125),
+        "Out Radius",
     );
 }

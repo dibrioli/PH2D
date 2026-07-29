@@ -43,6 +43,7 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             let v = host.store().number_value(id).unwrap_or(0.0);
             match id {
                 ids::INSP_WHEEL_RADIUS => Some(WheelFieldEdit::Radius(v as f32)),
+                ids::INSP_WHEEL_RADIUS_OUT => Some(WheelFieldEdit::RadiusOut(v as f32)),
                 // ⚠️ A caixa fala `f64` e a ordem é um ORDINAL: o arredondamento
                 // mora aqui, na fronteira, como o `i8` da Dominance. E o piso é
                 // 1 porque a row é 1-based — `0` chegaria à shell como "o nó

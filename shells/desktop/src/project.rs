@@ -179,7 +179,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// entregava. Três campos apendados, mesmo raciocínio posicional do v42/v43. O
 /// par `local`/`mounted` é o do W-AnchorFollow: o eixo é guardado no frame do
 /// CORPO e convertido uma vez, senão mover o bloco o faz deslizar por ele.
-const PROJECT_SCHEMA: u32 = 44;
+/// v45 (physics, W-Pulley W4): a `PulleyWheel` ganhou **`radius_out`** — o SEGUNDO
+/// diâmetro do eixo, que faz dela um **tambor diferencial** e devolve a vantagem
+/// mecânica CONTÍNUA que o `ratio` do W-Pulley prometia sem ter peça na cena. Um
+/// campo apendado, mesmo raciocínio posicional do v42/v43/v44.
+const PROJECT_SCHEMA: u32 = 45;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

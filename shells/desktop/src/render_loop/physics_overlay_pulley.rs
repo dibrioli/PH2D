@@ -59,6 +59,26 @@ pub(super) fn pulley_marks(
         // ali o anel de tela é a única coisa que se pode desenhar.
         if r > 1.0 {
             ring_px(centre, r, glyph);
+            // **O SEGUNDO diâmetro do eixo** (W4). Sem ele o tambor diferencial
+            // seria indistinguível de uma roldana comum, e a vantagem mecânica —
+            // que é o QUOCIENTE das duas circunferências — não teria de onde ser
+            // lida: o artista veria um número na §13 e um círculo na tela.
+            //
+            // Desenhado só quando difere, porque numa roldana comum o segundo
+            // anel cairia exatamente sobre o primeiro: dois traços no mesmo lugar
+            // são um traço mais grosso, e isso diria *diferencial* onde não há um.
+            let r_out = w.radius_out();
+            if r_out != w.radius {
+                let rim_out = screen_of(
+                    camera,
+                    window,
+                    [w.centre[0] + r_out * cos, w.centre[1] + r_out * sin],
+                );
+                let ro = (rim_out.x - centre.x).hypot(rim_out.y - centre.y);
+                if ro > 1.0 {
+                    ring_px(centre, ro, glyph);
+                }
+            }
             // **O raio-guia, no ângulo VIVO da roda.** Sem ele uma roda girando é
             // idêntica a uma parada — a mesma lição que o contorno de um collider
             // redondo pagou no W2a —, e sem o ÂNGULO o diâmetro não faria nada

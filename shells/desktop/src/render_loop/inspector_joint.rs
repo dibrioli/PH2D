@@ -539,6 +539,8 @@ pub(crate) fn create_joint_at(
                     rope,
                     order,
                     radius: w.radius,
+                    // Comum: o tambor diferencial do W4 é um segundo gesto.
+                    radius_out: 0.0,
                     wrap: ph2d_physics_ecs::WrapSide::Auto,
                     motor_speed: 0.0,
                     // Uma roldana nasce no CENÁRIO: montá-la num corpo (a cadernal

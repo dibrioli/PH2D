@@ -68,6 +68,25 @@ pub(crate) fn paint_wheel_section(
         "Radius (m)",
         ids::INSP_WHEEL_RADIUS,
     );
+    // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
+    // qualquer outro valor faz dela um TAMBOR DIFERENCIAL, e a corda ganha
+    // vantagem mecânica `Radius / Out Radius`.
+    //
+    // ⚠️ Row SEMPRE pintada, e não só quando já há um diferencial: ela é o único
+    // gesto que CRIA um, e um controle que só aparece depois de a coisa existir
+    // não pode ser o que a faz existir. (É a mesma lei da §11 vazia do W2a.)
+    yy = num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Out Radius (m)",
+        ids::INSP_WHEEL_RADIUS_OUT,
+    );
     // **Order** — a rota é uma SEQUÊNCIA, e duas roldanas trocadas descrevem
     // outra corda. Sem esta row a única forma de reordenar seria apagar e
     // recriar; empate é resolvido pelo nome, então um número repetido é inerte,

@@ -212,6 +212,7 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_pulley;
 mod physics_smoke_pulley_break;
+mod physics_smoke_pulley_diff;
 mod physics_smoke_pulley_tackle;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;

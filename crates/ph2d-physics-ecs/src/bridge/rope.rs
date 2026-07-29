@@ -132,9 +132,12 @@ impl PhysicsBridge {
                     body: mount.map(|(h, _, _)| h),
                     local: mount.map_or([0.0, 0.0], |(_, l, _)| l),
                     radius: wheel.radius,
-                    // W4: o segundo diâmetro do tambor diferencial. `None` é uma
-                    // roldana comum, que é o que toda roldana era até aqui.
-                    radius_out: None,
+                    // W4: o segundo diâmetro do tambor diferencial. O `0 = roldana
+                    // comum` do componente vira o `None` da geometria numa
+                    // conversão só — as duas pontas dizem a mesma coisa em
+                    // vocabulários próprios (um número que a row edita · uma
+                    // ausência que a rota entende).
+                    radius_out: (wheel.radius_out > 0.0).then_some(wheel.radius_out),
                     // A roldana é apontada pelo NOME dela, a mesma chave por que
                     // a corda aponta os corpos — bits de entidade mudam a cada
                     // undo, e o eixo partido migraria para a vizinha.

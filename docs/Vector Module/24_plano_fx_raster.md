@@ -137,8 +137,11 @@ posição do centroide da sombra, e a mensagem traz os números.
   do contorno e a ponta ceifada pelo traço. Ver §11.
 - **W6a — A LEI DE MISTURA POR DEGRAU (FECHADA, pendente de smoke):** o blend mode do Layer Style,
   em **quatro** dos nove tipos. Ver §12.
-- **W6b — A TURBULÊNCIA (FECHADA, pendente de smoke):** o `feTurbulence` + `feDisplacementMap`
-  num degrau só — o eixo ORGÂNICO. **Não mudou a pilha**, como previsto. Ver §13.
+- **W6b — A TURBULÊNCIA (FECHADA, smoke aprovado 2026-07-28):** o `feTurbulence` +
+  `feDisplacementMap` num degrau só — o eixo ORGÂNICO. **Não mudou a pilha**, como previsto. §13.
+- **W7 — GROW / SHRINK (FECHADA, pendente de smoke):** o `feMorphology` (dilate/erode) num knob
+  **com sinal** — 10 → **onze** tipos. Nenhum kernel novo: é um LIMIAR no campo de distância do W4.
+  Ver §14.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -705,3 +708,110 @@ e custaria mais um degrau para ninguém. **Uma linha, um bump.**
 **`PH2D_BUILD_SMOKE=35`** — quatro pares (Amount · Size · Detail · Modo), cada estrela com um
 CONTORNO por baixo da turbulência: é a linha fina que torna visível um deslocamento de poucos pixels,
 e de quebra é a prova de que o degrau COMPÕE.
+
+
+## §14 — W7: GROW / SHRINK (a morfologia)
+
+A última família de primitivas do SVG que faltava ao catálogo — a lista que o §7 abriu
+(*color-matrix · morphology · displacement+turbulence · bevel*) fica com **um** item aberto.
+
+### A pesquisa decidiu a FORMA, e a RÉGUA
+
+| ferramenta | interface | elemento estruturante |
+|---|---|---|
+| SVG `feMorphology` | `operator="erode\|dilate"` + radius | **retângulo** (quinas quadradas) |
+| Photoshop *Minimum/Maximum* | dois itens de menu | os dois (*Preserve: Squareness/Roundness*) |
+| AE *Simple Choker* | **um slider com sinal** | disco |
+| Blender *Dilate/Erode* | **uma "Distance" com sinal** | disco |
+| Illustrator *Offset Path* | **um valor com sinal** | disco (com joins) |
+
+**O modal é a interface ANTIGA.** Um enum é barato num formato *declarativo* (o SVG) e o Photoshop
+herdou dois itens de menu da era dos filtros de 1990. Todo mundo que desenhou isto como **CONTROLE**
+convergiu no bipolar, e por um motivo: crescer e encolher são a mesma operação em sinais opostos, e
+quem afina um *choke* quer atravessar o zero sem trocar de modo.
+
+E a régua sai de graça: com o campo de distância euclidiano do W4 o conjunto novo é `{d ≤ r}`, ou
+seja um **DISCO**. Medido na quina de uma caixa — crescer 10 px alcança **10,00 px** na diagonal,
+contra os **14,14** que um retângulo alcançaria.
+
+### O desenho, e as portas únicas
+
+| pergunta | porta | consumidores |
+|---|---|---|
+| este tipo engorda/afina? | `FxKindSpec::grow_label` | o painel (OFERECER) · o produtor (HONRAR) |
+| **contra o QUÊ ele mede?** | `FxOp::measures_the_image` | `plan_of` (a semente) · o writer dos globals (o `n_segs`) |
+| de que cor é a área nova? | `straight_colour` (WGSL) | o feather · a morfologia |
+| quanto ele espalha? | `op_reach` | `stack_reach` → o tamanho do scratch |
+
+**Não há kernel novo, e é o desenho inteiro:** `a = clamp(sdist + r + 0.5, 0, 1)`. A rampa é linear
+e de um texel porque a cobertura de uma aresta reta a distância `d` do centro **é** `d + 0,5`
+recortado — a mesma lei que todo renderer de SDF usa.
+
+### ⚠️ Ela mede a IMAGEM, não a FORMA
+
+As outras quatro do campo (contorno, feather, bevel, os de dentro em Contour) são efeitos de **borda
+da SILHUETA** e querem o pé exato da geometria. O `feMorphology` dilata **a entrada dele** — e é isso
+que faz `Outline → Grow` **engordar o traço** em vez de o recortar de volta à silhueta.
+
+Com geometria disponível o produtor resolveria pela forma: a resposta certa para quatro tipos e a
+errada para o quinto, **sem erro nenhum**. Daí a porta única, e daí o `n_segs` do uniform ter passado
+a ser derivado do PLANO — semear o raster e deixar o finalize consultar a geometria construiria um
+campo que ninguém lê.
+
+⚠️ **A fixture do gate TEM de trazer geometria.** Sem segmentos o produtor já semeia pela cobertura,
+o defeito não existe e o gate ficaria verde sobre nada.
+
+### ⚠️ `seeds_shell()` ENUMERAVA os leitores, e apodreceu na primeira adição
+
+Ela dizia `FEATHER || OUTLINE || BEVEL || GLOW`. A morfologia lê o campo dos **dois** lados (crescer
+olha para fora, encolher para dentro) e nasceu a cair no `else` — o ramo que semeia só os texels de
+FORA, a medida que os degraus de dentro pedem. O campo saía definido de um lado só, e **quatro gates
+ficaram vermelhos de uma vez**.
+
+A pergunta certa já estava escrita uma linha acima: **os de DENTRO são a exceção**, todo o resto quer
+os dois lados. Hoje é `!is_inner()`, equivalente ao byte no dia da troca, e o próximo tipo do campo
+nasce certo.
+
+### O oráculo, e o número que NÃO é desta operação
+
+O gate que fecha a wave não compara contra o ideal: **`Grow(r)` e `Outline(r)` descrevem o MESMO
+conjunto** (o comentário do contorno já dizia *"isto é uma DILATAÇÃO de verdade (`d ≤ w`)"*), logo
+têm de pôr o contorno no mesmo lugar. Medido: **71,992 contra 71,992** — e o gate de catálogo, que
+não sabe nada disto, conta os **mesmos 1152 texels** para os dois.
+
+⚠️ **MEDIDO e nomeado:** o campo semeado pelo raster põe a fronteira **~0,5 px adiante** numa aresta
+DURA alinhada aos eixos quando o JFA propaga longe. **Não é desta operação** — um Outline de 8 px
+mede `+8,494` no mesmo caminho contra `+8,000` pelo pé exato da geometria. A fixture é o pior caso do
+estimador de sub-texel (rampa de AA de exatamente 1 texel, com a diferença central a ler amostras
+saturadas). Como a morfologia mede a IMAGEM de propósito, ela paga essa régua **sempre**.
+
+### Gates — 14 novos, 10 mutações, **10 sangram**
+
+⚠️ **Uma mutação exigiu TRÊS iterações de fixture** até conter o fenômeno (colapsar os dois braços
+de `straight_colour`): numa forma **monocromática** *"a minha cor"* e *"a cor da borda"* são o mesmo
+número; num texel do **miolo** o JFA não alcança e o braço de vizinhança amostra a si próprio; só o
+**ENCOLHER** — onde os texels sobreviventes estão dentro do alcance do salto — os separa.
+
+⚠️ E o **gate de catálogo pegou a wave**: `every_kind_draws_something` constrói cada tipo com o
+*raio* visível, e o knob visível deste é outro campo ⇒ ele entrava no ponto NEUTRO e "não desenhava
+nada". A fixture passou a perguntar à TABELA, como a linha do `offset` ao lado já fazia.
+
+### Schema
+
+**`PROJECT_SCHEMA` fica em 38** — a terceira leva da mesma linha (`blend`, depois
+`scale`/`detail`/`seed`, agora `grow`). Um save v37 já é recusado pelo 38; pôr cada leva num número
+próprio jogaria fora exatamente os mesmos arquivos. **Uma linha, um bump.**
+
+### Smoke
+
+**`PH2D_BUILD_SMOKE=36`** — quatro pares: o SINAL · o ELEMENTO (as pontas arredondam) · **a ORDEM**
+(`Outline → Grow` contra `Grow → Outline`, o headline) · e o USO (o *choke* clássico: encolher antes
+de borrar).
+
+### Aberto
+
+- **Falta o `feColorMatrix`** (tint/duotone/saturate/`luminanceToAlpha`) — o último item da lista do
+  §7. O Color Overlay com as vinte leis de mistura já cobre a maior parte do que ele entrega.
+- **Os joins do offset**: o Illustrator oferece miter/round/bevel no *Offset Path*. Aqui a quina é
+  sempre redonda, porque a régua é a distância; um miter exigiria geometria, e a pilha de LPE
+  (`VecOffset { join }`) já tem essa resposta no eixo certo.

@@ -322,3 +322,194 @@ fn a_closed_stroke_ignores_the_flat_cap_flags() {
         }
     }
 }
+
+/// 📏 SONDA — quantas PASSAGENS o partidor acha em cada ponto do X, e com que cobertura cada uma.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_pass_split_of_an_x() {
+    let sc = screen(64.0, 64.0);
+    let pernas = [[12.0, 12.0], [52.0, 52.0], [52.0, 12.0], [12.0, 52.0]];
+    let mut pts: Vec<[f32; 2]> = Vec::new();
+    for w in pernas.windows(2) {
+        for k in 0..24 {
+            let t = k as f32 / 24.0;
+            pts.push([
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ]);
+        }
+    }
+    pts.push(pernas[3]);
+    let mut g = art(&[(&pts, 9.0, false, BLACK)]);
+    g.strokes[0].flags |= crate::pack::FLAG_SELF_OVERLAP;
+    for p in &mut g.points {
+        p.opacity = 0.5;
+    }
+    let bins = bin_segments(&g, &sc, 16);
+    for (nome, px, py) in [("braço", 20.5, 20.5), ("cruz", 32.5, 32.5), ("meio-perna", 50.5, 32.5)] {
+        let p = [px, py];
+        let Some(ti) = bins.tile_of_pixel(px, py) else {
+            continue;
+        };
+        let run = bins.segs_of(ti);
+        let mut s = 0;
+        let mut fatias = Vec::new();
+        while s < run.len() {
+            let e = crate::dabs::pass_end(run, s);
+            let cover = stroke_deposit(&run[s..e], &g, &sc, p).map_or(0.0, |d| d.cover);
+            if cover > 0.0 {
+                fatias.push((s, e, (cover * 100.0).round() as i32));
+            }
+            s = e;
+        }
+        let quebras: Vec<usize> = (0..run.len().saturating_sub(1))
+            .filter(|&k| run[k + 1].a != run[k].b)
+            .collect();
+        println!(
+            "  {nome:<11} run {:>3} segs -> {} passagem(ns) com tinta: {fatias:?}   quebras de cadeia: {quebras:?}",
+            run.len(),
+            fatias.len()
+        );
+    }
+}
+
+// ————————————————————————————— o self overlap —————————————————————————————
+
+/// Um "X" de UM traço só, denso e a opacidade em `op`. Sem o bit se `overlap` é falso.
+fn crossing_x(overlap: bool, op: f32) -> FlipGpuData {
+    let pernas = [[12.0, 12.0], [52.0, 52.0], [52.0, 12.0], [12.0, 52.0]];
+    let mut pts: Vec<[f32; 2]> = Vec::new();
+    for w in pernas.windows(2) {
+        for k in 0..24 {
+            let t = k as f32 / 24.0;
+            pts.push([
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ]);
+        }
+    }
+    pts.push(pernas[3]);
+    let mut g = art(&[(&pts, 9.0, false, BLACK)]);
+    if overlap {
+        g.strokes[0].flags |= crate::pack::FLAG_SELF_OVERLAP;
+    }
+    for p in &mut g.points {
+        p.opacity = op;
+    }
+    g
+}
+
+/// 🔴 **O SELF OVERLAP compõe as PASSAGENS — e SÓ no cruzamento.**
+///
+/// ⚠️ **A partição é ÁLGEBRA, não gosto:** em opacidade 1 os dois casos coincidem
+/// (`1 − Π exp(−τ_p) = 1 − exp(−τ)`), então a diferença é inteira sobre **como o `opacity` entra**, e
+/// isso exige o `τ` de cada passagem. Esse gate mede as três regiões de um X de um traço só:
+/// o braço (uma passagem), a junção (uma passagem, mas onde a 1ª versão desta wave CORTAVA) e o
+/// cruzamento (duas).
+#[test]
+fn the_self_overlap_composes_only_where_the_stroke_crosses_itself() {
+    let sc = screen(64.0, 64.0);
+    let alpha = |overlap: bool, p: [f32; 2]| {
+        let g = crossing_x(overlap, 0.5);
+        let bins = bin_segments(&g, &sc, 16);
+        walk_pixel(&bins, &g, &sc, p)[3]
+    };
+    let (braco, cruz, juncao) = ([20.5, 20.5], [32.5, 32.5], [50.5, 32.5]);
+    for p in [braco, juncao] {
+        let (off, on) = (alpha(false, p), alpha(true, p));
+        assert!(
+            (on - off).abs() < 1e-4,
+            "a partição cortou onde NAO ha cruzamento em {p:?}: OFF {off:.4} ON {on:.4}"
+        );
+    }
+    let (off, on) = (alpha(false, cruz), alpha(true, cruz));
+    println!("  cruzamento  OFF α {off:.4}   ON α {on:.4}");
+    // Duas passagens de cobertura cheia a opacidade 0,5: `1 − (1−0,5)² = 0,75`.
+    assert!(
+        (off - 0.5).abs() < 0.02,
+        "o cruzamento sem a flag nao satura em `opacity`: {off:.4}"
+    );
+    assert!(
+        (on - 0.75).abs() < 0.02,
+        "o cruzamento com a flag nao compôs duas passagens: {on:.4} (esperado 0,75)"
+    );
+}
+
+/// ⚠️ **Em opacidade 1 a flag só move o OMBRO — o MIOLO é intocado, e isso é a álgebra da lei.**
+///
+/// No interior saturado `1 − Π exp(−τ_p) = 1 − exp(−Σ τ_p)`: a partição não muda nada. O que sobra é
+/// o `edge`, que passa a ser **por-passagem** — e dois ombros parciais compostos dão mais que a união
+/// deles.
+///
+/// ⚠️ **A 1ª versão deste gate afirmava "a flag NÃO muda NADA em opacidade 1" e nasceu VERMELHA
+/// (pior |Δ| 1,21e-1). A medição do PRODUTO decidiu contra o gate, não contra o código:** o
+/// **rasterizador** muda mais que o percurso ali — pior Δalfa **+63 em 16 px** contra **+31 em 12 px**
+/// —, então o efeito é da semântica `over`, não desta implementação. A afirmação certa é a que este
+/// gate faz agora: onde a flag mexe, o pixel é de BORDA.
+#[test]
+fn at_full_opacity_the_self_overlap_only_moves_the_antialiased_shoulder() {
+    let sc = screen(64.0, 64.0);
+    let (a, b) = (crossing_x(false, 1.0), crossing_x(true, 1.0));
+    let (ba, bb) = (bin_segments(&a, &sc, 16), bin_segments(&b, &sc, 16));
+    let (mut mexidos, mut pior_no_miolo) = (0u32, 0.0_f32);
+    for y in 0..64 {
+        for x in 0..64 {
+            let p = [x as f32 + 0.5, y as f32 + 0.5];
+            let (va, vb) = (walk_pixel(&ba, &a, &sc, p), walk_pixel(&bb, &b, &sc, p));
+            let d = (0..4).fold(0.0_f32, |m, c| m.max((va[c] - vb[c]).abs()));
+            if d <= 1e-4 {
+                continue;
+            }
+            mexidos += 1;
+            // ⚠️ A asserção: um pixel que a flag mexe é de BORDA (o alfa `OFF` está estritamente
+            // entre 0 e 1). Se ela mexesse o miolo, a partição não seria `1 − Π exp(−τ_p)`.
+            assert!(
+                va[3] > 1e-4 && va[3] < 1.0 - 1e-4,
+                "a flag mexeu no MIOLO em ({x}, {y}): alfa OFF {:.4}, |Δ| {d:.4}",
+                va[3]
+            );
+            pior_no_miolo = pior_no_miolo.max(d);
+        }
+    }
+    println!("  opacidade 1: {mexidos} px de BORDA mexidos, pior |Δ| {pior_no_miolo:.3e}");
+    assert!(
+        mexidos > 0,
+        "a fixture nao contem o fenomeno: a flag nao mexeu pixel nenhum em opacidade 1"
+    );
+}
+
+/// ⚠️ **A LIMITAÇÃO, medida e nomeada:** um cruzamento que nunca sai do LADRILHO fica contíguo na
+/// lista e lê como UMA passagem — a flag não compõe ali. A degradação é a conservadora (volta ao
+/// comportamento `OFF`, o *first-wins* histórico do GP), e é a mesma postura dos tetos do
+/// `neighbors.rs`. Este gate **pina o limite** para ninguém o descobrir por acidente.
+#[test]
+fn a_crossing_that_never_leaves_the_tile_reads_as_one_pass() {
+    let sc = screen(64.0, 64.0);
+    // Um lacinho de ~10 px, inteiro dentro de um ladrilho de 16.
+    let pts = [
+        [26.0, 30.0],
+        [34.0, 30.0],
+        [34.0, 38.0],
+        [26.0, 38.0],
+        [30.0, 34.0],
+        [38.0, 34.0],
+    ];
+    let mut off = art(&[(&pts, 5.0, false, BLACK)]);
+    for p in &mut off.points {
+        p.opacity = 0.5;
+    }
+    let mut on = off.clone();
+    on.strokes[0].flags |= crate::pack::FLAG_SELF_OVERLAP;
+    let (bo, bn) = (bin_segments(&off, &sc, 16), bin_segments(&on, &sc, 16));
+    let p = [30.5, 34.5];
+    let (a_off, a_on) = (
+        walk_pixel(&bo, &off, &sc, p)[3],
+        walk_pixel(&bn, &on, &sc, p)[3],
+    );
+    println!("  lacinho num ladrilho só:  OFF α {a_off:.4}   ON α {a_on:.4}");
+    assert!(
+        (a_on - a_off).abs() < 1e-4,
+        "a limitação MUDOU (o lacinho passou a compor: OFF {a_off:.4} ON {a_on:.4}) — \
+         se isso e' de propósito, reescreva este gate; se nao, o partidor esta cortando por acidente"
+    );
+}

@@ -1155,11 +1155,211 @@ fn measure_where_the_cap_ends_in_both_engines() {
             fc.set_walk_engine(&gpu.device, armado);
             let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
             let px = readback_slice(&gpu, slice);
-            let rampa: Vec<u8> = (44..52).map(|x| px[((32 * W + x) * 4 + 3) as usize]).collect();
+            let rampa: Vec<u8> = (44..52)
+                .map(|x| px[((32 * W + x) * 4 + 3) as usize])
+                .collect();
             println!(
                 "  {nome} {}  y=32 {:?}   rampa x=44..51 {rampa:?}",
                 if i == 0 { "raster  " } else { "percurso" },
                 runs_along(&px, 32)
+            );
+        }
+    }
+}
+
+/// 🔴 **O SELF OVERLAP CHEGOU AO PERCURSO** — a última flag da lista, e a única cujo mecanismo no
+/// raster é o **DEPTH**.
+///
+/// Lá o bit troca a profundidade por-traço por uma por-SEGMENTO, então faces sobrepostas de partes
+/// diferentes do mesmo traço passam o GREATER estrito e blendam `over` em vez de serem descartadas. O
+/// percurso não tem faces nem depth: ele resolve UM depósito por traço, e a cobertura **satura** no
+/// cruzamento (que é a regra `OFF` do GP, *"the stroke cannot overlap itself"*).
+///
+/// ⚠️ **A partição é inevitável, e é ÁLGEBRA:** em opacidade 1 os dois casos coincidem
+/// (`1 − Π exp(−τ_p) = 1 − exp(−τ)`, que é o que o percurso já calcula), então a diferença é inteira
+/// sobre **como o `opacity` entra** — e isso pede o `τ` de cada passagem separado.
+///
+/// Quatro asserções, e a terceira e a quarta são as que matam os no-ops:
+/// 1. `OFF` os dois motores concordam nos três pontos (o controle: era assim antes desta wave);
+/// 2. `ON` também;
+/// 3. `ON` **difere de `OFF` no cruzamento** (191 contra 127 — senão a flag seria inerte);
+/// 4. `ON` **NÃO difere no braço nem na junção** (127 nos dois — senão a partição estaria cortando
+///    onde não há cruzamento, que foi exatamente o defeito da 1ª versão desta wave).
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_self_overlap_reaches_the_walk_and_composes_like_the_raster() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o self overlap");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    // `[braço, cruzamento, junção]` por (overlap, motor).
+    let mut m = [[[0u8; 3]; 2]; 2];
+    for (o, overlap) in [false, true].into_iter().enumerate() {
+        let data = pack_drawing(&self_crossing_x(overlap));
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            let a = |x: u32, y: u32| px[((y * W + x) * 4 + 3) as usize];
+            m[o][i] = [a(20, 20), a(32, 32), a(50, 32)];
+            println!(
+                "  overlap={overlap:<5} {}  braço {:>3}  cruzamento {:>3}  junção {:>3}",
+                if i == 0 { "raster  " } else { "percurso" },
+                m[o][i][0],
+                m[o][i][1],
+                m[o][i][2]
+            );
+        }
+    }
+    for (o, nome) in ["OFF", "ON"].into_iter().enumerate() {
+        assert_eq!(
+            m[o][0], m[o][1],
+            "os motores discordam com o self overlap {nome}"
+        );
+    }
+    // A flag TEM de mudar o cruzamento — e só ele.
+    assert!(
+        m[1][1][1] > m[0][1][1] + 32,
+        "a flag ficou inerte no cruzamento: ON {} contra OFF {}",
+        m[1][1][1],
+        m[0][1][1]
+    );
+    assert_eq!(
+        (m[1][1][0], m[1][1][2]),
+        (m[0][1][0], m[0][1][2]),
+        "a partição cortou onde NAO ha cruzamento: braço/junção mudaram com a flag"
+    );
+}
+
+/// Um "X" desenhado com UM traço só, denso (o regime real, pós-`resample_smooth`) e a opacidade em
+/// 0,5 — sem ela o self overlap é invisível, porque tinta opaca já satura.
+fn self_crossing_x(overlap: bool) -> FlipDrawing {
+    self_crossing_x_op(overlap, 0.5)
+}
+
+/// O mesmo X, com a opacidade escolhida.
+fn self_crossing_x_op(overlap: bool, op: f32) -> FlipDrawing {
+    let pernas = [(12.0_f32, 12.0), (52.0, 52.0), (52.0, 12.0), (12.0, 52.0)];
+    let mut st = FlipStroke::new();
+    let push = |st: &mut FlipStroke, x: f32, y: f32| {
+        st.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: 9.0,
+            opacity: op,
+            color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+        });
+    };
+    for w in pernas.windows(2) {
+        for k in 0..24 {
+            let t = k as f32 / 24.0;
+            push(
+                &mut st,
+                w[0].0 + (w[1].0 - w[0].0) * t,
+                w[0].1 + (w[1].1 - w[0].1) * t,
+            );
+        }
+    }
+    push(&mut st, pernas[3].0, pernas[3].1);
+    st.hardness = 1.0;
+    st.self_overlap = overlap;
+    let mut d = FlipDrawing::default();
+    d.strokes.push(st);
+    d
+}
+
+/// 📏 **SONDA — em opacidade 1 a flag muda algo? (nos DOIS motores, e onde)**
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_self_overlap_at_full_opacity() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    for armado in [false, true] {
+        fc.set_walk_engine(&gpu.device, armado);
+        let mut lados = Vec::new();
+        for overlap in [false, true] {
+            let data = pack_drawing(&self_crossing_x_op(overlap, 1.0));
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            lados.push(readback_slice(&gpu, slice));
+        }
+        let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = ((y * W + x) * 4 + 3) as usize;
+                let d = i32::from(lados[1][i]) - i32::from(lados[0][i]);
+                if d.abs() > pior.abs() {
+                    pior = d;
+                    onde = (x, y);
+                }
+                if d != 0 {
+                    n += 1;
+                }
+            }
+        }
+        println!(
+            "  {}  opacidade 1: pior Δalfa {pior:+} em {onde:?}, {n} px diferem",
+            if armado { "percurso" } else { "raster  " }
+        );
+    }
+}
+
+/// 📏 **SONDA — o SELF OVERLAP: o que o raster faz e o que o percurso faz hoje.**
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_self_overlap_in_both_engines() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a sonda do self overlap");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    // Um "X" de um traço só: desce, sobe cruzando. Denso (o regime real, pós-resample).
+    let pernas = [(12.0_f32, 12.0), (52.0, 52.0), (52.0, 12.0), (12.0, 52.0)];
+    for overlap in [false, true] {
+        let mut st = FlipStroke::new();
+        for w in pernas.windows(2) {
+            for k in 0..24 {
+                let t = k as f32 / 24.0;
+                st.push_point(Point {
+                    pos: Vec2::new(
+                        w[0].0 + (w[1].0 - w[0].0) * t,
+                        w[0].1 + (w[1].1 - w[0].1) * t,
+                    ),
+                    width: 9.0,
+                    opacity: 0.5,
+                    color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+                });
+            }
+        }
+        st.push_point(Point {
+            pos: Vec2::new(pernas[3].0, pernas[3].1),
+            width: 9.0,
+            opacity: 0.5,
+            color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+        });
+        st.hardness = 1.0;
+        st.self_overlap = overlap;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            let a = |x: u32, y: u32| px[((y * W + x) * 4 + 3) as usize];
+            println!(
+                "  overlap={overlap:<5} {}  braço {:>3}  cruzamento {:>3}  junção {:>3}",
+                if i == 0 { "raster  " } else { "percurso" },
+                a(20, 20),
+                a(32, 32),
+                a(50, 32),
             );
         }
     }

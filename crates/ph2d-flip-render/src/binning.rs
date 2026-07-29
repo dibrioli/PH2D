@@ -281,7 +281,7 @@ pub fn bin_segments(data: &FlipGpuData, screen: &ScreenSpace, tile: u32) -> Tile
             let (pa, pb) = (data.points[a as usize], data.points[b as usize]);
             let sa = screen.point_px(pa.pos);
             let sb = screen.point_px(pb.pos);
-            let r = crate::tau::dab_reach(
+            let r = crate::dabs::dab_reach(
                 tip,
                 screen.radius_px(pa.width).max(screen.radius_px(pb.width)),
             );
@@ -429,7 +429,7 @@ fn stroke_deposit(
 /// dela — e as contas sairiam sem anti-aliasing, com o `p_eval` empurrado para a linha-de-centro em
 /// vez de para dentro do carimbo.
 ///
-/// ⚠️ **E é aqui que a TAMPA CHATA mora** ([`crate::tau::flat_caps`]): no rasterizador ela é a
+/// ⚠️ **E é aqui que a TAMPA CHATA mora** ([`crate::dabs::flat_caps`]): no rasterizador ela é a
 /// ausência de geometria (o quad não estende), e o percurso não tem quad — então ela é a interseção
 /// com um semi-plano, um `max` sobre o `sd`. Só o PRIMEIRO e o ÚLTIMO segmento a honram; os do meio
 /// cobrem o que cobrem, e é isso que deixa um traço que se enrola de volta pintar sobre o próprio
@@ -441,8 +441,8 @@ fn stroke_silhouette(
     tip: crate::tau::TipShape,
     p: [f32; 2],
 ) -> Option<(f32, [f32; 2], f32)> {
-    let tail = crate::tau::tail_point(data, run);
-    let (cap_head, cap_tail) = crate::tau::flat_caps(data, run);
+    let tail = crate::dabs::tail_point(data, run);
+    let (cap_head, cap_tail) = crate::dabs::flat_caps(data, run);
     let mut best: Option<(f32, [f32; 2], f32)> = None;
     let mut keep = |sd: f32, near: [f32; 2], dist: f32| {
         if best.is_none_or(|(prev, _, _)| sd < prev) {
@@ -468,10 +468,10 @@ fn stroke_silhouette(
             if len > 1e-6 {
                 let dir = [v[0] / len, v[1] / len];
                 if cap_head == Some(seg.a) {
-                    cut = cut.max(crate::tau::cap_sd(p, sa, [-dir[0], -dir[1]]));
+                    cut = cut.max(crate::dabs::cap_sd(p, sa, [-dir[0], -dir[1]]));
                 }
                 if cap_tail == Some(seg.b) {
-                    cut = cut.max(crate::tau::cap_sd(p, sb, dir));
+                    cut = cut.max(crate::dabs::cap_sd(p, sb, dir));
                 }
             }
         }
@@ -482,17 +482,17 @@ fn stroke_silhouette(
             let arc_a = data.arc_len[seg.a as usize];
             let dw = [pb.pos[0] - pa.pos[0], pb.pos[1] - pa.pos[1]];
             let wlen = (dw[0] * dw[0] + dw[1] * dw[1]).sqrt();
-            let (o0, o1) = crate::tau::bead_range(arc_a, arc_a + wlen, pitch, tail == Some(seg.b));
+            let (o0, o1) = crate::dabs::bead_range(arc_a, arc_a + wlen, pitch, tail == Some(seg.b));
             if o0 > o1 {
                 continue;
             }
             let base = ((arc_a + t * wlen) / pitch).floor() as i32;
             for k in [base.clamp(o0, o1), (base + 1).clamp(o0, o1)] {
-                let bead = crate::tau::bead_at((sa, sb), (ra, rb), (arc_a, wlen), (k, pitch));
+                let bead = crate::dabs::bead_at((sa, sb), (ra, rb), (arc_a, wlen), (k, pitch));
                 // A "distância" é `dn·r`: no disco isso É `|p − c|`, e no quadrado é a Chebyshev no
                 // frame da tangente — a mesma grandeza que o `dn` normaliza, então o `edge` e o
                 // empurrão do `p_eval` falam a unidade certa nos dois.
-                let dist = crate::tau::bead_dn(p, bead, square) * bead.r;
+                let dist = crate::dabs::bead_dn(p, bead, square) * bead.r;
                 keep((dist - bead.r).max(cut), bead.c, dist);
             }
             continue;
@@ -568,16 +568,42 @@ fn walk_list(list: &[BinSeg], data: &FlipGpuData, screen: &ScreenSpace, p: [f32;
         while j < list.len() && list[j].stroke == sid {
             j += 1;
         }
-        if let Some(d) = stroke_deposit(&list[i..j], data, screen, p) {
-            let a = (d.rgba[3] * d.cover).clamp(0.0, 1.0);
-            for (dst, src) in acc.iter_mut().zip(&d.rgba).take(3) {
-                *dst = src * a + *dst * (1.0 - a);
+        // **SELF OVERLAP** (`FLAG_SELF_OVERLAP`, o `GP_STROKE_OVERLAP`): sem o bit o traço é UMA
+        // camada de tinta e a cobertura satura no cruzamento — a regra do GP, *"the stroke cannot
+        // overlap itself"*. Com o bit as PASSAGENS compõem, e a álgebra diz que a partição é
+        // inevitável: em opacidade 1 os dois casos coincidem (`1 − Π exp(−τ_p) = 1 − exp(−τ)`, que é
+        // o que o percurso já calcula), então a diferença é inteira sobre COMO o `opacity` entra, e
+        // isso pede o `τ` de cada passagem.
+        //
+        // ⚠️ **Uma passagem é uma SUB-LISTA, e uma sub-lista já é o que o `stroke_deposit` consome** —
+        // então não há lei nova nem kernel novo: com o bit, cada passagem é tratada como se fosse um
+        // traço, pela MESMA composição `over` que este laço já faz para traços diferentes. A
+        // silhueta também passa a ser por-passagem, que é o certo (o AA da borda de cada uma).
+        if data.strokes[sid as usize].flags & crate::pack::FLAG_SELF_OVERLAP == 0 {
+            compose(&mut acc, stroke_deposit(&list[i..j], data, screen, p));
+        } else {
+            let run = &list[i..j];
+            let mut s = 0;
+            while s < run.len() {
+                let e = crate::dabs::pass_end(run, s);
+                compose(&mut acc, stroke_deposit(&run[s..e], data, screen, p));
+                s = e;
             }
-            acc[3] = a + acc[3] * (1.0 - a);
         }
         i = j;
     }
     acc
+}
+
+/// `over` premultiplicado de um depósito sobre o acumulador — a composição que o percurso faz entre
+/// traços e, com `FLAG_SELF_OVERLAP`, entre PASSAGENS do mesmo traço.
+fn compose(acc: &mut [f32; 4], d: Option<Deposit>) {
+    let Some(d) = d else { return };
+    let a = (d.rgba[3] * d.cover).clamp(0.0, 1.0);
+    for (dst, src) in acc.iter_mut().zip(&d.rgba).take(3) {
+        *dst = src * a + *dst * (1.0 - a);
+    }
+    acc[3] = a + acc[3] * (1.0 - a);
 }
 
 #[cfg(test)]

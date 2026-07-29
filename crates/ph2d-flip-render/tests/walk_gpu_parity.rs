@@ -70,13 +70,15 @@ fn stroke(pts: &[(f32, f32)], width: f32, hardness: f32, col: [f32; 3], op: f32)
     s
 }
 
-/// A cena de paridade: **nove perguntas diferentes num desenho só** — a estrela que cruza a si
+/// A cena de paridade: **dez perguntas diferentes num desenho só** — a estrela que cruza a si
 /// mesma (a topologia da foto do Enio), um traço duro, um macio, um de opacidade < 1 (a regra do
 /// GP), um afilado (largura variando ⇒ o raio interpolado da quadratura) e **dois pontilhados**
 /// (Dots e Squares), que exercitam a OUTRA lista de dabs: o `arc_len`, o dono meio-aberto de cada
 /// conta e a conta da PONTA — mais um **sub-pixel** que afina atravessando 1 px, o unico regime
 /// onde o fade nao e' a identidade, e um de **tampa CHATA** que se enrola de volta sobre o proprio
-/// comeco (o unico jeito de provar que a truncagem e' por-SEGMENTO e nao um semi-plano global).
+/// comeco (o unico jeito de provar que a truncagem e' por-SEGMENTO e nao um semi-plano global), e um
+/// **X de UM traço** com `self_overlap` + opacidade 0,5 — sem a opacidade a flag e' invisivel (tinta
+/// opaca ja satura), e sem o cruzamento a particao de passagens nao roda.
 fn scene() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let (cx, cy, outer) = (60.0_f32, 60.0, 44.0);
@@ -166,6 +168,22 @@ fn scene() -> FlipDrawing {
     );
     chato.cap = (ph2d_flip::Cap::Flat, ph2d_flip::Cap::Flat);
     d.strokes.push(chato);
+    // **O SELF OVERLAP** — um X de um traço só, DENSO (o regime real, pós-`resample_smooth`) e a
+    // opacidade em 0,5: é o único regime onde a flag muda um pixel.
+    let mut xx = Vec::new();
+    for w in [(20.0_f32, 320.0), (60.0, 360.0), (60.0, 320.0), (20.0, 360.0)].windows(2) {
+        for k in 0..20 {
+            let t = k as f32 / 20.0;
+            xx.push((
+                w[0].0 + (w[1].0 - w[0].0) * t,
+                w[0].1 + (w[1].1 - w[0].1) * t,
+            ));
+        }
+    }
+    xx.push((20.0, 360.0));
+    let mut cruzado = stroke(&xx, 9.0, 1.0, [0.2, 0.6, 0.3], 0.5);
+    cruzado.self_overlap = true;
+    d.strokes.push(cruzado);
     d
 }
 
@@ -177,7 +195,7 @@ fn the_device_walk_is_the_cpu_walk() {
         println!("sem adapter -- skip");
         return;
     };
-    let (w, h) = (128_u32, 312);
+    let (w, h) = (128_u32, 376);
     let sc = ScreenSpace::from_camera(&camera(w, h));
     let data = pack_drawing(&scene());
     let bins = bin_segments(&data, &sc, DEFAULT_TILE);

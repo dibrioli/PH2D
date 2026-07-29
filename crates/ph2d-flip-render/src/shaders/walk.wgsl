@@ -60,6 +60,8 @@ struct Screen {
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
 const FLAG_END_FLAT: u32 = 4u;
+// `pack.rs::FLAG_SELF_OVERLAP` — com o bit as PASSAGENS do traço compõem em vez de saturarem.
+const FLAG_SELF_OVERLAP: u32 = 8u;
 const FLAG_AIRBRUSH: u32 = 16u;
 // `pack.rs::tip_code` (a porta única CPU→GPU) — TÊM de bater com o `flip.wgsl` e o `tau.rs`.
 const TIP_DOTS: u32 = 1u;
@@ -340,6 +342,45 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
     return best;
 }
 
+// `tau.rs::seg_window` — os `t` onde uma amostra cai dentro do alcance de um dab em torno de `p`.
+// `z < 0` = o segmento nao alcança este pixel. ⚠️ Porta ÚNICA: a quadratura usa para saber ONDE
+// integrar e o `pass_end` para saber SE o segmento pertence a passagem.
+fn seg_window(p: vec2<f32>, sa: vec2<f32>, sb: vec2<f32>, reach: f32) -> vec3<f32> {
+    let v = sb - sa;
+    let len2 = dot(v, v);
+    if (len2 <= 1e-12) {
+        return vec3<f32>(0.0, 0.0, -1.0);
+    }
+    let w = sa - p;
+    let wv = dot(w, v);
+    let ww = dot(w, w);
+    let disc = wv * wv - len2 * (ww - reach * reach);
+    if (disc <= 0.0) {
+        return vec3<f32>(0.0, 0.0, -1.0);
+    }
+    let sq = sqrt(disc);
+    let t0 = clamp((-wv - sq) / len2, 0.0, 1.0);
+    let t1 = clamp((-wv + sq) / len2, 0.0, 1.0);
+    if (t1 <= t0) {
+        return vec3<f32>(0.0, 0.0, -1.0);
+    }
+    return vec3<f32>(t0, t1, 1.0);
+}
+
+// `tau.rs::pass_end` — o fim (exclusivo) da cadeia CONTÍGUA que começa em `start`. Sem predicado de
+// alcance e sem épsilon: o binner lista todo segmento a `r` do LADRILHO, então um buraco na cadeia
+// significa que os do meio nao alcançam nem o ladrilho — o traço foi embora e voltou. Ver o irmão em
+// Rust para a versao por ALCANCE, construida, MEDIDA e reprovada (passagens fantasma).
+fn pass_end(lo: u32, hi: u32, start: u32) -> u32 {
+    var k = start;
+    loop {
+        if (k + 1u >= hi) { break; }
+        if (segs[k + 1u].a != segs[k].b) { break; }
+        k = k + 1u;
+    }
+    return k + 1u;
+}
+
 // `tau.rs::cap_sd` — o SDF (px, positivo = FORA) do corte de uma tampa chata. Interseção com a
 // cápsula = `max`, e é isso que dá anti-aliasing à borda reta de graça.
 fn cap_sd(p: vec2<f32>, q: vec2<f32>, n: vec2<f32>) -> f32 {
@@ -412,19 +453,13 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: 
 
         let rmax = max(ra, rb);
         let reach = dab_reach(pitch, square, rmax);
-        let w = sa - p;
-        let wv = dot(w, v);
-        let ww = dot(w, w);
-        let disc = wv * wv - len2 * (ww - reach * reach);
-        if (disc <= 0.0) {
+        // A janela vem da porta ÚNICA, a MESMA que o `pass_end` pergunta.
+        let win = seg_window(p, sa, sb, reach);
+        if (win.z < 0.0) {
             continue;
         }
-        let sq = sqrt(disc);
-        let t0 = clamp((-wv - sq) / len2, 0.0, 1.0);
-        let t1 = clamp((-wv + sq) / len2, 0.0, 1.0);
-        if (t1 <= t0) {
-            continue;
-        }
+        let t0 = win.x;
+        let t1 = win.y;
 
         // **AS CONTAS** — a soma sobre os carimbos que esta janela alcança, SEM peso de arco: uma
         // conta é UM dab, não um tubo varrido.
@@ -525,7 +560,18 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
             let st = strokes[sid];
             let pitch = bead_pitch_of(st);
             let square = st.tip == TIP_SQUARES;
-            let sil = stroke_silhouette(i, j, p, pitch, square);
+            // **SELF OVERLAP** — sem o bit o traço é UMA passagem (a sub-lista é a lista toda, e o
+            // laço roda uma vez ⇒ byte-idêntico); com o bit cada PASSAGEM é tratada como um traço,
+            // pela MESMA composição `over` de baixo. Ver o irmão em `binning.rs::walk_list`.
+            let overlap = (st.flags & FLAG_SELF_OVERLAP) != 0u;
+            var ps = i;
+            loop {
+            if (ps >= j) { break; }
+            var pe = j;
+            if (overlap) {
+                pe = pass_end(i, j, ps);
+            }
+            let sil = stroke_silhouette(ps, pe, p, pitch, square);
             let edge = 0.5 - sil.x;
             if (sil.x < 1e29 && edge > 0.0) {
                 var p_eval = p;
@@ -536,7 +582,7 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
                 var rgba = vec4<f32>(0.0);
                 var fade = 0.0;
                 let airbrush = (st.flags & FLAG_AIRBRUSH) != 0u;
-                let tau = stroke_tau(i, j, sid, st.hardness, airbrush, pitch, square, p_eval, &rgba, &fade);
+                let tau = stroke_tau(ps, pe, sid, st.hardness, airbrush, pitch, square, p_eval, &rgba, &fade);
                 if (tau > 0.0) {
                     // O fade multiplica a COBERTURA, ao lado do `edge` — nunca o `τ` (ver o irmão em
                     // Rust: escalar o `τ` satura junto com ele e a linha fina sairia opaca).
@@ -551,6 +597,8 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
                         );
                     }
                 }
+            }
+            ps = pe;
             }
             i = j;
         }

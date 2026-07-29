@@ -18,6 +18,7 @@
 
 mod binning;
 mod composite;
+mod dabs;
 mod fill;
 mod fill_holes;
 mod neighbors;

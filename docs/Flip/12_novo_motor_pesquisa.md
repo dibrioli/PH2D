@@ -1194,7 +1194,7 @@ Smoke do §18 aprovado. O §16 dizia *"não sobra item de projeto, resta integra
 | `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ✅ | **FECHADO no §19.3** |
 | `fade` sub-pixel | ✅ | ✅ | **FECHADO no §19.4** |
 | `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ✅ | **FECHADO no §19.5** |
-| `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | **próximo** |
+| `FLAG_SELF_OVERLAP` **ON** | ✅ | ✅ | **FECHADO no §19.6** |
 
 ⚠️ **Armado, o motor novo apagava CINCO features em silêncio — três delas integradas dois dias
 antes** (airbrush, tip pontilhado, pressão; a pressão é largura, que o percurso já lê). Enquanto
@@ -1475,6 +1475,103 @@ começo — a única forma que prova o por-segmento no device também).
 ⚠️ **LOC:** o `tau_tests.rs` bateu 736 > 700 e o corte foi por responsabilidade, não por tamanho:
 `cover = (1 − exp(−τ)) · edge · fade`, e os dois termos que **não** são o `τ` (o fade e a tampa)
 saíram para o irmão **`cover_tests.rs`**. Contagem de gates antes e depois do split: **57 e 57**.
+
+### §19.6 — O SELF OVERLAP: a lista fecha, e a partição é uma SUB-LISTA
+
+A última flag, e a única cujo mecanismo no rasterizador é o **DEPTH**: o bit troca a profundidade
+por-traço por uma por-SEGMENTO, então faces sobrepostas de partes diferentes do mesmo traço passam o
+GREATER estrito e blendam `over` em vez de serem descartadas. O percurso não tem faces nem depth — ele
+resolve UM depósito por traço, e a cobertura **satura** no cruzamento (a regra `OFF` do GP,
+*"the stroke cannot overlap itself"*).
+
+**Medido, um "X" de um traço só a opacidade 0,5** (sem opacidade < 1 a flag é invisível: tinta opaca
+já satura):
+
+```text
+                    braço   cruzamento   junção
+  OFF  raster        127        127        127
+  OFF  percurso      127        127        127     (já concordavam — o controle)
+  ON   raster        127        191        127
+  ON   percurso      127        127        127     ANTES
+  ON   percurso      127        191        127     DEPOIS
+```
+
+`191/255 = 0,749 = 1 − (1−0,5)²` — duas passagens compostas. ⚠️ **E a junção é 127 no raster
+também**: o truque de depth dele **não** duplica tinta nas quinas (era a minha suspeita, agora
+medida).
+
+**A partição é inevitável, e é ÁLGEBRA:** em opacidade 1 os dois casos coincidem
+(`1 − Π exp(−τ_p) = 1 − exp(−Σ τ_p)`, que é o que o percurso já calcula), então a diferença é inteira
+sobre **como o `opacity` entra** — e isso exige o `τ` de cada passagem separado. ⛔ **Deixar o
+`opacity` entrar no `f` do dab NÃO serve, e a razão é a doença que esta linha curou quatro vezes:** uma
+passagem são muitos dabs, então o braço passaria a depender da densidade de amostragem.
+
+**E então a implementação some:** *uma passagem é uma SUB-LISTA, e uma sub-lista já é o que o
+`stroke_deposit` consome.* Com o bit, cada passagem é tratada como se fosse um traço, pela MESMA
+composição `over` que o `walk_list` já faz entre traços — zero lei nova, zero kernel novo, e a
+silhueta passa a ser por-passagem, que é o certo (o AA da borda de cada uma).
+
+**⚠️ O PARTIDOR: duas versões construídas, e a primeira foi MEDIDA e reprovada.** O
+`neighbors.rs` já proíbe por escrito a partição por **ARCO** (*"a v1 desta wave cortava por ARCO e
+estava ERRADA — não re-derive"*), então eu fui para a por **ALCANCE**, que é a lei que ele usa. Ela
+erra por um motivo que só a medição mostra: `stroke_deposit` amostra em **`p_eval`**, empurrado até
+meio pixel para dentro, então um segmento que o alcance chama de "buraco" ainda **deposita** — no X
+saíram **passagens fantasma de 1 segmento a 23-25% de cobertura** em cada lado das reais, com
+cruzamento **205** onde o raster põe 191 e junção **143** onde ele põe 127.
+
+**A versão que ficou não tem predicado nem épsilon: uma passagem é uma cadeia CONTÍGUA da polilinha
+presente nesta lista.** A licença é do binner — ele lista **todo** segmento a `r` do LADRILHO, e o
+pixel está no ladrilho, então *estar na lista* é implicado por *poder alcançar o pixel*; logo um buraco
+na cadeia significa que os segmentos do meio nem alcançam o ladrilho, ou seja o traço foi embora e
+voltou. Medido no X: quebras de cadeia em `[5, 18]` no cruzamento (⇒ 2 blocos com tinta, 191), `[]` no
+meio da perna (⇒ 1 bloco, 127). **Exatos.**
+
+**⚠️ A LIMITAÇÃO é nomeada e gateada:** um cruzamento que **nunca sai do ladrilho** fica contíguo e lê
+como UMA passagem — a flag não compõe ali. A degradação é a conservadora (volta ao `OFF`, o
+*first-wins* histórico do GP), a mesma postura dos tetos do `neighbors.rs`, e há gate pinando o limite
+para ninguém o descobrir por acidente.
+
+**⚠️ E um gate MEU nasceu vermelho sobre código certo.** Eu afirmei *"em opacidade 1 a flag não muda
+nada"* pela álgebra acima; ele mediu `|Δ| = 1,21e-1`. O que a álgebra ignora é o **`edge`**, que passa a
+ser por-passagem — dois ombros parciais compostos dão mais que a união deles. E a medição do PRODUTO
+decidiu contra o gate, não contra o código: o **rasterizador muda MAIS** ali — pior Δalfa **+63 em
+16 px** contra **+31 em 12 px** do percurso —, então o efeito é da semântica `over`, não desta
+implementação. A afirmação certa, que o gate faz agora: **onde a flag mexe, o pixel é de BORDA**; o
+miolo é intocado.
+
+**Gates:** o do PRODUTO compara os dois motores com a flag OFF e ON e exige que ela mude **o
+cruzamento e só ele** (as duas últimas asserções são as que matam os no-ops: uma flag inerte e um
+partidor que corta onde não há cruzamento). Mais três de unidade na CPU: a composição só no
+cruzamento, o ombro em opacidade 1, e a limitação do lacinho. **6 mutações, 6 sangram.**
+
+⚠️ **A cena de paridade ganhou a DÉCIMA pergunta** (um X de um traço com a flag e opacidade 0,5 — sem
+os dois a partição não roda e a cena fica cega, como já ficou no fade e na tampa).
+
+⚠️ **LOC:** `tau.rs` bateu 741 ⇒ split pela distinção que o próprio arquivo já documenta (o
+`DabProfile` é *a FORMA da queda*, a `TipShape` é *ONDE os dabs estão*): a **geometria da lista de
+dabs** — alcance, contas, tampas, passagens, a janela da quadratura — saiu para **`dabs.rs`** (544 +
+209). Nada em `dabs.rs` sabe quanto vale um dab; tudo nele sabe onde ele pode estar.
+
+## 20. ⭐ A LISTA FECHOU — e o que sobra
+
+Com o §19.6 o percurso lê **todas as sete** entradas de `Stroke`/flags que o rasterizador lê. O §19
+começou porque *"armado, o motor novo apagava CINCO features em silêncio"*; nenhuma continua apagada.
+
+**O que a comparação com o raster deixou NOMEADO em vez de alinhado** (as três divergências, cada uma
+com número e sonda):
+
+| divergência | raster | percurso | onde |
+|---|---|---|---|
+| conta sub-pixel (0,40 px) | apaga a fileira | pontilhado fraco (76 px, pico 57) | §19.3 |
+| borda de tampa chata fora de fronteira de pixel | passo duro (perde a posição sub-pixel) | AA exato (102/255) | §19.5 |
+| ombro de cruzamento em opacidade 1 com a flag | +63 em 16 px | +31 em 12 px | §19.6 |
+
+Nas três o percurso é o mais correto pelas próprias regras que o raster afirma nos comentários dele, e
+nas três **o smoke decide** se isso é o produto.
+
+**A fronteira volta a ser a PERF** (§15): o binner da CPU custa 1,76 ms = 45% do frame, e o resíduo de
+−27 sobre ≤ 3 px na quina convexa segue aberto. E a decisão de **default** — qual motor arma — é do
+Enio, agora que não há mais feature apagada para descobrir depois.
 
 ## 17. Fontes
 

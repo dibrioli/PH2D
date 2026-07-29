@@ -330,7 +330,7 @@ fn the_bead_at_a_joint_is_stamped_once() {
 }
 
 /// 🔴 **A CONTA DA PONTA EXISTE** — o último ponto de um traço aberto não tem segmento seguinte
-/// para adotar a conta que cai ali, e sem a exceção do [`crate::tau::bead_range`] ela desaparece
+/// para adotar a conta que cai ali, e sem a exceção do [`crate::dabs::bead_range`] ela desaparece
 /// justamente quando o arco total é múltiplo da pitch (o caso de todo traço em números redondos).
 #[test]
 fn the_bead_at_the_tip_of_the_stroke_is_stamped() {

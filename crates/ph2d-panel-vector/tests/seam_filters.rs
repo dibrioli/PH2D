@@ -346,6 +346,52 @@ fn dragging_a_stop_handle_works_on_the_real_gradient_map_card() {
     );
 }
 
+/// **Os DOIS punhos do default do "Add" são arrastáveis — inclusive o da PONTA DIREITA.**
+///
+/// ⚠️ **Esta é a fixture que faltava, e o report do Enio ("ainda não posso mover") é ela.** Todos os
+/// gates de arrasto irmãos agarram o punho do MEIO (índice 1 em 0,5) — e o degrau que o "Add" cria
+/// tem **dois** stops, nas pontas EXATAS (`0.0` e `1.0`). O da direita senta em `bar.x + bar.w`, com
+/// metade da caixa de agarre fora da área útil do card, onde o hit-index é *last-registered-wins* e
+/// a barra de rolagem é registrada DEPOIS do corpo.
+#[test]
+fn both_handles_of_the_two_stop_default_are_draggable_including_the_right_edge() {
+    for stop in [0usize, 1] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        ph2d_panel_vector::set_current_filter_can_add(true);
+        ph2d_panel_vector::set_filter_kinds(kinds_table_real_gradient_map());
+        ph2d_panel_vector::set_filter_blend_names(blend_names_table());
+        // O default EXATO do `FxOp::new(GRADIENT_MAP)`: dois stops, nas pontas.
+        let mut r = row(0);
+        r.stop_count = 2;
+        r.stop_pos = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        r.stop_colors[0] = [0, 0, 0, 255];
+        r.stop_colors[1] = [255, 255, 255, 255];
+        ph2d_panel_vector::set_current_filters(vec![r]);
+        let id = ph2d_panel_vector::ids::filter_stop_id(0, stop);
+        let rect = host
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o punho {stop} do default nao foi PINTADO"));
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        evs.extend(host.dispatch_pointer_event(pointer(
+            PointerKind::Move,
+            cx - 20.0,
+            cy,
+            SEC + SEC / 100,
+        )));
+        let ramp = ph2d_panel_vector::ids::filter_ramp_id(0);
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ramp)),
+            "o punho {stop} do default (pos {}) NAO arrasta — o ponteiro sobre ele nao virou \
+             `ValueChanged` do trilho; algum widget registrado DEPOIS roubou o hit, ou o punho esta \
+             fora da area util do card",
+            if stop == 0 { "0,0" } else { "1,0" }
+        );
+    }
+}
+
 /// **ARRASTAR um punho chega ao bus como uma posição nova.**
 ///
 /// ⚠️ **Este gate faltava, e o report do Enio ("não é possível arrastar os pontos de cor") é

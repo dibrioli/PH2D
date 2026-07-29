@@ -550,7 +550,12 @@ impl BodyCtx<'_> {
     /// `canvas`, e um painel redimensionado deixaria o gesto a converter contra uma barra que já não
     /// está ali.
     fn filter_ramp_rows(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
+        // ⚠️ **O MESMO `row_gap` que a ALTURA do card reserva.** Eu usei `Spacing::Xs` aqui e
+        // `self.row_gap` (que é `Sm`) na conta da altura — container medido por uma régua e
+        // preenchido por outra, exactamente o que a lei do `segmented_row_counts` proíbe. Sobrava
+        // folga (Sm > Xs), então não transbordava; mas a próxima linha a mexer no trilho herdaria a
+        // discordância na direção que transborda.
+        let gap = self.row_gap;
         let mut py = y;
         // ── A fileira `+` / `−`, alinhada à direita ──
         let n = usize::from(fx.stop_count).min(MAX_FILTER_STOPS);
@@ -631,6 +636,20 @@ impl BodyCtx<'_> {
             fill_circle(self.scene, cx, cy, RAMP_HANDLE_R, scol);
         }
         py += RAMP_BAR_H + RAMP_HANDLE_R + gap;
+        // ⚠️ **Diagnóstico atrás de env** — o report *"não posso mover os pontos de cor"* não
+        // reproduz headless (o seam dirige o gesto real e chega ao barramento), então o que falta
+        // medir é o que só o app vivo tem. Ele responde as DUAS perguntas de uma vez: os punhos
+        // existem (e onde), e o store sabe que eles são arrastáveis.
+        if std::env::var_os("PH2D_FX_RAMP_DIAG").is_some() {
+            let armed = matches!(
+                self.store.get(ids::filter_stop_id(row, 0)),
+                Some(InteractiveState::CurvePoint { .. })
+            );
+            eprintln!(
+                "[ramp] linha {row}: barra x={:.0} w={:.0} y={:.0} · {n} punho(s) · store armado: {armed}",
+                bar.x, bar.w, bar.y
+            );
+        }
         // ── E a cor do stop escolhido, pela MESMA swatch/picker das duas pontas do Duotone ──
         let colour = fx
             .stop_colors

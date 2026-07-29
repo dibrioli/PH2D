@@ -689,7 +689,77 @@ acabou de comprar.
 
 ---
 
-## 10. Fontes
+## 10. ⭐ O CUSTO POR FRAME (o 2º eixo do §11.3 do handoff — `tests/walk_perf.rs`)
+
+O §6 mediu o pedágio de **ÁREA**; isto mede **o que custa um pixel**. ⚠️ **O número serial de CPU
+não é o número do produto** (o alvo é um dispatch de compute por ladrilho, onde cada pixel é uma
+thread) — o que ele responde, e o produto herda, é a **FORMA**.
+
+### 10.1 A forma está certa: o custo é LOCAL
+
+Um pixel de um canto VAZIO, com a cena crescendo do outro lado da tela:
+
+| traços | segs | canto vazio | faixa densa |
+|---|---|---|---|
+| 1 | 39 | **3,3 ns** | 423 ns |
+| 10 | 390 | **3,3 ns** | 834 ns |
+| 50 | 1950 | **3,4 ns** | 1678 ns |
+| 200 | 7800 | **3,4 ns** | 4147 ns |
+
+**Plano de 1 a 200 traços.** É o requisito que decide o desenho, e ele vale em qualquer
+dispositivo: um pixel só paga pelos segmentos que o ALCANÇAM. A faixa densa sobe porque ali os
+traços de fato se empilham (o fixture os sobrepõe) — trabalho legítimo, ~400 ns por traço que
+cobre o pixel.
+
+### 10.2 Um frame de 1080p, serial
+
+| traços | segs/tile (méd \| máx) | bin | walk | ns/px | ns/px COM TINTA | tinta |
+|---|---|---|---|---|---|---|
+| 1 | 0,04 \| 2 | 0,03 ms | 18,4 ms | 9 | 844 | 1,1% |
+| 10 | 0,38 \| 6 | 0,09 ms | 93,4 ms | 45 | 476 | 9,5% |
+| 50 | 1,87 \| 11 | 0,34 ms | 412,8 ms | 199 | 555 | 35,9% |
+| 200 | 7,60 \| 34 | 1,30 ms | 1593,7 ms | 769 | 1004 | 76,6% |
+
+O **binning** (1× por frame) é barato: **1,3 ms** para 7800 segmentos. O percurso é o custo.
+
+### 10.3 De que o pixel é feito, e as alavancas MEDIDAS
+
+- **O logaritmo é ~20%, não o dominante.** Ablação (`f_of` devolvendo `w` cru): 4147 → **3170 ns**.
+  Uma LUT de `f_of` — o padrão que o Painter já pagou no doc 24 — compra ~20%, não 5×.
+- **O dominante é o NÚMERO DE AMOSTRAS**, governado por `SUB`. ⚠️ **E não há 2× de graça:** a
+  bateria inteira do §9 foi rodada em `SUB` 2 · 3 · 4, e **2 e 3 REPROVAM** — o déficit da quina
+  convexa sai de −27/3 px para **−30/11 px**. Para cima, 4 → 16 move ≤1/255 (§9.3). **`SUB = 4` é
+  o joelho, agora defendido pelos oráculos e não por uma sonda só.**
+
+### 10.4 ⚠️ Duas lições de SONDA, as duas minhas
+
+1. **`black_box` vai na ENTRADA, dentro do laço.** Com ele só no fim, `walk_pixel` é pura sobre
+   argumentos invariantes e o LLVM a computa uma vez: a 1ª versão mediu **3,3 ns no canto E na
+   faixa densa** — o retrato de nada rodando.
+2. **A coordenada de tela nunca se escreve à mão sob uma câmera Y-FLIPADA.** Eu cravei
+   `y = h·0,6` como px de tela; a câmera espelha, a "faixa densa" caiu em espaço VAZIO, e as duas
+   colunas mediram o mesmo nada — *com a correção do (1) já aplicada*, que é o que torna o erro
+   difícil de ver. Os dois pontos agora são projetados por `ScreenSpace::point_px`, e **o alfa vai
+   impresso ao lado** para uma sonda que não encosta na tinta se denunciar.
+
+---
+
+## 11. O QUE FALTA PARA ISTO SER PRODUTO (não é só o passo 5)
+
+1. **ANTI-ALIASING — o ponto cego que os oráculos criaram.** Todas as comparações do §9 **excluem a
+   franja da silhueta** (`in_the_silhouette_fringe`), porque o depósito do Painter não tem AA e o
+   motor de hoje tem analítico. Consequência: **o motor novo nunca foi comparado na borda, e ele
+   não tem AA nenhum.** Não é passo 5, é requisito.
+2. **As features do §8 do handoff**, cada uma com a pergunta *"isto sobrevive à troca de lei?"* —
+   airbrush · self-overlap (que provavelmente **desaparece**: ele existe para forçar acúmulo que
+   agora é automático) · tip pontilhado · pressão · multiplano.
+3. **O cap da ponta** (§9.3), com a restrição que a mutação D descobriu: tem de ser **invariante à
+   partição do caminho**.
+4. **O port para compute**, que é o único lugar onde o custo do §10 vira um número de produto.
+
+---
+
+## 12. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

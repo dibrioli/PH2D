@@ -486,11 +486,17 @@ fn the_keys_solo_resolves_a_per_clip_prop_link() {
     // Active clip 0: Follower driven by `Sprite.x` (per-clip expr), Sprite keyed flat at 100.
     set_expr(&mut doc, 0, follower, PropKind::TranslationX, "Sprite.x");
     flat(&mut doc, 0, sprite, PropKind::TranslationX, 100.0);
-    assert!(doc.stack().is_empty(), "the Keys solo is the NON-STACKED view");
+    assert!(
+        doc.stack().is_empty(),
+        "the Keys solo is the NON-STACKED view"
+    );
 
     apply_active_clip(&mut world, &mut doc, 0.0, |_| false);
     let s = x_of(&world, sprite);
-    assert!((s - 100.0).abs() < 1e-3, "Sprite is keyed flat at 100; got {s}");
+    assert!(
+        (s - 100.0).abs() < 1e-3,
+        "Sprite is keyed flat at 100; got {s}"
+    );
     let f = x_of(&world, follower);
     assert!(
         (f - 100.0).abs() < 1e-3,
@@ -602,7 +608,13 @@ fn the_cross_os_hash_of_wiggle_plus_prop_link() {
     // Src wiggles on X and Y; Follower reads Src.x and adds its own wiggle (prop-link + wiggle).
     set_expr(&mut doc, 0, src, PropKind::TranslationX, "wiggle(3, 20)");
     set_expr(&mut doc, 0, src, PropKind::TranslationY, "wiggle(5, 8)");
-    set_expr(&mut doc, 0, follower, PropKind::TranslationX, "Src.x + wiggle(2, 5)");
+    set_expr(
+        &mut doc,
+        0,
+        follower,
+        PropKind::TranslationX,
+        "Src.x + wiggle(2, 5)",
+    );
 
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for i in 0..=120 {
@@ -626,7 +638,19 @@ fn the_cross_os_hash_of_wiggle_plus_prop_link() {
 
 /// Pinned on `line/anim` at ADR-0146 W7. Wiggle is an integer hash (cross-OS); the fold is
 /// integer arithmetic. A divergence on any OS in the nextest matrix is a real defect.
-const CROSS_OS_HASH: u64 = 0x6ed2_84e3_8f4f_28f9;
+/// ⚠️ **MOVED 2026-07-29** (`0x6ed2_84e3_8f4f_28f9` -> here), and the reason is a
+/// deliberate semantic change, not a drift: `wiggle` now lowers onto a **smooth value
+/// noise** instead of the raw hash, because with the hash its `freq` argument was a
+/// SEED — measured, 494 to 509 zero-crossings per second across a 32x sweep, i.e. no
+/// frequency at all (`ph2d-expr-parse::smooth_noise`, and the Enio smoke that named
+/// it: *"a velocidade em shake nunca foi velocidade"*).
+///
+/// ⚠️ What this gate GUARDS is untouched: the lowering adds only `floor`, `fract`
+/// (`x - floor(x)`), `mix` (`a*(1-t) + b*t`) and `+ - *` — every one of them
+/// IEEE-754 exact, and Rust never contracts to FMA. No transcendental entered the
+/// path, so the scene is still bit-reproducible on Linux/macOS/Windows, which is the
+/// whole claim. A pin that moved for any OTHER reason is a bug.
+const CROSS_OS_HASH: u64 = 0x8d0c_3807_61f8_141a;
 
 /// **Gate #6 (W7, Hole B / C4) — a MULTI-CHANNEL keyed fade co-resident with an expression is
 /// byte stable.** Gate #5 pins TranslationY under `scheduled`; the byte-identity fingerprint
@@ -745,12 +769,14 @@ fn measure_hundreds_of_prop_link_channels() {
     }
     let per_frame_ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     println!("PROP-LINK COST: {N} chained prop-link channels = {per_frame_ms:.3} ms/frame");
-    assert!(world
-        .get::<Transform>(Entity::from_bits(src))
-        .unwrap()
-        .translation
-        .x
-        .is_finite());
+    assert!(
+        world
+            .get::<Transform>(Entity::from_bits(src))
+            .unwrap()
+            .translation
+            .x
+            .is_finite()
+    );
 }
 
 /// **A per-clip expression FREEZES at the clip's authored cut** (Enio: *"expressões não estão
@@ -781,7 +807,10 @@ fn a_per_clip_expression_freezes_at_the_clips_authored_cut() {
     // Authored to 2 s: t=1 -> 10; t=3 (past the cut) -> FROZEN at the 2 s pose = 20.
     let (mut w, mut doc, e) = build(Some(2.0));
     apply_from_doc(&mut w, &mut doc, 1.0);
-    assert!((x_of(&w, e) - 10.0).abs() < 1e-3, "within the cut: time*10 = 10");
+    assert!(
+        (x_of(&w, e) - 10.0).abs() < 1e-3,
+        "within the cut: time*10 = 10"
+    );
     apply_from_doc(&mut w, &mut doc, 3.0);
     assert!(
         (x_of(&w, e) - 20.0).abs() < 1e-3,

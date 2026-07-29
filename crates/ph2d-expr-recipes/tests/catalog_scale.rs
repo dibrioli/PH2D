@@ -219,3 +219,84 @@ fn every_knob_steps_in_a_number_a_person_would_type() {
         "wiggle octaves step by whole numbers"
     );
 }
+
+// ------------------------------------------------- the smoke of 2026-07-29 (2)
+
+/// How many times a curve crosses its own mean, per second — the RATE it wobbles at.
+fn crossings_per_second(v: &[f32]) -> f32 {
+    let mean = v.iter().sum::<f32>() / v.len() as f32;
+    let n = v
+        .windows(2)
+        .filter(|w| (w[0] - mean) * (w[1] - mean) < 0.0)
+        .count();
+    n as f32 / JUDGE_SECONDS
+}
+
+/// **A Speed knob makes it FASTER — it does not reroll it.**
+///
+/// ⚠️ Red-first against the smoke: *"a velocidade em shake nunca foi velocidade,
+/// parece mais com um seed"*. Measured on the old lowering, across a 32x sweep of
+/// the knob: **494 to 509 crossings per second** — flat, because the frozen
+/// `noise(x)` primitive HASHES the bit pattern of `x`, so adjacent inputs are
+/// uncorrelated and there is no frequency to change. Multiplying by Speed only
+/// picked a different set of random numbers, which is the definition of a seed.
+///
+/// The oracle is the crossing RATE and not the values, because rerolling changes the
+/// values too — that is precisely what made the defect invisible to every gate this
+/// catalog already had.
+#[test]
+fn a_speed_knob_makes_the_wobble_faster_not_different() {
+    for id in ["shake", "drift", "sway"] {
+        let rate = |speed: f32| {
+            let mut row = row_with(id, Knobs::Default);
+            row.knobs[0] = KnobValue::Num(speed);
+            let mut st = RecipeStack::new();
+            st.push(row);
+            crossings_per_second(&trajectory(&st.to_formula(), 0.0).unwrap())
+        };
+        let (slow, fast) = (rate(1.0), rate(8.0));
+        assert!(
+            fast > slow * 3.0,
+            "{id}: 8x the Speed must wobble far faster, got {slow:.2} -> {fast:.2} crossings/s"
+        );
+    }
+}
+
+/// **`Jitter` still rides the raw HASH**, and that is not an oversight.
+///
+/// It asks for ONE fixed random offset per Seed — a value that never moves while the
+/// clock does. Give it the smooth noise and neighbouring seeds stop being
+/// independent, so "change Seed to reroll" would start returning near-misses.
+///
+/// ⚠️ The oracle is a FRACTIONAL seed, and it has to be: at an INTEGER `x` the two
+/// noises are equal by construction (`mix(a, b, 0) == a`), so the first version of
+/// this gate compared 7 against 8 and was measuring nothing — it failed only because
+/// two unrelated draws happened to land 0.03 apart. A half-integer is where they
+/// part company: the hash gives an unrelated number, the smooth noise gives exactly
+/// the midpoint of its neighbours.
+#[test]
+fn jitter_rerolls_on_a_fractional_seed_because_it_wants_the_hash() {
+    let at = |seed: f32| {
+        let mut row = row_with("jitter", Knobs::Default);
+        row.knobs[0] = KnobValue::Num(seed);
+        row.knobs[1] = KnobValue::Num(1.0);
+        let mut st = RecipeStack::new();
+        st.push(row);
+        trajectory(&st.to_formula(), 0.0).unwrap()[0]
+    };
+    let (lo, mid, hi) = (at(7.0), at(7.5), at(8.0));
+    let smooth_would_be = (lo + hi) * 0.5;
+    assert!(
+        (mid - smooth_would_be).abs() > 0.05,
+        "a Jitter seed must HASH, not interpolate: seed 7.5 gave {mid:.4}, and the \
+         midpoint of its neighbours ({lo:.4}, {hi:.4}) is {smooth_would_be:.4}"
+    );
+    // …and it does NOT move with the clock: a Jitter is an offset, not a wobble.
+    let mut st = RecipeStack::new();
+    st.push(row_with("jitter", Knobs::Default));
+    let v = trajectory(&st.to_formula(), 0.0).unwrap();
+    assert!(
+        v.windows(2).all(|w| (w[0] - w[1]).abs() < f32::EPSILON),
+        "a Jitter holds still while the clock runs"
+    );
+}

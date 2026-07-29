@@ -287,6 +287,50 @@ const WIGGLE_MAX_OCTAVES: u32 = 8; // LITERAL-PX-OK: wiggle octave cap (tree siz
 ///
 /// `noise` is bit-deterministic and seeded, so a wiggle is reproducible for a given
 /// seed and two wiggles with different seeds diverge (ADR-0144).
+///
+/// ⚠️ The octave is built on [`smooth_noise`], NOT on the raw `noise` primitive —
+/// see that function for the measurement that forced it. With the raw hash, `freq`
+/// was a seed.
+/// **Smooth value noise over `x`** — `[0, 1)`, one random value per unit of `x`,
+/// interpolated between them.
+///
+/// ⚠️ **The primitive `noise(x)` in the frozen `ph2d-expr` is a HASH, not a noise.**
+/// It hashes the BIT PATTERN of `x`, so two adjacent inputs are uncorrelated: the
+/// output is white noise at whatever rate you happen to sample it, and multiplying
+/// `x` by a frequency does not change how fast it wobbles — it only picks a
+/// different set of random numbers. Measured, across a 32x sweep of `wiggle`'s
+/// frequency: **494 to 509 zero-crossings per second**, i.e. flat, while a real sine
+/// went 0.25 -> 5.12 over the same sweep. That is the smoke report, exactly:
+/// *"a velocidade em shake nunca foi velocidade, parece mais com um seed"*.
+///
+/// This is the classic fix and it needs **no change to the frozen crate**: sample the
+/// hash on the INTEGER lattice and interpolate. `floor`, `fract` and `mix` are all
+/// already in the grammar, so a real value noise is expressible in the IR that
+/// exists — `Func` is untouched, and so is `ph2d-expr`'s WGSL twin.
+///
+/// The blend is Perlin's smoothstep `u²(3 - 2u)`, which is C¹ at the lattice points;
+/// a linear blend would leave a visible kink once per cell.
+fn smooth_noise(x: Expr) -> Expr {
+    let cell = Expr::call(Func::Floor, vec![x.clone()]);
+    let lo = Expr::call(Func::Noise, vec![cell.clone()]);
+    let hi = Expr::call(
+        Func::Noise,
+        vec![Expr::bin(BinOp::Add, cell, Expr::cnst(1.0))],
+    );
+    let u = Expr::call(Func::Fract, vec![x]);
+    // u*u*(3 - 2*u)
+    let smooth = Expr::bin(
+        BinOp::Mul,
+        Expr::bin(BinOp::Mul, u.clone(), u.clone()),
+        Expr::bin(
+            BinOp::Sub,
+            Expr::cnst(3.0),
+            Expr::bin(BinOp::Mul, Expr::cnst(2.0), u),
+        ),
+    );
+    Expr::call(Func::Mix, vec![lo, hi, smooth])
+}
+
 fn wiggle(freq: Expr, amp: Expr, octaves: u32, amp_mult: f32) -> Expr {
     let base = Expr::bin(BinOp::Add, Expr::attr("time"), Expr::attr("__seed"));
     let mut sum: Option<Expr> = None;
@@ -299,11 +343,7 @@ fn wiggle(freq: Expr, amp: Expr, octaves: u32, amp_mult: f32) -> Expr {
         if o > 0 {
             phase = Expr::bin(BinOp::Add, phase, Expr::cnst(o as f32));
         }
-        let centred = Expr::bin(
-            BinOp::Sub,
-            Expr::call(Func::Noise, vec![phase]),
-            Expr::cnst(0.5),
-        );
+        let centred = Expr::bin(BinOp::Sub, smooth_noise(phase), Expr::cnst(0.5));
         let term = Expr::bin(
             BinOp::Mul,
             Expr::bin(BinOp::Mul, amp.clone(), Expr::cnst(amp_scale * 2.0)),
@@ -339,6 +379,14 @@ fn make_call(name: &str, args: Vec<Expr>) -> Result<Expr, String> {
         "max" => Func::Max,
         "mix" => Func::Mix,
         "noise" => Func::Noise,
+        // ⚠️ Sugar, not a `Func`: it LOWERS to `mix(noise(floor x), noise(floor x + 1), …)`,
+        // so the frozen IR gains nothing. `noise` stays the raw HASH — `Jitter` wants
+        // exactly that (one fixed random offset per seed), and taking it away would
+        // break the one recipe the hash is right for.
+        "smoothnoise" => {
+            want(1)?;
+            return Ok(smooth_noise(args.into_iter().next().unwrap()));
+        }
         "select" => {
             want(3)?;
             let mut it = args.into_iter();
@@ -460,27 +508,35 @@ mod tests {
     /// (AE parity). `octaves`/`amp_mult` must be numeric literals; the octave count
     /// is capped so the tree cannot explode.
     #[test]
-    fn wiggle_octaves_unroll_to_one_noise_each() {
+    fn wiggle_octaves_unroll_to_two_noise_each() {
         let count_noise = |src: &str| {
             format!("{:?}", parse(src).unwrap())
                 .matches("Noise")
                 .count()
         };
-        assert_eq!(count_noise("wiggle(2, 20)"), 1, "default is one octave");
+        // ⚠️ TWO per octave, not one: an octave is a SMOOTH value noise, which
+        // samples the hash at both ends of the lattice cell and interpolates
+        // (`smooth_noise`). The one-per-octave era is what made `freq` a seed.
+        const PER_OCTAVE: usize = 2;
+        assert_eq!(
+            count_noise("wiggle(2, 20)"),
+            PER_OCTAVE,
+            "default is one octave"
+        );
         assert_eq!(
             count_noise("wiggle(2, 20, 3)"),
-            3,
-            "three octaves -> three Noise"
+            3 * PER_OCTAVE,
+            "three octaves -> three lattice pairs"
         );
         assert_eq!(
             count_noise("wiggle(2, 20, 4, 0.6)"),
-            4,
+            4 * PER_OCTAVE,
             "amp_mult is the 4th arg"
         );
         // Capped, not unbounded.
         assert_eq!(
             count_noise("wiggle(2, 20, 99)"),
-            WIGGLE_MAX_OCTAVES as usize,
+            WIGGLE_MAX_OCTAVES as usize * PER_OCTAVE,
             "octaves are capped at WIGGLE_MAX_OCTAVES"
         );
         // Non-literal octaves / too many args error.

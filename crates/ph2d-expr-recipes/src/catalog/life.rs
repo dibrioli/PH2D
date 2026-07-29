@@ -4,8 +4,16 @@
 //! `wiggle` sugar, which builds `time + __seed` **inside the parser** — no clock we
 //! choose reaches them, so they declare [`ClockUse::Own`] and a `Stepped Time` row
 //! above them is honestly reported as not applying. `Drift` is the same idea spelt
-//! with a raw `noise` over the current clock, so it IS steppable — which is why
-//! both ship instead of one.
+//! over the current clock, so it IS steppable — which is why both ship instead of one.
+//!
+//! ⚠️ **Two NOISES live here too, and the difference is the whole family.**
+//! `smoothnoise(x)` is a value noise — one random number per unit of `x`,
+//! interpolated — so multiplying `x` by a Speed genuinely makes it wobble faster.
+//! `noise(x)` is the raw HASH, where adjacent inputs are uncorrelated: sampled over
+//! a clock it is white noise whose character does not respond to Speed at all
+//! (measured: 494-509 crossings/s across a 32x sweep). `Jitter` is the ONE recipe
+//! that wants the hash — it asks for a single fixed random offset per Seed, never a
+//! wobble — and it is the reason `noise` stays in the grammar.
 
 use crate::knob::Knob;
 use crate::recipe::{ClockUse, Family, Neutrality, Recipe, RowKind};
@@ -76,7 +84,15 @@ pub const DRIFT: Recipe = Recipe {
     clock: ClockUse::Explicit,
     neutral: Neutrality::Additive(&[("amount", 0.0)]),
     pair: None,
-    emit: |c| format!("{} + noise({}*{})*{}", c.inner, c.clock, c.n(0), c.n(1)),
+    emit: |c| {
+        format!(
+            "{} + smoothnoise({}*{})*{}",
+            c.inner,
+            c.clock,
+            c.n(0),
+            c.n(1)
+        )
+    },
 };
 
 pub const JITTER: Recipe = Recipe {
@@ -138,7 +154,7 @@ pub const FLICKER: Recipe = Recipe {
     pair: None,
     emit: |c| {
         format!(
-            "{}*mix({}, 1, noise({}*{})*0.5 + 0.5)",
+            "{}*mix({}, 1, smoothnoise({}*{})*0.5 + 0.5)",
             c.tight(),
             c.n(1),
             c.clock,

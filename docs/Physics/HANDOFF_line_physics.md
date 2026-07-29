@@ -6587,3 +6587,88 @@ número certo, então cada gate cobre a sua camada ([[feedback_layered_defenses_
 carga (2 kg) e o MESMO contrapeso (1 kg, metade dela); a única diferença é se a roldana está montada
 no bloco. Medido por `probe_smoke_61`: a talha SEGURA (**0,008 m** em 2 s) e o controle 1:1 CAI
 **3,15 m** até o chão. A mensagem também guia a autoria pela UI (conta-gotas → clique no bloco).
+
+## W-Pulley W4 — O TAMBOR DIFERENCIAL: a vantagem mecânica CONTÍNUA (2026-07-28, cena `=62`, pendente de smoke)
+
+O `ratio` que o W1 aposentou descrevia *"uma talha diferencial com o eixo invisível"* (§3 do
+[plano 03](03_plano_polia.md)): um número sem peça na cena. O W4 põe a peça — e a forma dela foi
+decidida por uma **impossibilidade geométrica**, não por gosto.
+
+⚠️ **Duas roldanas CONCÊNTRICAS não têm tangente comum.** A existência exige `|C₂−C₁| > |s₂r₂ −
+s₁r₁|`, que centros iguais nunca satisfazem ⇒ a rota inteira seria recusada e a corda **sumiria da
+tela**. Um eixo é UM nó. Logo **um tambor diferencial é UMA roldana com DOIS raios** — o que a corda
+ENTRA e o que ela SAI. Sem referência cruzada entre roldanas, sem topologia nova, sem caso especial.
+
+**A lei:** girar o eixo de `dθ` recolhe `r_in·dθ` de um lado e paga `r_out·dθ` do outro ⇒
+`r_out·Δl_in + r_in·Δl_out = 0`. Normalizado pelo lado de entrada, o trecho de saída vale
+`gear = r_in/r_out` no orçamento da corda, e a **vantagem mecânica É esse número**.
+
+⚠️ **O kernel quase não muda, e a razão é a do W3:** `End::k` é a forma quadrática `vᵀM⁻¹v` e
+`End::rate` é uma projeção — nenhuma pede versor. O peso cavalga no vetor (`dir_b * weight_b`), a
+`Tangent` carrega o peso acumulado, e o `wheel_jacobian` — porta única que o impulso do eixo montado
+**e** a carga de ruptura já usam — pesa os dois lados sozinho.
+
+⚠️ **E o W4 FALSIFICA uma premissa escrita no código:** o `break_force` justifica ser um número só
+afirmando que *"a tensão é uniforme"* — verdade enquanto a corda DESLIZA, e o diferencial é
+exatamente onde ela não desliza. O limiar passou a comparar contra o **pico** (`weight_max`), senão
+uma corda com engrenagem 4 aguentaria quatro vezes o que o artista dimensionou, em silêncio. O
+**eixo** segue recebendo a tensão BASE: o Jacobiano dele já carrega os pesos, e o pico contaria duas
+vezes.
+
+**Medido** (contrapeso 1 kg; o sinal vira na carga prevista em toda linha):
+
+| r_saída | R/r | −20 % | previsto | +20 % |
+|---|---|---|---|---|
+| 0,500 | 1,00 | **+0,503** | −0,040 | −0,482 |
+| 0,250 | 2,00 | **+0,260** | −0,089 | −0,393 |
+| 0,125 | 4,00 | **+0,083** | −0,122 | −0,309 |
+| 0,100 | 5,00 | **+0,041** | −0,130 | −0,285 |
+
+Custo: **3,489 (comum) vs 3,532 ms/tique** para 50 sarilhos.
+
+⚠️ **A primeira sonda BISSECCIONAVA e a medição a derrubou:** o sistema não é monótono na carga —
+muito acima do equilíbrio o contrapeso leve é arremessado até o tambor e a rota degenera, então
+*desce* volta a virar *sobe* e a bissecção caminhava para o teto do intervalo (40 kg em toda linha).
+
+**A autoria:** `PulleyWheel.radius_out` (`0` = comum), row **Out Radius (m)** na §13 — **sempre
+pintada**, porque ela é o único gesto que CRIA um diferencial — e o **SEGUNDO ANEL** no overlay, sem
+o qual o número viveria só no Inspector, que é a queixa que aposentou o `ratio`.
+
+⚠️ **O gate estrutural da §13 pegou DOIS defeitos meus no minuto em que a row nasceu:** a contagem de
+caixas (5 onde a lista dizia 4 — **respondido**, não silenciado) e, na rodada seguinte, que a caixa
+era **WRITE-ONLY** (faltava o `sync_wheel_fields`: digitar funcionava e re-selecionar mostrava `0`,
+dizendo *roldana comum* sobre um diferencial). É o gap que a família de zonas pagou uma vez; aqui não
+sobreviveu a um commit.
+
+`PROJECT_SCHEMA` **44→45** (campo apendado, postcard posicional) · registro `ph2d-ecs` **21** ·
+c9 **94→96 corpos**, `7cb7728d44…` (debug ≡ release). ⚠️ **A lane antiga ficou COMUM de propósito** —
+separá-las é o que a mantém provando que o W4 não mexeu no que já existia: com só ela o hash fica em
+`52767c92f7…`, byte-idêntico ao do W3. ⚠️ **E o hash quase saiu errado no commit:** medido logo após
+acrescentar a lane, ele dava `bc7cd9ea80…` — mas naquele instante a colheita passava `None`
+incondicionalmente, então o `radius_out` da lane **nunca chegava à geometria** (dois corpos a mais com
+uma roldana comum). *Um hash medido antes da fiação descreve outra cena.*
+
+**11 gates, 9 mutações, 9 sangram** (três delas — Jacobiano sem peso · geometria ignorando o 2º raio ·
+ruptura ignorando o pico — matam **exatamente um** gate cada, o que só elas veem).
+
+⚠️ **A cena 62 nasceu errada DUAS vezes:** o `Transform` de uma corda é a **âncora em A**, não o lugar
+do tambor (pô-lo no tambor amarra a corda a um mastro invisível: os corpos foram arremessados a
+y=20,5 e y=−48,0 e as duas cargas SUBIRAM); e depois o contrapeso leve **alcançava** o tambor — o
+degenerado do W1 —, a rota degenerava e a carga caía livre pelo chão. Encurtar a queda limita a
+velocidade; subir o tambor só adia.
+
+### Aberto, nomeado
+
+- **O segundo diâmetro não tem alça no canvas** — o aro do raio de ENTRADA tem; o de saída é só a row.
+- **A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO** — este tambor com a cadernal móvel do W3 no
+  meio da corda — e **não foi montada numa cena**. Vale um smoke próprio.
+- **O arco do enlace conta pelo raio de ENTRADA** (a corda abraça o tambor em que chegou); num
+  diferencial ele se reparte entre os dois, mas é quase constante e o `L0` o absorve.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=62 cargo run -p ph2d-host-desktop --release`** — dois sarilhos com a MESMA
+carga (3 kg) e o MESMO contrapeso (1 kg); só o segundo diâmetro difere, e eles andam para lados
+**OPOSTOS**. Medido por `probe_smoke_62`: a engrenada SOBE **0,64 m** (o contrapeso desce e a levanta)
+e a comum CAI **2,70 m** até o chão. A mensagem também guia a autoria: digite `0.125` no *Out Radius*
+do tambor da direita e o segundo anel aparece.

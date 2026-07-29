@@ -161,11 +161,100 @@ reintegra sozinho.
 | **W2-A** ✅ | **o motor** — a roldana dirigida é um guincho; `ω·r` encurta `L0`, o diâmetro é o câmbio |
 | **W2-B** ✅ | **a ruptura** — a corda parte pela tensão, o eixo cede pela resultante, e o readout do overlay volta a dizer alguma coisa |
 | **W3** ✅ | **a talha de verdade** — a roldana montada num corpo, e a vantagem mecânica de volta |
-| **W4** | *nomeada, não escalonada*: o DIFERENCIAL — dois tambores acoplados num eixo ⇒ `ratio = r₂/r₁` emergente |
+| **W4** ✅ | **o DIFERENCIAL** — uma roldana com DOIS raios, e a vantagem mecânica CONTÍNUA que cai do quociente deles |
 
 ⚠️ **Âncora de regressão do W1:** a polia de hoje é o caso especial *2 roldanas,
 raio 0, estáticas* — os gates atuais têm de ficar **verdes**, e é isso que prova
 que o geral não quebrou o particular.
+
+### W4 — o TAMBOR DIFERENCIAL (FECHADO, pendente de smoke)
+
+O `ratio` que o W1 aposentou descrevia *"uma talha diferencial com o eixo
+invisível"* (§3): um número sem peça na cena. O W4 põe a peça.
+
+⚠️ **A leitura ingênua é IMPOSSÍVEL, e é ela que decide o desenho todo.** Duas
+roldanas **concêntricas** na rota não têm tangente comum — a existência exige
+`|C₂−C₁| > |s₂r₂ − s₁r₁|`, que centros iguais nunca satisfazem — então a rota
+inteira seria recusada e a corda **sumiria da tela**. Um eixo é UM nó. Logo:
+
+> **um tambor diferencial é UMA roldana com DOIS raios** — o que a corda ENTRA e
+> o que ela SAI.
+
+Sem referência cruzada entre roldanas, sem topologia nova, sem caso especial.
+
+**A lei é uma linha.** Girar o eixo de `dθ` recolhe `r_in·dθ` de um lado e paga
+`r_out·dθ` do outro, então `r_out·Δl_in + r_in·Δl_out = 0`. Normalizado pelo lado
+de entrada, o trecho de saída vale `gear = r_in/r_out` no orçamento da corda — e a
+**vantagem mecânica É esse número**.
+
+**O kernel quase não muda, e a razão é a do W3:** `End::k` é a forma quadrática
+`vᵀM⁻¹v` e `End::rate` é uma projeção, então nenhuma das duas pede versor. O peso
+cavalga no vetor (`dir_b * weight_b`); a `Tangent` carrega o peso acumulado; e o
+`wheel_jacobian` — porta única que o impulso do eixo montado **e** a carga de
+ruptura já usam — pesa os dois lados sozinho.
+
+⚠️ **E o W4 FALSIFICA uma premissa escrita no próprio código.** O `break_force`
+justifica ser um número só afirmando que *"a corda é inextensível, logo a tensão é
+uniforme"* — verdade enquanto ela **desliza**, e o diferencial é exatamente onde
+ela não desliza: os dois lados carregam `T` e `T·gear`. O limiar passou a comparar
+contra o **pico** (`weight_max`), senão uma corda com engrenagem 4 aguentaria
+quatro vezes o que o artista dimensionou, em silêncio. O **eixo** segue recebendo a
+tensão BASE: o Jacobiano dele já carrega os pesos, e o pico contaria duas vezes.
+
+**MEDIDO** pelo caminho do produto, contrapeso de 1 kg:
+
+| r_saída | R/r | −20 % | previsto | +20 % |
+|---|---|---|---|---|
+| 0,500 | 1,00 | **+0,503** | −0,040 | −0,482 |
+| 0,250 | 2,00 | **+0,260** | −0,089 | −0,393 |
+| 0,125 | 4,00 | **+0,083** | −0,122 | −0,309 |
+| 0,100 | 5,00 | **+0,041** | −0,130 | −0,285 |
+
+O sinal vira na carga prevista em **toda** linha. Custo: **3,489 (comum) vs 3,532
+ms/tique** para 50 sarilhos — a engrenagem é uma multiplicação, e o número diz isso.
+
+⚠️ **A primeira sonda BISSECCIONAVA a carga de equilíbrio e a medição a
+derrubou:** o sistema **não é monótono** na carga — muito acima do equilíbrio o
+contrapeso leve é arremessado até o tambor e a rota degenera, então *desce* volta a
+virar *sobe* lá em cima e a bissecção caminhava direto para o teto do intervalo
+(40 kg em toda linha). A tabela pergunta no lugar certo.
+
+**A autoria:** `PulleyWheel.radius_out` (`0` = roldana comum), row **Out Radius
+(m)** na §13 — **sempre pintada**, porque ela é o único gesto que CRIA um
+diferencial e um controle que só aparece depois da coisa existir não pode ser o que
+a faz existir — e o **SEGUNDO ANEL** no overlay, sem o qual o número viveria só no
+Inspector, que é a queixa que aposentou o `ratio`.
+
+⚠️ **O gate estrutural da §13 pegou dois defeitos meus no minuto em que a row
+nasceu:** a contagem de caixas (5 onde a lista dizia 4 — **respondido**, não
+silenciado) e, na rodada seguinte, que a caixa era **write-only** (eu esqueci o
+`sync_wheel_fields`, então digitar funcionava e re-selecionar mostrava `0`). É o
+mesmo gap que a família de zonas pagou uma vez; aqui não sobreviveu a um commit.
+
+`PROJECT_SCHEMA` **44→45** (campo apendado, postcard posicional) · c9 **94→96
+corpos**, `7cb7728d44…` (debug ≡ release). ⚠️ A lane antiga ficou **comum** de
+propósito: separá-las é o que a mantém provando que o W4 não mexeu no que já
+existia — com só ela o hash fica em `52767c92f7…`, byte-idêntico ao do W3.
+
+**11 gates, 9 mutações, 9 sangram.**
+
+⚠️ **A cena 62 nasceu errada DUAS vezes, e as duas a medição derrubou:** o
+`Transform` de uma corda é a **âncora em A**, não o lugar do tambor (pô-lo no
+tambor amarra a corda a um mastro invisível: os dois corpos foram arremessados a
+y=20,5 e y=−48,0, e as duas cargas SUBIRAM); e depois disso o contrapeso leve
+**alcançava** o tambor — o degenerado do W1 —, a rota degenerava e a carga caía
+livre pelo chão. Encurtar a queda limita a velocidade; subir o tambor só adia.
+
+### Aberto no W4, nomeado
+
+- **O segundo diâmetro não tem alça no canvas.** O aro do raio de ENTRADA tem; o de
+  saída é só a row. A alça honesta é a mesma conversa da 2ª alça de âncora do joint.
+- **A talha de WESTON (`2R/(R−r)`) sai por COMPOSIÇÃO e não foi montada numa cena:**
+  é este tambor com a cadernal móvel do W3 no meio da corda. Vale um smoke próprio.
+- **O arco do enlace conta pelo raio de ENTRADA** (a corda abraça o tambor em que
+  chegou). Num diferencial ele se reparte entre os dois diâmetros; o que ele
+  acrescenta é quase constante e o `L0` o absorve, então quem move a carga — os
+  trechos livres — está pesado exatamente.
 
 ## 10. O que MEDIR antes de escrever número
 

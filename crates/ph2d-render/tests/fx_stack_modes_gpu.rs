@@ -35,6 +35,9 @@ fn one(kind: u8, sigma: f32, tint: [f32; 4], off: [i32; 2], mode: u8) -> FxOpGpu
         hue: 0.0,
         sat: 0.0,
         bright: 0.0,
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
     }
 }
 

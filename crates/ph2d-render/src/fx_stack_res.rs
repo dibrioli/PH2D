@@ -78,10 +78,29 @@ pub(crate) struct Globals {
     ///
     /// `[0, 0]` = a fonte É a forma, o mundo de antes do atlas, byte-idêntico.
     pub(crate) src_org: [i32; 2],
-    /// ⚠️ Padding explícito, pelo mesmo motivo do `_pad`: o WGSL arredonda o tamanho do struct ao
-    /// alinhamento dele (16, por causa do `vec4`), e sem isto o Rust reportaria 136 contra os 144
-    /// do WGSL — o `min_binding_size` recusaria o bind group.
-    pub(crate) _pad3: [i32; 2],
+    /// Quantos stops da rampa valem. `0` = a rampa preto→branco, a identidade em luma.
+    ///
+    /// ⚠️ **Ele mora AQUI, na fileira do `src_org`, e o lugar é OBRIGATÓRIO** — ela tinha 8 bytes
+    /// livres, e a alternativa (um `vec3<u32>` de padding *depois* dos arrays) tem **alinhamento 16
+    /// no WGSL**, o que empurra padding implícito que o Rust não escreve. **Medido pelo device:**
+    /// WGSL **336** contra Rust **320**, e o `min_binding_size` recusou o bind group com os dois
+    /// números no erro — exactamente a classe de falha que o doc do `_pad` promete pegar, e que
+    /// derrubou os 82 gates de GPU de uma vez.
+    pub(crate) stop_count: u32,
+    /// ⚠️ Padding explícito — fecha a fileira de 16 bytes que o `src_org` abriu.
+    pub(crate) _pad3: i32,
+    /// **Os STOPS da rampa**, RGBA — o `rgb` é sRGB reto em `[0,1]` (o shader o lineariza pela
+    /// MESMA porta das duas pontas do Duotone) e o **alfa é a FORÇA** daquele stop.
+    ///
+    /// ⚠️ **Vem no FIM, com o `stop_pos`,** porque `array<vec4<f32>, N>` exige offset múltiplo de
+    /// 16: encaixado antes de um escalar, ele empurraria padding que os dois lados contariam
+    /// diferente.
+    pub(crate) stops: [[f32; 4]; 8],
+    /// As POSIÇÕES dos oito stops, empacotadas em dois `vec4`.
+    ///
+    /// ⚠️ **Empacotadas de propósito:** o WGSL dá stride **16** a um `array<f32>` no address space
+    /// de uniform, então oito floats soltos custariam 128 bytes para carregar 32.
+    pub(crate) stop_pos: [[f32; 4]; 2],
 }
 
 pub(crate) struct Tex {

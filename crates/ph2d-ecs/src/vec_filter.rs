@@ -47,7 +47,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::SimComponent;
 pub use crate::vec_filter_kinds::FxKindSpec;
-use crate::vec_filter_kinds::SPECS;
+use crate::vec_filter_kinds::{FALLOFF_MODES, SPECS};
 
 /// **Um degrau da pilha** — um efeito com os parâmetros dele.
 ///
@@ -130,6 +130,23 @@ pub struct FxOp {
     /// **O BRILHO**, em `-1..1` — lerp para preto (`-1`) ou branco (`+1`) em luz LINEAR, então os
     /// extremos são preto e branco EXACTOS.
     pub bright: f32,
+    /// **Os STOPS da rampa** do Gradient Map — RGBA reto em `[0,1]`, um por posição em
+    /// [`Self::stop_pos`]. Só os primeiros [`Self::stop_count`] contam.
+    ///
+    /// ⚠️ **Array de tamanho fixo, e não uma `Vec`** — o `FxOp` é `Copy` e viaja por valor em todo
+    /// o pipeline (componente → resolução em pixels → uniform do device); uma `Vec` o tiraria de
+    /// `Copy` e mudaria a natureza de um tipo que é *plain data* de propósito. O teto é
+    /// [`Self::MAX_GRADIENT_STOPS`], e o recurso de que ele é sai medido (ver lá).
+    ///
+    /// ⚠️ **RGBA, e o ALFA é a FORÇA daquele stop** — é a mesma convenção das duas pontas do
+    /// Duotone (`color.a`/`color_b.a`), e é ela que permite ao gate afirmar que um Gradient Map de
+    /// dois stops é o Duotone **ao byte**.
+    pub stops: [[f32; 4]; Self::MAX_GRADIENT_STOPS],
+    /// **Onde cada stop cai na rampa**, em `[0,1]`. Fora de ordem é legal — quem consome ordena
+    /// (a autoria não pode ser refém da ordem em que o artista clicou).
+    pub stop_pos: [f32; Self::MAX_GRADIENT_STOPS],
+    /// Quantos dos [`Self::stops`] valem. `0` cai na rampa preto→branco (a identidade em luma).
+    pub stop_count: u8,
 }
 
 /// O degrau neutro sobre o qual os defaults de cada tipo são escritos.
@@ -150,6 +167,9 @@ const BLANK: FxOp = FxOp {
     hue: 0.0,
     sat: 0.0,
     bright: 0.0,
+    stops: [[0.0, 0.0, 0.0, 1.0]; FxOp::MAX_GRADIENT_STOPS],
+    stop_pos: [0.0; FxOp::MAX_GRADIENT_STOPS],
+    stop_count: 0,
 };
 
 impl FxOp {
@@ -222,7 +242,61 @@ impl FxOp {
     /// vazio é preto ⇒ segue vazio), então a margem continua zero.
     pub const LUMA_TO_ALPHA: u8 = 13;
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    pub const KINDS: usize = 14;
+    /// Código de painel: a **RAMPA** — o brilho de cada texel escolhe uma cor numa rampa de N
+    /// stops (o *Gradient Map* do Photoshop / o `feComponentTransfer type="table"` do SVG).
+    ///
+    /// ⚠️ **É a generalização do [`Self::DUOTONE`]**, e isso está gateado: com dois stops nas
+    /// pontas ele é o Duotone **ao byte**. A régua é a MESMA (`L` do OKLab) — duas leis vizinhas na
+    /// mesma pilha que discordassem sobre *"quão claro é este texel"* seriam descobertas pelo
+    /// artista no primeiro experimento.
+    pub const GRADIENT_MAP: u8 = 14;
+    pub const KINDS: usize = 15;
+
+    /// **Quantos stops uma rampa carrega.**
+    ///
+    /// ⚠️ **O número é MEDIDO, e a primeira medição estava ERRADA.** O candidato óbvio a recurso
+    /// era o `UNIFORM_STRIDE` do passe (256 bytes, dos quais o `Globals` já usava 144) — mas
+    /// dobrá-lo para 512 é **grátis**: o mesmo frame de 32 formas custa **2,345 ms contra 2,332**,
+    /// dentro do ruído (duas corridas cada). ⚠️ A leitura ANTERIOR dizia 3× pior e era **carga da
+    /// máquina** — *repita antes de explicar*.
+    ///
+    /// Com o stride fora do caminho, o recurso que aperta é o **TRILHO no painel**: os punhos têm
+    /// uma caixa de agarre, e stops mais juntos que ela deixam de ser alcançáveis pelo ponteiro. É
+    /// disso que o teto é, e há gate a afirmá-lo sobre a largura REAL do card.
+    pub const MAX_GRADIENT_STOPS: usize = 8;
+
+    /// **A rampa como o DISPOSITIVO a quer: ordenada por posição e empacotada.** A porta única de
+    /// *"que rampa este degrau desenha?"*.
+    ///
+    /// ⚠️ **O documento guarda a ordem de AUTORIA e quem consome ordena uma CÓPIA** — é o modelo
+    /// que o Gradient Map do Painter já ship (`move_gradient_stop`: *"the stops keep their Vec
+    /// order (a stable index per editor handle, so a drag never re-binds to a different stop)"*).
+    /// Ordenar o documento faria o punho sob o dedo do artista **trocar de stop** no instante em
+    /// que ele cruzasse o vizinho, que é a forma exacta de perder o gesto no meio dele.
+    ///
+    /// ⚠️ **E é UMA porta porque o shader assume ordenado.** Se o produto ordenasse e o gate não
+    /// (ou o inverso), o gate mediria uma rampa que ninguém desenha; e o EMPACOTAMENTO nos dois
+    /// `vec4` — que existe porque o WGSL dá stride 16 a um `array<f32>` de uniform — escrito duas
+    /// vezes derivaria em silêncio no dia em que o teto deixasse de ser múltiplo de 4.
+    ///
+    /// `stop_count == 0` devolve a contagem `0`, e o shader a lê como a rampa preto→branco (a
+    /// identidade em luma) — sem stop nenhum não há o que ordenar.
+    #[must_use]
+    pub fn ramp_for_device(&self) -> ([[f32; 4]; Self::MAX_GRADIENT_STOPS], [[f32; 4]; 2], u32) {
+        const _: () = assert!(FxOp::MAX_GRADIENT_STOPS == 8, "o empacotamento é 2 x vec4");
+        let n = (self.stop_count as usize).min(Self::MAX_GRADIENT_STOPS);
+        let mut order: [usize; Self::MAX_GRADIENT_STOPS] = core::array::from_fn(|i| i);
+        // `total_cmp`, o mesmo do Painter: ordem TOTAL, então `NaN` numa posição não faz o sort
+        // entrar em pânico nem deixa a lista meio-ordenada.
+        order[..n].sort_by(|&a, &b| self.stop_pos[a].total_cmp(&self.stop_pos[b]));
+        let mut stops = [[0.0_f32; 4]; Self::MAX_GRADIENT_STOPS];
+        let mut packed = [[0.0_f32; 4]; 2];
+        for (slot, &src) in order[..n].iter().enumerate() {
+            stops[slot] = self.stops[src];
+            packed[slot / 4][slot % 4] = self.stop_pos[src];
+        }
+        (stops, packed, n as u32)
+    }
 
     /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
     /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
@@ -394,6 +468,25 @@ impl FxOp {
         kind == Self::MORPHOLOGY
     }
 
+    /// **O `mode` deste tipo escolhe entre PROXIMIDADE e CONTORNO?** A porta única de *"o modo
+    /// deste degrau manda no PLANO de passes, ou é assunto interno do kernel?"*.
+    ///
+    /// ⚠️ **O `mode` é um índice na lista DO TIPO, então o mesmo `1` quer dizer coisas diferentes
+    /// em tipos diferentes** — e a regra que isto substitui perguntava *"tem modos, e escolheu o
+    /// 1?"*, uma enumeração disfarçada de regra que já apodreceu **duas vezes**: a turbulência
+    /// *Creased* precisou de uma isenção escrita à mão, e o Gradient Map em *Smooth* era varrido
+    /// para o campo de distância e saía **no-op completo** (medido: saída byte-idêntica à fonte,
+    /// com o Linear correto ao lado — a forma exacta de um controlo que não faz nada).
+    ///
+    /// ⚠️ **Ela deriva da DECLARAÇÃO, não de uma lista de tipos:** a pergunta é *"a lista de modos
+    /// deste tipo É o par de falloff?"*, e [`FALLOFF_MODES`] é o que dá identidade a esse par. Um
+    /// falloff novo entra por construção (que era a intenção da regra antiga) e um tipo com
+    /// vocabulário próprio **não** é varrido — sem uma segunda lista para alguém esquecer.
+    #[must_use]
+    pub fn mode_selects_the_distance_plan(kind: u8) -> bool {
+        Self::spec(kind).modes == FALLOFF_MODES
+    }
+
     /// As oitavas que este degrau de facto soma — pelo menos uma, no máximo [`Self::MAX_DETAIL`].
     /// **Porta única**: o painel mostra este número e o produtor manda este número.
     #[must_use]
@@ -519,6 +612,29 @@ impl FxOp {
                 ..BLANK
             },
             Self::LUMA_TO_ALPHA => Self { kind, ..BLANK },
+            // A rampa nasce preto→branco — o mesmo default do Gradient Map do Painter (e do
+            // Photoshop), porque é o que se lê como *"a minha arte mapeada na minha rampa"*.
+            //
+            // ⚠️ **Ela NÃO é neutra, e a nota anterior afirmava que era.** Eu escrevi *"a
+            // IDENTIDADE em luma, um degrau novo não pode mudar o desenho"*; medido pelo gate
+            // `no_stops_is_the_painters_empty_ramp_which_is_not_the_two_stop_default`, um cinza de
+            // display **129 entra e 204 sai** — o `t` sai do `L` do OKLab e a mistura acontece em
+            // luz LINEAR, então não há como duas pontas lineares reconstruírem a curva sRGB. Um
+            // Gradient Map é um RECOLORIDOR, como o Duotone e o Color Overlay: adicioná-lo muda o
+            // desenho **por desenho**, e o que o default tem de ser é PREVISÍVEL.
+            Self::GRADIENT_MAP => {
+                let mut stops = [[0.0, 0.0, 0.0, 1.0]; Self::MAX_GRADIENT_STOPS];
+                stops[1] = [1.0, 1.0, 1.0, 1.0];
+                let mut stop_pos = [0.0; Self::MAX_GRADIENT_STOPS];
+                stop_pos[1] = 1.0;
+                Self {
+                    kind,
+                    stops,
+                    stop_pos,
+                    stop_count: 2,
+                    ..BLANK
+                }
+            }
             _ => Self {
                 kind: Self::BLUR,
                 radius: 0.12,

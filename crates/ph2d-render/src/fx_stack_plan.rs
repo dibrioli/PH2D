@@ -53,12 +53,15 @@ pub(crate) fn plan_of(op: &FxOpGpu, raster_seeded: bool) -> Plan {
             raster_seed: true,
         };
     }
-    // ⚠️ **Quem decide é o MODO, não o ser-de-dentro.** A condição dizia `spec.inner && Contour`, o
-    // que era verdade só enquanto os degraus de dentro fossem os únicos com modos — uma
-    // enumeração disfarçada de regra. Perguntar *"este tipo oferece escolha, e ele escolheu
-    // Contour?"* faz o Glow entrar por construção, e faz o próximo tipo com modos entrar também.
+    // ⚠️ **Quem decide é o MODO, não o ser-de-dentro** — mas a pergunta tem de ser feita ao TIPO.
+    // A condição dizia `spec.inner && Contour` (verdade só enquanto os de dentro fossem os únicos
+    // com modos), depois passou a `tem modos && escolheu o 1?`, e essa **apodreceu duas vezes**: o
+    // `1` da turbulência é *Creased* (isento à mão, no early return acima) e o `1` do Gradient Map
+    // é *Smooth* — que era varrido para cá e saía **no-op completo**, com o Linear correto ao lado.
+    // `mode_selects_the_distance_plan` deriva da DECLARAÇÃO de modos do tipo, então um falloff novo
+    // entra por construção e um vocabulário próprio nunca é varrido.
     let by_distance = matches!(op.kind, FxOp::OUTLINE | FxOp::FEATHER | FxOp::BEVEL)
-        || (!spec.modes.is_empty() && op.mode == FxOp::MODE_CONTOUR);
+        || (FxOp::mode_selects_the_distance_plan(op.kind) && op.mode == FxOp::MODE_CONTOUR);
     if by_distance {
         // ⚠️ **Com geometria não há JFA.** O finalize computa o pé exato POR TEXEL, então a semente
         // e os saltos ficariam a produzir uma textura que ninguém lê — e uma mutação que os

@@ -54,4 +54,11 @@ pub struct FxOpGpu {
     pub sat: f32,
     /// **O BRILHO**, `-1..1` (lerp para preto/branco em luz linear).
     pub bright: f32,
+    /// **Os STOPS da rampa** (Gradient Map) — RGBA reto em `[0,1]`, o alfa é a FORÇA do stop.
+    /// ⚠️ Chegam **ORDENADOS por posição**: quem ordena é o host, uma vez, e não o shader por texel.
+    pub stops: [[f32; 4]; 8],
+    /// As posições dos stops em `[0,1]`, empacotadas em dois `vec4` (o stride de uniform do WGSL).
+    pub stop_pos: [[f32; 4]; 2],
+    /// Quantos stops valem (`0` = a rampa preto→branco, a identidade em luma).
+    pub stop_count: u32,
 }

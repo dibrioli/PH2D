@@ -468,6 +468,9 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
         .filter(|o| o.is_active())
         .map(|o| {
             let (ox, oy) = (f64::from(o.offset[0]), f64::from(o.offset[1]));
+            // A rampa do Gradient Map, ordenada e empacotada pela porta única do componente — o
+            // shader assume ordenado, e ordenar aqui à mão seria a segunda resposta que diverge.
+            let (stops, stop_pos, stop_count) = o.ramp_for_device();
             FxOpGpu {
                 kind: o.kind,
                 sigma_px: (o.radius * cam_scale).max(0.0),
@@ -487,6 +490,9 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 // uma lei de um tipo que deixou de a tomar desenharia uma mistura que a UI não
                 // mostra; aqui ela vira Normal, e o dispositivo nunca vê um número órfão.
                 blend: o.blend_code(),
+                stops,
+                stop_pos,
+                stop_count,
                 // O tamanho das ondulações atravessa a mesma conversão do raio — é ela que torna
                 // o padrão zoom-invariante (o `noise_p` do shader divide por este número, e o
                 // numerador também escala com o zoom, então ele cancela).

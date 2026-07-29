@@ -32,7 +32,10 @@ struct Globals {
     _pad2: f32,
     tint_b: vec4<f32>,
     src_org: vec2<i32>,
-    _pad3: vec2<i32>,
+    stop_count: u32,
+    _pad3: i32,
+    stops: array<vec4<f32>, 8>,
+    stop_pos: array<vec4<f32>, 2>,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -80,6 +83,53 @@ fn tint_lin() -> vec3<f32> { return srgb_to_linear3(g.tint.rgb); }
 // conversão: as duas pontas TÊM de atravessá-la pela mesma função, senão a rampa nasce torta num
 // lado só.
 fn tint_b_lin() -> vec3<f32> { return srgb_to_linear3(g.tint_b.rgb); }
+
+// A posição do stop `i` — os oito offsets viajam empacotados em dois `vec4` porque o WGSL dá
+// stride 16 a um `array<f32>` em uniform: soltos, oito floats custariam 128 bytes para carregar 32.
+fn stop_pos_at(i: u32) -> f32 { return g.stop_pos[i / 4u][i % 4u]; }
+
+// O stop `i` em LINEAR, com o ALFA intacto — o alfa é a FORÇA daquele stop, não uma cor.
+fn stop_at(i: u32) -> vec4<f32> {
+    return vec4<f32>(srgb_to_linear3(g.stops[i].rgb), g.stops[i].a);
+}
+
+// **A RAMPA amostrada em `t`** — a lei do Gradient Map.
+//
+// ⚠️ **Os stops chegam ORDENADOS**, e é o host que ordena (a mesma coisa que o `gradient_map_lut`
+// do Painter faz antes de construir a tabela dele). Ordenar aqui seria ordenar por texel; e a
+// autoria não pode ser refém da ordem em que o artista clicou, então a ordenação tem de existir —
+// só não é aqui. Há gate a afirmar que a ordem de autoria não muda um byte.
+//
+// ⚠️ **Fora do vão dos stops os extremos estendem PLANO** — a mesma escolha do Painter, e a que o
+// Photoshop faz: uma rampa que não cobre `[0,1]` não deve inventar cor além das pontas.
+fn ramp_sample(t: f32) -> vec4<f32> {
+    let n = g.stop_count;
+    // Sem stops: a rampa preto→branco, que é a IDENTIDADE em luma.
+    if (n == 0u) { return vec4<f32>(srgb_to_linear3(vec3<f32>(t, t, t)), 1.0); }
+    if (t <= stop_pos_at(0u)) { return stop_at(0u); }
+    let last = n - 1u;
+    if (t >= stop_pos_at(last)) { return stop_at(last); }
+    var i = 0u;
+    loop {
+        if (i + 1u >= n) { break; }
+        if (stop_pos_at(i + 1u) >= t) { break; }
+        i = i + 1u;
+    }
+    let p0 = stop_pos_at(i);
+    let p1 = stop_pos_at(i + 1u);
+    let span = p1 - p0;
+    var u = 0.0;
+    if (span > 1.0e-6) { u = clamp((t - p0) / span, 0.0, 1.0); }
+    // O 2º modo é o `Smooth`: um smoothstep no `t` ENTRE stops, não na rampa inteira.
+    if (g.mode == 1u) { u = u * u * (3.0 - 2.0 * u); }
+    // ⚠️ **`c0 + (c1 - c0)·u`, e NÃO `mix`** — é a expressão VERBATIM do `gradient_sample` do
+    // Painter. As duas são a mesma álgebra e não são a mesma aritmética em `f32` (o `mix` do WGSL
+    // é `c0·(1-u) + c1·u`), e o gate de paridade compara com aquela crate: escrever a mesma forma
+    // deixa **uma** divergência conhecida entre as duas metades do app — a régua — em vez de duas.
+    let c0 = stop_at(i);
+    let c1 = stop_at(i + 1u);
+    return c0 + (c1 - c0) * u;
+}
 
 fn is_inner() -> bool { return g.kind == KIND_INNER_SHADOW || g.kind == KIND_INNER_GLOW; }
 
@@ -416,6 +466,24 @@ fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
     //
     // Em premultiplicado escalar o alfa é escalar o vetor INTEIRO: a cor RETA fica exactamente
     // onde estava e só a cobertura muda.
+    if (g.kind == KIND_GRADIENT_MAP) {
+        // A generalização do Duotone: a MESMA régua (`L` do OKLab) escolhe um ponto numa rampa de
+        // N stops em vez de entre duas pontas. Com dois stops nas pontas isto é o Duotone AO BYTE,
+        // e há gate a afirmá-lo — duas leis vizinhas na mesma pilha não podem discordar sobre
+        // *"quão claro é este texel"*.
+        var rgb = src.rgb;
+        var k = clamp(g.opacity, 0.0, 1.0);
+        if (src.a > 0.0001) {
+            let straight = src.rgb / src.a;
+            let t = clamp(oklab_from_linear(straight).x, 0.0, 1.0);
+            let c = ramp_sample(t);
+            k = k * clamp(c.a, 0.0, 1.0);
+            rgb = fx_blend(src, c.rgb) * src.a;
+        }
+        let mixed = mix(src.rgb, rgb, k);
+        textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), vec4<f32>(mixed, src.a));
+        return;
+    }
     if (g.kind == KIND_LUMA_TO_ALPHA) {
         var outc = src;
         if (src.a > 0.0001) {
@@ -484,6 +552,7 @@ pub(crate) fn kind_consts_wgsl() -> String {
          const KIND_COLOR_ADJUST: u32 = {}u;\n\
          const KIND_DUOTONE: u32 = {}u;\n\
          const KIND_LUMA_TO_ALPHA: u32 = {}u;\n\
+         const KIND_GRADIENT_MAP: u32 = {}u;\n\
          const MODE_CONTOUR: u32 = {}u;\n\
          const MODE_CREASED: u32 = {}u;\n",
         FxOp::BLUR,
@@ -497,6 +566,7 @@ pub(crate) fn kind_consts_wgsl() -> String {
         FxOp::COLOR_ADJUST,
         FxOp::DUOTONE,
         FxOp::LUMA_TO_ALPHA,
+        FxOp::GRADIENT_MAP,
         FxOp::MODE_CONTOUR,
         FxOp::MODE_CREASED,
     )

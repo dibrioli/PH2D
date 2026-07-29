@@ -72,7 +72,13 @@ pub const MAX_HALF: u32 = 96;
 /// O alinhamento mínimo de offset dinâmico de uniform buffer no WebGPU. A pilha escreve os
 /// globals de TODOS os passes de uma vez e indexa por offset — senão um `write_buffer` por passe
 /// antes de um único `submit` deixaria o último a valer para todos.
-pub(crate) const UNIFORM_STRIDE: u64 = 256;
+///
+/// ⚠️ **512 e não 256, e a diferença é MEDIDA:** os oito stops da rampa levam o `Globals` a 320
+/// bytes, e o offset dinâmico tem de ser múltiplo do alinhamento do device (256). Dobrar o stride
+/// custa **nada** — o mesmo frame de 32 formas dá **2,345 ms contra 2,332**, dentro do ruído (duas
+/// corridas cada). ⚠️ A primeira leitura desta medição disse **3× pior** e era **carga da
+/// máquina**; o teto de stops teria nascido errado se eu não a tivesse repetido.
+pub(crate) const UNIFORM_STRIDE: u64 = 512;
 
 pub use crate::fx_stack_op::FxOpGpu;
 use crate::fx_stack_plan::plan_of;
@@ -388,7 +394,10 @@ impl FxStackPass {
             _pad2: [0.0],
             tint_b: [0.0; 4],
             src_org: [0, 0],
-            _pad3: [0, 0],
+            stop_count: 0,
+            _pad3: 0,
+            stops: [[0.0; 4]; 8],
+            stop_pos: [[0.0; 4]; 2],
         };
         // ⚠️ O INGEST leva a origem da célula; o RESOLVE, não. Os dois compartilham este `edges`
         // porque nenhum lê tint/sigma/banda — mas o resolve lê `work[cur]`, que já é local, e
@@ -449,7 +458,10 @@ impl FxStackPass {
                 tint_b: op.tint_b,
                 // Nenhum op lê a fonte — o ingest já a trouxe para o espaço de trabalho.
                 src_org: [0, 0],
-                _pad3: [0, 0],
+                stop_count: op.stop_count,
+                _pad3: 0,
+                stops: op.stops,
+                stop_pos: op.stop_pos,
             };
             match plan {
                 Plan::Point | Plan::Warp => {

@@ -121,14 +121,24 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
         rust, wgsl,
         "os membros do `Globals` do WGSL derivaram do do Rust"
     );
-    // 144 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
+    // 304 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
     // que hospeda também o `grow_px` da morfologia) + os 16 do ajuste de cor + os 16 da SEGUNDA
     // cor (a ponta clara da rampa do Duotone) + os 16 da ORIGEM DA CÉLULA na fonte (o atlas de
-    // raster — dois `i32` mais o padding que a fileira de 16 exige).
+    // raster, onde a CONTAGEM de stops cabe nos 8 bytes livres) + os **160 da RAMPA** (oito stops
+    // RGBA = 128 + oito posições empacotadas em dois `vec4` = 32).
+    //
+    // ⚠️ **A ORDEM dos três últimos campos é obrigatória, e o device disse o número:** um
+    // `vec3<u32>` de padding depois dos arrays tem alinhamento 16 no WGSL e o `min_binding_size`
+    // recusou o bind group com **WGSL 336 contra Rust 320**.
     //
     // ⚠️ O número é MEDIDO, não escolhido: ele é a soma das linhas de 16 bytes que o `vec4` do
-    // `tint` impõe, e o `UNIFORM_STRIDE` (256) segue a acomodar com folga.
-    assert_eq!(core::mem::size_of::<Globals>(), 144);
+    // `tint` impõe. E é ele que obrigou o `UNIFORM_STRIDE` a 512 — dobrá-lo foi medido em **2,345
+    // ms contra 2,332** no mesmo frame de 32 formas, ou seja **grátis**.
+    assert_eq!(core::mem::size_of::<Globals>(), 304);
+    assert!(
+        core::mem::size_of::<Globals>() as u64 <= crate::fx_stack::UNIFORM_STRIDE,
+        "o `Globals` não cabe no stride — o offset dinâmico de um passe pisaria no do seguinte"
+    );
 }
 
 /// Os NOMES dos campos de um `struct` declarado em `src`, na ordem — serve o Rust e o WGSL, cuja
@@ -306,6 +316,9 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             hue: 0.0,
             sat: 0.0,
             bright: 0.0,
+            stops: [[0.0; 4]; 8],
+            stop_pos: [[0.0; 4]; 2],
+            stop_count: 0,
         };
         for raster_seeded in [false, true] {
             assert_eq!(
@@ -315,6 +328,59 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             );
         }
     }
+}
+
+/// **Um degrau POINTWISE com modos próprios nunca cai no plano do campo — e um falloff sempre
+/// cai.** As duas metades no mesmo gate, porque uma sozinha é verde por acidente.
+///
+/// ⚠️ **Isto é o irmão do gate acima, e a MESMA doença na terceira instância.** A regra do plano
+/// perguntava *"tem modos, e escolheu o 1?"* — uma enumeração disfarçada de regra. O `1` da
+/// turbulência é *Creased* (isento por um `if` escrito à mão) e o `1` do Gradient Map é *Smooth*,
+/// que era **varrido para o campo de distância e saía no-op COMPLETO**: medido, saída byte-idêntica
+/// à fonte, com o modo Linear correto ao lado — a forma exacta de um controlo que não faz nada.
+/// Hoje a pergunta é feita ao TIPO (`FxOp::mode_selects_the_distance_plan`), derivada da mesma
+/// declaração de modos que a UI pinta.
+#[test]
+fn a_pointwise_kind_with_its_own_modes_never_falls_into_the_field_plan() {
+    let step = |kind: u8, mode: u8| FxOpGpu {
+        kind,
+        sigma_px: 8.0,
+        offset_px: [0, 0],
+        tint: [0.0; 4],
+        tint_b: [1.0; 4],
+        opacity: 1.0,
+        mode,
+        blend: 0,
+        noise_scale_px: 0.0,
+        detail: 1,
+        seed: 0,
+        grow_px: 0.0,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
+    };
+    // (a) O Gradient Map é POINTWISE nos DOIS modos — o `1` dele é Smooth, assunto do kernel.
+    for mode in [0u8, 1] {
+        for raster_seeded in [false, true] {
+            let plan =
+                crate::fx_stack_plan::plan_of(&step(FxOp::GRADIENT_MAP, mode), raster_seeded);
+            assert!(
+                !matches!(plan, Plan::Field { .. }),
+                "Gradient Map em modo {mode} caiu em {plan:?} — o `1` dele é *Smooth*, e no plano \
+                 do campo o degrau sai NO-OP: o artista vê um controlo que não faz nada"
+            );
+        }
+    }
+    // (b) E um falloff em Contour AINDA cai — sem esta metade, um predicado cravado em `false`
+    // passaria em (a) e desligaria o modo Contour de toda a família de dentro.
+    let plan = crate::fx_stack_plan::plan_of(&step(FxOp::INNER_SHADOW, FxOp::MODE_CONTOUR), true);
+    assert!(
+        matches!(plan, Plan::Field { .. }),
+        "Inner Shadow em Contour caiu em {plan:?} — o modo que ESCOLHE o campo deixou de o escolher"
+    );
 }
 
 /// **A turbulência alcança o que ela DESLOCA, não o suporte de um kernel que ela não tem.**
@@ -340,6 +406,9 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         hue: 0.0,
         sat: 0.0,
         bright: 0.0,
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
     };
     for amount in [1.0f32, 4.0, 10.5, 30.0] {
         let reach = op_reach(&op(amount));
@@ -374,6 +443,9 @@ fn morph_op(grow_px: f32) -> FxOpGpu {
         hue: 0.0,
         sat: 0.0,
         bright: 0.0,
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
     }
 }
 

@@ -60,6 +60,9 @@ fn feathered(gpu: &ph2d_gpu::GpuContext) -> Vec<u8> {
             hue: 0.0,
             sat: 0.0,
             bright: 0.0,
+            stops: [[0.0; 4]; 8],
+            stop_pos: [[0.0; 4]; 2],
+            stop_count: 0,
         }],
         &[],
     );

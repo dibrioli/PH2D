@@ -96,6 +96,9 @@ fn adjust(hue: f32, sat: f32, bright: f32) -> FxOpGpu {
         hue,
         sat,
         bright,
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
     }
 }
 

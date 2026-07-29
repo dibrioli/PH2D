@@ -345,4 +345,24 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         grow_label: None,
         adjust_labels: None,
     },
+    FxKindSpec {
+        name: "Gradient Map",
+        // Pontual: cada texel pergunta o próprio brilho e lê uma cor. Zero vizinhos, zero margem.
+        radius_label: None,
+        offset_labels: None,
+        // ⚠️ **Nenhuma das duas swatches de cor**, e isto é a diferença inteira contra o Duotone:
+        // as cores desta rampa são N, autoradas no TRILHO, não duas com rótulo fixo. Oferecer
+        // `color`/`color_b` aqui seria pintar dois controles que a lei não lê.
+        color_label: None,
+        color_b_label: None,
+        grows: false,
+        inner: false,
+        // A INTERPOLAÇÃO entre stops. Os dois modos que o Gradient Map do Painter já tem — e o
+        // vocabulário é o dele, porque é a mesma lei.
+        modes: &["Linear", "Smooth"],
+        takes_blend: true,
+        noise_labels: None,
+        grow_label: None,
+        adjust_labels: None,
+    },
 ];

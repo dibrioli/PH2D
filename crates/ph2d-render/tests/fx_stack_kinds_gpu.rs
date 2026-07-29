@@ -127,6 +127,9 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
         } else {
             0.0
         },
+        stops: [[0.0; 4]; 8],
+        stop_pos: [[0.0; 4]; 2],
+        stop_count: 0,
     }
 }
 

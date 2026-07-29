@@ -140,6 +140,18 @@ impl ScreenSpace {
     pub fn radius_px(&self, width: f32) -> f32 {
         (width * 0.5 * self.px_per_world).max(MIN_WIDTH_PX * 0.5)
     }
+
+    /// A espessura **CRUA** em px — sem o piso do [`MIN_WIDTH_PX`].
+    ///
+    /// ⚠️ **Irmã do [`Self::radius_px`], nunca substituta.** As duas respondem perguntas diferentes
+    /// e o traço fino precisa das DUAS: a **geometria** usa o raio com piso (senão a fita não cobre
+    /// o centro de nenhum pixel e a linha pisca ao mover) e a **cobertura** usa esta (senão a linha
+    /// fina sai com a tinta de 1,3 px). É o par que o `flip.wgsl` carrega em dois varyings — `radii`
+    /// clampado para a forma, `thickness` cru só para o fade.
+    #[must_use]
+    pub fn thickness_px(&self, width: f32) -> f32 {
+        width * self.px_per_world
+    }
 }
 
 // ————————————————————————————————— geometria —————————————————————————————————
@@ -389,9 +401,18 @@ fn stroke_deposit(
     } else {
         p
     };
-    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, style, p_eval)?;
-    let cover = (1.0 - (-tau).exp()) * edge.min(1.0);
-    (cover > 0.0).then_some(Deposit { cover, rgba })
+    let ink = crate::tau::stroke_tau(run, data, screen, style, p_eval)?;
+    // ⚠️ **O fade multiplica a COBERTURA, ao lado do `edge` — nunca o `τ`.** Espelha o `flip.wgsl`
+    // termo a termo (`mask *= smoothstep(0, 1, thickness)`, depois do `hardness_mask`), e as duas
+    // rotas **não são equivalentes**: `1 − exp(−fade·τ)` satura junto com o `τ`, então em dureza 1
+    // (onde `f = F_MAX` e a exponencial já é 1) escalar o `τ` deixaria a linha fina **opaca** —
+    // exatamente o defeito que o fade existe para remover. Escalar a cobertura dá `fade`, que é o
+    // que o rasterizador escreve.
+    let cover = (1.0 - (-ink.tau).exp()) * edge.min(1.0) * ink.fade;
+    (cover > 0.0).then_some(Deposit {
+        cover,
+        rgba: ink.rgba,
+    })
 }
 
 /// A silhueta do traço vista deste pixel: `(distância COM SINAL, ponto mais próximo, distância)`

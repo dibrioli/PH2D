@@ -70,11 +70,12 @@ fn stroke(pts: &[(f32, f32)], width: f32, hardness: f32, col: [f32; 3], op: f32)
     s
 }
 
-/// A cena de paridade: **sete perguntas diferentes num desenho só** — a estrela que cruza a si
+/// A cena de paridade: **oito perguntas diferentes num desenho só** — a estrela que cruza a si
 /// mesma (a topologia da foto do Enio), um traço duro, um macio, um de opacidade < 1 (a regra do
 /// GP), um afilado (largura variando ⇒ o raio interpolado da quadratura) e **dois pontilhados**
 /// (Dots e Squares), que exercitam a OUTRA lista de dabs: o `arc_len`, o dono meio-aberto de cada
-/// conta e a conta da PONTA.
+/// conta e a conta da PONTA — mais um **sub-pixel** que afina atravessando 1 px, o unico regime
+/// onde o fade nao e' a identidade.
 fn scene() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let (cx, cy, outer) = (60.0_f32, 60.0, 44.0);
@@ -131,6 +132,22 @@ fn scene() -> FlipDrawing {
     squares.tip = ph2d_flip::StrokeTip::Squares;
     squares.dot_spacing = 1.25;
     d.strokes.push(squares);
+    // **O FADE SUB-PIXEL** — e ele exige uma largura ABAIXO de 1 px, senão o atalho do caso comum
+    // dispara em todo segmento e a cena inteira fica CEGA à mudança (a fixture tem de conter o
+    // fenômeno). O traço afina de 1,6 px a 0,1: ele atravessa a fronteira do atalho no meio, então
+    // os DOIS ramos correm no mesmo traço.
+    let mut fino = FlipStroke::new();
+    for k in 0..=20 {
+        let t = k as f32 / 20.0;
+        fino.push_point(Point {
+            pos: Vec2::new(10.0 + k as f32 * 5.0, 270.0),
+            width: 1.6 - 1.5 * t,
+            opacity: 1.0,
+            color: Rgba::new(0.3, 0.3, 0.9, 1.0),
+        });
+    }
+    fino.hardness = 1.0;
+    d.strokes.push(fino);
     d
 }
 
@@ -142,7 +159,7 @@ fn the_device_walk_is_the_cpu_walk() {
         println!("sem adapter -- skip");
         return;
     };
-    let (w, h) = (128_u32, 264);
+    let (w, h) = (128_u32, 288);
     let sc = ScreenSpace::from_camera(&camera(w, h));
     let data = pack_drawing(&scene());
     let bins = bin_segments(&data, &sc, DEFAULT_TILE);

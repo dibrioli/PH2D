@@ -846,3 +846,207 @@ fn the_dotted_tip_reaches_the_walk_and_the_beads_land_where_the_raster_puts_them
         );
     }
 }
+
+/// 🔴 **O FADE SUB-PIXEL CHEGOU AO PERCURSO** — e aqui o rasterizador é oráculo **exato**, não
+/// aproximado: o fade é um port do `gpencil_frag.glsl:534`, uma multiplicação na cobertura, sem
+/// nenhuma quadratura envolvida.
+///
+/// Duas metades, e a segunda é a que mata um no-op:
+/// 1. numa varredura de larguras SUB-PIXEL os dois motores dão o MESMO alfa (medido: **idêntico ao
+///    nível de byte** em 0,15 / 0,3 / 0,5 / 0,8 px);
+/// 2. o traço fino **não é** o traço de 1 px — o alfa CRESCE monotonicamente com a largura. Sem esta
+///    metade, um `cover` que ignorasse o fade passaria na primeira se o raster também o ignorasse, e
+///    um fade cravado em zero passaria por não pintar nada em lugar nenhum.
+///
+/// ⚠️ **A `hardness` é 1,0 de propósito:** ali `f = F_MAX` e `1 − exp(−τ)` já está **saturado**, o
+/// que torna este o único regime onde escalar o `τ` em vez da cobertura seria indistinguível de não
+/// fazer nada — é exatamente a confusão que a fixture tem de conter para o gate valer algo.
+///
+/// ⚠️ **O valor a 1 px é 166, não 255, e isso é geometria correta:** o piso põe o raio em 0,65 px, o
+/// centro do pixel fica a 0,5 do eixo, então `edge = 0,5 − (0,5 − 0,65) = 0,65` ⇒ 166/255. Os dois
+/// motores concordam nele, que é o que importa.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_sub_pixel_fade_reaches_the_walk_and_matches_the_raster() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o fade sub-pixel");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    let mut picos = Vec::new();
+    for w in [0.15_f32, 0.3, 0.5, 0.8] {
+        let mut st = FlipStroke::new();
+        for &x in &[8.0_f32, 56.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: w,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        let mut pico = [0u8; 2];
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            for y in 0..H {
+                for x in 16..48 {
+                    pico[i] = pico[i].max(px[((y * W + x) * 4 + 3) as usize]);
+                }
+            }
+        }
+        println!(
+            "  largura {w:.2} px:  raster {:>3}  percurso {:>3}",
+            pico[0], pico[1]
+        );
+        assert_eq!(
+            pico[0], pico[1],
+            "o percurso nao desbota como o raster em {w:.2} px"
+        );
+        assert!(
+            pico[1] > 0,
+            "a fixture nao contem o fenomeno: nada pintou em {w:.2} px"
+        );
+        picos.push(pico[1]);
+    }
+    // A metade que mata o no-op: o alfa CRESCE com a largura. Um fade constante (1 ou 0) o achata.
+    for par in picos.windows(2) {
+        assert!(
+            par[1] > par[0],
+            "o alfa nao cresce com a largura ({:?}) — o fade esta constante",
+            picos
+        );
+    }
+}
+
+/// 📏 **SONDA — o pico de alfa de um traço FINO nos dois motores.** Roda com
+/// `cargo test -p ph2d-flip-render --release --test composite_blend measure_the_thin_line -- --ignored --nocapture`.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_thin_line_in_both_engines() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a sonda");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    println!("  largura   raster  percurso");
+    for w in [0.15_f32, 0.3, 0.5, 0.8, 1.0, 1.3, 2.0, 6.0] {
+        let mut st = FlipStroke::new();
+        for &x in &[8.0_f32, 56.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: w,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        let mut pico = [0.0_f32; 2];
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            let mut m = 0u8;
+            for y in 0..H {
+                for x in 16..48 {
+                    m = m.max(px[((y * W + x) * 4 + 3) as usize]);
+                }
+            }
+            pico[i] = f32::from(m);
+        }
+        println!(
+            "  {w:>7.2}   {:>6.0}  {:>8.0}   (fade esperado {:.3})",
+            pico[0],
+            pico[1],
+            ph2d_flip_render::sub_pixel_fade(w)
+        );
+    }
+}
+
+/// 📏 **SONDA — A CONTA SUB-PIXEL, a única divergência que esta wave DEIXA ABERTA.**
+///
+/// Os dois motores discordam sobre o raio de uma conta abaixo de um pixel, e a discordância é
+/// ESTRUTURAL, não um bug de port: o `flip.wgsl` usa `in.thickness * 0.5` — a espessura **CRUA** —
+/// como raio da conta, então uma conta sub-pixel encolhe **e** desbota; o percurso usa o raio
+/// **CLAMPADO** (`bead_at` lê `radius_px`) e desbota uma vez só.
+///
+/// **Medido** (`dot_spacing` 4,0, dureza 1, pico de alfa e contagem de pixels acesos):
+///
+/// ```text
+///   largura   raster        percurso
+///     0,40    21 (  0 px)   57 ( 76 px)
+///     0,80    99 ( 40 px)  146 ( 52 px)
+///     1,30   149 ( 40 px)  163 ( 32 px)
+///     3,00   243 ( 48 px)  255 ( 60 px)
+/// ```
+///
+/// ⚠️ **A 0,40 px o RASTER apaga a fileira inteira** (nenhum pixel acima de 32/255) e o percurso
+/// desenha um pontilhado fraco. **Não foi "corrigido" para o raster de propósito**, e a razão é a
+/// regra que o próprio `flip.wgsl` escreve ao lado do `MIN_WIDTH_PX`: *sem o clamp a fita não cobre
+/// o centro de nenhum pixel e a linha PISCA*. Desaparecer ao dar zoom out é exatamente o modo de
+/// falha que o par clamp+fade existe para remover — então o percurso aplica a MESMA regra às contas
+/// (forma no piso, cobertura desbotada) em vez de carregar uma segunda regra para dentro de si.
+///
+/// **Fica ABERTO como decisão de produto:** o smoke decide se um pontilhado muito fino deve sumir
+/// (raster) ou virar uma fileira fraca (percurso). Acima de 1,3 px os dois convergem, que é onde
+/// todo pincel pontilhado do produto vive hoje.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_sub_pixel_bead_in_both_engines() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a sonda da conta sub-pixel");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    println!("  largura  raster  percurso");
+    for w in [0.4_f32, 0.8, 1.3, 3.0] {
+        let mut st = FlipStroke::new();
+        for &x in &[8.0_f32, 56.0] {
+            st.push_point(Point {
+                pos: Vec2::new(x, 32.0),
+                width: w,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        st.tip = StrokeTip::Dots;
+        st.dot_spacing = 4.0;
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let data = pack_drawing(&d);
+        let mut pico = [0u8; 2];
+        let mut n = [0u32; 2];
+        for (i, armado) in [false, true].into_iter().enumerate() {
+            fc.set_walk_engine(&gpu.device, armado);
+            let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+            let px = readback_slice(&gpu, slice);
+            for y in 0..H {
+                for x in 0..W {
+                    let a = px[((y * W + x) * 4 + 3) as usize];
+                    pico[i] = pico[i].max(a);
+                    if a > 32 {
+                        n[i] += 1;
+                    }
+                }
+            }
+        }
+        println!(
+            "  {w:>7.2}  {:>3} ({:>3}px)  {:>3} ({:>3}px)",
+            pico[0], n[0], pico[1], n[1]
+        );
+    }
+}

@@ -1192,8 +1192,8 @@ Smoke do §18 aprovado. O §16 dizia *"não sobra item de projeto, resta integra
 | `closed` · largura · cor · opacidade · `hardness` | ✅ | ✅ | — |
 | `FLAG_AIRBRUSH` | ✅ | ✅ | **FECHADO no §19.1** |
 | `tip` Dots/Squares + `dot_spacing` + `ref_width` | ✅ | ✅ | **FECHADO no §19.3** |
-| `fade` sub-pixel | ✅ | ❌ | **próximo** |
-| `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ❌ | wave C |
+| `fade` sub-pixel | ✅ | ✅ | **FECHADO no §19.4** |
+| `FLAG_END_FLAT` (a silhueta trunca) | ✅ | ❌ | **próximo** |
 | `FLAG_SELF_OVERLAP` **ON** | ✅ | ❌ | wave C |
 
 ⚠️ **Armado, o motor novo apagava CINCO features em silêncio — três delas integradas dois dias
@@ -1332,6 +1332,74 @@ para `Continuous` sangra 3 gates de unidade e a paridade, e **NÃO** sangra o ga
 a decisão que o produto executa mora no `bead_pitch_of` do **WGSL**. A lei do tip tem uma cópia por
 motor (é o espelho declarado no topo do `walk.wgsl`), então **um gate por lado**, e a paridade é o
 que os amarra.
+
+### §19.4 — O FADE SUB-PIXEL: o par que faltava do piso de largura
+
+**A linha fina saía GROSSA e OPACA.** Os dois motores clampam o raio em `MIN_WIDTH_PX/2 = 0,65 px`,
+e o rasterizador paga o preço desse clamp de volta com uma multiplicação na cobertura
+(`mask *= smoothstep(0, 1, thickness)`, o `gpencil_frag.glsl:534`); o percurso tinha **só a metade
+do clamp**. Medido no produto, pico de alfa de um traço reto de dureza 1:
+
+```text
+  largura   raster   percurso ANTES   percurso DEPOIS
+    0,15 px     10        166               10
+    0,30 px     36        166               36
+    0,50 px     83        166               83
+    0,80 px    148        166              148
+    1,00 px    166        166              166
+    2,00 px    255        255              255
+```
+
+Um traço de 0,15 px — o que qualquer desenho vira depois de um zoom out — saía com **16× a tinta**
+que ele pede. Hoje os dois motores dão o **MESMO byte** em toda largura.
+
+**Não há kernel novo.** O clamp e o fade são **um par**, e cada metade sozinha erra para um lado:
+sem o clamp a fita não cobre o centro de nenhum pixel e a linha **pisca** ao mover (o rasterizador
+acerta ou erra); sem o fade ela fica com a tinta do piso. Junto, a **forma** fica no piso e a
+**cobertura** desce — a energia é preservada.
+
+**O fade multiplica a COBERTURA, nunca o `τ`,** e as duas rotas não são equivalentes:
+`1 − exp(−fade·τ)` satura junto com o `τ`, então em dureza 1 (onde `f = F_MAX` e a exponencial já
+está em 1) escalar o `τ` deixaria a linha fina **opaca** — exatamente o defeito que o fade existe
+para remover. É por isso que a fixture do gate usa dureza 1: é o único regime onde a confusão é
+indistinguível de não fazer nada.
+
+**⚠️ O fade é do DAB, não do traço** — e essa é a única decisão de projeto da wave. Um pixel é
+tocado por muitos dabs de larguras diferentes (um traço de pressão afina), então o fade viaja no
+acumulador como **média ponderada por `dτ`**, o MESMO peso que a cor já usa. Um fade por-traço
+desenharia a agulha de uma ponta com a tinta da barriga: medido, barriga α 1,0000 · agulha α 0,3205,
+contra 1,0000 nas duas com o fade lido do traço.
+
+**⚠️ O acumulador virou UM tipo (`Ink`), e não por estética:** `end_dab` recebia três out-params e
+o quarto fez o `clippy` reclamar — mas o defeito real é que três out-params são três coisas que se
+pode esquecer de acrescentar. `Ink { tau, rgba, fade }` é o que já viajava junto (somas ponderadas
+durante a soma, médias ao devolver), e agora o compilador o carrega inteiro.
+
+**O atalho do caso comum é EXATO:** onde as duas pontas do segmento medem ≥ 1 px, toda amostra entre
+elas é uma combinação convexa — logo também ≥ 1 —, e ali `sub_pixel_fade` devolve `1.0` exato (o
+`clamp` satura e `1·1·(3−2) = 1`). Um traço de espessura normal não paga um ciclo por esta wave, e
+há gate varrendo 24×24 pares de larguras × 65 posições para pinar isso.
+
+**Gates:** o do PRODUTO compara contra o **rasterizador**, que aqui é oráculo **exato** e não
+aproximado (o fade é uma multiplicação na cobertura, sem quadratura envolvida) — e a segunda metade
+dele exige que o alfa **cresça** com a largura, senão um fade constante passaria. Mais quatro de
+unidade na CPU: a forma fechada `α(w) == sub_pixel_fade(w) · α(1,3)` (abaixo do piso o raio clampado
+é o MESMO, então a geometria é idêntica e só o fade difere — oráculo sem folga), a agulha do afilado,
+a exatidão do atalho, e o polinômio pinado contra valores computados **fora** do codebase.
+
+⚠️ **E a cena de paridade estava CEGA ao fade** — todas as larguras dela eram ≥ 1 px, então o atalho
+disparava em cada segmento e o fade era a identidade em toda a imagem. A cena ganhou uma **oitava
+pergunta** (um traço que afina de 1,6 a 0,1 px, atravessando a fronteira do atalho no meio, para os
+dois ramos correrem no mesmo traço); com ela a mutação *"o fade da CPU é sempre 1"* sangra em
+**6,289e-1 e 452 canais**, e sem ela passava em silêncio. **8 mutações, 8 sangram.**
+
+**⚠️ Uma divergência FICA ABERTA, com número:** a conta sub-pixel. O `flip.wgsl` usa a espessura
+**crua** como raio de conta, então a 0,40 px ele **apaga a fileira inteira** (zero pixel aceso); o
+percurso usa o raio clampado e desenha um pontilhado fraco (76 px, pico 57). Não foi alinhado ao
+raster de propósito — desaparecer ao dar zoom out é o modo de falha que o par clamp+fade existe para
+remover, e adotar a regra do raster só nas contas seria uma segunda regra dentro de um motor. Acima
+de 1,3 px os dois convergem, que é onde todo pincel pontilhado do produto vive. **O smoke decide**;
+a sonda que mede está em `measure_the_sub_pixel_bead_in_both_engines`.
 
 ## 17. Fontes
 

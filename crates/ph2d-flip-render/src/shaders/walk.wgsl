@@ -96,6 +96,19 @@ fn radius_px(width: f32) -> f32 {
     return max(width * 0.5 * sc.view.z, MIN_WIDTH_PX * 0.5);
 }
 
+// `ScreenSpace::thickness_px` — a espessura CRUA, sem o piso. Irmã da de cima, nunca substituta: a
+// forma usa o raio com piso (senão a linha fina pisca), a cobertura usa esta (senão ela sai grossa).
+fn thickness_px(width: f32) -> f32 {
+    return width * sc.view.z;
+}
+
+// `tau.rs::sub_pixel_fade` — o `gpencil_frag.glsl:534` que o `flip.wgsl` multiplica na máscara.
+// ⚠️ Aqui é o **builtin**, o MESMO que o rasterizador chama, para o device e ele serem a mesma
+// aritmética; o Rust carrega a expansão termo a termo, com gate irmão.
+fn sub_pixel_fade(w_px: f32) -> f32 {
+    return smoothstep(0.0, 1.0, w_px);
+}
+
 // `binning.rs::closest_on_seg` — devolve (t, cx, cy).
 fn closest_on_seg(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> vec3<f32> {
     let v = b - a;
@@ -297,7 +310,7 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
 }
 
 // `tau.rs::end_dab` — o termo de fronteira, SÓ no começo (a assimetria da referência).
-fn end_dab(sid: u32, hardness: f32, airbrush: bool, pitch: f32, p: vec2<f32>, tau: ptr<function, f32>, acc: ptr<function, vec4<f32>>) {
+fn end_dab(sid: u32, hardness: f32, airbrush: bool, pitch: f32, p: vec2<f32>, tau: ptr<function, f32>, acc: ptr<function, vec4<f32>>, fade_acc: ptr<function, f32>) {
     let st = strokes[sid];
     if ((st.flags & FLAG_CLOSED) != 0u || st.point_count == 0u) {
         return;
@@ -323,6 +336,8 @@ fn end_dab(sid: u32, hardness: f32, airbrush: bool, pitch: f32, p: vec2<f32>, ta
         return;
     }
     *tau = *tau + d_tau;
+    // Meio dab é um dab: ele carrega o fade da própria espessura, como qualquer outro.
+    *fade_acc = *fade_acc + sub_pixel_fade(thickness_px(pt.width)) * d_tau;
     *acc = *acc + vec4<f32>(
         pt.color.x * d_tau,
         pt.color.y * d_tau,
@@ -331,10 +346,12 @@ fn end_dab(sid: u32, hardness: f32, airbrush: bool, pitch: f32, p: vec2<f32>, ta
     );
 }
 
-// `tau.rs::stroke_tau` — devolve (tau, acc) com a cor já dividida; tau <= 0 ⇒ sem depósito.
-fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: f32, square: bool, p: vec2<f32>, out_rgb: ptr<function, vec4<f32>>) -> f32 {
+// `tau.rs::stroke_tau` — devolve (tau, acc, fade) com a cor e o fade já divididos por τ (o `Ink`);
+// tau <= 0 ⇒ sem depósito.
+fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: f32, square: bool, p: vec2<f32>, out_rgb: ptr<function, vec4<f32>>, out_fade: ptr<function, f32>) -> f32 {
     var tau = 0.0;
     var acc = vec4<f32>(0.0);
+    var fade_acc = 0.0;
     let tail = tail_point(sid);
     for (var k = lo; k < hi; k = k + 1u) {
         let s = segs[k];
@@ -344,6 +361,11 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: 
         let sb = point_px(pb.pos);
         let ra = radius_px(pa.width);
         let rb = radius_px(pb.width);
+        // As espessuras CRUAS, e o atalho do caso comum: com as duas pontas ≥ 1 px toda amostra
+        // entre elas mede ≥ 1 px (combinação convexa) e o fade é `1.0` exato.
+        let wa = thickness_px(pa.width);
+        let wb = thickness_px(pb.width);
+        let full = wa >= 1.0 && wb >= 1.0;
         let v = sb - sa;
         let len2 = dot(v, v);
         if (len2 <= 1e-12) {
@@ -388,6 +410,9 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: 
                 if (wlen > 1e-12) {
                     f = clamp((f32(kb) * pitch - arc_a) / wlen, 0.0, 1.0);
                 }
+                var fd = 1.0;
+                if (!full) { fd = sub_pixel_fade(wa * (1.0 - f) + wb * f); }
+                fade_acc = fade_acc + fd * d_tau;
                 let op = pa.opacity * (1.0 - f) + pb.opacity * f;
                 let col = pa.color * (1.0 - f) + pb.color * f;
                 acc = acc + vec4<f32>(col.x * d_tau, col.y * d_tau, col.z * d_tau, col.w * op * d_tau);
@@ -413,16 +438,20 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: 
                 continue;
             }
             tau = tau + d_tau;
+            var fd = 1.0;
+            if (!full) { fd = sub_pixel_fade(wa * (1.0 - t) + wb * t); }
+            fade_acc = fade_acc + fd * d_tau;
             let op = pa.opacity * (1.0 - t) + pb.opacity * t;
             let col = pa.color * (1.0 - t) + pb.color * t;
             acc = acc + vec4<f32>(col.x * d_tau, col.y * d_tau, col.z * d_tau, col.w * op * d_tau);
         }
     }
-    end_dab(sid, hardness, airbrush, pitch, p, &tau, &acc);
+    end_dab(sid, hardness, airbrush, pitch, p, &tau, &acc, &fade_acc);
     if (tau <= 0.0) {
         return 0.0;
     }
     *out_rgb = acc / tau;
+    *out_fade = fade_acc / tau;
     return tau;
 }
 
@@ -468,10 +497,13 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
                     p_eval = p + (vec2<f32>(sil.y, sil.z) - p) * f;
                 }
                 var rgba = vec4<f32>(0.0);
+                var fade = 0.0;
                 let airbrush = (st.flags & FLAG_AIRBRUSH) != 0u;
-                let tau = stroke_tau(i, j, sid, st.hardness, airbrush, pitch, square, p_eval, &rgba);
+                let tau = stroke_tau(i, j, sid, st.hardness, airbrush, pitch, square, p_eval, &rgba, &fade);
                 if (tau > 0.0) {
-                    let cover = (1.0 - exp(-tau)) * min(edge, 1.0);
+                    // O fade multiplica a COBERTURA, ao lado do `edge` — nunca o `τ` (ver o irmão em
+                    // Rust: escalar o `τ` satura junto com ele e a linha fina sairia opaca).
+                    let cover = (1.0 - exp(-tau)) * min(edge, 1.0) * fade;
                     if (cover > 0.0) {
                         let a = clamp(rgba.w * cover, 0.0, 1.0);
                         acc = vec4<f32>(

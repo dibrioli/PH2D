@@ -154,7 +154,7 @@ fn the_crossing_carries_more_tau_than_a_single_arm() {
             },
             p,
         )
-        .map_or(0.0, |(t, _)| t)
+        .map_or(0.0, |ink| ink.tau)
     };
     let crossing = tau_at([48.0, 48.0]);
     let single_arm = tau_at([48.0, 24.0]);
@@ -318,7 +318,9 @@ fn the_bead_at_a_joint_is_stamped_once() {
     let ti = bins
         .tile_of_pixel(p[0], p[1])
         .expect("o ladrilho da conta do meio");
-    let (tau, _) = crate::tau::stroke_tau(bins.segs_of(ti), &g, &sc, style, p).expect("tinta");
+    let tau = crate::tau::stroke_tau(bins.segs_of(ti), &g, &sc, style, p)
+        .expect("tinta")
+        .tau;
     let um = crate::tau::f_bead_of(0.6, style.profile);
     assert!(
         (tau - um).abs() < 1e-4,
@@ -339,8 +341,9 @@ fn the_bead_at_the_tip_of_the_stroke_is_stamped() {
     // 3 px ADIANTE da última conta (arco 40, `x = 60`): só ela alcança (a anterior está a 23 px).
     let p = [63.0, 40.0];
     let ti = bins.tile_of_pixel(p[0], p[1]).expect("o ladrilho da ponta");
-    let (tau, _) = crate::tau::stroke_tau(bins.segs_of(ti), &g, &sc, style, p)
-        .expect("a conta da ponta nao carimbou nada");
+    let tau = crate::tau::stroke_tau(bins.segs_of(ti), &g, &sc, style, p)
+        .expect("a conta da ponta nao carimbou nada")
+        .tau;
     let um = crate::tau::f_bead_of(0.6, style.profile);
     assert!(
         (tau - um).abs() < 1e-4,
@@ -359,7 +362,7 @@ fn the_dotted_row_has_gaps_where_the_full_line_has_ink() {
         let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
         bins.tile_of_pixel(vao[0], vao[1])
             .and_then(|ti| crate::tau::stroke_tau(bins.segs_of(ti), g, &sc, style, vao))
-            .map_or(0.0, |(t, _)| t)
+            .map_or(0.0, |ink| ink.tau)
     };
     let cheia = tau_at(&bead_row(ph2d_flip::StrokeTip::Continuous, 0.5));
     let contas = tau_at(&bead_row(ph2d_flip::StrokeTip::Dots, 0.5));
@@ -399,7 +402,7 @@ fn the_square_bead_is_a_square_not_a_disc() {
         let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
         bins.tile_of_pixel(quina[0], quina[1])
             .and_then(|ti| crate::tau::stroke_tau(bins.segs_of(ti), g, &sc, style, quina))
-            .map_or(0.0, |(t, _)| t)
+            .map_or(0.0, |ink| ink.tau)
     };
     let quadrado = tau_at(&bead_row(ph2d_flip::StrokeTip::Squares, 0.5));
     let disco = tau_at(&bead_row(ph2d_flip::StrokeTip::Dots, 0.5));
@@ -419,5 +422,137 @@ fn the_square_bead_is_a_square_not_a_disc() {
         disco, 0.0,
         "a mesma quina recebeu tinta com conta REDONDA: τ {disco:.4} (a fixture nao distingue as \
          duas formas)"
+    );
+}
+
+// ————————————————————————————— o fade sub-pixel —————————————————————————————
+
+/// O fade é o `smoothstep(0, 1, x)` da WGSL, pinado contra valores computados **FORA** do codebase
+/// (`x²·(3−2x)` à mão) — chamar a própria função seria o oráculo sempre-verde.
+#[test]
+fn the_sub_pixel_fade_is_the_wgsl_smoothstep() {
+    for (x, esperado) in [
+        (-1.0_f32, 0.0_f32),
+        (0.0, 0.0),
+        (0.15, 0.060_75), // 0,0225 · 2,70
+        (0.25, 0.156_25), // 0,0625 · 2,50
+        (0.3, 0.216),     // 0,0900 · 2,40
+        (0.5, 0.5),       // 0,2500 · 2,00
+        (0.8, 0.896),     // 0,6400 · 1,40
+        (1.0, 1.0),
+        (1.3, 1.0),
+        (99.0, 1.0),
+    ] {
+        let v = crate::tau::sub_pixel_fade(x);
+        assert!(
+            (v - esperado).abs() < 1e-6,
+            "fade({x}) = {v}, esperado {esperado}"
+        );
+    }
+    // Monótona — sem isto, uma curva errada mas ancorada nos pontos passaria.
+    let mut prev = -1.0_f32;
+    for k in 0..=200 {
+        let x = k as f32 / 200.0;
+        let v = crate::tau::sub_pixel_fade(x);
+        assert!(v >= prev, "o fade nao e' monotono em {x}");
+        prev = v;
+    }
+}
+
+/// ⚠️ **O ATALHO do caso comum é EXATO, e é isso que o torna aceitável:** o [`crate::tau::stroke_tau`]
+/// pula o `sub_pixel_fade` quando as DUAS pontas do segmento medem ≥ 1 px, e a licença é que toda
+/// amostra entre elas é uma combinação convexa — logo também ≥ 1 —, onde a função devolve `1.0`
+/// **exato** (o `clamp` satura e `1·1·(3−2) = 1`). Um traço de espessura normal não paga um ciclo por
+/// esta wave, e não paga um ulp.
+#[test]
+fn the_shortcut_for_a_normal_width_segment_is_exact() {
+    for a in 0..24 {
+        for b in 0..24 {
+            let (wa, wb) = (1.0 + a as f32 * 0.37, 1.0 + b as f32 * 0.61);
+            for k in 0..=64 {
+                let f = k as f32 / 64.0;
+                let lerp = wa * (1.0 - f) + wb * f;
+                assert_eq!(
+                    crate::tau::sub_pixel_fade(lerp),
+                    1.0,
+                    "o atalho mente em wa {wa} wb {wb} f {f} (lerp {lerp})"
+                );
+            }
+        }
+    }
+}
+
+/// O pico de alfa que o percurso da CPU deixa numa linha reta de largura `width`.
+fn peak_alpha(sc: &ScreenSpace, h: f32, width: f32) -> f32 {
+    let g = art(&[(&[[8.0, 16.0], [56.0, 16.0]], width, false, BLACK)]);
+    let bins = bin_segments(&g, sc, 16);
+    let mut best = 0.0_f32;
+    for y in 0..h as u32 {
+        best = best.max(walk_pixel(&bins, &g, sc, [32.5, y as f32 + 0.5])[3]);
+    }
+    best
+}
+
+/// 🔴 **A LINHA SUB-PIXEL DESBOTA em vez de sair GROSSA — e o oráculo é EXATO, não aproximado.**
+///
+/// Abaixo do piso (`MIN_WIDTH_PX = 1,3`) o raio clampado é o MESMO para toda largura, então a
+/// GEOMETRIA é idêntica (mesmo `edge`, mesmo `τ`) e a única coisa que muda de uma largura para outra
+/// é o fade. Isso dá uma forma fechada: `α(w) == sub_pixel_fade(w) · α(1,3)`.
+///
+/// ⚠️ **A `hardness` é 1,0** (o `art` a fixa) e isso é a fixture contendo o fenômeno: ali
+/// `f = F_MAX` e `1 − exp(−τ)` já está **SATURADO**, o único regime onde escalar o `τ` em vez da
+/// cobertura seria indistinguível de não fazer nada — que é exatamente a confusão que este gate
+/// existe para pegar.
+#[test]
+fn a_sub_pixel_line_fades_instead_of_going_out_thick() {
+    let (w, h) = (64.0, 32.0);
+    let sc = screen(w, h);
+    let cheia = peak_alpha(&sc, h, crate::binning::MIN_WIDTH_PX);
+    assert!(
+        cheia > 0.5,
+        "a fixture nao contem o fenomeno: a linha de piso mede α {cheia:.4}"
+    );
+    for width in [0.15_f32, 0.3, 0.5, 0.8, 1.0] {
+        let esperado = crate::tau::sub_pixel_fade(width) * cheia;
+        let medido = peak_alpha(&sc, h, width);
+        assert!(
+            (medido - esperado).abs() < 1e-4,
+            "a linha de {width} px nao desbotou: α {medido:.4} contra {esperado:.4} \
+             — o fade escala a COBERTURA, nunca o τ"
+        );
+    }
+}
+
+/// 🔴 **O FADE É DO DAB, NÃO DO TRAÇO** — e é este gate que separa as duas leituras.
+///
+/// Num traço que afina de 8 px a 0,2 px a barriga sai CHEIA e a agulha FRACA. Se o fade fosse lido
+/// do TRAÇO (uma largura só — a do primeiro ponto, digamos), a agulha de 0,2 px sairia com a tinta
+/// de 8: o defeito que o fade existe para remover, escondido na ponta em vez de na linha toda.
+#[test]
+fn the_needle_tip_of_a_taper_is_faint_and_the_belly_is_not() {
+    let (w, h) = (64.0, 32.0);
+    let sc = screen(w, h);
+    let mut g = FlipGpuData::default();
+    push_tapered(&mut g, &[[8.0, 16.0], [56.0, 16.0]], &[8.0, 0.2]);
+    let bins = bin_segments(&g, &sc, 16);
+    let alpha_em = |x: f32| -> f32 {
+        let mut best = 0.0_f32;
+        for y in 0..h as u32 {
+            best = best.max(walk_pixel(&bins, &g, &sc, [x, y as f32 + 0.5])[3]);
+        }
+        best
+    };
+    let (barriga, agulha) = (alpha_em(12.5), alpha_em(54.5));
+    println!("  barriga α {barriga:.4}   agulha α {agulha:.4}");
+    assert!(
+        barriga > 0.9,
+        "a barriga do traço desbotou sem motivo: α {barriga:.4}"
+    );
+    // Medido: barriga 1,0000 · agulha 0,3205; com o fade lido do TRAÇO a agulha vai a 1,0000, e a
+    // barra fica confortavelmente entre os dois (uma barra colada no medido falha por ruído, uma
+    // colada na mutação nao falha por nada).
+    assert!(
+        agulha < 0.6,
+        "a agulha saiu com a tinta da barriga: α {agulha:.4} — o fade esta sendo lido do TRAÇO"
     );
 }

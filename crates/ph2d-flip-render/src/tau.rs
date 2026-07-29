@@ -263,6 +263,28 @@ pub fn f_bead_of(dn: f32, prof: DabProfile) -> f32 {
     f_of(dn, prof)
 }
 
+/// **O FADE SUB-PIXEL de UM DAB** — `smoothstep(0, 1, espessura_px)`, o `gpencil_frag.glsl:534` que
+/// o `flip.wgsl` multiplica na máscara.
+///
+/// ⚠️ **Ele é o PAR do piso de largura, e sem os dois juntos a linha fina está errada de um jeito ou
+/// do outro:** o [`crate::binning::ScreenSpace::radius_px`] nunca deixa o raio abaixo de
+/// `MIN_WIDTH_PX/2`, senão a fita não cobre o centro de nenhum pixel e a linha **pisca** ao mover ou
+/// dar zoom (o rasterizador acerta ou erra o centro); mas desenhar 1,3 px onde o traço pede 0,3 põe
+/// **quatro vezes** a tinta autorada. O fade devolve a energia: a **forma** fica no piso e a
+/// **cobertura** desce. Sem ele o percurso desenhava toda linha sub-pixel grossa e opaca.
+///
+/// ⚠️ **Devolve exatamente `1.0` para espessura ≥ 1 px** (o `clamp` satura e `1·1·(3−2) = 1`), então
+/// todo traço que o artista vê como uma linha normal fica byte-intocado.
+///
+/// ⚠️ **É a expansão do `smoothstep` da WGSL termo a termo** (`t = clamp((x−0)/(1−0), 0, 1)`, e
+/// dividir por 1 é exato) — o `walk.wgsl` chama o **builtin**, para o percurso do device e o
+/// rasterizador serem a MESMA aritmética; esta cópia é a do motor da CPU, com o gate irmão.
+#[must_use]
+pub fn sub_pixel_fade(w_px: f32) -> f32 {
+    let t = w_px.clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
 /// **O ALCANCE de um dab a partir da LINHA-DE-CENTRO** — quantos pixels ao lado do caminho este
 /// pincel consegue pôr tinta, dado o maior raio em jogo.
 ///
@@ -373,7 +395,28 @@ pub(crate) fn bead_dn(p: [f32; 2], b: Bead, square: bool) -> f32 {
     }
 }
 
-/// O que um traço deposita num pixel: `τ` acumulado e a cor média ponderada por `dτ`.
+/// **O QUE UM TRAÇO DEPOSITOU NESTE PIXEL** — `τ` e as propriedades médias da tinta que chegou.
+///
+/// ⚠️ **Durante a soma os campos derivados são SOMAS ponderadas por `dτ`; ao devolver eles são
+/// MÉDIAS** — a divisão acontece uma vez, no fechamento do [`stroke_tau`]. É a resposta comutativa,
+/// do mesmo tipo da lei.
+///
+/// ⚠️ **O `fade` viaja AQUI e não no [`StrokeStyle`], e a distinção é o desenho todo:** o estilo é o
+/// que o traço DECLARA (a forma da queda, onde os dabs estão) e é lido uma vez; o fade é função do
+/// **raio LOCAL**, então num traço que afina ele muda dab a dab. Um pixel é tocado por muitos dabs
+/// de larguras diferentes, e o peso de cada um é exatamente o `dτ` que ele depositou — o MESMO peso
+/// que a cor já usa.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct Ink {
+    /// A densidade acumulada. `α = 1 − exp(−τ)`.
+    pub tau: f32,
+    /// A cor média (o alfa já traz o `opacity`).
+    pub rgba: [f32; 4],
+    /// O [`sub_pixel_fade`] médio — o fator que a COBERTURA multiplica.
+    pub fade: f32,
+}
+
+/// O que um traço deposita num pixel: `τ` acumulado, a cor e o fade médios (ponderados por `dτ`).
 ///
 /// ⚠️ **A quadratura fica ANCORADA no segmento, não na janela do pixel.** As sub-amostras caem
 /// sempre nas mesmas posições `(i + ½)·step`, e o que a janela faz é só **pular as que valem
@@ -389,17 +432,37 @@ pub(crate) fn stroke_tau(
     screen: &ScreenSpace,
     style: StrokeStyle,
     p: [f32; 2],
-) -> Option<(f32, [f32; 4])> {
+) -> Option<Ink> {
     let prof = style.profile;
     let tail = tail_point(data, run);
-    let mut tau = 0.0_f32;
-    let mut acc = [0.0_f32; 4];
+    // ⚠️ **Um acumulador, não três locais soltos** — durante a soma os campos derivados são somas
+    // ponderadas por `dτ`; o `Ink` é o que os mantém viajando juntos, e é o que faz o `end_dab`
+    // receber UM parâmetro em vez de três out-params que se pode esquecer de acrescentar.
+    let mut ink = Ink {
+        tau: 0.0,
+        rgba: [0.0; 4],
+        fade: 0.0,
+    };
     for seg in run {
         let (pa, pb) = (data.points[seg.a as usize], data.points[seg.b as usize]);
         let sa = screen.point_px(pa.pos);
         let sb = screen.point_px(pb.pos);
         let ra = screen.radius_px(pa.width);
         let rb = screen.radius_px(pb.width);
+        // As espessuras CRUAS deste segmento, e o atalho do caso comum. ⚠️ **Onde as duas pontas
+        // medem ≥ 1 px toda amostra entre elas mede ≥ 1 px** (é uma combinação convexa), e ali o
+        // [`sub_pixel_fade`] devolve `1.0` exato ⇒ o atalho pula trabalho sem mudar a resposta, e
+        // um traço de espessura normal não paga um ciclo por esta wave.
+        let wa = screen.thickness_px(pa.width);
+        let wb = screen.thickness_px(pb.width);
+        let full = wa >= 1.0 && wb >= 1.0;
+        let fade_at = |f: f32| {
+            if full {
+                1.0
+            } else {
+                sub_pixel_fade(wa * (1.0 - f) + wb * f)
+            }
+        };
         let v = [sb[0] - sa[0], sb[1] - sa[1]];
         let len2 = v[0] * v[0] + v[1] * v[1];
         if len2 <= 1e-12 {
@@ -441,18 +504,24 @@ pub(crate) fn stroke_tau(
                 if d_tau <= 0.0 {
                     continue;
                 }
-                tau += d_tau;
+                ink.tau += d_tau;
                 // A conta carrega UMA cor — a de onde ela está. É o que um carimbo é.
                 let f = if wlen > 1e-12 {
                     ((k as f32 * pitch - arc_a) / wlen).clamp(0.0, 1.0)
                 } else {
                     0.0
                 };
+                ink.fade += fade_at(f) * d_tau;
                 let op = pa.opacity * (1.0 - f) + pb.opacity * f;
-                for (dst, (ca, cb)) in acc.iter_mut().zip(pa.color.iter().zip(&pb.color)).take(3) {
+                for (dst, (ca, cb)) in ink
+                    .rgba
+                    .iter_mut()
+                    .zip(pa.color.iter().zip(&pb.color))
+                    .take(3)
+                {
                     *dst += (ca * (1.0 - f) + cb * f) * d_tau;
                 }
-                acc[3] += (pa.color[3] * (1.0 - f) + pb.color[3] * f) * op * d_tau;
+                ink.rgba[3] += (pa.color[3] * (1.0 - f) + pb.color[3] * f) * op * d_tau;
             }
             continue;
         }
@@ -476,26 +545,34 @@ pub(crate) fn stroke_tau(
             if d_tau <= 0.0 {
                 continue;
             }
-            tau += d_tau;
+            ink.tau += d_tau;
+            ink.fade += fade_at(t) * d_tau;
             // A cor é a média ponderada por `dτ` — a resposta comutativa, do mesmo tipo da lei.
             // ⚠️ O `opacity` multiplica DEPOIS da cobertura (a regra do GP que o `flip.wgsl`
             // documenta: *um traço a opacity 0,5 não escurece sobre si mesmo*), então ele entra
             // no alfa da COR e nunca no `f`.
             let op = pa.opacity * (1.0 - t) + pb.opacity * t;
-            for (dst, (ca, cb)) in acc.iter_mut().zip(pa.color.iter().zip(&pb.color)).take(3) {
+            for (dst, (ca, cb)) in ink
+                .rgba
+                .iter_mut()
+                .zip(pa.color.iter().zip(&pb.color))
+                .take(3)
+            {
                 *dst += (ca * (1.0 - t) + cb * t) * d_tau;
             }
-            acc[3] += (pa.color[3] * (1.0 - t) + pb.color[3] * t) * op * d_tau;
+            ink.rgba[3] += (pa.color[3] * (1.0 - t) + pb.color[3] * t) * op * d_tau;
         }
     }
-    end_dab(run, data, screen, style, p, &mut tau, &mut acc);
-    if tau <= 0.0 {
+    end_dab(run, data, screen, style, p, &mut ink);
+    if ink.tau <= 0.0 {
         return None;
     }
-    for c in &mut acc {
+    let tau = ink.tau;
+    for c in &mut ink.rgba {
         *c /= tau;
     }
-    Some((tau, acc))
+    ink.fade /= tau;
+    Some(ink)
 }
 
 /// **O CAP — e ele é UM TERMO DE FRONTEIRA, não uma geometria nova.**
@@ -526,8 +603,7 @@ fn end_dab(
     screen: &ScreenSpace,
     style: StrokeStyle,
     p: [f32; 2],
-    tau: &mut f32,
-    acc: &mut [f32; 4],
+    ink: &mut Ink,
 ) {
     let prof = style.profile;
     let Some(first) = run.first() else { return };
@@ -574,10 +650,12 @@ fn end_dab(
         if d_tau <= 0.0 {
             continue;
         }
-        *tau += d_tau;
-        for (dst, c) in acc.iter_mut().zip(&pt.color).take(3) {
+        ink.tau += d_tau;
+        // Meio dab é um dab: ele carrega o fade da própria espessura, como qualquer outro.
+        ink.fade += sub_pixel_fade(screen.thickness_px(pt.width)) * d_tau;
+        for (dst, c) in ink.rgba.iter_mut().zip(&pt.color).take(3) {
             *dst += c * d_tau;
         }
-        acc[3] += pt.color[3] * pt.opacity * d_tau;
+        ink.rgba[3] += pt.color[3] * pt.opacity * d_tau;
     }
 }

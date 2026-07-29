@@ -36,5 +36,5 @@ pub use pack::{
     pack_drawing, pack_drawings,
 };
 pub use pipeline::{CameraRaw, FlipRenderer};
-pub use tau::{PAINTER_SPACING, SUB, dab_weight, f_of};
+pub use tau::{PAINTER_SPACING, SUB, dab_weight, f_of, sub_pixel_fade};
 pub use walk_gpu::{TARGET_FORMAT as WALK_TARGET_FORMAT, WalkJob, WalkPass};

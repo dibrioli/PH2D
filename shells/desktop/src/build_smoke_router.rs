@@ -94,6 +94,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::fx_duotone_smoke::frame(app, f);
         return true;
     }
+    // GRADIENT MAP (=39, plano 24 W11) — a rampa de N stops, que SUBSUME o Duotone.
+    if level == 39 {
+        crate::fx_gradient_map_smoke::frame(app, f);
+        return true;
+    }
     if matches!(level, 13 | 14) {
         crate::fx_smoke::frame(app, f, level);
         return true;

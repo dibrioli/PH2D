@@ -149,6 +149,9 @@ posição do centroide da sombra, e a mensagem traz os números.
 - **W10 — O ATLAS DE RASTER (FECHADA, pendente de smoke):** a primeira wave que não acrescenta um
   tipo — ela responde *"quanto custa uma CENA de formas filtradas?"*, que é o eixo que o Enio
   nomeou. Ver §17.
+- **W11 — GRADIENT MAP (FECHADA, pendente de smoke):** a rampa de **N stops** — e ela **SUBSUME o
+  Duotone** (dois stops nas pontas são ele **ao byte**), então a wave é uma generalização em vez de
+  um 12º tipo que responde à mesma pergunta. Ver §18.
 
 ## §7 — W2: a PILHA (o que se construiu, e por quê)
 
@@ -1183,3 +1186,115 @@ pública (`run_batch`) que ninguém deve chamar. O que fica é este número.
 
 **Smoke:** `PH2D_BUILD_SMOKE=33` (as 16 estrelas filtradas) com **`PH2D_FX_PERF=1`** — a linha tem de
 dizer **`em 1 render(es)`**, e o desenho tem de ficar **igual ao de antes**.
+
+---
+
+## §18 — W11: o GRADIENT MAP — a rampa de N stops
+
+**O que a wave entrega:** um degrau que mapeia a claridade da arte numa rampa de até **8 stops**,
+com o trilho de autoria no card (barra de preview, punho por stop, `+`/`−`, e a swatch do stop em
+foco pelo MESMO picker OKLCH das duas pontas do Duotone).
+
+### §18.1 — A wave é uma SUBSUNÇÃO, e é isso que a justifica
+
+Um Gradient Map de **dois stops nas pontas é o Duotone ao byte** — medido no dispositivo, **0 de
+6144 bytes diferem**, em três opacidades. Duas leis vizinhas na mesma pilha não podem discordar
+sobre *"quão claro é este texel"*: o artista teria duas fichas que desenham coisas diferentes com os
+mesmos números, e ninguém lê um número numa screenshot.
+
+**A LEI DA RAMPA é a que o app já ship** — paridade com o `gradient_map_lut` do
+`ph2d-painter-effects` (a camada de ajuste do Painter, escrita por outra wave, para outro consumidor):
+**1 nível de byte** no pior caso, em três rampas × dois modos.
+
+⚠️ **A RÉGUA divergem de propósito, com o número medido.** O Painter mede claridade em **Rec.601
+sobre bytes de display**; esta pilha mede em **`L` do OKLab** (a régua que o Duotone e o Luma to
+Alpha já usam, e a única perceptualmente uniforme das três que o app carrega). Medido em sRGB 128:
+Rec.601 dá **0,502** e o OKLab **0,600**. A paridade afirmada é sobre *"que cor vive na posição
+`t`"*, não sobre *"que `t` este pixel tem"*.
+
+### §18.2 — A porta única: o documento guarda a AUTORIA, o consumidor ORDENA
+
+`FxOp::ramp_for_device` ordena uma cópia e empacota nos dois `vec4` do uniform. O documento guarda a
+ordem de **autoria**, o que dá **índice estável** a cada alça — arrastar um stop por cima do vizinho
+não re-liga o gesto a outro stop. É o precedente do `move_gradient_stop` do Painter, e o gate
+`the_authoring_order_of_the_stops_does_not_change_a_byte` o pina.
+
+### §18.3 — As três leis do trilho
+
+| Gesto | Lei | Por quê |
+|---|---|---|
+| **arrastar** um punho | move só a POSIÇÃO | a cor é da swatch; o índice é o de autoria |
+| **`+`** | stop novo no maior **VÃO**, com a cor que a rampa **já tem ali** | ele não pode mudar o desenho — o artista pediu um ponto de controle, não uma edição (é o que Photoshop e Illustrator fazem) |
+| **`−`** | remove o em foco, **piso em DOIS** | abaixo de dois a rampa muda de **LEI**, não de forma (§18.5) |
+
+### §18.4 — O que a medição derrubou: quatro notas minhas
+
+1. ⚠️ **`mode 1` num tipo pointwise era varrido para o plano do campo de distância**, e o degrau saía
+   **no-op completo** (saída byte-idêntica à fonte, com o Linear correto ao lado). A regra do plano
+   perguntava *"tem modos, e escolheu o 1?"* — enumeração disfarçada de regra, **terceira
+   instância**: o `1` da turbulência é *Creased* (isento por um `if` à mão), o `1` do Gradient Map é
+   *Smooth*. Hoje a pergunta é feita ao TIPO (`FxOp::mode_selects_the_distance_plan`), derivada da
+   MESMA declaração de modos que a UI pinta — um falloff novo entra por construção, um vocabulário
+   próprio nunca é varrido.
+2. ⚠️ **Um Gradient Map novo nascia em SMOOTH** — o `BLANK` compartilhado tem `mode: MODE_CONTOUR`
+   (= 1), o default bom da família do falloff, onde `1` significa *Contour*. **Quarta instância da
+   mesma doença, agora no DEFAULT.** E o corolário medido: em Smooth o `+` **não pode** ser neutro
+   (o easing é por SEGMENTO, dividir um segmento reforma a curva — 25 níveis de byte); em Linear ele
+   é neutro ao byte. `mode: 0` agora é **declarado**.
+3. ⚠️ **Eu escrevi que a rampa preto→branco era *"a IDENTIDADE em luma"*.** É **falsa**: o `t` sai
+   do `L` do OKLab e a mistura acontece em luz LINEAR, então **cinza 129 entra e 204 sai**. Um
+   Gradient Map é um **RECOLORIDOR** como o Duotone e o Color Overlay — adicioná-lo muda o desenho
+   por desenho (o default do Photoshop também), e o que o default tem de ser é **PREVISÍVEL**.
+4. ⚠️ **Eu escrevi que o registro do `CurvePoint` tinha lag de 1 frame.** Não tem — o
+   `seed_and_publish` é a **Fase B do MESMO `paint`**.
+
+### §18.5 — O degenerado NÃO é o default, e o gate o PINA
+
+`stop_count == 0` cai no ramo vazio do `gradient_sample` (`srgb_to_linear(t)`, que trata o `t` como
+valor de display) e **difere do default de dois stops em 73 níveis de byte** — porque duas pontas
+preto→branco linearizam e devolvem `t` em luz linear. **Herdamos as duas leis verbatim do Painter**,
+que tem exatamente a mesma descontinuidade. O gate as pina: quem "consertar" um dos ramos para casar
+com o outro passa a divergir da crate que é o nosso oráculo. É por isso que o `−` tem piso em dois —
+o degenerado é o caso bem-definido de um degrau em branco, nunca um estado de autoria.
+
+### §18.6 — Uma mutação minha sobreviveu, e o defeito era do meu GATE
+
+O readback do picker ramificava dentro do `render_frame` (window-gated), coberto por um **arch-gate
+sobre o FONTE**. A mutação que dobrava o stop na ponta escura **manteve o nome
+`ColourSlot::SelectedStop` num braço inalcançável** e passou **verde**: uma varredura de fonte vê
+FORMA, não comportamento.
+
+**A cura foi mover a decisão, não reforçar o gate:** a rota vive em `fx_live::apply_picked_colour`
+— pura, e portanto observável por um gate de unidade (`each_colour_slot_gets_the_picked_colour_and_only_it`,
+onde a mutação sangra num `assert_eq!`). O arch-gate ficou com a **costura**, que é o que só o fonte
+mostra. ⚠️ E o `bool` do readback (*"é a segunda?"*) virou `ColourSlot` de três — o comentário dele
+**já previa esta wave**: *"derivar a ponta do `kind` faria a segunda escrever na primeira em qualquer
+tipo que ganhasse uma rampa depois"*.
+
+### §18.7 — O que NÃO foi extraído, e o custo nomeado
+
+O trilho do Painter (`paint_adjust.rs::paint_gradient_map`) é um editor completo e **não** foi
+extraído para um widget compartilhado. **O que É compartilhado é o GESTO** —
+`InteractiveState::CurvePoint`, o dispatch 2D que o editor de falloff do Painter e a curva do
+motion-params já usam —, e esse é o precedente deste repo: reusar o primitivo de arrasto e pintar
+localmente. Extrair o **pintor** exigiria parametrizar dois `PaintCtx` diferentes, dois esquemas de
+id e duas fontes de *"qual stop está em foco"*.
+
+**O custo de não extrair:** as constantes de geometria do trilho (barra, punho, caixa de agarre,
+largura do botão) existem em **duas** cópias, hoje batendo valor a valor, cada uma citando a outra.
+É a mesma dívida que o editor de curva do motion-params já carrega. **Quem quiser fechá-la:** o
+alvo é um `paint_ramp_widget` no design system tomando um snapshot (`&[([u8;4], f32)]` + o índice em
+foco) e um provedor de ids, com os dois painéis a delegar.
+
+### §18.8 — Smoke
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector
+env PH2D_BUILD_SMOKE=39 cargo run -p ph2d-host-desktop --release
+```
+
+Oito estrelas em quatro pares — a cena **imprime o que montou**. O par 1 é o que carrega a wave (o
+Duotone contra a rampa de dois stops: **indistinguíveis**); o 2 traz quatro stops e a MESMA rampa
+**fora de ordem**; o 3 é Linear × Smooth; o 4 é a força por-stop e a rampa **posterizada**. E o
+passo que fecha: **no painel**, arrastar um punho por cima do vizinho, pintar um stop pela swatch, e
+os dois botões.

@@ -15,11 +15,13 @@
 | árvore | limpa |
 
 ## 2. ⚠️ Leia isto primeiro: o que esta leva É, e o que ela NÃO é
-
 Ela é o **degrau de INFRAESTRUTURA** do S3 — o journal por tile que captura o "antes" na hora da
-escrita, as portas que sabem **nomear** o plano, e a rede que confere o invariante em toda rodada da
-suíte. **A metade que PAGA (os ~21 ms/traço) NÃO está aqui e está bloqueada por um pré-requisito
-MEDIDO** (§4 abaixo).
+escrita, as portas que sabem **nomear** o plano, a rede que confere o invariante em toda rodada da
+suíte, e o **pré-requisito que bloqueava a metade paga** (§4: o journal retinha o canvas inteiro;
+agora retém a PEGADA — 67,11 → 0,13 MB, constante na tela).
+
+**A metade que PAGA (~19 ms/traço de fork) NÃO está aqui**, e agora está **desbloqueada** em vez de
+bloqueada — o desenho e as seis restrições estão na §7 do doc 28.
 
 O ganho de perf desta leva é **marginal e não é o motivo dela**. O motivo é que o S3 sem esta base
 seria construído sobre uma afirmação não-verificada, e o preço de errar é *undo que perde texels em
@@ -105,7 +107,7 @@ foi assim que ele foi pego. **O gate de fechamento tem de rodar os dois perfis.*
 
 ## 7. Parágrafo para o `CLAUDE.md` §5 (apendar ao FIM do bloco do Painter)
 
-> **⬛ O JOURNAL POR TILE — a base do S3, e o pré-requisito que a mediu como bloqueada (2026-07-28,
+> **⬛ O JOURNAL POR TILE — a base do S3, e o pré-requisito da metade paga aberto e FECHADO (2026-07-28,
 > `line/Painter`, [doc 28](docs/Painter/28_otimizacoes_o_que_funcionou.md) §5.20–§5.29 + §7):** o
 > "antes" de um passo passa a poder ser capturado **na hora da escrita** (`undo_journal::TileJournal`,
 > primeira captura por tile é a que vale) em vez de derivado de dois snapshots completos. Nesta leva
@@ -119,12 +121,19 @@ foi assim que ele foi pego. **O gate de fechamento tem de rodar os dois perfis.*
 > custava 202 passos). ⚠️ **O alargamento do arch-gate achou um sítio CRU** (`impasto_material`
 > escrevia `mats` por `Arc::make_mut` direto, sem **abrir acesso**) — latente, porque o `rect` dele
 > cabe na janela que os dabs declaram, mas a garantia do S1 (*esquecer é lento, nunca errado*) **só
-> vale para quem passa por uma porta**. ⚠️ **E a metade que PAGA está BLOQUEADA, com número:**
-> `fork_canvas` captura o plano INTEIRO (**67,11 MB a 4096², exatamente `n × 4`**) porque nenhum sítio
-> conhece a sua região no fork ⇒ promover o journal hoje trocaria um fork de 67 MB por uma captura de
-> 67 MB — **lateral, não positiva**. As três portas do relevo já passam a região nos onze sítios; o
-> canvas é o único outlier, e as duas saídas estão na §7 do doc 28 (⚠️ o bbox dos dabs **não** é
-> superconjunto seguro sob Tiling). ⚠️ **A sonda que mede isso lia o journal DEPOIS do pen-up e
+> vale para quem passa por uma porta**. ⚠️ **E o pré-requisito da metade PAGA abriu e fechou no mesmo
+> dia:** `fork_canvas` capturava o plano INTEIRO (**67,11 MB a 4096², exatamente `n × 4`**) porque
+> nenhum sítio conhecia a sua região no fork ⇒ a troca seria **lateral** (um fork de 67 MB por uma
+> captura de 67 MB). A footprint de um dab é **função pura** do centro e do raio, logo respondível
+> ANTES do laço: `ph2d_painter_brush::dab_write_bounds` é o **superconjunto declarado** das duas rotas
+> de blit (que diferem de propósito — `radius` contra `radius + aa_pad` — e seguem donas da própria
+> aritmética), com gate comparando o que elas **devolvem** contra o que ela prevê. **Journal 67,11 →
+> 0,13 MB, e CONSTANTE na tela** ⇒ a troca do S3 é positiva. ⚠️ A premissa é que a lista de dabs seja
+> a **FINAL** — Tiling e Symmetry expandem cópias **na lista** (`tiled_dabs_grouped`), não dentro do
+> blit —, e o gate pinta com Tiling nos dois eixos para falhar no dia em que isso mudar. ⚠️ **A
+> mutação *"só o 1º dab"* sobreviveu a DUAS fixtures:** passos de 18 px põem os dabs de um batch no
+> mesmo tile de 32 px, e os cinco sítios do `stamp_cache` ainda passavam `None` (22.767 de 38.928
+> texels sem descrição depois de corrigidos os dois). ⚠️ **A sonda lia o journal DEPOIS do pen-up e
 > reportava 0,00 MB em toda tela** — o commit move o cursor e `set_cursor` zera o journal; *um zero
 > lido no instante errado parece "não custa nada"*. ⚠️ **`fork_par` virou `#[cfg(test)]`** (referência
 > congelada — um `pub(super)` órfão é uma segunda resposta esperando alguém chamá-la, a lição do

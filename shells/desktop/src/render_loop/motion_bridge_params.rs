@@ -270,7 +270,7 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
         AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow,
-        SeedRow, TextRow, ToggleRow,
+        SeedRow, SourceRow, TextRow, ToggleRow,
     };
 
     // The params panel shows the properties of whatever ONE subject is selected.
@@ -372,6 +372,28 @@ pub(super) fn build_params_snapshot(
                 extra,
             }));
             consumed.push(mode_param);
+            continue;
+        }
+        // A source picker (doc 65): a TEXT param that names a value the app published
+        // into the external channel. The options are the LIVE published names — the same
+        // `Cook::externals` the node reads from — so the artist picks a shape they drew
+        // by name. `motion.pump.cook` holds the externals whether the graph cooked on the
+        // CPU or the GPU (the shell republishes them every frame, ADR-0126-independent).
+        if h.widget == ParamWidget::Source {
+            let current = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            let options = params_stream::source_options(motion);
+            rows.push(ParamRow::Source(SourceRow {
+                label: h.label.to_string(),
+                param: h.param,
+                options,
+                current,
+            }));
             continue;
         }
         if h.widget == ParamWidget::Text || h.widget == ParamWidget::Curve {

@@ -30,8 +30,8 @@ use number_rows::{
 };
 pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, MotionParamIntent, ParamRow,
-    ParamsSnapshot, ScalarRow, SeedRow, TextRow, ToggleRow, drain_param_intents, param_swatch_id,
-    set_current_params,
+    ParamsSnapshot, ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow, drain_param_intents,
+    param_swatch_id, set_current_params,
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id,
@@ -474,6 +474,20 @@ fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
                     return EventOutcome::Consumed;
                 }
             }
+            ParamRow::Source(row) => {
+                // A source chip (doc 65): clicking a published name writes it to the text
+                // param — the same channel the raw field below writes, one source of truth.
+                for j in 0..row.options.len().min(MAX_ENUM_OPTIONS) {
+                    if id == param_enum_id(slot, j) {
+                        push_param_intent(MotionParamIntent::SetTextParam {
+                            node: snap.node,
+                            param: row.param,
+                            value: row.options[j].clone(),
+                        });
+                        return EventOutcome::Consumed;
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -491,6 +505,7 @@ fn on_text_commit(id: NodeId, host: &dyn PanelHostInternal, snap: &ParamsSnapsho
             let param = match &snap.rows[slot] {
                 ParamRow::Text(row) => row.name,
                 ParamRow::Channels(row) => row.text_param,
+                ParamRow::Source(row) => row.param,
                 _ => return EventOutcome::Ignored,
             };
             push_param_intent(MotionParamIntent::SetTextParam {

@@ -6,12 +6,18 @@
 //! que o artista montaria:
 //!
 //! 1. **a forma**: uma curva em S no documento vetorial, chamada **`Track`** na Hierarchy — porque o
-//!    **nome é a referência inteira** (doc 65: não há id pra copiar, nem picker pra construir);
+//!    **nome é a referência inteira** (doc 65: não há id pra copiar);
 //! 2. **o grafo**: `value.lfo → motion.path → scale → output` — um segundo sink, ao lado da neve.
 //!
 //! O que se vê: 24 instâncias percorrendo a curva em arco-comprimento **uniforme**, **giradas para a
 //! tangente**, e **fluindo** (o LFO empurra o `offset`, que dá a volta). Arraste a curva com a tool
 //! Vector e o conjunto **segue** — é o memo enxergando o external.
+//!
+//! **E o campo `Shape` é um PICKER** (não uma caixa de texto): o nó nasce SELECIONADO, e o painel de
+//! params mostra a forma desenhada como um chip **`Track`** (destacado, porque o `path` já é "Track"),
+//! com o campo de texto como escape. Desenhe outra forma com a tool Vector e um chip novo aparece ao
+//! vivo (a lista vem do `Cook::externals`). Clicar um chip é o gesto que ANTES pedia digitar o nome
+//! interno exato — o "nó pra artista, não pra matemático" que o Enio pediu.
 
 use ph2d_ecs::Name;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
@@ -106,6 +112,15 @@ pub(crate) fn name_and_wire(
     graph.set_param(lfo, "offset", 0.5);
     graph.set_label(path, "Walk The Track");
     graph.set_label(lfo, "Flow");
+    // Select the `motion.path` node so its params show at once — the artist lands on the
+    // Shape PICKER (a chip "Track", + the text field), not a blank text box (doc 65).
+    ph2d_panel_motion_graph::request_graph_selection(vec![path.0]);
+    eprintln!(
+        "[motion.path smoke] O no 'Walk The Track' esta SELECIONADO: o painel de params mostra o \
+         campo Shape como um PICKER -- um chip 'Track' (destacado) + o campo de texto. Clique o \
+         chip em vez de digitar; desenhe outra forma com a tool Vector e um chip novo aparece ao \
+         vivo. 24 instancias percorrem a curva."
+    );
     Some(out)
 }
 

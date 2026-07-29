@@ -116,6 +116,16 @@ pub enum ParamWidget {
         mode_param: &'static str,
         channels: &'static [ReadChannel],
     },
+    /// A **source picker** for a TEXT param that names a value the APP published into
+    /// the graph's external channel (doc 65) — e.g. a drawn vector shape, by the name it
+    /// carries in the scene. The panel offers the LIVE list of published names as
+    /// clickable chips (populated at runtime from `Cook::externals`) plus a text field
+    /// for a name not yet drawn (a forward reference is legal — it is a reference, not a
+    /// lookup). Artist-facing sugar over [`Self::Text`]: the artist picks "Star" from the
+    /// shapes they drew instead of typing its exact internal name, and the substrate is
+    /// untouched — the text param stays the source of truth. Reusable by every node that
+    /// reads an external by name (`motion.path`, and later any `*.external` reader).
+    Source,
     /// A free-text field editing a **text param** (a `motion.expression` formula) —
     /// NOT a `ParamSpec` (which is f32-only). The hint's `param` names the text-param
     /// key (`Graph::set_text_param`), read/written through the additive text channel

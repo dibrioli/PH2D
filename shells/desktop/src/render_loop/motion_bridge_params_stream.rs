@@ -100,6 +100,16 @@ fn upstream_columns(
     }
 }
 
+/// **The names the app has published into the graph's external channel** (doc 65) — the
+/// options a [`ParamWidget::Source`](ph2d_node_registry::ParamWidget::Source) picker
+/// offers (a `motion.path` picks a drawn shape by name). They are the `Cook::externals`
+/// keys, held on `motion.pump.cook` and republished every frame by the shell whether the
+/// graph cooked on the CPU or the GPU — so the picker is never blind on a device frame.
+/// Sorted (the map is a `BTreeMap`), so the chips are stable frame to frame.
+pub(super) fn source_options(motion: &MotionState) -> Vec<String> {
+    motion.pump.cook.externals().keys().cloned().collect()
+}
+
 /// The names of the `Scalar` columns of `stream`, owned.
 fn scalar_names(stream: &ph2d_nodegraph::attr::Stream) -> Vec<String> {
     use ph2d_nodegraph::attr::Column;
@@ -202,6 +212,24 @@ mod tests {
         let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
         assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");
         assert!(cols.iter().any(|c| c == "Count"), "offers Count: {cols:?}");
+    }
+
+    /// **The `motion.path` Source picker offers the DRAWN SHAPES by name** (doc 65) — the
+    /// options are the names the app published into the external channel, so the artist
+    /// picks the shape they drew instead of typing its id. RED-first: make `source_options`
+    /// read from nothing (return empty) and the chips vanish.
+    #[test]
+    fn the_source_picker_offers_the_published_shape_names() {
+        use ph2d_nodegraph::attr::{Column, Stream};
+        let mut motion = crate::motion_state::MotionState::new();
+        motion.doc = ph2d_motion_doc::MotionDoc::new();
+        // The app published two drawn shapes into the graph's external channel.
+        let seg = || Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]));
+        motion.pump.cook.set_external("Track", seg());
+        motion.pump.cook.set_external("Ring", seg());
+        let opts = super::source_options(&motion);
+        assert!(opts.iter().any(|o| o == "Track"), "offers Track: {opts:?}");
+        assert!(opts.iter().any(|o| o == "Ring"), "offers Ring: {opts:?}");
     }
 
     /// The other route: when the CPU pump DID cook the graph, the picker reads the same

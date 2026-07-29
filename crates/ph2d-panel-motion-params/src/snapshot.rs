@@ -30,6 +30,7 @@ pub enum ParamRow {
     Text(TextRow),
     Curve(CurveRow),
     Channels(ChannelsRow),
+    Source(SourceRow),
 }
 
 /// A **named-channel picker** row (plan §1.1) — segmented channel buttons plus a
@@ -59,6 +60,27 @@ pub struct ChannelsRow {
     /// picks a real column (`id`, `Index`, a custom attribute) by name instead of
     /// guessing it blind. Empty when nothing upstream cooked → just the text field.
     pub extra: Vec<String>,
+}
+
+/// A **source picker** row (doc 65) — clickable chips of the names the app has
+/// published into the graph's external channel (drawn shapes), plus a text field for a
+/// name not yet drawn. The artist-facing face of a TEXT param that references an
+/// external by name; picking a chip writes `param = options[j]`, the field writes it raw.
+///
+/// `current` highlights the matching chip (or fills the field when it matches none). The
+/// substrate is untouched — the text param stays the source of truth, so this is pure UI
+/// sugar over [`TextRow`], the same way [`ChannelsRow`] is for a stream column.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceRow {
+    /// English label (from the `ParamUiHint`), e.g. "Shape".
+    pub label: String,
+    /// The text param the chosen name lands in (`Graph::set_text_param`).
+    pub param: &'static str,
+    /// The live published names (`Cook::externals` keys) — clickable chips. Empty when
+    /// the app has published nothing yet → just the text field (the honest escape).
+    pub options: Vec<String>,
+    /// The current text-param value — highlights the matching chip and fills the field.
+    pub current: String,
 }
 
 /// An interactive **transfer-curve editor** (A1) — a `ph2d-curve` serialized in a

@@ -391,6 +391,48 @@ fn the_live_column_chips_are_registered_so_a_click_reaches_them() {
     );
 }
 
+/// **A source-picker chip writes the published NAME to the text param** (doc 65) — the
+/// artist clicks "Ring" (a shape they drew) instead of typing its exact name. The chip
+/// ids reuse the enum-option pool `populate` registers, so a real click reaches them (a
+/// synthetic Click here proves the decode; the registration is the enum pool, gated
+/// elsewhere). FALSIFIED by dropping the `ParamRow::Source` arm in the click handler.
+#[test]
+fn picking_a_source_chip_writes_the_published_name() {
+    let _ = drain_param_intents();
+    set_current_params(Some(ParamsSnapshot {
+        node: 4,
+        title: "Path".into(),
+        rows: vec![ParamRow::Source(SourceRow {
+            label: "Shape".into(),
+            param: "path",
+            options: vec!["Track".into(), "Ring".into()],
+            current: String::new(),
+        })],
+    }));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    // The chip ids are registered (the shared enum pool) → a real click would land.
+    assert!(
+        host.store().button_state(param_enum_id(0, 1)).is_some(),
+        "the source chips are registered (clickable) buttons"
+    );
+    // The 2nd chip is "Ring".
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        WidgetEvent::Click(param_enum_id(0, 1)),
+    );
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::SetTextParam {
+            node: 4,
+            param: "path",
+            value: "Ring".into(),
+        }],
+        "clicking a source chip writes its published name to the text param"
+    );
+    set_current_params(None);
+}
+
 fn curve_snapshot(value: &str) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 9,

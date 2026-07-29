@@ -359,6 +359,71 @@ pub(crate) fn paint_rows(
                     y += used + row_gap;
                 }
             }
+            ParamRow::Source(row) => {
+                // A source picker (doc 65): the names the app published (drawn shapes)
+                // as chips + a text field for a name not yet drawn — the artist picks the
+                // shape they drew, never types its id.
+                paint_text(
+                    text_system,
+                    scene,
+                    &row.label,
+                    inner_x,
+                    y,
+                    TypeToken::Sm.px(),
+                    inner_w,
+                    resolve(ColorToken::Text2, theme),
+                );
+                y += TypeToken::Sm.px() + Spacing::Xs.px();
+                let n = row.options.len().min(MAX_ENUM_OPTIONS);
+                if n > 0 {
+                    paint_text(
+                        text_system,
+                        scene,
+                        "Drawn shapes",
+                        inner_x,
+                        y,
+                        TypeToken::Sm.px(),
+                        inner_w,
+                        resolve(ColorToken::Text2, theme),
+                    );
+                    y += TypeToken::Sm.px() + Spacing::Xs.px();
+                    let cols = n.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
+                    let gap = Spacing::Sm.px();
+                    let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
+                    for j in 0..n {
+                        let bid = param_enum_id(i, j);
+                        let rx = inner_x + (j % cols) as f32 * (seg_w + gap);
+                        let ry = y + (j / cols) as f32 * (ROW_H_PX + gap);
+                        let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
+                        let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
+                        paint_segmented_button(
+                            brect,
+                            &row.options[j],
+                            row.options[j] == row.current,
+                            bstate,
+                            scene,
+                            text_system,
+                            theme,
+                        );
+                        hit_index.register(bid, brect);
+                    }
+                    let seg_rows = n.div_ceil(cols) as f32;
+                    y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + Spacing::Xs.px();
+                }
+                // The raw text field for a name not (yet) in the list — the honest escape.
+                let used = paint_text_row(
+                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
+                    "Name",
+                    "e.g. a drawn shape",
+                    param_text_id(i),
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+                y += used + row_gap;
+            }
             ParamRow::Curve(row) => {
                 // The interactive Curve editor — a graph with draggable handles. Its
                 // `CurvePoint`/`Button` store states ride back in `curve_widgets` (this

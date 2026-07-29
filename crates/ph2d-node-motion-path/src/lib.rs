@@ -163,8 +163,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-/// Param UI hints (M1.P1). The **path name** is a `ParamWidget::Text` — the same widget the
-/// expression node's formula uses, and the same channel underneath (doc 32).
+/// Param UI hints (M1.P1). The **path name** is a `ParamWidget::Source` — a picker of the
+/// shapes the app has published (doc 65), so the artist picks the shape they drew by NAME
+/// instead of typing its exact internal name. It rides the same text channel underneath
+/// (doc 32); the raw text field is still there as the escape (a forward reference is legal).
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: PATH_PARAM,
@@ -172,7 +174,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 0.0,
         step: 0.0,
-        widget: ParamWidget::Text,
+        widget: ParamWidget::Source,
     },
     ParamUiHint {
         param: "count",

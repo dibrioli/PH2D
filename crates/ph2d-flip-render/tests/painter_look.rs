@@ -16,7 +16,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, Point, Rgba};
-use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
+use ph2d_flip_render::{
+    CameraRaw, DEFAULT_TILE, FlipRenderer, ScreenSpace, bin_segments, pack_drawing, walk_pixel,
+};
 
 const W: u32 = 64;
 const H: u32 = 64;
@@ -769,6 +771,377 @@ fn measure_the_convex_tip_residual() {
         }
         println!("  {hardness:.1}   {lo:+5}   {nlo:5}   {hi_d:+5}   {nhi:5}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// O MOTOR NOVO contra o MESMO oráculo (doc 12 §9, passo 4)
+// ---------------------------------------------------------------------------
+
+/// O motor NOVO sobre a MESMA figura, pelo MESMO caminho de dados do produto.
+///
+/// ⚠️ **Nada aqui é oráculo novo** — o handoff §6 é explícito (*"não escreva oráculo novo antes
+/// de usar estes"*). A figura é o `star_path`, a referência é o `painter_deposit`, a exclusão é o
+/// `in_the_silhouette_fringe`. O que muda é **quem responde**: `walk_pixel` em vez do
+/// `FlipRenderer`.
+///
+/// ⚠️ **A projeção é a MESMA CÂMERA do render** (`pixel_camera_sized` → `ScreenSpace::from_camera`),
+/// e o ponto de amostra é o centro do pixel **projetado por ela** — assim a comparação não depende
+/// de eu re-derivar convenção de eixo nenhuma (a câmera é Y-flipada, e é exatamente esse tipo de
+/// re-derivação que vira um erro mudo).
+fn new_engine_alpha(pts: &[(f32, f32)], r: f32, hardness: f32, w: u32, h: u32) -> Vec<f32> {
+    new_engine_alpha_of(&flip_drawing(pts, r, hardness), w, h)
+}
+
+/// O mesmo, com o DESENHO como parâmetro — o oráculo do Enio precisa de um desenho de vários
+/// traços, e um 2º harness mediria outro produto.
+fn new_engine_alpha_of(drawing: &FlipDrawing, w: u32, h: u32) -> Vec<f32> {
+    let data = pack_drawing(drawing);
+    let screen = ScreenSpace::from_camera(&pixel_camera_sized(w, h));
+    let bins = bin_segments(&data, &screen, DEFAULT_TILE);
+    let mut out = vec![0.0_f32; (w * h) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let p = screen.point_px([x as f32 + 0.5, y as f32 + 0.5]);
+            out[(y * w + x) as usize] = walk_pixel(&bins, &data, &screen, p)[3];
+        }
+    }
+    out
+}
+
+/// **SONDA** — o resíduo do motor NOVO por hardness, na coluna a coluna do
+/// `measure_the_convex_tip_residual`. É ela que diz se a ficção da reta era mesmo a causa da
+/// ponta convexa (+140/255 no motor de hoje).
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_new_engines_star_residual() {
+    let (pts, _) = star_path(7.0);
+    println!(
+        "\n  pontas do traco: {:?} .. {:?}",
+        pts[0],
+        pts[pts.len() - 1]
+    );
+    println!("\n=== MOTOR NOVO: residuo por hardness (estrela de um traco, raio 7) ===");
+    println!("  hard   falta  n_falta         onde   sobra  n_sobra         onde");
+    for hi in 1..=9 {
+        let hardness = hi as f32 / 10.0;
+        let (pts, r) = star_path(7.0);
+        let got = new_engine_alpha(&pts, r, hardness, W, H);
+        let dep = painter_deposit(&pts, r, hardness);
+        let (mut lo, mut hi_d, mut nlo, mut nhi) = (0i32, 0i32, 0u32, 0u32);
+        let (mut lo_at, mut hi_at) = ((0u32, 0u32), (0u32, 0u32));
+        for y in 0..H {
+            for x in 0..W {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let i = (y * W + x) as usize;
+                let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
+                if d < -16 {
+                    nlo += 1;
+                }
+                if d > 16 {
+                    nhi += 1;
+                }
+                if d < lo {
+                    lo = d;
+                    lo_at = (x, y);
+                }
+                if d > hi_d {
+                    hi_d = d;
+                    hi_at = (x, y);
+                }
+            }
+        }
+        println!(
+            "  {hardness:.1}   {lo:+5}   {nlo:5}   {lo_at:>10?}   {hi_d:+5}   {nhi:5}   \
+             {hi_at:>10?}"
+        );
+    }
+
+    // A MESMA medição, cega a um disco de raio `r` em torno das PONTAS do traço. Se a falta some
+    // aqui, ela é da PONTA (o cap — passo 5), não da lei.
+    println!("\n=== o MESMO, cego a um disco de raio r em torno das PONTAS ===");
+    println!("  hard   falta  n_falta         onde");
+    for hi in 1..=9 {
+        let hardness = hi as f32 / 10.0;
+        let (pts, r) = star_path(7.0);
+        let got = new_engine_alpha(&pts, r, hardness, W, H);
+        let dep = painter_deposit(&pts, r, hardness);
+        let ends = [pts[0], pts[pts.len() - 1]];
+        let (mut lo, mut nlo, mut lo_at) = (0i32, 0u32, (0u32, 0u32));
+        for y in 0..H {
+            for x in 0..W {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let p = (x as f32 + 0.5, y as f32 + 0.5);
+                if ends
+                    .iter()
+                    .any(|e| (p.0 - e.0).powi(2) + (p.1 - e.1).powi(2) <= r * r)
+                {
+                    continue;
+                }
+                let i = (y * W + x) as usize;
+                let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
+                if d < -16 {
+                    nlo += 1;
+                }
+                if d < lo {
+                    lo = d;
+                    lo_at = (x, y);
+                }
+            }
+        }
+        println!("  {hardness:.1}   {lo:+5}   {nlo:5}   {lo_at:>10?}");
+    }
+}
+
+/// A estrela como **UM** traço e como **CINCO** — a MESMA geometria que o oráculo do Enio
+/// (`measure_the_star_one_stroke_against_separate_strokes`) monta, para o motor novo ser medido
+/// na figura DELE e não numa parecida.
+fn star_one_and_five(r: f32, hardness: f32) -> (FlipDrawing, FlipDrawing) {
+    let (cx, cy, outer) = (32.0_f32, 32.0, 26.0);
+    let mut corners: Vec<(f32, f32)> = (0..5)
+        .map(|k| {
+            let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
+            (cx + outer * a.cos(), cy + outer * a.sin())
+        })
+        .collect();
+    corners.push(corners[0]);
+    let leg = |p: (f32, f32), q: (f32, f32)| -> Vec<(f32, f32)> {
+        let len = ((q.0 - p.0).powi(2) + (q.1 - p.1).powi(2)).sqrt();
+        let n = (len / (0.8 * r)).ceil().max(1.0) as usize;
+        (0..=n)
+            .map(|k| {
+                let t = k as f32 / n as f32;
+                (p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t)
+            })
+            .collect()
+    };
+    let mut um = leg(corners[0], corners[1]);
+    for w in corners.windows(2).skip(1) {
+        um.extend(leg(w[0], w[1]).into_iter().skip(1));
+    }
+    let mut sep = FlipDrawing::new();
+    for w in corners.windows(2) {
+        sep.strokes.push(
+            flip_drawing(&leg(w[0], w[1]), r, hardness)
+                .strokes
+                .remove(0),
+        );
+    }
+    (flip_drawing(&um, r, hardness), sep)
+}
+
+/// **SONDA** — o oráculo do Enio contra o motor NOVO, headless.
+///
+/// ⚠️ **Aqui a lei aditiva faz uma afirmação ALGÉBRICA, não uma aproximação:** um traço que passa
+/// duas vezes soma `τ` e devolve `1 − exp(−2τ₁)`; dois traços compõem por `over` e devolvem
+/// `1 − (1 − a)²` com `a = 1 − exp(−τ₁)`. **São a mesma expressão.** O cruzamento de um traço
+/// consigo mesmo tem de ficar IDÊNTICO a traços separados — e é exatamente essa igualdade que a
+/// união chapada do motor de hoje não pode produzir (medida em `-63/255`).
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_the_new_engine_on_the_star_one_stroke_against_separate_strokes() {
+    println!("\n=== MOTOR NOVO: a ESTRELA como UM traco vs CINCO ===");
+    let r = 7.0_f32;
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        let (d_um, d_sep) = star_one_and_five(r, hardness);
+        let a1 = new_engine_alpha_of(&d_um, W, H);
+        let a5 = new_engine_alpha_of(&d_sep, W, H);
+        let (mut falta, mut ondef) = (0i32, (0u32, 0u32));
+        let (mut sobra, mut ondes) = (0i32, (0u32, 0u32));
+        let (mut nf, mut ns) = (0u32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let d = (a1[i] * 255.0).round() as i32 - (a5[i] * 255.0).round() as i32;
+                if d < -8 {
+                    nf += 1;
+                }
+                if d > 8 {
+                    ns += 1;
+                }
+                if d < falta {
+                    falta = d;
+                    ondef = (x, y);
+                }
+                if d > sobra {
+                    sobra = d;
+                    ondes = (x, y);
+                }
+            }
+        }
+        println!(
+            "  h={hardness:.1}: FALTA {falta:+4} em {ondef:?} ({nf} px < -8)   \
+             SOBRA {sobra:+4} em {ondes:?} ({ns} px > +8)"
+        );
+    }
+}
+
+// ————————————————————— os GATES do motor novo (passo 4) —————————————————————
+
+/// 🔴🔴 **O ORÁCULO DO ENIO, E ELE MEDE ZERO.**
+///
+/// A estrela desenhada **sem levantar a caneta** tem de pintar exatamente o que cinco traços
+/// separados pintam. No motor de hoje ela não pinta: a união chapada não escurece no cruzamento,
+/// e o oráculo mede **−64/255 em 154 pixels** (`measure_the_star_one_stroke_against_separate_strokes`,
+/// h=0,4 — o CONTROLE deste gate).
+///
+/// No motor novo isto não é uma aproximação boa, é uma **IDENTIDADE**:
+///
+/// ```text
+///   um traço, duas passagens:  α = 1 − exp(−(τ₁+τ₂))
+///   dois traços, `over`:       α = 1 − (1−a₁)(1−a₂) = 1 − exp(−τ₁)·exp(−τ₂)
+/// ```
+///
+/// ⚠️ E ela é mais forte do que parece: a integral **não sabe onde um traço termina** — partir o
+/// caminho em cinco pedaços é partir o domínio de uma integral, e isso não muda a integral. É por
+/// isso que o número é 0 e não "pequeno", e é por isso que **não existe primitivo de JUNÇÃO** a
+/// construir para este caso (o cap da PONTA é outra coisa, e tem gate próprio abaixo).
+#[test]
+fn the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes() {
+    let r = 7.0_f32;
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        let (d_um, d_sep) = star_one_and_five(r, hardness);
+        let a1 = new_engine_alpha_of(&d_um, W, H);
+        let a5 = new_engine_alpha_of(&d_sep, W, H);
+        let (mut pior, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let d = (a1[i] * 255.0).round() as i32 - (a5[i] * 255.0).round() as i32;
+                if d != 0 {
+                    n += 1;
+                }
+                if d.abs() > pior.abs() {
+                    pior = d;
+                    onde = (x, y);
+                }
+            }
+        }
+        assert!(
+            n == 0,
+            "h={hardness:.1}: um traco que cruza a si mesmo TEM de ser identico a tracos \
+             separados -- {n} px diferem, pior {pior:+} em {onde:?} (o motor de hoje mede -64 \
+             em 154 px, e e' esse o defeito)"
+        );
+    }
+}
+
+/// 🔴 **A PONTA CONVEXA: +140/255 → +14.**
+///
+/// O `the_flip_paints_what_the_painters_digital_brush_deposits` (o gate do motor de hoje) precisa
+/// admitir **+140/255** de tinta A MAIS no vértice de 36°, e o doc-comment dele nomeia a causa
+/// como *"o perfil de traço os superestima"*. A causa REAL é a ficção da reta: o
+/// `hardness_mask` soma a densidade ao longo de uma fileira **infinita**, e numa ponta o caminho
+/// de verdade **acaba** — a ficção continua depositando onde não há mais traço.
+///
+/// Integrando sobre o caminho que existe, o excedente colapsa. Medido
+/// (`measure_the_new_engines_star_residual`, sobra por hardness 0,1..0,9):
+///
+/// ```text
+///   +5  +6  +7  +8  +9  +11  +14  +13  +0      ← e `n_sobra` = 0 em TODAS
+/// ```
+#[test]
+fn the_new_engine_has_no_convex_tip_overshoot() {
+    for hi in 1..=9 {
+        let hardness = hi as f32 / 10.0;
+        let (pts, r) = star_path(7.0);
+        let got = new_engine_alpha(&pts, r, hardness, W, H);
+        let dep = painter_deposit(&pts, r, hardness);
+        let (mut sobra, mut onde, mut n) = (0i32, (0u32, 0u32), 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let i = (y * W + x) as usize;
+                let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
+                if d > 16 {
+                    n += 1;
+                }
+                if d > sobra {
+                    sobra = d;
+                    onde = (x, y);
+                }
+            }
+        }
+        assert!(
+            sobra <= 16 && n == 0,
+            "h={hardness:.1}: sobra {sobra} em {onde:?} ({n} px > 16) -- o motor de hoje mede \
+             +140 aqui, e a ficcao da reta era a causa"
+        );
+    }
+}
+
+/// ⚠️ **O QUE SOBRA, E DE QUE É FEITO** — o negativo desta wave, com o número.
+///
+/// Trocar a ficção pelo caminho real matou o excedente e **deixou um déficit** que o motor de hoje
+/// não tinha. Ele é de DUAS coisas, e a medição as separa:
+///
+/// | zona | pior | n | o que é |
+/// |---|---|---|---|
+/// | tudo | **−36** | 16 px | inclui a PONTA do traço |
+/// | cego a um disco `r` nas PONTAS | **−27** | ≤3 px | só as quinas convexas |
+///
+/// 1. **A PONTA (o cap).** O depósito do Painter carimba um dab **no primeiro ponto**
+///    (`painter_deposit_sized` abre com `vec![pts[0]]`); a integral não tem nada além do fim do
+///    caminho. É o item que o handoff §5.5 nomeia como primitivo explícito — **passo 5**.
+/// 2. **A QUINA convexa.** O Painter compõe **dabs discretos** a `0,1·diâmetro`; a integral é o
+///    limite denso dessa mesma composição, e numa quina de 36° a discretização dele deposita um
+///    pouco mais. ⚠️ **NÃO é a minha quadratura, e isto foi MEDIDO:** subindo `SUB` de 4 para 16
+///    o número anda ≤1/255 (−20→−19, −24→−24, −27→−26). Casar isto exigiria reproduzir a
+///    discreteza do Painter, que é outro motor (o candidato C1, o buffer de dabs).
+///
+/// Este gate existe para o número não virar folclore: ele **pina o defeito**, e o dia em que o
+/// passo 5 fechar o cap ele fica vermelho pedindo os números novos.
+#[test]
+fn the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numbers() {
+    let mut pior_tudo = 0i32;
+    let mut pior_cego = 0i32;
+    let mut n_cego = 0u32;
+    for hi in 1..=9 {
+        let hardness = hi as f32 / 10.0;
+        let (pts, r) = star_path(7.0);
+        let got = new_engine_alpha(&pts, r, hardness, W, H);
+        let dep = painter_deposit(&pts, r, hardness);
+        let ends = [pts[0], pts[pts.len() - 1]];
+        for y in 0..H {
+            for x in 0..W {
+                if in_the_silhouette_fringe(&pts, r, x, y) {
+                    continue;
+                }
+                let i = (y * W + x) as usize;
+                let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
+                pior_tudo = pior_tudo.min(d);
+                let p = (x as f32 + 0.5, y as f32 + 0.5);
+                let na_ponta = ends
+                    .iter()
+                    .any(|e| (p.0 - e.0).powi(2) + (p.1 - e.1).powi(2) <= r * r);
+                if !na_ponta {
+                    pior_cego = pior_cego.min(d);
+                    if d < -16 {
+                        n_cego += 1;
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        pior_tudo >= -40,
+        "o deficit TOTAL passou do medido (-36): {pior_tudo}"
+    );
+    assert!(
+        pior_cego >= -30 && n_cego <= 8,
+        "fora das PONTAS o deficit e' da quina convexa e foi medido em -27/<=3 px: \
+         {pior_cego} em {n_cego} px"
+    );
+    assert!(
+        pior_tudo < pior_cego,
+        "a PONTA tem de ser a metade DOMINANTE do deficit (medido -36 contra -27); \
+         total {pior_tudo}, cego {pior_cego} -- se ela deixou de ser, o passo 5 mudou de alvo"
+    );
 }
 
 // ---------------------------------------------------------------------------

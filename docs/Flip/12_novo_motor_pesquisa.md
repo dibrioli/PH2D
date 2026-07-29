@@ -583,15 +583,113 @@ gate: braço **0,5000**, cruzamento **0,5000**.
 é fato do caminho, não da densidade · ✅ dureza 1 é a união dura · ✅ o perfil reto é o que shipa ·
 ✅ sem teto, sem depth, sem `neighbors.rs`.
 
-**Falta (passo 4-5):** a bateria do §6 do handoff contra o motor novo (o oráculo `painter_look`
-completo, incluindo a **ponta convexa** — o defeito que a §1 mediu em +140/255 e que a ficção
-causava) · **caps e joins como primitivo** (§5.5) · e o **port para GPU**, onde este percurso vira
-um dispatch de compute por ladrilho. ⚠️ **Nada disto está ligado ao produto ainda** — o motor
-velho segue intocado, e o novo não tem chamador de produção.
+**Falta (passo 5):** **caps e joins como primitivo** (§5.5 do handoff) · e o **port para GPU**,
+onde este percurso vira um dispatch de compute por ladrilho. ⚠️ **Nada disto está ligado ao
+produto ainda** — o motor velho segue intocado, e o novo não tem chamador de produção.
 
 ---
 
-## 9. Fontes
+## 9. ⭐ A BATERIA DE ORÁCULOS CONTRA O MOTOR NOVO (passo 4)
+
+O handoff §6 é explícito: *"não escreva oráculo novo antes de usar estes"*. Então nada aqui é
+oráculo novo — a figura é o `star_path`, a referência é o `painter_deposit` (o depósito REAL do
+Painter), a exclusão é o `in_the_silhouette_fringe`, e o gesto é o do Enio. O que muda é **quem
+responde**: `walk_pixel` em vez do `FlipRenderer`.
+
+⚠️ **Os quatro gates rodam HEADLESS.** Os irmãos que eles espelham são `#[ignore]` + adapter, e
+por isso não correm na varredura normal — que é exatamente onde uma regressão destas leis tem de
+aparecer.
+
+### 9.1 O oráculo do Enio mede ZERO
+
+| | pior desvio | px fora de ±8 |
+|---|---|---|
+| motor de HOJE (`measure_the_star_one_stroke_against_separate_strokes`, h=0,4) | **−64/255** | **154** |
+| motor NOVO (`the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes`) | **0** | **0** |
+
+A estrela desenhada **sem levantar a caneta** contra as mesmas cinco pernas como traços separados,
+em h = 0,4 · 0,7 · 1,0. E o zero não é "pequeno o bastante", é uma **identidade**:
+
+```text
+  um traço, duas passagens:  α = 1 − exp(−(τ₁+τ₂))
+  dois traços, `over`:       α = 1 − (1−a₁)(1−a₂) = 1 − exp(−τ₁)·exp(−τ₂)
+```
+
+⚠️ **E ela é mais forte do que parece:** a integral **não sabe onde um traço termina**. Partir o
+caminho em cinco pedaços é partir o DOMÍNIO de uma integral, e isso não muda a integral ⇒ **não há
+primitivo de JUNÇÃO a construir** para este caso. (O cap da PONTA é outra coisa — §9.3.)
+
+### 9.2 A ponta convexa: +140/255 → +14
+
+O gate do motor de hoje precisa admitir **+140/255** de tinta a MAIS no vértice de 36°. Integrando
+sobre o caminho que existe, o excedente colapsa — e `n_sobra` é **0** em todas as durezas:
+
+| hardness | 0,1 | 0,2 | 0,3 | 0,4 | 0,5 | 0,6 | 0,7 | 0,8 | 0,9 |
+|---|---|---|---|---|---|---|---|---|---|
+| sobra | +5 | +6 | +7 | +8 | +9 | +11 | **+14** | +13 | +0 |
+
+### 9.3 ⚠️ O NEGATIVO: o déficit que apareceu, e de que ele é feito
+
+Trocar a ficção pelo caminho real matou o excedente e **deixou um déficit** que o motor de hoje não
+tinha. Ele é de DUAS coisas, e a medição as separa:
+
+| zona | pior | n | o que é |
+|---|---|---|---|
+| tudo | **−36** | 16 px | inclui a PONTA do traço |
+| cego a um disco `r` nas PONTAS | **−27** | ≤3 px | só as quinas convexas |
+
+1. **A PONTA (o cap).** O depósito do Painter carimba um dab **no primeiro ponto**
+   (`painter_deposit_sized` abre com `vec![pts[0]]`); a integral não tem caminho além do fim. É o
+   passo 5.
+2. **A QUINA convexa.** O Painter compõe **dabs discretos** a `0,1·diâmetro`; a integral é o limite
+   denso da mesma composição, e numa quina de 36° a discretização dele deposita um pouco mais.
+   ⚠️ **NÃO é a quadratura, e isto foi MEDIDO:** subindo `SUB` de 4 para 16 o número anda ≤1/255
+   (−20→−19 · −24→−24 · −27→−26). Casar isto exigiria reproduzir a discreteza do Painter, que é
+   **outro motor** (o candidato C1, o buffer de dabs).
+
+O gate `the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numbers` **pina o
+defeito** para o número não virar folclore, e a terceira asserção dele é uma **tripwire**: no dia
+em que o passo 5 fechar o cap, ela fica vermelha pedindo os números novos.
+
+### 9.4 A invariância de densidade é ESTRUTURAL
+
+`the_new_engine_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled` — a MESMA estrela de
+`0,80·r` a `0,04·r` (45 → 885 segmentos, **20× de subdivisão**):
+
+```text
+  -31  -31  -31  -31  -31  -31      ← o mesmo número, ao byte
+```
+
+⚠️ **A barra deste gate NÃO é a do irmão de GPU (−24), e a diferença é nomeada:** o −31 constante é
+o déficit da §9.3 servindo de FUNDO; quem julga aqui é a segunda asserção (*a resposta não anda*).
+No motor de hoje a invariância teve de ser conquistada contra uma constante (`MAX_EXTRAS_PER_SEGMENT`);
+aqui não existe constante para correr contra — a lista por ladrilho é limitada por memória, e
+subdividir o domínio de uma integral não a muda.
+
+### 9.5 As mutações — 4, e as quatro sangram
+
+| # | mutação | sangra |
+|---|---|---|
+| A | cobertura **linear** (`tau.min(1)`) em vez de `1−exp(−τ)` | identidade · ponta |
+| B | `d_tau = fv` (sem o passo de arco ⇒ tinta = função da CONTAGEM) | ponta · déficit |
+| C | **teto de 64** por ladrilho (a propriedade (B) reinstalada) | invariância (**as duas metades**) · déficit |
+| D | **cap** de meio dab nas pontas (o passo 5 antecipado) | os três do `painter_look` |
+
+⚠️ **B sobrevive ao gate de invariância — por SATURAÇÃO** (τ fica ~4× maior, o alfa satura em 1 nas
+duas densidades e o desvio *deficitário* não se move). Não é buraco: B sangra em dois outros gates,
+e o defeito da CLASSE deste gate é o C. ⚠️ **A 1ª versão do C usava teto 16 e matava tudo** (−255 em
+TODA densidade) — ela fazia a BARRA disparar, não a invariância; com **64** o retrato é o do defeito
+histórico (`0,8 → −31 · 0,4 → −31 · 0,2 → −255 · …`) e **as duas** asserções sangram.
+
+⚠️ **E a mutação D achou uma RESTRIÇÃO DE PROJETO para o passo 5, não só um verde:** um cap ingênuo
+nas pontas **quebra a identidade da §9.1** (cinco traços têm dez pontas, um traço tem duas) — o gate
+`the_new_engine_makes_a_self_crossing_stroke_equal_separate_strokes` fica vermelho. Qualquer
+primitivo de cap tem de ser **invariante à partição do caminho**, ou paga a joia que esta wave
+acabou de comprar.
+
+---
+
+## 10. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

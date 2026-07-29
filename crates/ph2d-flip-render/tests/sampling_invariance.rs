@@ -37,7 +37,9 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipDrawing, FlipStroke, Point, Rgba};
-use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
+use ph2d_flip_render::{
+    CameraRaw, DEFAULT_TILE, FlipRenderer, ScreenSpace, bin_segments, pack_drawing, walk_pixel,
+};
 
 const W: u32 = 64;
 const H: u32 = 64;
@@ -348,4 +350,85 @@ fn the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled() {
         }
     }
     println!("\n  pior desvio em TODA densidade: {pior_global:+}");
+}
+
+// ————————————————————— o MOTOR NOVO na MESMA lei (passo 4) —————————————————————
+
+/// O motor novo sobre a MESMA figura, pelo MESMO caminho de dados e pela MESMA câmera.
+fn new_engine_alpha(pts: &[(f32, f32)], r: f32, hardness: f32) -> Vec<f32> {
+    let data = pack_drawing(&flip_drawing(pts, r, hardness));
+    let screen = ScreenSpace::from_camera(&pixel_camera());
+    let bins = bin_segments(&data, &screen, DEFAULT_TILE);
+    let mut out = vec![0.0_f32; (W * H) as usize];
+    for y in 0..H {
+        for x in 0..W {
+            let p = screen.point_px([x as f32 + 0.5, y as f32 + 0.5]);
+            out[(y * W + x) as usize] = walk_pixel(&bins, &data, &screen, p)[3];
+        }
+    }
+    out
+}
+
+/// 🔴 **A MESMA LEI, NO MOTOR NOVO — e aqui ela é ESTRUTURAL, não afinada.**
+///
+/// No motor de hoje a invariância é uma propriedade que teve de ser CONQUISTADA (o cabeçalho
+/// deste arquivo conta como): a lista de vizinhos que o fragment recebe é de tamanho FIXO, então
+/// "quantos vizinhos cabem" é uma constante contra a qual a densidade da polilinha corre.
+///
+/// No motor novo **não existe essa constante**: a lista por ladrilho é limitada por MEMÓRIA, e a
+/// tinta é `∫ f ds / pitch` — uma integral sobre o caminho, cujo valor não sabe em quantos pedaços
+/// o caminho foi partido. Densificar a polilinha subdivide o domínio da integral, e subdividir o
+/// domínio de uma integral não a muda.
+///
+/// ⚠️ Este gate roda **headless** (o irmão acima precisa de adapter), então ele corre na varredura
+/// normal — que é onde uma regressão de invariância tem de aparecer.
+#[test]
+fn the_new_engine_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled() {
+    let r = 7.0_f32;
+    // ⚠️ **A barra NÃO é a do irmão de GPU, e a diferença é nomeada.** O motor novo carrega um
+    // deslocamento CONSTANTE contra o depósito do Painter — a PONTA do traço (o Painter carimba
+    // um dab no primeiro ponto; a integral não tem caminho além do fim) mais a discretização das
+    // quinas. Esse deslocamento é assunto do
+    // `painter_look::the_new_engines_deficit_is_the_endpoint_and_the_corner_and_these_are_its_numbers`,
+    // que o pina em -36; aqui ele é **fundo**, e a barra só existe para um truncamento (que mede
+    // -184 e -255) não passar. Quem julga ESTE arquivo é a segunda asserção.
+    const BAR: i32 = -40;
+    for hardness in [0.4_f32, 0.7] {
+        // ⚠️ A tabela INTEIRA primeiro, e só então as asserções: um gate que aborta na 1ª célula
+        // reporta um número onde a pergunta é uma CURVA.
+        let tabela: Vec<(f32, i32)> = [0.80_f32, 0.40, 0.20, 0.10, 0.05, 0.04]
+            .into_iter()
+            .map(|frac| {
+                let pts = star(frac * r);
+                let got = new_engine_alpha(&pts, r, hardness);
+                let dep = painter_deposit(&pts, r, hardness);
+                let mut falta = 0i32;
+                for y in 0..H {
+                    for x in 0..W {
+                        if in_the_fringe(&pts, r, x, y) {
+                            continue;
+                        }
+                        let i = (y * W + x) as usize;
+                        let d = (got[i] * 255.0).round() as i32 - (dep[i] * 255.0).round() as i32;
+                        falta = falta.min(d);
+                    }
+                }
+                (frac, falta)
+            })
+            .collect();
+        let pior = tabela.iter().map(|&(_, f)| f).min().unwrap_or(0);
+        let melhor = tabela.iter().map(|&(_, f)| f).max().unwrap_or(0);
+        assert!(
+            pior >= BAR,
+            "hardness {hardness:.1}: falta {pior} contra o deposito do Painter \
+             (barra {BAR}) -- tabela {tabela:?}"
+        );
+        // ⚠️ **A barra sozinha admitiria uma DERIVA lenta dentro dela**, e a lei não é sobre o
+        // tamanho do desvio: é sobre ele NÃO ANDAR. 20× de subdivisão, o mesmo número.
+        assert!(
+            melhor - pior <= 2,
+            "hardness {hardness:.1}: a tinta ANDOU com a densidade ({pior} a {melhor}) -- \
+             tabela {tabela:?}"
+        );
+    }
 }

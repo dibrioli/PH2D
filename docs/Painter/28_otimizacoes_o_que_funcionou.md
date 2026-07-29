@@ -2251,6 +2251,30 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
       todo sítio abre um passo, ou sobra um caminho que serve a absorção do commit. **É a primeira
       decisão da wave, não um detalhe dela.**
 
+   ⚠️ **6. E UMA SEXTA RESTRIÇÃO, MEDIDA EM 2026-07-28 E QUE MUDA A CONTA DA WAVE: hoje o journal
+      retém o CANVAS INTEIRO.** A sonda `what_the_journal_retains_for_one_real_stroke` mede um traço
+      real, lendo o journal **antes do pen-up** (o commit move o cursor e `set_cursor` zera o journal —
+      a 1ª versão da sonda lia depois e reportava 0,00 MB em toda tela):
+
+      | tela | documento | **journal** | delta do histórico |
+      |---|---|---|---|
+      | 1024² | 16,8 MB | **4,19 MB** | 2,09 MB |
+      | 2048² | 67,1 MB | **16,78 MB** | 2,09 MB |
+      | 4096² | 268,4 MB | **67,11 MB** | 2,09 MB |
+
+      Os 67,11 MB a 4096² são **exatamente `n × 4`: o plano do canvas inteiro**. A causa está escrita no
+      produto — `fork_canvas` captura `None` por política documentada (*"nenhum sítio conhece a sua
+      região no momento do fork; os laços de dab acumulam o `touched` **enquanto** escrevem"*) — e a
+      consequência é que **a troca, como o journal está hoje, substituiria um fork de 67 MB por uma
+      captura de 67 MB**. Ela não seria positiva; seria lateral, mais 32× o delta em memória retida.
+
+      ⚠️ **As três portas do RELEVO já passam a região nos onze sítios** (§5.29) — o canvas é o único
+      *outlier*, e o próprio doc-comment do `fork_canvas` diz onde a correção entra: *"quando os sítios
+      quentes aprenderem a passar a região, esta chamada é o lugar onde ela entra"*. **Isso é um
+      pré-requisito da wave que ninguém tinha nomeado**, e ele não é mecânico: a região do depósito só
+      existe no fim do batch, então ou a captura é adiada para o `declare_wrote` (que JÁ recebe o
+      retângulo) ou o depósito passa o bbox dos dabs como superconjunto seguro.
+
    ⚠️ **E o journal sai do `cfg(any(test, debug_assertions))` no MESMO commit** — hoje ele é rede de
    verificação, e capturar *e* forkar seria pagar as duas coisas. O `cfg` do `mod journal` (em `undo.rs`)
    e o do campo em `WriteState` saem juntos, porque são um fato só.

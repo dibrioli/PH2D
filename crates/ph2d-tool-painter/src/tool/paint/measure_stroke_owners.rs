@@ -170,3 +170,49 @@ fn who_holds_the_planes_when_a_stroke_begins() {
     );
     eprintln!("  (sobra 1 = o TOOL, irredutivel ⇒ o S3 chega la, mas so alcancando as tres)\n");
 }
+
+/// **O QUE O JOURNAL RETÉM NUM TRAÇO REAL — o número que decide se ele pode sair do `cfg(debug)`.**
+///
+/// A troca do S3 substitui, em cada gesto, um **fork do plano inteiro** (que só existe porque há um
+/// segundo dono) por uma **captura da região**. A §5.25 mediu a região contra o fork no primitivo —
+/// 15–73× mais barata —, mas o primitivo não diz quanto um TRAÇO retém, e é o traço que paga.
+///
+/// ⚠️ **A comparação certa não é contra o documento, é contra o que o modelo de HOJE já retém.** O fork
+/// aloca um plano inteiro por gesto e o histórico guarda um delta por passo; se a captura for da mesma
+/// ordem do delta, ela é gratuita em memória — ela substitui trabalho, não o acrescenta.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn what_the_journal_retains_for_one_real_stroke() {
+    println!(
+        "\n{:<8} {:>10} {:>12} {:>12} {:>10}",
+        "tela", "doc (MB)", "journal MB", "delta MB", "j/doc"
+    );
+    for side in [1024u32, 2048, 4096] {
+        let mut t = armed(side);
+        stroke(&mut t, 40.0); // o 1º instala o histórico (e o cursor)
+        let before = t.undo.retained_bytes();
+
+        // O passo seguinte, medido com o journal ancorado nele.
+        // ⚠️ **Lido ANTES do pen-up**, e a 1ª versão desta sonda não era: o pen-up commita, o commit
+        // move o cursor e `set_cursor` **zera o journal** — a tabela saía com 0,00 MB em toda tela, que
+        // é o journal *depois* de ele ter cumprido o seu papel, não o pico que ele retém.
+        t.begin_undo_step();
+        t.on_canvas_pointer(cp([60.0, 80.0], PointerPhase::Down));
+        for k in 1..=6u8 {
+            t.on_canvas_pointer(cp([60.0 + f32::from(k) * 30.0, 80.0], PointerPhase::Move));
+        }
+        let journal = t.undo.write_state.journal_heap_bytes();
+        t.on_canvas_pointer(cp([260.0, 80.0], PointerPhase::Up));
+
+        let n = (side as usize) * (side as usize);
+        // Os quatro planos canvas-shaped de uma camada tocada: rgba(4) + heights(4) + covers(1) + mats(7).
+        let doc = (n * 16) as f64 / 1e6;
+        let delta = (t.undo.retained_bytes() - before) as f64 / 1e6;
+        println!(
+            "{side:<8} {doc:>10.1} {:>12.2} {delta:>12.2} {:>9.1}%",
+            journal as f64 / 1e6,
+            100.0 * journal as f64 / (doc * 1e6)
+        );
+    }
+    println!();
+}

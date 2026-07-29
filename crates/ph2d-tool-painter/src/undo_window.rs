@@ -309,6 +309,23 @@ impl WriteState {
 
     /// O byte que o elemento `i` do canvas tinha no início do passo, se o tile dele foi capturado.
     #[cfg(any(test, debug_assertions))]
+    /// **Os bytes que os quatro journals de fato retêm neste passo** — canvas + os três de relevo.
+    ///
+    /// É o número que decide se o journal pode sair do `cfg(debug)` para o release: a troca do S3
+    /// substitui um **fork do plano inteiro** por uma **captura da região**, e ela só é positiva se a
+    /// região couber onde o plano não cabia. `crate::tool::paint::measure_journal_cost` a mede num traço
+    /// real; aqui está a porta que ela lê.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn journal_heap_bytes(&self) -> usize {
+        let r = self.relief.borrow();
+        self.canvas.borrow().heap_bytes()
+            + r.heights.heap_bytes()
+            + r.covers.heap_bytes()
+            + r.mats.heap_bytes()
+    }
+
+    #[cfg(any(test, debug_assertions))]
     pub(crate) fn canvas_before(&self, i: usize) -> Option<u8> {
         self.canvas.borrow().get(i)
     }

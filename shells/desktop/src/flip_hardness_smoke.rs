@@ -24,10 +24,17 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_vec_scene::Xform;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 static FRAME: AtomicU32 = AtomicU32::new(0);
+
+/// ⚠️ **A tinta tem de ser VISÍVEL no canvas do Flip, que é CLARO.** Esta cena nasceu com o
+/// quase-branco `0.92,0.92,0.95` (copiado de smokes antigos) — sobre papel claro isso desenha
+/// **fantasmas**, e julgar "o aspecto do traço" com tinta invisível é impossível. É o mesmo azul
+/// que as duas cenas de Flip mais recentes (`airbrush`, `self_overlap`) já usam.
+const INK: Rgba = Rgba::new(0.20, 0.55, 0.85, 1.0);
 
 fn enabled() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
@@ -45,7 +52,7 @@ const HALF_INK_WAS: [f32; 3] = [1.000, 0.850, 0.700];
 /// O X é a fixture certa porque é onde o defeito lia pior: a cauda macia de uma passagem sobre o
 /// NÚCLEO da outra. Traço GROSSO de propósito: o perfil precisa de várias linhas para se ver.
 fn crossing(cx: f32, hardness: f32) -> [FlipStroke; 2] {
-    let ink = Rgba::new(0.92, 0.92, 0.95, 1.0);
+    let ink = INK;
     let arm = 0.62_f32;
     let mut out = Vec::with_capacity(2);
     for (dx, dy) in [(arm, arm), (arm, -arm)] {
@@ -73,26 +80,32 @@ fn crossing(cx: f32, hardness: f32) -> [FlipStroke; 2] {
 /// pinta por cima, ou seja **já compõe**). O caso do Enio — um traço só, com quina — exigia
 /// desenhar à mão para aparecer.
 fn one_stroke_star(cx: f32, hardness: f32) -> FlipStroke {
-    let ink = Rgba::new(0.92, 0.92, 0.95, 1.0);
     let outer = 0.80_f32;
     let mut corners = Vec::new();
     for k in 0..5 {
         // Passo de 2/5 de volta = a estrela de um traço só.
         let a = -std::f32::consts::FRAC_PI_2 + (k as f32) * 4.0 * std::f32::consts::PI / 5.0;
-        corners.push((cx + outer * a.cos(), outer * a.sin()));
+        corners.push(Vec2::new(cx + outer * a.cos(), outer * a.sin()));
     }
     corners.push(corners[0]);
-    let mut s = FlipStroke::new();
-    for &(x, y) in &corners {
-        s.push_point(Point {
-            pos: Vec2::new(x, y),
-            width: 0.42,
-            opacity: 1.0,
-            color: ink,
-        });
-    }
-    s.hardness = hardness;
-    s
+
+    // ⚠️ **PELO PIPELINE DE VERDADE** (`stroke_from_samples`: smoothing → RDP → reamostragem
+    // suave → `build_stroke`), NÃO por `push_point` cru. A versão anterior desta cena empurrava
+    // os 6 cantos direto no `FlipStroke`, então ela **pulava exatamente o estágio onde a
+    // densidade da polilinha é decidida** — e é a densidade que governa o orçamento de vizinhos
+    // (`MAX_RIBBON_EXTRAS`; penhasco MEDIDO em passo `< 0,1875·r`). Um smoke que arma o estado
+    // por baixo do pano pula a costura que ele existe para provar.
+    let style = ph2d_tool_flip::FlipStyleSnapshot {
+        stroke: [51, 140, 217, 255],
+        width_px: 0.42 * 100.0,
+        hardness,
+        ..Default::default()
+    };
+    let pressures = vec![1.0_f32; corners.len()];
+    let mut st =
+        crate::flip_draw::stroke_from_samples(&style, &corners, &pressures, &Xform::IDENTITY);
+    st.hardness = hardness;
+    st
 }
 
 /// **Monta a cena** — porta única (a mensagem encena por aqui). Devolve os x dos três grupos.
@@ -108,7 +121,23 @@ pub(crate) fn stage(obj: &mut ph2d_flip::FlipObject) -> [f32; 3] {
         strokes.extend(crossing(xs[0], HARDNESS[0]));
         strokes.extend(crossing(xs[1], HARDNESS[2]));
         // E a ESTRELA de UM traço — a foto.
-        strokes.push(one_stroke_star(xs[2], HARDNESS[2]));
+        let star = one_stroke_star(xs[2], HARDNESS[2]);
+        // ⚠️ A DENSIDADE é o que governa o orçamento de vizinhos: o penhasco MEDIDO está em
+        // passo `< 0,1875·r` (`painter_look.rs::measure_where_the_neighbour_budget_breaks`).
+        // Imprimir o passo REAL que o pipeline produziu é a única forma de saber de que lado
+        // da cerca a cena caiu.
+        let n = star.len();
+        let r = 0.42_f32 * 0.5;
+        let arc: f32 = (1..n)
+            .filter_map(|i| Some((star.point(i)?.pos - star.point(i - 1)?.pos).length()))
+            .sum();
+        eprintln!(
+            "[hardness-smoke] estrela pelo pipeline REAL: {n} pontos, passo medio {:.3} = \
+             {:.2} x raio (o penhasco do orcamento fica em 0.19 x raio)",
+            arc / (n.max(2) - 1) as f32,
+            arc / (n.max(2) - 1) as f32 / r
+        );
+        strokes.push(star);
     }
     xs
 }

@@ -840,6 +840,10 @@ fn render_the_two_side_by_side() {
         ("macio_h0.4", 0.4_f32, 0.8_f32),
         ("medio_h0.7", 0.7, 0.8),
         ("DENSO_h0.4_orcamento_estourado", 0.4, 0.08),
+        // ⚠️ A geometria EXATA da cena de smoke: 6 pontos CRUS, sem reamostragem nenhuma
+        // (`one_stroke_star` empurra os cantos direto no `FlipStroke`, sem passar pelo
+        // `stroke_from_samples` do produto). Segmentos ENORMES contra o alcance.
+        ("SMOKE_6_pontos_crus_h0.4", 0.4, 1e9),
     ] {
         // A estrela, na escala da imagem.
         let (cx, cy, outer) = (S as f32 * 0.5, S as f32 * 0.5, 300.0_f32);

@@ -23,6 +23,7 @@ mod fill_holes;
 mod neighbors;
 mod pack;
 mod pipeline;
+mod tau;
 
 pub use binning::{
     BinSeg, DEFAULT_TILE, MIN_WIDTH_PX, ScreenSpace, TileBins, bin_segments, walk_pixel,
@@ -34,3 +35,4 @@ pub use pack::{
     pack_drawing, pack_drawings,
 };
 pub use pipeline::{CameraRaw, FlipRenderer};
+pub use tau::{PAINTER_SPACING, SUB, dab_weight, f_of};

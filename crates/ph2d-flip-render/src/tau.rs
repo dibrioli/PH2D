@@ -1,0 +1,172 @@
+//! **A LEI DA TINTA** — a integral de arco que o percurso binado resolve
+//! ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md) §5 e §7.5, passo 3).
+//!
+//! ## ⚠️ Isto NÃO é uma lei nova. É a lei que o motor de hoje já usa, sobre a geometria CERTA.
+//!
+//! O `hardness_mask` do `flip.wgsl` compõe uma fileira de dabs por `over` e devolve
+//! `1 − Π(1 − w_k)`. Tome o logaritmo do produto:
+//!
+//! ```text
+//!   1 − α = Π (1 − w_k)   ⇒   −ln(1 − α) = Σ −ln(1 − w_k) = Σ f(d_k)   ⇒   α = 1 − exp(−τ)
+//! ```
+//!
+//! O motor de hoje **já calcula `α = 1 − exp(−τ)`** — só que soma `τ` sobre uma **RETA
+//! FICTÍCIA** que passa pelo ponto mais próximo (`d = √(dn² + along²)`, o `along` correndo por
+//! uma fileira infinita e reta). É por isso que:
+//!
+//! - traço reto sai certo (medido: controle **+1/255**);
+//! - o **cruzamento** sai errado — a ficção não tem cruzamento nenhum;
+//! - a **ponta convexa** sai errada (**+140/255**) — a ficção tem caminho infinito onde o real
+//!   acaba, e a nota do `hardness_law.rs` já a declarava superestimada.
+//!
+//! Aqui `τ` é integrado sobre o **CAMINHO QUE EXISTE**: `τ(p) = ∫ f(dn(s,p)) ds / pitch(s)`. Mesma
+//! lei, geometria honesta — e, por ser uma SOMA, ela é **comutativa e sem teto**, que é exatamente
+//! o que a lista por-ladrilho do [`crate::binning`] entrega (as propriedades (B) e (C) do §3).
+//!
+//! ## O que é `pitch`
+//!
+//! `PAINTER_SPACING × diâmetro` — o `spacing` default do pincel do Painter. ⚠️ **Não é dependência
+//! de amostragem** (a doença que esta linha curou quatro vezes): é propriedade do PINCEL, não de
+//! quão fino o motor amostrou o caminho. A §5.3 do doc 12 mediu o desvio **exatamente constante**
+//! em 6 densidades de polilinha (60 → 1155 segmentos).
+
+use crate::binning::{BinSeg, ScreenSpace};
+use crate::pack::FlipGpuData;
+
+/// O `spacing` do pincel do Painter (`spec_default.rs`): 0,10 × **diâmetro**.
+pub const PAINTER_SPACING: f32 = 0.10;
+
+/// Piso do pitch, em px — o mesmo do oráculo (`painter_look.rs::painter_deposit_sized`).
+const MIN_PITCH_PX: f32 = 0.25;
+
+/// Sub-amostras de quadratura por pitch. ⚠️ **4 SATURA** — medido na §5.4 do doc 12: de 4 para 8
+/// o número não se move. Não é um palpite conservador, é onde a curva deitou.
+pub const SUB: u32 = 4;
+
+/// Teto de `f`. `f = −ln(1 − w)` **diverge** em `w → 1` (o disco duro de `hardness = 1`), e a
+/// integral só precisa de um número grande o bastante para `1 − exp(−τ)` saturar em `f32`.
+const F_MAX: f32 = 16.0;
+
+/// A queda de **UM DAB** do Painter: platô até `hardness`, depois o preset `Falloff::Smooth`.
+///
+/// ⚠️ **É uma cópia por MOTOR, não uma cópia a mais.** O `flip.wgsl` carrega a dele (com o gate
+/// `hardness_law.rs` provando termo a termo contra a função REAL do Painter); esta é a do motor
+/// novo, com o gate irmão. Quando o motor velho sair, a cópia dele sai junto.
+#[must_use]
+pub fn dab_weight(dn: f32, hardness: f32) -> f32 {
+    let h = hardness.clamp(0.0, 1.0);
+    if h >= 1.0 {
+        return f32::from(dn < 1.0);
+    }
+    let remapped = ((dn - h) / (1.0 - h)).clamp(0.0, 1.0);
+    if remapped >= 1.0 {
+        return 0.0;
+    }
+    // `Falloff::Smooth` avaliado em `p = 1 − t` (convenção Blender), nas MESMAS operações e na
+    // MESMA ordem que o `falloff.rs`. ⚠️ `p*p*(3−2p)` é a MESMA álgebra e **não é o mesmo `f32`** —
+    // o gate `the_dab_weight_is_the_painters_falloff` nasceu vermelho exatamente nisso.
+    let p = 1.0 - remapped;
+    3.0 * p * p - 2.0 * p * p * p
+}
+
+/// A densidade `f = −ln(1 − w)`. É ela que troca o **PRODUTO** por uma **SOMA** — e é a soma que
+/// torna a lei comutativa, sem ordem e sem teto.
+#[must_use]
+pub fn f_of(dn: f32, hardness: f32) -> f32 {
+    let w = dab_weight(dn, hardness);
+    if w >= 1.0 {
+        return F_MAX;
+    }
+    (-(1.0 - w).ln()).min(F_MAX)
+}
+
+/// O que um traço deposita num pixel: `τ` acumulado e a cor média ponderada por `dτ`.
+///
+/// ⚠️ **A quadratura fica ANCORADA no segmento, não na janela do pixel.** As sub-amostras caem
+/// sempre nas mesmas posições `(i + ½)·step`, e o que a janela faz é só **pular as que valem
+/// zero**. Re-ancorar por pixel daria a cada um um erro de quadratura próprio — ruído sub-pixel
+/// numa lei que existe para ser função pura do caminho.
+///
+/// O custo por segmento é **limitado, não proporcional ao comprimento**: só o arco dentro do disco
+/// de raio `r` contribui, e ele mede no máximo `2r` ⇒ `2r / (pitch/SUB) = 8r/(0.2r) = 40`
+/// amostras, independente de o segmento ter 5 px ou 5000.
+pub(crate) fn stroke_tau(
+    run: &[BinSeg],
+    data: &FlipGpuData,
+    screen: &ScreenSpace,
+    hardness: f32,
+    p: [f32; 2],
+) -> Option<(f32, [f32; 4])> {
+    let mut tau = 0.0_f32;
+    let mut acc = [0.0_f32; 4];
+    for seg in run {
+        let (pa, pb) = (data.points[seg.a as usize], data.points[seg.b as usize]);
+        let sa = screen.point_px(pa.pos);
+        let sb = screen.point_px(pb.pos);
+        let ra = screen.radius_px(pa.width);
+        let rb = screen.radius_px(pb.width);
+        let v = [sb[0] - sa[0], sb[1] - sa[1]];
+        let len2 = v[0] * v[0] + v[1] * v[1];
+        if len2 <= 1e-12 {
+            continue;
+        }
+        let len = len2.sqrt();
+
+        // A janela: os `t` onde a amostra pode estar dentro do disco de raio `rmax` em torno de
+        // `p`. `rmax` (e não o raio interpolado) mantém a janela CONSERVADORA — ela só pode
+        // sobrar, nunca faltar.
+        let rmax = ra.max(rb);
+        let w = [sa[0] - p[0], sa[1] - p[1]];
+        let wv = w[0] * v[0] + w[1] * v[1];
+        let ww = w[0] * w[0] + w[1] * w[1];
+        let disc = wv * wv - len2 * (ww - rmax * rmax);
+        if disc <= 0.0 {
+            continue;
+        }
+        let sq = disc.sqrt();
+        let t0 = ((-wv - sq) / len2).clamp(0.0, 1.0);
+        let t1 = ((-wv + sq) / len2).clamp(0.0, 1.0);
+        if t1 <= t0 {
+            continue;
+        }
+
+        // A grade da quadratura — do SEGMENTO, com o pitch mais apertado dele (conservador: mais
+        // amostras, nunca menos).
+        let pitch_min = (PAINTER_SPACING * 2.0 * ra.min(rb)).max(MIN_PITCH_PX);
+        let ds = pitch_min / SUB as f32;
+        let n = (len / ds).ceil().max(1.0);
+        let step = len / n;
+        let i0 = (t0 * len / step - 0.5).floor().max(0.0) as u32;
+        let i1 = (t1 * len / step - 0.5).ceil().clamp(0.0, n - 1.0) as u32;
+
+        for i in i0..=i1 {
+            let t = ((i as f32 + 0.5) * step / len).clamp(0.0, 1.0);
+            let s = [sa[0] + v[0] * t, sa[1] + v[1] * t];
+            let r = (ra * (1.0 - t) + rb * t).max(1e-4);
+            let dn = ((p[0] - s[0]).powi(2) + (p[1] - s[1]).powi(2)).sqrt() / r;
+            let fv = f_of(dn, hardness);
+            if fv <= 0.0 {
+                continue;
+            }
+            let pitch = (PAINTER_SPACING * 2.0 * r).max(MIN_PITCH_PX);
+            let d_tau = fv * step / pitch;
+            tau += d_tau;
+            // A cor é a média ponderada por `dτ` — a resposta comutativa, do mesmo tipo da lei.
+            // ⚠️ O `opacity` multiplica DEPOIS da cobertura (a regra do GP que o `flip.wgsl`
+            // documenta: *um traço a opacity 0,5 não escurece sobre si mesmo*), então ele entra
+            // no alfa da COR e nunca no `f`.
+            let op = pa.opacity * (1.0 - t) + pb.opacity * t;
+            for (dst, (ca, cb)) in acc.iter_mut().zip(pa.color.iter().zip(&pb.color)).take(3) {
+                *dst += (ca * (1.0 - t) + cb * t) * d_tau;
+            }
+            acc[3] += (pa.color[3] * (1.0 - t) + pb.color[3] * t) * op * d_tau;
+        }
+    }
+    if tau <= 0.0 {
+        return None;
+    }
+    for c in &mut acc {
+        *c /= tau;
+    }
+    Some((tau, acc))
+}

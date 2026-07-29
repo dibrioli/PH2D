@@ -314,10 +314,30 @@ struct Deposit {
 
 /// A contribuição de UM traço num pixel, dada a fatia da lista que pertence a ele.
 ///
-/// ⚠️ **Aqui mora a lei da tinta, e no esqueleto ela é a UNIÃO DURA** (`dist <= r`) — a semântica
-/// de `hardness = 1` sem anti-aliasing. A integral `τ` do passo 3 substitui **só esta função**;
-/// o binning, o agrupamento e a composição não mudam.
+/// ⚠️ **É AQUI que a lei mora, e ela é a integral de arco** ([`crate::tau`]): a MESMA lei que o
+/// `flip.wgsl` já usa (`α = 1 − exp(−τ)`), com `τ` somado sobre o **caminho que existe** em vez de
+/// sobre uma reta fictícia. Toda a estrutura à volta — binning, agrupamento, composição — foi
+/// desenhada no passo 2 para não precisar mudar quando esta função mudasse.
 fn stroke_deposit(
+    run: &[BinSeg],
+    data: &FlipGpuData,
+    screen: &ScreenSpace,
+    p: [f32; 2],
+) -> Option<Deposit> {
+    let hardness = data.strokes[run.first()?.stroke as usize].hardness;
+    let (tau, rgba) = crate::tau::stroke_tau(run, data, screen, hardness, p)?;
+    let cover = 1.0 - (-tau).exp();
+    (cover > 0.0).then_some(Deposit { cover, rgba })
+}
+
+/// ⚠️ **A LEI DO PASSO 2, CONGELADA COMO ORÁCULO** — a união dura (`dist ≤ r`), que é a semântica
+/// de `hardness = 1` sem anti-aliasing. Ela é o CONTROLE do §8 do handoff: em dureza 1 a integral
+/// tem de reproduzi-la, e o gate mede em quantos pixels e por quanto elas discordam.
+///
+/// Sob `cfg(test)` porque não tem chamador de produção — um `pub` seria uma segunda resposta
+/// esperando alguém chamá-la (a lição do `warp_axis`).
+#[cfg(test)]
+fn hard_union_deposit(
     run: &[BinSeg],
     data: &FlipGpuData,
     screen: &ScreenSpace,

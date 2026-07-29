@@ -38,6 +38,7 @@
 //! entra em `[dev-dependencies]`: o `src/` do flip-render não a toca (machete-safe), exatamente
 //! como as crates-nó do gate de paridade da `line/gpu-nodes`.
 
+use ph2d_flip_render::{FlipGpuData, GpuPoint, GpuStroke, ScreenSpace};
 use ph2d_painter_brush::Falloff;
 
 /// O perfil que o `flip.wgsl` pintava ANTES desta wave (o port literal do GP), sem o termo de
@@ -285,4 +286,92 @@ fn measure_the_two_hardness_laws() {
         let b = cross(&painter_profile);
         println!("   {h:4.2}      {a:6.3}        {b:6.3}");
     }
+}
+
+// ═════════════════ O MOTOR NOVO CONTRA O PERFIL QUE HOJE SHIPA ═════════════════
+
+/// Constrói um traço RETO horizontal no meio de uma tela `w × h`, largura `width` (mundo = px).
+fn straight_stroke(w: f32, h: f32, width: f32, hardness: f32) -> (FlipGpuData, ScreenSpace) {
+    let sc = ScreenSpace {
+        world_to_clip: [
+            [2.0 / w, 0.0, 0.0, 0.0],
+            [0.0, 2.0 / h, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0, 1.0],
+        ],
+        viewport: [w, h],
+        px_per_world: 1.0,
+    };
+    let mut g = FlipGpuData::default();
+    for x in [-40.0_f32, w + 40.0] {
+        g.points.push(GpuPoint {
+            pos: [x, h * 0.5],
+            width,
+            opacity: 1.0,
+            color: [0.0, 0.0, 0.0, 1.0],
+        });
+        g.point_stroke.push(0);
+        g.arc_len.push(0.0);
+        g.seg_extra_range.push([0, 0]);
+    }
+    g.strokes.push(GpuStroke {
+        first_point: 0,
+        point_count: 2,
+        flags: 0,
+        hardness,
+        material: 0,
+        tip: 0,
+        dot_spacing: 0.0,
+        ref_width: width,
+    });
+    (g, sc)
+}
+
+/// ⚠️ **O MOTOR NOVO NÃO É UM VISUAL NOVO.**
+///
+/// O `hardness_mask` de hoje devolve `1 − Π(1−w_k)` sobre uma fileira de dabs **numa reta
+/// fictícia**; a integral do [`ph2d_flip_render::f_of`] devolve `1 − exp(−Σ f)` sobre o caminho
+/// REAL. Tomando o log do produto, as duas são a MESMA lei — então **num traço reto elas têm de
+/// dar o mesmo número**, e é exatamente aí que a ficção é verdade.
+///
+/// Este gate é o que pina o **nível ABSOLUTO** de tinta do motor novo: sem ele, esquecer o `pitch`
+/// na integral escalaria toda a cobertura e nenhum gate de forma piscaria.
+#[test]
+fn the_new_engine_reproduces_the_shipping_profile_on_a_straight_stroke() {
+    let (w, h) = (192.0_f32, 96.0);
+    let mut table: Vec<(f32, f32, f32)> = Vec::new();
+    for hi in [2_u32, 4, 6, 8, 12, 16] {
+        let hardness = hi as f32 / 20.0;
+        let width = 24.0_f32;
+        let r = width * 0.5;
+        let (g, sc) = straight_stroke(w, h, width, hardness);
+        let bins = ph2d_flip_render::bin_segments(&g, &sc, 16);
+        let (mut worst, mut worst_at) = (0.0_f32, 0.0_f32);
+        // Corta perpendicular no meio do traço, longe das pontas (que estão fora da tela).
+        for k in 0..=40 {
+            let dn = k as f32 / 40.0 * 0.98; // até 0,98: a borda exata é o AA, outra pergunta
+            let p = [w * 0.5, h * 0.5 + dn * r];
+            let got = ph2d_flip_render::walk_pixel(&bins, &g, &sc, p)[3];
+            let want = painter_deposited(dn, hardness);
+            if (got - want).abs() > worst {
+                worst = (got - want).abs();
+                worst_at = dn;
+            }
+        }
+        table.push((hardness, worst * 255.0, worst_at));
+    }
+    let worst = table.iter().fold(0.0_f32, |m, t| m.max(t.1));
+    let report: String = table
+        .iter()
+        .map(|(h, d, at)| format!("\n    hardness {h:.2}: {d:.2}/255 (em dn={at:.2})"))
+        .collect();
+    // **MEDIDO**, em níveis de 255: `0,10 → 0,27` · `0,20 → 0,32` · `0,30 → 0,38` · `0,40 → 0,43`
+    // · `0,60 → 0,75` · `0,80 → 1,33`. O resíduo cresce com a dureza e vive perto do aro
+    // (`dn ≈ 0,83–0,93`) — a assinatura de **soma finita contra integral contínua** (a fileira
+    // para em `DEPOSIT_HALF = 4`, e quanto mais duro o dab, mais estreito o perfil que ela trunca),
+    // não de duas leis diferentes.
+    assert!(
+        worst < 2.0,
+        "a integral divergiu do perfil que shipa:{report}"
+    );
 }

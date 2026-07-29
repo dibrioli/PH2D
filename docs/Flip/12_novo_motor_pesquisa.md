@@ -493,7 +493,105 @@ precisamente o que a lei aditiva precisa e o que o motor de hoje não consegue e
 
 ---
 
-## 8. Fontes
+## 8. ⭐ A LEI ENTROU NO PERCURSO (passo 3 — `src/tau.rs`)
+
+### 8.1 ⚠️ A descoberta que reescreve o enunciado: **a lei não é nova**
+
+Indo portar a integral, fui ler o `hardness_mask` do `flip.wgsl` — e ele **já compõe uma fileira
+de dabs por `over`**, devolvendo `1 − Π(1 − w_k)`. Tome o log:
+
+```text
+  1 − α = Π (1 − w_k)  ⇒  −ln(1 − α) = Σ −ln(1 − w_k) = Σ f(d_k)  ⇒  α = 1 − exp(−τ)
+```
+
+**O motor de hoje JÁ calcula `α = 1 − exp(−τ)`.** O que ele faz de errado é somar `τ` sobre uma
+**RETA FICTÍCIA** que passa pelo ponto mais próximo (`d = √(dn² + along²)`, uma fileira infinita e
+reta). Isso explica a baseline da §1 inteira, item por item:
+
+| sintoma medido na §1 | o que a ficção faz |
+|---|---|
+| traço reto: **+1/255** | ali a ficção **é** a verdade |
+| cruzamento errado | a reta fictícia **não tem cruzamento** para ver |
+| ponta convexa: **+140/255**, e **zero** faltando | a ficção tem caminho **infinito** onde o real acaba |
+
+⇒ o C4 não é "uma lei nova candidata". É **a mesma lei sobre a geometria que existe**. E a forma
+de soma é o que a torna comutativa e sem teto — exatamente o que a lista por-ladrilho entrega.
+
+### 8.2 O gate que é a entrega da wave
+
+**`the_new_engine_reproduces_the_shipping_profile_on_a_straight_stroke`** (em
+`tests/hardness_law.rs`, ao lado da lei do motor velho): num traço RETO as duas TÊM de coincidir,
+porque é ali que a ficção é verdade.
+
+| hardness | desvio contra o perfil que shipa |
+|---|---|
+| 0,10 | **0,27**/255 |
+| 0,20 | 0,32 · 0,30 → 0,38 · 0,40 → 0,43 |
+| 0,60 | 0,75 |
+| 0,80 | **1,33** |
+
+Sub-nível-de-byte na faixa toda. O resíduo **cresce com a dureza e vive perto do aro**
+(`dn ≈ 0,83–0,93`) — a assinatura de **soma finita contra integral contínua** (a fileira do shader
+para em `DEPOSIT_HALF = 4`, e dab mais duro é perfil mais estreito para ela truncar), não de duas
+leis diferentes. ⚠️ **É este gate que pina o NÍVEL ABSOLUTO de tinta**: sem ele, esquecer o `pitch`
+na integral escalaria a cobertura inteira e nenhum gate de forma piscaria (mutação ML3).
+
+### 8.3 ⚠️ Três coisas que a medição corrigiu em mim
+
+**(a) `p*p*(3−2p)` NÃO é `3p²−2p³` em `f32`.** Escrevi a curva do Painter na álgebra certa e na
+**ordem errada**, e o gate de paridade nasceu vermelho em `dn = 0,01`. É literalmente a disciplina
+*"as MESMAS operações na MESMA ordem"* que o doc-comment do WGSL prega — e eu a quebrei na 1ª
+tentativa. Uma cópia por MOTOR é aceitável (a do velho morre com ele); uma cópia **sem gate**, não.
+
+**(b) O gate de densidade estava medindo GEOMETRIA.** A 1ª fixture reamostrava uma senoide em 4 e
+40 pontos — com 4 cordas aquilo é **outro desenho**, e o desvio (24/255) era a corda, não a lei.
+A fixture certa **subdivide as MESMAS pernas retas**: geometria idêntica, amostragem diferente.
+
+**(c) E aí ela falhou de novo, por 254,8/255 — no regime errado.** Em `hardness = 1` a cobertura é
+um **DEGRAU**: a borda é resolvida até um passo de quadratura (~0,06 px), e um pixel cujo centro
+cai nessa casca **flipa 255 de uma vez**. Medido, varrendo `SUB`:
+
+| `SUB` | pior desvio, `h = 1` | pior desvio, `h = 0,4` |
+|---|---|---|
+| 1 | — | 3,60/255 |
+| 2 | **254,82**/255 | < 1,0 |
+| 4 | 1,06 | < 1,0 |
+| 8 | < 1,0 | < 1,0 |
+
+⇒ o gate de densidade roda **macio** (onde a lei é o assunto) e a metade dura tem gate PRÓPRIO
+(`at_hardness_one_the_integral_is_the_hard_union`, que mede **onde** elas discordam: uma casca de
+**< 0,75 px** em torno da silhueta). E `SUB = 4` deixa de ser "a §5.4 disse que satura": é o 1º
+valor confortavelmente dentro da região plana **nos dois regimes**.
+
+### 8.4 As duas mutações que sobreviveram, e o que elas nomearam
+
+| mutação | por que passou |
+|---|---|
+| raio do MEIO em vez do interpolado | **nenhuma fixture da lei tinha largura variando** — e pressão é o caso normal |
+| `opacity` dentro do `f` | **nenhuma fixture tinha opacidade ≠ 1** |
+
+As duas curas são gates novos, e o 2º vale por si: **`opacity` multiplica DEPOIS da cobertura e
+nunca entra no `f`** — é a regra do GP que o `flip.wgsl` documenta (*um traço a opacity 0,5 não
+escurece sobre si mesmo*), e com ela dentro do `f` o cruzamento acumularia opacidade. Medido no
+gate: braço **0,5000**, cruzamento **0,5000**.
+
+**16 mutações no total (9 do binning + 7 da lei), 16 sangram.**
+
+### 8.5 O que o motor novo já responde, e o que falta
+
+✅ o cruzamento acumula por construção (gate: τ do cruzamento **> 1,2×** o de um braço) · ✅ a tinta
+é fato do caminho, não da densidade · ✅ dureza 1 é a união dura · ✅ o perfil reto é o que shipa ·
+✅ sem teto, sem depth, sem `neighbors.rs`.
+
+**Falta (passo 4-5):** a bateria do §6 do handoff contra o motor novo (o oráculo `painter_look`
+completo, incluindo a **ponta convexa** — o defeito que a §1 mediu em +140/255 e que a ficção
+causava) · **caps e joins como primitivo** (§5.5) · e o **port para GPU**, onde este percurso vira
+um dispatch de compute por ladrilho. ⚠️ **Nada disto está ligado ao produto ainda** — o motor
+velho segue intocado, e o novo não tem chamador de produção.
+
+---
+
+## 9. Fontes
 
 - Ciao, S. & Wei, L.-Y. — *Ciallo: GPU-Accelerated Rendering of Vector Brush Strokes*, SIGGRAPH 2024.
   [ACM](https://dl.acm.org/doi/10.1145/3641519.3657418) ·

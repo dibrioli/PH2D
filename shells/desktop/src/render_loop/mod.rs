@@ -698,6 +698,7 @@ impl crate::App {
         self.motion_fx_smoke();
         self.adapter_smoke();
         self.attribute_demo_smoke();
+        self.picker_smoke();
         self.value_curve_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();

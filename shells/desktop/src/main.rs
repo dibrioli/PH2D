@@ -41,6 +41,7 @@ mod adapter_smoke;
 mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
+mod picker_smoke;
 mod audio;
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.

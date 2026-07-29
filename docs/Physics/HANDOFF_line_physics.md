@@ -6818,7 +6818,12 @@ sangram**, cada uma nomeando o culpado (`"Plain Post" 10.0` · `"Plain Rope Drum
 padrão — elas não pedem que se selecione uma roldana, e mexer no enquadramento de cenas já aprovadas
 mudaria o que o artista validou. A porta está pronta para quando uma delas passar a pedir.
 
-### E o segundo report expôs a causa REAL: alça é rest-only (2026-07-29)
+### O segundo report: alça é rest-only — verdadeiro, mas ainda NÃO era a causa (2026-07-29)
+
+> ⚠️ **Esta seção dizia "a causa REAL" e estava errada.** O defeito que ela descreve é verdadeiro,
+> medido e corrigido — mas o sintoma **sobreviveu a ele**, e a causa está na seção seguinte. A frase foi
+> corrigida no lugar onde estava: *um doc que nomeia a causa errada custa a próxima investigação
+> inteira.*
 
 *"Nada visível ainda"* (Enio), depois do fix de enquadramento. **A hipótese da câmera era um FATO
 medido, não a causa** — precisava ser corrigida de qualquer forma, mas não era o que escondia as alças.
@@ -6840,3 +6845,49 @@ discriminador) e `"alca"` como **substring** casa dentro de *alcance* (⇒ palav
 **2 gates, 2 mutações, 2 sangram**, e não são redundantes: o de classe depende da REDAÇÃO, o específico
 só da lista. ⚠️ **Nomeado e não corrigido:** seis cenas (56, 57, 59, 60, 61, 62) dizem *"depois PLAY"* e
 nascem tocando — nenhuma pede gesto de alça, então a imprecisão é de texto, e são cenas já aprovadas.
+
+### E A CAUSA ERA O PINTOR: as três alças eram FILTRADAS (2026-07-29, `f8c5fb8ac` + `3bd4270b1`)
+
+*"Nada ainda"* (Enio, 3ª rodada). As duas correções acima eram **fatos medidos** e nenhuma era a causa;
+o defeito estava no **terceiro estágio**. Diagnóstico por quatro lentes independentes sobre o caminho
+inteiro (publicação · cena · seleção · desenho), das quais **duas convergiram sozinhas** no mesmo ponto.
+
+**`PAINT_ORDER` era um `[PointHandleKind; 5]` escrito à mão** sobre o qual o laço de pintura iterava, e
+`WheelCentre`/`WheelRim`/`WheelRimOut` **caíam fora do filtro** — não eram desenhados **nem registrados
+no hit index**. O braço de `match` que os desenha era **código morto**, e o compilador não podia
+denunciá-lo: um `match` precisa ser exaustivo de qualquer forma, então acrescentar um variant o
+satisfazia **ali** e deixava a lista intocada.
+
+⚠️ **Havia gate dos dois lados e nenhum no meio** — `render_loop::point_gizmo` provava o publicador,
+`gizmo::point_tests` provava o pintor (âncoras e grips), e ninguém afirmava que a saída de um chega à
+entrada do outro. Corolário escondido pelo mesmo laço: como o `register` também era pulado, **o gesto de
+arrasto era inalcançável pelo canvas** e o `joint_anchor_drag_wheel.rs` inteiro estava morto por essa via.
+
+**A cura não é acrescentar três itens ao array — é APAGAR o array.** O rank sai de um `match`
+**exaustivo** (`paint_rank`) ⇒ o próximo kind **não compila** até dizer onde pinta; o último rank sai
+dos **dados** ⇒ segue zero-alloc, um passe por rank, e **byte-idêntico** para os 5 kinds antigos (os 11
+gates existentes ficam verdes sem retoque). Precedência nova: **roldana > âncora** (só a selecionada
+publica) e **centro > aro** (eles só dividem pixel onde o raio é sub-pixel).
+
+**A segunda porta, que morderia logo depois:** `wheel_handles` exige `show_overlay && at_rest` e o gate
+de classe só cobria o relógio. `show_colliders` nasce **`true`** e **`B` é TOGGLE** ⇒ *"aperte B para
+ver"* manda **DESLIGAR**. Seguro é o **condicional** (44/45) ou o **declarativo**.
+
+⚠️ **Dois buracos no meu próprio gate:** (1) **agulha com espaço é agulha morta** — `"aro "`/`"dot "`
+nunca podiam casar sob comparação por palavra inteira, e faltava o plural `"alcas"`, então **a cena 63
+nunca esteve na classe** (passava por já estar em `PAUSED_SCENES`); corrigidas as agulhas, apareceram
+**48** e **59** com o mesmo defeito do report — a 59 manda arrastar o aro *"com o motor ligado"*, que é
+exatamente o estado em que a alça não existe. (2) **o gate era não-determinístico** — a última `fn` de
+cada arquivo engolia o começo do **seguinte**, e *"o seguinte"* é a ordem de `read_dir`; medido ao vivo,
+a cena **10** foi acusada de pedir uma alça que ela não pede.
+
+**O invariante mudou, e a versão anterior confundia uma cura com a regra:** não é *"a cena nasce
+parada"*, é ***"o artista está em repouso quando o passo da alça roda"*** — uma demo de MOTOR satisfaz
+isso **mandando pausar**, sem abrir congelada. Gate novo **`the_needles_can_match_something`** é o
+controle da própria busca.
+
+**5 gates, 6 mutações, 6 sangram**, cada uma **só no seu gate**. ⚠️ **Uma sobreviveu na 1ª rodada** e foi
+ela que denunciou as agulhas mortas.
+
+**Re-smoke:** `PH2D_PHYSICS_SMOKE=63` (as três alças) · `=58` (o pedido (6), executável pela 1ª vez) ·
+`=48` e `=59` (o passo de alça agora manda PAUSAR).

@@ -2207,12 +2207,53 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
    para um **apenas se o journal alcançar as TRÊS referências** (tool · `cursor` · `stroke_undo`; mais a
    entrada `Whole` do 1º traço da camada), e `make_mut` copia com qualquer coisa acima de um ⇒ **o S3 é
    tudo-ou-nada, e não há meio-passo que compre um milissegundo**; *(c)* capturar
-   por região exige a região **antes** da escrita, e são **47 sítios de `fork_par` contra 12 que
-   declaram** — os dois quentes conseguem dá-la (o fold já tem o `rect`; o depósito tem o bbox dos dabs
-   como superconjunto seguro), o resto passa "não sei" e segue no caminho completo.
+   por região exige a região **antes** da escrita. ⚠️ **Esta metade ENVELHECEU e foi corrigida em
+   2026-07-28:** ela dizia *"47 sítios de `fork_par` contra 12 que declaram"*, e hoje o `fork_par` tem
+   **zero** chamadores de produção — todo plano canvas-shaped passa por uma porta que sabe **nomeá-lo**,
+   os dez sítios de sculpt/warp passam a região, e o journal descreve o relevo de **todo** passo
+   (`INCOMPLETO` foi a zero). §5.29.
    ⚠️ **A meia-versão barata foi avaliada e RECUSADA com motivo** (§5.20): compra só o Ctrl+Z ao preço de
    um caminho de falha que deixa o documento sem pixels. **Wave própria, com gates próprios**, e é a
    única frente que cura os QUATRO modos de uma vez.
+
+   ✅ **E os TRÊS pré-requisitos fecharam** (§5.26–§5.29), o que muda a wave de *"projetar"* para
+   *"construir"*:
+
+   | | o que ficou provado |
+   |---|---|
+   | a reconstrução | `cursor[i] == journal.get(i).unwrap_or(vivo[i])` — 231 aberturas, **0 divergências** |
+   | as portas | todo plano passa por uma porta que sabe nomeá-lo; **o compilador** é o guarda |
+   | a cobertura | `INCOMPLETO` **0** — o journal descreve o relevo de todo passo que tem relevo |
+
+   **A troca, numa frase:** hoje todo gesto paga um **fork do plano inteiro** porque há um segundo dono;
+   depois, paga uma **captura da região** e nada mais. Foi por isso que a §5.25 mediu uma contra a outra
+   antes de qualquer outra coisa: a região é **15–73× mais barata**.
+
+   **As CINCO restrições que só apareceram construindo os pré-requisitos** — elas são o que esta entrada
+   acrescenta; o resto da wave é mecânica:
+
+   1. ⚠️ **Uma âncora serve os DOIS donos, e é por isso que o `begin_undo_step` absorve ANTES de
+      re-ancorar.** O cursor está no último commit e o `stroke_undo` no pen-down — dois passados. A
+      absorção reconcilia o primeiro com o segundo, e só então o journal é re-ancorado; depois disso
+      `cursor == before == o estado que o journal descreve`, e **um** journal serve os dois.
+   2. ⚠️ **A identidade NÃO é perguntável no commit** (§5.28): ali a absorção ainda não rodou, e a
+      divergência que se mede **é ela**, não um contraexemplo. Medi 4083 bytes e quase os reportei
+      como achado.
+   3. ⚠️ **Tudo-ou-nada por plano** — já dito em *(b)*, e agora com o corolário de projeto: os dois
+      donos saem no **mesmo commit**, e um commit intermediário "só o cursor" não é um degrau, é um
+      commit que não compra nada.
+   4. ⚠️ **O `split` precisa só da JANELA do `before`, nunca do plano inteiro** (`PlaneWindow::extract`).
+      O que muda ali é a **fonte** do `extract` (journal + vivo, em vez de um buffer contíguo), o que é
+      local. Quem precisa do plano inteiro é o `side()` — e é ele que muda de FORMA, aplicando o patch
+      ao plano vivo em vez de clonar o cursor.
+   5. ⚠️ **`absorb_foreign_writes` tem DOIS chamadores** — o `begin_undo_step` (onde a reconstrução está
+      provada) e os `record_*` (onde não está, pela restrição 2). A troca tem de **resolver** isso: ou
+      todo sítio abre um passo, ou sobra um caminho que serve a absorção do commit. **É a primeira
+      decisão da wave, não um detalhe dela.**
+
+   ⚠️ **E o journal sai do `cfg(any(test, debug_assertions))` no MESMO commit** — hoje ele é rede de
+   verificação, e capturar *e* forkar seria pagar as duas coisas. O `cfg` do `mod journal` (em `undo.rs`)
+   e o do campo em `WriteState` saem juntos, porque são um fato só.
 
 2. 🔴 **O outlier de 134,8 ms num único evento (frente R) segue aberto** (§5.13/§5.14). O maior evento
    **reprodutível** é o pen-up a 38,9 ms e ele não chega lá. ⚠️ **Mas uma amostra única de pen-up já foi

@@ -109,6 +109,28 @@ pub(crate) fn paint(
         crate::state::set_expr_live(None);
         return;
     };
+    // **The card FOLLOWS the scene selection** (report: *"se eu seleciono outro objeto na
+    // cena, o painel de expressões não atualiza para o novo objeto"*).
+    //
+    // The Inspector's rule is to store no target at all and rebuild from the frame; a
+    // modal cannot do that (it has rows the artist is editing), so it re-points instead —
+    // to the SAME property on the newly selected object.
+    //
+    // ⚠️ Only when that object HAS a binding for the property. A naive re-point would run
+    // into the guard right below and **dismiss the card whenever the artist clicks an
+    // object with no track** — turning the reported bug into a vanishing panel. Creating
+    // the binding instead would author into the document as a side effect of *selecting*,
+    // which no selection anywhere else in this app does. So an unbound selection leaves
+    // the card where it is, and the title says which object that is.
+    if let Some(sel) = snap.selected_entity
+        && sel != m.entity
+        && let Some(t) = snap
+            .tracks
+            .iter()
+            .find(|t| t.entity == sel && t.prop == m.prop)
+    {
+        crate::expr_modal::retarget(m, t.target.get(), sel);
+    }
     // The track may have vanished (deleted / undo). Abandon rather than author a
     // formula onto whatever slid into its place — the same guard `expr_edit` has.
     let Some(track) = snap.tracks.iter().find(|t| t.target.get() == m.target) else {
@@ -133,6 +155,7 @@ pub(crate) fn paint(
         // ⚠️ The SAME label the track row shows (`tracks::prop_label`), so the card
         // and the row it was opened from never name the property differently.
         m.prop = track.prop;
+        m.entity = track.entity;
         m.title = format!(
             "{}  #{}",
             crate::tracks::prop_label(track.prop),

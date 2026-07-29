@@ -51,7 +51,16 @@ pub enum GalleryPage {
 pub struct ExprModal {
     /// The binding this authors.
     pub target: u64,
-    /// `"Ball · Position Y"` — what the title band says.
+    /// The OBJECT this card is about — what the selection is compared against so the card
+    /// can notice it has to follow. `0` until the first paint resolves it from the track.
+    pub entity: u64,
+    /// What the title band says.
+    ///
+    /// ⚠️ This doc-comment claimed `"Ball · Position Y"` for as long as the card has
+    /// existed, and the card has **never** shown an object's name: the string is
+    /// `prop_label + "  #" + entity % 10000`, because `TrackView` carries no name and
+    /// neither does the dope-sheet row it was opened from. Showing the real name needs the
+    /// shell to publish it, and that is named as open rather than promised here.
     pub title: String,
     /// Top-left of the card. ⚠️ `None` until the first paint CENTRES it in the
     /// viewport — the panel that opens the card does not know how big the window
@@ -83,6 +92,7 @@ pub struct ExprModal {
 pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
     state.expr_modal = Some(ExprModal {
         target,
+        entity: 0,
         title: String::new(),
         pos: None,
         drag: None,
@@ -94,6 +104,29 @@ pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
         prop: ph2d_timeline::PropKind::TranslationX,
         preview_frame: 0,
     });
+}
+
+/// **Re-point an open card at the same property on another object.**
+///
+/// ⚠️ The sheet is CLEARED, and that is a deliberate loss: the rows describe the old
+/// object's formula, and re-seeding over them would double-push the new object's text onto
+/// rows already there. Auto-committing them instead would author a formula nobody pressed
+/// Apply for — onto the object the artist just navigated away from.
+///
+/// ⚠️ The POSITION is kept. A card that jumped back to the centre of the viewport every
+/// time the artist clicked a different object would be a card they had to re-place to use.
+///
+/// ⚠️ And the live preview is dropped for a frame: the channel is keyed by target, so
+/// without this the object the artist LEFT keeps running the formula.
+pub(crate) fn retarget(m: &mut ExprModal, target: u64, entity: u64) {
+    m.target = target;
+    m.entity = entity;
+    m.stack = RecipeStack::new();
+    m.page = GalleryPage::Families;
+    m.opened = false;
+    m.reseed = true;
+    m.preview_frame = 0;
+    crate::state::set_expr_live(None);
 }
 
 /// Close without authoring anything.

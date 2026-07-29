@@ -258,6 +258,19 @@ pub struct TimelineViewSnapshot {
     /// [`Self::rebuild`] (the doc has no selection; the shell does). Defaults to Path
     /// (the fresh-object default) when nothing single is selected.
     pub position_is_path: bool,
+    /// **Who is selected in the SCENE** — the projection the Expression card follows.
+    ///
+    /// Same shape and the same reason as [`Self::position_is_path`]: the document has no
+    /// selection, the shell does, so this is filled after [`Self::rebuild`]. `None` when
+    /// nothing (or nothing single) is selected.
+    ///
+    /// ⚠️ Red-first against a report: *"se eu seleciono outro objeto na cena, o painel de
+    /// expressões não atualiza para o novo objeto."* The card captured one target when it
+    /// opened and nothing ever revisited it — and the panel had no way to revisit, because
+    /// the snapshot carried no selection at all. Following the selection is the Inspector's
+    /// rule (it stores no target and rebuilds from the frame), so the card needs the same
+    /// fact each frame — not a one-shot request — to notice a CHANGE.
+    pub selected_entity: Option<u64>,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// O onion da timeline (ADR-0142): o painel lê ISTO para pintar os controles no estado

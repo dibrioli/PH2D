@@ -819,3 +819,127 @@ fn a_modifier_row_has_no_combine_chip() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+/// Publish TWO objects bound on the same property, and set who is selected. Returns the
+/// two raw targets.
+fn publish_two_tracks(
+    a: u64,
+    b: u64,
+    prop: ph2d_timeline::PropKind,
+    selected: Option<u64>,
+) -> (u64, u64) {
+    use ph2d_timeline::{TimelineIntent, TimelineState, TimelineViewSnapshot, apply_intent};
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    for e in [a, b] {
+        apply_intent(&mut st, &mut ph, TimelineIntent::Bind { entity: e, prop });
+    }
+    let ta = st.doc.binding_for(a, prop).unwrap().target.get();
+    let tb = st.doc.binding_for(b, prop).unwrap().target.get();
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    snap.selected_entity = selected;
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+    (ta, tb)
+}
+
+/// **The card follows the scene selection.**
+///
+/// ⚠️ Red-first against a report: *"se eu seleciono outro objeto na cena, o painel de
+/// expressões não atualiza para o novo objeto."* The card captured one target when it
+/// opened and nothing revisited it — and it COULD not, because the snapshot carried no
+/// selection at all.
+///
+/// ⚠️ The gate moves `selected_entity` BETWEEN frames and repaints, which is the only
+/// shape that can fail: a test that asserts "the card follows" while never changing that
+/// field is green by construction.
+#[test]
+fn the_card_follows_the_scene_selection() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let prop = ph2d_timeline::PropKind::TranslationX;
+    let (ta, tb) = publish_two_tracks(31, 32, prop, Some(31));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, ta);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert_eq!(
+        state.expr_modal.as_ref().unwrap().target,
+        ta,
+        "the card opens on the track it was opened from"
+    );
+    // ⚠️ A row IN FLIGHT, and it is load-bearing: the first version of this gate switched
+    // selection over an EMPTY sheet, where clearing it and not clearing it are
+    // indistinguishable — the mutation that drops the clear survived.
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
+    );
+    assert_eq!(state.expr_modal.as_ref().unwrap().stack.rows.len(), 1);
+
+    // The artist clicks the other object.
+    publish_two_tracks(31, 32, prop, Some(32));
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let m = state
+        .expr_modal
+        .as_ref()
+        .expect("the card must SURVIVE the move");
+    assert_eq!(
+        m.target, tb,
+        "…and re-point at the same property on the new object"
+    );
+    assert_eq!(m.entity, 32);
+    assert!(
+        m.stack.rows.is_empty(),
+        "the sheet describes the OLD object's formula, so it is cleared rather than \
+         carried over or auto-committed"
+    );
+    assert_eq!(
+        ph2d_panel_timeline::drain_intents(),
+        vec![],
+        "and following the selection authors NOTHING"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// **Selecting an object with no track for this property does not DISMISS the card.**
+///
+/// ⚠️ This is the half that makes the fix safe rather than a different bug. The guard
+/// below the re-point abandons the card when its target has vanished, so a naive
+/// "re-point to whatever is selected" would make clicking an unbound object close the
+/// panel — worse than not following at all. Authoring the binding instead would write to
+/// the document as a side effect of *selecting*, which nothing else in this app does.
+#[test]
+fn selecting_an_object_with_no_track_leaves_the_card_alone() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = ph2d_panel_timeline::drain_intents();
+    let prop = ph2d_timeline::PropKind::TranslationX;
+    let (ta, _tb) = publish_two_tracks(41, 42, prop, Some(41));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    open_modal(&mut host, &mut state, ta);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
+    );
+    let rows = state.expr_modal.as_ref().unwrap().stack.rows.len();
+    assert_eq!(rows, 1, "a row is in flight");
+
+    // Select an object that has NO binding at all.
+    publish_two_tracks(41, 42, prop, Some(9_999));
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let m = state
+        .expr_modal
+        .as_ref()
+        .expect("the card must NOT be dismissed by selecting an unbound object");
+    assert_eq!(m.target, ta, "it stays on the object it was authoring");
+    assert_eq!(
+        m.stack.rows.len(),
+        rows,
+        "…and the row the artist was editing survives"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

@@ -1584,6 +1584,9 @@ impl crate::App {
                 ph2d_timeline::PositionKeyMode::Path
             )
         });
+        // Who is selected, for the Expression card to follow (same reason as
+        // `position_is_path` above: the document has no selection, the shell does).
+        self.timeline_view.selected_entity = selected_now;
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         // Global rigid physics (ADR-0131 W1): step the rapier world at the
         // Playhead tick and read poses back into Transform, BEFORE

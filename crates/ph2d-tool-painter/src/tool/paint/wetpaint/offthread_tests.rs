@@ -114,7 +114,11 @@ fn sim_frame(t: &mut PainterTool) -> u64 {
 /// Um frame do produto: o tick, e depois a folga até o vsync (`sleep`, nunca
 /// spin — um spin queimaria o núcleo que o worker acabou de ganhar).
 fn frame(t: &mut PainterTool) -> f32 {
-    const PERIOD: Duration = Duration::from_micros(16_666);
+    frame_at(t, Duration::from_micros(16_666))
+}
+
+fn frame_at(t: &mut PainterTool, period: Duration) -> f32 {
+    let PERIOD = period;
     let a = Instant::now();
     t.paint_tick(1.0 / 60.0);
     let spent = a.elapsed();
@@ -123,6 +127,34 @@ fn frame(t: &mut PainterTool) -> f32 {
     }
     spent.as_secs_f32() * 1e3
 }
+
+// ⚠️ **O RELÓGIO CONTÍNUO DO WORKER fica documentado e NÃO gateado — e a razão
+// é que eu escrevi o gate, o rodei, e a medição derrubou o oráculo dele.**
+//
+// O defeito é real e a correção é de princípio: `last` nascia dentro do
+// `while let Ok(engine) = rx.recv()`, então o tempo de cada round trip era
+// **descartado** do `acc` — e `acc` é a dívida que decide se há passo, logo o
+// worker sub-passava na fração descartada. Tempo real passou; a sim o deve.
+// Medido, um traço a 4096²: **31,9 → 38,4 Hz** (96% do nominal de 40).
+//
+// O gate que eu tentei afirmava que *"a taxa é indiferente ao ritmo do frame"*,
+// pela teoria de que um round trip mais longo amplificaria o erro. **Falso, e
+// medido nas duas rotas:**
+//
+// ```text
+//              frames 60 Hz   frames 30 Hz   razao
+//   limpo         37,8 Hz        31,9 Hz      1,18
+//   mutante       32,9 Hz        30,8 Hz      1,07   <- razao MELHOR
+// ```
+//
+// A 30 Hz há **metade** dos round trips, então o erro por-locação cresce e a
+// contagem cai — os dois efeitos se cancelam, e a razão anda para o lado errado.
+// Uma barra de taxa ABSOLUTA discriminaria (36 Hz), mas fica a 5% do valor
+// limpo, que é como se compra flake numa máquina carregada.
+//
+// O que cobre a regressão catastrófica é o gate de taxa utilizável acima (8 Hz,
+// discriminação de 60×). O 1,2× desta linha fica sem gate, de propósito, com o
+// número escrito no `worker_loop`.
 
 // ---------------------------------------------------------------------------
 // 1 — O FRAME NÃO SIMULA

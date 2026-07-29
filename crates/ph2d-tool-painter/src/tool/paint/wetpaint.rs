@@ -587,7 +587,10 @@ impl PainterTool {
             // colapso 33,4 → 0,5 Hz foi o `want` sobrevivendo à entrega
             // (`hand_off_sim`), e consertar o `return` não mudou um Hz. As duas
             // mutações estão documentadas em `offthread_tests.rs`.
-            if sess.try_bring_home() {
+            let t_wait = std::time::Instant::now();
+            let got = sess.try_bring_home();
+            crate::wet_diag::note_wait(t_wait.elapsed().as_secs_f32() * 1e3);
+            if got {
                 sess.seen_steps = done;
                 sess.reconcile_facts(facts);
                 if fresh {

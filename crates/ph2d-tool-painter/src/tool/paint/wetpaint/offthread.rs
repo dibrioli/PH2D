@@ -46,9 +46,15 @@ use std::time::{Duration, Instant};
 /// do `max_substeps` da física, que este módulo herda).
 const STEP_S: f64 = 1.0 / 40.0;
 
-/// Quanto atraso o worker aceita antes de DESISTIR do tempo perdido. Sem isto, uma pausa longa (o
-/// app minimizado, um breakpoint) deixa uma dívida que ele tentaria pagar toda de uma vez.
-const MAX_BEHIND_S: f64 = 0.25;
+/// Quanto atraso o worker aceita antes de DESISTIR do tempo perdido.
+///
+/// ⚠️ **Dois passos, e o número aperta porque o relógio é CONTÍNUO** (ver
+/// `worker_loop`): com o tempo das locações contando como dívida, uma pincelada
+/// de três segundos acumularia os 0,25 s antigos = **dez passos de catch-up numa
+/// rajada**, que é precisamente o que a política do `max_substeps` da física
+/// recusa. A 0,05 s o pior catch-up é de dois passos — o bastante para absorver
+/// um round trip, curto o bastante para nunca virar rajada.
+const MAX_BEHIND_S: f64 = 2.0 * STEP_S;
 
 /// Quanto o worker dorme quando não há nada a simular. Curto o bastante para a água acordar sem
 /// atraso perceptível, longo o bastante para não ocupar um núcleo à toa.
@@ -180,10 +186,22 @@ fn worker_loop(
     // O relógio é do WORKER: ele deve `STEP_S` de tempo simulado por `STEP_S` de tempo de parede, e
     // ficar para trás é câmera lenta (nunca uma rajada de catch-up — a lição do `max_substeps`).
     let mut acc = 0.0f64;
+    // ⚠️ **O relógio NÃO reinicia a cada locação, e esta linha vale 2,4× de taxa.**
+    //
+    // Ele nascia dentro do `while let`, com o racional de que *"o tempo em que o
+    // engine esteve na UI não é dívida do worker"* — e o preço disso é aritmético:
+    // `acc` é a DÍVIDA que decide se há passo, então descartar tempo real faz o
+    // worker sub-passar na **exata fração descartada**. Medido, um traço a 4096²:
+    // **31,9 → 38,4 Hz**, 96% do nominal.
+    //
+    // ⚠️ **E o ganho é 1,2×, não os 2,4× que a aritmética sugeria** — a estimativa
+    // era minha, o número é do produto. O `16,5 Hz` do log do Enio **não** é este
+    // defeito: naquela poça o limite é TRABALHO (~60 ms/passo), não relógio, e
+    // nenhuma correção de agendamento o move. A fixture de três traços mede
+    // **12,5 Hz antes e depois desta linha**, que é a assinatura do regime
+    // work-limited — a câmera lenta honesta do `max_substeps`.
+    let mut last = Instant::now();
     while let Ok(mut engine) = rx.recv() {
-        // Recebeu: o relógio recomeça daqui. O tempo em que o engine esteve na UI não é dívida do
-        // worker — a UI o usou para carimbar dabs, que é trabalho de sim por outra via.
-        let mut last = Instant::now();
         loop {
             if want.swap(false, Ordering::AcqRel) {
                 // Devolve em fronteira de ESTÁGIO — o pior caso de espera da UI.

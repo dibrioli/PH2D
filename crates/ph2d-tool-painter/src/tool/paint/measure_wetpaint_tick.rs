@@ -142,14 +142,23 @@ fn measure_what_the_off_thread_sim_buys() {
             }
         }
         let wall = wall0.elapsed().as_secs_f32();
+        let (_, (comp_sum, _, comp_n), (wait_sum, wait_max, wait_n)) =
+            crate::wet_diag::take_window();
         let steps = sim_frame(&mut t) - f0;
         ticks.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
         let p50 = ticks[ticks.len() / 2];
         let max = ticks[ticks.len() - 1];
         let hz = steps as f32 / wall;
+        let tick_total = ticks.iter().sum::<f32>();
         println!(
             "    {nome}  sim {steps:4} passos em {wall:.2} s = {hz:5.1} Hz  |  \
-             tick p50 {p50:6.3} ms  max {max:6.3} ms"
+             tick p50 {p50:6.3} max {max:6.3} ms"
+        );
+        println!(
+            "                 DE QUE O TICK E FEITO: total {tick_total:6.1} ms = \
+             composite {comp_sum:6.1} (x{comp_n})  +  ESPERA {wait_sum:6.1} (x{wait_n}, \
+             max {wait_max:.2})  +  resto {:.1}",
+            tick_total as f64 - comp_sum - wait_sum
         );
     }
     println!(

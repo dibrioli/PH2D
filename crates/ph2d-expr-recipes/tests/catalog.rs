@@ -5,76 +5,15 @@
 //! catalog a leaf the timeline UI and the Motion node can both consume, and it is
 //! the machete-safe shape `ph2d-gpu-cook` uses with the node crates it only gates.
 
-use ph2d_expr::{Bindings, eval};
+use ph2d_expr::eval;
 use ph2d_expr_parse::parse;
 use ph2d_expr_recipes::{
-    CATALOG, ClockUse, Family, KnobKind, KnobValue, Neutrality, REFUSALS, RecipeStack, Row,
-    RowKind, SearchHit, search,
+    CATALOG, ClockUse, Family, KnobKind, Neutrality, REFUSALS, RecipeStack, Row, RowKind,
+    SearchHit, search,
 };
 
-/// The bindings a gate evaluates under. `time` is deliberately NOT a round number
-/// — a clock of 0 makes `sin`, `fract` and `floor` agree with each other by
-/// accident, and half these recipes would compose correctly by coincidence.
-struct B(f32);
-impl Bindings for B {
-    fn attr(&self, name: &str) -> f32 {
-        match name {
-            "value" => self.0,
-            "time" => 0.37,
-            _ => 0.0,
-        }
-    }
-    fn param(&self, _: &str) -> f32 {
-        0.0
-    }
-}
-
-/// How a row's knobs are set for a given probe.
-#[derive(Clone, Copy)]
-enum Knobs {
-    Default,
-    /// Both ends of every slider.
-    End(bool),
-    /// **Every number typed as zero.**
-    ///
-    /// ⚠️ Not a slider position — a knob range is a DRAG range, not a validity
-    /// claim, and the artist can select the field and press Delete. This is the
-    /// probe that reaches the denominators (`Quantize` step, `Stepped Time` rate,
-    /// a zero-width `Remap`) and the parser's own floor on `wiggle` octaves. The
-    /// first version of this gate only walked the range ends, where `step` bottoms
-    /// out at 0.001 — so it passed with the divide-by-zero guards deleted.
-    Zero,
-    /// Away from the defaults, so a recipe that is the identity at its defaults
-    /// (`Multiply / Add`) actually does something.
-    Perturbed,
-}
-
-fn set_knobs(row: &mut Row, how: Knobs) {
-    let r = ph2d_expr_recipes::by_id(row.recipe).unwrap();
-    for (i, k) in r.knobs.iter().enumerate() {
-        let (lo, hi) = k.range;
-        row.knobs[i] = match (k.kind, how) {
-            (_, Knobs::Default) => k.default_value(),
-            (KnobKind::Number | KnobKind::Literal, Knobs::End(high)) => {
-                KnobValue::Num(if high { hi } else { lo })
-            }
-            (KnobKind::Number | KnobKind::Literal, Knobs::Zero) => KnobValue::Num(0.0),
-            (KnobKind::Number | KnobKind::Literal, Knobs::Perturbed) => {
-                KnobValue::Num(lo + 0.6 * (hi - lo))
-            }
-            (KnobKind::Link, Knobs::End(false) | Knobs::Zero) => KnobValue::Link(String::new()),
-            (KnobKind::Link, _) => KnobValue::Link("Ball.x".into()),
-            (KnobKind::Text, Knobs::End(false) | Knobs::Zero) => KnobValue::Text(String::new()),
-            (KnobKind::Text, _) => KnobValue::Text("value*2".into()),
-        };
-    }
-}
-
-fn row_with(id: &'static str, how: Knobs) -> Row {
-    let mut row = Row::new(id).unwrap();
-    set_knobs(&mut row, how);
-    row
-}
+mod shared;
+use shared::{B, Knobs, row_with};
 
 // ---------------------------------------------------------------- G1
 

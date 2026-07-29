@@ -23,7 +23,7 @@ pub const SWAY: Recipe = Recipe {
     ],
     knobs: &[
         Knob::num("speed", "Speed", 3.0, (0.05, 40.0)),
-        Knob::num("amount", "Amount", 40.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.5, (0.0, 40.0)),
         Knob::num("phase", "Phase", 0.0, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,
@@ -50,7 +50,7 @@ pub const SWAY_COSINE: Recipe = Recipe {
     aliases: &["cos", "cosine", "quarter turn", "offset sine"],
     knobs: &[
         Knob::num("speed", "Speed", 3.0, (0.05, 40.0)),
-        Knob::num("amount", "Amount", 40.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.5, (0.0, 40.0)),
         Knob::num("phase", "Phase", 0.0, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,
@@ -77,7 +77,7 @@ pub const BOUNCE: Recipe = Recipe {
     aliases: &["hop", "ball", "abs sine", "jump"],
     knobs: &[
         Knob::num("speed", "Speed", 3.0, (0.05, 40.0)),
-        Knob::num("height", "Height", 40.0, (0.0, 500.0)),
+        Knob::num("height", "Height", 0.5, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -100,8 +100,8 @@ pub const PING_PONG: Recipe = Recipe {
     ],
     knobs: &[
         Knob::num("rate", "Rate", 0.5, (0.01, 20.0)),
-        Knob::num("low", "Low", 0.0, (-1000.0, 1000.0)),
-        Knob::num("high", "High", 100.0, (-1000.0, 1000.0)),
+        Knob::num("low", "Low", 0.0, (-40.0, 40.0)),
+        Knob::num("high", "High", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -126,8 +126,8 @@ pub const RAMP_LOOP: Recipe = Recipe {
     aliases: &["sawtooth", "repeat", "cycle", "scroll", "conveyor"],
     knobs: &[
         Knob::num("rate", "Rate", 0.5, (0.01, 20.0)),
-        Knob::num("low", "Low", 0.0, (-1000.0, 1000.0)),
-        Knob::num("high", "High", 100.0, (-1000.0, 1000.0)),
+        Knob::num("low", "Low", 0.0, (-40.0, 40.0)),
+        Knob::num("high", "High", 1.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -145,8 +145,8 @@ pub const BLINK: Recipe = Recipe {
     knobs: &[
         Knob::num("rate", "Rate", 4.0, (0.05, 40.0)),
         Knob::num("duty", "Duty", 0.5, (0.0, 1.0)),
-        Knob::num("on", "On", 1.0, (-1000.0, 1000.0)),
-        Knob::num("off", "Off", 0.0, (-1000.0, 1000.0)),
+        Knob::num("on", "On", 1.0, (-40.0, 40.0)),
+        Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -173,8 +173,8 @@ pub const PULSE: Recipe = Recipe {
     knobs: &[
         Knob::num("rate", "Rate", 2.0, (0.05, 40.0)),
         Knob::num("decay", "Decay", 4.0, (0.1, 20.0)),
-        Knob::num("on", "On", 1.0, (-1000.0, 1000.0)),
-        Knob::num("off", "Off", 0.0, (-1000.0, 1000.0)),
+        Knob::num("on", "On", 1.0, (-40.0, 40.0)),
+        Knob::num("off", "Off", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -199,8 +199,8 @@ pub const ORBIT_X: Recipe = Recipe {
     blurb: "Circles a centre. Pair with Orbit (Y) on the other axis.",
     aliases: &["circle", "revolve", "spin around", "rotate about"],
     knobs: &[
-        Knob::num("centre", "Centre", 0.0, (-1000.0, 1000.0)),
-        Knob::num("radius", "Radius", 80.0, (0.0, 1000.0)),
+        Knob::num("centre", "Centre", 0.0, (-40.0, 40.0)),
+        Knob::num("radius", "Radius", 1.0, (0.0, 40.0)),
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
     ],
     kind: RowKind::Value,
@@ -217,8 +217,8 @@ pub const ORBIT_Y: Recipe = Recipe {
     blurb: "Circles a centre. Pair with Orbit (X) on the other axis.",
     aliases: &["circle", "revolve", "spin around", "rotate about"],
     knobs: &[
-        Knob::num("centre", "Centre", 0.0, (-1000.0, 1000.0)),
-        Knob::num("radius", "Radius", 80.0, (0.0, 1000.0)),
+        Knob::num("centre", "Centre", 0.0, (-40.0, 40.0)),
+        Knob::num("radius", "Radius", 1.0, (0.0, 40.0)),
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
     ],
     kind: RowKind::Value,

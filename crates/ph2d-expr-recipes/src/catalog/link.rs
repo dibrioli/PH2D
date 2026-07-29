@@ -21,7 +21,7 @@ pub const FOLLOW: Recipe = Recipe {
     knobs: &[
         Knob::link("target", "Target"),
         Knob::num("multiply", "Multiply", 1.0, (-10.0, 10.0)),
-        Knob::num("offset", "Offset", 0.0, (-1000.0, 1000.0)),
+        Knob::num("offset", "Offset", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,
@@ -52,7 +52,7 @@ pub const OPPOSITE: Recipe = Recipe {
     aliases: &["reflect about", "symmetry", "mirror pivot", "counterweight"],
     knobs: &[
         Knob::link("target", "Target"),
-        Knob::num("pivot", "Pivot", 0.0, (-1000.0, 1000.0)),
+        Knob::num("pivot", "Pivot", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,
@@ -69,7 +69,7 @@ pub const OFFSET_COPY: Recipe = Recipe {
     aliases: &["shadow", "trail", "follow at distance", "clone offset"],
     knobs: &[
         Knob::link("target", "Target"),
-        Knob::num("offset", "Offset", 20.0, (-1000.0, 1000.0)),
+        Knob::num("offset", "Offset", 0.2, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,
@@ -161,9 +161,9 @@ pub const SWITCH: Recipe = Recipe {
     aliases: &["if", "trigger", "threshold", "gate", "when", "condition"],
     knobs: &[
         Knob::link("target", "Watch"),
-        Knob::num("threshold", "Threshold", 10.0, (-1000.0, 1000.0)),
-        Knob::num("above", "Above", 1.0, (-1000.0, 1000.0)),
-        Knob::num("below", "Below", 0.0, (-1000.0, 1000.0)),
+        Knob::num("threshold", "Threshold", 0.5, (-40.0, 40.0)),
+        Knob::num("above", "Above", 1.0, (-40.0, 40.0)),
+        Knob::num("below", "Below", 0.0, (-40.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,

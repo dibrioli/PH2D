@@ -36,10 +36,19 @@ pub struct Knob {
     pub label: &'static str,
     pub kind: KnobKind,
     /// Where the knob sits when the recipe is first dropped on a row.
+    ///
+    /// ⚠️ **In the units of the property being driven** for anything that carries a
+    /// value — see [the crate docs](crate) for the one rule that makes a single
+    /// number read sensibly in metres, radians, scale factors and `0..1` alike.
     pub default: f32,
-    /// Soft range for the slider. Typing outside it is the artist's business;
-    /// this is the drag range, not a validity claim.
+    /// Soft range: what the number box's **stepper arrows and drag** honour. Typing
+    /// outside it is the artist's business — the commit path never clamps, only the
+    /// arrows and the drag do — so this is a working range, not a validity claim.
+    /// The one exception is [`KnobKind::Literal`], where it IS validity.
     pub range: (f32, f32),
+    /// Stepper increment. `0` means *derive it from [`Self::range`]* — see
+    /// [`Self::step_value`], which is right for every knob in the catalog but one.
+    pub step: f32,
 }
 
 impl Knob {
@@ -57,7 +66,20 @@ impl Knob {
             kind: KnobKind::Number,
             default,
             range,
+            step: 0.0,
         }
+    }
+
+    /// Override the derived stepper increment.
+    ///
+    /// ⚠️ Exactly ONE knob in the catalog needs this (`wiggle` octaves, which are
+    /// integers), and that is the measure of whether [`Self::step_value`]'s
+    /// derivation is pulling its weight. A second caller is a hint that the
+    /// derivation is wrong, not that the knob is special.
+    #[must_use]
+    pub const fn step(mut self, step: f32) -> Self {
+        self.step = step;
+        self
     }
 
     /// A knob whose value must reach the text as a literal (see [`KnobKind::Literal`]).
@@ -74,6 +96,7 @@ impl Knob {
             kind: KnobKind::Literal,
             default,
             range,
+            step: 0.0,
         }
     }
 
@@ -86,6 +109,7 @@ impl Knob {
             kind: KnobKind::Link,
             default: 0.0,
             range: (0.0, 0.0),
+            step: 0.0,
         }
     }
 
@@ -98,7 +122,39 @@ impl Knob {
             kind: KnobKind::Text,
             default: 0.0,
             range: (0.0, 0.0),
+            step: 0.0,
         }
+    }
+
+    /// What one click of a stepper arrow is worth.
+    ///
+    /// Derived from the range unless [`Self::step`] overrode it: a two-hundredth of
+    /// the span, snapped DOWN to a round number so the box counts in 0.05s and 0.1s
+    /// instead of 0.3987s. Snapping down (never up) keeps a click from overshooting
+    /// a knob whose whole working range is small.
+    ///
+    /// ⚠️ Registering this is not decoration: without a registered step the dispatch
+    /// falls back to a buffer heuristic (`0.01` when the text has a dot, else `1`),
+    /// and a `1.0` click on an Amount whose default is `0.3` moves three canvases.
+    #[must_use]
+    pub fn step_value(&self) -> f32 {
+        if self.step > 0.0 {
+            return self.step;
+        }
+        /// Clicks it should take to cross the whole range.
+        const CLICKS_ACROSS: f32 = 200.0; // LITERAL-PX-OK: CONTAGEM de cliques, nao medida
+        let raw = (self.range.1 - self.range.0).abs() / CLICKS_ACROSS;
+        const NICE: [f32; 9] = [
+            0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0,
+            10.0, // LITERAL-PX-OK: grade de incrementos redondos, nao medidas
+        ];
+        let mut out = NICE[0];
+        for n in NICE {
+            if n <= raw {
+                out = n;
+            }
+        }
+        out
     }
 
     /// The value this knob starts at.

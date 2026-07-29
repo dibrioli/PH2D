@@ -18,7 +18,7 @@ pub const SHAKE: Recipe = Recipe {
     aliases: &["wiggle", "jitter", "noise", "camera shake", "handheld"],
     knobs: &[
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
-        Knob::num("amount", "Amount", 30.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Own,
@@ -40,10 +40,10 @@ pub const TURBULENCE: Recipe = Recipe {
     ],
     knobs: &[
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
-        Knob::num("amount", "Amount", 30.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
         // ⚠️ Literal by contract: `wiggle` unrolls one `noise` per octave at PARSE
         // time, so these two size the expression tree and cannot be driven.
-        Knob::lit("detail", "Detail", 3.0, (1.0, 4.0)),
+        Knob::lit("detail", "Detail", 3.0, (1.0, 4.0)).step(1.0),
         Knob::lit("roughness", "Roughness", 0.5, (0.0, 1.0)),
     ],
     kind: RowKind::Value,
@@ -70,7 +70,7 @@ pub const DRIFT: Recipe = Recipe {
     aliases: &["smooth noise", "wander", "float", "perlin", "sway random"],
     knobs: &[
         Knob::num("speed", "Speed", 0.5, (0.01, 10.0)),
-        Knob::num("amount", "Amount", 20.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.2, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,
@@ -87,7 +87,7 @@ pub const JITTER: Recipe = Recipe {
     aliases: &["random offset", "seed", "vary", "randomize", "stagger"],
     knobs: &[
         Knob::num("seed", "Seed", 7.0, (0.0, 1000.0)),
-        Knob::num("amount", "Amount", 20.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.2, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::None,
@@ -104,7 +104,7 @@ pub const BREATHE: Recipe = Recipe {
     aliases: &["pulse soft", "idle", "inhale", "swell", "one sided sine"],
     knobs: &[
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
-        Knob::num("amount", "Amount", 10.0, (0.0, 500.0)),
+        Knob::num("amount", "Amount", 0.15, (0.0, 40.0)),
     ],
     kind: RowKind::Value,
     clock: ClockUse::Explicit,

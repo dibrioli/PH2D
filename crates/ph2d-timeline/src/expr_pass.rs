@@ -54,7 +54,7 @@
 //! coverage window and runs on the whole cut clock.
 
 use ph2d_anim::AnimValue;
-use ph2d_ecs::{Entity, Name, World, stable_name_id};
+use ph2d_ecs::{Entity, World};
 use ph2d_expr::{Bindings, Expr, eval};
 use std::collections::BTreeMap;
 
@@ -111,7 +111,6 @@ pub(crate) fn run(
     // Name -> entity map for prop-links. Read BEFORE any write, so the whole
     // sweep sees one consistent frame.
     let mut snap: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    let mut names: BTreeMap<u64, u64> = BTreeMap::new();
     for b in doc.bindings() {
         if b.missing {
             continue;
@@ -122,12 +121,37 @@ pub(crate) fn run(
         if let Some(v) = read_prop(world, e, b) {
             snap.insert((b.entity, b.prop), v);
         }
-        if let Some(name) = world.get::<Name>(e) {
-            names
-                .entry(stable_name_id(name.0.as_str()))
-                .or_insert(b.entity);
-        }
     }
+    // ⚠️ **The name map is the FRAME's, not a second one built here.** This pass used to
+    // construct its own from `doc.bindings()`, and the module doc admitted the
+    // duplication — then the duplication defeated a fix: widening
+    // `frame_solve::build_names` to cover the whole SCENE (so `Follow` can read an object
+    // the artist merely placed) reached the blend's per-clip expressions and left the
+    // GLOBAL driver, which runs here, resolving the same name to nothing. Two answers to
+    // *"what does this name mean?"* diverged in exactly the silent way the comment
+    // predicted. One map now, handed in.
+    // ⚠️ The borrow is SPLIT by field, not resolved by cloning the map: the name half is
+    // read for the whole sweep while the value half is still written at the tail.
+    let LinkFrame {
+        links: link_values,
+        names,
+    } = &mut *links;
+    // …and the same for the VALUES a prop-link may read: `snap` is this sweep's Jacobi
+    // read set (bindings only, read before any write), and the frame's `links` carries
+    // the seeded value of a source with no binding at all. `snap` wins where both have
+    // an entry, so a bound source keeps reading the consistent pre-write frame.
+    let unbound: BTreeMap<(u64, PropKind), f32> = link_values
+        .iter()
+        .filter(|(k, _)| !snap.contains_key(k))
+        .map(|(k, v)| {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "link values are stored f64 for the blend; the evaluator is f32"
+            )]
+            let v = *v as f32;
+            (*k, v)
+        })
+        .collect();
 
     // Parse the driven bindings every frame. A parse error is a fallback: the
     // property keeps its keyed value (nothing is collected, so nothing is written).
@@ -203,14 +227,17 @@ pub(crate) fn run(
     // snapshot): a binding reads `current` and writes its result back, so an acyclic
     // chain reads fresh values with no lag; cycle members (ordered last) read the
     // value still standing, non-exploding.
-    let order = topo_order(&driven, &names);
+    let order = topo_order(&driven, names);
+    // Snap wins where both have an entry (a bound source keeps its consistent pre-write
+    // value); the rest is the seeded pose of a source the timeline does not animate.
     let mut current = snap;
+    current.extend(unbound);
     let mut writes: Vec<(usize, f32)> = Vec::new();
     for &p in &order {
         let d = &driven[p];
         let bindings = ExprBindings {
             cur: &current,
-            names: &names,
+            names,
             value: d.value,
             time: d.time,
             seed: d.seed,
@@ -231,7 +258,7 @@ pub(crate) fn run(
             // globally-transformed channel reads its POST-transform value in `shown_value`
             // (not the pre-transform composed value the blend loop inserted) — else `shown`
             // differs from `world` every frame and the autokey mints a phantom key.
-            links.links.insert((b.entity, b.prop), f64::from(v));
+            link_values.insert((b.entity, b.prop), f64::from(v));
         }
     }
 }

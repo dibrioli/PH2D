@@ -80,12 +80,30 @@ pub(crate) fn write_prop(
 /// `reading_a_property_back_is_the_inverse_of_writing_it` asserts it over EVERY
 /// kind rather than over a list someone maintains.
 pub(crate) fn read_prop(world: &World, entity: Entity, b: &crate::TargetBinding) -> Option<f32> {
-    let prop = b.prop;
     // Position — read THROUGH the trajectory (the inverse of the pose door's
     // Position arm). `None` while the binding has no path yet, which is what an
-    // unresolvable scalar does too.
-    if prop == PropKind::Position {
+    // unresolvable scalar does too. It is the ONE kind that needs the binding, which
+    // is why it is answered here and everything else delegates.
+    if b.prop == PropKind::Position {
         return crate::apply_path::read_distance(world, entity, b);
+    }
+    read_prop_kind(world, entity, b.prop)
+}
+
+/// The same read, for a kind that needs **no binding** — every property whose value is
+/// a plain component read.
+///
+/// ⚠️ Extracted rather than copied: [`read_prop`] delegates to it, so the pair
+/// `read`/`write` stays ONE inverse and the gate over every kind still covers both
+/// callers. Its second caller is `frame_solve::seed_unbound_links`, which needs the
+/// value of an object the timeline does not animate — and therefore has no binding to
+/// hand over.
+///
+/// `Position` is not answerable here and returns `None`: a distance along a trajectory
+/// is a fact about a binding, not about an entity.
+pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
+    if prop == PropKind::Position {
+        return None;
     }
     if let Some(sp) = prop.as_sprite_transform() {
         let xf = world.get::<Transform>(entity)?;

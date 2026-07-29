@@ -11,6 +11,14 @@
 //! scheduler that BUILDS the map (the retired `expr_pass` machinery:
 //! `collect_links`/`resolve_link`/`topo_order`), and a prop-link finally reads a value.
 //!
+//! ⚠️ **W3's map was a projection of the BINDING LIST, and that was the bug behind
+//! *"Follow não segue o objeto referido"*.** Both halves — the name and the value — came
+//! from `doc.bindings()`, so a link could only read a property the timeline already
+//! animated; anything else took the evaluator's total contract and resolved to **0.0**,
+//! which reads as *"my object jumped to the origin"*. Today [`build_names`] covers the
+//! whole SCENE and [`seed_unbound_links`] reads the world for the sources it does not
+//! animate. See those two for the measurement.
+//!
 //! An empty [`LinkFrame`] allocates nothing — an empty `BTreeMap` never touches the
 //! heap until its first insert — so a formula-free apply carries one at zero cost
 //! (HR-3; gate `no_expression_allocates_no_link_frame`).
@@ -164,7 +172,58 @@ pub(crate) fn any_formula(doc: &TimelineDoc) -> bool {
         || crate::expr_live::has_pending_restore()
 }
 
-pub(crate) fn build_names(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64> {
+/// **Every name a prop-link may resolve — the whole SCENE, not the binding list.**
+///
+/// ⚠️ Red-first against a report: *"Follow e outros da categoria ruins, não seguem o
+/// objeto referido."* This map used to be built exclusively from `doc.bindings()`, so
+/// a name only existed if the timeline already animated that object — and MEASURED,
+/// `Ball.x*1 + 0` against a merely-placed sprite resolved to **0.0**, which does not
+/// read as *"the link is dead"*, it reads as *"my object jumped to the origin"*. The
+/// load-bearing measurement was the near-miss: an object **bound** on TranslationX
+/// with **zero keys** already worked (7.0000), so what was missing was never the
+/// track — it was the BINDING, a document fact the artist has no reason to connect to
+/// *"be where that is"*.
+///
+/// Two passes, and the order carries the weight:
+///
+/// 1. **the bindings, exactly as before** — a bound object stays authoritative, so
+///    every link that resolves today resolves to the same entity tomorrow;
+/// 2. **the rest of the scene**, `or_insert`, so pass 1 always wins.
+///
+/// ⚠️ Duplicate `Name`s become user-visible the moment the map covers the whole scene,
+/// and *"whichever came first"* is not an answer when the source is a query whose order
+/// is an implementation detail. The rule is the **lowest entity bits**: arbitrary, but
+/// STABLE across frames and across runs, which is the property that matters — an
+/// ambiguous link that picks a different object every frame is worse than one that
+/// picks the wrong object every frame.
+pub(crate) fn build_names(world: &mut World, doc: &TimelineDoc) -> BTreeMap<u64, u64> {
+    let mut names = build_names_bound(world, doc);
+    let mut unbound: BTreeMap<u64, u64> = BTreeMap::new();
+    let mut q = world.query::<(Entity, &Name)>();
+    for (e, name) in q.iter(world) {
+        let key = stable_name_id(name.0.as_str());
+        let bits = e.to_bits();
+        unbound
+            .entry(key)
+            .and_modify(|held| *held = (*held).min(bits))
+            .or_insert(bits);
+    }
+    for (key, bits) in unbound {
+        names.entry(key).or_insert(bits);
+    }
+    names
+}
+
+/// Pass 1 alone — the names of objects the timeline ANIMATES.
+///
+/// ⚠️ This is not a second answer to *"what does this name mean?"*: [`build_names`] calls
+/// it and then widens. It exists as its own door for the ONE caller that cannot widen —
+/// `pose_at`, the onion's ghost, which is handed a `&World` from inside the render
+/// extract and whose prop-links are ALREADY declared approximate (it reads the source at
+/// the live playhead, not at the ghost's time). Giving the ghost a mutable world to reach
+/// unbound sources would push `&mut` through the render path to make an approximation
+/// slightly less approximate.
+pub(crate) fn build_names_bound(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64> {
     let mut names = BTreeMap::new();
     for b in doc.bindings() {
         if b.missing {
@@ -180,6 +239,59 @@ pub(crate) fn build_names(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64
         }
     }
     names
+}
+
+/// **The value of a link whose source the timeline does not animate**, read straight
+/// from the world.
+///
+/// The composition loop writes `links.links` for every BINDING it composes, and
+/// [`seed_links`] pre-fills the same set from last frame — so a source that has a
+/// binding is always covered. This fills the other case, and only the pairs some
+/// formula actually NAMES: an unbound source contributes nothing to `topo_order`
+/// (there is no channel to order), and it does not need to — its value is already
+/// final for the frame, whoever wrote it (the gizmo, physics, a parent's transform).
+/// Read-only, and never inserted over a value the loop will produce.
+///
+/// ⚠️ `Position` is honestly absent for an unbound source: it is a distance ALONG a
+/// trajectory, and an object with no binding has no trajectory to measure against —
+/// so [`read_prop_kind`] returns `None` and the link keeps the total contract's 0.0.
+///
+/// [`read_prop_kind`]: crate::apply_prop::read_prop_kind
+pub(crate) fn seed_unbound_links(
+    world: &World,
+    doc: &TimelineDoc,
+    names: &BTreeMap<u64, u64>,
+    out: &mut BTreeMap<(u64, PropKind), f64>,
+) {
+    let bound: std::collections::BTreeSet<(u64, PropKind)> = doc
+        .bindings()
+        .iter()
+        .filter(|b| !b.missing)
+        .map(|b| (b.entity, b.prop))
+        .collect();
+    let mut wanted = Vec::new();
+    for b in doc.bindings() {
+        binding_links(doc, b, names, &mut wanted);
+    }
+    for c in doc.clips() {
+        for (_, expr) in c.expr.iter() {
+            let Ok(ir) = ph2d_expr_parse::parse(expr) else {
+                continue;
+            };
+            collect_links(&ir, names, &mut wanted);
+        }
+    }
+    for key in wanted {
+        if bound.contains(&key) || out.contains_key(&key) {
+            continue;
+        }
+        let Some(e) = Entity::try_from_bits(key.0) else {
+            continue;
+        };
+        if let Some(v) = crate::apply_prop::read_prop_kind(world, e, key.1) {
+            out.insert(key, f64::from(v));
+        }
+    }
 }
 
 /// Seed the frame's `links` from the world — the value each channel held LAST frame — so a

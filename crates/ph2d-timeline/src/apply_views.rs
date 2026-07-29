@@ -50,6 +50,9 @@ pub fn apply_container(
     let order = scheduled.then(|| {
         links.names = frame_solve::build_names(world, doc);
         frame_solve::seed_links(world, doc, &mut links.links);
+        // …and the sources the timeline does NOT animate, straight from the world. This is
+        // what makes `Follow` follow an object the artist merely placed (the report).
+        frame_solve::seed_unbound_links(world, doc, &links.names, &mut links.links);
         frame_solve::topo_order(doc, &links.names)
     });
     let n = doc.bindings().len();
@@ -131,6 +134,9 @@ pub fn apply_active_clip(
     let order = scheduled.then(|| {
         links.names = frame_solve::build_names(world, doc);
         frame_solve::seed_links(world, doc, &mut links.links);
+        // …and the sources the timeline does NOT animate, straight from the world. This is
+        // what makes `Follow` follow an object the artist merely placed (the report).
+        frame_solve::seed_unbound_links(world, doc, &links.names, &mut links.links);
         frame_solve::topo_order(doc, &links.names)
     });
 

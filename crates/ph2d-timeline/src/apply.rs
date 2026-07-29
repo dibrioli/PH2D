@@ -98,6 +98,9 @@ fn apply_inner(
         // Seed the cycle back-edges from last frame's world; an acyclic channel's seed is
         // overwritten by its fresh composition below, so this never moves the acyclic result.
         frame_solve::seed_links(world, doc, &mut links.links);
+        // …and the sources the timeline does NOT animate, straight from the world. This is
+        // what makes `Follow` follow an object the artist merely placed (the report).
+        frame_solve::seed_unbound_links(world, doc, &links.names, &mut links.links);
         frame_solve::topo_order(doc, &links.names)
     });
 

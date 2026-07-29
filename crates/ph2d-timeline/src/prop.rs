@@ -166,14 +166,21 @@ impl PropKind {
     /// case-insensitive. `TimeRemap` is deliberately absent (it is the timeline's
     /// meta-clock, not a scene value to read); a bare `time` is the playhead, so
     /// it is resolved by the pass's `Bindings`, not here.
+    /// ⚠️ **[`PropKind::i18n_suffix`] is one of the accepted spellings**, and it was not:
+    /// a link typed `Ball.translation_x` — the name this very enum gives the property,
+    /// and the one the panel's own label is keyed by — parsed cleanly and resolved to
+    /// **0.0**, teleporting the follower to the origin with nothing said. The two tables
+    /// are now checked against each other by
+    /// `every_prop_answers_to_the_name_the_panel_shows_it_under`, so a kind added with a
+    /// label but no spelling cannot ship.
     #[must_use]
     pub fn from_expr_name(name: &str) -> Option<PropKind> {
         match name.to_ascii_lowercase().as_str() {
-            "x" | "translationx" | "tx" => Some(PropKind::TranslationX),
-            "y" | "translationy" | "ty" => Some(PropKind::TranslationY),
+            "x" | "translationx" | "translation_x" | "tx" => Some(PropKind::TranslationX),
+            "y" | "translationy" | "translation_y" | "ty" => Some(PropKind::TranslationY),
             "rotation" | "rot" | "r" => Some(PropKind::Rotation),
-            "scalex" | "sx" => Some(PropKind::ScaleX),
-            "scaley" | "sy" => Some(PropKind::ScaleY),
+            "scalex" | "scale_x" | "sx" => Some(PropKind::ScaleX),
+            "scaley" | "scale_y" | "sy" => Some(PropKind::ScaleY),
             "opacity" | "alpha" | "a" => Some(PropKind::Opacity),
             "position" | "pos" | "p" => Some(PropKind::Position),
             "morph" | "m" => Some(PropKind::Morph),

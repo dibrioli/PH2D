@@ -88,7 +88,12 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
     // (limitação declarada). Semear do mundo pós-apply mantém `pose_at == {apply; read}` para
     // canal keyado E expressão local, o que o gate de equivalência pina.
     let mut links = crate::frame_solve::LinkFrame {
-        names: crate::frame_solve::build_names(world, doc),
+        // ⚠️ A metade BOUND do mapa de nomes: o fantasma recebe `&World` de dentro do
+        // extract, e os prop-links dele já são aproximados por construção (leem a fonte no
+        // playhead vivo, não no tempo do fantasma). Alcançar uma fonte NÃO-bindada exigiria
+        // empurrar `&mut` pelo caminho de render para deixar uma aproximação um pouco
+        // menos aproximada.
+        names: crate::frame_solve::build_names_bound(world, doc),
         ..Default::default()
     };
     crate::frame_solve::seed_links(world, doc, &mut links.links);

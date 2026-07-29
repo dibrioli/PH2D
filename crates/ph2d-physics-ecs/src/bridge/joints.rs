@@ -383,16 +383,58 @@ impl PhysicsBridge {
                     for (w, row) in wheels.iter_mut().zip(&self.rope_wheels[first..]) {
                         w.side = super::rope::wrap_side(row.wrap, w.side, w.centre, wa, wb);
                     }
+                    // A rota que as roldanas de fato desenham — UMA derivação,
+                    // servindo as DUAS metades abaixo. Ela é função do estado
+                    // AUTORADO inteiro (âncoras de repouso, centros de repouso),
+                    // logo é constante durante o play: é isso que torna o piso
+                    // seguro aqui, sem porta de relógio.
+                    let route = rope_route::route(wa, wb, wheels, &mut self.route_scratch)
+                        .map(|r| r.length);
+                    let authored = joint.clamped().max_length;
                     // O comprimento da corda: autorado, ou semeado da rota que a
                     // montagem tem em REPOUSO — a corda nasce esticada, e o
                     // primeiro frame não dá um puxão.
-                    let total_length = if joint.anchored {
-                        joint.clamped().max_length
-                    } else {
-                        let l0 = rope_route::route(wa, wb, wheels, &mut self.route_scratch)
-                            .map_or(joint.clamped().max_length, |r| r.length);
-                        self.joints_to_seed.push((e, la, lb, Some(l0)));
-                        l0
+                    //
+                    // ⚠️ **E uma corda não pode ser mais CURTA que o caminho que
+                    // ela enfia.** A porta `reseat_wheel_geometry` re-deriva o
+                    // `L0` para os três gestos que a conhecem (arrastar o centro,
+                    // arrastar o aro, digitar o raio) — mas a rota tem mais
+                    // entradas que essas três, e *uma condição que enumera seus
+                    // leitores apodrece*. Medido, com o `L0` parado (sonda
+                    // `measure_pulley_route_gestures`): acrescentar uma roldana
+                    // deixa a restrição violada em **+2,88 m** e o rig salta
+                    // **13,97 m** num tique (55,45 com raio 0,60) · mover o centro
+                    // de uma roldana para o lado, **+4,19 m** e **25,27** ·
+                    // digitar `Rope Length = 5` numa rota de 11,97, **+6,97** e
+                    // **46,58**. E **apagar** uma roldana nunca poderia passar por
+                    // uma porta: o delete da Hierarquia não sabe o que é uma corda.
+                    //
+                    // ⚠️ **É um PISO, não uma re-derivação, e a assimetria é o que
+                    // a medição mostrou:** violação POSITIVA explode; a negativa é
+                    // folga, e mede exatamente o salto do controle (0,0785 contra
+                    // 0,0817 de uma cena que ninguém tocou). Re-derivar para baixo
+                    // aqui **clobbaria um comprimento autorado** — é a row
+                    // `Rope Length (m)`, editável numa polia — enquanto encurtar
+                    // abaixo da própria geometria é impossível, não uma escolha.
+                    // Quem quer a corda mais curta move a geometria; a porta segue
+                    // dando o número EXATO nos dois sentidos para os gestos que ela
+                    // conhece, e as duas camadas têm gate cada.
+                    //
+                    // A escrita acontece no máximo UMA vez por mudança de
+                    // geometria: ela grava o mesmo `f32` que comparou, e a rota é
+                    // determinística ⇒ o dispatch seguinte acha `route == authored`
+                    // e não escreve nada (sem épsilon, sem ping-pong).
+                    let total_length = match (joint.anchored, route) {
+                        (false, r) => {
+                            let l0 = r.unwrap_or(authored);
+                            self.joints_to_seed.push((e, la, lb, Some(l0)));
+                            l0
+                        }
+                        (true, Some(r)) if r > authored => {
+                            self.joints_to_seed.push((e, la, lb, Some(r)));
+                            r
+                        }
+                        (true, _) => authored,
                     };
                     self.pulley_records.push(super::views::PulleyRecord {
                         entity: e,

@@ -177,6 +177,17 @@ pub(crate) const MEASURED_PLAIN_DROP: f32 = 0.75;
 /// **Quanto o contrapeso do rig engrenado DESCE**, metros — `2·(R/r)` vezes o que
 /// a carga sobe, e é o número que se vê de longe.
 pub(crate) const MEASURED_GEARED_COUNTER_DROP: f32 = 2.22;
+/// **O comprimento que a corda engrenada desta cena de fato mede**, metros — o
+/// número que o piso devolve quando o artista digita um absurdo na row
+/// `Rope Length (m)`. Medido por `probe_smoke_63_floor`.
+pub(crate) const MEASURED_GEARED_ROPE_LENGTH: f32 = 80.8986;
+/// **E o mesmo depois de um `Add Wheel`** — a roldana nova cai quase sobre a linha
+/// da corda nesta cena, então o piso a estica só 0,02 m. É por isso que a mensagem
+/// pede que se confira o TRANCO, não o movimento.
+pub(crate) const MEASURED_GEARED_ROPE_LENGTH_ADDED: f32 = 80.9190;
+/// **O maior passo que a carga engrenada dá num tique** — o mesmo na cena
+/// intocada, com a roldana acrescentada e com o comprimento absurdo corrigido.
+pub(crate) const MEASURED_GEARED_WORST_JUMP: f32 = 0.0046;
 
 /// **O ENQUADRAMENTO que esta cena precisa** — o centro e a altura de mundo da
 /// câmera.
@@ -286,7 +297,19 @@ impl crate::App {
                  o CENTRO dela: o eixo se re-coloca NO BLOCO e FICA. Antes desta wave\n    \
                  ele voltava sozinho ao soltar -- o centro de uma roldana montada e\n    \
                  derivado, e quem nao desarma o sentinela escreve num campo que o\n    \
-                 frame seguinte reescreve.",
+                 frame seguinte reescreve.\n\n  \
+               E O PISO -- dois gestos que NAO podem dar tranco:\n  \
+               - com a corda 'Geared Rope' selecionada, digite 2 na row\n    \
+                 'Rope Length (m)' da secao Physics Joint. A corda desta cena mede\n    \
+                 {l0:.1} m, entao 2 e impossivel: o numero volta para {l0:.1} sozinho\n    \
+                 (a corda nao pode ser mais curta que o caminho que ela enfia) e o\n    \
+                 Play continua liso. Sem o piso isso era {viol:.0} m de violacao, e o\n    \
+                 solver a comia num tique so.\n  \
+               - clique 'Add Wheel': nasce uma 3a roldana e o comprimento sobe\n    \
+                 sozinho ({l0:.4} -> {l0_added:.4} m). Nesta cena a roldana nova cai\n    \
+                 quase sobre a linha da corda, entao o Play muda pouco -- o que se\n    \
+                 confere aqui e que ele nao TRANCA (maior salto {jump:.4} m, o mesmo\n    \
+                 da cena intocada).",
             load = LOAD_MASS,
             counter = COUNTER_MASS,
             r_in = R_IN,
@@ -297,6 +320,10 @@ impl crate::App {
             geared = MEASURED_GEARED_RISE,
             drop = MEASURED_GEARED_COUNTER_DROP,
             plain = MEASURED_PLAIN_DROP,
+            l0 = MEASURED_GEARED_ROPE_LENGTH,
+            l0_added = MEASURED_GEARED_ROPE_LENGTH_ADDED,
+            jump = MEASURED_GEARED_WORST_JUMP,
+            viol = MEASURED_GEARED_ROPE_LENGTH - 2.0,
         );
     }
 }

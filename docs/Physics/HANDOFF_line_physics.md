@@ -6795,3 +6795,25 @@ diferencial E uma cadernal montada, que é exatamente o palco das duas alças. C
 relógio PARADO — selecione `Geared Rope Drum` (três alças âmbar: o centro, o aro da direita = entrada,
 o da esquerda = saída) e arraste o da esquerda; depois selecione `Geared Rope Sheave` e arraste o
 CENTRO dela: o eixo re-coloca-se no bloco e **FICA**.
+
+### O smoke do W6 reprovou, e a causa não era a alça (2026-07-29)
+
+*"Selecionar Geared Rope Drum não mostra três alças âmbar"* (Enio). **A medição inocentou o publicador
+na primeira sonda** — com a cena 63 real e o tambor selecionado ele devolve `["Centre", "Rim",
+"RimOut"]`, as três. A causa era **ENQUADRAMENTO**: a câmera padrão mostra `y ∈ [−5, +5]` e o tambor
+está em **y = 10**; as alças eram desenhadas cinco metros acima do topo da tela.
+
+⚠️ **O defeito é do W5, meu:** subi o `DRUM_Y` de 7,0 para 10,0 para dar pista ao contrapeso — número
+escolhido por motivo **FÍSICO**, e um número desses não sabe nada sobre o que cabe na tela. ⚠️ **A cena
+62 é pior:** tambor em **y = 12** e a mensagem mandando *selecionar o tambor e olhar o segundo anel
+aparecer* — instrução **inverificável desde que foi escrita**.
+
+**Lei, escrita uma vez** (`physics_smoke_pulley::outside_frame`, `cfg(test)`): *uma cena de smoke
+enquadra o que ela pede que se olhe*. As duas cenas declaram o quadro em consts, o gate afirma o fit no
+eixo Y (a largura depende do aspecto, que a cena não conhece), e o **teto do enquadramento é
+compile-time** — *enquadrar* não pode virar *afastar a câmera até tudo caber*. **2 mutações, 2
+sangram**, cada uma nomeando o culpado (`"Plain Post" 10.0` · `"Plain Rope Drum" 12.0`).
+
+⚠️ **Nomeado e NÃO corrigido:** as cenas 58-61 têm tambores em `BOOM_Y = 7,0`, também acima do topo
+padrão — elas não pedem que se selecione uma roldana, e mexer no enquadramento de cenas já aprovadas
+mudaria o que o artista validou. A porta está pronta para quando uma delas passar a pedir.

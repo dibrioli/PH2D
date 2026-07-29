@@ -391,6 +391,43 @@ Smoke: a **mesma cena `PH2D_PHYSICS_SMOKE=63`**, cuja mensagem ganhou os dois
 gestos — ela já tem um tambor diferencial E uma cadernal montada, que é
 exatamente o palco das duas alças.
 
+#### O smoke do W6 reprovou, e a causa não era a alça
+
+*"Selecionar Geared Rope Drum não mostra três alças âmbar"* (Enio). **A medição
+inocentou o publicador na primeira sonda:** com a cena 63 real e o tambor
+selecionado ele devolve `["Centre", "Rim", "RimOut"]`, exatamente as três. A causa
+estava a montante e era **ENQUADRAMENTO** — a câmera padrão mostra `y ∈ [−5, +5]`
+(`center = (0,0)`, `height_world = 10`; o próprio `main.rs` o diz na definição do
+`WORLD_HALF`) e o tambor da cena está em **y = 10**: as alças eram desenhadas
+**cinco metros acima do topo da tela**.
+
+⚠️ **E o defeito é do W5, meu:** eu subi o `DRUM_Y` de 7,0 para 10,0 para dar pista
+ao contrapeso. Foi um número escolhido por motivo **FÍSICO**, e um número desses
+**não sabe nada sobre o que cabe na tela** — as duas coisas têm de ser
+reconciliadas por alguém, e até aqui não eram por ninguém.
+
+⚠️ **A cena 62 tem a mesma doença e pior:** o tambor dela está em **y = 12**, e a
+mensagem dela manda *selecionar o tambor e OLHAR o segundo anel aparecer*. A
+instrução era **inverificável desde que foi escrita**, e ninguém notou porque o que
+a cena demonstra (as cargas indo para lados opostos) acontece embaixo.
+
+**A lei, escrita UMA vez** (`physics_smoke_pulley::outside_frame`): *uma cena de
+smoke ENQUADRA o que ela pede que se olhe.* As duas cenas declaram o próprio quadro
+em consts e o gate afirma que tudo que elas spawnam cabe nele — só o eixo **Y**,
+porque a largura visível depende do aspecto da janela, que a cena não conhece.
+**2 mutações, 2 sangram**, e cada uma reproduz o sintoma REPORTADO nomeando o
+culpado (`"Plain Post" 10.0` na 63, `"Plain Rope Drum" 12.0` na 62).
+
+⚠️ **O teto do enquadramento é COMPILE-TIME** (`const _: () = assert!(…)`):
+*enquadrar* não pode virar *afastar a câmera até tudo caber*, e mexer na const para
+além disso quebra o **BUILD** em vez de um teste que alguém pode filtrar.
+
+⚠️ **Nomeado e NÃO corrigido:** as cenas 58-61 têm os tambores em `BOOM_Y = 7,0`,
+também acima do topo padrão. Elas **não pedem** que se selecione uma roldana — o
+que demonstram acontece embaixo —, e mexer no enquadramento de cenas já aprovadas
+em smoke mudaria o que o artista já validou. A porta está pronta para quando uma
+delas passar a pedir.
+
 ### Aberto no W6, nomeado
 
 - **Nenhuma alça de roldana tem ÍMÃ**, e é decisão herdada do W1: o ímã cola nos

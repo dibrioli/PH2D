@@ -245,3 +245,71 @@ fn measure_the_two_cures_for_the_identity_token() {
     }
     println!();
 }
+
+/// **O QUE CUSTA UM FRAME COM A ÁGUA VIVA** — o repro do smoke do Enio (2026-07-28): *"IMG 4096, uma
+/// pincelada grande e molhada, FPS cai para 4"*.
+///
+/// ⚠️ **As sondas irmãs medem o MOVE, e o move não é o que ele viu.** Um move só acontece enquanto a
+/// mão anda; o que derruba o FPS *depois* da pincelada é o **tick** — a sim continua correndo, e ela
+/// roda uma vez por frame quer o artista mexa o mouse ou não. Medir o move e concluir sobre o FPS é
+/// medir a coisa errada com precisão.
+///
+/// 4 FPS são **250 ms/frame**. Esta tabela diz quanto disso é o tick, por tela e por raio.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture"]
+fn measure_what_a_frame_of_live_water_costs() {
+    const FRAME_MS: f32 = 16.6;
+    println!(
+        "\n{:<8} {:>7} {:>12} {:>12} {:>12}",
+        "tela", "raio", "traco ms", "tick p50 ms", "tick max ms"
+    );
+    for side in [1024u32, 2048, 4096] {
+        for radius in [40.0f32, 100.0, 200.0] {
+            let mut t = wetted(side, radius);
+            let mid = (side / 2) as f32;
+            let x0 = radius + 20.0;
+            let x1 = ((side as f32) - radius - 20.0).min(x0 + 400.0);
+
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+            let mut x = x0 + 40.0;
+            while x <= x1 {
+                t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+                x += 40.0;
+            }
+            t.on_canvas_pointer(cp([x1, mid], PointerPhase::Up));
+            let stroke_ms = t0.elapsed().as_secs_f64() * 1e3;
+
+            // A água viva: o que o app paga POR FRAME depois de soltar.
+            let mut ticks = Vec::new();
+            let mut areas = Vec::new();
+            for _ in 0..12 {
+                t.marks.clear();
+                let t1 = Instant::now();
+                ph2d_editor_core::tool::Tool::on_tick(&mut t, FRAME_MS);
+                ticks.push(t1.elapsed().as_secs_f64() * 1e3);
+                // ⚠️ A ÁREA que o tick declara suja é o que decide o UPLOAD, e o upload é do app, não
+                // do tool: um tick barato que suja a tela inteira custa um documento por frame na
+                // ponte. Medir só o relógio do tool responderia a pergunta errada.
+                let a: u64 = t
+                    .marks
+                    .iter()
+                    .map(|r| u64::from(r.w) * u64::from(r.h))
+                    .sum();
+                areas.push(a as f64);
+                let _ = t.take_preview_arc();
+            }
+            ticks.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            areas.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            let full = f64::from(side) * f64::from(side);
+            println!(
+                "{side:<8} {radius:>7.0} {stroke_ms:>12.2} {:>12.2} {:>12.2} {:>11.1}%",
+                ticks[ticks.len() / 2],
+                ticks[ticks.len() - 1],
+                100.0 * areas[areas.len() / 2] / full
+            );
+        }
+    }
+    println!();
+}

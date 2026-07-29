@@ -12,7 +12,10 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
-use ph2d_flip_render::{CameraRaw, FlipCompose, FlipRenderer, pack_drawing};
+use ph2d_flip_render::{
+    CameraRaw, DEFAULT_TILE, FlipCompose, FlipRenderer, ScreenSpace, bin_segments, pack_drawing,
+    walk_pixel,
+};
 use ph2d_gpu::GpuContext;
 use ph2d_painter_effects::BlendMode;
 use ph2d_render::layer_compositor::{
@@ -335,5 +338,128 @@ fn top_layer_opacity_fades_toward_backdrop() {
     assert!(
         (r - 0.5).abs() < 0.05,
         "branco @opacity 0.5 sobre preto = {r} (esperado ~0.5)"
+    );
+}
+
+/// Lê a FATIA straight (`Rgba8Unorm`) que o `stage_layer` devolve — o que o `inject` consome.
+fn readback_slice(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<u8> {
+    let bytes_per_row = W * 4; // 64*4 = 256, já alinhado
+    let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("flip slice readback"),
+        size: u64::from(bytes_per_row * H),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    enc.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture: tex,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buf,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: Some(H),
+            },
+        },
+        wgpu::Extent3d {
+            width: W,
+            height: H,
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([enc.finish()]);
+    buf.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    gpu.device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .expect("poll");
+    buf.slice(..).get_mapped_range().to_vec()
+}
+
+/// 🔴 **O GATE DA FIAÇÃO** — com o motor novo armado, a fatia que o `stage_layer` entrega ao
+/// compositor é a que o **percurso** desenha, não a do rasterizador.
+///
+/// ⚠️ **O oráculo é a COBERTURA (o alfa), e é de propósito.** O Pass B des-premultiplica o RGB
+/// (aritmética própria, que não é o assunto aqui) e **deixa o alfa em paz** — então o alfa da
+/// fatia é a única grandeza que atravessa a costura inteira sem ser transformada, e é exatamente
+/// a resposta à pergunta do doc 12: *dado um traço, quais pixels ele acende?*
+///
+/// ⚠️ **A barra é DERIVADA, não escolhida:** o número atravessa `f32` → meia precisão (o `hdr`,
+/// 2⁻¹¹ ≈ 4,9e-4 em magnitude 1) → 8 bits (a fatia, 1/255 ≈ 3,9e-3), e o segundo domina ⇒
+/// **1,5/255**. Nada mais apertado é afirmável sobre um `u8`.
+///
+/// ⚠️ E o gate **compara contra o irmão de CPU**, nunca contra o rasterizador: os dois motores
+/// discordam por PROJETO (é a razão de a linha existir), então exigir que a fatia case com o
+/// raster seria um gate que só pode passar se o trabalho estiver desfeito.
+#[test]
+#[ignore = "precisa de adapter GPU; roda com --ignored"]
+fn the_staged_slice_comes_from_the_new_engine_when_it_is_armed() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando a fiação do motor novo");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    let cam = pixel_camera();
+    // Um traço ABERTO e macio: a borda tem rampa (onde os dois motores mais divergem) e o
+    // cruzamento em L exercita o run-scan por ladrilho.
+    let mut st = FlipStroke::new();
+    for &(x, y) in &[(10.0, 20.0), (30.0, 20.0), (30.0, 50.0)] {
+        st.push_point(Point {
+            pos: Vec2::new(x, y),
+            width: 9.0,
+            opacity: 1.0,
+            color: Rgba::new(0.1, 0.1, 0.1, 1.0),
+        });
+    }
+    st.hardness = 0.4;
+    let mut d = FlipDrawing::default();
+    d.strokes.push(st);
+    let data = pack_drawing(&d);
+
+    assert!(!fc.walk_engine_armed(), "o default é o motor que shipa");
+    fc.set_walk_engine(&gpu.device, true);
+    assert!(fc.walk_engine_armed(), "armado");
+    let slice = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (W, H));
+    let px = readback_slice(&gpu, slice);
+
+    let sc = ScreenSpace::from_camera(&cam);
+    let bins = bin_segments(&data, &sc, DEFAULT_TILE);
+    let (mut pior, mut onde, mut n_tinta) = (0.0_f32, (0, 0), 0u32);
+    for y in 0..H {
+        for x in 0..W {
+            let cpu = walk_pixel(&bins, &data, &sc, [x as f32 + 0.5, y as f32 + 0.5]);
+            let got = f32::from(px[((y * W + x) * 4 + 3) as usize]) / 255.0;
+            let d = (got - cpu[3]).abs();
+            if d > pior {
+                pior = d;
+                onde = (x, y);
+            }
+            if cpu[3] > 0.0 {
+                n_tinta += 1;
+            }
+        }
+    }
+    // A premissa do gate: o traço PINTA. Sem isto, `pior = 0` é verde sobre uma tela vazia.
+    assert!(
+        n_tinta > 500,
+        "a fixture nao contem o fenomeno: so {n_tinta} px de tinta"
+    );
+    let bar = 1.5 / 255.0;
+    assert!(
+        pior <= bar,
+        "a fatia do produto nao e o percurso: pior |Δ| no alfa {:.4} ({:.2}/255) em {onde:?}",
+        pior,
+        pior * 255.0
+    );
+    println!(
+        "\n  fiacao OK -- pior |Δ| no alfa {:.2}/255 em {onde:?} ({n_tinta} px de tinta)",
+        pior * 255.0
     );
 }

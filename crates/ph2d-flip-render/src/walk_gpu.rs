@@ -9,13 +9,47 @@
 //! ⚠️ **Um workgroup de 16×16 É um ladrilho** (`DEFAULT_TILE = 16`, o número que a §6.2 mediu):
 //! as 256 threads leem a MESMA lista, que é a razão inteira de o binning existir.
 //!
-//! ⚠️ **A saída é `vec4<f32>`, não uma textura de 8 bits** — de propósito. O gate de paridade tem
-//! de medir a divergência entre os dois motores, e um alvo `rgba8unorm` a misturaria com a
-//! quantização. O alvo do produto é uma textura, e a troca é de uma linha.
+//! ⚠️ **A saída é UMA textura, e é a do PRODUTO** ([`TARGET_FORMAT`] = o `hdr` premult 16F do
+//! [`crate::FlipCompose`]). Uma 2ª saída em buffer daria dois caminhos para o mesmo pixel e a
+//! paridade passaria a medir um deles enquanto o outro shipa — a falha de duas-portas de sempre.
+//! O preço é honesto e está no gate: a precisão do readback deixou de ser a do kernel (`f32`) e
+//! passou a ser a do FORMATO (meia precisão, ~1e-3 relativo perto de 1,0) ⇒ a barra do
+//! `walk_gpu_parity` é derivada disso, não escolhida.
 
 use crate::binning::{ScreenSpace, TileBins};
 use crate::pack::FlipGpuData;
 use wgpu::util::DeviceExt;
+
+/// O formato do alvo. ⚠️ **É o `hdr` do [`crate::FlipCompose`]** (premult 16F), porque o passe
+/// entra exatamente onde o rasterizador entrava — o Pass B (premult → straight) segue intocado.
+pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+/// Meia precisão → `f32`, para o harness ler o alvo do produto. ⚠️ **Nada disto roda no produto**:
+/// o `hdr` é consumido pelo Pass B do [`crate::FlipCompose`], no device.
+fn f16_to_f32(bits: u16) -> f32 {
+    let sign = u32::from(bits >> 15) << 31;
+    let exp = u32::from((bits >> 10) & 0x1f);
+    let man = u32::from(bits & 0x3ff);
+    let v = if exp == 0 {
+        if man == 0 {
+            sign
+        } else {
+            // Subnormal: normaliza deslocando até o bit implícito aparecer.
+            let mut e = -1_i32;
+            let mut m = man;
+            while m & 0x400 == 0 {
+                m <<= 1;
+                e -= 1;
+            }
+            sign | (((127 - 15 + e + 1) as u32) << 23) | ((m & 0x3ff) << 13)
+        }
+    } else if exp == 0x1f {
+        sign | 0x7f80_0000 | (man << 13)
+    } else {
+        sign | ((exp + 127 - 15) << 23) | (man << 13)
+    };
+    f32::from_bits(v)
+}
 
 /// Os três números da grade + a câmera, no layout que o `walk.wgsl` declara.
 #[repr(C)]
@@ -68,7 +102,16 @@ impl WalkPass {
                 entry(2, true),
                 entry(3, true),
                 entry(4, true),
-                entry(5, false),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: TARGET_FORMAT,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -102,13 +145,33 @@ impl WalkPass {
         screen: &ScreenSpace,
         bins: &TileBins,
     ) -> Vec<[f32; 4]> {
-        let Some(job) = self.prepare(device, data, screen, bins) else {
+        let (w, h) = (screen.viewport[0] as u32, screen.viewport[1] as u32);
+        if w == 0 || h == 0 {
+            return Vec::new();
+        }
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("walk target"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: TARGET_FORMAT,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let Some(job) = self.prepare(device, data, screen, bins, &view) else {
             return Vec::new();
         };
-        let out_size = (job.n_px * 16) as u64;
+        // 8 bytes/px (4 canais de meia precisão), com a linha alinhada em 256.
+        let row = (w * 8).div_ceil(256) * 256;
         let read = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("walk read"),
-            size: out_size,
+            size: u64::from(row) * u64::from(h),
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -116,7 +179,27 @@ impl WalkPass {
             label: Some("walk enc"),
         });
         self.record(&mut enc, &job);
-        enc.copy_buffer_to_buffer(&job.out, 0, &read, 0, out_size);
+        enc.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &read,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(row),
+                    rows_per_image: Some(h),
+                },
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
         queue.submit(Some(enc.finish()));
 
         let slice = read.slice(..);
@@ -126,9 +209,21 @@ impl WalkPass {
         });
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         let _ = rx.recv();
-        let view = slice.get_mapped_range();
-        let px: Vec<[f32; 4]> = bytemuck::cast_slice::<u8, [f32; 4]>(&view)[..job.n_px].to_vec();
-        drop(view);
+        let bytes = slice.get_mapped_range();
+        let mut px = Vec::with_capacity(job.pixels());
+        for y in 0..h {
+            let base = (y * row) as usize;
+            for x in 0..w {
+                let o = base + (x as usize) * 8;
+                let mut c = [0.0_f32; 4];
+                for (k, dst) in c.iter_mut().enumerate() {
+                    let bits = u16::from_le_bytes([bytes[o + k * 2], bytes[o + k * 2 + 1]]);
+                    *dst = f16_to_f32(bits);
+                }
+                px.push(c);
+            }
+        }
+        drop(bytes);
         read.unmap();
         px
     }
@@ -142,6 +237,7 @@ impl WalkPass {
         data: &FlipGpuData,
         screen: &ScreenSpace,
         bins: &TileBins,
+        target: &wgpu::TextureView,
     ) -> Option<WalkJob> {
         let (w, h) = (screen.viewport[0] as u32, screen.viewport[1] as u32);
         let n_px = (w as usize) * (h as usize);
@@ -176,13 +272,6 @@ impl WalkPass {
         let strs = storage("walk strokes", bytemuck::cast_slice(&data.strokes));
         let rng = storage("walk ranges", bytemuck::cast_slice(&bins.ranges));
         let sgs = storage("walk segs", bytemuck::cast_slice(&bins.segs));
-        let out_size = (n_px * 16) as u64;
-        let out = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("walk out"),
-            size: out_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("walk bg"),
             layout: &self.layout,
@@ -209,13 +298,12 @@ impl WalkPass {
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
-                    resource: out.as_entire_binding(),
+                    resource: wgpu::BindingResource::TextureView(target),
                 },
             ],
         });
         Some(WalkJob {
             bg,
-            out,
             n_px,
             groups: [w.div_ceil(16), h.div_ceil(16)],
         })
@@ -238,7 +326,14 @@ impl WalkPass {
 /// Os recursos de uma cena já no device, prontos para [`WalkPass::record`].
 pub struct WalkJob {
     bg: wgpu::BindGroup,
-    out: wgpu::Buffer,
     n_px: usize,
     groups: [u32; 2],
+}
+
+impl WalkJob {
+    /// Quantos pixels o alvo tem — o harness de paridade dimensiona o readback por aqui.
+    #[must_use]
+    pub fn pixels(&self) -> usize {
+        self.n_px
+    }
 }

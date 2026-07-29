@@ -44,7 +44,10 @@ struct Screen {
 @group(0) @binding(2) var<storage, read> strokes: array<Stroke>;
 @group(0) @binding(3) var<storage, read> ranges: array<vec2<u32>>;
 @group(0) @binding(4) var<storage, read> segs: array<Seg>;
-@group(0) @binding(5) var<storage, read_write> out_rgba: array<vec4<f32>>;
+// ⚠️ **UMA saída, e é uma TEXTURA** — a que o produto de fato usa (o `hdr` premult 16F do
+// `FlipCompose`). Uma 2ª saída em buffer daria dois caminhos para o mesmo pixel, e a paridade
+// passaria a medir um deles enquanto o outro shipa.
+@group(0) @binding(5) var out_tex: texture_storage_2d<rgba16float, write>;
 
 // `pack.rs`
 const FLAG_CLOSED: u32 = 1u;
@@ -281,5 +284,5 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
             i = j;
         }
     }
-    out_rgba[gid.y * w + gid.x] = acc;
+    textureStore(out_tex, vec2<i32>(i32(gid.x), i32(gid.y)), acc);
 }

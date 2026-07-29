@@ -46,6 +46,13 @@ pub struct FlipCompose {
     straight: Option<wgpu::Texture>,
     straight_view: Option<wgpu::TextureView>,
     size: (u32, u32),
+    /// O MOTOR NOVO ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md)), quando armado.
+    ///
+    /// ⚠️ **Ele substitui o Pass A e SÓ ele.** O Pass B (premult → straight), o compositor
+    /// 22-modos, o multiplano, o tint de fantasma e o `inject` não sabem que a tinta mudou de
+    /// produtor — é isso que torna a troca uma decisão sobre *quais pixels o traço acende*, e não
+    /// um segundo pipeline de Flip.
+    walk: Option<crate::WalkPass>,
 }
 
 impl FlipCompose {
@@ -105,6 +112,7 @@ impl FlipCompose {
             straight: None,
             straight_view: None,
             size: (0, 0),
+            walk: None,
         }
     }
 
@@ -127,7 +135,11 @@ impl FlipCompose {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba16Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            // ⚠️ `STORAGE_BINDING` é o que permite o percurso do doc 12 escrever aqui; sem ele o
+            // motor novo não tem alvo. Custo: nenhum para o rasterizador (a usage é aditiva).
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
             view_formats: &[],
         });
         let hdr_view = hdr.create_view(&wgpu::TextureViewDescriptor::default());
@@ -162,6 +174,26 @@ impl FlipCompose {
     /// resolve pra straight sRGB8; devolve essa textura (pronta pro `inject`). O
     /// scratch é reusado no próximo `stage_layer` do frame — a cópia do `inject`
     /// que o chamador faz em seguida roda antes (ordem de submissão da fila).
+    /// Arma (ou desarma) o motor novo. **Compila o kernel na 1ª chamada** e depois é idempotente.
+    ///
+    /// ⚠️ Quem decide é o SHELL (uma variável de ambiente hoje) — a crate não lê o ambiente, senão
+    /// a escolha ficaria em dois lugares e o gate de um deles seria verde sobre o outro.
+    pub fn set_walk_engine(&mut self, device: &wgpu::Device, on: bool) {
+        if on {
+            if self.walk.is_none() {
+                self.walk = Some(crate::WalkPass::new(device));
+            }
+        } else {
+            self.walk = None;
+        }
+    }
+
+    /// O motor novo está armado?
+    #[must_use]
+    pub fn walk_engine_armed(&self) -> bool {
+        self.walk.is_some()
+    }
+
     pub fn stage_layer(
         &mut self,
         device: &wgpu::Device,
@@ -178,8 +210,41 @@ impl FlipCompose {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("ph2d-flip stage layer"),
         });
-        // Passe A: a camada no scratch 16F (premult-over + depth 2D próprio).
-        {
+        // Passe A: a camada no scratch 16F (premult, linear).
+        //
+        // ⚠️ **Dois produtores, UM alvo.** O rasterizador (`flip.wgsl` + o depth 2D que elege um
+        // fragmento por pixel) e o **percurso por ladrilho** (doc 12) escrevem o MESMO `hdr`, e o
+        // Passe B abaixo não sabe qual dos dois correu — é isso que mantém a troca honesta: o
+        // motor novo é medido contra o antigo dentro do produto REAL, não num harness ao lado.
+        if let Some(walk) = self.walk.as_ref() {
+            let screen = crate::ScreenSpace::from_camera(camera);
+            let bins = crate::bin_segments(data, &screen, crate::DEFAULT_TILE);
+            let target = self.hdr_view.as_ref().expect("ensure criou o hdr");
+            // ⚠️ O percurso escreve TODO pixel (o `acc` nasce zerado), então ele **não precisa** de
+            // um clear — mas uma cena sem segmento nenhum retorna `None` do `prepare`, e aí o `hdr`
+            // ficaria com a camada ANTERIOR. O clear cobre exatamente esse caso.
+            match walk.prepare(device, data, &screen, &bins, target) {
+                Some(job) => walk.record(&mut enc, &job),
+                None => {
+                    let _ = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("ph2d-flip stage: clear (walk, cena vazia)"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: target,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                }
+            }
+        } else {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-flip stage: rasterize layer"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {

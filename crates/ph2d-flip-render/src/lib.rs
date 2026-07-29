@@ -37,4 +37,4 @@ pub use pack::{
 };
 pub use pipeline::{CameraRaw, FlipRenderer};
 pub use tau::{PAINTER_SPACING, SUB, dab_weight, f_of};
-pub use walk_gpu::{WalkJob, WalkPass};
+pub use walk_gpu::{TARGET_FORMAT as WALK_TARGET_FORMAT, WalkJob, WalkPass};

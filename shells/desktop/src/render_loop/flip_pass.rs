@@ -152,6 +152,15 @@ pub(crate) fn render(
     let (w, h) = (window.width.max(1), window.height.max(1));
     let cam = camera_raw(camera, window);
 
+    // O MOTOR NOVO do traço ([doc 12](../../../../docs/Flip/12_novo_motor_pesquisa.md)) —
+    // `PH2D_FLIP_NEW_ENGINE=1`. **O shell é o único interruptor**: a crate não lê o ambiente,
+    // senão a escolha moraria em dois lugares e o gate de um seria verde sobre o outro.
+    //
+    // ⚠️ Lido UMA vez (`OnceLock`) — um `var()` por frame é syscall por frame, e pior: um
+    // interruptor que muda no meio de uma sessão faria o A/B do smoke depender de *quando* o
+    // artista olhou.
+    flip_compose.set_walk_engine(&gpu.device, new_engine_armed());
+
     if !layers.is_empty() {
         composite_layers(
             &layers,
@@ -172,6 +181,20 @@ pub(crate) fn render(
     if let Some(pv) = unfolded {
         draw_overlay(flip_render, pv, &cam, game_rt, (w, h), gpu);
     }
+}
+
+/// `PH2D_FLIP_NEW_ENGINE=1` arma o percurso por ladrilho em vez do rasterizador.
+///
+/// Aceita `1`/`true`/`on` (o vocabulário dos outros interruptores do repo); qualquer outra coisa —
+/// inclusive ausente — é o motor que shipa.
+fn new_engine_armed() -> bool {
+    static ARMED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ARMED.get_or_init(|| {
+        matches!(
+            std::env::var("PH2D_FLIP_NEW_ENGINE").as_deref(),
+            Ok("1" | "true" | "on")
+        )
+    })
 }
 
 /// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt`.

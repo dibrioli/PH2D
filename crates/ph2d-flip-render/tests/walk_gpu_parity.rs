@@ -6,8 +6,10 @@
 //! gate CPU-only + épsilon documentado por gate `#[ignore]` contra o kernel canônico*. Aqui o
 //! kernel canônico é o [`ph2d_flip_render::walk_pixel`], e o épsilon está MEDIDO abaixo.
 //!
-//! ⚠️ **A saída é `f32`, não uma textura de 8 bits** — senão o gate mediria a quantização junto
-//! com a divergência e não saberia dizer qual é qual.
+//! ⚠️ **A saída é UMA textura, e é a que o PRODUTO usa** (`rgba16float`, o `hdr` premult do
+//! `FlipCompose`) — uma 2ª saída em `f32` só para o gate mediria um caminho enquanto o outro shipa.
+//! O preço é honesto e está na barra abaixo: a precisão do readback deixou de ser a do kernel e
+//! passou a ser a do FORMATO (meia precisão).
 //!
 //! ```text
 //! cargo test -p ph2d-flip-render --release --test walk_gpu_parity -- --ignored --nocapture
@@ -158,12 +160,20 @@ fn the_device_walk_is_the_cpu_walk() {
         pior,
         som / n_tinta.max(1) as f32
     );
-    // **MEDIDO na RTX: pior |Δ| 4,05e-6**, ZERO canais acima de 1/255, erro médio no alfa 6,8e-8.
-    // ⚠️ A barra é **1e-4** e não `1/255`: meio nível de byte (3,9e-3) seria folga de 1000× — larga
-    // demais para pegar uma divergência real de kernel. 1e-4 deixa **25×** sobre o medido, o que
-    // cobre outra implementação de transcendental, e ainda é **39× mais apertada** que meio byte.
+    // **MEDIDO na RTX: pior |Δ| 4,883e-4**, ZERO canais acima de 1/255, erro médio no alfa 1,25e-4.
+    //
+    // ⚠️ **Esse número é o FORMATO, não o kernel, e a aritmética o nomeia:** `4,883e-4 = 2⁻¹¹` é
+    // exatamente o arredondamento de meia precisão em magnitude 1 (`rgba16float` tem 10 bits de
+    // mantissa ⇒ ulp `2⁻¹⁰`, erro de arredondamento metade disso). Enquanto a saída era um buffer
+    // `f32` o mesmo desenho media **4,05e-6** — 120× ABAIXO do quantum do alvo do produto, ou seja
+    // o kernel nunca foi o limite. Ganhamos medir o que shipa e perdemos resolução de medição; o
+    // trade é deliberado (uma 2ª saída em `f32` seria um caminho medido e outro shipado).
+    //
+    // A barra é **DERIVADA**: `1e-3` ≈ 2× o quantum do formato (folga para outra implementação de
+    // transcendental) e ainda **3,9× mais apertada** que meio nível de byte, que é a resolução em
+    // que qualquer pessoa pode ver a diferença.
     assert!(
-        pior <= 1e-4,
+        pior <= 1e-3,
         "o percurso do device divergiu do da CPU: pior |Δ| {pior:.3e} em {onde:?} \
          ({n_alto} canais acima de 1/255)"
     );
@@ -215,7 +225,24 @@ fn measure_what_a_frame_costs_on_the_device() {
         let bins = bin_segments(&data, &sc, DEFAULT_TILE);
         let bin_ms = t0.elapsed().as_secs_f64() * 1e3;
         let pass = WalkPass::new(&device);
-        let job = pass.prepare(&device, &data, &sc, &bins).expect("job");
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("walk perf target"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: ph2d_flip_render::WALK_TARGET_FORMAT,
+            usage: wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let job = pass
+            .prepare(&device, &data, &sc, &bins, &view)
+            .expect("job");
         // Aquece (compilação de pipeline, primeira submissão) e depois mede REPS dispatches.
         {
             let mut enc =

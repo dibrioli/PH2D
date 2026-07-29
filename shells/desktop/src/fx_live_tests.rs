@@ -270,6 +270,35 @@ fn the_grow_crosses_the_camera_with_its_sign() {
     }
 }
 
+/// **Os três do ajuste atravessam a câmara SEM escala — e o "sem" é a afirmação.**
+///
+/// ⚠️ Irmão do gate acima e o contrário dele: o `grow` é um COMPRIMENTO e tem de ser multiplicado
+/// pelo zoom; a matiz é um ÂNGULO e a saturação/brilho são FRAÇÕES. Dar zoom não pode mudar a cor
+/// de nada, e multiplicá-los pelo `cam_scale` é o mesmo erro que dividir o raio por ele — só que
+/// invisível até alguém dar zoom.
+#[test]
+fn the_adjust_knobs_cross_the_camera_unscaled() {
+    let mut o = op(FxOp::COLOR_ADJUST, 0.0);
+    for (h, s, b) in [(0.25_f32, 0.4_f32, -0.3_f32), (-0.5, -1.0, 1.0)] {
+        o.hue = h;
+        o.sat = s;
+        o.bright = b;
+        for zoom in [1.0_f64, 3.0, 0.25] {
+            let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::scale(zoom));
+            assert!(
+                (got[0].hue - h).abs() < 1e-6
+                    && (got[0].sat - s).abs() < 1e-6
+                    && (got[0].bright - b).abs() < 1e-6,
+                "sob zoom {zoom} o ajuste ({h}, {s}, {b}) chegou como ({}, {}, {}) — ele nao e' \
+                 um comprimento",
+                got[0].hue,
+                got[0].sat,
+                got[0].bright
+            );
+        }
+    }
+}
+
 /// **O decodificador conhece o Amount do Grow / Shrink.** Um id que ele não decodifica é um arrasto
 /// que a ponte descarta em silêncio — o slider anda e o documento não.
 #[test]
@@ -281,5 +310,16 @@ fn hit_of_decodes_the_grow_knob() {
             Some(FilterHit::Grow(r)),
             "o Amount da linha {r} nao e' decodificado"
         );
+        for (id, want) in [
+            (ph2d_editor::ids::filter_hue_id(r), FilterHit::Hue(r)),
+            (ph2d_editor::ids::filter_sat_id(r), FilterHit::Sat(r)),
+            (ph2d_editor::ids::filter_bright_id(r), FilterHit::Bright(r)),
+        ] {
+            assert_eq!(
+                hit_of(id),
+                Some(want),
+                "um knob de ajuste de cor da linha {r} nao e' decodificado"
+            );
+        }
     }
 }

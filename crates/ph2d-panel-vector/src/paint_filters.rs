@@ -24,8 +24,8 @@
 use super::*;
 use crate::state::filters as fst;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
-    FILTER_SEED_MAX,
+    FILTER_ADJUST_MAX, FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_HUE_MAX, FILTER_OFFSET_MAX,
+    FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -113,7 +113,8 @@ impl BodyCtx<'_> {
             + usize::from(spec.color_label.is_some())
             + usize::from(spec.takes_blend)
             + usize::from(spec.noise_labels.is_some()) * 3
-            + usize::from(spec.grow_label.is_some());
+            + usize::from(spec.grow_label.is_some())
+            + usize::from(spec.adjust_labels.is_some()) * 3;
         #[allow(clippy::cast_precision_loss)]
         let body_h = rows as f32 * (self.row_h + self.row_gap);
         let mode_h = if spec.modes.is_empty() {
@@ -171,6 +172,11 @@ impl BodyCtx<'_> {
         // O **Amount** do Grow / Shrink: o único número do tipo, logo no topo do corpo.
         if let Some(label) = spec.grow_label {
             py = self.filter_grow_row(row, fx, label, py);
+        }
+        // Os três do **Color Adjust** — juntos, e nessa ordem, porque é a ficha que Photoshop / AE
+        // / Krita / Blender desenharam e é a ordem em que um artista a lê.
+        if let Some((h, s, b)) = spec.adjust_labels {
+            py = self.filter_adjust_rows(row, fx, (h, s, b), py);
         }
         if let Some((lx, ly)) = spec.offset_labels {
             py = self.filter_offset_row(
@@ -350,6 +356,59 @@ impl BodyCtx<'_> {
             &format!("{:+.2}", fx.grow),
             y,
         )
+    }
+
+    /// **Os três knobs do Color Adjust** — matiz (graus), saturação e brilho, todos BIPOLARES.
+    ///
+    /// ⚠️ Os readouts trazem o SINAL explícito pela mesma razão do Amount: num slider cujo neutro
+    /// é o meio do curso, um número sem sinal deixa as duas metades a ler igual. A matiz traz o
+    /// GRAU (`+90°`) porque voltas não é a unidade em que ninguém pensa uma cor.
+    fn filter_adjust_rows(
+        &mut self,
+        row: usize,
+        fx: &fst::FilterRowView,
+        labels: (&str, &str, &str),
+        y: f32,
+    ) -> f32 {
+        let (hue_l, sat_l, bright_l) = labels;
+        let mut py = y;
+        let h_ids = (ids::filter_hue_id(row), ids::filter_hue_num_id(row));
+        let h_t = ((fx.hue + FILTER_HUE_MAX) / (2.0 * FILTER_HUE_MAX)) as f32;
+        let h_track = live_track(self.store, h_ids.0, h_t);
+        py = self.slider_row(
+            hue_l,
+            h_ids.0,
+            h_ids.1,
+            h_track,
+            fx.hue,
+            &format!("{:+.0}", fx.hue),
+            py,
+        );
+        for (label, value, ids2) in [
+            (
+                sat_l,
+                fx.sat,
+                (ids::filter_sat_id(row), ids::filter_sat_num_id(row)),
+            ),
+            (
+                bright_l,
+                fx.bright,
+                (ids::filter_bright_id(row), ids::filter_bright_num_id(row)),
+            ),
+        ] {
+            let t = ((value + FILTER_ADJUST_MAX) / (2.0 * FILTER_ADJUST_MAX)) as f32;
+            let track = live_track(self.store, ids2.0, t);
+            py = self.slider_row(
+                label,
+                ids2.0,
+                ids2.1,
+                track,
+                value,
+                &format!("{value:+.2}"),
+                py,
+            );
+        }
+        py
     }
 
     /// **Opacity** — a intensidade do degrau, presente em todo degrau.

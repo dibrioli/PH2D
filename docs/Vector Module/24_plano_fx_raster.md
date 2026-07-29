@@ -713,7 +713,8 @@ e de quebra é a prova de que o degrau COMPÕE.
 ## §14 — W7: GROW / SHRINK (a morfologia)
 
 A última família de primitivas do SVG que faltava ao catálogo — a lista que o §7 abriu
-(*color-matrix · morphology · displacement+turbulence · bevel*) fica com **um** item aberto.
+(*color-matrix · morphology · displacement+turbulence · bevel*) fica com **um** item aberto — que a
+§15 (W8) fechou.
 
 ### A pesquisa decidiu a FORMA, e a RÉGUA
 
@@ -815,3 +816,107 @@ de borrar).
 - **Os joins do offset**: o Illustrator oferece miter/round/bevel no *Offset Path*. Aqui a quina é
   sempre redonda, porque a régua é a distância; um miter exigiria geometria, e a pilha de LPE
   (`VecOffset { join }`) já tem essa resposta no eixo certo.
+
+## §15 — W8: COLOR ADJUST (o `feColorMatrix`) — e a lei NÃO é nova
+
+O último item da lista que o `apply_op` da W2 nomeou (*color-matrix · morphology ·
+displacement+turbulence · bevel*). Com ele o catálogo fecha.
+
+### A pesquisa decidiu a FORMA — e depois o REPO decidiu a LEI
+
+**O `type` de quatro valores do SVG é interface de formato DECLARATIVO.** O `feColorMatrix` tem
+`matrix` / `saturate` / `hueRotate` / `luminanceToAlpha`; quem o desenhou como **CONTROLE**
+convergiu, sem exceção, na ficha **Hue / Saturation / Brightness**: Photoshop, After Effects
+(*Hue/Saturation*), Krita, Blender (*Hue Saturation Value*). Três sliders com o neutro no meio.
+
+| `feColorMatrix type` | onde ele pousa |
+|---|---|
+| `saturate` | o slider **Saturation** |
+| `hueRotate` | o slider **Hue** |
+| `matrix` (a parte que um artista pede) | o slider **Brightness** |
+| `luminanceToAlpha` | **NÃO ENTROU**, e é decisão: ele converte luminância em COBERTURA, e a pista pontual existe precisamente para não mover cobertura. É outro verbo, não um quarto slider. |
+
+**E então a pergunta mudou de lugar.** Procurando onde escrever a rotação de matiz, ela já estava
+escrita: `AdjustmentKind::HueSaturationBrightness`, no `ph2d-painter-effects`, rotulada
+literalmente *"Hue/Saturation"*, com lei de CPU (`apply_hsb`) **e** kernel de GPU (o `case 0u` do
+`layer_composite.wgsl`) — a camada de ajuste que o Painter ship há waves. Escrever uma segunda
+seria dar ao app **duas respostas para *"o que o slider de matiz faz?"***, divergindo no único
+lugar onde ninguém lê um número: uma cor.
+
+⚠️ **E o repo já tinha decidido QUAL lei, pagando por isso.** O doc do `apply_hsb` diz porque a
+matiz roda em **OKLab** e não em HSL: *"HSL hue is numerically unstable for near-gray pixels …
+the colored speckle Enio hit on the gray background"*. A escolha não é gosto, é uma cicatriz.
+
+### A wave, então, é uma EXTRAÇÃO — a segunda vez que este módulo a faz
+
+`oklab_from_linear` / `oklab_to_linear` / o corpo do `case 0u` saíram para
+`shaders/colour_adjust.wgsl`, prefixado pelo `composite_source()` do compositor **e** pelo
+`module_sources()` da pilha. É, ao pé da letra, o movimento que o cabeçalho do `blend_modes.wgsl`
+já descreve — *"extraído do `layer_composite.wgsl` quando ganhou o SEGUNDO consumidor (a pilha de
+FX raster)"* — e o gate novo é o irmão exacto do que aquela extração deixou.
+
+| pergunta | porta única | consumidores |
+|---|---|---|
+| o que matiz/saturação/brilho fazem a uma cor? | `adjust_hsb` (WGSL compartilhado) | o compositor de CAMADAS · a pilha de FX |
+| este degrau ajusta cor? | `FxKindSpec::adjust_labels` | o painel (OFERECER) · o produtor (HONRAR) |
+| ele está no neutro? | `FxOp::adjust_is_neutral` | o gate · o kernel |
+| quanto ele espalha? | `op_reach` → **0** (pontual, a pista do Color Overlay) | o `stack_reach` |
+
+### O oráculo não é uma tolerância: é a OUTRA implementação
+
+`the_adjust_is_the_law_the_painter_already_ships` roda o degrau na GPU e o `apply_adjustment` do
+`ph2d-painter-effects` na CPU, sobre as mesmas cores e os mesmos knobs. **Pior divergência: 1
+nível de byte**, em 5 combinações × 9 cores. A força do oráculo é ele não ter sido escrito para
+esta wave.
+
+### O que a medição corrigiu (três vezes, e as três eram afirmações minhas)
+
+1. **"o brilho move um pixel de qualquer cor"** — falso. A fixture da varredura do catálogo é
+   BRANCA, e `+brilho` é `out + (1−out)·b`, que em branco é branco: **0 de 12800 texels**. Um
+   ajuste pontual tem pontos FIXOS por construção. A varredura passou a empurrar o brilho para
+   BAIXO, e nasceu o gate `an_achromatic_pixel_is_untouched_by_hue_and_saturation` para pinar onde
+   eles estão.
+2. **"a rotação preserva o croma"** — falso para cor viva: o vermelho da paleta cai a **0,641**
+   num quarto de volta. A rotação é rígida em OKLab, mas o resultado pode sair do gamut do sRGB e
+   a viagem de volta a 8 bits **corta**. Reescrevi para *"nas duas cores que ficam no gamut"* — e
+   isso **também** era falso, porque eu tinha medido UM ângulo: o âmbar cai a 0,817 a ⅜ de volta e
+   o azul a 0,736 a −⅛. **Estar no gamut é propriedade do par (cor, ângulo).** A fixture que
+   contém o fenômeno é uma cor de croma BAIXO — medida no giro inteiro, razão **0,989..1,010**.
+3. **"o early-out do neutro é load-bearing para a byte-identidade"** — falso, e foi uma MUTAÇÃO
+   que o mostrou: removendo o ramo, uma rampa sRGB completa sai com **0 de 4096 bytes diferentes**.
+   O erro do ida-e-volta OKLab em `f32` fica sob meio nível e a quantização o come. O ramo é
+   exactidão no FLOAT (que compõe numa pilha longa) e CUSTO — a mesma frase que o `apply_hsb` do
+   Painter já usava, e que eu tinha lido sem a ler.
+
+### Gates — 12 novos, 12 mutações, **11 sangram**
+
+O sobrevivente é o (3) acima: ele não expôs um buraco de gate, expôs uma frase errada em três
+doc-comments, que foram corrigidos com o número.
+
+⚠️ **E o que a mutação M5 ensinou sobre a divisão de trabalho:** apagar o braço do Color Adjust do
+`cs_op_point` mata **8** gates desta wave e **não** mata o `every_kind_draws_something` — sem o
+braço, o degrau cai na pista do Color Overlay, que repinta com o `tint` da varredura e portanto
+*desenha alguma coisa*. A varredura pergunta **se** um tipo desenha; os gates dedicados perguntam
+**o quê**.
+
+### Schema, contratos, ids
+
+- **`PROJECT_SCHEMA` fica em 38** — a quarta leva da mesma linha (`blend`, `scale`/`detail`/`seed`,
+  `grow`, agora `hue`/`sat`/`bright`). **Uma linha, um bump.**
+- **Contrato congelado §6: INTACTO** (conferido por gate: `architecture_contract_surface` 3 ✓ ·
+  `architecture_tool_contract_surface` 4 ✓).
+- **`MAX_FILTER_KINDS` 11 → 12**; ids novos `filter_{hue,sat,bright}_id{,_num}` (6).
+- **`Globals` 96 → 112 bytes** (uma linha de 16: matiz/saturação/brilho + pad).
+- Superfície pública nova: `FxOp::COLOR_ADJUST` · `FxOp::{hue,sat,bright}` ·
+  `FxKindSpec::adjust_labels` · `FxOp::{reads_adjust,adjust_is_neutral}` ·
+  `FxOpGpu::{hue,sat,bright}`. `FxOpGpu` **mudou de módulo** (`fx_stack_op`, mesmo caminho de
+  import, teto de LOC).
+
+### O que ficou de fora, nomeado
+
+- **O DUOTONE de duas pontas** (mapear a luminância de uma cor escura a uma clara — o *Tint* do AE,
+  o *Gradient Map* do Photoshop). O **Color Overlay com a lei `Color`** já entrega o tingimento
+  monocromático (troca a matiz preservando a luminosidade), e o Painter já tem um `gradient_map`
+  próprio; o que falta é só a PONTA ESCURA ser de outra matiz. É um degrau com uma **segunda cor**,
+  não um knob — wave própria, se o uso a pedir.
+- **`luminanceToAlpha`** — muda cobertura (acima).

@@ -44,6 +44,13 @@ pub(crate) const FILTER_SEED_MAX: f64 = 255.0; // LITERAL-PX-OK: a faixa do u8 q
 /// Faixa BIPOLAR do slider de **Amount** do Grow / Shrink (mundo), `0.5` = zero. A mesma régua do
 /// raio nos dois sentidos: é a mesma grandeza (um comprimento no documento).
 pub(crate) const FILTER_GROW_MAX: f64 = 2.0;
+/// Faixa BIPOLAR do slider de **Hue**, em GRAUS. **Não é um teto escolhido: é o período.** Meia
+/// volta para cada lado cobre TODAS as matizes, e ir além só daria dois caminhos para a mesma cor.
+pub(crate) const FILTER_HUE_MAX: f64 = 180.0; // LITERAL-PX-OK: meia volta em graus
+/// Faixa BIPOLAR de **Saturation** e **Brightness**. **Também não é escolha:** é a faixa que a LEI
+/// define (`-1` = cinza / preto exacto, `+1` = croma dobrado / branco exacto). Um slider mais
+/// largo pediria um número que o kernel clampa em silêncio.
+pub(crate) const FILTER_ADJUST_MAX: f64 = 1.0;
 
 /// **O que um tipo de degrau é**, como o painel precisa de saber. Espelha o `ph2d_ecs::FxKindSpec`
 /// — o painel **não alcança** o `ph2d-ecs` (vive de snapshots), e é a shell que traduz na
@@ -75,6 +82,10 @@ pub struct FilterKindView {
     /// O rótulo do CRESCIMENTO, ou `None` se este tipo não engorda nem afina nada. Espelha o
     /// `ph2d_ecs::FxKindSpec::grow_label`.
     pub grow_label: Option<&'static str>,
+    /// Os rótulos dos três knobs do AJUSTE DE COR — `(matiz, saturação, brilho)` —, ou `None` se
+    /// este tipo não ajusta cor nenhuma. Espelha o `ph2d_ecs::FxKindSpec::adjust_labels`, e é UM
+    /// campo para os três pela mesma razão do [`Self::noise_labels`].
+    pub adjust_labels: Option<(&'static str, &'static str, &'static str)>,
 }
 
 /// Um degrau da pilha, como o painel o desenha. Espelha o `ph2d_ecs::FxOp` — o painel **não
@@ -110,6 +121,17 @@ pub struct FilterRowView {
     pub seed: u8,
     /// Quanto a silhueta engorda (mundo), **com sinal**.
     pub grow: f64,
+    /// A MATIZ, em **GRAUS** (`-180..180`).
+    ///
+    /// ⚠️ **Graus aqui, VOLTAS no modelo.** O `FxOp::hue` fala voltas (a unidade do `HsbParams` do
+    /// Painter, que é a mesma lei); a conversão mora na fronteira da shell, nos dois sentidos e em
+    /// linhas adjacentes — é o idioma que a §12 da física já usa com radianos. Um artista não
+    /// digita `0,25` para pedir um quarto de volta.
+    pub hue: f64,
+    /// A SATURAÇÃO, `-1..1` — `-1` drena até o cinza, `+1` dobra o croma.
+    pub sat: f64,
+    /// O BRILHO, `-1..1` — `-1` é preto exacto, `+1` é branco exacto.
+    pub bright: f64,
 }
 
 thread_local! {

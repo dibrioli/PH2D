@@ -74,47 +74,7 @@ pub const MAX_HALF: u32 = 96;
 /// antes de um único `submit` deixaria o último a valer para todos.
 pub(crate) const UNIFORM_STRIDE: u64 = 256;
 
-/// **Um degrau da pilha, já resolvido em PIXELS DE TELA.**
-///
-/// A conversão mundo→pixel (o zoom da câmera) é da shell: este passe não sabe o que é uma câmera,
-/// e um segundo lugar a fazer a conta seria um segundo lugar a errá-la.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct FxOpGpu {
-    /// `0` Blur · `1` Glow · `2` Drop Shadow (os códigos do `ph2d_ecs::FxOp`).
-    pub kind: u8,
-    /// O desvio do gaussiano, em pixels de tela.
-    pub sigma_px: f32,
-    /// O deslocamento do halo, em pixels de tela INTEIROS.
-    ///
-    /// ⚠️ **Inteiros de propósito.** O halo é amostrado por `textureLoad` (sem sampler), então um
-    /// deslocamento fracionário custaria interpolação dentro do laço do borrão. Uma sombra não
-    /// precisa de posição sub-pixel — e a textura inteira já é alinhada ao pixel da tela.
-    pub offset_px: [i32; 2],
-    /// A cor RETA do halo, `[0,1]`.
-    pub tint: [f32; 4],
-    /// A intensidade deste degrau, `[0,1]`.
-    pub opacity: f32,
-    /// O MODO (o índice em `FxKindSpec::modes`). Só os degraus de DENTRO o leem hoje.
-    pub mode: u8,
-    /// **A LEI DE MISTURA** — o código de `ph2d_painter_effects::BlendMode`, `0` = Normal.
-    ///
-    /// ⚠️ **Um `u8` cru, sem acoplamento de enum** — o mesmo desenho que o `LayerCompositor` já
-    /// ship (a `ph2d-painter-effects` é dev-dep desta crate, nunca dependência de produção). Quem
-    /// decide se o número é honrado é o `FxOp::blend_code` do lado do produtor: aqui ele já chega
-    /// resolvido.
-    pub blend: u8,
-    /// O TAMANHO das ondulações do ruído, em pixels de tela (`escala_mundo × zoom`, como o
-    /// `sigma_px`).
-    pub noise_scale_px: f32,
-    /// Quantas OITAVAS o ruído soma — já clampado pelo produtor (`FxOp::detail_clamped`).
-    pub detail: u8,
-    /// Qual realização do ruído.
-    pub seed: u8,
-    /// **Quanto a silhueta engorda, em pixels de tela — COM SINAL** (positivo cresce, negativo
-    /// afina, zero não faz nada). Só a morfologia o lê.
-    pub grow_px: f32,
-}
-
+pub use crate::fx_stack_op::FxOpGpu;
 use crate::fx_stack_plan::plan_of;
 pub use crate::fx_stack_plan::{jump_count, kernel_half, op_reach, stack_reach};
 
@@ -184,20 +144,25 @@ pub struct FxStackPass {
 fn module_sources() -> [(&'static str, String); 2] {
     let kinds = kind_consts_wgsl();
     let blend = crate::layer_compositor::BLEND_MODES_WGSL;
+    // ⚠️ **O ajuste de cor vem do arquivo COMPARTILHADO**, o mesmo movimento das leis de
+    // mistura: a lei do Color Adjust É a do `AdjustmentKind::HueSaturationBrightness` do
+    // Painter, e uma cópia local seria a segunda resposta que este prefixo existe para não
+    // ter (há gate).
+    let adjust = crate::layer_compositor::COLOUR_ADJUST_WGSL;
     [
         (
             "mid",
             // ⚠️ O RUÍDO entra ANTES do fold (o `cs_op_warp` do `WARP_WGSL` chama o `fbm`) e o
             // WARP depois dele (ele chama o `tap_img`). A ordem é a das dependências, não gosto.
             format!(
-                "{blend}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}"
+                "{blend}\n{adjust}\n{kinds}{NOISE_WGSL}{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FIELD_WGSL}{WARP_WGSL}"
             ),
         ),
         (
             "out",
             // O módulo de SAÍDA escreve noutro formato de storage e não tem o `dst` que o warp
             // usa — ele não recebe o passe, só o campo de que o resto do fold não depende.
-            format!("{blend}\n{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}"),
+            format!("{blend}\n{adjust}\n{kinds}{FX_STACK_WGSL}{FX_STACK_OUT_WGSL}"),
         ),
     ]
 }
@@ -395,6 +360,10 @@ impl FxStackPass {
             org: [0.0, 0.0],
             grow_px: 0.0,
             _pad: [0.0],
+            hue: 0.0,
+            sat: 0.0,
+            bright: 0.0,
+            _pad2: [0.0],
         };
         write_at(&mut blob, 0, &edges);
         write_at(&mut blob, total_slots - 1, &edges);
@@ -444,6 +413,10 @@ impl FxStackPass {
                 org,
                 grow_px: op.grow_px,
                 _pad: [0.0],
+                hue: op.hue,
+                sat: op.sat,
+                bright: op.bright,
+                _pad2: [0.0],
             };
             match plan {
                 Plan::Point | Plan::Warp => {

@@ -26,6 +26,10 @@ struct Globals {
     org: vec2<f32>,
     grow_px: f32,
     _pad: f32,
+    hue: f32,
+    sat: f32,
+    bright: f32,
+    _pad2: f32,
 };
 @group(0) @binding(0) var t0: texture_2d<f32>;
 @group(0) @binding(1) var t1: texture_2d<f32>;
@@ -314,6 +318,25 @@ fn cs_op_v(@builtin(global_invocation_id) id: vec3<u32>) {
 fn cs_op_point(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= g.dims.x || id.y >= g.dims.y) { return; }
     let src = tap_img(t0, i32(id.x), i32(id.y));
+
+    // **O AJUSTE DE COR** — a MESMA lei do `AdjustmentKind::HueSaturationBrightness` do Painter,
+    // pela MESMA função (`colour_adjust.wgsl`, prefixado). Ele ajusta a cor que está lá e **não
+    // move um texel de cobertura**: o alfa sai byte-idêntico, como no Color Overlay ao lado.
+    //
+    // ⚠️ **Reto, nunca premultiplicado.** A lei é definida sobre a cor de facto do texel; aplicada
+    // ao premultiplicado, um texel de meia cobertura seria ajustado como se fosse meio escuro — a
+    // rampa de anti-aliasing rodaria de matiz em relação ao miolo.
+    if (g.kind == KIND_COLOR_ADJUST) {
+        var rgb = src.rgb;
+        if (src.a > 0.0001) {
+            let straight = src.rgb / src.a;
+            rgb = adjust_hsb(straight, g.hue, g.sat, g.bright) * src.a;
+        }
+        let mixed = mix(src.rgb, rgb, clamp(g.opacity, 0.0, 1.0));
+        textureStore(dst, vec2<i32>(i32(id.x), i32(id.y)), vec4<f32>(mixed, src.a));
+        return;
+    }
+
     let k = clamp(g.tint.a * g.opacity, 0.0, 1.0);
     // Premultiplicado: a cor cheia neste texel é `tint.rgb * src.a`.
     //
@@ -369,6 +392,7 @@ pub(crate) fn kind_consts_wgsl() -> String {
          const KIND_FEATHER: u32 = {}u;\n\
          const KIND_BEVEL: u32 = {}u;\n\
          const KIND_MORPHOLOGY: u32 = {}u;\n\
+         const KIND_COLOR_ADJUST: u32 = {}u;\n\
          const MODE_CONTOUR: u32 = {}u;\n\
          const MODE_CREASED: u32 = {}u;\n",
         FxOp::BLUR,
@@ -379,6 +403,7 @@ pub(crate) fn kind_consts_wgsl() -> String {
         FxOp::FEATHER,
         FxOp::BEVEL,
         FxOp::MORPHOLOGY,
+        FxOp::COLOR_ADJUST,
         FxOp::MODE_CONTOUR,
         FxOp::MODE_CREASED,
     )

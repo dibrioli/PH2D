@@ -13,14 +13,16 @@
 use super::{button, slider_chip, slider_chip_int};
 use crate::ids;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
-    FILTER_SEED_MAX,
+    FILTER_ADJUST_MAX, FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_HUE_MAX, FILTER_OFFSET_MAX,
+    FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::DropdownState;
 
 /// Passo dos campos numéricos, no domínio do documento.
 const RADIUS_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
+const HUE_STEP: f64 = 5.0; // LITERAL-PX-OK: passo em GRAUS de matiz
+const ADJUST_STEP: f64 = 0.05; // LITERAL-PX-OK: passo da saturação/brilho, cujo domínio é -1..1
 const OFFSET_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
 const OPACITY_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (0..1)
 const SCALE_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento (mundo)
@@ -138,6 +140,34 @@ pub(super) fn populate_filters(store: &mut WidgetStore) {
             -FILTER_GROW_MAX as f32,
         );
         store.set_number_range(grow_num, -FILTER_GROW_MAX, FILTER_GROW_MAX, RADIUS_STEP);
+        // **Os três do Color Adjust**, todos BIPOLARES (`0.5` = neutro) — a mesma régua do Amount
+        // e do par de offset, e pela mesma razão: os três têm SINAL e o neutro é o meio do curso.
+        let (hue, hue_num) = (ids::filter_hue_id(row), ids::filter_hue_num_id(row));
+        slider_chip(
+            store,
+            hue,
+            hue_num,
+            0.5,
+            0.0,
+            (2.0 * FILTER_HUE_MAX) as f32,
+            -FILTER_HUE_MAX as f32,
+        );
+        store.set_number_range(hue_num, -FILTER_HUE_MAX, FILTER_HUE_MAX, HUE_STEP);
+        for (slider, chip) in [
+            (ids::filter_sat_id(row), ids::filter_sat_num_id(row)),
+            (ids::filter_bright_id(row), ids::filter_bright_num_id(row)),
+        ] {
+            slider_chip(
+                store,
+                slider,
+                chip,
+                0.5,
+                0.0,
+                (2.0 * FILTER_ADJUST_MAX) as f32,
+                -FILTER_ADJUST_MAX as f32,
+            );
+            store.set_number_range(chip, -FILTER_ADJUST_MAX, FILTER_ADJUST_MAX, ADJUST_STEP);
+        }
         // Opacity: track == valor (`0..1`).
         let (opacity, opacity_num) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
         slider_chip(store, opacity, opacity_num, 1.0, 1.0, 1.0, 0.0);

@@ -381,6 +381,13 @@ pub(crate) fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
                 // zoom): engordar 0,06 tem de engordar a mesma fração da forma em qualquer escala.
                 // ⚠️ **Sem `max(0.0)`** — aqui o sinal É a operação.
                 grow_px: o.grow * cam_scale,
+                // ⚠️ **Os três do ajuste NÃO atravessam a câmara, e é a diferença que importa:**
+                // eles não são comprimentos. Uma matiz é um ÂNGULO e a saturação/brilho são
+                // frações — dar zoom não pode mudar a cor de nada. Multiplicá-los pelo
+                // `cam_scale` seria o mesmo erro que dividir o raio por ele.
+                hue: o.hue,
+                sat: o.sat,
+                bright: o.bright,
             }
         })
         .collect()
@@ -420,6 +427,11 @@ pub(crate) enum FilterHit {
     Seed(usize),
     /// O Amount do Grow / Shrink (bipolar).
     Grow(usize),
+    /// Os três knobs do AJUSTE DE COR (bipolares). ⚠️ O `Hue` chega em GRAUS — a conversão para
+    /// voltas mora no `apply`, ao lado da que o publica.
+    Hue(usize),
+    Sat(usize),
+    Bright(usize),
 }
 
 /// Decodifica um id de painel para o controle da pilha que ele endereça.
@@ -470,6 +482,12 @@ pub(crate) fn hit_of(id: ph2d_editor::NodeId) -> Option<FilterHit> {
             FilterHit::Seed(r)
         } else if id == vid::filter_grow_id(r) {
             FilterHit::Grow(r)
+        } else if id == vid::filter_hue_id(r) {
+            FilterHit::Hue(r)
+        } else if id == vid::filter_sat_id(r) {
+            FilterHit::Sat(r)
+        } else if id == vid::filter_bright_id(r) {
+            FilterHit::Bright(r)
         } else {
             continue;
         };

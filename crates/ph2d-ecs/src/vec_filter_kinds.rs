@@ -71,6 +71,15 @@ pub struct FxKindSpec {
     /// runtime, então uma régua bipolar emprestada ao raio faria o Blur ler metade da faixa dele
     /// como negativa. Duas grandezas, duas réguas.
     pub grow_label: Option<&'static str>,
+    /// **Este degrau AJUSTA a cor que recebeu?** — e, se ajusta, como se chamam os três knobs
+    /// dele: `(matiz, saturação, brilho)`.
+    ///
+    /// ⚠️ **Um campo para os três, e não três campos** — é o idioma do [`Self::noise_labels`] e
+    /// pela mesma razão: *que matiz*, *quanto croma* e *quão claro* são a MESMA pergunta (*como
+    /// esta cor é ajustada?*) em três eixos, e é assim que Photoshop / AE / Krita / Blender
+    /// desenharam a ficha. Oferecer um sem os outros deixaria a arte CINZENTA sem nenhum knob
+    /// vivo (matiz e saturação não movem um pixel sem croma — só o brilho move).
+    pub adjust_labels: Option<(&'static str, &'static str, &'static str)>,
 }
 
 /// Os modos de QUEDA. Duas leis diferentes sobre *o que é "perto da borda"*, e a diferença é
@@ -105,6 +114,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Glow",
@@ -121,6 +131,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Drop Shadow",
@@ -133,6 +144,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Inner Shadow",
@@ -145,6 +157,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Inner Glow",
@@ -157,6 +170,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Outline",
@@ -171,6 +185,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Feather",
@@ -183,6 +198,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Bevel",
@@ -195,6 +211,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Color Overlay",
@@ -207,6 +224,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: true,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Turbulence",
@@ -225,6 +243,7 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: Some(("Size", "Detail", "Seed")),
         grow_label: None,
+        adjust_labels: None,
     },
     FxKindSpec {
         name: "Grow / Shrink",
@@ -243,5 +262,25 @@ pub(crate) const SPECS: [FxKindSpec; FxOp::KINDS] = [
         takes_blend: false,
         noise_labels: None,
         grow_label: Some("Amount"),
+        adjust_labels: None,
+    },
+    FxKindSpec {
+        name: "Color Adjust",
+        // Pontual como o Color Overlay: sem raio, sem vizinho, um dispatch, margem zero.
+        radius_label: None,
+        offset_labels: None,
+        // ⚠️ **Não tinge, e a distinção é o verbo:** o Color Overlay SUBSTITUI a cor por uma que o
+        // artista escolhe; este AJUSTA a que já está lá, relativamente. Uma swatch aqui seria a
+        // segunda porta para *"recolorir"*.
+        color_label: None,
+        grows: false,
+        inner: false,
+        modes: &[],
+        // Sem cor própria, logo sem lei de mistura a aplicar — o argumento do Blur e do Feather:
+        // a saída DELE é a entrada transformada.
+        takes_blend: false,
+        noise_labels: None,
+        grow_label: None,
+        adjust_labels: Some(("Hue", "Saturation", "Brightness")),
     },
 ];

@@ -11,8 +11,8 @@
 
 use crate::ids;
 use crate::state::filters::{
-    FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_OFFSET_MAX, FILTER_RADIUS_MAX, FILTER_SCALE_MAX,
-    FILTER_SEED_MAX,
+    FILTER_ADJUST_MAX, FILTER_DETAIL_MAX, FILTER_GROW_MAX, FILTER_HUE_MAX, FILTER_OFFSET_MAX,
+    FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
 use ph2d_editor_core::panel::PanelHostInternal;
 
@@ -71,6 +71,17 @@ pub(super) fn filters_slider_event(
         if id == ids::filter_grow_id(row) {
             return Some(super::forward_track(host, id, 0.5, |t| {
                 t.mul_add(2.0 * FILTER_GROW_MAX, -FILTER_GROW_MAX)
+            }));
+        }
+        // Os três do ajuste de cor — bipolares, o MESMO mapa que o `populate` deu a cada chip.
+        if id == ids::filter_hue_id(row) {
+            return Some(super::forward_track(host, id, 0.5, |t| {
+                t.mul_add(2.0 * FILTER_HUE_MAX, -FILTER_HUE_MAX)
+            }));
+        }
+        if id == ids::filter_sat_id(row) || id == ids::filter_bright_id(row) {
+            return Some(super::forward_track(host, id, 0.5, |t| {
+                t.mul_add(2.0 * FILTER_ADJUST_MAX, -FILTER_ADJUST_MAX)
             }));
         }
         if id == ids::filter_offx_id(row) || id == ids::filter_offy_id(row) {

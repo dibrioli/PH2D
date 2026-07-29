@@ -56,6 +56,9 @@ fn row(kind: u8) -> FilterRowView {
         detail: 3,
         seed: 0,
         grow: 0.06,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
     }
 }
 
@@ -76,6 +79,7 @@ fn kinds_table() -> Vec<FilterKindView> {
         takes_blend,
         noise_labels: None,
         grow_label: None,
+        adjust_labels: None,
     };
     const INNER: &[&str] = &["Proximity", "Contour"];
     const OFF: Option<(&str, &str)> = Some(("Offset X", "Offset Y"));
@@ -102,6 +106,12 @@ fn kinds_table() -> Vec<FilterKindView> {
             // que a linha oferece.
             grow_label: Some("Amount"),
             ..k("Grow / Shrink", None, None, None, &[], false)
+        },
+        FilterKindView {
+            // ⚠️ Sem raio, sem cor: o Color Adjust é PONTUAL e ajusta a cor que já está lá — uma
+            // swatch aqui seria a segunda porta para *recolorir*, que o Color Overlay já é.
+            adjust_labels: Some(("Hue", "Saturation", "Brightness")),
+            ..k("Color Adjust", None, None, None, &[], false)
         },
     ]
 }
@@ -285,6 +295,20 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
             "o Amount do {} discorda da tabela",
             spec.name
         );
+        // Os TRÊS do ajuste de cor, também em BLOCO: eles descrevem *como esta cor é ajustada*
+        // em três eixos, e um sem os outros deixaria a arte cinzenta sem knob vivo nenhum.
+        for id in [
+            ids::filter_hue_id(0),
+            ids::filter_sat_id(0),
+            ids::filter_bright_id(0),
+        ] {
+            assert_eq!(
+                painted(&mut host, &mut st, id),
+                spec.adjust_labels.is_some(),
+                "um knob de ajuste de cor do {} discorda da tabela",
+                spec.name
+            );
+        }
         // Os chips de MODO: um por modo publicado, e NENHUM em quem não tem escolha a fazer.
         for m in 0..ids::MAX_FILTER_MODES {
             assert_eq!(
@@ -488,6 +512,68 @@ fn the_three_noise_knobs_reach_the_bus_when_dragged() {
             "arrastar o {what} nao emitiu valor nenhum ao barramento — o slider esta pintado e \
              inerte"
         );
+    }
+}
+
+/// **Os três knobs do ajuste chegam ao bus com a régua BIPOLAR.** Irmão exacto do gate do Amount
+/// logo abaixo, e pelo mesmo motivo: o meio do curso é o NEUTRO, e um mapa unipolar herdado do
+/// raio faria a metade esquerda de cada um ler como um ajuste positivo pequeno.
+#[test]
+fn the_three_adjust_knobs_reach_the_bus_with_a_bipolar_map_when_dragged() {
+    let table = kinds_table();
+    let kind = table
+        .iter()
+        .position(|s| s.adjust_labels.is_some())
+        .expect("a tabela tem um tipo que ajusta cor");
+    publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
+    for (id, chip) in [
+        (ids::filter_hue_id(0), ids::filter_hue_num_id(0)),
+        (ids::filter_sat_id(0), ids::filter_sat_num_id(0)),
+        (ids::filter_bright_id(0), ids::filter_bright_num_id(0)),
+    ] {
+        for (frac, want_negative) in [(0.15_f32, true), (0.85, false)] {
+            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut st = VectorPanelState;
+            let rect = host
+                .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .expect("um slider de ajuste nao foi PINTADO");
+            let (x, y) = (rect.x + rect.w * frac, rect.y + rect.h * 0.5);
+            let mut evs = host.dispatch_pointer_event(pointer(PointerKind::Down, x, y, SEC));
+            evs.extend(host.dispatch_pointer_event(pointer(
+                PointerKind::Up,
+                x,
+                y,
+                SEC + SEC / 100,
+            )));
+            for ev in evs {
+                host.apply_panel_event::<VectorPanel>(&mut st, ev);
+            }
+            let value = host.drained_actions().into_iter().find_map(|a| match a {
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(got, v)) if got == id => Some(v),
+                _ => None,
+            });
+            let v = value.expect("arrastar um knob de ajuste nao emitiu valor ao barramento");
+            assert_eq!(
+                v < 0.0,
+                want_negative,
+                "a {frac:.0}% do trilho o knob saiu {v:.3} — a régua deixou de ser bipolar"
+            );
+            // ⚠️ **E o READOUT tem de dizer o mesmo número.** Esta metade não é redundante: o
+            // valor no bus vem do mapa do `event_filters`, e o número que o artista LÊ vem do
+            // link que o `populate` registou — são DUAS portas para a mesma régua, e uma
+            // mutação que tornou só o `populate` unipolar passou por este gate sem ela. O
+            // sintoma seria o documento receber −90 enquanto o chip mostra 0.
+            let shown = host
+                .store()
+                .number_value(chip)
+                .expect("o chip do knob de ajuste nao e' um NumberInput registado");
+            assert_eq!(
+                shown < 0.0,
+                want_negative,
+                "a {frac:.0}% do trilho o bus levou {v:.3} e o chip mostra {shown:.3} — as duas \
+                 réguas discordam"
+            );
+        }
     }
 }
 

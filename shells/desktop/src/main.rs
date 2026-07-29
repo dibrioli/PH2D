@@ -123,6 +123,7 @@ mod flip_tween_phase_smoke;
 mod flip_tween_smoke;
 mod flip_tween_torsion_smoke;
 mod forwarding;
+mod fx_adjust_smoke;
 mod fx_blend_smoke;
 mod fx_bridge;
 mod fx_bridge_dispatch;

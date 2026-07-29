@@ -52,7 +52,13 @@ use ops::{distinct_layer_count, op_mask, validate_op_list};
 /// do módulo vetorial, plano 24 W6). Prefixo de módulo — não parseia sozinho, de propósito.
 pub(crate) const BLEND_MODES_WGSL: &str = include_str!("../shaders/blend_modes.wgsl");
 
-/// O corpo do compositor de camadas, SEM as leis de mistura (elas moram no [`BLEND_MODES_WGSL`]).
+/// **O AJUSTE DE COR** (OKLab + a lei Hue/Saturation/Brightness), extraído quando ganhou o SEGUNDO
+/// consumidor (o degrau *Color Adjust* da pilha de FX raster, plano 24 W8). Mesmo movimento, mesma
+/// razão e mesmo formato do [`BLEND_MODES_WGSL`]: prefixo de módulo, não parseia sozinho.
+pub(crate) const COLOUR_ADJUST_WGSL: &str = include_str!("../shaders/colour_adjust.wgsl");
+
+/// O corpo do compositor de camadas, SEM as leis de mistura (elas moram no [`BLEND_MODES_WGSL`])
+/// e SEM o ajuste de cor (que mora no [`COLOUR_ADJUST_WGSL`]).
 pub(crate) const LAYER_COMPOSITE_BODY_WGSL: &str = include_str!("../shaders/layer_composite.wgsl");
 
 /// **O módulo que o compositor de facto compila.** Porta única: o pipeline e os gates leem esta,
@@ -60,7 +66,7 @@ pub(crate) const LAYER_COMPOSITE_BODY_WGSL: &str = include_str!("../shaders/laye
 /// metade compartilhada, que é exatamente a metade que agora tem dois donos.
 #[must_use]
 pub(crate) fn composite_source() -> String {
-    format!("{BLEND_MODES_WGSL}\n{LAYER_COMPOSITE_BODY_WGSL}")
+    format!("{BLEND_MODES_WGSL}\n{COLOUR_ADJUST_WGSL}\n{LAYER_COMPOSITE_BODY_WGSL}")
 }
 
 /// Workgroup edge (mirrors the `@workgroup_size(8, 8, 1)` in the shader).

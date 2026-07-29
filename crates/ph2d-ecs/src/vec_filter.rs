@@ -110,6 +110,18 @@ pub struct FxOp {
     /// *Offset Path* do Illustrator — usa **um slider com sinal**. Crescer e encolher são a mesma
     /// operação em sinais opostos, e quem afina um choke quer atravessar o zero sem trocar de modo.
     pub grow: f32,
+    /// **A MATIZ**, em VOLTAS (`0.25` = um quarto de volta). Rotação rígida do croma em OKLab.
+    ///
+    /// ⚠️ **Voltas, e não graus, porque é a unidade do MODELO** — o `HsbParams::h` do
+    /// `ph2d-painter-effects` fala em voltas, e este degrau é a MESMA lei (ver
+    /// [`Self::COLOR_ADJUST`]). O painel converte para graus na fronteira, como a §12 da física
+    /// faz com radianos: uma unidade no modelo, outra no olho, e a conversão num sítio só.
+    pub hue: f32,
+    /// **A SATURAÇÃO**, em `-1..1` — escala o croma: `-1` é cinza, `0` é neutro, `+1` é o dobro.
+    pub sat: f32,
+    /// **O BRILHO**, em `-1..1` — lerp para preto (`-1`) ou branco (`+1`) em luz LINEAR, então os
+    /// extremos são preto e branco EXACTOS.
+    pub bright: f32,
 }
 
 /// O degrau neutro sobre o qual os defaults de cada tipo são escritos.
@@ -126,6 +138,9 @@ const BLANK: FxOp = FxOp {
     detail: 3,
     seed: 0,
     grow: 0.0,
+    hue: 0.0,
+    sat: 0.0,
+    bright: 0.0,
 };
 
 impl FxOp {
@@ -165,8 +180,23 @@ impl FxOp {
     /// ⚠️ **É o único da família do campo que mede a IMAGEM, não a FORMA** — ver
     /// [`Self::measures_the_image`].
     pub const MORPHOLOGY: u8 = 10;
+    /// Código de painel: **Color Adjust** — matiz, saturação e brilho. É o `feColorMatrix` do SVG
+    /// (os tipos `hueRotate` + `saturate` + o brilho que a `matrix` exprime) na forma em que TODO
+    /// mundo que o desenhou como CONTROLE o embrulhou: a ficha *Hue/Saturation* do Photoshop, do
+    /// AE, do Krita e do Blender. O `type` de quatro valores é interface de formato DECLARATIVO.
+    ///
+    /// ⚠️ **A lei NÃO é nova, e essa é a decisão inteira da wave:** ela é a MESMA do
+    /// `AdjustmentKind::HueSaturationBrightness` que o Painter já ship (`ph2d-painter-effects`,
+    /// rotulado literalmente *"Hue/Saturation"*), pelo MESMO kernel WGSL — que foi extraído para
+    /// um arquivo compartilhado quando ganhou este segundo consumidor. Uma segunda resposta a
+    /// *"o que o slider de matiz faz?"* divergiria no único lugar onde ninguém lê um número.
+    ///
+    /// ⚠️ **O que NÃO entrou, e por quê:** o `luminanceToAlpha` do SVG converte luminância em
+    /// COBERTURA, e a pista pontual existe precisamente para não mover cobertura — é outro verbo,
+    /// não um quarto slider.
+    pub const COLOR_ADJUST: u8 = 11;
     /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    pub const KINDS: usize = 11;
+    pub const KINDS: usize = 12;
 
     /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
     /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
@@ -309,6 +339,28 @@ impl FxOp {
         Self::spec(self.kind).grow_label.is_some()
     }
 
+    /// **Este degrau AJUSTA a cor que recebeu?** Vista da [`FxKindSpec::adjust_labels`], e a mesma
+    /// porta com dois consumidores do [`Self::reads_noise`]: o painel a consulta para OFERECER os
+    /// três knobs, o produtor da GPU para os HONRAR.
+    #[must_use]
+    pub fn reads_adjust(self) -> bool {
+        Self::spec(self.kind).adjust_labels.is_some()
+    }
+
+    /// **Este degrau está no ponto NEUTRO do ajuste de cor?** — e nele a lei devolve a entrada AO
+    /// BIT (o early-out do `adjust_hsb`, espelho exacto do `apply_hsb` do Painter).
+    ///
+    /// ⚠️ **A exactidão é do FLOAT.** Em 8 bits a identidade vale mesmo sem o ramo — medido, uma
+    /// rampa sRGB completa sai com 0 de 4096 bytes diferentes.
+    ///
+    /// ⚠️ Existe como porta porque a resposta é lida em DOIS sítios que não podem discordar: o
+    /// gate de byte-identidade e o próprio kernel. Um `== 0.0` reescrito no chamador é a segunda
+    /// cópia que passa a admitir um épsilon e deixa de ser identidade.
+    #[must_use]
+    pub fn adjust_is_neutral(self) -> bool {
+        self.hue == 0.0 && self.sat == 0.0 && self.bright == 0.0
+    }
+
     /// **Contra o QUÊ este degrau mede a distância — a IMAGEM que recebeu, ou a FORMA?**
     ///
     /// Quatro tipos da família do campo (contorno, feather, bevel, os de dentro em modo Contour)
@@ -427,6 +479,18 @@ impl FxOp {
                 // mudar a tela, e a direção que se lê como *efeito* é a que cresce — encolher uma
                 // forma para dentro pode não deixar rastro nenhum numa silhueta fina.
                 grow: 0.06,
+                ..BLANK
+            },
+            Self::COLOR_ADJUST => Self {
+                kind,
+                // Um QUARTO DE VOLTA de matiz. "Add" tem de mudar a tela, e dos três knobs a
+                // matiz é o que NOMEIA o efeito; um quarto de volta é longe o bastante para se
+                // ler como *outra cor* sem ser a complementar (meia volta), que lê como inversão.
+                //
+                // ⚠️ Numa arte CINZENTA este default não desenha nada, e isso é honesto: girar a
+                // matiz de um pixel sem croma É nada. Quem quiser mexer em cinza tem o Brilho, e
+                // é por isso que os três são oferecidos juntos.
+                hue: 0.25,
                 ..BLANK
             },
             _ => Self {

@@ -66,6 +66,31 @@ fn one(kind: u8, sigma_px: f32, tint: [f32; 4], offset_px: [i32; 2]) -> FxOpGpu 
         } else {
             0.0
         },
+        // ⚠️ **A mesma pergunta à TABELA que a linha do `grow_px` acima, e pelo mesmo motivo:** o
+        // Color Adjust não tem raio nenhum, então dar-lhe `sigma_px` o deixaria no ponto NEUTRO
+        // (onde a lei devolve a entrada AO BIT, de propósito) e ele entraria na varredura "sem
+        // desenhar nada".
+        //
+        // ⚠️ **E o BRILHO tem de ir para BAIXO, medido: a fixture desta suíte é BRANCA.** Um
+        // ajuste pontual tem pontos FIXOS por construção — matiz e saturação não movem um pixel
+        // sem croma, e `+brilho` é `out + (1−out)·b`, que em branco é exactamente branco. Escrevi
+        // aqui que o brilho *"move um pixel de qualquer cor"* e a varredura mediu **0 de 12800**.
+        // Para baixo (`out · (1+b)`) o branco anda; só o preto puro fica, e a fixture não é preta.
+        hue: if FxOp::spec(kind).adjust_labels.is_some() {
+            0.25
+        } else {
+            0.0
+        },
+        sat: if FxOp::spec(kind).adjust_labels.is_some() {
+            0.6
+        } else {
+            0.0
+        },
+        bright: if FxOp::spec(kind).adjust_labels.is_some() {
+            -0.25
+        } else {
+            0.0
+        },
     }
 }
 

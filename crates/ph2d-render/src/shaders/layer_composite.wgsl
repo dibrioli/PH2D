@@ -396,38 +396,9 @@ fn srgb_to_linear_f32(c: f32) -> f32 {
     return pow((v + 0.055) / 1.055, 2.4);
 }
 
-// Linear sRGB → OKLab. Coefficients bit-identical to
-// `ph2d_color::oklab::OklabColor::from_linear` (the rounded f32 literals the
-// Rust source uses — NOT the full-precision spec values, or the GPU↔CPU parity
-// drifts). Pinned by `shader_adjustment_coefficients_bit_identical_with_rust`.
-fn oklab_from_linear(c: vec3<f32>) -> vec3<f32> {
-    let l = 0.41222147 * c.r + 0.5363325 * c.g + 0.051445993 * c.b;
-    let m = 0.2119035 * c.r + 0.6806995 * c.g + 0.10739696 * c.b;
-    let s = 0.08830246 * c.r + 0.28171884 * c.g + 0.6299787 * c.b;
-    let l_ = pow(max(l, 0.0), 0.3333333333);
-    let m_ = pow(max(m, 0.0), 0.3333333333);
-    let s_ = pow(max(s, 0.0), 0.3333333333);
-    return vec3<f32>(
-        0.21045426 * l_ + 0.7936178 * m_ - 0.004072047 * s_,
-        1.9779985 * l_ - 2.4285922 * m_ + 0.4505937 * s_,
-        0.025904037 * l_ + 0.78277177 * m_ - 0.80867577 * s_,
-    );
-}
-
-// OKLab → linear sRGB. Coefficients bit-identical to `OklabColor::to_linear`.
-fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
-    let l_ = lab.x + 0.39633778 * lab.y + 0.21580376 * lab.z;
-    let m_ = lab.x - 0.105561346 * lab.y - 0.06385417 * lab.z;
-    let s_ = lab.x - 0.08948418 * lab.y - 1.2914855 * lab.z;
-    let l3 = l_ * l_ * l_;
-    let m3 = m_ * m_ * m_;
-    let s3 = s_ * s_ * s_;
-    return vec3<f32>(
-        4.0767417 * l3 - 3.3077116 * m3 + 0.23096994 * s3,
-        -1.268438 * l3 + 2.6097574 * m3 - 0.34131938 * s3,
-        -0.0041960863 * l3 - 0.7034186 * m3 + 1.7076147 * s3,
-    );
-}
+// ⚠️ `oklab_from_linear` / `oklab_to_linear` / `adjust_hsb` moraram AQUI até ganharem o SEGUNDO
+// consumidor (o degrau *Color Adjust* da pilha de FX raster) — hoje vêm do `colour_adjust.wgsl`,
+// prefixado pela `composite_source()`. É o mesmo movimento que as leis de mistura já fizeram.
 
 // ── Color Lookup "looks" — mirror of ph2d_painter_brush::adjustments::lut ────
 // Each look maps a DISPLAY-space (sRGB) triple → display-space triple. The CPU
@@ -472,20 +443,8 @@ fn apply_look(idx: u32, c: vec3<f32>) -> vec3<f32> {
 fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32> {
     switch ap.kind {
         case 0u: { // ADJ_HSB — p0=hue(turns), p1=sat(-1..1), p2=bright(-1..1)
-            let hue_rad = ap.p0 * 6.2831853072;
-            let hc = cos(hue_rad);
-            let hs = sin(hue_rad);
-            let chroma_scale = max(1.0 + ap.p1, 0.0);
-            let lab = oklab_from_linear(rgb);
-            let a = (lab.y * hc - lab.z * hs) * chroma_scale;
-            let b = (lab.y * hs + lab.z * hc) * chroma_scale;
-            var out = oklab_to_linear(vec3<f32>(lab.x, a, b));
-            if ap.p2 > 0.0 {
-                out = out + (vec3<f32>(1.0) - out) * ap.p2;
-            } else if ap.p2 < 0.0 {
-                out = out * (1.0 + ap.p2);
-            }
-            return out;
+            // A lei mora no `colour_adjust.wgsl` desde que ganhou o 2º consumidor.
+            return adjust_hsb(rgb, ap.p0, ap.p1, ap.p2);
         }
         case 1u: { // ADJ_BRIGHTNESS_CONTRAST — p0=brightness, p1=contrast
             let PIVOT = 0.21404114;

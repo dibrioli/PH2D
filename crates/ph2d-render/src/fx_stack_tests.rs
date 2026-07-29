@@ -57,6 +57,47 @@ fn the_blend_laws_come_from_the_shared_file_not_a_copy() {
     }
 }
 
+/// **O ajuste de cor chega à pilha pelo arquivo COMPARTILHADO — irmão exacto do gate acima.**
+///
+/// ⚠️ A lei do *Color Adjust* é a do `AdjustmentKind::HueSaturationBrightness` que o Painter já
+/// ship. Sem o prefixo, `adjust_hsb` é um nome que o WGSL não conhece e o `cs_op_point` deixa de
+/// compilar — mas só quando um pipeline é construído; e se alguém "resolver" isso colando uma
+/// cópia da função aqui, tudo passa a compilar e o app ganha DUAS respostas para *"o que o slider
+/// de matiz faz?"*, divergindo numa cor, que é onde ninguém lê um número.
+#[test]
+fn the_colour_adjust_comes_from_the_shared_file_not_a_copy() {
+    assert!(
+        crate::layer_compositor::COLOUR_ADJUST_WGSL.contains("fn adjust_hsb(")
+            && crate::layer_compositor::COLOUR_ADJUST_WGSL.contains("fn oklab_from_linear("),
+        "o arquivo compartilhado deixou de declarar a lei do ajuste de cor"
+    );
+    // O corpo do compositor de camadas também a perdeu — ele passou a CHAMÁ-la.
+    assert!(
+        !crate::layer_compositor::LAYER_COMPOSITE_BODY_WGSL.contains("fn adjust_hsb(")
+            && !crate::layer_compositor::LAYER_COMPOSITE_BODY_WGSL
+                .contains("fn oklab_from_linear("),
+        "o compositor de camadas voltou a declarar a própria lei de ajuste"
+    );
+    let own = format!("{FX_STACK_WGSL}{FX_STACK_MID_WGSL}{FX_STACK_OUT_WGSL}");
+    assert!(
+        !own.contains("fn adjust_hsb("),
+        "a pilha declarou a própria lei de ajuste de cor — é a segunda resposta que este prefixo \
+         existe para não ter"
+    );
+    // …e o módulo que o dispositivo de facto compila TEM de a receber.
+    for (label, src) in module_sources() {
+        assert!(
+            src.contains("fn adjust_hsb("),
+            "o módulo `{label}` não recebeu o bloco do ajuste de cor"
+        );
+    }
+    // E o compositor de camadas continua a compilar a MESMA função, pela porta única dele.
+    assert!(
+        crate::layer_compositor::composite_source().contains("fn adjust_hsb("),
+        "a fonte montada do compositor perdeu a lei de ajuste"
+    );
+}
+
 /// **O `Globals` do Rust e o do WGSL têm os mesmos membros, na mesma ordem.**
 ///
 /// Um uniform é lido por OFFSET: trocar `n_segs` com `blend` não falha a ligação — passa a ler a
@@ -80,8 +121,12 @@ fn the_wgsl_globals_members_match_the_rust_struct() {
         rust, wgsl,
         "os membros do `Globals` do WGSL derivaram do do Rust"
     );
-    // 96 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade).
-    assert_eq!(core::mem::size_of::<Globals>(), 96);
+    // 112 bytes: os 64 do fold + os 32 do ruído (escala/oitavas/semente/modo + a origem da grade,
+    // que hospeda também o `grow_px` da morfologia) + os 16 do ajuste de cor.
+    //
+    // ⚠️ O número é MEDIDO, não escolhido: ele é a soma das linhas de 16 bytes que o `vec4` do
+    // `tint` impõe, e o `UNIFORM_STRIDE` (256) segue a acomodar com folga.
+    assert_eq!(core::mem::size_of::<Globals>(), 112);
 }
 
 /// Os NOMES dos campos de um `struct` declarado em `src`, na ordem — serve o Rust e o WGSL, cuja
@@ -255,6 +300,9 @@ fn the_turbulence_warps_in_both_of_its_modes() {
             detail: 3,
             seed: 0,
             grow_px: 0.0,
+            hue: 0.0,
+            sat: 0.0,
+            bright: 0.0,
         };
         for raster_seeded in [false, true] {
             assert_eq!(
@@ -285,6 +333,9 @@ fn the_turbulence_reach_is_the_amount_it_displaces() {
         detail: 3,
         seed: 0,
         grow_px: 0.0,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
     };
     for amount in [1.0f32, 4.0, 10.5, 30.0] {
         let reach = op_reach(&op(amount));
@@ -315,6 +366,9 @@ fn morph_op(grow_px: f32) -> FxOpGpu {
         detail: 1,
         seed: 0,
         grow_px,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
     }
 }
 

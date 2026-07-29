@@ -42,7 +42,7 @@ pub const MAX_FILTER_ROWS: usize = 6;
 /// ⚠️ O painel não alcança o `ph2d-ecs`; há gate na shell (o único lugar que vê os dois lados) a
 /// exigir que os números concordem. Um teto MENOR aqui deixaria os últimos tipos sem botão — sem
 /// erro nenhum, porque o `paint` faz `.take(MAX_FILTER_KINDS)`.
-pub const MAX_FILTER_KINDS: usize = 11;
+pub const MAX_FILTER_KINDS: usize = 12;
 
 /// O teto de MODOS que um tipo pode oferecer (hoje: Proximity | Contour, dos degraus de dentro).
 /// Espelha o maior `FxKindSpec::modes` — o painel registra este número por linha, sempre, e pinta
@@ -225,4 +225,44 @@ pub fn filter_grow_id(row: usize) -> NodeId {
 #[must_use]
 pub fn filter_grow_num_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.filter.grow.{row}.num"))
+}
+
+/// **Hue** da linha `row` — a matiz do Color Adjust, régua BIPOLAR (`0,5` no meio = sem rotação).
+///
+/// ⚠️ Os três do ajuste têm ids próprios pelo mesmo motivo do [`filter_grow_id`]: o mapa
+/// track→valor de um slider é registado por LINHA, e emprestar a régua de outro knob faz a linha
+/// ler metade da faixa dele ao contrário quando ela troca de tipo em runtime.
+#[must_use]
+pub fn filter_hue_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.hue.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_hue_id`].
+#[must_use]
+pub fn filter_hue_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.hue.{row}.num"))
+}
+
+/// **Saturation** da linha `row` — bipolar: `-1` drena até o cinza, `+1` dobra o croma.
+#[must_use]
+pub fn filter_sat_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.sat.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_sat_id`].
+#[must_use]
+pub fn filter_sat_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.sat.{row}.num"))
+}
+
+/// **Brightness** da linha `row` — bipolar: `-1` é preto exacto, `+1` é branco exacto.
+#[must_use]
+pub fn filter_bright_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.bright.{row}"))
+}
+
+/// O campo numérico gêmeo do [`filter_bright_id`].
+#[must_use]
+pub fn filter_bright_num_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.filter.bright.{row}.num"))
 }

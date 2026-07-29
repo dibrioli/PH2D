@@ -3502,7 +3502,10 @@ impl crate::App {
                         | FilterHit::Scale(_)
                         | FilterHit::Detail(_)
                         | FilterHit::Seed(_)
-                        | FilterHit::Grow(_) => {}
+                        | FilterHit::Grow(_)
+                        | FilterHit::Hue(_)
+                        | FilterHit::Sat(_)
+                        | FilterHit::Bright(_) => {}
                     }
                 }
                 if let Some((hit, v)) = pending_filter_val {
@@ -3517,7 +3520,10 @@ impl crate::App {
                             | FilterHit::Scale(r)
                             | FilterHit::Detail(r)
                             | FilterHit::Seed(r)
-                            | FilterHit::Grow(r) => r,
+                            | FilterHit::Grow(r)
+                            | FilterHit::Hue(r)
+                            | FilterHit::Sat(r)
+                            | FilterHit::Bright(r) => r,
                             _ => return,
                         };
                         let Some(op) = f.ops.get_mut(row) else { return };
@@ -3537,6 +3543,12 @@ impl crate::App {
                             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                             FilterHit::Seed(_) => op.seed = x.clamp(0.0, 255.0).round() as u8,
                             FilterHit::Grow(_) => op.grow = x,
+                            // ⚠️ **GRAUS -> VOLTAS**, o inverso exacto da linha que publica o
+                            // snapshot. As duas conversões são as ÚNICAS do eixo, e é por isso
+                            // que ficam nomeadas uma na outra.
+                            FilterHit::Hue(_) => op.hue = x / 360.0,
+                            FilterHit::Sat(_) => op.sat = x,
+                            FilterHit::Bright(_) => op.bright = x,
                             _ => {}
                         }
                     });
@@ -4985,6 +4997,7 @@ impl crate::App {
                             takes_blend: s.takes_blend,
                             noise_labels: s.noise_labels,
                             grow_label: s.grow_label,
+                            adjust_labels: s.adjust_labels,
                         })
                         .collect(),
                 );
@@ -5023,6 +5036,14 @@ impl crate::App {
                                 detail: op.detail_clamped(),
                                 seed: op.seed,
                                 grow: f64::from(op.grow),
+                                // ⚠️ **VOLTAS -> GRAUS na fronteira.** O modelo fala voltas (a
+                                // unidade do `HsbParams` do Painter, que é a MESMA lei); o painel
+                                // fala graus, porque é a unidade em que um artista pensa uma cor.
+                                // A volta é feita aqui e no `apply`, em linhas que se leem juntas
+                                // — o idioma que a §12 da física já usa com radianos.
+                                hue: f64::from(op.hue) * 360.0,
+                                sat: f64::from(op.sat),
+                                bright: f64::from(op.bright),
                             })
                             .collect()
                     })

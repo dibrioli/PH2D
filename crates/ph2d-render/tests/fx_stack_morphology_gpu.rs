@@ -37,6 +37,9 @@ fn morph(grow_px: f32) -> FxOpGpu {
         detail: 1,
         seed: 0,
         grow_px,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
     }
 }
 
@@ -55,6 +58,9 @@ fn outline(w: f32) -> FxOpGpu {
         detail: 1,
         seed: 0,
         grow_px: 0.0,
+        hue: 0.0,
+        sat: 0.0,
+        bright: 0.0,
     }
 }
 

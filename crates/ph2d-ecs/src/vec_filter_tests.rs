@@ -246,12 +246,16 @@ fn the_blend_is_offered_where_a_colour_lands_on_something() {
             FxOp::kind_name(kind)
         );
     }
-    // …e a coincidência com `!grows` está PINADA como coincidência: se um dia deixarem de
-    // coincidir, é este `assert` que cai, e a mensagem diz que isso é ESPERADO.
-    let same = (0..FxOp::KINDS as u8).all(|k| FxOp::spec(k).takes_blend != FxOp::spec(k).grows);
+    // ⚠️ **A coincidência com `!grows` ACABOU, e o assert que a pinava caiu — como ele próprio
+    // mandava.** Ele existia para provar que as duas listas eram iguais *por acidente*; o
+    // **Color Adjust** é o primeiro tipo que não cresce E não toma a lei (ele não tem cor
+    // PRÓPRIA: a saída dele é a entrada ajustada, o argumento do Blur e do Feather). As duas
+    // perguntas — *preciso de margem na textura?* e *a minha cor encosta na de baixo?* — passaram
+    // a ter respostas diferentes, que é exactamente o que o campo próprio existia para permitir.
     assert!(
-        same,
-        "as duas listas divergiram — isto é LEGÍTIMO (são perguntas diferentes: margem de              textura × a cor encosta na de baixo). Apague este assert, não o campo."
+        !FxOp::spec(FxOp::COLOR_ADJUST).grows && !FxOp::spec(FxOp::COLOR_ADJUST).takes_blend,
+        "o Color Adjust é o tipo que quebrou a coincidência — se ele voltar a coincidir, esta \
+         nota mente"
     );
 }
 

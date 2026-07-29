@@ -51,6 +51,15 @@ pub(crate) struct Globals {
     /// Quanto a silhueta engorda, em pixels — **com sinal** (só a morfologia o lê).
     pub(crate) grow_px: f32,
     pub(crate) _pad: [f32; 1],
+    /// A MATIZ em VOLTAS, a saturação e o brilho em `-1..1` — só o Color Adjust os lê.
+    ///
+    /// ⚠️ **Voltas, e não o par (sen, cos) precomputado no host.** Precomputar seria mais barato
+    /// por um `sin`/`cos` por op, e escreveria um kernel DIFERENTE do que o compositor de camadas
+    /// já roda — que é exactamente o que esta wave existe para não fazer. O `adjust_hsb` é UM.
+    pub(crate) hue: f32,
+    pub(crate) sat: f32,
+    pub(crate) bright: f32,
+    pub(crate) _pad2: [f32; 1],
 }
 
 pub(crate) struct Tex {

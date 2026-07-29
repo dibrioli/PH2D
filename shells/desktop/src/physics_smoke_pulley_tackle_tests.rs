@@ -169,3 +169,48 @@ fn arming_the_mount_pick_writes_nothing() {
          próximo clique no canvas"
     );
 }
+
+/// **A cena 61 oferece o ímã que a mensagem dela promete** (W6) — e o CONTROLE
+/// da mesma cena continua sem nada a que colar.
+///
+/// ⚠️ **A cena é o único lugar onde o número da mensagem pode ser conferido.** Os
+/// gates do kernel (`ph2d-physics-ecs::pulley_wheel_snap`) medem uma CAIXA, que
+/// oferece nove; aqui o bloco é um DISCO e oferece cinco, então uma mensagem
+/// escrita a partir do gate errado diria ao artista para procurar quatro pontos
+/// que não existem — a classe de erro que esta linha já pagou duas vezes escrevendo
+/// cena antes de medir.
+///
+/// A metade do CENÁRIO é a que impede a wave de ter *perdido* uma recusa: a
+/// roldana de cima não pertence a corpo nenhum, e o ímã não pode abrir nela.
+#[test]
+fn the_tackle_scene_offers_the_magnet_it_promises_and_only_where_it_should() {
+    let mut sim = SimWorld::new();
+    build_tackle(sim.world_mut());
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+
+    let mounted = entity_of(&mut sim, "Tackle Rope Wheel 1");
+    let mut out = [[0.0f32; 2]; ph2d_physics_ecs::ShapeDesc::MAX_SNAP_POINTS];
+    let n = bridge.wheel_snap_targets(&sim, mounted, &mut out);
+    assert_eq!(
+        n, MEASURED_SNAP_TARGETS,
+        "a mensagem diz {MEASURED_SNAP_TARGETS} pontos e a cena ofereceu {n} — o \
+         bloco é um DISCO (centro + 4 cardinais), nunca uma caixa"
+    );
+    // O centro do disco é o primeiro candidato, e é o único ponto que um artista
+    // não acerta a olho: ele não está no contorno.
+    let block = y_of(&mut sim, "Tackle Block");
+    assert!(
+        (out[0][1] - block).abs() < 1.0e-4,
+        "o 1º candidato tinha de ser o CENTRO do bloco (y={block:.3}); saiu {:?}",
+        out[0]
+    );
+
+    // O CONTROLE: a roldana FIXA é do cenário — zero candidatos.
+    let scenery = entity_of(&mut sim, "Tackle Rope Wheel 2");
+    assert_eq!(
+        bridge.wheel_snap_targets(&sim, scenery, &mut out),
+        0,
+        "a roldana do CENÁRIO não pertence a corpo nenhum: o ímã não pode abrir nela"
+    );
+}

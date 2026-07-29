@@ -7143,3 +7143,79 @@ linha.
 
 **`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
 Nada aqui toca o produto — são sondas, gates e notas.
+
+---
+
+## W-WheelMagnet — o eixo de uma roldana MONTADA tem ÍMÃ (2026-07-29, cena `=61`, pendente de smoke)
+
+O último item aberto do W6, e o caminho até ele começou **derrubando uma nota**.
+
+### A nota obsoleta que veio primeiro
+
+O `Aberto no W3` dizia que *"o dot de centro edita o `Transform` da roldana, que numa
+montada é DERIVADO — arrastá-lo é escrever num número que o próximo reconcile
+reescreve"*. **Falso desde o W6:** o arrasto passa por `reseat_wheel_geometry` →
+`reseat_mounted_axle`, que desarma o `mounted` e re-deriva o `local`; os **8 gates**
+de `pulley_mount` provam, e foram rodados antes de qualquer código. A nota sobreviveu
+ao fato por uma wave — *rodar os gates do assunto antes de acreditar na lista* é o
+antídoto, e ele se paga na primeira vez.
+
+### O item real, e a frase do produto que envelheceu
+
+O braço `Grab::World` do arrasto tinha a isenção escrita à mão, com o porquê: *"uma
+roldana não pertence a corpo nenhum — não há a que colar"*. Verdade quando escrita, e
+o **W3 a falsificou** ao dar corpo à roldana ⇒ ela enumerava os donos de collider da
+época ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+
+**Medido antes de decidir** (`measure_pulley_wheel_snap`): montada oferece **9**
+pontos, cenário **0**; um erro de mão de 0,02 m assa `local = [0,62, 0,27]` e
+**0,0283 m** de desvio que **não decai** (o bloco anda 3 m e leva o erro junto),
+**invisível** — o eixo acompanha o bloco corretamente, só não está na quina. O
+alcance do ímã (14 px) vale 0,052 m a `height_world` 4 e **0,207 m** a 16, então o
+erro real cai dentro dele.
+
+### O desenho
+
+`PhysicsBridge::wheel_snap_targets` é irmã de `joint_snap_targets` — duas portas
+porque *"de quem é o corpo?"* tem duas respostas (a PONTA × o NOME citado) — e a
+**COLOCAÇÃO é UMA** (`body_snap_targets`): duas cópias colariam pino e eixo em pontos
+diferentes do mesmo collider. A recusa do cenário virou **aritmética** (porta devolve
+zero, `nearest_within` de fatia vazia é `None`) em vez do ramo que apodreceu.
+
+### Gates: 4 kernel + 1 arch-gate de shell + 1 na cena · **6 mutações, 6 sangram**
+
+M1 a isenção antiga ⇒ 3 kernel · **M2 escrever `free` em vez de `target` ⇒ o shell**
+(a que carrega o peso: computar o candidato e jogá-lo fora é indistinguível de não
+haver ímã) · M3 a colocação esquece o offset ⇒ o gate de offset **e** o do joint ·
+M4 o ímã sem o Ctrl ⇒ o shell · M5 esquecer a pose ⇒ 2 kernel · M6 a cena citar 9 ⇒
+o gate da cena.
+
+⚠️ **Dois buracos meus, os dois de FIXTURE:** a suíte nasceu com offset e escala em
+ZERO, então a M3 **passava inteira** do lado da roldana (só o gate irmão do joint a
+pegava) — *uma colocação partilhada precisa de um gate independente em cada lado*; e
+a mensagem da cena quer o número da CENA (o bloco 61 é um **disco**: 5 pontos), não o
+do gate (uma **caixa**: 9) — citar o errado mandaria o artista procurar quatro pontos
+que não existem.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=61`** — `Tackle Rope Wheel 1` (a montada), dot central
+**com CTRL**: cola nos 5 pontos do disco. Sem CTRL, livre; na roldana do CENÁRIO o
+ímã não abre.
+
+⚠️ **E o `handle_scenes_start_paused` pegou a minha edição de cena, nas DUAS
+metades** — a prova de que ele se paga. Acrescentar um passo de arrasto de alça à 61
+pôs a cena na classe *"pede gesto de alça"*, e ela **toca de propósito** (a talha
+segurando × o controle caindo é a demo inteira). As duas curas são as que o próprio
+gate documenta: o passo **manda PAUSAR** (alça de ponto é rest-only — durante o play
+o overlay desenha a geometria do SOLVER e a alça autora a AUTORADA), em vez de a
+cena entrar em `PAUSED_SCENES` e perder o que ensina; e o *"Aperte B para ver"* virou
+a forma **declarativa** (*"o contorno já está ligado"*), porque `show_colliders`
+nasce `true` e `B` **alterna** — a instrução antiga mandava o artista DESLIGAR o que
+ele quer ver e levava as alças junto.
+
+**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`, 96
+corpos) — a wave não alcança o solver.
+
+**Aberto na W-Pulley agora:** roldana montada em corpo **KINEMATIC** = guincho de
+graça (não medido, não gateado) · o eyedropper de **corda** (re-escolher a corda de
+uma roldana; hoje só na criação) · a **Weston** (topologia, 2ª restrição por corda —
+não é afinação).

@@ -148,6 +148,13 @@ pub(crate) const MEASURED_TACKLE_DRIFT: f32 = 0.02;
 /// da mensagem é o que a sonda diz, sempre — a estimativa era minha, o número é
 /// do produto.
 pub(crate) const MEASURED_PLAIN_DROP: f32 = 3.15;
+/// **Quantos pontos o ímã do eixo oferece nesta cena** (W6).
+///
+/// ⚠️ **CINCO, não nove:** o bloco é um DISCO, e um disco não tem quinas — o
+/// conjunto é o centro mais os quatro cardinais do aro (`ShapeDesc::snap_points`).
+/// Inventar quinas ofereceria ao artista um ponto que **não está no corpo**, e a
+/// mensagem tem de dizer o número que a cena de fato dá, não o do caso da caixa.
+pub(crate) const MEASURED_SNAP_TARGETS: usize = 5;
 
 /// Monta a cena 61.
 pub(crate) fn build_tackle(world: &mut World) {
@@ -188,7 +195,7 @@ impl crate::App {
 
         eprintln!(
             "[physics-smoke 61] A TALHA -- a roldana montada num corpo que se move.\n  \
-               Aperte B para ver os vinculos, e depois PLAY (o toggle Physics ja esta armado).\n\n  \
+               O contorno dos vinculos ja esta ligado; de PLAY (o toggle Physics ja esta armado).\n\n  \
                Os DOIS rigs tem a mesma carga ({block:.0} kg) e o mesmo contrapeso\n  \
                ({counter:.0} kg, METADE dela). A unica diferenca e onde a roldana esta.\n\n  \
                1. VERDE (esquerda) -- a roldana de baixo esta MONTADA no bloco: e a\n     \
@@ -205,11 +212,21 @@ impl crate::App {
                roldana passa a citar o nome dele. (Este rig nao vira uma talha so com\n  \
                isso -- a corda dele esta amarrada NO bloco, entao ele ja e o proprio no;\n  \
                o que a row prova e que a montagem e autoravel com dois cliques.)\n  \
-               A LIXEIRA ao lado desmonta de volta para o cenario.",
+               A LIXEIRA ao lado desmonta de volta para o cenario.\n\n  \
+               E O IMA (W6): PAUSE primeiro (uma alca de ponto e rest-only -- durante o\n  \
+               play o overlay desenha a geometria do SOLVER, e a alca autora a AUTORADA).\n  \
+               Selecione 'Tackle Rope Wheel 1' (a roldana MONTADA, a de baixo no rig\n  \
+               verde) e arraste o DOT central com CTRL apertado. Ele cola\n  \
+               nos {snap} pontos do collider do bloco que a carrega -- o centro e os\n  \
+               quatro cardinais do disco --, e a marca do encaixe acende no ponto.\n  \
+               ⚠️ Sem CTRL o arrasto e livre, como sempre foi. E na roldana do CENARIO\n  \
+               (a de cima) o ima NAO abre: ela nao pertence a corpo nenhum, entao nao ha\n  \
+               a que colar -- e e essa recusa que ele nao pode ter perdido.",
             block = BLOCK_MASS,
             counter = COUNTER_MASS,
             tackle = MEASURED_TACKLE_DRIFT,
             plain = MEASURED_PLAIN_DROP,
+            snap = MEASURED_SNAP_TARGETS,
         );
     }
 }

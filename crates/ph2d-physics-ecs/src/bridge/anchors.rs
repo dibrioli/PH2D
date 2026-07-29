@@ -216,6 +216,54 @@ impl PhysicsBridge {
         let Some((body, _)) = self.joint_side_body(sim, joint, side) else {
             return 0;
         };
+        Self::body_snap_targets(body, out)
+    }
+
+    /// **Os pontos a que o EIXO de uma roldana montada pode colar** (W-Pulley
+    /// W6) — os do collider do corpo que a carrega, em mundo.
+    ///
+    /// Irmã exata da [`Self::joint_snap_targets`], e a razão de existir é que a
+    /// pergunta *"de quem é o corpo?"* tem duas respostas diferentes: um joint a
+    /// responde pela ponta (`JointSide`), uma roldana pelo `PulleyWheel::body` —
+    /// o NOME que ela cita, resolvido pela mesma chave do reconcile. **A
+    /// COLOCAÇÃO é uma só** ([`Self::body_snap_targets`]): duas cópias colariam
+    /// o pino e o eixo em pontos diferentes do MESMO collider, e nada na tela
+    /// diria qual dos dois está errado.
+    ///
+    /// ⚠️ **`0` para uma roldana de CENÁRIO, e isso não é falha:** ela não
+    /// pertence a corpo nenhum, logo não há collider e não há candidato — a
+    /// isenção que o gesto de arrasto trazia continua correta *para ela*. O que
+    /// o W3 falsificou foi a generalização: uma roldana MONTADA tem corpo, e o
+    /// corpo tem os nove pontos.
+    #[must_use]
+    pub fn wheel_snap_targets(
+        &self,
+        sim: &SimWorld,
+        wheel: Entity,
+        out: &mut [[f32; 2]; ShapeDesc::MAX_SNAP_POINTS],
+    ) -> usize {
+        let Some(w) = sim.world().get::<crate::PulleyWheel>(wheel) else {
+            return 0;
+        };
+        if w.body == 0 {
+            return 0;
+        }
+        let Some(body) = self.names.get(&w.body).and_then(|e| self.bodies.get(e)) else {
+            return 0;
+        };
+        Self::body_snap_targets(body, out)
+    }
+
+    /// **A colocação dos nove pontos** — a resposta única que as duas portas
+    /// acima compartilham.
+    ///
+    /// Lê a descrição de REPOUSO do corpo, então é o collider **resolvido**: a
+    /// forma escalada (W6) no offset autorado (W-Offset), que é a que o solver de
+    /// fato colide e a que o contorno desenha.
+    fn body_snap_targets(
+        body: &BodyRef,
+        out: &mut [[f32; 2]; ShapeDesc::MAX_SNAP_POINTS],
+    ) -> usize {
         let n = body.rest.shape.snap_points(out);
         let pose = rest_pose(body);
         let [ox, oy] = body.rest.offset;

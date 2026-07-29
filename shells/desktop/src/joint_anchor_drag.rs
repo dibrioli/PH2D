@@ -238,33 +238,42 @@ impl App {
         drag.snap = match drag.grab {
             Grab::World(off) => {
                 let free = [cursor[0] + off[0], cursor[1] + off[1]];
-                // ⚠️ **Uma roldana sai antes do ÍMÃ, e não é atalho:** o ímã cola
-                // a alça nos pontos do COLLIDER do corpo daquela ponta, e uma
-                // roldana não pertence a corpo nenhum — não há a que colar. Um
-                // ímã aqui puxaria a roda para a superfície da carga.
-                if drag.kind.is_wheel() {
-                    wheel::move_wheel(&mut gfx.sim, entity, free);
-                    None
+                // **O ÍMÃ é o mesmo para as duas coisas que se agarram no mundo**
+                // — a âncora de um joint e o eixo de uma roldana —, e o que muda
+                // é só de QUEM é o collider: o joint pergunta pela ponta, a
+                // roldana pelo corpo em que está MONTADA (W-Pulley W3).
+                //
+                // ⚠️ **A isenção que morava aqui dizia que uma roldana *"não
+                // pertence a corpo nenhum — não há a que colar"*, e era verdade
+                // quando foi escrita:** o W3 deu corpo a ela, e a frase virou uma
+                // condição que enumerava os donos de collider da época. Uma
+                // roldana de CENÁRIO segue sem candidato — a porta devolve zero e
+                // o `nearest_within` de uma fatia vazia é `None` —, então a
+                // recusa continua acontecendo, agora pela ARITMÉTICA em vez de um
+                // ramo que alguém tem de lembrar de atualizar.
+                let mut cands = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
+                let n = if !ctrl {
+                    0
+                } else if drag.kind.is_wheel() {
+                    gfx.physics.wheel_snap_targets(&gfx.sim, entity, &mut cands)
                 } else {
                     let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
-                    let (target, snap) = if ctrl {
-                        let mut cands = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
-                        let n = gfx
-                            .physics
-                            .joint_snap_targets(&gfx.sim, entity, side, &mut cands);
-                        let threshold =
-                            SNAP_PX * gfx.camera.height_world / window_size.height as f32;
-                        match nearest_within(&cands[..n], free, threshold) {
-                            Some(p) => (p, Some(p)),
-                            None => (free, None),
-                        }
-                    } else {
-                        (free, None)
-                    };
+                    gfx.physics
+                        .joint_snap_targets(&gfx.sim, entity, side, &mut cands)
+                };
+                let threshold = SNAP_PX * gfx.camera.height_world / window_size.height as f32;
+                let (target, snap) = match nearest_within(&cands[..n], free, threshold) {
+                    Some(p) => (p, Some(p)),
+                    None => (free, None),
+                };
+                if drag.kind.is_wheel() {
+                    wheel::move_wheel(&mut gfx.sim, entity, target);
+                } else {
+                    let side = anchor_side(drag.kind).expect("a world grab is an anchor's");
                     gfx.physics
                         .set_joint_anchor_world(&mut gfx.sim, entity, side, target);
-                    snap
                 }
+                snap
             }
             // ⚠️ No magnet on a parameter grip, and that is a gap with a name
             // rather than an omission: an angle would want a STEP (15°, say) and

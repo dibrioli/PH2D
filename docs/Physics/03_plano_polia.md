@@ -799,10 +799,92 @@ arrastar de volta tem de devolver o âmbar **e** a simulação.
 
 ### Aberto no W6, nomeado
 
-- **Nenhuma alça de roldana tem ÍMÃ**, e é decisão herdada do W1: o ímã cola nos
-  pontos do collider do corpo daquela ponta, e uma roldana não pertence a corpo
-  nenhum. Numa **montada** haveria a que colar (o collider do corpo que a carrega),
-  e isso é uma conversa que só agora passou a existir.
+- ~~**Nenhuma alça de roldana tem ÍMÃ**~~ — **FECHADO** (2026-07-29, seção
+  [§O ÍMÃ DO EIXO](#o-ímã-do-eixo-de-uma-roldana-montada-w6) abaixo).
+
+## O ÍMÃ do eixo de uma roldana MONTADA (W6)
+
+O gesto de arrasto trazia uma isenção escrita à mão, **com o porquê**:
+
+> *"Uma roldana sai antes do ÍMÃ, e não é atalho: o ímã cola a alça nos pontos do
+> COLLIDER do corpo daquela ponta, e uma roldana não pertence a corpo nenhum — não
+> há a que colar."*
+
+⚠️ **Era verdade quando foi escrita, e o W3 a falsificou.** Uma roldana MONTADA
+pertence a um corpo (`PulleyWheel::body`), o eixo dela é `corpo · local`, e aquele
+corpo tem collider — logo tem os nove pontos. É a forma exata de
+[[feedback_a_condition_that_enumerates_its_readers_rots]]: a frase enumerava os
+donos de collider da época, e o dono novo nasceu fora da lista.
+
+### O preço, medido ANTES de escrever código
+
+Sonda `measure_pulley_wheel_snap` (bloco de meia-extensão `[0,60, 0,25]`):
+
+| o que | número |
+|---|---|
+| candidatos de uma roldana **montada** | **9** (centro · 4 quinas · 4 meios de aresta) |
+| candidatos de uma roldana de **cenário** (o controle) | **0** |
+| erro de mão de 0,02 m ao mirar a quina | `local = [0,62, 0,27]`, desvio **0,0283 m** |
+| … e depois de o bloco andar 3 m | desvio **0,0283 m** — ele **não decai** |
+| alcance do ímã (14 px) | 0,052 m a `height_world` 4 · **0,207 m** a 16 |
+
+⚠️ **O erro é congelado no `local`, logo permanente E invisível:** o eixo acompanha
+o bloco corretamente, só não está na quina. Não há nada a jusante que o corrija, e
+nada na tela que o denuncie. E o erro real da mão cai **dentro** do alcance do ímã,
+que é o número que diz que a feature de fato pega o caso.
+
+### O desenho
+
+**Uma porta nova, uma colocação só.** `PhysicsBridge::wheel_snap_targets` é a irmã
+exata de `joint_snap_targets`, e a razão de existirem duas é que a pergunta *"de
+quem é o corpo?"* tem duas respostas — o joint a responde pela **ponta**
+(`JointSide`), a roldana pelo **NOME** que ela cita (`PulleyWheel::body`, a mesma
+chave do reconcile). A **COLOCAÇÃO** dos pontos (forma resolvida → pose de repouso →
+offset do collider) é `body_snap_targets`, **uma** função: duas cópias colariam o
+pino e o eixo em pontos diferentes do MESMO collider, e nada na tela diria qual dos
+dois está errado.
+
+⚠️ **A recusa da roldana de cenário passou de RAMO a ARITMÉTICA:** a porta devolve
+zero e `nearest_within` de uma fatia vazia é `None`. O `if drag.kind.is_wheel()` que
+pulava o ímã era justamente o que apodreceu — agora o braço `Grab::World` pergunta
+UMA porta por rota e escreve o ponto colado nas duas.
+
+### Gates
+
+4 no kernel (`ph2d-physics-ecs::pulley_wheel_snap`) + 1 arch-gate de shell
+(`pulley_wheel_handles::the_mounted_axle_snaps_and_the_snapped_point_is_what_lands`,
+com controle positivo) + 1 na cena. **6 mutações, 6 sangram:**
+
+| mutação | sangra |
+|---|---|
+| M1 a porta devolve 0 para roldana com corpo (a isenção antiga) | 3 gates do kernel |
+| M2 o apply escreve `free` em vez de `target` | o arch-gate de shell |
+| M3 a colocação compartilhada esquece o offset | o gate de offset **e** o do joint |
+| M4 o ímã deixa de ser gateado no Ctrl | o arch-gate de shell |
+| M5 a colocação esquece a pose do corpo | 2 gates do kernel |
+| M6 a mensagem da cena cita 9 (o número da CAIXA) | o gate da cena |
+
+⚠️ **A M2 é a que carrega o peso, e um gate só de CHAMADA não a pegaria:** computar
+o candidato e escrever `free` de qualquer jeito é indistinguível de não haver ímã —
+a marca do encaixe acende e a roda pousa fora dele.
+
+⚠️ **A M3 expôs um buraco meu de FIXTURE:** a 1ª versão da suíte deixava offset e
+escala em zero, então a mutação da colocação compartilhada **passava inteira** do
+lado da roldana e só o gate irmão do joint a pegava. *Uma colocação partilhada
+precisa de um gate independente em CADA lado* — senão o lado que não a mede vai
+junto em silêncio no dia em que alguém lhe der uma cópia.
+
+⚠️ **E a M6 é sobre a CENA mentir:** os gates do kernel medem uma **caixa** (nove
+pontos) e o bloco da cena 61 é um **disco** (cinco — centro + cardinais, porque
+inventar quinas ofereceria um ponto que *não está no corpo*). Uma mensagem escrita a
+partir do gate errado mandaria o artista procurar quatro pontos que não existem.
+
+**Smoke:** `PH2D_PHYSICS_SMOKE=61` — selecione `Tackle Rope Wheel 1` (a MONTADA) e
+arraste o dot central **com CTRL**: ele cola nos 5 pontos do disco que a carrega. Sem
+CTRL o arrasto é livre; na roldana do CENÁRIO o ímã não abre.
+
+**Zero componente, zero id, zero schema** (`PROJECT_SCHEMA` 34, registro 21) e o
+**c9 saiu byte-idêntico** (`7cb7728d…`, 96 corpos) — nada aqui alcança o solver.
 
 ### Aberto no W5, nomeado
 
@@ -1080,9 +1162,17 @@ tique e reintroduz o atraso do sub-passo (0,0227 m).
 
 ### Aberto no W3, nomeado
 
-- **O eixo não tem alça própria no canvas.** O dot de centro edita o `Transform` da
-  roldana, que numa montada é DERIVADO — arrastá-lo é escrever num número que o
-  próximo reconcile reescreve. A alça honesta editaria o `local`, e é a mesma
-  conversa que a 2ª alça de âncora do joint teve.
+- ~~**O eixo não tem alça própria no canvas.**~~ **FECHADO pelo W6** (2026-07-29,
+  conferido por medição antes de qualquer código). A nota dizia que o dot de centro
+  escreve num `Transform` que *"o próximo reconcile reescreve"*, e isso deixou de
+  ser verdade quando o W6 fez o arrasto passar pela porta
+  `reseat_wheel_geometry` → `reseat_mounted_axle`, que desarma o sentinela
+  `mounted` e re-deriva o `local` do ponto novo. **8 gates provam** (`ph2d-physics-ecs::pulley_mount`),
+  incluindo `re_authoring_a_mounted_axle_sticks` e o arrasto de corpo em repouso
+  no MESMO frame.
+  > ⚠️ **A nota sobreviveu ao fato por uma wave**, e é a terceira vez que esta §
+  > custa isso: *uma lista de pendências velha não é ruído — ela faz a próxima LLM
+  > propor construir o que existe.* O antídoto usado aqui: **rodar os gates do
+  > assunto antes de acreditar na lista.**
 - **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end`
   não zera a velocidade do ponto, só a massa) — não medido, não gateado.

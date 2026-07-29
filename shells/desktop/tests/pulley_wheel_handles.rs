@@ -153,3 +153,60 @@ fn authoring_the_radius_through_the_panel_reopens_the_rope_length() {
          ainda não está no mundo, e o reconcile semearia o L0 da geometria VELHA"
     );
 }
+
+/// **O eixo de uma roldana montada tem ÍMÃ, e ele escreve o ponto COLADO** — o
+/// item que o W6 deixou aberto (2026-07-29).
+///
+/// A isenção que morava no `Grab::World` dizia, com o porquê: *"o ímã cola a alça
+/// nos pontos do COLLIDER do corpo daquela ponta, e uma roldana não pertence a
+/// corpo nenhum — não há a que colar"*. Era verdade quando foi escrita; **o W3 a
+/// falsificou** ao dar corpo à roldana, e a frase virou uma condição que enumerava
+/// os donos de collider da época.
+///
+/// ⚠️ **A segunda asserção é a que carrega o peso.** Pedir só a CHAMADA de
+/// `wheel_snap_targets` deixa passar o modo de falha real — computar o candidato e
+/// escrever `free` de qualquer jeito —, que na tela é indistinguível de não haver
+/// ímã: a marca do encaixe acende e a roda pousa fora dele. O que se afirma é
+/// **qual valor chega ao apply**.
+///
+/// A recusa da roldana de CENÁRIO segue viva e é gateada do outro lado da
+/// fronteira (`ph2d-physics-ecs::pulley_wheel_snap`): a porta devolve zero e o
+/// `nearest_within` de uma fatia vazia é `None` — aritmética, não um ramo que
+/// alguém tem de lembrar de atualizar.
+#[test]
+fn the_mounted_axle_snaps_and_the_snapped_point_is_what_lands() {
+    let src = fs::read_to_string("src/joint_anchor_drag.rs").expect("joint_anchor_drag.rs");
+    // A janela é o braço `Grab::World`, delimitado pelo braço seguinte — nunca
+    // uma distância em bytes, o proxy que já expirou duas vezes neste repo.
+    let at = src
+        .find("Grab::World(off) => {")
+        .expect("o braço de agarre no MUNDO sumiu");
+    let arm = &src[at..];
+    let end = arm
+        .find("Grab::Angle(off) => {")
+        .expect("o braço do mundo é seguido pelo do ângulo");
+    let arm = &arm[..end];
+
+    // Controle positivo: se o scanner não achar as duas rotas, ele não pode
+    // falhar pelo motivo que alega.
+    assert!(
+        arm.contains("joint_snap_targets"),
+        "controle positivo: o braço do mundo tem de conter a rota do JOINT — sem \
+         ela este gate está lendo o lugar errado"
+    );
+    assert!(
+        arm.contains("wheel_snap_targets(&gfx.sim, entity, &mut cands)"),
+        "uma roldana MONTADA tem nove pontos a que colar (o W3 lhe deu um corpo); \
+         o braço do mundo tem de perguntar a porta DELA"
+    );
+    assert!(
+        arm.contains("wheel::move_wheel(&mut gfx.sim, entity, target)"),
+        "o apply da roldana tem de receber o ponto COLADO (`target`); escrever \
+         `free` acende a marca do encaixe e pousa a roda fora dele"
+    );
+    // E o ímã só arma com o modificador — o mesmo Ctrl do resto do editor.
+    assert!(
+        arm.contains("let n = if !ctrl {"),
+        "o ímã tem de ser gateado no modificador, senão ele deixa de ser opcional"
+    );
+}

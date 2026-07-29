@@ -85,8 +85,7 @@ fn apply_inner(
     // §4.1 asymmetry). A formula-free document is `!scheduled`: it builds no `composed`,
     // runs no expression pass, and the `links` it hands the blend stays EMPTY — a
     // parameter of codegen, not a float op, so the fade fingerprint is byte-for-byte.
-    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
-        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let scheduled = frame_solve::any_formula(doc);
     // ADR-0146 W3 — the frame's channels compose in TOPOLOGICAL order (a prop-link source
     // before its reader), each writing its already-composed (faded) value into `links`, so
     // `value + Sprite.x` reads Sprite's FADED value in the SAME frame — the "double fade".

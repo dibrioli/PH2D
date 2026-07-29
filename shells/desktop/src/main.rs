@@ -642,6 +642,7 @@ impl App {
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),
+            expr_preview_clock: 0.0,
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

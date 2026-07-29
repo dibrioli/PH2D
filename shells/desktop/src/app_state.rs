@@ -589,6 +589,13 @@ pub(crate) struct App {
     /// canonical "smooth without dormant" value used by RTSS / Unity
     /// stats / Tracy.
     pub(crate) frame_ms_ewma: f32,
+    /// **The Expression card's live-preview clock**, in wall-clock seconds.
+    ///
+    /// ⚠️ Wall-clock and not the playhead, because the whole request is *"em tempo
+    /// real mesmo que o clip esteja pausado"* — the transport is exactly what is NOT
+    /// moving. And not a frame COUNT either: the artist is judging how fast a wobble
+    /// looks, and a count would make that judgement depend on the frame rate.
+    pub(crate) expr_preview_clock: f64,
     /// M14.7 polish (10.1): EWMA-smoothed "raw" frame work time —
     /// measured from start of `render_frame` to end of
     /// `queue.submit`, excluding the vsync wait. Same α as

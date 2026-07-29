@@ -1077,6 +1077,10 @@ impl crate::App {
         // single source of truth for "how long did the last frame
         // take". α=0.1 smooths over jitter while still tracking
         // sustained changes in ~10 frames.
+        // The Expression card's preview clock — advanced from the SAME `wall_dt` that
+        // every other real-time consumer reads, so there is one answer to "how long
+        // was the last frame".
+        self.expr_preview_clock += wall_dt;
         let frame_ms_now = (wall_dt * 1000.0) as f32;
         const ALPHA: f32 = 0.1;
         self.frame_ms_ewma = ALPHA * frame_ms_now + (1.0 - ALPHA) * self.frame_ms_ewma;
@@ -1505,6 +1509,17 @@ impl crate::App {
         } else {
             &mut self.playhead
         };
+        // **The open Expression card drives the REAL object, live** (Enio, smoke de
+        // 2026-07-29). Installed HERE, immediately before the apply that consumes it,
+        // and unconditionally — the `None` is what makes closing the card stop the
+        // scene, so this must run on every frame, not only on the frames a card exists.
+        ph2d_timeline::expr_live::set_live_expr(ph2d_panel_timeline::expr_live_target().map(
+            |(target, formula)| ph2d_timeline::expr_live::LiveExpr {
+                target,
+                formula,
+                time: self.expr_preview_clock,
+            },
+        ));
         let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
@@ -1563,12 +1578,6 @@ impl crate::App {
         // The Motion Path toggle reflects the SELECTED object's position mode, so
         // switching objects updates it (ADR-0141). Filled here because the document
         // has no selection; fresh / no single selection → Path (the default).
-        // How big a metre is on this canvas — a PROJECT setting, so it is filled
-        // here for the same reason `position_is_path` is: the document has no
-        // opinion about it. The Expression stage draws a metric window with it.
-        self.timeline_view.pixels_per_meter = hero_screen
-            .as_ref()
-            .map_or(0.0, |h| h.project.pixels_per_meter);
         self.timeline_view.position_is_path = selected_now.is_none_or(|e| {
             matches!(
                 self.timeline.doc.position_key_mode(e, true),

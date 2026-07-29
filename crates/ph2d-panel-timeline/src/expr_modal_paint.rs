@@ -100,12 +100,18 @@ pub(crate) fn paint(
     snap: &TimelineViewSnapshot,
 ) {
     let Some(m) = state.expr_modal.as_mut() else {
+        // No card: nothing previews. Cleared HERE too, because the panel can stop
+        // painting the card by routes that never run `cancel` (the panel hidden, the
+        // timeline closed) — and a preview that outlived its card would drive the
+        // scene with no way to stop it.
+        crate::state::set_expr_live(None);
         return;
     };
     // The track may have vanished (deleted / undo). Abandon rather than author a
     // formula onto whatever slid into its place — the same guard `expr_edit` has.
     let Some(track) = snap.tracks.iter().find(|t| t.target.get() == m.target) else {
         state.expr_modal = None;
+        crate::state::set_expr_live(None);
         return;
     };
     // First frame: seed the title and FREEZE the clock. The menu that opens the
@@ -137,14 +143,6 @@ pub(crate) fn paint(
     // formula bar and every readout describe the same instant.
     sync_from_store(m, ctx.host.store());
     let reseed = core::mem::take(&mut m.reseed);
-    // ⚠️ The fallback is resolved HERE, in the one crate that can see the project's
-    // own default: a `0` on the snapshot means nobody filled it (every gate builds a
-    // `Default` one), and `ph2d-timeline` has no business carrying a copy of `100`.
-    let px_per_m = if snap.pixels_per_meter > 0.0 {
-        snap.pixels_per_meter
-    } else {
-        ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER
-    };
     // ⚠️ ONE evaluation of the window per frame, shared by the strip and the
     // puppet — a puppet that sampled on its own would drift from the curve drawn
     // beside it.
@@ -152,6 +150,13 @@ pub(crate) fn paint(
     let base = crate::expr_modal_preview::preview_value(m.prop);
     let samples = crate::expr_modal_preview::sample_window(&m.stack, base);
     m.preview_frame = m.preview_frame.wrapping_add(1);
+    // ⚠️ **Publish what the sheet projects, so the REAL object runs it** (Enio, smoke
+    // de 2026-07-29). Here and not in `route`, because here is the one place the sheet
+    // has just been read back from the widgets — a formula published anywhere else
+    // would be a frame stale, and the artist would be watching the knob they turned
+    // one frame ago. The shell owns the clock and installs it; the card only says
+    // WHAT and to WHOM.
+    crate::state::set_expr_live(Some((m.target, m.stack.to_formula())));
     // ── Place the card, and KEEP it reachable. ──
     //
     // ⚠️ Both halves came out of the first smoke, which found the card pinned
@@ -176,10 +181,6 @@ pub(crate) fn paint(
         ch,
     );
     m.pos = Some((rect.x, rect.y));
-    // The stage opens to the RIGHT of the card, once, and is an offset from here on.
-    if m.stage_offset == (0.0, 0.0) {
-        m.stage_offset = crate::expr_modal_stage::default_offset(cw);
-    }
     let m = &*m;
 
     let radius = Radius::Md.px();
@@ -265,12 +266,6 @@ pub(crate) fn paint(
         let r = Rect::new(x, cy, FOOT_BTN_W, ROW_H_PX);
         expr_button(ctx, theme, id, ph2d_i18n::tr(key), r);
     }
-
-    // ── The STAGE, on its own card beside this one. ──
-    //
-    // Painted LAST so it overlays nothing of the card it is linked to, and handed
-    // the SAME sample vector the wave strip just plotted.
-    crate::expr_modal_stage::paint(m, ctx, theme, rect, &samples, base, px_per_m);
 }
 
 /// The title band — the drag handle and the close X — and the `y` the body starts at.

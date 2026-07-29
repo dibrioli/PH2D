@@ -1,30 +1,33 @@
 //! **The Expression modal's live preview** (plano 10 W2) — the WAVE half.
 //!
-//! Two views, and both are needed:
+//! The **curve strip** answers *what is it doing* — the value across the whole
+//! preview window, with the un-driven baseline dashed under it. It lives in the card,
+//! under the sheet, the whole card wide.
 //!
-//! * the **curve strip**, which answers *what is it doing* — the value across the
-//!   whole preview window, with the un-driven baseline dashed under it. It lives in
-//!   the card, under the sheet, the whole card wide.
-//! * the **ghost**, which answers *what will it look like* — and it lives in
-//!   `expr_modal_stage`, on a card of its own beside this one.
+//! ⚠️ *What will it look like* is answered by the SCENE, not by a picture of one.
+//! A ghost on a stage card was built here and DELETED (Enio, 2026-07-29: *"vamos tirar
+//! o fantasma. Vamos fazer o efeito correr no objeto selecionado em tempo real"*) — the
+//! real object runs the formula while the card is open (`ph2d_timeline::expr_live`), so
+//! a second, smaller, differently-lit drawing of it would be a second answer to the one
+//! question the artist can already see answered at full size.
 //!
 //! ⚠️ The strip is the half nobody copies. Blender's Drivers Editor plots the
 //! MAPPING (driver in, property out) rather than the result, and seeing the
 //! relation is what makes a driver comprehensible; every other product shows only
 //! the outcome. A dot that moves tells you it moves. The strip tells you *how*.
 //!
-//! ⚠️ **One door, two views.** [`sample_window`] evaluates the stack across the
-//! window ONCE per frame; the strip plots that vector and the ghost indexes it at
-//! the current phase. A ghost that evaluated on its own would drift from the curve
-//! drawn beside it, and the artist would have no way to know which one lies. The
-//! two are on separate CARDS now, which makes the shared vector more load-bearing,
-//! not less.
+//! ⚠️ **[`sample_window`] is the one door**, and the strip is now its one reader —
+//! evaluated once per frame, plotted verbatim. It is deliberately NOT the door the
+//! scene uses: the object is driven by the expression pass on the shell's wall clock,
+//! which is what lets it animate with the transport stopped. Two consumers of the same
+//! formula, each on the clock its own job needs.
 //!
-//! ⚠️ **The clock is a FRAME COUNT**, and that is the house convention for chrome
-//! (`ToastQueue::tick` ages by frames). The "never count ticks, count wall-clock"
-//! law this repo learned in the impasto is about the ARTWORK — where the frame
-//! rate would leak into what the artist produces. A thumbnail is not artwork, and
-//! a frame count is what makes the preview reproducible in a gate.
+//! ⚠️ **This strip's phase marker is a FRAME COUNT**, and that is the house convention
+//! for chrome (`ToastQueue::tick` ages by frames). The "never count ticks, count
+//! wall-clock" law this repo learned in the impasto is about the ARTWORK — where the
+//! frame rate would leak into what the artist produces; the scene-side preview obeys it
+//! (wall clock). A marker sliding along a plot is not artwork, and a frame count is
+//! what makes this strip reproducible in a gate.
 
 use ph2d_editor_core::paint::{resolve, stroke_polyline, stroke_rounded_rect};
 use ph2d_editor_core::zones::Rect;

@@ -29,6 +29,7 @@ pub mod clipboard;
 mod clock;
 pub mod doc;
 pub mod doc_path;
+pub mod expr_live;
 mod expr_pass;
 mod frame_solve;
 pub mod graph;

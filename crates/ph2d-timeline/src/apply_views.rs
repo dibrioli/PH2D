@@ -45,8 +45,7 @@ pub fn apply_container(
     // value in the SAME frame, exactly as the scene apply does (`apply_from_doc_except`).
     // A formula-free container builds NEITHER the names map nor the order — `order` is
     // `None`, the loop walks the natural binding order, and nothing allocates (HR-3).
-    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
-        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let scheduled = frame_solve::any_formula(doc);
     let mut links = LinkFrame::default();
     let order = scheduled.then(|| {
         links.names = frame_solve::build_names(world, doc);
@@ -127,8 +126,7 @@ pub fn apply_active_clip(
     // frame while editing the active clip, exactly as the scene apply does. A formula-free
     // clip builds NEITHER the names map nor the order — `order` is `None`, the loop walks
     // the natural binding order, and nothing allocates (HR-3).
-    let scheduled = doc.bindings().iter().any(|b| b.expr.is_some())
-        || doc.clips().iter().any(|c| !c.expr.is_empty());
+    let scheduled = frame_solve::any_formula(doc);
     let mut links = LinkFrame::default();
     let order = scheduled.then(|| {
         links.names = frame_solve::build_names(world, doc);

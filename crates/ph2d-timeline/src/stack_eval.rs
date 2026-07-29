@@ -77,7 +77,18 @@ enum AnimSource<'a> {
 fn clip_anim_source(doc: &TimelineDoc, clip: usize, target: AnimTarget) -> Option<AnimSource<'_>> {
     let named = doc.clips().get(clip)?;
     let track = named.clip.track(target).filter(|tr| !tr.is_empty());
-    if let Some(src) = named.expr.get(&target)
+    // ⚠️ **A channel being PREVIEWED goes quiet here**, and this is the one line that
+    // keeps the preview from doubling the artist's own work: the Expression card seeds
+    // itself from the formula this channel already carries (`TrackView::expr`, which
+    // reads exactly this map), so the sheet ALREADY contains it. Leave it composing and
+    // the live pass would apply it to a `value` that already includes it — the artist
+    // would be tuning `f(f(x))` and every number would read double.
+    //
+    // It goes at THIS door because both sample sites resolve through it (see the module
+    // docs), so the suppression cannot apply on the stacked path and miss the solo one.
+    let previewed = crate::expr_live::live_expr().is_some_and(|l| l.target == target.get());
+    if !previewed
+        && let Some(src) = named.expr.get(&target)
         && let Ok(ir) = ph2d_expr_parse::parse(src)
     {
         return Some(AnimSource::Expr {

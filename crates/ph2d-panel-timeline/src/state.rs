@@ -12,6 +12,11 @@ use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
+    /// See [`expr_live_target`].
+    static EXPR_LIVE: RefCell<Option<(u64, String)>> = const { RefCell::new(None) };
+}
+
+thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until the
     /// first push (panel paints an empty timeline).
     static CURRENT_SNAPSHOT: RefCell<Option<TimelineViewSnapshot>> = const { RefCell::new(None) };
@@ -388,6 +393,23 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
 #[must_use]
 pub fn drain_intents() -> Vec<TimelineIntent> {
     INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
+}
+
+/// **What the open Expression card wants previewed on the real object**, or `None`.
+///
+/// ⚠️ Published by the PAINT (the sheet is read back there, so that is the only place
+/// the projected formula is known to be this frame's), and read by the shell, which
+/// owns the clock and installs it into `ph2d_timeline::expr_live`. It is display
+/// state: the card closing clears it, and nothing here is ever written to the doc.
+///
+/// The shell does NOT reuse the panel's clock — it drives its own, in wall-clock
+/// seconds, so the preview animates at the same speed at any frame rate.
+pub fn expr_live_target() -> Option<(u64, String)> {
+    EXPR_LIVE.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn set_expr_live(v: Option<(u64, String)>) {
+    EXPR_LIVE.with(|c| *c.borrow_mut() = v);
 }
 
 /// Last scrollable content height measured by `paint`.

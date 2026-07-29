@@ -258,22 +258,6 @@ pub struct TimelineViewSnapshot {
     /// [`Self::rebuild`] (the doc has no selection; the shell does). Defaults to Path
     /// (the fresh-object default) when nothing single is selected.
     pub position_is_path: bool,
-    /// **The project's `pixels_per_meter`** — how a number in the document becomes a
-    /// distance on the canvas.
-    ///
-    /// Filled by the shell after [`Self::rebuild`], for the same reason as
-    /// [`Self::position_is_path`]: it is a PROJECT setting and the document has no
-    /// opinion about it. The Expression stage is the consumer — it draws a metric
-    /// window, and *"is 0.3 a nudge or a flight off the canvas?"* is unanswerable
-    /// without this number.
-    ///
-    /// ⚠️ **`0` means "nobody filled it"** — a `Default`-constructed snapshot (every
-    /// gate builds one) has no project behind it. The fallback is resolved by the
-    /// PANEL, which is the only consumer and the only crate that can see
-    /// `ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER`; putting a `100.0` here
-    /// would be a second copy of the project's default, sitting in a crate that has
-    /// no business knowing it.
-    pub pixels_per_meter: f32,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// O onion da timeline (ADR-0142): o painel lê ISTO para pintar os controles no estado

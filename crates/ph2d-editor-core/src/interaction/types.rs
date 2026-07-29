@@ -281,8 +281,6 @@ pub enum TimelineHitKind {
     /// artist opened it to look at — the first smoke found it pinned off the
     /// bottom of the screen with no way to reach it.
     ExprModalHandle,
-    /// The Expression STAGE's title band — drags the stage's OFFSET from the card.
-    ExprStageHandle,
     /// A key's anchor dot in an expanded track's graph. Dragging it edits the key
     /// in the `(time, value)` plane: sideways moves the selection in time,
     /// up/down retunes the value. `target`/`key` are the raw `AnimTarget`/`KeyId`.

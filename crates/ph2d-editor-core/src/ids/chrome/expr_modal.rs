@@ -24,8 +24,6 @@ pub const EXPR_MODAL_HANDLE: NodeId = hash_node_id("expr_modal.handle");
 /// Close X. Discards the sheet — the same as Cancel, because a card you can
 /// dismiss two ways must dismiss the same way twice.
 pub const EXPR_MODAL_CLOSE: NodeId = hash_node_id("expr_modal.close");
-/// The STAGE's title band — a `TimelineSurface` whose gestures move the stage.
-pub const EXPR_STAGE_HANDLE: NodeId = hash_node_id("expr_modal.stage_handle");
 /// The gallery's search field.
 pub const EXPR_MODAL_SEARCH: NodeId = hash_node_id("expr_modal.search");
 /// Commit: the sheet's formula becomes the property's expression.

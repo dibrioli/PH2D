@@ -450,24 +450,6 @@ fn the_preview_phase_advances_and_wraps() {
     assert_eq!(pv::phase(0), pv::phase(120), "and the window loops");
 }
 
-/// **What the ghost DOES follows the PROPERTY.** A rotation turns it, an opacity
-/// fades it — one function answers it, so the stage and the strip can never
-/// disagree about what is being previewed.
-#[test]
-fn what_the_ghost_does_is_chosen_by_the_property_being_driven() {
-    use ph2d_panel_timeline::expr_modal_stage::{Drive, drive_for};
-    use ph2d_timeline::PropKind;
-    assert_eq!(drive_for(PropKind::Rotation), Drive::Turn);
-    assert_eq!(drive_for(PropKind::Opacity), Drive::Fade);
-    assert_eq!(drive_for(PropKind::TranslationX), Drive::SlideX);
-    assert_eq!(drive_for(PropKind::TranslationY), Drive::SlideY);
-    assert_ne!(
-        drive_for(PropKind::ScaleX),
-        drive_for(PropKind::ScaleY),
-        "the two scale axes are different figures, or the stage lies about which"
-    );
-}
-
 /// **The card advances its own preview while it is open**, driven by the real
 /// paint pass rather than by a test poking the counter.
 #[test]
@@ -496,7 +478,7 @@ fn painting_the_card_advances_its_preview() {
     ph2d_panel_timeline::set_current_timeline(None);
 }
 
-/// **The card actually PAINTS the wave strip AND the stage.**
+/// **The card actually PAINTS the wave strip.**
 ///
 /// ⚠️ This gate exists because its absence bit during W2: the wiring edit silently
 /// missed its anchor, the column was never drawn, and every preview gate above
@@ -507,30 +489,28 @@ fn painting_the_card_advances_its_preview() {
 /// It asserts the PROPERTY (each painter is handed the window this frame sampled),
 /// never a byte offset — the proxy that expired twice on the Vector line.
 #[test]
-fn the_card_paints_the_wave_strip_and_the_stage() {
+fn the_card_paints_the_wave_strip() {
     let src = include_str!("../src/expr_modal_paint.rs");
-    for (door, what) in [
-        ("expr_modal_preview::paint_strip(", "the wave strip"),
-        ("expr_modal_stage::paint(", "the stage"),
-    ] {
-        let call = src
-            .find(door)
-            .unwrap_or_else(|| panic!("the card must call {what}"));
-        let body = &src[call..];
-        let end = body.find(");").expect("the call terminates");
-        let args = &body[..end];
-        assert!(
-            args.contains("&samples"),
-            "{what} must be handed THIS frame's samples, not its own: {args}"
-        );
-        assert!(
-            args.contains("base"),
-            "…against the property's own resting value: {args}"
-        );
-    }
+    // ⚠️ ONE door, asserted straight — this was a loop over two while the card also
+    // hosted a stage; the stage is gone, and a loop over one element is a loop that
+    // reads like it is guarding a family it no longer has.
+    let call = src
+        .find("expr_modal_preview::paint_strip(")
+        .expect("the card must call the wave strip");
+    let body = &src[call..];
+    let end = body.find(");").expect("the call terminates");
+    let args = &body[..end];
+    assert!(
+        args.contains("&samples"),
+        "the wave strip must be handed THIS frame's samples, not its own: {args}"
+    );
+    assert!(
+        args.contains("base"),
+        "…against the property's own resting value: {args}"
+    );
     // Positive control: the scanner finds the real thing, not any old text.
     assert!(
-        !src.contains("expr_modal_stage::paint(/* unwired */"),
+        !src.contains("expr_modal_preview::paint_strip(/* unwired */"),
         "control: the scanner is looking at the real call"
     );
 }
@@ -653,145 +633,82 @@ fn the_title_band_drags_the_card_and_the_clamp_keeps_it_reachable() {
     ph2d_panel_timeline::set_current_timeline(None);
 }
 
-// ───────────────────── the second smoke: the stage and the ghost ─────────────
+// ────────────── the second smoke: the REAL object runs the effect ──────────────
 
-/// **The stage is LINKED to the card: dragging the card carries it.**
+/// **An open card publishes what it projects, so the REAL object can run it.**
 ///
-/// ⚠️ Driven through the card's real drag, not by poking the offset — the link is
-/// the claim, and the link is only true because the stage has no position of its
-/// own. A stage that kept an absolute coordinate would pass a unit test of
-/// `stage_rect` and fail exactly here, on the frame after the card moves.
+/// ⚠️ Red-first against the smoke: *"vamos tirar o fantasma. Vamos fazer o efeito
+/// correr no objeto selecionado em tempo real mesmo que o clip esteja pausado, desde
+/// que o painel esteja aberto"* (Enio, 2026-07-29). The ghost is gone; what replaces
+/// it is the property itself, driven by `ph2d_timeline::expr_live` — and the ONLY
+/// thing the panel owes that channel is *what formula, on whose binding*. The clock
+/// is the shell's, in wall-clock seconds, because the transport is precisely what is
+/// not moving.
+///
+/// The publish happens in the PAINT, where the sheet has just been read back from the
+/// widgets; published anywhere else it would be a frame stale, and the artist would
+/// be watching the knob they turned one frame ago.
 #[test]
-fn dragging_the_card_carries_the_stage_with_it() {
-    use ph2d_editor_core::interaction::{
-        GestureMods, GesturePhase, TimelineGesture, TimelineHitKind,
-    };
-    use ph2d_host::PointerButton;
-    use ph2d_panel_timeline::expr_modal_stage::stage_rect;
+fn an_open_card_publishes_its_formula_for_the_real_object_to_run() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
     let _ = ph2d_panel_timeline::drain_intents();
-    let target = publish_one_track(30, ph2d_timeline::PropKind::TranslationX);
+    let target = publish_one_track(40, ph2d_timeline::PropKind::TranslationX);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
+
     open_modal(&mut host, &mut state, target);
-    host.paint::<TimelinePanel>(&mut state, SMOKE_VIEWPORT);
-
-    let card_of = |st: &TimelinePanelState| {
-        let m = st.expr_modal.as_ref().unwrap();
-        let (x, y) = m.pos.unwrap();
-        (
-            ph2d_editor_core::zones::Rect::new(
-                x,
-                y,
-                ph2d_panel_timeline::expr_modal_paint::card_w(),
-                ph2d_panel_timeline::expr_modal_paint::card_h(),
-            ),
-            m.stage_offset,
-        )
-    };
-    let (card0, off0) = card_of(&state);
-    let stage0 = stage_rect(card0, off0);
-    assert!(
-        stage0.x >= card0.x + card0.w,
-        "the stage opens to the RIGHT of the card, never over it: {stage0:?} vs {card0:?}"
-    );
-
-    let (x0, y0) = state.expr_modal.as_ref().unwrap().pos.unwrap();
-    let g = |phase, x: f32, y: f32| TimelineGesture {
-        surface: ids::EXPR_MODAL_HANDLE,
-        kind: TimelineHitKind::ExprModalHandle,
-        phase,
-        x,
-        y,
-        button: PointerButton::Primary,
-        mods: GestureMods::default(),
-    };
-    ph2d_panel_timeline::interact_for_test(&mut state, g(GesturePhase::Begin, x0, y0));
-    ph2d_panel_timeline::interact_for_test(
+    host.apply_panel_event::<TimelinePanel>(
         &mut state,
-        g(GesturePhase::Update, x0 - 50.0, y0 - 20.0),
+        WidgetEvent::Click(ids::expr_gallery_id("shake")),
     );
-    let (card1, off1) = card_of(&state);
-    let stage1 = stage_rect(card1, off1);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+
+    let (t, formula) =
+        ph2d_panel_timeline::expr_live_target().expect("an open card publishes a live preview");
+    assert_eq!(t, target, "…on the binding the card was opened from");
+    assert_eq!(
+        formula,
+        state.expr_modal.as_ref().unwrap().stack.to_formula(),
+        "…and it is EXACTLY what the formula bar shows, never a stale copy"
+    );
+
+    // Cancel: the scene must stop running it.
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::EXPR_MODAL_CANCEL));
     assert!(
-        (stage1.x - stage0.x + 50.0).abs() < 0.5 && (stage1.y - stage0.y + 20.0).abs() < 0.5,
-        "the stage travels with the card: {stage0:?} -> {stage1:?}"
+        ph2d_panel_timeline::expr_live_target().is_none(),
+        "closing the card stops the preview — a formula nobody can see or stop is worse \
+         than no preview at all"
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
 
-/// **The stage's own band is alive under a REAL POINTER, and moves only the stage.**
+/// **A card that stops being painted stops previewing**, even by a route that never
+/// runs `cancel`.
 ///
-/// ⚠️ The first version of this gate asked `hit_at`, and a mutation that painted the
-/// band while never REGISTERING it in the store **passed** — because `hit_at` reads
-/// the hit index alone, and a hit index is exactly the half that a dead widget still
-/// has. `dispatch_pointer` only turns a Down into a gesture when the id is
-/// *focusable*, and focusable means *present in the store*. So the pointer goes
-/// through the real dispatcher, and the panel drains the gesture in its own paint —
-/// the whole path, in the order the app runs it.
+/// ⚠️ The panel can go away without the card being dismissed — hidden panel, timeline
+/// closed, the track deleted under it. Every one of those is a door out, and a
+/// preview that survived one would drive the scene with no card left to stop it. So
+/// the clear does NOT live only in `cancel`: the paint clears it whenever there is no
+/// card, which is the condition that is true for all of them at once.
 #[test]
-fn the_stage_band_drags_the_stage_and_leaves_the_card_where_it_was() {
-    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+fn a_card_that_stops_being_painted_stops_driving_the_scene() {
+    const VIEWPORT: ph2d_editor_core::zones::Rect =
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
     let _ = ph2d_panel_timeline::drain_intents();
-    let target = publish_one_track(31, ph2d_timeline::PropKind::TranslationY);
+    let target = publish_one_track(41, ph2d_timeline::PropKind::TranslationY);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     open_modal(&mut host, &mut state, target);
-    let regs = host.paint::<TimelinePanel>(&mut state, SMOKE_VIEWPORT);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(ph2d_panel_timeline::expr_live_target().is_some());
 
-    let band = regs
-        .iter()
-        .find(|(id, _)| *id == ids::EXPR_STAGE_HANDLE)
-        .map(|(_, r)| *r)
-        .expect("the stage paints a drag band");
-    let (sx, sy) = (band.x + band.w * 0.5, band.y + band.h * 0.5);
-
-    let card_before = state.expr_modal.as_ref().unwrap().pos.unwrap();
-    let off_before = state.expr_modal.as_ref().unwrap().stage_offset;
-
-    let mut t = 0u128;
-    let pointer = |host: &mut MockPanelHost,
-                       state: &mut TimelinePanelState,
-                       kind: PointerKind,
-                       x: f32,
-                       y: f32,
-                       t: &mut u128| {
-        *t += 16_000_000;
-        host.dispatch_pointer_event(PointerEvent {
-            x,
-            y,
-            pressure: 1.0,
-            kind,
-            source: PointerSource::Mouse,
-            button: PointerButton::Primary,
-            timestamp_ns: *t,
-        });
-        // The panel drains the gesture in its PAINT — the order the app runs.
-        host.paint::<TimelinePanel>(state, SMOKE_VIEWPORT);
-    };
-
-    pointer(&mut host, &mut state, PointerKind::Down, sx, sy, &mut t);
-    // Two moves, for the same reason the card's drag gate takes two: with one,
-    // "delta from Begin" and "accumulate" agree.
-    for (dx, dy) in [(20.0_f32, 40.0_f32), (35.0, 70.0)] {
-        pointer(
-            &mut host,
-            &mut state,
-            PointerKind::Move,
-            sx + dx,
-            sy + dy,
-            &mut t,
-        );
-        let off = state.expr_modal.as_ref().unwrap().stage_offset;
-        assert!(
-            (off.0 - (off_before.0 + dx)).abs() < 0.5 && (off.1 - (off_before.1 + dy)).abs() < 0.5,
-            "the stage follows the pointer 1:1, every step: {off:?} vs {:?}",
-            (off_before.0 + dx, off_before.1 + dy)
-        );
-    }
-    assert_eq!(
-        state.expr_modal.as_ref().unwrap().pos.unwrap(),
-        card_before,
-        "and dragging the stage leaves the CARD exactly where it was"
+    // The card vanishes without anyone calling `cancel`.
+    state.expr_modal = None;
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    assert!(
+        ph2d_panel_timeline::expr_live_target().is_none(),
+        "a paint with no card must leave nothing driving the scene"
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }

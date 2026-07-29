@@ -142,6 +142,28 @@ pub(crate) fn collect_links(e: &Expr, names: &BTreeMap<u64, u64>, out: &mut Vec<
 /// Build the `stable_name_id(Name) -> entity bits` map for every live binding — the name
 /// half of a prop-link resolves through this. First name wins (deterministic under the
 /// `BTreeMap` iteration a binding list already has).
+/// **Does this frame have a formula to run?** — the predicate that decides whether the
+/// apply builds `composed`, a names map and a topological order at all, or takes the
+/// formula-free zero-alloc path (HR-3).
+///
+/// ⚠️ **One door, three callers.** It was written out identically in all three apply
+/// views (Arrange, container, Keys solo), and the live-preview channel is exactly the
+/// kind of fourth source that a copied predicate learns about in two places out of
+/// three: the preview would then drive the object in Arrange and sit dead inside a
+/// container, for no reason the artist could see.
+///
+/// ⚠️ A LIVE PREVIEW counts. The commonest moment to open the Expression card is on a
+/// track with nothing on it yet — no keys, no formula — which is precisely the document
+/// this predicate calls formula-free. Leave the preview out and the feature is dead in
+/// the only case it was asked for.
+#[must_use]
+pub(crate) fn any_formula(doc: &TimelineDoc) -> bool {
+    doc.bindings().iter().any(|b| b.expr.is_some())
+        || doc.clips().iter().any(|c| !c.expr.is_empty())
+        || crate::expr_live::is_previewing()
+        || crate::expr_live::has_pending_restore()
+}
+
 pub(crate) fn build_names(world: &World, doc: &TimelineDoc) -> BTreeMap<u64, u64> {
     let mut names = BTreeMap::new();
     for b in doc.bindings() {

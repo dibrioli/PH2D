@@ -76,15 +76,6 @@ pub struct ExprModal {
     pub prop: ph2d_timeline::PropKind,
     /// The preview's frame counter (see `expr_modal_preview`).
     pub preview_frame: u32,
-    /// The STAGE's position, as an offset from the card's top-left.
-    ///
-    /// ⚠️ An offset and not a position: that is the entire link. Dragging the card
-    /// carries the stage for free, and there is no second absolute coordinate to
-    /// drift out of step the first time the viewport clamp moves one of them.
-    /// `None` until the first paint, which cannot know the card's width earlier.
-    pub stage_offset: (f32, f32),
-    /// Stage offset and pointer at the start of a stage drag.
-    pub stage_drag: Option<(f32, f32, f32, f32)>,
 }
 
 /// Open the card for `target`. It places itself on the first paint (see
@@ -102,8 +93,6 @@ pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
         opened: false,
         prop: ph2d_timeline::PropKind::TranslationX,
         preview_frame: 0,
-        stage_offset: (0.0, 0.0),
-        stage_drag: None,
     });
 }
 
@@ -113,6 +102,9 @@ pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
 /// that dismisses differently is a card you cannot learn.
 pub(crate) fn cancel(state: &mut TimelinePanelState) {
     state.expr_modal = None;
+    // The live preview dies WITH the card, at every door that closes one — the scene
+    // must not keep running a formula nobody can see or stop.
+    state::set_expr_live(None);
 }
 
 /// Commit: the sheet's formula becomes the property's expression.
@@ -120,6 +112,7 @@ pub(crate) fn commit(state: &mut TimelinePanelState) {
     let Some(m) = state.expr_modal.take() else {
         return;
     };
+    state::set_expr_live(None);
     let src = m.stack.to_formula();
     let trimmed = src.trim();
     // An empty sheet projects to `"value"` — the identity. Authoring that would

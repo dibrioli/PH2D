@@ -133,6 +133,7 @@ mod fx_live;
 mod fx_raster_smoke;
 mod fx_silhouette;
 mod fx_smoke;
+mod fx_turbulence_smoke;
 mod fx_undo_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
 mod harmony_smoke;

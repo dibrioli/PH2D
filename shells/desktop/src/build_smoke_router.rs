@@ -72,6 +72,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::fx_blend_smoke::frame(app, f);
         return true;
     }
+    // A TURBULÊNCIA (=35, plano 24 W6b) — irmã da =34 e no mesmo molde: quatro pares, um knob de
+    // diferença em cada.
+    if level == 35 {
+        crate::fx_turbulence_smoke::frame(app, f);
+        return true;
+    }
     if matches!(level, 13 | 14) {
         crate::fx_smoke::frame(app, f, level);
         return true;

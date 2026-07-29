@@ -570,3 +570,40 @@ fn measure_what_an_extra_octave_still_moves() {
         prev = now;
     }
 }
+
+/// **Os números da CENA DE SMOKE (`PH2D_BUILD_SMOKE=35`)** — medidos antes de a mensagem dela os
+/// afirmar, que é a regra desta linha.
+///
+/// A cena fala MUNDO e este harness fala PIXEL, então os valores entram aqui já convertidos ao
+/// zoom que a cena abre (`ZOOM` px por unidade de mundo). Um número afirmado na tela sem uma
+/// medição por trás é a coisa que esta jornada já viu mentir duas vezes.
+#[test]
+#[ignore = "medição, não gate"]
+fn measure_the_smoke_scene_pairs() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador: pulando");
+        return;
+    };
+    /// Pixels por unidade de MUNDO na cena (as estrelas medem 1,35 e ocupam ~135 px).
+    const ZOOM: f32 = 100.0;
+    let src = half_plane(&gpu, W, H, f64::from(EDGE));
+    let m = |amount: f32, scale: f32, detail: u8, mode: u8| {
+        let ops = [turb(amount * ZOOM, scale * ZOOM, detail, 0, mode)];
+        let c = defined(&edge_curve(&run(&gpu, &src, W, H, &ops), W, H));
+        (amplitude(&c), crossings(&c), roughness(&c))
+    };
+    eprintln!("--- os quatro pares da cena =35 (zoom {ZOOM} px/mundo) ---");
+    for (name, amount, scale, detail, mode) in [
+        ("1a Amount 0.00", 0.00f32, 0.25f32, 3u8, FxOp::MODE_SMOOTH),
+        ("1b Amount 0.25", 0.25, 0.25, 3, FxOp::MODE_SMOOTH),
+        ("2a Size 0.12", 0.08, 0.12, 3, FxOp::MODE_SMOOTH),
+        ("2b Size 0.50", 0.08, 0.50, 3, FxOp::MODE_SMOOTH),
+        ("3a Detail 1", 0.08, 0.30, 1, FxOp::MODE_SMOOTH),
+        ("3b Detail 6", 0.08, 0.30, 6, FxOp::MODE_SMOOTH),
+        ("4a Smooth", 0.10, 0.30, 3, FxOp::MODE_SMOOTH),
+        ("4b Creased", 0.10, 0.30, 3, FxOp::MODE_CREASED),
+    ] {
+        let (a, c, r) = m(amount, scale, detail, mode);
+        eprintln!("  {name:<16} amplitude {a:6.2} px · {c:2} ondulações · rugosidade {r:.3}");
+    }
+}

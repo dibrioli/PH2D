@@ -46,28 +46,35 @@ passava. Fechado em `484684695`.
 O gate que o achou é o alargamento do arch-gate: ele varre `tool/paint/**` inteiro em vez de uma
 lista de arquivos, com controle positivo nas duas pontas.
 
-## 4. ⚠️ O pré-requisito que BLOQUEIA a metade paga, com o número
+## 4. O pré-requisito que bloqueava a metade paga — **ABERTO E FECHADO nesta leva**
 
-`fork_canvas` captura o **plano inteiro** (`None`), porque nenhum sítio conhece a sua região no
-momento do fork. Medido num traço real (`what_the_journal_retains_for_one_real_stroke`):
+`fork_canvas` capturava o **plano inteiro** (`None`), porque nenhum sítio conhecia a sua região no
+momento do fork. Medido num traço real (`what_the_journal_retains_for_one_real_stroke`, lido **antes**
+do pen-up — o commit zera o journal):
 
-| tela | documento | **journal** | delta do histórico |
+| tela | documento | journal ANTES | **journal DEPOIS** |
 |---|---|---|---|
-| 1024² | 16,8 MB | **4,19 MB** | 2,09 MB |
-| 2048² | 67,1 MB | **16,78 MB** | 2,09 MB |
-| 4096² | 268,4 MB | **67,11 MB** | 2,09 MB |
+| 1024² | 16,8 MB | 4,19 MB | **0,13 MB** |
+| 2048² | 67,1 MB | 16,78 MB | **0,13 MB** |
+| 4096² | 268,4 MB | 67,11 MB | **0,13 MB** |
 
-67,11 MB são exatamente `n × 4` — o plano do canvas. **Promover o journal hoje trocaria um fork de
-67 MB por uma captura de 67 MB: lateral, não positiva**, mais 32× o delta em memória retida.
+Os 67,11 MB eram `n × 4` — o plano do canvas. Com eles a troca do S3 seria **lateral** (um fork de
+67 MB por uma captura de 67 MB); agora ela é **positiva**, e o número é **constante na tela**.
 
-As três portas do **relevo** já passam a região nos onze sítios; **o canvas é o único outlier**. As
-duas saídas estão nomeadas na §7 do doc 28 (adiar a captura para o `declare_wrote`, que já recebe o
-retângulo; ou o depósito passar o bbox dos dabs como superconjunto — ⚠️ este segundo **não é seguro
-sob Tiling**, cujo wrap escreve fora do bbox).
+**A cura:** a footprint de um dab é função pura do centro e do raio ⇒ respondível **antes** do laço.
+`ph2d_painter_brush::dab_write_bounds` é o **superconjunto declarado** das duas rotas de blit (que
+diferem de propósito: `radius` × `radius + aa_pad`) — a porta promete apenas contê-las, e o gate
+compara o que elas **devolvem** com o que ela prevê. `region::dabs_bounds` soma as footprints; os 8
+sítios de depósito a passam, os 22 frios seguem em `None`.
 
-⚠️ **A primeira versão da sonda lia o journal DEPOIS do pen-up e reportava 0,00 MB em toda tela** (o
-commit move o cursor e `set_cursor` zera o journal). Um zero lido no instante errado parece "não
-custa nada" — e teria autorizado a wave inteira.
+⚠️ **A premissa:** a lista de dabs que chega às rotas é a **FINAL** — Tiling e Symmetry expandem
+cópias **na lista** (`tiled_dabs_grouped`), não dentro do blit. O gate
+`every_texel_the_stroke_changed_is_described_by_the_journal` pinta com Tiling nos dois eixos e falha
+no dia em que isso mudar.
+
+⚠️ **A mutação *"só o 1º dab"* sobreviveu a DUAS fixtures antes de sangrar:** passos de 18 px põem os
+dabs de um batch no mesmo tile de 32 px, e os cinco sítios do `stamp_cache` ainda passavam `None`.
+Com salto de 200 px num batch e os cinco ligados: **22.767 de 38.928 texels** sem descrição.
 
 ## 5. Foundational tocado — **NENHUM**
 
@@ -157,6 +164,11 @@ regredido (`dispatch max` na casa de 1 ms a 4096², não de centenas).
 
 | item | preço / estado |
 |---|---|
-| **`fork_canvas` aprender a região** | **pré-requisito da metade paga** — §4; não é mecânico |
-| **S3 3b-v (a metade que paga)** | ~21 ms/traço (pen-down 11,7 + pen-up 9,25) — bloqueado pelo acima |
-| o `cursor` do histórico é dono permanente dos 4 planos | por isso o S3 é tudo-ou-nada: `make_mut` copia com **qualquer** coisa acima de um dono |
+| **S3 3b-v (a metade que paga)** | **DESBLOQUEADA.** ~19 ms/traço de fork a 4096² (medido pela porta do produto: covers 5,86 + heights 4,46 + mats 8,58) |
+| o `cursor` e o `stroke_undo` seguram os 4 planos | por isso a troca é **tudo-ou-nada**: `make_mut` copia com **qualquer** coisa acima de um dono |
+| ⚠️ o canvas **já tem dono único dentro do gesto** | medido: `canvas 1 · heights 4 · covers 4 · mats 4` logo após o pen-down — quem paga o fork é o **RELEVO** |
+| a evidência que a wave precisa já existe | `cursor/RECONSTRUIDO: divergem=0` em **1113** reconstruções ⇒ o cursor É derivável de (vivo + journal) |
+
+⚠️ **O desenho está escrito na §7 do doc 28, com as seis restrições** — inclusive a que decide a
+primeira linha de código (o `absorb_foreign_writes` tem dois chamadores, e só um deles tem a
+reconstrução provada).

@@ -2251,29 +2251,46 @@ dobrando o canvas inteiro, 201,5 ms, e ele está curado (§4.8.2).
       todo sítio abre um passo, ou sobra um caminho que serve a absorção do commit. **É a primeira
       decisão da wave, não um detalhe dela.**
 
-   ⚠️ **6. E UMA SEXTA RESTRIÇÃO, MEDIDA EM 2026-07-28 E QUE MUDA A CONTA DA WAVE: hoje o journal
-      retém o CANVAS INTEIRO.** A sonda `what_the_journal_retains_for_one_real_stroke` mede um traço
-      real, lendo o journal **antes do pen-up** (o commit move o cursor e `set_cursor` zera o journal —
-      a 1ª versão da sonda lia depois e reportava 0,00 MB em toda tela):
+   ✅ **6. A SEXTA RESTRIÇÃO ABRIU E FECHOU NO MESMO DIA (2026-07-28): o journal retinha o CANVAS
+      INTEIRO, e agora retém a PEGADA.** A sonda `what_the_journal_retains_for_one_real_stroke` mede um
+      traço real lendo o journal **antes do pen-up** (o commit move o cursor e `set_cursor` zera o
+      journal — a 1ª versão da sonda lia depois e reportava 0,00 MB em toda tela, o que teria
+      autorizado a wave por um zero lido no instante errado):
 
-      | tela | documento | **journal** | delta do histórico |
+      | tela | documento | journal ANTES | **journal DEPOIS** |
       |---|---|---|---|
-      | 1024² | 16,8 MB | **4,19 MB** | 2,09 MB |
-      | 2048² | 67,1 MB | **16,78 MB** | 2,09 MB |
-      | 4096² | 268,4 MB | **67,11 MB** | 2,09 MB |
+      | 1024² | 16,8 MB | 4,19 MB | **0,13 MB** |
+      | 2048² | 67,1 MB | 16,78 MB | **0,13 MB** |
+      | 4096² | 268,4 MB | 67,11 MB | **0,13 MB** |
 
-      Os 67,11 MB a 4096² são **exatamente `n × 4`: o plano do canvas inteiro**. A causa está escrita no
-      produto — `fork_canvas` captura `None` por política documentada (*"nenhum sítio conhece a sua
-      região no momento do fork; os laços de dab acumulam o `touched` **enquanto** escrevem"*) — e a
-      consequência é que **a troca, como o journal está hoje, substituiria um fork de 67 MB por uma
-      captura de 67 MB**. Ela não seria positiva; seria lateral, mais 32× o delta em memória retida.
+      Os 67,11 MB eram **exatamente `n × 4`: o plano inteiro**, porque `fork_canvas` capturava `None`
+      por política documentada (*"nenhum sítio conhece a sua região no momento do fork"*). Com isso a
+      troca seria **lateral** — um fork de 67 MB por uma captura de 67 MB. Agora ela é **positiva**, e
+      o número é **constante na tela**, que é a forma correta: o journal retém a PEGADA.
 
-      ⚠️ **As três portas do RELEVO já passam a região nos onze sítios** (§5.29) — o canvas é o único
-      *outlier*, e o próprio doc-comment do `fork_canvas` diz onde a correção entra: *"quando os sítios
-      quentes aprenderem a passar a região, esta chamada é o lugar onde ela entra"*. **Isso é um
-      pré-requisito da wave que ninguém tinha nomeado**, e ele não é mecânico: a região do depósito só
-      existe no fim do batch, então ou a captura é adiada para o `declare_wrote` (que JÁ recebe o
-      retângulo) ou o depósito passa o bbox dos dabs como superconjunto seguro.
+      **A cura:** a footprint de um dab é **função pura** do centro e do raio, logo é respondível
+      **antes** do laço. `ph2d_painter_brush::dab_write_bounds` é o **superconjunto declarado** das duas
+      rotas de blit — elas diferem de propósito (`radius` contra `radius + aa_pad`) e seguem donas da
+      própria aritmética; a porta promete apenas **contê-las**, e um gate afirma isso comparando o que
+      elas **devolvem** com o que ela prevê (mutação: pad 0 ⇒ `stamp_dab` escreve 5×5 contra 3×3
+      prometido). `region::dabs_bounds` soma as footprints; os **8 sítios de depósito** a passam, os 22
+      frios seguem em `None` — correto, só mais caro.
+
+      ⚠️ **A premissa que torna isto seguro, e onde ela pode quebrar:** a lista de dabs que chega às
+      rotas é a **FINAL**. O Tiling replica o dab que cruza a borda numa cópia deslocada e a Symmetry
+      espelha — as duas expandem a **lista** (`tiled_dabs_grouped`, em `stamp_route`), não fazem o wrap
+      dentro do blit. Se algum dia alguém mover o wrap para dentro, `dabs_bounds` passa a devolver um
+      **subconjunto**. O gate `every_texel_the_stroke_changed_is_described_by_the_journal` pinta com
+      Tiling nos dois eixos e falha nesse dia, em vez de o undo passar a esquecer a borda oposta.
+
+      ⚠️ **A mutação *"só o 1º dab"* SOBREVIVEU a duas fixtures antes de sangrar**, e as duas lições
+      são de fixture: passos de 18 px põem os dabs de um batch **no mesmo tile de 32 px**, então uma
+      região que cobrisse só o primeiro ainda os conteria; e os **cinco sítios do `stamp_cache` ainda
+      passavam `None`** (o replace anterior falhara pela indentação e eu não conferi). Com um salto de
+      200 px num batch só e os cinco ligados: **22.767 de 38.928 texels** sem descrição.
+
+      Censo pós-mudança (`PH2D_UNDO_AUDIT=1`, suíte inteira, single-thread): **95 commits · 1113
+      reconstruções de cursor · 0 divergências**; relevo **302 PASSO / 442 SEM-RELEVO / 0 INCOMPLETO**.
 
    ⚠️ **E o journal sai do `cfg(any(test, debug_assertions))` no MESMO commit** — hoje ele é rede de
    verificação, e capturar *e* forkar seria pagar as duas coisas. O `cfg` do `mod journal` (em `undo.rs`)

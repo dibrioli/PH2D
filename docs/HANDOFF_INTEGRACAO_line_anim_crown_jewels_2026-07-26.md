@@ -119,8 +119,13 @@ produzida — [[feedback_derived_coordinate_seed_must_match_sample]]), fechados 
 
 ## 6. ABERTO / FILA (não construído, por ordem do Enio)
 
-**Expressão PURA (Time/Slider, sem keyframes) extrapola a strip.** Reportado 2026-07-26, adiado pelo Enio
-(*"coloque na fila para solução depois"*).
+~~**Expressão PURA (Time/Slider, sem keyframes) extrapola a strip.**~~ — **FECHADO**, auditado por
+medição em 2026-07-28. A rodada do *"0 = INFINITO"* já o tinha curado pela opção **(b)** (a prop pura
+vive dentro de um clip que TEM fim), nas duas metades do report — Arrange e container. Detalhe e a
+tabela medida no [plano 07 §11](../Timeline/07_plano_joias_da_coroa.md). ⚠️ Este parágrafo sobreviveu
+ao fato por duas jornadas; ver lá por que isso custa caro.
+
+Reportado 2026-07-26, adiado pelo Enio (*"coloque na fila para solução depois"*) — histórico:
 
 - **Diagnóstico (não re-derive):** o §5.3 fechou a janela para props **com keys** — elas obedecem a strip
   pela cobertura da composição. Uma expressão pura **não tem track**, logo **nenhuma strip a referencia**,

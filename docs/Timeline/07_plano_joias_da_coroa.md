@@ -310,20 +310,32 @@ timeline).
 
 ---
 
-## §11 — Aberto / fila (Enio 2026-07-26: *"coloque na fila para solução depois"*)
+## §11 — ~~Aberto / fila~~ **FECHADO** (auditado por medição, 2026-07-28)
 
-**Expressão PURA (Time/Slider, sem keyframes) extrapola a strip** — toca além da strip
-no container e no arrange. Uma prop com keys obedece a janela da strip (a lei da
-COBERTURA, `expr_pass.rs` + `composed`, fechada em `512c19f9`); uma expressão pura **não
-tem track**, logo nenhuma strip a referencia e não há janela a obedecer — ela roda no
-relógio da cena/container. **Não é bug do fix; é a ausência de um vínculo.** A cura pede
-uma **decisão de produto**: (a) um ESCOPO autorado (a expressão pura só toca enquanto um
-strip/clip apontado está ativo, como o guia do `<textPath>`/pattern do vetor), ou (b) a
-prop pura passa a viver DENTRO de um clip (track vazia que a strip janela). Nenhuma é
-mecânica; as duas provavelmente bumpam `DOC_VERSION`. Detalhe no handoff de integração
-[`../HANDOFF_INTEGRACAO_line_anim_crown_jewels_2026-07-26.md`](../HANDOFF_INTEGRACAO_line_anim_crown_jewels_2026-07-26.md) §6.
+⚠️ **Esta seção esteve MENTINDO.** Ela descrevia como aberto um item que a rodada do
+*"0 = INFINITO"* (`a59b56786` + o `clip_end_seconds` que dimensiona a fatia) já tinha
+fechado — e uma lista de pendências velha não é ruído: ela faz a próxima LLM **propor
+construir o que existe**. Foi o Enio quem desconfiou (*"acho q já resolvemos isso… confira
+se não já foram feitas"*).
 
-**Refino não-fechado do mesmo tema:** dentro da strip, o *valor* de uma prop com keys
-segue a posição da strip (vem da composição), mas a *fase* de um termo `time` puro (o
-jitter do `wiggle`) ainda usa o relógio externo, não o local da strip — sairia de
-`stack_eval` (`sole_strip_of`/`strip_source_time`), com a ressalva do multi-strip.
+**Expressão PURA (Time/Slider, sem keyframes) extrapola a strip — NÃO extrapola mais**, e
+a cura foi a opção **(b)** da bifurcação original (*a prop pura passa a viver DENTRO de um
+clip*): o clip da fórmula tem um fim (`clip_end_seconds` devolve `DEFAULT_DURATION_SECONDS`
+para um clip só-expressão), a strip dimensiona a fatia por ele, e fora da fatia **ninguém
+escreve**. Medido nas duas metades que o report nomeava:
+
+| onde | dentro | fora |
+|---|---|---|
+| **Arrange** (strip `[0,4)`) | corre 1:1 (`t=1 → 100`, `t=3 → 300`) | sentinela 42 intacta |
+| **Container** (instância `[1,5)`) | relógio da instância (`t=2 → 100`) | sentinela 42 intacta em `t=0,5 / 5,5 / 8` |
+
+Gates: `a_pure_expression_plays_windowed_inside_an_arrange_strip` (já existia) +
+`a_pure_expression_inside_a_container_is_windowed_by_the_instance` (**novo** — o Arrange
+tinha gate e o container **não**, que é por que a metade dele ficou parecendo aberta). A
+mutação `clip_end_seconds` → fim só-keyado sangra **os dois**.
+
+**O refino da FASE também está FEITO** (era o segundo parágrafo desta seção): o termo `time`
+de uma expressão per-clip lê o relógio **LOCAL** da strip, não o externo. Medido numa prop
+COM KEYS + `value + time*100` numa strip `[2,6)`: `t=2 → 0`, `t=3 → 100`, `t=4 → 200`,
+`t=5 → 300` — LOCAL nos quatro pontos. (O `wiggle` consome a MESMA ligação `time`, então a
+fase dele é local pelo mesmo caminho; isso é o mecanismo, não uma segunda medição.)

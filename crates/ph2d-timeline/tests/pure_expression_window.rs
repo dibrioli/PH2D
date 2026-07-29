@@ -150,6 +150,67 @@ fn a_pure_expression_plays_windowed_inside_an_arrange_strip() {
     );
 }
 
+/// **A mesma janela vale DENTRO de um container** — a outra metade do report.
+///
+/// O report do Enio (2026-07-26) dizia *"tocam além da strip no container E no arrange"*, e o
+/// irmão acima só cobria o Arrange: uma instância de container é um `ClipStrip` como qualquer
+/// outra, então a lei deveria valer — mas *deveria* não é medido, e foi exatamente essa metade
+/// que ficou sem gate enquanto o plano 07 §11 seguia listando o item inteiro como aberto.
+///
+/// Um clip de expressão pura vive dentro de um container, e a CENA instancia o container em
+/// `[1, 5)`. Dentro, a fórmula corre no relógio da instância (1:1, deslocado); fora, ninguém
+/// escreve e a pose que estava lá fica. (Mutação: fazer a instância ignorar a janela ⇒ a
+/// sentinela é sobrescrita em `t = 6`, RED.)
+#[test]
+fn a_pure_expression_inside_a_container_is_windowed_by_the_instance() {
+    let mut w = World::new();
+    let e = w.spawn(Transform::default()).id();
+    let mut doc = TimelineDoc::new();
+    let tgt = doc.bind(e.to_bits(), PropKind::TranslationX);
+    doc.set_clip_expr(0, tgt, Some("time*100".into()));
+
+    let c = doc.add_container("Box".into());
+    let inner = doc
+        .add_lane_in(StackHost::Container(c), "i".into())
+        .expect("lane do container");
+    doc.add_strip_to(
+        StackHost::Container(c),
+        inner,
+        StripSource::Clip(0),
+        0.0,
+        DEFAULT_DURATION_SECONDS,
+    )
+    .expect("instancia do clip");
+    let lane = doc.add_lane("L".into()).expect("lane da cena");
+    doc.add_strip_to(
+        StackHost::Document,
+        lane,
+        StripSource::Container(c as u16),
+        1.0,
+        5.0,
+    )
+    .expect("instancia do container");
+
+    // Dentro: o relógio é o da INSTÂNCIA, então t=2 é 1 s de clip.
+    apply_scene(&mut w, &mut doc, 2.0, |_| false);
+    assert!(
+        (x_of(&w, e) - 100.0).abs() < 1e-2,
+        "dentro do container a formula corre no relogio da instancia, deu {}",
+        x_of(&w, e)
+    );
+
+    // Fora: ninguém escreve — a sentinela sobrevive. É a metade que o report cobrava.
+    for t in [0.5_f64, 5.5, 8.0] {
+        w.get_mut::<Transform>(e).expect("transform").translation.x = 42.0;
+        apply_scene(&mut w, &mut doc, t, |_| false);
+        assert!(
+            (x_of(&w, e) - 42.0).abs() < 1e-2,
+            "t={t}: fora da instancia a expr pura tem de ficar QUIETA, deu {}",
+            x_of(&w, e)
+        );
+    }
+}
+
 /// **`0` = infinite is the SAME law for a clip, a container, and the scene** (Enio,
 /// 2026-07-28: *"a regra do infinito também deve se aplicar a strips e containers"*). With no
 /// authored duration each scope is UNBOUNDED — [`TimelineDoc::view_authored_end`] is `None` (no

@@ -3,7 +3,8 @@
 
 pub use ph2d_editor_core::ids::{
     TIMELINE_ADD_CLIP, TIMELINE_ADD_CONTAINER, TIMELINE_ADD_LANE, TIMELINE_ADD_MARKER,
-    TIMELINE_ADD_TRACK, TIMELINE_ADDPROP_OPACITY, TIMELINE_ADDPROP_POS, TIMELINE_ADDPROP_ROT,
+    TIMELINE_ADD_TRACK, TIMELINE_ADDPROP_MORPH, TIMELINE_ADDPROP_OPACITY, TIMELINE_ADDPROP_POS,
+    TIMELINE_ADDPROP_ROT,
     TIMELINE_ADDPROP_SX, TIMELINE_ADDPROP_SY, TIMELINE_ADDPROP_TIME, TIMELINE_ADDPROP_TX,
     TIMELINE_ADDPROP_TY, TIMELINE_AUTOKEY, TIMELINE_CLIP_DD, TIMELINE_CLIP_OPT,
     TIMELINE_CLIP_RENAME_INPUT, TIMELINE_CLOSE, TIMELINE_CRUMB, TIMELINE_DELETE_CLIP,
@@ -65,7 +66,7 @@ pub use ph2d_editor_core::ids::{
 /// TranslationX + TranslationY, e por isso fica fora de `ALL` como o Time Remap. Entra
 /// no FIM porque a ordem desta tabela é a ordem que o artista lê, e as seis da pose são
 /// o que ele procura primeiro.
-pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 8] = [
+pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 9] = [
     (TIMELINE_ADDPROP_TX, ph2d_timeline::PropKind::TranslationX),
     (TIMELINE_ADDPROP_TY, ph2d_timeline::PropKind::TranslationY),
     (TIMELINE_ADDPROP_ROT, ph2d_timeline::PropKind::Rotation),
@@ -74,4 +75,5 @@ pub const ADDPROP_BUTTONS: [(ph2d_a11y::NodeId, ph2d_timeline::PropKind); 8] = [
     (TIMELINE_ADDPROP_OPACITY, ph2d_timeline::PropKind::Opacity),
     (TIMELINE_ADDPROP_TIME, ph2d_timeline::PropKind::TimeRemap),
     (TIMELINE_ADDPROP_POS, ph2d_timeline::PropKind::Position),
+    (TIMELINE_ADDPROP_MORPH, ph2d_timeline::PropKind::Morph),
 ];

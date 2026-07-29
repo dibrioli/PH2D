@@ -268,7 +268,7 @@ fn a_session_aligns_every_track_of_an_object_on_shared_key_times() {
         ph.seek(t);
         let x = 40.0 * (t * 3.0).sin();
         let y = 25.0 * (t * 4.4).sin();
-        let mut p: PoseSample = [None; 6];
+        let mut p: PoseSample = [None; 7];
         p[0] = Some(x as f32);
         p[1] = Some(y as f32);
         frame_perf(&mut st, &ph, &[(E, p)], true, false, &mut ak);

@@ -363,6 +363,16 @@ pub const TIMELINE_ADDPROP_TIME: NodeId = hash_node_id("timeline.addprop.time");
 /// como o Time Remap, e pela mesma razão — `ALL` é a pose de eixos SEPARADOS, e uma
 /// track de Position é a ALTERNATIVA a dois membros dela.
 pub const TIMELINE_ADDPROP_POS: NodeId = hash_node_id("timeline.addprop.position");
+/// "+Track" -> **Morph**: o `t` de um `VecMorph` (ADR-0146 C4, smoke do Enio 2026-07-28).
+///
+/// ⚠️ Ele FALTAVA, e a ausência era exatamente a porta que o `PropKind::Morph` promete:
+/// o doc-comment daquele variant explica que Morph fica fora do `PropKind::ALL` porque
+/// `ALL` é a pose do sprite, e conclui *"the artist keys it from the '+ Track' list"* —
+/// uma lista que não o oferecia. Tudo a jusante já estava pronto (`prop_label` resolvia
+/// `panel.timeline.prop.morph`, a chave i18n existia, o popup tira a altura do
+/// `len()` da tabela): só a linha nunca entrou, então o único gesto que criava uma
+/// track de Morph era programático.
+pub const TIMELINE_ADDPROP_MORPH: NodeId = hash_node_id("timeline.addprop.morph");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing

@@ -56,7 +56,7 @@ fn x_of(world: &World, e: u64) -> f32 {
 }
 
 fn pose_x(x: f32) -> PoseSample {
-    let mut p: PoseSample = [None; 6];
+    let mut p: PoseSample = [None; 7];
     p[0] = Some(x); // PropKind::ALL[0] == TranslationX
     p
 }
@@ -495,7 +495,10 @@ fn value_plus_g_of_time_keys_and_pre_compensates() {
 /// Both non-stacked and stacked. Mutation (`refusal_for` returns `Overridden` unconditionally):
 /// the reason lies about what is wrong, RED.
 #[test]
-#[allow(non_snake_case, reason = "the gate name mirrors the ADR-0146 refusal variant")]
+#[allow(
+    non_snake_case,
+    reason = "the gate name mirrors the ADR-0146 refusal variant"
+)]
 fn a_pure_formula_refuses_ExpressionDriven() {
     use ph2d_timeline::KeyRefusal;
     // Non-stacked: a pure wiggle drives the channel.
@@ -563,7 +566,10 @@ fn a_value_nonlinear_formula_refuses() {
 /// from the world every frame. Mutation (`persisted_shown` returns `None`): the diff falls back
 /// to that graph-less re-derivation, sees 0 != 30, and mints a phantom key, RED.
 #[test]
-#[allow(non_snake_case, reason = "the gate name mirrors the ADR-0146 W6 gate list")]
+#[allow(
+    non_snake_case,
+    reason = "the gate name mirrors the ADR-0146 W6 gate list"
+)]
 fn auto_key_mints_no_phantom_key_on_a_PROP_LINKED_channel() {
     let mut world = World::new();
     let follower = world

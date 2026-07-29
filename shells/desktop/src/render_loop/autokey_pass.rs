@@ -74,8 +74,8 @@ pub(crate) struct AutokeyState {
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
 /// (e.g. opacity on an entity with no `Sprite`).
 fn sample_pose(world: &World, entity: u64) -> PoseSample {
-    let mut pose: PoseSample = [None; 6];
-    for (i, &prop) in PropKind::ALL.iter().enumerate() {
+    let mut pose: PoseSample = [None; 7];
+    for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
         pose[i] = sample_prop_value(world, entity, prop).and_then(|v| match v {
             AnimValue::Float(f) => Some(f),
             _ => None,
@@ -279,7 +279,7 @@ pub(crate) fn apply_samples(
         //
         // Compare where you read. [[feedback_derived_coordinate_seed_must_match_sample]]
         let t_diff = t_src;
-        let base = ak.baseline.get(&entity).copied().unwrap_or([None; 6]);
+        let base = ak.baseline.get(&entity).copied().unwrap_or([None; 7]);
         if capturing {
             // Performing (playing) records only what the DRAG pushed off the
             // curve; under a plain Play the drag is the sole source of an

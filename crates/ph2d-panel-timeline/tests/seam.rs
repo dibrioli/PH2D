@@ -1015,12 +1015,20 @@ fn every_add_track_option_reaches_the_shell_including_position() {
         );
         seen.push(prop);
     }
+    // ⚠️ COBERTURA, e não uma contagem. Isto era `seen.len() == 8` mais um
+    // `contains(Position)` — uma enumeração escrita à mão, e ela apodreceu exatamente
+    // como enumerações apodrecem: o `Morph` nunca entrou na tabela, o literal seguiu
+    // batendo, e o único gesto que criava uma track de morph era programático (smoke do
+    // Enio, 2026-07-28: *"nem tem o track disponível no dropdown de tracks"*). Perguntando
+    // pela cobertura, um kind novo cai aqui NOMEADO em vez de passar porque o número bate.
+    let missing: Vec<ph2d_timeline::PropKind> = (0..32_u64)
+        .filter_map(|id| ph2d_timeline::PropKind::from_target(ph2d_timeline::AnimTarget::new(id)))
+        .filter(|k| !seen.contains(k))
+        .collect();
     assert!(
-        seen.contains(&ph2d_timeline::PropKind::Position),
-        "Position não está na lista do +Track: o modo trajetória não teria como ser \
-         criado por gesto nenhum"
+        missing.is_empty(),
+        "estes kinds nao tem entrada no menu +Track, logo NENHUM gesto os cria: {missing:?}"
     );
-    assert_eq!(seen.len(), 8, "as seis da pose, o Time Remap e o Position");
 }
 
 /// **O gate anti-item-morto do menu da TRAJETÓRIA** — irmão do de cima, e a razão de

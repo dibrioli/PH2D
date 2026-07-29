@@ -29,11 +29,15 @@ use crate::path_convert::PositionKeyMode;
 use crate::prop::PropKind;
 use crate::refusal::KeyRefusal;
 
-/// One selected sprite's six animatable values this frame, in [`PropKind::ALL`]
-/// order (`TranslationX, TranslationY, Rotation, ScaleX, ScaleY, Opacity`).
-/// `None` where the sprite lacks the backing component (e.g. no `Sprite` for
-/// opacity), which never keys.
-pub type PoseSample = [Option<f32>; 6];
+/// One selected object's auto-keyable scalars this frame, in [`PropKind::AUTOKEYED`]
+/// order (`TranslationX, TranslationY, Rotation, ScaleX, ScaleY, Opacity, Morph`).
+/// `None` where the object lacks the backing component (no `Sprite` for opacity, no
+/// `VecMorph` for the morph `t`), which never keys.
+///
+/// ⚠️ Indices 0 e 1 continuam sendo os dois eixos de translação — o ramo do
+/// motion-path (`path_key`) lê `world[0]`/`world[1]` diretamente, e a lista foi
+/// estendida no FIM por isso.
+pub type PoseSample = [Option<f32>; 7];
 
 /// Which of a sprite's properties auto-key should write, given its live pose
 /// (`world`), the pose it had last frame (`baseline`, for unbound first-touch),
@@ -141,7 +145,7 @@ fn autokey_props_in(
     // unconditionally — is the *"even with a motion path the auto-key writes X/Y"*
     // conflict. The other four channels (Rotation/Scale/Opacity) are mode-blind.
     let mode = doc.position_key_mode(entity, default_path);
-    for (i, &prop) in PropKind::ALL.iter().enumerate() {
+    for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
         if mode == PositionKeyMode::Path
             && matches!(prop, PropKind::TranslationX | PropKind::TranslationY)
         {
@@ -473,7 +477,7 @@ mod tests {
     }
 
     fn pose(vals: &[(usize, f32)]) -> PoseSample {
-        let mut p: PoseSample = [None; 6];
+        let mut p: PoseSample = [None; 7];
         for &(i, v) in vals {
             p[i] = Some(v);
         }

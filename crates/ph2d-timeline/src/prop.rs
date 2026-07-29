@@ -44,10 +44,15 @@ pub enum PropKind {
     /// the reason the Morph object exists at all: without a keyed `t` it is a slider, not
     /// animation.
     ///
-    /// Outside [`PropKind::ALL`], like [`PropKind::TimeRemap`] and for the same reason: `ALL` is
-    /// the sprite POSE that the auto-key samples ([`crate::PoseSample`] is exactly that array's
-    /// shape), and `t` is not part of any sprite's pose. The artist keys it from the "+ Track"
-    /// list. Appended — the discriminant is a frozen wire value.
+    /// Outside [`PropKind::ALL`], like [`PropKind::TimeRemap`]: `ALL` is the sprite POSE, and `t`
+    /// is not part of any sprite's pose. The artist creates the track from the "+ Track" list.
+    ///
+    /// ⚠️ **Mas fora do `ALL` NÃO quer dizer fora do auto-key** — a redação anterior desta cerca
+    /// deixava isso ambíguo e o smoke do Enio (2026-07-28) cobrou: *"nem autokey funcionou para
+    /// morph"*. `ALL` é a pose; quem o auto-key varre é [`PropKind::AUTOKEYED`], e Morph está lá.
+    /// O próprio [`PropKind::Position`] já provava que o array não é a fronteira (ele também fica
+    /// fora do `ALL` e é autokeyado, por um ramo de geometria 2D). Appended — the discriminant is
+    /// a frozen wire value.
     Morph = 7,
     /// **Position** — the object's place on the canvas as ONE channel, following an
     /// authored trajectory ([ADR-0141]): the After Effects model, where *Separate
@@ -73,10 +78,14 @@ pub enum PropKind {
 }
 
 impl PropKind {
-    /// The six SCENE properties, in authoring order — the pose the auto-key
-    /// pass samples ([`crate::PoseSample`] is exactly this array's shape).
+    /// The six SCENE properties of a sprite's POSE, in authoring order.
     /// [`PropKind::TimeRemap`] is deliberately absent: it is the timeline's
     /// own clock, not a scene value (the "+ Track" list adds it separately).
+    ///
+    /// ⚠️ **Isto é a POSE, não a lista do auto-key** — para essa, veja
+    /// [`PropKind::AUTOKEYED`]. As duas coincidiram até 2026-07-28, e é por isso que
+    /// os doc-comments antigos (aqui e no `Morph`) diziam que `PoseSample` tem a forma
+    /// *deste* array: hoje ele tem a forma do outro.
     pub const ALL: [PropKind; 6] = [
         PropKind::TranslationX,
         PropKind::TranslationY,
@@ -84,6 +93,31 @@ impl PropKind {
         PropKind::ScaleX,
         PropKind::ScaleY,
         PropKind::Opacity,
+    ];
+
+    /// **Os canais ESCALARES que o auto-key diffa** — a pose mais o `t` do Morph, e a
+    /// forma exata de [`crate::PoseSample`].
+    ///
+    /// A pose de um sprite (`ALL`) responde *"onde este objeto está"*; esta lista responde
+    /// *"que números o artista pode mexer e esperar que o auto-key grave"*. Elas eram a
+    /// mesma até o Morph chegar, e tratá-las como uma só era o que impedia o auto-key de
+    /// gravar o canal cuja razão de existir é ser animado (`Morph`: *"sem um `t` keyado é
+    /// um slider, não animação"*).
+    ///
+    /// ⚠️ [`PropKind::Position`] **não** entra aqui, e não é esquecimento: capturá-la é
+    /// ACRESCENTAR UMA ÂNCORA à trajetória, o que reescreve a distância de toda key
+    /// posterior (ADR-0141 §2) — geometria 2D, não um escalar. Ela tem o ramo próprio do
+    /// auto-key (`AutokeyPlan::path_key`), que é o precedente de que estar fora do `ALL`
+    /// nunca significou estar fora do auto-key. [`PropKind::TimeRemap`] também não: é o
+    /// relógio, e não tem valor de cena para amostrar.
+    pub const AUTOKEYED: [PropKind; 7] = [
+        PropKind::TranslationX,
+        PropKind::TranslationY,
+        PropKind::Rotation,
+        PropKind::ScaleX,
+        PropKind::ScaleY,
+        PropKind::Opacity,
+        PropKind::Morph,
     ];
 
     /// The opaque [`AnimTarget`] a track uses to drive this property.

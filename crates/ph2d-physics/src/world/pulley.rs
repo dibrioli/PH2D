@@ -316,7 +316,17 @@ pub fn apply(
             continue;
         };
         let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
-        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]);
+        // ⚠️ **A ponta B entra ENGRENADA** (W4). `weight_b` é `1.0` em toda corda
+        // sem tambor diferencial — e `x * 1.0 == x` é exato —, então isto é
+        // byte-neutro para tudo que já existia.
+        //
+        // Ele não é um versor, e não precisa ser: [`End::k`] é a forma quadrática
+        // `vᵀM⁻¹v` e [`End::rate`] é uma projeção — nenhuma das duas pede norma 1.
+        // É a MESMA razão pela qual o eixo montado do W3 entrou sem caminho de
+        // código próprio, e é o que faz a vantagem mecânica contínua sair de
+        // graça: a tensão em B é `weight_b` vezes a de A, porque o impulso lá é
+        // `−λ·weight_b·u_b`.
+        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]) * route.weight_b;
         // Os tambores. Avança DEPOIS da rota — ela não depende do recolhido — e
         // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
         // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
@@ -374,10 +384,25 @@ pub fn apply(
         // joints do rapier, e pela mesma razão: um limiar escrito em impulsos
         // mudaria de significado a cada troca da contagem de sub-passos.
         let tension = lambda / dt;
+        // ⚠️ **A corda tem UMA tensão — até um tambor diferencial entrar nela**
+        // (W4). O `break_force` do [`PulleyDesc`] documenta a uniformidade como a
+        // razão de haver um número só, e essa premissa vale enquanto a corda
+        // DESLIZA; o diferencial é precisamente onde ela não desliza, e os dois
+        // lados carregam `T` e `T·gear`. O limiar tem de olhar o lado MAIS
+        // carregado, senão uma corda com engrenagem 5 aguentaria cinco vezes o que
+        // o artista dimensionou, em silêncio.
+        //
+        // Sem tambor `weight_max` é `1.0` e `peak == tension` **ao bit** — a
+        // ruptura de toda cena anterior não se move.
+        let peak = tension * route.weight_max;
         let slot = led.tension.entry(p.id).or_insert(0.0);
-        *slot = slot.max(tension);
+        *slot = slot.max(peak);
+        // ⚠️ **O eixo recebe a tensão BASE, não o pico**, e a diferença é
+        // load-bearing: o Jacobiano de cada roldana JÁ carrega os pesos dos dois
+        // lados dela ([`wheel_jacobian`]), então multiplicar pelo pico contaria a
+        // engrenagem duas vezes.
         ledger_axles(led, live, scratch, tension);
-        if tension > p.break_force {
+        if peak > p.break_force {
             led.broken_ropes.insert(p.id);
             led.breaks.push(PulleyBreak {
                 id: p.id,
@@ -385,7 +410,8 @@ pub fn apply(
                 // O meio da rota: o ponto que está SOBRE a corda desenhada em
                 // qualquer montagem, que é onde o artista está olhando.
                 point: [(a.point.x + b.point.x) * 0.5, (a.point.y + b.point.y) * 0.5],
-                load: tension,
+                // A carga que de fato a partiu — a mesma que o limiar comparou.
+                load: peak,
             });
         }
     }

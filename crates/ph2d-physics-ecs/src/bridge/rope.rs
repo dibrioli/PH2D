@@ -132,6 +132,9 @@ impl PhysicsBridge {
                     body: mount.map(|(h, _, _)| h),
                     local: mount.map_or([0.0, 0.0], |(_, l, _)| l),
                     radius: wheel.radius,
+                    // W4: o segundo diâmetro do tambor diferencial. `None` é uma
+                    // roldana comum, que é o que toda roldana era até aqui.
+                    radius_out: None,
                     // A roldana é apontada pelo NOME dela, a mesma chave por que
                     // a corda aponta os corpos — bits de entidade mudam a cada
                     // undo, e o eixo partido migraria para a vizinha.
@@ -221,6 +224,9 @@ pub fn pulley_rig(
         body: None,
         local: [0.0, 0.0],
         radius: lift * WHEEL_RADIUS_FRACTION,
+        // Uma polia recém-montada nasce com roldanas COMUNS: o tambor
+        // diferencial do W4 é um segundo gesto, como a cadernal móvel do W3.
+        radius_out: None,
         side: 1,
         id: 0,
         break_force: f32::INFINITY,

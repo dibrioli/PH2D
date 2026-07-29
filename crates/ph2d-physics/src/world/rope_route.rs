@@ -90,7 +90,31 @@ pub struct RopeWheel {
     pub local: [f32; 2],
     /// O raio, em metros. `0` reduz ao modelo de ponto do W-Pulley v1 — e essa
     /// redução é **exata**, o que a torna a âncora de regressão da wave.
+    ///
+    /// Numa roldana DIFERENCIAL (W4) este é o raio por onde a corda **ENTRA**;
+    /// ver [`Self::radius_out`].
     pub radius: f32,
+    /// **O raio por onde a corda SAI** — `None` numa roldana comum, que é o que
+    /// toda roldana era até o W4.
+    ///
+    /// Uma roldana com dois raios é um **tambor diferencial**: a corda chega
+    /// enrolando num diâmetro e sai enrolando noutro, presos ao mesmo eixo. É
+    /// daqui que a vantagem mecânica contínua nasce — e ela é o **quociente de
+    /// duas circunferências que o artista desenha**, nunca um número digitado.
+    ///
+    /// ⚠️ **Isto é o que substitui o `ratio` que o W1 aposentou.** Aquele campo
+    /// descrevia *"uma talha diferencial com o eixo invisível"* (§3 do plano); aqui
+    /// o eixo é visível, tem duas circunferências, e o número **cai delas**.
+    ///
+    /// ⚠️ **Duas roldanas CONCÊNTRICAS seriam a leitura ingênua e são impossíveis:**
+    /// a tangente comum exige `|C₂−C₁| > |s₂r₂ − s₁r₁}|`, que dois círculos de
+    /// mesmo centro nunca satisfazem ⇒ a rota inteira seria recusada. Um eixo é UM
+    /// nó, e é por isso que os dois raios moram na mesma roldana.
+    ///
+    /// Não-positivo é tratado como *não é um diferencial* — uma regra, dois
+    /// consumidores ([`Self::radius_out`] e [`Self::gear`]), em vez de uma
+    /// geometria que diz uma coisa e uma engrenagem que diz outra.
+    pub radius_out: Option<f32>,
     /// `+1` = a corda vira à ESQUERDA aqui; `−1` = à direita.
     pub side: i8,
     /// **Quem esta roldana É, através das trocas de arena** — o `stable_name_id`
@@ -129,9 +153,47 @@ impl Default for RopeWheel {
             body: None,
             local: [0.0, 0.0],
             radius: 0.0,
+            radius_out: None,
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
+        }
+    }
+}
+
+impl RopeWheel {
+    /// O raio por onde a corda **SAI** — o de entrada para toda roldana comum.
+    ///
+    /// Porta única com a [`Self::gear`] sobre *"esta roldana é um diferencial?"*:
+    /// um `radius_out` não-positivo cai aqui para o raio de entrada, e lá para
+    /// engrenagem 1, de modo que as duas respostas não podem discordar.
+    #[must_use]
+    pub fn radius_out(&self) -> f32 {
+        match self.radius_out {
+            Some(r) if r > 0.0 => r,
+            _ => self.radius,
+        }
+    }
+
+    /// **A ENGRENAGEM desta roldana** — quanto o orçamento de corda do lado de
+    /// SAÍDA vale, em unidades do lado de ENTRADA (W4).
+    ///
+    /// `r_entra / r_sai`, e **exatamente `1.0`** para toda roldana comum: o eixo
+    /// gira uma vez, recolhe `r_entra` de um lado e paga `r_sai` do outro, então
+    /// `r_sai·Δl_entra + r_entra·Δl_sai = 0`. Normalizado pelo lado de entrada, o
+    /// trecho que sai conta `r_entra/r_sai` vezes.
+    ///
+    /// ⚠️ **`1.0` não é aproximadamente um: `x * 1.0 == x` é exato no IEEE-754**, e
+    /// é isso que torna toda cena anterior byte-idêntica — a âncora de regressão
+    /// desta wave é a mesma do W1, uma multiplicação que não move um bit.
+    ///
+    /// A vantagem mecânica que ela produz é o próprio número: puxar do lado de
+    /// entrada com força `T` segura `T·gear` do lado de saída.
+    #[must_use]
+    pub fn gear(&self) -> f32 {
+        match self.radius_out {
+            Some(out) if out > 0.0 && self.radius > 0.0 => self.radius / out,
+            _ => 1.0,
         }
     }
 }
@@ -144,8 +206,31 @@ pub struct RopeRoute {
     pub dir_a: [f32; 2],
     /// O mesmo na ponta B.
     pub dir_b: [f32; 2],
-    /// `Σ|tangentes| + Σ arcos`, em metros.
+    /// `Σ|tangentes| + Σ arcos`, em metros — **pesado pela engrenagem** de cada
+    /// trecho (W4). Sem tambor diferencial todo peso é `1.0` e isto é a soma
+    /// simples que sempre foi.
     pub length: f32,
+    /// **A engrenagem acumulada na ponta B** — `1.0` sem tambor diferencial.
+    ///
+    /// A ponta A é a REFERÊNCIA e vale sempre `1.0` por construção (a engrenagem
+    /// só começa a contar depois da primeira roldana), então publicar um
+    /// `weight_a` seria um campo que só sabe dizer um número. A vantagem mecânica
+    /// da corda **é este valor**: a tensão em B é `weight_b` vezes a de A.
+    pub weight_b: f32,
+    /// **O maior peso da rota** — `1.0` sem tambor diferencial.
+    ///
+    /// ⚠️ **Ele existe porque o W4 FALSIFICA uma premissa escrita no
+    /// [`super::pulley::PulleyDesc::break_force`]:** *"a corda é inextensível,
+    /// logo a tensão é uniforme"*. Isso vale enquanto a corda DESLIZA sobre as
+    /// roldanas — e um tambor diferencial é exatamente o lugar onde ela não
+    /// desliza: os dois lados carregam tensões diferentes, e é dessa diferença
+    /// que a vantagem mecânica nasce.
+    ///
+    /// Então o limiar de ruptura tem de ser comparado contra o lado MAIS
+    /// carregado, senão uma corda com engrenagem 5 arrebentaria com cinco vezes a
+    /// carga que o artista dimensionou, em silêncio. O máximo, e não o de B: com
+    /// dois tambores em série o pico pode estar num trecho do meio.
+    pub weight_max: f32,
 }
 
 /// Abaixo disto um trecho não tem direção definida e normalizar produziria `NaN`.
@@ -163,6 +248,15 @@ pub struct Tangent {
     pub dir: [f32; 2],
     /// `|to − from|`.
     pub len: f32,
+    /// **Quanto um metro DESTE trecho vale no orçamento da corda** (W4) —
+    /// `1.0` em toda corda sem tambor diferencial, e é isso que mantém tudo o
+    /// que já existia byte-idêntico.
+    ///
+    /// É o produto das [`RopeWheel::gear`] de todas as roldanas que a corda já
+    /// atravessou até aqui, andando de A para B. Um tambor de dois raios
+    /// **engrena** o resto da rota, e dois deles compõem — o que é o que dois
+    /// eixos em série de fato fazem.
+    pub weight: f32,
 }
 
 #[inline]
@@ -205,7 +299,15 @@ pub fn tangent(c1: [f32; 2], r1: f32, s1: i8, c2: [f32; 2], r2: f32, s2: i8) -> 
         c2[0] - f32::from(s2) * r2 * pu[0],
         c2[1] - f32::from(s2) * r2 * pu[1],
     ];
-    Some(Tangent { from, to, dir, len })
+    Some(Tangent {
+        from,
+        to,
+        dir,
+        len,
+        // O peso é da ROTA, não do par de círculos: quem o conhece é o
+        // [`route`], que anda a corda de A para B acumulando as engrenagens.
+        weight: 1.0,
+    })
 }
 
 /// O ângulo com que a corda vira ao passar por uma roda de lado `side`, em
@@ -256,9 +358,15 @@ pub fn wheel_jacobian(legs: &[Tangent], i: usize) -> Option<[f32; 2]> {
     // O trecho que CHEGA nesta roda é o `i`, o que SAI é o `i+1`.
     let inbound = legs.get(i)?;
     let outbound = legs.get(i + 1)?;
+    // ⚠️ **Cada lado entra com o PESO dele** (W4): num tambor diferencial os dois
+    // trechos valem diferente no orçamento, então a resultante no eixo é a
+    // diferença dos versores JÁ engrenados — e é isso que faz a carga do eixo de
+    // um diferencial ser a soma de duas tensões distintas, que é o que ele de
+    // fato segura. Sem tambor os dois pesos são `1.0` e isto é a subtração de
+    // sempre, ao bit.
     Some([
-        inbound.dir[0] - outbound.dir[0],
-        inbound.dir[1] - outbound.dir[1],
+        inbound.dir[0] * inbound.weight - outbound.dir[0] * outbound.weight,
+        inbound.dir[1] * inbound.weight - outbound.dir[1] * outbound.weight,
     ])
 }
 
@@ -283,25 +391,44 @@ pub fn route(
     let mut prev_c = anchor_a;
     let mut prev_r = 0.0;
     let mut prev_s = 1_i8;
+    // **A engrenagem acumulada** (W4). A ponta A é a referência, então ela parte
+    // de `1.0` e só se move ao ATRAVESSAR um tambor de dois raios.
+    let mut weight = 1.0_f32;
     for w in wheels {
-        out.push(tangent(prev_c, prev_r, prev_s, w.centre, w.radius, w.side)?);
+        let mut leg = tangent(prev_c, prev_r, prev_s, w.centre, w.radius, w.side)?;
+        leg.weight = weight;
+        out.push(leg);
+        // Daqui para a frente a corda está do outro lado do eixo: ela sai
+        // enrolando no raio de SAÍDA, e um metro dela passa a valer `gear` vezes.
+        weight *= w.gear();
         prev_c = w.centre;
-        prev_r = w.radius;
+        prev_r = w.radius_out();
         prev_s = w.side;
     }
-    out.push(tangent(prev_c, prev_r, prev_s, anchor_b, 0.0, 1)?);
+    let mut tail = tangent(prev_c, prev_r, prev_s, anchor_b, 0.0, 1)?;
+    tail.weight = weight;
+    out.push(tail);
 
     let mut length = 0.0;
+    let mut weight_max = 1.0_f32;
     for t in out.iter() {
-        length += t.len;
+        length += t.len * t.weight;
+        weight_max = weight_max.max(t.weight);
     }
     // Os arcos: cada roda vive ENTRE dois trechos, e o que ela acrescenta é o
     // pedaço de circunferência que a corda abraça.
+    //
+    // ⚠️ **Pelo raio e pelo peso de ENTRADA**, e a escolha é declarada: a corda
+    // abraça o tambor em que ela CHEGOU. Num diferencial o enlace se reparte
+    // entre os dois diâmetros, mas o que ele acrescenta é quase constante e o
+    // `L0` o absorve — o que move a carga são os trechos LIVRES, e esses estão
+    // pesados exatamente. Numa roldana comum os dois raios e os dois pesos são o
+    // mesmo, então isto é o arco de sempre, ao bit.
     for (i, w) in wheels.iter().enumerate() {
         if w.radius <= 0.0 {
             continue;
         }
-        length += w.radius * turn_angle(out[i].dir, out[i + 1].dir, w.side).abs();
+        length += out[i].weight * w.radius * turn_angle(out[i].dir, out[i + 1].dir, w.side).abs();
     }
 
     // As duas pontas: o versor aponta do ponto de tangência PARA a âncora, que é
@@ -312,6 +439,8 @@ pub fn route(
         dir_a: [-first.dir[0], -first.dir[1]],
         dir_b: [last.dir[0], last.dir[1]],
         length,
+        weight_b: last.weight,
+        weight_max,
     })
 }
 

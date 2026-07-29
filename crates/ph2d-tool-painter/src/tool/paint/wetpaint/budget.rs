@@ -29,8 +29,8 @@
 //! AIMD sobre o `dt` que o próprio `on_tick` recebe. ⚠️ O `Tool` é contrato **CONGELADO** (§6), então
 //! não há parâmetro novo a pedir ao shell: o período do frame É o sinal disponível.
 //!
-//! - **o período** = o PISO do `dt` observado (com decaimento lento para cima) — com vsync ele é o
-//!   intervalo do monitor, seja 60 Hz ou 144. É a régua, e ela é MEDIDA.
+//! - **a régua** = [`WET_FRAME_REFERENCE_MS`], o quadro de 60 fps que o app tem como alvo — uma
+//!   referência DECLARADA, e a razão de não ser medida está na seção seguinte.
 //! - **cresce** devagar ([`WET_BUDGET_GROW_MS`]) enquanto o frame cabe em `período + folga`;
 //! - **encolhe** pela metade quando estoura **E a culpa é da água** — ver abaixo;
 //! - **teto** em [`WET_BUDGET_MAX_FRACTION`] do período, que é o que impede a água de comer o quadro
@@ -63,6 +63,31 @@
 //! ⚠️ **O trade continua sendo o do `max_substeps` da física:** sob carga a água simula MENOS tempo em
 //! vez de derrubar o frame. O que mudou é que agora *"sob carga"* é uma MEDIÇÃO do frame, não um
 //! palpite.
+//!
+//! # ⚠️ Por que a régua é DECLARADA e não medida — os dois estimadores que falharam
+//!
+//! Tentei duas vezes derivar o período do frame a partir do `dt`, e cada um falhou por um motivo
+//! **oposto** ao do outro:
+//!
+//! - **EWMA do `dt`** → um frame lento por culpa de outro inquilino LEVANTA a régua, e o teto junto
+//!   (`0,6 × 100 ms` = licença para a água comer 60 ms de quadro). Pior: com a água rodando, a maioria
+//!   dos frames contém um passo, então a média inclui o **nosso próprio custo** e o laço é
+//!   auto-realizável.
+//! - **`min` do `dt`** → uma **catraca de mão única**. E a premissa dela era falsa: `dt` abaixo do
+//!   vsync **não é espúrio neste app**, é comum (dois frames em sequência depois de um evento dão
+//!   `dt ≈ 1 ms`). Um único deles pregava a régua no piso ⇒ teto ≈ 2 ms ⇒ **a água a 4 Hz num app com
+//!   14 ms de folga ociosa por frame**, que é exatamente o que o smoke do Enio mediu
+//!   (`agua: sim media 28,70ms x8` em 120 frames).
+//!
+//! O sinal disponível (`dt` sozinho, porque o `Tool` é contrato congelado) **não separa** *"o display
+//! mudou de taxa"* de *"este frame foi rápido/lento por outro motivo"*. Então a régua deixou de ser
+//! uma inferência: ela é o quadro de **60 fps que o app tem como alvo**.
+//!
+//! ⚠️ **A limitação, nomeada em vez de escondida:** num display de 144 Hz a água pode tomar 16,6 ms de
+//! um quadro de 6,9 ⇒ **enquanto há água viva o app roda a ~60 fps**, não a 144. É o mesmo trade que o
+//! Enio declarou três vezes (a água antes dos últimos quadros por segundo), agora também no eixo do
+//! monitor. Levantá-lo exige o shell CONTAR o período do display para o tool — parâmetro novo no
+//! `Tool`, ou seja **§6 + ADR**.
 //!
 //! ⚠️ **As três metades se cobrem mutuamente, e por isso cada uma tem gate PRÓPRIO** — a primeira
 //! rodada de mutação deixou duas passarem justamente por isso: o crescimento é gateado sob `dt`
@@ -106,12 +131,9 @@ const WET_FRAME_SLACK_MS: f32 = 8.0;
 /// muitíssimo mais devagar"* (log: `tool-tick=17.31ms` numa amostra e `0.00` em todas as outras).
 /// 0,05 dá memória de ~20 frames — um passo isolado quase não a move, carga real move.
 const WET_DT_EWMA: f32 = 0.05;
-/// Decaimento do PISO do período, por frame. O período é o `min` do `dt` observado — um frame lento
-/// por culpa de outro inquilino não pode movê-lo —, e este creep para cima (0,05%/frame ≈ 3%/s) é o
-/// que o deixa seguir um display que de fato mudou de taxa.
-const WET_PERIOD_DECAY: f32 = 1.0005;
-/// Piso do período: abaixo disto seria um monitor de 500 Hz, e mais provavelmente um `dt` espúrio.
-const WET_PERIOD_MIN_MS: f32 = 2.0;
+/// **A RÉGUA: o quadro de 60 fps que o app tem como alvo.** Declarada, não inferida — ver a seção
+/// *"Por que a régua é DECLARADA"* no topo deste módulo, com os dois estimadores que falharam.
+const WET_FRAME_REFERENCE_MS: f32 = 1000.0 / 60.0;
 /// Teto da DÍVIDA (ms). Sem ele um passo patológico congelaria a água por dezenas de frames.
 ///
 /// ⚠️ É **fundo**, não conforto: enquanto a dívida não bate nele o custo amortizado por frame é
@@ -128,8 +150,6 @@ pub(in crate::tool::paint) struct SimBudget {
     /// duas versões daquele gate feitas com relógio (Hz absolutos, e depois uma razão entre janelas)
     /// reprovaram sob a suíte carregada.
     pub(in crate::tool::paint) per_frame_ms: f32,
-    /// O período NATURAL do app (ms) — a régua, MEDIDA em vez de assumida.
-    period_ms: f32,
     /// EWMA do `dt` e do `dt` SEM a água: a decisão é sobre carga sustentada, e um passo atômico
     /// estoura o quadro que o contém por construção.
     dt_avg_ms: f32,
@@ -154,23 +174,16 @@ impl SimBudget {
             per_frame_ms: Self::SEED_MS,
             // 60 Hz como semente; o controlador corrige na primeira dúzia de ticks a partir do `dt`
             // REAL, seja qual for o monitor.
-            period_ms: 1000.0 / 60.0,
-            dt_avg_ms: 1000.0 / 60.0,
-            non_sim_avg_ms: 1000.0 / 60.0,
+            dt_avg_ms: WET_FRAME_REFERENCE_MS,
+            non_sim_avg_ms: WET_FRAME_REFERENCE_MS,
             last_tick_ms: 0.0,
         }
     }
 
     /// Abre o frame: amostra o período, move o orçamento e credita.
     pub(in crate::tool::paint) fn open_frame(&mut self, dt_ms: f32) {
-        // O período é o PISO do `dt`: com vsync ele é o intervalo do monitor, e um frame lento por
-        // culpa de outro inquilino (o `stamps` do log) não o move. O creep para cima é o que o
-        // deixa seguir um display que de fato mudou.
-        self.period_ms = (self.period_ms * WET_PERIOD_DECAY)
-            .min(dt_ms.max(WET_PERIOD_MIN_MS))
-            .max(WET_PERIOD_MIN_MS);
-        let target = self.period_ms + WET_FRAME_SLACK_MS;
-        let ceiling = self.period_ms * WET_BUDGET_MAX_FRACTION;
+        let target = WET_FRAME_REFERENCE_MS + WET_FRAME_SLACK_MS;
+        let ceiling = WET_FRAME_REFERENCE_MS * WET_BUDGET_MAX_FRACTION;
         // A decisão é sobre carga SUSTENTADA: um passo é atômico e custa mais que um quadro, então o
         // frame que o contém estoura sempre. `dt` instantâneo aqui faz o recuo disparar em todo
         // passo e o orçamento catracar até o piso.
@@ -193,7 +206,7 @@ impl SimBudget {
             // ⚠️ **Crescer, não "segurar"** — a primeira versão segurava, e segurar num piso é ficar
             // preso nele para sempre: o diagnóstico mostrou o orçamento parado em **1,04 ms** por 80
             // frames depois de três recuos que a transição do EWMA disparou. Quem protege o frame
-            // aqui é o TETO, que é do período; o recuo é só para quando a água é a culpada.
+            // aqui é o TETO (a referência de quadro); o recuo é só para quando a água é a culpada.
             self.per_frame_ms = (self.per_frame_ms + WET_BUDGET_GROW_MS).min(ceiling);
         }
         // O teto do crédito é UM frame de orçamento: um bucket que entesoura devolve exatamente a
@@ -252,6 +265,42 @@ mod tests {
             dt = (OVERHEAD_MS + tick).max(VSYNC_MS);
         }
         b.per_frame_ms
+    }
+
+    /// **UM ÚNICO FRAME RÁPIDO NÃO PODE PREGAR A RÉGUA NO PISO** — o quinto smoke.
+    ///
+    /// Log do Enio (2026-07-29), com o split do tick já no lugar:
+    ///
+    /// ```text
+    /// tool-tick: media 5.44ms pico 49.53ms em 45/120 frames
+    /// agua: sim media 28.70ms pico 47.65ms x8 | composite media 1.91ms x8
+    /// ```
+    ///
+    /// **`x8` — oito passos em 120 frames, 4 Hz.** E `28,70 × 8 + 1,91 × 8` fecha exatamente o total
+    /// do tick, então os outros 37 ticks não fizeram nada: o orçamento estava em ~1,9 ms, quase no
+    /// piso, num app a 60 fps com 14 ms de folga ociosa por frame.
+    ///
+    /// A causa é a régua. Ela era o `min` do `dt` — escolhido para um frame lento não a levantar — e
+    /// isso a fez uma **catraca de mão única**: um `dt` pequeno espúrio (o primeiro frame, um
+    /// redraw duplo, um resize) a pregava no piso, e o creep de 0,05%/frame levaria **~70 segundos**
+    /// para voltar de 2 a 16,6 ms. O teto é a régua ⇒ orçamento ≈ 2 ms ⇒ água a 4 Hz.
+    #[test]
+    fn one_fast_frame_does_not_pin_the_ruler_to_the_floor() {
+        const VSYNC_MS: f32 = 1000.0 / 60.0;
+        let mut b = SimBudget::new();
+        // Um único frame espúrio de 1 ms — e depois um segundo inteiro de vsync limpo.
+        b.open_frame(1.0);
+        b.note_tick(0.0);
+        for _ in 0..60 {
+            b.open_frame(VSYNC_MS);
+            b.note_tick(0.0);
+        }
+        assert!(
+            b.per_frame_ms >= 8.0,
+            "um frame de 1 ms pregou a regua: orcamento {:.2} ms depois de 60 frames de vsync \
+             limpo (piso 8) — a agua fica a ~4 Hz num app com 14 ms de folga por frame",
+            b.per_frame_ms
+        );
     }
 
     /// **UM PASSO ATÔMICO NÃO CATRACA O ORÇAMENTO ATÉ O PISO** — o regime que o Enio reportou três

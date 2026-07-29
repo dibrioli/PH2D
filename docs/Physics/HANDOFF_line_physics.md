@@ -6443,7 +6443,7 @@ relação nenhuma.
 ombro estático, uma perna com joelho limitado), cena PAUSADA, painel aberto. Os dez passos comparam
 os cinco modos lado a lado; os números da mensagem saem de `probe_smoke_55`.
 
-## W-Pulley W3 — A TALHA: a roldana montada num corpo (2026-07-28, cena `=61`, pendente de smoke)
+## W-Pulley W3 — A TALHA: a roldana montada num corpo (2026-07-28, cena `=61`, **smoke OK**)
 
 O `ratio` da v1 prometia vantagem mecânica e **descrevia uma corda que não existe**: numa corda
 única sobre roldanas livres a tensão é **uniforme**, então os dois corpos sentem a MESMA força e a
@@ -6545,8 +6545,41 @@ minuto em que nasceram, e foi RESPONDIDO (um conta-gotas não é uma caixa de n�
   alça honesta editaria o `local`, e é a mesma conversa que a 2ª alça de âncora do joint teve.
 - **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end` não zera a
   velocidade do ponto, só a massa) — não medido, não gateado.
-- **A folga do desenho é de um sub-passo** (~8–19 mm a 3 m/s): a arena é refrescada no topo do
-  sub-passo e o rapier integra o corpo depois dele.
+
+### O TREMOR DO GIZMO — fechado no smoke (2026-07-28, `e71e6c31e`)
+
+Enio, no smoke da cena 61: *"Simulação correta. Apenas o gizmo da polia tremeu algumas vezes de forma
+incorreta mas sem afetar a simulação (só o desenho do gizmo tremeu)"*.
+
+**Mecanismo, medido antes de afirmado.** A arena é **reinstalada por `prepare` a cada dispatch** com
+o centro de uma roldana montada derivado da pose de **REPOUSO** (o único que a colheita do ECS
+conhece), e o único lugar que a punha na pose **VIVA** era o laço de sub-passos, **dentro do
+`step`**. Um quadro que não deve tique nenhum — o caso normal a 60 Hz de tique com o monitor à frente
+— publicava a roldana **onde ela foi autorada**: sonda sobre um bloco que viaja, **salto de 1,2683 m**
+entre um quadro e o seguinte, crescendo com a distância percorrida.
+
+⚠️ **O solver nunca leu esse número.** É por isso que a simulação estava correta enquanto o desenho
+tremia — e é a assinatura exata de uma lista que o solver refresca e o pintor consome.
+
+**Fix:** `PhysicsWorld::refresh_mounted_wheels()` (porta pública nova em `world/pulley.rs`) chamada
+uma vez no **FIM** de `dispatch_with_scene`, **incondicional**. ⚠️ **Aqui, e não junto da
+instalação** — este é o único ponto por onde as **QUATRO** saídas passam (replay · laço de tiques ·
+`settle` pausado · o quadro sem tique), então a arena publicada descreve onde as roldanas **ESTÃO**
+sem ninguém ter de enumerar os ramos; nos ramos que dão passo é idempotente com o `step`.
+
+⚠️ **Fecha de carona a folga de um SUB-PASSO** que esta lista trazia como aberta: o laço refresca
+**antes** de aplicar o passe (é o que o solver precisa), então ao fim do `step` a arena descrevia o
+**começo do último sub-passo**. Medido **4,8 → 22,7 mm** (crescendo com a velocidade) → **0,00000 m**.
+
+**c9 BYTE-IDÊNTICO** (`52767c92f7…`, 94 corpos, debug ≡ release) — a prova de que é readout, não
+solver. Nenhum schema, nenhum id, nenhum contrato congelado (`PROJECT_SCHEMA` 44, registro 21).
+
+**3 gates + 2 sondas, 3 mutações, 3 sangram:** o salto entre quadros (M1/M2 ⇒ 1,2683 m) · o eixo é o
+do corpo **ao fim do tique**, que é o que pina o fim do atraso · arrastar pausado leva o eixo no
+MESMO quadro. ⚠️ A 3ª mutação é a de DESENHO — mover a chamada para junto da instalação **cura o
+quadro sem tique e reintroduz o atraso** (0,0227 m); sem ela o lugar da chamada não estaria pinado.
+⚠️ E o gate do arrasto pausado fica **VERDE** em M1/M2 de propósito: pausado a colheita já derivava o
+número certo, então cada gate cobre a sua camada ([[feedback_layered_defenses_need_per_layer_gates]]).
 
 ### Smoke
 

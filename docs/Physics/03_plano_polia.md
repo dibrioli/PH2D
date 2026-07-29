@@ -1,7 +1,8 @@
 # A POLIA — plano de redesenho
 
-> Report do Enio, 2026-07-28, com foto. Estado: **W0/W1/W2 fechados e smokados**;
-> **W3 fechado, pendente de smoke** (cena 61).
+> Report do Enio, 2026-07-28, com foto. Estado: **W0/W1/W2/W3 fechados e smokados**
+> (o W3 é a cena 61; o smoke aprovou a simulação e achou o **tremor do gizmo**, que
+> fechou — §W3, e era só-desenho).
 > O tracker da linha é [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md); o mapa de
 > waves é [`00_plano_waves.md`](00_plano_waves.md). Este doc é o **porquê** do redesenho.
 
@@ -300,7 +301,7 @@ eixo que cede a **52,4 N** enquanto a corda nem sente.
   levantando as roldanas; o que uma polia REAL faz ali é a carga encostar na
   roda, que é contato, não corda.
 
-### W3 — a TALHA (FECHADA, pendente de smoke)
+### W3 — a TALHA (FECHADA e SMOKADA)
 
 `RopeWheel` ganhou `body`/`local` e uma roldana pode estar montada num **corpo que
 se move**: a *cadernal móvel*. O corpo passa a ser sustentado por DOIS ramos da
@@ -351,6 +352,43 @@ Cena de smoke: **`PH2D_PHYSICS_SMOKE=61`** — dois rigs com a MESMA carga (2 kg
 MESMO contrapeso (1 kg): a talha segura (**0,008 m** em 2 s), o controle 1:1 cai
 **3,15 m**.
 
+### O TREMOR DO GIZMO — fechado no smoke (2026-07-28)
+
+O smoke da cena 61 aprovou a simulação e reprovou o desenho: *"o gizmo da polia
+tremeu algumas vezes de forma incorreta mas sem afetar a simulação"* (Enio). Era
+só-desenho, e a **forma** do defeito é a razão.
+
+A arena de roldanas é **reinstalada por `prepare` a cada dispatch**, com o centro
+de uma roldana montada derivado da pose de **REPOUSO** — o único que a colheita do
+ECS conhece. O único lugar que a punha na pose **VIVA** era o laço de sub-passos,
+**dentro do `step`**. Um quadro mais rápido que o tique — o caso normal a 60 Hz de
+tique com o monitor à frente — não dá passo nenhum, e publicava a roldana **onde
+ela foi autorada**. Medido num bloco que viaja: salto de **1,2683 m** entre um
+quadro e o seguinte, crescendo com a distância percorrida.
+
+⚠️ **O solver nunca leu esse número** — quem o lê é o pintor, e é exatamente isso
+que se espera de uma lista que o solver refresca e o desenho consome.
+
+**Fix:** `PhysicsWorld::refresh_mounted_wheels()` chamada uma vez no **fim** de
+`dispatch_with_scene`, **incondicional**. Aqui, e não junto da instalação, porque
+este é o único ponto por onde as **quatro** saídas passam (replay · laço de tiques
+· `settle` pausado · o quadro que não deve tique nenhum): a arena publicada
+descreve onde as roldanas **estão** sem ninguém ter de enumerar os ramos. Nos
+ramos que dão passo é idempotente com o que o `step` já fez.
+
+⚠️ **E ele fecha, de carona, a folga de um SUB-PASSO que este plano listava como
+aberta.** O laço refresca **antes** de aplicar o passe (é o que o solver precisa),
+então ao fim do `step` a arena descrevia a pose do **começo do último sub-passo**.
+Medido: **4,8 mm a 22,7 mm**, crescendo com a velocidade → **0,00000 m**.
+
+**c9 byte-idêntico** (`52767c92f7…`, 94 corpos, debug ≡ release) — a prova de que
+é readout e não solver. Nenhum schema, nenhum id, nenhum contrato congelado.
+
+3 gates (o salto entre quadros · o eixo é o do corpo ao fim do tique · arrastar
+pausado leva o eixo no mesmo quadro) + 2 sondas. **3 mutações, 3 sangram** —
+inclusive **mover a chamada para junto da instalação**, que cura o quadro sem
+tique e reintroduz o atraso do sub-passo (0,0227 m).
+
 ### Aberto no W3, nomeado
 
 - **O eixo não tem alça própria no canvas.** O dot de centro edita o `Transform` da
@@ -359,5 +397,3 @@ MESMO contrapeso (1 kg): a talha segura (**0,008 m** em 2 s), o controle 1:1 cai
   conversa que a 2ª alça de âncora do joint teve.
 - **Uma roldana montada num corpo KINEMATIC vira um guincho de graça** (o `end`
   não zera a velocidade do ponto, só a massa) — não medido, não gateado.
-- **A folga do desenho é de um sub-passo** (~8–19 mm a 3 m/s): a arena é refrescada
-  no topo do sub-passo e o rapier integra o corpo depois dele.

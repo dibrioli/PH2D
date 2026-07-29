@@ -464,7 +464,7 @@ pub(super) fn draw(
     // laço percorre pares — a mesma forma que o `outlines` já usa.
     // A BANDA do gesto de criar, ANTES de tudo e SEM o gate de `show`: ela é o
     // feedback de algo que o artista está fazendo agora.
-    if let Some(band) = super::physics_overlay_joints::draw_band(join_band, camera, window) {
+    if let Some(band) = super::physics_overlay_gesture::draw_band(join_band, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
@@ -477,11 +477,11 @@ pub(super) fn draw(
     // gate de `show`). Depois da banda porque as duas nunca coexistem — criar um
     // joint é gesto de repouso, pegar um corpo é de play — e a ordem entre elas
     // só teria de ser decidida se algum dia coexistissem.
-    if let Some(path) = super::physics_overlay_joints::draw_grab(grab, camera, window) {
+    if let Some(path) = super::physics_overlay_gesture::draw_grab(grab, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(Color::new(super::physics_overlay_joints::GRAB_RGBA)),
+            &Brush::Solid(Color::new(super::physics_overlay_gesture::GRAB_RGBA)),
             None,
             &path,
         );

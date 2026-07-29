@@ -264,8 +264,16 @@ impl PhysicsBridge {
                 // outros tipos. `broken` congela o pico na carga que cruzou —
                 // é para isso que o leitor troca `load` por `peak`.
                 broken: !self.world.pulley_is_intact(r.desc.id),
-                // Uma polia inativa não é sequer instalada, então toda view
-                // que existe descreve uma corda que está segurando.
+                // Uma polia inativa não é sequer instalada, então toda view que
+                // existe descreve uma corda que o artista ARMOU.
+                //
+                // ⚠️ **Isto NÃO é o mesmo que "uma corda que está segurando"**, e
+                // dizê-lo aqui era falso: o passe de impulso PULA uma corda cuja
+                // rota não resolve (`pulley.rs:310`, um `continue`), e nada disso
+                // aparece neste campo. Medido: a carga cai a −1,237 m contra
+                // −0,460 do controle, com a view dizendo `active: true`. Quem
+                // responde *"está segurando?"* é o desenho, pela rota que ele já
+                // computa (`pulley_marks`), e a resposta é a cor.
                 active: true,
                 // A TENSÃO da corda, em newtons — `λ/dt` do passe próprio dela.
                 // ⚠️ **Torque zero não é lacuna:** uma corda não transmite

@@ -309,7 +309,15 @@ impl crate::App {
                  sozinho ({l0:.4} -> {l0_added:.4} m). Nesta cena a roldana nova cai\n    \
                  quase sobre a linha da corda, entao o Play muda pouco -- o que se\n    \
                  confere aqui e que ele nao TRANCA (maior salto {jump:.4} m, o mesmo\n    \
-                 da cena intocada).",
+                 da cena intocada).\n\n  \
+               E A CORDA QUE PARA DE SEGURAR -- arraste o CENTRO de 'Geared Rope\n  \
+               Drum' para cima da ponta de baixo da corda, ate a roldana ENGOLIR a\n  \
+               ancora: a rota fica impossivel (uma tangente de um ponto DENTRO do\n  \
+               circulo nao existe), o passe de impulso pula a corda, e ela tem de\n  \
+               ficar VERMELHA -- a mesma cor de um joint rompido, sem o estouro, e\n  \
+               dita reta em vez de roteada. Antes desta wave ela seguia AMBAR, que\n  \
+               e o desenho de uma corda que funciona: o unico sinal na tela era a\n  \
+               carga caindo. Arraste de volta e o ambar volta com a simulacao.",
             load = LOAD_MASS,
             counter = COUNTER_MASS,
             r_in = R_IN,

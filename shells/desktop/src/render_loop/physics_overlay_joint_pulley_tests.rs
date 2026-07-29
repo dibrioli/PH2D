@@ -246,3 +246,124 @@ fn a_differential_drum_draws_both_of_its_circles() {
         "os dois anéis estão em {drum:?}; os raios 0,125 e 0,50 pedem razão 0,25"
     );
 }
+
+/// **Uma corda cuja ROTA não resolve veste a cor do NÃO-SEGURA** (2026-07-29).
+///
+/// Medido: degenerar a geometria (a roldana engolindo a âncora) faz o passe de
+/// impulso PULAR a corda — a carga cai a −1,237 m contra −0,460 do controle — e o
+/// desenho era uma reta ÂMBAR, que é exactamente a figura de uma corda que
+/// funciona. O único sinal na tela era a carga caindo.
+///
+/// ⚠️ **Duas metades, e a segunda é o CONECTOR:** a função que computa a rota
+/// devolve o fato (`pulley_marks -> bool`), e o laço de pintura o usa para escolher
+/// a cor. Gatear só a primeira deixaria o fato correto e a tela igual — a forma
+/// exata do defeito que esta linha já pagou duas vezes.
+///
+/// Mutação: `v.broken || !acting` de volta a `v.broken` ⇒ a corda degenerada volta
+/// ao âmbar e a 2ª metade fica VERMELHA (0 elementos na cor de ruptura).
+#[test]
+fn a_rope_that_cannot_route_wears_the_not_holding_colour() {
+    use super::super::physics_overlay_joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
+
+    // A MESMA montagem do elevador, com a 1a roldana ENGOLINDO a âncora A: a
+    // tangente de um ponto DENTRO do círculo não existe, e a rota inteira cai.
+    let (v, mut wheels) = elevator();
+    wheels[0].centre = v.anchor_a;
+    wheels[0].radius = 1.0;
+    let mut segs = Vec::new();
+    assert!(
+        rope_route::route(v.anchor_a, v.anchor_b, &wheels, &mut segs).is_none(),
+        "a fixture não degenerou a rota — o gate mediria uma corda sadia"
+    );
+
+    // (1) A função que COMPUTA a rota devolve o fato.
+    let (cam, win) = (camera(), window());
+    let (mut span, mut glyph) = (BezPath::new(), BezPath::new());
+    let routed = pulley_marks(
+        &v,
+        &wheels,
+        &[0.0; 2],
+        Point::new(0.0, 0.0),
+        Point::new(10.0, 0.0),
+        &cam,
+        win,
+        &mut span,
+        &mut glyph,
+    );
+    assert!(!routed, "pulley_marks disse que roteou uma rota degenerada");
+
+    // (2) E o laço de pintura A HONRA — o conector.
+    //
+    // ⚠️ **Pelo `joint_marks` com a arena DEGENERADA**, não pelo helper `marks`:
+    // ele crava a arena SADIA compartilhada, e a 1a versão deste gate nasceu
+    // vermelha exactamente por isso — a metade que mede a cor estava pintando uma
+    // corda que roteia. Fixture que não contém o fenômeno.
+    let painted = super::super::physics_overlay_joints::joint_marks(
+        true,
+        std::slice::from_ref(&v),
+        &wheels,
+        &[0.0; 2],
+        super::joint_tests::G,
+        &cam,
+        win,
+    );
+    let broken_els: usize = painted
+        .iter()
+        .filter(|(_, c)| *c == JOINT_BROKEN_RGBA)
+        .map(|(p, _)| p.elements().len())
+        .sum();
+    let amber_els: usize = painted
+        .iter()
+        .filter(|(_, c)| *c == JOINT_RGBA)
+        .map(|(p, _)| p.elements().len())
+        .sum();
+    assert!(
+        broken_els > 0,
+        "a corda degenerada não pintou nada na cor do não-segura"
+    );
+    assert!(
+        amber_els == 0,
+        "a corda degenerada ainda pinta {amber_els} elementos no âmbar de *isto está \
+         segurando*"
+    );
+}
+
+/// **E a corda SADIA continua âmbar** — o irmão de presença.
+///
+/// Sem ele, colorir TODA polia de vermelho passaria no gate acima.
+#[test]
+fn a_rope_that_routes_stays_in_the_holding_colour() {
+    use super::super::physics_overlay_joints::{JOINT_BROKEN_RGBA, JOINT_RGBA};
+
+    let (v, wheels) = elevator();
+    let mut segs = Vec::new();
+    assert!(
+        rope_route::route(v.anchor_a, v.anchor_b, &wheels, &mut segs).is_some(),
+        "a fixture do controle não roteia"
+    );
+    // Pela MESMA porta e com a MESMA arena do irmão acima — só a geometria muda.
+    let painted = super::super::physics_overlay_joints::joint_marks(
+        true,
+        std::slice::from_ref(&v),
+        &wheels,
+        &[0.0; 2],
+        super::joint_tests::G,
+        &camera(),
+        window(),
+    );
+    let amber: usize = painted
+        .iter()
+        .filter(|(_, c)| *c == JOINT_RGBA)
+        .map(|(p, _)| p.elements().len())
+        .sum();
+    let broken: usize = painted
+        .iter()
+        .filter(|(_, c)| *c == JOINT_BROKEN_RGBA)
+        .map(|(p, _)| p.elements().len())
+        .sum();
+    assert!(amber > 0, "a corda sadia não pintou nada no âmbar");
+    assert!(
+        broken == 0,
+        "a corda sadia pintou {broken} elementos na cor do não-segura"
+    );
+}

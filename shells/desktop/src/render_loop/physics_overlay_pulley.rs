@@ -28,6 +28,11 @@ use super::physics_overlay_joints::JOINT_DOT_PX;
 ///
 /// O raio é desenhado no espaço do MUNDO (ele é uma medida da cena e escala com
 /// o zoom, ao contrário do anel de uma âncora, que é uma marca de tela).
+///
+/// **Devolve se a corda ROTEOU** — e é ele que decide a cor lá em cima. A rota é
+/// computada aqui de qualquer jeito (é ela que dá o caminho a desenhar), então
+/// deixar o fato SAIR desta função é o que impede uma segunda pergunta: quem pinta
+/// e quem colore leem a mesma resposta, da mesma chamada.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn pulley_marks(
     v: &JointView,
@@ -39,7 +44,7 @@ pub(super) fn pulley_marks(
     window: WindowSize,
     span: &mut BezPath,
     glyph: &mut BezPath,
-) {
+) -> bool {
     let start = v.wheel_start as usize;
     let wheels = arena
         .get(start..start + v.wheel_count as usize)
@@ -112,12 +117,21 @@ pub(super) fn pulley_marks(
             }
         }
         span.line_to(b);
+        true
     } else {
         // Rota degenerada — a mesma recusa do solver, e ali a corda de fato não
         // está segurando. Uma linha reta diz *há um vínculo aqui* sem afirmar
         // uma geometria que não existe.
+        //
+        // ⚠️ **E ela sai na cor do NÃO-SEGURA** (o `false` abaixo). Uma reta âmbar
+        // é exatamente o desenho de uma CORDA que funciona, então a única coisa na
+        // tela era a carga caindo — medido: −1,237 m contra −0,460 do controle, sem
+        // erro, sem aviso. O vermelho já está definido no vocabulário desta linha
+        // como *isto não está segurando por acidente*, que é precisamente o caso:
+        // ninguém desarmou nada, a geometria ficou impossível.
         span.move_to(a);
         span.line_to(b);
+        false
     }
 }
 

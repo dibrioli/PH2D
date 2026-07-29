@@ -133,7 +133,19 @@ pub(super) fn joint_marks(
         // duas perguntas na fonte, porque as duas escrevem a MESMA flag do
         // rapier; sem essa separação desarmar um joint o pintaria vermelho, com
         // estouro de ruptura.
-        let (main, dim) = if v.broken {
+        //
+        // ⚠️ **E uma corda cuja ROTA não resolve veste o mesmo vermelho** — ela
+        // também *não está segurando por acidente*. O `acting` sai da MESMA
+        // chamada que desenha a corda (`pulley_marks` já computa a rota para achar
+        // o caminho), então cor e desenho não podem discordar. É por isso que o
+        // `kind_marks` roda ANTES da escolha de cor, e não depois: a ordem em que
+        // as marcas são EMPILHADAS não muda (posse embaixo, span e glifo em cima).
+        //
+        // Distinguir do rompido é o que o ESTOURO faz: um joint que partiu ganha o
+        // `break_burst`; uma rota impossível não, e a corda dela sai reta em vez de
+        // roteada. Mesma cor, duas figuras.
+        let (span, glyph, acting) = kind_marks(v, wheels, spins, a, b, g_screen, camera, window);
+        let (main, dim) = if v.broken || !acting {
             (JOINT_BROKEN_RGBA, JOINT_BROKEN_DIM_RGBA)
         } else if !v.active {
             (JOINT_OFF_RGBA, JOINT_OFF_DIM_RGBA)
@@ -141,7 +153,6 @@ pub(super) fn joint_marks(
             (JOINT_RGBA, JOINT_DIM_RGBA)
         };
         out.push((ownership_lines(v, a, b, camera, window), dim));
-        let (span, glyph) = kind_marks(v, wheels, spins, a, b, g_screen, camera, window);
         out.push((span, main));
         out.push((glyph, main));
         if v.broken {
@@ -271,65 +282,6 @@ fn break_burst(a: Point, b: Point) -> BezPath {
 /// dizia onde ele PARARIA.
 pub(super) const JOINT_GHOST_RGBA: [f32; 4] = [0.98, 0.75, 0.25, 0.28]; // LITERAL-COLOR-OK: overlay de joint (fantasma)
 
-/// **A BANDA ELÁSTICA do gesto de criar** (W-J4) — âmbar, tracejada, do ponto do
-/// press até o cursor.
-///
-/// ⚠️ **Desenhada mesmo com o overlay DESLIGADO** (tecla `B`), ao contrário de
-/// todo o resto deste módulo: os outros traços são ANOTAÇÃO de coisas que
-/// existem (*onde está o collider, até onde vai o limite*) e o artista escolhe
-/// vê-los; esta é o **feedback de um gesto em andamento**, e um gesto que não se
-/// vê é um gesto que parece não ter começado.
-///
-/// Tracejada porque o joint ainda **não existe** — a linha de posse sólida é a de
-/// um vínculo real (W-J1), e usar o mesmo traço aqui prometeria que já há um.
-pub(super) fn draw_band(
-    band: Option<([f32; 2], [f32; 2])>,
-    camera: &Camera2d,
-    window: WindowSize,
-) -> Option<BezPath> {
-    let (from, to) = band?;
-    let a = screen_of(camera, window, from);
-    let b = screen_of(camera, window, to);
-    let mut p = BezPath::new();
-    // Um anel no ponto de origem: ele é a ÂNCORA que vai nascer ali, e sem ele o
-    // press não deixa marca nenhuma até o cursor andar.
-    ring_px(a, JOINT_DOT_PX * 2.0, &mut p);
-    dashed(a, b, &mut p);
-    Some(p)
-}
-
-/// **A MÃO** (W-Grab) — verde-limão, a única cor livre na paleta deste overlay
-/// (verde=estático · ciano=dinâmico · violeta=kinematic/torque · magenta=sensor ·
-/// âmbar=joint · vermelho=ruptura · branco=contato · laranja=força).
-pub(super) const GRAB_RGBA: [f32; 4] = [0.55, 1.0, 0.30, 0.95]; // LITERAL-COLOR-OK: overlay da mão
-
-/// **A mola da mão**, do cursor até o ponto de pega — desenhada como o **ZIGZAG**
-/// de mola, com um anel no ponto pego.
-///
-/// ⚠️ **A FORMA diz o mecanismo e a COR diz de quem é:** o artista já aprendeu no
-/// W-J1 que zigzag é mola, e a mão **é** uma mola (uma `SpringJoint` de verdade
-/// para uma âncora invisível no cursor). Um traço reto diria *"isto é rígido"*, o
-/// que é exactamente a coisa errada a prometer — ela cede contra parede, e é isso
-/// que a distingue de um teleporte.
-///
-/// ⚠️ **Desenhada mesmo com o overlay DESLIGADO**, pela mesma razão da
-/// [`draw_band`]: é feedback de um gesto em andamento, não anotação.
-pub(super) fn draw_grab(
-    grab: Option<([f32; 2], [f32; 2])>,
-    camera: &Camera2d,
-    window: WindowSize,
-) -> Option<BezPath> {
-    let (cursor, hold) = grab?;
-    let a = screen_of(camera, window, cursor);
-    let b = screen_of(camera, window, hold);
-    let mut p = spring_zigzag(a, b);
-    // O anel marca ONDE no corpo a mão pegou — o ponto que a mola persegue. Sem
-    // ele, um clique sem arrasto (que não move nada, de propósito) não deixaria
-    // marca nenhuma, e o gesto pareceria não ter começado.
-    ring_px(b, JOINT_DOT_PX * 2.0, &mut p);
-    Some(p)
-}
-
 /// A silhueta de B na pose que `limit` permite, ou `None` quando não há arrasto
 /// de limite em voo / o corpo B não tem collider.
 ///
@@ -417,9 +369,15 @@ fn kind_marks(
     g_screen: (f64, f64),
     camera: &Camera2d,
     window: WindowSize,
-) -> (BezPath, BezPath) {
+) -> (BezPath, BezPath, bool) {
     let mut span = BezPath::new();
     let mut glyph = BezPath::new();
+    // **Este tipo está de fato AGINDO?** `true` para todos menos a polia, e não é
+    // preguiça: os outros seis são joints do rapier, que os instala ou não — se a
+    // view existe, o solver os tem. Uma corda de polia é o único vínculo cuja
+    // geometria pode ficar impossível com o joint presente (a rota não resolve, o
+    // passe a pula), e é por isso que só ela responde `false`.
+    let mut acting = true;
     match v.kind {
         // Pin e Weld COMPARTILHAM um ponto: o glifo mora na âncora, e o span
         // existe só quando as duas discordam — que é a deformação, pintada em
@@ -437,7 +395,7 @@ fn kind_marks(
         // A→B descreveria uma corda que não existe na cena, e é por isso que
         // este é o único tipo cuja view carrega pontos de MUNDO próprios.
         JointKind::Pulley => {
-            super::physics_overlay_pulley::pulley_marks(
+            acting = super::physics_overlay_pulley::pulley_marks(
                 v, wheels, spins, a, b, camera, window, &mut span, &mut glyph,
             );
             ring_px(a, JOINT_DOT_PX, &mut glyph);
@@ -486,7 +444,7 @@ fn kind_marks(
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }
     }
-    (span, glyph)
+    (span, glyph, acting)
 }
 
 /// As duas linhas de posse: âncora→centro de cada corpo. **A sólida, B
@@ -508,7 +466,7 @@ fn ownership_lines(
 }
 
 /// Um segmento tracejado, em pixels de tela.
-fn dashed(from: Point, to: Point, path: &mut BezPath) {
+pub(super) fn dashed(from: Point, to: Point, path: &mut BezPath) {
     let (dx, dy) = (to.x - from.x, to.y - from.y);
     let len = dx.hypot(dy);
     if len < 1e-6 {

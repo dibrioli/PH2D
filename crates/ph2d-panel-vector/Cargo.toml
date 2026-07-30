@@ -23,6 +23,9 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # slider↔chip mapping from there. Direction panel → tool does not cycle (tool
 # depends on editor-core, panel on both).
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+# O `WidthSource` que os três chips da seção Pencil pintam (W1d): o painel compara o enum que a
+# tool publica no snapshot, e não guarda um espelho dele — a mesma disciplina do `ShapeKind`.
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # Concrete paint types named by the extracted section painters (`paint_sections`

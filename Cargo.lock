@@ -7001,6 +7001,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
+ "ph2d-vec-edit",
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
@@ -7406,6 +7407,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",
+ "ph2d-vec-edit",
  "ph2d-vec-scene",
  "ph2d-vector",
 ]

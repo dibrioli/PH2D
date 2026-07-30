@@ -175,6 +175,12 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.fill_type" => "Fill Type",
         "panel.vector.section.snap" => "Snap",
         "panel.vector.section.pencil" => "Pencil",
+        // A FONTE da largura de um traço de lápis (W1d). "Pen" e não "Pressure": o rótulo diz o
+        // DISPOSITIVO, e é ele que hoje não existe nesta shell — o artista escolhe e não vê
+        // diferença nenhuma, o que é a resposta honesta enquanto o caminho do tablet não chega.
+        "panel.vector.pencil.width.uniform" => "Uniform",
+        "panel.vector.pencil.width.speed" => "Speed",
+        "panel.vector.pencil.width.pressure" => "Pen",
         "panel.vector.section.transform" => "Transform",
         "panel.vector.section.vertex" => "Vertex",
         "panel.vector.section.boolean" => "Boolean",

@@ -6,6 +6,22 @@
 //! passaria com o RDP desligado.
 
 use super::*;
+
+/// A dinâmica que estas fixtures passam: **um rato** (pressão cheia) e um relógio que anda um
+/// passo por amostra.
+///
+/// ⚠️ Ela é PREMISSA, não asserção: os gates deste arquivo testam a GEOMETRIA do lápis, e a
+/// largura variável tem gates próprios (`pencil_width_tests`). Passar a mesma dinâmica em todos
+/// mantém a variável única — e o relógio anda porque um relógio parado é um caso degenerado com
+/// gate dedicado, não o caso normal.
+fn tick() -> crate::pencil_width::PenDynamics {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(0);
+    crate::pencil_width::PenDynamics {
+        pressure: 1.0,
+        t_ns: u128::from(N.fetch_add(1, Ordering::Relaxed)) * 4_000_000,
+    }
+}
 use ph2d_vec_scene::VecScene;
 
 /// Mundo por pixel de tela nas fixturas — 1:1, para os limiares em px lerem direto em mundo.
@@ -40,9 +56,9 @@ fn draw(samples: &[[f64; 2]], fidelity: f64) -> (VecScene, Option<VecPathId>) {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
     pencil.set_fidelity_px(fidelity);
-    let id = pencil.on_press(&mut scene, samples[0], PX);
+    let id = pencil.on_press(&mut scene, samples[0], PX, tick());
     for &p in &samples[1..] {
-        pencil.on_drag(&mut scene, p);
+        pencil.on_drag(&mut scene, p, tick());
     }
     let kept = pencil.on_release(&mut scene);
     (scene, kept.then_some(id))
@@ -88,7 +104,7 @@ fn sample_path(scene: &VecScene, id: VecPathId, steps: usize) -> Vec<[f64; 2]> {
 fn the_stroke_is_on_the_scene_from_the_press() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
-    let id = pencil.on_press(&mut scene, [10.0, 10.0], PX);
+    let id = pencil.on_press(&mut scene, [10.0, 10.0], PX, tick());
     assert!(pencil.is_active());
     let path = scene.path(id).expect("o press pos o traco vivo na cena");
     assert_eq!(path.verts.len(), 1, "uma amostra, um vertice");
@@ -195,8 +211,8 @@ fn a_deliberate_corner_survives_every_tolerance() {
 fn a_stray_click_leaves_nothing_behind() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
-    pencil.on_press(&mut scene, [5.0, 5.0], PX);
-    pencil.on_drag(&mut scene, [5.4, 5.2]); // abaixo do passo mínimo: nem é amostrado
+    pencil.on_press(&mut scene, [5.0, 5.0], PX, tick());
+    pencil.on_drag(&mut scene, [5.4, 5.2], tick()); // abaixo do passo mínimo: nem é amostrado
     assert!(!pencil.on_release(&mut scene), "um toque nao e' um traco");
     assert!(
         scene.paths().is_empty(),
@@ -223,9 +239,9 @@ fn a_committed_stroke_survives_the_next_one() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
 
-    pencil.on_press(&mut scene, [0.0, 0.0], PX);
+    pencil.on_press(&mut scene, [0.0, 0.0], PX, tick());
     for &p in &hand(40, 0.0)[1..] {
-        pencil.on_drag(&mut scene, p);
+        pencil.on_drag(&mut scene, p, tick());
     }
     let first = pencil.on_release(&mut scene);
     assert!(first, "o 1o traco foi commitado");
@@ -235,10 +251,10 @@ fn a_committed_stroke_survives_the_next_one() {
     );
 
     // O 2º traço, noutro lugar.
-    pencil.on_press(&mut scene, [40.0, 40.0], PX);
+    pencil.on_press(&mut scene, [40.0, 40.0], PX, tick());
     for i in 1..40 {
         let t = f64::from(i) / 39.0;
-        pencil.on_drag(&mut scene, [40.0 + 30.0 * t, 40.0 + 10.0 * t]);
+        pencil.on_drag(&mut scene, [40.0 + 30.0 * t, 40.0 + 10.0 * t], tick());
     }
     assert!(pencil.on_release(&mut scene), "o 2o traco foi commitado");
     assert_eq!(
@@ -253,9 +269,9 @@ fn a_committed_stroke_survives_the_next_one() {
 fn cancelling_removes_the_live_stroke() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
-    pencil.on_press(&mut scene, [0.0, 0.0], PX);
+    pencil.on_press(&mut scene, [0.0, 0.0], PX, tick());
     for &p in &hand(40, 0.0)[1..] {
-        pencil.on_drag(&mut scene, p);
+        pencil.on_drag(&mut scene, p, tick());
     }
     assert_eq!(scene.paths().len(), 1);
     pencil.cancel(&mut scene);
@@ -273,10 +289,10 @@ fn cancelling_removes_the_live_stroke() {
 fn a_still_cursor_does_not_add_samples() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
-    pencil.on_press(&mut scene, [0.0, 0.0], PX);
+    pencil.on_press(&mut scene, [0.0, 0.0], PX, tick());
     for _ in 0..50 {
         assert!(
-            !pencil.on_drag(&mut scene, [0.3, 0.2]),
+            !pencil.on_drag(&mut scene, [0.3, 0.2], tick()),
             "uma amostra a 0,36 px passou o passo minimo"
         );
     }
@@ -297,9 +313,9 @@ fn the_node_count_follows_the_gesture_not_the_zoom() {
     let mut scene_b = VecScene::new();
     let mut pencil = Pencil::default();
     pencil.set_fidelity_px(DEFAULT_FIDELITY_PX);
-    let idb = pencil.on_press(&mut scene_b, big[0], PX * 4.0);
+    let idb = pencil.on_press(&mut scene_b, big[0], PX * 4.0, tick());
     for &p in &big[1..] {
-        pencil.on_drag(&mut scene_b, p);
+        pencil.on_drag(&mut scene_b, p, tick());
     }
     assert!(pencil.on_release(&mut scene_b));
     let na = a.path(ida.expect("commitado")).expect("existe").verts.len();
@@ -320,14 +336,14 @@ fn changing_the_fidelity_refits_the_live_stroke() {
     let mut scene = VecScene::new();
     let mut pencil = Pencil::default();
     pencil.set_fidelity_px(0.5);
-    let id = pencil.on_press(&mut scene, samples[0], PX);
+    let id = pencil.on_press(&mut scene, samples[0], PX, tick());
     for &p in &samples[1..] {
-        pencil.on_drag(&mut scene, p);
+        pencil.on_drag(&mut scene, p, tick());
     }
     let fine = scene.path(id).expect("existe").verts.len();
     pencil.set_fidelity_px(8.0);
     // Um move a mais (a shell reajusta no frame seguinte, que é quando a amostra chega).
-    pencil.on_drag(&mut scene, [200.0, 0.0]);
+    pencil.on_drag(&mut scene, [200.0, 0.0], tick());
     let coarse = scene.path(id).expect("existe").verts.len();
     assert!(
         coarse < fine,
@@ -367,15 +383,15 @@ fn measure_pencil_fit() {
         let mut scene = VecScene::new();
         let mut pencil = Pencil::default();
         pencil.set_fidelity_px(DEFAULT_FIDELITY_PX);
-        pencil.on_press(&mut scene, samples[0], PX);
+        pencil.on_press(&mut scene, samples[0], PX, tick());
         for &p in &samples[1..n - 1] {
-            pencil.on_drag(&mut scene, p);
+            pencil.on_drag(&mut scene, p, tick());
         }
         // O move MAIS CARO é o último: a lista de amostras está cheia.
         let mut best = f64::MAX;
         for _ in 0..32 {
             let t = std::time::Instant::now();
-            pencil.on_drag(&mut scene, samples[n - 1]);
+            pencil.on_drag(&mut scene, samples[n - 1], tick());
             best = best.min(t.elapsed().as_secs_f64() * 1000.0);
             pencil.samples.pop();
         }

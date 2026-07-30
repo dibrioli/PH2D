@@ -21,6 +21,9 @@ pub mod hobby;
 
 /// **O LÁPIS** — desenhar à mão livre (captura + decimação + ajuste ao vivo).
 pub mod pencil;
+/// **A FONTE da largura** de um traço de lápis (W1d do plano 25) — irmão do [`pencil`], que
+/// grava o gesto; este responde *"e o que disso vira espessura?"*.
+pub mod pencil_width;
 pub use pencil::Pencil;
 
 /// Pen STYLE + edit HISTORY (sibling module, HR-18 file-LOC cap).

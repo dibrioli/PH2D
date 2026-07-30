@@ -47,6 +47,14 @@ fn hand(dy: f64) -> Vec<[f64; 2]> {
         .collect()
 }
 
+/// A dinâmica da mão sintética: rato (pressão cheia) e um relógio de passo CONSTANTE.
+pub(crate) fn dynamics(i: usize) -> ph2d_vec_edit::pencil_width::PenDynamics {
+    ph2d_vec_edit::pencil_width::PenDynamics {
+        pressure: 1.0,
+        t_ns: i as u128 * 4_000_000,
+    }
+}
+
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
     match f {
         3 => build(app),
@@ -80,9 +88,14 @@ fn build(app: &mut crate::App) {
         });
         pencil.set_fidelity_px(fidelity);
         let path = hand(dy);
-        pencil.on_press(&mut gfx.vec_scene, path[0], px_to_world);
-        for &p in &path[1..] {
-            pencil.on_drag(&mut gfx.vec_scene, p);
+        // A mão sintética também tem RELÓGIO: um passo constante por amostra. A cena é de
+        // REFERÊNCIA de fidelidade, então a velocidade tem de ser constante de propósito —
+        // assim ela não pendura perfil de largura nenhum e o par comparado tem uma variável só.
+        let mut t = crate::pencil_smoke::dynamics(0);
+        pencil.on_press(&mut gfx.vec_scene, path[0], px_to_world, t);
+        for (i, &p) in path[1..].iter().enumerate() {
+            t = crate::pencil_smoke::dynamics(i + 1);
+            pencil.on_drag(&mut gfx.vec_scene, p, t);
         }
         pencil.on_release(&mut gfx.vec_scene);
     }
@@ -119,7 +132,15 @@ fn announce(app: &mut crate::App) {
          'pesa' de leve (o ponto filtrado atrasa ~2,6 px, que e' o que 'lazy mouse' custa); \
          suba ao maximo e note que ele passa a CORTAR as curvas -- passado o joelho o filtro \
          come o desenho, nao o tremor; (9) **Fidelity** faz o oposto e na SAIDA: baixa guarda \
-         mais nos, alta guarda menos -- a 8 px o S vira quatro nos.",
+         mais nos, alta guarda menos -- a 8 px o S vira quatro nos; (10) a fileira **Width** e' a \
+         3a pergunta do gesto -- escolha **Speed** e desenhe um S variando a VELOCIDADE (comece \
+         devagar, acelere no meio, termine devagar): o traco tem de AFINAR onde a mao correu, ao \
+         vivo, e o afinamento fica na forma depois de soltar (o modo **Node** mostra que as \
+         ancoras nao mudaram -- a espessura e' um perfil, nao geometria). **Uniform** volta ao \
+         traco de largura unica. **Pen** hoje nao muda NADA e isso e' esperado: esta shell nao \
+         recebe pressao de dispositivo nenhum (o `CursorMoved` do winit nao a carrega e o `Touch` \
+         nao e' escutado), entao a rota esta' construida e gateada, a espera do caminho do \
+         tablet.",
         nodes.join(", ")
     );
 }

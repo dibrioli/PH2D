@@ -502,6 +502,10 @@ pub struct VectorDrawConfig {
     /// tool é este espelho publicado a cada frame; alcançar o tool por downcast num handler de move
     /// seria trabalho por evento para ler um `f32`.
     pub pencil_stabilizer: f32,
+    /// **De onde a largura do traço de lápis vem** (W1d). Viaja no config pela MESMA razão do
+    /// estabilizador: quem a consome é o laço de frame da shell, e alcançar o tool por downcast
+    /// para ler um enum seria trabalho por frame para uma pergunta que o espelho já responde.
+    pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
     /// A forma ATIVA do catálogo (só importa no modo [`DrawMode::Shape`]).
     pub shape: ShapeKind,
     /// Os parâmetros dela, na unidade em que o usuário os autora (px para raios). A
@@ -516,6 +520,7 @@ impl Default for VectorDrawConfig {
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,
+            pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
         }
     }
 }
@@ -533,6 +538,9 @@ pub struct VectorStyleSnapshot {
     /// **Blend:** cada passo nasce ACIMA do anterior (o checkbox da seção Blend). A tool é a dona;
     /// o painel só o pinta.
     pub blend_stack_up: bool,
+    /// **De onde a largura do traço de lápis vem** (W1d) — o painel pinta os três chips a partir
+    /// disto e não sabe o que uma fonte É; a tool é a dona.
+    pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
     /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
     /// seletor e os campos a partir disto, sem saber que formas existem.
     pub shape: ShapeKind,
@@ -580,6 +588,7 @@ impl Default for VectorStyleSnapshot {
             stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
             blend_stack_up: true,
+            pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,

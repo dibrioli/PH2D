@@ -95,7 +95,8 @@ pub use ph2d_editor_core::ids::{
 /// **O LÁPIS** (plano 25 W1): a seção + os dois knobs da mão livre, cada um com o seu chip.
 pub use ph2d_editor_core::ids::{
     VECTOR_PENCIL_FIDELITY, VECTOR_PENCIL_FIDELITY_NUM, VECTOR_PENCIL_STABILIZER,
-    VECTOR_PENCIL_STABILIZER_NUM, VECTOR_SECTION_PENCIL,
+    VECTOR_PENCIL_STABILIZER_NUM, VECTOR_PENCIL_W_PRESSURE, VECTOR_PENCIL_W_SPEED,
+    VECTOR_PENCIL_W_UNIFORM, VECTOR_SECTION_PENCIL,
 };
 /// **Text on Path** (plano 22): a seção + os quatro controles + o par do offset.
 pub use ph2d_editor_core::ids::{

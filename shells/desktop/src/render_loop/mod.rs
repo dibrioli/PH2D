@@ -5467,6 +5467,17 @@ impl crate::App {
             // aqui e desenhados no z da fonte — que entra na lista junto com eles.
             self.contour_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // **O LÁPIS pendura o perfil que o GESTO pede** (W1d) — ao vivo, a cada frame em que
+            // o traço está aberto. É aqui e não no `input_dispatch` porque o armamento precisa do
+            // mundo ECS, e porque é o único lugar que corre entre o `sync` (que dá entidade ao
+            // path recém-nascido) e o cozimento logo abaixo: o artista vê a espessura enquanto
+            // desenha, que é a promessa do lápis desde o W1a (*"o ajuste é AO VIVO"*).
+            if let Some(id) = self.vec_pencil.active_path() {
+                let stops = self
+                    .vec_pencil
+                    .width_stops(self.vec_draw_config.pencil_width_source);
+                crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops);
+            }
             // A largura VIVA (ADR-0145): a fita de largura variável, cozida aqui e desenhada no
             // z da fonte — que continua sendo a curva autorada que o modo Node edita.
             self.profile_live

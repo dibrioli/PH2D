@@ -110,16 +110,44 @@ de eventos **não casa `WindowEvent::Touch`** — o único evento do winit que c
 nenhum dispositivo entrega pressão a este app, tablet incluído. Fiar a pressão no perfil produziria
 um **fio morto** — a feature ficaria correta e invisível, e ninguém saberia se está quebrada.
 
-**As duas saídas, e a escolha é do Enio:**
+**As duas saídas foram apresentadas e o Enio escolheu a (1)** (2026-07-30):
 
-1. **Uma FONTE de largura** (`Uniform | Pressure | Speed`) — o modelo do Krita/GP. *Speed* é o único
-   que um mouse de facto dirige (a velocidade do gesto já está no traço), então o artista vê a
-   largura viva **hoje**, e a rota de pressão fica construída e gateada para o dia do tablet.
+1. ✅ **Uma FONTE de largura** (`Uniform | Speed | Pen`) — o modelo do Krita/GP. *Speed* é o único
+   que um mouse de facto dirige, então o artista vê a largura viva **hoje**, e a rota de pressão
+   fica construída e gateada para o dia do tablet. **ENTREGUE, ver W1d abaixo.**
 2. **O caminho do tablet** — casar `WindowEvent::Touch` e levar o `force` até o `PointerEvent`. É
    trabalho de INPUT da shell (não do vetor), afeta o **Flip do mesmo jeito** (o `flip_draw.rs`
-   também recebe um `1.0` literal), e não pode ser verificado sem hardware.
+   também recebe um `1.0` literal), e não pode ser verificado sem hardware. **Segue aberto**, e
+   agora custa **UMA função** (`App::pointer_dynamics`) em vez de uma varredura.
 
-Nenhuma foi construída: as duas são decisão de produto, e a (1) muda o que um traço de lápis É.
+### ✅ W1d — ENTREGUE: a fonte da largura
+
+Fileira **Width** na seção Pencil, e o lápis passou a gravar a **dinâmica** de cada amostra (a
+pressão do dispositivo + o carimbo de tempo do evento). Motor em `ph2d-vec-edit::pencil_width`;
+o perfil que ele produz é a `WidthStops` do W1c, pendurada **ao vivo** a cada frame em que o traço
+está aberto — o artista vê a espessura enquanto desenha, que é a promessa do lápis desde o W1a.
+
+**Três decisões, todas MEDIDAS:**
+
+- **Rápido AFINA** (a convenção de todo DCC), e a velocidade é normalizada **no próprio traço** —
+  velocidade absoluta depende do zoom e do rato, e calibrá-la seria um knob que ninguém acerta.
+  Consequência de graça: um gesto de velocidade CONSTANTE não pendura perfil nenhum.
+- **O filtro e o reamostrador eram a MESMA pergunta.** A 1ª versão suavizava e depois amostrava em
+  N pontos — aliasing: o perfil saía não-monotônico num gesto que só acelera, e o extremo era
+  perdido entre paradas (faixa efetiva 2,05× de 4,14×). Um filtro **casado** (a média sobre uma
+  fatia igual de amostras) responde as duas, e a const do suavizador desapareceu.
+- **`STOP_BUDGET = 8`, e a intuição estava invertida:** eu esperava que mais paradas descrevessem
+  melhor o gesto, e a medição mostra o erro **crescendo** com o orçamento (cada parada a mais é uma
+  fatia com menos amostras, logo menos média). 8 é o maior orçamento com **zero reversões
+  espúrias** — a coluna absoluta, contável, num gesto onde a mão só acelera.
+
+⚠️ **`Pen` está construída, gateada, e hoje não muda nada** — o rótulo o diz. Quando o caminho do
+tablet existir, é uma linha que muda (`App::pointer_dynamics`, a porta única).
+
+⚠️ **Uma mutação SOBREVIVEU e produziu o gate que faltava:** voltar ao ponto-a-ponto deixava os
+onze gates verdes, porque todos afirmam EXTREMOS (*o rápido é mais fino*) e o aliasing põe degraus
+no MEIO. O gate novo é *um gesto monotônico dá um perfil monotônico*, com jitter de relógio na
+fixture — sem o jitter o ponto-a-ponto acerta, e a fixture não conteria o fenômeno.
 
 **Tamanho: M.** Smoke: desenhar um S com pressão variável e ver a largura acompanhar; com estabilizador
 a 0 e a 1, a mesma mão dá traços diferentes.

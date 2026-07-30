@@ -99,6 +99,32 @@ impl PencilHand {
     }
 }
 
+impl crate::App {
+    /// **A DINÂMICA que o ponteiro carrega agora** — a porta única do W1d.
+    ///
+    /// A `pencil_width` deriva a largura de duas grandezas: a **pressão** do dispositivo e o
+    /// **relógio de parede** (de onde sai a velocidade). Esta função é o único lugar da shell que
+    /// as responde para o lápis.
+    ///
+    /// ⚠️ **A pressão é `1.0`, e é um fato MEDIDO da shell, não um placeholder solto.** Os dois
+    /// únicos sítios que constroem um `PointerEvent` (`input_dispatch.rs`) cravam `pressure: 1.0`
+    /// com `source: PointerSource::Mouse`, e o laço de eventos do winit **não casa
+    /// `WindowEvent::Touch`** — o único evento que carrega `force`. O `CursorMoved`, que é o que
+    /// a shell escuta, não tem pressão no protocolo. Logo, hoje, nenhum dispositivo entrega
+    /// pressão a este app.
+    ///
+    /// Ela mora aqui numa função só **exatamente por isso**: quando o caminho do tablet existir,
+    /// é ESTA linha que muda, e a fonte `Pressure` do lápis passa a funcionar sem que nada mais
+    /// se mexa. Repetir o literal no press e no move seria a terceira cópia de um número que já
+    /// mente em duas.
+    pub(crate) fn pointer_dynamics(&self) -> ph2d_vec_edit::pencil_width::PenDynamics {
+        ph2d_vec_edit::pencil_width::PenDynamics {
+            pressure: 1.0,
+            t_ns: Self::timestamp_ns(),
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_pencil_input_tests.rs"]
 mod tests;

@@ -128,6 +128,38 @@ fn the_apply_button_bakes_the_live_profile_not_the_sliders() {
     );
 }
 
+/// **O LÁPIS pendura o perfil que o gesto pede, ANTES do cozimento** (W1d).
+///
+/// Três maneiras de partir isto compilam e deixam os gates de unidade verdes: não armar (o
+/// artista escolhe *Speed* e nada muda), armar DEPOIS do cozimento (a espessura aparece com um
+/// quadro de atraso, o que lê como "o lápis engasga"), ou armar antes do `sync` — quando a forma
+/// recém-nascida ainda não tem entidade e o componente não tem onde pousar.
+#[test]
+fn the_pencil_arms_its_profile_before_the_cook() {
+    let sync = at("crate::vec_entities::sync(");
+    let arm = at("crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops)");
+    let cook = at("self.profile_live\n                .recook(");
+    assert!(
+        sync < arm,
+        "o lápis arma ANTES do `sync` — a forma recém-nascida ainda não tem entidade"
+    );
+    assert!(
+        arm < cook,
+        "o lápis arma DEPOIS do cozimento — a espessura apareceria com um quadro de atraso"
+    );
+    // E o que ele arma vem do GESTO vivo, não de um valor de painel: sem `width_stops` no meio,
+    // o perfil seria o que os sliders da Expand dizem, e o lápis não teria fonte nenhuma.
+    let head = &SRC[..arm];
+    let gesture = head
+        .rfind("self.vec_pencil.active_path()")
+        .expect("o armamento do lápis não é gateado por um traço VIVO");
+    assert!(
+        SRC[gesture..arm].contains("width_stops"),
+        "o perfil armado não sai do gesto (`Pencil::width_stops`) — a fonte de largura do lápis \
+         não chega ao desenho"
+    );
+}
+
 /// **O preview NÃO pode escrever no documento**, e quem o garante é o COMPILADOR: o `recook`
 /// recebe `&VecScene`. Irmão exato do gate do offset — a promessa *"a curva autorada não muda
 /// até o Apply"* é do tipo, não da disciplina.

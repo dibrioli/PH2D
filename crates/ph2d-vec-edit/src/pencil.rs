@@ -34,7 +34,8 @@
 //! livro e está escrita nos dois lugares.
 
 use crate::PenStyle;
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex};
+use crate::pencil_width::{PenDynamics, WidthSource, width_stops};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, WidthStops};
 
 /// Tolerância do decimador, em **pixels de tela**, quando ninguém escolhe (o *Fidelity*
 /// default).
@@ -77,6 +78,11 @@ pub struct Pencil {
     committed: Option<VecPathId>,
     /// As amostras CRUAS em mundo, na ordem em que a mão as deixou.
     samples: Vec<[f64; 2]>,
+    /// O que cada amostra carregava além da posição — a pressão do dispositivo e o carimbo de
+    /// tempo. Anda LADO A LADO com [`Self::samples`] (mesmo comprimento, sempre): é o que a
+    /// [`crate::pencil_width`] lê para derivar a largura, e um descompasso ali devolve um perfil
+    /// vazio em vez de adivinhar.
+    dyns: Vec<PenDynamics>,
     /// Unidades de mundo por pixel de tela, capturadas no press. Congelada no gesto de
     /// propósito: dar zoom no meio de um traço não pode mudar a densidade de nós do começo dele.
     px_to_world: f64,
@@ -121,13 +127,21 @@ impl Pencil {
     }
 
     /// **Press** — abre o traço com a 1ª amostra e põe o path vivo na cena. Devolve o id dele.
-    pub fn on_press(&mut self, scene: &mut VecScene, p: [f64; 2], px_to_world: f64) -> VecPathId {
+    pub fn on_press(
+        &mut self,
+        scene: &mut VecScene,
+        p: [f64; 2],
+        px_to_world: f64,
+        dyn_in: PenDynamics,
+    ) -> VecPathId {
         // Um gesto que não foi fechado (não deveria acontecer) não deixa lixo na cena.
         if let Some(id) = self.active.take() {
             scene.remove_path(id);
         }
         self.samples.clear();
+        self.dyns.clear();
         self.samples.push(p);
+        self.dyns.push(dyn_in);
         self.px_to_world = px_to_world.max(f64::MIN_POSITIVE);
         if self.fidelity_px <= 0.0 {
             self.fidelity_px = DEFAULT_FIDELITY_PX;
@@ -139,7 +153,7 @@ impl Pencil {
 
     /// **Move** — aceita a amostra se ela andou o passo mínimo e reescreve o traço vivo.
     /// Devolve `true` se a cena mudou (a shell não precisa repintar de graça).
-    pub fn on_drag(&mut self, scene: &mut VecScene, p: [f64; 2]) -> bool {
+    pub fn on_drag(&mut self, scene: &mut VecScene, p: [f64; 2], dyn_in: PenDynamics) -> bool {
         if self.active.is_none() {
             return false;
         }
@@ -150,6 +164,7 @@ impl Pencil {
             return false;
         }
         self.samples.push(p);
+        self.dyns.push(dyn_in);
         self.rebuild(scene)
     }
 
@@ -162,10 +177,12 @@ impl Pencil {
         if self.travel() < MIN_STROKE_PX * self.px_to_world || self.samples.len() < 2 {
             scene.remove_path(id);
             self.samples.clear();
+            self.dyns.clear();
             return false;
         }
         self.committed = Some(id);
         self.samples.clear();
+        self.dyns.clear();
         true
     }
 
@@ -175,6 +192,21 @@ impl Pencil {
             scene.remove_path(id);
         }
         self.samples.clear();
+        self.dyns.clear();
+    }
+
+    /// **O perfil de largura que este gesto pede**, na fonte dada (W1d).
+    ///
+    /// Lê as amostras VIVAS, então serve o preview ao vivo — a shell o pergunta a cada move e
+    /// pendura o resultado na forma. Depois do release as amostras já saíram, e a resposta é
+    /// vazia: quem guarda o perfil daí em diante é o componente que a shell armou no último move.
+    ///
+    /// ⚠️ **Nada aqui toca a cena.** O lápis produz a CURVA; a espessura dela é uma relação que
+    /// vive no componente (ADR-0145), e misturar as duas aqui poria geometria de fita dentro do
+    /// caminho autorado — exatamente o que o preview vivo existe para não fazer.
+    #[must_use]
+    pub fn width_stops(&self, source: WidthSource) -> WidthStops {
+        width_stops(source, &self.samples, &self.dyns)
     }
 
     /// As amostras cruas do gesto — para sondas e gates (o preview ao vivo é o path na cena).

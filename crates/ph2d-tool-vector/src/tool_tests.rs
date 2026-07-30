@@ -420,3 +420,44 @@ fn adopting_a_paths_markers_also_adopts_its_head_size_and_round() {
     assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
     assert!((t.marker_round() - crate::params::MARKER_ROUND.min).abs() < 1e-9);
 }
+
+/// **Cada chip da FONTE de largura escolhe a sua, e ela chega ao espelho que a shell lê** (W1d).
+///
+/// O oráculo é o `draw_config()` — o que o laço de frame de facto consome — e não o campo
+/// privado: um gate que lesse o campo provaria que a atribuição aconteceu, não que ela chega a
+/// quem desenha.
+#[test]
+fn each_width_source_chip_reaches_the_draw_config() {
+    use ph2d_vec_edit::pencil_width::WidthSource as Ws;
+    let mut t = VectorTool::default();
+    assert_eq!(
+        t.draw_config().pencil_width_source,
+        Ws::Uniform,
+        "o default tem de ser a fonte que não inventa geometria nenhuma"
+    );
+    for (id, want) in [
+        (ids::VECTOR_PENCIL_W_SPEED, Ws::Speed),
+        (ids::VECTOR_PENCIL_W_PRESSURE, Ws::Pressure),
+        (ids::VECTOR_PENCIL_W_UNIFORM, Ws::Uniform),
+    ] {
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
+        assert_eq!(t.draw_config().pencil_width_source, want, "chip {id:?}");
+        assert_eq!(
+            t.ui_snapshot().pencil_width_source,
+            want,
+            "o painel pinta a partir do snapshot — ele tem de concordar com o config"
+        );
+    }
+}
+
+/// **Escolher uma fonte NÃO arranca o artista do modo em que ele está.** A seção só é pintada no
+/// Pencil, então já se está lá; e um chip que trocasse o modo tornaria impossível ajustar a fonte
+/// vindo de qualquer outro caminho.
+#[test]
+fn picking_a_width_source_does_not_change_the_draw_mode() {
+    let mut t = VectorTool::default();
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_NODE));
+    let before = t.draw_config().mode;
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_PENCIL_W_SPEED));
+    assert_eq!(t.draw_config().mode, before);
+}

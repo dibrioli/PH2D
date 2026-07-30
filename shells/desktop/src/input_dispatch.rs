@@ -2310,11 +2310,15 @@ impl App {
         else {
             return false;
         };
+        let dyn_in = self.pointer_dynamics();
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_pencil
-            .on_drag(&mut gfx.vec_scene, [f64::from(w[0]), f64::from(w[1])]);
+        self.vec_pencil.on_drag(
+            &mut gfx.vec_scene,
+            [f64::from(w[0]), f64::from(w[1])],
+            dyn_in,
+        );
         // Consome o move mesmo quando a amostra foi recusada pelo passo mínimo: o gesto É do
         // lápis enquanto ele está vivo, e deixar cair viraria pan da câmera no meio do traço.
         true
@@ -3398,13 +3402,15 @@ impl App {
                     // fazer: um lápis desenha onde você encostou.
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
                         let px_to_world = self.vec_px_to_world();
+                        let dyn_in = self.pointer_dynamics();
                         if let Some(w) = self.vec_world_at(self.last_pointer)
                             && let Some(gfx) = self.gfx.as_mut()
                         {
                             // UM passo de undo por traço: begin aqui, commit no release (o
                             // mesmo par que a ferramenta de forma usa).
                             self.vec_history.begin(&gfx.vec_scene);
-                            self.vec_pencil.on_press(&mut gfx.vec_scene, w, px_to_world);
+                            self.vec_pencil
+                                .on_press(&mut gfx.vec_scene, w, px_to_world, dyn_in);
                         }
                         // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
                         // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um

@@ -122,6 +122,9 @@ pub struct VectorTool {
     /// **Estabilização do lápis** (0 = ponteiro cru). A shell aplica-a na ENTRADA, com a MESMA
     /// `lazy_mouse_step` do Painter — o valor é autorado aqui, o filtro corre lá.
     pencil_stabilizer: f32,
+    /// De onde a largura do traço de lápis vem (W1d). Estado AUTORADO da ferramenta, como o
+    /// estabilizador: o documento guarda o `WidthStops` que ele produziu, não a fonte.
+    pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
@@ -165,6 +168,7 @@ impl Default for VectorTool {
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
             pencil_fidelity_px: crate::params::PENCIL_FIDELITY_DEFAULT_PX,
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
+            pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
             mode: DrawMode::Select,
             blend_stack_up: true,
             shape: ShapeKind::default(),
@@ -399,6 +403,7 @@ impl VectorTool {
             shape: self.shape,
             values: self.shape_values(self.shape),
             pencil_stabilizer: self.pencil_stabilizer,
+            pencil_width_source: self.pencil_width_source,
         }
     }
 
@@ -426,6 +431,7 @@ impl VectorTool {
             stroke_width_px: self.stroke_width_px,
             mode: self.mode,
             blend_stack_up: self.blend_stack_up,
+            pencil_width_source: self.pencil_width_source,
             shape: self.shape,
             values: self.shape_values(self.shape),
             cap: self.cap,
@@ -515,6 +521,18 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
+            }
+            // **A fonte da largura do lápis** (W1d) — três chips exclusivos. Escolher uma NÃO
+            // arma o modo Pencil: a seção só é pintada nele, então já se está lá; e trocar de
+            // fonte no meio de outro modo seria arrancar o artista do que ele estava a fazer.
+            PanelEvent::Click(id) if id == ids::VECTOR_PENCIL_W_UNIFORM => {
+                self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Uniform;
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_PENCIL_W_SPEED => {
+                self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Speed;
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_PENCIL_W_PRESSURE => {
+                self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Pressure;
             }
             // **Forma** — o 5º pill. Re-arma o gesto na forma ATIVA do catálogo (não a
             // troca): é o caminho de volta ao desenho depois de um desvio pelo Select,

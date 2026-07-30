@@ -32,3 +32,7 @@ ph2d-core = { path = "../ph2d-core" }
 # Vello / kurbo via ph2d-vector for the icon BezPath.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A FONTE da largura do lápis (W1d): o `WidthSource` que o painel escolhe e o laço de frame
+# consome mora ao lado do motor que o lê (`ph2d-vec-edit::pencil_width`). O tool só carrega o
+# enum — um catálogo, como o `ShapeKind` que ele já espelha da `ph2d-vec-scene`.
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }

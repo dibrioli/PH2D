@@ -1,5 +1,17 @@
 //! **O estabilizador do lápis** — a mão filtrada, e a medição que escolhe o default.
 
+/// A dinâmica das fixtures: **um rato** (pressão cheia) e um relógio que anda um passo por
+/// amostra. Premissa, não asserção — estes gates testam a GEOMETRIA e o enquadramento do lápis;
+/// a largura variável tem gates próprios (`ph2d_vec_edit::pencil_width`).
+fn tick() -> ph2d_vec_edit::pencil_width::PenDynamics {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(0);
+    ph2d_vec_edit::pencil_width::PenDynamics {
+        pressure: 1.0,
+        t_ns: u128::from(N.fetch_add(1, Ordering::Relaxed)) * 4_000_000,
+    }
+}
+
 use ph2d_tool_vector::params::PENCIL_STABILIZER_DEFAULT as DEFAULT_STABILIZER;
 
 use super::PencilHand;
@@ -55,14 +67,14 @@ fn run(strength: f32) -> (f64, f64, usize) {
 
     hand.begin(raw[0]);
     let to_world = |p: (f32, f32)| [f64::from(p.0) * PX_TO_WORLD, f64::from(p.1) * PX_TO_WORLD];
-    let id = pencil.on_press(&mut scene, to_world(raw[0]), PX_TO_WORLD);
+    let id = pencil.on_press(&mut scene, to_world(raw[0]), PX_TO_WORLD, tick());
 
     let mut worst = 0.0_f64;
     let mut last = raw[0];
     for &p in &raw[1..] {
         let f = hand.filter(p, strength);
         worst = worst.max(dist_to_ideal(f));
-        pencil.on_drag(&mut scene, to_world(f));
+        pencil.on_drag(&mut scene, to_world(f), tick());
         last = f;
     }
     let tail = raw[raw.len() - 1];
@@ -100,10 +112,10 @@ fn measure_pencil_fidelity_range() {
         pencil.set_fidelity_px(fid);
         hand.begin(raw[0]);
         let to_world = |p: (f32, f32)| [f64::from(p.0) * PX_TO_WORLD, f64::from(p.1) * PX_TO_WORLD];
-        let id = pencil.on_press(&mut scene, to_world(raw[0]), PX_TO_WORLD);
+        let id = pencil.on_press(&mut scene, to_world(raw[0]), PX_TO_WORLD, tick());
         for &p in &raw[1..] {
             let f = hand.filter(p, DEFAULT_STABILIZER);
-            pencil.on_drag(&mut scene, to_world(f));
+            pencil.on_drag(&mut scene, to_world(f), tick());
         }
         pencil.on_release(&mut scene);
         let nodes = scene.path(id).map_or(0, |p| p.verts.len());

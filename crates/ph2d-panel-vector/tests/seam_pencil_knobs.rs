@@ -124,3 +124,69 @@ fn the_pencil_section_is_absent_outside_pencil_mode() {
         );
     }
 }
+
+/// **Os três chips da FONTE de largura são alcançáveis por um ponteiro e o clique chega ao bus.**
+///
+/// As duas metades são independentes e ambas silenciosas: sem o `populate` o chip pinta, tem
+/// hit-rect e está MORTO sob o mouse (a checagem de focabilidade mora no store); sem o braço do
+/// `event` o clique acende o chip e morre no painel — o artista escolheria *Speed* e todo traço
+/// continuaria uniforme, sem nada dizer por quê.
+#[test]
+fn the_pencil_width_source_chips_reach_the_bus() {
+    publish_mode(ph2d_tool_vector::DrawMode::Pencil);
+    for id in [
+        ids::VECTOR_PENCIL_W_UNIFORM,
+        ids::VECTOR_PENCIL_W_SPEED,
+        ids::VECTOR_PENCIL_W_PRESSURE,
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o chip {id:?} nao foi PINTADO na secao Pencil"));
+        // Ponteiro REAL (Down+Up no retângulo), não um `WidgetEvent` fabricado: o sintético pula
+        // a checagem de focabilidade, e um chip fora do `populate` passaria.
+        let cy = r.y + r.h * 0.5;
+        let cx = r.x + r.w * 0.5;
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 50));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "clicar o chip {id:?} nao produziu Click — ele esta' desenhado e nao existe para o \
+             dispatcher (falta o `register` no populate)"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id
+            )),
+            "o clique no chip {id:?} nao chegou ao bus — ele acende e nao faz nada (falta o \
+             `forwards_plain_click`)"
+        );
+    }
+}
+
+/// **A fileira de Width some fora do modo Pencil**, como o resto da seção — três chips que
+/// descrevem como uma mão livre é capturada, oferecidos onde não há mão livre, são três controles
+/// mortos.
+#[test]
+fn the_pencil_width_source_chips_are_absent_outside_pencil_mode() {
+    publish_mode(ph2d_tool_vector::DrawMode::Select);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    for id in [
+        ids::VECTOR_PENCIL_W_UNIFORM,
+        ids::VECTOR_PENCIL_W_SPEED,
+        ids::VECTOR_PENCIL_W_PRESSURE,
+    ] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_none(),
+            "o chip {id:?} foi pintado no modo Select"
+        );
+    }
+}

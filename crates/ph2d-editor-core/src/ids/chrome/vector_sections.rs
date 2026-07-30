@@ -6,6 +6,7 @@
 use ph2d_a11y::NodeId;
 
 use super::vector::*;
+use super::vector_pencil::VECTOR_SECTION_PENCIL;
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

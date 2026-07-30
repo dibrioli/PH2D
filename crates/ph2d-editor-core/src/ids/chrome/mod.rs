@@ -50,6 +50,8 @@ mod vector_contour;
 mod vector_filters;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
+/// Os ids da seção **Pencil** (a mão livre, plano 25) — irmão de `vector` pelo teto de 700 LOC.
+mod vector_pencil;
 /// A lista das seções colapsáveis do painel Vector — irmã de `vector` pelo teto de 700 LOC.
 mod vector_sections;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
@@ -87,6 +89,7 @@ pub use vector::*;
 pub use vector_contour::*;
 pub use vector_filters::*;
 pub use vector_patternpath::*;
+pub use vector_pencil::*;
 pub use vector_sections::*;
 pub use vector_textpath::*;
 pub use wet_tuning::*;

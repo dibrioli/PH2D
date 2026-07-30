@@ -24,6 +24,12 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // **O lápis** (o 11º modo). Fora daqui o chip pinta, ACENDE sob o mouse e o Click
         // morre no painel — nunca vira `ToolPanelEvent`.
         || id == ids::VECTOR_MODE_PENCIL
+        // **A FONTE da largura do lápis** (W1d) — três chips exclusivos. Fora daqui eles pintam,
+        // acendem sob o mouse e o Click morre no painel: o artista escolheria "Speed" e todo
+        // traço continuaria uniforme, sem nada dizer por quê.
+        || id == ids::VECTOR_PENCIL_W_UNIFORM
+        || id == ids::VECTOR_PENCIL_W_SPEED
+        || id == ids::VECTOR_PENCIL_W_PRESSURE
         // O 5º pill: re-arma o gesto de forma. Ausente daqui, o botão pintaria e estaria
         // MORTO — exatamente o bug que o smoke do Line/Arc pegou (Enio 2026-07-09).
         || id == ids::VECTOR_MODE_SHAPE

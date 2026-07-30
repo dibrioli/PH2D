@@ -20,6 +20,18 @@
 //! SEGUINTE, quando o lápis reescreve mundo por cima do local. Um gate que medisse um frame só
 //! ficaria verde sobre o produto vermelho — daí a asserção correr **sobre o gesto inteiro**.
 
+/// A dinâmica das fixtures: **um rato** (pressão cheia) e um relógio que anda um passo por
+/// amostra. Premissa, não asserção — estes gates testam a GEOMETRIA e o enquadramento do lápis;
+/// a largura variável tem gates próprios (`ph2d_vec_edit::pencil_width`).
+fn tick() -> ph2d_vec_edit::pencil_width::PenDynamics {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(0);
+    ph2d_vec_edit::pencil_width::PenDynamics {
+        pressure: 1.0,
+        t_ns: u128::from(N.fetch_add(1, Ordering::Relaxed)) * 4_000_000,
+    }
+}
+
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::VecScene;
 
@@ -86,10 +98,10 @@ fn the_pencil_draws_where_the_hand_is_through_the_whole_gesture() {
     let mut pencil = ph2d_vec_edit::Pencil::default();
     let path = hand();
 
-    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD);
+    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD, tick());
     let mut worst = 0.0_f64;
     for (n, p) in path[1..].iter().enumerate() {
-        pencil.on_drag(&mut scene, *p);
+        pencil.on_drag(&mut scene, *p, tick());
         let xf = frame(&mut sim, &mut scene, &mut map, &pencil);
         let tip = drawn_tip(&scene, &xf, id);
         let err = ((tip[0] - p[0]).powi(2) + (tip[1] - p[1]).powi(2)).sqrt();
@@ -118,9 +130,9 @@ fn the_committed_stroke_keeps_its_place_and_then_settles() {
     let mut pencil = ph2d_vec_edit::Pencil::default();
     let path = hand();
 
-    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD);
+    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD, tick());
     for p in &path[1..] {
-        pencil.on_drag(&mut scene, *p);
+        pencil.on_drag(&mut scene, *p, tick());
         frame(&mut sim, &mut scene, &mut map, &pencil);
     }
     assert!(
@@ -168,7 +180,7 @@ fn the_gesture_door_announces_a_live_pencil_stroke() {
         "sem gesto vivo a porta tem de estar vazia — anunciar um path ocioso proibiria o \
          assentamento dele para sempre"
     );
-    let id = pencil.on_press(&mut scene, [1.5, 0.5], PX_TO_WORLD);
+    let id = pencil.on_press(&mut scene, [1.5, 0.5], PX_TO_WORLD, tick());
     assert_eq!(
         crate::vec_transform::gesture_paths(&pen, &shape, &pencil),
         vec![id],
@@ -179,5 +191,73 @@ fn the_gesture_door_announces_a_live_pencil_stroke() {
     assert!(
         crate::vec_transform::gesture_paths(&pen, &shape, &pencil).is_empty(),
         "o gesto morreu e a porta continua a anunciá-lo"
+    );
+}
+
+/// **O gesto ARMA o perfil de largura enquanto o traço está aberto** (W1d) — é isto que faz o
+/// artista ver a espessura ao desenhar, e não descobri-la no release.
+///
+/// A cadeia é a do produto: a mão dita as amostras → o lápis deriva as paradas → o frame as
+/// pendura na forma viva. Um elo faltando deixa o componente ausente, e nenhum gate de unidade
+/// do `pencil_width` notaria (eles chamam `width_stops` à mão).
+#[test]
+fn a_speed_varying_gesture_arms_a_live_width_profile() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let mut pencil = ph2d_vec_edit::Pencil::default();
+    let path = hand();
+    // Metade lenta, metade rápida: as POSIÇÕES são as mesmas do gate acima, e só o relógio muda.
+    let mut t_ns = 0u128;
+    let mut dyn_at = |i: usize| {
+        t_ns += if i < path.len() / 2 {
+            8_000_000
+        } else {
+            1_000_000
+        };
+        ph2d_vec_edit::pencil_width::PenDynamics {
+            pressure: 1.0,
+            t_ns,
+        }
+    };
+
+    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD, dyn_at(0));
+    for (i, p) in path[1..].iter().enumerate() {
+        pencil.on_drag(&mut scene, *p, dyn_at(i + 1));
+    }
+    frame(&mut sim, &mut scene, &mut map, &pencil);
+    // O passo que o `render_loop` dá entre o `sync` e o cozimento.
+    let stops = pencil.width_stops(ph2d_vec_edit::pencil_width::WidthSource::Speed);
+    crate::profile_live::arm(&mut sim, &map, &[id], &stops);
+
+    let armed = crate::profile_live::spec_of(&sim, &map, id).expect("o gesto não armou perfil");
+    assert!(
+        armed.at(0.85) < armed.at(0.15),
+        "o trecho rápido não saiu mais fino: {:.3} contra {:.3}",
+        armed.at(0.85),
+        armed.at(0.15)
+    );
+}
+
+/// **A fonte `Uniform` não pendura nada.** É o produto de antes do W1d, e o neutro é a AUSÊNCIA —
+/// um componente com oito multiplicadores `1.0` em toda forma desenhada seria o documento a
+/// acumular relações invisíveis.
+#[test]
+fn the_uniform_source_arms_no_profile() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let mut pencil = ph2d_vec_edit::Pencil::default();
+    let path = hand();
+    let id = pencil.on_press(&mut scene, path[0], PX_TO_WORLD, tick());
+    for p in &path[1..] {
+        pencil.on_drag(&mut scene, *p, tick());
+    }
+    frame(&mut sim, &mut scene, &mut map, &pencil);
+    let stops = pencil.width_stops(ph2d_vec_edit::pencil_width::WidthSource::Uniform);
+    crate::profile_live::arm(&mut sim, &map, &[id], &stops);
+    assert!(
+        crate::profile_live::spec_of(&sim, &map, id).is_none(),
+        "a fonte Uniform pendurou um perfil"
     );
 }

@@ -180,13 +180,40 @@ impl BodyCtx<'_> {
             .unwrap_or(f64::from(
                 PENCIL_STABILIZER_DEFAULT * PENCIL_STABILIZER_SLIDER_SCALE,
             ));
-        self.slider_row(
+        y = self.slider_row(
             "Stabilizer",
             ids::VECTOR_PENCIL_STABILIZER,
             ids::VECTOR_PENCIL_STABILIZER_NUM,
             stab_track,
             stab_pct,
             &format!("{stab_pct:.0}%"),
+            y,
+        );
+        // **A FONTE da largura** (W1d) — a 3ª pergunta do gesto, e a que faz do lápis um pincel:
+        // *que mão eu escuto* (Stabilizer) · *que detalhe eu guardo* (Fidelity) · **de onde vem a
+        // ESPESSURA**. `Pressure` é oferecida e hoje não chega (a shell não recebe pressão de
+        // dispositivo nenhum); o rótulo o diz, em vez de deixar o artista descobrir.
+        let src = snap.pencil_width_source;
+        use ph2d_vec_edit::pencil_width::WidthSource as Ws;
+        self.segmented3(
+            "Width",
+            [
+                (
+                    ids::VECTOR_PENCIL_W_UNIFORM,
+                    tr("panel.vector.pencil.width.uniform"),
+                    src == Ws::Uniform,
+                ),
+                (
+                    ids::VECTOR_PENCIL_W_SPEED,
+                    tr("panel.vector.pencil.width.speed"),
+                    src == Ws::Speed,
+                ),
+                (
+                    ids::VECTOR_PENCIL_W_PRESSURE,
+                    tr("panel.vector.pencil.width.pressure"),
+                    src == Ws::Pressure,
+                ),
+            ],
             y,
         )
     }

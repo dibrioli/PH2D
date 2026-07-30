@@ -11,9 +11,24 @@ use ph2d_tool_vector::params::{
 
 use crate::ids;
 
-/// **Fidelity + Stabilizer**, os dois controles da mão livre. Ambos são slider + chip ligados: o
-/// chip é onde se digita um número exato, e o slider é onde se sente a faixa.
+/// **Fidelity + Stabilizer + a fonte da largura**, os controles da mão livre. Os dois primeiros
+/// são slider + chip ligados (o chip é onde se digita um número exato, o slider é onde se sente a
+/// faixa); o terceiro é uma fileira de três botões exclusivos.
 pub(super) fn pencil_knobs(store: &mut WidgetStore) {
+    // A FONTE da largura (W1d). Sem este registo os três chips ficariam pintados, com hit-rect,
+    // e MORTOS sob o mouse — a checagem de focabilidade mora no store, e é ela que o seam prova.
+    for id in [
+        ids::VECTOR_PENCIL_W_UNIFORM,
+        ids::VECTOR_PENCIL_W_SPEED,
+        ids::VECTOR_PENCIL_W_PRESSURE,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
     for (slider, chip, track, val, scale, offset) in [
         (
             ids::VECTOR_PENCIL_FIDELITY,

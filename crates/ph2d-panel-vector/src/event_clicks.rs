@@ -44,6 +44,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // O 9º e 10º pills (Fillet / Chamfer). Fora daqui, pintam e estão MORTOS.
         || id == ids::VECTOR_MODE_FILLET
         || id == ids::VECTOR_MODE_CHAMFER
+        // O 12º modo (Width). Fora daqui, o pill pinta e está MORTO.
+        || id == ids::VECTOR_MODE_WIDTH
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

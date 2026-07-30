@@ -672,3 +672,8 @@ pub const VECTOR_MODE_CHAMFER: NodeId = hash_node_id("vector.mode.chamfer");
 /// O gesto que faltava ao módulo, que só sabia nascer de cliques discretos ou de arrasto
 /// dimensionado.
 pub const VECTOR_MODE_PENCIL: NodeId = hash_node_id("vector.mode.pencil");
+
+/// **Width** — o 12º modo: as alças de largura na curva (plano 25 §5). Irmão dos pills de quina
+/// (Fillet/Chamfer) na fileira TOOL: os três editam um atributo VIVO de uma forma que já existe,
+/// apontando-a no canvas.
+pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");

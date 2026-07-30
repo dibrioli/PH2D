@@ -175,6 +175,15 @@ pub enum DrawMode {
     /// vez de arco (o SINAL do `corner_radius`, ADR-0121). O par Fillet/Chamfer consolida numa
     /// dupla de ferramentas o que estava espalhado entre a alça do Node e o toggle da seção Vertex.
     Chamfer,
+    /// **Width**: as alças de LARGURA na curva (plano 25 §5, ADR-0145). Uma alça por parada do
+    /// perfil, fora da curva à distância que a fita tem ali; afastar engrossa, aproximar afina,
+    /// andar ao longo move a parada. Clicar na curva acrescenta uma parada; o botão direito
+    /// sobre uma alça a apaga.
+    ///
+    /// É um modo pela MESMA razão do Fillet/Chamfer: no Node estas alças competiriam com as
+    /// âncoras — uma parada de multiplicador pequeno senta a milímetros da curva, ou seja em
+    /// cima delas. O Illustrator também o faz uma ferramenta (Shift+W).
+    Width,
 }
 
 impl DrawMode {
@@ -525,84 +534,6 @@ impl Default for VectorDrawConfig {
     }
 }
 
-/// Per-frame projection of the tool's Style, published by the shell bridge for
-/// the docked panel to paint. `stroke` / `fill` are sRGB8; `fill[3] == 0` ⇒ no
-/// fill ("None"). `mode` / `polygon_sides` drive the draw-mode segmented row +
-/// the Sides slider.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct VectorStyleSnapshot {
-    pub stroke: [u8; 4],
-    pub fill: [u8; 4],
-    pub stroke_width_px: f64,
-    pub mode: DrawMode,
-    /// **Blend:** cada passo nasce ACIMA do anterior (o checkbox da seção Blend). A tool é a dona;
-    /// o painel só o pinta.
-    pub blend_stack_up: bool,
-    /// **De onde a largura do traço de lápis vem** (W1d) — o painel pinta os três chips a partir
-    /// disto e não sabe o que uma fonte É; a tool é a dona.
-    pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
-    /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
-    /// seletor e os campos a partir disto, sem saber que formas existem.
-    pub shape: ShapeKind,
-    pub values: ShapeValues,
-    pub cap: StrokeCap,
-    pub join: StrokeJoin,
-    /// Dash as a multiple of stroke width (`0` = solid).
-    pub dash: f64,
-    /// Gap between dashes as a multiple of stroke width.
-    pub gap: f64,
-    /// **Pontas do traço** (arrowheads) — a do começo e a do fim do caminho. São
-    /// propriedade do STROKE (herdam cor e largura, giram com a tangente), não formas
-    /// do catálogo: por isso viajam no snapshot ao lado de cap/join/dash, e o painel
-    /// as pinta na seção Stroke. Aqui usamos o tipo do DOCUMENTO
-    /// (`ph2d_vec_scene::Marker`) em vez de um espelho de UI — a tool já depende da
-    /// crate de geometria (`ShapeKind`/`ShapeValues`), e um espelho a mais só criaria
-    /// uma tabela de conversão para manter em dia.
-    pub marker_start: Marker,
-    pub marker_end: Marker,
-    /// Tamanho da ponta ([`MARKER_SCALE`]) + arredondamento das quinas dela
-    /// ([`MARKER_ROUND`]). Viajam no snapshot porque as caixas do painel são semeadas com o
-    /// valor EFETIVO da tool a cada frame — um campo que nascesse em `0` daria uma seta
-    /// invisível ao primeiro toque.
-    pub marker_scale: f64,
-    pub marker_round: f64,
-}
-
-impl VectorStyleSnapshot {
-    /// **"É bidirecional?" é uma pergunta DERIVADA** — a linha tem ponta nos dois extremos.
-    ///
-    /// O botão Both Ends lê daqui e o clique reescreve as PONTAS (nunca um flag próprio):
-    /// um booleano guardado seria uma segunda verdade, e divergiria no instante em que o
-    /// usuário trocasse uma das pontas pelo chip de Start/End.
-    #[must_use]
-    pub fn both_ends(&self) -> bool {
-        self.marker_start != Marker::None && self.marker_end != Marker::None
-    }
-}
-
-impl Default for VectorStyleSnapshot {
-    fn default() -> Self {
-        Self {
-            stroke: [240, 240, 245, 255],
-            fill: [90, 150, 230, 255],
-            stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
-            mode: DrawMode::Pen,
-            blend_stack_up: true,
-            pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
-            shape: ShapeKind::Rectangle,
-            values: ShapeKind::Rectangle.defaults(),
-            cap: StrokeCap::Butt,
-            join: StrokeJoin::Miter,
-            dash: 0.0,
-            gap: GAP_DEFAULT,
-            marker_start: Marker::None,
-            marker_end: Marker::None,
-            marker_scale: DEFAULT_MARKER_SCALE,
-            marker_round: DEFAULT_MARKER_ROUND,
-        }
-    }
-}
-
 /// Os dois seletores de ponta, como o painel os endereça: `0` = começo, `1` = fim.
 /// Um `usize` (e não um enum) porque é exatamente o que o id de opção carrega
 /// (`ph2d_editor_core::ids::vector_marker_option_id(slot, index)`) — a tool, o painel
@@ -655,6 +586,10 @@ pub fn blend_steps_to_track(steps: u32) -> f32 {
     let n = steps.clamp(1, MAX_BLEND_STEPS);
     (f64::from(n - 1) / f64::from(MAX_BLEND_STEPS - 1)) as f32
 }
+
+/// O snapshot publicado por-frame — mora no irmão [`super::params_snapshot`] pelo teto de LOC,
+/// e é re-exportado aqui porque é por este caminho que os cerca de cinquenta sítios já o escrevem.
+pub use super::params_snapshot::VectorStyleSnapshot;
 
 #[cfg(test)]
 mod tests {

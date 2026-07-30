@@ -284,6 +284,10 @@ mod vec_text_ride;
 mod vec_transform;
 mod warp_smoke;
 mod wetpaint_smoke;
+/// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0145).
+mod width_handles;
+/// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.
+mod width_tool_smoke;
 mod winit_host;
 
 pub(crate) use app_state::{
@@ -578,6 +582,8 @@ impl App {
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
             vec_profile_mirrored: None,
+            vec_width_grab: None,
+            vec_width_ref: None,
             vec_contour_mirrored: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),

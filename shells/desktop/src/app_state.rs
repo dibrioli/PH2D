@@ -973,6 +973,12 @@ pub(crate) struct App {
     /// Mesmo papel do [`Self::vec_offset_mirrored`] e pela mesma razão: a borda é a SELEÇÃO, e
     /// sem ela escolher uma forma com perfil vivo mostraria os knobs globais do painel.
     pub(crate) vec_profile_mirrored: Option<ph2d_vec_scene::VecPathId>,
+    /// A alça de LARGURA agarrada agora (plano 25 §5). Runtime-only: o que o documento guarda é o
+    /// `VecStrokeProfile`, e isto é só qual parada o dedo está a mover.
+    pub(crate) vec_width_grab: Option<crate::width_handles::Grab>,
+    /// O caminho de REFERÊNCIA da cena de smoke do Width Tool, à espera de ganhar o perfil no
+    /// frame seguinte (o componente precisa de uma entidade, e ela nasce no `sync`).
+    pub(crate) vec_width_ref: Option<ph2d_vec_scene::VecPathId>,
     /// A forma cujo CONTOUR o painel está espelhando (os três sliders + os dois trios). Mesmo
     /// papel do [`Self::vec_offset_mirrored`] e pela mesma razão: o `paint` lê o STORE primeiro
     /// (senão o número saltaria durante o arrasto), então sem uma borda que reescreva o store na

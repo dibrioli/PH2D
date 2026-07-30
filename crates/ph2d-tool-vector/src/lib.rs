@@ -28,6 +28,8 @@
 pub mod connector;
 pub mod icon;
 pub mod params;
+/// A projeção por-frame do estilo — irmão de [`params`] pelo teto de 700 LOC.
+mod params_snapshot;
 /// O catálogo de APRESENTAÇÃO das formas (rótulo, família, campos, unidade) — par do
 /// `ph2d_vec_scene::kind`, que sabe desenhar. É o que faz uma forma nova custar uma
 /// linha de tabela em vez de oito lugares.

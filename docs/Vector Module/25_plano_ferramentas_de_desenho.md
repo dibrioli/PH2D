@@ -189,9 +189,37 @@ já a consome, o cozimento vivo já roda por frame no z da forma, e o par *arras
 o do Offset. **Zero bump** — a decisão da tabela acima foi tomada e executada.
 
 **O que sobra para a W2, e só isto:** as **alças no canvas** (adicionar/mover/apagar uma parada
-apontando a curva — o `InteractiveState::CurvePoint`) e os **perfis salvos** (a lista por nome). O
-que NÃO sobra é decidir onde o perfil mora nem escrever um segundo motor: quem o fizer estará a
-construir a segunda porta que o ADR-0145 §3 proíbe.
+apontando a curva) e os **perfis salvos** (a lista por nome). O que NÃO sobra é decidir onde o
+perfil mora nem escrever um segundo motor: quem o fizer estará a construir a segunda porta que o
+ADR-0145 §3 proíbe.
+
+### ✅ W2a — ENTREGUE: as alças no canvas
+
+Pill **Width** (o 12º modo), e uma alça por parada — **fora** da curva, à distância que a fita de
+facto tem ali. Arrastar para fora ENGROSSA, para dentro AFINA, ao longo MOVE a parada; arrastar a
+partir de um ponto da curva CRIA um ponto de largura; o botão direito sobre uma alça a APAGA (e
+abaixo de duas paradas o perfil inteiro sai, o neutro-é-ausência das outras rotas).
+
+É um modo, e não uma alça no Node, pela razão que o Fillet/Chamfer já pagou: estas alças pousam a
+milímetros da curva num multiplicador pequeno, ou seja **em cima das âncoras** que o Node existe
+para editar. O Illustrator também a faz uma ferramenta (Shift+W).
+
+⚠️ **Um número medido decidiu o gesto.** Inserir uma parada numa lista interpolada por
+`smoothstep` **não preserva a forma entre as vizinhas** — o desvio máximo é **13,1% da faixa do
+perfil**, e é ESTRUTURAL (o mesmo em todo perfil: é o máximo entre um smoothstep e dois
+meio-smoothsteps). Trocar por interpolação LINEAR tornaria a inserção exata e poria um vinco em
+cada parada, que é o que o `WidthProfile` recusa desde o 1º dia. **A cura não é a interpolação, é
+o gesto:** cria-se um ponto de largura **arrastando** (é o que o Illustrator faz), e um clique que
+não moveu nada é desfeito no release — quem arrasta nunca vê os 13,1%, porque a espessura já está
+a mudar sob o dedo.
+
+⚠️ E a alça **não escala com a pose**, porque a fita também não: o `bake_xform` transforma pontos e
+comprimentos de path e deixa `stroke.width` como está. As duas têm de concordar, e há gate.
+
+**Aberto da W2:** os **perfis salvos** (a lista por nome — *afina-no-fim*, *afina-nos-dois*…). O
+`WidthProfile` já É essa face; o que falta é a lista e o dropdown que a escolhe.
+
+Smoke: **`PH2D_BUILD_SMOKE=42`**.
 
 **Tamanho: G.** Smoke: um traço com 5 pontos de largura, arrastados; o mesmo traço sob Expand tem de
 dar a MESMA silhueta (a paridade vivo↔assado é o gate que impede duas respostas).

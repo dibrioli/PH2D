@@ -82,6 +82,8 @@ mod paint_connector;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;
+/// A seção PENCIL — irmã de `paint_modes` pelo teto de 600 LOC dos painéis.
+mod paint_pencil;
 mod paint_sections;
 mod paint_transform;
 pub mod populate;

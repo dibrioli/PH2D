@@ -59,6 +59,11 @@ pub(crate) mod protect_brush;
 /// para world) — a cópia não nasce exatamente sob o original.
 const PASTE_OFFSET_PX: f64 = 12.0;
 
+/// O raio de acerto de uma alça de canvas, em **pixels de tela**. O MESMO número que as
+/// ferramentas de quina usam para agarrar um vértice — uma alça é uma alça, e dois raios
+/// diferentes fariam o artista aprender duas mãos.
+const HANDLE_HIT_PX: f64 = 12.0;
+
 /// The z-ordered (back → front) indices of the closed paths in the pen's OBJECT
 /// selection. Boolean and Make Compound both need this: the back-most is the base
 /// and the front-most donates the style (Illustrator's Pathfinder).
@@ -2293,6 +2298,41 @@ impl App {
     /// cada amostra de um arrasto contínuo quantizaria a mão inteira numa grade, que é o oposto
     /// de desenhar à mão livre. (O snap a caminho/interseção é a W6 do plano, e a pergunta lá é
     /// sobre as PONTAS.)
+    /// **O move do Width Tool**: a alça agarrada segue o cursor — a distância à curva vira o
+    /// multiplicador e a projeção nela vira a posição. Mesma disciplina de early-return do lápis;
+    /// no-op sem alça agarrada.
+    fn vec_width_drag_move(&mut self, x: f32, y: f32) -> bool {
+        let Some(grab) = self.vec_width_grab else {
+            return false;
+        };
+        let Some(w) = self
+            .gfx
+            .as_ref()
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+        else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let scene = &gfx.vec_scene;
+        crate::width_handles::drag(
+            &mut gfx.sim,
+            scene,
+            &self.vec_entities,
+            grab,
+            [f64::from(w[0]), f64::from(w[1])],
+        );
+        // O dedo MOVEU: a parada deixa de ser "nascida num clique" e o release não a desfaz.
+        self.vec_width_grab = Some(crate::width_handles::Grab {
+            created: false,
+            ..grab
+        });
+        // Consome o move: o gesto É do Width enquanto a alça está agarrada, e deixar cair viraria
+        // pan da câmera no meio do arrasto.
+        true
+    }
+
     fn vec_pencil_drag_move(&mut self, x: f32, y: f32) -> bool {
         if !self.vector_tool_active() || !self.vec_pencil.is_active() {
             return false;
@@ -2577,6 +2617,10 @@ impl App {
         }
         // **O LÁPIS**: a mão livre acumula amostras e re-ajusta a curva. Mesma disciplina.
         if self.vec_pencil_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // **O Width Tool**: a alça de largura agarrada segue o cursor. Mesma disciplina.
+        if self.vec_width_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Conector (modo Connect): a 2ª ponta segue o cursor e GRUDA na forma sob ele — o
@@ -3444,6 +3488,39 @@ impl App {
                     // é próprio — move e release reusam o caminho do pen (o arrasto é guiado pelo
                     // `grab`, o release comita um passo). "Basta clicar numa quina", e um ponto
                     // SUAVE é primeiro transformado em quina (`on_press_corner`).
+                    // **Modo Width**: a pressão agarra a alça de largura sob o cursor, ou
+                    // ACRESCENTA uma parada se o cursor está sobre a curva (plano 25 §5). O gesto
+                    // é inteiro dele — o `Grab` armado dita o move, e o release comita um passo.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Width {
+                        let px_to_world = self.vec_px_to_world();
+                        if let Some(world) = self.vec_world_at(self.last_pointer) {
+                            let hit_r = HANDLE_HIT_PX * px_to_world;
+                            // (Re)seleciona o caminho sob o cursor — o gesto vale sem
+                            // pré-selecionar, como o das ferramentas de quina.
+                            if let Some(gfx) = self.gfx.as_mut()
+                                && let Some(pid) =
+                                    self.vec_pen.path_at(&gfx.vec_scene, world, hit_r)
+                            {
+                                self.vec_pen.select(Some(pid));
+                            }
+                            if let Some(pid) = self.vec_pen.selected()
+                                && let Some(gfx) = self.gfx.as_mut()
+                            {
+                                // UM passo de undo por gesto (o mesmo par do lápis e da quina).
+                                self.vec_history.begin(&gfx.vec_scene);
+                                let scene = &gfx.vec_scene;
+                                self.vec_width_grab = crate::width_handles::press(
+                                    &mut gfx.sim,
+                                    scene,
+                                    &self.vec_entities,
+                                    pid,
+                                    world,
+                                    hit_r,
+                                );
+                            }
+                        }
+                        return;
+                    }
                     if self.vec_draw_config.mode.is_corner_tool() {
                         let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();
@@ -3734,6 +3811,27 @@ impl App {
                         }
                         return;
                     }
+                    // **O WIDTH TOOL solta.** A alça é largada e o passo de undo fecha — o
+                    // MESMO par begin/commit do lápis e das ferramentas de quina.
+                    //
+                    // ⚠️ **Arm próprio, e ANTES da cadeia de modo**, pela razão que o lápis
+                    // pagou logo abaixo: `shape_kind_for_mode(..).is_none()` é verdadeiro no modo
+                    // Width, então um ramo posto no `else` dele seria código morto no único modo
+                    // capaz de o alcançar — e a alça ficaria agarrada ao dedo depois de solta.
+                    if let Some(grab) = self.vec_width_grab.take() {
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            // Um clique que não moveu nada não pediu nada: a parada que o press
+                            // criou é desfeita, e o desenho fica como estava (ver `Grab::created`
+                            // — os 13,1% da re-parametrização nunca chegam à tela).
+                            crate::width_handles::discard_if_untouched(
+                                &mut gfx.sim,
+                                &self.vec_entities,
+                                grab,
+                            );
+                            self.vec_history.commit_if_changed(&gfx.vec_scene);
+                        }
+                        return;
+                    }
                     // **O LÁPIS solta.** O traço vira documento (ou desaparece, se o gesto
                     // foi um clique perdido) e a forma nova fica SELECIONADA — o artista
                     // acabou de a desenhar, então é nela que ele vai mexer.
@@ -3874,6 +3972,33 @@ impl App {
                     // arrasto de uma ALÇA devolve a ponta ao lugar de onde ela saiu (o
                     // vínculo original, intacto): desistir não pode desligar a linha.
                     if self.conn_handle_cancel() || self.connector_cancel() {
+                        return;
+                    }
+                    // **O Width Tool**: o direito APAGA a parada sob o cursor — o verbo de
+                    // remoção da ferramenta, não um cancelamento (não há gesto em curso a
+                    // abortar; um clique é um clique). Abaixo de duas paradas o perfil inteiro
+                    // sai e o traço volta ao uniforme, que é o neutro-é-ausência das outras
+                    // rotas. Um passo de undo, pelo par begin/commit de sempre.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Width
+                        && let Some(pid) = self.vec_pen.selected()
+                        && let Some(world) = self.vec_world_at(self.last_pointer)
+                    {
+                        let hit_r = HANDLE_HIT_PX * self.vec_px_to_world();
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            self.vec_history.begin(&gfx.vec_scene);
+                            let scene = &gfx.vec_scene;
+                            let removed = crate::width_handles::remove(
+                                &mut gfx.sim,
+                                scene,
+                                &self.vec_entities,
+                                pid,
+                                world,
+                                hit_r,
+                            );
+                            if !removed {
+                                self.vec_history.cancel();
+                            }
+                        }
                         return;
                     }
                     // **O lápis** desiste pelo direito também: o traço vivo some sem deixar

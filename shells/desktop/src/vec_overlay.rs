@@ -42,6 +42,8 @@ pub(crate) struct VecOverlayPlan {
     /// só diz que elas *podem* aparecer; se há um pattern vinculado no primário é o
     /// [`crate::pattern_live::handle::world`] que decide (devolve `None` quando não há).
     pub patternpath_handles: bool,
+    /// **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil, na forma selecionada.
+    pub width_handles: bool,
     // NOTA: o antigo `corner_handles` (a alça de raio na bissetriz, só no Node) foi REMOVIDO — o
     // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer (o gesto de
     // clicar-e-arrastar sobre a quina). A consolidação que o Enio pediu.
@@ -71,6 +73,11 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         textpath_handle: vector_active && mode == DrawMode::Select,
         // As alças do Pattern seguem a MESMA regra da alça do texto (Select-only, mesma razão).
         patternpath_handles: vector_active && mode == DrawMode::Select,
+        // ⚠️ **Modo Width e SÓ ele.** Estas alças ficam FORA da curva, à distância da fita, e num
+        // multiplicador pequeno pousam a milímetros das âncoras — no Node elas competiriam com o
+        // que aquele modo existe para editar. É a mesma razão que fez a alça de quina virar as
+        // ferramentas Fillet/Chamfer.
+        width_handles: vector_active && mode == DrawMode::Width,
     }
 }
 
@@ -97,6 +104,31 @@ mod tests {
         let plan = vec_overlay_plan(true, DrawMode::Build);
         assert!(!plan.edit, "sem âncoras/handles no Build");
         assert!(plan.snap_guides, "as guias de snap valem em todo modo");
+    }
+
+    /// **As alças de largura pertencem ao modo Width e a mais nenhum.** Elas vivem FORA da curva,
+    /// e num multiplicador pequeno pousam em cima das âncoras — no Node roubariam o clique do nó,
+    /// que é o defeito que tirou a alça de quina de lá.
+    #[test]
+    fn the_width_handles_belong_to_width_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Width).width_handles);
+        for m in [
+            DrawMode::Select,
+            DrawMode::Node,
+            DrawMode::Pen,
+            DrawMode::Pencil,
+            DrawMode::Fillet,
+            DrawMode::Chamfer,
+        ] {
+            assert!(
+                !vec_overlay_plan(true, m).width_handles,
+                "as alças de largura apareceram no modo {m:?}"
+            );
+        }
+        assert!(
+            !vec_overlay_plan(false, DrawMode::Width).width_handles,
+            "com a tool inativa não há overlay nenhum"
+        );
     }
 
     /// Nos modos de desenho/edição de nó E nas ferramentas de QUINA, os overlays de edição

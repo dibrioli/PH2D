@@ -142,5 +142,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::profile_smoke::frame(app, f);
         return true;
     }
+    // A cena do WIDTH TOOL (=42, plano 25 §5) — irmã `width_tool_smoke`. Como as duas anteriores,
+    // ela dá o MATERIAL e **não entra no modo**: o gesto começa no pill.
+    if level == 42 {
+        crate::width_tool_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -79,7 +79,7 @@ pub use ph2d_editor_core::ids::{
 };
 /// O 9º e 10º pills de modo: **Fillet** / **Chamfer** — arredondar / chanfrar quina por
 /// clicar-e-arrastar (consolidam a alça do Node + o toggle da seção Vertex numa dupla).
-pub use ph2d_editor_core::ids::{VECTOR_MODE_CHAMFER, VECTOR_MODE_FILLET};
+pub use ph2d_editor_core::ids::{VECTOR_MODE_CHAMFER, VECTOR_MODE_FILLET, VECTOR_MODE_WIDTH};
 /// Os cabeçalhos COLAPSÁVEIS (canon `section_header.md`) + o 5º pill de modo + o chip de
 /// categoria do catálogo. `VECTOR_SECTIONS` é a lista que o `populate` marca como
 /// colapsável — uma seção fora dela pinta um chevron que não dobra.

@@ -29,4 +29,5 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // Fillet / Chamfer: arredondar / chanfrar quina por clicar-e-arrastar.
     button(store, ids::VECTOR_MODE_FILLET);
     button(store, ids::VECTOR_MODE_CHAMFER);
+    button(store, ids::VECTOR_MODE_WIDTH);
 }

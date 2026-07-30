@@ -5776,6 +5776,28 @@ impl crate::App {
                     vector_scene,
                 );
             }
+            // **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil da forma primária,
+            // fora da curva à distância que a fita tem ali. Reusa a MESMA ficha do texto e do
+            // pattern: uma alça arrastável deste módulo tem uma aparência só, e o que a distingue
+            // é ONDE ela está. `handles` devolve vazio sem traço (nada a editar).
+            if overlay.width_handles
+                && let Some(pid) = self.vec_pen.selected()
+            {
+                let grabbed = self.vec_width_grab.map(|g| g.stop);
+                for (k, at) in
+                    crate::width_handles::handles(sim, vec_scene, &self.vec_entities, pid)
+                        .into_iter()
+                        .enumerate()
+                {
+                    ph2d_vec_render::draw_text_handle(
+                        at,
+                        grabbed == Some(k),
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
+            }
             // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
             // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
             if let Some((a, b)) = crate::vec_text::caret_of(self.vec_text_edit.as_ref()) {

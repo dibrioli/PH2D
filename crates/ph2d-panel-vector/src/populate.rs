@@ -456,6 +456,12 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_EXPAND_OFFSET_PATH);
     button(store, ids::VECTOR_EXPAND_OUTLINE_STROKE);
     button(store, ids::VECTOR_EXPAND_POWER_STROKE);
+    // Os perfis nomeados (W2b): o TETO de botões, sempre. O `paint` desenha só os que a tabela
+    // publica, então registrar de menos deixaria um perfil novo clicável-e-MORTO sob o mouse, e
+    // registrar de mais é inerte. Espelho do laço dos presets de gaiola.
+    for i in 0..ids::MAX_WIDTH_PRESETS {
+        button(store, ids::vector_width_preset_id(i));
+    }
     for (slider, chip, default) in [
         (
             ids::VECTOR_EXPAND_W_START,

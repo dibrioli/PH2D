@@ -278,26 +278,18 @@ pub(crate) fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
 /// ⚠️ Só faz sentido para um perfil que É um preset (três paradas). Um perfil de alças arbitrárias
 /// (W2) não tem quatro números que o descrevam, e é o painel de então que decide o que mostrar —
 /// por isso a conversão de volta vive aqui, no lado da UI, e não no tipo.
+/// ⚠️ **Os trilhos saem da porta única** ([`params::preset_tracks`]) — a mesma que o painel usa
+/// para decidir qual perfil do catálogo está ACESO. Se esta função convertesse por conta própria,
+/// clicar um perfil escreveria trilhos que a fileira não reconheceria, e a linha que o artista
+/// acabou de escolher ficaria apagada.
 pub(crate) fn write_preset_to_store(store: &mut WidgetStore, p: &WidthProfile) {
-    for (id, v) in [
-        (
-            ph2d_editor::ids::VECTOR_EXPAND_W_START,
-            params::wprofile_to_slider(p.start),
-        ),
-        (
-            ph2d_editor::ids::VECTOR_EXPAND_W_MID,
-            params::wprofile_to_slider(p.mid),
-        ),
-        (
-            ph2d_editor::ids::VECTOR_EXPAND_W_END,
-            params::wprofile_to_slider(p.end),
-        ),
-        #[allow(clippy::cast_possible_truncation)]
-        (
-            ph2d_editor::ids::VECTOR_EXPAND_W_POS,
-            p.position.clamp(0.0, 1.0) as f32,
-        ),
-    ] {
+    const IDS: [ph2d_editor::NodeId; 4] = [
+        ph2d_editor::ids::VECTOR_EXPAND_W_START,
+        ph2d_editor::ids::VECTOR_EXPAND_W_MID,
+        ph2d_editor::ids::VECTOR_EXPAND_W_END,
+        ph2d_editor::ids::VECTOR_EXPAND_W_POS,
+    ];
+    for (id, v) in IDS.into_iter().zip(params::preset_tracks(p)) {
         store.set_slider_value(id, v);
     }
 }

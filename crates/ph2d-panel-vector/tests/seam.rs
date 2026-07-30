@@ -1468,6 +1468,13 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
         (ids::VECTOR_EXPAND_JOIN_MITER, "Join Miter", false),
         (ids::VECTOR_EXPAND_JOIN_ROUND, "Join Round", false),
         (ids::VECTOR_EXPAND_JOIN_BEVEL, "Join Bevel", false),
+        // Os perfis nomeados (W2b) — os quatro FORWARDAM: o clique escreve os sliders e arma o
+        // perfil na seleção, e as duas metades são da shell. Panel-local deixaria a linha acesa
+        // sobre uma forma que não mudou.
+        (ids::vector_width_preset_id(0), "Profile Uniform", true),
+        (ids::vector_width_preset_id(1), "Profile Taper", true),
+        (ids::vector_width_preset_id(2), "Profile Both", true),
+        (ids::vector_width_preset_id(3), "Profile Bulge", true),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;

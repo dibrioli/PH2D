@@ -128,42 +128,21 @@ impl BodyCtx<'_> {
     }
 
     /// A labelled 3-across segmented button row (Cap / Join / text Align).
+    ///
+    /// ⚠️ **Delega ao [`Self::segmented`]**, que é a mesma fileira com um número de botões
+    /// arbitrário: a aritmética de largura dos dois era literalmente a mesma expressão
+    /// (`(inner_w − gap·(n−1))/n` colapsa em `(inner_w − gap·2)/3` para `n = 3`), escrita duas
+    /// vezes. Duas respostas para *"onde cada botão desta fileira senta?"* divergem no dia em
+    /// que uma delas ganhar wrap, e a outra continuar medindo pela regra velha — que é
+    /// exatamente como o painel do impasto acabou pintando por cima dos próprios botões.
+    /// Este método fica pelo tipo: um array de três não pode ter tamanho errado.
     pub(crate) fn segmented3(
         &mut self,
         label: &str,
         opts: [(ph2d_a11y::NodeId, &str, bool); 3],
-        mut y: f32,
+        y: f32,
     ) -> f32 {
-        let sd_font = TypeToken::Sm.px();
-        let sd_gap = Spacing::Sm.px();
-        let sd_w = ((self.inner_w - sd_gap * 2.0) / 3.0).max(1.0); // LITERAL-PX-OK: 3-column segmented grid (button count, not a metric)
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            sd_font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += sd_font + Spacing::Xs.px();
-        for (i, (id, lbl, active)) in opts.iter().enumerate() {
-            let rx = self.inner_x + i as f32 * (sd_w + sd_gap);
-            let rect = Rect::new(rx, y, sd_w, self.row_h);
-            let st = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
-            paint_segmented_button(
-                rect,
-                lbl,
-                *active,
-                st,
-                self.scene,
-                self.text_system,
-                self.theme,
-            );
-            self.hit_index.register(*id, rect);
-        }
-        y + self.row_h + self.row_gap
+        self.segmented(label, &opts, y)
     }
 
     /// O cabeçalho CANÔNICO de seção (`docs/UI_Padrao/components/section_header.md`:

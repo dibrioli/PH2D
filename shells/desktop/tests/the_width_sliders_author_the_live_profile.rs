@@ -38,13 +38,16 @@ fn at(needle: &str) -> usize {
 /// mostra o resultado — que é exatamente o produto que o ADR-0145 substituiu.
 #[test]
 fn dragging_a_width_slider_arms_the_live_profile() {
-    let arm = at("crate::profile_live::arm(");
-    // A janela é o bloco que contém a chamada: do início do bloco da largura viva até o `arm`.
-    let block = at("// ── A LARGURA VIVA (ADR-0145)");
-    assert!(
-        block < arm,
-        "o `profile_live::arm` não está no bloco da largura viva"
-    );
+    // ⚠️ A âncora é o RAMO do arrasto, nunca *a primeira `arm(` do arquivo*: "a primeira
+    // ocorrência" é uma distância disfarçada — o catálogo de perfis (W2b) acrescentou um
+    // armamento ACIMA deste, e a janela passou a fechar antes dos ids que o gate procura. Ele
+    // ficou vermelho sobre produto correto, que é exatamente o que o cabeçalho deste arquivo
+    // manda evitar.
+    let block = at("let grabbed = matches!(");
+    let arm = SRC[block..]
+        .find("crate::profile_live::arm(")
+        .map(|i| block + i)
+        .expect("o ramo do arrasto deixou de armar o perfil vivo");
     let window = &SRC[block..arm];
     for id in [
         "VECTOR_EXPAND_W_START",
@@ -174,5 +177,57 @@ fn the_profile_cook_takes_the_scene_by_shared_reference() {
         tail.contains("scene: &VecScene"),
         "o `recook` deixou de receber a cena por referência COMPARTILHADA — a partir daqui o \
          preview pode escrever no documento:\n{tail}"
+    );
+}
+
+/// **Clicar um perfil do catálogo escreve os SLIDERS e arma a FORMA** (W2b) — as duas metades,
+/// e cada uma partida sozinha compila e deixa toda a suíte verde:
+///
+/// * sem o `write_preset_to_store`, o artista clica *Taper*, a forma muda, e o painel continua
+///   mostrando os números velhos com a linha apagada — o painel dizendo o contrário da tela;
+/// * sem o `arm`, a fileira acende e o traço não muda — um botão que só pinta a si mesmo.
+#[test]
+fn clicking_a_width_preset_writes_the_sliders_and_arms_the_shape() {
+    let block = at("// **O catálogo de perfis** (W2b)");
+    let grabbed = at("let grabbed = matches!(");
+    assert!(
+        block < grabbed,
+        "o bloco do catálogo não está antes da leitura do arrasto"
+    );
+    let window = &SRC[block..grabbed];
+    assert!(
+        window.contains("WIDTH_PRESETS"),
+        "o clique não consulta a TABELA de perfis — a lista do painel e a que a shell aplica \
+         seriam duas, e divergiriam no primeiro perfil novo"
+    );
+    assert!(
+        window.contains("write_preset_to_store"),
+        "o clique não escreve os quatro sliders — a forma mudaria e o painel mostraria os \
+         números da forma anterior, com a linha do perfil escolhido APAGADA"
+    );
+    assert!(
+        window.contains("profile_live::arm("),
+        "o clique não arma o perfil na seleção — a fileira acenderia e o traço ficaria como estava"
+    );
+}
+
+/// **O que a shell ESCREVE sai da mesma porta que o painel LÊ.** O gate de unidade
+/// (`writing_a_preset_makes_it_the_active_one`) compara `preset_tracks` com `active_preset` e
+/// continuaria verde se o `write_preset_to_store` voltasse a converter por conta própria — as
+/// duas funções que ele mede não teriam mudado. Quem quebraria é só o produto: a linha do perfil
+/// recém-escolhido nunca acenderia.
+#[test]
+fn the_shell_writes_the_tracks_through_the_one_door() {
+    const LIVE: &str = include_str!("../src/profile_live.rs");
+    let f = LIVE
+        .find("pub(crate) fn write_preset_to_store(")
+        .expect("o `write_preset_to_store` sumiu do profile_live");
+    let body = &LIVE[f..];
+    let end = body.find("\n}\n").unwrap_or(body.len());
+    let body = &body[..end];
+    assert!(
+        body.contains("params::preset_tracks("),
+        "o `write_preset_to_store` converte o perfil por conta própria — é a SEGUNDA resposta a \
+         *quais quatro trilhos este perfil é*, e a fileira de perfis lê a primeira:\n{body}"
     );
 }

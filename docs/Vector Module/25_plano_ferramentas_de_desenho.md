@@ -216,10 +216,58 @@ a mudar sob o dedo.
 ⚠️ E a alça **não escala com a pose**, porque a fita também não: o `bake_xform` transforma pontos e
 comprimentos de path e deixa `stroke.width` como está. As duas têm de concordar, e há gate.
 
-**Aberto da W2:** os **perfis salvos** (a lista por nome — *afina-no-fim*, *afina-nos-dois*…). O
-`WidthProfile` já É essa face; o que falta é a lista e o dropdown que a escolhe.
-
 Smoke: **`PH2D_BUILD_SMOKE=42`**.
+
+### ✅ W2b — ENTREGUE: os perfis salvos
+
+A fileira **Profile**, acima dos quatro sliders: **Uniform · Taper · Both · Bulge**. Escolhe-se a
+forma pelo nome e, se for o caso, refina-se nos knobs — a ordem do *Width Profile* do Illustrator
+(lá a lista é de miniaturas; um nome só serve se descrever a curva).
+
+**A tabela é o produto inteiro** (`ph2d_stroke_width::PRESETS`): um perfil novo é **uma linha lá** e
+zero mudança de UI — o idioma dos presets de gaiola do envelope e o da rack de áudio que se popula
+de `KINDS`. Os números foram **medidos** antes de escritos (`measure_width_presets`, o multiplicador
+em cinco pontos do arco):
+
+| perfil  | t=0   | 0.25  | 0.50  | 0.75  | 1.00  | fita (8 px × 100) |
+|---------|-------|-------|-------|-------|-------|-------------------|
+| Uniform | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | — |
+| Taper   | 1.000 | 0.775 | 0.550 | 0.275 | 0.000 | 420.0 |
+| Both    | 0.000 | 0.500 | 1.000 | 0.500 | 0.000 | 400.0 |
+| Bulge   | 1.000 | 1.400 | 1.800 | 1.400 | 1.000 | 1120.0 |
+
+⚠️ **A ponta de largura ZERO era o único valor a tocar a borda do domínio, e foi medida**: a fita
+fecha em ponta com 400-420 de área e 252-253 âncoras, todas finitas — a mesma ordem do Bulge. Não há
+caso degenerado a tratar.
+
+⚠️ **`Uniform` é a REMOÇÃO, não uma forma**: o `power_stroke` devolve vazio para um perfil uniforme
+(ali o comando é o *Outline Stroke*), então esta entrada é a única porta de volta ao traço de
+largura única — e há gate exigindo que ela seja a **primeira** e a **única** uniforme.
+
+⚠️ **A linha ACESA é DERIVADA** (`params::active_preset`), nunca guardada: não existe campo *"preset
+corrente"* em lugar nenhum, e é isso que faz a fileira apagar sozinha quando o artista arrasta um
+slider ou uma alça — aí a forma não é mais nenhuma delas, e dizer que é seria o painel mentindo.
+
+⚠️ **E a comparação é em TRILHO, não em multiplicador** — o ida-e-volta `f32` devolve
+`1.0000000298…` para `1.0`, então uma fileira que comparasse multiplicadores ficaria
+**permanentemente apagada**: pintada, clicável, e incapaz de mostrar o que o artista acabou de
+escolher. `params::preset_tracks` é a porta única, e o `write_preset_to_store` da shell passa por
+ela (há arch-gate: o gate de unidade continuaria verde se ele voltasse a converter sozinho).
+
+⚠️ **`segmented3` passou a DELEGAR ao `segmented`** — a aritmética de largura dos dois era a mesma
+expressão escrita duas vezes (`(inner_w − gap·(n−1))/n` colapsa em `(inner_w − gap·2)/3`), e duas
+respostas para *"onde cada botão senta?"* divergem no dia em que uma ganhar wrap.
+
+⚠️ **E um arch-gate da W1c quebrou sobre produto CORRETO:** ele ancorava na *primeira* `arm(` do
+arquivo, e o catálogo acrescentou um armamento acima — *"a primeira ocorrência"* é uma distância
+disfarçada, exatamente o que o cabeçalho daquele arquivo manda evitar. Re-ancorado no **ramo** do
+arrasto.
+
+LOC: `params.rs` bateu 745 ⇒ o vocabulário do perfil de largura saiu para o irmão
+**`params_width.rs`** (a faixa, o mapa do slider, o default, o catálogo), pelo mesmo corte de
+`params_pencil`/`params_text`.
+
+Smoke: **`PH2D_BUILD_SMOKE=41`**, passos 10-14.
 
 **Tamanho: G.** Smoke: um traço com 5 pontos de largura, arrastados; o mesmo traço sob Expand tem de
 dar a MESMA silhueta (a paridade vivo↔assado é o gate que impede duas respostas).

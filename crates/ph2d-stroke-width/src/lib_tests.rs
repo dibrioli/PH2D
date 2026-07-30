@@ -248,3 +248,110 @@ fn the_peak_of_a_thinning_list_is_still_one() {
     ]);
     assert!((s.peak() - 1.0).abs() < 1e-12);
 }
+
+// ─────────────────────────────── O CATÁLOGO (W2b) ───────────────────────────────
+
+/// **Cada perfil DESENHA o que o nome dele diz.** É o único gate que um catálogo de nomes
+/// precisa, e é sobre a CURVA, não sobre os quatro números: um `mid` mal escolhido produz um
+/// degrau no meio do afinamento, o nome continua "Taper", e o artista clica numa palavra que
+/// descreve outra coisa.
+///
+/// ⚠️ As asserções não citam os números da tabela — elas afirmam a FORMA (desce · sobe-e-volta ·
+/// simétrica), então trocar um valor por outro que ainda desenhe a mesma coisa é livre, e trocar
+/// dois perfis de lugar é vermelho.
+#[test]
+fn every_preset_draws_the_shape_its_name_promises() {
+    let at = |p: &WidthProfile, t: f64| p.to_stops().at(t);
+    let by_key = |k: &str| {
+        PRESETS
+            .iter()
+            .find(|p| p.key.ends_with(k))
+            .unwrap_or_else(|| panic!("o catálogo perdeu o perfil `{k}`"))
+            .profile
+    };
+
+    // Uniform: a MESMA largura em todo o arco — é a remoção do perfil.
+    let u = by_key("uniform");
+    assert!(u.is_uniform(), "o `Uniform` não é uniforme");
+
+    // Taper: desce, e desce SEMPRE (nada de degrau nem de barriga no meio).
+    let taper = by_key("taper");
+    let mut prev = at(&taper, 0.0);
+    for i in 1..=20 {
+        let v = at(&taper, f64::from(i) / 20.0);
+        assert!(
+            v < prev,
+            "o `Taper` não afina monotonicamente: subiu de {prev} para {v} em t={}",
+            f64::from(i) / 20.0
+        );
+        prev = v;
+    }
+    assert!(
+        at(&taper, 1.0) <= MIN_WIDTH_FACTOR,
+        "o `Taper` não chega a ponta fina — ele existe para o traço SUMIR no fim"
+    );
+
+    // Both: simétrico, cheio no meio, ponta fina nas DUAS extremidades.
+    let both = by_key("both");
+    for i in 0..=10 {
+        let t = f64::from(i) / 10.0;
+        let (a, b) = (at(&both, t), at(&both, 1.0 - t));
+        assert!(
+            (a - b).abs() < 1e-12,
+            "o `Both` não é simétrico: {a} em t={t} contra {b} no espelho"
+        );
+    }
+    assert!(
+        at(&both, 0.5) > at(&both, 0.25),
+        "o `Both` não engorda ao meio"
+    );
+    assert!(
+        at(&both, 0.0) <= MIN_WIDTH_FACTOR && at(&both, 1.0) <= MIN_WIDTH_FACTOR,
+        "o `Both` não afina nas duas pontas — é o que o nome promete"
+    );
+
+    // Bulge: NUNCA abaixo da largura autorada, e mais gordo no meio. É o oposto do Both: as
+    // pontas ficam cheias.
+    let bulge = by_key("bulge");
+    for i in 0..=20 {
+        let v = at(&bulge, f64::from(i) / 20.0);
+        assert!(v >= 1.0, "o `Bulge` afinou para {v} — ele só engrossa");
+    }
+    assert!(
+        at(&bulge, 0.5) > at(&bulge, 0.0) && at(&bulge, 0.5) > at(&bulge, 1.0),
+        "o `Bulge` não é mais grosso no meio"
+    );
+}
+
+/// **O primeiro perfil é a REMOÇÃO, e é o único que pode ser.** O `power_stroke` devolve vazio
+/// para um perfil uniforme (ali o comando é o *Outline Stroke*), então esta entrada não assa
+/// nada — ela existe para **tirar** o perfil da forma. Sem ela não há caminho de volta ao traço
+/// de largura única a não ser acertar `1.00` em três sliders à mão.
+#[test]
+fn the_first_preset_is_the_way_back_to_a_plain_stroke() {
+    let first = PRESETS[0].profile;
+    assert!(
+        first.is_uniform() && first.to_stops().is_uniform(),
+        "o 1º perfil do catálogo deixou de ser o uniforme — o artista perdeu a única porta de \
+         volta ao traço de largura única"
+    );
+    assert!(
+        PRESETS[1..].iter().all(|p| !p.profile.is_uniform()),
+        "há um SEGUNDO perfil uniforme no catálogo — duas linhas que fazem a mesma coisa, e a \
+         fileira acenderia a errada (a busca por posição para na primeira)"
+    );
+}
+
+/// As chaves são **distintas e não-vazias**: duas iguais dariam dois botões com o mesmo rótulo,
+/// e uma vazia um botão sem nome nenhum.
+#[test]
+fn the_preset_keys_are_distinct_and_named() {
+    for (i, p) in PRESETS.iter().enumerate() {
+        assert!(!p.key.is_empty(), "o perfil {i} não tem chave de rótulo");
+        assert!(
+            PRESETS[..i].iter().all(|q| q.key != p.key),
+            "a chave `{}` aparece duas vezes no catálogo",
+            p.key
+        );
+    }
+}

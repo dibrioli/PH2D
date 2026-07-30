@@ -242,6 +242,77 @@ impl WidthProfile {
     }
 }
 
+/// **Um perfil com NOME** — uma entrada do catálogo que o painel oferece (W2b).
+///
+/// A `key` é de **i18n**, não o rótulo: esta crate não sabe em que língua o app está, e um nome
+/// literal aqui seria a segunda cópia de um texto que o catálogo de traduções já possui.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WidthPreset {
+    /// A chave i18n do rótulo (`panel.vector.width.preset.…`).
+    pub key: &'static str,
+    /// A forma que a entrada carrega.
+    pub profile: WidthProfile,
+}
+
+/// **O catálogo** — as formas que se escolhem por nome, na ordem em que o painel as pinta.
+///
+/// É o *Width Profile* do Illustrator reduzido ao que se distingue por PALAVRA: lá a lista é de
+/// miniaturas (sete desenhos sem nome), e um nome só serve se descrever a curva. Estas quatro
+/// descrevem, e foram **medidas** antes de escritas
+/// (`ph2d-vec-boolean/tests/measure_width_presets.rs`, o multiplicador em cinco pontos do arco):
+///
+/// | perfil  | t=0   | 0.25  | 0.50  | 0.75  | 1.00  | fita (área a 8 px × 100) |
+/// |---------|-------|-------|-------|-------|-------|--------------------------|
+/// | Uniform | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | — (nada a assar)         |
+/// | Taper   | 1.000 | 0.775 | 0.550 | 0.275 | 0.000 | 420.0                    |
+/// | Both    | 0.000 | 0.500 | 1.000 | 0.500 | 0.000 | 400.0                    |
+/// | Bulge   | 1.000 | 1.400 | 1.800 | 1.400 | 1.000 | 1120.0                   |
+///
+/// ⚠️ **O `mid` do Taper é a MÉDIA das pontas de propósito** — é o que faz os cinco pontos caírem
+/// em passos iguais (0.225), ou seja o que faz a palavra *taper* descrever a curva. Um `mid`
+/// arbitrário produziria um degrau no meio do afinamento, e o nome mentiria.
+///
+/// ⚠️ **A ponta de largura ZERO é o pincel de ponta fina, e foi MEDIDA** (era o único valor da
+/// tabela a tocar a borda do domínio): a fita fecha em ponta com área 400-420 e 252-253 âncoras,
+/// todas finitas — a mesma ordem do Bulge. Não há caso degenerado a tratar.
+///
+/// ⚠️ **`Uniform` é o primeiro e não assa nada**: [`WidthStops::is_uniform`] faz o Power Stroke
+/// devolver vazio (o comando ali é o *Outline Stroke*), então esta entrada é a **REMOÇÃO** do
+/// perfil — a única porta de volta ao traço de largura única, e é por isso que ela existe.
+pub const PRESETS: [WidthPreset; 4] = [
+    WidthPreset {
+        key: "panel.vector.width.preset.uniform",
+        profile: WidthProfile::UNIFORM,
+    },
+    WidthPreset {
+        key: "panel.vector.width.preset.taper",
+        profile: WidthProfile {
+            start: 1.0,
+            mid: 0.55,
+            end: 0.0,
+            position: 0.5,
+        },
+    },
+    WidthPreset {
+        key: "panel.vector.width.preset.both",
+        profile: WidthProfile {
+            start: 0.0,
+            mid: 1.0,
+            end: 0.0,
+            position: 0.5,
+        },
+    },
+    WidthPreset {
+        key: "panel.vector.width.preset.bulge",
+        profile: WidthProfile {
+            start: 1.0,
+            mid: 1.8,
+            end: 1.0,
+            position: 0.5,
+        },
+    },
+];
+
 /// Uma parada, sem cerimónia.
 #[must_use]
 fn stop(pos: f64, mult: f64) -> WidthStop {

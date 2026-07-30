@@ -181,6 +181,14 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.pencil.width.uniform" => "Uniform",
         "panel.vector.pencil.width.speed" => "Speed",
         "panel.vector.pencil.width.pressure" => "Pen",
+        // **O catálogo de perfis de largura** (W2b) — os rótulos da tabela
+        // `ph2d_stroke_width::PRESETS`, na ordem em que ela os lista. São VERBOS sobre a curva
+        // ("afina", "engrossa"), não números: um nome só serve se descrever a forma, e a tabela
+        // foi medida para que descreva (o doc dela traz o multiplicador em cinco pontos do arco).
+        "panel.vector.width.preset.uniform" => "Uniform",
+        "panel.vector.width.preset.taper" => "Taper",
+        "panel.vector.width.preset.both" => "Both",
+        "panel.vector.width.preset.bulge" => "Bulge",
         "panel.vector.section.transform" => "Transform",
         "panel.vector.section.vertex" => "Vertex",
         "panel.vector.section.boolean" => "Boolean",

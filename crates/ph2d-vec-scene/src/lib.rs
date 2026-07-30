@@ -217,7 +217,9 @@ pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeSpec};
 /// e este crate é o modelo puro de documento; nenhum depende do outro, então a casa tem de ser
 /// a folha — o mesmo argumento (e o mesmo precedente) da [`ph2d_warp_style`]. O re-export
 /// mantém `ph2d_vec_scene::WidthProfile` válido para os catorze sítios que já o escreviam.
-pub use ph2d_stroke_width::{MIN_WIDTH_FACTOR, WidthProfile, WidthStop, WidthStops};
+pub use ph2d_stroke_width::{
+    MIN_WIDTH_FACTOR, PRESETS as WIDTH_PRESETS, WidthPreset, WidthProfile, WidthStop, WidthStops,
+};
 
 /// **O que um traço DESENHA** — a porta única, com dois consumidores: quem pinta
 /// (`ph2d-vec-render`) e quem assa (`ph2d_vec_boolean::outline_stroke`).

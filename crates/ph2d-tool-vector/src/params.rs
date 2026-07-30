@@ -333,38 +333,12 @@ pub fn offset_frac_to_slider(frac: f64) -> f32 {
         / (OFFSET_FRAC_MAX - OFFSET_FRAC_MIN)) as f32
 }
 
-/// **Power Stroke** — os multiplicadores do perfil de largura.
-///
-/// `0` é alcançável e significa **sem tinta ali** (o traço vira um bico, que é o desenho a
-/// nanquim que a feature existe para dar). O teto `3` é ergonômico: o perfil MULTIPLICA a
-/// largura que o artista já escolheu no slider de Width, e triplicá-la cobre o gesto de
-/// engrossar sem que o slider fique inutilizável na faixa fina, que é onde ele mora.
-pub const WPROFILE_MIN: f64 = 0.0;
-pub const WPROFILE_MAX: f64 = 3.0;
-pub const WPROFILE_SLIDER_SCALE: f32 = (WPROFILE_MAX - WPROFILE_MIN) as f32;
-pub const WPROFILE_SLIDER_OFFSET: f32 = WPROFILE_MIN as f32;
-
-/// O perfil DEFAULT do Power Stroke: afina nas duas pontas e engrossa no meio.
-///
-/// Não é neutro de propósito — o botão RECUSA o perfil uniforme (aí a operação é o Outline
-/// Stroke), então nascer em `1·1·1` daria um botão que não faz nada no primeiro clique. Este
-/// perfil é a pincelada de nanquim, que é o que a feature existe para dar.
-pub const WPROFILE_DEFAULT_START: f64 = 0.25;
-pub const WPROFILE_DEFAULT_MID: f64 = 1.6;
-pub const WPROFILE_DEFAULT_END: f64 = 0.25;
-/// Onde o ponto grosso senta, em fração de ARCO. No meio.
-pub const WPROFILE_DEFAULT_POS: f64 = 0.5;
-
-/// Normalized track `0..=1` → multiplicador `MIN..=MAX`.
-#[must_use]
-pub fn slider_to_wprofile(track: f32) -> f64 {
-    WPROFILE_MIN + f64::from(track.clamp(0.0, 1.0)) * (WPROFILE_MAX - WPROFILE_MIN)
-}
-/// Multiplicador → normalized track (inverse of [`slider_to_wprofile`]).
-#[must_use]
-pub fn wprofile_to_slider(m: f64) -> f32 {
-    ((m.clamp(WPROFILE_MIN, WPROFILE_MAX) - WPROFILE_MIN) / (WPROFILE_MAX - WPROFILE_MIN)) as f32
-}
+/// **O perfil de LARGURA** (o Power Stroke) — irmão pelo teto de 700 LOC. A faixa, o mapa do
+/// slider, o default e o catálogo de perfis nomeados moram lá; o pai continua sendo o vocabulário
+/// de ESTILO do traço.
+#[path = "params_width.rs"]
+mod width;
+pub use width::*;
 
 /// Minimum / maximum polygon sides (inclusive range the Sides slider spans).
 pub const SIDES_MIN: u32 = 3;
@@ -629,5 +603,64 @@ mod tests {
     fn draw_mode_defaults_to_select() {
         assert_eq!(DrawMode::default(), DrawMode::Select);
         assert_eq!(VectorDrawConfig::default().mode, DrawMode::Select);
+    }
+
+    /// **Escrever um perfil do catálogo o torna o ATIVO** — o gate central da fileira de perfis
+    /// (W2b): o que o clique escreve nos sliders é exatamente o que a linha acesa procura.
+    ///
+    /// ⚠️ **Ele nasceu para pegar uma comparação em MULTIPLICADOR**, que é o erro natural aqui e
+    /// que nenhum outro teste veria: o ida-e-volta pelo trilho `f32` devolve `1.0000000298…` para
+    /// `1.0`, então uma fileira que comparasse multiplicadores ficaria **permanentemente apagada**
+    /// — pintada, clicável, e incapaz de mostrar o que o artista acabou de escolher.
+    #[test]
+    fn writing_a_preset_makes_it_the_active_one() {
+        for (i, p) in ph2d_vec_scene::WIDTH_PRESETS.iter().enumerate() {
+            let tracks = preset_tracks(&p.profile);
+            assert_eq!(
+                active_preset(&tracks),
+                Some(i),
+                "escrever o perfil `{}` não acende a linha dele",
+                p.key
+            );
+        }
+    }
+
+    /// **A ida-e-volta em MULTIPLICADOR não fecha** — o número que torna o gate acima
+    /// load-bearing, pinado aqui para ninguém "simplificar" a comparação de volta.
+    #[test]
+    fn a_multiplier_does_not_survive_the_round_trip_through_the_track() {
+        let back = slider_to_wprofile(wprofile_to_slider(1.0));
+        assert!(
+            back != 1.0,
+            "o trilho passou a round-tripar exato — se isto virou verdade, a comparação em \
+             multiplicador deixou de ser uma armadilha, e este gate pode ir embora com ela"
+        );
+        assert!(
+            (back - 1.0).abs() < 1e-6,
+            "e a diferença é de precisão, não de faixa: {back}"
+        );
+    }
+
+    /// **O default dos sliders NÃO é um perfil do catálogo**, e a fileira o diz não acendendo
+    /// nada. É a forma que o artista vê ao abrir a seção (o traço de nanquim, `0.25/1.6/0.25`):
+    /// acender uma linha ali seria nomear como *Taper* uma curva que não é.
+    #[test]
+    fn the_default_profile_lights_no_row() {
+        assert_eq!(active_preset(&preset_tracks(&WPROFILE_DEFAULT)), None);
+    }
+
+    /// **Um trilho arrastado apaga a fileira.** É a metade que torna o readout honesto: depois de
+    /// mexer num slider (ou numa alça do Width Tool) a forma não é mais nenhum dos nomes, e dizer
+    /// que ainda é seria o painel mentindo sobre o que está na tela.
+    #[test]
+    fn a_dragged_track_lights_no_row() {
+        let mut tracks = preset_tracks(&ph2d_vec_scene::WIDTH_PRESETS[1].profile);
+        assert_eq!(active_preset(&tracks), Some(1));
+        tracks[1] += 0.01;
+        assert_eq!(
+            active_preset(&tracks),
+            None,
+            "a fileira continua acesa depois de o artista mexer no perfil"
+        );
     }
 }

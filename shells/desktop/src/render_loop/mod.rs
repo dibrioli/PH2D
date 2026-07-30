@@ -1864,6 +1864,8 @@ impl crate::App {
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
+            // O índice do perfil nomeado que o clique pediu (W2b), se algum.
+            let mut pending_width_preset: Option<usize> = None;
             // ADR-0128: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
             // ajusta o blend selecionado ao vivo. (O destrutivo `vec_blend::apply` sobrevive só
             // para os smokes — o painel não o alcança mais.)
@@ -2153,6 +2155,11 @@ impl crate::App {
                             {
                                 // ADR-0129 Fatia C: carimba o preset `i` na gaiola.
                                 pending_envelope_preset = Some(i);
+                            } else if let Some(i) = (0..ph2d_editor::ids::MAX_WIDTH_PRESETS)
+                                .find(|&i| *id == ph2d_editor::ids::vector_width_preset_id(i))
+                            {
+                                // W2b: escolhe a FORMA da largura (o catálogo de perfis).
+                                pending_width_preset = Some(i);
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -3978,6 +3985,22 @@ impl crate::App {
                     {
                         crate::profile_live::write_preset_to_store(&mut hero.store, &p);
                     }
+                }
+                // **O catálogo de perfis** (W2b) — escolher uma FORMA pelo nome. Corre ANTES do
+                // arrasto de propósito: escrever os quatro sliders é o que faz a fileira acender
+                // e os knobs mostrarem o que a forma passou a ser, e o armamento abaixo o
+                // relê pela mesma porta. As duas metades — os sliders e o documento — têm de
+                // andar juntas, senão o painel diria uma coisa e a tela outra.
+                if let Some(p) = pending_width_preset
+                    .and_then(|i| ph2d_vec_scene::WIDTH_PRESETS.get(i))
+                    .filter(|_| !sel.is_empty())
+                {
+                    crate::profile_live::write_preset_to_store(&mut hero.store, &p.profile);
+                    crate::profile_live::arm(sim, &self.vec_entities, &sel, &p.profile.to_stops());
+                    // O espelho da seleção acabou de ser ESCRITO por nós: sem isto o bloco do
+                    // frame seguinte veria o `mirror` inalterado e não reescreveria nada — mas
+                    // com uma seleção de uma forma só ele passaria a divergir na primeira troca.
+                    self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
                 let grabbed = matches!(
                     hero.store.active_id(),

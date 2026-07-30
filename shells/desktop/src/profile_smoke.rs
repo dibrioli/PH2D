@@ -94,6 +94,15 @@ fn announce(app: &mut crate::App) {
          fita; (8) com o S do meio selecionado clique **Apply Power Stroke** -- a forma nao pode \
          SALTAR (o que estava na tela e' o que fica) e um Ctrl+Z desfaz tudo num passo; (9) \
          arraste os knobs de volta ao neutro (1,00) num S ainda vivo: a fita some e o traco \
-         normal volta -- o perfil neutro nao fica pendurado no documento."
+         normal volta -- o perfil neutro nao fica pendurado no documento. \
+         [W2b -- os PERFIS SALVOS] (10) clique o S de BAIXO e, na fileira **Profile** (logo acima \
+         dos quatro sliders), clique **Taper**: o traco tem de sair da largura cheia e SUMIR na \
+         ponta, os quatro knobs saltam para os numeros dele, e o botao Taper fica ACESO; (11) \
+         **Both** afina nas DUAS pontas e **Bulge** engorda o meio sem afinar ponta nenhuma -- os \
+         nomes descrevem a curva, e se algum descrever outra coisa e' o nome que esta' errado; \
+         (12) agora arraste QUALQUER um dos quatro sliders: a linha acesa tem de APAGAR na hora \
+         -- a forma deixou de ser aquele perfil, e a fileira nao pode continuar dizendo que e'; \
+         (13) clique **Uniform**: a fita some e o traco de largura unica volta (e' a unica porta \
+         de volta); (14) com NADA selecionado, clicar um perfil nao pode mexer nos sliders."
     );
 }

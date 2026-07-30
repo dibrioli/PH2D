@@ -21,7 +21,9 @@ pub use ph2d_editor_core::ids::{
     MARKER_SLOTS, MAX_MARKER_OPTIONS, VECTOR_MARKER_BOTH, VECTOR_MARKER_END_DD,
     VECTOR_MARKER_ROUND, VECTOR_MARKER_SCALE, VECTOR_MARKER_START_DD, vector_marker_option_id,
 };
-pub use ph2d_editor_core::ids::{MAX_ENVELOPE_PRESETS, vector_envelope_preset_id};
+pub use ph2d_editor_core::ids::{
+    MAX_ENVELOPE_PRESETS, MAX_WIDTH_PRESETS, vector_envelope_preset_id, vector_width_preset_id,
+};
 pub use ph2d_editor_core::ids::{
     MAX_FX_KINDS, MAX_FX_ROW_PARAMS, MAX_FX_ROWS, VECTOR_FX_APPLY, vector_fx_add_id,
     vector_fx_card_id, vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id,

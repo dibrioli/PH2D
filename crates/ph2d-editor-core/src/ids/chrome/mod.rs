@@ -56,6 +56,7 @@ mod vector_pencil;
 mod vector_sections;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
+mod vector_width;
 mod wet_tuning;
 
 pub use bgremoval::*;
@@ -92,4 +93,5 @@ pub use vector_patternpath::*;
 pub use vector_pencil::*;
 pub use vector_sections::*;
 pub use vector_textpath::*;
+pub use vector_width::*;
 pub use wet_tuning::*;

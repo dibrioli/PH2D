@@ -124,6 +124,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_EXPAND_OFFSET_PATH
         || id == ids::VECTOR_EXPAND_OUTLINE_STROKE
         || id == ids::VECTOR_EXPAND_POWER_STROKE
+        // Os perfis nomeados (W2b): o clique escreve os quatro sliders E arma o perfil vivo na
+        // seleção, e as duas metades são da SHELL (é ela que tem store e cena). Panel-local, como
+        // o Side/Corner, deixaria a forma sem perfil e o botão aceso.
+        || (0..ids::MAX_WIDTH_PRESETS).any(|i| id == ids::vector_width_preset_id(i))
         || id == ids::VECTOR_FILL_RULE_NONZERO
         || id == ids::VECTOR_FILL_RULE_EVENODD
         || id == ids::VECTOR_SNAP_OFF

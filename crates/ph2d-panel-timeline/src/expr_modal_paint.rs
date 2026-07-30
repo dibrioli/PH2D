@@ -154,7 +154,7 @@ pub fn body_slots(vp: Rect) -> usize {
     } else {
         MIN_BODY_SLOTS
     };
-    n.clamp(MIN_BODY_SLOTS, MAX_BODY_SLOTS)
+    n.clamp(MIN_BODY_SLOTS, MAX_BODY_SLOTS) // CLAMP-OK: consts literais, usize (sem NaN)
 }
 
 /// Tudo o que o card gasta fora do CORPO: as três faixas nomeadas, a fita e os paddings.

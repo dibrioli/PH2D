@@ -245,10 +245,11 @@ pub(crate) fn sync_from_store(m: &mut ExprModal, store: &mut WidgetStore) {
                     row.knobs[ki] = KnobValue::Num(*value as f32);
                 }
                 (KnobKind::Literal, Some(InteractiveState::NumberInput { value, .. })) => {
-                    let (lo, hi) = (k.range.0.min(k.range.1), k.range.1.max(k.range.0));
+                    // `safe_clamp` e nao `clamp`: os limites vêm do catálogo, não são
+                    // literais aqui, e um `NaN` digitado tem de pousar num número — a caixa
+                    // mostra o que a fórmula usa, e `NaN` não é nenhum dos dois.
                     let v = *value as f32;
-                    // CLAMP-OK: bounds ordenados acima e nao-NaN (vem de `Knob::range`)
-                    let fixed = v.clamp(lo, hi);
+                    let fixed = ph2d_editor_core::math::safe_clamp(v, k.range.0, k.range.1);
                     row.knobs[ki] = KnobValue::Num(fixed);
                     if fixed != v {
                         // A caixa passa a MOSTRAR o que a fórmula usa. `value` é o valor

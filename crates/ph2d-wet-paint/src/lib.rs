@@ -31,6 +31,7 @@
 pub mod brush;
 pub mod colorops;
 pub mod drying;
+pub mod flow;
 pub mod grid;
 pub mod jsmath;
 pub mod opacity;

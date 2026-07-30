@@ -41,12 +41,23 @@ pub struct Grid {
     pub sett: Vec<f32>,
     /// Settled color, interleaved like `susp_rgb`.
     pub sett_rgb: Vec<[f32; 3]>,
-    /// Persistent velocity (gravity lands here).
+    /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
+    /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
+    ///
+    /// ⚠️ Em `rf = 1` ela iguala a fina campo a campo, então todo índice que o
+    /// motor já calculava continua exato.
+    pub flow: crate::flow::FlowGeom,
+    /// Persistent velocity (gravity lands here). **Grade de FLUXO.**
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     /// Transient flow, rebuilt from the persistent field each frame.
+    /// **Grade de FLUXO.**
     pub flow_x: Vec<f32>,
     pub flow_y: Vec<f32>,
+    /// A faixa viva PROJETADA na grade de fluxo (ver [`crate::flow::project_spans`]).
+    /// Mora aqui para os passes de fluxo não alocarem.
+    pub frow_lo: Vec<i32>,
+    pub frow_hi: Vec<i32>,
     /// Wetness byte: "the sheet is damp here".
     pub wet: Vec<u8>,
     /// Paper tooth height 0..1, baked incl. the pad ring.
@@ -157,10 +168,19 @@ pub fn span_window_of(
 }
 
 impl Grid {
+    /// A grade com a de fluxo COLADA nela (`rf = 1`) — o motor que sempre
+    /// shipou, e o construtor que a suíte de aceitação e o fingerprint usam.
     pub fn new(width: usize, height: usize) -> Self {
+        Self::with_flow_ratio(width, height, 1)
+    }
+
+    /// A grade com uma grade de FLUXO `rf` vezes menor (plano 30).
+    pub fn with_flow_ratio(width: usize, height: usize, rf: usize) -> Self {
         let s = width + 2;
         let rows = height + 2;
         let n = s * rows;
+        let flow = crate::flow::FlowGeom::new(width, height, rf);
+        let fn_ = flow.cells;
         Grid {
             w: width,
             h: height,
@@ -172,10 +192,13 @@ impl Grid {
             susp_rgb: vec![[0.0; 3]; n],
             sett: vec![0.0; n],
             sett_rgb: vec![[0.0; 3]; n],
-            vel_x: vec![0.0; n],
-            vel_y: vec![0.0; n],
-            flow_x: vec![0.0; n],
-            flow_y: vec![0.0; n],
+            flow,
+            vel_x: vec![0.0; fn_],
+            vel_y: vec![0.0; fn_],
+            flow_x: vec![0.0; fn_],
+            flow_y: vec![0.0; fn_],
+            frow_lo: vec![i32::MAX; flow.rows],
+            frow_hi: vec![i32::MIN; flow.rows],
             wet: vec![0; n],
             paper: vec![0.0; n],
             active: vec![0; n],

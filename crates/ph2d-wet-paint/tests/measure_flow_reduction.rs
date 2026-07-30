@@ -23,12 +23,12 @@
 //! | `smooth_velocity`  | `film` `vel_x` `vel_y` `active` |
 //! | `project`          | `vel_x` `vel_y` `active` |
 //!
-//! ⚠️ E o `advect` **ESCREVE `vel` por célula FINA** (`flow` amostrado na fonte
-//! + `gravidade × film LOCAL`) — então `vel` não pode simplesmente "morar na
-//! grade grossa": ou a atualização de momento migra para um passe grosso
-//! próprio (o desenho do inkwash: *um campo de fluxo borrado e barato empurrando
-//! um campo de tinta nítido e caro*), ou toda escrita de `advect` vira um
-//! scatter com contenção. É decisão de DESENHO, e ela muda o que se reduz.
+//! ⚠️ E o `advect` **ESCREVE `vel` por célula FINA** (o `flow` amostrado na
+//! fonte mais `gravidade × film LOCAL`) — então `vel` não pode simplesmente
+//! "morar na grade grossa": ou a atualização de momento migra para um passe
+//! grosso próprio (o desenho do inkwash: *um campo de fluxo borrado e barato
+//! empurrando um campo de tinta nítido e caro*), ou toda escrita de `advect`
+//! vira um scatter com contenção. É decisão de DESENHO, e muda o que se reduz.
 //!
 //! Esta sonda, então, mede a redução em DOIS regimes, que bracketam o desenho:
 //!

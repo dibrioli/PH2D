@@ -66,46 +66,7 @@ pub(crate) fn paint_wetpaint_section(
     // very flag, so the two agree by construction, and one condition guarding the knobs is cheaper to
     // trust than a second predicate that could drift from it.
     if brush.wetpaint {
-        // ⚠️ **A GRADE é o PRIMEIRO widget da seção** (Enio 2026-07-29), acima
-        // do rádio de tools: o custo do solver é linear nas células, então este
-        // número decide a taxa VISUAL da água antes de qualquer knob de física
-        // — e trocá-lo encerra a água viva (o bake), o que é uma decisão de
-        // sessão, não de pincelada. Faixa e passo espelham `grid_map`
-        // (MIN/MAX_RATIO) como os knobs espelham `KNOB_DEFS`.
-        y = card_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Grid Size (px)",
-            core_ids::PAINTER_WETPAINT_GRID,
-            f32::from(brush.wet_grid_ratio),
-            GRID_MIN,
-            GRID_MAX,
-            1.0,
-            0,
-        );
-        // A SEGUNDA metade da multi-resolução (plano 30): a velocidade e a
-        // pressão ficam `Flow Grid` vezes mais grossas que o pigmento. Dois
-        // números porque são duas perguntas — *quão fino é o pigmento?* e *quão
-        // grosso é o fluxo?* — e um controle só governando os dois seria a
-        // falha de duas-portas ao contrário.
-        y = card_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Flow Grid (x)",
-            core_ids::PAINTER_WETPAINT_FLOW,
-            f32::from(brush.wet_flow_ratio),
-            FLOW_MIN,
-            FLOW_MAX,
-            1.0,
-            0,
-        );
-        y = paint_resolution_readout(ctx, theme, x, content_w, y, brush);
+        y = paint_resolution_group(ctx, theme, x, content_w, y, brush);
         // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
         // one radio: Erase highlights when the rail's eraser wire is live,
         // everything else mirrors the authored wet tool.
@@ -267,6 +228,64 @@ pub(crate) fn paint_wetpaint_section(
             brush.wet_tuning_open,
         );
     }
+    y
+}
+
+/// **O GRUPO DE RESOLUÇÃO** — os dois números que decidem de que tamanho é cada
+/// grade, e o readout que os torna legíveis.
+///
+/// Extraído do corpo da seção pelo teto de 200 LOC de função dos painéis, e o
+/// corte é por RESPONSABILIDADE: aqui mora *de que tamanho é a simulação*, e no
+/// que sobra *o que ela faz* (as tools, os knobs de física).
+fn paint_resolution_group(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let mut y = y;
+    // ⚠️ **A GRADE é o PRIMEIRO widget da seção** (Enio 2026-07-29), acima
+    // do rádio de tools: o custo do solver é linear nas células, então este
+    // número decide a taxa VISUAL da água antes de qualquer knob de física
+    // — e trocá-lo encerra a água viva (o bake), o que é uma decisão de
+    // sessão, não de pincelada. Faixa e passo espelham `grid_map`
+    // (MIN/MAX_RATIO) como os knobs espelham `KNOB_DEFS`.
+    y = card_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Grid Size (px)",
+        core_ids::PAINTER_WETPAINT_GRID,
+        f32::from(brush.wet_grid_ratio),
+        GRID_MIN,
+        GRID_MAX,
+        1.0,
+        0,
+    );
+    // A SEGUNDA metade da multi-resolução (plano 30): a velocidade e a
+    // pressão ficam `Flow Grid` vezes mais grossas que o pigmento. Dois
+    // números porque são duas perguntas — *quão fino é o pigmento?* e *quão
+    // grosso é o fluxo?* — e um controle só governando os dois seria a
+    // falha de duas-portas ao contrário.
+    y = card_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Flow Grid (x)",
+        core_ids::PAINTER_WETPAINT_FLOW,
+        f32::from(brush.wet_flow_ratio),
+        FLOW_MIN,
+        FLOW_MAX,
+        1.0,
+        0,
+    );
+    y = paint_resolution_readout(ctx, theme, x, content_w, y, brush);
     y
 }
 

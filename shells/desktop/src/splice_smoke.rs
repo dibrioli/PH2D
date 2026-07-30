@@ -7,10 +7,16 @@
 //! fica intacto) se o tipo não faz a ponte.
 //!
 //! TESTE: R-click no fio entre **scale** e **output** (ou entre grid e scale) → o menu abre →
-//! escolha, por exemplo, **`motion.noise`** ou **`force.wind`** → ele entra NO fio (a cadeia
-//! vira grid → scale → noise → output), com UM Ctrl+Z desfazendo a inserção inteira. R-click em
-//! canvas VAZIO ainda só adiciona o nó solto (sem fio embaixo, sem splice). Um tipo que não
-//! encaixa (um source como `motion.grid`) é recusado e o fio original fica.
+//! escolha **`motion.twist`** (deformer, `angle` default 90°) ou **`motion.spherize`** → ele
+//! entra NO fio (grid → scale → twist → output) e **o grid se deforma NA HORA**, com UM Ctrl+Z
+//! desfazendo a inserção inteira. R-click em canvas VAZIO ainda só adiciona o nó solto (sem
+//! splice). Um source que não encaixa (`motion.grid`) é recusado e o fio original fica.
+//!
+//! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
+//! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
+//! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
+//! motor, não falha do splice. Por isso o exemplo aqui é um **deformer** (efeito direto na
+//! posição), não uma força.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
@@ -59,10 +65,14 @@ impl crate::App {
             "[splice smoke] Uma cadeia grid -> scale -> output, a ferramenta Motion ativa (o \
              grafo a vista).\n  \
              TESTE: R-CLICK SOBRE UM FIO (entre scale e output, ou grid e scale) -> o menu de \
-             nos abre -> escolha por exemplo 'motion.noise' ou 'force.wind' -> ele e INSERIDO no \
-             fio (grid -> scale -> noise -> output), com UM Ctrl+Z desfazendo tudo. R-click em \
-             canvas VAZIO ainda so adiciona o no solto (sem splice). Um source que nao encaixa \
-             (motion.grid) e recusado e o fio original fica."
+             nos abre -> escolha 'motion.twist' (deformer, angle 90 por default) ou \
+             'motion.spherize' -> ele e INSERIDO no fio (grid -> scale -> twist -> output) e o \
+             GRID SE DEFORMA NA HORA, com UM Ctrl+Z desfazendo tudo. R-click em canvas VAZIO ainda \
+             so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
+             recusado e o fio original fica.\n  \
+             NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
+             'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
+             uma forca."
         );
     }
 }
@@ -71,6 +81,28 @@ impl crate::App {
 mod tests {
     use super::*;
     use ph2d_node_registry::NodeRegistry;
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+
+    fn built_registry() -> NodeRegistry {
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+        reg
+    }
+
+    /// The instance positions the sink renders — the `P` (Vec2) column, cooked at t=0.
+    fn positions(g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<[f32; 2]> {
+        let mut cook = Cook::new();
+        cook.cook(g, reg, out, 0.0)
+            .expect("scene cooks")
+            .iter()
+            .next()
+            .and_then(|s| match s.as_stream().get("P") {
+                Some(Column::Vec2(v)) => Some(v.clone()),
+                _ => None,
+            })
+            .expect("the output stream carries a P (position) column")
+    }
 
     /// The splice-smoke scene is well-typed and carries the two wires the R-press aims at —
     /// a typo'd chain (or a missing edge) would leave nothing to splice into, which is what the
@@ -78,8 +110,7 @@ mod tests {
     /// scale → output wire is absent.
     #[test]
     fn the_smoke_chain_is_well_typed_and_has_a_wire_to_splice() {
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+        let reg = built_registry();
         let mut g = Graph::new();
         let out = chain(&mut g);
         g.validate(&reg)
@@ -90,6 +121,52 @@ mod tests {
                 .iter()
                 .any(|e| e.to.0 == out && e.to.1 == 0 && !e.delayed),
             "output has a wire in — the one to splice onto"
+        );
+    }
+
+    /// **The suggested example VISIBLY changes the render** — splicing `motion.twist` (its `angle`
+    /// defaults to 90°) into the chain, wiring only its primary port the way the real splice does,
+    /// deforms every instance. This is the guard against the smoke naming an INERT node again: the
+    /// `force.wind` it used to suggest only writes `accel` and moves NOTHING without an integrator
+    /// (Enio's report). FALSIFIED if the spliced deformer leaves the positions untouched — which is
+    /// exactly what a force would do here.
+    #[test]
+    fn splicing_the_suggested_deformer_visibly_changes_the_render() {
+        let reg = built_registry();
+
+        let mut base = Graph::new();
+        let out_a = chain(&mut base);
+        let before = positions(&base, &reg, out_a);
+
+        // The same chain with a twist spliced into scale → output — connecting ONLY the primary
+        // input (port 0), exactly what `splice_into_wire` does. If `motion.twist` needed a second
+        // wire to work, the real splice would leave it just as unconnected, so this mirrors it.
+        let mut spliced = Graph::new();
+        let grid = spliced.add_node("motion.grid");
+        let scale = spliced.add_node("motion.scale");
+        let twist = spliced.add_node("motion.twist");
+        let out_b = spliced.add_node("motion.output");
+        spliced.set_param(grid, "rows", 3.0);
+        spliced.set_param(grid, "cols", 6.0);
+        spliced.set_param(scale, "amount", 0.4);
+        for (from, to) in [(grid, scale), (scale, twist), (twist, out_b)] {
+            spliced
+                .connect(Edge {
+                    from: (from, 0),
+                    to: (to, 0),
+                    delayed: false,
+                })
+                .expect("edge");
+        }
+        spliced
+            .validate(&reg)
+            .expect("the spliced chain is well-typed (the splice would commit)");
+        let after = positions(&spliced, &reg, out_b);
+
+        assert_eq!(before.len(), after.len(), "same instance count");
+        assert_ne!(
+            before, after,
+            "the spliced twist deformed the grid — a force would have moved nothing"
         );
     }
 }

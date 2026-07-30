@@ -2458,3 +2458,85 @@ fn render_the_verdict_three_engines_side_by_side() {
     }
     println!("\n  escrito em {}", dir.display());
 }
+
+/// 📏 **SONDA — o resíduo da estrela medido no PERCURSO, não no rasterizador.**
+///
+/// ⚠️ **Ela existe porque o número que motiva o item 4 da fila do padrão-ouro descreve o produto
+/// ERRADO.** O `−64 (58 px em h=1,0)` de `measure_the_star_one_stroke_against_separate_strokes`
+/// sai do `FlipRenderer`, ou seja do **rasterizador** — que desde `9a4bdd07b` é a *escape hatch*,
+/// não o default. Ler dele que *"o resíduo sobrevive à dureza máxima ⇒ é geometria de junta"* é
+/// uma conclusão sobre um motor que o artista não usa mais.
+///
+/// Aqui a MESMA cena roda pelo `walk_pixel` (a referência do percurso, byte-paridade com o device
+/// pelo `walk_gpu_parity`), nos dois modos: um traço com quina contra cinco traços que empilham
+/// duas tampas em cada ponta.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_star_residual_on_the_walk_not_the_raster() {
+    let (pts, r) = star_path(7.0);
+    let sc = ph2d_flip_render::ScreenSpace {
+        world_to_clip: [
+            [2.0 / W as f32, 0.0, 0.0, 0.0],
+            [0.0, 2.0 / H as f32, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0, 1.0],
+        ],
+        viewport: [W as f32, H as f32],
+        px_per_world: 1.0,
+    };
+    println!("\n=== A ESTRELA no PERCURSO: um traco vs cinco ===");
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        let um = flip_drawing(&pts, r, hardness);
+        // Cinco traços: cada perna da estrela vira um traço próprio, com as duas tampas dela.
+        let mut cinco = FlipDrawing::default();
+        let passo = (pts.len() - 1) / 5;
+        for k in 0..5 {
+            let fatia: Vec<(f32, f32)> =
+                pts[k * passo..=((k + 1) * passo).min(pts.len() - 1)].to_vec();
+            let d = flip_drawing(&fatia, r, hardness);
+            cinco.strokes.extend(d.strokes);
+        }
+        let alpha = |d: &FlipDrawing| {
+            let g = ph2d_flip_render::pack_drawing(d);
+            let bins = ph2d_flip_render::bin_segments(&g, &sc, ph2d_flip_render::DEFAULT_TILE);
+            let mut out = vec![0.0_f32; (W * H) as usize];
+            for y in 0..H {
+                for x in 0..W {
+                    let p = [x as f32 + 0.5, y as f32 + 0.5];
+                    out[(y * W + x) as usize] = ph2d_flip_render::walk_pixel(&bins, &g, &sc, p)[3];
+                }
+            }
+            out
+        };
+        let (a, b) = (alpha(&um), alpha(&cinco));
+        let (mut falta, mut falta_em, mut sobra, mut sobra_em, mut n_falta) =
+            (0_i32, (0_u32, 0_u32), 0_i32, (0_u32, 0_u32), 0_u32);
+        for y in 0..H {
+            for x in 0..W {
+                let i = (y * W + x) as usize;
+                let d = ((a[i] - b[i]) * 255.0).round() as i32;
+                if d < falta {
+                    falta = d;
+                    falta_em = (x, y);
+                }
+                if d > sobra {
+                    sobra = d;
+                    sobra_em = (x, y);
+                }
+                if d < -8 {
+                    n_falta += 1;
+                }
+            }
+        }
+        let i = (falta_em.1 * W + falta_em.0) as usize;
+        // ⚠️ **As duas metades do mecanismo, no pixel.** Um traço computa a ÁREA EXATA da união
+        // (o que a wave da §22.7 estabeleceu, com gate); cinco traços são compostos `over`, que é
+        // `a + b − ab` — a união PROBABILÍSTICA, que só coincide com a geométrica quando os dois
+        // são disjuntos. Nas pontas da estrela eles se sobrepõem, então divergir é obrigatório.
+        println!(
+            "  h={hardness}: FALTA {falta:5} em {falta_em:?} ({n_falta} px < -8)   SOBRA {sobra:5} \
+             em {sobra_em:?}   |  um={:.4} cinco={:.4}",
+            a[i], b[i]
+        );
+    }
+}

@@ -1865,7 +1865,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
 | 3 | **a integral de ÁREA do pixel** | ⚠️ a premissa estava ERRADA (§22.6) — mas a medição achou **três** defeitos, e **dois já fecharam** (§22.7): a QUINA (63,75/255) e o ÂNGULO (9,72 a 45°, que ninguém tinha visto). |
 | 3a | ⚠️ **NÃO era saturação — o percurso DERRUBA tinta em tampa e junta** | ABERTO, diagnosticado e pinado (§22.8). Mecanismo, número e alcance medidos; a cura é wave própria porque move todo número de tinta do motor. |
-| 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
+| 4 | ~~**joins & caps**~~ | ⛔ **A PREMISSA FOI REFUTADA POR MEDIÇÃO (§22.9).** O `−64` saía do RASTERIZADOR (a escape hatch, não o default desde `9a4bdd07b`), e no percurso ele decompõe em duas causas conhecidas — o termo de fronteira do `end_dab` (correto: cinco traços têm cinco começos) e `over` contra união exata. **Nenhuma é geometria de junta.** Sobra uma pergunta de PRODUTO, não de correção. |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
 A **antiderivada** (§21.5) cai para o fim: ela é *perf*, e sob (2) deixa de ser necessária.
@@ -2163,3 +2163,68 @@ afirma as DUAS metades (o flanco exato · a tampa em zero) e **falha quando o de
 corrigido**, obrigando a atualizar esta nota — o padrão do
 `the_documented_hardening_is_still_there_and_this_is_its_number` do Painter. Sem ele o diagnóstico
 volta a ser re-derivado do zero, que é literalmente o que aconteceu com o rótulo "saturação".
+
+### 22.9 ⛔ O item 4 (joins & caps) foi REFUTADO — o número dele era de outro motor, e a causa é outra
+
+A fila trazia *"o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente não é
+a lei da tinta"*, e concluía **geometria de junta e tampa**. Fui construir e a medição derrubou as
+duas metades.
+
+#### (a) O número descrevia o RASTERIZADOR
+
+`measure_the_star_one_stroke_against_separate_strokes` renderiza pelo `FlipRenderer` — o
+**rasterizador**, que desde `9a4bdd07b` (§22.2) é a *escape hatch* e não o default. A §1 inteira
+deste doc é a baseline DELE. Ler dali que *"o percurso não conserta"* é uma conclusão sobre um motor
+que o artista não usa mais.
+
+⚠️ **E a minha 1ª tentativa de testar isso foi INVÁLIDA:** desliguei o `end_dab` em Rust e os
+números não mudaram — o que eu quase reportei como "hipótese refutada". Eles não mudaram porque a
+medição roda no **device**: a mutação caiu fora do caminho medido. *Uma busca negativa precisa de
+controle positivo* ([[feedback_a_negative_search_needs_a_positive_control]]), e aqui o controle era
+trivial — perguntar por qual pipeline o harness renderiza.
+
+#### (b) No PERCURSO o resíduo existe, e decompõe em duas causas conhecidas
+
+Sonda nova `measure_the_star_residual_on_the_walk_not_the_raster` (CPU, `walk_pixel`, byte-paridade
+com o device):
+
+| | com `end_dab` | **sem** `end_dab` |
+|---|---|---|
+| h=0,4 | −37 (138 px) | **−2 (0 px)** |
+| h=0,7 | −55 (111 px) | **−7 (0 px)** |
+| h=1,0 | −71 (87 px) | −62 (68 px) |
+
+- **em dureza macia o resíduo INTEIRO é o termo de fronteira** — cinco traços têm cinco começos,
+  logo cinco meios-dabs; um traço tem um. Isso é o motor **reproduzindo fielmente** que cinco
+  traços não são um traço, exatamente como o Painter carimba um dab no começo de cada traço. Não é
+  defeito: é a resposta certa para entradas diferentes;
+- **em dureza 1 o que sobra é `over` contra UNIÃO EXATA.** No pior pixel, `um = 0,4577` e
+  `cinco = 0,6997` — e `a + b − ab` com `a = b = 0,4577` dá **0,7060**, a composição
+  probabilística. Um traço computa a área exata da união (o que a §22.7 estabeleceu, com gate);
+  cinco traços independentes compõem `over`, que é o certo para camadas de tinta separadas. As duas
+  respostas são corretas para as duas entradas, e **têm** de divergir onde os traços se sobrepõem.
+
+⚠️ **Corolário:** *um traço vs cinco traços* **não é um oráculo**. Ele compara dois desenhos
+diferentes por duas leis corretas, e usá-lo como evidência de defeito foi o erro.
+
+#### (c) E o pedaço de h=1,0 que a §22.8 já tinha nomeado
+
+No pior pixel de h=1,0 **com** `end_dab`, `um = 0,0000` — o traço único deposita **zero**. É o
+defeito **3a** (§22.8) outra vez, agora numa estrela: a junta da ponta colapsa o suporte do
+integrando e a quadratura não pega amostra. O `cinco` é não-nulo porque cada traço tem um começo, e
+o `end_dab` dispara nele.
+
+#### O que sobra de joins & caps, honestamente
+
+Uma pergunta de **produto**, não de correção — e com um contra-argumento estrutural:
+
+- **round join e round/flat cap já existem** (a união de cápsulas *é* o join redondo; o `cap_sd` +
+  `FLAG_*_FLAT` dão o butt);
+- **miter e bevel contradizem o modelo** que a §22.1 estabelece como o padrão-ouro: a silhueta é a
+  união dos dabs, e um pincel de dabs **não mitra**. Adicioná-los quebraria a hierarquia inteira
+  (*o percurso é o limite contínuo do dab buffer*) para ganhar um estilo de traço VETORIAL;
+- **square/projecting cap** é o único que cabe barato e sem tocar a união: é o mesmo semi-plano do
+  flat, deslocado de `r`. Fica disponível se o produto pedir.
+
+⇒ **Nada a construir aqui sem uma ordem de produto.** A fila real que sobra é o **3b** (a cura da
+quadratura, §22.8) e o **5** (a terceira lei).

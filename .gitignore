@@ -90,3 +90,6 @@ docs/Tilling/
 docs/PromptDeck/
 scripts/prompt-deck.py
 scripts/prompt-deck-sync.py
+
+# Obsidian per-machine workspace state for the docs/3D vault (the notes are versioned, the pane layout is not).
+docs/3D/.obsidian/

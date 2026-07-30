@@ -55,6 +55,22 @@
 > fluxo barato**; o 1,3× é troco. O plano segue válido; a justificativa muda de
 > lugar, e é honesto que ela mude.
 
+> ## ✅ AS SEIS FASES FECHARAM (2026-07-30) — o resultado está no doc 28 §5.42
+>
+> | | |
+> |---|---|
+> | ganho, poça do produto | **1,16× (2:1) · 1,27× (4:1) · 1,40× (8:1)** |
+> | `build_flow_field` a 4:1 | 11,52 → **1,15 ms (10,02×)** |
+> | fingerprint do ADR-0134 | **intacto** (`rf = 1` byte-idêntico) |
+> | `PROJECT_SCHEMA` · contrato congelado · deps | **37 · 4/4 · nenhuma nova** |
+> | gates | 23, **10 mutações, 10 sangram** |
+>
+> ⚠️ **O que o plano abaixo diz e a construção corrigiu** está no topo (a F1) e
+> no doc 28 §5.42: a AMOSTRA no lugar da média · a fatoração do
+> `build_flow_field` que dissolveu · o momento que **não** virou passe próprio
+> (byte-identidade) · duas regressões de perf minhas · quatro fixtures que
+> falhavam no CONTROLE.
+
 > **Estado: as fases F2..F6 em construção.** Ordem do Enio (2026-07-30, com foto):
 > *"Ainda não temos o AA funcionando! … Fique muito esperançoso com a
 > possibilidade de grade grossa só para velocidade/pressão, pigmento e wetness

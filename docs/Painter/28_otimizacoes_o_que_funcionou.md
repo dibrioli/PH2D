@@ -3388,3 +3388,180 @@ Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
 5. **O preço:** com grade 30 e um pincel PEQUENO nada é pintado — a célula é
    maior que o pincel. Com pincel grande a faixa inteira funciona.
 6. Trocar a grade **encerra a água viva** (a tinta fica; o escorrido em voo, não).
+
+---
+
+## §5.42 — A MULTI-RESOLUÇÃO: o fluxo é grosso, o pigmento é da tela (2026-07-30)
+
+> Ordem do Enio, com foto: *"Ainda não temos o AA funcionando! … Fique muito
+> esperançoso com a possibilidade de grade grossa só para velocidade/pressão,
+> pigmento e wetness na resolução da tela. Mas que cada ajuste desses seja
+> colocado na UI junto ao nosso slider."*
+>
+> Plano: [`30_plano_multiresolucao.md`](30_plano_multiresolucao.md).
+
+### O que ficou
+
+`vel_x` · `vel_y` · `flow_x` · `flow_y` moram numa grade **`Flow Grid` vezes
+menor** que a do pigmento; `film`, `susp`, `sett`, cores, `wet`, `paper`,
+`active` e `bloom` ficam onde estavam. Dois sliders no topo da seção Wet Paint —
+`Grid Size (px)` e `Flow Grid (x)` — com um readout derivado embaixo
+(`fluido 1024x512 - fluxo 256x128`).
+
+### Os números, pela porta do produto (poça de 4096², ciclo de cadência)
+
+| `Flow Grid` | ms/passo | razão | células de fluxo |
+|---|---|---|---|
+| 1 | 10,4 | 1,00× | 16,8 M |
+| 2 | 9,0 | 1,16× | 4,2 M |
+| 4 | 8,2 | 1,27× | 1,05 M |
+| 8 | 7,5 | 1,40× | 0,26 M |
+
+Por passe, `rf = 1 → 4`:
+
+| passe | rf=1 | rf=4 | razão |
+|---|---|---|---|
+| `build_flow_field` | 11,52 ms | **1,15** | **10,02×** |
+| `project` | 1,49 | 0,36 | 4,18× |
+| `smooth_velocity` | 0,63 | 0,21 | 3,02× |
+| `advect` | 8,73 | 8,96 | 0,97× |
+| `drying_pass` | 3,12 | 3,42 | 0,91× (intocado) |
+
+⚠️ **A wave não é sobre velocidade.** O `Grid Size` da §5.41 compra **9,1×** na
+razão 4 — 25× mais que isto — e o preço dele é o pigmento GROSSO, que é
+exatamente a foto do Enio. A entrega aqui é **a borda fina com o fluxo barato**;
+o 1,3× é troco.
+
+### A F1 reescreveu o desenho antes de uma linha ser construída
+
+A fase 1 existia para medir o risco #1 do plano (*a redução pode comer o
+ganho*). Ela mediu e derrubou **três** afirmações do plano, as três minhas:
+
+1. **A REDUÇÃO é a rota errada; a certa é AMOSTRAR.** Mediar os planos finos é
+   `O(finas)` por construção — **não encolhe com `rf`** — e a **3,69 ms**
+   custava mais que os dois passes que alimentaria (1,49 somados). Amostrar UMA
+   célula fina por bloco é `O(grossas)`, **0,29 ms**, e encolhe por `rf²`.
+   ⚠️ Não é a mesma resposta (uma feição de 1 px pode cair ENTRE dois pontos),
+   mas o campo de fluxo é **suave por física** — a premissa inteira do inkwash —
+   e o que sobra é pergunta de **aparência**, para o render-and-look.
+2. **O `build_flow_field` não precisa ser FATORADO.** O plano chamava a
+   fatoração de *"o item de maior risco da wave"*, na teoria de que o backrun
+   (que espalha pigmento) o prendia no fino. **Medido: backrun +0,06 ms,
+   fingering +0,04 — 99,4% do passe é o NÚCLEO**, que é justamente a parte que
+   quer ser grossa.
+3. **O ganho é 1,3×, não 1,7×**, e eu errei pelo motivo que a **§5.40 já tinha
+   documentado**: a §1.4 do plano somava os passes **sem a CADÊNCIA**, e o
+   `build_flow_field` roda **÷4**.
+
+### A regra de unidade, em uma linha
+
+A velocidade é sempre medida em **células FINAS por frame** (é o que o `advect`
+back-traça e o que o `maxVelocity` significa), então **toda DIFERENÇA FINITA
+tomada na grade de fluxo leva um `/rf`** — e nada mais leva. Médias (a
+viscosidade, o `smooth_velocity`, a relaxação de Jacobi) são adimensionais;
+velocidades injetadas direto (o push do backrun, o do fingering, a gravidade, o
+sopro) já estão na unidade certa.
+
+⚠️ **`rf = 1` reduz LITERALMENTE, não a um épsilon:** `(x−1)/1+1` **é** `x`, e
+`x * 1.0` é **exatamente** `x` em IEEE-754. É isso que faz do fingerprint do
+ADR-0134 a rede de segurança de cada fase em vez de uma promessa — e ele ficou
+**intacto** da primeira à última.
+
+### O momento NÃO virou passe próprio, e a razão é byte-identidade
+
+O `advect` **escreve `vel` por célula fina** (`flow` amostrado na fonte +
+`gravidade × film LOCAL`), então com `vel` residente no grosso essa escrita não
+tem para onde ir. O desenho óbvio — extrair a atualização de momento para um
+passe coarse próprio, como o inkwash — foi **descartado**: o `advect` é uma
+varredura **SEQUENCIAL** cujas escritas de `film` alcançam as células ainda por
+visitar, então o `f` que a gravidade multiplica depende de onde o laço está. Um
+passe separado leria o film de ANTES de qualquer advecção, e a rede de segurança
+de `rf = 1` cairia junto.
+
+⇒ **a célula PROBE do bloco é quem escreve a velocidade** — a mesma lei da
+amostra que os passes de fluxo usam. Em `rf = 1` toda célula é o próprio probe.
+
+### ⚠️ DUAS regressões de perf minhas, achadas medindo e não supondo
+
+A primeira medição do produto deu **0,78×** — a wave saindo **mais lenta**. A
+decomposição por passe nomeou o culpado em uma linha: `build_flow_field` estava
+10,25× mais rápido e o **`advect` estava 0,81×**, e ele roda **todo frame**
+enquanto o build roda ÷4.
+
+1. **`is_probe_cell` por célula são DUAS divisões inteiras** no laço mais quente
+   do motor. A posse do bloco virou **CAMINHADA** (uma divisão por LINHA, soma e
+   comparação no resto): **11,55 → 8,89 ms**, já em `rf = 1`.
+2. **`flow_at_point` dividia por `rf` duas vezes por célula fina.** Recíproco
+   pré-computado no `FlowGeom`: **10,17 → 8,96** em `rf = 4` (0,87× → **0,97×**).
+
+### ⚠️ E QUATRO defeitos de fixture, todos falhando no CONTROLE
+
+*Um gate que falha no controle está medindo a coisa errada* — a lição da §5.41,
+cobrada quatro vezes seguidas:
+
+1. **O alcance ABSOLUTO do escorrido não é oráculo:** a folha SECA enquanto a
+   água corre, então a região molhada encolhe mesmo com o campo perfeito
+   (medido, sem gravidade: 106 → 81 em 60 passos). O oráculo é a **DIFERENÇA**
+   com e sem gravidade.
+2. **40 px/frame amontoa 44% da tinta no fim do traço** — a janela de 123
+   células do trail (o item aberto `TRAIL_HALF` do doc 21). A fixture media o
+   trail, não a grade.
+3. **"mais de 110 de 121 colunas pintadas" falhava em `rf = 1`**, que pinta
+   **100** com um vão de 17: o vão é a estrutura de **CERDAS** do pincel. E o
+   achado que a correção revelou: `rf = 4` reproduz o controle **idêntico**
+   (100/121, os mesmos 2 blocos, os mesmos vãos).
+4. **A MEDIANA de passos avulsos esconde o passe que a wave otimiza** — o
+   `build_flow_field` roda 1 frame em 4, então a mediana é sempre um frame SEM
+   ele: ela reportava **1,04×** onde o ciclo de 12 passos reporta **1,27×**.
+
+### Gates
+
+10 de porta (`ph2d-wet-paint/src/flow_tests.rs`) · 5 de comportamento
+(`tests/flow_grid.rs`) · 5 de tool (`wetpaint/flow_ratio_tests.rs`) · 3 de seam
+(`seam_wetpaint.rs`). **10 mutações, 10 sangram.**
+
+⚠️ **Duas sobreviveram na primeira rodada e as duas eram buraco meu:**
+
+* tirar o id do array `PAINTER_WETPAINT_FIELDS` deixava a row **pintada, viva
+  sob o mouse e MUDA** — e o gate que parecia cobri-lo
+  (`the_knob_rows_are_offered_only_while_armed`) **ITERA o próprio array sob
+  teste**, então encolher o array encolhe a lista que ele percorre e ele segue
+  verde afirmando menos. **Oráculo auto-referente.** Gate novo nomeia o id por
+  LITERAL;
+* e a minha primeira mutação de POSIÇÃO era **inválida** (o recorte movia a row
+  para entre o readout e os tools, isto é, ainda ANTES deles).
+
+### Aberto
+
+* **O `advect` (8,7 ms) e o `drying_pass` (3,1) somam ~88% do que resta**, os
+  dois FINOS e os dois já nomeados como *"não ganham nada"*. A próxima alavanca
+  de CPU não está aqui.
+* **A APARÊNCIA da amostra** — o backrun fica **esparso** em `rf > 1` (um sítio
+  de nucleação por bloco em vez de um por célula) e o freio de absorção sonda a
+  célula amostrada. São mudanças de desenho **para o smoke decidir**, não
+  defeitos; nenhuma delas tem gate numérico, e é de propósito.
+* **`MAX_FLOW_RATIO = 16`** não é teto de recurso (o custo já é desprezível a 8):
+  é onde a grade de fluxo deixa de resolver o PINCEL. O número final é do smoke,
+  e o readout torna o limite **visível**.
+
+### Smoke
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter
+env PH2D_WETPAINT_SMOKE=1 PH2D_FLUID_PROFILE=1 cargo run -p ph2d-host-desktop --release
+```
+
+Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
+
+1. A seção abre com **dois** sliders — `Grid Size (px)` e `Flow Grid (x)` — e um
+   readout embaixo dizendo as duas grades resolvidas.
+2. **Deixe `Grid Size` em 1** (pigmento na resolução da tela) e ponha
+   **`Flow Grid` em 4**. A água tem de correr **igual** e a taxa subir.
+3. **A pergunta da wave, e é de OLHO:** com `Grid Size 1 + Flow Grid 4` a borda
+   do escorrido tem de ficar **fina** — compare com `Grid Size 4 + Flow Grid 1`,
+   que é a granulação da §5.41. Se as duas parecerem iguais, a amostra do fluxo
+   está grosseira demais e o `MAX_FLOW_RATIO` desce.
+4. **O backrun esparso:** com `Flow Grid` alto, o padrão de *backrun* fica mais
+   espaçado (um sítio por bloco). É esperado — reprove se ler como artefato.
+5. Trocar qualquer uma das razões **encerra a água viva** (a tinta fica; o
+   escorrido em voo, não).

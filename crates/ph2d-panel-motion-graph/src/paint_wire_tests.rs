@@ -2,6 +2,32 @@
 
 use super::*;
 
+/// **A backward wire-draw paints its ghost too.** `draw_wire_ghost` has always handled
+/// `DrawWireBack`, but the paint entry decides WHEN to call it, and the predicate it consults must
+/// say yes for a backward drag — otherwise the ghost is dead code and the wire stays invisible
+/// until it connects (Enio's report). FALSIFIED by dropping the `DrawWireBack` arm of
+/// `draws_wire_ghost`: the backward drag then paints nothing, while the forward CONTROL still does.
+#[test]
+fn a_backward_wire_draw_shows_its_ghost() {
+    // The bug: a backward drag out of an empty input must show its ghost.
+    assert!(draws_wire_ghost(&Interaction::DrawWireBack {
+        to_node: 1,
+        to_port: 0,
+        cur: (0.0, 0.0),
+        target: None,
+    }));
+    // The control: the forward draw has always shown its ghost.
+    assert!(draws_wire_ghost(&Interaction::DrawWire {
+        from_node: 1,
+        from_port: 0,
+        cur: (0.0, 0.0),
+        target: None,
+        detached: None,
+    }));
+    // Not "always true": an idle graph paints no ghost.
+    assert!(!draws_wire_ghost(&Interaction::Idle));
+}
+
 /// The true curve, densely sampled — the oracle the flattening is measured against.
 fn true_curve(p0: (f32, f32), p3: (f32, f32), zoom: f32) -> Vec<(f32, f32)> {
     let (c1, c2) = wire_handles(p0, p3, zoom);

@@ -31,7 +31,8 @@ mod paint_stamp;
 mod paint_wire;
 use paint_stamp::draw_preview;
 pub(crate) use paint_wire::{
-    detached_edge, draw_wire, draw_wire_ghost, wire_endpoints, wire_hit_polyline, wires_crossed,
+    detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints, wire_hit_polyline,
+    wires_crossed,
 };
 
 use crate::geom::{self, View, card_h, socket_center};
@@ -219,7 +220,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // Overlays above the cards, still clipped: the in-progress wire ghost (it
     // tracks a CAPTURED pointer, which routinely leaves the panel) and the
     // add-menu (already clamped on-canvas).
-    if let Interaction::DrawWire { .. } = &state.interaction {
+    if draws_wire_ghost(&state.interaction) {
         draw_wire_ghost(ctx, &snap, state, &view, theme);
     }
     // The probe readout, over the cards (it is a HUD, not part of the graph).

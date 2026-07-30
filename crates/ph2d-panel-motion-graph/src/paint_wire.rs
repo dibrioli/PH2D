@@ -178,6 +178,19 @@ fn target_ring_token(compatible: bool) -> ColorToken {
     }
 }
 
+/// Whether the live interaction paints a wire ghost — the ONE door the caller consults so it
+/// never has to enumerate the variants itself. TRUE for a forward draw (out of an output, or the
+/// END of a wire pulled off its input) AND for a BACKWARD draw (out of an empty input, hunting for
+/// an output). Both are handled by [`draw_wire_ghost`]; leaving `DrawWireBack` out here is exactly
+/// what left the backward ghost dark on screen until it connected — the paint code was there, the
+/// caller just never reached it.
+pub(crate) fn draws_wire_ghost(interaction: &Interaction) -> bool {
+    matches!(
+        interaction,
+        Interaction::DrawWire { .. } | Interaction::DrawWireBack { .. }
+    )
+}
+
 /// The in-progress wire ghost: from the source output socket to the live pointer,
 /// coloured by the source domain over empty space or a compatible target, and **DANGER
 /// red over an incompatible one**. The hovered target socket gets a ring too — Accent

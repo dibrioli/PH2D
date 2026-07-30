@@ -168,8 +168,19 @@ pub(crate) fn row_result(stack: &RecipeStack, i: usize, time: f64, base: f32) ->
     //
     // ⚠️ A linha NÃO é dimmed: o knob vazio é exatamente o que ele precisa clicar, e
     // um controle apagado que ainda despacha mente. O readout fala, o resto fica vivo.
-    if stack.rows.get(i).and_then(Row::waiting_for).is_some() {
-        return ph2d_i18n::tr("panel.timeline.expr_waiting").to_string();
+    // ⚠️ E a linha de TEMPO inerte fala pela MESMA porta (B3): ela não produz valor, ela
+    // reescreve o relógio das linhas ABAIXO — medido, as seis receitas de Time projetam
+    // literalmente `value` sozinhas, e uma delas por cima de um `Shake` também (o `wiggle`
+    // carrega relógio próprio). Sem esta linha, o único sinal disso seria um readout que
+    // não muda: o artista escolhe `Speed`, nada acontece, e a tela não diz por quê.
+    match stack.inert_reason(i) {
+        Some(ph2d_expr_recipes::RowInert::WaitingFor(_)) => {
+            return ph2d_i18n::tr("panel.timeline.expr_waiting").to_string();
+        }
+        Some(ph2d_expr_recipes::RowInert::NothingToRetime) => {
+            return ph2d_i18n::tr("panel.timeline.expr_no_clock").to_string();
+        }
+        None => {}
     }
     let partial = RecipeStack {
         rows: stack.rows.iter().take(i + 1).cloned().collect(),
@@ -390,5 +401,38 @@ pub(crate) fn apply_drag(state: &mut TimelinePanelState, g: TimelineGesture) {
             }
         }
         _ => m.drag = None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **O readout DIZ por que a linha está inerte** — as duas razões, pela mesma porta.
+    ///
+    /// ⚠️ Um gate de unidade e não de seam porque o readout é TEXTO pintado, e o testkit
+    /// devolve retângulos de widget: `row_result` é a porta, e é ela que o pintor chama.
+    ///
+    /// **Mutação que deve sangrar:** o braço `NothingToRetime` cair no cálculo normal (aí
+    /// a linha de Time reporta o valor de baixo, que é exactamente o readout que não muda).
+    #[test]
+    fn the_readout_says_why_a_row_is_inert() {
+        let waiting = row_result(&RecipeStack::of(&["follow"]), 0, 0.0, 1.0);
+        assert_eq!(waiting, ph2d_i18n::tr("panel.timeline.expr_waiting"));
+
+        let no_clock = row_result(&RecipeStack::of(&["speed"]), 0, 0.0, 1.0);
+        assert_eq!(no_clock, ph2d_i18n::tr("panel.timeline.expr_no_clock"));
+        assert_ne!(
+            no_clock, waiting,
+            "as duas razões são DIFERENTES na tela: uma pede um alvo, a outra pede uma \
+             linha embaixo"
+        );
+
+        // O CONTROLE: com um consumidor de relógio embaixo, o readout volta a ser um NÚMERO.
+        let live = row_result(&RecipeStack::of(&["speed", "sway"]), 0, 0.25, 1.0);
+        assert!(
+            live.parse::<f32>().is_ok(),
+            "linha de Time viva reporta o valor, não uma palavra: {live:?}"
+        );
     }
 }

@@ -3,7 +3,7 @@
 use crate::catalog::by_id;
 use crate::emit::EmitCtx;
 use crate::knob::KnobValue;
-use crate::recipe::{Combine, RecipeId, RowKind};
+use crate::recipe::{ClockUse, Combine, RecipeId, RowKind};
 
 /// One row of the sheet.
 #[derive(Clone, Debug, PartialEq)]
@@ -124,6 +124,28 @@ impl Row {
     }
 }
 
+/// **Por que uma linha não muda nada.** `None` quando ela contribui.
+///
+/// Duas razões, e a segunda é a que a FASE B3 do plano 12 acrescentou: uma linha de TEMPO
+/// não produz valor nenhum — ela reescreve o relógio das linhas ABAIXO dela. Medido, as
+/// seis receitas de Time projetam literalmente `value` quando estão sozinhas na folha, e
+/// uma delas por cima de um `Shake` também: o `wiggle` carrega o próprio relógio
+/// (`ClockUse::Own`), então o retiming não o alcança.
+///
+/// ⚠️ **É a MESMA porta do `waiting_for`, não uma segunda.** O card já tinha o mecanismo
+/// para *"esta linha está inerte e é por isto"* — o readout fala e o resto da linha fica
+/// vivo. Um segundo mecanismo (esconder a família Time da galeria) seria uma segunda
+/// resposta à mesma pergunta, e ainda ensinaria menos: uma família que some não explica
+/// nada, e a inércia é CONTEXTUAL (depende do que há abaixo), não uma propriedade da
+/// receita.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowInert {
+    /// Um knob de alvo/texto ainda vazio — o rótulo dele.
+    WaitingFor(&'static str),
+    /// Uma linha de TEMPO sem nada abaixo que leia o relógio compartilhado.
+    NothingToRetime,
+}
+
 /// The sheet: rows applied **top to bottom**.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RecipeStack {
@@ -139,6 +161,31 @@ impl RecipeStack {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// **Por que a linha `i` está inerte** — ver [`RowInert`].
+    ///
+    /// ⚠️ *"Alguma coisa abaixo lê o relógio?"* é perguntada sobre linhas **não-Time**, e a
+    /// distinção é load-bearing: as seis receitas de Time declaram `ClockUse::Explicit`
+    /// (elas leem o relógio para o reescrever), então uma pergunta ingênua diria que
+    /// `speed → delay` alcança alguém — e as duas juntas ainda projetam `value`. Só um
+    /// consumidor **de valor** observa o relógio.
+    #[must_use]
+    pub fn inert_reason(&self, i: usize) -> Option<RowInert> {
+        let row = self.rows.get(i)?;
+        if let Some(label) = row.waiting_for() {
+            return Some(RowInert::WaitingFor(label));
+        }
+        if by_id(row.recipe)?.kind != RowKind::Time {
+            return None;
+        }
+        let observed = self.rows[i + 1..].iter().any(|r| {
+            r.is_live()
+                && by_id(r.recipe).is_some_and(|rec| {
+                    rec.kind != RowKind::Time && matches!(rec.clock, ClockUse::Explicit)
+                })
+        });
+        (!observed).then_some(RowInert::NothingToRetime)
     }
 
     /// Build from recipe ids at their defaults; unknown ids are skipped.

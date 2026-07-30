@@ -105,4 +105,4 @@ pub use recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RecipeId, RowKin
 pub use refusal::{Destination, REFUSALS, Refusal};
 pub use retired::{Answer, RETIRED, Retired, retired_by_id};
 pub use search::{SearchHit, search};
-pub use stack::{RecipeStack, Row, SEED_CLOCK, SEED_VALUE};
+pub use stack::{RecipeStack, Row, RowInert, SEED_CLOCK, SEED_VALUE};

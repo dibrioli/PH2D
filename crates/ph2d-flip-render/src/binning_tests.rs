@@ -435,3 +435,7 @@ mod cover_tests;
 /// pergunta de PROJETO (*vale trocar a quadratura por duas leituras de tabela?*), não um gate da lei.
 #[path = "antiderivative_tests.rs"]
 mod antiderivative_tests;
+
+/// A INTEGRAL DE AREA DO PIXEL (doc 12 §22.4, item 3) — o filtro-caixa 1-D contra a area 2-D.
+#[path = "aa_tests.rs"]
+mod aa_tests;

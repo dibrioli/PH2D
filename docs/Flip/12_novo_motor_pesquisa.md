@@ -1863,7 +1863,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 1 | **percurso como default** | ✅ **feito** (§22.2) |
 | 2 | **o Pass A pergunta antes de rasterizar** | ✅ **feito** (§22.5) — arte commitada e fantasma de onion custam **zero** enquanto ninguém mexe neles |
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
-| 3 | **a integral de ÁREA do pixel** | ⚠️ **o maior buraco visível que sobrou** — conferido: `sample_count: 1`, `no_msaa()` em TODO o pipeline, a cobertura é amostrada no CENTRO do pixel. O padrão-ouro é `α = ∫_pixel [1 − exp(−τ)] dA`, e ela **compõe** com τ (uma 2ª integral, no motor que já é feito de integrais) |
+| 3 | **a integral de ÁREA do pixel** | ⚠️ **a premissa deste item estava ERRADA — ver §22.6.** O AA já existe e é analítico; medido, sobram DOIS defeitos com números (a saturação em curvatura, 22-30/255 · a QUINA, 63,75/255) |
 | 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
@@ -1929,7 +1929,57 @@ níveis não são redundantes:
 Instrumento: **`PH2D_FLIP_STATS=1`** passou a imprimir `pass A: N rasterizada(s), M pulada(s)` por
 frame — sem ele *"o cache está funcionando?"* é opinião. ⚠️ **O ganho fim-a-fim é PROJEÇÃO até o
 smoke:** o mecanismo está gateado e o custo medido, mas quem confirma os zeros é aquela linha com
-onion ligado e a mão parada.
+onion ligado e a mão parada. **(SMOKE do default APROVADO pelo Enio, 2026-07-29.)**
+
+### 22.6 ⚠️ PASSO 3 — a premissa do item estava ERRADA, e a medição achou outros dois defeitos
+
+**O que eu escrevi no §22.4 e está falso:** *"a cobertura é amostrada no CENTRO do pixel, sem AA"*,
+inferido de `sample_count: 1` + `no_msaa()` em todo o pipeline. Os dois fatos são verdade e
+**irrelevantes** — o AA aqui é **analítico**, não MSAA. O `stroke_deposit` já computa
+`edge = clamp(0.5 − sd, 0, 1)` (o filtro-caixa da silhueta em PIXELS), com o `min` sobre as passagens
+**EXATO**, e o perfil amostrado no **ponto médio da parte coberta** (`u* = (sd − ½)/2`) — cuja
+derivação está no próprio código, junto com a medição que reprovou empurrar meio pixel inteiro
+(24,19/255). ⚠️ **Inferir a ausência de um mecanismo a partir de um proxy, em vez de grepar o
+mecanismo**, é exatamente a armadilha que a memória do repo nomeia — e eu caí nela num item que
+promovi a *"o maior buraco visível que sobrou"*.
+
+**O que de fato sobra**, medido em `aa_tests.rs::measure_what_the_box_filter_owes_the_pixel_area`
+(oráculo: a ÁREA de verdade por supersampling 16×16 do teste dentro/fora, em `hardness = 1`, onde a
+cobertura é pura área):
+
+| cena | `edge` vs área | `cover` vs área | saturação |
+|---|---|---|---|
+| borda reta longe das tampas (**CONTROLE**) | **0,00** | **0,00** | 0,00 |
+| a mesma cena **incluindo a tampa redonda** | 8,74 | 24,90 | **29,99** |
+| **PONTA** aguda | 10,97 | 18,93 | **21,55** |
+| **QUINA** externa (duas cápsulas cruzando) | **63,75** | **63,75** | 0,00 |
+
+⚠️ **O controle precisou de uma janela, e a 1ª versão não tinha:** o pior pixel da cena "reta" caía em
+`(87,5; 41,5)` — 3,5 px DEPOIS do fim do traço, ou seja **na tampa redonda**. A fixture continha a
+curvatura que ela existia para excluir, e o "controle" media 24,90. Com `x ∈ [20, 76]` ele mede
+**0,00**, e é isso que torna as outras linhas fenômeno em vez de ruído de instrumento.
+
+**São DOIS defeitos independentes, e a decomposição é o que impede consertar a metade errada:**
+
+- **3a — a SATURAÇÃO (22-30/255), e ela NÃO é o AA.** Em curvatura (tampa, ponta) o filtro-caixa erra
+  só 9-11 e o produto erra 19-25; o resto é `1 − exp(−τ)` não chegar a 1. Mecanismo: em
+  `hardness = 1` o `f_of` devolve `F_MAX = 16` e um pixel raso perto da borda pega **fração de um
+  dab** ⇒ `τ = 4` ⇒ `1 − e⁻⁴ = 0,9817`. O `F_MAX` é o que substitui o infinito da lei dura, e é ele
+  que limita a saturação ali.
+- **3b — a QUINA (63,75/255 = ¼ da cobertura de um pixel), 100% geométrica** (saturação 0,00 no pior
+  pixel): a união das duas cápsulas cobre **¾** do pixel e o `min` do SDF diz que o centro está EM
+  CIMA da fronteira (`edge = 0,5`). É a limitação clássica de todo AA por SDF.
+
+⚠️ **E a sonda `dump_the_crossing_pixel` pegou um erro meu de LEITURA antes de eu publicar a
+conclusão:** eu li o pior pixel como *"uma borda reta vertical"* e ele é a **quina externa de um L** —
+porque **o Y do `point_px` é invertido** (mundo (16,16) → px (16,80)), a cicatriz que o §18.4b já
+registrou. `63,75` ser exatamente `0,25 × 255` foi o que me fez abrir o pixel em vez de concluir: *um
+número redondo é ou geometria exata ou fixture, e os dois são indistinguíveis sem olhar as partes.*
+
+**Nada foi construído neste passo** — o item mudou de forma, e as duas correções são waves próprias
+(uma toca o `F_MAX`, que tem racional próprio; a outra é AA ciente de quina). O que fica é o
+**instrumento**: um oráculo de área supersampleado, com controle em zero, que qualquer tentativa
+futura tem de bater.
 
 ## 17. Fontes
 

@@ -140,12 +140,12 @@ pub(crate) mod physics_panel_bridge;
 #[cfg(test)]
 mod push_look_probe;
 pub(crate) mod record_fit;
-/// Render-and-look da razão da grade do fluido (diagnóstica, `#[ignore]`d).
-#[cfg(test)]
-mod wet_grid_look_probe;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
+/// Render-and-look da razão da grade do fluido (diagnóstica, `#[ignore]`d).
+#[cfg(test)]
+mod wet_grid_look_probe;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.

@@ -285,6 +285,94 @@ pub fn flow_at_cell(
     flow_at_point(fx, fy, geom, f64::from(x), f64::from(y))
 }
 
+/// **O amostrador que caminha uma LINHA de células finas** — a forma barata do
+/// [`flow_at_point`] para o único chamador que o percorre em sequência.
+///
+/// ⚠️ **Não é uma segunda resposta, e o gate é o que garante isso:** ele computa
+/// `u`, os índices, os pesos e a soma **na mesma ordem** que o `flow_at_point`,
+/// e há gate afirmando igualdade **BIT A BIT** numa varredura de razões e
+/// posições. O que ele faz de diferente é só *quando*: os quatro cantos e a
+/// metade-`y` dos pesos **não mudam enquanto `x` anda dentro do mesmo bloco**,
+/// então as **8 cargas** acontecem uma vez por bloco em vez de uma por célula.
+///
+/// O porquê, medido na poça do produto: com o `advect` amostrando por célula, a
+/// grade grossa custava **+10,6 ms** e comia dois terços do que o
+/// `build_flow_field` economizava (a ablação para *nearest* — que é rápido e
+/// dá a frente em BLOCOS, o artefato — mediu a diferença em **15,9 ms**).
+pub struct FlowRowSampler {
+    rf: usize,
+    inv_rf: f64,
+    half: f64,
+    w: f64,
+    /// `x0` do bloco carregado (`i64::MIN` = nenhum).
+    x0: i64,
+    base: usize,
+    /// Os quatro cantos, já em `f64`: `[00, 10, 01, 11]`.
+    cx: [f64; 4],
+    cy: [f64; 4],
+    /// A metade-`y` dos pesos, constante na linha.
+    b: f64,
+    identity: bool,
+}
+
+impl FlowRowSampler {
+    /// Abre a caminhada na linha fina `y`.
+    #[must_use]
+    pub fn new(geom: &FlowGeom, y: i32) -> Self {
+        let half = ((geom.rf - 1) / 2) as f64;
+        let v = if geom.is_identity() {
+            f64::from(y)
+        } else {
+            (f64::from(y) - 1.0 - half) * geom.inv_rf + 1.0
+        };
+        let v = v.clamp(1.0, geom.h as f64);
+        let y0 = v as i64;
+        FlowRowSampler {
+            rf: geom.rf,
+            inv_rf: geom.inv_rf,
+            half,
+            w: geom.w as f64,
+            x0: i64::MIN,
+            base: y0 as usize * geom.s,
+            cx: [0.0; 4],
+            cy: [0.0; 4],
+            b: v - y0 as f64,
+            identity: geom.is_identity(),
+        }
+    }
+
+    /// O fluxo na célula fina `x` desta linha. `fine_i` é o índice fino de
+    /// `(x, y)` — usado só na rota de identidade, onde ele **é** o índice.
+    #[inline]
+    pub fn at(&mut self, fx: &[f32], fy: &[f32], x: i32, fine_i: usize, s: usize) -> (f64, f64) {
+        if self.identity {
+            return (fx[fine_i] as f64, fy[fine_i] as f64);
+        }
+        let u = ((f64::from(x) - 1.0 - self.half) * self.inv_rf + 1.0).clamp(1.0, self.w);
+        let x0 = u as i64;
+        if x0 != self.x0 {
+            self.x0 = x0;
+            let i00 = x0 as usize + self.base;
+            for (k, i) in [i00, i00 + 1, i00 + s, i00 + s + 1].into_iter().enumerate() {
+                self.cx[k] = fx[i] as f64;
+                self.cy[k] = fy[i] as f64;
+            }
+        }
+        let a = u - x0 as f64;
+        // A MESMA ordem de termos do `flow_at_point` — é o que torna a
+        // igualdade bit-exata, e o gate a afirma.
+        let w00 = (1.0 - a) * (1.0 - self.b);
+        let w10 = a * (1.0 - self.b);
+        let w01 = (1.0 - a) * self.b;
+        let w11 = a * self.b;
+        let _ = self.rf;
+        (
+            self.cx[0] * w00 + self.cx[1] * w10 + self.cx[2] * w01 + self.cx[3] * w11,
+            self.cy[0] * w00 + self.cy[1] * w10 + self.cy[2] * w01 + self.cy[3] * w11,
+        )
+    }
+}
+
 /// Esta célula FINA é a que a sua célula de fluxo AMOSTRA?
 ///
 /// É quem responde *"quem escreve a velocidade deste bloco?"*: exatamente uma

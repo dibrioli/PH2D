@@ -597,3 +597,6 @@ fn measure_what_a_wet_stamp_costs() {
     }
     println!();
 }
+
+#[path = "measure_wetpaint_flow.rs"]
+mod measure_wetpaint_flow; // a sonda do `Flow Grid` (plano 30) — irmã, por LOC

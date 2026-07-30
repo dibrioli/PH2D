@@ -62,6 +62,9 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
         let mut cx = crate::flow::fine_to_flow(bx0, geom.rf);
         let mut blk_end = cx * rfi; // última coluna FINA do bloco `cx`
         let mut px = crate::flow::flow_probe(cx, gw, geom.rf);
+        // O amostrador da LINHA: as 8 cargas do bloco acontecem UMA vez por
+        // bloco em vez de uma por célula (ver `FlowRowSampler`).
+        let mut sampler = crate::flow::FlowRowSampler::new(&geom, y);
         let mut i = bx0 as usize + y as usize * s;
         for x in bx0..=bx1 {
             if x > blk_end {
@@ -90,7 +93,7 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
                 i += 1;
                 continue;
             }
-            let (ux, uy) = crate::flow::flow_at_cell(&g.flow_x, &g.flow_y, &geom, x, y, i);
+            let (ux, uy) = sampler.at(&g.flow_x, &g.flow_y, x, i, geom.s);
             let axv = ux.abs();
             let ayv = uy.abs();
             if axv > vmax {

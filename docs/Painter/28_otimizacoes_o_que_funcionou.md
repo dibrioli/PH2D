@@ -1117,7 +1117,36 @@ commit (user-paced)"*, como se *user-paced* quisesse dizer barato. Um commit aco
 todo traço**. A decisão de **calcular** a janela em vez de recebê-la continua certa (uma janela informada
 errado não falha: some com texels em silêncio) — o que estava errado era o preço estimado dela.
 
-#### Gates, e as duas mutações que ensinaram algo
+#### ⚠️ E DUAS lições de medição que custaram a atribuição inteira
+
+1. **A fixture ENVENENADA (a §5.40, outra vez).** O primeiro corte da sonda de
+   produto tirava o snapshot **sem rodar `rebuild_active_region`** — que é o 1º
+   estágio de todo passo do worker. Sem ele a máscara `active` do estado
+   congelado está VAZIA, todo passe gateado nela faz early-out em TODA célula, e
+   o `drying_pass` (que não é gateado do mesmo jeito) aparece sozinho. O
+   `build_flow_field` media **4,64 ms** onde o produto paga **66,14** — **14×** —
+   e os passes somavam 25 ms contra um passo medido de 63. *Números por passe
+   que não RECONCILIAM com o passo são a assinatura desta doença.*
+2. **A amostragem bilinear do `advect` custava 15,9 ms** — medido por ablação
+   para *nearest* (que é rápido e dá a frente em BLOCOS, o artefato que a wave
+   remove): o passo caía de 59,6 para 41,1 ms. Ela sozinha comia dois terços do
+   que o `build_flow_field` economizava, e na fixture pequena era **invisível**
+   (274k células ativas contra ~10 M).
+
+### O `FlowRowSampler` — as 8 cargas por BLOCO, não por célula
+
+A cura da (2), e o desenho é o que a mantém honesta: os quatro cantos e a
+metade-`y` dos pesos **não mudam enquanto `x` anda dentro do mesmo bloco**, então
+as 8 cargas acontecem uma vez por bloco. ⚠️ **Não é uma segunda resposta, e o
+gate é o que garante isso:** ele computa `u`, os índices, os pesos e a soma **na
+mesma ordem** que o `flow_at_point`, e há gate afirmando igualdade **BIT A BIT**
+numa varredura de razões, larguras e posições — com o campo de teste
+deliberadamente **estruturado**, porque um campo chato faria qualquer
+amostragem concordar e o gate seria verde por vácuo.
+
+**`advect` 41,93 → 34,51 ms · o passo 59,6 → 50,7 · a wave 1,10× → 1,25×.**
+
+### Gates, e as duas mutações que ensinaram algo
 
 O oráculo é a **varredura serial congelada sob `cfg(test)`** — o código que shipava, verbatim. ⚠️ Ela
 mora sob `cfg` de propósito: um `fn` privado sem chamador de produção não é código morto silencioso, é
@@ -3408,24 +3437,36 @@ menor** que a do pigmento; `film`, `susp`, `sett`, cores, `wet`, `paper`,
 `Grid Size (px)` e `Flow Grid (x)` — com um readout derivado embaixo
 (`fluido 1024x512 - fluxo 256x128`).
 
-### Os números, pela porta do produto (poça de 4096², ciclo de cadência)
+### Os números — e ⚠️ **os primeiros que eu publiquei eram da porta ERRADA**
 
-| `Flow Grid` | ms/passo | razão | células de fluxo |
-|---|---|---|---|
-| 1 | 10,4 | 1,00× | 16,8 M |
-| 2 | 9,0 | 1,16× | 4,2 M |
-| 4 | 8,2 | 1,27× | 1,05 M |
-| 8 | 7,5 | 1,40× | 0,26 M |
+A tabela original desta seção saiu da fixture que dirige o **`Engine` direto**
+(10,4 ms/passo). A §5.40 já tinha medido que as duas fixtures "grandes" dão
+números incomparáveis — *"quando o número vira decisão de produto, ele TEM de
+sair da porta do produto"* — e **eu caí nela na mesma wave em que a citei**.
+Pela porta do artista (`on_canvas_pointer`, `heavy_puddle` 4096², ciclo de
+cadência de 12 passos, mediana de 7):
 
-Por passe, `rf = 1 → 4`:
+| `Flow Grid` | ms/passo | Hz | razão | células de fluxo |
+|---|---|---|---|---|
+| 1 | 63,3 | 15,8 | 1,00× | 16,8 M |
+| 2 | 55,9 | 17,9 | 1,13× | 4,2 M |
+| **4** | **50,7** | **19,7** | **1,25×** | 1,05 M |
+| 8 | 50,1 | 20,0 | 1,26× | 0,26 M |
 
-| passe | rf=1 | rf=4 | razão |
-|---|---|---|---|
-| `build_flow_field` | 11,52 ms | **1,15** | **10,02×** |
-| `project` | 1,49 | 0,36 | 4,18× |
-| `smooth_velocity` | 0,63 | 0,21 | 3,02× |
-| `advect` | 8,73 | 8,96 | 0,97× |
-| `drying_pass` | 3,12 | 3,42 | 0,91× (intocado) |
+Por passe, `Flow 1 → 4`, na MESMA poça:
+
+| passe | Flow 1 | Flow 4 | razão | cadência |
+|---|---|---|---|---|
+| `build_flow_field` | 66,14 ms | **3,23** | **20,49×** | ÷4 |
+| `project` | 2,07 | 0,40 | 5,14× | ÷3 |
+| `smooth_velocity` | 1,20 | 0,28 | 4,30× | ×¾ |
+| `advect` | 30,66 | 34,51 | 0,89× | ×1 |
+| `drying_pass` | 46,78 | 46,46 | 1,01× (intocado) | ÷3 |
+| `rebuild_active_region` | 5,28 | 4,93 | 1,07× | ÷2 |
+| **amortizado** | **67,02** | **53,61** | **1,25×** | |
+
+⚠️ **E o `drying_pass` virou o maior item isolado** (46,8 ms ÷3 = 15,6 = **29%
+do passo**), sem ganho nesta wave e sem caminho de CPU nomeado.
 
 ⚠️ **A wave não é sobre velocidade.** O `Grid Size` da §5.41 compra **9,1×** na
 razão 4 — 25× mais que isto — e o preço dele é o pigmento GROSSO, que é

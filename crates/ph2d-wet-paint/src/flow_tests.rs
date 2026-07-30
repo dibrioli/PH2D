@@ -189,3 +189,36 @@ fn the_ratio_is_clamped_at_the_door_not_at_the_caller() {
     assert_eq!(fine_to_flow(7, 0), fine_to_flow(7, MIN_FLOW_RATIO));
     assert_eq!(flow_probe(3, 64, 999), flow_probe(3, 64, MAX_FLOW_RATIO));
 }
+
+#[test]
+fn the_row_sampler_is_the_point_sampler_bit_for_bit() {
+    // ⚠️ O gate que impede o `FlowRowSampler` de ser uma SEGUNDA RESPOSTA: ele
+    // existe só para mover as 8 cargas de por-célula para por-bloco, e tudo o
+    // mais — `u`, os índices, os pesos, a ORDEM da soma — tem de ser o mesmo.
+    // Bit a bit, não a um épsilon: duas leis de amostragem que "quase" batem
+    // divergem no lugar onde ninguém lê um número, que é a tela.
+    for &rf in &RATIOS {
+        for &w in &[9usize, 64, 257] {
+            let geom = FlowGeom::new(w, w, rf);
+            let n = geom.cells;
+            // Um campo com estrutura (não constante — um campo chato faria
+            // qualquer amostragem concordar e o gate seria verde por vácuo).
+            let fx: Vec<f32> = (0..n).map(|i| (i % 37) as f32 * 0.031 - 0.4).collect();
+            let fy: Vec<f32> = (0..n).map(|i| (i % 53) as f32 * -0.017 + 0.2).collect();
+            for y in 1..=w as i32 {
+                let mut sampler = FlowRowSampler::new(&geom, y);
+                for x in 1..=w as i32 {
+                    let fine_i = x as usize + y as usize * (w + 2);
+                    let got = sampler.at(&fx, &fy, x, fine_i, geom.s);
+                    let want = flow_at_cell(&fx, &fy, &geom, x, y, fine_i);
+                    assert_eq!(
+                        (got.0.to_bits(), got.1.to_bits()),
+                        (want.0.to_bits(), want.1.to_bits()),
+                        "o amostrador de linha divergiu da porta: rf {rf} w {w} ({x}, {y}) \
+                         -> {got:?} contra {want:?}"
+                    );
+                }
+            }
+        }
+    }
+}

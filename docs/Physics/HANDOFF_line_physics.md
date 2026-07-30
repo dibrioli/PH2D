@@ -6975,7 +6975,7 @@ horas, e eu a repeti: *um gate que pina a CHAMADA não pina a RESPOSTA*. Agora e
 pina a **FORMA** da guarda, e a metade comportamental (o predicado da rota) mora
 ao lado do funil.
 
-**`PROJECT_SCHEMA` fica 34**, registro fica **21**, **c9 BYTE-IDÊNTICO**
+**`PROJECT_SCHEMA` fica 45**, registro fica **22**, **c9 BYTE-IDÊNTICO**
 (`7cb7728d…`, 96 corpos) — a correção é de autoria e nenhuma cena do hash autora
 raio.
 
@@ -7031,7 +7031,7 @@ o 4º gate: ele vigiava convergência, onde nada podia falhar, e agora roda o re
 onde a premissa do desenho vive. A mutação da pose VIVA sangra só nele (*a corda
 ESTICA*, 14,846584 → 14,847183 no tique 2).
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
 96 corpos) — as polias do hash são semeadas normalmente, então o piso não dispara lá.
 
 **Smoke: `PH2D_PHYSICS_SMOKE=63`** — clique **Add Wheel**, e depois digite um
@@ -7091,7 +7091,7 @@ gateadas separadamente de propósito.
 arquivo articula (**anotação × gesto em andamento**): `draw_band` e `draw_grab`
 foram para **`physics_overlay_gesture.rs`** (553 + 77).
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
 96 corpos).
 
 **Smoke: `PH2D_PHYSICS_SMOKE=63`** — arraste o CENTRO de uma roldana sobre a âncora
@@ -7141,7 +7141,7 @@ mundo entre corridas enquanto os casos com corda reconstruíam a cena ⇒ o cont
 veio **negativa**. O controle atropelado pelo experimento, pela quinta vez nesta
 linha.
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
 Nada aqui toca o produto — são sondas, gates e notas.
 
 ---
@@ -7212,7 +7212,7 @@ a forma **declarativa** (*"o contorno já está ligado"*), porque `show_collider
 nasce `true` e `B` **alterna** — a instrução antiga mandava o artista DESLIGAR o que
 ele quer ver e levava as alças junto.
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`, 96
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`, 96
 corpos) — a wave não alcança o solver.
 
 **Aberto na W-Pulley agora:** roldana montada em corpo **KINEMATIC** = guincho de
@@ -7283,7 +7283,7 @@ a 1ª em pé**. Os números foram refeitos numa árvore verificada por `git diff
 vazio. *Um backup de mutação vale o que vale a árvore de onde saiu: confira-a antes,
 e confira o `git diff` depois de restaurar.*
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`).
 
 **Aberto na W-Pulley agora:** o eyedropper de **corda** (re-escolher a corda de uma
 roldana; hoje só na criação) · a **Weston** (topologia, 2ª restrição por corda — não
@@ -7343,7 +7343,7 @@ roldana), coluna não-monotônica; no gate a roldana tinha raio, então a rota t
 **Higiene:** `paint_readout_row_in` ficou sem chamador com a row nova e foi removida
 (47 linhas). `SNAP_PX` virou `pub(crate)` (um número, um lugar).
 
-**Ids:** `INSP_WHEEL_ROPE_PICK`. **`PROJECT_SCHEMA` fica 34**, registro **21**, **c9
+**Ids:** `INSP_WHEEL_ROPE_PICK`. **`PROJECT_SCHEMA` fica 45**, registro **22**, **c9
 BYTE-IDÊNTICO** (`7cb7728d…`) — a wave não alcança o solver.
 
 **Smoke: `PH2D_PHYSICS_SMOKE=61`** — o passo novo pede o gesto que importa:
@@ -7395,7 +7395,7 @@ eixo **duas vezes**, com os dois contatos em diâmetros diferentes e nós entre 
 `PulleyDesc`, no `route`, no ledger de carga e provavelmente no `PROJECT_SCHEMA` —
 **wave própria com aceitação própria**, nunca afinação de um número existente.
 
-**Nada construído** (só a sonda). `PROJECT_SCHEMA` fica **34**, registro **21**, c9
+**Nada construído** (só a sonda). `PROJECT_SCHEMA` fica **45**, registro **22**, c9
 intocado.
 
 ---
@@ -7407,6 +7407,35 @@ desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de seg
 o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montado · a
 **cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda**. Todos os
 smokes aprovados (`=61`, `=63`).
+
+⚠️ **DOIS NÚMEROS MEUS ESTAVAM FALSOS NAS SEIS WAVES DESTA JANELA — e o
+`PROJECT_SCHEMA` é a TERCEIRA vez que este exato número mente neste repo.** Eu
+reportei `PROJECT_SCHEMA` **34** e registro **21** em todas elas:
+
+| o que eu disse | a verdade | a fonte |
+|---|---|---|
+| `PROJECT_SCHEMA` 34 | **45** | `shells/desktop/src/project.rs:186` |
+| registro 21 | **22** | as 22 `register::<>` de `ph2d-physics-ecs` (o `PulleyWheel` é o 22º) |
+| c9 `7cb7728d…` | ✅ correto | rodado, não citado |
+
+O 45 chegou no `76a6cd1e8` (W4-B, *"o segundo diâmetro é autorável"*) e o 22 no W1 da
+polia — as duas **desta MESMA linha**, antes desta janela. Os dois vieram de um resumo
+de contexto e eu os repeti sem conferir a fonte; **o c9 é o único que eu RODEI, e é o
+único que estava certo.** *Número citado de memória é número velho; número rodado é
+número.*
+
+**A afirmação estava CERTA e o valor, velho:** nenhuma wave desta janela toca
+`project.rs` (conferido por `git log --name-only`), então *"esta wave não bumpa
+schema"* é verdade e é gateada — o que estava errado era o número citado ao lado.
+⚠️ **Os seis commits carregam o 34 no corpo da mensagem** e não foram reescritos (o
+histórico não é meu para reescrever; o registro vivo é este doc, e é aqui que a
+correção mora). A §5 do CLAUDE.md **já avisava**: *"a fonte é o `project.rs` /
+`project_tests.rs`; esta linha é o espelho, e espelho enverga."* O antídoto é uma
+linha de shell, não uma lembrança:
+
+```
+grep -n "PROJECT_SCHEMA: u32" shells/desktop/src/project.rs
+```
 
 **Aberto e nomeado:** a **Weston** (topologia, precisa de ordem) · o readout da §12 de
 uma corda degenerada mostra `0 N` em âmbar sem dizer por quê (texto ali quer i18n e

@@ -381,7 +381,7 @@ nenhum** — o reseat é um bloco inline no `mod.rs`. Corrigido para apontar o q
 existe.
 
 **Nenhum schema, nenhum componente, nenhum contrato congelado** (`PROJECT_SCHEMA`
-**45**, registro **21**); **c9 byte-idêntico** (`7cb7728d44…`, 96 corpos) — é
+**45**, registro **22**); **c9 byte-idêntico** (`7cb7728d44…`, 96 corpos) — é
 autoria, não solver. LOC: `joint_anchor_drag.rs` cruzou 600 e o corte é o que o
 próprio arquivo já confessava num comentário (*"`joint` aqui é a RODA, não a
 corda"*) — a metade da roldana saiu para o módulo **FILHO**
@@ -638,7 +638,7 @@ horas, e eu a repeti: *um gate que pina a CHAMADA não pina a RESPOSTA*. Agora e
 pina a **FORMA** da guarda, e a metade comportamental (o predicado da rota) mora
 ao lado do funil.
 
-**`PROJECT_SCHEMA` fica 34**, registro fica **21**, **c9 BYTE-IDÊNTICO**
+**`PROJECT_SCHEMA` fica 45**, registro fica **22**, **c9 BYTE-IDÊNTICO**
 (`7cb7728d…`, 96 corpos) — a correção é de autoria e nenhuma cena do hash autora
 raio.
 
@@ -707,7 +707,7 @@ VALOR. Renomeado, e o doc agora diz por que observar o valor é o certo: o diff 
 undo também compara bytes, então uma escrita idempotente é invisível exactamente
 onde ela importaria.
 
-**`PROJECT_SCHEMA` fica 34**, registro fica **21**, **c9 BYTE-IDÊNTICO**
+**`PROJECT_SCHEMA` fica 45**, registro fica **22**, **c9 BYTE-IDÊNTICO**
 (`7cb7728d…`, 96 corpos) — as polias do hash são semeadas normalmente, então o piso
 nunca dispara lá.
 
@@ -790,7 +790,7 @@ andamento**: `draw_band` (a banda elástica de criar) e `draw_grab` (a mola da m
 são *"feedback de um gesto em voo, desenhado mesmo com o overlay DESLIGADO"* e
 foram para o irmão **`physics_overlay_gesture.rs`** (553 + 77).
 
-**`PROJECT_SCHEMA` fica 34**, registro **21**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
+**`PROJECT_SCHEMA` fica 45**, registro **22**, **c9 BYTE-IDÊNTICO** (`7cb7728d…`,
 96 corpos) — nada aqui toca o solver.
 
 **Smoke: `PH2D_PHYSICS_SMOKE=63`** — arraste o CENTRO de uma roldana para cima da
@@ -883,7 +883,7 @@ partir do gate errado mandaria o artista procurar quatro pontos que não existem
 arraste o dot central **com CTRL**: ele cola nos 5 pontos do disco que a carrega. Sem
 CTRL o arrasto é livre; na roldana do CENÁRIO o ímã não abre.
 
-**Zero componente, zero id, zero schema** (`PROJECT_SCHEMA` 34, registro 21) e o
+**Zero componente, zero id, zero schema** (`PROJECT_SCHEMA` 45, registro 22) e o
 **c9 saiu byte-idêntico** (`7cb7728d…`, 96 corpos) — nada aqui alcança o solver.
 
 ### Aberto no W5, nomeado

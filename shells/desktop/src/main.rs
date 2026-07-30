@@ -135,6 +135,7 @@ mod fx_duotone_smoke;
 mod fx_gradient_map_smoke;
 mod fx_live;
 mod fx_live_hit;
+mod fx_live_memo;
 mod fx_live_resolve;
 mod fx_morphology_smoke;
 mod fx_raster_smoke;

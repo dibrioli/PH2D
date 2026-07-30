@@ -33,9 +33,11 @@
 //! tempo real em runtime para games"*, e num jogo as formas filtradas **animam**, logo erram o
 //! memo **todas, todo frame**. O que multiplica é o fixo, não o filtro.
 //!
-//! O memo (por *pilha resolvida em pixels* + tamanho) vira OTIMIZAÇÃO — pula o re-cook quando nada
-//! muda —, não requisito de correção: mesmo re-cozinhando todo frame (cena inteira animada), é UM
-//! render + `2n+1` passes por forma. Vazio = nenhum FX (byte-idêntico ao mundo pré-FX).
+//! O memo vira OTIMIZAÇÃO — pula o re-cook quando nada muda —, não requisito de correção: mesmo
+//! re-cozinhando todo frame (cena inteira animada), é UM render + `2n+1` passes por forma. Vazio =
+//! nenhum FX (byte-idêntico ao mundo pré-FX). ⚠️ **A CHAVE dele mora no [`crate::fx_live_memo`]** e
+//! carrega o que é DESENHADO, não só a pilha resolvida e o tamanho — era essa a falta que fazia
+//! *mudar a cor do fill de uma forma filtrada não mudar a tela*.
 //!
 //! # A conversão MUNDO → PIXEL mora aqui, e só aqui
 //!
@@ -47,16 +49,13 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, SimWorld, VecFilter};
 use ph2d_gpu::GpuContext;
-use ph2d_render::{FxOpGpu, FxStackPass, VelloPass, make_output_texture, stack_reach};
+use ph2d_render::{FxStackPass, VelloPass, make_output_texture};
 use ph2d_vec_render::{FxImage, FxImages, LiveGeometry};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 use ph2d_vector::{Affine, Color, ImageData, Rect, StableImage, VectorScene};
 
+use crate::fx_live_memo::{FxKey, Job, MAX_FX_SIDE, job_for};
 use crate::vec_entities::VecEntityMap;
-
-/// O maior lado de scratch/saída que pedimos à GPU — o `maxTextureDimension2D` baseline do WebGPU
-/// (8192). Limite de RECURSO (a dimensão de textura garantida), não de gosto.
-const MAX_FX_SIDE: u32 = 8192;
 
 /// Os recursos de GPU PERSISTENTES de uma forma filtrada: a textura de saída (o resultado da
 /// pilha) e o handle [`ImageData`] estável que a referencia no renderer principal. `tex` fica viva
@@ -66,27 +65,10 @@ struct PathFx {
     image: ImageData,
     /// A textura de saída (a pilha escreve aqui; o Vello copia daqui). Clone = handle, mesma tex.
     tex: wgpu::Texture,
-    w: u32,
-    h: u32,
-    /// A pilha JÁ RESOLVIDA em pixels — a chave do memo. Guardá-la resolvida (e não o componente)
-    /// é o que faz o zoom invalidar sozinho: a mesma pilha noutro zoom é outra lista.
-    ops: Vec<FxOpGpu>,
-}
-
-/// **O que uma forma filtrada precisa neste frame**, resolvido pela 1ª varredura do `recook`.
-///
-/// Existe porque a decisão do ATLAS é sobre a CENA: só depois de conhecer o tamanho de todas as
-/// formas que erraram o memo é que se sabe em quantos renders elas cabem. Sem isto o laço teria de
-/// resolver cada forma duas vezes — e a 2ª resposta é a que poderia divergir.
-struct Job {
-    id: VecPathId,
-    /// A pilha JÁ RESOLVIDA em pixels de tela.
-    ops: Vec<FxOpGpu>,
-    /// O canto do scratch desta forma, em pixels de tela (a caixa dela mais a margem da pilha).
-    ex0: f64,
-    ey0: f64,
-    w: u32,
-    h: u32,
+    /// **A chave do memo**: com o que estes pixels foram cozidos (a pilha resolvida, o tamanho, e o
+    /// que foi DESENHADO). Ver [`crate::fx_live_memo`] — a chave era `(pilha, w, h)` e a forma não
+    /// entrava nela, então mudar a cor do fill de uma forma filtrada não mudava a tela.
+    key: FxKey,
 }
 
 /// O cozimento de todos os FX raster da cena, GPU-resident. Runtime-only: o documento guarda a
@@ -155,48 +137,25 @@ impl FxLive {
         let mut jobs: Vec<Job> = Vec::new();
         let mut miss: Vec<usize> = Vec::new();
         for path in scene.paths() {
-            let Some(filter) = spec_of(sim, map, path.id) else {
+            let Some(job) = job_for(scene, sim, map, xforms, live, sil, camera, path.id) else {
                 continue;
             };
-            let ops = resolve_ops(&filter, camera);
-            if ops.is_empty() {
-                continue;
-            }
-            let Some((x0, y0, x1, y1)) =
-                ph2d_vec_render::path_screen_bounds(scene, xforms, live, path.id, camera)
-            else {
-                continue;
-            };
-            // A margem é da PILHA INTEIRA (as reaches somam ao longo dela) e assimétrica (uma
-            // sombra longa para a direita não paga textura à esquerda). Porta única no passe.
-            let (ml, mt, mr, mb) = stack_reach(&ops);
-            let ex0 = (x0 - f64::from(ml)).floor();
-            let ey0 = (y0 - f64::from(mt)).floor();
-            let w = (((x1 + f64::from(mr)).ceil() - ex0).max(1.0) as u32).min(MAX_FX_SIDE);
-            let h = (((y1 + f64::from(mb)).ceil() - ey0).max(1.0) as u32).min(MAX_FX_SIDE);
-            // O memo é otimização: re-coza só quando os PIXELS mudam.
-            let hit = self
-                .paths
-                .get(&path.id)
-                .is_some_and(|p| p.ops == ops && p.w == w && p.h == h);
-            if !hit {
+            // O memo é otimização: re-coza só quando os PIXELS mudam. A pergunta inteira está na
+            // CHAVE (`fx_live_memo`) — ela carrega o que é desenhado, não só a pilha e o tamanho.
+            if !self.paths.get(&path.id).is_some_and(|p| p.key == job.key) {
                 miss.push(jobs.len());
             }
-            jobs.push(Job {
-                id: path.id,
-                ops,
-                ex0,
-                ey0,
-                w,
-                h,
-            });
+            jobs.push(job);
         }
 
         // 2ª varredura — o ATLAS. Zero formas a re-cozinhar = zero renders: uma cena parada não
         // paga nada, que é a outra metade do que o memo sempre prometeu.
         let mut renders = 0usize;
         if !miss.is_empty() {
-            let sizes: Vec<(u32, u32)> = miss.iter().map(|&i| (jobs[i].w, jobs[i].h)).collect();
+            let sizes: Vec<(u32, u32)> = miss
+                .iter()
+                .map(|&i| (jobs[i].key.w, jobs[i].key.h))
+                .collect();
             for batch in crate::fx_atlas::pack(&sizes, MAX_FX_SIDE) {
                 if self.cook_batch(
                     gpu,
@@ -225,15 +184,15 @@ impl FxLive {
             let Some(pfx) = self
                 .paths
                 .get(&job.id)
-                .filter(|p| p.w == job.w && p.h == job.h)
+                .filter(|p| p.key.w == job.key.w && p.key.h == job.key.h)
             else {
                 continue;
             };
             let rect = (
                 job.ex0,
                 job.ey0,
-                job.ex0 + f64::from(pfx.w),
-                job.ey0 + f64::from(pfx.h),
+                job.ex0 + f64::from(pfx.key.w),
+                job.ey0 + f64::from(pfx.key.h),
             );
             self.live.insert(
                 job.id,
@@ -303,8 +262,8 @@ impl FxLive {
             scratch_scene.push_clip(&Rect::new(
                 f64::from(cell.org[0]),
                 f64::from(cell.org[1]),
-                f64::from(cell.org[0]) + f64::from(job.w),
-                f64::from(cell.org[1]) + f64::from(job.h),
+                f64::from(cell.org[0]) + f64::from(job.key.w),
+                f64::from(cell.org[1]) + f64::from(job.key.h),
             ));
             ph2d_vec_render::draw_path_isolated(
                 scene,
@@ -370,8 +329,11 @@ impl FxLive {
             let Some(pfx) = paths.get_mut(&job.id) else {
                 continue;
             };
-            pfx.ops.clear();
-            pfx.ops.extend_from_slice(&job.ops);
+            // **O único sítio que declara "estes pixels estão em dia com esta chave".** Escrito
+            // aqui (e não no `ensure_output`, que sai cedo quando o tamanho não muda) porque um
+            // re-cook comum não mexe na textura — e era exactamente por isso que a chave antiga
+            // atualizava só a pilha.
+            pfx.key = job.key.clone();
             let geom = ph2d_vec_render::silhouette_segments(
                 scene,
                 xforms,
@@ -386,8 +348,8 @@ impl FxLive {
                     "[fx-diag] path {:?}: {} segmentos, celula {}x{} em ({},{}) do atlas {}x{}",
                     job.id,
                     geom.len(),
-                    job.w,
-                    job.h,
+                    job.key.w,
+                    job.key.h,
                     cell.org[0],
                     cell.org[1],
                     batch.w,
@@ -398,18 +360,20 @@ impl FxLive {
                 i32::try_from(cell.org[0]).unwrap_or(0),
                 i32::try_from(cell.org[1]).unwrap_or(0),
             ];
-            stack.run_from(gpu, src, org, &pfx.tex, job.w, job.h, &job.ops, &geom);
-            dump.maybe(gpu, job.id, &pfx.tex, job.w, job.h, &job.ops, &geom);
+            let (w, h) = (job.key.w, job.key.h);
+            stack.run_from(gpu, src, org, &pfx.tex, w, h, &job.key.ops, &geom);
+            dump.maybe(gpu, job.id, &pfx.tex, w, h, &job.key.ops, &geom);
         }
         true
     }
 
     /// (Re)aloca a textura de saída de uma forma e mantém o id ESTÁVEL no renderer principal.
     fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) {
-        if matches!(self.paths.get(&job.id), Some(p) if p.w == job.w && p.h == job.h) {
+        if matches!(self.paths.get(&job.id), Some(p) if p.key.w == job.key.w && p.key.h == job.key.h)
+        {
             return;
         }
-        let tex = make_output_texture(gpu, job.w, job.h);
+        let tex = make_output_texture(gpu, job.key.w, job.key.h);
         match self.paths.get_mut(&job.id) {
             // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do antigo.
             // ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da `ImageData` —
@@ -421,8 +385,7 @@ impl FxLive {
                 let old = std::mem::replace(&mut pfx.image, fresh);
                 self.pending_unregister.push(old);
                 pfx.tex = tex;
-                pfx.w = job.w;
-                pfx.h = job.h;
+                pfx.key = job.key.clone();
             }
             // Forma nova: registra a textura e ganha um id estável.
             None => {
@@ -432,9 +395,7 @@ impl FxLive {
                     PathFx {
                         image,
                         tex,
-                        w: job.w,
-                        h: job.h,
-                        ops: job.ops.clone(),
+                        key: job.key.clone(),
                     },
                 );
             }

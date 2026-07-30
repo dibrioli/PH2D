@@ -7417,8 +7417,10 @@ A **W-Pulley está FECHADA, a Weston INCLUSA** (ordem do Enio, 2026-07-29). As w
 desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de segurar** ·
 o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montado · a
 **cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda** · e a
-**W-WESTON** (o eixo composto atravessado duas vezes, `2R/(R−r)`). Smokes aprovados:
-`=61`, `=63`. **Pendente de smoke: `=64`.**
+**W-WESTON** (o eixo composto atravessado duas vezes, `2R/(R−r)`). **Smokes aprovados:
+`=61`, `=63`, `=64`** (o `=64` em 2026-07-30 — *"Smoke OK"*). **A linha está FECHADA;
+o handoff de integração é
+[`HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md`](HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md).**
 
 ⚠️ **Estado no tip:** `PROJECT_SCHEMA` **45** (a Weston não o move — marcador),
 registro `ph2d-ecs` **23**, c9 `7cb7728d…` com 96 corpos (a wave não alcança o hash).
@@ -7456,7 +7458,8 @@ linha de shell, não uma lembrança:
 grep -n "PROJECT_SCHEMA: u32" shells/desktop/src/project.rs
 ```
 
-**Aberto e nomeado:** a **Weston** (topologia, precisa de ordem) · o readout da §12 de
+**Aberto e nomeado:** ~~a **Weston**~~ (**FEITA** — ordem do Enio em 2026-07-29, smoke
+aprovado em 2026-07-30; a seção acima) · o readout da §12 de
 uma corda degenerada mostra `0 N` em âmbar sem dizer por quê (texto ali quer i18n e
 canal próprio) · o salto balístico do contrapeso comum (física honesta, fica na tela)
 · um corpo que passa da própria roldana inverte o ramo (degenerado documentado) · um

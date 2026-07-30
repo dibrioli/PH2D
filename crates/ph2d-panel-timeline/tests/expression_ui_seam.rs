@@ -548,7 +548,7 @@ fn the_card_opens_fully_inside_the_viewport() {
     let (x, y) = state.expr_modal.as_ref().unwrap().pos.expect("placed");
     let (w, h) = (
         ph2d_panel_timeline::expr_modal_paint::card_w(),
-        ph2d_panel_timeline::expr_modal_paint::card_h(),
+        ph2d_panel_timeline::expr_modal_paint::card_h(SMOKE_VIEWPORT),
     );
     assert!(
         x >= SMOKE_VIEWPORT.x
@@ -629,7 +629,7 @@ fn the_title_band_drags_the_card_and_the_clamp_keeps_it_reachable() {
     let (x, y) = state.expr_modal.as_ref().unwrap().pos.unwrap();
     let (w, h) = (
         ph2d_panel_timeline::expr_modal_paint::card_w(),
-        ph2d_panel_timeline::expr_modal_paint::card_h(),
+        ph2d_panel_timeline::expr_modal_paint::card_h(SMOKE_VIEWPORT),
     );
     assert!(
         x + w <= SMOKE_VIEWPORT.w + 0.5 && y + h <= SMOKE_VIEWPORT.h + 0.5,

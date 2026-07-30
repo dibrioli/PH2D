@@ -15,12 +15,19 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
 use crate::expr_modal::{ExprModal, GalleryPage};
 use crate::expr_modal_columns::expr_button;
-use crate::expr_modal_paint::{BODY_SLOTS, GALLERY_W};
+use crate::expr_modal_paint::GALLERY_W;
 use crate::ids;
 
 /// The left column: the search field, then either the families or one family's
 /// recipes (plus any refusal cards a query surfaced).
-pub(crate) fn paint_gallery(m: &ExprModal, ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
+pub(crate) fn paint_gallery(
+    m: &ExprModal,
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    body_slots: usize,
+) {
     let font = TypeToken::Sm.px();
     let mut cy = y;
 
@@ -65,7 +72,7 @@ pub(crate) fn paint_gallery(m: &ExprModal, ctx: &mut PaintCtx, theme: Theme, x: 
         .register(ids::EXPR_MODAL_SEARCH, field);
     cy += ROW_H_PX;
 
-    let slots = BODY_SLOTS - 1;
+    let slots = body_slots - 1;
     let query = text.trim().to_string();
 
     if !query.is_empty() {

@@ -8,7 +8,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, TextInput, TextInputState,
@@ -16,12 +16,10 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_expr_recipes::{Knob, KnobKind};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 
 use crate::expr_modal::{ExprModal, row_result};
-use crate::expr_modal_paint::{
-    BODY_SLOTS, KNOB_LABEL_W, KNOB_READOUT_W, ROW_BTN_W, SHEET_W, button_state,
-};
+use crate::expr_modal_paint::{KNOB_LABEL_W, KNOB_READOUT_W, ROW_BTN_W, SHEET_W, button_state};
 use crate::ids;
 
 /// Paint a button AND make it live under the mouse.
@@ -99,6 +97,10 @@ const NUM_W: f32 = 96.0; // LITERAL-PX-OK: largura da caixa numerica de um knob
 /// ZERO** entre nome │ readout │ X (doc 13 §4-bis). Duas colunas encostadas repetiriam
 /// exactamente esse erro no eixo que sobrou.
 const KNOB_COL_GUTTER: f32 = 8.0; // LITERAL-PX-OK: = Spacing::Md, a calha das colunas
+/// A calha entre as três coisas do cabeçalho de uma row (nome │ readout │ X).
+const HDR_GUTTER: f32 = 6.0; // LITERAL-PX-OK: = Spacing::Sm, a calha do cabecalho
+/// O respiro ENTRE dois cartões de row.
+const ROW_GAP: f32 = 4.0; // LITERAL-PX-OK: = Spacing::Xs, o respiro entre rows
 
 /// Paint a knob's **number box** and make it live: value, stepper range, drag rate.
 ///
@@ -359,21 +361,30 @@ pub(crate) fn paint_sheet(
     m: &ExprModal,
     ctx: &mut PaintCtx,
     theme: Theme,
-    x: f32,
-    y: f32,
+    at: Rect,
     reseed: bool,
     base: f32,
 ) {
-    let font = TypeToken::Sm.px();
-    let mut cy = y;
-    let mut used = 0usize;
+    // ⚠️ **Uma BANDA, não `(x, y, slots)`.** O sheet pinta dentro de um retângulo, e o
+    // orçamento dele é a altura desse retângulo — que é exactamente o que
+    // `body_slots(viewport) * ROW_H_PX` já vale. Passar os três separados era pedir ao
+    // chamador que mantivesse coerentes três números que descrevem uma coisa só.
+    let (x, font) = (at.x, TypeToken::Sm.px());
+    let mut cy = at.y;
+    // ⚠️ **O orçamento é em PIXELS, não em slots** (FASE C.4). A calha entre rows não é um
+    // múltiplo de `ROW_H_PX`, então contar em slots a deixaria de fora da conta — e o
+    // modo de falha disso é o pior que este arquivo já teve: uma row que a aritmética diz
+    // caber e o desenho empurra para fora do card, viva na fórmula e invisível na tela.
+    let budget = at.h;
+    let mut used_px = 0.0_f32;
 
     for (ri, row) in m.stack.rows.iter().enumerate() {
         let Some(rec) = ph2d_expr_recipes::by_id(row.recipe) else {
             continue;
         };
         let need = 1 + knob_rows(rec);
-        if used + need > BODY_SLOTS {
+        let need_px = ROW_H_PX * need as f32 + ROW_GAP;
+        if used_px + need_px > budget {
             paint_text(
                 ctx.text_system,
                 ctx.scene,
@@ -386,7 +397,28 @@ pub(crate) fn paint_sheet(
             );
             return;
         }
-        used += need;
+        used_px += need_px;
+
+        // ── A LINHA É UM CARTÃO. ──
+        //
+        // O §5.2 do plano nomeou dois defeitos que são um só: *sem hierarquia* (uma row de
+        // receita e um knob dela tinham o MESMO peso visual — mesmo `ROW_H_PX`, mesmo
+        // fundo) e *sem respiro*. A planilha lia como uma lista plana de doze itens em vez
+        // de três blocos, e nada dizia onde uma receita acabava e a outra começava.
+        //
+        // ⚠️ **Copiado, não inventado:** é a superfície elevada + raio que o
+        // `ph2d-panel-wet-tuning` e o `motion-params` já usam para a mesma estrutura
+        // (linhas de um stack). Um artista aprende UM cartão.
+        //
+        // ⚠️ O fundo cobre a row INTEIRA (cabeçalho + as linhas de knob dela) porque é
+        // exactamente essa a extensão que o `need` acima reservou — desenhar só sob o
+        // cabeçalho separaria a receita dos próprios knobs.
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, cy, SHEET_W, ROW_H_PX * need as f32),
+            Radius::Sm.px(),
+            resolve(ColorToken::BgElev, theme),
+        );
 
         // Row header: bypass eye · label · result · remove.
         //
@@ -406,6 +438,10 @@ pub(crate) fn paint_sheet(
         expr_icon_button(ctx, theme, eye_id, eye_glyph, eye);
 
         let rm = Rect::new(x + SHEET_W - ROW_BTN_W, cy, ROW_BTN_W, ROW_H_PX);
+        // ⚠️ **A calha do header** — a queixa que a auditoria MEDIU (doc 13 §4-bis): não era
+        // a largura do nome (198 px, ~16 caracteres), era `gutter ZERO` entre
+        // nome │ readout │ X, três coisas encostadas lendo como uma só.
+        let readout_x = rm.x - HDR_GUTTER - KNOB_READOUT_W;
         let rm_id = ids::expr_remove_id(ri);
         expr_icon_button(ctx, theme, rm_id, IconId::Close, rm);
 
@@ -443,7 +479,7 @@ pub(crate) fn paint_sheet(
             label_x,
             cy + (ROW_H_PX - font) * 0.5,
             font,
-            (x + SHEET_W - ROW_BTN_W - KNOB_READOUT_W - label_x).max(0.0),
+            (readout_x - HDR_GUTTER - label_x).max(0.0),
             resolve(
                 if row.bypass {
                     ColorToken::Text2
@@ -457,7 +493,7 @@ pub(crate) fn paint_sheet(
             ctx.text_system,
             ctx.scene,
             &result,
-            x + SHEET_W - ROW_BTN_W - KNOB_READOUT_W,
+            readout_x,
             cy + (ROW_H_PX - font) * 0.5,
             font,
             KNOB_READOUT_W,
@@ -466,6 +502,7 @@ pub(crate) fn paint_sheet(
         cy += ROW_H_PX;
 
         cy = paint_knob_rows(ctx, theme, x, cy, reseed, ri, rec, row);
+        cy += ROW_GAP;
     }
 
     if m.stack.rows.is_empty() {

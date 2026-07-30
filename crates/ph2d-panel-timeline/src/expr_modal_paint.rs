@@ -21,37 +21,44 @@
 //! empty on purpose: a blank box is a promise, and a card that promises a preview
 //! and shows nothing reads as broken rather than unfinished.
 //!
-//! ⚠️ Nothing here scrolls, and the geometry says why. The body is
-//! [`BODY_SLOTS`] rows of `ROW_H_PX`; the gallery spends one on the search field
-//! and shows either the NINE families or ONE family's recipes (the largest family
-//! has nine, so a family always fits); the sheet spends `1 + knobs` per row and
-//! **says how many rows it could not show** rather than truncating in silence.
+//! ⚠️ Nothing here scrolls, and the geometry says why. The body is [`body_slots`] rows of
+//! `ROW_H_PX`; the gallery spends one on the search field and shows either the families or
+//! ONE family's recipes (the largest has ten, so a family always fits); the sheet spends
+//! `1 + knob_rows` per row and **says how many rows it could not show** rather than
+//! truncating in silence.
 //!
 //! ⚠️⚠️ **That last clause was TRUE and its reassurance FALSE, measured** (auditoria
-//! 2026-07-29, §4-bis U2): a row past `BODY_SLOTS` printed `+N more rows` **and got zero
+//! 2026-07-29, §4-bis U2): a row past the body printed `+N more rows` **and got zero
 //! widgets** — no hit rect, no store entry, nothing to click — *while the formula the object
 //! runs still contained it*. Four Turbulence rows left rows 2-3 driving the scene and
 //! unreachable; one `Fade by Distance` ate nine of the twelve slots.
 //!
-//! **FASE C.1 atacou isso por onde a medição apontava, e não por reflexo:** toda row de knob
-//! tinha **128 px MORTOS** (40% do sheet), então os knobs numéricos passaram a vir em DUAS
-//! colunas (`expr_modal_columns::knob_rows`, a porta única do layout). Com o corte da FASE A
-//! junto, o pior caso do catálogo saiu de **9 → 5 → 3 slots**:
+//! **Duas waves atacaram isso por onde a medição apontava, e não por reflexo.** A **C.1**
+//! achou **128 px MORTOS** (40% do sheet) em toda linha de knob e pôs os knobs numéricos em
+//! DUAS colunas (`expr_modal_columns::knob_rows`, a porta única do layout). A **C.4** achou o
+//! outro eixo: o corpo era uma `const 12`, e a ALTURA é a única coisa que a janela tem para
+//! dar — hoje o corpo é função dela (12..20 slots).
 //!
-//! | | pior caso | rows que cabem | típico |
-//! |---|---|---|---|
-//! | antes | 9 slots (`Fade by Distance`) | **1** | 3-4 |
-//! | pós-corte (FASE A) | 5 slots | 2 | 4 |
-//! | pós-2-colunas (FASE C.1) | **3 slots** | **4** | **6** |
+//! | | pior caso do catálogo | rows que cabem |
+//! |---|---|---|
+//! | antes | 9 slots (`Fade by Distance`) | **1** |
+//! | pós-corte (FASE A) | 5 slots (`Distance`) | 2 |
+//! | pós-2-colunas (FASE C.1) | 5 slots | 2 |
+//! | pós-janela (FASE C.4, corpo em 20) | 5 slots | **3** (típico: **9**) |
+//!
+//! ⚠️ **CORREÇÃO de uma tabela que eu mesmo shipei na C.1:** ela dizia *"pós-2-colunas: 3
+//! slots, 4 rows"*. É **falso** — medido, o pior caso do catálogo é **5 slots**
+//! (`Distance`, quatro knobs de LINK, e um knob largo toma a linha inteira por desenho), e a
+//! C.1 não o moveu (ela pareia NUMÉRICOS). O que a C.1 melhorou foi o caso típico. Um número
+//! errado num doc é pior que número nenhum: ele encerra a investigação no lugar errado.
 //!
 //! ⚠️ **E o `+N more rows` NÃO morreu — ficou raro, e isto é o número, não uma
-//! tranquilização:** 4 rows da receita mais cara são exactamente 12 slots, então a QUINTA
-//! ainda é derrubada, e derrubada do mesmo jeito (sem UI, dirigindo o objeto). O que fecha o
-//! caso de vez é a **row COLAPSÁVEL** — o cabeçalho custa 1 slot, então doze rows sempre
-//! caberiam colapsadas, e é literalmente o stack de F-Modifiers do Blender, que o §0 do
-//! plano 12 identificou como o estado da arte desta UI. Não construído: é wave própria (uma
-//! flag de vista por row + o chevron + o branch de paint), e o gate
-//! `every_row_the_formula_folds_has_a_widget` prova QUATRO rows, não doze.
+//! tranquilização:** três rows de `Distance` cabem num corpo de 20 slots e a QUARTA é
+//! derrubada, do mesmo jeito (sem UI, dirigindo o objeto). O que fecha o caso de vez é a
+//! **row COLAPSÁVEL** — o cabeçalho custa 1 slot, então vinte rows sempre caberiam
+//! colapsadas, e é literalmente o stack de F-Modifiers do Blender, que o §0 do plano 12
+//! identificou como o estado da arte desta UI. Não construído: é wave própria (uma flag de
+//! vista por row + o chevron + o branch de paint).
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
@@ -84,32 +91,86 @@ pub(crate) const ROW_BTN_W: f32 = 22.0; // LITERAL-PX-OK: expression row button 
 /// Apply / Cancel footer button width.
 const FOOT_BTN_W: f32 = 84.0; // LITERAL-PX-OK: expression modal footer button width
 
-/// How many `ROW_H_PX` rows the body is tall.
-///
-/// ⚠️ Derived, not chosen: the gallery needs one slot for the search field plus
-/// the largest family (Shape, ten recipes) plus the row that walks back out —
-/// twelve. The sheet then gets the same height for free, and its own capacity
-/// (`1 + knobs` per row) falls out of it.
 /// Half, for centring the card in the viewport.
 const CENTRE: f32 = 0.5; // LITERAL-PX-OK: aritmetica de centralizacao, nao medida
 
-pub(crate) const BODY_SLOTS: usize = 12;
+/// The body's floor in `ROW_H_PX` slots — **the size the card has shipped at**, so a
+/// small window is never worse off than before FASE C.4.
+///
+/// ⚠️ Derived, not chosen: the gallery needs one slot for the search field plus the
+/// largest family (ten recipes) plus the row that walks back out — twelve.
+const MIN_BODY_SLOTS: usize = 12;
+
+/// The body's ceiling in slots, and o número é MEDIDO — histograma do catálogo de 31
+/// receitas (`1 + knob_rows`): `{1: 1, 2: 16, 3: 11, 4: 2, 5: 1}`, **pior caso 5**
+/// (`Distance`, quatro links), **típico 2**. Com a calha entre cartões cobrada
+/// (`ROW_GAP`), uma row do pior caso custa 144 px e uma típica 60 px:
+///
+/// | slots | corpo | rows do PIOR caso | rows do típico | janela mínima |
+/// |---|---|---|---|---|
+/// | 12 (o piso, o que shipava) | 336 px | **2** | 5 | 564 px |
+/// | 16 | 448 px | 3 | 7 | 676 px |
+/// | **20** | **560 px** | **3** | **9** | **788 px** |
+/// | 24 | 672 px | 4 | 11 | 900 px |
+///
+/// Vinte, e o teto tem um RECURSO: a **galeria**. O conteúdo máximo dela é doze slots
+/// (busca + a maior família + a linha que volta), então a partir daí a coluna da
+/// esquerda é mais vazio do que lista, e um card que cresce sem teto num monitor 4K
+/// deixa de ler como card e vira uma tela. O 24 compraria a 4ª row do pior caso e
+/// exigiria uma janela de 900 px de altura para ser alcançado.
+const MAX_BODY_SLOTS: usize = 20;
 
 /// The rows the card spends on ITSELF — the title band, the formula bar and the
 /// footer — and therefore also the number of gaps between the four bands.
 const CHROME_ROWS: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM das tres linhas nomeadas, nao medida
 
+/// The margin the card keeps from the window edge when it sizes itself.
+const VIEWPORT_MARGIN: f32 = 16.0; // LITERAL-PX-OK: folga do card para a borda da janela
+
 /// Total card width.
+///
+/// ⚠️ **Não cresce, e isso é medição e não omissão.** O plano §5.3 pedia 820 px de largura
+/// sob a hipótese *"sobra pouco para o nome"*; a auditoria mediu **198 px** para o nome
+/// (~16 caracteres) e nomeou a queixa verdadeira do header como **calha ZERO** entre
+/// nome │ readout │ X. Largura extra compraria espaço que ninguém pediu; a calha é o
+/// conserto, e ela custa oito pixels.
 pub fn card_w() -> f32 {
     Spacing::Md.px() * 2.0 + GALLERY_W + SHEET_W + Spacing::Sm.px()
 }
 
-/// Total card height: title · body · wave strip · formula · footer, plus paddings.
-pub fn card_h() -> f32 {
-    let gap = Spacing::Xs.px();
+/// **Quantos slots o corpo tem NESTA janela** — o que decide quantas rows do stack cabem.
+///
+/// ⚠️ Era uma `const 12`, e o preço estava medido: com o pior caso em 5 slots, doze
+/// slots seguram **duas** rows. A altura é o único eixo em que o card comprava rows, e
+/// ela é a única coisa que a janela de fato tem para dar.
+///
+/// Piso e teto acima; entre eles a resposta é o que sobra da janela, **arredondado para
+/// baixo em slots inteiros** — meia faixa no fim do corpo é espaço que nada pode ocupar.
+#[must_use]
+pub fn body_slots(vp: Rect) -> usize {
+    let avail = vp.h - VIEWPORT_MARGIN * 2.0 - chrome_h();
+    let n = if avail.is_finite() && avail > 0.0 {
+        (avail / ROW_H_PX) as usize
+    } else {
+        MIN_BODY_SLOTS
+    };
+    n.clamp(MIN_BODY_SLOTS, MAX_BODY_SLOTS)
+}
+
+/// Tudo o que o card gasta fora do CORPO: as três faixas nomeadas, a fita e os paddings.
+fn chrome_h() -> f32 {
     Spacing::Sm.px() * 2.0
-        + ROW_H_PX * (BODY_SLOTS as f32 + STRIP_SLOTS + CHROME_ROWS)
-        + gap * (CHROME_ROWS + 1.0)
+        + ROW_H_PX * (STRIP_SLOTS + CHROME_ROWS)
+        + Spacing::Xs.px() * (CHROME_ROWS + 1.0)
+}
+
+/// Total card height: title · body · wave strip · formula · footer, plus paddings.
+///
+/// **Função da janela**, via [`body_slots`] — e por isso a altura é sempre um número
+/// inteiro de faixas.
+#[must_use]
+pub fn card_h(vp: Rect) -> f32 {
+    chrome_h() + ROW_H_PX * body_slots(vp) as f32
 }
 
 /// **Where the card is** — the one door, asked by the painter that places it and by
@@ -124,7 +185,7 @@ pub fn card_h() -> f32 {
 /// a window resized under it, still reports the rect the artist can hit.
 #[must_use]
 pub fn card_rect(pos: Option<(f32, f32)>, vp: Rect) -> Rect {
-    let (cw, ch) = (card_w(), card_h());
+    let (cw, ch) = (card_w(), card_h(vp));
     let (px, py) = pos.unwrap_or((vp.x + (vp.w - cw) * CENTRE, vp.y + (vp.h - ch) * CENTRE));
     let max_x = (vp.x + vp.w - cw).max(vp.x);
     let max_y = (vp.y + vp.h - ch).max(vp.y);
@@ -259,11 +320,16 @@ pub(crate) fn paint(
     let mut cy = paint_title_band(&title, ctx, theme, rect, cy);
 
     let body_y = cy;
-    crate::expr_modal_gallery::paint_gallery(m, ctx, theme, inner_x, body_y);
+    // ⚠️ Os dois columns recebem a MESMA contagem de slots que a altura do card usou —
+    // derivá-la de novo em cada um seria a 2ª resposta a *"de que tamanho é este card?"*,
+    // e ela discordaria exactamente numa janela sendo redimensionada.
+    let slots = body_slots(ctx.viewport);
+    crate::expr_modal_gallery::paint_gallery(m, ctx, theme, inner_x, body_y, slots);
     let sheet_x = inner_x + GALLERY_W + Spacing::Sm.px();
-    crate::expr_modal_columns::paint_sheet(m, ctx, theme, sheet_x, body_y, reseed, base);
+    let sheet_band = Rect::new(sheet_x, body_y, SHEET_W, ROW_H_PX * slots as f32);
+    crate::expr_modal_columns::paint_sheet(m, ctx, theme, sheet_band, reseed, base);
 
-    cy += ROW_H_PX * BODY_SLOTS as f32 + gap;
+    cy += ROW_H_PX * slots as f32 + gap;
 
     // ── The wave strip: the value across the window, the WHOLE card wide. ──
     //

@@ -192,3 +192,195 @@ fn a_text_knob_gets_the_whole_line() {
         mult.w
     );
 }
+
+// ─────────── FASE C.4 — o corpo é função da JANELA, e a row é um cartão ───────────
+
+/// Uma janela pequena o bastante para o card ficar no PISO (12 slots): 564 px é a altura
+/// exacta em que ele cabe, então 560 está abaixo dela.
+const SMALL_VIEWPORT: Rect = Rect {
+    x: 0.0,
+    y: 0.0,
+    w: 1600.0,
+    h: 560.0,
+};
+
+/// **O corpo cresce com a janela, entre um piso e um teto.**
+///
+/// ⚠️ O piso é o tamanho que o card SHIPAVA: uma janela pequena não pode ficar pior do que
+/// era. O teto tem um recurso nomeado (a galeria, cujo conteúdo máximo é doze slots).
+///
+/// **Mutação que deve sangrar:** `body_slots` voltar a devolver a constante 12.
+#[test]
+fn the_body_is_a_function_of_the_window_between_a_floor_and_a_ceiling() {
+    use ph2d_panel_timeline::expr_modal_paint::{body_slots, card_h};
+    let tiny = Rect {
+        h: 200.0,
+        ..SMALL_VIEWPORT
+    };
+    let huge = Rect {
+        h: 4000.0,
+        ..SMALL_VIEWPORT
+    };
+
+    assert_eq!(
+        body_slots(SMALL_VIEWPORT),
+        12,
+        "janela pequena = o corpo que o card sempre teve"
+    );
+    assert_eq!(
+        body_slots(tiny),
+        12,
+        "e ele NUNCA encolhe abaixo disso — o piso é o que já shipava"
+    );
+    assert_eq!(
+        body_slots(huge),
+        20,
+        "nem cresce sem teto: um card do tamanho da tela deixa de ler como card"
+    );
+    assert!(
+        body_slots(VIEWPORT) > body_slots(SMALL_VIEWPORT),
+        "e ENTRE os dois ele responde à janela: {} vs {}",
+        body_slots(VIEWPORT),
+        body_slots(SMALL_VIEWPORT)
+    );
+
+    // A altura é sempre um número inteiro de faixas — meia faixa no fim do corpo é
+    // espaço que nada pode ocupar.
+    for vp in [tiny, SMALL_VIEWPORT, VIEWPORT, huge] {
+        let body = card_h(vp) - card_h(tiny) + ph2d_tokens::ROW_H_PX * 12.0;
+        assert!(
+            (body / ph2d_tokens::ROW_H_PX).fract().abs() < 1e-3,
+            "o corpo de {vp:?} não é um número inteiro de faixas: {body}"
+        );
+    }
+}
+
+/// **Uma janela mais alta segura MAIS rows do stack — e é isso que a altura compra.**
+///
+/// O oráculo é o widget, não a aritmética: a row que não cabe é a que fica **sem UI**
+/// enquanto a fórmula continua a contendo (o defeito U2 desta suíte). A receita é a mais
+/// cara do catálogo (`distance-2d`, 5 slots — quatro knobs de LINK, e um knob largo toma a
+/// linha inteira), porque é nela que a capacidade morde.
+///
+/// **Mutação que deve sangrar:** `body_slots` constante (aí as duas janelas seguram o mesmo).
+#[test]
+fn a_taller_window_holds_more_rows_of_the_most_expensive_recipe() {
+    let target = publish_one_track(34, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    card_with(
+        &mut host,
+        &mut state,
+        target,
+        &["distance-2d", "distance-2d", "distance-2d"],
+    );
+    assert_eq!(
+        state
+            .expr_modal
+            .as_ref()
+            .expect("o card abriu")
+            .stack
+            .rows
+            .len(),
+        3,
+        "PREMISSA: três rows no stack"
+    );
+
+    let rows_with_ui = |host: &mut MockPanelHost, state: &mut TimelinePanelState, vp: Rect| {
+        let regs = host.paint::<TimelinePanel>(state, vp);
+        (0..3)
+            .filter(|ri| {
+                let rm = ids::expr_remove_id(*ri);
+                regs.iter().any(|(id, _)| *id == rm)
+            })
+            .count()
+    };
+
+    let small = rows_with_ui(&mut host, &mut state, SMALL_VIEWPORT);
+    let big = rows_with_ui(&mut host, &mut state, VIEWPORT);
+    assert_eq!(
+        small, 2,
+        "no piso, duas rows de `Distance` cabem — o número medido"
+    );
+    assert_eq!(big, 3, "e uma janela alta segura as três");
+}
+
+/// **Dois cartões de row não se encostam.**
+///
+/// O §5.2 nomeou *sem hierarquia* e *sem respiro* como dois defeitos; eles são um só, e é
+/// este: a planilha lia como uma lista plana porque nada separava uma receita da seguinte.
+///
+/// O oráculo é a GEOMETRIA registrada — o olhinho da row 1 tem de começar depois do fim da
+/// banda da row 0, não colado nela.
+///
+/// **Mutação que deve sangrar:** tirar o `cy += ROW_GAP` do fim do laço.
+#[test]
+fn two_row_cards_do_not_touch() {
+    let target = publish_one_track(35, ph2d_timeline::PropKind::TranslationY);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    // Duas rows de `Sway` (3 slots cada: cabeçalho + 2 linhas de knob).
+    card_with(&mut host, &mut state, target, &["sway", "sway"]);
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let eye = |ri: usize| {
+        regs.iter()
+            .find(|(id, _)| *id == ids::expr_bypass_id(ri))
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("o olhinho da row {ri} foi pintado"))
+    };
+    let (a, b) = (eye(0), eye(1));
+    let band = ph2d_tokens::ROW_H_PX * 3.0;
+    assert!(
+        b.y > a.y + band,
+        "a row 1 tem de começar DEPOIS da banda da row 0, com respiro: {a:?} vs {b:?}"
+    );
+    assert!(
+        b.y - (a.y + band) < ph2d_tokens::ROW_H_PX,
+        "e o respiro é uma calha, não uma faixa vazia: {}",
+        b.y - (a.y + band)
+    );
+}
+
+/// **O que o pintor admite CABE no corpo — a calha entre cartões entra na conta.**
+///
+/// ⚠️ O orçamento é em PIXELS e não em slots porque `ROW_GAP` não é múltiplo de
+/// `ROW_H_PX`: contado em slots, o respiro fica de fora da aritmética, o pintor admite
+/// uma row a mais e ela é desenhada **por baixo da fita**. É a mesma família do defeito
+/// U2 (a fórmula contém o que a tela não mostra), só que pelo outro lado.
+///
+/// ⚠️ **A fixture TEM de conter o fenômeno, e a primeira não continha:** com `Sway`
+/// (3 slots = 84 px) o corte cai no mesmo lugar com e sem a calha (6 rows nos dois casos),
+/// então a mutação SOBREVIVIA. A calha só morde quando o acúmulo dela cruza uma faixa: com
+/// uma receita de **2 slots** (56 px) o corpo de 560 px admite 9 rows cobrando a calha e
+/// **10** sem cobrar — e essas dez são desenhadas em 596 px, 36 px por baixo da fita.
+///
+/// **Mutação que deve sangrar:** `need_px` sem o `+ ROW_GAP`.
+#[test]
+fn what_the_painter_admits_fits_inside_the_body() {
+    let target = publish_one_track(36, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let ten = ["jitter"; 12];
+    card_with(&mut host, &mut state, target, &ten);
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+
+    let eyes: Vec<Rect> = (0..ten.len())
+        .filter_map(|ri| {
+            regs.iter()
+                .find(|(id, _)| *id == ids::expr_bypass_id(ri))
+                .map(|(_, r)| *r)
+        })
+        .collect();
+    assert!(eyes.len() >= 2, "PREMISSA: o card admitiu mais de uma row");
+
+    let band = ph2d_tokens::ROW_H_PX * 2.0; // `Jitter` = cabeçalho + 1 linha de knob
+    let span = eyes.last().expect("há rows").y + band - eyes[0].y;
+    let budget =
+        ph2d_tokens::ROW_H_PX * ph2d_panel_timeline::expr_modal_paint::body_slots(VIEWPORT) as f32;
+    assert!(
+        span <= budget,
+        "o pintor admitiu {} rows, que ocupam {span} px num corpo de {budget} px — a \
+         última é desenhada por baixo da fita",
+        eyes.len()
+    );
+}

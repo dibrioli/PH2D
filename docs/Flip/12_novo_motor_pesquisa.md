@@ -1705,34 +1705,60 @@ são os do **segmento que existe**, e a soma sobre os segmentos do caminho conti
 
 Tamanho: `[0,1]³` a 64³ = 262 k entradas × 4 B = **1 MB**, uma leitura trilinear. A precisão pede o
 protocolo do doc 24 (medir a deriva, desconfiar de mal-condicionamento), e aqui `H` é monótona e lisa
-em `u` — bem-condicionada por construção.
+em `u` — bem-condicionada por construção. ⚠️ **E a resolução deixou de ser um palpite:** a §21.5b
+mediu o outro lado do orçamento e a tabela precisa de **interpolação melhor que 0,07/255 por
+leitura** com `k = 4` — o 64³ é o candidato, não a resposta, e o 1º gate da wave é medir a
+interpolação DELE contra o `h_piece`.
 
 ### 21.5b ⭐ O RISCO 1 MEDIDO — a wave é viável, e não é de graça
 
-`measure_whether_the_antiderivative_survives_a_varying_radius` compara `τ` da quadratura que shipa
-contra `τ` da antiderivada (`H` por quadratura fina em `f64` — o ORÁCULO da tabela, não a tabela),
-fora da região das tampas, com `k` subdivisões por segmento:
+`measure_whether_the_antiderivative_survives_a_varying_radius` (agora em `antiderivative_tests.rs`)
+mede **três** rotas contra a MESMA referência fina (`tau_reference`: a lei que shipa com `SUB = 64` em
+`f64`), fora da região das tampas, com `k` subdivisões por segmento:
 
-| cena | k=1 | k=2 | k=4 | k=8 |
+| afilado 24→3, REAMOSTRADO | k=1 | k=2 | k=4 | k=8 |
 |---|---|---|---|---|
-| reto, largura **CONSTANTE** | **0,00** | 0,00 | 0,00 | 0,00 |
-| afilado 24→3, **2 pontos** (irreal) | 255 | 245 | 174 | 113 |
-| afilado 24→3, **REAMOSTRADO** | 20,00 | **4,39** | **2,15** | 4,53 |
+| a **quadratura que shipa** (o controle) | 0,01 | — | — | — |
+| `H` por **DIFERENÇA** (com o erro do meu oráculo) | 20,01 | 4,38 | 2,15 | **4,53** ⚠️ |
+| pedaço **DIRETO** (só o `r` congelado) | 20,01 | 4,38 | **0,94** | **0,21** |
 
-(pior `|Δα|` de 255.)
+(pior `|Δα|` de 255. Largura **CONSTANTE**: `0,00` nas três rotas e em todo `k`. Afilado de **2
+pontos**, irreal: 255 / 245 / ~173 / ~112 nas duas rotas — ali o `r` congelado domina tudo.)
 
-**O núcleo da ideia está PROVADO:** em largura constante o erro é **0,00/255** — a substituição
-`s = r·u` é exata, como a álgebra diz. E a cura do `r` variável funciona: **k = 2 leva 20 → 4,4 e
-k = 4 → 2,2**, ao custo de `2k` leituras contra ~40 amostras (ainda ~5× menos trabalho).
+**O núcleo está PROVADO e o risco 1 está QUANTIFICADO:** em largura constante o erro é **0,00/255** (a
+substituição `s = r·u` é exata, como a álgebra diz), e no traço de pressão REAL a premissa do `r`
+congelado cai **`O(1/k²)`** — 4,6× / 4,7× / 4,5× por dobra de `k` — chegando a **0,94/255 em k = 4** e
+**0,21 em k = 8**, ambos sob a barra de 1,5/255 do gate de costura, ao custo de `2k` leituras contra
+~40 amostras.
 
-⚠️ **Mas 2,15/255 fica ACIMA da barra de 1,5/255 do gate de costura**, e ⚠️ **`k = 8` é PIOR que
-`k = 4` (4,53 contra 2,15) — não-monótono.** Isso quer dizer que o resíduo **não é só** a premissa de
-`r` constante; algo mais entra (candidatos: o clamp `MIN_PITCH_PX` na ponta fina, onde `r/pitch` deixa
-de ser 5; ou a contagem fixa de amostras do próprio oráculo). **Diagnosticar isso é o primeiro passo
-da wave, não um detalhe dela** — construir a LUT sobre um resíduo não explicado é assinar o número
-errado.
+⚠️ **E O NÃO-MONÓTONO ERA DO MEU ORÁCULO, não do desenho.** A 1ª versão desta sonda tinha só a rota
+do meio e comparava contra **o que SHIPA**, então media duas coisas somadas contra um alvo que eu
+*supunha* enviesado. As duas hipóteses que eu registrei morreram:
 
-⚠️ **TRÊS defeitos de fixture nesta sonda, os três meus, e cada um mudou a resposta:**
+1. **o clamp `MIN_PITCH_PX`** — refutado pela ARITMÉTICA, sem rodar nada: ele só morde abaixo de raio
+   **1,25** e o afilado não desce de **1,50**. Subproduto que vale para o desenho da LUT: com o clamp
+   inativo `r/pitch = 5,000` **exato**, então o pitch **CANCELA** e `τ = 5·ΔH` — a única dependência de
+   `r` que sobra vive em `y = perp/r` e `u = (s−t_foot)/r`;
+2. **o alvo enviesado** — refutado pela MEDIÇÃO: contra a referência fina, a quadratura que shipa sai
+   em **0,00–0,01/255** no corpo do traço (o viés de `−53` do `SUB = 4` é da **TAMPA**, que a sonda
+   exclui de propósito) ⇒ o alvo nunca esteve torto ali.
+
+**A causa verdadeira é o CONSUMO de `H` como diferença.** O `h_exact` gasta `n` amostras sobre
+`[0, u]`, logo o erro dele **cresce com `u`**; consumido como `H(u1) − H(u0)` são duas grades
+DIFERENTES para números quase iguais, e os erros não se cancelam. Esse erro é **por-CHAMADA**: `k`
+pedaços somam `2k` deles enquanto o erro do `r` congelado cai com `1/k²` ⇒ a soma tem um **MÍNIMO** e
+depois SOBE, que é exatamente o 2,15 → 4,53. Trocado o consumo pelo pedaço direto (`h_piece`, erro
+`∝ (Δu/n)²`, que encolhe COM o pedaço), a curva fica monótona: **0,94 → 0,21**.
+
+⚠️ **A ESTRUTURA sobrevive à correção, e é o que a wave tem de orçar:** uma LUT real também é lida
+por diferença, e o erro de uma leitura é a **interpolação** (função da resolução da tabela, não de
+`u`). Então o orçamento é `erro(r congelado, k) + 2k · erro_interp(N)`, e as duas metades puxam para
+lados OPOSTOS — subdividir cura o `r` e multiplica as leituras. Com `k = 4` e teto de 1,5/255:
+`0,94 + 8·interp < 1,5` ⇒ a tabela precisa de **interp < 0,07/255 por leitura**. Esse número é a
+especificação de resolução da wave, e ela nasce medida em vez de escolhida.
+
+⚠️ **QUATRO defeitos nesta sonda, os quatro meus, e cada um mudou a resposta** (os três primeiros de
+FIXTURE, o quarto de ORÁCULO — e é o quarto que produziu uma conclusão publicada e errada):
 
 1. a 1ª versão media **dentro da tampa**, onde a quadratura soma o meio dab do `end_dab` (§13) e a
    antiderivada não o tem ⇒ ela reportava **57/255 na largura CONSTANTE**, medindo a ausência daquele
@@ -1742,7 +1768,11 @@ errado.
    a subdivisão de fato ataca;
 3. o densificador usava passo **UNIFORME**, o que na ponta fina dá segmentos de `3,2r` em vez de
    `0,8r` ⇒ **39/255**. Com `0,4 × largura` **LOCAL** (a convenção que o `measure_ribbon_budget` do
-   `neighbors_tests` já usa, porque é o que o `resample_smooth` faz): **20/255**.
+   `neighbors_tests` já usa, porque é o que o `resample_smooth` faz): **20/255**;
+4. **o erro do ORÁCULO entrava no número atribuído ao DESENHO** (acima) ⇒ eu publiquei *"2,15 em k=4,
+   e k=8 é PIOR"* como uma propriedade da antiderivada, quando 1,2 dos 2,15 e 4,3 dos 4,53 eram do
+   `h_exact`. **Um oráculo cujo erro é função de um parâmetro que a sonda VARIA não é um oráculo** — ele
+   é uma segunda variável independente, disfarçada de constante.
 
 *Cada correção mudou a conclusão em mais do que a diferença entre as alavancas que eu estava
 comparando.*

@@ -430,3 +430,8 @@ mod tau_tests;
 /// aqui pelo mesmo motivo: as fixtures são as do binning.
 #[path = "cover_tests.rs"]
 mod cover_tests;
+
+/// A medição do RISCO da antiderivada (§21.5) — irmão dos dois acima, e separado porque é uma
+/// pergunta de PROJETO (*vale trocar a quadratura por duas leituras de tabela?*), não um gate da lei.
+#[path = "antiderivative_tests.rs"]
+mod antiderivative_tests;

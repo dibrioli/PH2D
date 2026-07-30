@@ -346,7 +346,11 @@ fn measure_the_pass_split_of_an_x() {
         p.opacity = 0.5;
     }
     let bins = bin_segments(&g, &sc, 16);
-    for (nome, px, py) in [("braço", 20.5, 20.5), ("cruz", 32.5, 32.5), ("meio-perna", 50.5, 32.5)] {
+    for (nome, px, py) in [
+        ("braço", 20.5, 20.5),
+        ("cruz", 32.5, 32.5),
+        ("meio-perna", 50.5, 32.5),
+    ] {
         let p = [px, py];
         let Some(ti) = bins.tile_of_pixel(px, py) else {
             continue;

@@ -384,3 +384,82 @@ fn what_the_painter_admits_fits_inside_the_body() {
         eyes.len()
     );
 }
+
+// ─────────── FASE B4 — o clamp é do WIDGET, não da emissão ───────────
+
+/// **O que a caixa MOSTRA e o que a fórmula USA são o mesmo número.**
+///
+/// ⚠️ O defeito D7 da auditoria: `EmitCtx::lit` clampa um knob `Literal` na faixa dele — e
+/// com razão, o parser recusa `wiggle` com menos de uma oitava, e texto que não parseia
+/// **apaga a barra de fórmula**. O preço era a caixa mostrar `0` enquanto a fórmula usava
+/// `1`, em silêncio: o artista digita um número, o desenho não muda, e nada na tela diz por
+/// quê. Agora quem recusa é o WIDGET, e a emissão não precisa mentir.
+///
+/// ⚠️ O CONTROLE está no mesmo teste: um knob `Number` **não** é corrigido — digitar além
+/// do slider é assunto do artista, e é política escrita em `paint_knob_number`.
+///
+/// **Mutação que deve sangrar:** tirar a correção do `sync_from_store`.
+#[test]
+fn what_the_box_shows_is_what_the_formula_uses() {
+    use ph2d_expr_recipes::KnobKind;
+
+    let target = publish_one_track(37, ph2d_timeline::PropKind::TranslationX);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    // `shake` traz o `detail` — o knob de OITAVAS (faixa 1..4).
+    card_with(&mut host, &mut state, target, &["shake"]);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+
+    let rec = ph2d_expr_recipes::by_id("shake").expect("shake existe");
+    let (li, lit) = rec
+        .knobs
+        .iter()
+        .enumerate()
+        .find(|(_, k)| matches!(k.kind, KnobKind::Literal))
+        .expect("PREMISSA: o Shake tem um knob Literal");
+    let id = ids::expr_knob_id(0, li);
+
+    for typed in [0.0_f64, -3.0, 9.0] {
+        host.set_number_value(id, typed);
+        host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+
+        let shown = host
+            .store()
+            .number_input(id)
+            .map(|(_, v, _, _, _)| v)
+            .expect("a caixa existe");
+        let in_model = match state.expr_modal.as_ref().expect("card").stack.rows[0].knobs[li] {
+            ph2d_expr_recipes::KnobValue::Num(v) => f64::from(v),
+            ref other => panic!("o knob Literal virou {other:?}"),
+        };
+        let (lo, hi) = (f64::from(lit.range.0), f64::from(lit.range.1));
+        assert!(
+            (lo..=hi).contains(&shown),
+            "digitado {typed}: a caixa tem de mostrar um valor VÁLIDO, mostrou {shown}"
+        );
+        assert_eq!(
+            shown, in_model,
+            "digitado {typed}: a caixa e a fórmula têm de dizer o MESMO número"
+        );
+    }
+
+    // O CONTROLE: um knob numérico comum aceita o que foi digitado.
+    let (ni, _) = rec
+        .knobs
+        .iter()
+        .enumerate()
+        .find(|(_, k)| matches!(k.kind, KnobKind::Number))
+        .expect("PREMISSA: o Shake tem um knob Number");
+    let nid = ids::expr_knob_id(0, ni);
+    host.set_number_value(nid, 999.0);
+    host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let kept = host
+        .store()
+        .number_input(nid)
+        .map(|(_, v, _, _, _)| v)
+        .expect("a caixa existe");
+    assert_eq!(
+        kept, 999.0,
+        "a faixa de um knob NUMÉRICO é onde o thumb para, não onde o modelo para"
+    );
+}

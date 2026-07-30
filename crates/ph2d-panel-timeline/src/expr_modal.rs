@@ -204,7 +204,22 @@ pub(crate) fn row_result(stack: &RecipeStack, i: usize, time: f64, base: f32) ->
 
 /// Read every row widget back into the stack. Called ONCE at the top of the
 /// paint, so the formula bar and every readout describe the same instant.
-pub(crate) fn sync_from_store(m: &mut ExprModal, store: &WidgetStore) {
+///
+/// ⚠️ **E CORRIGE a caixa de um knob `Literal` que saiu da faixa** (B4 do plano 12, D7 da
+/// auditoria). Um `Literal` é o único kind cuja faixa é uma **afirmação de validade** e não
+/// um alcance de arrasto: o parser recusa `wiggle` com menos de uma oitava, então
+/// `EmitCtx::lit` clampa para produzir texto que parseia — e o preço disso era a caixa
+/// mostrar `0` enquanto a fórmula usava `1`, **em silêncio**. Quem tem de recusar o valor
+/// inválido é o WIDGET; a emissão então não precisa mentir.
+///
+/// ⚠️ Só o `Literal`. Um knob `Number` **não** é clampado ao digitar, e isso é política
+/// escrita (`paint_knob_number`): *a faixa de um knob é onde o thumb para, não onde o
+/// modelo para*.
+///
+/// ⚠️ O clamp do `EmitCtx::lit` FICA — a `ph2d-expr-recipes` é uma crate leaf com outros
+/// chamadores (uma pilha montada por código nunca passa por uma caixa), e ele é a última
+/// linha de defesa. O que muda é que a UI deixa de depender dela.
+pub(crate) fn sync_from_store(m: &mut ExprModal, store: &mut WidgetStore) {
     for (ri, row) in m.stack.rows.iter_mut().enumerate() {
         let Some(rec) = by_id(row.recipe) else {
             continue;
@@ -215,10 +230,34 @@ pub(crate) fn sync_from_store(m: &mut ExprModal, store: &WidgetStore) {
                 // ⚠️ The COMMITTED value, never the edit buffer: mid-typing the
                 // buffer is `"-"` or `"0."`, and reading it would blank the formula
                 // bar between two keystrokes.
-                (
-                    KnobKind::Number | KnobKind::Literal,
-                    Some(InteractiveState::NumberInput { value, .. }),
-                ) => row.knobs[ki] = KnobValue::Num(*value as f32),
+                (KnobKind::Number, Some(InteractiveState::NumberInput { value, .. })) => {
+                    row.knobs[ki] = KnobValue::Num(*value as f32);
+                }
+                (KnobKind::Literal, Some(InteractiveState::NumberInput { value, .. })) => {
+                    let (lo, hi) = (k.range.0.min(k.range.1), k.range.1.max(k.range.0));
+                    let v = *value as f32;
+                    // CLAMP-OK: bounds ordenados acima e nao-NaN (vem de `Knob::range`)
+                    let fixed = v.clamp(lo, hi);
+                    row.knobs[ki] = KnobValue::Num(fixed);
+                    if fixed != v {
+                        // A caixa passa a MOSTRAR o que a fórmula usa. `value` é o valor
+                        // COMMITADO (o buffer é o texto vivo), então isto nunca briga com
+                        // quem está digitando: só um valor já commitado chega aqui.
+                        if let Some(InteractiveState::NumberInput {
+                            value,
+                            buffer,
+                            last_committed,
+                            caret,
+                            ..
+                        }) = store.get_mut(id)
+                        {
+                            *value = f64::from(fixed);
+                            *last_committed = f64::from(fixed);
+                            *buffer = fmt_num(fixed);
+                            *caret = buffer.chars().count();
+                        }
+                    }
+                }
                 (KnobKind::Link, Some(InteractiveState::TextInput { text, .. })) => {
                     row.knobs[ki] = KnobValue::Link(text.clone());
                 }
@@ -250,7 +289,7 @@ pub(crate) fn route(
             Some(EventOutcome::Consumed)
         }
         WidgetEvent::Click(id) if id == ids::EXPR_MODAL_APPLY => {
-            sync_from_store(m, host.store());
+            sync_from_store(m, host.store_mut());
             commit(state);
             Some(EventOutcome::Consumed)
         }
@@ -270,7 +309,7 @@ pub(crate) fn route(
             }
             for r in CATALOG {
                 if id == ids::expr_gallery_id(r.id) {
-                    sync_from_store(m, host.store());
+                    sync_from_store(m, host.store_mut());
                     if let Some(row) = Row::new(r.id) {
                         m.stack.push(row);
                         // ⚠️ A pair recipe inserts BOTH halves: half a circle is
@@ -289,12 +328,12 @@ pub(crate) fn route(
             // A row's bypass eye or remove button.
             for ri in 0..m.stack.rows.len() {
                 if id == ids::expr_bypass_id(ri) {
-                    sync_from_store(m, host.store());
+                    sync_from_store(m, host.store_mut());
                     m.stack.rows[ri].bypass = !m.stack.rows[ri].bypass;
                     return Some(EventOutcome::Consumed);
                 }
                 if id == ids::expr_remove_id(ri) {
-                    sync_from_store(m, host.store());
+                    sync_from_store(m, host.store_mut());
                     m.stack.rows.remove(ri);
                     m.reseed = true;
                     return Some(EventOutcome::Consumed);
@@ -308,7 +347,7 @@ pub(crate) fn route(
                 // keeps the state from carrying a value that means nothing, and keeps the
                 // chip and the router asking one question.
                 if id == ids::expr_combine_id(ri) && m.stack.rows[ri].combines() {
-                    sync_from_store(m, host.store());
+                    sync_from_store(m, host.store_mut());
                     m.stack.rows[ri].combine = m.stack.rows[ri].combine.next();
                     return Some(EventOutcome::Consumed);
                 }

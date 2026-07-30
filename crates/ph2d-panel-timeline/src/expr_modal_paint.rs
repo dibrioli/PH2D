@@ -270,7 +270,7 @@ pub(crate) fn paint(
     }
     // ONE read-back per frame, before anything is painted or projected, so the
     // formula bar and every readout describe the same instant.
-    sync_from_store(m, ctx.host.store());
+    sync_from_store(m, ctx.host.store_mut());
     let reseed = core::mem::take(&mut m.reseed);
     // ⚠️ ONE evaluation of the window per frame, shared by the strip and the
     // puppet — a puppet that sampled on its own would drift from the curve drawn

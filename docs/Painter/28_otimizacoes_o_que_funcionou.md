@@ -3026,11 +3026,24 @@ janela dele — **busy** (dentro de `step_stage`) · **away** (o motor está com
 frame) · **sleep** (o ritmo de 40 Hz da SPEC). Uma leitura, três mundos:
 
 ```text
-  poca do produto (3 tracos, 4096², 1,61 M celulas vivas)
-    busy 79,4%   away 19,3%   sleep 1,4%   ->  13,0 Hz, 62,05 ms/passo
-  um traco (a agua SECA na cauda da janela — nao e regime de taxa)
-    busy 59,4%   away 21,5%   sleep 18,4%  ->  26,3 Hz, 22,96 ms/passo
+  MAQUINA OCIOSA (a leitura que vale)
+    um traco    busy 49,5%  away  7,0%  sleep 43,4%  ->  38,4 Hz, 12,91 ms/passo
+    tres tracos busy 76,8%  away 19,2%  sleep  1,6%  ->  14,0 Hz, 56,90 ms/passo
 ```
+
+**E a partição separa dois regimes com vereditos OPOSTOS:**
+
+- **um traço já alcança o NOMINAL** — 38,4 dos 40 Hz da SPEC, com **43% de sleep**: o
+  worker está adiantado e dorme de propósito. Não há nada a colher aqui, e nenhuma
+  otimização mudaria o número (o teto é a SPEC, não a máquina).
+- **três traços sobrepostos é work-limited** — busy 76,8%, sleep 1,6%. É a cena do
+  smoke, e é a única em que a taxa cai.
+
+⚠️ **A primeira corrida desta partição dizia `um traco: 26,3 Hz, sleep 18,4%`** e eu
+quase escrevi que uma pincelada só não alcançava o nominal. Era a **máquina
+carregada** — eu tinha dois `cargo` meus rodando ao lado. *Uma partição de duty cycle
+mede o AGENDADOR do SO junto, então ela só é lida com a máquina ociosa* — e o erro é
+para o lado pessimista, que é o que faz inventar trabalho.
 
 ### A CADÊNCIA, que não estava no meu modelo
 

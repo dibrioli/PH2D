@@ -136,17 +136,19 @@ Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
    ⚠️ **A TAXA agora está IMPRESSA, não se conta mais à mão:** o log traz uma linha
    `worker: busy X% away Y% sleep Z% | TAXA DA AGUA N Hz`, e é ela que responde
    *"por que a água está lenta?"* sem hipótese:
+   - **sleep alto** = a água **já alcançou o nominal de 40 Hz** e o worker dorme
+     adiantado. Medido a 4096², uma pincelada grande: **38,4 Hz, sleep 43%** — é o
+     estado normal, e ali o teto é a SPEC, não a máquina.
    - **busy alto (≥75%)** = *work-limited*. A água está no piso da física
      (ADR-0134: 16 ns por visita de célula-passe) e **nenhuma mudança de
-     agendamento a move** — só a GPU, que é ADR próprio. Medido a 4096² com três
-     faixas sobrepostas: **busy 79%, 62 ms/passo, 13 Hz**, com 1,61 M células
-     vivas. É o teto honesto da CPU, não um defeito.
+     agendamento a move** — só a GPU, que é ADR próprio. Medido com **três faixas
+     sobrepostas**: **busy 77%, 57 ms/passo, 14 Hz**, com 1,61 M células vivas. É o
+     teto honesto da CPU, não um defeito.
    - **away alto com busy baixo** = o *handshake* (o motor viajando para o frame)
      está comendo a taxa.
-   - **sleep alto** = a água já alcançou o nominal de 40 Hz **ou** secou; nos dois
-     casos o gargalo não é ela.
-   ⚠️ **A taxa é função da POÇA**: numa risca fina ela bate o nominal e o número não
-   diz nada. Pinte grande e sobreposto, que é o caso reportado.
+   ⚠️ **A taxa é função da POÇA**, então os dois regimes se veem no mesmo smoke: uma
+   pincelada corre no nominal, e a água só cai quando você **sobrepõe** faixas
+   grandes — que é o caso reportado.
 2. **Pintar durante o escorrido** — o dab traz o motor para casa; o traço não pode
    engasgar.
 3. **Undo (Ctrl+Z) leva o escorrido** — os gates do drip agora dirigem o motor

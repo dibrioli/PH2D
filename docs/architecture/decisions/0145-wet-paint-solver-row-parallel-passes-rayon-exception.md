@@ -215,13 +215,24 @@ Agora o worker reporta o COMPUTE por passo e três baldes que **particionam** a 
 separam três mundos com curas opostas, e a leitura fecha a frente de CPU:
 
 ```text
-  poca do produto (3 tracos, 4096², 1,61 M celulas vivas)
-    busy 79,4%   away 19,3%   sleep 1,4%    ->  13,0 Hz, 62,05 ms/passo
+  MAQUINA OCIOSA (uma particao de duty cycle mede o agendador do SO junto)
+    um traco    busy 49,5%  away  7,0%  sleep 43,4%  ->  38,4 Hz, 12,91 ms/passo
+    tres tracos busy 76,8%  away 19,2%  sleep  1,6%  ->  14,0 Hz, 56,90 ms/passo
 ```
 
-**79,4% busy é work-limited**, e o custo por célula é o piso: modelado sobre duas cenas, o `advect` gasta
-**15,5 ns por célula ATIVA** contra os **16 ns/visita-de-célula-passe** que o ADR-0134 declara como *"o
-teto escalar serial desta física"*. Não há folga a colher.
+**E os dois regimes têm vereditos opostos.** Uma pincelada só **já alcança o nominal** (38,4 dos 40 Hz da
+SPEC, com 43% de sleep — o worker dorme adiantado, de propósito): ali o teto é a SPEC e não há nada a
+colher. **Três traços sobrepostos é work-limited** (busy 76,8%, sleep 1,6%) — é a cena do smoke, e a única
+em que a taxa cai.
+
+**E o custo por célula é o piso:** modelado sobre duas cenas, o `advect` gasta **15,5 ns por célula
+ATIVA** contra os **16 ns/visita-de-célula-passe** que o ADR-0134 declara como *"o teto escalar serial
+desta física"*. Não há folga a colher.
+
+⚠️ **A primeira corrida desta partição media `um traco: 26,3 Hz, sleep 18,4%`** e eu quase concluí que uma
+pincelada só não alcançava o nominal — era a **máquina carregada** pelos meus próprios cargos. *Uma
+partição de duty cycle só é lida com a máquina ociosa*, e o erro é para o lado pessimista: o que faz
+inventar trabalho.
 
 ## 5. O que isto NÃO resolve
 

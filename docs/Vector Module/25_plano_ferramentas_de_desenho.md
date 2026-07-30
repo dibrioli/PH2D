@@ -231,6 +231,22 @@ Barata, e paga-se sozinha dentro da W1:
 
 **Tamanho: P**, exceto o gate de razão da bench (**P–M**).
 
+### ✅ W0 FECHADA (2026-07-29) — e a auditoria errou em dois pontos, os dois corrigidos
+
+| item | veredito | commit |
+|---|---|---|
+| 1 · memo do `fx_live` sem geometria | **DEFEITO REAL, curado.** A chave era `(pilha, w, h)` ⇒ mudar a cor do fill de uma forma filtrada **não mudava a tela**. A decisão virou porta única headless (`fx_live_memo::job_for` → `FxKey`) e carrega o que é DESENHADO. A translação fica FORA de propósito (pan não re-cozinha). 7 gates, 3 mutações | `5ad38ee27` |
+| 2 · `has_derived_verts` com um consumidor | **FENÔMENO REAL, mecanismo ERRADO na nota.** O `recook_into` **não roda por frame**: um nó arrastado numa Live Shape sobrevive até a próxima **edição de parâmetro**. Curado com a política que o par Fillet/Chamfer já tinha (congelar a receita no press), pela porta nova `PenTool::node_edit_hit_at` — porque o retorno do press **não distingue** *agarrou um vértice* de *selecionou a forma*. ⚠️ Os hosts de RELAÇÃO ficam ABERTOS e nomeados no `corner_handles.rs` (congelar não serve ali; a cura é RECUSAR, decisão de produto) | `d64e0…` |
+| 3+4 · `cooked()` 2× por forma · bench regredida 1,66× | **UM defeito, não dois.** O `draw_path` construía o caminho completo **incondicionalmente** e o jogava fora numa forma só-preenchida, e cada construção COZIA. Medido: **10k formas 1,323 → 0,901 ms** (1,47×). ⚠️ O resíduo contra os 0,77 do spike (**1,17×**) fica NOMEADO, não atribuído | `43b1c…` |
+| 5 · comentário mentiroso · seleção mista | **OS DOIS reais.** A leitura devolvia o tipo do vértice PRIMÁRIO e o painel afirmava-o sobre a seleção inteira ⇒ `SelectedKind::{Uniform,Mixed}`, e misto **não acende chip** (com os chips ainda VIVOS — retipar é o gesto que sai do misto) | `dd0828c98` |
+
+⚠️ **E um gate de perf nasceu não-discriminante e foi REESCRITO:** a 1ª versão do orçamento de encode
+era uma **razão de tempo** entre a mesma geometria só-preenchida e só-traçada, e a mutação
+**SOBREVIVEU** — medido com o defeito reinstalado, `fill 4,862 ms` contra `stroke 5,255 ms` = 0,93×.
+Um encode de FILL e um de STROKE não fazem o mesmo trabalho no Vello, e a diferença é maior que a
+construção inteira que o gate queria isolar. O oráculo virou o **NÚMERO** de construções e de
+cozimentos (contadores `#[cfg(test)]`), que é exato e é literalmente a propriedade em questão.
+
 ## §11 — Fora desta rodada, por decisão, com o preço nomeado
 
 - **A linha de RUNTIME** (*"agora não"*): a shell é **`[[bin]]` sem `[lib]`** e todo produtor vivo é

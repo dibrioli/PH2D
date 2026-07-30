@@ -150,3 +150,44 @@ existe: ela é a medição que decide se as outras valem.
   mantém o módulo provável byte a byte a cada reescrita de hot loop, que foi o
   que permitiu as waves do ADR-0145 e da §5.41 serem seguras.
 
+
+---
+
+## Emenda (2026-07-30) — a MULTI-RESOLUÇÃO re-precificou este ADR, e para PIOR
+
+> *Quem move o número que tornava algo inalcançável tem de reconferir a nota*
+> (CLAUDE.md §0). A wave da multi-resolução (plano 30 / doc 28 §5.42) moveu o
+> número, e a nota de fecho deste ADR — *"com o fluxo grosso, os passes que este
+> ADR nomeia como 93,1% encolhem, então ele terá de ser re-precificado"* —
+> supunha que a re-precificação seria **favorável**. Ela não é.
+
+Medido pela porta do produto (`on_canvas_pointer`, poça de 4096², `Grid Size 1 +
+Flow Grid 4`, ciclo de cadência):
+
+| passe | antes (§5.40) | **agora** | portável exato? |
+|---|---|---|---|
+| `advect` | 42,3 % | **64,4 %** | ❌ scatter |
+| `drying_pass` | 25,9 % | **28,9 %** | ❌ Gauss-Seidel |
+| `build_flow_field` | 24,9 % | **1,5 %** | ❌ scatter |
+| `rebuild_active_region` | — | 4,6 % | híbrido |
+| `project` + `smooth_velocity` | 2,5 % | **0,6 %** | ✅ |
+
+**Os que MUDAM os números continuam somando ~93 %** — mas agora concentrados em
+**DOIS** passes em vez de três, e o `build_flow_field`, que era o maior deles e
+o mais fácil de raciocinar, **saiu da conta na CPU** (20,49× mais barato).
+
+⇒ **A metade portável-exata encolheu de 2,5 % para 0,6 %.** A wave levou embora
+justamente o trabalho que a GPU poderia ter feito sem discutir o modelo, e
+deixou os dois que exigem uma relaxação diferente (`drying_pass`) ou um gather
+reformulado / atômicos (`advect`).
+
+⚠️ **A consequência para a decisão:** o argumento *"a GPU é o mesmo modelo mais
+rápido"* fica ainda menos defensável do que estava. Um port hoje é
+**all-or-nothing sobre `advect` + `drying_pass`**, isto é, sobre exatamente os
+dois passes cujo resultado o `tests/fingerprint.rs` pina — e o ADR-0134 não
+sobrevive a isso sem re-pin com justificativa própria.
+
+⚠️ **E o item que a wave PROMOVEU:** o `drying_pass` é hoje o **maior item
+isolado do passo** (46,8 ms ÷3 = 15,6 = 29 %), sem ganho na multi-resolução e
+sem caminho de CPU nomeado. Se houver uma próxima wave de CPU, é ali — e ela
+decide este ADR mais do que qualquer coisa escrita acima.

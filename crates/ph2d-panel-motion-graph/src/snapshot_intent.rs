@@ -203,6 +203,20 @@ pub enum GraphIntent {
         x: f32,
         y: f32,
     },
+    /// **Insert a CHOSEN node into a wire** (R-press a wire → the add-menu → pick a type) —
+    /// the generalisation of [`Self::SpliceReroute`] from the fixed reroute dot to any node
+    /// the artist names. The panel says which wire (`to_node`/`to_port`), where (`x`/`y`) and
+    /// which type (`to_type`, a `&'static` canonical name off the published catalog); the shell
+    /// inserts it on a trial clone and keeps it only if source → new → target VALIDATES — else
+    /// the original wire stays (a splice that cuts a wire and dangles a node is worse than no
+    /// splice). One undo step; re-cooks.
+    SpliceNode {
+        to_node: u32,
+        to_port: u16,
+        to_type: &'static str,
+        x: f32,
+        y: f32,
+    },
     /// **Auto-arrange the whole document** (the Hierarchy chip) — lay every node out
     /// in a left-to-right layered flow: a chain becomes one straight horizontal line,
     /// branches stack, and disconnected components go in their own bands (the
@@ -210,4 +224,90 @@ pub enum GraphIntent {
     /// POSITIONS, which are UI-only (they never touch the cook), so the shell applies
     /// it as ONE undo step with no `mark_dirty` — the same class as the backdrops.
     ArrangeLayout,
+}
+
+/// The intent a **node-library pick** produces, given the wire context the menu was opened
+/// with: a loose end WIRES the new node ([`GraphIntent::SmartConnect`]), a wire under the
+/// R-press INSERTS it into that wire ([`GraphIntent::SpliceNode`]), and neither just ADDS it
+/// ([`GraphIntent::AddNode`]). The one door the mouse pick and the Enter pick both go through
+/// — two callers choosing the same way, so a fourth context (should one appear) is decided
+/// here once instead of drifting between them. `connect_from` and `splice` are mutually
+/// exclusive; `connect_from` wins if both are somehow set.
+#[must_use]
+pub(crate) fn library_pick(
+    connect_from: Option<(u32, u16)>,
+    splice: Option<(u32, u16)>,
+    to_type: &'static str,
+    (x, y): (f32, f32),
+) -> GraphIntent {
+    if let Some((from_node, from_port)) = connect_from {
+        GraphIntent::SmartConnect {
+            from_node,
+            from_port,
+            to_type,
+            x,
+            y,
+        }
+    } else if let Some((to_node, to_port)) = splice {
+        GraphIntent::SpliceNode {
+            to_node,
+            to_port,
+            to_type,
+            x,
+            y,
+        }
+    } else {
+        GraphIntent::AddNode {
+            type_name: to_type,
+            x,
+            y,
+        }
+    }
+}
+
+#[cfg(test)]
+mod library_pick_tests {
+    use super::*;
+
+    /// The wire context decides the pick — and the mouse pick (`interact_menu`) and the Enter
+    /// pick (`menu_search`) BOTH go through this one function, so the rule cannot fork between
+    /// them. Mutation — dropping the `splice` branch so a wire-context pick falls back to a
+    /// plain `AddNode` (a node dumped beside the wire instead of inserted into it) — sangra on
+    /// the third case; and `connect_from` winning over `splice` is the documented precedence.
+    #[test]
+    fn the_wire_context_decides_the_pick() {
+        assert!(
+            matches!(
+                library_pick(None, None, "motion.noise", (1.0, 2.0)),
+                GraphIntent::AddNode { type_name: "motion.noise", x, y } if x == 1.0 && y == 2.0
+            ),
+            "no context: a plain add"
+        );
+        assert!(
+            matches!(
+                library_pick(Some((7, 1)), None, "motion.noise", (0.0, 0.0)),
+                GraphIntent::SmartConnect {
+                    from_node: 7,
+                    from_port: 1,
+                    to_type: "motion.noise",
+                    ..
+                }
+            ),
+            "a loose end: smart-connect from it"
+        );
+        assert!(
+            matches!(
+                library_pick(None, Some((5, 0)), "force.wind", (3.0, 4.0)),
+                GraphIntent::SpliceNode { to_node: 5, to_port: 0, to_type: "force.wind", x, y } if x == 3.0 && y == 4.0
+            ),
+            "a wire under the press: splice into it"
+        );
+        assert!(
+            matches!(
+                library_pick(Some((7, 1)), Some((5, 0)), "x", (0.0, 0.0)),
+                GraphIntent::SmartConnect { .. }
+            ),
+            "connect_from wins when both are somehow set"
+        );
+    }
 }

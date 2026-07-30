@@ -506,6 +506,7 @@ fn apply_socket_out(
                         opened: false,
                         body: MenuBody::Library {
                             connect_from: Some((from_node, from_port)),
+                            splice: None,
                         },
                     });
                     return;

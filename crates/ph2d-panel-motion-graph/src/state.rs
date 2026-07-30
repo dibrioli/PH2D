@@ -177,7 +177,16 @@ pub(crate) enum MenuBody {
     /// with an input this wire can feed, and picking one both creates it AND wires it —
     /// the gesture already said what it wanted, so making the artist draw the wire a
     /// second time would be asking twice.
-    Library { connect_from: Option<(u32, u16)> },
+    ///
+    /// `splice` is the wire (its unique target `(to_node, to_port)`) the R-press landed ON:
+    /// picking a node then **inserts it into that wire** — source → new → target, one undo
+    /// step, the shell validating and refusing if the type does not fit (the generalisation
+    /// of the double-click reroute to any chosen node). Mutually exclusive with `connect_from`
+    /// (you are either dragging a loose end or aiming at an existing wire, never both).
+    Library {
+        connect_from: Option<(u32, u16)>,
+        splice: Option<(u32, u16)>,
+    },
     /// **The eight tints a backdrop can take** (doc 62) — R-click on a backdrop's header.
     ///
     /// A backdrop's colour is the only thing about it the artist could not change: the tint

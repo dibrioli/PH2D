@@ -108,27 +108,24 @@ pub(crate) fn open_search(store: &mut WidgetStore) {
 pub(crate) fn pick_first(menu: &crate::state::Menu) {
     let snap = crate::snapshot::current_snapshot();
     match &menu.body {
-        crate::state::MenuBody::Library { connect_from } => {
+        crate::state::MenuBody::Library {
+            connect_from,
+            splice,
+        } => {
             let Some(c) = crate::snapshot::menu_matches(&snap, menu, *connect_from)
                 .first()
                 .copied()
             else {
                 return; // nothing matched: Enter on an empty result set does nothing
             };
-            crate::snapshot::push_intent(match connect_from {
-                Some((from_node, from_port)) => crate::snapshot::GraphIntent::SmartConnect {
-                    from_node: *from_node,
-                    from_port: *from_port,
-                    to_type: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                },
-                None => crate::snapshot::GraphIntent::AddNode {
-                    type_name: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                },
-            });
+            // The SAME door the mouse pick uses (`interact_menu`): a loose end wires, a wire
+            // under the press splices, neither adds — Enter must not fork the rule.
+            crate::snapshot::push_intent(crate::snapshot::library_pick(
+                *connect_from,
+                *splice,
+                c.type_name,
+                menu.spawn,
+            ));
         }
         // A card/param menu and a colour palette are short and picked by EYE; Enter there would
         // be guessing which port (or which colour) the artist meant. Neither has a search field

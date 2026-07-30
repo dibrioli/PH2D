@@ -57,7 +57,7 @@ pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Men
                 selected: false,
             })
             .collect(),
-        MenuBody::Library { connect_from } => menu_matches(snap, menu, *connect_from)
+        MenuBody::Library { connect_from, .. } => menu_matches(snap, menu, *connect_from)
             .iter()
             .map(|c| MenuRow {
                 label: c.display,

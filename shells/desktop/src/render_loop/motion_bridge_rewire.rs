@@ -51,6 +51,63 @@ fn wire_type(motion: &MotionState, from: NodeId, port: u16) -> Option<PortType> 
 ///
 /// The reroute is a **pass-through**, so the render must not move a pixel — that is the
 /// property that makes this gesture safe to reach for while tidying a live scene.
+/// The wire feeding `(to, port)`, if any — the ordinary edge, never a managed `pre`.
+fn wire_edge(motion: &MotionState, to: NodeId, port: u16) -> Option<Edge> {
+    motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .find(|e| e.to.0 == to && e.to.1 == port && !e.delayed)
+        .copied()
+}
+
+/// Insert `type_name` into `edge` at (x,y): on a TRIAL clone, add the node, cut the wire and
+/// rewire source → new:0 → target; commit only if the whole thing VALIDATES — else `refuse_msg`
+/// and the ORIGINAL wire stays (a splice that dangles a node and cuts a wire is worse than no
+/// splice). One undo step; re-cooks; selects the new node. The single door the fixed reroute
+/// and the artist-chosen node both go through — two callers, one splice.
+fn splice_into_wire(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    edge: Edge,
+    type_name: &str,
+    x: f32,
+    y: f32,
+    refuse_msg: &str,
+) {
+    let pre = motion.doc.clone();
+    let mut trial: Graph = motion.doc.graph.clone();
+    let node = trial.add_node(type_name.to_string());
+    trial.set_pos(node, Pos { x, y });
+    trial.disconnect(edge.to.0, edge.to.1);
+    let ok = trial
+        .connect(Edge {
+            from: edge.from,
+            to: (node, 0),
+            delayed: false,
+        })
+        .is_ok()
+        && trial
+            .connect(Edge {
+                from: (node, 0),
+                to: edge.to,
+                delayed: false,
+            })
+            .is_ok()
+        && trial.validate(&motion.registry).is_ok();
+
+    if !ok {
+        toasts.push(ph2d_editor::Toast::info(refuse_msg));
+        return;
+    }
+    motion.doc.graph = trial;
+    super::reconcile(motion, &pre.graph);
+    motion.history.push_undo(pre);
+    motion.pump.mark_dirty(); // a spliced node is IN the graph — the graph changed
+    ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+}
+
 pub(super) fn splice_reroute(
     motion: &mut MotionState,
     toasts: &mut ToastQueue,
@@ -59,18 +116,10 @@ pub(super) fn splice_reroute(
     x: f32,
     y: f32,
 ) {
-    let (to, port) = (NodeId(to_node), to_port);
-    // The wire, and what it carries.
-    let Some(edge) = motion
-        .doc
-        .graph
-        .edges()
-        .iter()
-        .find(|e| e.to.0 == to && e.to.1 == port && !e.delayed)
-        .copied()
-    else {
+    let Some(edge) = wire_edge(motion, NodeId(to_node), to_port) else {
         return; // no wire there (or a managed `pre`) — nothing to splice into
     };
+    // The reroute type is derived from what the wire CARRIES (the artist chose nothing).
     let Some(ty) = wire_type(motion, edge.from.0, edge.from.1) else {
         return;
     };
@@ -80,39 +129,41 @@ pub(super) fn splice_reroute(
         ));
         return;
     };
+    splice_into_wire(
+        motion,
+        toasts,
+        edge,
+        type_name,
+        x,
+        y,
+        "Can't reroute this wire",
+    );
+}
 
-    let pre = motion.doc.clone();
-    let mut trial: Graph = motion.doc.graph.clone();
-    let dot = trial.add_node(type_name.to_string());
-    trial.set_pos(dot, Pos { x, y });
-    trial.disconnect(to, port);
-    let ok = trial
-        .connect(Edge {
-            from: edge.from,
-            to: (dot, 0),
-            delayed: false,
-        })
-        .is_ok()
-        && trial
-            .connect(Edge {
-                from: (dot, 0),
-                to: (to, port),
-                delayed: false,
-            })
-            .is_ok()
-        && trial.validate(&motion.registry).is_ok();
-
-    if !ok {
-        // Refused: the ORIGINAL wire stays. A splice that leaves a node dangling and a wire
-        // cut is worse than no splice at all.
-        toasts.push(ph2d_editor::Toast::info("Can't reroute this wire"));
+/// Insert the artist-CHOSEN `type_name` into the wire feeding `(to_node, to_port)` — the
+/// R-press-a-wire → add-menu generalisation of [`splice_reroute`]. Same trial-validate-or-refuse
+/// (an unfitting type just does not splice, the wire stays), one undo step, one door.
+pub(super) fn splice_node(
+    motion: &mut MotionState,
+    toasts: &mut ToastQueue,
+    to_node: u32,
+    to_port: u16,
+    type_name: &str,
+    x: f32,
+    y: f32,
+) {
+    let Some(edge) = wire_edge(motion, NodeId(to_node), to_port) else {
         return;
-    }
-    motion.doc.graph = trial;
-    super::reconcile(motion, &pre.graph);
-    motion.history.push_undo(pre);
-    motion.pump.mark_dirty(); // a reroute is a NODE — the graph changed
-    ph2d_panel_motion_graph::request_graph_selection(vec![dot.0]);
+    };
+    splice_into_wire(
+        motion,
+        toasts,
+        edge,
+        type_name,
+        x,
+        y,
+        "Can't insert this node into this wire",
+    );
 }
 
 /// **Move a wire's end** from the input it was pulled off to wherever it was dropped (doc

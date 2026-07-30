@@ -83,7 +83,10 @@ pub(super) fn apply_key(
                 spawn,
                 query: String::new(),
                 opened: false,
-                body: MenuBody::Library { connect_from: None },
+                body: MenuBody::Library {
+                    connect_from: None,
+                    splice: None,
+                },
             });
         }
         // Space — toggle transport play/pause (the shell owns the transport).

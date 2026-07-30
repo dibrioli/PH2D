@@ -30,7 +30,10 @@ fn open_menu(scroll: f32) -> MotionGraphPanelState {
             spawn: (0.0, 0.0),
             query: String::new(),
             opened: false,
-            body: MenuBody::Library { connect_from: None },
+            body: MenuBody::Library {
+                connect_from: None,
+                splice: None,
+            },
         }),
         ..Default::default()
     }

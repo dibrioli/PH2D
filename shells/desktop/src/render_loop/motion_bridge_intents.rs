@@ -180,6 +180,18 @@ pub(super) fn apply_graph_intents(
                     rewire::splice_reroute(motion, toasts, t.0, tp, x, y);
                 }
             }
+            // The same insert, but the artist NAMED the node (R-press a wire → the add-menu).
+            GraphIntent::SpliceNode {
+                to_node,
+                to_port,
+                to_type,
+                x,
+                y,
+            } => {
+                if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
+                    rewire::splice_node(motion, toasts, t.0, tp, to_type, x, y);
+                }
+            }
             GraphIntent::MoveWireEnd {
                 from_node,
                 from_port,

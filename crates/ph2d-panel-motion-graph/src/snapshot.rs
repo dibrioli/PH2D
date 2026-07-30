@@ -16,6 +16,7 @@ use std::cell::RefCell;
 
 #[path = "snapshot_intent.rs"]
 mod intent;
+pub(crate) use intent::library_pick;
 pub use intent::{GraphIntent, RenameTarget};
 
 #[path = "snapshot_drop.rs"]

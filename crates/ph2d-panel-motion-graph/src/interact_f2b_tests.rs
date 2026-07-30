@@ -233,7 +233,8 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
     assert_eq!(
         menu.body,
         crate::state::MenuBody::Library {
-            connect_from: Some((1, 0))
+            connect_from: Some((1, 0)),
+            splice: None,
         },
         "it remembers the wire"
     );
@@ -517,5 +518,35 @@ fn an_empty_input_draws_a_wire_backwards_to_an_output() {
             }]
         ),
         "the same connection, made from the other end: {intents:?}"
+    );
+}
+
+/// **A right-press ON a wire arms a SPLICE** — the menu remembers the wire it landed on (its
+/// unique target `(to_node, to_port)`), so picking a node INSERTS it into that wire rather than
+/// dropping it beside the canvas. The mirror of the smart-connect "it remembers the wire" above,
+/// one gesture over. Mutation — the `Wire` arm falling through to the plain `_` default (`splice:
+/// None`) — would leave the pick an ordinary `AddNode`; this asserts the wire is captured.
+#[test]
+fn a_right_press_on_a_wire_arms_a_splice_onto_it() {
+    let snap = two_node_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    // The hit handle encodes the wire's target the way `paint::wire_target` decodes it.
+    let (to_node, to_port) = (2u32, 0u16);
+    let edge = (u64::from(to_node) << 16) | u64::from(to_port);
+    let mut g = gesture(
+        GraphHitKind::Wire { edge },
+        GesturePhase::Begin,
+        120.0,
+        40.0,
+    );
+    g.button = ph2d_host::PointerButton::Secondary;
+    apply_gesture(&mut st, g, RECT, CENTER, &snap);
+    assert_eq!(
+        st.menu.expect("the right-press opened the add-menu").body,
+        crate::state::MenuBody::Library {
+            connect_from: None,
+            splice: Some((to_node, to_port)),
+        },
+        "the menu remembers the wire, so the pick will splice into it"
     );
 }

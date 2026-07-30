@@ -245,3 +245,60 @@ fn dropped_in_space_unplugs_and_dropped_home_does_nothing() {
     );
     assert!(motion.history.can_undo());
 }
+
+/// **`splice_node` inserts the CHOSEN node into the wire** — source → new → target, on the same
+/// trial-validate-or-refuse machinery the reroute uses (`splice_into_wire`). A `motion.scale`
+/// goes into the grid → move wire: grid feeds the scale, the scale feeds move, node count +1.
+/// FALSIFIED by a splice that wires source → new but not new → target (or drops one side): the
+/// trial would fail validate, and the refuse case below proves the wire then stays.
+#[test]
+fn splice_node_inserts_the_chosen_node_into_the_wire() {
+    let mut motion = wired();
+    let mut toasts = ToastQueue::default();
+    // Splice into move's input (node 1, port 0): the grid -> move wire.
+    splice_node(&mut motion, &mut toasts, 1, 0, "motion.scale", 100.0, 50.0);
+
+    assert_eq!(
+        motion.doc.graph.nodes().len(),
+        4,
+        "the scale is IN the graph"
+    );
+    let new = source_of(&motion, 1, 0)
+        .expect("move still has a wire in")
+        .0;
+    assert_ne!(new, 0, "move's source is the spliced node, not the grid");
+    assert_eq!(
+        source_of(&motion, new, 0),
+        Some((0, 0)),
+        "grid feeds the spliced node"
+    );
+    assert_eq!(
+        motion.doc.graph.node(NodeId(new)).unwrap().type_name,
+        "motion.scale",
+        "the CHOSEN type was inserted, not a reroute"
+    );
+}
+
+/// **A type that cannot bridge the wire is REFUSED, and the original wire STAYS** — a splice
+/// that cut a wire and left a node dangling is worse than no splice. `motion.grid` is a pure
+/// SOURCE (`inputs: &[]`), so it has no input to take the grid → move stream; the first
+/// connect fails, the trial is discarded, and nothing changes.
+#[test]
+fn splice_node_refuses_a_type_that_cannot_bridge_and_leaves_the_wire() {
+    let mut motion = wired();
+    let before_nodes = motion.doc.graph.nodes().len();
+    let before_src = source_of(&motion, 1, 0);
+    let mut toasts = ToastQueue::default();
+    splice_node(&mut motion, &mut toasts, 1, 0, "motion.grid", 0.0, 0.0);
+
+    assert_eq!(
+        motion.doc.graph.nodes().len(),
+        before_nodes,
+        "no node was added"
+    );
+    assert_eq!(
+        source_of(&motion, 1, 0),
+        before_src,
+        "the original grid -> move wire is intact"
+    );
+}

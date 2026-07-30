@@ -171,27 +171,22 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
                 color: i as u8,
             });
         }
-        MenuBody::Library { connect_from } => {
+        MenuBody::Library {
+            connect_from,
+            splice,
+        } => {
             // The SAME list the paint drew: filtered by the query AND ranked by it. Reading
             // the raw catalog here is exactly the bug this popup already had once.
             let c = menu_matches(snap, menu, *connect_from)[i];
-            // Smart-connect is ONE intent, not an add followed by a connect: it was
-            // one gesture, so it must be one undo step (and the shell, which mints
-            // the id, is the only one that can name the node it just created).
-            match connect_from {
-                Some((from_node, from_port)) => push_intent(GraphIntent::SmartConnect {
-                    from_node: *from_node,
-                    from_port: *from_port,
-                    to_type: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                }),
-                None => push_intent(GraphIntent::AddNode {
-                    type_name: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                }),
-            }
+            // ONE undo step whatever the shape (and the shell, which mints the id, is the only
+            // one that can name the node it just created). `library_pick` is the shared door the
+            // Enter pick (`menu_search::pick_first`) also uses — one rule, two callers.
+            push_intent(crate::snapshot::library_pick(
+                *connect_from,
+                *splice,
+                c.type_name,
+                menu.spawn,
+            ));
         }
     }
 }
@@ -232,7 +227,17 @@ pub(super) fn open_on_right_press(
                     .map_or(0, |b| b.color),
             }
         }
-        _ => MenuBody::Library { connect_from: None },
+        // R-press ON a wire arms a SPLICE: picking a node inserts it INTO this wire
+        // (its unique target `(to_node, to_port)` names it) — source → new → target. The
+        // generalisation of the double-click reroute (doc 45) to any type the artist chooses.
+        GraphHitKind::Wire { edge } => MenuBody::Library {
+            connect_from: None,
+            splice: Some(crate::paint::wire_target(edge)),
+        },
+        _ => MenuBody::Library {
+            connect_from: None,
+            splice: None,
+        },
     };
     state.menu = Some(super::Menu {
         scroll: 0.0,

@@ -459,7 +459,10 @@ mod tests {
             spawn: (0.0, 0.0),
             query: String::new(),
             opened: false,
-            body: crate::state::MenuBody::Library { connect_from: None },
+            body: crate::state::MenuBody::Library {
+                connect_from: None,
+                splice: None,
+            },
         };
         let p = menu_panel(&menu, 3, canvas);
         assert!(p.x + p.w <= canvas.x + canvas.w + 0.01);

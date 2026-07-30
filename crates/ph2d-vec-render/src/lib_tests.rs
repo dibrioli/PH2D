@@ -246,6 +246,18 @@ fn one_pixel_image() -> FxImage {
 /// Spike de escala (ADR-0108 §5) — custo de re-encode NAIVE por frame (CPU,
 /// sem dirty-tracking), a fração dominante do custo em escala (achado Rive).
 /// `cargo test -p ph2d-vec-render --release -- --ignored --nocapture`
+///
+/// ⚠️ **Este número REGREDIU 1,7× sem ninguém ver**, porque ele vivia só neste `println!` de um
+/// teste `#[ignore]`: o spike de 2026-07-05 registrou 10k formas em **0,77 ms** e a auditoria de
+/// 2026-07-29 mediu **1,323**. A causa (uma construção de `BezPath` jogada fora por forma
+/// preenchida + o cozido a correr duas vezes) está curada e **agora é gateada por CONTAGEM**, não
+/// por relógio — ver `encode_cost_tests`. Medido depois da cura: **0,901 ms a 10k** (1,47×
+/// recuperado) · 0,089 a 1k · 4,109 a 50k.
+///
+/// ⚠️ E o RESÍDUO fica nomeado em vez de arredondado: 0,901 contra os 0,77 do spike é **1,17×** que
+/// esta wave não explica. Entre as duas medições nasceram o cozido (ADR-0121), a pilha de Live Path
+/// Effects (ADR-0132) e o `LiveGeometry`/`FxImages` no `dispatch` — atribuir esse 1,17× exige a
+/// própria medição, e afirmar uma causa sem ela seria o que a auditoria acabou de corrigir.
 #[test]
 #[ignore = "spike manual de medição; rode em --release --nocapture"]
 fn encode_cost_by_n() {

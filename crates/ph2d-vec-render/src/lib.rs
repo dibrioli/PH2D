@@ -70,78 +70,10 @@ pub use build_faces::draw_build_faces;
 mod blend_overlay;
 pub use blend_overlay::draw_blend_overlay;
 
-/// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
-/// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
-/// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se
-/// `closed`. Um compound vira um só `BezPath` de vários sub-caminhos — é a
-/// [`Fill`] rule que decide o que é buraco.
-pub fn build_bezpath(path: &VecPath) -> BezPath {
-    build_path(path, None)
-}
-
-/// O path do **PREENCHIMENTO** — só os contornos FECHADOS.
-///
-/// **Um contorno aberto não tem interior.** Ele é uma linha de construção: as três arestas
-/// internas do cubo isométrico, a boca da base do cone, a tampa do cilindro, as barras da
-/// sub-rotina, a cruz da junção. Essas coisas se DESENHAM, não se preenchem.
-///
-/// Sem esta distinção, o preenchimento **fecha cada contorno aberto implicitamente** (é a
-/// semântica de fill de qualquer rasterizador) e a corda que fecha a linha de construção
-/// vira uma região com winding próprio — que, com `NonZero`, CANCELA a silhueta onde
-/// coincide. Foi exatamente o que o Enio fotografou no cubo: as arestas internas
-/// `V1 → M → V3`, fechadas pela corda `V3 → V1`, abriam um triângulo escuro no meio da face
-/// direita. O cone e o cilindro tinham a mesma doença em forma de lente (o arco aberto
-/// fechado pela sua corda), só que menos visível.
-///
-/// O traço (`build_bezpath`) continua levando TUDO — é ele que desenha as linhas de
-/// construção, que é a razão de elas existirem.
-#[must_use]
-pub fn build_fill_bezpath(path: &VecPath) -> BezPath {
-    build_path(path, Some(true))
-}
-
-/// As **linhas de construção** — só os contornos ABERTOS. É o complemento exato de
-/// [`build_fill_bezpath`]: o que dá volume ao sólido (as arestas internas do cubo, a boca
-/// do cone, a tampa do cilindro) e que o preenchimento tem de ignorar.
-///
-/// Vazio para as 40 formas que não têm sub-contorno aberto.
-#[must_use]
-pub fn build_lines_bezpath(path: &VecPath) -> BezPath {
-    build_path(path, Some(false))
-}
-
-/// `want`: `None` = todos os contornos · `Some(true)` = só os fechados · `Some(false)` = só
-/// os abertos.
-fn build_path(path: &VecPath, want: Option<bool>) -> BezPath {
-    // A geometria COZIDA: as quinas com `corner_radius` já viraram arco. O documento
-    // guarda a quina afiada + o raio; o que se PINTA é isto. (Os overlays de âncora
-    // continuam na fonte — ver `draw_overlays` — senão o usuário veria dois vértices
-    // onde autorou um.) Sem raio nenhum, isto é a própria fonte emprestada.
-    let path = &*path.cooked();
-    let mut bp = BezPath::new();
-    for c in 0..path.contour_count() {
-        let Some((verts, closed)) = path.contour(c) else {
-            continue;
-        };
-        if want.is_some_and(|w| w != closed) {
-            continue;
-        }
-        let Some(first) = verts.first() else {
-            continue;
-        };
-        bp.move_to(pt(first.anchor));
-        for pair in verts.windows(2) {
-            let (a, b) = (&pair[0], &pair[1]);
-            bp.curve_to(pt(a.out_handle), pt(b.in_handle), pt(b.anchor));
-        }
-        if closed && verts.len() >= 2 {
-            let last = verts.last().unwrap();
-            bp.curve_to(pt(last.out_handle), pt(first.in_handle), pt(first.anchor));
-            bp.close_path();
-        }
-    }
-    bp
-}
+/// **De `VecPath` a `BezPath`** — os construtores de desenho (módulo irmão, teto de LOC).
+mod build;
+pub(crate) use build::build_contours;
+pub use build::{build_bezpath, build_fill_bezpath, build_lines_bezpath};
 
 /// A [`Fill`] rule do Vello para o `fill_rule` do path.
 pub(crate) fn fill_rule(path: &VecPath) -> Fill {
@@ -343,14 +275,36 @@ pub fn draw_path_isolated(
 /// Ao contrário dos overlays (gizmos, véu do Build), aqui a espessura do traço **escala com o
 /// mundo** — é o contorno de uma forma, como o de um sprite ampliado, não uma borda de px.
 pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    let bp = build_bezpath(path);
+    // ⚠️ **UM cozimento por forma, e nada é construído para quem não vai desenhar.** A versão
+    // anterior fazia `build_bezpath` INCONDICIONALMENTE e depois `build_fill_bezpath`: numa forma
+    // só-preenchida (a arte comum, e a cena inteira do spike de escala) o primeiro era construído
+    // e **jogado fora**, e numa forma preenchida-e-traçada sem contorno aberto os dois eram o
+    // MESMO desenho. Medido no `encode_cost_by_n`: 10k formas custavam 1,323 ms/frame de re-encode.
+    let cooked = path.cooked();
+    #[cfg(test)]
+    encode_cost_tests::count_cook();
+    // Há contorno ABERTO? É a única coisa que faz o desenho do traço diferir do do preenchimento.
+    let open =
+        (0..cooked.contour_count()).any(|c| cooked.contour(c).is_some_and(|(_, closed)| !closed));
+    // O preenchimento ignora os contornos ABERTOS (linhas de construção — as arestas internas do
+    // cubo, a tampa do cilindro): eles não têm interior, e fechá-los implicitamente recorta a
+    // silhueta. Ver [`build_fill_bezpath`].
+    let fill_bp = path
+        .fill
+        .is_some()
+        .then(|| build_contours(&cooked, Some(true)));
+    // O traço leva TODOS os contornos. Sem contorno aberto ele é **o mesmo desenho** do
+    // preenchimento ⇒ os dois compartilham uma construção só; com contorno aberto são dois
+    // desenhos diferentes e as duas construções são trabalho honesto.
+    let stroke_own = (path.stroke.is_some() && (open || fill_bp.is_none()))
+        .then(|| build_contours(&cooked, None));
     if let Some(fill) = &path.fill {
-        // O preenchimento ignora os contornos ABERTOS (linhas de construção — as
-        // arestas internas do cubo, a tampa do cilindro): eles não têm interior, e
-        // fechá-los implicitamente recorta a silhueta. Ver [`build_fill_bezpath`].
-        let fp = build_fill_bezpath(path);
+        let fp = fill_bp.as_ref().expect("fill => fill_bp construido");
         if let Paint::MultiPoint { points } = fill {
-            fill_multipoint(target, &fp, path, points, transform);
+            // ⚠️ `path`, não `cooked`: o `fill_multipoint` mede a caixa dos pontos de controle da
+            // forma AUTORADA (`control_point_bounds`). Passar o cozido moveria o gradiente de toda
+            // forma com quina viva ou efeito — mudança de aparência dentro de um fix de custo.
+            fill_multipoint(target, fp, path, points, transform);
         } else {
             // `VectorScene::fill_path` assume NonZero; um compound precisa da
             // regra do path (EvenOdd vaza o contorno de dentro).
@@ -359,11 +313,15 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
                 transform,
                 &fill_brush(fill, path),
                 None,
-                &fp,
+                fp,
             );
         }
     }
     if let Some(s) = path.stroke {
+        let bp = stroke_own
+            .as_ref()
+            .or(fill_bp.as_ref())
+            .expect("stroke => um dos dois desenhos existe");
         // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
         // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
         let brush = Brush::Solid(color(s.color));
@@ -604,6 +562,12 @@ fn fill_brush(paint: &Paint, _path: &VecPath) -> Brush {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+/// **O orçamento do re-encode por frame** — arquivo irmão. O spike de escala vivia num
+/// `println!` de teste `#[ignore]`, e uma regressão de 1,7× atravessou meses sem ninguém ver.
+#[cfg(test)]
+#[path = "encode_cost_tests.rs"]
+mod encode_cost_tests;
 
 /// Os gates da largura ZERO (o slider chega a 0 = sem traço) — arquivo irmão.
 #[cfg(test)]

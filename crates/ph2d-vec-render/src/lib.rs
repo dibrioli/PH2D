@@ -58,6 +58,8 @@ pub use envelope::{
 /// texto começa no caminho; arrastá-la corre o texto ao longo dele.
 mod text_handle;
 pub use text_handle::draw_text_handle;
+mod width_handle;
+pub use width_handle::draw_width_handle;
 
 /// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
 /// artista arrasta às cegas e só descobre o que pegou depois de soltar.

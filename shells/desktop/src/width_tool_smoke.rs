@@ -87,16 +87,24 @@ fn announce(app: &mut crate::App) {
     eprintln!(
         "[smoke] width tool (plano 25 §5): tres tracos -- AZUL reto, VERDE ondulado, LARANJA reto \
          com um afinamento JA' armado (a referencia). (1) na fileira TOOL clique **Width** -- se o \
-         pill nao existir ou nao acender, PARE; (2) clique o LARANJA: tres alcas aparecem SOBRE a \
-         borda da fita (nao sobre a curva), e a do meio esta' mais longe porque ali o traco e' \
-         grosso; (3) clique o AZUL: duas alcas, coladas a' borda -- ele nao tem perfil, e o que se \
-         ve e' o neutro; (4) ARRASTE uma alca do azul para FORA: o traco engrossa ali, ao vivo; \
+         pill nao existir ou nao acender, PARE; (2) clique o LARANJA: tres alcas aparecem SOBRE A \
+         CURVA, cada uma com uma HASTE que sai ate' a borda da fita -- a haste do meio e' mais \
+         longa porque ali o traco e' grosso; (3) clique o AZUL: duas alcas com hastes curtas -- \
+         ele nao tem perfil, e o que se ve e' o neutro; (4) ARRASTE uma alca do azul para FORA: o traco engrossa ali, ao vivo; \
          para DENTRO: afina; (5) arraste-a AO LONGO do traco: o ponto grosso anda com o dedo; \
          (6) ARRASTE a partir de um ponto qualquer da curva onde nao ha alca: nasce uma alca ali \
          e ela ja' segue o dedo; (7) CLIQUE (sem arrastar) num ponto da curva e solte: NADA pode \
          mudar -- nem uma alca nova, nem a espessura; (8) BOTAO DIREITO sobre uma alca: ela some \
          (com duas restantes o traco volta ao uniforme); (9) faca o mesmo no VERDE e confira que \
-         as alcas seguem a TANGENTE -- elas tem de ficar sempre a mesma distancia da tinta, nas \
-         subidas e nas descidas; (10) Ctrl+Z desfaz UM gesto por vez."
+         as HASTES seguem a TANGENTE -- elas tem de sair sempre perpendiculares a' tinta, nas \
+         subidas e nas descidas; (10) Ctrl+Z desfaz UM gesto por vez. \
+         [o report de 30/07] (11) desenhe um GRAMPO (uma linha que volta quase por cima de si \
+         mesma, os dois bracos bem juntos) ou um X, e clique UM dos bracos: tem de nascer UMA \
+         alca SO', e ela tem de ficar sobre o braco que voce clicou -- nunca sobre o vizinho; \
+         (12) engrosse muito essa alca (a haste atravessa o outro braco, e isso e' honesto: a \
+         fita de facto chega la') e clique DE NOVO no mesmo braco: tem de AGARRAR a alca que ja' \
+         esta' la', sem criar uma segunda; (13) num traco NOVO, sem perfil nenhum, arraste a \
+         partir do MEIO da curva: as duas alcas das pontas tem de continuar onde estavam -- a \
+         nova entra entre elas, e o fim do traco nao pode mudar de sitio."
     );
 }

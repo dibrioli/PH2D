@@ -216,6 +216,39 @@ a mudar sob o dedo.
 ⚠️ E a alça **não escala com a pose**, porque a fita também não: o `bake_xform` transforma pontos e
 comprimentos de path e deixa `stroke.width` como está. As duas têm de concordar, e há gate.
 
+#### ⚠️ Correção pós-smoke (2026-07-30) — a ficha mudou-se para a CURVA
+
+Report do Enio: *"linhas muito próximas ou cruzadas, cria-se duas alças (1 em cada segmento
+próximo). Mas deveria criar apenas uma alça na linha mais próxima do mouse."*
+
+**A escolha da linha nunca esteve errada** — o `closest_arc` já devolvia o braço mais próximo, e um
+press cria **uma** parada (o despacho é único, conferido). Errado estava o **DESENHO**: a ficha ficava
+na borda da fita, a `meia-largura × multiplicador` da curva. MEDIDO num grampo de braços a `0,30`
+com traço `0,16`: um arrasto que produziu multiplicador `3,75` pôs a ficha em **`y = 0,300`** — o
+braço vizinho, ao milésimo. O artista clicava numa linha, a alça nascia na de ao lado; clicava outra
+vez no sítio certo, e o hit-test não achava a alça (ela estava na outra linha) ⇒ **segunda parada**.
+Duas alças, uma em cada segmento — exatamente o report.
+
+Agora a **ficha fica SOBRE a curva** e uma **haste** sai dela até a borda da fita. *"De que linha é
+esta alça?"* deixa de ter resposta errada possível. É o *Width Tool* do Illustrator (o ponto de
+largura senta no traçado) e os nós do *Power Stroke* do Inkscape. A largura continua diretamente
+manipulável: puxar para longe da curva cresce a haste e engrossa a fita.
+
+⚠️ **A haste ainda pode atravessar a linha vizinha, e isso é honesto** — a fita de facto chega lá.
+
+⚠️ **E a sonda achou um SEGUNDO defeito, independente do reportado:** na forma VIRGEM o 1º gesto
+**sequestrava a parada do FIM** em vez de acrescentar uma. A parada criada nasce com o multiplicador
+que o perfil já tem ali (para o desenho não saltar), então sobre o neutro a lista continua uniforme
+— e o `arm` **remove** um perfil uniforme (o neutro-é-ausência). O `press` devolvia um índice para
+uma lista que nunca foi guardada, e o `drag` relia o neutro (duas paradas) editando a de índice 1: a
+ponta do traço. MEDIDO: `[(0,1),(1,1)]` virava `[(0,1),(0.241,5)]` — puxar no meio movia o fim do
+traço e engrossava toda a metade final. É o **primeiro gesto que qualquer artista faz**. Cura: o
+`Grab` carrega a **posição** da parada (não só o índice) e o `drag` reconstrói a lista pela mesma
+porta que o `press` usou.
+
+4 gates novos, 4 mutações, 4 sangram (a que repõe a ficha na borda reproduz o report ao milésimo).
+Smoke: **`PH2D_BUILD_SMOKE=42`**, passos 11-13.
+
 Smoke: **`PH2D_BUILD_SMOKE=42`**.
 
 ### ✅ W2b — ENTREGUE: os perfis salvos

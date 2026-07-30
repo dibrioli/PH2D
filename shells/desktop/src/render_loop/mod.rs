@@ -5799,21 +5799,23 @@ impl crate::App {
                     vector_scene,
                 );
             }
-            // **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil da forma primária,
-            // fora da curva à distância que a fita tem ali. Reusa a MESMA ficha do texto e do
-            // pattern: uma alça arrastável deste módulo tem uma aparência só, e o que a distingue
-            // é ONDE ela está. `handles` devolve vazio sem traço (nada a editar).
+            // **As alças de LARGURA** (plano 25 §5) — uma por parada do perfil da forma primária.
+            // A ficha fica SOBRE a curva e uma haste sai dela até a borda da fita, que é o que a
+            // parada mede: a ficha na borda atravessava a linha vizinha em multiplicador alto, e
+            // era isso que fazia uma alça nascer na linha de ao lado (report do Enio 2026-07-30 —
+            // ver o doc de `width_handles::handles`). Reusa a MESMA ficha do texto e do pattern.
+            // `handles` devolve vazio sem traço (nada a editar).
             if overlay.width_handles
                 && let Some(pid) = self.vec_pen.selected()
             {
                 let grabbed = self.vec_width_grab.map(|g| g.stop);
-                for (k, at) in
-                    crate::width_handles::handles(sim, vec_scene, &self.vec_entities, pid)
-                        .into_iter()
-                        .enumerate()
+                for (k, h) in crate::width_handles::handles(sim, vec_scene, &self.vec_entities, pid)
+                    .into_iter()
+                    .enumerate()
                 {
-                    ph2d_vec_render::draw_text_handle(
-                        at,
+                    ph2d_vec_render::draw_width_handle(
+                        h.at,
+                        h.tip,
                         grabbed == Some(k),
                         cam_affine,
                         hero.theme,

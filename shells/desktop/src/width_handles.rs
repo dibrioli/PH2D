@@ -35,7 +35,8 @@ use ph2d_vec_scene::{VecPathId, VecScene, WidthStop, WidthStops, bake_xform, xfo
 use crate::vec_entities::VecEntityMap;
 
 /// A parada agarrada por um arrasto.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+// Sem `Eq`: o `pos` é `f64`. `PartialEq` basta — ninguém usa isto como chave.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) struct Grab {
     /// O caminho cuja largura está a ser editada.
     pub path: VecPathId,
@@ -56,6 +57,17 @@ pub(crate) struct Grab {
     /// nada não pediu nada — então ele é desfeito no release e o desenho não muda. Quem arrasta
     /// nunca vê os 13,1%, porque a espessura já está a mudar sob o dedo.
     pub created: bool,
+    /// **Onde a parada estava quando o gesto começou**, em fração de arco.
+    ///
+    /// ⚠️ **Existe porque o índice sozinho MENTE numa forma virgem**, e o defeito era visível:
+    /// a parada criada nasce com o multiplicador que o perfil já tem ali (para o desenho não
+    /// saltar), então num perfil neutro a lista continua UNIFORME — e o `arm` remove um perfil
+    /// uniforme (o neutro-é-ausência, a lei deste módulo). O `press` devolvia então um índice
+    /// para uma lista que nunca foi guardada, e o `drag` seguinte relia o NEUTRO (duas paradas)
+    /// e editava a de índice 1: **a ponta do traço**. MEDIDO: o 1º gesto do Width numa forma
+    /// virgem levava `[(0, 1), (1, 1)]` a `[(0, 1), (0.241, 5)]` — o artista puxava no meio e o
+    /// FIM do traço dele mudava de sítio, com a metade final a engrossar toda.
+    pub pos: f64,
 }
 
 /// A meia-largura do traço de `id`, em unidades de MUNDO — a régua da alça.
@@ -104,18 +116,40 @@ fn profile_or_neutral(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Widt
     })
 }
 
-/// **Onde cada alça está**, em MUNDO — uma por parada, deslocada pela NORMAL à distância que a
-/// fita tem ali. Vazio sem traço (uma forma sem tinta não tem largura a editar).
+/// **O braço de uma parada** — o que a mão agarra e o que ele mede.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) struct HandleView {
+    /// A ficha agarrável, **SOBRE a curva**, no ponto da parada.
+    pub at: [f64; 2],
+    /// A ponta da haste: a borda da fita ali (`meia-largura × multiplicador` pela normal).
+    pub tip: [f64; 2],
+}
+
+/// **Onde cada braço está**, em MUNDO — um por parada. Vazio sem traço (uma forma sem tinta não
+/// tem largura a editar).
 ///
-/// A normal é a esquerda da tangente, sempre o mesmo lado: a fita é simétrica, então duas alças
-/// por parada seriam dois controles para um número.
+/// ⚠️ **A ficha fica na CURVA, e a haste é que vai até a borda da fita** (report do Enio,
+/// 2026-07-30). A 1ª versão punha a ficha na borda — a manipulação direta de *onde a tinta
+/// acaba* —, e a borda é `meia-largura × multiplicador` fora da curva: com o multiplicador alto
+/// isso **atravessa a vizinhança**. MEDIDO num grampo de braços a `0,30`: um arrasto que produziu
+/// multiplicador `3,75` sobre traço `0,16` pôs a ficha em `y = 0,30`, **exatamente sobre o outro
+/// braço**. O artista clicava numa linha e a alça nascia na de ao lado, clicava outra vez, e
+/// ficava com uma alça em cada segmento.
+///
+/// Com a ficha na curva, *"de que linha é esta alça?"* não tem resposta errada possível — e um
+/// clique entre duas linhas próximas cria **uma** parada, na mais próxima do rato
+/// ([`ph2d_vec_scene::arc_path::ArcPath::closest_arc`] já escolhia a certa; era o DESENHO que
+/// mentia). É o *Width Tool* do Illustrator e os nós do *Power Stroke* do Inkscape.
+///
+/// A normal da haste é a esquerda da tangente, sempre o mesmo lado: a fita é simétrica, então
+/// duas hastes por parada seriam dois controles para um número.
 #[must_use]
 pub(crate) fn handles(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
     id: VecPathId,
-) -> Vec<[f64; 2]> {
+) -> Vec<HandleView> {
     let (Some(hw), Some(arc)) = (half_width(scene, id), arc_of(scene, map, sim, id)) else {
         return Vec::new();
     };
@@ -135,9 +169,20 @@ pub(crate) fn handles(
                 [0.0, 1.0]
             };
             let d = hw * s.mult;
-            [p[0] + n[0] * d, p[1] + n[1] * d]
+            HandleView {
+                at: p,
+                tip: [p[0] + n[0] * d, p[1] + n[1] * d],
+            }
         })
         .collect()
+}
+
+/// O índice do braço cuja FICHA está sob o cursor. Porta única: o press agarra por aqui e o
+/// botão direito apaga por aqui — duas buscas divergiriam sobre o que é "estar sob o cursor",
+/// e a do apagar acertaria uma alça diferente da que o realce mostra.
+fn handle_at(hs: &[HandleView], world_pt: [f64; 2], radius: f64) -> Option<usize> {
+    hs.iter()
+        .position(|h| (h.at[0] - world_pt[0]).hypot(h.at[1] - world_pt[1]) <= radius)
 }
 
 /// **A pressão**: agarra a alça sob o cursor, ou ACRESCENTA uma parada se o cursor está sobre a
@@ -156,10 +201,7 @@ pub(crate) fn press(
     radius: f64,
 ) -> Option<Grab> {
     let hs = handles(sim, scene, map, id);
-    if let Some(k) = hs
-        .iter()
-        .position(|h| (h[0] - world_pt[0]).hypot(h[1] - world_pt[1]) <= radius)
-    {
+    if let Some(k) = handle_at(&hs, world_pt, radius) {
         // ⚠️ **Agarrar NÃO escreve nada**, e a tentação de armar aqui morre na própria lei do
         // módulo: o perfil de uma forma virgem é o NEUTRO, que é uniforme, e `arm` REMOVE um
         // perfil uniforme (o neutro-é-ausência). Armar no press seria escrever e apagar no mesmo
@@ -168,6 +210,10 @@ pub(crate) fn press(
             path: id,
             stop: k,
             created: false,
+            pos: profile_or_neutral(sim, map, id)
+                .as_slice()
+                .get(k)
+                .map_or(0.0, |s| s.pos),
         });
     }
     // Não há alça sob o cursor: se ele está SOBRE a curva, nasce uma parada ali.
@@ -183,20 +229,59 @@ pub(crate) fn press(
     }
     let pos = (s / total).clamp(0.0, 1.0);
     let cur = profile_or_neutral(sim, map, id);
-    let mult = cur.at(pos);
-    let mut v: Vec<WidthStop> = cur.as_slice().to_vec();
-    v.push(WidthStop { pos, mult });
-    let stops = WidthStops::new(v);
-    let k = stops
-        .as_slice()
-        .iter()
-        .position(|st| (st.pos - pos).abs() < 1e-12 && (st.mult - mult).abs() < 1e-12)?;
+    let stops = WidthStops::new(insert_stop(cur.as_slice(), pos, cur.at(pos)));
+    let k = stop_index(&stops, pos)?;
     arm_stops(sim, map, id, &stops);
     Some(Grab {
         path: id,
         stop: k,
         created: true,
+        pos,
     })
+}
+
+/// A lista `base` com uma parada acrescentada em `pos` — **ordenada**, a mesma que o `press`
+/// produz. Porta única: o press a escreve e o `drag` a REPRODUZ quando ela não chegou a ser
+/// guardada (perfil uniforme), e duas construções divergiriam sobre o índice da parada nova.
+fn insert_stop(base: &[WidthStop], pos: f64, mult: f64) -> Vec<WidthStop> {
+    let mut v = base.to_vec();
+    v.push(WidthStop { pos, mult });
+    v
+}
+
+/// O índice da parada que senta em `pos` — a resposta que o [`Grab`] guarda.
+fn stop_index(stops: &WidthStops, pos: f64) -> Option<usize> {
+    stops
+        .as_slice()
+        .iter()
+        .position(|st| (st.pos - pos).abs() < 1e-12)
+}
+
+/// **A lista que este arrasto edita, e o índice nela.**
+///
+/// Normalmente é o perfil vivo tal como está. O caso que exige esta porta é a forma VIRGEM: a
+/// parada que o `press` criou não chegou a ser guardada (a lista ficou uniforme e o `arm` a
+/// removeu), então reconstruí-la aqui é o que impede o arrasto de editar a parada errada — a
+/// ponta do traço. Ver [`Grab::pos`] para o número que isso valia.
+fn working_stops(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    grab: Grab,
+) -> Option<(Vec<WidthStop>, usize)> {
+    if let Some(cur) = crate::profile_live::spec_of(sim, map, grab.path) {
+        return Some((cur.as_slice().to_vec(), grab.stop));
+    }
+    let neutral = profile_or_neutral(sim, map, grab.path);
+    if !grab.created {
+        return Some((neutral.as_slice().to_vec(), grab.stop));
+    }
+    let stops = WidthStops::new(insert_stop(
+        neutral.as_slice(),
+        grab.pos,
+        neutral.at(grab.pos),
+    ));
+    let k = stop_index(&stops, grab.pos)?;
+    Some((stops.as_slice().to_vec(), k))
 }
 
 /// **O arrasto**: a distância à curva vira o multiplicador, a projeção na curva vira a posição.
@@ -224,9 +309,10 @@ pub(crate) fn drag(
     // O NEUTRO quando ainda não há perfil: é o que as alças mostram numa forma virgem, e é dele
     // que o 1º arrasto parte. Exigir um componente aqui tornaria a ferramenta inerte justamente
     // na forma em que ela é usada pela 1ª vez.
-    let cur = profile_or_neutral(sim, map, grab.path);
-    let mut v: Vec<WidthStop> = cur.as_slice().to_vec();
-    let Some(st) = v.get_mut(grab.stop) else {
+    let Some((mut v, k)) = working_stops(sim, map, grab) else {
+        return false;
+    };
+    let Some(st) = v.get_mut(k) else {
         return false;
     };
     let s = arc.closest_arc(world_pt);
@@ -277,10 +363,7 @@ pub(crate) fn remove(
     radius: f64,
 ) -> bool {
     let hs = handles(sim, scene, map, id);
-    let Some(k) = hs
-        .iter()
-        .position(|h| (h[0] - world_pt[0]).hypot(h[1] - world_pt[1]) <= radius)
-    else {
+    let Some(k) = handle_at(&hs, world_pt, radius) else {
         return false;
     };
     let cur = profile_or_neutral(sim, map, id);

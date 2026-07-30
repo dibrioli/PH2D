@@ -6443,6 +6443,13 @@ impl crate::App {
                     (comp_sum, comp_max, comp_n),
                     (wait_sum, wait_max, wait_n),
                 ) = ph2d_tool_painter::wet_diag::take_window();
+                // A partição do WORKER (`wet_diag`): com a sim fora da thread do frame, a linha
+                // `sim` acima imprimia `0.00ms x0` — ninguém media o passo, porque quem o dá é o
+                // worker. Estes três baldes dizem se a água lenta é TRABALHO (busy alto: só a GPU
+                // move) ou AGENDAMENTO (away/sleep alto), que têm curas opostas.
+                let (busy, away, sleep) = ph2d_tool_painter::wet_diag::take_worker();
+                let span = f64::from(total) * 120.0;
+                let pct = |x: f64| if span > 0.0 { 100.0 * x / span } else { 0.0 };
                 let per = |sum: f64, n: u64| if n > 0 { sum / n as f64 } else { 0.0 };
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
@@ -6452,13 +6459,24 @@ impl crate::App {
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120\n\
                      [frame]   agua: sim media {:.2}ms pico {sim_max:.2}ms x{sim_n} \
                      | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n} \
-                     | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)",
+                     | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)\n\
+                     [frame]   worker: busy {:.0}% away {:.0}% sleep {:.0}% \
+                     | TAXA DA AGUA {:.1} Hz ({sim_n} passos em {:.1}s)",
                     1000.0 / f64::from(total).max(0.001),
                     (f64::from(total) - f64::from(encode)).max(0.0),
                     per(sim_sum, sim_n),
                     per(comp_sum, comp_n),
                     per(wait_sum, wait_n),
                     wait_sum,
+                    pct(busy),
+                    pct(away),
+                    pct(sleep),
+                    if span > 0.0 {
+                        1000.0 * sim_n as f64 / span
+                    } else {
+                        0.0
+                    },
+                    span / 1000.0,
                 );
             }
         }

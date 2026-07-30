@@ -371,3 +371,60 @@ fn a_canvas_action_reaches_the_engine_while_the_worker_holds_it() {
         "o Fast dry nao secou a folha — a acao nao alcancou o motor"
     );
 }
+
+// ---------------------------------------------------------------------------
+// 5 — O INSTRUMENTO NÃO PODE EMUDECER (o defeito desta sessão)
+// ---------------------------------------------------------------------------
+
+/// **O worker REPORTA o que custa** — e este gate existe porque o instrumento
+/// emudeceu e a mudez passou por resultado.
+///
+/// Ao mover a sim para fora da thread do frame, ninguém mais chamou
+/// [`crate::wet_diag::note_step`] — quem dá o passo passou a ser o worker — e o
+/// log do produto imprimiu **`agua: sim media 0.00ms x0`** por uma wave inteira.
+/// Aquela linha lê-se como *"a simulação não custa nada"* e significava *"ninguém
+/// mede a simulação"*, sobre exatamente o número que decidia se a água lenta é
+/// **trabalho** ou **agendamento**. Um instrumento silencioso é pior que um
+/// ausente: ele TRANQUILIZA.
+///
+/// As três mutações sangram, uma por balde: tirar o `note_step` do worker (0
+/// passos reportados) · tirar o `note_busy` (o worker não computou nada) · tirar
+/// o `note_away` (o motor nunca viajou).
+///
+/// ⚠️ **Os contadores são globais do processo, então este gate CONSOME a janela**
+/// — ele é o único teste não-`#[ignore]` que chama os `take_*`, e é por isso que
+/// pode. Um segundo leitor na suíte zeraria a janela deste e o verde viraria
+/// sorte; se um aparecer, o instrumento tem de virar por-sessão.
+#[test]
+fn the_worker_reports_what_a_step_costs() {
+    let _ = crate::wet_diag::take_window();
+    let _ = crate::wet_diag::take_worker();
+    let mut t = small_puddle();
+    t.paint_tick(1.0 / 60.0); // entrega o motor ao worker
+    // Tempo de parede o bastante para vários passos numa poça pequena, e um
+    // tick no fim para o motor voltar (é ele que produz o `away`).
+    std::thread::sleep(Duration::from_millis(300));
+    t.paint_tick(1.0 / 60.0);
+    // ⚠️ **O `away` só é conhecido quando a viagem FECHA:** ele é medido do
+    // `send` até o `recv` do worker VOLTAR, e o tick acima acabou de devolver o
+    // motor — sem esta pausa o gate lia o balde antes de o worker o preencher, e
+    // nasceu vermelho por isso. É a grandeza que só o outro lado pode carimbar.
+    std::thread::sleep(Duration::from_millis(30));
+    let ((step_sum, _, step_n), ..) = crate::wet_diag::take_window();
+    let (busy, away, _sleep) = crate::wet_diag::take_worker();
+    assert!(
+        step_n > 0 && step_sum > 0.0,
+        "o worker nao reportou passo nenhum ({step_n} passos, {step_sum:.3} ms): o log do \
+         produto volta a imprimir `sim media 0.00ms x0`, que le-se como `a sim nao custa nada`"
+    );
+    assert!(
+        busy > 0.0,
+        "o balde BUSY do worker esta vazio: sem ele nao se sabe se a agua lenta e \
+         trabalho (so a GPU move) ou agendamento (curas opostas)"
+    );
+    assert!(
+        away > 0.0,
+        "o balde AWAY esta vazio: o motor viajou para o frame (houve composite) e o \
+         preco do handshake nao foi medido de nenhum lado"
+    );
+}

@@ -160,8 +160,80 @@ Por passe, na mesma poça: `project` 3,480 → 0,855 ms (4,07×) · `smooth_velo
 do commit) mostrava o `advect` — que esta wave **não toca** — oscilando 12,1 → 7,8 ms, 36% de deriva de
 máquina. Uma soma cross-run atribuiria isso ao ganho; por isso o A/B é no mesmo processo.
 
+## 4.1 ⚠️ EMENDA (2026-07-29, mesma sessão) — o 1,56× é da MINHA fixture; o produto ganhou 1,10×
+
+O smoke do Enio veio com a taxa **inalterada** (29-38 composites por janela de 2 s, contra os 37-38 de
+antes da wave). Não era o build dele: a wave está certa e o 1,56× é reprodutível **na fixture em que
+foi medido**. O que estava errado era eu tratar aquele número como o do produto.
+
+Medido pela porta do produto (a sonda `measure_what_the_off_thread_sim_buys`, cena `heavy_puddle`, que é
+a do smoke): a taxa foi **12,5 → 14,0 Hz = 1,12×**. E a razão aparece inteira quando o passo é medido
+**onde o worker o dá** (instrumentação nova, §4.2): a fixture da crate (`measure_pass_cost::scene_big`)
+custa **10,34 ms/passo** e a do produto custa **62,05 ms** — **seis vezes**.
+
+**A causa é a CADÊNCIA, e ela não estava no meu modelo.** O `sim_step_stage` não roda todo passe em todo
+passo: `advect` e `apply_boundaries` rodam sempre · `rebuild_active_region` a cada 2 · `project` e
+`drying_pass` a cada 3 (`dry_every` 3 ou 6) · `build_flow_field` a cada 4, e nos outros três o lugar dele
+é ocupado pelo `smooth_velocity`, que é ~50× mais barato. Amortizando a decomposição por-passe da poça do
+produto pela cadência:
+
+```text
+  passe                   custo cheio   cadencia   por passo    %
+  advect                     26,24 ms     todo      26,24     42,3
+  drying_pass                48,25 ms      ÷3       16,08      25,9
+  build_flow_field           61,76 ms      ÷4       15,44      24,9
+  rebuild_active_region       5,04 ms      ÷2        2,52       4,1
+  smooth_velocity             1,23 ms      ¾         0,92       1,5
+  project                     1,85 ms      ÷3        0,62       1,0
+  apply_boundaries            0,21 ms     todo       0,21       0,3
+  ------------------------------------------------------------------
+  MODELO                                            62,03
+  MEDIDO pelo worker                                62,05
+```
+
+O modelo prevê o passo do produto com **0,03 ms de erro** — e ele diz que os três passes desta wave
+somam **4,06 ms de 62 = 6,5% do passo**, não os ~46% que a soma-sem-cadência sugeria. Seriais eles
+custariam 10,3 ⇒ a wave corta **6,2 ms**, que é o 1,10× que o produto mostra. **Nada aqui está errado
+além do número que eu anunciei.**
+
+⚠️ **A lei que fica:** *um ganho por-passe só vira ganho de produto depois de passar pela CADÊNCIA, e uma
+razão medida numa fixture não se transporta para outra cujo mix por-passo é diferente.* Foi a segunda vez
+nesta sessão (a outra: eu inferi um imposto de células secas de 35-42% a partir da razão
+diagonal÷horizontal, que foi medida em cenas de ~110k células ativas, e apliquei a uma poça de **1,61 M** —
+modelando `custo = a·janela + b·ativas` sobre as duas medições, o imposto real na poça do produto é
+**5%**).
+
+## 4.2 A instrumentação que faltava — e que tornava esta emenda impossível
+
+O log do produto imprimia **`agua: sim media 0.00ms x0`**: ao mover a sim para fora da thread do frame,
+ninguém mais chamou o `note_step` — quem dá o passo é o worker. A linha lia-se como *"a simulação não
+custa nada"* e significava *"ninguém mede a simulação"*, **sobre exatamente o número que decide se a água
+lenta é trabalho ou agendamento**. Um instrumento silencioso é pior que um ausente: ele tranquiliza.
+
+Agora o worker reporta o COMPUTE por passo e três baldes que **particionam** a janela dele — **busy**
+(dentro de `step_stage`) · **away** (o motor está com o frame) · **sleep** (o ritmo de 40 Hz). Eles
+separam três mundos com curas opostas, e a leitura fecha a frente de CPU:
+
+```text
+  poca do produto (3 tracos, 4096², 1,61 M celulas vivas)
+    busy 79,4%   away 19,3%   sleep 1,4%    ->  13,0 Hz, 62,05 ms/passo
+```
+
+**79,4% busy é work-limited**, e o custo por célula é o piso: modelado sobre duas cenas, o `advect` gasta
+**15,5 ns por célula ATIVA** contra os **16 ns/visita-de-célula-passe** que o ADR-0134 declara como *"o
+teto escalar serial desta física"*. Não há folga a colher.
+
 ## 5. O que isto NÃO resolve
 
-O passo continua **work-limited**, só que num número menor. Os 60% que sobram são os quatro passes
-sequenciais por semântica, e **eles não têm caminho de CPU** — a próxima alavanca é a **GPU**, que quebra
-o port 1:1 e o fingerprint pinado, e exige ADR próprio.
+O passo continua **work-limited**, só que num número menor. Os 93% que sobram são `advect` (42%),
+`drying_pass` (26%) e `build_flow_field` (25%) — os três recusados pela §2, e **eles não têm caminho de
+CPU**: o `advect` SUBTRAI nos quatro cantos-fonte em linhas vizinhas, e nenhuma reordenação disso é
+byte-idêntica.
+
+O que resta de CPU está **medido e nomeado, não construído**: a metade do `wetpaint_composite` que
+**não toca o motor** (o *straight-alpha over* de `pigment` sobre `base`) é feita com o engine na mão,
+então ela entra no `away`; liberar o motor antes dela vale ~**1,06×** na taxa — abaixo do que o artista
+distingue, e por isso fica escrito em vez de shipado.
+
+⇒ **A próxima alavanca é a GPU**, que quebra o port 1:1 e o fingerprint pinado do ADR-0134, e exige ADR
+próprio + ordem do Enio (a mesma classe da palavra *"rayon"* que abriu este).

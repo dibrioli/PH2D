@@ -39,6 +39,20 @@
 //! cantos-fonte com clamp, então duas células de linhas diferentes que retro-traçam para o mesmo canto
 //! são uma escrita-leitura em conflito. `build_flow_field` também não, e por DOIS mecanismos — o freio
 //! do ADR-0134 e o backrun, que espalha em `susp[nb]`/`sett[nb]`.
+//!
+//! 6. **A CADÊNCIA** (2026-07-29, [ADR-0145 §4.1](../../../../../docs/architecture/decisions/0145-wet-paint-solver-row-parallel-passes-rayon-exception.md)) —
+//!    e é ela que fecha a família, porque sem ela toda decomposição por-passe mente. O
+//!    `sim_step_stage` **não roda todo passe em todo passo**: `advect` e `apply_boundaries` sempre ·
+//!    `rebuild_active_region` a cada 2 · `project` e `drying_pass` a cada 3 · `build_flow_field` a cada
+//!    **4**, e nos outros três o lugar dele é do `smooth_velocity`, ~50× mais barato. Amortizada, a
+//!    decomposição prevê o passo do produto com **0,03 ms de erro** — e diz que os três passes que
+//!    foram ao rayon são **6,5% do passo**, não os ~46% da soma-sem-cadência. Daí o produto ganhar
+//!    **1,10×** onde a fixture da crate media 1,56×.
+//!
+//! ⚠️ **E DUAS fixtures "grandes" diferentes dão dois números que ninguém consegue comparar:** a
+//! `measure_pass_cost::scene_big` (que dirige o `Engine` direto) custa **10,34 ms/passo** e a
+//! `heavy_puddle` daqui (que dirige o `on_canvas_pointer`, o caminho do artista) custa **62,05**. Seis
+//! vezes. Quando o número vira decisão de produto, ele TEM de sair da porta do produto.
 
 use super::*;
 
@@ -145,8 +159,9 @@ fn measure_what_the_off_thread_sim_buys() {
             }
         }
         let wall = wall0.elapsed().as_secs_f32();
-        let (_, (comp_sum, _, comp_n), (wait_sum, wait_max, wait_n)) =
+        let ((step_sum, step_max, step_n), (comp_sum, _, comp_n), (wait_sum, wait_max, wait_n)) =
             crate::wet_diag::take_window();
+        let (busy, away, sleep) = crate::wet_diag::take_worker();
         let steps = sim_frame(&mut t) - f0;
         ticks.sort_by(|a, b| a.partial_cmp(b).expect("sem NaN"));
         let p50 = ticks[ticks.len() / 2];
@@ -162,6 +177,30 @@ fn measure_what_the_off_thread_sim_buys() {
              composite {comp_sum:6.1} (x{comp_n})  +  ESPERA {wait_sum:6.1} (x{wait_n}, \
              max {wait_max:.2})  +  resto {:.1}",
             tick_total as f64 - comp_sum - wait_sum
+        );
+        // ⚠️ **A partição do WORKER é o que decide a frente seguinte**, e ela é
+        // sobre uma janela de wall-clock que os três baldes ou explicam ou não.
+        let w = f64::from(wall) * 1000.0;
+        let pct = |x: f64| 100.0 * x / w;
+        println!(
+            "                 O WORKER, em {w:.0} ms: busy {busy:6.1} ({:4.1}%)  \
+             away {away:6.1} ({:4.1}%)  sleep {sleep:6.1} ({:4.1}%)  \
+             resto {:.1} ({:4.1}%)",
+            pct(busy),
+            pct(away),
+            pct(sleep),
+            w - busy - away - sleep,
+            pct(w - busy - away - sleep),
+        );
+        println!(
+            "                 UM PASSO custa {:6.3} ms de COMPUTE (pico {step_max:6.3}, \
+             x{step_n}) e leva {:6.1} ms de PAREDE",
+            if step_n > 0 {
+                step_sum / step_n as f64
+            } else {
+                0.0
+            },
+            if steps > 0 { w / steps as f64 } else { 0.0 },
         );
     }
     println!(
@@ -216,6 +255,128 @@ fn the_wet_tick_does_not_run_the_frame_away() {
         "o frame FUGIU: mediana de {median:.2} ms em regime = {ratio:.2}x o overhead de \
          {OVERHEAD_MS} (teto {MAX_SETTLED_RATIO}x) — o controlador nao recuou"
     );
+}
+
+/// **DE QUE OS 62 ms SÃO FEITOS — na poça que o PRODUTO constrói.**
+///
+/// ⚠️ **Esta sonda existe porque a irmã dela na crate do motor mediu OUTRA
+/// cena.** O `measure_pass_cost::scene_big` monta três traços chamando o
+/// `Engine` direto e mede um passo em **10,3 ms**; a `heavy_puddle` abaixo monta
+/// três traços pelo `on_canvas_pointer` — o caminho do artista — e o worker do
+/// produto mede **62 ms**. Seis vezes, e o número que decide a frente é o do
+/// produto. *Duas fixtures "grandes" diferentes dão dois números que ninguém
+/// consegue comparar* (o próprio doc-comment do `scene_big` diz isso, e eu
+/// medi na fixture da crate de qualquer jeito).
+///
+/// Metodologia idêntica à da irmã: `snapshot_grid`/`restore_grid` devolvem o
+/// MESMO estado antes de cada amostra — sem isso o `rebuild_active_region`
+/// APERTA a bbox que ele próprio varre e as amostras 2..N medem uma janela
+/// menor que a que o produto vê.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_a_step_of_the_products_puddle_is_made_of() {
+    use ph2d_wet_paint::grid::{Grid, restore_grid, snapshot_grid};
+    use ph2d_wet_paint::solver;
+    use ph2d_wet_paint::tuning::Knob;
+
+    const REPS: usize = 7;
+    let mut t = heavy_puddle();
+    t.wet_bring_home();
+    let sess = t
+        .paint
+        .wetpaint
+        .session
+        .as_mut()
+        .expect("a sessao de agua existe apos o traco");
+    let e = &mut *sess.engine;
+    let p = e.sim.gather_params(&e.tuning);
+    let grav = e.sim.gravity(&e.tuning);
+    let evap = e.sim.evap_scale * p.k(Knob::Evaporation);
+    let rewet = e.sim.rewet_base * p.k(Knob::Rewet);
+    let bypass = e.sim.ext_bypass;
+    let g = e.active_grid_mut();
+    // ⚠️ **A MÁSCARA tem de estar VIVA antes do snapshot.** A 1ª versão desta
+    // sonda tirou o snapshot do estado logo após o pen-up, onde `active` está
+    // VAZIO — e todo passe gated em `active[i] == 0` fazia early-out em TODA
+    // célula: `project` mediu 0,88 ms (contra 3,48 na fixture da crate) e
+    // `smooth_velocity` 0,24. A soma casava com os 62 ms do worker **por
+    // coincidência**, porque o `drying_pass` (que não é gated) dominava.
+    // O worker roda o rebuild como 1º estágio; a fixture tem de fazer o mesmo.
+    solver::rebuild_active_region(g);
+    let (rows, span) = (
+        (g.by1 - g.by0 + 1).max(0) as usize,
+        (g.bx1 - g.bx0 + 1).max(0) as usize,
+    );
+    let live = g.active.iter().filter(|a| **a != 0).count();
+    // As células que de fato carregam água — o predicado do `drying_pass`, e o
+    // divisor honesto do custo dele.
+    let wet = (0..g.film.len())
+        .filter(|&i| g.film[i] > 0.0 || g.susp[i] > 0.0)
+        .count();
+    let snap = snapshot_grid(g);
+    let time = |g: &mut Grid, f: &mut dyn FnMut(&mut Grid)| -> f64 {
+        let mut v = Vec::with_capacity(REPS);
+        for _ in 0..REPS {
+            restore_grid(g, &snap);
+            let t0 = Instant::now();
+            f(g);
+            v.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let mut out: Vec<(&str, f64)> = Vec::new();
+    out.push((
+        "rebuild_active_region",
+        time(g, &mut solver::rebuild_active_region),
+    ));
+    out.push((
+        "drying_pass",
+        time(g, &mut |g| {
+            ph2d_wet_paint::drying::drying_pass(g, &p, evap, rewet, bypass);
+        }),
+    ));
+    out.push((
+        "build_flow_field",
+        time(g, &mut |g| {
+            solver::build_flow_field(g, &p, grav[0], grav[1], bypass);
+        }),
+    ));
+    out.push((
+        "smooth_velocity",
+        time(g, &mut |g| solver::smooth_velocity(g, &p)),
+    ));
+    out.push((
+        "advect",
+        time(g, &mut |g| {
+            solver::advect(g, &p, grav[0], grav[1]);
+        }),
+    ));
+    out.push((
+        "apply_boundaries",
+        time(g, &mut |g| solver::apply_boundaries(g, false)),
+    ));
+    out.push(("project", time(g, &mut |g| solver::project(g, &p))));
+    restore_grid(g, &snap);
+
+    println!("\n  A POCA DO PRODUTO (heavy_puddle, 4096x4096, mediana de {REPS})\n");
+    let cells = (rows * span).max(1);
+    println!(
+        "    janela {rows} x {span} = {cells} celulas ({:.1}% da tela)\n    \
+         ativas {live} ({:.1}% da janela) | COM AGUA {wet} ({:.1}% da janela)",
+        100.0 * cells as f64 / (4096.0 * 4096.0),
+        100.0 * live as f64 / cells as f64,
+        100.0 * wet as f64 / cells as f64,
+    );
+    let total: f64 = out.iter().map(|(_, t)| t).sum();
+    for (name, ms) in &out {
+        println!(
+            "    {name:<24} {ms:7.3} ms   ({:4.1}%)   {:5.1} ns/celula-da-janela",
+            100.0 * ms / total,
+            ms * 1e6 / cells as f64,
+        );
+    }
+    println!("    {:<24} {total:7.3} ms", "SOMA dos passes");
 }
 
 #[path = "measure_wetpaint_probes.rs"]

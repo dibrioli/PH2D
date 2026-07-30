@@ -131,12 +131,22 @@ env PH2D_WETPAINT_SMOKE=1 PH2D_FLUID_PROFILE=1 cargo run -p ph2d-host-desktop --
 
 Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
 
-1. **A água tem de correr LISA** — é a entrega. No log, `agua: sim media` deve
-   sumir (o frame não simula mais) e `tool-tick` deve ficar em frações de ms.
-   ⚠️ **Desde o ADR-0145 a TAXA também subiu:** conte os `composite ... xN` na
-   janela de 2 s — `N/2` é a taxa da água em Hz. O passo ficou 1,56× mais barato
-   numa poça de 5 M células, então o número tem de subir na MESMA poça (pincel
-   grande, várias faixas sobrepostas), não numa risca fina.
+1. **A água tem de correr LISA** — é a entrega. No frame, `tool-tick` fica em
+   frações de ms e a linha `agua:` não paga simulação nenhuma.
+   ⚠️ **A TAXA agora está IMPRESSA, não se conta mais à mão:** o log traz uma linha
+   `worker: busy X% away Y% sleep Z% | TAXA DA AGUA N Hz`, e é ela que responde
+   *"por que a água está lenta?"* sem hipótese:
+   - **busy alto (≥75%)** = *work-limited*. A água está no piso da física
+     (ADR-0134: 16 ns por visita de célula-passe) e **nenhuma mudança de
+     agendamento a move** — só a GPU, que é ADR próprio. Medido a 4096² com três
+     faixas sobrepostas: **busy 79%, 62 ms/passo, 13 Hz**, com 1,61 M células
+     vivas. É o teto honesto da CPU, não um defeito.
+   - **away alto com busy baixo** = o *handshake* (o motor viajando para o frame)
+     está comendo a taxa.
+   - **sleep alto** = a água já alcançou o nominal de 40 Hz **ou** secou; nos dois
+     casos o gargalo não é ela.
+   ⚠️ **A taxa é função da POÇA**: numa risca fina ela bate o nominal e o número não
+   diz nada. Pinte grande e sobreposto, que é o caso reportado.
 2. **Pintar durante o escorrido** — o dab traz o motor para casa; o traço não pode
    engasgar.
 3. **Undo (Ctrl+Z) leva o escorrido** — os gates do drip agora dirigem o motor

@@ -201,10 +201,21 @@ fn worker_loop(
     // **12,5 Hz antes e depois desta linha**, que é a assinatura do regime
     // work-limited — a câmera lenta honesta do `max_substeps`.
     let mut last = Instant::now();
+    // A instrumentação (`PH2D_FLUID_PROFILE`): os três baldes que particionam a
+    // janela do worker + o COMPUTE acumulado do passo em voo. Ver
+    // [`crate::wet_diag`] — sem eles o log do produto imprimia `sim 0.00ms x0`,
+    // e a pergunta *"a água lenta é trabalho ou agendamento?"* não tinha número.
+    let mut away_since: Option<Instant> = None;
+    let mut step_us: u64 = 0;
     while let Ok(mut engine) = rx.recv() {
+        if let Some(t) = away_since.take() {
+            crate::wet_diag::note_away(t.elapsed().as_micros() as u64);
+        }
         loop {
             if want.swap(false, Ordering::AcqRel) {
                 // Devolve em fronteira de ESTÁGIO — o pior caso de espera da UI.
+                // ⚠️ O relógio do `away` arma ANTES do `send`, que MOVE o engine.
+                away_since = Some(Instant::now());
                 if tx.send(engine).is_err() {
                     return;
                 }
@@ -216,12 +227,21 @@ fn worker_loop(
             let in_flight = engine.sim.step_pending();
             if !in_flight && (acc < STEP_S || !engine.sim_should_run()) {
                 // Nada a fazer: dorme um pouco em vez de girar num núcleo.
+                let t = Instant::now();
                 std::thread::sleep(IDLE_SLEEP);
+                crate::wet_diag::note_sleep(t.elapsed().as_micros() as u64);
                 continue;
             }
-            if engine.step_stage().is_some() {
+            let t = Instant::now();
+            let closed = engine.step_stage().is_some();
+            let spent = t.elapsed().as_micros() as u64;
+            step_us += spent;
+            crate::wet_diag::note_busy(spent);
+            if closed {
                 acc -= STEP_S;
                 steps.fetch_add(1, Ordering::Release);
+                crate::wet_diag::note_step(step_us as f32 / 1000.0);
+                step_us = 0;
             }
         }
     }

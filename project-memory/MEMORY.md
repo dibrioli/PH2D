@@ -79,6 +79,8 @@
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Gate de identidade não vê defeito no CORPO compartilhado](feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body.md) — rota A==rota B só prova o walker; o corpo quer oráculo externo
+- [Ganho por-passe passa pela CADÊNCIA](feedback_a_per_pass_gain_becomes_a_product_gain_only_through_the_cadence.md) — 1,56× virou 1,10×; e razão não se transporta entre cenas
+- [Instrumento MUDO lê-se como resultado](feedback_a_silenced_instrument_reads_as_a_result.md) — zero ≠ não-medido; gateie a presença de cada balde
 - [Gates compostos verdes escondem conector não-provado](feedback_green_composed_gates_can_hide_an_unproven_connector.md) — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra

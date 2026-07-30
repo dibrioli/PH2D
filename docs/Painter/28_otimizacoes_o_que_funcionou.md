@@ -3005,3 +3005,104 @@ a comparação não-vazia — e com ela a mesma mutação sangra **quatro** gate
 **Aberto:** o passo segue **work-limited**, num número menor. Os 60% que sobram são
 os quatro sequenciais, e eles **não têm caminho de CPU** — a próxima alavanca é a
 **GPU**, que quebra o port 1:1 e o fingerprint pinado, e exige ADR próprio.
+
+## §5.40 — A CADÊNCIA: por que o 1,56× do §5.39 chegou ao produto como 1,10×, e por que a CPU acabou
+
+O smoke do Enio veio com a taxa da água **inalterada** — 29-38 composites por janela
+de 2 s, contra os 37-38 de antes do rayon. Não era o build dele, e a wave não estava
+errada: **o número que eu anunciei era da minha fixture.**
+
+### O instrumento estava MUDO, e foi ele que atrasou a resposta
+
+O log do produto imprimia `agua: sim media 0.00ms x0`. Ao mover a sim para fora da
+thread do frame (§5.31-§5.38), ninguém mais chamou o `note_step` — quem dá o passo é
+o worker. Aquela linha lê-se como *"a simulação não custa nada"* e significava
+*"ninguém mede a simulação"*, **sobre exatamente o número que decide se a água lenta
+é trabalho ou agendamento** (duas curas opostas). *Um instrumento silencioso é pior
+que um ausente: ele TRANQUILIZA.*
+
+Agora o worker reporta o COMPUTE por passo mais três baldes que **particionam** a
+janela dele — **busy** (dentro de `step_stage`) · **away** (o motor está com o
+frame) · **sleep** (o ritmo de 40 Hz da SPEC). Uma leitura, três mundos:
+
+```text
+  poca do produto (3 tracos, 4096², 1,61 M celulas vivas)
+    busy 79,4%   away 19,3%   sleep 1,4%   ->  13,0 Hz, 62,05 ms/passo
+  um traco (a agua SECA na cauda da janela — nao e regime de taxa)
+    busy 59,4%   away 21,5%   sleep 18,4%  ->  26,3 Hz, 22,96 ms/passo
+```
+
+### A CADÊNCIA, que não estava no meu modelo
+
+O `sim_step_stage` **não roda todo passe em todo passo**. Amortizando a decomposição
+por-passe da poça do produto pela cadência real:
+
+| passe | custo cheio | cadência | por passo | % |
+|---|---|---|---|---|
+| **advect** | 26,24 ms | todo passo | **26,24** | 42,3 |
+| **drying_pass** | 48,25 ms | ÷3 (`dry_every`) | **16,08** | 25,9 |
+| **build_flow_field** | 61,76 ms | ÷4 | **15,44** | 24,9 |
+| rebuild_active_region | 5,04 ms | ÷2 | 2,52 | 4,1 |
+| smooth_velocity | 1,23 ms | ¾ (o lugar do flow) | 0,92 | 1,5 |
+| project | 1,85 ms | ÷3 | 0,62 | 1,0 |
+| apply_boundaries | 0,21 ms | todo passo | 0,21 | 0,3 |
+| **MODELO** | | | **62,03** | |
+| **MEDIDO pelo worker** | | | **62,05** | |
+
+**0,03 ms de erro** — e o modelo diz que os três passes do §5.39 somam **4,06 ms de
+62 = 6,5% do passo**, não os ~46% que a soma-sem-cadência sugeria. Seriais custariam
+10,3 ⇒ a wave corta **6,2 ms**, que é o **1,10×** que o produto mostra (medido:
+12,5 → 14,0 Hz).
+
+⚠️ **A lei:** *um ganho por-passe só vira ganho de produto depois de passar pela
+CADÊNCIA, e uma razão medida numa fixture não se transporta para outra cujo mix
+por-passo é diferente.* A `measure_pass_cost::scene_big` dirige o `Engine` direto e
+custa 10,34 ms/passo; a `heavy_puddle`, que dirige o `on_canvas_pointer` — o caminho
+do artista —, custa **62,05**. Seis vezes. **Quando o número vira decisão de
+produto, ele tem de sair da porta do produto.**
+
+### A MESMA lição, segunda vez na mesma sessão
+
+Eu inferi um *"imposto de células secas de 35-42%"* da razão diagonal÷horizontal do
+`measure_pass_cost` (1,80× / 1,80× / 2,04× com só +18% de células ativas) e ia abrir
+uma wave em cima disso. Modelando `custo = a·janela + b·ativas` sobre as **duas**
+medições: `a = 0,16 ns/célula-de-janela`, `b = 15,5 ns/célula-ATIVA`. Na poça do
+produto (8,42 M de janela, 1,61 M ativas) o imposto das secas é **1,33 de 26,24 ms =
+5%**. As cenas da razão têm ~110k ativas; a do produto tem **1,61 M**, e ali quem
+manda é o trabalho vivo. *A razão estava certa e a extrapolação, não.*
+
+### E é aqui que a CPU acaba, com o número do piso ao lado
+
+`b = 15,5 ns por célula ativa` contra os **16 ns/visita-de-célula-passe** que o
+ADR-0134 declara como *"o teto escalar serial desta física"*. **Não há folga.** Os
+93% do passo são `advect` (42%), `drying_pass` (26%) e `build_flow_field` (25%) — os
+três recusados pelo ADR-0145 §2, cada um com o mecanismo escrito, e o `advect`
+SUBTRAI nos quatro cantos-fonte de linhas vizinhas: nenhuma reordenação disso é
+byte-idêntica.
+
+**O que resta de CPU está medido e NÃO construído:** a metade do
+`wetpaint_composite` que **não toca o motor** (o *straight-alpha over* de `pigment`
+sobre `base`, mais os gates) roda com o engine na mão e por isso entra no `away`;
+liberá-lo antes dela vale ~**1,06×** na taxa — abaixo do que o artista distingue.
+
+⇒ **A próxima alavanca é a GPU**, e ela quebra o port 1:1 e o fingerprint pinado que
+o ADR-0134 escolheu: ADR próprio + ordem do Enio, a mesma classe da palavra
+*"rayon"*.
+
+### Gates
+
+**`the_worker_reports_what_a_step_costs`** — o instrumento não pode emudecer de
+novo: passo reportado (`n > 0`, soma > 0) + `busy > 0` + `away > 0`. **3 mutações, 3
+sangram**, uma por balde. ⚠️ O gate nasceu VERMELHO no `away` por um motivo que é o
+próprio contrato: **ele é medido do `send` até o `recv` do worker VOLTAR**, então a
+grandeza só existe quando a viagem FECHA — a pausa de 30 ms no fim do gate é isso, e
+não folga de conveniência. ⚠️ E ele é o único teste não-`#[ignore]` que consome a
+janela global; um segundo leitor zeraria a dele e o verde viraria sorte.
+
+Sondas: `measure_what_the_off_thread_sim_buys` (a partição + Hz + ms/passo) e
+**`measure_what_a_step_of_the_products_puddle_is_made_of`** (a decomposição na poça
+que o PRODUTO constrói). ⚠️ A 1ª versão da segunda tirou o snapshot logo após o
+pen-up, onde a máscara `active` está **VAZIA**, e todo passe gated em `active[i]==0`
+fazia early-out em toda célula: `project` mediu 0,88 ms contra 3,48, e a soma casava
+com os 62 ms do worker **por coincidência** — a mesma armadilha do §5.13. O worker
+roda o rebuild como 1º estágio; a fixture tem de fazer o mesmo.

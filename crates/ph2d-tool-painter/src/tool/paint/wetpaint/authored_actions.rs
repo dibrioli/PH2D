@@ -32,8 +32,12 @@ impl PainterTool {
         // quantos pixels ele fala com ele.
         let ratio = grid_map::clamp_ratio(self.paint.wetpaint.grid_ratio);
         let (gw, gh) = grid_map::grid_dims(w as usize, h as usize, ratio);
+        // E a grade de FLUXO é função da fina e da SEGUNDA razão: a velocidade
+        // e a pressão ficam `flow` vezes mais grossas que o pigmento.
+        let flow =
+            ph2d_wet_paint::flow::clamp_ratio(usize::from(self.paint.wetpaint.flow_ratio.max(1)));
         self.paint.wetpaint.session = Some(WetSession {
-            engine: EngineSlot::new_here(Engine::new(gw, gh)),
+            engine: EngineSlot::new_here(Engine::with_flow_ratio(gw, gh, flow)),
             ratio,
             grid: (gw, gh),
             worker: None,

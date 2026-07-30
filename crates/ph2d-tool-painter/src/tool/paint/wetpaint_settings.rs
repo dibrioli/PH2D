@@ -269,6 +269,25 @@ impl PainterTool {
         self.wetpaint_end_session();
     }
 
+    /// **A razão da grade de FLUXO** — quantas células de FLUIDO medem uma
+    /// célula de velocidade/pressão (plano 30).
+    ///
+    /// Irmã exata do [`Self::set_wet_grid_ratio`], e pelo mesmo motivo: a grade
+    /// tem dimensão, uma sessão viva já a tem congelada, e reamostrar quatro
+    /// planos de `f32` inventaria velocidade que o solver nunca produziu.
+    /// Encerrar É o bake — a tinta que se vê está no `canvas_rgba`.
+    ///
+    /// Sem mudança = **sem encerramento** (o guard que torna seguro o chip
+    /// numérico re-emitir o mesmo valor a cada frame de arrasto).
+    pub fn set_wet_flow_ratio(&mut self, v: f64) {
+        let want = ph2d_wet_paint::flow::clamp_ratio(v.round().clamp(0.0, 255.0) as usize) as u8;
+        if self.paint.wetpaint.flow_ratio == want {
+            return;
+        }
+        self.paint.wetpaint.flow_ratio = want;
+        self.wetpaint_end_session();
+    }
+
     /// Route one W3/tilt `SetValue` to its clamped field. Knob ranges are
     /// the engine's own (`KNOB_DEFS`); the two engine sliders are `0..1`.
     fn set_wet_knob_value(&mut self, id: ph2d_a11y::NodeId, v: f64) -> bool {
@@ -279,6 +298,10 @@ impl PainterTool {
         // de `self` inteiro.
         if id == core_ids::PAINTER_WETPAINT_GRID {
             self.set_wet_grid_ratio(v);
+            return true;
+        }
+        if id == core_ids::PAINTER_WETPAINT_FLOW {
+            self.set_wet_flow_ratio(v);
             return true;
         }
         let w = &mut self.paint.wetpaint;

@@ -9,6 +9,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
+use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
@@ -357,4 +358,150 @@ fn the_fluid_grid_row_is_alive_under_the_mouse() {
         "clicar a row da grade nao produziu evento nenhum"
     );
     let _ = st;
+}
+
+// ── Plano 30 — a SEGUNDA razão (a grade de FLUXO) e o readout derivado. ──
+
+/// O `Flow Grid` fica **logo abaixo** do `Grid Size` e **acima** dos tools: os
+/// dois números de resolução são um GRUPO, e separá-los faria o artista
+/// encontrar um sem o outro.
+///
+/// Mutação: mover a row para depois do `seg_row` das tools quebra a ordem e
+/// este gate nomeia qual chip ela passou.
+#[test]
+fn the_flow_grid_row_sits_right_under_the_fluid_grid_row() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    let rects = painted(&wet);
+    let find = |id: NodeId| {
+        rects
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
+    };
+    let grid = find(core_ids::PAINTER_WETPAINT_GRID).expect("a row do Grid Size nao e pintada");
+    let flow = find(core_ids::PAINTER_WETPAINT_FLOW)
+        .expect("a row do Flow Grid nao e pintada — o slider nao existe na tela");
+    assert!(
+        grid.y < flow.y,
+        "o Flow Grid (y={:.1}) tem de vir ABAIXO do Grid Size (y={:.1})",
+        flow.y,
+        grid.y
+    );
+    for (i, id) in core_ids::PAINTER_WETPAINT_TOOL_IDS.iter().enumerate() {
+        let tool = find(*id).unwrap_or_else(|| panic!("o chip de tool {i} nao e pintado"));
+        assert!(
+            flow.y < tool.y,
+            "o Flow Grid (y={:.1}) tem de vir ACIMA do chip de tool {i} (y={:.1})",
+            flow.y,
+            tool.y
+        );
+    }
+}
+
+/// A row do `Flow Grid` está **viva sob o mouse** — pintada, registrada E
+/// focável, que são três coisas e não uma (a lição das 36 células da matriz de
+/// colisão da física, que nasceram mortas com o gate verde porque ele mandava
+/// `WidgetEvent` sintético em vez de clicar).
+#[test]
+fn the_flow_grid_row_is_alive_under_the_mouse() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    set_current_brush(Some(wet.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let r = rects
+        .iter()
+        .find(|(w, _)| *w == core_ids::PAINTER_WETPAINT_FLOW)
+        .map(|(_, r)| *r)
+        .expect("a row do Flow Grid nao e pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert_eq!(
+        host.hit_at(cx, cy),
+        Some(core_ids::PAINTER_WETPAINT_FLOW),
+        "o retangulo do Flow Grid nao responde ao ponteiro — pintado mas morto"
+    );
+    assert!(
+        !host.click_at(cx, cy).is_empty(),
+        "clicar a row do Flow Grid nao produziu evento nenhum"
+    );
+    let _ = st;
+}
+
+/// **O readout diz a verdade** — e ele é o que impede que *Grid 2 + Flow 4* seja
+/// uma grade de fluxo de 512² que ninguém sabe que existe.
+///
+/// ⚠️ O oráculo é o TOOL, não uma aritmética escrita aqui: as dimensões são
+/// derivadas pelas MESMAS portas que o motor usa, e recomputá-las no gate
+/// tornaria o gate um espelho do bug em vez de um oráculo dele.
+#[test]
+fn the_resolution_readout_is_derived_from_both_ratios() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    wet.set_source(vec![255u8; 2048 * 1024 * 4], 2048, 1024);
+    // Sem as duas razões, o par tem de ser a própria tela.
+    let b = wet.brush_settings();
+    assert_eq!(
+        b.wet_fluid_dims,
+        (2048, 1024),
+        "razoes 1: o fluido e a tela"
+    );
+    assert_eq!(
+        b.wet_flow_dims,
+        (2048, 1024),
+        "razoes 1: o fluxo e o fluido"
+    );
+    wet.set_wet_grid_ratio(2.0);
+    wet.set_wet_flow_ratio(4.0);
+    let b = wet.brush_settings();
+    assert_eq!(b.wet_fluid_dims, (1024, 512), "Grid 2 divide a TELA");
+    assert_eq!(
+        b.wet_flow_dims,
+        (256, 128),
+        "Flow 4 divide o FLUIDO, nao a tela"
+    );
+}
+
+/// **O clique do `Flow Grid` CHEGA AO BARRAMENTO** — a terceira das quatro
+/// condições, e ela **não** é implicada pelas outras duas.
+///
+/// ⚠️ Este gate nasceu de uma mutação SOBREVIVENTE: tirar o id do array
+/// `PAINTER_WETPAINT_FIELDS` deixa a row pintada, hit-registrada e clicável — o
+/// gate de "vivo sob o mouse" fica **VERDE** — e o `ValueChanged` morre no
+/// painel sem virar `SetValue`. *Pintado, vivo e mudo* é um estado que só este
+/// gate distingue.
+///
+/// ⚠️ **E o gate que parecia cobri-lo tem ORÁCULO AUTO-REFERENTE:** o
+/// `the_knob_rows_are_offered_only_while_armed` ITERA
+/// `PAINTER_WETPAINT_FIELDS`, então tirar um id do array **encolhe a lista que
+/// o gate percorre** e ele segue verde afirmando menos. Um gate que enumera a
+/// própria coisa sob teste não pode falhar por ela sumir — por isso este aqui
+/// nomeia o id por LITERAL.
+#[test]
+fn the_flow_grid_edit_forwards_through_the_panel() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::EventOutcome;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    set_current_brush(Some(wet.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let id = core_ids::PAINTER_WETPAINT_FLOW;
+    assert_eq!(
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id)),
+        EventOutcome::Consumed,
+        "a edicao do Flow Grid morreu no painel — o braco ValueChanged nao conhece o id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "a edicao do Flow Grid nunca virou SetValue — pintada, viva e MUDA. drained = {actions:?}"
+    );
 }

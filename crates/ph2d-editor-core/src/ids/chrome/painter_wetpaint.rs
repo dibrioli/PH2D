@@ -107,6 +107,22 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 15] = [
 /// encerrar é o bake, então nada é perdido — ver `wetpaint::grid_map`.
 pub const PAINTER_WETPAINT_GRID: NodeId = hash_node_id("painter_brush.wetpaint_grid");
 
+/// **Flow Grid (×)** — quantas células de FLUIDO medem uma célula de FLUXO
+/// (1..=16, default 1). A segunda metade da multi-resolução (plano 30): a
+/// velocidade e a pressão ficam grossas enquanto o pigmento, a água e a
+/// wetness ficam na resolução que o `Grid Size` acima decidiu.
+///
+/// ⚠️ **Dois números, e não um.** Eles respondem perguntas diferentes — *quão
+/// fino é o pigmento?* e *quão grosso é o fluxo?* — e colapsá-los seria a
+/// falha de duas-portas ao contrário: um controle governando dois fatos
+/// independentes. O readout derivado abaixo dos dois é o que os torna
+/// legíveis, porque **um limite que não se vê é um limite que o artista
+/// descobre por acidente**.
+///
+/// ⚠️ Trocar o valor **ENCERRA a sessão de água viva**, exatamente como o
+/// `Grid Size` — encerrar é o bake.
+pub const PAINTER_WETPAINT_FLOW: NodeId = hash_node_id("painter_brush.wetpaint_flow");
+
 /// **Water** — the brush's water load per dab (engine `sliders.water`, `0..1`, boot `1.0`).
 pub const PAINTER_WETPAINT_WATER: NodeId = hash_node_id("painter_brush.wetpaint_water");
 /// **Pigment** — pigment per dab (SPEC §10 gain; knob `pigmentPerDab`, default `600`).
@@ -124,8 +140,9 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 8] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 9] = [
     PAINTER_WETPAINT_GRID,
+    PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,

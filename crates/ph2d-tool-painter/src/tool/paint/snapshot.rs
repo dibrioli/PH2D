@@ -68,6 +68,21 @@ impl PainterTool {
 
     pub fn brush_settings(&self) -> BrushSettings {
         let b = &self.paint.brush;
+        // As duas grades RESOLVIDAS — derivadas AQUI, pelas portas que o motor
+        // usa, porque um readout que faz a própria aritmética mostraria um
+        // tamanho que o solver pode não ter.
+        let (cw, ch) = self.source_size;
+        let (wet_fluid, wet_flow) = if cw == 0 || ch == 0 {
+            ((0, 0), (0, 0))
+        } else {
+            let r = super::wetpaint::grid_map::clamp_ratio(self.paint.wetpaint.grid_ratio);
+            let (gw, gh) = super::wetpaint::grid_map::grid_dims(cw as usize, ch as usize, r);
+            let f = ph2d_wet_paint::flow::clamp_ratio(usize::from(
+                self.paint.wetpaint.flow_ratio.max(1),
+            ));
+            let (fw, fh) = ph2d_wet_paint::flow::flow_dims(gw, gh, f);
+            ((gw as u32, gh as u32), (fw as u32, fh as u32))
+        };
         // Snapshot the Custom curve's control points into the Copy array (panel plots + places handles).
         let mut falloff_points = [FalloffPoint::default(); MAX_FALLOFF_POINTS];
         let pts = b.custom_falloff.points();
@@ -299,6 +314,9 @@ impl PainterTool {
             wet_km_glaze: self.paint.wetpaint.km_glaze,
             wet_tuning_open: self.paint.wetpaint.tuning_open,
             wet_grid_ratio: self.paint.wetpaint.grid_ratio,
+            wet_flow_ratio: self.paint.wetpaint.flow_ratio,
+            wet_fluid_dims: wet_fluid,
+            wet_flow_dims: wet_flow,
             watercolor: b.watercolor,
             watercolor_active: self.watercolor_render_active(),
             watercolor_shape_auto: b.watercolor_shape_auto,

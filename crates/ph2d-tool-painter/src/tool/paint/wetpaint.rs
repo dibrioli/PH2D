@@ -133,6 +133,9 @@ pub(crate) struct WetPaintState {
     /// nova — inventaria água que o solver não produziu, e faria da razão um
     /// parâmetro que altera o passado em vez do futuro.
     pub(super) grid_ratio: u8,
+    /// Quantas células de FLUIDO medem uma célula de FLUXO (plano 30). `1` = a
+    /// grade de fluxo É a fina, que é o motor que sempre shipou.
+    pub(super) flow_ratio: u8,
 }
 
 impl Default for WetPaintState {
@@ -154,6 +157,7 @@ impl Default for WetPaintState {
             km_glaze: false,
             tuning_open: false,
             grid_ratio: grid_map::DEFAULT_RATIO,
+            flow_ratio: 1,
         }
     }
 }
@@ -309,6 +313,10 @@ mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho po
 #[cfg(test)]
 #[path = "wetpaint/grid_ratio_tests.rs"]
 mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
+
+#[cfg(test)]
+#[path = "wetpaint/flow_ratio_tests.rs"]
+mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame

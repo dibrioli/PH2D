@@ -377,6 +377,16 @@ pub struct BrushSettings {
     /// primeiro widget da seção. O custo do solver é linear nas células, então
     /// este é o número que decide a taxa VISUAL da água.
     pub wet_grid_ratio: u8,
+    /// Quantas células de FLUIDO medem uma célula de FLUXO (plano 30, `1..=16`).
+    pub wet_flow_ratio: u8,
+    /// As duas grades RESOLVIDAS, em células: `(fluido, fluxo)`.
+    ///
+    /// ⚠️ Derivadas **no tool, pelas portas que o motor usa** (`grid_map::grid_dims`
+    /// e `flow::flow_dims`), nunca recomputadas no painel: um readout que faz a
+    /// própria aritmética mostra um tamanho que o solver pode não ter. `(0, 0)`
+    /// quando não há canvas.
+    pub wet_fluid_dims: (u32, u32),
+    pub wet_flow_dims: (u32, u32),
 
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).

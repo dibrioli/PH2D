@@ -29,6 +29,10 @@ const GRAVITY_STEP: f64 = 0.0005; // LITERAL-PX-OK: wet-paint Gravity slider ste
 // tool. Não é valor de design: é o domínio do parâmetro.
 const GRID_MIN: f32 = 1.0; // LITERAL-PX-OK: fluid-grid ratio lower bound (grid_map::MIN_RATIO)
 const GRID_MAX: f32 = 30.0; // LITERAL-PX-OK: fluid-grid ratio upper bound (grid_map::MAX_RATIO)
+// A faixa da grade de FLUXO (células de fluido por célula de velocidade) —
+// espelha `ph2d_wet_paint::flow` MIN/MAX_FLOW_RATIO, pelo mesmo motivo.
+const FLOW_MIN: f32 = 1.0; // LITERAL-PX-OK: flow-grid ratio lower bound (flow::MIN_FLOW_RATIO)
+const FLOW_MAX: f32 = 16.0; // LITERAL-PX-OK: flow-grid ratio upper bound (flow::MAX_FLOW_RATIO)
 
 pub(crate) fn paint_wetpaint_section(
     ctx: &mut PaintCtx,
@@ -82,6 +86,26 @@ pub(crate) fn paint_wetpaint_section(
             1.0,
             0,
         );
+        // A SEGUNDA metade da multi-resolução (plano 30): a velocidade e a
+        // pressão ficam `Flow Grid` vezes mais grossas que o pigmento. Dois
+        // números porque são duas perguntas — *quão fino é o pigmento?* e *quão
+        // grosso é o fluxo?* — e um controle só governando os dois seria a
+        // falha de duas-portas ao contrário.
+        y = card_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Flow Grid (x)",
+            core_ids::PAINTER_WETPAINT_FLOW,
+            f32::from(brush.wet_flow_ratio),
+            FLOW_MIN,
+            FLOW_MAX,
+            1.0,
+            0,
+        );
+        y = paint_resolution_readout(ctx, theme, x, content_w, y, brush);
         // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
         // one radio: Erase highlights when the rail's eraser wire is live,
         // everything else mirrors the authored wet tool.
@@ -244,4 +268,42 @@ pub(crate) fn paint_wetpaint_section(
         );
     }
     y
+}
+
+/// **O readout DERIVADO das duas razões** — `fluido 2048² · fluxo 512²`.
+///
+/// ⚠️ Ele não é decoração: sem ele o artista não tem como saber que *Grid 2 +
+/// Flow 4* dá uma grade de fluxo de 512², e a lei desta linha é que **um limite
+/// que não se vê é um limite que o artista descobre por acidente** (a duração
+/// autorada da timeline, o teto do impasto). É derivado das MESMAS portas que o
+/// motor usa (`grid_dims` e `flow_dims`) — uma segunda aritmética aqui
+/// mostraria um tamanho que o solver não tem.
+fn paint_resolution_readout(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    use ph2d_editor_core::paint::{paint_text, resolve};
+    use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+    let ((gw, gh), (fw, fh)) = (brush.wet_fluid_dims, brush.wet_flow_dims);
+    let text = if gw == 0 || gh == 0 {
+        "no canvas".to_string()
+    } else {
+        format!("fluido {gw}x{gh} - fluxo {fw}x{fh}")
+    };
+    let font = TypeToken::Sm.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        &text,
+        x + Spacing::Sm.px(),
+        y,
+        font,
+        content_w - 2.0 * Spacing::Sm.px(),
+        resolve(ColorToken::Text2, theme),
+    );
+    y + font + Spacing::Xs.px()
 }

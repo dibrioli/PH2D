@@ -202,6 +202,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // A grade de sempre (1 px por célula) — o fallback espelha o default do
     // tool, não o valor rápido.
     wet_grid_ratio: 1,
+    wet_flow_ratio: 1,
+    wet_fluid_dims: (0, 0),
+    wet_flow_dims: (0, 0),
     watercolor: false,
     watercolor_active: false,
     watercolor_shape_auto: true,

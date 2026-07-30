@@ -89,6 +89,13 @@ pub(super) fn apply_key(
                 },
             });
         }
+        // Ctrl+A — select every node at THIS level (the snapshot is level-scoped). A backdrop is
+        // a separate subject (see `select_on_press`), so it clears; an empty graph selects
+        // nothing, idempotent against the double key dispatch.
+        GraphKey::SelectAll => {
+            state.selected = snap.nodes.iter().map(|n| n.id).collect();
+            state.selected_backdrop = None;
+        }
         // Space — toggle transport play/pause (the shell owns the transport).
         GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
         _ => {}

@@ -434,6 +434,7 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         KEY_DELETE | KEY_BACKSPACE => GraphKey::Delete,
         KEY_KEY_F if !cmd => GraphKey::Fit,
         KEY_KEY_A if !cmd => GraphKey::Add,
+        KEY_KEY_A if cmd => GraphKey::SelectAll,
         KEY_ESCAPE => GraphKey::Escape,
         KEY_KEY_K if !cmd => GraphKey::Knife,
         KEY_KEY_P if !cmd => GraphKey::Probe,

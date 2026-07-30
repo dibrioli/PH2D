@@ -278,6 +278,7 @@ fn graph_shortcuts_route_when_the_surface_is_focused() {
         (KEY_DELETE, false, GraphKey::Delete),
         (KEY_KEY_F, false, GraphKey::Fit),
         (KEY_KEY_A, false, GraphKey::Add),
+        (KEY_KEY_A, true, GraphKey::SelectAll),
         (KEY_ESCAPE, false, GraphKey::Escape),
         (KEY_KEY_K, false, GraphKey::Knife),
         (KEY_KEY_P, false, GraphKey::Probe),
@@ -317,15 +318,32 @@ fn ctrl_alt_g_is_ungroup_and_plain_ctrl_g_is_group() {
     assert!(store.drain_graph_keys().next().is_none());
 }
 
+/// **Ctrl+A selects all NODES when the graph is focused and no field is being edited, and stays
+/// TEXT select-all when a field is** (doc 63.4). Plain `A` is the add-menu, so the graph's
+/// select-all takes the modifier; and the fast-path only claims Ctrl+A while `focus_id` is empty,
+/// so typing in a param field keeps the standard "select the field's text" — which was this test's
+/// original point (it used to assert Ctrl+A is never a graph verb; now the graph HAS a use for it,
+/// but only where no field owns the key).
 #[test]
-fn cmd_a_stays_select_all_not_graph_add() {
+fn cmd_a_selects_all_nodes_only_when_no_field_is_focused() {
     let (mut store, _hits) = graph_setup(GraphHitKind::Background);
     store.set_graph_focused(Some(SURFACE));
     let arena = Bump::new();
+
+    // No field focused: Ctrl+A is the graph's select-all.
+    let _ = dispatch_key(&mut store, key_cmd(KEY_KEY_A, true), &arena);
+    assert_eq!(
+        store.drain_graph_keys().collect::<Vec<_>>(),
+        vec![GraphKey::SelectAll],
+        "Ctrl+A with the graph focused and no field active selects all nodes"
+    );
+
+    // A field focused: Ctrl+A falls through to the text select-all — no graph key.
+    store.set_focus(Some(NodeId(1)));
     let _ = dispatch_key(&mut store, key_cmd(KEY_KEY_A, true), &arena);
     assert!(
         store.drain_graph_keys().next().is_none(),
-        "Cmd/Ctrl+A must fall through to select-all, not become graph Add"
+        "Ctrl+A while editing a field stays text select-all, not the graph's"
     );
 }
 

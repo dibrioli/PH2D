@@ -199,6 +199,10 @@ pub enum GraphKey {
     /// **F2 — rename the selected card, group or backdrop** (doc 61). The one key every
     /// editor that has the verb at all binds it to (Windows, Blender, Houdini, Nuke).
     Rename,
+    /// **Ctrl/Cmd+A — select every node at the current level.** The universal select-all, so a
+    /// move / delete / group / duplicate can act on the whole graph without a rubber band around
+    /// it. `A` alone opens the add-menu (Houdini / Nuke), so this verb takes the modifier.
+    SelectAll,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

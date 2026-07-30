@@ -408,3 +408,17 @@ fn the_node_body_drop_skips_a_collapsed_card_and_its_own_source() {
         "a collapsed card is left to its port menu, not the body drop"
     );
 }
+
+/// **Ctrl+A selects every node at the current level** — the universal select-all, and a backdrop
+/// (a separate subject) is dropped from the selection. FALSIFIED if the verb is inert: the
+/// selection stays empty and the stray backdrop survives.
+#[test]
+fn select_all_selects_every_node_at_this_level() {
+    let mut st = MotionGraphPanelState::default();
+    st.selected_backdrop = Some(9); // a stray backdrop selection, to prove it clears
+    apply_key(&mut st, GraphKey::SelectAll, RECT, &two_node_snapshot());
+    let mut got: Vec<u32> = st.selected.iter().copied().collect();
+    got.sort_unstable();
+    assert_eq!(got, vec![1, 2], "every node at this level is selected");
+    assert_eq!(st.selected_backdrop, None, "a backdrop is a separate subject, so it clears");
+}

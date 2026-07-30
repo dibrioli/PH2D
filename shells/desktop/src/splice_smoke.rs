@@ -32,6 +32,10 @@
 //! **grid** até o CORPO dele: conecta. Um card colapsado ainda vai pelo menu de portas, e soltar no
 //! CORPO do próprio nó-fonte é ignorado (não auto-conecta).
 //!
+//! ⊙ Ctrl+A com o grafo em foco (e nenhum campo de param em edição) SELECIONA TODOS os nós — daí
+//! um Delete / Ctrl+D / Ctrl+G age sobre o grafo inteiro sem precisar de laço. Editando um campo,
+//! Ctrl+A segue selecionando o TEXTO. (`A` sozinho abre o menu de nós.)
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -101,6 +105,8 @@ impl crate::App {
              CORPO: solte um fio no CORPO de um no (nao no socket) -> conecta ao 1o input LIVRE. \
              Como a cadeia esta toda ocupada, adicione um no com input livre (motion.twist) via \
              R-click e arraste um fio do grid ate o corpo dele.\n  \
+             CTRL+A: com o grafo em foco (sem campo em edicao) seleciona TODOS os nos -> Delete / \
+             Ctrl+D / Ctrl+G agem sobre o grafo inteiro. Editando um campo, Ctrl+A seleciona o TEXTO.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

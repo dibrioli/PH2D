@@ -46,7 +46,10 @@ pub const SHAKE: Recipe = Recipe {
     ],
     knobs: &[
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
-        Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
+        // ⚠️ O topo é `AMPLITUDE_M`, não `CANVAS_M`: a excursão de um `wiggle` chega a
+        // **1,96 × amount** no pior seed (medido em 40 objetos), então um topo de 40
+        // mandaria o objeto a 1,57 canvas — um pedaço de slider que não se pode usar.
+        Knob::num("amount", "Amount", 0.3, (0.0, crate::AMPLITUDE_M)),
         // ⚠️ Literal por contrato: o `wiggle` desenrola um `noise` por oitava em tempo de
         // PARSE, então estes dois dimensionam a árvore da expressão e não podem ser
         // dirigidos. Default 1 / 0.5 = os do parser (os do AE).

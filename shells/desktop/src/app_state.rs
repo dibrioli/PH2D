@@ -487,6 +487,8 @@ pub(crate) struct App {
     pub(crate) stagger_smoke_done: bool,
     pub(crate) buffer_smoke_done: bool,
     pub(crate) extrap_smoke_done: bool,
+    /// A cena de um GRUPO da FASE E já montou (`PH2D_EXPR_GROUP_SMOKE`).
+    pub(crate) expr_group_smoke_done: bool,
     pub(crate) expr_smoke_done: bool,
     pub(crate) expr_blend_smoke_done: bool,
     /// A cena do C4 (ADR-0146) ja montou? Uma vez por processo.

@@ -74,6 +74,7 @@ mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
 mod envelope_smoke;
 mod expr_blend_smoke;
+mod expr_group_smoke;
 mod expr_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
@@ -490,6 +491,7 @@ impl App {
             stagger_smoke_done: false,
             buffer_smoke_done: false,
             extrap_smoke_done: false,
+            expr_group_smoke_done: false,
             expr_smoke_done: false,
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,

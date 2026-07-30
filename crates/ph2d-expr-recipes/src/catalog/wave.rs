@@ -32,7 +32,9 @@ pub const SWAY: Recipe = Recipe {
     ],
     knobs: &[
         Knob::num("speed", "Speed", 3.0, (0.05, 40.0)),
-        Knob::num("amount", "Amount", 0.5, (0.0, 40.0)),
+        // ⚠️ Uma senoide de amplitude `A` percorre `2A`: com o topo em `CANVAS_M` o
+        // objeto ia a **1,95 canvas**. O teto de uma AMPLITUDE é metade do canvas.
+        Knob::num("amount", "Amount", 0.5, (0.0, crate::AMPLITUDE_M)),
         Knob::num("phase", "Phase", 0.0, (-10.0, 10.0)),
     ],
     kind: RowKind::Value,

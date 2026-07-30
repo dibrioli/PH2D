@@ -89,6 +89,25 @@
 /// where the artist's thumb stops, not where the model does.
 pub const CANVAS_M: f32 = 40.0; // LITERAL-PX-OK: 4096 px / 100 px-por-metro, arredondado
 
+/// The widest an **amplitude** knob may be dragged — half [`CANVAS_M`].
+///
+/// ⚠️ **`CANVAS_M` é o teto de um VALOR, e usá-lo como teto de uma AMPLITUDE foi o erro
+/// que o G1 mediu** (FASE E, §7.2 do plano 12): uma onda simétrica de amplitude `A`
+/// percorre `2A`, então `Amount = 40` no `Sway` move o objeto **80 m = 1,95 canvas** — o
+/// topo do slider é uma região que, por construção, não se pode usar.
+///
+/// O número é a **EXCURSÃO no pior caso ≤ um canvas**, e ele cai de duas derivações
+/// independentes:
+///
+/// * uma senoide de amplitude `A` percorre `2A` ⇒ `A = canvas/2`;
+/// * ⚠️ a excursão de um `wiggle(speed, A)` **depende do SEED** — medida sobre quarenta
+///   objetos ela vai de **0,49·A a 1,96·A** (um seed é uma amostra, e a primeira medição,
+///   feita com um só, dizia 1,048·A e subestimava em 53%) ⇒ `A ≤ canvas/1,96 = 20,9`.
+///
+/// Vinte, na mesma arredondação legível do `CANVAS_M`. Gate:
+/// `no_source_range_ejects_the_object`.
+pub const AMPLITUDE_M: f32 = 20.0; // LITERAL-PX-OK: metade do canvas, ver a derivacao acima
+
 mod catalog;
 mod emit;
 mod knob;

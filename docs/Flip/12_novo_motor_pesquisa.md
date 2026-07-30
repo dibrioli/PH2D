@@ -1657,12 +1657,63 @@ regressão do `SUB=2`. Ele é **pré-existente em `SUB=4`** — é a divergênci
 (o árbitro do próprio gate diz que ali o motor novo é que está mais perto da área verdadeira). *Uma
 linha de saída não é um delta; delta pede as duas colunas.*
 
-### 21.4 O que resta, e de quem é a decisão
+### 21.4 ⭐ A ABLAÇÃO: onde os 2,7 ms de fato moram
 
-O percurso não tem alavanca barata: não é o ladrilho, não é a lista, não é largura de banda, e o
-`SUB` é piso. O que sobraria é **não visitar pixel que traço nenhum alcança** — e o raster ganha
-exatamente por isso (um fragmento só existe onde um quad cobre). Isso é uma wave de arquitetura
-(dispatch por ladrilho não-vazio / lista por-pixel), não uma constante a afinar.
+Antes de projetar wave, **ablação por dentro do kernel** — as três âncoras do `walk.wgsl`, uma por
+corrida (baseline 3,06 ms, 200 traços, ladrilho 16, 1080p):
+
+| ablação | percurso | Δ |
+|---|---|---|
+| baseline | 3,06 ms | — |
+| `f_of` devolve `w·F_MAX` (mata o **`log`**) | 2,97 | **−3%** |
+| `d_tau_of` devolve constante (mata `dab_weight` + `log`) | 2,20 | −28% |
+| `n = 1` (mata o **LAÇO de quadratura**) | **0,72** | **−76%** |
+
+⛔ **O `log` é 3% — tabelá-lo é INÚTIL, e isso mata a transferência de um precedente forte.** O doc 24
+do Painter tabelou a transferência sRGB e ganhou 20-34×, mas lá o `pow` era **libm na CPU a ~24 ns**;
+aqui `log` é **instrução de SFU no device**. *Um precedente é sobre um mecanismo, não sobre um nome
+de função.*
+
+**A conta é o NÚMERO DE AMOSTRAS**, e a aritmética o confirma: `pitch = 0,2r` e `ds = pitch/SUB =
+0,05r`, com janela de ~`2r` ⇒ **~40 amostras por (pixel, segmento)**. `SUB` é piso (§21.3), então a
+única alavanca é **não amostrar**.
+
+### 21.5 A wave que sobra: a ANTIDERIVADA (não a LUT do `log`)
+
+Para `r` constante, a contribuição de um trecho de segmento é
+
+```text
+  ∫ f(dn) ds / pitch,   dn = √(y² + u²)   (y = distância perpendicular ÷ r, u = arco ÷ r)
+```
+
+e a substituição `s = r·u` **tira o `r` de dentro**: o integrando passa a depender só de `(hardness,
+y, u)`. Logo existe uma **antiderivada universal** `H(hardness, y, u)` e o laço inteiro colapsa em
+**duas leituras e uma subtração** — `(r/pitch)·[H(h, y, u₁) − H(h, y, u₀)]`. Isso é exato, não uma
+aproximação do perfil: o que a tabela discretiza é o *acumulado*, e o `SUB` sai de cena.
+
+⚠️ **Não confundir com a "reta fictícia" que o §1 acusa no motor que shipa.** Ele integra sobre uma
+reta **INFINITA** (por isso erra +140 na ponta convexa e não vê cruzamento); aqui os limites `u₀, u₁`
+são os do **segmento que existe**, e a soma sobre os segmentos do caminho continua sendo a soma da §5.
+
+**Dois riscos, os dois a MEDIR antes de construir:**
+
+1. **`r` varia ao longo de um segmento** (traço de pressão), e a substituição assumiu `r` constante.
+   O `resample_smooth` densifica a `0,4 × largura` ⇒ segmentos de ~`0,8r`, então a variação dentro de
+   um segmento é pequena e o erro é de 2ª ordem — **"é pequeno" não é medição.**
+2. **O airbrush tem OUTRA medida** (`dτ = k·step/2r`, densidade uniforme no disco — §19.1), então ele
+   quer a própria antiderivada, que é trivial (`k·(u₁−u₀)/2`) mas é uma 2ª tabela ou um 2º ramo.
+
+Tamanho: `[0,1]³` a 64³ = 262 k entradas × 4 B = **1 MB**, uma leitura trilinear. A precisão pede o
+protocolo do doc 24 (medir a deriva, desconfiar de mal-condicionamento), e aqui `H` é monótona e lisa
+em `u` — bem-condicionada por construção.
+
+### 21.6 O que NÃO é alavanca (medido, para ninguém re-derivar)
+
+- **o ladrilho** (§21.3: o percurso é insensível num fator 8 de área);
+- **o piso de dispatch** (1 traço = 0,08 ms de 2,73 ⇒ pular ladrilho vazio compra ~nada);
+- **o `log`** (3%);
+- **`SUB = 2`** (−30% e reprova o gate de controle);
+- **portar o binner** (ele é 26% do total, não 45% — o §14 estava sobre uma amostra ruidosa).
 
 **A decisão de DEFAULT é do Enio, e agora ela tem os dois números:** 14,8× de custo de device a 200
 traços, contra as três divergências do §20 em que o percurso é o mais correto e a família de defeitos

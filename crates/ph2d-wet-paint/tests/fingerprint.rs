@@ -49,9 +49,14 @@ fn fingerprint(e: &Engine) -> u64 {
 }
 
 fn scripted_session(wet_lift: Option<f64>) -> Engine {
+    scripted_session_with(wet_lift, true)
+}
+
+fn scripted_session_with(wet_lift: Option<f64>, gather: bool) -> Engine {
     // A session that exercises deposit + trail + drying + flow + advect +
     // projection + a wet pass + drip under tilt.
     let mut e = Engine::new(300, 200);
+    e.sim.order_invariant = gather;
     if let Some(v) = wet_lift {
         e.set_knob(ph2d_wet_paint::tuning::Knob::WetLift, v);
     }
@@ -72,14 +77,35 @@ fn scripted_session_fingerprint_is_stable() {
     assert_eq!(fp, PINNED, "session fingerprint drifted: {fp:#018x}");
 }
 
+/// **A rota Gauss-Seidel reproduz o pino DELA, ao byte** (doc 28 §5.45).
+///
+/// ⚠️ **Este é o gate que torna a troca de modelo AUDITÁVEL em vez de um pino
+/// que se moveu.** O `order_invariant = false` devolve o
+/// [`ph2d_wet_paint::solver::advect`] serial, e a sessão inteira volta a
+/// bater o valor que estava pinado antes da wave — logo **nada além do
+/// advect mudou**: nem a secagem, nem o fluxo, nem a projeção, nem o
+/// depósito, nem o `lift_settled`. Sem ele, um pino novo é indistinguível de
+/// uma regressão silenciosa em qualquer outro passe.
+#[test]
+fn the_gauss_seidel_route_still_reproduces_its_own_pin() {
+    let fp = fingerprint(&scripted_session_with(None, false));
+    assert_eq!(
+        fp, PINNED_GAUSS_SEIDEL,
+        "a rota serial mudou — o gather nao era a unica diferenca: {fp:#018x}"
+    );
+}
+
 /// Doc 23 §5 gate: `wetLift = 0` IS the pre-doc-23 model, to the byte — the
 /// same scripted session reproduces the pin that stood before the active
 /// lift landed. This is also the proof that extracting `lift_settled` out
 /// of the drying pass was pure code motion (the passive re-wet runs in this
 /// session and hashes identically).
+///
+/// ⚠️ Roda na rota **serial**: o pino que ele afirma é anterior ao gather, e
+/// compará-lo com o produto de hoje mediria as DUAS mudanças de uma vez.
 #[test]
 fn wet_lift_zero_is_the_old_model_to_the_byte() {
-    let fp = fingerprint(&scripted_session(Some(0.0)));
+    let fp = fingerprint(&scripted_session_with(Some(0.0), false));
     assert_eq!(
         fp, PINNED_PRE_DOC23,
         "wetLift=0 must reproduce the pre-doc-23 session: {fp:#018x}"
@@ -101,5 +127,27 @@ fn wet_lift_zero_is_the_old_model_to_the_byte() {
 //                        first stroke dried. wetLift=0 still reproduces
 //                        the previous pin (gate above): the drift is the
 //                        feature, not an accident.
-const PINNED: u64 = 0x99d8_891b_57a7_2abe;
+// 0x8dc7_134c_39c9_f84c  doc 28 §5.45: o `advect` virou GATHER (Jacobi). É
+//                        uma troca de MODELO, não uma reescrita — e o que a
+//                        justifica não é velocidade: o Gauss-Seidel QUEBRA a
+//                        simetria da cena (medido em
+//                        `tests/solver_symmetry.rs`: 1189 unidades de massa
+//                        de viés esquerda→direita numa folha espelhada, contra
+//                        0,000000 do gather), porque ele lê o canto que a
+//                        célula anterior já drenou. O pino ANTIGO segue
+//                        executável na rota `order_invariant = false` (gate
+//                        acima), e é isso que prova que o advect foi a ÚNICA
+//                        coisa que mudou.
+// 0x5b699a43f65b6c34     doc 28 §5.45, a outra metade: a SECAGEM também. O
+//                        fator de borda lia a vizinhança 3×3 de `susp` que o
+//                        próprio passe reescreve — vizinhos JÁ secos à
+//                        esquerda, ainda molhados à direita —, e agora ele é
+//                        materializado num pré-passe. O gate da rota serial
+//                        continua verde COM a extração do `dry_cell`, e é
+//                        isso que prova que a fatoração do kernel foi pure
+//                        code motion.
+const PINNED: u64 = 0x5b69_9a43_f65b_6c34;
+
+/// O pino da rota serial — o `PINNED` que valia antes da §5.45.
+const PINNED_GAUSS_SEIDEL: u64 = 0x99d8_891b_57a7_2abe;
 const PINNED_PRE_DOC23: u64 = 0x6097_a692_a23d_bd5f;

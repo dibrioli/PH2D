@@ -19,6 +19,10 @@ use crate::colorops::ColorMix;
 use crate::opacity::alpha_of_mass;
 use crate::paper::PaperPreset;
 
+#[path = "grid/scratch.rs"]
+mod scratch;
+pub use scratch::{AdvCell, SolverScratch};
+
 pub const DEFAULT_WIDTH: usize = 900;
 pub const DEFAULT_HEIGHT: usize = 450;
 
@@ -108,6 +112,9 @@ pub struct Grid {
     /// diverge em silêncio). Serve ao gate diferencial (mesma sessão, os dois
     /// modos, fingerprint idêntico) e a bissecar em campo.
     pub spans_enabled: bool,
+    /// Rascunho do [`crate::solver::advect_jacobi`] — derivado, fora do
+    /// histórico, alocado no primeiro passo. Ver [`SolverScratch`].
+    pub scratch: SolverScratch,
     // Paper identity (re-baked by paper.rs; part of history snapshots).
     pub paper_preset: PaperPreset,
     pub paper_sheet: u32,
@@ -213,6 +220,7 @@ impl Grid {
             live_lo: vec![i32::MAX; rows],
             live_hi: vec![i32::MIN; rows],
             spans_enabled: true,
+            scratch: SolverScratch::default(),
             paper_preset: PaperPreset::Cold,
             paper_sheet: 0,
         }

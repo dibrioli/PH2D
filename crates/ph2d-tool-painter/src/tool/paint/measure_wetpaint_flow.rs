@@ -184,3 +184,68 @@ fn measure_what_the_flow_ratio_buys_in_the_product() {
         a_amort / b_amort.max(1e-9)
     );
 }
+
+/// **O QUE O GATHER COMPRA NO PASSO INTEIRO** (doc 28 §5.45) — o A/B no MESMO
+/// processo e na MESMA poça, que é a lição do ADR-0145 §4: comparar duas
+/// corridas atribui deriva de máquina ao ganho.
+///
+/// ⚠️ O ciclo de 12 passos, pelo mesmo motivo da sonda acima: o `advect` roda
+/// em TODO passo, mas o que decide a taxa é a soma amortizada pela cadência.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_the_gather_advect_buys_in_the_product() {
+    const REPS: usize = 7;
+    const CYCLE: usize = 12;
+    println!("\n  O QUE O GATHER COMPRA NO PASSO (mediana de {REPS} ciclos de {CYCLE})\n");
+    println!(
+        "    {:>6}  {:>16} {:>16}  {:>7}",
+        "flow", "Gauss-Seidel", "gather (par)", "ganho"
+    );
+    for flow in [1u8, 4] {
+        const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+        let mut t = wetted(4096, 100.0);
+        t.set_wet_grid_ratio(1.0);
+        t.set_wet_flow_ratio(f64::from(flow));
+        for lane in 0..3 {
+            let off = 260.0 * lane as f32;
+            let (x0, y0) = (200.0 + off, 200.0);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            for k in 1..=90u32 {
+                let d = 40.0 * k as f32;
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+            }
+            let d = 40.0 * 90.0;
+            t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+        }
+        t.wet_bring_home();
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let e = &mut *sess.engine;
+        // A fixture envenenada da §5.40: sem isto a mascara `active` esta vazia.
+        ph2d_wet_paint::solver::rebuild_active_region(e.active_grid_mut());
+        let snap = ph2d_wet_paint::grid::snapshot_grid(e.active_grid());
+        let mut med = |gather: bool| -> f64 {
+            let mut v = Vec::with_capacity(REPS);
+            for _ in 0..REPS {
+                ph2d_wet_paint::grid::restore_grid(e.active_grid_mut(), &snap);
+                e.sim.frame = 0;
+                e.sim.dry_every = 6;
+                e.sim.order_invariant = gather;
+                let t0 = Instant::now();
+                for _ in 0..CYCLE {
+                    e.step_simulation();
+                }
+                v.push(t0.elapsed().as_secs_f64() * 1e3 / CYCLE as f64);
+            }
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        let (gs, ga) = (med(false), med(true));
+        println!(
+            "    {flow:>6}  {gs:>11.3} ms {:>4.1}Hz {ga:>11.3} ms {:>4.1}Hz  {:>6.2}x",
+            1000.0 / gs.max(1e-9),
+            1000.0 / ga.max(1e-9),
+            gs / ga.max(1e-9)
+        );
+    }
+}

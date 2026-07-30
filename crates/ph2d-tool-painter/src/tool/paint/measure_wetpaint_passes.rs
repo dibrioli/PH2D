@@ -86,8 +86,9 @@ fn measure_what_the_drying_pass_visits() {
             continue;
         }
         span += (bx1 - bx0 + 1) as u64;
-        let mut i = bx0 as usize + y as usize * s;
-        for _x in bx0..=bx1 {
+        let base = y as usize * s;
+        for x in bx0 as usize..=bx1 as usize {
+            let i = base + x;
             let (film, susp, sett) = (g.film[i], g.susp[i], g.sett[i]);
             if film > 0.0 || susp > 0.0 {
                 worked += 1;
@@ -104,7 +105,6 @@ fn measure_what_the_drying_pass_visits() {
                     pigment += 1;
                 }
             }
-            i += 1;
         }
     }
     let cells = (g.w * g.h) as u64;
@@ -256,4 +256,180 @@ fn measure_what_an_advect_is_made_of() {
         "\n    Corte uma peca do PRODUTO e re-rode: a diferenca e a atribuicao.\n\
          \x20   (a §5.43 pagou a licao de que um laco proprio aqui e apagado)"
     );
+}
+
+// ---------------------------------------------------------------------------
+// O GATHER (doc 28 §5.45) — quanto ele CUSTA e quanto ele MUDA
+// ---------------------------------------------------------------------------
+
+/// Os três planos que decidem a aparência, copiados para fora.
+fn planes(t: &mut crate::tool::PainterTool) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+    let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+    let g = sess.engine.active_grid();
+    (g.film.clone(), g.susp.clone(), g.sett.clone())
+}
+
+/// Roda `steps` passos a partir do estado congelado, na rota pedida.
+fn run_from(
+    t: &mut crate::tool::PainterTool,
+    snap: &ph2d_wet_paint::grid::GridSnapshot,
+    gather: bool,
+    steps: usize,
+) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+    {
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let e = &mut *sess.engine;
+        e.sim.frame = 0;
+        e.sim.dry_every = 6;
+        e.sim.evap_scale = 0.001;
+        e.sim.rewet_base = 0.0001;
+        e.sim.order_invariant = gather;
+        ph2d_wet_paint::grid::restore_grid(e.active_grid_mut(), snap);
+    }
+    for _ in 0..steps {
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        sess.engine.step_simulation();
+    }
+    planes(t)
+}
+
+/// **O QUE O GATHER MUDA** — a pergunta que decide o ADR-0146.
+///
+/// A reformulação de Jacobi é, por construção, um SEGUNDO MODELO (o serial é
+/// Gauss-Seidel). A pergunta não é *"é byte-idêntico?"* — sabemos que não é —,
+/// é ***quanto*** ele difere, e a régua tem de ser a que o olho usa: o **byte
+/// de opacidade**, não a massa crua.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_how_far_the_gather_advect_drifts_from_the_reference() {
+    use ph2d_wet_paint::opacity::alpha_of_mass;
+    let (mut t, _p, _e, _r) = puddle();
+    let snap = {
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        ph2d_wet_paint::grid::snapshot_grid(sess.engine.active_grid_mut())
+    };
+    println!("\n  O QUE O GATHER MUDA (poca do produto, 4096x4096)\n");
+    println!(
+        "    {:>6}  {:>12} {:>12}  {:>9} {:>9} {:>9}",
+        "passos", "massa serial", "massa gather", "max byte", ">1 byte", ">4 bytes"
+    );
+    // A régua honesta: comparar o VÃO ENTRE MODELOS com o vão que o modelo
+    // serial abre contra SI MESMO em UM passo a mais. Se o primeiro é menor
+    // que o segundo, os dois quadros diferem por menos do que a água muda
+    // enquanto o artista pisca — e nenhum número de "% de células" diz isso.
+    let alpha = |s: &[f32], t: &[f32], i: usize| -> f64 {
+        alpha_of_mass(f64::from(s[i])) + alpha_of_mass(f64::from(t[i]))
+    };
+    let compare = |a: &(Vec<f32>, Vec<f32>), b: &(Vec<f32>, Vec<f32>)| -> (i32, f64, u64) {
+        let (mut max_b, mut sum, mut n) = (0i32, 0.0f64, 0u64);
+        for i in 0..a.0.len() {
+            let (aa, bb) = (alpha(&a.0, &a.1, i), alpha(&b.0, &b.1, i));
+            if aa <= 0.0 && bb <= 0.0 {
+                continue;
+            }
+            n += 1;
+            let d = (aa - bb).abs() * 255.0;
+            sum += d;
+            let d = d.round() as i32;
+            if d > max_b {
+                max_b = d;
+            }
+        }
+        (max_b, sum / n.max(1) as f64, n)
+    };
+    println!(
+        "    {:>6}  {:>13} {:>13}  {:>9} {:>9}  {:>7}",
+        "passos", "massa serial", "massa gather", "MODELOxMODELO", "1 PASSO", "razao"
+    );
+    for steps in [1usize, 10, 40] {
+        let (fa, sa, ta) = run_from(&mut t, &snap, false, steps);
+        let a = (sa, ta);
+        let (_, sb, tb) = run_from(&mut t, &snap, true, steps);
+        let b = (sb, tb);
+        // O controle: o MESMO modelo serial, um passo adiante.
+        let (_, sn, tn) = run_from(&mut t, &snap, false, steps + 1);
+        let nxt = (sn, tn);
+        let mass = |p: &(Vec<f32>, Vec<f32>)| -> f64 {
+            p.0.iter().map(|&v| f64::from(v)).sum::<f64>()
+                + p.1.iter().map(|&v| f64::from(v)).sum::<f64>()
+        };
+        let (gap_max, gap_mean, _) = compare(&a, &b);
+        let (step_max, step_mean, _) = compare(&a, &nxt);
+        println!(
+            "    {steps:>6}  {:>13.1} {:>13.1}  {:>4}/{:>6.3} {:>4}/{:>6.3}  {:>6.2}x",
+            mass(&a),
+            mass(&b),
+            gap_max,
+            gap_mean,
+            step_max,
+            step_mean,
+            gap_mean / step_mean.max(1e-9)
+        );
+        let _ = &fa;
+    }
+    println!(
+        "\n    Cada celula e `max/media` do |delta| em BYTES sobre as celulas com\n\
+         \x20   tinta. `razao` < 1 significa: os dois MODELOS estao mais perto um do\n\
+         \x20   outro do que o modelo serial esta de si mesmo um passo adiante."
+    );
+}
+
+/// **O que o gather CUSTA**, pelas três rotas, na mesma poça e no mesmo
+/// processo (a lição do ADR-0145 §4: uma soma cross-run atribui deriva de
+/// máquina ao ganho).
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_the_gather_advect_costs() {
+    use ph2d_wet_paint::par::Rows;
+    const REPS: usize = 7;
+    println!("\n  O CUSTO DO `advect` PELAS TRES ROTAS (mediana de {REPS})\n");
+    println!(
+        "    {:>6}  {:>12} {:>14} {:>14}  {:>8}",
+        "flow", "serial (GS)", "gather serial", "gather par", "ganho"
+    );
+    for flow in [1u8, 4] {
+        let (mut t, p, _e, _r) = puddle_at(flow);
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let grav = sess.engine.sim.gravity(&sess.engine.tuning);
+        let g = sess.engine.active_grid_mut();
+        let snap = ph2d_wet_paint::grid::snapshot_grid(g);
+        let mut med = |which: u8| -> f64 {
+            let mut v = Vec::with_capacity(REPS);
+            for _ in 0..REPS {
+                ph2d_wet_paint::grid::restore_grid(g, &snap);
+                let t0 = Instant::now();
+                match which {
+                    0 => {
+                        ph2d_wet_paint::solver::advect(g, &p, grav[0], grav[1]);
+                    }
+                    1 => {
+                        ph2d_wet_paint::solver::advect_jacobi_rows(
+                            g,
+                            &p,
+                            grav[0],
+                            grav[1],
+                            Rows::Serial,
+                        );
+                    }
+                    _ => {
+                        ph2d_wet_paint::solver::advect_jacobi_rows(
+                            g,
+                            &p,
+                            grav[0],
+                            grav[1],
+                            Rows::Parallel,
+                        );
+                    }
+                }
+                v.push(t0.elapsed().as_secs_f64() * 1e3);
+            }
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        let (a, b, c) = (med(0), med(1), med(2));
+        println!(
+            "    {flow:>6}  {a:>12.3} {b:>14.3} {c:>14.3}  {:>7.2}x",
+            a / c
+        );
+    }
 }

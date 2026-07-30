@@ -76,6 +76,12 @@ fn run(staged: bool, gravity: Option<[f64; 2]>) -> (Grid, Sim) {
     let mut g = seeded(160, 120);
     let mut sim = Sim {
         gravity_override: gravity,
+        // ⚠️ **A rota atômica é CONGELADA, e ela chama o `advect` serial.** Este
+        // gate compara *retomável × atômico*, não *modelo × modelo* — então os
+        // dois lados TÊM de rodar o mesmo advect, senão ele passa a medir a
+        // troca de modelo e perde o que existe para provar. Quem prova o
+        // gather é `tests/advect_symmetry.rs` + o fingerprint.
+        order_invariant: false,
         ..Sim::default()
     };
     let tuning = Tuning::default();

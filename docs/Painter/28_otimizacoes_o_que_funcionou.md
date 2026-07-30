@@ -3805,3 +3805,118 @@ não-byte-idêntica. As duas metades que a ablação separa (momento 14,6 ms em
 
 ⇒ **A alavanca de CPU deste módulo está esgotada.** O que resta é o que o
 ADR-0146 já descreve como *um segundo modelo, não o mesmo mais rápido*.
+
+## §5.45 — O SOLVER FICOU INDEPENDENTE DE ORDEM: 52,1 → 11,0 ms/passo, e a água a 90,8 Hz
+
+**Ordem do Enio: *"GPU do Wet Paint"***. O [ADR-0146](../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md)
+tinha medido que `advect` (70,4%) + `drying_pass` (21,9%) somam ~92% do passo, que os dois são
+Gauss-Seidel, e que portá-los seria *"um segundo modelo, não o mesmo mais rápido"*.
+
+⚠️ **A pergunta que faltava, e que reescreveu a wave inteira:** aquele ADR trata a reformulação
+como **o preço da GPU**. Ela é o preço do **PARALELISMO** — e a máquina tem **32 núcleos**, com o
+`advect` (70% do passo) rodando em **um**.
+
+### §5.45.1 — O argumento NÃO é velocidade: é a simetria da cena
+
+Antes de qualquer relógio, a pergunta certa é *qual dos dois está certo?*. O Gauss-Seidel varre em
+ordem de raster e lê o vizinho que a célula anterior já reescreveu — isso não é física, é a direção
+do laço, e tem assinatura. Numa folha **espelhada** (massa simétrica, fluxo antissimétrico, cena
+cuja física é simétrica por construção — `tests/solver_symmetry.rs`):
+
+| passe | Gauss-Seidel | independente de ordem |
+|---|---:|---:|
+| `advect` | **1189,29** unidades de massa de viés | **0,000000** |
+| `drying_pass` | **554,82** | **0,000000** |
+
+O viés do advect é **mais que uma célula cheia de pigmento** (o platô da fixture é ~900), deslocada
+só porque o laço anda da esquerda para a direita. ⚠️ **E o CONTROLE pegou meu próprio erro na
+primeira corrida:** as "dentes" da fixture usavam `x % 7`, que **não é simétrico** sob `x → W+1−x`
+— erro de espelho 484,7 numa fixture que eu tinha declarado simétrica. Elas medem a **distância ao
+eixo** agora.
+
+### §5.45.2 — Como um scatter vira um gather sem atômicos
+
+O destino `d` puxa a fração `w_k` de cada canto; escrito assim é escrita em célula alheia. Mas a
+relação é **simétrica**: se `d` puxa `w` de `c`, então `c` **dá** `w` a `d`. Logo
+
+```text
+  novo[c] = velho[c] · (1 − saída[c])  +  Σ_k w_k · velho[canto_k]
+```
+
+e `saída[c] = Σ_d w(d→c)` é ela própria um gather, porque `|u| ≤ maxVelocity` torna a vizinhança
+local. ⚠️ **A saída pode passar de 1** onde o fluxo converge, e a cura é uma escala em que **quem
+recebe pergunta a escala da FONTE**: um clamp só no lado de quem sai CRIARIA massa, um clamp só no
+lado de quem entra a DESTRUIRIA. Medido: a massa total da poça do produto fica **806983136,5 nos
+dois modelos**, idêntica à primeira decimal em ~8×10⁸.
+
+⚠️ **E um off-by-one aqui CRIA massa.** O alcance de um destino não é `ceil(maxVelocity)` e sim
+**`ceil(M) + 1`**: com o **default** `M = 1` e `u = −1`, o destino em `x` puxa dos cantos `x+1` e
+**`x+2`**, logo `c` é alcançada por um destino em `c−2`. Eu escrevi o raio errado primeiro.
+
+### §5.45.3 — Duas reescritas medidas, e a primeira foi um brinquedo
+
+O gather serial nasceu **5× mais caro que o Gauss-Seidel** (180,8 contra 36,0 ms a `Flow 4`),
+porque a vizinhança re-amostrava a grade de fluxo **nove vezes por célula**. Duas correções, cada
+uma medida:
+
+1. **materializar o fluxo fino uma vez** (`SolverScratch::uv`) ⇒ o vizinho vira **carga**: 180,8 →
+   84,1 ms;
+2. **virar o laço do avesso** — em vez de cada célula varrer `(2·alcance+1)² = 25` retro-traços, cada
+   **DESTINO** deposita os seus dois pesos num acumulador que é a própria fatia `&mut [f32]` da
+   linha (scatter **privado da linha**, seguro sob rayon): 84,1 → **68,1 ms**, e paralelo **6,85**.
+
+### §5.45.4 — O que a troca de modelo custa
+
+**(a) O fingerprint se move — e o protocolo do doc 23 é honrado.** O pino ANTIGO virou um gate
+executável na rota `Sim::order_invariant = false`
+(`the_gauss_seidel_route_still_reproduces_its_own_pin`). ⚠️ **É esse gate que torna a troca
+auditável em vez de um número que mudou:** ele prova que nem a secagem, nem o fluxo, nem a projeção,
+nem o depósito, nem o `lift_settled` mudaram — e prova também que extrair o `dry_cell` (a
+aritmética de uma célula, agora a **porta única das duas rotas**) foi *pure code motion*.
+
+**(b) O escorrido corre ~18% menos.** Medido pelo deslocamento do **centroide de massa** do filme,
+varrendo `Flow Grid` 1..8: **0,64–0,96×, média ~0,82×**, uniformemente, sem colapso. ⚠️ E **sem
+viés de direção** — a hipótese óbvia (*"a varredura de cima para baixo cascateia com a gravidade"*)
+foi **REFUTADA por medição**: os dois modelos correm igual para cima e para baixo (1,14× e 1,09×).
+O knob **Gravity** cobre a diferença; o desenho é do smoke.
+
+**(c) +25 B por célula do fluido**, alocados preguiçosamente no 1º passo. A 4096² grade 1:1 são
++420 MB, e o slider **Grid Size** é a resposta — como já era para os 43 B/célula de antes.
+
+### §5.45.5 — ⚠️ Um gate reprovou a wave por um motivo que não era o dela
+
+O `the_water_still_runs_when_the_flow_is_coarse` ficou **VERMELHO** (rf 2 carregou 9, o controle
+21). A tentação é afrouxar a barra; a medição diz outra coisa. Ele media a **célula mais extrema
+acima de um limiar** — uma estatística de UM valor, e caótica na razão de fluxo: varrendo `rf` 1..8
+o **mesmo** motor devolvia **27, 23, 36, 18, 10, 14, 21** (3,6× de amplitude *dentro do mesmo
+modelo*, com o rf=3 **acima** do controle).
+
+Pelo **centroide de massa** a mesma varredura é lisa (**20,1 · 12,0 · 22,3 · 13,5 · 13,7 · 14,3**)
+e a queda em `rf = 2` aparece **igual nos dois modelos** — **0,60** no Gauss-Seidel contra **0,64**
+no independente de ordem. Ou seja: **ela é da GRADE DE FLUXO, não do solver.** A frente amplificava
+um 0,6 compartilhado em 0,85 contra 0,43.
+
+⇒ **o ORÁCULO foi corrigido, não a barra** (e a prova de que é honesto: o gate passa nos **dois**
+modelos). Descartar o limiar como causa também foi medido — a 0,05 / 0,02 / 0,005 / 0,001 o poço em
+rf=2 é o mesmo (9, 9, 10, 10).
+
+### §5.45.6 — O ganho, pela porta do PRODUTO
+
+A/B no **mesmo processo e na mesma poça**, `on_canvas_pointer` a 4096², ciclo de 12 passos:
+
+| `Flow Grid` | Gauss-Seidel | independente de ordem | |
+|---|---:|---:|---|
+| 1 | 60,19 ms (16,6 Hz) | **29,29 ms (34,1 Hz)** | **2,06×** |
+| 4 | 52,05 ms (19,2 Hz) | **11,02 ms (90,8 Hz)** | **4,72×** |
+
+⇒ **a água sai do regime work-limited**: a `Flow Grid 4` ela corre a **2,3× o nominal de 40 Hz da
+SPEC**, e o teto passa a ser a SPEC, não a máquina.
+
+### §5.45.7 — E o que sobra para a GPU
+
+O ADR-0146 chamava o port de **all-or-nothing sobre `advect` + `drying_pass`** porque os dois
+exigiam um modelo diferente. **Esse modelo agora existe, roda em produção e está provado contra a
+referência** — então a Fase 3 daquele ADR está feita para dois dos três passes, **na CPU, onde é
+debugável**. O que resta é o que nunca foi sobre o solver: o **stamp** (a silhueta do Painter por
+closure) e a **residência** dos 14 planos. E o gatilho mudou de número: o ganho que a GPU ainda
+compra tem de ser medido contra **11 ms**, não contra 52.

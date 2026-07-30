@@ -284,3 +284,45 @@ fn the_parallel_walk_does_not_depend_on_the_scheduling() {
         assert!(d.is_empty(), "corrida {pass}: o agendamento vazou: {d:?}");
     }
 }
+
+/// **O `advect` de GATHER: paralelo == serial, ao byte** (doc 28 §5.45).
+///
+/// ⚠️ Ele entra aqui por uma razão que os três do ADR-0145 não têm: o gather
+/// **acumula em ponto flutuante** (a saída de uma célula é a soma dos pesos com
+/// que os destinos a puxam). Uma soma de `f32` não é associativa, então a
+/// identidade das rotas **não é de graça** — ela vale porque a ordem da soma é
+/// FIXA (linha-fonte crescente, depois coluna) e privada da linha, e é
+/// exatamente isso que este gate afirma.
+#[test]
+fn the_parallel_gather_advect_is_the_serial_one_to_the_byte() {
+    let d = both_routes(|g, p, mode| {
+        solver::advect_jacobi_rows(g, p, 0.0, 1.0, mode);
+    });
+    assert!(d.is_empty(), "as rotas do gather divergiram: {d:?}");
+}
+
+/// E repetido, o agendamento não vira entrada — o irmão do gate de escalonamento
+/// dos três passes do ADR-0145, agora sobre a soma em ponto flutuante.
+#[test]
+fn the_parallel_gather_advect_does_not_depend_on_the_scheduling() {
+    for pass in 0..6 {
+        let mut a = puddle();
+        let mut b = puddle();
+        let (pa, pb) = (params(&a), params(&b));
+        for _ in 0..3 {
+            solver::advect_jacobi_rows(a.active_grid_mut(), &pa, 0.0, 1.0, Rows::Parallel);
+            solver::advect_jacobi_rows(b.active_grid_mut(), &pb, 0.0, 1.0, Rows::Parallel);
+        }
+        let d = diff(a.active_grid(), b.active_grid());
+        assert!(d.is_empty(), "corrida {pass}: o agendamento vazou: {d:?}");
+    }
+}
+
+/// **A secagem independente de ordem: paralelo == serial, ao byte.**
+#[test]
+fn the_parallel_jacobi_drying_is_the_serial_one_to_the_byte() {
+    let d = both_routes(|g, p, mode| {
+        ph2d_wet_paint::drying::drying_pass_jacobi_rows(g, p, 0.001, 0.0001, false, mode);
+    });
+    assert!(d.is_empty(), "as rotas da secagem divergiram: {d:?}");
+}

@@ -227,3 +227,42 @@ vizinhas). A metade portável-exata segue em **0,7 %**.
 `drying_pass`, e os dois são exatamente o que o `tests/fingerprint.rs` pina.
 O que mudou é que a alavanca de CPU que restava foi **gasta**, e o próximo
 número real do passo é o `advect` a 70 %.
+
+---
+
+## Emenda 3 (2026-07-30) — a metade CARA foi paga na CPU; o [ADR-0147](0147-wet-paint-order-invariant-solver.md) construiu o modelo que este ADR dizia que a GPU exigiria
+
+> *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (CLAUDE.md §0). Este
+> ADR fechou dizendo que um port é **all-or-nothing sobre `advect` + `drying_pass`**, porque **os
+> dois exigem um modelo diferente** — e tratou isso como o preço da GPU. **Era o preço do
+> PARALELISMO**, e a máquina tinha 32 núcleos ociosos.
+
+A pergunta que faltava: *reformular esses dois passes é caro **porque é a GPU**, ou porque é
+independência de ordem?* A resposta veio de duas medições:
+
+1. **O argumento não é velocidade — é CORREÇÃO.** Numa folha espelhada (cena cuja física é
+   simétrica por construção), o Gauss-Seidel desloca **1189 unidades de massa** no `advect` e
+   **555** na secagem, só porque o laço varre da esquerda para a direita. As formas independentes
+   de ordem desviam **0,000000**.
+2. **Na CPU, o ganho é quase todo o que a GPU compraria.** Pela porta do produto, 4096², ciclo de
+   cadência: `Flow Grid 4` **52,05 → 11,02 ms**, isto é **19,2 → 90,8 Hz** — *2,3× o nominal de 40
+   da SPEC*. A água **sai do regime work-limited**.
+
+⚠️ **O que isso faz com a recomendação deste ADR:** ela **não é revogada, é re-precificada**. Os
+dois obstáculos que restam são os que nunca foram sobre o solver:
+
+* o **stamp** recebe a silhueta do HOST por closure (o pincel do Painter), então (B) ainda exige o
+  pincel em WGSL — *duas respostas a "que forma tem este dab?"* — ou round-trip por batch;
+* a residência dos 14 planos continua **all-or-nothing**
+  ([[feedback_two_engines_one_state_is_worse_than_a_slow_engine]]).
+
+⚠️ **E o gatilho mudou de número:** o ganho que a GPU ainda pode comprar tem de ser medido contra
+**11 ms**, não contra os 52 que este ADR usou. O item 2 da lista de re-abertura (*"1:1 a 4096² sem
+concessão como requisito de produto"*) segue sendo o caso legítimo — e agora ele custa 29,3 ms/passo
+(34,1 Hz) em vez de 60,2.
+
+⚠️ **O que FICOU mais fácil, e é o desenho inteiro:** os dois passes viraram **gather puro por
+célula**, com identidade serial×paralelo gateada — que é exatamente a propriedade que um `dispatch`
+exige. A Fase 3 deste ADR (*"os três reformulados, um por vez, cada um com o número de quanto o
+desenho mudou ao lado"*) **está feita para dois deles, na CPU, onde é debugável e comparável contra
+a referência**. Um port hoje é tradução, não redesenho.

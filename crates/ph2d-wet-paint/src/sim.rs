@@ -68,6 +68,27 @@ pub struct Sim {
     pub km_mixing: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
+    /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
+    /// [`crate::solver::advect_jacobi`] e a
+    /// [`crate::drying::drying_pass_jacobi`]; `false` roda os dois
+    /// Gauss-Seidel do port 1:1.
+    ///
+    /// ⚠️ **UM flag para os DOIS passes, e é deliberado:** eles são a mesma
+    /// mudança (todo mundo lê o estado do INÍCIO do passe), shipam juntos e o
+    /// smoke os julga juntos — dois bools sugeririam uma combinação que
+    /// ninguém projetou.
+    ///
+    /// ⚠️ **É uma ABLAÇÃO, no molde do [`crate::grid::Grid::spans_enabled`]**,
+    /// e ela existe por dois motivos que nenhum outro mecanismo dá: o pino de
+    /// fingerprint ANTIGO do ADR-0134 continua sendo um gate executável (a
+    /// rota `false` tem de reproduzi-lo **ao byte**, provando que nada além
+    /// destes dois passes mudou), e um relatório de campo se bissecta com um
+    /// bool em vez de com um build.
+    ///
+    /// ⚠️ **NÃO é "dois motores"** — o serial é o **caminho de referência**
+    /// (CLAUDE.md §0), e quem manda no produto é a forma que 32 núcleos (ou
+    /// 10.000) podem responder.
+    pub order_invariant: bool,
     /// **Um passo INTERROMPIDO** — ver [`StepCursor`] e [`sim_step_stage`].
     pending: Option<StepCursor>,
 }
@@ -113,6 +134,7 @@ impl Default for Sim {
             gravity_override: None,
             km_mixing: false,
             ext_bypass: false,
+            order_invariant: true,
             pending: None,
         }
     }
@@ -243,13 +265,15 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             if n.is_multiple_of(sim.dry_every) {
                 // The evaporation / re-wet knobs are straight multipliers on the
                 // cadence-adaptive scales.
-                drying_pass(
-                    g,
-                    &c.p,
+                let (evap, rewet) = (
                     sim.evap_scale * c.p.k(Knob::Evaporation),
                     sim.rewet_base * c.p.k(Knob::Rewet),
-                    sim.ext_bypass,
                 );
+                if sim.order_invariant {
+                    crate::drying::drying_pass_jacobi(g, &c.p, evap, rewet, sim.ext_bypass);
+                } else {
+                    drying_pass(g, &c.p, evap, rewet, sim.ext_bypass);
+                }
             }
         }
         2 => {
@@ -262,7 +286,13 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 }
             }
         }
-        3 => c.vmax = advect(g, &c.p, c.grav[0], c.grav[1]),
+        3 => {
+            c.vmax = if sim.order_invariant {
+                crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])
+            } else {
+                advect(g, &c.p, c.grav[0], c.grav[1])
+            }
+        }
         4 => apply_boundaries(g, false),
         5 => {
             if n.is_multiple_of(3) {

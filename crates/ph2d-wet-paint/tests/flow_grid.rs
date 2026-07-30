@@ -40,28 +40,40 @@ fn scene(rf: usize, grav: f64) -> Engine {
     e
 }
 
-/// A linha mais funda que ainda tem FILME (água livre).
-fn wet_reach(g: &Grid) -> i32 {
-    let mut deepest = 0;
+/// O CENTROIDE do filme em `y`, pesado pela massa — *onde a água está*.
+fn film_centroid_y(g: &Grid) -> f64 {
+    let (mut m, mut my) = (0.0f64, 0.0f64);
     for y in 1..=g.h as i32 {
         for x in 1..=g.w as i32 {
-            if g.film[x as usize + y as usize * g.s] > 0.05 {
-                deepest = y;
-            }
+            let v = f64::from(g.film[x as usize + y as usize * g.s]);
+            m += v;
+            my += v * f64::from(y);
         }
     }
-    deepest
+    if m > 0.0 { my / m } else { 0.0 }
 }
 
-/// **Quanto a GRAVIDADE levou a água para baixo** — o alcance com gravidade
-/// menos o alcance sem ela.
+/// **Quanto a GRAVIDADE levou a água para baixo** — o deslocamento do centroide
+/// com gravidade menos o mesmo sem ela.
 ///
 /// ⚠️ O alcance ABSOLUTO não serve de oráculo: a folha seca enquanto a água
 /// corre, então a região molhada ENCOLHE mesmo com o campo de fluxo perfeito
 /// (medido, sem gravidade: 106 → 81 em 60 passos). O que só existe se o campo
 /// estiver vivo é a DIFERENÇA, e é ela que um refactor mata em silêncio.
-fn gravity_carry(rf: usize) -> i32 {
-    wet_reach(scene(rf, 2.0).active_grid()) - wet_reach(scene(rf, 0.0).active_grid())
+///
+/// ⚠️ **E a diferença é medida na MASSA, não na célula mais extrema acima de um
+/// limiar — a primeira versão deste gate usava o [`wet_reach`] e passava por
+/// SORTE.** A frente é uma estatística de UM valor extremo, e ela é caótica na
+/// razão de fluxo: varrendo `rf` 1..8 o mesmo motor devolvia **27, 23, 36, 18,
+/// 10, 14, 21** — 3,6× de amplitude *dentro do mesmo modelo*, com o rf=3 acima
+/// do controle. Pelo centroide a mesma varredura é lisa (**20,1 · 12,0 · 22,3 ·
+/// 13,5 · 13,7 · 14,3**) e a queda em `rf = 2` aparece **igual nos dois
+/// modelos** (0,60 no Gauss-Seidel · 0,64 no independente de ordem) — isto é,
+/// ela é da GRADE DE FLUXO, não do solver. A frente amplificava um 0,6
+/// compartilhado em 0,85 contra 0,43, e foi assim que o gate reprovou uma
+/// mudança de modelo por um motivo que não era o dela.
+fn gravity_carry(rf: usize) -> f64 {
+    film_centroid_y(scene(rf, 2.0).active_grid()) - film_centroid_y(scene(rf, 0.0).active_grid())
 }
 
 #[test]
@@ -99,8 +111,8 @@ fn the_water_still_runs_when_the_flow_is_coarse() {
     // carrega é a grandeza que só existe se o campo de fluxo estiver vivo.
     let base = gravity_carry(1);
     assert!(
-        base > 10,
-        "o CONTROLE nao carregou a agua ({base} celulas) — a fixture nao contem o fenomeno"
+        base > 10.0,
+        "o CONTROLE nao carregou a agua ({base:.2} celulas) — a fixture nao contem o fenomeno"
     );
     for rf in [2usize, 4] {
         let e = scene(rf, 2.0);
@@ -109,8 +121,9 @@ fn the_water_still_runs_when_the_flow_is_coarse() {
         // A física muda (é outra discretização), mas a ORDEM DE GRANDEZA não
         // pode: metade do transporte já seria "a água parou".
         assert!(
-            f64::from(carry) > f64::from(base) * 0.5,
-            "a agua parou de correr com o fluxo grosso: rf {rf} carregou {carry}, o controle {base}"
+            carry > base * 0.5,
+            "a agua parou de correr com o fluxo grosso: rf {rf} carregou {carry:.2}, \
+             o controle {base:.2}"
         );
     }
 }

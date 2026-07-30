@@ -28,13 +28,30 @@
 //!
 //! | passe | por que é sequencial |
 //! |---|---|
-//! | `advect` | SUBTRAI nos 4 cantos-fonte (`susp[i01]`, `film[i01]` — linhas VIZINHAS), read-modify-write de célula compartilhada |
 //! | `build_flow_field` | o freio LÊ `wet[probe]` alguns px adiante, que o carimbo de umidade deste mesmo passe pode ter escrito; e o backrun ESPALHA em `susp[nb]`/`sett[nb]`/`sett_rgb[nb]` |
-//! | `drying_pass` | o fator de borda lê a vizinhança 3×3 de `susp`, que o passe ESCREVE — a linha `y` lê `y−1` já atualizada |
 //! | a SAIA do `rebuild_active_region` | escreve `active[i±s]`, e o comentário do produto diz por quê: *"scanned top-to-down so earlier 2s shape later sums"* |
+//! | `solver::advect` (o serial) | SUBTRAI nos 4 cantos-fonte (`susp[i01]`, `film[i01]` — linhas VIZINHAS), read-modify-write de célula compartilhada |
+//! | `drying::drying_pass` (o serial) | o fator de borda lê a vizinhança 3×3 de `susp`, que o passe ESCREVE — a linha `y` lê `y−1` já atualizada |
 //!
-//! Qualquer uso novo de `rayon` nesta crate — em especial num destes quatro —
-//! **exige ADR novo**, exatamente como a cerca de contenção do ADR-0109 diz.
+//! ⚠️ **Os dois últimos deixaram de ser o que o produto roda** (doc 28 §5.45,
+//! [ADR-0147](../../../docs/architecture/decisions/0147-wet-paint-order-invariant-solver.md)):
+//! eles seguem no repo como **caminho de referência** e como a rota que o pino
+//! ANTIGO do fingerprint executa, mas quem simula é o
+//! [`crate::solver::advect_jacobi`] (gather conservativo) e a
+//! [`crate::drying::drying_pass_jacobi`] (fator de borda materializado). A
+//! razão não é velocidade: os dois Gauss-Seidel **quebram a simetria da cena**,
+//! e o `tests/solver_symmetry.rs` mede o viés (1189 e 555 unidades de massa,
+//! contra 0,000000).
+//!
+//! ⚠️ **Eles NÃO são "row-disjuntos que ninguém tinha visto"** — a §2 do
+//! ADR-0145 os recusou corretamente. O que mudou foi o MODELO, e isso exige
+//! ADR próprio: a cerca de contenção do ADR-0109 continua valendo, e qualquer
+//! uso novo de `rayon` nesta crate **exige ADR novo**.
+//!
+//! ⚠️ **E um deles ACUMULA EM PONTO FLUTUANTE** (a saída do gather é a soma dos
+//! pesos com que os destinos puxam), o que a condição 3 acima recusaria — a
+//! identidade vale porque a ordem da soma é **fixa e privada da linha**, e há
+//! gate afirmando exatamente isso.
 
 use rayon::prelude::*;
 
@@ -224,3 +241,97 @@ where
             .for_each(|(r, (ra, rb))| f(r, ra, rb)),
     }
 }
+
+/// [`walk_rows`] para um passe que escreve **TRÊS** planos na mesma passada.
+///
+/// O consumidor é o *commit* do [`crate::solver::advect_jacobi`]: `film`,
+/// `susp` e `susp_rgb` saem do MESMO registro de destino, e três
+/// [`walk_rows`] separados releriam aquele registro três vezes usando um
+/// terço dele a cada volta.
+pub(crate) fn walk_rows3<T, U, V, F>(
+    mode: Rows,
+    a: &mut [T],
+    b: &mut [U],
+    c: &mut [V],
+    stride: usize,
+    f: F,
+) where
+    T: Send,
+    U: Send,
+    V: Send,
+    F: Fn(usize, &mut [T], &mut [U], &mut [V]) + Send + Sync,
+{
+    debug_assert_eq!(a.len(), b.len(), "os planos tem faixas diferentes");
+    debug_assert_eq!(a.len(), c.len(), "os planos tem faixas diferentes");
+    debug_assert_eq!(a.len() % stride, 0, "a faixa nao mede linhas inteiras");
+    match mode {
+        Rows::Serial => a
+            .chunks_mut(stride)
+            .zip(b.chunks_mut(stride))
+            .zip(c.chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, ((ra, rb), rc))| f(r, ra, rb, rc)),
+        Rows::Parallel => a
+            .par_chunks_mut(stride)
+            .zip(b.par_chunks_mut(stride))
+            .zip(c.par_chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, ((ra, rb), rc))| f(r, ra, rb, rc)),
+    }
+}
+
+/// Piso do `advect_jacobi` — **medido**, ver a tabela no [`Rows::pick`] e o
+/// doc-comment do próprio passe. Ele move MUITO mais bytes por célula que os
+/// três do ADR-0145 (quatro passadas sobre a janela), então o pool se paga
+/// mais cedo.
+pub const MIN_CELLS_ADVECT: usize = 128 << 10;
+
+/// [`walk_rows`] para um passe que escreve **CINCO** planos na mesma passada.
+///
+/// O consumidor é a secagem independente de ordem: uma célula seca escreve
+/// `film`, `susp`, `sett` e as DUAS cores, todos no próprio índice. Cinco
+/// [`walk_rows`] separados releriam a mesma linha cinco vezes — e, pior, não
+/// existiriam: o corpo da célula é UMA aritmética acoplada (o que assenta sai
+/// da água que evaporou, e a cor composta depende das duas massas).
+pub(crate) fn walk_rows5<A, B, C, D, E, F>(
+    mode: Rows,
+    a: &mut [A],
+    b: &mut [B],
+    c: &mut [C],
+    d: &mut [D],
+    e: &mut [E],
+    stride: usize,
+    f: F,
+) where
+    A: Send,
+    B: Send,
+    C: Send,
+    D: Send,
+    E: Send,
+    F: Fn(usize, &mut [A], &mut [B], &mut [C], &mut [D], &mut [E]) + Send + Sync,
+{
+    debug_assert_eq!(a.len() % stride, 0, "a faixa nao mede linhas inteiras");
+    match mode {
+        Rows::Serial => a
+            .chunks_mut(stride)
+            .zip(b.chunks_mut(stride))
+            .zip(c.chunks_mut(stride))
+            .zip(d.chunks_mut(stride))
+            .zip(e.chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, ((((ra, rb), rc), rd), re))| f(r, ra, rb, rc, rd, re)),
+        Rows::Parallel => a
+            .par_chunks_mut(stride)
+            .zip(b.par_chunks_mut(stride))
+            .zip(c.par_chunks_mut(stride))
+            .zip(d.par_chunks_mut(stride))
+            .zip(e.par_chunks_mut(stride))
+            .enumerate()
+            .for_each(|(r, ((((ra, rb), rc), rd), re))| f(r, ra, rb, rc, rd, re)),
+    }
+}
+
+/// Piso do `drying_pass` independente de ordem — irmão medido dos três do
+/// ADR-0145 (tabela no [`Rows::pick`]). Ele move menos bytes por célula que o
+/// advect e mais que o `project`, e o piso reflete isso.
+pub const MIN_CELLS_DRYING: usize = 192 << 10;

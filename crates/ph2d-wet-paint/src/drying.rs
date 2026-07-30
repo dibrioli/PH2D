@@ -71,24 +71,173 @@ pub(crate) fn lift_settled(
     *sett = (st - lift) as f32;
 }
 
+/// As constantes do passe, colhidas UMA vez — o que o laço quente não pode
+/// re-perguntar por célula.
+pub(crate) struct DryConst {
+    pub retention: f64,
+    pub edge_darkening: f64,
+    pub base_evaporation: f64,
+    pub ext_granulation: f64,
+    pub ext_staining: f64,
+    pub evap_base: f64,
+    pub rewet_base: f64,
+    pub ext_bypass: bool,
+    pub mix: ColorMix,
+}
+
+impl DryConst {
+    pub fn new(p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) -> Self {
+        DryConst {
+            retention: p.k(Knob::Retention),
+            edge_darkening: p.k(Knob::EdgeDarkening),
+            base_evaporation: p.k(Knob::BaseEvaporation),
+            ext_granulation: p.k(Knob::ExtGranulation),
+            ext_staining: p.k(Knob::ExtStaining),
+            evap_base,
+            rewet_base,
+            ext_bypass,
+            mix: p.mix,
+        }
+    }
+}
+
+/// **A ARITMÉTICA DE UMA CÉLULA — a porta única das duas rotas.**
+///
+/// ⚠️ Ela recebe o `count` do fator de borda em vez de o buscar, e é isso que
+/// permite ao passe existir nas duas formas sem duas cópias da física: o
+/// Gauss-Seidel passa a janela deslizante VIVA (que enxerga o `susp` já
+/// reescrito à esquerda), o Jacobi passa o plano materializado ANTES do passe.
+/// *Uma segunda cópia deste corpo é como "a secagem paralela dourou a borda
+/// diferente" nasce daqui a seis meses.*
+#[inline]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dry_cell(
+    c: &DryConst,
+    paper: f32,
+    count: u32,
+    film: &mut f32,
+    susp: &mut f32,
+    sett: &mut f32,
+    susp_rgb: &mut [f32; 3],
+    sett_rgb: &mut [f32; 3],
+    out: &mut [f64; 3],
+) {
+    let film0 = *film;
+    let f = film0 as f64;
+    let s_mass = *susp as f64;
+    let mut susp_c = *susp;
+    let mut sett_c = *sett;
+    let mut susp_rgb_c = *susp_rgb;
+    let mut sett_rgb_c = *sett_rgb;
+    let mix = c.mix;
+
+    // Edge factor: fraction of the 3x3 neighbourhood carrying pigment. A full
+    // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
+    let mut e = 1.0;
+    if film0 > 0.0 && sett_c < 1000.0 {
+        e = if count == 9 { 1.0 } else { count as f64 / 9.0 };
+    }
+
+    // Evaporate: retention leak + edge-boosted linear loss.
+    let mut new_film =
+        f * c.retention - c.evap_base * ((1.0 - e) * c.edge_darkening + c.base_evaporation);
+    if new_film < 0.0001 {
+        new_film = 0.0;
+    }
+    let lost = if f > 0.0 {
+        1.0 - clamp01(new_film / f)
+    } else {
+        1.0
+    };
+    let film_c: f32 = new_film as f32;
+
+    // Settle: the fraction of water lost carries the same fraction of
+    // suspended pigment onto the paper (opacity-composited color).
+    if lost > 0.0 && s_mass > 0.0 {
+        let mut dm = s_mass * lost;
+        if !c.ext_bypass {
+            // Physical granulation (extension): settle biased toward valleys.
+            let mut bias = 1.0 + c.ext_granulation * 0.6 * (0.5 - paper as f64) * 2.0;
+            if bias < 0.3 {
+                bias = 0.3;
+            } else if bias > 1.7 {
+                bias = 1.7;
+            }
+            dm *= bias;
+            if dm > s_mass {
+                dm = s_mass;
+            }
+        }
+        // SPEC §6.2 step 3 (the shared settle composite, on locals).
+        let a_sett = alpha_of_mass(sett_c as f64);
+        let a_in = alpha_of_mass(dm);
+        if a_sett > 0.0 {
+            let u = a_sett * (1.0 - a_in);
+            let w = a_in / (u + a_in);
+            mix.mix(
+                sett_rgb_c[0] as f64,
+                sett_rgb_c[1] as f64,
+                sett_rgb_c[2] as f64,
+                susp_rgb_c[0] as f64,
+                susp_rgb_c[1] as f64,
+                susp_rgb_c[2] as f64,
+                w,
+                out,
+            );
+            sett_rgb_c = [out[0] as f32, out[1] as f32, out[2] as f32];
+        } else {
+            sett_rgb_c = susp_rgb_c;
+        }
+        sett_c = (sett_c as f64 + dm) as f32;
+        let rem = s_mass - dm;
+        susp_c = if rem < 0.0 { 0.0 } else { rem as f32 };
+    }
+
+    // Re-wet: standing water lifts a little settled pigment back into
+    // suspension; the lift grows with the EXCESS water over what the
+    // suspended pigment already occupies.
+    let st = sett_c as f64;
+    if film_c > 0.0 && st > 0.0 {
+        let excess = (film_c as f64 - alpha_of_mass(susp_c as f64)).max(0.0);
+        let mut b = c.rewet_base * (1.0 + excess * 50.0);
+        if !c.ext_bypass {
+            b *= staining_multiplier(c.ext_staining);
+        }
+        b = clamp01(b);
+        if b > 0.0 {
+            lift_settled(
+                b,
+                &mut susp_c,
+                &mut sett_c,
+                &mut susp_rgb_c,
+                sett_rgb_c,
+                mix,
+                out,
+            );
+        }
+    }
+
+    // Write the cell back once.
+    *film = film_c;
+    *susp = susp_c;
+    *sett = sett_c;
+    *susp_rgb = susp_rgb_c;
+    *sett_rgb = sett_rgb_c;
+}
+
 /// One drying pass over every bbox cell holding water or suspended pigment
 /// (deliberately NOT filtered by the active mask — paint dries everywhere).
 /// `evap_base` is the cadence-adaptive scale (or 1000 for a force-dry pass);
 /// `rewet_base` the cadence-adaptive lift floor.
+///
+/// ⚠️ **Esta é a rota GAUSS-SEIDEL, congelada:** ela lê o `susp` que ela mesma
+/// escreve (a janela deslizante enxerga a coluna à esquerda JÁ reescrita). É o
+/// caminho de referência do ADR-0134; quem o produto roda é o
+/// [`drying_pass_jacobi`].
 pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) {
     let s = g.s;
     let mut out = [0.0f64; 3];
-    let mix = p.mix;
-    let retention = p.k(Knob::Retention);
-    let edge_darkening = p.k(Knob::EdgeDarkening);
-    let base_evaporation = p.k(Knob::BaseEvaporation);
-    let ext_granulation = p.k(Knob::ExtGranulation);
-    let ext_staining = p.k(Knob::ExtStaining);
-    // Hot-loop discipline: every same-cell value lives in an f32 LOCAL that
-    // mirrors what the JS Float32Array holds after each store (the f32
-    // rounding IS the semantics — a later read sees the rounded value), and
-    // is written back once at the end. Neighbour reads compare in f32
-    // directly: widening is exact, so `susp > 10.0f32` == `(f64)susp > 10.0`.
+    let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
     for y in g.by0..=g.by1 {
         // Faixa viva: ela é publicada a partir de `film > 0 || susp > 0` — o
         // MESMO predicado que gateia este laço —, então fora dela o corpo já
@@ -105,123 +254,31 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
         for x in bx0..=bx1 {
             // ⚠️ O avanço é no TOPO e carrega a coluna `i + 1`, nunca `i + 2`:
             // o pad da grade é de UMA coluna (`s = w + 2`), então `bx1 + 2`
-            // cairia na linha seguinte. Com `i + 1` a carga máxima é a própria
-            // coluna de pad, que existe.
+            // cairia na linha seguinte.
             if x > bx0 {
                 win.advance(&g.susp, i + 1, s);
             }
-            let film0 = g.film[i];
-            let susp0 = g.susp[i];
-            if film0 <= 0.0 && susp0 <= 0.0 {
+            if g.film[i] <= 0.0 && g.susp[i] <= 0.0 {
                 i += 1;
                 continue;
             }
-            let f = film0 as f64;
-            let s_mass = susp0 as f64;
-            // Post-store mirrors of the cell's mutable fields.
-
-            let mut susp_c = susp0;
-            let mut sett_c = g.sett[i];
-            let mut susp_rgb = g.susp_rgb[i];
-            let mut sett_rgb = g.sett_rgb[i];
-
-            // Edge factor: fraction of the 3x3 neighbourhood carrying
-            // pigment. A full block (9/9) reads e=1 (no boost); a rim cell
-            // reads e<1.
-            let mut e = 1.0;
-            if film0 > 0.0 && sett_c < 1000.0 {
-                let count = win.count();
-                e = if count == 9 { 1.0 } else { count as f64 / 9.0 };
-            }
-
-            // Evaporate: retention leak + edge-boosted linear loss.
-            let mut new_film =
-                f * retention - evap_base * ((1.0 - e) * edge_darkening + base_evaporation);
-            if new_film < 0.0001 {
-                new_film = 0.0;
-            }
-            let lost = if f > 0.0 {
-                1.0 - clamp01(new_film / f)
-            } else {
-                1.0
-            };
-            let film_c: f32 = new_film as f32;
-
-            // Settle: the fraction of water lost carries the same fraction of
-            // suspended pigment onto the paper (opacity-composited color).
-            if lost > 0.0 && s_mass > 0.0 {
-                let mut dm = s_mass * lost;
-                if !ext_bypass {
-                    // Physical granulation (extension): settle biased toward
-                    // valleys.
-                    let mut bias = 1.0 + ext_granulation * 0.6 * (0.5 - g.paper[i] as f64) * 2.0;
-                    if bias < 0.3 {
-                        bias = 0.3;
-                    } else if bias > 1.7 {
-                        bias = 1.7;
-                    }
-                    dm *= bias;
-                    if dm > s_mass {
-                        dm = s_mass;
-                    }
-                }
-                // SPEC §6.2 step 3 (the shared settle composite, on locals).
-                let a_sett = alpha_of_mass(sett_c as f64);
-                let a_in = alpha_of_mass(dm);
-                if a_sett > 0.0 {
-                    let u = a_sett * (1.0 - a_in);
-                    let w = a_in / (u + a_in);
-                    mix.mix(
-                        sett_rgb[0] as f64,
-                        sett_rgb[1] as f64,
-                        sett_rgb[2] as f64,
-                        susp_rgb[0] as f64,
-                        susp_rgb[1] as f64,
-                        susp_rgb[2] as f64,
-                        w,
-                        &mut out,
-                    );
-                    sett_rgb = [out[0] as f32, out[1] as f32, out[2] as f32];
-                } else {
-                    sett_rgb = susp_rgb;
-                }
-                sett_c = (sett_c as f64 + dm) as f32;
-                let rem = s_mass - dm;
-                susp_c = if rem < 0.0 { 0.0 } else { rem as f32 };
-            }
-
-            // Re-wet: standing water lifts a little settled pigment back into
-            // suspension; the lift grows with the EXCESS water over what the
-            // suspended pigment already occupies.
-            let st = sett_c as f64;
-            if film_c > 0.0 && st > 0.0 {
-                let excess = (film_c as f64 - alpha_of_mass(susp_c as f64)).max(0.0);
-                let mut b = rewet_base * (1.0 + excess * 50.0);
-                if !ext_bypass {
-                    b *= staining_multiplier(ext_staining);
-                }
-                b = clamp01(b);
-                if b > 0.0 {
-                    lift_settled(
-                        b,
-                        &mut susp_c,
-                        &mut sett_c,
-                        &mut susp_rgb,
-                        sett_rgb,
-                        mix,
-                        &mut out,
-                    );
-                }
-            }
-
-            // Write the cell back once.
-            g.film[i] = film_c;
-            g.susp[i] = susp_c;
-            g.sett[i] = sett_c;
-            g.susp_rgb[i] = susp_rgb;
-            g.sett_rgb[i] = sett_rgb;
+            let count = win.count();
+            let mut film = g.film[i];
+            let mut susp = g.susp[i];
+            let mut sett = g.sett[i];
+            let mut srgb = g.susp_rgb[i];
+            let mut trgb = g.sett_rgb[i];
+            dry_cell(
+                &c, g.paper[i], count, &mut film, &mut susp, &mut sett, &mut srgb, &mut trgb,
+                &mut out,
+            );
+            g.film[i] = film;
+            g.susp[i] = susp;
+            g.sett[i] = sett;
+            g.susp_rgb[i] = srgb;
+            g.sett_rgb[i] = trgb;
             // A célula seguinte lê este `susp` JÁ ESCRITO (Gauss-Seidel).
-            win.note_write(susp_c);
+            win.note_write(susp);
             i += 1;
         }
     }
@@ -254,4 +311,150 @@ pub fn fast_dry(g: &mut Grid, p: &Params, rewet_base: f64, ext_bypass: bool) {
     if !g.has_fluid {
         g.empty_bbox();
     }
+}
+
+// ---------------------------------------------------------------------------
+// A SECAGEM INDEPENDENTE DE ORDEM (doc 28 §5.45)
+// ---------------------------------------------------------------------------
+
+/// **O fator de borda, materializado ANTES do passe** — gather puro.
+///
+/// A janela deslizante é a MESMA do laço Gauss-Seidel ([`EdgeWindow`]); o que
+/// muda é que aqui ninguém escreve `susp` enquanto ela anda, então
+/// [`EdgeWindow::note_write`] nunca é chamado e o resultado é função só do
+/// estado de entrada.
+fn edge_rows(g: &mut Grid, mode: crate::par::Rows) {
+    let s = g.s;
+    let (by0, by1) = (g.by0, g.by1);
+    let Grid {
+        scratch,
+        susp,
+        row_lo,
+        row_hi,
+        spans_enabled,
+        bx0,
+        bx1,
+        ..
+    } = g;
+    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let susp: &[f32] = susp;
+    let band = by0 as usize * s..(by1 as usize + 1) * s;
+    crate::par::walk_rows(mode, &mut scratch.edge[band], s, |ri, row| {
+        let y = by0 + ri as i32;
+        let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+        if lo > hi {
+            return;
+        }
+        let mut i = lo as usize + y as usize * s;
+        let mut win = EdgeWindow::seed(susp, i, s);
+        for x in lo..=hi {
+            if x > lo {
+                win.advance(susp, i + 1, s);
+            }
+            row[x as usize] = win.count() as u8;
+            i += 1;
+        }
+    });
+}
+
+/// **A secagem que o produto roda** — a mesma física, sem depender de em que
+/// ordem o laço anda.
+///
+/// ⚠️ **Isto é um SEGUNDO MODELO, como o [`crate::solver::advect_jacobi`]**, e
+/// pelo mesmo motivo: o fator de borda lê a vizinhança 3×3 de `susp` que o
+/// passe reescreve, então o Gauss-Seidel conta vizinhos **já secos** à esquerda
+/// e vizinhos **ainda molhados** à direita. Isso não é física — é a direção da
+/// varredura, e ela tem assinatura (`tests/drying_symmetry.rs`).
+pub fn drying_pass_jacobi(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+) {
+    let rows = (g.by1 - g.by0 + 1).max(0) as usize;
+    let span = (g.bx1 - g.bx0 + 1).max(0) as usize;
+    let mode = crate::par::Rows::pick(rows, span, crate::par::MIN_CELLS_DRYING);
+    drying_pass_jacobi_rows(g, p, evap_base, rewet_base, ext_bypass, mode);
+}
+
+/// [`drying_pass_jacobi`] com a rota forçada — a porta dos gates de identidade.
+pub fn drying_pass_jacobi_rows(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+    mode: crate::par::Rows,
+) {
+    if g.by0 > g.by1 {
+        return;
+    }
+    g.scratch.ensure(g.cells);
+    edge_rows(g, mode);
+
+    let s = g.s;
+    let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
+    let (by0, by1) = (g.by0, g.by1);
+    let Grid {
+        scratch,
+        film,
+        susp,
+        sett,
+        susp_rgb,
+        sett_rgb,
+        paper,
+        row_lo,
+        row_hi,
+        spans_enabled,
+        bx0,
+        bx1,
+        ..
+    } = g;
+    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let edge: &[u8] = &scratch.edge;
+    let paper: &[f32] = paper;
+    let band = by0 as usize * s..(by1 as usize + 1) * s;
+    crate::par::walk_rows5(
+        mode,
+        &mut film[band.clone()],
+        &mut susp[band.clone()],
+        &mut sett[band.clone()],
+        &mut susp_rgb[band.clone()],
+        &mut sett_rgb[band],
+        s,
+        |ri, fr, sr, tr, cr, dr| {
+            let y = by0 + ri as i32;
+            let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+            if lo > hi {
+                return;
+            }
+            let mut out = [0.0f64; 3];
+            let base = y as usize * s;
+            for x in lo as usize..=hi as usize {
+                if fr[x] <= 0.0 && sr[x] <= 0.0 {
+                    continue;
+                }
+                let i = base + x;
+                let (mut a, mut b, mut d) = (fr[x], sr[x], tr[x]);
+                let (mut e, mut f) = (cr[x], dr[x]);
+                dry_cell(
+                    &c,
+                    paper[i],
+                    u32::from(edge[i]),
+                    &mut a,
+                    &mut b,
+                    &mut d,
+                    &mut e,
+                    &mut f,
+                    &mut out,
+                );
+                fr[x] = a;
+                sr[x] = b;
+                tr[x] = d;
+                cr[x] = e;
+                dr[x] = f;
+            }
+        },
+    );
 }

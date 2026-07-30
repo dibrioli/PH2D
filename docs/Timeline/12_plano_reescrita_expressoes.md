@@ -621,14 +621,41 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                         ✅ FASE A (corte, 50→31)  →  FASE B (motor: B1..B5)
                              [FEITA 2026-07-29]         B2 ✅ (feito na FASE 0.4)
                                                     ↓
-                        FASE C (layout)  ←──────────┘
+                        ✅ FASE C (layout)  ←───────┘   [FEITA 2026-07-30]
                         ✅ C.0 modal · ✅ C.1 duas colunas · ✅ C.2 eixo da fita
-                        ⬜ C.3 o NOME do objeto · ⬜ C.4 card maior
+                        ✅ C.3 o NOME do objeto · ✅ C.4 o card é função da JANELA
                              ↓
                         G1 → smoke → G2 → smoke → G3 → … → G6
                              ↓
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
+
+### ✅ A FASE C FECHOU (2026-07-30) — e duas coisas que a medição mudou no plano
+
+| # | o defeito do §5.2 | a cura |
+|---|---|---|
+| **5 (ausente da lista)** | o card não era MODAL: 18 widgets do transporte vivos sob a pegada | **C.0** — o scrim registrado ANTES dos widgets do card |
+| **2 (sem respiro), metade** | 128 px MORTOS (40% do sheet) em toda linha de knob | **C.1** — knobs numéricos em DUAS colunas |
+| **6 (ausente da lista)** | a fita plana coincide com a linha de base ⇒ lê como quebrada | **C.2** — o EIXO de valor |
+| **4 (sem identidade)** | `#7294` em vez de `Ball · Position X` | **C.3** — a shell publica `object_names`; porta única `track_label` |
+| **1 (sem hierarquia)** | receita e knob no mesmo peso visual | **C.4** — a linha é um CARTÃO (superfície elevada + raio + calha) |
+| **3 (sem rolagem)** | conteúdo variável em container fixo | **C.4** — o corpo é função da JANELA (12..20 slots). ⚠️ Não fechado: ver abaixo |
+
+**Duas correções que a medição fez ao plano, e as duas ficam escritas:**
+
+1. **A LARGUARA de 820 px do §5.3 foi REJEITADA por medição.** A hipótese era *"sobra
+   pouco para o nome"*; medido, o nome tem **198 px** (~16 caracteres) e a queixa real do
+   header era **calha ZERO** entre nome │ readout │ X. A cura custa oito pixels, não 288.
+2. **O pior caso do catálogo é 5 slots, não 3** — a tabela que a C.1 shipou estava
+   **errada**. `Distance` tem quatro knobs de **LINK**, e um knob largo toma a linha
+   inteira por desenho; a C.1 pareia **numéricos**, então ela não moveu o pior caso (moveu
+   o típico). Corrigido no doc-módulo do `expr_modal_paint`.
+
+**O que a FASE C NÃO fechou, com o número:** o `+N more rows` ficou **raro**, não morto —
+três rows de `Distance` cabem num corpo de 20 slots e a quarta é derrubada, sem UI,
+dirigindo o objeto. A cura definitiva é a **row COLAPSÁVEL** (o cabeçalho custa 1 slot ⇒
+vinte rows sempre caberiam), que é o stack de F-Modifiers do Blender identificado no §0
+como o estado da arte desta UI. É **wave própria** e não foi contrabandeada aqui.
 
 ### ✅ A FASE 0 FECHOU (2026-07-29) — o que mudou, e o que ela deixou de herança
 

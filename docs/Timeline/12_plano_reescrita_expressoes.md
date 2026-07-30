@@ -643,7 +643,7 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
 
 **Duas correções que a medição fez ao plano, e as duas ficam escritas:**
 
-1. **A LARGUARA de 820 px do §5.3 foi REJEITADA por medição.** A hipótese era *"sobra
+1. **A LARGURA de 820 px do §5.3 foi REJEITADA por medição.** A hipótese era *"sobra
    pouco para o nome"*; medido, o nome tem **198 px** (~16 caracteres) e a queixa real do
    header era **calha ZERO** entre nome │ readout │ X. A cura custa oito pixels, não 288.
 2. **O pior caso do catálogo é 5 slots, não 3** — a tabela que a C.1 shipou estava

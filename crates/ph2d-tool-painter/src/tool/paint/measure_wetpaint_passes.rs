@@ -1,6 +1,10 @@
-//! **De que é feito o `drying_pass`** — a sonda da frente que a multi-resolução
-//! deixou aberta (doc 28 §5.42): com o `build_flow_field` 20,49× mais barato, a
-//! secagem virou **o maior item isolado do passo** (46,8 ms ÷3 = 29%).
+//! **De que são feitos os PASSES QUENTES da sim** — a sonda que abre cada frente
+//! aberta pela anterior (doc 28 §5.43).
+//!
+//! A ordem em que ela cresceu é o método: com o `build_flow_field` 20,49× mais
+//! barato (§5.42) a **secagem** virou o maior item do passo; com a secagem
+//! 1,43× mais barata (§5.43), o **`advect`** virou 70% dele. Cada frente é
+//! medida aqui antes de qualquer hipótese sobre ela.
 //!
 //! ⚠️ Ela é a irmã de *"de que isto é FEITO"*, não a de *"o que o produto
 //! PAGA"* — a distinção que o doc 28 §4.8.2 pagou: uma sonda que disseca com
@@ -20,10 +24,22 @@ fn puddle() -> (
     f64,
     f64,
 ) {
+    puddle_at(1)
+}
+
+/// A mesma poça, com a razão de fluxo escolhida.
+fn puddle_at(
+    flow: u8,
+) -> (
+    crate::tool::PainterTool,
+    ph2d_wet_paint::sim::Params,
+    f64,
+    f64,
+) {
     const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
     let mut t = wetted(4096, 100.0);
     t.set_wet_grid_ratio(1.0);
-    t.set_wet_flow_ratio(1.0);
+    t.set_wet_flow_ratio(f64::from(flow));
     for lane in 0..3 {
         let off = 260.0 * lane as f32;
         let (x0, y0) = (200.0 + off, 200.0);
@@ -205,5 +221,39 @@ fn measure_what_the_opacity_lookup_costs() {
     println!(
         "    razao                             {:8.2}x",
         best_door / best_trunc.max(1e-9)
+    );
+}
+
+/// **O custo do `advect`, pela porta** — a frente que a §5.43 abriu (70% do
+/// passo). Irmã exata da sonda da secagem: o número que a varredura de ablação
+/// do produto compara.
+///
+/// Mede nas DUAS razões de fluxo porque o `advect` é o único passe que fica
+/// mais CARO com o fluxo grosso (a amostragem bilinear do bloco), então uma
+/// medida só esconderia metade da resposta.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_an_advect_is_made_of() {
+    const REPS: usize = 7;
+    println!("\n  DE QUE O `advect` E FEITO (mediana de {REPS}, poca do produto)\n");
+    for flow in [1u8, 4] {
+        let (mut t, p, _e, _r) = puddle_at(flow);
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let grav = sess.engine.sim.gravity(&sess.engine.tuning);
+        let g = sess.engine.active_grid_mut();
+        let snap = ph2d_wet_paint::grid::snapshot_grid(g);
+        let mut v = Vec::with_capacity(REPS);
+        for _ in 0..REPS {
+            ph2d_wet_paint::grid::restore_grid(g, &snap);
+            let t0 = Instant::now();
+            ph2d_wet_paint::solver::advect(g, &p, grav[0], grav[1]);
+            v.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        v.sort_by(f64::total_cmp);
+        println!("    Flow {flow}x   advect  {:8.3} ms", v[v.len() / 2]);
+    }
+    println!(
+        "\n    Corte uma peca do PRODUTO e re-rode: a diferenca e a atribuicao.\n\
+         \x20   (a §5.43 pagou a licao de que um laco proprio aqui e apagado)"
     );
 }

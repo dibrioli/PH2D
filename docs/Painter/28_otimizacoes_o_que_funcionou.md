@@ -3735,3 +3735,73 @@ há caminho de CPU nomeado para ele.** Os outros itens somam 8%.
 E a varredura por `fmod` foi feita: o **único** outro `libm` nos passes quentes
 é o `sin`/`cos` do `ext_fingering`, que é uma extensão gateada por knob e mede
 +0,04 ms.
+
+---
+
+## §5.44 — O `advect`: o que a ablação atribuiu, e o que o RELÓGIO negou (2026-07-30)
+
+Com a secagem em 21,9% (§5.43), o `advect` virou **70,4% do passo**. A §5.43
+tinha acabado de ensinar que *"sem caminho de CPU nomeado"* é uma afirmação
+sobre o que se procurou — então a frente foi aberta com a mesma receita:
+ablacionar o **produto** peça por peça, pela porta do artista.
+
+### §5.44.1 A decomposição
+
+`measure_what_an_advect_is_made_of`, poça de 4096², mediana de 7:
+
+| corte no produto | Flow 1 | Flow 4 |
+|---|---:|---:|
+| baseline | 38,15 ms | 35,81 ms |
+| sem o **momento** (`flow_at_point`) | 23,51 (**−14,6**) | 34,11 (−1,7) |
+| sem o gather de **pigmento** | 22,27 (−15,9) | 19,24 (−16,6) |
+
+⚠️ **O momento custa 14,6 ms em `Flow Grid 1` e 1,7 em `Flow Grid 4`** — 8,6×
+de diferença, e o mecanismo é o desenho da §5.42: `owns_flow` é verdadeiro para
+**toda** célula em `rf = 1` (toda célula é a probe do próprio bloco) e para 1 em
+16 em `rf = 4`. **O slider de Flow Grid já removia 90% deste item**, e ninguém
+tinha notado porque a atribuição por-passe nunca desceu abaixo do passe.
+
+### §5.44.2 ⛔ MEDIDO E REJEITADO — não refaça: reusar a moldura bilinear
+
+A hipótese natural, e ela parecia forte: em `rf = 1` a `flow_at_point(sx, sy)`
+**recomputa** `x0`/`y0`/`a`/`b`, os quatro índices e os quatro pesos que o laço
+do `advect` **acabou de computar para o MESMO ponto**. Foi construída — porta
+`flow_at_frame` (a soma bilinear com a moldura pronta), a `flow_at_point`
+congelada sob `cfg(test)` como oráculo, gate bit-a-bit com frações
+não-diádicas, 3 mutações.
+
+**Medido A/B no mesmo estado de máquina: `advect` 29,98 → 30,24 ms.** Nada. O
+passo não se moveu.
+
+⚠️ **O porquê, e é a lição:** a `flow_at_point` é `#[inline]`, então as duas
+"recomputações" viviam no MESMO bloco básico, e o LLVM já as tinha fundido por
+**eliminação de subexpressão comum**. O que a ablação mediu em 14,6 ms são as
+**8 cargas dispersas** de `flow_x`/`flow_y` na posição back-traçada mais as duas
+escritas de `vel` — trabalho irredutível, porque a física precisa do fluxo
+*onde a partícula veio de*. *Uma ablação atribui a um BLOCO; atribuir a uma
+LINHA dentro dele é inferência de segunda ordem, e o compilador tem opinião.*
+
+**Revertido inteiro** — porta, oráculo congelado e gate. Um doc-comment que
+justifica uma porta com 14,6 ms que ela não entrega é pior que porta nenhuma.
+Fica a sonda (`measure_what_an_advect_is_made_of`) e este parágrafo.
+
+### §5.44.3 O que sobra, e para quem
+
+Depois de duas waves de CPU (§5.43 e esta), o passo na poça pesada é:
+
+| passe | Flow 4 | do passo |
+|---|---:|---:|
+| `advect` | 34,4 ms | **70,4%** |
+| `drying_pass` (÷3) | 10,7 | 21,9% |
+| `rebuild_active_region` (÷2) | 2,6 | 5,2% |
+| `build_flow_field` (÷4) | 0,8 | 1,7% |
+| `project` + `smooth_velocity` | 0,3 | 0,7% |
+
+O `advect` é gather **e** scatter: por célula ele lê 4 `susp` + 4 `susp_rgb`
+(12 B cada) + 4 `film` de duas linhas, e **subtrai** nos quatro cantos-fonte —
+o mecanismo que o ADR-0146 nomeia e que torna qualquer reordenação
+não-byte-idêntica. As duas metades que a ablação separa (momento 14,6 ms em
+`rf = 1` · pigmento ~16 ms) são as duas coisas que ele **é**.
+
+⇒ **A alavanca de CPU deste módulo está esgotada.** O que resta é o que o
+ADR-0146 já descreve como *um segundo modelo, não o mesmo mais rápido*.

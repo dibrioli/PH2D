@@ -1,6 +1,6 @@
 //! **O gesto do lápis é INTEIRO dele: press, move, release e a fuga.**
 //!
-//! As quatro metades vivem no `input_dispatch`, que precisa de janela + GPU — nenhum teste de
+//! As metades vivem no `input_dispatch`, que precisa de janela + GPU — nenhum teste de
 //! unidade as alcança, então a asserção é sobre o FONTE. É a 4ª condição da política de UI que a
 //! `line/physics` escreveu: *todo edit pode ter gate e o gesto ainda não levar a lugar nenhum*.
 //!
@@ -11,8 +11,11 @@
 //!    âncora — o modo existiria, seria alcançável pelo painel, e desenharia outra coisa.
 //! 2. **O move é DESPACHADO.** Sem a chamada no handler de movimento a curva nunca cresce: o
 //!    press põe um vértice na cena e o gesto inteiro vira um ponto.
-//! 3. **O release COMITA.** Sem ele o traço fica como path vivo sem passo de undo — e o
-//!    `post_frame_undo` registraria um passo espúrio pelo diff, com a fila de redo limpa.
+//! 3. **O release COMITA — e é ALCANÇÁVEL.** Sem o commit o traço fica como path vivo sem passo
+//!    de undo, e o `post_frame_undo` registraria um passo espúrio pelo diff. A segunda metade é a
+//!    asserção que faltava, e que custou um defeito reportado: as outras afirmam que as chamadas
+//!    EXISTEM, e existiam — dentro de um ramo que o modo Pencil nunca visita. **Presença não é
+//!    alcançabilidade.**
 //! 4. **O direito ABORTA.** É a tecla de fuga que a caneta, a forma e o conector já têm; sem ela
 //!    um traço começado por acidente não tem como ser descartado.
 //!
@@ -38,6 +41,8 @@ fn the_scanner_finds_what_it_scans_for() {
         "self.vec_pencil.on_press(",
         "self.vec_pen.on_press(",
         "self.vec_shape.on_press(",
+        "self.vec_pencil.on_release(",
+        "if shape_kind_for_mode(&self.vec_draw_config).is_none() {",
     ] {
         assert!(
             SRC.contains(needle),
@@ -78,24 +83,48 @@ fn the_pencil_move_is_dispatched() {
     );
 }
 
-/// **O release comita o passo de undo** — e o commit vem DEPOIS do release, que é quem decide se
-/// houve traço.
+/// **O release comita o passo de undo**, e as duas metades (commit / cancel) existem.
 #[test]
 fn the_pencil_release_commits_one_undo_step() {
     let release = at("self.vec_pencil.on_release(");
-    let commit = SRC[release..]
-        .find("commit_if_changed")
-        .map(|o| release + o)
-        .expect("o release do lapis nao comita passo de undo nenhum");
-    let cancel = SRC[release..]
-        .find("self.vec_history.cancel()")
-        .map(|o| release + o)
-        .expect("o release do lapis nao cancela o passo pendente num clique perdido");
-    // As duas metades moram no MESMO braço (o commit primeiro, o cancel no `else`), então o
-    // cancel vem depois na fonte — a asserção é que os dois EXISTEM ali.
     assert!(
-        commit < cancel + 4_000,
-        "o commit ({commit}) e o cancel ({cancel}) do lapis nao estao no mesmo braco"
+        SRC[release..].contains("commit_if_changed"),
+        "o release do lapis nao comita passo de undo nenhum"
+    );
+    assert!(
+        SRC[release..].contains("self.vec_history.cancel()"),
+        "o release do lapis nao cancela o passo pendente num clique perdido"
+    );
+}
+
+/// **O Up do lápis é um braço PRÓPRIO, antes da cadeia de modo** — e é isto que o torna
+/// ALCANÇÁVEL.
+///
+/// ⚠️ **Este gate nasceu vermelho sobre um defeito reportado pelo Enio, com os outros cinco deste
+/// arquivo VERDES.** O braço do release vivia no `else` de
+/// `shape_kind_for_mode(&self.vec_draw_config).is_none()`, que é **verdadeiro em modo Pencil** (o
+/// lápis não é um `ShapeKind`) ⇒ a primeira metade ganhava sempre e o `else if` era **código morto
+/// no único modo capaz de o alcançar**. Os cinco afirmavam que as *strings* existem no arquivo, e
+/// existiam: **presença não é alcançabilidade** — a mesma família do *registrado ≠ despachado* que
+/// os botões Undo/Redo da barra pagaram.
+///
+/// Os dois defeitos que o ramo morto produzia, e que o Enio viu como um só: o `active` do lápis
+/// nunca era limpo, então ele **continuava a desenhar depois de soltar** (todo move seguinte
+/// entrava no traço) e o press seguinte **apagava o traço anterior** (o `on_press` remove o path
+/// que encontra vivo).
+///
+/// A asserção é uma RELAÇÃO de posição, nunca uma distância em bytes: se o release corre ANTES da
+/// cadeia de modo, ele não pode estar dentro de nenhum ramo dela.
+#[test]
+fn the_pencil_release_is_its_own_arm_before_the_mode_chain() {
+    let release = at("self.vec_pencil.on_release(");
+    let mode_chain = at("if shape_kind_for_mode(&self.vec_draw_config).is_none() {");
+    assert!(
+        release < mode_chain,
+        "o release do lapis (byte {release}) corre DEPOIS da cadeia de modo ({mode_chain}) — se \
+         ele esta' num ramo dela, o modo Pencil nunca o alcanca: `shape_kind_for_mode` e' None no \
+         Pencil, entao a metade `is_none()` ganha sempre e o lapis NUNCA solta (continua a \
+         desenhar com o botao em cima, e o proximo traco apaga o anterior)"
     );
 }
 

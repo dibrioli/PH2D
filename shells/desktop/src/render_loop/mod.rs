@@ -5247,20 +5247,13 @@ impl crate::App {
             // (assar + reparentar + pendurar) já aconteceu síncrono no `create`. O `settle` pula os
             // filhos (têm `ChildOf`) e o container (sem path, fora do mapa).
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
-            // que a forma pára de crescer, ela vai para o centro dela.
-            // Os gestos que escrevem geometria em MUNDO a cada frame: a caneta e a
-            // ferramenta de forma. Nenhum deles pode ser assentado no meio.
-            // ⚠️ **O Offset saiu desta lista de propósito** (2026-07-21): o preview dele
-            // deixou de tocar a cena — a forma que está no documento é a AUTORADA, com a
-            // pose dela, e o resultado é geometria derivada que nunca entra aqui. Enquanto o
-            // preview churnava a cena, o resultado renascia com o mesmo id todo frame e
-            // precisava ser pulado, senão mundo × centro dobrava a pose (o "pula pro canto
-            // direito"). Sem churn, não há o que pular.
-            let drawing: Vec<ph2d_vec_scene::VecPathId> =
-                [self.vec_pen.active_path(), self.vec_shape.active_path()]
-                    .into_iter()
-                    .flatten()
-                    .collect();
+            // que a forma pára de crescer, ela vai para o centro dela. Quem está EM GESTO é
+            // pulado, e a lista sai de UMA porta (`vec_gesture_paths`) — o porquê está lá.
+            let drawing = crate::vec_transform::gesture_paths(
+                &self.vec_pen,
+                &self.vec_shape,
+                &self.vec_pencil,
+            );
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
             // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
             // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a

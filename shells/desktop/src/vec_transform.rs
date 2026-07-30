@@ -156,6 +156,43 @@ pub(crate) fn translate_shape_world(
     true
 }
 
+/// **Os paths EM GESTO neste frame** — a porta ÚNICA da pergunta *"quem está escrevendo
+/// geometria de MUNDO agora?"*.
+///
+/// Todo gesto de autoria à mão (a caneta, a ferramenta de forma, o **lápis**) reescreve a
+/// geometria do seu path em coordenadas de MUNDO a cada frame. Assentar um deles no meio do
+/// gesto soma geometria + `Transform` e a tinta sai deslocada do cursor exatamente pelo
+/// ponto onde o arrasto começou — **medido: 1,5897 unidades de mundo (≈353 px) num arrasto
+/// que começou a 1,5 do centro**, e o erro cresce com a distância à origem do mundo.
+///
+/// ⚠️ **Por que uma porta e não uma lista no chamador.** Esta lista nasceu enumerando *"a
+/// caneta e a ferramenta de forma"* — as duas que existiam. O lápis chegou como o TERCEIRO
+/// e a enumeração não o conhecia: a condição envelheceu em silêncio, com o gesto novo
+/// funcionando no primeiro frame (o `settle` corre antes do render) e deslocado em todos os
+/// seguintes ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+///
+/// E os gestos entram por **PARÂMETRO**, não numa lista montada no chamador: o gesto nº 4
+/// acrescenta um parâmetro, o que é um **erro de compilação** no único sítio de chamada —
+/// enquanto um `Vec` literal aceita em silêncio a lista incompleta, que é exactamente como
+/// esta nasceu.
+///
+/// ⚠️ **O Offset saiu desta lista de propósito** (2026-07-21): o preview dele deixou de
+/// tocar a cena — a forma que está no documento é a AUTORADA, com a pose dela, e o
+/// resultado é geometria derivada que nunca entra aqui. Enquanto o preview churnava a cena,
+/// o resultado renascia com o mesmo id todo frame e precisava ser pulado, senão mundo ×
+/// centro dobrava a pose (o *"pula pro canto direito"*). Sem churn, não há o que pular.
+#[must_use]
+pub(crate) fn gesture_paths(
+    pen: &ph2d_vec_edit::PenTool,
+    shape: &ph2d_vec_edit::ShapeTool,
+    pencil: &ph2d_vec_edit::Pencil,
+) -> Vec<ph2d_vec_scene::VecPathId> {
+    [pen.active_path(), shape.active_path(), pencil.active_path()]
+        .into_iter()
+        .flatten()
+        .collect()
+}
+
 /// Põe a origem de cada path recém-criado no **centro da bbox dele**.
 ///
 /// Um path nasce com a geometria em coordenadas de mundo e a entidade na
@@ -535,3 +572,10 @@ mod tests {
         assert!(build(&sim, &map).is_empty());
     }
 }
+
+/// O lápis contra a ordem REAL do frame — o gate do defeito de POSE (o "offset do mouse").
+/// Arquivo irmão porque este já hospeda a suíte do assentamento, e as duas medem coisas
+/// diferentes: aquela o pivô, esta a tinta sob o dedo.
+#[cfg(test)]
+#[path = "vec_pencil_frame_tests.rs"]
+mod pencil_frame_tests;

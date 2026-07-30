@@ -205,6 +205,49 @@ fn a_stray_click_leaves_nothing_behind() {
     assert!(!pencil.is_active());
 }
 
+/// **Um traço commitado SOBREVIVE ao traço seguinte** — e o gesto acaba quando se solta.
+///
+/// ⚠️ Este gate nasceu de um defeito reportado pelo Enio (*"o traço desaparece no final"*), cuja
+/// causa estava na SHELL: o braço de release do lápis vivia no `else` de um predicado que é
+/// verdadeiro em modo Pencil, então `on_release` **nunca corria**. O `active` ficava para sempre, e
+/// as duas consequências eram exactamente as que ele viu — o lápis **continuava a desenhar com o
+/// botão em cima** (todo move seguinte entrava no traço) e o press seguinte **apagava o traço
+/// anterior**, porque `on_press` remove o path que encontra vivo.
+///
+/// A limpeza do path órfão no `on_press` está CERTA e fica (um gesto que não fechou não pode deixar
+/// lixo na cena); o que estava errado era um chamador que nunca fechava o gesto. Este gate afirma o
+/// lado do MOTOR — soltar encerra —, que é o que torna aquela limpeza inofensiva; o lado do
+/// despacho é gateado no `shells/desktop/tests/the_pencil_owns_its_whole_gesture.rs`.
+#[test]
+fn a_committed_stroke_survives_the_next_one() {
+    let mut scene = VecScene::new();
+    let mut pencil = Pencil::default();
+
+    pencil.on_press(&mut scene, [0.0, 0.0], PX);
+    for &p in &hand(40, 0.0)[1..] {
+        pencil.on_drag(&mut scene, p);
+    }
+    let first = pencil.on_release(&mut scene);
+    assert!(first, "o 1o traco foi commitado");
+    assert!(
+        !pencil.is_active() && pencil.active_path().is_none(),
+        "soltar NAO encerrou o gesto — o lapis continua vivo e o proximo move ainda desenha, com o          botao em cima"
+    );
+
+    // O 2º traço, noutro lugar.
+    pencil.on_press(&mut scene, [40.0, 40.0], PX);
+    for i in 1..40 {
+        let t = f64::from(i) / 39.0;
+        pencil.on_drag(&mut scene, [40.0 + 30.0 * t, 40.0 + 10.0 * t]);
+    }
+    assert!(pencil.on_release(&mut scene), "o 2o traco foi commitado");
+    assert_eq!(
+        scene.paths().len(),
+        2,
+        "o traco anterior DESAPARECEU quando o seguinte comecou"
+    );
+}
+
 /// **Abortar não deixa rastro** (o botão direito / o Esc no meio do gesto).
 #[test]
 fn cancelling_removes_the_live_stroke() {

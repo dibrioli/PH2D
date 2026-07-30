@@ -3716,6 +3716,41 @@ impl App {
                         }
                         return;
                     }
+                    // **O LÁPIS solta.** O traço vira documento (ou desaparece, se o gesto
+                    // foi um clique perdido) e a forma nova fica SELECIONADA — o artista
+                    // acabou de a desenhar, então é nela que ele vai mexer.
+                    //
+                    // ⚠️ **Arm PRÓPRIO, e antes da cadeia de modo.** Ele nasceu no `else` de
+                    // `shape_kind_for_mode(..).is_none()`, que é **verdadeiro em modo Pencil** (o
+                    // lápis não é um `ShapeKind`) ⇒ a primeira metade ganhava sempre e este
+                    // ramo era **código morto no único modo capaz de o alcançar**. O preço eram
+                    // dois defeitos que o Enio viu como um: o `active` nunca era limpo, então o
+                    // lápis **continuava a desenhar com o botão em cima** (todo move seguinte
+                    // entrava no traço) e o press seguinte **apagava o traço anterior**
+                    // (`on_press` remove o path que encontra vivo).
+                    //
+                    // ⚠️ O guard é `is_active()`, não "o modo é Pencil": soltar sobre um botão
+                    // do painel enquanto o lápis está armado mas ocioso TEM de cair no chrome,
+                    // senão todo clique de painel morre em silêncio (a lição que o
+                    // `shape_up_consumes` documenta ao lado).
+                    if self.vec_pencil.is_active() {
+                        let committed = if let Some(gfx) = self.gfx.as_mut() {
+                            let c = self.vec_pencil.on_release(&mut gfx.vec_scene);
+                            if c {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            } else {
+                                self.vec_history.cancel();
+                            }
+                            c
+                        } else {
+                            false
+                        };
+                        if committed {
+                            let sel = self.vec_pencil.selected();
+                            self.vec_pen.select(sel);
+                        }
+                        return;
+                    }
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {
                         // Pen: the release ends a handle drag / grab.
                         let consumed = self.vec_pen.on_release();
@@ -3747,31 +3782,6 @@ impl App {
                         if consumed {
                             return;
                         }
-                    } else if self.vec_pencil.is_active() {
-                        // **O LÁPIS solta.** O traço vira documento (ou desaparece, se o gesto
-                        // foi um clique perdido) e a forma nova fica SELECIONADA — o artista
-                        // acabou de a desenhar, então é nela que ele vai mexer.
-                        //
-                        // ⚠️ O guard é `is_active()`, não "o modo é Pencil": soltar sobre um
-                        // botão do painel enquanto o lápis está armado mas ocioso TEM de cair no
-                        // chrome, senão todo clique de painel morre em silêncio (a lição que o
-                        // `shape_up_consumes` documenta ao lado).
-                        let committed = if let Some(gfx) = self.gfx.as_mut() {
-                            let c = self.vec_pencil.on_release(&mut gfx.vec_scene);
-                            if c {
-                                self.vec_history.commit_if_changed(&gfx.vec_scene);
-                            } else {
-                                self.vec_history.cancel();
-                            }
-                            c
-                        } else {
-                            false
-                        };
-                        if committed {
-                            let sel = self.vec_pencil.selected();
-                            self.vec_pen.select(sel);
-                        }
-                        return;
                     } else if shape_up_consumes(
                         self.vec_draw_config.mode,
                         self.vec_shape.is_active(),

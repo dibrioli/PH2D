@@ -181,6 +181,7 @@ mod palette_persist;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
 mod pattern_path_smoke;
+mod pencil_smoke;
 mod physics_smoke;
 mod physics_smoke_authoring;
 mod physics_smoke_collision;
@@ -268,7 +269,6 @@ mod vec_overlay_diag;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 mod vec_pick;
 mod vec_selection;
-mod pencil_smoke;
 mod vec_shape_live;
 mod vec_shape_params;
 mod vec_snap;

@@ -46,10 +46,29 @@ fn the_atlas_clips_every_cell() {
     );
     // O recorte tem de ser da CÉLULA (a origem que o empacotador deu mais o tamanho da forma), não
     // de um retângulo qualquer: um clip na origem do atlas não recorta nada.
+    //
+    // ⚠️ **A asserção olha a chamada do `push_clip`, e pede a ORIGEM do empacotador + algo do
+    // JOB — não um caminho de campo exacto.** Ela cravava `job.w`, e a W0.1 deste plano moveu a
+    // largura para `job.key.w` ao dar ao memo a chave que lhe faltava: o produto continuou certo e
+    // **o gate ficou vermelho-latente**, invisível a um fechamento por `cargo test -p` (os gates de
+    // `shells/desktop/tests/` só correm na varredura da shell — a mesma família do miss do
+    // `file_loc_caps` que a `line/physics` documentou). Pedir `job.` em vez do campo deixa o gate
+    // sobreviver a um rename e continuar a falhar no que importa: clipar a uma constante ou à
+    // origem do atlas.
+    let clip = block
+        .find("push_clip")
+        .map(|i| &block[i..])
+        .expect("o bloco do lote nao chama `push_clip` — ja apanhado acima");
+    let clip = &clip[..clip.find(");").map_or(clip.len(), |i| i + 2)];
     assert!(
-        block.contains("cell.org[0]") && block.contains("job.w"),
-        "o recorte não é a célula desta forma — ele tem de sair da origem do empacotador e do \
-         tamanho do scratch dela"
+        clip.contains("cell.org[0]") && clip.contains("cell.org[1]"),
+        "o recorte não sai da origem que o empacotador deu — um clip na origem do atlas não \
+         recorta nada, e a arte que passa da caixa vai pintar dentro da célula da vizinha"
+    );
+    assert!(
+        clip.contains("job."),
+        "o recorte não mede a forma DESTA célula (nada do `job` entra no rect) — um tamanho \
+         constante recorta a célula errada assim que duas formas tiverem tamanhos diferentes"
     );
     // Controle positivo: sem isto, um `find` que falhasse devolveria um bloco vazio e as três
     // afirmações acima passariam a ser sobre nada.

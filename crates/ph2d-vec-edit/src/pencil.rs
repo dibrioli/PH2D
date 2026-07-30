@@ -102,6 +102,18 @@ impl Pencil {
         self.active.is_some()
     }
 
+    /// O path VIVO do gesto — o irmão exato do `ShapeTool::active_path`.
+    ///
+    /// ⚠️ Quem pergunta isto é o assentamento de origens (`settle_origins`): a geometria deste
+    /// path é reescrita em **MUNDO** a cada move, então assentá-lo no meio do gesto soma
+    /// geometria + `Transform` e a tinta sai deslocada do cursor **pelo ponto onde o arrasto
+    /// começou** (medido: 1,5897 unidades de mundo ≈ 353 px). Um gesto que escreve mundo por
+    /// frame tem de ser ANUNCIÁVEL, senão o sistema que o pula não o enxerga.
+    #[must_use]
+    pub fn active_path(&self) -> Option<VecPathId> {
+        self.active
+    }
+
     /// O último traço commitado (para a shell selecioná-lo).
     #[must_use]
     pub fn selected(&self) -> Option<VecPathId> {

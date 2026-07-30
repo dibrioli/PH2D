@@ -92,6 +92,11 @@ pub use ph2d_editor_core::ids::{
     VECTOR_SECTION_TOOL, VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX, VECTOR_SECTIONS,
     VECTOR_SHAPE_GROUP_DD,
 };
+/// **O LÁPIS** (plano 25 W1): a seção + os dois knobs da mão livre, cada um com o seu chip.
+pub use ph2d_editor_core::ids::{
+    VECTOR_PENCIL_FIDELITY, VECTOR_PENCIL_FIDELITY_NUM, VECTOR_PENCIL_STABILIZER,
+    VECTOR_PENCIL_STABILIZER_NUM, VECTOR_SECTION_PENCIL,
+};
 /// **Text on Path** (plano 22): a seção + os quatro controles + o par do offset.
 pub use ph2d_editor_core::ids::{
     VECTOR_SECTION_TEXTPATH, VECTOR_TEXTPATH_DETACH, VECTOR_TEXTPATH_FLIP,

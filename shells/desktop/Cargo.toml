@@ -106,6 +106,9 @@ ph2d-vec-blend = { path = "../../crates/ph2d-vec-blend" }
 # ADR-0129: o motor do envelope/warp (deformação não-afim de geometria Bézier).
 ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
+# O estabilizador do lápis (`lazy_mouse_step`) — a MESMA função que o pincel do Painter usa.
+# ⚠️ Aresta de custo ZERO, medido: a crate já vem transitivamente pela `ph2d-tool-painter`.
+ph2d-painter-brush = { path = "../../crates/ph2d-painter-brush" }
 # Flip drawing tool (ADR-0114 W2) — the shell's `flip_bridge` downcasts it for
 # the brush style + routes canvas pointer → world → `FlipDoc` stroke.
 ph2d-tool-flip = { path = "../../crates/ph2d-tool-flip" }

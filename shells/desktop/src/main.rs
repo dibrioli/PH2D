@@ -266,6 +266,7 @@ mod vec_glyph_build;
 mod vec_guide;
 mod vec_overlay;
 mod vec_overlay_diag;
+mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 mod vec_pick;
 mod vec_selection;
@@ -515,6 +516,7 @@ impl App {
             vec_shape: ph2d_vec_edit::ShapeTool::new(),
             vec_pencil: ph2d_vec_edit::Pencil::default(),
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
+            vec_pencil_hand: crate::vec_pencil_input::PencilHand::default(),
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
             flip_active: false,
             flip_style: None,

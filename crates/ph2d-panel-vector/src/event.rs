@@ -152,6 +152,16 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     None
 }
 
+/// Os sliders cujo valor viaja como **track normalizado** (`0..=1`) para o tool converter.
+///
+/// Lista e não `match` de propósito: ela é a resposta a *"este slider é encaminhado cru?"*, e um
+/// slider novo entra aqui em vez de num braço próprio com um corpo copiado.
+const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
+    ids::VECTOR_WIDTH,
+    ids::VECTOR_PENCIL_FIDELITY,
+    ids::VECTOR_PENCIL_STABILIZER,
+];
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
@@ -161,7 +171,11 @@ pub(crate) fn apply_event(
         return EventOutcome::from_bool(consumed);
     }
     let consumed = match ev {
-        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_WIDTH => {
+        // **Os sliders cujo TRACK vai cru para o tool** — Width e os dois knobs do lápis. Um braço
+        // só porque a pergunta é literalmente a mesma (*qual é o novo track deste slider?*); o que
+        // difere é o mapeamento para a unidade autorada, e esse é do tool. Três braços com corpos
+        // idênticos é como o quarto slider nasce com um `unwrap_or` diferente dos outros.
+        WidgetEvent::ValueChanged(id) if FORWARDED_TRACK_SLIDERS.contains(&id) => {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

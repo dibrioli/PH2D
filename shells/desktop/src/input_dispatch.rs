@@ -2297,6 +2297,12 @@ impl App {
         if !self.vector_tool_active() || !self.vec_pencil.is_active() {
             return false;
         }
+        // **O ESTABILIZADOR corre aqui, em px de TELA, antes da conversão para mundo** — o tremor
+        // é um fato da mão sobre a mesa, e é em px que ele tem tamanho. Com o slider no mínimo o
+        // `lazy_mouse_step` devolve o ponteiro cru, ao bit.
+        let (x, y) = self
+            .vec_pencil_hand
+            .filter((x, y), self.vec_draw_config.pencil_stabilizer);
         let Some(w) = self
             .gfx
             .as_ref()
@@ -3400,6 +3406,12 @@ impl App {
                             self.vec_history.begin(&gfx.vec_scene);
                             self.vec_pencil.on_press(&mut gfx.vec_scene, w, px_to_world);
                         }
+                        // O estabilizador começa ONDE A MÃO ENCOSTOU. Sem esta semente o 1º move
+                        // mistura a partir de onde o gesto ANTERIOR acabou, e o traço nasce com um
+                        // salto vindo do outro lado da tela. Fora do `if let` de propósito: ele
+                        // depende só do ponteiro, e semear a mão nunca pode ficar refém de a cena
+                        // estar pronta — o move consome esta posição sem perguntar mais nada.
+                        self.vec_pencil_hand.begin(self.last_pointer);
                         return;
                     }
                     // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a

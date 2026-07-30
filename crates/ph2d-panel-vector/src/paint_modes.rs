@@ -32,8 +32,9 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
-    DrawMode, text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
-    text_weight_to_slider,
+    DrawMode, PENCIL_FIDELITY_DEFAULT_PX, PENCIL_STABILIZER_DEFAULT,
+    PENCIL_STABILIZER_SLIDER_SCALE, fidelity_px_to_slider, text_line_height_to_slider,
+    text_size_to_slider, text_tracking_to_slider, text_weight_to_slider,
 };
 use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot};
@@ -125,6 +126,71 @@ impl BodyCtx<'_> {
     ///
     /// Formas sem campo (Rect / Decision / Terminal / Delay / Junction…) mostram uma
     /// linha "No parameters": a seção nunca parece quebrada.
+    /// **A seção PENCIL** — os dois controles da mão livre, e só no modo Lápis.
+    ///
+    /// Condicional pela convenção deste painel (uma seção por *coisa ativa*, como a de parâmetros
+    /// da forma logo abaixo): o artista pega o Lápis e os ajustes dele aparecem imediatamente sob a
+    /// fileira TOOL. Os dois knobs editam como a MÃO é capturada — noutro modo não haveria mão a
+    /// capturar, e seriam dois sliders que não fazem nada.
+    ///
+    /// ⚠️ **Dois controles porque são duas PERGUNTAS**, e uma delas não pode responder pela outra:
+    /// *Fidelity* é a tolerância do decimador (na SAÍDA — quanto detalhe fica na curva) e
+    /// *Stabilizer* filtra o tremor (na ENTRADA — que mão o lápis escuta). O decimador preserva
+    /// extremos locais de propósito, e um tremor é um extremo local: nenhuma Fidelity o remove.
+    pub(crate) fn pencil_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        if snap.mode != DrawMode::Pencil {
+            return y;
+        }
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_PENCIL,
+            tr("panel.vector.section.pencil"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
+        // O store é a fonte da verdade do knob (o arrasto manda); o default do tool só o semeia.
+        let fid_track = self
+            .store
+            .slider(ids::VECTOR_PENCIL_FIDELITY)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| fidelity_px_to_slider(PENCIL_FIDELITY_DEFAULT_PX));
+        let fid_px = self
+            .store
+            .number_value(ids::VECTOR_PENCIL_FIDELITY_NUM)
+            .unwrap_or(PENCIL_FIDELITY_DEFAULT_PX);
+        y = self.slider_row(
+            "Fidelity",
+            ids::VECTOR_PENCIL_FIDELITY,
+            ids::VECTOR_PENCIL_FIDELITY_NUM,
+            fid_track,
+            fid_px,
+            &format!("{fid_px:.1} px"),
+            y,
+        );
+        let stab_track = self
+            .store
+            .slider(ids::VECTOR_PENCIL_STABILIZER)
+            .map(|(_, v)| v)
+            .unwrap_or(PENCIL_STABILIZER_DEFAULT);
+        // O chip já fala por cento (o mapeamento vive no `link_slider_number_mapped`).
+        let stab_pct = self
+            .store
+            .number_value(ids::VECTOR_PENCIL_STABILIZER_NUM)
+            .unwrap_or(f64::from(
+                PENCIL_STABILIZER_DEFAULT * PENCIL_STABILIZER_SLIDER_SCALE,
+            ));
+        self.slider_row(
+            "Stabilizer",
+            ids::VECTOR_PENCIL_STABILIZER,
+            ids::VECTOR_PENCIL_STABILIZER_NUM,
+            stab_track,
+            stab_pct,
+            &format!("{stab_pct:.0}%"),
+            y,
+        )
+    }
+
     pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let Some(focus) = crate::shape_focus::resolved(snap) else {
             return y;

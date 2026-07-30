@@ -100,6 +100,13 @@ pub fn px_to_slider(px: f64) -> f32 {
     (((px - WIDTH_MIN_PX) / (WIDTH_MAX_PX - WIDTH_MIN_PX)) as f32).clamp(0.0, 1.0)
 }
 
+/// **Os params do LÁPIS** (Fidelity + Stabilizer) — irmão pelo teto de 700 LOC, e o corte é por
+/// responsabilidade: eles descrevem como a MÃO é capturada, não a geometria de uma forma. As
+/// tabelas MEDIDAS que escolhem cada número viajam com eles.
+#[path = "params_pencil.rs"]
+mod pencil;
+pub use pencil::*;
+
 /// Horizontal text alignment for a text block (mirror of the panel's L / C / R row).
 /// `Left` = lines start at the click origin; `Center` = centred on it; `Right` = lines
 /// end at it. Lives in the tool crate (the panel deps this, not the shell).
@@ -490,6 +497,11 @@ pub fn opacity_to_slider(a: u8) -> f32 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorDrawConfig {
     pub mode: DrawMode,
+    /// **A estabilização autorada do lápis** (0 = ponteiro cru). Viaja no config porque quem a
+    /// aplica é o `input_dispatch` da shell, por movimento de ponteiro — e ali a única alça para o
+    /// tool é este espelho publicado a cada frame; alcançar o tool por downcast num handler de move
+    /// seria trabalho por evento para ler um `f32`.
+    pub pencil_stabilizer: f32,
     /// A forma ATIVA do catálogo (só importa no modo [`DrawMode::Shape`]).
     pub shape: ShapeKind,
     /// Os parâmetros dela, na unidade em que o usuário os autora (px para raios). A
@@ -503,6 +515,7 @@ impl Default for VectorDrawConfig {
             mode: DrawMode::Select,
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
+            pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,
         }
     }
 }

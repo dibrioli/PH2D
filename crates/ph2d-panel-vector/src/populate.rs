@@ -39,6 +39,10 @@ const GRAD_JITTER_SLIDER_SCALE: f32 = 1.0; // LITERAL-PX-OK: jitter is already a
 #[path = "populate_modes.rs"]
 mod modes;
 
+/// Os dois knobs do LÁPIS — irmão pelo teto de LOC (600) do painel.
+#[path = "populate_pencil.rs"]
+mod pencil;
+
 /// Register a plain action Button in the Normal state.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(
@@ -219,6 +223,11 @@ fn populate_shape(store: &mut WidgetStore) {
         WIDTH_SLIDER_SCALE,
         WIDTH_SLIDER_OFFSET,
     );
+
+    // **Os dois knobs do LÁPIS.** Sem o `register` o slider fica pintado e MORTO sob o ponteiro
+    // (a checagem de focabilidade mora no store) — a falha que as 36 células da matriz de física
+    // e os dez chips do Painter já pagaram.
+    pencil::pencil_knobs(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
     modes::mode_buttons(store);

@@ -672,3 +672,22 @@ pub const VECTOR_MODE_CHAMFER: NodeId = hash_node_id("vector.mode.chamfer");
 /// O gesto que faltava ao módulo, que só sabia nascer de cliques discretos ou de arrasto
 /// dimensionado.
 pub const VECTOR_MODE_PENCIL: NodeId = hash_node_id("vector.mode.pencil");
+
+/// **A seção PENCIL** — os dois controles da mão livre. Existe porque as duas perguntas do gesto
+/// são independentes e cada uma tem o seu slider: *que detalhe eu guardo?* (Fidelity, na SAÍDA — a
+/// tolerância do decimador) e *que mão eu escuto?* (Stabilizer, na ENTRADA — o lazy mouse). Um
+/// controle só teria de mentir sobre uma das duas.
+pub const VECTOR_SECTION_PENCIL: NodeId = hash_node_id("vector.section.pencil");
+
+/// **Fidelity** — a tolerância do decimador do lápis, em px de TELA (a mesma grandeza que o slider
+/// homónimo do Illustrator expõe), logo invariante ao zoom.
+pub const VECTOR_PENCIL_FIDELITY: NodeId = hash_node_id("vector.pencil.fidelity");
+/// O chip numérico ligado ao [`VECTOR_PENCIL_FIDELITY`].
+pub const VECTOR_PENCIL_FIDELITY_NUM: NodeId = hash_node_id("vector.pencil.fidelity.num");
+
+/// **Stabilizer** — a força do lazy mouse (0 = ponteiro cru). Filtra o TREMOR na entrada, que é o
+/// que o decimador não pode fazer: ele preserva extremos locais de propósito, e um tremor é um
+/// extremo local.
+pub const VECTOR_PENCIL_STABILIZER: NodeId = hash_node_id("vector.pencil.stabilizer");
+/// O chip numérico ligado ao [`VECTOR_PENCIL_STABILIZER`].
+pub const VECTOR_PENCIL_STABILIZER_NUM: NodeId = hash_node_id("vector.pencil.stabilizer.num");

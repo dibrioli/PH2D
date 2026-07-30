@@ -32,6 +32,15 @@ fn at(needle: &str) -> usize {
         .unwrap_or_else(|| panic!("o `input_dispatch` nao contem `{needle}`"))
 }
 
+/// A janela do fonte que começa em `from` e termina no próximo `until` (ou no fim do arquivo).
+///
+/// Afirmar dentro de uma janela é o que permite falar de ORDEM sem falar de distância: o `rustfmt`
+/// pode refluir tudo lá dentro e a relação continua a mesma.
+fn window(from: usize, until: &str) -> &'static str {
+    let rest = &SRC[from..];
+    &rest[..rest.find(until).unwrap_or(rest.len())]
+}
+
 /// **Controle positivo:** os âncoras existem. Um scanner que não acha nada passaria em silêncio
 /// por todas as outras asserções, e este arquivo inteiro seria decoração.
 #[test]
@@ -134,5 +143,50 @@ fn the_secondary_button_cancels_a_live_pencil_stroke() {
     assert!(
         SRC.contains("self.vec_pencil.cancel("),
         "o lapis nao tem tecla de fuga — um traco comecado por acidente nao pode ser descartado"
+    );
+}
+
+/// **O estabilizador corre ANTES da conversão para mundo, e o press SEMEIA a mão.**
+///
+/// Duas asserções sobre a MESMA costura, e cada uma protege um defeito diferente:
+///
+/// 1. **Filtrar depois do `screen_to_world`** deixaria o número do slider a significar coisas
+///    diferentes em zooms diferentes no dia em que o filtro ganhasse qualquer termo absoluto — e o
+///    tremor é um fato da mão sobre a mesa, medido em px de tela.
+/// 2. **Sem a semente no press** o 1º move mistura a partir de onde o gesto ANTERIOR acabou: o
+///    traço nasce com um salto vindo do outro lado da tela, e o modo de falha é pior no 2º traço,
+///    ou seja depois de o artista já ter aprovado o 1º.
+///
+/// ⚠️ As duas correm dentro de uma JANELA (a função de move · o braço do press), nunca sobre uma
+/// distância em bytes nem sobre um recorte de linha que o `rustfmt` reflui.
+#[test]
+fn the_stabiliser_filters_screen_px_and_the_press_seeds_the_hand() {
+    // ── a função de MOVE: o filtro antes da conversão ──
+    let mv = window(at("fn vec_pencil_drag_move"), "\n    fn ");
+    let filter = mv.find("vec_pencil_hand").expect(
+        "o move do lapis nao passa pela mao filtrada — o estabilizador nao chega ao produto",
+    );
+    let to_world = mv
+        .find("screen_to_world")
+        .expect("o move do lapis nao converte para mundo");
+    assert!(
+        filter < to_world,
+        "o estabilizador corre DEPOIS do `screen_to_world` — o filtro tem de ver px de TELA, que \
+         e' onde o tremor da mao tem tamanho"
+    );
+
+    // ── o braço do PRESS: a semente mora nele ──
+    let press = window(
+        at("DrawMode::Pencil {"),
+        "\n                    // Modo Connect",
+    );
+    assert!(
+        press.contains("self.vec_pencil.on_press("),
+        "controle positivo: a janela do press nao contem o proprio press"
+    );
+    assert!(
+        press.contains("self.vec_pencil_hand.begin("),
+        "o braco do press NAO semeia a mao — o 1o move mistura a partir do fim do gesto ANTERIOR e \
+         o traco nasce com um salto vindo do outro lado da tela"
     );
 }

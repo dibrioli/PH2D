@@ -52,4 +52,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_contour::VECTOR_SECTION_CONTOUR,
     // FX raster (plano 24) — distinto de EFFECTS (deformadores vetoriais, ADR-0132).
     super::vector_filters::VECTOR_SECTION_FILTERS,
+    // O LÁPIS (plano 25 W1): Fidelity + Stabilizer.
+    VECTOR_SECTION_PENCIL,
 ];

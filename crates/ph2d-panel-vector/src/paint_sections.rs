@@ -204,6 +204,9 @@ impl BodyCtx<'_> {
         let mut y = y;
         y = self.step(y, |b, y| b.tool_section(snap, y));
         y = self.step(y, |b, y| b.shape_catalog_section(snap, y));
+        // O LÁPIS entra aqui, entre a fileira TOOL e os parâmetros da forma: os três respondem
+        // "o que estou desenhando, e como". Some inteira fora do modo Pencil.
+        y = self.step(y, |b, y| b.pencil_section(snap, y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

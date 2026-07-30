@@ -740,6 +740,10 @@ pub(crate) struct App {
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.
     pub(crate) vec_draw_config: ph2d_tool_vector::VectorDrawConfig,
+    /// **A mão FILTRADA do lápis** (o estabilizador). Semeada no press, avançada em cada move —
+    /// vive aqui porque é a shell que possui a entrada, e porque a `lazy_mouse_step` mora numa
+    /// crate que o `Pencil` não pode ver (`vec_pencil_input`).
+    pub(crate) vec_pencil_hand: crate::vec_pencil_input::PencilHand,
     /// ADR-0114 W2: a tool Flip está ativa? Cacheado do registry pelo `flip_bridge`
     /// (o `input_dispatch` não pode fazer downcast — vive no bridge allowlistado).
     pub(crate) flip_active: bool,

@@ -112,7 +112,14 @@ fn announce(app: &mut crate::App) {
          fica SELECIONADO; (4) Ctrl+Z desfaz o traco INTEIRO num passo; (5) comece um traco e \
          aperte o BOTAO DIREITO no meio: ele desaparece sem deixar rastro; (6) um CLIQUE sem \
          arrastar nao deixa nada; (7) troque para **Node** e confira que os nos sao poucos e \
-         editaveis (o azul da tela mostra o extremo detalhista, o laranja o extremo liso).",
+         editaveis (o azul da tela mostra o extremo detalhista, o laranja o extremo liso); \
+         (8) a secao **Pencil** abriu junto com o modo, logo abaixo da fileira TOOL: arraste \
+         **Stabilizer** para 0 e desenhe um S -- o traco segue o cursor exactamente e fica \
+         TREMIDO, com muitos nos; suba para ~50%% (o default) e o mesmo S sai liso, e a mao \
+         'pesa' de leve (o ponto filtrado atrasa ~2,6 px, que e' o que 'lazy mouse' custa); \
+         suba ao maximo e note que ele passa a CORTAR as curvas -- passado o joelho o filtro \
+         come o desenho, nao o tremor; (9) **Fidelity** faz o oposto e na SAIDA: baixa guarda \
+         mais nos, alta guarda menos -- a 8 px o S vira quatro nos.",
         nodes.join(", ")
     );
 }

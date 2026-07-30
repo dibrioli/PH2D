@@ -186,6 +186,10 @@ pub(super) fn dispatch(
     pen.set_style(style);
     shape.set_style(style);
     pencil.set_style(style);
+    // A Fidelity autorada (a tolerância do decimador) vem pela MESMA rota do estilo: o tool é o
+    // dono do valor, e o `Pencil` é quem o consome. O estabilizador NÃO passa aqui — ele é aplicado
+    // na ENTRADA, por movimento de ponteiro, e viaja no `VectorDrawConfig` que o `input_dispatch` lê.
+    pencil.set_fidelity_px(tool.pencil_fidelity_px());
 
     // ── 4. Restyle the selected path — colour + width (undoable, one step per
     //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope

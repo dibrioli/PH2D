@@ -116,6 +116,12 @@ pub struct VectorTool {
     fill: [u8; 4],
     /// Stroke width in screen pixels, held in `WIDTH_MIN_PX..=WIDTH_MAX_PX`.
     stroke_width_px: f64,
+    /// **Fidelity do lápis** (px de tela): a tolerância do decimador. Autorada pelo slider da seção
+    /// Pencil; a shell empurra-a para o `Pencil` a cada frame, como faz com o estilo.
+    pencil_fidelity_px: f64,
+    /// **Estabilização do lápis** (0 = ponteiro cru). A shell aplica-a na ENTRADA, com a MESMA
+    /// `lazy_mouse_step` do Painter — o valor é autorado aqui, o filtro corre lá.
+    pencil_stabilizer: f32,
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
@@ -157,6 +163,8 @@ impl Default for VectorTool {
             stroke: color_of("white").unwrap_or([240, 240, 245, 255]),
             fill: color_of("blue").unwrap_or([90, 150, 230, 255]),
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
+            pencil_fidelity_px: crate::params::PENCIL_FIDELITY_DEFAULT_PX,
+            pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             mode: DrawMode::Select,
             blend_stack_up: true,
             shape: ShapeKind::default(),
@@ -196,6 +204,12 @@ impl VectorTool {
     #[must_use]
     pub fn stroke_width_px(&self) -> f64 {
         self.stroke_width_px
+    }
+
+    /// A Fidelity autorada do lápis (px de tela) — a shell empurra-a para o `Pencil`.
+    #[must_use]
+    pub fn pencil_fidelity_px(&self) -> f64 {
+        self.pencil_fidelity_px
     }
 
     /// Current canvas draw-mode (the shell mirrors this to route input).
@@ -384,6 +398,7 @@ impl VectorTool {
             mode: self.mode,
             shape: self.shape,
             values: self.shape_values(self.shape),
+            pencil_stabilizer: self.pencil_stabilizer,
         }
     }
 
@@ -465,6 +480,15 @@ impl Tool for VectorTool {
                 // the width slider affects the path you're looking at — not just
                 // the next one drawn.
                 self.apply_to_selected = true;
+            }
+            // **Os dois knobs do LÁPIS.** Nenhum deles restila a seleção (`apply_to_selected`):
+            // eles descrevem como a MÃO é capturada, não como o traço é pintado — mexer neles não
+            // pode reescrever uma curva que já está no documento.
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_PENCIL_FIDELITY => {
+                self.pencil_fidelity_px = crate::params::slider_to_fidelity_px(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_PENCIL_STABILIZER => {
+                self.pencil_stabilizer = (v as f32).clamp(0.0, 1.0);
             }
             // **Campo de forma** — um braço só para TODAS as formas: o id carrega o
             // ÍNDICE do parâmetro no catálogo, e a forma ativa diz o que ele significa.

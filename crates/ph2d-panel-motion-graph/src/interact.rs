@@ -4,7 +4,7 @@
 //! the [`GraphIntent`]s the shell applies (doc mutations only).
 //!
 //! Coverage: **middle-drag = pan** (from anywhere on the surface), **left-drag on
-//! empty canvas = rubber-band select** (Shift = additive), anchored wheel zoom,
+//! empty canvas = rubber-band select** (Shift = additive, Ctrl = subtract), anchored wheel zoom,
 //! F = fit, Esc = deselect / cancel, click/shift-select, multi-drag (one
 //! `MoveNodes` undo at End), socket→socket **connect** (with a live compatibility
 //! ghost; the shell validates for real), alt-press a wire = **disconnect**,
@@ -285,6 +285,7 @@ fn apply_background(
                     anchor: (g.x, g.y),
                     cur: (g.x, g.y),
                     additive: g.mods.shift,
+                    subtract: g.mods.cmd,
                 };
             }
         }
@@ -348,12 +349,21 @@ fn apply_background(
                         anchor,
                         cur,
                         additive,
+                        subtract,
                     } => {
                         let hit = geom::nodes_in_box(snap, &view, geom::band_rect(anchor, cur));
-                        if !additive {
-                            state.selected.clear();
+                        if subtract {
+                            // Ctrl-drag REMOVES the covered nodes — refine a select-all / linked
+                            // island down to what you want, without re-picking from scratch.
+                            for id in hit {
+                                state.selected.remove(&id);
+                            }
+                        } else {
+                            if !additive {
+                                state.selected.clear();
+                            }
+                            state.selected.extend(hit);
                         }
-                        state.selected.extend(hit);
                         // A band selects NODES; a backdrop is picked by its header
                         // alone (its body is click-through — the band swept over it).
                         state.selected_backdrop = None;

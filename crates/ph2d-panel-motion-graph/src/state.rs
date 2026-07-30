@@ -42,7 +42,11 @@ pub(crate) enum Interaction {
     BoxSelect {
         anchor: (f32, f32),
         cur: (f32, f32),
+        /// Shift held at the start — the band ADDS to the selection instead of replacing it.
         additive: bool,
+        /// Ctrl/Cmd held at the start — the band REMOVES the nodes it covers from the selection
+        /// (Alt is avoided: KDE steals it for window drags). Wins over `additive` if both are held.
+        subtract: bool,
     },
     /// Slicing a knife stroke across the canvas (armed by `K`): every wire the
     /// segment crosses is cut on release, as ONE undo step. Screen space.

@@ -40,6 +40,10 @@
 //! ILHA conectada inteira (grid→scale→output), seguindo os fios em qualquer direção. Ilhas
 //! desconexas não entram. Daí mover / apagar / agrupar a sub-árvore toda a partir de um nó só.
 //!
+//! ⊙ Ctrl+ARRASTAR (box) DESELECIONA os nós cobertos — refine um Ctrl+A / Ctrl+L tirando uma
+//! região sem re-selecionar do zero. (Shift+arrastar ADICIONA; arrastar puro SUBSTITUI. Ctrl e não
+//! Alt porque o KDE rouba o Alt.)
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -113,6 +117,8 @@ impl crate::App {
              Ctrl+D / Ctrl+G agem sobre o grafo inteiro. Editando um campo, Ctrl+A seleciona o TEXTO.\n  \
              CTRL+L: selecione UM no e aperte Ctrl+L -> a selecao cresce para a ILHA conectada \
              inteira (segue os fios em qualquer direcao); ilhas desconexas nao entram.\n  \
+             CTRL+ARRASTAR (box): DESELECIONA os nos cobertos (refina um Ctrl+A/Ctrl+L). Shift \
+             adiciona, arrasto puro substitui.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

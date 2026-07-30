@@ -458,3 +458,23 @@ fn select_linked_grows_to_the_connected_island_only() {
     got.sort_unstable();
     assert_eq!(got, vec![1, 2, 3], "the whole island A joined; island B (4-5) is untouched");
 }
+
+/// **Ctrl-drag a box REMOVES the covered nodes from the selection** — refine a select-all / linked
+/// island down without re-picking. Node 2's card is at x 200..390; a Ctrl-box over [195, 400]
+/// covers it but not node 1 ([0, 190]). FALSIFIED if the subtract branch is ignored: a plain /
+/// additive band would instead leave node 2 selected (or reselect only it).
+#[test]
+fn ctrl_box_drag_subtracts_the_covered_nodes() {
+    let snap = two_node_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.extend([1, 2]);
+    for phase in [GesturePhase::Begin, GesturePhase::Update, GesturePhase::End] {
+        let (x, y) = if phase == GesturePhase::Begin { (195.0, 10.0) } else { (400.0, 300.0) };
+        let mut g = gesture(GraphHitKind::Background, phase, x, y);
+        g.mods.cmd = true; // Ctrl held → the band subtracts
+        apply_gesture(&mut st, g, RECT, CENTER, &snap);
+    }
+    let mut got: Vec<u32> = st.selected.iter().copied().collect();
+    got.sort_unstable();
+    assert_eq!(got, vec![1], "node 2 (under the box) was deselected; node 1 (outside) stays");
+}

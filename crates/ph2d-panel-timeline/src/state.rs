@@ -76,8 +76,12 @@ pub(crate) use state_nav::{
     enter_container, open_container_root, pop_to_depth, publish_containers_list, publish_keys_mode,
     publish_scene_root, set_tab, trail_len,
 };
-pub use state_requests::{request_fit, request_keys_tab, request_reveal_playhead};
-pub(crate) use state_requests::{take_fit_request, take_keys_tab_request, take_reveal_request};
+pub use state_requests::{
+    request_expr_card, request_fit, request_keys_tab, request_reveal_playhead,
+};
+pub(crate) use state_requests::{
+    take_expr_card_request, take_fit_request, take_keys_tab_request, take_reveal_request,
+};
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
 /// time axis (pan + zoom). Wired in E6; `Default` satisfies the

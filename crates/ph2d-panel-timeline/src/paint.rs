@@ -41,6 +41,12 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_keys_tab_request() {
         state::set_tab(state, crate::tab::Tab::Keys);
     }
+    // **And a scene that asks for the Expression card gets it** — through the same
+    // `expr_modal::open` the track menu's row calls, so an opened-by-request card and an
+    // opened-by-artist card cannot be two different cards (see `request_expr_card`).
+    if let Some(target) = state::take_expr_card_request() {
+        crate::expr_modal::open(state, target);
+    }
     // **`keys_mode` follows the TAB, not `&& stacked()`** (Enio, 2026-07-27): the Keys tab
     // is the CLIP's scope and Arrange is the SCENE's, INDEPENDENT — each edits its own
     // duration, each plays its own thing. The old `&& stacked()` collapsed them without a

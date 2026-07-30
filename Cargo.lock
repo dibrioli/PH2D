@@ -5350,6 +5350,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor",
  "ph2d-eval-motion",
+ "ph2d-expr-recipes",
  "ph2d-flip",
  "ph2d-flip-colorize",
  "ph2d-flip-fill",

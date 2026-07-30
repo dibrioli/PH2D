@@ -289,7 +289,29 @@ fn paint_resolution_group(
     y
 }
 
-/// **O readout DERIVADO das duas razões** — `fluido 2048² · fluxo 512²`.
+/// O TEXTO do readout — extraído para ser afirmável.
+///
+/// ⚠️ Ele existe como função porque a primeira versão shipou **"fluido/fluxo"**
+/// no meio de "Grid Size", "Paint", "Erase" e "Smear" — duas línguas na mesma
+/// seção, e nenhum gate do repo alcança essa classe: o `hr15_no_hardcoded_ui_strings`
+/// varre `.label(...)` dentro de `ph2d-editor-core/src/widget/`, não `paint_text`
+/// num painel. Um gate GERAL de idioma seria uma lista de palavras que nunca
+/// fica completa; este pina a string que de fato falhou.
+fn resolution_readout(fluid: (u32, u32), flow: (u32, u32)) -> String {
+    let ((gw, gh), (fw, fh)) = (fluid, flow);
+    if gw == 0 || gh == 0 {
+        "no canvas".to_string()
+    } else {
+        format!("fluid {gw}x{gh} - flow {fw}x{fh}")
+    }
+}
+
+/// **O readout DERIVADO das duas razões** — `fluid 2048x2048 - flow 512x512`.
+///
+/// ⚠️ **O texto é INGLÊS** porque a UI do app é inglês (o comentário é
+/// português porque o código é lido por quem trabalha nele; a STRING é lida
+/// pelo artista). A primeira versão shipou "fluido/fluxo" no meio de
+/// "Grid Size" e "Paint/Erase/Smear" — duas línguas na mesma seção.
 ///
 /// ⚠️ Ele não é decoração: sem ele o artista não tem como saber que *Grid 2 +
 /// Flow 4* dá uma grade de fluxo de 512², e a lei desta linha é que **um limite
@@ -307,12 +329,7 @@ fn paint_resolution_readout(
 ) -> f32 {
     use ph2d_editor_core::paint::{paint_text, resolve};
     use ph2d_tokens::{ColorToken, Spacing, TypeToken};
-    let ((gw, gh), (fw, fh)) = (brush.wet_fluid_dims, brush.wet_flow_dims);
-    let text = if gw == 0 || gh == 0 {
-        "no canvas".to_string()
-    } else {
-        format!("fluido {gw}x{gh} - fluxo {fw}x{fh}")
-    };
+    let text = resolution_readout(brush.wet_fluid_dims, brush.wet_flow_dims);
     let font = TypeToken::Sm.px();
     paint_text(
         ctx.text_system,
@@ -325,4 +342,21 @@ fn paint_resolution_readout(
         resolve(ColorToken::Text2, theme),
     );
     y + font + Spacing::Xs.px()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **O readout é INGLÊS**, como todo o resto da UI do app.
+    ///
+    /// Mutação: voltar a "fluido {gw}x{gh} - fluxo {fw}x{fh}" sangra aqui.
+    #[test]
+    fn the_resolution_readout_speaks_the_apps_language() {
+        assert_eq!(
+            resolution_readout((1024, 1024), (256, 256)),
+            "fluid 1024x1024 - flow 256x256"
+        );
+        assert_eq!(resolution_readout((0, 0), (0, 0)), "no canvas");
+    }
 }

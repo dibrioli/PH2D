@@ -625,10 +625,45 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                         ✅ C.0 modal · ✅ C.1 duas colunas · ✅ C.2 eixo da fita
                         ✅ C.3 o NOME do objeto · ✅ C.4 o card é função da JANELA
                              ↓
-                        G1 → smoke → G2 → smoke → G3 → … → G6
+                        ✅ G1 (construído, PENDENTE DE SMOKE) → G2 → … → G6
                              ↓
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
+
+### ⏳ O G1 ESTÁ CONSTRUÍDO (2026-07-30) — e a régua achou o defeito antes da UI
+
+O protocolo do §7.1 rodou inteiro, e ele funciona: **medir antes da UI achou um defeito de
+FAIXA que nenhum smoke encontraria** (o topo do slider é um lugar onde ninguém repara até
+arrastar até lá).
+
+| | topo antes | excursão medida | depois |
+|---|---|---|---|
+| `Sway.amount` | 40 | **1,95 canvas** | 20 → 40,0 m |
+| `Shake.amount` | 40 | **1,57 canvas** (pior seed) | 20 → 32,1 m |
+
+O defeito tinha nome: **`CANVAS_M` (o teto de um VALOR) usado como teto de uma AMPLITUDE**.
+`AMPLITUDE_M = 20` cai de duas derivações independentes (canvas/2 para uma senoide,
+canvas/1,96 para o pior seed do wiggle).
+
+**Três coisas que a própria régua ensinou, e que valem para os grupos 2..8:**
+
+1. **A excursão não responde por knob que não é amplitude.** `Speed` e `Phase` seriam
+   declarados quase mortos. A pergunta *"vivo?"* é sobre o **SINAL**; excursão e taxa dizem
+   **o quê** mudou.
+2. **Um seed é uma amostra.** A excursão de um `wiggle` varia **0,49×–1,96×** entre
+   objetos; a medição de um seed subestimava em 53%.
+3. **Varredura DUPLA.** `Roughness` mede zero no default e não está morto — ele age através
+   do `Detail`. Um knob que só age através de outro parece morto na fixture preguiçosa.
+
+⛔ **E uma hipótese minha foi REFUTADA:** *"os dois `Speed` estão em unidades diferentes"* —
+medido, `Speed = 3` dá 0,50 Hz no Sway e 0,60 Hz no Shake. O modelo NÃO foi reescrito, e o
+report *"a velocidade em shake parece um seed"* **segue sem causa medida**.
+
+**Censo do catálogo:** 7 → 5 faixas que expulsam o objeto. As cinco são do **G6**
+(Orbit ×2, Pendulum, Throw ×2), com o número medido de cada uma na allowlist do gate — cada
+grupo futuro apaga a linha dele.
+
+**Smoke: `PH2D_EXPR_GROUP_SMOKE=1`.** Aguarda o veredito do Enio; o G2 não começa antes.
 
 ### ✅ A FASE B FECHOU (2026-07-30) — e DOIS dos cinco itens dissolveram na medição
 

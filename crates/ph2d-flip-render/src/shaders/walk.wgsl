@@ -599,13 +599,16 @@ fn stroke_tau(lo: u32, hi: u32, sid: u32, hardness: f32, airbrush: bool, pitch: 
 
         let pitch_min = max(PAINTER_SPACING * 2.0 * min(ra, rb), MIN_PITCH_PX);
         let ds = pitch_min / SUB;
-        let n = max(ceil(len / ds), 1.0);
-        let step = len / n;
-        let i0 = u32(max(floor(t0 * len / step - 0.5), 0.0));
-        let i1 = u32(clamp(ceil(t1 * len / step - 0.5), 0.0, n - 1.0));
+        // ⚠️ A grade resolve a JANELA, nao o SEGMENTO (irmao do `tau.rs`; o doc 12 §22.8/§22.10
+        // traz o porque e o preco medido). Ancorada no segmento, um pixel cuja cobertura so' vem de
+        // perto de um EXTREMO nao pegava amostra nenhuma e o percurso DERRUBAVA a tinta.
+        let win_len = (t1 - t0) * len;
+        let n = max(ceil(win_len / ds), 1.0);
+        let step = win_len / n;
+        let i1 = u32(n) - 1u;
 
-        for (var i = i0; i <= i1; i = i + 1u) {
-            let t = clamp((f32(i) + 0.5) * step / len, 0.0, 1.0);
+        for (var i = 0u; i <= i1; i = i + 1u) {
+            let t = clamp(t0 + (f32(i) + 0.5) * step / len, 0.0, 1.0);
             let sp = sa + v * t;
             let r = max(ra * (1.0 - t) + rb * t, 1e-4);
             let dn = length(p - sp) / r;

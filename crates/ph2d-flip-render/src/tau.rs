@@ -422,13 +422,28 @@ pub(crate) fn stroke_tau(
         // amostras, nunca menos).
         let pitch_min = (PAINTER_SPACING * 2.0 * ra.min(rb)).max(MIN_PITCH_PX);
         let ds = pitch_min / SUB as f32;
-        let n = (len / ds).ceil().max(1.0);
-        let step = len / n;
-        let i0 = (t0 * len / step - 0.5).floor().max(0.0) as u32;
-        let i1 = (t1 * len / step - 0.5).ceil().clamp(0.0, n - 1.0) as u32;
+        // ⚠️ **A grade resolve a JANELA, não o SEGMENTO — e a densidade (`ds`) é a mesma.** O
+        // integrando é zero fora de `[t0, t1]` por construção (a janela é exatamente onde o dab
+        // alcança), então integrar a janela é a MESMA integral; o que muda é onde as amostras
+        // pousam.
+        //
+        // Ancorada no SEGMENTO, um pixel cuja cobertura só vem de perto de um EXTREMO via o pico do
+        // integrando cair em cima da fronteira do domínio: medido, suporte de **0,121 px contra um
+        // passo de 0,35** ⇒ nenhuma amostra, `τ = 0`, e o percurso **derrubava a tinta** (doc 12
+        // §22.8 — 4 px num traço reto, 13 num zigue-zague de 24 juntas). Ancorada na JANELA, o piso
+        // de uma amostra cai no meio dela.
+        //
+        // ⚠️ **E o preço no miolo foi MEDIDO, não estimado** (§22.10): a mudança move **0 pixels
+        // acima de 1/255** em `hardness` 0,4 e 0,7 (pior 0,10 e 0,37), porque ali a janela é larga
+        // e re-ancorar a grade vale `O(passo²)`. Os 16 pixels que se movem em dureza 1 **são o
+        // defeito sendo corrigido**.
+        let win = (t1 - t0) * len;
+        let n = (win / ds).ceil().max(1.0);
+        let step = win / n;
+        let i1 = n as u32 - 1;
 
-        for i in i0..=i1 {
-            let t = ((i as f32 + 0.5) * step / len).clamp(0.0, 1.0);
+        for i in 0..=i1 {
+            let t = (t0 + (i as f32 + 0.5) * step / len).clamp(0.0, 1.0);
             let s = [sa[0] + v[0] * t, sa[1] + v[1] * t];
             let r = (ra * (1.0 - t) + rb * t).max(1e-4);
             let dn = ((p[0] - s[0]).powi(2) + (p[1] - s[1]).powi(2)).sqrt() / r;

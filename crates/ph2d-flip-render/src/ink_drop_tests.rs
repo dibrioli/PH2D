@@ -211,6 +211,17 @@ fn measure_how_much_ink_the_walk_drops() {
                 com_tinta += 1;
                 let cover = stroke_deposit(run, g, &sc, p).map_or(0.0, |d| d.cover);
                 if cover <= 0.0 && real > 0.02 {
+                    if zerados == 0 {
+                        let sl = stroke_silhouette(run, g, &sc, style.tip, p).expect("tocado");
+                        println!(
+                            "      1o ofensor ({:.1}, {:.1}): sd={:+.4} dist={:.4} area={real:.4}                              segs no tile={}",
+                            p[0],
+                            p[1],
+                            sl.sd,
+                            sl.dist,
+                            run.len()
+                        );
+                    }
                     zerados += 1;
                     pior = pior.max(real);
                     soma += real;
@@ -225,28 +236,17 @@ fn measure_how_much_ink_the_walk_drops() {
     }
 }
 
-/// ⭐ **O DEFEITO 3a, PINADO COM O NÚMERO DELE — e ele não é saturação.**
+/// ⭐ **A CURA DO 3a, PINADA** — o que era um pin do DEFEITO virou o guard da correção.
 ///
-/// ⚠️ **Este gate falha quando o defeito for CORRIGIDO, e isso é o desenho** (o padrão do
-/// `the_documented_hardening_is_still_there_and_this_is_its_number` do Painter): sem ele o
-/// diagnóstico volta a ser re-derivado do zero, e a §22.6 já rotulou este mesmo número de
-/// "saturação" uma vez.
+/// A grade da quadratura passou a resolver a **JANELA** em vez do segmento (doc 12 §22.10), e as
+/// duas metades que o pin antigo media trocaram de valor: o flanco continua exato e **a tampa
+/// deixou de ser zero**.
 ///
-/// **O que ele afirma, e o que a medição estabeleceu:**
-///
-/// 1. **no FLANCO a lei é exata** — mesmo `sd`, `cover == área` a quatro casas. Sem esta metade o
-///    número da outra não distingue *a lei erra na borda* de *a lei erra perto de um EXTREMO*;
-/// 2. **num pixel cuja cobertura só vem de um extremo de segmento o `cover` é ZERO**, não baixo:
-///    `stroke_tau` devolve `None`. Perto de uma tampa ou junta o pico do integrando cai EM CIMA da
-///    fronteira do domínio e o suporte encolhe — medido, **0,121 px contra um passo de 0,35** ⇒ a
-///    regra do ponto médio não pega amostra nenhuma.
-///
-/// A cura é resolver a JANELA em vez do segmento (o `SUB` é um piso, e hoje ele está no domínio
-/// errado). Ela move todo número de tinta do motor, o port WGSL e os gates de look ⇒ **wave
-/// própria**, e o alcance medido diz o preço de adiá-la: **4 pixels de 1180** num traço reto,
-/// **13 de 1115** num zigue-zague de 24 juntas.
+/// ⚠️ **O flanco tem de ser INCLINADO.** Num traço horizontal o `sd` do flanco cai exatamente em
+/// ±0,5 — nunca há pixel meio-coberto ali —, então uma fixture horizontal mede `área = 0` e o gate
+/// afirma o vazio. É também a razão de os piores pixels das sondas terem caído todos numa TAMPA.
 #[test]
-fn the_walk_drops_a_sliver_of_ink_at_caps_and_joints_and_this_is_its_number() {
+fn the_walk_no_longer_drops_the_ink_at_a_cap() {
     let sc = screen(96.0, 96.0);
     let ver = |g: &crate::pack::FlipGpuData, p: [f32; 2]| {
         let bins = bin_segments(g, &sc, 16);
@@ -257,19 +257,16 @@ fn the_walk_drops_a_sliver_of_ink_at_caps_and_joints_and_this_is_its_number() {
         let cover = stroke_deposit(run, g, &sc, p).map_or(0.0, |d| d.cover);
         (real, cover)
     };
-    // (1) O FLANCO, com o centro do pixel FORA: a lei acerta a área.
-    //
-    // ⚠️ **O flanco tem de ser INCLINADO, e a 1ª versão deste gate não era.** Num traço horizontal
-    // o `sd` do flanco cai exatamente em ±0,5 — nunca há pixel meio-coberto ali —, então a fixture
-    // media `área = 0` e o gate falhava afirmando o vazio. É também a razão de os três piores
-    // pixels das sondas terem caído todos numa TAMPA.
+    // (1) O FLANCO segue exato — é o controle que separa *a lei erra na borda* de *a lei erra
+    // perto de um EXTREMO*, e sem ele o número da outra metade não diz nada.
     let inclinado = art(&[(&[[20.0, 20.0], [70.0, 62.0]], 9.0, false, BLACK)]);
     let (real_flanco, cover_flanco) = ver(&inclinado, [47.5, 46.5]);
     assert!(
         real_flanco > 0.0 && (cover_flanco - real_flanco).abs() < 2.0 / 255.0,
         "o flanco deveria ser exato: area {real_flanco:.4} vs cover {cover_flanco:.4}"
     );
-    // (2) A TAMPA: mesma ordem de cobertura, e o percurso não deposita nada.
+    // (2) A TAMPA deposita. Antes da cura este pixel media EXATAMENTE zero contra uma área de
+    // 0,1028 — 26,21/255 de tinta derrubada.
     let reto = art(&[(&[[12.0, 48.0], [84.0, 48.0]], 14.0, false, BLACK)]);
     let (real_tampa, cover_tampa) = ver(&reto, [87.5, 41.5]);
     assert!(
@@ -277,8 +274,57 @@ fn the_walk_drops_a_sliver_of_ink_at_caps_and_joints_and_this_is_its_number() {
         "a fixture perdeu a tampa: area {real_tampa:.4} (o gate mediria o vazio)"
     );
     assert!(
-        cover_tampa <= 0.0,
-        "⭐ O DEFEITO 3a FOI CORRIGIDO — a tampa agora deposita {cover_tampa:.4} contra area \
-         {real_tampa:.4}. Atualize a nota da §22.8 do doc 12 e este gate: o numero mudou."
+        cover_tampa > 0.02,
+        "⭐ A TINTA DA TAMPA VOLTOU A SER DERRUBADA: cover {cover_tampa:.4} contra area \
+         {real_tampa:.4}. A grade voltou a ser ancorada no SEGMENTO?"
+    );
+}
+
+/// ⭐ **O RESÍDUO QUE A LEI DE ÁREA CRIOU, pinado com o número — e ele NÃO é regressão.**
+///
+/// A lei de área (§22.7) enxerga um pixel cuja **QUINA** entra na silhueta mesmo com o centro a mais
+/// de meio pixel de distância (`sd` até `√2/2`). O `p_eval` — que escolhe onde amostrar o PERFIL —
+/// é 1-D ao longo da normal, e a derivação dele (*a parte coberta é `v ∈ [sd − ½, 0]`*) tem
+/// intervalo **vazio** quando `sd > ½`: ele pousa FORA da silhueta, `τ` sai 0 e o depósito devolve
+/// `None`.
+///
+/// ⚠️ **Não é regressão:** com a lei antiga esses pixels tinham `edge = 0,5 − sd ≤ 0` e eram
+/// descartados no early-out — derrubados do mesmo jeito, só que sem ninguém saber. O que a lei de
+/// área fez foi **tornar visível** a discordância entre a cobertura 2-D e a amostra 1-D.
+///
+/// Medido: **13 pixels de 1115** num zigue-zague de 24 juntas, área ≤ 2,9% (14,94/255). As duas
+/// curas candidatas têm preço (capar o alcance dos planos em ½ joga fora a exatidão da quina;
+/// mover o `p_eval` para dentro muda onde TODO pixel amostra o perfil) ⇒ decisão própria.
+#[test]
+fn the_area_law_can_claim_a_corner_the_profile_cannot_sample_and_this_is_its_number() {
+    let sc = screen(96.0, 96.0);
+    let g = art(&[(
+        &(0..24)
+            .map(|k| [20.0 + k as f32 * 2.5, if k % 2 == 0 { 40.0 } else { 52.0 }])
+            .collect::<Vec<_>>(),
+        6.0,
+        false,
+        BLACK,
+    )]);
+    let bins = bin_segments(&g, &sc, 16);
+    let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+    let p = [17.5_f32, 58.5];
+    let ti = bins.tile_of_pixel(p[0], p[1]).expect("dentro");
+    let run = bins.segs_of(ti);
+    let sl = stroke_silhouette(run, &g, &sc, style.tip, p).expect("tocado");
+    // A premissa declarada: o centro está FORA de meio pixel, então só a quina entra.
+    assert!(
+        sl.sd > 0.5 && sl.sd < core::f32::consts::FRAC_1_SQRT_2,
+        "a fixture perdeu o fenomeno: sd = {} (precisa de meio-pixel a raiz(2)/2)",
+        sl.sd
+    );
+    assert!(
+        sl.planes.coverage() > 0.01,
+        "a lei de area deveria enxergar a quina: {}",
+        sl.planes.coverage()
+    );
+    assert!(
+        stroke_deposit(run, &g, &sc, p).is_none(),
+        "⭐ O RESIDUO DA QUINA FOI CORRIGIDO — atualize a nota da §22.10 do doc 12 e este gate."
     );
 }

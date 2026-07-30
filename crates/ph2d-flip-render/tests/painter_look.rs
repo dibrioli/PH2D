@@ -2540,3 +2540,39 @@ fn measure_the_star_residual_on_the_walk_not_the_raster() {
         );
     }
 }
+
+/// 📏 **SONDA — despeja o campo de alfa do PERCURSO num arquivo, para um A/B entre duas versões
+/// do motor.** `PH2D_WALK_DUMP=<arquivo>` diz onde.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn dump_the_walk_alpha_field() {
+    let Ok(dest) = std::env::var("PH2D_WALK_DUMP") else {
+        println!("sem PH2D_WALK_DUMP");
+        return;
+    };
+    let (pts, r) = star_path(7.0);
+    let sc = ph2d_flip_render::ScreenSpace {
+        world_to_clip: [
+            [2.0 / W as f32, 0.0, 0.0, 0.0],
+            [0.0, 2.0 / H as f32, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0, 1.0],
+        ],
+        viewport: [W as f32, H as f32],
+        px_per_world: 1.0,
+    };
+    let mut out = String::new();
+    for hardness in [0.4_f32, 0.7, 1.0] {
+        let g = ph2d_flip_render::pack_drawing(&flip_drawing(&pts, r, hardness));
+        let bins = ph2d_flip_render::bin_segments(&g, &sc, ph2d_flip_render::DEFAULT_TILE);
+        for y in 0..H {
+            for x in 0..W {
+                let p = [x as f32 + 0.5, y as f32 + 0.5];
+                let a = ph2d_flip_render::walk_pixel(&bins, &g, &sc, p)[3];
+                out.push_str(&format!("{a:.6}\n"));
+            }
+        }
+    }
+    std::fs::write(&dest, out).expect("escreve");
+    println!("despejado em {dest}");
+}

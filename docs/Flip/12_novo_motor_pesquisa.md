@@ -1864,7 +1864,8 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 2 | **o Pass A pergunta antes de rasterizar** | ✅ **feito** (§22.5) — arte commitada e fantasma de onion custam **zero** enquanto ninguém mexe neles |
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
 | 3 | **a integral de ÁREA do pixel** | ⚠️ a premissa estava ERRADA (§22.6) — mas a medição achou **três** defeitos, e **dois já fecharam** (§22.7): a QUINA (63,75/255) e o ÂNGULO (9,72 a 45°, que ninguém tinha visto). |
-| 3a | ⚠️ **NÃO era saturação — o percurso DERRUBA tinta em tampa e junta** | ABERTO, diagnosticado e pinado (§22.8). Mecanismo, número e alcance medidos; a cura é wave própria porque move todo número de tinta do motor. |
+| 3a | ⚠️ **NÃO era saturação — o percurso DERRUBAVA tinta em tampa e junta** | ✅ **CURADO** (§22.10): a grade resolve a JANELA, não o segmento. Tampa e junta vão a **zero px derrubados**, e o miolo **não se move** (0 px acima de 1/255 em h=0,4 e 0,7). |
+| 3c | o resíduo de QUINA que a lei de área expôs | ABERTO e pinado — **não é regressão** (§22.10): a área enxerga uma quina do pixel com `sd > ½`, onde o `p_eval` 1-D não tem ponto para amostrar. 13 px de 1115, ≤ 14,94/255. |
 | 4 | ~~**joins & caps**~~ | ⛔ **A PREMISSA FOI REFUTADA POR MEDIÇÃO (§22.9).** O `−64` saía do RASTERIZADOR (a escape hatch, não o default desde `9a4bdd07b`), e no percurso ele decompõe em duas causas conhecidas — o termo de fronteira do `end_dab` (correto: cinco traços têm cinco começos) e `over` contra união exata. **Nenhuma é geometria de junta.** Sobra uma pergunta de PRODUTO, não de correção. |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
@@ -2228,3 +2229,69 @@ Uma pergunta de **produto**, não de correção — e com um contra-argumento es
 
 ⇒ **Nada a construir aqui sem uma ordem de produto.** A fila real que sobra é o **3b** (a cura da
 quadratura, §22.8) e o **5** (a terceira lei).
+
+### 22.10 ⭐ O 3a CURADO — a grade resolve a JANELA, e o miolo não se move
+
+A §22.8 disse *"a cura é wave própria porque move todo número de tinta do motor"*. **Era estimativa
+minha, e a medição a derrubou.**
+
+#### A mudança, em duas linhas
+
+A quadratura ancorava a grade no **SEGMENTO** (`n = ceil(len/ds)` células, amostras nos centros) e
+depois escolhia as células que caem na janela `[t0, t1]`. Agora ela ancora na **JANELA**
+(`n = ceil(win/ds)`, amostras nos centros dela), com a **mesma densidade `ds`**. O integrando é zero
+fora da janela por construção — a janela é exatamente onde o dab alcança —, então é a **mesma
+integral**; o que muda é onde as amostras pousam.
+
+#### O raio de explosão, MEDIDO (`dump_the_walk_alpha_field`, A/B do campo inteiro)
+
+| dureza | px com tinta | px que movem >1/255 | >16/255 | pior |
+|---|---|---|---|---|
+| 0,4 | 2208 | **0** | 0 | 0,10 |
+| 0,7 | 2234 | **0** | 0 | 0,37 |
+| 1,0 | 2324 | 16 | 8 | 69,11 |
+
+⚠️ **O miolo não se move**, e o motivo é estrutural: onde a janela é larga, re-ancorar a grade vale
+`O(passo²)`. Os 16 pixels de dureza 1 **são o defeito sendo corrigido**. O medo de "mover todo
+número de tinta" era meu; o número é do produto.
+
+#### O que fechou
+
+| cena | px derrubados ANTES | DEPOIS |
+|---|---|---|
+| traço reto (2 tampas) | 4 | **0** |
+| L (2 tampas + 2 juntas) | 4 | **0** |
+| zigue-zague (24 juntas) | 13 | 13 (outra causa — abaixo) |
+
+E a estrela no percurso melhorou em dureza 1: **−71 → −63**, com a sobra indo a 0.
+
+**Custo:** device a 200 traços/1080p, ladrilho 16: **3,65 → 3,70 ms** (+1,4%). O port para o
+`walk.wgsl` foi junto e o `walk_gpu_parity` fecha no mesmo **4,883e-4** — o quantum da meia
+precisão do alvo. ⚠️ O port esbarrou numa colisão de nome (`win` já existia como o retorno do
+`seg_window`) — o validador de shader pegou, não o olho.
+
+#### ⚠️ O resíduo que sobrou é da MINHA lei de área, e não é regressão
+
+Os 13 do zigue-zague são outra coisa. O 1º ofensor tem **`sd = +0,5355`**: o centro do pixel está a
+mais de meio pixel da silhueta, e a área só é não-nula porque uma **QUINA** do pixel entra (a lei de
+área enxerga até `√2/2`). Mas o `p_eval` — que decide onde amostrar o PERFIL — é **1-D ao longo da
+normal**, e a derivação dele (*a parte coberta é `v ∈ [sd − ½, 0]`*) tem intervalo **vazio** quando
+`sd > ½`: ele pousa FORA, `τ` sai 0, o depósito devolve `None`.
+
+⚠️ **Com a lei antiga esses pixels tinham `edge = 0,5 − sd ≤ 0` e morriam no early-out** — eram
+derrubados do mesmo jeito, só que sem ninguém saber. A lei de área não criou o buraco: ela o **tornou
+visível**, que é o que uma lei mais exata faz.
+
+Medido: **13 px de 1115**, área ≤ 2,9% (14,94/255). As duas curas candidatas têm preço — capar o
+alcance dos planos em ½ joga fora a exatidão da quina que a §22.7 comprou; mover o `p_eval` para
+dentro muda onde **todo** pixel amostra o perfil ⇒ decisão própria, pinada em
+`the_area_law_can_claim_a_corner_the_profile_cannot_sample_and_this_is_its_number`.
+
+#### Gates
+
+O pin do defeito virou o **guard da cura** (`the_walk_no_longer_drops_the_ink_at_a_cap`), com as
+duas metades de sempre: o flanco INCLINADO exato (o controle) e a tampa depositando. **2 mutações:**
+voltar a grade para o segmento **sangra**; trocar `ceil` por `floor` na contagem de amostras
+**sobrevive — e é honesto**: ela muda a resolução em ≤1 amostra, que é exatamente o que o gate
+`the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled` prova que não muda a resposta (e
+ele passa sob a mutação, o que é evidência, não buraco).

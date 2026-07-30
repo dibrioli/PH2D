@@ -21,6 +21,7 @@ pub use pen_support::{History, PenStyle};
 
 /// Selection + the document ops that act on it (sibling module, LOC cap).
 mod selection;
+pub use selection::SelectedKind;
 
 pub mod snap;
 pub use snap::{SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_targets};
@@ -292,8 +293,10 @@ impl PenTool {
         if self.reopen_endpoint(scene, p, hit_r) {
             return PenClick::Grabbed;
         }
-        // hit-test para EDITAR um ponto existente. Sem alca de raio: ela e do modo
-        // NODE (ADR-0112) — no Pen o clique cria e edita ponto, nao arredonda quina.
+        // hit-test para EDITAR um ponto existente. **Nenhum modo agarra alça de raio aqui:** ela
+        // saiu do Node e virou o par de ferramentas Fillet / Chamfer (`corner_tool`), então o
+        // arredondar/chanfrar quina tem press próprio. (Este comentário dizia *"ela é do modo
+        // NODE"* e contradizia o código shipado 35 linhas abaixo — a auditoria do plano 25 o pegou.)
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;

@@ -332,7 +332,7 @@ pub(super) fn dispatch(
     // (Corner/Smooth/Symmetric) + highlights the active one. `None` hides it.
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_selected_vertex_type(if vector_active {
-        pen.selected_vertex_kind(scene).map(vertex_type_of)
+        pen.selected_vertex_kind(scene).map(vertex_sel_of)
     } else {
         None
     });
@@ -495,6 +495,17 @@ fn line_join(j: ph2d_tool_vector::StrokeJoin) -> LineJoin {
 }
 
 /// Map the geometry `VertexKind` to the panel's UI-facing `VertexType`.
+/// O que a seleção de vértices tem em comum, no vocabulário do painel. `Mixed` viaja porque nenhum
+/// chip descreve uma seleção de tipos diferentes — publicar o tipo do PRIMÁRIO fazia o painel
+/// afirmar um deles (auditoria do plano 25, item 5).
+fn vertex_sel_of(sel: ph2d_vec_edit::SelectedKind) -> ph2d_tool_vector::VertexSel {
+    use ph2d_tool_vector::VertexSel;
+    match sel {
+        ph2d_vec_edit::SelectedKind::Uniform(k) => VertexSel::Uniform(vertex_type_of(k)),
+        ph2d_vec_edit::SelectedKind::Mixed => VertexSel::Mixed,
+    }
+}
+
 fn vertex_type_of(k: ph2d_vec_scene::VertexKind) -> ph2d_tool_vector::VertexType {
     use ph2d_tool_vector::VertexType;
     use ph2d_vec_scene::VertexKind;

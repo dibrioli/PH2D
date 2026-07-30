@@ -39,8 +39,8 @@ mod shapes_units;
 pub mod tool;
 
 pub use params::{
-    DrawMode, StrokeCap, StrokeJoin, TextAlign, VectorDrawConfig, VectorStyleSnapshot, VertexType,
-    px_to_slider, slider_to_px,
+    DrawMode, StrokeCap, StrokeJoin, TextAlign, VectorDrawConfig, VectorStyleSnapshot, VertexSel,
+    VertexType, px_to_slider, slider_to_px,
 };
 pub use tool::{
     DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_RADIUS_PX,

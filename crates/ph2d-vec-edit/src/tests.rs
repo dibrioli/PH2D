@@ -380,6 +380,10 @@ fn multi_retype_and_multi_delete_apply_to_all_selected() {
 
 /// The Vertex-type buttons target the selected vertex; `selected_vertex_kind`
 /// reports it for the panel to highlight.
+///
+/// ⚠️ Ele devolve o que a seleção tem em COMUM (`SelectedKind`) e não o tipo do primário — com um
+/// vértice selecionado as duas respostas coincidem, e é por isso que este gate segue valendo. O caso
+/// que as separa (seleção MISTA) tem gate próprio, em `selection_kind_tests.rs`.
 #[test]
 fn selected_vertex_kind_tracks_the_last_touched_vertex() {
     let mut scene = VecScene::new();
@@ -391,12 +395,12 @@ fn selected_vertex_kind_tracks_the_last_touched_vertex() {
     assert_eq!(pen.selected_vert(), Some(1));
     assert_eq!(
         pen.selected_vertex_kind(&scene),
-        Some(VertexKind::Corner) // straight corners from clicks
+        Some(crate::SelectedKind::Uniform(VertexKind::Corner)) // straight corners from clicks
     );
     assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Symmetric));
     assert_eq!(
         pen.selected_vertex_kind(&scene),
-        Some(VertexKind::Symmetric)
+        Some(crate::SelectedKind::Uniform(VertexKind::Symmetric))
     );
     // Selecting a whole path (boolean result) clears the vertex selection.
     pen.select(Some(scene.paths()[0].id));

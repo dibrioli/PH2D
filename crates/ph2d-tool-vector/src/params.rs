@@ -191,6 +191,20 @@ pub enum VertexType {
     Symmetric,
 }
 
+/// **O que a SELEÇÃO de vértices tem em comum** — o que o painel precisa para destacar (ou não
+/// destacar) um chip da seção Vertex.
+///
+/// ⚠️ O `Mixed` existe porque publicar só o tipo do vértice PRIMÁRIO fazia um dos três chips ficar
+/// aceso descrevendo a seleção INTEIRA: com dois nós de tipos diferentes selecionados, o painel
+/// afirmava um deles. Nenhum chip aceso é a resposta honesta (e é a do Illustrator).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VertexSel {
+    /// Todos os vértices selecionados são deste tipo.
+    Uniform(VertexType),
+    /// A seleção mistura tipos — chip nenhum descreve o todo.
+    Mixed,
+}
+
 /// UI-facing line cap / join (mirror of `ph2d_vec_scene::{LineCap, LineJoin}`;
 /// the shell maps between them — the tool crate doesn't dep `ph2d-vec-scene`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]

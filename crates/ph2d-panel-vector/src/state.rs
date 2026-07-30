@@ -11,7 +11,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_vector::shapes::ShapeGroup;
-use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexType};
+use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexSel};
 use ph2d_vec_scene::ShapeKind;
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
@@ -22,7 +22,7 @@ thread_local! {
     static CURRENT_SNAPSHOT: RefCell<Option<VectorStyleSnapshot>> = const { RefCell::new(None) };
     /// Type of the currently-selected vertex (published by the shell each frame
     /// from the Pen). `None` = no vertex selected → the Vertex section hides.
-    static CURRENT_VERTEX_TYPE: RefCell<Option<VertexType>> = const { RefCell::new(None) };
+    static CURRENT_VERTEX_TYPE: RefCell<Option<VertexSel>> = const { RefCell::new(None) };
     /// Selected path's anchor bbox `[x, y, w, h]` (world), published each frame.
     /// `None` = no path selected → the Transform section hides.
     static CURRENT_TRANSFORM: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
@@ -153,14 +153,14 @@ pub(crate) fn current_snapshot() -> VectorStyleSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().unwrap_or_default())
 }
 
-/// Publish the selected vertex's type (or `None` when no vertex is selected).
-/// Called by the shell each frame while the `vector` tool is active.
-pub fn set_selected_vertex_type(kind: Option<VertexType>) {
-    CURRENT_VERTEX_TYPE.with(|c| *c.borrow_mut() = kind);
+/// Publish **o que a seleção de vértices tem em comum** (ou `None` quando não há vértice
+/// selecionado). Chamado pela shell a cada frame com a tool `vector` ativa.
+pub fn set_selected_vertex_type(sel: Option<VertexSel>) {
+    CURRENT_VERTEX_TYPE.with(|c| *c.borrow_mut() = sel);
 }
 
-/// The selected vertex's type this frame (`None` ⇒ hide the Vertex section).
-pub(crate) fn current_vertex_type() -> Option<VertexType> {
+/// A seleção de vértices deste frame (`None` ⇒ esconde a seção Vertex).
+pub(crate) fn current_vertex_type() -> Option<VertexSel> {
     CURRENT_VERTEX_TYPE.with(|c| *c.borrow())
 }
 

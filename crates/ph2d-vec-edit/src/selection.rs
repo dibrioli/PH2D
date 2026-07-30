@@ -10,6 +10,15 @@ use crate::node_hit::INSERT_SAMPLES;
 use crate::{Part, PenTool};
 use ph2d_vec_scene::{VecPathId, VecScene, VecVertex, VertexKind};
 
+/// **O que a seleção de vértices tem em comum** (ver [`PenTool::selected_vertex_kind`]).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SelectedKind {
+    /// Todos os vértices selecionados são deste tipo.
+    Uniform(VertexKind),
+    /// A seleção MISTURA tipos — nenhum chip descreve o todo.
+    Mixed,
+}
+
 impl PenTool {
     /// **Shift+clique num vértice: alterna-o na seleção de pontos** (a multi-seleção do modo Node —
     /// Enio 2026-07-15). Hit-testa a ÂNCORA sob `p` (raio `hit_r` em MUNDO, como o resto do pen) e a
@@ -257,13 +266,30 @@ impl PenTool {
             .unwrap_or_default();
     }
 
-    /// Tipo do vértice primário (para o painel destacar Corner/Smooth/Symmetric).
-    /// `None` se não há vértice selecionado ou o índice não existe mais.
-    pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<VertexKind> {
-        let i = self.selected_vert()?;
+    /// **O que a SELEÇÃO de vértices tem em comum** — o que o painel precisa para destacar (ou não
+    /// destacar) um chip Corner/Smooth/Symmetric. `None` se não há vértice selecionado (ou se
+    /// nenhum dos índices existe mais).
+    ///
+    /// ⚠️ **Devolvia o tipo do vértice PRIMÁRIO**, e isso fazia o painel afirmar um tipo sobre uma
+    /// seleção que tem três: com dois nós de tipos diferentes selecionados, um dos chips ficava
+    /// aceso como se descrevesse o todo (auditoria do plano 25, item 5). O `set_selected_vertex_kind`
+    /// sempre agiu sobre TODOS — era só a leitura que mentia.
+    pub fn selected_vertex_kind(&self, scene: &VecScene) -> Option<SelectedKind> {
         let sel = self.selected?;
         let path = scene.paths().iter().find(|p| p.id == sel)?;
-        path.vert(i).map(|v| v.kind)
+        let mut acc: Option<VertexKind> = None;
+        for &i in &self.selected_verts {
+            // Índice que não existe mais é ignorado, não é "misto": ele não descreve vértice nenhum.
+            let Some(k) = path.vert(i).map(|v| v.kind) else {
+                continue;
+            };
+            match acc {
+                None => acc = Some(k),
+                Some(prev) if prev == k => {}
+                Some(_) => return Some(SelectedKind::Mixed),
+            }
+        }
+        acc.map(SelectedKind::Uniform)
     }
 
     /// Retipa TODOS os vértices selecionados (botões Corner/Smooth/Symmetric).
@@ -335,3 +361,7 @@ impl PenTool {
         true
     }
 }
+
+#[cfg(test)]
+#[path = "selection_kind_tests.rs"]
+mod kind_tests;

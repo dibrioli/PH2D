@@ -424,3 +424,174 @@ fn the_square_bead_is_a_square_not_a_disc() {
          duas formas)"
     );
 }
+
+// ————————————————— a ANTIDERIVADA: medir o risco antes de construir —————————————————
+
+/// `H(y, u) = ∫₀^u f(√(y² + v²)) dv` — a antiderivada universal da §21.5, por quadratura FINA.
+///
+/// ⚠️ Isto **não é** a LUT: é o ORÁCULO dela. A pergunta desta sonda é a do risco 1 — a substituição
+/// `s = r·u` supõe `r` CONSTANTE no segmento, e um traço de pressão viola isso. A resolução da tabela
+/// é outra pergunta, e medir as duas juntas não diria qual erra.
+fn h_exact(y: f32, u: f32, prof: crate::tau::DabProfile) -> f64 {
+    if u == 0.0 {
+        return 0.0;
+    }
+    let n = 4000;
+    let (a, b) = (0.0_f64, f64::from(u));
+    let h = (b - a) / f64::from(n);
+    let mut acc = 0.0_f64;
+    for k in 0..n {
+        let v = a + (f64::from(k) + 0.5) * h;
+        let dn = (f64::from(y) * f64::from(y) + v * v).sqrt();
+        acc += f64::from(crate::tau::f_of(dn as f32, prof)) * h;
+    }
+    acc
+}
+
+/// `τ` de um traço via a ANTIDERIVADA, com `r` congelado no MEIO de cada segmento.
+fn tau_via_antiderivative(
+    run: &[BinSeg],
+    g: &FlipGpuData,
+    sc: &ScreenSpace,
+    prof: crate::tau::DabProfile,
+    p: [f32; 2],
+    k: u32,
+) -> f64 {
+    let mut tau = 0.0_f64;
+    for seg in run {
+        let (pa, pb) = (g.points[seg.a as usize], g.points[seg.b as usize]);
+        let (sa, sb) = (sc.point_px(pa.pos), sc.point_px(pb.pos));
+        let v = [sb[0] - sa[0], sb[1] - sa[1]];
+        let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
+        if len <= 1e-6 {
+            continue;
+        }
+        let dir = [v[0] / len, v[1] / len];
+        let w = [p[0] - sa[0], p[1] - sa[1]];
+        let t_foot = w[0] * dir[0] + w[1] * dir[1];
+        let perp = (w[0] * (-dir[1]) + w[1] * dir[0]).abs();
+        let (ra, rb) = (sc.radius_px(pa.width), sc.radius_px(pb.width));
+        // ⚠️ **A antiderivada é EXATA para `r` constante**, então a cura do risco 1 é SUBDIVIDIR: `k`
+        // pedaços com `r` congelado no meio de cada um. Duas leituras por pedaço, contra ~40 amostras
+        // da quadratura — o `k` que fecha o erro é o que decide se a wave vale.
+        for j in 0..k {
+            let (fa, fb) = (j as f32 / k as f32, (j + 1) as f32 / k as f32);
+            let (sa_j, sb_j) = (len * fa, len * fb);
+            let r = ra + (rb - ra) * (fa + fb) * 0.5;
+            let pitch = (crate::tau::PAINTER_SPACING * 2.0 * r).max(0.25);
+            let y = perp / r;
+            let (u0, u1) = ((sa_j - t_foot) / r, (sb_j - t_foot) / r);
+            tau += f64::from(r / pitch) * (h_exact(y, u1, prof) - h_exact(y, u0, prof));
+        }
+    }
+    tau
+}
+
+/// 📏 **SONDA — o RISCO 1 da §21.5: a antiderivada supõe `r` constante no segmento.**
+///
+/// Compara `τ` da quadratura que SHIPA contra `τ` da antiderivada com `r` congelado no meio do
+/// segmento, em três regimes. O que decide a wave é a coluna do traço de PRESSÃO.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_whether_the_antiderivative_survives_a_varying_radius() {
+    let (w, h) = (96.0, 64.0);
+    let sc = screen(w, h);
+    let prof = crate::tau::DabProfile {
+        hardness: 0.5,
+        airbrush: false,
+    };
+    let style = crate::tau::StrokeStyle {
+        profile: prof,
+        tip: crate::tau::TipShape::Continuous,
+    };
+    // ⚠️ **A fixture afilada é REAMOSTRADA, e a 1ª versão desta sonda não era:** com 2 pontos o `r`
+    // varia 8× dentro de UM segmento, o que não é regime nenhum do produto — o `resample_smooth`
+    // densifica a `0,4 × largura`, ou seja segmentos de ~`0,8r`. Medir no traço de 2 pontos respondia
+    // sobre um desenho que o motor nunca vê (o erro saía 74,6 em τ).
+    // ⚠️ **O passo é `0,4 × largura` LOCAL — e a 2ª versão desta sonda usava passo UNIFORME**, o que
+    // no fim fino dá segmentos de `3,2r` em vez de `0,8r`: ela media uma reamostragem que o produto
+    // não produz. É a mesma convenção que o `measure_ribbon_budget` do `neighbors_tests` já usa
+    // (`step = 0,8·R` com `R` local), porque é o que o `resample_smooth` faz.
+    let densificado = |xs: (f32, f32), ws: (f32, f32)| -> FlipGpuData {
+        let (mut pts, mut wds) = (Vec::new(), Vec::new());
+        let mut x = xs.0;
+        loop {
+            let t = (x - xs.0) / (xs.1 - xs.0);
+            let wl = ws.0 + (ws.1 - ws.0) * t;
+            pts.push([x, 32.0]);
+            wds.push(wl);
+            if x >= xs.1 - 1e-4 {
+                break;
+            }
+            x = (x + 0.4 * wl).min(xs.1);
+        }
+        let mut g = FlipGpuData::default();
+        push_tapered(&mut g, &pts, &wds);
+        g
+    };
+    println!("  cena                           o pior |Δα| (de 255) por nº de subdivisões");
+    for (nome, g) in [
+        (
+            "reto, largura CONSTANTE",
+            art(&[(&[[12.0, 32.0], [84.0, 32.0]], 12.0, false, BLACK)]),
+        ),
+        ("afilado 24->3, 2 PONTOS (irreal)", {
+            let mut g = FlipGpuData::default();
+            push_tapered(&mut g, &[[12.0, 32.0], [84.0, 32.0]], &[24.0, 3.0]);
+            g
+        }),
+        (
+            "afilado 24->3, REAMOSTRADO",
+            densificado((12.0, 84.0), (24.0, 3.0)),
+        ),
+    ] {
+        let bins = bin_segments(&g, &sc, 16);
+        let (mut pior_t, mut pior_a, mut n) = ([0.0_f64; 4], [0.0_f64; 4], 0u32);
+        for y in 0..h as u32 {
+            for x in 0..w as u32 {
+                let p = [x as f32 + 0.5, y as f32 + 0.5];
+                let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                    continue;
+                };
+                let run = bins.segs_of(ti);
+                if run.is_empty() {
+                    continue;
+                }
+                // ⚠️ **Fora das TAMPAS.** A quadratura que shipa soma o meio dab do `end_dab` (§13) e
+                // a antiderivada não o tem; incluir a ponta mediria a AUSÊNCIA desse termo (≈ F_MAX/2
+                // = 8 em τ, o que a 1ª versão desta sonda reportou como 9,0) em vez da substituição.
+                let st = g.strokes[0];
+                let p0 = sc.point_px(g.points[st.first_point as usize].pos);
+                let pn = sc.point_px(g.points[(st.first_point + st.point_count - 1) as usize].pos);
+                let r0 = sc.radius_px(g.points[st.first_point as usize].width) + 2.0;
+                let rn = sc
+                    .radius_px(g.points[(st.first_point + st.point_count - 1) as usize].width)
+                    + 2.0;
+                let perto = |q: [f32; 2], raio: f32| {
+                    (p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) <= raio * raio
+                };
+                if perto(p0, r0) || perto(pn, rn) {
+                    continue;
+                }
+                let Some(ink) = crate::tau::stroke_tau(run, &g, &sc, style, p) else {
+                    continue;
+                };
+                for (ki, kk) in [1_u32, 2, 4, 8].into_iter().enumerate() {
+                    let alvo = tau_via_antiderivative(run, &g, &sc, prof, p, kk);
+                    let (a_q, a_h) = (
+                        1.0 - (-f64::from(ink.tau)).exp(),
+                        1.0 - (-alvo.max(0.0)).exp(),
+                    );
+                    pior_t[ki] = pior_t[ki].max((f64::from(ink.tau) - alvo).abs());
+                    pior_a[ki] = pior_a[ki].max((a_q - a_h).abs() * 255.0);
+                }
+                n += 1;
+            }
+        }
+        println!(
+            "  {nome:29}  |Δα| k=1 {:6.2}  k=2 {:6.2}  k=4 {:6.2}  k=8 {:6.2}   ({n} px)",
+            pior_a[0], pior_a[1], pior_a[2], pior_a[3]
+        );
+        let _ = pior_t;
+    }
+}

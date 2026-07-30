@@ -1707,6 +1707,46 @@ Tamanho: `[0,1]³` a 64³ = 262 k entradas × 4 B = **1 MB**, uma leitura trilin
 protocolo do doc 24 (medir a deriva, desconfiar de mal-condicionamento), e aqui `H` é monótona e lisa
 em `u` — bem-condicionada por construção.
 
+### 21.5b ⭐ O RISCO 1 MEDIDO — a wave é viável, e não é de graça
+
+`measure_whether_the_antiderivative_survives_a_varying_radius` compara `τ` da quadratura que shipa
+contra `τ` da antiderivada (`H` por quadratura fina em `f64` — o ORÁCULO da tabela, não a tabela),
+fora da região das tampas, com `k` subdivisões por segmento:
+
+| cena | k=1 | k=2 | k=4 | k=8 |
+|---|---|---|---|---|
+| reto, largura **CONSTANTE** | **0,00** | 0,00 | 0,00 | 0,00 |
+| afilado 24→3, **2 pontos** (irreal) | 255 | 245 | 174 | 113 |
+| afilado 24→3, **REAMOSTRADO** | 20,00 | **4,39** | **2,15** | 4,53 |
+
+(pior `|Δα|` de 255.)
+
+**O núcleo da ideia está PROVADO:** em largura constante o erro é **0,00/255** — a substituição
+`s = r·u` é exata, como a álgebra diz. E a cura do `r` variável funciona: **k = 2 leva 20 → 4,4 e
+k = 4 → 2,2**, ao custo de `2k` leituras contra ~40 amostras (ainda ~5× menos trabalho).
+
+⚠️ **Mas 2,15/255 fica ACIMA da barra de 1,5/255 do gate de costura**, e ⚠️ **`k = 8` é PIOR que
+`k = 4` (4,53 contra 2,15) — não-monótono.** Isso quer dizer que o resíduo **não é só** a premissa de
+`r` constante; algo mais entra (candidatos: o clamp `MIN_PITCH_PX` na ponta fina, onde `r/pitch` deixa
+de ser 5; ou a contagem fixa de amostras do próprio oráculo). **Diagnosticar isso é o primeiro passo
+da wave, não um detalhe dela** — construir a LUT sobre um resíduo não explicado é assinar o número
+errado.
+
+⚠️ **TRÊS defeitos de fixture nesta sonda, os três meus, e cada um mudou a resposta:**
+
+1. a 1ª versão media **dentro da tampa**, onde a quadratura soma o meio dab do `end_dab` (§13) e a
+   antiderivada não o tem ⇒ ela reportava **57/255 na largura CONSTANTE**, medindo a ausência daquele
+   termo (≈ `F_MAX/2` = 8 em `τ`, e o `|Δτ|` saiu 9,0) em vez da substituição;
+2. a fixture afilada tinha **2 pontos** (`r` variando 8× dentro de UM segmento), regime que o produto
+   nunca vê ⇒ **74,6 em `τ`**. Ela fica na tabela **rotulada "irreal"**, porque é ela que mostra o que
+   a subdivisão de fato ataca;
+3. o densificador usava passo **UNIFORME**, o que na ponta fina dá segmentos de `3,2r` em vez de
+   `0,8r` ⇒ **39/255**. Com `0,4 × largura` **LOCAL** (a convenção que o `measure_ribbon_budget` do
+   `neighbors_tests` já usa, porque é o que o `resample_smooth` faz): **20/255**.
+
+*Cada correção mudou a conclusão em mais do que a diferença entre as alavancas que eu estava
+comparando.*
+
 ### 21.6 O que NÃO é alavanca (medido, para ninguém re-derivar)
 
 - **o ladrilho** (§21.3: o percurso é insensível num fator 8 de área);

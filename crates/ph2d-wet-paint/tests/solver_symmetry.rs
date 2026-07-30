@@ -232,3 +232,22 @@ fn the_fixture_has_cells_on_the_rim() {
         "a fixture quase nao tem borda ({rim}/{ink}) — o fator de borda seria 1 em toda parte"
     );
 }
+
+/// **O PRODUTO roda o solver independente de ordem por DEFAULT.**
+///
+/// ⚠️ Sem este gate a wave inteira pode ficar verde com o produto rodando o
+/// Gauss-Seidel: todo gate acima escolhe a rota explicitamente, e o fingerprint
+/// também. *Um default é lei, e é a única coisa aqui que nenhum outro teste
+/// afirma.*
+#[test]
+fn the_product_boots_order_invariant() {
+    assert!(
+        ph2d_wet_paint::sim::Sim::default().order_invariant,
+        "o default do Sim voltou para o Gauss-Seidel"
+    );
+    let e = ph2d_wet_paint::painter::Engine::new(64, 64);
+    assert!(
+        e.sim.order_invariant,
+        "o Engine nasce com o solver dependente de ordem"
+    );
+}

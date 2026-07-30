@@ -121,3 +121,55 @@ nada). O que olhar:
 * **⛔ Não refaça** (medidos e rejeitados, cada um com o parágrafo): tabular a
   razão K/S (§5.41 do doc 24) · reusar a moldura bilinear do `advect` (§5.44) ·
   paralelizar `advect`/`build_flow_field`/`drying_pass` (ADR-0145 §2).
+
+
+---
+
+## 9. O SOLVER INDEPENDENTE DE ORDEM (ADR-0147 · doc 28 §5.45) — a wave que fechou a frente
+
+Acrescentada **depois** da versão original deste handoff. Ordem do Enio: *"GPU do Wet Paint"*.
+
+**O que mudou:** `advect` e `drying_pass` passam a ler o estado do **início do passe** (forma de
+Jacobi) e vão para o `rayon`. O `advect` vira **gather conservativo**; a secagem materializa o
+**fator de borda** num pré-passe.
+
+**Por que — e não é velocidade:** numa folha espelhada (cena cuja física é simétrica por
+construção) o Gauss-Seidel desloca **1189,29** unidades de massa no advect e **554,82** na secagem;
+o independente de ordem desvia **0,000000** (`tests/solver_symmetry.rs`).
+
+**Ganho, pela porta do produto** (4096², ciclo de 12 passos, mesmo processo):
+
+| `Flow Grid` | antes | depois | |
+|---|---:|---:|---|
+| 1 | 60,19 ms (16,6 Hz) | **29,29 ms (34,1 Hz)** | 2,06× |
+| 4 | 52,05 ms (19,2 Hz) | **11,02 ms (90,8 Hz)** | 4,72× |
+
+### O que o integrador PRECISA saber
+
+1. ⚠️ **`rayon` em mais dois passes = 3ª exceção do repo** — **ADR-0147** (número **PROVISÓRIO**,
+   conte-o contra o `main` do dia). A `ph2d-wet-paint` **já** tinha a dep (ADR-0145); **nenhum
+   `Cargo.toml` foi tocado**.
+2. ⚠️ **O pino do fingerprint MOVEU, com o protocolo do doc 23.** `PINNED` é o do produto; o pino
+   ANTIGO virou `PINNED_GAUSS_SEIDEL`, executável na rota `Sim::order_invariant = false`. **Se o
+   `the_gauss_seidel_route_still_reproduces_its_own_pin` ficar vermelho pós-merge, PARE** — ele é o
+   que prova que nada além destes dois passes mudou.
+3. **`PROJECT_SCHEMA` = 37, INTOCADO.** A shell **não foi tocada** (`git diff shells/` vazio).
+   Contrato congelado intacto (gate + grep).
+4. **Arquivos novos:** `src/solver/advect_jacobi.rs` · `src/grid/scratch.rs` ·
+   `tests/solver_symmetry.rs` · `tests/measure_transport_range.rs` ·
+   `docs/architecture/decisions/0147-*.md`.
+5. **Renomes que podem conflitar textualmente:** `Sim::advect_gather` → **`Sim::order_invariant`**
+   (o flag cobre os DOIS passes) · `AdvectScratch` → **`SolverScratch`** e `Grid::adv` →
+   **`Grid::scratch`**.
+6. ⚠️ **Um gate teve o ORÁCULO trocado, não a barra:** `flow_grid.rs::gravity_carry` passou da
+   célula mais extrema acima de um limiar para o **centroide de massa**. Ele passa nos **dois**
+   modelos — é isso que prova que a troca é honesta.
+
+### O que o SMOKE decide
+
+⚠️ **Uma mudança de comportamento, medida e nomeada: o escorrido corre ~18% menos longe**
+(0,64–0,96×, média 0,82×, uniforme e sem viés de direção). O knob **Gravity** traz o alcance antigo
+de volta. **É a única pergunta de olho desta wave.**
+
+Comando: `env PH2D_WETPAINT_SMOKE=1 PH2D_FLUID_PROFILE=1 cargo run -p ph2d-host-desktop --release`
+— canvas **4096**, pincel grande, faixas **SOBREPOSTAS**, `Grid Size 1 + Flow Grid 4`.

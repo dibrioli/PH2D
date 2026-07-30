@@ -55,6 +55,16 @@ impl TessCache {
         self.map.get(key).map(|c| &c.data)
     }
 
+    /// O hash de CONTEÚDO da geometria de `key` — o mesmo que o [`Self::ensure`] já computa por
+    /// frame, exposto para a impressão digital da frescura (`flip_pass_stage`).
+    ///
+    /// ⚠️ **É o hash, não a chave.** A chave é `(objeto, desenho)` e sobrevive a uma EDIÇÃO; o hash
+    /// é o que muda quando o artista mexe no desenho, e é ele que o skip do Pass A precisa — usar a
+    /// chave congelaria a camada no primeiro traço dela.
+    pub(super) fn hash(&self, key: &(u64, u32)) -> Option<u64> {
+        self.map.get(key).map(|c| c.hash)
+    }
+
     pub(super) fn log(&self) {
         if std::env::var_os("PH2D_FLIP_STATS").is_some() {
             eprintln!(

@@ -45,6 +45,9 @@ pub(crate) struct FlipComposite {
     /// Geometria empacotada por (objeto, desenho), camera-INDEPENDENTE — sobrevive
     /// a pan/zoom e a *holds*. Validada por hash de conteúdo.
     tess: TessCache,
+    /// **A frescura do Pass A** (doc 12 §22.3): o que já foi rasterizado em cada fatia. É o que faz
+    /// arte commitada e fantasma de onion custarem **zero** enquanto ninguém mexe neles.
+    stage: super::flip_pass_stage::StageMemo,
 }
 
 impl FlipComposite {
@@ -53,6 +56,7 @@ impl FlipComposite {
             compositor: LayerCompositor::new(gpu),
             dummy: Vec::new(),
             tess: TessCache::default(),
+            stage: super::flip_pass_stage::StageMemo::default(),
         }
     }
 
@@ -243,6 +247,10 @@ fn composite_layers(
     let comp = flip_composite.get_or_insert_with(|| FlipComposite::new(gpu));
     comp.ensure_dummy(w, h);
     comp.tess.reset_stats();
+    comp.stage.reset_stats();
+    // QUAL motor produziu os pixels — entra na impressão digital da frescura (constante no processo
+    // hoje, e explícito para o dia em que o interruptor virar dinâmico).
+    let walk = new_engine_armed();
 
     // Passe 1: garante a tesselação das camadas COM desenho (cache-hit num
     // hold/pan/zoom). Uma camada só-preview (`drawing: None`) não cacheia.
@@ -257,7 +265,10 @@ fn composite_layers(
     // sobrescrevê-lo (submissão k+1) — garantido pela ordem da fila.
     {
         let FlipComposite {
-            compositor, tess, ..
+            compositor,
+            tess,
+            stage,
+            ..
         } = comp;
         for l in layers {
             // Camada-alvo do preview: dobra o traço em curso na geometria dela
@@ -293,6 +304,22 @@ fn composite_layers(
             if let Some((rgb, a)) = l.ghost {
                 layer_cam = layer_cam.with_ghost_tint(rgb, a);
             }
+            // ⭐ **A FRESCURA** (doc 12 §22.3): o Pass A rasterizava por camada, por frame, SEMPRE —
+            // então arte commitada e fantasma de onion pagavam o preço inteiro para redesenhar
+            // pixels idênticos. Aqui a pergunta é feita ANTES do trabalho, e ela tem duas metades:
+            // a nossa impressão digital e a palavra do compositor (`has_slice`), porque a fatia pode
+            // ter sido despejada pelo LRU ou limpa por um rebuild — e um memo sozinho mandaria
+            // compor arte velha nesses dois casos, sem nada parecer quebrado.
+            let fp = super::flip_pass_stage::fingerprint(
+                tess.hash(&l.cache_key).unwrap_or(0),
+                l.preview,
+                &layer_cam,
+                (w, h),
+                walk,
+            );
+            if !stage.needs_stage(l.key, fp, compositor.has_slice(l.key)) {
+                continue;
+            }
             let slice = flip_compose.stage_layer(
                 &gpu.device,
                 &gpu.queue,
@@ -301,12 +328,17 @@ fn composite_layers(
                 data,
                 (w, h),
             );
+            // ⚠️ **A `version` do inject fica em `0`, e NÃO é a impressão digital.** O
+            // `DummyProvider` reporta versão 0 para qualquer chave, então o `ensure_slice` do
+            // compositor só acha a fatia "limpa" — e não sobe o dummy TRANSPARENTE por cima da arte
+            // — enquanto os dois números batem. A frescura mora no nosso memo justamente por isso.
             if let Err(e) =
                 compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, w, h, (0, 0, w, h), 0)
             {
                 eprintln!("[ph2d-flip] inject falhou: {e}");
                 return;
             }
+            stage.record(l.key, fp);
         }
     }
 
@@ -325,6 +357,10 @@ fn composite_layers(
         }
     }
     comp.tess.log();
+    if std::env::var_os("PH2D_FLIP_STATS").is_some() {
+        let (staged, skipped) = comp.stage.stats();
+        eprintln!("[ph2d-flip] pass A: {staged} rasterizada(s), {skipped} pulada(s) neste frame");
+    }
 }
 
 /// Rasteriza `data` DIRETO no `game_rt` (premult-over, `LoadOp::Load`) com o depth

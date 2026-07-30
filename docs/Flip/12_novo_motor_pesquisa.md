@@ -1861,12 +1861,75 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | # | item | estado |
 |---|---|---|
 | 1 | **percurso como default** | ✅ **feito** (§22.2) |
-| 2 | **cache de cobertura por-camada** (tiles de mundo, invalidado por edição e por zoom) | desenho; mata a pergunta do custo e conserta o raster de carona |
+| 2 | **o Pass A pergunta antes de rasterizar** | ✅ **feito** (§22.5) — arte commitada e fantasma de onion custam **zero** enquanto ninguém mexe neles |
+| 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
 | 3 | **a integral de ÁREA do pixel** | ⚠️ **o maior buraco visível que sobrou** — conferido: `sample_count: 1`, `no_msaa()` em TODO o pipeline, a cobertura é amostrada no CENTRO do pixel. O padrão-ouro é `α = ∫_pixel [1 − exp(−τ)] dA`, e ela **compõe** com τ (uma 2ª integral, no motor que já é feito de integrais) |
 | 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
 A **antiderivada** (§21.5) cai para o fim: ela é *perf*, e sob (2) deixa de ser necessária.
+
+### 22.5 ⭐ PASSO 2 — o Pass A PERGUNTA antes de rasterizar
+
+O skip é correto quando **duas** coisas valem, e cada uma responde o que a outra não pode:
+
+1. **a impressão digital bate** — o que este frame produziria é o que já foi produzido (o nosso
+   `StageMemo`);
+2. **o compositor AINDA tem a fatia** — `LayerCompositor::has_slice`, **a palavra do dono**: ela pode
+   ter sido despejada pelo LRU do `alloc_slice` ou limpa por um rebuild do array (resize, op-list
+   nova), e nenhum memo nosso sabe disso.
+
+⚠️ **Sem a (2) o modo de falha é arte VELHA na tela, e nada parece quebrado.** Com ela o pior caso é
+*fazer o trabalho* — o que o produto fazia antes desta wave. É a lição do ADR-0124 no nível da fatia:
+pergunte ao DONO, nunca ao seu próprio memo.
+
+⚠️ **A `version` do inject fica em `0`, e a armadilha estava documentada no código que eu ia mudar.**
+Meu 1º desenho punha a impressão digital ali — mas o `DummyProvider` reporta versão **0** para
+qualquer chave, e é essa igualdade que faz o `ensure_slice` achar a fatia "limpa" e **não subir o
+dummy transparente por cima da arte**. Um número diferente de 0 apagaria a camada. A frescura mora no
+nosso memo por causa disso.
+
+**A impressão digital toma a câmera como RESULTADO** (`CameraRaw` inteiro, POD de 96 bytes via
+`bytemuck`) e não como ingredientes: paralaxe multiplano, fold do `model` e tint de fantasma já estão
+dobrados lá dentro ⇒ uma porta nova que mexa na câmera é coberta sem ninguém se lembrar da função. O
+mesmo vale para os pontos do preview (`GpuPoint` é POD). ⚠️ **Esquecer uma entrada é o único bug grave
+da wave, e ele é silencioso** — a camada congela mostrando o estado anterior.
+
+**O que a impressão CUSTA** (`measure_what_the_fingerprint_costs`, 12 corridas, 1ª descartada,
+mínimo):
+
+| preview | custo por camada |
+|---|---|
+| **0 pontos** — arte commitada e TODO fantasma do onion | **0,0001 ms** |
+| 200 pontos | 0,0047 |
+| 2 000 | 0,0467 |
+| 20 000 | 0,4475 |
+
+⇒ o caso que domina (as camadas que serão puladas) custa **100 ns** contra **4,33 ms** economizados. O
+`O(n)` só morde no traço VIVO, cuja faixa real depois do RDP + reamostragem é 200–2000 pontos.
+⛔ **Duas alternativas O(1) rejeitadas:** *contagem + último ponto* colide em princípio (dois previews
+distintos com a mesma contagem e a mesma ponta), e *identidade de ponteiro do buffer* é o ABA que o
+ADR-0124 e a §5.12 do Painter já pagaram.
+
+**Gates:** 5 de unidade (impressão estável · **cada** entrada a move · o traço vivo a move e a mão
+parada não · a lei do skip com as duas metades · as estatísticas) + **3 de arch-gate** sobre o
+`flip_pass.rs` (pergunta ANTES do raster **e** honra a resposta com `continue` · o 3º argumento é
+`has_slice` e **não** o literal `true` · a impressão usa `&layer_cam` e `l.preview`).
+
+⚠️ **4 mutações, 4 sangram — e cada uma só na camada que a possui**, o que é a prova de que os dois
+níveis não são redundantes:
+
+| mutação | unidade | arch |
+|---|---|---|
+| o compositor "sempre tem" a fatia (`true`) | verde | **RED** |
+| a impressão usa a câmera do FRAME | verde | **RED** |
+| o preview sai da impressão | verde | **RED** |
+| o skip ignora a impressão digital | **RED** | verde |
+
+Instrumento: **`PH2D_FLIP_STATS=1`** passou a imprimir `pass A: N rasterizada(s), M pulada(s)` por
+frame — sem ele *"o cache está funcionando?"* é opinião. ⚠️ **O ganho fim-a-fim é PROJEÇÃO até o
+smoke:** o mecanismo está gateado e o custo medido, mas quem confirma os zeros é aquela linha com
+onion ligado e a mão parada.
 
 ## 17. Fontes
 

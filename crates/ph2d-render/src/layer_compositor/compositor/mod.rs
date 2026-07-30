@@ -520,6 +520,25 @@ impl LayerCompositor {
         self.cache.len()
     }
 
+    /// **Does this compositor still hold a slice for `key`?** — asked by a producer that wants to
+    /// SKIP re-rendering a layer whose pixels have not changed.
+    ///
+    /// ⚠️ **The `false` half is the one that matters, and there are two ways to get it:** the slice
+    /// may have been **evicted** (`alloc_slice`'s LRU, when layers outnumber the cap) or **cleared**
+    /// wholesale by an array rebuild (a resize, or a wider op-list). A producer that trusted its own
+    /// memo instead of asking would keep showing art it no longer owns, in exactly those two cases —
+    /// the ADR-0124 lesson (ask the OWNER, never your own copy) at the slice level.
+    ///
+    /// ⚠️ **Read-only ON PURPOSE — it does not touch `last_used`.** A skipping producer therefore
+    /// lets its stable layers grow cold, so in a scene with more layers than `cache_cap` they can be
+    /// evicted and re-rendered. That degrades to *doing the work* (today's behaviour), never to
+    /// showing stale pixels — and a query that silently counted as a use would be a lie about being
+    /// read-only.
+    #[must_use]
+    pub fn has_slice(&self, key: u64) -> bool {
+        self.cache.contains_key(&key)
+    }
+
     /// The output texture of the last [`Self::composite`] (region-sized,
     /// straight sRGB8 `rgba8unorm`). The shell blits this onto the sprite;
     /// `None` before the first composite.

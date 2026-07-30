@@ -33,6 +33,7 @@ mod flip_gap_overlay;
 pub(crate) mod flip_pass;
 mod flip_pass_cache;
 mod flip_pass_ghosts;
+mod flip_pass_stage;
 mod flip_selection_overlay;
 mod flip_tween_overlay;
 mod gizmo_prune;

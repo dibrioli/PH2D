@@ -22,6 +22,12 @@ pub(crate) const PAD_BOTTOM: f32 = 10.0; // LITERAL-PX-OK: node card bottom padd
 /// shrinks with zoom, but the target does not).
 pub(crate) const SOCKET_HIT_R: f32 = 9.0; // LITERAL-PX-OK: socket hit half-extent
 
+/// Screen-px radius within which a wire's loose end SNAPS to a socket — larger than the exact
+/// hit zone so a near-miss still lands on its target (magnetic drop). Fixed in screen space,
+/// like [`SOCKET_HIT_R`]: the reach must not shrink when the graph is zoomed out. Small enough
+/// that a drop in genuinely empty canvas still falls through to smart-connect (doc 45).
+pub(crate) const SNAP_R: f32 = 22.0; // LITERAL-PX-OK: wire-drop magnetic snap radius
+
 // Add-node popup metrics (logical == screen; the menu never scales with zoom).
 pub(crate) const MENU_W: f32 = 200.0; // LITERAL-PX-OK: add-menu popup width
 pub(crate) const MENU_ROW_H: f32 = 22.0; // LITERAL-PX-OK: add-menu row height
@@ -146,43 +152,59 @@ pub(crate) fn socket_center(n: &GraphNodeView, view: &View, output: bool, i: usi
     view.pt(edge_x, y)
 }
 
-/// The input socket whose square hit zone contains `(x, y)`, if any — the drop
-/// target of a wire drag (the End gesture only carries the pointer position, so
-/// the panel resolves the target socket itself). Returns `(node id, port)`.
-pub(crate) fn hit_input_socket(
+/// The input socket NEAREST to `(x, y)` within [`SNAP_R`], if any — the magnetic drop target
+/// of a wire drag (the End gesture only carries the pointer position, so the panel resolves the
+/// target socket itself). Returns `(node id, port)`. Nearest by SCREEN distance, so a drop
+/// between two rows lands on the closer socket; `None` when nothing is in reach, and the drop
+/// then falls through to the collapsed-card menu or smart-connect (doc 45/57).
+pub(crate) fn nearest_input_socket(
     snap: &GraphViewSnapshot,
     view: &View,
     x: f32,
     y: f32,
 ) -> Option<(u32, u16)> {
-    for n in &snap.nodes {
-        for (i, _) in n.inputs.iter().enumerate() {
-            let (cx, cy) = socket_center(n, view, false, i);
-            if (x - cx).abs() <= SOCKET_HIT_R && (y - cy).abs() <= SOCKET_HIT_R {
-                return Some((n.id, i as u16));
-            }
-        }
-    }
-    None
+    nearest_socket(snap, view, x, y, false)
 }
 
-/// The OUTPUT socket whose hit zone contains `(x, y)` — the mirror of
-/// [`hit_input_socket`], for a wire dragged backwards out of an input (doc 45).
-pub(crate) fn hit_output_socket(
+/// The OUTPUT socket nearest to `(x, y)` within [`SNAP_R`] — the mirror of
+/// [`nearest_input_socket`], for a wire dragged backwards out of an input (doc 45).
+pub(crate) fn nearest_output_socket(
     snap: &GraphViewSnapshot,
     view: &View,
     x: f32,
     y: f32,
 ) -> Option<(u32, u16)> {
+    nearest_socket(snap, view, x, y, true)
+}
+
+/// The socket of the requested side nearest to `(x, y)` within [`SNAP_R`] — the one door both
+/// snap resolvers share, so the input and output magnets can never drift apart.
+fn nearest_socket(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    x: f32,
+    y: f32,
+    output: bool,
+) -> Option<(u32, u16)> {
+    let r2 = SNAP_R * SNAP_R;
+    let mut best: Option<(u32, u16, f32)> = None;
     for n in &snap.nodes {
-        for (i, _) in n.outputs.iter().enumerate() {
-            let (cx, cy) = socket_center(n, view, true, i);
-            if (x - cx).abs() <= SOCKET_HIT_R && (y - cy).abs() <= SOCKET_HIT_R {
-                return Some((n.id, i as u16));
+        // A collapsed card's exposed INPUT sockets ARE the wires crossing it — occupied, so a
+        // NEW forward wire has nothing free to land on and goes through the card's port menu
+        // (doc 57), never the magnet. Its OUTPUT sockets fan out, so those stay grabbable.
+        if !output && n.kind == crate::snapshot::NodeViewKind::Subgraph {
+            continue;
+        }
+        let ports = if output { n.outputs.len() } else { n.inputs.len() };
+        for i in 0..ports {
+            let (cx, cy) = socket_center(n, view, output, i);
+            let d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+            if d2 <= r2 && best.is_none_or(|(_, _, bd2)| d2 < bd2) {
+                best = Some((n.id, i as u16, d2));
             }
         }
     }
-    None
+    best.map(|(id, p, _)| (id, p))
 }
 
 /// The rubber band's screen rect, normalised — the artist may drag in any
@@ -385,26 +407,76 @@ mod tests {
         }
     }
 
-    #[test]
-    fn hit_input_socket_resolves_the_right_port() {
-        let snap = GraphViewSnapshot {
+    fn one_node(node: GraphNodeView) -> GraphViewSnapshot {
+        GraphViewSnapshot {
             level: None,
             breadcrumb: Vec::new(),
-            nodes: vec![node_with_inputs(7, 100.0, 2)],
+            nodes: vec![node],
             edges: vec![],
             backdrops: vec![],
             probe: None,
             now: 0.0,
-        };
+        }
+    }
+
+    fn node_with_outputs(id: u32, x: f32, n_out: usize) -> GraphNodeView {
+        let mut n = node_with_inputs(id, x, 0);
+        n.outputs = (0..n_out)
+            .map(|_| PortView {
+                name: "o",
+                domain: Domain::Instances,
+                dim: Dim::Scalar,
+                clock: Clock::Frame,
+            })
+            .collect();
+        n
+    }
+
+    #[test]
+    fn nearest_input_socket_resolves_the_right_port() {
+        let snap = one_node(node_with_inputs(7, 100.0, 2));
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
         // Input 0 center: (100, HEADER_H + ROW_H*0.5) = (100, 37).
         let (n0, p0) = socket_center(&snap.nodes[0], &view, false, 0);
-        assert!(hit_input_socket(&snap, &view, n0, p0) == Some((7, 0)));
+        assert_eq!(nearest_input_socket(&snap, &view, n0, p0), Some((7, 0)));
         // Input 1 center: (100, HEADER_H + ROW_H*1.5) = (100, 59).
         let (n1, p1) = socket_center(&snap.nodes[0], &view, false, 1);
-        assert_eq!(hit_input_socket(&snap, &view, n1, p1), Some((7, 1)));
-        // Far from any socket → no hit.
-        assert_eq!(hit_input_socket(&snap, &view, 400.0, 400.0), None);
+        assert_eq!(nearest_input_socket(&snap, &view, n1, p1), Some((7, 1)));
+        // Far from any socket → no snap.
+        assert_eq!(nearest_input_socket(&snap, &view, 400.0, 400.0), None);
+    }
+
+    /// **A near-miss SNAPS to the socket** — a drop 15 px above input 0 (past the 9 px exact
+    /// hit box, inside the 22 px magnet) still lands on it. FALSIFIED by shrinking `SNAP_R` to
+    /// `SOCKET_HIT_R`: 15 > 9, so the near-miss resolves to nothing and the wire is dropped.
+    #[test]
+    fn a_near_miss_snaps_to_the_socket() {
+        let snap = one_node(node_with_inputs(7, 100.0, 2));
+        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+        // Input 0 center (100, 37); 15 px above it — only input 0 is within reach.
+        assert_eq!(nearest_input_socket(&snap, &view, 100.0, 22.0), Some((7, 0)));
+    }
+
+    /// Between two in-range sockets the magnet takes the **nearer** one — a drop at y=54 is
+    /// 17 px from input 0 and 5 px from input 1. FALSIFIED by returning the first socket found
+    /// rather than the closest: input 0 (found first, still in range) would win.
+    #[test]
+    fn snap_takes_the_nearest_of_two_sockets() {
+        let snap = one_node(node_with_inputs(7, 100.0, 2));
+        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+        assert_eq!(nearest_input_socket(&snap, &view, 100.0, 54.0), Some((7, 1)));
+    }
+
+    /// The output magnet reads **output** sockets (right edge), not inputs — the mirror used by
+    /// the backward wire drag. FALSIFIED by resolving against the input side, which this node
+    /// does not have.
+    #[test]
+    fn the_output_magnet_reads_output_sockets() {
+        let snap = one_node(node_with_outputs(9, 100.0, 1));
+        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+        let (ox, oy) = socket_center(&snap.nodes[0], &view, true, 0);
+        assert_eq!(nearest_output_socket(&snap, &view, ox + 12.0, oy), Some((9, 0)));
+        assert_eq!(nearest_input_socket(&snap, &view, ox + 12.0, oy), None);
     }
 
     /// **A readout makes the card taller — and the HIT geometry grows with it.**

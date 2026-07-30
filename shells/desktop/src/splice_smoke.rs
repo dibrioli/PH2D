@@ -17,6 +17,10 @@
 //! ficar cortada (delete-and-reconnect, o Ctrl+X do Blender). Deletar um nó de PONTA (grid ou
 //! output) só o remove, sem religar (não há o que carregar).
 //!
+//! ⊙ SNAP MAGNÉTICO: arraste um fio de um socket e SOLTE PERTO (não exatamente em cima) de um
+//! socket compatível — o fio PULA para ele e conecta (raio ~22 px). Soltar em canvas realmente
+//! VAZIO ainda abre o smart-connect; um card colapsado ainda oferece o menu de portas.
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -78,6 +82,8 @@ impl crate::App {
              INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
              cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (o Ctrl+X do Blender). \
              Deletar uma PONTA (grid/output) so remove.\n  \
+             SNAP: arraste um fio e SOLTE PERTO (nao em cima) de um socket compativel -> o fio \
+             PULA e conecta. Soltar em canvas VAZIO ainda abre o smart-connect.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

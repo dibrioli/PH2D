@@ -539,7 +539,7 @@ pub(super) fn target_socket(
     x: f32,
     y: f32,
 ) -> Option<(u32, u16, bool)> {
-    let (to_node, to_port) = geom::hit_input_socket(snap, view, x, y)?;
+    let (to_node, to_port) = geom::nearest_input_socket(snap, view, x, y)?;
     let out = snap
         .nodes
         .iter()

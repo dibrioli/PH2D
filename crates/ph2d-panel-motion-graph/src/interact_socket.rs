@@ -204,7 +204,7 @@ fn output_target(
     x: f32,
     y: f32,
 ) -> Option<(u32, u16, bool)> {
-    let (from_node, from_port) = geom::hit_output_socket(snap, view, x, y)?;
+    let (from_node, from_port) = geom::nearest_output_socket(snap, view, x, y)?;
     let out = snap
         .nodes
         .iter()

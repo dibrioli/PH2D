@@ -285,6 +285,9 @@ pub(crate) fn paint(
         base,
         m.preview_frame,
     );
+    // ⚠️ O EIXO por último, por cima da curva: sem ele uma fita plana e uma fita morta são o
+    // mesmo desenho (auditoria §4-bis U5, e o *"gráfico plano de flick"* do report).
+    crate::expr_modal_preview::paint_value_axis(ctx, theme, strip, &samples, base);
     cy += ROW_H_PX * STRIP_SLOTS + gap;
 
     // ── The formula bar: the PROJECTION of the sheet, never a stored copy. ──

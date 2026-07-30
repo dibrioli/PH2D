@@ -76,6 +76,8 @@ pub fn preview_value(prop: PropKind) -> f32 {
 const CURVE_PAD_FRAC: f32 = 0.1; // LITERAL-PX-OK: fracao do desenho, nao medida
 /// Dashes across the baseline.
 const BASELINE_DASHES: f32 = 24.0; // LITERAL-PX-OK: CONTAGEM de tracos, nao medida
+/// Largura reservada a um rótulo do eixo de valor.
+const AXIS_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: coluna do rotulo do eixo da fita
 /// Half, for centring.
 const HALF: f32 = 0.5; // LITERAL-PX-OK: aritmetica de centralizacao, nao medida
 
@@ -167,6 +169,29 @@ pub fn extent(samples: &[f32], base: f32) -> (f32, f32) {
     }
 }
 
+/// **A fita é PLANA?** — o que o artista precisa saber e não conseguia ver.
+///
+/// ⚠️ Medido (auditoria 2026-07-29, §4-bis U5): numa curva plana o [`extent`] devolve
+/// `(base−1, base+1)`, então a curva E a linha de base normalizam para **0,5000 as duas** e
+/// caem no MESMO `y` — inclusive num card recém-aberto, que é o caso em que a referência é
+/// mais necessária. O desenho estava certo (uma constante É a base) e ILEGÍVEL: o Enio leu
+/// isso como *"veja o gráfico plano de flick"*, ou seja como a feature quebrada.
+///
+/// O AE resolve isto plotando no graph editor DE VERDADE, na escala real, com o eixo de
+/// valor rotulado (plano 12 §0, D-0.4). A fita não é um graph editor, então o que ela ganha
+/// é o mínimo que torna a escala legível: quando a curva é plana, o **valor** dela; quando
+/// não é, os **extremos** do que está sendo mostrado. Nos dois casos o artista lê um NÚMERO
+/// em vez de adivinhar o que a caixa quis dizer.
+#[must_use]
+pub fn is_flat(samples: &[f32]) -> bool {
+    let Some(&first) = samples.first() else {
+        return true;
+    };
+    samples
+        .iter()
+        .all(|v| (v - first).abs() <= f32::EPSILON * first.abs().max(1.0))
+}
+
 /// The sample the ghost stands on RIGHT NOW — the shared vector indexed at the
 /// shared phase, which is the whole reason the two cards cannot disagree.
 #[must_use]
@@ -238,4 +263,51 @@ pub(crate) fn paint_strip(
         StrokeToken::Thin.px(),
         resolve(ColorToken::Text2, theme),
     );
+}
+
+/// **O EIXO DE VALOR da fita** — os números que fazem uma linha plana legível.
+///
+/// Chamado pelo pintor do card, que é quem tem o `text_system`. Duas leituras, e a escolha
+/// entre elas é o [`is_flat`]:
+///
+/// * **plana** — UM rótulo, o valor, sobre a linha. Uma constante é uma resposta legítima
+///   (*"esta fórmula não move a propriedade"*), e dizê-la em número é a diferença entre isso
+///   e *"o preview está quebrado"*.
+/// * **não-plana** — os DOIS extremos do que está desenhado, no topo e no pé. É a escala, e
+///   sem ela uma onda de 0,3 u e uma de 300 u desenham exactamente igual.
+///
+/// ⚠️ Rótulos à ESQUERDA, onde a curva começa e o marcador de fase nunca para: à direita
+/// eles competiriam com o fim da onda, que é onde o artista olha.
+pub(crate) fn paint_value_axis(
+    ctx: &mut ph2d_editor_core::panel::PaintCtx,
+    theme: Theme,
+    rect: Rect,
+    samples: &[f32],
+    base: f32,
+) {
+    let font = ph2d_tokens::TypeToken::Xs.px();
+    let ink = resolve(ColorToken::Text2, theme);
+    let pad = ph2d_tokens::Spacing::Xs.px();
+    let (lo, hi) = extent(samples, base);
+    let label = |ctx: &mut ph2d_editor_core::panel::PaintCtx, t: &str, y: f32| {
+        ph2d_editor_core::paint::paint_text(
+            ctx.text_system,
+            ctx.scene,
+            t,
+            rect.x + pad,
+            y,
+            font,
+            AXIS_LABEL_W,
+            ink,
+        );
+    };
+    if is_flat(samples) {
+        // O valor, sobre a própria linha — e a linha está no meio do span de fallback.
+        let v = samples.first().copied().unwrap_or(base);
+        let y = rect.y + rect.h * HALF - font * HALF;
+        label(ctx, &format!("= {v:.3}"), y);
+    } else {
+        label(ctx, &format!("{hi:.2}"), rect.y + pad);
+        label(ctx, &format!("{lo:.2}"), rect.y + rect.h - font - pad);
+    }
 }

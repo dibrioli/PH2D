@@ -185,3 +185,58 @@ fn the_one_seed_door_is_linear_in_the_target_and_spaced() {
         "the spacing is uniform, so no two bindings can collide by arithmetic"
     );
 }
+
+// ─────────── FASE C.2 — uma fita PLANA é legível, não "quebrada" ───────────
+
+/// **Uma curva plana é reconhecida como plana, e uma que se move não.**
+///
+/// ⚠️ Medido (auditoria 2026-07-29, §4-bis U5): numa curva plana o `extent` devolve
+/// `(base−1, base+1)`, então a curva e a linha de base normalizam para **0,5000 as duas** e
+/// caem no MESMO `y`. O desenho estava CERTO (uma constante é a base) e ilegível — o Enio
+/// leu *"veja o gráfico plano de flick"*, ou seja leu a feature como quebrada. A cura é o
+/// EIXO (um número), e o que este gate pina é a pergunta que o eixo faz.
+///
+/// **Mutação que deve sangrar:** `is_flat` devolvendo sempre `false` (aí a fita rotula um
+/// span de ±1 inventado no lugar do valor) ou sempre `true` (aí uma onda perde a escala).
+#[test]
+fn a_flat_ribbon_is_told_apart_from_one_that_moves() {
+    let base = pv::preview_value(PropKind::TranslationX);
+
+    // A folha VAZIA projeta `value` — a fórmula mais comum que existe, e o card
+    // recém-aberto. É plana por construção.
+    let empty = pv::sample_window(&RecipeStack::new(), base, 3);
+    assert!(
+        pv::is_flat(&empty),
+        "a folha vazia é plana: é `value`, e o card abre assim"
+    );
+
+    // Uma constante que NÃO é a base também é plana — e é o caso em que a coincidência com
+    // a linha de base não acontece, mas a escala continua ilegível sem número.
+    let flat_offset = vec![250.0_f32; pv::PREVIEW_SAMPLES];
+    assert!(
+        pv::is_flat(&flat_offset),
+        "uma constante é plana onde estiver"
+    );
+
+    // ...e uma onda de verdade não é.
+    let sway = pv::sample_window(&RecipeStack::of(&["sway"]), base, 3);
+    assert!(
+        !pv::is_flat(&sway),
+        "um Sway atravessa a base nos dois sentidos: não é plano"
+    );
+
+    // O DEFEITO, num número: numa curva plana a curva e a base pousam no mesmo y. É por isso
+    // que o eixo existe — e é por isso que ele NÃO é opcional numa fita plana.
+    let (lo, hi) = pv::extent(&empty, base);
+    let norm = |v: f32| (v - lo) / (hi - lo);
+    assert_eq!(
+        norm(base),
+        norm(empty[0]),
+        "a coincidência é REAL (é o desenho honesto de uma constante) — o que faltava era o \
+         número que a explica"
+    );
+    assert!(
+        hi > lo,
+        "e o span nunca é degenerado, senão a normalização divide por zero"
+    );
+}

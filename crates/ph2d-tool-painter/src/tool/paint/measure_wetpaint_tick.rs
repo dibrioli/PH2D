@@ -379,5 +379,84 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     println!("    {:<24} {total:7.3} ms", "SOMA dos passes");
 }
 
+/// **O QUE UMA GRADE MAIS GROSSA COMPRARIA** — a alavanca que NÃO é a GPU, precificada.
+///
+/// Hoje a grade do fluido é **1:1 com os pixels do canvas** (`Engine::new(side, side)`, e o
+/// composite mapeia célula `(cx,cy)` → pixel `(cx-1,cy-1)`), então a 4096² a física paga
+/// **16,7 M células** — e o custo é comprovadamente **linear nas células** (o `ns/célula` é
+/// PLANO de 512² a 4096², `ph2d-wet-paint/tests/measure_density.rs`).
+///
+/// A pergunta que isto responde: *e se a água simulasse numa grade mais grossa que a tela?*
+/// A medição substituta é exata — **o MESMO desenho físico numa tela pela metade** (tudo em
+/// metade: lado, raio, comprimento do traço) é célula-por-célula o que uma grade de meia
+/// resolução simularia.
+///
+/// ⚠️ **Não é uma proposta de implementação, é um PREÇO.** Mudar a razão grade:canvas re-pina
+/// o fingerprint e mexe no LOOK do fluido (detalhe sub-célula), então é decisão de produto —
+/// e o número tem de estar na mesa antes da decisão, não depois.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_a_coarser_grid_would_buy() {
+    const REPS: usize = 9;
+    println!("\n  O MESMO DESENHO EM GRADES DE RESOLUCAO DIFERENTE (mediana de {REPS})\n");
+    let mut prev: Option<(f64, usize)> = None;
+    for (div, side, radius, moves) in [(1u32, 4096u32, 100.0f32, 90u32), (2, 2048, 50.0, 90)] {
+        // A MESMA figura: três faixas diagonais, tudo escalado por `div`.
+        const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+        let mut t = wetted(side, radius);
+        let step = 40.0 / div as f32;
+        for lane in 0..3 {
+            let off = 260.0 / div as f32 * lane as f32;
+            let (x0, y0) = (200.0 / div as f32 + off, 200.0 / div as f32);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            for k in 1..=moves {
+                let d = step * k as f32;
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+            }
+            let d = step * moves as f32;
+            t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+        }
+        t.wet_bring_home();
+        let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let e = &mut *sess.engine;
+        let live = {
+            let g = e.active_grid_mut();
+            ph2d_wet_paint::solver::rebuild_active_region(g);
+            g.active.iter().filter(|a| **a != 0).count()
+        };
+        // O passo INTEIRO pela porta do produto, com o estado restaurado a cada amostra.
+        let snap = ph2d_wet_paint::grid::snapshot_grid(e.active_grid());
+        let mut v = Vec::with_capacity(REPS);
+        for _ in 0..REPS {
+            ph2d_wet_paint::grid::restore_grid(e.active_grid_mut(), &snap);
+            let t0 = Instant::now();
+            e.step_simulation();
+            v.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        v.sort_by(f64::total_cmp);
+        let med = v[v.len() / 2];
+        let hz = 1000.0 / med.max(1e-9);
+        print!(
+            "    grade 1/{div} ({side}x{side}, raio {radius:.0})  {live:>8} celulas vivas  \
+             {med:7.3} ms/passo  -> {hz:5.1} Hz"
+        );
+        if let Some((p_med, p_live)) = prev {
+            println!(
+                "   [{:4.2}x mais rapido, {:4.2}x menos celulas]",
+                p_med / med.max(1e-9),
+                p_live as f64 / live.max(1) as f64
+            );
+        } else {
+            println!();
+        }
+        prev = Some((med, live));
+    }
+    println!(
+        "\n    Leitura: o custo e LINEAR nas celulas vivas, entao a razao de tempo tem de\n    \
+         acompanhar a razao de celulas. O nominal da SPEC e 40 Hz (25 ms/passo)."
+    );
+}
+
 #[path = "measure_wetpaint_probes.rs"]
 mod measure_wetpaint_probes; // as MEDIÇÕES (#[ignore]) — irmãs dos gates, por LOC

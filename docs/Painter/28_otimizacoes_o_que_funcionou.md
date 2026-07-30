@@ -3119,3 +3119,58 @@ pen-up, onde a máscara `active` está **VAZIA**, e todo passe gated em `active[
 fazia early-out em toda célula: `project` mediu 0,88 ms contra 3,48, e a soma casava
 com os 62 ms do worker **por coincidência** — a mesma armadilha do §5.13. O worker
 roda o rebuild como 1º estágio; a fixture tem de fazer o mesmo.
+
+### E o smoke do Enio CONFIRMOU o veredito, com um número que eu não tinha
+
+```
+agua: sim media 46.73ms pico 106.32ms x38
+worker: busy 88% away 12% sleep 0% | TAXA DA AGUA 19.0 Hz
+```
+
+**`busy 88%`, `sleep 0%`** — o worker não tem folga; é o regime work-limited na
+cena dele, não numa fixture minha. E o **`pico` é 2,2× a média**, que é o que dá
+o nome certo ao sintoma: *"não fluida"* ≠ *"lenta"*.
+
+**A causa da irregularidade é a CADÊNCIA, e ela é aritmética.** Com os divisores
+2/3/3/4, o custo de um passo depende de `n mod 12`:
+
+```text
+  n%12:    0     1     2     3     4     5     6     7     8     9    10    11
+  ms:   143,2  27,6  32,6  77,6  93,2  27,6  82,6  27,6  93,2  77,6  32,6  27,6
+```
+
+Média **62,0**, faixa **27,6 a 143,2 — um swing de 5,2×** (a razão pico/média do
+modelo é 2,3×; o log do Enio mede 2,2×). Todo passo avança a MESMA fatia de tempo
+simulado, então a água cobre a mesma distância em 28 ms e em 143 ms: **ela parece
+acelerar e frear 5×.** É isso que o olho chama de não-fluido.
+
+⛔ **E evenar isso na CPU é impossível — as três saídas foram checadas e as três
+morrem:** (1) mudar a cadência é mudar a física (o fingerframe é o contrato do
+ADR-0134); (2) ritmar o worker pelo PIOR caso derruba a média de 62 para 143 ms/passo
+= **7 Hz**, muito pior; (3) ritmar o DISPLAY não pode funcionar porque **o engine
+guarda UM estado** — um passo pronto não pode ser segurado enquanto o worker continua,
+o estado dele já foi sobrescrito. E compositar em fronteira de ESTÁGIO (que é seguro,
+o módulo já o declara) **não ajuda**: o movimento todo mora no `advect`, um estágio de
+sete, então as outras seis atualizações não mostram nada.
+
+### As DUAS saídas, precificadas — e a escolha é do Enio
+
+O custo é **linear nas células vivas** (`ns/célula` PLANO de 512² a 4096²), e a grade
+do fluido é hoje **1:1 com os pixels do canvas** (`Engine::new(side, side)`; o
+composite mapeia célula `(cx,cy)` → pixel `(cx-1,cy-1)`) — a 4096² a física paga
+**16,7 M células**.
+
+| | passo | taxa | o que custa |
+|---|---|---|---|
+| hoje (grade 1:1) | 32,5 ms | 30,7 Hz | — |
+| **(A) grade 1/2** | **10,8 ms** | **92,3 Hz** | o detalhe SUB-CÉLULA do fluido; fingerprint re-pinado; resample no composite + dab em coordenada de grade; ADR |
+| **(B) GPU** | — | — | o port 1:1 e o fingerprint pinado do ADR-0134; wave grande; ADR próprio |
+
+Medido pela porta do produto, MESMO desenho físico (tudo escalado: lado, raio,
+comprimento): **3,00× mais rápido com 3,30× menos células** — a razão de tempo
+acompanha a razão de células, como a linearidade exige.
+
+⚠️ **(A) faz a água ALCANÇAR o nominal**, não só ficar mais rápida: média 62/3 =
+**21 ms contra os 25 ms de um passo a 40 Hz**, e o swing (o pior passo cairia a ~48 ms)
+é absorvido pelo `acc`, que existe exatamente para isso (`MAX_BEHIND_S` = 2 passos).
+Sonda: `measure_what_a_coarser_grid_would_buy`.

@@ -202,15 +202,8 @@ pub(crate) fn paint(
             row.set("formula", ph2d_expr_recipes::KnobValue::Text(src.clone()));
             m.stack.push(row);
         }
-        // ⚠️ The SAME label the track row shows (`tracks::prop_label`), so the card
-        // and the row it was opened from never name the property differently.
         m.prop = track.prop;
         m.entity = track.entity;
-        m.title = format!(
-            "{}  #{}",
-            crate::tracks::prop_label(track.prop),
-            track.entity % 10_000
-        );
         m.time = snap.time_seconds;
         m.opened = true;
     }
@@ -255,7 +248,15 @@ pub(crate) fn paint(
     let inner_x = rect.x + pad;
     let cy = rect.y + Spacing::Sm.px();
 
-    let mut cy = paint_title_band(m, ctx, theme, rect, cy);
+    // ⚠️ **O título é DERIVADO por frame, não semeado na abertura** (FASE C.3). A mesma
+    // porta que rotula a row (`tracks::track_label`), com o nome que a shell publicou —
+    // então renomear o objeto com o card aberto re-titula, em vez de deixar na tela o
+    // nome que ele tinha. Guardá-lo seria a 2ª cópia de um fato derivado, e é justamente
+    // como o card passou a existência inteira anunciando `#nnnn` sob um doc que prometia
+    // um nome.
+    let title =
+        crate::tracks::track_label(snap.object_name(track.entity), track.entity, track.prop);
+    let mut cy = paint_title_band(&title, ctx, theme, rect, cy);
 
     let body_y = cy;
     crate::expr_modal_gallery::paint_gallery(m, ctx, theme, inner_x, body_y);
@@ -386,13 +387,7 @@ fn paint_frame(ctx: &mut PaintCtx, theme: Theme, pos: Option<(f32, f32)>) -> Rec
 ///
 /// Split out when `paint` crossed the 200-LOC function cap; the cut is by BAND, so
 /// each piece is one horizontal thing the card has.
-fn paint_title_band(
-    m: &crate::expr_modal::ExprModal,
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    rect: Rect,
-    cy: f32,
-) -> f32 {
+fn paint_title_band(title: &str, ctx: &mut PaintCtx, theme: Theme, rect: Rect, cy: f32) -> f32 {
     let pad = Spacing::Md.px();
     let font = TypeToken::Sm.px();
     let inner_x = rect.x + pad;
@@ -428,11 +423,7 @@ fn paint_title_band(
     paint_text(
         ctx.text_system,
         ctx.scene,
-        &format!(
-            "{} — {}",
-            ph2d_i18n::tr("panel.timeline.expression"),
-            m.title
-        ),
+        &format!("{} — {}", ph2d_i18n::tr("panel.timeline.expression"), title),
         inner_x,
         cy + (ROW_H_PX - font) * 0.5,
         font,

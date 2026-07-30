@@ -271,6 +271,23 @@ pub struct TimelineViewSnapshot {
     /// rule (it stores no target and rebuilds from the frame), so the card needs the same
     /// fact each frame — not a one-shot request — to notice a CHANGE.
     pub selected_entity: Option<u64>,
+    /// **The NAME of every object this snapshot has a track for**, by entity bits.
+    ///
+    /// Third field with the shape of [`Self::position_is_path`], and for the third time
+    /// the same reason: the document holds no `Name` — it points at objects by
+    /// `wire_id` (the hash of one) — so only the shell can answer *who is this?*. It
+    /// fills this after [`Self::rebuild`], for the tracks that are here and no others:
+    /// a scene of five hundred objects with three animated ones publishes three names.
+    ///
+    /// ⚠️ **Why a MAP and not a `TrackView::name`:** an object with six tracks has six
+    /// rows and ONE name, and the two consumers ask at different granularities — the
+    /// dope-sheet row asks per track, the Expression card asks per object. A per-row
+    /// copy would answer both, and would be six strings that can disagree.
+    ///
+    /// A missing entry is not an error: an object with no `Name` component (a transient
+    /// that would not survive a reload either) has none, and the label falls back to the
+    /// `#nnnn` short id that this app has shown since the dope-sheet existed.
+    pub object_names: std::collections::BTreeMap<u64, String>,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// O onion da timeline (ADR-0142): o painel lê ISTO para pintar os controles no estado
@@ -345,6 +362,16 @@ impl TimelineViewSnapshot {
         !self.lanes.is_empty()
     }
 
+    /// **What this object is called**, or `None` when nobody published a name for it
+    /// (see [`Self::object_names`] for when that happens and what the caller shows
+    /// instead). The accessor exists so no consumer reaches into the map — the answer
+    /// to *who is this?* has one door, and a second one would be the place a fallback
+    /// gets forgotten.
+    #[must_use]
+    pub fn object_name(&self, entity: u64) -> Option<&str> {
+        self.object_names.get(&entity).map(String::as_str)
+    }
+
     /// Refill this snapshot from `state` + the ACTIVE `playhead`, reusing the
     /// existing `tracks`/`markers`/`keys` buffers (clear + push, no fresh `Vec`s
     /// once the capacities are warm).
@@ -412,7 +439,10 @@ impl TimelineViewSnapshot {
         self.performing = state.flags.performing;
         // `position_is_path` is NOT set here: it is a projection of the SELECTION,
         // which the document does not know. The shell fills it after this rebuild,
-        // before the panel reads the snapshot.
+        // before the panel reads the snapshot. `object_names` is the same deal (the
+        // document points at objects by `wire_id`, never by `Name`) — and it is NOT
+        // cleared here on purpose: clearing what the shell owns would blank every
+        // label for one frame on any rebuild the shell does not follow with a fill.
         self.simulate_physics = state.flags.simulate_physics;
         self.onion = state.onion;
 

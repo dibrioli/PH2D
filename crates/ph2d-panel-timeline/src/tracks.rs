@@ -219,7 +219,7 @@ pub(crate) fn paint_rows(
         );
         ctx.host.hit_index_mut().register(row_id, row_hit);
         let font = TypeToken::Sm.px();
-        let text = format!("{}  #{}", prop_label(track.prop), track.entity % 10_000);
+        let text = track_label(snap.object_name(track.entity), track.entity, track.prop);
         let color = if track.missing {
             ColorToken::TimelineMissing
         } else {
@@ -567,6 +567,27 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
     }
 }
 
+/// **How this app names an animated channel** — `Ball · Position X`, or the short id
+/// `Position X  #7294` when the object published no name (FASE C.3 do plano 12).
+///
+/// A porta ÚNICA, e a razão é literal: o card de Expressão nasceu montando esta string
+/// por conta própria, e o doc-comment dele **prometia** `"Ball · Position Y"` desde o
+/// primeiro dia enquanto o código escrevia `#nnnn` — a row e o card do mesmo canal
+/// dizendo coisas diferentes é exactamente o que uma segunda cópia produz.
+///
+/// **O nome vem primeiro** porque é o que o artista varre numa coluna estreita: com
+/// seis tracks do mesmo objeto, a propriedade é o que muda de linha para linha, e o
+/// nome é a âncora que diz de quem é o bloco.
+pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
+    match name {
+        Some(n) => format!("{n} · {}", prop_label(prop)),
+        // O fallback é o rótulo que o dope-sheet sempre teve. Ele NÃO é sinal de erro:
+        // um objeto sem `Name` é transiente, e mostrar `#nnnn` continua distinguindo
+        // duas rows do mesmo tipo em objetos diferentes.
+        None => format!("{}  #{}", prop_label(prop), entity % 10_000),
+    }
+}
+
 /// A subtle zebra fill for alternate rows.
 fn fill_row(ctx: &mut PaintCtx, theme: Theme, rect: Rect, tok: ColorToken) {
     fill_rounded_rect(ctx.scene, rect, Radius::Xs.px(), resolve(tok, theme));
@@ -588,5 +609,41 @@ mod tests {
                 "{m:?} resolves to a real badge label"
             );
         }
+    }
+
+    /// **Com nome, o rótulo diz QUEM antes de dizer O QUÊ; sem nome, cai no id curto.**
+    ///
+    /// As duas metades num gate só de propósito: o fallback é o que impede a cura de virar
+    /// uma regressão para objetos transientes (que não têm `Name`), e afirmar só a metade
+    /// bonita deixaria um rótulo `" · Position X"` órfão passar.
+    ///
+    /// **Mutação que deve sangrar:** `None` devolver `prop_label` puro (aí duas rows de
+    /// objetos diferentes ficam indistinguíveis).
+    #[test]
+    fn the_label_names_the_object_first_and_falls_back_to_the_short_id() {
+        let named = track_label(Some("Ball"), 7_294, PropKind::TranslationX);
+        assert!(
+            named.starts_with("Ball"),
+            "o nome vem primeiro — é o que se varre numa coluna estreita: {named:?}"
+        );
+        assert!(
+            named.contains(prop_label(PropKind::TranslationX)),
+            "e a propriedade continua lá: {named:?}"
+        );
+        assert!(
+            !named.contains('#'),
+            "com nome, o id curto não é ruído a mais na linha: {named:?}"
+        );
+
+        let bare = track_label(None, 7_294, PropKind::TranslationX);
+        assert!(
+            bare.contains("#7294"),
+            "sem nome, o rótulo tem de continuar DISTINGUINDO dois objetos: {bare:?}"
+        );
+        assert_ne!(
+            bare,
+            track_label(None, 1_294, PropKind::TranslationX),
+            "duas rows da mesma propriedade em objetos diferentes não podem ler igual"
+        );
     }
 }

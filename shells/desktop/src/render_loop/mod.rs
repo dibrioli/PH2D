@@ -1587,6 +1587,10 @@ impl crate::App {
         // Who is selected, for the Expression card to follow (same reason as
         // `position_is_path` above: the document has no selection, the shell does).
         self.timeline_view.selected_entity = selected_now;
+        // ...and WHO each animated object is, by name, for the same reason a third time:
+        // the document points at objects by `wire_id` (the hash of a `Name`), never by the
+        // name itself. Without this the dope-sheet labels every row `#7294`.
+        crate::timeline_persist::publish_object_names(&mut self.timeline_view, sim.world());
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         // Global rigid physics (ADR-0131 W1): step the rapier world at the
         // Playhead tick and read poses back into Transform, BEFORE

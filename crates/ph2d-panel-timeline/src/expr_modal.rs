@@ -54,14 +54,6 @@ pub struct ExprModal {
     /// The OBJECT this card is about — what the selection is compared against so the card
     /// can notice it has to follow. `0` until the first paint resolves it from the track.
     pub entity: u64,
-    /// What the title band says.
-    ///
-    /// ⚠️ This doc-comment claimed `"Ball · Position Y"` for as long as the card has
-    /// existed, and the card has **never** shown an object's name: the string is
-    /// `prop_label + "  #" + entity % 10000`, because `TrackView` carries no name and
-    /// neither does the dope-sheet row it was opened from. Showing the real name needs the
-    /// shell to publish it, and that is named as open rather than promised here.
-    pub title: String,
     /// Top-left of the card. ⚠️ `None` until the first paint CENTRES it in the
     /// viewport — the panel that opens the card does not know how big the window
     /// is, and the first smoke found the card pinned half off the bottom of the
@@ -78,8 +70,11 @@ pub struct ExprModal {
     /// Next paint clobbers the row widgets instead of seeding them (see the
     /// module docs).
     pub reseed: bool,
-    /// First paint has run: the title and the clock are seeded from the snapshot
+    /// First paint has run: the CLOCK and the seed row are taken from the snapshot
     /// there, because the menu that OPENS the card does not have one.
+    ///
+    /// ⚠️ The title is **not** among them — it is derived per frame from the track
+    /// (see `expr_modal_paint`), so renaming the object re-titles the open card.
     pub opened: bool,
     /// The property being driven — what the preview's puppet follows.
     pub prop: ph2d_timeline::PropKind,
@@ -93,7 +88,6 @@ pub(crate) fn open(state: &mut TimelinePanelState, target: u64) {
     state.expr_modal = Some(ExprModal {
         target,
         entity: 0,
-        title: String::new(),
         pos: None,
         drag: None,
         page: GalleryPage::Families,

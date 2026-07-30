@@ -42,7 +42,9 @@
 //!    NÃO pode mudar. Role a roda sobre o card: a timeline atrás **não** pode dar zoom.
 //! 3. **A fita é do OBJETO** (FASE 0.2): a curva desenhada no card tem de ser o tremor
 //!    que o Shaker faz. Selecione o **Jitterer** na cena — o card segue a seleção e a
-//!    fita tem de MUDAR (outro seed, outro tremor).
+//!    fita tem de MUDAR (outro seed, outro tremor). **E o card diz QUEM** (FASE C.3): o
+//!    título lê `Expression — Shaker · Position X` e vira `Jitterer · Position X` com a
+//!    seleção; as rows do dope-sheet trazem o NOME do objeto, não o `#nnnn` de antes.
 //! 4. **Esconder o painel PARA o preview** (FASE 0.3): aperte `L` para fechar a
 //!    timeline. Os objetos param na pose autorada; nada continua andando.
 //! 5. **Apagar a linha DEVOLVE a propriedade** (FASE 0.4): no card do Shaker, clique o
@@ -164,7 +166,8 @@ impl crate::App {
              O card ja esta ABERTO no Shaker. Prove, nesta ordem: (2) o card e MODAL — \
              clique a barra de formula e digite: o Dur(s) do transporte NAO muda, e a roda \
              sobre o card NAO da zoom na timeline; (3) a fita e do OBJETO — selecione o \
-             Jitterer e a curva TEM de mudar (outro seed); (4) aperte L para esconder a \
+             Jitterer e a curva TEM de mudar (outro seed) E o titulo passa a dizer \
+             'Jitterer . Position X'; (4) aperte L para esconder a \
              timeline: tudo PARA; (5) no card, X na linha + Apply: o Shaker volta para x=0 \
              e FICA (era isto que ficava a 250); (6) aba ARRANGE: um strip do clip 0 em \
              [1,3s] janela as tres receitas."

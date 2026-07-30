@@ -162,6 +162,43 @@ fn purge_the_dead(
     true
 }
 
+/// **Publica o NOME de cada objeto que tem track**, para o painel poder rotular uma row
+/// (e o card de Expressão titular-se) com *quem* em vez de `#7294` (FASE C.3 do plano 12).
+///
+/// Mora aqui porque este módulo já é o dono da pergunta *"qual objeto é este?"* — é ele que
+/// resolve binding↔objeto pelo `Name` no heal, no save e no load. Uma segunda travessia do
+/// mundo noutro arquivo seria a 2ª resposta que o `wire_of` acima existe para não ter.
+///
+/// ⚠️ **Escopo: as tracks que o snapshot tem, nunca a cena.** A pergunta é sobre as rows que
+/// vão ser pintadas; varrer o mundo publicaria centenas de nomes que ninguém lê.
+///
+/// ⚠️ **Reaproveita as `String`s** (`clear` + `push_str` quando o nome não mudou; nada é
+/// realocado em regime) e **poda por varredura das tracks** em vez de montar um conjunto:
+/// são poucas rows, e um `Vec` de scratch por frame custaria mais que o laço que ele evitaria.
+pub(crate) fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, world: &World) {
+    let ph2d_timeline::TimelineViewSnapshot {
+        tracks,
+        object_names,
+        ..
+    } = view;
+    // Poda primeiro: um objeto que saiu das tracks (deletado, ou a track foi removida) não
+    // pode continuar nomeando bits que o bevy já reciclou para OUTRO objeto.
+    object_names.retain(|bits, _| tracks.iter().any(|t| t.entity == *bits));
+    for t in tracks.iter() {
+        let Some(name) = Entity::try_from_bits(t.entity).and_then(|e| world.get::<Name>(e)) else {
+            // Sem `Name` não há o que publicar — e uma entrada VELHA teria de sair, senão o
+            // rótulo mostraria o nome que o objeto tinha antes de perdê-lo.
+            object_names.remove(&t.entity);
+            continue;
+        };
+        let slot = object_names.entry(t.entity).or_default();
+        if slot != name.as_str() {
+            slot.clear();
+            slot.push_str(name.as_str());
+        }
+    }
+}
+
 /// Carimba o `wire_id` (hash do nome do objeto) em cada binding e serializa o documento —
 /// os bytes que o arquivo de projeto carrega no campo `timeline` ([`crate::project`]).
 pub(crate) fn serialize(timeline: &mut TimelineState, world: &World) -> Result<Vec<u8>, String> {

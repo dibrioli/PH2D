@@ -11,8 +11,8 @@
 //! already there:
 //!
 //! - **Empty input → draw BACKWARDS.** A ghost wire follows the cursor, hunting for an
-//!   output. Drop it on one and the connection is made, exactly as if it had been drawn the
-//!   other way.
+//!   output. Drop it on one — or anywhere on a node's BODY, taking its first compatible output —
+//!   and the connection is made, exactly as if it had been drawn the other way.
 //! - **Occupied input → GRAB THE WIRE'S END.** The wire lets go of the socket and follows
 //!   the cursor, still attached to its source. Drop it on another input and it has *moved*;
 //!   drop it on empty canvas and it is unplugged.
@@ -183,6 +183,18 @@ pub(super) fn apply_socket_in(
                         // this input? The backwards gesture had no answer for a card either
                         // — it was a silent no-op, the very thing it exists to prevent.
                         state.menu = Some(menu);
+                    } else if let Some((from_node, from_port)) =
+                        super::drop_gesture::node_body_source(snap, &view, to_node, to_port, g.x, g.y)
+                    {
+                        // Dropped on a regular node's BODY: connect its first compatible OUTPUT —
+                        // the mirror of the forward drop-on-node (doc 63.3), so a backward drag is
+                        // as forgiving as a forward one.
+                        push_intent(GraphIntent::Connect {
+                            from_node,
+                            from_port,
+                            to_node,
+                            to_port,
+                        });
                     }
                 }
                 _ => {}

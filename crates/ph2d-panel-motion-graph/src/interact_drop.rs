@@ -94,3 +94,33 @@ pub(super) fn node_body_target(
         (!occupied && compat).then_some((node.id, i as u16))
     })
 }
+
+/// The first OUTPUT of the regular node whose card body contains `(x, y)`, type-compatible with the
+/// target INPUT — the mirror of [`node_body_target`], for a wire dragged BACKWARDS out of an empty
+/// input and let go over a node's body (so a backward drag is as forgiving as a forward one).
+/// Outputs fan out, never "occupied", so it is simply the first compatible one. `None` over no
+/// regular node, the TARGET node itself (that would self-loop), or no compatible output. A
+/// collapsed card is skipped: its hidden ports go through the card menu.
+pub(super) fn node_body_source(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    to_node: u32,
+    to_port: u16,
+    x: f32,
+    y: f32,
+) -> Option<(u32, u16)> {
+    let inp = snap
+        .nodes
+        .iter()
+        .find(|n| n.id == to_node)
+        .and_then(|n| n.inputs.get(to_port as usize))?;
+    let node = snap.nodes.iter().find(|n| {
+        n.id != to_node
+            && n.kind != crate::snapshot::NodeViewKind::Subgraph
+            && geom::card_rect(n, view).contains(x, y)
+    })?;
+    node.outputs.iter().enumerate().find_map(|(i, out)| {
+        let compat = out.domain == inp.domain && out.dim == inp.dim && out.clock == inp.clock;
+        compat.then_some((node.id, i as u16))
+    })
+}

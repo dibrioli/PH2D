@@ -30,7 +30,8 @@
 //! compatível — não precisa acertar o socket. Todos os inputs desta cadeia estão ocupados, então
 //! R-click no canvas → adicione um nó com input livre (ex. **`motion.twist`**) e arraste um fio do
 //! **grid** até o CORPO dele: conecta. Um card colapsado ainda vai pelo menu de portas, e soltar no
-//! CORPO do próprio nó-fonte é ignorado (não auto-conecta).
+//! CORPO do próprio nó-fonte é ignorado (não auto-conecta). Simétrico: arrastar um fio pra TRÁS de
+//! um input vazio e soltar no CORPO de um nó pega o 1º OUTPUT compatível dele.
 //!
 //! ⊙ Ctrl+A com o grafo em foco (e nenhum campo de param em edição) SELECIONA TODOS os nós — daí
 //! um Delete / Ctrl+D / Ctrl+G age sobre o grafo inteiro sem precisar de laço. Editando um campo,

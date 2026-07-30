@@ -478,3 +478,44 @@ fn ctrl_box_drag_subtracts_the_covered_nodes() {
     got.sort_unstable();
     assert_eq!(got, vec![1], "node 2 (under the box) was deselected; node 1 (outside) stays");
 }
+
+/// **A backward wire (dragged out of an empty input) dropped on a node's BODY takes that node's
+/// first compatible OUTPUT** — the mirror of the forward drop-on-node, so a backward drag is as
+/// forgiving as a forward one. Node 2's output socket is at x=390; a drop at (295, 30) is 95 px
+/// away, outside the magnet, but inside its card body. FALSIFIED if the node-body branch is
+/// missing: the backward drop over a plain node is a silent no-op.
+#[test]
+fn a_backward_wire_dropped_on_a_node_body_takes_its_first_compatible_output() {
+    let _ = drain_intents();
+    use crate::snapshot::NodeViewKind;
+    let snap = GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
+        nodes: vec![
+            // Node 1: an EMPTY input to drag a wire backwards out of.
+            body_node(1, 0.0, NodeViewKind::Node, vec![port(Domain::Instances)], Vec::new()),
+            // Node 2: a compatible OUTPUT — the backward wire lands on its body.
+            body_node(2, 200.0, NodeViewKind::Node, Vec::new(), vec![port(Domain::Instances)]),
+        ],
+        edges: Vec::new(),
+        backdrops: Vec::new(),
+        probe: None,
+        now: 0.0,
+    };
+    let mut st = MotionGraphPanelState::default();
+    let in_sock = GraphHitKind::SocketIn { node: 1, port: 0 };
+    apply_gesture(&mut st, gesture(in_sock, GesturePhase::Begin, 0.0, 37.0), RECT, CENTER, &snap);
+    // Drop on node 2's BODY (295, 30) — 95 px from its output socket, outside the magnet.
+    apply_gesture(&mut st, gesture(in_sock, GesturePhase::Update, 295.0, 30.0), RECT, CENTER, &snap);
+    apply_gesture(&mut st, gesture(in_sock, GesturePhase::End, 295.0, 30.0), RECT, CENTER, &snap);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::Connect {
+            from_node: 2,
+            from_port: 0,
+            to_node: 1,
+            to_port: 0,
+        }],
+        "the backward wire took node 2's first compatible output"
+    );
+}

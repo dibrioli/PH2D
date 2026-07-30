@@ -3163,7 +3163,7 @@ composite mapeia célula `(cx,cy)` → pixel `(cx-1,cy-1)`) — a 4096² a físi
 | | passo | taxa | o que custa |
 |---|---|---|---|
 | hoje (grade 1:1) | 32,5 ms | 30,7 Hz | — |
-| **(A) grade 1/2** | **10,8 ms** | **92,3 Hz** | o detalhe SUB-CÉLULA do fluido; fingerprint re-pinado; resample no composite + dab em coordenada de grade; ADR |
+| **(A) grade 1/2** | **10,8 ms** | **92,3 Hz** | o detalhe SUB-CÉLULA do fluido; resample no composite + dab em coordenada de grade |
 | **(B) GPU** | — | — | o port 1:1 e o fingerprint pinado do ADR-0134; wave grande; ADR próprio |
 
 Medido pela porta do produto, MESMO desenho físico (tudo escalado: lado, raio,
@@ -3174,3 +3174,217 @@ acompanha a razão de células, como a linearidade exige.
 **21 ms contra os 25 ms de um passo a 40 Hz**, e o swing (o pior passo cairia a ~48 ms)
 é absorvido pelo `acc`, que existe exatamente para isso (`MAX_BEHIND_S` = 2 passos).
 Sonda: `measure_what_a_coarser_grid_would_buy`.
+
+⚠️ **(A) SHIPOU no mesmo dia — §5.41 — e duas coisas desta tabela estavam
+ERRADAS:** ela dizia que a razão *"re-pina o fingerprint"* e que precisaria de
+**ADR**. Nenhum dos dois: o motor sempre foi agnóstico de dimensão, o
+`tests/fingerprint.rs` ficou intacto, e não há decisão de arquitetura a tomar
+(a razão é um número que o host escolhe, não um contrato). E o ganho medido pela
+porta do produto é **2,7× a 2:1 e 9,1× a 4:1**, não os 3,00× que a medição
+substituta estimou. *A estimativa era minha; o número é do produto.*
+
+---
+
+## §5.41 — A GRADE DO FLUIDO DESACOPLOU DO PIXEL (2026-07-29)
+
+> Ordem do Enio: *"Os dois (A) e (B). Inclusive quero ter total controle sobre a
+> grade do fluido, quero um slider em que eu possa usar a grade desde 1:1 até
+> 1:30 px. Quero esse slider como primeiro widget da seção wet paint, acima das
+> tools."* — e, na mesma janela: *"EM Tuning: Pigment Mixing (K-M) temos séria
+> queda de FPS. Resolva isso."*
+
+### O que a §5.40 deixou aberto
+
+A água era **work-limited** (`busy 88%`, `sleep 0%`, 47-51 ms/passo, 17-19 Hz) e
+os 93 % do passo eram os três passes seriais por semântica — sem caminho de CPU.
+A alavanca que sobrava não era *quanto custa uma célula*, era **quantas células
+existem**: o custo é linear nas células vivas e a grade era **1:1 com os pixels**.
+
+### O que shipou
+
+**`wetpaint/grid_map.rs`** — a porta única da conversão pixel↔célula, com a
+razão autorada em `WetPaintState.grid_ratio` (1..=30) e congelada por sessão em
+`WetSession::ratio`. O slider **"Grid Size (px)"** é o primeiro widget da seção.
+
+Medido **pela porta do produto** (4096², pincel r=100, 3 faixas diagonais;
+`measure_what_the_grid_ratio_buys`):
+
+| razão | grade | células vivas | ms/passo | Hz | ganho |
+|---|---|---|---|---|---|
+| 1:1 | 4096×4096 | 1.607.169 | 32,2 | 31 | — |
+| **2:1** | 2048×2048 | 486.789 | **12,0** | **83** | **2,7×** |
+| 3:1 | 1366×1366 | 227.319 | 6,0 | 166 | 5,3× |
+| 4:1 | 1024×1024 | 128.000 | 3,6 | 282 | 9,1× |
+| 8:1 | 512×512 | 32.391 | 0,77 | 1293 | 44,7× |
+
+**A razão 2 já passa o nominal de 40 Hz da SPEC** — a água deixa de ser
+work-limited e o worker volta a dormir adiantado.
+
+### O K–M foi curado pelo MESMO slider, e o Glaze já estava curado
+
+O custo do `km_mixing` é **por célula** (9 misturas de cor por célula
+advectada), então a razão o corta na mesma proporção
+(`measure_what_km_costs_at_each_grid_ratio`):
+
+| razão | passo K–M off | passo K–M **ON** | custo | composite off → ON |
+|---|---|---|---|---|
+| 1:1 | 32,7 ms | **104,4 ms** (9,6 Hz) | **3,2×** | 14,9 → 14,9 (**1,00×**) |
+| 2:1 | 11,3 | 31,0 | 2,8× | 21,1 → 20,0 (0,95×) |
+| **4:1** | 3,0 | **8,3** | 2,7× | 17,8 → 17,9 (1,01×) |
+| 8:1 | 0,76 | 2,1 | 2,8× | 17,2 → 17,2 (1,00×) |
+
+Duas leituras que importam:
+
+* o report é **real e grande** — a 1:1 o Pigment Mixing leva a água a **9,6 Hz**,
+  praticamente parada;
+* **o Glaze Layering JÁ estava curado** pelo doc 24 (a tabela sRGB): custo
+  medido **1,00×**, zero. O que derruba o FPS é só a metade da SIM.
+
+A 4:1 o K–M ligado custa **8,3 ms**, abaixo do kill de 12 do ADR-0134.
+
+### Por que o fingerprint do ADR-0134 fica INTACTO
+
+⚠️ **A nota que a §5.40 deixou dizia que a razão *"re-pina o fingerprint"*. É
+FALSO, e a construção o derrubou.** O motor sempre foi agnóstico de dimensão —
+a suíte de aceitação dele roda em 900×450, 300×200 e 60×60 justamente porque a
+dimensão nunca foi parte da física —, então `Engine::new(gw, gh)` com números
+menores é o **mesmo código**. O que a razão muda é *de quantos pixels o HOST
+fala com ele*, e essa conversão vive toda no `grid_map`. `tests/fingerprint.rs`:
+**2/2 verdes**, sem re-pin. *A estimativa era minha; o fato é do produto.*
+
+### A convenção, e as quatro portas que TÊM de ser inversas
+
+A célula `c` cobre os pixels `[(c−1)·r, c·r)`, logo o centro dela é
+`(c−1)·r + r/2`. O motor recebe posições em que o centro da célula `c` vale
+`c + 0,5` — é o que o `+ 1.0` que a rota do dab sempre somou significa. Com a
+razão isso vira **`u = px / r + 1,0`**, e em `r = 1` a expressão é
+*literalmente* `px + 1.0`.
+
+| pergunta | porta | quem chama |
+|---|---|---|
+| de que tamanho é a grade? | `grid_dims` (⚠️ `div_ceil`) | o nascimento da sessão |
+| onde, em células, está este ponto? | `px_to_cell` / `px_len_to_cell` | a rota do dab |
+| que pixel é o centro desta célula? | `cell_center_px` / `cell_center_texel` | a silhueta, o Grain, o Paper |
+| de que células sai este pixel? | `SampleU::at` | o composite |
+
+⚠️ **Se o dab pousa numa célula e a silhueta é avaliada noutra, o carimbo sai
+deslocado de meia célula** — a doença `seed == sample`. Escrever a aritmética
+duas vezes é como isso acontece, então ela é escrita uma vez e há gate de
+inversão em 7 razões.
+
+⚠️ **O upsample é bilinear PREMULTIPLICADO.** Straight-alpha puxaria a cor de um
+vizinho transparente para dentro da tinta (o halo); há gate com fixture de
+vermelho-opaco ao lado de verde-transparente. E o **véu do show-wet é nearest de
+propósito**: o menisco é um gradiente MEDIDO na grade (`film[i±1]`), e
+interpolá-lo desenharia uma crista que o solver não tem.
+
+⚠️ **Trocar a razão ENCERRA a sessão de água viva** (encerrar É o bake — a tinta
+que se vê já está no `canvas_rgba`); reamostrar catorze planos de `f32` para a
+resolução nova inventaria água que o solver não produziu. **Re-emitir o mesmo
+valor não encerra nada** — o guard de igualdade é o que torna o chip numérico
+seguro sob arrasto.
+
+### O PREÇO, medido e nomeado em vez de escondido
+
+A tile de cerdas do modelo (128×128) é indexada em unidades de **CÉLULA**, com
+pontas de ~1-2 células. Então o que decide se o banco resolve o pincel é o
+**raio em células**, `raio_px / ratio` — medido pelo caminho do produto (com a
+silhueta do host):
+
+| raio (células) | massa | cobertura |
+|---|---|---|
+| < 1,5 | **0,0** | 0 % ← **nada é depositado** |
+| 1,5 | 16,6 | 14 % (uma célula) |
+| 3,0 | 204,2 | 7 % |
+| 6,0 | 1375,9 | 6,2 % |
+| 12,5 | 4990,6 | 5,5 % ← o regime normal |
+| 25,0 | 16258,3 | 5,2 % |
+
+A cobertura converge em ~5 % (a densidade do banco — o depósito do modelo é
+**inerentemente esparso**, é uma pincelada de *cerdas*), então **acima de ~6
+células o depósito é auto-similar**: é o de sempre, resolvido mais grosso.
+⇒ **a razão útil é ≈ `raio_px / 6`** (100 px suportam ~16:1; 12 px, ~2:1).
+
+⚠️ **Sem piso e sem cap, de propósito.** Um piso no raio em células faria o
+pincel pintar MAIOR do que o artista pediu (mentira silenciosa); um cap na razão
+faria o pincel decidir a resolução do fluido. O comportamento honesto é o que o
+gate pina: com a célula maior que o pincel, nada sai — e o slider diz
+*"Grid Size (px)"* ao lado do tamanho do pincel, então a leitura é direta.
+
+⚠️ **A cura possível está mapeada e NÃO foi construída:** ler a tile em escala de
+CANVAS faria a granulação convergir para a da razão 1. É mudança de APARÊNCIA do
+depósito ⇒ wave própria com smoke próprio, não contrabando dentro de uma wave de
+perf.
+
+### Custo que a wave ADICIONA, nomeado
+
+O composite não cai com a razão (é O(pixels de canvas)) e a bilinear o encarece:
+tela cheia a 4096² mediu **14,9 ms a 1:1 contra 17-21 a 2:1..8:1**. No produto o
+composite é da região suja (~3,2 ms no log do Enio), então o acréscimo é
+~0,5-1,3 ms — contra ~20 ms economizados no passo.
+
+### As lições de fixture desta wave (SEIS, e todas minhas)
+
+1. **"px 7 está a meio caminho"** — com `r` par nenhum pixel cai no meio de duas
+   células (os centros ficam em 4,0 e 12,0; o meio, 8,0, é a *fronteira* entre os
+   pixels 7 e 8). O gate falhou sobre código correto; a propriedade verdadeira é
+   a **simetria** (os dois pixels que abraçam o meio somam a cobertura cheia).
+2. **O gate da borda nasceu VERMELHO na razão 1** — isto é, sobre o mundo que já
+   shipava: o stamp do motor recorta em `min(grid_w − 1)`, então a última coluna
+   viva nunca recebe, em nenhuma razão. *Um gate que falha no controle está
+   medindo a coisa errada.*
+3. **A massa de tinta não é o oráculo da granulação** — cada célula pinta `r²`
+   pixels, então a massa visível se preserva (medido: 74 %) enquanto a forma
+   granula. Mesma armadilha que o doc 25 §13.10 registrou no eixo do traço.
+4. **O probe do limiar passou `sil = None`** e mediu um cliff em 3 células; o
+   produto SEMPRE passa a silhueta do host, e por ela o cliff é **1,5**. A
+   fixture tem de conter o caminho do produto.
+5. **O deslocamento de centroide que eu achei ser erro de conversão** era
+   assimetria de ponta de traço + estatística de cerdas — o teste decisivo é um
+   **dab único**, simétrico por construção.
+6. **A mutação que não sangrou acusou a minha AFIRMAÇÃO** (a 2ª vez nesta linha,
+   depois da comutatividade IEEE-754 no warp): forçar a razão 1 pela rota
+   bilinear dá **0 bytes divergentes** — as frações são zero exatas, os cantos
+   caem no `continue` de peso zero, e o `round() as u8` absorve a diferença de
+   ordem. A rota de identidade existe pelo **CUSTO**, não pela identidade.
+
+### Gates
+
+10 novos: byte-identidade contra o **over congelado** (`over_as_it_shipped`, sob
+`cfg(test)` — oráculo, não segunda resposta) · as portas inversas em 7 razões ·
+`div_ceil` · upsample plano · o vazamento premultiplicado · o clamp de borda · a
+grade encolhe **e** a tinta pousa no mesmo lugar · a troca de razão encerra a
+sessão (e a re-emissão não) · o barramento do painel · a row é o **primeiro**
+widget (comparação de `y` contra os 7 chips) e está **viva sob o mouse**
+(`click_at` real) · o cliff do banco de cerdas.
+
+**6 mutações, 5 sangram**; a sobrevivente está documentada acima (lição 6).
+
+### Aberto
+
+* a cura da granulação (a tile em escala de canvas) — **decisão de aparência**;
+* o default fica em **1** de propósito: mudar a resolução do fluido por default
+  mudaria o desenho de toda arte já feita, e o ponto de operação é do artista.
+  Com o número da tabela na mesa, é escolha do Enio mover o default;
+* a bilinear do composite não é otimizada (os pesos se repetem dentro de uma
+  célula) — 0,5-1,3 ms contra 20 economizados, não vale a complexidade hoje.
+
+### Smoke
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter
+env PH2D_WETPAINT_SMOKE=1 PH2D_FLUID_PROFILE=1 cargo run -p ph2d-host-desktop --release
+```
+
+Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
+
+1. **A seção abre com "Grid Size (px)" no TOPO**, acima de Paint/Erase/Smear/…
+2. Com **1** (o default) a água corre como antes: `TAXA DA AGUA ~19 Hz`,
+   `busy 88%`.
+3. Ponha **2** e pinte de novo: a taxa tem de **passar de 40 Hz** e o `sleep`
+   tem de subir. Ponha **4** e ela voa.
+4. **O K–M:** abra o Tuning → EXPERIMENTAL → Pigment Mixing. Com grade 1 a água
+   quase para (9,6 Hz medidos); com grade 4 ela fica utilizável.
+5. **O preço:** com grade 30 e um pincel PEQUENO nada é pintado — a célula é
+   maior que o pincel. Com pincel grande a faixa inteira funciona.
+6. Trocar a grade **encerra a água viva** (a tinta fica; o escorrido em voo, não).

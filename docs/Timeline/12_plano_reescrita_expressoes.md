@@ -612,7 +612,7 @@ então "clicar no card" pode acertar o transporte, D10) · a **CENA de smoke** (
 receitas e o roteiro dela manda usar um widget deletado, doc 13 §4 D-F/D-L).
 
 ```
-AUDITORIA (11 + 13)  →  ⚠️ FASE 0: consertar os INSTRUMENTOS
+AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-29]
                             (D10 o card engole o ponteiro+roda ·
                              D11 a fita usa o seed da cena ·
                              D12/D13 a pose volta quando a formula sai ·
@@ -626,6 +626,44 @@ AUDITORIA (11 + 13)  →  ⚠️ FASE 0: consertar os INSTRUMENTOS
                              ↓
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
+
+### ✅ A FASE 0 FECHOU (2026-07-29) — o que mudou, e o que ela deixou de herança
+
+Cinco commits, **5 defeitos medidos fechados**, **19 gates novos**, **8 mutações** (7 sangram,
+1 sobrevive **por prova**), workspace **10.133 verdes**. O que o próximo executor precisa saber:
+
+| # | o defeito | a cura, em uma frase |
+|---|---|---|
+| **D10/U1** | 18 widgets do transporte vivos sob o card; clicar a barra de fórmula editava o `Dur(s)` | um **SCRIM** registrado ANTES dos widgets do card (a ordem É o mecanismo) |
+| **U3** | a roda sobre o card zoomava a timeline (120 → 326 px/s) | `TimelineWheel` ganhou `anchor_y` — *"dentro deste rect?"* não se responde com uma coordenada de duas — e `card_rect` é a porta única de *"onde está o card?"* |
+| **D11/D-J** | o `__seed` tinha TRÊS respostas; a fita desenhava o objeto zero | **`ph2d_timeline::seed_of_target`**, e os 4 consumidores perguntam a ela |
+| **D12/D-K** | esconder o painel deixava o preview dirigindo para sempre | a limpeza foi para o ramo OCULTO do painel (`release_everything_a_hidden_panel_must_not_hold`) + **`MockPanelHost::paint_hidden`**, que não existia |
+| **D13/D-I** | apagar a fórmula deixava a prop sem keys a **250,0000** | o `RESTORE` de uma casca virou o **LEDGER** (mapa), escrito pelo post-pass E pelo blend, drenado onde `composed` diz que ninguém respondeu |
+| **D-F/D-L** | o smoke exercitava zero receitas e o roteiro mandava usar um widget deletado | a cena autora por `RecipeStack::to_formula`, **abre o card** (`request_expr_card`) e o roteiro pede as 4 correções |
+
+**Três coisas que valem mais que os fixes, para quem continuar:**
+
+1. ⚠️ **Um gate PRÉ-EXISTENTE era um cara-ou-coroa, e só a mudança de fixture o revelou.**
+   `jitter_rerolls_on_a_fractional_seed` media UM meio-inteiro contra uma barra de 0,05:
+   medido sobre 64, a mediana é **0,2691** e **3 de 64** caem abaixo — ~5% de chance de falhar
+   sobre produto CORRETO. Virou mediana sobre 64 probes (interpolação suave dá 0,0000 em
+   todos). *Se um gate seu falhar quando você troca um fixture, meça a distribuição do
+   discriminante antes de culpar o produto.*
+2. ⚠️ **Eu construí uma guarda tipada de 6 call sites e a DELETEI porque a mutação
+   sobreviveu.** O `Ledger::{Note,Quiet}` protegia contra o `pose_at` envenenar o ledger — e
+   não podia falhar, porque *o hand-back só dispara onde o valor pré-expressão é o `rest`, uma
+   constante*. Uma guarda que não pode falhar é lida como protegendo algo. No lugar dela ficou
+   um gate sobre o invariante, **com a nota de que ele morre se a FASE B alargar a esparsidade
+   do `clip_anim_source`** — que é exatamente o que a FASE B contempla.
+3. ⚠️ **O gate das frases proibidas pegou o meu próprio doc-comment.** Eu citei a instrução
+   morta VERBATIM enquanto explicava que ela é proibida: um roteiro que carrega a instrução
+   morta está a um copiar-colar de voltar a ser ela.
+
+**Herança para as fases seguintes:** os três instrumentos estão honestos, então a FASE A pode
+ler a fita, a FASE C pode julgar o card clicando nele, e cada grupo G tem um smoke que sabe
+reprovar. ⚠️ **O que a FASE 0 NÃO tocou** e segue valendo: os 8 gates falsos da §9 (menos o do
+jitter, consertado aqui), o `+N more rows` (U2 — uma row viva sem um pixel de UI, nomeado no
+doc-comment do `expr_modal_paint` para ninguém se tranquilizar), e as 128 px mortas por row.
 
 * ⚠️ **NENHUMA fase começa antes da FASE 0.** A FASE A decide cortes lendo a fita e a excursão;
   a FASE C julga layout clicando no card; cada grupo G fecha com um smoke. Os três instrumentos

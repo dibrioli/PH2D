@@ -565,7 +565,6 @@ mod render_tests {
     use super::*;
     use crate::TimelineDoc;
     use ph2d_anim::{Interp, RationalTime};
-    use ph2d_ecs::Transform;
     use ph2d_render::Sprite;
 
     #[test]

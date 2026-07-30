@@ -246,10 +246,41 @@ impl PainterTool {
         self.set_paint_tool_mode("brush");
     }
 
+    /// **A razão da grade do fluido** (1..=30 px por célula) — a porta ÚNICA.
+    ///
+    /// ⚠️ **Trocar a razão encerra a sessão de água viva**, e isso é o desenho,
+    /// não uma limitação: a grade tem dimensão, e uma sessão viva já a tem
+    /// congelada em `WetSession::ratio`. Encerrar É o bake (a tinta que se vê
+    /// está no `canvas_rgba`), então o artista não perde pintura — perde a água
+    /// AINDA MOLHADA, que é exactamente o que "mudar a resolução do fluido"
+    /// significa. A alternativa seria reamostrar catorze planos de `f32` para a
+    /// resolução nova, inventando água que o solver nunca produziu.
+    ///
+    /// Sem mudança = **sem encerramento** (o guard de igualdade é o que torna
+    /// seguro o chip numérico re-emitir o mesmo valor a cada frame de arrasto).
+    pub(crate) fn set_wet_grid_ratio(&mut self, v: f64) {
+        use super::wetpaint::grid_map;
+        let want = grid_map::clamp_ratio(v.round().clamp(0.0, 255.0) as u8);
+        if self.paint.wetpaint.grid_ratio == want {
+            return;
+        }
+        self.paint.wetpaint.grid_ratio = want;
+        // A sessão viva nasceu com a razão antiga; a próxima nasce com esta.
+        self.wetpaint_end_session();
+    }
+
     /// Route one W3/tilt `SetValue` to its clamped field. Knob ranges are
     /// the engine's own (`KNOB_DEFS`); the two engine sliders are `0..1`.
     fn set_wet_knob_value(&mut self, id: ph2d_a11y::NodeId, v: f64) -> bool {
         use ph2d_editor_core::ids as core_ids;
+        // ⚠️ A razão da grade vem ANTES do empréstimo dos knobs: ela não é um
+        // knob do motor (o motor nem sabe que ela existe — ver
+        // `wetpaint::grid_map`), e o setter dela ENCERRA a sessão, o que precisa
+        // de `self` inteiro.
+        if id == core_ids::PAINTER_WETPAINT_GRID {
+            self.set_wet_grid_ratio(v);
+            return true;
+        }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
         match id {

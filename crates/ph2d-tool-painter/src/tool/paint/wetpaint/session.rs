@@ -31,6 +31,17 @@ pub(in crate::tool::paint) struct WetSession {
     /// ele está**: na thread do frame ou com o worker da sim
     /// ([`super::offthread`]). Pergunte por [`Self::eng`], nunca pelo slot.
     pub(in crate::tool::paint) engine: EngineSlot,
+    /// **Quantos pixels de canvas medem uma célula desta grade** — congelado no
+    /// nascimento (ver [`super::grid_map`]). A razão AUTORADA vive no
+    /// `WetPaintState`; esta é a que o motor vivo de fato tem, e é ela que a
+    /// rota do dab e o composite perguntam. Trocar a autorada encerra a sessão,
+    /// então as duas concordam sempre — mas quem responde *"de que tamanho é a
+    /// grade que estou usando?"* tem de ser a grade, não a preferência.
+    pub(in crate::tool::paint) ratio: u8,
+    /// As dimensões da grade (sem o pad ring), derivadas de `(source_size,
+    /// ratio)` uma vez no nascimento. O `pigment` abaixo tem este tamanho, não
+    /// o do canvas.
+    pub(in crate::tool::paint) grid: (usize, usize),
     /// A thread da sim, criada no primeiro `hand_off_sim`. `None` = o motor
     /// nunca saiu daqui (sessão recém-nascida, ou um teste que só dirige).
     pub(in crate::tool::paint) worker: Option<SimWorker>,
@@ -62,8 +73,11 @@ pub(in crate::tool::paint) struct WetSession {
     /// ABA that makes a raw-pointer identity check unsound (the ADR-0124
     /// lesson: **ask the value, never `as_ptr()` of something you don't pin**).
     pub(in crate::tool::paint) canvas: Weak<Vec<u8>>,
-    /// Session-persistent pigment scratch (`w*h*4`); the region render fully
-    /// overwrites the rect it is asked for, so stale bytes outside are inert.
+    /// Session-persistent pigment scratch — **`grid.0 * grid.1 * 4`, o tamanho
+    /// da GRADE e não o do canvas** (o render de pigmento do motor escreve uma
+    /// linha de célula por vez; o composite é quem sobe para o canvas). The
+    /// region render fully overwrites the rect it is asked for, so stale bytes
+    /// outside are inert.
     pub(super) pigment: Vec<u8>,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last

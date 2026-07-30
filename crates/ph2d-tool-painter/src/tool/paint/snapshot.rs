@@ -298,6 +298,7 @@ impl PainterTool {
             wet_km_mixing: self.paint.wetpaint.km_mixing,
             wet_km_glaze: self.paint.wetpaint.km_glaze,
             wet_tuning_open: self.paint.wetpaint.tuning_open,
+            wet_grid_ratio: self.paint.wetpaint.grid_ratio,
             watercolor: b.watercolor,
             watercolor_active: self.watercolor_render_active(),
             watercolor_shape_auto: b.watercolor_shape_auto,

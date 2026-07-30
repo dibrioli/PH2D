@@ -48,18 +48,27 @@ impl PainterTool {
             return;
         };
         sess.bring_home();
-        // Engine dirty (1-based cells, inclusive) → clamped cell rect.
+        // ⚠️ **Células e pixels deixaram de ser a mesma coisa** ([`grid_map`]):
+        // a grade tem `ratio` pixels de canvas por célula. O dirty do motor é
+        // em CÉLULAS e é clampado à GRADE; o retângulo que este composite
+        // escreve — e que o `mark_dirty` publica — é em PIXELS.
+        let ratio = sess.ratio;
+        let (gw, gh) = sess.grid;
         let (cx0, cy0, cx1, cy1) = match sess.engine.take_dirty() {
             Dirty::Clean => return,
-            Dirty::Full => (1, 1, w, h),
+            Dirty::Full => (1, 1, gw, gh),
             Dirty::Rect { x0, y0, x1, y1 } => (
-                (x0.max(1) as usize).min(w),
-                (y0.max(1) as usize).min(h),
-                (x1.max(1) as usize).min(w),
-                (y1.max(1) as usize).min(h),
+                (x0.max(1) as usize).min(gw),
+                (y0.max(1) as usize).min(gh),
+                (x1.max(1) as usize).min(gw),
+                (y1.max(1) as usize).min(gh),
             ),
         };
         if cx1 < cx0 || cy1 < cy0 || sess.base.len() != w * h * 4 {
+            return;
+        }
+        let (px0, py0, px1, py1) = grid_map::cell_rect_to_px((cx0, cy0, cx1, cy1), ratio, w, h);
+        if px1 <= px0 || py1 <= py0 {
             return;
         }
         let layers: Vec<RenderLayer<'_>> = sess
@@ -87,8 +96,12 @@ impl PainterTool {
         // serial loop computed, and rows never read each other's output.
         let params = sess.engine.sim.gather_params(&sess.engine.tuning);
         let stride = w * 4;
-        sess.pigment[(cy0 - 1) * stride..cy1 * stride]
-            .par_chunks_mut(stride)
+        // O plano de pigmento é da GRADE (uma linha por linha de célula), e é
+        // por isso que uma razão maior corta o render de pigmento por `ratio²`
+        // — é o mesmo trabalho por célula, e há `ratio²` vezes menos delas.
+        let g_stride = gw * 4;
+        sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride]
+            .par_chunks_mut(g_stride)
             .enumerate()
             .for_each(|(k, row)| {
                 render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row);
@@ -117,15 +130,49 @@ impl PainterTool {
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base) = (&sess.pigment, &sess.base);
-        canvas[(cy0 - 1) * stride..cy1 * stride]
+        // O amostrador do upsample. ⚠️ A pergunta *"um pixel É uma célula?"* é
+        // feita UMA vez, fora do laço: na razão 1 o corpo abaixo lê os quatro
+        // bytes no MESMO offset que sempre leu, com a MESMA aritmética de
+        // `f32`, então aquele caminho é byte-idêntico ao que shipava — não por
+        // sorte numérica, por ser literalmente a mesma expressão.
+        let sampler = grid_map::SampleU::new(ratio, gw, gh);
+        let one_cell_per_pixel = sampler.is_identity();
+        canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .enumerate()
             .for_each(|(k, row)| {
-                let gb = (cy0 - 1 + k) * stride;
-                for cx in cx0..=cx1 {
-                    let lo = (cx - 1) * 4; // dentro da linha
+                let py = py0 + k;
+                let gb = py * stride;
+                for px in px0..px1 {
+                    let lo = px * 4; // dentro da linha
                     let o = gb + lo; // global, para os planos e os gates
-                    let pa = pigment[o + 3] as f32 / 255.0;
+                    // O pigmento, em premultiplicado normalizado (`pc * pa`) —
+                    // a forma em que o `over` abaixo já o consumia.
+                    let (premul, pa) = if one_cell_per_pixel {
+                        let a = pigment[o + 3] as f32 / 255.0;
+                        (
+                            [
+                                pigment[o] as f32 * a,
+                                pigment[o + 1] as f32 * a,
+                                pigment[o + 2] as f32 * a,
+                            ],
+                            a,
+                        )
+                    } else {
+                        // O amostrador devolve `Σ c·a·w` e `Σ a·w` em 0..255;
+                        // dividir por 255 dá exatamente `pc · pa`, sem passar
+                        // pela cor straight (que precisaria dividir pelo alpha
+                        // e multiplicar de volta).
+                        let s = sampler.at(pigment, px, py);
+                        (
+                            [
+                                (s[0] / 255.0) as f32,
+                                (s[1] / 255.0) as f32,
+                                (s[2] / 255.0) as f32,
+                            ],
+                            (s[3] / 255.0) as f32,
+                        )
+                    };
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so
                         // they are exact no-ops on this branch.
@@ -135,9 +182,8 @@ impl PainterTool {
                     let ba = base[o + 3] as f32 / 255.0;
                     let oa = pa + ba * (1.0 - pa);
                     for ch in 0..3 {
-                        let pc = pigment[o + ch] as f32;
                         let bc = base[o + ch] as f32;
-                        row[lo + ch] = ((pc * pa + bc * ba * (1.0 - pa)) / oa).round() as u8;
+                        row[lo + ch] = ((premul[ch] + bc * ba * (1.0 - pa)) / oa).round() as u8;
                     }
                     row[lo + 3] = (oa * 255.0).round() as u8;
                     if gate_on {
@@ -168,8 +214,17 @@ impl PainterTool {
             // override the alpha-lock's look — the bake never carries it).
             let g = sess.engine.active_grid();
             let sg = g.s;
-            for cy in cy0..=cy1 {
-                for cx in cx0..=cx1 {
+            // ⚠️ O véu percorre PIXELS e resolve a célula pelo vizinho mais
+            // próximo — deliberadamente SEM o bilinear do pigmento. O menisco
+            // é um gradiente do filme MEDIDO na grade (`film[i±1]`), e
+            // interpolá-lo desenharia uma crista que o solver não tem: o véu
+            // é uma anotação de *"aqui está molhado"*, não uma medição de cor.
+            // Na razão 1 cada pixel É a sua célula e isto é byte-idêntico.
+            let rr = usize::from(ratio);
+            for py in py0..py1 {
+                let cy = (py / rr + 1).min(gh);
+                for px in px0..px1 {
+                    let cx = (px / rr + 1).min(gw);
                     let i = cx + cy * sg;
                     let film = f64::from(g.film[i]);
                     let mut wet_sig = f64::from(g.wet[i]) / 255.0;
@@ -183,7 +238,7 @@ impl PainterTool {
                     if wet_sig <= 0.01 {
                         continue;
                     }
-                    let o = ((cy - 1) * w + (cx - 1)) * 4;
+                    let o = (py * w + px) * 4;
                     let a_v = WET_VEIL_ALPHA * wet_sig;
                     let ca = f64::from(canvas[o + 3]) / 255.0;
                     let oa = a_v + ca * (1.0 - a_v);
@@ -212,11 +267,14 @@ impl PainterTool {
         // Re-arm the guard with the allocation our own make_mut may have
         // re-seated (weak — [`WetSession::canvas`]).
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
+        // A região é a de PIXELS que este composite de fato escreveu (o dirty
+        // do motor é em células; publicar aquele retângulo verbatim sob razão
+        // > 1 declararia sujo `ratio²` menos pixels do que mudaram).
         let region = Region {
-            x: (cx0 - 1) as u32,
-            y: (cy0 - 1) as u32,
-            w: (cx1 - cx0 + 1) as u32,
-            h: (cy1 - cy0 + 1) as u32,
+            x: px0 as u32,
+            y: py0 as u32,
+            w: (px1 - px0) as u32,
+            h: (py1 - py0) as u32,
         };
         self.mark_dirty(region);
     }

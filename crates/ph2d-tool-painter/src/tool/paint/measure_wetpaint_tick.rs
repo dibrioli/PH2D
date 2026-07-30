@@ -379,53 +379,63 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     println!("    {:<24} {total:7.3} ms", "SOMA dos passes");
 }
 
-/// **O QUE UMA GRADE MAIS GROSSA COMPRARIA** — a alavanca que NÃO é a GPU, precificada.
+/// **O que a razão da grade compra, pela PORTA do artista** (o slider "Grid
+/// Size (px)" — `wetpaint::grid_map`).
 ///
-/// Hoje a grade do fluido é **1:1 com os pixels do canvas** (`Engine::new(side, side)`, e o
-/// composite mapeia célula `(cx,cy)` → pixel `(cx-1,cy-1)`), então a 4096² a física paga
-/// **16,7 M células** — e o custo é comprovadamente **linear nas células** (o `ns/célula` é
-/// PLANO de 512² a 4096², `ph2d-wet-paint/tests/measure_density.rs`).
+/// A grade do fluido era **1:1 com os pixels do canvas**, então a 4096² a
+/// física pagava **16,7 M células** — e o custo é comprovadamente **linear nas
+/// células** (o `ns/célula` é PLANO de 512² a 4096²,
+/// `ph2d-wet-paint/tests/measure_density.rs`). A razão desacopla as duas.
 ///
-/// A pergunta que isto responde: *e se a água simulasse numa grade mais grossa que a tela?*
-/// A medição substituta é exata — **o MESMO desenho físico numa tela pela metade** (tudo em
-/// metade: lado, raio, comprimento do traço) é célula-por-célula o que uma grade de meia
-/// resolução simularia.
+/// ⚠️ **Esta sonda substituiu a `measure_what_a_coarser_grid_would_buy`, e o
+/// doc dela continha uma AFIRMAÇÃO QUE A CONSTRUÇÃO DERRUBOU:** *"mudar a razão
+/// grade:canvas re-pina o fingerprint"*. **Não re-pina.** O motor sempre foi
+/// agnóstico de dimensão — a suíte de aceitação dele roda em 900×450, 300×200 e
+/// 60×60 justamente porque a dimensão nunca foi parte da física —, então
+/// `Engine::new(gw, gh)` com números menores é o MESMO código e
+/// `tests/fingerprint.rs` fica **intacto**. O que a razão muda é de quantos
+/// pixels o HOST fala com ele, e essa conversão vive toda no `grid_map`. A
+/// estimativa era minha; o fato é do produto.
 ///
-/// ⚠️ **Não é uma proposta de implementação, é um PREÇO.** Mudar a razão grade:canvas re-pina
-/// o fingerprint e mexe no LOOK do fluido (detalhe sub-célula), então é decisão de produto —
-/// e o número tem de estar na mesa antes da decisão, não depois.
+/// A outra metade da correção: a sonda antiga ESTIMAVA o ganho desenhando a
+/// mesma figura física num canvas menor. Era honesta mas indireta; agora o
+/// número sai do caminho que o artista percorre — a mesma correção que a §5.40
+/// fez ao descobrir que duas fixtures "grandes" davam números incomparáveis
+/// (10,34 contra 62,05 ms/passo).
 #[test]
 #[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
-fn measure_what_a_coarser_grid_would_buy() {
+fn measure_what_the_grid_ratio_buys() {
     const REPS: usize = 9;
-    println!("\n  O MESMO DESENHO EM GRADES DE RESOLUCAO DIFERENTE (mediana de {REPS})\n");
-    let mut prev: Option<(f64, usize)> = None;
-    for (div, side, radius, moves) in [(1u32, 4096u32, 100.0f32, 90u32), (2, 2048, 50.0, 90)] {
-        // A MESMA figura: três faixas diagonais, tudo escalado por `div`.
+    println!("\n  A MESMA CENA EM RAZOES DE GRADE DIFERENTES (mediana de {REPS})\n");
+    println!("    O slider 'Grid Size (px)' e a porta; a figura em PIXELS e sempre a mesma.\n");
+    let mut base: Option<(f64, usize)> = None;
+    for ratio in [1u8, 2, 3, 4, 8] {
         const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
-        let mut t = wetted(side, radius);
-        let step = 40.0 / div as f32;
+        let mut t = wetted(4096, 100.0);
+        // A PORTA do artista — e ela encerra a sessao, entao vem antes do traco.
+        t.set_wet_grid_ratio(f64::from(ratio));
         for lane in 0..3 {
-            let off = 260.0 / div as f32 * lane as f32;
-            let (x0, y0) = (200.0 / div as f32 + off, 200.0 / div as f32);
+            let off = 260.0 * lane as f32;
+            let (x0, y0) = (200.0 + off, 200.0);
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
-            for k in 1..=moves {
-                let d = step * k as f32;
+            for k in 1..=90u32 {
+                let d = 40.0 * k as f32;
                 t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
                 let _ = t.take_preview_arc();
             }
-            let d = step * moves as f32;
+            let d = 40.0 * 90.0;
             t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
         }
         t.wet_bring_home();
         let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let grid = sess.grid;
         let e = &mut *sess.engine;
         let live = {
             let g = e.active_grid_mut();
             ph2d_wet_paint::solver::rebuild_active_region(g);
             g.active.iter().filter(|a| **a != 0).count()
         };
-        // O passo INTEIRO pela porta do produto, com o estado restaurado a cada amostra.
+        // O passo INTEIRO pela porta do produto, estado restaurado por amostra.
         let snap = ph2d_wet_paint::grid::snapshot_grid(e.active_grid());
         let mut v = Vec::with_capacity(REPS);
         for _ in 0..REPS {
@@ -438,25 +448,122 @@ fn measure_what_a_coarser_grid_would_buy() {
         let med = v[v.len() / 2];
         let hz = 1000.0 / med.max(1e-9);
         print!(
-            "    grade 1/{div} ({side}x{side}, raio {radius:.0})  {live:>8} celulas vivas  \
-             {med:7.3} ms/passo  -> {hz:5.1} Hz"
+            "    {ratio:2}:1  grade {:4}x{:<4}  {live:>8} vivas  {med:8.3} ms/passo  -> {hz:6.1} Hz",
+            grid.0, grid.1
         );
-        if let Some((p_med, p_live)) = prev {
-            println!(
-                "   [{:4.2}x mais rapido, {:4.2}x menos celulas]",
-                p_med / med.max(1e-9),
-                p_live as f64 / live.max(1) as f64
-            );
-        } else {
-            println!();
+        match base {
+            None => println!("   (a referencia)"),
+            Some((b_med, b_live)) => println!(
+                "   [{:5.2}x mais rapido, {:5.2}x menos celulas]",
+                b_med / med.max(1e-9),
+                b_live as f64 / live.max(1) as f64
+            ),
         }
-        prev = Some((med, live));
+        if base.is_none() {
+            base = Some((med, live));
+        }
     }
     println!(
-        "\n    Leitura: o custo e LINEAR nas celulas vivas, entao a razao de tempo tem de\n    \
-         acompanhar a razao de celulas. O nominal da SPEC e 40 Hz (25 ms/passo)."
+        "\n    Leitura: o custo e LINEAR nas celulas vivas, entao a razao de tempo tem de\n             acompanhar a razao de celulas. O nominal da SPEC e 40 Hz (25 ms/passo)."
     );
 }
 
 #[path = "measure_wetpaint_probes.rs"]
 mod measure_wetpaint_probes; // as MEDIÇÕES (#[ignore]) — irmãs dos gates, por LOC
+
+/// **O que o Pigment Mixing (K–M) custa, e o que a razão da grade faz com ele**
+/// (report do Enio 2026-07-29: *"em Tuning: Pigment Mixing (K-M) temos séria
+/// queda de FPS"*).
+///
+/// O doc 24 já tabelou a transferência sRGB e levou o flood de 122,8 para 18,9
+/// ms/passo, deixando NOMEADO que *"o flood com K–M ligado fica em 18,9 ms
+/// contra o kill de 12"*. Esta sonda pergunta a coisa que mudou desde então: o
+/// custo do K–M é **por-célula** (9 misturas de cor por célula advectada), e a
+/// razão da grade corta células — então ela tem de cortar o K–M na mesma
+/// proporção. Se cortar, o item se dissolve sem uma linha de otimização.
+///
+/// Mede as DUAS metades pelas portas do produto: `km_mixing` (a sim) e
+/// `km_glaze` (o composite).
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_km_costs_at_each_grid_ratio() {
+    const REPS: usize = 7;
+    println!("\n  O K-M POR RAZAO DE GRADE (mediana de {REPS}, 4096x4096, pincel r=100)\n");
+    println!(
+        "    {:>5}  {:>10} {:>10} {:>8}   {:>10} {:>10} {:>8}",
+        "razao", "passo off", "passo ON", "custo", "comp off", "comp ON", "custo"
+    );
+    for ratio in [1u8, 2, 4, 8] {
+        let mut row = [0.0f64; 4];
+        for (slot, km) in [(0usize, false), (1, true)] {
+            const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+            let mut t = wetted(4096, 100.0);
+            t.set_wet_grid_ratio(f64::from(ratio));
+            // As duas metades do EXPERIMENTAL, pelas portas do produto.
+            t.paint.wetpaint.km_mixing = km;
+            t.paint.wetpaint.km_glaze = km;
+            for lane in 0..3 {
+                let off = 260.0 * lane as f32;
+                let (x0, y0) = (200.0 + off, 200.0);
+                t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+                for k in 1..=90u32 {
+                    let d = 40.0 * k as f32;
+                    t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                    let _ = t.take_preview_arc();
+                }
+                let d = 40.0 * 90.0;
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+            }
+            t.wet_bring_home();
+            // (a) o PASSO da sim.
+            let step = {
+                let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+                let e = &mut *sess.engine;
+                {
+                    let g = e.active_grid_mut();
+                    ph2d_wet_paint::solver::rebuild_active_region(g);
+                }
+                let snap = ph2d_wet_paint::grid::snapshot_grid(e.active_grid());
+                let mut v = Vec::with_capacity(REPS);
+                for _ in 0..REPS {
+                    ph2d_wet_paint::grid::restore_grid(e.active_grid_mut(), &snap);
+                    let t0 = Instant::now();
+                    e.step_simulation();
+                    v.push(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                v.sort_by(f64::total_cmp);
+                v[v.len() / 2]
+            };
+            // (b) o COMPOSITE (a outra metade: o glaze mora aqui).
+            let comp = {
+                let mut v = Vec::with_capacity(REPS);
+                for _ in 0..REPS {
+                    if let Some(sess) = t.paint.wetpaint.session.as_mut() {
+                        sess.bring_home();
+                        sess.engine.mark_dirty_full();
+                    }
+                    let t0 = Instant::now();
+                    crate::tool::paint::wetpaint::composite_for_measure(&mut t);
+                    v.push(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                v.sort_by(f64::total_cmp);
+                v[v.len() / 2]
+            };
+            row[slot * 2] = step;
+            row[slot * 2 + 1] = comp;
+        }
+        // row = [step_off, comp_off, step_on, comp_on]
+        println!(
+            "    {ratio:>3}:1  {:>9.3}ms {:>9.3}ms {:>7.2}x   {:>9.3}ms {:>9.3}ms {:>7.2}x",
+            row[0],
+            row[2],
+            row[2] / row[0].max(1e-9),
+            row[1],
+            row[3],
+            row[3] / row[1].max(1e-9),
+        );
+    }
+    println!(
+        "\n    Leitura: o K-M e custo POR CELULA, entao a razao o corta na mesma proporcao\n             que corta o passo. O kill do ADR-0134 e 12 ms/passo; o nominal, 25 ms (40 Hz)."
+    );
+}

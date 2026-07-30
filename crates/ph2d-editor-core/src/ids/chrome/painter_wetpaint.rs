@@ -97,6 +97,16 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 15] = [
 //    committed/scrubbed value forwards as `SetValue` via `PAINTER_WETPAINT_FIELDS` +
 //    `number_field::is_param_field`, exactly like the Watercolor fields. ──
 
+/// **Grid Size (px)** — quantos pixels de canvas medem uma célula de fluido
+/// (1..=30, default 1). É o PRIMEIRO widget da seção, acima do rádio de tools
+/// (Enio 2026-07-29): a resolução da grade decide o custo do solver, que é
+/// linear nas células, e por isso decide a taxa VISUAL da água — a 4096² a
+/// razão 1 são 16,7 M células e ~19 Hz, a razão 2 são 4,2 M e o nominal.
+///
+/// ⚠️ Trocar o valor **ENCERRA a sessão de água viva** (a grade tem dimensão);
+/// encerrar é o bake, então nada é perdido — ver `wetpaint::grid_map`.
+pub const PAINTER_WETPAINT_GRID: NodeId = hash_node_id("painter_brush.wetpaint_grid");
+
 /// **Water** — the brush's water load per dab (engine `sliders.water`, `0..1`, boot `1.0`).
 pub const PAINTER_WETPAINT_WATER: NodeId = hash_node_id("painter_brush.wetpaint_water");
 /// **Pigment** — pigment per dab (SPEC §10 gain; knob `pigmentPerDab`, default `600`).
@@ -114,7 +124,8 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 7] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 8] = [
+    PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_WATER,
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,

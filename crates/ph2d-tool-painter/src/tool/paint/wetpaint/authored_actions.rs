@@ -26,8 +26,16 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return false;
         }
+        // A GRADE é função do canvas E da razão autorada (`grid_map`): a
+        // 4096² com razão 1 são 16,7 M células, com razão 2 são 4,2 M. O
+        // motor sempre foi agnóstico de dimensão — é o host que decide de
+        // quantos pixels ele fala com ele.
+        let ratio = grid_map::clamp_ratio(self.paint.wetpaint.grid_ratio);
+        let (gw, gh) = grid_map::grid_dims(w as usize, h as usize, ratio);
         self.paint.wetpaint.session = Some(WetSession {
-            engine: EngineSlot::new_here(Engine::new(w as usize, h as usize)),
+            engine: EngineSlot::new_here(Engine::new(gw, gh)),
+            ratio,
+            grid: (gw, gh),
             worker: None,
             seen_steps: 0,
             base: Arc::clone(&self.canvas_rgba),
@@ -36,7 +44,7 @@ impl PainterTool {
             // makes the FIRST composite copy — correctly, since the frozen base
             // has to survive the write.
             canvas: Arc::downgrade(&self.canvas_rgba),
-            pigment: vec![0u8; w as usize * h as usize * 4],
+            pigment: vec![0u8; gw * gh * 4],
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,

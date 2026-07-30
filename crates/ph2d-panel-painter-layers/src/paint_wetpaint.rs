@@ -24,6 +24,11 @@ const DRY_SPEED_STEP: f64 = 0.05; // LITERAL-PX-OK: wet-paint Evaporation slider
 const EDGE_MAX: f32 = 200.0; // LITERAL-PX-OK: wet-paint Edge-darkening range bound (SPEC §16)
 const GRAVITY_MAX: f32 = 0.05; // LITERAL-PX-OK: wet-paint Gravity range bound (SPEC §16)
 const GRAVITY_STEP: f64 = 0.0005; // LITERAL-PX-OK: wet-paint Gravity slider step (SPEC §16)
+// A faixa da grade do fluido (px por célula) — espelha `wetpaint::grid_map`
+// MIN_RATIO/MAX_RATIO, do mesmo jeito que os knobs acima espelham os clamps do
+// tool. Não é valor de design: é o domínio do parâmetro.
+const GRID_MIN: f32 = 1.0; // LITERAL-PX-OK: fluid-grid ratio lower bound (grid_map::MIN_RATIO)
+const GRID_MAX: f32 = 30.0; // LITERAL-PX-OK: fluid-grid ratio upper bound (grid_map::MAX_RATIO)
 
 pub(crate) fn paint_wetpaint_section(
     ctx: &mut PaintCtx,
@@ -57,6 +62,26 @@ pub(crate) fn paint_wetpaint_section(
     // very flag, so the two agree by construction, and one condition guarding the knobs is cheaper to
     // trust than a second predicate that could drift from it.
     if brush.wetpaint {
+        // ⚠️ **A GRADE é o PRIMEIRO widget da seção** (Enio 2026-07-29), acima
+        // do rádio de tools: o custo do solver é linear nas células, então este
+        // número decide a taxa VISUAL da água antes de qualquer knob de física
+        // — e trocá-lo encerra a água viva (o bake), o que é uma decisão de
+        // sessão, não de pincelada. Faixa e passo espelham `grid_map`
+        // (MIN/MAX_RATIO) como os knobs espelham `KNOB_DEFS`.
+        y = card_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Grid Size (px)",
+            core_ids::PAINTER_WETPAINT_GRID,
+            f32::from(brush.wet_grid_ratio),
+            GRID_MIN,
+            GRID_MAX,
+            1.0,
+            0,
+        );
         // The wet TOOLS (doc 22 — the model's 7-button radio). Two views of
         // one radio: Erase highlights when the rail's eraser wire is live,
         // everything else mirrors the authored wet tool.

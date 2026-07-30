@@ -373,6 +373,10 @@ pub struct BrushSettings {
     pub wet_km_glaze: bool,
     /// The Tuning side panel's visibility checkbox.
     pub wet_tuning_open: bool,
+    /// **Quantos pixels de canvas medem uma célula de fluido** (1..=30) — o
+    /// primeiro widget da seção. O custo do solver é linear nas células, então
+    /// este é o número que decide a taxa VISUAL da água.
+    pub wet_grid_ratio: u8,
 
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).

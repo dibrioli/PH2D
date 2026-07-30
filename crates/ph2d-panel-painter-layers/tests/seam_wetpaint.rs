@@ -283,3 +283,78 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
         "a drag straight right is spoke 0"
     );
 }
+
+/// **A GRADE é o primeiro widget da seção, acima do rádio de tools** — o pedido
+/// literal do Enio (2026-07-29: *"quero esse slider como primeiro widget da
+/// seção wet paint, acima das tools"*), e é gateável porque a posição é um
+/// número: o `y` da row tem de ser menor que o `y` de TODOS os sete chips de
+/// tool.
+///
+/// ⚠️ **A ordem não é estética aqui.** O custo do solver é linear nas células,
+/// então esta é a decisão que governa a taxa VISUAL da água antes de qualquer
+/// knob de física — e trocá-la ENCERRA a água viva (o bake), o que é uma decisão
+/// de sessão, não de pincelada. Um controle desse peso enterrado entre os knobs
+/// seria encontrado por acidente.
+///
+/// Mutação: mover a `card_row` da grade para depois do `seg_row` das tools faz o
+/// `y` dela passar o dos chips e este gate nomeia qual.
+#[test]
+fn the_fluid_grid_row_is_the_first_widget_of_the_wet_section() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    let rects = painted(&wet);
+    let grid = rects
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_WETPAINT_GRID && r.w > 0.0 && r.h > 0.0)
+        .map(|(_, r)| *r)
+        .expect("a row da grade nao e pintada — o slider nao existe na tela");
+    for (i, id) in core_ids::PAINTER_WETPAINT_TOOL_IDS.iter().enumerate() {
+        let tool = rects
+            .iter()
+            .find(|(w, r)| w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("o chip de tool {i} nao e pintado"));
+        assert!(
+            grid.y < tool.y,
+            "a grade (y={:.1}) tem de vir ACIMA do chip de tool {i} (y={:.1})",
+            grid.y,
+            tool.y
+        );
+    }
+}
+
+/// A row da grade está **viva sob o mouse** (pintada, registrada E focável) — a
+/// diferença entre um widget que existe e um que responde.
+///
+/// ⚠️ Dirige o ponteiro REAL (`click_at`), não um `WidgetEvent` sintético: o
+/// evento sintético pula a checagem de focabilidade no store, e foi assim que as
+/// 36 células da matriz de colisão da física nasceram mortas com o gate verde.
+#[test]
+fn the_fluid_grid_row_is_alive_under_the_mouse() {
+    let mut wet = PainterTool::default();
+    wet.set_wetpaint_armed(true);
+    set_current_brush(Some(wet.brush_settings()));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let r = rects
+        .iter()
+        .find(|(w, _)| *w == core_ids::PAINTER_WETPAINT_GRID)
+        .map(|(_, r)| *r)
+        .expect("a row da grade nao e pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    // O ponteiro REAL: o hit-index tem de resolver o id ali, e o clique tem de
+    // produzir evento. Um id pintado e nao registrado engole o clique em
+    // silencio — o modo de falha que este arquivo existe para pegar.
+    assert_eq!(
+        host.hit_at(cx, cy),
+        Some(core_ids::PAINTER_WETPAINT_GRID),
+        "o retangulo da grade nao responde ao ponteiro — pintado mas morto"
+    );
+    let evs = host.click_at(cx, cy);
+    assert!(
+        !evs.is_empty(),
+        "clicar a row da grade nao produziu evento nenhum"
+    );
+    let _ = st;
+}

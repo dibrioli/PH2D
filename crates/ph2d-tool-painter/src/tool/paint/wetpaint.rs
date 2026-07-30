@@ -123,6 +123,16 @@ pub(crate) struct WetPaintState {
     pub(super) km_glaze: bool,
     /// The Tuning side panel's visibility (the basic section's checkbox).
     pub(super) tuning_open: bool,
+    /// **Quantos pixels de canvas medem uma célula de fluido** (1..=30, o
+    /// slider no topo da seção; ver [`grid_map`]). `1` é a grade de sempre.
+    ///
+    /// ⚠️ **Autorado, e trocá-lo ENCERRA a sessão** — a grade tem dimensão, e
+    /// uma sessão viva já a tem congelada em `WetSession::ratio`. Encerrar é o
+    /// BAKE (a tinta que se vê já está no `canvas_rgba`), então nada é perdido;
+    /// a alternativa — reamostrar catorze planos de `f32` para a resolução
+    /// nova — inventaria água que o solver não produziu, e faria da razão um
+    /// parâmetro que altera o passado em vez do futuro.
+    pub(super) grid_ratio: u8,
 }
 
 impl Default for WetPaintState {
@@ -143,10 +153,12 @@ impl Default for WetPaintState {
             km_mixing: false,
             km_glaze: false,
             tuning_open: false,
+            grid_ratio: grid_map::DEFAULT_RATIO,
         }
     }
 }
 
+pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};
@@ -210,6 +222,11 @@ impl PainterTool {
         let sess = &mut taken;
         // A PORTA: o motor pode estar com o worker desde o fim do último tick.
         sess.bring_home();
+        // A razão da grade é a da SESSÃO, nunca a autorada: é ela que diz de
+        // que tamanho o motor VIVO é. As duas concordam sempre (trocar a
+        // razão encerra a sessão), e ler a que existe é o que mantém a
+        // conversão honesta mesmo se essa porta ganhar um caminho novo.
+        let ratio = sess.ratio;
         // ── The artist's PAPER drives the engine's tooth (W2.7) ────────────
         // RECONCILED per batch, not seeded once: paper is substrate under
         // live water, but the SLOT is authored state and the session spans
@@ -235,7 +252,13 @@ impl PainterTool {
                 let paper_tex = brush.paper;
                 let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
                 let rot = ph2d_painter_brush::texture::angle_basis(paper_tex.angle_deg);
-                sess.engine.seed_paper_with(&mut |px, py| {
+                // ⚠️ O `seed_paper_with` fala em CÉLULAS (ele passa `cell − 1`),
+                // e o papel é uma lei de CANVAS — sob razão > 1 amostrá-lo na
+                // coordenada de célula encolheria o dente do papel pelo mesmo
+                // fator, e o papel deixaria de casar com o do resto do app.
+                sess.engine.seed_paper_with(&mut |cx, cy| {
+                    let px = grid_map::cell_center_texel(cx as i32 + 1, ratio);
+                    let py = grid_map::cell_center_texel(cy as i32 + 1, ratio);
                     f64::from(ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
                         &paper_tex,
                         px,
@@ -306,8 +329,8 @@ impl PainterTool {
             {
                 sess.engine.begin_direct_stroke(
                     0,
-                    f64::from(d0.center[0]) + 1.0,
-                    f64::from(d0.center[1]) + 1.0,
+                    grid_map::px_to_cell(f64::from(d0.center[0]), ratio),
+                    grid_map::px_to_cell(f64::from(d0.center[1]), ratio),
                 );
             }
         }
@@ -344,7 +367,8 @@ impl PainterTool {
                 match lane {
                     Some(i) => {
                         if wet_tool.uses_lanes() {
-                            sess.engine.direct_segment(i, f64::from(best.sqrt()));
+                            let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
+                            sess.engine.direct_segment(i, chord);
                         }
                         i
                     }
@@ -358,8 +382,8 @@ impl PainterTool {
                             sess.engine.color = ink(d.color);
                             sess.engine.begin_direct_stroke(
                                 i,
-                                f64::from(x) + 1.0,
-                                f64::from(y) + 1.0,
+                                grid_map::px_to_cell(f64::from(x), ratio),
+                                grid_map::px_to_cell(f64::from(y), ratio),
                             );
                         }
                         sess.lanes.push(Lane {
@@ -418,11 +442,16 @@ impl PainterTool {
                 ph2d_painter_brush::texture::dab_basis(&spec.texture, &mut *tex_rng, canvas_wh, fp)
             });
             let inv_r = 1.0 / d.radius_px.max(0.01);
+            // ⚠️ A silhueta é avaliada em espaço de CANVAS, sempre — só
+            // AMOSTRADA por célula. É por isso que a razão da grade não muda a
+            // forma do pincel, apenas quão fino o fluido a resolve: o `t` sai
+            // da distância em pixels ao centro do dab, e o Shape/Grain leem o
+            // texel de canvas onde o centro da célula caiu.
             let mut sil = |cx: i32, cy: i32| -> f64 {
-                let px = i64::from(cx) - 1;
-                let py = i64::from(cy) - 1;
-                let ddx = (px as f32 + 0.5) - d.center[0];
-                let ddy = (py as f32 + 0.5) - d.center[1];
+                let px = grid_map::cell_center_texel(cx, ratio);
+                let py = grid_map::cell_center_texel(cy, ratio);
+                let ddx = grid_map::cell_center_px(cx, ratio) - d.center[0];
+                let ddy = grid_map::cell_center_px(cy, ratio) - d.center[1];
                 let t = fp.falloff_t(ddx * inv_r, ddy * inv_r);
                 f64::from(ph2d_painter_brush::dab::silhouette_at(
                     &spec,
@@ -440,8 +469,8 @@ impl PainterTool {
             let gimg = grain_image.as_ref();
             let mut grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
-                    let px = i64::from(cx) - 1;
-                    let py = i64::from(cy) - 1;
+                    let px = grid_map::cell_center_texel(cx, ratio);
+                    let py = grid_map::cell_center_texel(cy, ratio);
                     f64::from(ph2d_painter_brush::dab::grain_at(
                         spec_ref,
                         gb,
@@ -454,17 +483,24 @@ impl PainterTool {
                 }
             });
             let grain_arg = grain.as_mut().map(|g| g as &mut dyn FnMut(i32, i32) -> f64);
+            // O ponto e o raio, em CÉLULAS — as duas coisas que o motor mede
+            // na sua própria grade. O `d.radius_px` continua sendo o raio da
+            // silhueta (em pixels), e é assim que o pincel não muda de tamanho
+            // quando a razão muda: o mesmo disco, resolvido mais grosso.
+            let cell_x = grid_map::px_to_cell(f64::from(x), ratio);
+            let cell_y = grid_map::px_to_cell(f64::from(y), ratio);
+            let cell_r = grid_map::px_len_to_cell(f64::from(d.radius_px), ratio);
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape
                 // the deposit.
                 sess.engine.dispatch_pressure_dab_erase(
-                    f64::from(x) + 1.0,
-                    f64::from(y) + 1.0,
+                    cell_x,
+                    cell_y,
                     b,
                     f64::from(d.dir[0]),
                     f64::from(d.dir[1]),
-                    f64::from(d.radius_px),
+                    cell_r,
                     Some(&mut sil),
                     grain_arg,
                 );
@@ -473,12 +509,12 @@ impl PainterTool {
             match wet_tool {
                 WetTool::Paint => sess.engine.dispatch_pressure_dab_lane(
                     li,
-                    f64::from(x) + 1.0,
-                    f64::from(y) + 1.0,
+                    cell_x,
+                    cell_y,
                     b,
                     f64::from(d.dir[0]),
                     f64::from(d.dir[1]),
-                    f64::from(d.radius_px),
+                    cell_r,
                     Some(&mut sil),
                     grain_arg,
                 ),
@@ -486,25 +522,30 @@ impl PainterTool {
                 // model's tools ignore the brush silhouette on purpose).
                 WetTool::Blend => sess.engine.dispatch_pressure_dab_lane_blend(
                     li,
-                    f64::from(x) + 1.0,
-                    f64::from(y) + 1.0,
+                    cell_x,
+                    cell_y,
                     b,
                     f64::from(d.dir[0]),
                     f64::from(d.dir[1]),
-                    f64::from(d.radius_px),
+                    cell_r,
                 ),
                 // Direct tools: per-dab grid ops; the displacement source is
                 // THIS lane's previous centre (host-tracked per copy).
                 WetTool::Wet | WetTool::Dry | WetTool::Blow | WetTool::Smear => {
                     sess.engine.dispatch_pressure_dab_tool(
                         wet_tool.engine(),
-                        f64::from(x) + 1.0,
-                        f64::from(y) + 1.0,
+                        cell_x,
+                        cell_y,
                         b,
                         f64::from(d.dir[0]),
                         f64::from(d.dir[1]),
-                        f64::from(d.radius_px),
-                        lane_prev.map(|p| [f64::from(p[0]) + 1.0, f64::from(p[1]) + 1.0]),
+                        cell_r,
+                        lane_prev.map(|p| {
+                            [
+                                grid_map::px_to_cell(f64::from(p[0]), ratio),
+                                grid_map::px_to_cell(f64::from(p[1]), ratio),
+                            ]
+                        }),
                     );
                 }
             }
@@ -632,6 +673,9 @@ mod authored_actions; // canvas actions + session birth + facts — child file (
 mod composite;
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
 
+#[cfg(test)]
+#[path = "wetpaint/grid_ratio_tests.rs"]
+mod grid_ratio_tests; // os gates de PRODUTO da razão da grade
 #[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame

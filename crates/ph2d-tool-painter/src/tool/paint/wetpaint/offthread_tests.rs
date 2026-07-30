@@ -327,6 +327,16 @@ fn the_water_runs_at_a_usable_rate_under_a_real_frame_loop() {
 ///
 /// ⚠️ Barra de wall-clock ⇒ só em release (em debug o passo é ordens de
 /// grandeza mais caro e o número mediria o perfil, não o desenho).
+///
+/// ⚠️ **FLAKE DE CARGA CONHECIDA, e o número dela está aqui:** a fixture é a
+/// poça PESADA por desenho (com um traço só a versão bloqueante media 10,5 ms e
+/// passaria — a fixture é parte do gate), então o pior tick mede também a
+/// contenção da máquina. Medido em 2026-07-29: **30,64 ms sob a suíte inteira
+/// em paralelo, contra a barra de 30**, e VERDE nas duas corridas seguintes
+/// isolado e em suíte. Irmão da flake do `the_cost_of_depth_is_linear_not_explosive`
+/// da timeline: **re-rode sozinho antes de suspeitar de uma regressão.** A barra
+/// fica onde está — subi-la para acomodar a máquina carregada tiraria o dente
+/// que separa 4 ms de espera de um estágio inteiro.
 #[test]
 #[cfg_attr(debug_assertions, ignore = "barra de wall-clock: rode em --release")]
 fn the_tick_never_waits_for_a_whole_stage() {

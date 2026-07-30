@@ -5358,6 +5358,7 @@ dependencies = [
  "ph2d-node-registry-init",
  "ph2d-node-util-reroute",
  "ph2d-nodegraph",
+ "ph2d-painter-brush",
  "ph2d-painter-effects",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",

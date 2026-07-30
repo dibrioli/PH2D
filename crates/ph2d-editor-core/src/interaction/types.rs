@@ -203,6 +203,10 @@ pub enum GraphKey {
     /// move / delete / group / duplicate can act on the whole graph without a rubber band around
     /// it. `A` alone opens the add-menu (Houdini / Nuke), so this verb takes the modifier.
     SelectAll,
+    /// **Ctrl/Cmd+L — grow the selection to the connected island(s) it touches** (Blender's
+    /// *Select Linked*). Flood-fills out along edges, so a whole subtree can be grabbed from one
+    /// of its nodes to move or delete it. Nothing selected → nothing to grow from.
+    SelectLinked,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

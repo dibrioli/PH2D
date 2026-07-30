@@ -96,8 +96,36 @@ pub(super) fn apply_key(
             state.selected = snap.nodes.iter().map(|n| n.id).collect();
             state.selected_backdrop = None;
         }
+        // Ctrl+L — grow the selection to the connected island(s) it touches (Select Linked).
+        GraphKey::SelectLinked => grow_selection_to_linked(state, snap),
         // Space — toggle transport play/pause (the shell owns the transport).
         GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
         _ => {}
+    }
+}
+
+/// Flood-fill the selection out along edges (UNDIRECTED): every node reachable from a currently
+/// selected one joins it. The graph's islands, grabbed whole — to move or delete a whole subtree
+/// from any one of its nodes. Edge direction is irrelevant here (the point is topological
+/// reachability, not evaluation order), so a `pre` (feedback) edge links its endpoints like any
+/// other. `state.selected` doubles as the visited set: a node re-explores only when it was newly
+/// inserted, so the walk terminates. Nothing selected → nothing to grow from.
+fn grow_selection_to_linked(state: &mut MotionGraphPanelState, snap: &GraphViewSnapshot) {
+    let mut stack: Vec<u32> = state.selected.iter().copied().collect();
+    while let Some(n) = stack.pop() {
+        for e in &snap.edges {
+            let neighbour = if e.from_node == n {
+                Some(e.to_node)
+            } else if e.to_node == n {
+                Some(e.from_node)
+            } else {
+                None
+            };
+            if let Some(m) = neighbour
+                && state.selected.insert(m)
+            {
+                stack.push(m);
+            }
+        }
     }
 }

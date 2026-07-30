@@ -352,19 +352,29 @@ fn stroke_deposit(
     p: [f32; 2],
 ) -> Option<Deposit> {
     let style = crate::tau::StrokeStyle::of(&data.strokes[run.first()?.stroke as usize]);
-    let (sd, near, dist) = stroke_silhouette(run, data, screen, style.tip, p)?;
-    // **O ANTI-ALIASING** — a fração do pixel coberta pela silhueta, por filtro-caixa.
+    let Silhouette {
+        sd,
+        near,
+        dist,
+        planes,
+    } = stroke_silhouette(run, data, screen, style.tip, p)?;
+    // **O ANTI-ALIASING** — a fração do pixel coberta pela silhueta, **pela ÁREA** (`pixel_area`).
     //
-    // ⚠️ Espelha o `edge` do `flip.wgsl` TERMO A TERMO: lá é `clamp(0.5 + (1 − dn)/aa, 0, 1)` com
-    // `aa = fwidth(dn)`; como `dn = d/r` e um pixel vale `1/r` em `dn`, o termo `(1 − dn)/aa` **é**
-    // `r − d`, a distância com sinal em PIXELS. A mesma expressão aqui é `0.5 − sd`, e sem derivada
-    // de tela nenhuma — o percurso tem os segmentos na mão, então o `min` sobre as passagens é
-    // EXATO. (O shader precisa do `fwidth` de um `min`, que salta na costura, e por isso o AA de
-    // lá é por-PASSAGEM; o próprio comentário dele registra o preço.)
+    // ⚠️ **Isto era `0,5 − sd`, o filtro-caixa 1-D ao longo da normal, e a rampa só é a área certa
+    // quando a borda é paralela a um eixo do pixel.** Medido num flanco reto longe de qualquer
+    // tampa: 0,00/255 a 0° e 90°, mas **9,72/255 a 45°** — e onde DUAS bordas atravessam o mesmo
+    // pixel (uma quina) o `min` dos SDFs dizia meia cobertura sobre uma união que cobre ¾:
+    // **63,75/255**. Recortar o quadrado pelos semi-planos de fora responde às duas com um
+    // mecanismo só, e **reduz à rampa exatamente no caso em que ela estava certa** (gate
+    // `an_axis_aligned_edge_is_exactly_the_old_ramp`).
     //
-    // Ele fecha em `sd = 0,5`: além disso o pixel não é tocado, e sair aqui poupa a integral
-    // inteira num pixel que ia devolver zero.
-    let edge = 0.5 - sd;
+    // O rasterizador (`flip.wgsl`) fica na rampa por-PASSAGEM: ele precisa do `fwidth` de um `min`,
+    // que salta na costura, e o próprio comentário dele registra o preço. Aqui o percurso tem os
+    // segmentos na mão.
+    //
+    // Fecha em `sd = 0,5` como antes — além disso nenhum plano alcança o pixel, a cobertura é zero,
+    // e sair aqui poupa a integral inteira num pixel que ia devolver zero.
+    let edge = planes.coverage();
     if edge <= 0.0 {
         return None;
     }
@@ -386,8 +396,14 @@ fn stroke_deposit(
     //
     // ⚠️ **A profundidade é DERIVADA, não varrida.** O que o filtro-caixa quer é a média do perfil
     // sobre o pixel: `C = ∫_{−½}^{½} P(sd + v) dv`. Com o pixel atravessando a silhueta, a parte
-    // COBERTA é `v ∈ [sd − ½, 0]` — comprimento `½ − sd`, que **é** o `edge` — e o seu ponto médio
-    // está em `u* = (sd − ½)/2`. Logo `C ≈ edge · P(u*)`, e o empurrão é `sd − u* = (sd + ½)/2`.
+    // COBERTA é `v ∈ [sd − ½, 0]` — comprimento `½ − sd` — e o seu ponto médio está em
+    // `u* = (sd − ½)/2`. Logo `C ≈ (½ − sd) · P(u*)`, e o empurrão é `sd − u* = (sd + ½)/2`.
+    //
+    // ⚠️ **Este `½ − sd` NÃO é mais o `edge`, e a distinção é load-bearing.** Ele já foi: enquanto a
+    // cobertura era a rampa, os dois eram a mesma expressão, e é tentador "unificar". São perguntas
+    // diferentes — *onde ao longo da NORMAL amostrar o perfil* (1-D, e a rampa é a resposta certa
+    // dela) contra *quanto do PIXEL a silhueta cobre* (2-D, que é o que passou a ser área). Trocar
+    // o `sd` por `edge` aqui mediria a profundidade de uma quina pela área dela.
     // A fórmula acerta os dois regimes por construção: com o perfil CHAPADO (dureza 1) `P(u*) = 1`
     // e a máscara vira o `edge`; com o perfil suave ela vira a média certa.
     //
@@ -415,8 +431,20 @@ fn stroke_deposit(
     })
 }
 
-/// A silhueta do traço vista deste pixel: `(distância COM SINAL, ponto mais próximo, distância)`
-/// — a com sinal é **negativa dentro**.
+/// O que este pixel vê da silhueta do traço.
+///
+/// ⚠️ **`sd` e `planes` respondem perguntas diferentes e as duas são precisas.** O `sd` é a
+/// distância com sinal (negativa dentro) da passagem MAIS PRÓXIMA — é ele que diz onde amostrar o
+/// perfil ao longo da normal. O `planes` é o conjunto das passagens que de fato cruzam este pixel, e
+/// é dele que sai a ÁREA coberta; num pixel de quina o `sd` de uma passagem não sabe da outra.
+struct Silhouette {
+    sd: f32,
+    near: [f32; 2],
+    dist: f32,
+    planes: crate::pixel_area::PlaneSet,
+}
+
+/// A silhueta do traço vista deste pixel — a distância com sinal é **negativa dentro**.
 ///
 /// É o `min` sobre as passagens que o `flip.wgsl` também faz — só que aqui **EXATO**, porque o
 /// percurso tem os segmentos na mão. O shader precisa estimar o tamanho de um pixel em unidades de
@@ -440,11 +468,26 @@ fn stroke_silhouette(
     screen: &ScreenSpace,
     tip: crate::tau::TipShape,
     p: [f32; 2],
-) -> Option<(f32, [f32; 2], f32)> {
+) -> Option<Silhouette> {
     let tail = crate::dabs::tail_point(data, run);
     let (cap_head, cap_tail) = crate::dabs::flat_caps(data, run);
     let mut best: Option<(f32, [f32; 2], f32)> = None;
+    let mut planes = crate::pixel_area::PlaneSet::default();
     let mut keep = |sd: f32, near: [f32; 2], dist: f32| {
+        // ⚠️ **O plano é OFERECIDO por passagem, não pelo vencedor** — é a única diferença que
+        // importa num pixel de quina, onde o vencedor sozinho descreve meia verdade. O `offer`
+        // descarta o que não alcança o pixel, então o custo de oferecer é uma comparação.
+        //
+        // ⚠️ **Com o pixel EM CIMA do eixo (`dist ≈ 0`) a normal é indefinida — e não importa:** ali
+        // a silhueta é um disco centrado no pixel, equidistante em toda direção, então qualquer
+        // normal unitária dá a mesma área. (E na prática o plano nem entra: `sd = −r`, fora do
+        // alcance para qualquer traço de raio ≥ 0,71 px.)
+        let n = if dist > 1e-6 {
+            [(p[0] - near[0]) / dist, (p[1] - near[1]) / dist]
+        } else {
+            [1.0, 0.0]
+        };
+        planes.offer(crate::pixel_area::OutsidePlane { n, sd });
         if best.is_none_or(|(prev, _, _)| sd < prev) {
             best = Some((sd, near, dist));
         }
@@ -500,7 +543,13 @@ fn stroke_silhouette(
         let r = ra * (1.0 - t) + rb * t;
         keep((dist - r).max(cut), [cx, cy], dist);
     }
-    best
+    let (sd, near, dist) = best?;
+    Some(Silhouette {
+        sd,
+        near,
+        dist,
+        planes,
+    })
 }
 
 /// ⚠️ **A LEI DO PASSO 2, CONGELADA COMO ORÁCULO** — a união dura (`dist ≤ r`), que é a semântica

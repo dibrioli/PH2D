@@ -264,11 +264,104 @@ fn bead_window(lo: f32, hi: f32, pitch: f32) -> vec2<i32> {
     return vec2<i32>(i32(floor(lo / pitch)), i32(ceil(hi / pitch)));
 }
 
-// `binning.rs::stroke_silhouette` — devolve (sd, near.x, near.y, dist); `sd = 1e30` se vazio.
+// ————————————— `pixel_area.rs` — a AREA do pixel sob a uniao dos semi-planos —————————————
+//
+// ⚠️ **Isto e' o port do `pixel_area.rs`, e o `walk_gpu_parity` e' quem prova que os dois
+// concordam — medido, o pior |delta| e' 4,883e-4, que E' o quantum da meia precisao do alvo.**
+// A lei antiga era `edge = 0.5 - sd`, o filtro-caixa 1-D ao longo da normal — exato SO' quando a
+// borda e' paralela a um eixo do pixel. Medido no produto: 0,00/255 a 0 e 90 graus, mas 9,72 a 45; e
+// numa quina, onde duas bordas cruzam o mesmo pixel, 63,75 (a uniao cobre 3/4 e o `min` dos SDFs
+// dizia meio). Recortar o quadrado pelos semi-planos de FORA responde as duas com um mecanismo so'.
+// = `core::f32::consts::FRAC_1_SQRT_2` do lado da CPU; os digitos batem porque isto e' um
+// LIMIAR, e um limiar que difere entre os dois lados decide diferente na janela da diferenca.
+const PLANE_REACH: f32 = 0.70710678;
+// Uma vaga vazia carrega `sd = 1e30`, que ja' cai no mesmo `>= PLANE_REACH` do descartavel — uma
+// pergunta, dois significados, sem contador separado para desandar.
+const PLANE_EMPTY: vec3<f32> = vec3<f32>(1.0, 0.0, 1e30);
+
+// `PlaneSet::offer` — entra ordenado por `sd` crescente e empurra o maior para fora.
+fn plane_offer(planes: ptr<function, array<vec3<f32>, 3>>, n: vec2<f32>, sd: f32) {
+    if (sd >= PLANE_REACH) {
+        return;
+    }
+    var entrando = vec3<f32>(n.x, n.y, sd);
+    for (var i = 0; i < 3; i = i + 1) {
+        let atual = (*planes)[i];
+        if (entrando.z < atual.z) {
+            (*planes)[i] = entrando;
+            entrando = atual;
+        }
+    }
+}
+
+// `PlaneSet::coverage` — Sutherland-Hodgman + sapateiro sobre o quadrado unitario.
+fn plane_coverage(planes: array<vec3<f32>, 3>) -> f32 {
+    // ⚠️ Os dois atalhos saem da mesma aritmetica do `PLANE_REACH` (`|n.u| <= raiz(2)/2` sobre o
+    // quadrado): nenhum plano em alcance => nada coberto; o mais recortante ja' engole o quadrado
+    // => tudo coberto. Sao exatos, e MEDIDOS valem 4% aqui (4,91 -> 4,71 ms) — pixel de fronteira e'
+    // espalhado, entao quase todo warp toma o caminho longo de qualquer jeito.
+    if (planes[0].z >= PLANE_REACH) {
+        return 0.0;
+    }
+    if (planes[0].z <= -PLANE_REACH) {
+        return 1.0;
+    }
+    var poly: array<vec2<f32>, 7>;
+    poly[0] = vec2<f32>(-0.5, -0.5);
+    poly[1] = vec2<f32>(0.5, -0.5);
+    poly[2] = vec2<f32>(0.5, 0.5);
+    poly[3] = vec2<f32>(-0.5, 0.5);
+    var n = 4;
+    for (var k = 0; k < 3; k = k + 1) {
+        let pl = planes[k];
+        if (pl.z >= PLANE_REACH) {
+            continue;
+        }
+        var src: array<vec2<f32>, 7> = poly;
+        var out = 0;
+        for (var j = 0; j < n; j = j + 1) {
+            let a = src[j];
+            let b = src[select(j + 1, 0, j + 1 == n)];
+            let da = pl.x * a.x + pl.y * a.y + pl.z;
+            let db = pl.x * b.x + pl.y * b.y + pl.z;
+            if (da >= 0.0) {
+                poly[out] = a;
+                out = out + 1;
+            }
+            if ((da >= 0.0) != (db >= 0.0)) {
+                let t = da / (da - db);
+                poly[out] = a + (b - a) * t;
+                out = out + 1;
+            }
+        }
+        n = out;
+        if (n == 0) {
+            // O plano engoliu o quadrado: nada descoberto, cobertura cheia.
+            return 1.0;
+        }
+    }
+    var duas = 0.0;
+    for (var i = 0; i < n; i = i + 1) {
+        let a = poly[i];
+        let b = poly[select(i + 1, 0, i + 1 == n)];
+        duas = duas + a.x * b.y - b.x * a.y;
+    }
+    return clamp(1.0 - abs(duas * 0.5), 0.0, 1.0);
+}
+
+struct Sil {
+    sd: f32,
+    near: vec2<f32>,
+    dist: f32,
+    planes: array<vec3<f32>, 3>,
+}
+
+// `binning.rs::stroke_silhouette` — `sd = 1e30` se vazio.
 // Com contas a silhueta é a UNIÃO DELAS (um disco é uma cápsula degenerada): sem isto o `edge`
 // mediria a borda da FITA e as contas sairiam sem anti-aliasing.
-fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -> vec4<f32> {
+fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -> Sil {
     var best = vec4<f32>(1e30, 0.0, 0.0, 0.0);
+    var planes = array<vec3<f32>, 3>(PLANE_EMPTY, PLANE_EMPTY, PLANE_EMPTY);
     var tail = 0xffffffffu;
     // `tau.rs::flat_caps` — os pontos onde a fita é CORTADA em vez de arredondada. `0xffffffff` = sem
     // tampa. Num traço FECHADO não há ponta (o `flip.wgsl` gateia em `!closed` pelo mesmo motivo).
@@ -326,6 +419,7 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
                 // A "distância" é `dn·r`: no disco isso É `|p − c|`, e no quadrado é a Chebyshev.
                 let dist = bead_dn(p, b, square) * b.r;
                 let sd = max(dist - b.r, cut);
+                plane_offer(&planes, plane_normal(p, b.c, dist), sd);
                 if (sd < best.x) {
                     best = vec4<f32>(sd, b.c.x, b.c.y, dist);
                 }
@@ -335,11 +429,22 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
         let dist = length(p - vec2<f32>(tc.y, tc.z));
         let r = ra * (1.0 - tc.x) + rb * tc.x;
         let sd = max(dist - r, cut);
+        plane_offer(&planes, plane_normal(p, vec2<f32>(tc.y, tc.z), dist), sd);
         if (sd < best.x) {
             best = vec4<f32>(sd, tc.y, tc.z, dist);
         }
     }
-    return best;
+    return Sil(best.x, vec2<f32>(best.y, best.z), best.w, planes);
+}
+
+// A normal de FORA: do ponto mais proximo em direcao ao pixel. Com o pixel EM CIMA do eixo
+// (`dist ~ 0`) ela e' indefinida e nao importa — ali a silhueta e' um disco centrado no pixel,
+// equidistante em toda direcao, entao qualquer normal unitaria da' a mesma area.
+fn plane_normal(p: vec2<f32>, near: vec2<f32>, dist: f32) -> vec2<f32> {
+    if (dist > 1e-6) {
+        return (p - near) / dist;
+    }
+    return vec2<f32>(1.0, 0.0);
 }
 
 // `tau.rs::seg_window` — os `t` onde uma amostra cai dentro do alcance de um dab em torno de `p`.
@@ -572,12 +677,15 @@ fn walk(@builtin(global_invocation_id) gid: vec3<u32>) {
                 pe = pass_end(i, j, ps);
             }
             let sil = stroke_silhouette(ps, pe, p, pitch, square);
-            let edge = 0.5 - sil.x;
-            if (sil.x < 1e29 && edge > 0.0) {
+            let edge = plane_coverage(sil.planes);
+            if (sil.sd < 1e29 && edge > 0.0) {
                 var p_eval = p;
-                if (sil.x > -0.5 && sil.w > 1e-6) {
-                    let f = (sil.x + 0.5) * 0.5 / sil.w;
-                    p_eval = p + (vec2<f32>(sil.y, sil.z) - p) * f;
+                // ⚠️ O empurrao segue lendo `sd`, NAO o `edge` — sao perguntas diferentes (onde ao
+                // longo da NORMAL amostrar o perfil, contra quanto do PIXEL a silhueta cobre), e o
+                // irmao em `binning.rs` carrega a mesma nota.
+                if (sil.sd > -0.5 && sil.dist > 1e-6) {
+                    let f = (sil.sd + 0.5) * 0.5 / sil.dist;
+                    p_eval = p + (sil.near - p) * f;
                 }
                 var rgba = vec4<f32>(0.0);
                 var fade = 0.0;

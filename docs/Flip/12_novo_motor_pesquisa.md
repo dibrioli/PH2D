@@ -1863,7 +1863,8 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 1 | **percurso como default** | ✅ **feito** (§22.2) |
 | 2 | **o Pass A pergunta antes de rasterizar** | ✅ **feito** (§22.5) — arte commitada e fantasma de onion custam **zero** enquanto ninguém mexe neles |
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
-| 3 | **a integral de ÁREA do pixel** | ⚠️ **a premissa deste item estava ERRADA — ver §22.6.** O AA já existe e é analítico; medido, sobram DOIS defeitos com números (a saturação em curvatura, 22-30/255 · a QUINA, 63,75/255) |
+| 3 | **a integral de ÁREA do pixel** | ⚠️ a premissa estava ERRADA (§22.6) — mas a medição achou **três** defeitos, e **dois já fecharam** (§22.7): a QUINA (63,75/255) e o ÂNGULO (9,72 a 45°, que ninguém tinha visto). |
+| 3a | a **saturação** em curvatura (~21-27/255) | ABERTO — não é AA: é `1 − exp(−τ)` não chegar a 1, e encosta no `F_MAX`, que tem racional próprio. Wave própria. |
 | 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
@@ -1994,3 +1995,106 @@ futura tem de bater.
   [Soft painting mode](https://krita-artists.org/t/feedback-wanted-soft-painting-mode/167535) (Drawpile)
 - In-repo, **não re-derivar**: [`docs/Painter/25 §13.9–§13.13`](../Painter/25_avaliacao_gpu.md) ·
   [`docs/Flip/03 §8.6–§8.7.2`](03_traco_rasterizacao.md)
+
+### 22.7 ⭐ PASSO 3 — a cobertura é a ÁREA do pixel, e o mesmo mecanismo fecha DOIS defeitos
+
+A §22.6 mediu a quina em **63,75/255** e a chamou de "o único 100% geométrico". Indo consertá-la,
+uma dúvida sobre a minha própria atribuição derrubou metade da tabela e achou um **terceiro**
+defeito, maior em alcance que a quina.
+
+#### O que a dúvida era
+
+Eu havia escrito que na cena da PONTA *"o erro é a saturação, não o AA"*, com `|edge−área| = 10,97`.
+Mas o filtro-caixa da lei antiga é **1-D ao longo da normal**, e a área de um quadrado unitário
+cortado por um semi-plano **depende do ÂNGULO da borda**: a rampa `0,5 − sd` só é exata quando a
+borda é paralela a um eixo. Uma conta de meia linha diz que a 45° isso já deve ~10,9/255 — todo o
+número atribuído à saturação, numa cena sem quina nenhuma.
+
+⚠️ **E a 1ª medição da varredura de ângulo deu 15,11 — ACIMA do teto teórico.** Um número que passa
+do próprio limite é ou fixture ou premissa errada, e aqui era o **ORÁCULO**: a estimativa por
+sub-amostras erra na proporção de quantas sub-células a fronteira atravessa, e isso é **máximo a
+45°**, exatamente o ângulo em questão. *Um oráculo cujo erro é função do parâmetro que a sonda varia
+não é um oráculo* — a mesma lição que a antiderivada (§21.5b) pagou nesta jornada. Com `N = 96` a
+área amostrada bate a analítica em quatro dígitos e o número do produto aparece:
+
+| ângulo | RAMPA (era) | ÁREA (é) |
+|---|---|---|
+| 0° | 0,00 | 0,00 |
+| 15° | 5,76 | **0,03** |
+| 30° | 8,54 | **0,03** |
+| 45° | **9,72** | **0,07** |
+| 60° | 8,54 | **0,03** |
+| 75° | 5,76 | **0,03** |
+| 90° | 0,00 | 0,00 |
+
+**Este defeito é o mais pervasivo dos três** — não precisa de quina, de ponta nem de tampa: basta
+uma borda que não seja horizontal nem vertical, ou seja quase todo traço de todo desenho.
+
+#### A cura, e por que ela apaga os dois casos de uma vez
+
+O conjunto **NÃO** coberto do pixel é a interseção dos semi-planos de FORA de cada passagem.
+Interseção de semi-planos com um quadrado é um **polígono convexo** ⇒ recorte de Sutherland-Hodgman
++ fórmula do sapateiro (`pixel_area.rs`), exato, sem caso especial e sem transcendental (HR-5). É a
+mesma decomposição que o empuxo da `line/physics` usa para *"quanto deste corpo está dentro da
+água"*.
+
+- com **um** plano ele é a área exata de um semi-plano em qualquer ângulo ⇒ o defeito novo;
+- com **dois** ele é a quina ⇒ o defeito de 63,75;
+- **e reduz à rampa EXATAMENTE onde ela estava certa** (gate `an_axis_aligned_edge_is_exactly_the_old_ramp`, borda paralela a um eixo) ⇒ o traço horizontal/vertical não se move um bit.
+
+| cena | RAMPA (era) | ÁREA (é) |
+|---|---|---|
+| borda reta longe das tampas (CONTROLE) | 0,00 | 0,00 |
+| a mesma com a TAMPA redonda | 10,18 | **2,59** |
+| PONTA aguda | 10,65 | **4,50** |
+| **QUINA externa** | **63,75** | **3,20** |
+
+O resíduo de 2,6-4,5 é a **CURVATURA** (cada passagem entra como o plano TANGENTE, e uma tampa de
+raio 7 px não é reta dentro do pixel) — declarado deliberado no `pixel_area.rs`, e o controle em
+0,00 é o que prova que ele não é o instrumento.
+
+#### ⚠️ O port para o device, e o gate que o exigiu
+
+O que **shipa** é o compute (`walk.wgsl`), não a referência em Rust — então mudar só a CPU deixaria
+o produto na lei antiga com a referência na nova. O `walk_gpu_parity` **nasceu VERMELHO** e é ele
+que provou o port: pior `|Δ|` = **4,883e-4**, que **é** o quantum da meia precisão do alvo
+(`rgba16float`, 2⁻¹¹) — os dois lados concordam até o limite do formato.
+
+#### ⚠️ O teto de planos é MEDIDO, e as duas metades estão no código (§0.0)
+
+*Quantos o desenho usa:* a quina mede **2**, e o pior pixel de um zigue-zague de passo sub-pixel — a
+única figura em que consegui pôr três bordas perto do mesmo pixel — também mede **2**. *Quanto cada
+vaga custa*, no device a 200 traços/1080p, ladrilho 16:
+
+| vagas | frame do percurso |
+|---|---|
+| a lei antiga | **2,72 ms** |
+| 2 | 3,46 |
+| **3 (o que shipa)** | **3,65** |
+| 4 | 4,71 |
+
+O degrau de 3→4 é o array de recorte deixando de caber em registrador. **Três fica acima da maior
+contagem que consegui produzir e abaixo do degrau**; truncar erra sempre para MENOS cobertura, e
+ainda assim para mais que a lei antiga, que enxergava **um** plano só.
+
+⚠️ **E os dois atalhos exatos do `coverage()` quase não pagam no device** (4,91 → 4,71, 4%): pixel de
+fronteira é espalhado, então quase todo warp tem um, e um atalho divergente não economiza tempo se
+alguém no warp toma o caminho longo. Ficam por serem exatos e de graça, **não** por serem a
+otimização — a nota que eu havia escrito ali (*"1,39 → 2,32"*) era um número que eu não tinha
+medido, e foi corrigida.
+
+#### O que NÃO mudou, de propósito
+
+- o **`p_eval`** (o empurrão que amostra o perfil) segue lendo `sd`, **não** o `edge`. Enquanto a
+  cobertura era a rampa os dois eram a mesma expressão e é tentador "unificar" — são perguntas
+  diferentes: *onde ao longo da NORMAL amostrar o perfil* (1-D) contra *quanto do PIXEL a silhueta
+  cobre* (2-D). Os dois lados carregam a nota.
+- o **rasterizador** (`flip.wgsl`) fica na rampa por-PASSAGEM: ele precisa do `fwidth` de um `min`,
+  que salta na costura. Ele é a escape hatch, não o produto.
+
+**Gates:** 6 em `pixel_area` (incluindo o oráculo de FORÇA BRUTA, que não sabe de recorte nem de
+sapateiro) + 1 no PRODUTO (`at_a_corner_the_deposit_passes_what_the_nearest_edge_alone_allows`,
+cujo oráculo é aritmético: a rampa não passa de `0,5` num pixel de `sd ≥ 0`, então nenhum ajuste de
+constante alcança o outro lado) + o `walk_gpu_parity`. **6 mutações, 5 sangram**; a 6ª
+(`PLANE_REACH` gigante) **sobrevive por projeto** — o `offer` já ordena por `sd`, então um plano fora
+de alcance é despejado antes de importar: o alcance é **custo**, não correção, e está escrito assim.

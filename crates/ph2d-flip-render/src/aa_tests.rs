@@ -37,7 +37,7 @@ fn true_area(
                 p[0] - 0.5 + (i as f32 + 0.5) / n as f32,
                 p[1] - 0.5 + (j as f32 + 0.5) / n as f32,
             ];
-            if stroke_silhouette(run, g, sc, tip, q).is_some_and(|(sd, _, _)| sd < 0.0) {
+            if stroke_silhouette(run, g, sc, tip, q).is_some_and(|s| s.sd < 0.0) {
                 dentro += 1;
             }
         }
@@ -51,23 +51,29 @@ fn true_area(
 /// o filtro-caixa é exato por construção): ela mede **0,00** nas três colunas, e é isso que dá
 /// sentido às outras — sem um controle em zero, um número alto pode ser o instrumento.
 ///
-/// **O resultado, e ele nomeia DOIS defeitos independentes:**
+/// **O resultado, com a lei ANTIGA (a rampa `0,5 − sd`) e a de hoje (a ÁREA) lado a lado:**
 ///
-/// | cena | `edge` vs área | `cover` vs área | saturação |
-/// |---|---|---|---|
-/// | reta longe das tampas (CONTROLE) | **0,00** | **0,00** | 0,00 |
-/// | a mesma com a TAMPA redonda | 8,74 | 24,90 | **29,99** |
-/// | PONTA aguda | 10,97 | 18,93 | **21,55** |
-/// | QUINA externa | **63,75** | **63,75** | 0,00 |
+/// | cena | RAMPA vs área | ÁREA vs área | `cover` vs área | saturação |
+/// |---|---|---|---|---|
+/// | reta longe das tampas (CONTROLE) | **0,00** | **0,00** | 0,00 | 0,00 |
+/// | a mesma com a TAMPA redonda | 10,18 | **2,59** | 26,21 | **26,56** |
+/// | PONTA aguda | 10,65 | **4,50** | 20,30 | **21,15** |
+/// | QUINA externa | **63,75** | **3,20** | 16,68 | **16,89** |
 ///
-/// - **em CURVATURA (tampa, ponta) o erro é a SATURAÇÃO, não o AA** — o filtro-caixa erra 9-11 e o
-///   produto erra 19-25, com o resto vindo de `1 − exp(−τ)` não chegar a 1;
-/// - **na QUINA é 100% geométrico** (saturação 0,00): a união cobre ¾ do pixel e o `min` do SDF diz
-///   meio. É a limitação clássica do AA por SDF, e aqui ela vale **¼ da cobertura de um pixel**.
+/// - a coluna RAMPA é o defeito que a wave da área fechou — **63,75/255 na quina**, que é
+///   exatamente ¼ de pixel, e ~10 em qualquer borda diagonal;
+/// - o que sobra na coluna ÁREA (2,6-4,5) é a **CURVATURA**: cada passagem entra como o plano
+///   TANGENTE, e uma tampa de raio 7 px não é reta dentro do pixel. É o resíduo que o `pixel_area`
+///   declara deliberado, e o controle em 0,00 é o que prova que ele não é o instrumento;
+/// - `|cover − área|` continua grande **e não é mais AA**: a saturação ao lado explica quase tudo
+///   dela. É o defeito **3a**, o outro eixo, e ele encosta no `F_MAX`, que tem racional próprio.
 #[test]
 #[ignore = "sonda; roda com --ignored --nocapture"]
 fn measure_what_the_box_filter_owes_the_pixel_area() {
-    const N: u32 = 16; // 256 sub-amostras/pixel
+    // ⚠️ **`N = 16` MENTIA aqui, e a sonda irmã é que mostrou.** O erro do oráculo cresce com
+    // quantas sub-células a fronteira atravessa — máximo em diagonal — e a 45° ele sozinho valia
+    // 5,4/255. Com 64 os dois oráculos concordam.
+    const N: u32 = 64;
     let (w, h) = (96.0_f32, 96.0_f32);
     let sc = screen(w, h);
     // ⚠️ **O CONTROLE precisa de uma janela, e a 1ª versão não tinha.** Na cena da borda reta o pior
@@ -118,16 +124,16 @@ fn measure_what_the_box_filter_owes_the_pixel_area() {
     //
     // Sem separar, uma "correção do AA" atacaria a metade errada.
     println!(
-        "  cena                                      |edge-area|   |cover-area|   satur.   onde (pior \
-         cover)"
+        "  cena                                      RAMPA(era)  AREA(e')   |cover-area|  satur.  \
+         onde (pior cover)"
     );
     for (nome, g, janela) in &cenas {
         // ⚠️ `hardness = 1` é o regime em que a pergunta EXISTE: ali o perfil é um degrau e a
         // cobertura é pura área. Num pincel macio a rampa é larga e o filtro-caixa quase não é
         // chamado a opinar.
         let bins = bin_segments(g, &sc, 16);
-        let (mut pior_edge, mut pior_cover, mut satur, mut onde) =
-            (0.0_f32, 0.0_f32, 0.0_f32, [0.0_f32, 0.0]);
+        let (mut pior_rampa, mut pior_edge, mut pior_cover, mut satur, mut onde) =
+            (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32, [0.0_f32, 0.0]);
         for y in 0..h as u32 {
             for x in 0..w as u32 {
                 let p = [x as f32 + 0.5, y as f32 + 0.5];
@@ -143,10 +149,12 @@ fn measure_what_the_box_filter_owes_the_pixel_area() {
                 }
                 let style = crate::tau::StrokeStyle::of(&g.strokes[run[0].stroke as usize]);
                 let real = true_area(run, g, &sc, style.tip, p, N);
-                // O filtro-caixa SOZINHO: a mesma expressão do `stroke_deposit`, sem o perfil.
-                let edge = stroke_silhouette(run, g, &sc, style.tip, p)
-                    .map_or(0.0, |(sd, _, _)| (0.5 - sd).clamp(0.0, 1.0));
+                let s = stroke_silhouette(run, g, &sc, style.tip, p);
+                // A LEI ANTIGA (congelada aqui como referência) e a NOVA, lado a lado.
+                let rampa = s.as_ref().map_or(0.0, |s| (0.5 - s.sd).clamp(0.0, 1.0));
+                let edge = s.as_ref().map_or(0.0, |s| s.planes.coverage());
                 let cover = stroke_deposit(run, g, &sc, p).map_or(0.0, |d| d.cover);
+                pior_rampa = pior_rampa.max((rampa - real).abs() * 255.0);
                 pior_edge = pior_edge.max((edge - real).abs() * 255.0);
                 let d = (cover - real).abs() * 255.0;
                 if d > pior_cover {
@@ -158,8 +166,8 @@ fn measure_what_the_box_filter_owes_the_pixel_area() {
             }
         }
         println!(
-            "  {nome:40}  {pior_edge:6.2}        {pior_cover:6.2}       {satur:6.2}   ({:.1}, \
-             {:.1})",
+            "  {nome:40}  {pior_rampa:6.2}    {pior_edge:6.2}      {pior_cover:6.2}     \
+             {satur:6.2}   ({:.1}, {:.1})",
             onde[0], onde[1]
         );
         // ⚠️ **O pior pixel, aberto** — `63,75` é exatamente `0,25 × 255`, e um número redondo assim
@@ -167,15 +175,122 @@ fn measure_what_the_box_filter_owes_the_pixel_area() {
         let ti = bins.tile_of_pixel(onde[0], onde[1]).expect("dentro");
         let run = bins.segs_of(ti);
         let style = crate::tau::StrokeStyle::of(&g.strokes[run[0].stroke as usize]);
-        let (sd, _, _) = stroke_silhouette(run, g, &sc, style.tip, onde).expect("tocado");
+        let s = stroke_silhouette(run, g, &sc, style.tip, onde).expect("tocado");
+        let sd = s.sd;
         println!(
             "        sd = {sd:+.4}  edge = {:.4}  area = {:.4}  segs no tile = {}",
-            (0.5 - sd).clamp(0.0, 1.0),
+            s.planes.coverage(),
             true_area(run, g, &sc, style.tip, onde, N),
             run.len()
         );
     }
 }
+/// 📏 **SONDA — o filtro-caixa contra o ÂNGULO da borda, sem quina nenhuma.**
+///
+/// ⚠️ **Ela nasceu de uma dúvida sobre a minha própria atribuição.** Eu havia escrito que na cena da
+/// PONTA *"o erro é a saturação, não o AA"* — mas o `|edge−area|` dela foi **10,97**, e uma conta de
+/// meia linha diz que uma borda RETA a 45° já deve esse tanto: o filtro-caixa é 1-D **ao longo da
+/// normal**, e a área de um quadrado unitário cortado por um semi-plano só é `0,5 − sd` quando a
+/// borda é **paralela a um eixo**. A 45° a área exata é `(sd√2 + 1)²/2` para `sd ∈ [−√2/2, 0]`, que
+/// em `sd = −0,25` vale `0,2090` contra `0,25` da rampa ⇒ **10,4/255**. Se a medição confirmar, o
+/// item 3 tem uma TERCEIRA metade, e ela não tem quina nenhuma.
+///
+/// A fixture varre o ângulo com um traço reto e **só olha o flanco** (`t ∈ [0,25; 0,75]` no
+/// segmento) — sem isso a tampa redonda entra e mede curvatura, o erro que já derrubou o controle da
+/// sonda irmã.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_what_the_box_filter_owes_a_slanted_edge() {
+    // ⚠️ **A 1ª rodada usou `N = 16` e o número saiu ACIMA do teto teórico** (15,11 contra os 10,9
+    // que um semi-plano puro pode dever a 45°). A causa é o próprio ORÁCULO: a estimativa por
+    // sub-amostras erra na proporção de quantas sub-células a fronteira atravessa, e isso é MÁXIMO a
+    // 45° — exatamente o ângulo em questão. *Um oráculo cujo erro é função do parâmetro que a sonda
+    // VARIA não é um oráculo* (a lição que a antiderivada desta mesma jornada já pagou). A sonda
+    // agora imprime DUAS resoluções: se as duas concordarem, o número é do produto.
+    for n in [16_u32, 96] {
+        println!("  --- oraculo com {n}x{n} sub-amostras ---");
+        slanted_edge_sweep(n);
+    }
+}
+
+fn slanted_edge_sweep(n_sub: u32) {
+    let n = n_sub;
+    let (w, h) = (96.0_f32, 96.0_f32);
+    let sc = screen(w, h);
+    println!("  angulo   RAMPA(era)  AREA(e')   pior pixel (pela rampa)");
+    for deg in [0, 15, 30, 45, 60, 75, 90] {
+        let a = (deg as f32).to_radians();
+        let (c, s) = (a.cos(), a.sin());
+        let (cx, cy) = (48.0_f32, 48.0);
+        let g = art(&[(
+            &[
+                [cx - 40.0 * c, cy - 40.0 * s],
+                [cx + 40.0 * c, cy + 40.0 * s],
+            ],
+            13.0,
+            false,
+            BLACK,
+        )]);
+        let bins = bin_segments(&g, &sc, 16);
+        let (mut pior, mut pior_area, mut onde) = (0.0_f32, 0.0_f32, [0.0_f32, 0.0]);
+        for y in 0..h as u32 {
+            for x in 0..w as u32 {
+                let p = [x as f32 + 0.5, y as f32 + 0.5];
+                let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                    continue;
+                };
+                let run = bins.segs_of(ti);
+                if run.is_empty() {
+                    continue;
+                }
+                // Só o FLANCO: um pixel cujo ponto mais próximo cai perto de uma ponta está medindo
+                // a tampa redonda, e a curvatura dela é outro fenômeno.
+                let seg = run[0];
+                let (pa, pb) = (g.points[seg.a as usize], g.points[seg.b as usize]);
+                let (sa, sb) = (sc.point_px(pa.pos), sc.point_px(pb.pos));
+                let (t, _, _) = closest_on_seg(p, sa, sb);
+                if !(0.25..=0.75).contains(&t) {
+                    continue;
+                }
+                let style = crate::tau::StrokeStyle::of(&g.strokes[run[0].stroke as usize]);
+                let real = true_area(run, &g, &sc, style.tip, p, n);
+                let s = stroke_silhouette(run, &g, &sc, style.tip, p);
+                let rampa = s.as_ref().map_or(0.0, |s| (0.5 - s.sd).clamp(0.0, 1.0));
+                let area = s.as_ref().map_or(0.0, |s| s.planes.coverage());
+                pior_area = pior_area.max((area - real).abs() * 255.0);
+                let d = (rampa - real).abs() * 255.0;
+                if d > pior {
+                    pior = d;
+                    onde = p;
+                }
+            }
+        }
+        // ⚠️ **O pior pixel, aberto** — a 1ª rodada mediu 15,11 a 45° e a conta de meia linha diz
+        // 10,9 para um semi-plano puro. Um número que passa do próprio limite teórico é ou fixture
+        // ou premissa errada, e as duas se distinguem OLHANDO as partes.
+        let ti = bins
+            .tile_of_pixel(onde[0], onde[1])
+            .filter(|t| !bins.segs_of(*t).is_empty());
+        if let Some(ti) = ti {
+            let run = bins.segs_of(ti);
+            let style = crate::tau::StrokeStyle::of(&g.strokes[run[0].stroke as usize]);
+            let s = stroke_silhouette(run, &g, &sc, style.tip, onde).expect("tocado");
+            let sd = s.sd;
+            println!(
+                "  {deg:3}   {pior:8.2} {pior_area:8.2}    ({:.1}, {:.1})   sd={sd:+.4} \
+                 edge={:.4} area={:.4} segs={}",
+                onde[0],
+                onde[1],
+                s.planes.coverage(),
+                true_area(run, &g, &sc, style.tip, onde, n),
+                run.len()
+            );
+        } else {
+            println!("  {deg:3}   {pior:8.2} {pior_area:8.2}    (sem pixel)");
+        }
+    }
+}
+
 /// 📏 **SONDA — a QUINA aberta, sub-amostra por sub-amostra.**
 ///
 /// ⚠️ **Ela existe porque `63,75/255` é exatamente `0,25 × 255`, e um número redondo assim é ou
@@ -224,9 +339,108 @@ fn dump_the_crossing_pixel() {
                 p[0] - 0.5 + (i as f32 + 0.5) / 16.0,
                 p[1] - 0.5 + (j as f32 + 0.5) / 16.0,
             ];
-            let d = stroke_silhouette(run, &g, &sc, style.tip, q).map_or(9.9, |(sd, _, _)| sd);
+            let d = stroke_silhouette(run, &g, &sc, style.tip, q).map_or(9.9, |s| s.sd);
             linha.push(if d < 0.0 { '#' } else { '.' });
         }
         println!("    j={j:2}: {linha}");
     }
+}
+
+/// ⭐ **O GATE DO PRODUTO — num pixel de quina o depósito passa MAIS do que a borda mais próxima
+/// sozinha permite.**
+///
+/// ⚠️ **Ele existe porque os gates de `pixel_area` vivem na LEI, e uma reversão dentro do
+/// `stroke_deposit` passaria por todos eles.** E o oráculo não precisa modelar a saturação: o
+/// `cover` é `sat · edge`, com o mesmo `sat` nas duas leis (o `τ` não sabe do `edge`), então num
+/// pixel cuja passagem mais próxima tem `sd ≥ 0` a rampa dá `edge ≤ 0,5` e portanto
+/// **`cover ≤ 0,5` por aritmética** — nenhum ajuste de constante alcança o outro lado. A área diz
+/// ¾ ali, e o que se mede é o depósito atravessando essa barreira.
+#[test]
+fn at_a_corner_the_deposit_passes_what_the_nearest_edge_alone_allows() {
+    let sc = screen(96.0, 96.0);
+    // O mesmo L da sonda: em PX o Y é invertido, então a quina EXTERNA fica em (48, 16) e o pixel
+    // (52,5; 20,5) tem `sd = 0` nas DUAS cápsulas.
+    let g = art(&[(
+        &[[16.0, 16.0], [80.0, 80.0], [48.0, 80.0], [48.0, 16.0]],
+        9.0,
+        false,
+        BLACK,
+    )]);
+    let bins = bin_segments(&g, &sc, 16);
+    let p = [52.5_f32, 20.5];
+    let ti = bins.tile_of_pixel(p[0], p[1]).expect("dentro da tela");
+    let run = bins.segs_of(ti);
+    let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+    let s = stroke_silhouette(run, &g, &sc, style.tip, p).expect("tocado");
+    // A premissa da fixture, declarada: se a quina deixar de ser uma quina, o gate não mede o que
+    // diz medir. (A fixture que não contém o fenômeno é a falha recorrente desta jornada.)
+    assert!(
+        s.sd >= -0.01,
+        "a fixture perdeu a quina: sd = {} (a rampa nem estaria capada em 0,5)",
+        s.sd
+    );
+    let area = true_area(run, &g, &sc, style.tip, p, 64);
+    assert!(
+        (area - 0.75).abs() < 0.02,
+        "a fixture mudou: a uniao cobre {area}, nao 3/4"
+    );
+    let cover = stroke_deposit(run, &g, &sc, p).map_or(0.0, |d| d.cover);
+    assert!(
+        cover > 0.55,
+        "o deposito na quina deu {cover} — a rampa nao passa de 0,5 ali, entao isto e' a lei antiga \
+         de volta"
+    );
+}
+
+/// 📏 **SONDA — o que a 3ª e a 4ª vaga de plano COMPRAM.**
+///
+/// ⚠️ **Ela existe porque o tamanho do conjunto é um TETO, e um teto entra medido** (§0.0). No
+/// device o custo é dominado pelo array de recorte — 4 vagas / 8-gono custam **4,71 ms** por frame
+/// a 200 traços contra **3,50** com 2 vagas / 6-gono, a MESMA lei —, então a pergunta não é
+/// "quantas cabem" e sim "quantas o desenho usa".
+///
+/// A cena é um ZIGUE-ZAGUE de passo sub-pixel: o único jeito de um traço só atravessar o mesmo
+/// pixel com três bordas. Imprime, por número de vagas, o pior desvio contra a área supersampleada.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_what_the_third_and_fourth_plane_buy() {
+    let sc = screen(96.0, 96.0);
+    let mut pts: Vec<[f32; 2]> = Vec::new();
+    for k in 0..24 {
+        let x = 20.0 + k as f32 * 2.0;
+        pts.push([x, if k % 2 == 0 { 40.0 } else { 44.0 }]);
+    }
+    let g = art(&[(&pts, 3.0, false, BLACK)]);
+    let bins = bin_segments(&g, &sc, 16);
+    let (mut pior, mut onde, mut n_planos) = (0.0_f32, [0.0_f32, 0.0], 0_usize);
+    for y in 0..96_u32 {
+        for x in 0..96_u32 {
+            let p = [x as f32 + 0.5, y as f32 + 0.5];
+            let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                continue;
+            };
+            let run = bins.segs_of(ti);
+            if run.is_empty() {
+                continue;
+            }
+            let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+            let Some(s) = stroke_silhouette(run, &g, &sc, style.tip, p) else {
+                continue;
+            };
+            let real = true_area(run, &g, &sc, style.tip, p, 64);
+            let d = (s.planes.coverage() - real).abs() * 255.0;
+            if d > pior {
+                pior = d;
+                onde = p;
+                n_planos = s.planes.len();
+            }
+        }
+    }
+    println!(
+        "  MAX_PLANES = {}: pior |area-real| = {pior:.2}/255 em ({:.1}, {:.1}), {n_planos} planos \
+         em alcance ali",
+        crate::pixel_area::MAX_PLANES,
+        onde[0],
+        onde[1]
+    );
 }

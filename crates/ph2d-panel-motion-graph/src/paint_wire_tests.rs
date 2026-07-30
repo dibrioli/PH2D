@@ -143,3 +143,66 @@ fn an_incompatible_drop_target_is_danger_red() {
     assert_eq!(target_compat(&Some((3, 0, true))), Some(true));
     assert_eq!(target_compat(&None), None);
 }
+
+/// **The ghost wire's loose end SNAPS to the target socket** — once the drag locks onto a socket
+/// (the same one the magnet in `geom` will drop onto), the wire draws to that socket's CENTRE,
+/// not the cursor, so the artist SEES the lock. FALSIFIED three ways: the target is ignored (the
+/// end never leaves the cursor), the wrong EDGE is used (an output target drawn on the left), or
+/// empty space resolves to a point instead of `None` (the wire would jump to a phantom socket).
+#[test]
+fn the_ghost_end_snaps_to_the_target_socket() {
+    use crate::snapshot::{GraphNodeView, NodeViewKind, PortView};
+    use crate::state::ViewState;
+    use ph2d_node_registry::{NodeSilhouette, NodeUiCategory};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain};
+
+    let port = || PortView {
+        name: "p",
+        domain: Domain::Instances,
+        dim: Dim::Scalar,
+        clock: Clock::Frame,
+    };
+    let snap = GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
+        nodes: vec![GraphNodeView {
+            kind: NodeViewKind::Node,
+            id: 5,
+            display_name: "n".into(),
+            category: NodeUiCategory::Utility,
+            silhouette: NodeSilhouette::Rect,
+            x: 100.0,
+            y: 0.0,
+            inputs: vec![port()],
+            outputs: vec![port()],
+            readout: None,
+            count: None,
+            hot: false,
+            is_sink: false,
+            preview: None,
+        }],
+        edges: vec![],
+        backdrops: vec![],
+        probe: None,
+        now: 0.0,
+    };
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    let node = &snap.nodes[0];
+
+    // Locked onto the node's OUTPUT socket (right edge) — the ghost end is that socket's centre.
+    assert_eq!(
+        ghost_target_center(&Some((5, 0, true)), &snap, &view, true),
+        Some(socket_center(node, &view, true, 0)),
+    );
+    // Locked onto its INPUT (left edge): proves the `output` flag picks the edge, not a constant.
+    assert_eq!(
+        ghost_target_center(&Some((5, 0, false)), &snap, &view, false),
+        Some(socket_center(node, &view, false, 0)),
+    );
+    // No target, or a node that is not here → None, so the end falls back to the cursor.
+    assert_eq!(ghost_target_center(&None, &snap, &view, true), None);
+    assert_eq!(
+        ghost_target_center(&Some((99, 0, true)), &snap, &view, true),
+        None,
+    );
+}

@@ -139,6 +139,22 @@ fn target_compat(target: &Option<(u32, u16, bool)>) -> Option<bool> {
     target.map(|(_, _, ok)| ok)
 }
 
+/// The TARGET socket's screen centre once the drag has locked onto one, else `None`. The
+/// ghost wire's loose end snaps HERE (so it visibly jumps to where it will land, matching the
+/// magnet in `geom` — the drop already resolves to this socket), and the highlight ring lands
+/// here too. `output` picks the edge: a forward wire's target is an INPUT (left), a backward
+/// wire's is an OUTPUT (right).
+fn ghost_target_center(
+    target: &Option<(u32, u16, bool)>,
+    snap: &GraphViewSnapshot,
+    view: &View,
+    output: bool,
+) -> Option<(f32, f32)> {
+    let (tn, tp, _) = (*target)?;
+    let t = snap.nodes.iter().find(|n| n.id == tn)?;
+    Some(socket_center(t, view, output, tp as usize))
+}
+
 /// The ghost wire's colour. **DANGER over an incompatible target** — the affirmative
 /// "no" the artist must SEE before dropping, not the muted grey that reads as "inactive".
 /// Otherwise `on_target`: the source domain's hue (the "this is what I'll carry" preview)
@@ -189,13 +205,12 @@ pub(crate) fn draw_wire_ghost(
             let p0 = socket_center(src, view, true, *from_port as usize);
             let on_target = domain_token(port_out_domain(src, *from_port));
             let color = resolve(ghost_wire_token(target_compat(target), on_target), theme);
-            let pts = wire_polyline(p0, *cur, view.zoom);
+            // Forward wire's target is an INPUT socket; the loose end snaps to it when locked on.
+            let tc = ghost_target_center(target, snap, view, false);
+            let pts = wire_polyline(p0, tc.unwrap_or(*cur), view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
-            if let Some((tn, tp, compat)) = target
-                && let Some(t) = snap.nodes.iter().find(|n| n.id == *tn)
-            {
-                let (cx, cy) = socket_center(t, view, false, *tp as usize);
+            if let (Some((_, _, compat)), Some((cx, cy))) = (target, tc) {
                 let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;
                 highlight_socket(ctx, cx, cy, r, theme, target_ring_token(*compat));
             }
@@ -225,13 +240,13 @@ pub(crate) fn draw_wire_ghost(
                 None => ColorToken::Border,
             };
             let color = resolve(ghost_wire_token(target_compat(target), on_target), theme);
-            let pts = wire_polyline(*cur, p3, view.zoom);
+            // Backward wire's target is an OUTPUT socket; the loose end (the START, running INTO
+            // the input) snaps to it when locked on.
+            let tc = ghost_target_center(target, snap, view, true);
+            let pts = wire_polyline(tc.unwrap_or(*cur), p3, view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
-            if let Some((fnode, fport, compat)) = target
-                && let Some(f) = snap.nodes.iter().find(|n| n.id == *fnode)
-            {
-                let (cx, cy) = socket_center(f, view, true, *fport as usize);
+            if let (Some((_, _, compat)), Some((cx, cy))) = (target, tc) {
                 let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;
                 highlight_socket(ctx, cx, cy, r, theme, target_ring_token(*compat));
             }

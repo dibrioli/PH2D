@@ -6,7 +6,8 @@
 //! Índices de vértice são **planos** entre contornos (ver `ph2d_vec_scene`
 //! `compound`): um buraco de compound path seleciona e edita como qualquer outro.
 
-use crate::{INSERT_SAMPLES, Part, PenTool};
+use crate::node_hit::INSERT_SAMPLES;
+use crate::{Part, PenTool};
 use ph2d_vec_scene::{VecPathId, VecScene, VecVertex, VertexKind};
 
 impl PenTool {

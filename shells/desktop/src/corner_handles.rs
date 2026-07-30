@@ -75,6 +75,24 @@ pub(crate) fn has_derived_verts(
 // arredondar/chanfrar quina virou o par de ferramentas Fillet / Chamfer. O que sobrevive deste
 // módulo é a POLÍTICA `has_derived_verts`, que o press dessas ferramentas consulta.
 
+// ⚠️ **O PRESS DO MODO NODE, e a metade que fica ABERTA** (W0.2 do plano 25, medido 2026-07-29).
+//
+// A mesma doença deste módulo vale para arrastar/inserir um NÓ, não só para escrever um raio: a
+// geometria derivada é reescrita por trás do artista. A **forma paramétrica** está curada — o press
+// do Node congela a receita dentro do gesto (`vec_convert::freeze_shape_recipe`), exatamente como o
+// par Fillet/Chamfer, com arch-gate próprio e o repro em
+// `vec_convert_tests::a_node_edit_on_a_live_shape_is_wiped_by_the_next_param_edit`.
+//
+// Os **hosts de RELAÇÃO** (conector · morph · filho de envelope) seguem no estado antigo: o press do
+// Node não os consulta, então um nó ali é aceito e o `*_live::recook` o reverte — no envelope e no
+// conector isso é **por frame**, na forma paramétrica era só na próxima edição de parâmetro. Não
+// curei por dois motivos, e nenhum é "não deu tempo": (a) congelar NÃO serve aqui (é o que este
+// módulo argumenta — soltar a relação destrói o que o artista construiu), então a única cura é
+// **RECUSAR**, que é mudança de comportamento visível; (b) a recusa tem de deixar o **blend** de
+// fora, cuja escrita PARA quando o artista assume o spine (o `has_derived_verts` já o exclui de
+// propósito, e arrastar o spine É o gesto de autoria). Decisão de produto — não construída sem
+// pedido, com o mecanismo medido escrito aqui para quem a pegar.
+
 #[cfg(test)]
 #[path = "corner_handles_tests.rs"]
 mod tests;

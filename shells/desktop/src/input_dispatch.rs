@@ -3526,6 +3526,31 @@ impl App {
                                 ) {
                                     // canto agarrado — o pen fica de fora
                                 } else {
+                                    // **A forma VIVA congela a receita AQUI**, exatamente como no
+                                    // par Fillet/Chamfer acima — e pelo mesmo motivo: o
+                                    // `recook_into` reescreve `path.verts` INTEIRO, então um nó
+                                    // arrastado numa Live Shape sobrevive até o instante em que o
+                                    // artista encosta num slider de parâmetro, e some **sem erro
+                                    // nenhum** (o modo de falha que o `corner_handles` descreve;
+                                    // medido em `vec_node_freeze_tests`).
+                                    //
+                                    // ⚠️ Só quando o press vai de fato EDITAR geometria: o
+                                    // `on_press_node` devolve `Grabbed` tanto ao agarrar um vértice
+                                    // como ao apenas SELECIONAR a forma pelo preenchimento, então a
+                                    // pergunta é feita ANTES, à porta que faz a MESMA busca
+                                    // (`node_edit_hit_at`) — congelar num clique que só seleciona
+                                    // expandiria a forma sem ninguém pedir.
+                                    if let Some(pid) = self.vec_pen.node_edit_hit_at(
+                                        &gfx.vec_scene,
+                                        [w[0] as f64, w[1] as f64],
+                                        px_to_world,
+                                    ) {
+                                        crate::vec_convert::freeze_shape_recipe(
+                                            &mut gfx.sim,
+                                            &self.vec_entities,
+                                            pid,
+                                        );
+                                    }
                                     // Node edita âncoras/handles. Arredondar/chanfrar quina não é
                                     // mais deste modo — virou o par Fillet/Chamfer (o hit-test aqui
                                     // não agarra alça de raio nenhuma).

@@ -31,6 +31,9 @@ pub mod corner_handle;
 /// **O press das ferramentas Fillet / Chamfer** (`on_press_corner`) — módulo irmão (LOC cap).
 /// Bloco `impl PenTool` inerente; move e release reusam o caminho do pen.
 mod corner_tool;
+/// **O que um press do modo Node EDITARIA aqui** (`node_edit_hit_at` + a busca do insert) —
+/// módulo irmão (LOC cap). Bloco `impl PenTool` inerente.
+mod node_hit;
 /// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
 /// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
 mod pen_drag;
@@ -48,9 +51,6 @@ pub enum PenClick {
     Inserted,
     Ignored,
 }
-
-/// Amostras por segmento no hit-test de "inserir vértice perto do traço".
-const INSERT_SAMPLES: u32 = 24;
 
 /// Parte de um vértice que o hit-test pode agarrar.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -336,7 +336,7 @@ impl PenTool {
         px_to_world: f64,
         alt: bool,
     ) -> PenClick {
-        let hit_r = 10.0 * px_to_world;
+        let hit_r = crate::node_hit::NODE_HIT_PX * px_to_world;
         if let Some(g) = self.hit_test(scene, p, hit_r) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
@@ -510,37 +510,6 @@ impl PenTool {
             let _ = ph2d_vec_scene::retype_vertex(path, g.vert, VertexKind::Corner);
         }
         self.grab = Some(g);
-    }
-
-    /// Perto de um SEGMENTO do path selecionado → insere um vértice (split de
-    /// Bézier, forma preservada) e o agarra pra arrastar de imediato. Só o path
-    /// selecionado (previsível — é onde as âncoras aparecem); mesmo raio do grab de
-    /// handle. `None` quando o cursor não está perto de segmento nenhum.
-    fn insert_on_selected_segment(
-        &mut self,
-        scene: &mut VecScene,
-        p: [f64; 2],
-        hit_r: f64,
-    ) -> Option<PenClick> {
-        let sel = self.selected?;
-        let path = scene.paths().iter().find(|pp| pp.id == sel)?;
-        // A curva é local; a distância que o usuário enxerga é mundo.
-        let pl = self.to_local(sel, p);
-        let (seg, t, d2) = ph2d_vec_scene::nearest_point_on_path(path, pl, INSERT_SAMPLES)?;
-        if d2.sqrt() * self.xf(sel).mean_scale() > hit_r {
-            return None;
-        }
-        let ni = ph2d_vec_scene::split_segment(scene.path_mut(sel)?, seg, t)?;
-        self.selected_paths = vec![sel];
-        self.selected_verts = vec![ni];
-        self.grab = Some(Grab {
-            path: sel,
-            vert: ni,
-            part: Part::Anchor,
-            radius_offset: 0.0,
-            chamfer: None,
-        });
-        Some(PenClick::Inserted)
     }
 
     /// O raio `r` é WORLD-units (px × zoom), então a comparação acontece no mundo:

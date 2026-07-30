@@ -393,3 +393,98 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
     assert_eq!(v[1].corner_radius, 5.0, "a 1a quina sobreviveu ao frame");
     assert_eq!(v[2].corner_radius, -3.0, "e a 2a também");
 }
+
+// ---------------------------------------------------------------------------------------------
+// W0.2 do plano 25 — **o nó de uma Live Shape** (a auditoria de 5 agentes, item 2).
+//
+// A nota dizia: *"arrastar âncora de uma Live Shape no modo Node talvez seja aceito e revertido em
+// silêncio pelo recook do frame seguinte — repro antes de chamar defeito"*. Os dois gates abaixo
+// medem, e a nota estava **meio certa**: o fenômeno existe (a edição é descartada em silêncio) mas o
+// MECANISMO não é *"o frame seguinte"* — o `recook_into` não roda por frame, ele roda no
+// nascimento da forma e a cada **edição de PARÂMETRO** (`vec_shape_params::edit_selected_shape`,
+// os únicos dois chamadores de produção). O nó sobrevive até o artista encostar num slider.
+// ---------------------------------------------------------------------------------------------
+
+/// Uma forma VIVA (receita `Param`) de 40×40, já cozida, com a receita pendurada na entidade.
+fn live_square() -> (SimWorld, VecScene, VecEntityMap, VecPathId) {
+    use ph2d_vec_scene::ShapeKind;
+    let (mut sim, mut scene, map, id) = square_entity();
+    let shape = VecShape::Param {
+        kind: ShapeKind::Rectangle as u16,
+        w: 40.0,
+        h: 40.0,
+        values: [0.0; ph2d_ecs::MAX_SHAPE_VALUES],
+    };
+    sim.world_mut()
+        .entity_mut(entity_of(&map, id))
+        .insert(shape.clone());
+    crate::vec_shape_live::recook_into(&mut scene, id, &shape);
+    (sim, scene, map, id)
+}
+
+/// O que um arrasto de nó do modo Node deixa na cena: a âncora `0` deslocada.
+fn drag_node_zero(scene: &mut VecScene, id: VecPathId) -> [f64; 2] {
+    let p = scene.path_mut(id).expect("a forma existe");
+    let moved = [p.verts[0].anchor[0] + 7.0, p.verts[0].anchor[1] - 3.0];
+    p.verts[0].anchor = moved;
+    moved
+}
+
+/// **O FENÔMENO: sem congelar a receita, o nó arrastado é descartado por uma edição de parâmetro.**
+///
+/// Este gate descreve o motor a fazer o que ele deve (uma receita reescreve a geometria dela) — ele
+/// existe para pinar **o preço** dessa verdade quando o artista edita nós de uma forma viva, que é o
+/// que justifica o congelamento no press. Ele fica VERDE: é a razão da cura, não a cura.
+#[test]
+fn a_node_edit_on_a_live_shape_is_wiped_by_the_next_param_edit() {
+    let (mut sim, mut scene, map, id) = live_square();
+    let moved = drag_node_zero(&mut scene, id);
+    assert_eq!(
+        scene.path(id).expect("existe").verts[0].anchor,
+        moved,
+        "o arrasto de no' nao chegou a' cena"
+    );
+    // O artista encosta num slider de parâmetro da forma (o único gesto que re-cozinha).
+    let edited = crate::vec_shape_params::edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        |_kind, _values| true,
+    );
+    assert!(
+        edited,
+        "a edicao de parametro tem de acontecer nesta fixture"
+    );
+    assert_ne!(
+        scene.path(id).expect("existe").verts[0].anchor,
+        moved,
+        "a fixture nao contem o fenomeno: o recook nao mexeu na ancora que o no' arrastou"
+    );
+}
+
+/// **A CURA: com a receita congelada no press, o nó sobrevive.**
+///
+/// É o mesmo `freeze_shape_recipe` que o par Fillet/Chamfer já chama, pelo mesmo motivo — e é por
+/// isso que a wave não inventa política nova: ela dá ao press do Node a política que o press da
+/// quina já tinha.
+///
+/// ⚠️ Mutação que tem de sangrar: tirar o `freeze_shape_recipe` do press do Node (o arch-gate irmão
+/// prova que a shell o chama; este prova que chamá-lo RESOLVE).
+#[test]
+fn freezing_the_recipe_at_the_press_makes_the_node_edit_survive() {
+    let (mut sim, mut scene, map, id) = live_square();
+    // O press do modo Node: congela a receita ANTES de o pen tocar a geometria.
+    assert!(
+        crate::vec_convert::freeze_shape_recipe(&mut sim, &map, id),
+        "a forma desta fixture tem receita a congelar"
+    );
+    let moved = drag_node_zero(&mut scene, id);
+    // O artista encosta no slider: sem receita, não há o que re-cozinhar.
+    crate::vec_shape_params::edit_selected_shape(&mut sim, &mut scene, &map, &[id], |_k, _v| true);
+    assert_eq!(
+        scene.path(id).expect("existe").verts[0].anchor,
+        moved,
+        "o no' arrastado foi descartado mesmo com a receita congelada"
+    );
+}

@@ -888,9 +888,43 @@ CTRL o arrasto é livre; na roldana do CENÁRIO o ímã não abre.
 
 ### Aberto no W5, nomeado
 
-- **A Weston não é expressável** hoje — e é topologia, não um número que falta. Ela
-  pediria um nó cujos dois contatos são **separados na rota**, o que é uma segunda
-  restrição por corda; não construída, e não deve ser confundida com afinação.
+- **A Weston não é expressável** hoje — **CONFIRMADO por medição** (2026-07-29,
+  `measure_weston`), e é topologia, não um número que falta.
+
+  ⚠️ **A nota foi tratada como hipótese** — esta linha viu quatro parecidas
+  dissolverem —, e ela **sobreviveu**. As duas peças existem e montá-las juntas
+  **não** dá uma Weston: numa Weston a corrente toca o tambor composto **DUAS vezes
+  com a carga NO MEIO** (grande → cadernal móvel → pequeno), e o modelo de
+  `radius_out` põe os dois contatos **ADJACENTES** (entra num diâmetro e sai no outro
+  **no mesmo nó**). Duas roldanas concêntricas são **geometricamente recusadas** pela
+  rota (`|C₂−C₁| > |s₂r₂ − s₁r₁|`, §W4).
+
+  **O que a medição AFIRMA:** o `gear` de fato **pesa a corda** — a rota de um tambor
+  `R = 0,35` vai de 8,185 m com `r = R` a 12,994 m com `r = 0,15`, e a engrenagem na
+  ponta acompanha `R/r` **exatamente** (1,0000 · 1,1667 · 1,4000 · 2,3333). O
+  mecanismo diferencial está certo; o que falta é a **ORDEM da rota**.
+
+  ⚠️ **A tabela de VANTAGEM foi REMOVIDA em vez de shipada.** Montei as duas peças
+  juntas (tambor composto no cenário · cadernal móvel na carga · ponta B morta na
+  lança) e o rig **não assenta**: a deriva da carga em 2 s contra o esforço saiu
+  **não-monotônica e toda positiva** (2,03 · 1,90 · 4,16 · −0,03 · 3,90 · 2,98 ·
+  2,19 m de 0,01 a 8 kg) — balística, não quase-estática. *Um arranjo que não
+  descansa não tem vantagem mecânica a medir, e publicar uma coluna tirada dele seria
+  um número com casas decimais sobre nada.*
+
+  ⚠️ **E antes disso a busca binária MENTIU:** ela imprimiu *"controle: esforço
+  0,0100 kg, vantagem 199,99"*, e 0,01 é o **piso** dela — a carga nunca desceu, e a
+  coluna era o número que uma busca colapsada devolve. *Uma busca só significa algo
+  depois de a função medida ter sido vista cruzando o zero.* Quem a derrubou foi o
+  diagnóstico da deriva crua, que a 1ª versão da sonda tinha pulado.
+
+  **O desenho, se o Enio o mandar** (não construído): a rota deixa de ser uma
+  sequência de roldanas DISTINTAS e passa a admitir o mesmo eixo **duas vezes**, com
+  os dois contatos em diâmetros diferentes e nós entre eles. Isso é **uma segunda
+  restrição por corda** (o laço fechado não tem duas pontas), então mexe no
+  `PulleyDesc`, no `route`, no ledger de carga e provavelmente no
+  `PROJECT_SCHEMA` — wave própria, com aceitação própria, e **não** afinação de um
+  número existente.
 - **O salto balístico do contrapeso comum** é física honesta e fica **na tela**. A
   mensagem da cena o nomeia, para o artista não o ler como defeito.
 

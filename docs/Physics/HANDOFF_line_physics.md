@@ -7352,3 +7352,64 @@ BYTE-IDÊNTICO** (`7cb7728d…`) — a wave não alcança o solver.
 
 **Aberto na W-Pulley agora:** a **Weston** (topologia — um nó cujos dois contatos são
 separados na rota, uma 2ª restrição por corda; não é afinação e não foi construída).
+
+---
+
+## W-Weston (investigação) — a nota SOBREVIVEU à medição (2026-07-29, sem cena, NÃO construída)
+
+O último item aberto da W-Pulley, tratado como hipótese porque **quatro notas
+parecidas dissolveram** nesta jornada. Esta não dissolveu.
+
+### As duas peças existem, e juntas não dão uma Weston
+
+Tambor **DIFERENCIAL** (W4) + cadernal **MÓVEL** (W3). Numa Weston a corrente toca o
+tambor composto **DUAS vezes com a carga NO MEIO** (grande → cadernal móvel →
+pequeno); o `radius_out` põe os dois contatos **ADJACENTES** — entra num diâmetro e
+sai no outro **no mesmo nó**. E duas roldanas concêntricas são **geometricamente
+recusadas** pela rota (`|C₂−C₁| > |s₂r₂ − s₁r₁|`).
+
+### O que a medição afirma
+
+O `gear` **pesa a corda**, e exatamente: rota de 8,185 m (`r = R`) a 12,994 m
+(`r = 0,15`), engrenagem na ponta acompanhando `R/r` ao quarto decimal (1,0000 ·
+1,1667 · 1,4000 · 2,3333). O mecanismo diferencial está certo; falta a **ORDEM**.
+
+### Duas coisas minhas que a medição derrubou, e as duas ficam escritas
+
+⚠️ **A tabela de VANTAGEM foi removida em vez de shipada:** o rig das duas peças
+juntas **não assenta** — deriva da carga em 2 s contra o esforço **não-monotônica e
+toda positiva** (2,03 · 1,90 · 4,16 · −0,03 · 3,90 · 2,98 · 2,19 m de 0,01 a 8 kg),
+balística. *Um arranjo que não descansa não tem vantagem mecânica a medir.*
+
+⚠️ **A busca binária mentiu antes disso:** *"controle: esforço 0,0100 kg, vantagem
+199,99"* — 0,01 é o **piso** dela, a carga nunca desceu, e a coluna era o número que
+uma busca colapsada devolve. *Uma busca só significa algo depois de a função medida
+ter sido vista cruzando o zero.* Foi a deriva crua que a derrubou — o diagnóstico que
+a 1ª versão da sonda pulou.
+
+### O desenho, se vier ordem
+
+A rota deixa de ser uma sequência de roldanas DISTINTAS e passa a admitir o mesmo
+eixo **duas vezes**, com os dois contatos em diâmetros diferentes e nós entre eles ⇒
+**uma segunda restrição por corda** (um laço fechado não tem duas pontas). Mexe no
+`PulleyDesc`, no `route`, no ledger de carga e provavelmente no `PROJECT_SCHEMA` —
+**wave própria com aceitação própria**, nunca afinação de um número existente.
+
+**Nada construído** (só a sonda). `PROJECT_SCHEMA` fica **34**, registro **21**, c9
+intocado.
+
+---
+
+## Estado da linha (2026-07-29)
+
+A **W-Pulley está FECHADA** exceto a Weston, que é decisão de produto. As cinco waves
+desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de segurar** ·
+o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montado · a
+**cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda**. Todos os
+smokes aprovados (`=61`, `=63`).
+
+**Aberto e nomeado:** a **Weston** (topologia, precisa de ordem) · o readout da §12 de
+uma corda degenerada mostra `0 N` em âmbar sem dizer por quê (texto ali quer i18n e
+canal próprio) · o salto balístico do contrapeso comum (física honesta, fica na tela)
+· um corpo que passa da própria roldana inverte o ramo (degenerado documentado) · um
+Ctrl+Z para as duas metades do bake (mora no roteador de undo, outro domínio).

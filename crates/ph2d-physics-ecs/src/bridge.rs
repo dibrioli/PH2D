@@ -188,6 +188,16 @@ pub struct PhysicsBridge {
     /// campo dentro do `RopeWheel` porque aquele tipo é do motor, que não conhece
     /// entidade nenhuma (e não deve conhecer).
     wheel_entities: Vec<Entity>,
+    /// **O que o artista escolheu sobre o LADO**, na MESMA ordem da arena.
+    ///
+    /// ⚠️ Paralela e não lida direto das linhas colhidas porque a arena passa por
+    /// um FILTRO que elas não passam: um eixo que cedeu não é instalado. Enquanto o
+    /// override era lido por `zip` contra as linhas cruas, o primeiro eixo partido
+    /// de uma corda **deslocava** todos os overrides seguintes para a roldana
+    /// vizinha — o defeito nascia só depois de uma ruptura, e só com um abraço
+    /// autorado, que é por que ele viveu calado. O override tem de andar pelo MESMO
+    /// filtro que a roda que ele governa.
+    wheel_wraps: Vec<crate::WrapSide>,
     /// Os trechos que a resolução de LADO escreve. Scratch pelo mesmo motivo.
     route_scratch: Vec<ph2d_physics::world::rope_route::Tangent>,
     /// **A lista de polias VIVAS**, reconstruída todo reconcile — a fonte única
@@ -305,6 +315,7 @@ impl PhysicsBridge {
             pulley_wheels_to_install: Vec::new(),
             rope_wheels: Vec::new(),
             wheel_entities: Vec::new(),
+            wheel_wraps: Vec::new(),
             wheel_spin: Vec::new(),
             wheel_spin_by_entity: std::collections::BTreeMap::new(),
             route_scratch: Vec::new(),

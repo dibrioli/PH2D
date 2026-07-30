@@ -406,6 +406,49 @@ pub fn rope_joint_of(
         .map(|(e, _, _)| e)
 }
 
+/// **Este eixo é uma talha de WESTON** — a corda sai pelo diâmetro grande, dá a
+/// volta no que houver no meio, e **VOLTA pelo pequeno** (W-Weston).
+///
+/// Ausente (o caso de sempre) o eixo de dois diâmetros é um **TAMBOR**: a corda
+/// troca de diâmetro no MESMO nó, os dois contatos são adjacentes, e a vantagem a
+/// jusante é `R/r`. Presente, os dois contatos passam a **ABRAÇAR** o resto da
+/// rota — e o quociente que sai da eliminação da rotação do eixo é outro:
+/// **`R/(R−r)`**, que com uma cadernal móvel no meio dá a vantagem `2R/(R−r)`.
+///
+/// ⚠️ **A diferença não é o número, é de que CIRCUNFERÊNCIAS ele sai.** Vantagem
+/// 32 pede `r_saída = 0,031` num tambor de `R = 0,5` (um tambor de espessura de
+/// fio de cabelo) e `r = 0,469` numa Weston — quase do tamanho do irmão. É a
+/// *diferença* de dois raios gordos que é pequena, e **é por isso que a máquina
+/// foi inventada**: a vantagem sai de duas circunferências que o artista consegue
+/// desenhar. Medições em [`ph2d_physics::world::rope_route::crossing_gear`].
+///
+/// ⚠️ **Sozinho não faz nada:** sem um segundo diâmetro (`radius_out > 0`) não há
+/// par de contatos a formar, então o marcador é inerte — e a row não o oferece. A
+/// mesma lei do [`crate::AreaFalloff`], que atenua o nada sem uma força ao lado.
+///
+/// ⚠️ **O RETORNO tem de ser pelo diâmetro MENOR.** Com `r = R` a máquina está
+/// **travada** (a carga não anda por mais que se puxe) e com `r > R` ela
+/// **inverte** — e nenhuma das duas é um orçamento `L ≤ L0` que `λ ≥ 0` saiba
+/// segurar. A rota recusa o par (`axle_pair`) e os dois contatos voltam a ser
+/// roldanas comuns; a **row** é quem impede o artista de chegar lá.
+///
+/// ⚠️ **Um MOTOR aqui é um sarilho DIFERENCIAL, e ele já funciona:** a taxa
+/// `ω·R` entra no orçamento do lado do esforço, que é pesado por `1`, então a
+/// carga sobe a `ω·R/(2·R/(R−r)) = ω(R−r)/2` — a cinemática exata do sarilho
+/// diferencial, sem uma linha de código a mais. O contato de RETORNO não recolhe
+/// (um eixo, uma rotação, um termo de recolhimento).
+///
+/// Vigésimo-terceiro componente registrado, e marcador em vez de campo pela
+/// razão que esta linha já pagou oito vezes: o blob de um componente é postcard
+/// POSICIONAL, então apendar campo na [`PulleyWheel`] seria bump de
+/// `PROJECT_SCHEMA` — e um bump **recusa todo projeto já salvo**. Presença É o
+/// booleano (o idioma do [`crate::Ccd`], do [`crate::LockRotation`] e do
+/// [`crate::OneWayPlatform`]).
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct WestonAxle;
+
+impl SimComponent for WestonAxle {}
+
 impl PulleyWheel {
     /// **Esta edição muda a ROTA da corda?** — e portanto o `L0` dela.
     ///

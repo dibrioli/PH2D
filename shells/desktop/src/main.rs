@@ -216,6 +216,7 @@ mod physics_smoke_pulley_break;
 mod physics_smoke_pulley_comp;
 mod physics_smoke_pulley_diff;
 mod physics_smoke_pulley_tackle;
+mod physics_smoke_pulley_weston;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;
 mod physics_smoke_wheel;

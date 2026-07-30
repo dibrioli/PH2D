@@ -337,10 +337,28 @@ pub fn apply(
         // chão em paz.
         // ⚠️ Sem tambor, sem teto — é o que mantém byte-idêntica toda cena
         // que já existia (ver [`PULLEY_CORRECTION_LAG`]).
+        //
+        // ⚠️ **E o teto é ESCALADO PELO PESO da corda** (W-Weston), senão ele deixa
+        // de guardar e passa a LIMITAR. O aperto normal de um guincho — os 4,1–4,5
+        // sub-passos de recolhimento que o `PULLEY_CORRECTION_LAG` mediu — foi medido
+        // numa corda de peso `1`; num orçamento PESADO a tensão que segura a carga é
+        // `λ ∝ 1/w` sobre uma massa efetiva `k ∝ w²`, logo o aperto de regime cresce
+        // **linearmente com `w`**, enquanto `lag·rate·dt` não sabe nada de peso.
+        //
+        // MEDIDO (`measure_weston::measure_the_driven_hoist_rate`, pontas presas): a
+        // sensibilidade `ΔL/Δaltura` sai EXATA em todo peso (2,005 · 3,996 · 7,971 ·
+        // 15,848 para 1 · 2 · 4 · 8) — a lei estava certa —, e ainda assim a taxa
+        // içada caía a **79% no peso 4 e 38% no peso 8**: era o teto cortando o ponto
+        // de operação normal. *Um guarda que clipa o regime virou um limite.*
+        //
+        // ⚠️ **O bug é PRÉ-EXISTENTE e latente:** `weight_max` já era `> 1` num tambor
+        // diferencial do W4, e nenhuma cena shipada dirigia um — esta wave é a
+        // primeira a encostar nele. Com `weight_max == 1.0` (toda corda que já
+        // existia) `x * 1.0 == x` é exato ⇒ **byte-idêntico**.
         let cap = if p.motor_rate == 0.0 {
             f32::INFINITY
         } else {
-            lag * p.motor_rate.abs() * dt
+            lag * route.weight_max * p.motor_rate.abs() * dt
         };
         let c = route.length - (p.total_length - reeled);
         if c <= 0.0 {

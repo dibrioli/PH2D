@@ -5,11 +5,13 @@
 //! moram em `ph2d-panel-inspector/tests/seam_wheel.rs`; aqui mora o que
 //! acontece com o COMPONENTE.
 
+use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
 use ph2d_ecs::{Name, SimWorld, Transform, stable_name_id};
 use ph2d_editor::WheelFieldEdit;
-use ph2d_physics_ecs::{JointKind, PhysicsJoint, PulleyWheel, WrapSide};
+use ph2d_physics_ecs::{JointKind, PhysicsJoint, PulleyWheel, WestonAxle, WrapSide};
 
-use super::inspector_joint_wheel::{build_wheel_info, wheel_with_edit};
+use super::inspector_joint_tests::registry;
+use super::inspector_joint_wheel::{apply_wheel_edit, build_wheel_info, wheel_with_edit};
 
 fn wheel(order: u16) -> PulleyWheel {
     PulleyWheel {
@@ -221,4 +223,115 @@ fn the_axle_threshold_goes_through_the_same_clamp() {
         Some(PulleyWheel::DEFAULT_BREAK_FORCE),
         "NaN nunca compara verdadeiro: seria um eixo indestrutível com a caixa marcada"
     );
+}
+
+/// **O chip de WESTON anexa e desanexa o MARCADOR — e re-abre o `L0`.**
+///
+/// ⚠️ **É o único toggle desta seção que devolve `true` sempre**, e a razão é
+/// estrutural: armar a Weston ACRESCENTA um nó à rota (o contato de retorno) e re-pesa
+/// a corda, então o comprimento derivado tem de ser re-semeado — e o `route_differs`,
+/// que compara campos da `PulleyWheel`, é **cego** a um componente ao lado dela.
+///
+/// ⚠️ Mutação: rotear a Weston pelo funil de campo (o `wheel_with_edit`) não escreve
+/// componente nenhum e devolve `false` — o chip fica marcado na tela e a máquina não
+/// muda, que é a forma exata de um controle morto.
+#[test]
+fn the_weston_chip_attaches_the_marker_and_reopens_the_length() {
+    let mut sim = SimWorld::default();
+    let reg = registry();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new("Sheave"),
+            PulleyWheel {
+                rope: stable_name_id("Rope"),
+                radius: 0.5,
+                radius_out: 0.375,
+                ..Default::default()
+            },
+            Transform::default(),
+        ))
+        .id();
+    let bits = e.to_bits();
+    let apply = |sim: &mut SimWorld, on: bool| -> bool {
+        let queue = EditorCommandQueue::default();
+        let changed = apply_wheel_edit(sim, bits, WheelFieldEdit::Weston(on), &queue, &reg);
+        apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commands apply");
+        changed
+    };
+
+    assert!(
+        sim.world().get::<WestonAxle>(e).is_none(),
+        "uma roldana nasce TAMBOR — a talha é um gesto"
+    );
+    assert!(apply(&mut sim, true), "armar a Weston muda a ROTA");
+    assert!(
+        sim.world().get::<WestonAxle>(e).is_some(),
+        "o marcador anexou"
+    );
+    assert!(apply(&mut sim, false), "desarmar também muda a rota");
+    assert!(
+        sim.world().get::<WestonAxle>(e).is_none(),
+        "e o arquivo não carrega um marcador desligado"
+    );
+}
+
+/// **O funil de campo RECUSA a Weston** — ela não mora em campo nenhum.
+///
+/// Devolver `Some(next)` inalterado ali faria a edição parecer aplicada e o
+/// `apply_wheel_edit` enfileirar uma escrita que não muda nada.
+#[test]
+fn the_field_funnel_refuses_the_weston_because_it_is_a_marker() {
+    let w = PulleyWheel {
+        radius: 0.5,
+        radius_out: 0.375,
+        ..Default::default()
+    };
+    assert!(wheel_with_edit(w, WheelFieldEdit::Weston(true)).is_none());
+    assert!(wheel_with_edit(w, WheelFieldEdit::Weston(false)).is_none());
+}
+
+/// **O readout `Gear` sai da porta do MOTOR**, e ele muda de lei com o chip.
+///
+/// `R/r` num tambor (0,5/0,375 = 1,333) e `R/(R−r)` numa Weston (0,5/0,125 = 4).
+/// ⚠️ Uma conta escrita no painel mostraria um número e o solver usaria outro — o
+/// defeito exato do `ratio` DIGITADO que o W4 aposentou.
+#[test]
+fn the_gear_readout_changes_law_with_the_chip() {
+    let mut sim = SimWorld::default();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new("Sheave"),
+            PulleyWheel {
+                rope: stable_name_id("Rope"),
+                radius: 0.5,
+                radius_out: 0.375,
+                ..Default::default()
+            },
+            Transform::default(),
+        ))
+        .id();
+    let bits = e.to_bits();
+    let drum = build_wheel_info(&mut sim, bits, false, false).expect("tem seção");
+    assert!(!drum.weston);
+    assert!(
+        (drum.gear - 0.5 / 0.375).abs() < 1.0e-6,
+        "o tambor compra R/r; deu {}",
+        drum.gear
+    );
+    sim.world_mut().entity_mut(e).insert(WestonAxle);
+    let weston = build_wheel_info(&mut sim, bits, false, false).expect("tem seção");
+    assert!(weston.weston);
+    assert!(
+        (weston.gear - 4.0).abs() < 1.0e-6,
+        "a Weston compra R/(R−r); deu {}",
+        weston.gear
+    );
+    // E sem segundo diâmetro não há engrenagem nenhuma a mostrar.
+    if let Some(mut pw) = sim.world_mut().get_mut::<PulleyWheel>(e) {
+        pw.radius_out = 0.0;
+    }
+    let plain = build_wheel_info(&mut sim, bits, false, false).expect("tem seção");
+    assert_eq!(plain.gear, 1.0);
 }

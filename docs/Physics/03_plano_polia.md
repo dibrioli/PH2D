@@ -888,43 +888,21 @@ CTRL o arrasto é livre; na roldana do CENÁRIO o ímã não abre.
 
 ### Aberto no W5, nomeado
 
-- **A Weston não é expressável** hoje — **CONFIRMADO por medição** (2026-07-29,
-  `measure_weston`), e é topologia, não um número que falta.
+- ~~**A Weston não é expressável**~~ — **CONSTRUÍDA (W-Weston, 2026-07-29). E a nota
+  que este item carregava estava ERRADA na metade que decidia o custo.**
 
-  ⚠️ **A nota foi tratada como hipótese** — esta linha viu quatro parecidas
-  dissolverem —, e ela **sobreviveu**. As duas peças existem e montá-las juntas
-  **não** dá uma Weston: numa Weston a corrente toca o tambor composto **DUAS vezes
-  com a carga NO MEIO** (grande → cadernal móvel → pequeno), e o modelo de
-  `radius_out` põe os dois contatos **ADJACENTES** (entra num diâmetro e sai no outro
-  **no mesmo nó**). Duas roldanas concêntricas são **geometricamente recusadas** pela
-  rota (`|C₂−C₁| > |s₂r₂ − s₁r₁|`, §W4).
+  A nota dizia: *"é topologia, e pediria uma SEGUNDA restrição por corda"*. A primeira
+  metade era verdade — é topologia — e a segunda **não**: eliminar a rotação do eixo
+  entre os DOIS contatos deixa **uma** restrição escalar, e ela é um orçamento
+  **PESADO**, exatamente o tipo que a rota já soma. O peso é `R/(R−r)`, e com uma
+  cadernal móvel abraçada entre os contatos a vantagem é `2R/(R−r)`.
 
-  **O que a medição AFIRMA:** o `gear` de fato **pesa a corda** — a rota de um tambor
-  `R = 0,35` vai de 8,185 m com `r = R` a 12,994 m com `r = 0,15`, e a engrenagem na
-  ponta acompanha `R/r` **exatamente** (1,0000 · 1,1667 · 1,4000 · 2,3333). O
-  mecanismo diferencial está certo; o que falta é a **ORDEM da rota**.
+  ⚠️ **E a objeção GEOMÉTRICA também caiu:** *"duas roldanas concêntricas são
+  recusadas pela rota"* vale para pares **CONSECUTIVOS**, e num par de Weston eles
+  nunca são consecutivos — a cadernal está no meio. A condição `|C₂−C₁| > |s₂r₂ −
+  s₁r₁|` só é feita para pares consecutivos, então ela nunca é perguntada sobre o par.
 
-  ⚠️ **A tabela de VANTAGEM foi REMOVIDA em vez de shipada.** Montei as duas peças
-  juntas (tambor composto no cenário · cadernal móvel na carga · ponta B morta na
-  lança) e o rig **não assenta**: a deriva da carga em 2 s contra o esforço saiu
-  **não-monotônica e toda positiva** (2,03 · 1,90 · 4,16 · −0,03 · 3,90 · 2,98 ·
-  2,19 m de 0,01 a 8 kg) — balística, não quase-estática. *Um arranjo que não
-  descansa não tem vantagem mecânica a medir, e publicar uma coluna tirada dele seria
-  um número com casas decimais sobre nada.*
-
-  ⚠️ **E antes disso a busca binária MENTIU:** ela imprimiu *"controle: esforço
-  0,0100 kg, vantagem 199,99"*, e 0,01 é o **piso** dela — a carga nunca desceu, e a
-  coluna era o número que uma busca colapsada devolve. *Uma busca só significa algo
-  depois de a função medida ter sido vista cruzando o zero.* Quem a derrubou foi o
-  diagnóstico da deriva crua, que a 1ª versão da sonda tinha pulado.
-
-  **O desenho, se o Enio o mandar** (não construído): a rota deixa de ser uma
-  sequência de roldanas DISTINTAS e passa a admitir o mesmo eixo **duas vezes**, com
-  os dois contatos em diâmetros diferentes e nós entre eles. Isso é **uma segunda
-  restrição por corda** (o laço fechado não tem duas pontas), então mexe no
-  `PulleyDesc`, no `route`, no ledger de carga e provavelmente no
-  `PROJECT_SCHEMA` — wave própria, com aceitação própria, e **não** afinação de um
-  número existente.
+  Detalhe da wave na §11 abaixo.
 - **O salto balístico do contrapeso comum** é física honesta e fica **na tela**. A
   mensagem da cena o nomeia, para o artista não o ler como defeito.
 
@@ -1283,3 +1261,168 @@ tique e reintroduz o atraso do sub-passo (0,0227 m).
   árvore verificada por `git diff --stat` vazio. *Um backup de mutação vale o que
   vale a árvore de onde foi tirado; confira-a antes, e confira o `git diff` depois
   de restaurar.*
+
+## 11. W-Weston — a talha DIFERENCIAL (2026-07-29, cena `=64`)
+
+> **Ordem do Enio:** *"Weston"*. Wave própria, aceitação própria, como este plano
+> pedia — só que ela custou **muito menos** do que a nota previa, porque a nota
+> estava errada sobre o custo.
+
+### A derivação, e a nota que ela derrubou
+
+Um contato **ENGATADO** (a corda não escorrega — um dente de corrente, uma canaleta
+que morde) transfere material de um segmento para o outro na taxa `s·ρ·θ̇`. Com `S₀`
+o trecho antes do 1º contato, `S₁` o que os dois contatos **ABRAÇAM** e `S₂` o de
+depois:
+
+```text
+dS₀ = −s₁ρ₁ dθ ,  dS₁ = (s₁ρ₁ − s₂ρ₂) dθ ,  dS₂ = +s₂ρ₂ dθ
+```
+
+O `θ` é **UM** (os dois contatos são o mesmo eixo), então eliminá-lo entre as duas
+primeiras dá **uma** restrição escalar — e ela é um orçamento pesado:
+
+```text
+S₀ + [s₁ρ₁/(s₁ρ₁ − s₂ρ₂)] · S₁ = L₀        ⇒ com s₁ = s₂:  S₀ + [R/(R−r)]·S₁ = L₀
+```
+
+Com uma cadernal MÓVEL dentro de `S₁` os dois ramos dela carregam esse peso, logo a
+vantagem é **`2R/(R−r)`**. ⚠️ **`S₂` recebe peso ZERO, e isso é a corda MORTA:** três
+segmentos não se dobram em um orçamento (eliminar um `θ` entre TRÊS equações deixa
+duas restrições, e uma combinação linear delas não impõe as duas), então o modelo
+segura a máquina que existe — numa Weston o ramo depois do retorno é o lado SOLTO da
+alça de mão, e ele pende sem carregar nada. Peso zero é isso dito por **aritmética**:
+`0 × qualquer coisa` mantém tudo a jusante solto sem um `if` para o próximo nó
+esquecer. E ele dá de graça a força de um **enrolamento terminal** — o Jacobiano do 2º
+contato vira `u_entra·w − u_sai·0`, ou seja o eixo sente só o puxão que CHEGA.
+
+**Duas afirmações do plano corrigidas** (as duas estavam no item aberto do W5):
+
+| a nota dizia | a medição/derivação diz |
+|---|---|
+| *"pediria uma SEGUNDA restrição por corda"* | **uma**, e ela é um orçamento pesado |
+| *"concêntricas são geometricamente recusadas"* | só para pares **CONSECUTIVOS**, e um par de Weston não é |
+
+### MEDIDO: a vantagem, e de que circunferências ela sai
+
+`tests/measure_weston.rs`, contrapeso de 1 kg, `R = 0,5`, bracket de ±20% em cada
+linha (previsão, **nunca** bisseção — uma busca binária sobre este sistema já mentiu
+nesta linha):
+
+| peso `R/(R−r)` | `r` de retorno | previsto `2R/(R−r)` | −20% | +20% |
+|---|---|---|---|---|
+| 2 | 0,2500 | **4** | 3,20 kg sobe | 4,80 kg desce |
+| 4 | 0,3750 | **8** | 6,40 kg sobe | 9,60 kg desce |
+| 8 | 0,4375 | **16** | 12,80 kg sobe | 19,20 kg desce |
+| 16 | 0,4688 | **32** | 25,60 kg sobe | 38,40 kg desce |
+
+⚠️ **A coluna do `r` é a razão de a máquina existir.** Vantagem 32 sai de duas
+circunferências de 0,500 e 0,469 — quase do mesmo tamanho. O tambor ADJACENTE do W4
+chega ao mesmo 32 com `r_saída = 0,031`, um tambor de espessura de fio de cabelo. É a
+*diferença* de dois raios gordos que é pequena.
+
+**Oráculo INDEPENDENTE:** o próprio tambor adjacente com `r_saída = R − r` produz o
+MESMO orçamento por um caminho de código que **já shipava**; no equilíbrio previsto os
+dois ficam quase parados (0,0021 contra −0,031 m/s no peso 2; 0,00025 contra −0,022 no
+peso 16 — o resíduo é a geometria dos enlaces, que não é exatamente 180°).
+
+### ⛔ NÃO há teto, e a medição é que decidiu
+
+A mesma sonda varreu o peso até **131 072** (`r = 0,499996`) procurando o número que
+um teto pudesse citar, e **não existe um**: nada explode, nada vira `NaN`, nada oscila
+(o `axle_pair` já garante denominador estritamente positivo). O que acontece é que a
+carga anda `1/peso` do que o esforço anda, e a partir de ~2 048 o movimento cai abaixo
+da resolução de `f32` em `C = Σ w·l − L₀` — as duas colunas do bracket param de
+discordar e a máquina deixa de ser dirigível.
+
+| peso | `L₀` (m) | −20% | +20% |
+|---|---|---|---|
+| 32 | 308,7 | +0,0149 | −0,0149 |
+| 512 | 4 907,6 | +0,0004 | −0,0014 |
+| 2 048 | 19 624,0 | −0,0003 | −0,0008 |
+| 131 072 | 1 255 808,4 | −0,0005 | −0,0005 |
+
+**Isso é o que o DESENHO diz**, não um modo de falha: dois diâmetros a 6 µm um do
+outro são um diferencial que não se vê mover. Capar o peso seria capar o desenho — o
+§0 na forma exata (*nunca deixe o fallback definir o produto*) —, e o remédio é o
+**readout `Gear` na §13**, não um número que contradiz as duas circunferências.
+
+### DOIS bugs achados por gates desta wave, os dois PRÉ-EXISTENTES
+
+**(1) O teto do guincho não sabia de PESO.** O `PULLEY_CORRECTION_LAG` mediu o aperto
+normal — 4,1–4,5 sub-passos de recolhimento — numa corda de peso `1`. Num orçamento
+pesado a tensão que segura a carga é `λ ∝ 1/w` sobre uma massa efetiva `k ∝ w²`, logo
+o aperto de regime cresce **linearmente com `w`**, enquanto `lag·rate·dt` não sabe nada
+de peso. MEDIDO: a sensibilidade `ΔL/Δaltura` sai EXATA em todo peso (2,005 · 3,996 ·
+7,971 · 15,848 para 1 · 2 · 4 · 8) — a lei estava certa — e ainda assim a taxa içada
+caía a **79% no peso 4 e 38% no peso 8**. *Um guarda que clipa o regime virou um
+limite.* Fix: `cap = lag · route.weight_max · |rate| · dt`. O bug é latente desde o
+W4 (`weight_max > 1` já existia num tambor diferencial e nenhuma cena shipada dirigia
+um); com `weight_max == 1.0` é **byte-idêntico**.
+
+**(2) Um rewind replayava SEM AS CORDAS.** A tabela de polias vive DENTRO do
+`PhysicsWorld`, e o `rebuild_from_rest` o substituía por um novo sem reinstalá-la — com
+o laço de replay no MESMO chamado. Medido: depois de um Reset a arena voltava
+**VAZIA**, então um scrub para um tique intermediário replayava sem corda nenhuma e a
+carga caía livre. ⚠️ **Ficou calado porque `target == 0` replaya ZERO passos** — o
+Reset, o caso comum e o único que os smokes fazem. O doc do `respawn_joints_from_rest`
+já dizia a frase certa (*"um replay sem os joints é outra simulação"*) e as polias
+tinham ficado FORA dela. Fix: a tabela sai do mundo velho antes de ele morrer, com os
+handles de eixo MONTADO remapeados (um handle órfão faria a corda puxar coisa nenhuma,
+em silêncio).
+
+### A UI: um chip e um readout
+
+**`Differential: Drum | Weston`** na §13, **oferecido só quando há o que qualificar**
+(`radius_out > 0` **e** `< radius`). A row não CRIA nada — ela qualifica um diferencial
+que já existe —, então gateá-la é a lei das rows de área gateadas em `Sensor`. E o
+retorno tem de ser pelo diâmetro MENOR: com `r = R` a máquina está **travada** e com
+`r > R` ela **inverte**, e nenhuma das duas é um orçamento que `λ ≥ 0` saiba segurar.
+
+**Readout `Gear`** (`R/r` num tambor, `R/(R−r)` numa Weston) — sai da porta do MOTOR
+(`rope_route::weston_gear`), nunca de uma conta escrita no painel: um readout com
+aritmética própria mostraria um número e o solver usaria outro, que é o defeito exato
+do `ratio` DIGITADO que o W4 aposentou. Ele existe porque a medição **recusou um
+teto**.
+
+### Contabilidade
+
+**Marcador `WestonAxle`** (presença É o booleano — o idioma do `Ccd`/`LockRotation`),
+registro `ph2d-ecs` **22→23**, **`PROJECT_SCHEMA` fica 45** (9ª vez pela mesma razão:
+campo novo é postcard posicional, e um bump **recusa todo projeto já salvo**). `c9`
+intocado pela wave em si.
+
+**Gates:** 6 kernel (`ph2d-physics/tests/pulley_weston.rs`) · 6 ECS
+(`weston_axle.rs`) · 3 painel (`seam_wheel.rs`) · 3 shell
+(`inspector_joint_wheel_tests.rs`) · 2 cena. **10 mutações, 10 sangram.**
+
+⚠️ **Duas lições de FIXTURE, as duas do controle sendo atropelado pelo experimento —
+a 5ª e a 6ª vez nesta linha:**
+- o CONTROLE (vantagem 2) arremessava o contrapeso de 1 kg contra a própria roldana em
+  menos de 1 s e media **+3,05 m subindo** onde tinha de descer ⇒ o eixo subiu para
+  30 m. A cura é dar espaço, **nunca** encurtar a janela de um braço só (dois braços
+  com janelas diferentes é a assimetria que esconde o próximo defeito);
+- o gate do MOTOR media com um contrapeso na ponta de esforço e leu **2,05×** onde
+  tinha de ler 4 — metade do movimento era o contrapeso ganhando da carga. Presas as
+  duas pontas, o único lugar em que a corda recolhida cabe é o trecho abraçado, e o
+  que se mede é CINEMÁTICA (que é o que a pergunta é);
+- e a mutação do `tie_axle_pairs` **SOBREVIVEU** à primeira rodada porque na montagem
+  natural a poligonal dos centros já resolve os dois contatos para o mesmo lado ⇒ o
+  amarre era redundante *naquela fixture*. Com a ponta MORTA do mesmo lado do esforço a
+  geometria quer lados opostos, e a mutação sangra (1 contra −1).
+
+**Cena `=64`:** dois rigs com as **MESMAS duas circunferências** (0,500 e 0,375), a
+mesma carga (5 kg) e o mesmo contrapeso (1 kg); a ÚNICA diferença é o chip. Medido: a
+carga da Weston **sobe 0,81 m** em 2 s e o contrapeso dela **desce 6,85 m** (razão
+8,50 — os 8,00 valem para um passo infinitesimal, e em 6,8 m de curso a geometria da
+rota muda); a carga do tambor **cai 0,75 m** até o chão. ⚠️ **O contrapeso nasce a
+8,0 e não a 6,0** porque a 6,0 ele **encostava no chão** aos ~1,9 s e o pouso
+contaminava a razão (8,65).
+
+**Aberto:** o `axle_pair` recusa **três ou mais** contatos no mesmo eixo (a eliminação
+deixa de dar uma restrição) — dois diferenciais em série na mesma corda é topologia
+própria, não um número · o eixo composto é **cenário** nesta v1 (montá-lo num corpo
+que se move pede o Jacobiano do 2º contato no ledger, hoje um `max` entre os dois
+contatos em vez da soma vetorial) · o **`radius_out` e o marcador são duas formas de
+dizer "eixo composto"**, e a rota escolhe o marcador — a row impede a ambiguidade, mas
+um dia isto quer ser um enum.

@@ -6,7 +6,7 @@
 //! non-advancing timeline, and neither belongs in the middle of the stepping path.
 
 use ph2d_ecs::SimWorld;
-use ph2d_physics::PhysicsWorld;
+use ph2d_physics::{PhysicsWorld, RigidBodyHandle};
 
 use super::{PhysicsBridge, SceneAtTick};
 
@@ -107,13 +107,49 @@ impl PhysicsBridge {
     /// missed.)
     pub(super) fn rebuild_from_rest(&mut self) {
         self.ring.clear();
+        // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
+        // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
+        // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay
+        // roda no MESMO chamado, ou seja **um scrub para trás replayava sem as
+        // cordas**: a carga caía livre por `target` passos e pousava onde a gravidade
+        // a deixasse, e as polias voltavam um dispatch depois.
+        //
+        // O doc do `respawn_joints_from_rest` já dizia a frase certa — *"um replay sem
+        // os joints é outra simulação"* — e as polias tinham ficado FORA dela. Ficou
+        // calado porque `target == 0` (o Reset, o caso comum e o dos smokes) replaya
+        // **zero** passos: o vão só aparece num scrub para um tique intermediário fora
+        // da janela do ring.
+        let mut table = Vec::new();
+        let mut arena = Vec::new();
+        self.world.swap_pulleys(&mut table, &mut arena);
         self.world = PhysicsWorld::new();
         self.settings.apply_to(&mut self.world);
         // BTreeMap → entity order, so the fresh handles are assigned in the
         // same deterministic order as the original spawn (HR-5).
+        //
+        // ⚠️ Os pares `(velho, novo)` são colhidos aqui porque a arena de roldanas
+        // carrega handles do mundo VELHO num eixo MONTADO (a cadernal móvel do W3), e
+        // um handle órfão faria a corda puxar coisa nenhuma — em silêncio.
+        let mut remap: Vec<(RigidBodyHandle, RigidBodyHandle)> = Vec::with_capacity(4);
         for b in self.bodies.values_mut() {
+            let old = b.handle;
             b.handle = self.world.spawn_body(b.rest);
+            remap.push((old, b.handle));
         }
+        for w in &mut arena {
+            if let Some(old) = w.body {
+                w.body = remap.iter().find(|(o, _)| *o == old).map(|(_, n)| *n);
+            }
+        }
+        for p in &mut table {
+            if let Some((_, n)) = remap.iter().find(|(o, _)| *o == p.body_a) {
+                p.body_a = *n;
+            }
+            if let Some((_, n)) = remap.iter().find(|(o, _)| *o == p.body_b) {
+                p.body_b = *n;
+            }
+        }
+        self.world.swap_pulleys(&mut table, &mut arena);
         // Joints come back in the SAME call: the rewind replays its owed steps
         // immediately, and a replay missing the joints is a different
         // simulation — the chain would fall apart and re-assemble a frame later.

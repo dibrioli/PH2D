@@ -22,6 +22,10 @@ use ph2d_editor_core::screens::hero::InspectorWheelInfo;
 /// Os chips do lado — a ordem de `WrapSide::ALL`, que é a ordem dos tags.
 const WRAP_LABELS: [&str; 3] = ["Auto", "Over", "Under"];
 
+/// Os chips do eixo de dois diâmetros (W-Weston) — o tag é `u8::from(weston)`,
+/// então a ordem aqui É a do booleano.
+const DIFF_LABELS: [&str; 2] = ["Drum", "Weston"];
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_wheel_section(
     scene: &mut VectorScene,
@@ -87,6 +91,45 @@ pub(crate) fn paint_wheel_section(
         "Out Radius (m)",
         ids::INSP_WHEEL_RADIUS_OUT,
     );
+    // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
+    // WESTON (W-Weston), e a diferença é onde o segundo contato fica: no mesmo nó
+    // (vantagem `R/r`) ou **abraçando** o resto da rota (vantagem `R/(R−r)`, e com
+    // uma cadernal no meio, `2R/(R−r)`).
+    //
+    // ⚠️ **Oferecido só com um segundo diâmetro**, ao contrário da row acima: esta
+    // não CRIA nada — ela qualifica um diferencial que já existe. O marcador sozinho
+    // é inerte (não há o que retornar por), e a rota o recusa; uma row que arma o
+    // nada é o botão morto que esta linha varre a cada wave. É a mesma lei das rows
+    // de área gateadas em `Sensor`, e não no kind.
+    //
+    // ⚠️ **E o Weston pede o retorno pelo diâmetro MENOR.** Com `r ≥ R` a máquina
+    // está travada ou invertida, e nenhuma das duas é um orçamento que `λ ≥ 0` saiba
+    // segurar — então o chip não é oferecido, em vez de armar um par que a rota vai
+    // recusar em silêncio.
+    if info.radius_out > 0.0 {
+        if info.radius_out < info.radius {
+            yy = seg_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                "Differential",
+                ids::INSP_WHEEL_DIFF_GROUP,
+                &ids::INSP_WHEEL_DIFF,
+                &DIFF_LABELS,
+                u8::from(info.weston),
+            );
+        }
+        // **O que as duas circunferências compraram.** Readout e não knob: o número
+        // CAI dos dois raios (a lei do W4), e o artista precisa VÊ-lo porque a
+        // medição recusou um teto — dois diâmetros quase iguais dão uma vantagem
+        // enorme e um movimento invisível, e isso tem de ser legível antes do smoke.
+        yy = paint_gear_readout(scene, text_system, theme, x, w, yy, info);
+    }
     // **Order** — a rota é uma SEQUÊNCIA, e duas roldanas trocadas descrevem
     // outra corda. Sem esta row a única forma de reordenar seria apagar e
     // recriar; empate é resolvido pelo nome, então um número repetido é inerte,
@@ -314,6 +357,49 @@ fn paint_mount_row(
 /// ⚠️ **Sempre oferecido, inclusive na roldana ÓRFÃ** — e é ali que ele mais serve:
 /// gatear em `bound` esconderia o botão exatamente no estado que ele existe para
 /// consertar.
+/// **O quociente que as duas circunferências produzem** — readout, nunca knob.
+///
+/// Não há id nem hit: ele não é editável, e um readout que despacha mente (a lei do
+/// *dimmed que despacha* da §12). Quem edita são os dois raios e o chip acima.
+fn paint_gear_readout(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorWheelInfo,
+) -> f32 {
+    let h = ROW_H_PX;
+    let font = TypeToken::Sm.px();
+    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: same label column as the Rope row
+    let text_y = y + (h - font) * 0.5;
+    paint_text(
+        text_system,
+        scene,
+        "Gear",
+        x,
+        text_y,
+        font,
+        label_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    // ⚠️ **O número vem da shell, que o tira da porta do MOTOR.** Uma conta aqui
+    // seria a segunda resposta a *"o que estes dois raios compram?"*.
+    let text = format!("{:.2} : 1", info.gear);
+    paint_text(
+        text_system,
+        scene,
+        &text,
+        x + label_w,
+        text_y,
+        font,
+        (w - label_w).max(0.0),
+        resolve(ColorToken::Text1, theme),
+    );
+    y + h
+}
+
 #[allow(clippy::too_many_arguments)]
 fn paint_rope_row(
     scene: &mut VectorScene,

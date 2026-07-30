@@ -222,6 +222,17 @@ pub const INSP_WHEEL_UNMOUNT: NodeId = hash_node_id("insp_wheel_unmount");
 /// (`PhysicsBridge::rope_at_world`) — o mesmo traço que o overlay desenha.
 pub const INSP_WHEEL_ROPE_PICK: NodeId = hash_node_id("insp_wheel_rope_pick");
 
+/// **O modo do eixo de DOIS diâmetros** (W-Weston) — `Drum` ou `Weston`.
+///
+/// Oferecido só quando há um segundo diâmetro: o marcador sozinho não faz uma
+/// talha (não há o que retornar por), e uma row que arma o nada é o botão morto
+/// que esta linha varre a cada wave.
+pub const INSP_WHEEL_DIFF_GROUP: NodeId = hash_node_id("insp_wheel_diff_group");
+pub const INSP_WHEEL_DIFF: [NodeId; 2] = [
+    hash_node_id("insp_wheel_diff_drum"),
+    hash_node_id("insp_wheel_diff_weston"),
+];
+
 pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
 pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
     hash_node_id("insp_wheel_wrap_auto"),

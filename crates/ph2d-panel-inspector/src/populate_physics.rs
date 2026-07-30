@@ -121,6 +121,10 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
 pub(super) fn populate_wheel(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_WHEEL_WRAP);
     register_button_ids(store, &ids::INSP_WHEEL_BREAK);
+    // W-Weston. Registrado SEM condição, ao contrário de a row ser pintada: o
+    // `populate` roda uma vez no boot e não sabe que roldana está selecionada, e um
+    // id não-registrado é o chip morto sob o mouse que o `wiring_parity` pega.
+    register_button_ids(store, &ids::INSP_WHEEL_DIFF);
     for (id, value, min, max, step, rate) in [
         // Metros. O seed é o `PulleyWheel::DEFAULT_RADIUS`.
         (ids::INSP_WHEEL_RADIUS, 0.25, 0.0, 100.0, 0.01, 0.01), // LITERAL-PX-OK: meters

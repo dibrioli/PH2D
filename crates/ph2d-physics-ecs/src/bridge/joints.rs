@@ -230,6 +230,7 @@ impl PhysicsBridge {
         self.pulley_records.clear();
         self.harvest_rope_wheels(world);
         self.wheel_entities.clear();
+        self.wheel_wraps.clear();
         self.wheel_spin.clear();
 
         for (e, joint, _local) in q.iter(world) {
@@ -364,6 +365,10 @@ impl PhysicsBridge {
                         motor_rate += row.reel_rate;
                         self.pulley_wheels_to_install.push(row.wheel);
                         self.wheel_entities.push(row.entity);
+                        // ⚠️ O override de abraço anda pelo MESMO filtro da roda que
+                        // ele governa — ver o campo, e o defeito que o `zip` contra as
+                        // linhas cruas produzia depois da primeira ruptura.
+                        self.wheel_wraps.push(row.wrap);
                         // O ângulo que esta roda já tinha: a arena é reconstruída
                         // todo dispatch, então sem esta memória por ENTIDADE toda
                         // roldana voltaria a zero a cada frame.
@@ -380,9 +385,14 @@ impl PhysicsBridge {
                     // O que o artista escolheu vence o que o algoritmo achou — o
                     // escape manual que a lição do Flip exige ao lado de todo
                     // matcher automático.
-                    for (w, row) in wheels.iter_mut().zip(&self.rope_wheels[first..]) {
-                        w.side = super::rope::wrap_side(row.wrap, w.side, w.centre, wa, wb);
+                    for (w, &wrap) in wheels.iter_mut().zip(&self.wheel_wraps[start as usize..]) {
+                        w.side = super::rope::wrap_side(wrap, w.side, w.centre, wa, wb);
                     }
+                    // ⚠️ **E o par de EIXO é re-amarrado DEPOIS do override**: um
+                    // abraço autorado numa ponta do par vale para as duas (é um eixo,
+                    // um sentido), senão a máquina passaria a SOMAR os diâmetros em
+                    // vez de subtrair por causa de um chip clicado num dos contatos.
+                    rope_route::tie_axle_pairs(wheels);
                     // A rota que as roldanas de fato desenham — UMA derivação,
                     // servindo as DUAS metades abaixo. Ela é função do estado
                     // AUTORADO inteiro (âncoras de repouso, centros de repouso),

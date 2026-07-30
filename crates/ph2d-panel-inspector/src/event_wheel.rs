@@ -31,9 +31,7 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         WidgetEvent::Click(id) if id == ids::INSP_WHEEL_UNMOUNT => Some(WheelFieldEdit::Unmount),
         // W1: o eyedropper da row Rope ARMA o pick da corda. O alvo é a ROTA
         // desenhada — uma corda não tem sprite, então o gesto do corpo não serve.
-        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_ROPE_PICK => {
-            Some(WheelFieldEdit::PickRope)
-        }
+        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_ROPE_PICK => Some(WheelFieldEdit::PickRope),
         WidgetEvent::Click(id) => ids::INSP_WHEEL_WRAP
             .iter()
             .position(|&o| o == id)
@@ -43,6 +41,14 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| WheelFieldEdit::BreakEnabled(i == 1))
+            })
+            // W-Weston: Drum | Weston. O tag é o índice, então a ordem dos chips É a
+            // do booleano — e a shell o roteia para o MARCADOR, não para um campo.
+            .or_else(|| {
+                ids::INSP_WHEEL_DIFF
+                    .iter()
+                    .position(|&o| o == id)
+                    .map(|i| WheelFieldEdit::Weston(i == 1))
             }),
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0);

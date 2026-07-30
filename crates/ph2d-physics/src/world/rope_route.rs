@@ -53,6 +53,16 @@
 //! (o mesmo motivo do `libm::sincosf` do W-AreaFrame). `f32::atan2` viria da libm
 //! da plataforma e este número alimenta o hash.
 
+/// **O EIXO COMPOSTO** — a lei de *dois contatos, uma rotação* (W-Weston).
+///
+/// Filho por path e `pub use`ado inteiro: a geometria pura fica aqui, a lei da
+/// máquina fica lá, e `rope_route::crossing_gear` segue sendo o caminho de todo
+/// consumidor.
+#[path = "rope_route_axle.rs"]
+mod axle;
+
+pub use axle::{axle_pair, crossing_gear, is_axle_return, tie_axle_pairs, weston_gear};
+
 /// Uma roldana na rota: onde ela está, que tamanho tem, e **de que lado a corda
 /// passa**.
 ///
@@ -115,6 +125,29 @@ pub struct RopeWheel {
     /// consumidores ([`Self::radius_out`] e [`Self::gear`]), em vez de uma
     /// geometria que diz uma coisa e uma engrenagem que diz outra.
     pub radius_out: Option<f32>,
+    /// **A que EIXO este contato pertence** — `0` é um eixo só dele, que é o que
+    /// toda roldana era até a Weston (W-Weston).
+    ///
+    /// Dois contatos que compartilham este número compartilham a **ROTAÇÃO**, e é
+    /// só isso que uma talha de Weston é: um eixo composto cuja corda sai por um
+    /// diâmetro, dá a volta no que vier no meio, e **volta pelo outro**. É a
+    /// diferença que a `radius_out` não consegue expressar — ali os dois contatos
+    /// são adjacentes (a corda troca de diâmetro no mesmo nó), aqui há nós ENTRE
+    /// eles, e o quociente que sai da eliminação da rotação é outro:
+    /// `R/(R−r)` em vez de `R/r` (ver [`crossing_gear`]).
+    ///
+    /// ⚠️ **Duas roldanas concêntricas seriam recusadas pela tangente — e um par
+    /// de Weston NÃO é recusado**, porque os dois contatos nunca são
+    /// CONSECUTIVOS: entre eles está a cadernal. A condição `|C₂−C₁| > |s₂r₂ −
+    /// s₁r₁|` só é feita para pares consecutivos, e é por isso que a nota antiga
+    /// do plano (*"concêntricas são geometricamente recusadas"*) valia para o
+    /// tambor adjacente e **não** para esta topologia.
+    ///
+    /// ⚠️ **Um par de Weston tem UM sentido de abraço**, não dois: é ele que faz o
+    /// diferencial SUBTRAIR em vez de somar (`R/(R−r)` contra `R/(R+r)`). O
+    /// [`resolve_sides`] copia o lado do primeiro contato para o segundo, então a
+    /// geometria não pode discordar da máquina.
+    pub axle: u64,
     /// `+1` = a corda vira à ESQUERDA aqui; `−1` = à direita.
     pub side: i8,
     /// **Quem esta roldana É, através das trocas de arena** — o `stable_name_id`
@@ -154,6 +187,7 @@ impl Default for RopeWheel {
             local: [0.0, 0.0],
             radius: 0.0,
             radius_out: None,
+            axle: 0,
             side: 1,
             id: 0,
             break_force: f32::INFINITY,
@@ -394,13 +428,17 @@ pub fn route(
     // **A engrenagem acumulada** (W4). A ponta A é a referência, então ela parte
     // de `1.0` e só se move ao ATRAVESSAR um tambor de dois raios.
     let mut weight = 1.0_f32;
-    for w in wheels {
+    for (i, w) in wheels.iter().enumerate() {
         let mut leg = tangent(prev_c, prev_r, prev_s, w.centre, w.radius, w.side)?;
         leg.weight = weight;
         out.push(leg);
         // Daqui para a frente a corda está do outro lado do eixo: ela sai
         // enrolando no raio de SAÍDA, e um metro dela passa a valer `gear` vezes.
-        weight *= w.gear();
+        //
+        // ⚠️ Pela porta única [`crossing_gear`], que sabe as TRÊS respostas (a
+        // roldana comum · o tambor adjacente · o par de Weston) — uma multiplicação
+        // escrita aqui teria de aprender a terceira e a quarta.
+        weight *= crossing_gear(wheels, i);
         prev_c = w.centre;
         prev_r = w.radius_out();
         prev_s = w.side;
@@ -481,7 +519,10 @@ pub fn resolve_sides(
     }
     for _ in 0..MAX_SIDE_PASSES {
         if route(anchor_a, anchor_b, wheels, scratch).is_none() {
-            return;
+            // Rota degenerada: fica-se com o chute. O `break` e não `return` porque
+            // a regra do EIXO é da máquina, não da geometria — ela vale igual sobre
+            // um chute que a tangente recusou.
+            break;
         }
         let mut changed = false;
         for i in 0..wheels.len() {
@@ -493,9 +534,10 @@ pub fn resolve_sides(
             }
         }
         if !changed {
-            return;
+            break;
         }
     }
+    tie_axle_pairs(wheels);
 }
 
 /// Quantas vezes o ponto fixo do lado pode reavaliar antes de aceitar o que tem.

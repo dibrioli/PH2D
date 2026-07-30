@@ -554,6 +554,29 @@ pub struct InspectorWheelInfo {
     /// mecânica `radius / radius_out`. O número não é digitado: ele CAI das duas
     /// circunferências, e as duas são desenhadas.
     pub radius_out: f32,
+    /// **Este eixo de dois diâmetros é uma talha de WESTON?** (W-Weston.)
+    ///
+    /// `false` é o **TAMBOR**: a corda troca de diâmetro no MESMO nó, e a vantagem
+    /// a jusante é `R/r`. `true` faz os dois contatos ABRAÇAREM o resto da rota —
+    /// a corda sai pelo grande, dá a volta no que houver no meio, e volta pelo
+    /// pequeno —, e o quociente passa a ser `R/(R−r)`.
+    ///
+    /// Só significa algo com [`Self::radius_out`] positivo, e é isso que a row
+    /// pergunta antes de se oferecer.
+    pub weston: bool,
+    /// **O que as duas circunferências COMPRARAM** — o quociente que o solver usa,
+    /// `R/r` num tambor e `R/(R−r)` numa Weston; `1` sem segundo diâmetro.
+    ///
+    /// ⚠️ **Vem da porta do MOTOR** (`rope_route::weston_gear` /
+    /// `RopeWheel::gear`), nunca de uma conta escrita no painel: um readout com
+    /// aritmética própria mostraria um número e o solver usaria outro, que é
+    /// exatamente o defeito do `ratio` DIGITADO que o W4 aposentou.
+    ///
+    /// Ele existe porque a medição do `crossing_gear` **recusou um teto**: a
+    /// máquina degrada para *não se move* em vez de explodir, e o remédio honesto
+    /// para dois diâmetros quase iguais é o artista VER que desenhou 512:1 — não um
+    /// cap que contradiz o desenho.
+    pub gear: f32,
     /// A posição ao longo da corda, **1-based** — 1º nó, 2º nó, …
     ///
     /// ⚠️ Sufixo `_ui` pela razão que o `limit_min_ui` da §12 dá por extenso: o
@@ -599,6 +622,17 @@ pub enum WheelFieldEdit {
     Radius(f32),
     /// O SEGUNDO diâmetro, metros (W4). `0` volta a roldana a ser comum.
     RadiusOut(f32),
+    /// **Este eixo de dois diâmetros é uma talha de WESTON?** (W-Weston.)
+    ///
+    /// Ao contrário dos irmãos, ele **não escreve na `PulleyWheel`** — a presença do
+    /// marcador `WestonAxle` É o booleano (sem bump de `PROJECT_SCHEMA`), então a
+    /// shell o roteia pela porta de anexar/desanexar em vez do funil de campo.
+    ///
+    /// ⚠️ **E ele MUDA A ROTA**, o que nenhum outro toggle desta seção faz: armá-lo
+    /// acrescenta um nó (o contato de retorno) e re-pesa a corda, então o `L0` tem de
+    /// ser re-derivado — e o `route_differs`, que compara campos da `PulleyWheel`,
+    /// **não consegue ver isso**.
+    Weston(bool),
     /// **1-based**, como a row mostra — ver [`InspectorWheelInfo::order_ui`].
     Order(u32),
     /// `0` Auto · `1` Over · `2` Under.

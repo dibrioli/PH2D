@@ -35,6 +35,14 @@ pub(super) struct RopeWheelRow {
     pub(super) rope: u64,
     /// A chave de ordenação dentro da corda.
     pub(super) key: (u16, u64),
+    /// **Este contato é a CAUDA da rota** — o retorno de um eixo de Weston, o
+    /// último nó que a corda toca (W-Weston).
+    ///
+    /// Entra na chave de ordenação ANTES do `order` autorado, então ele vai para o
+    /// fim da corda por construção. Um sentinela em `u16::MAX` faria o mesmo até o
+    /// dia em que alguém autorasse uma roldana ali — e então o desempate por nome
+    /// escolheria a rota em silêncio.
+    pub(super) tail: bool,
     /// A entidade — o que o desenho e as alças precisam para saber QUEM é.
     pub(super) entity: Entity,
     /// A roda como a rota a consome.
@@ -116,14 +124,21 @@ impl PhysicsBridge {
                     let centre = ph2d_physics::PhysicsWorld::world_from_local_at_pose(rest, local);
                     (b.handle, local, centre)
                 });
+            let name_id = world
+                .get::<Name>(we)
+                .map_or(0, |n| stable_name_id(n.as_str()));
+            // **A talha de WESTON (W-Weston):** este eixo é atravessado DUAS vezes,
+            // com o que houver no meio abraçado pelos dois contatos.
+            //
+            // ⚠️ **O marcador sozinho não faz um par** — sem segundo diâmetro não há
+            // o que retornar por, e o `radius_out` de um eixo comum é `0`. Perguntar
+            // as duas coisas aqui é o que impede uma roldana com o marcador e sem
+            // diâmetro de emitir um contato de raio zero na cauda da rota.
+            let weston = world.get::<crate::WestonAxle>(we).is_some() && wheel.radius_out > 0.0;
             self.rope_wheels.push(RopeWheelRow {
                 rope: wheel.rope,
-                key: (
-                    wheel.order,
-                    world
-                        .get::<Name>(we)
-                        .map_or(0, |n| stable_name_id(n.as_str())),
-                ),
+                key: (wheel.order, name_id),
+                tail: false,
                 entity: we,
                 wheel: RopeWheel {
                     // Sem montagem o `Transform` da roldana É o centro — ela é um
@@ -137,13 +152,20 @@ impl PhysicsBridge {
                     // conversão só — as duas pontas dizem a mesma coisa em
                     // vocabulários próprios (um número que a row edita · uma
                     // ausência que a rota entende).
-                    radius_out: (wheel.radius_out > 0.0).then_some(wheel.radius_out),
+                    //
+                    // ⚠️ **Numa WESTON o segundo diâmetro não é um `radius_out`, é o
+                    // OUTRO CONTATO** (a row abaixo): os dois contatos de um par são
+                    // cada um de raio único, e o que os torna um eixo composto é o
+                    // `axle` compartilhado. Deixar o `radius_out` aqui seria a mesma
+                    // máquina dita de duas formas, e a rota teria de escolher.
+                    radius_out: (!weston && wheel.radius_out > 0.0).then_some(wheel.radius_out),
+                    // Um par de Weston compartilha o EIXO — é ele que faz a rotação
+                    // ser UMA, e é dessa unicidade que o peso `R/(R−r)` sai.
+                    axle: if weston { name_id } else { 0 },
                     // A roldana é apontada pelo NOME dela, a mesma chave por que
                     // a corda aponta os corpos — bits de entidade mudam a cada
                     // undo, e o eixo partido migraria para a vizinha.
-                    id: world
-                        .get::<Name>(we)
-                        .map_or(0, |n| stable_name_id(n.as_str())),
+                    id: name_id,
                     break_force: if wheel.break_enabled {
                         wheel.break_force
                     } else {
@@ -159,10 +181,31 @@ impl PhysicsBridge {
                 // e `ω·0` já é zero. A aritmética responde sozinha.
                 reel_rate: wheel.motor_speed * wheel.radius,
             });
+            if weston {
+                // **O contato de RETORNO**, pelo diâmetro pequeno e no MESMO centro:
+                // duas circunferências concêntricas são o que um eixo composto É, e a
+                // rota as aceita porque os dois contatos nunca são consecutivos —
+                // entre eles está o que a corda abraça.
+                let mut ret = self.rope_wheels[self.rope_wheels.len() - 1];
+                ret.wheel.radius = wheel.radius_out;
+                // ⚠️ **O retorno NÃO recolhe.** Um eixo tem UMA rotação, logo um
+                // termo de recolhimento — o do contato de entrada, `ω·R`, que é
+                // exatamente o que um sarilho diferencial paga do lado do esforço.
+                // Somar o segundo contaria a mesma volta duas vezes.
+                ret.reel_rate = 0.0;
+                // A cauda da rota: é o último nó que a corda toca, porque é ali que
+                // ela **termina enrolada**. O que vier depois é o ramo SOLTO, e a
+                // rota lhe dá peso zero.
+                ret.tail = true;
+                self.rope_wheels.push(ret);
+            }
         }
         self.wheel_query = Some(wq);
+        // ⚠️ **A cauda entra na CHAVE, não num sentinela de `order`.** Pôr o retorno
+        // em `u16::MAX` empataria com uma roldana que o artista autorasse ali, e o
+        // desempate por nome escolheria a rota em silêncio; um campo diz o que ele é.
         self.rope_wheels
-            .sort_unstable_by_key(|r| (r.rope, r.key.0, r.key.1));
+            .sort_unstable_by_key(|r| (r.rope, r.tail, r.key.0, r.key.1));
     }
 }
 
@@ -230,6 +273,9 @@ pub fn pulley_rig(
         // Uma polia recém-montada nasce com roldanas COMUNS: o tambor
         // diferencial do W4 é um segundo gesto, como a cadernal móvel do W3.
         radius_out: None,
+        // …e com eixo PRÓPRIO: a talha de Weston do W-Weston é um terceiro gesto,
+        // e ela nem é expressável sem o segundo diâmetro que a linha acima recusa.
+        axle: 0,
         side: 1,
         id: 0,
         break_force: f32::INFINITY,
@@ -331,7 +377,8 @@ impl PhysicsBridge {
                 continue;
             };
             let start = r.desc.wheel_start as usize;
-            for i in start..start + r.desc.wheel_count as usize {
+            let count = r.desc.wheel_count as usize;
+            for i in start..start + count {
                 let (Some(w), Some(&e)) = (
                     self.world.pulley_wheels().get(i),
                     self.wheel_entities.get(i),
@@ -341,7 +388,21 @@ impl PhysicsBridge {
                 if w.radius <= 0.0 {
                     continue;
                 }
-                let d = speed * f32::from(w.side) / w.radius * dt;
+                // ⚠️ **Um eixo, UMA rotação** (W-Weston): o contato de RETORNO de uma
+                // Weston compartilha a entidade com o de entrada, então integrá-lo
+                // também avançaria o mesmo ângulo duas vezes — e com o raio errado, o
+                // que desenharia dois anéis concêntricos girando em velocidades
+                // diferentes. Ele COPIA o ângulo que a entrada acabou de escrever (a
+                // arena põe a cauda depois, então a ordem já é essa), e é isso que
+                // mantém os dois anéis rígidos.
+                let d = if rope_route::is_axle_return(
+                    &self.world.pulley_wheels()[start..start + count],
+                    i - start,
+                ) {
+                    0.0
+                } else {
+                    speed * f32::from(w.side) / w.radius * dt
+                };
                 let a = self.wheel_spin_by_entity.entry(e).or_insert(0.0);
                 // Enrolado em ±π: um ângulo que cresce sem parar perde precisão de
                 // `f32` num take longo, e o desenho só quer a direção do raio-guia.

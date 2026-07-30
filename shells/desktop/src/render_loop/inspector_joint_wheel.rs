@@ -107,6 +107,12 @@ pub(crate) fn build_wheel_info(
 ) -> Option<InspectorWheelInfo> {
     let entity = Entity::from_bits(entity_bits);
     let wheel = *sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity)?;
+    // A presença do marcador É o booleano (W-Weston) — lida aqui, antes de as queries
+    // abaixo tomarem o mundo emprestado.
+    let weston = sim
+        .world()
+        .get::<ph2d_physics_ecs::WestonAxle>(entity)
+        .is_some();
     // W3: o CORPO em que o eixo está montado, resolvido do hash para o nome.
     // ⚠️ Exige um `RigidBody`, não só um nome que bate — uma roldana montada num
     // sprite sem corpo não está montada em coisa alguma, e mostrar o nome dele
@@ -134,12 +140,28 @@ pub(crate) fn build_wheel_info(
         .find(|(n, _)| stable_name_id(n.as_str()) == wheel.rope)
         .map(|(n, _)| n.as_str().to_string())
         .unwrap_or_default();
+    // **A talha de WESTON e o que ela COMPROU** (W-Weston).
+    //
+    // ⚠️ **O quociente sai da porta do MOTOR**, nunca de uma conta escrita aqui ou no
+    // painel: um readout com aritmética própria mostraria um número e o solver usaria
+    // outro — que é exatamente o defeito do `ratio` DIGITADO que o W4 aposentou. E as
+    // duas leis vivem lado a lado ali (`R/r` no tambor, `R/(R−r)` na Weston), então
+    // esta fronteira só escolhe QUAL perguntar.
+    let gear = if wheel.radius_out <= 0.0 {
+        1.0
+    } else if weston {
+        ph2d_physics_ecs::rope_route::weston_gear(wheel.radius, wheel.radius_out)
+    } else {
+        wheel.radius / wheel.radius_out
+    };
     Some(InspectorWheelInfo {
         entity_bits,
         bound: !rope_name.is_empty(),
         rope_name,
         radius: wheel.radius,
         radius_out: wheel.radius_out,
+        weston,
+        gear,
         // O componente conta de zero e a pessoa conta de um. A conversão mora
         // aqui e no `wheel_with_edit`, uma vez de cada lado.
         order_ui: u32::from(wheel.order) + 1,
@@ -174,6 +196,30 @@ pub(crate) fn apply_wheel_edit(
     let Some(&current) = sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity) else {
         return false;
     };
+    // **A talha de WESTON é um MARCADOR, não um campo** (W-Weston): a presença do
+    // componente É o booleano, então ela sai do funil de campo e vai pela porta de
+    // anexar/desanexar — o idioma do `Ccd`/`LockRotation`, e o que a mantém fora de um
+    // bump de `PROJECT_SCHEMA`.
+    //
+    // ⚠️ **Devolve `true` sempre**, e é o único toggle desta seção que faz isso: armar
+    // a Weston ACRESCENTA um nó à rota e re-pesa a corda, então o `L0` derivado tem de
+    // ser re-aberto — e o `route_differs`, que compara campos da `PulleyWheel`, é cego
+    // a um componente ao lado dela.
+    if let WheelFieldEdit::Weston(on) = edit {
+        const WESTON: &str = "ph2d::physics::WestonAxle";
+        if on {
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                WESTON,
+                &ph2d_physics_ecs::WestonAxle,
+            );
+        } else {
+            super::inspector_ordering::queue_remove(queue, registry, entity_bits, WESTON);
+        }
+        return true;
+    }
     let Some(next) = wheel_with_edit(current, edit) else {
         return false;
     };
@@ -201,6 +247,11 @@ pub(crate) fn wheel_with_edit(
         // `0` volta a roldana a ser comum — a mesma regra que a geometria e a
         // engrenagem seguem, para que as três não possam discordar.
         WheelFieldEdit::RadiusOut(v) => next.radius_out = v,
+        // ⚠️ **Recusado aqui de propósito:** a Weston é um MARCADOR e o
+        // `apply_wheel_edit` a intercepta antes deste funil. Cair neste braço seria
+        // uma escrita de campo para um fato que não mora em campo nenhum, e devolver
+        // `Some(next)` inalterado faria a edição parecer aplicada.
+        WheelFieldEdit::Weston(_) => return None,
         // 1-based na row, 0-based no componente. `saturating_sub` e não `- 1`:
         // a fronteira do painel já põe o piso em 1, e um zero que escapasse por
         // outra rota viraria `u16::MAX` num wrap silencioso.

@@ -7355,58 +7355,77 @@ separados na rota, uma 2ª restrição por corda; não é afinação e não foi 
 
 ---
 
-## W-Weston (investigação) — a nota SOBREVIVEU à medição (2026-07-29, sem cena, NÃO construída)
+## W-Weston — a talha DIFERENCIAL (2026-07-29, cena `=64`, ordem do Enio)
 
-O último item aberto da W-Pulley, tratado como hipótese porque **quatro notas
-parecidas dissolveram** nesta jornada. Esta não dissolveu.
+Detalhe completo (derivação, tabelas, as duas notas corrigidas) no
+[plano 03 §11](03_plano_polia.md). Aqui o resumo de handoff.
 
-### As duas peças existem, e juntas não dão uma Weston
+### A investigação virou wave, e por um motivo de CUSTO
 
-Tambor **DIFERENCIAL** (W4) + cadernal **MÓVEL** (W3). Numa Weston a corrente toca o
-tambor composto **DUAS vezes com a carga NO MEIO** (grande → cadernal móvel →
-pequeno); o `radius_out` põe os dois contatos **ADJACENTES** — entra num diâmetro e
-sai no outro **no mesmo nó**. E duas roldanas concêntricas são **geometricamente
-recusadas** pela rota (`|C₂−C₁| > |s₂r₂ − s₁r₁|`).
+A sonda `measure_weston` de mais cedo hoje concluiu *"não é expressável — pediria uma
+SEGUNDA restrição por corda"*. A primeira metade era verdade (é topologia) e **a
+segunda não**: eliminar a rotação do eixo entre os DOIS contatos deixa **uma**
+restrição, e ela é um orçamento **pesado** — o tipo que a rota já soma. Peso
+`R/(R−r)`; com a cadernal móvel abraçada, vantagem `2R/(R−r)`.
 
-### O que a medição afirma
+⚠️ **A objeção geométrica também caiu:** *"concêntricas são recusadas"* vale para
+pares **CONSECUTIVOS**, e num par de Weston a cadernal está no meio.
 
-O `gear` **pesa a corda**, e exatamente: rota de 8,185 m (`r = R`) a 12,994 m
-(`r = 0,15`), engrenagem na ponta acompanhando `R/r` ao quarto decimal (1,0000 ·
-1,1667 · 1,4000 · 2,3333). O mecanismo diferencial está certo; falta a **ORDEM**.
+### O que ficou
 
-### Duas coisas minhas que a medição derrubou, e as duas ficam escritas
+- `RopeWheel.axle` (0 = eixo próprio) + a porta única `crossing_gear`, que sabe as
+  três respostas (roldana comum · tambor adjacente · par de Weston). `S₂` recebe peso
+  **ZERO** — é a corda MORTA, e por aritmética, não por um `if`.
+- `tie_axle_pairs`: **um eixo, UM sentido de abraço** — é ele que faz o diferencial
+  SUBTRAIR (`R/(R−r)`) em vez de somar (`R/(R+r)`).
+- Marcador **`WestonAxle`**, registro **22→23**, **`PROJECT_SCHEMA` fica 45**.
+- §13: chip **`Differential: Drum | Weston`** (só com `0 < radius_out < radius`) +
+  readout **`Gear`**, que sai da porta do motor.
+- Cena **`=64`**: as MESMAS duas circunferências (0,500 e 0,375), o chip é a única
+  diferença; a Weston sobe 0,81 m e o tambor cai 0,75 m em 2 s.
 
-⚠️ **A tabela de VANTAGEM foi removida em vez de shipada:** o rig das duas peças
-juntas **não assenta** — deriva da carga em 2 s contra o esforço **não-monotônica e
-toda positiva** (2,03 · 1,90 · 4,16 · −0,03 · 3,90 · 2,98 · 2,19 m de 0,01 a 8 kg),
-balística. *Um arranjo que não descansa não tem vantagem mecânica a medir.*
+### DOIS bugs PRÉ-EXISTENTES achados por gates desta wave
 
-⚠️ **A busca binária mentiu antes disso:** *"controle: esforço 0,0100 kg, vantagem
-199,99"* — 0,01 é o **piso** dela, a carga nunca desceu, e a coluna era o número que
-uma busca colapsada devolve. *Uma busca só significa algo depois de a função medida
-ter sido vista cruzando o zero.* Foi a deriva crua que a derrubou — o diagnóstico que
-a 1ª versão da sonda pulou.
+1. **O teto do guincho não sabia de PESO** (`PULLEY_CORRECTION_LAG` mediu o aperto
+   normal numa corda de peso 1; num orçamento pesado ele cresce com `w`). A taxa içada
+   caía a 79% no peso 4 e **38% no peso 8** — *um guarda que clipa o regime virou um
+   limite*. Fix: `cap = lag · route.weight_max · |rate| · dt`; byte-idêntico com
+   `weight_max == 1.0`. **Latente desde o W4.**
+2. **Um rewind replayava SEM AS CORDAS** — o `rebuild_from_rest` trocava o
+   `PhysicsWorld` sem reinstalar a tabela de polias, e o replay roda no MESMO chamado.
+   Calado porque `target == 0` (o Reset, o que os smokes fazem) replaya zero passos.
+   Fix: a tabela sai do mundo velho antes de ele morrer, com os handles de eixo montado
+   **remapeados**.
 
-### O desenho, se vier ordem
+### ⛔ NÃO há teto no peso, e a medição decidiu
 
-A rota deixa de ser uma sequência de roldanas DISTINTAS e passa a admitir o mesmo
-eixo **duas vezes**, com os dois contatos em diâmetros diferentes e nós entre eles ⇒
-**uma segunda restrição por corda** (um laço fechado não tem duas pontas). Mexe no
-`PulleyDesc`, no `route`, no ledger de carga e provavelmente no `PROJECT_SCHEMA` —
-**wave própria com aceitação própria**, nunca afinação de um número existente.
+Varrido até 131 072: nada explode, nada vira `NaN`. O que acontece é a carga andar
+`1/peso`, e a partir de ~2 048 o movimento cai abaixo da resolução de `f32` em `C`. Isso
+é o que o DESENHO diz — capar seria capar o desenho (§0). O remédio é o readout.
 
-**Nada construído** (só a sonda). `PROJECT_SCHEMA` fica **45**, registro **22**, c9
-intocado.
+### Gates e mutações
+
+6 kernel · 6 ECS · 3 painel · 3 shell · 2 cena. **10 mutações, 10 sangram.**
+⚠️ Três lições de fixture: o controle atropelado pelo experimento (2×) e a mutação do
+amarre que **sobreviveu** porque a montagem natural já resolvia os dois lados iguais.
 
 ---
 
 ## Estado da linha (2026-07-29)
 
-A **W-Pulley está FECHADA** exceto a Weston, que é decisão de produto. As cinco waves
+A **W-Pulley está FECHADA, a Weston INCLUSA** (ordem do Enio, 2026-07-29). As waves
 desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de segurar** ·
 o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montado · a
-**cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda**. Todos os
-smokes aprovados (`=61`, `=63`).
+**cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda** · e a
+**W-WESTON** (o eixo composto atravessado duas vezes, `2R/(R−r)`). Smokes aprovados:
+`=61`, `=63`. **Pendente de smoke: `=64`.**
+
+⚠️ **Estado no tip:** `PROJECT_SCHEMA` **45** (a Weston não o move — marcador),
+registro `ph2d-ecs` **23**, c9 `7cb7728d…` com 96 corpos (a wave não alcança o hash).
+
+⚠️ **A W-Weston derrubou DUAS notas deste plano e achou DOIS bugs pré-existentes** (o
+teto do guincho cego ao peso da corda · o rewind replayando sem as cordas) — ver a
+seção W-Weston acima.
 
 ⚠️ **DOIS NÚMEROS MEUS ESTAVAM FALSOS NAS SEIS WAVES DESTA JANELA — e o
 `PROJECT_SCHEMA` é a TERCEIRA vez que este exato número mente neste repo.** Eu

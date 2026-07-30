@@ -43,6 +43,12 @@ fn wheel() -> InspectorWheelInfo {
         // chegasse engrenada por acidente diria *diferencial* onde os gates deste
         // arquivo falam de uma roldana qualquer.
         radius_out: 0.0,
+        // ⚠️ Um TAMBOR, e a premissa é declarada pela mesma razão da linha acima: sem
+        // segundo diâmetro a row de Differential não é oferecida, então uma fixture
+        // que chegasse em Weston deixaria os gates de AUSÊNCIA verdes pelo motivo
+        // errado. O `gear` de uma roldana comum é 1.
+        weston: false,
+        gear: 1.0,
         order_ui: 1,
         wrap_tag: 0,
         motor_deg_per_s: 0.0,
@@ -127,6 +133,74 @@ fn the_wrap_chips_each_pick_their_own_side() {
     }
 }
 
+/// **Uma roldana com dois diâmetros:** a fixture do card de diferencial.
+fn differential() -> InspectorWheelInfo {
+    InspectorWheelInfo {
+        radius: 0.5,
+        radius_out: 0.375,
+        gear: 4.0,
+        ..wheel()
+    }
+}
+
+/// **Os chips Drum | Weston armam o marcador** — e o clique CHEGA, o que só um
+/// ponteiro real pode dizer.
+///
+/// ⚠️ Mutação: tirar `INSP_WHEEL_DIFF` do `populate` deixa os dois chips pintados e
+/// hit-registrados e **mortos sob o mouse** — o `click_real` é quem pega isso, um
+/// `WidgetEvent` sintético não.
+#[test]
+fn the_differential_chips_arm_the_weston_marker() {
+    for (i, &id) in ids::INSP_WHEEL_DIFF.iter().enumerate() {
+        expect(
+            &click_real(differential(), id),
+            WheelFieldEdit::Weston(i == 1),
+            &format!("chip de diferencial {i}"),
+        );
+    }
+}
+
+/// **A row de diferencial só é oferecida quando há o que qualificar** — presença E
+/// ausência, as duas metades.
+///
+/// Sem segundo diâmetro não há par a formar (o marcador seria inerte); com um retorno
+/// que NÃO é menor a máquina está travada ou invertida, e o orçamento não a segura —
+/// então o chip não é oferecido, em vez de armar um par que a rota vai recusar em
+/// silêncio.
+///
+/// ⚠️ O readout **Gear** segue pintado nos dois casos em que há segundo diâmetro: ele
+/// diz o que os dois raios compraram, e isso vale para o tambor também.
+#[test]
+fn the_differential_row_is_offered_only_when_it_qualifies_something() {
+    let painted = |info: InspectorWheelInfo| -> bool {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_wheel(Some(info));
+        host.paint::<InspectorPanel>(&mut state, VIEWPORT)
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_WHEEL_DIFF[1])
+    };
+    assert!(painted(differential()), "com R > r > 0 a row é oferecida");
+    assert!(
+        !painted(wheel()),
+        "sem segundo diâmetro o marcador é inerte — a row não pode existir"
+    );
+    assert!(
+        !painted(InspectorWheelInfo {
+            radius_out: 0.5,
+            ..differential()
+        }),
+        "retorno IGUAL à entrada é uma máquina travada: sem chip"
+    );
+    assert!(
+        !painted(InspectorWheelInfo {
+            radius_out: 0.75,
+            ..differential()
+        }),
+        "retorno MAIOR é uma máquina invertida: sem chip"
+    );
+}
+
 /// **O raio digitado chega ao barramento em metros**, sem conversão nenhuma.
 #[test]
 fn typing_a_radius_reaches_the_bus() {
@@ -195,9 +269,17 @@ fn no_wheel_selected_paints_no_wheel_section() {
 fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
     let mut not_a_number: Vec<ph2d_a11y::NodeId> = ids::INSP_WHEEL_WRAP.to_vec();
     not_a_number.extend(ids::INSP_WHEEL_BREAK);
+    // W-Weston: os dois chips do eixo composto. Declarados e não silenciados — a
+    // varredura os PEGOU no minuto em que nasceram (7 contra 5), que é exatamente o
+    // que ela existe para fazer; o que ela cobra é que alguém diga o que eles são.
+    //
+    // ⚠️ O readout **Gear** não aparece aqui porque ele não tem id: um readout que se
+    // registra é um readout que pode ser clicado, e *dimmed que despacha mente*.
+    not_a_number.extend(ids::INSP_WHEEL_DIFF);
     not_a_number.extend_from_slice(&[
         ids::INSP_WHEEL_BREAK_GROUP,
         ids::INSP_WHEEL_WRAP_GROUP,
+        ids::INSP_WHEEL_DIFF_GROUP,
         ids::INSP_LIVE_WHEEL_SECTION,
         ids::INSP_LIVE_WHEEL_COLOR,
         // W3: os dois botões de ícone da row de montagem. Declarados aqui, e não

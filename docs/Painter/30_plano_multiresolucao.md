@@ -1,6 +1,61 @@
 # 30 — MULTI-RESOLUÇÃO: o fluxo é grosso, o pigmento é da tela
 
-> **Estado: PLANO, nada construído.** Ordem do Enio (2026-07-30, com foto):
+> ## ⚠️ A FASE 1 RODOU E REESCREVEU O DESENHO — leia esta seção antes do resto
+>
+> A F1 existia para medir o risco #1 (§2.4: *a redução pode comer o ganho*).
+> Ela mediu, e **derrubou três coisas que este plano afirmava** — as três
+> minhas. Números reproduzíveis (3 corridas apertadas), poça de 1,66 M células
+> a 4096², sonda `ph2d-wet-paint/tests/measure_flow_reduction.rs`:
+>
+> | grandeza | medido |
+> |---|---|
+> | `build_flow_field` | **9,88 ms** |
+> | `smooth_velocity` | 0,44 ms |
+> | `project` | 1,05 ms |
+> | **MÉDIA** de 8 planos, `rf=4` — `O(finas)` | **3,69 ms** |
+> | **AMOSTRA** de 8 planos, `rf=4` — `O(grossas)` | **0,29 ms** |
+> | ablação: o **backrun** dentro do `build_flow_field` | **+0,06 ms** |
+> | ablação: o **fingering** | +0,04 ms |
+>
+> **(1) A REDUÇÃO É A ROTA ERRADA — a certa é AMOSTRAR.** Mediar é `O(finas)`
+> por construção (lê toda célula fina) e por isso **não encolhe com `rf`**: a
+> 3,69 ms ela custa *mais* que os dois passes que ela alimentaria (1,49 ms
+> somados). Amostrar — ler UMA célula fina por bloco — custa **0,29 ms e
+> encolhe por `rf²`**, 12,7× mais barato. ⚠️ Não é a mesma resposta (uma gota
+> de 1 px pode cair ENTRE dois pontos de amostra), mas o campo de fluxo é
+> **suave por física** — é a premissa inteira do inkwash —, e a pergunta que
+> sobra é de **APARÊNCIA**, decidida por render-and-look, não por aritmética.
+>
+> **(2) O `build_flow_field` NÃO PRECISA SER FATORADO.** A §2.5 chamava a
+> fatoração de *"o item de maior risco da wave"* e a punha na Fase 3, na teoria
+> de que o backrun (que espalha PIGMENTO) prendia o passe na grade fina.
+> **Medido: o backrun custa 0,6% do passe** e o fingering 0,4% — **99,4% é o
+> NÚCLEO** (leveling · capilar · viscosidade · freio), que é exatamente a parte
+> que quer ser grossa. A fatoração dissolve: o backrun fica onde está.
+>
+> **(3) O GANHO É 1,3×, NÃO 1,7× — e eu errei pelo motivo que o doc 28 §5.40 já
+> tinha documentado.** A §1.4 abaixo soma os passes **sem a CADÊNCIA**, e o
+> `build_flow_field` roda **÷4**. Amortizado:
+>
+> | | hoje | depois (`rf=4`, alimentado por amostra) |
+> |---|---|---|
+> | `build_flow_field` ÷4 | 2,47 ms | 0,23 |
+> | `smooth_velocity` ×¾ | 0,33 | 0,10 |
+> | `project` ÷3 | 0,35 | 0,04 |
+> | **lado do fluxo** | **3,15 ms/passo** | **0,37** |
+>
+> ⇒ nesta poça **10,3 → 7,5 ms (1,37×)**; na escala do PRODUTO (62 ms/passo)
+> **62 → ~47 ms (1,32×)**. E o que sobra é `advect` (26,2) + `drying_pass`
+> (15,5) = **88%**, os dois FINOS e os dois já nomeados como *"não ganham
+> nada"*.
+>
+> **⇒ ESTA WAVE NÃO É SOBRE VELOCIDADE.** O `Grid Size` que já shipou compra
+> **9,1×** na razão 4 — 25× mais que isto — e o preço dele é o pigmento grosso,
+> que é *exatamente a foto do Enio*. A entrega aqui é **a BORDA FINA com o
+> fluxo barato**; o 1,3× é troco. O plano segue válido; a justificativa muda de
+> lugar, e é honesto que ela mude.
+
+> **Estado: as fases F2..F6 em construção.** Ordem do Enio (2026-07-30, com foto):
 > *"Ainda não temos o AA funcionando! … Fique muito esperançoso com a
 > possibilidade de grade grossa só para velocidade/pressão, pigmento e wetness
 > na resolução da tela. Mas que cada ajuste desses seja colocado na UI junto ao
@@ -158,10 +213,17 @@ grosso **amostrado** e move o fino.
 |---|---|---|
 | de que tamanho é cada grid? | `grid_map::grid_dims` (já existe) + `flow_dims` | o nascimento da sessão |
 | onde, em células FINAS, está este ponto de canvas? | `px_to_cell` (já existe) | a rota do dab |
-| onde, em células de FLUXO, está esta célula fina? | **`fine_to_flow`** (novo) | o `build_flow_field`, a redução |
-| qual é o fluxo NESTA célula fina? | **`FlowSample::at`** (novo) | o `advect`, o `project` |
+| onde, em células de FLUXO, está esta célula fina? | **`fine_to_flow`** (novo) | os passes de fluxo |
+| **que célula FINA esta célula de fluxo amostra?** | **`flow_probe`** (novo — a rota que a F1 escolheu) | `build_flow_field`, `smooth_velocity`, o momento |
+| qual é o fluxo NESTA posição fina? | **`FlowSample::at`** (novo) | o `advect` |
 | que pixel de canvas é o centro desta célula fina? | `cell_center_px`/`_texel` (já existe) | silhueta, Grain, Paper |
 | de que células finas sai este pixel? | `SampleU::at` (já existe) | o composite |
+
+⚠️ **`fine_to_flow` e `flow_probe` são INVERSAS** (`fine_to_flow(flow_probe(c)) == c`),
+e é essa identidade que substitui a que a §2.4 pedia da redução: um passe que
+lê a célula-amostra de um bloco e escreve o fluxo daquele bloco tem de
+concordar sobre QUAL bloco, senão o campo sai deslocado meia célula — a doença
+`seed == sample`, a mesma que as quatro portas do `grid_map` já pinam.
 
 ⚠️ **`FlowSample::at` é a porta que decide a wave.** Ela é chamada pelo `advect`
 (que precisa do fluxo na posição da partícula) e pelo `project` (que devolve
@@ -187,7 +249,23 @@ a pressão corrige outro — **e nada nos números denuncia**: a poça fica
 | `flow_x`, `flow_y` | **FLUXO** | idem |
 | pressão (transiente do `project`) | **FLUXO** | *the expensive part scales with cell count* |
 
-### 2.4 ⚠️ A decisão delicada: o `film`
+### 2.4 ⚠️ A decisão delicada: o `film` — **DISSOLVIDA pela F1**
+
+> A F1 mediu e o dilema desta seção **não existe**: com a rota de AMOSTRA
+> nenhum plano fino é reduzido, então o `film` simplesmente **fica FINO** e o
+> passe de fluxo lê a célula-amostra do bloco. Não há cópia grossa a manter, e
+> por isso não há a pergunta *"de quem é a verdade sobre a poça?"*. A seção
+> fica como registro do que foi pesado.
+>
+> ⚠️ **O que a F1 abriu no lugar, e é REAL:** o `advect` **escreve `vel` por
+> célula FINA** (`flow` amostrado na fonte + `gravidade × film LOCAL`). Com
+> `vel` residente no grosso, essa escrita não tem para onde ir ⇒ a
+> **atualização de momento migra para um passe COARSE próprio**, e o `advect`
+> fino passa a transportar só MASSA. É literalmente o desenho do inkwash (*um
+> campo de fluxo borrado e barato empurrando um campo de tinta nítido e caro*)
+> e é o que muda os números — o re-pin do fingerprint (§2.6) é dele.
+
+### 2.4-histórico — o dilema, como estava escrito
 
 O `film` (profundidade de água livre) é **os dois**: é a fonte do gradiente de
 pressão (que quer ser grosso) **e** a borda visível da poça no véu + o que o
@@ -210,7 +288,17 @@ pressão (que quer ser grosso) **e** a borda visível da poça no véu + o que o
 ser MEDIDO na Fase 1 antes de qualquer outra coisa** — se a redução custar o que
 o passe custava, a wave morre aí e é barato descobrir.
 
-### 2.5 O que fatorar no `build_flow_field` (o passe de 42,9 %)
+### 2.5 O que fatorar no `build_flow_field` — **DISSOLVIDO pela F1**
+
+> A fatoração desta seção era *"o item de maior risco da wave"* e a F1 a mediu:
+> **backrun +0,06 ms · fingering +0,04 ms · núcleo 9,83 ms.** O que prendia o
+> passe na grade fina custa **0,6%** dele. O passe inteiro roda grosso e o
+> backrun vai junto — ele lê e escreve na célula AMOSTRADA, o que muda o
+> desenho do padrão de backrun (menos sítios de nucleação, mais espaçados) e é
+> uma pergunta de **aparência para o smoke**, não de custo. A seção fica como
+> registro.
+
+### 2.5-histórico — a fatoração, como estava escrita
 
 Ele faz hoje **três** coisas distintas:
 
@@ -349,16 +437,18 @@ medindo outra coisa — e essa foi exatamente a armadilha das três tentativas.
 
 ## 6. As fases (nenhuma depois da 1 é reversível de graça)
 
-| fase | o que | o que ela decide | reversível |
+| fase | o que | o que ela decide | estado |
 |---|---|---|---|
-| **F1** | a REDUÇÃO `film`/`wet` fino→grosso + `project` e `smooth_velocity` no grid de fluxo | **mede o custo da REDUÇÃO** (§2.4). Se ela custar o que o passe custava, a wave morre aqui, barato | sim |
-| **F2** | o `advect` amostra o fluxo grosso (`FlowSample::at`) | o acoplamento fino↔grosso, e é onde a poça pode derivar | sim |
-| **F3** | o `build_flow_field` FATORADO (o freio grosso; backrun e fingering finos) | **o ganho grande (42,9 %)** — e o maior risco de desenho | não |
-| **F4** | a UI (os dois sliders + o readout) e o re-pin do fingerprint | — | sim |
+| **F1** | **medir** como alimentar a grade de fluxo | MÉDIA (3,69 ms) × AMOSTRA (0,29) · o backrun não prende nada · o ganho é 1,3× | ✅ **feita** — ver o topo |
+| **F2** | a grade de FLUXO EXISTE e `Flow Ratio = 1` é **byte-idêntico** | a rede de segurança de tudo que vem depois (fingerprint intacto) | |
+| **F3** | `project` + `smooth_velocity` na grade de fluxo | os dois mais simples (não escrevem plano fino nenhum) | |
+| **F4** | `build_flow_field` grosso + o **passe de MOMENTO** que sai do `advect` | o que muda os números ⇒ o re-pin | |
+| **F5** | o `advect` amostra o fluxo grosso (`FlowSample::at`) | o acoplamento fino↔grosso, e é onde a poça pode derivar | |
+| **F6** | a UI (os dois sliders + o readout), o re-pin do fingerprint, os gates | — | |
 
-⚠️ **A F1 vem primeiro mesmo entregando só 2,1 %**, porque é ela que responde a
-pergunta que decide as outras três. É o mesmo desenho da Fase 1 do ADR-0146, e
-pela mesma razão: *a medição que decide se o resto vale.*
+⚠️ **A ordem é a da SEGURANÇA, não a do ganho:** a F2 não entrega um
+milissegundo e é a fase mais importante — ela é o que torna toda fase seguinte
+falsificável por um gate de byte-identidade contra o modelo que shipa.
 
 ---
 

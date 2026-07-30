@@ -630,6 +630,42 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
 
+### ⛔ ACHADO NOVO do smoke do G1 (2026-07-30) — *"todos aparecem como custom"*
+
+**A folha é WRITE-ONCE.** O artista escolhe `Shake`, afina Amount/Detail/Roughness, aperta
+**Apply**, fecha o card — e ao reabrir encontra **uma linha `Custom Formula` com o texto
+cru**. Os knobs sumiram. Não há bug: é o desenho declarado da crate, e o motivo é bom —
+
+> *"parsear texto arbitrário de volta em linhas é deliberadamente NÃO oferecido: um
+> reconhecedor de 'fragmentos canônicos' começa a MENTIR no dia em que alguém edita um
+> caractere."*
+
+⚠️ **O que ninguém tinha medido é o PREÇO dessa frase.** Ela foi escrita sobre *"reabrir uma
+fórmula qualquer"*, e o caso real é outro: **reabrir a fórmula que este card acabou de
+produzir**. Nesse caso não é preciso reconhecer nada — bastava não ter jogado fora a folha.
+A auditoria de 2026-07-29 **não nomeou** este item; ele veio do smoke.
+
+**Consequências medidas:**
+
+* toda edição posterior de uma expressão é **digitar texto**, que é exactamente o que o
+  plano 10 existia para substituir;
+* a cena do G1 **se auto-derrotou**: ela pré-autorava o objeto do card, então o roteiro
+  mandava arrastar um `Amount` que não estava na tela (corrigido — o Shaker chega vazio);
+* e o `Custom Formula` acaba sendo **a receita mais usada do catálogo**, sem ninguém a ter
+  escolhido.
+
+**A cura NÃO é um parser** — é guardar a FOLHA. Três desenhos possíveis, em ordem de preço:
+
+| onde | sobrevive a | preço |
+|---|---|---|
+| estado do painel, por `target` | trocar de objeto e voltar, dentro da sessão | zero schema |
+| `TimelineDoc`, ao lado do `clip.expr` | save/load | **`DOC_VERSION` + ADR** |
+| nada (hoje) | nada | — |
+
+⚠️ **A decisão é do Enio** (o segundo desenho recusa todo projeto já salvo na versão
+anterior). O primeiro é barato e cobre a metade do caso de uso que dói mais — afinar,
+fechar, reabrir na mesma sessão — e **não foi construído sem ordem**.
+
 ### ⏳ O G1 ESTÁ CONSTRUÍDO (2026-07-30) — e a régua achou o defeito antes da UI
 
 O protocolo do §7.1 rodou inteiro, e ele funciona: **medir antes da UI achou um defeito de

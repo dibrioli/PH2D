@@ -52,7 +52,7 @@ fn the_group_one_scene_names_its_three_and_says_what_to_prove() {
         s.contains("[expr-group-smoke]"),
         "a cena IMPRIME o que montou — se a linha não sai, o resto do smoke não significa nada"
     );
-    for id in ["\"shake\"", "\"sway\"", "\"limit\""] {
+    for id in ["\"sway\"", "\"limit\""] {
         assert!(s.contains(id), "a receita {id} tem de ser autorada na cena");
     }
     // O `Limit` só é julgável sob uma fonte: a cena o empilha, não o solta.
@@ -80,5 +80,44 @@ fn the_group_scene_has_its_own_switch() {
         reads[0].contains("PH2D_EXPR_GROUP_SMOKE"),
         "e é a do grupo — dividir o interruptor com a cena dos instrumentos seria duas \
          perguntas num botão: {reads:?}"
+    );
+}
+
+/// **O objeto em que o card ABRE não pode chegar com fórmula pronta.**
+///
+/// ⚠️ O defeito que o smoke do Enio expôs (*"todos aparecem como custom"*): o card **não
+/// reconstrói linhas a partir do texto** — decisão declarada da crate —, então uma fórmula
+/// autorada por FORA dele volta como uma linha `Custom Formula` com o texto cru, sem knob
+/// nenhum. Uma cena que pré-autora o objeto do card entrega exactamente o card que não tem
+/// os knobs que o roteiro manda arrastar.
+///
+/// **Mutação que deve sangrar:** `drive(...)` no Shaker em vez de só `bind`.
+#[test]
+fn the_card_lands_on_an_object_with_no_pre_authored_formula() {
+    let s = src();
+    // ⚠️ O arquivo INTEIRO, não uma fatia a partir de uma âncora: a primeira versão deste
+    // gate cortava em `let shaker_target` e a mutação — um `drive(doc, shaker, ...)` uma
+    // linha ACIMA — passou por ele. Um gate que fatia por marcador só vê o lado que o
+    // marcador escolheu.
+    assert!(
+        !s.contains("drive(doc, shaker"),
+        "o objeto do card chega SEM fórmula: uma pré-autorada volta como `Custom Formula` \
+         (texto cru, zero knobs), e o roteiro manda arrastar um knob"
+    );
+    assert!(
+        s.contains("doc.bind(shaker,"),
+        "ele é só BINDADO — a track existe, a fórmula é o artista que escolhe"
+    );
+}
+
+/// **A cena SELECIONA o objeto do card.**
+///
+/// Sem isto o card segue a seleção da cena (a feature do ADR-0144) e pousa em qualquer
+/// objeto que o artista tenha clicado — o roteiro diz um nome e a tela mostra outro.
+#[test]
+fn the_group_scene_selects_the_object_the_script_names() {
+    assert!(
+        src().contains("replace_selection(Some(shaker))"),
+        "a cena põe a seleção onde o roteiro diz"
     );
 }

@@ -18,30 +18,27 @@
 use crate::knob::Knob;
 use crate::recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RowKind};
 
+/// **Shake — e o Turbulence mora DENTRO dele** (FASE A, plano 12).
+///
+/// ⚠️ `turbulence ~> shake` com delta **0,000000**: turbulence é shake com octaves, e
+/// `Detail`/`Roughness` eram knobs de IMPLEMENTAÇÃO num card próprio. Absorvidos aqui, e o
+/// default do Shake **não se moveu**: o contrato do parser diz que `octaves = 1` é
+/// byte-idêntico ao lowering de uma oitava, então `wiggle(s, a, 1, 0.5)` é o
+/// `wiggle(s, a)` de antes ao bit (gate `absorbing_turbulence_left_shakes_default_alone`).
 pub const SHAKE: Recipe = Recipe {
     id: "shake",
     family: Family::Life,
     label: "Shake",
-    blurb: "Random wobble around the current value.",
-    aliases: &["wiggle", "jitter", "noise", "camera shake", "handheld"],
-    knobs: &[
-        Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
-        Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: Some(Combine::Add),
-    clock: ClockUse::Own,
-    neutral: Neutrality::Additive(&[("amount", 0.0)]),
-    pair: None,
-    emit: |c| format!("wiggle({}, {})", c.n(0), c.n(1)),
-};
-
-pub const TURBULENCE: Recipe = Recipe {
-    id: "turbulence",
-    family: Family::Life,
-    label: "Turbulence",
-    blurb: "Shake with fine detail layered on top.",
+    blurb: "Random wobble around the current value. Detail layers finer wobble on top.",
     aliases: &[
+        "wiggle",
+        "jitter",
+        "noise",
+        "camera shake",
+        "handheld",
+        // Herdados do `turbulence` APOSENTADO (ver `retired.rs`): cortar sem herdar é
+        // esconder capacidade, e a auditoria mediu os RÓTULOS sendo esquecidos.
+        "turbulence",
         "wiggle octaves",
         "fractal noise",
         "rough shake",
@@ -50,9 +47,10 @@ pub const TURBULENCE: Recipe = Recipe {
     knobs: &[
         Knob::num("speed", "Speed", 2.0, (0.05, 20.0)),
         Knob::num("amount", "Amount", 0.3, (0.0, 40.0)),
-        // ⚠️ Literal by contract: `wiggle` unrolls one `noise` per octave at PARSE
-        // time, so these two size the expression tree and cannot be driven.
-        Knob::lit("detail", "Detail", 3.0, (1.0, 4.0)).step(1.0),
+        // ⚠️ Literal por contrato: o `wiggle` desenrola um `noise` por oitava em tempo de
+        // PARSE, então estes dois dimensionam a árvore da expressão e não podem ser
+        // dirigidos. Default 1 / 0.5 = os do parser (os do AE).
+        Knob::lit("detail", "Detail", 1.0, (1.0, 4.0)).step(1.0),
         Knob::lit("roughness", "Roughness", 0.5, (0.0, 1.0)),
     ],
     kind: RowKind::Value,

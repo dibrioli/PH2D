@@ -8,10 +8,14 @@
 //! Split per family so no file approaches the LOC cap and so a family reads as a
 //! unit — the emit functions are the specification of the language we speak.
 
-mod field;
+// ⚠️ **`logic` e `field` NÃO são mais módulos** (FASE A do plano 12). As seis de Logic
+// saíram por serem PROGRAMAÇÃO (D3, *"não vejo o menor sentido para artistas na seção
+// logic"*) e as três de Field por serem COMPOSIÇÕES que a pilha já expressa
+// (`fade-by-distance ~> distance-2d`, 6e-8). As duas famílias respondem por
+// `refusal::REFUSALS` (`condition` → um keyframe · `compose` → duas linhas), e o registro
+// com a medição de cada corte está em `retired.rs`. O `git log` guarda o código.
 mod life;
 mod link;
-mod logic;
 mod physics;
 mod raw;
 mod shape;
@@ -21,15 +25,23 @@ mod wave;
 use crate::recipe::{Recipe, RecipeId};
 
 /// Every recipe, in gallery order.
+///
+/// ⚠️ **50 → 31 na FASE A**, e o número é o RESTO de uma regra (*inerte ou programação*),
+/// nunca uma cota — a meta "~21" do plano foi abandonada porque o tamanho não era o
+/// defeito (a Cavalry shipa 40+ Behaviours). O que saiu, e a medição de cada corte, está
+/// em [`crate::retired::RETIRED`]; quem cortar mais entra ali no MESMO commit, senão o gate
+/// `every_retired_label_still_finds_its_answer` nasce vermelho.
 pub const CATALOG: &[&Recipe] = &[
     // Life
-    &life::SHAKE,
-    &life::TURBULENCE,
+    &life::SHAKE, // absorveu o `turbulence` (Detail/Roughness)
     &life::DRIFT,
     &life::JITTER,
     &life::BREATHE,
     &life::FLICKER,
-    // Wave
+    // Wave — ⚠️ NENHUM corte: a medição REFUTOU *"Ping-Pong e Pulse e Blink são a MESMA
+    // pergunta"* (nenhuma contenção entre as três; são triangular · quadrada · dente com
+    // decaimento). O `Cycle` com chip de forma segue defensável como PRODUTO, e é decisão
+    // do Enio — não um corte por redundância, que é como o plano o apresentava.
     &wave::SWAY,
     &wave::BOUNCE,
     &wave::PING_PONG,
@@ -38,46 +50,27 @@ pub const CATALOG: &[&Recipe] = &[
     &wave::ORBIT_X,
     &wave::ORBIT_Y,
     // Link
-    &link::FOLLOW,
-    &link::OPPOSITE,
-    &link::OFFSET_COPY,
+    &link::FOLLOW, // herdou `opposite` (Multiply −1) e `offset-copy`
     &link::DISTANCE_2D,
     &link::DISTANCE_1D,
     &link::BLEND_TWO,
-    &link::SWITCH,
     // Shape
-    &shape::LIMIT,
-    &shape::FLOOR_AT,
-    &shape::CEILING_AT,
+    &shape::LIMIT, // herdou `floor-at`, `ceiling-at` e `remap-clamped` (mútua)
     &shape::REMAP,
-    &shape::REMAP_CLAMPED,
-    &shape::MULTIPLY_ADD,
-    &shape::INVERT_RANGE,
+    &shape::MULTIPLY_ADD, // herdou `invert-range`
     &shape::ABSOLUTE,
     &shape::QUANTIZE,
-    // Time
+    // Time — ⚠️ `freeze-after` e `start-at` FICAM: a medição não achou a contenção que o
+    // plano afirmava (*"o mesmo clamp em lados opostos"*).
     &time::STEPPED_TIME,
     &time::DELAY,
-    &time::SPEED,
-    &time::REVERSE_TIME,
+    &time::SPEED, // herdou `reverse-time` (Speed −1)
     &time::FREEZE_AFTER,
     &time::START_AT,
     &time::PING_PONG_TIME,
-    // Logic
-    &logic::IF_GREATER,
-    &logic::IF_LESS,
-    &logic::IF_EQUAL,
-    &logic::GATE_AND,
-    &logic::GATE_OR,
-    &logic::AFTER_TIME,
-    // Field
-    &field::FADE_BY_DISTANCE,
-    &field::SCALE_BY_PROXIMITY,
-    &field::GRADIENT_BY_VALUE,
     // Physics-lite
     &physics::PENDULUM,
-    &physics::FREE_FALL,
-    &physics::THROW,
+    &physics::THROW, // herdou `free-fall` (velocidade 0)
     &physics::WAVE_ALONG_CHAIN,
     // Raw
     &raw::CUSTOM,

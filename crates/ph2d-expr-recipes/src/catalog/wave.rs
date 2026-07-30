@@ -26,6 +26,9 @@ pub const SWAY: Recipe = Recipe {
         "cosine",
         "quarter turn",
         "offset sine",
+        // ⚠️ O RÓTULO da `Sway (Cosine)` aposentada. A jornada que a cortou herdou o
+        // sinônimo (`"cosine"`) e ESQUECEU o rótulo — medido: zero hits (doc 13 §7.3).
+        "sway cosine",
     ],
     knobs: &[
         Knob::num("speed", "Speed", 3.0, (0.05, 40.0)),
@@ -138,6 +141,10 @@ pub const PULSE: Recipe = Recipe {
         "cycle",
         "scroll",
         "conveyor",
+        // ⚠️ Os RÓTULOS da `Ramp Loop` aposentada, pela mesma razão: `"sawtooth"` chegava,
+        // `"ramp"` e `"ramp loop"` davam zero.
+        "ramp",
+        "ramp loop",
     ],
     knobs: &[
         Knob::num("rate", "Rate", 2.0, (0.05, 40.0)),

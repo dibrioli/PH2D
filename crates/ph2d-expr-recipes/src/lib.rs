@@ -94,6 +94,7 @@ mod emit;
 mod knob;
 mod recipe;
 mod refusal;
+pub mod retired;
 mod search;
 mod stack;
 
@@ -102,5 +103,6 @@ pub use emit::{EmitCtx, fmt_num, paren};
 pub use knob::{Knob, KnobKind, KnobValue};
 pub use recipe::{ClockUse, Combine, Family, Neutrality, Recipe, RecipeId, RowKind};
 pub use refusal::{Destination, REFUSALS, Refusal};
+pub use retired::{Answer, RETIRED, Retired, retired_by_id};
 pub use search::{SearchHit, search};
 pub use stack::{RecipeStack, Row, SEED_CLOCK, SEED_VALUE};

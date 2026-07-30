@@ -323,11 +323,19 @@ fn every_recipe_is_findable_by_its_industry_name() {
         ("cosine", "sway"),
         ("midpoint", "blend-two"),
         ("negate", "multiply-add"),
-        ("mirror", "opposite"),
+        // ⚠️ Estas quatro mudaram de ALVO na FASE A, e é a prova de que o corte não
+        // escondeu capacidade: a palavra que o artista sabe continua chegando, agora no
+        // sobrevivente medido. `falloff` cai numa RECUSA com roteamento (não há
+        // sobrevivente: era Distance + Remap), então ela é conferida no gate das recusas.
+        ("mirror", "follow"),
+        ("opposite", "follow"),
         ("boomerang", "ping-pong-time"),
         ("follow through", "wave-along-chain"),
-        ("falloff", "fade-by-distance"),
-        ("gravity", "free-fall"),
+        ("gravity", "throw"),
+        ("free fall", "throw"),
+        ("turbulence", "shake"),
+        ("floor at", "limit"),
+        ("reverse time", "speed"),
         ("formula", "custom"),
         ("snap", "quantize"),
     ];
@@ -390,7 +398,7 @@ fn the_search_answers_for_what_the_catalog_refuses() {
 /// `Track.extrap`.
 #[test]
 fn the_catalog_refuses_what_the_product_already_answers() {
-    assert_eq!(REFUSALS.len(), 10, "the refusal list is part of the design");
+    assert_eq!(REFUSALS.len(), 12, "the refusal list is part of the design");
     for r in REFUSALS {
         // Absence: the top hit for a refusal's own key is never a recipe that
         // claims to do it.
@@ -458,17 +466,17 @@ fn every_declared_neutral_names_a_knob_the_recipe_has() {
 /// — a family that shipped empty would be a drawer that opens onto nothing.
 #[test]
 fn the_catalog_covers_every_family() {
-    // ⚠️ The number is COUNTED, not chosen. It was 55; five entries were retired after a
-    // report (*"muitas expressões não passam de mais do mesmo"*) once each had been MEASURED
-    // identical to a survivor at some knob setting — `Sway (Cosine)` = Sway with Phase a
-    // quarter period, `Ramp Loop` = Pulse at Decay 1 with On/Off swapped, `Mirror` =
-    // Opposite at Pivot 0, `Midpoint` = Blend Two at 0.5, `Negate` = Multiply/Add at -1.
-    // Each survivor INHERITED the retired one's search words, so no term the artist knows
-    // went dead with it.
+    // ⚠️ **O número é CONTADO, não escolhido — e é o resto de uma REGRA.** 55 -> 50 (cinco
+    // duplicatas medidas na jornada anterior) -> **31** na FASE A do plano 12, cortando o que
+    // é *inerte* ou *programação*: as 6 de Logic, as 3 de Field (composições que a pilha já
+    // expressa), o `switch` disfarçado de Link e 9 subsumidas por contenção medida. A meta
+    // "~21" do plano foi ABANDONADA porque o tamanho nunca foi o defeito — a Cavalry shipa
+    // 40+ Behaviours. Cada corte, com a medição, está em `retired::RETIRED`, e cada palavra
+    // aposentada chega no sobrevivente ou numa recusa com roteamento (gate irmão).
     assert_eq!(
         CATALOG.len(),
-        50,
-        "plano 10 §4, menos as cinco duplicatas MEDIDAS"
+        31,
+        "FASE A: o corte por inerte-ou-programação"
     );
     for f in Family::ALL {
         assert!(

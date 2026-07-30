@@ -74,7 +74,30 @@ fn scene_samples(stack: &RecipeStack, base: f32, target: u64) -> Vec<f32> {
 
 /// Recipes that read `__seed` — the only ones that can see this defect. `remap` is the
 /// CONTROL: it reads no noise, so it must agree across every target either way.
-const NOISY: [&str; 3] = ["shake", "turbulence", "jitter"];
+///
+/// ⚠️ **`turbulence` estava aqui e a FASE A o aposentou** (absorvido pelo `shake`), e o que
+/// aconteceu é a lição: `RecipeStack::of` faz `filter_map`, então um id que não existe é
+/// **silenciosamente descartado** e a pilha nasce VAZIA — a fórmula vira `value`, uma
+/// constante. O gate de "objetos diferentes tremem diferente" pegou isso por sorte (uma
+/// constante é igual a si mesma), e o gate de IGUALDADE ficou **verde sobre uma fixture
+/// vazia**. Daí a asserção de premissa em [`every_probe_names_a_recipe_that_exists`]: um
+/// gate que nomeia uma receita por string fica vacuous no dia em que ela sai.
+const NOISY: [&str; 2] = ["shake", "jitter"];
+
+/// **Todo id que estas fixtures nomeiam existe.**
+///
+/// A guarda contra a classe inteira. Sem ela, aposentar uma receita deixa os gates que a
+/// nomeiam VERDES e vazios — e um gate vazio é pior que gate nenhum, porque ele é contado.
+#[test]
+fn every_probe_names_a_recipe_that_exists() {
+    for id in NOISY.iter().chain(["remap"].iter()) {
+        assert!(
+            ph2d_expr_recipes::by_id(id).is_some(),
+            "a fixture nomeia {id:?}, que não está no catálogo — `RecipeStack::of` a \
+             descartaria em silêncio e estes gates passariam a medir uma pilha VAZIA"
+        );
+    }
+}
 
 /// **For every object, the ribbon's samples are the scene's samples, one for one.**
 #[test]

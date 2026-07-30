@@ -32,6 +32,14 @@ pub enum Destination {
     VectorBlend,
     /// The Flip strip's exposure.
     FlipExposure,
+    /// **A keyframe.** The answer to the whole Logic family (FASE A): *"acontece a partir
+    /// de tal segundo"* is a key, and this app has a timeline.
+    Keyframes,
+    /// **Two rows in THIS card.** ⚠️ O único destino que aponta para dentro: quando a
+    /// ideia é a COMPOSIÇÃO de duas receitas que já existem, um card próprio para ela é
+    /// uma terceira resposta a uma pergunta que a PILHA já responde — e foi por isso que a
+    /// família Field saiu (`fade-by-distance ~> distance-2d`, 6e-8).
+    TwoRows,
 }
 
 impl Destination {
@@ -48,6 +56,8 @@ impl Destination {
             Destination::FieldNodes => "the field nodes",
             Destination::VectorBlend => "shape Blend",
             Destination::FlipExposure => "the Flip strip's exposure",
+            Destination::Keyframes => "a keyframe on the timeline",
+            Destination::TwoRows => "two rows, stacked here",
         }
     }
 }
@@ -67,6 +77,61 @@ pub struct Refusal {
 
 /// Every refusal, with its destination.
 pub const REFUSALS: &[Refusal] = &[
+    Refusal {
+        key: "condition",
+        title: "Conditions",
+        aliases: &[
+            // Os RÓTULOS das seis receitas de Logic + o Switch, mais o vocabulário delas.
+            // Cortar sem herdar é esconder capacidade; aqui não há sobrevivente, então o
+            // que se herda é o CAMINHO (ver `retired.rs`).
+            "if",
+            "if greater",
+            "if less",
+            "if near",
+            "gate",
+            "gate both",
+            "gate either",
+            "after time",
+            "switch",
+            "condition",
+            "threshold",
+            "compare",
+            "greater than",
+            "less than",
+            "when",
+            "trigger",
+            "and",
+            "or",
+        ],
+        body: "A condition on a number is programming. What an animator wants — \"this \
+               happens from here on\" — is a keyframe, and the timeline has one.",
+        to: Destination::Keyframes,
+    },
+    Refusal {
+        key: "compose",
+        title: "Fields by Distance",
+        aliases: &[
+            "fade by distance",
+            "scale by proximity",
+            "driven by another",
+            "falloff",
+            "proximity fade",
+            "near far",
+            "distance opacity",
+            "dim",
+            "react to distance",
+            "magnet scale",
+            "closeness",
+            "grow near",
+            "remap link",
+            "driver",
+            "controlled by",
+            "map from",
+        ],
+        body: "Reacting to a distance is Distance and then Remap - two rows, stacked. A \
+               card of its own would be a third answer to what the stack already does.",
+        to: Destination::TwoRows,
+    },
     Refusal {
         key: "loop",
         title: "Loop",

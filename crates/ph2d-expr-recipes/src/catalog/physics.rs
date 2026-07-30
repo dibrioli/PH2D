@@ -37,27 +37,26 @@ pub const PENDULUM: Recipe = Recipe {
     },
 };
 
-pub const FREE_FALL: Recipe = Recipe {
-    id: "free-fall",
-    family: Family::PhysicsLite,
-    label: "Free Fall",
-    blurb: "Accelerates downward like gravity.",
-    aliases: &["gravity", "drop", "fall", "accelerate", "parabola"],
-    knobs: &[Knob::num("gravity", "Gravity", 9.8, (0.0, 50.0))],
-    kind: RowKind::Value,
-    combine: Some(Combine::Add),
-    clock: ClockUse::Explicit,
-    neutral: Neutrality::Additive(&[("gravity", 0.0)]),
-    pair: None,
-    emit: |c| format!("-0.5*{}*{}*{}", c.n(0), c.clock, c.clock),
-};
-
 pub const THROW: Recipe = Recipe {
     id: "throw",
     family: Family::PhysicsLite,
     label: "Throw",
     blurb: "Launches, arcs over, and falls.",
-    aliases: &["toss", "launch", "arc", "projectile", "lob", "jump arc"],
+    aliases: &[
+        "toss",
+        "launch",
+        "arc",
+        "projectile",
+        "lob",
+        "jump arc",
+        // Herdados de `free-fall`: throw com velocidade 0 É a queda livre (delta 0,000000).
+        "free fall",
+        "gravity",
+        "drop",
+        "fall",
+        "accelerate",
+        "parabola",
+    ],
     knobs: &[
         Knob::num("speed", "Launch Speed", 3.0, (-40.0, 40.0)),
         Knob::num("gravity", "Gravity", 9.8, (0.0, 50.0)),

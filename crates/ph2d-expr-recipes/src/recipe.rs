@@ -22,10 +22,6 @@ pub enum Family {
     Shape,
     /// Rows that rewrite the clock.
     Time,
-    /// Conditionals.
-    Logic,
-    /// Gradients and proximity.
-    Field,
     /// Motion that looks physical without a solver.
     PhysicsLite,
     /// The artist's own formula.
@@ -42,22 +38,22 @@ impl Family {
             Family::Link => "Link",
             Family::Shape => "Shape",
             Family::Time => "Time",
-            Family::Logic => "Logic",
-            Family::Field => "Field",
             Family::PhysicsLite => "Physics",
             Family::Raw => "Raw",
         }
     }
 
     /// Gallery order.
-    pub const ALL: [Family; 9] = [
+    /// ⚠️ **Sete, não nove** (FASE A do plano 12): `Logic` e `Field` foram removidas com as
+    /// receitas delas. Uma família vazia é uma gaveta que abre para nada — é o que o gate
+    /// `the_catalog_covers_every_family` existe para impedir, e manter os variants "por
+    /// enquanto" seria exatamente isso. As duas respondem por `refusal::REFUSALS`.
+    pub const ALL: [Family; 7] = [
         Family::Life,
         Family::Wave,
         Family::Link,
         Family::Shape,
         Family::Time,
-        Family::Logic,
-        Family::Field,
         Family::PhysicsLite,
         Family::Raw,
     ];

@@ -103,11 +103,18 @@ include!(concat!(
 /// its right) and is the same number.
 #[test]
 fn the_catalog_is_value_identical_to_the_pre_combine_world() {
-    const TEXT_MOVED: &[&str] = &["free-fall"];
-    // ⚠️ Retired as MEASURED duplicates of a survivor, each named with the setting that
-    // reproduces it. Listed rather than deleted from the table so that removing a recipe
-    // stays a DECISION with a reason attached, and so a re-added id is caught.
-    const RETIRED: &[&str] = &["sway-cosine", "ramp-loop", "mirror", "midpoint", "negate"];
+    // ⚠️ `shake` entrou aqui na FASE A, e o VALOR dele continua conferido pelo `agree`
+    // abaixo — é só o TEXTO que mudou. Ele absorveu os knobs do `turbulence` aposentado, e
+    // por CONTRATO DO PARSER `octaves = 1` é byte-idêntico ao lowering de uma oitava, então
+    // `wiggle(2, 0.3, 1, 0.5)` é o `wiggle(2, 0.3)` de antes ao bit. Esta é a distinção que
+    // o gate existe para fazer: um texto que muda com o valor pinado é refatoração; um
+    // valor que muda é uma decisão de produto.
+    const TEXT_MOVED: &[&str] = &["free-fall", "shake"];
+    // ⚠️ **A lista de aposentadas é a do CRATE** (`retired::RETIRED`), não uma cópia local.
+    // Ela era uma const aqui com cinco ids; a FASE A acrescentou dezenove, e duas listas do
+    // mesmo fato é como a segunda envelhece. A tabela do crate carrega a MEDIÇÃO de cada
+    // corte, então este gate ganha o motivo de graça.
+    let retired: Vec<&str> = ph2d_expr_recipes::RETIRED.iter().map(|r| r.id).collect();
     // ⚠️ `Jitter` is the one recipe whose VALUE moved on purpose: it emitted a constant
     // (`noise(7)` = +0.197 forever, excursion 0.0000) and now reads the per-binding
     // `__seed`, so a group of objects each gets a different offset — which is what its own
@@ -115,18 +122,18 @@ fn the_catalog_is_value_identical_to_the_pre_combine_world() {
     const VALUE_MOVED: &[&str] = &["jitter"];
     assert_eq!(
         PRE_COMBINE.len(),
-        CATALOG.len() + RETIRED.len(),
+        CATALOG.len() + retired.len(),
         "the frozen table must cover the catalog plus the retired — a recipe added without \
          a line here is a recipe whose default nobody pinned"
     );
-    for r in RETIRED {
+    for r in &retired {
         assert!(
             ph2d_expr_recipes::by_id(r).is_none(),
             "{r} is listed as retired but is still in the catalog"
         );
     }
     for (id, before) in PRE_COMBINE {
-        if RETIRED.contains(id) || VALUE_MOVED.contains(id) {
+        if retired.contains(id) || VALUE_MOVED.contains(id) {
             continue;
         }
         let now = formula_of(vec![row_at_defaults(id)]);
@@ -143,7 +150,17 @@ fn the_catalog_is_value_identical_to_the_pre_combine_world() {
         }
     }
     // …and the exception really is one, so nobody "tidies" the list by adding to it.
-    for id in TEXT_MOVED.iter().chain(VALUE_MOVED) {
+    //
+    // ⚠️ Skipping the RETIRED, because an exception can outlive its recipe: `free-fall` was
+    // text-moved by the combine wave and then APOSENTADA pela FASE A (throw ⊇ free-fall).
+    // Its line stays as the record of why the text moved — deleting it would lose the
+    // reason — but `row_at_defaults` cannot build a row for a card that is gone, and the
+    // panic it produced was this gate telling the truth in the least readable way.
+    for id in TEXT_MOVED
+        .iter()
+        .chain(VALUE_MOVED)
+        .filter(|id| by_id(id).is_some())
+    {
         let now = formula_of(vec![row_at_defaults(id)]);
         let before = PRE_COMBINE.iter().find(|(i, _)| i == id).unwrap().1;
         assert_ne!(

@@ -278,7 +278,10 @@ fn every_knob_steps_in_a_number_a_person_would_type() {
     // The one override, named: octaves size an unrolled noise tree, so they are
     // integers and a derived 0.01 would be a control that does nothing four times
     // out of five.
-    let detail = ph2d_expr_recipes::by_id("turbulence")
+    // ⚠️ `shake`, não `turbulence`: o card de turbulence foi APOSENTADO na FASE A e o Shake
+    // absorveu este knob (`retired::RETIRED`). O gate segue apontando para o mesmo FATO — um
+    // octave é inteiro — só que na receita que hoje o carrega.
+    let detail = ph2d_expr_recipes::by_id("shake")
         .unwrap()
         .knobs
         .iter()

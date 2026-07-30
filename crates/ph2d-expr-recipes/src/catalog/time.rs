@@ -57,7 +57,20 @@ pub const SPEED: Recipe = Recipe {
     family: Family::Time,
     label: "Speed",
     blurb: "Run the rows below faster or slower.",
-    aliases: &["time scale", "fast", "slow motion", "rate", "tempo"],
+    aliases: &[
+        "time scale",
+        "fast",
+        "slow motion",
+        "rate",
+        "tempo",
+        // Herdados de `reverse-time`: Speed −1 É o reverse (delta 0,000000). ⚠️ A grade
+        // uniforme não achava isto — 11 passos sobre (−10, 10) pulam o −1.
+        "reverse time",
+        "backwards",
+        "rewind",
+        "negate time",
+        "invert time",
+    ],
     knobs: &[Knob::num("factor", "Factor", 2.0, (-10.0, 10.0))],
     kind: RowKind::Time,
     combine: None,
@@ -65,21 +78,6 @@ pub const SPEED: Recipe = Recipe {
     neutral: Neutrality::NoNeutral,
     pair: None,
     emit: |c| format!("({}*{})", c.clock, c.n(0)),
-};
-
-pub const REVERSE_TIME: Recipe = Recipe {
-    id: "reverse-time",
-    family: Family::Time,
-    label: "Reverse Time",
-    blurb: "Run the rows below backwards.",
-    aliases: &["backwards", "rewind", "negate time", "invert time"],
-    knobs: &[],
-    kind: RowKind::Time,
-    combine: None,
-    clock: ClockUse::Explicit,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("(-{})", c.clock),
 };
 
 pub const FREEZE_AFTER: Recipe = Recipe {

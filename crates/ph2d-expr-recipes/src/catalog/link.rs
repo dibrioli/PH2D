@@ -16,8 +16,35 @@ pub const FOLLOW: Recipe = Recipe {
     id: "follow",
     family: Family::Link,
     label: "Follow",
-    blurb: "Copy another object's property, scaled and offset.",
-    aliases: &["link", "pick whip", "parent", "copy", "track", "bind"],
+    blurb: "Copy another object's property, scaled and offset. Multiply -1 mirrors it.",
+    aliases: &[
+        "link",
+        "pick whip",
+        "parent",
+        "copy",
+        "track",
+        "bind",
+        // Herdados do `offset-copy` APOSENTADO — o Follow já tinha os DOIS knobs
+        // (Multiply e Offset), então ele contém aquele card no espaço inteiro.
+        "offset copy",
+        "shadow",
+        "trail",
+        "follow at distance",
+        "clone offset",
+        // ...e do `opposite`: `2*pivot - link` é Follow com Multiply −1 e Offset 2*pivot
+        // (delta medido 0,000000). O blurb acima diz isso, porque um apelido que acha o
+        // card e não explica como chegar lá é meio caminho.
+        "opposite",
+        "reflect about",
+        "symmetry",
+        "mirror pivot",
+        "counterweight",
+        "negate link",
+        "flip",
+        "invert follow",
+        "reflect",
+        "mirror",
+    ],
     knobs: &[
         Knob::link("target", "Target"),
         Knob::num("multiply", "Multiply", 1.0, (-10.0, 10.0)),
@@ -29,53 +56,6 @@ pub const FOLLOW: Recipe = Recipe {
     neutral: Neutrality::NoNeutral,
     pair: None,
     emit: |c| format!("{}*{} + {}", c.link(0), c.n(1), c.n(2)),
-};
-
-pub const OPPOSITE: Recipe = Recipe {
-    id: "opposite",
-    family: Family::Link,
-    label: "Opposite",
-    blurb: "Mirror another object around a pivot.",
-    aliases: &[
-        "reflect about",
-        "symmetry",
-        "mirror pivot",
-        "counterweight",
-        // Inherited from the retired `Mirror`, which was EXACTLY this with Pivot 0.
-        "negate link",
-        "flip",
-        "invert follow",
-        "reflect",
-        "mirror",
-    ],
-    knobs: &[
-        Knob::link("target", "Target"),
-        Knob::num("pivot", "Pivot", 0.0, (-40.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: Some(Combine::Replace),
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("2*{} - {}", c.n(1), c.link(0)),
-};
-
-pub const OFFSET_COPY: Recipe = Recipe {
-    id: "offset-copy",
-    family: Family::Link,
-    label: "Offset Copy",
-    blurb: "Sit a fixed distance from another object.",
-    aliases: &["shadow", "trail", "follow at distance", "clone offset"],
-    knobs: &[
-        Knob::link("target", "Target"),
-        Knob::num("offset", "Offset", 0.2, (-40.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: Some(Combine::Replace),
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("{} + {}", c.link(0), c.n(1)),
 };
 
 pub const DISTANCE_2D: Recipe = Recipe {
@@ -153,24 +133,4 @@ pub const BLEND_TWO: Recipe = Recipe {
     neutral: Neutrality::NoNeutral,
     pair: None,
     emit: |c| format!("mix({}, {}, {})", c.link(0), c.link(1), c.n(2)),
-};
-
-pub const SWITCH: Recipe = Recipe {
-    id: "switch",
-    family: Family::Link,
-    label: "Switch",
-    blurb: "One value while another object is past a threshold, another below it.",
-    aliases: &["if", "trigger", "threshold", "gate", "when", "condition"],
-    knobs: &[
-        Knob::link("target", "Watch"),
-        Knob::num("threshold", "Threshold", 0.5, (-40.0, 40.0)),
-        Knob::num("above", "Above", 1.0, (-40.0, 40.0)),
-        Knob::num("below", "Below", 0.0, (-40.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: Some(Combine::Replace),
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("select({} > {}, {}, {})", c.link(0), c.n(1), c.n(2), c.n(3)),
 };

@@ -14,7 +14,32 @@ pub const LIMIT: Recipe = Recipe {
     family: Family::Shape,
     label: "Limit",
     blurb: "Keep the value between two bounds.",
-    aliases: &["clamp", "constrain", "min max", "bound", "cap", "range"],
+    aliases: &[
+        "clamp",
+        "constrain",
+        "min max",
+        "bound",
+        "cap",
+        "range",
+        // Herdados de `floor-at` / `ceiling-at` (delta 0,000000 nos dois: Limit é o mesmo
+        // com os DOIS lados) e de `remap-clamped`, que era MÚTUA com este.
+        "floor at",
+        "min",
+        "lower bound",
+        "at least",
+        "ground",
+        "clamp low",
+        "ceiling at",
+        "max",
+        "upper bound",
+        "at most",
+        "cap",
+        "clamp high",
+        "remap clamped",
+        "linear clamp",
+        "map clamped",
+        "safe remap",
+    ],
     knobs: &[
         Knob::num("min", "Min", -1.0, (-40.0, 40.0)),
         Knob::num("max", "Max", 1.0, (-40.0, 40.0)),
@@ -25,36 +50,6 @@ pub const LIMIT: Recipe = Recipe {
     neutral: Neutrality::NoNeutral,
     pair: None,
     emit: |c| format!("min(max({}, {}), {})", c.inner, c.n(0), c.n(1)),
-};
-
-pub const FLOOR_AT: Recipe = Recipe {
-    id: "floor-at",
-    family: Family::Shape,
-    label: "Floor At",
-    blurb: "Never let the value go below this.",
-    aliases: &["min", "lower bound", "at least", "ground", "clamp low"],
-    knobs: &[Knob::num("min", "Min", -1.0, (-40.0, 40.0))],
-    kind: RowKind::Value,
-    combine: None,
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("max({}, {})", c.inner, c.n(0)),
-};
-
-pub const CEILING_AT: Recipe = Recipe {
-    id: "ceiling-at",
-    family: Family::Shape,
-    label: "Ceiling At",
-    blurb: "Never let the value go above this.",
-    aliases: &["max", "upper bound", "at most", "cap", "clamp high"],
-    knobs: &[Knob::num("max", "Max", 1.0, (-40.0, 40.0))],
-    kind: RowKind::Value,
-    combine: None,
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("min({}, {})", c.inner, c.n(0)),
 };
 
 pub const REMAP: Recipe = Recipe {
@@ -94,36 +89,6 @@ pub const REMAP: Recipe = Recipe {
     },
 };
 
-pub const REMAP_CLAMPED: Recipe = Recipe {
-    id: "remap-clamped",
-    family: Family::Shape,
-    label: "Remap (Clamped)",
-    blurb: "Remap, but never overshoot past the output range.",
-    aliases: &["linear clamp", "ease range", "map clamped", "safe remap"],
-    knobs: &[
-        Knob::num("in_lo", "In Min", 0.0, (-40.0, 40.0)),
-        Knob::num("in_hi", "In Max", 1.0, (-40.0, 40.0)),
-        Knob::num("out_lo", "Out Min", 0.0, (-40.0, 40.0)),
-        Knob::num("out_hi", "Out Max", 1.0, (-40.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: None,
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| {
-        format!(
-            "mix({}, {}, min(max(({} - {})/({} - {}), 0), 1))",
-            c.n(2),
-            c.n(3),
-            c.inner,
-            c.n(0),
-            c.span_hi(0, 1),
-            c.n(0)
-        )
-    },
-};
-
 pub const MULTIPLY_ADD: Recipe = Recipe {
     id: "multiply-add",
     family: Family::Shape,
@@ -140,6 +105,13 @@ pub const MULTIPLY_ADD: Recipe = Recipe {
         "invert sign",
         "minus",
         "opposite sign",
+        // Herdados de `invert-range`, subsumida por DUAS receitas (`remap` 1e-7 e esta
+        // 0,000000).
+        "invert in range",
+        "flip range",
+        "reverse range",
+        "mirror value",
+        "complement",
     ],
     knobs: &[
         Knob::num("multiply", "Multiply", 1.0, (-10.0, 10.0)),
@@ -156,24 +128,6 @@ pub const MULTIPLY_ADD: Recipe = Recipe {
     // unparenthesised form means `value + (wiggle*m) + o` — a different animation
     // that parses. This is the row the pairwise-composition gate exists for.
     emit: |c| format!("{}*{} + {}", c.tight(), c.n(0), c.n(1)),
-};
-
-pub const INVERT_RANGE: Recipe = Recipe {
-    id: "invert-range",
-    family: Family::Shape,
-    label: "Invert in Range",
-    blurb: "Turn the value inside out between two bounds.",
-    aliases: &["flip range", "reverse range", "mirror value", "complement"],
-    knobs: &[
-        Knob::num("min", "Min", 0.0, (-40.0, 40.0)),
-        Knob::num("max", "Max", 1.0, (-40.0, 40.0)),
-    ],
-    kind: RowKind::Value,
-    combine: None,
-    clock: ClockUse::None,
-    neutral: Neutrality::NoNeutral,
-    pair: None,
-    emit: |c| format!("{} + {} - {}", c.n(0), c.n(1), c.tight()),
 };
 
 pub const ABSOLUTE: Recipe = Recipe {

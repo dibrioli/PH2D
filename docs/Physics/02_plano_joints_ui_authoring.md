@@ -49,6 +49,15 @@ diagnóstico da pesquisa:
 | L6 | **Sem break force** | Unity: Break Force/Torque com default Infinity=off + Break Action dropdown. Godot nem lê a força de reação (proposal #7672 pede). rapier expõe `ImpulseJoint.impulses` público — construível no padrão do W-ImpactForce |
 | L7 | **Sem higiene do par**: desabilitar sem deletar, collide-connected por joint, swap A↔B | `JointEnabled` e `contacts_enabled` são NATIVOS do rapier e não têm row; RUBE tem swap; Newton tem "Active" checkbox (keyframável!) |
 
+> **⚠️ ESTE QUADRO É O DIAGNÓSTICO DE 2026-07-25, NÃO O ESTADO DE HOJE.** As sete limitações
+> estão **FECHADAS**: L1→W-J1 · L2→W-J2/W-J2b · L3→W-J4/W-J4b · L4→W-J5/W-J6 (+ os tipos que o
+> §8 não previa: **Rod** · **Wheel** · **Pulley**) · L5→W-J3 · L6→W-J7/W-J7b · L7→W-J8. O §7
+> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **sete** itens,
+> **nenhum escalonado** — params keyframáveis (cross-line com a timeline, pede decisão do Enio) ·
+> a metade **autorável** do Pin-to-world · Custom/GenericJoint · ragdoll wizard / make-chain ·
+> soft weld (premissa falsificada e medida) · copy/paste de propriedades · rows de readout
+> tingidas. Quatro deles estão explicitamente condicionados a *"se o uso pedir"*.
+
 ---
 
 ## §2 — As imagens, uma a uma (o que cada uma ensina)
@@ -292,8 +301,17 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   invisível no cursor). O que resta no horizonte é a metade **AUTORÁVEL** — um joint com UM corpo e um
   ponto de mundo persistido —, e ela não é mecânica: `names_two_bodies()` gateia o reconcile, o rig walk,
   o overlay e a §12.
-- **IK multibody** (`inverse_kinematics_delta` pronto no rapier): posar corrente arrastando a ponta e
-  bakear — diferencial de verdade para animação; arquitetura separada (multibody set), ADR próprio.
+- ~~**IK multibody**~~ — **FECHADO ([ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md),
+  W-IK, 2026-07-27, cena `=54`)**, e ⚠️ **a metade "arquitetura separada (multibody set)" desta nota
+  foi DELIBERADAMENTE recusada** — leia o ADR antes de reabrir. O multibody **não é estado da cena, é
+  uma ferramenta transitória de POSE**: a árvore é construída no press, resolvida, escrita de volta em
+  `Transform` e jogada fora no release; nada no `step` a toca e o `MultibodyJointSet` do mundo continua
+  **VAZIO**. A alternativa que esta nota sugeria (joints multibody-NATIVOS como representação de
+  produção) está avaliada e rejeitada no ADR §*Alternativas*, com o preço: seria uma **ÁRVORE** (um pai
+  por corpo — laço fechado inexprimível) e todo elo não-raiz teria de ser `Dynamic`.
+  ⚠️ E a metade **"e bakear"** também está paga, por outro caminho: posar escreve `Transform`, e com o
+  **AutoKey armado a timeline captura pela máquina que já existe** — não há, nem deve haver, um
+  segundo caminho de IK→keyframe (plano 04 §5).
 - **Ragdoll wizard** (Fyrox) / **Make chain por protótipo** (RUBE) — depois que a corrente por seleção
   ordenada (W-J4) existir e o uso pedir mais.
 - **Soft weld** — ⚠️ **a premissa desta linha estava ERRADA e foi medida (2026-07-27).** *"frequency/damping

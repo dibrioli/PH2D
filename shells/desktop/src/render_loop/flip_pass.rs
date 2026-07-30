@@ -152,9 +152,10 @@ pub(crate) fn render(
     let (w, h) = (window.width.max(1), window.height.max(1));
     let cam = camera_raw(camera, window);
 
-    // O MOTOR NOVO do traço ([doc 12](../../../../docs/Flip/12_novo_motor_pesquisa.md)) —
-    // `PH2D_FLIP_NEW_ENGINE=1`. **O shell é o único interruptor**: a crate não lê o ambiente,
-    // senão a escolha moraria em dois lugares e o gate de um seria verde sobre o outro.
+    // O MOTOR do traço ([doc 12](../../../../docs/Flip/12_novo_motor_pesquisa.md)) — o percurso é o
+    // DEFAULT, e `PH2D_FLIP_NEW_ENGINE=0` é a escape. **O shell é o único interruptor**: a crate não
+    // lê o ambiente, senão a escolha moraria em dois lugares e o gate de um seria verde sobre o
+    // outro.
     //
     // ⚠️ Lido UMA vez (`OnceLock`) — um `var()` por frame é syscall por frame, e pior: um
     // interruptor que muda no meio de uma sessão faria o A/B do smoke depender de *quando* o
@@ -183,18 +184,32 @@ pub(crate) fn render(
     }
 }
 
-/// `PH2D_FLIP_NEW_ENGINE=1` arma o percurso por ladrilho em vez do rasterizador.
+/// **O PERCURSO É O DEFAULT** (doc 12 §22) — `PH2D_FLIP_NEW_ENGINE=0` é a ESCAPE para o
+/// rasterizador que shipava.
 ///
-/// Aceita `1`/`true`/`on` (o vocabulário dos outros interruptores do repo); qualquer outra coisa —
-/// inclusive ausente — é o motor que shipa.
+/// A inversão é a decisão do padrão-ouro, e o que a sustenta é a hierarquia das leis, não uma
+/// preferência: a lei do percurso (`τ = ∫ f(dn) ds`, `α = 1 − exp(−τ)`) é o **limite contínuo** que
+/// os dab buffers de GIMP/Krita/Procreate — e o do nosso próprio Painter — aproximam por soma
+/// finita, e o rasterizador (união global + eleição por depth) não está na família. Medido contra o
+/// depósito do Painter, o pico na ponta: raster **+129/+131/+175** contra percurso
+/// **−12/−17/−46** (durezas 0,2/0,4/0,7).
 fn new_engine_armed() -> bool {
     static ARMED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ARMED.get_or_init(|| {
-        matches!(
-            std::env::var("PH2D_FLIP_NEW_ENGINE").as_deref(),
-            Ok("1" | "true" | "on")
-        )
-    })
+    *ARMED.get_or_init(|| walk_from_env(std::env::var("PH2D_FLIP_NEW_ENGINE").ok().as_deref()))
+}
+
+/// A política do interruptor, **PURA** — quem decide *qual motor* a partir do que o ambiente diz.
+///
+/// ⚠️ **Ela existe separada porque o default não era testável:** o [`new_engine_armed`] é um
+/// `OnceLock` sobre uma variável de processo, então nenhum teste consegue exercitá-lo duas vezes no
+/// mesmo binário, e um default que ninguém pode afirmar é um default que a próxima edição inverte
+/// em silêncio.
+///
+/// ⚠️ **Só o desligamento EXPLÍCITO volta ao raster** — ausente, vazio ou irreconhecível dá o
+/// percurso. Isso é deliberado: um erro de digitação na escape (`=flase`) falha **para o default**,
+/// nunca para um terceiro comportamento.
+fn walk_from_env(v: Option<&str>) -> bool {
+    !matches!(v, Some("0" | "false" | "off"))
 }
 
 /// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt`.
@@ -518,87 +533,9 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
     object_id.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (layer_id as u64)
 }
 
-/// **A porta ÚNICA da paralaxe multiplano** (2.5D, ADR-0114 §Decisão 3): desloca a
-/// TRANSLAÇÃO do `model` do objeto por `(cam_center − origem)·(1 − depth)`, uma translação
-/// de MUNDO. A camada passa a renderizar como se a câmera estivesse a
-/// `lerp(cam_center, origem, depth)` — `depth = 1` (flat, o comum) devolve o model
-/// **intacto** (`is_identity` segue verdadeiro ⇒ caminho byte-idêntico); `depth = 0` fixa a
-/// origem do objeto no centro da tela (fundo estático). Só a translação muda; a parte linear
-/// (rotação/escala) do gizmo fica. **Uma porta** — a arte assada, o fantasma e o traço de
-/// preview desta camada TODOS passam por aqui, senão o esboço vivo folgaria da arte.
-///
-/// A âncora é a origem do objeto `(e, f)`: enquadrado de frente (a câmera sobre ela), todos
-/// os planos coincidem; panhar os separa por `depth` (o deslocamento de tela = `depth × pan`).
-pub(super) fn parallax_model(model: &Xform, cam_center: [f32; 2], depth: f32) -> Xform {
-    if depth == 1.0 {
-        return *model; // flat: intacto (byte-idêntico ao pré-multiplano)
-    }
-    let [a, b, c, d, e, f] = model.0;
-    let k = 1.0 - depth as f64;
-    Xform([
-        a,
-        b,
-        c,
-        d,
-        e + (cam_center[0] as f64 - e) * k,
-        f + (cam_center[1] as f64 - f) * k,
-    ])
-}
-
-/// A câmera do passe com o `model` LOCAL→mundo do objeto dobrado: `world_to_clip ·
-/// model`, e a espessura escalada pela escala média do objeto (`px_per_world ·
-/// mean_scale`) — para o traço engrossar junto quando o gizmo escala. É isto que
-/// deixa o gizmo de sprite mover/girar/escalar a arte SEM reescrever geometria.
-pub(super) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
-    let [a, b, c, d, e, f] = model.0;
-    // `model` como 4×4 col-major (`m[col][row]`): local (x, y, 0, 1) → mundo.
-    let m: [[f32; 4]; 4] = [
-        [a as f32, b as f32, 0.0, 0.0],
-        [c as f32, d as f32, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [e as f32, f as f32, 0.0, 1.0],
-    ];
-    let p = base.world_to_clip; // col-major (mundo→clip)
-    // combined = P · M (col-major): combined[j][row] = Σ_k P[k][row] · M[j][k].
-    let mut w = [[0.0f32; 4]; 4];
-    for (j, wj) in w.iter_mut().enumerate() {
-        for (row, wjr) in wj.iter_mut().enumerate() {
-            let mut s = 0.0;
-            for k in 0..4 {
-                s += p[k][row] * m[j][k];
-            }
-            *wjr = s;
-        }
-    }
-    CameraRaw::new(
-        w,
-        base.viewport,
-        base.px_per_world * model.mean_scale() as f32,
-    )
-}
-
-/// Converte a `Camera2d` (mundo→clip ortográfico) no uniform do passe. O
-/// `view_proj` é o MESMO afim que os sprites usam (as POSIÇÕES acompanham o zoom).
-///
-/// O 3º campo é a **escala de espessura** = **`px_per_world`** (ADR-0114 §4.C.6): a
-/// largura do traço é guardada em unidades de MUNDO e o render a projeta como qualquer
-/// outra grandeza geométrica (`thickness_px = raio_mundo · px_per_world`, que é o que o
-/// `ph2d-flip-render` sempre documentou querer). Dar zoom engrossa o traço na tela —
-/// arte é arte, não chrome.
-///
-/// Antes daqui passava `1.0`, que forçava a largura a ser lida como PX DE TELA (brush
-/// absoluto, Enio 2026-07-11). Enio 2026-07-17 reverteu: *"a largura do traço está
-/// relativa ao zoom do canvas e não é fixa no mundo"*. O `fold_model` de um objeto
-/// escalado multiplica por `mean_scale` por cima (a arte engrossa junto com o gizmo).
-fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
-    let vp = camera.view_proj(window).to_cols_array_2d();
-    let px_per_world = window.height as f32 / camera.height_world.max(f32::EPSILON);
-    CameraRaw::new(
-        vp,
-        [window.width as f32, window.height as f32],
-        px_per_world,
-    )
-}
+#[path = "flip_pass_camera.rs"]
+mod camera;
+use camera::{camera_raw, fold_model, parallax_model};
 
 #[cfg(test)]
 #[path = "flip_pass_tests.rs"]

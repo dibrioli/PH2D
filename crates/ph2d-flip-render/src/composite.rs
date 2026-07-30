@@ -46,8 +46,10 @@ pub struct FlipCompose {
     straight: Option<wgpu::Texture>,
     straight_view: Option<wgpu::TextureView>,
     size: (u32, u32),
-    /// O PISO do motor novo: os fills rasterizados, que o percurso compõe por baixo dos traços.
-    /// `None` até o motor ser armado — quem nunca liga o `PH2D_FLIP_NEW_ENGINE` não paga a VRAM.
+    /// O PISO do percurso: os fills rasterizados, que ele compõe por baixo dos traços.
+    /// `None` até o motor ser armado. ⚠️ **O percurso é o DEFAULT desde o §22 do doc 12**, então na
+    /// prática isto nasce alocado; a preguiça agora serve o caminho INVERSO (quem escapa para o
+    /// raster com `PH2D_FLIP_NEW_ENGINE=0` não paga a VRAM nem do `fills` nem do `walk`).
     fills: Option<wgpu::Texture>,
     fills_view: Option<wgpu::TextureView>,
     /// O MOTOR NOVO ([doc 12](../../../docs/Flip/12_novo_motor_pesquisa.md)), quando armado.

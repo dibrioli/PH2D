@@ -1175,10 +1175,12 @@ linhas caem: uma fixture que crava coordenada de tela codifica a convenção em 
 
 ### 18.5 Rodar
 
+⚠️ **O default INVERTEU no §22** — o percurso é o motor, e o interruptor é a escape:
+
 ```
 cargo build -p ph2d-host-desktop --release
-env PH2D_FLIP_DEMO=1 PH2D_FLIP_NEW_ENGINE=1 cargo run -p ph2d-host-desktop --release   # o motor NOVO
-env PH2D_FLIP_DEMO=1                        cargo run -p ph2d-host-desktop --release   # o CONTROLE
+env PH2D_FLIP_DEMO=1                        cargo run -p ph2d-host-desktop --release   # o PERCURSO (default)
+env PH2D_FLIP_DEMO=1 PH2D_FLIP_NEW_ENGINE=0 cargo run -p ph2d-host-desktop --release   # o CONTROLE (raster)
 ```
 
 ⚠️ **O A/B é o ponto** — a mesma cena, a mesma mão, os dois builds. O que o §11.3 diz que muda:
@@ -1785,9 +1787,86 @@ comparando.*
 - **`SUB = 2`** (−30% e reprova o gate de controle);
 - **portar o binner** (ele é 26% do total, não 45% — o §14 estava sobre uma amostra ruidosa).
 
-**A decisão de DEFAULT é do Enio, e agora ela tem os dois números:** 14,8× de custo de device a 200
-traços, contra as três divergências do §20 em que o percurso é o mais correto e a família de defeitos
-do cruzamento/ponta que ele existe para curar. **O smoke aprovou a imagem; o preço está medido.**
+**A decisão de DEFAULT era do Enio, e ela foi tomada no §22** — que também mostra por que este §21
+estava com a lente errada.
+
+---
+
+## 22. ⭐⭐⭐ O PADRÃO-OURO — a decisão do Enio, e por que o §21 media a coisa errada
+
+> *"vamos ao padrão ouro"* (Enio, 2026-07-29), depois de *"qual é o estado da arte, o padrão ouro **sem
+> olhar custos**?"*
+
+⚠️ **O §21 inteiro comparou o percurso contra o RASTER e concluiu que 26% de um quadro é demais.**
+Isso é o §0.0 do `CLAUDE.md` de cabeça para baixo: *nunca deixe o fallback definir o produto* — eu
+deixei o caminho mais barato definir o teto do mais correto, e a recomendação que saiu daí (rotear por
+tile) era um contorno para um custo que, medido no lugar certo, é de **ARQUITETURA**.
+
+### 22.1 A hierarquia das leis — o percurso não é um candidato, é o LIMITE
+
+```
+Beer-Lambert sobre densidade varrida   ← A FÍSICA
+   ↓ integral exata
+τ = ∫ f(dn) ds ,  α = 1 − exp(−τ)      ← O PERCURSO (construído, gateado)
+   ↓ soma finita a 0,1·diâmetro
+buffer de dabs                          ← GIMP · Krita · Procreate · o NOSSO Painter
+   ↓ (fora da família)
+união global + eleição por depth        ← o raster que shipava
+```
+
+A pesquisa do §2 disse que **ninguém publicou a resposta** (Ciallo declara o nosso defeito como
+limitação própria; o GP segue quebrado no 5.0.1; o Vello é *"outlines only — not soft/feathered"*), e a
+hierarquia explica por quê: o percurso é o **limite contínuo** que os dab buffers da indústria
+aproximam por soma finita. É por isso que ele bate o **próprio depósito do Painter** como oráculo nas
+três divergências do §20 — o Painter é uma soma finita do mesmo limite.
+
+⚠️ **Corolário que fecha o pedido original:** o C1 (buffer de dabs, o que o Enio pediu ao pé da letra)
+é **estritamente pior** que o que está construído — nele a lei volta a depender do *spacing*, a doença
+que matou o motor atual e que a `sampling_invariance` proíbe. **O percurso é o C1 sem o defeito do
+C1.**
+
+### 22.2 A decisão: o percurso é o DEFAULT (`aa14e9366` invertido)
+
+`PH2D_FLIP_NEW_ENGINE=0` passa a ser a **escape** para o raster. A política mora numa função **PURA**
+(`walk_from_env`) e não no `OnceLock`, porque um `OnceLock` sobre variável de processo responde uma vez
+por binário ⇒ **o default não era afirmável**, e default não-afirmável é default que a próxima edição
+inverte em silêncio. Gate `the_walk_is_the_default_and_only_an_explicit_zero_escapes_to_the_raster`
+(mutação: voltar ao opt-in sangra na 1ª asserção). Só o desligamento **explícito** volta ao raster —
+um `=flase` falha **para o default**, nunca para um terceiro comportamento.
+
+### 22.3 ⚠️ O custo era ARQUITETURA, e o número de hoje mede o Pass A errado
+
+Conferido no `flip_pass.rs`: **não existe dirty check no Pass A.** O cache é da *tesselação* (CPU,
+cache-hit em pan/zoom); a rasterização na GPU roda **por camada, por frame, sempre** — panhando,
+parado, em playback. Nenhum app de pintura faz isso; **o nosso Painter não faz** (canvas + preview +
+dirty-rect); nenhum app vetorial faz (Illustrator/Figma cacheiam tiles, invalidados por edição e por
+nível de zoom).
+
+E o Flip **multiplica camadas por conta própria**: cada fantasma do onion é uma camada com o seu
+`stage_layer`. ⚠️ **E a cobertura de um fantasma é IDÊNTICA à do desenho** — o `with_ghost_tint` põe o
+tint na CÂMERA, só rgb/alpha mudam ⇒ hoje o onion re-rasteriza N vezes a mesma cobertura.
+
+| | hoje | com cache de cobertura |
+|---|---|---|
+| arte commitada | re-rasteriza todo frame | **0/frame** |
+| fantasmas do onion | N× a MESMA cobertura, todo frame | **0/frame** (uma cobertura serve o desenho e todos os fantasmas dele) |
+| traço VIVO | — | **0,166 ms = 1% de um quadro** (medido, §21.2) |
+
+⇒ **os 14,8× são o preço de um re-render COMPLETO**, que sob a arquitetura certa acontece na **edição**
+e na **troca de zoom** — não 60 vezes por segundo. E o item conserta o **raster também**: não é gastar
+para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs**.
+
+### 22.4 O que falta para padrão-ouro (a fila aprovada)
+
+| # | item | estado |
+|---|---|---|
+| 1 | **percurso como default** | ✅ **feito** (§22.2) |
+| 2 | **cache de cobertura por-camada** (tiles de mundo, invalidado por edição e por zoom) | desenho; mata a pergunta do custo e conserta o raster de carona |
+| 3 | **a integral de ÁREA do pixel** | ⚠️ **o maior buraco visível que sobrou** — conferido: `sample_count: 1`, `no_msaa()` em TODO o pipeline, a cobertura é amostrada no CENTRO do pixel. O padrão-ouro é `α = ∫_pixel [1 − exp(−τ)] dA`, e ela **compõe** com τ (uma 2ª integral, no motor que já é feito de integrais) |
+| 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
+| 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
+
+A **antiderivada** (§21.5) cai para o fim: ela é *perf*, e sob (2) deixa de ser necessária.
 
 ## 17. Fontes
 

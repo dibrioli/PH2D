@@ -1002,8 +1002,11 @@ deixa **25×** sobre o medido e ainda é 39× mais apertada que meio byte.
 
 **200 gestos a 1080p custam 2,16 ms de device — 13% de um quadro de 60 fps.** O desenho fecha.
 
-⚠️ **E a fronteira MUDOU DE LADO:** o binning de CPU (1,76 ms) agora é **45% do total**. A próxima
-alavanca não é mais o percurso — é portar o binner, ou incrementá-lo (a lista só muda onde o traço
+⚠️ **ESTA CONCLUSÃO FOI REFUTADA — ver o §21.** O `1,76` saiu de **uma amostra não-aquecida** de um
+instrumento que, re-rodado três vezes no mesmo binário, media `1,33 / 2,30 / 4,00`; com mediana e o
+1º descartado o binner mede **~1,0 ms**, e depois das cinco features do §19 o percurso subiu para
+2,7-2,9. A fronteira é o PERCURSO, não o binner. O texto original segue abaixo por honestidade
+histórica: a próxima alavanca não é mais o percurso — é portar o binner, ou incrementá-lo (a lista só muda onde o traço
 em curso mexe).
 
 ---
@@ -1569,9 +1572,101 @@ com número e sonda):
 Nas três o percurso é o mais correto pelas próprias regras que o raster afirma nos comentários dele, e
 nas três **o smoke decide** se isso é o produto.
 
-**A fronteira volta a ser a PERF** (§15): o binner da CPU custa 1,76 ms = 45% do frame, e o resíduo de
-−27 sobre ≤ 3 px na quina convexa segue aberto. E a decisão de **default** — qual motor arma — é do
-Enio, agora que não há mais feature apagada para descobrir depois.
+**A fronteira volta a ser a PERF — e o §21 mediu que ela NÃO era onde este doc dizia.**
+
+## 21. ⭐⭐ A PERF, MEDIDA CONTRA O MOTOR QUE SHIPA — o número que decide o default
+
+O §14 fechou o desenho do percurso com *"2,16 ms, 13% de um quadro"* e o §20 apontou a próxima
+alavanca para o binner. **As duas afirmações estavam erradas, e por motivos diferentes.**
+
+### 21.1 O instrumento media UMA amostra não-aquecida
+
+O `1,76 ms` do §14 é `bin_ms` de **uma** chamada de `bin_segments`, sem aquecimento e incluindo as
+alocações dela. Re-rodando a MESMA sonda três vezes no mesmo binário: **1,33 · 2,30 · 4,00 ms.**
+*Um número que não reproduz não é achado, é ruído com casas decimais* — e foi sobre uma dessas
+amostras que este doc concluiu *"o binner é 45% do frame"* e mandou a próxima wave para lá.
+
+Corrigido (12 chamadas, a 1ª descartada, **mínimo** — aqui toda amostra faz trabalho idêntico, então
+o mínimo é o que a máquina consegue e o resto é carga alheia):
+
+| traços | binner (CPU) | percurso (GPU) | total |
+|---|---|---|---|
+| 1 | 0,01 | 0,08 | 0,09 |
+| 10 | 0,04 | 0,21 | 0,25 |
+| 50 | 0,21 | 0,75 | 0,96 |
+| **200** | **0,97** | **2,73** | **3,70** |
+
+O binner é **26%** do total, não 45%. A fronteira é o percurso.
+
+### 21.2 ⭐ O número que NUNCA foi medido: o motor que SHIPA
+
+*Rápido* e *lento* só existem contra alguma coisa, e a coisa é o rasterizador que está no produto.
+`measure_what_each_engine_charges_for_the_same_scene` mede o **seam real** (`stage_layer`: Pass A
+produtor + Pass B resolve, idêntico nos dois ⇒ a diferença é o produtor), 1080p:
+
+| traços | raster | percurso | razão |
+|---|---|---|---|
+| 1 | 0,072 ms | 0,166 | **2,3×** |
+| 10 | 0,082 | 0,365 | **4,5×** |
+| 50 | 0,125 | 1,286 | **10,3×** |
+| 200 | **0,293** | **4,332** | **14,8×** |
+
+**O percurso custa 14,8× o motor que shipa, e a razão CRESCE com a contagem de traços.** Em termos de
+quadro: 1,8% contra **26%** de um quadro de 60 fps a 200 traços.
+
+⚠️ **E o CRESCIMENTO é o diagnóstico, não o valor absoluto:** o raster cresce 4× para 200× os traços
+(0,072 → 0,293) e o percurso cresce **26×** (0,166 → 4,33). O raster paga **área de tinta**; o percurso
+paga **pixels × segmentos perto deles** — ele multiplica onde o raster soma.
+
+⚠️ **A 1ª versão desta sonda mediu no canvas 64×64 do harness** e deu 19,4×: ali o percurso é dominado
+pelo binning e pelo dispatch, não por pixels. *A TELA é parte da fixture.*
+
+### 21.3 Duas alavancas MEDIDAS — uma inexistente, uma reprovada
+
+**O ladrilho JÁ ESTÁ no ótimo** (varredura 8/16/32/64 × 1/10/50/200 traços, total bin+walk):
+
+| ladrilho | 10 traços | 50 | 200 |
+|---|---|---|---|
+| 8 | 0,35 | 1,43 | 5,75 |
+| **16** (o que shipa) | **0,25** | **0,96** | 3,70 |
+| 32 | 0,27 | 0,97 | **3,55** |
+| 64 | 0,28 | 1,09 | 4,15 |
+
+32 ganha **4%** a 200 traços e perde a 10; 8 é muito pior. **O `DEFAULT_TILE = 16` é medição, não
+palpite** — e o achado que importa é outro: **o percurso é quase INSENSÍVEL ao ladrilho** (2,73 / 2,79 /
+3,05 / 3,85 num fator 8 de área), o que **refuta** a hipótese natural de que ele é limitado pelo
+comprimento da lista por ladrilho. Ladrilho menor encurta a lista e não compra nada.
+
+**O piso é desprezível:** um traço só custa 0,08 ms dos 2,73 (2,07 M pixels de load+store = 0,04 ns/px)
+⇒ os 2,7 ms são **trabalho de quadratura de verdade**, não largura de banda.
+
+⛔ **`SUB = 2` — CONSTRUÍDO, MEDIDO e REPROVADO. Não refaça.** Ele compra **−30% do device**
+(2,73 → 1,90 ms) e custa:
+
+- **o DOBRO do erro na TAMPA** de um traço reto contra o depósito do Painter: **−53 → −134**;
+- o árbitro do cruzamento caindo de **11,7× para 7,1×**, abaixo da barra de 8× do gate de controle
+  (`the_new_engine_leaves_the_hard_default_where_the_shipping_engine_put_it`).
+
+⚠️ **E isso corrige a §5.4:** a tabela dela mediu numa **QUINA** (`h = 0,4`) e concluiu *"4 satura"*
+(`1→−73 · 2→−67 · 4→−65`). A saturação é real e a conclusão era **limitada pela fixture** — a
+quadratura não dói na quina, dói na **TAMPA**, onde vive o termo de fronteira do §13. `SUB = 4` é o
+**piso**, não o conforto.
+
+⚠️ **Registro de leitura errada, minha:** eu li `estrela corpo +127 (178 px)` na saída do gate como
+regressão do `SUB=2`. Ele é **pré-existente em `SUB=4`** — é a divergência de PROJETO no cruzamento
+(o árbitro do próprio gate diz que ali o motor novo é que está mais perto da área verdadeira). *Uma
+linha de saída não é um delta; delta pede as duas colunas.*
+
+### 21.4 O que resta, e de quem é a decisão
+
+O percurso não tem alavanca barata: não é o ladrilho, não é a lista, não é largura de banda, e o
+`SUB` é piso. O que sobraria é **não visitar pixel que traço nenhum alcança** — e o raster ganha
+exatamente por isso (um fragmento só existe onde um quad cobre). Isso é uma wave de arquitetura
+(dispatch por ladrilho não-vazio / lista por-pixel), não uma constante a afinar.
+
+**A decisão de DEFAULT é do Enio, e agora ela tem os dois números:** 14,8× de custo de device a 200
+traços, contra as três divergências do §20 em que o percurso é o mais correto e a família de defeitos
+do cruzamento/ponta que ele existe para curar. **O smoke aprovou a imagem; o preço está medido.**
 
 ## 17. Fontes
 

@@ -262,7 +262,9 @@ fn measure_what_a_frame_costs_on_the_device() {
     let (w, h) = (1920_u32, 1080);
     let sc = ScreenSpace::from_camera(&camera(w, h));
     println!("\n=== O CUSTO DE UM FRAME NO DEVICE (1920x1080) ===");
-    println!("  tracos   segs   bin(CPU) ms   walk(GPU) ms   ns/px   vs CPU serial");
+    println!("  tracos   segs   bin(CPU) ms [min-max]   walk(GPU) ms   ns/px   vs CPU serial");
+    for tile in [8_u32, 16, 32, 64] {
+    println!("  --- ladrilho {tile} px ---");
     for n in [1_usize, 10, 50, 200] {
         let mut d = FlipDrawing::new();
         let mut seed = 0x85EB_CA6B_u32;
@@ -289,9 +291,25 @@ fn measure_what_a_frame_costs_on_the_device() {
                 .push(stroke(&pts, 12.0, 0.5, [0.1, 0.1, 0.1], 1.0));
         }
         let data = pack_drawing(&d);
-        let t0 = std::time::Instant::now();
-        let bins = bin_segments(&data, &sc, DEFAULT_TILE);
-        let bin_ms = t0.elapsed().as_secs_f64() * 1e3;
+        // ⚠️ **O lado da CPU é MEDIANA de 9, o 1º descartado** — e não é higiene: com UMA amostra
+        // não-aquecida ele media 1,33 / 2,30 / 4,00 ms em três corridas seguidas do mesmo binário
+        // (o `bin_segments` aloca, e o alocador tem memória entre chamadas). *Um número que não
+        // reproduz não é achado, é ruído com casas decimais* — e foi sobre uma dessas amostras que
+        // o §14 concluiu "o binner é 45% do frame".
+        let mut amostras = Vec::new();
+        let mut bins = bin_segments(&data, &sc, tile);
+        for _ in 0..9 {
+            let t0 = std::time::Instant::now();
+            bins = bin_segments(&data, &sc, tile);
+            amostras.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        amostras.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // ⚠️ **MÍNIMO, não mediana** — e a escolha do redutor é parte da fixture: aqui toda amostra
+        // faz o trabalho IDÊNTICO (mesmos dados, mesma chamada), então o mínimo é o que a máquina de
+        // fato consegue e o resto é carga alheia. (Onde uma amostra é estruturalmente diferente — o
+        // 1º move de um traço, que não compõe — o mínimo é o redutor ERRADO; ver doc 28 §5.12.)
+        let bin_ms = amostras[0];
+        let (bin_lo, bin_hi) = (amostras[0], amostras[amostras.len() - 1]);
         let pass = WalkPass::new(&device);
         let tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("walk perf target"),
@@ -354,11 +372,12 @@ fn measure_what_a_frame_costs_on_the_device() {
             _ => 1593.7,
         };
         println!(
-            "  {n:6}   {:4}   {bin_ms:11.2}   {ms:12.2}   {:5.1}   {:8.0}x",
+            "  {n:6}   {:4}   {bin_ms:6.2} [{bin_lo:.2}-{bin_hi:.2}]   {ms:12.2}   {:5.1}   {:8.0}x",
             data.points.len() - data.strokes.len(),
             ms * 1e6 / px,
             cpu / ms
         );
+    }
     }
 }
 

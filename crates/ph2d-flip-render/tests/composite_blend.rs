@@ -1364,3 +1364,96 @@ fn measure_the_self_overlap_in_both_engines() {
         }
     }
 }
+
+/// 📏 **SONDA — O NÚMERO QUE DECIDE O DEFAULT: quanto cada motor cobra pela MESMA cena.**
+///
+/// ⚠️ **Ninguém tinha medido o motor que SHIPA.** O §14 fechou o desenho do percurso com
+/// *"2,16 ms, 13% de um quadro"* e o §20 apontou a próxima alavanca para o binner — mas *rápido* e
+/// *lento* só existem contra alguma coisa, e a coisa é o rasterizador que está no produto hoje.
+///
+/// Mede o **seam real** (`stage_layer`: Pass A produtor + Pass B resolve) nos dois motores, na mesma
+/// cena, com `submit` + `poll(wait)` por iteração. O Pass B é idêntico nos dois ⇒ a **diferença** é o
+/// produtor. Mínimo de 12, o 1º descartado (toda iteração faz trabalho idêntico).
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_what_each_engine_charges_for_the_same_scene() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter GPU — pulando o custo comparado");
+        return;
+    };
+    let mut fr = FlipRenderer::new(&gpu.device, GAME_RT);
+    let mut fc = FlipCompose::new(&gpu.device, GAME_RT);
+    // ⚠️ **A TELA é parte da fixture, e a 1ª versão desta sonda mediu no 64×64 do harness** — ali o
+    // percurso é dominado pelo binning da CPU e pelo overhead de dispatch, não por pixels, e a razão
+    // que sai (19,4×) não é a do produto. O tamanho do canvas de desenho é o que importa.
+    for (cw, ch) in [(1024_u32, 1024_u32), (1920, 1080)] {
+        let sx = 2.0 / cw as f32;
+        let sy = -2.0 / ch as f32;
+        let cam = CameraRaw::new(
+            [
+                [sx, 0.0, 0.0, 0.0],
+                [0.0, sy, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [-1.0, 1.0, 0.0, 1.0],
+            ],
+            [cw as f32, ch as f32],
+            1.0,
+        );
+        println!("\n=== O QUE CADA MOTOR COBRA PELA MESMA CENA (stage_layer, {cw}x{ch}) ===");
+        println!("  tracos    raster ms    percurso ms    razao");
+        for n in [1_usize, 10, 50, 200] {
+            let mut d = FlipDrawing::default();
+            let mut seed = 0x85EB_CA6B_u32;
+            let mut rnd = || {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                f32::from(u16::try_from((seed >> 8) & 0xffff).unwrap_or(0)) / 65536.0
+            };
+            for _ in 0..n {
+                let mut st = FlipStroke::new();
+                let (x0, y0) = (rnd() * 12.0, rnd() * ch as f32);
+                let (x1, y1) = (cw as f32 - rnd() * 12.0, rnd() * ch as f32);
+                let bow = (rnd() - 0.5) * ch as f32 * 0.6;
+                for k in 0..40 {
+                    let t = k as f32 / 39.0;
+                    st.push_point(Point {
+                        pos: Vec2::new(
+                            x0 + (x1 - x0) * t,
+                            y0 + (y1 - y0) * t + bow * (std::f32::consts::PI * t).sin(),
+                        ),
+                        width: 12.0,
+                        opacity: 1.0,
+                        color: Rgba::new(0.1, 0.1, 0.1, 1.0),
+                    });
+                }
+                st.hardness = 0.5;
+                d.strokes.push(st);
+            }
+            let data = pack_drawing(&d);
+            let mut ms = [0.0_f64; 2];
+            for (i, armado) in [false, true].into_iter().enumerate() {
+                fc.set_walk_engine(&gpu.device, armado);
+                let mut melhor = f64::MAX;
+                for it in 0..12 {
+                    let t0 = std::time::Instant::now();
+                    let _ = fc.stage_layer(&gpu.device, &gpu.queue, &mut fr, &cam, &data, (cw, ch));
+                    gpu.device
+                        .poll(wgpu::PollType::wait_indefinitely())
+                        .expect("poll");
+                    let dt = t0.elapsed().as_secs_f64() * 1e3;
+                    if it > 0 {
+                        melhor = melhor.min(dt);
+                    }
+                }
+                ms[i] = melhor;
+            }
+            println!(
+                "  {n:6}    {:9.3}    {:11.3}    {:5.2}x",
+                ms[0],
+                ms[1],
+                ms[1] / ms[0].max(1e-9)
+            );
+        }
+    }
+}

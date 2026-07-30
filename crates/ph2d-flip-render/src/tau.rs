@@ -40,8 +40,17 @@ pub const PAINTER_SPACING: f32 = 0.10;
 /// Piso do pitch, em px — o mesmo do oráculo (`painter_look.rs::painter_deposit_sized`).
 const MIN_PITCH_PX: f32 = 0.25;
 
-/// Sub-amostras de quadratura por pitch. ⚠️ **4 SATURA** — medido na §5.4 do doc 12: de 4 para 8
-/// o número não se move. Não é um palpite conservador, é onde a curva deitou.
+/// Sub-amostras de quadratura por pitch. ⚠️ **4 SATURA por cima e MORDE por baixo.**
+///
+/// De 4 para 8 o número não se move (§5.4 do doc 12), e **2 foi construído, medido e REPROVADO**: ele
+/// compra **−30% do device** (2,73 → 1,90 ms a 200 traços em 1080p) e custa **o DOBRO do erro na
+/// TAMPA** de um traço reto contra o depósito do Painter (−53 → −134) mais a queda do árbitro do
+/// cruzamento de **11,7× para 7,1×**, abaixo da barra do gate de controle
+/// (`the_new_engine_leaves_the_hard_default_where_the_shipping_engine_put_it`).
+///
+/// ⚠️ **E a tabela da §5.4 mediu numa QUINA (`h = 0,4`)** e concluiu *"4 satura"*: a quadratura **não
+/// dói na quina, dói na TAMPA**, onde vive o termo de fronteira do §13. A saturação era real e a
+/// conclusão era limitada pela fixture — 4 é o piso, não o conforto.
 pub const SUB: u32 = 4;
 
 /// Teto de `f`. `f = −ln(1 − w)` **diverge** em `w → 1` (o disco duro de `hardness = 1`), e a

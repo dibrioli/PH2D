@@ -360,6 +360,48 @@ clique-a-clique.
 **Tamanho: M.** Smoke: apagar o nó do meio de um arco e a curva ficar; arrastar o meio de um segmento
 e a topologia não mudar; marquee sem Shift, aditivo, sobre duas formas.
 
+### ✅ W3a — ENTREGUE: as duas operações de nó
+
+**Apagar preserva a forma.** `Delete` era `verts.remove` cru — a curva morria com o ponto. Agora os
+handles dos vizinhos são re-ajustados para que a cúbica que sobra passe por onde as duas passavam.
+⚠️ **Porta única `dissolve_vertex`**: o Simplify (que escolhe QUAL nó sacrificar) e o Delete (onde o
+artista escolhe) chamam a MESMA função — o motor `merged_segment_fit` já estava no repo, servindo só
+metade dos consumidores, e a divergência aparecia como *"o Simplify preserva a forma e o Delete
+não"*. MEDIDO sobre um arco de 2×0,75: desvio **0,0799** (11% da altura) contra **0,5875** da
+remoção crua (78% — a curva vira quase a corda). Fosso de **7,4×**; a barra do gate é 0,15.
+
+⚠️ **Limite honesto, achado pela sonda:** com as tangentes das duas PONTAS paralelas nenhuma cúbica
+alcança o ápice (todos os pontos de controle ficam na mesma reta) e o refit degrada para a corda —
+o `det` do sistema 2×2 é zero e o fallback é o default. É o mesmo limite do Illustrator, e está
+escrito no gate porque a **1ª fixture da sonda era exatamente esse caso**: os dois caminhos mediram
+`1,0000` e a mutação não sangraria.
+
+**Arrastar o SEGMENTO** (`Part::Segment`). Pressionar sobre a curva **inseria um nó**, então não
+havia como reformar um trecho sem mexer na topologia — o gesto que Illustrator e Inkscape
+documentam como o normal. ⚠️ **A inserção não se perdeu: mudou de ferramenta.** É a divisão do
+Illustrator — a seta branca (Node) **reforma**, a Pen **acrescenta âncora** —, e o press da Caneta
+já inseria no mesmo hit-test. Há gate exigindo que ela continue a inserir: mover o gesto teria
+removido a capacidade em silêncio.
+
+⚠️ **A distribuição é EXATA, não uma aproximação.** Uma cúbica é linear nos pontos de controle, e a
+solução de norma mínima de `B₁ΔP₁ + B₂ΔP₂ = delta` devolve `ΔC(t) = delta` **por identidade
+algébrica**. MEDIDO: pior erro **2,0e-16** sobre `t ∈ [0.05, 0.95]`, âncoras intocadas, contagem de
+vértices intocada. O `t` é clampado nas pontas porque ali `B₁` e `B₂` vão a zero juntos — nenhum
+movimento de handle move a curva NA âncora, que é o que uma âncora é.
+
+⚠️ **A fixture do gate do editor teve de ser AMPLIADA 100×**: com `px_to_world = 1` o raio de
+captura é 10 unidades de MUNDO, e um arco de 2 unidades cabe inteiro dentro dele — o press no meio
+agarrava um handle do vizinho. É a cicatriz que o `node_hit_tests` já pregava (*"a escala é o
+fenômeno, não decoração"*), e ela reincidiu.
+
+8 gates novos (4 de motor + 4 de costura), **4 mutações, 4 sangram**. Nenhum schema, nenhum contrato
+congelado. API pública nova: `ph2d_vec_scene::{dissolve_vertex, reshape_segment, point_on_segment}`.
+
+Smoke: **`PH2D_BUILD_SMOKE=43`**.
+
+**Aberto da W3 (W3b):** a **escala da seleção** — marquee sem Shift/aditivo, lasso, `Tab`,
+select-all de nós, select por tipo, sub-caminho, X/Y numérico do nó.
+
 ## §7 — W4: OS CORTES
 
 **Tesoura** (`nearest_point_on_path` + `split_segment` — **P**) · **borracha de caminho** (a matemática

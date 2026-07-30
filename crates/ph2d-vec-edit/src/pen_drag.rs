@@ -51,6 +51,21 @@ impl PenTool {
                 }
                 return true;
             }
+            // **O SEGMENTO**: o ponto da curva em `seg_t` segue o dedo, e as duas âncoras ficam
+            // onde estão — a topologia não muda. Sem snap: encaixar o MEIO de uma curva numa
+            // âncora vizinha produziria uma torção que ninguém pediu (a mesma razão do handle).
+            //
+            // O delta é `dedo − ponto da curva AGORA`, e não `dedo − ponto do press`: a
+            // distribuição é exata (ver `reshape_segment`), então cada frame leva o ponto ao dedo
+            // e o gesto não acumula erro. É a mesma forma do arrasto de âncora, uma linha acima.
+            if g.part == Part::Segment {
+                let Some(at) = ph2d_vec_scene::point_on_segment(path, g.vert, g.seg_t) else {
+                    return false;
+                };
+                let pl = inv.apply(p);
+                let d = [pl[0] - at[0], pl[1] - at[1]];
+                return ph2d_vec_scene::reshape_segment(path, g.vert, g.seg_t, d);
+            }
             // Um handle é uma tangente: sem snap, e no espaço local do path.
             let p = inv.apply(p);
             // O RAIO DE QUINA: o cursor projetado na bissetriz vira recuo, e o recuo vira
@@ -80,7 +95,7 @@ impl PenTool {
                 return false;
             };
             match g.part {
-                Part::Anchor | Part::Radius => unreachable!("handled above"),
+                Part::Anchor | Part::Radius | Part::Segment => unreachable!("handled above"),
                 // O handle oposto segue a restrição do tipo: Symmetric espelha,
                 // Smooth mantém colinear preservando o comprimento, Corner é livre.
                 Part::In => {

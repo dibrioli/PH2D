@@ -74,6 +74,15 @@ enum Part {
     /// para dentro arredonda o canto. Só existe onde há quina de verdade —
     /// `corner_at` é o mesmo predicado que o cozimento usa.
     Radius,
+    /// **O SEGMENTO entre duas âncoras** (plano 25 §6): arrastá-lo REFORMA a curva sem mexer na
+    /// topologia — nenhum vértice nasce nem morre. Era a ausência que obrigava a inserir um nó
+    /// para mudar a forma de um trecho, e é o gesto normal do Illustrator (Direct Selection) e do
+    /// Inkscape.
+    ///
+    /// ⚠️ Neste `Part` o campo `vert` do [`Grab`] guarda o índice **PLANO do SEGMENTO** (a
+    /// convenção do `nearest_point_on_path`/`split_segment`), e não o de um vértice — o parâmetro
+    /// `t` viaja no `seg_t`.
+    Segment,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -92,6 +101,10 @@ struct Grab {
     /// `offset = 0 − park` e o raio cresce de zero, como o dedo espera. Só o
     /// `Part::Radius` usa.
     radius_offset: f64,
+    /// Para um [`Part::Segment`]: **onde no segmento o dedo pegou**, em `t ∈ [0,1]`. Fixo no
+    /// press — é o ponto da curva que segue o dedo, e re-derivá-lo por frame faria o agarrado
+    /// escorregar ao longo da curva enquanto o artista puxa para o lado.
+    seg_t: f64,
     /// Para um `Part::Radius`: o ESTILO que o arrasto FORÇA — `Some(true)` = chanfro,
     /// `Some(false)` = arredondado. É como as ferramentas Fillet/Chamfer decidem a quina
     /// enquanto o dedo só dita a MAGNITUDE. `None` = **preserva** o estilo atual do vértice
@@ -355,7 +368,10 @@ impl PenTool {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
-        if let Some(click) = self.insert_on_selected_segment(scene, p, hit_r) {
+        // **Sobre a curva: REFORMA o segmento** (plano 25 §6). Era um insert, e por isso não havia
+        // como mudar a forma de um trecho sem lhe acrescentar um nó. A inserção continua a existir
+        // — na CANETA, que é a ferramenta de acrescentar pontos (a divisão do Illustrator).
+        if let Some(click) = self.grab_segment(scene, p, hit_r) {
             return click;
         }
         match self.path_at(scene, p, hit_r) {
@@ -554,6 +570,7 @@ impl PenTool {
                             vert: i,
                             part,
                             radius_offset: 0.0,
+                            seg_t: 0.0,
                             chamfer: None,
                         });
                     }
@@ -573,6 +590,7 @@ impl PenTool {
                         vert: i,
                         part: Part::Anchor,
                         radius_offset: 0.0,
+                        seg_t: 0.0,
                         chamfer: None,
                     });
                 }

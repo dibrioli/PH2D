@@ -19,7 +19,8 @@ mod geometry;
 #[cfg(test)]
 pub(crate) use geometry::cubic_at;
 pub use geometry::{
-    ghost_handle, make_sharp_corner, nearest_point_on_path, retype_vertex, split_segment,
+    ghost_handle, make_sharp_corner, nearest_point_on_path, point_on_segment, reshape_segment,
+    retype_vertex, split_segment,
 };
 
 /// Compound paths (contornos extras + fill rule) + o índice plano de vértice.
@@ -54,8 +55,11 @@ pub use path_ops::{bake_xform, curve_bbox_in_frame};
 mod inside;
 pub use inside::contains_point;
 
-/// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling.
+/// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling. Publica também o
+/// [`reshape::dissolve_vertex`] — a porta única de *"apaga este nó e preserva a curva"*, partilhada
+/// pelo Simplify (que escolhe o nó) e pelo Delete do editor (onde o artista escolhe).
 mod reshape;
+pub use reshape::dissolve_vertex;
 
 /// Shape primitives (rectangle / ellipse / polygon / star / spiral / round-rect)
 /// + the demo scene — a sibling module (LOC cap).

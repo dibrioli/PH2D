@@ -269,6 +269,77 @@ pub fn split_segment(path: &mut VecPath, seg: usize, t: f64) -> Option<usize> {
     path.flat_vert(c, local + 1)
 }
 
+/// **Reformar um SEGMENTO** — arrastar a curva entre duas âncoras sem mexer na topologia dela.
+///
+/// O ponto do segmento no parâmetro `t` anda exatamente `delta`; as duas âncoras ficam onde
+/// estão, e nenhum vértice nasce nem morre. É o gesto normal do Illustrator (Direct Selection) e
+/// do Inkscape: *"não se pode reformar uma curva sem alterar a topologia dela"* era a ausência.
+///
+/// # A distribuição é EXATA, não uma aproximação
+///
+/// Uma cúbica é **linear nos seus pontos de controle**: `C(t) = B₀P₀ + B₁P₁ + B₂P₂ + B₃P₃`. Mover
+/// só `P₁` e `P₂` dá `ΔC(t) = B₁ΔP₁ + B₂ΔP₂`, e a solução de **norma mínima** de
+/// `B₁ΔP₁ + B₂ΔP₂ = delta` é `ΔPₖ = delta · Bₖ / (B₁² + B₂²)`. Substituindo:
+/// `ΔC(t) = delta·(B₁² + B₂²)/(B₁² + B₂²) = delta`, **ao bit**. Não há iteração nem ajuste — o
+/// ponto agarrado segue o dedo por identidade algébrica. (É o que o Inkscape faz.)
+///
+/// ⚠️ **O `t` é clampado a `[0.05, 0.95]`**: nas pontas `B₁` e `B₂` vão a zero juntos e o sistema
+/// fica sem solução — nenhum movimento de handle move a curva NA âncora, que é justamente o que
+/// uma âncora é. Perto delas o hit-test da âncora já vence, então o clamp só protege o degenerado.
+///
+/// `seg` é o índice **PLANO** (a mesma convenção do [`nearest_point_on_path`] e do
+/// [`split_segment`], e é dali que ele vem). `false` se o segmento não existe.
+pub fn reshape_segment(path: &mut VecPath, seg: usize, t: f64, delta: [f64; 2]) -> bool {
+    let Some((c, local)) = path.locate_segment(seg) else {
+        return false;
+    };
+    let Some((verts, _)) = path.contour_mut(c) else {
+        return false;
+    };
+    let n = verts.len();
+    if n < 2 || local >= n {
+        return false;
+    }
+    let t = t.clamp(0.05, 0.95);
+    let mt = 1.0 - t;
+    let b1 = 3.0 * mt * mt * t;
+    let b2 = 3.0 * mt * t * t;
+    let denom = b1 * b1 + b2 * b2;
+    if denom <= 0.0 {
+        return false;
+    }
+    let (k1, k2) = (b1 / denom, b2 / denom);
+    let b = (local + 1) % n;
+    verts[local].out_handle[0] += delta[0] * k1;
+    verts[local].out_handle[1] += delta[1] * k1;
+    verts[b].in_handle[0] += delta[0] * k2;
+    verts[b].in_handle[1] += delta[1] * k2;
+    true
+}
+
+/// **O ponto do segmento `seg` no parâmetro `t`** — o mesmo índice PLANO do
+/// [`nearest_point_on_path`]. É o que um arrasto de segmento precisa para saber quanto o dedo se
+/// afastou do ponto que agarrou; sem ele, quem arrasta teria de re-derivar a cúbica por conta
+/// própria, e essa segunda leitura discordaria do [`reshape_segment`] no dia em que a convenção
+/// de índice mudasse.
+#[must_use]
+pub fn point_on_segment(path: &VecPath, seg: usize, t: f64) -> Option<[f64; 2]> {
+    let (c, local) = path.locate_segment(seg)?;
+    let (verts, _) = path.contour(c)?;
+    let n = verts.len();
+    if n < 2 || local >= n {
+        return None;
+    }
+    let b = (local + 1) % n;
+    Some(cubic_at(
+        verts[local].anchor,
+        verts[local].out_handle,
+        verts[b].in_handle,
+        verts[b].anchor,
+        t.clamp(0.0, 1.0),
+    ))
+}
+
 /// Ponto mais próximo de `p` sobre os segmentos de `path` (todos os contornos;
 /// amostragem uniforme, `samples` por segmento). Devolve `(seg PLANO, t, dist²)` —
 /// o alvo do "clicar perto do traço pra inserir um vértice" — ou `None` se não há

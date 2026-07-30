@@ -66,6 +66,39 @@ impl PenTool {
         (d2.sqrt() * self.xf(sel).mean_scale() <= hit_r).then_some((sel, seg, t))
     }
 
+    /// Perto de um SEGMENTO do caminho selecionado → **agarra o segmento** para o reformar. A
+    /// topologia não muda: nenhum vértice nasce, e o ponto que o dedo pegou segue o dedo.
+    ///
+    /// ⚠️ **Isto era um INSERT** (plano 25 §6): pressionar sobre a curva partia o segmento em dois
+    /// e agarrava o vértice novo, então **não havia como reformar uma curva sem alterar a
+    /// topologia dela** — o gesto que o Illustrator (Direct Selection) e o Inkscape documentam
+    /// como o normal. A inserção não se perdeu: ela é da **CANETA**, que insere no mesmo hit-test
+    /// (`on_press`, uma linha abaixo do dela) — é a divisão do Illustrator, onde a seta branca
+    /// reforma e a Pen/Add-Anchor acrescenta.
+    pub(crate) fn grab_segment(
+        &mut self,
+        scene: &VecScene,
+        p: [f64; 2],
+        hit_r: f64,
+    ) -> Option<PenClick> {
+        let (sel, seg, t) = self.insert_hit(scene, p, hit_r)?;
+        self.selected_paths = vec![sel];
+        // Nenhum vértice é selecionado: o que está agarrado é o TRECHO, e acender as âncoras
+        // vizinhas diria ao artista que ele está a mover pontos — o Delete seguinte apagaria dois
+        // nós que ele não escolheu.
+        self.selected_verts.clear();
+        self.grab = Some(Grab {
+            path: sel,
+            // ⚠️ No `Part::Segment` o `vert` guarda o índice do SEGMENTO (ver o doc do variant).
+            vert: seg,
+            part: Part::Segment,
+            radius_offset: 0.0,
+            seg_t: t,
+            chamfer: None,
+        });
+        Some(PenClick::Grabbed)
+    }
+
     /// Perto de um SEGMENTO do caminho selecionado → insere um vértice (split de Bézier, forma
     /// preservada) e o agarra pra arrastar de imediato. `None` quando o cursor não está perto de
     /// segmento nenhum.
@@ -84,6 +117,7 @@ impl PenTool {
             vert: ni,
             part: Part::Anchor,
             radius_offset: 0.0,
+            seg_t: 0.0,
             chamfer: None,
         });
         Some(PenClick::Inserted)
@@ -93,3 +127,8 @@ impl PenTool {
 #[cfg(test)]
 #[path = "node_hit_tests.rs"]
 mod tests;
+
+/// Gates do **alcance do nó** (plano 25 §6) — a costura dos dois gestos, irmã pelo assunto.
+#[cfg(test)]
+#[path = "node_reach_tests.rs"]
+mod node_reach_tests;

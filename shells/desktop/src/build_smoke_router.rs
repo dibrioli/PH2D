@@ -148,5 +148,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::width_tool_smoke::frame(app, f);
         return true;
     }
+    // A cena do ALCANCE DO NÓ (=43, plano 25 §6) — irmã `node_reach_smoke`. Mesma disciplina: dá o
+    // MATERIAL (arcos com nó de meio marcado) e **não entra no modo Node**.
+    if level == 43 {
+        crate::node_reach_smoke::frame(app, f);
+        return true;
+    }
     false
 }

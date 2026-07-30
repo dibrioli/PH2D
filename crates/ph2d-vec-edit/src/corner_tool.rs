@@ -85,6 +85,7 @@ impl PenTool {
             vert,
             part: Part::Radius,
             radius_offset: frame.setback - proj,
+            seg_t: 0.0,
             chamfer: Some(chamfer),
         });
         true

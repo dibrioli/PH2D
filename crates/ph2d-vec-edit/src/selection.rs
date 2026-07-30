@@ -335,10 +335,14 @@ impl PenTool {
         // Do maior pro menor: assim nenhum índice local ainda pendente desliza.
         located.sort_unstable();
         for &(c, local) in located.iter().rev() {
-            if let Some((verts, _)) = path.contour_mut(c)
-                && local < verts.len()
-            {
-                verts.remove(local);
+            if let Some((verts, closed)) = path.contour_mut(c) {
+                // ⚠️ **PRESERVA A FORMA** (plano 25 §6): os handles dos vizinhos são re-ajustados
+                // para que a cúbica que sobra passe por onde as duas passavam. Antes disto era um
+                // `verts.remove(local)` cru — a curva morria com o ponto, e é a operação de nó
+                // mais usada em qualquer app de desenho. A porta é a MESMA do Simplify
+                // (`dissolve_vertex`): duas cópias divergiriam, e a divergência apareceria como
+                // *"o Simplify preserva a forma e o Delete não"*, que era o estado anterior.
+                ph2d_vec_scene::dissolve_vertex(verts, local, *closed);
             }
         }
         // Descarta contornos degenerados (do último pro primeiro).

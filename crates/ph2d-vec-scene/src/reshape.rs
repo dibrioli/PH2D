@@ -219,17 +219,50 @@ fn simplify_contour(verts: &mut Vec<VecVertex>, closed: bool) -> bool {
                 best = Some((i, dist, out, inn));
             }
         }
-        let Some((i, _dist, out, inn)) = best else {
+        let Some((i, _dist, _, _)) = best else {
             break;
         };
-        let pi = (i + m - 1) % m;
-        let ni = (i + 1) % m;
-        verts[pi].out_handle = out;
-        verts[ni].in_handle = inn;
-        verts.remove(i);
+        dissolve_vertex(verts, i, closed);
         changed = true;
     }
     changed
+}
+
+/// **Apaga o vértice `i` PRESERVANDO a forma** — a curva que sobra passa por onde as duas
+/// passavam, em vez de morrer com o ponto.
+///
+/// É a operação de nó mais usada em qualquer app de desenho, e é o `Delete` do Inkscape e do
+/// Illustrator. O que a torna possível é o [`merged_segment_fit`]: os dois segmentos
+/// `prev → i → next` viram UMA cúbica que sai e chega pelas mesmas tangentes e é forçada a passar
+/// pela âncora que está a ser removida.
+///
+/// ⚠️ **Porta única** — o [`simplify_contour`] (que escolhe QUAL vértice sacrificar) e o `Delete`
+/// do editor (onde o artista escolhe) chamam esta mesma função. Duas cópias divergiriam no dia em
+/// que uma ganhasse um cuidado — e a diferença apareceria como *"o Simplify preserva a forma e o
+/// Delete não"*, que é literalmente o estado anterior.
+///
+/// ⚠️ **A ponta de um contorno ABERTO não tem como preservar nada** e é removida sem refit: não há
+/// `prev` e `next` para costurar, e a curva fica genuinamente mais curta. `false` quando o índice
+/// não existe ou o contorno ficaria com menos de dois vértices — aí quem chama decide (descartar o
+/// contorno é decisão dele, não desta função).
+pub fn dissolve_vertex(verts: &mut Vec<VecVertex>, i: usize, closed: bool) -> bool {
+    let m = verts.len();
+    if i >= m || m < 2 {
+        return false;
+    }
+    // Ponta de aberto (ou contorno curto demais para haver dois vizinhos distintos): remoção
+    // simples. Um `prev == next` costuraria um segmento consigo mesmo.
+    if (!closed && (i == 0 || i == m - 1)) || m < 3 {
+        verts.remove(i);
+        return true;
+    }
+    let pi = (i + m - 1) % m;
+    let ni = (i + 1) % m;
+    let (out, inn, _) = merged_segment_fit(&verts[pi], &verts[i], &verts[ni]);
+    verts[pi].out_handle = out;
+    verts[ni].in_handle = inn;
+    verts.remove(i);
+    true
 }
 
 /// Ajusta uma ÚNICA cúbica `prev→next` que substitui os dois segmentos originais

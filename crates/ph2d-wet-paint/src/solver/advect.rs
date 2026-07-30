@@ -19,6 +19,8 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
     let s = g.s;
     let w = g.w as f64;
     let h = g.h as f64;
+    let geom = g.flow;
+    let (gw, gh) = (g.w as i32, g.h as i32);
     let max_v = p.k(Knob::MaxVelocity);
     let (by0, by1) = (g.by0, g.by1);
     let km_mean = p.km_mixing; // route the incoming mean through K–M
@@ -47,16 +49,48 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
         if bx0 > bx1 {
             continue;
         }
+        // ⚠️ **A posse do bloco é caminhada, não dividida.** O 1º corte
+        // perguntava `is_probe_cell` por célula, o que são DUAS divisões
+        // inteiras no laço mais quente do motor — medido, o `advect` foi a
+        // **0,81×** e comeu sozinho o ganho de 10,25× do `build_flow_field`.
+        // A linha é fixa dentro do laço e a coluna anda em bloco: uma divisão
+        // por LINHA, e o resto é soma e comparação.
+        let identity = geom.is_identity();
+        let rfi = geom.rf as i32;
+        let cy = crate::flow::fine_to_flow(y, geom.rf);
+        let probe_row = identity || crate::flow::flow_probe(cy, gh, geom.rf) == y;
+        let mut cx = crate::flow::fine_to_flow(bx0, geom.rf);
+        let mut blk_end = cx * rfi; // última coluna FINA do bloco `cx`
+        let mut px = crate::flow::flow_probe(cx, gw, geom.rf);
         let mut i = bx0 as usize + y as usize * s;
         for x in bx0..=bx1 {
+            if x > blk_end {
+                cx += 1;
+                blk_end = cx * rfi;
+                px = crate::flow::flow_probe(cx, gw, geom.rf);
+            }
+            // ⚠️ **A velocidade mora na grade de FLUXO, e quem a escreve é a
+            // célula PROBE do bloco** — a mesma que os passes de fluxo leem
+            // (plano 30). Em `rf = 1` toda célula é o próprio probe, então este
+            // laço faz exatamente o que sempre fez.
+            //
+            // A alternativa — extrair o momento para um passe grosso próprio —
+            // foi DESCARTADA por byte-identidade: o `advect` é uma varredura
+            // SEQUENCIAL cujas escritas de `film` alcançam as células ainda por
+            // visitar, então o `f` que a gravidade multiplica depende de onde o
+            // laço está. Um passe separado leria o film de ANTES de qualquer
+            // advecção, e a rede de segurança de `rf = 1` cairia junto.
+            let owns_flow = probe_row && (identity || x == px);
+            let fi = if identity { i } else { geom.idx(cx, cy) };
             if g.active[i] == 0 {
-                g.vel_x[i] = 0.0;
-                g.vel_y[i] = 0.0;
+                if owns_flow {
+                    g.vel_x[fi] = 0.0;
+                    g.vel_y[fi] = 0.0;
+                }
                 i += 1;
                 continue;
             }
-            let ux = g.flow_x[i] as f64;
-            let uy = g.flow_y[i] as f64;
+            let (ux, uy) = crate::flow::flow_at_cell(&g.flow_x, &g.flow_y, &geom, x, y, i);
             let axv = ux.abs();
             let ayv = uy.abs();
             if axv > vmax {
@@ -89,28 +123,23 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
             // Persistent velocity = transient flow sampled at the source,
             // then gravity injected (unbraked) scaled by the water here.
             let f = g.film[i] as f64;
-            let mut nvx = g.flow_x[i00] as f64 * w00
-                + g.flow_x[i10] as f64 * w10
-                + g.flow_x[i01] as f64 * w01
-                + g.flow_x[i11] as f64 * w11
-                + gx * f;
-            let mut nvy = g.flow_y[i00] as f64 * w00
-                + g.flow_y[i10] as f64 * w10
-                + g.flow_y[i01] as f64 * w01
-                + g.flow_y[i11] as f64 * w11
-                + gy * f;
-            if nvx > max_v {
-                nvx = max_v;
-            } else if nvx < -max_v {
-                nvx = -max_v;
+            if owns_flow {
+                let (sfx, sfy) = crate::flow::flow_at_point(&g.flow_x, &g.flow_y, &geom, sx, sy);
+                let mut nvx = sfx + gx * f;
+                let mut nvy = sfy + gy * f;
+                if nvx > max_v {
+                    nvx = max_v;
+                } else if nvx < -max_v {
+                    nvx = -max_v;
+                }
+                if nvy > max_v {
+                    nvy = max_v;
+                } else if nvy < -max_v {
+                    nvy = -max_v;
+                }
+                g.vel_x[fi] = nvx as f32;
+                g.vel_y[fi] = nvy as f32;
             }
-            if nvy > max_v {
-                nvy = max_v;
-            } else if nvy < -max_v {
-                nvy = -max_v;
-            }
-            g.vel_x[i] = nvx as f32;
-            g.vel_y[i] = nvy as f32;
 
             // Pigment gather (pre-clamp weights drive the incoming color
             // mean). The "reduce p_k by the shortfall" clamp cannot bite

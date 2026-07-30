@@ -21,7 +21,7 @@ fn ratio_one_reduces_to_the_expression_the_engine_shipped() {
             "fine_to_flow em rf=1 tem de ser a identidade"
         );
     }
-    for c in 1..=2000 {
+    for c in 0..=4097 {
         assert_eq!(
             flow_probe(c, 4096, 1),
             c,
@@ -100,6 +100,28 @@ fn the_two_doors_are_inverses() {
                     "as portas discordam sobre o BLOCO: rf {rf} w {w} c {c} -> fino {x}"
                 );
             }
+        }
+    }
+}
+
+#[test]
+fn the_pad_ring_of_one_grid_samples_the_pad_ring_of_the_other() {
+    // O anel de dreno é o que impede a água de empoçar na borda, e um passe de
+    // fluxo que amostrasse o INTERIOR quando pergunta pelo pad leria água onde
+    // há dreno — a borda deixaria de drenar, em silêncio.
+    for &rf in &RATIOS {
+        for &w in &WIDTHS {
+            let (fw, _) = flow_dims(w, w, rf);
+            assert_eq!(
+                flow_probe(0, w as i32, rf),
+                0,
+                "pad de baixo: rf {rf} w {w}"
+            );
+            assert_eq!(
+                flow_probe(fw as i32 + 1, w as i32, rf),
+                w as i32 + 1,
+                "pad de cima: rf {rf} w {w}"
+            );
         }
     }
 }

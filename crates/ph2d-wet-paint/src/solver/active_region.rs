@@ -109,6 +109,10 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     g.clear_live();
     {
         let spans_on = g.spans_enabled;
+        // ⚠️ A velocidade mora na grade de FLUXO: a pergunta *"esta célula secou
+        // mas ainda carrega velocidade?"* é feita à célula de fluxo que a
+        // contém. Em `rf = 1` o índice é o próprio `i`.
+        let geom = g.flow;
         let Grid {
             row_lo,
             row_hi,
@@ -135,10 +139,16 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
             let mut lo = i32::MAX;
             let mut hi = i32::MIN;
             let mut i = l as usize + base;
+            let fy = crate::flow::fine_to_flow(y, geom.rf);
             for x in l..=r {
+                let vi = if geom.is_identity() {
+                    i
+                } else {
+                    geom.idx(crate::flow::fine_to_flow(x, geom.rf), fy)
+                };
                 let live = film[i] > 0.0
                     || susp[i] > 0.0
-                    || (vel_rows && x >= 2 && x < w && (velx[i] != 0.0 || vely[i] != 0.0));
+                    || (vel_rows && x >= 2 && x < w && (velx[vi] != 0.0 || vely[vi] != 0.0));
                 if live {
                     if x < lo {
                         lo = x;

@@ -122,13 +122,26 @@ pub struct Engine {
     /// `Send` a menos que capture algo que não seja.
     pub on_dab: Option<Box<dyn FnMut(f64, &Dab) + Send>>,
     pub dirty: Dirty,
+    /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
+    /// fluxo E a fina, que e o motor que sempre shipou.
+    pub flow_ratio: usize,
 }
 
 impl Engine {
+    /// A engine com a grade de fluxo COLADA na fina — o motor que sempre
+    /// shipou, e a porta que a suíte de aceitação e o fingerprint usam.
     pub fn new(width: usize, height: usize) -> Self {
+        Self::with_flow_ratio(width, height, 1)
+    }
+
+    /// A engine com uma grade de FLUXO `rf` vezes menor que a fina (plano 30):
+    /// a velocidade e a pressão ficam grossas, o pigmento fica na resolução da
+    /// tela. `rf = 1` é [`Engine::new`].
+    pub fn with_flow_ratio(width: usize, height: usize, flow_ratio: usize) -> Self {
         let mut engine = Engine {
             width,
             height,
+            flow_ratio: crate::flow::clamp_ratio(flow_ratio),
             tuning: Tuning::default(),
             sim: Sim::default(),
             layers: Vec::new(),
@@ -157,7 +170,7 @@ impl Engine {
             dirty: Dirty::Clean,
         };
         engine.layers.push(Layer {
-            grid: Grid::new(width, height),
+            grid: Grid::with_flow_ratio(width, height, engine.flow_ratio),
             opacity: 1.0,
             visible: true,
             undo: Vec::new(),
@@ -547,7 +560,7 @@ impl Engine {
         if self.layers.len() >= MAX_LAYERS {
             return false;
         }
-        let mut g = Grid::new(self.width, self.height);
+        let mut g = Grid::with_flow_ratio(self.width, self.height, self.flow_ratio);
         bake_paper(&mut g, &self.paper_tile); // shared tooth (same bake)
         g.paper_preset = self.paper_preset;
         g.paper_sheet = self.paper_sheet;

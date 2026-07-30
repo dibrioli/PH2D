@@ -275,6 +275,27 @@ impl Grid {
         span_window_of(&self.row_lo, &self.row_hi, self.spans_enabled, self.s, y)
     }
 
+    /// **Re-DERIVA a faixa viva da grade de fluxo** a partir da fina.
+    ///
+    /// ⚠️ É derivada, nunca lembrada, e isso é decisão: manter uma faixa de
+    /// fluxo *sincronizada* exigiria que toda porta que mexe na faixa fina
+    /// (`note_live`, `publish_spans_from_live`, o restore de histórico) se
+    /// lembrasse de mexer na outra — uma enumeração, que é o que apodrece. Ela
+    /// custa `O(linhas)` (~4 mil iterações triviais contra os ~0,4 ms do passe
+    /// mais barato que a consome), então a resposta é recomputá-la.
+    ///
+    /// Em `rf = 1` ela reproduz a faixa fina exatamente.
+    pub fn refresh_flow_spans(&mut self) {
+        crate::flow::project_spans(
+            &self.row_lo,
+            &self.row_hi,
+            self.h,
+            &self.flow,
+            &mut self.frow_lo,
+            &mut self.frow_hi,
+        );
+    }
+
     /// Zera o rascunho de extensão viva (topo do rebuild).
     pub fn clear_live(&mut self) {
         self.live_lo.fill(i32::MAX);
@@ -416,12 +437,21 @@ pub fn verify_spans(g: &Grid) {
             let ring = x <= 1 || x >= g.w as i32 || y <= 1 || y >= g.h as i32;
             let in_bbox = x >= g.bx0 && x <= g.bx1 && y >= g.by0 && y <= g.by1;
             if in_bbox && !ring {
+                // A velocidade mora na grade de FLUXO (em `rf = 1`, `vi == i`).
+                let vi = if g.flow.is_identity() {
+                    i
+                } else {
+                    g.flow.idx(
+                        crate::flow::fine_to_flow(x, g.flow.rf),
+                        crate::flow::fine_to_flow(y, g.flow.rf),
+                    )
+                };
                 assert!(
-                    g.vel_x[i] == 0.0 && g.vel_y[i] == 0.0,
+                    g.vel_x[vi] == 0.0 && g.vel_y[vi] == 0.0,
                     "velocidade sobrevivente fora da faixa em ({x}, {y}): \
                      ({}, {}) -- o advect nao chegaria mais nela",
-                    g.vel_x[i],
-                    g.vel_y[i]
+                    g.vel_x[vi],
+                    g.vel_y[vi]
                 );
             }
         }
@@ -478,11 +508,19 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix) {
                 g.susp[i] = 0.0;
             }
             g.film[i] = 0.0;
+            g.wet[i] = 0;
+            i += 1;
+        }
+    }
+    // A velocidade mora na grade de FLUXO — mesmo interior, outra régua.
+    let fg = g.flow;
+    for cy in 1..=fg.h {
+        let mut i = 1 + cy * fg.s;
+        for _cx in 1..=fg.w {
             g.vel_x[i] = 0.0;
             g.vel_y[i] = 0.0;
             g.flow_x[i] = 0.0;
             g.flow_y[i] = 0.0;
-            g.wet[i] = 0;
             i += 1;
         }
     }

@@ -337,6 +337,7 @@ pub fn apply_blow(
     let mut touched = false;
     let w_i32 = g.w as i32;
     let h_i32 = g.h as i32;
+    let geom = g.flow;
     let Grid {
         s,
         w,
@@ -378,8 +379,22 @@ pub fn apply_blow(
             }
             let e = stamp * force;
             if film[i] > 0.0 {
-                vel_x[i] = (vel_x[i] as f64 + cdx * e) as f32;
-                vel_y[i] = (vel_y[i] as f64 + cdy * e) as f32;
+                // ⚠️ O impulso vai para a célula de FLUXO, e só a célula PROBE
+                // do bloco o entrega — as `rf²` células finas de um bloco
+                // somariam `rf²` vezes o mesmo empurrão, e o sopro sairia `rf²`
+                // vezes forte. É a mesma lei da posse do momento no `advect`.
+                if crate::flow::is_probe_cell(x, y, w_i32, h_i32, geom.rf) {
+                    let vi = if geom.is_identity() {
+                        i
+                    } else {
+                        geom.idx(
+                            crate::flow::fine_to_flow(x, geom.rf),
+                            crate::flow::fine_to_flow(y, geom.rf),
+                        )
+                    };
+                    vel_x[vi] = (vel_x[vi] as f64 + cdx * e) as f32;
+                    vel_y[vi] = (vel_y[vi] as f64 + cdy * e) as f32;
+                }
                 wet[i] = wet_byte_from_paper(paper[i] as f64); // re-wet under the air jet
             }
             // Wetness dragged from the source wherever the stamp touches,

@@ -94,7 +94,14 @@ pub const fn fine_to_flow(x: i32, rf: usize) -> i32 {
 #[inline]
 #[must_use]
 pub const fn flow_probe(c: i32, w: i32, rf: usize) -> i32 {
+    if c <= 0 {
+        return 0; // pad ↔ pad: o anel de fluxo amostra o anel fino
+    }
     let r = clamp_ratio(rf) as i32;
+    let fw = (w + r - 1) / r; // div_ceil
+    if c > fw {
+        return w + 1; // idem, do outro lado
+    }
     let half = (r - 1) / 2;
     let x = (c - 1) * r + 1 + half;
     if x > w { w } else { x }
@@ -122,10 +129,17 @@ pub fn flow_coord(xf: f64, rf: usize) -> f64 {
 /// ⚠️ Em `rf = 1` **todo campo iguala o da grade fina** (`w`, `s`, `rows`,
 /// `cells`), então todo índice que o motor já calculava continua exato — é
 /// isso que faz do fingerprint do ADR-0134 a rede de segurança desta wave.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlowGeom {
     /// Células FINAS por célula de fluxo.
     pub rf: usize,
+    /// `1 / rf` pré-computado.
+    ///
+    /// ⚠️ Não é micro-otimização: a [`flow_at_point`] roda **por célula fina**
+    /// no `advect`, o laço mais quente do motor, e duas divisões de ponto
+    /// flutuante ali são visíveis no relógio do produto. A divisão INTEIRA que
+    /// morava no mesmo lugar já custou 2,6 ms num passo (medido).
+    pub inv_rf: f64,
     pub w: usize,
     pub h: usize,
     /// Stride = `w + 2` (o mesmo anel de pad da grade fina).
@@ -143,6 +157,7 @@ impl FlowGeom {
         let rows = h + 2;
         FlowGeom {
             rf,
+            inv_rf: 1.0 / rf as f64,
             w,
             h,
             s,
@@ -201,6 +216,84 @@ pub const fn probe_idx(cx: i32, cy: i32, w: i32, h: i32, s: usize, rf: usize) ->
 #[must_use]
 pub fn diff_scale(rf: usize) -> f64 {
     1.0 / clamp_ratio(rf) as f64
+}
+
+/// **O fluxo numa posição FINA fracionária** — a amostragem bilinear que o
+/// `advect` percorre ao back-traçar.
+///
+/// ⚠️ **Bilinear, nunca nearest.** Com o valor CHATO do bloco, todas as `rf²`
+/// células finas de um bloco andariam com exatamente a mesma velocidade, e a
+/// frente de tinta ganharia degraus do tamanho do bloco — que é precisamente o
+/// artefato que esta wave existe para remover.
+///
+/// Em `rf = 1` a coordenada é a própria posição fina, e a expressão é a que o
+/// `advect` sempre computou, termo a termo, na mesma ordem.
+#[inline]
+#[must_use]
+pub fn flow_at_point(fx: &[f32], fy: &[f32], geom: &FlowGeom, sx: f64, sy: f64) -> (f64, f64) {
+    let half = ((geom.rf - 1) / 2) as f64;
+    let (u, v) = if geom.is_identity() {
+        (sx, sy)
+    } else {
+        (
+            (sx - 1.0 - half) * geom.inv_rf + 1.0,
+            (sy - 1.0 - half) * geom.inv_rf + 1.0,
+        )
+    };
+    // Clampa ao interior: em `rf > 1` o meio do primeiro bloco fica ADIANTE da
+    // borda, então `u` pode cair abaixo de 1 sem que a posição fina o faça.
+    let u = u.clamp(1.0, geom.w as f64);
+    let v = v.clamp(1.0, geom.h as f64);
+    let x0 = u as i64; // positivo ⇒ trunc == floor
+    let y0 = v as i64;
+    let a = u - x0 as f64;
+    let b = v - y0 as f64;
+    let i00 = x0 as usize + y0 as usize * geom.s;
+    let i10 = i00 + 1;
+    let i01 = i00 + geom.s;
+    let i11 = i01 + 1;
+    let w00 = (1.0 - a) * (1.0 - b);
+    let w10 = a * (1.0 - b);
+    let w01 = (1.0 - a) * b;
+    let w11 = a * b;
+    (
+        fx[i00] as f64 * w00 + fx[i10] as f64 * w10 + fx[i01] as f64 * w01 + fx[i11] as f64 * w11,
+        fy[i00] as f64 * w00 + fy[i10] as f64 * w10 + fy[i01] as f64 * w01 + fy[i11] as f64 * w11,
+    )
+}
+
+/// **O fluxo NA célula fina `(x, y)`**, cujo índice fino já é conhecido.
+///
+/// ⚠️ A rota de `rf = 1` devolve o valor no índice **verbatim** — não a forma
+/// bilinear com pesos zerados. As duas dariam o mesmo número, mas a identidade
+/// se CONSTRÓI, não se argumenta: `f00 * 1.0 + f10 * 0.0 + …` obriga a
+/// raciocinar sobre `-0.0`, e raciocínio é o que o `x * 1.0` do
+/// [`diff_scale`] existe para dispensar.
+#[inline]
+#[must_use]
+pub fn flow_at_cell(
+    fx: &[f32],
+    fy: &[f32],
+    geom: &FlowGeom,
+    x: i32,
+    y: i32,
+    fine_i: usize,
+) -> (f64, f64) {
+    if geom.is_identity() {
+        return (fx[fine_i] as f64, fy[fine_i] as f64);
+    }
+    flow_at_point(fx, fy, geom, f64::from(x), f64::from(y))
+}
+
+/// Esta célula FINA é a que a sua célula de fluxo AMOSTRA?
+///
+/// É quem responde *"quem escreve a velocidade deste bloco?"*: exatamente uma
+/// célula fina por bloco, a mesma que os passes de fluxo leem. Em `rf = 1` toda
+/// célula é o próprio probe, então a resposta é sempre sim.
+#[inline]
+#[must_use]
+pub const fn is_probe_cell(x: i32, y: i32, w: i32, h: i32, rf: usize) -> bool {
+    flow_probe(fine_to_flow(x, rf), w, rf) == x && flow_probe(fine_to_flow(y, rf), h, rf) == y
 }
 
 /// A bbox de FLUXO que cobre uma bbox FINA. Vazia continua vazia.

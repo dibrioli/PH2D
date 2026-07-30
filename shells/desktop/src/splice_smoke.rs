@@ -26,6 +26,12 @@
 //! input do **output** (hoje alimentado pelo **scale**): o output passa a vir direto do grid e o
 //! scale se solta. Um `pre` (feedback) expert é preservado; re-soltar o mesmo fio é no-op.
 //!
+//! ⊙ DROP NO CORPO: um fio solto no CORPO de um nó (não num socket) conecta ao 1º input LIVRE
+//! compatível — não precisa acertar o socket. Todos os inputs desta cadeia estão ocupados, então
+//! R-click no canvas → adicione um nó com input livre (ex. **`motion.twist`**) e arraste um fio do
+//! **grid** até o CORPO dele: conecta. Um card colapsado ainda vai pelo menu de portas, e soltar no
+//! CORPO do próprio nó-fonte é ignorado (não auto-conecta).
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -92,6 +98,9 @@ impl crate::App {
              TROCA: solte um fio sobre um input JA ocupado -> ele SUBSTITUI o que alimentava. \
              Arraste do output do grid e solte no input do output (alimentado pelo scale) -> o \
              output passa a vir do grid e o scale se solta.\n  \
+             CORPO: solte um fio no CORPO de um no (nao no socket) -> conecta ao 1o input LIVRE. \
+             Como a cadeia esta toda ocupada, adicione um no com input livre (motion.twist) via \
+             R-click e arraste um fio do grid ate o corpo dele.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

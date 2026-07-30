@@ -17,7 +17,8 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::{GraphIntent, GraphViewSnapshot, push_intent};
-use crate::state::MenuBody;
+// `Menu` is re-exported to the child modules (`interact_menu`, `interact_key`), which reach it as
+// `super::Menu` — this file no longer builds one itself (that moved to `interact_drop`).
 use crate::state::{Interaction, Menu, MotionGraphPanelState};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{
@@ -32,6 +33,9 @@ mod backdrop_gesture;
 
 #[path = "interact_socket.rs"]
 mod socket;
+
+#[path = "interact_drop.rs"]
+mod drop_gesture;
 
 #[path = "interact_menu.rs"]
 mod menu;
@@ -477,38 +481,12 @@ fn apply_socket_out(
             } = std::mem::take(&mut state.interaction)
             {
                 let Some((to_node, to_port, _compat)) = target else {
-                    // Dropped on a collapsed CARD's body: the group has ports this wire
-                    // could feed, but no socket for them yet (doc 57 §5). Ask which one.
+                    // The wire landed on no input socket: a collapsed card, a regular node's
+                    // BODY, or empty canvas — resolved in that order (doc 45/57/63.3).
                     let view = View::new(rect, state.view);
-                    if let Some(menu) = subgraph_gesture::card_port_menu(
-                        snap,
-                        &view,
-                        (from_node, from_port),
-                        true,
-                        None,
-                        g.x,
-                        g.y,
-                    ) {
-                        state.menu = Some(menu);
-                        return;
-                    }
-                    // **Smart-connect**: dropped on empty canvas. The gesture already
-                    // said what it wanted — a consumer for THIS wire — so open the
-                    // add-menu filtered to the node types that can take it, and wire
-                    // it on the pick. (Dropping in space used to be a silent no-op:
-                    // the artist drew a wire and got nothing back.)
-                    let spawn = view.graph(g.x, g.y);
-                    state.menu = Some(Menu {
-                        scroll: 0.0,
-                        screen: (g.x, g.y),
-                        spawn,
-                        query: String::new(),
-                        opened: false,
-                        body: MenuBody::Library {
-                            connect_from: Some((from_node, from_port)),
-                            splice: None,
-                        },
-                    });
+                    drop_gesture::resolve_loose_output_drop(
+                        state, snap, &view, from_node, from_port, g.x, g.y,
+                    );
                     return;
                 };
                 // Emit regardless of the local compatibility flag — the shell is

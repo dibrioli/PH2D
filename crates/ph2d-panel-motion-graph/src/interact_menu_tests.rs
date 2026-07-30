@@ -5,7 +5,10 @@
 
 use super::tests::{CENTER, RECT, gesture, two_node_snapshot};
 use super::*;
+// `MenuBody` used to reach here via `interact`'s re-export; the smart-connect menu that imported
+// it moved to `interact_drop`, so this test now names it directly.
 use crate::snapshot::{GraphIntent, NodeChoice, drain_intents, set_current_node_catalog};
+use crate::state::MenuBody;
 use ph2d_node_registry::NodeUiCategory;
 
 /// A catalog of `n` node types — enough of them to overflow any screen.

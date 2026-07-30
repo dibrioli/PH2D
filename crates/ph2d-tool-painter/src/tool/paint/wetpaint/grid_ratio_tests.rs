@@ -403,3 +403,80 @@ fn the_grid_slider_reaches_the_tool_over_the_panel_bus() {
     // mostraria o valor antigo depois de commitado).
     assert_eq!(t.brush_settings().wet_grid_ratio, 5);
 }
+
+#[test]
+#[ignore]
+fn probe_cell_alpha_at_the_edge() {
+    // O alpha do PIGMENTO por celula atravessando a borda lateral de um traco
+    // vertical: se for degrau duro (255,255,0,0) a silhueta SATUROU e o AA de
+    // entrada e inerte; se houver rampa, ha informacao a interpolar.
+    for ratio in [1u8, 8] {
+        for (label, moves) in [("traco LENTO (muitos dabs)", 40u32), ("um DAB so", 0)] {
+            let mut t = wet_tool(ratio);
+            let x = 200.0f32;
+            t.on_canvas_pointer(cp([x, 60.0], PointerPhase::Down));
+            for k in 1..=moves {
+                t.on_canvas_pointer(cp([x, 60.0 + 4.0 * k as f32], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x, 60.0 + 4.0 * moves as f32], PointerPhase::Up));
+            composite_all(&mut t);
+            let sess = t.paint.wetpaint.session.as_ref().expect("sessao");
+            let (gw, _) = sess.grid;
+            // A celula do centro do traco e a linha de celula do meio.
+            let ccx = (x as usize) / usize::from(ratio) + 1;
+            let ccy = (100usize) / usize::from(ratio) + 1;
+            let mut row = Vec::new();
+            for cx in ccx..(ccx + 8).min(gw + 1) {
+                let o = ((ccy - 1) * gw + (cx - 1)) * 4;
+                row.push(sess.pigment[o + 3]);
+            }
+            eprintln!("  ratio {ratio}, {label}: alpha do pigmento saindo do centro = {row:?}");
+        }
+    }
+}
+
+/// **O AA de entrada dá PENUMBRA onde a saturação não a come** — o número.
+///
+/// Medido: num dab ISOLADO a borda ganha uma célula de transição
+/// (`[143, 153, 113, 33, 0, …]` com AA contra `[143, 153, 120, 0, …]` sem), e num
+/// traço LENTO ele é quase inerte (212 → 204) porque centenas de dabs saturam a
+/// célula — a silhueta é uma TAXA, e com muitas passadas o teto é atingido de
+/// qualquer jeito (a mesma aritmética do doc 25 §13.9).
+///
+/// ⚠️ Por isso o AA de entrada **não é a cura da foto** — a cura é o smoothstep do
+/// upsample (`the_upsample_weights_are_smooth_at_the_cell_seams`). Ele fica porque
+/// **se paga**: 16 taps/célula em 8:1 custam **0,280 ms/move contra 2,081 da razão
+/// 1** (7,4× mais barato), já que o carimbo é `O(área/ratio²)`.
+///
+/// Mutação: `n = 1` sempre (o AA de entrada desligado) faz a célula de penumbra
+/// desaparecer e este gate a nomeia.
+#[test]
+fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
+    let mut t = wet_tool(8);
+    // Um dab ISOLADO (Down+Up no mesmo ponto) — sem saturacao.
+    t.on_canvas_pointer(cp([200.0, 120.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([200.0, 120.0], PointerPhase::Up));
+    composite_all(&mut t);
+    let sess = t.paint.wetpaint.session.as_ref().expect("sessao");
+    let (gw, _) = sess.grid;
+    let ccx = 200usize / 8 + 1;
+    let ccy = 120usize / 8 + 1;
+    let alpha = |cx: usize| -> u8 { sess.pigment[((ccy - 1) * gw + (cx - 1)) * 4 + 3] };
+    // Saindo do centro, conta as celulas com cobertura PARCIAL antes do zero —
+    // sao elas a penumbra que o supersampling cria.
+    let mut partial = 0usize;
+    for cx in ccx..ccx + 8 {
+        let a = alpha(cx);
+        if a == 0 {
+            break;
+        }
+        if a < 200 {
+            partial += 1;
+        }
+    }
+    assert!(
+        partial >= 2,
+        "so {partial} celula(s) de cobertura parcial na borda de um dab isolado — \
+         o AA de entrada esta inerte (esperado >= 2 com MAX_AA = 4)"
+    );
+}

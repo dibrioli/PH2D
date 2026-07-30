@@ -258,7 +258,7 @@ impl PainterTool {
     ///
     /// Sem mudança = **sem encerramento** (o guard de igualdade é o que torna
     /// seguro o chip numérico re-emitir o mesmo valor a cada frame de arrasto).
-    pub(crate) fn set_wet_grid_ratio(&mut self, v: f64) {
+    pub fn set_wet_grid_ratio(&mut self, v: f64) {
         use super::wetpaint::grid_map;
         let want = grid_map::clamp_ratio(v.round().clamp(0.0, 255.0) as u8);
         if self.paint.wetpaint.grid_ratio == want {

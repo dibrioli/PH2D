@@ -237,3 +237,99 @@ fn the_slider_range_is_the_clamp() {
     assert_eq!(clamp_ratio(255), MAX_RATIO);
     assert_eq!(DEFAULT_RATIO, 1, "a fabrica e a grade de sempre");
 }
+
+/// **O AA não toca a razão 1: um sub-ponto, e é o centro.**
+///
+/// As duas metades: `cell_subsamples(1)` dá `n = 1`, e o sub-ponto 0 dele É
+/// `cell_center_px` — a mesma expressão de `f32`, não um valor próximo.
+///
+/// Mutação: `MAX_AA` aplicado sem o `min(ratio, ..)` (isto é, `n = MAX_AA`
+/// sempre) faz a razão 1 amostrar 16 pontos e este gate morde no `n`.
+#[test]
+fn the_deposit_aa_is_one_point_at_ratio_one_and_it_is_the_centre() {
+    let (n, step) = cell_subsamples(1);
+    assert_eq!(n, 1, "razao 1 tem de amostrar UM ponto");
+    assert_eq!(step, 1.0);
+    for c in [1i32, 2, 137, 4096] {
+        assert_eq!(
+            cell_subsample_px(c, 1, 0, step),
+            cell_center_px(c, 1),
+            "o unico sub-ponto da razao 1 e o centro, em {c}"
+        );
+    }
+    // E o número de sub-pontos cresce com a razão, capado.
+    for (ratio, want) in [(1u8, 1u8), (2, 2), (3, 3), (4, 4), (8, 4), (30, 4)] {
+        assert_eq!(cell_subsamples(ratio).0, want, "n em {ratio}:1");
+    }
+}
+
+/// **Os sub-pontos LADRILHAM a célula** — cobrem-na sem buraco nem
+/// sobreposição, e o conjunto é simétrico em torno do centro.
+///
+/// É o que faz a média deles ser uma COBERTURA e não uma amostra enviesada:
+/// o primeiro fica a `passo/2` do canto e o último a `passo/2` do outro.
+/// Mutação: o `+ 0.5` do `cell_subsample_px` trocado por `0.0` (amostrar o
+/// canto) desloca o conjunto meio passo e a média enviesa para dentro.
+#[test]
+fn the_subsamples_tile_the_cell_and_are_centred_on_it() {
+    for ratio in [2u8, 3, 4, 8, 30] {
+        let (n, step) = cell_subsamples(ratio);
+        let r = f32::from(ratio);
+        for c in [1i32, 7] {
+            let left = (c - 1) as f32 * r;
+            let first = cell_subsample_px(c, ratio, 0, step);
+            let last = cell_subsample_px(c, ratio, n - 1, step);
+            assert!(
+                (first - (left + step * 0.5)).abs() < 1e-3,
+                "ratio {ratio}: o 1o sub-ponto fica a meio passo do canto"
+            );
+            // Simetria: a média dos extremos é o centro da célula.
+            let mid = (first + last) * 0.5;
+            assert!(
+                (mid - cell_center_px(c, ratio)).abs() < 1e-3,
+                "ratio {ratio} cell {c}: o conjunto tem de ser simetrico \
+                 (mid {mid} vs centro {})",
+                cell_center_px(c, ratio)
+            );
+        }
+    }
+}
+
+/// **Os pesos do upsample são C¹ e passam pelos nós** — o AA de saída.
+///
+/// Duas propriedades, e as duas importam: nos nós (`t = 0` e `t = 1`) o peso é
+/// EXATO (senão a interpolação não reproduziria os valores de célula), e a
+/// derivada nos nós é ZERO (é isso que remove a quebra que o olho lê como
+/// blocos quadrados de `ratio` px).
+///
+/// Mutação: pesos lineares (o `smooth` removido) dá derivada 1 nos nós e este
+/// gate nomeia o número.
+#[test]
+fn the_upsample_weights_are_smooth_at_the_cell_seams() {
+    // ⚠️ A função do PRODUTO, não uma cópia local — a 1ª versão deste gate
+    // definia o smoothstep aqui dentro e ficava VERDE com o produto em pesos
+    // lineares (medido: a mutação não sangrou).
+    let smooth = smooth_weight;
+    assert_eq!(smooth(0.0), 0.0, "o no de baixo e exato");
+    assert_eq!(smooth(1.0), 1.0, "o no de cima e exato");
+    assert_eq!(smooth(0.5), 0.5, "simetrico no meio");
+    // Derivada por diferenca central nos nos: 6t(1-t) vale 0 em 0 e em 1.
+    let d = 1e-4;
+    let slope_at_0 = (smooth(d) - smooth(0.0)) / d;
+    let slope_at_1 = (smooth(1.0) - smooth(1.0 - d)) / d;
+    assert!(
+        slope_at_0 < 1e-3 && slope_at_1 < 1e-3,
+        "a derivada nos nos tem de ser ~0 (C1): {slope_at_0} / {slope_at_1} — \
+         pesos lineares dariam 1,0 e a emenda entre celulas voltaria a ser visivel"
+    );
+    // Monotonico (nenhum overshoot: o upsample nunca sai do intervalo dos nos).
+    let mut prev = -1.0;
+    for i in 0..=100 {
+        let v = smooth(f64::from(i) / 100.0);
+        assert!(
+            v >= prev && (0.0..=1.0).contains(&v),
+            "monotonico e sem overshoot em {i}"
+        );
+        prev = v;
+    }
+}

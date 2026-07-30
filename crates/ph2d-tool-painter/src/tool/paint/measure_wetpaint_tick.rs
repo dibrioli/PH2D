@@ -567,3 +567,49 @@ fn measure_what_km_costs_at_each_grid_ratio() {
         "\n    Leitura: o K-M e custo POR CELULA, entao a razao o corta na mesma proporcao\n             que corta o passo. O kill do ADR-0134 e 12 ms/passo; o nominal, 25 ms (40 Hz)."
     );
 }
+
+/// **O custo do AA de ENTRADA** (o supersampling da silhueta por célula,
+/// `grid_map::cell_subsamples`) — para a constante `MAX_AA` sair de uma medição
+/// e não de um palpite (CLAUDE.md §0).
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_the_deposit_aa_costs() {
+    const REPS: usize = 9;
+    println!(
+        "\n  O CARIMBO (move) POR RAZAO — o AA de entrada e {n}x{n} taps/celula\n",
+        n = "n"
+    );
+    println!(
+        "    {:>5}  {:>12}  {:>10}",
+        "razao", "ms/move", "vs razao 1"
+    );
+    let mut base = 0.0f64;
+    for ratio in [1u8, 2, 4, 8, 16, 30] {
+        let mut t = wetted(4096, 100.0);
+        t.set_wet_grid_ratio(f64::from(ratio));
+        // Um traco longo; mede o MOVE (o carimbo), que e o `INPUT` do log.
+        t.on_canvas_pointer(cp([300.0, 2000.0], PointerPhase::Down));
+        let mut v = Vec::with_capacity(REPS);
+        for k in 0..REPS {
+            let x = 300.0 + 40.0 * (k + 1) as f32;
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x, 2000.0], PointerPhase::Move));
+            v.push(t0.elapsed().as_secs_f64() * 1e3);
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp([300.0 + 40.0 * REPS as f32, 2000.0], PointerPhase::Up));
+        v.sort_by(f64::total_cmp);
+        let med = v[v.len() / 2];
+        if ratio == 1 {
+            base = med;
+        }
+        println!(
+            "    {ratio:>3}:1  {med:>11.3}ms  {:>9.2}x",
+            med / base.max(1e-9)
+        );
+    }
+    println!(
+        "\n    Leitura: o carimbo e O(celulas do dab) = O(area/ratio^2), e o AA multiplica por\n    \
+         min(ratio, MAX_AA)^2 — entao o produto dos dois e que decide."
+    );
+}

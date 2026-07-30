@@ -38,7 +38,9 @@ use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
     bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, push_wire_hits, register_hits,
 };
-use crate::snapshot::{GraphNodeView, GraphViewSnapshot, current_snapshot};
+use crate::snapshot::{
+    GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
+};
 use crate::state::{Interaction, MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
@@ -46,6 +48,7 @@ use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_title, rect_to_vello, resolve, stroke_polyline,
     stroke_rounded_rect,
 };
+use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::NodeUiCategory;
@@ -403,23 +406,11 @@ fn draw_card(
 
     for (i, p) in n.inputs.iter().enumerate() {
         let (cx, cy) = socket_center(n, view, false, i);
-        fill_circle(
-            ctx.scene,
-            cx,
-            cy,
-            SOCKET_R * view.zoom,
-            resolve(domain_token(p.domain), theme),
-        );
+        paint_socket_glyph(ctx, cx, cy, SOCKET_R * view.zoom, p, theme);
     }
     for (i, p) in n.outputs.iter().enumerate() {
         let (cx, cy) = socket_center(n, view, true, i);
-        fill_circle(
-            ctx.scene,
-            cx,
-            cy,
-            SOCKET_R * view.zoom,
-            resolve(domain_token(p.domain), theme),
-        );
+        paint_socket_glyph(ctx, cx, cy, SOCKET_R * view.zoom, p, theme);
     }
 
     // The inline readout: what this card produced on this frame's cook, under its sockets.
@@ -465,17 +456,31 @@ fn draw_card(
     body
 }
 
-/// An Accent ring around a socket (the compatible drop-target highlight), drawn
-/// as a rounded-rect stroke whose corner radius equals its half-side — i.e. a
-/// circle — so it reuses `stroke_rounded_rect` (no per-frame trig, HR-5-clean).
-fn highlight_socket(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, theme: Theme) {
+/// Draw one socket dot: coloured by [`Domain`], SHAPED by [`Dim`] — a diamond ◇ for a
+/// multi-component column, a circle ○ for a single value ([`socket_glyph`]). The one
+/// door the input AND output loops go through, so the two can never disagree on how a
+/// socket looks (the bug a second copy invites six months on).
+fn paint_socket_glyph(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, p: &PortView, theme: Theme) {
+    let color = resolve(domain_token(p.domain), theme);
+    match socket_glyph(p.dim) {
+        SocketGlyph::Value => fill_circle(ctx.scene, cx, cy, r, color),
+        SocketGlyph::Column => fill_diamond(ctx.scene, cx, cy, r, color),
+    }
+}
+
+/// A ring around a socket (the drop-target highlight), drawn as a rounded-rect stroke
+/// whose corner radius equals its half-side — i.e. a circle — so it reuses
+/// `stroke_rounded_rect` (no per-frame trig, HR-5-clean). `token` is `Accent` for a
+/// compatible target and `Danger` for an incompatible one: the ring is a circle
+/// regardless of the socket's own glyph, because it is a halo, not the socket.
+fn highlight_socket(ctx: &mut PaintCtx, cx: f32, cy: f32, r: f32, theme: Theme, token: ColorToken) {
     let d = 2.0 * r;
     stroke_rounded_rect(
         ctx.scene,
         Rect::new(cx - r, cy - r, d, d),
         r,
         2.0,
-        resolve(ColorToken::Accent, theme),
+        resolve(token, theme),
     );
 }
 

@@ -132,10 +132,40 @@ fn draw_pre_badges(
     }
 }
 
+/// A drag target's compatibility: `Some(true)` = a legal drop, `Some(false)` = an
+/// illegal one (the `connects_directly` verdict the interaction already resolved onto
+/// the socket under the pointer), `None` = empty space.
+fn target_compat(target: &Option<(u32, u16, bool)>) -> Option<bool> {
+    target.map(|(_, _, ok)| ok)
+}
+
+/// The ghost wire's colour. **DANGER over an incompatible target** — the affirmative
+/// "no" the artist must SEE before dropping, not the muted grey that reads as "inactive".
+/// Otherwise `on_target`: the source domain's hue (the "this is what I'll carry" preview)
+/// over empty space or a compatible socket, or the muted `Border` when no source domain
+/// is known yet (a backward drag that has found nothing).
+fn ghost_wire_token(compat: Option<bool>, on_target: ColorToken) -> ColorToken {
+    match compat {
+        Some(false) => ColorToken::Danger,
+        _ => on_target,
+    }
+}
+
+/// The ring around the hovered drop-target socket: **ACCENT** to say "drop here",
+/// **DANGER** to say "not here". The same `connects_directly` verdict as the wire
+/// colour, two hues — the refusal lands on the exact socket the artist is pointing at.
+fn target_ring_token(compatible: bool) -> ColorToken {
+    if compatible {
+        ColorToken::Accent
+    } else {
+        ColorToken::Danger
+    }
+}
+
 /// The in-progress wire ghost: from the source output socket to the live pointer,
-/// colored by the source domain when the hovered target is compatible, muted
-/// `Border` when incompatible; a compatible target socket also gets an Accent
-/// ring so the drop point is unambiguous.
+/// coloured by the source domain over empty space or a compatible target, and **DANGER
+/// red over an incompatible one**. The hovered target socket gets a ring too — Accent
+/// when the drop is legal, Danger when it is not.
 pub(crate) fn draw_wire_ghost(
     ctx: &mut PaintCtx,
     snap: &GraphViewSnapshot,
@@ -157,18 +187,17 @@ pub(crate) fn draw_wire_ghost(
                 return;
             };
             let p0 = socket_center(src, view, true, *from_port as usize);
-            let color = match target {
-                Some((_, _, false)) => resolve(ColorToken::Border, theme),
-                _ => resolve(domain_token(port_out_domain(src, *from_port)), theme),
-            };
+            let on_target = domain_token(port_out_domain(src, *from_port));
+            let color = resolve(ghost_wire_token(target_compat(target), on_target), theme);
             let pts = wire_polyline(p0, *cur, view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
-            if let Some((tn, tp, true)) = target
+            if let Some((tn, tp, compat)) = target
                 && let Some(t) = snap.nodes.iter().find(|n| n.id == *tn)
             {
                 let (cx, cy) = socket_center(t, view, false, *tp as usize);
-                highlight_socket(ctx, cx, cy, (SOCKET_R + TARGET_RING_PAD) * view.zoom, theme);
+                let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;
+                highlight_socket(ctx, cx, cy, r, theme, target_ring_token(*compat));
             }
         }
         // BACKWARDS, out of an empty input, hunting for an output. The ghost runs from the
@@ -184,29 +213,27 @@ pub(crate) fn draw_wire_ghost(
                 return;
             };
             let p3 = socket_center(dst, view, false, *to_port as usize);
-            let color = match target {
-                Some((_, _, false)) => resolve(ColorToken::Border, theme),
-                Some((fnode, fport, true)) => {
-                    let d = snap
-                        .nodes
-                        .iter()
-                        .find(|n| n.id == *fnode)
-                        .map(|n| port_out_domain(n, *fport));
-                    match d {
-                        Some(d) => resolve(domain_token(d), theme),
-                        None => resolve(ColorToken::Border, theme),
-                    }
-                }
-                None => resolve(ColorToken::Border, theme),
+            // The found output's hue when the pointer is over one, else muted Border (no
+            // source known yet). `ghost_wire_token` overrides this to Danger when illegal.
+            let on_target = match target {
+                Some((fnode, fport, _)) => snap
+                    .nodes
+                    .iter()
+                    .find(|n| n.id == *fnode)
+                    .map(|n| domain_token(port_out_domain(n, *fport)))
+                    .unwrap_or(ColorToken::Border),
+                None => ColorToken::Border,
             };
+            let color = resolve(ghost_wire_token(target_compat(target), on_target), theme);
             let pts = wire_polyline(*cur, p3, view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
-            if let Some((fnode, fport, true)) = target
+            if let Some((fnode, fport, compat)) = target
                 && let Some(f) = snap.nodes.iter().find(|n| n.id == *fnode)
             {
                 let (cx, cy) = socket_center(f, view, true, *fport as usize);
-                highlight_socket(ctx, cx, cy, (SOCKET_R + TARGET_RING_PAD) * view.zoom, theme);
+                let r = (SOCKET_R + TARGET_RING_PAD) * view.zoom;
+                highlight_socket(ctx, cx, cy, r, theme, target_ring_token(*compat));
             }
         }
         _ => {}

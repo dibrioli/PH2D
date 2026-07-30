@@ -32,16 +32,73 @@ pub(crate) use menu::{menu_matches, menu_rows};
 #[cfg(test)]
 pub(crate) use menu::menu_catalog;
 
-/// One socket on a node card. Color ← [`Domain`], shape ← [`Dim`] (plan §2.4).
-/// `clock` completes the [`ph2d_nodegraph::port::PortType`] axes so the editor's
-/// live wire-compatibility preview matches `connects_directly` (domain + dim +
-/// clock) without touching the graph; the membrane check stays server-side.
+/// One socket on a node card. **Colour ← [`Domain`], shape ← [`Dim`]** (plan §2.4) —
+/// two orthogonal readouts: the hue says which data family, the glyph ([`socket_glyph`])
+/// says a single value (○) vs a multi-component column (◇). `clock` completes the
+/// [`ph2d_nodegraph::port::PortType`] axes so the editor's live wire-compatibility
+/// preview matches `connects_directly` (domain + dim + clock) without touching the
+/// graph; the membrane check stays server-side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortView {
     pub name: &'static str,
     pub domain: Domain,
     pub dim: Dim,
     pub clock: Clock,
+}
+
+/// The glyph a socket wears — its DIMENSIONALITY at a glance, orthogonal to the domain
+/// colour. A single scalar (a "value" a parameter can read) is a circle; a
+/// multi-component column (a position/colour/geometry stream) is a diamond. It is the
+/// visible half of what `connects_directly` enforces on the `dim` axis: two sockets of
+/// different SHAPE cannot join by a plain edge, so the artist sees the refusal before
+/// dragging.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum SocketGlyph {
+    /// A single scalar — the "value" the artist wires into a parameter (○).
+    Value,
+    /// A multi-component column — a "column" of per-element data (◇).
+    Column,
+}
+
+/// The glyph for a port of dimensionality `dim`: `Scalar` is a value, everything else is
+/// a column. A pure function of the REAL [`Dim`], enumerated (never a `_ =>`) so a new
+/// axis forces a decision here instead of silently drawing the wrong shape — the same
+/// discipline that keeps the polygon-sides gate honest.
+#[must_use]
+pub(crate) fn socket_glyph(dim: Dim) -> SocketGlyph {
+    match dim {
+        Dim::Scalar => SocketGlyph::Value,
+        Dim::Vec2 | Dim::Vec3 | Dim::Vec4 | Dim::Mat2 | Dim::Mat3 | Dim::Mat4 => {
+            SocketGlyph::Column
+        }
+    }
+}
+
+#[cfg(test)]
+mod socket_glyph_tests {
+    use super::{SocketGlyph, socket_glyph};
+    use ph2d_nodegraph::port::Dim;
+
+    /// A single scalar is a value ○; every multi-component dim is a column ◇. The match
+    /// enumerates ALL `Dim` (no `_ =>`), so a new axis is a compile error here — not a
+    /// socket silently drawn as the wrong shape, which is exactly how the shape was lost
+    /// (`draw_card` drew `fill_circle` for everything while the doc claimed "shape ← Dim").
+    /// Mutation — collapsing every dim to `Value`, or flipping `Scalar` to `Column` —
+    /// sangra on the loop or the first assert.
+    #[test]
+    fn scalar_is_a_value_dot_and_multi_component_is_a_column_diamond() {
+        assert_eq!(socket_glyph(Dim::Scalar), SocketGlyph::Value);
+        for d in [
+            Dim::Vec2,
+            Dim::Vec3,
+            Dim::Vec4,
+            Dim::Mat2,
+            Dim::Mat3,
+            Dim::Mat4,
+        ] {
+            assert_eq!(socket_glyph(d), SocketGlyph::Column, "{d:?} is a column");
+        }
+    }
 }
 
 /// **What a card in the view actually IS** (doc 57). The panel paints and hits all

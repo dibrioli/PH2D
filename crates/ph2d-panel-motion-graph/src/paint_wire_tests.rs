@@ -111,3 +111,35 @@ fn the_coarse_hit_boxes_still_cover_the_drawn_wire() {
         );
     }
 }
+
+/// **An incompatible drop target reads as DANGER RED, not muted grey** — the ghost wire and
+/// the target-socket ring both go red, the affirmative "no" the artist sees before releasing.
+/// This is the `connects_directly` verdict (resolved onto the target by the interaction) made
+/// visible; a compatible or empty target keeps the domain preview and an Accent ring.
+///
+/// Reverting the change — Danger back to the old muted `Border`, or the ring back to Accent
+/// regardless — sangra here, and `None` (empty space) must stay the neutral preview so hovering
+/// nowhere never flashes red.
+#[test]
+fn an_incompatible_drop_target_is_danger_red() {
+    let dom = ColorToken::PortInstances; // any domain hue: the "this is what I'll carry" preview
+
+    // The ghost WIRE: incompatible ⇒ Danger; compatible or empty ⇒ the on-target preview.
+    assert_eq!(ghost_wire_token(Some(false), dom), ColorToken::Danger);
+    assert_eq!(ghost_wire_token(Some(true), dom), dom);
+    assert_eq!(ghost_wire_token(None, dom), dom);
+    // A backward drag with nothing found yet has no hue — it stays muted Border, never red.
+    assert_eq!(
+        ghost_wire_token(None, ColorToken::Border),
+        ColorToken::Border
+    );
+
+    // The target-socket RING: compatible ⇒ Accent (drop here), incompatible ⇒ Danger (not here).
+    assert_eq!(target_ring_token(true), ColorToken::Accent);
+    assert_eq!(target_ring_token(false), ColorToken::Danger);
+
+    // The verdict comes straight off the interaction's resolved target tuple.
+    assert_eq!(target_compat(&Some((3, 0, false))), Some(false));
+    assert_eq!(target_compat(&Some((3, 0, true))), Some(true));
+    assert_eq!(target_compat(&None), None);
+}

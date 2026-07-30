@@ -45,6 +45,7 @@ pub mod math;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;
+pub mod paint_shapes;
 pub mod panel;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;

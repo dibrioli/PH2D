@@ -618,8 +618,8 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                              D12/D13 a pose volta quando a formula sai ·
                              a cena de smoke abre o CARD e usa RECEITAS)
                              ↓
-                        ✅ FASE A (corte, 50→31)  →  FASE B (motor: B1..B5)
-                             [FEITA 2026-07-29]         B2 ✅ (feito na FASE 0.4)
+                        ✅ FASE A (corte, 50→31)  →  ✅ FASE B (motor)
+                             [FEITA 2026-07-29]         [FEITA 2026-07-30]
                                                     ↓
                         ✅ FASE C (layout)  ←───────┘   [FEITA 2026-07-30]
                         ✅ C.0 modal · ✅ C.1 duas colunas · ✅ C.2 eixo da fita
@@ -629,6 +629,29 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                              ↓
                         FASE D (pick-whip) → G7 → smoke → G8
 ```
+
+### ✅ A FASE B FECHOU (2026-07-30) — e DOIS dos cinco itens dissolveram na medição
+
+| # | o que o plano pedia | o que ficou |
+|---|---|---|
+| **B1** | uma porta de escrita + decidir per-clip × global | **meio fechado antes de eu chegar** (o ADR-0145 já pôs a autoria em UMA porta per-clip). O global é canal **legado só de leitura**: ZERO escritores no produto. A tabela `(escritor, leitor)` virou gate; **matar o campo é decisão do Enio** (migração + `DOC_VERSION` + ADR) |
+| **B2** | apagar a fórmula devolve a propriedade | ✅ feito na FASE 0.4 |
+| **B3** | `ClockUse` visível | ✅ `RecipeStack::inert_reason` — o readout diz *"no clock"*. ⚠️ A metade *"não oferecer Time sozinha"* foi **descartada com motivo** (ver abaixo) |
+| **B4** | o clamp é do widget | ✅ `sync_from_store` corrige a caixa de um `Literal` fora da faixa; o `Number` segue livre (política escrita) |
+| **B5** | determinismo do `__seed` | ⛔ **premissa REFUTADA** — o alocador é monotônico por binding; criar track não move ninguém. A cura proposta foi **medida e rejeitada** |
+
+**As três decisões que a medição tomou, e ficam escritas:**
+
+1. **B5 — a suspeita era falsa.** *"Adicionar uma track re-rola o Jitter de todos"* não
+   acontece. O resíduo real (apagar a track e recriá-la re-rola) é pequeno, e a cura
+   (semear do `wire_id`) **re-rolaria toda arte já salva uma vez** e trocaria um re-roll
+   por outro (passaria a mudar no RENAME). O número está num teste executável.
+2. **B3 — esconder a família Time da galeria foi DESCARTADO.** Seria um segundo mecanismo
+   para a pergunta que o card já responde (`waiting_for` → readout), e ensinaria menos:
+   uma família que some não explica nada, e a inércia é **contextual** — `Speed` sobre
+   `Jitter` é inerte, e nenhuma regra de galeria pegaria isso.
+3. **B1 — o D4 já estava meio fechado.** O que sobrou não é um defeito, é uma **decisão de
+   produto com preço de schema**, e ela é do Enio.
 
 ### ✅ A FASE C FECHOU (2026-07-30) — e duas coisas que a medição mudou no plano
 

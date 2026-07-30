@@ -618,9 +618,12 @@ AUDITORIA (11 + 13)  →  ✅ FASE 0: consertar os INSTRUMENTOS  [FEITA 2026-07-
                              D12/D13 a pose volta quando a formula sai ·
                              a cena de smoke abre o CARD e usa RECEITAS)
                              ↓
-                        FASE A (corte)  →  FASE B (motor: B1..B5)
+                        ✅ FASE A (corte, 50→31)  →  FASE B (motor: B1..B5)
+                             [FEITA 2026-07-29]         B2 ✅ (feito na FASE 0.4)
                                                     ↓
                         FASE C (layout)  ←──────────┘
+                        ✅ C.0 modal · ✅ C.1 duas colunas · ✅ C.2 eixo da fita
+                        ⬜ C.3 o NOME do objeto · ⬜ C.4 card maior
                              ↓
                         G1 → smoke → G2 → smoke → G3 → … → G6
                              ↓

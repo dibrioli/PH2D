@@ -131,6 +131,16 @@ pub(crate) fn solo_source_value(
             let value = value_track
                 .and_then(|tr| as_f64(tr.sample(t)))
                 .unwrap_or_else(|| f64::from(rest));
+            // ⚠️ **Note what this channel would be WITHOUT the formula**, so deleting the
+            // formula can hand it back. Here and not in the post-pass, because by the time
+            // the pass runs the per-clip formula is already folded into `composed` — the
+            // pre-expression value exists only at the site that computes it (auditoria
+            // 2026-07-29, §4 D-I).
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "the scene value is f32; f64 is the blend's working precision"
+            )]
+            crate::expr_live::remember(target.get(), value as f32);
             f64::from(eval_expr(&ir, value, t, seed_of(target), links))
         }
     };
@@ -281,6 +291,13 @@ fn eval_frame(
                             let value = value_track
                                 .and_then(|tr| as_f64(tr.sample(t_src)))
                                 .unwrap_or_else(|| f64::from(rest));
+                            // Same note as the solo path: what this channel is without the
+                            // formula, for the frame the formula is deleted.
+                            #[expect(
+                                clippy::cast_possible_truncation,
+                                reason = "the scene value is f32; f64 is the blend's working precision"
+                            )]
+                            crate::expr_live::remember(target.get(), value as f32);
                             f64::from(eval_expr(ir, value, t_src, seed_of(target), links))
                         }
                         (None, None) => continue,

@@ -28,6 +28,7 @@
 //! never do.
 
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 /// A formula being previewed live on one binding.
 #[derive(Clone, Debug, PartialEq)]
@@ -43,7 +44,8 @@ pub struct LiveExpr {
 
 thread_local! {
     static LIVE: RefCell<Option<LiveExpr>> = const { RefCell::new(None) };
-    /// **The pose to hand back**, as `(target, pre-expression value)`.
+    /// **The formula-drive LEDGER** — for every channel a formula is driving, the pose to
+    /// hand back if it stops: `target -> pre-expression value`.
     ///
     /// ⚠️ This exists because of a gate that was RIGHT and a comment of mine that was
     /// WRONG. I wrote that stopping the preview is the whole of the undo — the keyed
@@ -54,12 +56,21 @@ thread_local! {
     /// therefore NOBODY writes it. Measured: cancel the card and the object stayed
     /// where the preview left it.
     ///
-    /// ⚠️ The value is the pass's own **pre-expression `value`**, refreshed every
-    /// previewed frame — not a snapshot taken when the preview began. A snapshot would
-    /// be a second answer to what this property is (and would go stale the moment the
-    /// artist scrubbed); `value` is the number the pass already computes to feed the
-    /// formula, so restoring it is by construction "what it would have been".
-    static RESTORE: RefCell<Option<(u64, f32)>> = const { RefCell::new(None) };
+    /// ⚠️ **And it was wired to ONE event — the end of a live preview — which is the
+    /// smaller half.** Deleting an AUTHORED formula is the same event and had no
+    /// hand-back at all: measured (auditoria 2026-07-29, §4 D-I) a bare binding driven by
+    /// `value + 250` stayed at **250.0000** after DELETE + Apply, and on every frame
+    /// after. That is *"mesmo deletando as expressões, elas ficam atuando"*, literally.
+    /// So this is a MAP now, filled by every site that drives a formula (the global
+    /// post-pass, the per-clip blend, the preview), and drained by the one place that
+    /// knows nobody answered for a channel.
+    ///
+    /// ⚠️ The value is the driver's own **pre-expression `value`**, refreshed every driven
+    /// frame — not a snapshot taken when the formula was installed. A snapshot would be a
+    /// second answer to what this property is (and would go stale the moment the artist
+    /// scrubbed); `value` is the number the driver already computes to feed the formula, so
+    /// restoring it is by construction "what it would have been".
+    static OWED: RefCell<BTreeMap<u64, f32>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 /// Install (or clear) the live preview. Called by the shell each frame — the same
@@ -68,31 +79,58 @@ pub fn set_live_expr(v: Option<LiveExpr>) {
     LIVE.with(|c| *c.borrow_mut() = v);
 }
 
-/// Remember what the previewed property WOULD have been, so it can be handed back.
-/// Called by the pass every previewed frame (see [`RESTORE`]).
+/// Remember what a DRIVEN property would have been without its formula, so it can be
+/// handed back if the formula goes away. Called by every driver, every driven frame
+/// (see [`OWED`]).
 pub(crate) fn remember(target: u64, pre_expression_value: f32) {
-    RESTORE.with(|c| *c.borrow_mut() = Some((target, pre_expression_value)));
+    OWED.with(|c| {
+        c.borrow_mut().insert(target, pre_expression_value);
+    });
 }
 
-/// The pose to hand back, ONCE, on the first apply after the preview stopped.
+/// **Every pose that is owed back**, and taking it clears it.
 ///
-/// Returns `None` while the same target is still previewing — the pose is not owed back
-/// until the card is gone. Taking it clears it, so the write happens exactly once and a
-/// later authored change is never clobbered by a stale restore.
-pub(crate) fn take_restore() -> Option<(u64, f32)> {
-    let live_target = LIVE.with(|c| c.borrow().as_ref().map(|l| l.target));
-    RESTORE.with(|c| {
-        let owed = matches!(*c.borrow(), Some((t, _)) if live_target != Some(t));
-        if owed { c.borrow_mut().take() } else { None }
+/// `still_driven` answers *"is a formula driving this channel right now?"* — a channel
+/// whose formula is still installed (or whose card is still open) owes nothing, and
+/// handing its pose back would fight the driver. The caller supplies that predicate
+/// because it is the caller who knows the frame: the document's formulas, the preview
+/// channel, and — critically — whether anything ELSE wrote the property this frame.
+///
+/// Draining is exactly-once per entry, so a later authored change is never clobbered by a
+/// stale hand-back.
+pub(crate) fn drain_owed(still_driven: &dyn Fn(u64) -> bool) -> Vec<(u64, f32)> {
+    OWED.with(|c| {
+        let mut owed = c.borrow_mut();
+        let handing: Vec<(u64, f32)> = owed
+            .iter()
+            .filter(|(t, _)| !still_driven(**t))
+            .map(|(t, v)| (*t, *v))
+            .collect();
+        for (t, _) in &handing {
+            owed.remove(t);
+        }
+        handing
     })
 }
 
-/// Whether a pose is owed back — the apply asks, so the frame that hands it back is not
-/// skipped by the formula-free fast path.
+/// Whether any pose is owed back — the apply asks, so the frame that hands it back is not
+/// skipped by the formula-free fast path (`frame_solve::any_formula`).
+///
+/// ⚠️ True while a formula is still driving, too, and that is deliberate: keeping the pass
+/// scheduled is what makes `composed` available on the frame the hand-back needs it, and a
+/// document with a formula was taking that path anyway.
 #[must_use]
 pub fn has_pending_restore() -> bool {
-    let live_target = LIVE.with(|c| c.borrow().as_ref().map(|l| l.target));
-    RESTORE.with(|c| matches!(*c.borrow(), Some((t, _)) if live_target != Some(t)))
+    OWED.with(|c| !c.borrow().is_empty())
+}
+
+/// Forget every owed pose — for a host installing a different document.
+///
+/// ⚠️ Without this, loading project B would hand project A's poses to whatever bindings
+/// happened to reuse those targets. The load already forgets the clock, the undo queue and
+/// the timeline for exactly this reason.
+pub fn forget_owed_poses() {
+    OWED.with(|c| c.borrow_mut().clear());
 }
 
 /// What is being previewed, if anything.
@@ -132,27 +170,51 @@ mod tests {
         );
     }
 
-    /// **A pose is owed back only once, and only after the card is gone.**
+    /// **A pose is owed back only once, and only after the driver is gone.**
+    ///
+    /// ⚠️ The "is it still driven?" question is now the CALLER's — the ledger cannot
+    /// answer it, because a formula can be driving from three places (the global channel,
+    /// any clip, the preview) and only the pass sees all three. So the predicate is passed
+    /// in, and this test plays the caller: `driving` stands for *"the card is still open"*.
     #[test]
-    fn the_pose_is_owed_back_once_and_only_after_the_card_closes() {
-        set_live_expr(Some(LiveExpr {
-            target: 3,
-            formula: "value".into(),
-            time: 0.0,
-        }));
+    fn the_pose_is_owed_back_once_and_only_after_the_driver_goes_away() {
+        forget_owed_poses();
         remember(3, 7.5);
+        assert!(has_pending_restore(), "the ledger has a note");
+        assert!(
+            drain_owed(&|t| t == 3).is_empty(),
+            "nothing is handed back while that channel is still driven"
+        );
+        assert!(
+            has_pending_restore(),
+            "and a refused drain must not consume the note"
+        );
+
+        assert_eq!(drain_owed(&|_| false), vec![(3, 7.5)]);
+        assert!(
+            drain_owed(&|_| false).is_empty() && !has_pending_restore(),
+            "and it is handed back exactly ONCE — a stale restore would clobber a later edit"
+        );
+    }
+
+    /// **Several channels can owe at once**, which the single-slot version could not
+    /// represent: two rows cleared in one gesture is one Apply.
+    #[test]
+    fn every_channel_that_owes_is_handed_back_and_the_driven_ones_are_left_alone() {
+        forget_owed_poses();
+        remember(1, 10.0);
+        remember(2, 20.0);
+        remember(3, 30.0);
+        let handed = drain_owed(&|t| t == 2);
+        assert_eq!(handed, vec![(1, 10.0), (3, 30.0)]);
+        assert!(
+            has_pending_restore(),
+            "channel 2 is still driven, so its note stays"
+        );
+        forget_owed_poses();
         assert!(
             !has_pending_restore(),
-            "nothing is owed while the same card is still open"
-        );
-        assert!(take_restore().is_none());
-
-        set_live_expr(None);
-        assert!(has_pending_restore(), "closing the card owes the pose back");
-        assert_eq!(take_restore(), Some((3, 7.5)));
-        assert!(
-            take_restore().is_none() && !has_pending_restore(),
-            "and it is handed back exactly ONCE — a stale restore would clobber a later edit"
+            "and a host can drop the whole ledger"
         );
     }
 }

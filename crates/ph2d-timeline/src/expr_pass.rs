@@ -95,13 +95,15 @@ pub(crate) fn run(
     // compose loop above, so handing back the pre-expression value here would undo the
     // artist's own authored formula on the very frame they closed the card. Absence
     // from `composed` is precisely *"nothing else answered for this channel"*.
-    if let Some((target, v)) = crate::expr_live::take_restore()
-        && let Some(b) = doc.bindings().iter().find(|b| b.target.get() == target)
-        && !composed.contains_key(&(b.entity, b.prop))
-        && let Some(e) = Entity::try_from_bits(b.entity)
-    {
-        write_prop(world, e, b, AnimValue::Float(v), false);
-        links.links.insert((b.entity, b.prop), f64::from(v));
+    let live_target = live.as_ref().map(|l| l.target);
+    for (target, v) in crate::expr_live::drain_owed(&|t| still_driven(doc, live_target, t)) {
+        if let Some(b) = doc.bindings().iter().find(|b| b.target.get() == target)
+            && !composed.contains_key(&(b.entity, b.prop))
+            && let Some(e) = Entity::try_from_bits(b.entity)
+        {
+            write_prop(world, e, b, AnimValue::Float(v), false);
+            links.links.insert((b.entity, b.prop), f64::from(v));
+        }
     }
     if !doc.bindings().iter().any(|b| b.expr.is_some()) && live.is_none() {
         return;
@@ -199,11 +201,16 @@ pub(crate) fn run(
             continue;
         }
         let value = composed_v.unwrap_or(b.rest.unwrap_or(0.0));
-        // While this channel is previewed, keep a fresh note of what it would have
-        // been — that is the pose the card owes back when it closes.
-        if previewing.is_some() {
-            crate::expr_live::remember(b.target.get(), value);
-        }
+        // Keep a fresh note of what this channel would have been WITHOUT the formula —
+        // the pose owed back when the formula goes away, whether that is the card
+        // closing or the artist deleting the row.
+        //
+        // ⚠️ It used to be `if previewing.is_some()`, i.e. only the smaller half. Deleting
+        // an authored formula is the same event and had no hand-back: a bare binding driven
+        // by `value + 250` stayed at 250 forever (auditoria 2026-07-29, §4 D-I). The
+        // per-clip channel notes its own value at the blend, where the pre-expression
+        // number still exists.
+        crate::expr_live::remember(b.target.get(), value);
         driven.push(Driven {
             idx: i,
             ir,
@@ -308,6 +315,31 @@ impl Bindings for ExprBindings<'_> {
     fn param(&self, _name: &str) -> f32 {
         0.0
     }
+}
+
+/// **Is a formula driving this channel right now?** — the predicate the hand-back ledger
+/// asks before giving a pose back.
+///
+/// Three ways to be driven, and all three have to be here or the pose is handed back while
+/// something is still writing it: the GLOBAL channel (`binding.expr`, ADR-0144), a
+/// PER-CLIP formula in any clip (ADR-0145 — the channel `Apply` writes), and the live
+/// PREVIEW. ⚠️ *Any* clip, not the active one: switching clips is not deleting a formula,
+/// and handing the pose back on a clip change would make a formula look like it evaporated
+/// every time the artist looked at another clip.
+fn still_driven(doc: &TimelineDoc, live_target: Option<u64>, target: u64) -> bool {
+    if live_target == Some(target) {
+        return true;
+    }
+    let Some(b) = doc.bindings().iter().find(|b| b.target.get() == target) else {
+        // No binding at all — the track was deleted. Nothing to hand a pose back TO, and
+        // the drain's own `find` will drop it; saying "driven" here would leak the entry.
+        return false;
+    };
+    b.expr.is_some()
+        || doc
+            .clips()
+            .iter()
+            .any(|c| c.expr.get(&b.target).is_some_and(|s| !s.trim().is_empty()))
 }
 
 /// Kahn topological order of the driven bindings — a dependency before its

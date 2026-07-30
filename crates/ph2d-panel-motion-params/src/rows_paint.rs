@@ -24,53 +24,12 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-/// **A row DIRIGIDA (doc 58) — o único caso que não é um widget.** O fio decide o número,
-/// então não há nada a registrar: sem hit rect, sem arrasto, sem id no store. É por isso que
-/// ela sai do laço em vez de virar mais um braço parecido com os outros — os oito braços
-/// restantes registram e despacham; este só *mostra*, e o acento diz que o valor vem de fora.
-/// (Extraída para o `paint_rows` caber no teto de 200 LOC de fn de painel, HR-18.)
-#[allow(clippy::too_many_arguments)]
-fn paint_driven_row(
-    row: &super::ScalarRow,
-    inner_x: f32,
-    inner_w: f32,
-    y: f32,
-    label_font: f32,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    let mid = y + (ROW_H_PX - label_font) * 0.5;
-    paint_text(
-        text_system,
-        scene,
-        &row.label,
-        inner_x,
-        mid,
-        label_font,
-        DEFAULT_LABEL_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    let display = row_value(
-        normalized_track(row.value, row.min, (row.max - row.min).max(f64::EPSILON)),
-        row.min,
-        row.max,
-        row.integer,
-    );
-    paint_text(
-        text_system,
-        scene,
-        // The SAME formatter the chip uses — a second one would show the same
-        // number with two faces.
-        &ph2d_editor_core::widget::format_number(display),
-        inner_x + DEFAULT_LABEL_W,
-        mid,
-        label_font,
-        inner_w - DEFAULT_LABEL_W,
-        // The accent says it: this number is coming from somewhere else.
-        resolve(ColorToken::Accent, theme),
-    );
-}
+#[path = "rows_paint_kinds.rs"]
+mod kinds;
+use kinds::{
+    paint_channels_row, paint_color_row, paint_driven_row, paint_enum_row, paint_scalar_row,
+    paint_source_row, paint_toggle_row,
+};
 
 /// Paint each param row from `body_top` down, registering hit rects as it goes.
 #[allow(clippy::too_many_arguments)]
@@ -110,109 +69,64 @@ pub(crate) fn paint_rows(
                 y += ROW_H_PX + row_gap;
             }
             ParamRow::Scalar(row) => {
-                let slider_id = param_slider_id(i);
-                let chip_id = param_chip_id(i);
-                let span = (row.max - row.min).max(f64::EPSILON);
-                let track = store
-                    .slider(slider_id)
-                    .map(|(_, v)| v)
-                    .unwrap_or(normalized_track(row.value, row.min, span));
-                let display = row_value(track, row.min, row.max, row.integer);
-                let used = paint_slider_with_chip_layout_adaptive(
-                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                    &row.label,
-                    track,
-                    display,
-                    None,
-                    slider_id,
-                    chip_id,
-                    DEFAULT_LABEL_W,
+                y = paint_scalar_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
                     chip_w,
+                    row_gap,
+                    y,
                     store,
                     hit_index,
                     scene,
                     text_system,
                     theme,
                 );
-                y += used + row_gap;
             }
             ParamRow::Color(row) => {
-                let swatch_w = SwatchSize::Md.px();
-                paint_text(
-                    text_system,
-                    scene,
-                    &row.label,
+                y = paint_color_row(
+                    row,
                     inner_x,
-                    y + (ROW_H_PX - label_font) * 0.5,
+                    inner_w,
+                    row_gap,
+                    y,
                     label_font,
-                    DEFAULT_LABEL_W,
-                    resolve(ColorToken::Text1, theme),
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
                 );
-                let swatch_id = param_swatch_id(row.channels[0]);
-                let srect = Rect::new(inner_x + inner_w - swatch_w, y, swatch_w, ROW_H_PX);
-                let sw = ColorSwatch::new(swatch_id, "Color", row.srgb).size(SwatchSize::Md);
-                paint_color_swatch(&sw, srect, scene, theme);
-                hit_index.register(swatch_id, srect);
-                y += ROW_H_PX + row_gap;
             }
             ParamRow::Toggle(row) => {
-                // A real checkbox — label + box on the left (the box owns the click; the
-                // dispatch flips its value + fires Toggled).
-                let cb_id = param_checkbox_id(i);
-                let (cb_state, _) = store
-                    .checkbox(cb_id)
-                    .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-                let value = if row.on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                };
-                let cb = Checkbox::new(cb_id, row.label.clone())
-                    .state(cb_state)
-                    .value(value);
-                let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
-                paint_checkbox(&cb, crect, scene, text_system, theme);
-                hit_index.register(cb_id, crect);
-                y += ROW_H_PX + row_gap;
+                y = paint_toggle_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    row_gap,
+                    y,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
             }
             ParamRow::Enum(row) => {
-                // Named segmented selector (label line + option buttons), mirror of the
-                // Vector panel's Cap / Join / Draw rows.
-                paint_text(
-                    text_system,
-                    scene,
-                    &row.label,
+                y = paint_enum_row(
+                    row,
+                    i,
                     inner_x,
-                    y,
-                    TypeToken::Sm.px(),
                     inner_w,
-                    resolve(ColorToken::Text2, theme),
+                    row_gap,
+                    y,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
                 );
-                y += TypeToken::Sm.px() + Spacing::Xs.px();
-                let k = row.labels.len().min(MAX_ENUM_OPTIONS);
-                // Up to 4 buttons across, then wrap; a single option → 1.
-                let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
-                let gap = Spacing::Sm.px();
-                let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
-                for (opt, caption) in row.labels.iter().enumerate().take(k) {
-                    let bid = param_enum_id(i, opt);
-                    let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-                    let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
-                    let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-                    let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
-                    paint_segmented_button(
-                        brect,
-                        caption,
-                        opt == row.selected,
-                        bstate,
-                        scene,
-                        text_system,
-                        theme,
-                    );
-                    hit_index.register(bid, brect);
-                }
-                let seg_rows = k.div_ceil(cols) as f32;
-                y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
             }
             ParamRow::Angle(row) => {
                 // A `deg` number box — never a raw turns/radians slider.
@@ -260,171 +174,34 @@ pub(crate) fn paint_rows(
                 y += used + row_gap;
             }
             ParamRow::Channels(row) => {
-                // Named-channel picker (plan §1.1): the channel LABELS as segmented
-                // buttons + a trailing "Custom" — the artist reads "Speed", not a
-                // column name and a magic mode. Custom reveals the raw text field.
-                paint_text(
-                    text_system,
-                    scene,
-                    &row.label,
+                y = paint_channels_row(
+                    row,
+                    i,
                     inner_x,
-                    y,
-                    TypeToken::Sm.px(),
                     inner_w,
-                    resolve(ColorToken::Text2, theme),
-                );
-                y += TypeToken::Sm.px() + Spacing::Xs.px();
-                let n = row.channels.len(); // Custom is the n-th button
-                let k = (n + 1).min(MAX_ENUM_OPTIONS);
-                let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
-                let gap = Spacing::Sm.px();
-                let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
-                for opt in 0..k {
-                    let caption = if opt < n {
-                        row.channels[opt].0
-                    } else {
-                        "Custom"
-                    };
-                    let bid = param_enum_id(i, opt);
-                    let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-                    let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
-                    let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-                    let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
-                    paint_segmented_button(
-                        brect,
-                        caption,
-                        opt == row.selected,
-                        bstate,
-                        scene,
-                        text_system,
-                        theme,
-                    );
-                    hit_index.register(bid, brect);
-                }
-                let seg_rows = k.div_ceil(cols) as f32;
-                y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
-                // Custom selected: the live-column picker (the roadmap's *dropdown
-                // populated at runtime*) + the raw text field as the escape.
-                if row.selected >= n {
-                    // Chips for the columns the UPSTREAM stream actually carries: the
-                    // artist clicks a REAL name instead of guessing. Ids live in a
-                    // range above the curated segments (`CHANNELS_EXTRA_BASE`).
-                    let ext = row.extra.len().min(MAX_ENUM_OPTIONS);
-                    if ext > 0 {
-                        paint_text(
-                            text_system,
-                            scene,
-                            "From stream",
-                            inner_x,
-                            y,
-                            TypeToken::Sm.px(),
-                            inner_w,
-                            resolve(ColorToken::Text2, theme),
-                        );
-                        y += TypeToken::Sm.px() + Spacing::Xs.px();
-                        let ecols = ext.clamp(1, 4); // CLAMP-OK: segmented column count
-                        let egap = Spacing::Sm.px();
-                        let ew = ((inner_w - egap * (ecols as f32 - 1.0)) / ecols as f32).max(1.0);
-                        for j in 0..ext {
-                            let bid = param_enum_id(i, CHANNELS_EXTRA_BASE + j);
-                            let rx = inner_x + (j % ecols) as f32 * (ew + egap);
-                            let ry = y + (j / ecols) as f32 * (ROW_H_PX + egap);
-                            let brect = Rect::new(rx, ry, ew, ROW_H_PX);
-                            let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
-                            paint_segmented_button(
-                                brect,
-                                &row.extra[j],
-                                row.extra[j] == row.custom,
-                                bstate,
-                                scene,
-                                text_system,
-                                theme,
-                            );
-                            hit_index.register(bid, brect);
-                        }
-                        let erows = ext.div_ceil(ecols) as f32;
-                        y += erows * ROW_H_PX + (erows - 1.0) * egap + Spacing::Xs.px();
-                    }
-                    // The raw text field for anything not listed (honest placeholder,
-                    // never "e.g. sin(t)").
-                    let used = paint_text_row(
-                        Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                        "Column",
-                        "e.g. inv_mass, id",
-                        param_text_id(i),
-                        store,
-                        hit_index,
-                        scene,
-                        text_system,
-                        theme,
-                    );
-                    y += used + row_gap;
-                }
-            }
-            ParamRow::Source(row) => {
-                // A source picker (doc 65): the names the app published (drawn shapes)
-                // as chips + a text field for a name not yet drawn — the artist picks the
-                // shape they drew, never types its id.
-                paint_text(
-                    text_system,
-                    scene,
-                    &row.label,
-                    inner_x,
+                    row_gap,
                     y,
-                    TypeToken::Sm.px(),
-                    inner_w,
-                    resolve(ColorToken::Text2, theme),
-                );
-                y += TypeToken::Sm.px() + Spacing::Xs.px();
-                let n = row.options.len().min(MAX_ENUM_OPTIONS);
-                if n > 0 {
-                    paint_text(
-                        text_system,
-                        scene,
-                        "Drawn shapes",
-                        inner_x,
-                        y,
-                        TypeToken::Sm.px(),
-                        inner_w,
-                        resolve(ColorToken::Text2, theme),
-                    );
-                    y += TypeToken::Sm.px() + Spacing::Xs.px();
-                    let cols = n.clamp(1, 4); // CLAMP-OK: segmented column count, not a UI metric
-                    let gap = Spacing::Sm.px();
-                    let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
-                    for j in 0..n {
-                        let bid = param_enum_id(i, j);
-                        let rx = inner_x + (j % cols) as f32 * (seg_w + gap);
-                        let ry = y + (j / cols) as f32 * (ROW_H_PX + gap);
-                        let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-                        let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
-                        paint_segmented_button(
-                            brect,
-                            &row.options[j],
-                            row.options[j] == row.current,
-                            bstate,
-                            scene,
-                            text_system,
-                            theme,
-                        );
-                        hit_index.register(bid, brect);
-                    }
-                    let seg_rows = n.div_ceil(cols) as f32;
-                    y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + Spacing::Xs.px();
-                }
-                // The raw text field for a name not (yet) in the list — the honest escape.
-                let used = paint_text_row(
-                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                    "Name",
-                    "e.g. a drawn shape",
-                    param_text_id(i),
                     store,
                     hit_index,
                     scene,
                     text_system,
                     theme,
                 );
-                y += used + row_gap;
+            }
+            ParamRow::Source(row) => {
+                y = paint_source_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    row_gap,
+                    y,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
             }
             ParamRow::Curve(row) => {
                 // The interactive Curve editor — a graph with draggable handles. Its

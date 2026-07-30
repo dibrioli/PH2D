@@ -12,6 +12,11 @@
 //! desfazendo a inserção inteira. R-click em canvas VAZIO ainda só adiciona o nó solto (sem
 //! splice). Um source que não encaixa (`motion.grid`) é recusado e o fio original fica.
 //!
+//! O INVERSO do splice também está aqui: SELECIONE o nó do meio (ex. **scale**, ou o **twist**
+//! recém-splicado) e aperte **Delete** — a cadeia se RE-CONECTA (grid -> output), em vez de
+//! ficar cortada (delete-and-reconnect, o Ctrl+X do Blender). Deletar um nó de PONTA (grid ou
+//! output) só o remove, sem religar (não há o que carregar).
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -70,6 +75,9 @@ impl crate::App {
              GRID SE DEFORMA NA HORA, com UM Ctrl+Z desfazendo tudo. R-click em canvas VAZIO ainda \
              so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
              recusado e o fio original fica.\n  \
+             INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
+             cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (o Ctrl+X do Blender). \
+             Deletar uma PONTA (grid/output) so remove.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

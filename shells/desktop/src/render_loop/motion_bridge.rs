@@ -472,11 +472,14 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
     }
 }
 
-/// Apply a `DeleteSelection` intent. Deleting a mid-chain force re-heals the
-/// state entry onto the branch's new dangling head; orphaned plumbing dies
-/// with the branch (before/after diff in `plumbing`). The sinks are
-/// re-resolved from the Output nodes each frame (before the cook), so deleting
-/// one cleanly stops its scene — no manual sink bookkeeping here.
+/// Apply a `DeleteSelection` intent. A mid-chain node is **healed out**
+/// (delete-and-reconnect, Blender Ctrl+X): its port-0 source is bridged to its
+/// port-0 targets, so the chain gets shorter, not severed — a deleted force keeps
+/// the branch's head and its managed state entry (`plumbing` re-derives the rest).
+/// When there is nothing to bridge (an end node, or a heal that would not validate)
+/// it falls back to plain removal. The sinks are re-resolved from the Output nodes
+/// each frame (before the cook), so deleting one cleanly stops its scene — no manual
+/// sink bookkeeping here.
 #[cfg(feature = "panel-motion-graph")]
 fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>, toasts: &mut ToastQueue) {
     let pre = motion.doc.clone();
@@ -509,7 +512,14 @@ fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>, toasts: &mu
             // member, at every depth, and the decoration that lived in there.
             subgraph::Target::Card(sid) => changed |= subgraph::delete_deep(motion, sid),
             subgraph::Target::Node(nid) => {
-                if motion.doc.graph.remove_node(nid) {
+                // Delete-and-reconnect (Blender Ctrl+X): a node removed from the middle of a
+                // chain leaves the chain HEALED, not severed. `heal_deleted_node` removes it on
+                // success; otherwise fall back to the plain removal. Processing `dead` in order
+                // and re-reading the live graph each time composes — deleting two adjacent nodes
+                // heals the whole span (grid -> a -> b -> out becomes grid -> out).
+                let removed =
+                    rewire::heal_deleted_node(motion, nid) || motion.doc.graph.remove_node(nid);
+                if removed {
                     motion.doc.forget_nodes(&[nid]);
                     changed = true;
                 }

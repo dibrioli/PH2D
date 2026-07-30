@@ -302,3 +302,90 @@ fn splice_node_refuses_a_type_that_cannot_bridge_and_leaves_the_wire() {
         "the original grid -> move wire is intact"
     );
 }
+
+/// **Deleting a mid-chain node HEALS the wire** (Blender Ctrl+X): remove `move` from
+/// grid -> move -> output and the grid feeds the output DIRECTLY — the chain is not severed.
+/// `heal_deleted_node` removes the node itself on success, so the count drops to 2.
+/// FALSIFIED by a heal that returns false (the node would be left in place with the wire cut) —
+/// the plain removal the caller falls back to would leave `output` with no input at all.
+#[test]
+fn deleting_a_mid_chain_node_heals_the_wire() {
+    let mut motion = wired(); // grid(0) -> move(1) -> output(2)
+    let healed = heal_deleted_node(&mut motion, NodeId(1));
+
+    assert!(healed, "a mid-chain node is healed, not left dangling");
+    assert_eq!(
+        motion.doc.graph.nodes().len(),
+        2,
+        "move is gone — grid and output remain"
+    );
+    assert!(
+        motion.doc.graph.node(NodeId(1)).is_none(),
+        "the deleted node is removed"
+    );
+    assert_eq!(
+        source_of(&motion, 2, 0),
+        Some((0, 0)),
+        "the grid now feeds the output directly — the chain healed"
+    );
+    assert!(motion.doc.graph.validate(&motion.registry).is_ok());
+}
+
+/// The heal bridges the source to **EVERY** wire leaving the deleted node's output, not just
+/// the first — a node whose output fans out to two sinks leaves both fed by the upstream source.
+/// FALSIFIED by a heal that reconnects only the first target: the second sink would be orphaned.
+#[test]
+fn healing_bridges_the_source_to_every_output_target() {
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let mid = g.add_node("motion.move");
+    let out_a = g.add_node("motion.output");
+    let out_b = g.add_node("motion.output");
+    for (from, to) in [(grid, mid), (mid, out_a), (mid, out_b)] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, 0),
+            delayed: false,
+        })
+        .expect("wire");
+    }
+    motion.doc.graph = g;
+
+    assert!(heal_deleted_node(&mut motion, mid));
+    assert_eq!(
+        source_of(&motion, out_a.0, 0),
+        Some((grid.0, 0)),
+        "the first sink is fed by the grid"
+    );
+    assert_eq!(
+        source_of(&motion, out_b.0, 0),
+        Some((grid.0, 0)),
+        "the second sink is fed by the grid too — not orphaned"
+    );
+    assert!(motion.doc.graph.validate(&motion.registry).is_ok());
+}
+
+/// A node with **no wire feeding port 0** (a source node) heals NOTHING — there is nothing to
+/// carry through, so the caller removes it the plain way. FALSIFIED by a heal that touched the
+/// graph anyway: the grid would be gone (or the graph altered) before the caller ever removed it.
+#[test]
+fn deleting_a_source_node_heals_nothing() {
+    let mut motion = wired(); // grid(0) has no input
+    let before = motion.doc.graph.nodes().len();
+
+    assert!(
+        !heal_deleted_node(&mut motion, NodeId(0)),
+        "a source node has nothing to bridge"
+    );
+    assert_eq!(
+        motion.doc.graph.nodes().len(),
+        before,
+        "the graph is untouched — the heal left the node for the caller to remove"
+    );
+    assert_eq!(
+        source_of(&motion, 1, 0),
+        Some((0, 0)),
+        "grid still feeds move"
+    );
+}

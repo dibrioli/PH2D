@@ -238,6 +238,64 @@ pub(super) fn move_wire_end(
     motion.pump.mark_dirty();
 }
 
+/// **Delete-and-reconnect** (Blender's Ctrl+X): before a node leaves the graph, bridge the wire
+/// feeding its PRIMARY input (port 0) to every wire leaving its PRIMARY output, so a node
+/// removed from the middle of a chain leaves the chain HEALED instead of severed. This is
+/// [`splice_into_wire`] run in reverse, through the same trial-validate-or-refuse authority.
+///
+/// On success the node is removed and `true` is returned; on `false` the node is left in place
+/// and the caller removes it the plain way (today's behaviour). It heals NOTHING — leaving the
+/// wire cut — when the bridge would be ambiguous or wrong: no ordinary wire feeds port 0 (a
+/// source node has nothing to carry through), no wire leaves port 0 (nothing downstream to
+/// keep), or the bridged graph does not VALIDATE. The `!e.delayed` filters skip engine-managed
+/// `pre` plumbing (an input takes exactly one source, so a bridged target is never a `pre`),
+/// which the delete's `reconcile` re-derives regardless.
+pub(super) fn heal_deleted_node(motion: &mut MotionState, nid: NodeId) -> bool {
+    // The wire feeding port 0 — the stream this node sits on. Its source is what carries through.
+    let Some(source) = motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .find(|e| e.to.0 == nid && e.to.1 == 0 && !e.delayed)
+        .map(|e| e.from)
+    else {
+        return false; // nothing feeds port 0 (a source node) — no chain to heal
+    };
+    // Every wire leaving port 0 — the targets that must keep their input after nid is gone.
+    let targets: Vec<(NodeId, u16)> = motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .filter(|e| e.from.0 == nid && e.from.1 == 0 && !e.delayed)
+        .map(|e| e.to)
+        .collect();
+    if targets.is_empty() {
+        return false; // nothing downstream of port 0 — deleting an end, not a middle
+    }
+
+    let mut trial: Graph = motion.doc.graph.clone();
+    trial.remove_node(nid); // drops nid and all its edges; targets are now dangling
+    for &(tn, tp) in &targets {
+        if trial
+            .connect(Edge {
+                from: source,
+                to: (tn, tp),
+                delayed: false,
+            })
+            .is_err()
+        {
+            return false; // a bridge that will not connect — leave the node for plain removal
+        }
+    }
+    if trial.validate(&motion.registry).is_err() {
+        return false; // the healed chain is ill-typed — the caller severs it the plain way
+    }
+    motion.doc.graph = trial;
+    true
+}
+
 #[cfg(test)]
 #[path = "motion_bridge_rewire_tests.rs"]
 mod tests;

@@ -307,3 +307,47 @@ fn the_cpu_path_still_reads_and_still_fills_the_memo() {
         "the CPU path DOES cook — which is what makes the memo assertion above mean something"
     );
 }
+
+/// The source feeding `(to, port)`, if any — the seam-side reader for the heal below.
+fn src_of(motion: &MotionState, to: NodeId, port: u16) -> Option<(u32, u16)> {
+    motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .find(|e| e.to.0 == to && e.to.1 == port && !e.delayed)
+        .map(|e| (e.from.0.0, e.from.1))
+}
+
+/// **The Delete intent reaches the heal** (delete-and-reconnect, Blender Ctrl+X): deleting the
+/// mid-chain `move` through the real `apply_delete_selection` path leaves the grid feeding the
+/// output DIRECTLY, and touches nothing else — the stray `tint`, fed off the grid, keeps its
+/// wire. This gates the WIRING (the `heal_deleted_node(..) || remove_node(..)` fallback), not
+/// just the unit: FALSIFIED by a delete that severs instead of heals (output left with no input).
+#[test]
+fn deleting_a_mid_chain_node_via_the_intent_heals_the_chain() {
+    let mut motion = MotionState::new();
+    let (grid, mv, out, tint) = scene(&mut motion);
+    let before = motion.doc.graph.nodes().len();
+    let mut toasts = ToastQueue::default();
+
+    super::apply_delete_selection(&mut motion, vec![mv.0], &mut toasts);
+
+    assert_eq!(
+        motion.doc.graph.nodes().len(),
+        before - 1,
+        "move left the graph"
+    );
+    assert!(motion.doc.graph.node(mv).is_none(), "move is gone");
+    assert_eq!(
+        src_of(&motion, out, 0),
+        Some((grid.0, 0)),
+        "the grid feeds the output directly — the chain healed"
+    );
+    assert_eq!(
+        src_of(&motion, tint, 0),
+        Some((grid.0, 0)),
+        "the stray tint, off a different wire, is untouched"
+    );
+    assert!(motion.doc.graph.validate(&motion.registry).is_ok());
+}

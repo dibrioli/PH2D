@@ -250,13 +250,16 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
     );
 }
 
-/// Deleting a mid-chain force re-heals the plumbing: the orphaned upstream
-/// stub loses its state entry, the surviving chain's new dangling head gains
-/// it. And the managed badge itself is not hand-deletable (the disconnect
-/// gesture on it is refused with a toast) while an EXPERT `pre` elsewhere
-/// still is.
+/// Deleting a mid-chain force HEALS the force chain (delete-and-reconnect): the
+/// upstream force is bridged straight to the surviving downstream, so the chain is
+/// SHORTER, not severed — the branch head keeps its managed state entry, nothing is
+/// orphaned, nothing re-homes. (Before delete-and-reconnect this severed the chain,
+/// dropping the upstream force out of the branch and re-homing the entry to the new
+/// dangling head — the worse outcome the heal removes.) And the managed badge itself
+/// is not hand-deletable (the disconnect gesture on it is refused with a toast) while
+/// an EXPERT `pre` elsewhere still is.
 #[test]
-fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
+fn a_healed_mid_chain_force_delete_keeps_the_head_and_managed_pre_is_not_hand_deletable() {
     use ph2d_editor::ToastQueue;
     use ph2d_nodegraph::graph::{Edge, Graph};
 
@@ -289,8 +292,8 @@ fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
         "the managed state entry is not hand-deletable"
     );
 
-    // ...while deleting the mid-chain node re-heals: wind's stale entry is
-    // swept, drag (the new dangling head) gains one.
+    // ...while deleting the mid-chain force HEALS the chain: wind is bridged straight
+    // to drag, so wind stays the head and keeps its state entry — nothing re-homes.
     apply_delete_selection(
         &mut motion,
         vec![curl.0],
@@ -302,13 +305,22 @@ fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
         "the deleted node's edges died with it"
     );
     assert!(
-        !edges.iter().any(|e| e.to == (wind, 0)),
-        "the orphaned stub lost its state entry"
-    );
-    assert!(
         edges
             .iter()
-            .any(|e| e.from == (integrate, 0) && e.to == (drag, 0) && e.delayed),
-        "the surviving chain's new head gained the state entry"
+            .any(|e| e.from == (wind, 0) && e.to == (drag, 0) && !e.delayed),
+        "the force chain healed: wind feeds drag directly"
+    );
+    assert!(
+        edges.iter().any(|e| e.to == (wind, 0) && e.delayed),
+        "wind stays the branch head and keeps its managed state entry — nothing was orphaned"
+    );
+    assert!(
+        !edges.iter().any(|e| e.to == (drag, 0) && e.delayed),
+        "drag is mid-chain now, not a second head — no state entry re-homed to it"
+    );
+    // `integrate`'s forces port stays fed by the (shorter) branch.
+    assert!(
+        edges.iter().any(|e| e.to == (integrate, 1) && !e.delayed),
+        "the healed branch still feeds the integrator"
     );
 }

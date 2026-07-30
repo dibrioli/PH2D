@@ -144,44 +144,46 @@ pub(crate) fn bake_stroke(
 
 /// **A tolerância da simplificação: uma FRAÇÃO da espessura do traço.**
 ///
-/// O amostrador guarda um ponto a cada `MIN_SAMPLE_PX` (2 px de tela), e antes de
-/// 2026-07-18 a decimação usava `0,05 · px_to_world` — *"só remove colinear puro
-/// (invisível)"*. Era literalmente isso: uma simplificação calibrada para não simplificar.
-/// O resultado é o que o Enio viu no smoke — *"o traço gera muitos pontos muito próximos
-/// e até sobrepostos"* —, e ele fica PIOR quando se desenha com a câmera perto, porque um
-/// limiar em px de TELA vira uma distância minúscula em unidades de MUNDO.
+/// A grandeza é adimensional de propósito — **um desvio muito menor que a própria linha é invisível
+/// por definição**, e é a linha que diz o que é "muito menor". Um limiar em px de TELA viraria uma
+/// distância minúscula em MUNDO quando se desenha com a câmera perto.
 ///
-/// A grandeza certa é adimensional, pela mesma razão do `FILL_TUCK_FRACTION`: **um desvio
-/// muito menor que a própria linha é invisível por definição**, e é a linha que diz o que
-/// é "muito menor". Medido num arco de mão (400 amostras, pincel default):
+/// ## ⚠️ O número mudou de SIGNIFICADO em 2026-07-30, e é por isso que ele mudou de valor
 ///
-/// | fração | pontos | % do cru | desvio máx (da espessura) |
-/// |---|---|---|---|
-/// | 0,0008 (o valor antigo, ≈0,05 px) | 210 | 52,5 % | 0,05 % |
-/// | 0,02 | 173 | 43,2 % | 1,9 % |
-/// | 0,05 | 95 | 23,8 % | 5,0 % |
-/// | **0,10** | **17** | **4,2 %** | **7,4 %** |
-/// | 0,20 | 10 | 2,5 % | 19,5 % |
+/// Até aqui a tolerância era cobrada contra a **CORDA RETA** (o `simplify_rdp`), enquanto quem
+/// desenha é o `resample_smooth`, que traça uma **Catmull-Rom** pelos sobreviventes. Os dois
+/// discordavam sobre o que um ponto guardado significa, e num gancho fechado a corda parecia ótima
+/// enquanto a curva reconstruída saía de onde a mão passou.
 ///
-/// ⚠️ **O joelho da curva é 0,10 (95 → 17 pontos), e o valor escolhido é 0,05 — de
-/// propósito, por causa de uma CERCA.** Em 2026-07-11 o Enio reportou *"o desenho em
-/// tempo real está mais suave que o traço cosido após mouse up"*, causado por um RDP de
-/// 0,75 px ≈ **12,5 % da espessura** do pincel default. O RDP substitui trechos por
-/// RETAS, então tolerância demais não desloca a arte — ela a deixa **angulosa**, que é
-/// outro defeito e não aparece na coluna de desvio.
+/// **A história da constante é a prova de que ela era o instrumento errado** — ela foi reclamada
+/// nas DUAS pontas: `0,0008` deu *"muitos pontos muito próximos e até sobrepostos"* (Enio,
+/// 2026-07-18) e `0,05` deu *"poucos pontos … precisamos de mais precisão"* (Enio, 2026-07-30, com
+/// screenshot). Um terceiro ajuste do mesmo número seria o remédio novo pagando o velho
+/// ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]).
 ///
-/// 0,05 é **2,5× mais conservador** que o valor que causou a queixa e ainda assim corta
-/// os pontos 4× (400 → 95, espaçamento ~8 px em vez de 2). Subir para 0,10 é um ganho
-/// grande e está medido — mas é o smoke do Enio que decide, porque quem julga
-/// angulosidade é o olho dele.
+/// Hoje o erro é cobrado contra **a curva que será desenhada** (`simplify_to_curve`), então o número
+/// diz o que promete: *o traço guardado não se afasta da mão mais que esta fração da espessura*.
 ///
-/// E o que torna qualquer valor SEGURO agora é a porta única: o preview ao vivo passa
-/// pelo MESMO `stroke_from_samples`, então o traço assado é idêntico ao que ele viu
-/// enquanto desenhava — a cerca de 2026-07-11 virou estrutura em vez de calibração.
+/// ## E aí o joelho MUDOU de lugar (medido no gancho da foto + num arco liso, espessura 12)
 ///
-/// Quinas sobrevivem por construção: o RDP mantém sempre o ponto de desvio MÁXIMO, e uma
-/// quina é o desvio máximo do trecho.
-const STROKE_SIMPLIFY_FRACTION: f32 = 0.05; // adimensional: fracao da espessura, MEDIDO
+/// | fração | gancho: pts / desvio | arco liso: pts / desvio |
+/// |---|---|---|
+/// | 0,05 | 13 / **3,83 %** | 5 / 1,75 % |
+/// | **0,02** | **13 / 2,86 %** | **5 / 1,75 %** |
+/// | 0,01 | 26 / 2,28 % | 8 / 0,46 % |
+///
+/// **0,02 dá o MESMO número de pontos que 0,05 com o desvio no piso** — e o piso é o próprio
+/// Smoothing, que sozinho move a mão 1,78 % (ablação em `measure_what_the_stroke_deviation_is_made_of`).
+/// Descer para 0,01 dobra os pontos por 0,6 pp, que é o lado errado do joelho.
+///
+/// ⚠️ **A queixa antiga não volta, e é estrutural:** no arco liso a Catmull-Rom reconstrói bem, então
+/// o ajuste guarda **5 pontos de 240**. Poucos pontos onde a curva os dispensa, pontos onde a
+/// precisão precisa deles — as duas queixas param de disputar o mesmo número.
+///
+/// A cerca de 2026-07-11 (*"o desenho em tempo real está mais suave que o traço cosido"*) segue
+/// honrada por ESTRUTURA e não por calibração: o preview ao vivo passa pelo MESMO
+/// `stroke_from_samples`, então o traço assado é idêntico ao que o artista viu.
+const STROKE_SIMPLIFY_FRACTION: f32 = 0.02; // adimensional: fracao da espessura, MEDIDO
 
 /// A tolerância em unidades de MUNDO (os pontos crus são mundo; a conversão para local é
 /// do `build_stroke`, depois).
@@ -201,7 +203,15 @@ pub(crate) fn stroke_from_samples(
     world_to_local: &Xform,
 ) -> FlipStroke {
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
-    let keep = crate::flip_smooth::simplify_rdp(&smoothed, simplify_tolerance(style));
+    // ⚠️ **Contra a CURVA que será desenhada, não contra a corda reta** (Enio 2026-07-30). O
+    // `simplify_rdp` cobrava a tolerância contra a corda enquanto o `resample_smooth` desenha uma
+    // Catmull-Rom pelos sobreviventes — num gancho a corda parecia boa e o traço ficava a 8,46 % da
+    // espessura da mão, com 11 pontos de 240.
+    let keep = crate::flip_smooth::simplify_to_curve(
+        &smoothed,
+        simplify_tolerance(style),
+        resample_step(style),
+    );
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     // **Reamostragem SUAVE** (T2.8): o RDP e o render ligam os pontos por RETAS, então poucos

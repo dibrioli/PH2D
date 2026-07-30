@@ -85,24 +85,43 @@ pub fn phase(frame: u32) -> f32 {
     (frame % PREVIEW_FRAMES) as f32 / PREVIEW_FRAMES as f32
 }
 
-/// What the stack produces across the whole window.
+/// What the stack produces across the whole window, **for one binding**.
 ///
 /// ⚠️ Through `ph2d_expr::eval` — the PRODUCT's evaluator, the same one the
 /// property is actually driven by. Non-finite samples become the baseline rather
 /// than poisoning the extent: a formula the artist is halfway through typing must
 /// not blank the column.
+///
+/// ⚠️ **`target` is not decoration: it carries the `__seed`.** This function used to
+/// take only the stack, so `__seed` fell through its `_ => 0.0` arm and the ribbon drew
+/// the wobble of *object zero* whatever object was selected — measured (auditoria
+/// 2026-07-29, §4 D-J): the same one-knob `Jitter` displaces 0.1971 / 0.0881 / 0.0089 /
+/// 0.0727 on objects 0..3, and the ribbon always drew 0.1971. On the third object that is
+/// **0.9 px** at 100 px/m, which is what *"Jitter não funciona"* meant. The seed comes
+/// from [`ph2d_timeline::seed_of_target`] — the SAME door the scene reads.
+///
+/// ⚠️ A `Name.prop` link still resolves to `0.0` here, and that is a DIFFERENT gap: the
+/// card has no scene to read another object's channel from. It is honest (a link the
+/// preview cannot see is not a wobble it may invent) and it is why a link recipe draws
+/// flat in the ribbon — named in the audit as D-A, and it belongs to the FASE C/D work
+/// that gives the card the scene's names.
 #[must_use]
-pub fn sample_window(stack: &RecipeStack, base: f32) -> Vec<f32> {
+pub fn sample_window(stack: &RecipeStack, base: f32, target: u64) -> Vec<f32> {
     let src = stack.to_formula();
     let Ok(e) = ph2d_expr_parse::parse(&src) else {
         return vec![base; PREVIEW_SAMPLES];
     };
-    struct B(f32, f32);
+    struct B {
+        time: f32,
+        value: f32,
+        seed: f32,
+    }
     impl ph2d_expr::Bindings for B {
         fn attr(&self, name: &str) -> f32 {
             match name {
-                "value" => self.1,
-                "time" => self.0,
+                "value" => self.value,
+                "time" => self.time,
+                "__seed" => self.seed,
                 _ => 0.0,
             }
         }
@@ -110,10 +129,18 @@ pub fn sample_window(stack: &RecipeStack, base: f32) -> Vec<f32> {
             0.0
         }
     }
+    let seed = ph2d_timeline::seed_of_target(target);
     (0..PREVIEW_SAMPLES)
         .map(|i| {
             let t = (i as f64 / PREVIEW_SAMPLES as f64) * PREVIEW_SECONDS;
-            let v = ph2d_expr::eval(&e, &B(t as f32, base));
+            let v = ph2d_expr::eval(
+                &e,
+                &B {
+                    time: t as f32,
+                    value: base,
+                    seed,
+                },
+            );
             if v.is_finite() { v } else { base }
         })
         .collect()

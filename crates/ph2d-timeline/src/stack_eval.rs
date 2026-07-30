@@ -28,7 +28,7 @@ use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Interp, RationalTime,
 use ph2d_expr::Expr;
 
 use crate::doc::TimelineDoc;
-use crate::frame_solve::{LinkFrame, SEED_SPACING, eval_expr};
+use crate::frame_solve::{LinkFrame, eval_expr};
 use crate::prop::{Algebra, PropKind};
 use crate::refusal::KeyRefusal;
 use crate::stack::LaneMode;
@@ -99,11 +99,10 @@ fn clip_anim_source(doc: &TimelineDoc, clip: usize, target: AnimTarget) -> Optio
     track.map(AnimSource::Track)
 }
 
-/// This channel's wiggle seed — the same `target * SEED_SPACING` the retired post-pass
-/// used, so `wiggle` phases identically whether it composes in the blend or (until W4) in
-/// the post-pass.
+/// This channel's wiggle seed — DELEGATED to the one door, so `wiggle` phases identically
+/// wherever it is asked (the blend, the post-pass, the card's ribbon, the census).
 fn seed_of(target: AnimTarget) -> f64 {
-    f64::from(target.get() as f32 * SEED_SPACING)
+    f64::from(crate::frame_solve::seed_of_target(target.get()))
 }
 
 /// **The SECOND sample site (ADR-0146 W2, C1).** The value the ACTIVE clip `clip`

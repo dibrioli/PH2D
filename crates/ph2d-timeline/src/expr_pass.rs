@@ -60,7 +60,7 @@ use std::collections::BTreeMap;
 
 use crate::apply_prop::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
-use crate::frame_solve::{LinkFrame, SEED_SPACING, collect_links, resolve_link};
+use crate::frame_solve::{LinkFrame, collect_links, resolve_link};
 use crate::prop::PropKind;
 
 /// Run the expression pass at the composition's CUT clock `time` (see the module
@@ -210,7 +210,7 @@ pub(crate) fn run(
             entity: b.entity,
             prop: b.prop,
             value,
-            seed: b.target.get() as f32 * SEED_SPACING,
+            seed: crate::frame_solve::seed_of_target(b.target.get()),
             // The GLOBAL driver runs on the composition's cut clock, everywhere (the
             // Arrange scene driver — ADR-0145) — EXCEPT a live preview, which brings
             // its own wall clock so it animates with the transport stopped.

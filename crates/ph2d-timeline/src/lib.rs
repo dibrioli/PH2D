@@ -73,6 +73,10 @@ pub use doc::{
     DEFAULT_DURATION_SECONDS, DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc,
 };
 pub use doc_path::AutoOrient;
+/// The one door to `__seed`. Public because the Expression card's preview ribbon is a
+/// consumer, and a ribbon with its own seed draws a wobble the object does not run
+/// (auditoria 2026-07-29, §4 D-J).
+pub use frame_solve::seed_of_target;
 pub use graph::{
     drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points,
     speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,

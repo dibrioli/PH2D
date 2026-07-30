@@ -207,7 +207,10 @@ pub(crate) fn paint(
     // beside it.
     // The resting value of THIS property — 0 for a translation, 1 for a scale.
     let base = crate::expr_modal_preview::preview_value(m.prop);
-    let samples = crate::expr_modal_preview::sample_window(&m.stack, base);
+    // ⚠️ `m.target` is what makes the ribbon draw THIS object's noise and not object
+    // zero's — see `sample_window`, and D-J of the 2026-07-29 audit for the five
+    // different numbers one `Jitter` used to have.
+    let samples = crate::expr_modal_preview::sample_window(&m.stack, base, m.target);
     m.preview_frame = m.preview_frame.wrapping_add(1);
     // ⚠️ **Publish what the sheet projects, so the REAL object runs it** (Enio, smoke
     // de 2026-07-29). Here and not in `route`, because here is the one place the sheet

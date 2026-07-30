@@ -373,9 +373,14 @@ fn the_preview_samples_the_window_once_and_both_views_read_it() {
 
     // A Sway is a sine: over a 2 s window it must leave the baseline in BOTH
     // directions, which a constant or a clamped-to-zero evaluation cannot do.
+    //
+    // ⚠️ **And `sway` is exactly why this gate was blind to D-J**: a pure sine never
+    // reads `__seed`, so the ribbon could feed the wrong seed — or none — with this
+    // green. The seed is gated by `the_ribbon_draws_what_the_object_does`, whose
+    // fixture is a `jitter`; the fixture has to contain the phenomenon.
     let stack = RecipeStack::of(&["sway"]);
     let base = pv::preview_value(ph2d_timeline::PropKind::TranslationX);
-    let s = pv::sample_window(&stack, base);
+    let s = pv::sample_window(&stack, base, 3);
     assert_eq!(s.len(), pv::PREVIEW_SAMPLES);
     assert!(
         s.iter().any(|v| *v > base) && s.iter().any(|v| *v < base),
@@ -399,7 +404,7 @@ fn a_flat_curve_still_has_a_span_to_draw_in() {
         ph2d_timeline::PropKind::ScaleX,
     ] {
         let base = pv::preview_value(prop);
-        let flat = pv::sample_window(&RecipeStack::new(), base);
+        let flat = pv::sample_window(&RecipeStack::new(), base, 3);
         let (lo, hi) = pv::extent(&flat, base);
         assert!(hi > lo, "a flat curve must still have a non-zero span");
         assert!(

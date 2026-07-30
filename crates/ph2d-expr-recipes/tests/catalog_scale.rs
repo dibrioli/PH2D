@@ -32,16 +32,48 @@ const JUDGE_SAMPLES: usize = 240;
 /// every MULTIPLICATIVE recipe (`Flicker`, `Multiply / Add`) is flat zero whatever
 /// its knobs say, and a gate reading that would call them broken.
 fn trajectory(src: &str, value: f32) -> Option<Vec<f32>> {
-    struct Clock(f32, f32);
+    trajectory_seeded(src, value, PLAUSIBLE_SEED)
+}
+
+/// A seed a REAL binding has. ⚠️ Not the product's door: this crate is leaf and dep-free
+/// on purpose (the parser and the evaluator are dev-deps), so it cannot call
+/// `ph2d_timeline::seed_of_target`. What it CAN do is stop handing `__seed` a number no
+/// object ever has — which is what the previous fixture did, by letting `__seed` fall
+/// through to the *link* arm and come out `0.96` (auditoria 2026-07-29, §4 D-J: the third
+/// answer to a question that now has one). `100.0` is target #1's seed under the door's
+/// law, and [`the_census_seed_is_one_a_real_binding_has`] pins the shape.
+const PLAUSIBLE_SEED: f32 = 100.0;
+
+/// [`trajectory`], with the noise seed named. Noisy recipes are judged over SEVERAL of
+/// these — see [`peak_excursion`].
+fn trajectory_seeded(src: &str, value: f32, seed: f32) -> Option<Vec<f32>> {
+    struct Clock {
+        time: f32,
+        value: f32,
+        seed: f32,
+    }
     impl Bindings for Clock {
         fn attr(&self, name: &str) -> f32 {
             match name {
-                "time" => self.0,
-                "value" => self.1,
+                "time" => self.time,
+                "value" => self.value,
+                // ⚠️ Its own arm, because it is not a link and does not behave like one.
+                "__seed" => self.seed,
                 // Any `Name.prop` a link knob points at — DIFFERENT per name, so a
                 // recipe that reads two links (`Blend Two`, `Distance`) is not
                 // handed the same number twice and quietly collapsed.
-                other => 0.3 + other.len() as f32 * 0.11,
+                //
+                // ⚠️ By HASH, never by `name.len()`, which is what this was: `"Ball.x"`
+                // and `"Cube.y"` are both six characters, so both ends of every two-link
+                // recipe read the SAME number and `mix(a, b, t)` collapsed to `a`. I made
+                // the identical mistake in the audit's own probe (§8.3) — it is a fixture
+                // that looks varied and is constant on exactly the inputs that matter.
+                other => {
+                    let h = other.bytes().fold(2_166_136_261_u32, |a, b| {
+                        (a ^ u32::from(b)).wrapping_mul(16_777_619)
+                    });
+                    0.3 + (h % 100) as f32 * 0.011
+                }
             }
         }
         fn param(&self, _: &str) -> f32 {
@@ -53,20 +85,58 @@ fn trajectory(src: &str, value: f32) -> Option<Vec<f32>> {
         (0..JUDGE_SAMPLES)
             .map(|i| {
                 let t = i as f32 / JUDGE_SAMPLES as f32 * JUDGE_SECONDS;
-                let v = eval(&e, &Clock(t, value));
+                let v = eval(
+                    &e,
+                    &Clock {
+                        time: t,
+                        value,
+                        seed,
+                    },
+                );
                 if v.is_finite() { v } else { 0.0 }
             })
             .collect(),
     )
 }
 
+/// **The census's seed has the SHAPE of a real one.**
+///
+/// ⚠️ It cannot be the product's door (leaf crate), so what is pinned here is the only
+/// thing that can be: it is a multiple of the spacing, and it is NOT the number the old
+/// fixture produced by accident. Without this, `__seed` drifting back into the link arm is
+/// a silent change to what the whole census reports.
+#[test]
+fn the_census_seed_is_one_a_real_binding_has() {
+    assert!(
+        PLAUSIBLE_SEED > 0.0 && (PLAUSIBLE_SEED % 100.0).abs() < f32::EPSILON,
+        "the census must judge noise at a seed some binding actually gets, not at a \
+         number invented by a fall-through arm (the old fixture said 0.96)"
+    );
+}
+
 /// How far a formula takes a property that is resting at zero.
 fn peak_excursion(src: &str) -> Option<f32> {
-    Some(
-        trajectory(src, 0.0)?
+    // ⚠️ **Over SEVERAL seeds, and the reducer is MAX.** A noisy recipe draws a different
+    // curve on every object, so judging one seed judges one object: the audit measured the
+    // SAME one-knob `Jitter` displacing 0.1971 / 0.0881 / 0.0089 / 0.0727 on objects 0..3
+    // — an **8×** spread (§4 D-J). For *"does this default fling the object off the
+    // canvas?"* the honest reducer is the worst object, not a representative one: a
+    // default that ruins the frame for some objects and not others is still a bad default,
+    // and it is the shape of bug that reads as random.
+    let seeds = [
+        0.0,
+        PLAUSIBLE_SEED,
+        PLAUSIBLE_SEED * 2.0,
+        PLAUSIBLE_SEED * 3.0,
+    ];
+    let mut worst = None;
+    for seed in seeds {
+        let peak = trajectory_seeded(src, 0.0, seed)?
             .into_iter()
-            .fold(0.0_f32, |p, v| p.max(v.abs())),
-    )
+            .fold(0.0_f32, |p, v| p.max(v.abs()));
+        worst = Some(worst.map_or(peak, |w: f32| w.max(peak)));
+    }
+    worst
 }
 
 /// **No recipe flings the object off a 4K canvas at its own defaults.**
@@ -274,6 +344,17 @@ fn a_speed_knob_makes_the_wobble_faster_not_different() {
 /// two unrelated draws happened to land 0.03 apart. A half-integer is where they
 /// part company: the hash gives an unrelated number, the smooth noise gives exactly
 /// the midpoint of its neighbours.
+///
+/// ⚠️⚠️ **And the version after THAT — one half-integer against a 0.05 bar — was a coin
+/// flip, caught when FASE 0.2 moved `__seed` off the number a fall-through arm had
+/// invented.** The gate went RED on a product that was correct: seed 107.5 draws 0.3929
+/// and the midpoint of its neighbours is 0.4033, which is 0.0104 apart *by chance*.
+/// Measured over 64 half-integers under the shipped hash: median **0.2691**, and **3 of
+/// 64** land under 0.05 — a ~5% chance of failing on any fixture anyone happened to pick.
+/// So the discriminant is now the **MEDIAN over many probes**, which cannot be a
+/// coincidence: smooth interpolation puts the value EXACTLY at the midpoint of its
+/// neighbours at every half-integer (delta 0.0000, all 64), and a hash cannot. `0.10` is
+/// a bar neither answer can be talked into.
 #[test]
 fn jitter_rerolls_on_a_fractional_seed_because_it_wants_the_hash() {
     let at = |seed: f32| {
@@ -284,12 +365,21 @@ fn jitter_rerolls_on_a_fractional_seed_because_it_wants_the_hash() {
         st.push(row);
         trajectory(&st.to_formula(), 0.0).unwrap()[0]
     };
-    let (lo, mid, hi) = (at(7.0), at(7.5), at(8.0));
-    let smooth_would_be = (lo + hi) * 0.5;
+    const PROBES: usize = 64;
+    let mut deltas: Vec<f32> = (0..PROBES)
+        .map(|k| {
+            let s = 7.0 + k as f32;
+            let (lo, mid, hi) = (at(s), at(s + 0.5), at(s + 1.0));
+            (mid - (lo + hi) * 0.5).abs()
+        })
+        .collect();
+    deltas.sort_by(f32::total_cmp);
+    let median = deltas[PROBES / 2];
     assert!(
-        (mid - smooth_would_be).abs() > 0.05,
-        "a Jitter seed must HASH, not interpolate: seed 7.5 gave {mid:.4}, and the \
-         midpoint of its neighbours ({lo:.4}, {hi:.4}) is {smooth_would_be:.4}"
+        median > 0.10,
+        "a Jitter seed must HASH, not interpolate: over {PROBES} half-integer seeds the \
+         median distance from the midpoint of the neighbours is {median:.4}. Smooth noise \
+         would put it at 0.0000 on every one of them."
     );
     // …and it does NOT move with the clock: a Jitter is an offset, not a wobble.
     let mut st = RecipeStack::new();

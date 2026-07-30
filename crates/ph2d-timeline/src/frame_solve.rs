@@ -55,6 +55,26 @@ pub(crate) struct LinkFrame {
 /// only needs to keep the numbers apart). `LITERAL-PX-OK`: a seed spacing, not a UI value.
 pub(crate) const SEED_SPACING: f32 = 100.0;
 
+/// **The one door to `__seed`** — this channel's noise seed, for every consumer.
+///
+/// ⚠️ It exists because the SAME question had **three answers**, and the audit of
+/// 2026-07-29 (§4 D-J) measured all three: the scene said `target * SEED_SPACING`; the
+/// card's preview ribbon fell through to its `_ => 0.0` arm and said **0**, always; and
+/// the coverage census — the instrument that decided which recipes were "alive" — let
+/// `__seed` land in its *link* arm and said **0.96**. One formula, one knob, five
+/// different numbers: a `Jitter` on the third object displaced **0.0089 u ≈ 0.9 px**
+/// while the ribbon drew the wobble of object zero. *"Jitter não funciona"* was literal,
+/// and literal for SOME objects and not others.
+///
+/// ⚠️ Three independent instruments got the same binding wrong, which is why this is a
+/// function and not a convention. `expr_live`'s own doc-comment already stated the law it
+/// could not enforce: *"a preview with its own seed would show a different wobble from the
+/// one it is previewing, which is the one thing it must never do"*.
+#[must_use]
+pub fn seed_of_target(target: u64) -> f32 {
+    target as f32 * SEED_SPACING
+}
+
 /// Evaluate a parsed expression `ir` as a channel's value: `value` is this channel's
 /// pre-expression value (the keyed sample or rest), `time` is the strip-LOCAL clip clock,
 /// `seed` is the wiggle seed, and `links` carries the faded value of any source channel a

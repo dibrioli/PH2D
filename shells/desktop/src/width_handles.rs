@@ -177,12 +177,67 @@ pub(crate) fn handles(
         .collect()
 }
 
-/// O índice do braço cuja FICHA está sob o cursor. Porta única: o press agarra por aqui e o
-/// botão direito apaga por aqui — duas buscas divergiriam sobre o que é "estar sob o cursor",
-/// e a do apagar acertaria uma alça diferente da que o realce mostra.
-fn handle_at(hs: &[HandleView], world_pt: [f64; 2], radius: f64) -> Option<usize> {
-    hs.iter()
-        .position(|h| (h.at[0] - world_pt[0]).hypot(h.at[1] - world_pt[1]) <= radius)
+/// **Onde na curva o gesto pousou** — a resposta única de proximidade desta ferramenta.
+struct Landing {
+    /// A fração de arco do ponto do caminho mais próximo do rato.
+    pos: f64,
+    /// A parada que **já está ali**, se houver. `None` ⇒ o gesto cria uma.
+    stop: Option<usize>,
+}
+
+/// **A proximidade é medida à LINHA, e a busca por parada corre AO LONGO dela** (Enio,
+/// 2026-07-30: *"o melhor critério para escolher que segmento atuar é a proximidade do mouse em
+/// relação à linha"*).
+///
+/// ⚠️ **A versão anterior perguntava no espaço LIVRE** — *existe alguma ficha a menos de 12 px do
+/// rato?* — e num cruzamento isso é indecidível: as duas linhas passam a milímetros uma da outra,
+/// então a alça da linha de CIMA ficava sempre dentro do raio de um clique dirigido à de BAIXO, e
+/// engolia-o. Nenhum ajuste do raio salva: junto ao cruzamento a distância entre as linhas tende a
+/// zero, e a resposta certa não é *"a ficha mais perto no plano"*.
+///
+/// Agora há **uma** pergunta de proximidade — [`ph2d_vec_scene::arc_path::ArcPath::closest_arc`],
+/// que já escolhe o ramo mais próximo — e a segunda pergunta (*já há parada aqui?*) é feita em
+/// **ARCO**, sobre o ramo que a primeira escolheu. Duas linhas que se cruzam estão a milímetros no
+/// plano e a meio caminho uma da outra **ao longo do traço**: é isso que torna a escolha decidível,
+/// e é a mesma grandeza em que a parada vive.
+///
+/// Porta única: o press agarra-ou-cria por aqui e o botão direito apaga por aqui. Duas buscas
+/// divergiriam sobre o que é *"estar sob o cursor"*, e a do apagar acertaria uma alça diferente da
+/// que o realce mostra.
+fn landing(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    id: VecPathId,
+    world_pt: [f64; 2],
+    radius: f64,
+) -> Option<Landing> {
+    let arc = arc_of(scene, map, sim, id)?;
+    let total = arc.total();
+    if total <= 0.0 {
+        return None;
+    }
+    let s = arc.closest_arc(world_pt);
+    let (p, _) = arc.frame_at(s);
+    // O gesto tem de estar SOBRE a linha. Fora do raio não há nem alça nem parada nova — é o
+    // clique no vazio, e ele não pode acrescentar nada.
+    if (p[0] - world_pt[0]).hypot(p[1] - world_pt[1]) > radius {
+        return None;
+    }
+    let pos = (s / total).clamp(0.0, 1.0);
+    // O mesmo raio, na unidade em que a parada vive: uma fração do arco total.
+    let reach = radius / total;
+    let stop = profile_or_neutral(sim, map, id)
+        .as_slice()
+        .iter()
+        .enumerate()
+        .map(|(k, st)| (k, (st.pos - pos).abs()))
+        .filter(|&(_, d)| d <= reach)
+        // A MAIS PRÓXIMA, não a primeira: com duas paradas dentro do alcance, a primeira da lista
+        // é um acidente da ordenação, e agarrar a errada move um ponto que o artista não apontou.
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(k, _)| k);
+    Some(Landing { pos, stop })
 }
 
 /// **A pressão**: agarra a alça sob o cursor, ou ACRESCENTA uma parada se o cursor está sobre a
@@ -200,8 +255,9 @@ pub(crate) fn press(
     world_pt: [f64; 2],
     radius: f64,
 ) -> Option<Grab> {
-    let hs = handles(sim, scene, map, id);
-    if let Some(k) = handle_at(&hs, world_pt, radius) {
+    let l = landing(sim, scene, map, id, world_pt, radius)?;
+    let cur = profile_or_neutral(sim, map, id);
+    if let Some(k) = l.stop {
         // ⚠️ **Agarrar NÃO escreve nada**, e a tentação de armar aqui morre na própria lei do
         // módulo: o perfil de uma forma virgem é o NEUTRO, que é uniforme, e `arm` REMOVE um
         // perfil uniforme (o neutro-é-ausência). Armar no press seria escrever e apagar no mesmo
@@ -210,25 +266,11 @@ pub(crate) fn press(
             path: id,
             stop: k,
             created: false,
-            pos: profile_or_neutral(sim, map, id)
-                .as_slice()
-                .get(k)
-                .map_or(0.0, |s| s.pos),
+            pos: cur.as_slice().get(k).map_or(0.0, |s| s.pos),
         });
     }
-    // Não há alça sob o cursor: se ele está SOBRE a curva, nasce uma parada ali.
-    let arc = arc_of(scene, map, sim, id)?;
-    let total = arc.total();
-    if total <= 0.0 {
-        return None;
-    }
-    let s = arc.closest_arc(world_pt);
-    let (p, _) = arc.frame_at(s);
-    if (p[0] - world_pt[0]).hypot(p[1] - world_pt[1]) > radius {
-        return None;
-    }
-    let pos = (s / total).clamp(0.0, 1.0);
-    let cur = profile_or_neutral(sim, map, id);
+    // Não há parada onde o dedo pousou: nasce uma ali.
+    let pos = l.pos;
     let stops = WidthStops::new(insert_stop(cur.as_slice(), pos, cur.at(pos)));
     let k = stop_index(&stops, pos)?;
     arm_stops(sim, map, id, &stops);
@@ -362,8 +404,7 @@ pub(crate) fn remove(
     world_pt: [f64; 2],
     radius: f64,
 ) -> bool {
-    let hs = handles(sim, scene, map, id);
-    let Some(k) = handle_at(&hs, world_pt, radius) else {
+    let Some(k) = landing(sim, scene, map, id, world_pt, radius).and_then(|l| l.stop) else {
         return false;
     };
     let cur = profile_or_neutral(sim, map, id);

@@ -246,7 +246,37 @@ traço e engrossava toda a metade final. É o **primeiro gesto que qualquer arti
 `Grab` carrega a **posição** da parada (não só o índice) e o `drag` reconstrói a lista pela mesma
 porta que o `press` usou.
 
-4 gates novos, 4 mutações, 4 sangram (a que repõe a ficha na borda reproduz o report ao milésimo).
+#### ⚠️ 2ª rodada (mesmo dia) — a proximidade é medida à LINHA
+
+*"Ainda não gostei: próximo da linha de cima não consigo clicar na linha cruzada abaixo. O melhor
+critério para escolher que segmento atuar é a proximidade do mouse em relação à linha."* (Enio)
+
+Pôr a ficha na curva tirou-a da linha errada, mas **não mudou a pergunta**: o press ainda procurava
+no **plano** (*existe alguma ficha a menos de 12 px do rato?*), e isso é **indecidível** entre linhas
+mais juntas que o raio — junto a um cruzamento a distância entre elas tende a zero, então a alça de
+uma engole sempre o clique dirigido à outra. **Nenhum ajuste do raio salva.**
+
+Agora há **uma** pergunta de proximidade (`closest_arc`, que já escolhe o ramo mais próximo) e a
+segunda — *já há parada aqui?* — corre em **ARCO**, sobre o ramo que a primeira escolheu. Duas
+linhas que se cruzam estão a milímetros no plano e a **meio traço** uma da outra ao longo do
+percurso: `0,509` de fração contra um alcance de `0,031`. É isso que torna a escolha decidível, e é
+a mesma grandeza em que a parada vive. Porta única `landing` — o press agarra-ou-cria por ela e o
+botão direito apaga por ela.
+
+⚠️ **A 1ª fixture do gate não continha o fenômeno e a mutação SOBREVIVEU:** o X que eu montei tinha
+o arrasto a saltar de perna (o alvo estava mais perto da *outra*), então a alça nunca ficava perto
+do clique e a busca no plano acertava por acidente. O vão da fixture — **`0,15` contra um raio de
+`0,25`** — é o que faz o gate ser um gate; com o vão de `0,30` do irmão a mutação passa. O gate
+**afirma a premissa** antes de medir.
+
+⚠️ E duas mutações sobreviventes nomearam dois buracos reais, agora gateados: **o botão direito**
+tinha a MESMA ambiguidade (apagava a alça da linha vizinha) e **com duas paradas dentro do alcance**
+agarrava-se a primeira da lista em vez da mais próxima.
+
+7 gates novos, 7 mutações, 7 sangram (a que repõe a ficha na borda reproduz o report ao milésimo; a
+que repõe a busca no plano reproduz o segundo). LOC: `width_handles_tests.rs` bateu 625 ⇒ a família
+das linhas próximas saiu para o filho `width_handles_near_lines_tests.rs`.
+
 Smoke: **`PH2D_BUILD_SMOKE=42`**, passos 11-13.
 
 Smoke: **`PH2D_BUILD_SMOKE=42`**.

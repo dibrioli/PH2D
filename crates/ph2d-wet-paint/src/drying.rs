@@ -15,6 +15,10 @@ use crate::sim::Params;
 use crate::solver::rebuild_active_region;
 use crate::tuning::Knob;
 
+#[path = "drying/edge_window.rs"]
+mod edge_window;
+use edge_window::EdgeWindow;
+
 /// Staining extension: bidirectional lift multiplier, exactly 1 at 0.5.
 /// `pub(crate)`: the doc-23 active lifts (Wet/Smear/Blend tools) apply the
 /// SAME law, so staining means one thing everywhere.
@@ -94,7 +98,18 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             continue;
         }
         let mut i = bx0 as usize + y as usize * s;
-        for _x in bx0..=bx1 {
+        // A vizinhança 3×3 do fator de borda, deslizante: só a coluna da
+        // direita é nova a cada passo (`edge_window.rs`). Ela anda em TODA
+        // célula — inclusive nas puladas, que são vizinhas das próximas.
+        let mut win = EdgeWindow::seed(&g.susp, i, s);
+        for x in bx0..=bx1 {
+            // ⚠️ O avanço é no TOPO e carrega a coluna `i + 1`, nunca `i + 2`:
+            // o pad da grade é de UMA coluna (`s = w + 2`), então `bx1 + 2`
+            // cairia na linha seguinte. Com `i + 1` a carga máxima é a própria
+            // coluna de pad, que existe.
+            if x > bx0 {
+                win.advance(&g.susp, i + 1, s);
+            }
             let film0 = g.film[i];
             let susp0 = g.susp[i];
             if film0 <= 0.0 && susp0 <= 0.0 {
@@ -115,17 +130,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             // reads e<1.
             let mut e = 1.0;
             if film0 > 0.0 && sett_c < 1000.0 {
-                let up = i - s;
-                let dn = i + s;
-                let count = (g.susp[up - 1] > 10.0) as u32
-                    + (g.susp[up] > 10.0) as u32
-                    + (g.susp[up + 1] > 10.0) as u32
-                    + (g.susp[i - 1] > 10.0) as u32
-                    + (susp0 > 10.0) as u32
-                    + (g.susp[i + 1] > 10.0) as u32
-                    + (g.susp[dn - 1] > 10.0) as u32
-                    + (g.susp[dn] > 10.0) as u32
-                    + (g.susp[dn + 1] > 10.0) as u32;
+                let count = win.count();
                 e = if count == 9 { 1.0 } else { count as f64 / 9.0 };
             }
 
@@ -215,6 +220,8 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
             g.sett[i] = sett_c;
             g.susp_rgb[i] = susp_rgb;
             g.sett_rgb[i] = sett_rgb;
+            // A célula seguinte lê este `susp` JÁ ESCRITO (Gauss-Seidel).
+            win.note_write(susp_c);
             i += 1;
         }
     }

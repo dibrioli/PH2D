@@ -600,3 +600,6 @@ fn measure_what_a_wet_stamp_costs() {
 
 #[path = "measure_wetpaint_flow.rs"]
 mod measure_wetpaint_flow; // a sonda do `Flow Grid` (plano 30) — irmã, por LOC
+
+#[path = "measure_wetpaint_drying.rs"]
+mod measure_wetpaint_drying; // de que a SECAGEM é feita (doc 28 §5.42) — irmã, por assunto

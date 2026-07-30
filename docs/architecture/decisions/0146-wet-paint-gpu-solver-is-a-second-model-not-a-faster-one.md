@@ -191,3 +191,39 @@ sobrevive a isso sem re-pin com justificativa própria.
 isolado do passo** (46,8 ms ÷3 = 15,6 = 29 %), sem ganho na multi-resolução e
 sem caminho de CPU nomeado. Se houver uma próxima wave de CPU, é ali — e ela
 decide este ADR mais do que qualquer coisa escrita acima.
+>
+> ⚠️ **HOUVE, e o caminho existia — ver a Emenda 2 abaixo:** a frase *"sem
+> caminho de CPU nomeado"* era uma afirmação sobre o que eu tinha PROCURADO, não
+> sobre o que havia. `drying_pass` 46,08 → 32,13 ms.
+
+---
+
+## Emenda 2 (2026-07-30) — a wave de CPU que a emenda anterior pediu FOI FEITA
+
+A emenda acima fechou dizendo: *"o `drying_pass` é hoje o maior item isolado do
+passo, sem caminho de CPU nomeado. Se houver uma próxima wave de CPU, é ali."*
+Houve, e o caminho existia (doc 28 §5.43): a consulta de opacidade chamava a
+**libm** (`fmod`, via a semântica ToInt32 do JS) cinco vezes por célula, e o
+fator de borda relia nove texels que a célula anterior já tinha lido.
+**`drying_pass` 46,08 → 32,13 ms (1,43×), byte-idêntico, fingerprint intocado.**
+
+Os pesos amortizados, re-medidos pela mesma porta:
+
+| passe | emenda 1 | **agora** | portável exato? |
+|---|---|---|---|
+| `advect` | 64,4 % | **70,4 %** | ❌ scatter |
+| `drying_pass` | 28,9 % | **21,9 %** | ❌ Gauss-Seidel |
+| `rebuild_active_region` | 4,6 % | 5,2 % | híbrido |
+| `build_flow_field` | 1,5 % | 1,7 % | ❌ scatter |
+| `project` + `smooth_velocity` | 0,6 % | **0,7 %** | ✅ |
+
+⚠️ **A conclusão da emenda 1 fica MAIS forte, não mais fraca.** A wave de CPU
+não moveu a fronteira do modelo: ela tornou a secagem mais barata **sem** torná-la
+portável, e concentrou ainda mais o passo no `advect` — o único passe que este
+ADR nomeia como scatter puro (ele **SUBTRAI** nos quatro cantos-fonte de linhas
+vizinhas). A metade portável-exata segue em **0,7 %**.
+
+⇒ **A recomendação não muda:** um port é all-or-nothing sobre `advect` +
+`drying_pass`, e os dois são exatamente o que o `tests/fingerprint.rs` pina.
+O que mudou é que a alavanca de CPU que restava foi **gasta**, e o próximo
+número real do passo é o `advect` a 70 %.

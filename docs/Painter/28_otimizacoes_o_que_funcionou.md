@@ -3606,3 +3606,132 @@ Canvas **4096**, pincel grande, Wet Paint no dropdown. O que olhar:
    espaçado (um sítio por bloco). É esperado — reprove se ler como artefato.
 5. Trocar qualquer uma das razões **encerra a água viva** (a tinta fica; o
    escorrido em voo, não).
+
+---
+
+## §5.43 — A SECAGEM: o `fmod` do JS e a janela deslizante (2026-07-30)
+
+A multi-resolução (§5.42) deixou uma frente nomeada com número: com o
+`build_flow_field` **20,49× mais barato**, o `drying_pass` virou **o maior item
+isolado do passo** — 46,8 ms ÷3 de cadência = **29%** — *"sem ganho nesta wave e
+sem caminho de CPU"*. Esta seção é a resposta a essa frase, e ela existia.
+
+### §5.43.1 A forma, e uma fixture minha que mentiu
+
+Primeiro a pergunta que não custa relógio (`measure_what_the_drying_pass_visits`,
+poça do produto a 4096²):
+
+| | células | |
+|---|---:|---|
+| grade | 16 777 216 | |
+| faixa viva (o laço) | 1 955 483 | 11,7% da grade |
+| **trabalham** | **1 293 992** | 66,2% da faixa |
+
+⚠️ **E a mesma sonda disse *"re-wet: 0 células"*, o que é FALSO.** Ela lê o
+`sett` do estado congelado, e o `sett` de uma poça fresca é zero — mas o bloco
+de re-wet lê o `sett_c` **depois** do settle da MESMA célula, no mesmo passe.
+*A fixture não continha o fenômeno no instante em que eu o medi*; a ablação do
+produto o mostrou em 22 ms.
+
+### §5.43.2 A atribuição veio do PRODUTO, porque o meu laço foi apagado
+
+A primeira decomposição dissecava o passe com laços **próprios** e reportou
+`só a varredura 2,97 · varredura + gather 5,93 · varredura + tocar as duas cores
+2,93` contra um passe de **47,0 ms** — números que **não reconciliam com o
+total**. Causa: ler `susp_rgb[i]` e escrever o mesmo valor de volta é **código
+morto**, e o LLVM o remove. ⚠️ *Uma ablação que o otimizador pode provar inútil
+mede zero e parece um achado.* A atribuição honesta é cortar o **PRODUTO** peça
+por peça e medir pela porta:
+
+| corte no produto | passe | atribuído |
+|---|---:|---:|
+| baseline | 46,2 ms | |
+| sem o gather 3×3 | 37,6 | **8,7 ms** |
+| sem o bloco de settle | 10,7 | 35,5 |
+| `alpha_of_mass` → truncamento | 33,0 | **13,2 ms** |
+
+### §5.43.3 O achado: a consulta de opacidade chamava a libm
+
+`alpha_of_mass` é a tabela de opacidade da SPEC §3, e ela indexa por
+`jsmath::to_int32_wrapping` — a semântica **ToInt32 do JS**, portada como
+`v.trunc().rem_euclid(2^32)`. E `%` em `f64` **não é uma instrução: é uma
+chamada a `fmod`**. Medido isolado, **2,51 ns por consulta contra 0,54** — e a
+secagem faz **cinco** consultas por célula trabalhada.
+
+**A cura é o mesmo raciocínio do doc 24** (tabelar o que a libm respondia), um
+degrau abaixo: no domínio que uma massa de pigmento de fato ocupa
+(`0 <= m < 2^31`) o `trunc()` já cai dentro de `[0, 2^32)`, então **o resto é a
+identidade** e o `as i32` do Rust trunca para o mesmo inteiro. O caminho rápido
+não é aproximação — é **a mesma resposta sem o `fmod`**; negativo, NaN,
+infinito e `m >= 2^31` caem no caminho de sempre, **verbatim**.
+
+⚠️ **O teto do guard é load-bearing:** em `2^31` o `as i32` do Rust **satura** e
+o ToInt32 do JS **envolve**. A mutação que troca `m >= 0.0 && m < 2^31` por
+`m >= 0.0` sangra **só** no gate novo.
+
+⚠️ **A porta antiga ficou CONGELADA sob `cfg(test)`** (`alpha_of_mass_reference`)
+para o gate ter um oráculo que não é o código sob teste — a lição do
+`warp_axis` / `serial_side` / `sim_step_atomic_reference`. E `table_at` é a
+porta ÚNICA do clamp, para os dois caminhos não ganharem tetos diferentes.
+
+**O ganho cai em TODO consumidor**, não só na secagem: `trail/transfer`,
+`tools`, `grid` (o composite) e o `drying` compartilham a porta.
+
+### §5.43.4 E o gather 3×3 virou uma janela deslizante
+
+O fator de borda pergunta *quantos dos 9 vizinhos carregam pigmento*. Escrito
+direto são **nove cargas por célula**; mas o laço anda em `x`, e as três colunas
+de uma célula são duas colunas da seguinte. Guardando uma **soma por coluna**, a
+conta vira `c[x-1] + c[x] + c[x+1]` com **uma** coluna carregada por passo.
+
+⚠️ **A metade que torna isto byte-idêntico é a linha do MEIO.** O `susp` da
+linha `y` é escrito por este mesmo laço (Gauss-Seidel — o mecanismo que o
+ADR-0134 nomeia), então a célula `x+1` lê em `x` o valor **pós-escrita**. Por
+isso a soma de uma coluna é guardada em **duas partes** — `ud` (as linhas de
+cima e de baixo, estáveis) e `m` (a do meio) — e quem escreve avisa a janela
+(`note_write`). Fundir as duas num inteiro tornaria a correção inexprimível.
+
+⚠️ **A janela avança em TODA célula**, inclusive nas que o early-out pula: uma
+célula pulada não escreve, mas **é** vizinha das próximas.
+
+⚠️ **O avanço carrega a coluna `i + 1`, nunca `i + 2`** — o pad da grade é de
+UMA coluna (`s = w + 2`), então `bx1 + 2` cairia na linha seguinte. A primeira
+versão fazia `i + 2` no rodapé da iteração; mover o avanço para o **topo**
+(pulando a primeira célula, que a semeadura já cobre) tira o caso especial em
+vez de o remendar.
+
+**E o ganho é honesto: 1,65 ms de 33,8 (4,9%)**, não os 8,7 que a ablação
+sugeriu — porque cortar o gather também deixava o compilador dobrar `(1 - e)`
+para zero e matar trabalho a jusante. Fica pelo mesmo motivo que o
+`value_noise_pair` da §5.11: **estritamente menos trabalho, exato e gateado**.
+
+### §5.43.5 O número, medido A/B no mesmo estado de máquina
+
+Dois builds costas-com-costas, a MESMA poça, pela porta do artista:
+
+| | ANTES | DEPOIS | |
+|---|---:|---:|---|
+| **`drying_pass`** | 46,08 ms | **32,13 ms** | **1,43×** |
+| passo, Flow 1 | 64,42 (15,5 Hz) | **60,79 (16,4 Hz)** | 1,06× |
+| passo, Flow 4 | 50,81 (19,7 Hz) | **47,95 (20,9 Hz)** | 1,06× |
+| soma amortizada, Flow 4 | 53,54 | 49,17 | 1,09× |
+
+Reprodutível: três corridas do passo dão 47,42 / 47,48 / 47,60 ms.
+
+**Fingerprint do ADR-0134 INTOCADO** — é ele que torna esta wave uma reescrita
+de hot loop e não uma mudança de modelo. **5 mutações, 5 sangram** (3 na
+opacidade, 2 na janela, estas últimas sangrando o gate de unidade **E** o
+fingerprint). Nenhum schema, nenhum contrato congelado, nenhum id/token
+(`PROJECT_SCHEMA` 37), **nenhuma dep nova**.
+
+### §5.43.6 Aberto, com o preço certo
+
+Com a secagem em 21,9% do passo, **o `advect` é 70,4%** — e o ADR-0146 já o
+nomeia: ele **SUBTRAI** nos quatro cantos-fonte de linhas vizinhas (scatter),
+então nenhuma reordenação dele é byte-idêntica, e o que sobra por célula é
+gather/scatter de `susp` + `susp_rgb` (12 B) + `film` sobre duas linhas. **Não
+há caminho de CPU nomeado para ele.** Os outros itens somam 8%.
+
+E a varredura por `fmod` foi feita: o **único** outro `libm` nos passes quentes
+é o `sin`/`cos` do `ext_fingering`, que é uma extensão gateada por knob e mede
++0,04 ms.

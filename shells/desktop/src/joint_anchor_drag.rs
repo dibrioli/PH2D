@@ -92,7 +92,7 @@ enum Grab {
 /// gap between neighbouring candidates at any zoom a body is authored at — a
 /// 0.5 m box at the default camera puts its corners 50 px apart — so the free
 /// space between targets stays reachable.
-const SNAP_PX: f32 = 14.0;
+pub(crate) const SNAP_PX: f32 = 14.0;
 
 /// Open a drag on `kind` of `joint`, or `None` if there is nothing to author
 /// (a locked entity, an end with no body, a parameter this joint does not have).

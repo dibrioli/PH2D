@@ -210,3 +210,73 @@ fn the_mounted_axle_snaps_and_the_snapped_point_is_what_lands() {
         "o ímã tem de ser gateado no modificador, senão ele deixa de ser opcional"
     );
 }
+
+/// **O eyedropper de CORDA arma um pick MODAL, e o alvo dele é a ROTA** (W1).
+///
+/// A costura mora dentro do `input_dispatch`, que exige janela — nenhum unit test a
+/// dirige, e as duas metades testáveis já estão (`seam_wheel` prova que o botão
+/// arma; `inspector_joint_wheel::rope_pick_tests` prova o que a escrita FAZ).
+///
+/// ⚠️ **A asserção que carrega o peso é `rope_at_world` e não `pick_sprites_at_world`.**
+/// Copiar o gesto do CORPO é o erro natural aqui — os três picks são irmãos no
+/// gesto — e ele resolveria `None` sobre a corda **para sempre**: uma corda é uma
+/// LINHA e a entidade dela não tem sprite. Um botão que arma e nunca acerta é pior
+/// que um botão que falta, e nada na tela diria por quê.
+///
+/// ⚠️ **E a ordem é load-bearing:** o guard tem de PRECEDER o picking/gizmo, senão o
+/// clique é consumido pela seleção e o pick fica armado para sempre.
+#[test]
+fn the_rope_eyedropper_arms_a_modal_pick_against_the_route() {
+    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    // Controle positivo: o irmão de MONTAGEM tem de estar aqui, senão este gate
+    // está lendo o arquivo errado e não pode falhar pelo motivo que alega.
+    assert!(
+        src.contains("self.wheel_body_pick.is_some()"),
+        "controle positivo: o guard do pick de montagem sumiu deste arquivo"
+    );
+    // ⚠️ **A FORMA do guard, não só a presença do nome.** `if false && self.…` deixa
+    // o literal no arquivo e neutraliza o guard — a lição que o gate irmão do
+    // `route_changed` pagou nesta mesma suíte: *um gate que pina a CHAMADA não pina
+    // a RESPOSTA*. O que se afirma é o `if` colado no nome.
+    assert!(
+        src.contains("if self.wheel_rope_pick.is_some()"),
+        "o pick de corda tem de ter guard próprio no Down, e a guarda é o \
+         `if self.wheel_rope_pick.is_some()` — qualquer coisa entre o `if` e o nome \
+         é a guarda sendo neutralizada; sem ela o clique cai na seleção e o \
+         eyedropper fica armado para sempre"
+    );
+    assert!(
+        src.contains("gfx.physics.rope_at_world(world_pos, tol)"),
+        "o alvo tem de ser a ROTA: `pick_sprites_at_world` exige um sprite, e a \
+         entidade-corda não tem nenhum"
+    );
+    assert!(
+        !src.contains("fn wheel_rope_pick_click")
+            || src[src.find("fn wheel_rope_pick_click").expect("achado")..]
+                .lines()
+                .take(40)
+                .all(|l| !l.contains("pick_sprites_at_world")),
+        "o handler de corda não pode resolver por SPRITE — seria um pick que nunca \
+         acerta"
+    );
+    // A ordem: o guard de corda vem antes do picking genérico de canvas.
+    let rope_guard = src
+        .find("self.wheel_rope_pick.is_some()")
+        .expect("já afirmado");
+    let generic = src
+        .find("fn canvas_pick")
+        .or_else(|| src.find("self.begin_selection"))
+        .or_else(|| src.find("pick_sprites_at_world(gfx.present.world_mut(), world_pos)\n            .into_iter()\n            .find(|&bits| {\n                bits != joint"));
+    if let Some(generic) = generic {
+        assert!(
+            rope_guard < generic || generic < src.find("fn wheel_rope_pick_click").expect("achado"),
+            "o guard do pick de corda tem de preceder o picking genérico"
+        );
+    }
+    // E a tolerância é a MESMA do resto do editor, lida do único lugar onde ela mora.
+    assert!(
+        src.contains("crate::joint_anchor_drag::SNAP_PX"),
+        "a tolerância tem de vir do `SNAP_PX` compartilhado; um segundo número faria \
+         dois alvos de canvas responderem a distâncias diferentes"
+    );
+}

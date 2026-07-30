@@ -53,6 +53,7 @@ fn wheel() -> InspectorWheelInfo {
         // os gates de ausência da lixeira verdes pelo motivo errado.
         mount_name: String::new(),
         mount_pick_armed: false,
+        rope_pick_armed: false,
     }
 }
 
@@ -205,6 +206,8 @@ fn every_number_row_the_wheel_section_paints_is_seeded_synced_and_routed() {
         // diga o que eles são, e um eyedropper não é uma caixa de número.
         ids::INSP_WHEEL_MOUNT_PICK,
         ids::INSP_WHEEL_UNMOUNT,
+        // W1: o eyedropper da row Rope — a mesma declaração pela mesma razão.
+        ids::INSP_WHEEL_ROPE_PICK,
         ph2d_editor_core::widget::INSPECTOR_SCROLLBAR_ID,
     ]);
 
@@ -370,6 +373,37 @@ fn the_axle_break_switch_gates_its_own_threshold() {
     assert!(
         !painted.contains(&ids::INSP_WHEEL_BREAK_FORCE),
         "o limiar não pode ser pintado com o switch desarmado"
+    );
+}
+
+/// **A row Rope (W1): o eyedropper da CORDA arma, e é oferecido inclusive na
+/// roldana ÓRFÃ.**
+///
+/// ⚠️ **A metade da órfã é a que importa.** Uma roldana cuja corda foi renomeada ou
+/// apagada é **inerte** e o diz em voz alta (`bound: false` ⇒ a row mostra
+/// `(no rope)`), e até esta wave o único caminho de volta era apagar e refazer.
+/// Gatear o eyedropper em `bound` o esconderia **exactamente no estado que ele
+/// existe para consertar** — o mesmo defeito que a §11 vazia do W2a corrigiu, e o
+/// mesmo que o eyedropper de montagem já evita.
+///
+/// ⚠️ **`click_real` e não um `WidgetEvent` sintético:** um evento à mão pula a
+/// checagem de FOCABILIDADE no store, então tirar o id do `populate` deixaria o
+/// botão pintado, hit-registrado e **morto sob o mouse** com este gate verde — a
+/// armadilha que as 36 células do W2c pagaram.
+#[test]
+fn the_rope_row_arms_a_pick_even_on_an_orphaned_wheel() {
+    expect(
+        &click_real(wheel(), ids::INSP_WHEEL_ROPE_PICK),
+        WheelFieldEdit::PickRope,
+        "o eyedropper de corda numa roldana ligada",
+    );
+    let mut orphan = wheel();
+    orphan.bound = false;
+    orphan.rope_name = String::new();
+    expect(
+        &click_real(orphan, ids::INSP_WHEEL_ROPE_PICK),
+        WheelFieldEdit::PickRope,
+        "o eyedropper de corda numa roldana ORFA -- e e aqui que ele serve",
     );
 }
 

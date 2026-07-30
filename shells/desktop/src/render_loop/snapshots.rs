@@ -119,6 +119,9 @@ pub(super) fn publish(
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
     wheel_body_pick: Option<u64>,
+    // W1: o pick de CORDA armado (o eyedropper da row Rope), e para qual roldana.
+    // Dono: `App.wheel_rope_pick`.
+    wheel_rope_pick: Option<u64>,
     // W-J4: o gesto de desenhar um joint está ARMADO (o botão pinta Pressed).
     join_draw_armed: bool,
     // W-J2/W-J2b: every grabbable joint anchor this frame, resolved through the
@@ -786,7 +789,12 @@ pub(super) fn publish(
     // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
     // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
     let inspector_wheel = hero.gizmo.selection.and_then(|b| {
-        super::inspector_joint_wheel::build_wheel_info(sim, b, wheel_body_pick == Some(b))
+        super::inspector_joint_wheel::build_wheel_info(
+            sim,
+            b,
+            wheel_body_pick == Some(b),
+            wheel_rope_pick == Some(b),
+        )
     });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(

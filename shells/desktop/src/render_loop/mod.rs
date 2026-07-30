@@ -1712,6 +1712,7 @@ impl crate::App {
                 self.joint_body_pick,
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
+                self.wheel_rope_pick,
                 // W-J4: o gesto de desenhar está armado?
                 self.joint_draw_armed,
                 // W-J2/W-J2b: every grabbable joint anchor. Resolved HERE
@@ -2832,6 +2833,10 @@ impl crate::App {
                         // shell, não uma escrita de componente.
                         if matches!(edit, ph2d_editor::WheelFieldEdit::PickMountBody) {
                             self.wheel_body_pick = Some(entity_bits);
+                        } else if matches!(edit, ph2d_editor::WheelFieldEdit::PickRope) {
+                            // W1: o mesmo lugar e a mesma razão — o pick é estado
+                            // da shell. O alvo é a ROTA, resolvido no Down.
+                            self.wheel_rope_pick = Some(entity_bits);
                         } else {
                             wheel_edits.push((entity_bits, edit));
                         }

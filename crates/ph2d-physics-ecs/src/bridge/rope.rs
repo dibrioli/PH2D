@@ -418,3 +418,91 @@ impl PhysicsBridge {
         self.wheels_to_seed = scratch;
     }
 }
+
+impl PhysicsBridge {
+    /// **Que corda está sob este ponto do mundo?** — o alvo do eyedropper de corda
+    /// da §13 (W-Pulley W1).
+    ///
+    /// Devolve a polia cuja ROTA passa mais perto de `p`, dentro de `tol` metros, e
+    /// `None` quando nenhuma passa.
+    ///
+    /// ⚠️ **Isto NÃO pode ser o irmão do eyedropper da §12, e a diferença foi
+    /// medida** (`measure_rope_pick`): o da §12 resolve o alvo com
+    /// `pick_sprites_at_world`, que exige um **sprite** sob o cursor. Um corpo tem
+    /// um; uma corda é uma **LINHA** e a entidade dela não tem nenhum — copiar
+    /// aquele gesto daria `None` sobre a corda **para sempre**, um botão que arma e
+    /// nunca acerta. A nota do plano que prometia *"o irmão exato"* está corrigida.
+    ///
+    /// ⚠️ **A geometria vem da MESMA `rope_route::route` que DESENHA a corda.** Um
+    /// segundo caminho — a reta entre as âncoras, digamos — faria o artista clicar
+    /// no traço que ele vê e acertar uma linha que só existe no código; e ninguém
+    /// confere geometria numa screenshot. É a lei que o `physics_overlay_pulley` já
+    /// afirma em voz alta sobre o desenho.
+    ///
+    /// Uma corda **degenerada** (rota que não resolve) é apontável pela RETA entre
+    /// as âncoras, que é exatamente o que o overlay desenha nesse caso — as duas
+    /// respostas continuam saindo da mesma pergunta (*"a rota resolve?"*), então o
+    /// alvo é sempre o traço que está na tela.
+    ///
+    /// Medido: sobre a rota dá **0,00000 m**; afastar `d` pela normal dá `d` ao
+    /// quinto decimal; e entre duas cordas paralelas a mais próxima ganha em TODA
+    /// separação (a escolha nunca é ambígua, ela só fica fina).
+    #[must_use]
+    pub fn rope_at_world(&self, p: [f32; 2], tol: f32) -> Option<Entity> {
+        let mut best: Option<(Entity, f32)> = None;
+        let mut wheels: Vec<RopeWheel> = Vec::new();
+        // ⚠️ **As DUAS metades da geometria vêm das portas do DESENHO** — as
+        // âncoras de `joint_views` e as rodas de `rope_wheels`, o par exato que o
+        // `physics_overlay_pulley` lê. Re-derivá-las aqui (das poses, dos
+        // componentes) seria a segunda opinião que faz o clique acertar uma corda
+        // que não é a desenhada.
+        for v in self
+            .joint_views()
+            .filter(|v| v.kind == crate::JointKind::Pulley)
+        {
+            wheels.clear();
+            wheels.extend(self.rope_wheels(v.entity).map(|(_, w)| w));
+            let d = route_distance(v.anchor_a, v.anchor_b, &wheels, p);
+            if d <= tol && best.is_none_or(|(_, bd)| d < bd) {
+                best = Some((v.entity, d));
+            }
+        }
+        best.map(|(e, _)| e)
+    }
+}
+
+/// A distância de `p` à polilinha que a corda DESENHA.
+///
+/// Rota que não resolve cai na reta âncora-a-âncora, o mesmo traço que o overlay
+/// desenha para uma corda degenerada — uma pergunta, dois desenhos, o mesmo alvo.
+fn route_distance(a: [f32; 2], b: [f32; 2], wheels: &[RopeWheel], p: [f32; 2]) -> f32 {
+    let mut segs = Vec::new();
+    let mut best = f32::INFINITY;
+    let mut prev = a;
+    if rope_route::route(a, b, wheels, &mut segs).is_some() {
+        for t in &segs {
+            best = best.min(point_to_segment(p, prev, t.from));
+            best = best.min(point_to_segment(p, t.from, t.to));
+            prev = t.to;
+        }
+    }
+    best.min(point_to_segment(p, prev, b))
+}
+
+/// Distância de um ponto a um segmento — a aritmética que um hit-test de linha é.
+///
+/// ⚠️ Sem transcendental e sem `hypot` no caminho de decisão: o `hypot` é a libm da
+/// plataforma, e embora este número **não** alcance o `physics_ecs_c9` (é uma
+/// consulta de UI, não um passo de sim), manter a mesma disciplina custa nada e
+/// evita a próxima chamada nascer num lugar onde ela alcança.
+fn point_to_segment(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
+    let (ax, ay) = (b[0] - a[0], b[1] - a[1]);
+    let len2 = ax * ax + ay * ay;
+    let t = if len2 <= f32::EPSILON {
+        0.0
+    } else {
+        (((p[0] - a[0]) * ax + (p[1] - a[1]) * ay) / len2).clamp(0.0, 1.0)
+    };
+    let (dx, dy) = (p[0] - (a[0] + ax * t), p[1] - (a[1] + ay * t));
+    (dx * dx + dy * dy).sqrt()
+}

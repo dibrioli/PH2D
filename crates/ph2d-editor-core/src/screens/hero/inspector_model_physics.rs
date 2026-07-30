@@ -585,6 +585,10 @@ pub struct InspectorWheelInfo {
     /// enquanto espera o clique no corpo — a mesma máquina do re-pick de corpo do
     /// joint (W-JointAuthoring), agora para o eixo.
     pub mount_pick_armed: bool,
+    /// O pick da CORDA está armado? O eyedropper da row Rope pinta `Pressed`
+    /// enquanto espera o clique — e o alvo dele é a ROTA desenhada, não um sprite
+    /// (a entidade-corda não tem nenhum).
+    pub rope_pick_armed: bool,
 }
 
 /// Um campo editável da §13, despachado como
@@ -609,6 +613,11 @@ pub enum WheelFieldEdit {
     /// operando, como o `PickBodyA` do joint: o clique escolhe o alvo, não este
     /// evento.
     PickMountBody,
+    /// **Armar o pick da CORDA** (W1) — sem operando: o alvo vem do clique no
+    /// canvas, resolvido pela ROTA. Fecha o item *"a corda de uma roldana é
+    /// escolhida só na CRIAÇÃO"*, que deixava uma roldana órfã sem volta a não ser
+    /// apagar e refazer.
+    PickRope,
     /// **DESMONTA** a roldana: ela volta a ser um ponto do cenário.
     ///
     /// Existe porque montar é um gesto e desmontar tem de ser outro — sem ele a

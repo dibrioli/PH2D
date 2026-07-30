@@ -2165,6 +2165,43 @@ impl App {
         self.wheel_body_pick = None;
     }
 
+    /// **O clique do eyedropper de CORDA** (§13, W1): com um pick armado, resolve a
+    /// corda cuja ROTA passa sob o cursor e religa aquela roldana a ela.
+    ///
+    /// ⚠️ **A tolerância é a MESMA `SNAP_PX` do ímã de âncora**, convertida em
+    /// mundo pelo zoom vigente — um app onde dois alvos de canvas respondem a
+    /// distâncias diferentes é um app que se aprende duas vezes. Medido: 14 px valem
+    /// 0,052 m a `height_world` 4 e 0,207 m a 16.
+    ///
+    /// Clique longe de toda corda desiste; um alvo que não é polia é RECUSADO e o
+    /// pick segue armado (`set_wheel_rope`).
+    fn wheel_rope_pick_click(&mut self, sx: f32, sy: f32) {
+        let Some(wheel) = self.wheel_rope_pick else {
+            return;
+        };
+        self.any_input_this_frame = true;
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let window_size = gfx.surface.size();
+        let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
+        let tol =
+            crate::joint_anchor_drag::SNAP_PX * gfx.camera.height_world / window_size.height as f32;
+        match gfx.physics.rope_at_world(world_pos, tol) {
+            Some(rope) => {
+                if crate::render_loop::inspector_joint_wheel::set_wheel_rope(
+                    &mut gfx.sim,
+                    wheel,
+                    rope,
+                ) {
+                    self.wheel_rope_pick = None;
+                }
+                // senão: o alvo não é uma polia, segue armado para outro clique
+            }
+            None => self.wheel_rope_pick = None, // longe de toda corda = desiste
+        }
+    }
+
     fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
         let Some(active) = self.vec_envelope_drag else {
             return false;
@@ -3233,6 +3270,18 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
         {
             self.wheel_mount_pick_click(evt.x, evt.y);
+            return;
+        }
+        // **O eyedropper de CORDA da roldana** (§13, W-Pulley W1) — a mesma classe
+        // de pick modal, e o único cujo alvo NÃO é um sprite: uma corda é uma
+        // linha, e ela é apontada pela ROTA que o overlay desenha.
+        if self.wheel_rope_pick.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+        {
+            self.wheel_rope_pick_click(evt.x, evt.y);
             return;
         }
         // **A EXPLOSÃO e a ATRAÇÃO** (W-Hand) — modal como os picks acima e pela

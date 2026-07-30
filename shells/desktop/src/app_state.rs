@@ -898,6 +898,15 @@ pub(crate) struct App {
     /// eixo daquela roldana nele. Runtime-only: um pick pela metade não é
     /// documento, é um gesto em andamento.
     pub(crate) wheel_body_pick: Option<u64>,
+    /// **O eyedropper de CORDA da §13 está armado, e para qual roldana** (W-Pulley
+    /// W1) — irmão dos de cima no GESTO e não no ALVO.
+    ///
+    /// Armado, o próximo Down no canvas escolhe a CORDA cuja rota passa sob o
+    /// cursor (`PhysicsBridge::rope_at_world`) e religa a roldana a ela. ⚠️ **Não é
+    /// `pick_sprites_at_world`:** uma corda é uma LINHA e a entidade dela não tem
+    /// sprite, então aquele gesto resolveria `None` sobre ela para sempre.
+    /// Runtime-only: um pick pela metade é um gesto em andamento, não documento.
+    pub(crate) wheel_rope_pick: Option<u64>,
     /// **The open joint-anchor drag** (W-J2), or `None`. Both canvas handles — the
     /// filled A dot and the hollow B ring — open this one gesture, which writes
     /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime

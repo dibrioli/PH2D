@@ -213,6 +213,15 @@ pub const INSP_WHEEL_MOUNT_PICK: NodeId = hash_node_id("insp_wheel_mount_pick");
 /// o que desmontar — um botão que não faz nada é pior que um botão que falta.
 pub const INSP_WHEEL_UNMOUNT: NodeId = hash_node_id("insp_wheel_unmount");
 
+/// **A que CORDA esta roldana pertence** (W1) — o eyedropper que arma o pick de
+/// canvas da corda.
+///
+/// ⚠️ **NÃO é o irmão do `INSP_JOINT_PICK_A/B`, e a diferença é o ALVO:** aqueles
+/// resolvem um CORPO por `pick_sprites_at_world`, que exige um sprite; uma corda é
+/// uma LINHA e a entidade dela não tem nenhum. Este resolve pela ROTA
+/// (`PhysicsBridge::rope_at_world`) — o mesmo traço que o overlay desenha.
+pub const INSP_WHEEL_ROPE_PICK: NodeId = hash_node_id("insp_wheel_rope_pick");
+
 pub const INSP_WHEEL_WRAP_GROUP: NodeId = hash_node_id("insp_wheel_wrap_group");
 pub const INSP_WHEEL_WRAP: [NodeId; 3] = [
     hash_node_id("insp_wheel_wrap_auto"),

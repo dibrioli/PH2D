@@ -213,6 +213,13 @@ impl crate::App {
                isso -- a corda dele esta amarrada NO bloco, entao ele ja e o proprio no;\n  \
                o que a row prova e que a montagem e autoravel com dois cliques.)\n  \
                A LIXEIRA ao lado desmonta de volta para o cenario.\n\n  \
+               E A CORDA TAMBEM SE RE-ESCOLHE (W1): a row 'Rope' ganhou um\n  \
+               CONTA-GOTAS. Selecione uma roldana, clique nele e depois clique EM\n  \
+               CIMA DA CORDA no canvas -- o alvo e o traco desenhado, nao um corpo.\n  \
+               Prove que ela funciona onde importa: RENOMEIE uma corda na Hierarquia\n  \
+               (a roldana dela fica orfa e a row passa a dizer '(no rope)'); o\n  \
+               conta-gotas segue oferecido, e um clique na corda a religa. Antes\n  \
+               desta wave a unica volta era apagar a roldana e refaze-la.\n\n  \
                E O IMA (W6): PAUSE primeiro (uma alca de ponto e rest-only -- durante o\n  \
                play o overlay desenha a geometria do SOLVER, e a alca autora a AUTORADA).\n  \
                Selecione 'Tackle Rope Wheel 1' (a roldana MONTADA, a de baixo no rig\n  \

@@ -7288,3 +7288,67 @@ e confira o `git diff` depois de restaurar.*
 **Aberto na W-Pulley agora:** o eyedropper de **corda** (re-escolher a corda de uma
 roldana; hoje só na criação) · a **Weston** (topologia, 2ª restrição por corda — não
 é afinação).
+
+---
+
+## W-RopePick — a corda de uma roldana se RE-ESCOLHE (2026-07-29, cena `=61`, pendente de smoke)
+
+O último item de UI aberto da W-Pulley, e a nota que o descrevia **errava o alvo**.
+
+### O gesto é irmão do da §12; o ALVO não pode ser
+
+A nota prometia *"um eyedropper de corda, se vier, é o irmão exato do da §12"*. O da
+§12 resolve com `pick_sprites_at_world`, que exige um **sprite**: um corpo tem, e uma
+corda é uma **LINHA** cuja entidade não tem nenhum ⇒ copiar aquele gesto daria `None`
+sobre a corda **para sempre** — um botão que arma e nunca acerta, sem nada na tela
+dizendo por quê.
+
+O alvo que existe é a **ROTA**, e ela é a que o overlay desenha:
+`PhysicsBridge::rope_at_world` percorre as polias pelas **MESMAS portas do desenho**
+(`joint_views` + `rope_wheels`) e devolve a mais próxima dentro da tolerância. Uma
+segunda geometria — a reta entre as âncoras, digamos — faria o artista clicar no traço
+que ele vê e acertar uma linha que só existe no código.
+
+**Medido** (`measure_rope_pick`): sobre a rota **0,00000 m** · afastar `d` pela normal
+dá `d` ao quinto decimal · entre duas cordas paralelas a mais próxima ganha em TODA
+separação (3,0 · 1,0 · 0,4 · 0,1 · 0,02 m), razão das distâncias exatamente **2**.
+Tolerância = o **mesmo `SNAP_PX` de 14 px** do ímã (0,052 m a `height_world` 4 ·
+0,207 m a 16) — dois alvos de canvas a distâncias diferentes seriam dois apps.
+
+### As três leis da wave
+
+**Oferecido inclusive na roldana ÓRFÃ** (gatear em `bound` esconderia o botão no
+estado que ele existe para consertar) · **re-abre o `L0`** pela porta compartilhada (a
+roldana entra numa rota que ela não atravessava; a wave do piso mediu 13,97 m de salto
+sem isso — e a corda que ela DEIXOU fica com folga, medida como inofensiva) · **alvo
+que não é polia é RECUSADO** e o pick segue armado.
+
+### Gates: 4 kernel + 2 shell + 1 seam · **5 mutações, 5 sangram**
+
+rota ignorada ⇒ 4/4 kernel · tolerância ignorada ⇒ 2/4 · primeira-em-vez-da-mais-próxima
+⇒ 1/4 · alvo por SPRITE ⇒ o arch-gate · guard neutralizado (`if false &&`) ⇒ o
+arch-gate **depois** de apertado para afirmar a FORMA do `if`.
+
+⚠️ **Duas mutações minhas não compilaram e não são evidência** (`if false {` num bloco
+cujo `Vec` perde a inferência; um campo renomeado). *Mutação que não builda não
+sobreviveu — ela não rodou.*
+
+⚠️ **O MESMO defeito de fixture mordeu duas vezes, uma na sonda e uma no GATE:** um
+ponto que se chama *"sobre a corda"* tem de sair de uma rota que passa por onde se
+calcula. Na sonda cravei `(0, 5)` e ele estava a **0,46 m** da rota (que desvia para a
+roldana), coluna não-monotônica; no gate a roldana tinha raio, então a rota toca a
+**TANGENTE** e não o centro, e ele nasceu vermelho. A cura no gate é o modelo de PONTO
+(raio 0): a geometria fica exata no papel e o oráculo segue sem chamar o produto.
+
+**Higiene:** `paint_readout_row_in` ficou sem chamador com a row nova e foi removida
+(47 linhas). `SNAP_PX` virou `pub(crate)` (um número, um lugar).
+
+**Ids:** `INSP_WHEEL_ROPE_PICK`. **`PROJECT_SCHEMA` fica 34**, registro **21**, **c9
+BYTE-IDÊNTICO** (`7cb7728d…`) — a wave não alcança o solver.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=61`** — o passo novo pede o gesto que importa:
+**RENOMEIE uma corda na Hierarquia** (a roldana dela fica órfã, a row diz
+`(no rope)`), clique o conta-gotas e clique **em cima da corda** no canvas.
+
+**Aberto na W-Pulley agora:** a **Weston** (topologia — um nó cujos dois contatos são
+separados na rota, uma 2ª restrição por corda; não é afinação e não foi construída).

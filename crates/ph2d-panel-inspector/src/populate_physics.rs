@@ -57,6 +57,8 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
             // hit-registrados e MORTOS sob o mouse.
             ids::INSP_WHEEL_MOUNT_PICK,
             ids::INSP_WHEEL_UNMOUNT,
+            // §13 (W1): o eyedropper que arma o pick da CORDA.
+            ids::INSP_WHEEL_ROPE_PICK,
         ],
     );
     // The join-kind selector's four chips (Pin/Spring/Rope/Weld). Registered in a

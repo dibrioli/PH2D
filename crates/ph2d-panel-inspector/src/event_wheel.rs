@@ -29,6 +29,11 @@ pub(crate) fn apply_wheel_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             Some(WheelFieldEdit::PickMountBody)
         }
         WidgetEvent::Click(id) if id == ids::INSP_WHEEL_UNMOUNT => Some(WheelFieldEdit::Unmount),
+        // W1: o eyedropper da row Rope ARMA o pick da corda. O alvo é a ROTA
+        // desenhada — uma corda não tem sprite, então o gesto do corpo não serve.
+        WidgetEvent::Click(id) if id == ids::INSP_WHEEL_ROPE_PICK => {
+            Some(WheelFieldEdit::PickRope)
+        }
         WidgetEvent::Click(id) => ids::INSP_WHEEL_WRAP
             .iter()
             .position(|&o| o == id)

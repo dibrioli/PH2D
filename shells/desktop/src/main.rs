@@ -582,6 +582,7 @@ impl App {
             vec_path_pick: None,
             joint_body_pick: None,
             wheel_body_pick: None,
+            wheel_rope_pick: None,
             joint_anchor_drag: None,
             joint_draw_armed: false,
             joint_draw: None,

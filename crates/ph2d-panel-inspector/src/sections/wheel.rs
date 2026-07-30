@@ -54,7 +54,7 @@ pub(crate) fn paint_wheel_section(
     }
 
     let mut yy = y + header_h;
-    yy = paint_rope_row(scene, text_system, theme, x, w, yy, info);
+    yy = paint_rope_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy = paint_mount_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy = num_row(
         scene,
@@ -297,63 +297,45 @@ fn paint_mount_row(
     y + h
 }
 
-/// **A que corda esta roldana pertence** — nome, e um aviso quando ele não
-/// resolve.
+/// **A que corda esta roldana pertence** — o nome, um aviso quando ele não resolve,
+/// e o eyedropper que a RE-ESCOLHE (W1).
 ///
-/// Só leitura: a corda é escolhida no gesto que cria a roldana. Uma roldana
-/// órfã (corda apagada ou renomeada) é **inerte, não quebrada** — ela some da
-/// rota e nada mais acontece —, e dizê-lo em voz alta é a mesma escolha do
-/// `bound` da §12: mostrar raio e lado como se ela estivesse na corda seria
-/// mentira.
+/// Uma roldana órfã (corda apagada ou renomeada) é **inerte, não quebrada** — ela
+/// some da rota e nada mais acontece —, e dizê-lo em voz alta é a mesma escolha do
+/// `bound` da §12. O que faltava era a **volta**: até esta wave a corda só era
+/// escolhida no gesto que CRIA a roldana, então o caminho de cura era apagar e
+/// refazer.
+///
+/// ⚠️ **O eyedropper é irmão do de montagem no GESTO e não no ALVO** (`rope_at_world`
+/// vs `pick_sprites_at_world`): ele arma, o próximo clique no canvas escolhe, e
+/// pinta `Pressed` enquanto espera — mas o alvo é a **ROTA desenhada**, porque a
+/// entidade-corda não tem sprite e o gesto do corpo resolveria `None` para sempre.
+///
+/// ⚠️ **Sempre oferecido, inclusive na roldana ÓRFÃ** — e é ali que ele mais serve:
+/// gatear em `bound` esconderia o botão exatamente no estado que ele existe para
+/// consertar.
+#[allow(clippy::too_many_arguments)]
 fn paint_rope_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
     info: &InspectorWheelInfo,
 ) -> f32 {
-    let shown = if info.bound {
-        info.rope_name.as_str()
-    } else {
-        "(no rope)"
-    };
-    paint_readout_row_in(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        y,
-        "Rope",
-        shown,
-        info.bound,
-    )
-}
-
-/// Uma row de LEITURA, com o valor APAGADO quando ele não descreve nada — a diferença
-/// entre *"o número é este"* e *"não há número"*, que um zero não conta.
-#[allow(clippy::too_many_arguments)]
-fn paint_readout_row_in(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    value: &str,
-    live: bool,
-) -> f32 {
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
-    let label_w = (font * 4.0).min(w * 0.5); // LITERAL-PX-OK: label = 4 char-heights, capped at half the row
+    let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
+    let label_w = (font * 5.0).min(w * 0.42); // LITERAL-PX-OK: label = 5 char-heights, capped at 0.42 of the row
+    let gap = Spacing::Sm.px();
     let text_y = y + (h - font) * 0.5;
     paint_text(
         text_system,
         scene,
-        label,
+        "Rope",
         x,
         text_y,
         font,
@@ -363,13 +345,17 @@ fn paint_readout_row_in(
     paint_text(
         text_system,
         scene,
-        value,
+        if info.bound {
+            info.rope_name.as_str()
+        } else {
+            "(no rope)"
+        },
         x + label_w,
         text_y,
         font,
-        (w - label_w).max(0.0),
+        (w - label_w - (icon_w + gap)).max(0.0),
         resolve(
-            if live {
+            if info.bound {
                 ColorToken::Text1
             } else {
                 ColorToken::Text3
@@ -377,5 +363,21 @@ fn paint_readout_row_in(
             theme,
         ),
     );
+    let brect = Rect::new(x + w - icon_w, y + (h - icon_w) * 0.5, icon_w, icon_w);
+    paint_icon_button(
+        brect,
+        IconGlyph::Builtin(IconId::Eyedropper),
+        IconButtonStyle::Compact,
+        if info.rope_pick_armed {
+            ButtonState::Pressed
+        } else {
+            store
+                .button_state(ids::INSP_WHEEL_ROPE_PICK)
+                .unwrap_or(ButtonState::Normal)
+        },
+        scene,
+        theme,
+    );
+    hit_index.register(ids::INSP_WHEEL_ROPE_PICK, brect);
     y + h
 }

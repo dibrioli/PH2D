@@ -103,6 +103,7 @@ pub(crate) fn build_wheel_info(
     sim: &mut SimWorld,
     entity_bits: u64,
     mount_pick_armed: bool,
+    rope_pick_armed: bool,
 ) -> Option<InspectorWheelInfo> {
     let entity = Entity::from_bits(entity_bits);
     let wheel = *sim.world().get::<ph2d_physics_ecs::PulleyWheel>(entity)?;
@@ -150,6 +151,7 @@ pub(crate) fn build_wheel_info(
         break_force: wheel.break_force,
         mount_name,
         mount_pick_armed,
+        rope_pick_armed,
     })
 }
 
@@ -214,7 +216,8 @@ pub(crate) fn wheel_with_edit(
         // `None` diz *"isto não é uma escrita de componente"*, exatamente como o
         // tag de Wrap desconhecido — e é por ele que o `apply_wheel_edit` não
         // enfileira nada.
-        WheelFieldEdit::PickMountBody => return None,
+        // As duas ARMAM e não escrevem: o alvo vem do próximo clique no canvas.
+        WheelFieldEdit::PickMountBody | WheelFieldEdit::PickRope => return None,
         // Voltar ao CENÁRIO. ⚠️ `mounted` volta a `false` junto: o local guardado
         // descreve um frame que não é mais o de ninguém, e deixá-lo semeado faria
         // a próxima montagem herdar o eixo da anterior em silêncio.
@@ -262,6 +265,153 @@ pub(crate) fn set_wheel_mount(sim: &mut SimWorld, wheel_bits: u64, body: Entity)
         w.body = stable_name_id(&name);
         w.local = [0.0, 0.0];
         w.mounted = false;
+    }
+}
+
+/// **Religar uma roldana a OUTRA corda** (W1) — o alvo do eyedropper da row Rope.
+///
+/// A corda é citada pelo **NOME** (`stable_name_id`), a mesma chave por que a
+/// roldana já a aponta e por que o reconcile a resolve: bits de entidade são id de
+/// ALOCAÇÃO e o undo os troca. Uma corda sem nome ganha um (uma corda que ninguém
+/// pode citar não é apontável).
+///
+/// ⚠️ **Re-abre o `L0` pela porta compartilhada**, e não é higiene: a roldana entra
+/// numa rota que ela não atravessava, então o comprimento daquela corda cresce — e
+/// `L(rota) ≤ L0` com o `L0` parado nasce **violada**, que é o salto explosivo que a
+/// wave do piso mediu em 13,97 m. A corda que ela DEIXOU fica com folga, que a
+/// mesma medição mostrou ser inofensiva (a lei é um PISO, não uma re-derivação).
+///
+/// ⚠️ **Recusa quando o alvo não é uma polia** e devolve `false`, então o pick
+/// segue armado em vez de deixar a roldana apontando um joint que não é corda — a
+/// mesma escolha do `set_joint_body` sobre o self-joint.
+pub(crate) fn set_wheel_rope(sim: &mut SimWorld, wheel_bits: u64, rope: Entity) -> bool {
+    if sim
+        .world()
+        .get::<ph2d_physics_ecs::PhysicsJoint>(rope)
+        .is_none_or(|j| j.kind != ph2d_physics_ecs::JointKind::Pulley)
+    {
+        return false;
+    }
+    let name = match sim.world().get::<Name>(rope) {
+        Some(n) => n.as_str().to_string(),
+        None => {
+            let n = format!("Rope {}", rope.index());
+            sim.world_mut().entity_mut(rope).insert(Name::new(&n));
+            n
+        }
+    };
+    let entity = Entity::from_bits(wheel_bits);
+    {
+        let Some(mut w) = sim
+            .world_mut()
+            .get_mut::<ph2d_physics_ecs::PulleyWheel>(entity)
+        else {
+            return false;
+        };
+        w.rope = stable_name_id(&name);
+        // O empréstimo do componente sai de escopo aqui — a re-abertura do `L0` precisa
+        // do `&mut World` de novo.
+    }
+    ph2d_physics_ecs::reseat_wheel_geometry(sim.world_mut(), entity);
+    true
+}
+
+#[cfg(test)]
+mod rope_pick_tests {
+    use super::*;
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+
+    fn rig() -> (SimWorld, u64, Entity, Entity) {
+        let mut sim = SimWorld::new();
+        let wheel = sim
+            .world_mut()
+            .spawn((
+                Name::new("Wheel"),
+                ph2d_physics_ecs::PulleyWheel {
+                    rope: stable_name_id("Old Rope"),
+                    radius: 0.3,
+                    ..Default::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 4.0)),
+            ))
+            .id();
+        let rope = sim
+            .world_mut()
+            .spawn((
+                Name::new("New Rope"),
+                ph2d_physics_ecs::PhysicsJoint {
+                    kind: ph2d_physics_ecs::JointKind::Pulley,
+                    anchored: true,
+                    ..ph2d_physics_ecs::PhysicsJoint::of_kind(ph2d_physics_ecs::JointKind::Pulley)
+                },
+                Transform::default(),
+            ))
+            .id();
+        // Um joint que NÃO é polia — o alvo que a porta tem de recusar.
+        let pin = sim
+            .world_mut()
+            .spawn((
+                Name::new("A Pin"),
+                ph2d_physics_ecs::PhysicsJoint::default(),
+                Transform::default(),
+            ))
+            .id();
+        (sim, wheel.to_bits(), rope, pin)
+    }
+
+    /// **Religar a roldana escreve o NOME da corda nova e re-abre o `L0`.**
+    ///
+    /// ⚠️ **A re-abertura não é higiene:** a roldana entra numa rota que ela não
+    /// atravessava, então o comprimento daquela corda CRESCE — e `L(rota) ≤ L0` com
+    /// o `L0` parado nasce violada, o salto explosivo que a wave do piso mediu em
+    /// 13,97 m.
+    #[test]
+    fn picking_a_rope_rebinds_the_wheel_and_reopens_the_length() {
+        let (mut sim, wheel, rope, _) = rig();
+        if let Some(mut j) = sim
+            .world_mut()
+            .get_mut::<ph2d_physics_ecs::PhysicsJoint>(rope)
+        {
+            j.anchored = true;
+        }
+        assert!(set_wheel_rope(&mut sim, wheel, rope), "a corda é uma polia");
+        let w = *sim
+            .world()
+            .get::<ph2d_physics_ecs::PulleyWheel>(Entity::from_bits(wheel))
+            .expect("a roldana vive");
+        assert_eq!(
+            w.rope,
+            stable_name_id("New Rope"),
+            "a roldana tinha de citar a corda NOVA pelo nome"
+        );
+        assert!(
+            !sim.world()
+                .get::<ph2d_physics_ecs::PhysicsJoint>(rope)
+                .expect("a corda vive")
+                .anchored,
+            "o `L0` da corda nova tinha de ser RE-ABERTO — sem isso a rota cresce \
+             sob um comprimento parado e o solver come a diferença num tique"
+        );
+    }
+
+    /// **Um alvo que não é polia é RECUSADO**, e o `false` mantém o pick armado em
+    /// vez de deixar a roldana apontando um joint que não é corda.
+    #[test]
+    fn picking_a_non_pulley_is_refused() {
+        let (mut sim, wheel, _, pin) = rig();
+        assert!(
+            !set_wheel_rope(&mut sim, wheel, pin),
+            "um Pin não é uma corda"
+        );
+        assert_eq!(
+            sim.world()
+                .get::<ph2d_physics_ecs::PulleyWheel>(Entity::from_bits(wheel))
+                .expect("vive")
+                .rope,
+            stable_name_id("Old Rope"),
+            "a recusa não pode ter mexido na corda que ela já tinha"
+        );
     }
 }
 

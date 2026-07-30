@@ -1063,10 +1063,51 @@ eixo que cede a **52,4 N** enquanto a corda nem sente.
 
 ### Aberto no W1, nomeado
 
-- **A corda de uma roldana é escolhida só na CRIAÇÃO** — a §13 mostra o nome e
-  não o re-escolhe. Uma roldana órfã (corda renomeada) é inerte e o diz em voz
-  alta, mas a volta é apagar e refazer. É a mesma exposição de toda binding por
-  nome do editor; um eyedropper de corda, se vier, é o irmão exato do da §12.
+- ~~**A corda de uma roldana é escolhida só na CRIAÇÃO**~~ — **FECHADO**
+  (2026-07-29): a row **Rope** da §13 ganhou conta-gotas.
+
+  ⚠️ **E ele NÃO é "o irmão exato do da §12", como esta nota prometia.** O da §12
+  resolve o alvo com `pick_sprites_at_world`, que exige um **sprite** sob o cursor:
+  um corpo tem, e uma corda é uma **LINHA** cuja entidade não tem nenhum — copiar
+  aquele gesto daria `None` sobre a corda **para sempre**, um botão que arma e nunca
+  acerta. Irmãos no GESTO (arma · clica · religa), nunca no ALVO.
+
+  O alvo que existe é a **ROTA**, e ela é a que o overlay DESENHA
+  (`PhysicsBridge::rope_at_world`, pelas MESMAS portas do desenho —
+  `joint_views` + `rope_wheels`). Medido (`measure_rope_pick`): sobre a rota
+  **0,00000 m**; afastar `d` pela normal dá `d` ao quinto decimal; entre duas cordas
+  paralelas a mais próxima ganha em TODA separação (3,0 · 1,0 · 0,4 · 0,1 · 0,02 m),
+  com a razão das distâncias saindo exatamente **2**. Tolerância = o **mesmo
+  `SNAP_PX` de 14 px** do ímã (0,052 m a `height_world` 4 · 0,207 m a 16).
+
+  ⚠️ **Oferecido inclusive na roldana ÓRFÃ, e é ali que ele serve:** gatear em
+  `bound` esconderia o botão exatamente no estado que ele existe para consertar.
+  ⚠️ **Re-abre o `L0`** pela porta compartilhada — a roldana entra numa rota que ela
+  não atravessava, e a wave do piso mediu o preço de não o fazer (13,97 m de salto);
+  a corda que ela DEIXOU fica com folga, que a mesma medição mostrou inofensiva.
+  ⚠️ Alvo que não é polia é **RECUSADO** e o pick segue armado.
+
+  **5 mutações, 5 sangram:** a rota ignorada ⇒ 4/4 gates do kernel · a tolerância
+  ignorada ⇒ 2/4 · a primeira em vez da mais próxima ⇒ 1/4 · o alvo por SPRITE ⇒ o
+  arch-gate · o guard neutralizado (`if false &&`) ⇒ o arch-gate, **depois** de ele
+  ser apertado para afirmar a FORMA do `if` (a lição do gate irmão do
+  `route_changed`: *um gate que pina a CHAMADA não pina a RESPOSTA*).
+
+  ⚠️ **Duas mutações minhas não compilaram e não são evidência** (`if false {` num
+  bloco cujo `Vec` perde a inferência; um campo renomeado). *Mutação que não builda
+  não sobreviveu — ela não rodou.*
+
+  ⚠️ **E o MESMO defeito de fixture mordeu duas vezes:** um ponto que se chama
+  *"sobre a corda"* tem de ser derivado de uma rota que passa por onde se calcula.
+  Na sonda eu cravei `(0, 5)` e ele estava a **0,46 m** da rota (que desvia para a
+  roldana), com a coluna saindo não-monotônica; no GATE a roldana tinha raio, então a
+  rota toca a **TANGENTE** e não o centro, e ele nasceu vermelho. A cura do gate é o
+  modelo de PONTO (raio 0) — a geometria fica exata no papel e o oráculo segue sem
+  chamar o produto.
+
+  Higiene: `paint_readout_row_in` ficou **sem chamador** com a row nova e foi
+  **removida** (47 linhas) — uma `fn` órfã é uma segunda resposta esperando alguém
+  chamá-la.
 - **Um corpo que passa da própria roldana inverte o ramo** — a corda passa a
   puxar do outro lado e a cena dá um tranco. A cena de smoke evita o caso
   levantando as roldanas; o que uma polia REAL faz ali é a carga encostar na

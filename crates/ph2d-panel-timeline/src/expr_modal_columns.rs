@@ -15,153 +15,14 @@ use ph2d_editor_core::widget::{
     paint_button, paint_icon_button, paint_number_input_with_buffer, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_expr_recipes::{CATALOG, Family, Knob, KnobKind, SearchHit, search};
+use ph2d_expr_recipes::{Knob, KnobKind};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
-use crate::expr_modal::{ExprModal, GalleryPage, row_result};
+use crate::expr_modal::{ExprModal, row_result};
 use crate::expr_modal_paint::{
-    BODY_SLOTS, GALLERY_W, KNOB_LABEL_W, KNOB_READOUT_W, ROW_BTN_W, SHEET_W, button_state,
+    BODY_SLOTS, KNOB_LABEL_W, KNOB_READOUT_W, ROW_BTN_W, SHEET_W, button_state,
 };
 use crate::ids;
-
-/// The left column: the search field, then either the families or one family's
-/// recipes (plus any refusal cards a query surfaced).
-pub(crate) fn paint_gallery(m: &ExprModal, ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
-    let font = TypeToken::Sm.px();
-    let mut cy = y;
-
-    // Search field — a TextInput seeded ONCE (re-seeding every frame would stomp
-    // the artist's typing, the lesson `expr_edit` already paid for).
-    let field = Rect::new(x, cy, GALLERY_W, ROW_H_PX);
-    ctx.host.store_mut().register_if_absent(
-        ids::EXPR_MODAL_SEARCH,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
-    let (ti_state, text, caret, anchor) = match ctx.host.store().get(ids::EXPR_MODAL_SEARCH) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, text.clone(), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, String::new(), 0, None),
-    };
-    let input = TextInput::new(
-        ids::EXPR_MODAL_SEARCH,
-        ph2d_i18n::tr("panel.timeline.expr_search"),
-    )
-    .state(ti_state);
-    paint_text_input_with_buffer(
-        &input,
-        Some(text.as_str()),
-        Some(caret),
-        anchor,
-        field,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    ctx.host
-        .hit_index_mut()
-        .register(ids::EXPR_MODAL_SEARCH, field);
-    cy += ROW_H_PX;
-
-    let slots = BODY_SLOTS - 1;
-    let query = text.trim().to_string();
-
-    if !query.is_empty() {
-        // A query flattens the gallery: recipes first, then the refusal cards
-        // that route to where a refused idea actually lives.
-        let hits = search(&query);
-        let shown = hits.len().min(slots);
-        for h in hits.iter().take(shown) {
-            match h {
-                SearchHit::Recipe(r) => {
-                    let id = ids::expr_gallery_id(r.id);
-                    expr_button(
-                        ctx,
-                        theme,
-                        id,
-                        r.label,
-                        Rect::new(x, cy, GALLERY_W, ROW_H_PX),
-                    );
-                }
-                SearchHit::Refusal(rf) => {
-                    let id = ids::expr_refusal_id(rf.key);
-                    let label = format!("{} -> {}", rf.title, rf.to.label());
-                    expr_button(
-                        ctx,
-                        theme,
-                        id,
-                        &label,
-                        Rect::new(x, cy, GALLERY_W, ROW_H_PX),
-                    );
-                }
-            }
-            cy += ROW_H_PX;
-        }
-        if hits.len() > shown {
-            // ⚠️ Named, never silent: a list that quietly stops reads as "there is
-            // nothing else", which is the one thing it must not say.
-            paint_text(
-                ctx.text_system,
-                ctx.scene,
-                &format!("+{} more", hits.len() - shown),
-                x + Spacing::Sm.px(),
-                cy + (ROW_H_PX - font) * 0.5,
-                font,
-                GALLERY_W,
-                resolve(ColorToken::Text2, theme),
-            );
-        }
-        return;
-    }
-
-    match m.page {
-        GalleryPage::Families => {
-            for f in Family::ALL {
-                let n = CATALOG.iter().filter(|r| r.family == f).count();
-                let id = ids::expr_gallery_id(f.label());
-                let label = format!("{}  ({n})", f.label());
-                expr_button(
-                    ctx,
-                    theme,
-                    id,
-                    &label,
-                    Rect::new(x, cy, GALLERY_W, ROW_H_PX),
-                );
-                cy += ROW_H_PX;
-            }
-        }
-        GalleryPage::Family(f) => {
-            let id = ids::expr_gallery_id("..");
-            expr_button(
-                ctx,
-                theme,
-                id,
-                "< All",
-                Rect::new(x, cy, GALLERY_W, ROW_H_PX),
-            );
-            cy += ROW_H_PX;
-            for r in CATALOG.iter().filter(|r| r.family == f) {
-                let id = ids::expr_gallery_id(r.id);
-                expr_button(
-                    ctx,
-                    theme,
-                    id,
-                    r.label,
-                    Rect::new(x, cy, GALLERY_W, ROW_H_PX),
-                );
-                cy += ROW_H_PX;
-            }
-        }
-    }
-}
 
 /// Paint a button AND make it live under the mouse.
 ///
@@ -232,6 +93,12 @@ pub(crate) fn expr_icon_button(
 /// now holds things like `0.05` and `-12.75`, and the stepper column eats the right
 /// end of whatever is left.
 const NUM_W: f32 = 96.0; // LITERAL-PX-OK: largura da caixa numerica de um knob
+/// A calha entre as duas colunas de knob.
+///
+/// ⚠️ `Spacing::Md`, não `Xs`: a queixa medida do header não era largura, era **gutter
+/// ZERO** entre nome │ readout │ X (doc 13 §4-bis). Duas colunas encostadas repetiriam
+/// exactamente esse erro no eixo que sobrou.
+const KNOB_COL_GUTTER: f32 = 8.0; // LITERAL-PX-OK: = Spacing::Md, a calha das colunas
 
 /// Paint a knob's **number box** and make it live: value, stepper range, drag rate.
 ///
@@ -311,6 +178,181 @@ fn paint_knob_number(
     ctx.host.hit_index_mut().register(id, rect);
 }
 
+/// **Quantas linhas de knob uma receita gasta, e onde cada knob senta.**
+///
+/// ⚠️ **A porta única do layout do sheet**, e ela existe porque a capacidade vertical era
+/// onde de fato apertava: `BODY_SLOTS = 12`, uma row custava `1 + knobs`, e uma receita de
+/// 4 knobs deixava caber **2 rows** (medido, doc 13 §4-bis). O `+N more rows` não era falta
+/// de scroll: era uma row **dirigindo o objeto sem um pixel de UI**.
+///
+/// A cura não é scroll — é os **128 px MORTOS** que toda row de knob já tinha (`ctrl_w`
+/// computado como 168 e descartado no braço `Number|Literal`). Dois knobs numéricos por
+/// linha, e o pior caso do catálogo cai de **5 slots para 3** (4 rows garantidas, 6 no
+/// caso típico) sem introduzir um 2º eixo de scroll dentro de um painel que já rola.
+///
+/// ⚠️ **Um knob de TEXTO fica sozinho na linha** (um `Link` carrega um nome, um `Text` uma
+/// fórmula): parear dois campos de texto de 72 px seria trocar um aperto por outro. Então a
+/// conta é *pares de numéricos* + *um por texto*, e ela é feita AQUI para que o pintor e o
+/// contador de slots não possam discordar — um container medido por uma regra e preenchido
+/// por outra é como a próxima seção pinta por cima dos botões.
+fn knob_rows(rec: &ph2d_expr_recipes::Recipe) -> usize {
+    let (mut numeric, mut wide) = (0usize, 0usize);
+    for k in rec.knobs {
+        match k.kind {
+            KnobKind::Number | KnobKind::Literal => numeric += 1,
+            KnobKind::Link | KnobKind::Text => wide += 1,
+        }
+    }
+    numeric.div_ceil(2) + wide
+}
+
+/// Onde o knob `i` de `rec` senta: a linha (relativa ao topo dos knobs) e a COLUNA (0 ou 1,
+/// e sempre 0 para um knob de texto, que ocupa a linha inteira).
+///
+/// Deriva da MESMA varredura que [`knob_rows`] conta, na mesma ordem, então o pintor não
+/// pode pousar um widget fora do espaço que o contador reservou.
+fn knob_slot(rec: &ph2d_expr_recipes::Recipe, want: usize) -> (usize, usize) {
+    let (mut line, mut col) = (0usize, 0usize);
+    for (i, k) in rec.knobs.iter().enumerate() {
+        let wide = matches!(k.kind, KnobKind::Link | KnobKind::Text);
+        if wide && col == 1 {
+            // Um knob largo não divide linha com um numérico já pousado à esquerda.
+            line += 1;
+            col = 0;
+        }
+        if i == want {
+            return (line, col);
+        }
+        if wide {
+            line += 1;
+            col = 0;
+        } else if col == 0 {
+            col = 1;
+        } else {
+            line += 1;
+            col = 0;
+        }
+    }
+    (line, col)
+}
+
+/// As linhas de knob de UMA row do sheet, e o `y` em que a próxima row começa.
+///
+/// Split de `paint_sheet` quando as duas colunas o levaram a 211 > 200 LOC; o corte é o
+/// mesmo que o resto deste arquivo usa — *a ROW* contra *os knobs dela* — e é o que dá à
+/// geometria de coluna um lugar só.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "os mutáveis por-frame do paint mais a row e o índice dela; a alternativa é um \
+              struct de contexto que existiria só para este chamador"
+)]
+fn paint_knob_rows(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    cy_in: f32,
+    reseed: bool,
+    ri: usize,
+    rec: &ph2d_expr_recipes::Recipe,
+    row: &ph2d_expr_recipes::Row,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let mut cy = cy_in;
+    // ── Knob rows, DOIS numéricos por linha (ver `knob_rows`). ──
+    //
+    // ⚠️ A geometria vem da porta, não de aritmética repetida aqui: `knob_slot` diz a
+    // linha e a coluna, e `knob_rows` — que varre na MESMA ordem — diz quantas linhas
+    // reservar. Antes desta wave `ctrl_w` era computado como 168 e **descartado** no
+    // braço numérico, deixando 128 px (40% do sheet) mortos em toda linha de knob.
+    let knob_top = cy;
+    for (ki, k) in rec.knobs.iter().enumerate() {
+        let (line, col) = knob_slot(rec, ki);
+        let wide = matches!(k.kind, KnobKind::Link | KnobKind::Text);
+        cy = knob_top + ROW_H_PX * line as f32;
+        let indent = Spacing::Md.px();
+        // A largura de uma COLUNA de knob: o sheet menos o recuo e a calha do meio,
+        // dividido por dois. Um knob largo toma as duas.
+        let col_w = (SHEET_W - indent - KNOB_COL_GUTTER) * 0.5;
+        let lx = x
+            + indent
+            + if col == 1 {
+                col_w + KNOB_COL_GUTTER
+            } else {
+                0.0
+            };
+        let label_w = if wide {
+            KNOB_LABEL_W
+        } else {
+            (col_w - NUM_W - Spacing::Xs.px()).max(1.0)
+        };
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            k.label,
+            lx,
+            cy + (ROW_H_PX - font) * 0.5,
+            font,
+            label_w,
+            resolve(ColorToken::Text2, theme),
+        );
+        let ctrl_x = lx + label_w + Spacing::Xs.px();
+        // Um knob largo chega até a borda do sheet; um numérico, até o fim da sua coluna.
+        let ctrl_w = if wide {
+            (x + SHEET_W - ctrl_x).max(1.0)
+        } else {
+            (lx + col_w - ctrl_x).max(1.0)
+        };
+        let id = ids::expr_knob_id(ri, ki);
+        match k.kind {
+            KnobKind::Number | KnobKind::Literal => {
+                // ⚠️ `ctrl_w`, não `NUM_W`: era exactamente aqui que os 168 px
+                // computados eram jogados fora.
+                let r = Rect::new(ctrl_x, cy, ctrl_w.min(NUM_W), ROW_H_PX);
+                paint_knob_number(ctx, theme, id, k, row.knobs[ki].as_num(), reseed, r);
+            }
+            KnobKind::Link | KnobKind::Text => {
+                let seed = row.knobs[ki].as_text().to_string();
+                let caret = seed.len();
+                let init = InteractiveState::TextInput {
+                    state: TextInputState::Normal,
+                    text: seed,
+                    caret,
+                    selection_anchor: None,
+                };
+                if reseed {
+                    ctx.host.store_mut().register(id, init);
+                } else {
+                    ctx.host.store_mut().register_if_absent(id, init);
+                }
+                let (st, t, c, a) = match ctx.host.store().get(id) {
+                    Some(InteractiveState::TextInput {
+                        state,
+                        text,
+                        caret,
+                        selection_anchor,
+                    }) => (*state, text.clone(), *caret, *selection_anchor),
+                    _ => (TextInputState::Normal, String::new(), 0, None),
+                };
+                let r = Rect::new(ctrl_x, cy, ctrl_w, ROW_H_PX);
+                ctx.host.hit_index_mut().register(id, r);
+                let ti = TextInput::new(id, k.label).state(st);
+                paint_text_input_with_buffer(
+                    &ti,
+                    Some(t.as_str()),
+                    Some(c),
+                    a,
+                    r,
+                    ctx.scene,
+                    ctx.text_system,
+                    theme,
+                );
+            }
+        }
+    }
+
+    knob_top + ROW_H_PX * knob_rows(rec) as f32
+}
+
 /// The centre column: the stack, one row per recipe, each with its knobs and the
 /// number it produces RIGHT NOW.
 pub(crate) fn paint_sheet(
@@ -330,7 +372,7 @@ pub(crate) fn paint_sheet(
         let Some(rec) = ph2d_expr_recipes::by_id(row.recipe) else {
             continue;
         };
-        let need = 1 + rec.knobs.len();
+        let need = 1 + knob_rows(rec);
         if used + need > BODY_SLOTS {
             paint_text(
                 ctx.text_system,
@@ -423,72 +465,7 @@ pub(crate) fn paint_sheet(
         );
         cy += ROW_H_PX;
 
-        // Knob rows.
-        for (ki, k) in rec.knobs.iter().enumerate() {
-            let lx = x + Spacing::Md.px();
-            paint_text(
-                ctx.text_system,
-                ctx.scene,
-                k.label,
-                lx,
-                cy + (ROW_H_PX - font) * 0.5,
-                font,
-                KNOB_LABEL_W,
-                resolve(ColorToken::Text2, theme),
-            );
-            let ctrl_x = lx + KNOB_LABEL_W + Spacing::Xs.px();
-            let ctrl_w = (x + SHEET_W - ctrl_x - KNOB_READOUT_W - Spacing::Xs.px()).max(1.0);
-            let id = ids::expr_knob_id(ri, ki);
-            match k.kind {
-                KnobKind::Number | KnobKind::Literal => {
-                    let r = Rect::new(ctrl_x, cy, NUM_W, ROW_H_PX);
-                    paint_knob_number(ctx, theme, id, k, row.knobs[ki].as_num(), reseed, r);
-                }
-                KnobKind::Link | KnobKind::Text => {
-                    let seed = row.knobs[ki].as_text().to_string();
-                    let caret = seed.len();
-                    let init = InteractiveState::TextInput {
-                        state: TextInputState::Normal,
-                        text: seed,
-                        caret,
-                        selection_anchor: None,
-                    };
-                    if reseed {
-                        ctx.host.store_mut().register(id, init);
-                    } else {
-                        ctx.host.store_mut().register_if_absent(id, init);
-                    }
-                    let (st, t, c, a) = match ctx.host.store().get(id) {
-                        Some(InteractiveState::TextInput {
-                            state,
-                            text,
-                            caret,
-                            selection_anchor,
-                        }) => (*state, text.clone(), *caret, *selection_anchor),
-                        _ => (TextInputState::Normal, String::new(), 0, None),
-                    };
-                    let r = Rect::new(
-                        ctrl_x,
-                        cy,
-                        ctrl_w + KNOB_READOUT_W - Spacing::Xs.px(),
-                        ROW_H_PX,
-                    );
-                    ctx.host.hit_index_mut().register(id, r);
-                    let ti = TextInput::new(id, k.label).state(st);
-                    paint_text_input_with_buffer(
-                        &ti,
-                        Some(t.as_str()),
-                        Some(c),
-                        a,
-                        r,
-                        ctx.scene,
-                        ctx.text_system,
-                        theme,
-                    );
-                }
-            }
-            cy += ROW_H_PX;
-        }
+        cy = paint_knob_rows(ctx, theme, x, cy, reseed, ri, rec, row);
     }
 
     if m.stack.rows.is_empty() {

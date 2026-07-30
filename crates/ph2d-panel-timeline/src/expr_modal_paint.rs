@@ -27,15 +27,31 @@
 //! has nine, so a family always fits); the sheet spends `1 + knobs` per row and
 //! **says how many rows it could not show** rather than truncating in silence.
 //!
-//! ⚠️⚠️ **That last clause is TRUE and its reassurance is FALSE, measured** (auditoria
-//! 2026-07-29, §4-bis U2): a row past `BODY_SLOTS` prints `+N more rows` **and gets zero
-//! widgets** — no hit rect, no store entry, nothing to click — *while the formula the
-//! object runs still contains it*. Four Turbulence rows leave rows 2-3 driving the scene
-//! and unreachable; one `Fade by Distance` eats nine of the twelve slots. The only way to
-//! reach the buried row is to delete one above it. **Open, and it belongs to FASE C** —
-//! the fix is not scroll by reflex (128 px per knob row are dead, so two columns may
-//! remove the overflow instead), and this note exists so the next reader is not
-//! reassured by the sentence above it.
+//! ⚠️⚠️ **That last clause was TRUE and its reassurance FALSE, measured** (auditoria
+//! 2026-07-29, §4-bis U2): a row past `BODY_SLOTS` printed `+N more rows` **and got zero
+//! widgets** — no hit rect, no store entry, nothing to click — *while the formula the object
+//! runs still contained it*. Four Turbulence rows left rows 2-3 driving the scene and
+//! unreachable; one `Fade by Distance` ate nine of the twelve slots.
+//!
+//! **FASE C.1 atacou isso por onde a medição apontava, e não por reflexo:** toda row de knob
+//! tinha **128 px MORTOS** (40% do sheet), então os knobs numéricos passaram a vir em DUAS
+//! colunas (`expr_modal_columns::knob_rows`, a porta única do layout). Com o corte da FASE A
+//! junto, o pior caso do catálogo saiu de **9 → 5 → 3 slots**:
+//!
+//! | | pior caso | rows que cabem | típico |
+//! |---|---|---|---|
+//! | antes | 9 slots (`Fade by Distance`) | **1** | 3-4 |
+//! | pós-corte (FASE A) | 5 slots | 2 | 4 |
+//! | pós-2-colunas (FASE C.1) | **3 slots** | **4** | **6** |
+//!
+//! ⚠️ **E o `+N more rows` NÃO morreu — ficou raro, e isto é o número, não uma
+//! tranquilização:** 4 rows da receita mais cara são exactamente 12 slots, então a QUINTA
+//! ainda é derrubada, e derrubada do mesmo jeito (sem UI, dirigindo o objeto). O que fecha o
+//! caso de vez é a **row COLAPSÁVEL** — o cabeçalho custa 1 slot, então doze rows sempre
+//! caberiam colapsadas, e é literalmente o stack de F-Modifiers do Blender, que o §0 do
+//! plano 12 identificou como o estado da arte desta UI. Não construído: é wave própria (uma
+//! flag de vista por row + o chevron + o branch de paint), e o gate
+//! `every_row_the_formula_folds_has_a_widget` prova QUATRO rows, não doze.
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
@@ -242,7 +258,7 @@ pub(crate) fn paint(
     let mut cy = paint_title_band(m, ctx, theme, rect, cy);
 
     let body_y = cy;
-    crate::expr_modal_columns::paint_gallery(m, ctx, theme, inner_x, body_y);
+    crate::expr_modal_gallery::paint_gallery(m, ctx, theme, inner_x, body_y);
     let sheet_x = inner_x + GALLERY_W + Spacing::Sm.px();
     crate::expr_modal_columns::paint_sheet(m, ctx, theme, sheet_x, body_y, reseed, base);
 

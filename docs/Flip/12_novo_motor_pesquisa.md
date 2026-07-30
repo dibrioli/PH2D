@@ -1864,7 +1864,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 2 | **o Pass A pergunta antes de rasterizar** | ✅ **feito** (§22.5) — arte commitada e fantasma de onion custam **zero** enquanto ninguém mexe neles |
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
 | 3 | **a integral de ÁREA do pixel** | ⚠️ a premissa estava ERRADA (§22.6) — mas a medição achou **três** defeitos, e **dois já fecharam** (§22.7): a QUINA (63,75/255) e o ÂNGULO (9,72 a 45°, que ninguém tinha visto). |
-| 3a | a **saturação** em curvatura (~21-27/255) | ABERTO — não é AA: é `1 − exp(−τ)` não chegar a 1, e encosta no `F_MAX`, que tem racional próprio. Wave própria. |
+| 3a | ⚠️ **NÃO era saturação — o percurso DERRUBA tinta em tampa e junta** | ABERTO, diagnosticado e pinado (§22.8). Mecanismo, número e alcance medidos; a cura é wave própria porque move todo número de tinta do motor. |
 | 4 | **joins & caps** (miter/bevel/round × butt/round/square) | o resíduo MEDIDO que sobrevive a `hardness = 1,0` (−64, 58 px) ⇒ provadamente **não** é a lei da tinta; o percurso não o conserta |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
 
@@ -2098,3 +2098,68 @@ cujo oráculo é aritmético: a rampa não passa de `0,5` num pixel de `sd ≥ 0
 constante alcança o outro lado) + o `walk_gpu_parity`. **6 mutações, 5 sangram**; a 6ª
 (`PLANE_REACH` gigante) **sobrevive por projeto** — o `offer` já ordena por `sd`, então um plano fora
 de alcance é despejado antes de importar: o alcance é **custo**, não correção, e está escrito assim.
+
+### 22.8 ⚠️ O defeito "3a" NÃO era saturação — o percurso DERRUBA tinta em tampa e junta
+
+A §22.6 mediu uma coluna que chamei de *"saturação, 22-30/255"* e escrevi que ela vinha de
+`1 − exp(−τ)` não chegar a 1, encostando no `F_MAX`. **Fui abrir o pixel antes de tocar no `F_MAX`,
+e o rótulo estava errado.**
+
+#### O que a sonda achou
+
+| | sd | área real | `edge` | **τ** | `cover` |
+|---|---|---|---|---|---|
+| flanco reto (pior pixel) | +0,382 | 0,1028 | 0,1041 | **0,000** | **0,0000** |
+| PONTA aguda | +0,415 | 0,0796 | 0,0829 | **0,000** | **0,0000** |
+| QUINA externa | +0,450 | 0,0654 | 0,0662 | **0,000** | **0,0000** |
+
+O `τ` não é *pequeno*: é **zero**, e o `stroke_tau` devolve `None`. A coluna que eu chamara de
+saturação era `edge − 0` — o depósito **não depositando nada** num pixel com 6-10% de cobertura
+real. Multiplicar 0,1041 por 255 dá exatamente os 26,56 que a tabela antiga atribuía ao `F_MAX`.
+
+#### O CONTROLE, que é o que separa as duas explicações
+
+No **flanco**, com o MESMO `sd`, o produto acerta:
+
+| sd | área | `cover` |
+|---|---|---|
+| +0,401 | 0,0938 | **0,0938** |
+| +0,431 | 0,0759 | **0,0758** |
+| +0,309 | 0,1592 | **0,1591** |
+| +0,339 | 0,1355 | **0,1354** |
+
+⚠️ **E o controle precisou ser INCLINADO:** num traço horizontal o `sd` do flanco cai exatamente em
+±0,5, então nunca existe pixel meio-coberto ali — é por isso que os três piores pixels das sondas
+caíram todos numa TAMPA, e é o que fez a 1ª versão do gate falhar medindo o vazio.
+
+#### O mecanismo, aberto no pixel
+
+Perto de uma tampa ou de uma junta o **pico do integrando cai EM CIMA da fronteira do domínio de
+integração** (o extremo do segmento), e o suporte encolhe. No pixel `(87,5; 41,5)`: o ponto
+empurrado pelo `p_eval` fica a 6,942 do extremo com `r = 7` ⇒ os centros de dab que o alcançam vivem
+num trecho de **0,121 px**, contra um passo de quadratura de `pitch/SUB = 1,4/4 = 0,35`. **A regra
+do ponto médio não pega uma amostra sequer**, e a integral inteira dá 0.
+
+Não é termo de fronteira faltando (o `end_dab` existe e a assimetria dele é medida contra o
+Painter): é o **`SUB` sendo um piso sobre o SEGMENTO quando deveria ser um piso sobre a JANELA**.
+
+#### Por que a cura é wave própria, com o preço de adiá-la medido
+
+Resolver a janela em vez do segmento move as posições de amostra **em todo pixel**, logo move todo
+número de tinta do motor — e com eles o port WGSL e os gates de look que o Enio já aprovou. O que se
+paga por adiar:
+
+| cena | px com tinta | px DERRUBADOS | pior queda | soma perdida |
+|---|---|---|---|---|
+| traço reto (2 tampas) | 1180 | **4** | 26,21/255 | 0,41 px |
+| L (2 tampas + 2 juntas) | 1824 | **4** | 16,68/255 | 0,26 px |
+| zigue-zague (24 juntas) | 1115 | **13** | 14,94/255 | 0,70 px |
+
+≈ **um pixel por tampa ou junta**, na banda mais externa, num pixel que estaria ≤10% coberto. É
+pequeno — e é um número, não uma impressão.
+
+**Pinado em gate executável:** `the_walk_drops_a_sliver_of_ink_at_caps_and_joints_and_this_is_its_number`
+afirma as DUAS metades (o flanco exato · a tampa em zero) e **falha quando o defeito for
+corrigido**, obrigando a atualizar esta nota — o padrão do
+`the_documented_hardening_is_still_there_and_this_is_its_number` do Painter. Sem ele o diagnóstico
+volta a ser re-derivado do zero, que é literalmente o que aconteceu com o rótulo "saturação".

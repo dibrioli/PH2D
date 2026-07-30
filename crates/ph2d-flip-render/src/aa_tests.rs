@@ -444,3 +444,9 @@ fn measure_what_the_third_and_fourth_plane_buy() {
         onde[1]
     );
 }
+
+/// A outra metade do item 3, e ela é sobre o **τ**, não sobre o AA: perto de uma tampa ou de uma
+/// junta o percurso não deposita *pouco*, deposita **zero**. Mora ao lado porque compartilha o
+/// oráculo (`true_area`) — duplicá-lo daria duas referências para uma pergunta.
+#[path = "ink_drop_tests.rs"]
+mod ink_drop;

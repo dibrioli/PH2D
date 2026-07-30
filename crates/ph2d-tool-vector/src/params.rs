@@ -125,6 +125,11 @@ pub enum DrawMode {
     Node,
     /// Caneta: cria path novo e edita os nós que ela mesma pôs. Sem gizmo.
     Pen,
+    /// **Lápis**: arrasta e a curva sai — a mão livre. O gesto grava amostras, o decimador as
+    /// reduz a nós e o ajuste de Hobby devolve a spline que PASSA por eles
+    /// (`ph2d_vec_edit::Pencil`). É um modo e não uma variante da caneta porque o gesto é o
+    /// oposto: a caneta é uma sequência de cliques DISCRETOS, o lápis é um arrasto contínuo.
+    Pencil,
     /// **Forma**: arrasta para dimensionar a forma ATIVA do catálogo
     /// (`VectorTool::shape_kind`). É UM modo para todas as formas — retângulo, estrela,
     /// seta, balão… — porque a forma é dado, não código. Antes cada forma era um modo, e

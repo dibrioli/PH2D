@@ -309,6 +309,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.mode.connect" => "Connect",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
+        "panel.vector.mode.pencil" => "Pencil",
         "panel.vector.category" => "Category",
         "panel.vector.shape.no_params" => "No parameters",
         // Stroke markers (arrowheads) — the two selectors in the STROKE section.

@@ -489,6 +489,9 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_SELECT => self.mode = DrawMode::Select,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_NODE => self.mode = DrawMode::Node,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
+                self.mode = DrawMode::Pencil;
+            }
             // **Forma** — o 5º pill. Re-arma o gesto na forma ATIVA do catálogo (não a
             // troca): é o caminho de volta ao desenho depois de um desvio pelo Select,
             // e é o pill que ACENDE enquanto se desenha (antes o modo Shape não tinha

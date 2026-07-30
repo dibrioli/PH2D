@@ -2286,6 +2286,34 @@ impl App {
             .on_drag(&mut gfx.vec_scene, p, shape_constraint(self.modifiers))
     }
 
+    /// **O LÁPIS, enquanto a mão anda**: a amostra entra (se andou o passo mínimo) e a curva é
+    /// re-ajustada AO VIVO. No-op sem gesto — a mesma disciplina de early-return do pen.
+    ///
+    /// ⚠️ **Sem snap, de propósito.** A caneta encaixa porque cada clique é uma DECISÃO; encaixar
+    /// cada amostra de um arrasto contínuo quantizaria a mão inteira numa grade, que é o oposto
+    /// de desenhar à mão livre. (O snap a caminho/interseção é a W6 do plano, e a pergunta lá é
+    /// sobre as PONTAS.)
+    fn vec_pencil_drag_move(&mut self, x: f32, y: f32) -> bool {
+        if !self.vector_tool_active() || !self.vec_pencil.is_active() {
+            return false;
+        }
+        let Some(w) = self
+            .gfx
+            .as_ref()
+            .map(|gfx| gfx.camera.screen_to_world((x, y), gfx.surface.size()))
+        else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        self.vec_pencil
+            .on_drag(&mut gfx.vec_scene, [f64::from(w[0]), f64::from(w[1])]);
+        // Consome o move mesmo quando a amostra foi recusada pelo passo mínimo: o gesto É do
+        // lápis enquanto ele está vivo, e deixar cair viraria pan da câmera no meio do traço.
+        true
+    }
+
     /// The clip frame under `(x, y)` if it's inside the overlay waveform — for
     /// starting a selection drag. `None` if the overlay is hidden or the point is
     /// outside the waveform area.
@@ -2535,6 +2563,10 @@ impl App {
         // ADR-0108 Fase 1: shape drag-to-size (Rectangle/Ellipse/Polygon). Same
         // early-return discipline as the pen; no-op unless a shape drag is live.
         if self.vec_shape_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // **O LÁPIS**: a mão livre acumula amostras e re-ajusta a curva. Mesma disciplina.
+        if self.vec_pencil_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Conector (modo Connect): a 2ª ponta segue o cursor e GRUDA na forma sob ele — o
@@ -3355,6 +3387,21 @@ impl App {
                         }
                         return;
                     }
+                    // **Modo Lápis**: a pressão abre um traço de mão livre. O gesto é INTEIRO
+                    // dele (press/move/release), como o Build e o Connect — não há hit-test a
+                    // fazer: um lápis desenha onde você encostou.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Pencil {
+                        let px_to_world = self.vec_px_to_world();
+                        if let Some(w) = self.vec_world_at(self.last_pointer)
+                            && let Some(gfx) = self.gfx.as_mut()
+                        {
+                            // UM passo de undo por traço: begin aqui, commit no release (o
+                            // mesmo par que a ferramenta de forma usa).
+                            self.vec_history.begin(&gfx.vec_scene);
+                            self.vec_pencil.on_press(&mut gfx.vec_scene, w, px_to_world);
+                        }
+                        return;
+                    }
                     // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
                     // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
                     // a linha de um conector não é autorada, é derivada.
@@ -3700,6 +3747,31 @@ impl App {
                         if consumed {
                             return;
                         }
+                    } else if self.vec_pencil.is_active() {
+                        // **O LÁPIS solta.** O traço vira documento (ou desaparece, se o gesto
+                        // foi um clique perdido) e a forma nova fica SELECIONADA — o artista
+                        // acabou de a desenhar, então é nela que ele vai mexer.
+                        //
+                        // ⚠️ O guard é `is_active()`, não "o modo é Pencil": soltar sobre um
+                        // botão do painel enquanto o lápis está armado mas ocioso TEM de cair no
+                        // chrome, senão todo clique de painel morre em silêncio (a lição que o
+                        // `shape_up_consumes` documenta ao lado).
+                        let committed = if let Some(gfx) = self.gfx.as_mut() {
+                            let c = self.vec_pencil.on_release(&mut gfx.vec_scene);
+                            if c {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            } else {
+                                self.vec_history.cancel();
+                            }
+                            c
+                        } else {
+                            false
+                        };
+                        if committed {
+                            let sel = self.vec_pencil.selected();
+                            self.vec_pen.select(sel);
+                        }
+                        return;
                     } else if shape_up_consumes(
                         self.vec_draw_config.mode,
                         self.vec_shape.is_active(),
@@ -3774,6 +3846,15 @@ impl App {
                     // arrasto de uma ALÇA devolve a ponta ao lugar de onde ela saiu (o
                     // vínculo original, intacto): desistir não pode desligar a linha.
                     if self.conn_handle_cancel() || self.connector_cancel() {
+                        return;
+                    }
+                    // **O lápis** desiste pelo direito também: o traço vivo some sem deixar
+                    // rastro e o passo de undo pendente é cancelado.
+                    if self.vec_pencil.is_active() {
+                        if let Some(gfx) = self.gfx.as_mut() {
+                            self.vec_pencil.cancel(&mut gfx.vec_scene);
+                        }
+                        self.vec_history.cancel();
                         return;
                     }
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {

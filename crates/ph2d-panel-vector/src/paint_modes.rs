@@ -63,6 +63,13 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.pen"),
                 DrawMode::Pen,
             ),
+            // **Lápis** — ao lado da caneta de propósito: são os dois gestos de PRODUZIR
+            // geometria à mão, e a vizinhança é o que faz o artista achar o novo.
+            (
+                ids::VECTOR_MODE_PENCIL,
+                tr("panel.vector.mode.pencil"),
+                DrawMode::Pencil,
+            ),
             (
                 ids::VECTOR_MODE_SHAPE,
                 tr("panel.vector.mode.shape"),

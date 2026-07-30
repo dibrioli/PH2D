@@ -731,6 +731,11 @@ pub(crate) struct App {
     /// Polygon). Sibling of `vec_pen`; the shell routes canvas input to one or
     /// the other by `vec_draw_mode` (mirrored from the tool by `vector_bridge`).
     pub(crate) vec_shape: ph2d_vec_edit::ShapeTool,
+    /// **O LÁPIS** — a mão livre (W1 do plano 25). Irmão do `vec_pen`/`vec_shape`: a shell
+    /// converte tela→mundo e ele acumula as amostras, decima e ajusta a spline AO VIVO. O path
+    /// vivo mora na cena desde o press (o padrão da `ShapeTool`), então preview, undo de um passo
+    /// e seleção no release saem do caminho normal.
+    pub(crate) vec_pencil: ph2d_vec_edit::Pencil,
     /// The tool's current draw-mode + shape parameters, mirrored each frame from
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.

@@ -7444,7 +7444,9 @@ dependencies = [
 name = "ph2d-vec-edit"
 version = "0.0.0"
 dependencies = [
+ "glam 0.30.10",
  "ph2d-vec-scene",
+ "ph2d-vector-doc",
 ]
 
 [[package]]

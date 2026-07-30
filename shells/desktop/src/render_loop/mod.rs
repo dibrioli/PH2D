@@ -4487,6 +4487,7 @@ impl crate::App {
                 vec_scene,
                 &mut self.vec_pen,
                 &mut self.vec_shape,
+                &mut self.vec_pencil,
                 &mut self.vec_history,
                 vec_px_to_world,
                 self.vec_grad_selected,

@@ -81,6 +81,10 @@ pub(super) fn dispatch(
     scene: &mut VecScene,
     pen: &mut PenTool,
     shape: &mut ShapeTool,
+    // **O LÁPIS** — o 3º produtor de geometria a receber o Style corrente. Está aqui porque um
+    // traço de mão livre nasce com o mesmo traço/preenchimento que a caneta e a forma: uma 2ª
+    // fonte de estilo faria o mesmo pincel desenhar diferente em modos vizinhos.
+    pencil: &mut ph2d_vec_edit::Pencil,
     history: &mut History,
     // World units per screen pixel (from the camera) — converts the tool's px
     // stroke width into the path's world-space width when restyling.
@@ -181,6 +185,7 @@ pub(super) fn dispatch(
     };
     pen.set_style(style);
     shape.set_style(style);
+    pencil.set_style(style);
 
     // ── 4. Restyle the selected path — colour + width (undoable, one step per
     //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope

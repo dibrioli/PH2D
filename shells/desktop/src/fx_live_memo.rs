@@ -111,6 +111,12 @@ pub(crate) struct Job {
 /// **Porta única:** o `recook` e os gates perguntam AQUI. A alternativa (o laço a resolver em linha)
 /// é o que tornou o defeito invisível — a decisão do memo vivia dentro de uma função que precisa de
 /// GPU, então nenhum teste headless a alcançava.
+// Oito parâmetros porque a chave do memo É a lista do que é DESENHADO (§13 do doc 25): a cena, o
+// mundo ECS, a ponte path↔entidade, as poses, a geometria viva, a silhueta, a câmera e o id. Um
+// struct de agrupamento existiria só para satisfazer o lint, e esconderia justamente a coisa que a
+// wave W0.1 curou — **quem esquecer de passar uma delas volta a ter o defeito**, e a assinatura é
+// o que torna esquecer visível. (Mesmo veredito que o `body_desc` da linha de física tomou.)
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn job_for(
     scene: &VecScene,
     sim: &SimWorld,

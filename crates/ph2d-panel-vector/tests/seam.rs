@@ -125,6 +125,8 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     // allowlist de `event.rs` → o clique nunca virava `ToolPanelEvent`.
     for (id, want) in [
         (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        // O 11º modo: o **LÁPIS** (mão livre). Mesmo caminho, mesma armadilha.
+        (ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
         (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         (ids::VECTOR_MODE_NODE, DrawMode::Node),
         // O 5º pill (reforma da UI): `DrawMode::Shape` não tinha botão nenhum, então a

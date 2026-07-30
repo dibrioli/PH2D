@@ -15,6 +15,14 @@ pub mod shape;
 mod shape_constraint;
 pub use shape::{ShapeConstraint, ShapeTool};
 
+/// **O ajuste de Hobby** — a spline que PASSA pelos nós (o motor do lápis). Port em f64 do
+/// solver que dormia na crate congelada; ver o doc do módulo.
+pub mod hobby;
+
+/// **O LÁPIS** — desenhar à mão livre (captura + decimação + ajuste ao vivo).
+pub mod pencil;
+pub use pencil::Pencil;
+
 /// Pen STYLE + edit HISTORY (sibling module, HR-18 file-LOC cap).
 mod pen_support;
 pub use pen_support::{History, PenStyle};

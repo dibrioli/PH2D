@@ -14,3 +14,11 @@ authors.workspace = true
 # operam sobre o modelo `ph2d-vec-scene`. Puro (world-space cru); o shell converte
 # screen→world e chama estes métodos. Sem vello/kurbo — igual à cena.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[dev-dependencies]
+# ⚠️ **Só o gate de paridade do port de Hobby** (`src/hobby_tests.rs`): o solver original vive na
+# crate vetorial CONGELADA (§6) e o `src/` desta crate NÃO a usa — o port existe justamente para
+# não criar essa aresta em produção. É machete-safe (dev-dep), e é o mesmo padrão das 5 crates-nó
+# no dev-dep da `ph2d-gpu-cook`, que existem só para o gate de paridade CPU×GPU.
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+glam = "0.30"

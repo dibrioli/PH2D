@@ -75,6 +75,7 @@ fn mode_buttons_switch_the_draw_mode() {
     assert_eq!(t.mode(), DrawMode::Select); // default
     for (id, want) in [
         (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        (ids::VECTOR_MODE_PENCIL, DrawMode::Pencil),
         (ids::VECTOR_MODE_NODE, DrawMode::Node),
         (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         // O 5º pill: sem ele, desenhar uma forma deixava a fileira toda apagada.

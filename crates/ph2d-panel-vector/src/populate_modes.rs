@@ -15,6 +15,10 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_SELECT);
     button(store, ids::VECTOR_MODE_NODE);
     button(store, ids::VECTOR_MODE_PEN);
+    // **Lápis** — o modo de mão livre. Sem esta linha o chip PINTA e fica morto sob o mouse
+    // (o `register` é o que o torna hittable/focável), que é o defeito exato que a lista de
+    // pills já pagou duas vezes.
+    button(store, ids::VECTOR_MODE_PENCIL);
     button(store, ids::VECTOR_MODE_SHAPE);
     button(store, ids::VECTOR_MODE_TEXT);
     // Connect (a linha que gruda em duas formas) + Build (Shape Builder).

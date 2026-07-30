@@ -130,5 +130,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::pattern_path_smoke::frame(app, f);
         return true;
     }
+    // A cena do LÁPIS (=40, plano 25 W1) — irmã `pencil_smoke`. Ela dá a REFERÊNCIA na tela e
+    // **não arma o modo**: o gesto que este smoke prova começa no chip do painel.
+    if level == 40 {
+        crate::pencil_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -214,6 +214,35 @@ impl MockPanelHost {
     /// therefore impossible to write, which is why none existed: the add-menu could be
     /// unclickable in the running app with every test in the crate green (Enio, smoke
     /// 2026-07-13). A harness that cannot lay a panel out cannot test what the artist clicks.
+    /// **Run panel `P`'s paint pass with the panel HIDDEN** — the housekeeping half.
+    ///
+    /// ⚠️ Every other paint helper here **forces the panel visible**, for a good reason
+    /// (a paint gated on `panel_visible` would return before drawing anything, and these
+    /// helpers exist to read what it drew). The consequence, measured by the audit of
+    /// 2026-07-29 (§4 D-K): **no gate in this repo could exercise a panel's hidden
+    /// branch** — and that branch is not empty. It is where a panel drops its stale rects,
+    /// its in-flight gestures, its published flags and (now) its live preview channel. A
+    /// panel that forgets one of those keeps driving the app with nothing on screen to
+    /// stop it, which is exactly the defect that produced this method.
+    ///
+    /// Returns nothing, because a hidden panel registers nothing: what a gate asserts
+    /// after calling this is the state it *dropped*, not the rects it *made*.
+    pub fn paint_hidden<P: Panel>(&mut self, state: &mut P::State, viewport: Rect) {
+        self.set_panel_visible(P::ID, false);
+        self.hit_index.clear_for_frame();
+        let layout = HeroLayout::for_viewport(viewport);
+        let mut scene = VectorScene::new();
+        let mut text_system = TextSystem::without_system_fonts();
+        let mut ctx = PaintCtx {
+            host: self,
+            layout: &layout,
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text_system,
+        };
+        P::paint(state, &mut ctx);
+    }
+
     pub fn paint_with_layout<P: Panel>(
         &mut self,
         state: &mut P::State,

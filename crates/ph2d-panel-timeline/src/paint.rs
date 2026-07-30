@@ -62,30 +62,60 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     );
 }
 
+/// **What a hidden panel has to LET GO of.**
+///
+/// ⚠️ This is a list, not a formality, and every line of it is a bug someone shipped: a
+/// panel that keeps a rect keeps eating the wheel; one that keeps a gesture resolves a
+/// marquee nobody is drawing; one that keeps a published flag refuses playback with no
+/// panel on screen to say why; and one that keeps its live preview **drives the artist's
+/// object forever** (auditoria 2026-07-29, §4 D-K).
+///
+/// Split out of `paint` when the preview clear pushed it past the 200-LOC cap. The cut is
+/// by responsibility — *what the panel does when it is not on screen* — and it also gives
+/// the list a name to be found by, which is what the next item to be forgotten needs.
+fn release_everything_a_hidden_panel_must_not_hold(
+    state: &mut TimelinePanelState,
+    ctx: &mut PaintCtx,
+) {
+    // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
+    // (and `dispatch_wheel` stops zooming its time axis) once it is hidden.
+    ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
+    ctx.host.store_mut().clear_timeline_canvas();
+    // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
+    // marquee to resolve (or repaint) when it comes back — nor an undo
+    // bracket open, which would swallow the next atomic edit.
+    state::drop_row_gestures(state);
+    // A hidden panel is not editing keys: the timeline runs on its normal
+    // (timeline) clock, not a soloed clip one.
+    state::publish_keys_mode(false);
+    // ...and it is not showing the Containers list either — a stale `true`
+    // here would keep refusing playback with no panel on screen to say why.
+    state::publish_containers_list(false);
+    // A selection made with the panel CLOSED does not queue a tab yank for
+    // whenever it reopens — drop the request instead of banking it.
+    let _ = state::take_keys_tab_request();
+    // **And nothing previews.** ⚠️ The clear in `expr_modal_paint` runs at the END of the
+    // VISIBLE path, so hiding the panel used to leave the live formula installed, driving
+    // the object FOREVER, animating (measured: `x` 100 → 110 → … → 160) with
+    // `has_pending_restore() == false`, so the pose was never handed back and no UI on
+    // screen could stop it. The card's own painter names exactly this failure — *"the
+    // panel can stop painting the card by routes that never run `cancel` (the panel
+    // hidden, …)"* — and could not prevent it from where it stands.
+    //
+    // Here, not in the shell: the panel OWNS the card, so the panel is what knows the card
+    // is gone. The shell installing the channel and the panel clearing it are one pipe
+    // with one writer at each end, not two answers.
+    state::set_expr_live(None);
+    // ...nor is it inside a container. The trail survives (it comes back where it was),
+    // but a hidden panel must not leave the shell driving a container's interior.
+    state::publish_scene_root(true);
+    set_last_content_h(0.0);
+    set_last_visible_h(0.0);
+}
+
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
-        // Symmetric stale-rect cleanup so `panel_at` stops returning the panel
-        // (and `dispatch_wheel` stops zooming its time axis) once it is hidden.
-        ctx.host.store_mut().clear_panel_rect(ids::TIMELINE_PANEL);
-        ctx.host.store_mut().clear_timeline_canvas();
-        // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
-        // marquee to resolve (or repaint) when it comes back — nor an undo
-        // bracket open, which would swallow the next atomic edit.
-        state::drop_row_gestures(state);
-        // A hidden panel is not editing keys: the timeline runs on its normal
-        // (timeline) clock, not a soloed clip one.
-        state::publish_keys_mode(false);
-        // ...and it is not showing the Containers list either — a stale `true`
-        // here would keep refusing playback with no panel on screen to say why.
-        state::publish_containers_list(false);
-        // A selection made with the panel CLOSED does not queue a tab yank for
-        // whenever it reopens — drop the request instead of banking it.
-        let _ = state::take_keys_tab_request();
-        // ...nor is it inside a container. The trail survives (it comes back where it was),
-        // but a hidden panel must not leave the shell driving a container's interior.
-        state::publish_scene_root(true);
-        set_last_content_h(0.0);
-        set_last_visible_h(0.0);
+        release_everything_a_hidden_panel_must_not_hold(state, ctx);
         return;
     }
 

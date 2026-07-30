@@ -328,3 +328,150 @@ fn the_area_law_can_claim_a_corner_the_profile_cannot_sample_and_this_is_its_num
         "⭐ O RESIDUO DA QUINA FOI CORRIGIDO — atualize a nota da §22.10 do doc 12 e este gate."
     );
 }
+
+/// 📏 **SONDA — a borda macia ENDURECE quando o traço passa por cima de si mesmo?**
+///
+/// ⚠️ **É a pergunta do item 5 da fila (a terceira lei, o `Soft` do Krita), feita ao NOSSO motor
+/// antes de portar lei nenhuma.** O doc 12 §2.4 mediu o defeito no Painter, cujo depósito é um
+/// PRODUTO por-dab; o percurso não tem dabs — ele é `α = 1 − exp(−τ)` com `τ` integral. Mas a
+/// álgebra é a mesma família: uma TAXA rumo a um teto. Se `τ` dobra a cada passada, a faixa em que
+/// `α` sobe de 10% a 90% encolhe, e isso É o endurecimento.
+///
+/// A fixture é o gesto que o defeito exige — ir e voltar sobre a MESMA linha dentro de UM traço —,
+/// com o pincel mais macio da faixa. Mede a largura da banda perpendicular.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_whether_a_soft_edge_hardens_within_one_stroke() {
+    let (w, h) = (128.0_f32, 64.0_f32);
+    let sc = screen(w, h);
+    println!("  passadas | dureza |  alfa max |  banda HOJE  |  alfa max  |  banda com a 3a LEI");
+    for hardness in [0.0_f32, 0.2, 0.5] {
+        for passadas in [1_u32, 3, 15] {
+            // Vai-e-volta sobre a MESMA linha, dentro de um traço só.
+            let mut pts: Vec<[f32; 2]> = Vec::new();
+            for k in 0..passadas {
+                let (a, b) = if k % 2 == 0 {
+                    (24.0, 104.0)
+                } else {
+                    (104.0, 24.0)
+                };
+                if k == 0 {
+                    pts.push([a, 32.0]);
+                }
+                pts.push([b, 32.0]);
+            }
+            let mut g = art(&[(&pts, 18.0, false, BLACK)]);
+            g.strokes[0].hardness = hardness;
+            let bins = bin_segments(&g, &sc, 16);
+            // Perfil perpendicular no MEIO do traço (longe das tampas).
+            let coluna: Vec<f32> = (0..h as u32)
+                .map(|y| {
+                    let p = [64.5_f32, y as f32 + 0.5];
+                    crate::binning::walk_pixel(&bins, &g, &sc, p)[3]
+                })
+                .collect();
+            let amax = coluna.iter().copied().fold(0.0_f32, f32::max);
+            // A banda: distância entre os cruzamentos de 10% e 90% do máximo, num lado só.
+            let cruza = |alvo: f32| -> f32 {
+                for y in 0..coluna.len() - 1 {
+                    let (a, b) = (coluna[y], coluna[y + 1]);
+                    if a < alvo && b >= alvo {
+                        return y as f32 + (alvo - a) / (b - a);
+                    }
+                }
+                0.0
+            };
+            let banda = cruza(0.9 * amax) - cruza(0.1 * amax);
+            // ⚠️ **O que a TERCEIRA LEI daria aqui, computado na sonda e NÃO no produto.** O `Soft`
+            // limita cada pixel pela cobertura do PRÓPRIO dab ali; no contínuo isso é o perfil
+            // avaliado na distância ao caminho — `dn = dist/r`, com `r = dist − sd`. É um campo
+            // LISO, então a ressalva do doc 12 §2.4 (*"o ponto fixo é o `max` que deu beading"*)
+            // **não alcança o percurso**: o beading era estrutura por-dab ficando à vista, e aqui
+            // não há dabs.
+            let teto: Vec<f32> = (0..h as u32)
+                .map(|y| {
+                    let p = [64.5_f32, y as f32 + 0.5];
+                    let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                        return 0.0;
+                    };
+                    let run = bins.segs_of(ti);
+                    if run.is_empty() {
+                        return 0.0;
+                    }
+                    let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+                    let Some(sl) = stroke_silhouette(run, &g, &sc, style.tip, p) else {
+                        return 0.0;
+                    };
+                    let r = (sl.dist - sl.sd).max(1e-4);
+                    let w = crate::tau::dab_weight(sl.dist / r, hardness);
+                    let cov = stroke_deposit(run, &g, &sc, p).map_or(0.0, |d| d.cover);
+                    cov.min(w * sl.planes.coverage())
+                })
+                .collect();
+            let tmax = teto.iter().copied().fold(0.0_f32, f32::max);
+            let cruza_t = |alvo: f32| -> f32 {
+                for y in 0..teto.len() - 1 {
+                    let (a, b) = (teto[y], teto[y + 1]);
+                    if a < alvo && b >= alvo {
+                        return y as f32 + (alvo - a) / (b - a);
+                    }
+                }
+                0.0
+            };
+            let banda_t = cruza_t(0.9 * tmax) - cruza_t(0.1 * tmax);
+            println!(
+                "  {passadas:8} | {hardness:6} |  {amax:.4}   |  {banda:.3}       |  {tmax:.4}  \
+                 |  {banda_t:.3}"
+            );
+        }
+    }
+}
+
+/// ⭐ **A BORDA MACIA ENDURECE SOB AUTO-SOBREPOSIÇÃO, E ESTE É O NÚMERO** — o item 5 da fila, medido
+/// no percurso.
+///
+/// ⚠️ **Descrição, não veredito.** Acumular ao passar por cima é o que tinta faz, e é o que o
+/// build-up do GIMP entrega; a terceira lei (`Soft` do Krita) é um MODO, não um conserto. O gate
+/// existe para que o número não precise ser re-derivado quando a decisão de produto vier.
+///
+/// A álgebra do percurso é a mesma família: `α = 1 − exp(−τ)` é uma TAXA rumo a um teto, então
+/// dobrar `τ` a cada passada encolhe a faixa em que `α` sobe de 10% a 90%.
+#[test]
+fn a_soft_edge_hardens_when_the_stroke_crosses_itself_and_this_is_its_number() {
+    let (w, h) = (128.0_f32, 64.0_f32);
+    let sc = screen(w, h);
+    let banda = |passadas: u32| -> f32 {
+        let mut pts: Vec<[f32; 2]> = vec![[24.0, 32.0]];
+        for k in 0..passadas {
+            pts.push([if k % 2 == 0 { 104.0 } else { 24.0 }, 32.0]);
+        }
+        let mut g = art(&[(&pts, 18.0, false, BLACK)]);
+        g.strokes[0].hardness = 0.0;
+        let bins = bin_segments(&g, &sc, 16);
+        let col: Vec<f32> = (0..h as u32)
+            .map(|y| crate::binning::walk_pixel(&bins, &g, &sc, [64.5, y as f32 + 0.5])[3])
+            .collect();
+        let amax = col.iter().copied().fold(0.0_f32, f32::max);
+        let cruza = |alvo: f32| -> f32 {
+            for y in 0..col.len() - 1 {
+                if col[y] < alvo && col[y + 1] >= alvo {
+                    return y as f32 + (alvo - col[y]) / (col[y + 1] - col[y]);
+                }
+            }
+            0.0
+        };
+        cruza(0.9 * amax) - cruza(0.1 * amax)
+    };
+    let (uma, quinze) = (banda(1), banda(15));
+    // A premissa: com o pincel mais macio a borda de UMA passada é larga. Sem isto o gate mede a
+    // razão entre dois números duros e não diz nada sobre maciez.
+    assert!(
+        uma > 3.0,
+        "a fixture perdeu a maciez: banda de uma passada {uma:.3} px"
+    );
+    assert!(
+        quinze < uma * 0.6,
+        "⭐ O ENDURECIMENTO MUDOU — uma passada {uma:.3} px, quinze {quinze:.3}. Se a terceira lei \
+         entrou, atualize a nota da §22.11 do doc 12; se nao, algo mexeu na lei da tinta."
+    );
+}

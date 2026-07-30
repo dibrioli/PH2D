@@ -1867,7 +1867,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 3a | ⚠️ **NÃO era saturação — o percurso DERRUBAVA tinta em tampa e junta** | ✅ **CURADO** (§22.10): a grade resolve a JANELA, não o segmento. Tampa e junta vão a **zero px derrubados**, e o miolo **não se move** (0 px acima de 1/255 em h=0,4 e 0,7). |
 | 3c | o resíduo de QUINA que a lei de área expôs | ABERTO e pinado — **não é regressão** (§22.10): a área enxerga uma quina do pixel com `sd > ½`, onde o `p_eval` 1-D não tem ponto para amostrar. 13 px de 1115, ≤ 14,94/255. |
 | 4 | ~~**joins & caps**~~ | ⛔ **A PREMISSA FOI REFUTADA POR MEDIÇÃO (§22.9).** O `−64` saía do RASTERIZADOR (a escape hatch, não o default desde `9a4bdd07b`), e no percurso ele decompõe em duas causas conhecidas — o termo de fronteira do `end_dab` (correto: cinco traços têm cinco começos) e `over` contra união exata. **Nenhuma é geometria de junta.** Sobra uma pergunta de PRODUTO, não de correção. |
-| 5 | **a terceira lei** (`Soft` do Krita, §2.4) | acúmulo DENTRO de um traço; medir o ponto fixo antes de decidir (a armadilha do `max`/beading está no §2.4) |
+| 5 | **a terceira lei** (`Soft` do Krita, §2.4) | ⚠️ **MEDIDA (§22.11): funciona perfeitamente, e a ressalva do §2.4 NÃO alcança o percurso** — sem dabs não há beading. Mas ela muda a borda de UMA passada em +69%, então é **decisão de LOOK, do Enio**, não de engenharia. |
 
 A **antiderivada** (§21.5) cai para o fim: ela é *perf*, e sob (2) deixa de ser necessária.
 
@@ -2295,3 +2295,64 @@ voltar a grade para o segmento **sangra**; trocar `ceil` por `floor` na contagem
 **sobrevive — e é honesto**: ela muda a resolução em ≤1 amostra, que é exatamente o que o gate
 `the_ink_is_a_fact_of_the_path_not_of_how_finely_it_was_sampled` prova que não muda a resposta (e
 ele passa sob a mutação, o que é evidência, não buraco).
+
+### 22.11 A TERCEIRA LEI, medida no percurso — ela funciona, e o preço é a borda de UMA passada
+
+O item 5 pedia *"medir o ponto fixo antes de decidir"*. Medido, e ele responde três coisas.
+
+#### (1) O percurso TEM a doença
+
+O §2.4 mediu o endurecimento no Painter, cujo depósito é um **produto por-dab**. O percurso não tem
+dabs — mas a álgebra é da mesma família (`α = 1 − exp(−τ)` é uma **taxa rumo a um teto**), e dobrar
+`τ` a cada passada encolhe a faixa em que `α` sobe de 10% a 90%. Vai-e-volta sobre a mesma linha,
+dentro de **um** traço, pincel de dureza 0:
+
+| passadas | banda 10-90% |
+|---|---|
+| 1 | **3,248 px** |
+| 3 | 1,962 |
+| 15 | **1,436 px** |
+
+**2,26× de endurecimento** — o Painter mediu 2,56× (3,53 → 1,38) pelo outro mecanismo.
+
+#### (2) ⚠️ A RESSALVA DO §2.4 NÃO ALCANÇA O PERCURSO
+
+O §2.4 avisou: *"o ponto fixo dessa recorrência é `max_k(w_k)` — o mesmo `max` que o Painter já
+reprovou por beading"*. **Isso era verdade num buffer de dabs e é falso aqui.** O beading era
+*estrutura por-dab ficando à vista* — uma fileira de discos. No contínuo, `max_s w(s)` sobre um
+caminho suave **é o perfil avaliado na distância ao caminho**: um campo LISO, sem período, sem
+discos. Não há o que ficar à vista.
+
+⇒ o risco principal que mantinha o item 5 em espera **não existe neste motor**.
+
+#### (3) E ela funciona — perfeitamente, o que é o problema
+
+Computando o teto na sonda (`min(cover, w(dn_min)·edge)`, com `dn = dist/r` e `r = dist − sd`, os
+dois já disponíveis na silhueta):
+
+| dureza | banda HOJE (1 · 3 · 15) | banda com a 3ª LEI (1 · 3 · 15) |
+|---|---|---|
+| 0,0 | 3,248 · 1,962 · **1,436** | **5,485 · 5,485 · 5,485** |
+| 0,2 | 2,630 · 1,738 · **1,536** | **4,481 · 4,481 · 4,481** |
+| 0,5 | 1,785 · 1,369 · **1,583** | **2,916 · 2,916 · 2,916** |
+
+**A banda fica IDÊNTICA em 1, 3 e 15 passadas** — não *quase*: o mesmo número. É literalmente o que
+o Krita promete (*"soft edges remain soft during painting"*), e no contínuo ele entrega exato.
+
+⚠️ **E é a mesma coluna que traz o preço: a borda de UMA passada vai de 3,248 para 5,485 px, +69%.**
+A terceira lei não corrige só a sobreposição — ela redefine a borda de **todo traço macio**, porque
+diz que a borda é o perfil do bico, não o resultado da varredura.
+
+#### A decisão é de LOOK, e é do Enio
+
+- **ganho:** acúmulo dentro do traço desaparece por completo, e o beading que assombrava a ideia
+  **não pode acontecer aqui**;
+- **preço:** todo traço macio fica com a borda ~69% mais larga — a aparência aprovada muda;
+- **não é conserto, é MODO:** acumular ao passar por cima é o que tinta faz, e é o que o build-up do
+  GIMP entrega. O Krita ship as duas justamente porque é gosto.
+
+**Nada construído** — um flag de lei sem alguém que o autore seria botão morto, e a escolha entre
+duas aparências corretas não é minha. O número do endurecimento fica pinado em
+`a_soft_edge_hardens_when_the_stroke_crosses_itself_and_this_is_its_number` (descrição, não
+veredito) e a receita da 3ª lei está na sonda irmã, pronta para virar produto no dia em que a
+resposta vier.

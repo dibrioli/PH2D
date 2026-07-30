@@ -53,7 +53,7 @@ pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
 };
-pub use joint::{JointKind, LengthField, MotorMode, PhysicsJoint};
+pub use joint::{JointKind, JointWorldAnchor, LengthField, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use ph2d_physics::world::rope_route;
@@ -108,6 +108,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
     reg.register::<AreaFalloff>("ph2d::physics::AreaFalloff");
     reg.register::<WestonAxle>("ph2d::physics::WestonAxle");
+    reg.register::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
 }
 
 #[cfg(test)]
@@ -121,7 +122,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 23);
+        assert_eq!(reg.len(), 24);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());

@@ -505,6 +505,31 @@ impl PhysicsWorld {
         }
     }
 
+    /// **Um ponto fixo do MUNDO com que um joint possa se prender** (W-JointWorld).
+    ///
+    /// rapier **não tem âncora de mundo**: todo joint é corpo↔corpo, e a resposta
+    /// deste repo já era um corpo `fixed` no ponto — é o que a
+    /// [`Self::grab_body_with`] faz desde a W-Grab para segurar um objeto com o
+    /// mouse. Esta porta dá a esse mesmo corpo um ciclo de vida **autorado** em
+    /// vez de um por-gesto.
+    ///
+    /// ⚠️ **Entra direto na arena, sem `insert_body`** — a mesma razão da âncora
+    /// da mão: o `insert_body` estampa os defaults de mundo (damping, sono), que
+    /// não querem dizer nada para um corpo que **nunca é integrado**, e esta
+    /// âncora não tem entidade, então nada a lê de volta nem a desenha.
+    ///
+    /// Some pela porta de sempre — [`Self::remove_body`] —, que já limpa os
+    /// joints presos a ela. Não há door de remoção própria de propósito: duas
+    /// portas para *"tire este corpo do mundo"* divergem na primeira que alguém
+    /// esquecer de atualizar.
+    pub fn spawn_world_anchor(&mut self, point: [f32; 2]) -> RigidBodyHandle {
+        self.bodies.insert(
+            RigidBodyBuilder::fixed()
+                .translation(Vector2::new(point[0], point[1]))
+                .build(),
+        )
+    }
+
     /// Remove a body and its attached colliders (used when the ECS entity
     /// carrying it is despawned). No-op if the handle is already gone.
     pub fn remove_body(&mut self, handle: RigidBodyHandle) {

@@ -96,7 +96,7 @@ fn the_ghost_draws_the_limit_pose_without_moving_the_body() {
         ))
         .id();
     let mut v = view(JointKind::Pin);
-    v.body_b = arm;
+    v.body_b = Some(arm);
     v.centre_b = [1.0, 0.0];
     let views = [v];
     let before = *sim.world().get::<Transform>(arm).expect("arm");

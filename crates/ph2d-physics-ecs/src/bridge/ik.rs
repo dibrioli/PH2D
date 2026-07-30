@@ -142,7 +142,19 @@ impl PhysicsBridge {
             if !is_rigid_link(jr.rest.kind) {
                 continue;
             }
-            let (a, b) = jr.entities;
+            // ⚠️ Um joint preso ao MUNDO (W-JointWorld) não contribui ARESTA —
+            // é a mesma lei do rig walk (`joint_group.rs`): a adjacência é entre
+            // dois CORPOS, e o cenário não é um deles. O corpo preso continua na
+            // árvore pelos outros joints dele; o que ele não faz é a pose andar
+            // para dentro da parede.
+            //
+            // ⚠️ E isto NÃO é o mesmo que dizer que um pino de mundo é inútil
+            // para posar: ele é a raiz natural de uma cadeia, e a `IkPlan` já
+            // tem política de raiz própria. Ensiná-la a preferir um corpo
+            // ancorado é wave própria, nomeada no plano 02 §9.3.
+            let (a, Some(b)) = jr.entities else {
+                continue;
+            };
             adj.entry(a).or_default().push((b, je));
             adj.entry(b).or_default().push((a, je));
         }
@@ -248,7 +260,7 @@ impl PhysicsBridge {
             // (corpo A, corpo B) do joint AUTORADO, e a árvore precisa delas na
             // ordem (pai, filho). Quando o BFS chega pelo lado B, as duas trocam
             // — e trocá-las é o bug que pendura o elo pela ponta errada.
-            let desc = if jr.entities == (parent, child) {
+            let desc = if jr.entities == (parent, Some(child)) {
                 desc
             } else {
                 swap_anchors(desc)

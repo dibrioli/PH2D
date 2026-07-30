@@ -37,7 +37,7 @@ fn view(load: f32, peak: f32, cap: f32, broken: bool) -> JointView {
         anchor_b: [0.0, -1.0],
         centre_a: [0.0, 0.0],
         centre_b: [0.0, -1.0],
-        body_b: ph2d_ecs::Entity::from_bits(3),
+        body_b: Some(ph2d_ecs::Entity::from_bits(3)),
         angle_a: 0.0,
         angle_b: 0.0,
         limits: None,

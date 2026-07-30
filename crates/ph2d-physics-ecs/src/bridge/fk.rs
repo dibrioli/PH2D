@@ -185,7 +185,7 @@ impl PhysicsBridge {
         // AUTORADO, e a coordenada é medida na ordem (pai, filho). Alcançar o
         // joint pelo lado B troca as duas — a mesma correção que a árvore de IK
         // faz, pela mesma porta.
-        let from_a = jr.entities == (parent, node);
+        let from_a = jr.entities == (parent, Some(node));
         let desc = if from_a {
             jr.rest
         } else {

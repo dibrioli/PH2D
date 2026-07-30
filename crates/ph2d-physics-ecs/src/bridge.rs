@@ -24,6 +24,7 @@ mod hold;
 pub mod ik;
 mod inspect;
 pub mod joint_break;
+mod joint_respawn;
 pub mod joints;
 mod kinematic;
 mod readback;

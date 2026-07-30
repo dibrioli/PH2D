@@ -520,9 +520,57 @@ impl PhysicsJoint {
     pub fn names_two_bodies(&self) -> bool {
         self.body_a != 0 && self.body_b != 0 && self.body_a != self.body_b
     }
+
+    /// **Does this joint have BOTH ends?** — the question the reconcile and the
+    /// Inspector actually have, now that one of the ends can be the WORLD.
+    ///
+    /// `world_anchored` is the presence of [`JointWorldAnchor`] on the same
+    /// entity, which only the ECS can answer; the component cannot see its own
+    /// siblings. Pass it and this is the single door — the alternative is each
+    /// caller writing `if marker { a != 0 } else { names_two_bodies() }`, and
+    /// the third one writes it slightly differently.
+    ///
+    /// ⚠️ **[`Self::names_two_bodies`] is NOT deprecated by this** — it answers
+    /// a *different* question that one caller genuinely has: the rig walk asks
+    /// *"is there an EDGE between two bodies here?"*, and a joint to the world
+    /// has none. Collapsing the two would make a drag walk into the scenery.
+    pub fn is_anchored(&self, world_anchored: bool) -> bool {
+        if world_anchored {
+            self.body_a != 0
+        } else {
+            self.names_two_bodies()
+        }
+    }
 }
 
 impl SimComponent for PhysicsJoint {}
+
+/// **O lado B deste joint é o MUNDO** — um ponto fixo do cenário, não um corpo.
+///
+/// A dobradiça na parede, o pêndulo no teto, a mola presa no chão. Sem isto, o
+/// artista **inventa um corpo estático** só para servir de âncora: um objeto a
+/// mais para nomear, achar na Hierarquia e mover por acidente.
+///
+/// **Presença é o booleano** — o idioma de [`crate::Ccd`] / [`crate::LockRotation`]
+/// / [`crate::OneWayPlatform`], e o motivo é o custo: um componente novo cunha
+/// blob-key própria e **não move `PROJECT_SCHEMA`**, enquanto um campo apendado
+/// ao [`PhysicsJoint`] o moveria (postcard é posicional) — e um bump **recusa
+/// todo projeto já salvo**.
+///
+/// ⚠️ **Não é o mesmo que `body_b == 0`, e a diferença não é estilo.** Esse
+/// estado já significa **meio-autorado** — *o artista criou o joint e ainda não
+/// escolheu o segundo corpo* — e o reconcile o trata explicitamente. Se ele
+/// passasse a significar *"preso ao mundo"*, todo joint recém-criado pinaria no
+/// cenário no intervalo entre o clique e a escolha de B, em silêncio.
+///
+/// ⚠️ **O PONTO é o `Transform` da própria entidade-joint**, não um campo aqui.
+/// Ele já é a âncora autorada, já tem o dot âmbar arrastável (W-JointAnchor), já
+/// tem as rows Position e já viaja no save. Guardar o ponto aqui seria um segundo
+/// lugar para o mesmo fato — e é por isso que este componente é vazio.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JointWorldAnchor;
+
+impl SimComponent for JointWorldAnchor {}
 
 #[cfg(test)]
 mod tests {

@@ -65,7 +65,27 @@ pub(super) struct JointRef {
     /// And *whose* bodies they are. A rewind hands out fresh handles, so the
     /// only durable way back to them is the entity — the same reason nothing
     /// else in this bridge remembers a handle across a rebuild.
-    pub(super) entities: (Entity, Entity),
+    ///
+    /// ⚠️ **O segundo lado é `Option` porque ele pode ser o MUNDO** (W-JointWorld,
+    /// [`crate::JointWorldAnchor`]): um pino de parede não tem segunda entidade.
+    /// O tipo é o que torna isso **impossível de esquecer** — a alternativa era
+    /// um `Entity` sentinela, e todo leitor teria de lembrar de não acreditar
+    /// nele. Onde é `None`, o corpo B é a âncora de [`Self::world_anchor`].
+    pub(super) entities: (Entity, Option<Entity>),
+    /// **O ponto de mundo com que este joint se prende**, quando o lado B é o
+    /// cenário. `None` num joint corpo↔corpo.
+    ///
+    /// É o `Transform` da entidade-joint, copiado no spawn — o mesmo papel que
+    /// o `rest` faz para os parâmetros: um rewind reconstrói a âncora a partir
+    /// daqui, no MESMO chamado.
+    ///
+    /// ⚠️ **A lição do Weston mora nesta linha:** o `rebuild_from_rest` TROCA o
+    /// `PhysicsWorld`, então a âncora do mundo velho morre com ele; sem este
+    /// campo o respawn não teria de onde recriá-la e *um scrub replayaria sem o
+    /// pino*, exatamente como a tabela de polias sumia. Calado num Reset
+    /// (`target == 0` replaya zero passos) — por isso o gate scrubba para um
+    /// tique do MEIO.
+    pub(super) world_anchor: Option<[f32; 2]>,
 }
 
 /// The two WORLD points this joint attaches at. **The single place the anchor
@@ -557,7 +577,8 @@ impl PhysicsBridge {
                         handle,
                         rest: desc,
                         bodies,
-                        entities,
+                        entities: (entities.0, Some(entities.1)),
+                        world_anchor: None,
                     },
                 );
             }
@@ -644,29 +665,5 @@ impl PhysicsBridge {
         }
         scratch.clear();
         self.joints_to_sync = scratch;
-    }
-
-    /// Re-attach every joint after the bodies have been rebuilt from their rest
-    /// descriptions (`rebuild_from_rest`, which has just handed out fresh body
-    /// handles). The joints have to come back **in the same call**, not on the
-    /// next frame: the rewind replays the owed steps immediately, and a replay
-    /// without the joints is a different simulation.
-    pub(super) fn respawn_joints_from_rest(&mut self) {
-        let existing: Vec<(Entity, JointRef)> = self.joints.iter().map(|(&e, &j)| (e, j)).collect();
-        self.joints.clear();
-        for (e, mut j) in existing {
-            // Copy the handles out before touching `self.world` — and read them
-            // from `self.bodies`, which the rebuild has already refreshed.
-            let a = self.bodies.get(&j.entities.0).map(|r| r.handle);
-            let b = self.bodies.get(&j.entities.1).map(|r| r.handle);
-            let (Some(a), Some(b)) = (a, b) else {
-                continue;
-            };
-            j.bodies = (a, b);
-            if let Some(handle) = self.world.spawn_joint(a, b, j.rest) {
-                j.handle = handle;
-                self.joints.insert(e, j);
-            }
-        }
     }
 }

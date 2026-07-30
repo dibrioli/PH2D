@@ -160,7 +160,7 @@ fn a_rails_ghost_slides_along_the_axis_instead_of_turning() {
     let mut v = view(JointKind::Slider);
     v.axis = Some([0.0, 1.0]);
     v.limits = Some([-0.5, 0.9]);
-    v.body_b = car;
+    v.body_b = Some(car);
     v.anchor_a = [0.0, 0.0];
     v.anchor_b = [0.0, 0.0];
     v.centre_b = [0.0, 0.0];

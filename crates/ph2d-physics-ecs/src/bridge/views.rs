@@ -56,7 +56,10 @@ pub struct JointView {
     /// A view já carrega onde B está e como está virado; esta é a mesma
     /// pergunta — *de quem é essa pose?* — e sem ela o desenhista teria de
     /// re-resolver o nome, que é a segunda resposta que esta linha evita.
-    pub body_b: Entity,
+    /// ⚠️ **`None` quando o lado B é o MUNDO** (W-JointWorld): não há silhueta
+    /// de B para o fantasma desenhar, e o desenhista descobre isso pelo TIPO em
+    /// vez de por uma entidade sentinela que ele teria de reconhecer.
+    pub body_b: Option<Entity>,
     /// Rotação viva do corpo A (rad). O arco de limite é desenhado no frame
     /// DELE — o limite do rapier é sobre o ângulo RELATIVO `θb − θa`.
     pub angle_a: f32,
@@ -251,7 +254,7 @@ impl PhysicsBridge {
                 anchor_b: PhysicsWorld::world_from_local_at_pose(pb, r.desc.local_b),
                 centre_a: [pose_a.translation.x, pose_a.translation.y],
                 centre_b: [pose_b.translation.x, pose_b.translation.y],
-                body_b: r.entities.1,
+                body_b: Some(r.entities.1),
                 angle_a: pose_a.rotation.angle(),
                 angle_b: pose_b.rotation.angle(),
                 limits: None,

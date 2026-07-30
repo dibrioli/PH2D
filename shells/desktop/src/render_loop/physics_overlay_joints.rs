@@ -311,9 +311,13 @@ pub(super) fn limit_ghost(
     let (joint, limit) = posed?;
     let v = views.iter().find(|v| v.entity == joint)?;
     let world = sim.world();
-    let col = world.get::<ph2d_physics_ecs::Collider>(v.body_b)?;
+    // ⚠️ Um joint preso ao MUNDO não tem silhueta de B para o fantasma mostrar
+    // (W-JointWorld) — e o `?` já é a resposta certa, porque este passe inteiro
+    // é *"desenhe onde B ESTARIA"*. Sem corpo B não há pergunta.
+    let body_b = v.body_b?;
+    let col = world.get::<ph2d_physics_ecs::Collider>(body_b)?;
     let mut chain = Vec::new();
-    let t = ph2d_ecs::world_transform_into(world, v.body_b, &mut chain)?;
+    let t = ph2d_ecs::world_transform_into(world, body_b, &mut chain)?;
     let live = [t.translation.x, t.translation.y];
 
     // Onde o corpo estaria, e virado como — uma resposta por tipo de movimento.

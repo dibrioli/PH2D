@@ -99,9 +99,13 @@ impl PhysicsBridge {
     ) -> Option<(&BodyRef, PhysicsJoint)> {
         let jr = self.joints.get(&joint)?;
         let component = *sim.world().get::<PhysicsJoint>(joint)?;
+        // ⚠️ O lado B pode ser o MUNDO (W-JointWorld), e aí não há `BodyRef` a
+        // devolver: a âncora de mundo não é um corpo da cena, é tralha na arena.
+        // O `?` é a resposta certa — quem pergunta pelo lado B de um pino de
+        // parede está perguntando por um corpo que não existe.
         let entity = match side {
             JointSide::A => jr.entities.0,
-            JointSide::B => jr.entities.1,
+            JointSide::B => jr.entities.1?,
         };
         Some((self.bodies.get(&entity)?, component))
     }

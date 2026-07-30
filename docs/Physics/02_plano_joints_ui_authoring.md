@@ -341,5 +341,69 @@ Não é a ordem da lista; é a que sai das dependências **medidas** acima.
 
 ---
 
+## §9 — W-JointWorld: a metade AUTORÁVEL do Pin-to-world (2026-07-30)
+
+**O que é:** um joint cujo lado B é um **PONTO DE MUNDO**, não um corpo. A dobradiça na
+parede, o pêndulo no teto, a mola presa no cenário.
+
+**O que ele remove:** hoje, para prender algo ao mundo, o artista **inventa um corpo
+estático** só para servir de âncora — um objeto a mais para nomear, achar na Hierarquia e
+mover por acidente. O mundo não é um objeto da cena, e não devia precisar de um.
+
+### §9.1 — O que a medição mudou nesta nota, antes de uma linha de código
+
+⚠️ **O primitivo JÁ EXISTE.** A nota dizia que a metade autorável *"não é mecânica"*, e a
+parte cara — *como se prende um corpo a um ponto de mundo em rapier?* — está construída e
+medida desde a **W-Grab**: `grab_body_with` insere um `RigidBodyBuilder::fixed()` no ponto e
+jointa contra ele. rapier **não tem âncora de mundo**; todo joint é corpo↔corpo, e a resposta
+do repo já é um corpo fixo. Esta wave dá a esse corpo um **ciclo de vida autorado** em vez de
+um por-gesto.
+
+⚠️ **São DOIS sítios, não os quatro que a nota lista.** Medido:
+
+| sítio da nota | o que a medição diz |
+|---|---|
+| reconcile (`bridge/joints.rs:266`) | ✅ muda — é onde a âncora nasce |
+| §12 (`inspector_joint.rs:158`) | ✅ muda — `bound` tem de aceitar "A + mundo" |
+| **rig walk** (`joint_group.rs:152`) | ⛔ **JÁ ESTÁ CERTO, e não é acidente:** ele contribui uma **ARESTA entre dois corpos**, e um pino no mundo não tem segundo corpo ⇒ nenhuma aresta ⇒ **o mundo é FRONTEIRA por construção**, exatamente como Static/Kinematic já são. Mexer aqui seria fazer o rig andar para dentro do cenário |
+| **overlay** | ⛔ **não gateia nada** — `names_two_bodies` não aparece no overlay (grep). Ele desenha do `desc` da ponte, e um joint que a ponte não construiu simplesmente não tem `desc` |
+
+### §9.2 — As três decisões
+
+**D1 — MARCADOR, nunca overload de `body_b == 0`.** Esse estado **já significa
+meio-autorado** (*"o artista tem um objeto joint e ainda não escolheu o segundo corpo"*) e o
+reconcile o trata explicitamente. Reinterpretá-lo faria **todo joint recém-criado pinar no
+mundo** no frame entre o clique e a escolha de B — uma mudança de comportamento silenciosa
+num caminho que todo artista percorre. Fica um componente **marcador** (`JointWorldAnchor`,
+presença = o booleano), blob-key própria ⇒ **zero bump de `PROJECT_SCHEMA`** — o idioma que
+esta linha já usou seis vezes (`Ccd`, `LockRotation`, `LockPositionX/Y`, `OneWayPlatform`,
+`AreaForceWorldAxes`, `WestonAxle`).
+
+**D2 — O ponto é o `Transform` DO PRÓPRIO JOINT, não um campo novo.** Ele **já é** a âncora
+autorada, **já tem** o dot âmbar arrastável (W-JointAnchor), **já tem** as rows Position, e
+**já viaja** no save. Um `world_point: [f32; 2]` no componente seria um segundo lugar para o
+mesmo fato — e custaria um bump.
+⚠️ **Consequência que é a metade do trabalho:** o `sync_joint_pivots` reescreve
+`Transform = bodyA · local_a` em repouso (W-AnchorFollow), e num pino de mundo isso é
+**exatamente ao contrário** — quem segue a âncora é o CORPO, não a âncora o corpo. Ele tem de
+pular um joint marcado, senão arrastar o dot é desfeito no frame seguinte.
+
+**D3 — A âncora fixa mora no `JointRef`**, criada e destruída **com o joint**. Precedente
+direto: o `Grab` guarda a dele no `Grab { anchor, .. }`.
+⚠️ **E a lição do Weston é lei aqui:** `rebuild_from_rest` **troca o `PhysicsWorld`** e o
+replay roda no MESMO chamado, então a âncora tem de voltar junto — foi exatamente assim que a
+tabela de polias sumiu e *"um rewind replayava sem as cordas"*. O gate nasce dessa forma: um
+scrub para um tique intermediário, não um Reset (que replaya zero passos e **não vê o bug**).
+
+### §9.3 — Aberto de propósito
+
+- **Um joint de mundo não entra num rig** (D1/§9.1) — arrastar o corpo preso NÃO carrega o
+  cenário, porque não há o que carregar.
+- **Não parte sob carga** por ora: `can_break` lê a reação do `ImpulseJointSet`, e a âncora
+  ESTÁ nele — então é provavelmente de graça, mas *"provavelmente"* não é medição. Fica
+  nomeado, não afirmado.
+
+---
+
 *Imagens: `~/Documentos/Recursos/UI_Reference/` (44). Relatórios integrais dos 5 agentes: na sessão de
 2026-07-25. Superfície rapier conferida em `rapier2d-0.28.0/src/dynamics/joint/` local.*

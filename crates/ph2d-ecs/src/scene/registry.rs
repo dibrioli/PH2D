@@ -273,6 +273,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // irmãos — sem o registro o snapshot o DESCARTA, e um Ctrl+Z (ou um save) devolveria a
     // forma sem o offset, em silêncio, com a curva certa por baixo.
     reg.register::<crate::VecOffset>("ph2d::ecs::VecOffset");
+    reg.register::<crate::VecStrokeProfile>("ph2d::ecs::VecStrokeProfile");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -346,7 +347,8 @@ mod tests {
         // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129)
         // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath)
         // + 1 pattern em caminho (VecPatternPath, plano 23)
-        // + 1 FX raster (VecFilter, plano 24).
+        // + 1 FX raster (VecFilter, plano 24)
+        // + 1 largura viva (VecStrokeProfile, ADR-0145).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -358,9 +360,10 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 38);
+        assert_eq!(reg.len(), 39);
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecFilter").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecStrokeProfile").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

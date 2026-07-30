@@ -5090,6 +5090,7 @@ dependencies = [
  "ph2d-asset-cooker",
  "ph2d-core",
  "ph2d-render",
+ "ph2d-stroke-width",
  "ph2d-warp-style",
  "postcard",
  "serde",
@@ -7122,6 +7123,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-stroke-width"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "ph2d-system-fonts"
 version = "0.0.0"
 dependencies = [
@@ -7472,6 +7480,7 @@ name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
  "ph2d-arclen",
+ "ph2d-stroke-width",
  "ph2d-warp-style",
  "postcard",
  "serde",

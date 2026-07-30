@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-stroke-width"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A CASA ÚNICA do perfil de largura (ADR-0145). O perfil vive em DOIS lugares do editor: o
+# documento o guarda num componente (`ph2d-ecs::VecStrokeProfile`) e o motor o consome ao moldar
+# a fita (`ph2d-vec-boolean::power_stroke`, via o re-export da `ph2d-vec-scene`). `ph2d-ecs` é
+# fundação e `ph2d-vec-scene` é o modelo puro de documento; nenhum depende do outro, então a casa
+# tem de ser esta folha — exatamente o argumento (e o precedente) da `ph2d-warp-style`.
+#
+# serde: as paradas viajam no save (`VecStrokeProfile`). Sem `postcard`: só o tipo é serializado,
+# quem escreve o wire é o consumidor.
+serde = { version = "1", features = ["derive"] }

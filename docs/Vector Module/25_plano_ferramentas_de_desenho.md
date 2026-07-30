@@ -85,6 +85,42 @@ Três peças, e **nenhuma pede matemática nova**:
 **A largura viva é o que faz disto um pincel** e é a espinha compartilhada com a §5: a pressão escreve
 num **perfil de largura VIVO** (não no bake). Ver §5 para onde ele mora.
 
+### ✅ W1c — ENTREGUE: a largura viva (ADR-0145)
+
+A espinha está de pé, e **pela metade que serve às DUAS waves**: crate-folha `ph2d-stroke-width`
+(`WidthStops` — a lista de paradas — com o `WidthProfile` de quatro números como FACE dela, e a
+redução preset→lista provada **bit a bit**) · componente `VecStrokeProfile` (**zero bump**: registo
+38→39, `PROJECT_SCHEMA` fica em **38**) · `power_stroke` passou a consumir paradas · `profile_live`
+coze por frame com memo e desenha no z da forma · e **os quatro sliders `W *` AUTORAM**: arrastá-los
+arma o perfil na seleção e a fita aparece na hora; o botão virou **Apply Power Stroke** e
+materializa, o par exato do Offset. A porta é **uma** (`vec_expand::power_stroke_layers`): o preview
+desenha o que ela devolve e o Apply insere o que ela devolve, com gate byte a byte.
+
+Isto **fecha a consequência que o ADR-0145 nomeava** (*"os sliders passam a escrever no perfil do
+caminho e o Apply assa o que está lá"*) — antes o preview mostrava uma espessura e o Apply assava
+outra. Smoke: **`PH2D_BUILD_SMOKE=41`**.
+
+### ⚠️ W1b.2 — A PRESSÃO: bloqueada por um fato do SHELL, e é decisão de produto
+
+O item 2 acima diz *"o `CanvasPointer` já a traz … mouse reporta `1.0`, então nada muda sem tablet"*.
+**Metade disso está errada, e foi MEDIDO:** esta shell **constrói o `PointerEvent` com `pressure: 1.0`
+literal** nos seus dois únicos sítios (`input_dispatch.rs`, `source: PointerSource::Mouse`), e o laço
+de eventos **não casa `WindowEvent::Touch`** — o único evento do winit que carrega `force`. O
+`CursorMoved`, que é o que a shell escuta, **não tem pressão nenhuma no protocolo**. Logo: hoje
+nenhum dispositivo entrega pressão a este app, tablet incluído. Fiar a pressão no perfil produziria
+um **fio morto** — a feature ficaria correta e invisível, e ninguém saberia se está quebrada.
+
+**As duas saídas, e a escolha é do Enio:**
+
+1. **Uma FONTE de largura** (`Uniform | Pressure | Speed`) — o modelo do Krita/GP. *Speed* é o único
+   que um mouse de facto dirige (a velocidade do gesto já está no traço), então o artista vê a
+   largura viva **hoje**, e a rota de pressão fica construída e gateada para o dia do tablet.
+2. **O caminho do tablet** — casar `WindowEvent::Touch` e levar o `force` até o `PointerEvent`. É
+   trabalho de INPUT da shell (não do vetor), afeta o **Flip do mesmo jeito** (o `flip_draw.rs`
+   também recebe um `1.0` literal), e não pode ser verificado sem hardware.
+
+Nenhuma foi construída: as duas são decisão de produto, e a (1) muda o que um traço de lápis É.
+
 **Tamanho: M.** Smoke: desenhar um S com pressão variável e ver a largura acompanhar; com estabilizador
 a 0 e a 1, a mesma mão dá traços diferentes.
 
@@ -116,6 +152,18 @@ que é exatamente o que o `VecOffset` é.
 alças arrastáveis na curva (o `InteractiveState::CurvePoint` é o dispatch 2D compartilhado — o
 precedente do repo) · perfis salvos · e o render a variar a largura **sem assar**. O `Expand::PowerStroke`
 de hoje **fica** como a porta para quem quer a forma preenchida.
+
+### ⚠️ O que a W1c JÁ entregou desta wave (não reconstrua)
+
+A **representação inteira** e o **motor vivo** já estão de pé (ver §4, W1c): a lista de paradas
+arbitrárias existe (`WidthStops`), o componente existe e é salvo/desfeito de graça, o `power_stroke`
+já a consome, o cozimento vivo já roda por frame no z da forma, e o par *arrasta-e-vê* / *Apply* já é
+o do Offset. **Zero bump** — a decisão da tabela acima foi tomada e executada.
+
+**O que sobra para a W2, e só isto:** as **alças no canvas** (adicionar/mover/apagar uma parada
+apontando a curva — o `InteractiveState::CurvePoint`) e os **perfis salvos** (a lista por nome). O
+que NÃO sobra é decidir onde o perfil mora nem escrever um segundo motor: quem o fizer estará a
+construir a segunda porta que o ADR-0145 §3 proíbe.
 
 **Tamanho: G.** Smoke: um traço com 5 pontos de largura, arrastados; o mesmo traço sob Expand tem de
 dar a MESMA silhueta (a paridade vivo↔assado é o gate que impede duas respostas).

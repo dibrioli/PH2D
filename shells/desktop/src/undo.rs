@@ -283,6 +283,7 @@ impl crate::App {
         // O Pattern vivo pela mesma razão do offset.
         self.pattern_live.forget();
         self.contour_live.forget();
+        self.profile_live.forget();
         // O FX raster vivo (plano 24) pela mesma razão: a cena inteira mudou debaixo do cozimento.
         self.fx_live.forget();
         self.fx_silhouette.forget();

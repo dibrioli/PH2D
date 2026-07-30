@@ -437,7 +437,7 @@ const TAPER: WidthProfile = WidthProfile {
 #[test]
 fn the_ink_is_thicker_where_the_profile_says() {
     let line = stroked(open_line(20.0), 1.0);
-    let out = power_stroke(&line, &TAPER);
+    let out = power_stroke(&line, &TAPER.to_stops());
     assert_eq!(out.len(), 1, "uma forma");
     let bez = crate::to_bez_with(&out[0], Closing::Always);
     // Quanta tinta uma vertical em `x` atravessa (a altura da caixa da forma ali é uma
@@ -473,13 +473,13 @@ fn the_ink_is_thicker_where_the_profile_says() {
 #[test]
 fn a_uniform_profile_is_not_an_operation() {
     let line = stroked(open_line(10.0), 2.0);
-    assert!(power_stroke(&line, &WidthProfile::UNIFORM).is_empty());
+    assert!(power_stroke(&line, &WidthProfile::UNIFORM.to_stops()).is_empty());
 }
 
 /// Sem traço não há largura a variar.
 #[test]
 fn a_path_without_a_stroke_has_no_width_to_vary() {
-    assert!(power_stroke(&square(10.0), &TAPER).is_empty());
+    assert!(power_stroke(&square(10.0), &TAPER.to_stops()).is_empty());
 }
 
 /// **A tinta é UMA peça só, sem buracos** — os quads da fita partilham aresta com os vizinhos,
@@ -506,7 +506,7 @@ fn the_ink_is_one_connected_piece_with_no_loops() {
         },
         0.6,
     );
-    let out = power_stroke(&sine, &TAPER);
+    let out = power_stroke(&sine, &TAPER.to_stops());
     assert_eq!(out.len(), 1, "a tinta é uma peça só");
     assert!(
         out[0].subpaths.is_empty(),
@@ -532,7 +532,7 @@ fn the_ribbon_boundary_follows_the_profile_without_ripple() {
         position: 0.5,
     };
     let (width, len) = (1.0, 20.0);
-    let out = power_stroke(&stroked(open_line(len), width), &profile);
+    let out = power_stroke(&stroked(open_line(len), width), &profile.to_stops());
     assert_eq!(out.len(), 1);
     let bez = crate::to_bez_with(&out[0], Closing::Always);
     // A borda de cima em `x`: o maior `y` que a tinta alcança ali (a linha é horizontal em
@@ -568,7 +568,7 @@ fn the_ribbon_boundary_follows_the_profile_without_ripple() {
 /// É o mesmo que um traço uniforme faz; o que muda é a espessura do anel ao longo dele.
 #[test]
 fn stroking_a_closed_contour_leaves_a_ring() {
-    let out = power_stroke(&stroked(square(10.0), 1.0), &TAPER);
+    let out = power_stroke(&stroked(square(10.0), 1.0), &TAPER.to_stops());
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].subpaths.len(), 1, "o anel tem o miolo como buraco");
 }
@@ -577,7 +577,7 @@ fn stroking_a_closed_contour_leaves_a_ring() {
 /// Stroke, pela mesma porta (`ink_style`).
 #[test]
 fn the_baked_ink_carries_the_strokes_colour() {
-    let out = power_stroke(&stroked(open_line(10.0), 1.0), &TAPER);
+    let out = power_stroke(&stroked(open_line(10.0), 1.0), &TAPER.to_stops());
     assert_eq!(out[0].fill, Some(Paint::Solid(Rgba8::new(10, 20, 30, 255))));
     assert_eq!(out[0].stroke, None);
 }
@@ -598,7 +598,7 @@ fn a_profile_that_reaches_zero_tapers_the_ink_to_a_point() {
         end: 2.0,
         position: 0.5,
     };
-    let out = power_stroke(&stroked(open_line(20.0), 1.0), &zero_start);
+    let out = power_stroke(&stroked(open_line(20.0), 1.0), &zero_start.to_stops());
     assert_eq!(out.len(), 1);
     let bez = crate::to_bez_with(&out[0], Closing::Always);
     let thickness_at = |x: f64| {
@@ -641,7 +641,7 @@ fn a_stretch_of_exactly_zero_width_produces_no_sliver() {
         end: 2.0,
         position: 0.5,
     };
-    let out = power_stroke(&stroked(open_line(20.0), 1.0), &flat_zero);
+    let out = power_stroke(&stroked(open_line(20.0), 1.0), &flat_zero.to_stops());
     assert!(!out.is_empty(), "a metade grossa continua sendo tinta");
     for p in &out {
         let b = bbox(p);

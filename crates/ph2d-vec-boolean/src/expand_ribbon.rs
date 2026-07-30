@@ -10,7 +10,7 @@
 
 use kurbo::{BezPath, PathEl, Point, Vec2};
 use linesweeper::FillRule as LsFillRule;
-use ph2d_vec_scene::{LineCap, StrokeSpec, VecPath, WidthProfile};
+use ph2d_vec_scene::{LineCap, StrokeSpec, VecPath, WidthStops};
 
 use super::{MIN_TOL, Region, drop_slivers, ink_style, tolerance};
 use crate::{Closing, to_bez_with};
@@ -37,7 +37,7 @@ use crate::{Closing, to_bez_with};
 /// Devolve vazio sem traço, com perfil UNIFORME (aí o comando é o [`outline_stroke`], e ter
 /// dois botões para a mesma saída seria pior que ter um), ou se o sweep falhar.
 #[must_use]
-pub fn power_stroke(path: &VecPath, profile: &WidthProfile) -> Vec<VecPath> {
+pub fn power_stroke(path: &VecPath, profile: &WidthStops) -> Vec<VecPath> {
     let Some(s) = path.stroke.filter(|_| !profile.is_uniform()) else {
         return Vec::new();
     };
@@ -76,7 +76,7 @@ const RIBBON_SAMPLES: usize = 128;
 /// perfil de largura, e devolve os pontos + o `t` de ARCO normalizado de cada um (`0` no
 /// começo, `1` no fim). `None` se degenerar.
 ///
-/// Por arco e não por parâmetro de Bézier: é a unidade em que o [`WidthProfile`] mora, a mesma
+/// Por arco e não por parâmetro de Bézier: é a unidade em que o [`WidthStops`] mora, a mesma
 /// do Zig Zag e do Blend — duas formas que se veem iguais têm de se comportar igual.
 fn flatten_arc(bez: &BezPath, closed: bool) -> Option<(Vec<Point>, Vec<f64>)> {
     let tol = tolerance(bez);
@@ -168,7 +168,7 @@ fn ribbon_into(
     ink: &mut BezPath,
     bez: &BezPath,
     s: &StrokeSpec,
-    profile: &WidthProfile,
+    profile: &WidthStops,
     closed: bool,
 ) {
     let Some((pts, arc)) = flatten_arc(bez, closed) else {

@@ -81,7 +81,7 @@ fn measure_power_stroke_ribbon() {
     // CUSTO no caso pior (a senoide que auto-cruza), com o `RIBBON_SAMPLES` EM VIGOR.
     let path = sine();
     let t0 = Instant::now();
-    let out = ph2d_vec_boolean::power_stroke(&path, &profile);
+    let out = ph2d_vec_boolean::power_stroke(&path, &profile.to_stops());
     let ms = t0.elapsed().as_secs_f64() * 1000.0;
     assert!(!out.is_empty());
     let area: f64 = out.iter().map(ph2d_vec_boolean::area).sum();
@@ -89,7 +89,7 @@ fn measure_power_stroke_ribbon() {
 
     // RUGOSIDADE: o desvio da borda ao perfil numa reta, com o `RIBBON_SAMPLES` em vigor.
     let (len, width) = (20.0, 1.0);
-    let out = ph2d_vec_boolean::power_stroke(&straight(len, width), &profile);
+    let out = ph2d_vec_boolean::power_stroke(&straight(len, width), &profile.to_stops());
     let dev = ripple(&out, len, width, &profile);
     println!(
         "reta: desvio máx da borda ao perfil = {dev:.5} (o festão da união de discos era ~0.08)"

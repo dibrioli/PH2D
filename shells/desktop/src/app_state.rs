@@ -942,6 +942,10 @@ pub(crate) struct App {
     /// da fonte (`ph2d_ecs::VecOffset`). Runtime-only e memoizado: o documento guarda a curva
     /// autorada, e isto é o que se VÊ.
     pub(crate) offset_live: crate::offset_live::OffsetLive,
+    /// O **cozimento da LARGURA VIVA** — a fita de largura variável que o `dispatch` desenha no
+    /// lugar da fonte (`ph2d_ecs::VecStrokeProfile`, ADR-0145). Runtime-only e memoizado: o
+    /// documento guarda as PARADAS, e isto é o que se VÊ.
+    pub(crate) profile_live: crate::profile_live::ProfileLive,
     /// O **cozimento do Pattern Along Path VIVO** — as cópias de um motivo ao longo de um guia
     /// (`ph2d_ecs::VecPatternPath`, plano 23), irmão do `offset_live`. Runtime-only: o documento
     /// guarda a RELAÇÃO (o componente), e isto é o desenho derivado dela.
@@ -965,6 +969,10 @@ pub(crate) struct App {
     /// republica; sem isto, escolher uma forma offsetada mostraria os knobs globais do painel e
     /// o chip mentiria sobre o que está na tela. Runtime-only.
     pub(crate) vec_offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
+    /// A forma cujo **perfil de largura** os quatro knobs `W *` estão espelhando (ADR-0145).
+    /// Mesmo papel do [`Self::vec_offset_mirrored`] e pela mesma razão: a borda é a SELEÇÃO, e
+    /// sem ela escolher uma forma com perfil vivo mostraria os knobs globais do painel.
+    pub(crate) vec_profile_mirrored: Option<ph2d_vec_scene::VecPathId>,
     /// A forma cujo CONTOUR o painel está espelhando (os três sliders + os dois trios). Mesmo
     /// papel do [`Self::vec_offset_mirrored`] e pela mesma razão: o `paint` lê o STORE primeiro
     /// (senão o número saltaria durante o arrasto), então sem uma borda que reescreva o store na

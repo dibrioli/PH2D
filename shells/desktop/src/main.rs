@@ -203,6 +203,10 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_zones;
+/// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0145), irmão do `offset_live`.
+mod profile_live;
+/// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
+mod profile_smoke;
 mod project;
 mod project_painter;
 mod render_loop;
@@ -566,12 +570,14 @@ impl App {
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
             offset_live: crate::offset_live::OffsetLive::default(),
+            profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,
+            vec_profile_mirrored: None,
             vec_contour_mirrored: None,
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),

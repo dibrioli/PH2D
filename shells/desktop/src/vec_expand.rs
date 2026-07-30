@@ -9,19 +9,23 @@
 
 use ph2d_vec_edit::{History, PenTool};
 use ph2d_vec_scene::{
-    LineJoin, OffsetSide, VecPathId, VecScene, VecXforms, WidthProfile, bake_xform, xform_of,
+    LineJoin, OffsetSide, VecPath, VecPathId, VecScene, VecXforms, WidthStops, bake_xform, xform_of,
 };
 
 /// Qual comando o clique pediu.
 // Sem `Eq`: o perfil carrega `f64`. `PartialEq` basta — ninguém usa isto como chave.
-#[derive(Copy, Clone, Debug, PartialEq)]
+// ⚠️ **`Clone` e não `Copy` desde o ADR-0145:** o Power Stroke carrega a LISTA de paradas (o
+// que o documento guarda), e uma lista tem heap. Carregar o preset de quatro números aqui
+// tornaria o comando incapaz de exprimir o perfil que uma alça do Width Tool autora — e o
+// `materialise` teria de assar por uma segunda rota, que é exatamente o que o ADR proíbe.
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Expand {
     /// A borda anda `d` (negativo encolhe), com quinas em `join`, no(s) contorno(s) `side`.
     Offset { join: LineJoin, side: OffsetSide },
     /// O traço vira forma preenchida.
     OutlineStroke,
-    /// O traço vira forma preenchida com a largura VARIANDO pelo `profile` — o Power Stroke.
-    PowerStroke { profile: WidthProfile },
+    /// O traço vira forma preenchida com a largura VARIANDO pelas `stops` — o Power Stroke.
+    PowerStroke { stops: WidthStops },
 }
 
 /// O id do painel → o comando, ou `None` se o id não é nosso. Porta única: o dreno pergunta
@@ -41,7 +45,7 @@ pub(crate) fn expand_for_id(id: ph2d_editor::NodeId) -> Option<Expand> {
         // O perfil vem dos sliders, e quem os lê é a `render_loop` (é ela que tem o store).
         // Aqui só se diz QUAL comando é; o `profile` é preenchido lá, como o `d` do offset.
         Some(Expand::PowerStroke {
-            profile: WidthProfile::UNIFORM,
+            stops: WidthStops::default(),
         })
     } else {
         None
@@ -93,7 +97,7 @@ pub(crate) fn apply_vec_expand(
 ) {
     let pre = scene.clone(); // UM passo de undo para o gesto inteiro
     let ids = pen.selected_paths().to_vec();
-    if expand_selection(scene, pen, xforms, &ids, |_| Some((cmd, d))) {
+    if expand_selection(scene, pen, xforms, &ids, |_| Some((cmd.clone(), d))) {
         history.push_undo(pre);
         eprintln!("[ph2d-vec] expand {cmd:?}: ok");
     } else {
@@ -146,12 +150,8 @@ pub(crate) fn expand_selection(
         let mut world = src.cooked().into_owned();
         bake_xform(&mut world, &xform_of(xforms, src.id));
 
-        let results = match cmd {
-            Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(&world, d, join, side),
-            Expand::OutlineStroke => ph2d_vec_boolean::outline_stroke(&world),
-            Expand::PowerStroke { profile } => ph2d_vec_boolean::power_stroke(&world, &profile),
-        };
-        if results.is_empty() {
+        let layers = expand_layers(&world, cmd, d);
+        if layers.is_empty() {
             // Nada a fazer nesta forma (sem traço; ou um offset que a ANIQUILA). A fonte fica
             // onde está e segue selecionada — e, no caso vivo, o componente fica com ela: não
             // há geometria para materializar, e apagar a arte do artista num clique de "Apply"
@@ -161,31 +161,68 @@ pub(crate) fn expand_selection(
         }
         touched = true;
 
-        // O Outline Stroke converte o TRAÇO. Se a forma também tinha PREENCHIMENTO, essa
-        // região continua existindo e fica no lugar dela, agora sem traço — é o grupo de
-        // dois objetos que o Illustrator produz. Sem fill não sobra nada da original.
-        // Os dois comandos que assam TINTA convertem o traço e deixam o miolo em paz.
-        let bakes_ink = matches!(cmd, Expand::OutlineStroke | Expand::PowerStroke { .. });
-        let keep_fill = bakes_ink && src.fill.is_some();
         scene.remove_path(src.id);
-        let mut at = z;
-        if keep_fill {
-            let mut base = world.clone();
-            base.stroke = None;
+        for (at, r) in (z..).zip(layers) {
             // `insert_path` cunha id novo (o antigo saiu com o `remove_path`) — guarda o
             // que ELE devolveu, senão a re-seleção aponta para um path que não existe.
-            produced.push(scene.insert_path(at, base));
-            at += 1;
-        }
-        for r in results {
             produced.push(scene.insert_path(at, r));
-            at += 1;
         }
     }
     if touched {
         pen.select_many(&produced);
     }
     touched
+}
+
+/// **O que este comando DESENHA sobre `world`** — as camadas, do fundo para a frente. Vazio
+/// quando não há nada a fazer (sem traço; um offset que aniquila a forma).
+///
+/// ⚠️ **Porta ÚNICA, e é a espinha do ADR-0145:** o [`expand_selection`] INSERE esta lista no
+/// documento e o preview vivo do Power Stroke ([`crate::profile_live`]) DESENHA esta lista. Uma
+/// segunda rota — um "aproximador só para o preview" — faria a forma **SALTAR** no instante do
+/// Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate: as duas rotas produzem
+/// geometria byte-idêntica.
+///
+/// A regra da camada de baixo: os dois comandos que assam TINTA (Outline Stroke e Power Stroke)
+/// convertem o **traço** e deixam o miolo em paz — se a forma tinha PREENCHIMENTO, essa região
+/// continua existindo no lugar dela, agora sem traço (é o grupo de dois objetos que o
+/// Illustrator produz). Sem fill não sobra nada da original.
+#[must_use]
+pub(crate) fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
+    match cmd {
+        Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(world, d, join, side),
+        Expand::OutlineStroke => ink_layers(world, ph2d_vec_boolean::outline_stroke(world)),
+        Expand::PowerStroke { stops } => power_stroke_layers(world, &stops),
+    }
+}
+
+/// **O Power Stroke de uma lista de PARADAS** — a rota que o perfil VIVO percorre (ADR-0145).
+///
+/// Não é uma segunda porta: a lista de paradas é o que o documento guarda, e o preset de quatro
+/// números do painel é uma FACE dela — o [`expand_layers`] converte a face e cai aqui. As duas
+/// chegam ao mesmo `power_stroke` e à mesma [`ink_layers`].
+#[must_use]
+pub(crate) fn power_stroke_layers(world: &VecPath, stops: &WidthStops) -> Vec<VecPath> {
+    ink_layers(world, ph2d_vec_boolean::power_stroke(world, stops))
+}
+
+/// A regra da camada de baixo, escrita **uma vez**: os dois comandos que assam TINTA convertem o
+/// **traço** e deixam o miolo em paz — se a forma tinha PREENCHIMENTO, essa região continua
+/// existindo no lugar dela, agora sem traço (é o grupo de dois objetos que o Illustrator produz).
+/// Sem fill não sobra nada da original.
+#[must_use]
+fn ink_layers(world: &VecPath, results: Vec<VecPath>) -> Vec<VecPath> {
+    if results.is_empty() {
+        return Vec::new();
+    }
+    let mut out = Vec::with_capacity(results.len() + 1);
+    if world.fill.is_some() {
+        let mut base = world.clone();
+        base.stroke = None;
+        out.push(base);
+    }
+    out.extend(results);
+    out
 }
 
 /// **A escala do slider de Offset** — metade do maior lado da bbox de MUNDO da seleção.

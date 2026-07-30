@@ -79,12 +79,16 @@ impl BodyCtx<'_> {
         self.power_stroke_rows(y)
     }
 
-    /// As quatro linhas do **perfil de largura** + o botão que o assa.
+    /// As quatro linhas do **perfil de largura** + o botão que o CONSOLIDA.
     ///
     /// Os três multiplicadores são MULTIPLICADORES da largura do traço, não medidas: o
     /// artista já escolheu a largura no slider de Width, e o perfil diz o que acontece com
     /// ELA ao longo do caminho. `1 · 1 · 1` é o traço uniforme — e é por isso que o botão
     /// recusa esse caso (aí a operação é o Outline Stroke, logo acima).
+    ///
+    /// ⚠️ **Desde o ADR-0145 estes quatro sliders AUTORAM** (não são mais parâmetros de um
+    /// comando): arrastá-los arma um `VecStrokeProfile` na seleção e a fita aparece na hora,
+    /// como os chips de Corner/Side do Offset. O botão materializa.
     fn power_stroke_rows(&mut self, y: f32) -> f32 {
         let mut y = y;
         // Os ids são tipados como `ph2d_a11y::NodeId` porque é o que eles de fato são: cada um
@@ -135,6 +139,10 @@ impl BodyCtx<'_> {
             &format!("{pos:.2}"),
             y,
         );
-        self.action_button(ids::VECTOR_EXPAND_POWER_STROKE, "Power Stroke", y)
+        // "Apply Power Stroke", pelo MESMO argumento do "Apply Offset" acima (ADR-0145): desde
+        // que os quatro sliders autoram um perfil VIVO, arrastá-los já mostra a fita na tela —
+        // quem consolida a curva é ESTE botão. O nome do botão é a promessa, e um "Power Stroke"
+        // solto prometeria que nada acontece antes de clicá-lo.
+        self.action_button(ids::VECTOR_EXPAND_POWER_STROKE, "Apply Power Stroke", y)
     }
 }

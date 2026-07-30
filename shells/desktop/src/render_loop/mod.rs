@@ -3958,6 +3958,40 @@ impl crate::App {
                     crate::offset_live::retune(sim, &self.vec_entities, &sel, knobs);
                 }
             }
+            // ── A LARGURA VIVA (ADR-0145) ────────────────────────────────────────
+            // Os quatro sliders `W Start/Mid/End/Pos` deixaram de ser parâmetros de um comando
+            // e passaram a AUTORAR um perfil vivo: o traço engrossa e afina enquanto o slider
+            // anda, e o botão *Power Stroke* MATERIALIZA — o mesmo par que o Offset já tinha.
+            {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                // **O painel espelha o que está SELECIONADO** — a mesma lei (e a mesma ordem) do
+                // offset acima: a borda é a SELEÇÃO, e ela corre ANTES de o arrasto ser lido.
+                let mirror = (sel.len() == 1).then(|| sel[0]).filter(|id| {
+                    crate::profile_live::spec_of(sim, &self.vec_entities, *id).is_some()
+                });
+                if mirror != self.vec_profile_mirrored {
+                    self.vec_profile_mirrored = mirror;
+                    if let Some(p) = mirror
+                        .and_then(|id| crate::profile_live::spec_of(sim, &self.vec_entities, id))
+                        .as_ref()
+                        .and_then(crate::profile_live::preset_of)
+                    {
+                        crate::profile_live::write_preset_to_store(&mut hero.store, &p);
+                    }
+                }
+                let grabbed = matches!(
+                    hero.store.active_id(),
+                    Some(id) if id == ph2d_editor::ids::VECTOR_EXPAND_W_START
+                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_MID
+                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_END
+                        || id == ph2d_editor::ids::VECTOR_EXPAND_W_POS
+                );
+                if grabbed && !sel.is_empty() {
+                    let stops = crate::profile_live::preset_from_store(&hero.store).to_stops();
+                    crate::profile_live::arm(sim, &self.vec_entities, &sel, &stops);
+                    self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
+                }
+            }
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // **Apply Offset MATERIALIZA o offset vivo** — é o único momento em que os
@@ -3966,6 +4000,31 @@ impl crate::App {
                 // carregar offsets diferentes, e o botão tem de honrar o que está na TELA.
                 // Passa pela MESMA porta do caminho numérico (`expand_selection`), senão
                 // haveria uma 2ª maneira de a geometria do offset entrar na cena.
+                // **O botão Power Stroke MATERIALIZA o perfil vivo** (ADR-0145) — o espelho
+                // exato do Apply Offset logo abaixo. Sem perfil armado na seleção devolve
+                // `false`, e o clique segue pelo caminho numérico (que lê os sliders).
+                let sel_now: Vec<ph2d_vec_scene::VecPathId> =
+                    self.vec_pen.selected_paths().to_vec();
+                if matches!(cmd, crate::vec_expand::Expand::PowerStroke { .. })
+                    && crate::profile_live::materialise(
+                        vec_scene,
+                        sim,
+                        &mut self.vec_pen,
+                        &mut self.vec_history,
+                        &self.vec_entities,
+                        &xf,
+                        &sel_now,
+                    )
+                {
+                    // A forma nova não tem perfil vivo, e knobs parados num afinamento sobre ela
+                    // mentiriam sobre o que está na cena — o mesmo argumento do slider de Offset.
+                    self.vec_profile_mirrored = None;
+                    crate::profile_live::write_preset_to_store(
+                        &mut hero.store,
+                        &ph2d_vec_scene::WidthProfile::UNIFORM,
+                    );
+                    return;
+                }
                 let materialised = matches!(cmd, crate::vec_expand::Expand::Offset { .. }) && {
                     let ids: Vec<ph2d_vec_scene::VecPathId> =
                         self.vec_pen.selected_paths().to_vec();
@@ -4001,23 +4060,11 @@ impl crate::App {
                     // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
                     // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
                     // lugar decidindo o que o artista já arrastou.
-                    let wp = |id, default: f64| {
-                        hero.store.slider(id).map_or(default, |(_, v)| {
-                            ph2d_tool_vector::params::slider_to_wprofile(v)
-                        })
-                    };
                     let cmd = match cmd {
                         crate::vec_expand::Expand::PowerStroke { .. } => {
                             crate::vec_expand::Expand::PowerStroke {
-                                profile: ph2d_vec_scene::WidthProfile {
-                                    start: wp(ph2d_editor::ids::VECTOR_EXPAND_W_START, 0.25),
-                                    mid: wp(ph2d_editor::ids::VECTOR_EXPAND_W_MID, 1.6),
-                                    end: wp(ph2d_editor::ids::VECTOR_EXPAND_W_END, 0.25),
-                                    position: hero
-                                        .store
-                                        .slider(ph2d_editor::ids::VECTOR_EXPAND_W_POS)
-                                        .map_or(0.5, |(_, v)| f64::from(v)),
-                                },
+                                stops: crate::profile_live::preset_from_store(&hero.store)
+                                    .to_stops(),
                             }
                         }
                         other => other,
@@ -4027,7 +4074,7 @@ impl crate::App {
                         &mut self.vec_history,
                         &mut self.vec_pen,
                         &xf,
-                        cmd,
+                        cmd.clone(),
                         d,
                     );
                     // O botão de Offset (caminho numérico: arrastar sem seleção viva e clicar)
@@ -5420,6 +5467,10 @@ impl crate::App {
             // aqui e desenhados no z da fonte — que entra na lista junto com eles.
             self.contour_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // A largura VIVA (ADR-0145): a fita de largura variável, cozida aqui e desenhada no
+            // z da fonte — que continua sendo a curva autorada que o modo Node edita.
+            self.profile_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
             // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern OU contour
             // (nunca dois — cada um é um componente próprio e o painel oferece um de cada vez),
             // então fundir é seguro; começa do offset (em cena típica dos outros, vazio ⇒ clone
@@ -5433,6 +5484,12 @@ impl crate::App {
             );
             vec_live.extend(
                 self.contour_live
+                    .live()
+                    .iter()
+                    .map(|(id, v)| (*id, v.clone())),
+            );
+            vec_live.extend(
+                self.profile_live
                     .live()
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),

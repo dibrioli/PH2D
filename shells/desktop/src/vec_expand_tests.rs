@@ -213,7 +213,9 @@ fn the_power_stroke_command_bakes_the_selection() {
         &mut hist,
         &mut pen,
         &xf,
-        Expand::PowerStroke { profile: taper },
+        Expand::PowerStroke {
+            stops: taper.to_stops(),
+        },
         0.0,
     );
     assert_eq!(scene.paths().len(), 1, "o traço virou UMA forma");
@@ -235,7 +237,7 @@ fn a_uniform_power_stroke_records_nothing() {
         &mut pen,
         &xf,
         Expand::PowerStroke {
-            profile: WidthProfile::UNIFORM,
+            stops: WidthProfile::UNIFORM.to_stops(),
         },
         0.0,
     );

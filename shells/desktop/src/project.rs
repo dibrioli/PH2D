@@ -404,6 +404,7 @@ impl crate::App {
         // O Pattern vivo pela MESMA razão (id reciclado entre documentos).
         self.pattern_live.forget();
         self.contour_live.forget();
+        self.profile_live.forget();
         // O FX raster vivo (plano 24) pela MESMA razão (id reciclado entre documentos).
         self.fx_live.forget();
         self.fx_silhouette.forget();

@@ -28,3 +28,8 @@ postcard = { version = "1", features = ["alloc"] }
 # do Envelope re-exportam o MESMO `WarpStyle`, então não podem divergir. Folha pura
 # (só serde) — não fere a pureza da cena.
 ph2d-warp-style = { path = "../ph2d-warp-style" }
+# A casa ÚNICA do perfil de largura (ADR-0145): o `WidthProfile`/`WidthStops` mora nesta folha
+# porque tem dois donos que não se veem — este crate (o motor, via `power_stroke`) e o
+# `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente da
+# `ph2d-warp-style` logo acima. Re-exportado por `lib.rs`.
+ph2d-stroke-width = { path = "../ph2d-stroke-width" }

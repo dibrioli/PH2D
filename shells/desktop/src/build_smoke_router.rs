@@ -136,5 +136,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::pencil_smoke::frame(app, f);
         return true;
     }
+    // A cena da LARGURA VIVA (=41, ADR-0145) — irmã `profile_smoke`. Como a do lápis, ela dá o
+    // MATERIAL e **não arma o perfil**: o gesto que este smoke prova começa nos sliders.
+    if level == 41 {
+        crate::profile_smoke::frame(app, f);
+        return true;
+    }
     false
 }

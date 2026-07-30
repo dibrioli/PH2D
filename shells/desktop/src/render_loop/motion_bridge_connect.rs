@@ -45,6 +45,23 @@ pub(super) fn apply_connect(
     // An expert (non-managed) `pre` is NOT cleared: the connect then fails with
     // the ordinary occupied-port refusal.
     plumbing::clear_managed_pre_at(&mut trial, &motion.registry, NodeId(to_node), to_port);
+    // **Replace-on-drop** (Blender / Nuke / Houdini): a wire dropped on an input that is already
+    // fed SWAPS what feeds it, instead of earning the "input already wired" refusal — the natural
+    // completion of the magnetic drop (doc 63.2), which now lands on occupied sockets far more
+    // often. Only a plain FORWARD edge is replaced; an expert `pre` (feedback) edge is left to the
+    // ordinary refusal below, exactly the edge `clear_managed_pre_at` above deliberately preserves.
+    // All of this rides the TRIAL clone, so a swap whose new wire fails typing / the membrane / a
+    // cycle refuses whole and leaves the old wire untouched.
+    let target = (NodeId(to_node), to_port);
+    match trial.edges().iter().find(|e| e.to == target).copied() {
+        // Already exactly this wire: a no-op re-drop — no toast, no spurious undo step.
+        Some(occ) if !occ.delayed && occ.from == fwd.from => return,
+        // A forward edge from another source: drop it so the new wire can take the port.
+        Some(occ) if !occ.delayed => {
+            trial.disconnect(target.0, target.1);
+        }
+        _ => {}
+    }
     let (attempt, edge) = match trial.connect(fwd) {
         Err(EdgeError::WouldCycle) => {
             let pre_edge = Edge {

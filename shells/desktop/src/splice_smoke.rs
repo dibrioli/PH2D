@@ -21,6 +21,11 @@
 //! socket compatível — o fio PULA para ele e conecta (raio ~22 px). Soltar em canvas realmente
 //! VAZIO ainda abre o smart-connect; um card colapsado ainda oferece o menu de portas.
 //!
+//! ⊙ TROCA-NO-DROP: um fio solto SOBRE um input JÁ ocupado SUBSTITUI o que o alimentava (em vez de
+//! recusar com "input already wired") — arraste um fio do socket de SAÍDA do **grid** e solte no
+//! input do **output** (hoje alimentado pelo **scale**): o output passa a vir direto do grid e o
+//! scale se solta. Um `pre` (feedback) expert é preservado; re-soltar o mesmo fio é no-op.
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -84,6 +89,9 @@ impl crate::App {
              Deletar uma PONTA (grid/output) so remove.\n  \
              SNAP: arraste um fio e SOLTE PERTO (nao em cima) de um socket compativel -> o fio \
              PULA e conecta. Soltar em canvas VAZIO ainda abre o smart-connect.\n  \
+             TROCA: solte um fio sobre um input JA ocupado -> ele SUBSTITUI o que alimentava. \
+             Arraste do output do grid e solte no input do output (alimentado pelo scale) -> o \
+             output passa a vir do grid e o scale se solta.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

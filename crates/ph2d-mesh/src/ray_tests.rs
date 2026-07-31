@@ -54,7 +54,7 @@ impl Rng {
 #[test]
 fn the_octree_never_loses_geometry_that_brute_force_finds() {
     let mesh = shapes::uv_sphere(24, 32, 1.0);
-    let mut rng = Rng(0x2026_07_31);
+    let mut rng = Rng(0x2026_0731_u64);
     let mut hits = 0;
     let mut misses = 0;
     for _ in 0..400 {
@@ -88,7 +88,10 @@ fn the_octree_never_loses_geometry_that_brute_force_finds() {
     // Sem isto o teste passaria com um raio que nunca acerta nada — o vácuo que
     // deixa um gate verde sobre um índice quebrado.
     assert!(hits > 50, "poucos acertos ({hits}) para valer como oráculo");
-    assert!(misses > 20, "poucos erros ({misses}); os dois lados importam");
+    assert!(
+        misses > 20,
+        "poucos erros ({misses}); os dois lados importam"
+    );
 }
 
 #[test]
@@ -117,7 +120,9 @@ fn nothing_behind_the_eye_is_ever_picked() {
     // Olho DENTRO da esfera, mirando +Z: só a casca da frente conta; a de trás
     // está a t negativo e não é acerto nenhum.
     let ray = Ray::new([0.0, 0.0, 0.0], [0.0, 0.0, 1.0]);
-    let hit = mesh.raycast(&ray).expect("de dentro ainda se acerta a casca");
+    let hit = mesh
+        .raycast(&ray)
+        .expect("de dentro ainda se acerta a casca");
     assert!(hit.t > 0.0, "t={} não pode ser negativo", hit.t);
     assert!((hit.t - 1.0).abs() < 0.06, "t={}", hit.t);
 }
@@ -144,7 +149,9 @@ fn a_quad_is_picked_by_the_two_triangles_the_gpu_draws() {
 
     // Um ponto que cai no triângulo (a,c,d) e NÃO no (a,b,c).
     let ray = Ray::new([0.2, 0.7, 5.0], [0.0, 0.0, -1.0]);
-    let hit = mesh.raycast(&ray).expect("o segundo triângulo do quad existe");
+    let hit = mesh
+        .raycast(&ray)
+        .expect("o segundo triângulo do quad existe");
     assert_eq!(hit.face, 0);
     // O plano de (a,c,d) é `x − y + z = 0`, logo `z = y − x = 0.5` no ponto.
     assert!(
@@ -155,7 +162,9 @@ fn a_quad_is_picked_by_the_two_triangles_the_gpu_draws() {
 
     // E o primeiro triângulo continua sendo acertado onde ele é quem cobre.
     let ray2 = Ray::new([0.7, 0.2, 5.0], [0.0, 0.0, -1.0]);
-    let h2 = mesh.raycast(&ray2).expect("o primeiro triângulo do quad existe");
+    let h2 = mesh
+        .raycast(&ray2)
+        .expect("o primeiro triângulo do quad existe");
     assert!((h2.point[2]).abs() < 1e-4, "z={}", h2.point[2]);
 }
 
@@ -164,7 +173,10 @@ fn a_degenerate_direction_is_refused_instead_of_answering_about_another_one() {
     let mesh = shapes::uv_sphere(8, 12, 1.0);
     for dir in [[0.0, 0.0, 0.0], [f32::NAN, 0.0, 0.0], [f32::INFINITY; 3]] {
         let ray = Ray::new([0.0, 0.0, 5.0], dir);
-        assert!(mesh.raycast(&ray).is_none(), "dir {dir:?} devia ser recusada");
+        assert!(
+            mesh.raycast(&ray).is_none(),
+            "dir {dir:?} devia ser recusada"
+        );
     }
 }
 
@@ -178,7 +190,11 @@ fn an_axis_aligned_ray_grazing_a_box_plane_is_not_lost_to_nan() {
     let ray = Ray::new([b.min[0], 0.0, 5.0], [0.0, 0.0, -1.0]);
     let want = brute_force(&mesh, &ray);
     let got = mesh.raycast(&ray).map(|h| (h.face, h.t));
-    assert_eq!(want.is_some(), got.is_some(), "bruto {want:?} vs índice {got:?}");
+    assert_eq!(
+        want.is_some(),
+        got.is_some(),
+        "bruto {want:?} vs índice {got:?}"
+    );
 }
 
 #[test]

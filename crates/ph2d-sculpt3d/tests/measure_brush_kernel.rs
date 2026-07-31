@@ -15,18 +15,29 @@
 //!
 //! **Ablação pelas PORTAS DO PRODUTO, nunca por instrumentação.** A decomposição
 //! sai de chamar `verts_in_sphere` e `refresh_region` — que são portas públicas
-//! que o `apply_dab` usa — em vez de cronometrar de dentro dele. Uma sonda que
+//! que o traço usa — em vez de cronometrar de dentro dele. Uma sonda que
 //! re-implementa o laço fica CEGA à porta e segue reportando o custo antigo
 //! depois de o produto parar de pagá-lo (a lição que a `line/Painter` pagou em
 //! 2026-07-26).
 //!
 //! E ela **anda o pincel**, em vez de bater no mesmo lugar: um dab repetido no
 //! mesmo ponto mede o cache quente daquela vizinhança, que não é o que a mão faz.
+//!
+//! ⚠️ **Ela re-começa o traço a cada dab, e isso é o LIMITE SUPERIOR de propósito.**
+//! Dentro de um traço vivo, um dab que reincide sobre vértices já capturados
+//! custa MENOS (a captura não repete, e o envelope descarta quem não subiu) — é
+//! a lei do traço trabalhando. O número que decide o K1 tem de ser o do dab que
+//! faz trabalho cheio, senão a sobreposição da fixture o maquia para baixo.
+//!
+//! ⚠️ **Os números da W1 NÃO foram herdados.** Aquela medição era do `apply_dab`,
+//! que o traço subsumiu; manter os dois seria a segunda porta para *"aplicar um
+//! dab"*. O caminho de hoje faz estritamente mais trabalho (captura + envelope +
+//! alvo), e a tabela abaixo é a re-medição.
 
 use std::time::Instant;
 
 use ph2d_mesh::{Mesh, QueryScratch, RegionScratch, shapes};
-use ph2d_sculpt3d::{Dab, DabScratch, apply_dab};
+use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 /// O teto que o `docs/3D/03.5` declara para um dab. Não é inventado: é o mesmo
 /// orçamento que o Painter usa para um *move* de pincel, porque é o mesmo gesto
@@ -63,24 +74,31 @@ struct Row {
     normals_ms: f64,
 }
 
+/// Força minúscula: a sonda mede CUSTO, e deformar a malha ao longo da
+/// varredura mudaria a vizinhança de um dab para o seguinte.
+fn probe_brush(verb: Verb, radius: f32) -> Brush {
+    Brush {
+        verb,
+        radius,
+        strength: 1e-4,
+        ..Brush::default()
+    }
+}
+
 fn measure(mesh: &mut Mesh, radius_frac: f32, dabs: usize) -> Row {
     let radius = mesh.bounds().longest_edge() * radius_frac;
     let centers = stroke_centers(mesh, dabs);
-    let mut scratch = DabScratch::default();
+    let brush = probe_brush(Verb::Draw, radius);
+    let mut stroke = SculptStroke::default();
 
     // (a) o dab COMPLETO, pela porta do produto.
     let mut full = Vec::with_capacity(dabs);
     let mut affected = 0usize;
     for c in &centers {
-        let dab = Dab {
-            center: *c,
-            radius,
-            // Força minúscula: a sonda mede CUSTO, e deformar a malha ao longo
-            // da varredura mudaria a vizinhança de um dab para o seguinte.
-            strength: radius * 1e-4,
-        };
+        stroke.begin(mesh);
+        let dab = Dab::at(*c, radius);
         let t = Instant::now();
-        let moved = apply_dab(mesh, &dab, &mut scratch);
+        let moved = stroke.dab(mesh, &brush, &dab, Symmetry::default());
         full.push(t.elapsed().as_secs_f64() * 1e3);
         affected = affected.max(moved);
     }
@@ -179,19 +197,18 @@ fn measure_brush_kernel() {
     for target in [500_000usize, 5_000_000] {
         let mut mesh = shapes::sphere_with_triangles(target, 1.0);
         let mut best = (f32::MAX, 0.02f32);
-        let mut scratch = DabScratch::default();
+        let mut stroke = SculptStroke::default();
         let probe_at = mesh.positions()[0];
         let span = mesh.bounds().longest_edge();
         for k in 1..=60 {
             let frac = k as f32 * 0.005;
-            let n = apply_dab(
+            let r = span * frac;
+            stroke.begin(&mesh);
+            let n = stroke.dab(
                 &mut mesh,
-                &Dab {
-                    center: probe_at,
-                    radius: span * frac,
-                    strength: 0.0,
-                },
-                &mut scratch,
+                &probe_brush(Verb::Draw, r),
+                &Dab::at(probe_at, r),
+                Symmetry::default(),
             );
             let err = (n as f32 - 30_000.0).abs();
             if err < best.0 {

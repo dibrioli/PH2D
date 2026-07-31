@@ -19,14 +19,19 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## Integração — jornada de 2026-07-30 FECHADA (6 linhas), **NÃO pushada**
+## Integração — jornada FECHADA (7 linhas), ship+CI POR ORDEM DO ENIO
 
-**Seis linhas integraram**, na ordem MEDIDA: **`line/Painter`** (74 commits — o journal de
+**Sete linhas integraram**, na ordem MEDIDA: **`line/Painter`** (74 commits — o journal de
 undo por tile + a performance do Wet Paint) → **`line/Vector`** (58 — a pilha de FX raster +
 o lápis, a largura viva e o alcance do nó) → **`line/motion-value`** (43 — o editor de nós
 ganhou mãos) → **`line/physics`** (70 — a POLIA W0..W6 + a Weston + o pino de mundo) →
 **`line/sculpt3d`** (7 — a W1 do módulo 3D, a malha) → **`line/FLIP`** (58 — o motor novo de
-traço, que passa a ser PERCORRIDO em vez de rasterizado). `main` = **`d1204c500`**.
+traço, que passa a ser PERCORRIDO em vez de rasterizado) → **`line/anim`** (89, em 2026-07-31
+— a expressão vira fonte de lane que FADEIA e a trajetória é do CLIP).
+
+> **A ordem da última NÃO foi medida, e isso é a resposta honesta:** a sobreposição par-a-par
+> existe entre linhas CONCORRENTES, e a `line/anim` era a única restante. Medir teria sido
+> ritual.
 
 > **Como a ordem foi medida nas duas últimas** (a sobreposição se MEDE, não se escolhe): as
 > duas tocavam os MESMOS 3 arquivos (`Cargo.lock` · `main.rs` · `render_loop/mod.rs`), as duas
@@ -45,8 +50,8 @@ verde**). ⚠️ **NÃO foi pushado, e o `ship.sh` NÃO foi rodado** — os dois
 do Enio (§0.7).
 
 **Números no `main` de hoje** (a fonte é o código, não esta linha):
-`PROJECT_SCHEMA` **46** · `FLIP_SCHEMA` **12** · `VEC_SCENE` **13** · `DOC_VERSION` **15** ·
-formato textual do nodegraph **v5** · **ADR max 0150** · registro `ph2d-ecs` **39**
+`PROJECT_SCHEMA` **46** · `FLIP_SCHEMA` **12** · `VEC_SCENE` **13** · `DOC_VERSION` **17** ·
+formato textual do nodegraph **v5** · **ADR max 0152** · registro `ph2d-ecs` **39**
 (espelhos `ph2d-render`/`ph2d-script` **40**) · registro `ph2d-physics-ecs` **24** · gizmo ids
 **próximo livre 972** · `physics_ecs_c9` **`7cb7728d…`, 96 corpos** · crates novas
 **`ph2d-stroke-width`** + **`ph2d-mesh`/`ph2d-mesh-render`/`ph2d-sculpt3d`**.
@@ -109,6 +114,24 @@ formato textual do nodegraph **v5** · **ADR max 0150** · registro `ph2d-ecs` *
 > `line/Vector`). **Quem fecha uma linha roda o gate de LOC do dono do teto, não só o `-p` da
 > própria crate.**
 
+> ⚠️ **A `line/anim` trouxe DOIS conflitos que o handoff dela não previu, e os dois no MESMO
+> arquivo:** `ph2d-editor-core/src/paint_shapes.rs`. Duas linhas o criaram **independentemente
+> e pelo mesmo motivo** (`paint.rs` no teto congelado de 884 LOC ⇒ um primitivo novo nasce num
+> irmão) — `fill_diamond` pela `motion-value`, `fill_polygon` pela `anim`. Primeiro **add/add**
+> (mecânico: ficam os dois, é ponto de extensão append-only); depois **modify/delete**, quando
+> a própria `anim` apagou o arquivo ao retirar o preview de expressão. Apagar teria levado o
+> `fill_diamond` que o `ph2d-panel-motion-graph` importa e que **já shipou**. ⚠️ **E a metade
+> que o merge textual não mostra:** o commit de remoção tirou **também** o `pub mod
+> paint_shapes;` do `lib.rs` — restaurar só o ARQUIVO deixa o módulo **órfão**, uma árvore que
+> funde limpa e **não compila**. *As duas metades voltam juntas.*
+
+> ⚠️ **O rewrite de token da renumeração mediu o próprio preço, e o escopo por-ARQUIVO NÃO
+> bastou:** 23 arquivos **alheios** citam `ADR-0145/0146` (todos do wet paint), então o escopo
+> foi a interseção *arquivos-da-linha ∩ citações* — **44**. Mas dois deles são **MISTOS**: o
+> `CLAUDE.md` cita os 0145/0146 do wet paint **11 vezes** e os da timeline **1**, e o handoff
+> da linha nomeia os dois donos de propósito. Os 42 puros foram por token; o `CLAUDE.md` levou
+> **edição cirúrgica**, com controle confirmando as 11 citações alheias intactas.
+
 ### ⚠️ Ao REABRIR uma linha: rebase primeiro
 
 **Toda worktree está ATRÁS do `main`** — nenhuma continua de onde parou sem rebase. Rota
@@ -123,20 +146,18 @@ O `cd` + `pwd` não é zelo: a janela abre na raiz (= `main`) e **o mesmo path r
 duas árvores** — editar a errada compila e commita sem erro
 ([`MODELO_TROCA_DE_AGENTE_NA_LINHA`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
 
-**UMA linha segue EM VOO** — ela não entrou nesta rodada e **não** está fechada (confira o
-número, que é a fonte: `git rev-list --count main..line/anim`, medido em 2026-07-30 como
-**82**): **`line/anim`**. Todas as outras worktrees estão em zero commits contra o `main`.
+**NENHUMA linha em voo.** Todas as worktrees estão em **zero** commits contra o `main`
+(confira, que é a fonte: `for w in Worktrees/*; do git -C $w rev-list --count main..HEAD; done`).
 
-> ⚠️ **As notas anteriores sobre `line/physics`, `line/FLIP`, `line/sculpt3d` e
-> `line/motion-value` "em voo" estão VENCIDAS** — as quatro integraram. ⚠️ E a que dizia que
-> a `motion-value` carregava 17 commits órfãos também: o trabalho de 14/07-15/07 (as crates-nó
-> `fx-glow`/`motion-delay`/`motion-path`, o `ph2d-nodegraph::external`, o W4.T4) está no `main`.
-> **A armadilha dos DOIS `motion_path_smoke.rs` foi resolvida na própria linha** — não a
-> re-litigue.
+> ⚠️ **Toda nota anterior de "linha em voo" está VENCIDA** — as sete integraram, a `line/anim`
+> por último. ⚠️ E a que dizia que a `motion-value` carregava 17 commits órfãos também: o
+> trabalho de 14/07-15/07 (as crates-nó `fx-glow`/`motion-delay`/`motion-path`, o
+> `ph2d-nodegraph::external`, o W4.T4) está no `main`. **A armadilha dos DOIS
+> `motion_path_smoke.rs` foi resolvida na própria linha** — não a re-litigue.
 
 > ⚠️ **TODOS os smokes desta jornada seguem PENDENTES** (as três primeiras linhas já estavam
-> assim; physics/sculpt3d/FLIP foram smokadas pelos donos ANTES da integração, e **integrar
-> não é aprovar**). Os comandos por módulo estão na §5 do CLAUDE.md.
+> assim; physics/sculpt3d/FLIP/anim foram smokadas pelos donos ANTES da integração, e
+> **integrar não é aprovar**). Os comandos por módulo estão na §5 do CLAUDE.md.
 
 **`line/cook-parallel` foi DESCARTADA (2026-07-25)** — estava subsumida pela `line/gpu-nodes`.
 Worktree e branch removidas; o histórico vive na tag **`archive/cook-parallel-2026-07-15`**.

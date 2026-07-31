@@ -394,7 +394,16 @@ pub struct InspectorJointInfo {
     /// Are BOTH bodies present right now? The section says so out loud: a
     /// joint whose body was renamed is dormant, not broken, and silently
     /// showing its parameters as if it were live would be a lie.
+    ///
+    /// ⚠️ **Num pino de MUNDO isto é verdade com UM corpo só** (W-JointWorld) —
+    /// o cenário não é um objeto que possa estar ausente. Perguntá-lo pelos DOIS
+    /// nomes chamaria de quebrado um joint que está segurando.
     pub bound: bool,
+    /// **O lado B é o MUNDO** — um ponto do cenário, não um objeto
+    /// (`JointWorldAnchor`). A row *Body B* diz *World* e não oferece
+    /// conta-gotas: não há o que apontar, e um ícone apagado que ainda despacha é
+    /// exatamente o que esta linha proíbe.
+    pub world_anchored: bool,
     pub limits_enabled: bool,
     /// The limit range **in the KIND's own unit** — degrees for a Pin's angular
     /// range, metres for a Slider's stroke.
@@ -521,6 +530,13 @@ pub enum JointFieldEdit {
     /// artista. Estrutural, como o `Remove`: a shell SPAWNA um objeto, e o undo
     /// global por-diff o captura como captura qualquer outro.
     AddWheel,
+    /// **Prender o lado B ao MUNDO (`true`) ou a um objeto (`false`)**
+    /// (W-JointWorld).
+    ///
+    /// ⚠️ Estrutural como o `AddWheel`: acrescenta/remove o marcador
+    /// `JointWorldAnchor`, e por isso NÃO passa pelo funil de campos que os
+    /// outros variants usam — não há campo de `PhysicsJoint` a escrever.
+    AnchorToWorld(bool),
     /// Delete the joint object.
     Remove,
 }

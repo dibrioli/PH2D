@@ -42,6 +42,7 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         body_a_name: "Hook".into(),
         body_b_name: "Plank".into(),
         bound: true,
+        world_anchored: false,
         limits_enabled: true,
         limit_min_ui: -45.0,
         limit_max_ui: 45.0,
@@ -196,6 +197,49 @@ fn the_body_pickers_arm_their_own_slot() {
         &click_real(joint(0), ids::INSP_JOINT_PICK_B),
         JointFieldEdit::PickBodyB,
         "pick Body B",
+    );
+}
+
+/// **O par Object|World ARMA o que ele nomeia** (W-JointWorld).
+///
+/// Sem este canal o pino de mundo é inautorável: o marcador é um componente, e
+/// nada mais na tela o acrescenta.
+#[test]
+fn the_anchor_b_chips_ask_for_the_side_they_name() {
+    expect(
+        &click_real(joint(0), ids::INSP_JOINT_ANCHOR_B[1]),
+        JointFieldEdit::AnchorToWorld(true),
+        "anchor B to the world",
+    );
+    expect(
+        &click_real(joint(0), ids::INSP_JOINT_ANCHOR_B[0]),
+        JointFieldEdit::AnchorToWorld(false),
+        "anchor B back to an object",
+    );
+}
+
+/// **Um pino de mundo NÃO oferece o conta-gotas do lado B — e OFERECE o do A.**
+///
+/// ⚠️ As duas metades no mesmo gate de propósito: *"o ícone sumiu"* sozinho
+/// também é o que aconteceria se a seção inteira parasse de pintar, e aí o gate
+/// estaria verde sobre a §12 quebrada. O lado A é o controle.
+#[test]
+fn a_world_pin_withholds_the_b_picker_but_keeps_the_a_one() {
+    let mut info = joint(0);
+    info.world_anchored = true;
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_joint(Some(info));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_joint(None);
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PICK_A),
+        "o conta-gotas do lado A tinha de continuar lá — ele é o CONTROLE"
+    );
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PICK_B),
+        "o conta-gotas do lado B foi pintado num pino de MUNDO: não há corpo a \
+         apontar, e ele armaria um pick que nenhum clique pode satisfazer"
     );
 }
 
@@ -822,6 +866,8 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         &ids::INSP_JOINT_BREAK[..],
         &ids::INSP_JOINT_ACTIVE[..],
         &ids::INSP_JOINT_COLLIDE[..],
+        // W-JointWorld: o par Object|World do lado B.
+        &ids::INSP_JOINT_ANCHOR_B[..],
     ] {
         not_a_number.extend_from_slice(group);
     }
@@ -833,6 +879,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_JOINT_BREAK_GROUP,
         ids::INSP_JOINT_ACTIVE_GROUP,
         ids::INSP_JOINT_COLLIDE_GROUP,
+        ids::INSP_JOINT_ANCHOR_B_GROUP,
         ids::INSP_JOINT_SWAP,
         // O botão que acrescenta uma roldana (W-Pulley W1) — botão, não número.
         ids::INSP_JOINT_ADD_WHEEL,

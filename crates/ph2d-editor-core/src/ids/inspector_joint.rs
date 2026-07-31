@@ -149,6 +149,22 @@ pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 pub const INSP_JOINT_PICK_A: NodeId = hash_node_id("insp_joint_pick_a");
 pub const INSP_JOINT_PICK_B: NodeId = hash_node_id("insp_joint_pick_b");
 
+/// **A que o lado B se prende: a um OBJETO, ou ao MUNDO?** (W-JointWorld.)
+///
+/// Sem este par o artista **inventa um corpo estático** só para servir de âncora
+/// — a dobradiça na parede, o pêndulo no teto, a mola presa no chão viram todos
+/// um objeto a mais para nomear, achar na Hierarquia e mover por acidente.
+///
+/// ⚠️ **Mora ao lado das rows do par, não num card próprio:** ele responde
+/// exatamente a pergunta que a row *Body B* faz, e um controle que muda o
+/// significado de uma row tem de estar onde a row está.
+pub const INSP_JOINT_ANCHOR_B_GROUP: NodeId = hash_node_id("insp_joint_anchor_b_group");
+/// `0` = Object · `1` = World.
+pub const INSP_JOINT_ANCHOR_B: [NodeId; 2] = [
+    hash_node_id("insp_joint_anchor_b_object"),
+    hash_node_id("insp_joint_anchor_b_world"),
+];
+
 /// **Acrescentar uma roldana à corda** (W-Pulley W1) — o pedido (4) do artista,
 /// *"escolher o número de roldanas, em tempo real, acrescentando após a criação"*.
 ///

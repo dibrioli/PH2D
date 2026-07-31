@@ -147,6 +147,9 @@ pub(crate) fn build_joint_info(
     let world = sim.world();
     let a = name_for(world, joint.body_a, &mut q);
     let b = name_for(world, joint.body_b, &mut q);
+    let world_anchored = world
+        .get::<ph2d_physics_ecs::JointWorldAnchor>(entity)
+        .is_some();
     Some(InspectorJointInfo {
         entity_bits,
         kind_tag: tag_of(joint.kind),
@@ -155,7 +158,14 @@ pub(crate) fn build_joint_info(
         // can act on. Whether the solver also built it depends on those bodies
         // having colliders, and saying "not connected" for a body that is
         // merely not physical yet would point at the wrong problem.
-        bound: joint.names_two_bodies() && !a.is_empty() && !b.is_empty(),
+        // ⚠️ **Um pino de MUNDO é `bound` com UM corpo só** — o cenário não é um
+        // objeto que possa estar ausente, então exigir os dois nomes chamaria de
+        // quebrado um joint que está segurando. A pergunta vai à porta única
+        // (`is_anchored`), que é a mesma que o reconcile faz.
+        bound: joint.is_anchored(world_anchored)
+            && !a.is_empty()
+            && (world_anchored || !b.is_empty()),
+        world_anchored,
         body_a_name: a,
         body_b_name: b,
         limits_enabled: joint.limits_enabled,
@@ -376,7 +386,13 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // `set_joint_body`. Neither reaches this per-joint apply; listed so the
         // match stays exhaustive, exactly like `Remove`.
         JointFieldEdit::PickBodyA | JointFieldEdit::PickBodyB => return None,
-        JointFieldEdit::Remove | JointFieldEdit::AddWheel => return None,
+        // Estruturais: não escrevem campo de `PhysicsJoint` nenhum. O `Remove`
+        // apaga a entidade, o `AddWheel` spawna uma, e o `AnchorToWorld`
+        // acrescenta/remove um MARCADOR — os três moram no laço de ações, onde
+        // a shell tem `&mut self`.
+        JointFieldEdit::Remove | JointFieldEdit::AddWheel | JointFieldEdit::AnchorToWorld(_) => {
+            return None;
+        }
     }
     // Through the SAME clamp the bridge uses on the way to the solver, so the
     // Inspector cannot author a state the loader would have to repair.

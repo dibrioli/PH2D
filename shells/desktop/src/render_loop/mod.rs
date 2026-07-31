@@ -6184,6 +6184,20 @@ impl crate::App {
                 if matches!(edit, ph2d_editor::JointFieldEdit::Remove) {
                     let e = ph2d_ecs::Entity::from_bits(bits);
                     let _ = sim.world_mut().despawn(e);
+                } else if let ph2d_editor::JointFieldEdit::AnchorToWorld(on) = edit {
+                    // Estrutural como os dois irmãos: acrescenta/remove o
+                    // MARCADOR `JointWorldAnchor` (W-JointWorld). Não há campo de
+                    // `PhysicsJoint` a escrever, então ele não passa pelo funil.
+                    let e = ph2d_ecs::Entity::from_bits(bits);
+                    if on {
+                        sim.world_mut()
+                            .entity_mut(e)
+                            .insert(ph2d_physics_ecs::JointWorldAnchor);
+                    } else {
+                        sim.world_mut()
+                            .entity_mut(e)
+                            .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+                    }
                 } else if matches!(edit, ph2d_editor::JointFieldEdit::AddWheel) {
                     // Estrutural como o `Remove`, do outro lado: SPAWNA um
                     // objeto. O undo global por-diff o captura como captura

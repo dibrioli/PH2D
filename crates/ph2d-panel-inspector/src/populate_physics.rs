@@ -42,6 +42,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     // under the mouse (the 36-cell lesson of W2c).
     register_button_ids(store, &ids::INSP_JOINT_ACTIVE);
     register_button_ids(store, &ids::INSP_JOINT_COLLIDE);
+    register_button_ids(store, &ids::INSP_JOINT_ANCHOR_B);
     register_button_ids(
         store,
         &[

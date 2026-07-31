@@ -30,6 +30,29 @@ pub(super) fn paint_pair_rows(
     info: &InspectorJointInfo,
 ) -> f32 {
     let mut yy = paint_body_rows(scene, text_system, theme, hit_index, store, x, w, y, info);
+    // **A que o lado B se prende?** (W-JointWorld.) Logo abaixo das rows do par
+    // porque é a pergunta que a row *Body B* faz — um controle que muda o
+    // significado de uma row tem de estar onde a row está.
+    //
+    // ⚠️ **Oferecido em todo tipo, e não só nos que "fazem sentido"**: uma mola
+    // presa no teto e uma corda presa no chão são tão comuns quanto uma
+    // dobradiça na parede. Quem recusa é a POLIA, e ela recusa no reconcile (a
+    // corda puxa as duas pontas), não aqui.
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Anchor B",
+        ids::INSP_JOINT_ANCHOR_B_GROUP,
+        &ids::INSP_JOINT_ANCHOR_B,
+        &ANCHOR_B_LABELS,
+        u8::from(info.world_anchored),
+    );
     let h = ROW_H_PX;
     let btn_rect = Rect::new(x, yy, w, h);
     // ⚠️ Always offered, on every kind and whether or not the names resolve: a
@@ -62,6 +85,9 @@ pub(super) fn paint_pair_rows(
         u8::from(info.collide_connected),
     )
 }
+
+/// Os dois destinos possíveis do lado B — objeto ou cenário (W-JointWorld).
+const ANCHOR_B_LABELS: [&str; 2] = ["Object", "World"];
 
 /// The two per-body rows: the label ("Body A"/"Body B"), the CURRENT body's
 /// name, and an eyedropper to re-pick it. Its own fn for the 200-LOC panel-fn
@@ -115,7 +141,11 @@ fn paint_body_rows(
             label_w,
             resolve(ColorToken::Text2, theme),
         );
-        let shown = display_name(name);
+        // ⚠️ **Num pino de MUNDO o lado B não é um nome que faltou** — ele é o
+        // cenário, e dizer "(missing)" ali chamaria de quebrado um joint que
+        // está segurando (W-JointWorld).
+        let world_b = info.world_anchored && id == ids::INSP_JOINT_PICK_B;
+        let shown = if world_b { "World" } else { display_name(name) };
         let name_x = x + label_w;
         let name_w = (w - label_w - icon_w - gap).max(0.0);
         paint_text(
@@ -127,7 +157,7 @@ fn paint_body_rows(
             label_font,
             name_w,
             resolve(
-                if name.is_empty() {
+                if name.is_empty() && !world_b {
                     ColorToken::Text3
                 } else {
                     ColorToken::Text1
@@ -135,6 +165,14 @@ fn paint_body_rows(
                 theme,
             ),
         );
+        // ⚠️ **Num pino de mundo o conta-gotas do lado B NÃO é oferecido** — não
+        // há corpo a apontar, e um ícone que continua clicável armaria um pick
+        // que nenhum clique pode satisfazer. Não é dim: ele não existe (a lei do
+        // botão-morto — *dimmed que despacha mente*).
+        if world_b {
+            yy += h;
+            continue;
+        }
         // The eyedropper, right-aligned. Pressed (accent) while its pick is
         // ARMED, so the artist sees which end is waiting for a body click.
         let brect = Rect::new(x + w - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);

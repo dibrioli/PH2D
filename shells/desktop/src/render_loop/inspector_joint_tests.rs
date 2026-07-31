@@ -300,3 +300,52 @@ fn set_joint_body_refuses_a_self_joint() {
     let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     assert_eq!(before, after, "a refused re-pick must not touch the joint");
 }
+
+/// **A §12 chama um pino de MUNDO de ligado, com um corpo só** (W-JointWorld).
+///
+/// ⚠️ O controle é a metade que importa: o MESMO joint, sem o marcador, tem de
+/// ser `bound: false`. Sem ele o gate ficaria verde sobre um `bound` cravado em
+/// `true`, e o painel diria "ligado" para todo joint meio-autorado do app.
+#[test]
+fn a_world_pin_reads_as_bound_with_a_single_body() {
+    let (mut sim, _hook, _plank) = two_bodies(true);
+    // ⚠️ Autorado direto, e não pelo `create_joint`: aquela porta EXIGE dois
+    // corpos (ela toma bits de entidade, e `Entity::from_bits(0)` nem existe).
+    // Este é o estado real em que o artista fica — um joint com uma ponta só,
+    // esperando o par Object|World.
+    let joint = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Name::new("Wall Pin"),
+            PhysicsJoint {
+                body_a: ph2d_ecs::stable_name_id("Hook"),
+                body_b: 0,
+                kind: JointKind::Pin,
+                ..PhysicsJoint::default()
+            },
+            ph2d_ecs::Transform::default(),
+        ))
+        .id();
+
+    let before = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0)
+        .expect("a §12 tem de existir para um joint selecionado");
+    assert!(
+        !before.bound,
+        "CONTROLE: sem o marcador, `body_b == 0` é meio-autorado — não ligado"
+    );
+
+    sim.world_mut()
+        .entity_mut(joint)
+        .insert(ph2d_physics_ecs::JointWorldAnchor);
+    let after = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0)
+        .expect("a §12 tem de existir para um joint selecionado");
+    assert!(
+        after.bound,
+        "um pino de mundo está SEGURANDO — chamá-lo de não-ligado aponta o \
+         artista para um problema que não existe"
+    );
+    assert!(
+        after.world_anchored,
+        "a §12 tem de saber que o lado B é o cenário, senão ela pinta \"(missing)\""
+    );
+}

@@ -63,9 +63,10 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // no pick and the graph never changed (the enumeration rotted the moment the
     // table grew). A family row is a leaf only under a mode — a stray click on one
     // from the top-level menu must not park a pick the shell cannot resolve.
-    let is_top_level_leaf = ids::TIMELINE_SEGMENT_MENU
-        .iter()
-        .any(|(row, _, _)| *row == id)
+    // …and the table is the one the SCOPE paints: a strip's fade menu drops the four rows
+    // that name an interpolation kind, so reading the segment table here would treat a
+    // `Hold` click as a leaf on a menu that never offered it.
+    let is_top_level_leaf = scope.menu_table().iter().any(|(row, _, _)| *row == id)
         && !CASCADES.iter().any(|(cascade, _)| *cascade == id);
     let is_family = ids::TIMELINE_EASE_MENU.iter().any(|(fam, _, _)| *fam == id);
     if !(is_top_level_leaf || (is_family && open_mode != TL_NO_EASE_MODE)) {

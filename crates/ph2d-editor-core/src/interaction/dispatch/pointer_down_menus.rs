@@ -116,12 +116,32 @@ pub(super) fn handle_down_menus(
                             ContextMenuKind::TimelineTrackTimeRemap { target }
                         }
                     }),
-                    // A strip — any of its three grab zones: the body and both
-                    // trim edges open the same menu, because they are all the
-                    // same strip and a right-click is not a drag.
-                    K::Strip { lane, strip, .. } => {
-                        Some(ContextMenuKind::TimelineStrip { lane, strip })
-                    }
+                    // A strip — the body and both trim edges open the same menu, because
+                    // they are all the same strip and a right-click is not a drag. Its two
+                    // FADE grips do not: a fade is a different thing to edit, and its menu
+                    // is the easing catalogue (Enio, 2026-07-31). The zone the pointer is
+                    // in is the whole question, and it already rode in on the hit.
+                    K::Strip { lane, strip, edge } => Some(match edge {
+                        crate::interaction::TIMELINE_STRIP_FADE_IN => {
+                            ContextMenuKind::TimelineSegment {
+                                scope: S::StripFade {
+                                    lane,
+                                    strip,
+                                    edge: 0,
+                                },
+                            }
+                        }
+                        crate::interaction::TIMELINE_STRIP_FADE_OUT => {
+                            ContextMenuKind::TimelineSegment {
+                                scope: S::StripFade {
+                                    lane,
+                                    strip,
+                                    edge: 1,
+                                },
+                            }
+                        }
+                        _ => ContextMenuKind::TimelineStrip { lane, strip },
+                    }),
                     K::LaneHeader { lane } => Some(ContextMenuKind::TimelineLane { lane }),
                     // A marker pennant: its whole edit surface (Rename / Set Signal /
                     // Delete, ADR-0143). Down does not CAPTURE the marker on Secondary

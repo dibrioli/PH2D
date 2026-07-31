@@ -285,6 +285,36 @@ pub const TIMELINE_MARKER_MENU: [(NodeId, &str, Option<[u8; 4]>); 3] = [
     (CTX_MENU_TL_DELETE_MARKER, "Delete Marker", None),
 ];
 
+// ── Timeline strip FADE menu (Enio, 2026-07-31) ─────────────────────────────
+// Right-click a strip's fade wedge for the SHAPE of that fade — "as mesmas opções
+// de easing que temos nos clips". It shares the three cascade rows and `Linear`
+// with the segment menu (same ids: it is the same question about a different
+// thing), and drops the four rows that name an interpolation KIND rather than an
+// easing — `Hold`, `Nearest`, `Custom (Bézier)` and `Rove` mean nothing to a
+// crossfade, and a row that cannot act is the dead menu item this file's
+// one-table-per-menu shape exists to prevent (the `TIMELINE_TIMEREMAP_TRACK_MENU`
+// precedent: a table of its own, never a conditional row).
+/// Back to the factory ramp. **Not** a catalogue easing and deliberately so: the
+/// default fade is `smoothstep`, whose nearest neighbour (`Quad In-Out`) gives
+/// `0.125` where it gives `0.15625` — naming a preset here would silently reshape
+/// every fade ever authored. It crosses as its own row and the shell maps it to
+/// `None`.
+pub const CTX_MENU_TL_FADE_SMOOTH: NodeId = hash_node_id("ctx_menu_tl_fade_smooth");
+
+/// The fade menu, in paint order: the default first (it is where a fade starts and
+/// what "undo my choice" means), then the two shapes that need no tuning, then the
+/// three easing cascades.
+///
+/// One table, three consumers — the overlay paints it, `pre_populate` registers it,
+/// and the shell's `preset_for` resolves every row (its gate walks this table too).
+pub const TIMELINE_FADE_MENU: [(NodeId, &str, Option<[u8; 4]>); 5] = [
+    (CTX_MENU_TL_FADE_SMOOTH, "Smooth (Default)", None),
+    (CTX_MENU_TL_LINEAR, "Linear", None),
+    (CTX_MENU_TL_EASE_IN, "Ease In \u{25b6}", None),
+    (CTX_MENU_TL_EASE_OUT, "Ease Out \u{25b6}", None),
+    (CTX_MENU_TL_EASE_INOUT, "Ease In-Out \u{25b6}", None),
+];
+
 /// The easing-family submenu, shared by all three modes (the mode rides in the
 /// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
 /// families (overshoot, bounce) last — the order animators scan.

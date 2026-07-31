@@ -340,7 +340,10 @@ pub fn paint_context_menu_overlay(
         // Timeline key: the interpolation leaving it, and the family submenu the
         // three cascade rows open. Both tables live in `ids` so the overlay, the
         // populate pass and the shell's resolver can never drift apart.
-        ContextMenuKind::TimelineSegment { .. } => &ids::TIMELINE_SEGMENT_MENU,
+        // The SCOPE picks the table: a key gets the interpolation presets, a strip's fade
+        // gets the easings alone (`TimelineInterpScope::menu_table` — the same door the
+        // chrome handler asks, so painted rows and live rows cannot drift).
+        ContextMenuKind::TimelineSegment { scope } => scope.menu_table(),
         ContextMenuKind::TimelineSegmentEase { .. } => &ids::TIMELINE_EASE_MENU,
         // Timeline track row (label column): whole-track actions.
         ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,

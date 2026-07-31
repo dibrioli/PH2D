@@ -136,6 +136,19 @@ pub struct StripView {
     pub ease_locked_in: bool,
     /// Mirror of `ease_locked_in`, at the end.
     pub ease_locked_out: bool,
+    /// The SHAPE of the fade at the start edge — `None` is the factory `smoothstep`
+    /// (Enio, 2026-07-31). The panel draws this curve inside the fade's wedge, so what the
+    /// artist chose in the menu is what the strip wears.
+    ///
+    /// ⚠️ It is the **EFFECTIVE** curve, not the authored one: where an OVERLAP defines the
+    /// window the authored curve is ignored (`ClipLane::weight_at_with` — the crossfade's
+    /// two weights must sum to 1), and it is resolved here by the very function the
+    /// evaluator asks (`ClipLane::authored_curve`). Letting the panel apply that rule from
+    /// `ease_locked_in` would be a second copy of it, and a drawing that shows a curve the
+    /// blend does not use is a lie no gate on the model can see.
+    pub curve_in: Option<ph2d_anim::Easing>,
+    /// Mirror of `curve_in`, at the end edge.
+    pub curve_out: Option<ph2d_anim::Easing>,
     /// Whether its source loops, ping-pongs, or plays once.
     pub loop_mode: StripLoop,
     /// Its playback rate. The panel writes it on the strip whenever it is not
@@ -546,6 +559,8 @@ impl TimelineViewSnapshot {
                     marks: st.marks,
                     ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
+                    curve_in: lane.authored_curve(st.curve_in, lane.overlapped_in(i)),
+                    curve_out: lane.authored_curve(st.curve_out, lane.overlapped_out(i)),
                     loop_mode: st.loop_mode,
                     speed: st.speed,
                 });

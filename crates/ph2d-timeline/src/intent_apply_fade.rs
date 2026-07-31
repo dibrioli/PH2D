@@ -78,3 +78,26 @@ pub(crate) fn set_lead(
         s.ease_out = 0.0; // the inward fade-out and the outward one are exclusive
     }
 }
+
+/// The fade's SHAPE at one edge — what the right-click menu authors, where the two above
+/// author its LENGTH.
+///
+/// It writes ONE field and nothing else: the curve is orthogonal to which kind of fade lives
+/// at this edge (inward ease or outward lead), so it survives the exclusivity dance those two
+/// perform. `None` restores the factory `smoothstep`.
+pub(crate) fn set_curve(
+    doc: &mut TimelineDoc,
+    host: StackHost,
+    lane: usize,
+    id: StripId,
+    edge: u8,
+    curve: Option<ph2d_anim::Easing>,
+) {
+    if let Some(s) = doc.strip_in_mut(host, lane, id) {
+        if edge == 0 {
+            s.curve_in = curve;
+        } else {
+            s.curve_out = curve;
+        }
+    }
+}

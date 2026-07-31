@@ -33,6 +33,16 @@ const CORNER_W: f32 = 2.0; // LITERAL-PX-OK: a bracket stroke, like the fade bar
 pub(crate) const HATCH_STEP: f32 = 5.0; // LITERAL-PX-OK: hatch line pitch
 /// Half-size of a fade-handle arrowhead.
 const ARROW_SZ: f32 = 3.0; // LITERAL-PX-OK: fade arrowhead half-size
+/// Thickness of the easing curve drawn inside a fade band.
+const FADE_CURVE_W: f32 = 1.5; // LITERAL-PX-OK: a hairline over the hatch
+/// The curve's inset from the band's top and bottom, so a stroke centred on the corner
+/// does not bleed half its width outside the fade.
+const FADE_CURVE_INSET: f32 = FADE_CURVE_W; // LITERAL-PX-OK: exactly the stroke's width
+/// Below this the band is too small for a curve to read as anything but a thicker stripe.
+const FADE_CURVE_MIN_W: f32 = 6.0; // LITERAL-PX-OK: a legibility floor, measured by eye
+/// Samples across a fade band. The non-monotone families (Elastic, Bounce) are the ones
+/// that need them: at 24 a bounce's last lobe is already a corner rather than a kink.
+const FADE_CURVE_STEPS: u32 = 24;
 
 /// The four corners as `(stretch, edge)` — GREEN top pair retimes, RED bottom pair
 /// trims; `edge` is the document's `0` = start, `1` = end.
@@ -141,9 +151,9 @@ pub(crate) fn paint_strip(
     // **The fade areas are LISTRADAS (gray-striped)** so the crossfade reads at a glance
     // (Enio, 2026-07-16). A window at an end means the strip is fading there — into its
     // neighbour if it has one (the overlap), out of nothing if it does not.
-    for (t_from, secs) in [
-        (s.t_start, s.blend_in),
-        (s.t_end - s.blend_out, s.blend_out),
+    for (t_from, secs, fade) in [
+        (s.t_start, s.blend_in, fade_in_curve(s)),
+        (s.t_end - s.blend_out, s.blend_out, fade_out_curve(s)),
     ] {
         if secs <= 0.0 {
             continue;
@@ -151,7 +161,7 @@ pub(crate) fn paint_strip(
         let a = view.x(t_from).max(body.x);
         let b = view.x(t_from + secs).min(body.x + body.w);
         if b > a {
-            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h));
+            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h), fade);
         }
     }
 
@@ -163,7 +173,12 @@ pub(crate) fn paint_strip(
         let a = view.x(s.t_start - s.lead_in);
         let b = view.x(s.t_start);
         if b > a {
-            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h));
+            paint_fade_region(
+                ctx,
+                theme,
+                Rect::new(a, body.y, b - a, body.h),
+                fade_in_curve(s),
+            );
         }
     }
 
@@ -175,7 +190,12 @@ pub(crate) fn paint_strip(
         let a = view.x(s.t_end);
         let b = view.x(s.t_end + s.lead_out);
         if b > a {
-            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h));
+            paint_fade_region(
+                ctx,
+                theme,
+                Rect::new(a, body.y, b - a, body.h),
+                fade_out_curve(s),
+            );
         }
     }
 
@@ -306,7 +326,7 @@ fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool, color: Co
 
 /// Paint a fade area: a faint darkening + gray diagonal STRIPES, so it reads as "a fade
 /// lives here" at a glance.
-fn paint_fade_region(ctx: &mut PaintCtx, theme: Theme, rect: Rect) {
+fn paint_fade_region(ctx: &mut PaintCtx, theme: Theme, rect: Rect, curve: FadeCurve) {
     fill_rounded_rect(
         ctx.scene,
         rect,
@@ -314,6 +334,104 @@ fn paint_fade_region(ctx: &mut PaintCtx, theme: Theme, rect: Rect) {
         resolve(ColorToken::Bg3, theme),
     );
     paint_hatch(ctx, rect, resolve(ColorToken::Border, theme), false);
+    paint_fade_curve(ctx, theme, rect, curve);
+}
+
+/// The start edge's fade, whichever side of the edge it lives on.
+///
+/// The INWARD band (`blend_in`, inside the box) and the OUTWARD one (`lead_in`, out in the
+/// gap) are the same fade authored on two sides of one edge — mutually exclusive, one curve.
+/// Two accessors instead of two literals so the four call sites cannot pair a band with the
+/// other edge's shape.
+fn fade_in_curve(s: &ph2d_timeline::StripView) -> FadeCurve {
+    FadeCurve {
+        curve: s.curve_in,
+        rising: true,
+    }
+}
+
+/// The end edge's fade — mirror of [`fade_in_curve`], falling.
+fn fade_out_curve(s: &ph2d_timeline::StripView) -> FadeCurve {
+    FadeCurve {
+        curve: s.curve_out,
+        rising: false,
+    }
+}
+
+/// Which fade this band is, and what shape it wears — the pair every fade band needs to
+/// draw itself.
+///
+/// `rising` is the band's DIRECTION (a fade-in climbs to full weight, a fade-out falls from
+/// it), and it is passed rather than inferred from the rect because the two outward bands
+/// live OUTSIDE the strip's box: there is nothing in the geometry that says which way the
+/// weight goes.
+#[derive(Copy, Clone)]
+pub(crate) struct FadeCurve {
+    /// The easing that shapes it — `None` is the factory `smoothstep`. Already the
+    /// EFFECTIVE curve (`StripView::curve_in`): an overlap-defined window arrives as `None`
+    /// because that is what the evaluator uses there.
+    pub curve: Option<ph2d_timeline::Easing>,
+    /// `true` for a fade-IN (weight climbs left to right), `false` for a fade-out.
+    pub rising: bool,
+}
+
+/// **A curva do fade, desenhada DENTRO da própria cunha** (Enio, 2026-07-31: *"coloque o
+/// desenho da curva do easing na área do FADE para decorar o fade das strips"*).
+///
+/// O eixo horizontal é o tempo através da banda; o vertical é o PESO (embaixo `0`, em cima
+/// `1`) — então a linha sobe num fade-in e desce num fade-out, e uma curva escolhida se
+/// distingue da de fábrica pela barriga.
+///
+/// ⚠️ **A altura vem de [`ph2d_timeline::fade_ramp`], a MESMA função que o avaliador usa.**
+/// Reimplementar o `smoothstep` aqui daria duas respostas para *"que forma tem este fade?"*,
+/// e elas divergiriam exatamente onde ninguém confere: numa screenshot.
+fn paint_fade_curve(ctx: &mut PaintCtx, theme: Theme, rect: Rect, fade: FadeCurve) {
+    let pts = fade_curve_points(rect, fade);
+    if pts.is_empty() {
+        return;
+    }
+    let mut p = BezPath::new();
+    for (i, pt) in pts.into_iter().enumerate() {
+        if i == 0 {
+            p.move_to(pt);
+        } else {
+            p.line_to(pt);
+        }
+    }
+    ctx.scene.inner_mut().stroke(
+        &Stroke::new(f64::from(FADE_CURVE_W)),
+        Affine::IDENTITY,
+        resolve(ColorToken::Text2, theme),
+        None,
+        &p,
+    );
+}
+
+/// A polilinha da curva, em pixels — **pura**, e separada da pintura pelo mesmo motivo que o
+/// `hit_plan`: é a GEOMETRIA que pode estar errada (a direção do fade, a escala do peso, a
+/// função que a molda), e nenhuma pintura headless a alcança.
+///
+/// Vazia quando a banda é pequena demais para a curva se distinguir da diagonal do hatch —
+/// ali desenhá-la só engrossaria a listra.
+pub(crate) fn fade_curve_points(rect: Rect, fade: FadeCurve) -> Vec<(f64, f64)> {
+    if rect.w < FADE_CURVE_MIN_W || rect.h < FADE_CURVE_MIN_W {
+        return Vec::new();
+    }
+    // A linha nasce e morre nos cantos, então ela sangraria meia espessura para fora da
+    // banda; o inset a mantém dentro do que o artista entende como o fade.
+    let inset = FADE_CURVE_INSET;
+    let (x0, y0) = (f64::from(rect.x), f64::from(rect.y + inset));
+    let (w, h) = (f64::from(rect.w), f64::from(rect.h - inset * 2.0));
+    (0..=FADE_CURVE_STEPS)
+        .map(|i| {
+            let f = f64::from(i) / f64::from(FADE_CURVE_STEPS);
+            // Um fade-out é medido a partir do FIM da janela — é assim que `weight_at_with`
+            // o avalia (`lead_end - t`) —, então a fração que entra na rampa é `1 - f`.
+            let u = if fade.rising { f } else { 1.0 - f };
+            let weight = ph2d_timeline::fade_ramp(u, fade.curve);
+            (x0 + f * w, y0 + (1.0 - weight) * h)
+        })
+        .collect()
 }
 
 /// Fill `rect` with diagonal hatch lines. `crossed` draws BOTH diagonals (an X, for the

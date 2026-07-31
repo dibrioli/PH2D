@@ -31,9 +31,14 @@ pub(crate) fn blend_px(view: TimeView, t_start: f64, blend: f64) -> f32 {
 pub(crate) const EASE_BAR_W: f32 = 2.0; // LITERAL-PX-OK: uma linha, como o traço de uma borda
 
 /// Hit/paint code for the fade-in grip (the strip's start corner).
-pub(crate) const EASE_IN: u8 = 3;
+///
+/// ⚠️ Re-exported from editor-core rather than written here, because editor-core now READS
+/// it: a right-click on a fade opens the easing menu instead of the strip menu, and two
+/// crates answering *"which zone number means fade?"* separately is a right-click that
+/// opens the wrong menu the day one of them moves.
+pub(crate) const EASE_IN: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_IN;
 /// …and the fade-out grip (its end corner).
-pub(crate) const EASE_OUT: u8 = 4;
+pub(crate) const EASE_OUT: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_OUT;
 
 /// **Both fade grips of one strip, placed together** — because they CONSTRAIN each other.
 ///

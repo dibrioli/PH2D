@@ -46,6 +46,41 @@ pub enum TimelineInterpScope {
     /// Every key at one time, across every track — the Summary channel's column.
     /// `t_bits` is `f64::to_bits` of the time in seconds.
     Column { t_bits: u64 },
+    /// One FADE of one clip strip (Enio, 2026-07-31) — the same easing vocabulary, applied
+    /// to the shape of a crossfade instead of the shape of a key's segment.
+    ///
+    /// It paints a table of its OWN ([`crate::ids::TIMELINE_FADE_MENU`]) rather than the key
+    /// menu: `Hold`, `Nearest`, `Custom (Bézier)` and `Rove` name interpolation KINDS, and a
+    /// fade has none of them — offering the four here would be four rows that do nothing,
+    /// which is the dead menu item this codebase keeps a table per menu to prevent.
+    StripFade {
+        /// Index into the stack.
+        lane: usize,
+        /// The strip's stable id, carried opaque (same contract as [`TimelineHitKind`]).
+        strip: u64,
+        /// `0` = the fade at the START edge, `1` = at the END. **Not** the raw hit code:
+        /// the two fade grips arrive as [`TIMELINE_STRIP_FADE_IN`]/[`TIMELINE_STRIP_FADE_OUT`]
+        /// and are normalised here, so downstream never learns the panel's zone numbering.
+        edge: u8,
+    },
+}
+
+impl TimelineInterpScope {
+    /// **Which table this scope's menu paints** — a key's segment presets, or a fade's
+    /// easings.
+    ///
+    /// Asked by the overlay (to PAINT) and by the chrome handler (to decide which rows are
+    /// leaves it may park a pick for). Two copies of that choice would ship a menu whose
+    /// rows draw but do nothing, which is exactly the failure the segment handler already
+    /// carries a scar from — it hand-listed the leaf ids once, `Nearest` was added to the
+    /// table, and the row was born dead.
+    #[must_use]
+    pub fn menu_table(self) -> &'static [(NodeId, &'static str, Option<[u8; 4]>)] {
+        match self {
+            Self::StripFade { .. } => &crate::ids::TIMELINE_FADE_MENU,
+            Self::Key { .. } | Self::Column { .. } => &crate::ids::TIMELINE_SEGMENT_MENU,
+        }
+    }
 }
 
 /// A preset the user picked from the timeline segment menu, parked on
@@ -411,6 +446,17 @@ pub const TIMELINE_EDGE_R: u8 = 1 << 1;
 pub const TIMELINE_EDGE_T: u8 = 1 << 2;
 /// Bottom edge bit.
 pub const TIMELINE_EDGE_B: u8 = 1 << 3;
+
+/// [`TimelineHitKind::Strip`]'s `edge` when the pointer is on the **fade grip at the start
+/// corner** — past the three span codes (`0` start, `1` end, `2` body).
+///
+/// It lives here, and not only in the panel that writes it, because editor-core now READS it:
+/// a right-click on a fade opens a different menu from a right-click on the strip's body, and
+/// two crates answering *"which number means fade?"* separately is the drift this constant
+/// exists to make impossible.
+pub const TIMELINE_STRIP_FADE_IN: u8 = 3;
+/// …and the fade grip at the end corner — see [`TIMELINE_STRIP_FADE_IN`].
+pub const TIMELINE_STRIP_FADE_OUT: u8 = 4;
 
 /// Accumulated wheel input over a timeline surface, drained by the panel. Three
 /// independent axes, split by modifier the way a dope sheet expects (plain =

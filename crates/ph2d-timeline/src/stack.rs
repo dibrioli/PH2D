@@ -552,7 +552,11 @@ impl ClipLane {
 
     /// A curva que de fato molda um fade: a autorada, ou `None` (a de fábrica) onde uma
     /// SOBREPOSIÇÃO define o blend. Uma porta, duas bordas.
-    fn authored_curve(&self, authored: Option<Easing>, overlapped: bool) -> Option<Easing> {
+    pub(crate) fn authored_curve(
+        &self,
+        authored: Option<Easing>,
+        overlapped: bool,
+    ) -> Option<Easing> {
         if overlapped { None } else { authored }
     }
 
@@ -653,7 +657,18 @@ fn ramp_with(elapsed: f64, window: f64, curve: Option<Easing>) -> f64 {
     if window <= 0.0 {
         return 1.0;
     }
-    let u = (elapsed / window).clamp(0.0, 1.0);
+    fade_ramp(elapsed / window, curve)
+}
+
+/// **A forma de um fade, dado o quanto dele já passou** (`u`, clampado a `[0, 1]`).
+///
+/// A metade aritmética do [`ramp_with`], pública porque o PAINEL desenha esta curva dentro
+/// da cunha do fade: se ele a re-derivasse, o desenho e o blend seriam duas respostas à
+/// pergunta *"que forma tem este fade?"*, e a divergência apareceria só numa screenshot —
+/// onde ninguém lê número.
+#[must_use]
+pub fn fade_ramp(u: f64, curve: Option<Easing>) -> f64 {
+    let u = u.clamp(0.0, 1.0); // CLAMP-OK: uma fração de janela
     match curve {
         None => u * u * (3.0 - 2.0 * u),
         Some(e) => e.eval(u),

@@ -6,10 +6,18 @@ use super::*;
 use ph2d_editor::ids as c;
 
 /// Every row the overlay paints must resolve — the anti-dead-menu gate.
+///
+/// It walks BOTH top-level tables (the key's segment presets and the strip fade's easings):
+/// the fade menu added a row of its own (`Smooth (Default)`), and a gate that only knew the
+/// older table would have shipped it painted, clickable and inert.
 #[test]
 fn every_published_menu_row_resolves_to_a_preset() {
-    // Leaves of the top-level menu (the three cascade rows are editor-core's).
-    for (id, label, _) in c::TIMELINE_SEGMENT_MENU {
+    // Leaves of the top-level menus (the three cascade rows are editor-core's).
+    for (id, label, _) in c::TIMELINE_SEGMENT_MENU
+        .iter()
+        .chain(c::TIMELINE_FADE_MENU.iter())
+    {
+        let (id, label) = (*id, *label);
         let is_cascade = id == c::CTX_MENU_TL_EASE_IN
             || id == c::CTX_MENU_TL_EASE_OUT
             || id == c::CTX_MENU_TL_EASE_INOUT;

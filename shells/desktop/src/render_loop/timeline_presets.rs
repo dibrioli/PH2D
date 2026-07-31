@@ -33,6 +33,11 @@ pub(crate) enum Preset {
     Rove,
     /// One of the 30 easing family × mode combinations.
     Eased(ph2d_anim::Easing),
+    /// Back to the factory `smoothstep` — offered only by the strip-fade menu, where it is
+    /// the default a fade starts with. It is a variant rather than an `Easing` because the
+    /// catalogue has no `smoothstep`: the nearest, `Quad In-Out`, gives `0.125` where it
+    /// gives `0.15625`, and naming a preset would reshape every fade already authored.
+    FadeSmooth,
 }
 
 /// Resolve one menu row. `mode` is `TL_NO_EASE_MODE` for the rows that carry
@@ -59,6 +64,9 @@ pub(crate) fn preset_for(item: ph2d_editor::NodeId, mode: u8) -> Option<Preset> 
     }
     if item == c::CTX_MENU_TL_ROVE {
         return Some(Preset::Rove);
+    }
+    if item == c::CTX_MENU_TL_FADE_SMOOTH {
+        return Some(Preset::FadeSmooth);
     }
     let mode = match mode {
         c::TL_EASE_MODE_IN => M::In,
@@ -107,7 +115,36 @@ pub(crate) fn intents_for_pick(
     match pick.scope {
         S::Key { target, key } => single_key(state, preset, target, key),
         S::Column { t_bits } => column(state, preset, f64::from_bits(t_bits)),
+        S::StripFade { lane, strip, edge } => strip_fade(preset, lane, strip, edge),
     }
+}
+
+/// One fade of one strip: the picked row becomes the curve that shapes it.
+///
+/// No selection widening here, and that is the point of difference from a key — a fade is
+/// not selectable, so "the scope follows the selection" has nothing to follow; the wedge
+/// under the cursor is the whole scope. The four rows that name an interpolation KIND
+/// cannot arrive (the fade menu does not paint them), and a stray one is dropped rather
+/// than guessed at.
+fn strip_fade(preset: Preset, lane: usize, strip: u64, edge: u8) -> Vec<TimelineIntent> {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    let curve = match preset {
+        Preset::FadeSmooth => None,
+        // `Linear` is a shape, not an interpolation kind, so it belongs here — and in the
+        // easing vocabulary it is exactly `Linear In` (the mode is inert for that family).
+        Preset::Linear => Some(Easing {
+            family: EasingFamily::Linear,
+            mode: EasingMode::In,
+        }),
+        Preset::Eased(e) => Some(e),
+        Preset::Hold | Preset::Nearest | Preset::Custom | Preset::Rove => return Vec::new(),
+    };
+    vec![TimelineIntent::SetStripCurve {
+        lane,
+        id: ph2d_timeline::StripId(strip),
+        edge,
+        curve,
+    }]
 }
 
 /// A key: bulk when it is selected, otherwise just itself.
@@ -235,6 +272,7 @@ fn absolute(preset: Preset) -> ph2d_anim::Interp {
         Preset::Eased(e) => Interp::Eased(e),
         Preset::Custom => unreachable!("Custom is relative to each key's own curve"),
         Preset::Rove => unreachable!("Rove toggles a flag, it is not an interpolation"),
+        Preset::FadeSmooth => unreachable!("FadeSmooth shapes a strip's fade, not a key"),
     }
 }
 

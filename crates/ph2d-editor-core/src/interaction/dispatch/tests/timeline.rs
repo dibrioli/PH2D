@@ -471,6 +471,113 @@ fn right_clicking_a_summary_column_scopes_the_menu_to_the_whole_column() {
     );
 }
 
+/// **A right-click on a strip's FADE opens the easing menu; on its BODY, the strip menu**
+/// (Enio, 2026-07-31).
+///
+/// The two are the same hit kind and differ only by the zone the pointer is in, which is why
+/// the body case is asserted in the SAME test: a branch that opened the fade menu everywhere
+/// would satisfy the first half alone, and the strip menu is where Duplicate/Delete/Loop
+/// live.
+#[test]
+fn right_clicking_a_fade_opens_the_easing_menu_and_the_body_still_opens_the_strip_menu() {
+    use crate::interaction::{
+        ContextMenuKind, TIMELINE_STRIP_FADE_IN, TIMELINE_STRIP_FADE_OUT, TimelineInterpScope,
+    };
+    // `edge` -> the menu that zone must open. The two fade zones normalise to the
+    // document's edge vocabulary (`0` start, `1` end) on the way through.
+    for (zone, want) in [
+        (
+            TIMELINE_STRIP_FADE_IN,
+            ContextMenuKind::TimelineSegment {
+                scope: TimelineInterpScope::StripFade {
+                    lane: 2,
+                    strip: 9,
+                    edge: 0,
+                },
+            },
+        ),
+        (
+            TIMELINE_STRIP_FADE_OUT,
+            ContextMenuKind::TimelineSegment {
+                scope: TimelineInterpScope::StripFade {
+                    lane: 2,
+                    strip: 9,
+                    edge: 1,
+                },
+            },
+        ),
+        // The body and both TRIM edges are the strip itself — unchanged.
+        (2, ContextMenuKind::TimelineStrip { lane: 2, strip: 9 }),
+        (0, ContextMenuKind::TimelineStrip { lane: 2, strip: 9 }),
+        (1, ContextMenuKind::TimelineStrip { lane: 2, strip: 9 }),
+    ] {
+        let (mut store, hits) = timeline_setup(TimelineHitKind::Strip {
+            lane: 2,
+            strip: 9,
+            edge: zone,
+        });
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            rmb(PointerKind::Down, 60.0, 60.0),
+            &arena,
+        );
+        assert_eq!(
+            store.context_menu().map(|r| r.kind),
+            Some(want),
+            "strip zone {zone} opened the wrong menu"
+        );
+    }
+}
+
+/// **The fade menu offers easings and nothing else.**
+///
+/// `Hold`, `Nearest`, `Custom (Bézier)` and `Rove` name interpolation KINDS — a crossfade has
+/// none of them, so a fade menu that painted them would ship four rows that draw, take a
+/// click, and do nothing. The gate asserts both halves (the four are absent, the easings are
+/// present) because a table that dropped everything would pass the first alone.
+#[test]
+fn the_fade_menu_offers_only_easings() {
+    use crate::interaction::TimelineInterpScope;
+    let fade = TimelineInterpScope::StripFade {
+        lane: 0,
+        strip: 0,
+        edge: 0,
+    }
+    .menu_table();
+    for dead in [
+        crate::ids::CTX_MENU_TL_HOLD,
+        crate::ids::CTX_MENU_TL_NEAREST,
+        crate::ids::CTX_MENU_TL_CUSTOM,
+        crate::ids::CTX_MENU_TL_ROVE,
+    ] {
+        assert!(
+            !fade.iter().any(|(id, _, _)| *id == dead),
+            "a fade menu must not offer an interpolation KIND"
+        );
+    }
+    for live in [
+        crate::ids::CTX_MENU_TL_FADE_SMOOTH,
+        crate::ids::CTX_MENU_TL_LINEAR,
+        crate::ids::CTX_MENU_TL_EASE_IN,
+        crate::ids::CTX_MENU_TL_EASE_OUT,
+        crate::ids::CTX_MENU_TL_EASE_INOUT,
+    ] {
+        assert!(
+            fade.iter().any(|(id, _, _)| *id == live),
+            "the fade menu must offer the easing rows"
+        );
+    }
+    // …and a KEY still gets the full table: narrowing the fade must not narrow the key.
+    let key = TimelineInterpScope::Key { target: 1, key: 1 }.menu_table();
+    assert!(
+        key.iter()
+            .any(|(id, _, _)| *id == crate::ids::CTX_MENU_TL_ROVE),
+        "a key's menu still offers Rove"
+    );
+}
+
 #[test]
 fn a_primary_press_on_a_summary_column_captures_a_drag_gesture() {
     let t_bits = 0.5_f64.to_bits();

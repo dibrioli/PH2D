@@ -309,3 +309,93 @@ fn keys_at_groups_by_exact_time_across_every_bound_track() {
     let t = ph2d_anim::RationalTime::from_frame(60, 60).to_seconds();
     assert_eq!(keys_at(&st, t).len(), 1, "t = 1.0 s reached by frame math");
 }
+
+// ── The strip FADE scope (Enio, 2026-07-31) ─────────────────────────────────
+
+/// **A pick on a fade becomes the curve for THAT edge of THAT strip.**
+///
+/// The five rows are walked in one loop against what each must produce, because the failure
+/// this catches is a mapping that is right for one row and wrong for the next — and the
+/// `Smooth (Default)` row is the one that is easy to get wrong, since `None` is also what a
+/// row the resolver forgot would produce.
+#[test]
+fn a_fade_pick_sets_that_edges_curve() {
+    let st = TimelineState::new();
+    let cases = [
+        (c::CTX_MENU_TL_FADE_SMOOTH, TL_NO_EASE_MODE, None),
+        (
+            c::CTX_MENU_TL_LINEAR,
+            TL_NO_EASE_MODE,
+            Some(Easing {
+                family: EasingFamily::Linear,
+                mode: EasingMode::In,
+            }),
+        ),
+        (
+            c::CTX_MENU_TL_FAM_BOUNCE,
+            c::TL_EASE_MODE_OUT,
+            Some(Easing {
+                family: EasingFamily::Bounce,
+                mode: EasingMode::Out,
+            }),
+        ),
+    ];
+    for (item, mode, want) in cases {
+        for edge in [0_u8, 1] {
+            let out = intents_for_pick(
+                &st,
+                TimelineInterpPick {
+                    scope: TimelineInterpScope::StripFade {
+                        lane: 3,
+                        strip: 77,
+                        edge,
+                    },
+                    item,
+                    mode,
+                },
+            );
+            match out.as_slice() {
+                [
+                    TimelineIntent::SetStripCurve {
+                        lane,
+                        id,
+                        edge: e,
+                        curve,
+                    },
+                ] => {
+                    assert_eq!((*lane, id.0, *e), (3, 77, edge), "wrong strip or edge");
+                    assert_eq!(*curve, want, "row resolved to the wrong curve");
+                }
+                other => panic!("a fade pick must raise exactly one SetStripCurve: {other:?}"),
+            }
+        }
+    }
+}
+
+/// **A row the fade menu does not paint raises nothing.**
+///
+/// `Rove` cannot arrive through the UI (the fade table drops it), and this pins what happens
+/// if it ever does: the pick is dropped, not guessed at. Without it, the catch-all would be
+/// free to fall through to a curve nobody chose.
+#[test]
+fn an_interpolation_kind_is_not_a_fade_curve() {
+    let st = TimelineState::new();
+    for item in [c::CTX_MENU_TL_HOLD, c::CTX_MENU_TL_ROVE] {
+        assert!(
+            intents_for_pick(
+                &st,
+                TimelineInterpPick {
+                    scope: TimelineInterpScope::StripFade {
+                        lane: 0,
+                        strip: 1,
+                        edge: 0,
+                    },
+                    item,
+                    mode: TL_NO_EASE_MODE,
+                },
+            )
+            .is_empty(),
+            "an interpolation kind must not become a fade curve"
+        );
+    }
+}

@@ -44,6 +44,8 @@ fn one_lone_strip() -> TimelineViewSnapshot {
                 marks: [0.0; 4],
                 ease_locked_in: lane.neighbour_reach_in(0) > 0.0,
                 ease_locked_out: lane.neighbour_reach_out(0) > 0.0,
+                curve_in: None,
+                curve_out: None,
                 loop_mode: StripLoop::Once,
                 speed: 1.0,
             }],

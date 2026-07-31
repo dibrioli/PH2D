@@ -460,6 +460,8 @@ mod tests {
                         lead_out: 0.0,
                         ease_locked_in: false,
                         ease_locked_out: false,
+                        curve_in: None,
+                        curve_out: None,
                         loop_mode: StripLoop::Once,
                         speed: 1.0,
                         marks: [0.0; 4],

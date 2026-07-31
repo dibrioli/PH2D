@@ -35,6 +35,8 @@ fn strip(marks: [f64; 4]) -> StripView {
         lead_out: 0.0,
         ease_locked_in: false,
         ease_locked_out: false,
+        curve_in: None,
+        curve_out: None,
         loop_mode: StripLoop::Once,
         speed: 1.0,
         marks,
@@ -119,5 +121,91 @@ fn a_stretch_bar_rides_the_top_edge_and_a_trim_bar_the_bottom() {
     assert!(
         top.y + top.h <= bottom.y,
         "e as duas bandas não se encostam — um strip com as quatro marcas mostra as quatro"
+    );
+}
+
+// ── A curva desenhada dentro da cunha do fade (Enio, 2026-07-31) ────────────
+
+/// Uma banda de fade folgada, em pixels de tela.
+fn band() -> Rect {
+    Rect::new(100.0, 50.0, 80.0, 20.0)
+}
+
+/// **A altura de cada ponto é a que o AVALIADOR computa** — o desenho não tem uma segunda
+/// resposta para *"que forma tem este fade?"*.
+///
+/// O oráculo é o `ph2d_timeline::fade_ramp`, a mesma função que o `weight_at_with` chama;
+/// reimplementar o `smoothstep` aqui só provaria que dois erros combinam.
+#[test]
+fn the_drawn_curve_is_the_ramp_the_evaluator_uses() {
+    let r = band();
+    for curve in [
+        None,
+        Some(ph2d_timeline::Easing {
+            family: ph2d_timeline::EasingFamily::Bounce,
+            mode: ph2d_timeline::EasingMode::Out,
+        }),
+    ] {
+        let pts = crate::strip_paint::fade_curve_points(
+            r,
+            crate::strip_paint::FadeCurve {
+                curve,
+                rising: true,
+            },
+        );
+        assert!(pts.len() > 2, "uma banda folgada tem de render curva");
+        let inset = f64::from(crate::strip_paint::FADE_CURVE_INSET);
+        let (top, h) = (f64::from(r.y) + inset, f64::from(r.h) - inset * 2.0);
+        for (x, y) in &pts {
+            // A fração horizontal É a fração da janela, então o peso esperado sai dela.
+            let f = (x - f64::from(r.x)) / f64::from(r.w);
+            let want = top + (1.0 - ph2d_timeline::fade_ramp(f, curve)) * h;
+            assert!(
+                (y - want).abs() < 1e-9,
+                "o ponto em f={f} desenha {y}, o avaliador diz {want}"
+            );
+        }
+    }
+}
+
+/// **Um fade-in SOBE e um fade-out DESCE.**
+///
+/// A direção não está na geometria da banda (as duas outward moram FORA da caixa, uma de
+/// cada lado), então ela é passada — e uma que chegasse errada desenharia uma entrada onde
+/// há uma saída, com o teste de altura acima ainda verde: ele afirma a FORMA, não o sentido.
+#[test]
+fn a_fade_in_climbs_and_a_fade_out_falls() {
+    let r = band();
+    let ends = |rising: bool| {
+        let p = crate::strip_paint::fade_curve_points(
+            r,
+            crate::strip_paint::FadeCurve {
+                curve: None,
+                rising,
+            },
+        );
+        (p.first().unwrap().1, p.last().unwrap().1)
+    };
+    // `y` cresce para BAIXO: subir de peso é o `y` DIMINUIR.
+    let (a, b) = ends(true);
+    assert!(b < a, "um fade-in tem de subir: {a} -> {b}");
+    let (a, b) = ends(false);
+    assert!(b > a, "um fade-out tem de descer: {a} -> {b}");
+}
+
+/// **Uma banda pequena demais não desenha curva.** Ali a linha seria indistinguível da
+/// diagonal do hatch, e uma cunha de 2 px com um traço dentro lê como listra mais grossa,
+/// não como forma.
+#[test]
+fn a_sliver_of_a_fade_draws_no_curve() {
+    assert!(
+        crate::strip_paint::fade_curve_points(
+            Rect::new(0.0, 0.0, 3.0, 20.0),
+            crate::strip_paint::FadeCurve {
+                curve: None,
+                rising: true,
+            },
+        )
+        .is_empty()
     );
 }

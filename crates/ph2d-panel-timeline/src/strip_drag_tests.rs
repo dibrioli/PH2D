@@ -33,6 +33,8 @@ fn snap() -> TimelineViewSnapshot {
                 marks: [0.0; 4],
                 ease_locked_in: false,
                 ease_locked_out: false,
+                curve_in: None,
+                curve_out: None,
                 loop_mode: StripLoop::Once,
                 speed: 1.0,
             }],

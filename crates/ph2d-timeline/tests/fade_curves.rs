@@ -183,3 +183,125 @@ fn an_overlap_crossfade_ignores_the_authored_curve() {
          plain={plain} curved={curved}"
     );
 }
+
+/// **O INTENT chega ao avaliador** — a metade que os gates acima não cobrem.
+///
+/// Eles constroem a curva escrevendo no strip; este dirige a porta que o menu de fato usa
+/// (`TimelineIntent::SetStripCurve`), e mede a POSE. Sem ele, a fiação do menu poderia
+/// escrever no campo errado — ou em campo nenhum — com os quatro verdes.
+#[test]
+fn the_intent_reaches_the_pose() {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{TimelineIntent, apply_intent};
+
+    let build = || {
+        let mut sim = SimWorld::new();
+        let bits = sim
+            .world_mut()
+            .spawn((Transform::default(), Name::new("I")))
+            .id()
+            .to_bits();
+        let mut st = TimelineState::new();
+        let doc = &mut st.doc;
+        key(doc, bits, PropKind::TranslationX, 0.0, -3.0);
+        key(doc, bits, PropKind::TranslationX, 4.0, -3.0);
+        let c2 = doc.add_clip("B".into());
+        doc.set_active(c2);
+        key(doc, bits, PropKind::TranslationX, 0.0, 5.0);
+        key(doc, bits, PropKind::TranslationX, 4.0, 5.0);
+        doc.set_active(0);
+        let lane = doc.add_lane("L".into()).unwrap();
+        // ⚠️ A Main leva `lead_in` porque sem ele há um VÃO no topo do loop: nada cobre a
+        // volta, a costura não tem para onde atravessar, e a pose fica chapada em +5 —
+        // uma fixture que não contém o fenômeno, com o produto correto.
+        let main = doc.add_strip(lane, 0, 0.5, 4.0).unwrap();
+        let clip2 = doc.add_strip(lane, c2, 4.0, 7.5).unwrap();
+        doc.strip_mut(lane, main).unwrap().lead_in = 0.5;
+        doc.strip_mut(lane, clip2).unwrap().lead_out = 0.5;
+        doc.set_active_loop_for(false, Some((0.0, 8.0)));
+        (sim, st, bits, lane, clip2)
+    };
+
+    let (mut sim, mut st, bits, ..) = build();
+    let before = x_at(&mut sim, &mut st, bits, 7.625);
+
+    let (mut sim, mut st, bits, lane, clip2) = build();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripCurve {
+            lane,
+            id: clip2,
+            edge: 1, // a borda de SAÍDA — a que fadeia para fora
+            curve: Some(LINEAR),
+        },
+    );
+    let after = x_at(&mut sim, &mut st, bits, 7.625);
+    assert!(
+        after < before - 0.05,
+        "o intent tem de moldar o fade de saída: antes={before} depois={after}"
+    );
+
+    // …e a borda de ENTRADA é outra: o mesmo intent no `edge: 0` não pode mover este ponto.
+    let (mut sim, mut st, bits, lane, clip2) = build();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripCurve {
+            lane,
+            id: clip2,
+            edge: 0,
+            curve: Some(LINEAR),
+        },
+    );
+    let other_edge = x_at(&mut sim, &mut st, bits, 7.625);
+    assert!(
+        (other_edge - before).abs() < 1e-9,
+        "escrever a borda de ENTRADA não pode moldar a de SAÍDA: {other_edge} vs {before}"
+    );
+}
+
+/// **O snapshot reporta a curva EFETIVA, não a autorada** — e é o que o painel desenha.
+///
+/// Onde uma SOBREPOSIÇÃO define a janela, o avaliador ignora a curva autorada (a
+/// complementaridade do crossfade é load-bearing — o gate acima o prova). Se o snapshot
+/// entregasse a autorada mesmo assim, o painel desenharia dentro da cunha uma curva que o
+/// blend não usa: uma mentira que **nenhum gate sobre o modelo pode ver**, porque o modelo
+/// está certo. Aqui a mesma curva é autorada nas duas bordas e só a livre sobrevive.
+#[test]
+fn the_snapshot_reports_the_curve_the_blend_actually_uses() {
+    use ph2d_core::Playhead;
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    let c2 = doc.add_clip("B".into());
+    let lane = doc.add_lane("L".into()).unwrap();
+    let a = doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
+    let b = doc.add_strip(lane, c2, 3.0, 7.0).unwrap(); // 1 s de SOBREPOSIÇÃO
+    {
+        // A: a saída está sobreposta pelo vizinho, a entrada é livre.
+        let s = doc.strip_mut(lane, a).unwrap();
+        s.ease_in = 0.5;
+        s.curve_in = Some(LINEAR);
+        s.curve_out = Some(LINEAR);
+    }
+    doc.strip_mut(lane, b).unwrap().curve_in = Some(LINEAR);
+
+    let mut snap = ph2d_timeline::TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &Playhead::new(1.0 / 60.0), false);
+    let strips = &snap.lanes[0].strips;
+    assert_eq!(
+        strips[0].curve_in,
+        Some(LINEAR),
+        "a borda LIVRE tem de reportar a curva autorada"
+    );
+    assert_eq!(
+        strips[0].curve_out, None,
+        "a borda SOBREPOSTA tem de reportar a de fábrica — é ela que o blend usa"
+    );
+    assert_eq!(
+        strips[1].curve_in, None,
+        "e o outro lado da mesma sobreposição também"
+    );
+}

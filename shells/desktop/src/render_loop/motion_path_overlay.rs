@@ -127,6 +127,38 @@ pub(crate) enum MotionPathGrab {
 /// Vazio quando não há seleção, quando o selecionado não tem binding Position, quando
 /// esse binding não tem caminho, ou quando a track está vazia — em nenhum desses casos
 /// existe uma trajetória a mostrar, e desenhar algo seria inventar uma.
+/// **O caminho que o clip ATIVO de fato anima** — `(alvo, caminho)`, ou `None`.
+///
+/// ⚠️ **A segunda metade da porta única, e ela faltava** (report do Enio, 2026-07-30: *"o
+/// Path criado em um Clip contamina e aparece alças em outro Clip criado depois"*). O
+/// `anchor_screen` já declarava, no próprio doc, que pintar e agarrar têm de concordar
+/// sobre ONDE a âncora está — e as duas metades discordavam sobre algo anterior: **se ela
+/// existe neste clip**. O caminho mora no BINDING, que é do DOCUMENTO; as keys moram no
+/// CLIP. Então num clip criado depois o `marks` (que pergunta pela track do clip ativo)
+/// devolvia zero marcas e o `anchor_screen`/`tangent_screen` seguiam entregando as âncoras
+/// do outro clip: nada desenhado, tudo agarrável.
+///
+/// Medido, clip novo e VAZIO: `marks=0 ancoras=2 alcas=2 agarravel=SIM` — um clique em cima
+/// de uma alça invisível pegava e arrastava a trajetória de OUTRO clip; e o duplo-clique
+/// (`motion_path_curve_hit`) inseria âncora numa curva que ninguém via.
+///
+/// A pergunta é a mesma que o `marks` faz e agora é feita UMA vez: *o clip ativo tem key
+/// para este alvo?* Uma track vazia conta como não — é o que o `marks` já exigia ao pedir
+/// `first`/`last`.
+fn active_path(
+    doc: &TimelineDoc,
+    selected: Option<u64>,
+) -> Option<(&ph2d_timeline::TargetBinding, &ph2d_timeline::MotionPath)> {
+    let entity = selected?;
+    let b = doc
+        .bindings()
+        .iter()
+        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)?;
+    let path = b.path.as_ref()?;
+    let track = doc.active_clip().track(b.target)?;
+    (!track.is_empty()).then_some((b, path))
+}
+
 pub(crate) fn marks(
     show: bool,
     doc: &TimelineDoc,
@@ -138,15 +170,7 @@ pub(crate) fn marks(
     if !show {
         return out;
     }
-    let Some(entity) = selected else { return out };
-    let Some(b) = doc
-        .bindings()
-        .iter()
-        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)
-    else {
-        return out;
-    };
-    let Some(path) = b.path.as_ref() else {
+    let Some((b, path)) = active_path(doc, selected) else {
         return out;
     };
     let Some(track) = doc.active_clip().track(b.target) else {
@@ -337,17 +361,7 @@ pub(crate) fn anchor_screen(
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(AnimTarget, usize, Point)> {
-    let Some(entity) = selected else {
-        return Vec::new();
-    };
-    let Some(b) = doc
-        .bindings()
-        .iter()
-        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)
-    else {
-        return Vec::new();
-    };
-    let Some(path) = b.path.as_ref() else {
+    let Some((b, path)) = active_path(doc, selected) else {
         return Vec::new();
     };
     path.anchors()
@@ -376,17 +390,7 @@ pub(crate) fn tangent_screen(
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(AnimTarget, usize, bool, Point, Point)> {
-    let Some(entity) = selected else {
-        return Vec::new();
-    };
-    let Some(b) = doc
-        .bindings()
-        .iter()
-        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)
-    else {
-        return Vec::new();
-    };
-    let Some(path) = b.path.as_ref() else {
+    let Some((b, path)) = active_path(doc, selected) else {
         return Vec::new();
     };
     let to_screen = |p: [f32; 2]| {
@@ -459,12 +463,7 @@ pub(crate) fn motion_path_curve_hit(
     if motion_path_hit(doc, selected, camera, window, x, y).is_some() {
         return None;
     }
-    let entity = selected?;
-    let b = doc
-        .bindings()
-        .iter()
-        .find(|b| b.entity == entity && b.prop == PropKind::Position && !b.missing)?;
-    let path = b.path.as_ref()?;
+    let (b, path) = active_path(doc, selected)?;
     if path.len() < 2 {
         return None;
     }

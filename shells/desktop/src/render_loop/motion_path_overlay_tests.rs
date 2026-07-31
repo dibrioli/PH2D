@@ -480,3 +480,95 @@ fn a_constant_speed_track_paints_a_uniform_ribbon() {
          uniforme não deu uma fita uniforme"
     );
 }
+
+/// **Num clip que NÃO anima a trajetória, não há âncora para pintar nem para agarrar**
+/// (report do Enio, 2026-07-30: *"o Path criado em um Clip contamina e aparece alças em
+/// outro Clip criado depois"*).
+///
+/// O caminho mora no BINDING, que é do DOCUMENTO; as keys moram no CLIP. O `marks` já
+/// perguntava pela track do clip ATIVO e devolvia zero marcas — mas o `anchor_screen` e o
+/// `tangent_screen` liam só `b.path`, então um clip criado depois herdava as âncoras e as
+/// alças do outro: **nada desenhado e tudo agarrável**. Medido antes do fix, num clip novo e
+/// vazio: `marks=0 ancoras=2 alcas=2 agarravel=SIM` — o clique numa alça invisível pegava e
+/// arrastava a trajetória do OUTRO clip, e o duplo-clique inseria âncora numa curva que
+/// ninguém via.
+///
+/// ⚠️ O oráculo pergunta as TRÊS coisas (pintar · agarrar · a curva), porque as três liam o
+/// caminho por portas diferentes e uma só ficaria verde sobre as outras duas.
+///
+/// **Mutação que deve sangrar:** qualquer uma das três voltando a ler `b.path` direto em vez
+/// de passar pelo `active_path`.
+#[test]
+fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
+    let (mut doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (1.0, 20.0, Interp::Linear)]);
+    // ⚠️ Âncoras COM alça: o `doc_with` usa `PathAnchor::corner`, cujas alças têm
+    // comprimento zero e o `tangent_screen` PULA (`TANGENT_MIN_PX`) — com elas a metade
+    // das alças deste gate seria verde sobre um conjunto vazio, que é a fixture não
+    // conter o fenômeno. A asserção de controle logo abaixo é o que prende isso.
+    doc.bindings_mut()[0].path = Some(MotionPath::new(vec![
+        PathAnchor {
+            anchor: [0.0, 0.0],
+            out_handle: [5.0, 3.0],
+            ..PathAnchor::corner([0.0, 0.0])
+        },
+        PathAnchor {
+            anchor: [20.0, 0.0],
+            in_handle: [-5.0, 3.0],
+            ..PathAnchor::corner([20.0, 0.0])
+        },
+    ]));
+    let (cam, win) = (camera(), window());
+
+    // O clip que AUTOROU a trajetória: tudo presente. CONTROLE POSITIVO — sem isto, um
+    // conjunto vazio nos dois clips passaria por "não vaza".
+    let a_marks = marks(true, &doc, Some(e), &cam, win).len();
+    let a_anchors = super::anchor_screen(&doc, Some(e), &cam, win);
+    let a_tangents = super::tangent_screen(&doc, Some(e), &cam, win);
+    assert!(
+        a_marks > 0 && a_anchors.len() == 2 && !a_tangents.is_empty(),
+        "o clip que anima a trajetória a desenha: marks={a_marks} âncoras={} alças={}",
+        a_anchors.len(),
+        a_tangents.len()
+    );
+    let on_anchor = a_anchors[0].2;
+    let (hx, hy) = (on_anchor.x as f32, on_anchor.y as f32);
+    assert!(
+        super::motion_path_hit(&doc, Some(e), &cam, win, hx, hy).is_some(),
+        "e a âncora dele é agarrável"
+    );
+    // ⚠️ O ponto SOBRE A CURVA é pedido ao próprio produto (uma varredura em px de tela até
+    // ele dizer "aqui"), não chutado: um ponto fora do raio de pega devolveria `None` nos
+    // DOIS clips e a metade do duplo-clique ficaria verde sobre nada.
+    let on_curve = (0..1000)
+        .map(|k| {
+            (
+                100.0 + f32::from(u16::try_from(k % 100).unwrap_or(0)) * 8.0,
+                100.0 + f32::from(u16::try_from(k / 100).unwrap_or(0)) * 80.0,
+            )
+        })
+        .find(|&(x, y)| super::motion_path_curve_hit(&doc, Some(e), &cam, win, x, y).is_some())
+        .expect("algum ponto de tela cai sobre a curva no clip que a anima");
+
+    // Um clip criado DEPOIS, vazio: o mesmo objeto, o mesmo binding, a mesma trajetória.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+
+    assert!(
+        marks(true, &doc, Some(e), &cam, win).is_empty(),
+        "nada é DESENHADO num clip que não anima a trajetória"
+    );
+    assert!(
+        super::anchor_screen(&doc, Some(e), &cam, win).is_empty()
+            && super::tangent_screen(&doc, Some(e), &cam, win).is_empty(),
+        "e não há âncora nem alça a enumerar"
+    );
+    assert!(
+        super::motion_path_hit(&doc, Some(e), &cam, win, hx, hy).is_none(),
+        "nem a agarrar: o ponto que pegava a âncora no clip A não pega nada aqui"
+    );
+    assert!(
+        super::motion_path_curve_hit(&doc, Some(e), &cam, win, on_curve.0, on_curve.1).is_none(),
+        "nem a curva: o duplo-clique no ponto que ACERTAVA a curva no clip A não insere \
+         âncora numa trajetória que este clip não anima"
+    );
+}

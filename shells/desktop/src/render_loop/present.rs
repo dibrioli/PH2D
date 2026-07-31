@@ -216,11 +216,11 @@ impl crate::App {
                 #[cfg(feature = "sculpt3d")]
                 if let Some(scene) = sculpt3d.as_mut() {
                     let gpu = surface.gpu();
-                    let mut enc = gpu
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("ph2d-mesh encoder"),
-                        });
+                    let mut enc =
+                        gpu.device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: Some("ph2d-mesh encoder"),
+                            });
                     scene.render(
                         gpu,
                         &mut enc,

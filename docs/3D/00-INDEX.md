@@ -18,7 +18,9 @@ resumo: "Uma linha por nota do cofre: caminho, tags e o que a nota responde. Lei
 ```
 DECISÃO: ADR-0145 (proposto) — malha primária · escrito direto em Rust/wgpu · SculptGL (MIT) de referência
 LINHA:   line/sculpt3d  (branch + worktree JÁ existem)
-CÓDIGO:  nenhum ainda — a W1 é a primeira
+CÓDIGO:  W1 FECHADA (M1 malha · M2 tela · M3 medições) — 5 commits, aguardando integração
+MEDIDO:  a pegada manda (10x a malha = 0,79x o dab). K1/K2 disparam só no pincel gigante,
+         e 88% do custo é DESCOBRIR a vizinhança, não as normais. Decisão: HANDOFF_INTEGRACAO
 MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 ```
 
@@ -74,6 +76,9 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
   porta (o undo, a lei do traço, o render).*
 - **[[03.5-Onde-roda-o-motor]]** · `decisao` `performance` — **A decisão que o fim do MVP forçou.** *Malha
   na CPU com rayon, GPU dona do render e da doação, porta única, e kill-criterion escrito antes do build.*
+- **[[HANDOFF_INTEGRACAO_line_sculpt3d_W1_2026-07-30]]** · `handoff` `integracao` —
+  **O que a W1 entregou e o que ela MEDIU.** *Identidade da linha, o que foi tocado fora do
+  módulo, os símbolos que podem colidir, e a tabela K1/K2 com a decisão que ficou para o Enio.*
 - **[[03.6-HANDOFF-implementador-W1]]** · `handoff` `plano` — **O briefing para COMEÇAR.** *O bloco a
   colar, a ordem dos marcos, as decisões que não se re-litigam e o formato do reporte.*
 

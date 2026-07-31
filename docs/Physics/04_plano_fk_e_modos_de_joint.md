@@ -6,7 +6,7 @@
 > outra seção de interação exclusiva para Joints. Coloque botões para 5 tipos de interação (3 nós já
 > temos)."*
 >
-> **Arquitetura:** [ADR-0145 §10](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
+> **Arquitetura:** [ADR-0149 §10](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
 > (emenda). Este doc é o **estado**; o ADR é o *porquê*.
 
 ---

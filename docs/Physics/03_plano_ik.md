@@ -5,7 +5,7 @@
 > diferencial de verdade para animação; arquitetura separada (multibody set), ADR próprio"*.
 > Escalonado pelo Enio em 2026-07-27.
 >
-> **Arquitetura:** [ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
+> **Arquitetura:** [ADR-0149](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
 > Este doc é o **estado**; o ADR é o *porquê*.
 
 ---

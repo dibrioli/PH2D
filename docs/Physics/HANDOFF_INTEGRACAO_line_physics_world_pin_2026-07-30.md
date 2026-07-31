@@ -117,7 +117,7 @@ o antídoto é uma linha de shell, não uma lembrança:
 grep -n "PROJECT_SCHEMA: u32" shells/desktop/src/project.rs
 ```
 
-### §3.2 — ADR-0145: RENUMERAR o desta linha
+### §3.2 — ADR-0149: RENUMERAR o desta linha
 
 ⚠️ **Colisão que o git NÃO reporta**, porque os nomes de arquivo diferem e cada
 lado só acrescenta o seu:
@@ -125,7 +125,7 @@ lado só acrescenta o seu:
 | lado | arquivo |
 |---|---|
 | **main** | `0145-wet-paint-solver-row-parallel-passes-rayon-exception.md` (+ 0146, 0147, **0148**) |
-| **linha** | `0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md` |
+| **linha** | `0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md` |
 
 **Renumere o DESTA LINHA para `0149`** (o próximo livre depois do 0148 do main) —
 quem chegou ao `main` primeiro fica com o número, a regra que o repo já aplicou
@@ -133,8 +133,10 @@ três vezes. Renomeie o arquivo e conserte as referências, que são **7 ocorrê
 em 5 arquivos** (medido, não estimado):
 
 ```
-grep -rln "0145-physics-ik\|ADR-0145" docs/ crates/ shells/
-#   docs/architecture/decisions/0145-physics-ik-…md   (o próprio, + o título dentro)
+# FEITO na integracao de 2026-07-30: o ADR desta linha virou 0149 (o main ja' tinha
+# 0145/0146/0147 da line/Painter e 0148 da line/Vector). O comando que o achou:
+#   grep -rln "0145-physics-ik\|ADR-0145" docs/ crates/ shells/
+#   docs/architecture/decisions/0149-physics-ik-…md   (o próprio, + o título dentro)
 #   docs/Physics/00_plano_waves.md                    (2×)
 #   docs/Physics/02_plano_joints_ui_authoring.md
 #   docs/Physics/03_plano_ik.md

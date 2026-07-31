@@ -301,7 +301,7 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   invisível no cursor). O que resta no horizonte é a metade **AUTORÁVEL** — um joint com UM corpo e um
   ponto de mundo persistido —, e ela não é mecânica: `names_two_bodies()` gateia o reconcile, o rig walk,
   o overlay e a §12.
-- ~~**IK multibody**~~ — **FECHADO ([ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md),
+- ~~**IK multibody**~~ — **FECHADO ([ADR-0149](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md),
   W-IK, 2026-07-27, cena `=54`)**, e ⚠️ **a metade "arquitetura separada (multibody set)" desta nota
   foi DELIBERADAMENTE recusada** — leia o ADR antes de reabrir. O multibody **não é estado da cena, é
   uma ferramenta transitória de POSE**: a árvore é construída no press, resolvida, escrita de volta em

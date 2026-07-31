@@ -1,4 +1,4 @@
-# ADR-0145 — A IK é uma ÁRVORE DE POSE transitória, não uma segunda representação do joint
+# ADR-0149 — A IK é uma ÁRVORE DE POSE transitória, não uma segunda representação do joint
 
 - **Status:** Aceito (2026-07-27)
 - **Contexto:** `line/physics`, W-IK. Horizonte do [plano 02 §8](../../Physics/02_plano_joints_ui_authoring.md)

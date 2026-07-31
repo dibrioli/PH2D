@@ -39,7 +39,7 @@ Quatro frentes, na ordem em que foram construídas.
 
 | wave | o quê | cena |
 |---|---|---|
-| W-IK | **posar arrastando a PONTA** — [ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md): a IK é uma **árvore de pose TRANSIENTE**, nunca uma segunda representação de joint | `=54` |
+| W-IK | **posar arrastando a PONTA** — [ADR-0149](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md): a IK é uma **árvore de pose TRANSIENTE**, nunca uma segunda representação de joint | `=54` |
 | W-FK + W-JointTools | a **cinemática DIRETA** (girar um elo em torno da própria âncora) + os cinco modos de joint numa seção própria | `=55` |
 
 ### (B) Os TIPOS que faltavam ao kit

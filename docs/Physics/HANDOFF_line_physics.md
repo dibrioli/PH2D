@@ -6261,7 +6261,7 @@ arrastar o muro estático *"não faz nada"*, o que esta wave tornou FALSO.
 
 ## W-IK — POSAR ARRASTANDO A PONTA (2026-07-27, cena `=54`, pendente de smoke)
 
-> **Arquitetura:** [ADR-0145](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
+> **Arquitetura:** [ADR-0149](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md).
 > **Plano/estado:** [`03_plano_ik.md`](03_plano_ik.md). Aqui fica só o que um agente que
 > RETOMA a linha precisa saber e não deve re-derivar.
 
@@ -6350,7 +6350,7 @@ Painel Physics. Deixe a seção Interaction para a simulação da física. Crie 
 exclusiva para Joints. Coloque botões para 5 tipos de interação (3 nós já temos)."*
 
 Plano: [`04_plano_fk_e_modos_de_joint.md`](04_plano_fk_e_modos_de_joint.md).
-Arquitetura: [ADR-0145 §10](../architecture/decisions/0145-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
+Arquitetura: [ADR-0149 §10](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md)
 (emenda — a FK não pede ADR próprio, ela é o outro lado da mesma decisão).
 
 ### O que mudou

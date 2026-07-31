@@ -415,13 +415,38 @@ fn the_worker_reports_what_a_step_costs() {
     // tick no fim para o motor voltar (é ele que produz o `away`).
     std::thread::sleep(Duration::from_millis(300));
     t.paint_tick(1.0 / 60.0);
-    // ⚠️ **O `away` só é conhecido quando a viagem FECHA:** ele é medido do
-    // `send` até o `recv` do worker VOLTAR, e o tick acima acabou de devolver o
-    // motor — sem esta pausa o gate lia o balde antes de o worker o preencher, e
-    // nasceu vermelho por isso. É a grandeza que só o outro lado pode carimbar.
-    std::thread::sleep(Duration::from_millis(30));
-    let ((step_sum, _, step_n), ..) = crate::wet_diag::take_window();
-    let (busy, away, _sleep) = crate::wet_diag::take_worker();
+
+    // ⚠️ **O `away` só é conhecido quando a viagem FECHA:** ele é medido do `send` até o `recv`
+    // do worker VOLTAR, e o tick acima acabou de devolver o motor — ler o balde antes disso o
+    // encontra vazio, e foi assim que este gate nasceu vermelho.
+    //
+    // A espera é uma CONDIÇÃO, não uma duração. Uma pausa fixa é uma aposta sobre a velocidade
+    // da máquina, e ela perdeu duas vezes no MESMO dia (integração de 2026-07-30): sob a suíte
+    // inteira em paralelo, e no perfil **debug**, onde tudo corre ~16× mais devagar. O que o
+    // gate afirma não mudou — só deixou de supor quanto tempo o outro lado leva.
+    //
+    // ⚠️ Os `take_*` ZERAM a janela, então o laço **acumula** o que cada leitura tirou: um poll
+    // que descartasse a leitura vazia perderia justamente o balde que ele espera.
+    let (mut step_sum, mut step_n, mut busy, mut away) = (0.0f64, 0u64, 0.0f64, 0.0f64);
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let ((s, _, n), ..) = crate::wet_diag::take_window();
+        let (b, a, _sleep) = crate::wet_diag::take_worker();
+        step_sum += s;
+        step_n += n;
+        busy += b;
+        away += a;
+        if (step_n > 0 && step_sum > 0.0 && busy > 0.0 && away > 0.0)
+            || std::time::Instant::now() >= deadline
+        {
+            break;
+        }
+        // ⚠️ E a espera **dirige o produto**: o `away` só existe quando o motor VIAJA, então um
+        // laço que apenas dorme nunca o preenche — foi assim que a 1ª versão desta espera falhou
+        // em debug depois de 10 s. Cada volta é um frame a mais, que é o que o gate já fazia.
+        std::thread::sleep(Duration::from_millis(10));
+        t.paint_tick(1.0 / 60.0);
+    }
     assert!(
         step_n > 0 && step_sum > 0.0,
         "o worker nao reportou passo nenhum ({step_n} passos, {step_sum:.3} ms): o log do \

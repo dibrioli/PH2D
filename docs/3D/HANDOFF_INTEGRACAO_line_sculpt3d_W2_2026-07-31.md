@@ -10,8 +10,9 @@ relacionados: ["[[06.1-Waves-riscos-e-alvos]]", "[[04.1-Pinceis]]", "[[03.5-Onde
 
 # `line/sculpt3d` — W2, **O BARRO**
 
-**Estado: FECHADA, pendente de SMOKE e de ordem de integração do Enio.**
-Branch `line/sculpt3d`, 6 commits sobre `main` (`98eb502a2`).
+**Estado: FECHADA, 1ª rodada de smoke ABSORVIDA, pendente de RE-SMOKE e de
+ordem de integração do Enio.** Branch `line/sculpt3d`, 8 commits sobre `main`
+(`98eb502a2`).
 
 ---
 
@@ -25,6 +26,8 @@ Branch `line/sculpt3d`, 6 commits sobre `main` (`98eb502a2`).
 | 4 | `e1e1f71f3` | **O UPLOAD É DA PEGADA** — região em vez da malha |
 | 5 | `8e49f4805` | **O GESTO** — o pick vira traço, com undo, simetria e teclas |
 | 6 | `e4e6a5717` | split por cap de LOC (a LEI e os VERBOS em irmãos) |
+| 7 | `ce3f84219` | os docs do cofre + este handoff |
+| 8 | `3fc7bbaad` | **os 3 defeitos da 1ª rodada de smoke** (§4b) |
 
 **26 arquivos, +3700/−360.**
 
@@ -111,6 +114,45 @@ byte, num gate de GPU.
 
 ---
 
+## 4b. Os três defeitos que o SMOKE pegou (1ª rodada)
+
+Report do Enio: *"os movimentos de rot do mouse no canvas estão invertidos"* +
+*"o local onde está esculpindo não coincide com a posição do mouse"*.
+
+**(1) A órbita estava invertida nos DOIS eixos.** `yaw` positivo leva o OLHO para
+`+X`, e a câmera indo para a direita faz o modelo *parecer* ir para a esquerda —
+então manipulação direta pede `yaw -= dx`. E arrastar para BAIXO mostra o TOPO,
+que é `pitch += dy`; eu passava `-dy` e **o próprio comentário ao lado afirmava o
+contrário do que a linha fazia**. ⚠️ O gate que fecha isso mede o **modelo NA
+TELA**, não o sinal do ângulo: argumentar sobre sinais foi como o erro entrou, e
+um gate que argumentasse do mesmo jeito herdaria o erro.
+
+**(2) Um clique sobre PAINEL era do modelo.** A cena devolvia `true`
+incondicionalmente ⇒ engolia todo botão do app, inclusive os do rail, e o
+dispatch 2D nunca via o evento. ⚠️ O `Move` e o `Up` **não** fazem a pergunta, de
+propósito (regra de captura), e isso está gateado para ninguém "completar" a
+correção e quebrar o traço longo.
+
+**(3) O espelho nascia LIGADO.** O artista clicava de um lado e via uma segunda
+protuberância do outro, sem nada na tela explicando por quê. O ZBrush nasce com
+espelho e **mostra**; nós ainda não mostramos ⇒ o default honesto é desligado.
+
+⚠️ **A hipótese óbvia — a geometria do pick estaria errada — foi REFUTADA por
+medição**, e a refutação deixou dois instrumentos:
+
+- **`the_pixels_the_ray_hits_are_the_pixels_the_mesh_painted`** — o oráculo que
+  faltava. O round-trip prova raio↔**MATRIZ**; este prova raio↔**IMAGEM**, e
+  entre os dois mora tudo que pode deslocar o pincel do cursor (viewport de outro
+  tamanho, flip de Y, aspect divergente). Medido: **99,99 % dos pixels
+  concordam**, e a discordância é a BORDA da silhueta. Câmera **assimétrica** de
+  propósito — com o modelo centrado um espelho é indistinguível do certo.
+- **`PH2D_SCULPT3D_DIAG=1`** — reprojeta o acerto e imprime o erro em pixels.
+
+E nasceu **`Camera3d::project`**, o inverso EXATO do `ray_through`, com três
+consumidores que precisam concordar. O gate de round-trip passou a usá-la em vez
+de reimplementar a conversão NDC→pixel — uma segunda conta no teste concordaria
+com o erro em vez de o expor.
+
 ## 5. Números
 
 **O custo de um dab** (`measure_brush_kernel`, `--release`, re-medido pela porta
@@ -145,9 +187,9 @@ com pincel de 45 % do raio do modelo.
 |---|---|---|
 | `ph2d-mesh` (lib) | 50 | 4 do pick + 1 do refit, **todas sangram** |
 | `ph2d-sculpt3d` (lib) | 27 | **10, 10 sangram** |
-| `ph2d-mesh-render` (lib) | 20 | 6 do plano de upload |
-| `ph2d-mesh-render` (GPU, `#[ignore]`) | **6** | rodados na RTX: **6/6** |
-| `shells/desktop` (arch-gate) | 7 | **6 realistas, 6 sangram** |
+| `ph2d-mesh-render` (lib) | 22 | 6 do plano de upload + **3 da câmera** |
+| `ph2d-mesh-render` (GPU, `#[ignore]`) | **7** | rodados na RTX: **7/7** |
+| `shells/desktop` (arch-gate) | 10 | **9 realistas, 9 sangram** |
 
 ⚠️ **Os gates de GPU são `#[ignore]` e precisam de adapter** —
 `cargo test -p ph2d-mesh-render --release -- --ignored`. Sem adapter fazem *skip
@@ -187,6 +229,9 @@ debug mede o `opt-level=0`.
 A cena **imprime o que montou** e os controles. ⚠️ **Se essas linhas não
 aparecerem, pare** — o resto do smoke não significa nada.
 
+⚠️ **Diagnóstico:** `PH2D_SCULPT3D_DIAG=1` imprime, a cada dab, o pixel clicado e
+o acerto reprojetado — se eles divergirem, o número diz quanto e para onde.
+
 **Os controles:** ESQUERDO esculpe (fora do modelo, **gira**) · DIREITO gira ·
 MEIO desloca · RODA aproxima · **Shift** = Smooth enquanto segurar · **Ctrl** =
 inverte (cava) · **1..9,0** escolhem o verbo · **M** máscara · **`[` `]`**
@@ -197,15 +242,19 @@ tamanho · **X/Y/Z** espelho · **Ctrl+Z** desfaz.
    na borda do pincel.
 2. **Devagar × rápido.** O MESMO caminho, arrastado devagar e depois rápido, tem
    de deixar o MESMO relevo. É a lei do traço, e é o que quase todo app erra.
-3. **A simetria** (X ligado por padrão): o outro lado acompanha.
-4. **Os verbos**, um a um. O `2` (Inflate) tem de **engordar** onde o `1` (Draw)
+3. **A rotação segue a mão** — arrastar para a direita vira o modelo para a
+   direita; arrastar para baixo mostra o topo. (Era o defeito (1) do §4b.)
+4. **A simetria nasce DESLIGADA**; `X` a liga e aí o outro lado acompanha.
+5. **Clicar num painel não esculpe** — mas um traço começado no modelo continua
+   se o cursor cruzar um painel.
+6. **Os verbos**, um a um. O `2` (Inflate) tem de **engordar** onde o `1` (Draw)
    só levanta; o `3` (Smooth) tem de derreter um pico que o `4` (Sharpen)
    aprofunda; o `5` (Flatten) tem de deixar um platô.
-5. **Shift e Ctrl** no meio de uma sessão — os dois atalhos universais.
-6. **A borda do pincel.** Não pode haver costura de iluminação num anel em volta
+7. **Shift e Ctrl** no meio de uma sessão — os dois atalhos universais.
+8. **A borda do pincel.** Não pode haver costura de iluminação num anel em volta
    do que você acabou de esculpir (era o defeito (b) do §4).
-7. **Ctrl+Z** devolve o traço inteiro, de uma vez.
-8. **Rode uma vez SEM a env var** — é a metade do smoke que prova a inércia: o
+9. **Ctrl+Z** devolve o traço inteiro, de uma vez.
+10. **Rode uma vez SEM a env var** — é a metade do smoke que prova a inércia: o
    app 2D tem de estar byte-idêntico.
 
 ---
@@ -225,6 +274,10 @@ tamanho · **X/Y/Z** espelho · **Ctrl+Z** desfaz.
   octree no load).
 - **Sem cursor 3D na tela.** O artista aponta e o pincel age, mas não há anel
   desenhado sob o mouse. É o irmão do gizmo de pincel do Painter e mora no shell.
+  ⚠️ **A 1ª rodada de smoke o promoveu de "polimento" a candidato a próximo
+  item:** sem anel, *"onde isto vai cair?"* só se responde esculpindo, e foi
+  parte do que fez o report (3) parecer um erro de coordenadas. A porta já
+  existe (`Camera3d::project`).
 - **Sem painel.** Verbo, raio, força, falloff e simetria são teclas; o painel
   docado é wave própria (e é lá que a **curva customizada** do falloff entra,
   reusando o `ParamWidget::Curve` que o repo já tem — nunca um segundo editor).

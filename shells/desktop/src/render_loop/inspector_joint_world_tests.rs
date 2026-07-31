@@ -150,3 +150,116 @@ fn the_canvas_release_on_empty_routes_to_the_world_pin() {
         "este gate está lendo o arquivo errado"
     );
 }
+
+/// **A ÂNCORA DE MUNDO SE MOVE** — o 2º relato de smoke (*"ainda não posso mover
+/// a âncora colocada no mundo"*).
+///
+/// ⚠️ O mecanismo era exato: o dot é desenhado no `Transform` do joint, mas o
+/// arrasto escrevia `local_a` — *onde no CORPO o pino prende* —, e o desenho
+/// ficava exatamente onde estava. A alça respondia a pergunta errada, então
+/// arrastar não fazia nada visível.
+///
+/// ⚠️ **E o CONTROLE é a outra metade:** num joint corpo-a-corpo o MESMO gesto tem
+/// de continuar escrevendo `local_a`. Sem ele este gate ficaria verde sobre uma
+/// porta que passou a mover o pivô de TODO joint do app.
+#[test]
+fn dragging_the_dot_moves_a_world_pins_anchor_and_still_slides_a_normal_one() {
+    // --- o pino de mundo: o `Transform` anda ---
+    let (mut sim, body) = one_body();
+    let joint = create_world_pin_at(
+        &mut sim,
+        body.to_bits(),
+        JointKind::Pin,
+        [0.0, 5.0],
+        [0.0, 7.0],
+    )
+    .expect("pino");
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let before = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert!(
+        bridge.set_joint_anchor_world(&mut sim, joint, ph2d_physics_ecs::JointSide::A, [2.0, 9.0]),
+        "a porta recusou o arrasto"
+    );
+    let t = sim.world().get::<Transform>(joint).expect("joint");
+    assert!(
+        (t.translation.x - 2.0).abs() < 1e-4 && (t.translation.y - 9.0).abs() < 1e-4,
+        "a âncora de mundo não andou: está em ({}, {})",
+        t.translation.x,
+        t.translation.y
+    );
+    let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert_eq!(
+        before.local_a, after.local_a,
+        "mover a âncora NÃO pode mexer em onde no corpo o pino prende — é o \
+         `local_a` intacto que faz o corpo ir junto"
+    );
+
+    // --- o CONTROLE: um joint corpo-a-corpo segue escrevendo o local ---
+    let mut sim2 = SimWorld::new();
+    let a = sim2
+        .world_mut()
+        .spawn((
+            Name::new("A"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 6.0)),
+        ))
+        .id();
+    let b = sim2
+        .world_mut()
+        .spawn((
+            Name::new("B"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 5.0)),
+        ))
+        .id();
+    let j2 = crate::render_loop::inspector_joint::create_joint(
+        &mut sim2,
+        a.to_bits(),
+        b.to_bits(),
+        JointKind::Pin,
+    )
+    .expect("joint");
+    let mut bridge2 = PhysicsBridge::new();
+    bridge2.dispatch(&mut sim2, false, 0);
+    let before2 = *sim2.world().get::<PhysicsJoint>(j2).expect("joint");
+    bridge2.set_joint_anchor_world(&mut sim2, j2, ph2d_physics_ecs::JointSide::A, [1.0, 6.0]);
+    let after2 = *sim2.world().get::<PhysicsJoint>(j2).expect("joint");
+    assert_ne!(
+        before2.local_a, after2.local_a,
+        "CONTROLE: num joint corpo-a-corpo o arrasto tem de continuar escrevendo \
+         o `local_a` — se ele passou a mover o pivô, a porta quebrou para TODO \
+         joint do app"
+    );
+}
+
+/// **O gesto vale nas DUAS direções, e elas produzem o MESMO pino** — o 2º
+/// relato (*"arrastar do canvas vazio para o objeto também deveria funcionar"*).
+///
+/// ⚠️ **A primeira versão deste gate NÃO PODIA FALHAR:** eu chamava a porta de
+/// criação com os MESMOS argumentos duas vezes e comparava os resultados —
+/// verde por construção, sobre nada. O que a direção de fato muda é o PAPEL dos
+/// dois pontos, e é isso que se pergunta aqui, à porta pura que os decide.
+#[test]
+fn the_gesture_reads_the_same_from_either_direction() {
+    let press = [0.0, 5.0];
+    let release = [0.0, 7.0];
+    // Saindo do CORPO: o press é o ponto no corpo, o release é a âncora.
+    assert_eq!(
+        super::inspector_joint_world::gesture_points(true, press, release),
+        (press, release)
+    );
+    // Saindo do CENÁRIO: os papéis TROCAM — o press é a âncora.
+    assert_eq!(
+        super::inspector_joint_world::gesture_points(false, release, press),
+        (press, release),
+        "vazio->corpo tinha de dar o MESMO par que corpo->vazio; sem a troca o \
+         pino nasce com a âncora onde o artista SOLTOU, o oposto do que apontou"
+    );
+}

@@ -27,7 +27,11 @@ use crate::App;
 /// O gesto em voo: de que corpo saiu, de que ponto, e onde o cursor está.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct JointDraw {
-    pub(crate) body_a: Entity,
+    /// De que corpo o gesto saiu — **`None` quando ele saiu do VAZIO**, isto é,
+    /// do cenário (W-JointWorld). O tipo é o que impede o release de esquecer
+    /// esse caso; a alternativa era um sentinela que todo leitor teria de
+    /// reconhecer.
+    pub(crate) body_a: Option<Entity>,
     /// O ponto do PRESS, em mundo — a âncora em A, e o pivô de um Pin/Weld.
     pub(crate) from: [f32; 2],
     /// Onde o cursor está agora, em mundo — a ponta da banda elástica.
@@ -95,23 +99,16 @@ impl App {
         };
         let window = gfx.surface.size();
         let world = gfx.camera.screen_to_world((sx, sy), window);
-        match body_at(gfx, world) {
-            Some(body_a) => {
-                self.joint_draw = Some(JointDraw {
-                    body_a,
-                    from: world,
-                    to: world,
-                });
-            }
-            // Nada sob o cursor: o gesto SEGUE armado (o precedente do
-            // eyedropper), e o toast diz o que falta em vez de deixar o artista
-            // concluir que o botão não fez nada.
-            None => {
-                gfx.toasts.push(ph2d_editor::Toast::info(
-                    "Press ON a physics body to start the joint",
-                ));
-            }
-        }
+        // ⚠️ **Apertar no VAZIO também é um começo legítimo** (W-JointWorld,
+        // 2º relato de smoke): o artista pensa *"prego na parede, agora ligo a
+        // bola nele"* tanto quanto o contrário. As duas direções produzem o
+        // MESMO joint — o que muda é qual ponta o gesto nomeia primeiro —, e
+        // recusar uma delas é ensinar que o gesto não existe.
+        self.joint_draw = Some(JointDraw {
+            body_a: body_at(gfx, world),
+            from: world,
+            to: world,
+        });
         true
     }
 
@@ -154,39 +151,58 @@ impl App {
         // arch-gate que a proíbe procura por substring, e um comentário que a
         // repete é um falso positivo esperando a próxima busca (ele já disparou
         // uma vez, sobre esta linha).
-        if let Some(b) = target
-            && b == d.body_a
+        if let (Some(a), Some(b)) = (d.body_a, target)
+            && a == b
         {
             gfx.toasts.push(ph2d_editor::Toast::info(
                 "A joint binds two DIFFERENT bodies",
             ));
             return; // segue armado: tente outra vez
         }
-        let created = match target {
-            Some(b) => crate::render_loop::inspector_joint::create_joint_at(
+        // **As três formas do gesto**, e as duas últimas produzem o MESMO objeto:
+        // corpo→corpo é o joint de sempre; corpo→vazio e vazio→corpo são o pino
+        // de mundo, com o CORPO sempre no lado A e a âncora no ponto do cenário.
+        //
+        // ⚠️ Vazio→vazio é a única combinação sem sentido: não há corpo nenhum a
+        // prender, e o `None` abaixo diz isso com um toast em vez de criar um
+        // objeto que não liga coisa alguma.
+        let created = match (d.body_a, target) {
+            (Some(a), Some(b)) => crate::render_loop::inspector_joint::create_joint_at(
                 &mut gfx.sim,
-                d.body_a.to_bits(),
+                a.to_bits(),
                 b.to_bits(),
                 kind,
                 Some((d.from, world)),
             ),
-            None => crate::render_loop::inspector_joint_world::create_world_pin_at(
-                &mut gfx.sim,
-                d.body_a.to_bits(),
-                kind,
-                d.from,
-                world,
-            ),
+            // ⚠️ As duas direções produzem o MESMO objeto, e quem sabe qual
+            // ponto é qual é a porta pura `gesture_points` — a troca escrita
+            // aqui nos dois braços nasceria invertida num terceiro.
+            (Some(a), None) | (None, Some(a)) => {
+                let (on_body, anchor) = crate::render_loop::inspector_joint_world::gesture_points(
+                    d.body_a.is_some(),
+                    d.from,
+                    world,
+                );
+                crate::render_loop::inspector_joint_world::create_world_pin_at(
+                    &mut gfx.sim,
+                    a.to_bits(),
+                    kind,
+                    on_body,
+                    anchor,
+                )
+            }
+            (None, None) => None,
         };
         let Some(joint) = created else {
-            gfx.toasts
-                .push(ph2d_editor::Toast::info(if target.is_some() {
-                    "Those two bodies cannot be joined"
-                } else {
-                    // A única forma de o pino de mundo recusar: a POLIA. A corda puxa
-                    // as DUAS pontas, e uma delas no cenário é outra máquina.
-                    "A pulley needs two bodies — its rope pulls at both ends"
-                }));
+            gfx.toasts.push(ph2d_editor::Toast::info(
+                match (d.body_a.is_some(), target.is_some()) {
+                    (false, false) => "Start or end the joint ON a body",
+                    (true, true) => "Those two bodies cannot be joined",
+                    // A única forma de o pino de mundo recusar: a POLIA. A corda
+                    // puxa as DUAS pontas, e uma delas no cenário é outra máquina.
+                    _ => "A pulley needs two bodies — its rope pulls at both ends",
+                },
+            ));
             return;
         };
         // O comprimento que o GESTO mediu. Uma mola criada arrastando 2 m
@@ -298,9 +314,16 @@ pub(crate) fn band(draw: Option<JointDraw>) -> Option<([f32; 2], [f32; 2])> {
 }
 
 /// O corpo A do gesto ainda existe? (Um corpo apagado sob o gesto o invalida.)
+///
+/// ⚠️ **Um gesto que saiu do VAZIO não tem corpo a perder** (W-JointWorld), então
+/// ele está sempre vivo — a resposta é `true`, e não uma consulta a uma entidade
+/// que não existe.
 #[must_use]
 pub(crate) fn body_alive(sim: &SimWorld, draw: Option<JointDraw>) -> bool {
-    draw.is_none_or(|d| sim.world().get::<Transform>(d.body_a).is_some())
+    draw.is_none_or(|d| {
+        d.body_a
+            .is_none_or(|a| sim.world().get::<Transform>(a).is_some())
+    })
 }
 
 #[cfg(test)]

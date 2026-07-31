@@ -144,11 +144,17 @@ impl crate::App {
                  vai junto. Ctrl+Z desfaz em UM passo.\n  \
                - e faca o mesmo em 'Old Pin' (o laranja): clicar 'World' ali\n    \
                  ABANDONA o gancho inventado -- e ai da para apagar o objeto.\n\n  \
-               DESENHE UM NO CANVAS (o gesto que faltava): na secao Physics Body de\n  \
-               qualquer corpo, 'Join As' escolhe o tipo e 'Draw Joint on Canvas' arma o\n  \
-               gesto. Aperte SOBRE o corpo e solte no VAZIO -- o vazio E o mundo, e o\n  \
-               pino nasce onde voce soltou. (Ate esta wave soltar no vazio era uma\n  \
-               RECUSA, e era o que faltava: so dava para ligar objeto a objeto.)\n  \
+               DESENHE UM NO CANVAS: na secao Physics Body de qualquer corpo, 'Join\n  \
+               As' escolhe o tipo e 'Draw Joint on Canvas' arma o gesto. Ele vale nas\n  \
+               DUAS direcoes, e as duas produzem o MESMO pino:\n  \
+               - aperte SOBRE o corpo e solte no VAZIO;\n  \
+               - ou aperte no VAZIO (o prego na parede) e solte SOBRE o corpo.\n  \
+               O vazio E o mundo, e a ancora nasce no ponto do CENARIO -- nao onde a\n  \
+               mao terminou. (Ate esta wave as duas eram RECUSA: so dava para ligar\n  \
+               objeto a objeto.)\n  \
+               - e ARRASTE O DOT AMBAR do pino: a ancora anda, e o corpo vai junto.\n    \
+                 (Ela tambem nao se movia -- o arrasto escrevia onde no CORPO o pino\n    \
+                 prende, e o desenho ficava parado.)\n  \
                - um Pin nasce SEM TRANCO: o corpo fica onde estava, e passa a pender\n    \
                  do ponto que voce apontou.\n  \
                - uma Spring/Rope prende ONDE voce apertou no corpo, e o arrasto mede o\n    \

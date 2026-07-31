@@ -88,6 +88,19 @@ impl PhysicsBridge {
         &self.joints_seen
     }
 
+    /// **Este joint prende o lado B ao MUNDO?** (W-JointWorld.)
+    ///
+    /// Perguntado ao que a PONTE construiu (`JointRef::world_anchor`) e não ao
+    /// ECS, pelo mesmo motivo que as views: o marcador pode ter acabado de ser
+    /// posto num joint que o solver ainda não aceitou, e a alça descreve o que
+    /// está em vigor.
+    #[must_use]
+    fn joint_is_world_anchored(&self, joint: Entity) -> bool {
+        self.joints
+            .get(&joint)
+            .is_some_and(|j| j.world_anchor.is_some())
+    }
+
     /// The body (and the joint component) one side of a joint attaches to, or
     /// `None` if that side is not resolvable — a dormant joint, a renamed body,
     /// a joint the bridge has never built.
@@ -171,6 +184,22 @@ impl PhysicsBridge {
         side: JointSide,
         world: [f32; 2],
     ) -> bool {
+        // ⚠️ **Num pino de MUNDO o lado A move a ÂNCORA, não o ponto no corpo**
+        // (W-JointWorld), e sem esta linha a alça é MORTA: o dot é desenhado no
+        // `Transform` do joint — que num pino de mundo **É** a âncora —, então
+        // escrever `local_a` mudava *onde no corpo o pino prende* e deixava o
+        // desenho exatamente onde estava. O artista arrasta e nada acontece.
+        //
+        // ⚠️ E o CORPO vai junto, que é o certo: com o `local_a` intacto, mover a
+        // âncora de um pêndulo o faz pender do ponto novo (medido no kernel —
+        // âncora 6→9, corpo 5→8). Mudar *onde no corpo* ele prende é outra
+        // pergunta, e ela não tem alça hoje (plano 02 §9.3).
+        if side == JointSide::A && self.joint_is_world_anchored(joint) {
+            if sim.world().get::<PhysicsJoint>(joint).is_none() {
+                return false;
+            }
+            return write_pivot(sim, joint, world);
+        }
         let resolved = self
             .joint_side_body(sim, joint, side)
             .filter(|(_, c)| c.anchored)

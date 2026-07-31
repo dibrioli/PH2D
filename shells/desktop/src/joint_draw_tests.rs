@@ -222,7 +222,7 @@ fn a_body_is_never_joined_to_itself() {
 fn the_band_exists_only_while_the_gesture_does() {
     assert!(band(None).is_none());
     let d = JointDraw {
-        body_a: Entity::from_bits(1),
+        body_a: Some(Entity::from_bits(1)),
         from: [1.0, 2.0],
         to: [3.0, 4.0],
     };
@@ -239,7 +239,7 @@ fn a_gesture_whose_body_vanished_draws_no_band() {
     let mut sim = SimWorld::new();
     let a = body(&mut sim, "A", [0.0, 0.0]);
     let d = Some(JointDraw {
-        body_a: a,
+        body_a: Some(a),
         from: [0.0, 0.0],
         to: [1.0, 1.0],
     });
@@ -273,7 +273,7 @@ fn the_draw_toggle_cancels_and_takes_the_band_with_it() {
 
     // O gesto começa: há uma banda em voo.
     draw = Some(JointDraw {
-        body_a: Entity::from_bits(1),
+        body_a: Some(Entity::from_bits(1)),
         from: [0.0, 0.0],
         to: [1.0, 1.0],
     });
@@ -293,7 +293,7 @@ fn the_draw_toggle_cancels_and_takes_the_band_with_it() {
 fn disarming_clears_both_halves() {
     let mut armed = true;
     let mut draw = Some(JointDraw {
-        body_a: Entity::from_bits(9),
+        body_a: Some(Entity::from_bits(9)),
         from: [0.0, 0.0],
         to: [0.0, 0.0],
     });

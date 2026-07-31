@@ -16,6 +16,29 @@ use ph2d_physics_ecs::{JointKind, JointWorldAnchor, PhysicsJoint};
 
 use super::inspector_joint::ensure_named;
 
+/// **Qual ponto do gesto é o quê**, quando um dos lados é o cenário.
+///
+/// `from_body` diz se o gesto SAIU de um corpo. Devolve `(ponto no corpo, âncora
+/// no mundo)` — e é só isso que a direção muda: um pino desenhado do corpo para
+/// a parede e um desenhado da parede para o corpo são o MESMO objeto.
+///
+/// ⚠️ **Porta própria porque a alternativa é a troca escrita nos dois braços do
+/// `match`**, e uma delas nasceria invertida no dia em que um terceiro braço
+/// aparecer. Pura, então o gate pode perguntar direto — o `joint_draw_release`
+/// exige janela e nenhum teste de unidade o alcança.
+#[must_use]
+pub(crate) fn gesture_points(
+    from_body: bool,
+    press: [f32; 2],
+    release: [f32; 2],
+) -> ([f32; 2], [f32; 2]) {
+    if from_body {
+        (press, release)
+    } else {
+        (release, press)
+    }
+}
+
 /// **O pino de parede, nascido de um gesto.**
 ///
 /// `press` é onde o arrasto começou (sobre o corpo) e `anchor` é onde ele

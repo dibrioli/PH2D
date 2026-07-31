@@ -419,10 +419,42 @@ bits de entidade, e `Entity::from_bits(0)` não existe.
 morta ao pé da letra. Não é ruído: um grep futuro cairia nele do mesmo jeito. O
 comentário passou a parafrasear, e diz por quê.
 
+### §9.2c — As duas metades que o 2º smoke derrubou (2026-07-30)
+
+Relato do Enio: *"arrastar do canvas vazio para o objeto também deveria
+funcionar"* e *"ainda não posso mover a âncora colocada no mundo"*.
+
+**(a) O gesto vale nas DUAS direções.** O artista pensa *"prego na parede, agora
+ligo a bola nele"* tanto quanto o contrário, e as duas produzem o MESMO joint —
+o que muda é qual ponta ele nomeia primeiro. ⚠️ **Os pontos TROCAM de papel**, e
+essa troca é uma **porta pura** (`gesture_points`) em vez de escrita nos dois
+braços do `match`: uma delas nasceria invertida no dia em que um terceiro braço
+aparecer, e a versão errada nasce com a âncora onde a mão *terminou*.
+
+**(b) A âncora não se movia, e o mecanismo era exato.** O dot é desenhado no
+`Transform` do joint — que num pino de mundo **É** a âncora —, mas
+`set_joint_anchor_world(A)` escrevia `local_a`, isto é *onde no CORPO o pino
+prende*. O desenho ficava onde estava e o arrasto parecia não fazer nada.
+⚠️ **Num pino de mundo o lado A move a ÂNCORA**, e com o `local_a` intacto o
+CORPO vai junto — que é o certo: mover a âncora de um pêndulo o faz pender do
+ponto novo. Mudar *onde no corpo* ele prende é outra pergunta, e ela não tem alça
+(§9.3).
+
+⚠️ **Um gate meu NÃO PODIA FALHAR:** o das duas direções chamava a porta de
+criação com os MESMOS argumentos duas vezes e comparava os resultados — verde por
+construção, sobre nada. Ele agora pergunta à porta pura o que a direção de fato
+muda.
+
 ### §9.3 — Aberto de propósito
 
 - **Um joint de mundo não entra num rig** (D1/§9.1) — arrastar o corpo preso NÃO carrega o
   cenário, porque não há o que carregar.
+- **Não há alça para *onde no corpo* o pino prende.** O dot move a ÂNCORA (§9.2c b); o
+  `local_a` é semeado no gesto de criação e depois só muda por re-criação. Uma segunda
+  alça responderia a outra pergunta, e ela ainda não foi pedida.
+- **Um pino de mundo e um pino entre dois corpos leem IGUAL na tela.** O overlay o desenha
+  de graça e a geometria está certa; o que falta é o glifo dizer que aquela ponta é o
+  cenário. Nomeado, não construído — decisão de desenho.
 - **Não parte sob carga** por ora: `can_break` lê a reação do `ImpulseJointSet`, e a âncora
   ESTÁ nele — então é provavelmente de graça, mas *"provavelmente"* não é medição. Fica
   nomeado, não afirmado.

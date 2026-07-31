@@ -266,3 +266,42 @@ célula**, com identidade serial×paralelo gateada — que é exatamente a propr
 exige. A Fase 3 deste ADR (*"os três reformulados, um por vez, cada um com o número de quanto o
 desenho mudou ao lado"*) **está feita para dois deles, na CPU, onde é debugável e comparável contra
 a referência**. Um port hoje é tradução, não redesenho.
+
+## Emenda 4 (2026-07-31) — o TERCEIRO passe saiu do Gauss-Seidel, e a cena do smoke deixou de ser work-limited
+
+O `build_flow_field` era o último passe sequencial do caminho quente, e a §2 do
+ADR-0145 o recusava com dois mecanismos reais (o freio lendo o `wet` que o
+carimbo do próprio passe escreve; o backrun espalhando em `susp`/`sett`). A
+cura foi **decomposição**, não agendamento: os dois efeitos viraram passes
+próprios e o núcleo — 99,4% do custo — ficou um gather puro. Ver o doc 28
+§5.46.
+
+**O que isso faz com este ADR, medido:**
+
+| | antes | agora |
+|---|---|---|
+| `build_flow_field` (poça do produto, Flow 1) | 64,10 ms | **4,18 ms** |
+| passo (ciclo de cadência, porta do produto) | 30,11 ms · 33,2 Hz | **16,1 ms · 62,0 Hz** |
+| worker na cena de TRÊS traços (a do smoke) | `busy 76,8% · sleep 1,6%` · 14,0 Hz | `busy 57,7% · **sleep 22,7%**` · **36,7 Hz** |
+
+⚠️ **A linha que importa para este ADR é a terceira.** A cena que a §5.40
+nomeou como *work-limited* — a que o smoke do Enio usa — passou a ter **22,7%
+de folga** e corre a 36,7 dos **40 Hz nominais da SPEC**. Ou seja: no ponto de
+operação default, **a água não está mais esperando a CPU; está esperando o
+próprio relógio.** Uma GPU não pode entregar mais que o nominal, e o nominal já
+chegou.
+
+⚠️ **E o achado que muda a natureza da mudança:** ao contrário dos dois irmãos
+do ADR-0147, este passe é **byte-idêntico ao Gauss-Seidel no ponto de operação
+que shipa** — o carimbo só escreve onde `film > 3`, e ali o freio satura com o
+`brake` default de 1,5, então o termo de umidade nunca entra. **O fingerprint
+do ADR-0134 ficou INTACTO.** A troca de modelo só é observável com
+`brake > 2`, e lá o Gauss-Seidel é quem quebra a simetria da cena.
+
+**A recomendação deste ADR não muda de sinal, mas o alvo dela encolheu outra
+vez.** O que resta de work-limited no módulo é **um knob EXPERIMENTAL**: o K–M
+do Tuning custa 4,75× o passo a 4096²/razão 1 (67,9 ms, 14,7 Hz). Ele tem
+resposta sancionada na CPU (o slider **Grid Size**, que a §5.41 mediu levando-o
+a 8,3 ms) e um remédio de CPU medido e rejeitado por **403 MB de rascunho**
+(doc 28 §5.46.10). Se a GPU voltar à mesa, é **contra 16 ms e contra uma cena
+que já dorme**, não contra os 52 ms que este ADR foi escrito para atacar.

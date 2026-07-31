@@ -131,7 +131,33 @@ pub(crate) fn paint_physics_section(
             );
         paint_button(&btn, btn_rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
-        return yy + h + SECTION_BOTTOM_PAD_PX;
+        yy += h;
+        // **E a segunda resposta à mesma pergunta** (W-Rig): a porta acima torna
+        // ESTE objeto físico; o rig torna o personagem INTEIRO físico e o monta,
+        // lendo a árvore que o artista já desenhou.
+        //
+        // ⚠️ **A face vazia é o caso NORMAL do rig, não uma borda** — um
+        // personagem nasce como sprites parenteados, sem corpo em lugar nenhum.
+        // Deixá-lo só na face com corpo faria o gerador exigir o passo manual que
+        // ele existe para remover (é por isso que as rotas de LIGAR não aparecem
+        // aqui e esta aparece: elas precisam de corpos, esta os cria).
+        if info.rig_parts > 0 {
+            let rect = Rect::new(x, yy, w, h);
+            let btn = Button::new(
+                ids::INSP_PHYS_RIG,
+                super::physics_join_rows::rig_button_label(info.rig_parts),
+            )
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_PHYS_RIG)
+                    .unwrap_or(ButtonState::Normal),
+            );
+            paint_button(&btn, rect, scene, text_system, theme);
+            hit_index.register(ids::INSP_PHYS_RIG, rect);
+            yy += h;
+        }
+        return yy + SECTION_BOTTOM_PAD_PX;
     }
 
     yy = seg_row(
@@ -499,7 +525,7 @@ fn paint_body_actions(
     // punha o gesto atrás do próprio passo que ele remove. O botão *Join
     // Selected* segue gateado lá dentro, onde o `join_count` decide.
     {
-        yy = super::physics_rows::paint_join_gesture(
+        yy = super::physics_join_rows::paint_join_gesture(
             scene,
             text_system,
             theme,
@@ -511,6 +537,7 @@ fn paint_body_actions(
             info.join_kind_tag,
             info.join_count,
             info.join_draw_armed,
+            info.rig_parts,
         );
     }
 

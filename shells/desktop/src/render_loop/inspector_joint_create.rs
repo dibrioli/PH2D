@@ -66,8 +66,17 @@ pub(crate) fn create_joint_at(
     if a == b {
         return None;
     }
-    let pa = sim.world().get::<Transform>(a)?.translation;
-    let pb = sim.world().get::<Transform>(b)?.translation;
+    // ⚠️ **MUNDO, não `Transform` cru.** `Transform` é LOCAL e compõe com o pai
+    // (W5), então um corpo PARENTEADO devolve o próprio offset — e o "meio entre
+    // os dois" saía entre a pose de mundo de um e o offset do outro, um lugar que
+    // não é nem um nem outro. Medido na cena 67 antes do conserto: o pescoço de um
+    // boneco nascia **1,65 m abaixo** da emenda, e o ragdoll esparramava porque
+    // cada membro pendia de um ponto no ar.
+    //
+    // Sobreviveu desde o W3 porque toda fixture, cena e demo usava corpos-RAIZ,
+    // onde local e mundo coincidem — a mesma frase que o W5 escreveu sobre si.
+    let pa = ph2d_ecs::world_transform(sim.world(), a)?.translation;
+    let pb = ph2d_ecs::world_transform(sim.world(), b)?.translation;
 
     let name_a = ensure_named(sim, a, "Body")?;
     let name_b = ensure_named(sim, b, "Body")?;
@@ -92,9 +101,11 @@ pub(crate) fn create_joint_at(
     // The authored poses of the two bodies — what a body-local anchor is
     // measured against (the seed uses the same `rest`, and using the LIVE pose
     // would bake a swing into the local; W-AnchorFollow).
+    // A mesma correção do outro lado: a conversão mundo→local de uma âncora tem
+    // de ser contra a pose de MUNDO do corpo, senão a rota do canvas planta o
+    // mesmo erro que o ponto médio plantava.
     let pose = |e: Entity| {
-        sim.world()
-            .get::<Transform>(e)
+        ph2d_ecs::world_transform(sim.world(), e)
             .map(|t| [t.translation.x, t.translation.y, t.rotation])
     };
     let anchored = at.and_then(|(wa, wb)| {

@@ -764,11 +764,30 @@ pub(super) fn publish(
         0
     };
 
+    // W-Rig: quantas PARTES um clique em *Rig* tocaria — 0 quando não há aresta
+    // pai→filho a ligar, e é esse zero que tira o botão da tela.
+    //
+    // ⚠️ **Da `iter_selected()`, NÃO do `inspector_selection`** — aquele vetor é
+    // colhido só numa MULTI-seleção (`selected_count > 1`) e fica vazio no caso
+    // único, que é precisamente o gesto do rig: marcar a raiz do personagem e
+    // clicar. Lido dali, o botão só apareceria com dois objetos marcados, isto é
+    // em toda situação menos a que ele existe para servir.
+    let rig_parts = {
+        let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
+        let plan = crate::joint_rig::plan(sim, &roots);
+        if plan.is_offered() {
+            u8::try_from(plan.parts.len()).unwrap_or(u8::MAX)
+        } else {
+            0
+        }
+    };
+
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
         super::inspector_physics::build_physics_info(
             sim.world(),
             b,
             join_count,
+            rig_parts,
             join_draw_armed,
             join_kind_tag,
             bake_range,

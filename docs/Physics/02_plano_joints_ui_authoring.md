@@ -322,8 +322,12 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   ⚠️ E a metade **"e bakear"** também está paga, por outro caminho: posar escreve `Transform`, e com o
   **AutoKey armado a timeline captura pela máquina que já existe** — não há, nem deve haver, um
   segundo caminho de IK→keyframe (plano 04 §5).
-- **Ragdoll wizard** (Fyrox) / **Make chain por protótipo** (RUBE) — depois que a corrente por seleção
-  ordenada (W-J4) existir e o uso pedir mais.
+- ~~**Ragdoll wizard** (Fyrox) / **Make chain por protótipo** (RUBE)~~ — **FECHADO (W-Rig, 2026-07-31,
+  cena `=67`, §11 deste plano).** ⚠️ E o item era **dois**, com metades de tamanhos muito diferentes: o
+  *make chain por protótipo* já estava praticamente pago (a corrente da W-J4 CRIA, a W-JointCopy
+  CARIMBA — dois gestos em vez de um), e o que faltava mesmo era o wizard, porque **uma corrente é uma
+  FILA e um ragdoll é uma ÁRVORE**. A árvore não precisou ser inventada: o artista já a desenhou na
+  Hierarquia.
 - **Soft weld** — ⚠️ **a premissa desta linha estava ERRADA e foi medida (2026-07-27).** *"frequency/damping
   no Fixed"* supõe que uma mola possa ser posta nos eixos de um `FixedJoint`; `contact_constraints_set.rs:48`
   faz `let motor_axes = joint.motor_axes.bits() & !locked_axes` ⇒ **um motor num eixo TRAVADO é mascarado**.
@@ -351,7 +355,7 @@ Não é a ordem da lista; é a que sai das dependências **medidas** acima.
 | ~~1~~ | ~~**Rod**~~ ✅ `=56` | o gap real — hoje **nada** segura dois corpos a distância fixa deixando os dois GIRAREM (o Weld trava o giro, a Rope só o teto). O menor, e estreia a plumbing do `GenericJoint` |
 | ~~2~~ | ~~**Wheel preset**~~ ✅ `=57` | o de maior valor visível (um veículo). Precisou da plumbing por eixo, que o Rod abriu |
 | ~~3~~ | ~~**Polia**~~ ✅ `=58` | a primeira que precisa de um passe de restrição PRÓPRIO (rapier não a tem). ⚠️ **NÃO puxou o *Pin-to-world*** — ela guarda os próprios pontos de mundo, e o gizmo de PONTO que a nota queria já existia desde a W-JointAnchor |
-| 4 | **Ragdoll wizard / make chain** | é um GERADOR: só faz sentido sobre o conjunto de tipos já fechado |
+| ~~4~~ | ~~**Ragdoll wizard / make chain**~~ ✅ `=67` | era um GERADOR, e a previsão se confirmou pelo avesso: o valor não veio do conjunto de tipos, veio da **HIERARQUIA** — a estrutura que uma corrente não expressa e que já estava desenhada |
 | ~~5~~ | ~~**Copy/paste de propriedades**~~ ✅ `=66` | e a previsão *"vale mais quanto mais propriedades existirem"* se confirmou: são **doze** campos de afinação a carimbar hoje |
 | 6 | **Soft weld** | premissa corrigida acima; nada o pede |
 
@@ -563,6 +567,112 @@ Um arch-gate afirma as duas metades — que o Paste espalha, e que nada mais esp
 - **Não há copy/paste na §13 (a roldana).** A roldana tem três números e um corpo de
   montagem; o gesto se paga onde há doze campos, e inventá-lo ali seria simetria em vez de
   necessidade.
+
+
+---
+
+## §11 — W-Rig: o rig sai da HIERARQUIA (2026-07-31)
+
+O item 4 do §8.1, e a última rota de criação que faltava.
+
+### §11.1 — A lei, numa frase
+
+**Uma aresta pai→filho da Hierarquia É um joint.**
+
+As duas rotas que já existiam ligam o que o artista **APONTA** — `Join Selected` liga uma sequência
+marcada, o arrasto no canvas liga dois corpos por um gesto. Nenhuma das duas expressa uma **ÁRVORE**:
+a pelve de um ragdoll tem três filhos, e uma corrente ligaria `Torso→Head→ArmL→ArmR`, uma fila que
+descreve um boneco que não existe.
+
+E a árvore não precisou ser inventada. Ela já está desenhada: é a Hierarquia.
+
+### §11.2 — O corte, e o que cada metade sabe
+
+| metade | onde | o que ela responde |
+|---|---|---|
+| **topologia** | `ph2d-physics-ecs::rig` (`rig_edges` / `subtree_parts`) | *dada uma lista de partes e a árvore, quais são as arestas?* — pura, headless, sobre o ECS **autorado** |
+| **quem é parte** | `shells/desktop/src/joint_rig.rs` | precisa de `Sprite`, e a crate de física não conhece `ph2d-render` **nem deve** |
+| **como uma parte vira corpo** | a porta da §11 (`PhysicsFieldEdit::Add`) | ela já sabe tirar o collider da **CAIXA DO SPRITE**; uma segunda regra faria um rig cujos colliders discordam dos que o botão *Add Body* produz |
+
+É o mesmo corte do `jointed_group` (W-BakeJoint): função pura sobre o estado autorado, gateável sem
+um dispatch no caminho.
+
+### §11.3 — O GRUPO é transparente, e essa é a decisão de desenho
+
+Um nó sem desenho é **organização**, não osso — a metade que o ADR-0133 chama de organizacional. Duas
+saídas erradas e a certa:
+
+- **dar-lhe corpo** planta um collider invisível de meio metro no meio do personagem (é o fallback do
+  `Add` para entidade sem sprite);
+- **pular a aresta** DESCONECTA o filho do rig;
+- **deixá-lo passar** — o filho se liga ao **AVÔ**. É por isso que a função pergunta *"qual o ancestral
+  mais próximo que TAMBÉM é parte?"* em vez de olhar só o pai.
+
+### §11.4 — O botão mora nas DUAS faces da §11, e a vazia é a que importa
+
+As rotas de LIGAR não aparecem na face vazia de propósito: elas precisam de corpos, e um sprite pelado
+não tem nenhum. **O rig aparece porque ele os CRIA** — e a face vazia é o caso NORMAL dele, não uma
+borda: um personagem nasce como sprites parenteados, sem corpo em lugar nenhum. Deixá-lo só na face com
+corpo faria o gerador exigir o passo manual que ele existe para remover.
+
+A contagem entra no **RÓTULO** (`Rig 6 Parts from Hierarchy`), a lei do `Bake 5.0s to Timeline` e do
+`Paste to 3 Joints`: ela é a **divulgação** da expansão de subárvore — se você marcou um tronco
+esperando três partes e lê seis, você vê o alcance antes de clicar, em vez de desfazendo.
+
+### §11.5 — Re-executável, e é o que o torna ferramenta
+
+Uma aresta que **já tem joint é pulada**. Acrescente um braço ao personagem, clique de novo, e só o
+braço novo ganha joint. ⚠️ Dois joints sobre o mesmo par são **legítimos em geral** (é metade do motivo
+de um joint ser ENTIDADE, W3); o que esta wave recusa é o **gerador** produzi-los, porque um rig com
+duas restrições no mesmo par é o solver brigando consigo mesmo sobre um par que ninguém autorou duas
+vezes.
+
+E como todo o trabalho cai no MESMO frame, **um Ctrl+Z desfaz o rig inteiro** — o undo global é por
+diff de fim de frame, ele vê um estado e não N operações.
+
+### §11.6 — ⚠️ A medição achou um DEFEITO PRÉ-EXISTENTE, e ele era grande
+
+A primeira corrida da cena 67 mostrou o boneco **esparramando**: o pescoço separava **1,09 m** em 3 s,
+mais do que a geometria permite por rotação.
+
+A causa não era do rig. `create_joint_at` computava o ponto médio a partir de
+`Transform.translation` **CRU** — e `Transform` é **LOCAL** e compõe com o pai (W5). Juntar um
+corpo-filho punha a âncora no meio entre a pose de MUNDO de um e o **OFFSET** do outro, um lugar que
+não é nem um nem outro. Medido na cena: a âncora do pescoço nascia em `y = 1,85` com a emenda em
+`y = 3,5` — **1,65 m abaixo** —, e cada membro pendia de um ponto flutuando no ar longe dele.
+
+Isto alcançava as **três** rotas de criação (o botão Join, o arrasto no canvas e o rig), e sobreviveu
+desde o W3 porque **toda** fixture, cena e demo desta linha usava corpos-RAIZ, onde local e mundo
+coincidem. É literalmente a frase que o W5 escreveu sobre si mesmo, no arquivo ao lado, um ano depois.
+
+Conserto na PORTA (as duas leituras passam por `world_transform`), com gate red-first que nasceu
+vermelho em `y = 1,850` — o número exato que a sonda tinha medido. Depois: pescoço **1,09 m → 0,0026 m**.
+
+⚠️ **O `physics_ecs_c9` saiu byte-idêntico** (`7cb7728d…`, 96 corpos) e isso é coerente, não sorte: a
+cena de determinismo não tem corpo parenteado sob joint, então o conserto não a alcança — ele só muda o
+que já estava errado.
+
+### §11.7 — Números
+
+| grandeza | valor |
+|---|---|
+| partes do boneco da cena 67 | 6 (mais um grupo, que não vira osso) |
+| joints criados por um clique | 5 |
+| queda do tronco em 3 s | 3,15 m |
+| separação do pescoço em 3 s | **0,0026 m** (era 1,09 m antes do conserto da âncora) |
+| gates / mutações | 21 gates novos · 14 mutações, 14 sangram |
+
+### §11.8 — Aberto
+
+- **A âncora é o ponto MÉDIO dos dois centros**, que é a emenda exata só quando as duas partes têm o
+  mesmo tamanho. Numa cabeça pequena sobre um tronco grande o pivô fica dentro do tronco, e o giro é
+  de um ponto que não é o pescoço. As partes da cena 67 se tocam de propósito para o desenho ficar
+  honesto; a cura (ancorar onde as silhuetas se encontram) é **decisão de produto** — muda o desenho
+  das TRÊS rotas de criação, não só do rig.
+- **Todo joint nasce Pin**, do seletor *Join As*. Um ragdoll de verdade quer limites por junta — o que
+  a W-JointCopy tornou barato (afine um joelho, copie, marque os outros, cole), mas o gerador não
+  adivinha ângulos por parte do corpo (o Fyrox adivinha porque conhece nomes de osso; nós não temos
+  esse vocabulário e inventá-lo seria adivinhar).
 
 ---
 

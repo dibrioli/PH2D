@@ -486,3 +486,78 @@ alto) · não-uniforme (ELIPSE, cai deitada e balança) · **parenteada** sob um
 2× (herda a escala do pai). O oráculo é o contorno (tecla `B`): ele desenha a
 forma RESOLVIDA, então um scale→collider morto traçaria o raio autorado dentro
 de cada sprite escalado.
+
+---
+
+## Bug #4 — A âncora de um joint entre corpos PARENTEADOS nascia em espaço LOCAL
+
+**Achado pela W-Rig (2026-07-31), pré-existente desde o W3.** Consertado no mesmo
+commit; a cena `=67` é o repro visual.
+
+### Sintoma
+
+Um boneco rigado a partir da Hierarquia **esparramava** ao dar Play: cada membro
+pendia de um ponto flutuando no ar longe dele, e o par tronco↔cabeça separava
+**1,09 m em 3 s** — mais do que a geometria do Pin permite por rotação (o máximo
+seria a soma dos dois braços, 0,7 m).
+
+### Causa-raiz
+
+`create_joint_at` computava o ponto médio a partir de `Transform.translation`
+**cru**:
+
+```rust
+let pa = sim.world().get::<Transform>(a)?.translation;
+let pb = sim.world().get::<Transform>(b)?.translation;
+let origin = (pa + pb) * 0.5;
+```
+
+E `Transform` é **LOCAL**: ele compõe com o pai (a lei que o W5 escreveu). Para um
+corpo-RAIZ local e mundo coincidem; para um corpo-FILHO, `pb` é o **offset dentro do
+pai**. O "meio entre os dois" saía entre a pose de MUNDO de um e o OFFSET do outro
+— um lugar que não é nem um nem outro.
+
+Medido na cena 67: o tronco em `(0, 3,0)` e a cabeça em `(0, 3,7)` de mundo
+(local `(0, 0,7)`) davam âncora em **`(0, 1,85)`** — o meio entre `3,0` e `0,7` —
+quando a emenda está em `y = 3,5`. **1,65 m abaixo.**
+
+O mesmo erro estava no `pose` do lado da conversão mundo→local, então a rota do
+**canvas** plantava a mesma âncora errada.
+
+### ⚠️ A parte que enganava: por que atravessou o W3 inteiro
+
+**Toda** fixture, cena de smoke e demo desta linha usava corpos-**RAIZ** — onde local
+e mundo são o mesmo número, e o bug é literalmente invisível. É a mesma frase que o
+W5 escreveu sobre si mesmo (*"a premissa nunca foi escrita, era verdade por acidente
+do fixture"*), um arquivo ao lado, e ela reincidiu porque a nota do W5 enumerou os
+**cinco sítios da PONTE** — e a porta de CRIAÇÃO não estava entre eles.
+
+E o sintoma não acusa a causa: o joint EXISTE, o overlay o desenha, o solver o honra.
+O que se vê é um ragdoll ruim, que se lê como *"a física está frouxa"* — nunca como
+*"a âncora está no lugar errado"*.
+
+### Solução
+
+As duas leituras passam por `ph2d_ecs::world_transform` (`inspector_joint_create.rs`).
+Uma linha cada, na PORTA — as três rotas de criação (Join, Draw, Rig) a compartilham,
+então nenhuma pode divergir.
+
+### Lições
+
+- **Enumerar sítios apodrece; o W5 enumerou cinco e o sexto nasceu fora.** O que
+  fecha a classe é a pergunta *"esta função lê `Transform` para compará-lo com outro
+  espaço?"*, feita de toda função nova.
+- **O gate red-first é o que prova a causa.** Ele nasceu vermelho em `y = 1,850` — o
+  número EXATO que a sonda da cena tinha medido. Um gate que nasce vermelho no valor
+  previsto é a diferença entre corrigir a causa e corrigir um sintoma.
+- **A fixture tem de conter o fenômeno**, e aqui o fenômeno é *ter um pai*. O gate
+  novo (`a_joint_between_parented_bodies_anchors_in_world_space`) é o primeiro desta
+  linha a parentear um dos dois corpos.
+
+### Gates que fecham este bug
+
+- `render_loop::inspector_joint_tests::a_joint_between_parented_bodies_anchors_in_world_space`
+  — o pivô cai em `y = 3,35` (o meio das poses de MUNDO), e a mensagem nomeia o
+  `1,85` como a assinatura do defeito.
+- `physics_smoke_rig::tests::the_message_of_scene_67_quotes_measured_numbers` — a
+  separação do pescoço tem de ficar em milímetros; ela media 1,09 m.

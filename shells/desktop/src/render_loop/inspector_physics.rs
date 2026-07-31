@@ -17,10 +17,17 @@ pub(crate) use super::inspector_physics_apply::apply_physics_edit;
 /// body** — `has_body: false` is what lets the section offer the Add button.
 /// Without that, physics would be authorable only on entities that already
 /// have physics, which is nowhere.
+// O 8º argumento é o `rig_parts` da W-Rig. Esta função é uma PROJEÇÃO — cada
+// argumento é um fato que só a shell enxerga (a seleção, o relógio, a árvore) e
+// que o painel não pode derivar; empacotá-los num struct só moveria a mesma lista
+// para outro arquivo, com um sítio de construção a mais para alguém esquecer.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
     join_count: u8,
+    // W-Rig: partes que um rig tocaria; `0` = o botão não é oferecido.
+    rig_parts: u8,
     join_draw_armed: bool,
     join_kind_tag: u8,
     bake_range: (f32, f32),
@@ -119,6 +126,13 @@ pub(crate) fn build_physics_info(
             // *Add Physics Body* door, so NEITHER creation route is painted here
             // — a joint needs a body, and the door is the one thing to offer.
             join_count: 0,
+            // ⚠️ **Mas o RIG aparece aqui**, e a diferença não é um detalhe: as
+            // rotas de LIGAR precisam de corpos que ainda não existem, e o rig é
+            // quem os CRIA. Zerá-lo junto com o `join_count` faria o gerador
+            // exigir o passo manual que ele existe para remover — e o caso normal
+            // dele é exatamente este: um personagem desenhado em sprites, nenhum
+            // corpo em lugar nenhum.
+            rig_parts,
             join_draw_armed,
             join_kind_tag,
             is_sensor: false,
@@ -183,6 +197,7 @@ pub(crate) fn build_physics_info(
         friction: col.friction,
         layer: col.layer,
         join_count,
+        rig_parts,
         join_draw_armed,
         join_kind_tag,
         bake_seconds,
@@ -260,7 +275,7 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), 0, false, 0, (0.0, 5.0), 0)
+            build_physics_info(&world, e.to_bits(), 0, 0, false, 0, (0.0, 5.0), 0)
                 .expect("a zone has a Transform, so §11 describes it")
                 .force_world_axes
         };

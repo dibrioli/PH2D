@@ -355,7 +355,11 @@ pub(crate) fn apply_physics_edit(
         | PhysicsFieldEdit::Bake
         | PhysicsFieldEdit::BakeChannels(_)
         | PhysicsFieldEdit::JoinKind(_)
-        | PhysicsFieldEdit::JoinDraw => {}
+        | PhysicsFieldEdit::JoinDraw
+        // W-Rig entra na mesma lista pelo mesmo motivo: um rig é UM gesto sobre a
+        // subárvore, e espalhado ele rodaria o gerador inteiro uma vez por
+        // entidade selecionada.
+        | PhysicsFieldEdit::Rig => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

@@ -144,6 +144,11 @@ fn click_edit(
         // this handler read the SAME number; when they were a `bool` beside
         // a count they disagreed the day the chain arrived.
         Some(PhysicsFieldEdit::Join)
+    } else if id == ids::INSP_PHYS_RIG && info.rig_parts > 0 {
+        // W-Rig. Gateado no MESMO número que o painter usa para oferecer — o
+        // zero é a resposta inteira, e uma recusa que mora no laço de pintura
+        // não é recusa ([[feedback_disabled_button_still_dispatches]]).
+        Some(PhysicsFieldEdit::Rig)
     } else if let Some(i) = ids::INSP_PHYS_JOIN_KIND.iter().position(|&o| o == id) {
         // ⚠️ **NOT gated on the selection any more** (W-J4): the kind
         // qualifies BOTH creation routes, and the canvas gesture needs no

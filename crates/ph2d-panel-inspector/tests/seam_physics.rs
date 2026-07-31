@@ -32,6 +32,7 @@ fn with_body() -> InspectorPhysicsInfo {
         entity_bits: ENTITY,
         has_body: true,
         join_count: 0,
+        rig_parts: 0,
         join_draw_armed: false,
         kind_tag: 0,
         shape_tag: 1,
@@ -1645,5 +1646,121 @@ fn the_selection_button_is_absent_without_two_bodies() {
     assert!(
         rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_JOIN_DRAW),
         "…e Draw Joint tem de continuar lá"
+    );
+}
+
+/// **O botão do RIG é vivo sob o mouse, nas DUAS faces** (W-Rig).
+///
+/// ⚠️ **A face VAZIA é a que importa.** Um personagem nasce como sprites
+/// parenteados, sem corpo em lugar nenhum — é ali que o gerador é usado. As duas
+/// rotas de LIGAR (Join / Draw) não aparecem nessa face de propósito, porque
+/// precisam de corpos; o rig aparece porque ele os CRIA, e deixá-lo só na face
+/// com corpo faria o gerador exigir o passo manual que ele existe para remover.
+///
+/// `click_real` dirige o ponteiro de verdade: um botão pintado e
+/// hit-registrado ainda pode estar MORTO sob o mouse se o `populate` não o
+/// registrar, e um `WidgetEvent` sintético pula exatamente essa checagem.
+#[test]
+fn the_rig_button_is_alive_under_the_mouse_on_both_faces() {
+    for base in [with_body(), without_body()] {
+        let face = if base.has_body { "com corpo" } else { "vazia" };
+        let info = InspectorPhysicsInfo {
+            rig_parts: 6,
+            ..base
+        };
+        let actions = click_real(info, ids::INSP_PHYS_RIG);
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPhysicsEdit {
+                    edit: PhysicsFieldEdit::Rig,
+                    ..
+                }
+            )),
+            "o clique no Rig não chegou ao barramento na face {face}: {actions:?}"
+        );
+    }
+}
+
+/// **E ele some quando não há aresta a ligar** — presença E ausência, pelo mesmo
+/// número. Dois irmãos selecionados não têm ancestral um do outro, então o rig
+/// não faria nada, e um botão que não faz nada é pior que botão nenhum.
+#[test]
+fn the_rig_button_is_absent_when_there_is_nothing_to_rig() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    for base in [with_body(), without_body()] {
+        for parts in [0u8, 2, 9] {
+            let mut host = Host::with_panel::<InspectorPanel>();
+            let mut state = InspectorState::default();
+            set_current_inspector_physics(Some(InspectorPhysicsInfo {
+                rig_parts: parts,
+                ..base
+            }));
+            let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+            set_current_inspector_physics(None);
+            assert_eq!(
+                rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_RIG),
+                parts > 0,
+                "a presença do botão Rig tem de seguir a CONTAGEM \
+                 (rig_parts={parts}, has_body={})",
+                base.has_body
+            );
+        }
+    }
+
+    // E a recusa não pode morar só no laço de pintura
+    // ([[feedback_disabled_button_still_dispatches]]): o id fica no store a
+    // sessão inteira, então o braço confere por conta própria.
+    assert!(
+        click(with_body(), ids::INSP_PHYS_RIG).is_empty(),
+        "o Rig disparou com rig_parts=0"
+    );
+}
+
+/// **O rótulo diz quantas partes o clique vai tocar.**
+///
+/// A contagem é a DIVULGAÇÃO da expansão de subárvore: selecionar um tronco
+/// esperando três partes e ler seis é como o artista descobre o alcance antes de
+/// clicar, em vez de desfazendo. Lê a porta EXPORTADA, nunca um `format!`
+/// reescrito aqui — reescrevê-lo pinaria o texto do gate, não o do produto.
+#[test]
+fn the_rig_label_says_how_many_parts_it_will_touch() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(InspectorPhysicsInfo {
+        rig_parts: 6,
+        ..without_body()
+    }));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+
+    let label = ph2d_panel_inspector::rig_button_label(6);
+    assert!(
+        label.contains('6'),
+        "o rótulo não conta as partes: {label:?}"
+    );
+    assert_ne!(
+        label,
+        ph2d_panel_inspector::rig_button_label(9),
+        "o rótulo é o mesmo para 6 e 9 partes"
     );
 }

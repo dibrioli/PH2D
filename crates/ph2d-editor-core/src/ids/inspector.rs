@@ -588,6 +588,15 @@ pub const INSP_PHYS_JOIN: NodeId = hash_node_id("insp_phys_join");
 /// the seed policy (body B's CENTRE for a spring/rope). Both stay — the button
 /// is how a CHAIN is made, the gesture is how a placement is made.
 pub const INSP_PHYS_JOIN_DRAW: NodeId = hash_node_id("insp_phys_join_draw");
+/// **Rig a subárvore selecionada** (W-Rig) — a terceira rota de criação, e a
+/// única que não pede que o artista descreva a estrutura de novo.
+///
+/// As outras duas ligam o que você APONTA: `INSP_PHYS_JOIN` liga uma sequência
+/// marcada, `INSP_PHYS_JOIN_DRAW` liga dois corpos por um arrasto. Nenhuma das
+/// duas expressa uma ÁRVORE — uma pelve com três filhos não é uma fila —, e a
+/// árvore o artista já desenhou na Hierarquia. Este botão a lê: cada aresta
+/// pai→filho vira um joint, e cada parte sem corpo ganha um.
+pub const INSP_PHYS_RIG: NodeId = hash_node_id("insp_phys_rig");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates
 /// the joint TYPE they want in one gesture, instead of making a Pin and

@@ -7555,3 +7555,47 @@ uma corda degenerada mostra `0 N` em âmbar sem dizer por quê (texto ali quer i
 canal próprio) · o salto balístico do contrapeso comum (física honesta, fica na tela)
 · um corpo que passa da própria roldana inverte o ramo (degenerado documentado) · um
 Ctrl+Z para as duas metades do bake (mora no roteador de undo, outro domínio).
+
+---
+
+## §W-Rig — o rig sai da HIERARQUIA (2026-07-31, cena `=67`, **pendente de smoke**)
+
+O item 4 do horizonte do plano 02 (`§8.1`), fechado. **Desenho completo: plano 02
+§11** — aqui só o estado e o que a próxima sessão precisa saber.
+
+**Em uma frase:** uma aresta pai→filho da Hierarquia É um joint. Um clique dá corpo
+a cada parte sem corpo (pela MESMA porta do *Add Body*) e faz um joint por aresta.
+
+**O que existe agora:**
+
+| peça | onde |
+|---|---|
+| topologia (pura, headless) | `ph2d-physics-ecs::rig` — `rig_edges` + `subtree_parts` |
+| quem é parte + aplicação | `shells/desktop/src/joint_rig.rs` |
+| o botão (as DUAS faces da §11) | `sections/physics_join_rows.rs` + `sections/physics.rs` |
+| id | `INSP_PHYS_RIG` (derivado por hash — sem próximo-livre a gerir) |
+| variant | `PhysicsFieldEdit::Rig` |
+| cena | `physics_smoke_rig.rs` (`=67`), já em `PAUSED_SCENES` |
+
+**Zero bump:** `PROJECT_SCHEMA` fica em **46**, registro em **24**, nenhum componente
+novo, nenhum gizmo id, nenhuma dep, contrato congelado intacto. **c9 byte-idêntico**
+(`7cb7728d…`, 96 corpos) — a prova de que a wave é só autoria.
+
+**⚠️ E ela consertou um defeito PRÉ-EXISTENTE que alcançava as TRÊS rotas de
+criação** — a âncora de um joint entre corpos parenteados nascia em espaço LOCAL,
+1,65 m fora. Mecanismo, repro e lições: [`BUGS_physics.md`](BUGS_physics.md) #4.
+
+**LOC:** `sections/physics_rows.rs` bateu 626 > 600 (cap de PAINEL, distinto dos 700
+de `crates/`) ⇒ split por responsabilidade em **`physics_join_rows.rs`** — *o que
+este CORPO é* × *como um joint NASCE* —, com o doc-comment do `JOIN_KIND_LABELS`
+reancorado junto (o corte o tinha orfanado).
+
+**Aberto, nomeado:**
+
+- **a âncora é o ponto MÉDIO dos dois centros**, exata só quando as partes têm o
+  mesmo tamanho; numa cabeça pequena sobre um tronco grande o pivô fica dentro do
+  tronco. A cura muda o desenho das TRÊS rotas ⇒ **decisão de produto**.
+- **todo joint nasce Pin** (do seletor *Join As*). Limites por junta são o gesto que
+  a W-JointCopy tornou barato (afine um joelho → copie → cole nos outros); o gerador
+  não adivinha ângulos por parte do corpo, e inventar um vocabulário de osso para
+  isso seria adivinhar.

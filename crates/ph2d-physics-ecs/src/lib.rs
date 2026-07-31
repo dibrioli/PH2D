@@ -22,6 +22,7 @@ pub mod interaction;
 mod joint;
 mod joint_group;
 pub mod joint_tool;
+mod rig;
 mod scale;
 pub mod settings;
 
@@ -58,6 +59,7 @@ pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
+pub use rig::{rig_edges, subtree_parts};
 pub use scale::scaled_shape;
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
 // the shell, which only deps this crate) draws the SAME resolved shape the

@@ -83,7 +83,12 @@ pub(crate) mod inspector_joint_world;
 #[path = "inspector_joint_world_tests.rs"]
 mod inspector_joint_world_tests;
 mod inspector_ordering;
-mod inspector_physics;
+// ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
+// entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
+// (`crate::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
+// cujos colliders discordam dos que o botão *Add Body* produz. Mesmo alcance do
+// `inspector_joint` logo acima, pelo mesmo motivo.
+pub(crate) mod inspector_physics;
 mod inspector_physics_apply;
 mod inspector_physics_area;
 #[cfg(test)]
@@ -2107,6 +2112,9 @@ impl crate::App {
             // ordem vem da própria seleção, que o `join_selected_chain` lê.
             let mut join_chain = false;
             let mut join_draw_arm = false;
+            // W-Rig: um clique em *Rig* — booleano pelo mesmo motivo do
+            // `join_chain`, porque a SELEÇÃO já diz sobre o que ele age.
+            let mut rig_now = false;
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
@@ -2839,6 +2847,14 @@ impl crate::App {
                             if inspector_selection.len() >= 2 {
                                 join_chain = true;
                             }
+                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::Rig) {
+                            // ⚠️ **Nem o Rig faz fan-out** (W-Rig), e a razão é a
+                            // do Bake mais que a do Join: cada corrida do gerador
+                            // percorre a MESMA subárvore, então espalhado ele
+                            // rodaria N vezes sobre o mesmo trabalho — a 2ª em
+                            // diante achariam tudo já ligado e não fariam nada,
+                            // mas o toast contaria a 1ª N vezes.
+                            rig_now = true;
                         } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::JoinDraw) {
                             // ARMA o gesto de canvas (sem operando, como os
                             // eyedroppers do §12): quem nomeia os dois corpos é
@@ -6514,6 +6530,44 @@ impl crate::App {
                     toasts.push(ph2d_editor::Toast::info(format!(
                         "Chained {} bodies with {made} joints",
                         made + 1
+                    )));
+                }
+            }
+            // W-Rig: a TERCEIRA rota de criação — a única que não pede ao artista
+            // que redescreva uma estrutura que ele já desenhou. Depois do
+            // `join_chain` porque as duas escrevem joints, e a ordem entre elas
+            // num mesmo frame só importaria se o artista tivesse clicado nas duas
+            // (ele não pode: são dois botões).
+            if rig_now {
+                let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
+                let plan = crate::joint_rig::plan(sim, &roots);
+                let (bodies, joints, last) = crate::joint_rig::apply(
+                    sim,
+                    &plan,
+                    inspector_joint::kind_of(self.join_kind),
+                    editor_queue,
+                    component_registry,
+                );
+                // O flush é daqui, e não de dentro do gerador: este laço já é o
+                // dono do padrão (drenar + reportar o erro num toast).
+                if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
+                    sim.world_mut(),
+                    editor_queue,
+                    component_registry,
+                ) {
+                    toasts.push(ph2d_editor::Toast::error(format!("Rig commit failed: {e}")));
+                }
+                // Seleciona o ÚLTIMO joint, pelo motivo que o `join_chain`
+                // documenta: a §12 abre na hora, com o Kind e a afinação à mão —
+                // e afinar UM e carimbar o resto é o gesto que a W-JointCopy
+                // acabou de tornar barato.
+                if let Some(j) = last {
+                    hero.gizmo.selection = Some(j.to_bits());
+                    hero.gizmo.extra_selection.clear();
+                }
+                if joints > 0 {
+                    toasts.push(ph2d_editor::Toast::info(format!(
+                        "Rigged {bodies} new bodies with {joints} joints"
                     )));
                 }
             }

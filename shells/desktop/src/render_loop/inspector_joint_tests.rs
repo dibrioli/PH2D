@@ -349,3 +349,69 @@ fn a_world_pin_reads_as_bound_with_a_single_body() {
         "a §12 tem de saber que o lado B é o cenário, senão ela pinta \"(missing)\""
     );
 }
+
+/// **A âncora de um corpo PARENTEADO nasce onde os dois corpos de fato estão.**
+///
+/// ⚠️ **Defeito PRÉ-EXISTENTE, achado pela W-Rig.** O ponto médio saía de
+/// `Transform.translation` cru, e `Transform` é **LOCAL** e compõe com o pai
+/// (W5): juntar um corpo-filho punha a âncora no meio entre a pose de MUNDO de um
+/// e o OFFSET do outro — um lugar que não é nem um nem outro. Medido na cena 67
+/// antes do conserto: o pescoço de um boneco nascia em `y = 1,85` com a emenda em
+/// `y = 3,5`, **1,65 m abaixo**, e o ragdoll inteiro esparramava porque cada
+/// membro pendia de um ponto flutuando no ar longe dele.
+///
+/// Isto alcança as TRÊS rotas de criação (o botão Join, o arrasto no canvas e o
+/// rig), e sobreviveu porque **toda** fixture, cena e demo desta linha usava
+/// corpos-RAIZ — onde local e mundo coincidem. É a mesma frase que o W5 escreveu
+/// sobre si mesmo, no arquivo ao lado.
+#[test]
+fn a_joint_between_parented_bodies_anchors_in_world_space() {
+    use ph2d_ecs::ChildOf;
+
+    let mut sim = SimWorld::new();
+    let parent = sim
+        .world_mut()
+        .spawn((
+            Name::new("Torso"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ))
+        .id();
+    // Filho: LOCAL `(0, 0.7)`, MUNDO `(0, 3.7)`.
+    let child = sim
+        .world_mut()
+        .spawn((
+            Name::new("Head"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider::default(),
+            Transform::from_translation(Vec2::new(0.0, 0.7)),
+            ChildOf(parent),
+        ))
+        .id();
+
+    let j = super::inspector_joint::create_joint(
+        &mut sim,
+        parent.to_bits(),
+        child.to_bits(),
+        JointKind::Pin,
+    )
+    .expect("joint criado");
+
+    let pivot = sim
+        .world()
+        .get::<Transform>(j)
+        .expect("o joint tem Transform")
+        .translation;
+    assert!(
+        (pivot.y - 3.35).abs() < 1e-3,
+        "a âncora nasceu em y = {:.3}; o meio entre (0,3.0) e (0,3.7) é 3.35. \
+         y ≈ 1.85 significa que o `Transform` LOCAL do filho foi lido como mundo",
+        pivot.y
+    );
+    assert!((pivot.x).abs() < 1e-3, "x = {:.3}", pivot.x);
+}

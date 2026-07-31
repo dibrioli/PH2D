@@ -55,6 +55,7 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
             ids::INSP_JOINT_PICK_B,
             ids::INSP_PHYS_JOIN,
             ids::INSP_PHYS_JOIN_DRAW,
+            ids::INSP_PHYS_RIG,
             // §13 (W3): o eyedropper que arma o pick do corpo de montagem, e a
             // lixeira que desmonta. Sem o registro eles nascem pintados,
             // hit-registrados e MORTOS sob o mouse.

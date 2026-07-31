@@ -135,3 +135,55 @@ fn the_bake_request_falls_back_to_the_inspected_entity() {
          one-body case"
     );
 }
+
+/// **O RIG é a terceira, e não pode ser espalhada tampouco** (W-Rig).
+///
+/// A falha é mais quieta que a do Join e a do Bake. Cada corrida do gerador
+/// percorre a MESMA subárvore, então espalhado ele acerta: a 2ª corrida em
+/// diante acha toda aresta já ligada e não faz nada. O que quebra é o RELATO —
+/// o toast contaria os corpos da 1ª corrida uma vez por entidade selecionada —,
+/// e um número errado num toast é como o artista aprende a não acreditar neles.
+#[test]
+fn rig_is_intercepted_before_the_per_entity_fan_out() {
+    let arm = physics_edit_arm();
+
+    let rig_at = arm.find("PhysicsFieldEdit::Rig").expect(
+        "o braço de edição da §11 não menciona o Rig — ele está sendo tratado \
+         como uma edição por-entidade, e o gerador roda uma vez por objeto \
+         selecionado",
+    );
+    let fan_out_at = arm.find("for &t in &inspector_selection").expect(
+        "o braço da §11 não faz mais fan-out sobre a seleção — se isso é \
+         deliberado, este gate sai junto",
+    );
+    assert!(
+        rig_at < fan_out_at,
+        "o Rig é tratado DEPOIS do fan-out sobre a seleção"
+    );
+}
+
+/// **E o Rig lê a seleção VIVA, não o `inspector_selection`.**
+///
+/// ⚠️ Este é o defeito que a wave quase teve, e ele é invisível em toda fixture
+/// de multi-seleção: o `inspector_selection` só é colhido quando
+/// `selected_count > 1` e fica **vazio** no caso único — que é precisamente o
+/// gesto do rig (marcar a raiz do personagem e clicar). Lido dali, o botão
+/// funcionaria em toda situação **menos** a que ele existe para servir, e um
+/// gate escrito com dois objetos marcados ficaria verde por cima disso.
+#[test]
+fn the_rig_reads_the_live_selection_not_the_multi_select_buffer() {
+    let start = SRC
+        .find("if rig_now {")
+        .expect("o bloco que executa o rig sumiu do render loop");
+    let block = &SRC[start..start + 900];
+    assert!(
+        block.contains("hero.gizmo.iter_selected()"),
+        "o rig não lê a seleção viva — com UM objeto marcado (o gesto normal) \
+         ele receberia uma lista vazia e não faria nada"
+    );
+    assert!(
+        !block.contains("&inspector_selection"),
+        "o rig voltou a ler o buffer de multi-seleção, que é vazio no caso de \
+         um objeto só"
+    );
+}

@@ -91,6 +91,18 @@ pub struct InspectorPhysicsInfo {
     /// other painted a button whose click was refused. `>= 2` is the whole
     /// predicate, asked of ONE number.
     pub join_count: u8,
+    /// **How many PARTS a *Rig* would touch** (W-Rig) — 0 when the button is not
+    /// offered, which is the case whenever the selected subtree has no
+    /// parent→child edge left to join (two siblings, or a rig already made).
+    ///
+    /// Only the shell can see this either: it needs the whole HIERARCHY, and the
+    /// panel is handed one entity at a time.
+    ///
+    /// ⚠️ **Uma pergunta, um número** — a lição que o `join_count` já pagou: ele
+    /// substituiu um `can_join: bool` ao lado, e o par divergiu no dia em que a
+    /// corrente chegou. Aqui o zero é a resposta inteira, e o painter e o event
+    /// handler leem o mesmo campo.
+    pub rig_parts: u8,
     /// **The canvas drawing gesture is ARMED** (the *Draw Joint* button paints
     /// pressed). Runtime state of the shell, mirrored for the painter.
     pub join_draw_armed: bool,
@@ -367,6 +379,16 @@ pub enum PhysicsFieldEdit {
     /// eyedroppers: the shell holds the armed flag and the two bodies are named
     /// by the press and the release, not by anything the panel can see.
     JoinDraw,
+    /// **Rig the selected subtree from the Hierarchy** (W-Rig). No operand, for
+    /// the same reason as `Join`: the shell owns the selection, the tree and the
+    /// pending `JoinKind`.
+    ///
+    /// Like `Join` and `Bake`, it must **not** fan out. Fanned out it would run
+    /// the whole generator once per selected entity, and each run walks the same
+    /// subtree — the second one would find every edge already jointed and do
+    /// nothing, which is the *harmless* half; the first would be counted N times
+    /// in the toast.
+    Rig,
     /// Bake the selection's simulated motion into timeline curves (W4).
     ///
     /// Carries no range for the same reason `Join` carries no bodies: the

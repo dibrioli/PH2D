@@ -16,6 +16,14 @@ use ph2d_vec_scene::ShapeKind;
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 
+/// **As CONTAGENS da seleção** — quantos caminhos, quantos nós. Irmão pelo teto de 600 LOC, e o
+/// corte é por RESPONSABILIDADE: o resto deste arquivo publica *o que a seleção É*; ali mora
+/// *quantos há*, a pergunta que decide se um gesto de CONJUNTO é sequer oferecido.
+#[path = "state_counts.rs"]
+mod counts;
+pub(crate) use counts::{current_selection_count, current_vertex_count};
+pub use counts::{set_current_selection_count, set_current_vertex_count};
+
 thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).
@@ -40,9 +48,6 @@ thread_local! {
     /// Selected multi-point gradient point's jitter (`None` unless a point is
     /// selected) — drives the Jitter slider's visibility + value.
     static CURRENT_GRAD_JITTER: Cell<Option<f64>> = const { Cell::new(None) };
-    /// Number of paths in the object selection — drives the Align (≥2) / Distribute
-    /// (≥3) section visibility.
-    static CURRENT_SELECTION_COUNT: Cell<usize> = const { Cell::new(0) };
     /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
     /// the two rules agree on a single contour, so the row would be a no-op there.
     static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
@@ -220,16 +225,6 @@ pub fn set_current_grad_jitter(v: Option<f64>) {
 /// The selected multi-point point's jitter this frame (drives the slider).
 pub(crate) fn current_grad_jitter() -> Option<f64> {
     CURRENT_GRAD_JITTER.with(|c| c.get())
-}
-
-/// Publish the number of paths in the object selection (drives Align/Distribute).
-pub fn set_current_selection_count(n: usize) {
-    CURRENT_SELECTION_COUNT.with(|c| c.set(n));
-}
-
-/// The object-selection path count this frame (≥2 shows Align, ≥3 shows Distribute).
-pub(crate) fn current_selection_count() -> usize {
-    CURRENT_SELECTION_COUNT.with(|c| c.get())
 }
 
 /// Publish the selected path's fill rule — `None` unless it is a compound path

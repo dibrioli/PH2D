@@ -182,3 +182,25 @@ fn the_knife_arms_on_press_tracks_on_move_and_cuts_on_release() {
         assert!(window.contains(needle), "{why} -- falta `{needle}`");
     }
 }
+
+/// **A shell publica a CONTAGEM de nós selecionados.** Sem ela o painel lê sempre `0` e o botão
+/// **Average** nunca aparece — a feature ficaria completa e invisível.
+///
+/// ⚠️ É publicação de shell, então nenhum teste de unidade do painel a alcança: o gate de seam
+/// prova que o botão aparece *dada a contagem*, e só este prova que a contagem CHEGA.
+#[test]
+fn the_shell_publishes_how_many_nodes_are_selected() {
+    const BRIDGE: &str = include_str!("../src/render_loop/vector_bridge.rs");
+    let f = BRIDGE
+        .find("set_current_vertex_count(")
+        .expect("a contagem de nós não é publicada -- o Average nunca aparece");
+    let window = &BRIDGE[f..f + 200];
+    assert!(
+        window.contains("pen.selected_verts().len()"),
+        "a contagem publicada não vem da seleção de nós do pen -- duas fontes divergem"
+    );
+    assert!(
+        window.contains("vector_active"),
+        "a contagem não é zerada fora da ferramenta -- o painel de outra tool leria a nossa"
+    );
+}

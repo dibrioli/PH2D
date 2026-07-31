@@ -345,6 +345,14 @@ pub(super) fn dispatch(
     } else {
         None
     });
+    // **Quantos** nós estão selecionados — o tipo acima diz *uniforme ou misto*, não a contagem, e
+    // o Average precisa exactamente dela (com um nó só não há o que mediar).
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_vertex_count(if vector_active {
+        pen.selected_verts().len()
+    } else {
+        0
+    });
     // NOTA: o estilo de quina não é mais publicado para um toggle na seção Vertex — ele virou o
     // par de ferramentas Fillet / Chamfer (o SINAL do `corner_radius` é escrito pelo arrasto).
 

@@ -2069,6 +2069,10 @@ fn the_node_ops_reach_the_bus_when_clicked() {
             ph2d_tool_vector::VertexSel::Uniform(ph2d_tool_vector::VertexType::Corner),
         ));
         ph2d_panel_vector::state::set_current_selection_count(if needs_two { 2 } else { 1 });
+        // ⚠️ O **Average** também exige DOIS (nós, desta vez): a seção Vertex aparece com um só, e
+        // um Average de um nó não tem o que mediar. Sem declarar esta premissa o `painted_rect`
+        // devolve `None` e o gate falharia sobre produto correto.
+        ph2d_panel_vector::state::set_current_vertex_count(2);
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
             .unwrap_or_else(|| panic!("o botao {name} nao foi PINTADO com area clicavel"));
@@ -2092,6 +2096,7 @@ fn the_node_ops_reach_the_bus_when_clicked() {
         );
     }
     ph2d_panel_vector::state::set_current_selection_count(0);
+    ph2d_panel_vector::state::set_current_vertex_count(0);
 }
 
 /// **O Join NÃO é oferecido com um caminho só** — a metade de AUSÊNCIA, e é ela que impede o
@@ -2150,25 +2155,6 @@ fn clicking_the_scissors_pill_reaches_the_tool() {
     );
 }
 
-/// E o pill é **alcançável por um ponteiro**: pintado com área clicável na fileira TOOL. Um id
-/// registado que nunca é pintado é a forma exacta de uma ferramenta que ninguém encontra.
-#[test]
-fn the_scissors_pill_is_reachable_by_a_pointer() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 900.0,
-    };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_MODE_SCISSORS)
-            .is_some(),
-        "o pill da tesoura nao foi PINTADO com area clicavel"
-    );
-}
-
 /// **O pill da FACA arma o modo** (W4) — irmão do da tesoura, e pela mesma razão: o gesto inteiro
 /// dela vive no canvas, então este é o único caminho pelo qual o artista lá chega.
 #[test]
@@ -2191,9 +2177,49 @@ fn clicking_the_knife_pill_reaches_the_tool() {
     assert_eq!(tool.mode(), DrawMode::Knife, "falta o arm no tool");
 }
 
-/// E os DOIS pills de corte são alcançáveis por um ponteiro na fileira TOOL.
+/// **Os pills de corte respondem a um PONTEIRO real** — e este gate SUBSTITUI dois irmãos que
+/// só perguntavam *foi pintado?*, porque foi exactamente essa a pergunta que deixou os dois
+/// passarem enquanto estavam mortos sob o mouse (report do Enio: *"botão não funciona"*).
+///
+/// O gate irmão dirige um `WidgetEvent::Click` sintético, que **pula a checagem de focabilidade do
+/// store**: um id pintado e registado no `hit_index` mas ausente do `populate` fica *vivo aos olhos
+/// daquele gate e MORTO sob o mouse*. É a cicatriz que este repo já pagou nos dez chips do impasto.
 #[test]
-fn both_cutting_pills_are_reachable_by_a_pointer() {
+fn the_cutting_pills_answer_a_real_pointer() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, name) in [
+        (ids::VECTOR_MODE_SCISSORS, "Scissors"),
+        (ids::VECTOR_MODE_KNIFE, "Knife"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("{name} nao foi pintado"));
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} NAO virou Click -- o pill esta' morto sob o mouse"
+        );
+    }
+}
+
+/// **O Average NÃO é oferecido com um nó só** — a metade de AUSÊNCIA, irmã da do Join.
+///
+/// ⚠️ A seção Vertex aparece assim que UM vértice é selecionado, e o Average precisa de dois: sem
+/// esta regra ele fica pintado, vivo sob o mouse e **mudo** justamente no estado mais comum de
+/// todos — a forma exacta de um botão morto, e o mesmo defeito que os pills acabaram de ter.
+#[test]
+fn the_average_button_is_not_offered_for_a_single_node() {
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -2202,14 +2228,85 @@ fn both_cutting_pills_are_reachable_by_a_pointer() {
     };
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
-    for (id, name) in [
+    ph2d_panel_vector::state::set_selected_vertex_type(Some(ph2d_tool_vector::VertexSel::Uniform(
+        ph2d_tool_vector::VertexType::Corner,
+    )));
+
+    ph2d_panel_vector::state::set_current_vertex_count(1);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_AVERAGE)
+            .is_none(),
+        "o Average foi pintado com UM no' selecionado -- nao ha' o que mediar"
+    );
+    // E o Delete, que age sobre um só, continua lá — a linha não pode sumir com ele.
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_DELETE)
+            .is_some(),
+        "o Delete sumiu junto -- ele age sobre UM no'"
+    );
+
+    ph2d_panel_vector::state::set_current_vertex_count(2);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_AVERAGE)
+            .is_some(),
+        "o Average nao aparece com DOIS nos selecionados"
+    );
+    ph2d_panel_vector::state::set_current_vertex_count(0);
+}
+
+/// **TODO pill da fileira TOOL responde a um ponteiro real.**
+///
+/// ⚠️ **Este gate existe porque o genérico do repo NÃO os vê**, e isso está escrito no doc dele: o
+/// `architecture_panel_wiring_parity` só coleta `.register(ids::LITERAL` direto, e os pills são
+/// registados num LAÇO (`button_grid`). É o mesmo ponto cego que as 36 células da matriz de
+/// colisão da `line/physics` documentaram — e foi por ele que a Tesoura e a Faca chegaram ao
+/// smoke pintadas, acesas sob o mouse e MUDAS (*"botão não funciona"*, Enio).
+///
+/// ⚠️ **A lista é enumerada à mão, e a exposição é essa:** um 15º modo que não entre aqui nasce
+/// descoberto. Não há como derivá-la — a tabela que o painel pinta é privada dele.
+#[test]
+fn every_tool_row_pill_answers_a_real_pointer() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    let pills: [(ph2d_a11y::NodeId, &str); 13] = [
+        (ids::VECTOR_MODE_SELECT, "Select"),
+        (ids::VECTOR_MODE_NODE, "Node"),
+        (ids::VECTOR_MODE_PEN, "Pen"),
+        (ids::VECTOR_MODE_PENCIL, "Pencil"),
+        (ids::VECTOR_MODE_SHAPE, "Shape"),
+        (ids::VECTOR_MODE_TEXT, "Text"),
+        (ids::VECTOR_MODE_CONNECT, "Connect"),
+        (ids::VECTOR_MODE_BUILD, "Build"),
+        (ids::VECTOR_MODE_FILLET, "Fillet"),
+        (ids::VECTOR_MODE_CHAMFER, "Chamfer"),
+        (ids::VECTOR_MODE_WIDTH, "Width"),
         (ids::VECTOR_MODE_SCISSORS, "Scissors"),
         (ids::VECTOR_MODE_KNIFE, "Knife"),
-    ] {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-                .is_some(),
-            "o pill {name} nao foi PINTADO com area clicavel"
-        );
+    ];
+    let mut dead = Vec::new();
+    for (id, name) in pills {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let Some(r) = host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id) else {
+            dead.push(format!("{name} (nao PINTADO)"));
+            continue;
+        };
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        if !evs
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id))
+        {
+            dead.push(format!(
+                "{name} (MORTO sob o mouse -- falta o `button()` no populate)"
+            ));
+        }
     }
+    assert!(dead.is_empty(), "pills que nao respondem: {dead:?}");
 }

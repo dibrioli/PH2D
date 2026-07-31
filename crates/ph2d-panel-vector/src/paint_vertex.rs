@@ -62,15 +62,23 @@ impl BodyCtx<'_> {
         // **Average** (W4) — colapsa os nós selecionados no centroide deles. Fica ao lado do
         // Delete de propósito: são os dois gestos que agem sobre a SELEÇÃO de nós inteira, e o
         // Average é a metade que TORNA duas pontas coincidentes para o Join as soldar.
-        y = self.row2(
-            w,
-            gap,
-            [
-                (ids::VECTOR_VERT_AVERAGE, "Average"),
-                (ids::VECTOR_VERT_DELETE, "Delete Node"),
-            ],
-            y,
-        );
+        //
+        // ⚠️ **Só com DOIS ou mais**, e é a mesma lei do Join na seção PATH: esta seção aparece
+        // assim que UM vértice é selecionado, e um Average de um nó não tem o que mediar — ele
+        // ficaria pintado, vivo sob o mouse e mudo no estado mais comum de todos.
+        if state::current_vertex_count() >= 2 {
+            y = self.row2(
+                w,
+                gap,
+                [
+                    (ids::VECTOR_VERT_AVERAGE, "Average"),
+                    (ids::VECTOR_VERT_DELETE, "Delete Node"),
+                ],
+                y,
+            );
+        } else {
+            y = self.action_button(ids::VECTOR_VERT_DELETE, "Delete Node", y);
+        }
         y
     }
 }

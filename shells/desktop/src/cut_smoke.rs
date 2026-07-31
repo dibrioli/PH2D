@@ -127,7 +127,8 @@ fn announce(app: &mut crate::App) {
          estavam a {gap_near:.2} (muito acima da tolerancia de solda, {tol:e}), tem de aparecer um SEGMENTO a \
          liga-las; (8) Ctrl+Z; (9) agora pill **Node**, clique a ponta de uma fita verde, \
          **Shift+clique** a ponta da outra... e repare que a secao Vertex so' edita UM caminho: \
-         para o par canonico *Average + Join*, aproxime cada ponta com o Average dentro da SUA \
+         para o par canonico *Average + Join*, selecione DOIS nos numa fita (o botao Average so' \
+         aparece com dois -- com um so' nao ha' o que mediar) e aproxime cada ponta dentro da SUA \
          fita e depois Join -- com as pontas COINCIDENTES a emenda tem de ser **um vertice so'**, \
          nao dois sobrepostos; (10) nas fitas LARANJA (vao {gap_far:.2}) faca Select + Shift+clique + \
          **Join**: aqui o segmento de ligacao e' longo e OBVIO -- e' a metade da lei que distingue \

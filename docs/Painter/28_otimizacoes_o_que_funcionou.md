@@ -4041,6 +4041,29 @@ de 12 passos, com a rota do `sim_step_stage` trocada à mão e devolvida:
 **1,87× no passo**, e o passe sozinho **64,10 → 4,18 ms (15,3×)**. A soma
 amortizada reconcilia com o passo medido dentro de **−1,6 %**.
 
+⚠️ **E o A/B mudou de forma no fim da sessão, porque a MÁQUINA é compartilhada.**
+Esta worktree divide 32 núcleos com outras linhas e com o app do Enio rodando um
+smoke; medido ao longo da sessão, **o MESMO passo do produto foi de 14,5 a 30,2
+ms sem uma linha de código mudar**, e um A/B cross-run teria atribuído isso ao
+ganho — a deriva de 36% que a §5.39 já documentou, agora com 2× de amplitude.
+A cura é a mesma que aquela seção aplicou: **as duas rotas medidas
+costas-com-costas DENTRO da corrida**, sobre o MESMO estado restaurado, o que
+torna a carga um fator comum que levanta os dois juntos. A sonda passou a
+imprimir isso, e o número reproduz:
+
+```text
+  corrida   gauss-seidel   ordem-invariante   razao   passo medido   reconcilia
+     1         66,652 ms         4,133 ms     16,13x     14,503 ms      -1,1%
+     2         64,518 ms         4,035 ms     15,99x     16,794 ms      +8,4%
+     3         66,240 ms         4,436 ms     14,93x     15,894 ms      -0,9%
+     4         66,315 ms         4,465 ms     14,85x     15,926 ms      +0,0%
+```
+
+A aritmética da cadência fecha por uma **terceira** via independente: `0,25 ×
+(66,65 − 4,13) = 15,63 ms`, logo o passo previsto na rota antiga é **29,98 ms**
+— contra os **30,11 e 30,21** que as duas corridas com a rota forçada à mão
+mediram. *Três testemunhas concordando é o que separa um ganho de um número.*
+
 ### §5.46.7 — Quem é o dono agora, e o que a medição diz sobre ele
 
 O `advect` passou a ser **57,9% do passo**, e a decomposição por sub-passe

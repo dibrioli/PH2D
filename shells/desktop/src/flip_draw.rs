@@ -32,6 +32,10 @@ pub(crate) struct FlipDraw {
     /// Não precisa de posição no pen-up: a posição em que a mão soltou **é** a última que a
     /// ferramenta viu, e ela já passa por aqui — recusada.
     pending: Option<(Vec2, f32)>,
+    /// O ajuste já decidido deste traço — estado DERIVADO, e por isso mora ao lado das amostras de
+    /// que deriva. O preview roda o pipeline inteiro por quadro; sem isto ele re-decide, a cada
+    /// quadro, um traço que a lei já garante que não muda.
+    fit: crate::flip_smooth::FitCache,
 }
 
 /// Distância mínima (px de tela) entre amostras — abaixo disso o move é
@@ -49,6 +53,7 @@ impl FlipDraw {
         self.points.clear();
         self.pressures.clear();
         self.pending = None;
+        self.fit.clear();
         self.points.push(world);
         self.pressures.push(pressure);
         self.active = true;
@@ -73,10 +78,10 @@ impl FlipDraw {
         true
     }
 
-    /// As amostras acumuladas (mundo, pressão) — pra o preview ao vivo.
-    #[must_use]
-    pub(crate) fn samples(&self) -> (&[Vec2], &[f32]) {
-        (&self.points, &self.pressures)
+    /// As amostras **e o cache do ajuste**, emprestados juntos — o preview precisa dos três de uma
+    /// vez, e emprestar o `FlipDraw` inteiro travaria o cache contra as próprias amostras.
+    pub(crate) fn preview_parts(&mut self) -> (&[Vec2], &[f32], &mut crate::flip_smooth::FitCache) {
+        (&self.points, &self.pressures, &mut self.fit)
     }
 
     /// Encerra o traço e devolve as amostras (mundo, pressão), limpando o estado.
@@ -239,16 +244,37 @@ pub(crate) fn stroke_from_samples(
     pressures: &[f32],
     world_to_local: &Xform,
 ) -> FlipStroke {
+    stroke_from_samples_cached(
+        style,
+        points,
+        pressures,
+        world_to_local,
+        &mut crate::flip_smooth::FitCache::default(),
+    )
+}
+
+/// **A MESMA porta, com a memória do ajuste** — e é por isso que ela é a de baixo: um cache recém-
+/// nascido está VAZIO, então [`stroke_from_samples`] (o bake, e todo teste) percorre o caminho
+/// completo **por construção**, não por calibração.
+///
+/// ⚠️ Isto NÃO é uma segunda rota. O preview e o bake continuam sendo a mesma função — a cerca de
+/// 2026-07-11 (*"o desenho em tempo real está mais suave que o traço cosido"*) segue valendo por
+/// ESTRUTURA. O que o cache muda é quanto trabalho é refeito, nunca o resultado: o
+/// [`FitCache::simplify`] devolve exatamente o que o `simplify_to_curve` devolveria, e há gate
+/// afirmando isso índice a índice, quadro a quadro, sobre o pipeline do produto.
+pub(crate) fn stroke_from_samples_cached(
+    style: &FlipStyleSnapshot,
+    points: &[Vec2],
+    pressures: &[f32],
+    world_to_local: &Xform,
+    fit: &mut crate::flip_smooth::FitCache,
+) -> FlipStroke {
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
     // ⚠️ **Contra a CURVA que será desenhada, não contra a corda reta** (Enio 2026-07-30). O
     // `simplify_rdp` cobrava a tolerância contra a corda enquanto o `resample_smooth` desenha uma
     // Catmull-Rom pelos sobreviventes — num gancho a corda parecia boa e o traço ficava a 8,46 % da
     // espessura da mão, com 11 pontos de 240.
-    let keep = crate::flip_smooth::simplify_to_curve(
-        &smoothed,
-        simplify_tolerance(style),
-        resample_step(style),
-    );
+    let keep = fit.simplify(&smoothed, simplify_tolerance(style), resample_step(style));
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     // **Reamostragem SUAVE** (T2.8): o RDP e o render ligam os pontos por RETAS, então poucos
@@ -454,7 +480,7 @@ impl crate::App {
     /// composite a cada frame; vira documento só no pen-up). `None` quando não há
     /// gesto ou < 2 amostras.
     #[must_use]
-    pub(crate) fn flip_preview_data(&self) -> Option<FlipGpuData> {
+    pub(crate) fn flip_preview_data(&mut self) -> Option<FlipGpuData> {
         if !self.flip_draw.is_active() {
             return None;
         }
@@ -463,7 +489,7 @@ impl crate::App {
         // amostras são MUNDO → converte, senão o preview folga do traço final. A
         // largura é px de tela ABSOLUTO (o render não escala pelo zoom) → sem câmera.
         let w2l = self.flip_active_world_to_local();
-        let (pts, prs) = self.flip_draw.samples();
+        let (pts, prs, fit) = self.flip_draw.preview_parts();
         if pts.len() < 2 {
             return None;
         }
@@ -477,7 +503,8 @@ impl crate::App {
         // 2026-07-11 (*"o desenho em tempo real está mais suave que o traço cosido"*).
         // Compartilhando a função, ele passa a valer por CONSTRUÇÃO.
         let mut d = FlipDrawing::default();
-        d.strokes.push(stroke_from_samples(&style, pts, prs, &w2l));
+        d.strokes
+            .push(stroke_from_samples_cached(&style, pts, prs, &w2l, fit));
         Some(pack_drawing(&d))
     }
 

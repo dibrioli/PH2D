@@ -67,6 +67,9 @@ fn perp_dist(p: Vec2, a: Vec2, b: Vec2) -> f32 {
 /// (`flip_smooth`) mora o que se faz com uma lista de pontos; lá, **quantos pontos ela deve ter**.
 #[path = "flip_fit.rs"]
 pub(crate) mod fit;
+pub(crate) use fit::FitCache;
+/// O ajuste sem memória — **oráculo dos testes**, sem chamador de produção (ver [`fit`]).
+#[cfg(test)]
 pub(crate) use fit::simplify_to_curve;
 
 /// **Simplify RDP** — ⚠️ **REFERÊNCIA CONGELADA, sem chamador de produção desde 2026-07-30.**

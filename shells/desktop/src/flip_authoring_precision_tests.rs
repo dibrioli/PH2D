@@ -426,3 +426,8 @@ fn measure_what_the_capture_and_the_smoothing_cost() {
 /// falha (lento · enviesado) não se veem por medição de forma.
 #[path = "flip_fit_budget_tests.rs"]
 mod orcamento;
+
+/// O CACHE do ajuste — módulo irmão porque a pergunta é outra: aqui se mede *quantos pontos e com
+/// que desvio*, lá **se guardar a resposta muda a resposta**.
+#[path = "flip_fit_cache_tests.rs"]
+mod cache;

@@ -1867,7 +1867,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 3a | ⚠️ **NÃO era saturação — o percurso DERRUBAVA tinta em tampa e junta** | ✅ **CURADO** (§22.10): a grade resolve a JANELA, não o segmento. Tampa e junta vão a **zero px derrubados**, e o miolo **não se move** (0 px acima de 1/255 em h=0,4 e 0,7). |
 | 3c | o resíduo de QUINA que a lei de área expôs | **FECHADO por medição (2026-07-31)** — segue pinado, e **não é regressão** (§22.10). Três curas construídas/avaliadas; a melhor (amostrar no CENTROIDE da parte coberta) foi **reprovada pelo oráculo supersampleado**: empate nos flancos, pior nas junções (96,38 contra 61,86/255). E o achado que fecha: o pior erro da lei que SHIPA contra a verdade é **22-62/255** e o resíduo vale **≤ 14,94** — *o artefato é menor que o erro da aproximação que o curaria*. A cura real ataca a aproximação (supersamplear o perfil / 2º tap): outra wave. |
 | 4 | ~~**joins & caps**~~ | ⛔ **A PREMISSA FOI REFUTADA POR MEDIÇÃO (§22.9).** O `−64` saía do RASTERIZADOR (a escape hatch, não o default desde `9a4bdd07b`), e no percurso ele decompõe em duas causas conhecidas — o termo de fronteira do `end_dab` (correto: cinco traços têm cinco começos) e `over` contra união exata. **Nenhuma é geometria de junta.** Sobra uma pergunta de PRODUTO, não de correção. |
-| 5 | **a terceira lei** (`Soft` do Krita, §2.4) | ⚠️ **MEDIDA (§22.11): funciona perfeitamente, e a ressalva do §2.4 NÃO alcança o percurso** — sem dabs não há beading. Mas ela muda a borda de UMA passada em +69%, então é **decisão de LOOK, do Enio**, não de engenharia. |
+| 5 | **a terceira lei** (`Soft` do Krita, §2.4) | ⚠️ **MEDIDA (§22.11): funciona perfeitamente, e a ressalva do §2.4 NÃO alcança o percurso** — sem dabs não há beading. Mas ela muda a borda de UMA passada em +69%, então é **decisão de LOOK, do Enio**, não de engenharia. **⚠️ E há uma SEGUNDA metade do preço, medida em 2026-07-31 (§22.11):** ela capa toda acumulação dentro do traço, então o **SELF OVERLAP** (shipado em 2026-07-27) fica INERTE — o cruzamento vai de **1,50× para 1,00×** o braço, em toda dureza. Os dois são mutuamente exclusivos, como o One-Way e a zona de força da física. |
 
 A **antiderivada** (§21.5) cai para o fim: ela é *perf*, e sob (2) deixa de ser necessária.
 
@@ -2386,3 +2386,34 @@ duas aparências corretas não é minha. O número do endurecimento fica pinado 
 `a_soft_edge_hardens_when_the_stroke_crosses_itself_and_this_is_its_number` (descrição, não
 veredito) e a receita da 3ª lei está na sonda irmã, pronta para virar produto no dia em que a
 resposta vier.
+
+#### ⚠️ 2026-07-31 — a decisão tem uma SEGUNDA metade, e ela não estava aqui
+
+A 3ª lei limita cada pixel pela cobertura do **próprio bico** ali. Isso não capa só o endurecimento
+da borda: capa **toda acumulação dentro do traço** — e o Flip shipou o **SELF OVERLAP** em
+2026-07-27 (*"um traço que cruza a si mesmo fica mais escuro no cruzamento"*), que é exatamente uma
+acumulação dentro do traço. Medido
+(`measure_whether_the_third_law_also_switches_off_the_self_overlap`, X de um traço, opacidade 0,5,
+`FLAG_SELF_OVERLAP` ligado):
+
+| dureza | braço HOJE | cruzamento HOJE | ganho | cruzamento 3ª LEI | ganho |
+|---|---|---|---|---|---|
+| 1,0 | 0,5000 | 0,7500 | **1,50×** | 0,5000 | **1,00×** |
+| 0,5 | 0,5000 | 0,7500 | **1,50×** | 0,5000 | **1,00×** |
+| 0,0 | 0,5000 | 0,7500 | **1,50×** | 0,5000 | **1,00×** |
+
+⇒ **A 3ª lei capa o cruzamento no valor exato do braço**, em toda dureza: o toggle de Self Overlap
+fica **inerte dentro do traço**. Ela não é *um modo ao lado do que existe* — ela é
+**mutuamente exclusiva** com uma feature shipada, como o One-Way e a zona de força da física (cada
+controle é morto no modo do outro, e o painel tem de dizer isso em vez de deixar o artista
+descobrir). O preço do item 5 passa a ter duas metades: a borda de uma passada **+69 %** *e* o
+cruzamento **1,50× → 1,00×**.
+
+⚠️ **E a sonda custou TRÊS fixtures erradas, todas minhas — a lição é a de sempre.** (1) Ela lia o
+`cover` (geometria × tinta) para perguntar *"escureceu?"*, quando o `opacity` entra **depois** dele,
+no alfa da cor (a regra do GP que o `tau.rs` documenta): mediu 1,0000 em tudo. (2) Não ligava o
+`FLAG_SELF_OVERLAP` — o `art` não o liga —, então media o toggle DESLIGADO fazendo o que promete.
+(3) O X era desenhado *vai, volta, sobe*, então ele cruzava num **VÉRTICE**, onde as passagens são
+contíguas e a partição não vê duas. Nas três a sonda reportou **1,00× sobre um motor que funciona**,
+e a única coisa que a salvou foi o gate `the_self_overlap_composes_only_where_the_stroke_crosses_itself`
+já ter uma fixture que contém o fenômeno.

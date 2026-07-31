@@ -625,3 +625,91 @@ fn measure_which_profile_sample_point_is_closer_to_the_truth() {
         }
     }
 }
+
+/// 📏 **SONDA — a terceira lei ANULA o Self Overlap?** (a pergunta que faltava ao item 5)
+///
+/// ⚠️ **É um fato novo sobre a decisão, e ele não estava no §22.11.** No percurso, `τ` é uma
+/// INTEGRAL sobre todas as passagens do ladrilho — então um traço que cruza a si mesmo acumula por
+/// construção: **o Self Overlap não é um toggle aqui, é o motor**. (No rasterizador ele era um bit
+/// no `flip.wgsl`, e foi shipado como feature em 2026-07-27.)
+///
+/// A terceira lei limita cada pixel pela cobertura do PRÓPRIO bico ali. Isso não capa só o
+/// endurecimento da borda: capa **a acumulação inteira**, inclusive a do cruzamento. Se o
+/// cruzamento deixar de escurecer, a 3ª lei não é *um modo ao lado* do que existe — ela **desliga
+/// uma feature que já shipa**, e a decisão de look passa a ter duas metades em vez de uma.
+///
+/// Um X de UM traço só, opacidade 0,5, **com o `FLAG_SELF_OVERLAP` ligado** (com tinta opaca não há
+/// o que acumular — o §2.4 já dizia; e sem a flag o traço é uma passagem só, ganho 1,00×).
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_whether_the_third_law_also_switches_off_the_self_overlap() {
+    let sc = screen(64.0, 64.0);
+    println!("\n=== A 3a LEI E O SELF OVERLAP (X de UM traco, opacidade 0,5) ===");
+    println!(
+        "  dureza | braco HOJE | cruzamento HOJE | ganho | braco 3a LEI | cruz 3a LEI | ganho"
+    );
+    for dureza in [1.0_f32, 0.5, 0.0] {
+        // ⚠️ **A forma é a do `crossing_x` do `cover_tests`, e a diferença é load-bearing:** o
+        // cruzamento tem de cair no MEIO de duas pernas. Um X desenhado como *vai, volta, sobe*
+        // cruza num VÉRTICE, onde as passagens são contíguas — a partição não vê duas, e a sonda
+        // mede 1,00× sobre um motor que funciona (foi o que aconteceu na 1ª tentativa).
+        let pernas = [[12.0, 12.0], [52.0, 52.0], [52.0, 12.0], [12.0, 52.0]];
+        let mut pts: Vec<[f32; 2]> = Vec::new();
+        for w in pernas.windows(2) {
+            for k in 0..24 {
+                let t = k as f32 / 24.0;
+                pts.push([
+                    w[0][0] + (w[1][0] - w[0][0]) * t,
+                    w[0][1] + (w[1][1] - w[0][1]) * t,
+                ]);
+            }
+        }
+        pts.push(pernas[3]);
+        let mut g = art(&[(&pts, 9.0, false, BLACK)]);
+        for p in &mut g.points {
+            p.opacity = 0.5;
+        }
+        for s in &mut g.strokes {
+            s.hardness = dureza;
+            // ⚠️ **A FLAG, sem a qual a fixture não contém o fenômeno.** O `art` não a liga, e sem
+            // ela o percurso trata o traço como UMA passagem: medido, ganho 1,00× em toda dureza —
+            // que é o toggle DESLIGADO fazendo o que promete, não a ausência da feature.
+            s.flags |= crate::pack::FLAG_SELF_OVERLAP;
+        }
+        let bins = bin_segments(&g, &sc, 16);
+        let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+        // A cobertura de hoje, e a que a 3ª lei daria (o teto do próprio bico ali).
+        // ⚠️ **O ALFA do pixel, não o `cover`** — é ele que responde *"o cruzamento escureceu?"*. O
+        // `cover` é geometria × tinta; o `opacity` entra DEPOIS dele, no alfa da cor (`tau.rs`: a
+        // regra do GP, *um traço a opacity 0,5 não escurece sobre si mesmo*). Ler o `cover` mede a
+        // pergunta errada e devolve 1,0000 em tudo.
+        let par = |p: [f32; 2]| -> (f32, f32) {
+            let hoje = crate::binning::walk_pixel(&bins, &g, &sc, p)[3];
+            let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                return (hoje, 0.0);
+            };
+            let run = bins.segs_of(ti);
+            let Some(sl) = stroke_silhouette(run, &g, &sc, style.tip, p) else {
+                return (hoje, 0.0);
+            };
+            let r = (sl.dist - sl.sd).max(1e-4);
+            // O teto da 3ª lei, na mesma unidade: a cobertura do próprio bico ali, vezes a
+            // opacidade (que é o que um dab isolado depositaria).
+            let teto = crate::tau::dab_weight(sl.dist / r, dureza) * 0.5 * sl.planes.coverage();
+            (hoje, hoje.min(teto))
+        };
+        // O BRAÇO: um ponto do meio de uma perna, longe do cruzamento.
+        let (braco_h, braco_t) = par([20.5, 20.5]);
+        // O CRUZAMENTO: onde as duas passagens se encontram, no meio das duas.
+        let (cruz_h, cruz_t) = par([32.5, 32.5]);
+        println!(
+            "  {dureza:6.1} | {:10.4} | {:15.4} | {:5.2}x | {:12.4} | {:11.4} | {:5.2}x",
+            braco_h,
+            cruz_h,
+            cruz_h / braco_h.max(1e-6),
+            braco_t,
+            cruz_t,
+            cruz_t / braco_t.max(1e-6)
+        );
+    }
+}

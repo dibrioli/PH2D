@@ -55,7 +55,7 @@
 - [Integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md) — feche → handoff → PARE
 - [Ship do integrador drena latentes](project_integrator_ship_catches_latents_budget_iterations.md) — 2-4 iterações
 - [Ordem de integração se MEDE](feedback_integration_order_comes_from_measured_overlap.md) — sobreposição par-a-par
-- [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — tmpfs evapora
+- [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — tmpfs evapora · disco cheio vira "linking failed"
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) — verifique o ESTADO
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — `check --workspace`

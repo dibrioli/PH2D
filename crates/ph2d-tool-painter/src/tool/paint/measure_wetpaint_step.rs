@@ -441,4 +441,3 @@ fn measure_what_km_costs_at_each_grid_ratio() {
         "\n    Leitura: o K-M e custo POR CELULA, entao a razao o corta na mesma proporcao\n             que corta o passo. O kill do ADR-0134 e 12 ms/passo; o nominal, 25 ms (40 Hz)."
     );
 }
-

@@ -121,12 +121,6 @@ pub(crate) enum MotionPathGrab {
     },
 }
 
-/// O que desenhar para a trajetória do objeto `selected`: `(caminho, cor, espessura)`,
-/// já em px de tela.
-///
-/// Vazio quando não há seleção, quando o selecionado não tem binding Position, quando
-/// esse binding não tem caminho, ou quando a track está vazia — em nenhum desses casos
-/// existe uma trajetória a mostrar, e desenhar algo seria inventar uma.
 /// **O caminho que o clip ATIVO de fato anima** — `(alvo, caminho)`, ou `None`. **A porta
 /// ÚNICA** por onde o desenho, as âncoras, as alças e o hit-test da curva perguntam se há
 /// trajetória a mostrar.
@@ -145,10 +139,35 @@ pub(crate) enum MotionPathGrab {
 /// aplicar. ⚠️ E a leitura é a CRUA (`clip_path`), nunca o `path_for`: aquele tem um
 /// recuo para o AVALIADOR não perder a composição, e um recuo no desenho é exatamente a
 /// alça fantasma de volta.
+///
+/// # `keys_tab` — a trajetória só existe onde o clip ATIVO é o que está no ar
+///
+/// Report do Enio (2026-07-31): *"os paths estão visíveis e editáveis em strips Arrange e
+/// Containers. Isso não pode acontecer. Path editável apenas em Keys: Clips"*.
+///
+/// A trajetória é do CLIP, e o clip ativo é escolhido no dropdown da aba **Keys** — mas
+/// ela era desenhada e agarrável em QUALQUER aba. Em Arrange/Containers o que dirige o
+/// objeto é a PILHA (o apply compõe as strips), então a curva sob o cursor podia nem ser
+/// a que move o que se vê, e arrastar uma âncora ali editava um clip que a aba nem nomeia.
+///
+/// ⚠️ **`keys_tab` NÃO é uma preferência de visibilidade: é o MESMO booleano que decide se
+/// o documento sola o clip ativo** (`TimelineState::keys_mode` → `apply_active_clip` contra
+/// `apply_scene`, e o `solo` do `autokey_pass`). Por isso a regra cai também com o painel
+/// FECHADO — ali o `paint` publica `false` e o apply já está compondo a cena; oferecer a
+/// alça seria oferecê-la sobre um clip que ninguém escolheu nesta tela.
+///
+/// ⚠️ E ele entra AQUI, na porta única, nunca nos chamadores: o `marks` (que PINTA) e o
+/// `motion_path_hit` (que AGARRA) têm de concordar, e uma regra copiada em cinco sítios é
+/// a alça pintada em lugar nenhum e agarrável em todo lugar — literalmente o defeito que
+/// o parágrafo acima descreve.
 fn active_path(
     doc: &TimelineDoc,
     selected: Option<u64>,
+    keys_tab: bool,
 ) -> Option<(&ph2d_timeline::TargetBinding, &ph2d_timeline::MotionPath)> {
+    if !keys_tab {
+        return None;
+    }
     let entity = selected?;
     let b = doc
         .bindings()
@@ -158,18 +177,22 @@ fn active_path(
     Some((b, path))
 }
 
+/// O que desenhar para a trajetória do objeto `selected`: `(caminho, cor, espessura)`,
+/// já em px de tela.
+///
+/// Vazio quando o painel não está na aba Keys, quando não há seleção, quando o selecionado
+/// não tem binding Position, quando esse binding não tem caminho no clip ativo, ou quando a
+/// track está vazia — em nenhum desses casos existe uma trajetória a mostrar, e desenhar
+/// algo seria inventar uma. Todas essas perguntas são de [`active_path`].
 pub(crate) fn marks(
-    show: bool,
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<OverlayMark> {
     let mut out = Vec::new();
-    if !show {
-        return out;
-    }
-    let Some((b, path)) = active_path(doc, selected) else {
+    let Some((b, path)) = active_path(doc, selected, keys_tab) else {
         return out;
     };
     let Some(track) = doc.active_clip().track(b.target) else {
@@ -276,7 +299,7 @@ pub(crate) fn marks(
     let mut tan_lines = BezPath::new();
     let mut tan_tips = BezPath::new();
     let mut any_tan = false;
-    for (_, _, _, anchor_pt, tip) in tangent_screen(doc, selected, camera, window) {
+    for (_, _, _, anchor_pt, tip) in tangent_screen(keys_tab, doc, selected, camera, window) {
         tan_lines.move_to(anchor_pt);
         tan_lines.line_to(tip);
         push_circle(&mut tan_tips, tip, TANGENT_TIP_R);
@@ -318,7 +341,7 @@ pub(crate) fn marks(
     // 4. AS ÂNCORAS — o que translada a curva, pela MESMA porta que o hit-test consulta.
     let mut anchors = BezPath::new();
     let mut any_anchor = false;
-    for (_, _, p) in anchor_screen(doc, selected, camera, window) {
+    for (_, _, p) in anchor_screen(keys_tab, doc, selected, camera, window) {
         push_square(&mut anchors, p, ANCHOR_HALF);
         any_anchor = true;
     }
@@ -355,12 +378,13 @@ pub(crate) fn marks(
 /// Lê o ponto **autorado** (`anchors()[i].anchor`), não uma re-amostragem por
 /// distância: a âncora é a coisa que o artista pôs ali, e a distância é derivada dela.
 pub(crate) fn anchor_screen(
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(AnimTarget, usize, Point)> {
-    let Some((b, path)) = active_path(doc, selected) else {
+    let Some((b, path)) = active_path(doc, selected, keys_tab) else {
         return Vec::new();
     };
     path.anchors()
@@ -384,12 +408,13 @@ pub(crate) fn anchor_screen(
 /// Lê os handles **autorados** (relativos à âncora), não uma re-amostragem: a alça é a
 /// coisa que o artista molda, e o objeto seguir a curva é derivado dela.
 pub(crate) fn tangent_screen(
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(AnimTarget, usize, bool, Point, Point)> {
-    let Some((b, path)) = active_path(doc, selected) else {
+    let Some((b, path)) = active_path(doc, selected, keys_tab) else {
         return Vec::new();
     };
     let to_screen = |p: [f32; 2]| {
@@ -417,6 +442,7 @@ pub(crate) fn tangent_screen(
 /// já mantém as pontas fora do alvo da âncora, então perto do quadrado a âncora vence e
 /// na ponta a alça vence, sem regra de prioridade a manter.
 pub(crate) fn motion_path_hit(
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -432,10 +458,10 @@ pub(crate) fn motion_path_hit(
             best = Some((dist2, grab));
         }
     };
-    for (target, i, p) in anchor_screen(doc, selected, camera, window) {
+    for (target, i, p) in anchor_screen(keys_tab, doc, selected, camera, window) {
         consider(d2(p), MotionPathGrab::Anchor { target, i });
     }
-    for (target, i, out, _, tip) in tangent_screen(doc, selected, camera, window) {
+    for (target, i, out, _, tip) in tangent_screen(keys_tab, doc, selected, camera, window) {
         consider(d2(tip), MotionPathGrab::Tangent { target, i, out });
     }
     best.map(|(_, g)| g)
@@ -451,6 +477,7 @@ pub(crate) fn motion_path_hit(
 /// cursor está mesmo em cima da curva, dentro de [`CURVE_HIT_R_PX`] — senão um duplo-clique
 /// no vazio inseriria um ponto.
 pub(crate) fn motion_path_curve_hit(
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -459,10 +486,10 @@ pub(crate) fn motion_path_curve_hit(
     y: f32,
 ) -> Option<(AnimTarget, f64)> {
     // Âncora/alça vence: sobre uma delas, o clique não conta como "na curva".
-    if motion_path_hit(doc, selected, camera, window, x, y).is_some() {
+    if motion_path_hit(keys_tab, doc, selected, camera, window, x, y).is_some() {
         return None;
     }
-    let (b, path) = active_path(doc, selected)?;
+    let (b, path) = active_path(doc, selected, keys_tab)?;
     if path.len() < 2 {
         return None;
     }
@@ -520,7 +547,7 @@ const STEP_COS_SIN: (f64, f64) = (0.866_025_403_784_438_6, 0.5); // cos30°, sin
 
 /// Pinta. No-op quando [`marks`] não devolve nada.
 pub(super) fn draw(
-    show: bool,
+    keys_tab: bool,
     doc: &TimelineDoc,
     selected: Option<u64>,
     camera: &Camera2d,
@@ -531,7 +558,7 @@ pub(super) fn draw(
     // A ordem de pintura é o PAPEL de cada marca, não a ordem em que `marks` a empurrou:
     // glow por baixo, a ponta da alça por cima. Estável, então bandas de mesma camada
     // mantêm a ordem em que nasceram.
-    let mut ms = marks(show, doc, selected, camera, window);
+    let mut ms = marks(keys_tab, doc, selected, camera, window);
     ms.sort_by_key(|m| m.role.layer());
     for m in ms {
         vector_scene.inner_mut().stroke(
@@ -547,3 +574,7 @@ pub(super) fn draw(
 #[cfg(test)]
 #[path = "motion_path_overlay_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_path_overlay_scope_tests.rs"]
+mod scope_tests;

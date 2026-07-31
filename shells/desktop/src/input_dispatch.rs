@@ -1826,6 +1826,7 @@ impl App {
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
         let Some(hit) = crate::render_loop::motion_path_overlay::motion_path_hit(
+            self.timeline.keys_mode,
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -1862,6 +1863,7 @@ impl App {
         // Só a ÂNCORA (o quadrado) abre o menu — a ponta de tangente é para arrastar, e o
         // tipo de alça é propriedade do NÓ, não da alça.
         let Some(MotionPathGrab::Anchor { target, i }) = motion_path_hit(
+            self.timeline.keys_mode,
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -1917,6 +1919,7 @@ impl App {
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
         let Some((target, d)) = crate::render_loop::motion_path_overlay::motion_path_curve_hit(
+            self.timeline.keys_mode,
             &self.timeline.doc,
             selected,
             &gfx.camera,

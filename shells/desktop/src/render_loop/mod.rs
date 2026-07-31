@@ -4847,8 +4847,13 @@ impl crate::App {
             // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a
             // cada frame sem ter onde pegar o caminho. Os PONTOS são um por quadro, e o
             // espaçamento entre eles é a velocidade. No-op sem seleção ou sem Position.
+            // ⚠️ **Só na aba Keys** (Enio, 2026-07-31) — a trajetória é do CLIP ATIVO, e
+            // fora dali quem dirige o objeto é a PILHA; o MESMO booleano que sola o clip
+            // (`keys_mode`) decide se há alça a oferecer. Um `true` literal aqui deixaria
+            // todo gate do overlay verde com a alça fantasma de volta na tela — daí o
+            // arch-gate `the_motion_path_is_offered_only_on_the_keys_tab`.
             motion_path_overlay::draw(
-                true,
+                self.timeline.keys_mode,
                 &self.timeline.doc,
                 hero.gizmo.iter_selected().next(),
                 camera,

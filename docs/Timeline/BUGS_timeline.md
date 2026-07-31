@@ -359,3 +359,51 @@ não OLHAR a saída:**
    agentes escreveram sondas nos meus arquivos e **um deles reverteu o `apply.rs`** — o
    sintoma foi um `git diff` VAZIO num arquivo que eu tinha acabado de editar. Lição:
    *investigação paralela lê; quem escreve é um só.*
+
+### 2f. E a trajetória era oferecida em TODA aba — só a Keys tem um clip ativo
+
+**Report** (Enio, 2026-07-31, depois do smoke que aprovou o 2e): *"Funcionou! Mas os paths
+estão visíveis e editáveis em strips Arrange e Containers. Isso não pode acontecer. Path
+editável apenas em Keys: Clips."*
+
+**Mecanismo.** As waves 2b-2e moveram a trajetória para o CLIP, e o overlay a lê do clip
+**ATIVO** (`doc.clip_path(doc.active_index(), …)`). Quem escolhe o clip ativo é o dropdown
+da aba **Keys** — mas o overlay era desenhado e agarrável em **qualquer** aba. Em
+Arrange/Containers o que dirige o objeto é a **PILHA** (o apply compõe as strips), então a
+curva sob o cursor podia nem ser a que move o que se vê, e arrastar uma âncora ali editava
+um clip que a aba nem nomeia.
+
+**A cura entra na porta ÚNICA.** `active_path` — a mesma que as waves anteriores usaram
+para matar a alça fantasma — ganhou `keys_tab: bool` e recusa antes de olhar o documento.
+As cinco portas (pintar · âncoras · alças · hit · hit-de-curva) atravessam ela, então
+**pintar e agarrar não podem discordar**; a regra copiada nos cinco chamadores seria
+literalmente o defeito do §2a de volta (*nada desenhado, tudo agarrável*).
+
+⚠️ **`keys_tab` não é uma preferência de visibilidade: é o MESMO booleano que decide se o
+documento SOLA o clip ativo** (`TimelineState::keys_mode` → `apply_active_clip` contra
+`apply_scene`, e o `solo` do `autokey_pass`). Por isso a regra é coerente e não arbitrária
+— e por isso ela cai **também com o painel FECHADO**: ali o `paint` publica `false` e o
+apply já está compondo a cena, então oferecer a alça seria oferecê-la sobre um clip que
+ninguém escolheu nesta tela. **Consequência de produto NOMEADA, não escondida.**
+
+**Gates.** `the_trajectory_is_offered_only_on_the_keys_tab` (as cinco portas, presença E
+ausência, no MESMO documento e nas MESMAS coordenadas — o oráculo de agarrar é lido do
+DESENHO, senão metade ficaria verde sobre um ponto chutado) + o arch-gate de shell
+`the_motion_path_is_offered_only_on_the_keys_tab`, que varre o `src/` INTEIRO e recusa um
+literal no 1º argumento de qualquer uma das cinco portas.
+
+⚠️ **Os dois gates NÃO são redundantes, e isso está medido:** com o `draw` revertido para
+`true` literal, **os 20 testes de unidade do overlay ficam VERDES** e só o arch-gate sangra
+— os cinco sítios vivem em `render_frame` e nos handlers de ponteiro, que exigem janela e
+GPU. **3 mutações, 3 sangram** (a porta ignorando `keys_tab` · o `draw` literal · um sítio
+de `input_dispatch` literal).
+
+**LOC:** o `_tests.rs` cruzou 600 com o argumento novo, então o gate do CLIP (§2b) e o da
+ABA foram para o irmão `motion_path_overlay_scope_tests.rs`. O corte é por assunto, não por
+tamanho: os dois medem *ONDE a trajetória é oferecida* — as duas metades da mesma porta —
+enquanto o `_tests.rs` mede *como ela é desenhada*.
+
+**Aberto, NÃO construído (decisão de produto):** com AutoKey armado, arrastar o objeto em
+Arrange ainda pode plantar uma âncora (`AutokeyPlan::path_key`) no path do clip ativo — é a
+mesma incoerência por outra porta, mas gateá-la deixa o gesto **silenciosamente inerte**, e
+uma recusa honesta precisa de UX própria (`KeyRefusal`).

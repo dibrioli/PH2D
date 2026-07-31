@@ -5,133 +5,163 @@
 
 use super::{Vec2, resample_smooth};
 
-/// **SIMPLIFICAÇÃO CONTRA A CURVA QUE SERÁ DESENHADA** — o simplificador e o reconstrutor passam a
-/// concordar sobre o que um ponto guardado significa.
+/// **SIMPLIFICAÇÃO CONTRA A CURVA QUE SERÁ DESENHADA, DA ESQUERDA PARA A DIREITA** — o traço
+/// guardado deixa de ser re-decidido enquanto a mão continua desenhando.
 ///
-/// ⚠️ **O defeito que ela corrige** (Enio 2026-07-30, com screenshot): o [`simplify_rdp`] cobra a
-/// tolerância contra a **CORDA RETA** entre dois pontos, mas quem desenha depois é o
-/// [`resample_smooth`], que traça uma **Catmull-Rom centrípeta** pelos sobreviventes. Num gancho
-/// fechado a corda parece ótima — e a curva reconstruída estoura a curva da mão. Medido no gancho
-/// (240 amostras, espessura 12): o RDP guardava **11 pontos** e o traço final ficava a **8,46 % da
-/// espessura** de onde a mão passou.
+/// ## ⚠️ A propriedade que este ajuste tem e o anterior não tinha: ele é PREFIXO-ESTÁVEL
 ///
-/// ⚠️ **E é por isso que a CONSTANTE não era o instrumento.** Ela já tinha sido reclamada nas duas
-/// pontas — `0,0008` deu *"muitos pontos muito próximos e até sobrepostos"* (2026-07-18) e `0,05`
-/// deu *"poucos pontos"* (hoje). Um terceiro ajuste do mesmo número é o sinal de que o modelo está
-/// errado ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]).
+/// Report do Enio (2026-07-30, terceira rodada): *"o traço deve parar de reconstruir a curva toda;
+/// os pontos já postos não devem ser modificados"*.
 ///
-/// **Como:** refinamento guloso. Começa com as pontas, reconstrói **pela porta do produto**
-/// ([`resample_smooth`], a MESMA que o traço usa) e acrescenta o ponto da mão que mais se afasta da
-/// reconstrução, até que ninguém passe da tolerância.
+/// A versão anterior era **divide-e-conquista com fila por pior erro**: a primeira partição saía do
+/// máximo **GLOBAL**, então uma amostra nova na ponta podia re-decidir um corte no COMEÇO — e o
+/// preview roda o ajuste **a cada frame**. Medido no pipeline do produto, traço de 1200 amostras
+/// (`measure_how_often_an_already_placed_point_is_moved`): **762 de 1001 frames** mexiam em pontos
+/// já postos, atrás do cursor. O deslocamento por frame é pequeno (~1 % da espessura), e é
+/// exatamente por isso que ele **não** foi curado pelas duas rodadas anteriores: o que o artista vê
+/// não é a amplitude, é 1 % **mudando a cada frame** sobre um traço que ele já considera pronto.
 ///
-/// ⚠️ **A reconstrução vem da porta única, e isso é a espinha:** uma cópia da avaliação da curva
-/// aqui recriaria exatamente o desacordo que esta função existe para acabar.
+/// Andar da esquerda para a direita apaga a classe inteira: **a decisão de um nó só olha amostras
+/// que já chegaram**, então `fit(amostras[..n])` é prefixo de `fit(amostras[..m])` para todo
+/// `m ≥ n`, a menos do último span — o que está literalmente sob a caneta. Não é uma calibração
+/// melhor, é a propriedade que faltava.
 ///
-/// Ganho estrutural: num arco liso a Catmull-Rom já reconstrói bem ⇒ **poucos pontos** (nada de
-/// pontos sobrepostos); num gancho ela não reconstrói ⇒ **pontos onde a precisão é necessária**.
-/// As duas queixas opostas param de disputar o mesmo número.
+/// ## Como
+///
+/// Do último nó guardado, estende o span **enquanto a reconstrução couber na tolerância**, e fecha o
+/// nó no último ponto que coube. A reconstrução vem da porta do produto ([`resample_smooth`], a
+/// MESMA que o traço usa) — uma cópia da avaliação da curva aqui recriaria o desacordo que este
+/// ajuste existe para acabar (era o defeito da rodada 1: o `simplify_rdp` cobrava contra a CORDA
+/// RETA enquanto quem desenha traça uma Catmull-Rom, e num gancho fechado a corda parecia ótima
+/// com o traço final a **8,46 %** da espessura de onde a mão passou).
+///
+/// ⚠️ **A tangente do fim do span sai do [`espelho`], nunca de um nó futuro** — é a única
+/// dependência de "frente" que existe aqui, ela vale **um span** (não o traço inteiro), e é o que
+/// mantém o erro cobrado contra a curva que de fato será desenhada. Medido
+/// (`measure_how_far_behind_the_pen_a_point_freezes`): a re-decisão mais funda fica a **12 amostras
+/// atrás do cursor**.
+///
+/// ⚠️ **Não há mais TETO de pontos, e a remoção é consequência da lei, não economia.** Um teto
+/// global é uma decisão sobre o traço INTEIRO: sob ele, o mesmo começo recebe orçamentos diferentes
+/// conforme o traço cresce — que é precisamente o defeito acima. Quem limita a contagem agora é o
+/// piso anti-redundância, que é **local** (uma pergunta por span). Medido pelo pipeline do produto
+/// num traço de 9000 amostras: **919 pontos em 1,92 ms** — contra o teto anterior de 512.
+///
+/// ⚠️ **O que esta lei NÃO faz, com o número ao lado:** ela para de *re-decidir*, não de
+/// *re-computar*. O ajuste segue percorrendo o traço inteiro a cada frame do preview — medido
+/// (`measure_what_a_live_preview_frame_is_made_of`), o frame custa **0,33 ms a 1200 amostras e
+/// 2,42 ms a 9000**, dos quais o ajuste é **95 %**. Um cache incremental levaria isso a `O(cauda)`
+/// e **só é seguro por causa desta lei** (com a decisão global de antes, um prefixo em cache
+/// mentiria); fica MEDIDO e não construído — 2,42 ms são 15 % de um quadro de 60 fps, num traço de
+/// 18 000 px de percurso.
 #[must_use]
 pub(crate) fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usize> {
-    simplify_to_curve_capped(points, tol, step, MAX_FIT_POINTS)
+    fit(points, tol, step, SAFETY)
 }
 
-/// A mesma porta com o teto como PARÂMETRO — é assim que o gate da justiça consegue **forçar** o
-/// teto a morder. Sem isso ele mediria um teto que a fixture não alcança, que foi exatamente o que
-/// escondeu o defeito de mim: com o teto em 512 e o traço pedindo 495, ele só mordia nas últimas
-/// 17 inserções e a distribuição saía `[166, 165, 164]`, de aparência inocente.
-#[must_use]
-pub(crate) fn simplify_to_curve_capped(
-    points: &[Vec2],
-    tol: f32,
-    step: f32,
-    teto: usize,
-) -> Vec<usize> {
+/// **A MARGEM DE ACEITAÇÃO** — o span é fechado quando o erro ESTIMADO passa de `tol × SAFETY`.
+///
+/// ⚠️ **Ela existe porque a estimativa é aproximada por construção** (a tangente do fim do span sai
+/// do [`espelho`], um palpite sobre onde o próximo nó vai cair), e o erro que importa é o da curva
+/// DESENHADA. Sem margem o desenhado saía a **1,27× a tolerância**; a varredura mediu o gancho da
+/// fixture de precisão e o arco liso ao lado dela:
+///
+/// | margem | gancho (% da espessura) | pts do gancho | pts do arco liso |
+/// |---|---|---|---|
+/// | 1,00 | 2,53 | 11 | 16 |
+/// | 0,80 | 1,94 | 11 | 17 |
+/// | **0,65** | **1,40** | **13** | **19** |
+/// | 0,50 | 0,92 | 22 | **49** |
+///
+/// **0,65 bate o divide-e-conquista na precisão** (1,40 % contra 1,85 %) **e ainda é econômico**;
+/// **0,50 é o joelho e ele é do lado errado** — o arco LISO salta de 19 para 49 pontos, que é
+/// literalmente a queixa de 2026-07-18 (*"muitos pontos muito próximos e até sobrepostos"*)
+/// voltando pela porta dos fundos. Abaixo de 0,65 a margem deixa de comprar precisão e passa a
+/// comprar pontos.
+const SAFETY: f32 = 0.65;
+
+/// O ajuste com a margem como PARÂMETRO — é assim que a sonda a varre. A produção passa a
+/// [`SAFETY`]; ninguém mais tem escolha.
+fn fit(points: &[Vec2], tol: f32, step: f32, safety: f32) -> Vec<usize> {
     let n = points.len();
     if n < 3 || tol <= 0.0 {
         return (0..n).collect();
     }
-    let mut keep: Vec<usize> = vec![0, n - 1];
-    // ⚠️ **A fila é por PIOR ERRO, e a ordem é load-bearing quando o teto morde.**
+    // ⚠️ **Um corte que o RENDER não consegue representar não é precisão, é lixo.** O
+    // `resample_smooth` densifica a curva a cada `step`, então dois pontos guardados a menos de
+    // meio `step` carregam informação que o traço desenhado não tem como mostrar — e é exatamente a
+    // queixa de 2026-07-18 (*"pontos muito próximos e até sobrepostos"*).
     //
-    // Ela já foi uma PILHA (`Vec::pop`), o que faz a recursão descer inteira pela metade da
-    // DIREITA antes de tocar a esquerda. Enquanto o teto não morde isso é indiferente — mas quando
-    // morde, o orçamento inteiro fica no FIM do traço e o COMEÇO não recebe ponto nenhum. Medido
-    // com o teto forçado a 64 num traço de 9000 amostras: **pontos por terço `[1, 0, 63]`**, com
-    // 1594 % de desvio no primeiro terço. É o report do Enio (2026-07-30): *"se o traço é muito
-    // longo o início do traço perde pontos e deforma"*.
-    //
-    // Tirando sempre o span de MAIOR erro, o teto deixa de ser um corte ESPACIAL e vira um corte de
-    // QUALIDADE: o que fica de fora é o refinamento menos necessário, onde quer que ele esteja.
-    //
-    // ⚠️ O erro guardado é só a CHAVE de ordenação — ele é recomputado ao sair, porque os vizinhos
-    // (logo as tangentes) mudaram desde que o span entrou na fila.
-    let mut fila: Vec<(f32, usize, usize)> = vec![(f32::MAX, 0, n - 1)];
-    while !fila.is_empty() && keep.len() < teto {
-        // Varredura linear: `k ≤ MAX_FIT_POINTS`, então isto é `O(k²)` de comparações contra
-        // `O(k · n)` de geometria — invisível ao lado do que o `span_error` já custa.
-        let pos = fila
-            .iter()
-            .enumerate()
-            .max_by(|x, y| x.1.0.total_cmp(&y.1.0))
-            .map_or(0, |(i, _)| i);
-        let (_, a, b) = fila.swap_remove(pos);
-        if b <= a + 1 {
-            continue;
+    // ⚠️ **A régua NÃO é minha: é a que o gate anti-redundância já cobra** — `0,05 × espessura`
+    // (`the_resampled_stroke_tracks_the_drawing_without_redundant_points`), que nesta unidade é
+    // `step × 0,125`, a MESMA razão `STROKE_SIMPLIFY_FRACTION / RESAMPLE_STEP_FRACTION` que o
+    // `resample_smooth` documenta. Uma primeira tentativa usou `step × 0,5` e era grande demais:
+    // dá `0,4 × raio` contra a cerca de vizinhos do render, que é `0,1875 × raio`.
+    let minimo = step * 0.125;
+    let longe = |i: usize, j: usize| -> bool {
+        let d = Vec2::new(points[j].x - points[i].x, points[j].y - points[i].y);
+        (d.x * d.x + d.y * d.y).sqrt() >= minimo
+    };
+    let mut keep = vec![0_usize];
+    let mut a = 0_usize;
+    while a < n - 1 {
+        // O nó ANTERIOR já guardado dá a tangente de entrada do span. Ele é passado, nunca futuro.
+        let antes = (keep.len() >= 2).then(|| keep[keep.len() - 2]);
+        let mut b = a + 1;
+        while b < n - 1 {
+            let candidato = b + 1;
+            // Abaixo do piso o span é estendido SEM perguntar o erro: guardar ali seria guardar o
+            // que o render não desenha.
+            if longe(a, b) {
+                let depois = espelho(a, candidato, n);
+                if span_error(points, (antes, a, candidato, depois), step, tol) > tol * safety {
+                    break;
+                }
+            }
+            b = candidato;
         }
-        // Os vizinhos GUARDADOS dão as tangentes do span — a curva é local, e é isso que torna o
-        // erro de um span computável sem reconstruir o traço inteiro.
-        let pos = keep.binary_search(&a).unwrap_or(0);
-        let antes = pos.checked_sub(1).map(|k| keep[k]);
-        let depois = keep.get(pos + 2).copied();
-        let (pior, idx) = span_error(points, (antes, a, b, depois), step, tol);
-        if pior <= tol || idx <= a || idx >= b {
-            continue;
-        }
-        // ⚠️ **Um corte que o RENDER não consegue representar não é precisão, é lixo.** O
-        // `resample_smooth` densifica a curva a cada `step`, então dois pontos guardados a menos de
-        // meio `step` carregam informação que o traço desenhado não tem como mostrar — e é
-        // exatamente a queixa de 2026-07-18 (*"pontos muito próximos e até sobrepostos"*), que o
-        // gate `the_resampled_stroke_tracks_the_drawing_without_redundant_points` pegou quando o
-        // ajuste passou a ser dividir-e-conquistar.
-        //
-        // ⚠️ **A régua NÃO é minha: é a que o gate anti-redundância já cobra** — `0,05 × espessura`
-        // (`the_resampled_stroke_tracks_the_drawing_without_redundant_points`). Na unidade que esta
-        // função tem, isso é `step × 0,125`, a MESMA razão
-        // `STROKE_SIMPLIFY_FRACTION / RESAMPLE_STEP_FRACTION` que o `resample_smooth` documenta.
-        //
-        // ⚠️ **A primeira tentativa foi `step × 0,5` e ela era grande demais — provado por gate:**
-        // dá `0,4 × raio`, contra a cerca de vizinhos do render, que é `0,1875 × raio`. Um piso
-        // ACIMA do que o render suporta proíbe espaçamentos que o produto sabe desenhar, e o
-        // `the_slow_hand_star_is_denser_than_the_old_neighbour_fence` ficou vermelho dizendo
-        // exatamente isso — a cena de mão lenta deixava de conter o fenômeno.
-        let minimo = step * 0.125;
-        let longe = |i: usize, j: usize| -> bool {
-            let d = Vec2::new(points[j].x - points[i].x, points[j].y - points[i].y);
-            (d.x * d.x + d.y * d.y).sqrt() >= minimo
-        };
-        if !longe(a, idx) || !longe(idx, b) {
-            continue;
-        }
-        if let Err(at) = keep.binary_search(&idx) {
-            keep.insert(at, idx);
-        }
-        fila.push((pior, a, idx));
-        fila.push((pior, idx, b));
+        keep.push(b);
+        a = b;
     }
     keep
 }
 
-/// O pior desvio das amostras de `[a, b]` contra a curva que o produto desenharia ali, e ONDE.
+/// O ajuste com a margem forçada — só a sonda que a escolheu chama por aqui.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn fit_tuned(points: &[Vec2], tol: f32, step: f32, safety: f32) -> Vec<usize> {
+    fit(points, tol, step, safety)
+}
+
+/// **Onde estará o PRÓXIMO nó** — a amostra a uma distância de span adiante de `b`, espelhando o
+/// span que acabou de ser medido.
 ///
-/// ⚠️ **Reconstrói só a VIZINHANÇA** (`antes, a, b, depois`), e é isso que derruba o custo de
-/// `O(k · n · m)` para `O(n · m_local)`: a Catmull-Rom é local — a tangente em `a` só olha o
+/// ⚠️ **Isto é a única dependência de "frente" do ajuste, e ela precisa ser esta.** A tangente que a
+/// curva final terá em `b` sai dos vizinhos `(a, próximo nó)`, não de `(a, amostra colada em b)` —
+/// e a diferença NÃO é sutil: com a amostra adjacente o gancho da fixture de precisão saiu a
+/// **14,62 %** da espessura da mão, contra **1,85 %** com o espelho. Numa região de curvatura
+/// parecida os spans saem parecidos, então espelhar o span é o palpite certo sobre onde o vizinho
+/// vai cair.
+///
+/// ⚠️ **E o preço é nomeado:** a decisão sobre `b` passa a depender de amostras até `b + (b − a)`,
+/// ou seja a franja provisória do traço deixa de ser "dois nós" e passa a ser "um span" — que é o
+/// pedaço sob a caneta de qualquer forma. Passado isso, congela.
+fn espelho(a: usize, b: usize, n: usize) -> Option<usize> {
+    let alvo = (b + (b - a)).min(n - 1);
+    (alvo > b).then_some(alvo)
+}
+
+/// O pior desvio das amostras de `[a, b]` contra a curva que o produto desenharia ali.
+///
+/// ⚠️ **Reconstrói só a VIZINHANÇA** (`antes, a, b, depois`), e é isso que mantém o custo em
+/// `O(n · m_local)` em vez de `O(k · n · m)`: a Catmull-Rom é local — a tangente em `a` só olha o
 /// vizinho anterior —, então o span não precisa do traço inteiro para saber a própria curva.
 fn span_error(
     points: &[Vec2],
     span: (Option<usize>, usize, usize, Option<usize>),
     step: f32,
     tol: f32,
-) -> (f32, usize) {
+) -> f32 {
     let (antes, a, b, depois) = span;
     let mut viz: Vec<Vec2> = Vec::with_capacity(4);
     viz.extend(antes.map(|i| points[i]));
@@ -140,22 +170,16 @@ fn span_error(
     viz.extend(depois.map(|i| points[i]));
     let prs = vec![1.0_f32; viz.len()];
     let (curva, _) = resample_smooth(&viz, &prs, step, tol);
-    let (mut pior, mut onde) = (0.0_f32, a);
-    for (i, q) in points.iter().enumerate().take(b).skip(a + 1) {
+    let mut pior = 0.0_f32;
+    for q in points.iter().take(b).skip(a + 1) {
         let mut d = f32::MAX;
         for w in curva.windows(2) {
             d = d.min(dist_to_seg(*q, w[0], w[1]));
         }
-        if d > pior {
-            pior = d;
-            onde = i;
-        }
+        pior = pior.max(d);
     }
-    (pior, onde)
+    pior
 }
-
-/// Teto de pontos do ajuste guloso — **custo**, não qualidade (ver [`simplify_to_curve`]).
-const MAX_FIT_POINTS: usize = 512;
 
 /// Distância de `q` ao SEGMENTO `a→b` (clampada), que é o que a curva desenhada de fato ocupa — a
 /// [`perp_dist`] mede até a reta INFINITA, e usá-la aqui cobraria distância a prolongamentos que

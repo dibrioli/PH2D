@@ -105,37 +105,83 @@ fn measure_how_the_fit_cost_grows_with_the_stroke() {
 /// inteiro a cada inserção custava **27 ms/frame já na tolerância antiga** e 64 na de hoje — e ele
 /// roda **por frame** no preview ao vivo.
 ///
-/// A barra é kill de wall-clock com folga de ~7× sobre o medido (0,72 ms), porque o modo de falha
-/// que ela vigia é de ORDEM DE GRANDEZA (voltar a reconstruir o traço inteiro custa 90×), não de
-/// afinação.
+/// ⚠️ **Ele NASCEU como kill de wall-clock (`< 5 ms`) e isso foi CORRIGIDO em 2026-07-31, porque a
+/// barra reprovava sob carga.** Medido: isolado ele custa 0,00 s e passa sempre; **sob a suíte
+/// inteira em debug ele falhava em ~1 de 3 corridas** — e passava nas outras duas. Um bar de relógio
+/// mede o PERFIL do build e a CARGA da máquina, não o código, e o gate irmão logo abaixo já tinha
+/// pago essa lição (21,65 ms em debug contra 1,92 em release, sobre o mesmo código). Um gate que
+/// falha por motivo alheio ao que alega será **silenciado em vez de acreditado**.
+///
+/// O modo de falha que ele vigia é de FORMA, não de velocidade: reconstruir o traço INTEIRO a cada
+/// inserção é `O(n²)` onde a vizinhança é `O(n)`. Então a afirmação é uma **RAZÃO**, imune ao perfil
+/// e à carga.
+///
+/// ⚠️ **E o EIXO da razão precisou de duas tentativas — a primeira estava errada, e a medição a
+/// derrubou.** Triplicar a DENSIDADE de amostras de uma curva fixa mede **5,06×** com o ajuste
+/// saudável (não 3×): o span cresce junto com a densidade, então o custo por span cresce também, e
+/// até o ajuste local é superlinear nesse eixo. Contra os 7,13× do defeito, a separação seria de
+/// 1,4× — barra frágil dos dois lados.
+///
+/// O eixo em que local e global de fato se separam é o **COMPRIMENTO com a densidade FIXA**: aí os
+/// spans têm o mesmo tamanho, o custo de cada um é constante, e o número deles cresce com o traço
+/// ⇒ saudável é **linear** e reconstruir-tudo é **quadrático**. Medido (1500 → 4500 amostras, mínimo
+/// de três, com o defeito reinstalado por mutação):
+///
+/// | | debug | release |
+/// |---|---|---|
+/// | saudável | **2,93×** | **2,98×** |
+/// | reconstrói o traço inteiro | **8,60×** | **8,88×** |
+///
+/// A barra **5,0** cai no meio: 1,7× de folga de cada lado, e o mesmo número serve os dois perfis —
+/// que é o ponto inteiro de medir uma razão em vez de um relógio.
+///
+/// ⚠️ **A escala também é parte da fixture.** A 600/1800 amostras o lado curto custava ~1 ms em
+/// debug e a razão saía **5,63×** — ruído, não superlinearidade (release dava 2,99 na mesma
+/// corrida). Uma razão entre dois números pequenos mede o escalonador; 1500/4500 põe os dois lados
+/// bem acima do piso e os dois perfis concordam em 2,9.
 #[test]
 fn the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke() {
     let espessura = 12.0_f32;
-    let n = 1200_usize;
-    let cru: Vec<Vec2> = (0..n)
-        .map(|k| {
-            let t = k as f32 / (n - 1) as f32;
-            Vec2::new(
-                40.0 + t * 900.0,
-                200.0 + 70.0 * (t * 9.0).sin() + 20.0 * (t * 23.0).cos(),
-            )
-        })
-        .collect();
     let tol = 0.0025 * espessura;
+    // ⚠️ Espaçamento e frequência espacial CONSTANTES: `n` maior = traço mais LONGO, nunca mais
+    // finamente amostrado. É este o eixo em que reconstruir-o-traço-inteiro explode.
+    let medir = |n: usize| -> (usize, f64) {
+        let cru: Vec<Vec2> = (0..n)
+            .map(|k| {
+                let s = k as f32;
+                Vec2::new(
+                    40.0 + s * 1.5,
+                    200.0 + 70.0 * (s * 0.045).sin() + 20.0 * (s * 0.115).cos(),
+                )
+            })
+            .collect();
+        // ⚠️ **MÍNIMO de três**, e é o redutor certo aqui: as três amostras fazem o MESMO
+        // trabalho, e uma máquina carregada só sabe deixar mais lento. É isto que tira a razão
+        // da dependência de carga que derrubou a versão de wall-clock.
+        let mut melhor = f64::MAX;
+        let mut pts = 0;
+        for _ in 0..3 {
+            let t0 = std::time::Instant::now();
+            let keep = simplify_to_curve(&cru, tol, 0.4 * espessura);
+            melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0);
+            pts = keep.len();
+        }
+        (pts, melhor)
+    };
+    let (pts_curto, ms_curto) = medir(1500);
+    let (pts, ms) = medir(4500);
+    println!("  1500 -> {pts_curto} pts / {ms_curto:.3} ms | 4500 -> {pts} pts / {ms:.3} ms");
     // A premissa da fixture, declarada: o traço tem de EXIGIR muitos pontos, senão o gate mede um
     // ajuste que nem trabalha.
-    let t0 = std::time::Instant::now();
-    let keep = simplify_to_curve(&cru, tol, 0.4 * espessura);
-    let ms = t0.elapsed().as_secs_f64() * 1000.0;
     assert!(
-        keep.len() > 60,
-        "a fixture nao exige pontos ({} guardados) — o gate mediria o vazio",
-        keep.len()
+        pts > 60,
+        "a fixture nao exige pontos ({pts} guardados) — o gate mediria o vazio"
     );
+    let razao = ms / ms_curto.max(1e-6);
     assert!(
-        ms < 5.0,
-        "o ajuste custou {ms:.2} ms num traco de {n} amostras — a reconstrucao voltou a ser do \
-         TRACO INTEIRO? (medido local: 0,72 ms; global: 64 ms)"
+        razao < 5.0,
+        "3x o COMPRIMENTO do traco custou {razao:.2}x (vizinhanca mede 2,9; traco inteiro, 8,6) \
+         — a reconstrucao voltou a ser do TRACO INTEIRO?  {ms_curto:.3} -> {ms:.3} ms"
     );
 }
 
@@ -469,9 +515,20 @@ fn a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget() {
     // uma entrada que ninguém entrega.
     let medir = |n: usize| -> (usize, f64) {
         let cru = active_smooth(&mao(n), 0.5);
-        let t0 = std::time::Instant::now();
-        let keep = simplify_to_curve(&cru, tol, passo);
-        (keep.len(), t0.elapsed().as_secs_f64() * 1000.0)
+        // ⚠️ **MÍNIMO de três** — pelo mesmo motivo do gate irmão, e aqui ele foi PRECISO: com
+        // uma medição única esta razão oscilou entre **1,54× e 3,97× em release** sobre o MESMO
+        // código (os dois lados custam ~1 ms, então um stall de agendamento move a razão inteira),
+        // e sob a suíte em debug ela chegou a estourar a barra. As três amostras fazem o mesmo
+        // trabalho e a máquina só sabe deixar mais lento ⇒ o mínimo é o redutor certo.
+        let mut melhor = f64::MAX;
+        let mut pts = 0;
+        for _ in 0..3 {
+            let t0 = std::time::Instant::now();
+            let keep = simplify_to_curve(&cru, tol, passo);
+            melhor = melhor.min(t0.elapsed().as_secs_f64() * 1000.0);
+            pts = keep.len();
+        }
+        (pts, melhor)
     };
     let (pts_curto, ms_curto) = medir(3000);
     let (pts, ms) = medir(9000);

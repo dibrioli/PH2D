@@ -11,8 +11,18 @@
 //! ADR-0040 §3 exception (same shape as protect_brush / eyedropper), here used to
 //! read `canvas_size` + deliver the pointer.
 //!
-//! Limitation: desktop CursorMoved has no pen pressure, so Move/Up deliver
-//! pressure 1.0 (real pressure arrives on the iPad shell) — a follow-up.
+//! ⚠️ Limitation: desktop `CursorMoved` has no pen pressure, so Down/Move/Up deliver a literal
+//! `1.0` — and this is NOT a follow-up waiting on another shell. `shells/` has exactly one entry
+//! (`desktop`); the "iPad shell" this note used to promise never existed, and a note that promises
+//! a future wave rots worse than a wrong one, because read in passing it REASSURES.
+//!
+//! What the survey found (2026-07-31, measured against the winit 0.30 source): there is no stylus
+//! event in this winit at all — `Touch.force` is touchscreen, `TouchpadPressure` is Apple
+//! force-touch, and `AxisMotion` is a raw XInput2 valuator behind an opaque `AxisId` (no way to ask
+//! which axis is pressure, nor its range). The Wayland backend has no `zwp_tablet_v2` whatsoever.
+//! The cure is a winit bump (cross-line, ADR class) or a per-platform tablet path — never "one
+//! function". The full write-up, with the price of each consumer, lives in the executable gate
+//! `shells/desktop/tests/the_desktop_shell_has_no_pen_pressure.rs`.
 
 use std::cell::Cell;
 

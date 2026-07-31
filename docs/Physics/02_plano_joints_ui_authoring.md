@@ -52,11 +52,14 @@ diagnóstico da pesquisa:
 > **⚠️ ESTE QUADRO É O DIAGNÓSTICO DE 2026-07-25, NÃO O ESTADO DE HOJE.** As sete limitações
 > estão **FECHADAS**: L1→W-J1 · L2→W-J2/W-J2b · L3→W-J4/W-J4b · L4→W-J5/W-J6 (+ os tipos que o
 > §8 não previa: **Rod** · **Wheel** · **Pulley**) · L5→W-J3 · L6→W-J7/W-J7b · L7→W-J8. O §7
-> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **sete** itens,
+> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **cinco** itens,
 > **nenhum escalonado** — params keyframáveis (cross-line com a timeline, pede decisão do Enio) ·
-> a metade **autorável** do Pin-to-world · Custom/GenericJoint · ragdoll wizard / make-chain ·
-> soft weld (premissa falsificada e medida) · copy/paste de propriedades · rows de readout
-> tingidas. Quatro deles estão explicitamente condicionados a *"se o uso pedir"*.
+> Custom/GenericJoint · **ragdoll wizard** (⚠️ o *make-chain* do mesmo item **já existe**:
+> `join_selected_chain` + o rótulo "Chain N Selected Bodies") · soft weld (premissa
+> falsificada e medida) · copy/paste de propriedades · rows de readout tingidas
+> (⚠️ **condição NÃO satisfeita** — o readout de carga vive no OVERLAY, não em row).
+> ⚠️ **A metade autorável do Pin-to-world SAIU da lista**: fechou na W-JointWorld
+> (2026-07-30, cena `=65`, §9). Dos cinco, três estão condicionados a *"se o uso pedir"*.
 
 ---
 
@@ -296,11 +299,17 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   (medido) e o esticamento em regime é **1,1 mm**, menor que a tolerância de repouso do
   próprio rapier. O que ela NÃO faz é **partir** (`JointKind::can_break` — nada mede a reação
   de algo fora do `ImpulseJointSet`), e a §12 não pinta a caixa.
-- ~~**Pin-to-world / Target joint**~~ — a metade do **GESTO** FECHOU (**W-Grab**, 2026-07-26, cena `=52`):
-  arrastar um corpo dinâmico com o relógio andando é a **MÃO** (uma mola macia para um corpo-âncora
-  invisível no cursor). O que resta no horizonte é a metade **AUTORÁVEL** — um joint com UM corpo e um
-  ponto de mundo persistido —, e ela não é mecânica: `names_two_bodies()` gateia o reconcile, o rig walk,
-  o overlay e a §12.
+- ~~**Pin-to-world / Target joint**~~ — **FECHADO NAS DUAS METADES.** A do **GESTO**
+  fechou na W-Grab (2026-07-26, cena `=52`); a **AUTORÁVEL** fechou na
+  **W-JointWorld** (2026-07-30, cena `=65`, §9 deste plano) — e ⚠️ **a objeção
+  desta nota estava certa e o preço, menor do que ela dizia**: os `names_two_bodies()`
+  eram **dois** sítios de produto a mudar, não quatro (o rig walk já estava certo
+  por construção, e o overlay não gateia nada). O texto original, para o registro:
+
+  > arrastar um corpo dinâmico com o relógio andando é a **MÃO** (uma mola macia para um corpo-âncora
+  > invisível no cursor). O que resta no horizonte é a metade **AUTORÁVEL** — um joint com UM corpo e um
+  > ponto de mundo persistido —, e ela não é mecânica: `names_two_bodies()` gateia o reconcile, o rig walk,
+  > o overlay e a §12.
 - ~~**IK multibody**~~ — **FECHADO ([ADR-0149](../architecture/decisions/0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md),
   W-IK, 2026-07-27, cena `=54`)**, e ⚠️ **a metade "arquitetura separada (multibody set)" desta nota
   foi DELIBERADAMENTE recusada** — leia o ADR antes de reabrir. O multibody **não é estado da cena, é

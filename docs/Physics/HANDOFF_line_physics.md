@@ -7411,7 +7411,74 @@ amarre que **sobreviveu** porque a montagem natural já resolvia os dois lados i
 
 ---
 
-## Estado da linha (2026-07-29)
+## Estado da linha (2026-07-30) — **INTEGRADA, e a linha está REABERTA**
+
+⚠️ **A jornada da POLIA + o PINO DE MUNDO INTEGRARAM ao `main`** (2026-07-30, 70
+commits). A worktree foi rebaseada e está **em cima do `main`** — `ahead=0`,
+`behind=0`. Os dois handoffs de integração daquele dia
+([`..._pulley_...`](HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md) e
+[`..._world_pin_...`](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md))
+viram **históricos**: não integre por nenhum dos dois.
+
+### Os pins DEPOIS da integração — lidos da FONTE, não de memória
+
+| pin | valor no `main` de hoje | onde se lê |
+|---|---|---|
+| `PROJECT_SCHEMA` | **46** | `shells/desktop/src/project.rs` |
+| registro `ph2d-physics-ecs` | **24** | as `reg.register::<>` de `lib.rs` |
+| id de gizmo mais alto | **971** (próximo livre **972**) | `ph2d-editor-core/src/gizmo/hit.rs` |
+| cena de smoke mais alta | **65** (próxima livre **66**) | `shells/desktop/src/physics_smoke.rs` |
+| ADR desta linha | **0149** (era 0145, renumerado na integração) | `docs/architecture/decisions/` |
+| `physics_ecs_c9` | `7cb7728d…`, 96 corpos | `cargo run --release --bin physics_ecs_c9` |
+
+⚠️ **O ADR foi renumerado 0145 → 0149 na integração** — a `line/Painter` levou
+0145·0146·0147, a `line/Vector` o 0148, e o 0150/0151/0152 já saíram para
+sculpt3d e timeline. *Um número escolhido numa linha paralela é PROVISÓRIO.*
+
+⚠️ **E o `PROJECT_SCHEMA` 46 é o valor CONTADO**, não o que qualquer um dos dois
+lados trazia: o fork estava em 37, o `main` foi a 38 pela `line/Vector`, e esta
+linha bumpou oito vezes. Quarta vez que estas duas linhas disputam este número
+([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+
+### Verde na árvore combinada (rodado após o rebase)
+
+`ph2d-physics` + `ph2d-physics-ecs` **531 ok** · shell bins **1503 ok** ·
+`architecture_adr_numbers_are_unique` · `node_id_collisions` ·
+`architecture_workspace_file_loc_cap` · `file_loc_caps` (shell) ·
+`handle_scenes_start_paused` — todos verdes.
+
+### O que está ABERTO para a próxima jornada
+
+**Do plano 02 §8 — cinco itens, nenhum escalonado:**
+
+| item | estado medido |
+|---|---|
+| **Params de joint KEYFRAMÁVEIS** | ⚠️ **decisão do Enio + cross-line.** `PropKind` é enum FECHADO de 7 variants, todas de POSE, e o apply escreve `Transform`. Keyframar `motor_target` é *a timeline aprender a dirigir campo de componente* — não é apendar variant |
+| **Ragdoll wizard** | ⚠️ **metade já existe:** o *make-chain* é `join_selected_chain` + "Chain N Selected Bodies". Sobra o GERADOR, e ele só fazia sentido sobre o conjunto de tipos fechado — que agora está (8 tipos) |
+| **Copy/paste de propriedades** | real, e vale mais agora que a §12 tem muitos params |
+| **Custom/GenericJoint** | *"só se um caso real pedir"* — e a própria nota registra que **o Wheel NÃO é esse caso**. Cerca de Chesterton |
+| **Soft weld** | premissa falsificada e MEDIDA (um motor em eixo TRAVADO é mascarado pelo rapier); nada o pede |
+| ~~Rows de readout tingidas~~ | ⚠️ **condição NÃO satisfeita**: o readout de carga do W-J7b vive no **OVERLAY**, não em row. Fica fechado pela própria regra |
+
+**Dívidas menores nomeadas pelas waves desta janela:**
+
+- **Um pino de mundo e um pino entre dois corpos leem IGUAL na tela** — a
+  geometria está certa e o overlay o desenha de graça; falta o glifo dizer que
+  aquela ponta é o cenário. Decisão de desenho.
+- **Não há alça para *onde no corpo* o pino de mundo prende** (o dot move a
+  ÂNCORA; o `local_a` é semeado na criação).
+- **`axle_pair` recusa três ou mais contatos num eixo** (dois diferenciais em
+  série é topologia própria) · **o eixo composto da Weston é cenário na v1** ·
+  **`radius_out` e `WestonAxle` são duas formas de dizer "eixo composto"** e um
+  dia querem ser um enum.
+- **O readout `0 N` de uma corda degenerada** não diz por quê (quer i18n).
+- **Um Ctrl+Z para as duas metades do bake** segue não-mecânico (dois roteadores
+  de undo; a cura mora no roteador do editor, outro domínio).
+
+---
+
+## Estado da linha (2026-07-29) — HISTÓRICO, pré-integração
+
 
 A **W-Pulley está FECHADA, a Weston INCLUSA** (ordem do Enio, 2026-07-29). As waves
 desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de segurar** ·

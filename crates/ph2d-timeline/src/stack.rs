@@ -635,17 +635,15 @@ impl ClipLane {
     }
 }
 
-/// The fade curve: `smoothstep(elapsed / window)`, and 1 where there is no window.
+/// The fade curve: `smoothstep(elapsed / window)` by default, and 1 where there is no
+/// window — com a escolha do artista quando ela existe.
 ///
 /// `smoothstep(1 - u) == 1 - smoothstep(u)`, which is why two strips sharing an
 /// overlap sum to exactly 1 through it (proved in the tests). Complementary
 /// weights need no base value to blend against — that property is what keeps the
-/// crossfade immune to sagging toward a default pose.
-fn ramp(elapsed: f64, window: f64) -> f64 {
-    ramp_with(elapsed, window, None)
-}
-
-/// A curva do fade com a escolha do artista — `None` = a de fábrica ([`ramp`]).
+/// crossfade immune to sagging toward a default pose. ⚠️ É por isso que uma curva autorada
+/// **não alcança um crossfade de sobreposição** ([`ClipLane::weight_at_with`]): ali a
+/// simetria é load-bearing, e uma curva qualquer não a tem.
 ///
 /// ⚠️ **O `None` NÃO é um preset do catálogo, e é por isso que ele existe**: a curva de
 /// fábrica é o `smoothstep`, que o `EasingFamily` não tem (o `Quad InOut` mais próximo dá

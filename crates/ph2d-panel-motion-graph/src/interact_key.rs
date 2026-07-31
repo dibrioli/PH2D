@@ -98,6 +98,24 @@ pub(super) fn apply_key(
         }
         // Ctrl+L — grow the selection to the connected island(s) it touches (Select Linked).
         GraphKey::SelectLinked => grow_selection_to_linked(state, snap),
+        // H — switch the selected node(s) off/on (bypass/mute). The scope rule is the rove
+        // idiom: press once and everything selected goes OFF; if it is ALL already off, press
+        // again and it comes back on. `bypassed` is read off the view (which mirrors the graph),
+        // so a mixed selection resolves to "off" and one more press to "on". Nothing selected →
+        // inert (falls through to the no-op arm).
+        GraphKey::Bypass if !state.selected.is_empty() => {
+            let nodes: Vec<u32> = state.selected.iter().copied().collect();
+            let all_muted = nodes.iter().all(|id| {
+                snap.nodes
+                    .iter()
+                    .find(|n| n.id == *id)
+                    .is_some_and(|n| n.bypassed)
+            });
+            push_intent(GraphIntent::SetBypass {
+                nodes,
+                on: !all_muted,
+            });
+        }
         // Space — toggle transport play/pause (the shell owns the transport).
         GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
         _ => {}

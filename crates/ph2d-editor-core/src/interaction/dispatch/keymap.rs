@@ -25,6 +25,7 @@ pub const KEY_KEY_X: u32 = 0x58;
 pub const KEY_KEY_D: u32 = 0x44;
 pub const KEY_KEY_F: u32 = 0x46;
 pub const KEY_KEY_G: u32 = 0x47;
+pub const KEY_KEY_H: u32 = 0x48;
 pub const KEY_KEY_K: u32 = 0x4B;
 pub const KEY_KEY_L: u32 = 0x4C;
 pub const KEY_KEY_P: u32 = 0x50;

@@ -8,7 +8,8 @@
 
 use super::*;
 use crate::interaction::dispatch::{
-    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P,
+    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_H, KEY_KEY_K, KEY_KEY_L,
+    KEY_KEY_P,
 };
 use crate::interaction::{GesturePhase, GraphHitKind, GraphKey};
 use ph2d_host::{PointerButton, WheelEvent};
@@ -281,6 +282,7 @@ fn graph_shortcuts_route_when_the_surface_is_focused() {
         (KEY_KEY_A, true, GraphKey::SelectAll),
         (KEY_KEY_L, true, GraphKey::SelectLinked),
         (KEY_ESCAPE, false, GraphKey::Escape),
+        (KEY_KEY_H, false, GraphKey::Bypass),
         (KEY_KEY_K, false, GraphKey::Knife),
         (KEY_KEY_P, false, GraphKey::Probe),
         (KEY_KEY_D, true, GraphKey::Duplicate),

@@ -224,6 +224,11 @@ pub enum GraphIntent {
     /// POSITIONS, which are UI-only (they never touch the cook), so the shell applies
     /// it as ONE undo step with no `mark_dirty` — the same class as the backdrops.
     ArrangeLayout,
+    /// **Switch nodes off/on** (bypass/mute — H). `on` is decided panel-side from the selection's
+    /// current state (mixed/all-on → off; all-off → on), so the intent is a plain SET, never a
+    /// per-node toggle the shell would have to re-derive. It IS semantic (a muted node cooks a
+    /// passthrough), so the shell marks the cook dirty and pushes ONE undo step for the batch.
+    SetBypass { nodes: Vec<u32>, on: bool },
 }
 
 /// The intent a **node-library pick** produces, given the wire context the menu was opened

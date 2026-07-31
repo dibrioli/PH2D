@@ -207,6 +207,12 @@ pub enum GraphKey {
     /// *Select Linked*). Flood-fills out along edges, so a whole subtree can be grabbed from one
     /// of its nodes to move or delete it. Nothing selected → nothing to grow from.
     SelectLinked,
+    /// **H — switch the selected node(s) off/on** (bypass/mute — Blender's *Mute*, Nuke's
+    /// *disable*). A muted node's op does not run; its primary input passes straight through, so
+    /// the artist can see the graph WITHOUT a node's effect without unwiring it. `H` alone (no
+    /// modifier): the graph fast-path only fires with no text field focused, so it never steals a
+    /// typed key. Nothing selected → nothing to toggle.
+    Bypass,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

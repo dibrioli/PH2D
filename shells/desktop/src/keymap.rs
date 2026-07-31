@@ -14,7 +14,7 @@ pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
     use ph2d_editor::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
         KEY_ENTER, KEY_ESCAPE, KEY_F2, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G,
-        KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+        KEY_KEY_H, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
     };
     Some(match code {
         KeyCode::Tab => KEY_TAB,
@@ -38,6 +38,8 @@ pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
         KeyCode::KeyF => KEY_KEY_F,
         // G — Group / Ungroup a subgraph (doc 57), when the cursor is over the graph.
         KeyCode::KeyG => KEY_KEY_G,
+        // H — Bypass / mute the selected node(s), when the cursor is over the graph.
+        KeyCode::KeyH => KEY_KEY_H,
         KeyCode::KeyK => KEY_KEY_K,
         // L — Select Linked, when the cursor is over the graph (doc 63.5).
         KeyCode::KeyL => KEY_KEY_L,
@@ -73,6 +75,7 @@ mod tests {
             (KeyCode::KeyA, false, false, GraphKey::Add),
             (KeyCode::KeyA, true, false, GraphKey::SelectAll),
             (KeyCode::KeyL, true, false, GraphKey::SelectLinked),
+            (KeyCode::KeyH, false, false, GraphKey::Bypass),
             (KeyCode::KeyK, false, false, GraphKey::Knife),
             (KeyCode::KeyP, false, false, GraphKey::Probe),
             (KeyCode::Escape, false, false, GraphKey::Escape),

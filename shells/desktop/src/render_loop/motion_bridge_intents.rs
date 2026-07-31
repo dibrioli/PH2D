@@ -34,7 +34,7 @@ pub(super) fn apply_graph_intents(
     toasts: &mut ToastQueue,
     split: &mut CenterSplit,
 ) {
-    use ph2d_nodegraph::graph::Pos;
+    use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
     for intent in ph2d_panel_motion_graph::drain_intents() {
         match intent {
@@ -288,6 +288,24 @@ pub(super) fn apply_graph_intents(
                 ph2d_motion_doc::layout::arrange(&mut motion.doc);
                 if motion.doc != pre {
                     motion.history.push_undo(pre);
+                }
+            }
+            // **Bypass / mute** (H). Semantic — a muted node cooks a passthrough — so it marks the
+            // cook dirty and pushes ONE undo step for the whole batch. Only REAL nodes are muted:
+            // a subgraph CARD's id is tagged (`SUBGRAPH_VIEW_TAG`), and a bypass on a phantom id
+            // would emit a `y` record the loader rejects. Guarded on an actual change, like the
+            // arrange above.
+            GraphIntent::SetBypass { nodes, on } => {
+                let pre = motion.doc.clone();
+                for id in nodes {
+                    let nid = NodeId(id);
+                    if motion.doc.graph.node(nid).is_some() {
+                        motion.doc.graph.set_bypassed(nid, on);
+                    }
+                }
+                if motion.doc != pre {
+                    motion.history.push_undo(pre);
+                    motion.pump.mark_dirty();
                 }
             }
         }

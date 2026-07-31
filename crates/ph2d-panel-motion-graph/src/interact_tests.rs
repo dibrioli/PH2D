@@ -220,6 +220,58 @@ fn delete_key_emits_delete_selection_and_is_idempotent() {
     assert!(drain_intents().is_empty());
 }
 
+/// **H switches the selection off, then on** (bypass/mute), by the rove scope rule: with anything
+/// un-muted it mutes ALL; with everything already muted it un-mutes; a mixed selection resolves to
+/// "off". Nothing selected → inert (no intent). FALSIFIED by reading `on` from a fixed side, or by
+/// dropping the empty-selection guard.
+#[test]
+fn h_switches_the_selection_off_then_on() {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.extend([1, 2]);
+
+    // Nothing muted → H mutes ALL selected.
+    apply_key(&mut st, GraphKey::Bypass, RECT, &two_node_snapshot());
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::SetBypass {
+            nodes: vec![1, 2],
+            on: true
+        }]
+    );
+
+    // Both already muted → H un-mutes.
+    let mut snap = two_node_snapshot();
+    for n in &mut snap.nodes {
+        n.bypassed = true;
+    }
+    apply_key(&mut st, GraphKey::Bypass, RECT, &snap);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::SetBypass {
+            nodes: vec![1, 2],
+            on: false
+        }]
+    );
+
+    // Mixed (one muted, one not) → H mutes ALL (the rove idiom, not a per-node toggle).
+    let mut snap = two_node_snapshot();
+    snap.nodes[0].bypassed = true;
+    apply_key(&mut st, GraphKey::Bypass, RECT, &snap);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::SetBypass {
+            nodes: vec![1, 2],
+            on: true
+        }]
+    );
+
+    // Nothing selected → inert.
+    st.selected.clear();
+    apply_key(&mut st, GraphKey::Bypass, RECT, &two_node_snapshot());
+    assert!(drain_intents().is_empty());
+}
+
 #[test]
 fn right_click_background_opens_menu_then_left_pick_adds_node() {
     let _ = drain_intents();

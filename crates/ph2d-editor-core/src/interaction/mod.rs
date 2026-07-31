@@ -48,7 +48,7 @@ pub use flip_strip::{
 pub use dispatch::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
     KEY_ENTER, KEY_ESCAPE, KEY_F2, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G,
-    KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB, apply_clipboard_paste,
+    KEY_KEY_H, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB, apply_clipboard_paste,
     dispatch_key, dispatch_pointer, dispatch_pointer_with_text, dispatch_text_input, dispatch_tick,
     dispatch_wheel, graph_key_for,
 };

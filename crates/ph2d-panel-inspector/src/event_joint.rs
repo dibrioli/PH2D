@@ -29,6 +29,17 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::AddWheel)
             } else if id == ids::INSP_JOINT_SWAP {
                 Some(JointFieldEdit::Swap)
+            } else if id == ids::INSP_JOINT_COPY {
+                Some(JointFieldEdit::CopyProperties)
+            } else if id == ids::INSP_JOINT_PASTE {
+                // ⚠️ Roteado sem perguntar se há o que colar: quem RECUSA é a
+                // shell, dona da área de transferência. O painel recusaria com
+                // uma cópia da mesma pergunta (`paste_targets > 0`), e duas
+                // respostas para *"há o que colar?"* divergem no dia em que o
+                // snapshot ficar um frame atrás — o botão não é sequer pintado
+                // nesse caso, então esta rota só é alcançada por um clique real
+                // num botão que existe.
+                Some(JointFieldEdit::PasteProperties)
             } else if id == ids::INSP_JOINT_PICK_A {
                 Some(JointFieldEdit::PickBodyA)
             } else if id == ids::INSP_JOINT_PICK_B {

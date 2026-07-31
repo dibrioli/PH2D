@@ -62,7 +62,7 @@ fn a_motor_number_round_trips_in_its_kinds_own_unit() {
                 .world_mut()
                 .spawn((Name::new("J"), after, Transform::default()))
                 .id();
-            let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+            let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
             assert!(
                 (read_ui(&info) - typed).abs() < 1e-3,
                 "kind {kind_tag}: typed {typed}, the row shows {}",
@@ -139,7 +139,7 @@ fn the_mode_chip_writes_the_mode_and_the_snapshot_reads_it_back() {
             .world_mut()
             .spawn((Name::new("J"), after, Transform::default()))
             .id();
-        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
         assert_eq!(
             info.motor_mode_tag, tag,
             "the snapshot has to mirror it back"

@@ -35,6 +35,23 @@ const KIND_LABELS: [&str; 8] = [
 /// a thing that can happen.
 pub(super) const SWITCH_LABELS: [&str; 2] = ["Off", "On"];
 
+/// **O rótulo do botão Paste** (W-JointCopy) — porta pública porque o gate lê
+/// dela, e não de uma segunda cópia da regra: um rótulo afirmado num teste que
+/// re-escreve o `format!` fica verde enquanto a tela diz outra coisa (a lição do
+/// `bake_label`, um irmão adiante).
+///
+/// **Um alvo** é o gesto de sempre e não precisa de número; **mais de um** tem de
+/// dizer quantos ANTES do clique, porque o fan-out é o que este botão tem de
+/// diferente e um clique que muda dez objetos não pode surpreender.
+#[must_use]
+pub fn paste_label(targets: usize) -> String {
+    if targets > 1 {
+        format!("Paste to {targets} Joints")
+    } else {
+        "Paste Properties".to_string()
+    }
+}
+
 /// Tag of the Pin kind — named because the painter branches on it and a bare
 /// `0` at a branch survives a refactor pointing at the wrong variant.
 const KIND_PIN: u8 = 0;
@@ -267,6 +284,42 @@ pub(crate) fn paint_joint_section(
     // degree of freedom, so it is asked of ALL five.
     if kind_can_break(info.kind_tag) {
         yy = paint_break_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    }
+
+    // **Copiar / colar as propriedades** (W-JointCopy) — logo acima do Delete
+    // porque são verbos sobre o objeto inteiro, como ele, e não afinação de um
+    // parâmetro. O Copy é sempre oferecido: a §12 só existe com um joint
+    // selecionado, e todo joint tem propriedades a copiar.
+    let copy_rect = Rect::new(x, yy, w, h);
+    let copy = Button::new(ids::INSP_JOINT_COPY, "Copy Properties")
+        .kind(ButtonKind::Default)
+        .state(
+            store
+                .button_state(ids::INSP_JOINT_COPY)
+                .unwrap_or(ButtonState::Normal),
+        );
+    paint_button(&copy, copy_rect, scene, text_system, theme);
+    hit_index.register(ids::INSP_JOINT_COPY, copy_rect);
+    yy += h;
+    // ⚠️ **O Paste só existe com algo copiado**, e a contagem entra no RÓTULO
+    // quando ele vai tocar mais de um: o fan-out é o que o gesto tem de valioso,
+    // e um clique que muda dez objetos tem de dizer isso antes de ser clicado
+    // (a lei do `Bake 5.0s to Timeline`). Zero alvos = sem botão — um Paste
+    // vazio não muda um pixel, e ler isso como "quebrado" é o que a ausência
+    // evita.
+    if info.paste_targets > 0 {
+        let label = paste_label(info.paste_targets);
+        let paste_rect = Rect::new(x, yy, w, h);
+        let paste = Button::new(ids::INSP_JOINT_PASTE, label)
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_JOINT_PASTE)
+                    .unwrap_or(ButtonState::Normal),
+            );
+        paint_button(&paste, paste_rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_JOINT_PASTE, paste_rect);
+        yy += h;
     }
 
     let btn_rect = Rect::new(x, yy, w, h);

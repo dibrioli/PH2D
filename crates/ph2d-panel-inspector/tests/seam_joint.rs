@@ -73,6 +73,12 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         // actually opens.
         active: true,
         collide_connected: false,
+        // W-JointCopy: a fixture-base é um joint sendo AFINADO, e nada foi
+        // copiado ainda — então o Paste não está na tela. Os gates que o
+        // exercitam declaram a premissa em vez de herdá-la, porque uma fixture
+        // que chega ao estado por atalho inverte de sentido quando o default se
+        // move e segue verde testando o oposto.
+        paste_targets: 0,
     }
 }
 
@@ -886,6 +892,13 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_JOINT_REMOVE,
         ids::INSP_JOINT_PICK_A,
         ids::INSP_JOINT_PICK_B,
+        // W-JointCopy: os dois verbos da área de transferência — botões, não
+        // números. (O Paste só é pintado com algo copiado, e a fixture desta
+        // varredura não tem; ele entra na lista assim mesmo, porque o que ela
+        // declara é *o que NÃO é uma caixa de número* e não *o que está na tela
+        // hoje*.)
+        ids::INSP_JOINT_COPY,
+        ids::INSP_JOINT_PASTE,
         ids::INSP_LIVE_JOINT_SECTION,
         ids::INSP_LIVE_JOINT_COLOR,
         // ⚠️ A BARRA DE ROLAGEM do Inspector, e ela não é da §12: a seção só a
@@ -1055,4 +1068,82 @@ fn a_pulleys_rope_length_follows_the_derived_number_unless_you_are_typing() {
          que o artista estava digitando"
     );
     set_current_inspector_joint(None);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W-JointCopy — copiar e colar as propriedades de um joint.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Os dois verbos estão vivos sob o mouse** — pelo dispatcher REAL, que é o
+/// que separa *pintado e registrado* de *clicável* (docs do topo).
+#[test]
+fn the_two_clipboard_verbs_are_alive_under_the_mouse() {
+    expect(
+        &click_real(joint(0), ids::INSP_JOINT_COPY),
+        JointFieldEdit::CopyProperties,
+        "Copy Properties",
+    );
+    let mut with_clip = joint(0);
+    with_clip.paste_targets = 1;
+    expect(
+        &click_real(with_clip, ids::INSP_JOINT_PASTE),
+        JointFieldEdit::PasteProperties,
+        "Paste Properties",
+    );
+}
+
+/// **Sem nada copiado, o Paste não existe — e o Copy continua lá.**
+///
+/// As duas metades no mesmo gate: a ausência sozinha passaria numa seção que
+/// parou de pintar os dois, e a presença sozinha não diria nada sobre o botão
+/// morto que esta linha existe para não shipar.
+#[test]
+fn the_paste_button_is_absent_until_something_is_copied() {
+    for (targets, want_paste) in [(0usize, false), (1, true), (7, true)] {
+        let mut info = joint(0);
+        info.paste_targets = targets;
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_joint(None);
+        assert!(
+            rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_COPY),
+            "o Copy tem de estar sempre lá — ele é o CONTROLE, e um joint \
+             selecionado sempre tem propriedades a copiar (targets = {targets})"
+        );
+        assert_eq!(
+            rects.iter().any(|(n, _)| *n == ids::INSP_JOINT_PASTE),
+            want_paste,
+            "com {targets} alvo(s) o Paste devia estar {}: um Paste vazio nao \
+             muda um pixel e le como 'o paste esta quebrado'",
+            if want_paste {
+                "na tela"
+            } else {
+                "fora da tela"
+            }
+        );
+    }
+}
+
+/// **O rótulo diz quantos joints o clique vai tocar.**
+///
+/// Lido da porta que o PINTOR usa (`paste_label`), nunca de uma segunda cópia da
+/// regra dentro do teste — a lição do `bake_label`, um irmão adiante: um rótulo
+/// afirmado por um `format!` re-escrito no gate fica verde enquanto a tela diz
+/// outra coisa.
+#[test]
+fn the_paste_label_says_how_many_joints_it_will_touch() {
+    let one = ph2d_panel_inspector::paste_label(1);
+    assert!(
+        !one.contains('1'),
+        "um alvo e' o gesto de sempre: contar ate' um e' ruido ({one:?})"
+    );
+    for n in [2usize, 7, 12] {
+        let many = ph2d_panel_inspector::paste_label(n);
+        assert!(
+            many.contains(&n.to_string()),
+            "um clique que muda {n} objetos tem de dizer isso ANTES ({many:?})"
+        );
+    }
 }

@@ -115,6 +115,10 @@ pub(super) fn publish(
     // The armed §12 joint-body eyedropper `(joint_bits, slot_b)`, so the waiting
     // slot's picker paints pressed. Owned by the shell (`App.joint_body_pick`).
     joint_body_pick: Option<(u64, bool)>,
+    // W-JointCopy: quantos joints um Paste atingiria agora — `0` quando a área
+    // de transferência está vazia, e é isso que tira o botão da tela. Resolvido
+    // pelo chamador, que é dono da área de transferência E da seleção.
+    joint_paste_targets: usize,
     // W-Pulley W3: a §13 tem a mesma máquina, uma família adiante — o eyedropper
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
@@ -784,7 +788,7 @@ pub(super) fn publish(
             }
             _ => 0,
         };
-        super::inspector_joint::build_joint_info(sim, b, pick_armed)
+        super::inspector_joint::build_joint_info(sim, b, pick_armed, joint_paste_targets)
     });
     // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
     // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.

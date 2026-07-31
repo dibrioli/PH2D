@@ -7447,15 +7447,27 @@ linha bumpou oito vezes. Quarta vez que estas duas linhas disputam este número
 `architecture_workspace_file_loc_cap` · `file_loc_caps` (shell) ·
 `handle_scenes_start_paused` — todos verdes.
 
+### O que esta jornada acrescentou (por cima da integração)
+
+| wave | o que | cena |
+|---|---|---|
+| **W-JointCopy** | **copiar/colar as propriedades de um joint** — o item 5 do §8. Porta única `PhysicsJoint::with_properties_of` (destructuring EXAUSTIVO da fonte: um campo novo não compila até ser classificado); o **tipo viaja** porque metade dos números não tem unidade própria; `active` e as âncoras **não** viajam; e é o **único fan-out da §12**, com a contagem no rótulo. Detalhe no [plano 02 §10](02_plano_joints_ui_authoring.md). **11 mutações, 11 sangram.** Zero componente, zero id de física, **zero bump** | `=66` |
+
+⚠️ **Dois SPLITS de LOC vieram junto, os dois por RESPONSABILIDADE:**
+`inspector_joint.rs` (shell, 631 > 600) cedeu o **gesto que CRIA** para
+`inspector_joint_create.rs` — o corte que a UI já faz, *criar é da §11, editar é da §12* — e
+`inspector_model_physics.rs` (crate, 704 > 700) cedeu a **§12 + §13** para
+`inspector_model_joint.rs`, o mesmo corte que o painel desenha entre `sections/physics.rs` e
+`sections/joint.rs`. Os dois re-exportam, então nenhum chamador mudou de caminho.
+
 ### O que está ABERTO para a próxima jornada
 
-**Do plano 02 §8 — cinco itens, nenhum escalonado:**
+**Do plano 02 §8 — quatro itens, nenhum escalonado:**
 
 | item | estado medido |
 |---|---|
 | **Params de joint KEYFRAMÁVEIS** | ⚠️ **decisão do Enio + cross-line.** `PropKind` é enum FECHADO de 7 variants, todas de POSE, e o apply escreve `Transform`. Keyframar `motor_target` é *a timeline aprender a dirigir campo de componente* — não é apendar variant |
 | **Ragdoll wizard** | ⚠️ **metade já existe:** o *make-chain* é `join_selected_chain` + "Chain N Selected Bodies". Sobra o GERADOR, e ele só fazia sentido sobre o conjunto de tipos fechado — que agora está (8 tipos) |
-| **Copy/paste de propriedades** | real, e vale mais agora que a §12 tem muitos params |
 | **Custom/GenericJoint** | *"só se um caso real pedir"* — e a própria nota registra que **o Wheel NÃO é esse caso**. Cerca de Chesterton |
 | **Soft weld** | premissa falsificada e MEDIDA (um motor em eixo TRAVADO é mascarado pelo rapier); nada o pede |
 | ~~Rows de readout tingidas~~ | ⚠️ **condição NÃO satisfeita**: o readout de carga do W-J7b vive no **OVERLAY**, não em row. Fica fechado pela própria regra |

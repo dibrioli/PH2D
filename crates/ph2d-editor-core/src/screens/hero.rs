@@ -44,10 +44,14 @@ pub mod style;
 pub mod topbar;
 
 mod inspector_model;
+/// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
+/// separado dele no cap de 700 LOC (W-JointCopy).
+mod inspector_model_joint;
 mod inspector_model_physics;
 mod paint;
 
 pub use inspector_model::*;
+pub use inspector_model_joint::*;
 pub use inspector_model_physics::*;
 pub use paint::*;
 

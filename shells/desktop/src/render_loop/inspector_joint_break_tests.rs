@@ -57,7 +57,7 @@ fn a_break_threshold_is_carried_verbatim_in_newtons() {
                 .world_mut()
                 .spawn((Name::new("J"), after, Transform::default()))
                 .id();
-            let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+            let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
             assert!(
                 (shown(&info) - typed).abs() < 1e-4,
                 "kind {kind_tag}: the row has to show {typed}, shows {}",
@@ -109,7 +109,7 @@ fn the_breakable_switch_writes_and_reads_back() {
             .world_mut()
             .spawn((Name::new("J"), after, Transform::default()))
             .id();
-        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
         assert_eq!(info.break_enabled, want, "the snapshot mirrors it back");
     }
 }
@@ -152,7 +152,7 @@ fn the_snapshot_carries_the_engines_answer_about_torque() {
                 Transform::default(),
             ))
             .id();
-        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
         assert_eq!(
             info.breaks_on_torque, want,
             "{kind:?}: the snapshot has to carry the engine's answer"

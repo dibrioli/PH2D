@@ -45,6 +45,10 @@ pub(crate) mod inspector_joint;
 /// neither is converted. Its own file for the shell's LOC cap.
 #[cfg(test)]
 mod inspector_joint_break_tests;
+/// O gesto que CRIA um joint (§11 *Join Selected Bodies* e o desenho no canvas),
+/// separado do `inspector_joint` — que descreve e edita um que já existe — no
+/// cap de 600 LOC do shell.
+mod inspector_joint_create;
 /// The §11 Physics Body seam's OTHER half: the Inspector click reached the
 /// ECS and the sprite actually falls (panel-side proof lives in
 /// ).
@@ -61,6 +65,12 @@ mod inspector_joint_motor_tests;
 /// the same line the section draws — *which two, and how they treat each other*.
 #[cfg(test)]
 mod inspector_joint_pair_tests;
+/// A metade de SHELL do copy/paste (W-JointCopy): a porta escreve pela fila e
+/// pelo clamp de sempre, e atravessa em silêncio o que não é um joint — a
+/// condição que torna o fan-out sobre uma seleção mista seguro. A LEI (que campo
+/// é uma propriedade) mora na `ph2d-physics-ecs`, em `joint::properties`.
+#[cfg(test)]
+mod inspector_joint_paste_tests;
 #[cfg(test)]
 mod inspector_joint_tests;
 pub(crate) mod inspector_joint_wheel;
@@ -1723,6 +1733,27 @@ impl crate::App {
                 // The armed §12 joint-body eyedropper, so the waiting slot's
                 // picker paints pressed.
                 self.joint_body_pick,
+                // W-JointCopy: quantos joints um Paste atingiria. `0` sem nada
+                // copiado — e é o zero que tira o botão da tela.
+                //
+                // ⚠️ Contado sobre a SELEÇÃO, porque o Paste é a única edição da
+                // §12 que faz fan-out; e contando só quem de fato carrega um
+                // `PhysicsJoint`, senão o rótulo prometeria dez alvos numa
+                // seleção de nove sprites e um joint.
+                if self.joint_clipboard.is_some() {
+                    hero.gizmo
+                        .iter_selected()
+                        .filter(|&b| {
+                            sim.world()
+                                .get::<ph2d_physics_ecs::PhysicsJoint>(ph2d_ecs::Entity::from_bits(
+                                    b,
+                                ))
+                                .is_some()
+                        })
+                        .count()
+                } else {
+                    0
+                },
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
                 self.wheel_rope_pick,
@@ -2861,6 +2892,21 @@ impl crate::App {
                             }
                             ph2d_editor::JointFieldEdit::PickBodyB => {
                                 self.joint_body_pick = Some((entity_bits, true));
+                            }
+                            // ⚠️ **O ÚNICO fan-out da §12** (W-JointCopy). O
+                            // resto da seção descreve UM joint e edita UM; um
+                            // paste existe para carimbar o rig inteiro, e sem
+                            // isto o gesto é *digitar quinze campos, dez vezes*.
+                            // Espalhado sobre a seleção crua: quem não for joint
+                            // cai no early-return de `paste_joint_properties`,
+                            // do mesmo jeito que o fan-out do §11 atravessa
+                            // entidades sem `Collider`.
+                            ph2d_editor::JointFieldEdit::PasteProperties
+                                if !inspector_selection.is_empty() =>
+                            {
+                                for &t in &inspector_selection {
+                                    joint_edits.push((t, edit));
+                                }
                             }
                             _ => joint_edits.push((entity_bits, edit)),
                         }
@@ -6329,6 +6375,45 @@ impl crate::App {
                         sim.world_mut()
                             .entity_mut(e)
                             .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+                    }
+                } else if matches!(edit, ph2d_editor::JointFieldEdit::CopyProperties) {
+                    // ARMA a área de transferência — estado da shell, nenhum
+                    // componente muda (por isso não passa pelo funil nem pela
+                    // fila). Guarda o componente INTEIRO: quem decide o que é
+                    // uma *propriedade* é `with_properties_of`, no paste, e uma
+                    // segunda triagem aqui seria a segunda resposta que diverge.
+                    let e = ph2d_ecs::Entity::from_bits(bits);
+                    self.joint_clipboard = sim
+                        .world()
+                        .get::<ph2d_physics_ecs::PhysicsJoint>(e)
+                        .copied();
+                } else if matches!(edit, ph2d_editor::JointFieldEdit::PasteProperties) {
+                    // O fan-out já aconteceu no laço de ações: aqui é sempre UM
+                    // joint. A fonte é a área de transferência; sem ela o botão
+                    // nem foi pintado, e este ramo é um no-op honesto.
+                    if let Some(src) = self.joint_clipboard {
+                        inspector_joint::paste_joint_properties(
+                            sim,
+                            bits,
+                            &src,
+                            editor_queue,
+                            component_registry,
+                        );
+                        // FLUSH por edição, pela razão que o ramo abaixo
+                        // documenta: `paste_joint_properties` só ENFILEIRA, e
+                        // ele read-modify-writes o componente inteiro — um
+                        // segundo paste no mesmo frame que lesse um primeiro
+                        // ainda não aplicado o descartaria em silêncio, que é
+                        // exatamente o caso do fan-out sobre dez joints.
+                        if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
+                            sim.world_mut(),
+                            editor_queue,
+                            component_registry,
+                        ) {
+                            toasts.push(ph2d_editor::Toast::error(format!(
+                                "Joint commit failed: {e}"
+                            )));
+                        }
                     }
                 } else if matches!(edit, ph2d_editor::JointFieldEdit::AddWheel) {
                     // Estrutural como o `Remove`, do outro lado: SPAWNA um

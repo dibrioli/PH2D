@@ -205,6 +205,7 @@ mod physics_smoke_ik;
 mod physics_smoke_interact;
 mod physics_smoke_joint_bake;
 mod physics_smoke_joint_break;
+mod physics_smoke_joint_copy;
 mod physics_smoke_joint_draw;
 mod physics_smoke_joint_glyphs;
 mod physics_smoke_joint_handles;
@@ -595,6 +596,7 @@ impl App {
             vec_patternpath_handle: None,
             vec_path_pick: None,
             joint_body_pick: None,
+            joint_clipboard: None,
             wheel_body_pick: None,
             wheel_rope_pick: None,
             joint_anchor_drag: None,

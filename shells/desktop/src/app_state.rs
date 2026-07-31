@@ -907,6 +907,18 @@ pub(crate) struct App {
     /// selection/gizmo. Runtime-only: the pick is not the document, the binding
     /// it writes is.
     pub(crate) joint_body_pick: Option<(u64, bool)>,
+    /// **As propriedades copiadas de um joint** (W-JointCopy) — o *Copy
+    /// properties to…* do Unreal PhAT.
+    ///
+    /// Guarda o componente INTEIRO e não só a metade que viaja: quem decide o
+    /// que é uma propriedade é `PhysicsJoint::with_properties_of`, uma porta só,
+    /// e uma segunda triagem aqui seria a segunda resposta que diverge.
+    ///
+    /// Runtime-only, como o `joint_body_pick` e o `join_kind` ao lado: uma área
+    /// de transferência é um gesto em andamento, não documento — salvá-la faria
+    /// um projeto reaberto oferecer um Paste do que alguém copiou semana
+    /// passada.
+    pub(crate) joint_clipboard: Option<ph2d_physics_ecs::PhysicsJoint>,
     /// **O eyedropper de MONTAGEM da §13 está armado, e para qual roldana**
     /// (W-Pulley W3) — irmão exato do de cima, uma família adiante.
     ///

@@ -62,7 +62,7 @@ fn the_pair_switches_round_trip_through_the_snapshot() {
             .world_mut()
             .spawn((Name::new("J"), j, Transform::default()))
             .id();
-        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
         assert_eq!(
             (info.active, info.collide_connected),
             (active, collide),

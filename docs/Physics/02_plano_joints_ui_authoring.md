@@ -52,14 +52,15 @@ diagnóstico da pesquisa:
 > **⚠️ ESTE QUADRO É O DIAGNÓSTICO DE 2026-07-25, NÃO O ESTADO DE HOJE.** As sete limitações
 > estão **FECHADAS**: L1→W-J1 · L2→W-J2/W-J2b · L3→W-J4/W-J4b · L4→W-J5/W-J6 (+ os tipos que o
 > §8 não previa: **Rod** · **Wheel** · **Pulley**) · L5→W-J3 · L6→W-J7/W-J7b · L7→W-J8. O §7
-> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **cinco** itens,
+> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **quatro** itens,
 > **nenhum escalonado** — params keyframáveis (cross-line com a timeline, pede decisão do Enio) ·
 > Custom/GenericJoint · **ragdoll wizard** (⚠️ o *make-chain* do mesmo item **já existe**:
 > `join_selected_chain` + o rótulo "Chain N Selected Bodies") · soft weld (premissa
-> falsificada e medida) · copy/paste de propriedades · rows de readout tingidas
+> falsificada e medida) · rows de readout tingidas
 > (⚠️ **condição NÃO satisfeita** — o readout de carga vive no OVERLAY, não em row).
-> ⚠️ **A metade autorável do Pin-to-world SAIU da lista**: fechou na W-JointWorld
-> (2026-07-30, cena `=65`, §9). Dos cinco, três estão condicionados a *"se o uso pedir"*.
+> ⚠️ **Duas saíram da lista construídas**: a metade autorável do Pin-to-world (W-JointWorld,
+> cena `=65`, §9) e o **copy/paste de propriedades** (W-JointCopy, cena `=66`, §10). Dos
+> quatro que restam, três estão condicionados a *"se o uso pedir"*.
 
 ---
 
@@ -332,7 +333,13 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   **MEDIDA E MORTA**: `set_limits(LinX, [len, len])` não segura, porque o limite linear acoplado do rapier
   é **unilateral** (`// FIXME: handle min limit too.` no solver dele). O que ficou é um **motor de posição
   no eixo acoplado**, `ROD_STIFFNESS = 1e6` medido. Detalhe no [plano de waves](00_plano_waves.md).
-- **Copy/paste de propriedades de joint** (Unreal PhAT Ctrl+C/V).
+- ~~**Copy/paste de propriedades de joint**~~ — **FECHADO (W-JointCopy, 2026-07-31, cena `=66`).**
+  ⚠️ E o item mudou de forma ao ser construído: *"Ctrl+C/V"* estava errado. O atalho de
+  clipboard deste app **segue a ÁREA SOB O MOUSE** desde a integração da `line/anim-fixes`
+  (a regra do Blender: mouse na timeline = keyframes, no canvas = formas), então
+  sequestrá-lo para joints seria um TERCEIRO significado da mesma tecla. O gesto virou
+  **dois botões na §12** — a seção que já é dona de todo parâmetro de joint — e o Paste é
+  **a única edição da §12 que faz fan-out**, que é a razão de ele existir.
 - **Rows de readout tingidas** (RUBE verde=estático/vermelho=dinâmico) — se o §12 ganhar readouts vivos.
 
 ### §8.1 — A ordem escolhida (2026-07-27, ordem do Enio: *"o item B primeiro"*)
@@ -345,7 +352,7 @@ Não é a ordem da lista; é a que sai das dependências **medidas** acima.
 | ~~2~~ | ~~**Wheel preset**~~ ✅ `=57` | o de maior valor visível (um veículo). Precisou da plumbing por eixo, que o Rod abriu |
 | ~~3~~ | ~~**Polia**~~ ✅ `=58` | a primeira que precisa de um passe de restrição PRÓPRIO (rapier não a tem). ⚠️ **NÃO puxou o *Pin-to-world*** — ela guarda os próprios pontos de mundo, e o gizmo de PONTO que a nota queria já existia desde a W-JointAnchor |
 | 4 | **Ragdoll wizard / make chain** | é um GERADOR: só faz sentido sobre o conjunto de tipos já fechado |
-| 5 | **Copy/paste de propriedades** | vale mais quanto mais propriedades existirem |
+| ~~5~~ | ~~**Copy/paste de propriedades**~~ ✅ `=66` | e a previsão *"vale mais quanto mais propriedades existirem"* se confirmou: são **doze** campos de afinação a carimbar hoje |
 | 6 | **Soft weld** | premissa corrigida acima; nada o pede |
 
 ---
@@ -467,6 +474,95 @@ muda.
 - **Não parte sob carga** por ora: `can_break` lê a reação do `ImpulseJointSet`, e a âncora
   ESTÁ nele — então é provavelmente de graça, mas *"provavelmente"* não é medição. Fica
   nomeado, não afirmado.
+
+---
+
+## §10 — W-JointCopy: copiar e colar as propriedades (2026-07-31)
+
+O item 5 do §8, e ele **mudou de forma ao ser construído**. A linha do plano dizia
+*"Copy/paste de propriedades de joint (Unreal PhAT Ctrl+C/V)"*; o atalho estava errado e o
+resto estava certo.
+
+### §10.1 — O gesto NÃO é Ctrl+C/V
+
+O clipboard deste app **segue a ÁREA SOB O MOUSE** desde a integração da `line/anim-fixes`
+(a regra do Blender: mouse na timeline copia keyframes, no canvas copia formas). Um
+terceiro significado para a mesma tecla é como se descobre que copiar um joint copiou um
+desenho. O gesto virou **dois botões na §12**, logo acima do Delete — a seção que já é dona
+de todo parâmetro de joint, e onde o artista já está quando pensa *"os outros nove têm de
+ficar assim"*.
+
+### §10.2 — O que é uma PROPRIEDADE (a linha já estava na tela)
+
+O corte é o que o `joint_pair_rows` já declara: *"aqui **entre QUAIS DOIS** isto está, e
+como eles se tratam; lá **o que a restrição FAZ**"*. Viaja a segunda metade.
+
+| classe | campos | viaja? |
+|---|---|---|
+| identidade | `body_a` · `body_b` | ❌ colar isto é DUPLICAR o joint, não copiar |
+| colocação | `local_a` · `local_b` · `anchored` | ❌ um offset medido no corpo da fonte não significa nada no corpo do alvo |
+| o experimento | `active` | ❌ é o *"tente o rig sem este aqui"*, sobre UM joint — e o paste age sobre muitos |
+| o que a restrição faz | `kind` + os doze de afinação + `collide_connected` | ✅ |
+
+⚠️ **O TIPO viaja, e é o que torna a colagem SEGURA.** Metade destes números não tem
+unidade própria: `limit_min/max` são **radianos** num Pin e **metros** num Slider,
+`motor_speed`/`motor_target` são rad/s num eixo e m/s num trilho. Números sem o tipo junto
+seriam reinterpretação de unidade em silêncio — o ±0,785 rad de um Pin virando ±0,785
+**metro** de curso. E é a mesma razão de o paste **não poder** ser escrito como *um
+`Kind(tag)` seguido de quinze edições de campo*: o braço `Kind` re-semeia limites, motor e
+mola para os defaults do tipo novo, e as quinze edições seguintes estariam desfazendo esse
+re-seed campo a campo. Chegando juntos, **não há re-seed a fazer**.
+
+A **âncora** é a exceção com regra: a *política* de âncora é função do tipo (Pin/Weld
+ancoram no ponto compartilhado, Spring/Rope no centro de B), então tipo diferente derruba
+`anchored` para pedir UMA re-derivação — o 5º sítio de autoria, ao lado do dot, do commit
+de Position, do re-pick e do braço `Kind`.
+
+### §10.3 — Um campo novo QUEBRA A COMPILAÇÃO
+
+`PhysicsJoint::with_properties_of` desestrutura a fonte **exaustivamente**. Não é estilo: é
+a resposta ao *enumeração apodrece*, e ela erra para o lado seguro. Uma lista escrita à mão
+envelhece nos dois sentidos — um campo de afinação novo que não viaja deixa o paste
+incompleto (chato, e visível), e um campo de IDENTIDADE novo que viaja faz o joint apontar
+para o corpo errado (catastrófico, e silencioso). Com o destructuring, o campo dezoito não
+compila até alguém dizer de que lado ele está.
+
+### §10.4 — O ÚNICO fan-out da §12
+
+Colar num joint por vez seria *digitar quinze campos, dez vezes*. O Paste se espalha sobre
+a seleção, e a **contagem entra no rótulo** (`Paste to 3 Joints`) porque um clique que muda
+dez objetos tem de dizer isso antes — a lei do `Bake 5.0s to Timeline`.
+
+⚠️ E as duas irmãs estruturais **continuam recusando** o fan-out por motivos que não valem
+aqui: um `Join` espalhado criaria N joints entre o mesmo par, e um `Bake` espalhado
+re-simularia a cena inteira N vezes pelos MESMOS números, deixando N passos de undo.
+Um arch-gate afirma as duas metades — que o Paste espalha, e que nada mais espalha.
+
+### §10.5 — O que a medição corrigiu
+
+- **O oráculo da cena era periódico.** A primeira sonda mediu o ângulo de cada portão no
+  tick 120 e reportou **38,1°** para os três sem batente — um portão livre é um PÊNDULO, e
+  `t = 2 s` é um ponto arbitrário do ciclo dele. Esse número teria virado a constante da
+  mensagem. Pelo **máximo da trajetória** eles giram **179,7°** (quase dão a volta) contra
+  **25,1°** do afinado, e depois da colagem os quatro param em 25,1. É exatamente a fixture
+  que o W3 já pagou uma vez (*"o pêndulo é PERIÓDICO … tudo virou TRAJETÓRIA"*), reincidida.
+- **Um gate irmão ficou vermelho sobre produto correto**, e a causa é a família que o
+  próprio arquivo dele documenta: `the_joint_edit_loop_flushes_the_command_queue` procurava
+  `body.find("apply_editor_commands(")` — a PRIMEIRA ocorrência — e o braço do Paste ganhou
+  um flush legítimo que aparece antes na fonte. A busca passou a começar NO apply, e o gate
+  ganhou a metade que faltava: o flush encontrado tem de estar no **mesmo ramo**, senão
+  apagar o flush deste apply ficaria verde no dia em que um irmão com flush próprio
+  nascesse depois dele.
+
+### §10.6 — Aberto de propósito
+
+- **A área de transferência é runtime-only** (`App.joint_clipboard`), como o `join_kind` e o
+  `joint_body_pick`: um projeto reaberto não oferece um Paste do que alguém copiou semana
+  passada.
+- **Colar entre duas SESSÕES do app** não existe pelo mesmo motivo, e nada o pede.
+- **Não há copy/paste na §13 (a roldana).** A roldana tem três números e um corpo de
+  montagem; o gesto se paga onde há doze campos, e inventá-lo ali seria simetria em vez de
+  necessidade.
 
 ---
 

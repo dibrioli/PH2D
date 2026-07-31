@@ -74,7 +74,15 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
                  if the §12 edits moved, update this gate and confirm they still flush."
             )
         });
-    let flush = body.find("apply_editor_commands(").unwrap_or_else(|| {
+    // ⚠️ **A busca começa NO apply, não no início do corpo.** O laço ganhou um
+    // segundo flush legítimo em W-JointCopy — o braço do Paste tem o seu, e ele
+    // aparece ANTES na fonte —, então `body.find(…)` passou a devolver o flush
+    // de OUTRO ramo e o gate ficou vermelho sobre um produto correto. É a mesma
+    // família do landmark de bytes que este arquivo já documenta no topo: *a
+    // primeira ocorrência* é um proxy, e o que o gate quer dizer é **o flush que
+    // pertence a este apply**.
+    let rest = &body[apply..];
+    let flush = rest.find("apply_editor_commands(").unwrap_or_else(|| {
         panic!(
             "the §12 joint-edit loop no longer flushes the editor command queue — \
              `apply_joint_edit` only QUEUES a SetComponent, so without the flush a \
@@ -85,13 +93,19 @@ fn the_joint_edit_loop_flushes_the_command_queue() {
              for every other Inspector edit type."
         )
     });
-    // PER edit: the flush follows the apply within the SAME loop body, which is
-    // the whole point — `apply_joint_edit` read-modify-writes the whole component,
-    // so a second edit that read a not-yet-applied first one would drop it.
+    // PER edit: the flush follows the apply within the SAME arm, which is the
+    // whole point — `apply_joint_edit` read-modify-writes the whole component, so
+    // a second edit that read a not-yet-applied first one would drop it.
+    //
+    // ⚠️ E *no mesmo ramo*: sem esta segunda metade, apagar o flush deste apply
+    // deixaria o gate verde no dia em que um irmão com flush próprio nascesse
+    // DEPOIS dele na fonte — que é exatamente o que acabou de acontecer, na
+    // ordem inversa.
     assert!(
-        apply < flush,
-        "the flush must follow `apply_joint_edit` inside the loop body: \
-         apply@{apply} flush@{flush} (body {open}..{close})"
+        !rest[..flush].contains("} else if"),
+        "o flush encontrado depois de `apply_joint_edit` está em OUTRO ramo do \
+         `else if` — o apply da §12 ficou sem o seu, e uma edição de parâmetro \
+         volta a esperar que alguma outra drene a fila (body {open}..{close})"
     );
 }
 

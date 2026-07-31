@@ -163,7 +163,7 @@ fn the_angle_fields_convert_at_the_boundary() {
         j.limit_max
     );
     // And it comes back out in degrees, so the round trip is closed.
-    let info = build_joint_info(&mut sim, joint.to_bits(), 0).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
     assert!((info.limit_max_ui - 90.0).abs() < 1e-3);
 }
 
@@ -177,13 +177,13 @@ fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
     let joint =
         create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
 
-    let info = build_joint_info(&mut sim, joint.to_bits(), 0).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
     assert_eq!(info.body_a_name, "Hook");
     assert_eq!(info.body_b_name, "Plank");
     assert!(info.bound);
 
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Renamed");
-    let info = build_joint_info(&mut sim, joint.to_bits(), 0).expect("info");
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
     assert!(
         !info.bound && info.body_b_name.is_empty(),
         "after the rename the section must report the link as broken, not \
@@ -195,7 +195,7 @@ fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
 #[test]
 fn a_plain_body_has_no_joint_section() {
     let (mut sim, hook, _) = two_bodies(true);
-    assert!(build_joint_info(&mut sim, hook.to_bits(), 0).is_none());
+    assert!(build_joint_info(&mut sim, hook.to_bits(), 0, 0).is_none());
 }
 
 /// **Two bodies that share a name cannot be joined, and the gesture says so.**
@@ -327,7 +327,7 @@ fn a_world_pin_reads_as_bound_with_a_single_body() {
         ))
         .id();
 
-    let before = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0)
+    let before = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0, 0)
         .expect("a §12 tem de existir para um joint selecionado");
     assert!(
         !before.bound,
@@ -337,7 +337,7 @@ fn a_world_pin_reads_as_bound_with_a_single_body() {
     sim.world_mut()
         .entity_mut(joint)
         .insert(ph2d_physics_ecs::JointWorldAnchor);
-    let after = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0)
+    let after = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0, 0)
         .expect("a §12 tem de existir para um joint selecionado");
     assert!(
         after.bound,

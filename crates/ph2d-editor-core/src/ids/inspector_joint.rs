@@ -138,6 +138,24 @@ pub const INSP_JOINT_COLLIDE: [NodeId; 2] = [
 /// eyedropper re-picks.
 pub const INSP_JOINT_SWAP: NodeId = hash_node_id("insp_joint_swap");
 
+/// **Copiar as propriedades deste joint** — o *Copy properties to…* do Unreal
+/// PhAT, e a metade que ARMA.
+///
+/// O que ele copia é a resposta de `PhysicsJoint::with_properties_of`: o que a
+/// restrição FAZ, nunca entre quais dois corpos ela está nem onde neles ela
+/// prende. Sempre oferecido — a §12 só existe com um joint selecionado, e um
+/// joint sempre tem propriedades a copiar.
+pub const INSP_JOINT_COPY: NodeId = hash_node_id("insp_joint_copy");
+
+/// **Colar as propriedades copiadas** — a metade que AGE, e a única edição da
+/// §12 que faz fan-out sobre a seleção (é a razão de existir dela: afinar UM
+/// joint e carimbar os outros dez do rig).
+///
+/// ⚠️ **Só é pintado com algo na área de transferência.** Um botão que não faz
+/// nada é pior que um botão que falta, e aqui a diferença é invisível: um Paste
+/// vazio não muda nada na tela e lê como *"o paste está quebrado"*.
+pub const INSP_JOINT_PASTE: NodeId = hash_node_id("insp_joint_paste");
+
 /// Delete the joint object.
 pub const INSP_JOINT_REMOVE: NodeId = hash_node_id("insp_joint_remove");
 

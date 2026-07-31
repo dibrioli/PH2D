@@ -68,6 +68,11 @@ use serde::{Deserialize, Serialize};
 /// O gesto de Swap A↔B — módulo irmão pelo cap de 700 LOC.
 mod swap;
 
+/// **O que se COPIA de um joint** (`with_properties_of`) — módulo irmão pelo cap
+/// de 700 LOC, cortado na MESMA linha que a §12 desenha na tela: *entre quais
+/// dois isto está* × *o que a restrição faz*.
+mod properties;
+
 mod kind;
 pub use kind::{JointKind, LengthField};
 

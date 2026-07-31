@@ -235,7 +235,7 @@ fn a_limit_round_trips_in_its_kinds_own_unit() {
             .world_mut()
             .spawn((Name::new("J"), after, Transform::default()))
             .id();
-        let info = build_joint_info(&mut sim, e.to_bits(), 0).expect("info");
+        let info = build_joint_info(&mut sim, e.to_bits(), 0, 0).expect("info");
         assert!(
             (info.limit_max_ui - typed).abs() < 1e-3,
             "kind {kind_tag}: digitou {typed}, a row mostra {}",

@@ -12,6 +12,7 @@
 //! afirmam é APARÊNCIA (que lado está aceso, quanto da tela a silhueta cobre), e
 //! ler `f16` de volta acrescentaria uma conversão entre a medição e o olho.
 
+use ph2d_light::LightRig;
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
@@ -42,9 +43,22 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
 
 /// Rasteriza `mesh` com `camera` e devolve os pixels RGBA (sem padding).
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, camera: &Camera3d) -> Vec<u8> {
+    render_with_rig(device, queue, mesh, camera, &LightRig::default())
+}
+
+/// A cena sob um rig ESCOLHIDO. O `render` acima passa o default — que é o rig de
+/// toda tela que ninguém abriu o card para mexer, e portanto o que os gates de
+/// aparência devem julgar.
+fn render_with_rig(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh: &Mesh,
+    camera: &Camera3d,
+    rig: &LightRig,
+) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
     renderer.upload(device, queue, mesh);
-    render_using(device, queue, &mut renderer, camera)
+    render_using_rig(device, queue, &mut renderer, camera, rig)
 }
 
 /// A mesma cena com um renderizador que o chamador JÁ semeou — é o que deixa
@@ -54,6 +68,16 @@ fn render_using(
     queue: &wgpu::Queue,
     renderer: &mut MeshRenderer,
     camera: &Camera3d,
+) -> Vec<u8> {
+    render_using_rig(device, queue, renderer, camera, &LightRig::default())
+}
+
+fn render_using_rig(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+    rig: &LightRig,
 ) -> Vec<u8> {
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("alvo"),
@@ -92,7 +116,16 @@ fn render_using(
             multiview_mask: None,
         });
     }
-    renderer.render(device, queue, &mut encoder, &view, camera, (W, H));
+    let resolved = ph2d_light::resolve(rig);
+    renderer.render(
+        device,
+        queue,
+        &mut encoder,
+        &view,
+        camera,
+        resolved.as_ref(),
+        (W, H),
+    );
 
     let bpr = (W * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -205,13 +238,19 @@ fn the_mesh_appears_on_screen_at_the_size_the_framing_promised() {
 /// normal espelhada em `z`, que o shader vira para o olho: o lado esquerdo passa
 /// a responder como se fosse o direito.
 ///
-/// A luz-chave vem de cima-e-da-ESQUERDA (`key_dir.x < 0`), então numa esfera
-/// vista de frente a esquerda é mais clara que a direita. Isso é uma afirmação
-/// sobre a APARÊNCIA — não sobre `depth_compare` —, e é por isso que ela pega
-/// tanto um depth desligado quanto um invertido.
+/// A lâmpada PRINCIPAL do artista nasce em cima e à esquerda (azimute 230°,
+/// elevação 30° — o default afinado pelo Enio), então numa esfera vista de frente
+/// a esquerda é mais clara que a direita E o alto é mais claro que o baixo.
+///
+/// ⚠️ **O eixo VERTICAL é a metade que a W3 acrescentou, e ela é a única conversão
+/// de espaço do passe.** O rig é autorado em espaço de TELA (`y` para BAIXO — é lá
+/// que "em cima, à esquerda" quer dizer algo) e a normal chega em espaço de VISTA
+/// (`y` para CIMA). Sem a negação, a MESMA lâmpada acende a pintura por cima e a
+/// escultura por baixo, no mesmo documento, sob o mesmo card, com o mesmo número.
+/// Não há teste de unidade que veja isso: só um render.
 #[test]
 #[ignore = "precisa de adapter"]
-fn the_lit_side_is_the_side_the_key_light_comes_from() {
+fn the_key_light_falls_where_the_artist_put_it() {
     let Some((device, queue)) = device() else {
         eprintln!("sem adapter — skip");
         return;
@@ -219,17 +258,94 @@ fn the_lit_side_is_the_side_the_key_light_comes_from() {
     let mesh = shapes::uv_sphere(40, 56, 1.0);
     let px = render(&device, &queue, &mesh, &camera_for(&mesh));
 
-    // Dois pontos simétricos em torno do centro, dentro da silhueta.
+    // Quatro pontos simétricos em torno do centro, dentro da silhueta.
     let (lx, rx) = (W / 2 - W / 5, W / 2 + W / 5);
-    let y = H / 2;
-    let (l, r) = (lum(&px, lx, y), lum(&px, rx, y));
-    println!("luminância esquerda {l:.1} / direita {r:.1}");
-    assert!(l > 8.0 && r > 8.0, "os dois pontos têm de estar na malha");
+    let (ty, by) = (H / 2 - H / 5, H / 2 + H / 5);
+    let (l, r) = (lum(&px, lx, H / 2), lum(&px, rx, H / 2));
+    let (t, b) = (lum(&px, W / 2, ty), lum(&px, W / 2, by));
+    println!("esquerda {l:.1} / direita {r:.1} · alto {t:.1} / baixo {b:.1}");
+    assert!(
+        l > 8.0 && r > 8.0 && t > 8.0 && b > 8.0,
+        "os quatro pontos têm de estar na malha"
+    );
     assert!(
         l > r * 1.3,
         "a esquerda ({l:.1}) devia ser bem mais clara que a direita ({r:.1}) — \
          a superfície visível não é a da frente"
     );
+    assert!(
+        t > b * 1.3,
+        "o alto ({t:.1}) devia ser bem mais claro que o baixo ({b:.1}) — a luz do \
+         artista está chegando com o `y` invertido"
+    );
+}
+
+/// **A wave inteira, numa afirmação: mover a lâmpada reacende a FORMA.**
+///
+/// Sob o matcap da W1 as direções eram literais no shader, então o card do artista
+/// não mexia em nada aqui — e "um documento, uma iluminação" era uma frase sobre
+/// código, não sobre o que o Enio vê. O oráculo é de APARÊNCIA e não *"a imagem
+/// mudou"*: o lado claro tem de TROCAR DE LADO quando a lâmpada atravessa a cena.
+#[test]
+#[ignore = "precisa de adapter"]
+fn moving_the_key_light_re_lights_the_form() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    let (lx, rx) = (W / 2 - W / 5, W / 2 + W / 5);
+
+    let from_left = render(&device, &queue, &mesh, &cam);
+    let mut moved = LightRig::default();
+    moved.lights[0].angle_deg = (moved.lights[0].angle_deg + 180) % 360;
+    let from_right = render_with_rig(&device, &queue, &mesh, &cam, &moved);
+
+    let (al, ar) = (lum(&from_left, lx, H / 2), lum(&from_left, rx, H / 2));
+    let (bl, br) = (lum(&from_right, lx, H / 2), lum(&from_right, rx, H / 2));
+    println!("antes E{al:.1}/D{ar:.1} · depois E{bl:.1}/D{br:.1}");
+    assert!(al > ar, "com a principal à esquerda, a esquerda é a clara");
+    assert!(
+        br > bl,
+        "atravessando a lâmpada, o lado claro tinha de trocar — E{bl:.1}/D{br:.1}"
+    );
+}
+
+/// Apagar todas as luzes devolve o BARRO CRU, não uma silhueta preta.
+///
+/// É a leitura honesta de "sem luz" para uma superfície opaca — e o espelho do
+/// contrato da tinta, onde apagar tudo devolve a tela intocada ao byte em vez de
+/// a escurecer até o piso ambiente.
+#[test]
+#[ignore = "precisa de adapter"]
+fn turning_every_lamp_off_leaves_bare_clay() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    let mut dark = LightRig::default();
+    for l in &mut dark.lights {
+        l.on = false;
+    }
+    let px = render_with_rig(&device, &queue, &mesh, &cam, &dark);
+
+    // Sem rig não há razão a computar, então a esfera inteira é UMA cor.
+    let (lx, rx) = (W / 2 - W / 5, W / 2 + W / 5);
+    let (l, r) = (lum(&px, lx, H / 2), lum(&px, rx, H / 2));
+    println!("sem luz: esquerda {l:.1} / direita {r:.1}");
+    assert!(
+        l > 8.0,
+        "a forma continua na tela — ela não some, só não é lida"
+    );
+    assert!(
+        (l - r).abs() < 1.0,
+        "sem lâmpada a esfera é chapada; E{l:.1} contra D{r:.1} é sombreamento"
+    );
+    // E ela não é preta: o barro tem cor própria.
+    assert!(l > 100.0, "o barro cru devia estar claro, e está em {l:.1}");
 }
 
 /// A câmera CHEGA ao device: girar muda a imagem. O fixture é um cubo porque

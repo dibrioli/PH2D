@@ -27,14 +27,21 @@ fn impasto_light_wgsl_parses_and_validates_via_naga() {
 fn impasto_light_shader_constants_match_the_cpu_pass() {
     // Kept as string checks against the WGSL source rather than shared constants, because the WGSL is
     // a separate compilation unit: it is exactly the drift a shared `const` cannot catch.
+    //
+    // ⚠️ `AMBIENT` é a exceção, e ela é DERIVADA da constante de propósito. Uma string escrita à mão
+    // pega o shader driftando e é CEGA à outra direção — o número em Rust mudar e o shader ficar
+    // parado. Isso era teórico enquanto havia um dono e um shader; com o rig morando em `ph2d-light` e
+    // a malha do módulo 3D acendendo pela MESMA lei, são três lugares, e o piso ambiente é justamente
+    // o que os dois consumidores têm de dobrar igual.
+    let ambient_decl = format!("const AMBIENT: f32 = {};", ph2d_light::AMBIENT);
     for (decl, why) in [
         (
             "const DEPTH_UNIT_PX: f32 = 16.0;",
             "the height-to-pixel gain (impasto_light::DEPTH_UNIT_PX)",
         ),
         (
-            "const AMBIENT: f32 = 0.35;",
-            "the diffuse floor (impasto_light::AMBIENT)",
+            ambient_decl.as_str(),
+            "the diffuse floor (ph2d_light::AMBIENT)",
         ),
         (
             "const SPEC_LUT_LAST: f32 = 255.0;",
@@ -53,8 +60,9 @@ fn impasto_light_shader_constants_match_the_cpu_pass() {
         );
     }
     assert_eq!(
-        IMPASTO_MAX_LIGHTS, 4,
-        "the uniform's lamp array and impasto_rig::MAX_LIGHTS are the same number"
+        IMPASTO_MAX_LIGHTS,
+        ph2d_light::MAX_LIGHTS,
+        "the uniform's lamp array and the rig's own MAX_LIGHTS are the same number"
     );
 }
 

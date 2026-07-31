@@ -48,9 +48,13 @@ pub(crate) const IMPASTO_LIGHT_WGSL: &str = include_str!("shaders/impasto_light.
 /// Workgroup edge (mirrors `@workgroup_size(8, 8, 1)` in the shader).
 const WORKGROUP_EDGE: u32 = 8;
 
-/// Lamps the shader's uniform holds. Mirrors `impasto_rig::MAX_LIGHTS`; pinned by
-/// `impasto_light_shader_constants_match_the_cpu_pass`.
-pub const IMPASTO_MAX_LIGHTS: usize = 4;
+/// Lamps the shader's uniform holds.
+///
+/// ⚠️ Era um `4` escrito aqui, com um comentário dizendo *"espelha `impasto_rig::MAX_LIGHTS`"* e um
+/// gate que o comparava contra o literal `4` — ou seja, o gate não podia falhar pelo motivo que
+/// alegava. Agora é o número, e não um espelho dele: o rig tem um dono ([`ph2d_light`]) e esta crate o
+/// LÊ.
+pub const IMPASTO_MAX_LIGHTS: usize = ph2d_light::MAX_LIGHTS;
 
 /// One resolved lamp, as the pass consumes it: direction, half-vector, and `intensity × colour` already
 /// multiplied together.

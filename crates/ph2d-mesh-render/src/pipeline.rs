@@ -13,7 +13,12 @@ use ph2d_mesh::Mesh;
 use wgpu::util::DeviceExt as _;
 
 use crate::camera::Camera3d;
+use crate::lighting::RigRaw;
 use crate::upload;
+
+/// O fonte do shader, exposto para o gate poder afirmar o que ele DECLARA sem
+/// precisar de device — o molde do `IMPASTO_LIGHT_WGSL` do `ph2d-render`.
+pub(crate) const MESH_WGSL: &str = include_str!("shaders/mesh.wgsl");
 
 /// O uniform da câmera. `mat4x4` alinha em 16 B, então não há padding a declarar.
 #[repr(C)]
@@ -37,6 +42,7 @@ struct MeshGpu {
 pub struct MeshRenderer {
     pipeline: wgpu::RenderPipeline,
     uniform: wgpu::Buffer,
+    rig_uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
     depth: Option<wgpu::TextureView>,
     depth_size: (u32, u32),
@@ -54,16 +60,33 @@ impl MeshRenderer {
     pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh bgl"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                // O RIG. Buffer separado do da câmera de propósito: são duas
+                // frequências (a câmera muda a cada arrasto, o rig quando o
+                // artista abre o card) e, sobretudo, o gate do layout coluna-major
+                // da câmera continua olhando exatamente os mesmos 128 bytes que
+                // olhava antes desta wave.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
         });
 
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
@@ -73,13 +96,26 @@ impl MeshRenderer {
             mapped_at_creation: false,
         });
 
+        let rig_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-mesh rig"),
+            size: RigRaw::SIZE as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh bind"),
             layout: &bgl,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: rig_uniform.as_entire_binding(),
+                },
+            ],
         });
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -90,7 +126,7 @@ impl MeshRenderer {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-mesh shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/mesh.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(MESH_WGSL.into()),
         });
 
         // Os atributos têm de viver tanto quanto o descritor, então são `const`
@@ -167,6 +203,7 @@ impl MeshRenderer {
         Self {
             pipeline,
             uniform,
+            rig_uniform,
             bind,
             depth: None,
             depth_size: (0, 0),
@@ -309,6 +346,16 @@ impl MeshRenderer {
 
     /// Desenha a malha em `color_view`, PRESERVANDO o que já está lá
     /// (`LoadOp::Load`) — a cena 2D fica por baixo. No-op sem geometria.
+    ///
+    /// `rig` são as lâmpadas do ARTISTA, resolvidas ([`ph2d_light::resolve`]) — as mesmas que acendem
+    /// a tinta. `None` é o artista com todas as luzes apagadas, e o shader devolve o barro cru.
+    ///
+    /// ⚠️ Ele é passado por frame, não guardado: o rig é do DOCUMENTO, e uma cópia aqui seria uma
+    /// segunda verdade sobre onde a luz está — a que fica velha no frame seguinte ao card mudar.
+    // Oito argumentos, e nenhum deles é agrupável sem inventar um tipo que existiria só para o
+    // clippy: quatro são as alças do device (que o chamador possui) e quatro são o frame. O precedente
+    // é o `body_desc` da `line/physics`.
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         device: &wgpu::Device,
@@ -316,6 +363,7 @@ impl MeshRenderer {
         encoder: &mut wgpu::CommandEncoder,
         color_view: &wgpu::TextureView,
         camera: &Camera3d,
+        rig: Option<&ph2d_light::ResolvedRig>,
         size: (u32, u32),
     ) {
         if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
@@ -332,6 +380,7 @@ impl MeshRenderer {
                 view: camera.view().to_cols_array_2d(),
             }),
         );
+        queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
 
         let g = self.mesh.as_ref().expect("has_mesh acabou de confirmar");
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");

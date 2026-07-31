@@ -12,6 +12,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use ph2d_light::LightRig;
 use ph2d_mesh::{Mesh, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
@@ -31,6 +32,12 @@ const ORBIT_RAD_PER_PX: f32 = 0.01;
 /// porta, e um raio em metros seria invisível num e engoliria o outro. É o mesmo
 /// argumento do `REACH_FRACTION` da crate de escultura, um nível acima.
 const DEFAULT_RADIUS_FRAC: f32 = 0.12;
+
+/// Passo das teclas de LUZ (`Q`/`E` giram, `R`/`F` sobem e descem), em graus
+/// inteiros — que é a unidade em que o rig é autorado. Quinze graus porque o
+/// gesto é *"ver a forma reacender"*, não afinar: um passo de 1° pediria vinte
+/// toques para a mudança ficar óbvia.
+const LIGHT_STEP_DEG: u16 = 15;
 
 /// Passo do `[` / `]`. Multiplicativo pelo motivo do `dolly`: o gesto tem o
 /// mesmo efeito *aparente* com pincel grande e pequeno.
@@ -82,6 +89,15 @@ pub(crate) struct Sculpt3dScene {
     /// TRAÇO e não pelo raio vivo justamente para o padrão não re-fasar.
     model_span: f32,
     symmetry: Symmetry,
+    /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
+    /// do Painter (`ph2d-light`).
+    ///
+    /// ⚠️ A cena guarda uma INSTÂNCIA porque hoje ela é um viewport solto, e o
+    /// viewport é o documento dela. Quando a escultura virar uma camada de um
+    /// documento do Painter (W3.M4) o rig passa a ser o DELE — a estrutura já tem
+    /// um dono só, e o que falta unificar é o dado. Um segundo rig permanente
+    /// aqui seria exatamente o que `docs/3D/05.2` proíbe.
+    rig: LightRig,
     stroke: SculptStroke,
     undo: Vec<StrokeUndo>,
     /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
@@ -116,6 +132,7 @@ impl Sculpt3dScene {
             // coincide com a posição do mouse"*. Um default que só se descobre
             // por acidente é pior que um default menos ambicioso; o `X` liga.
             symmetry: Symmetry::default(),
+            rig: LightRig::default(),
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             dirty: Vec::new(),
@@ -161,8 +178,20 @@ impl Sculpt3dScene {
             }
             self.dirty.clear();
         }
-        self.renderer
-            .render(&gpu.device, &gpu.queue, encoder, color, &self.camera, size);
+        // O rig é RESOLVIDO por frame, não guardado resolvido: a resolução é
+        // barata (quatro lâmpadas) e uma cópia resolvida seria uma segunda
+        // verdade sobre onde a luz está — a que fica velha no frame seguinte ao
+        // artista mexer no card.
+        let resolved = ph2d_light::resolve(&self.rig);
+        self.renderer.render(
+            &gpu.device,
+            &gpu.queue,
+            encoder,
+            color,
+            &self.camera,
+            resolved.as_ref(),
+            size,
+        );
     }
 
     /// O raio do cursor, pela câmera desta cena.
@@ -268,6 +297,7 @@ impl App {
              [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
              [sculpt3d] Shift = Smooth enquanto segurar · Ctrl = inverte (cava)\n\
              [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
+             [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
              [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
             mesh.face_count(),
@@ -447,6 +477,45 @@ impl App {
                 };
                 *axis = !*axis;
                 eprintln!("[sculpt3d] espelho: {:?}", scene.symmetry);
+                true
+            }
+            // **A LUZ.** Girar a lâmpada principal em torno da cena e subi-la.
+            //
+            // ⚠️ Isto é o gesto do SMOKE, não a UI final: o card de Lighting do
+            // Painter já é o lugar onde este rig se autora, e é ele que a M4
+            // conecta. Um segundo card aqui seria a segunda porta para o mesmo
+            // número. Estas teclas existem para o Enio poder ver a forma reacender
+            // sem abrir um documento de pintura.
+            K::KeyQ | K::KeyE => {
+                let d = if code == K::KeyE {
+                    LIGHT_STEP_DEG
+                } else {
+                    360 - LIGHT_STEP_DEG
+                };
+                let l = scene.rig.current_mut();
+                l.angle_deg = (l.angle_deg + d) % 360;
+                eprintln!(
+                    "[sculpt3d] luz: azimute {}deg elevacao {}deg",
+                    l.angle_deg, l.elev_deg
+                );
+                true
+            }
+            K::KeyR | K::KeyF => {
+                let l = scene.rig.current_mut();
+                let up = code == K::KeyR;
+                // Clampado no piso do resolvedor, e não em 0: abaixo dele a
+                // resposta plana vai a zero e o modelo relativo dividiria por ~0.
+                l.elev_deg = if up {
+                    (l.elev_deg + LIGHT_STEP_DEG).min(90)
+                } else {
+                    l.elev_deg
+                        .saturating_sub(LIGHT_STEP_DEG)
+                        .max(ph2d_light::MIN_ELEV_DEG)
+                };
+                eprintln!(
+                    "[sculpt3d] luz: azimute {}deg elevacao {}deg",
+                    l.angle_deg, l.elev_deg
+                );
                 true
             }
             _ => false,

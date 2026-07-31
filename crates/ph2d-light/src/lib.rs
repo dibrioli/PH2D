@@ -57,6 +57,20 @@ pub const MAX_LIGHTS: usize = 4;
 /// pela resposta plana — dividiria por ~0. // CLAMP-OK
 pub const MIN_ELEV_DEG: u16 = 5;
 
+/// **Piso AMBIENTE** da difusa: o que uma face totalmente virada PARA LONGE da luz ainda devolve.
+///
+/// Tinta na sombra é mais escura; não é preta. Sem este piso o sombreamento vai a `0` e multiplica o
+/// pixel a zero — que foi exatamente o que pôs as manchas pretas nas pontas dos traços do primeiro
+/// smoke do impasto (a ponta de um traço é onde a altura cai de cheia a nada em um pixel, logo é a
+/// encosta mais íngreme da tela, logo é o primeiro lugar onde um piso zero morde).
+///
+/// ⚠️ **Ele é LEI do modelo relativo, não material** — e por isso mora aqui e não no Painter: os dois
+/// consumidores (tinta e forma) têm de dobrar a razão do MESMO jeito, senão a mesma lâmpada deixaria a
+/// escultura mais escura na sombra que a pintura ao lado dela, e ninguém saberia dizer por quê.
+/// Dobrado de modo que uma superfície PLANA ainda devolva exatamente `1.0` — o contrato de
+/// byte-identidade sobrevive. // CLAMP-OK
+pub const AMBIENT: f32 = 0.35;
+
 /// Uma lâmpada, como o artista a autora.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Light {

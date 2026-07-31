@@ -5366,6 +5366,7 @@ dependencies = [
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
  "ph2d-input",
+ "ph2d-light",
  "ph2d-mesh",
  "ph2d-mesh-render",
  "ph2d-motion-doc",
@@ -5680,6 +5681,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "glam 0.30.10",
+ "ph2d-light",
  "ph2d-mesh",
  "ph2d-sculpt3d",
  "pollster",
@@ -7119,6 +7121,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-light",
  "ph2d-painter-effects",
  "ph2d-tool-painter",
  "postcard",

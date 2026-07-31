@@ -1,24 +1,77 @@
 // Hospedado por `ph2d-mesh-render` (crates/ph2d-mesh-render/src/shaders/mesh.wgsl).
 //
-// O passe de matcap da W1/M2: rasteriza a malha e a sombreia por um matcap
-// PROCEDURAL — sombreamento que é função apenas da normal em espaço de VISTA.
+// O passe da malha: rasteriza a forma e a acende com O RIG DO ARTISTA — as mesmas
+// quatro lâmpadas que iluminam a tinta do Painter, resolvidas pela mesma função
+// (`ph2d-light`), dobradas pelo mesmo piso ambiente.
 //
-// Por que procedural e não uma textura de matcap: um matcap de arquivo é um
-// asset, e um asset é um pipeline (importar, empacotar, versionar, escolher).
-// A W1 existe para haver forma na tela; a função aqui é o mesmo modelo (o
-// sombreamento depende só de `n_view`) sem nada disso. O matcap por textura
-// entra com o painel que o escolhe — que é quando ele deixa de ser um arquivo
-// que ninguém pode trocar.
+// ISTO SUBSTITUI O MATCAP DA W1, e a troca é a tese da W3 (docs/3D/05.2): a malha
+// não pede um sistema de luz novo, ela pede uma segunda fonte de NORMAL para o que
+// já existe. O matcap era sombreamento função-da-normal com lâmpadas cravadas no
+// shader; era certo para "haver forma na tela" e é errado para "um documento, uma
+// iluminação" -- sob ele, mover a lâmpada do card não mexia na escultura.
+//
+// O MODELO É RELATIVO, e essa é a propriedade que faz a doação funcionar: a
+// resposta de um ponto é dividida pela resposta de uma superfície PLANA sob o
+// mesmo rig. Uma face virada para o olho devolve exatamente a cor do barro; o que
+// se inclina escurece até o piso ambiente ou clareia até o dobro. É o mesmo
+// contrato que mantém tinta plana byte-idêntica no Painter -- e é por isso que a
+// mesma lâmpada vai poder multiplicar a pintura por baixo da forma, na M4, sem
+// que nada precise concordar por acidente.
+//
+// O QUE NÃO É COMPARTILHADO É O MATERIAL. A tinta tem rugosidade, metal e cera
+// por-pixel com LUT baked; o barro tem uma cor e um expoente. O material da malha
+// é a wave do shader (docs/3D/05.1, W7). A fronteira está tabelada em
+// `src/lighting.rs`.
 //
 // A saída é LINEAR e pode passar de 1.0: o alvo é o `game_rt` (Rgba16Float) e o
-// tonemap do shell vem depois. Escrever já-tonemapeado aqui apagaria o realce.
+// tonemap do shell vem depois. Escrever já-tonemapeado aqui apagaria o realce --
+// e é por isso que o realce SOMA aqui e faz `screen` no Painter, que escreve
+// unorm8 e cujo pixel É a arte.
 
 struct Camera {
     view_proj: mat4x4<f32>,
     view: mat4x4<f32>,
 };
 
+// Uma lâmpada resolvida — o mesmo dado que sobe para o passe de luz da tinta.
+struct Lamp {
+    dir: vec4<f32>,
+    hlf: vec4<f32>,
+    tint: vec4<f32>,
+};
+
+struct Rig {
+    lamps: array<Lamp, 4>,
+    n: u32,
+};
+
 @group(0) @binding(0) var<uniform> cam: Camera;
+@group(0) @binding(1) var<uniform> rig: Rig;
+
+// O piso AMBIENTE: o que uma face totalmente virada para longe da luz ainda
+// devolve. Sombra é mais escura, não é preta. ⚠️ É `ph2d_light::AMBIENT`, e a
+// igualdade é gateada (`the_clay_folds_the_ratio_by_the_same_ambient_floor`) --
+// duas cópias dariam uma escultura mais escura na sombra que a pintura ao lado
+// dela, sob a MESMA lâmpada.
+const AMBIENT: f32 = 0.35;
+
+// Piso do divisor. Um canal a que o rig não dá luz nenhuma (uma lâmpada pura
+// vermelha, no canal azul) dividiria por zero; a difusa dele também é zero, então
+// a resposta que mantém o contrato é 1 -- o canal fica intocado.
+const FLAT_FLOOR: f32 = 1.0e-4;
+
+// O barro de estúdio: claro e dessaturado, para a FORMA aparecer.
+const CLAY: vec3<f32> = vec3<f32>(0.74, 0.70, 0.66);
+
+// O expoente Blinn-Phong do barro. ⚠️ É UM NÚMERO, não um modelo de material: a
+// tinta deriva o dela da rugosidade por-pixel por uma LUT baked, e o barro ainda
+// não tem rugosidade. 24 é o mesmo ponto neutro que o impasto usa por default
+// (a média geométrica de 6 e 96).
+const CLAY_EXPONENT: f32 = 24.0;
+
+// Quanto do realce entra. O `Shine` da tinta é per-pixel; aqui é fixo, pelo mesmo
+// motivo do expoente.
+const CLAY_SHINE: f32 = 0.35;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -53,25 +106,42 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         n = -n;
     }
 
-    let key_dir = normalize(vec3<f32>(-0.45, 0.65, 0.62));
-    let fill_dir = normalize(vec3<f32>(0.55, -0.35, 0.45));
+    // ⚠️ A ÚNICA conversão de espaço do passe, e a que só um render revela: o rig
+    // é autorado em espaço de TELA, onde `y` cresce para BAIXO ("a principal está
+    // em cima, à esquerda" só quer dizer algo lá). A vista tem `y` para CIMA.
+    // Sem esta negação a mesma lâmpada acende a pintura por cima e a escultura por
+    // baixo, no mesmo documento, sob o mesmo card, com o mesmo número.
+    let nc = vec3<f32>(n.x, -n.y, n.z);
 
-    let key = max(dot(n, key_dir), 0.0);
-    let fill = max(dot(n, fill_dir), 0.0);
-    // Fresnel barato: quanto mais a normal foge do olho, mais borda.
-    let rim = pow(1.0 - clamp(n.z, 0.0, 1.0), 3.0);
+    // Sem lâmpada acesa não há razão a computar: o barro cru é a leitura honesta
+    // de "o artista apagou tudo" para uma superfície opaca.
+    if (rig.n == 0u) {
+        return vec4<f32>(CLAY, 1.0);
+    }
 
-    // Argila clara e dessaturada — o barro de estúdio. A cor existe para a FORMA
-    // aparecer; um material de verdade é a wave do shader (docs/3D/05.1).
-    let clay = vec3<f32>(0.74, 0.70, 0.66);
-    let cool = vec3<f32>(0.42, 0.52, 0.68);
+    var diffuse = vec3<f32>(0.0);
+    var spec = vec3<f32>(0.0);
+    var flat_d = vec3<f32>(0.0);
+    for (var i = 0u; i < rig.n; i = i + 1u) {
+        let l = rig.lamps[i];
+        // A resposta PLANA (N = (0,0,1) ⇒ N·L = L.z), que é o divisor de tudo.
+        let lz = max(l.dir.z, 0.0);
+        flat_d = flat_d + l.tint.rgb * lz;
+        diffuse = diffuse + l.tint.rgb * max(dot(nc, l.dir.xyz), 0.0);
+        // O realce de cada lâmpada é relativo AO PRÓPRIO realce dela numa
+        // superfície plana, e clampado em zero ALI: somar os brutos e subtrair o
+        // total plano deixaria uma lâmpada virada para o outro lado tomar
+        // emprestada a folga de uma virada para cá, e a forma brilharia no chapado.
+        let fs = pow(max(l.hlf.z, 0.0), CLAY_EXPONENT);
+        let s = pow(max(dot(nc, l.hlf.xyz), 0.0), CLAY_EXPONENT);
+        spec = spec + l.tint.rgb * max(s - fs, 0.0);
+    }
 
-    var c = clay * (0.16 + 0.82 * key) + cool * (0.22 * fill);
-    c = c + cool * (rim * 0.30);
+    let flat_c = select(vec3<f32>(1.0), flat_d, flat_d > vec3<f32>(FLAT_FLOOR));
+    let ratio = clamp(diffuse / flat_c, vec3<f32>(0.0), vec3<f32>(2.0));
+    let m = vec3<f32>(AMBIENT) + (1.0 - AMBIENT) * ratio;
 
-    // Um realce estreito, para a curvatura ser legível onde a difusa satura.
-    let h = normalize(key_dir + vec3<f32>(0.0, 0.0, 1.0));
-    c = c + vec3<f32>(pow(max(dot(n, h), 0.0), 48.0) * 0.30);
-
+    // Soma, não `screen`: o destino é HDR e quem faz o roll-off é o tonemap.
+    let c = CLAY * m + CLAY_SHINE * spec;
     return vec4<f32>(c, 1.0);
 }

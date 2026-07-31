@@ -17,6 +17,11 @@ authors.workspace = true
 [dependencies]
 # A malha residente — a fonte da geometria a rasterizar.
 ph2d-mesh = { path = "../ph2d-mesh" }
+# O RIG DE LUZ do artista -- as mesmas lampadas que acendem a tinta do Painter.
+# ⚠️ E o unico caminho pelo qual esta crate toca o mundo 2D, e e deliberado
+# (docs/3D/02.3): ph2d-light e a UNICA peca nao-removivel do modulo, porque um
+# segundo rig faria o artista afinar a arte contra uma iluminacao e ver outra.
+ph2d-light = { path = "../ph2d-light" }
 # Mat4/Vec3 da camera. `glam` ja e a algebra desta casa (`ph2d-core`,
 # `ph2d-vector-doc`); uma Mat4 escrita a mao aqui seria a segunda resposta.
 glam = "0.30"

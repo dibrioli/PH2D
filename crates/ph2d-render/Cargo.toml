@@ -10,6 +10,11 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# O RIG DE LUZ: MAX_LIGHTS e o piso AMBIENT. Esta crate carregava um `4` com um
+# comentario dizendo "espelha impasto_rig::MAX_LIGHTS" e um gate que o comparava
+# contra o literal 4 -- um oraculo que nao podia falhar pelo motivo que alegava.
+# `ph2d-light` e folha e e o dono do rig; agora o numero e LIDO.
+ph2d-light = { path = "../ph2d-light" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-gpu = { path = "../ph2d-gpu" }

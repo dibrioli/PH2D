@@ -246,6 +246,11 @@ ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
 # feature `sculpt3d` uma promessa de remocao verificavel, e nao uma opiniao.
 ph2d-mesh = { path = "../../crates/ph2d-mesh", optional = true }
 ph2d-mesh-render = { path = "../../crates/ph2d-mesh-render", optional = true }
+# O rig de luz do artista, para a cena 3D acender pelas MESMAS lampadas da tinta.
+# ⚠️ NAO e `optional`: `ph2d-light` e a unica peca nao-removivel do modulo 3D
+# (docs/3D/02.3) e ja chega aqui pelo Painter de qualquer jeito -- marca-la de
+# opcional afirmaria uma removibilidade que ela nao tem.
+ph2d-light = { path = "../../crates/ph2d-light" }
 ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }

@@ -54,12 +54,11 @@ pub(super) const DEPTH_UNIT_PX: f32 = 16.0;
 
 /// **Ambient** floor of the diffuse term: what a face turned fully AWAY from the light still returns.
 ///
-/// Paint in shadow is darker; it is not black. Without this the shading floors at `0` and multiplies
-/// the pixel to zero — which is exactly what put the black smudges on the stroke ends of Enio's smoke
-/// (a stroke's cap is where the height falls from full to nothing over a pixel, so it is the steepest
-/// slope on the canvas, so it is the first place a zero-floor bites). Folded so a FLAT surface still
-/// returns exactly `1.0` — the byte-identity contract survives. // CLAMP-OK
-pub(super) const AMBIENT: f32 = 0.35;
+/// ⚠️ O número mudou-se para [`ph2d_light`] junto com o rig, e não por arrumação: ele é **lei do
+/// modelo relativo**, não material, e a escultura do módulo 3D dobra a razão pela mesma lei. Duas
+/// cópias dariam uma escultura mais escura na sombra que a pintura ao lado dela, sob a MESMA lâmpada,
+/// e ninguém saberia dizer por quê. O porquê do valor está lá.
+pub(super) use ph2d_light::AMBIENT;
 
 /// How the relief's effect scales with how much PAINT is at a pixel.
 ///

@@ -379,20 +379,26 @@ impl StackScratch {
                     range.filter(|_| !ping_pong)
                 })
                 .flatten();
-            if let Some((strip, t_local, w)) = lane.hold_at(t, loop_range)
-                && let t_local = doc.cut_source(strip.source, t_local)
-                && let Some(source) =
+            // ⚠️ **Até DUAS fontes seguradas, não uma** — na costura de um loop cujas duas
+            // pontas fadeiam, a pose é uma MISTURA das duas (`ClipLane::seam_split`), e a
+            // média ponderada da lane já sabe misturar N entradas: os pesos somam o MESMO
+            // complemento, então `den` continua 1 e o único caso que muda é o que antes
+            // ficava congelado. Uma ponta só devolve UMA fonte, byte-idêntica ao que era.
+            for (strip, t_local, w) in lane.hold_at(t, loop_range).into_iter().flatten() {
+                let t_local = doc.cut_source(strip.source, t_local);
+                if let Some(source) =
                     self.resolve(doc, strip.source, t_local, additive, strip.src_in)
-            {
-                self.active.push(ActiveStrip {
-                    frame,
-                    lane: li,
-                    source,
-                    w,
-                    t_clip: t_local,
-                    src_in: strip.src_in,
-                    held: true,
-                });
+                {
+                    self.active.push(ActiveStrip {
+                        frame,
+                        lane: li,
+                        source,
+                        w,
+                        t_clip: t_local,
+                        src_in: strip.src_in,
+                        held: true,
+                    });
+                }
             }
         }
     }

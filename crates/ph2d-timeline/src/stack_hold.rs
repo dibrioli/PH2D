@@ -49,8 +49,8 @@ impl ClipLane {
     /// loop**, where the ruler's ends are neighbours: what is "before the first strip"
     /// is "after the last", and what is "after the last" is "before the first". So a
     /// fade at EITHER edge of the loop crosses to the pose the loop shows at the seam
-    /// (the closing edge asks [`Self::seam_source`]; the opening edge, where nothing is
-    /// live at the head to own it, is always the loop's end), never to the rest pose or
+    /// (as duas pontas perguntam a [`Self::seam_split`], que é o que as impede de
+    /// discordar), never to the rest pose or
     /// a strip that ended before it:
     ///
     /// - the **opening** fade-in (nothing has ended yet) put the object at the last
@@ -64,10 +64,12 @@ impl ClipLane {
     ///
     /// Outside the loop range nothing wraps and the fade-from-rest above is untouched.
     ///
-    /// Returns the held strip, **the clip second it is asserting**, and the weight. The
-    /// time is returned rather than re-derived by the caller because the cases answer it
-    /// differently, and a caller that picked would be a second opinion about which frame
-    /// is being held.
+    /// Returns até DUAS fontes `(strip, o segundo de clipe que ela assere, peso)`. Duas
+    /// só na costura de um loop cujas duas pontas fadeiam, onde a pose é uma MISTURA
+    /// ([`Self::seam_split`]); em todo o resto é uma, e os pesos somam o mesmo complemento
+    /// de sempre. O tempo vem daqui em vez de ser re-derivado pelo chamador porque os
+    /// casos o respondem de formas diferentes, e um chamador que escolhesse seria uma
+    /// segunda opinião sobre qual frame está sendo segurado.
     ///
     /// The weight is the complement of what is live, which is exactly what turns the
     /// normalized mix into a plain `lerp(held, incoming, w)` — see the tests.
@@ -76,16 +78,16 @@ impl ClipLane {
         &self,
         t: f64,
         loop_range: Option<(f64, f64)>,
-    ) -> Option<(&ClipStrip, f64, f64)> {
+    ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         let live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, t)).sum();
         let w = 1.0 - live;
         if w <= 0.0 {
-            return None;
+            return [None, None];
         }
         // **CLOSING edge of a loop.** The strip that ends latest (at or before the loop
         // end) in its fade-OUT ramp — INWARD (`ease_out`, from `t_end - bo`) or OUTWARD
         // (`lead_out`, in the gap from `t_end`) — crosses to the pose the loop shows at the
-        // seam ([`Self::seam_source`]), not to the strip that ended before it (nor, for a
+        // seam ([`Self::seam_split`]), not to the strip that ended before it (nor, for a
         // lead-out, to its own frozen last frame — that made the outward fade do nothing at
         // the wrap; Enio, 2026-07-19). A strip that STRADDLES the loop end fades out past
         // the wrap, where the loop never reaches, so `t_end <= b` gates it out. This runs
@@ -104,8 +106,11 @@ impl ClipLane {
                     let bo = self.blend_out(li);
                     (bo > 0.0 || last.lead_out > 0.0) && last.t_end <= b && t >= last.t_end - bo
                 });
-            if closing && let Some((strip, t_clip)) = self.seam_source(a, b) {
-                return Some((strip, t_clip, w));
+            if closing {
+                let held = self.seam_held(a, b, w);
+                if held[0].is_some() {
+                    return held;
+                }
             }
         }
         // **FADE-OUT toward the NEXT strip (no loop needed).** A strip in its fade-out ramp
@@ -121,7 +126,7 @@ impl ClipLane {
         // (`blend_out > 0`, inside `fade_out_target`) — a hard cut with no fade keeps the
         // gap-holds-previous behaviour, which is the author's choice.
         if let Some(nxt) = self.fade_out_target(t) {
-            return Some((nxt, nxt.fold(0.0), w));
+            return [Some((nxt, nxt.fold(0.0), w)), None];
         }
         // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
         // sorted by START time, and a long strip can begin before a short one and
@@ -189,25 +194,26 @@ impl ClipLane {
             });
             let cyclic = loop_range.is_some_and(|(a, b)| t >= a && t < b);
             if something_ahead || cyclic {
-                return Some((held, held.hold_source_time(), w));
+                return [Some((held, held.hold_source_time(), w)), None];
             }
-            return None;
+            return [None, None];
         }
         // Nothing has ended yet — the OPENING edge. Under a loop that brackets `t`,
         // wrap: the pose the object is coming FROM is the one the loop's end leaves
-        // behind. It keeps its own expression rather than calling `seam_source`: when
-        // nothing has ended, nothing is live at the head to own the seam, so the seam
-        // is always the loop's end — which is `seam_source`'s own fallback.
-        let (a, b) = loop_range?;
+        // behind.
+        //
+        // ⚠️ **Pela MESMA porta que a borda de saída** ([`Self::seam_split`]) — antes esta
+        // metade repetia a expressão *"a última strip lida em `b`"*, o que era a resposta
+        // certa enquanto a costura tinha um dono só. Com as duas pontas fadeando ela é uma
+        // MISTURA, e duas expressões para a mesma pose divergiriam exatamente onde o loop
+        // pula: os dois lados da volta ficariam em poses diferentes.
+        let Some((a, b)) = loop_range else {
+            return [None, None];
+        };
         if t < a || t >= b {
-            return None;
+            return [None, None];
         }
-        let last = self
-            .strips
-            .iter()
-            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
-        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
-        Some((last, last.fold(elapsed), w))
+        self.seam_held(a, b, w)
     }
 
     /// **What the loop shows at the seam** (`b` ≡ `a`) — the pose the object rests on
@@ -225,27 +231,104 @@ impl ClipLane {
     ///   opening wrap's own answer — the two share this door on purpose, so the fade-in
     ///   and the fade-out cannot disagree about the seam.
     ///
-    /// When both ends fade, neither owns the seam and the last strip's end is the
-    /// consistent choice both wraps reveal — the loop settles there while the weights
-    /// dip through the wrap.
-    fn seam_source(&self, a: f64, b: f64) -> Option<(&ClipStrip, f64)> {
+    /// ⚠️ **Quando as DUAS pontas fadeiam, a travessia se DIVIDE entre elas** (Enio,
+    /// 2026-07-31: *"o fade da direita é descartado e o objeto simplesmente fica parado
+    /// enquanto o playhead encontra-se ali"*). O desenho anterior escolhia *"a pose da
+    /// última strip"* para os dois lados, o que mantinha os dois wraps de acordo — e fazia
+    /// o fade de SAÍDA cruzar **para ele mesmo**: medido, `+5` a janela inteira, com um
+    /// degrau só no fim. Um fade que não move é um fade descartado.
+    ///
+    /// A cura mantém o invariante (**os dois lados têm de ver a MESMA pose de costura**,
+    /// senão o loop pula) e o expressa como uma MISTURA: a costura é
+    /// `lerp(pose_do_fim, pose_do_começo, f)`, com
+    ///
+    /// ```text
+    /// f = janela_de_saída / (janela_de_saída + janela_de_entrada)
+    /// ```
+    ///
+    /// isto é, **a fração da travessia que acontece ANTES da volta**. O fade de saída leva
+    /// o objeto de `pose_do_fim` até essa mistura; o de entrada continua dali até
+    /// `pose_do_começo`. Os dois lados chamam esta função, então não podem discordar.
+    ///
+    /// ⚠️ **Os dois casos de UMA ponta só são BYTE-IDÊNTICOS ao que já shipava**, e é isso
+    /// que protege o que o Enio disse que *"funciona muito bem"*: sem fade de entrada
+    /// `f = 1` (a saída faz a travessia inteira, uma fonte só), sem fade de saída `f = 0`
+    /// (a entrada faz tudo). A divisão só existe onde antes havia um fade inerte.
+    ///
+    /// A primeira pergunta continua sendo a de sempre: se uma strip está VIVA no topo (sem
+    /// fade lá), ela é a dona da costura e não há o que dividir.
+    ///
+    /// Devolve até DUAS fontes `(strip, tempo-de-clipe, FRAÇÃO)`, com as frações somando 1.
+    /// Array e não `Vec` porque isto roda por frame e por lane (`no_alloc_bridge`).
+    fn seam_split(&self, a: f64, b: f64) -> [Option<(&ClipStrip, f64, f64)>; 2] {
+        // O que o FIM do loop deixa asserindo — a última strip lida na volta.
+        let Some((ti, tail)) = self
+            .strips
+            .iter()
+            .enumerate()
+            .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))
+        else {
+            return [None, None];
+        };
+        let tail_at = tail.fold((b - tail.t_start).clamp(0.0, tail.span())); // CLAMP-OK: span() >= 0
+
+        // Quem está presente no TOPO do loop — a strip cuja janela de presença contém `a`
+        // (ela mesma, ou o fade dela alcançando de volta). `None` = vão no topo: não há
+        // para onde cruzar, e a costura é o que o fim deixou (o desenho de sempre).
+        let Some((hi, head)) = self
+            .strips
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.lead_start() <= a && s.lead_end() > a)
+            .min_by(|(_, x), (_, y)| x.t_start.total_cmp(&y.t_start))
+        else {
+            return [Some((tail, tail_at, 1.0)), None];
+        };
+        let head_at = head.fold((a - head.t_start).clamp(0.0, head.span())); // CLAMP-OK: span() >= 0
+
+        // As duas janelas são a MEDIDA da travessia de cada lado — a de fora (`lead_*`) e a
+        // de sobreposição (`blend_*`) juntas, porque as duas movem a pose e o defeito é o
+        // mesmo nas duas (um `ease_in`/`ease_out` nas pontas congela igual).
+        let l_out = tail.lead_out.max(0.0) + self.blend_out(ti);
+        let l_in = head.lead_in.max(0.0) + self.blend_in(hi);
+        let total = l_out + l_in;
+        // `total == 0` é inalcançável pelos dois chamadores (o de saída exige uma janela de
+        // saída; o de entrada só roda com peso a preencher, o que exige uma de entrada) —
+        // o zero é o recuo conservador: a costura de sempre.
+        let f = if total > 0.0 { l_out / total } else { 0.0 };
+        if f >= 1.0 {
+            // A cabeça não fadeia: ela é a dona da costura, e a saída faz a travessia
+            // inteira até ela. É o `head_live >= 1` de sempre, respondido pela GEOMETRIA.
+            return [Some((head, head_at, 1.0)), None];
+        }
+        if f <= 0.0 {
+            return [Some((tail, tail_at, 1.0)), None];
+        }
+        // ⚠️ **A pergunta CARA é feita por último, e só aqui** — `weight_at` percorre a lane
+        // por strip (ele consulta `blend_in`/`blend_out`), então somar a cobertura é
+        // QUADRÁTICO, e a borda de ENTRADA do `hold_at` chama esta função em todo frame de
+        // toda lane. Pô-la no topo custou uma REGRESSÃO REAL: o
+        // `the_cost_of_depth_is_linear_not_explosive` mediu **3,36×** contra a barra de 2,9 e
+        // a faixa sã de ~2,25 — perto do número do mutante dele. Aqui embaixo ela só roda na
+        // geometria que de fato precisa dela.
+        //
+        // O que ela ainda decide: uma OUTRA strip totalmente viva em `a` enquanto a que
+        // começa mais cedo ainda fadeia. Aí a costura tem dona (a que cobre), e dividir
+        // mandaria o objeto para uma mistura que ninguém está mostrando.
         let head_live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, a)).sum();
         if head_live >= 1.0
             && let Some(first) = self.strips.iter().find(|s| s.covers(a))
         {
             let elapsed = (a - first.t_start).clamp(0.0, first.span()); // CLAMP-OK: span() >= 0
-            return Some((first, first.fold(elapsed)));
+            return [Some((first, first.fold(elapsed), 1.0)), None];
         }
-        // The head fades in (or is a gap): cross from what the loop's END leaves
-        // asserting — the last strip read at the wrap. This is the SAME pose the opening
-        // wrap reveals (`hold_at`'s last branch), so a fade-in and fade-out that meet at
-        // the seam agree on it.
-        let last = self
-            .strips
-            .iter()
-            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
-        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
-        Some((last, last.fold(elapsed)))
+        [Some((tail, tail_at, 1.0 - f)), Some((head, head_at, f))]
+    }
+
+    /// Reparte um peso `w` pelas frações de [`Self::seam_split`].
+    fn seam_held(&self, a: f64, b: f64, w: f64) -> [Option<(&ClipStrip, f64, f64)>; 2] {
+        self.seam_split(a, b)
+            .map(|e| e.map(|(s, t, frac)| (s, t, w * frac)))
     }
 
     /// The strip that starts NEXT after time `end` — the smallest `t_start >= end`, with

@@ -128,14 +128,23 @@ fn the_wrapped_fade_out_travels_from_the_last_pose_to_the_head() {
     );
 }
 
-/// **Com fade dos DOIS lados a costura fica no FIM do loop — sem salto duplo.** A Main tem
-/// fade-in; a Clip 2 tem fade-out. O fade-in da Main já cruza do fim da Clip 2 (+5,
-/// d326ff28); então o fade-out da Clip 2 tem de cruzar para o MESMO ponto (+5, a própria
-/// ponta dela), não para o início da Main (−3) — senão a volta pularia 8 unidades. É o
-/// `head_live` do `seam_source`: quando a cabeça também fadeia, ninguém a possui e a
-/// costura é o fim do loop. Um espelho ingênuo (sempre o início da primeira) sangra aqui.
+/// **Com fade dos DOIS lados a costura é o PONTO DE ENCONTRO — sem salto duplo.** A Main
+/// tem fade-in; a Clip 2 tem fade-out, as duas janelas do mesmo tamanho.
+///
+/// ⚠️ **Este gate mudou de VALOR em 2026-07-31, e a metade que importa não mudou.** O
+/// invariante que ele existe para prender é o do NOME — *sem salto duplo*: os dois lados da
+/// volta têm de ver a MESMA pose, senão o loop pula 8 unidades. Ele continua sendo afirmado
+/// aqui, e é o que impede um espelho ingênuo (cada lado cruzando para a ponta oposta).
+///
+/// O que mudou é ONDE eles se encontram. O desenho antigo escolhia *"a pose do fim do
+/// loop"* (+5) para os dois — o que satisfaz o invariante e faz o fade de SAÍDA cruzar para
+/// ele mesmo: parado em +5 a janela inteira (Enio, 2026-07-31: *"o fade da direita é
+/// descartado e o objeto simplesmente fica parado"*). Agora a travessia se DIVIDE pelas
+/// duas janelas (`ClipLane::seam_split`): com elas iguais o encontro cai no meio do caminho
+/// entre +5 e −3, e cada fade anda metade. Com UMA ponta só nada disto muda —
+/// `loop_wrap_both_ends.rs` prende os dois casos.
 #[test]
-fn with_both_fades_the_seam_stays_on_the_loop_end_no_double_jump() {
+fn with_both_fades_the_seam_is_the_meeting_point_no_double_jump() {
     let Scene {
         mut sim,
         mut st,
@@ -146,14 +155,12 @@ fn with_both_fades_the_seam_stays_on_the_loop_end_no_double_jump() {
     let before_wrap = x_at(&mut sim, &mut st, bits, 8.0 - FRAME);
     let after_wrap = x_at(&mut sim, &mut st, bits, 0.0);
 
+    // O ENCONTRO: metade do caminho de +5 (fim da Clip 2) até −3 (início da Main).
     assert!(
-        (before_wrap - 5.0).abs() < 0.1,
-        "o fade-out cruza para o fim do loop (+5), não o início da Main (−3): {before_wrap}"
+        (before_wrap - 1.0).abs() < 0.2,
+        "o fade-out anda até o ponto de encontro (+1), não fica parado no +5: {before_wrap}"
     );
-    assert!(
-        (after_wrap - 5.0).abs() < 0.1,
-        "o fade-in da Main também cruza do fim da Clip 2 (+5): {after_wrap}"
-    );
+    // O INVARIANTE, intocado: o outro lado da volta vê a MESMA pose.
     let jump = (after_wrap - before_wrap).abs();
     assert!(
         jump < 0.5,

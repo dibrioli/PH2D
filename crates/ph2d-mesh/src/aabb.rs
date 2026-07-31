@@ -87,6 +87,43 @@ impl Aabb {
         d[0].max(d[1]).max(d[2])
     }
 
+    /// O intervalo `[t0, t1]` em que o raio está DENTRO da caixa, recortado a
+    /// `t ≥ 0`. Método das *slabs*, com o recíproco da direção vindo pronto do
+    /// chamador — numa varredura de octree a divisão é paga uma vez por raio,
+    /// não uma vez por nó. Vazio (`t0 > t1`) quando não há travessia.
+    ///
+    /// ⚠️ **Direção com componente zero é tratada de propósito, não por acaso.**
+    /// `inv` vira `±INFINITY`, e um raio que começa EXATAMENTE no plano da
+    /// caixa produz `0 * INFINITY = NaN`. O `f32::max`/`min` da `std` devolvem
+    /// *o outro operando* quando um é NaN, então aquele eixo simplesmente não
+    /// restringe o intervalo — a resposta fica **conservadora** (a caixa pode
+    /// ser visitada à toa), que é exatamente o erro que um índice espacial pode
+    /// cometer sem mentir. O erro oposto — descartar a caixa — perderia
+    /// geometria em silêncio.
+    ///
+    /// Uma pergunta, dois consumidores: quem só quer saber *se* atravessa lê
+    /// [`Aabb::ray_hit`], quem ordena a travessia lê o `t0`. Duas implementações
+    /// de slab divergiriam no caso do NaN, que é o único que importa.
+    #[must_use]
+    pub fn ray_slab(&self, origin: [f32; 3], inv_dir: [f32; 3]) -> (f32, f32) {
+        let mut t0 = 0.0f32;
+        let mut t1 = f32::INFINITY;
+        for k in 0..3 {
+            let a = (self.min[k] - origin[k]) * inv_dir[k];
+            let b = (self.max[k] - origin[k]) * inv_dir[k];
+            t0 = t0.max(a.min(b));
+            t1 = t1.min(a.max(b));
+        }
+        (t0, t1)
+    }
+
+    /// O raio atravessa a caixa dentro de `[0, t_max]`?
+    #[must_use]
+    pub fn ray_hit(&self, origin: [f32; 3], inv_dir: [f32; 3], t_max: f32) -> bool {
+        let (t0, t1) = self.ray_slab(origin, inv_dir);
+        t0 <= t1.min(t_max)
+    }
+
     /// A caixa toca a esfera? Distância ao ponto mais próximo da caixa, ao
     /// quadrado — sem `sqrt`, que numa varredura de octree é o custo todo.
     #[must_use]

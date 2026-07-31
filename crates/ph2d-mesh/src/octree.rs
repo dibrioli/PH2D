@@ -141,6 +141,61 @@ impl Octree {
         }
     }
 
+    /// Visita as folhas que um raio atravessa, **da mais próxima para a mais
+    /// distante**, podando com o melhor `t` que o visitante já achou.
+    ///
+    /// ⚠️ **Por que um visitante em vez de um `Vec` de candidatas** — e a
+    /// diferença é grande, ao contrário do irmão [`Octree::faces_in_sphere`].
+    /// Uma esfera é pequena e não tem ordem interna, então juntar as candidatas
+    /// e filtrar custa o mesmo. Um raio atravessa a malha inteira: sem poda, um
+    /// pick lê as faces da superfície de trás para descobrir que a da frente já
+    /// tinha ganhado. O visitante devolve o `t` do melhor acerto até agora, e é
+    /// isso que corta os nós atrás dele. O octree segue sem saber o que é um
+    /// triângulo — ele responde *onde procurar, e em que ordem*.
+    ///
+    /// A ordenação é por distância de ENTRADA da caixa: empilha-se do mais
+    /// distante para o mais próximo, para que o topo da pilha seja o próximo.
+    pub fn ray_visit_leaves(
+        &self,
+        origin: [f32; 3],
+        inv_dir: [f32; 3],
+        mut visit: impl FnMut(&[u32]) -> f32,
+    ) {
+        if self.nodes.is_empty() {
+            return;
+        }
+        let mut best = f32::INFINITY;
+        let mut stack: Vec<(u32, f32)> = vec![(0, 0.0)];
+        while let Some((ni, entry)) = stack.pop() {
+            // O `t` de entrada foi medido quando o nó foi EMPILHADO; o `best`
+            // pode ter encolhido desde então, e este é o teste que aproveita.
+            if entry > best {
+                continue;
+            }
+            let node = self.nodes[ni as usize];
+            if node.first_child == NO_CHILD {
+                if node.len > 0 {
+                    let s = node.start as usize;
+                    let e = s + node.len as usize;
+                    best = best.min(visit(&self.face_indices[s..e]));
+                }
+                continue;
+            }
+            let mut kids = [(0u32, 0.0f32); 8];
+            for (k, slot) in kids.iter_mut().enumerate() {
+                let ci = node.first_child + k as u32;
+                let (t0, t1) = self.nodes[ci as usize].loose.ray_slab(origin, inv_dir);
+                *slot = (ci, if t0 <= t1 { t0 } else { f32::INFINITY });
+            }
+            kids.sort_unstable_by(|a, b| b.1.total_cmp(&a.1));
+            for (ci, t0) in kids {
+                if t0 <= best {
+                    stack.push((ci, t0));
+                }
+            }
+        }
+    }
+
     fn subdivide(
         &mut self,
         node: usize,

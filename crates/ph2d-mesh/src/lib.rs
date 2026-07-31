@@ -42,6 +42,7 @@ mod mesh;
 mod normals;
 mod obj;
 mod octree;
+mod ray;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
@@ -53,6 +54,7 @@ pub use normals::{
 };
 pub use obj::{ObjError, import_obj};
 pub use octree::Octree;
+pub use ray::{Hit, Ray};
 
 /// Geometria de teste — um cubo e uma esfera UV.
 ///

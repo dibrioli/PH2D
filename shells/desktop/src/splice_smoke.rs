@@ -45,6 +45,12 @@
 //! região sem re-selecionar do zero. (Shift+arrastar ADICIONA; arrastar puro SUBSTITUI. Ctrl e não
 //! Alt porque o KDE rouba o Alt.)
 //!
+//! ⊙ H (BYPASS/MUTE): selecione um nó e aperte **H** — o card fica APAGADO com um risco de quina a
+//! quina (o sinal de "desligado de propósito"). Para ver a SAÍDA mudar, splice um **motion.twist**
+//! (como acima) e mute ELE: um nó desligado não roda o op, passa o input direto, então a
+//! deformação SOME e o grid volta ao normal. H de novo religa. Vários selecionados: H muta todos;
+//! se já estão todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -120,6 +126,11 @@ impl crate::App {
              inteira (segue os fios em qualquer direcao); ilhas desconexas nao entram.\n  \
              CTRL+ARRASTAR (box): DESELECIONA os nos cobertos (refina um Ctrl+A/Ctrl+L). Shift \
              adiciona, arrasto puro substitui.\n  \
+             H (BYPASS/MUTE): selecione um no e aperte H -> o card fica APAGADO com um risco de \
+             quina a quina (o sinal de 'desligado de proposito'). Para ver a SAIDA mudar, splice um \
+             motion.twist e mute ELE: um no desligado nao roda o op, passa o input direto, entao a \
+             deformacao SOME e o grid volta ao normal. H de novo religa. Varios selecionados: H \
+             muta todos; se ja estao todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."
@@ -217,6 +228,61 @@ mod tests {
         assert_ne!(
             before, after,
             "the spliced twist deformed the grid — a force would have moved nothing"
+        );
+    }
+
+    /// **Muting a deformer reverts the render to its input** — the H demo, on the node whose
+    /// effect the artist can SEE in the positions. A bypassed `motion.twist` passes its primary
+    /// input straight through, so the twist stops applying and the output positions become the bare
+    /// grid's again. FALSIFIED if muting leaves the twisted positions in place (the passthrough
+    /// never happened). (`motion.scale`'s `amount` does not move `P`, so the smoke tells the artist
+    /// to mute a DEFORMER to see the output change — the card's dim+strike shows on any node.)
+    #[test]
+    fn muting_a_deformer_reverts_the_render_to_its_input() {
+        let reg = built_registry();
+
+        // grid → twist → output: the twist deforms every instance.
+        let mut g = Graph::new();
+        let grid = g.add_node("motion.grid");
+        let twist = g.add_node("motion.twist");
+        let out = g.add_node("motion.output");
+        g.set_param(grid, "rows", 3.0);
+        g.set_param(grid, "cols", 6.0);
+        for (from, to) in [(grid, twist), (twist, out)] {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (to, 0),
+                delayed: false,
+            })
+            .expect("edge");
+        }
+        let twisted = positions(&g, &reg, out);
+
+        // The bare grid the muted chain should revert TO.
+        let bare_grid = {
+            let mut gg = Graph::new();
+            let grid = gg.add_node("motion.grid");
+            let o = gg.add_node("motion.output");
+            gg.set_param(grid, "rows", 3.0);
+            gg.set_param(grid, "cols", 6.0);
+            gg.connect(Edge {
+                from: (grid, 0),
+                to: (o, 0),
+                delayed: false,
+            })
+            .expect("edge");
+            positions(&gg, &reg, o)
+        };
+        assert_ne!(twisted, bare_grid, "the twist actually deforms (fixture sanity)");
+
+        // Mute the twist: grid → twist(OFF) → output passes the grid straight through.
+        g.set_bypassed(twist, true);
+        let muted = positions(&g, &reg, out);
+
+        assert_ne!(twisted, muted, "muting the twist changed the render");
+        assert_eq!(
+            muted, bare_grid,
+            "a muted twist passes the grid through — its deformation stops applying"
         );
     }
 }

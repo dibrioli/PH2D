@@ -16,6 +16,20 @@
 #   RUSTSEC-2026-0195  alloc) — Linux/Wayland BUILD-TIME only (wayland-scanner
 #                      codegen over trusted in-repo protocol XML), never runtime
 #                      input; wayland-scanner pins 0.39.x (no reachable fix).
+#   RUSTSEC-2026-0217  tract-nnef integer overflow -> OOB read ON MODEL LOAD.
+#                      Reached only via the VENDORED deep_filter (ADR-0123) ->
+#                      ph2d-audio-ml, `optional = true`, feature `audio-ml` OFF
+#                      by default. The one model we load is the DFN3 EMBEDDED at
+#                      build time — no PH2D code opens a user-chosen model.
+#                      ⚠️ The upgrade was TRIED (2026-07-31): the fix starts at
+#                      0.21.16 and bumping the vendored crate to it fails
+#                      workspace resolution ("failed to select a version for
+#                      half"). Revisit if audio-ml ever ships ON by default.
+#
+# ⚠️ RUSTSEC-2026-0222 (wasmtime, published 2026-07-31) is NOT here on purpose:
+# it was FIXED, not ignored. `tests/spike` pinned `wasmtime = "44"` and the whole
+# 44 series is outside every fixed range, so `cargo update` could not reach one —
+# the bump to "47" (47.0.3) was the real fix, and the spike compiles on it.
 [advisories]
 ignore = [
     "RUSTSEC-2024-0436",
@@ -24,4 +38,5 @@ ignore = [
     "RUSTSEC-2026-0192",
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    "RUSTSEC-2026-0217",
 ]

@@ -25,6 +25,16 @@ extend-ignore-identifiers-re = [
     # (`ph2d-painter-brush::diffusion`), paired with `pc` (pigment-centre). A
     # deliberate short identifier, not a typo of `on`. Anchored (2026-06-08).
     "^pn$",
+    # `inh` — the IN-handle of a Hobby-spline vertex (`ph2d-vec-edit::hobby`),
+    # paired with `out`. A deliberate short identifier, not a typo of `in`.
+    # Anchored (2026-07-31).
+    "^inh$",
+    # `flase` — ⚠️ a DELIBERATE misspelling, and the point of the test: the Flip
+    # engine's escape hatch must fall back to the DEFAULT on a mistyped value,
+    # so the fixture feeds it `["", "flase", "no", "2", "OFF"]` and the doc-
+    # comment quotes `=flase` as the example. Correcting it would delete the
+    # case the gate exists to cover. Anchored (2026-07-31).
+    "^flase$",
 ]
 
 [default.extend-identifiers]
@@ -38,6 +48,39 @@ FleX = "FleX"
 # dentro das aspas falsificaria a citacao, entao a palavra entra aqui. O identificador
 # e o nome da feature seguem "container" (ingles correto) no codigo.
 resolvemos = "resolvemos"  # pt-BR (citacao VERBATIM do Enio: "ainda nao resolvemos o primeiro traco")
+# pt-BR de comentario, drenadas no ship de 2026-07-31 (a jornada de SETE linhas
+# acumulou 33 ocorrencias / 16 palavras -- este gate nao roda no fechamento de
+# linha, so' no `ship.sh`, entao a divida chega toda junta ao integrador).
+#
+# ⚠️ O criterio NAO foi "silenciar o gate": foi *allowlistar isto pode esconder
+# um typo real?*. Onde a resposta era SIM, o texto foi REESCRITO:
+#   * `grep -rin` -> `grep -r -i -n` em `world/pulley.rs`, porque `rin` colide
+#     com `ring` -- e este repo diz "ring" o tempo todo (CheckpointRing, return
+#     ring, os rings do nodegraph). Allowlistar teria cegado o gate para eles.
+# E onde a resposta era NAO, entra aqui -- reescrever prosa correta so' para
+# agradar um dicionario de ingles e' o gate mandando no texto.
+artistas = "artistas"          # pt-BR ("metade dos artistas fazer exatamente...")
+inventario = "inventario"      # pt-BR ("um inventario com buracos")
+cenario = "cenario"            # pt-BR (diagrama da polia: "[cenario]")
+mediam = "mediam"              # pt-BR, 5x ("todos mediam o MIOLO") -- imperfeito de "medir"
+suspenso = "suspenso"          # pt-BR, 6x (o carro com suspensao, nas cenas de roda)
+tese = "tese"                  # pt-BR ("a tese, em uma linha")
+editores = "editores"          # pt-BR ("os editores de curva")
+transcrito = "transcrito"      # pt-BR (o libopus transcrito por c2rust)
+otimize = "otimize"            # pt-BR ("nao otimize prematuro")
+ingredientes = "ingredientes"  # pt-BR (os ingredientes por-texel do envelope)
+inferir = "inferir"            # pt-BR ("Inferir a partir de...")
+incrementos = "incrementos"    # pt-BR (o produto sobre os INCREMENTOS)
+ilegal = "ilegal"              # pt-BR (link ILEGAL em vermelho)
+exponencial = "exponencial"    # pt-BR
+conservativo = "conservativo"  # pt-BR (o gather conservativo do advect)
+# ⚠️ `fing` entra como WORD e nao como identifier-re: ele nao e' o identificador,
+# vive DENTRO de `k_fing`/`b_no_fing`, e `extend-ignore-identifiers-re` casa o
+# identificador INTEIRO. Abreviacao do knob `ExtFingering` do wet paint.
+fing = "fing"
+# `pont` — mesma razao do `fing`: vive DENTRO de `pont_marcado`, o gemeo marcado
+# de `pontilhado` (pt-BR "dotted", o pincel pontilhado do Flip).
+pont = "pont"
 conteiner = "conteiner"  # pt-BR (citacao do Enio)
 conteiners = "conteiners"  # pt-BR (citacao do Enio)
 Conteiners = "Conteiners"  # pt-BR (citacao do Enio)

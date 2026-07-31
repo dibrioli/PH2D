@@ -18,7 +18,7 @@
 //!
 //! # Por que isto NÃO é um joint do rapier, e não foi escolha
 //!
-//! `grep -rin pulley` sobre `rapier2d-0.28.0/src` devolve **nada** — o conjunto
+//! `grep -r -i -n pulley` sobre `rapier2d-0.28.0/src` devolve **nada** — o conjunto
 //! é Fixed · Generic · Prismatic · Revolute · Rope · Spherical · Spring, e o
 //! `b2PulleyJoint` do Box2D não foi portado. E **não há gancho de restrição do
 //! usuário**: `PhysicsHooks` tem exatamente três métodos e os três falam de

@@ -130,6 +130,21 @@ ignore = [
     # post last green push; ship-blocking, same class as RUSTSEC-2026-0192.)
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    # `tract-nnef` integer overflow in the NNEF tensor parser -> OOB read ON MODEL
+    # LOAD (RUSTSEC-2026-0217, 6.1 medium). Pulled transitively ONLY by the W7 ML
+    # denoise: tract-nnef <- tract-onnx <- deep_filter (VENDORED, ADR-0123) <-
+    # ph2d-audio-ml, which is `optional = true` and reached only by the `audio-ml`
+    # feature — OFF by default, so it is not in any shipped build.
+    # The vulnerable path needs an ATTACKER-SUPPLIED model: we load exactly one,
+    # the 7.6 MB DFN3 EMBEDDED in the vendored crate at build time. No PH2D code
+    # opens a model file the user chose.
+    # ⚠️ The upgrade was TRIED, not assumed (integrador 2026-07-31): the fixed
+    # range starts at 0.21.16, and bumping the vendored deep_filter to it fails
+    # workspace resolution — `failed to select a version for half`. That is the
+    # measured reason behind ADR-0123's pin ("o git HEAD NAO compila"), which so
+    # far only asserted it. Revisit when the audio-ml feature ships ON by default
+    # or when deep_filter upstream moves to a tract >= 0.21.16.
+    "RUSTSEC-2026-0217",
 ]
 
 # ----------------------------------------------------------------------------

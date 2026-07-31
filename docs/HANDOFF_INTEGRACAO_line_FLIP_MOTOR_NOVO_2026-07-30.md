@@ -223,7 +223,7 @@ env PH2D_FLIP_HARDNESS_SMOKE=1 cargo run -p ph2d-host-desktop --release
 | # | item | número |
 |---|---|---|
 | **2b** | cache em **tiles de MUNDO** (sobreviver ao pan, não só à câmera parada) | o (2) já entrega o caso que domina: arte commitada e fantasma de onion custam **0,0001 ms/camada** |
-| **3c** | o resíduo de QUINA que a lei de área expôs | **13 px de 1115, ≤ 14,94/255** — **não é regressão**; duas curas candidatas, cada uma com preço |
+| **3c** | o resíduo de QUINA que a lei de área expôs | **FECHADO por medição em 2026-07-31** (doc 12 §22.10): a melhor das três curas (CENTROIDE da parte coberta) foi construída e **reprovada pelo oráculo supersampleado** — pior nas junções, 96,38 contra 61,86/255. O achado que fecha: o pior erro da lei que SHIPA é **22-62/255** e o resíduo vale **≤ 14,94** — *menor que o erro da aproximação que o curaria*. |
 | **4** | joins & caps como **estilo** | ⛔ a premissa de correção foi **REFUTADA** (§22.9): o `−64` era do rasterizador, e no percurso decompõe em duas causas conhecidas. Sobra pergunta de PRODUTO |
 | **5** | a **terceira lei** (`Soft` do Krita) | ⚠️ **funciona exato** e a ressalva do §2.4 não a alcança — mas muda a borda de UMA passada em **+69 %**: decisão de LOOK, do Enio |
 | **novo** | cache **incremental** do ajuste | a lei prefixo-estável o torna seguro; o frame do preview custa **0,33 ms a 1200 amostras e 2,42 ms a 9000** (95 % é o ajuste). 2,42 ms = 15 % de um quadro, num traço de 18 000 px |

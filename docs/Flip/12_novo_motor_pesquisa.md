@@ -1865,7 +1865,7 @@ para bancar o percurso, é uma dívida do módulo que o percurso apenas **expôs
 | 2b | o cache em tiles de MUNDO (sobreviver ao pan, não só ao parado) | desenho; o (2) já entrega o caso que domina |
 | 3 | **a integral de ÁREA do pixel** | ⚠️ a premissa estava ERRADA (§22.6) — mas a medição achou **três** defeitos, e **dois já fecharam** (§22.7): a QUINA (63,75/255) e o ÂNGULO (9,72 a 45°, que ninguém tinha visto). |
 | 3a | ⚠️ **NÃO era saturação — o percurso DERRUBAVA tinta em tampa e junta** | ✅ **CURADO** (§22.10): a grade resolve a JANELA, não o segmento. Tampa e junta vão a **zero px derrubados**, e o miolo **não se move** (0 px acima de 1/255 em h=0,4 e 0,7). |
-| 3c | o resíduo de QUINA que a lei de área expôs | ABERTO e pinado — **não é regressão** (§22.10): a área enxerga uma quina do pixel com `sd > ½`, onde o `p_eval` 1-D não tem ponto para amostrar. 13 px de 1115, ≤ 14,94/255. |
+| 3c | o resíduo de QUINA que a lei de área expôs | **FECHADO por medição (2026-07-31)** — segue pinado, e **não é regressão** (§22.10). Três curas construídas/avaliadas; a melhor (amostrar no CENTROIDE da parte coberta) foi **reprovada pelo oráculo supersampleado**: empate nos flancos, pior nas junções (96,38 contra 61,86/255). E o achado que fecha: o pior erro da lei que SHIPA contra a verdade é **22-62/255** e o resíduo vale **≤ 14,94** — *o artefato é menor que o erro da aproximação que o curaria*. A cura real ataca a aproximação (supersamplear o perfil / 2º tap): outra wave. |
 | 4 | ~~**joins & caps**~~ | ⛔ **A PREMISSA FOI REFUTADA POR MEDIÇÃO (§22.9).** O `−64` saía do RASTERIZADOR (a escape hatch, não o default desde `9a4bdd07b`), e no percurso ele decompõe em duas causas conhecidas — o termo de fronteira do `end_dab` (correto: cinco traços têm cinco começos) e `over` contra união exata. **Nenhuma é geometria de junta.** Sobra uma pergunta de PRODUTO, não de correção. |
 | 5 | **a terceira lei** (`Soft` do Krita, §2.4) | ⚠️ **MEDIDA (§22.11): funciona perfeitamente, e a ressalva do §2.4 NÃO alcança o percurso** — sem dabs não há beading. Mas ela muda a borda de UMA passada em +69%, então é **decisão de LOOK, do Enio**, não de engenharia. |
 
@@ -2282,10 +2282,40 @@ normal**, e a derivação dele (*a parte coberta é `v ∈ [sd − ½, 0]`*) tem
 derrubados do mesmo jeito, só que sem ninguém saber. A lei de área não criou o buraco: ela o **tornou
 visível**, que é o que uma lei mais exata faz.
 
-Medido: **13 px de 1115**, área ≤ 2,9% (14,94/255). As duas curas candidatas têm preço — capar o
-alcance dos planos em ½ joga fora a exatidão da quina que a §22.7 comprou; mover o `p_eval` para
-dentro muda onde **todo** pixel amostra o perfil ⇒ decisão própria, pinada em
+Medido: **13 px de 1115**, área ≤ 2,9% (14,94/255), pinado em
 `the_area_law_can_claim_a_corner_the_profile_cannot_sample_and_this_is_its_number`.
+
+#### ⛔ 2026-07-31 — a pergunta FECHOU por medição, e a resposta é *não vale a pena por esta rota*
+
+As duas curas que esta seção nomeou ganharam uma **terceira, melhor que as duas**: amostrar o perfil
+no **CENTROIDE da parte coberta**, derivado do MESMO polígono que a lei de área já recorta
+(`c_cob = −c_desc·A_desc/A_cob`, um momento acumulado no laço do sapateiro). Ela fecha o buraco **por
+construção** (a região coberta é não-vazia exatamente quando a área é não-nula), não capa o alcance
+dos planos, e substitui um modelo de FATIA que erra duas vezes — a extensão do quadrado na normal é
+`|nx|+|ny|` (até `√2`), não 1, e a densidade ao longo dela é um **TRAPÉZIO**, não uma constante.
+
+Foi construída, e o **oráculo supersampleado** (`measure_which_profile_sample_point_is_closer_to_the_truth`,
+a média da tinta sobre o pixel a 24×24 — irmã do `true_area`) a reprovou:
+
+| cena / dureza | erro médio FATIA | CENTROIDE | pior FATIA | pior CENTROIDE |
+|---|---|---|---|---|
+| flanco 0° / 0,8 | 0,89 | 0,87 | 23,07 | 23,07 |
+| flanco 45° / 0,8 | **2,77** | 2,87 | 28,19 | 28,19 |
+| zigue-zague / 0,8 | **3,39** | 4,45 | **61,86** | **96,38** |
+
+Empate nos flancos, **pior nas junções** — que é exatamente onde o resíduo vive. O mecanismo: numa
+junção a região coberta é uma **UNIÃO** de passagens, possivelmente não-convexa, e o centroide dela
+não representa ninguém; a fatia, ancorada na normal da passagem MAIS PRÓXIMA, ao menos amostra onde a
+passagem dominante manda. (A variante intermediária — manter a fatia e corrigir só o SUPORTE, `r` no
+lugar do ½ — é pior que as duas: **65,77/255** de movimento no zigue-zague, **21,48** até num flanco a
+0°, porque herda a densidade uniforme.)
+
+⚠️ **E o que a medição estabeleceu vale mais que o veredito de uma cura:** o pior erro da lei que
+SHIPA contra a verdade é **22 a 62/255**, e este resíduo vale **≤ 14,94**. *O artefato é menor que o
+erro da aproximação que o curaria.* Enquanto o ponto de amostra do perfil for **UM ponto**, mexer nele
+troca um artefato pequeno e conhecido por um maior e difuso. A cura de verdade é atacar a aproximação
+inteira — supersamplear o perfil, ou um segundo tap — e isso é outra wave, com preço de device
+próprio. **O item 3c sai da fila de decisões e entra como "medido e não vale a pena por esta rota".**
 
 #### Gates
 

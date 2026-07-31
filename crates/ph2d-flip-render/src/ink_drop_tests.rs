@@ -292,9 +292,20 @@ fn the_walk_no_longer_drops_the_ink_at_a_cap() {
 /// descartados no early-out — derrubados do mesmo jeito, só que sem ninguém saber. O que a lei de
 /// área fez foi **tornar visível** a discordância entre a cobertura 2-D e a amostra 1-D.
 ///
-/// Medido: **13 pixels de 1115** num zigue-zague de 24 juntas, área ≤ 2,9% (14,94/255). As duas
-/// curas candidatas têm preço (capar o alcance dos planos em ½ joga fora a exatidão da quina;
-/// mover o `p_eval` para dentro muda onde TODO pixel amostra o perfil) ⇒ decisão própria.
+/// Medido: **13 pixels de 1115** num zigue-zague de 24 juntas, área ≤ 2,9% (14,94/255).
+///
+/// ⚠️ **E em 2026-07-31 a pergunta foi FECHADA por medição, não por escolha:** as duas curas que a
+/// §22.10 nomeou (capar o alcance dos planos; mover o `p_eval` para dentro) ganharam uma terceira,
+/// melhor que as duas — amostrar no **CENTROIDE** da parte coberta, derivado do mesmo polígono da lei
+/// de área. Ela foi construída e o oráculo supersampleado a **reprovou**: empate nos flancos, pior
+/// nas junções (96,38 contra 61,86/255 de pior caso). Detalhe e tabela em
+/// `measure_which_profile_sample_point_is_closer_to_the_truth`.
+///
+/// ⚠️ **O que aquela medição estabeleceu é maior que o veredito de uma cura:** o pior erro da lei que
+/// SHIPA contra a verdade é **22 a 62/255**, e este resíduo vale **≤ 14,94**. *Ele é menor que o erro
+/// da aproximação que o curaria.* Enquanto o ponto de amostra for UM ponto, mexer nele troca um
+/// artefato pequeno e conhecido por um maior e difuso — a cura de verdade é atacar a aproximação
+/// (supersamplear o perfil, ou um segundo tap), que é outra wave, com preço de device próprio.
 #[test]
 fn the_area_law_can_claim_a_corner_the_profile_cannot_sample_and_this_is_its_number() {
     let sc = screen(96.0, 96.0);
@@ -474,4 +485,143 @@ fn a_soft_edge_hardens_when_the_stroke_crosses_itself_and_this_is_its_number() {
         "⭐ O ENDURECIMENTO MUDOU — uma passada {uma:.3} px, quinze {quinze:.3}. Se a terceira lei \
          entrou, atualize a nota da §22.11 do doc 12; se nao, algo mexeu na lei da tinta."
     );
+}
+
+/// 📏 **SONDA — o ORÁCULO: qual das duas leis está mais perto da tinta que o pixel de fato tem.**
+///
+/// ⚠️ **Ela existe porque o preço sozinho não decide nada.** A sonda irmã mede *quanto* as duas leis
+/// discordam; esta mede *qual acerta*. Sem ela, "a lei nova move 91,93/255 num pixel" é uma
+/// acusação contra a lei nova — e pode ser exatamente o contrário.
+///
+/// A verdade é a definição do filtro-caixa: **a média da tinta sobre o pixel**, por supersampling
+/// `N×N` (irmã do `true_area` do `aa_tests`, que faz o mesmo para a ÁREA). Cada sub-amostra é um
+/// pixel infinitesimal ⇒ sem fator de área, só `(1 − exp(−τ)) · fade` avaliado ALI.
+///
+/// # ⛔ O CENTROIDE FOI CONSTRUÍDO E REJEITADO POR ESTA SONDA (2026-07-31) — não refaça
+///
+/// A §22.10 nomeou duas curas para o resíduo de quina e chamou as duas de decisão. **Uma terceira
+/// foi construída**, e ela parecia estritamente melhor: amostrar o perfil no **CENTROIDE da parte
+/// coberta**, derivado do MESMO polígono que a lei de área já recorta (`c_cob = −c_desc·A_desc/A_cob`).
+/// Ela fecha o buraco por construção (a região é não-vazia exatamente quando a área é não-nula),
+/// não capa o alcance dos planos, e substitui um modelo de FATIA — que erra duas vezes: a extensão
+/// do quadrado na normal é `|nx|+|ny|`, não 1, e a densidade ao longo dela é um TRAPÉZIO, não uma
+/// constante.
+///
+/// ⚠️ **O oráculo reprovou.** Contra a média supersampleada, o centroide é empate nos flancos e
+/// **pior onde as passagens se sobrepõem**, que é exatamente onde o resíduo vive:
+///
+/// | cena / dureza | erro médio FATIA | CENTROIDE | pior FATIA | pior CENTROIDE |
+/// |---|---|---|---|---|
+/// | flanco 0° / 0,8 | 0,89 | 0,87 | 23,07 | 23,07 |
+/// | flanco 45° / 0,8 | **2,77** | 2,87 | 28,19 | 28,19 |
+/// | zigue-zague / 0,8 | **3,39** | 4,45 | **61,86** | **96,38** |
+///
+/// O mecanismo: numa junção a região coberta é uma **UNIÃO** de passagens, possivelmente não-convexa,
+/// e o centroide dela não representa ninguém — enquanto a fatia, ancorada na normal da passagem MAIS
+/// PRÓXIMA, ao menos amostra onde a passagem dominante manda.
+///
+/// ⚠️ **E o número que fecha o item 3c está NESTA tabela, não na do resíduo:** o pior erro da lei que
+/// shipa contra a verdade é **22 a 62/255**, e o resíduo de quina que se queria curar vale
+/// **≤ 14,94/255 em 13 pixels de 1115**. *O artefato é menor que o erro da aproximação que o
+/// curaria* — mover o ponto de amostra troca um artefato pequeno e conhecido por um maior e difuso.
+/// Curar o resíduo de verdade exige atacar a aproximação inteira (supersamplear o perfil, ou um
+/// segundo tap), que é outra wave e tem preço de device próprio.
+///
+/// Uma variante intermediária também foi medida e é pior que as duas: manter a fatia e só corrigir o
+/// SUPORTE dela (`r = (|nx|+|ny|)/2` no lugar do ½) move **65,77/255** no zigue-zague e **21,48** até
+/// num flanco a 0° — ela herda a densidade uniforme, e a de uma borda a 45° é um triângulo.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_which_profile_sample_point_is_closer_to_the_truth() {
+    const N: u32 = 24;
+    let sc = screen(96.0, 96.0);
+    let cenas: [(&str, crate::pack::FlipGpuData); 3] = [
+        (
+            "flanco a 0 graus  ",
+            art(&[(&[[12.0, 48.0], [84.0, 48.0]], 14.0, false, BLACK)]),
+        ),
+        (
+            "flanco a 45 graus ",
+            art(&[(&[[16.0, 16.0], [80.0, 80.0]], 14.0, false, BLACK)]),
+        ),
+        (
+            "zigue-zague (24 j)",
+            art(&[(
+                &(0..24)
+                    .map(|k| [20.0 + k as f32 * 2.5, if k % 2 == 0 { 40.0 } else { 52.0 }])
+                    .collect::<Vec<_>>(),
+                6.0,
+                false,
+                BLACK,
+            )]),
+        ),
+    ];
+    println!("\n=== QUANTO A LEI QUE SHIPA ERRA (contra a media supersampleada 24x24) ===");
+    println!("  cena | dureza | erro MEDIO (/255) | pior pixel (/255)");
+    for (nome, g) in &cenas {
+        for dureza in [1.0_f32, 0.8, 0.3] {
+            let mut g = g.clone();
+            for s in &mut g.strokes {
+                s.hardness = dureza;
+            }
+            let bins = bin_segments(&g, &sc, 16);
+            let style = crate::tau::StrokeStyle::of(&g.strokes[0]);
+            let (mut soma_f, mut n_px) = (0.0_f64, 0_usize);
+            let mut pior_f = 0.0_f32;
+            for y in 0..96 {
+                for x in 0..96 {
+                    let p = [x as f32 + 0.5, y as f32 + 0.5];
+                    let Some(ti) = bins.tile_of_pixel(p[0], p[1]) else {
+                        continue;
+                    };
+                    let run = bins.segs_of(ti);
+                    let Some(sl) = stroke_silhouette(run, &g, &sc, style.tip, p) else {
+                        continue;
+                    };
+                    let edge = sl.planes.coverage();
+                    if edge <= 0.0 {
+                        continue;
+                    }
+                    // A VERDADE: a média da tinta sobre o pixel, sub-amostra a sub-amostra.
+                    let mut soma = 0.0_f32;
+                    for j in 0..N {
+                        for i in 0..N {
+                            let q = [
+                                p[0] - 0.5 + (i as f32 + 0.5) / N as f32,
+                                p[1] - 0.5 + (j as f32 + 0.5) / N as f32,
+                            ];
+                            let Some(ti_q) = bins.tile_of_pixel(q[0], q[1]) else {
+                                continue;
+                            };
+                            soma += crate::tau::stroke_tau(bins.segs_of(ti_q), &g, &sc, style, q)
+                                .map_or(0.0, |k| (1.0 - (-k.tau).exp()) * k.fade);
+                        }
+                    }
+                    let verdade = soma / (N * N) as f32;
+                    let cobrir = |pe: [f32; 2]| -> f32 {
+                        crate::tau::stroke_tau(run, &g, &sc, style, pe)
+                            .map_or(0.0, |i| (1.0 - (-i.tau).exp()) * edge.min(1.0) * i.fade)
+                    };
+                    let pe_fatia = if sl.sd > -0.5 && sl.dist > 1e-6 {
+                        let f = (sl.sd + 0.5) * 0.5 / sl.dist;
+                        [
+                            p[0] + (sl.near[0] - p[0]) * f,
+                            p[1] + (sl.near[1] - p[1]) * f,
+                        ]
+                    } else {
+                        p
+                    };
+                    let e_f = (cobrir(pe_fatia) - verdade).abs() * 255.0;
+                    soma_f += f64::from(e_f);
+                    pior_f = pior_f.max(e_f);
+                    n_px += 1;
+                }
+            }
+            let d = n_px.max(1) as f64;
+            println!(
+                "  {nome} | {dureza:6.1} | {:17.2} | {pior_f:17.2}",
+                soma_f / d
+            );
+        }
+    }
 }

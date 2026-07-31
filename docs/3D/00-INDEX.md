@@ -18,7 +18,8 @@ resumo: "Uma linha por nota do cofre: caminho, tags e o que a nota responde. Lei
 ```
 DECISÃO: ADR-0145 (proposto) — malha primária · escrito direto em Rust/wgpu · SculptGL (MIT) de referência
 LINHA:   line/sculpt3d  (branch + worktree JÁ existem)
-CÓDIGO:  W1 FECHADA (M1 malha · M2 tela · M3 medições) — 5 commits, aguardando integração
+CÓDIGO:  W1 FECHADA, SMOKE APROVADO (2026-07-30) — 6 commits, rebaseada em cd8513b76,
+         gate verde sobre a árvore combinada. Aguardando ORDEM DE INTEGRAÇÃO.
 MEDIDO:  a pegada manda (10x a malha = 0,79x o dab). K1/K2 disparam só no pincel gigante,
          e 88% do custo é DESCOBRIR a vizinhança, não as normais. Decisão: HANDOFF_INTEGRACAO
 MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)

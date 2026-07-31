@@ -171,7 +171,14 @@ fn scene() -> FlipDrawing {
     // **O SELF OVERLAP** — um X de um traço só, DENSO (o regime real, pós-`resample_smooth`) e a
     // opacidade em 0,5: é o único regime onde a flag muda um pixel.
     let mut xx = Vec::new();
-    for w in [(20.0_f32, 320.0), (60.0, 360.0), (60.0, 320.0), (20.0, 360.0)].windows(2) {
+    for w in [
+        (20.0_f32, 320.0),
+        (60.0, 360.0),
+        (60.0, 320.0),
+        (20.0, 360.0),
+    ]
+    .windows(2)
+    {
         for k in 0..20 {
             let t = k as f32 / 20.0;
             xx.push((
@@ -264,120 +271,120 @@ fn measure_what_a_frame_costs_on_the_device() {
     println!("\n=== O CUSTO DE UM FRAME NO DEVICE (1920x1080) ===");
     println!("  tracos   segs   bin(CPU) ms [min-max]   walk(GPU) ms   ns/px   vs CPU serial");
     for tile in [8_u32, 16, 32, 64] {
-    println!("  --- ladrilho {tile} px ---");
-    for n in [1_usize, 10, 50, 200] {
-        let mut d = FlipDrawing::new();
-        let mut seed = 0x85EB_CA6B_u32;
-        let mut rnd = || {
-            seed ^= seed << 13;
-            seed ^= seed >> 17;
-            seed ^= seed << 5;
-            (seed >> 8) as f32 / (1 << 24) as f32
-        };
-        for _ in 0..n {
-            let (x0, y0) = (rnd() * w as f32 * 0.2, rnd() * h as f32);
-            let (x1, y1) = (w as f32 * 0.8 + rnd() * w as f32 * 0.2, rnd() * h as f32);
-            let bow = (rnd() - 0.5) * h as f32 * 0.6;
-            let pts: Vec<(f32, f32)> = (0..40)
-                .map(|k| {
-                    let t = k as f32 / 39.0;
-                    (
-                        x0 + (x1 - x0) * t,
-                        y0 + (y1 - y0) * t + bow * (std::f32::consts::PI * t).sin(),
-                    )
-                })
-                .collect();
-            d.strokes
-                .push(stroke(&pts, 12.0, 0.5, [0.1, 0.1, 0.1], 1.0));
-        }
-        let data = pack_drawing(&d);
-        // ⚠️ **O lado da CPU é MEDIANA de 9, o 1º descartado** — e não é higiene: com UMA amostra
-        // não-aquecida ele media 1,33 / 2,30 / 4,00 ms em três corridas seguidas do mesmo binário
-        // (o `bin_segments` aloca, e o alocador tem memória entre chamadas). *Um número que não
-        // reproduz não é achado, é ruído com casas decimais* — e foi sobre uma dessas amostras que
-        // o §14 concluiu "o binner é 45% do frame".
-        let mut amostras = Vec::new();
-        let mut bins = bin_segments(&data, &sc, tile);
-        for _ in 0..9 {
-            let t0 = std::time::Instant::now();
-            bins = bin_segments(&data, &sc, tile);
-            amostras.push(t0.elapsed().as_secs_f64() * 1e3);
-        }
-        amostras.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        // ⚠️ **MÍNIMO, não mediana** — e a escolha do redutor é parte da fixture: aqui toda amostra
-        // faz o trabalho IDÊNTICO (mesmos dados, mesma chamada), então o mínimo é o que a máquina de
-        // fato consegue e o resto é carga alheia. (Onde uma amostra é estruturalmente diferente — o
-        // 1º move de um traço, que não compõe — o mínimo é o redutor ERRADO; ver doc 28 §5.12.)
-        let bin_ms = amostras[0];
-        let (bin_lo, bin_hi) = (amostras[0], amostras[amostras.len() - 1]);
-        let pass = WalkPass::new(&device);
-        let tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("walk perf target"),
-            size: wgpu::Extent3d {
-                width: w,
-                height: h,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: ph2d_flip_render::WALK_TARGET_FORMAT,
-            usage: wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
-        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-        // Piso de fills VAZIO — a sonda mede o percurso, não a composição do fill.
-        let floor = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("walk perf empty fills"),
-            size: wgpu::Extent3d {
-                width: w,
-                height: h,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: ph2d_flip_render::WALK_TARGET_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let floor_view = floor.create_view(&wgpu::TextureViewDescriptor::default());
-        let job = pass
-            .prepare(&device, &data, &sc, &bins, &view, &floor_view)
-            .expect("job");
-        // Aquece (compilação de pipeline, primeira submissão) e depois mede REPS dispatches.
-        {
+        println!("  --- ladrilho {tile} px ---");
+        for n in [1_usize, 10, 50, 200] {
+            let mut d = FlipDrawing::new();
+            let mut seed = 0x85EB_CA6B_u32;
+            let mut rnd = || {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                (seed >> 8) as f32 / (1 << 24) as f32
+            };
+            for _ in 0..n {
+                let (x0, y0) = (rnd() * w as f32 * 0.2, rnd() * h as f32);
+                let (x1, y1) = (w as f32 * 0.8 + rnd() * w as f32 * 0.2, rnd() * h as f32);
+                let bow = (rnd() - 0.5) * h as f32 * 0.6;
+                let pts: Vec<(f32, f32)> = (0..40)
+                    .map(|k| {
+                        let t = k as f32 / 39.0;
+                        (
+                            x0 + (x1 - x0) * t,
+                            y0 + (y1 - y0) * t + bow * (std::f32::consts::PI * t).sin(),
+                        )
+                    })
+                    .collect();
+                d.strokes
+                    .push(stroke(&pts, 12.0, 0.5, [0.1, 0.1, 0.1], 1.0));
+            }
+            let data = pack_drawing(&d);
+            // ⚠️ **O lado da CPU é MEDIANA de 9, o 1º descartado** — e não é higiene: com UMA amostra
+            // não-aquecida ele media 1,33 / 2,30 / 4,00 ms em três corridas seguidas do mesmo binário
+            // (o `bin_segments` aloca, e o alocador tem memória entre chamadas). *Um número que não
+            // reproduz não é achado, é ruído com casas decimais* — e foi sobre uma dessas amostras que
+            // o §14 concluiu "o binner é 45% do frame".
+            let mut amostras = Vec::new();
+            let mut bins = bin_segments(&data, &sc, tile);
+            for _ in 0..9 {
+                let t0 = std::time::Instant::now();
+                bins = bin_segments(&data, &sc, tile);
+                amostras.push(t0.elapsed().as_secs_f64() * 1e3);
+            }
+            amostras.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            // ⚠️ **MÍNIMO, não mediana** — e a escolha do redutor é parte da fixture: aqui toda amostra
+            // faz o trabalho IDÊNTICO (mesmos dados, mesma chamada), então o mínimo é o que a máquina de
+            // fato consegue e o resto é carga alheia. (Onde uma amostra é estruturalmente diferente — o
+            // 1º move de um traço, que não compõe — o mínimo é o redutor ERRADO; ver doc 28 §5.12.)
+            let bin_ms = amostras[0];
+            let (bin_lo, bin_hi) = (amostras[0], amostras[amostras.len() - 1]);
+            let pass = WalkPass::new(&device);
+            let tex = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("walk perf target"),
+                size: wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: ph2d_flip_render::WALK_TARGET_FORMAT,
+                usage: wgpu::TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+            });
+            let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+            // Piso de fills VAZIO — a sonda mede o percurso, não a composição do fill.
+            let floor = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("walk perf empty fills"),
+                size: wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: ph2d_flip_render::WALK_TARGET_FORMAT,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let floor_view = floor.create_view(&wgpu::TextureViewDescriptor::default());
+            let job = pass
+                .prepare(&device, &data, &sc, &bins, &view, &floor_view)
+                .expect("job");
+            // Aquece (compilação de pipeline, primeira submissão) e depois mede REPS dispatches.
+            {
+                let mut enc =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                pass.record(&mut enc, &job);
+                queue.submit(Some(enc.finish()));
+                let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            }
+            const REPS: u32 = 16;
+            let t1 = std::time::Instant::now();
             let mut enc =
                 device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-            pass.record(&mut enc, &job);
+            for _ in 0..REPS {
+                pass.record(&mut enc, &job);
+            }
             queue.submit(Some(enc.finish()));
             let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            let ms = t1.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+            let px = f64::from(w) * f64::from(h);
+            // Os números seriais de CPU do doc 12 §10.2, para a razão ficar ao lado.
+            let cpu = match n {
+                1 => 18.4,
+                10 => 93.4,
+                50 => 412.8,
+                _ => 1593.7,
+            };
+            println!(
+                "  {n:6}   {:4}   {bin_ms:6.2} [{bin_lo:.2}-{bin_hi:.2}]   {ms:12.2}   {:5.1}   {:8.0}x",
+                data.points.len() - data.strokes.len(),
+                ms * 1e6 / px,
+                cpu / ms
+            );
         }
-        const REPS: u32 = 16;
-        let t1 = std::time::Instant::now();
-        let mut enc =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-        for _ in 0..REPS {
-            pass.record(&mut enc, &job);
-        }
-        queue.submit(Some(enc.finish()));
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        let ms = t1.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
-        let px = f64::from(w) * f64::from(h);
-        // Os números seriais de CPU do doc 12 §10.2, para a razão ficar ao lado.
-        let cpu = match n {
-            1 => 18.4,
-            10 => 93.4,
-            50 => 412.8,
-            _ => 1593.7,
-        };
-        println!(
-            "  {n:6}   {:4}   {bin_ms:6.2} [{bin_lo:.2}-{bin_hi:.2}]   {ms:12.2}   {:5.1}   {:8.0}x",
-            data.points.len() - data.strokes.len(),
-            ms * 1e6 / px,
-            cpu / ms
-        );
-    }
     }
 }
 

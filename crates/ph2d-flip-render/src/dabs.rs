@@ -32,7 +32,12 @@ pub fn dab_reach(tip: TipShape, rmax: f32) -> f32 {
 ///
 /// Extraída como função pelo motivo de sempre nesta crate: o `walk.wgsl` carrega o espelho dela, e um
 /// espelho função-por-função é o que o gate de paridade consegue ler.
-pub(crate) fn seg_window(p: [f32; 2], sa: [f32; 2], sb: [f32; 2], reach: f32) -> Option<(f32, f32)> {
+pub(crate) fn seg_window(
+    p: [f32; 2],
+    sa: [f32; 2],
+    sb: [f32; 2],
+    reach: f32,
+) -> Option<(f32, f32)> {
     let v = [sb[0] - sa[0], sb[1] - sa[1]];
     let len2 = v[0] * v[0] + v[1] * v[1];
     if len2 <= 1e-12 {

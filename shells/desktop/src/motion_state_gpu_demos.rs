@@ -7,8 +7,19 @@
 //! gates that prove each one still plans the way it claims (`motion_state_gpu_tests.rs`)
 //! are its sibling.
 
+use ph2d_color::{GradientPreset, RampInterp, serialize_gradient};
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
+
+/// A preset gradient serialized for the `ramp` text param, with **Ease** interpolation — the
+/// look these demos authored back when the node had an `interp` param. The presets themselves
+/// are Linear (`GradientPreset::ramp`), and Ease is what makes the bands blend instead of
+/// banding hard, so it is spelled out here rather than assumed.
+fn eased_preset(preset: GradientPreset) -> String {
+    let mut ramp = preset.ramp();
+    ramp.interp = RampInterp::Ease;
+    serialize_gradient(&ramp)
+}
 use ph2d_nodegraph::graph::NodeId;
 
 /// The GPU/M5 Fase 1 **ready-to-smoke** document (`PH2D_GPU_COOK_DEMO=1`):
@@ -120,8 +131,11 @@ pub(super) fn build_gpu_sim_demo_document(
     // `t` would put the node back on the CPU, and the CPU would then own the
     // whole document: this graph drives a `pre` loop).
     let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 0.0);
-    g.set_param(ramp, "interp", 1.0); // Ease — the bands blend instead of banding hard
+    // The gradient IS the `ramp` text param (doc 85) — `preset`/`interp` are gone, so setting
+    // them left the node carrying params its manifest no longer declares and `validate` refused
+    // the whole graph (caught by the census at integration, 2026-07-30). Rainbow + Ease is what
+    // this scene always authored.
+    g.set_text_param(ramp, "ramp", eased_preset(GradientPreset::Rainbow));
     let ig = g.add_node("motion.integrate");
     let out = g.add_node("motion.output");
 
@@ -245,8 +259,7 @@ pub(super) fn build_gpu_sea_demo_document(
     // The field spans ±42, so the sea at 0 cuts it in half: half of it starts
     // dry and falls, half starts under and rises. Both regimes on screen at once.
     let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 0.0);
-    g.set_param(ramp, "interp", 1.0);
+    g.set_text_param(ramp, "ramp", eased_preset(GradientPreset::Rainbow));
     let ig = g.add_node("motion.integrate");
     let out = g.add_node("motion.output");
 

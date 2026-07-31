@@ -96,7 +96,13 @@ pub(super) fn build_gpu_voronoi_demo_document(
     g.set_text_param(attr, "attr", "falloff");
 
     let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 2.0); // Ice — a cold field reads as structure
+    // Ice — a cold field reads as structure. The gradient IS the `ramp` text param (doc 85);
+    // the `preset` param is gone, and setting it made `validate` refuse the graph.
+    g.set_text_param(
+        ramp,
+        "ramp",
+        ph2d_color::serialize_gradient(&ph2d_color::GradientPreset::Ice.ramp()),
+    );
 
     // Grains, not blobs: unit quads at this count would be a solid sheet.
     let scale = g.add_node("motion.scale");

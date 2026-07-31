@@ -316,6 +316,12 @@ pub(crate) fn apply_samples(
             if !plan.refused.is_empty() {
                 refused_now = Some(home.err().unwrap_or(ph2d_timeline::KeyRefusal::Overridden));
             }
+            // A âncora de trajetória fora da aba Keys (Enio, 2026-07-31): o documento a
+            // recusou com o motivo pronto, e ele só entra se nada mais falou. ⚠️ Os dois
+            // são disjuntos na prática — em modo Path os eixos de translação nem entram no
+            // laço escalar, então `refused` descreveria OUTRO canal —, e quando coexistem o
+            // motivo estrutural (o clip não toca aqui) é o mais informativo dos dois.
+            refused_now = refused_now.or(plan.path_refused);
             if let Some(t_e) = t_e {
                 // The motion-path anchor (Path mode), authored at the same home time
                 // as the scalar keys. During a paused drag `t_e` is fixed, so

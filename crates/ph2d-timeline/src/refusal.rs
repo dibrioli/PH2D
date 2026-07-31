@@ -30,6 +30,17 @@ pub enum KeyRefusal {
     /// or rewrite it, never "delete a lane". `value + g(time)` (the affine idiom) keys
     /// and pre-compensates instead of refusing.
     ExpressionDriven,
+    /// The pose is a **motion-path ANCHOR**, and a trajectory belongs to its CLIP — but
+    /// the panel is showing a STACK (Arrange, or a container's interior), where the pose
+    /// on screen is a blend of strips and the active clip is not what the animator picked.
+    ///
+    /// The other refusals are about a value the clip cannot *express*; this one is about a
+    /// clip the animator is not *looking at*. Writing the anchor anyway would edit the
+    /// geometry of a clip the tab does not even name, and rewrite the distance that every
+    /// key in it holds (`rewrite_path_key_values`) — a large, invisible edit from a gesture
+    /// that looks local. It is the authoring half of the overlay's `keys_tab` rule
+    /// (`motion_path_overlay::active_path`), and the SAME boolean decides both.
+    PathNeedsKeysTab,
 }
 
 /// Why a container could not be placed inside another (ADR-0133 §4).
@@ -76,6 +87,9 @@ impl KeyRefusal {
             Self::Overridden => "Can't key: a lane above overrides this clip here",
             Self::ExpressionDriven => {
                 "Can't key: an expression drives this channel — clean or rewrite the formula"
+            }
+            Self::PathNeedsKeysTab => {
+                "Can't key the path here: a trajectory belongs to its clip — switch to the Keys tab"
             }
         }
     }

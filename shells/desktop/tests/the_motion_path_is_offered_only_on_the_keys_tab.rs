@@ -109,3 +109,45 @@ fn every_caller_hands_the_overlay_the_live_keys_tab() {
         "controle positivo: esperava as chamadas do shell às portas do overlay, achei {seen}"
     );
 }
+
+/// **E o K ancora pela porta que também RECUSA** — a metade de autoria da mesma lei.
+///
+/// A decisão é pura e testada (`timeline_bridge::path_key_time`), mas quem a chama vive
+/// dentro do `render_frame`: se o K montasse o `AddPathKey` por qualquer outro caminho —
+/// um `solo_key_time` direto, o `key_insert_time` de antes — o gate de unidade seguiria
+/// verde sobre uma âncora plantada em Arrange.
+///
+/// ⚠️ Afirma a PROPRIEDADE (*todo `AddPathKey` do shell nasce de um `path_key_time`*), não
+/// uma distância em bytes entre os dois: um proxy desses expira na primeira linha que
+/// alguém acrescenta no meio ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
+#[test]
+fn the_k_authors_an_anchor_through_the_door_that_can_refuse() {
+    let mut files = Vec::new();
+    rust_files(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src").as_path(),
+        &mut files,
+    );
+    let mut emitters = 0_usize;
+    for path in &files {
+        let Ok(src) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        // As fixtures de teste montam o intent direto, de propósito: elas são o
+        // CONSUMIDOR do intent, não o gesto do artista.
+        if src.contains("AddPathKey") && !path.to_string_lossy().contains("test") {
+            emitters += 1;
+            assert!(
+                src.contains("path_key_time("),
+                "{} emite `AddPathKey` sem passar pelo `path_key_time` — a porta que \
+                 decide SE pode (só a aba Keys) e diz o motivo quando não. Uma segunda \
+                 rota aqui planta a âncora num clip que a aba nem nomeia.",
+                path.display()
+            );
+        }
+    }
+    assert_eq!(
+        emitters, 1,
+        "controle positivo: esperava exatamente um emissor de `AddPathKey` no shell \
+         (o K); achei {emitters} — se o gesto ganhou um irmão, ele entra nesta lei"
+    );
+}

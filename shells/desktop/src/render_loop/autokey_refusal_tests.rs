@@ -250,3 +250,59 @@ fn a_soloed_pose_on_its_own_curve_keys_nothing_under_a_stack() {
         "nem o pin de pose deslocada arma — a pose está NA curva que a cena mostra"
     );
 }
+
+/// **A âncora recusada fora da aba Keys também FALA** (Enio, 2026-07-31).
+///
+/// É a mesma lei deste arquivo aplicada ao canal de GEOMETRIA: sob uma pilha o AutoKey
+/// não pode plantar uma âncora (a trajetória é do clip ativo, e a aba não o nomeia), e uma
+/// recusa muda é a ferramenta parecendo quebrada — aqui com uma agravante, porque o
+/// próximo apply devolve o objeto para a curva e o artista vê a pose saltar sem motivo.
+///
+/// ⚠️ **As três asserções são independentes:** que nada é escrito (a lei), que algo é dito
+/// (o R9), e que o que é dito é o motivo CERTO — trocar a mensagem por *"uma lane acima
+/// sobrepõe"* passaria nas duas primeiras e mentiria sobre a causa.
+#[test]
+fn an_anchor_refused_outside_the_keys_tab_says_so() {
+    let (mut st, ph) = state_with_path();
+    st.keys_mode = false; // Arrange (ou a interior de um container)
+    let mut ak = AutokeyState::default();
+    let mut toasts = ToastQueue::new();
+    let before = st.doc.position_path(E).unwrap().len();
+
+    // O mesmo gesto do gate de autoria: assenta na pose que a trajetória desenha e depois
+    // arrasta para fora dela.
+    frame_toasts(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 5.0), (TY, 0.0)]))],
+        false,
+        true,
+        &mut ak,
+        &mut toasts,
+    );
+    frame_toasts(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 5.0), (TY, 3.0)]))],
+        false,
+        true,
+        &mut ak,
+        &mut toasts,
+    );
+
+    assert_eq!(
+        st.doc.position_path(E).unwrap().len(),
+        before,
+        "nenhuma âncora entra na trajetória fora da aba Keys"
+    );
+    let msgs: Vec<String> = toasts.iter().map(|t| t.message.clone()).collect();
+    assert_eq!(
+        msgs,
+        vec![
+            ph2d_timeline::KeyRefusal::PathNeedsKeysTab
+                .message()
+                .to_string()
+        ],
+        "e o artista ouve o motivo, uma vez"
+    );
+}

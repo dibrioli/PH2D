@@ -391,3 +391,34 @@ fn only_a_new_selection_asks_for_the_keys_tab() {
     );
     assert!(!selection_jumps_to_keys(None, None), "nada continua nada");
 }
+
+/// **O K só ancora uma trajetória na aba Keys** (Enio, 2026-07-31) — a metade de AUTORIA
+/// da mesma lei que o overlay aplica ao desenho e às alças, e a porta que a torna
+/// impossível de esquecer: quem pergunta *"onde ancorar?"* recebe o motivo junto.
+///
+/// ⚠️ **Presença E ausência sobre o MESMO documento e o MESMO instante** — a única coisa
+/// que muda é a vista. Um gate que só medisse o `Err` ficaria verde sobre uma função que
+/// recusa sempre, que é o gesto silenciosamente inerte com outro nome.
+#[test]
+fn the_k_anchors_a_trajectory_only_on_the_keys_tab() {
+    let mut st = TimelineState::new();
+    st.doc
+        .key_the_path(1, ph2d_anim::RationalTime::from_seconds(0.0), [0.0, 0.0]);
+
+    st.keys_mode = true;
+    assert_eq!(
+        path_key_time(&st, 1, 0.5),
+        Ok(solo_key_time(&st, 1, 0.5)),
+        "na aba Keys o instante é o MESMO das outras keys do clip — uma composição \
+         própria aqui seria a pose a saltar de volta"
+    );
+
+    // Arrange, ou a interior de um container: a pose na tela é a composição das strips e
+    // o clip ativo não é o que o animador escolheu.
+    st.keys_mode = false;
+    assert_eq!(
+        path_key_time(&st, 1, 0.5),
+        Err(ph2d_timeline::KeyRefusal::PathNeedsKeysTab),
+        "fora dela a recusa é um VALOR, com motivo — não um `None` que o K engole"
+    );
+}

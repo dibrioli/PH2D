@@ -1412,35 +1412,32 @@ impl crate::App {
                             .world()
                             .get::<ph2d_ecs::Transform>(ph2d_ecs::Entity::from_bits(entity))
                         {
-                            // ⚠️ O tempo vem das MESMAS portas das outras keys: em
-                            // Keys, o relógio do clip cortado e remapeado
-                            // (`solo_key_time`, a metade extraída do
-                            // `key_authoring_solo`); em Arrange/container, o
-                            // `key_insert_time`, que pode RECUSAR (o clip não toca
-                            // aqui, ou toca duas vezes). Uma composição própria aqui
-                            // seria a pose a saltar de volta.
-                            let t = if keys_mode {
-                                Some(timeline_bridge::solo_key_time(
-                                    &self.timeline,
-                                    entity,
-                                    self.clip_playhead.time(),
-                                ))
-                            } else {
-                                timeline_bridge::key_insert_time(
-                                    &self.timeline,
-                                    entity,
-                                    prop,
-                                    k_time,
-                                )
-                            };
-                            if let Some(t) = t {
-                                self.timeline_intents.push(
+                            // ⚠️ O tempo vem da porta que também decide SE pode: uma
+                            // trajetória é geometria do CLIP, e só a aba Keys tem um clip
+                            // escolhido (Enio, 2026-07-31). Em Keys é o relógio do clip
+                            // cortado e remapeado (`solo_key_time`, a metade extraída do
+                            // `key_authoring_solo` — uma composição própria aqui seria a
+                            // pose a saltar de volta); fora dela é uma RECUSA com motivo,
+                            // dita em voz alta. O `key_insert_time` respondia por este
+                            // caso e responde a outra pergunta (*onde esta STRIP toca?*).
+                            match timeline_bridge::path_key_time(
+                                &self.timeline,
+                                entity,
+                                self.clip_playhead.time(),
+                            ) {
+                                Ok(t) => self.timeline_intents.push(
                                     ph2d_timeline::TimelineIntent::AddPathKey {
                                         entity,
                                         t,
                                         at: [xf.translation.x, xf.translation.y],
                                     },
-                                );
+                                ),
+                                Err(r) => {
+                                    // O `push` da fila de toasts devolve se coube; derrubar
+                                    // um toast nunca derruba trabalho, e aqui não há
+                                    // trabalho — a recusa É o resultado.
+                                    let _ = toasts.push(Toast::warning(r.message()));
+                                }
                             }
                         }
                         continue;

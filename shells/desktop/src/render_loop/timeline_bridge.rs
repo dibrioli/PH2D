@@ -451,6 +451,32 @@ pub(crate) fn solo_key_time(
     ph2d_anim::RationalTime::from_seconds(ph2d_timeline::remapped_time(doc, entity, clip_t))
 }
 
+/// **Onde o K pode ancorar uma trajetória** — `Ok(instante)` na aba Keys, `Err(motivo)`
+/// fora dela (Enio, 2026-07-31: *"Path editável apenas em Keys: Clips"*).
+///
+/// ⚠️ **A pergunta é feita AQUI e não no chamador**, e é o que torna a regra impossível de
+/// esquecer: a função lê o `keys_mode` que o próprio `TimelineState` carrega, então o K não
+/// tem um booleano a passar (nem a passar errado). É a metade de AUTORIA da mesma lei que o
+/// overlay aplica no `active_path` para o desenho e as alças — o mesmo booleano, duas
+/// superfícies.
+///
+/// ⚠️ E o `Err` não é um `None`: um gesto que não faz nada e não diz nada é indistinguível
+/// de uma ferramenta quebrada, então o chamador **fala** ([`ph2d_timeline::KeyRefusal`]).
+/// Sob uma pilha a pose é a composição das strips e o clip ativo não é o que o animador
+/// escolheu; ancorar ali reescreveria a distância de todas as keys de um clip que a aba nem
+/// nomeia. Era o `key_insert_time` que atendia este caso — e ele responde a outra pergunta
+/// (*onde esta STRIP toca?*), que para geometria de clip não é a pergunta certa.
+pub(crate) fn path_key_time(
+    timeline: &TimelineState,
+    entity: u64,
+    clip_t: f64,
+) -> Result<ph2d_anim::RationalTime, ph2d_timeline::KeyRefusal> {
+    if !timeline.keys_mode {
+        return Err(ph2d_timeline::KeyRefusal::PathNeedsKeysTab);
+    }
+    Ok(solo_key_time(timeline, entity, clip_t))
+}
+
 /// The default interpolation for a freshly inserted key (a gentle ease).
 pub(crate) fn default_interp() -> ph2d_anim::Interp {
     ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(

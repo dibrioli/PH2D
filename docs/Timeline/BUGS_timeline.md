@@ -403,7 +403,58 @@ ABA foram para o irmão `motion_path_overlay_scope_tests.rs`. O corte é por ass
 tamanho: os dois medem *ONDE a trajetória é oferecida* — as duas metades da mesma porta —
 enquanto o `_tests.rs` mede *como ela é desenhada*.
 
-**Aberto, NÃO construído (decisão de produto):** com AutoKey armado, arrastar o objeto em
-Arrange ainda pode plantar uma âncora (`AutokeyPlan::path_key`) no path do clip ativo — é a
-mesma incoerência por outra porta, mas gateá-la deixa o gesto **silenciosamente inerte**, e
-uma recusa honesta precisa de UX própria (`KeyRefusal`).
+**A metade de AUTORIA fechou na mesma sessão — ver §2g.**
+
+### 2g. E a mesma lei na AUTORIA: o K e o AutoKey não ancoram fora da aba Keys
+
+O §2f fechou o que se **vê** (o desenho e as alças). Havia duas outras portas que
+**escreviam** a mesma geometria, invisíveis: o **K** (`TimelineIntent::AddPathKey`) e o
+**AutoKey armado** (`AutokeyPlan::path_key`). As duas plantavam uma âncora no path do clip
+ATIVO a partir de Arrange ou de dentro de um container — e uma âncora não é uma key a mais:
+ela reescreve a distância que **todas** as keys daquele clip guardam
+(`rewrite_path_key_values`). Um gesto local, uma edição grande, num clip que a aba nem
+nomeia.
+
+⚠️ **Gatear não bastava, e é por isso que a nota anterior dizia "não construído":** um gesto
+que não faz nada e não diz nada é indistinguível de uma ferramenta quebrada — com uma
+agravante aqui, porque o apply seguinte devolve o objeto à curva e o artista vê a pose
+saltar sem motivo. Então a recusa é um **VALOR**, a lei que este documento já segue desde o
+R9: `KeyRefusal::PathNeedsKeysTab`, com mensagem própria.
+
+⚠️ **As outras recusas são sobre um valor que o clip não consegue EXPRIMIR; esta é sobre um
+clip que o animador não está OLHANDO.** Por isso ela não entra na lista `refused` (cujo
+motivo o chamador deriva do mapa da strip — o toast diria *"uma lane acima sobrepõe"* sobre
+uma trajetória): `AutokeyPlan` ganhou o campo próprio **`path_refused`**, e o `is_empty()` o
+inclui — o que também prende o anti-spam: um objeto **parado** sob uma pilha não keya nem
+**reclama**, senão Arrange com AutoKey armado cospe um toast por frame.
+
+**As duas portas, cada uma com a pergunta no lugar certo:**
+
+- **AutoKey** — o `solo` do `autokey_props_in` **é** a pergunta (o mesmo `keys_mode` do
+  overlay), então a lei mora no documento e o shell só a repassa ao toast que já existia.
+- **K** — nasceu a porta **`timeline_bridge::path_key_time`**, que lê o `keys_mode` do
+  próprio `TimelineState` e devolve `Result<RationalTime, KeyRefusal>`. ⚠️ **O chamador não
+  tem booleano a passar (nem a passar errado)**, e o `key_insert_time` — que atendia este
+  caso — responde a outra pergunta (*onde esta STRIP toca?*), que para geometria de clip
+  não é a pergunta certa.
+
+**Gates:** `the_anchor_is_refused_under_a_stack` (presença E ausência sobre o MESMO
+movimento, só a PORTA muda) · `the_k_anchors_a_trajectory_only_on_the_keys_tab` (idem, só a
+VISTA muda) · `an_anchor_refused_outside_the_keys_tab_says_so` (as três asserções são
+independentes: nada é escrito · algo é dito · o motivo é o CERTO) · e o arch-gate
+`the_k_authors_an_anchor_through_the_door_that_can_refuse`, que afirma a PROPRIEDADE
+(*todo `AddPathKey` do shell nasce de um `path_key_time`*) com controle positivo de
+**exatamente um** emissor. **4 mutações, 4 sangram.**
+
+⚠️ **Três fixtures foram corrigidas, não afrouxadas:** elas testavam *"o modo Path ancora e
+nunca keya os eixos"* pela porta da PILHA — uma vista onde isso não pode acontecer. Agora
+declaram a premissa (`autokey_props_solo` / `st.keys_mode = true`) em vez de herdá-la de um
+default, que é o que inverte de sentido no dia em que o default se move
+([[feedback_a_fixture_that_reaches_its_state_by_toggle_inverts_when_the_default_moves]]).
+
+**LOC:** `autokey.rs` estava em 698/700 ⇒ o `mod tests` foi para o irmão
+`autokey_tests.rs` por `#[path]` (segue FILHO, então `use super::*` alcança os privados —
+o corte é de TAMANHO, não de visibilidade).
+
+**Escopo que NÃO muda:** o AutoKey em Arrange segue vivo para os **escalares** (o
+`invert_stack` do ADR-0146 é feature desenhada); só a geometria de trajetória é recusada.

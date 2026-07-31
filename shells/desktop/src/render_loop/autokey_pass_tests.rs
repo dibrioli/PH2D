@@ -40,6 +40,10 @@ fn a_pose_on_its_curve_at_an_off_frame_pause_keys_nothing() {
 #[test]
 fn a_motion_path_object_auto_keys_the_path_never_the_axes() {
     let (mut st, ph) = state_with_path();
+    // ⚠️ A premissa declarada: uma âncora é geometria do CLIP e só a aba Keys tem um clip
+    // escolhido (Enio, 2026-07-31). O `TimelineState::new()` nasce fora dela, então herdar
+    // o default deixaria este gate medindo a recusa em vez da autoria.
+    st.keys_mode = true;
     let mut ak = AutokeyState::default();
     let target = st.doc.binding_for(E, PropKind::Position).unwrap().target;
     let before = st.doc.position_path(E).unwrap().len();

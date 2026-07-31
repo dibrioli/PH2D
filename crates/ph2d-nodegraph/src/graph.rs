@@ -21,7 +21,7 @@
 
 use crate::cook::OpResolver;
 use crate::node::NodeTypeId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A canonical node type name must be non-empty and whitespace-free, so it
 /// round-trips through the whitespace-delimited textual format unambiguously.
@@ -168,6 +168,18 @@ pub struct Graph {
     /// above `[layout]` in the textual format (the `t` record, header `v4`) and it rides
     /// `Clone`/`PartialEq`, which is what puts a rename in the undo queue for free.
     node_labels: BTreeMap<NodeId, String>,
+    /// **Nodes switched OFF** (bypass/mute — the Blender H, the Nuke disable). A bypassed node
+    /// does not run its op: the cook ([`crate::cook`]) passes its primary input (port 0) straight
+    /// to its primary output (port 0), every other output going `Empty`. It is **semantic** — it
+    /// changes the cooked result — so it enters the node's cook fingerprint and sits in the
+    /// semantic section of the textual format (the `y` record, header `v5`). Absent → the node
+    /// runs normally, so a graph nobody muted cooks and serializes byte for byte as before.
+    ///
+    /// Same append-only, foundational-safe move as `node_text_params`/`node_labels`: a parallel
+    /// **set**, not a field on [`NodeInstance`], so a new line extending the graph never conflicts
+    /// on a construction site ([[feedback_foundational_editable_design_for_isolation]]). It rides
+    /// `Clone`/`PartialEq`, which is what puts a bypass toggle in the undo queue for free.
+    node_bypassed: BTreeSet<NodeId>,
     next_id: u32,
 }
 
@@ -259,6 +271,7 @@ impl Graph {
         self.node_params.remove(&id);
         self.node_text_params.remove(&id);
         self.node_labels.remove(&id);
+        self.node_bypassed.remove(&id);
         // Both sides: the params IT drove, and the params driven BY it. A source left
         // pointing at a deleted node would cook as `Empty` forever — a socket wired to a
         // ghost.
@@ -342,6 +355,41 @@ impl Graph {
     /// the `x` record).
     pub fn node_text_params(&self) -> &BTreeMap<NodeId, BTreeMap<String, String>> {
         &self.node_text_params
+    }
+
+    // ── Bypass: nodes switched off (H) ──────────────────────────────────────
+
+    /// Switch a node off (bypass/mute) or back on. A bypassed node's op never runs; the cook
+    /// passes port 0 straight through. Idempotent; lenient on `id` like [`Graph::set_pos`] (a
+    /// bypass on a non-existent node is dead data the cook never reads — the textual parser is
+    /// stricter and rejects a `y` record whose id has no node).
+    pub fn set_bypassed(&mut self, id: NodeId, on: bool) {
+        if on {
+            self.node_bypassed.insert(id);
+        } else {
+            self.node_bypassed.remove(&id);
+        }
+    }
+
+    /// Toggle a node's bypass, returning the NEW state (`true` = now switched off).
+    pub fn toggle_bypass(&mut self, id: NodeId) -> bool {
+        if self.node_bypassed.remove(&id) {
+            false
+        } else {
+            self.node_bypassed.insert(id);
+            true
+        }
+    }
+
+    /// Is this node switched off? Read by the cook (passthrough) and the snapshot (dimmed card).
+    pub fn node_bypassed(&self, id: NodeId) -> bool {
+        self.node_bypassed.contains(&id)
+    }
+
+    /// Every bypassed node id, in deterministic order. Used by the textual format (the `y`
+    /// record); the cook reads a single node's state via [`Graph::node_bypassed`].
+    pub fn bypassed_nodes(&self) -> &BTreeSet<NodeId> {
+        &self.node_bypassed
     }
 
     // ── Labels: the artist's name for a node (doc 61) ───────────────────────

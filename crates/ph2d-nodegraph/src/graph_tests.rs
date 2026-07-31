@@ -136,6 +136,34 @@ fn remove_node_drops_node_incident_edges_layout_and_params() {
     assert!(!g.remove_node(NodeId(999)));
 }
 
+/// **Bypass is a per-node toggle that `remove_node` cleans up.** `toggle_bypass` returns the new
+/// state and is its own inverse; `set_bypassed` is idempotent. Deleting a muted node drops it from
+/// the set — so a later node that reuses the id (the undo respawn) is NOT born muted. FALSIFIED by
+/// dropping the `node_bypassed.remove(&id)` line in `remove_node` (the ghost mute survives).
+#[test]
+fn bypass_toggles_and_remove_node_cleans_it_up() {
+    let mut g = Graph::new();
+    let a = g.add_node("a");
+    let b = g.add_node("b");
+
+    assert!(!g.node_bypassed(a), "a fresh node runs");
+    assert!(g.toggle_bypass(a), "toggle returns the new state: now off");
+    assert!(g.node_bypassed(a));
+    assert!(!g.toggle_bypass(a), "toggle is its own inverse: back on");
+    assert!(!g.node_bypassed(a));
+
+    // set_bypassed is idempotent.
+    g.set_bypassed(b, true);
+    g.set_bypassed(b, true);
+    assert!(g.node_bypassed(b));
+    assert_eq!(g.bypassed_nodes().len(), 1);
+
+    // Deleting a muted node drops it from the set — no phantom mute.
+    assert!(g.remove_node(b));
+    assert!(!g.node_bypassed(b));
+    assert!(g.bypassed_nodes().is_empty());
+}
+
 #[test]
 fn input_edge_resolves_source() {
     let mut g = Graph::new();

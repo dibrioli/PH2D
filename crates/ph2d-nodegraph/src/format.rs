@@ -9,13 +9,14 @@
 //!
 //! Grammar (whitespace-separated; canonical type names have no spaces):
 //! ```text
-//! v1 | v2 | v3 | v4
+//! v1 | v2 | v3 | v4 | v5
 //! n <id> <type_name>
 //! e <from_id> <from_port> <to_id> <to_port> <fwd|pre>
 //! p <id> <param_name> <value>
 //! x <id> <text_param_name> <formula...>          (v2 only)
 //! d <id> <param_name> <src_id> <src_port>        (v3 only)
 //! t <id> <label...>                              (v4 only)
+//! y <id>                                         (v5 only)
 //! [layout]
 //! l <id> <x> <y>
 //! ```
@@ -69,11 +70,15 @@ pub fn to_text(graph: &Graph) -> String {
     let has_driven = !graph.all_param_sources().is_empty();
     // …and a label (doc 61) is one more turn of the same crank.
     let has_label = !graph.node_labels().is_empty();
-    let mut out = String::from(match (has_label, has_driven, has_text) {
-        (true, _, _) => "v4\n",
-        (false, true, _) => "v3\n",
-        (false, false, true) => "v2\n",
-        (false, false, false) => "v1\n",
+    // …and a bypassed node (the `y` record) is the newest turn: v5 iff some node is muted, else
+    // the version it would otherwise have had. A graph nobody muted is byte-identical to before.
+    let has_bypass = !graph.bypassed_nodes().is_empty();
+    let mut out = String::from(match (has_bypass, has_label, has_driven, has_text) {
+        (true, ..) => "v5\n",
+        (false, true, _, _) => "v4\n",
+        (false, false, true, _) => "v3\n",
+        (false, false, false, true) => "v2\n",
+        (false, false, false, false) => "v1\n",
     });
 
     let mut nodes: Vec<_> = graph.nodes().iter().collect();
@@ -118,6 +123,12 @@ pub fn to_text(graph: &Graph) -> String {
         }
     }
 
+    // Bypassed nodes (semantic — a muted node cooks a passthrough, not its op). One id per line,
+    // already sorted (`bypassed_nodes()` is a `BTreeSet`).
+    for id in graph.bypassed_nodes() {
+        let _ = writeln!(out, "y {}", id.0);
+    }
+
     // Labels (authored, not semantic — see the module doc). The name is the trailing
     // free-text field, so interior spaces round-trip: "The Sea" is one label, not two.
     for (id, label) in graph.node_labels() {
@@ -151,7 +162,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
 
     match lines.next() {
-        Some("v1") | Some("v2") | Some("v3") | Some("v4") => {}
+        Some("v1") | Some("v2") | Some("v3") | Some("v4") | Some("v5") => {}
         _ => return Err(ParseError::BadHeader),
     }
 
@@ -162,6 +173,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut text_param_recs: Vec<(NodeId, String, String)> = Vec::new();
     let mut driven_recs: Vec<(NodeId, String, NodeId, u16)> = Vec::new();
     let mut label_recs: Vec<(NodeId, String)> = Vec::new();
+    let mut bypass_recs: Vec<NodeId> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
     let mut seen_ids = std::collections::BTreeSet::new();
 
@@ -251,6 +263,14 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
                 }
                 driven_recs.push((id, name.to_string(), src, port));
             }
+            Some("y") => {
+                // A bypassed node: just its id. A trailing token would be a corrupt line.
+                let id = NodeId(parse(&mut tok, line)?);
+                if tok.next().is_some() {
+                    return Err(ParseError::BadLine(line.into()));
+                }
+                bypass_recs.push(id);
+            }
             Some("l") => {
                 let id = NodeId(parse(&mut tok, line)?);
                 let x: f32 = parse(&mut tok, line)?;
@@ -290,6 +310,13 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
             id.0
         )));
     }
+    // Same for `y` (bypass) — muting a node that is not in the file is a phantom.
+    if let Some(id) = bypass_recs.iter().find(|id| !seen_ids.contains(id)) {
+        return Err(ParseError::BadLine(format!(
+            "y record for unknown node id {}",
+            id.0
+        )));
+    }
     // Same for `d` (driven param) — on BOTH ends. A source pointing at a node that is not in
     // the file is a wire to nowhere, and it would cook `Empty` forever rather than fail.
     if let Some((id, _, src, _)) = driven_recs
@@ -324,6 +351,9 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     }
     for (id, label) in label_recs {
         graph.set_label(id, label);
+    }
+    for id in bypass_recs {
+        graph.set_bypassed(id, true);
     }
     for (id, pos) in layout_recs {
         graph.set_pos(id, pos);
@@ -425,6 +455,44 @@ mod tests {
         // Malformed `x` (missing the formula field) → rejected.
         assert!(matches!(
             from_text("v2\nn 0 a\nx 0 expr\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+    }
+
+    /// **A bypass round-trips through the `y` record, and only then is the file `v5`.** A muted
+    /// node saved and reloaded stays muted; a graph nobody muted stays byte-identical to v1. A `y`
+    /// on an unknown node id, or with a trailing token, is rejected at the boundary. FALSIFIED by
+    /// dropping the `y` emit (the save loses the mute), the parse arm (the load loses it), or the
+    /// version bump (the header stays v1 and a v5-only reader would reject a legit file).
+    #[test]
+    fn a_bypass_round_trips_and_only_then_is_the_file_v5() {
+        let mut g = Graph::new();
+        let a = g.add_node("motion.grid");
+        let b = g.add_node("motion.clone");
+        g.set_bypassed(b, true);
+
+        let text = to_text(&g);
+        assert!(text.starts_with("v5\n"), "a bypass bumps the header to v5:\n{text}");
+        assert!(text.contains(&format!("y {}\n", b.0)), "the `y` record is emitted:\n{text}");
+        // The `y` sits ABOVE `[layout]` — it is semantic (it changes the cook).
+        assert!(text.find("\ny ").unwrap() < text.find("[layout]").unwrap());
+
+        let back = from_text(&text).unwrap();
+        assert!(back.node_bypassed(b), "the reloaded node is still muted");
+        assert!(!back.node_bypassed(a), "the untouched node is not");
+
+        // Un-muting returns the file to the version it would otherwise have had (byte-identical).
+        g.set_bypassed(b, false);
+        assert!(to_text(&g).starts_with("v1\n"), "no mute → back to v1");
+
+        // A `y` on a node with no `n` record → rejected (no phantom).
+        assert!(matches!(
+            from_text("v5\nn 0 a\ny 7\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        // A trailing token on a `y` line → rejected.
+        assert!(matches!(
+            from_text("v5\nn 0 a\ny 0 extra\n[layout]\n"),
             Err(ParseError::BadLine(_))
         ));
     }

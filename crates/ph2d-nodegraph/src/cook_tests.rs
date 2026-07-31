@@ -681,3 +681,6 @@ fn the_initial_checkpoint_is_the_tick_zero_seed() {
 
 #[path = "cook_scope_tests.rs"]
 mod scope;
+
+#[path = "cook_bypass_tests.rs"]
+mod bypass;

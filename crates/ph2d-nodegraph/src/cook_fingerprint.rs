@@ -39,6 +39,10 @@ pub(super) struct Fingerprint {
     /// bytes). Same reuse-gating role as [`params`](Self::params): an edited
     /// formula must recompute rather than return a stale, pre-edit stream.
     pub(super) text_params: u64,
+    /// Whether the node is switched off (bypass/mute — the `y` record). A muted node cooks a
+    /// passthrough instead of its op, so flipping it must recompute: without this field the cache
+    /// would hand back the pre-mute stream (or the pre-un-mute one), and a toggle would look inert.
+    pub(super) bypassed: bool,
 }
 
 /// FNV-1a over a node's overrides, in `BTreeMap` (deterministic) order. `None`

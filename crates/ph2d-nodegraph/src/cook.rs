@@ -29,6 +29,9 @@
 mod fingerprint;
 use fingerprint::{Fingerprint, params_fingerprint, text_params_fingerprint};
 
+#[path = "cook_bypass.rs"]
+mod cook_bypass;
+
 use crate::attr::Stream;
 use crate::effect::Effect;
 use crate::graph::{Graph, NodeId};
@@ -589,6 +592,8 @@ impl Cook {
             tick: consumes_pre.then_some(self.tick),
             params: params_fingerprint(graph.node_param_overrides(node)),
             text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
+            // A muted node cooks a passthrough, not its op — flipping it must recompute.
+            bypassed: graph.node_bypassed(node),
             param_sources: crate::param_source::fingerprint(sources),
             // The externals this node read LAST time, at their revisions NOW (doc 65). A node that
             // has never cooked has read nothing, so this is the hash of the empty list — and its
@@ -626,7 +631,13 @@ impl Cook {
             },
             outputs: Vec::new(),
         };
-        op.eval(&mut ctx);
+        // BYPASS/MUTE (H): a switched-off node's op never runs — it passes port 0 straight through
+        // (`cook_bypass`). Otherwise the op computes as usual.
+        if graph.node_bypassed(node) {
+            ctx.outputs = cook_bypass::bypass_outputs(&input_values, manifest.outputs.len());
+        } else {
+            op.eval(&mut ctx);
+        }
         let n_out = manifest.outputs.len();
         if ctx.outputs.len() != n_out {
             return Err(CookError::OutputCountMismatch {
@@ -662,22 +673,11 @@ impl Cook {
         Ok(revision)
     }
 
-    fn cur_output(&self, node: NodeId, key: ScopeKey, port: usize) -> CookValue {
-        self.cache
-            .get(&(node, key))
-            .and_then(|c| c.outputs.get(port))
-            .cloned()
-            .unwrap_or_default()
-    }
-
-    fn prev_output(&self, node: NodeId, port: usize) -> CookValue {
-        self.prev_outputs
-            .get(&node)
-            .and_then(|outs| outs.get(port))
-            .cloned()
-            .unwrap_or_default()
-    }
 }
+
+// The cached-output readers live in a sibling for the LOC cap.
+#[path = "cook_read.rs"]
+mod cook_read;
 
 #[cfg(test)]
 #[path = "cook_tests.rs"]

@@ -208,7 +208,7 @@ impl crate::App {
                     window_size,
                     surface.gpu(),
                 );
-                // Pass 1d: a malha 3D (ADR-0145 W1/M2) — MESMO alvo `game_rt`,
+                // Pass 1d: a malha 3D (ADR-0150 W1/M2) — MESMO alvo `game_rt`,
                 //   câmera PRÓPRIA (perspectiva orbital) e depth-buffer próprio.
                 //   `LoadOp::Load`, então a cena 2D fica por baixo. No-op sem
                 //   cena armada: num run normal `sculpt3d` é `None` e o frame é

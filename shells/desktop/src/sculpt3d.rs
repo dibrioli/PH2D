@@ -3,7 +3,7 @@
 //! ⚠️ **A navegação orbital mora AQUI, nunca numa `Tool`.** Girar o modelo não é
 //! esculpir: o artista gira com o pincel na mão, e uma `Tool` que capturasse o
 //! ponteiro para navegar teria de devolvê-lo a cada gesto. É também o que mantém
-//! o contrato congelado intacto (ADR-0145) — nenhum método novo em `Tool`.
+//! o contrato congelado intacto (ADR-0150) — nenhum método novo em `Tool`.
 //!
 //! ⚠️ **Tudo isto é inerte sem a cena armada.** `AppGfx.sculpt3d` nasce `None` e
 //! só o smoke a cria, então num run normal cada porta daqui devolve `false` no

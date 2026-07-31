@@ -466,7 +466,7 @@ intervalos = "intervalos"
 invertendo = "invertendo"
 irracional = "irracional"
 
-# pt-BR do módulo 3D (`crates/ph2d-mesh`, ADR-0145). Doc-comment de código, lido como inglês
+# pt-BR do módulo 3D (`crates/ph2d-mesh`, ADR-0150). Doc-comment de código, lido como inglês
 # torto pelo dicionário en-US; são as palavras portuguesas. Apendadas ao FIM da seção de
 # propósito: esta lista é compartilhada por todas as linhas, e só a adição funde limpo.
 #   `termine` — o teto de profundidade do octree existe para que geometria degenerada

@@ -2,7 +2,7 @@
 //!
 //! ⚠️ **Ela mora aqui e o GESTO mora no shell.** Este tipo é estado + matrizes,
 //! sem saber o que é um ponteiro; quem traduz *arrastar* em `orbit` é a shell,
-//! nunca uma `Tool` (ADR-0145: o contrato congelado não é tocado, e navegar não
+//! nunca uma `Tool` (ADR-0150: o contrato congelado não é tocado, e navegar não
 //! é esculpir — o artista gira o modelo com a ferramenta de pincel na mão).
 //!
 //! ⚠️ **Órbita, não voo livre.** Uma câmera 3D genérica tem 6 graus de liberdade

@@ -16,7 +16,7 @@ resumo: "Uma linha por nota do cofre: caminho, tags e o que a nota responde. Lei
 ## O estado, em quatro linhas
 
 ```
-DECISÃO: ADR-0145 (proposto) — malha primária · escrito direto em Rust/wgpu · SculptGL (MIT) de referência
+DECISÃO: ADR-0150 (proposto) — malha primária · escrito direto em Rust/wgpu · SculptGL (MIT) de referência
 LINHA:   line/sculpt3d  (branch + worktree JÁ existem)
 CÓDIGO:  W1 FECHADA, SMOKE APROVADO (2026-07-30) — 6 commits, rebaseada em cd8513b76,
          gate verde sobre a árvore combinada. Aguardando ORDEM DE INTEGRAÇÃO.
@@ -30,7 +30,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
 | **começar a implementar (é aqui)** | [[03.6-HANDOFF-implementador-W1]] |
-| entender a decisão inteira | `ADR-0145` → [[02.1-Representacao-malha-primaria]] |
+| entender a decisão inteira | `ADR-0150` → [[02.1-Representacao-malha-primaria]] |
 | **saber onde o motor roda (CPU × GPU)** | [[03.5-Onde-roda-o-motor]] |
 | usar o SculptGL como referência | [[03.4-Referencia-SculptGL]] |
 | saber por que não há protótipo web | [[02.4-Por-que-nao-ha-MVP-em-TypeScript]] |
@@ -111,7 +111,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 ## Documentos irmãos fora do cofre
 
-- [`ADR-0145`](../architecture/decisions/0145-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md)
+- [`ADR-0150`](../architecture/decisions/0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md)
   — a decisão de arquitetura registrada no repositório. **Reescrito em 2026-07-30**; é ele que vence se
   divergir de qualquer nota daqui.
 - [`CLAUDE.md`](../../CLAUDE.md) — o roteador operacional do projeto inteiro.

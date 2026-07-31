@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# A malha residente do modulo de escultura 3D (ADR-0145: a malha e primaria, o
+# A malha residente do modulo de escultura 3D (ADR-0150: a malha e primaria, o
 # campo e gerador). Crate LEAF: buffers, adjacencia
 # CSR, octree de consulta e import OBJ, sem saber o que e uma GPU, uma Tool ou um
 # painel. Quem fala com o device e a `ph2d-mesh-render`; quem esculpe e a

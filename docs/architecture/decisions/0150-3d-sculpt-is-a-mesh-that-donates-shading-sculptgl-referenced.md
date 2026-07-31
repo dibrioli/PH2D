@@ -1,4 +1,4 @@
-# ADR-0145 — A escultura 3D é uma MALHA que doa sombreamento, referenciada no SculptGL (MIT)
+# ADR-0150 — A escultura 3D é uma MALHA que doa sombreamento, referenciada no SculptGL (MIT)
 
 - **Status:** proposto — aguarda aceite do Enio.
   ⚠️ **O número 0145 está livre no `main` de 2026-07-30** (o último é o 0144). Número de ADR escolhido

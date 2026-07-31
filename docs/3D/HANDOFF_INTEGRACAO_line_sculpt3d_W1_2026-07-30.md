@@ -113,7 +113,7 @@ drop-crate. O que sai da pasta do módulo:
 
 | Símbolo | Valor | Risco |
 |---|---|---|
-| **`ADR-0145`** | o arquivo `0145-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md` | ⚠️ **PROVISÓRIO, e é o ÚNICO símbolo de fato disputável desta linha.** O 0145 estava livre no `main` de hoje, mas **um número de ADR escolhido numa linha paralela é provisório** — já aconteceu duas vezes (0130→0131 na física, 0134→0140 no gpu-nodes). Como os nomes de arquivo diferem, **o git nunca conflita**: quem chega ao `main` primeiro fica com o número e o gate `architecture_adr_numbers_are_unique` é quem acusa. **Se houver colisão, renumere ESTE** e conserte os 9 ponteiros (`git grep -l "ADR-0145\|0145-3d-sculpt"`). |
+| **`ADR-0150`** | o arquivo `0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md` | ⚠️ **PROVISÓRIO, e é o ÚNICO símbolo de fato disputável desta linha.** O 0145 estava livre no `main` de hoje, mas **um número de ADR escolhido numa linha paralela é provisório** — já aconteceu duas vezes (0130→0131 na física, 0134→0140 no gpu-nodes). Como os nomes de arquivo diferem, **o git nunca conflita**: quem chega ao `main` primeiro fica com o número e o gate `architecture_adr_numbers_are_unique` é quem acusa. **Se houver colisão, renumere ESTE** e conserte os 9 ponteiros (`git grep -l "ADR-0150\|0145-3d-sculpt"`). |
 | feature `sculpt3d` | `shells/desktop/Cargo.toml` | Nome único; a lista `default` é append-only. |
 | Os dois `AppGfx { … }` destructurings | `render_loop/mod.rs` e `render_loop/present.rs` | ⚠️ Toda linha que acrescenta campo em `AppGfx` toca as MESMAS duas listas. **No rebase de hoje não conflitou**; se conflitar com uma linha futura, a resolução é trivial (as duas metades entram). |
 | `PH2D_SCULPT3D_SMOKE` | env var | Nome único. |
@@ -129,7 +129,7 @@ compartilhado, zero entrada em lista ordenada** — a W1 não tem UI de painel.
 
 - `Tool = 12` / `RasterEditTool = 5` / `CanvasPaintTool = 1` / `PanelEvent = 4` — intactos.
   A navegação orbital mora **no shell**, nunca numa `Tool`, e é essa decisão que
-  mantém a superfície congelada fora do caminho (ADR-0145).
+  mantém a superfície congelada fora do caminho (ADR-0150).
 - `NodeOp = 2` / `OpResolver = 1` / `NodeManifest = 8` — nem tocados.
 - `ComponentRegistry` do `ph2d-ecs` — **não** mudou de contagem (a W1 não registra
   componente nenhum; a malha ainda não é uma entidade).
@@ -188,7 +188,7 @@ cargo test -p ph2d-sculpt3d  --release --test measure_brush_kernel -- --nocaptur
 
 ## 7. ⚠️ O que a W1 mediu, e a decisão que ficou para o Enio
 
-**A aposta central do ADR-0145 está MEDIDA e vale:** com a pegada FIXA, 10× a
+**A aposta central do ADR-0150 está MEDIDA e vale:** com a pegada FIXA, 10× a
 malha custa **0,79×** (dab) e **1,04×** (refresh de normais). O custo é da
 **pegada**, não da malha.
 

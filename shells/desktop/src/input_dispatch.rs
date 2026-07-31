@@ -2548,7 +2548,7 @@ impl App {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
             return;
         }
-        // ADR-0145 W1/M2: a órbita da cena 3D. Só consome com um arrasto EM
+        // ADR-0150 W1/M2: a órbita da cena 3D. Só consome com um arrasto EM
         // CURSO — a porta devolve `false` sem cena armada e sem botão preso, e
         // é por isso que ela não rouba o hover do app 2D.
         #[cfg(feature = "sculpt3d")]
@@ -2796,7 +2796,7 @@ impl App {
         // (forward to hero).
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
-        // ADR-0145 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um
+        // ADR-0150 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um
         // "passo" é uma linha de roda (os 16 px acima são a régua do zoom 2D).
         #[cfg(feature = "sculpt3d")]
         if !over_panel && self.sculpt3d_wheel(dy / 16.0) {
@@ -2855,7 +2855,7 @@ impl App {
             self.release_body_pose();
             self.release_body_fk();
         }
-        // ADR-0145 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
+        // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
         // portanto invisível) sem cena armada.
         #[cfg(feature = "sculpt3d")]
         {

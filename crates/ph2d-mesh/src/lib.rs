@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! `ph2d-mesh` — **a malha residente** do módulo de escultura 3D.
 //!
-//! O ADR-0145 decide que *a malha é a representação primária e o campo (SDF) é
+//! O ADR-0150 decide que *a malha é a representação primária e o campo (SDF) é
 //! um gerador*. Esta crate é essa malha: buffers SoA, adjacência CSR, normais e
 //! um octree de consulta — mais o import de OBJ, para haver o que esculpir.
 //!

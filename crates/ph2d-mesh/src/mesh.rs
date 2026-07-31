@@ -1,5 +1,5 @@
 //! A malha residente: os buffers, a adjacência, as normais e o índice espacial
-//! — a estrutura que o ADR-0145 chama de **representação primária**.
+//! — a estrutura que o ADR-0150 chama de **representação primária**.
 //!
 //! Layout SoA (*struct of arrays*), adaptado de
 //! `reference/sculptgl/src/mesh/MeshData.js`, MIT — ver `LICENSES/sculptgl-MIT.txt`.

@@ -242,7 +242,7 @@ ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
 ph2d-flip = { path = "../../crates/ph2d-flip" }
 # ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
-# ADR-0145 — a malha residente e o passe wgpu dela. `optional`: e o que torna a
+# ADR-0150 — a malha residente e o passe wgpu dela. `optional`: e o que torna a
 # feature `sculpt3d` uma promessa de remocao verificavel, e nao uma opiniao.
 ph2d-mesh = { path = "../../crates/ph2d-mesh", optional = true }
 ph2d-mesh-render = { path = "../../crates/ph2d-mesh-render", optional = true }
@@ -358,7 +358,7 @@ default = [
 # builds that ship only the rendering surface (e.g., embedded
 # preview windows) without the editor sidecars.
 lite = []
-# ADR-0145 — o modulo de escultura 3D. LIGADA no `default` de proposito: o
+# ADR-0150 — o modulo de escultura 3D. LIGADA no `default` de proposito: o
 # `ship.sh` roda clippy SEM `--all-features`, entao codigo atras de uma feature
 # desligada nao e lintado e apodrece. A flag continua sendo o CONTRATO de
 # removibilidade (docs/3D/02.3): as deps sao `optional`, e desliga-la tem de

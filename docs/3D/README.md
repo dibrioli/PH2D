@@ -32,7 +32,7 @@ pode ser lida e adaptada ([[03.4-Referencia-SculptGL]]).
 ## Estado atual
 
 ```
-DECISÃO: ADR-0145 (proposto, aguarda aceite do Enio)
+DECISÃO: ADR-0150 (proposto, aguarda aceite do Enio)
          malha primária · direto em Rust/wgpu · SculptGL (MIT) de referência
 LINHA:   line/sculpt3d  — branch e worktree JÁ existem
 CÓDIGO:  nenhum ainda — a W1 (a malha) é a primeira

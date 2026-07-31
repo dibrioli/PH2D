@@ -12,7 +12,7 @@
 //!
 //! - [`Camera3d`] — a câmera **orbital** (estado + matrizes). O gesto que a
 //!   dirige mora no shell, nunca numa `Tool`: navegar não é esculpir, e o
-//!   contrato congelado não é tocado (ADR-0145).
+//!   contrato congelado não é tocado (ADR-0150).
 //! - [`MeshRenderer`] — o passe de **matcap procedural**, que põe forma na tela
 //!   sem exigir um asset.
 

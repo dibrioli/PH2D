@@ -58,6 +58,17 @@ impl App {
             (ElementState::Pressed, true) => KeyKind::Repeat,
             (ElementState::Released, _) => KeyKind::Up,
         };
+        // ADR-0150 W2: a cena 3D toma as teclas dela ANTES do store. Inerte (e
+        // portanto invisível) sem cena armada — num run normal `sculpt3d` é
+        // `None` e esta porta devolve `false` no primeiro `if`.
+        #[cfg(feature = "sculpt3d")]
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.sculpt3d_key(code, self.modifiers.control_key())
+        {
+            return;
+        }
+
         self.handler.on_key(KeyEvent {
             keycode,
             modifiers: Self::convert_modifiers(self.modifiers),

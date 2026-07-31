@@ -12,6 +12,7 @@
 //! em vez de meramente desencorajado.
 
 use glam::{Mat4, Vec3};
+use ph2d_mesh::Ray;
 
 /// Quão perto do polo a órbita pode chegar. Exatamente no polo a direção da
 /// vista fica paralela ao `up` e a `look_at` **degenera** (produz `NaN`); esta
@@ -143,6 +144,37 @@ impl Camera3d {
     pub fn clip_planes(&self) -> (f32, f32) {
         let near = (self.distance * 0.01).max(1e-4);
         (near, self.distance * 100.0)
+    }
+
+    /// O raio que sai do olho e passa pelo pixel `(px, py)` — **o pick**.
+    ///
+    /// `px` cresce para a direita e `py` para BAIXO (a convenção de janela), e a
+    /// conversão para NDC (`y` para cima) mora aqui: fazê-la no chamador é como
+    /// nasce um pincel espelhado na vertical que ninguém entende.
+    ///
+    /// ⚠️ **Os eixos e o `tan` saem das MESMAS grandezas que a `view_proj` usa.**
+    /// Se o raio fosse derivado de uma segunda cópia do frustum, o cursor e a
+    /// imagem discordariam por um ângulo pequeno e constante — o defeito clássico
+    /// de *"o pincel pinta ao lado de onde eu aponto"*, que nenhum teste de
+    /// nenhuma das duas metades enxerga. O gate do round-trip
+    /// (projeta um ponto → pega o pixel → dispara o raio de volta) é o que prende
+    /// as duas.
+    #[must_use]
+    pub fn ray_through(&self, px: f32, py: f32, size: (u32, u32)) -> Ray {
+        let (w, h) = (size.0.max(1) as f32, size.1.max(1) as f32);
+        let ndc_x = 2.0 * px / w - 1.0;
+        let ndc_y = 1.0 - 2.0 * py / h;
+        let tan_v = (self.fov_y * 0.5).max(0.01).tan();
+        let tan_h = tan_v * (w / h);
+
+        let (sy, cy) = self.yaw.sin_cos();
+        let (sp, cp) = self.pitch.sin_cos();
+        let v = Vec3::new(cp * sy, sp, cp * cy); // alvo → olho
+        let right = Vec3::Y.cross(v).normalize_or(Vec3::X);
+        let up = v.cross(right);
+
+        let dir = right * (ndc_x * tan_h) + up * (ndc_y * tan_v) - v;
+        Ray::new(self.eye().into(), dir.into())
     }
 
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um

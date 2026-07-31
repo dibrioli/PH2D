@@ -284,3 +284,72 @@ fn the_clip_planes_follow_the_distance_so_depth_precision_is_scale_free() {
         assert!((r - first).abs() / first < 1e-3, "razões {ratios:?}");
     }
 }
+
+#[test]
+fn the_ray_through_a_pixel_lands_where_that_pixel_draws() {
+    // O oráculo do pick: pegue um ponto do mundo, PROJETE-o com a mesma
+    // `view_proj` que o renderer usa, converta para pixel, e dispare o raio de
+    // volta por esse pixel — ele tem de passar pelo ponto. É este ida-e-volta
+    // que prende o cursor à imagem; sem ele, o raio e a projeção podem discordar
+    // por um ângulo pequeno e constante, e o sintoma é *"o pincel pinta ao lado
+    // de onde eu aponto"* — que nenhum teste de nenhuma das duas metades vê.
+    let size = (1280u32, 720u32);
+    let aspect = f32::from(size.0 as u16) / f32::from(size.1 as u16);
+    let cam = Camera3d {
+        target: glam::Vec3::new(0.3, -0.2, 0.1),
+        distance: 4.0,
+        yaw: 0.9,
+        pitch: -0.35,
+        fov_y: core::f32::consts::FRAC_PI_4,
+    };
+    let vp = cam.view_proj(aspect);
+    let mut checked = 0;
+    for k in 0..24 {
+        let t = k as f32 / 23.0;
+        let p = glam::Vec3::new(-1.0 + 2.0 * t, (t * 7.0).sin() * 0.8, (t * 5.0).cos() * 0.8);
+        let clip = vp * p.extend(1.0);
+        if clip.w <= 0.0 {
+            continue;
+        }
+        let ndc = clip.truncate() / clip.w;
+        // A mesma conversão do `ray_through`, na direção oposta.
+        let px = (ndc.x + 1.0) * 0.5 * size.0 as f32;
+        let py = (1.0 - ndc.y) * 0.5 * size.1 as f32;
+        if !(0.0..size.0 as f32).contains(&px) || !(0.0..size.1 as f32).contains(&py) {
+            continue;
+        }
+        let ray = cam.ray_through(px, py, size);
+        // Distância do ponto à reta do raio.
+        let o = glam::Vec3::from(ray.origin());
+        let d = glam::Vec3::from(ray.dir());
+        let w = p - o;
+        let perp = w - d * w.dot(d);
+        assert!(
+            perp.length() < 2e-3,
+            "ponto {p:?} caiu a {} do raio do pixel ({px:.1}, {py:.1})",
+            perp.length()
+        );
+        checked += 1;
+    }
+    assert!(checked > 12, "só {checked} pontos ficaram na tela");
+}
+
+#[test]
+fn the_ray_through_the_centre_of_the_screen_aims_at_the_target() {
+    let cam = Camera3d {
+        target: glam::Vec3::new(1.0, 2.0, -3.0),
+        distance: 5.0,
+        yaw: -1.2,
+        pitch: 0.6,
+        ..Camera3d::default()
+    };
+    let size = (800u32, 600u32);
+    let ray = cam.ray_through(400.0, 300.0, size);
+    let to_target = (cam.target - glam::Vec3::from(ray.origin())).normalize();
+    let d = glam::Vec3::from(ray.dir());
+    assert!(
+        d.dot(to_target) > 0.9999,
+        "o centro da tela não mira o alvo: {:?} vs {to_target:?}",
+        d
+    );
+}

@@ -4113,3 +4113,32 @@ o que ele ainda faz é mudar o **LOOK** (movimento mais liso/em blocos, backrun
 esparso), que era metade do desenho desde o começo. Mas o slider deixou de ser
 um controle de performance, e quem o oferecer como tal estará vendendo um
 número que a medição não sustenta.
+
+### §5.46.10 — ⛔ MEDIDO E REJEITADO — não refaça: materializar o K/S do K–M
+
+Com o passo em ~16 ms, o **K–M** do Tuning é o único regime que continua
+limitado por trabalho: medido a 4096², razão 1, ele custa **4,75× o passo
+(14,3 → 67,9 ms, 14,7 Hz)**.
+
+A causa é exatamente a que o doc 24 nomeou e que ele reduziu, mas não removeu:
+`km_weighted_mean_color` converte **as QUATRO cores-fonte por DESTINO** — 12
+consultas forward + 3 inversas = **15 por célula advectada** — e uma célula é
+canto de até quatro destinos, logo **cada cor é convertida ~4× por passe**.
+
+O remédio é o mesmo padrão do `prepare_rows` (materialize uma vez, leia muitas):
+um plano `ks_rgb` num pré-passe deixaria a média com 3 consultas em vez de 15,
+**byte-idêntico por construção** (a transferência é função pura da cor, e a
+ordem da soma não muda). Vale ~2,5× no custo do K–M.
+
+**Não foi feito, e o que decide é a MEMÓRIA:** o valor tem de ser guardado em
+`f64` — em `f32` a ida-e-volta arredonda e a identidade cai —, o que dá **24 B
+por célula = 403 MB a 4096²**, sobre um grid que já paga 68 B/célula. Gastar
+isso num knob **EXPERIMENTAL e `Hidden`** que já tem resposta sancionada — o
+slider **Grid Size**, que a §5.41 mediu levando o K–M a 8,3 ms, abaixo do kill
+de 12 — é o trade errado. ⚠️ E a alternativa compacta (um anel de 4 linhas por
+thread) é **pior**, não melhor: com `par_chunks_mut` cada tarefa é UMA linha,
+então o anel recomputaria 4 linhas por linha — 4× o trabalho que ele existe
+para evitar.
+
+Se um dia o K–M sair do EXPERIMENTAL, é aqui que a wave começa, e o número que
+ela tem de bater é 403 MB.

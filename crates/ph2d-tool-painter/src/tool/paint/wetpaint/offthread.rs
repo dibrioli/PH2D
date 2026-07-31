@@ -92,9 +92,17 @@ pub(in crate::tool::paint) enum EngineSlot {
 
 /// O worker vivo de uma sessão: os dois canais e o pedido de volta.
 ///
-/// A thread morre quando `to_worker` é dropado (a sessão terminou) — nenhum `join` explícito, e é o
-/// certo: o engine que ela por acaso tivesse morre com ela, e uma sessão encerrada não tem mais nada
-/// a dizer sobre a água.
+/// A thread morre quando a sessão termina — nenhum `join` explícito, e é o certo: o engine que ela
+/// por acaso tivesse morre com ela, e uma sessão encerrada não tem mais nada a dizer sobre a água.
+///
+/// ⚠️ **E quem a mata é o [`Drop`], não o canal fechado.** Este doc afirmava
+/// *"a thread morre quando `to_worker` é dropado"*, e a afirmação é **falsa
+/// exatamente no caso que importa**: com o motor COM ela, o
+/// `while let Ok(engine) = rx.recv()` só observa o canal fechado no TOPO do
+/// laço externo, e o laço INTERNO só sai quando `want` é setado — que é o que
+/// ninguém faz depois de a sessão morrer. O preço era uma thread girando o
+/// ritmo de 40 Hz sobre um motor órfão, **por sessão encerrada**, cada uma
+/// segurando um `Box<Engine>` inteiro.
 pub(in crate::tool::paint) struct SimWorker {
     to_worker: Sender<Box<Engine>>,
     back: Receiver<Box<Engine>>,
@@ -152,6 +160,24 @@ impl std::ops::DerefMut for EngineSlot {
             Self::Here(e) => e,
             Self::Away => unreachable!(),
         }
+    }
+}
+
+/// **O que de fato encerra a thread.**
+///
+/// Setar `want` é a MESMA porta que o tick usa para pedir o motor de volta — e
+/// é por isso que ela é a certa aqui: o worker acorda em no máximo um
+/// [`IDLE_SLEEP`], tenta devolver, e a devolução falha (o `back` morre com este
+/// struct) ou pousa num canal que já está sendo destruído. Nos DOIS caminhos
+/// ele sai do laço interno e cai num `rx.recv()` cujo `to_worker` já morreu,
+/// então a thread retorna e o motor órfão é liberado.
+///
+/// ⚠️ **Um sinal PRÓPRIO de shutdown seria uma segunda porta** para a pergunta
+/// *"largue o motor"*, e as duas divergiriam no dia em que uma ganhasse um
+/// passo a mais.
+impl Drop for SimWorker {
+    fn drop(&mut self) {
+        self.want.store(true, Ordering::Release);
     }
 }
 
@@ -395,5 +421,72 @@ impl super::super::PainterTool {
         if moved {
             self.wetpaint_composite();
         }
+    }
+}
+
+#[cfg(test)]
+mod leak_tests {
+    //! ⚠️ **Aqui, e não no `offthread_tests.rs`:** o oráculo é o `Arc` do pedido,
+    //! que é campo PRIVADO do [`SimWorker`] — e abrir a visibilidade para um gate
+    //! é o tipo de erosão que a próxima linha herda.
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    /// **UMA SESSÃO ENCERRADA NÃO DEIXA UMA THREAD SIMULANDO PARA SEMPRE.**
+    ///
+    /// ⚠️ **Este gate nasceu de um LOG DE SMOKE, não de uma suspeita minha**
+    /// (Enio, 2026-07-31):
+    ///
+    /// ```text
+    ///   worker: busy 69% away 31% sleep 909% | TAXA DA AGUA 392.8 Hz (779 passos em 2.0s)
+    /// ```
+    ///
+    /// Três baldes que dizem PARTIÇÃO somando 1009%, e uma sim dez vezes acima dos
+    /// 40 Hz nominais. Nenhuma das duas coisas é possível para **um** worker — mas
+    /// as duas são exatamente o que **dez** produzem, cada um no seu ritmo correto.
+    ///
+    /// O doc do [`SimWorker`] afirmava *"a thread morre quando `to_worker` é
+    /// dropado (a sessão terminou)"*, e a afirmação é **falsa quando o motor está
+    /// COM ela**: o `while let Ok(engine) = rx.recv()` só observa o canal fechado
+    /// no TOPO do laço externo, e o laço INTERNO só sai quando `want` é setado —
+    /// que é justamente o que ninguém faz depois de a sessão morrer. A thread fica
+    /// girando o ritmo de 40 Hz sobre um motor órfão, **para sempre**, e o motor é
+    /// um `Box<Engine>` com os quatorze planos dentro.
+    ///
+    /// O oráculo é o `Arc` do próprio pedido: o worker segura um clone, então a
+    /// contagem forte cair para 1 **é** a thread ter saído. Um `join` seria melhor
+    /// oráculo e não existe — a thread é solta de propósito.
+    #[test]
+    fn a_finished_session_does_not_leave_a_worker_simulating_forever() {
+        let w = SimWorker::spawn();
+        // O motor VAI para o worker: é este o estado em que o vazamento existe (com
+        // ele em casa, o laço externo observa o canal fechado e sai sozinho).
+        let mut e = Engine::new(64, 64);
+        e.sim.gravity_override = Some([0.0, 1.0]);
+        w.to_worker
+            .send(Box::new(e))
+            .expect("o worker aceita o motor");
+        let want = Arc::clone(&w.want);
+        // Deixa o laço interno de fato entrar em regime antes de soltar a sessão.
+        std::thread::sleep(Duration::from_millis(30));
+        // Três donos: o `SimWorker`, a thread, e este clone.
+        assert_eq!(
+            Arc::strong_count(&want),
+            3,
+            "o worker devia estar vivo segurando o motor — a fixture nao contem o fenomeno"
+        );
+        drop(w);
+        // O worker acorda no máximo um `IDLE_SLEEP` depois; meio segundo é folga de
+        // três ordens de grandeza, e o gate falha em vez de pendurar.
+        let t0 = Instant::now();
+        while Arc::strong_count(&want) > 1 && t0.elapsed() < Duration::from_millis(500) {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(
+            Arc::strong_count(&want),
+            1,
+            "a thread da sim sobreviveu a sessao: ela segue simulando um motor orfao \
+             (foi isto que o log do smoke mediu como `sleep 909%` e 392 Hz)"
+        );
     }
 }

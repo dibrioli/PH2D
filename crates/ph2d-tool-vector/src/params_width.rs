@@ -1,4 +1,4 @@
-//! **O perfil de LARGURA** do traço (ADR-0145 · plano 25 §5) — irmão de [`super`] pelo teto de
+//! **O perfil de LARGURA** do traço (ADR-0148 · plano 25 §5) — irmão de [`super`] pelo teto de
 //! 700 LOC, e o corte é por responsabilidade: aqui mora tudo que responde *"que forma a largura
 //! tem ao longo do caminho?"* — a faixa dos multiplicadores, o mapa slider↔multiplicador, o
 //! default que os knobs mostram, e o **catálogo de perfis nomeados** (W2b).

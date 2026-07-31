@@ -215,7 +215,7 @@ pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeSpec};
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
 /// do caminho, e é o que separa um desenho de um diagrama.
 ///
-/// ⚠️ **A casa dele é a folha [`ph2d_stroke_width`]** (ADR-0145), e não este crate: o perfil
+/// ⚠️ **A casa dele é a folha [`ph2d_stroke_width`]** (ADR-0148), e não este crate: o perfil
 /// tem DOIS donos — o documento o guarda num componente (`ph2d-ecs::VecStrokeProfile`) e o
 /// motor o consome ao moldar a fita (`ph2d_vec_boolean::power_stroke`). `ph2d-ecs` é fundação
 /// e este crate é o modelo puro de documento; nenhum depende do outro, então a casa tem de ser

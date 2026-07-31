@@ -4,7 +4,7 @@
 //! linha que afina na ponta, o traço de nanquim que engrossa na curva, a caligrafia. É o
 //! *Power Stroke* do Inkscape e o *Width Tool* do Illustrator.
 //!
-//! # Duas faces, UMA representação (ADR-0145)
+//! # Duas faces, UMA representação (ADR-0148)
 //!
 //! O que o documento guarda é a **lista de paradas** ([`WidthStops`]) — `(posição de arco,
 //! multiplicador)`. O que o artista escolhe por nome é o **preset** ([`WidthProfile`]): quatro
@@ -203,7 +203,7 @@ impl WidthProfile {
         a + (b - a) * smoothstep(u)
     }
 
-    /// **O preset vira a lista** — a porta única do ADR-0145.
+    /// **O preset vira a lista** — a porta única do ADR-0148.
     ///
     /// ⚠️ Os dois casos degenerados têm ramo PRÓPRIO, e não é higiene: com o meio colado numa
     /// ponta o [`Self::at`] responde pelo trecho que sobrou (duas paradas), e emitir três com

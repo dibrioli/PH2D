@@ -1,5 +1,5 @@
 //! **A LARGURA VIVA na shell** — o cozimento e a materialização do
-//! [`ph2d_ecs::VecStrokeProfile`] (ADR-0145).
+//! [`ph2d_ecs::VecStrokeProfile`] (ADR-0148).
 //!
 //! Espelho exato do [`crate::offset_live`]: o componente guarda a **relação** (que largura, onde)
 //! e a aparência é uma **função pura** dela, re-cozida aqui e desenhada por

@@ -1,4 +1,4 @@
-//! **A cena pronta para o smoke da LARGURA VIVA** — `PH2D_BUILD_SMOKE=41` (ADR-0145).
+//! **A cena pronta para o smoke da LARGURA VIVA** — `PH2D_BUILD_SMOKE=41` (ADR-0148).
 //!
 //! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC (HR-18), como os `*_smoke` vizinhos.
 //!
@@ -78,7 +78,7 @@ fn build(app: &mut crate::App) {
 fn announce(app: &mut crate::App) {
     let n = app.gfx.as_ref().map_or(0, |g| g.vec_scene.paths().len());
     eprintln!(
-        "[smoke] largura viva (ADR-0145): {n} formas -- tres S iguais (azul/verde/laranja) e um \
+        "[smoke] largura viva (ADR-0148): {n} formas -- tres S iguais (azul/verde/laranja) e um \
          DISCO com preenchimento E traco. Nenhum perfil esta' armado: o gesto comeca nos \
          sliders. (1) clique o S do MEIO; (2) na secao **Expand** do painel Vector arraste **W \
          Mid** -- o traco tem de engrossar DESDE o arrasto, com os outros dois S parados como \

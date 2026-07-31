@@ -202,7 +202,7 @@ impl Pencil {
     /// vazia: quem guarda o perfil daí em diante é o componente que a shell armou no último move.
     ///
     /// ⚠️ **Nada aqui toca a cena.** O lápis produz a CURVA; a espessura dela é uma relação que
-    /// vive no componente (ADR-0145), e misturar as duas aqui poria geometria de fita dentro do
+    /// vive no componente (ADR-0148), e misturar as duas aqui poria geometria de fita dentro do
     /// caminho autorado — exatamente o que o preview vivo existe para não fazer.
     #[must_use]
     pub fn width_stops(&self, source: WidthSource) -> WidthStops {

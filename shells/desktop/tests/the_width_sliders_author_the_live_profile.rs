@@ -1,4 +1,4 @@
-//! **Arch-gate da costura da LARGURA VIVA** (ADR-0145) — os quatro sliders AUTORAM, o frame
+//! **Arch-gate da costura da LARGURA VIVA** (ADR-0148) — os quatro sliders AUTORAM, o frame
 //! COZE, e o botão MATERIALIZA.
 //!
 //! ## O que este gate protege
@@ -35,7 +35,7 @@ fn at(needle: &str) -> usize {
 
 /// **Arrastar um dos quatro sliders ARMA o perfil na seleção.** Sem esta costura os knobs
 /// voltam a ser parâmetros de um comando: o artista arrasta, nada acontece, e só o clique
-/// mostra o resultado — que é exatamente o produto que o ADR-0145 substituiu.
+/// mostra o resultado — que é exatamente o produto que o ADR-0148 substituiu.
 #[test]
 fn dragging_a_width_slider_arms_the_live_profile() {
     // ⚠️ A âncora é o RAMO do arrasto, nunca *a primeira `arm(` do arquivo*: "a primeira

@@ -10,7 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# A CASA ÚNICA do perfil de largura (ADR-0145). O perfil vive em DOIS lugares do editor: o
+# A CASA ÚNICA do perfil de largura (ADR-0148). O perfil vive em DOIS lugares do editor: o
 # documento o guarda num componente (`ph2d-ecs::VecStrokeProfile`) e o motor o consome ao moldar
 # a fita (`ph2d-vec-boolean::power_stroke`, via o re-export da `ph2d-vec-scene`). `ph2d-ecs` é
 # fundação e `ph2d-vec-scene` é o modelo puro de documento; nenhum depende do outro, então a casa

@@ -14,7 +14,7 @@ use ph2d_vec_scene::{
 
 /// Qual comando o clique pediu.
 // Sem `Eq`: o perfil carrega `f64`. `PartialEq` basta — ninguém usa isto como chave.
-// ⚠️ **`Clone` e não `Copy` desde o ADR-0145:** o Power Stroke carrega a LISTA de paradas (o
+// ⚠️ **`Clone` e não `Copy` desde o ADR-0148:** o Power Stroke carrega a LISTA de paradas (o
 // que o documento guarda), e uma lista tem heap. Carregar o preset de quatro números aqui
 // tornaria o comando incapaz de exprimir o perfil que uma alça do Width Tool autora — e o
 // `materialise` teria de assar por uma segunda rota, que é exatamente o que o ADR proíbe.
@@ -177,7 +177,7 @@ pub(crate) fn expand_selection(
 /// **O que este comando DESENHA sobre `world`** — as camadas, do fundo para a frente. Vazio
 /// quando não há nada a fazer (sem traço; um offset que aniquila a forma).
 ///
-/// ⚠️ **Porta ÚNICA, e é a espinha do ADR-0145:** o [`expand_selection`] INSERE esta lista no
+/// ⚠️ **Porta ÚNICA, e é a espinha do ADR-0148:** o [`expand_selection`] INSERE esta lista no
 /// documento e o preview vivo do Power Stroke ([`crate::profile_live`]) DESENHA esta lista. Uma
 /// segunda rota — um "aproximador só para o preview" — faria a forma **SALTAR** no instante do
 /// Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate: as duas rotas produzem
@@ -196,7 +196,7 @@ pub(crate) fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath
     }
 }
 
-/// **O Power Stroke de uma lista de PARADAS** — a rota que o perfil VIVO percorre (ADR-0145).
+/// **O Power Stroke de uma lista de PARADAS** — a rota que o perfil VIVO percorre (ADR-0148).
 ///
 /// Não é uma segunda porta: a lista de paradas é o que o documento guarda, e o preset de quatro
 /// números do painel é uma FACE dela — o [`expand_layers`] converte a face e cai aqui. As duas

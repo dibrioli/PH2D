@@ -103,9 +103,9 @@ fn the_peak_is_the_largest_control_value() {
     assert!((p.peak() - 1.8).abs() < 1e-12);
 }
 
-// ── A LISTA DE PARADAS (ADR-0145) ──────────────────────────────────────────────────────
+// ── A LISTA DE PARADAS (ADR-0148) ──────────────────────────────────────────────────────
 
-/// **O preset reduz à lista BIT A BIT.** É o gate central do ADR-0145: o motor passou a
+/// **O preset reduz à lista BIT A BIT.** É o gate central do ADR-0148: o motor passou a
 /// consumir paradas, e a única coisa que garante que nada do que já shipava se moveu é a
 /// redução ser a MESMA função — não uma aproximação com o mesmo desenho.
 ///

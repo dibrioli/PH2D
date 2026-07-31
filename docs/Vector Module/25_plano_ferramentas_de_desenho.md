@@ -85,7 +85,7 @@ Três peças, e **nenhuma pede matemática nova**:
 **A largura viva é o que faz disto um pincel** e é a espinha compartilhada com a §5: a pressão escreve
 num **perfil de largura VIVO** (não no bake). Ver §5 para onde ele mora.
 
-### ✅ W1c — ENTREGUE: a largura viva (ADR-0145)
+### ✅ W1c — ENTREGUE: a largura viva (ADR-0148)
 
 A espinha está de pé, e **pela metade que serve às DUAS waves**: crate-folha `ph2d-stroke-width`
 (`WidthStops` — a lista de paradas — com o `WidthProfile` de quatro números como FACE dela, e a
@@ -96,7 +96,7 @@ arma o perfil na seleção e a fita aparece na hora; o botão virou **Apply Powe
 materializa, o par exato do Offset. A porta é **uma** (`vec_expand::power_stroke_layers`): o preview
 desenha o que ela devolve e o Apply insere o que ela devolve, com gate byte a byte.
 
-Isto **fecha a consequência que o ADR-0145 nomeava** (*"os sliders passam a escrever no perfil do
+Isto **fecha a consequência que o ADR-0148 nomeava** (*"os sliders passam a escrever no perfil do
 caminho e o Apply assa o que está lá"*) — antes o preview mostrava uma espessura e o Apply assava
 outra. Smoke: **`PH2D_BUILD_SMOKE=41`**.
 
@@ -191,7 +191,7 @@ o do Offset. **Zero bump** — a decisão da tabela acima foi tomada e executada
 **O que sobra para a W2, e só isto:** as **alças no canvas** (adicionar/mover/apagar uma parada
 apontando a curva) e os **perfis salvos** (a lista por nome). O que NÃO sobra é decidir onde o
 perfil mora nem escrever um segundo motor: quem o fizer estará a construir a segunda porta que o
-ADR-0145 §3 proíbe.
+ADR-0148 §3 proíbe.
 
 ### ✅ W2a — ENTREGUE: as alças no canvas
 

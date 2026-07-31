@@ -1,5 +1,5 @@
 //! **A LARGURA VIVA** de um traço — o perfil que varia ao longo do caminho, sem que a curva
-//! autorada mude (ADR-0145).
+//! autorada mude (ADR-0148).
 //!
 //! Irmão do [`crate::VecOffset`] no padrão que esta linha já usou várias vezes: o componente
 //! guarda a **relação** (que largura, onde) e a aparência é uma **função pura** dela, re-cozida

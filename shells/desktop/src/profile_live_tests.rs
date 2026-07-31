@@ -1,4 +1,4 @@
-//! Gates da **LARGURA VIVA** — arquivo irmão de `profile_live.rs` (ADR-0145).
+//! Gates da **LARGURA VIVA** — arquivo irmão de `profile_live.rs` (ADR-0148).
 //!
 //! O fato que esta família pina: os quatro sliders deixaram de ser parâmetros de um comando e
 //! passaram a AUTORAR um perfil que se vê antes de assar. Os oráculos são (a) o preview e o Apply
@@ -71,7 +71,7 @@ fn drawn(live: &ProfileLive, id: VecPathId) -> Vec<[f64; 2]> {
         .unwrap_or_default()
 }
 
-/// **O PREVIEW É O QUE O APPLY ASSA.** O gate central do ADR-0145 §3: uma segunda rota faria a
+/// **O PREVIEW É O QUE O APPLY ASSA.** O gate central do ADR-0148 §3: uma segunda rota faria a
 /// forma SALTAR no instante do clique, que é o defeito que o ADR-0128 pagou cinco vezes.
 ///
 /// O oráculo é âncora a âncora, com `==` em `f64`: um épsilon aqui aceitaria um "aproximador só

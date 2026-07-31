@@ -172,7 +172,7 @@ mod motion_path_smoke;
 mod motion_state;
 mod name_unique;
 mod nest_smoke;
-/// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0145).
+/// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0148).
 mod node_reach_smoke;
 /// **Expand** — os cliques de Offset Path / Outline Stroke (o motor é
 /// `ph2d_vec_boolean::expand`; aqui mora o que é de documento: z, pose e undo).
@@ -205,7 +205,7 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_zones;
-/// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0145), irmão do `offset_live`.
+/// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.
 mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;

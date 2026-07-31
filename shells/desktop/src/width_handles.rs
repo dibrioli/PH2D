@@ -1,4 +1,4 @@
-//! **O WIDTH TOOL** — as alças de largura na curva (plano 25 §5, ADR-0145).
+//! **O WIDTH TOOL** — as alças de largura na curva (plano 25 §5, ADR-0148).
 //!
 //! O W1c deu a representação (a lista de paradas) e o motor vivo; o W1d deu uma fonte automática
 //! (o gesto do lápis). Este é o terceiro escritor do MESMO perfil: **a mão do artista, ponto a

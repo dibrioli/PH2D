@@ -1,4 +1,4 @@
-# ADR-0145 — A largura variável é um COMPONENTE ECS, e UM motor serve o preview e o Apply
+# ADR-0148 — A largura variável é um COMPONENTE ECS, e UM motor serve o preview e o Apply
 
 - **Status:** aceito (2026-07-29)
 - **Contexto:** `line/Vector`, plano [`25_plano_ferramentas_de_desenho.md`](../../Vector%20Module/25_plano_ferramentas_de_desenho.md) §4 (W1, A MÃO) e §5 (W2, o Width Tool)

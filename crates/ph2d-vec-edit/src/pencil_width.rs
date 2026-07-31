@@ -2,7 +2,7 @@
 //! decisão do Enio 2026-07-30).
 //!
 //! O [`crate::pencil`] grava o que a mão fez; este módulo responde *"e o que disso vira
-//! ESPESSURA?"*. A saída é uma [`WidthStops`] — o perfil vivo do ADR-0145 —, e é a shell que a
+//! ESPESSURA?"*. A saída é uma [`WidthStops`] — o perfil vivo do ADR-0148 —, e é a shell que a
 //! pendura na forma; aqui não há cena, nem entidade, nem componente.
 //!
 //! # Três fontes, e a que o app de facto tem é a do MEIO

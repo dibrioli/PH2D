@@ -175,7 +175,7 @@ pub enum DrawMode {
     /// vez de arco (o SINAL do `corner_radius`, ADR-0121). O par Fillet/Chamfer consolida numa
     /// dupla de ferramentas o que estava espalhado entre a alça do Node e o toggle da seção Vertex.
     Chamfer,
-    /// **Width**: as alças de LARGURA na curva (plano 25 §5, ADR-0145). Uma alça por parada do
+    /// **Width**: as alças de LARGURA na curva (plano 25 §5, ADR-0148). Uma alça por parada do
     /// perfil, fora da curva à distância que a fita tem ali; afastar engrossa, aproximar afina,
     /// andar ao longo move a parada. Clicar na curva acrescenta uma parada; o botão direito
     /// sobre uma alça a apaga.

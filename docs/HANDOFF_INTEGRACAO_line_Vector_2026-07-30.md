@@ -46,11 +46,13 @@ duas vezes nesta linha:
 
 Cada um roda **só na suíte da própria crate**, então dois merges verdes deixam o workspace
 vermelho. Os componentes novos da linha são **`VecFilter`** (plano 24) e **`VecStrokeProfile`**
-(ADR-0145).
+(ADR-0148).
 
-**ADR novo: um só** — [`0145-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md`](architecture/decisions/0145-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md).
-⚠️ **Um número de ADR escolhido numa linha paralela é PROVISÓRIO** — confira o `architecture_adr_numbers_are_unique` na árvore combinada; se outra linha reivindicou 0145, quem chegou ao `main`
-primeiro fica com o número e este renumera (é a 4ª vez no repo).
+**ADR novo: um só** — [`0148-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md`](architecture/decisions/0148-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md).
+⚠️ **E ele NASCEU como 0145 — renumerado para 0148 NA INTEGRAÇÃO de 2026-07-30** (a 5ª vez no
+repo): a `line/Painter` reivindicou **0145 · 0146 · 0147** na mesma janela e chegou ao `main`
+primeiro, então ela ficou com os três. *Um número de ADR escolhido numa linha paralela é
+PROVISÓRIO* — e este é o registro de que o provisório se realizou.
 
 **Handoffs por-wave da metade do FX** (histórico; o conteúdo técnico deles continua válido):
 
@@ -150,7 +152,7 @@ deixar o artista descobrir. O caminho do tablet (casar `WindowEvent::Touch` e ca
 ⚠️ `PenDynamics` **não tem `Default`**: esquecer de passar a dinâmica é erro de COMPILAÇÃO, o
 idioma do `ShapeFrame` do Painter.
 
-### W1c/W2 — A LARGURA VIVA (ADR-0145) — `=41`, `=42`
+### W1c/W2 — A LARGURA VIVA (ADR-0148) — `=41`, `=42`
 
 O perfil de largura é um **componente ECS** (`VecStrokeProfile`), não um campo do `StrokeSpec` — um
 campo bumparia `VEC_SCENE_SCHEMA_VERSION` **e** `PROJECT_SCHEMA`, e um schema divergente **recusa
@@ -188,7 +190,7 @@ os botões **Select Subpath** e **Select Same** na seção Vertex.
 ## §6 — Os pontos de fusão que exigem CUIDADO
 
 1. **`render_loop/mod.rs`** — a linha acrescenta dois blocos e três drenos de clique:
-   - o bloco `// ── A LARGURA VIVA (ADR-0145)` (o espelho da seleção + o armamento por arrasto + o
+   - o bloco `// ── A LARGURA VIVA (ADR-0148)` (o espelho da seleção + o armamento por arrasto + o
      catálogo de perfis), que corre **depois do `vec_entities::sync`** e **antes do desenho**;
    - `self.profile_live.recook(...)` e a fusão do mapa vivo no argumento do
      `ph2d_vec_render::dispatch` (ele já recebia `&LiveGeometry` do offset — a linha **acrescenta**
@@ -234,7 +236,7 @@ E, **explicitamente**, os que a varredura por-crate não alcança:
 | `node_id_collisions` | `ph2d-editor-core` | os ids derivados por chave em runtime |
 | `architecture_panel_wiring_parity` | `ph2d-editor-core` | pintado ≠ registrado |
 | `hr12_widgets_a11y` | `ph2d-editor-core` | a delegação de a11y dos arquivos de painel novos |
-| `architecture_adr_numbers_are_unique` | `ph2d-editor-core` | o **0145** desta linha |
+| `architecture_adr_numbers_are_unique` | `ph2d-editor-core` | o **0148** desta linha (nasceu 0145) |
 | `arch_safe_clamp_only` | `ph2d-editor-core` | já ficou vermelho-latente noutra linha |
 
 ⚠️ **A lição estrutural que esta linha pagou em 2026-07-23:** os gates que moram em

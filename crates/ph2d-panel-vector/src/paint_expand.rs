@@ -86,7 +86,7 @@ impl BodyCtx<'_> {
     /// ELA ao longo do caminho. `1 · 1 · 1` é o traço uniforme — e é por isso que o botão
     /// recusa esse caso (aí a operação é o Outline Stroke, logo acima).
     ///
-    /// ⚠️ **Desde o ADR-0145 estes quatro sliders AUTORAM** (não são mais parâmetros de um
+    /// ⚠️ **Desde o ADR-0148 estes quatro sliders AUTORAM** (não são mais parâmetros de um
     /// comando): arrastá-los arma um `VecStrokeProfile` na seleção e a fita aparece na hora,
     /// como os chips de Corner/Side do Offset. O botão materializa.
     fn power_stroke_rows(&mut self, y: f32) -> f32 {
@@ -144,7 +144,7 @@ impl BodyCtx<'_> {
                 y,
             );
         }
-        // "Apply Power Stroke", pelo MESMO argumento do "Apply Offset" acima (ADR-0145): desde
+        // "Apply Power Stroke", pelo MESMO argumento do "Apply Offset" acima (ADR-0148): desde
         // que os quatro sliders autoram um perfil VIVO, arrastá-los já mostra a fita na tela —
         // quem consolida a curva é ESTE botão. O nome do botão é a promessa, e um "Power Stroke"
         // solto prometeria que nada acontece antes de clicá-lo.

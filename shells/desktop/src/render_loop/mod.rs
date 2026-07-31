@@ -3974,7 +3974,7 @@ impl crate::App {
                     crate::offset_live::retune(sim, &self.vec_entities, &sel, knobs);
                 }
             }
-            // ── A LARGURA VIVA (ADR-0145) ────────────────────────────────────────
+            // ── A LARGURA VIVA (ADR-0148) ────────────────────────────────────────
             // Os quatro sliders `W Start/Mid/End/Pos` deixaram de ser parâmetros de um comando
             // e passaram a AUTORAR um perfil vivo: o traço engrossa e afina enquanto o slider
             // anda, e o botão *Power Stroke* MATERIALIZA — o mesmo par que o Offset já tinha.
@@ -4032,7 +4032,7 @@ impl crate::App {
                 // carregar offsets diferentes, e o botão tem de honrar o que está na TELA.
                 // Passa pela MESMA porta do caminho numérico (`expand_selection`), senão
                 // haveria uma 2ª maneira de a geometria do offset entrar na cena.
-                // **O botão Power Stroke MATERIALIZA o perfil vivo** (ADR-0145) — o espelho
+                // **O botão Power Stroke MATERIALIZA o perfil vivo** (ADR-0148) — o espelho
                 // exato do Apply Offset logo abaixo. Sem perfil armado na seleção devolve
                 // `false`, e o clique segue pelo caminho numérico (que lê os sliders).
                 let sel_now: Vec<ph2d_vec_scene::VecPathId> =
@@ -5519,7 +5519,7 @@ impl crate::App {
                     .width_stops(self.vec_draw_config.pencil_width_source);
                 crate::profile_live::arm(sim, &self.vec_entities, &[id], &stops);
             }
-            // A largura VIVA (ADR-0145): a fita de largura variável, cozida aqui e desenhada no
+            // A largura VIVA (ADR-0148): a fita de largura variável, cozida aqui e desenhada no
             // z da fonte — que continua sendo a curva autorada que o modo Node edita.
             self.profile_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);

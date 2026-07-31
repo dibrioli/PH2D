@@ -348,7 +348,7 @@ mod tests {
         // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath)
         // + 1 pattern em caminho (VecPatternPath, plano 23)
         // + 1 FX raster (VecFilter, plano 24)
-        // + 1 largura viva (VecStrokeProfile, ADR-0145).
+        // + 1 largura viva (VecStrokeProfile, ADR-0148).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só

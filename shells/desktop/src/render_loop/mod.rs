@@ -67,6 +67,10 @@ pub(crate) mod inspector_joint_wheel;
 /// ela aplica ao componente.
 #[cfg(test)]
 mod inspector_joint_wheel_tests;
+pub(crate) mod inspector_joint_world;
+#[cfg(test)]
+#[path = "inspector_joint_world_tests.rs"]
+mod inspector_joint_world_tests;
 mod inspector_ordering;
 mod inspector_physics;
 mod inspector_physics_apply;

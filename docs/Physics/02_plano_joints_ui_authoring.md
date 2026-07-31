@@ -395,6 +395,30 @@ replay roda no MESMO chamado, então a âncora tem de voltar junto — foi exata
 tabela de polias sumiu e *"um rewind replayava sem as cordas"*. O gate nasce dessa forma: um
 scrub para um tique intermediário, não um Reset (que replaya zero passos e **não vê o bug**).
 
+### §9.2b — O GESTO DE CANVAS (correção de smoke, 2026-07-30)
+
+⚠️ **A wave shipou sem a metade que o artista tenta primeiro.** Relato do Enio:
+*"não aceita desenhar a junta a partir do canvas vazio, apenas de um objeto para
+outro"* — e ele está certo: eu construí o chip da §12 e deixei o gesto do canvas
+(W-J4) recusando um release no vazio. Pior, **a recusa dizia ao artista que pinos
+de mundo não existiam**, uma frase que esta mesma wave acabara de falsificar.
+
+Agora **soltar no vazio cria o pino** — o vazio *é* o mundo. A única recusa que
+sobra é a que continua verdadeira (um joint não liga um corpo a ele mesmo), mais
+a **POLIA**, recusada no GESTO e não só no reconcile: recusar tarde deixaria o
+artista criar um objeto que nasce dormente sem dizer por quê.
+
+⚠️ **A política de âncora é COPIADA do irmão de dois corpos, e é o que evita um
+TRANCO:** num tipo que compartilha um ponto (Pin/Weld) os dois lados são o MESMO
+lugar, então ancorar A no ponto do *press* faria o solver arrancar o corpo até o
+ponto do *release* no primeiro passo. `create_world_pin_at` mora em arquivo
+próprio porque `create_joint_at` **exige dois corpos por construção** — ele toma
+bits de entidade, e `Entity::from_bits(0)` não existe.
+
+⚠️ **O arch-gate disparou sobre o meu próprio comentário**, que citava a frase
+morta ao pé da letra. Não é ruído: um grep futuro cairia nele do mesmo jeito. O
+comentário passou a parafrasear, e diz por quê.
+
 ### §9.3 — Aberto de propósito
 
 - **Um joint de mundo não entra num rig** (D1/§9.1) — arrastar o corpo preso NÃO carrega o

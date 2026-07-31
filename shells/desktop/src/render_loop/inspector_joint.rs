@@ -581,7 +581,7 @@ pub(crate) fn create_joint_at(
 }
 
 /// The entity's name, assigning a unique one first if it has none.
-fn ensure_named(sim: &mut SimWorld, entity: Entity, base: &str) -> Option<String> {
+pub(crate) fn ensure_named(sim: &mut SimWorld, entity: Entity, base: &str) -> Option<String> {
     if let Some(n) = sim.world().get::<Name>(entity)
         && !n.as_str().is_empty()
     {

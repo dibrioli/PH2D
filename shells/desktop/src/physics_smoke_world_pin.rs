@@ -132,8 +132,8 @@ impl crate::App {
                   fica na Hierarquia para sempre podendo ser movido por acidente.\n  \
                2. VERDE (direita) -- o PINO DE MUNDO. Na Hierarquia ha 'New Bob' e\n     \
                   'Wall Pin', e mais nada. A ancora e o proprio joint.\n\n  \
-               Os dois balancam IGUAL ({swing:.3} m de percurso em 2 s, os DOIS):\n  \
-               e um pivo de verdade, nao um corpo congelado.\n\n  \
+               Os dois balancam IGUAL ({swing:.3} m de percurso em 2 s, os DOIS): o\n  \
+               pino de mundo e um pivo de verdade, nao um corpo congelado.\n\n  \
                AUTORE VOCE MESMO: selecione 'Wall Pin' na Hierarquia. Na secao Joint,\n  \
                a row 'Body B' diz **World** (nao '(missing)') e NAO tem conta-gotas --\n  \
                nao ha corpo a apontar. Logo abaixo, 'Anchor B' mostra [Object | World].\n  \
@@ -144,6 +144,16 @@ impl crate::App {
                  vai junto. Ctrl+Z desfaz em UM passo.\n  \
                - e faca o mesmo em 'Old Pin' (o laranja): clicar 'World' ali\n    \
                  ABANDONA o gancho inventado -- e ai da para apagar o objeto.\n\n  \
+               DESENHE UM NO CANVAS (o gesto que faltava): na secao Physics Body de\n  \
+               qualquer corpo, 'Join As' escolhe o tipo e 'Draw Joint on Canvas' arma o\n  \
+               gesto. Aperte SOBRE o corpo e solte no VAZIO -- o vazio E o mundo, e o\n  \
+               pino nasce onde voce soltou. (Ate esta wave soltar no vazio era uma\n  \
+               RECUSA, e era o que faltava: so dava para ligar objeto a objeto.)\n  \
+               - um Pin nasce SEM TRANCO: o corpo fica onde estava, e passa a pender\n    \
+                 do ponto que voce apontou.\n  \
+               - uma Spring/Rope prende ONDE voce apertou no corpo, e o arrasto mede o\n    \
+                 comprimento de repouso.\n  \
+               - a POLIA e recusada, com o porque: a corda puxa as DUAS pontas.\n\n  \
                (!) SCRUB: toque Play, deixe correr, edite qualquer numero do pino e\n     \
                arraste a regua PARA TRAS. A bola verde tem de continuar pendurada. Se\n     \
                ela cair, o replay correu sem a ancora -- e a licao do Weston.\n",

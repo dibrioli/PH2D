@@ -119,7 +119,7 @@ fn a_body_pinned_to_the_world_hangs_and_an_unmarked_one_falls() {
 /// parâmetro — seguida do scrub. É o par exato que um artista faz ao afinar uma
 /// mola e voltar para rever o movimento.
 #[test]
-fn a_scrub_that_MISSES_the_ring_replays_with_the_world_pin_still_holding() {
+fn a_scrub_that_misses_the_ring_replays_with_the_world_pin_still_holding() {
     let (mut sim, joint) = hanging(true);
     let mut bridge = PhysicsBridge::new();
     run(&mut sim, &mut bridge, 200);

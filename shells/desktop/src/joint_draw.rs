@@ -143,28 +143,50 @@ impl App {
         let window = gfx.surface.size();
         let world = gfx.camera.screen_to_world((sx, sy), window);
         let target = body_at(gfx, world);
-        let refusal = match target {
-            None => {
-                Some("Release ON another body — a joint needs two (world pins are not a thing yet)")
-            }
-            Some(b) if b == d.body_a => Some("A joint binds two DIFFERENT bodies"),
-            _ => None,
-        };
-        if let Some(msg) = refusal {
-            gfx.toasts.push(ph2d_editor::Toast::info(msg));
+        // ⚠️ **Soltar no VAZIO não é um erro — o vazio É o mundo** (W-JointWorld).
+        // Antes desta wave a recusa aqui dizia ao artista que pinos de mundo não
+        // existiam, e o gesto que ele de fato tenta — arrastar do corpo para a
+        // parede — não levava a lugar nenhum (relato de smoke, 2026-07-30). A
+        // ÚNICA recusa que sobra é a que continua sendo verdade: um joint não
+        // liga um corpo a ele mesmo.
+        //
+        // ⚠️ A frase antiga NÃO é citada aqui ao pé da letra de propósito: o
+        // arch-gate que a proíbe procura por substring, e um comentário que a
+        // repete é um falso positivo esperando a próxima busca (ele já disparou
+        // uma vez, sobre esta linha).
+        if let Some(b) = target
+            && b == d.body_a
+        {
+            gfx.toasts.push(ph2d_editor::Toast::info(
+                "A joint binds two DIFFERENT bodies",
+            ));
             return; // segue armado: tente outra vez
         }
-        let b = target.expect("refusal covered None");
-        let Some(joint) = crate::render_loop::inspector_joint::create_joint_at(
-            &mut gfx.sim,
-            d.body_a.to_bits(),
-            b.to_bits(),
-            kind,
-            Some((d.from, world)),
-        ) else {
-            gfx.toasts.push(ph2d_editor::Toast::info(
-                "Those two bodies cannot be joined",
-            ));
+        let created = match target {
+            Some(b) => crate::render_loop::inspector_joint::create_joint_at(
+                &mut gfx.sim,
+                d.body_a.to_bits(),
+                b.to_bits(),
+                kind,
+                Some((d.from, world)),
+            ),
+            None => crate::render_loop::inspector_joint_world::create_world_pin_at(
+                &mut gfx.sim,
+                d.body_a.to_bits(),
+                kind,
+                d.from,
+                world,
+            ),
+        };
+        let Some(joint) = created else {
+            gfx.toasts
+                .push(ph2d_editor::Toast::info(if target.is_some() {
+                    "Those two bodies cannot be joined"
+                } else {
+                    // A única forma de o pino de mundo recusar: a POLIA. A corda puxa
+                    // as DUAS pontas, e uma delas no cenário é outra máquina.
+                    "A pulley needs two bodies — its rope pulls at both ends"
+                }));
             return;
         };
         // O comprimento que o GESTO mediu. Uma mola criada arrastando 2 m

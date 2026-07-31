@@ -257,3 +257,34 @@ fn re_describing_a_world_pin_does_not_leak_anchor_bodies() {
         after as i64 - baseline as i64
     );
 }
+
+/// **O pino de mundo se DESENHA — e a ponta B senta no ponto do cenário.**
+///
+/// Medido em vez de suposto: a view sai de `JointRef`, e um pino de mundo TEM
+/// um `JointRef` (a âncora é um corpo de verdade na arena), então a hipótese era
+/// que o overlay já o desenhasse de graça. Ela se confirma — e este gate é o que
+/// impede a próxima wave de "consertar" um desenho que já funciona.
+///
+/// ⚠️ O que ele afirma é a GEOMETRIA (`anchor_b` no ponto autorado), não que o
+/// glifo seja distinto: hoje um pino de parede e um pino entre dois corpos leem
+/// IGUAL na tela, e isso está nomeado como aberto no plano 02 §9.3.
+#[test]
+fn a_world_pin_produces_a_view_whose_b_end_sits_on_the_authored_point() {
+    let (mut sim, _) = hanging(true);
+    let mut bridge = PhysicsBridge::new();
+    run(&mut sim, &mut bridge, 30);
+
+    let v = bridge
+        .joint_views()
+        .next()
+        .expect("um pino de mundo tem de produzir view — sem ela o overlay não o desenha");
+    assert!(
+        (v.anchor_b[0] - 0.0).abs() < 1e-3 && (v.anchor_b[1] - 6.0).abs() < 1e-3,
+        "a ponta B tinha de sentar no ponto autorado (0, 6); está em {:?}",
+        v.anchor_b
+    );
+    assert_eq!(
+        v.body_b, None,
+        "não há corpo B a apontar — o fantasma do limite não tem silhueta a desenhar"
+    );
+}

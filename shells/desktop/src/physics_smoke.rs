@@ -38,7 +38,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 /// das cenas e exige que quem manda arrastar uma alça esteja nesta lista.
 const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
-    "44", "45", "46", "47", "51", "54", "58", "63", "64",
+    "44", "45", "46", "47", "51", "54", "58", "63", "64", "65",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -140,6 +140,7 @@ impl crate::App {
             "62" => self.physics_smoke_differential(),
             "63" => self.physics_smoke_composition(),
             "64" => self.physics_smoke_weston(),
+            "65" => self.physics_smoke_world_pin(),
             _ => self.physics_smoke_drop(),
         }
 

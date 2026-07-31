@@ -229,6 +229,8 @@ camadas finas de intent+UI.
 > `TargetBinding.expr` (`DOC_VERSION 14→15`) · intent `SetBindingExpr` · campo de
 > texto no menu R-click da track (`expr_edit.rs`). `wiggle`/`time`/`value`/`Name.prop`.
 > Smoke: `PH2D_EXPR_SMOKE=1`. Pick-whip = follow-up.
+>
+> ⚠️ **A cena `PH2D_EXPR_SMOKE` MORREU com o card de expressão (2026-07-30)** — o smoke do motor é o **`PH2D_EXPR_BLEND_SMOKE=1`**; ver [`14_a_autoria_de_expressoes_foi_retirada.md`](14_a_autoria_de_expressoes_foi_retirada.md).
 
 - **O QUE:** uma propriedade pode ser dirigida por uma FÓRMULA de tempo e/ou de
   OUTRAS propriedades — `wiggle(freq, amp)`, `time*v`, "linka a `X.position`". A

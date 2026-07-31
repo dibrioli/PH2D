@@ -1,5 +1,10 @@
 # HANDOFF — AUDITORIA TOTAL do editor de Expressões
 
+> ⚠️ **HISTÓRICO a partir de 2026-07-30** — a AUTORIA de expressões (o card + o catálogo de
+> receitas) foi **retirada** por ordem do Enio; o MOTOR ficou. O que este doc mede sobre o
+> catálogo segue válido, mas o código que ele descreve não existe mais no `main`. Registro
+> completo: [`14_a_autoria_de_expressoes_foi_retirada.md`](14_a_autoria_de_expressoes_foi_retirada.md).
+
 > **Para um agente NOVO.** A feature foi **reprovada pelo Enio** em 2026-07-29, depois de
 > quatro rodadas de smoke. Este doc existe para você **auditar tudo nos mínimos detalhes**
 > antes de qualquer reescrita — e para você **não acreditar em mim**. O plano de reescrita

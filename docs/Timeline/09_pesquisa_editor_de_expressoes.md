@@ -1,5 +1,10 @@
 # Pesquisa 09 — Expressões para ARTISTAS: o estado da arte
 
+> ⚠️ **HISTÓRICO a partir de 2026-07-30** — a AUTORIA de expressões (o card + o catálogo de
+> receitas) foi **retirada** por ordem do Enio; o MOTOR ficou. O que este doc mede sobre o
+> catálogo segue válido, mas o código que ele descreve não existe mais no `main`. Registro
+> completo: [`14_a_autoria_de_expressoes_foi_retirada.md`](14_a_autoria_de_expressoes_foi_retirada.md).
+
 > Pedido do Enio (2026-07-28): *"Artistas (alvo dessa engine) não sabem muito sobre
 > expressões. Em vez de abrir apenas um input de texto, deveríamos ter um super modal
 > com expressões comumente usadas … configuradas na UI … algo parecido com uma

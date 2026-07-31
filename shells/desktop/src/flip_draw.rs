@@ -22,6 +22,16 @@ pub(crate) struct FlipDraw {
     points: Vec<Vec2>,
     pressures: Vec<f32>,
     active: bool,
+    /// ⚠️ **A última amostra RECUSADA pelo `MIN_SAMPLE_PX`** — é ela que o pen-up promove.
+    ///
+    /// Sem isto o traço acaba onde caiu a última amostra ACEITA, que fica até `MIN_SAMPLE_PX` de
+    /// onde a mão soltou: medido no gancho, o pior desvio contra a mão caía exatamente no ÚLTIMO
+    /// ponto, valendo **1,0 px (8,3 % da espessura)**. Um traço que termina curto é imprecisão que
+    /// o artista vê em TODO traço, e mais ainda nos curtos.
+    ///
+    /// Não precisa de posição no pen-up: a posição em que a mão soltou **é** a última que a
+    /// ferramenta viu, e ela já passa por aqui — recusada.
+    pending: Option<(Vec2, f32)>,
 }
 
 /// Distância mínima (px de tela) entre amostras — abaixo disso o move é
@@ -38,6 +48,7 @@ impl FlipDraw {
     pub(crate) fn begin(&mut self, world: Vec2, pressure: f32) {
         self.points.clear();
         self.pressures.clear();
+        self.pending = None;
         self.points.push(world);
         self.pressures.push(pressure);
         self.active = true;
@@ -52,8 +63,11 @@ impl FlipDraw {
         let d = world - last;
         let dist_px = (d.x * d.x + d.y * d.y).sqrt() * px_per_world;
         if dist_px < MIN_SAMPLE_PX {
+            // Guardada, não descartada: se o gesto acabar aqui, ela é o fim do traço.
+            self.pending = Some((world, pressure));
             return false;
         }
+        self.pending = None;
         self.points.push(world);
         self.pressures.push(pressure);
         true
@@ -69,6 +83,12 @@ impl FlipDraw {
     /// `None` se não há amostras suficientes (< 2 pontos = um toque, sem traço).
     pub(crate) fn take(&mut self) -> Option<(Vec<Vec2>, Vec<f32>)> {
         self.active = false;
+        // ⭐ **O pen-up PROMOVE a amostra pendente** — o traço acaba onde a mão soltou, não onde
+        // caiu a última amostra que passou do limiar.
+        if let Some((w, pr)) = self.pending.take() {
+            self.points.push(w);
+            self.pressures.push(pr);
+        }
         if self.points.len() < 2 {
             self.points.clear();
             self.pressures.clear();
@@ -485,3 +505,43 @@ impl crate::App {
 #[cfg(test)]
 #[path = "flip_draw_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod pen_up_tests {
+    use super::*;
+
+    /// ⭐ **O TRAÇO ACABA ONDE A MÃO SOLTOU** — não onde caiu a última amostra que passou do
+    /// `MIN_SAMPLE_PX`.
+    ///
+    /// ⚠️ Foi o pior desvio contra a mão na sonda de captura, e ele caía **exatamente no último
+    /// ponto** (`1,0 px`, 8,3 % da espessura). É imprecisão que aparece em TODO traço.
+    #[test]
+    fn the_stroke_ends_where_the_hand_lifted() {
+        let mut d = FlipDraw::default();
+        d.begin(Vec2::new(0.0, 0.0), 1.0);
+        // Três aceitas (10 px de tela cada) e uma RECUSADA por estar a 1 px — o pen-up.
+        assert!(d.extend(Vec2::new(10.0, 0.0), 1.0, 1.0));
+        assert!(d.extend(Vec2::new(20.0, 0.0), 1.0, 1.0));
+        assert!(!d.extend(Vec2::new(21.0, 0.0), 1.0, 1.0));
+        let (pts, prs) = d.take().expect("dois pontos ou mais");
+        assert_eq!(pts.len(), prs.len());
+        let fim = *pts.last().expect("nao vazio");
+        assert!(
+            (fim.x - 21.0).abs() < 1e-6,
+            "o traco acabou em {fim:?}, e a mao soltou em (21, 0)"
+        );
+    }
+
+    /// E a pendente **não sobrevive ao gesto**: um traço novo não pode herdar o fim do anterior.
+    #[test]
+    fn a_new_stroke_does_not_inherit_the_previous_pen_up() {
+        let mut d = FlipDraw::default();
+        d.begin(Vec2::new(0.0, 0.0), 1.0);
+        assert!(d.extend(Vec2::new(10.0, 0.0), 1.0, 1.0));
+        assert!(!d.extend(Vec2::new(10.5, 0.0), 1.0, 1.0));
+        d.begin(Vec2::new(100.0, 100.0), 1.0);
+        assert!(d.extend(Vec2::new(110.0, 100.0), 1.0, 1.0));
+        let (pts, _) = d.take().expect("dois pontos");
+        assert_eq!(pts.len(), 2, "herdou a pendente do traco anterior: {pts:?}");
+    }
+}

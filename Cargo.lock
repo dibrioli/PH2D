@@ -5399,6 +5399,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-render",
  "ph2d-script",
+ "ph2d-sculpt3d",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-tokens",
@@ -5677,6 +5678,7 @@ dependencies = [
  "bytemuck",
  "glam 0.30.10",
  "ph2d-mesh",
+ "ph2d-sculpt3d",
  "pollster",
  "wgpu",
 ]

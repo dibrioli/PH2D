@@ -466,6 +466,16 @@ intervalos = "intervalos"
 invertendo = "invertendo"
 irracional = "irracional"
 
+# pt-BR do módulo 3D (`crates/ph2d-mesh`, ADR-0145). Doc-comment de código, lido como inglês
+# torto pelo dicionário en-US; são as palavras portuguesas. Apendadas ao FIM da seção de
+# propósito: esta lista é compartilhada por todas as linhas, e só a adição funde limpo.
+#   `termine` — o teto de profundidade do octree existe para que geometria degenerada
+#     TERMINE em vez de dividir para sempre (`ph2d-mesh/src/octree.rs`).
+#   `duplicatas` — o gate que prova que o anel de vértices não tem DUPLICATAS
+#     (`ph2d-mesh/src/adjacency_tests.rs`); é o carimbo que garante isso.
+termine = "termine"
+duplicatas = "duplicatas"
+
 [files]
 extend-exclude = [
     "target/**",

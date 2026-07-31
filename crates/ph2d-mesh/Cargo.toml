@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-mesh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A malha residente do modulo de escultura 3D (ADR-0145: a malha e primaria, o
+# campo e gerador). Crate LEAF e dep-free como a `ph2d-curve`: buffers, adjacencia
+# CSR, octree de consulta e import OBJ, sem saber o que e uma GPU, uma Tool ou um
+# painel. Quem fala com o device e a `ph2d-mesh-render`; quem esculpe e a
+# `ph2d-sculpt3d`. Apagar as tres apaga o modulo (docs/3D/02.3).
+[dependencies]
+
+# dhat-rs: o HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate
+# que MEDE*. A sonda `measure_memory` responde "quantos MB residentes por milhao
+# de triangulos", que e a entrada do teto por tier (ADR-0104) e do K1/K2 de
+# docs/3D/03.5. Ela mede ANTES de qualquer `MAX_*` ser escrito.
+[dev-dependencies]
+dhat = "0.3"

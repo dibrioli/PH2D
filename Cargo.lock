@@ -5648,6 +5648,13 @@ name = "ph2d-memory-gc"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-mesh"
+version = "0.0.0"
+dependencies = [
+ "dhat",
+]
+
+[[package]]
 name = "ph2d-motion-doc"
 version = "0.0.0"
 dependencies = [

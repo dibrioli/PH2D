@@ -294,6 +294,14 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     let evap = e.sim.evap_scale * p.k(Knob::Evaporation);
     let rewet = e.sim.rewet_base * p.k(Knob::Rewet);
     let bypass = e.sim.ext_bypass;
+    // ⚠️ **A ROTA que o produto de fato roda.** O `sim_step_stage` escolhe
+    // `advect_jacobi`/`drying_pass_jacobi` sob `order_invariant` (ADR-0147), e uma
+    // sonda que chamasse os irmãos CONGELADOS mediria o mundo pré-wave — a lição
+    // do doc 28 §5.11 (*sonda que re-implementa o laço fica cega à porta*), aqui
+    // na forma mais barata de errar: chamar a função de nome parecido.
+    let order_inv = e.sim.order_invariant;
+    // A CADÊNCIA — sem ela a soma dos passes não é o passo (doc 28 §5.40).
+    let dry_every = e.sim.dry_every;
     let g = e.active_grid_mut();
     // ⚠️ **A MÁSCARA tem de estar VIVA antes do snapshot.** A 1ª versão desta
     // sonda tirou o snapshot do estado logo após o pen-up, onde `active` está
@@ -333,13 +341,21 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     out.push((
         "drying_pass",
         time(g, &mut |g| {
-            ph2d_wet_paint::drying::drying_pass(g, &p, evap, rewet, bypass);
+            if order_inv {
+                ph2d_wet_paint::drying::drying_pass_jacobi(g, &p, evap, rewet, bypass);
+            } else {
+                ph2d_wet_paint::drying::drying_pass(g, &p, evap, rewet, bypass);
+            }
         }),
     ));
     out.push((
         "build_flow_field",
         time(g, &mut |g| {
-            solver::build_flow_field(g, &p, grav[0], grav[1], bypass);
+            if order_inv {
+                solver::build_flow_field_jacobi(g, &p, grav[0], grav[1], bypass);
+            } else {
+                solver::build_flow_field(g, &p, grav[0], grav[1], bypass);
+            }
         }),
     ));
     out.push((
@@ -349,7 +365,11 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     out.push((
         "advect",
         time(g, &mut |g| {
-            solver::advect(g, &p, grav[0], grav[1]);
+            if order_inv {
+                solver::advect_jacobi(g, &p, grav[0], grav[1]);
+            } else {
+                solver::advect(g, &p, grav[0], grav[1]);
+            }
         }),
     ));
     out.push((
@@ -368,15 +388,70 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
         100.0 * live as f64 / cells as f64,
         100.0 * wet as f64 / cells as f64,
     );
+    // ⚠️ **A CADÊNCIA é parte da resposta, não um detalhe** (doc 28 §5.40): o
+    // `sim_step_stage` não roda todo passe em todo passo, então a soma CRUA
+    // sobrestima quem roda ÷3 ou ÷4 e faz otimizar o passe errado. A fração
+    // abaixo é a do `sim.rs` — `smooth_velocity` é o complemento do `build`.
+    let share = |name: &str| -> f64 {
+        match name {
+            "rebuild_active_region" => 0.5,
+            "drying_pass" => 1.0 / dry_every as f64,
+            "build_flow_field" => 0.25,
+            "smooth_velocity" => 0.75,
+            "project" => 1.0 / 3.0,
+            // `advect` e `apply_boundaries` correm em TODO passo (o segundo
+            // roda de novo dentro do estágio da projeção, daí 1 + 1/3).
+            "apply_boundaries" => 1.0 + 1.0 / 3.0,
+            _ => 1.0,
+        }
+    };
     let total: f64 = out.iter().map(|(_, t)| t).sum();
+    let amort: f64 = out.iter().map(|(n, t)| t * share(n)).sum();
+    println!(
+        "    {:<24} {:>8}  {:>7}  {:>8}   {}",
+        "passe", "cru(ms)", "cadencia", "amort(ms)", "% do passo"
+    );
     for (name, ms) in &out {
+        let a = ms * share(name);
         println!(
-            "    {name:<24} {ms:7.3} ms   ({:4.1}%)   {:5.1} ns/celula-da-janela",
-            100.0 * ms / total,
-            ms * 1e6 / cells as f64,
+            "    {name:<24} {ms:8.3}  {:7.3}  {a:8.3}   {:5.1}%",
+            share(name),
+            100.0 * a / amort,
         );
     }
-    println!("    {:<24} {total:7.3} ms", "SOMA dos passes");
+    println!(
+        "    {:<24} {total:8.3}  {:7}  {amort:8.3}   (dry_every = {dry_every})",
+        "SOMA", ""
+    );
+    // ⚠️ **E o passo MEDIDO, pela porta do produto** — sem isto a tabela acima
+    // é uma conta que ninguém conferiu. A unidade é o CICLO DE CADÊNCIA (12
+    // passos cobrem ÷2, ÷3, ÷4 e ÷6 de uma vez): a mediana de passos avulsos
+    // esconde justamente os passes caros, que rodam 1 em 3 ou 1 em 4.
+    const CYCLE: usize = 12;
+    let frame0 = e.sim.frame;
+    let mut v = Vec::with_capacity(REPS);
+    for _ in 0..REPS {
+        restore_grid(e.active_grid_mut(), &snap);
+        e.sim.frame = frame0;
+        let t0 = Instant::now();
+        for _ in 0..CYCLE {
+            e.step_simulation();
+        }
+        v.push(t0.elapsed().as_secs_f64() * 1e3 / CYCLE as f64);
+    }
+    v.sort_by(f64::total_cmp);
+    let measured = v[REPS / 2];
+    println!(
+        "\n    PASSO MEDIDO (ciclo de {CYCLE}, porta do produto)  {measured:7.3} ms  \
+         -> {:6.1} Hz\n    a SOMA amortizada acima da {amort:7.3} ms  (erro {:+.1}%)",
+        1000.0 / measured.max(1e-9),
+        100.0 * (amort - measured) / measured,
+    );
+    println!(
+        "\n    Leitura: a coluna AMORT e a que decide onde gastar esforco — a CRUA\n             \
+         sobrestima quem roda ÷3 ou ÷4. Se os dois totais nao reconciliam, a\n             \
+         fixture esta envenenada (doc 28 §5.40)."
+    );
 }
 
 /// **O que a razão da grade compra, pela PORTA do artista** (o slider "Grid

@@ -224,6 +224,75 @@ impl Mesh {
         }
     }
 
+    /// Recalcula as normais afetadas por um deslocamento em `moved`.
+    ///
+    /// É a metade *limitada pela pegada* do `rebuild`: as normais de face das
+    /// faces que tocam `moved`, e depois as normais de vértice de TODOS os
+    /// vértices dessas faces — não só os que se moveram. Um vizinho parado ao
+    /// lado de uma face que girou tem a normal mudada, e esquecê-lo deixa uma
+    /// costura visível exatamente na borda do pincel, que é onde o artista está
+    /// olhando.
+    ///
+    /// ⚠️ **NÃO mexe no octree.** Depois de um deslocamento ele descreve as
+    /// posições anteriores; enquanto o dab move menos que a folga das caixas
+    /// frouxas isso é invisível, e a atualização incremental por região é da W2
+    /// (o custo dela é da PEGADA, como este passe). Reconstruí-lo aqui tornaria
+    /// um gesto `O(pegada)` num gesto `O(malha)`, que é o oposto do desenho.
+    pub fn refresh_region(&mut self, moved: &[u32], scratch: &mut RegionScratch) {
+        if moved.is_empty() {
+            return;
+        }
+        scratch.reset(self.faces.len(), self.positions.len());
+
+        scratch.faces.clear();
+        for &v in moved {
+            for &fi in self.adjacency.vert_faces.neighbours(v as usize) {
+                if !scratch.face_seen[fi as usize] {
+                    scratch.face_seen[fi as usize] = true;
+                    scratch.faces.push(fi);
+                }
+            }
+        }
+        scratch.verts.clear();
+        for &fi in &scratch.faces {
+            for &v in self.faces[fi as usize].verts() {
+                if !scratch.vert_seen[v as usize] {
+                    scratch.vert_seen[v as usize] = true;
+                    scratch.verts.push(v);
+                }
+            }
+        }
+        // Calcula para um vetor CONTÍGUO e espalha — é o que deixa a leitura
+        // pura e permite o `rayon`. Escrever direto nos índices esparsos seria
+        // escrita concorrente sobre o mesmo `Vec`.
+        normals::face_normals_of(
+            &self.positions,
+            &self.faces,
+            &scratch.faces,
+            &mut scratch.tmp,
+        );
+        for (&fi, n) in scratch.faces.iter().zip(&scratch.tmp) {
+            self.face_normals[fi as usize] = *n;
+        }
+        normals::vertex_normals_of(
+            &self.face_normals,
+            &self.adjacency.vert_faces,
+            &scratch.verts,
+            &mut scratch.tmp,
+        );
+        for (&v, n) in scratch.verts.iter().zip(&scratch.tmp) {
+            self.normals[v as usize] = *n;
+        }
+        // Limpa só o que sujou — zerar os vetores inteiros faria deste passe
+        // `O(malha)` pela porta dos fundos.
+        for &fi in &scratch.faces {
+            scratch.face_seen[fi as usize] = false;
+        }
+        for &v in &scratch.verts {
+            scratch.vert_seen[v as usize] = false;
+        }
+    }
+
     /// O buffer de índices que a GPU consome (quads triangulados).
     pub fn triangle_indices(&self, out: &mut Vec<[u32; 3]>) {
         out.clear();
@@ -249,6 +318,41 @@ impl QueryScratch {
     #[must_use]
     pub fn capacity_bytes(&self) -> usize {
         (self.faces.capacity() + self.seen.capacity()) * size_of::<u32>()
+    }
+}
+
+/// Buffers reutilizados pelo [`Mesh::refresh_region`].
+///
+/// Os `*_seen` são vetores do TAMANHO da malha, mas o passe só os toca onde
+/// escreveu e os limpa na saída — é o que torna o custo função da pegada e não
+/// da malha, e é a razão de eles viverem aqui em vez de nascerem por dab.
+#[derive(Clone, Debug, Default)]
+pub struct RegionScratch {
+    faces: Vec<u32>,
+    verts: Vec<u32>,
+    face_seen: Vec<bool>,
+    vert_seen: Vec<bool>,
+    /// Saída contígua das portas paralelas, reusada pelas duas metades do passe.
+    tmp: Vec<[f32; 3]>,
+}
+
+impl RegionScratch {
+    fn reset(&mut self, faces: usize, verts: usize) {
+        if self.face_seen.len() != faces {
+            self.face_seen = vec![false; faces];
+        }
+        if self.vert_seen.len() != verts {
+            self.vert_seen = vec![false; verts];
+        }
+    }
+
+    /// Bytes que este scratch segura.
+    #[must_use]
+    pub fn capacity_bytes(&self) -> usize {
+        (self.faces.capacity() + self.verts.capacity()) * size_of::<u32>()
+            + self.face_seen.capacity()
+            + self.vert_seen.capacity()
+            + self.tmp.capacity() * size_of::<[f32; 3]>()
     }
 }
 

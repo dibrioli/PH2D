@@ -71,6 +71,89 @@ fn rebuild_is_idempotent() {
     assert_eq!(m.octree().node_count(), nodes0);
 }
 
+/// ⚠️ **O oráculo do `refresh_region` é o `rebuild`.** O passe por-região é uma
+/// otimização de um resultado que já tem uma resposta certa e cara; provar que
+/// ele "atualiza alguma coisa" não diz nada. O que importa é que a malha
+/// resultante seja **byte-idêntica** à que a reconstrução inteira produziria.
+#[test]
+fn a_region_refresh_gives_exactly_what_a_full_rebuild_would() {
+    let mut m = shapes::uv_sphere(16, 22, 1.0);
+    let mut scratch = RegionScratch::default();
+
+    // Desloca uma calota — verts com y alto.
+    let moved: Vec<u32> = (0..m.vert_count() as u32)
+        .filter(|&v| m.positions()[v as usize][1] > 0.6)
+        .collect();
+    assert!(
+        moved.len() > 10,
+        "a fixture precisa mover um pedaço de verdade"
+    );
+    for &v in &moved {
+        let n = m.normals()[v as usize];
+        let p = &mut m.positions_mut()[v as usize];
+        for k in 0..3 {
+            p[k] += n[k] * 0.25;
+        }
+    }
+
+    m.refresh_region(&moved, &mut scratch);
+    let after_region = (m.normals().to_vec(), m.face_normals().to_vec());
+
+    m.rebuild();
+    assert_eq!(
+        after_region.0,
+        m.normals(),
+        "as normais de vértice divergiram da reconstrução completa"
+    );
+    assert_eq!(after_region.1, m.face_normals());
+}
+
+/// ⚠️ **O gate que pega o erro tentador:** atualizar só os vértices que se
+/// MOVERAM. O vizinho parado ao lado de uma face que girou tem a normal
+/// mudada, e esquecê-lo deixa uma costura na borda exata do pincel.
+#[test]
+fn a_region_refresh_also_fixes_the_neighbours_that_did_not_move() {
+    let mut m = shapes::uv_sphere(14, 18, 1.0);
+    let mut scratch = RegionScratch::default();
+    let moved = vec![0u32]; // só o polo norte
+    let before = m.normals().to_vec();
+
+    let n = m.normals()[0];
+    let p = &mut m.positions_mut()[0];
+    for k in 0..3 {
+        p[k] += n[k] * 0.4;
+    }
+    m.refresh_region(&moved, &mut scratch);
+
+    let ring: Vec<u32> = m.adjacency().vert_verts.neighbours(0).to_vec();
+    assert!(!ring.is_empty());
+    let changed = ring
+        .iter()
+        .filter(|&&v| m.normals()[v as usize] != before[v as usize])
+        .count();
+    assert_eq!(
+        changed,
+        ring.len(),
+        "todo vizinho do vértice movido devia ter a normal atualizada"
+    );
+}
+
+/// O scratch é reusado entre dabs, e limpar só o que sujou é o que mantém o
+/// passe limitado pela pegada. Duas passagens seguidas dão o mesmo resultado.
+#[test]
+fn the_region_scratch_is_clean_between_dabs() {
+    let mut m = shapes::uv_sphere(12, 16, 1.0);
+    let mut scratch = RegionScratch::default();
+    let a = vec![0u32];
+    let b = vec![m.vert_count() as u32 - 1];
+    m.refresh_region(&a, &mut scratch);
+    let once = m.normals().to_vec();
+    m.refresh_region(&b, &mut scratch);
+    m.refresh_region(&a, &mut scratch);
+    assert_eq!(m.normals(), &once[..], "o scratch vazou entre passagens");
+    assert!(scratch.capacity_bytes() > 0);
+}
+
 /// A consulta de esfera contra a **força bruta**, que é um oráculo
 /// independente: ela não sabe que existe um octree.
 #[test]

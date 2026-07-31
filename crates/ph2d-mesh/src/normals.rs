@@ -9,15 +9,26 @@
 //! `f32` não é associativa: a mesma malha daria normais diferentes entre
 //! execuções. Lendo pela adjacência, cada vértice **escreve só o seu** e lê uma
 //! lista de ordem fixa ⇒ o resultado é determinístico e as saídas são
-//! disjuntas, que é exatamente a forma que o ADR-0109 pede para paralelizar
-//! depois por linhas sem mudar um byte.
+//! disjuntas, que é exatamente a forma que o ADR-0109 pede para paralelizar.
 //!
-//! ⚠️ **Serial de propósito nesta wave.** O `docs/3D/03.5` prevê `rayon`, mas o
-//! `par_chunks_mut` entra quando a sonda `measure_normals` (M3) disser que ele é
-//! preciso — o kernel já está na forma que torna a mudança de três linhas e
-//! byte-idêntica por construção.
+//! ⚠️ **E paralelizamos, porque a MEDIÇÃO pediu.** A W1/M3 mediu um dab de raio
+//! grande numa malha de 5 M triângulos em 23,7 ms, dos quais **16,0 eram estas
+//! normais** — 67% do gesto. O paralelismo é **byte-idêntico por construção**:
+//! ele muda qual thread avalia qual vértice, nunca a ordem da soma DENTRO de um
+//! vértice, que é a única ordem que o `f32` enxerga. O caminho serial fica como
+//! oráculo, com gate de paridade.
+
+use rayon::prelude::*;
 
 use crate::face::Face;
+
+/// A partir de quantos itens vale acordar o `rayon`.
+///
+/// **Medido, não escolhido** (`measure_normals`, workstation de 32 threads):
+/// abaixo de alguns milhares de itens o custo de distribuir o trabalho passa do
+/// trabalho, e um dab de DETALHE — que toca centenas de vértices — ficaria mais
+/// lento. Se a tabela do M3 mudar, este número muda junto, com a tabela ao lado.
+pub const PAR_MIN: usize = 4_096;
 
 /// A normal de uma face por **Newell**: soma dos produtos cruzados das arestas.
 ///
@@ -45,9 +56,40 @@ pub fn face_normal(positions: &[[f32; 3]], face: Face) -> [f32; 3] {
 /// Recalcula TODAS as normais de face.
 pub fn recompute_face_normals(positions: &[[f32; 3]], faces: &[Face], out: &mut Vec<[f32; 3]>) {
     out.clear();
-    out.reserve(faces.len());
-    for &f in faces {
-        out.push(face_normal(positions, f));
+    out.resize(faces.len(), [0.0, 1.0, 0.0]);
+    if faces.len() < PAR_MIN {
+        for (o, &f) in out.iter_mut().zip(faces) {
+            *o = face_normal(positions, f);
+        }
+    } else {
+        out.par_iter_mut()
+            .zip(faces.par_iter())
+            .for_each(|(o, &f)| *o = face_normal(positions, f));
+    }
+}
+
+/// As normais das faces listadas, **na ordem de `which`** — o chamador espalha.
+///
+/// A separação existe pelo paralelismo: escrever direto nos índices esparsos do
+/// buffer da malha seria escrita concorrente sobre o mesmo `Vec`. Computar para
+/// um vetor contíguo e espalhar depois mantém a leitura pura e a escrita
+/// sequencial, que é barata.
+pub fn face_normals_of(
+    positions: &[[f32; 3]],
+    faces: &[Face],
+    which: &[u32],
+    out: &mut Vec<[f32; 3]>,
+) {
+    out.clear();
+    out.resize(which.len(), [0.0, 1.0, 0.0]);
+    if which.len() < PAR_MIN {
+        for (o, &fi) in out.iter_mut().zip(which) {
+            *o = face_normal(positions, faces[fi as usize]);
+        }
+    } else {
+        out.par_iter_mut()
+            .zip(which.par_iter())
+            .for_each(|(o, &fi)| *o = face_normal(positions, faces[fi as usize]));
     }
 }
 
@@ -70,16 +112,46 @@ pub fn recompute_vertex_normals(
     verts: Option<&[u32]>,
 ) {
     match verts {
-        None => {
+        None if normals.len() < PAR_MIN => {
             for (v, out) in normals.iter_mut().enumerate() {
                 *out = gather(face_normals, vert_faces, v);
             }
         }
+        None => {
+            normals
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(v, out)| *out = gather(face_normals, vert_faces, v));
+        }
+        // Índices esparsos: quem quer paralelismo nesta rota usa
+        // [`vertex_normals_of`] e espalha — é o que o `refresh_region` faz.
+        // Este braço fica como o caminho SIMPLES e como oráculo de paridade.
         Some(list) => {
             for &v in list {
                 normals[v as usize] = gather(face_normals, vert_faces, v as usize);
             }
         }
+    }
+}
+
+/// As normais dos vértices listados, **na ordem de `which`** — o chamador
+/// espalha. Irmã da [`face_normals_of`], pelo mesmo motivo.
+pub fn vertex_normals_of(
+    face_normals: &[[f32; 3]],
+    vert_faces: &crate::adjacency::Csr,
+    which: &[u32],
+    out: &mut Vec<[f32; 3]>,
+) {
+    out.clear();
+    out.resize(which.len(), [0.0, 1.0, 0.0]);
+    if which.len() < PAR_MIN {
+        for (o, &v) in out.iter_mut().zip(which) {
+            *o = gather(face_normals, vert_faces, v as usize);
+        }
+    } else {
+        out.par_iter_mut()
+            .zip(which.par_iter())
+            .for_each(|(o, &v)| *o = gather(face_normals, vert_faces, v as usize));
     }
 }
 

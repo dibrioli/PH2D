@@ -7,8 +7,10 @@
 //!
 //! # O que esta crate NÃO sabe
 //!
-//! Que existe uma GPU, uma `Tool`, um painel ou um documento. Ela é **leaf e
-//! dep-free** como a `ph2d-curve`. Quem fala com o device é a `ph2d-mesh-render`;
+//! Que existe uma GPU, uma `Tool`, um painel ou um documento. Ela é **leaf**, e
+//! a única dependência é o `rayon` — que entrou porque a sonda do M3 mediu as
+//! normais em 67% do custo de um dab, não porque estava previsto. Quem fala com
+//! o device é a `ph2d-mesh-render`;
 //! quem esculpe é a `ph2d-sculpt3d`. Apagar as três apaga o módulo, que é a
 //! promessa de removibilidade do `docs/3D/02.3` — e uma promessa dessas só é
 //! verdadeira se for construída antes da primeira linha, nunca depois.
@@ -44,8 +46,11 @@ mod octree;
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use face::{Face, TRI};
-pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch};
-pub use normals::{face_normal, recompute_face_normals, recompute_vertex_normals};
+pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
+pub use normals::{
+    PAR_MIN, face_normal, face_normals_of, recompute_face_normals, recompute_vertex_normals,
+    vertex_normals_of,
+};
 pub use obj::{ObjError, import_obj};
 pub use octree::Octree;
 

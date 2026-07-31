@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-sculpt3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os verbos de escultura. Na W1/M3 ela existe com UM verbo — o `Draw` — porque
+# e o minimo que responde a pergunta do M3: *quanto custa um dab?* O modelo de
+# TRACO (o `pre` congelado no pen-down + envelope, docs/3D/04.1), a mascara, a
+# simetria e os outros 19 verbos sao a W2, e cada um chega com o gate dele.
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }

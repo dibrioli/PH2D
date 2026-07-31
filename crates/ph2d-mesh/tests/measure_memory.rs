@@ -56,7 +56,24 @@ fn analytic_breakdown(m: &Mesh) -> Vec<(&'static str, usize)> {
 fn measure_memory() {
     let _profiler = dhat::Profiler::builder().testing().build();
 
+    // ⚠️ **Acorda o pool do `rayon` ANTES de medir qualquer malha.** Ele nasce
+    // preguiçoso, na primeira chamada paralela — que é o build da primeira
+    // malha —, e o dhat atribuía as alocações dele à malha de 10 k triângulos:
+    // 54,3 → 77,9 B/triângulo, e o gate de linearidade disparava culpando uma
+    // "estrutura super-linear" que não existe. O pool é custo de PROCESSO, fixo
+    // e pago uma vez; contá-lo como custo de malha é a mesma classe de erro que
+    // medir o primeiro traço junto com o *first-touch* dos buffers.
+    let pool_before = dhat::HeapStats::get().curr_bytes;
+    drop(shapes::sphere_with_triangles(20_000, 1.0));
+    let pool = dhat::HeapStats::get()
+        .curr_bytes
+        .saturating_sub(pool_before);
+
     println!("\n=== ph2d-mesh :: memória residente por malha ===\n");
+    println!(
+        "  (pool do rayon, custo de processo pago uma vez: {:.2} MB)\n",
+        pool as f64 / MB
+    );
     println!(
         "{:>12} {:>10} {:>10} {:>12} {:>12}",
         "triangulos", "vertices", "faces", "MB (dhat)", "B/triangulo"

@@ -10,11 +10,18 @@ authors.workspace = true
 [lib]
 
 # A malha residente do modulo de escultura 3D (ADR-0145: a malha e primaria, o
-# campo e gerador). Crate LEAF e dep-free como a `ph2d-curve`: buffers, adjacencia
+# campo e gerador). Crate LEAF: buffers, adjacencia
 # CSR, octree de consulta e import OBJ, sem saber o que e uma GPU, uma Tool ou um
 # painel. Quem fala com o device e a `ph2d-mesh-render`; quem esculpe e a
 # `ph2d-sculpt3d`. Apagar as tres apaga o modulo (docs/3D/02.3).
 [dependencies]
+# rayon: as normais por gather sao por-vertice PURAS com saidas DISJUNTAS — a
+# forma exata do ADR-0109, que este repositorio ja paralelizou cinco vezes
+# (sculpt_offset, sculpt_close, o campo da aquarela, o fold da luz, o scan do
+# undo). O `docs/3D/03.5` previu `rayon` e a sonda do M3 MEDIU que ele e
+# preciso: as normais eram 67% do custo de um dab. O caminho serial FICA, como
+# oraculo de paridade byte-a-byte.
+rayon = "1"
 
 # dhat-rs: o HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate
 # que MEDE*. A sonda `measure_memory` responde "quantos MB residentes por milhao

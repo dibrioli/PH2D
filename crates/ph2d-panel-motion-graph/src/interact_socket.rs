@@ -184,7 +184,9 @@ pub(super) fn apply_socket_in(
                         // — it was a silent no-op, the very thing it exists to prevent.
                         state.menu = Some(menu);
                     } else if let Some((from_node, from_port)) =
-                        super::drop_gesture::node_body_source(snap, &view, to_node, to_port, g.x, g.y)
+                        super::drop_gesture::node_body_source(
+                            snap, &view, to_node, to_port, g.x, g.y,
+                        )
                     {
                         // Dropped on a regular node's BODY: connect its first compatible OUTPUT —
                         // the mirror of the forward drop-on-node (doc 63.3), so a backward drag is

@@ -672,7 +672,6 @@ impl Cook {
         );
         Ok(revision)
     }
-
 }
 
 // The cached-output readers live in a sibling for the LOC cap.

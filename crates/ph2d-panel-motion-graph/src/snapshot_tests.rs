@@ -13,7 +13,14 @@ use ph2d_nodegraph::port::Dim;
 #[test]
 fn scalar_is_a_value_dot_and_multi_component_is_a_column_diamond() {
     assert_eq!(socket_glyph(Dim::Scalar), SocketGlyph::Value);
-    for d in [Dim::Vec2, Dim::Vec3, Dim::Vec4, Dim::Mat2, Dim::Mat3, Dim::Mat4] {
+    for d in [
+        Dim::Vec2,
+        Dim::Vec3,
+        Dim::Vec4,
+        Dim::Mat2,
+        Dim::Mat3,
+        Dim::Mat4,
+    ] {
         assert_eq!(socket_glyph(d), SocketGlyph::Column, "{d:?} is a column");
     }
 }
@@ -32,8 +39,16 @@ fn snapshot_from_reflects_bypass_into_the_view() {
 
     let reg = NodeRegistry::new();
     let snap = snapshot_from(&g, &reg);
-    let view = |id: u32| snap.nodes.iter().find(|n| n.id == id).expect("node in view");
-    assert!(!view(a.0).bypassed, "an unmuted node's view is not bypassed");
+    let view = |id: u32| {
+        snap.nodes
+            .iter()
+            .find(|n| n.id == id)
+            .expect("node in view")
+    };
+    assert!(
+        !view(a.0).bypassed,
+        "an unmuted node's view is not bypassed"
+    );
     assert!(view(b.0).bypassed, "a muted node's view IS bypassed");
 }
 
@@ -45,7 +60,11 @@ fn the_bypass_strike_spans_the_card_corners() {
     let body = ph2d_editor_core::zones::Rect::new(10.0, 20.0, 190.0, 60.0);
     let [start, end] = crate::paint::bypass_strike(body);
     assert_eq!(start, (body.x, body.y), "starts at the top-left corner");
-    assert_eq!(end, (body.x + body.w, body.y + body.h), "ends at the bottom-right corner");
+    assert_eq!(
+        end,
+        (body.x + body.w, body.y + body.h),
+        "ends at the bottom-right corner"
+    );
     // It genuinely crosses the card, both axes.
     assert!((end.0 - start.0).abs() >= body.w && (end.1 - start.1).abs() >= body.h);
 }

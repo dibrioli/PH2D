@@ -8,8 +8,8 @@
 
 use super::*;
 use crate::interaction::dispatch::{
-    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_H, KEY_KEY_K, KEY_KEY_L,
-    KEY_KEY_P,
+    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_H, KEY_KEY_K,
+    KEY_KEY_L, KEY_KEY_P,
 };
 use crate::interaction::{GesturePhase, GraphHitKind, GraphKey};
 use ph2d_host::{PointerButton, WheelEvent};

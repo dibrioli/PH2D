@@ -208,11 +208,11 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_props;
 mod physics_smoke_rigs;
 mod physics_smoke_zones;
+mod picker_smoke;
 /// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.
 mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
-mod picker_smoke;
 mod project;
 mod project_painter;
 mod render_loop;

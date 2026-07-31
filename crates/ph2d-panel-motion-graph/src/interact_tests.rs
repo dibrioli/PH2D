@@ -383,7 +383,13 @@ fn a_wire_dropped_on_a_node_body_takes_its_first_free_compatible_input() {
         level: None,
         breadcrumb: Vec::new(),
         nodes: vec![
-            body_node(1, 0.0, NodeViewKind::Node, vec![], vec![port(Domain::Instances)]),
+            body_node(
+                1,
+                0.0,
+                NodeViewKind::Node,
+                vec![],
+                vec![port(Domain::Instances)],
+            ),
             body_node(
                 2,
                 200.0,
@@ -407,10 +413,28 @@ fn a_wire_dropped_on_a_node_body_takes_its_first_free_compatible_input() {
     };
     let mut st = MotionGraphPanelState::default();
     let out = GraphHitKind::SocketOut { node: 1, port: 0 };
-    apply_gesture(&mut st, gesture(out, GesturePhase::Begin, 10.0, 37.0), RECT, CENTER, &snap);
+    apply_gesture(
+        &mut st,
+        gesture(out, GesturePhase::Begin, 10.0, 37.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
     // Drop on B's BODY (295, 50): 95 px from any socket, well outside the 22 px magnet.
-    apply_gesture(&mut st, gesture(out, GesturePhase::Update, 295.0, 50.0), RECT, CENTER, &snap);
-    apply_gesture(&mut st, gesture(out, GesturePhase::End, 295.0, 50.0), RECT, CENTER, &snap);
+    apply_gesture(
+        &mut st,
+        gesture(out, GesturePhase::Update, 295.0, 50.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    apply_gesture(
+        &mut st,
+        gesture(out, GesturePhase::End, 295.0, 50.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::Connect {
@@ -443,7 +467,13 @@ fn the_node_body_drop_skips_a_collapsed_card_and_its_own_source() {
                 vec![port(Domain::Instances)],
             ),
             // A collapsed card (id 2) with a free compatible input.
-            body_node(2, 200.0, NodeViewKind::Subgraph, vec![port(Domain::Instances)], Vec::new()),
+            body_node(
+                2,
+                200.0,
+                NodeViewKind::Subgraph,
+                vec![port(Domain::Instances)],
+                Vec::new(),
+            ),
         ],
         edges: Vec::new(),
         backdrops: Vec::new(),
@@ -474,7 +504,10 @@ fn select_all_selects_every_node_at_this_level() {
     let mut got: Vec<u32> = st.selected.iter().copied().collect();
     got.sort_unstable();
     assert_eq!(got, vec![1, 2], "every node at this level is selected");
-    assert_eq!(st.selected_backdrop, None, "a backdrop is a separate subject, so it clears");
+    assert_eq!(
+        st.selected_backdrop, None,
+        "a backdrop is a separate subject, so it clears"
+    );
 }
 
 /// **Ctrl+L grows the selection to the whole connected island, and only that island** — flood-fill
@@ -497,7 +530,15 @@ fn select_linked_grows_to_the_connected_island_only() {
         level: None,
         breadcrumb: Vec::new(),
         nodes: (1..=5)
-            .map(|id| body_node(id, id as f32 * 100.0, NodeViewKind::Node, Vec::new(), Vec::new()))
+            .map(|id| {
+                body_node(
+                    id,
+                    id as f32 * 100.0,
+                    NodeViewKind::Node,
+                    Vec::new(),
+                    Vec::new(),
+                )
+            })
             .collect(),
         // Island A: 1 -> 2 -> 3. Island B: 4 -> 5.
         edges: vec![edge(1, 2), edge(2, 3), edge(4, 5)],
@@ -510,7 +551,11 @@ fn select_linked_grows_to_the_connected_island_only() {
     apply_key(&mut st, GraphKey::SelectLinked, RECT, &snap);
     let mut got: Vec<u32> = st.selected.iter().copied().collect();
     got.sort_unstable();
-    assert_eq!(got, vec![1, 2, 3], "the whole island A joined; island B (4-5) is untouched");
+    assert_eq!(
+        got,
+        vec![1, 2, 3],
+        "the whole island A joined; island B (4-5) is untouched"
+    );
 }
 
 /// **Ctrl-drag a box REMOVES the covered nodes from the selection** — refine a select-all / linked
@@ -523,14 +568,22 @@ fn ctrl_box_drag_subtracts_the_covered_nodes() {
     let mut st = MotionGraphPanelState::default();
     st.selected.extend([1, 2]);
     for phase in [GesturePhase::Begin, GesturePhase::Update, GesturePhase::End] {
-        let (x, y) = if phase == GesturePhase::Begin { (195.0, 10.0) } else { (400.0, 300.0) };
+        let (x, y) = if phase == GesturePhase::Begin {
+            (195.0, 10.0)
+        } else {
+            (400.0, 300.0)
+        };
         let mut g = gesture(GraphHitKind::Background, phase, x, y);
         g.mods.cmd = true; // Ctrl held → the band subtracts
         apply_gesture(&mut st, g, RECT, CENTER, &snap);
     }
     let mut got: Vec<u32> = st.selected.iter().copied().collect();
     got.sort_unstable();
-    assert_eq!(got, vec![1], "node 2 (under the box) was deselected; node 1 (outside) stays");
+    assert_eq!(
+        got,
+        vec![1],
+        "node 2 (under the box) was deselected; node 1 (outside) stays"
+    );
 }
 
 /// **A backward wire (dragged out of an empty input) dropped on a node's BODY takes that node's
@@ -547,9 +600,21 @@ fn a_backward_wire_dropped_on_a_node_body_takes_its_first_compatible_output() {
         breadcrumb: Vec::new(),
         nodes: vec![
             // Node 1: an EMPTY input to drag a wire backwards out of.
-            body_node(1, 0.0, NodeViewKind::Node, vec![port(Domain::Instances)], Vec::new()),
+            body_node(
+                1,
+                0.0,
+                NodeViewKind::Node,
+                vec![port(Domain::Instances)],
+                Vec::new(),
+            ),
             // Node 2: a compatible OUTPUT — the backward wire lands on its body.
-            body_node(2, 200.0, NodeViewKind::Node, Vec::new(), vec![port(Domain::Instances)]),
+            body_node(
+                2,
+                200.0,
+                NodeViewKind::Node,
+                Vec::new(),
+                vec![port(Domain::Instances)],
+            ),
         ],
         edges: Vec::new(),
         backdrops: Vec::new(),
@@ -558,10 +623,28 @@ fn a_backward_wire_dropped_on_a_node_body_takes_its_first_compatible_output() {
     };
     let mut st = MotionGraphPanelState::default();
     let in_sock = GraphHitKind::SocketIn { node: 1, port: 0 };
-    apply_gesture(&mut st, gesture(in_sock, GesturePhase::Begin, 0.0, 37.0), RECT, CENTER, &snap);
+    apply_gesture(
+        &mut st,
+        gesture(in_sock, GesturePhase::Begin, 0.0, 37.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
     // Drop on node 2's BODY (295, 30) — 95 px from its output socket, outside the magnet.
-    apply_gesture(&mut st, gesture(in_sock, GesturePhase::Update, 295.0, 30.0), RECT, CENTER, &snap);
-    apply_gesture(&mut st, gesture(in_sock, GesturePhase::End, 295.0, 30.0), RECT, CENTER, &snap);
+    apply_gesture(
+        &mut st,
+        gesture(in_sock, GesturePhase::Update, 295.0, 30.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    apply_gesture(
+        &mut st,
+        gesture(in_sock, GesturePhase::End, 295.0, 30.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::Connect {

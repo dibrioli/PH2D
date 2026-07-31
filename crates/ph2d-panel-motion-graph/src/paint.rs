@@ -477,10 +477,7 @@ fn draw_card(
 /// bottom-right. It SPANS the card — the "off" gesture reads only if it crosses the whole thing,
 /// not as a dot or a stub. A pure function so the geometry is gate-able without a Vello scene.
 pub(crate) fn bypass_strike(body: Rect) -> [(f32, f32); 2] {
-    [
-        (body.x, body.y),
-        (body.x + body.w, body.y + body.h),
-    ]
+    [(body.x, body.y), (body.x + body.w, body.y + body.h)]
 }
 
 /// Draw one socket dot: coloured by [`Domain`], SHAPED by [`Dim`] — a diamond ◇ for a

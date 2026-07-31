@@ -195,7 +195,11 @@ fn nearest_socket(
         if !output && n.kind == crate::snapshot::NodeViewKind::Subgraph {
             continue;
         }
-        let ports = if output { n.outputs.len() } else { n.inputs.len() };
+        let ports = if output {
+            n.outputs.len()
+        } else {
+            n.inputs.len()
+        };
         for i in 0..ports {
             let (cx, cy) = socket_center(n, view, output, i);
             let d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
@@ -455,7 +459,10 @@ mod tests {
         let snap = one_node(node_with_inputs(7, 100.0, 2));
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
         // Input 0 center (100, 37); 15 px above it — only input 0 is within reach.
-        assert_eq!(nearest_input_socket(&snap, &view, 100.0, 22.0), Some((7, 0)));
+        assert_eq!(
+            nearest_input_socket(&snap, &view, 100.0, 22.0),
+            Some((7, 0))
+        );
     }
 
     /// Between two in-range sockets the magnet takes the **nearer** one — a drop at y=54 is
@@ -465,7 +472,10 @@ mod tests {
     fn snap_takes_the_nearest_of_two_sockets() {
         let snap = one_node(node_with_inputs(7, 100.0, 2));
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        assert_eq!(nearest_input_socket(&snap, &view, 100.0, 54.0), Some((7, 1)));
+        assert_eq!(
+            nearest_input_socket(&snap, &view, 100.0, 54.0),
+            Some((7, 1))
+        );
     }
 
     /// The output magnet reads **output** sockets (right edge), not inputs — the mirror used by
@@ -476,7 +486,10 @@ mod tests {
         let snap = one_node(node_with_outputs(9, 100.0, 1));
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
         let (ox, oy) = socket_center(&snap.nodes[0], &view, true, 0);
-        assert_eq!(nearest_output_socket(&snap, &view, ox + 12.0, oy), Some((9, 0)));
+        assert_eq!(
+            nearest_output_socket(&snap, &view, ox + 12.0, oy),
+            Some((9, 0))
+        );
         assert_eq!(nearest_input_socket(&snap, &view, ox + 12.0, oy), None);
     }
 

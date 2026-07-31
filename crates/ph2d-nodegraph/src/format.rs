@@ -472,8 +472,14 @@ mod tests {
         g.set_bypassed(b, true);
 
         let text = to_text(&g);
-        assert!(text.starts_with("v5\n"), "a bypass bumps the header to v5:\n{text}");
-        assert!(text.contains(&format!("y {}\n", b.0)), "the `y` record is emitted:\n{text}");
+        assert!(
+            text.starts_with("v5\n"),
+            "a bypass bumps the header to v5:\n{text}"
+        );
+        assert!(
+            text.contains(&format!("y {}\n", b.0)),
+            "the `y` record is emitted:\n{text}"
+        );
         // The `y` sits ABOVE `[layout]` — it is semantic (it changes the cook).
         assert!(text.find("\ny ").unwrap() < text.find("[layout]").unwrap());
 

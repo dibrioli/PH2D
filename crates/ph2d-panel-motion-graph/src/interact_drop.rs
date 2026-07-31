@@ -29,9 +29,15 @@ pub(super) fn resolve_loose_output_drop(
 ) {
     // A collapsed CARD's body: the group has ports this wire could feed, but no socket for them
     // yet (doc 57 §5). Ask which one.
-    if let Some(menu) =
-        super::subgraph_gesture::card_port_menu(snap, view, (from_node, from_port), true, None, x, y)
-    {
+    if let Some(menu) = super::subgraph_gesture::card_port_menu(
+        snap,
+        view,
+        (from_node, from_port),
+        true,
+        None,
+        x,
+        y,
+    ) {
         state.menu = Some(menu);
         return;
     }

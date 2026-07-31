@@ -129,6 +129,21 @@ pub(super) fn apply_key(
         }
         // Ctrl+L — grow the selection to the connected island(s) it touches (Select Linked).
         GraphKey::SelectLinked => grow_selection_to_linked(state, snap),
+        // Ctrl+I — invert the selection at THIS level (the snapshot is level-scoped), the
+        // sibling of Ctrl+A. Every node the level has that is NOT currently selected becomes
+        // selected, and the currently-selected ones drop out. `take` reads the old set and
+        // leaves the field empty, so the rebuild has no borrow to fight; a backdrop is a
+        // separate subject (like SelectAll), so it clears. Empty graph → empty selection.
+        GraphKey::SelectInvert => {
+            let was = std::mem::take(&mut state.selected);
+            state.selected = snap
+                .nodes
+                .iter()
+                .map(|n| n.id)
+                .filter(|id| !was.contains(id))
+                .collect();
+            state.selected_backdrop = None;
+        }
         // H — switch the selected node(s) off/on (bypass/mute). The scope rule is the rove
         // idiom: press once and everything selected goes OFF; if it is ALL already off, press
         // again and it comes back on. `bypassed` is read off the view (which mirrors the graph),

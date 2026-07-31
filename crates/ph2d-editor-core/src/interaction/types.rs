@@ -242,6 +242,11 @@ pub enum GraphKey {
     /// *Select Linked*). Flood-fills out along edges, so a whole subtree can be grabbed from one
     /// of its nodes to move or delete it. Nothing selected → nothing to grow from.
     SelectLinked,
+    /// **Ctrl/Cmd+I — invert the selection at the current level** (Blender's *Select Inverse*).
+    /// Every node not currently selected becomes selected and vice versa — the fast path to
+    /// *"everything except these"* (select the few, invert). Level-scoped, like [`Self::SelectAll`];
+    /// a backdrop is a separate subject, so it clears.
+    SelectInvert,
     /// **H — switch the selected node(s) off/on** (bypass/mute — Blender's *Mute*, Nuke's
     /// *disable*). A muted node's op does not run; its primary input passes straight through, so
     /// the artist can see the graph WITHOUT a node's effect without unwiring it. `H` alone (no

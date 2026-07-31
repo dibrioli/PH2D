@@ -14,7 +14,8 @@ pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
     use ph2d_editor::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
         KEY_ENTER, KEY_ESCAPE, KEY_F2, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G,
-        KEY_KEY_H, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+        KEY_KEY_H, KEY_KEY_I, KEY_KEY_K, KEY_KEY_L, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE,
+        KEY_TAB,
     };
     Some(match code {
         KeyCode::Tab => KEY_TAB,
@@ -31,6 +32,9 @@ pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
         KeyCode::ArrowRight => KEY_ARROW_RIGHT,
         KeyCode::KeyA => KEY_KEY_A,
         KeyCode::KeyC => KEY_KEY_C,
+        // I — Select Inverse in the graph (Ctrl+I); like the letters below, consumed only
+        // while a graph surface has focus, otherwise it falls through unmapped.
+        KeyCode::KeyI => KEY_KEY_I,
         // Motion Nodes M0.T3 — graph-editor shortcut letters (D duplicate,
         // F fit, K knife, P probe). Consumed only while a graph surface has
         // focus; otherwise they fall through unmapped as before.
@@ -78,6 +82,7 @@ mod tests {
             (KeyCode::KeyV, true, false, GraphKey::Paste),
             (KeyCode::KeyX, true, false, GraphKey::Cut),
             (KeyCode::KeyL, true, false, GraphKey::SelectLinked),
+            (KeyCode::KeyI, true, false, GraphKey::SelectInvert),
             (KeyCode::KeyH, false, false, GraphKey::Bypass),
             (KeyCode::KeyK, false, false, GraphKey::Knife),
             (KeyCode::KeyP, false, false, GraphKey::Probe),

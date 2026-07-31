@@ -42,6 +42,10 @@
 //! ILHA conectada inteira (grid→scale→output), seguindo os fios em qualquer direção. Ilhas
 //! desconexas não entram. Daí mover / apagar / agrupar a sub-árvore toda a partir de um nó só.
 //!
+//! ⊙ Ctrl+I — SELECT INVERSE: inverte a seleção deste nível (o que estava selecionado sai, o resto
+//! entra) — o atalho para "tudo MENOS estes": selecione os poucos, aperte Ctrl+I. Ctrl+I duas vezes
+//! volta ao original. Nada selecionado → seleciona TODOS.
+//!
 //! ⊙ Ctrl+ARRASTAR (box) DESELECIONA os nós cobertos — refine um Ctrl+A / Ctrl+L tirando uma
 //! região sem re-selecionar do zero. (Shift+arrastar ADICIONA; arrastar puro SUBSTITUI. Ctrl e não
 //! Alt porque o KDE rouba o Alt.)
@@ -135,6 +139,9 @@ impl crate::App {
              Ctrl+D / Ctrl+G agem sobre o grafo inteiro. Editando um campo, Ctrl+A seleciona o TEXTO.\n  \
              CTRL+L: selecione UM no e aperte Ctrl+L -> a selecao cresce para a ILHA conectada \
              inteira (segue os fios em qualquer direcao); ilhas desconexas nao entram.\n  \
+             CTRL+I (SELECT INVERSE): inverte a selecao deste nivel (o selecionado sai, o resto \
+             entra) -- o atalho para 'tudo menos estes'. Ctrl+I duas vezes volta ao original; nada \
+             selecionado -> seleciona TODOS.\n  \
              CTRL+ARRASTAR (box): DESELECIONA os nos cobertos (refina um Ctrl+A/Ctrl+L). Shift \
              adiciona, arrasto puro substitui.\n  \
              H (BYPASS/MUTE): selecione um no e aperte H -> o card fica APAGADO com um risco de \

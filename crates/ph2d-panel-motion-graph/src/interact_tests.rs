@@ -471,6 +471,33 @@ fn select_all_selects_every_node_at_this_level() {
     );
 }
 
+/// **Ctrl+I inverts the level selection** — every node NOT selected becomes selected and vice
+/// versa, level-scoped like Ctrl+A, and a stray backdrop (a separate subject) clears. Inverting a
+/// second time returns the original set, proving it is a true flip, not a one-shot select-all.
+/// FALSIFIED three ways: an inert handler leaves {1}; a select-ALL leaves {1,2}; and keeping the
+/// selected side (dropping only the rest) also leaves {1}.
+#[test]
+fn select_invert_flips_the_level_selection() {
+    let mut st = MotionGraphPanelState {
+        selected_backdrop: Some(9), // a stray backdrop, to prove it clears
+        ..Default::default()
+    };
+    st.selected.insert(1);
+
+    apply_key(&mut st, GraphKey::SelectInvert, RECT, &two_node_snapshot());
+    let got: Vec<u32> = st.selected.iter().copied().collect();
+    assert_eq!(got, vec![2], "node 1 dropped out, node 2 came in");
+    assert_eq!(
+        st.selected_backdrop, None,
+        "a backdrop is a separate subject, so it clears"
+    );
+
+    // A second invert returns the original — it is a flip, not a one-shot select-all.
+    apply_key(&mut st, GraphKey::SelectInvert, RECT, &two_node_snapshot());
+    let got: Vec<u32> = st.selected.iter().copied().collect();
+    assert_eq!(got, vec![1], "inverting twice is a round-trip");
+}
+
 /// **Ctrl+L grows the selection to the whole connected island, and only that island** — flood-fill
 /// out along edges (Select Linked). Selecting the island's SINK (node 3) proves the walk is
 /// UNDIRECTED: it must travel BACKWARD along `2->3` and `1->2` to reach 2 and 1. FALSIFIED three

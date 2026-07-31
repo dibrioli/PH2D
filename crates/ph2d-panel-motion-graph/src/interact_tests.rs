@@ -369,8 +369,11 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
 /// selection stays empty and the stray backdrop survives.
 #[test]
 fn select_all_selects_every_node_at_this_level() {
-    let mut st = MotionGraphPanelState::default();
-    st.selected_backdrop = Some(9); // a stray backdrop selection, to prove it clears
+    // A stray backdrop selection, to prove it clears.
+    let mut st = MotionGraphPanelState {
+        selected_backdrop: Some(9),
+        ..Default::default()
+    };
     apply_key(&mut st, GraphKey::SelectAll, RECT, &two_node_snapshot());
     let mut got: Vec<u32> = st.selected.iter().copied().collect();
     got.sort_unstable();

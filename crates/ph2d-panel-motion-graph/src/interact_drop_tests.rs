@@ -3,10 +3,9 @@
 //! cap, the same cut `interact_f2_tests` made; `super` is `interact`, so the shared
 //! fixtures come in with it.
 
-use super::tests::{CENTER, RECT, body_node, gesture, port, two_node_snapshot};
+use super::tests::{CENTER, RECT, body_node, gesture, port};
 use super::*;
-use crate::snapshot::{GraphEdgeView, GraphNodeView, GraphViewSnapshot, PortView, drain_intents};
-use ph2d_a11y::NodeId as A11yNodeId;
+use crate::snapshot::{GraphEdgeView, GraphViewSnapshot, PortView, drain_intents};
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 
 /// **A wire dropped on a node's BODY connects to its first FREE, type-compatible input** — the

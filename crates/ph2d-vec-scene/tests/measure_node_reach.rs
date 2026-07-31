@@ -401,6 +401,14 @@ fn how_much_a_deleted_node_costs_and_what_it_would_cost_to_do_better() {
         &before.verts[2],
         8,
     ));
+    // O LSQ INGENUO (uma passada, sem reparametrizacao) — a rota que o plano 25 §6 recusa por
+    // MEDICAO. Ele fica no readout, e nao apenas no doc: um numero citado que a sonda nao imprime
+    // mais deixa de ser reproduzivel, e a funcao vira codigo morto que o clippy acusa.
+    let naive_lsq = fit_with(lsq_fit(
+        &before.verts[0],
+        &before.verts[1],
+        &before.verts[2],
+    ));
     let free_f = free_fit(&before.verts[0], &before.verts[1], &before.verts[2], 8);
     let free_p = fit_with(free_f);
     let ang = |a: [f64; 2], b: [f64; 2]| {
@@ -424,6 +432,10 @@ fn how_much_a_deleted_node_costs_and_what_it_would_cost_to_do_better() {
     println!(
         "  ATUAL  passa pela ancora, tangentes fixas      desvio {:.4}",
         dev(&cur)
+    );
+    println!(
+        "  LSQ INGENUO  uma passada, sem reparametrizacao desvio {:.4}   (recusado: PIOR que o atual)",
+        dev(&naive_lsq)
     );
     println!(
         "  SCHNEIDER  LSQ + reparametrizacao, 8 iters     desvio {:.4}",

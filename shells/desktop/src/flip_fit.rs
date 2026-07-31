@@ -32,14 +32,50 @@ use super::{Vec2, resample_smooth};
 /// As duas queixas opostas param de disputar o mesmo número.
 #[must_use]
 pub(crate) fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usize> {
+    simplify_to_curve_capped(points, tol, step, MAX_FIT_POINTS)
+}
+
+/// A mesma porta com o teto como PARÂMETRO — é assim que o gate da justiça consegue **forçar** o
+/// teto a morder. Sem isso ele mediria um teto que a fixture não alcança, que foi exatamente o que
+/// escondeu o defeito de mim: com o teto em 512 e o traço pedindo 495, ele só mordia nas últimas
+/// 17 inserções e a distribuição saía `[166, 165, 164]`, de aparência inocente.
+#[must_use]
+pub(crate) fn simplify_to_curve_capped(
+    points: &[Vec2],
+    tol: f32,
+    step: f32,
+    teto: usize,
+) -> Vec<usize> {
     let n = points.len();
     if n < 3 || tol <= 0.0 {
         return (0..n).collect();
     }
     let mut keep: Vec<usize> = vec![0, n - 1];
-    let mut fila: Vec<(usize, usize)> = vec![(0, n - 1)];
-    while let Some((a, b)) = fila.pop() {
-        if b <= a + 1 || keep.len() >= MAX_FIT_POINTS {
+    // ⚠️ **A fila é por PIOR ERRO, e a ordem é load-bearing quando o teto morde.**
+    //
+    // Ela já foi uma PILHA (`Vec::pop`), o que faz a recursão descer inteira pela metade da
+    // DIREITA antes de tocar a esquerda. Enquanto o teto não morde isso é indiferente — mas quando
+    // morde, o orçamento inteiro fica no FIM do traço e o COMEÇO não recebe ponto nenhum. Medido
+    // com o teto forçado a 64 num traço de 9000 amostras: **pontos por terço `[1, 0, 63]`**, com
+    // 1594 % de desvio no primeiro terço. É o report do Enio (2026-07-30): *"se o traço é muito
+    // longo o início do traço perde pontos e deforma"*.
+    //
+    // Tirando sempre o span de MAIOR erro, o teto deixa de ser um corte ESPACIAL e vira um corte de
+    // QUALIDADE: o que fica de fora é o refinamento menos necessário, onde quer que ele esteja.
+    //
+    // ⚠️ O erro guardado é só a CHAVE de ordenação — ele é recomputado ao sair, porque os vizinhos
+    // (logo as tangentes) mudaram desde que o span entrou na fila.
+    let mut fila: Vec<(f32, usize, usize)> = vec![(f32::MAX, 0, n - 1)];
+    while !fila.is_empty() && keep.len() < teto {
+        // Varredura linear: `k ≤ MAX_FIT_POINTS`, então isto é `O(k²)` de comparações contra
+        // `O(k · n)` de geometria — invisível ao lado do que o `span_error` já custa.
+        let pos = fila
+            .iter()
+            .enumerate()
+            .max_by(|x, y| x.1.0.total_cmp(&y.1.0))
+            .map_or(0, |(i, _)| i);
+        let (_, a, b) = fila.swap_remove(pos);
+        if b <= a + 1 {
             continue;
         }
         // Os vizinhos GUARDADOS dão as tangentes do span — a curva é local, e é isso que torna o
@@ -79,8 +115,8 @@ pub(crate) fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usi
         if let Err(at) = keep.binary_search(&idx) {
             keep.insert(at, idx);
         }
-        fila.push((a, idx));
-        fila.push((idx, b));
+        fila.push((pior, a, idx));
+        fila.push((pior, idx, b));
     }
     keep
 }

@@ -421,75 +421,8 @@ fn measure_what_the_capture_and_the_smoothing_cost() {
     }
 }
 
-/// 📏 **SONDA — o custo do ajuste cresce como com o COMPRIMENTO do traço?**
-///
-/// ⚠️ **A pergunta que precede triplicar os pontos.** O ajuste guloso roda **por frame** no preview
-/// ao vivo (a porta é a mesma do bake, de propósito), e ele é `O(k · n · m)` — pontos guardados ×
-/// amostras cruas × segmentos da reconstrução. Triplicar `k` num traço LONGO multiplica os três.
-#[test]
-#[ignore = "sonda; roda com --ignored --nocapture"]
-fn measure_how_the_fit_cost_grows_with_the_stroke() {
-    let espessura = 12.0_f32;
-    println!("  fracao  | amostras |  pts  |   ms por ajuste");
-    for fracao in [0.02_f32, 0.0025] {
-        for n in [240_usize, 600, 1200] {
-            // Um serpenteado longo: curvatura o tempo todo, o pior caso honesto.
-            let cru: Vec<Vec2> = (0..n)
-                .map(|k| {
-                    let t = k as f32 / (n - 1) as f32;
-                    Vec2::new(
-                        40.0 + t * 900.0,
-                        200.0 + 70.0 * (t * 9.0).sin() + 20.0 * (t * 23.0).cos(),
-                    )
-                })
-                .collect();
-            let tol = fracao * espessura;
-            let t0 = std::time::Instant::now();
-            let keep = simplify_to_curve(&cru, tol, 0.4 * espessura);
-            let ms = t0.elapsed().as_secs_f64() * 1000.0;
-            println!("  {fracao:7} |  {n:7}  | {:5} |   {ms:8.3}", keep.len());
-        }
-    }
-}
-
-/// ⭐ **O AJUSTE RECONSTRÓI A VIZINHANÇA, NÃO O TRAÇO** — e este é o único gate que pode ver isso,
-/// porque a diferença entre as duas versões é **só o relógio**: elas dão o mesmo conjunto de pontos.
-///
-/// ⚠️ **A medição original não continha o fenômeno.** Ela usou o gancho (duas pernas retas, ~13
-/// pontos) e mediu 0,2-0,4 ms; num traço LONGO e serpenteado a versão que reconstruía o traço
-/// inteiro a cada inserção custava **27 ms/frame já na tolerância antiga** e 64 na de hoje — e ele
-/// roda **por frame** no preview ao vivo.
-///
-/// A barra é kill de wall-clock com folga de ~7× sobre o medido (0,72 ms), porque o modo de falha
-/// que ela vigia é de ORDEM DE GRANDEZA (voltar a reconstruir o traço inteiro custa 90×), não de
-/// afinação.
-#[test]
-fn the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke() {
-    let espessura = 12.0_f32;
-    let n = 1200_usize;
-    let cru: Vec<Vec2> = (0..n)
-        .map(|k| {
-            let t = k as f32 / (n - 1) as f32;
-            Vec2::new(
-                40.0 + t * 900.0,
-                200.0 + 70.0 * (t * 9.0).sin() + 20.0 * (t * 23.0).cos(),
-            )
-        })
-        .collect();
-    let tol = 0.0025 * espessura;
-    // A premissa da fixture, declarada: o traço tem de EXIGIR muitos pontos, senão o gate mede um
-    // ajuste que nem trabalha.
-    let t0 = std::time::Instant::now();
-    let keep = simplify_to_curve(&cru, tol, 0.4 * espessura);
-    let ms = t0.elapsed().as_secs_f64() * 1000.0;
-    assert!(
-        keep.len() > 60,
-        "a fixture nao exige pontos ({} guardados) — o gate mediria o vazio",
-        keep.len()
-    );
-    assert!(
-        ms < 5.0,
-        "o ajuste custou {ms:.2} ms num traco de {n} amostras — a reconstrucao voltou a ser do \
-         TRACO INTEIRO? (medido local: 0,72 ms; global: 64 ms)"
-    );
-}
+/// O CUSTO e a JUSTIÇA do ajuste — módulo irmão porque o oráculo é outro: aqui o desvio se mede em
+/// fração da espessura, lá em **milissegundos** e em **distribuição de pontos**, e os dois modos de
+/// falha (lento · enviesado) não se veem por medição de forma.
+#[path = "flip_fit_budget_tests.rs"]
+mod orcamento;

@@ -149,11 +149,25 @@ impl SculptStroke {
         &self.base_mask
     }
 
-    /// Os vértices que o ÚLTIMO dab de fato moveu — a janela que o upload
-    /// incremental e o refit do octree consomem.
+    /// Os vértices que o ÚLTIMO dab de fato moveu.
     #[must_use]
     pub fn last_moved(&self) -> &[u32] {
         &self.moved
+    }
+
+    /// Os vértices que o último dab deixou **obsoletos na GPU** — a janela do
+    /// upload incremental.
+    ///
+    /// ⚠️ **É um SUPERCONJUNTO de [`Self::last_moved`], e confundir os dois é um
+    /// defeito visível.** Mover um vértice muda a normal de todo vizinho que
+    /// compartilha uma face com ele, mesmo que o vizinho não tenha andado —
+    /// `refresh_region` já os conserta na CPU, e subir só os movidos deixa a
+    /// malha iluminada por normais velhas numa faixa de um anel de largura, bem
+    /// na BORDA do pincel. Um gate de GPU pegou isto comparando o quadro
+    /// incremental com o quadro do upload cheio.
+    #[must_use]
+    pub fn last_refreshed(&self) -> &[u32] {
+        self.region.refreshed()
     }
 
     /// Bytes segurados. A sonda de memória o soma: o custo do GESTO não pode
@@ -261,6 +275,9 @@ impl SculptStroke {
         }
         if brush.verb.paints_mask() {
             self.apply_mask(mesh, brush);
+            // Nada de geometria mudou: quem lê `last_refreshed` tem de ver
+            // vazio, não a lista do dab anterior.
+            self.region.forget();
         } else {
             self.apply_positions(mesh);
             mesh.refresh_region(&self.moved, &mut self.region);

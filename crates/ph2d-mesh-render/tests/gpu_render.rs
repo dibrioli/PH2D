@@ -14,6 +14,7 @@
 
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
+use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 const W: u32 = 128;
 const H: u32 = 128;
@@ -41,6 +42,19 @@ fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
 
 /// Rasteriza `mesh` com `camera` e devolve os pixels RGBA (sem padding).
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, camera: &Camera3d) -> Vec<u8> {
+    let mut renderer = MeshRenderer::new(device, FORMAT);
+    renderer.upload(device, queue, mesh);
+    render_using(device, queue, &mut renderer, camera)
+}
+
+/// A mesma cena com um renderizador que o chamador JÁ semeou — é o que deixa
+/// comparar "subi a malha inteira" com "subi só a região" no mesmo pixel.
+fn render_using(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+) -> Vec<u8> {
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("alvo"),
         size: wgpu::Extent3d {
@@ -56,9 +70,6 @@ fn render(device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh, camera: &Came
         view_formats: &[],
     });
     let view = target.create_view(&wgpu::TextureViewDescriptor::default());
-
-    let mut renderer = MeshRenderer::new(device, FORMAT);
-    renderer.upload(device, queue, mesh);
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     // O passe da malha usa `LoadOp::Load` (a cena 2D fica por baixo), então quem
@@ -259,4 +270,84 @@ fn an_empty_mesh_draws_nothing_and_does_not_panic() {
     let mesh = Mesh::default();
     let px = render(&device, &queue, &mesh, &Camera3d::default());
     assert_eq!(coverage(&px), 0.0);
+}
+
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — pulando");
+        return;
+    };
+    let mut mesh = shapes::uv_sphere(40, 56, 1.0);
+    let camera = camera_for(&mesh);
+
+    // Um renderizador semeado com a malha ORIGINAL, que daqui para a frente só
+    // recebe regiões — é ele o caminho sob teste.
+    let mut incremental = MeshRenderer::new(&device, FORMAT);
+    incremental.upload(&device, &queue, &mesh);
+
+    // Esculpe de verdade, pela porta do produto.
+    let brush = Brush {
+        verb: Verb::Draw,
+        radius: 0.45,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    let mut uploaded = 0u32;
+    for k in 0..5 {
+        let x = -0.3 + 0.15 * k as f32;
+        stroke.dab(
+            &mut mesh,
+            &brush,
+            &Dab::at([x, 0.0, 0.95], brush.radius),
+            Symmetry::default(),
+        );
+        assert!(
+            incremental.upload_region(&queue, &mesh, stroke.last_refreshed()),
+            "o upload incremental recusou uma malha de mesma topologia"
+        );
+        uploaded += incremental.last_region_verts();
+    }
+
+    let want = render(&device, &queue, &mesh, &camera);
+    let got = render_using(&device, &queue, &mut incremental, &camera);
+    assert_eq!(
+        got, want,
+        "a região subiu bytes diferentes do que a malha inteira subiria"
+    );
+
+    // E o ponto do exercício: viajou MUITO menos que a malha. Sem esta metade o
+    // gate ficaria verde com um `upload_region` que delega ao upload cheio — o
+    // caminho rápido virando código morto com todos os gates verdes, que é a
+    // armadilha que o ADR-0120 do áudio documentou.
+    let whole = mesh.vert_count() as u32 * 5;
+    let share = f64::from(uploaded) / f64::from(whole);
+    println!("upload incremental: {uploaded} de {whole} vértices ({share:.3})");
+    assert!(
+        share < 0.5,
+        "a região viajou como {share:.3} da malha — não é incremental"
+    );
+}
+
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_region_upload_refuses_a_mesh_whose_topology_changed() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — pulando");
+        return;
+    };
+    let small = shapes::uv_sphere(12, 16, 1.0);
+    let big = shapes::uv_sphere(20, 28, 1.0);
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    // Sem nada subido ainda: não há com que reconciliar.
+    assert!(!r.upload_region(&queue, &small, &[0, 1, 2]));
+    r.upload(&device, &queue, &small);
+    assert!(r.upload_region(&queue, &small, &[0, 1, 2]));
+    // Contagem diferente: recusar é a resposta certa. Escrever a região sobre um
+    // buffer de outra topologia poria bytes VÁLIDOS nos vértices errados, e a
+    // geometria seria puxada para lugares que ninguém tocou.
+    assert!(!r.upload_region(&queue, &big, &[0, 1, 2]));
 }

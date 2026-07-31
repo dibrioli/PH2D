@@ -243,6 +243,7 @@ impl Mesh {
     /// honrada.
     pub fn refresh_region(&mut self, moved: &[u32], scratch: &mut RegionScratch) {
         if moved.is_empty() {
+            scratch.forget();
             return;
         }
         scratch.reset(self.faces.len(), self.positions.len());
@@ -352,6 +353,27 @@ pub struct RegionScratch {
 }
 
 impl RegionScratch {
+    /// Os vértices cuja NORMAL o último `refresh_region` recomputou.
+    ///
+    /// ⚠️ **É um superconjunto de "quem se moveu", e a diferença é visível.** Um
+    /// vizinho parado ao lado de uma face que girou tem a normal mudada; quem
+    /// subir para a GPU só a lista de movidos deixa a normal velha exatamente na
+    /// BORDA do pincel, que é onde o artista está olhando. Esta é a lista que o
+    /// upload incremental consome.
+    #[must_use]
+    pub fn refreshed(&self) -> &[u32] {
+        &self.verts
+    }
+
+    /// Declara que nada foi refrescado (um dab que não tocou geometria).
+    ///
+    /// Existe porque a alternativa é o chamador ler a lista do dab ANTERIOR e
+    /// subir uma região que ninguém mexeu — barato, mas mentiroso, e a mentira
+    /// vira um gate verde sobre um upload que não acompanha o produto.
+    pub fn forget(&mut self) {
+        self.verts.clear();
+    }
+
     fn reset(&mut self, faces: usize, verts: usize) {
         if self.face_seen.len() != faces {
             self.face_seen = vec![false; faces];

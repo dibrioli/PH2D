@@ -13,6 +13,7 @@ use ph2d_mesh::Mesh;
 use wgpu::util::DeviceExt as _;
 
 use crate::camera::Camera3d;
+use crate::upload;
 
 /// O uniform da câmera. `mat4x4` alinha em 16 B, então não há padding a declarar.
 #[repr(C)]
@@ -41,6 +42,8 @@ pub struct MeshRenderer {
     depth_size: (u32, u32),
     mesh: Option<MeshGpu>,
     scratch_indices: Vec<[u32; 3]>,
+    scratch_moved: Vec<u32>,
+    scratch_runs: Vec<(u32, u32)>,
 }
 
 impl MeshRenderer {
@@ -169,6 +172,8 @@ impl MeshRenderer {
             depth_size: (0, 0),
             mesh: None,
             scratch_indices: Vec::new(),
+            scratch_moved: Vec::new(),
+            scratch_runs: Vec::new(),
         }
     }
 
@@ -213,6 +218,64 @@ impl MeshRenderer {
             vert_capacity: verts,
             index_capacity: idx,
         });
+    }
+
+    /// Sobe **só os vértices que um dab moveu** — posições e normais.
+    ///
+    /// Devolve `false` quando não há com que reconciliar (nada subiu ainda, ou a
+    /// contagem de vértices mudou), e aí o chamador cai no [`Self::upload`]
+    /// cheio. Recusar é a resposta certa: subir uma região sobre um buffer de
+    /// outra topologia escreveria bytes válidos nos vértices errados, e o
+    /// sintoma seria geometria puxada para lugares que ninguém tocou.
+    ///
+    /// ⚠️ **Os ÍNDICES não são reenviados**, e é isso que torna o caminho barato:
+    /// um dab move vértices e não muda a topologia. Quem mudar a topologia
+    /// (remesh, subdivisão, dyntopo — a W4) passa pelo `upload` cheio.
+    ///
+    /// ⚠️ **A normal viaja junto com a posição, sempre.** São dois buffers, mas
+    /// um fato só: o `refresh_region` já recomputou as normais de todo vértice
+    /// que este `moved` contém, e subir metade deixaria a malha iluminada por
+    /// normais de antes do dab — um erro que só aparece na tela, nunca num
+    /// número.
+    pub fn upload_region(&mut self, queue: &wgpu::Queue, mesh: &Mesh, moved: &[u32]) -> bool {
+        let Some(g) = self.mesh.as_ref() else {
+            return false;
+        };
+        if g.vert_capacity != mesh.vert_count() {
+            return false;
+        }
+        if moved.is_empty() {
+            return true;
+        }
+        self.scratch_moved.clear();
+        self.scratch_moved.extend_from_slice(moved);
+        self.scratch_moved.sort_unstable();
+        self.scratch_moved.dedup();
+        upload::plan_runs(&self.scratch_moved, &mut self.scratch_runs);
+
+        let stride = size_of::<[f32; 3]>() as u64;
+        for &(a, b) in &self.scratch_runs {
+            let (a, b) = (a as usize, (b as usize).min(mesh.vert_count()));
+            if a >= b {
+                continue;
+            }
+            let at = a as u64 * stride;
+            queue.write_buffer(
+                &g.positions,
+                at,
+                bytemuck::cast_slice(&mesh.positions()[a..b]),
+            );
+            queue.write_buffer(&g.normals, at, bytemuck::cast_slice(&mesh.normals()[a..b]));
+        }
+        true
+    }
+
+    /// Quantos vértices o último [`Self::upload_region`] de fato copiou — a
+    /// grandeza que separa "subi a pegada" de "subi a malha", e que um gate
+    /// consegue ler sem device.
+    #[must_use]
+    pub fn last_region_verts(&self) -> u32 {
+        upload::covered(&self.scratch_runs)
     }
 
     /// Há geometria para desenhar?

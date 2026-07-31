@@ -15,9 +15,15 @@
 //!   contrato congelado não é tocado (ADR-0150).
 //! - [`MeshRenderer`] — o passe de **matcap procedural**, que põe forma na tela
 //!   sem exigir um asset.
+//!
+//! A W2 acrescentou o **upload incremental**: um dab move alguns milhares de
+//! vértices de uma malha de milhões, e reenviar tudo faria o custo do gesto ser
+//! função do DOCUMENTO em vez da PEGADA. O plano de faixas ([`upload`]) é função
+//! pura e tem gate sem device; quem executa é o [`MeshRenderer`].
 
 mod camera;
 mod pipeline;
+pub mod upload;
 
 pub use camera::Camera3d;
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};

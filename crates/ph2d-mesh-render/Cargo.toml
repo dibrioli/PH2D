@@ -29,3 +29,9 @@ bytemuck = { version = "1", features = ["derive"] }
 [dev-dependencies]
 # Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.
 pollster = "0.4"
+# ⚠️ DEV-dependency, nunca `[dependencies]`: o gate do upload incremental dirige
+# um traco REAL para produzir a lista `last_moved()` que a shell vai passar --
+# um deformador escrito a mao no teste seria uma segunda resposta a "que
+# vertices um dab move", e ela divergiria em silencio. O `src/` nao a toca, entao
+# isto e machete-safe (o padrao que a `line/Flip` usou com `ph2d-painter-brush`).
+ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }

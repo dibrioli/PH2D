@@ -487,7 +487,9 @@ pub(crate) struct App {
     pub(crate) stagger_smoke_done: bool,
     pub(crate) buffer_smoke_done: bool,
     pub(crate) extrap_smoke_done: bool,
-    /// A cena de um GRUPO da FASE E já montou (`PH2D_EXPR_GROUP_SMOKE`).
+    /// A cena das expressões que FADEIAM no blend já montou (`PH2D_EXPR_BLEND_SMOKE`).
+    /// ⚠️ O nome antigo (`PH2D_EXPR_GROUP_SMOKE`, a FASE E do catálogo) morreu com a
+    /// retirada da AUTORIA de expressões — o MOTOR ficou, e é ele que esta cena smoka.
     pub(crate) expr_blend_smoke_done: bool,
     /// A cena do C4 (ADR-0146) ja montou? Uma vez por processo.
     pub(crate) morph_fade_smoke_done: bool,

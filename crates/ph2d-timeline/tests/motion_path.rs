@@ -556,3 +556,101 @@ fn unbinding_a_position_track_forgets_that_clips_trajectory() {
         "a geometria foi junto com a track que a percorria"
     );
 }
+
+/// **No Arrange, cada strip percorre a trajetória do SEU clip** (report do Enio,
+/// 2026-07-30: *"só o path do clip selecionado na aba keys toca em arrange que possui
+/// outros clips e outros paths em outras strips — o arrange toca apenas um clip"*).
+///
+/// Com a trajetória no clip, o `path_for` (que responde pelo clip ATIVO) é exato no Keys e
+/// ERRADO no Arrange: as distâncias que o strip de B keya iam parar na curva de A. A cura é
+/// perguntar ao STRIP que dirige (`driving_path`), e numa SEQUÊNCIA — strips que não se
+/// sobrepõem, o Arrange normal — a resposta é exata em todo instante.
+///
+/// A cena: A vai 10 para a DIREITA, B vai 10 para CIMA, cada um no seu strip. O clip aberto
+/// no Keys é o A o tempo todo, de propósito — é a variável que o report acusa.
+///
+/// **Mutação que deve sangrar:** o `apply` voltar a usar `path_for` sob a composição.
+#[test]
+fn each_strip_in_arrange_walks_its_own_clips_trajectory() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+
+    // CLIP A: para a direita.
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+
+    // CLIP B: para cima, e com trajetória PRÓPRIA.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [0.0, 10.0]);
+
+    // O Keys fica aberto em A — a variável que o report acusa.
+    doc.set_active(0);
+
+    // Uma faixa, dois strips em SEQUÊNCIA (sem sobreposição).
+    let lane = doc.add_lane("L".into()).expect("faixa");
+    doc.add_strip(lane, 0, 0.0, 1.0);
+    doc.add_strip(lane, b, 2.0, 3.0);
+
+    apply_from_doc(&mut w, &mut doc, 1.0);
+    assert!(
+        near(pos(&w, e), [10.0, 0.0]),
+        "no strip de A o objeto percorre a curva de A: {:?}",
+        pos(&w, e)
+    );
+
+    apply_from_doc(&mut w, &mut doc, 3.0);
+    assert!(
+        near(pos(&w, e), [0.0, 10.0]),
+        "e no strip de B, a de B — nao a do clip aberto no Keys: {:?}",
+        pos(&w, e)
+    );
+}
+
+/// **Num crossfade entre duas curvas DIFERENTES, quem manda é o strip DOMINANTE** — e a
+/// troca no meio do cruzamento é o limite NOMEADO desta wave, não um acidente.
+///
+/// O blend compõe DISTÂNCIAS (`prop.rs`), e uma distância só significa algo sobre UMA
+/// curva; então enquanto os dois strips estão vivos não existe resposta escalar. A regra é
+/// o maior peso, e o gate a pina nos dois lados do cruzamento.
+///
+/// ⚠️ Este gate existe porque o irmão da SEQUÊNCIA não continha o fenômeno: com um strip
+/// vivo de cada vez, "maior peso" e "menor peso" dão a mesma resposta, e a mutação que
+/// inverte a comparação SOBREVIVIA a ele.
+///
+/// O oráculo não é o ponto exato (num cruzamento a distância é uma mistura): é **em que
+/// CURVA** ele está — A anda na horizontal (`y == 0`), B na vertical (`x == 0`).
+///
+/// **Mutação que deve sangrar:** `driving_path` escolher o menor peso.
+#[test]
+fn during_a_crossfade_the_dominant_strip_picks_the_curve() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [10.0, 0.0]);
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [0.0, 10.0]);
+    doc.set_active(0);
+    let lane = doc.add_lane("L".into()).expect("faixa");
+    doc.add_strip(lane, 0, 0.0, 2.0);
+    doc.add_strip(lane, b, 1.0, 3.0); // sobreposição em [1, 2]
+
+    // Primeira metade do cruzamento: A ainda pesa mais.
+    apply_from_doc(&mut w, &mut doc, 1.25);
+    let p = pos(&w, e);
+    assert!(
+        p[1].abs() < 1e-6 && p[0] > 1.0,
+        "na primeira metade do fade o objeto anda na curva de A (horizontal): {p:?}"
+    );
+
+    // Segunda metade: B passou a pesar mais.
+    apply_from_doc(&mut w, &mut doc, 1.75);
+    let p = pos(&w, e);
+    assert!(
+        p[0].abs() < 1e-6 && p[1] > 1.0,
+        "na segunda metade, a de B (vertical): {p:?}"
+    );
+}

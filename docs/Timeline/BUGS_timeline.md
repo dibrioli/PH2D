@@ -184,3 +184,46 @@ pelo `path_for`: a alça fantasma da foto volta na hora.
 
 ⚠️ **E os dois `fade_fingerprint` saíram VERDES com o MESMO hash**, antes e depois — a prova
 executável de que o sistema de fade não foi tocado.
+
+### 2c. E o Arrange passou a tocar UM caminho só — a trajetória é do STRIP que dirige
+
+**Report (Enio, no smoke seguinte):** *"só o path do clip selecionado na aba keys toca em
+arrange que possui outros clips e outros paths em outras strips. O arrange toca apenas um
+clip."*
+
+⚠️ **Consequência direta da §2b, e ela estava NOMEADA no doc do `path_for`** — o que faltava
+era ligar o nome ao Arrange. Aquela porta responde pelo **clip ATIVO** (com recuo para o
+primeiro que tenha trajetória), o que é exato no Keys e **errado sob a composição**: as
+distâncias que o strip de B keya iam parar na curva de A, então o objeto percorria uma
+trajetória só, qualquer que fosse o strip tocando.
+
+**A cura é perguntar ao STRIP, não ao dropdown:** `TimelineDoc::driving_path(scratch,
+target)` — o **maior peso** entre os strips vivos cujo clip TEM trajetória para o alvo,
+desempate pela ordem do scratch (frame, lane, posição). O scan é **plano** de propósito: os
+strips de um container interior estão no MESMO vetor com o `frame` deles, então o nesting
+sai de graça, e a vista de container (`apply_views`) usa a mesma porta.
+
+⚠️ **Numa SEQUÊNCIA — strips que não se sobrepõem, o Arrange normal — isto é EXATO em todo
+instante.** O caso sem resposta escalar continua sendo o **crossfade entre duas curvas
+diferentes**: ali o dominante vence e a trajetória TROCA no meio do cruzamento (medido:
+a virada cai no meio da sobreposição, onde os pesos empatam). Compor **PONTOS** é a cura, e
+é wave própria — ela precisa de três coisas que hoje são escalares: um `rest` que é ponto, o
+canal de prop-link (`composed`/`links`, um `f64` por `(entity, prop)`) com dois números, e
+outra resposta para o **auto-orient**, que pede a TANGENTE — ou seja, uma distância sobre
+UMA curva.
+
+**Gates (2 novos, e eles não são redundantes):**
+
+| gate | o que só ele vê |
+|---|---|
+| `each_strip_in_arrange_walks_its_own_clips_trajectory` | a SEQUÊNCIA: dois strips, o Keys aberto em A o tempo todo — a variável que o report acusa |
+| `during_a_crossfade_the_dominant_strip_picks_the_curve` | a regra do MAIOR peso |
+
+⚠️ **E o segundo nasceu porque o primeiro não continha o fenômeno:** numa sequência há um
+strip vivo de cada vez, então *"maior peso"* e *"menor peso"* dão a MESMA resposta e a
+mutação que inverte a comparação **sobrevivia**. O oráculo do crossfade também não pode ser
+o ponto exato (num cruzamento a distância é uma mistura) — é **em que CURVA** ele está: A
+anda na horizontal (`y == 0`), B na vertical (`x == 0`).
+
+**8 mutações no total, 8 sangram** — e a do `apply` voltando ao `path_for` sob composição
+reproduz o report ao número: `[10.0, 0.0]` onde a curva de B mandava `[0.0, 10.0]`.

@@ -171,14 +171,14 @@ fn apply_inner(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(
-                world,
-                e,
-                b,
-                doc.path_for(b.target),
-                AnimValue::Float(f),
-                orient,
-            );
+            // ⚠️ Sob a composição a trajetória é a do STRIP que dirige, não a do clip que
+            // o dropdown do Keys selecionou — o report *"o arrange toca apenas um clip"*.
+            let path = if stacked {
+                doc.driving_path(&scratch, b.target)
+            } else {
+                doc.path_for(b.target)
+            };
+            write_prop(world, e, b, path, AnimValue::Float(f), orient);
         }
     }
 

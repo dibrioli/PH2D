@@ -20,6 +20,7 @@
 use ph2d_anim::AnimTarget;
 
 use crate::doc::TimelineDoc;
+use crate::stack_frames::StackScratch;
 
 impl TimelineDoc {
     /// **A trajetória que o clip `clip` autora para `target`** — a leitura crua, sem
@@ -83,5 +84,45 @@ impl TimelineDoc {
     /// Remove a trajetória do clip ATIVO para `target`, devolvendo-a.
     pub(crate) fn take_active_path(&mut self, target: AnimTarget) -> Option<crate::MotionPath> {
         self.clips[self.active_clip].paths.remove(&target)
+    }
+
+    /// **A trajetória que o canal percorre AGORA, sob a COMPOSIÇÃO** — a do clip do strip
+    /// que de fato o dirige neste instante, e não a do que o dropdown do Keys selecionou.
+    ///
+    /// ⚠️ **Foi um report do Enio** (2026-07-30, logo depois de a trajetória mudar-se para
+    /// o clip): *"só o path do clip selecionado na aba keys toca em arrange que possui
+    /// outros clips e outros paths em outras strips — o arrange toca apenas um clip"*. O
+    /// [`Self::path_for`] responde pelo clip ATIVO, o que é exato no Keys e ERRADO no
+    /// Arrange: as distâncias que o strip de B keya iam parar na curva de A.
+    ///
+    /// A regra é o **maior peso** entre os strips vivos cujo clip TEM trajetória para este
+    /// alvo, com desempate pela ordem do scratch (frame, lane, posição) — determinística. O
+    /// scan é plano de propósito: os strips de um container interior estão no MESMO vetor,
+    /// com o `frame` deles, então o nesting sai de graça.
+    ///
+    /// ⚠️ **Numa sequência (strips que não se sobrepõem) isto é EXATO em todo instante** —
+    /// que é o Arrange normal. O caso sem resposta escalar é o crossfade entre DUAS curvas
+    /// diferentes: o blend compõe DISTÂNCIAS, e uma distância só significa algo sobre uma
+    /// curva. Ali o maior peso vence e a trajetória TROCA no meio do cruzamento. Compor
+    /// PONTOS é a cura, e é wave própria — ela precisa de um `rest` que é ponto, de um
+    /// canal de prop-link com dois números, e de outra resposta para o auto-orient (que
+    /// pede a TANGENTE, ou seja uma distância sobre uma curva).
+    pub(crate) fn driving_path(
+        &self,
+        scratch: &StackScratch,
+        target: AnimTarget,
+    ) -> Option<&crate::MotionPath> {
+        let mut best: Option<(f64, usize)> = None;
+        for a in &scratch.active {
+            let Some(c) = a.source.clip() else { continue };
+            if self.clip_path(c, target).is_none() {
+                continue;
+            }
+            if best.is_none_or(|(w, _)| a.w > w) {
+                best = Some((a.w, c));
+            }
+        }
+        best.and_then(|(_, c)| self.clip_path(c, target))
+            .or_else(|| self.path_for(target))
     }
 }

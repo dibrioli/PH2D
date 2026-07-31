@@ -84,11 +84,13 @@ pub fn apply_container(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+            // Dentro de um container a composição é a mesma: a trajetória é a do strip
+            // que dirige (`driving_path`), nunca a do clip aberto no Keys.
             write_prop(
                 world,
                 e,
                 b,
-                doc.path_for(b.target),
+                doc.driving_path(&scratch, b.target),
                 AnimValue::Float(f),
                 orient,
             );

@@ -151,6 +151,20 @@ pub(crate) struct StackScratch {
     /// SURVIVES a rebuild (`prime_rooted` clears the strips/clocks, not this), so the value the
     /// DRAW apply stashed is still here when the autokey pass primes and reads it, same frame.
     pub(crate) composed_links: crate::frame_solve::LinkFrame,
+    /// **A POSE que o apply escreveu para cada binding de trajetória**, por entidade.
+    ///
+    /// ⚠️ **Existe porque o autokey precisa comparar contra o que foi ESCRITO, não contra
+    /// uma reconstrução.** Um canal de Position sob a pilha compõe PONTOS
+    /// (`stack_eval::Query::axis`), então `path.at(distância_composta)` deixou de ser a
+    /// pose — e o autokey, que keya quando mundo ≠ mostrado, passou a ver movimento em
+    /// todo frame de um fade e a plantar uma ÂNCORA em cada um: a *"curva de transição"*
+    /// que o Enio reportou (2026-07-30), deformando o caminho que a recebia.
+    ///
+    /// É o irmão exato do [`Self::composed_links`] e existe pelo mesmo motivo (ADR-0146
+    /// C2/W6): *leia o que o apply escreveu*. Vazio num frame em que o apply não escreveu
+    /// (a entidade estava sob a mão do artista, ou não há pilha), e aí o leitor RE-DERIVA —
+    /// que é o comportamento certo, porque aí a diferença é movimento de verdade.
+    pub(crate) composed_points: std::collections::BTreeMap<u64, [f32; 2]>,
 }
 
 /// Scratch is not identity — see [`ClockIndex`]'s own note.
@@ -169,6 +183,7 @@ impl Default for StackScratch {
             t: f64::NAN, // never equal to a real time: the first prime always builds
             root: None,
             composed_links: crate::frame_solve::LinkFrame::default(),
+            composed_points: std::collections::BTreeMap::new(),
         }
     }
 }

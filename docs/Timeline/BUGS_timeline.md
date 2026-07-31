@@ -294,3 +294,68 @@ roteando Position pelo `sample_stack_point`, ignorar o eixo devolve a distância
 eixos (`x=14, y=14` para distância 14, um ponto que não está em curva nenhuma). Dava *"140
 de 161 amostras moveram"*, e eu quase reportei isso. **Uma mutação não é uma máquina do
 tempo: para medir antes×depois desliga-se a ROTA, não o miolo dela.**
+
+### 2e. E o que DEFORMAVA os dois paths era o AUTOKEY plantando uma âncora por frame
+
+**Report (Enio, terceira rodada, com a §2d já shipada):** *"não funcionou. Está criando o
+Path de transição."*
+
+⚠️ **As minhas duas correções anteriores estavam certas e nenhuma tocava a causa** — porque
+eu tinha lido *"deformando os paths"* como aparência, e o Enio estava descrevendo
+**geometria**: as âncoras mudavam mesmo.
+
+⚠️ **A primeira medição cortou o espaço de busca ao meio e me tirou da hipótese errada:**
+rodar `apply_from_doc` 49 vezes ao longo do fade **não altera uma âncora**
+(`probe_does_the_fade_write_geometry`: `GEOMETRIA MUDOU? NÃO`). Logo não era o apply, não
+era o blend, e não era o overlay (que amostra a track e o path do clip ATIVO — não pode
+desenhar uma terceira curva).
+
+**A causa é o AUTOKEY.** Ele keya quando o mundo difere do que o documento diz, e num canal
+de trajetória isso planta uma **ÂNCORA** (`AutokeyPlan::path_key` → `key_the_path` →
+`add_path_key`), ou seja **geometria nova**. E o lado que LÊ reconstruía a pose como
+`position_path(entity).at(distância_composta)` — um ponto **SOBRE** uma curva —, enquanto o
+apply, desde a §2d, escreve o ponto **COMPOSTO**, que durante o fade está **ENTRE** as duas.
+
+Repro red-first, varrendo o cruzamento inteiro sem o artista tocar em nada:
+
+```
+o autokey plantou 32 âncora(s) sobre a pose que o apply acabou de escrever
+primeiras: (1.031, [5.14, 0.0004]) (1.062, [5.25, 0.0035]) (1.094, [5.33, 0.0116]) …
+```
+
+Uma por frame, cada uma na posição de trânsito. **É literalmente uma curva de transição
+sendo desenhada dentro do path**, e ela deforma o caminho que a recebe — depois o
+`rewrite_path_key_values` reescreve as distâncias de todas as keys daquele clip, e a
+cronometragem vai junto.
+
+⚠️ **A lei quebrada está citada no doc do próprio `autokey_props`:** *"whatever writes a
+derived coordinate and whatever reads it must be the SAME function"*
+([[feedback_derived_coordinate_seed_must_match_sample]]). O doc-comment do `position_shown`
+ainda **afirmava a garantia** — *"`position_shown` and the apply both read `path.at(distance)`
+at the same instant, so an on-curve pose is byte-equal and never re-keys"* — e essa frase
+virou **FALSA** no commit que fez a composição compor pontos. Corrigida onde estava.
+
+**A cura é a que o irmão escalar já usava** (ADR-0146 C2/W6 — *leia o que o apply
+ESCREVEU*): o apply publica a pose de trajetória que escreveu
+(`StackScratch::composed_points`, irmão exato do `composed_links`) e o `position_shown` a
+LÊ. Mapa vazio ⇒ o apply não escreveu esta entidade neste frame (não há pilha, ou ela estava
+sob a mão do artista) ⇒ **re-derivar é o certo ali**, porque a diferença é movimento de
+verdade.
+
+**Gate:** `the_autokey_plants_no_anchor_on_the_pose_the_apply_itself_wrote` — varre os 33
+instantes do cruzamento, e em cada um pergunta ao autokey sobre **exatamente a pose que o
+apply acabou de escrever**. **2 mutações, 2 sangram**, e as duas com o mesmo número (32
+âncoras): o leitor re-derivar · o escritor não publicar. Elas **não são redundantes** — são
+as duas pontas da mesma igualdade, e cada uma sozinha a quebra.
+
+⚠️ **DOIS erros de PROCESSO meus nesta rodada, os dois do mesmo tipo — trabalho perdido por
+não OLHAR a saída:**
+
+1. Um script `python` morreu num `assert` e eu **só grepei o stdout do cargo que vinha
+   depois**, então o traceback passou invisível: três edições ao `apply.rs` nunca
+   aconteceram e eu diagnostiquei o resultado como se tivessem
+   ([[feedback_pipe_masks_script_exit_code]], terceira vez).
+2. Rodei um **workflow de investigação na MESMA worktree** em que estava editando; os
+   agentes escreveram sondas nos meus arquivos e **um deles reverteu o `apply.rs`** — o
+   sintoma foi um `git diff` VAZIO num arquivo que eu tinha acabado de editar. Lição:
+   *investigação paralela lê; quem escreve é um só.*

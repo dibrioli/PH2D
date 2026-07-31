@@ -106,6 +106,10 @@ fn apply_inner(
 
     // Pass 3 — compose (reading `links`) and write, in dependency order. Reads the
     // document, writes the world: no `&mut doc` here, so the binding list is a plain slice.
+    //
+    // As poses de trajetória que este apply escrever, para o autokey LER em vez de
+    // re-derivar (ver o `insert` lá dentro, e `StackScratch::composed_points`).
+    let mut written_points: BTreeMap<u64, [f32; 2]> = BTreeMap::new();
     let n = doc.bindings().len();
     for idx in 0..n {
         let bi = order.as_ref().map_or(idx, |o| o[idx]);
@@ -155,6 +159,13 @@ fn apply_inner(
                     p,
                     orient,
                 );
+                // ⚠️ **PUBLICA a pose que acabou de escrever.** O autokey compara o mundo
+                // com o que o documento diz, e num canal de trajetória a diferença vira uma
+                // ÂNCORA. Reconstruir `path.at(distância)` do outro lado deixou de dar este
+                // ponto no instante em que a composição passou a compor PONTOS — durante um
+                // fade o objeto viaja ENTRE as curvas —, e cada frame do cruzamento virava
+                // geometria nova: a *"curva de transição"* do report (`composed_points`).
+                written_points.insert(b.entity, p);
             }
             continue;
         }
@@ -231,6 +242,7 @@ fn apply_inner(
     // phantom undo), survives the autokey's re-prime — and a formula-free frame stashes the
     // empty map, so `shown_value` falls back to re-deriving (byte-identical).
     scratch.composed_links = links;
+    scratch.composed_points = written_points;
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
 }
 

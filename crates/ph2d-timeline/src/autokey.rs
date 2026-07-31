@@ -256,6 +256,15 @@ impl AutokeyPlan {
 /// (`shown_value` under a stack, `curve_value` soloed), so an on-curve pose the
 /// apply just wrote is byte-equal here.
 fn position_shown(doc: &TimelineDoc, entity: u64, t_secs: f64, solo: bool) -> Option<[f32; 2]> {
+    // ⚠️ **Sob a composição, LEIA o que o apply ESCREVEU** (`StackScratch::composed_points`,
+    // a mesma lei do `persisted_shown`) — Position sob a pilha compõe PONTOS, então
+    // `path.at(distância)` deixou de ser a pose e a diferença lia como *"o artista moveu o
+    // objeto"*, que num canal de trajetória keya uma ÂNCORA por frame de fade: a *"curva de
+    // transição"* do report. Mapa vazio ⇒ o apply não escreveu esta entidade neste frame,
+    // e aí RE-DERIVAR é o certo (a diferença é movimento de verdade).
+    if !solo && let Some(&p) = doc.scratch().composed_points.get(&entity) {
+        return Some(p);
+    }
     let distance = if solo {
         curve_value(doc, entity, PropKind::Position, t_secs)
     } else {

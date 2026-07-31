@@ -702,3 +702,100 @@ fn probe_crossfade_between_two_curves() {
         println!("t={t:.2} pos={:?}", pos(&w, e));
     }
 }
+
+/// SONDA: a GEOMETRIA muda quando o Arrange toca sobre um fade?
+#[test]
+#[ignore]
+fn probe_does_the_fade_write_geometry() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [10.0, 0.0]);
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [0.0, 10.0]);
+    doc.set_active(0);
+    let lane = doc.add_lane("L".into()).expect("faixa");
+    doc.add_strip(lane, 0, 0.0, 2.0);
+    doc.add_strip(lane, b, 1.0, 3.0);
+    let target = doc.binding_for(bits, PropKind::Position).unwrap().target;
+
+    let snap = |d: &TimelineDoc| -> Vec<Vec<[f32; 2]>> {
+        (0..d.clips().len())
+            .map(|c| {
+                d.clip_path(c, target)
+                    .map(|p| p.anchors().iter().map(|a| a.anchor).collect())
+                    .unwrap_or_default()
+            })
+            .collect()
+    };
+    let before = snap(&doc);
+    println!("ANTES  {before:?}");
+    for k in 0..=48 {
+        apply_from_doc(&mut w, &mut doc, f64::from(k) / 16.0);
+    }
+    let after = snap(&doc);
+    println!("DEPOIS {after:?}");
+    println!(
+        "GEOMETRIA MUDOU? {}",
+        if before == after { "NAO" } else { "SIM" }
+    );
+}
+
+/// **O AUTOKEY NÃO PODE PLANTAR ÂNCORA SOBRE A POSE QUE O PRÓPRIO APPLY ESCREVEU**
+/// (report do Enio, 2026-07-30, terceira rodada: *"o Fade gera Path de transição entre um
+/// path de uma strip e outro path de outra strip. Isso acaba deformando os paths de ambas
+/// as strips"*).
+///
+/// O `autokey_props` compara a pose do MUNDO com a pose que o documento diz — e keya
+/// quando elas diferem, porque diferença significa *"o artista moveu o objeto"*. Num canal
+/// de trajetória isso planta uma ÂNCORA (`AutokeyPlan::path_key` → `key_the_path`), ou
+/// seja **geometria nova**. Durante um fade o apply põe o objeto entre as duas curvas; se o
+/// lado que LÊ reconstruir a pose de outra maneira, todo frame do cruzamento vira uma
+/// âncora — a *"curva de transição"* do report, e ela deforma o caminho que a recebe.
+///
+/// É a lição [[feedback_derived_coordinate_seed_must_match_sample]], e o doc do
+/// `autokey_props` já a cita: *"whatever writes a derived coordinate and whatever reads it
+/// must be the SAME function"*. O que quebrou a igualdade foi a composição de PONTOS: o
+/// apply parou de escrever `path.at(distância)` sob a pilha, e o leitor não soube.
+///
+/// **Mutação que deve sangrar:** `position_shown` voltar a reconstruir a pose como
+/// `path_for(...).at(distância composta)`.
+#[test]
+fn the_autokey_plants_no_anchor_on_the_pose_the_apply_itself_wrote() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [10.0, 0.0]);
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [0.0, 10.0]);
+    doc.set_active(0);
+    let lane = doc.add_lane("L".into()).expect("faixa");
+    doc.add_strip(lane, 0, 0.0, 2.0);
+    doc.add_strip(lane, b, 1.0, 3.0); // sobreposição em [1, 2] = o fade
+
+    // Varre o cruzamento inteiro. Em CADA instante: o apply escreve a pose, e o autokey é
+    // perguntado sobre EXATAMENTE essa pose — o artista não tocou em nada.
+    let mut planted = Vec::new();
+    for k in 0..=32 {
+        let t = 1.0 + f64::from(k) / 32.0;
+        apply_from_doc(&mut w, &mut doc, t);
+        let p = pos(&w, e);
+        let pose: ph2d_timeline::PoseSample =
+            [Some(p[0]), Some(p[1]), None, None, None, None, None];
+        let plan = ph2d_timeline::autokey_props(&doc, bits, t, &pose, &pose, false, false);
+        if let Some(at) = plan.path_key {
+            planted.push((t, at));
+        }
+    }
+    assert!(
+        planted.is_empty(),
+        "o autokey plantou {} âncora(s) sobre a pose que o apply acabou de escrever — \
+         é a CURVA DE TRANSIÇÃO do report. Primeiras: {:?}",
+        planted.len(),
+        &planted[..planted.len().min(4)]
+    );
+}

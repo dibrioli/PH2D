@@ -56,6 +56,9 @@ pub fn apply_container(
         frame_solve::topo_order(doc, &links.names)
     });
     let n = doc.bindings().len();
+    // Idem: as poses de trajetória escritas aqui, para o autokey (ver o `insert`).
+    let mut written_points: std::collections::BTreeMap<u64, [f32; 2]> =
+        std::collections::BTreeMap::new();
     for idx in 0..n {
         let bi = order.as_ref().map_or(idx, |o| o[idx]);
         let b = &doc.bindings()[bi];
@@ -85,6 +88,10 @@ pub fn apply_container(
                     p,
                     orient,
                 );
+                // A MESMA publicação do apply da cena: o autokey lê o que foi ESCRITO,
+                // nunca uma reconstrução (senão um fade dentro de um container planta
+                // âncora por frame, como plantava fora).
+                written_points.insert(b.entity, p);
             }
             continue;
         }
@@ -131,6 +138,7 @@ pub fn apply_container(
     crate::expr_pass::run(world, doc, expr_t, &skip, &composed, &mut links);
     // Persist the composed map so the container-view autokey reads what the apply wrote (C2, W6).
     scratch.composed_links = links;
+    scratch.composed_points = written_points;
     doc.put_scratch(scratch);
 }
 

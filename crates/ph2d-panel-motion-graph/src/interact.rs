@@ -564,6 +564,10 @@ fn select_on_press(state: &mut MotionGraphPanelState, node: u32, shift: bool) {
 mod tests;
 
 #[cfg(test)]
+#[path = "interact_drop_tests.rs"]
+mod drop_tests;
+
+#[cfg(test)]
 #[path = "interact_f2_tests.rs"]
 mod f2_tests;
 

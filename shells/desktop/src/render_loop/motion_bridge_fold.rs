@@ -436,6 +436,9 @@ fn card_view(
         hot: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.hot)),
         is_sink: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.is_sink)),
         preview: head.and_then(|v| v.preview.clone()),
+        // A collapsed group is not itself a muted NODE (muting a whole group is its own
+        // question); the card draws normally even if a member inside it is bypassed.
+        bypassed: false,
     }
 }
 

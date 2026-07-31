@@ -76,31 +76,8 @@ pub(crate) fn socket_glyph(dim: Dim) -> SocketGlyph {
 }
 
 #[cfg(test)]
-mod socket_glyph_tests {
-    use super::{SocketGlyph, socket_glyph};
-    use ph2d_nodegraph::port::Dim;
-
-    /// A single scalar is a value ○; every multi-component dim is a column ◇. The match
-    /// enumerates ALL `Dim` (no `_ =>`), so a new axis is a compile error here — not a
-    /// socket silently drawn as the wrong shape, which is exactly how the shape was lost
-    /// (`draw_card` drew `fill_circle` for everything while the doc claimed "shape ← Dim").
-    /// Mutation — collapsing every dim to `Value`, or flipping `Scalar` to `Column` —
-    /// sangra on the loop or the first assert.
-    #[test]
-    fn scalar_is_a_value_dot_and_multi_component_is_a_column_diamond() {
-        assert_eq!(socket_glyph(Dim::Scalar), SocketGlyph::Value);
-        for d in [
-            Dim::Vec2,
-            Dim::Vec3,
-            Dim::Vec4,
-            Dim::Mat2,
-            Dim::Mat3,
-            Dim::Mat4,
-        ] {
-            assert_eq!(socket_glyph(d), SocketGlyph::Column, "{d:?} is a column");
-        }
-    }
-}
+#[path = "snapshot_tests.rs"]
+mod snapshot_tests;
 
 /// **What a card in the view actually IS** (doc 57). The panel paints and hits all
 /// three the same way — a card is a card — but they answer to different verbs, and
@@ -201,6 +178,11 @@ pub struct GraphNodeView {
     /// number of CARDS, never by the size of the stream — which is why this can be on by
     /// default, where Nuke has to tell you to switch its thumbnails off on a heavy script.
     pub preview: Option<Vec<[f32; 2]>>,
+    /// **Switched OFF** (bypass/mute — H). The node's op did not run this frame; its primary
+    /// input passed straight through ([`ph2d_nodegraph::Graph::node_bypassed`]). The card draws
+    /// dimmed with a strike, so *"this node is inert on purpose"* reads at a glance instead of
+    /// looking like a chain the artist forgot to wire.
+    pub bypassed: bool,
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
@@ -472,6 +454,8 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 hot: false,
                 is_sink: false,
                 preview: None,
+                // Read straight from the graph — bypass is authored state, not a cook result.
+                bypassed: graph.node_bypassed(inst.id),
             }
         })
         .collect();

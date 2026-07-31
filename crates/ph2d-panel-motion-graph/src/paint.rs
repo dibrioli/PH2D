@@ -62,6 +62,7 @@ use ph2d_tokens::{ColorToken, Theme};
 // panel chrome, and a node-graph canvas has its own geometry (like the sprite /
 // vector canvases). Hence `LITERAL-PX-OK` per line.
 const CARD_RADIUS: f32 = 7.0; // LITERAL-PX-OK: node card corner radius
+const BYPASS_STRIKE_W: f32 = 2.5; // LITERAL-PX-OK: the strike across a muted card
 const SOCKET_R: f32 = 5.0; // LITERAL-PX-OK: socket dot radius
 const FIT_PAD: f32 = 44.0; // LITERAL-PX-OK: fit-view margin
 const TARGET_RING_PAD: f32 = 3.0; // LITERAL-PX-OK: compatible-target ring beyond the socket
@@ -454,7 +455,32 @@ fn draw_card(
             stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
         }
     }
+
+    // **Switched OFF** (bypass/mute — H). A bypassed node IS inert — nothing flows through it — so
+    // it takes the same veil as an unwired card; the STRIKE, corner to corner, is what says the
+    // inertness is DELIBERATE (you muted it) rather than an accident (you forgot to wire it). It
+    // sits above the veil and the selection ring so a muted node reads as muted even when selected.
+    if n.bypassed {
+        fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
+        let strike = bypass_strike(body);
+        stroke_polyline(
+            ctx.scene,
+            &strike,
+            BYPASS_STRIKE_W * view.zoom,
+            resolve(ColorToken::Text2, theme),
+        );
+    }
     body
+}
+
+/// The strike across a muted card: a single line from the body's top-left corner to its
+/// bottom-right. It SPANS the card — the "off" gesture reads only if it crosses the whole thing,
+/// not as a dot or a stub. A pure function so the geometry is gate-able without a Vello scene.
+pub(crate) fn bypass_strike(body: Rect) -> [(f32, f32); 2] {
+    [
+        (body.x, body.y),
+        (body.x + body.w, body.y + body.h),
+    ]
 }
 
 /// Draw one socket dot: coloured by [`Domain`], SHAPED by [`Dim`] — a diamond ◇ for a

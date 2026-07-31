@@ -206,6 +206,7 @@ fn the_ghost_end_snaps_to_the_target_socket() {
             hot: false,
             is_sink: false,
             preview: None,
+            bypassed: false,
         }],
         edges: vec![],
         backdrops: vec![],

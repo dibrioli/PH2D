@@ -218,6 +218,7 @@ mod tests {
             hot: false,
             is_sink: false,
             preview: None,
+            bypassed: false,
         }
     }
 

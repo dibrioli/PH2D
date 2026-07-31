@@ -50,6 +50,7 @@ pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
         hot: false,
         is_sink: false,
         preview: None,
+        bypassed: false,
     };
     GraphViewSnapshot {
         level: None,
@@ -307,6 +308,7 @@ fn body_node(
         hot: false,
         is_sink: false,
         preview: None,
+        bypassed: false,
     }
 }
 

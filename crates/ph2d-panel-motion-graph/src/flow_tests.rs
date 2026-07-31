@@ -21,6 +21,7 @@ fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
         hot: false,
         is_sink,
         preview: None,
+        bypassed: false,
     }
 }
 

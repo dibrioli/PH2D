@@ -4069,3 +4069,47 @@ cujos pesos podem não somar 1,0 ao ulp: um `u = 1 + ε` põe um destino em
 Em `rf = 1` o sampler devolve o valor VERBATIM e o limite seria seguro — mas um
 bound correto por acidente de configuração é a forma exata de bug que este
 módulo passou a jornada inteira caçando.
+
+### §5.46.8 — ⚠️ A CENA PESADA SAIU DO REGIME WORK-LIMITED — e é isso que fecha a frente
+
+A pergunta *"ainda há o que otimizar?"* não se responde com um milissegundo,
+se responde com a **partição do worker** (`busy` / `away` / `sleep`), que é o
+único instrumento que distingue *"a água é lenta porque falta CPU"* de *"a água
+está no ritmo dela"*. Contra os números da §5.40, na MESMA sonda:
+
+| cena | antes | agora |
+|---|---|---|
+| um traço | `busy 49,5% · away 7,0% · sleep 43,4%` → 38,4 Hz | `busy 16,8% · away 3,8% · sleep 79,2%` → **38,9 Hz** |
+| três traços sobrepostos | `busy 76,8% · away 19,2% · sleep 1,6%` → **14,0 Hz** | `busy 57,7% · away 19,7% · sleep 22,7%` → **36,7 Hz** |
+
+A cena de três traços — **a do smoke do Enio**, e a que a §5.40 nomeou como
+*work-limited* — passou a ter **22,7% de folga** e corre a 36,7 dos 40 Hz
+nominais da SPEC. **2,6× no nível do produto.**
+
+⇒ **Otimizar mais a CPU deste módulo não compra nada VISÍVEL no ponto de
+operação default:** o worker apenas dormiria mais. O que resta de frente é o
+que sai do default — o **K–M** do Tuning (a §5.41 mediu 3,2× o passo, então
+com o passo em ~16 ms ele volta ao regime limitado por trabalho) — e o que não
+é sobre o solver.
+
+### §5.46.9 — ⚠️ NOTA RECONFERIDA: o `Flow Grid` não compra mais velocidade
+
+A §5.42 entregou o slider medindo **1,27× a 4:1**, e a nota dizia que a
+entrega dele era *"a BORDA FINA com o fluxo barato"*. Quem move o número que
+justificava uma nota tem de reconferi-la (CLAUDE.md §0), e este passe moveu:
+o `build_flow_field` saiu de 54,4% para **6,9%** do passo. Medido hoje, mesma
+sonda:
+
+```text
+  rf   ms/passo (media do ciclo)   razao
+  1                   6.123 ms    1.00x
+  2                   6.110 ms    1.00x
+  4                   6.196 ms    0.99x
+  8                   5.744 ms    1.07x
+```
+
+**Zero.** O racional de VELOCIDADE do slider acabou — e ele não some por isso:
+o que ele ainda faz é mudar o **LOOK** (movimento mais liso/em blocos, backrun
+esparso), que era metade do desenho desde o começo. Mas o slider deixou de ser
+um controle de performance, e quem o oferecer como tal estará vendendo um
+número que a medição não sustenta.

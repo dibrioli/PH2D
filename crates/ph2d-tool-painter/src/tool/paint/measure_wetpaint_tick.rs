@@ -321,6 +321,23 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     let wet = (0..g.film.len())
         .filter(|&i| g.film[i] > 0.0 || g.susp[i] > 0.0)
         .count();
+    // ⚠️ **A bbox NÃO é o que os passes percorrem** — eles andam a faixa viva
+    // por LINHA (`span_x_of`), e é contra ela que "quantos % estão ativos" quer
+    // dizer alguma coisa. Sem este número não dá para saber se um passe é caro
+    // por célula ou por percorrer células que não fazem nada.
+    let spanned: usize = (g.by0..=g.by1)
+        .map(|y| {
+            let (lo, hi) = ph2d_wet_paint::grid::span_x_of(
+                &g.row_lo,
+                &g.row_hi,
+                g.spans_enabled,
+                g.bx0,
+                g.bx1,
+                y,
+            );
+            (hi - lo + 1).max(0) as usize
+        })
+        .sum();
     let snap = snapshot_grid(g);
     let time = |g: &mut Grid, f: &mut dyn FnMut(&mut Grid)| -> f64 {
         let mut v = Vec::with_capacity(REPS);
@@ -382,11 +399,12 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     println!("\n  A POCA DO PRODUTO (heavy_puddle, 4096x4096, mediana de {REPS})\n");
     let cells = (rows * span).max(1);
     println!(
-        "    janela {rows} x {span} = {cells} celulas ({:.1}% da tela)\n    \
-         ativas {live} ({:.1}% da janela) | COM AGUA {wet} ({:.1}% da janela)",
+        "    bbox {rows} x {span} = {cells} celulas ({:.1}% da tela)\n    \
+         FAIXA VIVA {spanned} ({:.1}% da bbox) | ativas {live} ({:.1}% da FAIXA) | \
+         com agua {wet}",
         100.0 * cells as f64 / (4096.0 * 4096.0),
-        100.0 * live as f64 / cells as f64,
-        100.0 * wet as f64 / cells as f64,
+        100.0 * spanned as f64 / cells as f64,
+        100.0 * live as f64 / spanned.max(1) as f64,
     );
     // ⚠️ **A CADÊNCIA é parte da resposta, não um detalhe** (doc 28 §5.40): o
     // `sim_step_stage` não roda todo passe em todo passo, então a soma CRUA

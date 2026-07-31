@@ -28,7 +28,11 @@ mod text_rows;
 mod tests;
 
 #[cfg(test)]
-#[path = "lib_tests_gradient.rs"]
+// O sufixo `_tests.rs` NÃO é cosmético: os gates de HR-15 (`no_magic_numeric`,
+// `no_literal_color`) isentam por ele os irmãos de teste extraídos. Um nome fora do
+// padrão põe o arquivo de volta sob a regra de chrome, e as dimensões de um viewport
+// de fixture viram "magic numbers" (pego na integração de 2026-07-30).
+#[path = "lib_gradient_tests.rs"]
 mod tests_gradient;
 
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};

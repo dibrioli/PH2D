@@ -103,12 +103,15 @@ fn paint_gradient_bar(scene: &mut VectorScene, rect: Rect, ramp: &ColorRamp) {
     for k in 0..strips {
         let t = (k as f32 + 0.5) / strips as f32;
         let [r, g, b, _a] = ramp.eval(t);
-        let col = Color::from_rgba8(
+        // ⚠️ Uma linha só, e não é estilo: o gate casa o marcador **na linha da chamada**, e numa
+        // chamada quebrada em cinco linhas ele acabava no `);` — ou seja, em lugar nenhum. É a
+        // forma que o irmão `paint_ramp_widget.rs` já usa (integração 2026-07-30).
+        let (rb, gb, bb) = (
             linear_to_srgb_byte(r),
             linear_to_srgb_byte(g),
             linear_to_srgb_byte(b),
-            255,
-        ); // LITERAL-COLOR-OK: the ramp's OWN colour is data (the swatch precedent), not a token
+        );
+        let col = Color::from_rgba8(rb, gb, bb, 255); // LITERAL-COLOR-OK: the ramp's OWN colour is data (the swatch precedent), not a token
         let sx = rect.x + (k as f32 / strips as f32) * rect.w;
         let sw = rect.w / strips as f32 + 1.0; // +1: overlap so no seam gap between strips
         fill_rounded_rect(scene, Rect::new(sx, rect.y, sw, rect.h), 0.0, col);

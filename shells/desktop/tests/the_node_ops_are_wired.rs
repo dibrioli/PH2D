@@ -103,3 +103,35 @@ fn the_close_button_goes_through_the_welding_door() {
          vertice inteiro sumiu), entao todo indice plano guardado descreve outro no'"
     );
 }
+
+/// **O gesto da TESOURA corre no canvas, antes das ferramentas de quina, e não cai adiante.**
+///
+/// A ordem é load-bearing: sem o `return`, o mesmo press seguiria para o roteador do pen/shape e a
+/// tesourada viria acompanhada de um segundo gesto que o artista não pediu.
+#[test]
+fn the_scissors_press_cuts_and_stops_there() {
+    let block = at(DISPATCH, "// **Modo Tesoura** (W4)");
+    let corner = at(DISPATCH, "if self.vec_draw_config.mode.is_corner_tool() {");
+    assert!(
+        block < corner,
+        "o ramo da tesoura corre DEPOIS das ferramentas de quina -- a ordem dos modos exclusivos \
+         nesta cadeia e' o que decide quem ve^ o press"
+    );
+    let window = &DISPATCH[block..corner];
+    assert!(
+        window.contains("DrawMode::Scissors"),
+        "o ramo nao e' gateado no modo Tesoura -- ele cortaria em todo modo"
+    );
+    assert!(
+        window.contains("scissors_cut("),
+        "o ramo nao chama a porta que corta"
+    );
+    assert!(
+        window.contains("self.vec_history.begin(") && window.contains("commit_if_changed("),
+        "a tesourada nao abre UM passo de undo -- o Ctrl+Z saltaria por cima dela"
+    );
+    assert!(
+        window.contains("return;"),
+        "o press da tesoura cai adiante -- o pen/shape veria o mesmo clique"
+    );
+}

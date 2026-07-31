@@ -58,6 +58,9 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         // de formas sobrepostas só atrapalham a leitura das faces — que é a única coisa
         // que o artista precisa enxergar ali. O **Pick Shapes** (Blend) idem: o que se
         // manipula é a LISTA de formas, não os nós de uma delas.
+        // ⚠️ **A Tesoura fica DENTRO** (W4), e é decisão, não omissão: clicar sobre uma âncora
+        // corta NELA em vez de inserir uma gêmea, e sem ver os nós o artista não tem como saber
+        // onde essa distinção acontece — a ferramenta pareceria cortar "quase" onde ele apontou.
         edit: vector_active
             && !matches!(
                 mode,
@@ -240,6 +243,25 @@ mod tests {
         assert!(
             !vec_overlay_plan(false, DrawMode::Select).textpath_handle,
             "tool inativa não desenha a alça"
+        );
+    }
+}
+
+#[cfg(test)]
+mod scissors_tests {
+    use super::*;
+
+    /// **A tesoura mostra as âncoras.** Elas não são decoração: clicar sobre uma corta NELA (e não
+    /// insere uma gêmea coincidente), então escondê-las tornaria invisível a única distinção que o
+    /// gesto tem. E as guias de snap valem em todo modo.
+    #[test]
+    fn the_scissors_shows_the_anchors_because_clicking_one_cuts_at_it() {
+        let plan = vec_overlay_plan(true, DrawMode::Scissors);
+        assert!(plan.edit, "sem as âncoras o corte-no-nó fica invisível");
+        assert!(!plan.width_handles, "as alças de largura são do Width");
+        assert!(
+            !plan.textpath_handle && !plan.patternpath_handles,
+            "as alças de Select não pertencem à tesoura"
         );
     }
 }

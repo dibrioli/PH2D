@@ -2115,3 +2115,56 @@ fn the_join_button_is_not_offered_for_a_single_path() {
     );
     ph2d_panel_vector::state::set_current_selection_count(0);
 }
+
+/// **O pill da TESOURA arma o modo** (W4) — o gesto inteiro dela vive no canvas, então este é o
+/// único caminho pelo qual o artista lá chega. Um pill que pinta e não arma o modo é uma
+/// ferramenta que não existe.
+#[test]
+fn clicking_the_scissors_pill_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_ne!(
+        tool.mode(),
+        DrawMode::Scissors,
+        "precondition: nao e Scissors"
+    );
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_SCISSORS),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o pill Tesoura nao foi consumido -- falta o id no `event_clicks`"
+    );
+    assert!(
+        drain_into_tool(&mut host, &mut tool),
+        "o clique nunca virou ToolPanelEvent -- o seam painel->shell esta morto"
+    );
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Scissors,
+        "o clique chegou ao bus mas nao virou modo -- falta o arm em `handle_panel_event`"
+    );
+}
+
+/// E o pill é **alcançável por um ponteiro**: pintado com área clicável na fileira TOOL. Um id
+/// registado que nunca é pintado é a forma exacta de uma ferramenta que ninguém encontra.
+#[test]
+fn the_scissors_pill_is_reachable_by_a_pointer() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_MODE_SCISSORS)
+            .is_some(),
+        "o pill da tesoura nao foi PINTADO com area clicavel"
+    );
+}

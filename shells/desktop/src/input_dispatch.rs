@@ -3689,6 +3689,26 @@ impl App {
                         }
                         return;
                     }
+                    // **Modo Tesoura** (W4): a pressão CORTA o caminho sob o cursor e o gesto
+                    // acaba ali — não há arrasto nem release próprios, ao contrário das
+                    // ferramentas de quina e da de largura. Um passo de undo por tesourada.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Scissors {
+                        let px_to_world = self.vec_px_to_world();
+                        if let Some(world) = self.vec_world_at(self.last_pointer)
+                            && let Some(gfx) = self.gfx.as_mut()
+                        {
+                            let hit_r = HANDLE_HIT_PX * px_to_world;
+                            self.vec_history.begin(&gfx.vec_scene);
+                            if self
+                                .vec_pen
+                                .scissors_cut(&mut gfx.vec_scene, world, hit_r)
+                                .is_some()
+                            {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            }
+                        }
+                        return;
+                    }
                     if self.vec_draw_config.mode.is_corner_tool() {
                         let chamfer = self.vec_draw_config.mode.corner_is_chamfer();
                         let px_to_world = self.vec_px_to_world();

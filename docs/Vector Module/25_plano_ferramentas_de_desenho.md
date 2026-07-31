@@ -481,6 +481,69 @@ regra de seleção) · **Average** de nós (3 linhas sobre `selected_verts`) · 
 **Tamanho: M.** Smoke: cortar uma forma fechada em duas abertas com a tesoura; a faca a atravessar
 três formas de uma vez; Join a fechar duas pontas.
 
+### ✅ W4 (A + B) — ENTREGUE: o corte existe, e a tesoura é o 1º consumidor dele
+
+**O achado que reescreveu o desenho da wave inteira:** as quatro ferramentas de corte — tesoura,
+faca, borracha de caminho e o *break path* do modo Node — **são UM primitivo só**, *abrir um
+contorno num vértice*, e ele **não existia**. A diferença entre elas não é geométrica; é apenas
+*de onde vem o vértice*:
+
+| ferramenta | de onde vem o vértice |
+|---|---|
+| **Tesoura** | um clique: o vértice sob o cursor, senão `split_segment` no ponto mais próximo |
+| **Faca** | cada cruzamento de uma lâmina reta com a curva |
+| **Borracha de caminho** | as duas pontas de um arrasto AO LONGO da curva (dois cortes + um delete) |
+
+⚠️ **Corolário que apaga metade do trabalho previsto:** a borracha **não terá aritmética de arco
+própria** — dois cortes deixam o trecho do meio como um contorno inteiro, e apagá-lo é
+`remove_contour`/`remove_path`, que já existem. A linha do plano que mandava portar *"a matemática
+por arco do `fx_trim`"* fica **revogada por este parágrafo**: uma segunda resposta a *"onde este
+caminho termina?"* divergiria da primeira no dia em que uma quina viva entrasse no meio.
+
+**O primitivo** (`ph2d-vec-scene::path_cut::cut_path_at_vertex`), com três respostas — e a última é
+uma pergunta de **fill rule**, não de conveniência:
+
+- contorno **FECHADO** → vira **ABERTO**, re-enraizado no corte, com a costura nas duas pontas;
+- contorno **ABERTO**, vértice **interior** → parte em dois, e o vértice fica nos dois lados;
+- **ponta** de contorno aberto → `None` (não há ali o que abrir; o Illustrator também recusa).
+
+A 2ª metade vira um **path novo** num path de contorno único e um **contorno irmão** num compound:
+separar um contorno de compound em dois OBJETOS mudaria o que a `FillRule` significa — o buraco
+deixaria de ser buraco no clique que era para ser um corte.
+
+⚠️ **Os handles do vértice cortado sobrevivem nas DUAS cópias**, e re-fechar devolve a curva **ao
+bit**: um contorno aberto só consome o `out` do primeiro e o `in` do último, então zerar os
+"mortos" pareceria higiene e destruiria a tangente autorada.
+
+**A junção** (`path_join`) é o inverso, e tem **zero geometria nova**: a receita de *que ponta
+encosta em que ponta* já vivia no `weld_new_shape`. A diferença é de GATILHO — lá o par sai de uma
+tolerância, aqui o artista escolheu os objetos e a tolerância só decide *se a emenda funde num
+vértice ou se nasce um segmento*.
+
+**As três de seleção:** **Average** (colapsa os nós no centroide, movendo o vértice INTEIRO) ·
+**Join** (solda 2+ caminhos numa cadeia) · **Reverse** (que agora vira **todos** os contornos — num
+compound, inverter metade deixa sentidos misturados e sob `NonZero` isso muda qual região é buraco,
+em silêncio).
+
+⚠️ **A auditoria achou que "fechar" JÁ TINHA botão** — o `Close Path` da seção PATH —, então o
+**Join não fecha um caminho só**, ao contrário do `Ctrl+J` do Illustrator. Uma segunda porta para a
+mesma pergunta divergiria dela no primeiro refino. O que o Join deu ao `Close Path` foi a **SOLDA**:
+ele virava só o flag, e fechar um laço cujas pontas o artista tinha acabado de encostar deixava
+**dois vértices sobrepostos** no mesmo ponto — invisível no desenho e presente em todo
+Delete/Average/Simplify seguinte.
+
+**A tesoura** é o 13º modo (`DrawMode::Scissors`), e o corpo dela é literalmente a pergunta *de onde
+vem o vértice?*. ⚠️ Clicar **em cima** de uma âncora corta NELA: sem essa metade, o clique inseria
+um vértice coincidente e deixava um segmento de comprimento zero. E o overlay de âncoras fica
+**ligado** nela — não é decoração: é o que torna visível onde essa distinção acontece.
+
+**Smoke: `PH2D_BUILD_SMOKE=44`.** Seis formas, com os vãos MEDIDOS pela própria tabela da cena
+(`0,1200` e `1,0000`, contra uma tolerância de solda 120 000× menor).
+
+**Aberto da W4:** a **faca** (lâmina reta × N cruzamentos — é a tesoura repetida, e para uma origem
+FECHADA cortada em exatamente 2 pontos cada peça re-fecha pela corda, que **é** a lâmina) e a
+**borracha de caminho** (dois cortes + um delete).
+
 ## §8 — W5: O PATHFINDER BARATO (edit-time, não toca a D4)
 
 Temos **4 das 10** operações (`Union`/`Intersect`/`Subtract`/`Exclude`). Quatro das seis que faltam são

@@ -184,6 +184,14 @@ pub enum DrawMode {
     /// âncoras — uma parada de multiplicador pequeno senta a milímetros da curva, ou seja em
     /// cima delas. O Illustrator também o faz uma ferramenta (Shift+W).
     Width,
+    /// **Tesoura** (plano 25 §7, W4): clicar num caminho e ele ABRE ali — um fechado vira uma fita,
+    /// um aberto parte em dois. É o `C` do Illustrator.
+    ///
+    /// É um modo e não um botão porque a unidade de trabalho é um PONTO NA CURVA, não o objeto: o
+    /// que o gesto escolhe é *onde* cortar, e isso só se diz apontando. E é um modo distinto do
+    /// Node porque ali o press já tem três donos (âncora, handle, segmento) — a tesoura seria o
+    /// quarto significado do mesmo clique, e o artista não teria como pedir um deles.
+    Scissors,
 }
 
 impl DrawMode {

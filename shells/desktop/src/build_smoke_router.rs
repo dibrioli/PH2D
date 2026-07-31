@@ -154,5 +154,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::node_reach_smoke::frame(app, f);
         return true;
     }
+    // A cena dos CORTES (=44, plano 25 §7) — irmã `cut_smoke`. Mesma disciplina: dá o MATERIAL
+    // (um anel, dois pares de fitas e uma seta) e **não arma modo nenhum**.
+    if level == 44 {
+        crate::cut_smoke::frame(app, f);
+        return true;
+    }
     false
 }

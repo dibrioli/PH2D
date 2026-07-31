@@ -110,6 +110,14 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.width"),
                 DrawMode::Width,
             ),
+            // **Tesoura** — o 13º pill, e fica no fim desta vizinhança de propósito: os quatro
+            // (Fillet · Chamfer · Width · Scissors) editam uma forma que JÁ existe apontando-a no
+            // canvas, em vez de produzir geometria nova.
+            (
+                ids::VECTOR_MODE_SCISSORS,
+                tr("panel.vector.mode.scissors"),
+                DrawMode::Scissors,
+            ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

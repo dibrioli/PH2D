@@ -33,6 +33,10 @@ pub use pen_support::{History, PenStyle};
 /// Selection + the document ops that act on it (sibling module, LOC cap).
 mod selection;
 
+/// **A TESOURA** (W4) — clicar num caminho e ele abre ali. O 1º consumidor do
+/// `cut_path_at_vertex`, e o corpo dela é a pergunta *de onde vem o vértice?*.
+mod cut_tool;
+
 /// **As três operações de NÓ da W4** — Join · Average · Reverse. Irmão de `selection.rs` pelo teto
 /// de LOC: lá mora *quem está selecionado*, aqui *o que se faz com a seleção* quando a resposta
 /// muda a topologia (ou a direção) do caminho.

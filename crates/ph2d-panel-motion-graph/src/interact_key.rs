@@ -56,6 +56,25 @@ pub(super) fn apply_key(
         // COPIED, not on what is selected now (the shell drops it when the clipboard
         // is empty), and the pastes become the new selection when it lands.
         GraphKey::Paste => push_intent(GraphIntent::Paste),
+        // Ctrl+X — CUT: copy the selection into the clipboard, THEN delete it. It is
+        // exactly copy-then-delete and says so by emitting both intents in that order:
+        // the copy is a READ (no undo step) and the delete is the one undo step, so a
+        // cut is a single Ctrl+Z — no third code path, no dedicated intent to keep in
+        // sync with the two it composes. The copy runs first (intents drain FIFO), so it
+        // captures the nodes while they still exist; then the delete removes them, healing
+        // the chain and expanding group cards exactly as the Delete key does. Nothing
+        // selected → inert (falls through to the no-op arm), and — unlike Delete — a lone
+        // selected backdrop is NOT cut: a backdrop is decoration, not graph content the
+        // clipboard carries, so cutting it would delete-without-copy, a lie about the verb.
+        GraphKey::Cut if !state.selected.is_empty() => {
+            let nodes: Vec<u32> = state.selected.iter().copied().collect();
+            push_intent(GraphIntent::CopySelection {
+                nodes: nodes.clone(),
+            });
+            push_intent(GraphIntent::DeleteSelection { nodes });
+            state.selected.clear();
+            state.interaction = Interaction::Idle;
+        }
         // `K` arms the knife: the next left-drag slices wires instead of selecting.
         // A second K disarms it (so does Esc, and so does the stroke itself). The
         // toolbar chip mirrors the state (Accent ring) — a mode with no visible

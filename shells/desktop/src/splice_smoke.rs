@@ -14,8 +14,9 @@
 //!
 //! O INVERSO do splice também está aqui: SELECIONE o nó do meio (ex. **scale**, ou o **twist**
 //! recém-splicado) e aperte **Delete** — a cadeia se RE-CONECTA (grid -> output), em vez de
-//! ficar cortada (delete-and-reconnect, o Ctrl+X do Blender). Deletar um nó de PONTA (grid ou
-//! output) só o remove, sem religar (não há o que carregar).
+//! ficar cortada (delete-and-reconnect: no Blender é o Ctrl+X; AQUI é o **Delete**, e o Ctrl+X é o
+//! **Cut**, abaixo). Deletar um nó de PONTA (grid ou output) só o remove, sem religar (não há o
+//! que carregar).
 //!
 //! ⊙ SNAP MAGNÉTICO: arraste um fio de um socket e SOLTE PERTO (não exatamente em cima) de um
 //! socket compatível — o fio PULA para ele e conecta (raio ~22 px). Soltar em canvas realmente
@@ -56,6 +57,10 @@
 //! arraste as coloca). Diferente do Ctrl+D: a área de transferência SOBREVIVE, então Ctrl+V de novo
 //! cola OUTRA cópia (cascateada mais pra fora, não empilhada); e cola mesmo depois de apagar os
 //! originais, ou dentro de um grupo. Ctrl+V com nada copiado é inerte. UM Ctrl+Z por colagem.
+//!
+//! ⊙ Ctrl+X (CUT): selecione a cadeia → **Ctrl+X** copia E apaga (a cadeia se RE-CONECTA como no
+//! Delete) — depois **Ctrl+V** a cola de volta, aqui ou noutro nível. É exatamente Copy+Delete: UM
+//! Ctrl+Z desfaz o corte inteiro. Ctrl+X sem seleção é inerte.
 //!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
@@ -116,8 +121,8 @@ impl crate::App {
              so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
              recusado e o fio original fica.\n  \
              INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
-             cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (o Ctrl+X do Blender). \
-             Deletar uma PONTA (grid/output) so remove.\n  \
+             cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (no Blender e o Ctrl+X; \
+             AQUI e o Delete, e o Ctrl+X e o Cut, abaixo). Deletar uma PONTA (grid/output) so remove.\n  \
              SNAP: arraste um fio e SOLTE PERTO (nao em cima) de um socket compativel -> o fio \
              PULA e conecta. Soltar em canvas VAZIO ainda abre o smart-connect.\n  \
              TROCA: solte um fio sobre um input JA ocupado -> ele SUBSTITUI o que alimentava. \
@@ -141,6 +146,9 @@ impl crate::App {
              copias NOVAS deslocadas, com params e fios INTERNOS, ja selecionadas. Ao contrario do \
              Ctrl+D, a area de transferencia SOBREVIVE: Ctrl+V de novo cola OUTRA copia (cascateada, \
              nao empilhada), e cola ate depois de apagar os originais. UM Ctrl+Z por colagem.\n  \
+             CTRL+X (CUT): selecione a cadeia -> Ctrl+X copia E apaga (a cadeia se re-conecta como no \
+             Delete) -> Ctrl+V a cola de volta, aqui ou noutro nivel. E Copy+Delete: UM Ctrl+Z desfaz \
+             o corte. Ctrl+X sem selecao e inerte.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

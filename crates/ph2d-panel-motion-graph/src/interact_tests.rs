@@ -331,6 +331,35 @@ fn copy_and_paste_keys_emit_their_intents() {
     assert!(drain_intents().is_empty());
 }
 
+/// **Ctrl+X cuts: copy THEN delete, in that order, one gesture.** It emits the two
+/// intents it composes — `CopySelection` FIRST (so the clip captures the nodes while
+/// they still exist), then `DeleteSelection` — and clears the selection like Delete.
+/// The ORDER is load-bearing: swap it and the delete runs before the copy reads. Cut
+/// of nothing is inert. FALSIFIED by the wrong order, by dropping either half (which
+/// would make Cut a bare Copy or a bare Delete), or by dropping the empty-selection
+/// guard.
+#[test]
+fn cut_key_emits_copy_then_delete_in_order() {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.extend([1, 2]);
+
+    apply_key(&mut st, GraphKey::Cut, RECT, &two_node_snapshot());
+    assert_eq!(
+        drain_intents(),
+        vec![
+            GraphIntent::CopySelection { nodes: vec![1, 2] },
+            GraphIntent::DeleteSelection { nodes: vec![1, 2] },
+        ],
+        "cut is copy-then-delete, and the copy must run first"
+    );
+    assert!(st.selected.is_empty(), "cut clears the selection like delete");
+
+    // Cut of nothing is inert (double-dispatch safe, and there is nothing to carry).
+    apply_key(&mut st, GraphKey::Cut, RECT, &two_node_snapshot());
+    assert!(drain_intents().is_empty());
+}
+
 /// **The double-dispatch is collapsed.** The graph's keys reach the store TWICE per
 /// press (focus gate + cursor router), so a non-idempotent verb like Paste would run
 /// twice — two copies from one Ctrl+V, exactly the bug this fixes. An adjacent repeat

@@ -259,6 +259,13 @@ pub enum GraphKey {
     /// follows moves them). Distinct from [`Self::Duplicate`]: it can paste MANY times from one
     /// copy and always replays the ORIGINAL snapshot, not the last copies.
     Paste,
+    /// **Ctrl/Cmd+X — cut the selection: copy it to the clipboard, then delete it.** It is
+    /// exactly [`Self::Copy`] followed by [`Self::Delete`], and the panel emits both intents
+    /// rather than inventing a third — the copy is a READ (no undo step) and the delete is the
+    /// one undo step, so a cut is a single Ctrl+Z, and the removal heals the chain and handles
+    /// group cards exactly as the Delete key does. Nothing selected → inert. The graph fast-path
+    /// only fires with no text field focused, so `Ctrl+X` over a field still cuts the TEXT.
+    Cut,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

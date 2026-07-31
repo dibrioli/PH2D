@@ -437,6 +437,7 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         KEY_KEY_A if cmd => GraphKey::SelectAll,
         KEY_KEY_C if cmd => GraphKey::Copy,
         KEY_KEY_V if cmd => GraphKey::Paste,
+        KEY_KEY_X if cmd => GraphKey::Cut,
         KEY_KEY_L if cmd => GraphKey::SelectLinked,
         KEY_ESCAPE => GraphKey::Escape,
         KEY_KEY_H if !cmd => GraphKey::Bypass,

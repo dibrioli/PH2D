@@ -149,41 +149,53 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v37 (Flip, Airbrush, 03 §8): o `FlipStroke` ganhou `airbrush` (falloff físico Beer-Lambert por
 /// dab esférico) no MEIO do struct (após `self_overlap`) ⇒ mesmo raciocínio posicional.
 /// `FLIP_SCHEMA_VERSION` 11→12.
-/// v38 (physics, W-Rod): `JointKind` ganhou a variante **`Rod`** (a barra rígida). Apender
+/// v38 (Vector, plano 24 W6 — a LEI DE MISTURA por degrau): o `ph2d_ecs::FxOp` ganhou `blend`
+/// APENDADO — um degrau da pilha de FX raster passa a dizer *como a cor dele encosta na que já
+/// está ali* (Inner Shadow em Multiply escurece em vez de lavar; Color Overlay em Color troca a
+/// matiz preservando a luminosidade). O `VecFilter` é componente registado, e postcard é
+/// POSICIONAL, então um save v37 lido como v38 leria `blend` além do fim de cada degrau.
+/// ⚠️ Não há como evitar o bump com `serde(default)`: o postcard não tem NOMES de campo, e um
+/// buffer que acaba cedo é erro de decode, não um default.
+/// ⚠️ **E o 38 carrega TAMBÉM a turbulência (plano 24 W6b), o Grow / Shrink (W7), o Color Adjust
+/// (W8) e o Duotone (W9), de propósito:** o mesmo `FxOp` ganhou `scale`/`detail`/`seed`, depois
+/// `grow`, depois `hue`/`sat`/`bright` e por fim `color_b` na MESMA janela, e um save v37 já é
+/// recusado pelo 38 — pôr cada leva num número próprio jogaria fora exatamente os mesmos
+/// arquivos. **Uma linha, um bump**; o que não pode acontecer é o número não subir.
+/// v39 (physics, W-Rod): `JointKind` ganhou a variante **`Rod`** (a barra rígida). Apender
 /// variante NÃO move os índices das existentes — o bump é para o caminho INVERSO: um build
 /// antigo lendo um arquivo novo veria o discriminante 5 e devolveria lixo bem-formado em vez
 /// de recusar. É o mesmo raciocínio do Weld (v27→28) e do Slider, e é por isso que a recusa
 /// tem de ser ALTA. `FLIP_SCHEMA_VERSION` fica em 12.
-/// v41 (physics, W-Pulley W1): o `PhysicsJoint` **PERDEU** `wheel_a`/`wheel_b`/`ratio` — uma
+/// v42 (physics, W-Pulley W1): o `PhysicsJoint` **PERDEU** `wheel_a`/`wheel_b`/`ratio` — uma
 /// roldana virou ENTIDADE (`PulleyWheel` + `Transform`), o que remove o teto de duas e dá ao
 /// artista contar/posicionar/dimensionar cada uma. Componente NOVO não custa bump (blob-key
 /// própria); o que custa é a REMOÇÃO dos três campos, porque postcard é posicional e um blob
-/// v40 traz três a mais. E o `ratio` saiu por ser FÍSICA ERRADA: numa corda única sobre
+/// v41 traz três a mais. E o `ratio` saiu por ser FÍSICA ERRADA: numa corda única sobre
 /// roldanas livres a tensão é uniforme, então não há vantagem mecânica a ganhar de diâmetro
 /// nenhum. `FLIP_SCHEMA_VERSION` fica em 12.
-/// v39 (physics, W-Wheel): `JointKind` ganhou a variante **`Wheel`** (o cubo que gira E cavalga
-/// uma suspensão). Mesmo raciocínio do v38, um degrau adiante: apender variante não move
+/// v40 (physics, W-Wheel): `JointKind` ganhou a variante **`Wheel`** (o cubo que gira E cavalga
+/// uma suspensão). Mesmo raciocínio do v39, um degrau adiante: apender variante não move
 /// índice nenhum, e o bump existe para o build antigo RECUSAR em vez de ler o discriminante 6
 /// como lixo bem-formado. `FLIP_SCHEMA_VERSION` fica em 12.
-/// v42 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`motor_speed`** — a roldana
+/// v43 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`motor_speed`** — a roldana
 /// dirigida, o guincho. Componente NOVO não custa bump (blob-key própria), mas
 /// APENDAR campo a um componente que já existe custa: postcard é **posicional**, e
-/// um blob v41 tem um `f32` a menos, então o load leria lixo bem-formado no lugar
+/// um blob v42 tem um `f32` a menos, então o load leria lixo bem-formado no lugar
 /// de recusar. Mesmo raciocínio do `is_sensor` (v27) e do `offset` (v29).
-/// v43 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`break_enabled`** e
+/// v44 (physics, W-Pulley W2): a `PulleyWheel` ganhou **`break_enabled`** e
 /// **`break_force`** — o eixo que cede sob carga. Dois campos apendados, mesmo
-/// raciocínio posicional do v42.
-/// v44 (physics, W-Pulley W3): a `PulleyWheel` ganhou **`body`**, **`local`** e
+/// raciocínio posicional do v43.
+/// v45 (physics, W-Pulley W3): a `PulleyWheel` ganhou **`body`**, **`local`** e
 /// **`mounted`** — a roldana montada num corpo que se move, a *cadernal móvel* de
 /// uma talha, e com ela a vantagem mecânica que o `ratio` prometia e não
-/// entregava. Três campos apendados, mesmo raciocínio posicional do v42/v43. O
+/// entregava. Três campos apendados, mesmo raciocínio posicional do v43/v44. O
 /// par `local`/`mounted` é o do W-AnchorFollow: o eixo é guardado no frame do
 /// CORPO e convertido uma vez, senão mover o bloco o faz deslizar por ele.
-/// v45 (physics, W-Pulley W4): a `PulleyWheel` ganhou **`radius_out`** — o SEGUNDO
+/// v46 (physics, W-Pulley W4): a `PulleyWheel` ganhou **`radius_out`** — o SEGUNDO
 /// diâmetro do eixo, que faz dela um **tambor diferencial** e devolve a vantagem
 /// mecânica CONTÍNUA que o `ratio` do W-Pulley prometia sem ter peça na cena. Um
-/// campo apendado, mesmo raciocínio posicional do v42/v43/v44.
-const PROJECT_SCHEMA: u32 = 45;
+/// campo apendado, mesmo raciocínio posicional do v43/v44/v45.
+const PROJECT_SCHEMA: u32 = 46;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

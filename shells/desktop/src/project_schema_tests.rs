@@ -101,35 +101,39 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // FLIP 11→12 + PROJECT 36→37: o `FlipStroke` ganhou `airbrush` (falloff físico
         // Beer-Lambert por dab esférico, 03 §8) — campo no MEIO do struct (após `self_overlap`),
         // mesmo raciocínio posicional.
-        // PROJECT 37→38: `JointKind` ganhou a variante `Rod` (W-Rod). Apender variante não
+        // PROJECT 37→38: o `ph2d_ecs::FxOp` ganhou `blend` (a LEI DE MISTURA por degrau da pilha
+        // de FX raster, plano 24 W6) — campo APENDADO ao componente `VecFilter`, e postcard é
+        // posicional ⇒ um save v37 leria `blend` além do fim de cada degrau. ⚠️ `FLIP` e
+        // `VEC_SCENE` NÃO se movem: a lei é do componente ECS, não da `VecScene`.
+        // PROJECT 38→39: `JointKind` ganhou a variante `Rod` (W-Rod). Apender variante não
         // move índice; o bump é para o build ANTIGO recusar em vez de ler o discriminante 5
         // como lixo bem-formado. FLIP/VEC_SCENE ficam.
-        // PROJECT 38→39: `JointKind` ganhou a variante `Wheel` (W-Wheel — o cubo que gira E
+        // PROJECT 39→40: `JointKind` ganhou a variante `Wheel` (W-Wheel — o cubo que gira E
         // cavalga uma suspensão). Mesmo raciocínio, um degrau adiante.
-        // PROJECT 39→40: o `PhysicsJoint` ganhou `wheel_a`/`wheel_b`/`ratio` (W-Pulley — a
+        // PROJECT 40→41: o `PhysicsJoint` ganhou `wheel_a`/`wheel_b`/`ratio` (W-Pulley — a
         // corda por duas roldanas). ⚠️ Aqui o bump NÃO é cortesia como nos dois acima: são
         // CAMPOS apendados a um struct que o postcard codifica POSICIONALMENTE, então um
-        // blob v39 tem o comprimento errado e todo joint de todo projeto salvo decodificaria
+        // blob v40 tem o comprimento errado e todo joint de todo projeto salvo decodificaria
         // como outra coisa. A variante `Pulley` viaja junto e seria só cortesia sozinha.
-        // PROJECT 40→41: os MESMOS três campos SAÍRAM (W-Pulley W1). Uma roldana virou
+        // PROJECT 41→42: os MESMOS três campos SAÍRAM (W-Pulley W1). Uma roldana virou
         // ENTIDADE (`PulleyWheel`), e um componente novo não custaria bump nenhum — o que
-        // custa é a REMOÇÃO: postcard é posicional, então um blob v40 tem três campos a
+        // custa é a REMOÇÃO: postcard é posicional, então um blob v41 tem três campos a
         // mais e todo joint salvo leria os seguintes deslocados. Bump por remover, pelo
         // mesmo motivo que se bumpa por apendar.
-        // PROJECT 41→42: a `PulleyWheel` ganhou `motor_speed` (W-Pulley W2 — a roldana
+        // PROJECT 42→43: a `PulleyWheel` ganhou `motor_speed` (W-Pulley W2 — a roldana
         // dirigida, o guincho). Componente NOVO não custaria bump; APENDAR campo a um
-        // que já existe custa, porque postcard é posicional e um blob v41 tem um `f32`
+        // que já existe custa, porque postcard é posicional e um blob v42 tem um `f32`
         // a menos — o load leria lixo bem-formado em vez de recusar.
-        // PROJECT 42→43: a `PulleyWheel` ganhou `break_enabled`+`break_force` (W2 —
+        // PROJECT 43→44: a `PulleyWheel` ganhou `break_enabled`+`break_force` (W2 —
         // o eixo que cede). Dois campos apendados, mesmo raciocínio posicional.
-        // PROJECT 43→44: a `PulleyWheel` ganhou `body`+`local`+`mounted` (W-Pulley W3 — a
+        // PROJECT 44→45: a `PulleyWheel` ganhou `body`+`local`+`mounted` (W-Pulley W3 — a
         // roldana montada num corpo que se move, e com ela a vantagem mecânica). Três
         // campos apendados, mesmo raciocínio posicional; o par `local`/`mounted` é o do
         // W-AnchorFollow, para o eixo não deslizar pelo bloco quando o bloco se move.
-        // PROJECT 44→45: a `PulleyWheel` ganhou `radius_out` (W-Pulley W4 — o tambor
+        // PROJECT 45→46: a `PulleyWheel` ganhou `radius_out` (W-Pulley W4 — o tambor
         // DIFERENCIAL: uma roldana com dois raios, e a vantagem mecânica contínua que
         // cai do quociente deles). Um campo apendado, mesmo raciocínio posicional.
-        (45, 12, 13),
+        (46, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

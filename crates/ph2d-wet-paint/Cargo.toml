@@ -30,11 +30,22 @@ authors.workspace = true
 # the sRGB<->linear transfer for Kubelka–Munk). Same pin + rationale as
 # ph2d-ecs: a patch bump can move an ulp and break determinism gates.
 libm = { version = "=0.2.16", default-features = false }
-# Passes row-paralelos do solver (ADR-0145, a 2a excecao ao "sem rayon" do repo;
-# a 1a e o ADR-0109). Entra em EXATAMENTE tres passes -- `project` (Jacobi),
-# `smooth_velocity` (gather) e a metade row-disjunta do `rebuild_active_region`
-# --, todos com escrita por linha disjunta, leitura de buffer que ninguem
-# escreve no passe, e reducao so por min/max/||. `advect`, `build_flow_field`,
-# `drying_pass` e a SAIA do rebuild ficam SERIAIS por semantica (o porque de
-# cada um esta em `src/par.rs`); qualquer uso novo exige ADR novo.
+# Passes row-paralelos do solver. DUAS decisoes, e elas sao distintas:
+#
+#   ADR-0145 (a 2a excecao ao "sem rayon" do repo; a 1a e o ADR-0109) --
+#     `project` (Jacobi), `smooth_velocity` (gather) e a metade row-disjunta do
+#     `rebuild_active_region`. Todos row-disjuntos POR CONSTRUCAO, com o
+#     resultado BYTE-IDENTICO ao serial.
+#
+#   ADR-0147 (a 3a) -- `solver::advect_jacobi` e `drying::drying_pass_jacobi`.
+#     Aqui o que mudou foi o MODELO: os dois leem o estado do INICIO do passe
+#     em vez do vizinho que a celula anterior reescreveu. Nao e "row-disjunto
+#     que ninguem tinha visto" -- a §2 do ADR-0145 os recusava, e corretamente.
+#     A justificativa e CORRECAO, nao velocidade: os dois Gauss-Seidel quebram
+#     a simetria da cena (`tests/solver_symmetry.rs`).
+#
+# `build_flow_field` e a SAIA do `rebuild_active_region` ficam SERIAIS por
+# semantica, e os dois kernels Gauss-Seidel ficam no repo como caminho de
+# REFERENCIA (o porque de cada um esta em `src/par.rs`). Qualquer uso novo de
+# rayon nesta crate exige ADR novo.
 rayon = "1"

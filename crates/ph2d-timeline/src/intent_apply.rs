@@ -11,9 +11,10 @@ use ph2d_core::Playhead;
 use crate::doc::TimelineDoc;
 use crate::intent::TimelineIntent;
 use crate::state::{SelectedKey, Selection, TimelineState};
-use crate::strip_edge_edit::{
-    MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
-};
+
+/// A família da PILHA (ADR-0115) — sibling module under the LOC cap.
+#[path = "intent_apply_stack.rs"]
+mod intent_apply_stack;
 
 /// The Buffer-Curves bodies (`store`/`swap`) — sibling module under the LOC cap.
 #[path = "intent_apply_buffer.rs"]
@@ -470,96 +471,17 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 l.weight = weight.clamp(0.0, 1.0); // CLAMP-OK: constant bounds
             }
         }),
-        I::AddStrip {
-            lane,
-            source,
-            t_start,
-            t_end,
-        } => edit_at(state, host, |doc, host, _| {
-            let _ = doc.add_strip_to(host, lane, source, t_start.max(0.0), t_end.max(0.0));
-        }),
-        I::RemoveStrip { lane, id } => edit_at(state, host, |doc, host, _| {
-            doc.remove_strip_in(host, lane, id);
-        }),
-        I::DuplicateStrip { lane, id } => edit_at(state, host, |doc, host, _| {
-            doc.duplicate_strip_in(host, lane, id);
-        }),
-        I::MoveStrip {
-            lane,
-            to_lane,
-            id,
-            t_start,
-        } => edit_at(state, host, |doc, host, _| {
-            doc.move_strip_in(host, lane, to_lane, id, t_start.max(0.0));
-        }),
-        I::TrimStrip {
-            lane,
-            id,
-            edge,
-            t,
-            from,
-        } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                trim_strip(s, edge, t);
-                mark_edge(s, false, edge, from);
-            }
-        }),
-        I::StretchStrip {
-            lane,
-            id,
-            edge,
-            t,
-            from,
-        } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                stretch_strip(s, edge, t);
-                mark_edge(s, true, edge, from);
-            }
-        }),
-        I::SetStripLoop {
-            lane,
-            id,
-            loop_mode,
-        } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                s.loop_mode = loop_mode;
-            }
-        }),
-        // Authoring a strip's fades — both live in `intent_apply_fade` (LOC cap). The inward
-        // ease and the outward lead, at either edge; each runs inside this `edit_at` bracket.
-        I::SetStripEase {
-            lane,
-            id,
-            edge,
-            seconds,
-        } => edit_at(state, host, |doc, host, _| {
-            crate::intent_apply_fade::set_ease(doc, host, lane, id, edge, seconds);
-        }),
-        I::SetStripLead {
-            lane,
-            id,
-            edge,
-            seconds,
-        } => edit_at(state, host, |doc, host, _| {
-            crate::intent_apply_fade::set_lead(doc, host, lane, id, edge, seconds);
-        }),
-        I::SetStripSpeed { lane, id, speed } => edit_at(state, host, |doc, host, _| {
-            if let Some(s) = doc.strip_in_mut(host, lane, id) {
-                // The span follows the rate, `t_start` pinned — the same edit
-                // `stretch_strip` makes, stated as a number instead of felt as a
-                // drag (see the variant's docs).
-                s.speed = speed.clamp(MIN_STRIP_SPEED, MAX_STRIP_SPEED); // CLAMP-OK: const bounds
-                let slice = s.slice();
-                if slice > 0.0 {
-                    // Same edit, same change bar: typing a rate moves the END edge,
-                    // and a mark that only appeared for the DRAG would make the two
-                    // paths to one number look like two different edits.
-                    let before = s.t_end;
-                    s.t_end = s.t_start + slice / s.speed;
-                    mark_edge(s, true, 1, before);
-                }
-            }
-        }),
+        stack @ (I::AddStrip { .. }
+        | I::RemoveStrip { .. }
+        | I::DuplicateStrip { .. }
+        | I::MoveStrip { .. }
+        | I::TrimStrip { .. }
+        | I::StretchStrip { .. }
+        | I::SetStripLoop { .. }
+        | I::SetStripEase { .. }
+        | I::SetStripLead { .. }
+        | I::SetStripCurve { .. }
+        | I::SetStripSpeed { .. }) => intent_apply_stack::apply(state, host, stack),
     }
 }
 
@@ -569,7 +491,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
 /// closure already borrows `state` mutably — and threading it makes the routing visible at
 /// every call site, which is the point: a stack edit that forgot the host would silently
 /// edit the document while the animator watched a container.
-fn edit_at(
+pub(crate) fn edit_at(
     state: &mut TimelineState,
     host: crate::StackHost,
     f: impl FnOnce(&mut TimelineDoc, crate::StackHost, &mut Selection),

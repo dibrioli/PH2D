@@ -19,7 +19,7 @@
 //! `commit_if_changed`), so a no-op edit never pollutes the stack. Selection,
 //! transport and flag intents are not undoable.
 
-use ph2d_anim::{AnimTarget, AnimValue, Extrap, ExtrapSide, Interp, KeyId, RationalTime};
+use ph2d_anim::{AnimTarget, AnimValue, Easing, Extrap, ExtrapSide, Interp, KeyId, RationalTime};
 
 use crate::prop::PropKind;
 use crate::stack::{LaneMode, StripId, StripLoop, StripSource};
@@ -591,17 +591,8 @@ pub enum TimelineIntent {
         /// nobody made.
         from: f64,
     },
-    /// **Stretch a strip** by one edge — the retime that `TrimStrip` refuses to be.
-    ///
-    /// The source slice is held FIXED and the span is resized around it, so the
-    /// rate falls out: `speed = slice / span`. Nothing is revealed or hidden; the
-    /// same frames play, slower or faster. The edge you are NOT dragging stays put.
-    ///
-    /// This is the *only* authoring path to `speed` in the UI, and it exists
-    /// because a rate is a thing you feel, not a number you type. (The NLEs make
-    /// it a separate tool — Premiere's Rate Stretch, Resolve's Change Speed. We
-    /// have no tool palette inside a panel, so it is the modifier on the gesture
-    /// it modifies.)
+    /// **Stretch a strip** by one edge — the retime that `TrimStrip` refuses to be. What
+    /// it does, and why a rate is felt rather than typed: [`crate::intent_apply_stack`].
     StretchStrip {
         /// Index into the stack.
         lane: usize,
@@ -642,18 +633,8 @@ pub enum TimelineIntent {
         /// which is what `StripLoop::Once` past its end already does, honestly.
         speed: f64,
     },
-    /// **The strip's own fade at one edge** (ADR-0115 B4) — what the corner handle
-    /// authors.
-    ///
-    /// It is the SAME curve as the crossfade, which is the whole point: where a
-    /// neighbour overlaps this edge, the overlap defines the window and this number is
-    /// ignored (`ClipLane::blend_in`/`blend_out`), so the two can never disagree. The
-    /// panel refuses the drag there rather than writing a number nobody will read
-    /// (Unity greys the field out and relabels it "Blend").
-    ///
-    /// Without this, a strip ALONE on a lane could not fade at all: it entered and left
-    /// hard. The fields existed and the evaluator already honoured them — nothing wrote
-    /// them.
+    /// **The strip's own INWARD fade at one edge** (ADR-0115 B4) — its LENGTH, in seconds.
+    /// Why it is the same curve as the crossfade: [`crate::intent_apply_stack`].
     SetStripEase {
         /// Index into the stack.
         lane: usize,
@@ -666,19 +647,9 @@ pub enum TimelineIntent {
         /// than the strip is not a fade, and a negative one is not a thing.
         seconds: f64,
     },
-    /// **The strip's OUTWARD fade — the "lead" that lives in the gap beside it** (Enio,
-    /// 2026-07-16 for the start edge, 2026-07-19 for the end). What a fade corner handle
-    /// authors when dragged PAST its edge, into the empty time beyond the strip.
-    ///
-    /// It is a different blend from [`Self::SetStripEase`]'s inward fade: that one
-    /// crossfades against this clip while it PLAYS; this one crossfades against the clip's
-    /// FROZEN frame at that edge, so the object travels across the gap while the clip plays
-    /// clean. At the START edge (`edge = 0`, `ClipStrip::lead_in`) it travels FROM the
-    /// previous strip's held pose TO this clip's first frame; at the END edge (`edge = 1`,
-    /// `ClipStrip::lead_out`) it travels FROM this clip's last frame TO the next strip's
-    /// start. Clamped to `[0, gap]` on apply — the outward fade lives in the gap and cannot
-    /// overrun the neighbour. Setting it clears the inward ease on the SAME edge: the fade
-    /// handle is on one side of the edge or the other, never both.
+    /// **The strip's OUTWARD fade — the "lead" that lives in the GAP beside it** — its
+    /// LENGTH, in seconds. How it differs from [`Self::SetStripEase`], and why the two are
+    /// exclusive on one edge: [`crate::intent_apply_stack`].
     SetStripLead {
         /// Index into the stack.
         lane: usize,
@@ -690,5 +661,19 @@ pub enum TimelineIntent {
         edge: u8,
         /// The outward fade's length in seconds (into the gap beside the edge).
         seconds: f64,
+    },
+    /// **The SHAPE of a strip's fade at one edge** — the curve, where [`Self::SetStripEase`]
+    /// and [`Self::SetStripLead`] author the LENGTH. Why `None` is not a catalogue preset,
+    /// and why it never reaches an overlap: [`crate::intent_apply_stack`].
+    SetStripCurve {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// `0` = the fade at the START edge, `1` = at the END — the same edge vocabulary as
+        /// [`Self::SetStripEase`], [`Self::SetStripLead`] and [`Self::TrimStrip`].
+        edge: u8,
+        /// The easing, or `None` for the factory `smoothstep`.
+        curve: Option<Easing>,
     },
 }

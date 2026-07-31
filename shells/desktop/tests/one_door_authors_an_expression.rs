@@ -6,10 +6,10 @@
 //!
 //! | campo | ESCRITORES no produto | LEITORES |
 //! |---|---|---|
-//! | `clip.expr` (per-clip, ADR-0145) | **UM**: `TimelineIntent::SetBindingExpr` → `TimelineDoc::set_clip_expr` | `frame_solve` ×2 · `stack_eval` · `expr_pass::still_driven` · `snapshot` (primeiro) · `doc_extent` · `copy_clip` |
+//! | `clip.expr` (per-clip, ADR-0151) | **UM**: `TimelineIntent::SetBindingExpr` → `TimelineDoc::set_clip_expr` | `frame_solve` ×2 · `stack_eval` · `expr_pass::still_driven` · `snapshot` (primeiro) · `doc_extent` · `copy_clip` |
 //! | `binding.expr` (global, ADR-0144) | **NENHUM** | `frame_solve` ×2 · `expr_pass` ×3 · `snapshot` (fallback) |
 //!
-//! Ou seja: **a autoria já é per-clip e tem uma porta só** (o ADR-0145 fechou isso). O que
+//! Ou seja: **a autoria já é per-clip e tem uma porta só** (o ADR-0151 fechou isso). O que
 //! sobrou é um canal **legado, só de leitura**: `binding.expr` não é escrito por caminho
 //! nenhum do produto — ele só pode chegar de um save v15 ou da cena de smoke que o
 //! exercita de propósito.
@@ -80,7 +80,7 @@ fn the_global_expression_field_has_no_product_writer() {
         s.contains(".expr = Some") || s.contains(".expr = None") || s.contains("b.expr =")
     });
 
-    // CONTROLE POSITIVO: o scanner tem de ACHAR a exceção conhecida — a cena do ADR-0146
+    // CONTROLE POSITIVO: o scanner tem de ACHAR a exceção conhecida — a cena do ADR-0152
     // C4, que demonstra o canal GLOBAL de propósito (um prop-link que não obedece a strip).
     // Sem isto, um rename de arquivo deixa o gate verde sobre nada.
     assert!(

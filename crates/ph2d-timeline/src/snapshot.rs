@@ -597,7 +597,7 @@ impl TimelineViewSnapshot {
             row.entity = b.entity;
             row.missing = b.missing;
             row.keys.clear();
-            // ADR-0145 — show the ACTIVE clip's per-clip formula (where the Keys view
+            // ADR-0151 — show the ACTIVE clip's per-clip formula (where the Keys view
             // authors), falling back to the binding's GLOBAL one. Set every pass since
             // the row is reused; `None` on a bare binding with no formula.
             row.expr = doc

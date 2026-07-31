@@ -302,7 +302,7 @@ fn position_shown(doc: &TimelineDoc, entity: u64, t_secs: f64, solo: bool) -> Op
 }
 
 /// **The composed value the last apply WROTE for `(entity, prop)`** — from the persisted
-/// `LinkFrame` on the scratch (ADR-0146 W6, C2). The exact number `shown` must equal the world
+/// `LinkFrame` on the scratch (ADR-0152 W6, C2). The exact number `shown` must equal the world
 /// for a driven channel, so the autokey diff mints no phantom key. `None` for a formula-free
 /// frame (the map is empty, the compose loop never inserted) or a channel the apply left out,
 /// so the caller RE-DERIVES — byte-identical where there was no formula.
@@ -361,7 +361,7 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
 /// pre-compensated for the rest of it ([`crate::stack_eval::invert_stack`]). `Err` = **refuse**,
 /// with the reason ([`KeyRefusal`]): the pose is not reachable by keying this clip — an
 /// `Override` lane above owns it (`Overridden`), or a pure/non-linear formula drives it
-/// (`ExpressionDriven`, ADR-0146 W5). Never move the object behind the animator's back.
+/// (`ExpressionDriven`, ADR-0152 W5). Never move the object behind the animator's back.
 ///
 /// Every path that authors a key goes through here — auto-key, performing, and the manual `K` —
 /// because a value written by one rule and read by another is the bug this module has now
@@ -379,7 +379,7 @@ pub fn key_value_in_active_clip(
     let target = doc
         .binding_for(entity, prop)
         .map_or(ph2d_anim::AnimTarget::new(u64::MAX), |b| b.target);
-    // ADR-0146 W0 threaded EMPTY; W5 substitutes the probe INTO the expression as `value` so
+    // ADR-0152 W0 threaded EMPTY; W5 substitutes the probe INTO the expression as `value` so
     // `value + g(time)` keys and pre-compensates instead of refusing.
     let links = crate::frame_solve::LinkFrame::default();
     // Root-aware, like `key_home` (the same 2026-07-22 fix): rooted, the blend to invert is

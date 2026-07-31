@@ -23,7 +23,7 @@ impl TimelineDoc {
         self.scratch = scratch;
     }
 
-    /// **Stash the frame's composed `LinkFrame` onto the scratch** (ADR-0146 W6, C2), for a
+    /// **Stash the frame's composed `LinkFrame` onto the scratch** (ADR-0152 W6, C2), for a
     /// view that keeps no local scratch ([`crate::apply_active_clip`]) — the autokey diff then
     /// READS it (`shown_value`/`curve_value`) instead of re-deriving. `put_scratch` would
     /// overwrite it, so the views that DO take a scratch set the field on theirs directly.

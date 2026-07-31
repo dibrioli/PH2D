@@ -112,7 +112,7 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     // O relógio da entidade (Time Remap) é o mesmo para todos os bindings dela.
     let t_entity = remapped_time(doc, entity, clip_t);
-    // **Um `LinkFrame` DEGENERADO** (ADR-0146 W6, §3): os prop-links (`Nome.prop`) resolvem à
+    // **Um `LinkFrame` DEGENERADO** (ADR-0152 W6, §3): os prop-links (`Nome.prop`) resolvem à
     // pose VIVA da fonte, semeada do mundo. Uma expressão LOCAL (time/wiggle) o ignora e o
     // fantasma é EXATO; um prop-link entre objetos é APROXIMADO — lê a pose da fonte NESTE
     // playhead, não no tempo `t_entity` do fantasma, porque o onion não tem o grafo cross-time

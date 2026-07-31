@@ -1,7 +1,10 @@
-# ADR-0145 — A expressão é POR-CLIP, então um strip a janela
+# ADR-0151 — A expressão é POR-CLIP, então um strip a janela
 
-**Data:** 2026-07-27 · **Status:** aceito (Enio 2026-07-27) · **Provisório:** o número **0145** e o
-**`DOC_VERSION` 15→16** se CONTAM na integração (maior ADR no main de hoje = 0144).
+**Data:** 2026-07-27 · **Status:** aceito (Enio 2026-07-27) · **Numerado na integração
+(2026-07-31):** nasceu **0145** e virou **0151** — a `line/Painter` levou 0145·0146·0147 na mesma
+janela, a `line/Vector` o 0148, a `line/physics` o 0149 e a `line/sculpt3d` o 0150; como os NOMES de
+arquivo diferem, o git **nunca conflitou**, e quem pega é o gate `architecture_adr_numbers_are_unique`.
+*Um número escolhido numa linha paralela é PROVISÓRIO: ele se CONTA a partir do `main` do dia.*
 **Segue** e emenda o [ADR-0144](0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md)
 (§F já nomeava este follow-up: *"`expr` por-track (por-clip) … Per-clip é follow-up"*).
 

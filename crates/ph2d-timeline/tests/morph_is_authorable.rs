@@ -1,7 +1,7 @@
 //! **O canal de Morph é AUTORÁVEL** — os dois defeitos do smoke do Enio (2026-07-28):
 //! *"nem autokey funcionou para morph e nem tem o track disponível no dropdown de tracks"*.
 //!
-//! O C4 (ADR-0146) fez o Morph ser LIDO de volta do mundo. Mas ler não é autorar, e o
+//! O C4 (ADR-0152) fez o Morph ser LIDO de volta do mundo. Mas ler não é autorar, e o
 //! artista não tinha gesto nenhum para criar a track: a cena do smoke a montou
 //! programaticamente, então a wave anterior demonstrou o fix por um caminho que o
 //! produto não oferece.

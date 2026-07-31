@@ -411,7 +411,7 @@ Tier B **encosta no congelado**; cada primitiva quer ADR próprio.
 | G12 | `a_pair_recipe_writes_both_properties_or_neither` | Orbit escrevendo só X |
 | G13 | seam: **todo cartão e todo knob** clicáveis por ponteiro real | tirar do `populate` |
 | G14 | `opening_and_cancelling_the_modal_leaves_the_document_byte_identical` | Cancel escrevendo |
-| G15 | fingerprint de fade **intacto** (o guardião do ADR-0146) | qualquer vazamento no blend |
+| G15 | fingerprint de fade **intacto** (o guardião do ADR-0152) | qualquer vazamento no blend |
 
 ⚠️ **Três armadilhas de fixture, nomeadas de antemão:**
 - **G2a tem de iterar o catálogo INTEIRO.** Um "neutro" testado só no *Shake* passa com

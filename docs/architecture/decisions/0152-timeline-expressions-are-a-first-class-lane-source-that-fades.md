@@ -1,7 +1,7 @@
-# ADR-0146 — Timeline expressions are a first-class LANE SOURCE that fades (they compose inside the blend, not after it)
+# ADR-0152 — Timeline expressions are a first-class LANE SOURCE that fades (they compose inside the blend, not after it)
 
 Status: **Accepted e CONSTRUÍDO** (`line/anim`, W0–W7 + o follow-up das vistas, todas gateadas e mutação-provadas; aguardando smoke do Enio e ordem de integração). Plano: [`docs/Timeline/08_plano_expressoes_no_blend.md`](../../Timeline/08_plano_expressoes_no_blend.md).
-Supersedes the *isolation* clause of [ADR-0144](0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md); completes [ADR-0145](0145-timeline-expressions-are-per-clip-so-a-strip-windows-them.md).
+Supersedes the *isolation* clause of [ADR-0144](0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md); completes [ADR-0151](0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md).
 Date: 2026-07-27 · Line: `line/anim`
 
 > ⚠️ O número **0146** é PROVISÓRIO — se CONTA na integração (o main de hoje para em 0144; o 0145 desta linha ainda não integrou). Se outra linha reivindicar o mesmo número, quem chegar ao main primeiro fica com ele.
@@ -41,8 +41,8 @@ A força: **queremos o padrão-ouro — expressões plenamente integradas ao sis
 
 ### 2.1 O mecanismo, em prosa
 
-- **Per-clip = fonte de lane que FADEIA.** A fórmula vive no clip (`NamedClip.expr`, ADR-0145). No sítio de amostra, para cada strip cujo clip carrega a expressão daquele canal, a **contribuição da strip é o resultado da expressão** (`E(t_src)`), avaliado no tempo local da strip, com `value` = a amostra keyada **daquela strip** (ou o repouso). A partir daí o valor flui pela mesma normalização de lane (`num/den`), pelo mesmo crossfade complementar e pelo mesmo aditivo — **fade/overlap/aditivo/container são herdados, não reimplementados.**
-- **Global (`binding.expr`) = transformação do canal inteiro, que NÃO fadeia.** Um driver global não tem strip para fadeá-lo; ele é aplicado como uma transformação final sobre o valor composto do canal (`composed = eval_expr(global_ir, value = composed, …)`). É a separação limpa que o ADR-0145 já insinuava: *per-clip fadeia (é fonte de lane); global não fadeia (é fórmula do canal).*
+- **Per-clip = fonte de lane que FADEIA.** A fórmula vive no clip (`NamedClip.expr`, ADR-0151). No sítio de amostra, para cada strip cujo clip carrega a expressão daquele canal, a **contribuição da strip é o resultado da expressão** (`E(t_src)`), avaliado no tempo local da strip, com `value` = a amostra keyada **daquela strip** (ou o repouso). A partir daí o valor flui pela mesma normalização de lane (`num/den`), pelo mesmo crossfade complementar e pelo mesmo aditivo — **fade/overlap/aditivo/container são herdados, não reimplementados.**
+- **Global (`binding.expr`) = transformação do canal inteiro, que NÃO fadeia.** Um driver global não tem strip para fadeá-lo; ele é aplicado como uma transformação final sobre o valor composto do canal (`composed = eval_expr(global_ir, value = composed, …)`). É a separação limpa que o ADR-0151 já insinuava: *per-clip fadeia (é fonte de lane); global não fadeia (é fórmula do canal).*
 - **Prop-links (`Sprite.x`) fadeiam DUAS vezes.** O objeto-fonte compõe **antes** (ordem topológica) e grava seu **valor já fadeado** no mapa do frame; o leitor lê esse valor fadeado, e a **própria strip do leitor** fadeia o resultado inteiro. Impossível no passe pós-composição.
 - **Ciclos entre objetos (A↔B) = um-frame-de-atraso.** A maioria acíclica resolve topologicamente, exata no frame (sem lag). Ciclos genuínos leem a aresta-de-volta semeada do mundo (o precedente `snap` do `expr_pass`) — `N_CYCLE = 1` **é** o um-frame-de-atraso da indústria (Houdini Feedback CHOP, Unreal off-by-one), determinístico e reproduzível.
 

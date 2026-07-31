@@ -57,7 +57,7 @@ sha ele rodou antes de atribuir qualquer sintoma.**
 Uma **expressão de propriedade** é uma fórmula em VEX-lite (`value + wiggle(2, 0.3)`) que
 dirige um canal da timeline. Duas metades independentes:
 
-**(A) O MOTOR** — ADR-0144 (o passe global) + ADR-0145 (por-clip) + ADR-0146 (prop-links).
+**(A) O MOTOR** — ADR-0144 (o passe global) + ADR-0151 (por-clip) + ADR-0152 (prop-links).
 
 | arquivo | papel |
 |---|---|
@@ -345,7 +345,7 @@ Ordem deliberada: **reproduzir → medir → só então ler meu código.**
 * [`10_plano_editor_de_expressoes.md`](10_plano_editor_de_expressoes.md) — o plano que eu
   executei. **Leia com desconfiança**: ele é a fonte das decisões que o Enio reprovou (55
   receitas, 9 famílias, "nada rola"). A W4 (pick-whip) está lá e **nunca foi construída**.
-* [`08_plano_expressoes_no_blend.md`](08_plano_expressoes_no_blend.md) — ADR-0146, o motor.
+* [`08_plano_expressoes_no_blend.md`](08_plano_expressoes_no_blend.md) — ADR-0152, o motor.
 * ADRs: `0144` (expressões), `0145` (por-clip), `0146` (prop-links no blend), `0039`
   (congelamento do `ph2d-expr`).
 * O CLAUDE.md §5, entrada **Timeline** → "AS JOIAS DA COROA" tem o parágrafo (C) sobre

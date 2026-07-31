@@ -5,7 +5,7 @@
 //! num doc-comment, e a afirmação ficou falsa em dois canais sem ninguém notar — a
 //! leitora tomava só o `PropKind` e não conseguia responder por
 //! [`crate::PropKind::Position`] (que precisa da trajetória do binding) nem por
-//! `Morph` (uma omissão pura). Lado a lado, um braço sem par se vê (ADR-0146 C4).
+//! `Morph` (uma omissão pura). Lado a lado, um braço sem par se vê (ADR-0152 C4).
 //!
 //! A metade de Position mora no irmão [`crate::apply_path`], que é exatamente o mesmo
 //! trabalho para o único canal que é uma curva em vez de um campo.
@@ -74,7 +74,7 @@ pub(crate) fn write_prop(
 /// (`refresh_liveness_and_rest`) carried a special case the OTHER two callers did
 /// not have. That is the shape of "one question, two doors", and the two doors
 /// disagreed: a `Nome.position` prop-link resolved 0.0 while the very same
-/// binding's `rest` resolved correctly (ADR-0146 C4).
+/// binding's `rest` resolved correctly (ADR-0152 C4).
 ///
 /// The arms below mirror [`write_prop`]'s, in the same order, on purpose: this
 /// pair is an inverse, and the gate

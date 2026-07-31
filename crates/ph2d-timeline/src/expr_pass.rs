@@ -1,22 +1,22 @@
-//! The **expression pass** (Wave C / ADR-0144, NARROWED to global drivers by ADR-0146 W1-W2).
+//! The **expression pass** (Wave C / ADR-0144, NARROWED to global drivers by ADR-0152 W1-W2).
 //! A SEPARATE post-composition pass for the GLOBAL channel transform: it runs at the END of the
 //! apply, after every keyed property AND every per-clip expression is composed into the world.
 //! For each binding that carries a document-wide formula (`binding.expr`) it reads the composed
 //! values, evaluates the expression AS A CHANNEL FORMULA, and overwrites the driven property.
 //!
-//! ⚠️ **It handles ONLY global drivers now** (ADR-0146). A PER-CLIP expression
+//! ⚠️ **It handles ONLY global drivers now** (ADR-0152). A PER-CLIP expression
 //! (`NamedClip.expr`) is a first-class LANE SOURCE at the blend's sample sites
 //! (`clip_anim_source` -> `eval_frame` / `solo_source_value`), so it FADES with its strip,
 //! crossfades, and sums on additive lanes. The per-clip loop that used to live here — with its
 //! own strip-layout windowing (`sole_strip_of`, `clip_expr_clock`) — is GONE. What remains is
 //! the global transform: applied at FULL wherever the composition covers, NEVER weighted by a
-//! fade. That is the clean ADR-0145 separation, gated as one statement
+//! fade. That is the clean ADR-0151 separation, gated as one statement
 //! (`a_per_clip_source_fades_and_a_global_transform_does_not`): per-clip fades, global transforms.
 //!
 //! ⚠️ **This GLOBAL post-pass never enters the BLEND** (`sample_stack`/`eval_frame`) — it is a
 //! channel transform on the composed value, which is why a global driver does NOT fade. A
 //! document with no GLOBAL formula takes the early-out and does nothing. The arch-gate that
-//! scanned this file (`the_expression_pass_never_enters_the_blend`) was RETIRED in ADR-0146 W7:
+//! scanned this file (`the_expression_pass_never_enters_the_blend`) was RETIRED in ADR-0152 W7:
 //! its premise — *no* expression enters the blend — is deliberately false now (per-clip exprs
 //! are lane sources that compose INSIDE the blend), and the fade byte-identity it stood in for
 //! is proven DIRECTLY by the fingerprints (`fade_fingerprint` #1 + the co-resident #5/#6).
@@ -75,7 +75,7 @@ pub(crate) fn run(
     composed: &BTreeMap<(u64, PropKind), f32>,
     links: &mut LinkFrame,
 ) {
-    // ADR-0146 W2 — this pass now handles ONLY GLOBAL drivers (`binding.expr`, the
+    // ADR-0152 W2 — this pass now handles ONLY GLOBAL drivers (`binding.expr`, the
     // document-wide channel transform of ADR-0144). Per-clip expressions are first-class
     // lane SOURCES at the two sample sites (the blend `eval_frame` / `solo_source_value`),
     // so they fade; nothing to do here if no global driver exists.
@@ -208,12 +208,12 @@ pub(crate) fn run(
             value,
             seed: crate::frame_solve::seed_of_target(b.target.get()),
             // O driver GLOBAL roda no relógio CORTADO da composição, em todo lugar (o
-            // driver de cena do Arrange — ADR-0145).
+            // driver de cena do Arrange — ADR-0151).
             time: time as f32,
         });
     }
 
-    // ADR-0146 W2 — the per-clip loop that used to live here is GONE. A per-clip
+    // ADR-0152 W2 — the per-clip loop that used to live here is GONE. A per-clip
     // expression is now a lane source at the two sample sites (`eval_frame` under a stack,
     // `solo_source_value` without one), so it fades with its strip instead of overwriting
     // the composed value. This pass keeps only the GLOBAL drivers collected above.
@@ -256,7 +256,7 @@ pub(crate) fn run(
                 AnimValue::Float(v),
                 false,
             );
-            // C2 (ADR-0146 W6): the persisted map must hold the FINAL world value, so a
+            // C2 (ADR-0152 W6): the persisted map must hold the FINAL world value, so a
             // globally-transformed channel reads its POST-transform value in `shown_value`
             // (not the pre-transform composed value the blend loop inserted) — else `shown`
             // differs from `world` every frame and the autokey mints a phantom key.
@@ -277,8 +277,8 @@ struct Driven {
     /// This binding's wiggle seed.
     seed: f32,
     /// The clock this expr evaluates at: the composition CUT clock (the Arrange scene
-    /// driver — ADR-0145). This pass carries only global drivers, so it is always the cut
-    /// clock; the per-clip strip-LOCAL clock lives at the blend now (ADR-0146).
+    /// driver — ADR-0151). This pass carries only global drivers, so it is always the cut
+    /// clock; the per-clip strip-LOCAL clock lives at the blend now (ADR-0152).
     time: f32,
 }
 
@@ -317,7 +317,7 @@ impl Bindings for ExprBindings<'_> {
 ///
 /// Three ways to be driven, and all three have to be here or the pose is handed back while
 /// something is still writing it: the GLOBAL channel (`binding.expr`, ADR-0144), a
-/// PER-CLIP formula in any clip (ADR-0145 — the channel `Apply` writes), and the live
+/// PER-CLIP formula in any clip (ADR-0151 — the channel `Apply` writes), and the live
 /// PREVIEW. ⚠️ *Any* clip, not the active one: switching clips is not deleting a formula,
 /// and handing the pose back on a clip change would make a formula look like it evaporated
 /// every time the artist looked at another clip.

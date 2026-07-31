@@ -141,7 +141,7 @@ pub(crate) struct StackScratch {
     /// a checked one.
     t: f64,
     /// **The composed value the apply last WROTE for each `(entity, prop)`** — the persisted
-    /// `LinkFrame` (ADR-0146 W6, C2). The autokey diff READS it (`shown_value`/`curve_value`)
+    /// `LinkFrame` (ADR-0152 W6, C2). The autokey diff READS it (`shown_value`/`curve_value`)
     /// instead of re-deriving: a single-entity re-derivation has no prop-link graph and would
     /// differ from the world every frame (a phantom key per paused frame on a prop-linked
     /// channel), and `curve_value` samples the raw track (missing the expression entirely).
@@ -160,7 +160,7 @@ pub(crate) struct StackScratch {
     /// todo frame de um fade e a plantar uma ÂNCORA em cada um: a *"curva de transição"*
     /// que o Enio reportou (2026-07-30), deformando o caminho que a recebia.
     ///
-    /// É o irmão exato do [`Self::composed_links`] e existe pelo mesmo motivo (ADR-0146
+    /// É o irmão exato do [`Self::composed_links`] e existe pelo mesmo motivo (ADR-0152
     /// C2/W6): *leia o que o apply escreveu*. Vazio num frame em que o apply não escreveu
     /// (a entidade estava sob a mão do artista, ou não há pilha), e aí o leitor RE-DERIVA —
     /// que é o comportamento certo, porque aí a diferença é movimento de verdade.

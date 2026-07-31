@@ -1,4 +1,4 @@
-//! **Ler uma propriedade de volta do mundo** — o C4 do [ADR-0146].
+//! **Ler uma propriedade de volta do mundo** — o C4 do [ADR-0152].
 //!
 //! `write_prop` toma o BINDING inteiro, e o doc-comment dele diz por quê: o valor de
 //! [`PropKind::Position`] é uma *distância*, e transformá-la de volta num lugar precisa
@@ -25,7 +25,7 @@
 //! e a ordem topológica já montava a aresta — então não era capacidade ausente, era um
 //! **controle que mentia**: o artista digitava um link válido e recebia zero em silêncio.
 //!
-//! [ADR-0146]: ../../../docs/architecture/decisions/0146-timeline-expressions-are-a-first-class-lane-source-that-fades.md
+//! [ADR-0152]: ../../../docs/architecture/decisions/0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md
 
 use ph2d_anim::{AnimTarget, AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecMorph, World};

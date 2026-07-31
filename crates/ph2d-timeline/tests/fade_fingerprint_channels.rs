@@ -1,5 +1,5 @@
 //! **O guardião dos canais que o guardião do fade não vigiava** — a condição de
-//! aceitação nº 6 do [ADR-0146] (C4).
+//! aceitação nº 6 do [ADR-0152] (C4).
 //!
 //! `fade_fingerprint.rs` é a joia: ela pina a superfície de fade inteira (crossfade
 //! por sobreposição, `lead_out`, instância de container) num hash exato. ⚠️ Mas o
@@ -21,7 +21,7 @@
 //! ternary search de trip count FIXO, só `+ − * /` e comparação em `f64` (`path.rs`),
 //! e o Rust não contrai FMA — o mesmo template do irmão.
 //!
-//! [ADR-0146]: ../../../docs/architecture/decisions/0146-timeline-expressions-are-a-first-class-lane-source-that-fades.md
+//! [ADR-0152]: ../../../docs/architecture/decisions/0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Name, Transform, VecMorph, World};
@@ -207,7 +207,7 @@ fn the_fade_surface_is_byte_stable_on_morph_and_position() {
         h,
         CHANNEL_FINGERPRINT,
         "\nO FADE MOVEU EM MORPH/POSITION. Este gate e o IRMAO do fade_fingerprint: \
-         ele cobre os canais que aquele nao ve (ADR-0146 C4).\n\
+         ele cobre os canais que aquele nao ve (ADR-0152 C4).\n\
          Se a mudanca foi intencional, re-pine CHANNEL_FINGERPRINT no MESMO commit \
          com o motivo. Senao, reverta.\n\
          amostras (t, morph, x, y) = {:?}",

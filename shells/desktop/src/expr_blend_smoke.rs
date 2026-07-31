@@ -1,4 +1,4 @@
-//! **Smoke das expressões que FADEIAM no blend** (ADR-0146). `PH2D_EXPR_BLEND_SMOKE=1`:
+//! **Smoke das expressões que FADEIAM no blend** (ADR-0152). `PH2D_EXPR_BLEND_SMOKE=1`:
 //!
 //! O `expr_smoke` (ADR-0144/0145) mostra o comportamento ANTIGO — a expressão liga/desliga
 //! seco na borda da strip. ESTA cena mostra o novo: a expressão é a FONTE que a strip entrega
@@ -41,7 +41,7 @@ use ph2d_timeline::{
     LaneMode, PropKind, StackHost, StripSource, TimelineDoc, TimelineIntent, apply_intent,
 };
 
-/// Author `src` as the PER-CLIP expression of `(bits, prop)` in clip `clip` (ADR-0145/0146).
+/// Author `src` as the PER-CLIP expression of `(bits, prop)` in clip `clip` (ADR-0151/0146).
 fn expr(doc: &mut TimelineDoc, clip: usize, bits: u64, prop: PropKind, src: &str) {
     let target = doc.bind(bits, prop);
     doc.set_clip_expr(clip, target, Some(src.to_string()));
@@ -192,7 +192,7 @@ impl crate::App {
         self.playhead.play();
 
         eprintln!(
-            "[expr-blend-smoke] 4 objetos, expressoes FADEIAM no blend (ADR-0146), loop [0,6] em \
+            "[expr-blend-smoke] 4 objetos, expressoes FADEIAM no blend (ADR-0152), loop [0,6] em \
              ARRANGE: Cross (y=+3.5) X=expr +4 (strip [0,3)) CRUZANDO com X keyada -4 (strip \
              [2,5)) -> na janela [2,3) cruza suave de +4 a -4 (o motor antigo SALTAVA). Follow \
              (y=+1.5) X=Cross.x -> segue o valor FADEADO (duplo fade). Wiggle (y=-0.5) X rampa \

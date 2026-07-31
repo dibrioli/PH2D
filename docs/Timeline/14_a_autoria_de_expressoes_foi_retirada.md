@@ -16,7 +16,7 @@ Medido antes de decidir, não depois:
 
 | metade | estado | veredito |
 |---|---|---|
-| **o motor** — a expressão per-clip como **fonte de lane** (ADR-0146), o transform global (ADR-0144/0145) | fechado, gateado por fingerprint, smokado | **fica** |
+| **o motor** — a expressão per-clip como **fonte de lane** (ADR-0152), o transform global (ADR-0144/0145) | fechado, gateado por fingerprint, smokado | **fica** |
 | **a autoria** — o card, o catálogo de receitas, os 2 smokes de card | inacabada; o smoke de 29/07 nomeou o motivo | **sai** |
 
 ⛔ **O que decidiu:** a **folha é write-once**. O card não reconstrói linhas a partir do

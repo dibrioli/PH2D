@@ -442,7 +442,7 @@ Apply — e numa prop sem keys o objeto **fica**.
 *(Lente 1, verificado por mim independentemente.)*
 
 * `main` tem `DOC_VERSION = 15`; esta branch tem **16**, bumpado por
-  `8789add52` (*"a expressao e POR-CLIP … ADR-0145, DOC_VERSION 16"*). Postcard é posicional ⇒
+  `8789add52` (*"a expressao e POR-CLIP … ADR-0151, DOC_VERSION 16"*). Postcard é posicional ⇒
   **v15 é RECUSADO no load**: todo projeto salvo pelo `main` de hoje é rejeitado por esta branch.
 * ⚠️ **Precisão sobre o handoff, porque a acusação fácil aqui seria injusta:** o §6 dele diz
   *"`PROJECT_SCHEMA` = 37 no `main`. `DOC_VERSION` = 15. Nada nesta jornada bumpou."* As duas

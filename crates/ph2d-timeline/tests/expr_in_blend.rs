@@ -1,4 +1,4 @@
-//! **ADR-0146 W1: a per-clip expression is a first-class LANE SOURCE that fades.**
+//! **ADR-0152 W1: a per-clip expression is a first-class LANE SOURCE that fades.**
 //!
 //! The pre-W1 engine applied a per-clip expression in a SEPARATE post-composition pass
 //! that OVERWROTE the composed value — so it could not crossfade, could not sum on an
@@ -457,7 +457,7 @@ fn coresident_fingerprint() -> (u64, Vec<(f64, f32)>) {
     (h, samples)
 }
 
-/// Pinned on `line/anim` at ADR-0146 W1. Captures Y's keyed crossfade under `scheduled`.
+/// Pinned on `line/anim` at ADR-0152 W1. Captures Y's keyed crossfade under `scheduled`.
 const CORESIDENT_FINGERPRINT: u64 = 0x7a19_b02a_890c_015b;
 
 /// **Gate #18 (W3 follow-up) — a per-clip PROP-LINK resolves in the KEYS solo view.** Editing
@@ -506,7 +506,7 @@ fn the_keys_solo_resolves_a_per_clip_prop_link() {
 }
 
 /// **Gate #19 (W4) — the clean separation: a per-clip SOURCE fades, a global TRANSFORM does
-/// not.** ADR-0145's two roles on ONE channel. Clip 0 drives X by the PER-CLIP expression
+/// not.** ADR-0151's two roles on ONE channel. Clip 0 drives X by the PER-CLIP expression
 /// `100` (a pure lane source); clip 1 keys X flat at 0; the two strips crossfade over [1,2) —
 /// so the COMPOSED X fades to 50 mid-overlap (the per-clip half is a faded lane source). A
 /// GLOBAL `value * 2` (`binding.expr`) then transforms that composed value AS A CHANNEL
@@ -588,7 +588,7 @@ fn the_onion_ghost_evaluates_a_local_expression() {
 ///
 /// ⚠️ **ONLY `wiggle` (Noise = an integer hash of the f32 bits) and arithmetic — NEVER
 /// `sin`/`cos`.** The std transcendentals (`ph2d-expr/eval.rs:42-43`) are not bit-identical
-/// across platforms; a fingerprint including them would diverge between OSes (ADR-0146 §5.15).
+/// across platforms; a fingerprint including them would diverge between OSes (ADR-0152 §5.15).
 #[test]
 fn the_cross_os_hash_of_wiggle_plus_prop_link() {
     let mut world = World::new();
@@ -636,7 +636,7 @@ fn the_cross_os_hash_of_wiggle_plus_prop_link() {
     );
 }
 
-/// Pinned on `line/anim` at ADR-0146 W7. Wiggle is an integer hash (cross-OS); the fold is
+/// Pinned on `line/anim` at ADR-0152 W7. Wiggle is an integer hash (cross-OS); the fold is
 /// integer arithmetic. A divergence on any OS in the nextest matrix is a real defect.
 /// ⚠️ **MOVED 2026-07-29** (`0x6ed2_84e3_8f4f_28f9` -> here), and the reason is a
 /// deliberate semantic change, not a drift: `wiggle` now lowers onto a **smooth value
@@ -718,10 +718,10 @@ fn multichannel_coresident_fingerprint() -> (u64, f32) {
     (h, hi - lo)
 }
 
-/// Pinned on `line/anim` at ADR-0146 W7 (Hole B). Non-X keyed crossfades under `scheduled`.
+/// Pinned on `line/anim` at ADR-0152 W7 (Hole B). Non-X keyed crossfades under `scheduled`.
 const MULTICHANNEL_FINGERPRINT: u64 = 0x97e1_9fe3_ea22_4329;
 
-/// **Cost measurement (ADR-0146 W7, `#[ignore]`).** The named trigger from the plan: HUNDREDS of
+/// **Cost measurement (ADR-0152 W7, `#[ignore]`).** The named trigger from the plan: HUNDREDS of
 /// prop-link channels. Each frame the scheduler topo-sorts the graph, then re-evaluates every
 /// channel through `solo_source_value` — parsing each expression afresh (~335 ns, caching
 /// measured-and-rejected in `expr_pass.rs`). This builds a CHAIN of `N` prop-links (each reads

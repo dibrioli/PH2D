@@ -406,7 +406,7 @@ fn a_keyed_expression_is_quiet_outside_its_strip_window() {
 }
 
 /// **A PURE per-clip expression (no keyframes) obeys its strip — windowed AND at the
-/// strip-LOCAL time** (ADR-0145, the reported "Time/Slider extrapola a strip"). The
+/// strip-LOCAL time** (ADR-0151, the reported "Time/Slider extrapola a strip"). The
 /// formula lives in clip 0 (what the Walk strip plays); the scene places the Walk
 /// container at `[5,7)`, and inside it clip 0's strip is `[0,2)`. So at scene-time 6 the
 /// pure `Y = time*10` runs at the LOCAL time (6 -> 1 -> 10), NOT the raw clock (60); and

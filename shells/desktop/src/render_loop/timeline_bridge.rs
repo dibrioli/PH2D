@@ -363,7 +363,7 @@ pub(crate) fn key_value_for(
         return None;
     };
     // `Err` = the active clip cannot express this pose (a lane above overrides it, or a
-    // pure/non-linear expression drives it — ADR-0146 W5); K refuses. The refusal REASON is
+    // pure/non-linear expression drives it — ADR-0152 W5); K refuses. The refusal REASON is
     // surfaced by the manual-K path (`key_home` -> `KeyRefusal::message`), not this value door.
     let stored =
         ph2d_timeline::key_value_in_active_clip(&timeline.doc, entity, prop, pose, t_secs).ok()?;

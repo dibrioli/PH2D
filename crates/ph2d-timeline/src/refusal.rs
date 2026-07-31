@@ -23,7 +23,7 @@ pub enum KeyRefusal {
     /// clip stores (an `Override` lane at full weight), so no value in it produces
     /// the pose that was asked for. The affine solve is degenerate — `A ~ 0`.
     Overridden,
-    /// The channel is driven by a **formula** the key cannot invert (ADR-0146 W5): a
+    /// The channel is driven by a **formula** the key cannot invert (ADR-0152 W5): a
     /// value-independent one (`wiggle`, `time*10` — the solve is degenerate in the
     /// stored `value`), or a non-linear one (`value*value` — the affine check fails).
     /// Distinct from `Overridden`: the fix is the FORMULA, not the lane stack — clean

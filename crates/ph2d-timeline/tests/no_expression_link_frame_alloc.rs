@@ -1,4 +1,4 @@
-//! **ADR-0146 W0, gate #3: a formula-free apply builds no expression machinery.**
+//! **ADR-0152 W0, gate #3: a formula-free apply builds no expression machinery.**
 //!
 //! W0 threads a [`LinkFrame`](../src/frame_solve.rs) through the blend so W1 can make
 //! an expression a lane source — but on the common path (no global `binding.expr`, no

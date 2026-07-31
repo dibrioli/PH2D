@@ -79,14 +79,14 @@ fn apply_inner(
     // mask + pre-expression `value` (ADR-0144). Built only when a formula exists, so
     // the no-expression hot path stays zero-alloc (HR-3, `no_alloc_bridge`).
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    // ADR-0146 W0 — the fade pin. `scheduled` is WIDENED past the old `has_expr` (which
+    // ADR-0152 W0 — the fade pin. `scheduled` is WIDENED past the old `has_expr` (which
     // saw only GLOBAL drivers, `binding.expr`): a PER-CLIP driver (`clip.expr`) also needs
     // `composed` populated, or its `value` reads `rest` instead of the composed key (the
     // §4.1 asymmetry). A formula-free document is `!scheduled`: it builds no `composed`,
     // runs no expression pass, and the `links` it hands the blend stays EMPTY — a
     // parameter of codegen, not a float op, so the fade fingerprint is byte-for-byte.
     let scheduled = frame_solve::any_formula(doc);
-    // ADR-0146 W3 — the frame's channels compose in TOPOLOGICAL order (a prop-link source
+    // ADR-0152 W3 — the frame's channels compose in TOPOLOGICAL order (a prop-link source
     // before its reader), each writing its already-composed (faded) value into `links`, so
     // `value + Sprite.x` reads Sprite's FADED value in the SAME frame — the "double fade".
     // `links` carries the Name->entity map + the values composed so far; a formula-free
@@ -188,7 +188,7 @@ fn apply_inner(
             // clock must be read at the SAME instant it was built at.
             let t_solo = doc.clip_cut(doc.active_index(), t);
             let t_entity = stack_eval::solo_source_time(&scratch, b.entity, t_solo);
-            // The SECOND sample site (ADR-0146 W2, C1): a keyed sample OR a per-clip
+            // The SECOND sample site (ADR-0152 W2, C1): a keyed sample OR a per-clip
             // expression over it. An empty track with no expression is None, so a
             // just-created binding never forces the property to a default value.
             stack_eval::solo_source_value(
@@ -230,7 +230,7 @@ fn apply_inner(
     // `stack_eval`/the fade). GLOBAL drivers run on the scene's CUT clock; per-clip
     // drivers are windowed by the STRIPS (stacked) or the active clip (non-stacked).
     // Run BEFORE `put_scratch` so the per-clip window can read the strip layout.
-    // ADR-0146 W0: skipped entirely on the formula-free path (`!scheduled`), where it
+    // ADR-0152 W0: skipped entirely on the formula-free path (`!scheduled`), where it
     // was already a no-op internal early-out — so no `snap`/topo is even built (HR-3).
     if scheduled {
         let expr_t = doc.cut_scene(t);
@@ -285,7 +285,7 @@ pub(crate) fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc
             // takes the binding now, so "what does this channel hold in the world?"
             // has ONE answer for every kind. While the exception lived in this caller
             // it was knowledge the other two readers did not have — and they gave a
-            // different answer (ADR-0146 C4).
+            // different answer (ADR-0152 C4).
             let rest = read_prop(
                 world,
                 entity,

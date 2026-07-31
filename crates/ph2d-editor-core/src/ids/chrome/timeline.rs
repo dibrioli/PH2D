@@ -358,7 +358,7 @@ pub const TIMELINE_ADDPROP_TIME: NodeId = hash_node_id("timeline.addprop.time");
 /// como o Time Remap, e pela mesma razão — `ALL` é a pose de eixos SEPARADOS, e uma
 /// track de Position é a ALTERNATIVA a dois membros dela.
 pub const TIMELINE_ADDPROP_POS: NodeId = hash_node_id("timeline.addprop.position");
-/// "+Track" -> **Morph**: o `t` de um `VecMorph` (ADR-0146 C4, smoke do Enio 2026-07-28).
+/// "+Track" -> **Morph**: o `t` de um `VecMorph` (ADR-0152 C4, smoke do Enio 2026-07-28).
 ///
 /// ⚠️ Ele FALTAVA, e a ausência era exatamente a porta que o `PropKind::Morph` promete:
 /// o doc-comment daquele variant explica que Morph fica fora do `PropKind::ALL` porque

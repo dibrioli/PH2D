@@ -491,7 +491,7 @@ pub(crate) struct App {
     /// ⚠️ O nome antigo (`PH2D_EXPR_GROUP_SMOKE`, a FASE E do catálogo) morreu com a
     /// retirada da AUTORIA de expressões — o MOTOR ficou, e é ele que esta cena smoka.
     pub(crate) expr_blend_smoke_done: bool,
-    /// A cena do C4 (ADR-0146) ja montou? Uma vez por processo.
+    /// A cena do C4 (ADR-0152) ja montou? Uma vez por processo.
     pub(crate) morph_fade_smoke_done: bool,
     pub(crate) nest_smoke_done: bool,
     /// Latch for `PH2D_PHYSICS_SMOKE` (drop-a-sprite-on-a-floor, once).

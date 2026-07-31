@@ -128,7 +128,7 @@ fn schema_version_is_seventeen() {
     // v15 = property EXPRESSIONS (ADR-0144): `TargetBinding.expr: Option<String>`,
     //      appended — the formula that drives a property in a separate
     //      post-composition pass. `None` (the default) is byte-identical to v14.
-    // v16 = per-CLIP expressions (ADR-0145): `NamedClip.expr:
+    // v16 = per-CLIP expressions (ADR-0151): `NamedClip.expr:
     //      BTreeMap<AnimTarget, String>`, appended — the formula lives in the clip
     //      (like keyframes) so a strip that plays the clip windows it. Empty (the
     //      default) is byte-identical to v15.

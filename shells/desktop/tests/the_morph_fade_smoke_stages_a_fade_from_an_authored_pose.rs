@@ -1,4 +1,4 @@
-//! **Gate de FONTE da cena `PH2D_MORPH_FADE_SMOKE`** (ADR-0146 C4).
+//! **Gate de FONTE da cena `PH2D_MORPH_FADE_SMOKE`** (ADR-0152 C4).
 //!
 //! A cena é env-gated, então nenhum teste de unidade a alcança — e o precedente desta
 //! linha é claro sobre o que acontece então: o `expr_blend_smoke` montava clips sem

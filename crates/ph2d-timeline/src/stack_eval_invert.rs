@@ -64,14 +64,14 @@ pub(crate) fn invert_stack(
         // live lane at all (degenerate) — read as no influence.
         Err(AffineFail::NoValue) => Err(KeyRefusal::Overridden),
         // `A ~ 0` or a non-affine composition: the fix is the FORMULA if one drives this
-        // channel (`ExpressionDriven`, ADR-0146 W5), else the lane stack (`Overridden`).
+        // channel (`ExpressionDriven`, ADR-0152 W5), else the lane stack (`Overridden`).
         Err(AffineFail::NoInfluence | AffineFail::NonAffine) => {
             Err(refusal_for(doc, clip, q.target))
         }
     }
 }
 
-/// **Invert the ACTIVE clip's affine expression on the NON-STACKED path (C3, ADR-0146 W5).**
+/// **Invert the ACTIVE clip's affine expression on the NON-STACKED path (C3, ADR-0152 W5).**
 /// Without a stack the scene value IS the expression `E(stored, t)` (`solo_source_value`), so
 /// keying `want` stores the `v` with `E(v, t) == want` — `value + g(time)` pre-compensates by
 /// `want - g(t)`. `None` when the active clip does not DRIVE `target` by an expression (the
@@ -96,7 +96,7 @@ pub(crate) fn invert_active_clip_expr(
 }
 
 /// The refusal reason when the affine solve is degenerate / non-affine: `ExpressionDriven` if a
-/// FORMULA drives this channel (the fix is the formula, ADR-0146 W5), else `Overridden` (the
+/// FORMULA drives this channel (the fix is the formula, ADR-0152 W5), else `Overridden` (the
 /// fix is the lane stack).
 fn refusal_for(doc: &TimelineDoc, clip: usize, target: AnimTarget) -> KeyRefusal {
     if matches!(

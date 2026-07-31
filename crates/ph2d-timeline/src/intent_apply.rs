@@ -314,7 +314,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             }
         }),
         I::SetBindingExpr { target, expr } => edit(state, |doc, _| {
-            // ADR-0145 — the formula is authored PER-CLIP (in the active clip, like
+            // ADR-0151 — the formula is authored PER-CLIP (in the active clip, like
             // keyframes) so a strip that plays the clip windows it. Empty text clears.
             let active = doc.active_index();
             doc.set_clip_expr(active, target, expr);

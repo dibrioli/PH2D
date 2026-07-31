@@ -75,7 +75,7 @@ pub(crate) struct Query {
 }
 
 /// What a clip contributes to a channel this frame: its keyed track, or a per-clip
-/// EXPRESSION over it (ADR-0146 W1). Deciding the source ONCE is load-bearing — the value
+/// EXPRESSION over it (ADR-0152 W1). Deciding the source ONCE is load-bearing — the value
 /// path and the additive-reference path must read the SAME answer, or a per-clip expr that
 /// faded the value but not the reference would leak on an additive lane.
 enum AnimSource<'a> {
@@ -115,7 +115,7 @@ fn seed_of(target: AnimTarget) -> f64 {
     f64::from(crate::frame_solve::seed_of_target(target.get()))
 }
 
-/// **The SECOND sample site (ADR-0146 W2, C1).** The value the ACTIVE clip `clip`
+/// **The SECOND sample site (ADR-0152 W2, C1).** The value the ACTIVE clip `clip`
 /// contributes to `target` at its own clip time `t`, on the NON-STACKED path — a keyed
 /// sample or a per-clip EXPRESSION over it. `None` when the clip neither keys nor drives
 /// the channel (sparsity), so a just-bound property is never forced to a default.
@@ -267,7 +267,7 @@ fn eval_frame(
                     // ⚠️ Este braço produz a DISTÂNCIA que a track guarda; a conversão em
                     // coordenada acontece no FIM dele, sobre a curva DESTE clip ([`path_axis`]).
                     // The clip's source for this channel: its keyed track, or a per-clip
-                    // EXPRESSION over it (ADR-0146 W1). `.get`, not `[..]`: the index is
+                    // EXPRESSION over it (ADR-0152 W1). `.get`, not `[..]`: the index is
                     // cached in the scratch, and a scratch that outlived a DeleteClip would
                     // panic rather than go quiet.
                     let source = clip_anim_source(doc, clip, target);
@@ -276,7 +276,7 @@ fn eval_frame(
                     // answer "what if it did".
                     let d = match (probed, &source) {
                         // Keying an EXPRESSION-driven clip substitutes the probe into the
-                        // formula's `value` INPUT and lets `E(value)` enter the blend (ADR-0146
+                        // formula's `value` INPUT and lets `E(value)` enter the blend (ADR-0152
                         // W5), so `invert_stack` solves for the STORED value: `value + g(time)`
                         // keys and pre-compensates; `wiggle`/`value*value` refuse (A~0 / the
                         // 3rd probe). `t_src` is this strip's own source time — the same clock
@@ -353,7 +353,7 @@ fn eval_frame(
                     ActiveSource::Clip(clip) => {
                         let probed = probe.filter(|p| p.clip == clip);
                         // The SAME source the value path resolved — a per-clip expr must fade
-                        // its reference exactly as it fades its value (ADR-0146).
+                        // its reference exactly as it fades its value (ADR-0152).
                         let source = clip_anim_source(doc, clip, target);
                         let d = match (probed, &source) {
                             (Some(p), Some(AnimSource::Track(tr))) => {

@@ -335,7 +335,7 @@ ainda **afirmava a garantia** — *"`position_shown` and the apply both read `pa
 at the same instant, so an on-curve pose is byte-equal and never re-keys"* — e essa frase
 virou **FALSA** no commit que fez a composição compor pontos. Corrigida onde estava.
 
-**A cura é a que o irmão escalar já usava** (ADR-0146 C2/W6 — *leia o que o apply
+**A cura é a que o irmão escalar já usava** (ADR-0152 C2/W6 — *leia o que o apply
 ESCREVEU*): o apply publica a pose de trajetória que escreveu
 (`StackScratch::composed_points`, irmão exato do `composed_links`) e o `position_shown` a
 LÊ. Mapa vazio ⇒ o apply não escreveu esta entidade neste frame (não há pilha, ou ela estava
@@ -457,4 +457,4 @@ default, que é o que inverte de sentido no dia em que o default se move
 o corte é de TAMANHO, não de visibilidade).
 
 **Escopo que NÃO muda:** o AutoKey em Arrange segue vivo para os **escalares** (o
-`invert_stack` do ADR-0146 é feature desenhada); só a geometria de trajetória é recusada.
+`invert_stack` do ADR-0152 é feature desenhada); só a geometria de trajetória é recusada.

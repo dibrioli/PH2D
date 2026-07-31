@@ -1,4 +1,4 @@
-# Handoff de integração — `line/anim` · Expressões como fonte de lane que FADEIA (ADR-0146)
+# Handoff de integração — `line/anim` · Expressões como fonte de lane que FADEIA (ADR-0152)
 
 **Data:** 2026-07-27 · **Linha:** `line/anim` · **Estado:** FECHADA, gateada, aguardando smoke do Enio + ordem de integração (§0.7 — a linha NÃO integra nem pusha sozinha).
 
@@ -40,7 +40,7 @@ d880fe3a5 W4  -- global = transformação do canal (NÃO fadeia); doc do expr_pa
 1865ac27f W7  -- corpus (#15 cross-OS, #6 Hole B) + aposenta #17 + mede o custo
 546a14cf2     -- split doc_scratch.rs (LOC cap)
 82ead2be5     -- cena de smoke PH2D_EXPR_BLEND_SMOKE
-+ 1 docs: ADR-0146 Accepted e CONSTRUÍDO
++ 1 docs: ADR-0152 Accepted e CONSTRUÍDO
 ```
 
 ## Correções pós-smoke (Enio, 2026-07-27 — reports do 1º smoke da wave)
@@ -75,7 +75,7 @@ Quatro reports, **três eram um por-linha e um por-composicao**:
   data loss (verdict b).** `remove_strip` (`stack_edit.rs:133`) so tira a strip da lane; NAO toca
   `NamedClip.expr`. A formula continua no clip (o campo Expression da track a mostra) — ela apenas
   PARA de dirigir porque uma expressao per-clip so dirige enquanto uma strip toca o clip (o design
-  da wave, ADR-0145/0146: *"value virou per-STRIP"*). So a **lixeira Delete Clip** (`transport_clips`)
+  da wave, ADR-0151/0146: *"value virou per-STRIP"*). So a **lixeira Delete Clip** (`transport_clips`)
   apaga a expressao (dropa o clip inteiro). **Decisao de PRODUTO do Enio:** manter o per-strip
   (uma expressao e uma camada, fadeia com a strip) ou querer uma expressao GLOBAL que sobrevive
   (a UI hoje so autora per-clip via `SetBindingExpr` → `set_clip_expr`). Nada a corrigir sem essa

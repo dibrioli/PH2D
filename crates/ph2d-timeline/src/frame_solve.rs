@@ -1,6 +1,6 @@
 //! The frame solver's shared state — what the blend knows about *other* channels
 //! this frame, so a prop-link (`Name.prop`) can read a source that is itself faded
-//! (ADR-0146). It is the `snap`+`names` the ADR-0144 post-pass built, lifted to a
+//! (ADR-0152). It is the `snap`+`names` the ADR-0144 post-pass built, lifted to a
 //! type the blend can be handed.
 //!
 //! **Through W2 this is threaded EMPTY.** In W0 it is never read (the codegen of
@@ -33,7 +33,7 @@ use crate::apply_prop::read_prop;
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 
-/// What the blend knows about other channels this frame, for prop-links (ADR-0146).
+/// What the blend knows about other channels this frame, for prop-links (ADR-0152).
 ///
 /// Empty on the formula-free path (the common case), where it is never read: an
 /// empty `BTreeMap` never allocates, so carrying one costs nothing. The blend reads it
@@ -43,7 +43,7 @@ pub(crate) struct LinkFrame {
     /// The composed value per `(entity, prop)` — what a `Name.prop` link reads. A
     /// source composes *before* its reader (W3's topological order) and writes its
     /// already-faded value here; the reader reads it, and its own strip fades the
-    /// result again (the "double fade" of ADR-0146).
+    /// result again (the "double fade" of ADR-0152).
     pub links: BTreeMap<(u64, PropKind), f64>,
     /// `stable_name_id(Name)` -> entity bits, resolving the name half of a
     /// `Name.prop` link to the entity whose channel it names.
@@ -77,7 +77,7 @@ pub fn seed_of_target(target: u64) -> f32 {
 /// Evaluate a parsed expression `ir` as a channel's value: `value` is this channel's
 /// pre-expression value (the keyed sample or rest), `time` is the strip-LOCAL clip clock,
 /// `seed` is the wiggle seed, and `links` carries the faded value of any source channel a
-/// `Name.prop` link reads (ADR-0146).
+/// `Name.prop` link reads (ADR-0152).
 ///
 /// The evaluator is f32 (`ph2d-expr`); the blend works in f64 and casts the result back.
 /// A `Name.prop` whose source is not in `links` resolves to 0.0 (the evaluator's total
@@ -98,7 +98,7 @@ pub(crate) fn eval_expr(ir: &Expr, value: f64, time: f64, seed: f64, links: &Lin
 
 /// The [`Bindings`] the blend hands an expression: `time`, `value`, `__seed`, and
 /// `Name.prop` prop-links resolved against the frame's [`LinkFrame`] (the faded value of
-/// the source channel this sweep composed — ADR-0146). An unknown name is 0.0.
+/// the source channel this sweep composed — ADR-0152). An unknown name is 0.0.
 struct ExprBindings<'a> {
     links: &'a LinkFrame,
     value: f32,
@@ -310,7 +310,7 @@ pub(crate) fn seed_unbound_links(
 
 /// Seed the frame's `links` from the world — the value each channel held LAST frame — so a
 /// genuine cycle's back edge (`A` reads `B` reads `A`) reads a previous-frame value instead
-/// of 0 (ADR-0146 §2.1, the industry one-frame-delay). An ACYCLIC channel's seed is
+/// of 0 (ADR-0152 §2.1, the industry one-frame-delay). An ACYCLIC channel's seed is
 /// immediately overwritten by its fresh composition in topo order, so seeding never changes
 /// the acyclic result — it only gives a cycle something stable to read.
 ///
@@ -360,12 +360,12 @@ fn binding_links(
     }
 }
 
-/// **The order the frame's channels compose in (ADR-0146 W3):** a prop-link SOURCE before
+/// **The order the frame's channels compose in (ADR-0152 W3):** a prop-link SOURCE before
 /// its reader, so `value + Sprite.x` reads Sprite's already-composed (faded) value in the
 /// SAME frame — no one-frame lag. Kahn's algorithm over the binding graph; a genuine cycle
 /// (A reads B reads A) has no valid order, so its members are appended in original order and
 /// read the value STILL STANDING in the `LinkFrame` (the one-frame delay of the industry —
-/// Houdini Feedback CHOP, ADR-0146 §3). Returns binding indices into `doc.bindings()`.
+/// Houdini Feedback CHOP, ADR-0152 §3). Returns binding indices into `doc.bindings()`.
 pub(crate) fn topo_order(doc: &TimelineDoc, names: &BTreeMap<u64, u64>) -> Vec<usize> {
     let bindings = doc.bindings();
     let n = bindings.len();

@@ -40,7 +40,7 @@ pub fn apply_container(
     // The coverage mask + pre-expression value the expression pass reads (ADR-0144);
     // built only with a formula present so the no-expression path stays zero-alloc.
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    // ADR-0146 W3 — the container view composes in TOPOLOGICAL order too, so a per-clip
+    // ADR-0152 W3 — the container view composes in TOPOLOGICAL order too, so a per-clip
     // prop-link (`value + Sprite.x`) inside the container reads the source's already-faded
     // value in the SAME frame, exactly as the scene apply does (`apply_from_doc_except`).
     // A formula-free container builds NEITHER the names map nor the order — `order` is
@@ -131,7 +131,7 @@ pub fn apply_container(
         }
     }
 
-    // ADR-0146 W2 — only GLOBAL drivers run in the post-pass now, on the CONTAINER's CUT
+    // ADR-0152 W2 — only GLOBAL drivers run in the post-pass now, on the CONTAINER's CUT
     // local clock; the container's per-clip expressions were resolved as lane sources in the
     // blend above (`sample_stack` -> `eval_frame`).
     let expr_t = doc.container_cut(container, t);
@@ -168,7 +168,7 @@ pub fn apply_active_clip(
     // an instance of this clip freeze at the same instant.
     let clip_t = doc.clip_cut(doc.active_index(), clip_t);
     let mut composed: BTreeMap<(u64, PropKind), f32> = BTreeMap::new();
-    // ADR-0146 W3 — the Keys solo composes in TOPOLOGICAL order too, so a per-clip
+    // ADR-0152 W3 — the Keys solo composes in TOPOLOGICAL order too, so a per-clip
     // prop-link (`value + Sprite.x`) reads the source's already-faded value in the SAME
     // frame while editing the active clip, exactly as the scene apply does. A formula-free
     // clip builds NEITHER the names map nor the order — `order` is `None`, the loop walks
@@ -195,7 +195,7 @@ pub fn apply_active_clip(
         // and the same door K seeds through, so a soloed pose and a keyed one land
         // at the identical instant.
         let t_entity = remapped_time(doc, b.entity, clip_t);
-        // The SECOND sample site (ADR-0146 W2, C1): a keyed sample OR a per-clip
+        // The SECOND sample site (ADR-0152 W2, C1): a keyed sample OR a per-clip
         // expression over it. An empty track with no expression is None, so a just-created
         // binding never forces a default pose.
         let sampled = stack_eval::solo_source_value(
@@ -226,7 +226,7 @@ pub fn apply_active_clip(
         }
     }
 
-    // ADR-0146 W2 — on the clip's own CUT clock (`clip_t`, already clamped). Only GLOBAL
+    // ADR-0152 W2 — on the clip's own CUT clock (`clip_t`, already clamped). Only GLOBAL
     // drivers run in the post-pass now; the active clip's per-clip expressions were resolved
     // as lane sources at the sample site above (`solo_source_value`).
     crate::expr_pass::run(world, doc, clip_t, &skip, &composed, &mut links);

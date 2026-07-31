@@ -342,9 +342,9 @@ vem primeiro.**
 
 ### B1 — UMA porta de escrita de expressão *(fecha D4)*
 * Enumerar leitores/escritores (Bloco 2.4 da auditoria).
-* **Decisão de projeto a tomar com o Enio:** a expressão é per-clip (ADR-0145) OU global
+* **Decisão de projeto a tomar com o Enio:** a expressão é per-clip (ADR-0151) OU global
   (ADR-0144)? Hoje as duas existem, o snapshot lê `per-clip ?? global` e o Apply escreve só
-  per-clip. Recomendação: **per-clip é a semântica certa** (fade com o strip, ADR-0146), e o
+  per-clip. Recomendação: **per-clip é a semântica certa** (fade com o strip, ADR-0152), e o
   global vira **legado com migração** — ou seja o load converte `binding.expr` para o clip 0
   e o campo morre. Isso mexe em `DOC_VERSION` ⇒ ADR.
 * Gate: uma tabela `(escritor, leitor)` gerada por grep no fonte, com controle positivo.
@@ -710,7 +710,7 @@ grupo futuro apaga a linha dele.
 
 | # | o que o plano pedia | o que ficou |
 |---|---|---|
-| **B1** | uma porta de escrita + decidir per-clip × global | **meio fechado antes de eu chegar** (o ADR-0145 já pôs a autoria em UMA porta per-clip). O global é canal **legado só de leitura**: ZERO escritores no produto. A tabela `(escritor, leitor)` virou gate; **matar o campo é decisão do Enio** (migração + `DOC_VERSION` + ADR) |
+| **B1** | uma porta de escrita + decidir per-clip × global | **meio fechado antes de eu chegar** (o ADR-0151 já pôs a autoria em UMA porta per-clip). O global é canal **legado só de leitura**: ZERO escritores no produto. A tabela `(escritor, leitor)` virou gate; **matar o campo é decisão do Enio** (migração + `DOC_VERSION` + ADR) |
 | **B2** | apagar a fórmula devolve a propriedade | ✅ feito na FASE 0.4 |
 | **B3** | `ClockUse` visível | ✅ `RecipeStack::inert_reason` — o readout diz *"no clock"*. ⚠️ A metade *"não oferecer Time sozinha"* foi **descartada com motivo** (ver abaixo) |
 | **B4** | o clamp é do widget | ✅ `sync_from_store` corrige a caixa de um `Literal` fora da faixa; o `Number` segue livre (política escrita) |

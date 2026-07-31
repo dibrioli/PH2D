@@ -277,10 +277,10 @@ fn a_binding_without_expr_is_untouched_while_the_pass_runs() {
     );
 }
 
-// **RETIRED (ADR-0146 W7 §5.17) — `the_expression_pass_never_enters_the_blend`.** A registered
+// **RETIRED (ADR-0152 W7 §5.17) — `the_expression_pass_never_enters_the_blend`.** A registered
 // trade, not a silent delete. ADR-0144 isolated expressions in a post-composition pass that
 // OVERWROTE the composed value, and this arch-gate scanned `expr_pass.rs` to keep that pass out
-// of `sample_stack`/`eval_frame`/`invert_stack`. ADR-0146 REVERSES the premise: a per-clip
+// of `sample_stack`/`eval_frame`/`invert_stack`. ADR-0152 REVERSES the premise: a per-clip
 // expression is now a first-class LANE SOURCE that composes INSIDE the blend (`clip_anim_source`
 // -> `eval_frame`), so it can fade / crossfade / sum / nest — the whole point of the wave. The
 // "expressions never enter the blend" invariant is therefore deliberately FALSE now, and a gate

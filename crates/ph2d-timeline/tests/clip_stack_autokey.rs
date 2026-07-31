@@ -497,7 +497,7 @@ fn value_plus_g_of_time_keys_and_pre_compensates() {
 #[test]
 #[allow(
     non_snake_case,
-    reason = "the gate name mirrors the ADR-0146 refusal variant"
+    reason = "the gate name mirrors the ADR-0152 refusal variant"
 )]
 fn a_pure_formula_refuses_ExpressionDriven() {
     use ph2d_timeline::KeyRefusal;
@@ -568,7 +568,7 @@ fn a_value_nonlinear_formula_refuses() {
 #[test]
 #[allow(
     non_snake_case,
-    reason = "the gate name mirrors the ADR-0146 W6 gate list"
+    reason = "the gate name mirrors the ADR-0152 W6 gate list"
 )]
 fn auto_key_mints_no_phantom_key_on_a_PROP_LINKED_channel() {
     let mut world = World::new();

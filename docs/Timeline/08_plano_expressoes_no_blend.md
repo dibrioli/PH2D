@@ -2,7 +2,7 @@
 
 > ⚠️ **A cena `PH2D_EXPR_SMOKE` MORREU com o card de expressão (2026-07-30)** — o smoke do motor é o **`PH2D_EXPR_BLEND_SMOKE=1`**; ver [`14_a_autoria_de_expressoes_foi_retirada.md`](14_a_autoria_de_expressoes_foi_retirada.md).
 
-> Executa [ADR-0146](../architecture/decisions/0146-timeline-expressions-are-a-first-class-lane-source-that-fades.md). Norte: **a expressão participa plenamente do fade/overlap/aditivo/container/prop-links, e o fade fica byte-idêntico onde não há expressão.** Custo não é restrição; a fidelidade do fade é inegociável.
+> Executa [ADR-0152](../architecture/decisions/0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md). Norte: **a expressão participa plenamente do fade/overlap/aditivo/container/prop-links, e o fade fica byte-idêntico onde não há expressão.** Custo não é restrição; a fidelidade do fade é inegociável.
 
 A ordem é **dependência-dirigida e segurança-primeiro**: primeiro o andaime que prova a byte-identidade (nenhum comportamento novo), depois cada capacidade com seu gate RED-first. **O gate #1 (`the_fade_surface_is_byte_stable`, hash `0x69dca8811eb0f8f8`) roda em TODO commit da wave** — se ele mover sem re-pin justificado no MESMO commit, pare.
 
@@ -75,9 +75,9 @@ A ordem é **dependência-dirigida e segurança-primeiro**: primeiro o andaime q
 
 ## W4 — O global como transformação do canal (que NÃO fadeia)
 
-**Objetivo:** a separação limpa ADR-0145. Um `binding.expr` global é aplicado como transformação final: `composed = eval_expr(global_ir, value = composed, time = cut_clock, …)`. Per-clip fadeia (fonte de lane); global não (fórmula do canal).
+**Objetivo:** a separação limpa ADR-0151. Um `binding.expr` global é aplicado como transformação final: `composed = eval_expr(global_ir, value = composed, time = cut_clock, …)`. Per-clip fadeia (fonte de lane); global não (fórmula do canal).
 
-**Gate:** um driver global roda em todo lugar no cut clock; um per-clip janela com a strip. (Reusa/ajusta os gates de janela do ADR-0145.)
+**Gate:** um driver global roda em todo lugar no cut clock; um per-clip janela com a strip. (Reusa/ajusta os gates de janela do ADR-0151.)
 
 ---
 

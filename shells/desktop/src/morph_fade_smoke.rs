@@ -1,4 +1,4 @@
-//! **Smoke do C4** (ADR-0146): ler uma propriedade de volta é o inverso EXATO de
+//! **Smoke do C4** (ADR-0152): ler uma propriedade de volta é o inverso EXATO de
 //! escrevê-la. `PH2D_MORPH_FADE_SMOKE=1`.
 //!
 //! Dois canais nunca souberam responder *"que valor você tem no mundo?"* — Morph e

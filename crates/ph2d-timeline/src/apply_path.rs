@@ -17,7 +17,7 @@ use ph2d_ecs::{Entity, Transform, World};
 /// ⚠️ It was called `read_rest` while `rest` capture was its only caller. It is now
 /// the Position arm of [`crate::apply::read_prop`], so it also answers a
 /// `Nome.position` prop-link — and a name that describes one of two callers is a
-/// comment that lies (ADR-0146 C4). What it computes never changed.
+/// comment that lies (ADR-0152 C4). What it computes never changed.
 ///
 /// For rest capture it is the base a partially-covering clip lane fades in FROM
 /// (ADR-0115 R5), and it has to be in the *track's* units, which for this kind is

@@ -64,6 +64,60 @@ Fix = split (mover `watercolor_render_active` pro sibling), nunca allowlist.
 4. Ver [[feedback_ship_parity_gaps_ci_only]] (ship↔CI), [[feedback_ci_direct_lint_gates_and_fmt_skew]],
    [[project_integration_prefork_lines_ship_drift]], [[feedback_ship_prep_no_fail_fast]].
 
+## Os dois critérios que o ship de 2026-07-31 acrescentou (jornada de 7 linhas)
+
+### Advisory: TENTE o upgrade antes de escrever o `ignore`
+
+Dois RUSTSEC chegaram juntos, e a resposta certa foi **oposta** para cada um:
+
+- **wasmtime (RUSTSEC-2026-0222, publicado NAQUELE dia) — CONSERTADO.** ⚠️ A
+  armadilha: `tests/spike` pinava `"44"` e **a série 44 inteira está fora de toda
+  faixa corrigida**, então `cargo update -p wasmtime` "atualizava" (44.0.1→44.0.3)
+  **sem alcançar conserto nenhum** — parecia que não havia fix. O fix era o bump
+  de major (`"47"` → 47.0.3). *Leia as faixas do advisory antes de concluir que
+  não há saída.*
+- **tract (RUSTSEC-2026-0217) — ignorado, com a justificativa MEDIDA.** O upgrade
+  foi TENTADO: a faixa começa em 0.21.16 e bumpar o `deep_filter` vendorizado
+  falha a resolução da workspace (`failed to select a version for half`). Isso deu
+  **motivo medido** ao pin que o ADR-0123 até então só AFIRMAVA.
+
+⇒ Um `ignore` escrito sem tentar o upgrade é um palpite; escrito depois, é um
+fato com mecanismo. E os dois configs são **paralelos e independentes**:
+`deny.toml [advisories].ignore` **e** `.cargo/audit.toml` — mexer num só deixa o
+outro ✗.
+
+### Typos: a pergunta é *"allowlistar isto pode esconder um typo REAL?"*
+
+33 ocorrências / 16 palavras acumuladas por 7 linhas (o gate só roda no ship).
+A tentação é allowlistar tudo; o critério que funciona é por-palavra:
+
+- **Pode esconder → REESCREVA o texto.** `grep -rin` virou `grep -r -i -n`,
+  porque `rin` colide com **`ring`** — e este repo diz "ring" o tempo todo
+  (CheckpointRing, return ring, os rings do nodegraph). Allowlistar teria cegado
+  o gate para eles.
+- **Não pode → entra no config.** Prosa pt-BR correta não se reescreve para
+  agradar um dicionário de inglês; isso é o gate mandando no texto.
+
+⚠️ **`flase` NÃO era typo — era o DADO DO TESTE** (`["", "flase", "no", "2",
+"OFF"]`, provando que uma escape mal digitada cai no default). "Corrigi-lo"
+deletaria o caso que o gate existe para cobrir. *Leia o sítio antes de consertar
+a grafia.*
+
+⚠️ **`extend-ignore-identifiers-re` casa o identificador INTEIRO.** `fing` e
+`pont` vivem dentro de `k_fing`/`pont_marcado`, então `^fing$` **não pega** —
+vão para `[default.extend-words]`, que é o token que o typos de fato compara.
+(`inh` e `flase` são identificadores inteiros e funcionam na lista âncorada.)
+
+### E um `✗` de nextest que era FLAKE, não regressão
+
+`ph2d-timeline::no_alloc_bridge` falhou **uma vez** e passou 2/2 na workspace
+inteira depois, além de 4/4 isolado no mesmo perfil `ci-test`. Mecanismo: ele
+mede uma propriedade **local** (`apply_from_doc` não aloca) com
+`dhat::HeapStats`, um contador **global do processo** — qualquer inicialização
+preguiçosa que caia na janela medida o vermelha
+([[feedback_zero_alloc_gate_capacity_not_global_counter]]). *Antes de caçar a
+regressão, meça se REPRODUZ.*
+
 ## Infra: `/dev/shm/ph2d-target` some entre sessões
 
 O `target/` do primário é symlink pro tmpfs (`workstation`). O

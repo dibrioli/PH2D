@@ -55,8 +55,8 @@ endpoint sozinho fica verde sobre um degrau. 2 mutações, 2 sangram.
 **Report (Enio):** *"O Path criado em um Clip contamina e aparece alças em outro Clip
 criado depois."*
 
-**São DOIS defeitos com a mesma raiz**, os dois fechados — o segundo pela escolha do
-modelo (B, o trilho compartilhado).
+**São DOIS defeitos com a mesma raiz**, os dois fechados — o segundo por uma mudança de
+MODELO, depois de a primeira tentativa ser reprovada na tela.
 
 ### 2a. As alças invisíveis — FECHADO
 
@@ -89,65 +89,98 @@ tem marcas, âncoras E alças) e o ponto sobre a curva **pedido ao produto**, n�
 ponto de duplo-clique que eu chutei caía fora do raio de pega, então devolvia `None` nos
 DOIS clips. *A fixture tem de conter o fenômeno.*
 
-### 2b. FECHADO pela ESCOLHA B — o caminho é um TRILHO compartilhado
+### 2b. O TRILHO COMPARTILHADO foi CONSTRUÍDO e REPROVADO NA TELA — a trajetória é do CLIP
 
 Assim que o clip B ganha **uma key qualquer**, o `marks` passa e o que se desenha é a
-trajetória do clip A. Isso não era o overlay: era o **modelo**. O `binding.rs` defende o
+trajetória do clip A. Isso não era o overlay: era o **modelo**. O `binding.rs` defendia o
 armazenamento no documento —
 
 > *"a trajetória é propriedade do MOVIMENTO deste objeto, não da leitura de um clip: dois
 > clips que a animam são duas CRONOMETRAGENS da mesma jornada"*
 
-— e a linha seguinte do MESMO doc-comment diz:
+— e a linha seguinte do MESMO doc-comment dizia:
 
 > *"âncora `i` pareia com a key `i` da track."*
 
 **As duas só podem ser verdade enquanto existir UMA cronometragem**, porque a track é
-por-CLIP. E o produto já sabia: apertar K num clip criado depois dispara o `debug_assert`
+por-CLIP. E o produto já sabia: apertar K num clip criado depois disparava o `debug_assert`
 do `rewrite_path_key_values` — *"a track tem 1 keys para 3 âncoras"*. Em release o assert
 não dispara e o `zip` deixa a key de CHEGADA com a distância de uma âncora do MEIO: *"o
-percurso do objeto encolhe"*, que é o *"se tentar arrastar qualquer ponto a curva quebra"*
-de um smoke anterior.
+percurso do objeto encolhe"*.
 
-⚠️ **A opção A (caminho por-clip) foi MEDIDA e recusada com três custos que a primeira
-tabela não listava**, e ficam registrados para ninguém os redescobrir:
+#### A tentativa B — construída, e reprovada de OLHO
 
-1. **"Distância" só significa alguma coisa sobre UMA curva.** O `prop.rs` já dizia:
-   *"blending DISTANCES is what keeps a crossfade ON the trajectory … blending the two
-   POINTS would cut the corner off it."* Com uma curva por clip, o blend não tem de que ser
-   distância — Position teria de compor **PONTOS**, em 2D.
-2. **Isso mudaria à força o que uma lane ADITIVA de Position significa** — hoje o
-   `algebra()` a define como *"go further along it"*; sobre curvas diferentes isso não se
-   pode dizer, e viraria *deslocar em XY*.
-3. **O `fade_fingerprint_channels` é exatamente essa cena** (clip A em distância 2, clip B
-   em 14, com SOBREPOSIÇÃO, sobre um L de 10+6): meio caminho é 8, **a quina**. Compondo
-   pontos, o corredor corta a quina e o hash `0x69dca8811eb0f8f8` **move** — e o doc dele
-   diz *"não há motivo para mover um pin que já dizia a verdade sobre o canal dele"*.
+A primeira escolha do Enio foi **B**: manter a trajetória no documento e fazer dela um
+**TRILHO compartilhado** — *quem lança o trilho é a única cronometragem que existe; a partir
+da segunda o K keya PROGRESSO ao longo do que já existe*. Foi construída inteira (porta
+única `active_clip_authors_the_rail`, três camadas, três gates, três mutações sangrando) e
+**reprovada no smoke, com foto**:
 
-**A escolha do Enio foi B**, e a lei que ficou é uma frase:
+> *"não prestou. Veja clip 1 com o path. Ao criar Clip 2 tudo buga, alças em path fantasma
+> aparecem, não consigo criar keys onde quero. Cada clip novo deve ser um branco e criar do
+> zero seu próprio PATH"* (Enio, 2026-07-30)
 
-> **Quem lança o trilho é a única cronometragem que existe.** A partir da segunda, ninguém
-> autora geometria por acidente: as âncoras só mudam pelos gestos EXPLÍCITOS (arrastar
-> âncora, arrastar alça, inserir na curva), e o **K de qualquer clip keya PROGRESSO** ao
-> longo do que já existe (a pose vai para a curva pelo `project`, e a key guarda a
-> DISTÂNCIA).
+⚠️ **Os dois sintomas eram a lei de B funcionando como especificada**, e é por isso que
+nenhum gate os pegou: com uma key qualquer no clip 2, o `marks` passa a desenhar — a
+trajetória do clip 1, que é a única que existe — e o K, obedecendo, projeta a pose no trilho
+alheio e grava uma DISTÂNCIA em vez de pôr a âncora onde o dedo clicou. *"Não consigo criar
+keys onde quero"* é a frase exata do braço de progresso.
 
-Porta única: `TimelineDoc::active_clip_authors_the_rail`. **Três consumidores, e cada um é
-uma camada com gate PRÓPRIO** — com o braço de progresso no lugar, o K nunca ALCANÇA os
-outros dois, então um gate só ficaria verde sobre eles
-([[feedback_layered_defenses_need_per_layer_gates]]):
+⚠️ **A opção A (caminho por-clip) tinha sido MEDIDA e adiada com três custos**, que ficam
+registrados porque **o primeiro e o segundo continuam abertos**:
 
-| camada | o que ela impede | gate |
+1. **"Distância" só significa alguma coisa sobre UMA curva.** O `prop.rs` diz: *"blending
+   DISTANCES is what keeps a crossfade ON the trajectory … blending the two POINTS would cut
+   the corner off it."* Com uma curva por clip, um crossfade entre trajetórias DIFERENTES não
+   tem arco comum para compor.
+2. **Isso muda o que uma lane ADITIVA de Position significa** — o `algebra()` a define como
+   *"go further along it"*, e sobre curvas diferentes isso não se pode dizer.
+3. **O `fade_fingerprint_channels` é exatamente essa cena** (clip A em distância 2, clip B em
+   14, com sobreposição, sobre um L de 10+6; meio caminho é 8, **a quina**) — ⚠️ **e este
+   custo NÃO se materializou:** os dois clips do fixture percorrem a MESMA jornada, então a
+   composição segue em distância sobre a mesma curva e o hash `0x69dca8811eb0f8f8` ficou
+   **byte-idêntico**. O custo era real e a medição o dissolveu.
+
+#### O que shipou — e como os dois primeiros custos foram pagos
+
+A trajetória mudou-se para o **CLIP**: `NamedClip.paths: BTreeMap<AnimTarget, MotionPath>`,
+e `TargetBinding.path` **morreu**. `DOC_VERSION` **16 → 17** — o segundo bump desta escada
+que TIRA um campo em vez de só acrescentar (o outro foi o v8 do nesting), então um v16 não
+fica curto: os bytes dele significam outra coisa a partir dali, e o load recusa.
+
+**Duas portas, e a distinção é a espinha da wave:**
+
+| porta | quem pergunta | tem recuo? |
 |---|---|---|
-| `add_path_key` | o K de outro clip acrescentar âncora | `keying_the_path_in_a_second_clip_keys_progress_not_geometry` |
-| `rewrite_path_key_values` | arrastar uma âncora reescrever a cronometragem de quem só percorre | `reshaping_the_rail_leaves_a_progress_timing_alone` |
-| `reconcile_one_position_path` | o `settle` reconstruir o trilho com uma âncora por key do clip que só percorre | `reconcile_only_repairs_the_timing_that_authored_the_rail` |
+| `clip_path(clip, target)` | o **DESENHO** e o hit-test do canvas | **não** — um clip sem trajetória não tem alça a mostrar nem curva a agarrar |
+| `path_for(target)` | o **AVALIADOR** (distância → ponto) e as conversões | **sim** — clip ativo, e como recuo o primeiro clip que tenha uma |
 
-3 mutações, 3 sangram — a do reconcile de forma espetacular: o L de 3 quinas vira 5 âncoras
-suaves ao longo da cronometragem do outro clip (a contaminação pelo lado oposto).
+⚠️ **O recuo é o que paga os custos 1 e 2 sem tocar o blend.** Sob o Arrange o clip ativo é o
+que o dropdown selecionou e pode ser um que nunca autorou trajetória; sem ele, um documento
+autorado no clip 1 e composto no Arrange pararia de mapear distância→ponto e o objeto iria
+para a origem. E ⚠️ **o limite fica NOMEADO em vez de escondido:** o blend compõe DISTÂNCIAS,
+que só têm significado sobre UMA curva, então um crossfade entre dois clips de trajetórias
+DIFERENTES percorre a que o `path_for` escolher. **Compor PONTOS é wave própria** — e não é
+regressão: antes desta wave existia uma trajetória só, para o documento inteiro.
 
-⚠️ **O custo honesto de B, para ninguém o descobrir por acidente:** a partir da segunda
-cronometragem, reformar o trilho **não** reescreve mais as distâncias de ninguém — nem as
-do clip que o autorou. É o que "progresso ao longo de um trilho" significa (a key diz *7 ao
-longo*, e reformar o trilho move onde isso cai), mas para o clip autor é uma mudança: com
-uma cronometragem só, as keys dele seguiam as âncoras.
+**As camadas, cada uma com gate PRÓPRIO** (a ausência tem várias causas independentes e uma
+só ficaria verde sobre as outras):
+
+| camada | o que ela garante | gate |
+|---|---|---|
+| `NamedClip::paths` nasce vazio | um clip novo é BRANCO | `a_clip_created_later_starts_with_no_path_at_all` |
+| `add_path_key` instala no clip ATIVO | o K constrói a trajetória DELE, do zero | `the_first_key_of_a_new_clip_builds_that_clips_own_path` |
+| `active_path_mut` é do clip ATIVO | reformar uma não toca a outra | `reshaping_one_clips_path_leaves_the_others_untouched` |
+| `duplicate_clip` clona `paths` | a única forma de partir de um trilho pronto | `duplicating_a_clip_copies_its_trajectory` |
+| o recuo do `path_for` | a composição não perde a trajetória | `the_evaluator_still_finds_the_trajectory_from_a_clip_that_has_none` |
+| `unbind` leva a geometria junto | nada de curva órfã no arquivo | `unbinding_a_position_track_forgets_that_clips_trajectory` |
+| `active_path` do overlay lê a porta CRUA | sem alça fantasma | `a_clip_that_does_not_animate_the_path_shows_no_handles` |
+
+**6 mutações, 6 sangram** — e a que nomeia a wave inteira é trocar o `clip_path` do overlay
+pelo `path_for`: a alça fantasma da foto volta na hora.
+
+⚠️ **`PROJECT_SCHEMA` fica onde está** (37): o `TimelineDoc` viaja como blob DENTRO do
+`ProjectFile` e carrega a própria versão — a forma do `ProjectFile` não mudou.
+
+⚠️ **E os dois `fade_fingerprint` saíram VERDES com o MESMO hash**, antes e depois — a prova
+executável de que o sistema de fade não foi tocado.

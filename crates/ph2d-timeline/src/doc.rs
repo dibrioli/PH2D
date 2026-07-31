@@ -26,6 +26,13 @@ use crate::stack_frames::StackScratch;
 #[path = "doc_markers.rs"]
 mod markers;
 
+// As portas da TRAJETÓRIA por-clip vivem num módulo irmão pela mesma razão que os markers:
+// elas alcançam o campo privado `clips`, e este arquivo está sob o teto de 700 LOC. Split
+// por responsabilidade — *onde a trajetória mora e quem a resolve* é um assunto, e é o
+// assunto que a wave de 2026-07-30 moveu do binding para o clip.
+#[path = "doc_clip_paths.rs"]
+mod clip_paths;
+
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
 /// as the first field (never trust `serde(default)` under a positional format).
 /// v2: tracks carry per-key roving flags (`TrackData.roving`, appended field —
@@ -93,12 +100,19 @@ mod markers;
 /// byte-identical to v15, but postcard is positional so the appended field forces the
 /// bump: a v15 blob is refused on load.
 ///
+/// v17: **a trajetória é do CLIP** (Enio, 2026-07-30: *"cada clip novo deve ser um branco
+/// e criar do zero seu próprio PATH"*) — `NamedClip.paths: BTreeMap<AnimTarget,
+/// MotionPath>` apendado, e `TargetBinding.path` **REMOVIDO**. É a única mudança desta
+/// escada que tira um campo em vez de só acrescentar: o v16 não fica meramente sem dados,
+/// os bytes dele passam a significar outra coisa a partir dali. Recusado no load, como
+/// todo bump deste documento desde o ADR-0133.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0145]: ../../../docs/architecture/decisions/0145-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 16;
+pub const DOC_VERSION: u32 = 17;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -190,6 +204,18 @@ pub struct NamedClip {
     /// 15 -> 16.
     #[serde(default)]
     pub expr: BTreeMap<AnimTarget, String>,
+    /// **A TRAJETÓRIA deste clip** (ADR-0141), por alvo — a geometria que uma track de
+    /// [`crate::PropKind::Position`] percorre, cujo valor é a *distância* ao longo dela.
+    ///
+    /// ⚠️ **Mora no CLIP, e é a decisão inteira** (Enio, 2026-07-30): um clip novo nasce
+    /// **em branco**, sem trajetória a herdar, contaminar nem desalinhar, e a primeira key
+    /// dele cria a sua. O porquê e as duas portas de leitura estão no módulo irmão
+    /// [`crate::doc::clip_paths`]; o report que o motivou, em
+    /// `docs/Timeline/BUGS_timeline.md` #2b.
+    ///
+    /// Apêndice posicional ⇒ `DOC_VERSION` 16 -> 17.
+    #[serde(default)]
+    pub paths: BTreeMap<AnimTarget, crate::path::MotionPath>,
 }
 
 /// The editable timeline document (see module docs).
@@ -254,6 +280,7 @@ impl TimelineDoc {
                 keys_loop_ping_pong: false,
                 length_override: None,
                 expr: BTreeMap::new(),
+                paths: BTreeMap::new(),
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -350,6 +377,8 @@ impl TimelineDoc {
             keys_loop_ping_pong: false,
             length_override: None,
             expr: BTreeMap::new(),
+            // Em BRANCO: um clip novo não herda trajetória nenhuma (ver o campo).
+            paths: BTreeMap::new(),
         });
         self.clips.len() - 1
     }
@@ -408,6 +437,8 @@ impl TimelineDoc {
             // The per-clip formulas travel — a variation animates the same targets
             // (ADR-0145). A copy of "walk" carries walk's expressions.
             expr: src.expr.clone(),
+            // A trajetória viaja: uma cópia da animação percorre a mesma jornada.
+            paths: src.paths.clone(),
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)
@@ -586,6 +617,10 @@ impl TimelineDoc {
         };
         let target = self.bindings.remove(pos).target;
         self.active_clip_mut().remove_track(target);
+        // A trajetória deste clip vai junto: ela é a geometria que a track percorria, e
+        // deixá-la para trás faria o próximo `bind` do mesmo alvo herdar a curva de uma
+        // animação que já não existe (`NamedClip::paths`).
+        self.take_active_path(target);
         true
     }
 

@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_sixteen() {
+fn schema_version_is_seventeen() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -132,10 +132,15 @@ fn schema_version_is_sixteen() {
     //      BTreeMap<AnimTarget, String>`, appended — the formula lives in the clip
     //      (like keyframes) so a strip that plays the clip windows it. Empty (the
     //      default) is byte-identical to v15.
+    // v17 = a TRAJETÓRIA é do CLIP (Enio, 2026-07-30): `NamedClip.paths:
+    //      BTreeMap<AnimTarget, MotionPath>` apendado, e `TargetBinding.path`
+    //      REMOVIDO. ⚠️ O SEGUNDO bump desta escada que tira um campo em vez de só
+    //      acrescentar (o outro foi o v8): um v16 não fica curto, os bytes dele passam
+    //      a significar outra coisa a partir dali.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 16);
-    assert_eq!(TimelineDoc::new().version, 16);
+    assert_eq!(DOC_VERSION, 17);
+    assert_eq!(TimelineDoc::new().version, 17);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

@@ -44,7 +44,13 @@ fn rig(path: MotionPath) -> (World, Entity, TimelineDoc) {
             Interp::Linear,
         );
     }
-    doc.bindings_mut()[0].path = Some(path);
+    {
+        let t = doc.bindings()[0].target;
+        let p = path;
+        for c in 0..doc.clips().len() {
+            doc.set_clip_path(c, t, p.clone());
+        }
+    }
     (w, e, doc)
 }
 

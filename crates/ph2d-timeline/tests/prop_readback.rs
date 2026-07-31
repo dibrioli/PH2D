@@ -220,10 +220,16 @@ fn a_prop_link_reads_a_position_channel() {
         .iter()
         .position(|b| b.prop == PropKind::Position)
         .unwrap();
-    doc.bindings_mut()[i].path = Some(MotionPath::new(vec![
-        PathAnchor::corner([0.0, 0.0]),
-        PathAnchor::corner([10.0, 0.0]),
-    ]));
+    {
+        let t = doc.bindings()[i].target;
+        let p = MotionPath::new(vec![
+            PathAnchor::corner([0.0, 0.0]),
+            PathAnchor::corner([10.0, 0.0]),
+        ]);
+        for c in 0..doc.clips().len() {
+            doc.set_clip_path(c, t, p.clone());
+        }
+    }
     key(doc, reader, PropKind::TranslationY, 0.0, 0.0);
     drive(doc, reader, PropKind::TranslationY, "Pather.position");
 
@@ -332,10 +338,16 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         key(doc, e, prop, 3.0, v);
         if prop == PropKind::Position {
             let i = doc.bindings().iter().position(|b| b.prop == prop).unwrap();
-            doc.bindings_mut()[i].path = Some(MotionPath::new(vec![
-                PathAnchor::corner([0.0, 0.0]),
-                PathAnchor::corner([10.0, 0.0]),
-            ]));
+            {
+                let t = doc.bindings()[i].target;
+                let p = MotionPath::new(vec![
+                    PathAnchor::corner([0.0, 0.0]),
+                    PathAnchor::corner([10.0, 0.0]),
+                ]);
+                for c in 0..doc.clips().len() {
+                    doc.set_clip_path(c, t, p.clone());
+                }
+            }
         }
 
         // O apply ESCREVE o valor no mundo…

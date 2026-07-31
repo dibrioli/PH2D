@@ -89,11 +89,17 @@ fn build_scene() -> (World, TimelineDoc, u64, u64) {
         .iter()
         .position(|x| x.prop == PropKind::Position)
         .expect("the key bound one");
-    doc.bindings_mut()[i].path = Some(MotionPath::new(vec![
-        PathAnchor::corner([0.0, 0.0]),
-        PathAnchor::corner([10.0, 0.0]),
-        PathAnchor::corner([10.0, 6.0]),
-    ]));
+    {
+        let t = doc.bindings()[i].target;
+        let p = MotionPath::new(vec![
+            PathAnchor::corner([0.0, 0.0]),
+            PathAnchor::corner([10.0, 0.0]),
+            PathAnchor::corner([10.0, 6.0]),
+        ]);
+        for c in 0..doc.clips().len() {
+            doc.set_clip_path(c, t, p.clone());
+        }
+    }
 
     let lane = doc.add_lane("L".into()).expect("scene lane");
     doc.add_strip(lane, 0, 1.0, 4.0);

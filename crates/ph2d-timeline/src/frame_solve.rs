@@ -329,7 +329,7 @@ pub(crate) fn seed_links(
         let Some(e) = Entity::try_from_bits(b.entity) else {
             continue;
         };
-        if let Some(v) = read_prop(world, e, b) {
+        if let Some(v) = read_prop(world, e, b, doc.path_for(b.target)) {
             out.insert((b.entity, b.prop), f64::from(v));
         }
     }

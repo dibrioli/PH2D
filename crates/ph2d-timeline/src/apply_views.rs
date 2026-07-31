@@ -84,7 +84,14 @@ pub fn apply_container(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, AnimValue::Float(f), orient);
+            write_prop(
+                world,
+                e,
+                b,
+                doc.path_for(b.target),
+                AnimValue::Float(f),
+                orient,
+            );
         }
     }
 
@@ -171,7 +178,14 @@ pub fn apply_active_clip(
             // que o `clock.rs` curou) — daí o curto-circuito, só para Position.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, AnimValue::Float(f), orient);
+            write_prop(
+                world,
+                e,
+                b,
+                doc.path_for(b.target),
+                AnimValue::Float(f),
+                orient,
+            );
         }
     }
 

@@ -19,8 +19,7 @@ fn at(doc: &TimelineDoc, bits: u64, t: f64) -> [f32; 2] {
     let AnimValue::Float(s) = track.sample(t) else {
         panic!("a track de Position é escalar")
     };
-    b.path
-        .as_ref()
+    doc.clip_path(doc.active_index(), b.target)
         .expect("caminho")
         .at(f64::from(s))
         .expect("ponto")

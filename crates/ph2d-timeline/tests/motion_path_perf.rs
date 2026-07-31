@@ -82,7 +82,13 @@ fn scene(entities: usize, anchors: usize) -> (World, TimelineDoc) {
             );
         }
         let b = doc.bindings().len() - 1;
-        doc.bindings_mut()[b].path = Some(path.clone());
+        {
+            let t = doc.bindings()[b].target;
+            let p = path.clone();
+            for c in 0..doc.clips().len() {
+                doc.set_clip_path(c, t, p.clone());
+            }
+        }
     }
     (world, doc)
 }

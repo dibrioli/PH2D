@@ -23,13 +23,17 @@ use crate::{AutoOrient, TimelineDoc, remapped_time};
 pub(crate) fn set_transform_field(
     xf: &mut Transform,
     b: &TargetBinding,
+    path: Option<&crate::MotionPath>,
     v: AnimValue,
     orient: bool,
 ) {
     // O único canal cujo valor não é uma coordenada (ADR-0141): é uma DISTÂNCIA ao longo
     // do caminho, e virá um ponto quando se perguntar à trajetória onde ela está.
     if b.prop == PropKind::Position {
-        let (Some(path), AnimValue::Float(s)) = (b.path.as_ref(), v) else {
+        // ⚠️ A trajetória é PASSADA, nunca lida do binding: ela mora no CLIP desde
+        // 2026-07-30 (`NamedClip::paths`), e quem a resolve é quem sabe qual clip está a
+        // dirigir — [`crate::TimelineDoc::path_for`], a porta única.
+        let (Some(path), AnimValue::Float(s)) = (path, v) else {
             return;
         };
         let Some(sample) = path.at(f64::from(s)) else {
@@ -116,7 +120,13 @@ pub fn pose_at(world: &World, doc: &TimelineDoc, entity: u64, clip_t: f64) -> Op
             continue;
         };
         let orient = b.prop == PropKind::Position && doc.auto_orient(entity) == AutoOrient::Active;
-        set_transform_field(&mut xf, b, AnimValue::Float(v), orient);
+        set_transform_field(
+            &mut xf,
+            b,
+            doc.path_for(b.target),
+            AnimValue::Float(v),
+            orient,
+        );
     }
     Some(xf)
 }

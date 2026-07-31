@@ -192,6 +192,13 @@ impl crate::App {
              (as alcas Auto Bezier re-suavizam). ARRASTE um CIRCULO (a ponta da alca): \
              a curva se MOLDA a mao. As alcas so aparecem nas ancoras curvas do meio."
         );
+        eprintln!(
+            "[path-smoke] E A PERGUNTA DA WAVE (Enio, 2026-07-30): crie um CLIP NOVO no \
+             dropdown. Ele tem de abrir em BRANCO -- nenhuma curva, nenhum quadrado, \
+             nenhum circulo, e nada agarravel onde a trajetoria do outro clip passava. \
+             Ponha o objeto onde quiser e aperte K: a ancora nasce ONDE VOCE CLICOU, e o \
+             clip 1 nao se mexe um pixel quando voce volta a ele."
+        );
     }
 
     /// Cena `=2`: **o auto-orient, e a recusa ao lado dele.**

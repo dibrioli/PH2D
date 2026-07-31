@@ -44,7 +44,8 @@ fn rig(path: MotionPath, keys: &[(f64, f32)]) -> (World, Entity, TimelineDoc) {
         .iter()
         .position(|b| b.prop == PropKind::Position)
         .expect("the key bound one");
-    doc.bindings_mut()[i].path = Some(path);
+    let target = doc.bindings()[i].target;
+    doc.set_clip_path(doc.active_index(), target, path);
     (w, e, doc)
 }
 
@@ -144,7 +145,10 @@ fn a_position_bindings_rest_is_where_the_pose_sits_on_the_path_not_zero() {
 #[test]
 fn a_position_binding_without_a_path_leaves_the_object_alone() {
     let (mut w, e, mut doc) = rig(ell(), &[(0.0, 0.0), (2.0, 20.0)]);
-    doc.bindings_mut()[0].path = None;
+    {
+        let t = doc.bindings()[0].target;
+        doc.clear_clip_path(doc.active_index(), t);
+    }
     w.get_mut::<Transform>(e).unwrap().translation = Vec2::new(3.0, 4.0);
 
     apply_from_doc(&mut w, &mut doc, 1.0);
@@ -173,9 +177,8 @@ fn a_position_binding_and_its_path_round_trip_through_the_document() {
     let (_, _, doc) = rig(ell(), &[(0.0, 0.0), (2.0, 20.0)]);
     let bytes = doc.to_bytes().unwrap();
     let back = TimelineDoc::from_bytes(&bytes).unwrap();
-    let path = back.bindings()[0]
-        .path
-        .as_ref()
+    let path = back
+        .clip_path(back.active_index(), back.bindings()[0].target)
         .expect("the trajectory came back");
     assert_eq!(path.anchors(), ell().anchors());
     assert!(
@@ -336,24 +339,54 @@ fn a_roving_key_gives_constant_speed_along_the_curve() {
     );
 }
 
-// ── O TRILHO COMPARTILHADO — o K de um segundo clip keya PROGRESSO ────────────
+// ── A TRAJETÓRIA É DO CLIP — um clip novo nasce em BRANCO ────────────────────
 
-/// **O K num clip que não autora o trilho keya PROGRESSO, não geometria** (report do
-/// Enio, 2026-07-30, escolha B: *"o Path criado em um Clip contamina … outro Clip criado
-/// depois"*).
+/// **Um clip criado depois não tem trajetória nenhuma** (report do Enio, 2026-07-30, com
+/// foto: *"Ao criar Clip 2 tudo buga, alças em path fantasma aparecem, não consigo criar
+/// keys onde quero. Cada clip novo deve ser um branco e criar do zero seu próprio PATH"*).
 ///
-/// A trajetória é do BINDING (do documento) e as keys são do CLIP: *"dois clips que animam
-/// o objeto ao longo dela são duas CRONOMETRAGENS da mesma jornada"*. Mas a lei
-/// *"âncora `i` pareia com key `i`"* só pode valer para UMA delas — e apertar K num
-/// segundo clip acrescentava âncora ao trilho compartilhado enquanto a track daquele clip
-/// tinha outra contagem. O `debug_assert` do `rewrite_path_key_values` disparava
-/// (*"a track tem 1 keys para 3 âncoras"*); em release ele não dispara e o `zip` deixa a
-/// key de CHEGADA com a distância de uma âncora do MEIO — *"o percurso do objeto encolhe"*.
+/// A trajetória morava no BINDING, que é do DOCUMENTO, sob o argumento de que dois clips
+/// que animam o objeto são duas CRONOMETRAGENS da mesma jornada. A lei irmã —
+/// *"âncora `i` pareia com a key `i`"* — só pode valer para UMA delas, porque a track é do
+/// CLIP; e o preço visível eram as alças do clip 1 agarráveis dentro do clip 2, sobre uma
+/// curva que ele não autorou.
 ///
-/// **Mutação que deve sangrar:** o braço de progresso do `add_path_key`, ou o guard de
-/// autoria do `rewrite_path_key_values`.
+/// **Mutação que deve sangrar:** `clip_path` ler o primeiro clip que tenha caminho em vez
+/// do clip pedido (o fallback de RESOLUÇÃO não pode vazar para a LEITURA CRUA — é ela que
+/// o desenho e o hit-test do canvas fazem).
 #[test]
-fn keying_the_path_in_a_second_clip_keys_progress_not_geometry() {
+fn a_clip_created_later_starts_with_no_path_at_all() {
+    let (_w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("bound")
+        .target;
+
+    // CLIP A autora um trilho de dois pontos.
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+    assert_eq!(doc.clip_path(0, target).map(MotionPath::len), Some(2));
+
+    // CLIP B, criado depois: BRANCO.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    assert!(
+        doc.clip_path(b, target).is_none(),
+        "um clip novo não herda trajetória — não há alça a desenhar nem curva a agarrar"
+    );
+}
+
+/// **E a primeira key desse clip cria a trajetória DELE, do zero.**
+///
+/// A metade que torna o branco útil em vez de um beco: dentro do clip 2 o K põe a âncora
+/// onde o artista clicou (era o *"não consigo criar keys onde quero"* — o modelo anterior
+/// projetava a pose no trilho alheio e keyava PROGRESSO ao longo dele).
+///
+/// **Mutação que deve sangrar:** `add_path_key` instalar a trajetória em qualquer clip que
+/// não o ATIVO.
+#[test]
+fn the_first_key_of_a_new_clip_builds_that_clips_own_path() {
     let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
     let bits = e.to_bits();
     let target = doc
@@ -361,91 +394,42 @@ fn keying_the_path_in_a_second_clip_keys_progress_not_geometry() {
         .expect("bound")
         .target;
 
-    // CLIP A autora o trilho: dois pontos, o L de 10 para a direita.
     doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
     doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
-    let rail = doc
-        .binding_for(bits, PropKind::Position)
-        .and_then(|b| b.path.clone())
-        .expect("o trilho existe");
-    assert_eq!(rail.len(), 2, "o clip que autora põe uma âncora por key");
-    let a_keys: Vec<f32> = doc.clips()[0]
-        .clip
-        .track(target)
-        .expect("track de A")
-        .keys()
-        .iter()
-        .map(|k| match k.value {
-            AnimValue::Float(v) => v,
-            _ => f32::NAN,
-        })
-        .collect();
+    let a = doc.clip_path(0, target).cloned().expect("o trilho de A");
 
-    // CLIP B, criado depois. O artista põe o objeto no MEIO do trilho e aperta K.
     let b = doc.add_clip("B".into());
     doc.set_active(b);
-    doc.key_the_path(bits, RationalTime::from_seconds(0.5), [5.0, 0.0]);
+    // O artista desenha OUTRO percurso, para CIMA, num clip que nasceu vazio.
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [0.0, 30.0]);
 
-    // 1. A GEOMETRIA não se mexeu — nem em contagem nem em forma.
-    let after = doc
-        .binding_for(bits, PropKind::Position)
-        .and_then(|b| b.path.clone())
-        .expect("o trilho sobrevive");
+    let bp = doc.clip_path(b, target).cloned().expect("o trilho de B");
+    assert_eq!(bp.len(), 2, "as âncoras nasceram onde o K clicou");
+    assert!(
+        (bp.length() - 30.0).abs() < 1e-6,
+        "o percurso de B é o de B ({}), não o de A ({})",
+        bp.length(),
+        a.length()
+    );
     assert_eq!(
-        after.anchors(),
-        rail.anchors(),
-        "um clip que só cronometra não autora geometria"
+        doc.clip_path(0, target).map(MotionPath::anchors),
+        Some(a.anchors()),
+        "e A ficou exatamente como estava"
     );
 
-    // 2. A key de B guarda o PROGRESSO (5 de 10), não uma âncora.
-    let b_keys = doc.clips()[b]
-        .clip
-        .track(target)
-        .expect("track de B")
-        .keys();
-    assert_eq!(b_keys.len(), 1, "uma key, a que o artista pôs");
-    let AnimValue::Float(d) = b_keys[0].value else {
-        panic!("a key de progresso é um float");
-    };
-    assert!(
-        (d - 5.0).abs() < 1e-3,
-        "o K keya a distância da pose projetada no trilho: {d}"
-    );
-
-    // 3. E a cronometragem de A ficou INTACTA — é o que "contaminar" significava.
-    let a_now: Vec<f32> = doc.clips()[0]
-        .clip
-        .track(target)
-        .expect("track de A")
-        .keys()
-        .iter()
-        .map(|k| match k.value {
-            AnimValue::Float(v) => v,
-            _ => f32::NAN,
-        })
-        .collect();
-    assert_eq!(a_now, a_keys, "a cronometragem do clip A não é tocada");
-
-    // 4. E o objeto de fato PARA onde o artista o pôs, no clip B.
-    apply_from_doc(&mut w, &mut doc, 0.5);
-    assert!(
-        near(pos(&w, e), [5.0, 0.0]),
-        "o objeto segue o progresso keyado em B: {:?}",
-        pos(&w, e)
-    );
+    // E o objeto percorre o trilho do clip ATIVO.
+    apply_from_doc(&mut w, &mut doc, 1.0);
+    assert!(near(pos(&w, e), [0.0, 30.0]), "{:?}", pos(&w, e));
 }
 
-/// **Reformar o trilho não reescreve a cronometragem de quem só o percorre.**
+/// **Reformar o trilho de um clip não toca o do outro** — a terceira camada, e ela precisa
+/// de gate próprio: com a trajetória por-clip, `move_path_anchor` alcança só a do clip
+/// ATIVO, e é essa restrição que o gate pina.
 ///
-/// A segunda camada da mesma lei, e ela precisa de gate PRÓPRIO: com o braço de progresso
-/// no lugar, o K de um clip que não autora nunca ALCANÇA o `rewrite_path_key_values` — mas
-/// arrastar uma âncora alcança. Sem o guard de autoria, o `zip` posicional
-/// (*"âncora `i` ↔ key `i`"*) reescreveria as keys de PROGRESSO com as distâncias das
-/// âncoras: a cronometragem do clip vira a do trilho, e o que o artista autorou some.
-///
-/// **Mutação que deve sangrar:** o guard de autoria do `rewrite_path_key_values`.
+/// **Mutação que deve sangrar:** `active_path_mut` procurar a trajetória em qualquer clip.
 #[test]
-fn reshaping_the_rail_leaves_a_progress_timing_alone() {
+fn reshaping_one_clips_path_leaves_the_others_untouched() {
     let (_w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
     let bits = e.to_bits();
     let target = doc
@@ -458,39 +442,117 @@ fn reshaping_the_rail_leaves_a_progress_timing_alone() {
 
     let b = doc.add_clip("B".into());
     doc.set_active(b);
-    doc.key_the_path(bits, RationalTime::from_seconds(0.5), [5.0, 0.0]);
-    doc.key_the_path(bits, RationalTime::from_seconds(0.9), [8.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [0.0, 30.0]);
+    let a_before = doc.clip_path(0, target).cloned().expect("A");
 
-    let before: Vec<f32> = doc.clips()[b]
-        .clip
-        .track(target)
-        .expect("track de B")
-        .keys()
-        .iter()
-        .map(|k| match k.value {
-            AnimValue::Float(v) => v,
-            _ => f32::NAN,
-        })
-        .collect();
-    assert_eq!(before.len(), 2, "B cronometra dois instantes");
+    // Arrasta a âncora de chegada de B para longe.
+    let mut last = doc.path_anchor(target, 1).expect("a âncora de B");
+    last.anchor = [0.0, 60.0];
+    assert!(doc.move_path_anchor(target, 1, last));
 
-    // O artista arrasta a âncora do FIM: o trilho fica mais longo.
-    assert!(doc.move_path_anchor(target, 1, PathAnchor::corner([20.0, 0.0])));
-
-    let after: Vec<f32> = doc.clips()[b]
-        .clip
-        .track(target)
-        .expect("track de B")
-        .keys()
-        .iter()
-        .map(|k| match k.value {
-            AnimValue::Float(v) => v,
-            _ => f32::NAN,
-        })
-        .collect();
+    assert!(
+        (doc.clip_path(b, target).unwrap().length() - 60.0).abs() < 1e-6,
+        "B seguiu o dedo"
+    );
     assert_eq!(
-        after, before,
-        "as keys de PROGRESSO guardam o que o artista autorou; reformar o trilho move \
-         onde elas caem, não o que elas dizem"
+        doc.clip_path(0, target).map(MotionPath::anchors),
+        Some(a_before.anchors()),
+        "e A não se mexeu um texel"
+    );
+}
+
+/// **Duplicar um clip leva a trajetória junto** — uma cópia da animação percorre a MESMA
+/// jornada, e é a única forma de partir de um trilho pronto agora que um clip NOVO nasce
+/// em branco.
+///
+/// **Mutação que deve sangrar:** `duplicate_clip` deixar de clonar `paths`.
+#[test]
+fn duplicating_a_clip_copies_its_trajectory() {
+    let (_w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("bound")
+        .target;
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+
+    let copy = doc.duplicate_clip(0).expect("a cópia");
+    assert_eq!(
+        doc.clip_path(copy, target).map(MotionPath::anchors),
+        doc.clip_path(0, target).map(MotionPath::anchors),
+        "a cópia percorre a mesma jornada"
+    );
+
+    // E é uma cópia INDEPENDENTE: reformar a do original não move a da cópia.
+    doc.set_active(0);
+    let mut a0 = doc.path_anchor(target, 1).expect("âncora");
+    a0.anchor = [40.0, 0.0];
+    assert!(doc.move_path_anchor(target, 1, a0));
+    assert!(
+        (doc.clip_path(copy, target).unwrap().length() - 10.0).abs() < 1e-6,
+        "a cópia ficou onde estava"
+    );
+}
+
+/// **O avaliador não perde a trajetória sob a composição** — o RECUO do `path_for`.
+///
+/// Sob o Arrange o clip ATIVO é o que o dropdown selecionou, e pode ser um que nunca
+/// autorou trajetória; sem o recuo, um documento inteiro autorado no clip 1 e composto no
+/// Arrange deixaria de mapear distância→ponto e o objeto pararia na origem.
+///
+/// ⚠️ Este gate e o `a_clip_created_later_starts_with_no_path_at_all` são as DUAS metades
+/// da mesma decisão e por isso são dois: a leitura CRUA (`clip_path`, o desenho) não pode
+/// ter recuo, e a de RESOLUÇÃO (`path_for`, o avaliador) tem de ter.
+///
+/// **Mutação que deve sangrar:** `path_for` largar o `or_else`.
+#[test]
+fn the_evaluator_still_finds_the_trajectory_from_a_clip_that_has_none() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+
+    // Um clip criado depois é o ativo, e não tem trajetória própria.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.upsert_key(
+        bits,
+        PropKind::Position,
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+
+    apply_from_doc(&mut w, &mut doc, 0.0);
+    assert!(
+        near(pos(&w, e), [10.0, 0.0]),
+        "a distância keyada em B foi resolvida sobre a jornada que existe: {:?}",
+        pos(&w, e)
+    );
+}
+
+/// **Esquecer a track de um clip esquece a trajetória DELE** — senão a geometria fica no
+/// arquivo para sempre, pendurada num alvo que já não é animado, e o próximo bind do mesmo
+/// objeto herdaria a curva de uma animação que não existe mais.
+///
+/// **Mutação que deve sangrar:** `unbind` não chamar o `take_active_path`.
+#[test]
+fn unbinding_a_position_track_forgets_that_clips_trajectory() {
+    let (_w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("bound")
+        .target;
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+    assert!(doc.clip_path(0, target).is_some(), "o trilho existe");
+
+    doc.unbind(bits, PropKind::Position);
+    assert!(
+        doc.clip_path(0, target).is_none(),
+        "a geometria foi junto com a track que a percorria"
     );
 }

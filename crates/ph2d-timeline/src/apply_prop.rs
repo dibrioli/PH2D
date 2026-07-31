@@ -24,6 +24,7 @@ pub(crate) fn write_prop(
     world: &mut World,
     entity: Entity,
     b: &crate::TargetBinding,
+    path: Option<&crate::MotionPath>,
     v: AnimValue,
     orient: bool,
 ) {
@@ -33,7 +34,7 @@ pub(crate) fn write_prop(
     // usa, para que não haja uma 2ª derivação da pose a divergir (ADR-0142).
     if prop == PropKind::Position || prop.as_sprite_transform().is_some() {
         if let Some(mut xf) = world.get_mut::<Transform>(entity) {
-            crate::pose::set_transform_field(&mut xf, b, v, orient);
+            crate::pose::set_transform_field(&mut xf, b, path, v, orient);
         }
         return;
     }
@@ -79,13 +80,18 @@ pub(crate) fn write_prop(
 /// pair is an inverse, and the gate
 /// `reading_a_property_back_is_the_inverse_of_writing_it` asserts it over EVERY
 /// kind rather than over a list someone maintains.
-pub(crate) fn read_prop(world: &World, entity: Entity, b: &crate::TargetBinding) -> Option<f32> {
+pub(crate) fn read_prop(
+    world: &World,
+    entity: Entity,
+    b: &crate::TargetBinding,
+    path: Option<&crate::MotionPath>,
+) -> Option<f32> {
     // Position — read THROUGH the trajectory (the inverse of the pose door's
     // Position arm). `None` while the binding has no path yet, which is what an
     // unresolvable scalar does too. It is the ONE kind that needs the binding, which
     // is why it is answered here and everything else delegates.
     if b.prop == PropKind::Position {
-        return crate::apply_path::read_distance(world, entity, b);
+        return crate::apply_path::read_distance(world, entity, path);
     }
     read_prop_kind(world, entity, b.prop)
 }

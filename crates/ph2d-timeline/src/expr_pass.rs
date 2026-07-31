@@ -95,7 +95,14 @@ pub(crate) fn run(
             && !composed.contains_key(&(b.entity, b.prop))
             && let Some(e) = Entity::try_from_bits(b.entity)
         {
-            write_prop(world, e, b, AnimValue::Float(v), false);
+            write_prop(
+                world,
+                e,
+                b,
+                doc.path_for(b.target),
+                AnimValue::Float(v),
+                false,
+            );
             links.links.insert((b.entity, b.prop), f64::from(v));
         }
     }
@@ -114,7 +121,7 @@ pub(crate) fn run(
         let Some(e) = Entity::try_from_bits(b.entity) else {
             continue;
         };
-        if let Some(v) = read_prop(world, e, b) {
+        if let Some(v) = read_prop(world, e, b, doc.path_for(b.target)) {
             snap.insert((b.entity, b.prop), v);
         }
     }
@@ -241,7 +248,14 @@ pub(crate) fn run(
     for (i, v) in writes {
         let b = &doc.bindings()[i];
         if let Some(e) = Entity::try_from_bits(b.entity) {
-            write_prop(world, e, b, AnimValue::Float(v), false);
+            write_prop(
+                world,
+                e,
+                b,
+                doc.path_for(b.target),
+                AnimValue::Float(v),
+                false,
+            );
             // C2 (ADR-0146 W6): the persisted map must hold the FINAL world value, so a
             // globally-transformed channel reads its POST-transform value in `shown_value`
             // (not the pre-transform composed value the blend loop inserted) — else `shown`

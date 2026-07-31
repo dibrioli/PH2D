@@ -122,11 +122,17 @@ fn pose_at_matches_apply_for_a_position_path_with_auto_orient() {
         doc.bind(b, PropKind::Position);
         key(&mut doc, b, PropKind::Position, 0.0, 0.0, Interp::Linear);
         key(&mut doc, b, PropKind::Position, 4.0, 24.0, Interp::Linear);
-        doc.bindings_mut()[0].path = Some(MotionPath::new(vec![
-            PathAnchor::corner([0.0, 0.0]),
-            PathAnchor::corner([12.0, 0.0]),
-            PathAnchor::corner([12.0, 12.0]),
-        ]));
+        {
+            let t = doc.bindings()[0].target;
+            let p = MotionPath::new(vec![
+                PathAnchor::corner([0.0, 0.0]),
+                PathAnchor::corner([12.0, 0.0]),
+                PathAnchor::corner([12.0, 12.0]),
+            ]);
+            for c in 0..doc.clips().len() {
+                doc.set_clip_path(c, t, p.clone());
+            }
+        }
         doc.set_auto_orient(b, true);
         (w, b, doc)
     };

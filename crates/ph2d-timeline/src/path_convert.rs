@@ -142,7 +142,12 @@ impl TimelineDoc {
     /// caminho inverso. Devolve `None` sem um binding Position com caminho e keys.
     pub fn path_to_separate(&mut self, entity: u64) -> Option<ConversionReport> {
         let b = self.binding_for(entity, PropKind::Position)?;
-        let (target, path) = (b.target, b.path.clone()?);
+        let target = b.target;
+        // ⚠️ Pela porta de RESOLUÇÃO (`path_for`), não pela crua: converter é transformar
+        // *o que o objeto faz na tela* em duas tracks escalares, e o que ele faz sai da
+        // trajetória que o avaliador usa. Um clip que só cronometra sobre a jornada de
+        // outro tem uma conversão legítima a oferecer.
+        let path = self.path_for(target)?.clone();
         let track = self.active_clip().track(target)?;
         if track.keys().is_empty() {
             return None;
@@ -189,7 +194,11 @@ impl TimelineDoc {
     /// para saber **qual** conversão oferecer.
     #[must_use]
     pub fn position_path(&self, entity: u64) -> Option<&MotionPath> {
-        self.binding_for(entity, PropKind::Position)?.path.as_ref()
+        let target = self.binding_for(entity, PropKind::Position)?.target;
+        // A mesma porta de resolução do `path_to_separate`: o painel pergunta *este objeto
+        // está em modo Path?*, que é sobre o que o avaliador faz, não sobre qual clip
+        // desenhou a curva.
+        self.path_for(target)
     }
 
     /// **Which mode a new position key for `entity` must use** ([ADR-0141]).

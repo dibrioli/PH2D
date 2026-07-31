@@ -25,7 +25,8 @@ fn rig() -> (World, ph2d_ecs::Entity, TimelineDoc) {
             Interp::Linear,
         );
     }
-    doc.bindings_mut()[0].path = Some(path);
+    let target = doc.bindings()[0].target;
+    doc.set_clip_path(doc.active_index(), target, path);
     (w, e, doc)
 }
 
@@ -165,7 +166,7 @@ fn keying_a_position_track_grows_the_trajectory() {
     ] {
         assert!(doc.add_path_key(target, RationalTime::from_seconds(t), p));
     }
-    let path = doc.bindings()[0].path.as_ref().unwrap();
+    let path = doc.clip_path(doc.active_index(), target).unwrap();
     assert_eq!(path.len(), 3, "uma âncora por key");
     // ⚠️ Auto Bezier num ângulo reto **abaúla para FORA**, não corta por dentro: a alça
     // do meio segue a corda dos vizinhos (a diagonal), então a curva passa por fora da
@@ -245,7 +246,7 @@ fn keying_the_same_instant_moves_that_anchor_instead_of_stacking_one() {
         doc.add_path_key(target, RationalTime::from_seconds(t), p);
     }
     assert!(doc.add_path_key(target, RationalTime::from_seconds(1.0), [5.0, 9.0]));
-    assert_eq!(doc.bindings()[0].path.as_ref().unwrap().len(), 2);
+    assert_eq!(doc.clip_path(doc.active_index(), target).unwrap().len(), 2);
     assert_eq!(doc.path_anchor(target, 1).unwrap().anchor, [5.0, 9.0]);
     assert_eq!(doc.active_clip().track(target).unwrap().keys().len(), 2);
 }
@@ -260,7 +261,7 @@ fn the_first_key_has_no_journey_and_a_scalar_target_is_refused() {
 
     let target = doc.bind(1, PropKind::Position);
     assert!(doc.add_path_key(target, RationalTime::from_seconds(0.0), [3.0, 4.0]));
-    let path = doc.bindings()[1].path.as_ref().unwrap();
+    let path = doc.clip_path(doc.active_index(), target).unwrap();
     assert_eq!(path.len(), 1);
     assert_eq!(path.length(), 0.0);
 }
@@ -608,22 +609,27 @@ fn insert_refuses_a_scalar_target_and_a_bare_path() {
     );
 }
 
-/// **A reconciliação é da cronometragem que AUTORA o trilho, e de mais nenhuma.**
+/// **A reconciliação é do clip que tem a trajetória, e de mais nenhum.**
 ///
-/// A terceira camada da lei do trilho compartilhado, e a que precisa do gate mais
-/// explícito: o `reconcile_position_paths` roda no `settle` de TODA edição, então ele
-/// alcança um clip que só percorre o trilho sem ninguém pedir. Sem o guard de autoria ele
-/// reconstruiria a trajetória com **uma âncora por key daquele clip** — a contaminação do
-/// report do Enio (2026-07-30) pelo outro lado: em vez de o clip novo herdar o trilho, o
-/// trilho é que passaria a herdar a cronometragem do clip novo.
+/// O `reconcile_position_paths` roda no `settle` de TODA edição, então ele alcança um clip
+/// que apenas keya distâncias sem ninguém pedir. Se ele fosse buscar a geometria noutro
+/// clip, reconstruiria a trajetória com **uma âncora por key DAQUELE** — a contaminação do
+/// report do Enio (2026-07-30) pelo outro lado: em vez de o clip novo herdar a curva, a
+/// curva é que passaria a herdar a cronometragem do clip novo.
 ///
-/// **Mutação que deve sangrar:** o guard de autoria do `reconcile_one_position_path`.
+/// Com a trajetória no CLIP a proteção é estrutural (o `active_path_mut` do clip B devolve
+/// `None` e o passe sai adiante), e é isso que este gate pina.
+///
+/// **Mutação que deve sangrar:** o `active_path_mut` procurar em qualquer clip.
 #[test]
-fn reconcile_only_repairs_the_timing_that_authored_the_rail() {
+fn reconcile_only_touches_the_clip_that_owns_the_path() {
     let (_w, e, mut doc) = rig();
     let bits = e.to_bits();
     let target = doc.binding_for(bits, PropKind::Position).unwrap().target;
-    let rail = doc.bindings()[0].path.clone().expect("o trilho do rig");
+    let rail = doc
+        .clip_path(doc.active_index(), target)
+        .cloned()
+        .expect("o trilho do rig");
     assert_eq!(rail.len(), 3, "o rig autora três âncoras");
 
     // Um segundo clip, com uma cronometragem PRÓPRIA: cinco instantes ao longo do mesmo
@@ -642,7 +648,10 @@ fn reconcile_only_repairs_the_timing_that_authored_the_rail() {
 
     doc.reconcile_position_paths();
 
-    let after = doc.bindings()[0].path.clone().expect("o trilho sobrevive");
+    let after = doc
+        .clip_path(0, target)
+        .cloned()
+        .expect("o trilho sobrevive");
     assert_eq!(
         after.anchors(),
         rail.anchors(),

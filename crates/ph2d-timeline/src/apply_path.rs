@@ -11,8 +11,6 @@
 
 use ph2d_ecs::{Entity, Transform, World};
 
-use crate::binding::TargetBinding;
-
 /// **Where along the path the object currently sits** — a Position binding read back
 /// out of the world, in the TRACK's units.
 ///
@@ -30,8 +28,12 @@ use crate::binding::TargetBinding;
 /// `None` while the binding has no path yet (a Position track before its first key),
 /// which leaves `rest` uncaptured and lets the next frame try again — exactly what
 /// an unresolvable scalar does.
-pub(crate) fn read_distance(world: &World, entity: Entity, b: &TargetBinding) -> Option<f32> {
-    let path = b.path.as_ref()?;
+pub(crate) fn read_distance(
+    world: &World,
+    entity: Entity,
+    path: Option<&crate::MotionPath>,
+) -> Option<f32> {
+    let path = path?;
     let xf = world.get::<Transform>(entity)?;
     let s = path.project([xf.translation.x, xf.translation.y])?;
     Some(s as f32)

@@ -171,7 +171,14 @@ fn apply_inner(
             // mesmo laço.
             let orient = b.prop == PropKind::Position
                 && doc.auto_orient(b.entity) == crate::AutoOrient::Active;
-            write_prop(world, e, b, AnimValue::Float(f), orient);
+            write_prop(
+                world,
+                e,
+                b,
+                doc.path_for(b.target),
+                AnimValue::Float(f),
+                orient,
+            );
         }
     }
 
@@ -234,7 +241,12 @@ pub(crate) fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc
             // has ONE answer for every kind. While the exception lived in this caller
             // it was knowledge the other two readers did not have — and they gave a
             // different answer (ADR-0146 C4).
-            let rest = read_prop(world, entity, &doc.bindings()[i]);
+            let rest = read_prop(
+                world,
+                entity,
+                &doc.bindings()[i],
+                doc.path_for(doc.bindings()[i].target),
+            );
             doc.bindings_mut()[i].rest = rest;
         }
     }

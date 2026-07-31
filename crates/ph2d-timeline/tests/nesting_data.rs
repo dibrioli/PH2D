@@ -152,22 +152,22 @@ fn a_deeply_nested_but_acyclic_document_loads_fine() {
 // Persistência
 // ---------------------------------------------------------------------------
 
-/// **v9, e um blob mais velho é recusado — não mal-lido.**
+/// **A versão atual, e um blob mais velho é recusado — não mal-lido.**
 ///
 /// O v9 APENDA um campo (`ClipStrip.lead_out`), então um blob mais antigo tem bytes de menos e o
 /// postcard não fecha; e o v8 antes dele SUBSTITUIU um campo (`clip` → `source`), onde os bytes
 /// significam outra coisa a partir dali. Em qualquer caso, postcard é posicional: ler assim mesmo
 /// não daria erro, daria um documento errado. O gate de versão recusa tudo que não é o atual.
 #[test]
-fn the_schema_is_sixteen_and_an_older_blob_is_refused() {
-    assert_eq!(DOC_VERSION, 16);
-    assert_eq!(TimelineDoc::new().version, 16);
+fn the_schema_is_seventeen_and_an_older_blob_is_refused() {
+    assert_eq!(DOC_VERSION, 17);
+    assert_eq!(TimelineDoc::new().version, 17);
 
     let mut bytes = TimelineDoc::new().to_bytes().unwrap();
     bytes[0] = 8; // o version é o primeiro varint — finge um blob v8
     let err = TimelineDoc::from_bytes(&bytes).expect_err("um blob v8 tem de ser recusado");
     assert!(
-        err.contains('8') && err.contains("16"),
+        err.contains('8') && err.contains("17"),
         "diz os dois — o do blob e o atual: {err}"
     );
 }

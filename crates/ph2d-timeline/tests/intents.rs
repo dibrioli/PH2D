@@ -1417,7 +1417,10 @@ fn counts(st: &TimelineState) -> (usize, usize) {
         .doc
         .binding_for(1, PropKind::Position)
         .expect("position bound");
-    let anchors = b.path.as_ref().map_or(0, |p| p.len());
+    let anchors = st
+        .doc
+        .clip_path(st.doc.active_index(), b.target)
+        .map_or(0, |p| p.len());
     let keys = st
         .doc
         .active_clip()
@@ -1488,7 +1491,11 @@ fn re_joining_a_moved_position_key_keeps_the_path_and_keys_one_to_one() {
     // And the object still lands on every key: the last key holds the FULL journey, not a
     // truncated one (the `zip` in `rewrite_path_key_values` would shorten it on a mismatch).
     let b = st.doc.binding_for(1, PropKind::Position).unwrap();
-    let total = b.path.as_ref().unwrap().length() as f32;
+    let total = st
+        .doc
+        .clip_path(st.doc.active_index(), b.target)
+        .unwrap()
+        .length() as f32;
     let last = match st
         .doc
         .active_clip()
@@ -1578,10 +1585,10 @@ fn a_plain_time_move_does_not_disturb_the_path_geometry() {
     );
     let before: Vec<[f32; 2]> = st
         .doc
-        .binding_for(1, PropKind::Position)
-        .unwrap()
-        .path
-        .as_ref()
+        .clip_path(
+            st.doc.active_index(),
+            st.doc.binding_for(1, PropKind::Position).unwrap().target,
+        )
         .unwrap()
         .anchors()
         .iter()
@@ -1599,10 +1606,10 @@ fn a_plain_time_move_does_not_disturb_the_path_geometry() {
 
     let after: Vec<[f32; 2]> = st
         .doc
-        .binding_for(1, PropKind::Position)
-        .unwrap()
-        .path
-        .as_ref()
+        .clip_path(
+            st.doc.active_index(),
+            st.doc.binding_for(1, PropKind::Position).unwrap().target,
+        )
         .unwrap()
         .anchors()
         .iter()

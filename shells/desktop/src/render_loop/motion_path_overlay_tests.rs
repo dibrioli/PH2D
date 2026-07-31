@@ -73,10 +73,17 @@ fn doc_with(keys: &[(f64, f32, Interp)]) -> (TimelineDoc, u64) {
             interp,
         );
     }
-    doc.bindings_mut()[0].path = Some(MotionPath::new(vec![
-        PathAnchor::corner([0.0, 0.0]),
-        PathAnchor::corner([20.0, 0.0]),
-    ]));
+    {
+        let t = doc.bindings()[0].target;
+        doc.set_clip_path(
+            doc.active_index(),
+            t,
+            MotionPath::new(vec![
+                PathAnchor::corner([0.0, 0.0]),
+                PathAnchor::corner([20.0, 0.0]),
+            ]),
+        );
+    }
     (doc, entity)
 }
 
@@ -200,7 +207,10 @@ fn nothing_is_drawn_when_there_is_no_trajectory_to_show() {
     );
 
     let (mut no_path, e2) = doc_with(&[(0.0, 0.0, Interp::Linear), (2.0, 20.0, Interp::Linear)]);
-    no_path.bindings_mut()[0].path = None;
+    {
+        let t = no_path.bindings()[0].target;
+        no_path.clear_clip_path(no_path.active_index(), t);
+    }
     assert!(
         marks(true, &no_path, Some(e2), &camera(), window()).is_empty(),
         "binding sem caminho"
@@ -485,19 +495,22 @@ fn a_constant_speed_track_paints_a_uniform_ribbon() {
 /// (report do Enio, 2026-07-30: *"o Path criado em um Clip contamina e aparece alças em
 /// outro Clip criado depois"*).
 ///
-/// O caminho mora no BINDING, que é do DOCUMENTO; as keys moram no CLIP. O `marks` já
-/// perguntava pela track do clip ATIVO e devolvia zero marcas — mas o `anchor_screen` e o
-/// `tangent_screen` liam só `b.path`, então um clip criado depois herdava as âncoras e as
-/// alças do outro: **nada desenhado e tudo agarrável**. Medido antes do fix, num clip novo e
-/// vazio: `marks=0 ancoras=2 alcas=2 agarravel=SIM` — o clique numa alça invisível pegava e
-/// arrastava a trajetória do OUTRO clip, e o duplo-clique inseria âncora numa curva que
-/// ninguém via.
+/// Naquele desenho o caminho morava no BINDING (do DOCUMENTO) e as keys no CLIP: o `marks`
+/// já perguntava pela track do clip ATIVO e devolvia zero marcas, mas o `anchor_screen` e o
+/// `tangent_screen` liam `b.path` direto, então um clip criado depois herdava as âncoras e
+/// as alças do outro — **nada desenhado e tudo agarrável** (`marks=0 ancoras=2 alcas=2
+/// agarravel=SIM`). O clique numa alça invisível arrastava a trajetória do OUTRO clip, e o
+/// duplo-clique inseria âncora numa curva que ninguém via.
+///
+/// Hoje a trajetória é do CLIP (`NamedClip::paths`), então o clip B deste gate não tem
+/// nenhuma — e é isso que o gate afirma continuar valendo: as quatro perguntas passam pela
+/// mesma porta e a ausência é estrutural.
 ///
 /// ⚠️ O oráculo pergunta as TRÊS coisas (pintar · agarrar · a curva), porque as três liam o
 /// caminho por portas diferentes e uma só ficaria verde sobre as outras duas.
 ///
-/// **Mutação que deve sangrar:** qualquer uma das três voltando a ler `b.path` direto em vez
-/// de passar pelo `active_path`.
+/// **Mutação que deve sangrar:** o `active_path` trocar o `clip_path` (leitura CRUA) pelo
+/// `path_for` (que tem recuo para o avaliador) — a alça fantasma volta na hora.
 #[test]
 fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
     let (mut doc, e) = doc_with(&[(0.0, 0.0, Interp::Linear), (1.0, 20.0, Interp::Linear)]);
@@ -505,18 +518,25 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
     // comprimento zero e o `tangent_screen` PULA (`TANGENT_MIN_PX`) — com elas a metade
     // das alças deste gate seria verde sobre um conjunto vazio, que é a fixture não
     // conter o fenômeno. A asserção de controle logo abaixo é o que prende isso.
-    doc.bindings_mut()[0].path = Some(MotionPath::new(vec![
-        PathAnchor {
-            anchor: [0.0, 0.0],
-            out_handle: [5.0, 3.0],
-            ..PathAnchor::corner([0.0, 0.0])
-        },
-        PathAnchor {
-            anchor: [20.0, 0.0],
-            in_handle: [-5.0, 3.0],
-            ..PathAnchor::corner([20.0, 0.0])
-        },
-    ]));
+    {
+        let t = doc.bindings()[0].target;
+        doc.set_clip_path(
+            doc.active_index(),
+            t,
+            MotionPath::new(vec![
+                PathAnchor {
+                    anchor: [0.0, 0.0],
+                    out_handle: [5.0, 3.0],
+                    ..PathAnchor::corner([0.0, 0.0])
+                },
+                PathAnchor {
+                    anchor: [20.0, 0.0],
+                    in_handle: [-5.0, 3.0],
+                    ..PathAnchor::corner([20.0, 0.0])
+                },
+            ]),
+        );
+    }
     let (cam, win) = (camera(), window());
 
     // O clip que AUTOROU a trajetória: tudo presente. CONTROLE POSITIVO — sem isto, um
@@ -549,7 +569,7 @@ fn a_clip_that_does_not_animate_the_path_shows_no_handles() {
         .find(|&(x, y)| super::motion_path_curve_hit(&doc, Some(e), &cam, win, x, y).is_some())
         .expect("algum ponto de tela cai sobre a curva no clip que a anima");
 
-    // Um clip criado DEPOIS, vazio: o mesmo objeto, o mesmo binding, a mesma trajetória.
+    // Um clip criado DEPOIS: o mesmo objeto, o mesmo binding — e trajetória NENHUMA.
     let b = doc.add_clip("B".into());
     doc.set_active(b);
 

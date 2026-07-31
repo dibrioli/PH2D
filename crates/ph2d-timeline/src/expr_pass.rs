@@ -79,11 +79,6 @@ pub(crate) fn run(
     // document-wide channel transform of ADR-0144). Per-clip expressions are first-class
     // lane SOURCES at the two sample sites (the blend `eval_frame` / `solo_source_value`),
     // so they fade; nothing to do here if no global driver exists.
-    // ⚠️ A LIVE PREVIEW counts as a driver, so the early-out has to know about it —
-    // otherwise a document with no authored expression at all (the common case when
-    // the artist first opens the card) takes the early-out and the preview never
-    // runs, which reads as "the panel does nothing".
-    let live = crate::expr_live::live_expr();
     // ⚠️ **Hand the pose back, but ONLY where nobody else writes it.** A closed card
     // owes the property what it would have had, and for a BARE binding nobody else
     // will — the sparse path returns `None` on purpose so a just-bound property is
@@ -95,8 +90,7 @@ pub(crate) fn run(
     // compose loop above, so handing back the pre-expression value here would undo the
     // artist's own authored formula on the very frame they closed the card. Absence
     // from `composed` is precisely *"nothing else answered for this channel"*.
-    let live_target = live.as_ref().map(|l| l.target);
-    for (target, v) in crate::expr_live::drain_owed(&|t| still_driven(doc, live_target, t)) {
+    for (target, v) in crate::expr_owed::drain_owed(&|t| still_driven(doc, t)) {
         if let Some(b) = doc.bindings().iter().find(|b| b.target.get() == target)
             && !composed.contains_key(&(b.entity, b.prop))
             && let Some(e) = Entity::try_from_bits(b.entity)
@@ -105,7 +99,7 @@ pub(crate) fn run(
             links.links.insert((b.entity, b.prop), f64::from(v));
         }
     }
-    if !doc.bindings().iter().any(|b| b.expr.is_some()) && live.is_none() {
+    if !doc.bindings().iter().any(|b| b.expr.is_some()) {
         return;
     }
 
@@ -171,14 +165,8 @@ pub(crate) fn run(
         if b.missing || skip(b.entity) {
             continue;
         }
-        // ⚠️ The live preview REPLACES this binding's own expression rather than
-        // composing with it: the editor seeded itself from that formula, so the sheet
-        // already contains it, and running both would apply it twice.
-        let previewing = live.as_ref().filter(|l| l.target == b.target.get());
-        let src = match (previewing, &b.expr) {
-            (Some(l), _) => l.formula.as_str(),
-            (None, Some(s)) => s.as_str(),
-            (None, None) => continue,
+        let Some(src) = b.expr.as_deref() else {
+            continue;
         };
         let Ok(ir) = ph2d_expr_parse::parse(src) else {
             continue;
@@ -193,24 +181,18 @@ pub(crate) fn run(
             .iter()
             .any(|c| c.clip.track(b.target).is_some_and(|t| !t.is_empty()));
         let composed_v = composed.get(&(b.entity, b.prop)).copied();
-        // ⚠️ A preview runs even where the composition does not cover — that is the
-        // whole point of *"em tempo real mesmo que o clip esteja pausado"*: the artist
-        // is tuning, not playing, and a card that goes quiet outside a strip would look
-        // broken exactly when it is being used.
-        if keyed && composed_v.is_none() && previewing.is_none() {
+        if keyed && composed_v.is_none() {
             continue;
         }
         let value = composed_v.unwrap_or(b.rest.unwrap_or(0.0));
         // Keep a fresh note of what this channel would have been WITHOUT the formula —
-        // the pose owed back when the formula goes away, whether that is the card
-        // closing or the artist deleting the row.
+        // the pose owed back when the artist deletes the row.
         //
-        // ⚠️ It used to be `if previewing.is_some()`, i.e. only the smaller half. Deleting
-        // an authored formula is the same event and had no hand-back: a bare binding driven
-        // by `value + 250` stayed at 250 forever (auditoria 2026-07-29, §4 D-I). The
-        // per-clip channel notes its own value at the blend, where the pre-expression
-        // number still exists.
-        crate::expr_live::remember(b.target.get(), value);
+        // ⚠️ Deleting an authored formula had no hand-back: uma binding pelada dirigida por
+        // `value + 250` ficava em 250 para sempre (auditoria 2026-07-29, §4 D-I). O canal
+        // per-clip anota o próprio valor no blend, onde o número pré-expressão ainda
+        // existe.
+        crate::expr_owed::remember(b.target.get(), value);
         driven.push(Driven {
             idx: i,
             ir,
@@ -218,10 +200,9 @@ pub(crate) fn run(
             prop: b.prop,
             value,
             seed: crate::frame_solve::seed_of_target(b.target.get()),
-            // The GLOBAL driver runs on the composition's cut clock, everywhere (the
-            // Arrange scene driver — ADR-0145) — EXCEPT a live preview, which brings
-            // its own wall clock so it animates with the transport stopped.
-            time: previewing.map_or(time, |l| l.time) as f32,
+            // O driver GLOBAL roda no relógio CORTADO da composição, em todo lugar (o
+            // driver de cena do Arrange — ADR-0145).
+            time: time as f32,
         });
     }
 
@@ -326,10 +307,7 @@ impl Bindings for ExprBindings<'_> {
 /// PREVIEW. ⚠️ *Any* clip, not the active one: switching clips is not deleting a formula,
 /// and handing the pose back on a clip change would make a formula look like it evaporated
 /// every time the artist looked at another clip.
-fn still_driven(doc: &TimelineDoc, live_target: Option<u64>, target: u64) -> bool {
-    if live_target == Some(target) {
-        return true;
-    }
+fn still_driven(doc: &TimelineDoc, target: u64) -> bool {
     let Some(b) = doc.bindings().iter().find(|b| b.target.get() == target) else {
         // No binding at all — the track was deleted. Nothing to hand a pose back TO, and
         // the drain's own `find` will drop it; saying "driven" here would leak the entry.

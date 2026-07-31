@@ -24,15 +24,6 @@ thread_local! {
     /// object becomes selected ([`request_keys_tab`]), consumed (or, hidden,
     /// dropped) by the next paint.
     static KEYS_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
-    /// A pending "open the Expression card on this target" request.
-    ///
-    /// ⚠️ It exists for the SMOKE, and that is a reason and not an excuse: a scene that
-    /// authors formulas in code and leaves the artist to find the card *skips the seam it
-    /// was built to prove* — which is precisely how the smoke script came to instruct the
-    /// artist to use a text field deleted three waves earlier (auditoria 2026-07-29, §4
-    /// D-L). A request rather than a direct write because the card is PANEL state and the
-    /// smoke lives in the shell; this is the same one-shot dance as the three above.
-    static EXPR_CARD_REQUESTED: Cell<Option<u64>> = const { Cell::new(None) };
 }
 
 /// Ask the panel to fit its time view to the extent of the keys on the next
@@ -77,19 +68,4 @@ pub fn request_keys_tab() {
 /// Consume a pending Keys-tab request.
 pub(crate) fn take_keys_tab_request() -> bool {
     KEYS_TAB_REQUESTED.with(|c| c.replace(false))
-}
-
-/// **Ask the panel to open the Expression card on `target`** on its next paint.
-///
-/// Raised by the smoke scene so the artist lands IN the card instead of being told where to
-/// find it. It goes through the panel's own [`crate::expr_modal::open`] — the same door the
-/// track menu's row uses — so a scene that opens the card cannot drift from a card the
-/// artist opens.
-pub fn request_expr_card(target: u64) {
-    EXPR_CARD_REQUESTED.with(|c| c.set(Some(target)));
-}
-
-/// Consume a pending Expression-card request.
-pub(crate) fn take_expr_card_request() -> Option<u64> {
-    EXPR_CARD_REQUESTED.with(|c| c.replace(None))
 }

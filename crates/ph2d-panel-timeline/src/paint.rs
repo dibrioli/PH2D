@@ -41,12 +41,6 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_keys_tab_request() {
         state::set_tab(state, crate::tab::Tab::Keys);
     }
-    // **And a scene that asks for the Expression card gets it** — through the same
-    // `expr_modal::open` the track menu's row calls, so an opened-by-request card and an
-    // opened-by-artist card cannot be two different cards (see `request_expr_card`).
-    if let Some(target) = state::take_expr_card_request() {
-        crate::expr_modal::open(state, target);
-    }
     // **`keys_mode` follows the TAB, not `&& stacked()`** (Enio, 2026-07-27): the Keys tab
     // is the CLIP's scope and Arrange is the SCENE's, INDEPENDENT — each edits its own
     // duration, each plays its own thing. The old `&& stacked()` collapsed them without a
@@ -100,18 +94,6 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // A selection made with the panel CLOSED does not queue a tab yank for
     // whenever it reopens — drop the request instead of banking it.
     let _ = state::take_keys_tab_request();
-    // **And nothing previews.** ⚠️ The clear in `expr_modal_paint` runs at the END of the
-    // VISIBLE path, so hiding the panel used to leave the live formula installed, driving
-    // the object FOREVER, animating (measured: `x` 100 → 110 → … → 160) with
-    // `has_pending_restore() == false`, so the pose was never handed back and no UI on
-    // screen could stop it. The card's own painter names exactly this failure — *"the
-    // panel can stop painting the card by routes that never run `cancel` (the panel
-    // hidden, …)"* — and could not prevent it from where it stands.
-    //
-    // Here, not in the shell: the panel OWNS the card, so the panel is what knows the card
-    // is gone. The shell installing the channel and the panel clearing it are one pipe
-    // with one writer at each end, not two answers.
-    state::set_expr_live(None);
     // ...nor is it inside a container. The trail survives (it comes back where it was),
     // but a hidden panel must not leave the shell driving a container's interior.
     state::publish_scene_root(true);
@@ -441,9 +423,6 @@ fn paint_overlays(
             .unwrap_or_else(|| o.clip_dd_chip.map_or(o.body, |c| c.rect)),
         snapshot,
     );
-    // The property-expression field (ADR-0144) floats at its own click position, so
-    // it needs no reported rect — painted last so it overlays the sheet.
-    crate::expr_modal_paint::paint(state, ctx, theme, snapshot);
 }
 
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch

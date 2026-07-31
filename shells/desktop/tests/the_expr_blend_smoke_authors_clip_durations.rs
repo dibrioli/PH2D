@@ -36,7 +36,8 @@ const SMOKE: &str = include_str!("../src/expr_blend_smoke.rs");
 #[test]
 fn the_runtime_scene_authors_its_clip_durations() {
     assert!(
-        SMOKE.contains("set_clip_length_override(i, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS))"),
+        SMOKE
+            .contains("set_clip_length_override(i, Some(ph2d_timeline::DEFAULT_DURATION_SECONDS))"),
         "a cena runtime do expr-blend smoke não autora mais a duração dos seus clips — o `doc.add_clip` \
          cru deixa cada clip DERIVADO, e a aba Keys abre o clip ativo sem veil (o defeito das três \
          rodadas do Enio). Estampe `set_clip_length_override` em cada clip que a cena cria."

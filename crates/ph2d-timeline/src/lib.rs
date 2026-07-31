@@ -29,7 +29,7 @@ pub mod clipboard;
 mod clock;
 pub mod doc;
 pub mod doc_path;
-pub mod expr_live;
+pub mod expr_owed;
 mod expr_pass;
 mod frame_solve;
 pub mod graph;
@@ -73,9 +73,9 @@ pub use doc::{
     DEFAULT_DURATION_SECONDS, DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc,
 };
 pub use doc_path::AutoOrient;
-/// The one door to `__seed`. Public because the Expression card's preview ribbon is a
-/// consumer, and a ribbon with its own seed draws a wobble the object does not run
-/// (auditoria 2026-07-29, §4 D-J).
+/// A porta única do `__seed`. Pública porque o gate que a vigia
+/// (`the_noise_seed_is_stable`) mora numa crate de teste — e porque um segundo lugar que
+/// derive o seed desenha um wobble que o objeto não roda (auditoria 2026-07-29, §4 D-J).
 pub use frame_solve::seed_of_target;
 pub use graph::{
     drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points,

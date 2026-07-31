@@ -49,7 +49,7 @@ pub fn dispatch_wheel<'frame>(
         } else {
             (event.delta_y, event.delta_x, 0.0)
         };
-        store.add_timeline_wheel(surface, zoom, pan, scroll, event.x, event.y);
+        store.add_timeline_wheel(surface, zoom, pan, scroll, event.x);
         return events.into_bump_slice();
     }
     // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a

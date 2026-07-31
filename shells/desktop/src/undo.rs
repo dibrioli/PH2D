@@ -364,15 +364,8 @@ impl crate::App {
         // soltar o slider registraria um passo com o resultado ANTIGO e a chegada do worker
         // registraria um segundo: dois Ctrl+Z para um arrasto.
         // ⚠️ **Uma PREVIEW ao vivo tambem conta como gesto em andamento** — e a MESMA
-        // frase acima aplicada a um card aberto: enquanto a expressao da carta dirige
-        // uma propriedade, o mundo NAO esta num estado autorado, e um diff contra ele
-        // gravaria uma pose que ninguem escreveu. Digitar num knob E input, entao sem
-        // isto cada tecla viraria um passo de undo de uma pose que o artista nunca
-        // pediu. Fechar o card limpa o canal, e o apply do frame seguinte devolve a
-        // propriedade as curvas, entao o baseline volta a bater sozinho.
         if !had_input
             || self.held_button.is_some()
-            || ph2d_timeline::expr_live::is_previewing()
             || self.flip_colorize.live_busy(self.flip_style.as_ref())
         {
             return;

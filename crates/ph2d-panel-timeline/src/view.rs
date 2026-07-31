@@ -191,10 +191,6 @@ mod tests {
             pan_delta: pan,
             scroll_delta: scroll,
             anchor_x,
-            // `apply_wheel` does not read the y — the anchored zoom holds a TIME
-            // fixed, and time is an x. It is the wheel's consumer upstream (the
-            // Expression card's frame guard) that needs both.
-            anchor_y: 0.0,
         }
     }
 

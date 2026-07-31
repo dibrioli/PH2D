@@ -24,7 +24,10 @@ use ph2d_timeline::{PropKind, TimelineDoc, apply_from_doc};
 fn scene(src_x: f32) -> (World, Entity, Entity) {
     let mut w = World::new();
     let follower = w
-        .spawn((Transform::from_translation(Vec2::ZERO), Name::new("Follower")))
+        .spawn((
+            Transform::from_translation(Vec2::ZERO),
+            Name::new("Follower"),
+        ))
         .id();
     let source = w
         .spawn((

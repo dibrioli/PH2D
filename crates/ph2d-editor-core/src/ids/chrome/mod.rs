@@ -17,7 +17,6 @@
 use super::{NodeId, hash_node_id};
 
 mod bgremoval;
-mod expr_modal;
 mod flip;
 mod image_tools;
 mod inspector;
@@ -61,7 +60,6 @@ mod vector_width;
 mod wet_tuning;
 
 pub use bgremoval::*;
-pub use expr_modal::*;
 pub use flip::*;
 pub use image_tools::*;
 pub use inspector::*;

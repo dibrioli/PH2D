@@ -129,13 +129,6 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.onion_settings" => "Onion Settings",
         // The Expression modal (plano 10 W1) — the card that replaces the inline
         // formula field with a searchable catalog and a tunable sheet.
-        "panel.timeline.expression" => "Expression",
-        "panel.timeline.expr_search" => "Search",
-        "panel.timeline.expr_apply" => "Apply",
-        "panel.timeline.expr_cancel" => "Cancel",
-        "panel.timeline.expr_empty" => "Pick a recipe to start.",
-        "panel.timeline.expr_waiting" => "waiting",
-        "panel.timeline.expr_no_clock" => "no clock",
         "panel.timeline.onion_opacity" => "Opacity",
         "panel.timeline.onion_before" => "Ghosts Before",
         "panel.timeline.onion_after" => "Ghosts After",

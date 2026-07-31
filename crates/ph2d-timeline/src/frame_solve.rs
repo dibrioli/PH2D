@@ -66,10 +66,9 @@ pub(crate) const SEED_SPACING: f32 = 100.0;
 /// while the ribbon drew the wobble of object zero. *"Jitter não funciona"* was literal,
 /// and literal for SOME objects and not others.
 ///
-/// ⚠️ Three independent instruments got the same binding wrong, which is why this is a
-/// function and not a convention. `expr_live`'s own doc-comment already stated the law it
-/// could not enforce: *"a preview with its own seed would show a different wobble from the
-/// one it is previewing, which is the one thing it must never do"*.
+/// ⚠️ Três instrumentos independentes erraram a MESMA binding, e é por isso que isto é uma
+/// função e não uma convenção: quem deriva o seed por conta própria desenha um wobble que o
+/// objeto não roda.
 #[must_use]
 pub fn seed_of_target(target: u64) -> f32 {
     target as f32 * SEED_SPACING
@@ -180,16 +179,11 @@ pub(crate) fn collect_links(e: &Expr, names: &BTreeMap<u64, u64>, out: &mut Vec<
 /// three: the preview would then drive the object in Arrange and sit dead inside a
 /// container, for no reason the artist could see.
 ///
-/// ⚠️ A LIVE PREVIEW counts. The commonest moment to open the Expression card is on a
-/// track with nothing on it yet — no keys, no formula — which is precisely the document
-/// this predicate calls formula-free. Leave the preview out and the feature is dead in
-/// the only case it was asked for.
 #[must_use]
 pub(crate) fn any_formula(doc: &TimelineDoc) -> bool {
     doc.bindings().iter().any(|b| b.expr.is_some())
         || doc.clips().iter().any(|c| !c.expr.is_empty())
-        || crate::expr_live::is_previewing()
-        || crate::expr_live::has_pending_restore()
+        || crate::expr_owed::has_pending_restore()
 }
 
 /// **Every name a prop-link may resolve — the whole SCENE, not the binding list.**

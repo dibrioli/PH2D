@@ -23,7 +23,7 @@
 //! **O que provar** (arraste a régua devagar — NÃO dê play):
 //! 1. **Em `t < 2`** (antes do fade abrir) a forma está na pose AUTORADA (perto da
 //!    estrela) e a agulha está no ALTO. Este é o quadro que quebrava.
-//! 2. **Cruze `t = 2.0` devagar.** A forma tem de COMEÇAR a caminhar dali — sem estalo.
+//! 2. **Atravesse `t = 2.0` devagar.** A forma tem de COMEÇAR a caminhar dali — sem estalo.
 //!    Antes do fix ela saltava para o círculo no primeiro quadro do fade.
 //! 3. **`t` de 2 a 3** — a forma caminha até quase o círculo e a **agulha desce junto**,
 //!    continuamente. A agulha se mexendo É o prop-link funcionando.

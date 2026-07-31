@@ -51,23 +51,7 @@ fn number(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
-/// The Expression modal's search field (plano 10 W1). It lives HERE and not only
-/// in the modal's paint because `is_focusable()` reads the store: a field that is
-/// merely painted and hit-indexed never receives a Down.
-fn expr_search(store: &mut WidgetStore) {
-    store.register(
-        crate::ids::EXPR_MODAL_SEARCH,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
-}
-
 pub(crate) fn populate(store: &mut WidgetStore) {
-    expr_search(store);
     // The ruler is scrubbed as a horizontal slider (1D drag over its strip; the
     // panel paints the ticks/playhead itself and reads the slider value on drag).
     store.register(

@@ -224,27 +224,59 @@ fn zero_is_infinite_for_clip_container_and_scene() {
     let c = doc.add_container("C".into());
 
     // No override anywhere → every scope is unbounded: no authored end, and no cut.
-    assert_eq!(doc.view_authored_end(None, true), None, "clip: unbounded (no veil, box reads infinity)");
-    assert_eq!(doc.view_authored_end(Some(c), false), None, "container: unbounded");
+    assert_eq!(
+        doc.view_authored_end(None, true),
+        None,
+        "clip: unbounded (no veil, box reads infinity)"
+    );
+    assert_eq!(
+        doc.view_authored_end(Some(c), false),
+        None,
+        "container: unbounded"
+    );
     assert_eq!(doc.scene_length, None, "scene: unbounded");
-    assert_eq!(doc.clip_cut(0, 9.0), 9.0, "clip: the clock runs on (infinite)");
-    assert_eq!(doc.container_cut(c, 9.0), 9.0, "container: the clock runs on");
+    assert_eq!(
+        doc.clip_cut(0, 9.0),
+        9.0,
+        "clip: the clock runs on (infinite)"
+    );
+    assert_eq!(
+        doc.container_cut(c, 9.0),
+        9.0,
+        "container: the clock runs on"
+    );
     assert_eq!(doc.cut_scene(9.0), 9.0, "scene: the clock runs on");
 
     // Author 4 s on each → each becomes finite: an authored end AND a cut at 4 s.
     doc.set_clip_length_override(0, Some(4.0));
     doc.set_container_length_override(c, Some(4.0));
     doc.set_scene_length(Some(4.0));
-    assert_eq!(doc.view_authored_end(None, true), Some(4.0), "clip: finite (veil at 4)");
-    assert_eq!(doc.view_authored_end(Some(c), false), Some(4.0), "container: finite");
+    assert_eq!(
+        doc.view_authored_end(None, true),
+        Some(4.0),
+        "clip: finite (veil at 4)"
+    );
+    assert_eq!(
+        doc.view_authored_end(Some(c), false),
+        Some(4.0),
+        "container: finite"
+    );
     assert_eq!(doc.scene_length, Some(4.0), "scene: finite");
     assert_eq!(doc.clip_cut(0, 9.0), 4.0, "clip: cut at the authored end");
-    assert_eq!(doc.container_cut(c, 9.0), 4.0, "container: cut at the authored end");
+    assert_eq!(
+        doc.container_cut(c, 9.0),
+        4.0,
+        "container: cut at the authored end"
+    );
     assert_eq!(doc.cut_scene(9.0), 4.0, "scene: cut at the authored end");
 
     // And a typed `0` clears back to infinite (the numeric-box gesture).
     doc.set_clip_length_override(0, Some(0.0));
-    assert_eq!(doc.clip_length_override(0), None, "0 clears the override -> infinite again");
+    assert_eq!(
+        doc.clip_length_override(0),
+        None,
+        "0 clears the override -> infinite again"
+    );
     assert_eq!(doc.clip_cut(0, 9.0), 9.0, "and the clock runs on again");
 }
 

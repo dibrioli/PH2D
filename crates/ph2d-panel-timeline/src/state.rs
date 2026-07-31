@@ -12,11 +12,6 @@ use ph2d_timeline::{TimelineIntent, TimelineViewSnapshot};
 use std::cell::{Cell, RefCell};
 
 thread_local! {
-    /// See [`expr_live_target`].
-    static EXPR_LIVE: RefCell<Option<(u64, String)>> = const { RefCell::new(None) };
-}
-
-thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until the
     /// first push (panel paints an empty timeline).
     static CURRENT_SNAPSHOT: RefCell<Option<TimelineViewSnapshot>> = const { RefCell::new(None) };
@@ -76,12 +71,8 @@ pub(crate) use state_nav::{
     enter_container, open_container_root, pop_to_depth, publish_containers_list, publish_keys_mode,
     publish_scene_root, set_tab, trail_len,
 };
-pub use state_requests::{
-    request_expr_card, request_fit, request_keys_tab, request_reveal_playhead,
-};
-pub(crate) use state_requests::{
-    take_expr_card_request, take_fit_request, take_keys_tab_request, take_reveal_request,
-};
+pub use state_requests::{request_fit, request_keys_tab, request_reveal_playhead};
+pub(crate) use state_requests::{take_fit_request, take_keys_tab_request, take_reveal_request};
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
 /// time axis (pan + zoom). Wired in E6; `Default` satisfies the
@@ -211,11 +202,6 @@ pub struct TimelinePanelState {
     /// `WidgetStore`, so this only remembers WHICH clip and whether the field has
     /// been seeded (re-seeding every frame would stomp the user's typing).
     pub clip_rename: Option<ClipRename>,
-    /// An open property-expression edit (ADR-0144) — the inline formula field
-    /// opened from a track menu. `None` when none is in flight; same WidgetStore
-    /// text ownership as `clip_rename`.
-    /// The open Expression modal (plano 10 W1), if any.
-    pub expr_modal: Option<crate::expr_modal::ExprModal>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -304,7 +290,6 @@ impl Default for TimelinePanelState {
             marker_drag: None,
             marker_rename: None,
             clip_rename: None,
-            expr_modal: None,
             box_drag: None,
             box_commit: None,
             rect: None,
@@ -397,23 +382,6 @@ pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
 #[must_use]
 pub fn drain_intents() -> Vec<TimelineIntent> {
     INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))
-}
-
-/// **What the open Expression card wants previewed on the real object**, or `None`.
-///
-/// ⚠️ Published by the PAINT (the sheet is read back there, so that is the only place
-/// the projected formula is known to be this frame's), and read by the shell, which
-/// owns the clock and installs it into `ph2d_timeline::expr_live`. It is display
-/// state: the card closing clears it, and nothing here is ever written to the doc.
-///
-/// The shell does NOT reuse the panel's clock — it drives its own, in wall-clock
-/// seconds, so the preview animates at the same speed at any frame rate.
-pub fn expr_live_target() -> Option<(u64, String)> {
-    EXPR_LIVE.with(|c| c.borrow().clone())
-}
-
-pub(crate) fn set_expr_live(v: Option<(u64, String)>) {
-    EXPR_LIVE.with(|c| *c.borrow_mut() = v);
 }
 
 /// Last scrollable content height measured by `paint`.

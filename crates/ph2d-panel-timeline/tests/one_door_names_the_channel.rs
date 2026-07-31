@@ -1,54 +1,20 @@
-//! **A row e o card nomeiam o canal pela MESMA porta** (FASE C.3 do plano 12).
+//! **O canal tem UM nome, montado num lugar só** (FASE C.3 do plano 12).
 //!
-//! O defeito que este arquivo existe para impedir já aconteceu, e durou o tempo de vida
-//! inteiro do card: o doc-comment do `ExprModal::title` prometia `"Ball · Position Y"`
-//! enquanto o código montava `prop_label + "  #" + entity % 10000` — porque nada publicava
-//! o nome do objeto e cada consumidor formatava o rótulo por conta própria. Duas cópias de
-//! *"como este app chama um canal"* divergem no dia em que uma delas ganha o nome.
+//! O rótulo de uma track (`"Ball · Position Y"`) sai da porta única
+//! `tracks::track_label`, e o fallback dela — `#nnnn`, o id curto de quem ainda não tem
+//! `Name` — é o que este gate vigia: ele tem de ser montado **uma** vez na crate.
 //!
-//! ⚠️ **Por que um arch-gate e não só um teste de comportamento:** o rótulo é TEXTO
-//! pintado, e o `MockPanelHost` devolve retângulos, não strings — um gate de unidade prova
-//! que a porta responde certo, e não que os dois chamadores passam por ela. Este lê a
-//! FONTE, com controle positivo nas duas pontas (um marcador que some por renomeação de
-//! arquivo deixaria o gate verde sobre nada).
+//! ⚠️ **O gate IRMÃO foi removido com o card de expressão** (2026-07-30). Ele afirmava
+//! que a row e o card passavam pela MESMA porta, e existia porque o defeito já tinha
+//! acontecido: o doc do `ExprModal::title` prometia `"Ball · Position Y"` enquanto o
+//! código montava o rótulo por conta própria. Com um consumidor só, *"os dois passam pela
+//! porta"* virou afirmação que não pode falhar — o que **pode** falhar é o próximo
+//! consumidor montar a string dele, e é isso que a asserção abaixo pega.
+//!
+//! ⚠️ **Por que um arch-gate e não um teste de comportamento:** o rótulo é TEXTO pintado,
+//! e o `MockPanelHost` devolve retângulos, não strings.
 
 use std::path::Path;
-
-fn read(rel: &str) -> String {
-    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{} não pôde ser lido: {e}", p.display()))
-}
-
-/// **Os dois chamadores passam por `track_label`.**
-///
-/// **Mutação que deve sangrar:** o card voltar a montar a string dele
-/// (`format!("{}  #{}", prop_label(...), entity % 10_000)`).
-#[test]
-fn the_row_and_the_card_both_go_through_the_label_door() {
-    let tracks = read("src/tracks.rs");
-    let card = read("src/expr_modal_paint.rs");
-
-    // Controle positivo: os dois arquivos ainda são os que eu penso que são.
-    assert!(
-        tracks.contains("fn track_label("),
-        "a porta mudou de casa — este gate está lendo o arquivo errado"
-    );
-    assert!(
-        card.contains("fn paint_title_band("),
-        "o card mudou de casa — este gate está lendo o arquivo errado"
-    );
-
-    assert!(
-        tracks.contains("track_label(snap.object_name("),
-        "a ROW do dope-sheet tem de rotular pela porta única"
-    );
-    assert!(
-        card.contains("track_label(snap.object_name("),
-        "o TÍTULO do card tem de rotular pela porta única — foi exactamente esta linha \
-         que passou a existência inteira do card dizendo `#nnnn` sob um doc que prometia \
-         o nome do objeto"
-    );
-}
 
 /// **O id curto é formatado num lugar só.**
 ///

@@ -46,11 +46,6 @@ mod container_list;
 mod duration_drag;
 mod event;
 mod event_track_menu;
-pub mod expr_modal;
-pub mod expr_modal_columns;
-pub mod expr_modal_gallery;
-pub mod expr_modal_paint;
-pub mod expr_modal_preview;
 mod geom;
 mod graph;
 mod graph_paint;
@@ -84,8 +79,8 @@ mod transport_tabs;
 mod view;
 
 pub use state::{
-    TimelinePanelState, drain_intents, expr_live_target, last_content_h, last_visible_h,
-    request_fit, request_reveal_playhead, set_current_timeline,
+    TimelinePanelState, drain_intents, last_content_h, last_visible_h, request_fit,
+    request_reveal_playhead, set_current_timeline,
 };
 
 use ph2d_a11y::NodeId;

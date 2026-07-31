@@ -258,31 +258,16 @@ pub struct TimelineViewSnapshot {
     /// [`Self::rebuild`] (the doc has no selection; the shell does). Defaults to Path
     /// (the fresh-object default) when nothing single is selected.
     pub position_is_path: bool,
-    /// **Who is selected in the SCENE** — the projection the Expression card follows.
-    ///
-    /// Same shape and the same reason as [`Self::position_is_path`]: the document has no
-    /// selection, the shell does, so this is filled after [`Self::rebuild`]. `None` when
-    /// nothing (or nothing single) is selected.
-    ///
-    /// ⚠️ Red-first against a report: *"se eu seleciono outro objeto na cena, o painel de
-    /// expressões não atualiza para o novo objeto."* The card captured one target when it
-    /// opened and nothing ever revisited it — and the panel had no way to revisit, because
-    /// the snapshot carried no selection at all. Following the selection is the Inspector's
-    /// rule (it stores no target and rebuilds from the frame), so the card needs the same
-    /// fact each frame — not a one-shot request — to notice a CHANGE.
-    pub selected_entity: Option<u64>,
     /// **The NAME of every object this snapshot has a track for**, by entity bits.
     ///
-    /// Third field with the shape of [`Self::position_is_path`], and for the third time
-    /// the same reason: the document holds no `Name` — it points at objects by
+    /// Segundo campo com a forma de [`Self::position_is_path`], e pela mesma razão: o
+    /// documento não guarda `Name` — ele aponta para os objetos por
     /// `wire_id` (the hash of one) — so only the shell can answer *who is this?*. It
     /// fills this after [`Self::rebuild`], for the tracks that are here and no others:
     /// a scene of five hundred objects with three animated ones publishes three names.
     ///
-    /// ⚠️ **Why a MAP and not a `TrackView::name`:** an object with six tracks has six
-    /// rows and ONE name, and the two consumers ask at different granularities — the
-    /// dope-sheet row asks per track, the Expression card asks per object. A per-row
-    /// copy would answer both, and would be six strings that can disagree.
+    /// ⚠️ **Por que um MAPA e não um `TrackView::name`:** um objeto com seis tracks tem
+    /// seis rows e UM nome — uma cópia por-row seriam seis strings que podem discordar.
     ///
     /// A missing entry is not an error: an object with no `Name` component (a transient
     /// that would not survive a reload either) has none, and the label falls back to the

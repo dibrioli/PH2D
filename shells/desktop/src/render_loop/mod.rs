@@ -688,8 +688,6 @@ impl crate::App {
         self.stagger_smoke();
         self.buffer_smoke();
         self.extrap_smoke();
-        self.expr_smoke();
-        self.expr_group_smoke();
         self.expr_blend_smoke();
         self.morph_fade_smoke();
         self.nest_smoke();
@@ -1078,10 +1076,6 @@ impl crate::App {
         // single source of truth for "how long did the last frame
         // take". α=0.1 smooths over jitter while still tracking
         // sustained changes in ~10 frames.
-        // The Expression card's preview clock — advanced from the SAME `wall_dt` that
-        // every other real-time consumer reads, so there is one answer to "how long
-        // was the last frame".
-        self.expr_preview_clock += wall_dt;
         let frame_ms_now = (wall_dt * 1000.0) as f32;
         const ALPHA: f32 = 0.1;
         self.frame_ms_ewma = ALPHA * frame_ms_now + (1.0 - ALPHA) * self.frame_ms_ewma;
@@ -1510,17 +1504,6 @@ impl crate::App {
         } else {
             &mut self.playhead
         };
-        // **The open Expression card drives the REAL object, live** (Enio, smoke de
-        // 2026-07-29). Installed HERE, immediately before the apply that consumes it,
-        // and unconditionally — the `None` is what makes closing the card stop the
-        // scene, so this must run on every frame, not only on the frames a card exists.
-        ph2d_timeline::expr_live::set_live_expr(ph2d_panel_timeline::expr_live_target().map(
-            |(target, formula)| ph2d_timeline::expr_live::LiveExpr {
-                target,
-                formula,
-                time: self.expr_preview_clock,
-            },
-        ));
         let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
@@ -1585,12 +1568,9 @@ impl crate::App {
                 ph2d_timeline::PositionKeyMode::Path
             )
         });
-        // Who is selected, for the Expression card to follow (same reason as
-        // `position_is_path` above: the document has no selection, the shell does).
-        self.timeline_view.selected_entity = selected_now;
-        // ...and WHO each animated object is, by name, for the same reason a third time:
-        // the document points at objects by `wire_id` (the hash of a `Name`), never by the
-        // name itself. Without this the dope-sheet labels every row `#7294`.
+        // ...e QUEM é cada objeto animado, por nome, pela mesma razão: o documento aponta
+        // para os objetos por `wire_id` (o hash de um `Name`), nunca pelo nome. Sem isto o
+        // dope-sheet rotula toda row como `#7294`.
         crate::timeline_persist::publish_object_names(&mut self.timeline_view, sim.world());
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         // Global rigid physics (ADR-0131 W1): step the rapier world at the

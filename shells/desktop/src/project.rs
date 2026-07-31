@@ -427,11 +427,11 @@ impl crate::App {
         // zerada logo acima.
         self.timeline = ph2d_timeline::TimelineState::new();
         self.timeline_intents.clear();
-        // E as poses que uma expressão ainda DEVE de volta (`expr_live`, ADR-0144): elas são
+        // E as poses que uma expressão ainda DEVE de volta (`expr_owed`, ADR-0144): elas são
         // chaveadas por `AnimTarget`, e o documento novo aloca os SEUS targets a partir do
         // zero — então uma nota do projeto A seria entregue ao binding do projeto B que
         // herdou o número. É a MESMA razão da linha acima, um nível abaixo.
-        ph2d_timeline::expr_live::forget_owed_poses();
+        ph2d_timeline::expr_owed::forget_owed_poses();
         // O memo do Offset vivo — pela razão do restore de undo: os `VecPathId` são reciclados
         // entre documentos, e um acerto de memo desenharia o offset do projeto ANTERIOR.
         self.offset_live.forget();

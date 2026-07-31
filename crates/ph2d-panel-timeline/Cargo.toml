@@ -17,13 +17,6 @@ authors.workspace = true
 # W2.E0 = scaffold (docked chrome + title); controls land in E2+.
 
 [dependencies]
-# The recipe CATALOG the modal offers (plano 10). A leaf: it emits strings.
-ph2d-expr-recipes = { path = "../ph2d-expr-recipes" }
-# The result readout evaluates through the PRODUCT's evaluator and the ONE
-# parser -- a second little interpreter for readouts is the `seed != sample`
-# family of bug (plano 10 P3).
-ph2d-expr = { path = "../ph2d-expr" }
-ph2d-expr-parse = { path = "../ph2d-expr-parse" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # Spacing / type / colour tokens named by the transport bar paint (chips,

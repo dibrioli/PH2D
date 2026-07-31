@@ -220,6 +220,18 @@ thread_local! {
     /// — to pin a slowdown the `[fluid]` profiler proves is OUTSIDE the fluid drive.
     static FRAME_PROF_ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
     static FRAME_PROF_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// ⚠️ **O RELÓGIO da janela de diagnóstico, MEDIDO.** Ele existe porque a
+    /// versão anterior a ASSUMIA (`span = frame_medio × 120`), e os contadores
+    /// do worker (`wet_diag`) acumulam em tempo REAL enquanto este bloco só
+    /// conta os frames em que ele roda — as duas janelas divergem, e a
+    /// divergência aparecia como uma partição impossível: o log do Enio de
+    /// 2026-07-31 trouxe `busy 69% away 31% sleep 909%` (soma 1009%) e uma
+    /// `TAXA DA AGUA 392,8 Hz` contra os **40 Hz nominais da SPEC**, ou seja um
+    /// solver dez vezes fora do ritmo — que **não existia**. Três baldes que
+    /// dizem partição TÊM de dividir uma janela medida, senão o instrumento
+    /// manda a próxima pessoa caçar uma sim desgovernada que não está lá.
+    static FRAME_PROF_SINCE: std::cell::RefCell<Option<std::time::Instant>> =
+        const { std::cell::RefCell::new(None) };
     static FRAME_PROF_DISPATCH_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     /// Active tool's `on_tick` µs (the watercolor heartbeat: soak pour + live recomposite) —
     /// the perf-audit phase the original split missed (2026-07-07, "grave FPS drop" hunt).
@@ -7096,6 +7108,16 @@ impl crate::App {
                 c.set(n);
                 n
             });
+            // ⚠️ O relógio da janela ARMA no primeiro frame, não no primeiro
+            // relatório: sem isto a primeira janela sairia com `span = 0` e
+            // imprimiria uma partição de zeros, que se lê como *"o worker não
+            // fez nada"* — a mentira oposta à que ele existe para evitar.
+            FRAME_PROF_SINCE.with(|c| {
+                let mut b = c.borrow_mut();
+                if b.is_none() {
+                    *b = Some(std::time::Instant::now());
+                }
+            });
             if n.is_multiple_of(120) {
                 let total = self.frame_ms_ewma;
                 let encode = self.frame_cpu_ms_ewma;
@@ -7147,7 +7169,13 @@ impl crate::App {
                 // worker. Estes três baldes dizem se a água lenta é TRABALHO (busy alto: só a GPU
                 // move) ou AGENDAMENTO (away/sleep alto), que têm curas opostas.
                 let (busy, away, sleep) = ph2d_tool_painter::wet_diag::take_worker();
-                let span = f64::from(total) * 120.0;
+                // A janela REAL desde o último dreno — nunca `frame_medio × 120`.
+                let span = FRAME_PROF_SINCE.with(|c| {
+                    let now = std::time::Instant::now();
+                    c.borrow_mut()
+                        .replace(now)
+                        .map_or(0.0, |t0| (now - t0).as_secs_f64() * 1000.0)
+                });
                 let pct = |x: f64| if span > 0.0 { 100.0 * x / span } else { 0.0 };
                 let per = |sum: f64, n: u64| if n > 0 { sum / n as f64 } else { 0.0 };
                 eprintln!(

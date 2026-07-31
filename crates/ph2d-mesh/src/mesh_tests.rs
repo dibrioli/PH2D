@@ -271,3 +271,95 @@ fn the_triangle_sentinel_is_not_mistaken_for_an_index() {
     );
     assert!(m.is_ok());
 }
+
+/// Deforma a malha empurrando um bloco de vértices para longe, sem pedir
+/// permissão ao índice — é o que um dab forte faz.
+fn shove(mesh: &mut Mesh, center: [f32; 3], radius: f32, push: f32) -> Vec<u32> {
+    let mut moved = Vec::new();
+    for v in 0..mesh.vert_count() {
+        let p = mesh.positions()[v];
+        let d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]];
+        if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= radius * radius {
+            let n = mesh.normals()[v];
+            let out = &mut mesh.positions_mut()[v];
+            for k in 0..3 {
+                out[k] += n[k] * push;
+            }
+            moved.push(v as u32);
+        }
+    }
+    moved
+}
+
+#[test]
+fn the_query_still_finds_everything_after_the_surface_moved() {
+    // O preço da frase que a W1 escreveu (*"o octree descreve as posições
+    // anteriores; enquanto o dab move menos que a folga isso é invisível"*): um
+    // empurrão FORTE tira o vértice da caixa da folha dele, ele some da consulta
+    // e o pincel deixa um BURACO — sem erro, sem aviso, e sem nada que ligue o
+    // sintoma ao índice. A fixture empurra o suficiente para sair.
+    let mut mesh = shapes::uv_sphere(40, 56, 1.0);
+    let center = [0.0, 0.0, 1.0];
+    let moved = shove(&mut mesh, center, 0.35, 0.45);
+    assert!(moved.len() > 20, "a fixture mal empurrou ({})", moved.len());
+    let mut region = RegionScratch::default();
+    mesh.refresh_region(&moved, &mut region);
+
+    // Consulta na superfície NOVA, contra a força bruta — que não sabe que
+    // existe um octree.
+    let probe = [0.0, 0.0, 1.40];
+    let radius = 0.25;
+    let mut scratch = QueryScratch::default();
+    let mut got = Vec::new();
+    mesh.verts_in_sphere(probe, radius, &mut scratch, &mut got);
+    got.sort_unstable();
+
+    let mut want: Vec<u32> = (0..mesh.vert_count() as u32)
+        .filter(|&v| {
+            let p = mesh.positions()[v as usize];
+            let d = [p[0] - probe[0], p[1] - probe[1], p[2] - probe[2]];
+            d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= radius * radius
+        })
+        .collect();
+    want.sort_unstable();
+    assert!(want.len() > 10, "a sonda não pegou nada ({})", want.len());
+    assert_eq!(got, want, "o índice perdeu geometria que se moveu");
+}
+
+#[test]
+fn a_refitted_tree_answers_exactly_what_a_rebuilt_one_answers() {
+    // O refit não é só "não perder": ele deixa as caixas TÃO justas quanto uma
+    // reconstrução deixaria. Uma caixa grande demais é conservadora — responde
+    // certo e visita à toa —, e sem este gate a diferença entre as duas ficaria
+    // invisível até alguém cronometrar a consulta numa malha grande.
+    let mut refitted = shapes::uv_sphere(20, 28, 1.0);
+    let moved = shove(&mut refitted, [0.4, 0.0, 0.9], 0.5, 0.3);
+    let mut region = RegionScratch::default();
+    refitted.refresh_region(&moved, &mut region);
+
+    let mut rebuilt = refitted.clone();
+    rebuilt.rebuild();
+
+    let mut sa = QueryScratch::default();
+    let mut sb = QueryScratch::default();
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    let mut nonempty = 0;
+    for k in 0..40 {
+        let t = k as f32 / 39.0;
+        let probe = [-1.2 + 2.6 * t, (t * 6.0).sin() * 0.6, 0.4 + t * 0.9];
+        refitted.verts_in_sphere(probe, 0.3, &mut sa, &mut a);
+        rebuilt.verts_in_sphere(probe, 0.3, &mut sb, &mut b);
+        a.sort_unstable();
+        b.sort_unstable();
+        assert_eq!(a, b, "sonda {k} em {probe:?}");
+        if !a.is_empty() {
+            nonempty += 1;
+        }
+    }
+    assert!(nonempty > 10, "só {nonempty} sondas acertaram a malha");
+    assert_eq!(
+        refitted.bounds(),
+        rebuilt.bounds(),
+        "a caixa do mundo divergiu do que uma reconstrução daria"
+    );
+}

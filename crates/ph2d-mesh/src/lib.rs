@@ -53,7 +53,7 @@ pub use normals::{
     vertex_normals_of,
 };
 pub use obj::{ObjError, import_obj};
-pub use octree::Octree;
+pub use octree::{Octree, RefitScratch};
 pub use ray::{Hit, Ray};
 
 /// Geometria de teste — um cubo e uma esfera UV.

@@ -56,6 +56,11 @@ struct Node {
     /// Faixa em `face_indices` (folha).
     start: u32,
     len: u32,
+    /// De quem este nó é filho (`NO_CHILD` na raiz) — o caminho que o refit
+    /// sobe para reunir as caixas dos ancestrais.
+    parent: u32,
+    /// Profundidade, para o refit processar filhos ANTES de pais sem ordenar.
+    depth: u8,
 }
 
 /// Índice espacial sobre as faces de uma malha.
@@ -63,6 +68,11 @@ struct Node {
 pub struct Octree {
     nodes: Vec<Node>,
     face_indices: Vec<u32>,
+    /// Face → a folha que a contém. É este mapa que torna o refit possível: a
+    /// face MOVEU, então descer a árvore pelo centro dela hoje pode chegar a
+    /// outro nó, e recomputar a caixa do nó errado é perder geometria em
+    /// silêncio. Custa 4 B por face, e a sonda de memória o reporta.
+    face_leaf: Vec<u32>,
 }
 
 impl Octree {
@@ -78,11 +88,14 @@ impl Octree {
             split.expand_point(*c);
         }
         tree.face_indices = (0..faces.len() as u32).collect();
+        tree.face_leaf = vec![0; faces.len()];
         tree.nodes.push(Node {
             loose: Aabb::EMPTY,
             first_child: NO_CHILD,
             start: 0,
             len: faces.len() as u32,
+            parent: NO_CHILD,
+            depth: 0,
         });
         tree.subdivide(0, split, 0, positions, faces, &centers);
         tree
@@ -104,7 +117,8 @@ impl Octree {
     /// parcela é derivada, e a sonda diz qual é qual.
     #[must_use]
     pub fn memory_bytes(&self) -> usize {
-        self.nodes.capacity() * size_of::<Node>() + self.face_indices.capacity() * size_of::<u32>()
+        self.nodes.capacity() * size_of::<Node>()
+            + (self.face_indices.capacity() + self.face_leaf.capacity()) * size_of::<u32>()
     }
 
     /// A caixa de tudo que o octree indexa.
@@ -196,6 +210,68 @@ impl Octree {
         }
     }
 
+    /// Re-ajusta as caixas frouxas depois de a GEOMETRIA se mover.
+    ///
+    /// ⚠️ **A partição não muda, só as caixas.** Um dab desloca vértices; ele não
+    /// cria nem apaga face nenhuma, então cada face continua na folha em que
+    /// nasceu. O que envelhece é a caixa frouxa — e uma caixa que ficou PEQUENA
+    /// demais perde geometria em silêncio: o vértice que saiu dela vira
+    /// invisível para o pincel, e o sintoma é um buraco no traço que ninguém
+    /// liga ao índice.
+    ///
+    /// ⚠️ **É por isso que existe o `face_leaf`.** Descer a árvore pelo centro
+    /// ATUAL da face pode chegar a outro nó — o centro se moveu —, e recomputar
+    /// a caixa do nó errado deixaria a do nó certo velha. O mapa custa 4 B por
+    /// face e é a única coisa que torna esta operação correta.
+    ///
+    /// Custo: `O(faces movidas + folhas tocadas × faces por folha)`, ou seja
+    /// limitado pela PEGADA. A ordem sai de graça — os nós afetados são
+    /// agrupados por profundidade e processados do mais fundo para a raiz, então
+    /// todo filho já está pronto quando o pai o lê, sem ordenar nada.
+    pub fn refit(
+        &mut self,
+        positions: &[[f32; 3]],
+        faces: &[Face],
+        moved_faces: &[u32],
+        scratch: &mut RefitScratch,
+    ) {
+        if self.nodes.is_empty() || moved_faces.is_empty() {
+            return;
+        }
+        scratch.begin(self.nodes.len(), MAX_DEPTH as usize + 1);
+        for &fi in moved_faces {
+            let mut ni = self.face_leaf[fi as usize];
+            // Subir para quando encontra um ancestral já marcado: ele e tudo
+            // acima dele já estão na lista. Sem esta saída, uma pegada grande
+            // reescreveria o caminho até a raiz uma vez por face.
+            while ni != NO_CHILD && scratch.mark(ni) {
+                let node = &self.nodes[ni as usize];
+                scratch.by_depth[node.depth as usize].push(ni);
+                ni = node.parent;
+            }
+        }
+        for d in (0..scratch.by_depth.len()).rev() {
+            for k in 0..scratch.by_depth[d].len() {
+                let ni = scratch.by_depth[d][k] as usize;
+                let node = self.nodes[ni];
+                let mut loose = Aabb::EMPTY;
+                if node.first_child == NO_CHILD {
+                    let (s, e) = (node.start as usize, (node.start + node.len) as usize);
+                    for &fi in &self.face_indices[s..e] {
+                        for &v in faces[fi as usize].verts() {
+                            loose.expand_point(positions[v as usize]);
+                        }
+                    }
+                } else {
+                    for c in 0..8 {
+                        loose.expand(&self.nodes[(node.first_child + c) as usize].loose);
+                    }
+                }
+                self.nodes[ni].loose = loose;
+            }
+        }
+    }
+
     fn subdivide(
         &mut self,
         node: usize,
@@ -210,7 +286,9 @@ impl Octree {
 
         if len <= MAX_FACES_PER_LEAF || depth >= MAX_DEPTH || split.is_empty() {
             let mut loose = Aabb::EMPTY;
-            for &fi in &self.face_indices[start..start + len] {
+            for i in start..start + len {
+                let fi = self.face_indices[i];
+                self.face_leaf[fi as usize] = node as u32;
                 for &v in faces[fi as usize].verts() {
                     loose.expand_point(positions[v as usize]);
                 }
@@ -250,6 +328,8 @@ impl Octree {
                 first_child: NO_CHILD,
                 start: (start + a) as u32,
                 len: (b - a) as u32,
+                parent: node as u32,
+                depth: (depth + 1).min(u32::from(u8::MAX)) as u8,
             });
         }
 
@@ -308,6 +388,60 @@ fn face_center(positions: &[[f32; 3]], face: Face) -> [f32; 3] {
         c[2] += p[2];
     }
     [c[0] * inv, c[1] * inv, c[2] * inv]
+}
+
+/// Buffers do [`Octree::refit`], reusados entre dabs.
+///
+/// O `stamp` é do tamanho da ÁRVORE, mas é carimbado por época e nunca varrido
+/// — o mesmo idioma do `QueryScratch`. É isso que mantém o refit função da
+/// pegada em vez da malha.
+#[derive(Clone, Debug, Default)]
+pub struct RefitScratch {
+    stamp: Vec<u32>,
+    epoch: u32,
+    by_depth: Vec<Vec<u32>>,
+}
+
+impl RefitScratch {
+    fn begin(&mut self, nodes: usize, depths: usize) {
+        if self.stamp.len() != nodes {
+            self.stamp = vec![0; nodes];
+            self.epoch = 0;
+        }
+        self.epoch = self.epoch.wrapping_add(1);
+        // O carimbo 0 é o "nunca visto"; a época nunca pode valer 0.
+        if self.epoch == 0 {
+            self.epoch = 1;
+            self.stamp.fill(0);
+        }
+        if self.by_depth.len() != depths {
+            self.by_depth = vec![Vec::new(); depths];
+        }
+        for b in &mut self.by_depth {
+            b.clear();
+        }
+    }
+
+    /// Marca `ni`; devolve `false` se ele já estava marcado nesta rodada.
+    fn mark(&mut self, ni: u32) -> bool {
+        let slot = &mut self.stamp[ni as usize];
+        if *slot == self.epoch {
+            return false;
+        }
+        *slot = self.epoch;
+        true
+    }
+
+    /// Bytes segurados.
+    #[must_use]
+    pub fn capacity_bytes(&self) -> usize {
+        self.stamp.capacity() * size_of::<u32>()
+            + self
+                .by_depth
+                .iter()
+                .map(|b| b.capacity() * size_of::<u32>())
+                .sum::<usize>()
+    }
 }
 
 #[cfg(test)]

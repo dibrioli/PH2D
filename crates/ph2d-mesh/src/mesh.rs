@@ -22,7 +22,7 @@ use crate::aabb::Aabb;
 use crate::adjacency::Adjacency;
 use crate::face::Face;
 use crate::normals;
-use crate::octree::Octree;
+use crate::octree::{Octree, RefitScratch};
 
 /// A malha de triângulos/quads residente na CPU.
 #[derive(Clone, Debug, Default)]
@@ -233,11 +233,14 @@ impl Mesh {
     /// costura visível exatamente na borda do pincel, que é onde o artista está
     /// olhando.
     ///
-    /// ⚠️ **NÃO mexe no octree.** Depois de um deslocamento ele descreve as
-    /// posições anteriores; enquanto o dab move menos que a folga das caixas
-    /// frouxas isso é invisível, e a atualização incremental por região é da W2
-    /// (o custo dela é da PEGADA, como este passe). Reconstruí-lo aqui tornaria
-    /// um gesto `O(pegada)` num gesto `O(malha)`, que é o oposto do desenho.
+    /// ⚠️ **O octree é re-ajustado aqui** (W2), pela mesma lista de faces que as
+    /// normais usam. A W1 o deixava velho de propósito — *"enquanto o dab move
+    /// menos que a folga das caixas frouxas isso é invisível"* —, e o preço
+    /// daquela frase é um traço forte empurrando um vértice para fora da caixa
+    /// da folha dele: ele some da consulta e o pincel deixa um BURACO, sem erro
+    /// e sem aviso. `Octree::refit` custa a PEGADA, não a malha, então a razão
+    /// original para adiar (não transformar `O(pegada)` em `O(malha)`) continua
+    /// honrada.
     pub fn refresh_region(&mut self, moved: &[u32], scratch: &mut RegionScratch) {
         if moved.is_empty() {
             return;
@@ -283,6 +286,17 @@ impl Mesh {
         for (&v, n) in scratch.verts.iter().zip(&scratch.tmp) {
             self.normals[v as usize] = *n;
         }
+        // As MESMAS faces que moveram as normais movem as caixas. Duas listas
+        // divergiriam no dia em que uma delas ganhasse um filtro.
+        self.octree.refit(
+            &self.positions,
+            &self.faces,
+            &scratch.faces,
+            &mut scratch.refit,
+        );
+        // A caixa do mundo é a raiz do octree — derivá-la de novo percorrendo
+        // todas as posições seria o `O(malha)` entrando pela porta dos fundos.
+        self.bounds = self.octree.bounds();
         // Limpa só o que sujou — zerar os vetores inteiros faria deste passe
         // `O(malha)` pela porta dos fundos.
         for &fi in &scratch.faces {
@@ -334,6 +348,7 @@ pub struct RegionScratch {
     vert_seen: Vec<bool>,
     /// Saída contígua das portas paralelas, reusada pelas duas metades do passe.
     tmp: Vec<[f32; 3]>,
+    refit: RefitScratch,
 }
 
 impl RegionScratch {
@@ -353,6 +368,7 @@ impl RegionScratch {
             + self.face_seen.capacity()
             + self.vert_seen.capacity()
             + self.tmp.capacity() * size_of::<[f32; 3]>()
+            + self.refit.capacity_bytes()
     }
 }
 

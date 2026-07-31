@@ -397,6 +397,33 @@ fenômeno, não decoração"*), e ela reincidiu.
 8 gates novos (4 de motor + 4 de costura), **4 mutações, 4 sangram**. Nenhum schema, nenhum contrato
 congelado. API pública nova: `ph2d_vec_scene::{dissolve_vertex, reshape_segment, point_on_segment}`.
 
+#### ⚠️ *"Fica um pouco diferente — esse é o esperado?"* (Enio, smoke da 43) — SIM, e aqui está o preço
+
+Ele apagou o nó do meio de um arco e o resultado ficou **mais pontudo** que o controle. É esperado,
+e a razão não é o ajuste: **um nó carrega informação**. Fixadas as duas âncoras e as duas direções
+de tangente, sobram **2 graus de liberdade** (os comprimentos das alças) para reproduzir uma curva
+que tinha 3 nós — alguma mudança de forma é matemática, não defeito.
+
+O que se pode perguntar é *quanto* da mudança é evitável, e a sonda mediu as quatro respostas
+(`measure_node_reach.rs`, arco de 2,0 × 0,75):
+
+| ajuste | desvio | o que custa |
+|---|---|---|
+| remoção CRUA (o de antes) | **0,5875** | a curva morre com o ponto |
+| **ATUAL** — passa pela âncora, tangentes fixas | **0,0782** | nada (forma fechada, sem iteração) |
+| Schneider — LSQ + reparametrização, 8 iterações | 0,0687 | um fitter **iterativo** no gesto |
+| piso teórico — tangentes **LIVRES** | 0,0358 | a tangente da ponta gira **8,4°** |
+
+⚠️ **O ajuste atual está a 12% do piso alcançável com as tangentes preservadas**, e comprar esses
+12% custa um fitter iterativo — **medido e recusado**. ⚠️ E a outra metade (0,069 → 0,036) exige
+**girar a tangente das pontas**, o que num vértice `Smooth` propaga para o segmento **ANTERIOR**:
+apagar um nó mudaria a forma de um trecho que o artista não tocou. É por isso que Illustrator e
+Inkscape preservam as tangentes, e é a mesma decisão aqui.
+
+⚠️ **Um LSQ ingênuo é PIOR que o que shipa** (0,1675 contra 0,0782) — sem a reparametrização de
+Newton o alvo está mal parametrizado, e o "melhor ajuste" ajusta a coisa errada. Fica escrito para
+ninguém trocar o fit por um LSQ direto achando que melhora.
+
 Smoke: **`PH2D_BUILD_SMOKE=43`**.
 
 **Aberto da W3 (W3b):** a **escala da seleção** — marquee sem Shift/aditivo, lasso, `Tab`,

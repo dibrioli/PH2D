@@ -34,7 +34,7 @@
 //! unchanged), so it never re-describes and never churns the checkpoint ring —
 //! only a genuine edit does (gate `an_unedited_joint_does_not_churn_the_scrub_cache`).
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, stable_name_id};
 use ph2d_physics::world::pulley::PulleyDesc;
 use ph2d_physics::world::rope_route;
 use ph2d_physics::{ImpulseJointHandle, JointDesc, MotorDesc, PhysicsWorld, RigidBodyHandle};
@@ -283,30 +283,64 @@ impl PhysicsBridge {
                     me.joints_to_remove.push(e);
                 }
             };
-            if !joint.names_two_bodies() {
+            // **O lado B é o MUNDO?** (W-JointWorld.) A presença do marcador é o
+            // booleano, e só o ECS pode respondê-la — o componente não enxerga
+            // os próprios irmãos.
+            let world_point = world
+                .get::<crate::JointWorldAnchor>(e)
+                .map(|_| [transform.translation.x, transform.translation.y]);
+            if !joint.is_anchored(world_point.is_some()) {
                 // Half-authored: the artist has a joint object but has not
                 // picked both bodies yet. Not an error, and not a joint.
                 drop_if_live(self);
                 continue;
             }
-            let (Some(&ea), Some(&eb)) =
-                (self.names.get(&joint.body_a), self.names.get(&joint.body_b))
-            else {
+            let Some(&ea) = self.names.get(&joint.body_a) else {
                 // A named body that is not here — deleted, renamed, or not yet
                 // spawned. The joint goes dormant and comes back by itself if
                 // the body does (the same healing the timeline's bindings get).
                 drop_if_live(self);
                 continue;
             };
-            let (Some(ba), Some(bb)) = (self.bodies.get(&ea), self.bodies.get(&eb)) else {
+            // ⚠️ **Um pino de mundo NÃO resolve um segundo corpo**, e é isso que
+            // ele é: o cenário não é um objeto da cena. `eb`/`bb` ficam `None` e
+            // o lado B inteiro passa a falar do PONTO.
+            let eb = match world_point {
+                Some(_) => None,
+                None => match self.names.get(&joint.body_b) {
+                    Some(&eb) => Some(eb),
+                    None => {
+                        drop_if_live(self);
+                        continue;
+                    }
+                },
+            };
+            let Some(ba) = self.bodies.get(&ea) else {
                 drop_if_live(self);
                 continue;
             };
-            let handles = (ba.handle, bb.handle);
-            // As poses de REPOUSO, copiadas aqui: tudo abaixo fala delas, e
-            // segurar as referências de `self.bodies` até lá colidiria com o
-            // `drop_if_live`, que precisa de `&mut self`.
-            let (rest_a, rest_b) = (rest_pose(ba), rest_pose(bb));
+            let rest_a = rest_pose(ba);
+            let ha = ba.handle;
+            // A pose de REPOUSO do lado B. Num pino de mundo ela é o PONTO, sem
+            // rotação: a âncora é um corpo `fixed` ali, então o `local_b` que sai
+            // do `local_anchor_at_pose` abaixo é exatamente `[0, 0]` — a mesma
+            // aritmética, sem caso especial ([[feedback_the_representation_can_delete_the_special_case]]).
+            let (hb, rest_b) = match (eb, world_point) {
+                (Some(eb), _) => match self.bodies.get(&eb) {
+                    Some(bb) => (Some(bb.handle), rest_pose(bb)),
+                    None => {
+                        drop_if_live(self);
+                        continue;
+                    }
+                },
+                (None, Some(p)) => (None, [p[0], p[1], 0.0]),
+                // Inalcançável: `is_anchored` acima já recusou este par.
+                (None, None) => {
+                    drop_if_live(self);
+                    continue;
+                }
+            };
+            let handles = (ha, hb);
             // The body-local anchors. Authored state once seeded; the whole
             // slide fix is that a body move reads them UNCHANGED (the anchor
             // follows the body) instead of re-deriving against the world point.
@@ -345,6 +379,13 @@ impl PhysicsBridge {
             // e virou polia tem de sair do solver.
             if joint.kind == JointKind::Pulley {
                 drop_if_live(self);
+                // ⚠️ **Uma POLIA quer DOIS corpos**, e a recusa é explícita em vez
+                // de herdada: a corda puxa as duas pontas, e uma delas presa ao
+                // cenário é *outra* máquina (o `motor_rate` já é o guincho). Sem
+                // este guard o par `(None, None)` cairia no `unwrap` do lado B.
+                let (Some(eb), Some(hb)) = (eb, handles.1) else {
+                    continue;
+                };
                 if joint.active {
                     // As âncoras em REPOUSO. A rota da corda é resolvida contra
                     // elas — e não contra a pose viva — porque é isso que congela
@@ -475,7 +516,7 @@ impl PhysicsBridge {
                             // corpos e por que as roldanas a apontam.
                             id: rope,
                             body_a: handles.0,
-                            body_b: handles.1,
+                            body_b: hb,
                             local_a: la,
                             local_b: lb,
                             wheel_start: start,
@@ -507,8 +548,21 @@ impl PhysicsBridge {
                 drop_if_live(self);
                 continue;
             };
+            // **Este joint vivo ainda descreve o que está autorado?**
+            //
+            // ⚠️ Num pino de MUNDO a comparação de handles não tem o que
+            // detectar — a âncora é NOSSA, ninguém a respawna por baixo — e em
+            // compensação ela não veria o que importa: **mover o ponto não muda
+            // o `desc`** (o `local_b` é `[0,0]` onde quer que a âncora esteja),
+            // então sem comparar o PONTO arrastar o dot não moveria o pino.
+            let unchanged = |j: &JointRef| match handles.1 {
+                Some(hb) => j.bodies == (handles.0, hb) && j.rest == desc,
+                None => j.bodies.0 == handles.0 && j.world_anchor == world_point && j.rest == desc,
+            };
             match self.joints.get(&e) {
-                None => self.joints_to_spawn.push((e, desc, handles, (ea, eb))),
+                None => self
+                    .joints_to_spawn
+                    .push((e, desc, handles, (ea, eb), world_point)),
                 // Re-described whenever `desc` changed — a parameter or anchor
                 // edit — with NO `at_rest` gate, so a spring tunes while it
                 // bounces (module docs; the anchor is safe because it is seeded
@@ -517,8 +571,9 @@ impl PhysicsBridge {
                 // ring. Also fires when the bodies it binds have been re-spawned
                 // underneath it, or the joint would hold handles into an arena
                 // that has moved on.
-                Some(j) if j.rest != desc || j.bodies != handles => {
-                    self.joints_to_spawn.push((e, desc, handles, (ea, eb)));
+                Some(j) if !unchanged(j) => {
+                    self.joints_to_spawn
+                        .push((e, desc, handles, (ea, eb), world_point));
                     self.joints_to_remove.push(e);
                 }
                 Some(_) => {}
@@ -559,6 +614,18 @@ impl PhysicsBridge {
             let e = self.joints_to_remove[i];
             if let Some(j) = self.joints.remove(&e) {
                 self.world.remove_joint(j.handle);
+                // ⚠️ **A âncora de mundo morre com o joint que a usa** — ela não
+                // é um corpo da cena, é tralha da arena, e ninguém mais a
+                // aponta. Deixá-la para trás seria um corpo fixo invisível
+                // acumulando por edição de parâmetro (um re-describe passa por
+                // aqui), que é a mesma tabela-suja que o `remove_body` limpa
+                // dos efetores e das polias.
+                //
+                // Segura por construção: um re-describe REMOVE e depois SPAWNA,
+                // e o spawn cria uma âncora NOVA — nunca a que acabou de sair.
+                if j.world_anchor.is_some() {
+                    self.world.remove_body(j.bodies.1);
+                }
             }
         }
         self.joints_to_remove.clear();
@@ -567,20 +634,34 @@ impl PhysicsBridge {
         // solver's joint order is a pure function of the entity set, never of
         // ECS archetype order.
         self.joints_to_spawn
-            .sort_unstable_by_key(|(e, _, _, _)| e.to_bits());
+            .sort_unstable_by_key(|(e, _, _, _, _)| e.to_bits());
         for i in 0..self.joints_to_spawn.len() {
-            let (e, desc, bodies, entities) = self.joints_to_spawn[i];
-            if let Some(handle) = self.world.spawn_joint(bodies.0, bodies.1, desc) {
+            let (e, desc, bodies, entities, world_anchor) = self.joints_to_spawn[i];
+            // ⚠️ **É AQUI que a âncora de mundo nasce** — e não no reconcile, que
+            // roda para todo joint de todo frame: criá-la lá vazaria um corpo
+            // fixo por quadro em cada pino já construído. Nascer no flush a
+            // amarra ao SPAWN, que é exatamente o tempo de vida dela.
+            let hb = match (world_anchor, bodies.1) {
+                (Some(p), _) => self.world.spawn_world_anchor(p),
+                (None, Some(hb)) => hb,
+                // Inalcançável: o reconcile só empurra `None` de handle com um
+                // ponto ao lado.
+                (None, None) => continue,
+            };
+            if let Some(handle) = self.world.spawn_joint(bodies.0, hb, desc) {
                 self.joints.insert(
                     e,
                     JointRef {
                         handle,
                         rest: desc,
-                        bodies,
-                        entities: (entities.0, Some(entities.1)),
-                        world_anchor: None,
+                        bodies: (bodies.0, hb),
+                        entities,
+                        world_anchor,
                     },
                 );
+            } else if world_anchor.is_some() {
+                // O joint não foi construído, então ninguém aponta esta âncora.
+                self.world.remove_body(hb);
             }
         }
         self.joints_to_spawn.clear();
@@ -615,55 +696,5 @@ impl PhysicsBridge {
             }
         }
         self.wheels_to_seed.clear();
-    }
-
-    /// Sync each joint's DISPLAY pivot — its `Transform.translation` — to where
-    /// its authored body-A anchor now sits (`bodyA_rest · local_a`). This is what
-    /// makes the anchor dot and the Inspector Position FOLLOW the body: move a
-    /// body and its stored `local_a` is unchanged, so the derived pivot — and the
-    /// dot drawn there — moves with it.
-    ///
-    /// Rest-only (the caller gates on `!playing`): during play the dot is not
-    /// shown and the overlay draws the live solver anchors, so writing a stale
-    /// display value every frame would be work for no reader.
-    ///
-    /// The write is idempotent after a seed/re-seat (the pivot equals what the
-    /// gesture set), so it never manufactures a diff — a body move and the pivot
-    /// that follows it land in the SAME undo step (one gesture).
-    ///
-    /// ⚠️ Joints are root entities, so `translation` IS the world pivot with no
-    /// parent compose (the same assumption `point_gizmo::build_point_view` makes).
-    pub(super) fn sync_joint_pivots(&mut self, sim: &mut SimWorld) {
-        if self.joints.is_empty() {
-            return;
-        }
-        // Take the scratch out so the collect (which borrows `self.joints` and
-        // `self.bodies`) does not clash with pushing into it.
-        let mut scratch = std::mem::take(&mut self.joints_to_sync);
-        scratch.clear();
-        {
-            // Through the SAME door the handles and the Inspector read
-            // (`bridge::anchors`) — the displayed pivot and the grabbable dot
-            // cannot describe different points if only one function answers
-            // "where is the A anchor?". An un-seeded joint answers with its own
-            // `Transform`, so this is a no-op there rather than a special case.
-            for &e in self.joints.keys() {
-                if let Some(pivot) = self.joint_anchor_world(sim, e, super::anchors::JointSide::A) {
-                    scratch.push((e, pivot));
-                }
-            }
-        }
-        for &(e, pivot) in scratch.iter() {
-            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
-                // Write only on a real change so an untouched joint never
-                // manufactures a diff for the frame-level undo.
-                if t.translation.x != pivot[0] || t.translation.y != pivot[1] {
-                    t.translation.x = pivot[0];
-                    t.translation.y = pivot[1];
-                }
-            }
-        }
-        scratch.clear();
-        self.joints_to_sync = scratch;
     }
 }

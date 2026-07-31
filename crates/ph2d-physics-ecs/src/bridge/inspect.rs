@@ -51,8 +51,19 @@ impl PhysicsBridge {
     }
 
     /// Number of live rapier bodies (for tests / diagnostics).
+    ///
+    /// ⚠️ **Conta o mapa entidade→corpo da PONTE**, não a arena: um corpo sem
+    /// entidade (a âncora de um pino de mundo, a tralha da mão) não está aqui.
+    /// Quem quer o número da arena — um gate de vazamento, por exemplo — tem de
+    /// perguntar a [`Self::arena_body_count`], senão o gate não pode falhar pelo
+    /// motivo que alega.
     pub fn body_count(&self) -> usize {
         self.bodies.len()
+    }
+
+    /// **Quantos corpos a ARENA tem**, âncoras sem entidade incluídas.
+    pub fn arena_body_count(&self) -> usize {
+        self.world.arena_body_count()
     }
 
     /// Number of live rapier joints (for tests / diagnostics).

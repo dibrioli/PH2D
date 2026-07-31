@@ -276,6 +276,74 @@ impl PhysicsBridge {
         }
         n
     }
+
+    // ---------------------------------------------------------------------
+    // O lado ESCRITA da mesma pergunta.
+    //
+    // ⚠️ `sync_joint_pivots` mudou-se de `bridge::joints` para cá (W-JointWorld)
+    // porque é isto que ele é: o `joint_anchor_world` acima responde *onde está
+    // a âncora deste lado?* e ele PUBLICA essa resposta no `Transform`. No
+    // reconcile ele ficava ao lado de *o que o artista autorou vira que
+    // restrição?*, que é outra pergunta — e foi o cap de LOC que pediu a hora.
+    /// Sync each joint's DISPLAY pivot — its `Transform.translation` — to where
+    /// its authored body-A anchor now sits (`bodyA_rest · local_a`). This is what
+    /// makes the anchor dot and the Inspector Position FOLLOW the body: move a
+    /// body and its stored `local_a` is unchanged, so the derived pivot — and the
+    /// dot drawn there — moves with it.
+    ///
+    /// Rest-only (the caller gates on `!playing`): during play the dot is not
+    /// shown and the overlay draws the live solver anchors, so writing a stale
+    /// display value every frame would be work for no reader.
+    ///
+    /// The write is idempotent after a seed/re-seat (the pivot equals what the
+    /// gesture set), so it never manufactures a diff — a body move and the pivot
+    /// that follows it land in the SAME undo step (one gesture).
+    ///
+    /// ⚠️ Joints are root entities, so `translation` IS the world pivot with no
+    /// parent compose (the same assumption `point_gizmo::build_point_view` makes).
+    pub(super) fn sync_joint_pivots(&mut self, sim: &mut SimWorld) {
+        if self.joints.is_empty() {
+            return;
+        }
+        // Take the scratch out so the collect (which borrows `self.joints` and
+        // `self.bodies`) does not clash with pushing into it.
+        let mut scratch = std::mem::take(&mut self.joints_to_sync);
+        scratch.clear();
+        {
+            // Through the SAME door the handles and the Inspector read
+            // (`bridge::anchors`) — the displayed pivot and the grabbable dot
+            // cannot describe different points if only one function answers
+            // "where is the A anchor?". An un-seeded joint answers with its own
+            // `Transform`, so this is a no-op there rather than a special case.
+            for (&e, j) in self.joints.iter() {
+                // ⚠️ **Um pino de MUNDO é o caso INVERSO, e sem esta linha ele
+                // seria impossível de autorar:** aqui o `Transform` do joint **É**
+                // a fonte — a âncora é um ponto do cenário e quem a segue é o
+                // CORPO. Reescrevê-lo a partir de `bodyA · local_a` desfaria o
+                // arrasto do dot no frame seguinte, e o artista veria a alça
+                // voltar sozinha (o defeito exato que a W-J6-A curou no eixo de
+                // uma roldana montada).
+                if j.world_anchor.is_some() {
+                    continue;
+                }
+                if let Some(pivot) = self.joint_anchor_world(sim, e, super::anchors::JointSide::A) {
+                    scratch.push((e, pivot));
+                }
+            }
+        }
+        for &(e, pivot) in scratch.iter() {
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+                // Write only on a real change so an untouched joint never
+                // manufactures a diff for the frame-level undo.
+                if t.translation.x != pivot[0] || t.translation.y != pivot[1] {
+                    t.translation.x = pivot[0];
+                    t.translation.y = pivot[1];
+                }
+            }
+        }
+        scratch.clear();
+        self.joints_to_sync = scratch;
+    }
 }
 
 /// Write the joint's display pivot (its `Transform.translation`), reporting

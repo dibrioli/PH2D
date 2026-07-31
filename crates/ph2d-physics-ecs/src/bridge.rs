@@ -65,11 +65,21 @@ type BodyQuery = QueryState<(
 /// it is, the two body handles, and the two body ENTITIES. The entities travel
 /// alongside the handles because a rewind hands out fresh handles and the only
 /// durable way back to a body is its entity.
+///
+/// ⚠️ **O último campo é o PONTO DE MUNDO** com que este joint se prende quando
+/// o lado B é o cenário (W-JointWorld) — `None` num joint corpo↔corpo. Ele viaja
+/// aqui em vez de um handle porque a âncora **ainda não existe** no momento do
+/// reconcile: ela é criada no flush, junto com o joint que a usa, e some com ele.
+/// ⚠️ **O handle do lado B é `Option` pela MESMA razão** — num pino de mundo ele
+/// ainda não existe: `None` aqui significa *"o flush cria a âncora em
+/// `world_point`"*. A alternativa era um handle-fantasma que ninguém lê, e é
+/// exatamente o tipo de valor que o próximo leitor acredita.
 type PendingJoint = (
     Entity,
     ph2d_physics::JointDesc,
-    (RigidBodyHandle, RigidBodyHandle),
-    (Entity, Entity),
+    (RigidBodyHandle, Option<RigidBodyHandle>),
+    (Entity, Option<Entity>),
+    Option<[f32; 2]>,
 );
 
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].

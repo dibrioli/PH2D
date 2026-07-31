@@ -530,6 +530,19 @@ impl PhysicsWorld {
         )
     }
 
+    /// **Quantos corpos a ARENA tem** — incluindo os que não têm entidade
+    /// (âncoras de mundo, a tralha da mão).
+    ///
+    /// ⚠️ **Não confundir com `PhysicsBridge::body_count`**, que conta o mapa
+    /// entidade→corpo da ponte. Um gate de vazamento de âncora perguntado àquele
+    /// **não pode falhar**: a âncora não tem entidade, então ela nunca aparece
+    /// lá — e o gate ficaria verde exatamente sobre o defeito que ele alega
+    /// pegar.
+    #[must_use]
+    pub fn arena_body_count(&self) -> usize {
+        self.bodies.len()
+    }
+
     /// Remove a body and its attached colliders (used when the ECS entity
     /// carrying it is despawned). No-op if the handle is already gone.
     pub fn remove_body(&mut self, handle: RigidBodyHandle) {

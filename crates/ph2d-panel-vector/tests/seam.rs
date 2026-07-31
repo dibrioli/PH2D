@@ -1990,3 +1990,54 @@ fn the_spacing_floor_reaches_the_bus() {
         );
     }
 }
+
+/// **Os dois botões de ALCANCE da seleção chegam ao bus** (plano 25 §6, W3b) — `Select Subpath` e
+/// `Select Same`. Como o Delete Node, são comandos que a SHELL executa (ela tem o `PenTool`), então
+/// o que o painel prova é que o clique é encaminhado.
+///
+/// ⚠️ O clique é um ponteiro de VERDADE: um `WidgetEvent` sintético pula a checagem de focabilidade
+/// no store, e um botão fora do `populate` passaria — pintado, com hit-rect, e morto sob o mouse.
+#[test]
+fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, name) in [
+        (ids::VECTOR_VERT_SEL_SUBPATH, "Select Subpath"),
+        (ids::VECTOR_VERT_SEL_SAME, "Select Same"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        // ⚠️ A seção Vertex só existe com um VÉRTICE selecionado (o `state::current_vertex_type`),
+        // e sem declarar essa premissa o `painted_rect` devolve `None` — o gate falharia sobre
+        // produto correto, medindo a ausência da seção em vez do botão.
+        ph2d_panel_vector::state::set_selected_vertex_type(Some(
+            ph2d_tool_vector::VertexSel::Uniform(ph2d_tool_vector::VertexType::Corner),
+        ));
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o botao {name} nao foi PINTADO com area clicavel"));
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click -- falta o `button()` no populate"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id
+            )),
+            "o Click de {name} nao chegou ao bus -- falta a linha no event_clicks"
+        );
+    }
+}

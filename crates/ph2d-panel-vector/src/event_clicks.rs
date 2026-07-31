@@ -62,6 +62,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_VERT_SMOOTH
         || id == ids::VECTOR_VERT_SYMMETRIC
         || id == ids::VECTOR_VERT_DELETE
+        || id == ids::VECTOR_VERT_SEL_SUBPATH
+        || id == ids::VECTOR_VERT_SEL_SAME
         || id == ids::VECTOR_BLEND_RUN
         || id == ids::VECTOR_BLEND_RESET_SPINE
         || id == ids::VECTOR_BLEND_EXPAND

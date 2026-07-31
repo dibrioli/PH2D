@@ -3408,6 +3408,35 @@ impl App {
                     //      gizmo, whose bbox interior otherwise swallows every dot.
                     //   3. Transform gizmo handles (scale / rotate / interior move).
                     //   4. Pen / shape drawing + vertex editing.
+                    // **Modo Node: o press no VAZIO abre o retângulo — sem Shift** (plano 25 §6).
+                    //
+                    // ⚠️ Ele exigia Shift, e o Shift é o modificador de ADIÇÃO em todo app de
+                    // desenho: quem quisesse somar nós não tinha tecla, e quem quisesse só o
+                    // retângulo tinha de descobrir uma. Agora o gesto é o de todo mundo — arrastar
+                    // do vazio desenha a caixa, e o Shift SOMA.
+                    //
+                    // A pergunta *"o press acerta alguma coisa?"* é feita à porta que já existe
+                    // (`node_edit_hit_at` + `path_at`), e **antes** do `on_press_node`: ele
+                    // desseleciona quando não acerta nada, e um marquee aditivo aberto depois disso
+                    // somaria a uma seleção que acabou de ser apagada.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+                        && let Some(w) = self.vec_world_at(self.last_pointer)
+                        && let Some(gfx) = self.gfx.as_ref()
+                    {
+                        let px = self.vec_px_to_world();
+                        let empty = self
+                            .vec_pen
+                            .node_edit_hit_at(&gfx.vec_scene, w, px)
+                            .is_none()
+                            && self
+                                .vec_pen
+                                .path_at(&gfx.vec_scene, w, HANDLE_HIT_PX * px)
+                                .is_none();
+                        if empty {
+                            self.vec_marquee = Some((self.last_pointer, self.last_pointer));
+                            return;
+                        }
+                    }
                     // Gradient group 3b: a Down on a gradient handle starts dragging it.
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
                         self.vec_grad_selected = Some(i);
@@ -3799,15 +3828,25 @@ impl App {
                     // ao lado do Up do conector; não aqui, que é o caminho de Node.)
                     // Marquee release → box-select the anchors inside the box.
                     if let Some((start, cur)) = self.vec_marquee.take() {
+                        // **Shift SOMA** (o retângulo de todo app); sem ele, substitui. E um
+                        // retângulo de tamanho zero é um CLIQUE no vazio: ele desseleciona, em vez
+                        // de fazer um box-select que não apanha nada e deixa a seleção intacta.
+                        let additive = self.modifiers.shift_key();
+                        let moved = (start.0 - cur.0).abs() > 1.0 || (start.1 - cur.1).abs() > 1.0;
                         if let Some(gfx) = self.gfx.as_mut() {
-                            let win = gfx.surface.size();
-                            let a = gfx.camera.screen_to_world(start, win);
-                            let b = gfx.camera.screen_to_world(cur, win);
-                            self.vec_pen.box_select(
-                                &gfx.vec_scene,
-                                [a[0] as f64, a[1] as f64],
-                                [b[0] as f64, b[1] as f64],
-                            );
+                            if moved {
+                                let win = gfx.surface.size();
+                                let a = gfx.camera.screen_to_world(start, win);
+                                let b = gfx.camera.screen_to_world(cur, win);
+                                self.vec_pen.box_select_with(
+                                    &gfx.vec_scene,
+                                    [a[0] as f64, a[1] as f64],
+                                    [b[0] as f64, b[1] as f64],
+                                    additive,
+                                );
+                            } else if !additive {
+                                self.vec_pen.select(None);
+                            }
                         }
                         return;
                     }

@@ -224,6 +224,23 @@ impl PenTool {
     /// mais âncoras na caixa) dentro do retângulo world `[min,max]`. Substitui a
     /// seleção. Só muda estado de seleção — não muta a cena, não gera undo.
     pub fn box_select(&mut self, scene: &VecScene, min: [f64; 2], max: [f64; 2]) {
+        self.box_select_with(scene, min, max, false);
+    }
+
+    /// O mesmo, **somando** à seleção quando `additive` (o Shift+retângulo de todo app).
+    ///
+    /// ⚠️ **Somar só vale dentro do MESMO caminho**, e não é preguiça: o `selected_verts` pertence
+    /// a um `selected` único (o plano 25 §6 nomeia editar nós de várias formas como ausência **por
+    /// construção**). Um retângulo que caia noutra forma SUBSTITUI — a alternativa seria acumular
+    /// índices que passariam a apontar para o caminho errado, e o Delete seguinte apagaria nós de
+    /// uma forma que o artista não estava a olhar.
+    pub fn box_select_with(
+        &mut self,
+        scene: &VecScene,
+        min: [f64; 2],
+        max: [f64; 2],
+        additive: bool,
+    ) {
         let (x0, x1) = (min[0].min(max[0]), min[0].max(max[0]));
         let (y0, y1) = (min[1].min(max[1]), min[1].max(max[1]));
         let inside = |a: [f64; 2]| a[0] >= x0 && a[0] <= x1 && a[1] >= y0 && a[1] <= y1;
@@ -232,27 +249,40 @@ impl PenTool {
         let xforms = &self.xforms;
         let in_world =
             |id: VecPathId, a: [f64; 2]| inside(ph2d_vec_scene::xform_of(xforms, id).apply(a));
-        let target = self.selected.or_else(|| {
-            scene
-                .paths()
-                .iter()
-                .map(|p| {
-                    (
-                        p.id,
-                        p.verts_all().filter(|v| in_world(p.id, v.anchor)).count(),
-                    )
-                })
-                .filter(|&(_, c)| c > 0)
-                .max_by_key(|&(_, c)| c)
-                .map(|(id, _)| id)
-        });
+        // Quantos nós de `id` a caixa apanha.
+        let caught = |id: VecPathId| {
+            scene.paths().iter().find(|p| p.id == id).map_or(0, |p| {
+                p.verts_all().filter(|v| in_world(id, v.anchor)).count()
+            })
+        };
+        // ⚠️ **O caminho selecionado só tem preferência se a caixa de facto o apanhar.** Antes a
+        // preferência era incondicional, então arrastar o retângulo sobre OUTRA forma mirava a
+        // selecionada, apanhava zero nós e devolvia uma seleção vazia — o artista via o retângulo
+        // passar por cima dos nós e nada acender. É metade do *"o marquee vê um path só"* do
+        // plano 25 §6; a outra metade (nós de VÁRIAS formas ao mesmo tempo) é ausência por
+        // construção e continua nomeada lá.
+        let target = self
+            .selected
+            .filter(|&id| caught(id) > 0)
+            .or_else(|| {
+                scene
+                    .paths()
+                    .iter()
+                    .map(|p| (p.id, caught(p.id)))
+                    .filter(|&(_, c)| c > 0)
+                    .max_by_key(|&(_, c)| c)
+                    .map(|(id, _)| id)
+            })
+            .or(self.selected);
         let Some(id) = target else {
             self.selected_verts.clear();
             return;
         };
+        // Somar só vale se o retângulo caiu no MESMO caminho que já estava selecionado.
+        let same_path = self.selected == Some(id);
         self.selected = Some(id);
         self.selected_paths = vec![id];
-        self.selected_verts = scene
+        let hits: Vec<usize> = scene
             .paths()
             .iter()
             .find(|p| p.id == id)
@@ -264,6 +294,129 @@ impl PenTool {
                     .collect()
             })
             .unwrap_or_default();
+        if additive && same_path {
+            for i in hits {
+                if !self.selected_verts.contains(&i) {
+                    self.selected_verts.push(i);
+                }
+            }
+        } else {
+            self.selected_verts = hits;
+        }
+    }
+
+    /// **Todos os nós** do caminho selecionado (o `Ctrl+A` do modo Node). `true` se selecionou
+    /// algum — sem caminho selecionado não há o que selecionar, e dizer que sim faria o shell
+    /// empurrar um passo de undo por nada.
+    pub fn select_all_verts(&mut self, scene: &VecScene) -> bool {
+        let Some(id) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+            return false;
+        };
+        let n = path.total_verts();
+        if n == 0 {
+            return false;
+        }
+        self.selected_verts = (0..n).collect();
+        true
+    }
+
+    /// **Todos os nós dos CONTORNOS que a seleção toca** — o *select subpath*. Num compound (forma
+    /// com furos) é o que separa "este buraco" de "a forma inteira", e o `Ctrl+A` não distingue.
+    pub fn select_subpath_verts(&mut self, scene: &VecScene) -> bool {
+        let Some(id) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+            return false;
+        };
+        // Os contornos tocados pela seleção atual. Um `BTreeSet` seria exagero: são unidades.
+        let mut cs: Vec<usize> = Vec::new();
+        for &i in &self.selected_verts {
+            if let Some((c, _)) = path.locate_vert(i)
+                && !cs.contains(&c)
+            {
+                cs.push(c);
+            }
+        }
+        if cs.is_empty() {
+            return false;
+        }
+        let mut out: Vec<usize> = Vec::new();
+        for c in cs {
+            let Some((verts, _)) = path.contour(c) else {
+                continue;
+            };
+            for local in 0..verts.len() {
+                if let Some(f) = path.flat_vert(c, local) {
+                    out.push(f);
+                }
+            }
+        }
+        if out.is_empty() {
+            return false;
+        }
+        self.selected_verts = out;
+        true
+    }
+
+    /// **Todos os nós do MESMO TIPO** do primário (o *Select Same* do Inkscape) — o gesto que
+    /// transforma "afiar as 12 quinas desta estrela" de doze cliques em dois.
+    ///
+    /// O tipo vem do vértice PRIMÁRIO (o último tocado); sem seleção não há tipo a igualar.
+    pub fn select_verts_of_same_kind(&mut self, scene: &VecScene) -> bool {
+        let Some(id) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+            return false;
+        };
+        let Some(kind) = self
+            .selected_vert()
+            .and_then(|i| path.vert(i))
+            .map(|v| v.kind)
+        else {
+            return false;
+        };
+        let out: Vec<usize> = path
+            .verts_all()
+            .enumerate()
+            .filter(|(_, v)| v.kind == kind)
+            .map(|(i, _)| i)
+            .collect();
+        if out.is_empty() {
+            return false;
+        }
+        self.selected_verts = out;
+        true
+    }
+
+    /// **O nó SEGUINTE (ou anterior)** do caminho selecionado — o `Tab` do Inkscape.
+    ///
+    /// Substitui a seleção por UM nó: percorrer é olhar um de cada vez, e somar ao andar tornaria
+    /// o Tab um segundo "select all" lento. Sem seleção nenhuma começa no primeiro (ou no último,
+    /// andando para trás) — é o que faz o gesto ter uma porta de entrada.
+    pub fn step_vert_selection(&mut self, scene: &VecScene, forward: bool) -> bool {
+        let Some(id) = self.selected else {
+            return false;
+        };
+        let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
+            return false;
+        };
+        let n = path.total_verts();
+        if n == 0 {
+            return false;
+        }
+        let next = match self.selected_vert() {
+            Some(i) if forward => (i + 1) % n,
+            Some(i) => (i + n - 1) % n,
+            None if forward => 0,
+            None => n - 1,
+        };
+        self.selected_verts = vec![next];
+        true
     }
 
     /// **O que a SELEÇÃO de vértices tem em comum** — o que o painel precisa para destacar (ou não
@@ -369,3 +522,8 @@ impl PenTool {
 #[cfg(test)]
 #[path = "selection_kind_tests.rs"]
 mod kind_tests;
+
+/// Gates da **escala da seleção** (plano 25 §6, W3b) — irmão pelo assunto.
+#[cfg(test)]
+#[path = "selection_scale_tests.rs"]
+mod scale_tests;

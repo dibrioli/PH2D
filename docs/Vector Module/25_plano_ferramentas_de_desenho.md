@@ -426,8 +426,48 @@ ninguém trocar o fit por um LSQ direto achando que melhora.
 
 Smoke: **`PH2D_BUILD_SMOKE=43`**.
 
-**Aberto da W3 (W3b):** a **escala da seleção** — marquee sem Shift/aditivo, lasso, `Tab`,
-select-all de nós, select por tipo, sub-caminho, X/Y numérico do nó.
+### ✅ W3b — ENTREGUE: a escala da seleção
+
+A queixa era operacional: *"trabalhar uma forma de 40 nós é clique-a-clique"*. Seis alcances,
+todos sobre a mesma lista de nós.
+
+**O retângulo deixou de exigir Shift.** Ele o exigia — e o Shift é o modificador de **adição** em
+todo app de desenho, então quem quisesse somar nós não tinha tecla e quem quisesse só a caixa tinha
+de descobrir uma. Agora: arrastar do vazio abre a caixa, **Shift SOMA**, sem Shift substitui, e um
+clique nu (caixa de tamanho zero) **desseleciona** — sem essa última metade não haveria como largar
+uma forma a não ser clicando noutra.
+
+⚠️ **O ramo corre ANTES do `on_press_node`, e a ordem é load-bearing:** ele desseleciona quando não
+acerta nada, então um retângulo aditivo aberto depois dele somaria a uma seleção que acabou de ser
+apagada. A pergunta *"o press acerta alguma coisa?"* vai à porta que já existe (`node_edit_hit_at`),
+e não a uma segunda busca que discordaria da que o press usa.
+
+⚠️ **E metade do *"o marquee vê um path só"* fechou:** a preferência pelo caminho selecionado era
+**incondicional**, então arrastar a caixa sobre OUTRA forma mirava a selecionada, apanhava zero nós
+e devolvia seleção vazia — o artista via o retângulo passar por cima dos nós e nada acender. Agora
+a preferência só vale se a caixa de facto apanhar o selecionado. A outra metade (nós de **várias**
+formas ao mesmo tempo) continua ausência **por construção** e segue nomeada acima.
+
+**`Tab` / `Shift+Tab`** percorre os nós (e dá a volta nos dois sentidos); **`Ctrl+A`** apanha todos.
+⚠️ O Tab **substitui** a seleção: percorrer é olhar um de cada vez, e somar ao andar tornaria a tecla
+um *select all* lento.
+
+**Dois botões na seção Vertex** — **Select Subpath** (o contorno que a seleção toca; num compound é
+o que separa *este buraco* de *a forma inteira*, distinção que o `Ctrl+A` não faz) e **Select Same**
+(todos os nós do tipo do primário — o gesto que transforma *"afiar as 12 quinas desta estrela"* de
+doze cliques em dois). São **botões e não atalhos** porque um atalho que ninguém descobre é uma
+feature que não existe; o `Ctrl+A` fica na tecla porque esse o artista tenta sozinho.
+
+⚠️ **Nenhum dos dois abre passo de undo:** eles mudam QUEM está selecionado, e a seleção não é
+estado de documento — uma linha na fila que o Ctrl+Z não teria o que desfazer.
+
+10 gates novos (6 de motor + 1 de seam + 4 arch-gates de shell), **6 mutações, 6 sangram**. Nenhum
+schema, nenhum contrato congelado. Smoke: **`PH2D_BUILD_SMOKE=43`**, passos 9-15.
+
+**Aberto, e nomeado:** o **lasso** (a caixa cobre o caso comum; o laço quer captura de polígono +
+overlay próprio — wave dela) · **X/Y numérico do nó** (é *precisão*, e cai naturalmente na **W6**,
+que é a wave da precisão) · e **editar nós de várias formas ao mesmo tempo**, que segue **G** e por
+construção.
 
 ## §7 — W4: OS CORTES
 

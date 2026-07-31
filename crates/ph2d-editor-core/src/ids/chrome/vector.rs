@@ -328,6 +328,12 @@ pub const VECTOR_VERT_SYMMETRIC: NodeId = hash_node_id("vector.vert.symmetric");
 /// a document edit routed through the shell drain (mirror of the vertex-type
 /// buttons). Insert is a canvas gesture (click a segment) — no button.
 pub const VECTOR_VERT_DELETE: NodeId = hash_node_id("vector.vert.delete");
+/// **Select Subpath** — todos os nós dos CONTORNOS que a seleção toca. Num compound (forma com
+/// furos) é o que separa *este buraco* de *a forma inteira*, distinção que o `Ctrl+A` não faz.
+pub const VECTOR_VERT_SEL_SUBPATH: NodeId = hash_node_id("vector.vert.sel.subpath");
+/// **Select Same** — todos os nós do MESMO tipo do primário (o *Select Same* do Inkscape). É o que
+/// transforma *"afiar as 12 quinas desta estrela"* de doze cliques em dois.
+pub const VECTOR_VERT_SEL_SAME: NodeId = hash_node_id("vector.vert.sel.same");
 
 // ── Arrange (ADR-0108 — path ops: duplicate + z-order) ───────────────────────
 // Act on the SELECTED path (shell-side PenTool selection); document commands

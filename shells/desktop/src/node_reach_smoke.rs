@@ -86,6 +86,16 @@ fn announce(app: &mut crate::App) {
          **Pen** e clique sobre a curva do laranja: AGORA um no' novo tem de nascer -- a insercao \
          nao se perdeu, mudou de ferramenta (a divisao do Illustrator: a seta branca reforma, a \
          Pen acrescenta); (8) volte ao Node, selecione o no' de uma PONTA do azul e Delete: ali \
-         nao ha o que preservar, o caminho so' fica mais curto -- e' a resposta honesta."
+         nao ha o que preservar, o caminho so' fica mais curto -- e' a resposta honesta. \
+         [W3b -- a ESCALA da selecao] (9) arraste um retangulo a partir do VAZIO **sem apertar \
+         Shift**: ele tem de abrir e apanhar os nos que cobrir (antes exigia Shift); (10) com \
+         **Shift**, arraste um 2o retangulo noutro grupo de nos: eles SOMAM aos primeiros -- sem \
+         Shift, substituem; (11) clique no VAZIO sem arrastar: a selecao e' largada; (12) arraste \
+         o retangulo sobre uma forma que NAO esta' selecionada: ele tem de apanhar os nos DELA (o \
+         retangulo mirava a selecionada e devolvia nada); (13) aperte **Tab** varias vezes: a \
+         selecao anda de no' em no' e da' a volta -- **Shift+Tab** anda para tras; (14) **Ctrl+A** \
+         apanha todos os nos do caminho; (15) na secao **Vertex** do painel, com um no' \
+         selecionado, clique **Select Same**: todos os nos do mesmo TIPO acendem (retipe um ou \
+         dois antes, para haver mistura) -- e **Select Subpath** apanha o contorno inteiro."
     );
 }

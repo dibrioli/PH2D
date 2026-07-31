@@ -1864,6 +1864,11 @@ impl crate::App {
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
+            // **A ESCALA da seleção de nós** (plano 25 §6, W3b): os dois alcances que o retângulo
+            // não dá. Não são edições de documento — só mudam QUEM está selecionado —, então não
+            // abrem passo de undo (o `post_frame_undo` compara o ESTADO, e a seleção não é dele).
+            let mut pending_vec_select_subpath = false;
+            let mut pending_vec_select_same = false;
             // O índice do perfil nomeado que o clique pediu (W2b), se algum.
             let mut pending_width_preset: Option<usize> = None;
             // ADR-0128: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
@@ -2171,6 +2176,10 @@ impl crate::App {
                                 pending_vec_vertex_kind = Some(kind);
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_DELETE {
                                 pending_vec_delete_vertex = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_SEL_SUBPATH {
+                                pending_vec_select_subpath = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_SEL_SAME {
+                                pending_vec_select_same = true;
                             } else if let Some(order) =
                                 crate::input_dispatch::vec_reorder_for_id(*id)
                             {
@@ -4144,6 +4153,15 @@ impl crate::App {
                     &mut self.vec_history,
                     &mut self.vec_pen,
                 );
+            }
+            // ⚠️ **Sem `vec_history.begin`**: os dois só mudam QUEM está selecionado, e a seleção
+            // não é estado de documento — abrir um passo de undo por eles poria uma linha na fila
+            // que o Ctrl+Z não teria o que desfazer.
+            if pending_vec_select_subpath {
+                self.vec_pen.select_subpath_verts(vec_scene);
+            }
+            if pending_vec_select_same {
+                self.vec_pen.select_verts_of_same_kind(vec_scene);
             }
             if let Some(order) = pending_vec_reorder {
                 crate::input_dispatch::apply_vec_reorder(

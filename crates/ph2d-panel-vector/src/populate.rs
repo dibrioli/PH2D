@@ -403,6 +403,8 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_SMOOTH);
     button(store, ids::VECTOR_VERT_SYMMETRIC);
     button(store, ids::VECTOR_VERT_DELETE);
+    button(store, ids::VECTOR_VERT_SEL_SUBPATH);
+    button(store, ids::VECTOR_VERT_SEL_SAME);
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     blend::populate_blend(store);

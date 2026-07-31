@@ -187,6 +187,37 @@ impl App {
             }
         }
 
+        // **A ESCALA DA SELEÇÃO DE NÓS** (plano 25 §6, W3b) — `Tab`/`Shift+Tab` percorre, `Ctrl+A`
+        // apanha todos. Sem estes dois, trabalhar uma forma de 40 nós é clique-a-clique, que era
+        // literalmente a queixa do plano.
+        //
+        // ⚠️ Só no modo **Node**: noutro modo não há nó selecionado a que estas teclas se refiram,
+        // e o `Tab` do app tem outros donos.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+            && state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+        {
+            // `gfx` e `vec_pen` são campos DISJUNTOS de `self` — o empréstimo se divide, e a
+            // cena não precisa de ser clonada por tecla premida.
+            let back = self.modifiers.shift_key();
+            let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
+            if let Some(gfx) = self.gfx.as_ref() {
+                match code {
+                    // `Tab` anda para a frente, `Shift+Tab` para trás — o percurso do Inkscape.
+                    KeyCode::Tab if !ctrl => {
+                        self.vec_pen.step_vert_selection(&gfx.vec_scene, !back);
+                        return;
+                    }
+                    // `Ctrl+A` (ou `Cmd+A`) apanha TODOS os nós do caminho selecionado.
+                    KeyCode::KeyA if ctrl && self.vec_pen.select_all_verts(&gfx.vec_scene) => {
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         // Arrow keys nudge the selection (nodes if any, else the whole path).
         // Allows Shift (coarse 10px, unlike the boolean block above); blocked by
         // Ctrl/Alt/Super and while drawing. Auto-repeat keeps moving but a held

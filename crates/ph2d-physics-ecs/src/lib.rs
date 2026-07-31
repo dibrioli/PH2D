@@ -24,6 +24,7 @@ mod joint_group;
 pub mod joint_tool;
 mod rig;
 mod scale;
+mod seam;
 pub mod settings;
 
 pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
@@ -59,8 +60,9 @@ pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
-pub use rig::{rig_edges, subtree_parts};
+pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
 pub use scale::scaled_shape;
+pub use seam::{ColliderPose, seam_between, seam_point};
 // `ShapeDesc` + the ellipse tessellation are re-exported so the overlay (in
 // the shell, which only deps this crate) draws the SAME resolved shape the
 // bridge simulates — one import path, one answer. `zone_force_world_at` is there

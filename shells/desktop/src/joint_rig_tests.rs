@@ -7,9 +7,7 @@
 use super::*;
 use ph2d_core::Vec2;
 use ph2d_ecs::ChildOf;
-use ph2d_ecs::scene::{
-    ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
-};
+use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, register_ecs_components};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -56,9 +54,9 @@ fn rig(sim: &mut SimWorld, root: Entity) -> (usize, usize) {
     let reg = registry();
     let queue = EditorCommandQueue::default();
     let p = plan(sim, &[root.to_bits()]);
-    let (bodies, joints, _) = apply(sim, &p, JointKind::Pin, &queue, &reg);
-    apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commit");
-    (bodies, joints)
+    let out = apply(sim, &p, JointKind::Pin, &queue, &reg);
+    assert!(out.error.is_none(), "commit: {:?}", out.error);
+    (out.bodies, out.joints)
 }
 
 fn joint_pairs(sim: &mut SimWorld) -> Vec<(u64, u64)> {
@@ -251,4 +249,120 @@ fn named(sim: &mut SimWorld, name: &str) -> Entity {
         .find(|(_, n)| n.as_str() == name)
         .map(|(e, _)| e)
         .expect("entity exists")
+}
+
+/// **A âncora nasce na EMENDA, não no meio dos centros.**
+///
+/// Uma cabeça pequena sobre um tronco grande: a junta está no pescoço, e o meio
+/// dos centros cai DENTRO do tronco — a cabeça passaria a girar em torno de um
+/// ponto no peito. Este gate pina o número que a cena 67 mede.
+#[test]
+fn the_rig_anchors_on_the_seam_not_on_the_midpoint_of_centres() {
+    let mut sim = SimWorld::new();
+    // Tronco 0,5×1,0 em (0,3) ⇒ topo em 3,5. Cabeça 0,4×0,4 encostada nele.
+    let torso = sim
+        .world_mut()
+        .spawn((
+            Name::new("Torso"),
+            Sprite::atlas(WHITE_TILE_KEY, [0.5, 1.0], [1.0, 1.0, 1.0, 1.0]),
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ))
+        .id();
+    sim.world_mut().spawn((
+        Name::new("Head"),
+        Sprite::atlas(WHITE_TILE_KEY, [0.4, 0.4], [1.0, 1.0, 1.0, 1.0]),
+        Transform::from_translation(Vec2::new(0.0, 0.7)),
+        ChildOf(torso),
+    ));
+
+    rig(&mut sim, torso);
+    let j = {
+        let mut q = sim.world_mut().query::<(&Name, &Transform)>();
+        q.iter(sim.world())
+            .find(|(n, _)| n.as_str() == "Torso : Head")
+            .map(|(_, t)| t.translation)
+            .expect("o joint existe")
+    };
+    assert!(
+        (j.y - 3.5).abs() < 1e-4,
+        "a âncora nasceu em y = {:.4}. A junta está em 3,5 (topo do tronco = base \
+         da cabeça); 3,35 é o MEIO dos centros, dentro do peito",
+        j.y
+    );
+}
+
+/// **As juntas de um RIG nascem com batente; um Join comum, não.**
+///
+/// Não é uma propriedade do "Pin" — é uma propriedade de *isto é um rig*: sem
+/// batente o boneco dobra a cabeça 176° para dentro do peito (medido, doc do
+/// `RIG_LIMIT_DEG`), e o wizard existe para o artista não afinar N juntas à mão.
+/// O botão *Join* faz UM joint e o artista já está olhando para a §12.
+#[test]
+fn a_rigged_joint_is_born_limited_and_a_plain_join_is_not() {
+    let (mut sim, torso) = doll();
+    rig(&mut sim, torso);
+
+    let half = ph2d_physics_ecs::RIG_LIMIT_DEG.to_radians();
+    let mut q = sim.world_mut().query::<&PhysicsJoint>();
+    let js: Vec<PhysicsJoint> = q.iter(sim.world()).copied().collect();
+    assert_eq!(js.len(), 3);
+    for j in &js {
+        assert!(j.limits_enabled, "uma junta do rig nasceu sem batente");
+        assert!((j.limit_min + half).abs() < 1e-5, "min = {}", j.limit_min);
+        assert!((j.limit_max - half).abs() < 1e-5, "max = {}", j.limit_max);
+    }
+
+    // O controle: a rota por SELEÇÃO não é um rig, e continua sem batente.
+    let (mut sim2, _) = doll();
+    let a = named(&mut sim2, "Torso");
+    let b = named(&mut sim2, "Head");
+    let j = crate::render_loop::inspector_joint::create_joint(
+        &mut sim2,
+        a.to_bits(),
+        b.to_bits(),
+        JointKind::Pin,
+    )
+    .expect("joint");
+    assert!(
+        !sim2
+            .world()
+            .get::<PhysicsJoint>(j)
+            .expect("joint")
+            .limits_enabled,
+        "o Join comum passou a nascer limitado — as duas rotas viraram uma \
+         resposta só para duas perguntas diferentes"
+    );
+}
+
+/// **E um trilho NÃO ganha 60 metros de curso.**
+///
+/// ⚠️ Armadilha de UNIDADE, não sutileza: num `Slider` o limite é o CURSO, em
+/// METROS (`JointKind::limits_in_metres`), então escrever a faixa angular ali
+/// daria **±1,05 m** de trilho — um número que ninguém pediu e que não se lê como
+/// erro. É a mesma classe que a W-JointCopy nomeou ao explicar por que o TIPO
+/// viaja junto com os números.
+#[test]
+fn a_rail_rig_does_not_get_a_sixty_metre_stroke() {
+    let (mut sim, torso) = doll();
+    let reg = registry();
+    let queue = EditorCommandQueue::default();
+    let p = plan(&mut sim, &[torso.to_bits()]);
+    let out = apply(&mut sim, &p, JointKind::Slider, &queue, &reg);
+    assert!(out.error.is_none());
+
+    // ⚠️ **A propriedade, não uma magnitude.** A primeira versão deste gate pedia
+    // `limit_max < 2.0` e a mutação (tirar a guarda de unidade) PASSOU: 60° em
+    // radianos é **1,047**, que cabe folgado sob a barra — e 1,047 metro de curso
+    // num trilho É o defeito. Um gate que não pode falhar pelo motivo que alega é
+    // pior que gate nenhum. O que o rig promete é não autorar um curso que ele não
+    // tem como saber: os batentes ficam DESLIGADOS.
+    let mut q = sim.world_mut().query::<&PhysicsJoint>();
+    for j in q.iter(sim.world()) {
+        assert!(
+            !j.limits_enabled,
+            "um Slider nasceu com batente ({:.3}..{:.3}) — a faixa ANGULAR do rig \
+             foi escrita numa unidade LINEAR, e ela vira curso em metros",
+            j.limit_min, j.limit_max
+        );
+    }
 }

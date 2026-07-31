@@ -662,17 +662,59 @@ que já estava errado.
 | separação do pescoço em 3 s | **0,0026 m** (era 1,09 m antes do conserto da âncora) |
 | gates / mutações | 21 gates novos · 14 mutações, 14 sangram |
 
-### §11.8 — Aberto
+### §11.8 — O smoke do Enio, e os dois itens que ele mandou fechar
 
-- **A âncora é o ponto MÉDIO dos dois centros**, que é a emenda exata só quando as duas partes têm o
-  mesmo tamanho. Numa cabeça pequena sobre um tronco grande o pivô fica dentro do tronco, e o giro é
-  de um ponto que não é o pescoço. As partes da cena 67 se tocam de propósito para o desenho ficar
-  honesto; a cura (ancorar onde as silhuetas se encontram) é **decisão de produto** — muda o desenho
-  das TRÊS rotas de criação, não só do rig.
-- **Todo joint nasce Pin**, do seletor *Join As*. Um ragdoll de verdade quer limites por junta — o que
-  a W-JointCopy tornou barato (afine um joelho, copie, marque os outros, cole), mas o gerador não
-  adivinha ângulos por parte do corpo (o Fyrox adivinha porque conhece nomes de osso; nós não temos
-  esse vocabulário e inventá-lo seria adivinhar).
+O smoke aprovou o gesto e reprovou uma coisa: ***"o reset não consegue devolver o conjunto à posição
+original"***. E os dois itens acima deixaram de ser abertos por ordem dele — *"busque o melhor, o
+perfeito, o padrão-ouro, sem pensar em custos"*.
+
+**(a) O Reset — e não era do rig.** Isolado num par pai+filho **sem joint nenhum**: a raiz voltava
+exata e o filho aterrissava a **4,910 m**, que é `½·g·t²` do segundo simulado — a queda do PAI
+aparecendo dentro do local do filho. O `readback` escreve o filho ANTES do pai (a ordem de `Entity`
+num `BTreeMap` não é a de spawn), então ele converte a pose de mundo contra o pai do frame anterior.
+Durante o play isso vale **3,2 mm** e some no movimento; num rewind vale o salto inteiro. Pré-existente
+desde o W5. Agora o readback escreve em ordem de PROFUNDIDADE. Detalhe: [BUGS #5](BUGS_physics.md).
+
+**(b) A âncora vai para a EMENDA.** A regra antiga era uma aproximação — o próprio doc dela dizia o
+que aproximava —, e ela só vale entre formas do mesmo tamanho. A emenda é o meio entre os dois pontos
+em que as SILHUETAS cruzam a linha dos centros, **reduz ao ponto médio no caso que o desenho antigo
+acertava**, e não precisou de geometria nova: a `radial_fraction` do falloff de área é uma
+função-calibre, então o alcance da silhueta é `1/f(d)` em forma fechada — com a escala do W6 e o
+offset do collider dentro. Medido na cena 67: pescoço `3,35 → 3,50` (a junta), pernas `2,58 → 2,50`.
+Vale para as TRÊS rotas de criação, porque *"onde estes dois se encontram"* é uma pergunta só.
+
+**(c) O rig nasce com BATENTES, e o número é medido.** Sem eles o boneco dobra a cabeça **176°** para
+dentro do peito — o ragdoll-macarrão. A varredura (3 s de queda, pior ângulo relativo por junta) está
+no doc do `RIG_LIMIT_DEG`; **±60°** é a maior faixa em que TODA junta é de fato limitada, e o
+desabamento fica mais vivo, não menos (3,42 m contra 3,30 sem batente). ⚠️ A faixa é simétrica em
+torno da pose **AUTORADA**, e isso sai de graça do `axis_locals`. ⚠️ E ela **não** vale para um tipo
+cujo limite é uma DISTÂNCIA: num Slider `±60°` viraria **±1,05 metro** de curso.
+
+⚠️ **A decisão de (c) é do RIG, não do Pin:** o botão *Join* faz um joint e o artista já está olhando
+para a §12; este faz cinco de uma vez, e afinar N juntas à mão é a labuta que o wizard existe para
+remover. As duas rotas continuam duas respostas para duas perguntas diferentes.
+
+### §11.9 — Três defeitos MEUS que a medição pegou nesta rodada
+
+1. **O oráculo da cena virou mentira quando a âncora mudou.** Ele media a distância entre os CENTROS
+   como proxy de *"o joint segura"*; com o pivô no pescoço a cabeça GIRA em torno dele e essa distância
+   varia de 0,3 a 0,7 m por geometria pura. Reportou 0,35 m e lia-se como *"soltou"*. O oráculo certo é
+   a **violação da restrição** (a distância entre as duas âncoras), invariante sob rotação porque ela
+   **É** a restrição: medida, **0,00002 m**.
+2. **Uma afirmação minha ficou falsa no mesmo commit.** O doc do gerador dizia que a ordem entre dar
+   corpo e ligar não importava (componentes disjuntos) — verdade até a emenda passar a medir o
+   `Collider`, que ainda estava na fila. O sintoma não seria erro: seria a emenda caindo no fallback do
+   ponto médio, em silêncio. O flush entre as duas metades mudou-se para dentro do gerador.
+3. **Um gate meu não podia falhar pelo motivo que alegava.** O do Slider pedia `limit_max < 2.0`, e 60°
+   em radianos é **1,047** — que passa folgado, e 1,047 metro de curso É o defeito. A mutação o
+   encontrou. Virou a PROPRIEDADE: um trilho rigado não tem batente ligado.
+
+### §11.10 — Aberto
+
+- Um ragdoll de verdade quer limites **por parte do corpo** (um joelho não é um pescoço). O Fyrox
+  adivinha porque conhece nomes de osso; nós não temos esse vocabulário, e inventá-lo seria adivinhar.
+  O que o rig entrega é uma faixa uniforme medida, e a W-JointCopy torna a afinação por-junta um gesto
+  de dois cliques.
 
 ---
 

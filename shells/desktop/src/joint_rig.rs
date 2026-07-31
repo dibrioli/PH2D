@@ -95,25 +95,40 @@ pub(crate) fn plan(sim: &mut SimWorld, roots: &[u64]) -> RigPlan {
     RigPlan { parts, edges }
 }
 
-/// Executa o plano: corpo a quem não tem, um joint por aresta. Devolve
-/// `(corpos criados, joints criados, o último joint)`.
+/// O que um rig FEZ — para o toast, e para o `last` que a §12 passa a mostrar.
+pub(crate) struct RigOutcome {
+    pub(crate) bodies: usize,
+    pub(crate) joints: usize,
+    pub(crate) last: Option<Entity>,
+    /// A fila de comandos recusou algo? O chamador é quem tem o deck de toasts.
+    pub(crate) error: Option<String>,
+}
+
+/// Executa o plano: corpo a quem não tem, **flush**, um joint por aresta.
 ///
-/// ⚠️ **A ordem entre as duas metades não importa, e isso é um FATO conferido, não
-/// um descuido:** o `Add` enfileira `RigidBody`+`Collider`, e o `create_joint` lê
-/// `Transform` e `Name` — conjuntos disjuntos. Por isso o flush da fila é do
-/// CHAMADOR (que já tem o padrão do toast de erro), e não uma terceira drenagem
-/// aqui dentro.
+/// ⚠️ **O FLUSH ENTRE AS DUAS METADES É LOAD-BEARING, e este doc já afirmou o
+/// contrário.** Ele dizia que a ordem não importava porque *"o `Add` enfileira
+/// `RigidBody`+`Collider` e o `create_joint` lê `Transform` e `Name` — conjuntos
+/// disjuntos"*. Era verdade, e deixou de ser no instante em que a criação passou a
+/// ancorar na **EMENDA** (`ph2d_physics_ecs::seam_between`): a emenda mede as duas
+/// SILHUETAS, e a silhueta é o `Collider` que ainda está na fila.
+///
+/// O sintoma não seria um erro — seria a emenda caindo em silêncio no fallback do
+/// ponto médio, ou seja o rig inteiro ancorando pelo desenho antigo enquanto o
+/// resto do app usa o novo. Medido: o pescoço do boneco da cena 67 nascia em
+/// `y = 3,35` (o meio) em vez de `y = 3,50` (a junta).
 ///
 /// ⚠️ **Um passo de undo, e de graça:** tudo cai no MESMO frame, e o undo global
-/// é por DIFF de fim de frame — ele vê um estado, não N operações. É a mesma
-/// linha que a `join_chain` escreveu.
+/// é por DIFF de fim de frame — ele vê um estado, não N operações (nem duas
+/// drenagens). É a mesma linha que a `join_chain` escreveu.
 pub(crate) fn apply(
     sim: &mut SimWorld,
     plan: &RigPlan,
     kind: JointKind,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
-) -> (usize, usize, Option<Entity>) {
+) -> RigOutcome {
+    let mut error = None;
     let mut bodies = 0;
     for &e in &plan.parts {
         // ⚠️ **Só quem NÃO tem corpo.** O `Add` reescreve o `Collider` a partir da
@@ -131,6 +146,11 @@ pub(crate) fn apply(
             bodies += 1;
         }
     }
+    // ⚠️ AQUI, e não no chamador: o `create_joint` abaixo lê o `Collider` que o
+    // laço acima acabou de enfileirar.
+    if let Err(e) = ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), queue, registry) {
+        error = Some(e.to_string());
+    }
     let mut made = 0;
     let mut last = None;
     for &(parent, child) in &plan.edges {
@@ -143,11 +163,29 @@ pub(crate) fn apply(
             child.to_bits(),
             kind,
         ) {
+            // **O rig nasce com BATENTES, e as outras duas rotas não.** Não é uma
+            // propriedade do "Pin" — é uma propriedade de *isto é um RIG*: sem
+            // batente o boneco dobra a cabeça 176° para dentro do peito (medido),
+            // e o wizard existe justamente para o artista não afinar N juntas à
+            // mão. O botão *Join* faz UM joint e você já está olhando para a §12;
+            // este faz cinco de uma vez.
+            if let Some((lo, hi)) = ph2d_physics_ecs::rig_limits(kind)
+                && let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(j)
+            {
+                c.limits_enabled = true;
+                c.limit_min = lo;
+                c.limit_max = hi;
+            }
             made += 1;
             last = Some(j);
         }
     }
-    (bodies, made, last)
+    RigOutcome {
+        bodies,
+        joints: made,
+        last,
+        error,
+    }
 }
 
 /// A chave de um par, sem direção — um joint `A→B` e um `B→A` ligam o mesmo par.

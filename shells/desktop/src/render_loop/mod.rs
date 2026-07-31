@@ -6541,22 +6541,20 @@ impl crate::App {
             if rig_now {
                 let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
                 let plan = crate::joint_rig::plan(sim, &roots);
-                let (bodies, joints, last) = crate::joint_rig::apply(
+                let out = crate::joint_rig::apply(
                     sim,
                     &plan,
                     inspector_joint::kind_of(self.join_kind),
                     editor_queue,
                     component_registry,
                 );
-                // O flush é daqui, e não de dentro do gerador: este laço já é o
-                // dono do padrão (drenar + reportar o erro num toast).
-                if let Err(e) = ph2d_ecs::scene::apply_editor_commands(
-                    sim.world_mut(),
-                    editor_queue,
-                    component_registry,
-                ) {
+                // ⚠️ O flush mora DENTRO do gerador, entre dar corpo e ligar: a
+                // emenda mede o `Collider` que a primeira metade acabou de
+                // enfileirar. Aqui fica só o deck de toasts, que é deste laço.
+                if let Some(e) = out.error {
                     toasts.push(ph2d_editor::Toast::error(format!("Rig commit failed: {e}")));
                 }
+                let (bodies, joints, last) = (out.bodies, out.joints, out.last);
                 // Seleciona o ÚLTIMO joint, pelo motivo que o `join_chain`
                 // documenta: a §12 abre na hora, com o Kind e a afinação à mão —
                 // e afinar UM e carimbar o resto é o gesto que a W-JointCopy

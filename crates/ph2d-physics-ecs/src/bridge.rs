@@ -229,6 +229,15 @@ pub struct PhysicsBridge {
     /// Persistent so the per-body, per-frame conversion allocates nothing
     /// (HR-3; `hot_path_no_alloc` is the gate).
     pub(super) chain: Vec<Transform>,
+    /// A ordem em que o readback escreve: `(profundidade, entidade, x, y, rot)`.
+    ///
+    /// ⚠️ **Ancestral ANTES de descendente, e isso é correção, não arrumação.**
+    /// `Transform` é LOCAL, então o readback converte a pose de MUNDO do solver
+    /// contra o pai VIGENTE; escrito antes do pai, o filho é convertido contra uma
+    /// pose que o mesmo passe está prestes a substituir. O mapa de corpos é um
+    /// `BTreeMap<Entity>` e a ordem de `Entity` **não** é a de spawn — medido, um
+    /// par pai/filho itera **o filho primeiro**. Scratch: limpo a cada readback.
+    pub(super) readback_order: Vec<(u32, Entity, f32, f32, f32)>,
     /// New entities to spawn a body for, this frame.
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
@@ -334,6 +343,7 @@ impl PhysicsBridge {
             joints_to_sync: Vec::new(),
             kin_start: Vec::new(),
             chain: Vec::new(),
+            readback_order: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
             to_settle: Vec::new(),

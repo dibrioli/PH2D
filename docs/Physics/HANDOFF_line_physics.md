@@ -7599,3 +7599,25 @@ reancorado junto (o corte o tinha orfanado).
   a W-JointCopy tornou barato (afine um joelho → copie → cole nos outros); o gerador
   não adivinha ângulos por parte do corpo, e inventar um vocabulário de osso para
   isso seria adivinhar.
+
+### §W-Rig — o smoke, e as três correções que ele puxou (2026-07-31)
+
+O Enio aprovou o gesto e reprovou o **Reset**; e mandou fechar os dois itens abertos
+*"sem pensar em custos"*. As três estão no plano 02 §11.8-§11.10; aqui o essencial.
+
+| o quê | onde | número |
+|---|---|---|
+| **o Reset devolve todo corpo PARENTEADO** — o readback escrevia o filho ANTES do pai | `bridge/readback.rs` (ordem por PROFUNDIDADE) | 4,910 m → **0,000 m**; no play 3,2 mm → 0 |
+| **a âncora vai para a EMENDA** — as três rotas de criação | `ph2d-physics-ecs::seam` | pescoço 3,35 → **3,50** (a junta) |
+| **o rig nasce com batentes** de ±60° | `rig::RIG_LIMIT_DEG` (tabela medida no doc) | sem batente a cabeça dobra **176°** |
+
+⚠️ **O Reset e a emenda são defeitos PRÉ-EXISTENTES**, não regressões da wave —
+[BUGS #5](BUGS_physics.md) e [#6](BUGS_physics.md). O do Reset vinha do W5 e valia
+3,2 mm no play, o que é como ele sobreviveu um ano.
+
+⚠️ **`ColliderPose`/`seam_point`/`seam_between` e `RIG_LIMIT_DEG`/`rig_limits` são
+superfície pública nova** da `ph2d-physics-ecs`; `collider_offset` virou porta única
+(o `body_desc` e a emenda têm de concordar sobre onde o collider ESTÁ).
+
+**c9 segue byte-idêntico** (`7cb7728d…`, 96 corpos): a emenda vive na porta de
+CRIAÇÃO, e a cena de determinismo constrói os joints por literal.

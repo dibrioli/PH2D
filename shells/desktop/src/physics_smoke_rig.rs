@@ -41,15 +41,26 @@ const CAMERA_HEIGHT: f32 = 8.0;
 ///
 /// A queda do TRONCO, em metros — o boneco larga de `y = 3,0` e desaba sobre o
 /// piso. É o número que separa *"o rig funcionou"* de *"nada ficou ligado"*.
-pub(crate) const MEASURED_TORSO_DROP: f32 = 3.15;
-/// E o quanto o par tronco↔cabeça se AFASTA nesses 3 s, em metros. Um Pin segura;
-/// se este número crescesse, o rig teria feito joints que não prendem.
+pub(crate) const MEASURED_TORSO_DROP: f32 = 3.12;
+/// **A VIOLAÇÃO da restrição do pescoço** em 3 s, em metros: a distância entre as
+/// duas âncoras do joint, que um Pin prende no MESMO ponto. Zero enquanto ele
+/// segura — e é ELE que cresce quando não segura.
 ///
-/// ⚠️ **Ele mediu 1,09 m até a W-Rig consertar a porta de criação** — o ponto
-/// médio saía de `Transform` CRU, que é LOCAL num corpo parenteado, e a âncora do
-/// pescoço nascia 1,65 m abaixo da emenda. O boneco esparramava, e este número é
-/// a prova executável de que ele não esparrama mais.
-pub(crate) const MEASURED_NECK_DRIFT: f32 = 0.003;
+/// ⚠️ **O oráculo anterior media a distância entre os CENTROS, e ele passou a
+/// mentir** no instante em que a âncora foi para a emenda: com o pivô no pescoço a
+/// cabeça GIRA em torno dele, então a distância entre centros varia de 0,3 a 0,7 m
+/// por pura geometria. Ele reportou 0,35 m e se lia como *"o joint soltou"*. A
+/// violação é invariante sob rotação porque ela **É** a restrição.
+///
+/// ⚠️ E o defeito que este número existe para vigiar era real: até a W-Rig
+/// consertar a porta de criação, a âncora de um corpo PARENTEADO nascia em espaço
+/// LOCAL (1,65 m fora) e o boneco esparramava.
+pub(crate) const MEASURED_JOINT_GAP: f32 = 0.0001;
+
+/// A meia-faixa de batente com que cada junta do rig nasce, em graus — o número
+/// mora no kernel (`ph2d_physics_ecs::RIG_LIMIT_DEG`, com a tabela da medição ao
+/// lado); aqui é só o eco para a mensagem.
+pub(crate) const RIG_LIMIT_DEG: f32 = ph2d_physics_ecs::RIG_LIMIT_DEG;
 
 fn limb(
     world: &mut World,
@@ -150,10 +161,13 @@ impl crate::App {
                   Hierarchy'**. A contagem esta NO rotulo, porque o clique alcanca a\n     \
                   subarvore inteira e voce tem de ver isso antes.\n  \
                2. clique em Rig. Toast: 'Rigged {parts} new bodies with {joints} joints'.\n  \
-               3. De PLAY: o boneco DESABA sobre o piso e os membros se dobram --\n     \
-                  o tronco cai ~{drop:.1} m e as juntas SEGURAM (o pescoco separa\n     \
-                  {drift_mm:.0} mm em 3 s; ele ja separou 1090 mm, quando a ancora\n     \
-                  nascia no lugar errado).\n\n  \
+               3. De PLAY: o boneco DESABA sobre o piso e os membros se DOBRAM --\n     \
+                  o tronco cai ~{drop:.1} m e as juntas seguram (a violacao da\n     \
+                  restricao do pescoco fica abaixo de {gap_mm:.1} mm em 3 s).\n  \
+               4. **RESET** (rebobine a regua): TODAS as partes voltam a pose\n     \
+                  autorada, nao so o tronco. Era exatamente isto que estava\n     \
+                  quebrado -- e nao era do rig: o readback escrevia um FILHO antes\n     \
+                  do PAI, entao o local dele absorvia a queda inteira do pai.\n\n  \
                O QUE CONFERIR, e vale mais que a queda:\n  \
                - a Hierarquia ganhou {joints} objetos-joint nomeados pelo par que eles\n    \
                  ligam ('Torso : Head', 'Torso : ArmL', ...). Nenhum deles se chama\n    \
@@ -163,13 +177,22 @@ impl crate::App {
                  aresta que ja tem joint e' pulada. E' o que deixa voce acrescentar\n    \
                  um membro depois e re-rigar sem duplicar o que ja existe.\n  \
                - UM Ctrl+Z desfaz o rig inteiro -- os {parts} corpos e os {joints}\n    \
-                 joints num passo so.\n\n  \
+                 joints num passo so.\n  \
+               - as juntas nascem com **BATENTE de +/-{limit:.0} graus** (secao Joint,\n    \
+                 Limits). Sem eles a cabeca dobra 176 graus para DENTRO do peito --\n    \
+                 o ragdoll-macarrao. Desligue os limites de um joint e de Play para\n    \
+                 ver a diferenca. A faixa e' simetrica em torno da pose que voce\n    \
+                 DESENHOU, entao um braco inclinado ganha limites inclinados junto.\n  \
+               - as ancoras nascem na EMENDA (onde as silhuetas se encontram), nao\n    \
+                 no meio entre os centros: o pescoco fica no PESCOCO, e nao dentro\n    \
+                 do peito. Tecla B mostra os contornos para conferir.\n\n  \
                (!) Depois do rig a §12 abre no ULTIMO joint: afine UM (limites, mola)\n  \
                e use Copy/Paste Properties (cena 66) para carimbar os outros.\n",
             parts = DOLL_PARTS,
             joints = DOLL_JOINTS,
             drop = MEASURED_TORSO_DROP,
-            drift_mm = MEASURED_NECK_DRIFT * 1000.0,
+            gap_mm = MEASURED_JOINT_GAP * 1000.0,
+            limit = RIG_LIMIT_DEG,
         );
     }
 }

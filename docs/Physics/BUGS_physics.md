@@ -561,3 +561,96 @@ então nenhuma pode divergir.
   `1,85` como a assinatura do defeito.
 - `physics_smoke_rig::tests::the_message_of_scene_67_quotes_measured_numbers` — a
   separação do pescoço tem de ficar em milímetros; ela media 1,09 m.
+
+---
+
+## Bug #5 — O Reset não devolvia nenhum corpo PARENTEADO
+
+**Reportado pelo Enio no smoke da cena 67** (*"o reset não consegue devolver o
+conjunto à posição original"*, 2026-07-31). **Pré-existente desde o W5**, e nem o
+rig nem os joints tinham parte nisso.
+
+### Sintoma
+
+Depois de simular e apertar Reset, a RAIZ do boneco voltava exata (0,000 m) e
+**toda parte filha aterrissava 2,3–4,2 m fora**. O screenshot mostra o boneco
+partido em dois grupos com os joints esticados através da tela.
+
+### Isolamento
+
+Um par pai+filho de corpos dinâmicos, **sem joint nenhum**:
+
+| corpo | autorado | pós-Reset | erro |
+|---|---|---|---|
+| P (raiz) | `(0, 3)` | `(0, 3)` | **0,000 m** |
+| C (filho) | `(1, 3)` | `(1, 7,91)` | **4,910 m** |
+
+4,905 m é exatamente `½·g·t²` para o segundo simulado — **a queda do PAI, aparecendo
+dentro do local do filho**.
+
+### Causa-raiz
+
+`Transform` é LOCAL e compõe com o pai, então o `readback` converte a pose de MUNDO
+que o solver deu para o local que o **pai vigente** exige. O mapa de corpos é um
+`BTreeMap<Entity>` — e a ordem de `Entity` **não é a de spawn**. Instrumentado:
+
+```
+[rb] e=1v0 solver=(1.000,-1.910) parent=(0.000,-1.748)
+[rb] e=0v0 solver=(0.000,-1.910) parent=(0.000, 0.000)
+```
+
+O **filho é escrito primeiro**, contra o pai do frame ANTERIOR.
+
+### ⚠️ A parte que enganava: durante o play o erro é de 3 mm
+
+Escrito contra o pai de um frame atrás, o filho fica um frame atrás — 3,2 mm num
+par caindo, invisível a olho e indistinguível do movimento. **Foi assim que
+atravessou o W5 inteiro.** Num REWIND o "frame anterior" é o mundo inteiro antes do
+salto, e o mesmo defeito vale 4,91 m.
+
+### Solução
+
+O readback escreve em ordem de **PROFUNDIDADE na hierarquia**: todo ancestral tem
+profundidade estritamente menor, logo já foi escrito. Ordenar apenas *"raízes
+primeiro"* consertaria um nível e deixaria o neto com o mesmo defeito — daí o gate
+de três níveis.
+
+### Lições
+
+- **Um erro pequeno no regime comum é um erro grande em algum regime**, e o regime
+  que o expõe pode não ser aquele em que ele foi introduzido. O play escondeu por
+  um ano o que o Reset gritou.
+- **A ordem de iteração de um `BTreeMap<Entity>` não é a de spawn.** Qualquer passe
+  em que a ordem importa tem de a ESTABELECER, não herdá-la.
+
+### Gates que fecham este bug
+
+`ph2d-physics-ecs/tests/readback_order.rs` — o Reset (nasceu vermelho em 4,9101 m),
+o play (0,0032 m) e a cadeia de três níveis. Mutação: tirar a profundidade da chave
+de ordenação derruba os três.
+
+---
+
+## Bug #6 — A âncora nascia no meio dos centros, não na emenda
+
+Não é um defeito reportado: é a **aproximação** que a regra antiga assumia, tornada
+exata quando o Enio mandou buscar o padrão-ouro (2026-07-31).
+
+O doc da regra dizia o que ela aproximava — *"entre dois corpos que se TOCAM (um elo
+de corrente, o caso comum) o meio É o pivô certo"*. É verdade, e **só** entre formas
+do mesmo tamanho. Uma cabeça de 0,4 sobre um tronco de 1,0 encostados: a junta está
+em `y = 3,5` e o meio dos centros em `3,35` — o pivô **dentro do peito**, e a cabeça
+girando em torno dele.
+
+A emenda (`ph2d_physics_ecs::seam_point`) é o meio entre os dois pontos em que as
+SILHUETAS cruzam a linha dos centros, e **reduz ao ponto médio no caso que o desenho
+antigo acertava**. Sem geometria nova: `ShapeDesc::radial_fraction` — a régua do
+falloff de área — é uma função-calibre, então o alcance da silhueta numa direção é
+`1 / f(d)`, em forma fechada, já com a escala do W6 e o offset do collider dentro.
+
+⚠️ **E ela expôs uma afirmação minha que virou falsa no mesmo commit:** o doc do
+gerador de rig dizia que a ordem entre *dar corpo* e *ligar* não importava porque os
+dois tocam componentes disjuntos. Era verdade até a emenda passar a medir o
+`Collider` — que ainda estava na FILA. O sintoma não seria um erro: seria a emenda
+caindo em silêncio no fallback do ponto médio. Medido: o pescoço nascendo em 3,35 de
+novo. O flush entre as duas metades é load-bearing e agora mora dentro do gerador.

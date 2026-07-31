@@ -163,6 +163,24 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
 /// The argument list grows one flag per per-body wave (gravity / velocity / ccd /
 /// lock); each is an independent optional component the bridge reads and folds in,
 /// so bundling them into a struct would only move the same fields behind one name.
+/// **O offset do collider em unidades de MUNDO** — a porta única da regra.
+///
+/// Escala **COM SINAL**, não `abs`: ao contrário das meias-extensões da forma (um
+/// tamanho, sempre positivo), o offset é uma POSIÇÃO, então um flip
+/// (`scale.x < 0`) tem de ESPELHÁ-LO para o outro lado — o hitbox dos pés de um
+/// personagem invertido acompanha a inversão.
+///
+/// Extraída quando a emenda (`crate::seam`) passou a precisar do mesmo número: o
+/// solver e a geometria que decide onde um joint nasce têm de concordar sobre
+/// onde o collider ESTÁ, e duas cópias da regra divergem no primeiro flip.
+#[must_use]
+pub(crate) fn collider_offset(col: &Collider, scale: ph2d_core::Vec2) -> [f32; 2] {
+    [col.offset[0] * scale.x, col.offset[1] * scale.y]
+}
+
+// ⚠️ O `#[allow]` abaixo pertence ao `body_desc`, e a inserção do `collider_offset`
+// acima já o DESANCOROU uma vez — o irmão exato do doc-comment órfão. Depois de
+// inserir um item entre um atributo e o que ele governa, rode o clippy.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn body_desc(
     rb: &RigidBody,
@@ -234,7 +252,7 @@ pub(crate) fn body_desc(
         // other side — the foot-box of a flipped character moves with the flip.
         // rapier then rotates this relative translation with the body; the overlay
         // reads `col.offset` through the same signed scale so the two agree.
-        offset: [col.offset[0] * t.scale.x, col.offset[1] * t.scale.y],
+        offset: collider_offset(col, t.scale),
         // **A lateralidade do frame da zona** (W-AreaMirror) — o SINAL de cada eixo da
         // escala de mundo, e nada mais. Mora aqui, encostado no offset, porque é a MESMA
         // regra que a linha acima: um flip espelha o que tem lado. O offset é uma posição

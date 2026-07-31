@@ -119,11 +119,30 @@ pub(crate) fn create_joint_at(
             wb,
         ))
     });
+    // **A EMENDA**, quando o gesto não nomeou um ponto (W-Rig): onde as duas
+    // SILHUETAS se encontram na linha entre os centros, e não o meio entre os
+    // centros. O meio era uma aproximação da emenda — o doc antigo dizia
+    // exatamente isso (*"entre dois corpos que se TOCAM … o meio É o pivô
+    // certo"*), e ela só vale entre formas do mesmo tamanho: uma cabeça pequena
+    // sobre um tronco grande punha o pivô DENTRO do tronco, e a cabeça girava em
+    // torno de um ponto no peito.
+    //
+    // ⚠️ Reduz ao ponto médio no caso que o desenho antigo acertava (formas
+    // iguais encostadas, o elo de corrente), então a corrente que já shipa não
+    // se move. Sem collider dos dois lados não há silhueta a medir, e aí o
+    // fallback é o meio — o que se sabe sem geometria nenhuma.
+    let seam = ph2d_physics_ecs::seam_between(
+        sim.world()
+            .get::<ph2d_physics_ecs::Collider>(a)
+            .zip(ph2d_ecs::world_transform(sim.world(), a)),
+        sim.world()
+            .get::<ph2d_physics_ecs::Collider>(b)
+            .zip(ph2d_ecs::world_transform(sim.world(), b)),
+    )
+    .unwrap_or((pa + pb) * 0.5);
     // The display pivot: the A anchor when the gesture named one (the value
-    // `sync_joint_pivots` will keep deriving), the midpoint otherwise.
-    let origin = anchored.map_or((pa + pb) * 0.5, |(_, _, wa, _)| {
-        ph2d_core::Vec2::new(wa[0], wa[1])
-    });
+    // `sync_joint_pivots` will keep deriving), the seam otherwise.
+    let origin = anchored.map_or(seam, |(_, _, wa, _)| ph2d_core::Vec2::new(wa[0], wa[1]));
     let base = PhysicsJoint::of_kind(kind);
     // ⚠️ **A geometria autorada de uma POLIA é MAIS que as duas âncoras** — ela
     // tem ROLDANAS —, e `anchored: true` diz ao reconcile *"leia o que está

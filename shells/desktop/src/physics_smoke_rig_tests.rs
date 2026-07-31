@@ -22,15 +22,15 @@ fn rigged() -> (SimWorld, usize, usize) {
     };
     let queue = ph2d_ecs::scene::EditorCommandQueue::default();
     let plan = crate::joint_rig::plan(&mut sim, &[torso.to_bits()]);
-    let (bodies, joints, _) = crate::joint_rig::apply(
+    let out = crate::joint_rig::apply(
         &mut sim,
         &plan,
         ph2d_physics_ecs::JointKind::Pin,
         &queue,
         &reg,
     );
-    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commit");
-    (sim, bodies, joints)
+    assert!(out.error.is_none(), "commit: {:?}", out.error);
+    (sim, out.bodies, out.joints)
 }
 
 /// A pose de MUNDO de uma parte.
@@ -53,23 +53,55 @@ fn pos(sim: &mut SimWorld, name: &str) -> ph2d_core::Vec2 {
         .translation
 }
 
-/// Roda `ticks` da sim e devolve `(queda do tronco, deriva do pescoço)`.
+/// A VIOLAÇÃO da restrição: a distância entre as duas âncoras de um joint, em
+/// mundo. Um Pin as prende no MESMO ponto, então este número é zero enquanto o
+/// joint segura, e é ele que cresce quando não segura.
 ///
-/// ⚠️ A deriva é a MUDANÇA da distância tronco↔cabeça, não a distância — um Pin
-/// segura os dois num ponto, e o que um joint quebrado faria é deixá-la CRESCER.
-/// A distância em si é geometria do boneco e não diz nada sobre o rig.
+/// ⚠️ **O oráculo anterior media a distância entre os CENTROS**, e ele mentia a
+/// partir do momento em que a âncora foi para a EMENDA: com o pivô no pescoço a
+/// cabeça GIRA em torno dele, então a distância entre centros varia de 0,3 a 0,7
+/// por pura geometria — 0,35 m que se lê como *"o joint soltou"* e não é. A
+/// violação é invariante sob rotação porque ela É a restrição.
+fn constraint_gap(sim: &mut SimWorld, joint_name: &str) -> f32 {
+    let (j, pj) = {
+        let mut q = sim.world_mut().query::<(&Name, &PhysicsJoint)>();
+        q.iter(sim.world())
+            .find(|(n, _)| n.as_str() == joint_name)
+            .map(|(n, p)| (n.as_str().to_string(), *p))
+            .expect("joint vivo")
+    };
+    let _ = j;
+    let mut anchor = |name_id: u64, local: [f32; 2]| -> ph2d_core::Vec2 {
+        let e = {
+            let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+            q.iter(sim.world())
+                .find(|(_, n)| ph2d_ecs::stable_name_id(n.as_str()) == name_id)
+                .map(|(e, _)| e)
+                .expect("corpo vivo")
+        };
+        let t = ph2d_ecs::world_transform(sim.world(), e).expect("pose");
+        let (s, c) = (t.rotation.sin(), t.rotation.cos());
+        ph2d_core::Vec2::new(
+            t.translation.x + c * local[0] - s * local[1],
+            t.translation.y + s * local[0] + c * local[1],
+        )
+    };
+    let wa = anchor(pj.body_a, pj.local_a);
+    let wb = anchor(pj.body_b, pj.local_b);
+    (wa - wb).length()
+}
+
+/// Roda `ticks` da sim e devolve `(queda do tronco, violação do pescoço)`.
 fn run(ticks: u64) -> (f32, f32) {
     let (mut sim, _, _) = rigged();
     let y0 = pos(&mut sim, "Torso").y;
-    let d0 = (pos(&mut sim, "Head") - pos(&mut sim, "Torso")).length();
 
     let mut bridge = PhysicsBridge::new();
     for t in 1..=ticks {
         bridge.dispatch(&mut sim, true, t);
     }
     let y1 = pos(&mut sim, "Torso").y;
-    let d1 = (pos(&mut sim, "Head") - pos(&mut sim, "Torso")).length();
-    (y0 - y1, (d1 - d0).abs())
+    (y0 - y1, constraint_gap(&mut sim, "Torso : Head"))
 }
 
 /// A sonda da cena 67.
@@ -93,7 +125,7 @@ fn probe_smoke_67() {
     }
     for (secs, ticks) in [(1.0, 60u64), (3.0, 180)] {
         let (drop, drift) = run(ticks);
-        println!("t={secs:.0}s  queda do tronco {drop:.2} m  deriva do pescoço {drift:.4} m");
+        println!("t={secs:.0}s  queda do tronco {drop:.2} m  violacao do pescoco {drift:.5} m");
     }
     // Onde cada joint PENSA que está a âncora, contra onde a emenda de fato é.
     {
@@ -170,9 +202,10 @@ fn the_message_of_scene_67_quotes_measured_numbers() {
         "a mensagem diz que o tronco cai {MEASURED_TORSO_DROP:.1} m e a sonda mede {drop:.2}"
     );
     assert!(
-        drift <= MEASURED_NECK_DRIFT + 0.02,
-        "o pescoço separou {drift:.4} m — a mensagem promete {MEASURED_NECK_DRIFT:.2}, e um \
-         joint que não segura é um rig que não rigou"
+        drift <= MEASURED_JOINT_GAP,
+        "a restrição do pescoço foi violada em {drift:.5} m — a mensagem promete \
+         menos de {MEASURED_JOINT_GAP:.4}, e um joint que não segura é um rig que \
+         não rigou"
     );
 }
 
@@ -199,4 +232,144 @@ fn the_rigged_doll_collapses_onto_the_floor_instead_of_falling_through() {
         "o boneco continua em pé e empilhado — a cena não mostra um ragdoll \
          (cabeça em {head:?}, tronco em {torso:?})"
     );
+}
+
+/// **SONDA DO RESET** (report do Enio, 2026-07-31): o Reset devolve o conjunto?
+///
+/// `cargo test -p ph2d-host-desktop --bins probe_reset_67 -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate"]
+fn probe_reset_67() {
+    let (mut sim, _, _) = rigged();
+    let names = ["Torso", "Head", "ArmL", "ArmR", "LegL", "LegR"];
+    let before: Vec<ph2d_core::Vec2> = names.iter().map(|n| pos(&mut sim, n)).collect();
+
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=120u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let collapsed: Vec<ph2d_core::Vec2> = names.iter().map(|n| pos(&mut sim, n)).collect();
+
+    // RESET = o relógio volta ao tique 0, PARADO (o que o botão faz).
+    bridge.dispatch(&mut sim, false, 0);
+    let after: Vec<ph2d_core::Vec2> = names.iter().map(|n| pos(&mut sim, n)).collect();
+
+    println!("\n=== RESET da cena 67 ===");
+    println!(
+        "{:>6} | {:>16} | {:>16} | {:>16} | erro",
+        "parte", "autorado", "desabado", "pos-reset"
+    );
+    for i in 0..names.len() {
+        let err = (after[i] - before[i]).length();
+        println!(
+            "{:>6} | ({:>6.2},{:>6.2}) | ({:>6.2},{:>6.2}) | ({:>6.2},{:>6.2}) | {err:.3} m",
+            names[i],
+            before[i].x,
+            before[i].y,
+            collapsed[i].x,
+            collapsed[i].y,
+            after[i].x,
+            after[i].y
+        );
+    }
+    // E um SEGUNDO dispatch parado — o frame seguinte ao Reset.
+    bridge.dispatch(&mut sim, false, 0);
+    println!("--- depois de um 2o frame parado ---");
+    for (i, n) in names.iter().enumerate() {
+        let p = pos(&mut sim, n);
+        println!(
+            "{n:>6} | ({:>6.2},{:>6.2}) | erro {:.3} m",
+            p.x,
+            p.y,
+            (p - before[i]).length()
+        );
+    }
+}
+
+/// **SONDA DAS LIMITES:** quanto cada junta gira sem batente, e o que um batente
+/// de `X` graus faria. O numero da wave sai daqui, nao de intuicao.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn probe_rig_limits() {
+    use ph2d_physics_ecs::PhysicsJoint;
+    let names = [
+        "Torso : Head",
+        "Torso : ArmL",
+        "Torso : ArmR",
+        "Torso : LegL",
+        "Torso : LegR",
+    ];
+    for deg in [f32::INFINITY, 90.0, 60.0, 45.0, 30.0] {
+        let (mut sim, _, _) = rigged();
+        if deg.is_finite() {
+            let ents: Vec<ph2d_ecs::Entity> = {
+                let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &PhysicsJoint)>();
+                q.iter(sim.world()).map(|(e, _)| e).collect()
+            };
+            for e in ents {
+                let mut j = sim.world_mut().get_mut::<PhysicsJoint>(e).unwrap();
+                j.limits_enabled = true;
+                j.limit_min = -deg.to_radians();
+                j.limit_max = deg.to_radians();
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        let mut worst: Vec<f32> = vec![0.0; names.len()];
+        let t0 = pos(&mut sim, "Torso");
+        for t in 1..=180u64 {
+            bridge.dispatch(&mut sim, true, t);
+            for (i, n) in names.iter().enumerate() {
+                let rel = rel_angle(&mut sim, n).to_degrees().abs();
+                worst[i] = worst[i].max(rel);
+            }
+        }
+        let travel = (pos(&mut sim, "Torso") - t0).length();
+        let label = if deg.is_finite() {
+            format!("+/-{deg:.0} graus")
+        } else {
+            "SEM batente".to_string()
+        };
+        println!(
+            "{label:>14} | max relativo: {} | queda {travel:.2} m",
+            worst
+                .iter()
+                .map(|v| format!("{v:5.0}"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+    }
+}
+
+/// O angulo do FILHO relativo ao PAI, radianos.
+fn rel_angle(sim: &mut SimWorld, joint_name: &str) -> f32 {
+    use ph2d_physics_ecs::PhysicsJoint;
+    let pj = {
+        let mut q = sim.world_mut().query::<(&Name, &PhysicsJoint)>();
+        q.iter(sim.world())
+            .find(|(n, _)| n.as_str() == joint_name)
+            .map(|(_, p)| *p)
+            .expect("joint vivo")
+    };
+    let mut rot = |name_id: u64| -> f32 {
+        let e = {
+            let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+            q.iter(sim.world())
+                .find(|(_, n)| ph2d_ecs::stable_name_id(n.as_str()) == name_id)
+                .map(|(e, _)| e)
+                .expect("corpo vivo")
+        };
+        ph2d_ecs::world_transform(sim.world(), e)
+            .expect("pose")
+            .rotation
+    };
+    let a = rot(pj.body_a);
+    let b = rot(pj.body_b);
+    let mut d = b - a;
+    while d > std::f32::consts::PI {
+        d -= std::f32::consts::TAU;
+    }
+    while d < -std::f32::consts::PI {
+        d += std::f32::consts::TAU;
+    }
+    d
 }

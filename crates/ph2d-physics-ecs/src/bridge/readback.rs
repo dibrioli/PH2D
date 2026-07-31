@@ -4,7 +4,23 @@
 
 use super::PhysicsBridge;
 use super::space;
-use ph2d_ecs::SimWorld;
+use ph2d_ecs::{ChildOf, Entity, SimWorld, World};
+
+/// Quantos saltos de `ChildOf` separam `e` da raiz.
+///
+/// ⚠️ **Sem guarda de ciclo**, pelo mesmo motivo do `parent_world_transform_into`
+/// que o `write_world_pose` chama logo abaixo: uma hierarquia cíclica já trava
+/// aquele caminho, e uma segunda resposta a *"a árvore pode ciclar?"* seria pior
+/// que nenhuma.
+fn depth_of(world: &World, e: Entity) -> u32 {
+    let mut d = 0;
+    let mut cur = world.get::<ChildOf>(e).map(ChildOf::parent);
+    while let Some(p) = cur {
+        d += 1;
+        cur = world.get::<ChildOf>(p).map(ChildOf::parent);
+    }
+    d
+}
 
 impl PhysicsBridge {
     /// Read each dynamic body's pose back into its entity's `Transform`
@@ -23,22 +39,57 @@ impl PhysicsBridge {
     /// in one place and draws in another. A parent that cannot be inverted
     /// (scaled to zero) leaves the `Transform` untouched rather than storing
     /// a non-finite pose that would poison the whole subtree.
+    ///
+    /// ⚠️ **E a ORDEM é ancestral-antes-de-descendente, o que é correção e não
+    /// arrumação.** A conversão mundo→local pergunta ao pai VIGENTE; escrito
+    /// antes do pai, um filho é convertido contra a pose que este mesmo passe
+    /// está prestes a substituir, e o erro é exatamente o quanto o pai andou
+    /// entre as duas escritas. O mapa de corpos é um `BTreeMap<Entity>` e a
+    /// ordem de `Entity` **não** é a de spawn — medido, um par pai/filho itera
+    /// **o filho primeiro**.
+    ///
+    /// Durante o play isso era um atraso de UM frame (3,2 mm num par caindo:
+    /// pequeno, e some no ruído do movimento — foi assim que atravessou o W5
+    /// inteiro). Num REWIND o "frame anterior" é o mundo antes do salto, e o
+    /// filho aterrissava a **4,91 m**: a distância que o pai tinha caído. Foi o
+    /// *"o reset não consegue devolver o conjunto à posição original"* que o Enio
+    /// reportou no smoke da cena 67 — e nem o rig nem os joints tinham parte
+    /// nisso, era um par pai/filho comum.
+    ///
+    /// Ordenar por PROFUNDIDADE resolve a classe inteira: todo ancestral tem
+    /// profundidade estritamente menor, então já foi escrito. Ordenar apenas
+    /// *"raízes primeiro"* consertaria um nível e deixaria o neto com o mesmo
+    /// defeito (gate `the_order_holds_for_a_chain_three_levels_deep`).
     pub(super) fn readback(&mut self, sim: &mut SimWorld) {
-        let world = sim.world_mut();
-        for (&e, b) in self.bodies.iter() {
-            if !b.kind.solver_owns_pose() {
-                continue;
-            }
-            if let Some(pose) = self.world.body_pose(b.handle) {
-                space::write_world_pose(
-                    world,
-                    e,
-                    pose.translation.x,
-                    pose.translation.y,
-                    pose.rotation.angle(),
-                    &mut self.chain,
-                );
+        // O scratch sai de `self` para o laço de escrita poder emprestar `chain`.
+        let mut order = std::mem::take(&mut self.readback_order);
+        order.clear();
+        {
+            let world = sim.world();
+            for (&e, b) in self.bodies.iter() {
+                if !b.kind.solver_owns_pose() {
+                    continue;
+                }
+                if let Some(pose) = self.world.body_pose(b.handle) {
+                    order.push((
+                        depth_of(world, e),
+                        e,
+                        pose.translation.x,
+                        pose.translation.y,
+                        pose.rotation.angle(),
+                    ));
+                }
             }
         }
+        // Desempate por entidade: dois irmãos não se afetam, mas uma ordem
+        // reproduzível é o que mantém duas corridas iguais byte a byte.
+        order.sort_unstable_by_key(|&(d, e, ..)| (d, e));
+        {
+            let world = sim.world_mut();
+            for &(_, e, x, y, rot) in &order {
+                space::write_world_pose(world, e, x, y, rot, &mut self.chain);
+            }
+        }
+        self.readback_order = order;
     }
 }

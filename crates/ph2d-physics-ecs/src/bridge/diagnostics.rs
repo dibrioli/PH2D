@@ -39,6 +39,8 @@ impl PhysicsBridge {
         // reports "no growth" while another doubles beside it. `chain` is the
         // ancestor walk W5 added; it grows to the deepest hierarchy once and
         // must never grow again.
-        self.seen.capacity() + self.chain.capacity()
+        // `readback_order` entrou com a correção de ordem (ancestral antes de
+        // descendente): ele cresce até o número de corpos uma vez e para.
+        self.seen.capacity() + self.chain.capacity() + self.readback_order.capacity()
     }
 }

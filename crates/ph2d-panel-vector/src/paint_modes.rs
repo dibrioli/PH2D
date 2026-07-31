@@ -118,6 +118,14 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.scissors"),
                 DrawMode::Scissors,
             ),
+            // **Faca** — o 14º pill, ao lado da tesoura: as duas cortam, e a diferença é só o
+            // GESTO (um clique × um arrasto). Vizinhas, o artista descobre a segunda ao usar a
+            // primeira.
+            (
+                ids::VECTOR_MODE_KNIFE,
+                tr("panel.vector.mode.knife"),
+                DrawMode::Knife,
+            ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

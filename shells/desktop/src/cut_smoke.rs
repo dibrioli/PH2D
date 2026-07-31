@@ -132,10 +132,19 @@ fn announce(app: &mut crate::App) {
          nao dois sobrepostos; (10) nas fitas LARANJA (vao {gap_far:.2}) faca Select + Shift+clique + \
          **Join**: aqui o segmento de ligacao e' longo e OBVIO -- e' a metade da lei que distingue \
          soldar de ligar. \
-         [REVERSE] (11) clique a SETA roxa e, na secao PATH, **Reverse**; (12) a direcao nao se ve \
+         [A FACA] (11) na fileira TOOL clique **Knife** e ARRASTE uma lamina horizontal por cima \
+         das duas fitas LARANJA e do que restar do losango: tudo o que ela atravessar tem de ser \
+         cortado de uma vez, e as pecas ficam **ABERTAS** (fechar e' um clique no Close Path); \
+         (12) repare que a lamina se desenha enquanto o dedo anda -- se ela nao aparecer, PARE; \
+         (13) arraste uma lamina que PARA a meio caminho: o que fica para la' da ponta **nao pode \
+         ser tocado** -- uma faca que corta alem do traco esta' a fazer o que ninguem desenhou; \
+         (14) arraste uma lamina no VAZIO: nada acontece, e **Ctrl+Z nao tem o que desfazer** (um \
+         no-op nao e' um gesto); (15) esconda ou TRAVE uma forma na Hierarquia e passe a lamina \
+         por cima dela: ela tem de sobreviver intacta. \
+         [REVERSE] (16) clique a SETA roxa e, na secao PATH, **Reverse**; (17) a direcao nao se ve \
          sozinha, entao confirme assim: com a seta selecionada, secao **Stroke**, ponha um MARKER \
          de ponta -- ele tem de saltar de uma extremidade para a outra ao clicar Reverse. \
-         [CLOSE] (13) selecione uma fita verde sozinha e clique **Close Path**: ela fecha; se as \
+         [CLOSE] (18) selecione uma fita verde sozinha e clique **Close Path**: ela fecha; se as \
          pontas dela estiverem coincidentes (depois do Average), o fecho tem de **fundir** as duas \
          num vertice so' -- no pill Node, conte os nos: **um a menos** do que antes de fechar."
     );

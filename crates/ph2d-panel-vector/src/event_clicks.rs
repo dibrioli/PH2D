@@ -48,6 +48,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_MODE_WIDTH
         // O 13º modo (Tesoura). Fora daqui, o pill pinta e está MORTO.
         || id == ids::VECTOR_MODE_SCISSORS
+        // O 14º modo (Faca). Fora daqui, o pill pinta e está MORTO.
+        || id == ids::VECTOR_MODE_KNIFE
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

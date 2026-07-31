@@ -58,13 +58,16 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         // de formas sobrepostas só atrapalham a leitura das faces — que é a única coisa
         // que o artista precisa enxergar ali. O **Pick Shapes** (Blend) idem: o que se
         // manipula é a LISTA de formas, não os nós de uma delas.
-        // ⚠️ **A Tesoura fica DENTRO** (W4), e é decisão, não omissão: clicar sobre uma âncora
-        // corta NELA em vez de inserir uma gêmea, e sem ver os nós o artista não tem como saber
-        // onde essa distinção acontece — a ferramenta pareceria cortar "quase" onde ele apontou.
+        // ⚠️ **A Tesoura fica DENTRO e a Faca FORA** (W4), e as duas são decisão, não omissão.
+        // A tesoura age sobre UM caminho e clicar sobre uma âncora corta NELA em vez de inserir
+        // uma gêmea: sem ver os nós, o artista não tem como saber onde essa distinção acontece.
+        // A faca age sobre **tudo o que a lâmina atravessa**, e as âncoras que o overlay desenha
+        // são as do caminho SELECIONADO — mostrá-las anunciaria um escopo que a ferramenta não
+        // tem, justamente enquanto se arrasta uma lâmina por cima de três formas.
         edit: vector_active
             && !matches!(
                 mode,
-                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
+                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend | DrawMode::Knife
             ),
         snap_guides: vector_active,
         // Node-only (mesma razão de modo do `edit`, mais estreita). Se a seleção é um envelope é
@@ -258,6 +261,12 @@ mod scissors_tests {
     fn the_scissors_shows_the_anchors_because_clicking_one_cuts_at_it() {
         let plan = vec_overlay_plan(true, DrawMode::Scissors);
         assert!(plan.edit, "sem as âncoras o corte-no-nó fica invisível");
+        // ⚠️ **E a FACA não as mostra** — ela age sobre tudo o que a lâmina atravessa, e as
+        // âncoras do overlay são as do caminho SELECIONADO: anunciariam um escopo que ela não tem.
+        assert!(
+            !vec_overlay_plan(true, DrawMode::Knife).edit,
+            "a faca mostra as âncoras do caminho selecionado -- ela nao age so' nele"
+        );
         assert!(!plan.width_handles, "as alças de largura são do Width");
         assert!(
             !plan.textpath_handle && !plan.patternpath_handles,

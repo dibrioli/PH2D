@@ -243,3 +243,137 @@ fn cutting_an_unknown_path_is_refused() {
     scene.push_path(open_chain(4));
     assert_eq!(scene.cut_path_at_vertex(999, 1), None);
 }
+
+// ── A LÂMINA ────────────────────────────────────────────────────────────────
+
+/// ⚠️ **Um quadrado de arestas RETAS** — e não o `closed_square()` do topo, cujos vértices carregam
+/// handles (as "arestas" dele são curvas, e uma lâmina horizontal atravessa-as em sítios que não
+/// são `x = 0` nem `x = 4`). Os gates da lâmina são sobre ONDE ela cruza, então a fixture tem de
+/// ter cruzamentos que se possam escrever à mão.
+fn sharp_square() -> VecPath {
+    let sharp = |x: f64, y: f64| VecVertex {
+        anchor: [x, y],
+        in_handle: [x, y],
+        out_handle: [x, y],
+        kind: VertexKind::Corner,
+        corner_radius: 0.0,
+    };
+    VecPath {
+        verts: vec![
+            sharp(0.0, 0.0),
+            sharp(4.0, 0.0),
+            sharp(4.0, 4.0),
+            sharp(0.0, 4.0),
+        ],
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
+/// Uma lâmina que atravessa um quadrado de lado a lado cruza-o em **DOIS** pontos, e nos lugares
+/// certos. É o caso que faz a faca funcionar: origem fechada + 2 cruzamentos = duas peças.
+#[test]
+fn a_blade_across_a_square_crosses_it_exactly_twice() {
+    let p = sharp_square(); // (0,0)-(4,4), arestas RETAS
+    let x = crate::blade_crossings(&p, [-1.0, 2.0], [5.0, 2.0]);
+
+    assert_eq!(x.len(), 2, "duas arestas atravessadas: {x:?}");
+    for &(s, t) in &x {
+        let pt = crate::point_on_segment(&p, s, t).unwrap();
+        assert!((pt[1] - 2.0).abs() < 1e-9, "o cruzamento está na lâmina");
+        assert!(pt[0] == 4.0 || pt[0] == 0.0, "nas arestas laterais");
+    }
+}
+
+/// ⚠️ **Só dentro do SEGMENTO da lâmina.** Uma faca é um traço com começo e fim; cortar para lá da
+/// ponta seria a ferramenta a fazer o que ninguém desenhou.
+#[test]
+fn a_blade_that_stops_short_only_cuts_what_it_reached() {
+    let p = sharp_square();
+    // Começa fora, à esquerda, e PARA no meio do quadrado.
+    let x = crate::blade_crossings(&p, [-1.0, 2.0], [2.0, 2.0]);
+
+    assert_eq!(x.len(), 1, "só a aresta esquerda: {x:?}");
+    let pt = crate::point_on_segment(&p, x[0].0, x[0].1).unwrap();
+    // ⚠️ Épsilon, não igualdade: o refino é por bisseção, e pedir o bit exato seria um gate que
+    // falha sobre produto correto por causa do último passo dela.
+    assert!(
+        (pt[0] - 0.0).abs() < 1e-9 && (pt[1] - 2.0).abs() < 1e-9,
+        "{pt:?}"
+    );
+}
+
+#[test]
+fn a_blade_that_misses_finds_nothing_and_a_degenerate_one_too() {
+    let p = sharp_square();
+    assert!(crate::blade_crossings(&p, [-5.0, 9.0], [5.0, 9.0]).is_empty());
+    assert!(
+        crate::blade_crossings(&p, [2.0, 2.0], [2.0, 2.0]).is_empty(),
+        "lâmina de comprimento zero"
+    );
+}
+
+/// **Uma CURVA pode ser atravessada mais de uma vez pelo mesmo segmento**, e a amostragem tem de
+/// os achar: dois zeros dentro da mesma amostra cancelariam em sinal e passariam despercebidos.
+#[test]
+fn a_blade_finds_both_crossings_of_a_single_curved_segment() {
+    // Uma cúbica em arco: sobe até y≈0,75 e volta. Uma lâmina em y=0,5 atravessa-a DUAS vezes.
+    let mut p = VecPath {
+        verts: vec![
+            VecVertex {
+                anchor: [0.0, 0.0],
+                in_handle: [0.0, 0.0],
+                out_handle: [0.0, 1.0],
+                kind: VertexKind::Corner,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: [4.0, 0.0],
+                in_handle: [4.0, 1.0],
+                out_handle: [4.0, 0.0],
+                kind: VertexKind::Corner,
+                corner_radius: 0.0,
+            },
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    p.closed = false;
+
+    let x = crate::blade_crossings(&p, [-1.0, 0.5], [5.0, 0.5]);
+
+    assert_eq!(x.len(), 2, "o arco atravessa a lâmina duas vezes: {x:?}");
+    for &(_, t) in &x {
+        let pt = crate::point_on_segment(&p, 0, t).unwrap();
+        assert!((pt[1] - 0.5).abs() < 1e-7, "y={} != 0,5", pt[1]);
+    }
+}
+
+/// **A camada SEMÂNTICA da faca**: um cruzamento na PONTA de um segmento é o mesmo do segmento
+/// vizinho, e reportá-lo cortaria o mesmo ponto duas vezes. É também o que impede a costura de um
+/// corte — que assenta exactamente sobre a lâmina, e é sempre uma ponta — de ser reencontrada.
+#[test]
+fn a_crossing_at_a_segment_endpoint_is_never_reported() {
+    let p = sharp_square();
+    // ⚠️ A lâmina tem de ATRAVESSAR a quina, e achar essa fixture custou duas tentativas: a
+    // diagonal pelos cantos opostos ROÇA as arestas (as duas ficam do mesmo lado, sem troca de
+    // sinal), e uma a 45° pelo canto (4,0) vinda de fora também. Esta entra pelo canto e segue
+    // para DENTRO — aí a aresta de baixo e a da direita ficam em lados opostos, e o mesmo ponto
+    // seria reportado como ponta de uma e princípio da outra.
+    let x = crate::blade_crossings(&p, [5.0, -1.0], [3.0, 1.0]);
+
+    for &(s, t) in &x {
+        assert!(
+            t > 1e-6 && t < 1.0 - 1e-6,
+            "cruzamento na PONTA do segmento {s} (t={t}) -- o vizinho reporta o mesmo ponto"
+        );
+    }
+    // ⚠️ **O preço, nomeado:** com a guarda, uma lâmina que passa EXACTAMENTE por um vértice não
+    // corta ali — a travessia é reportada como ponta e cai fora. É medida zero (mover a lâmina um
+    // pixel resolve) e o modo de falha é *não cortar*, nunca *cortar no sítio errado*; a
+    // alternativa é cortar o mesmo ponto duas vezes e deixar um segmento de comprimento nulo.
+    assert!(
+        x.is_empty(),
+        "a lâmina pelo vértice devia cair fora, e reportou {x:?}"
+    );
+}

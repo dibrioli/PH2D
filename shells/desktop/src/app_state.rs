@@ -837,6 +837,11 @@ pub(crate) struct App {
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
+    /// **A LÂMINA da faca** (`DrawMode::Knife`, plano 25 §7) — `(início, actual)` em espaço de
+    /// TELA, o mesmo par do marquee. `None` = sem gesto; no release ela corta tudo o que
+    /// atravessa. Vive em tela e não em mundo porque é isso que o overlay desenha, e converter
+    /// duas vezes daria duas lâminas para o artista comparar.
+    pub(crate) vec_knife: Option<((f32, f32), (f32, f32))>,
     /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que

@@ -135,3 +135,50 @@ fn the_scissors_press_cuts_and_stops_there() {
         "o press da tesoura cai adiante -- o pen/shape veria o mesmo clique"
     );
 }
+
+/// **A FACA arma no press e CORTA no release** — e a lâmina segue o dedo pelo meio.
+///
+/// Um gesto de três tempos tem três sítios onde morre em silêncio, e cada um deixa a suíte inteira
+/// verde: sem o arm nada acontece, sem o `k.1 = …` a lâmina fica com comprimento zero e nunca
+/// atravessa nada, sem o corte no release o artista desenha um traço e larga-o no vazio.
+#[test]
+fn the_knife_arms_on_press_tracks_on_move_and_cuts_on_release() {
+    let arm = at(DISPATCH, "// **Modo Faca** (W4)");
+    let scissors = at(DISPATCH, "// **Modo Tesoura** (W4)");
+    assert!(
+        arm < scissors,
+        "os dois modos de corte trocaram de ordem na cadeia -- quem ve^ o press muda"
+    );
+    let arm_window = &DISPATCH[arm..scissors];
+    assert!(
+        arm_window.contains("DrawMode::Knife") && arm_window.contains("self.vec_knife = Some("),
+        "o press nao ARMA a lamina"
+    );
+    assert!(
+        !arm_window.contains("knife_cut("),
+        "o press CORTA -- uma faca e' um traco, e um traco nao existe ate' se soltar"
+    );
+
+    // O move: a lâmina segue o dedo.
+    let track = at(DISPATCH, "if let Some(k) = self.vec_knife.as_mut() {");
+    assert!(
+        DISPATCH[track..track + 200].contains("k.1 = self.last_pointer"),
+        "a lamina nao segue o dedo -- ela ficaria com comprimento zero"
+    );
+
+    // O release: corta, com UM passo de undo.
+    let rel = at(
+        DISPATCH,
+        "if let Some((start, cur)) = self.vec_knife.take()",
+    );
+    let end = at(&DISPATCH[rel..], "return;") + rel;
+    let window = &DISPATCH[rel..end];
+    for (needle, why) in [
+        ("knife_cut(", "o release nao corta"),
+        ("self.vec_history.begin(", "sem passo de undo"),
+        ("commit_if_changed(", "sem commit do passo"),
+        ("vec_world_at(", "a lamina nao e' convertida para MUNDO"),
+    ] {
+        assert!(window.contains(needle), "{why} -- falta `{needle}`");
+    }
+}

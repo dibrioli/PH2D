@@ -5813,6 +5813,16 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // **A LÂMINA da faca** (W4), em espaço de tela — o mesmo desenho do marquee, e
+                // de propósito: as duas são "o que este arrasto vai apanhar", e um 2º vocabulário
+                // gráfico obrigaria o artista a aprender duas linguagens para o mesmo conceito.
+                if let Some((start, cur)) = self.vec_knife {
+                    ph2d_vec_render::draw_marquee(
+                        [f64::from(start.0), f64::from(start.1)],
+                        [f64::from(cur.0), f64::from(cur.1)],
+                        vector_scene,
+                    );
+                }
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(

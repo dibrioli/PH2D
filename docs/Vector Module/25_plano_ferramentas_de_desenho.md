@@ -540,9 +540,42 @@ um vértice coincidente e deixava um segmento de comprimento zero. E o overlay d
 **Smoke: `PH2D_BUILD_SMOKE=44`.** Seis formas, com os vãos MEDIDOS pela própria tabela da cena
 (`0,1200` e `1,0000`, contra uma tolerância de solda 120 000× menor).
 
-**Aberto da W4:** a **faca** (lâmina reta × N cruzamentos — é a tesoura repetida, e para uma origem
-FECHADA cortada em exatamente 2 pontos cada peça re-fecha pela corda, que **é** a lâmina) e a
-**borracha de caminho** (dois cortes + um delete).
+### ✅ W4 (C) — ENTREGUE: a FACA, e ela não tem geometria própria
+
+Uma lâmina reta arrastada corta **tudo** o que atravessa. É a tesoura repetida em cada cruzamento
+— zero geometria nova além de *onde uma reta cruza uma curva*, que é amostragem + bisseção
+(`blade_crossings`, sem transcendental e sem solver).
+
+⚠️ **As peças ficam ABERTAS** — a escolha do Affinity, e a razão é a que aquele produto documenta:
+fechar em silêncio destrói informação (a peça deixa de poder ser reaberta como estava), enquanto
+fechar é **um clique** no `Close Path`, que esta mesma wave ensinou a soldar. A previsão do plano
+de que uma origem fechada re-fecharia pela corda fica **revogada por decisão**, não por
+impossibilidade: a corda de facto É a lâmina, mas fechar não é o default de ninguém que dê escolha.
+
+⚠️ **O laço re-deriva os cruzamentos a cada corte** em vez de os pré-calcular: cortar rota e
+re-indexa o contorno inteiro, então uma lista feita antes descreveria vértices que já não existem.
+E **só a metade NOVA volta à fila** — a fonte fica com tudo até ao corte, que foi tomado no
+PRIMEIRO cruzamento restante, logo ela não pode ter outro (mutação-provado).
+
+⚠️ **Duas camadas independentes** impedem a costura recém-criada — que assenta exactamente sobre a
+lâmina — de ser reencontrada para sempre, e **cada uma basta sozinha** (medido: com as duas
+removidas, três gates ficam vermelhos; com qualquer uma, verdes). A semântica é o
+`blade_crossings` excluir `t` nas pontas; o cinto é o conjunto de pontos já cortados.
+
+⚠️ **O preço, nomeado:** uma lâmina que passa EXACTAMENTE por um vértice não corta ali — a
+travessia cai fora como *ponta*. É medida zero, o modo de falha é *não cortar* (nunca *cortar no
+sítio errado*), e a alternativa seria cortar o mesmo ponto duas vezes.
+
+**A faca é o 14º modo**, ao lado da tesoura: as duas cortam e a diferença é só o GESTO (um clique ×
+um arrasto). ⚠️ E o overlay de âncoras é **desligado** nela — ela age sobre tudo o que a lâmina
+atravessa, e as âncoras que o overlay desenha são as do caminho SELECIONADO: mostrá-las anunciaria
+um escopo que a ferramenta não tem.
+
+**Smoke: a mesma cena `PH2D_BUILD_SMOKE=44`**, passos 11-15.
+
+**Aberto da W4:** a **borracha de caminho** — e a receita está PROVADA, não é pesquisa: *dois
+cortes + apagar o pedaço do meio*, com `remove_path`/`remove_contour`, que já existem. O que falta
+é o GESTO (press na curva → arrastar ao longo dela → release), não a geometria.
 
 ## §8 — W5: O PATHFINDER BARATO (edit-time, não toca a D4)
 

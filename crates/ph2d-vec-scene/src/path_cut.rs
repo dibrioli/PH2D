@@ -132,3 +132,92 @@ impl VecScene {
 #[cfg(test)]
 #[path = "path_cut_tests.rs"]
 mod tests;
+
+/// Quantas amostras por SEGMENTO a busca de cruzamentos toma antes de refinar. O refino é por
+/// bisseção, então isto não decide a precisão — decide **quantos cruzamentos são encontrados**:
+/// dois cruzamentos dentro da mesma amostra cancelam-se em sinal e passam despercebidos. 32 por
+/// segmento resolve uma cúbica a atravessar uma reta três vezes, que é o pior caso de uma cúbica.
+const BLADE_SAMPLES: usize = 32;
+
+/// Passos de bisseção depois de a amostragem cercar o cruzamento. 40 leva o intervalo a
+/// `2⁻⁴⁰` do de partida — muito abaixo da precisão de qualquer coisa a jusante.
+const BLADE_REFINE: usize = 40;
+
+/// Quão perto de uma PONTA de segmento um cruzamento ainda conta como sendo **nela**.
+///
+/// ⚠️ **O número é MEDIDO, não escolhido:** junto de uma tangência o `side` é ~0 com ruído de
+/// `f64`, e a bisseção estagna em vez de convergir — uma lâmina a passar exactamente por um
+/// vértice do quadrado da fixture devolvia `t = 4,3e-9`, que um limiar de `1e-9` deixava passar.
+/// `1e-6` de um segmento é `1e-4` unidades num de 100: abaixo de tudo o que se vê, e uma ordem de
+/// grandeza acima do ruído medido.
+const BLADE_END_EPS: f64 = 1e-6;
+
+/// **Onde uma LÂMINA reta `a→b` cruza a curva de `path`** — tudo em coordenadas LOCAIS do path.
+/// Devolve `(segmento PLANO, t)` em ordem crescente.
+///
+/// ⚠️ **É a geometria AUTORADA, não a cozida**, e é deliberado: quem corta é o `split_segment`, que
+/// opera na autorada — a mesma escolha que o insert da caneta faz. Num caminho com quina viva ou
+/// pilha de efeitos, o que se vê na tela e o que se corta divergem, e essa divergência é do modelo
+/// fonte≠cozido (ADR-0121), não desta função.
+///
+/// ⚠️ **Só cruzamentos DENTRO do segmento da lâmina** — não da reta infinita que a contém. Uma
+/// faca é um traço com começo e fim, e cortar o que está para lá da ponta seria a ferramenta a
+/// fazer o que ninguém desenhou.
+#[must_use]
+pub fn blade_crossings(path: &VecPath, a: [f64; 2], b: [f64; 2]) -> Vec<(usize, f64)> {
+    let d = [b[0] - a[0], b[1] - a[1]];
+    let len2 = d[0] * d[0] + d[1] * d[1];
+    if len2 <= f64::EPSILON {
+        return Vec::new();
+    }
+    // Lado da reta (produto vetorial) e posição AO LONGO dela, normalizada.
+    let side = |p: [f64; 2]| d[0] * (p[1] - a[1]) - d[1] * (p[0] - a[0]);
+    let along = |p: [f64; 2]| ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / len2;
+
+    let mut out = Vec::new();
+    for s in 0..path.total_segments() {
+        let at = |t: f64| crate::point_on_segment(path, s, t);
+        let Some(p0_first) = at(0.0) else { continue };
+        let mut prev = (0.0_f64, side(p0_first));
+        for k in 1..=BLADE_SAMPLES {
+            let t1 = k as f64 / BLADE_SAMPLES as f64;
+            let Some(p1) = at(t1) else { continue };
+            let s1 = side(p1);
+            // ⚠️ **Um zero exato é UM LADO, não um cruzamento próprio.** Tratá-lo à parte
+            // (`prev.1 == 0.0 || …`) contava a mesma travessia duas vezes sempre que uma amostra
+            // caía em cima da lâmina — medido: uma aresta vertical cortada ao meio devolvia t=0,50
+            // *e* t=0,53. Com o zero dobrado no lado positivo, uma TANGÊNCIA (que toca e volta)
+            // deixa de contar, o que é o certo: ali a lâmina não atravessa nada.
+            if (prev.1 < 0.0) != (s1 < 0.0) {
+                // Cerca o zero e refina por bisseção — sem transcendental, sem solver.
+                let (mut lo, mut hi) = (prev.0, t1);
+                let (mut slo, _) = (prev.1, s1);
+                for _ in 0..BLADE_REFINE {
+                    let mid = 0.5 * (lo + hi);
+                    let Some(pm) = at(mid) else { break };
+                    let sm = side(pm);
+                    if (slo < 0.0) != (sm < 0.0) {
+                        hi = mid;
+                    } else {
+                        lo = mid;
+                        slo = sm;
+                    }
+                }
+                let t = 0.5 * (lo + hi);
+                if let Some(p) = at(t) {
+                    let u = along(p);
+                    // ⚠️ `t` estritamente dentro: um cruzamento na fronteira de amostra é o mesmo
+                    // que o do segmento vizinho, e cortar duas vezes no mesmo ponto deixaria um
+                    // segmento de comprimento zero.
+                    if (0.0..=1.0).contains(&u) && t > BLADE_END_EPS && t < 1.0 - BLADE_END_EPS {
+                        out.push((s, t));
+                    }
+                }
+            }
+            prev = (t1, s1);
+        }
+    }
+    out.sort_by(|x, y| x.0.cmp(&y.0).then(x.1.total_cmp(&y.1)));
+    out.dedup_by(|x, y| x.0 == y.0 && (x.1 - y.1).abs() < 1e-7);
+    out
+}

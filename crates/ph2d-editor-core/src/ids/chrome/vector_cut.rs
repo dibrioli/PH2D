@@ -28,3 +28,7 @@ pub const VECTOR_VERT_AVERAGE: NodeId = hash_node_id("vector.vert.average");
 /// **Tesoura** — o 13º modo (plano 25 §7, W4): clicar num caminho e ele abre ali. Fica ao lado dos
 /// pills de quina e do Width: os quatro editam uma forma que JÁ existe, apontando-a no canvas.
 pub const VECTOR_MODE_SCISSORS: NodeId = hash_node_id("vector.mode.scissors");
+
+/// **Faca** — o 14º modo (plano 25 §7, W4): arrastar uma lâmina reta e tudo o que ela atravessa é
+/// cortado. Irmã da tesoura na fileira TOOL, e o mesmo primitivo por baixo.
+pub const VECTOR_MODE_KNIFE: NodeId = hash_node_id("vector.mode.knife");

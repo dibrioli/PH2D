@@ -2674,6 +2674,9 @@ impl App {
         }
         // ADR-0108 Fase 1: node box-select marquee — while Shift+dragging, grow
         // the box. Early-return so it doesn't pan / draw. No-op unless active.
+        if let Some(k) = self.vec_knife.as_mut() {
+            k.1 = self.last_pointer;
+        }
         if let Some(m) = self.vec_marquee.as_mut() {
             m.1 = self.last_pointer;
             return;
@@ -3689,6 +3692,13 @@ impl App {
                         }
                         return;
                     }
+                    // **Modo Faca** (W4): a pressão só ARMA a lâmina — quem corta é o release,
+                    // porque uma faca é um traço e um traço não existe até se soltar. É o mesmo
+                    // par (press arma / release aplica) do marquee de nós.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Knife {
+                        self.vec_knife = Some((self.last_pointer, self.last_pointer));
+                        return;
+                    }
                     // **Modo Tesoura** (W4): a pressão CORTA o caminho sob o cursor e o gesto
                     // acaba ali — não há arrasto nem release próprios, ao contrário das
                     // ferramentas de quina e da de largura. Um passo de undo por tesourada.
@@ -3986,6 +3996,22 @@ impl App {
                     // (A alça do texto em caminho é do modo Select — o Up dela mora lá em cima,
                     // ao lado do Up do conector; não aqui, que é o caminho de Node.)
                     // Marquee release → box-select the anchors inside the box.
+                    // **A FACA corta no release** (W4). Um clique sem arrasto não é uma lâmina:
+                    // a `blade_crossings` recusa comprimento zero por conta própria, mas sair aqui
+                    // poupa o passo de undo vazio.
+                    if let Some((start, cur)) = self.vec_knife.take() {
+                        let hit_r = HANDLE_HIT_PX * self.vec_px_to_world();
+                        if let (Some(a), Some(b)) =
+                            (self.vec_world_at(start), self.vec_world_at(cur))
+                            && let Some(gfx) = self.gfx.as_mut()
+                        {
+                            self.vec_history.begin(&gfx.vec_scene);
+                            if self.vec_pen.knife_cut(&mut gfx.vec_scene, a, b, hit_r) > 0 {
+                                self.vec_history.commit_if_changed(&gfx.vec_scene);
+                            }
+                        }
+                        return;
+                    }
                     if let Some((start, cur)) = self.vec_marquee.take() {
                         // **Shift SOMA** (o retângulo de todo app); sem ele, substitui. E um
                         // retângulo de tamanho zero é um CLIQUE no vazio: ele desseleciona, em vez

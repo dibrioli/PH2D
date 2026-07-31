@@ -574,6 +574,7 @@ impl App {
             field_gizmo_drag: None,
             flip_edit_domain: None,
             vec_marquee: None,
+            vec_knife: None,
             vec_connect: None,
             vec_conn_handle: None,
             vec_blend: None,

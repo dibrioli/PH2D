@@ -192,6 +192,12 @@ pub enum DrawMode {
     /// Node porque ali o press já tem três donos (âncora, handle, segmento) — a tesoura seria o
     /// quarto significado do mesmo clique, e o artista não teria como pedir um deles.
     Scissors,
+    /// **Faca** (plano 25 §7, W4): arrasta-se uma LÂMINA reta e tudo o que ela atravessa é cortado.
+    ///
+    /// É a tesoura repetida em cada cruzamento — nenhuma geometria nova. As peças ficam **abertas**
+    /// (a escolha do Affinity): fechar em silêncio destrói informação, enquanto fechar é um clique
+    /// no `Close Path`, que esta mesma wave ensinou a soldar.
+    Knife,
 }
 
 impl DrawMode {

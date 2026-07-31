@@ -54,7 +54,7 @@ pub use path_ops::{bake_xform, curve_bbox_in_frame};
 /// corte é por RESPONSABILIDADE: `path_ops` move e transforma um caminho INTEIRO; aqui a topologia
 /// dele muda.
 mod path_cut;
-pub use path_cut::Cut;
+pub use path_cut::{Cut, blade_crossings};
 
 /// **A JUNÇÃO** — o inverso do `path_cut`: fechar um caminho aberto e soldar dois num só (o
 /// `Ctrl+J` do Illustrator). Irmão pelo mesmo teto de LOC e pelo mesmo corte de responsabilidade.

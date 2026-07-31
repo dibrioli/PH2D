@@ -2168,3 +2168,48 @@ fn the_scissors_pill_is_reachable_by_a_pointer() {
         "o pill da tesoura nao foi PINTADO com area clicavel"
     );
 }
+
+/// **O pill da FACA arma o modo** (W4) — irmão do da tesoura, e pela mesma razão: o gesto inteiro
+/// dela vive no canvas, então este é o único caminho pelo qual o artista lá chega.
+#[test]
+fn clicking_the_knife_pill_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_ne!(tool.mode(), DrawMode::Knife, "precondition: nao e Knife");
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_KNIFE),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "falta o id no event_clicks"
+    );
+    assert!(drain_into_tool(&mut host, &mut tool), "o seam esta morto");
+    assert_eq!(tool.mode(), DrawMode::Knife, "falta o arm no tool");
+}
+
+/// E os DOIS pills de corte são alcançáveis por um ponteiro na fileira TOOL.
+#[test]
+fn both_cutting_pills_are_reachable_by_a_pointer() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    for (id, name) in [
+        (ids::VECTOR_MODE_SCISSORS, "Scissors"),
+        (ids::VECTOR_MODE_KNIFE, "Knife"),
+    ] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_some(),
+            "o pill {name} nao foi PINTADO com area clicavel"
+        );
+    }
+}

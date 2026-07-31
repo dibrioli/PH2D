@@ -89,3 +89,126 @@ impl PenTool {
 #[cfg(test)]
 #[path = "cut_tool_tests.rs"]
 mod tests;
+
+/// Teto de cortes por caminho numa passagem de faca. Uma lâmina reta cruza uma cúbica no máximo
+/// três vezes por segmento, então este número é folga larga sobre qualquer forma que um artista
+/// desenhe — e existe para que um defeito de convergência vire uma faca que corta de menos, nunca
+/// um laço infinito com a janela congelada.
+const MAX_KNIFE_CUTS: usize = 256;
+
+impl PenTool {
+    /// **A FACA** — uma lâmina reta de `a` a `b` (MUNDO) corta TODO caminho que ela atravesse.
+    /// Devolve quantos cortes fez.
+    ///
+    /// ⚠️ **Não há geometria nova aqui, e é o desenho inteiro:** a faca é a tesoura repetida em
+    /// cada cruzamento. Uma origem FECHADA cortada em dois pontos dá duas fitas cujas pontas
+    /// assentam na lâmina — e como a lâmina é RETA, a corda que fecharia cada peça **é** a lâmina,
+    /// então o resultado coincide com o do Illustrator sem um motor de arranjo no caminho.
+    ///
+    /// ⚠️ **As peças ficam ABERTAS.** É a escolha do Affinity, e a razão é a que aquele produto
+    /// documenta: fechar em silêncio destrói informação (a peça deixa de poder ser reaberta como
+    /// estava), enquanto fechar é um clique — o `Close Path`, que a mesma wave ensinou a soldar.
+    ///
+    /// O laço re-deriva os cruzamentos a cada corte em vez de os pré-calcular, e isso é
+    /// deliberado: cortar rota e re-indexa o contorno inteiro, então uma lista feita antes
+    /// descreveria vértices que já não existem.
+    ///
+    /// ⚠️ **A costura recém-criada assenta EXACTAMENTE sobre a lâmina**, e duas camadas
+    /// independentes impedem que ela seja reencontrada para sempre — **medido**, cada uma basta
+    /// sozinha (com as duas removidas, três gates ficam vermelhos; com qualquer uma delas, verdes):
+    ///
+    /// 1. o `blade_crossings` **exclui `t` nas pontas** de cada segmento, e um vértice de costura é
+    ///    sempre uma ponta (é assim que o `cut_path_at_vertex` o deixa) — esta é a camada
+    ///    SEMÂNTICA, e tem gate próprio na `ph2d-vec-scene`;
+    /// 2. o conjunto `done` de pontos já cortados, em MUNDO — o cinto deste laço.
+    ///
+    /// A 2ª não é hoje observável sozinha, e fica registada em vez de removida: a 1ª mora noutra
+    /// crate e existe por outro motivo (não reportar o mesmo cruzamento por dois segmentos
+    /// vizinhos), então relaxá-la é uma mudança legítima que não sabe que esta faca depende dela.
+    pub fn knife_cut(
+        &mut self,
+        scene: &mut VecScene,
+        a: [f64; 2],
+        b: [f64; 2],
+        hit_r: f64,
+    ) -> usize {
+        let mut work: Vec<VecPathId> = scene
+            .paths()
+            .iter()
+            .map(|p| p.id)
+            .filter(|id| self.view.is_pickable(*id))
+            .collect();
+        let mut done: Vec<[f64; 2]> = Vec::new();
+        let mut cuts = 0usize;
+
+        while let Some(pid) = work.pop() {
+            for _ in 0..MAX_KNIFE_CUTS {
+                let Some((seg, t, at_world)) = self.next_blade_crossing(scene, pid, a, b, &done)
+                else {
+                    break;
+                };
+                done.push(at_world);
+                let Some(vert) = self.cut_vertex_at(scene, pid, seg, t, hit_r) else {
+                    continue;
+                };
+                let Some(cut) = scene.cut_path_at_vertex(pid, vert) else {
+                    continue;
+                };
+                cuts += 1;
+                if let Some(new_id) = cut.new_path {
+                    // ⚠️ **Só a metade NOVA volta à fila.** A fonte fica com tudo até ao corte, e o
+                    // corte foi tomado no PRIMEIRO cruzamento que restava — logo ela não pode ter
+                    // outro lá dentro, e as duas pontas dela são as costuras, que o
+                    // `blade_crossings` exclui. Re-enfileirá-la seria uma volta que nunca acha
+                    // nada (mutação-provado: com ela, os números não mudam).
+                    work.push(new_id);
+                    break;
+                }
+            }
+        }
+        if cuts > 0 {
+            self.selected_verts.clear();
+        }
+        cuts
+    }
+
+    /// O 1º cruzamento da lâmina com `id` que ainda não foi cortado — `(segmento, t, ponto MUNDO)`.
+    fn next_blade_crossing(
+        &self,
+        scene: &VecScene,
+        id: VecPathId,
+        a: [f64; 2],
+        b: [f64; 2],
+        done: &[[f64; 2]],
+    ) -> Option<(usize, f64, [f64; 2])> {
+        let path = scene.paths().iter().find(|p| p.id == id)?;
+        let xf = self.xf(id);
+        // A lâmina é MUNDO; a curva é LOCAL (ADR-0111). Um afim degenerado não tem inversa, e um
+        // caminho nesse estado não é cortável — recusar é a resposta honesta.
+        let inv = xf.inverse()?;
+        let (la, lb) = (inv.apply(a), inv.apply(b));
+        // O raio do "já cortei aqui" acompanha a ESCALA do caminho: o `done` fala mundo, e num
+        // caminho encolhido um raio local fixo apanharia cruzamentos legítimos vizinhos.
+        let eps = 1e-6_f64.max(hit_epsilon(xf.mean_scale()));
+        for (seg, t) in ph2d_vec_scene::blade_crossings(path, la, lb) {
+            let Some(pl) = ph2d_vec_scene::point_on_segment(path, seg, t) else {
+                continue;
+            };
+            let pw = xf.apply(pl);
+            if done
+                .iter()
+                .any(|d| (d[0] - pw[0]).powi(2) + (d[1] - pw[1]).powi(2) <= eps * eps)
+            {
+                continue;
+            }
+            return Some((seg, t, pw));
+        }
+        None
+    }
+}
+
+/// O raio, em MUNDO, dentro do qual dois cruzamentos são "o mesmo ponto" para a faca. Deriva da
+/// escala do caminho para que a resposta não mude quando a forma é ampliada ou reduzida.
+fn hit_epsilon(mean_scale: f64) -> f64 {
+    (mean_scale.abs() * 1e-9).max(1e-9)
+}

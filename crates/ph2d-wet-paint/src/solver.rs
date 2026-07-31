@@ -544,8 +544,10 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
 mod active_region;
 mod advect;
 mod advect_jacobi;
+mod flow_jacobi;
 mod project;
 pub use active_region::{rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;
 pub use advect_jacobi::{advect_jacobi, advect_jacobi_rows, destination_reach};
+pub use flow_jacobi::{build_flow_field_jacobi, build_flow_field_jacobi_rows};
 pub use project::{apply_boundaries, project, project_rows};

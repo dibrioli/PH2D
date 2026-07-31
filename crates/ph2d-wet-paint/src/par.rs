@@ -335,3 +335,28 @@ pub(crate) fn walk_rows5<A, B, C, D, E, F>(
 /// ADR-0145 (tabela no [`Rows::pick`]). Ele move menos bytes por célula que o
 /// advect e mais que o `project`, e o piso reflete isso.
 pub const MIN_CELLS_DRYING: usize = 192 << 10;
+
+/// Piso do `build_flow_field` independente de ordem — **medido**, e a medição
+/// derrubou o número que eu tinha escolhido por raciocínio.
+///
+/// A coluna dele na varredura do [`Rows::pick`] é a mais limpa da família e a
+/// que mais rende (a célula é cara: ~20 leituras de estêncil, dois clamps, uma
+/// raiz e um `trunc`):
+///
+/// ```text
+///     celulas     flow
+///      60_000     0,89x
+///     122_952     0,92x   <- ainda PREJUIZO
+///     194_788     3,65x
+///     411_166     5,75x
+///   2_546_830     7,88x
+///   9_800_850    10,19x
+/// ```
+///
+/// ⚠️ **Eu havia escrito `96 << 10` argumentando *"a célula é cara, logo o
+/// pool se paga antes"*.** A parte do argumento estava certa — ele rende mais
+/// que os três do ADR-0145 em toda janela grande — e a CONCLUSÃO não: a 123k
+/// células o pool ainda cobra 8%, e o piso baixo mandava exatamente essa
+/// janela para a rota que perde. O joelho está entre 123k e 195k; o piso fica
+/// logo abaixo do lado que ganha.
+pub const MIN_CELLS_FLOW: usize = 160 << 10;

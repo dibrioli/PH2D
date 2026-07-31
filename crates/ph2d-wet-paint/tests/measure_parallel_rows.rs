@@ -100,14 +100,23 @@ fn time_pass(e: &mut Engine, p: &Params, mode: Rows, which: usize) -> f64 {
         match which {
             0 => solver::project_rows(g, p, mode),
             1 => solver::smooth_velocity_rows(g, p, mode),
-            _ => solver::rebuild_active_region_rows(g, mode),
+            2 => solver::rebuild_active_region_rows(g, mode),
+            // ⚠️ A gravidade entra porque o fingering/backrun leem o eixo dela;
+            // com os knobs default os dois estão desligados, mas o passe é o
+            // mesmo que o produto roda.
+            _ => solver::build_flow_field_jacobi_rows(g, p, 0.0, 0.6, false, mode),
         }
         s.push(t.elapsed().as_secs_f64() * 1e3);
     }
     median(&mut s)
 }
 
-const NAMES: [&str; 3] = ["project", "smooth_velocity", "rebuild_active_region"];
+const NAMES: [&str; 4] = [
+    "project",
+    "smooth_velocity",
+    "rebuild_active_region",
+    "build_flow_field",
+];
 
 /// ⚠️ **O A/B tem de ser no MESMO processo, sobre a MESMA poça.** Comparar duas
 /// corridas do `measure_pass_cost` (uma antes, uma depois do commit) mediu o
@@ -233,7 +242,7 @@ fn measure_where_the_thread_pool_starts_paying() {
     for side in [256usize, 384, 512, 768, 1024, 1536, 2048, 3072, 4096] {
         let (rows, span) = window(&puddle(side));
         let cells = rows * span;
-        let mut r = [0.0f64; 3];
+        let mut r = [0.0f64; 4];
         for (which, slot) in r.iter_mut().enumerate() {
             let mut e = puddle(side);
             let p = e.sim.gather_params(&e.tuning);
@@ -245,15 +254,18 @@ fn measure_where_the_thread_pool_starts_paying() {
         let pj = Rows::pick(rows, span, ph2d_wet_paint::par::MIN_CELLS_JACOBI);
         let pg = Rows::pick(rows, span, ph2d_wet_paint::par::MIN_CELLS_GATHER);
         let pr = Rows::pick(rows, span, ph2d_wet_paint::par::MIN_CELLS_REBUILD);
+        let pf = Rows::pick(rows, span, ph2d_wet_paint::par::MIN_CELLS_FLOW);
         let tag = |r: Rows| if r == Rows::Parallel { "par" } else { "ser" };
         println!(
-            "    {side:>6}  {cells:>12}  proj {:5.2}x [{}]  smooth {:5.2}x [{}]  rebuild {:5.2}x [{}]",
+            "    {side:>6}  {cells:>12}  proj {:5.2}x [{}]  smooth {:5.2}x [{}]  rebuild {:5.2}x [{}]  flow {:5.2}x [{}]",
             r[0],
             tag(pj),
             r[1],
             tag(pg),
             r[2],
-            tag(pr)
+            tag(pr),
+            r[3],
+            tag(pf)
         );
     }
     println!(

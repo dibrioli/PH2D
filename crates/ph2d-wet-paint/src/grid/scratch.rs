@@ -53,6 +53,15 @@ pub struct SolverScratch {
     /// o próprio passe reescreve — materializá-lo num pré-passe (gather puro)
     /// deixa o laço principal com leituras e escritas SÓ no próprio índice.
     pub edge: Vec<u8>,
+    /// Os dois predicados que o **backrun** pergunta aos VIZINHOS — `sett > 0`
+    /// e `bloom < 6` —, lidos ANTES de o passe escrever qualquer célula.
+    ///
+    /// ⚠️ **Alocado só com o knob LIGADO** ([`SolverScratch::ensure_backrun`]),
+    /// e é por isso que ele tem porta própria: `extBackrun` é `Hidden` e nasce
+    /// em `0.0`, então a sessão default **não paga um byte** por um plano que
+    /// nenhum passe leria. O irmão [`SolverScratch::ensure`] cobre os planos
+    /// que todo passo materializa.
+    pub bflags: Vec<u8>,
 }
 
 impl SolverScratch {
@@ -64,6 +73,13 @@ impl SolverScratch {
             self.outflow = vec![0.0; n];
             self.dst = vec![AdvCell::default(); n];
             self.edge = vec![0; n];
+        }
+    }
+
+    /// Garante o plano do backrun. Chamado só quando o knob está ligado.
+    pub fn ensure_backrun(&mut self, n: usize) {
+        if self.bflags.len() != n {
+            self.bflags = vec![0; n];
         }
     }
 }

@@ -278,7 +278,17 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
         }
         2 => {
             if n.is_multiple_of(4) {
-                build_flow_field(g, &c.p, c.grav[0], c.grav[1], sim.ext_bypass);
+                if sim.order_invariant {
+                    crate::solver::build_flow_field_jacobi(
+                        g,
+                        &c.p,
+                        c.grav[0],
+                        c.grav[1],
+                        sim.ext_bypass,
+                    );
+                } else {
+                    build_flow_field(g, &c.p, c.grav[0], c.grav[1], sim.ext_bypass);
+                }
             } else {
                 smooth_velocity(g, &c.p);
                 if !sim.ext_bypass && c.p.k(Knob::ExtDiffusion) > 0.0 {

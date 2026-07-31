@@ -8,3 +8,15 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+[dependencies]
+# ⚠️ O ROTOR, e só ele. A conversão azimute→vetor passa por
+# `texture::rotate_by_degrees`, que ACUMULA uma rotação de 1° — uma sequência
+# numérica específica, não `(cos θ, sin θ)`. Um `sin`/`cos` escrito aqui daria
+# outro número nos últimos bits, e o app inteiro (Jitter Rotate, Angle por-slot,
+# a luz do impasto) gira por aquele. `ph2d-painter-brush` é FOLHA (zero
+# dependências), então folha→folha não inverte arquitetura nenhuma.
+#
+# O rotor está lá por acidente de nascimento, não por ser do pincel — mas movê-lo
+# é churn na crate mais quente do repo, e é decisão do dono dela.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }

@@ -44,7 +44,14 @@ const DEPTH_MIN: f32 = -1.0; // LITERAL-PX-OK: signed unit depth — negative ca
 const DEPTH_MAX: f32 = 1.0; // LITERAL-PX-OK: signed unit depth
 pub(crate) const UNIT_MAX: f32 = 1.0; // LITERAL-PX-OK: 0..1 amount track
 pub(crate) const ANGLE_MAX_DEG: f32 = 360.0; // LITERAL-PX-OK: a full turn of azimuth
-pub(crate) const ELEV_MIN_DEG: f32 = 5.0; // LITERAL-PX-OK: floor above 0 — a grazing light divides by ~0
+/// O piso da elevação, LIDO de quem o aplica.
+///
+/// ⚠️ Era um `5.0` escrito à mão aqui, e o resolvedor do rig tem um clamp com o mesmo número: **duas
+/// portas para o mesmo fato**. Concordavam, e nada as obrigava — baixar só uma delas daria um slider
+/// que anda e uma luz que não muda, silenciosamente clampada. Agora há um número só, e ele mora com o
+/// clamp (`ph2d_light::MIN_ELEV_DEG`): abaixo dele a lâmpada rasa a superfície, a resposta plana vai a
+/// zero, e o modelo relativo dividiria por ~0.
+pub(crate) const ELEV_MIN_DEG: f32 = ph2d_tool_painter::MIN_ELEV_DEG as f32;
 pub(crate) const ELEV_MAX_DEG: f32 = 90.0; // LITERAL-PX-OK: straight down at the canvas
 pub(crate) const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: whole degrees
 /// A lamp may be pushed to twice full — a rig wants headroom for a key that carries the picture while

@@ -150,53 +150,35 @@ impl Rig {
 
     /// Resolve the rig. `None` when no lamp is lit — the caller then leaves the canvas alone rather
     /// than dividing by a zero flat response.
+    ///
+    /// ⚠️ **A resolução em si não mora mais aqui** ([`ph2d_light::resolve`]): a escultura do módulo 3D
+    /// tem de ser acesa pelas MESMAS lâmpadas, e duas conversões graus→vetor não divergiriam no dia em
+    /// que fossem escritas — divergiriam no dia em que alguém consertasse uma. O que ficou aqui é o que
+    /// é do Painter: a LUT especular, e o material contra o qual o rig é resolvido.
+    ///
+    /// (O filtro de lâmpada apagada, o piso de elevação e o rotor de 1° viajaram junto e estão gateados
+    /// lá — inclusive o caso que parece higiene e não é: *baixar todas as luzes a zero é uma tela SEM
+    /// LUZ*, não uma tela escurecida ao piso ambiente.)
     pub(super) fn new(rig: &super::impasto_rig::LightRig) -> Option<Self> {
         const DARK: Lamp = Lamp {
             dir: [0.0; 3],
             half: [0.0; 3],
             tint: [0.0; 3],
         };
+        let resolved = ph2d_light::resolve(rig)?;
         let mut lamps = [DARK; super::impasto_rig::MAX_LIGHTS];
-        let mut n = 0usize;
-        for l in rig.lights.iter().filter(|l| l.on && l.intensity > 0.0) {
-            // Transcendental-free (HR-5): the shared 1°-step rotor, the same one the brush's Jitter
-            // Rotate and per-slot Angle are built from.
-            let elev = l.elev_deg.clamp(super::impasto_rig::MIN_ELEV_DEG, 90);
-            let az = ph2d_painter_brush::texture::rotate_by_degrees(l.angle_deg % 360);
-            let el = ph2d_painter_brush::texture::rotate_by_degrees(elev);
-            let (cos_e, sin_e) = (el[0], el[1]);
-            let dir = [cos_e * az[0], cos_e * az[1], sin_e];
-            let half = {
-                let h = [dir[0], dir[1], dir[2] + 1.0]; // view = (0, 0, 1), orthographic
-                let len = (h[0] * h[0] + h[1] * h[1] + h[2] * h[2]).sqrt().max(1e-6);
-                [h[0] / len, h[1] / len, h[2] / len]
+        for (dst, src) in lamps.iter_mut().zip(resolved.lamps()) {
+            *dst = Lamp {
+                dir: src.dir,
+                half: src.half,
+                tint: src.tint,
             };
-            let w = l.intensity.clamp(0.0, 2.0);
-            let tint = [
-                w * l.color[0].clamp(0.0, 1.0),
-                w * l.color[1].clamp(0.0, 1.0),
-                w * l.color[2].clamp(0.0, 1.0),
-            ];
-            lamps[n] = Lamp { dir, half, tint };
-            n += 1;
         }
-        if n == 0 {
-            return None;
-        }
-        // (The `intensity > 0` filter above is about the EMPTY rig: with every lamp at zero power, an
-        // unfiltered `lamps` is non-empty, so this returns `Some`, the flat diffuse is all-zero, the
-        // floor in `resolve` turns it into 1, the diffuse stays 0, and the ratio is 0 — which drives
-        // every lit pixel to the AMBIENT floor. Turning the lights down to zero would DARKEN the
-        // painting to 35% instead of leaving it unlit. The filter is what makes `n == 0` above true, and
-        // the pass bail. `the_lights_turned_all_the_way_down_is_an_unlit_canvas` — MUT: drop it ⇒ RED.)
-        let achromatic = lamps[..n]
-            .iter()
-            .all(|l| l.tint[0] == l.tint[1] && l.tint[1] == l.tint[2]);
         Some(Self {
             lamps,
-            n,
+            n: resolved.lamps().len(),
             spec: ph2d_painter_brush::material::SpecLut::get(),
-            achromatic,
+            achromatic: resolved.achromatic(),
         })
     }
 

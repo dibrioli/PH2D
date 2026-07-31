@@ -75,7 +75,7 @@ pub use tool::{
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, ImpastoLamp,
     ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
-    MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PaintMedia, PainterTool,
+    MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, PANEL_RAMP_STOPS, PaintMedia, PainterTool,
     PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
     TangentHandles, TransformGizmo, WetKnobs, WetTool, brush_falloff_weight_at,
     set_pending_select_mods,

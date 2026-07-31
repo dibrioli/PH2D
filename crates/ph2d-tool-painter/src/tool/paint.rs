@@ -181,7 +181,7 @@ mod state_default;
 
 mod brush_ranges; // Stroke-slider UI range consts (BRUSH_*_MAX / airbrush rate) + shape grab tol; split for the LOC cap
 pub use brush_ranges::*;
-pub use impasto_rig::{ImpastoLight, LightRig, MAX_IMPASTO_LIGHTS};
+pub use impasto_rig::{ImpastoLight, LightRig, MAX_IMPASTO_LIGHTS, MIN_ELEV_DEG};
 
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.

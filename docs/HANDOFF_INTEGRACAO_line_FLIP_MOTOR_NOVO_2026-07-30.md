@@ -94,7 +94,10 @@ overlap · fill · o cap como **termo de fronteira** · o Pass A que **pergunta 
 | id / token / i18n | **nenhum** |
 
 ⚠️ **UMA nota de rebase sobre schema:** os docs desta linha afirmam `PROJECT_SCHEMA 37 · FLIP_SCHEMA 12`
-(o valor no fork). No `main` de hoje o `PROJECT_SCHEMA` é **38** (o `VecFilter` da `line/Vector`).
+(o valor no fork). No `main` da INTEGRACAO ele e' **46** — o handoff dizia 38 (o `VecFilter` da
+`line/Vector`) e envelheceu no MESMO dia, quando a `line/physics` entrou com mais cinco degraus
+(30 a ancora body-local do joint - 32/33/34 os tres apendices ao `PhysicsJoint` - 46 a jornada das
+polias). *Um numero que se CONTA envelhece entre escrever o handoff e integra-lo.* CORRIGIDO.
 A linha **não escreve** essa constante, então **não há conflito** — mas as frases nos docs ficam
 stale. *Um número falso é pior que ausente*: o integrador deve corrigir as quatro ocorrências em
 `docs/Flip/12_novo_motor_pesquisa.md` e nos dois handoffs parciais para o valor do `main` do dia.
@@ -250,7 +253,7 @@ de engenharia.
 - [ ] `cargo test --workspace` (ou `scripts/nextest-impacted.sh`) em **debug E release**
 - [ ] `cargo test -p ph2d-flip-render --release -- --ignored` **no adapter** — 114 esperados
 - [ ] `cargo clippy --all-targets` · `cargo fmt --all -- --check` · `file_loc_caps` · machete/deny
-- [ ] corrigir as menções stale a `PROJECT_SCHEMA 37` nos docs para o valor do `main` do dia (§2)
+- [x] corrigir as menções stale a `PROJECT_SCHEMA 37` nos docs para o valor do `main` do dia (§2)
 - [ ] `./scripts/ship.sh` até verde
 - [ ] a §5 do `CLAUDE.md` ganha a entrada desta jornada
 - [ ] **push só por ordem explícita do Enio**

@@ -90,7 +90,7 @@ par RDP→reamostragem **fabricava** o caso ruim. (`4652c980b`)
 
 ## 4. Superfície tocada
 
-- **Nenhum schema** (`PROJECT_SCHEMA` 37 · `FLIP_SCHEMA` 12 — intocados).
+- **Nenhum schema** (`PROJECT_SCHEMA` 46 · `FLIP_SCHEMA` 12 — intocados).
 - **Nenhum contrato congelado** (§6): `Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/
   `PanelEvent=4` intactos, conferido por grep.
 - **Nenhum ADR novo, nenhuma crate nova, nenhuma dep nova, nenhum `Cargo.toml` tocado.**
@@ -269,7 +269,7 @@ os dois perfis viram o mesmo ⇒ RED.
   **`[dev-dependencies]`** da `ph2d-flip-render`. Crate **FOLHA** (`[dependencies]` vazio), o
   `src/` não a toca ⇒ **machete-safe** (conferido: `cargo machete` limpo) — o precedente do gate
   de paridade CPU×GPU da `line/gpu-nodes`.
-- **Nenhum schema** (`PROJECT_SCHEMA` 37 · `FLIP_SCHEMA` 12), **nenhum contrato congelado**,
+- **Nenhum schema** (`PROJECT_SCHEMA` 46 · `FLIP_SCHEMA` 12), **nenhum contrato congelado**,
   **nenhum ADR**, **nenhum id/token/i18n**.
 - Arquivo novo: `shells/desktop/src/flip_hardness_smoke.rs` (+ `mod` no `main.rs` e a chamada no
   prólogo, ao lado dos outros smokes).

@@ -412,7 +412,8 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   `Continuous` **não toca `dn`** ⇒ byte-idêntico. **A depth é por-TRAÇO** (o tip não a muda),
   então contas sobrepostas numa quina são first-wins (união), nunca acumulam — o oposto da
   armadilha do *Self Overlap*. Seletor **Tip** + slider **Spacing** na seção Brush (Draw).
-  `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 29→30. Gates GPU
+  `FLIP_SCHEMA` 8→9, `PROJECT_SCHEMA` 30→31 **NA INTEGRACAO** (a linha escreveu 29→30 e a
+  `line/physics` reivindicou o mesmo 30 na mesma janela — o numero se CONTA). Gates GPU
   (`dots_carve_gaps_that_a_continuous_line_does_not` red-first mutação-provado +
   `squares_cover_more_area_than_round_dots` a **raio 10** — a raio 4 o AA some com a razão 4/π +
   `dots_on_a_curved_thick_stroke_are_full_disks_not_shrunken_lenses`).
@@ -455,7 +456,8 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
   medido 0,76 em hardness 0,5; ⚠️ este contraste era com o `pow`+smoothstep do GP, o default até
   2026-07-28). Casa com o Self Overlap: a
   acumulação `over` de airbrush é a multiplicação de transmitâncias, o build-up físico. Toggle-chip
-  na seção Brush(Draw), abaixo do Self Overlap. `FLIP_SCHEMA` 11→12, `PROJECT_SCHEMA` 33→34.
+  na seção Brush(Draw), abaixo do Self Overlap. `FLIP_SCHEMA` 11→12, `PROJECT_SCHEMA` 34→37
+  **NA INTEGRACAO** (a linha escreveu 33→34; a `line/physics` reivindicou os MESMOS 32/33/34).
   - ⚠️ **A flag chega ao FRAGMENT por um varying flat `flags` novo** (loc 14) — antes o fragment não
     lia `flags` (o Self Overlap é vertex-only, via depth); o airbrush é a 1ª decisão de máscara por
     flag no fragment. Reusável (a próxima flag de máscara testa o mesmo varying).

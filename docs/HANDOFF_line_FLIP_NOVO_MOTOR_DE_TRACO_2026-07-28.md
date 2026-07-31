@@ -277,8 +277,8 @@ justifique a diferença. É o CONTROLE de todos os smokes.
   morrem com ele; os do §6 são de COMPORTAMENTO e **sobrevivem** — são a sua rede.
 - **Fora da crate:** `shells/desktop/src/render_loop/flip_pass.rs` (multiplano, preview) e o
   `TessCache`.
-- **Schema:** nenhum. `PROJECT_SCHEMA` **37** · `FLIP_SCHEMA` **12** · tripla do pin
-  `(37, 12, 13)`. Um motor novo **não deve** precisar tocar em nenhum: ele lê o mesmo documento.
+- **Schema:** nenhum. `PROJECT_SCHEMA` **46** · `FLIP_SCHEMA` **12** · tripla do pin
+  `(46, 12, 13)`. Um motor novo **não deve** precisar tocar em nenhum: ele lê o mesmo documento.
 
 ---
 

@@ -335,3 +335,162 @@ fn a_roving_key_gives_constant_speed_along_the_curve() {
          ao longo da curva"
     );
 }
+
+// ── O TRILHO COMPARTILHADO — o K de um segundo clip keya PROGRESSO ────────────
+
+/// **O K num clip que não autora o trilho keya PROGRESSO, não geometria** (report do
+/// Enio, 2026-07-30, escolha B: *"o Path criado em um Clip contamina … outro Clip criado
+/// depois"*).
+///
+/// A trajetória é do BINDING (do documento) e as keys são do CLIP: *"dois clips que animam
+/// o objeto ao longo dela são duas CRONOMETRAGENS da mesma jornada"*. Mas a lei
+/// *"âncora `i` pareia com key `i`"* só pode valer para UMA delas — e apertar K num
+/// segundo clip acrescentava âncora ao trilho compartilhado enquanto a track daquele clip
+/// tinha outra contagem. O `debug_assert` do `rewrite_path_key_values` disparava
+/// (*"a track tem 1 keys para 3 âncoras"*); em release ele não dispara e o `zip` deixa a
+/// key de CHEGADA com a distância de uma âncora do MEIO — *"o percurso do objeto encolhe"*.
+///
+/// **Mutação que deve sangrar:** o braço de progresso do `add_path_key`, ou o guard de
+/// autoria do `rewrite_path_key_values`.
+#[test]
+fn keying_the_path_in_a_second_clip_keys_progress_not_geometry() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("bound")
+        .target;
+
+    // CLIP A autora o trilho: dois pontos, o L de 10 para a direita.
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+    let rail = doc
+        .binding_for(bits, PropKind::Position)
+        .and_then(|b| b.path.clone())
+        .expect("o trilho existe");
+    assert_eq!(rail.len(), 2, "o clip que autora põe uma âncora por key");
+    let a_keys: Vec<f32> = doc.clips()[0]
+        .clip
+        .track(target)
+        .expect("track de A")
+        .keys()
+        .iter()
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => f32::NAN,
+        })
+        .collect();
+
+    // CLIP B, criado depois. O artista põe o objeto no MEIO do trilho e aperta K.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.5), [5.0, 0.0]);
+
+    // 1. A GEOMETRIA não se mexeu — nem em contagem nem em forma.
+    let after = doc
+        .binding_for(bits, PropKind::Position)
+        .and_then(|b| b.path.clone())
+        .expect("o trilho sobrevive");
+    assert_eq!(
+        after.anchors(),
+        rail.anchors(),
+        "um clip que só cronometra não autora geometria"
+    );
+
+    // 2. A key de B guarda o PROGRESSO (5 de 10), não uma âncora.
+    let b_keys = doc.clips()[b]
+        .clip
+        .track(target)
+        .expect("track de B")
+        .keys();
+    assert_eq!(b_keys.len(), 1, "uma key, a que o artista pôs");
+    let AnimValue::Float(d) = b_keys[0].value else {
+        panic!("a key de progresso é um float");
+    };
+    assert!(
+        (d - 5.0).abs() < 1e-3,
+        "o K keya a distância da pose projetada no trilho: {d}"
+    );
+
+    // 3. E a cronometragem de A ficou INTACTA — é o que "contaminar" significava.
+    let a_now: Vec<f32> = doc.clips()[0]
+        .clip
+        .track(target)
+        .expect("track de A")
+        .keys()
+        .iter()
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => f32::NAN,
+        })
+        .collect();
+    assert_eq!(a_now, a_keys, "a cronometragem do clip A não é tocada");
+
+    // 4. E o objeto de fato PARA onde o artista o pôs, no clip B.
+    apply_from_doc(&mut w, &mut doc, 0.5);
+    assert!(
+        near(pos(&w, e), [5.0, 0.0]),
+        "o objeto segue o progresso keyado em B: {:?}",
+        pos(&w, e)
+    );
+}
+
+/// **Reformar o trilho não reescreve a cronometragem de quem só o percorre.**
+///
+/// A segunda camada da mesma lei, e ela precisa de gate PRÓPRIO: com o braço de progresso
+/// no lugar, o K de um clip que não autora nunca ALCANÇA o `rewrite_path_key_values` — mas
+/// arrastar uma âncora alcança. Sem o guard de autoria, o `zip` posicional
+/// (*"âncora `i` ↔ key `i`"*) reescreveria as keys de PROGRESSO com as distâncias das
+/// âncoras: a cronometragem do clip vira a do trilho, e o que o artista autorou some.
+///
+/// **Mutação que deve sangrar:** o guard de autoria do `rewrite_path_key_values`.
+#[test]
+fn reshaping_the_rail_leaves_a_progress_timing_alone() {
+    let (_w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    let target = doc
+        .binding_for(bits, PropKind::Position)
+        .expect("bound")
+        .target;
+
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(1.0), [10.0, 0.0]);
+
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.5), [5.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.9), [8.0, 0.0]);
+
+    let before: Vec<f32> = doc.clips()[b]
+        .clip
+        .track(target)
+        .expect("track de B")
+        .keys()
+        .iter()
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => f32::NAN,
+        })
+        .collect();
+    assert_eq!(before.len(), 2, "B cronometra dois instantes");
+
+    // O artista arrasta a âncora do FIM: o trilho fica mais longo.
+    assert!(doc.move_path_anchor(target, 1, PathAnchor::corner([20.0, 0.0])));
+
+    let after: Vec<f32> = doc.clips()[b]
+        .clip
+        .track(target)
+        .expect("track de B")
+        .keys()
+        .iter()
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => f32::NAN,
+        })
+        .collect();
+    assert_eq!(
+        after, before,
+        "as keys de PROGRESSO guardam o que o artista autorou; reformar o trilho move \
+         onde elas caem, não o que elas dizem"
+    );
+}

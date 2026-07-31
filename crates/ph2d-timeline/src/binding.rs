@@ -86,8 +86,20 @@ pub struct TargetBinding {
     /// that both animate the object along it are two timings of the same journey,
     /// which is precisely what the arc-length track expresses.
     ///
-    /// Anchor `i` pairs with key `i` of the track, and the number that key holds is
-    /// [`MotionPath::arclen_at`]. Appended (v12).
+    /// ⚠️ **Anchor `i` pairs with key `i` of the track — na cronometragem que AUTOROU o
+    /// trilho, e só nela** (Enio, 2026-07-30). As duas frases acima e esta só podem ser
+    /// verdade ao mesmo tempo enquanto existir UMA cronometragem, porque a track é do
+    /// CLIP: um segundo clip que percorre a mesma jornada tem keys próprias, em número e
+    /// distâncias próprios. Quem responde *"este clip autora a geometria?"* é
+    /// [`crate::TimelineDoc::active_clip_authors_the_rail`], e a partir da segunda
+    /// cronometragem o **K keya PROGRESSO** em vez de acrescentar âncora. Sem isso, apertar
+    /// K num clip criado depois desalinhava a contagem e o `zip` do
+    /// `rewrite_path_key_values` deixava a key de CHEGADA com a distância de uma âncora do
+    /// MEIO — *"o percurso do objeto encolhe"* (registro em
+    /// `docs/Timeline/BUGS_timeline.md` #2b).
+    ///
+    /// O número que uma key guarda é sempre [`MotionPath::arclen_at`] da posição dela ao
+    /// longo do trilho. Appended (v12).
     ///
     /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
     pub path: Option<MotionPath>,

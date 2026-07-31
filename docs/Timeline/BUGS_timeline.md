@@ -55,7 +55,8 @@ endpoint sozinho fica verde sobre um degrau. 2 mutações, 2 sangram.
 **Report (Enio):** *"O Path criado em um Clip contamina e aparece alças em outro Clip
 criado depois."*
 
-**São DOIS defeitos com a mesma raiz**, e só o primeiro está fechado.
+**São DOIS defeitos com a mesma raiz**, os dois fechados — o segundo pela escolha do
+modelo (B, o trilho compartilhado).
 
 ### 2a. As alças invisíveis — FECHADO
 
@@ -88,41 +89,65 @@ tem marcas, âncoras E alças) e o ponto sobre a curva **pedido ao produto**, n�
 ponto de duplo-clique que eu chutei caía fora do raio de pega, então devolvia `None` nos
 DOIS clips. *A fixture tem de conter o fenômeno.*
 
-### 2b. ⛔ ABERTO — a trajetória é do DOCUMENTO e as âncoras pareiam com as keys do CLIP
+### 2b. FECHADO pela ESCOLHA B — o caminho é um TRILHO compartilhado
 
 Assim que o clip B ganha **uma key qualquer**, o `marks` passa e o que se desenha é a
-trajetória do clip A, com as âncoras e as alças dela. Isso **não é o overlay**: é o modelo.
+trajetória do clip A. Isso não era o overlay: era o **modelo**. O `binding.rs` defende o
+armazenamento no documento —
 
-O `binding.rs` defende o armazenamento no documento —
-
-> *"It lives on the BINDING rather than in the clip because the trajectory is a property of
-> this object's movement, not of one clip's take on it: two clips that both animate the
-> object along it are two timings of the same journey."*
+> *"a trajetória é propriedade do MOVIMENTO deste objeto, não da leitura de um clip: dois
+> clips que a animam são duas CRONOMETRAGENS da mesma jornada"*
 
 — e a linha seguinte do MESMO doc-comment diz:
 
-> *"Anchor `i` pairs with key `i` of the track."*
+> *"âncora `i` pareia com a key `i` da track."*
 
-**As duas não podem ser verdade ao mesmo tempo**, porque a track é por-CLIP. E o produto já
-sabe disso: apertar K na trajetória num clip criado depois dispara o `debug_assert` do
-`rewrite_path_key_values` —
+**As duas só podem ser verdade enquanto existir UMA cronometragem**, porque a track é
+por-CLIP. E o produto já sabia: apertar K num clip criado depois dispara o `debug_assert`
+do `rewrite_path_key_values` — *"a track tem 1 keys para 3 âncoras"*. Em release o assert
+não dispara e o `zip` deixa a key de CHEGADA com a distância de uma âncora do MEIO: *"o
+percurso do objeto encolhe"*, que é o *"se tentar arrastar qualquer ponto a curva quebra"*
+de um smoke anterior.
 
-```
-a track tem 1 keys para 3 âncoras — a autoria não passou pela porta única
-```
+⚠️ **A opção A (caminho por-clip) foi MEDIDA e recusada com três custos que a primeira
+tabela não listava**, e ficam registrados para ninguém os redescobrir:
 
-⚠️ **Em release o assert não dispara** e o `zip` escreve só até a mais curta: a key de
-CHEGADA fica com a distância de uma âncora do MEIO e *"o percurso do objeto encolhe"* — que
-é literalmente o *"se tentar arrastar qualquer ponto a curva quebra"* de um smoke anterior.
-O `reconcile_one_position_path` é onde os dois modelos foram emparelhados: ele **retorna
-cedo** quando o clip ativo não tem track, deixando as âncoras do outro clip de pé.
+1. **"Distância" só significa alguma coisa sobre UMA curva.** O `prop.rs` já dizia:
+   *"blending DISTANCES is what keeps a crossfade ON the trajectory … blending the two
+   POINTS would cut the corner off it."* Com uma curva por clip, o blend não tem de que ser
+   distância — Position teria de compor **PONTOS**, em 2D.
+2. **Isso mudaria à força o que uma lane ADITIVA de Position significa** — hoje o
+   `algebra()` a define como *"go further along it"*; sobre curvas diferentes isso não se
+   pode dizer, e viraria *deslocar em XY*.
+3. **O `fade_fingerprint_channels` é exatamente essa cena** (clip A em distância 2, clip B
+   em 14, com SOBREPOSIÇÃO, sobre um L de 10+6): meio caminho é 8, **a quina**. Compondo
+   pontos, o corredor corta a quina e o hash `0x69dca8811eb0f8f8` **move** — e o doc dele
+   diz *"não há motivo para mover um pin que já dizia a verdade sobre o canal dele"*.
 
-**As duas saídas, e a escolha é do Enio** (as duas mexem em `DOC_VERSION` ou em semântica):
+**A escolha do Enio foi B**, e a lei que ficou é uma frase:
 
-| | o que muda | preço |
+> **Quem lança o trilho é a única cronometragem que existe.** A partir da segunda, ninguém
+> autora geometria por acidente: as âncoras só mudam pelos gestos EXPLÍCITOS (arrastar
+> âncora, arrastar alça, inserir na curva), e o **K de qualquer clip keya PROGRESSO** ao
+> longo do que já existe (a pose vai para a curva pelo `project`, e a key guarda a
+> DISTÂNCIA).
+
+Porta única: `TimelineDoc::active_clip_authors_the_rail`. **Três consumidores, e cada um é
+uma camada com gate PRÓPRIO** — com o braço de progresso no lugar, o K nunca ALCANÇA os
+outros dois, então um gate só ficaria verde sobre eles
+([[feedback_layered_defenses_need_per_layer_gates]]):
+
+| camada | o que ela impede | gate |
 |---|---|---|
-| **A — o caminho vai para o CLIP** | cada clip tem a própria trajetória; casa com *"âncora i ↔ key i"*; mata a contaminação na raiz | `DOC_VERSION` + migração + revoga a cerca de Chesterton do `binding.rs` |
-| **B — o caminho fica no DOCUMENTO, mas é um TRILHO** | as âncoras são compartilhadas de propósito e cada clip keya só o *progresso*; o K num clip novo **não** acrescenta âncora | sem bump, mas muda o que o K faz e precisa de UI que diga de quem é o trilho |
+| `add_path_key` | o K de outro clip acrescentar âncora | `keying_the_path_in_a_second_clip_keys_progress_not_geometry` |
+| `rewrite_path_key_values` | arrastar uma âncora reescrever a cronometragem de quem só percorre | `reshaping_the_rail_leaves_a_progress_timing_alone` |
+| `reconcile_one_position_path` | o `settle` reconstruir o trilho com uma âncora por key do clip que só percorre | `reconcile_only_repairs_the_timing_that_authored_the_rail` |
 
-Enquanto não se decide, o `debug_assert` fica como está: ele é o tripwire que provou a
-contradição.
+3 mutações, 3 sangram — a do reconcile de forma espetacular: o L de 3 quinas vira 5 âncoras
+suaves ao longo da cronometragem do outro clip (a contaminação pelo lado oposto).
+
+⚠️ **O custo honesto de B, para ninguém o descobrir por acidente:** a partir da segunda
+cronometragem, reformar o trilho **não** reescreve mais as distâncias de ninguém — nem as
+do clip que o autorou. É o que "progresso ao longo de um trilho" significa (a key diz *7 ao
+longo*, e reformar o trilho move onde isso cai), mas para o clip autor é uma mudança: com
+uma cronometragem só, as keys dele seguiam as âncoras.

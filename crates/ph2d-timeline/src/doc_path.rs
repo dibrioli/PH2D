@@ -210,6 +210,32 @@ impl TimelineDoc {
         if b.prop != PropKind::Position {
             return false;
         }
+        // ⚠️ **Num clip que NÃO autora o trilho, o K keya PROGRESSO** (o modelo do trilho
+        // compartilhado — ver [`Self::active_clip_authors_the_rail`]). A pose vai para a
+        // curva pelo `project` e o que a key guarda é a DISTÂNCIA: nenhuma âncora nasce,
+        // nenhuma geometria muda, e a cronometragem deste clip não perturba a de ninguém.
+        // Era aqui que o report do Enio nascia — o K acrescentava âncora ao trilho de outro
+        // clip e desalinhava a contagem.
+        //
+        // O `project` só falha num caminho VAZIO, e aí não há trilho a percorrer: cai no
+        // caminho de autoria abaixo, que é o que cria o primeiro.
+        if !self.active_clip_authors_the_rail(target)
+            && let Some(d) = b.path.as_ref().and_then(|p| p.project(at))
+        {
+            let entity = b.entity;
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "a distância é f64 na curva e f32 na key, como todo valor de track"
+            )]
+            self.upsert_key(
+                entity,
+                PropKind::Position,
+                t,
+                AnimValue::Float(d as f32),
+                crate::Interp::Linear,
+            );
+            return true;
+        }
         // Onde a âncora entra: a contagem de keys ESTRITAMENTE antes de `t`. Num
         // instante já keyado isso dá o índice daquela key, e o passo abaixo a
         // sobrescreve em vez de duplicar — a mesma semântica do `upsert_key`.
@@ -248,6 +274,45 @@ impl TimelineDoc {
         self.rewrite_path_key_values(target)
     }
 
+    /// **O clip ativo é quem AUTORA a geometria deste trilho?** (o modelo do TRILHO
+    /// COMPARTILHADO, Enio 2026-07-30.)
+    ///
+    /// A trajetória mora no BINDING, que é do DOCUMENTO, e o `binding.rs` defende o porquê:
+    /// *"dois clips que animam o objeto ao longo dela são duas CRONOMETRAGENS da mesma
+    /// jornada"*. Mas a linha seguinte do mesmo doc-comment diz *"âncora `i` pareia com a
+    /// key `i` da track"* — e a track é por-CLIP. **As duas só podem ser verdade enquanto
+    /// UMA cronometragem existir.**
+    ///
+    /// Foi essa contradição que o report do Enio expôs (*"o Path criado em um Clip
+    /// contamina … outro Clip criado depois"*): apertar K num segundo clip acrescentava uma
+    /// âncora ao trilho compartilhado enquanto a track daquele clip tinha outra contagem, e
+    /// o `debug_assert` do [`Self::rewrite_path_key_values`] disparava — *"a track tem 1
+    /// keys para 3 âncoras"*. Em release o assert não dispara e o `zip` deixa a key de
+    /// CHEGADA com a distância de uma âncora do MEIO: *"o percurso do objeto encolhe"*.
+    ///
+    /// Então a lei do trilho é: **quem lança o trilho é a única cronometragem que existe.**
+    /// A partir da segunda, ninguém autora geometria por acidente — as âncoras só mudam
+    /// pelos gestos EXPLÍCITOS (arrastar uma âncora, arrastar uma alça, inserir na curva),
+    /// e o K de qualquer clip keya PROGRESSO ao longo do que já existe.
+    ///
+    /// `true` também quando ninguém keya ainda (o primeiro K de todos), que é o caso em que
+    /// o trilho está sendo criado.
+    fn active_clip_authors_the_rail(&self, target: AnimTarget) -> bool {
+        let timings = self
+            .clips()
+            .iter()
+            .filter(|c| c.clip.track(target).is_some_and(|t| !t.is_empty()))
+            .count();
+        match timings {
+            0 => true,
+            1 => self
+                .active_clip()
+                .track(target)
+                .is_some_and(|t| !t.is_empty()),
+            _ => false,
+        }
+    }
+
     /// Reescreve o valor de TODA key com a distância que o caminho diz hoje.
     ///
     /// Extraída porque há dois autores de geometria ([`Self::move_path_anchor`] e
@@ -262,6 +327,13 @@ impl TimelineDoc {
             return false;
         };
         let lens: Vec<f64> = (0..path.len()).filter_map(|k| path.arclen_at(k)).collect();
+        // ⚠️ **Só a cronometragem que AUTORA o trilho tem uma key por âncora** — nas outras
+        // as keys são progresso ao longo dele, em quantidade e distâncias próprias, e
+        // reescrevê-las pelas âncoras destruiria justamente o que elas dizem. O `zip`
+        // posicional abaixo É a lei "âncora `i` ↔ key `i`", e ela só vale ali.
+        if !self.active_clip_authors_the_rail(target) {
+            return true;
+        }
         let Some(track) = self.active_clip_mut().track_mut(target) else {
             return true;
         };
@@ -423,6 +495,14 @@ impl TimelineDoc {
     /// está em passo** — toda key casa a própria âncora, então um caminho intocado não é
     /// perturbado (nenhum passo de undo espúrio).
     fn reconcile_one_position_path(&mut self, target: AnimTarget) {
+        // ⚠️ **A reconciliação é da cronometragem que AUTORA o trilho, e de mais nenhuma.**
+        // Ela existe para curar a autoria (separar X/Y e juntar de volta absorve uma key e
+        // deixa a âncora órfã; duplicar/colar faz nascer uma key sem âncora) — fluxos de UM
+        // clip. Rodada sobre um clip que só keya PROGRESSO, ela reconstruiria o trilho com
+        // uma âncora por key DAQUELE clip: a contaminação do report, pelo outro lado.
+        if !self.active_clip_authors_the_rail(target) {
+            return;
+        }
         // As distâncias que as keys da track guardam, em ordem de TEMPO.
         let Some(track) = self.active_clip().track(target) else {
             return;

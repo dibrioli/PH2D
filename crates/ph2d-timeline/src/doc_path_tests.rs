@@ -607,3 +607,61 @@ fn insert_refuses_a_scalar_target_and_a_bare_path() {
         "a one-point path cannot be split"
     );
 }
+
+/// **A reconciliação é da cronometragem que AUTORA o trilho, e de mais nenhuma.**
+///
+/// A terceira camada da lei do trilho compartilhado, e a que precisa do gate mais
+/// explícito: o `reconcile_position_paths` roda no `settle` de TODA edição, então ele
+/// alcança um clip que só percorre o trilho sem ninguém pedir. Sem o guard de autoria ele
+/// reconstruiria a trajetória com **uma âncora por key daquele clip** — a contaminação do
+/// report do Enio (2026-07-30) pelo outro lado: em vez de o clip novo herdar o trilho, o
+/// trilho é que passaria a herdar a cronometragem do clip novo.
+///
+/// **Mutação que deve sangrar:** o guard de autoria do `reconcile_one_position_path`.
+#[test]
+fn reconcile_only_repairs_the_timing_that_authored_the_rail() {
+    let (_w, e, mut doc) = rig();
+    let bits = e.to_bits();
+    let target = doc.binding_for(bits, PropKind::Position).unwrap().target;
+    let rail = doc.bindings()[0].path.clone().expect("o trilho do rig");
+    assert_eq!(rail.len(), 3, "o rig autora três âncoras");
+
+    // Um segundo clip, com uma cronometragem PRÓPRIA: cinco instantes ao longo do mesmo
+    // trilho, em distâncias que não são as das âncoras.
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    for (i, d) in [1.0_f32, 4.0, 7.0, 11.0, 16.0].iter().enumerate() {
+        doc.upsert_key(
+            bits,
+            PropKind::Position,
+            RationalTime::from_seconds(i as f64 * 0.5),
+            AnimValue::Float(*d),
+            Interp::Linear,
+        );
+    }
+
+    doc.reconcile_position_paths();
+
+    let after = doc.bindings()[0].path.clone().expect("o trilho sobrevive");
+    assert_eq!(
+        after.anchors(),
+        rail.anchors(),
+        "cinco keys de progresso não viram cinco âncoras: a geometria é de quem a autorou"
+    );
+    let b_keys: Vec<f32> = doc.clips()[b]
+        .clip
+        .track(target)
+        .expect("track de B")
+        .keys()
+        .iter()
+        .map(|k| match k.value {
+            AnimValue::Float(v) => v,
+            _ => f32::NAN,
+        })
+        .collect();
+    assert_eq!(
+        b_keys,
+        vec![1.0, 4.0, 7.0, 11.0, 16.0],
+        "e a cronometragem de B fica exatamente como o artista a autorou"
+    );
+}

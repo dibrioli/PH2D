@@ -81,6 +81,7 @@
 - [Gates compostos verdes escondem conector não-provado](feedback_green_composed_gates_can_hide_an_unproven_connector.md) — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra
+- [Bug de default que persiste? é num RESET, não no CREATE](feedback_a_persistent_default_bug_lives_in_a_reset_path_not_the_create_path.md) — enumere toda porta que reconstrói o estado (new/default/purge/load)
 - [Mutação sem sangue acusa o ORÁCULO](feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding.md) — meça a propriedade que a mudança É antes de descartar o achado
 - [Aproximação dentro de ponto fixo CAMINHA](feedback_an_approximation_inside_a_fixed_point_walks_it_does_not_merely_err.md) — tabela num laço de realimentação: meça deriva sob iteração, não erro de chamada única
 - [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem

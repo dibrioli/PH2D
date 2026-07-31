@@ -13,6 +13,8 @@ metadata:
 
 **How to apply:**
 - When a crate has foreign uncommitted WIP (check `git status` first), format ONLY your own files: `rustfmt <path/to/my_file.rs> ...` (rustfmt takes explicit file paths), NOT `cargo fmt -p`.
+- ⚠️ **`rustfmt <files>` only limits scope if NONE of them is a crate root.** rustfmt follows the `mod` tree from every file it is given, so passing `src/lib.rs` or `src/main.rs` formats the **whole crate** — exactly what you were avoiding. Measured 2026-07-28 (`line/anim`): `rustfmt … lib.rs main.rs …` swept 5 unrelated files into the working tree, 3 of which reached a feature commit before `git show --stat` caught them. Pass leaf files only; if you need a crate root formatted, expect the cascade and check `git status` right after.
+- After ANY fmt, `git status -s` before `git add`, and never `git add -- <dir>/` (a directory pathspec re-collects whatever the cascade touched).
 - Damage control after an accidental `cargo fmt -p`:
   - A file that was **clean at HEAD** before fmt → `git checkout -- <file>` is safe (restores HEAD).
   - A file that was **already `M`** (foreign WIP) → do NOT `git checkout` (destroys their WIP). rustfmt changes are non-semantic whitespace, so leaving it is the least-harmful option; flag it. You can't restore their exact pre-fmt WIP (no snapshot).

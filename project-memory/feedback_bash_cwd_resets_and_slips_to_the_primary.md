@@ -15,3 +15,7 @@ No Modo L, a cwd da ferramenta Bash **não é estável**: ela volta ao **repo pr
 Como ela se revela (se revelar): `cargo test --test <alvo>` responde **"no test target named ..."** para um arquivo que você acabou de criar — porque o alvo existe na worktree e você está no primário.
 
 **How to apply:** prefixe **todo** comando com `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-<módulo> && ...`, e nunca termine um comando composto com um `cd` para outro lugar — rode o que for do primário com `git -C <primário>` em vez de `cd`. Um `pwd` no começo de qualquer bloco que vá EDITAR é barato e é a única confirmação que vale.
+
+⚠️ **Refinamento (2026-07-29, 2ª e 3ª escorregadas na mesma sessão): todo script de edição in-place usa path ABSOLUTO.** O `cd` protege o cargo, mas um heredoc `python3`/`sed -i` com path relativo resolve contra a cwd escorregada e **edita a árvore errada sem erro** — foi assim que duas linhas de `mod` foram parar no `main`. Com path absoluto a disciplina do `cd` deixa de ser load-bearing para a CORREÇÃO (só para a velocidade do build). E a reversão de um acidente desses é **remoção cirúrgica** das linhas inseridas (python com path absoluto), **nunca `git checkout`** ([[feedback_mutation_undo_with_cp_never_git_checkout]]) — a árvore primária costuma ter trabalho alheio não-commitado (a `project-memory/`, por exemplo).
+
+O sintoma que denuncia: `cargo` reclama de `failed to create directory .../PH2D/target` — ele está tentando construir no primário.

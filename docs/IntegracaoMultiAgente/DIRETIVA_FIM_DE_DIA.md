@@ -16,12 +16,73 @@
 ## §1 — Os 3 portões (TODOS passam, ou não apague)
 
 1. **Nenhum build rodando.** `pgrep cargo|rustc|mold|cc1|ld` vazio. Apagar o `target/` de um build
-   em curso o quebra. Portão **global e duro**: um build ativo aborta a limpeza inteira.
+   em curso o quebra. Portão **global e duro** no modo padrão: um build ativo aborta a limpeza
+   inteira. ⚠️ **Exceção nomeada — o MODO PARCIAL (§1-bis):** quando há agentes trabalhando e o Enio
+   manda limpar mesmo assim, este portão vira **por-worktree**. É a única flexibilização permitida, e
+   ela tem regras próprias.
 2. **A worktree está limpa de FONTE.** `git status` sem `M`/`A`/`D` (ignore o `?? target`). Worktree
    suja = alguém deixou trabalho não-commitado ali → **pule essa worktree** e sinalize; não nuke o
    target quente de quem está no meio de algo.
 3. **O alvo é um dir REAL sob `Worktrees/*/target`, não symlink.** O `target/` do **primário** é um
    symlink pra tmpfs (`/dev/shm`) — apagar *através* dele é outra coisa. Nunca `rm -rf` num symlink.
+
+---
+
+## §1-bis — MODO PARCIAL: limpar com agentes vivos *(emenda 2026-07-30)*
+
+> **Quando:** o Enio manda limpar no meio de uma jornada — *"temos vários agentes trabalhando, limpe
+> apenas o que não atrapalha"*. O modo padrão abortaria tudo por causa de UM build ativo, e no dia em
+> que esta emenda nasceu isso teria deixado **464 GB** no chão com o disco a **85%**.
+
+### A troca, e só ela
+
+O portão 1 deixa de ser global e passa a ser **por-worktree**: para cada candidata, resolva o **`cwd`
+de cada processo de build vivo** e pule a worktree se algum estiver dentro dela.
+
+```bash
+ativo=""
+for p in cargo rustc mold cc1 ld rustdoc; do
+  for pid in $(pgrep -x "$p" 2>/dev/null); do
+    cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
+    case "$cwd" in "$wt"|"$wt"/*) ativo="$p($pid)";; esac
+  done
+done
+[ -n "$ativo" ] && { echo "· $(basename "$wt"): BUILD ATIVO $ativo — PULADO"; continue; }
+```
+
+**Os portões 2 e 3 não mudam** — e o 2 (worktree suja) faz o trabalho pesado aqui: um agente no meio
+de uma tarefa quase sempre tem alteração não-commitada, então *sujo* já é um bom detector de *ocupado*.
+
+⚠️ **Re-cheque os portões IMEDIATAMENTE antes de cada `rm`**, dentro do laço — nunca uma vez no
+começo. Entre a inspeção e a remoção há minutos, e agentes começam builds nesse vão.
+
+### ⚠️ O sinal de atividade que MENTE
+
+**A mtime do diretório `target/` NÃO é sinal de atividade.** Ela só muda quando entradas são criadas ou
+removidas **diretamente** em `target/` — escrita em subpasta não a move.
+
+> **Medido no dia da emenda:** `line-Painter` marcava mtime de **2 dias antes** enquanto um
+> `cargo test --release` rodava **naquele instante**. Quem confiasse nela apagaria o target de um build
+> em curso — exatamente o que o portão 1 existe para impedir.
+
+O sinal que **funciona** é o arquivo mais recente *dentro* do target, e ele é barato por causa do
+`-quit` (para no primeiro achado):
+
+```bash
+find "$t" -type f -newermt '-24 hours' -print -quit
+```
+
+Vazio = fria. Use-o como **terceira confirmação**, nunca como substituto dos portões.
+
+### O risco residual, que é real e aceito
+
+Uma worktree limpa e fria **pode** receber um build segundos depois da remoção. O custo é o documentado
+(build frio, reversível, com o sccache quente amortecendo) — **não há corrupção**, porque o `rm`
+terminou antes do build começar.
+
+> **Aconteceu em 2026-07-30:** o agente do `line-anim` iniciou um build ~30 s depois de o target dele
+> ser limpo. Nada quebrou; aquela linha pagou um rebuild frio. **Reporte isso** — é perturbação real de
+> um agente, e omiti-la faria o relatório mentir.
 
 ---
 
@@ -88,6 +149,10 @@ echo "— não-pushado em HEAD: $(git rev-list --count @{u}..HEAD 2>/dev/null ||
 
 O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
 
+> **Com agentes vivos, este script aborta na 1ª linha** (portão 1 global). Use o **modo parcial**:
+> troque o `for p in … exit 1` do topo pelo teste **por-worktree** de [§1-bis](#1-bis--modo-parcial-limpar-com-agentes-vivos-emenda-2026-07-30),
+> movido para **dentro** do laço, e acrescente a sonda `find -newermt` como terceira confirmação.
+
 > **Por que o teste é `[ -n "$(git status --porcelain)" ]` e não `grep -vq`:** `grep -v` sobre
 > entrada vazia devolve exit-code ambíguo (depende do shell) — a 1ª versão desta diretiva usava
 > `grep -vq` e pulava worktrees LIMPAS em silêncio. String vazia = limpa é inequívoco. *(Achado
@@ -116,3 +181,12 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
 - **Diagnóstico que originou esta diretiva:**
   [`project-memory/project_modo_l_speed_hole_worktree_targets_slow_path.md`](../../project-memory/project_modo_l_speed_hole_worktree_targets_slow_path.md)
   — a lentidão do Modo L não era RAM, era disco + recompilação 6×; o cache quente é o herói, não o vilão.
+- **Emenda 2026-07-30 (§1-bis) — a 2ª vez que rodar o runbook o corrigiu.** Jornada com 8 worktrees e
+  agentes vivos, disco a **85%** (798 G de 950 G). O portão 1 global teria abortado tudo por causa de
+  um `cargo test` no `line-Painter`; o modo por-worktree liberou **464 GB** (→ 36%) limpando
+  `line-anim` (221 G), `line-physics` (203 G) e `line-FLIP` (42 G), e pulando as três worktrees com
+  trabalho não-commitado. Dois achados vieram de *exercitar*, não de revisar: a **mtime de diretório
+  mente** (o `line-Painter` marcava 2 dias enquanto compilava) e a **corrida é real** (o `line-anim`
+  começou um build 30 s depois da limpeza — sem dano, mas com rebuild frio a reportar). Mesma lição do
+  achado do `grep -vq` acima: *um runbook de segurança tem de ser EXERCITADO*
+  ([[feedback_render_and_look_when_a_green_gate_is_contradicted]]).

@@ -177,8 +177,36 @@ impl Camera3d {
         Ray::new(self.eye().into(), dir.into())
     }
 
+    /// Onde um ponto do mundo cai na tela, em pixels — **o inverso exato do
+    /// [`Self::ray_through`]**.
+    ///
+    /// `None` quando o ponto está atrás do olho (não há pixel para ele).
+    ///
+    /// ⚠️ Existe como PORTA e não como conta no chamador porque ela tem três
+    /// consumidores que precisam concordar: o gate de round-trip, o diagnóstico
+    /// do gesto, e qualquer cursor 3D futuro. Uma segunda cópia da conversão
+    /// NDC→pixel é exatamente o que faz o cursor e a tinta discordarem.
+    #[must_use]
+    pub fn project(&self, p: [f32; 3], size: (u32, u32)) -> Option<(f32, f32)> {
+        let (w, h) = (size.0.max(1) as f32, size.1.max(1) as f32);
+        let clip = self.view_proj(w / h) * Vec3::from(p).extend(1.0);
+        if clip.w <= 0.0 {
+            return None;
+        }
+        let ndc = clip.truncate() / clip.w;
+        Some(((ndc.x + 1.0) * 0.5 * w, (1.0 - ndc.y) * 0.5 * h))
+    }
+
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um
     /// pixel, porque é ela que conhece a densidade da tela.
+    ///
+    /// ⚠️ **O SENTIDO é do chamador, e ele não é óbvio.** `yaw` positivo leva o
+    /// OLHO para `+X`, e a câmera indo para a direita faz o modelo *parecer* ir
+    /// para a esquerda. Manipulação direta — *o modelo segue a mão*, que é o que
+    /// ZBrush, Blender e SculptGL entregam — exige portanto `yaw -= dx` e
+    /// `pitch += dy`. O gate que prende isto é
+    /// `dragging_right_turns_the_model_right`, e ele mede o modelo NA TELA em
+    /// vez de argumentar sobre sinais.
     pub fn orbit(&mut self, dx: f32, dy: f32) {
         self.yaw += dx;
         self.pitch = (self.pitch + dy).clamp(-PITCH_LIMIT, PITCH_LIMIT);

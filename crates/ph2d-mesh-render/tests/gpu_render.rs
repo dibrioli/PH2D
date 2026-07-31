@@ -351,3 +351,62 @@ fn a_region_upload_refuses_a_mesh_whose_topology_changed() {
     // geometria seria puxada para lugares que ninguém tocou.
     assert!(!r.upload_region(&queue, &big, &[0, 1, 2]));
 }
+
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn the_pixels_the_ray_hits_are_the_pixels_the_mesh_painted() {
+    // ⚠️ **O oráculo que faltava.** O gate de round-trip da câmera prova
+    // raio↔MATRIZ; este prova raio↔IMAGEM. Entre os dois mora tudo que pode
+    // deslocar o pincel do cursor — viewport de outro tamanho, um flip de Y no
+    // alvo, uma aspect diferente entre quem projeta e quem dispara — e nenhum
+    // teste de nenhuma das duas metades enxerga isso.
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — pulando");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    // Câmera ASSIMÉTRICA de propósito: com o modelo centrado, um espelho em X ou
+    // em Y é indistinguível do certo, e o gate ficaria verde sobre a inversão.
+    let mut camera = camera_for(&mesh);
+    camera.yaw = 0.8;
+    camera.pitch = 0.5;
+    camera.pan(0.18, -0.12);
+
+    let px = render(&device, &queue, &mesh, &camera);
+
+    let mut painted = 0usize;
+    let mut agree = 0usize;
+    let mut disagree = Vec::new();
+    for y in 0..H {
+        for x in 0..W {
+            let lit = lum(&px, x, y) > 0.02;
+            // Amostra do CENTRO do pixel: é para onde o rasterizador olha.
+            let ray = camera.ray_through(x as f32 + 0.5, y as f32 + 0.5, (W, H));
+            let hit = mesh.raycast(&ray).is_some();
+            if lit {
+                painted += 1;
+            }
+            if lit == hit {
+                agree += 1;
+            } else if disagree.len() < 8 {
+                disagree.push((x, y, lit, hit));
+            }
+        }
+    }
+    let total = (W * H) as usize;
+    let share = agree as f64 / total as f64;
+    println!(
+        "pintados {painted} de {total}; raio e imagem concordam em {:.4} dos pixels",
+        share
+    );
+    assert!(painted > total / 20, "a malha mal apareceu ({painted} px)");
+    // A discordância honesta é a BORDA: um pixel meio coberto acende e o raio
+    // pelo centro dele erra (e vice-versa). Numa silhueta de ~300 px de diâmetro
+    // a borda é ~1000 px de 65 mil = 1,5%.
+    assert!(
+        share > 0.975,
+        "raio e imagem discordam em {:.1}% dos pixels — o pincel não cai onde o \
+         cursor aponta. Amostras (x, y, pintado, acertou): {disagree:?}",
+        (1.0 - share) * 100.0
+    );
+}

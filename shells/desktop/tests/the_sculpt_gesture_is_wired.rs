@@ -186,3 +186,57 @@ fn the_shell_takes_the_3d_keys_before_the_widget_store_sees_them() {
         "a cena 3D tem de ver a tecla ANTES do store, senão `1..9` viram outra coisa"
     );
 }
+
+#[test]
+fn the_model_follows_the_hand() {
+    // ⚠️ **Proxy deliberado.** O FATO — *arrastar para a direita vira o modelo
+    // para a direita* — é definido e medido na crate, em
+    // `dragging_right_turns_the_model_right_and_dragging_down_shows_its_top`,
+    // que projeta um ponto do modelo NA TELA. Aqui só se afirma que a shell
+    // entrega os sinais que aquele fato exige; dirigir a câmera de verdade
+    // precisaria de um device.
+    //
+    // Os dois sinais estavam TROCADOS e o smoke os pegou: `yaw` positivo leva o
+    // OLHO para `+X`, e a câmera indo para a direita faz o modelo parecer ir
+    // para a esquerda.
+    let body = function_body(&source("sculpt3d.rs"), "sculpt3d_pointer_move");
+    assert!(
+        body.contains(".orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX)"),
+        "a órbita da shell tem de negar o `dx` e NÃO o `dy`"
+    );
+}
+
+#[test]
+fn a_click_on_a_panel_is_not_a_click_on_the_model() {
+    // Sem esta pergunta a cena 3D engolia TODO botão do app, inclusive os do
+    // rail — ela devolvia `true` incondicionalmente e o dispatch 2D nunca via o
+    // evento.
+    let src = source("sculpt3d.rs");
+    let down = function_body(&src, "sculpt3d_pointer_down");
+    assert!(
+        down.contains("cursor_over_hero_panel("),
+        "o Down tem de recusar um clique sobre painel"
+    );
+    // ⚠️ E o Move/Up NÃO podem fazer a mesma pergunta: um arrasto em curso
+    // continua sendo do gesto que o abriu, mesmo que o cursor passeie sobre um
+    // painel. É a regra de captura que todo gizmo deste shell segue, e gateá-la
+    // aqui impede que alguém "complete" a correção e quebre o traço longo.
+    for port in ["sculpt3d_pointer_move", "sculpt3d_pointer_up"] {
+        assert!(
+            !function_body(&src, port).contains("cursor_over_hero_panel("),
+            "`{port}` não pode largar um arrasto em curso ao cruzar um painel"
+        );
+    }
+}
+
+#[test]
+fn the_mirror_is_off_until_the_artist_asks_for_it() {
+    // Um default que só se descobre por acidente é pior que um default menos
+    // ambicioso: com o espelho ligado o artista clicava de um lado e via uma
+    // segunda protuberância do outro, sem nada na tela explicando por quê.
+    let body = function_body(&source("sculpt3d.rs"), "new(");
+    assert!(
+        body.contains("symmetry: Symmetry::default()"),
+        "a simetria tem de nascer desligada; o `X` a liga"
+    );
+}

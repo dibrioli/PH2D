@@ -109,7 +109,13 @@ impl Sculpt3dScene {
             brush: Brush::default(),
             radius_frac: DEFAULT_RADIUS_FRAC,
             model_span,
-            symmetry: Symmetry::MIRROR_X,
+            // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
+            // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
+            // de um lado e via uma segunda protuberância do outro, sem nada na
+            // tela explicando por quê: *"o local onde está esculpindo não
+            // coincide com a posição do mouse"*. Um default que só se descobre
+            // por acidente é pior que um default menos ambicioso; o `X` liga.
+            symmetry: Symmetry::default(),
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             dirty: Vec::new(),
@@ -171,6 +177,20 @@ impl Sculpt3dScene {
         let Some(hit) = self.mesh.raycast(&ray) else {
             return false;
         };
+        if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
+            // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
+            // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
+            // `project` — o inverso exato do `ray_through` — e imprime o erro em
+            // pixels. Um desvio grande acusa a fiação (viewport, escala, um
+            // flip); zero acusa a percepção, e aí a causa é outra.
+            let back = self.camera.project(hit.point, self.viewport);
+            let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
+            eprintln!(
+                "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
+                 -> volta {err:?}",
+                self.viewport, hit.point
+            );
+        }
         let brush = self.armed_brush();
         self.stroke.dab(
             &mut self.mesh,
@@ -247,7 +267,8 @@ impl App {
             "[sculpt3d] esfera com {} vértices / {} faces / {} triângulos\n\
              [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
              [sculpt3d] Shift = Smooth enquanto segurar · Ctrl = inverte (cava)\n\
-             [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz",
+             [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
+             [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
             mesh.face_count(),
             mesh.triangle_count()
@@ -264,6 +285,15 @@ impl App {
     /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
     pub(crate) fn sculpt3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
         let pos = self.last_pointer;
+        // ⚠️ Um clique SOBRE PAINEL não é da cena — e sem esta pergunta a cena 3D
+        // engolia todo botão do app, inclusive os do rail. O `Move` e o `Up` NÃO
+        // a fazem de propósito: um arrasto em curso continua sendo do gesto que
+        // o abriu, mesmo que o cursor passeie por cima de um painel (a regra de
+        // captura que todo gizmo deste shell segue). É a MESMA porta que a roda
+        // já usava.
+        if crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), pos.0, pos.1) {
+            return false;
+        }
         let mods = self.modifiers;
         let (ctrl, shift) = (mods.control_key(), mods.shift_key());
         let Some(scene) = self.sculpt3d_scene_mut() else {
@@ -324,12 +354,18 @@ impl App {
         scene.last = (x, y);
         let height = scene.viewport.1.max(1) as f32;
         match drag {
-            // O sinal do pitch é invertido: arrastar para BAIXO na tela olha o
-            // modelo de cima, que é o que a mão espera (o modelo gira, não a
-            // câmera voa).
+            // ⚠️ **Manipulação direta: o modelo segue a mão.** `yaw` positivo
+            // leva o OLHO para `+X`, e a câmera indo para a direita faz o
+            // modelo *parecer* ir para a esquerda — então arrastar para a
+            // direita pede `yaw -= dx`. E arrastar para BAIXO mostra o TOPO
+            // (o modelo tomba para a frente), que é `pitch += dy`.
+            //
+            // Os DOIS sinais estavam trocados e o smoke os pegou; o gate que os
+            // prende (`dragging_right_turns_the_model_right`) mede o modelo NA
+            // TELA em vez de argumentar sobre sinais, que foi como o erro entrou.
             Drag::Orbit => scene
                 .camera
-                .orbit(dx * ORBIT_RAD_PER_PX, -dy * ORBIT_RAD_PER_PX),
+                .orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX),
             Drag::Pan => scene.camera.pan(dx / height, dy / height),
             Drag::Sculpt => {
                 scene.sculpt_at(x, y);

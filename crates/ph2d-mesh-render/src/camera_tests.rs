@@ -302,19 +302,17 @@ fn the_ray_through_a_pixel_lands_where_that_pixel_draws() {
         pitch: -0.35,
         fov_y: core::f32::consts::FRAC_PI_4,
     };
-    let vp = cam.view_proj(aspect);
+    let _ = aspect;
     let mut checked = 0;
     for k in 0..24 {
         let t = k as f32 / 23.0;
         let p = glam::Vec3::new(-1.0 + 2.0 * t, (t * 7.0).sin() * 0.8, (t * 5.0).cos() * 0.8);
-        let clip = vp * p.extend(1.0);
-        if clip.w <= 0.0 {
+        // ⚠️ Pela PORTA `project`, não por uma conversão escrita aqui: uma
+        // segunda conta NDC→pixel no teste é a segunda resposta de que o defeito
+        // precisa para nascer, e ela concordaria com o erro em vez de o expor.
+        let Some((px, py)) = cam.project(p.into(), size) else {
             continue;
-        }
-        let ndc = clip.truncate() / clip.w;
-        // A mesma conversão do `ray_through`, na direção oposta.
-        let px = (ndc.x + 1.0) * 0.5 * size.0 as f32;
-        let py = (1.0 - ndc.y) * 0.5 * size.1 as f32;
+        };
         if !(0.0..size.0 as f32).contains(&px) || !(0.0..size.1 as f32).contains(&py) {
             continue;
         }
@@ -352,4 +350,84 @@ fn the_ray_through_the_centre_of_the_screen_aims_at_the_target() {
         "o centro da tela não mira o alvo: {:?} vs {to_target:?}",
         d
     );
+}
+
+/// Um ponto na face do modelo que está voltada para a câmera.
+fn front_of_model(cam: &Camera3d, radius: f32) -> glam::Vec3 {
+    let dir = (cam.eye() - cam.target).normalize();
+    cam.target + dir * radius
+}
+
+#[test]
+fn dragging_right_turns_the_model_right_and_dragging_down_shows_its_top() {
+    // ⚠️ **O gate mede o modelo NA TELA, não o sinal do ângulo.** Argumentar
+    // sobre `yaw += dx` é como o erro entrou: `yaw` positivo leva o OLHO para
+    // `+X`, e a câmera indo para a direita faz o modelo *parecer* ir para a
+    // esquerda. A pergunta que o artista faz é *"o modelo segue a minha mão?"*,
+    // e é essa que se afirma aqui — via [`Camera3d::project`], a porta que o
+    // produto usa.
+    let size = (1000u32, 800u32);
+    let base = Camera3d {
+        target: glam::Vec3::ZERO,
+        distance: 4.0,
+        yaw: 0.3,
+        pitch: 0.2,
+        ..Camera3d::default()
+    };
+    let mark = front_of_model(&base, 1.0);
+    let before = base
+        .project(mark.into(), size)
+        .expect("o ponto está na tela");
+
+    // Arrastar para a DIREITA: o ponto da frente tem de andar para a direita.
+    let mut right = base;
+    right.orbit(-0.25, 0.0);
+    let after = right.project(mark.into(), size).expect("continua na tela");
+    assert!(
+        after.0 > before.0 + 20.0,
+        "arrastar para a direita moveu o modelo de x={} para x={}",
+        before.0,
+        after.0
+    );
+
+    // Arrastar para BAIXO: vê-se o TOPO, então o ponto da frente desce na tela.
+    let mut down = base;
+    down.orbit(0.0, 0.25);
+    let after = down.project(mark.into(), size).expect("continua na tela");
+    assert!(
+        after.1 > before.1 + 20.0,
+        "arrastar para baixo moveu o modelo de y={} para y={}",
+        before.1,
+        after.1
+    );
+}
+
+#[test]
+fn project_is_the_exact_inverse_of_ray_through() {
+    // As duas portas TÊM de concordar, e o gate as compara direto em vez de
+    // reimplementar a projeção no teste — uma segunda conta aqui seria a
+    // segunda resposta que o defeito precisa para nascer.
+    let size = (1280u32, 720u32);
+    let cam = Camera3d {
+        target: glam::Vec3::new(0.3, -0.2, 0.1),
+        distance: 4.0,
+        yaw: 0.9,
+        pitch: -0.35,
+        fov_y: core::f32::consts::FRAC_PI_4,
+    };
+    let mut checked = 0;
+    for k in 0..40 {
+        let (x, y) = ((k % 8) as f32 * 160.0 + 20.0, (k / 8) as f32 * 140.0 + 20.0);
+        let ray = cam.ray_through(x, y, size);
+        // Um ponto a 3 unidades ao longo do raio tem de projetar de volta no
+        // MESMO pixel.
+        let p = ray.at(3.0);
+        let (bx, by) = cam.project(p, size).expect("à frente do olho");
+        assert!(
+            (bx - x).abs() < 1e-2 && (by - y).abs() < 1e-2,
+            "pixel ({x}, {y}) voltou como ({bx}, {by})"
+        );
+        checked += 1;
+    }
+    assert_eq!(checked, 40);
 }

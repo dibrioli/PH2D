@@ -87,8 +87,35 @@ mod intents;
 #[cfg(feature = "panel-motion-graph")]
 use intents::apply_graph_intents;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_arrange_tests.rs"]
+mod arrange_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_backdrop_tests.rs"]
+mod backdrop_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_bypass_tests.rs"]
+mod bypass_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_connect_tests.rs"]
 mod connect_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_dock_tests.rs"]
+mod dock_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_edit_tests.rs"]
+mod edit_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_param_tests.rs"]
+mod param_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_plumbing_tests.rs"]
+mod plumbing_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_range_tests.rs"]
+mod range_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_rename_tests.rs"]
+mod rename_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_subgraph_ports_tests.rs"]
 mod subgraph_ports_tests;
@@ -96,35 +123,8 @@ mod subgraph_ports_tests;
 #[path = "motion_bridge_subgraph_tests.rs"]
 mod subgraph_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_dock_tests.rs"]
-mod dock_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_rename_tests.rs"]
-mod rename_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_param_tests.rs"]
-mod param_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_range_tests.rs"]
-mod range_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_plumbing_tests.rs"]
-mod plumbing_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_backdrop_tests.rs"]
-mod backdrop_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_arrange_tests.rs"]
-mod arrange_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_edit_tests.rs"]
-mod edit_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_bypass_tests.rs"]
-mod bypass_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).

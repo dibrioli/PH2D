@@ -201,7 +201,6 @@ pub(crate) fn param_value(
         .map_or(0.0, |p| p.default)
 }
 
-
 /// A behaviour's magnitude param needs a **channel-aware widget range**, not just
 /// a channel-aware value: a `ParamUiHint`'s range is static, and the behaviours'
 /// were authored for position (`±10` world units). On the Rotation channel the

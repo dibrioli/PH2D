@@ -250,9 +250,15 @@ mod tests {
             .map(|n| n.id)
             .collect();
         let (uv, size) = (motion.default_uv_rect, motion.default_size);
-        motion
-            .pump
-            .pump(&motion.doc.graph, &motion.registry, &sinks, 0, 0.0, uv, size);
+        motion.pump.pump(
+            &motion.doc.graph,
+            &motion.registry,
+            &sinks,
+            0,
+            0.0,
+            uv,
+            size,
+        );
         let covered: BTreeSet<&str> = BTreeSet::new();
         let cols = super::upstream_scalar_columns(&motion, attr, &covered, "");
         assert!(cols.iter().any(|c| c == "Index"), "offers Index: {cols:?}");

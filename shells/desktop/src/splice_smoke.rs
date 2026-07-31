@@ -273,7 +273,10 @@ mod tests {
             .expect("edge");
             positions(&gg, &reg, o)
         };
-        assert_ne!(twisted, bare_grid, "the twist actually deforms (fixture sanity)");
+        assert_ne!(
+            twisted, bare_grid,
+            "the twist actually deforms (fixture sanity)"
+        );
 
         // Mute the twist: grid → twist(OFF) → output passes the grid straight through.
         g.set_bypassed(twist, true);

@@ -5507,10 +5507,9 @@ impl crate::App {
             // andava numa cópia da curva deslocada+encolhida (o report do Enio: "objetos afastados
             // do path, com drift em relação ao canvas"). Projetá-las com as MESMAS dims casa a
             // curva desenhada com os walkers. Fora do split = janela cheia, byte-idêntico.
-            let cam_affine = camera.world_to_screen_affine(crate::field_gizmo::scene_camera_window(
-                hero.view.center_split,
-                window_size,
-            ));
+            let cam_affine = camera.world_to_screen_affine(
+                crate::field_gizmo::scene_camera_window(hero.view.center_split, window_size),
+            );
             // A geometria DERIVADA deste frame — hoje, os offsets vivos. Cozida aqui (depois
             // do `sync`, senão uma forma recém-criada ainda não tem entidade e o componente
             // dela não seria encontrado) e desenhada pelo `dispatch` no z de cada forma.

@@ -41,7 +41,6 @@ mod adapter_smoke;
 mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
-mod picker_smoke;
 mod audio;
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.
@@ -146,6 +145,7 @@ mod fx_silhouette;
 mod fx_smoke;
 mod fx_turbulence_smoke;
 mod fx_undo_smoke;
+mod gradient_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
 mod harmony_smoke;
 mod hero_bridge;
@@ -212,6 +212,7 @@ mod physics_smoke_zones;
 mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
+mod picker_smoke;
 mod project;
 mod project_painter;
 mod render_loop;
@@ -222,6 +223,7 @@ mod sim_populate;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 mod smoke_layout;
+mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
 mod text_fx_smoke;
@@ -239,8 +241,6 @@ mod transport;
 mod twist_smoke;
 mod undo;
 mod undo_route;
-mod gradient_smoke;
-mod splice_smoke;
 mod value_curve_smoke;
 mod value_gain_smoke;
 mod value_median_smoke;

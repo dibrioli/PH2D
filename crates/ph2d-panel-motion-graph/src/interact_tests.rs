@@ -331,6 +331,32 @@ fn copy_and_paste_keys_emit_their_intents() {
     assert!(drain_intents().is_empty());
 }
 
+/// **The double-dispatch is collapsed.** The graph's keys reach the store TWICE per
+/// press (focus gate + cursor router), so a non-idempotent verb like Paste would run
+/// twice — two copies from one Ctrl+V, exactly the bug this fixes. An adjacent repeat
+/// is the artifact and is dropped; distinct verbs and non-adjacent repeats survive.
+/// FALSIFIED by dropping the collapse (a doubled Paste passes through).
+#[test]
+fn a_doubled_key_press_collapses_to_one() {
+    // One Ctrl+V arrives as two adjacent Pastes → one paste.
+    assert_eq!(
+        dedup_double_dispatch(vec![GraphKey::Paste, GraphKey::Paste]),
+        vec![GraphKey::Paste],
+        "one press is one paste, not two"
+    );
+    // Distinct verbs in a frame both survive.
+    assert_eq!(
+        dedup_double_dispatch(vec![GraphKey::Copy, GraphKey::Paste]),
+        vec![GraphKey::Copy, GraphKey::Paste]
+    );
+    // A repeat that is NOT adjacent (two real presses) is preserved — only the
+    // back-to-back double is the artifact.
+    assert_eq!(
+        dedup_double_dispatch(vec![GraphKey::Paste, GraphKey::Copy, GraphKey::Paste]),
+        vec![GraphKey::Paste, GraphKey::Copy, GraphKey::Paste]
+    );
+}
+
 #[test]
 fn right_click_background_opens_menu_then_left_pick_adds_node() {
     let _ = drain_intents();

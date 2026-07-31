@@ -93,8 +93,10 @@ impl App {
         // It runs on the CURSOR rather than on the focus gate inside `dispatch_key`,
         // which is the whole reason this router exists: a stale focus elsewhere in the
         // editor used to swallow the graph's keys (the "Ctrl+D não duplica" smoke).
-        // The panel's handling is idempotent, so the focus-gated path pushing the same
-        // verb in the same frame is harmless.
+        // Both paths CAN push the same verb in one frame, so the panel COLLAPSES an
+        // adjacent repeat on drain (`dedup_double_dispatch`) — otherwise a
+        // non-idempotent verb (Paste, Duplicate) would run twice, two copies from one
+        // Ctrl+V. The verbs need not be idempotent for the double to be harmless.
         if over_motion_graph
             && let Some(kc) = crate::keymap::winit_to_editor_keycode(code)
             && let Some(gk) =

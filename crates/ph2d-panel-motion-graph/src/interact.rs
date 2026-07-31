@@ -49,6 +49,22 @@ pub(crate) use subgraph_gesture::{GroupVerb, verb as group_verb};
 mod key;
 use key::apply_key;
 
+/// Collapse a CONSECUTIVE repeat of the same graph verb — the double-dispatch
+/// artifact (the store gets each verb from both the focus gate and the shell's cursor
+/// router). A human cannot press a key twice in one frame, so an adjacent repeat is
+/// never intentional. Distinct verbs, and a repeat from two SEPARATE presses (not
+/// adjacent), are preserved — only the back-to-back double is dropped.
+fn dedup_double_dispatch(keys: Vec<GraphKey>) -> Vec<GraphKey> {
+    let mut out: Vec<GraphKey> = Vec::with_capacity(keys.len());
+    for k in keys {
+        if out.last() == Some(&k) {
+            continue;
+        }
+        out.push(k);
+    }
+    out
+}
+
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
 /// the snapshot `paint` already fetched — reused for socket/wire hit-testing.
@@ -78,7 +94,13 @@ pub(crate) fn process(
     {
         apply_zoom(state, rect, z);
     }
-    let keys: Vec<GraphKey> = ctx.host.store_mut().drain_graph_keys().collect();
+    // A verb can arrive TWICE in one frame: the graph's keys reach the store through
+    // BOTH the focus gate (`dispatch_key`) and the shell's cursor router
+    // (`input_handlers`: "one map, two readers"). Idempotent verbs (Delete/SelectAll)
+    // shrug that off, but a NON-idempotent one — Paste, Duplicate — would run twice
+    // (two copies from one Ctrl+V). Collapsed here so no verb has to be idempotent to
+    // survive the double.
+    let keys = dedup_double_dispatch(ctx.host.store_mut().drain_graph_keys().collect());
     for k in keys {
         apply_key(state, k, rect, snap);
     }

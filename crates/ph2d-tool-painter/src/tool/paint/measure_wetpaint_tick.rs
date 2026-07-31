@@ -426,8 +426,8 @@ fn measure_what_a_step_of_the_products_puddle_is_made_of() {
     let total: f64 = out.iter().map(|(_, t)| t).sum();
     let amort: f64 = out.iter().map(|(n, t)| t * share(n)).sum();
     println!(
-        "    {:<24} {:>8}  {:>7}  {:>8}   {}",
-        "passe", "cru(ms)", "cadencia", "amort(ms)", "% do passo"
+        "    {:<24} {:>8}  {:>7}  {:>8}   % do passo",
+        "passe", "cru(ms)", "cadencia", "amort(ms)"
     );
     for (name, ms) in &out {
         let a = ms * share(name);

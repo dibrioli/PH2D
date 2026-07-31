@@ -97,9 +97,12 @@ fn measure_what_an_advect_is_made_of_by_sub_pass() {
         "momentum_rows",
         time(g, &mut |g| momentum_rows(g, &p, grav[0], grav[1], mode)),
     ));
-    out.push(("prepare_rows", time(g, &mut |g| {
-        prepare_rows(g, mode);
-    })));
+    out.push((
+        "prepare_rows",
+        time(g, &mut |g| {
+            prepare_rows(g, mode);
+        }),
+    ));
     // ⚠️ Os três seguintes CONSOMEM o que os anteriores escreveram, então cada
     // amostra tem de refazer a cadeia — cronometrar só o alvo.
     let chained = |g: &mut Grid, upto: u8| -> f64 {
@@ -159,9 +162,8 @@ fn measure_what_an_advect_is_made_of_by_sub_pass() {
     // sub-passe é caro por célula ou por percorrer demais.
     let spanned: usize = (g.by0..=g.by1)
         .map(|y| {
-            let (lo, hi) = crate::grid::span_x_of(
-                &g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y,
-            );
+            let (lo, hi) =
+                crate::grid::span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
             (hi - lo + 1).max(0) as usize
         })
         .sum();
@@ -172,9 +174,16 @@ fn measure_what_an_advect_is_made_of_by_sub_pass() {
     );
     let sum: f64 = out.iter().map(|(_, t)| t).sum();
     for (name, ms) in &out {
-        println!("    {name:<18} {ms:7.3} ms  ({:4.1}%)  {:5.1} ns/celula-da-faixa", 100.0 * ms / sum, ms * 1e6 / spanned.max(1) as f64);
+        println!(
+            "    {name:<18} {ms:7.3} ms  ({:4.1}%)  {:5.1} ns/celula-da-faixa",
+            100.0 * ms / sum,
+            ms * 1e6 / spanned.max(1) as f64
+        );
     }
-    println!("    {:<18} {sum:7.3} ms   (o passe INTEIRO mede {whole:.3})", "SOMA");
+    println!(
+        "    {:<18} {sum:7.3} ms   (o passe INTEIRO mede {whole:.3})",
+        "SOMA"
+    );
     println!(
         "\n    Se a SOMA nao bate com o passe inteiro, algum sub-passe esta sendo\n    \
          medido quente (ou frio) contra o que o produto paga."

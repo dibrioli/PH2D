@@ -100,7 +100,8 @@ impl FlowConst {
     fn new(p: &Params, gx: f64, gy: f64, ext_bypass: bool, geom: &FlowGeom) -> Self {
         let g_mag = (gx * gx + gy * gy).sqrt();
         let fingering = !ext_bypass && p.k(Knob::ExtFingering) > 0.0 && g_mag > 0.0;
-        let (mut gnx, mut gny, mut wave_len, mut t_axis_x, mut t_axis_y) = (0.0, 0.0, 1.0, 0.0, 0.0);
+        let (mut gnx, mut gny, mut wave_len, mut t_axis_x, mut t_axis_y) =
+            (0.0, 0.0, 1.0, 0.0, 0.0);
         if fingering {
             gnx = gx / g_mag;
             gny = gy / g_mag;
@@ -592,7 +593,10 @@ fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     // (b) O LEVANTE — cada célula CONTA quantos vizinhos a disparam e aplica
     //     `F` esse número de vezes. A janela é a das células de fluxo
     //     dilatada de UMA, porque o alvo de um levante não precisa estar vivo.
-    let (lo, hi) = (probe_row((by0 - 1).max(0)), probe_row((by1 + 1).min(gh + 1)));
+    let (lo, hi) = (
+        probe_row((by0 - 1).max(0)),
+        probe_row((by1 + 1).min(gh + 1)),
+    );
     let band = lo * fine_s..(hi + 1) * fine_s;
     par::walk_rows3(
         mode,
@@ -621,7 +625,8 @@ fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     if dx < 0 || dy < 0 || dx > geom.w as i32 + 1 || dy > geom.h as i32 + 1 {
                         continue;
                     }
-                    let du = probe_row(dy) * fine_s + crate::flow::flow_probe(dx, gw, geom.rf) as usize;
+                    let du =
+                        probe_row(dy) * fine_s + crate::flow::flow_probe(dx, gw, geom.rf) as usize;
                     if active_full[du] == 0 || bflags[du] & BF_CAN_BLOOM == 0 {
                         continue;
                     }

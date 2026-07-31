@@ -53,7 +53,11 @@ fn symmetric_pool() -> Grid {
             let bump = if d < 30.0 { 1.0 - d / 30.0 } else { 0.0 };
             // ⚠️ Os dentes medem a DISTÂNCIA AO EIXO, nunca `x` — a lição que o
             // controle do `solver_symmetry.rs` pagou.
-            let teeth = if (d.floor() as i32) % 7 < 3 { 1.3 } else { 0.85 };
+            let teeth = if (d.floor() as i32) % 7 < 3 {
+                1.3
+            } else {
+                0.85
+            };
             g.film[i] = (7.0 * bump * teeth) as f32;
             g.susp[i] = (400.0 * bump) as f32;
             g.susp_rgb[i] = [200.0, 40.0, 90.0];
@@ -130,8 +134,14 @@ fn at_the_shipping_knobs_the_two_models_are_the_same_to_the_byte() {
     build_flow_field(&mut gs, &p, 0.0, 0.6, false);
     let mut ji = symmetric_pool();
     build_flow_field_jacobi(&mut ji, &p, 0.0, 0.6, false);
-    assert_eq!(gs.flow_x, ji.flow_x, "flow_x divergiu no ponto de operação default");
-    assert_eq!(gs.flow_y, ji.flow_y, "flow_y divergiu no ponto de operação default");
+    assert_eq!(
+        gs.flow_x, ji.flow_x,
+        "flow_x divergiu no ponto de operação default"
+    );
+    assert_eq!(
+        gs.flow_y, ji.flow_y,
+        "flow_y divergiu no ponto de operação default"
+    );
     assert_eq!(gs.wet, ji.wet, "o carimbo de umidade divergiu");
 }
 
@@ -182,7 +192,10 @@ fn both_models_leave_the_same_wetness_behind() {
     build_flow_field(&mut gs, &p, 0.0, 0.0, false);
     let mut ji = symmetric_pool();
     build_flow_field_jacobi(&mut ji, &p, 0.0, 0.0, false);
-    assert_eq!(gs.wet, ji.wet, "o carimbo de umidade divergiu entre os modelos");
+    assert_eq!(
+        gs.wet, ji.wet,
+        "o carimbo de umidade divergiu entre os modelos"
+    );
     assert!(
         gs.wet.iter().any(|w| *w != 0),
         "nenhuma celula foi carimbada — o gate esta comparando dois planos vazios"
@@ -272,8 +285,14 @@ fn seed_settled(g: &mut Grid) {
             }
         }
     }
-    assert!(lifted > 200, "so {lifted} celulas assentadas — o backrun nao teria o que levantar");
-    assert!(spent > 200, "so {spent} gatilhos sem orcamento — o `bloom < 6` fica inerte");
+    assert!(
+        lifted > 200,
+        "so {lifted} celulas assentadas — o backrun nao teria o que levantar"
+    );
+    assert!(
+        spent > 200,
+        "so {spent} gatilhos sem orcamento — o `bloom < 6` fica inerte"
+    );
 }
 
 /// O gate acima só vale se o levante DE FATO rodou.
@@ -322,11 +341,29 @@ fn the_serial_and_parallel_walks_agree_to_the_byte() {
             false,
             ph2d_wet_paint::par::Rows::Parallel,
         );
-        assert_eq!(a.flow_x, b.flow_x, "backrun={backrun}: flow_x divergiu entre as rotas");
-        assert_eq!(a.flow_y, b.flow_y, "backrun={backrun}: flow_y divergiu entre as rotas");
-        assert_eq!(a.wet, b.wet, "backrun={backrun}: wet divergiu entre as rotas");
-        assert_eq!(a.susp, b.susp, "backrun={backrun}: susp divergiu entre as rotas");
-        assert_eq!(a.sett, b.sett, "backrun={backrun}: sett divergiu entre as rotas");
-        assert_eq!(a.bloom, b.bloom, "backrun={backrun}: bloom divergiu entre as rotas");
+        assert_eq!(
+            a.flow_x, b.flow_x,
+            "backrun={backrun}: flow_x divergiu entre as rotas"
+        );
+        assert_eq!(
+            a.flow_y, b.flow_y,
+            "backrun={backrun}: flow_y divergiu entre as rotas"
+        );
+        assert_eq!(
+            a.wet, b.wet,
+            "backrun={backrun}: wet divergiu entre as rotas"
+        );
+        assert_eq!(
+            a.susp, b.susp,
+            "backrun={backrun}: susp divergiu entre as rotas"
+        );
+        assert_eq!(
+            a.sett, b.sett,
+            "backrun={backrun}: sett divergiu entre as rotas"
+        );
+        assert_eq!(
+            a.bloom, b.bloom,
+            "backrun={backrun}: bloom divergiu entre as rotas"
+        );
     }
 }

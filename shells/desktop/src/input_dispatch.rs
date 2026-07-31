@@ -405,7 +405,7 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_scen
 pub(crate) fn apply_vec_toggle_closed(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
-    pen: &ph2d_vec_edit::PenTool,
+    pen: &mut ph2d_vec_edit::PenTool,
 ) {
     let Some(sel) = pen.selected() else {
         eprintln!("[ph2d-vec] close-toggle: nenhum path selecionado");
@@ -415,7 +415,17 @@ pub(crate) fn apply_vec_toggle_closed(
         return;
     };
     let pre = scene.clone();
-    if scene.set_path_closed(sel, !cur) {
+    // ⚠️ **Fechar passa pela porta que SOLDA** (`close_path`, W4): antes isto era um
+    // `set_path_closed(true)` cru, então fechar um laço cujas pontas o artista tinha acabado de
+    // encostar deixava DOIS vértices sobrepostos no mesmo lugar — invisível no desenho e presente
+    // em todo Delete/Average/Simplify seguinte. Abrir continua a ser só o flag: não há nada a
+    // soldar ao abrir, e um `close_path(false)` seria uma porta que não existe.
+    let did = if cur {
+        scene.set_path_closed(sel, false)
+    } else {
+        scene.close_path(sel, ph2d_vec_edit::WELD_TOL)
+    };
+    if did {
         // Closing a never-filled path seeds its fill from the current Style — so it
         // paints IMMEDIATELY, matching the pen's auto-close (click the start point).
         // An existing fill is preserved across open→close cycles.
@@ -425,6 +435,9 @@ pub(crate) fn apply_vec_toggle_closed(
         {
             path.fill = Some(ph2d_vec_scene::Paint::solid(pen.style().fill));
         }
+        // A costura mudou de sítio (e, num fecho soldado, um vértice inteiro sumiu), então todo
+        // índice plano guardado descreve outro nó — ou nó nenhum.
+        pen.select(Some(sel));
         history.push_undo(pre);
     }
 }
@@ -5586,13 +5599,13 @@ mod tests {
 
         // Close/Open toggle flips the selected path's `closed` flag each click.
         let was = scene.paths().iter().find(|p| p.id == sq).unwrap().closed;
-        super::apply_vec_toggle_closed(&mut scene, &mut hist, &pen);
+        super::apply_vec_toggle_closed(&mut scene, &mut hist, &mut pen);
         assert_eq!(
             scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
             !was,
             "toggle flips closed"
         );
-        super::apply_vec_toggle_closed(&mut scene, &mut hist, &pen);
+        super::apply_vec_toggle_closed(&mut scene, &mut hist, &mut pen);
         assert_eq!(
             scene.paths().iter().find(|p| p.id == sq).unwrap().closed,
             was,

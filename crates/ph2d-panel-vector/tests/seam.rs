@@ -2041,3 +2041,77 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
         );
     }
 }
+
+/// **As três operações de nó da W4 chegam ao barramento** — Join · Reverse · Average.
+///
+/// ⚠️ Cada uma declara a SUA premissa, e são diferentes: o Average vive na seção Vertex (que só
+/// existe com um vértice selecionado) e o Join só é oferecido com **2+ caminhos** selecionados —
+/// com um só, o `Close Path` logo acima já é a resposta, e um segundo botão para a mesma pergunta
+/// é a falha de duas-portas que esta linha passou a wave inteira a evitar. Sem declarar as
+/// premissas o `painted_rect` devolve `None` e o gate falharia sobre produto correto.
+#[test]
+fn the_node_ops_reach_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, name, needs_two) in [
+        (ids::VECTOR_VERT_AVERAGE, "Average", false),
+        (ids::VECTOR_PATH_REVERSE, "Reverse", false),
+        (ids::VECTOR_PATH_JOIN, "Join", true),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        ph2d_panel_vector::state::set_selected_vertex_type(Some(
+            ph2d_tool_vector::VertexSel::Uniform(ph2d_tool_vector::VertexType::Corner),
+        ));
+        ph2d_panel_vector::state::set_current_selection_count(if needs_two { 2 } else { 1 });
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o botao {name} nao foi PINTADO com area clicavel"));
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click -- falta o `button()` no populate"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id
+            )),
+            "o Click de {name} nao chegou ao bus -- falta a linha no event_clicks"
+        );
+    }
+    ph2d_panel_vector::state::set_current_selection_count(0);
+}
+
+/// **O Join NÃO é oferecido com um caminho só** — a metade de AUSÊNCIA, e é ela que impede o
+/// segundo botão de "fechar". Sem este gate, oferecer o Join sempre passaria despercebido: ele
+/// devolveria `false` em silêncio, que é a forma exata de um botão morto.
+#[test]
+fn the_join_button_is_not_offered_for_a_single_path() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    ph2d_panel_vector::state::set_current_selection_count(1);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_PATH_JOIN)
+            .is_none(),
+        "o Join foi pintado com UM caminho selecionado -- ali quem responde e' o Close Path"
+    );
+    ph2d_panel_vector::state::set_current_selection_count(0);
+}

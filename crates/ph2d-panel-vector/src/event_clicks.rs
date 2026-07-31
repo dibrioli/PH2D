@@ -64,6 +64,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_VERT_DELETE
         || id == ids::VECTOR_VERT_SEL_SUBPATH
         || id == ids::VECTOR_VERT_SEL_SAME
+        // As três da W4. Fora daqui pintam, acendem sob o mouse e o Click morre no painel.
+        || id == ids::VECTOR_VERT_AVERAGE
+        || id == ids::VECTOR_PATH_JOIN
+        || id == ids::VECTOR_PATH_REVERSE
         || id == ids::VECTOR_BLEND_RUN
         || id == ids::VECTOR_BLEND_RESET_SPINE
         || id == ids::VECTOR_BLEND_EXPAND

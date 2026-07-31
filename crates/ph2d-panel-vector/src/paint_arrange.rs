@@ -347,6 +347,16 @@ impl BodyCtx<'_> {
         } else {
             "Close Path"
         };
-        self.action_button(ids::VECTOR_PATH_CLOSE, label, y)
+        y = self.action_button(ids::VECTOR_PATH_CLOSE, label, y);
+        // **Reverse** (W4) — o sentido do caminho é um fato autorado, e até aqui não havia gesto
+        // nenhum que o mudasse: o `reverse_path` existia com UM chamador interno e nenhum id.
+        y = self.action_button(ids::VECTOR_PATH_REVERSE, "Reverse", y);
+        // **Join** — ⚠️ só com 2+ selecionados. Com um caminho só a resposta é o `Close Path` logo
+        // acima; oferecer o Join ali seria um segundo botão para a mesma pergunta, e ele
+        // devolveria `false` em silêncio (a lei do botão morto).
+        if state::current_selection_count() >= 2 {
+            y = self.action_button(ids::VECTOR_PATH_JOIN, "Join", y);
+        }
+        y
     }
 }

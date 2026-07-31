@@ -49,6 +49,17 @@ pub use xform::{VecXforms, Xform, xform_of};
 mod path_ops;
 pub use path_ops::{bake_xform, curve_bbox_in_frame};
 
+/// **O CORTE** — abrir um contorno num vértice, o primitivo de que a tesoura, a faca e a borracha
+/// de caminho são feitas (plano 25 §7). Módulo irmão de `path_ops` pelo mesmo teto de LOC, e o
+/// corte é por RESPONSABILIDADE: `path_ops` move e transforma um caminho INTEIRO; aqui a topologia
+/// dele muda.
+mod path_cut;
+pub use path_cut::Cut;
+
+/// **A JUNÇÃO** — o inverso do `path_cut`: fechar um caminho aberto e soldar dois num só (o
+/// `Ctrl+J` do Illustrator). Irmão pelo mesmo teto de LOC e pelo mesmo corte de responsabilidade.
+mod path_join;
+
 /// **O ponto está dentro da forma?** — módulo irmão de `path_ops` (teto de LOC). A ponta de
 /// seta é um [`VecPath`] que **não vive na cena**, então o hit-test precisa poder perguntar por
 /// CAMINHO, e não só por id — senão a parte gorda da seta fica invisível para o mouse.

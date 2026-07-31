@@ -403,6 +403,10 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_SMOOTH);
     button(store, ids::VECTOR_VERT_SYMMETRIC);
     button(store, ids::VECTOR_VERT_DELETE);
+    // As três da W4 (Join · Reverse · Average).
+    button(store, ids::VECTOR_VERT_AVERAGE);
+    button(store, ids::VECTOR_PATH_JOIN);
+    button(store, ids::VECTOR_PATH_REVERSE);
     button(store, ids::VECTOR_VERT_SEL_SUBPATH);
     button(store, ids::VECTOR_VERT_SEL_SAME);
 

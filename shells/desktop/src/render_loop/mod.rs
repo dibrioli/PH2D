@@ -1910,6 +1910,11 @@ impl crate::App {
             // abrem passo de undo (o `post_frame_undo` compara o ESTADO, e a seleção não é dele).
             let mut pending_vec_select_subpath = false;
             let mut pending_vec_select_same = false;
+            // **As três da W4** (plano 25 §7). Ao contrário das duas acima, estas MUDAM o
+            // documento — logo abrem passo de undo, e cada uma abre exatamente um.
+            let mut pending_vec_join = false;
+            let mut pending_vec_reverse = false;
+            let mut pending_vec_average = false;
             // O índice do perfil nomeado que o clique pediu (W2b), se algum.
             let mut pending_width_preset: Option<usize> = None;
             // ADR-0128: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
@@ -2222,6 +2227,12 @@ impl crate::App {
                                 pending_vec_select_subpath = true;
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_SEL_SAME {
                                 pending_vec_select_same = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_PATH_JOIN {
+                                pending_vec_join = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_PATH_REVERSE {
+                                pending_vec_reverse = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_VERT_AVERAGE {
+                                pending_vec_average = true;
                             } else if let Some(order) =
                                 crate::input_dispatch::vec_reorder_for_id(*id)
                             {
@@ -4221,6 +4232,26 @@ impl crate::App {
             if pending_vec_select_same {
                 self.vec_pen.select_verts_of_same_kind(vec_scene);
             }
+            // **As três da W4.** Um passo de undo por gesto, e só se algo de facto mudou — o
+            // `begin`/`commit_if_changed` é o mesmo par do lápis e das ferramentas de quina.
+            for (armed, op) in [
+                (pending_vec_join, 0u8),
+                (pending_vec_reverse, 1),
+                (pending_vec_average, 2),
+            ] {
+                if !armed {
+                    continue;
+                }
+                self.vec_history.begin(vec_scene);
+                let changed = match op {
+                    0 => self.vec_pen.join_selection(vec_scene),
+                    1 => self.vec_pen.reverse_selected_paths(vec_scene),
+                    _ => self.vec_pen.average_selected_verts(vec_scene),
+                };
+                if changed {
+                    self.vec_history.commit_if_changed(vec_scene);
+                }
+            }
             if let Some(order) = pending_vec_reorder {
                 crate::input_dispatch::apply_vec_reorder(
                     vec_scene,
@@ -4521,7 +4552,7 @@ impl crate::App {
                 crate::input_dispatch::apply_vec_toggle_closed(
                     vec_scene,
                     &mut self.vec_history,
-                    &self.vec_pen,
+                    &mut self.vec_pen,
                 );
             }
             if let Some(kind) = pending_vec_fill_kind {

@@ -114,16 +114,29 @@ impl VecScene {
         true
     }
 
-    /// Inverte a ordem dos vértices do contorno primário do path `id` — o 1º vira o
+    /// Inverte a ordem dos vértices de **todos os contornos** do path `id` — o 1º vira o
     /// último. Os handles in/out trocam de papel (o sentido inverteu). `false` se o
-    /// id sumiu. Usado para orientar uma junção de paths (weld) na direção certa.
+    /// id sumiu. Usado para orientar uma junção de paths (weld) na direção certa, e pelo
+    /// botão **Reverse** da seção Vertex (a direção do caminho decide de que lado uma
+    /// ponta de seta aponta, para onde um texto-em-caminho corre e qual é o winding).
+    ///
+    /// ⚠️ **Todos os contornos, não só o primário.** Para um path de contorno único — que é o
+    /// único caso que o `weld_new_shape` alcança — isto é byte-idêntico ao que sempre foi (não
+    /// há subpaths a percorrer); num COMPOUND, inverter metade dele deixaria o objeto com
+    /// contornos de sentidos misturados, o que sob [`crate::FillRule::NonZero`] muda **qual
+    /// região é buraco** — um botão que faz meio trabalho e reescreve o desenho em silêncio.
     pub fn reverse_path(&mut self, id: VecPathId) -> bool {
         let Some(path) = self.paths.iter_mut().find(|p| p.id == id) else {
             return false;
         };
-        path.verts.reverse();
-        for v in &mut path.verts {
-            std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+        for c in 0..path.contour_count() {
+            let Some((verts, _)) = path.contour_mut(c) else {
+                continue;
+            };
+            verts.reverse();
+            for v in verts.iter_mut() {
+                std::mem::swap(&mut v.in_handle, &mut v.out_handle);
+            }
         }
         true
     }

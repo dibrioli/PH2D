@@ -59,9 +59,19 @@ impl BodyCtx<'_> {
         let gap = Spacing::Sm.px();
         let w = ((self.inner_w - gap) / 2.0).max(1.0);
         y = self.row2(w, gap, sel, y);
-        // Delete-node button (full width). Insert is a canvas gesture (click a
-        // segment) — no button.
-        self.action_button(ids::VECTOR_VERT_DELETE, "Delete Node", y)
+        // **Average** (W4) — colapsa os nós selecionados no centroide deles. Fica ao lado do
+        // Delete de propósito: são os dois gestos que agem sobre a SELEÇÃO de nós inteira, e o
+        // Average é a metade que TORNA duas pontas coincidentes para o Join as soldar.
+        y = self.row2(
+            w,
+            gap,
+            [
+                (ids::VECTOR_VERT_AVERAGE, "Average"),
+                (ids::VECTOR_VERT_DELETE, "Delete Node"),
+            ],
+            y,
+        );
+        y
     }
 }
 

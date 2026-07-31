@@ -281,10 +281,11 @@ pub(crate) fn paint_gradient_row(
 /// stop's position and emit the new serialized gradient. `None` if the slot is empty or
 /// not our editor. Sets the dragged stop as SELECTED.
 pub(crate) fn drain_drag(store: &mut WidgetStore, slot: usize, value: &str) -> Option<String> {
-    let (parent, _channel, index, x, _y) = store.take_curve_point_drag()?;
-    if parent != param_grad_editor_id(slot) {
-        return None;
-    }
+    // The stash is a GLOBAL channel: the ownership question is part of the call, so a drag that
+    // belongs to another panel is LEFT for it (a `take` would be irreversible — see
+    // `WidgetStore::take_curve_point_drag_if`).
+    let (_parent, _channel, index, x, _y) =
+        store.take_curve_point_drag_if(|p| p == param_grad_editor_id(slot))?;
     let mut ramp = working(value);
     let i = index as usize;
     if i >= ramp.len() {
@@ -437,6 +438,11 @@ mod tests {
             "position order preserved: {:?}",
             r.stops().iter().map(|s| s.pos).collect::<Vec<_>>()
         );
-        assert!(store.take_curve_point_drag().is_none(), "slot drained");
+        assert!(
+            store
+                .take_curve_point_drag_if(|p| p == param_grad_editor_id(slot))
+                .is_none(),
+            "slot drained"
+        );
     }
 }

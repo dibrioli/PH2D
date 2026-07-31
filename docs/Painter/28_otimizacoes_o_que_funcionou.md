@@ -3920,3 +3920,152 @@ referência** — então a Fase 3 daquele ADR está feita para dois dos três pa
 debugável**. O que resta é o que nunca foi sobre o solver: o **stamp** (a silhueta do Painter por
 closure) e a **residência** dos 14 planos. E o gatilho mudou de número: o ganho que a GPU ainda
 compra tem de ser medido contra **11 ms**, não contra 52.
+
+---
+
+## §5.46 — O CAMPO DE FLUXO SAIU DO GAUSS-SEIDEL: 64,1 → 4,2 ms, o passo 1,87×, e o fingerprint INTACTO
+
+O ADR-0147 tirou dois dos três passes sequenciais do caminho quente. **Este é o
+terceiro** — e o retrato que o abriu só apareceu porque o INSTRUMENTO foi
+consertado antes de qualquer número ser acreditado.
+
+### §5.46.1 — A sonda media a rota errada
+
+O `sim_step_stage` escolhe `advect_jacobi`/`drying_pass_jacobi` sob
+`order_invariant` desde a §5.45, mas a
+`measure_what_a_step_of_the_products_puddle_is_made_of` continuava chamando os
+irmãos **CONGELADOS**. É a lição da §5.11 (*sonda que re-implementa o laço fica
+cega à porta*) na sua forma mais barata de cometer: **chamar a função de nome
+parecido**. Roteada pelo flag, a decomposição mudou de dono:
+
+```text
+    passe                     cru(ms)  cadencia  amort(ms)   % do passo
+    build_flow_field           64.101    0.250    16.025    54.4%   <- o dono
+    advect                      8.309    1.000     8.309    28.2%
+    rebuild_active_region       5.392    0.500     2.696     9.1%
+```
+
+E a sonda ganhou **a coluna da CADÊNCIA** (o `build` roda ÷4) e **o passo
+MEDIDO ao lado da soma amortizada**. Essa última linha pagou-se três vezes na
+mesma sessão: ela acusou o `ensure` de 141 MB dentro do relógio da sonda do
+advect (99,8 ms contra 31,7 de soma), acusou uma corrida de máquina ruim (8×
+todos os passes), e acusou o A/B com a rota forçada à mão (−52,5%).
+*Uma tabela por-passe que ninguém reconcilia com um passo medido é aritmética
+sem testemunha.*
+
+### §5.46.2 — Os dois mecanismos, e a decomposição que os dissolve
+
+A §2 do ADR-0145 recusou este passe com dois motivos, e os dois estavam certos:
+
+1. **o freio LÊ `wet[probe]`** alguns pixels adiante, e o carimbo de umidade
+   **deste mesmo passe** pode ter escrito aquela célula;
+2. **o backrun ESPALHA** em `susp[nb]`/`sett[nb]`/`susp_rgb[nb]` — escritas em
+   outras linhas.
+
+A cura não é agendamento, é **decomposição**. Os dois efeitos viram passes
+próprios e o que sobra — o núcleo, que a F1 do plano 30 mediu em **99,4% do
+custo** — fica um **gather puro que escreve `flow_x`/`flow_y` e mais nada**:
+
+| passe | lê | escreve |
+|---|---|---|
+| `flow_rows` | film, paper, vel, active, wet, susp, sett, bloom | `flow_x`, `flow_y` |
+| `wet_stamp_rows` | film, paper, active | `wet` |
+| `backrun_rows` | film, active, `bflags` | `bloom`, `susp`, `sett`, `susp_rgb` |
+
+**A ORDEM é a lei**, não conveniência: o carimbo corre DEPOIS do núcleo (todo
+freio lê o `wet` de antes do passo) e o backrun por último (o portão capilar e
+o teste `sett[nb] > 0` também leem o estado de entrada).
+
+### §5.46.3 — O backrun é *pure code motion*, e a razão é aritmética
+
+O levante — `lift = sett·0,1`, `susp += lift`, `sett −= lift`, cor por
+`mix(…, lift/(susp+lift))` — é função **só do estado da célula levantada**. O
+vizinho que o dispara não entra em nenhum termo. Logo aplicá-lo `n` vezes é
+`F^n`, e **`F^n` independe da ordem em que os `n` gatilhos foram descobertos**:
+o gather só precisa CONTAR. Daí o gate
+`the_backrun_lift_lands_on_the_same_pigment_as_the_serial`, que compara
+`susp`/`sett`/`susp_rgb`/`bloom` entre os dois modelos e sai **byte-idêntico**.
+
+⚠️ **O `bflags` existe por isso e só por isso:** contar exige perguntar
+`sett[vizinho] > 0` e `bloom[vizinho] < 6`, dois planos que o passe escreve. Os
+dois predicados são **invariantes sob o passe** (o levante multiplica `sett`
+por 0,9, que preserva o sinal; `bloom` só é escrito pela própria célula), então
+materializá-los é o mesmo bit computado uma vez — **e só é alocado com o knob
+LIGADO** (`extBackrun` é `Hidden` e nasce em `0.0`).
+
+### §5.46.4 — ⚠️ O ACHADO: no ponto de operação que shipa, os dois modelos são o MESMO
+
+Eu esperava uma troca de modelo, como nos dois irmãos. **Não é**, e a razão é
+aritmética: o carimbo só escreve onde `film > 3`, e o freio de quem sonda
+aquela célula vale `clamp(film + 3·wet/255 − brake, 0.05, 1)`. Com o `brake`
+**default de 1,5**, já `film − 1,5 > 1,5 > 1` ⇒ **satura em 1,0 e o termo de
+umidade não entra**. Dito de outro modo: *a única célula cujo `wet` este passe
+pode mudar é uma célula funda demais para que o `wet` dela importe.*
+
+O gate `at_the_shipping_knobs_the_two_models_are_the_same_to_the_byte` pina
+isso — e é ele que **mantém o fingerprint do ADR-0134 INTACTO** (3/3 pinos
+verdes). A wave é reescrita de laço quente no ponto de operação do produto, e
+vira mudança de modelo só onde o irmão mede: com `brake = 4` a saturação some
+para o filme na faixa `(3, 5)`, e ali o Gauss-Seidel **quebra a simetria da
+cena** (viés de espelho `> 1e-3` contra **0,000000** do independente de ordem).
+
+### §5.46.5 — ⚠️ O piso do pool que eu escolhi por RACIOCÍNIO estava errado
+
+Escrevi `MIN_CELLS_FLOW = 96 << 10` argumentando *"a célula é cara, logo o pool
+se paga antes"*. A premissa estava certa — ele rende mais que os três do
+ADR-0145 em toda janela grande — e a **conclusão não**:
+
+```text
+    celulas     flow
+     60_000     0,89x
+    122_952     0,92x   <- ainda PREJUIZO, e o piso baixo mandava para ca
+    194_788     3,65x
+    411_166     5,75x
+  2_546_830     7,88x
+  9_800_850    10,19x
+```
+
+O joelho está entre 123k e 195k ⇒ **`160 << 10`**. *Um piso é medição; a única
+coisa que o raciocínio produz é a hipótese.*
+
+### §5.46.6 — O ganho, pela porta do PRODUTO
+
+A/B no **mesmo binário**, mesma poça (`heavy_puddle`, 4096²), ciclo de cadência
+de 12 passos, com a rota do `sim_step_stage` trocada à mão e devolvida:
+
+| | ms/passo | Hz |
+|---|---|---|
+| Gauss-Seidel | **30,11** | 33,2 |
+| independente de ordem | **16,1** | **62,0** |
+
+**1,87× no passo**, e o passe sozinho **64,10 → 4,18 ms (15,3×)**. A soma
+amortizada reconcilia com o passo medido dentro de **−1,6 %**.
+
+### §5.46.7 — Quem é o dono agora, e o que a medição diz sobre ele
+
+O `advect` passou a ser **57,9% do passo**, e a decomposição por sub-passe
+(sonda nova `measure_what_an_advect_is_made_of_by_sub_pass`, filho
+`#[cfg(test)]` porque os cinco sub-passes são privados) diz onde ele está:
+
+```text
+    momentum_rows    16,3%   prepare_rows 15,5%   outflow_rows  7,5%
+    transport_rows   36,8%   commit_rows  23,9%          (soma reconcilia: 5,33 vs 5,47)
+```
+
+⚠️ **O gather 5×5 — a peça que eu ia atacar — é 7,5% do advect**, ou 4,3% do
+passo. Quem custa são `transport` e `commit`, que são **largura de banda sobre
+a faixa viva** (o segundo buffer que um passo de Jacobi exige, 20 B por
+célula). E a sonda expõe o número que decide a próxima wave: a **faixa viva é
+36,4% da bbox e só 5,2% dela está ATIVA** — a granularidade do span é o que
+sobra, e é wave própria.
+
+⛔ **MEDIDO E NÃO FEITO — o alcance do gather NÃO pode ser apertado por
+raciocínio.** Com `maxVelocity = 1` o intervalo exato dos destinos é
+`d − c ∈ [−2, +1]` (4 por eixo, 16 em 2D) contra os `±2` (25) que o código
+percorre — 36% de vizinhança a menos. **Mas o limite se apoia em `|u| ≤ max_v`
+valer EXATAMENTE**, e em `rf > 1` a amostragem bilinear soma quatro produtos
+cujos pesos podem não somar 1,0 ao ulp: um `u = 1 + ε` põe um destino em
+`d − c = +2`, fora do intervalo apertado, e a massa **some sem ninguém ver**.
+Em `rf = 1` o sampler devolve o valor VERBATIM e o limite seria seguro — mas um
+bound correto por acidente de configuração é a forma exata de bug que este
+módulo passou a jornada inteira caçando.

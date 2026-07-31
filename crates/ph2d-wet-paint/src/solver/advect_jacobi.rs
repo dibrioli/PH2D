@@ -543,3 +543,7 @@ fn commit_rows(g: &mut Grid, mode: Rows) {
         },
     );
 }
+
+#[cfg(test)]
+#[path = "advect_jacobi_measure.rs"]
+mod advect_jacobi_measure;

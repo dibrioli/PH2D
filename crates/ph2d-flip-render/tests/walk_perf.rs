@@ -191,3 +191,74 @@ fn measure_whether_a_far_pixel_pays_for_the_scene() {
         );
     }
 }
+
+/// 📏 **SONDA — um PAN pode reusar os pixels do quadro anterior?**
+///
+/// ⚠️ **A pergunta que precede um cache de tiles de MUNDO**, e ela não é sobre custo: é sobre se o
+/// reuso é sequer EXATO. O `fingerprint` da fatia inclui a câmera inteira, então hoje todo pan
+/// re-rasteriza toda camada — medido no device (`measure_what_a_frame_costs_on_the_device`, tile
+/// 16, 1080p): **bin 1,02 ms (CPU) + walk 3,75 ms (GPU) por camada a 200 traços**.
+///
+/// O que esta sonda decide: a AA do percurso é **área EXATA do pixel** contra a geometria de mundo,
+/// então o valor de um pixel é função da FASE SUB-PIXEL da câmera. Se um deslocamento de meio pixel
+/// muda os pixels, um cache ancorado no mundo **não é byte-exato de graça** — ele exige uma decisão
+/// sobre a câmera (encaixar o pan em pixels inteiros), que é de PRODUTO, não de engenharia.
+///
+/// Compara o mesmo traço rasterizado com a câmera deslocada por 1 px inteiro (o quadro tem de ser a
+/// TRANSLAÇÃO exata do anterior) e por meio pixel.
+#[test]
+#[ignore = "sonda de medicao; roda com --ignored"]
+fn measure_whether_a_pan_can_reuse_the_previous_frames_pixels() {
+    let (w, h) = (256u32, 256);
+    let data = pack_drawing(&gesture_scene(6, w, h, 12.0));
+    // A câmera deslocada por `dx` px de tela: a translação entra na última linha do afim.
+    let deslocada = |dx: f32| -> ScreenSpace {
+        let sx = 2.0 / w as f32;
+        let sy = -2.0 / h as f32;
+        ScreenSpace::from_camera(&CameraRaw::new(
+            [
+                [sx, 0.0, 0.0, 0.0],
+                [0.0, sy, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [-1.0 + dx * sx, 1.0, 0.0, 1.0],
+            ],
+            [w as f32, h as f32],
+            1.0,
+        ))
+    };
+    let quadro = |sc: &ScreenSpace| -> Vec<[f32; 4]> {
+        let bins = bin_segments(&data, sc, DEFAULT_TILE);
+        (0..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .map(|(x, y)| walk_pixel(&bins, &data, sc, [x as f32 + 0.5, y as f32 + 0.5]))
+            .collect()
+    };
+    let base = quadro(&deslocada(0.0));
+    println!("\n=== UM PAN PODE REUSAR OS PIXELS DO QUADRO ANTERIOR? ===");
+    println!("  deslocamento | pixels que DIFEREM da translacao exata do quadro base | pior delta");
+    for dx in [1.0_f32, 2.0, 0.5, 0.25] {
+        let movido = quadro(&deslocada(dx));
+        // O quadro deslocado por `dx` INTEIRO deveria ser o base transladado: compara
+        // `movido[x] == base[x - dx]` na faixa onde os dois existem.
+        let inteiro = dx.fract() == 0.0;
+        let d = dx as i32;
+        let (mut diferem, mut pior) = (0_usize, 0.0_f32);
+        for y in 0..h as i32 {
+            for x in 0..w as i32 {
+                let src = x - d;
+                if src < 0 || src >= w as i32 {
+                    continue;
+                }
+                let a = movido[(y * w as i32 + x) as usize];
+                let b = base[(y * w as i32 + src) as usize];
+                let e = (0..4).map(|k| (a[k] - b[k]).abs()).fold(0.0_f32, f32::max);
+                if e > 0.0 {
+                    diferem += 1;
+                }
+                pior = pior.max(e);
+            }
+        }
+        let etiqueta = if inteiro { "INTEIRO" } else { "sub-pixel" };
+        println!("  {dx:5} px {etiqueta:10} | {diferem:8} | {pior:.6}");
+    }
+}

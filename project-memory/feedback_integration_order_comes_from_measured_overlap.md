@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 50723bb0-6f74-4589-81dc-ee242a680d8c
+  modified: 2026-07-31T21:41:44.572Z
 ---
 
 Numa jornada Modo L de N linhas, o `--ff-only` serializa: **a 1ª é fast-forward puro (zero conflito,
@@ -35,3 +36,22 @@ colide com aquela?"* — porque `git diff --name-only` não tem opinião.
 Corolário: colisão de **número** (ADR, schema, id) não aparece nesta tabela quando as duas linhas
 criam arquivos de nomes diferentes — para essas, o handoff §1.5.9.3 é a fonte, e o valor certo
 **se conta** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+
+⚠️ **Corolário 2 (medido em 2026-07-31, e é um buraco do comando acima): `git diff` é NET, o rebase
+é COMMIT A COMMIT.** Um arquivo que a linha **cria e depois apaga** dentro dela mesma tem diff net
+ZERO contra a base — some da tabela — mas o rebase replaya cada commit: o nascimento colide
+(**add/add**) com um arquivo que outra linha criou no MESMO path, e a morte então ameaça apagar o
+sobrevivente (**delete/modify**). Instância: `line/anim` × `line/motion-value` em
+`crates/ph2d-editor-core/src/paint_shapes.rs` — a `anim` o criou para o preview de expressão e o
+apagou ao retirar a feature; a `motion-value` criou o dela com `fill_diamond`. Dois conflitos que o
+handoff da `anim` **não previu**, porque a previsão foi feita com o diff net.
+
+A tabela precisa da segunda metade:
+
+```bash
+git log --diff-filter=AD --name-only --pretty=format: main..HEAD | sort -u | grep -v '^$'
+```
+
+(arquivos NASCIDOS ou MORTOS em qualquer commit da linha; intersecte com a lista da outra linha).
+A resolução certa é pelo CONSUMIDOR: sobrevive a função cujo chamador sobrevive — apagar o arquivo
+levaria junto o símbolo do outro dono.

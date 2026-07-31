@@ -221,3 +221,76 @@ fn a_lead_out_plays_the_clip_fully_then_fades_in_the_gap() {
         "segura −4 e entra em B sem salto: {after_lead} / {entry}"
     );
 }
+
+/// **Um `lead_out` no ÚLTIMO strip da lane FADEIA — para as lanes de baixo** (report do
+/// Enio, 2026-07-30: *"na lane 2 temos um fade do lado direito para fora e ele não
+/// funcionou corretamente"*).
+///
+/// O irmão acima cobre o `lead_out` **com uma próxima strip**, e ele sempre funcionou (o
+/// braço `fade_out_target` do `hold_at` dispara e a travessia é para a próxima pose). O
+/// caso do report é o outro: o fade no FIM da lane, sem nada depois. Ali o `hold_at` caía
+/// no braço da *"strip mais recentemente terminada"* — que é ELA MESMA — e devolvia a
+/// própria pose congelada com peso `1 − w`, então a cobertura da lane voltava a **1** e a
+/// fórmula do fade cruzava contra si mesma. Medido antes do fix: peso `1.000 → 0.000` ao
+/// longo da janela e a pose **PARADA** em +5 o trecho inteiro, com um degrau em `lead_end`
+/// — o fade só MOVIA o corte por `lead_out` segundos.
+///
+/// A causa foi a isenção da borda inclusiva perguntar só `blend_out <= 0` (o blend de
+/// SOBREPOSIÇÃO): um strip que fadeia para FORA não tem sobreposição nenhuma, então ela
+/// dava `true` para a janela inteira do `lead_out`. É a mesma pergunta que o
+/// `fade_out_target` já faz (`bo > 0.0 || s.lead_out > 0.0`), e as duas têm de concordar
+/// sobre *"este strip fadeou?"*.
+///
+/// **Mutação que deve sangrar:** tirar o `&& s.lead_out <= 0.0` do `hard_cut`, ou o
+/// `s.t_end > t` da primeira metade do `something_ahead`.
+#[test]
+fn a_lead_out_on_the_last_strip_fades_to_the_lane_below() {
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((Transform::default(), Name::new("Gap")))
+        .id()
+        .to_bits();
+    let mut st = TimelineState::new();
+    let doc = &mut st.doc;
+    // A (lane de cima) = pose CONSTANTE +5 · BASE (lane de baixo) = pose CONSTANTE −4.
+    doc.rename_clip(0, "A".into());
+    key(doc, bits, PropKind::TranslationX, 0.0, 5.0);
+    key(doc, bits, PropKind::TranslationX, 4.0, 5.0);
+    let cbase = doc.add_clip("Base".into());
+    doc.set_active(cbase);
+    key(doc, bits, PropKind::TranslationX, 0.0, -4.0);
+    key(doc, bits, PropKind::TranslationX, 4.0, -4.0);
+    doc.set_active(0);
+
+    let l1 = doc.add_lane("Lane 1".into()).unwrap();
+    doc.add_strip(l1, cbase, 0.0, 12.0).unwrap();
+    let l2 = doc.add_lane("Lane 2".into()).unwrap();
+    let a = doc.add_strip(l2, 0, 0.0, 4.0).unwrap(); // NADA depois dele nesta lane
+    doc.strip_mut(l2, a).unwrap().lead_out = 2.0; // fade para FORA, em [4, 6]
+
+    let inside = x_at(&mut sim, &mut st, bits, 3.0); // tocando: a lane de cima manda
+    let quarter = x_at(&mut sim, &mut st, bits, 4.5);
+    let half = x_at(&mut sim, &mut st, bits, 5.0);
+    let end = x_at(&mut sim, &mut st, bits, 6.0); // fim do lead-out
+    let after = x_at(&mut sim, &mut st, bits, 7.0); // depois: só a base
+
+    assert!(
+        (inside - 5.0).abs() < 1e-6,
+        "tocando, a lane de cima manda: {inside}"
+    );
+    // A metade EXATA da rampa smoothstep é a média das duas poses.
+    assert!(
+        (half - 0.5).abs() < 1e-6,
+        "no meio do lead-out o objeto está a meio caminho de −4: {half}"
+    );
+    // E é MONÓTONO — sem degrau, sem platô: o fade de fato percorre o caminho.
+    assert!(
+        inside > quarter && quarter > half && half > end,
+        "o lead-out percorre +5 -> −4 (sem platô): {inside} / {quarter} / {half} / {end}"
+    );
+    assert!(
+        (end + 4.0).abs() < 1e-6 && (after + 4.0).abs() < 1e-6,
+        "no fim do lead-out a lane de baixo está sozinha: {end} / {after}"
+    );
+}

@@ -161,10 +161,32 @@ impl ClipLane {
             // paused, frame-snapped SCRUB parks on it, and under PingPong (the loop is
             // filtered to `None`) no seam smooths it, so the object jumped at the strip
             // exit (Enio, 2026-07-23).
-            let something_ahead =
-                self.strips.iter().enumerate().any(|(i, s)| {
-                    s.lead_end() > t || (s.lead_end() >= t && self.blend_out(i) <= 0.0)
-                });
+            // ⚠️ **Um strip que JÁ ACABOU não está "à frente" — nem pela própria janela de
+            // `lead_out`, que NÃO é um corte seco** (Enio, 2026-07-30: *"na lane 2 temos um
+            // fade do lado direito para fora e ele não funcionou corretamente"*).
+            //
+            // Duas metades do predicado deixavam o strip que acabou de terminar responder
+            // *"algo ainda vem"* sobre SI MESMO — o `lead_end()` de um `lead_out` o estende
+            // além do `t_end`, e a isenção da borda inclusiva perguntava só `blend_out <= 0`
+            // (o blend de SOBREPOSIÇÃO), que um fade para FORA nunca tem. O hold então
+            // devolvia a pose congelada dele com peso `1 − w`, a cobertura da lane voltava a
+            // exatamente **1**, e a fórmula do fade cruzava contra ela mesma: medido, peso
+            // `1.000 → 0.000` ao longo da janela com a pose **PARADA** o trecho inteiro e um
+            // degrau em `lead_end`. O fade só MOVIA o corte por `lead_out` segundos.
+            //
+            // Com um PRÓXIMO strip nada disto aparecia: o `fade_out_target` acima dispara
+            // primeiro e a travessia funciona. O defeito vive só no ÚLTIMO strip de uma lane,
+            // onde o que está do outro lado do fade são **as lanes de baixo** — e é isso que
+            // um `influence < 1` já diz, desde que o hold não recomponha o peso.
+            //
+            // O `s.lead_out <= 0.0` é a mesma pergunta que o `fade_out_target` já faz
+            // (`bo > 0.0 || s.lead_out > 0.0`): os dois têm de concordar sobre *"este strip
+            // fadeou?"*. A borda inclusiva do corte seco fica intacta — ela é o frame final
+            // segurado de um container, e o `nesting_leads` a pegou uma vez.
+            let something_ahead = self.strips.iter().enumerate().any(|(i, s)| {
+                let hard_cut = self.blend_out(i) <= 0.0 && s.lead_out <= 0.0;
+                (s.t_end > t && s.lead_end() > t) || (s.lead_end() >= t && hard_cut)
+            });
             let cyclic = loop_range.is_some_and(|(a, b)| t >= a && t < b);
             if something_ahead || cyclic {
                 return Some((held, held.hold_source_time(), w));

@@ -63,87 +63,11 @@ fn perp_dist(p: Vec2, a: Vec2, b: Vec2) -> f32 {
     (ab.x * ap.y - ab.y * ap.x).abs() / len
 }
 
-/// **SIMPLIFICAÇÃO CONTRA A CURVA QUE SERÁ DESENHADA** — o simplificador e o reconstrutor passam a
-/// concordar sobre o que um ponto guardado significa.
-///
-/// ⚠️ **O defeito que ela corrige** (Enio 2026-07-30, com screenshot): o [`simplify_rdp`] cobra a
-/// tolerância contra a **CORDA RETA** entre dois pontos, mas quem desenha depois é o
-/// [`resample_smooth`], que traça uma **Catmull-Rom centrípeta** pelos sobreviventes. Num gancho
-/// fechado a corda parece ótima — e a curva reconstruída estoura a curva da mão. Medido no gancho
-/// (240 amostras, espessura 12): o RDP guardava **11 pontos** e o traço final ficava a **8,46 % da
-/// espessura** de onde a mão passou.
-///
-/// ⚠️ **E é por isso que a CONSTANTE não era o instrumento.** Ela já tinha sido reclamada nas duas
-/// pontas — `0,0008` deu *"muitos pontos muito próximos e até sobrepostos"* (2026-07-18) e `0,05`
-/// deu *"poucos pontos"* (hoje). Um terceiro ajuste do mesmo número é o sinal de que o modelo está
-/// errado ([[feedback_a_new_remedy_makes_the_old_one_double_counting]]).
-///
-/// **Como:** refinamento guloso. Começa com as pontas, reconstrói **pela porta do produto**
-/// ([`resample_smooth`], a MESMA que o traço usa) e acrescenta o ponto da mão que mais se afasta da
-/// reconstrução, até que ninguém passe da tolerância.
-///
-/// ⚠️ **A reconstrução vem da porta única, e isso é a espinha:** uma cópia da avaliação da curva
-/// aqui recriaria exatamente o desacordo que esta função existe para acabar.
-///
-/// Ganho estrutural: num arco liso a Catmull-Rom já reconstrói bem ⇒ **poucos pontos** (nada de
-/// pontos sobrepostos); num gancho ela não reconstrói ⇒ **pontos onde a precisão é necessária**.
-/// As duas queixas opostas param de disputar o mesmo número.
-#[must_use]
-pub(crate) fn simplify_to_curve(points: &[Vec2], tol: f32, step: f32) -> Vec<usize> {
-    let n = points.len();
-    if n < 3 || tol <= 0.0 {
-        return (0..n).collect();
-    }
-    let mut keep = vec![0usize, n - 1];
-    // ⚠️ **O teto existe e é do CUSTO, não da qualidade** — este laço roda por frame no preview ao
-    // vivo (a porta é a mesma do bake, de propósito). Cada rodada acrescenta UM ponto, e um traço
-    // que precise de mais que isto já é um traço cujo `tol` está errado.
-    let teto = n.min(MAX_FIT_POINTS);
-    while keep.len() < teto {
-        let pts: Vec<Vec2> = keep.iter().map(|&i| points[i]).collect();
-        let prs = vec![1.0_f32; pts.len()];
-        let (curva, _) = resample_smooth(&pts, &prs, step, tol);
-        // O ponto da MÃO mais longe da curva reconstruída.
-        let (mut pior, mut onde) = (0.0_f32, 0usize);
-        for (i, q) in points.iter().enumerate() {
-            let mut d = f32::MAX;
-            for w in curva.windows(2) {
-                d = d.min(dist_to_seg(*q, w[0], w[1]));
-            }
-            if d > pior {
-                pior = d;
-                onde = i;
-            }
-        }
-        if pior <= tol {
-            break;
-        }
-        // `onde` nunca é uma ponta (elas estão na curva), então a inserção ordenada é segura.
-        match keep.binary_search(&onde) {
-            Ok(_) => break,
-            Err(pos) => keep.insert(pos, onde),
-        }
-    }
-    keep
-}
-
-/// Teto de pontos do ajuste guloso — **custo**, não qualidade (ver [`simplify_to_curve`]).
-const MAX_FIT_POINTS: usize = 96;
-
-/// Distância de `q` ao SEGMENTO `a→b` (clampada), que é o que a curva desenhada de fato ocupa — a
-/// [`perp_dist`] mede até a reta INFINITA, e usá-la aqui cobraria distância a prolongamentos que
-/// ninguém desenha.
-fn dist_to_seg(q: Vec2, a: Vec2, b: Vec2) -> f32 {
-    let ab = Vec2::new(b.x - a.x, b.y - a.y);
-    let len2 = ab.x * ab.x + ab.y * ab.y;
-    let t = if len2 < 1e-12 {
-        0.0
-    } else {
-        (((q.x - a.x) * ab.x + (q.y - a.y) * ab.y) / len2).clamp(0.0, 1.0)
-    };
-    let (dx, dy) = (q.x - (a.x + ab.x * t), q.y - (a.y + ab.y * t));
-    (dx * dx + dy * dy).sqrt()
-}
+/// O ajuste que decide QUAIS pontos o traço guarda — módulo irmão porque é outro assunto: aqui
+/// (`flip_smooth`) mora o que se faz com uma lista de pontos; lá, **quantos pontos ela deve ter**.
+#[path = "flip_fit.rs"]
+pub(crate) mod fit;
+pub(crate) use fit::simplify_to_curve;
 
 /// **Simplify RDP** — ⚠️ **REFERÊNCIA CONGELADA, sem chamador de produção desde 2026-07-30.**
 ///

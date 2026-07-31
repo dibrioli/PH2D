@@ -192,9 +192,26 @@ pub(crate) fn bake_stroke(
 /// | **0,02** | **13 / 2,86 %** | **5 / 1,75 %** |
 /// | 0,01 | 26 / 2,28 % | 8 / 0,46 % |
 ///
-/// **0,02 dá o MESMO número de pontos que 0,05 com o desvio no piso** — e o piso é o próprio
-/// Smoothing, que sozinho move a mão 1,78 % (ablação em `measure_what_the_stroke_deviation_is_made_of`).
-/// Descer para 0,01 dobra os pontos por 0,6 pp, que é o lado errado do joelho.
+/// ## ⚠️ E aí o Enio pediu **o TRIPLO de pontos** (2026-07-30, com screenshot dos pontos guardados)
+///
+/// Isso é decisão de produto, não de engenharia, e a tabela diz o preço. Varrida abaixo do joelho:
+///
+/// | fração | gancho: pts | arco liso: pts | ms/ajuste (gancho) |
+/// |---|---|---|---|
+/// | 0,02 | 13 | 5 | 0,218 |
+/// | 0,01 | 26 | 8 | 0,451 |
+/// | 0,005 | 32 | 8 | 0,868 |
+/// | **0,0025** | **43** | **14** | 1,206 |
+///
+/// **0,0025 é o triplo pedido** (13 → 43 e 5 → 14). O desvio contra a mão vai a 1,78 %, que é o
+/// piso do próprio Smoothing — abaixo disso a tolerância deixa de comprar precisão e só compra
+/// pontos.
+///
+/// ⚠️ **O custo obrigou a reescrever o ajuste ANTES de aplicar o pedido.** A medição de custo
+/// original usava o gancho (duas pernas retas, 13 pontos) e não continha o fenômeno; num traço
+/// LONGO e serpenteado o ajuste guloso — que reconstruía o traço inteiro a cada inserção — custava
+/// **27 ms/frame já no 0,02**, e 64 ms no 0,0025. Reconstruindo só a VIZINHANÇA do span (a
+/// Catmull-Rom é local) o mesmo caso caiu para **1,6 e 2,0 ms**.
 ///
 /// ⚠️ **A queixa antiga não volta, e é estrutural:** no arco liso a Catmull-Rom reconstrói bem, então
 /// o ajuste guarda **5 pontos de 240**. Poucos pontos onde a curva os dispensa, pontos onde a
@@ -203,7 +220,7 @@ pub(crate) fn bake_stroke(
 /// A cerca de 2026-07-11 (*"o desenho em tempo real está mais suave que o traço cosido"*) segue
 /// honrada por ESTRUTURA e não por calibração: o preview ao vivo passa pelo MESMO
 /// `stroke_from_samples`, então o traço assado é idêntico ao que o artista viu.
-const STROKE_SIMPLIFY_FRACTION: f32 = 0.02; // adimensional: fracao da espessura, MEDIDO
+const STROKE_SIMPLIFY_FRACTION: f32 = 0.0025; // adimensional: fracao da espessura, MEDIDO
 
 /// A tolerância em unidades de MUNDO (os pontos crus são mundo; a conversão para local é
 /// do `build_stroke`, depois).

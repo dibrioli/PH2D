@@ -116,3 +116,5 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
   divergir de qualquer nota daqui.
 - [`CLAUDE.md`](../../CLAUDE.md) — o roteador operacional do projeto inteiro.
 - [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) — as Hard Rules (HR-1..HR-18).
+
+- [[HANDOFF_INTEGRACAO_line_sculpt3d_W2_2026-07-31]] — **W2, o BARRO**: o pick, a lei do traço, os 12 verbos, máscara, simetria, octree e upload incrementais, undo e o gesto. Fechada, pendente de smoke.

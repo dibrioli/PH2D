@@ -74,6 +74,8 @@ mod tests {
             (KeyCode::KeyF, false, false, GraphKey::Fit),
             (KeyCode::KeyA, false, false, GraphKey::Add),
             (KeyCode::KeyA, true, false, GraphKey::SelectAll),
+            (KeyCode::KeyC, true, false, GraphKey::Copy),
+            (KeyCode::KeyV, true, false, GraphKey::Paste),
             (KeyCode::KeyL, true, false, GraphKey::SelectLinked),
             (KeyCode::KeyH, false, false, GraphKey::Bypass),
             (KeyCode::KeyK, false, false, GraphKey::Knife),

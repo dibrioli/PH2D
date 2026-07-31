@@ -159,6 +159,35 @@ pub(super) fn apply_graph_intents(
                     ph2d_panel_motion_graph::request_graph_selection(selection);
                 }
             }
+            // Ctrl+C — snapshot the selection into the graph clipboard. A card
+            // expands to its member nodes (copying a group copies its contents),
+            // exactly as the duplicate's source half does; the NESTING is not
+            // captured (paste lands them flat — named in `edit::paste`).
+            GraphIntent::CopySelection { nodes } => {
+                let cards: Vec<u32> = nodes
+                    .iter()
+                    .filter_map(|v| subgraph::subgraph_of(*v))
+                    .collect();
+                let mut sources: Vec<u32> = nodes
+                    .iter()
+                    .filter(|v| subgraph::subgraph_of(**v).is_none())
+                    .copied()
+                    .collect();
+                for sid in &cards {
+                    sources.extend(
+                        ph2d_motion_doc::subgraph::member_nodes_deep(
+                            &motion.doc.subgraphs,
+                            &motion.doc.members,
+                            *sid,
+                        )
+                        .iter()
+                        .map(|n| n.0),
+                    );
+                }
+                edit::copy_selection(motion, sources);
+            }
+            // Ctrl+V — replay the clipboard into the current level (one undo step).
+            GraphIntent::Paste => edit::paste(motion),
             GraphIntent::CutWires { targets } => {
                 let targets: Vec<(u32, u16)> = targets
                     .into_iter()

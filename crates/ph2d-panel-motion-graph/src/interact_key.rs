@@ -44,6 +44,18 @@ pub(super) fn apply_key(
                 nodes: state.selected.iter().copied().collect(),
             });
         }
+        // Ctrl+C — copy the selection into the graph clipboard (the shell owns it).
+        // Nothing selected → inert (a copy of nothing is not an operation), so it
+        // falls through to the no-op arm and leaves the clipboard as it was.
+        GraphKey::Copy if !state.selected.is_empty() => {
+            push_intent(GraphIntent::CopySelection {
+                nodes: state.selected.iter().copied().collect(),
+            });
+        }
+        // Ctrl+V — paste the clipboard. No selection guard: paste depends on what was
+        // COPIED, not on what is selected now (the shell drops it when the clipboard
+        // is empty), and the pastes become the new selection when it lands.
+        GraphKey::Paste => push_intent(GraphIntent::Paste),
         // `K` arms the knife: the next left-drag slices wires instead of selecting.
         // A second K disarms it (so does Esc, and so does the stroke itself). The
         // toolbar chip mirrors the state (Accent ring) — a mode with no visible

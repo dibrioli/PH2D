@@ -146,6 +146,47 @@ pub(crate) struct MotionState {
     /// staged node). `None` on a CPU-driven frame (the memo holds the real thing)
     /// and one frame behind — exactly as the memo is (`readout::stamp`'s note).
     pub(crate) gpu_tap: Option<std::collections::BTreeMap<NodeId, ph2d_nodegraph::attr::Stream>>,
+    /// **The graph clipboard** (Ctrl+C / Ctrl+V), `None` until the first copy. It
+    /// lives HERE, not in [`MotionDoc`], because a clipboard is not document state:
+    /// an undo must not empty it, entering a group must not lose it, and it can
+    /// outlive the nodes it snapshotted. See [`GraphClip`].
+    pub(crate) clip: Option<GraphClip>,
+}
+
+/// A **portable snapshot of copied nodes** — the graph clipboard (Ctrl+C/Ctrl+V).
+///
+/// **NodeId-free on purpose.** Each node carries its type, params, text params and
+/// position; the wires BETWEEN the copied nodes are stored by INDEX into
+/// [`Self::nodes`]. So a paste re-creates them in whatever graph the artist is
+/// standing in — a different level, or after the originals were deleted — where a
+/// stored NodeId would dangle. `pre` (feedback) wires are never stored: the paste
+/// re-plumbs the copies' self-loops through `reconcile`, exactly as a dropped node.
+#[derive(Clone, Default)]
+pub(crate) struct GraphClip {
+    pub(crate) nodes: Vec<ClipNode>,
+    pub(crate) edges: Vec<ClipEdge>,
+    /// How many times this clip has already been pasted. Each paste cascades one
+    /// offset further down-right (`copy_selection` resets it to 0), so pasting the
+    /// same clip repeatedly does not stack every copy on one spot.
+    pub(crate) pastes: u32,
+}
+
+/// One node in a [`GraphClip`] — the same three things `duplicate` copies (type +
+/// f32 params + text params), plus the source position the paste offsets from.
+#[derive(Clone)]
+pub(crate) struct ClipNode {
+    pub(crate) type_name: String,
+    pub(crate) params: std::collections::BTreeMap<String, f32>,
+    pub(crate) texts: std::collections::BTreeMap<String, String>,
+    pub(crate) pos: ph2d_nodegraph::graph::Pos,
+}
+
+/// A wire with BOTH ends among the copied nodes, endpoints as `(index, port)` into
+/// [`GraphClip::nodes`] — id-free, so it re-points at the pasted copies.
+#[derive(Clone)]
+pub(crate) struct ClipEdge {
+    pub(crate) from: (usize, u16),
+    pub(crate) to: (usize, u16),
 }
 
 /// **Is the GPU cook path on?** — the policy, as a pure function of the env var,
@@ -314,6 +355,8 @@ impl MotionState {
             // Filled each active frame by the bridge from the GPU tap (`None` until
             // then, and on every CPU-cooked frame).
             gpu_tap: None,
+            // Nothing copied yet — the first Ctrl+C fills it.
+            clip: None,
         }
     }
 

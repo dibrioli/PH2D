@@ -51,6 +51,12 @@
 //! deformação SOME e o grid volta ao normal. H de novo religa. Vários selecionados: H muta todos;
 //! se já estão todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.
 //!
+//! ⊙ Ctrl+C / Ctrl+V (COPY/PASTE): selecione a cadeia (Ctrl+A ou box) → **Ctrl+C** copia → **Ctrl+V**
+//! cola cópias NOVAS deslocadas, com os params e os fios INTERNOS, já selecionadas (o próximo
+//! arraste as coloca). Diferente do Ctrl+D: a área de transferência SOBREVIVE, então Ctrl+V de novo
+//! cola OUTRA cópia (cascateada mais pra fora, não empilhada); e cola mesmo depois de apagar os
+//! originais, ou dentro de um grupo. Ctrl+V com nada copiado é inerte. UM Ctrl+Z por colagem.
+//!
 //! ⚠️ **Um nó de FORÇA (`force.wind`/`force.attractor`/…) NÃO move nada sozinho** — ele só
 //! ACUMULA na coluna `accel`, e quem a aplica é o `motion.integrate` (semântica Houdini, entradas
 //! `rest`+`forces`). Splicar uma força numa cadeia linear sem integrador é inerte por DESIGN do
@@ -131,6 +137,10 @@ impl crate::App {
              motion.twist e mute ELE: um no desligado nao roda o op, passa o input direto, entao a \
              deformacao SOME e o grid volta ao normal. H de novo religa. Varios selecionados: H \
              muta todos; se ja estao todos mutados, H religa (a regra do rove). UM Ctrl+Z desfaz.\n  \
+             CTRL+C / CTRL+V (COPY/PASTE): selecione a cadeia (Ctrl+A) -> Ctrl+C copia -> Ctrl+V cola \
+             copias NOVAS deslocadas, com params e fios INTERNOS, ja selecionadas. Ao contrario do \
+             Ctrl+D, a area de transferencia SOBREVIVE: Ctrl+V de novo cola OUTRA copia (cascateada, \
+             nao empilhada), e cola ate depois de apagar os originais. UM Ctrl+Z por colagem.\n  \
              NOTA: uma FORCA (force.wind/attractor) NAO move nada sozinha -- ela so acumula em \
              'accel', e quem aplica e o motion.integrate. Por isso o exemplo e um deformer, nao \
              uma forca."

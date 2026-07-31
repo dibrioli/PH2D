@@ -248,6 +248,17 @@ pub enum GraphKey {
     /// modifier): the graph fast-path only fires with no text field focused, so it never steals a
     /// typed key. Nothing selected → nothing to toggle.
     Bypass,
+    /// **Ctrl/Cmd+C — copy the selection to the graph clipboard.** Snapshots the nodes' type,
+    /// params, text params and the wires BETWEEN them into a portable (id-free) clip that survives
+    /// entering a group and outlives the originals — so [`Self::Paste`] can land in a different
+    /// level, or after they were deleted. A read: it never edits the document. The graph fast-path
+    /// only fires with no text field focused, so `Ctrl+C` over a field still copies the TEXT.
+    Copy,
+    /// **Ctrl/Cmd+V — paste the graph clipboard into the current level.** Mints fresh nodes, wires
+    /// the copied internal links, and hands the pastes back as the selection (so the drag that
+    /// follows moves them). Distinct from [`Self::Duplicate`]: it can paste MANY times from one
+    /// copy and always replays the ORIGINAL snapshot, not the last copies.
+    Paste,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

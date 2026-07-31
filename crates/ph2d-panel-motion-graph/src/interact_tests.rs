@@ -299,6 +299,38 @@ fn h_switches_the_selection_off_then_on() {
     assert!(drain_intents().is_empty());
 }
 
+/// **Ctrl+C copies the selection; Ctrl+V pastes regardless of it** (the graph clipboard).
+/// Copy carries the selection into a `CopySelection` intent and is INERT with nothing
+/// selected (a copy of nothing is not an operation). Paste ALWAYS emits `Paste` — it
+/// depends on what was copied, not on the current selection — so it fires even when
+/// nothing is selected. FALSIFIED by copy emitting on an empty selection, or paste
+/// carrying a selection guard it must not have.
+#[test]
+fn copy_and_paste_keys_emit_their_intents() {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.extend([1, 2]);
+
+    apply_key(&mut st, GraphKey::Copy, RECT, &two_node_snapshot());
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::CopySelection { nodes: vec![1, 2] }]
+    );
+
+    // Paste fires with a selection present...
+    apply_key(&mut st, GraphKey::Paste, RECT, &two_node_snapshot());
+    assert_eq!(drain_intents(), vec![GraphIntent::Paste]);
+
+    // ...and, crucially, with NONE — the clipboard is what it acts on.
+    st.selected.clear();
+    apply_key(&mut st, GraphKey::Paste, RECT, &two_node_snapshot());
+    assert_eq!(drain_intents(), vec![GraphIntent::Paste]);
+
+    // Copy of nothing is inert (no clipboard write requested).
+    apply_key(&mut st, GraphKey::Copy, RECT, &two_node_snapshot());
+    assert!(drain_intents().is_empty());
+}
+
 #[test]
 fn right_click_background_opens_menu_then_left_pick_adds_node() {
     let _ = drain_intents();

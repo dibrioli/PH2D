@@ -115,6 +115,140 @@ pub(super) fn duplicate(
     copy_of
 }
 
+/// **Ctrl+C** — snapshot the selection into the graph clipboard (`motion.clip`): each
+/// node's type, params, text params and position, plus the wires **between them**.
+/// A READ — it never touches the document, so no undo step and no re-cook.
+///
+/// The captured set mirrors [`duplicate`] exactly (internal wires only; a wire from
+/// OUTSIDE is not part of the thing being copied), but into a PORTABLE clip: the
+/// edges reference node INDICES, not ids, so [`paste`] can land them in any level or
+/// after the originals are gone. `pre` (feedback) edges are dropped — the paste
+/// re-plumbs the copies' self-loops through `reconcile`, like a dropped node.
+pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
+    let sources: Vec<NodeId> = nodes
+        .iter()
+        .map(|id| NodeId(*id))
+        .filter(|id| motion.doc.graph.node(*id).is_some())
+        .collect();
+    if sources.is_empty() {
+        return; // a copy of nothing leaves the clipboard as it was
+    }
+    // source id → its index in the clip's node list, so the edges below become
+    // index pairs the paste can re-point at the copies it mints.
+    let index: std::collections::BTreeMap<NodeId, usize> =
+        sources.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+
+    let clip_nodes: Vec<crate::motion_state::ClipNode> = sources
+        .iter()
+        .map(|src| {
+            let inst = motion.doc.graph.node(*src).expect("filtered to live nodes above");
+            crate::motion_state::ClipNode {
+                type_name: inst.type_name.clone(),
+                params: motion
+                    .doc
+                    .graph
+                    .node_param_overrides(*src)
+                    .cloned()
+                    .unwrap_or_default(),
+                texts: motion
+                    .doc
+                    .graph
+                    .node_text_param_overrides(*src)
+                    .cloned()
+                    .unwrap_or_default(),
+                pos: motion.doc.graph.pos(*src).unwrap_or(Pos { x: 0.0, y: 0.0 }),
+            }
+        })
+        .collect();
+
+    let clip_edges: Vec<crate::motion_state::ClipEdge> = motion
+        .doc
+        .graph
+        .edges()
+        .iter()
+        .filter(|e| !e.delayed)
+        .filter_map(|e| {
+            let from = *index.get(&NodeId(e.from.0.0))?;
+            let to = *index.get(&NodeId(e.to.0.0))?;
+            Some(crate::motion_state::ClipEdge {
+                from: (from, e.from.1),
+                to: (to, e.to.1),
+            })
+        })
+        .collect();
+
+    motion.clip = Some(crate::motion_state::GraphClip {
+        nodes: clip_nodes,
+        edges: clip_edges,
+        pastes: 0,
+    });
+}
+
+/// **Ctrl+V** — mint fresh nodes from the graph clipboard into the CURRENT graph,
+/// re-wire the internal links between them, and hand the pastes back as the
+/// selection (so the drag that follows moves the copies, not whatever was selected).
+/// One undo step; inert when nothing was copied.
+///
+/// Each paste cascades one offset further than the last (`GraphClip::pastes`), so
+/// pasting the same clip repeatedly does not stack every copy on one spot. The
+/// membership + `pre` plumbing ride on the shared [`super::reconcile`], so a paste
+/// into a group joins that group and a pasted sequential node arrives alive — exactly
+/// like a node dropped from the add-menu.
+///
+/// **Limitation, named:** a copied group's NESTING is not recreated — its member
+/// nodes paste FLAT into the current level (with their internal wires). Re-nesting on
+/// paste is the same follow-up the duplicate solved with `subgraph::duplicate_nesting`.
+pub(super) fn paste(motion: &mut MotionState) {
+    let Some(clip) = motion.clip.clone() else {
+        return; // nothing copied yet
+    };
+    if clip.nodes.is_empty() {
+        return;
+    }
+    let pre = motion.doc.clone();
+    let step = clip.pastes as f32 + 1.0;
+    let (ox, oy) = (OFFSET_X * step, OFFSET_Y * step);
+
+    // Mint one node per clip entry; `new_ids[i]` is the copy of `clip.nodes[i]`, so
+    // the index-based edges below re-point at the copies.
+    let mut new_ids: Vec<NodeId> = Vec::with_capacity(clip.nodes.len());
+    for cn in &clip.nodes {
+        let dst = motion.doc.graph.add_node(cn.type_name.clone());
+        motion.doc.graph.set_pos(
+            dst,
+            Pos {
+                x: cn.pos.x + ox,
+                y: cn.pos.y + oy,
+            },
+        );
+        for (name, value) in &cn.params {
+            motion.doc.graph.set_param(dst, name.clone(), *value);
+        }
+        for (name, value) in &cn.texts {
+            motion.doc.graph.set_text_param(dst, name.clone(), value.clone());
+        }
+        new_ids.push(dst);
+    }
+    for ce in &clip.edges {
+        let _ = motion.doc.graph.connect(Edge {
+            from: (new_ids[ce.from.0], ce.from.1),
+            to: (new_ids[ce.to.0], ce.to.1),
+            delayed: false,
+        });
+    }
+
+    super::reconcile(motion, &pre.graph);
+    motion.history.push_undo(pre);
+    motion.pump.mark_dirty();
+
+    ph2d_panel_motion_graph::request_graph_selection(new_ids.iter().map(|id| id.0).collect());
+
+    // Cascade the NEXT paste one offset further (the clip stays, so paste-many works).
+    if let Some(c) = motion.clip.as_mut() {
+        c.pastes += 1;
+    }
+}
+
 /// **Smart-connect**: the artist dragged a wire into empty space and picked a node
 /// type from the filtered menu. Add that node AND wire the dragged output into the
 /// first input the wire fits — **one undo step**, because it was one gesture (an

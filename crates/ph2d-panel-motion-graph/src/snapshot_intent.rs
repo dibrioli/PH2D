@@ -229,6 +229,18 @@ pub enum GraphIntent {
     /// per-node toggle the shell would have to re-derive. It IS semantic (a muted node cooks a
     /// passthrough), so the shell marks the cook dirty and pushes ONE undo step for the batch.
     SetBypass { nodes: Vec<u32>, on: bool },
+    /// **Copy the selection to the graph clipboard** (Ctrl+C) — the same set the
+    /// duplicate copies (type, params, text params, internal wires), but into a
+    /// portable clip on the shell instead of straight back into the document. It is
+    /// a READ: no undo step, no re-cook. A card in the selection is expanded to its
+    /// member nodes, so copying a group copies its contents.
+    CopySelection { nodes: Vec<u32> },
+    /// **Paste the graph clipboard** into the current level (Ctrl+V). The shell mints
+    /// the ids, re-wires the copied internal links and hands the pastes back as the
+    /// selection. One undo step; re-cooks. Inert when nothing was copied. Unlike
+    /// [`Self::DuplicateSelection`] it replays the clip, so it can paste MANY times
+    /// from one copy and works after the originals are gone or across levels.
+    Paste,
 }
 
 /// The intent a **node-library pick** produces, given the wire context the menu was opened

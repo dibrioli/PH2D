@@ -8,6 +8,7 @@
 //! (`fold`, `hold_source_time`), and writes nothing.
 
 use crate::stack::{ClipLane, ClipStrip};
+use ph2d_anim::Easing;
 
 impl ClipLane {
     /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for
@@ -79,7 +80,12 @@ impl ClipLane {
         t: f64,
         loop_range: Option<(f64, f64)>,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
-        let live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, t)).sum();
+        // A curva da costura, resolvida UMA vez: ela molda a entrada da cabeça, então o
+        // somatório vivo daqui e o peso vivo do `stack_frames` têm de vê-la igual.
+        let seam = self.seam_curve(loop_range);
+        let live: f64 = (0..self.strips.len())
+            .map(|i| self.weight_at_with(i, t, seam))
+            .sum();
         let w = 1.0 - live;
         if w <= 0.0 {
             return [None, None];
@@ -107,7 +113,7 @@ impl ClipLane {
                     (bo > 0.0 || last.lead_out > 0.0) && last.t_end <= b && t >= last.t_end - bo
                 });
             if closing {
-                let held = self.seam_held(a, b, w);
+                let held = self.seam_held(a, b, w, seam);
                 if held[0].is_some() {
                     return held;
                 }
@@ -213,7 +219,7 @@ impl ClipLane {
         if t < a || t >= b {
             return [None, None];
         }
-        self.seam_held(a, b, w)
+        self.seam_held(a, b, w, seam)
     }
 
     /// **What the loop shows at the seam** (`b` ≡ `a`) — the pose the object rests on
@@ -260,7 +266,12 @@ impl ClipLane {
     ///
     /// Devolve até DUAS fontes `(strip, tempo-de-clipe, FRAÇÃO)`, com as frações somando 1.
     /// Array e não `Vec` porque isto roda por frame e por lane (`no_alloc_bridge`).
-    fn seam_split(&self, a: f64, b: f64) -> [Option<(&ClipStrip, f64, f64)>; 2] {
+    fn seam_split(
+        &self,
+        a: f64,
+        b: f64,
+        seam: Option<Easing>,
+    ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         // O que o FIM do loop deixa asserindo — a última strip lida na volta.
         let Some((ti, tail)) = self
             .strips
@@ -315,7 +326,9 @@ impl ClipLane {
         // O que ela ainda decide: uma OUTRA strip totalmente viva em `a` enquanto a que
         // começa mais cedo ainda fadeia. Aí a costura tem dona (a que cobre), e dividir
         // mandaria o objeto para uma mistura que ninguém está mostrando.
-        let head_live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, a)).sum();
+        let head_live: f64 = (0..self.strips.len())
+            .map(|i| self.weight_at_with(i, a, seam))
+            .sum();
         if head_live >= 1.0
             && let Some(first) = self.strips.iter().find(|s| s.covers(a))
         {
@@ -326,8 +339,14 @@ impl ClipLane {
     }
 
     /// Reparte um peso `w` pelas frações de [`Self::seam_split`].
-    fn seam_held(&self, a: f64, b: f64, w: f64) -> [Option<(&ClipStrip, f64, f64)>; 2] {
-        self.seam_split(a, b)
+    fn seam_held(
+        &self,
+        a: f64,
+        b: f64,
+        w: f64,
+        seam: Option<Easing>,
+    ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
+        self.seam_split(a, b, seam)
             .map(|e| e.map(|(s, t, frac)| (s, t, w * frac)))
     }
 

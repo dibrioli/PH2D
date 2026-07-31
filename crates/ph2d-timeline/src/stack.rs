@@ -29,6 +29,7 @@
 //! is immune to the "sag toward the default pose" that Unity ships a whole
 //! `AnimationOutputWeightProcessor` to prevent. It is proved in the tests.
 
+use ph2d_anim::Easing;
 use serde::{Deserialize, Serialize};
 
 /// What a strip's source does once it runs past its slice.
@@ -178,6 +179,27 @@ pub struct ClipStrip {
     /// or the other). Appended (`DOC_VERSION` 8 -> 9); `0.0` is the old behaviour
     /// byte-for-byte.
     pub lead_out: f64,
+    /// **A curva do fade de ENTRADA** (Enio, 2026-07-31: *"no menu do botão direito sobre o
+    /// fade de uma strip vamos colocar as mesmas opções de easing que temos nos clips"*) —
+    /// `None` = a de fábrica.
+    ///
+    /// ⚠️ **`Option`, e não uma `Easing` com um default, porque a curva de fábrica NÃO ESTÁ
+    /// no catálogo:** o fade sempre foi um `smoothstep` (`u²(3−2u)`), e o `Quad InOut` mais
+    /// próximo dá 0,125 onde ele dá 0,15625. Guardar um preset como default reescreveria a
+    /// forma de todo fade já autorado — e o `fade_fingerprint` diria isso na hora. Com
+    /// `None` a ausência de escolha continua sendo o `smoothstep`, byte a byte.
+    ///
+    /// Uma curva por BORDA (decisão do Enio): a saída pode acelerar enquanto a entrada
+    /// desacelera, na mesma strip. Apendado (`DOC_VERSION` 17 -> 18).
+    #[serde(default)]
+    pub curve_in: Option<Easing>,
+    /// **A curva do fade de SAÍDA** — o espelho de [`Self::curve_in`].
+    ///
+    /// ⚠️ **Na costura de um LOOP esta é a que PREVALECE** (decisão do Enio): as duas
+    /// metades da volta são UMA travessia, e duas curvas a moldariam com um joelho no meio.
+    /// Fora de um loop não há costura, e aí cada fade usa a sua ([`ClipLane::seam_curve`]).
+    #[serde(default)]
+    pub curve_out: Option<Easing>,
 }
 
 /// Index into [`ClipStrip::marks`] for one corner: `stretch` picks the GREEN top
@@ -214,6 +236,8 @@ impl ClipStrip {
             lead_in: 0.0,
             marks: [0.0; 4],
             lead_out: 0.0,
+            curve_in: None,
+            curve_out: None,
         }
     }
 
@@ -487,14 +511,93 @@ impl ClipLane {
     /// window is `[…, t_end]` and this is byte-for-byte the old behaviour.
     #[must_use]
     pub fn weight_at(&self, i: usize, t: f64) -> f64 {
+        self.weight_at_with(i, t, None)
+    }
+
+    /// [`Self::weight_at`] com a curva da COSTURA de um loop, quando há uma.
+    ///
+    /// ⚠️ **`seam` substitui a curva de ENTRADA da strip da cabeça, e só dela** (decisão do
+    /// Enio: *"se houver dois fades (um em cada ponta) o fade da última prevalece sobre o
+    /// fade da primeira"*): as duas metades da volta são UMA travessia, e duas curvas a
+    /// moldariam com um joelho no meio. Quem resolve *qual* é ela — e paga o custo uma vez
+    /// por lane, não uma por strip — é [`Self::seam_curve`].
+    ///
+    /// ⚠️ **Os três chamadores de peso têm de passar o MESMO `seam`** (o somatório vivo do
+    /// `hold_at`, a cobertura da cabeça do `seam_split` e o peso vivo do `stack_frames`):
+    /// o peso segurado é `1 − vivo`, então uma metade que resolvesse a curva diferente da
+    /// outra faria a lane somar ≠ 1 e a pose afundar para as lanes de baixo.
+    #[must_use]
+    pub fn weight_at_with(&self, i: usize, t: f64, seam: Option<Easing>) -> f64 {
         let s = &self.strips[i];
         let lead = s.lead_in.max(0.0);
         if t < s.lead_start() || t >= s.lead_end() {
             return 0.0;
         }
-        let fade_in = ramp(t - s.lead_start(), lead + self.blend_in(i));
-        let fade_out = ramp(s.lead_end() - t, s.lead_out.max(0.0) + self.blend_out(i));
+        // ⚠️ **A curva autorada não alcança um crossfade de SOBREPOSIÇÃO**, e é a MESMA lei
+        // que o `ease_in`/`ease_out` já obedece (*"a sobreposição É o blend"*): ali os dois
+        // pesos precisam somar exatamente 1, o que vale porque `smoothstep(1−u) == 1−s(u)`.
+        // Uma curva assimétrica de um lado só quebraria a complementaridade e a pose
+        // afundaria no meio do crossfade — o problema que o `AnimationOutputWeightProcessor`
+        // da Unity existe para remendar, e que este módulo evita por construção.
+        let curve_in = seam.or_else(|| self.authored_curve(s.curve_in, self.overlapped_in(i)));
+        let curve_out = self.authored_curve(s.curve_out, self.overlapped_out(i));
+        let fade_in = ramp_with(t - s.lead_start(), lead + self.blend_in(i), curve_in);
+        let fade_out = ramp_with(
+            s.lead_end() - t,
+            s.lead_out.max(0.0) + self.blend_out(i),
+            curve_out,
+        );
         fade_in * fade_out
+    }
+
+    /// A curva que de fato molda um fade: a autorada, ou `None` (a de fábrica) onde uma
+    /// SOBREPOSIÇÃO define o blend. Uma porta, duas bordas.
+    fn authored_curve(&self, authored: Option<Easing>, overlapped: bool) -> Option<Easing> {
+        if overlapped { None } else { authored }
+    }
+
+    /// Este strip fadeia CONTRA um vizinho na entrada? (Então a sobreposição é o blend.)
+    #[must_use]
+    pub fn overlapped_in(&self, i: usize) -> bool {
+        self.neighbour_reach_in(i) > 0.0
+    }
+
+    /// O espelho de [`Self::overlapped_in`], na saída.
+    #[must_use]
+    pub fn overlapped_out(&self, i: usize) -> bool {
+        self.neighbour_reach_out(i) > 0.0
+    }
+
+    /// **A curva que governa a COSTURA de um loop** — a de SAÍDA da última strip, quando as
+    /// duas pontas fadeiam.
+    ///
+    /// `None` sem loop (não há costura: cada fade usa a própria curva — decisão do Enio),
+    /// quando a última strip não fadeia para fora, ou quando ela é a própria cabeça.
+    ///
+    /// Resolvida **uma vez por lane por frame** pelo chamador, nunca por strip: ela varre a
+    /// lane duas vezes, e `weight_at` roda por strip.
+    #[must_use]
+    pub fn seam_curve(&self, loop_range: Option<(f64, f64)>) -> Option<Easing> {
+        let (a, b) = loop_range?;
+        let (ti, tail) = self
+            .strips
+            .iter()
+            .enumerate()
+            .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))?;
+        if tail.t_end > b || (tail.lead_out.max(0.0) + self.blend_out(ti)) <= 0.0 {
+            return None;
+        }
+        let (_, head) = self
+            .strips
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.lead_start() <= a && s.lead_end() > a)
+            .min_by(|(_, x), (_, y)| x.t_start.total_cmp(&y.t_start))?;
+        // A cabeça É a cauda: uma strip só, e não há duas curvas para discordar.
+        if std::ptr::eq(head, tail) {
+            return None;
+        }
+        tail.curve_out
     }
 
     /// The empty span before strip `i` — from the end of the nearest strip that ends
@@ -539,9 +642,22 @@ impl ClipLane {
 /// weights need no base value to blend against — that property is what keeps the
 /// crossfade immune to sagging toward a default pose.
 fn ramp(elapsed: f64, window: f64) -> f64 {
+    ramp_with(elapsed, window, None)
+}
+
+/// A curva do fade com a escolha do artista — `None` = a de fábrica ([`ramp`]).
+///
+/// ⚠️ **O `None` NÃO é um preset do catálogo, e é por isso que ele existe**: a curva de
+/// fábrica é o `smoothstep`, que o `EasingFamily` não tem (o `Quad InOut` mais próximo dá
+/// 0,125 onde ele dá 0,15625). Guardar um preset como default reescreveria a forma de todo
+/// fade já autorado; com `None`, um documento que nunca escolheu curva é byte-idêntico.
+fn ramp_with(elapsed: f64, window: f64, curve: Option<Easing>) -> f64 {
     if window <= 0.0 {
         return 1.0;
     }
     let u = (elapsed / window).clamp(0.0, 1.0);
-    u * u * (3.0 - 2.0 * u)
+    match curve {
+        None => u * u * (3.0 - 2.0 * u),
+        Some(e) => e.eval(u),
+    }
 }

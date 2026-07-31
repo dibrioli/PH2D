@@ -112,7 +112,7 @@ mod clip_paths;
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 17;
+pub const DOC_VERSION: u32 = 18;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

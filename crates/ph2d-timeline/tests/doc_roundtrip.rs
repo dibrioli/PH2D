@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_seventeen() {
+fn schema_version_is_eighteen() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -137,10 +137,18 @@ fn schema_version_is_seventeen() {
     //      REMOVIDO. ⚠️ O SEGUNDO bump desta escada que tira um campo em vez de só
     //      acrescentar (o outro foi o v8): um v16 não fica curto, os bytes dele passam
     //      a significar outra coisa a partir dali.
+    // v18 = a CURVA de cada fade (Enio, 2026-07-31): `ClipStrip.curve_in`/`curve_out:
+    //      Option<Easing>` apendados — o menu do botão direito sobre um fade oferece as
+    //      MESMAS opções de easing dos clips, uma por BORDA (a saída pode acelerar
+    //      enquanto a entrada desacelera). ⚠️ `Option`, e não uma `Easing` com default,
+    //      porque a curva de fábrica é o `smoothstep` e ele NÃO está no catálogo
+    //      (`Quad InOut` dá 0,125 onde ele dá 0,15625): guardar um preset reescreveria a
+    //      forma de todo fade já autorado. `None` é byte-idêntico ao v17 — o
+    //      `fade_fingerprint` é quem afirma isso.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 17);
-    assert_eq!(TimelineDoc::new().version, 17);
+    assert_eq!(DOC_VERSION, 18);
+    assert_eq!(TimelineDoc::new().version, 18);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

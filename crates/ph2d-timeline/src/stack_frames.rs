@@ -311,6 +311,20 @@ impl StackScratch {
                 continue; // muting REMOVES the lane; it is not a zero weight
             }
             let additive = lane.mode == LaneMode::Additive;
+            // ⚠️ **Resolvido ANTES do laço de strips, e é por isso que ele está aqui em cima:**
+            // o peso vivo de cada strip e o complemento que o `hold_at` devolve têm de ver a
+            // MESMA curva de costura, senão a lane soma ≠ 1 e a pose afunda. E `seam_curve`
+            // varre a lane, então perguntá-la por strip seria quadrático.
+            let loop_range = (frame == 0)
+                .then(|| {
+                    let (range, ping_pong) = match self.root {
+                        None => (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
+                        Some(c) => doc.container_loop(c),
+                    };
+                    range.filter(|_| !ping_pong)
+                })
+                .flatten();
+            let seam = lane.seam_curve(loop_range);
             for (si, strip) in lane.strips.iter().enumerate() {
                 // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
                 // zero.** O peso é DADO — a resposta da lane —, não um filtro.
@@ -323,7 +337,7 @@ impl StackScratch {
                 //
                 // Custo: no máximo um punhado de strips de peso zero na lista, e só nas beiras
                 // exatas de um fade (o clamp da soma garante que o peso só zera nos extremos).
-                let w = lane.weight_at(si, t);
+                let w = lane.weight_at_with(si, t, seam);
                 // `source_time_with_lead`, not `source_time`: in the strip's outward
                 // lead-in window (in the gap before it) this returns the FROZEN first
                 // frame, so the strip contributes a still pose there — the travel the
@@ -370,15 +384,6 @@ impl StackScratch {
             // the CONTAINER's own — the scene's Arrange loop is another clock's bracket
             // around a stack it knows nothing about (the warning three lines up, which
             // the rooted path had quietly walked past).
-            let loop_range = (frame == 0)
-                .then(|| {
-                    let (range, ping_pong) = match self.root {
-                        None => (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
-                        Some(c) => doc.container_loop(c),
-                    };
-                    range.filter(|_| !ping_pong)
-                })
-                .flatten();
             // ⚠️ **Até DUAS fontes seguradas, não uma** — na costura de um loop cujas duas
             // pontas fadeiam, a pose é uma MISTURA das duas (`ClipLane::seam_split`), e a
             // média ponderada da lane já sabe misturar N entradas: os pesos somam o MESMO

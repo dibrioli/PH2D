@@ -4165,3 +4165,54 @@ para evitar.
 
 Se um dia o K–M sair do EXPERIMENTAL, é aqui que a wave começa, e o número que
 ela tem de bater é 403 MB.
+
+### §5.46.11 — ⚠️ O LOG DO SMOKE ACHOU UM VAZAMENTO DE THREAD QUE NENHUM GATE VIA
+
+O smoke de 2026-07-31 voltou com *"performance subjetivamente bem melhorada"* e
+com esta linha:
+
+```text
+  worker: busy 69% away 31% sleep 909% | TAXA DA AGUA 392.8 Hz (779 passos em 2.0s)
+```
+
+Três baldes que dizem **partição** somando **1009%**, e uma sim **dez vezes**
+acima dos 40 Hz nominais. Nenhuma das duas coisas é possível para **um** worker
+— e as duas são exatamente o que **dez** produzem, cada um no seu ritmo
+correto. *Um número impossível é mais informativo que um número ruim: ele
+nomeia a classe da causa.*
+
+**Duas causas, ambas reais, e a segunda foi achada por causa da primeira.**
+
+**(a) A janela do diagnóstico era ASSUMIDA.** `span = frame_medio × 120` supõe
+que 120 frames se passaram e que cada um durou a média — enquanto os contadores
+do `wet_diag` acumulam em tempo REAL. Agora o span é **medido** por um
+`Instant` que arma no primeiro frame e é trocado a cada dreno.
+
+**(b) Uma sessão encerrada deixava uma THREAD simulando um motor órfão, para
+sempre.** O doc do `SimWorker` afirmava *"a thread morre quando `to_worker` é
+dropado (a sessão terminou)"*, e a afirmação é **falsa exatamente no caso que
+importa**: com o motor COM ela, o `while let Ok(engine) = rx.recv()` só observa
+o canal fechado no **TOPO** do laço externo, e o laço **INTERNO** só sai quando
+`want` é setado — que é o que ninguém faz depois de a sessão morrer.
+
+⚠️ **O preço não é só CPU:** cada worker vazado segura um `Box<Engine>` com os
+quatorze planos dentro — a 4096² razão 1, da ordem de **um gigabyte por
+sessão encerrada** —, e os nove rogues estavam disputando os mesmos núcleos com
+o frame que o log mede. Parte do `painter-dispatch = 10,02 ms` e do
+`tool-tick = 5,07 ms` daquele log é contenção com sims que não deviam existir.
+
+O conserto é o `Drop`, e ele usa a **MESMA porta** que o tick usa para pedir o
+motor de volta (`want`) — um sinal próprio de shutdown seria uma segunda porta
+para *"largue o motor"*, e as duas divergiriam no dia em que uma ganhasse um
+passo a mais.
+
+⚠️ **A lição sobre a suíte:** nenhum dos 932 gates via isto, e não por
+descuido — **todos usam uma sessão só**. O vazamento é sobre a SEGUNDA, e o
+oráculo que o pega não é um relógio nem um pixel: é a **contagem forte do `Arc`
+do pedido**, porque ela cair para 1 *é* a thread ter saído. Um `join` seria
+melhor e não existe: a thread é solta de propósito.
+
+⚠️ **E é a QUARTA vez nesta sessão que o instrumento erra antes do produto** (a
+sonda chamando a rota congelada · o `ensure` dentro do relógio · o A/B
+cross-run sob máquina compartilhada · a janela assumida). O padrão é sempre o
+mesmo: *o número que não reconcilia é o que vale a pena perseguir*.

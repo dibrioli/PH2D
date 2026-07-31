@@ -20,6 +20,33 @@ use crate::{AutoOrient, TimelineDoc, remapped_time};
 /// onde o apply (mutando o mundo) e o [`pose_at`] (num Transform de rascunho) escrevem
 /// uma pose. Só os canais que são pose (Position + os cinco de sprite-transform); Morph e
 /// Opacity vivem noutros componentes e não movem um `Transform`.
+/// **Escreve uma POSE de trajetória já resolvida como PONTO** — o destino do
+/// [`crate::stack_eval::sample_stack_point`].
+///
+/// ⚠️ **O auto-orient PROJETA em vez de pedir um segundo blend.** A tangente é uma
+/// grandeza sobre UMA curva, e depois de compor pontos não há mais distância; projetar o
+/// ponto de volta na trajetória que dirige devolve exatamente a distância que ele ocupa —
+/// exato fora do cruzamento (o ponto ESTÁ na curva) e a leitura honesta dentro dele. A
+/// alternativa seria rodar o blend uma terceira vez em distância, o que faria a pose e o
+/// ângulo saírem de duas composições diferentes: a doença
+/// [[feedback_derived_coordinate_seed_must_match_sample]], mais uma vez.
+pub(crate) fn set_transform_point(
+    xf: &mut Transform,
+    path: Option<&crate::MotionPath>,
+    p: [f32; 2],
+    orient: bool,
+) {
+    xf.translation.x = p[0];
+    xf.translation.y = p[1];
+    if orient
+        && let Some(path) = path
+        && let Some(d) = path.project(p)
+        && let Some(t) = path.at(d).and_then(|s| s.tangent)
+    {
+        xf.rotation = libm::atan2f(t[1], t[0]);
+    }
+}
+
 pub(crate) fn set_transform_field(
     xf: &mut Transform,
     b: &TargetBinding,

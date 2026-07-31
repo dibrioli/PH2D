@@ -227,3 +227,70 @@ anda na horizontal (`y == 0`), B na vertical (`x == 0`).
 
 **8 mutações no total, 8 sangram** — e a do `apply` voltando ao `path_for` sob composição
 reproduz o report ao número: `[10.0, 0.0]` onde a curva de B mandava `[0.0, 10.0]`.
+
+### 2d. E o FADE misturava réguas — agora ele compõe PONTOS, como o modo sem Path
+
+**Report (Enio):** *"O Fade gera Path de transição entre um path de uma strip e outro path
+de outra strip. Isso acaba deformando os paths de ambas as strips. O Fade precisa ser
+similar ao modo sem Path."*
+
+A §2c fez cada strip **escolher** a curva certa; ela não podia fazer os dois strips
+coexistirem. A track de Position guarda uma **DISTÂNCIA**, e distância só significa algo
+sobre UMA curva — então o blend cruzava dois números de **réguas diferentes** e avaliava o
+resultado numa curva só. Medido no cruzamento de um caminho horizontal com um vertical:
+
+```
+t=1.25  [5.47, 0.00]     <- ainda na curva de A, mas numa distância já puxada por B
+t=1.50  [5.00, 0.00]
+t=1.75  [0.00, 4.53]     <- SALTO de 5 unidades para a curva de B
+```
+
+É essa a *"path de transição que deforma os dois"*: durante o fade o objeto percorre a
+trajetória errada, e depois salta.
+
+**A cura é a que o report nomeia:** o modo Separate (sem Path) blenda **coordenadas**, então
+Position passa a fazer o mesmo. `Query::axis` (`Some(0)`/`Some(1)`) faz **cada strip
+converter a própria distância na PRÓPRIA curva** (`stack_eval_path.rs::on_axis`) antes de o
+blend somar qualquer coisa; o que cruza é uma coordenada.
+
+⚠️ **O maquinário do fade não muda UMA LINHA, e a razão é aritmética:** a média por lane, o
+`lerp` de Override e a soma de Additive são todos **AFINS** nos valores de origem, e aplicar
+um blend afim componente a componente **É** blendar pontos. Depois:
+
+```
+t=1.25  [5.27, 0.20]
+t=1.50  [3.75, 1.25]     <- a viagem entre as duas curvas
+t=1.75  [1.37, 3.16]
+```
+
+**O que mudou, medido antes×depois nas MESMAS 161 amostras da cena do fingerprint:** o canal
+`morph` difere em **0** delas; Position em **18** — as janelas de fade, e só elas —, com
+delta máximo de **2,59** unidades. O irmão `fade_fingerprint.rs` (canais de transform) ficou
+**byte-idêntico**. O `CHANNEL_FINGERPRINT` foi **re-pinado no mesmo commit com o motivo**,
+que é o protocolo do pin.
+
+⚠️ **Três consequências, cada uma com a sua decisão:**
+
+1. **O auto-orient PROJETA em vez de pedir um segundo blend.** A tangente é uma grandeza
+   sobre UMA curva, e depois de compor pontos não há mais distância; projetar o ponto de
+   volta na trajetória que dirige devolve a distância que ele ocupa — exato fora do
+   cruzamento (o ponto ESTÁ na curva) e a leitura honesta dentro dele. Rodar o blend uma
+   terceira vez em distância faria pose e ângulo saírem de duas composições diferentes
+   ([[feedback_derived_coordinate_seed_must_match_sample]]).
+2. **O canal de prop-link continua publicando a DISTÂNCIA** — é o que uma fórmula
+   `Nome.position` sempre leu, e mudá-lo seria outra quebra sem pedido.
+3. **A rota de PROBE (`invert_stack`, o K sob uma pilha) resolve em DISTÂNCIA** (`axis:
+   None`), porque distância é a unidade que a key guarda. Ela fica byte-idêntica ao que era.
+
+**Gate:** `a_crossfade_between_two_curves_travels_instead_of_jumping` — ⚠️ e o oráculo é a
+**CONTINUIDADE**, não um ponto: um endpoint sozinho fica verde sobre um salto. Ele mede o
+MAIOR passo ao longo do cruzamento (a barra recusa o salto, não um passo de fade mais
+rápido), exige que **fora** da sobreposição cada strip esteja EXATAMENTE na sua curva, e que
+o **meio** do fade esteja fora das duas — que é o que viajar entre elas significa.
+
+⚠️ **E uma medição minha nasceu ERRADA, do jeito mais fácil de não perceber:** usei a
+MUTAÇÃO (ignorar o `axis`) como *"antes"*, e ela não é o modelo antigo — com o apply já
+roteando Position pelo `sample_stack_point`, ignorar o eixo devolve a distância nos DOIS
+eixos (`x=14, y=14` para distância 14, um ponto que não está em curva nenhuma). Dava *"140
+de 161 amostras moveram"*, e eu quase reportei isso. **Uma mutação não é uma máquina do
+tempo: para medir antes×depois desliga-se a ROTA, não o miolo dela.**

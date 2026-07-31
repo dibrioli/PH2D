@@ -608,23 +608,30 @@ fn each_strip_in_arrange_walks_its_own_clips_trajectory() {
     );
 }
 
-/// **Num crossfade entre duas curvas DIFERENTES, quem manda é o strip DOMINANTE** — e a
-/// troca no meio do cruzamento é o limite NOMEADO desta wave, não um acidente.
+/// **Num crossfade entre duas curvas DIFERENTES o objeto VIAJA entre elas, sem salto**
+/// (Enio, 2026-07-30: *"o Fade gera Path de transição entre um path de uma strip e outro
+/// path de outra strip. Isso acaba deformando os paths de ambas as strips. O Fade precisa
+/// ser similar ao modo sem Path"*).
 ///
-/// O blend compõe DISTÂNCIAS (`prop.rs`), e uma distância só significa algo sobre UMA
-/// curva; então enquanto os dois strips estão vivos não existe resposta escalar. A regra é
-/// o maior peso, e o gate a pina nos dois lados do cruzamento.
+/// A track de Position guarda uma DISTÂNCIA, e distância só significa algo sobre UMA curva.
+/// Cruzar duas misturava números de réguas diferentes e avaliava o resultado numa curva só:
+/// o objeto corria pela trajetória ERRADA durante o fade e depois saltava para a outra — o
+/// *"path de transição que deforma os dois"* do report (medido: `[5.47, 0]` → `[5.0, 0]` →
+/// `[0, 4.53]`, cinco unidades de salto).
 ///
-/// ⚠️ Este gate existe porque o irmão da SEQUÊNCIA não continha o fenômeno: com um strip
-/// vivo de cada vez, "maior peso" e "menor peso" dão a mesma resposta, e a mutação que
-/// inverte a comparação SOBREVIVIA a ele.
+/// Agora cada strip converte a própria distância na PRÓPRIA curva e o blend compõe
+/// COORDENADAS, que é exatamente o que o modo Separate (sem Path) faz.
 ///
-/// O oráculo não é o ponto exato (num cruzamento a distância é uma mistura): é **em que
-/// CURVA** ele está — A anda na horizontal (`y == 0`), B na vertical (`x == 0`).
+/// ⚠️ **O oráculo é a CONTINUIDADE, não um ponto** — um endpoint sozinho fica verde sobre
+/// um salto. O passo máximo ao longo do cruzamento tem de ficar da ordem do passo de um
+/// trecho normal; e o gate ainda exige o essencial que a geometria promete: **fora da
+/// sobreposição cada strip está EXATAMENTE na sua curva**, e o meio do fade está FORA das
+/// duas (é a viagem entre elas — é isso que o modo sem Path também faz).
 ///
-/// **Mutação que deve sangrar:** `driving_path` escolher o menor peso.
+/// **Mutação que deve sangrar:** `Query::axis` ser ignorado (o blend volta a compor
+/// distâncias).
 #[test]
-fn during_a_crossfade_the_dominant_strip_picks_the_curve() {
+fn a_crossfade_between_two_curves_travels_instead_of_jumping() {
     let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
     let bits = e.to_bits();
     doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
@@ -638,19 +645,60 @@ fn during_a_crossfade_the_dominant_strip_picks_the_curve() {
     doc.add_strip(lane, 0, 0.0, 2.0);
     doc.add_strip(lane, b, 1.0, 3.0); // sobreposição em [1, 2]
 
-    // Primeira metade do cruzamento: A ainda pesa mais.
-    apply_from_doc(&mut w, &mut doc, 1.25);
-    let p = pos(&w, e);
+    let mut prev: Option<[f32; 2]> = None;
+    let mut worst = 0.0_f32;
+    for k in 0..=48 {
+        let t = f64::from(k) / 16.0;
+        apply_from_doc(&mut w, &mut doc, t);
+        let p = pos(&w, e);
+        if let Some(q) = prev {
+            let step = ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2)).sqrt();
+            worst = worst.max(step);
+        }
+        prev = Some(p);
+    }
+    // Um trecho normal anda 10 unidades em 2 s a 16 amostras/s => ~0,31 por passo. O salto
+    // do modelo antigo media ~5. A barra é generosa de proposito: o que ela recusa e o
+    // SALTO, nao um passo de fade um pouco mais rapido.
     assert!(
-        p[1].abs() < 1e-6 && p[0] > 1.0,
-        "na primeira metade do fade o objeto anda na curva de A (horizontal): {p:?}"
+        worst < 1.0,
+        "o percurso tem de ser contínuo ao longo do fade; maior passo = {worst}"
     );
 
-    // Segunda metade: B passou a pesar mais.
-    apply_from_doc(&mut w, &mut doc, 1.75);
+    // Fora da sobreposição, cada strip está EXATAMENTE na sua curva.
+    apply_from_doc(&mut w, &mut doc, 0.5);
+    assert!(near(pos(&w, e), [2.5, 0.0]), "{:?}", pos(&w, e));
+    apply_from_doc(&mut w, &mut doc, 2.5);
+    assert!(near(pos(&w, e), [0.0, 7.5]), "{:?}", pos(&w, e));
+
+    // E o meio do fade está FORA das duas — é a viagem entre elas.
+    apply_from_doc(&mut w, &mut doc, 1.5);
     let p = pos(&w, e);
     assert!(
-        p[0].abs() < 1e-6 && p[1] > 1.0,
-        "na segunda metade, a de B (vertical): {p:?}"
+        p[0] > 0.1 && p[1] > 0.1,
+        "no meio do cruzamento o objeto não está em nenhuma das duas curvas: {p:?}"
     );
+}
+
+/// Sonda: o percurso ao longo de um crossfade entre duas curvas diferentes.
+#[test]
+#[ignore]
+fn probe_crossfade_between_two_curves() {
+    let (mut w, e, mut doc) = rig(MotionPath::new(Vec::new()), &[]);
+    let bits = e.to_bits();
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [10.0, 0.0]);
+    let b = doc.add_clip("B".into());
+    doc.set_active(b);
+    doc.key_the_path(bits, RationalTime::from_seconds(0.0), [0.0, 0.0]);
+    doc.key_the_path(bits, RationalTime::from_seconds(2.0), [0.0, 10.0]);
+    doc.set_active(0);
+    let lane = doc.add_lane("L".into()).expect("faixa");
+    doc.add_strip(lane, 0, 0.0, 2.0);
+    doc.add_strip(lane, b, 1.0, 3.0);
+    for k in 0..=12 {
+        let t = f64::from(k) * 0.25;
+        apply_from_doc(&mut w, &mut doc, t);
+        println!("t={t:.2} pos={:?}", pos(&w, e));
+    }
 }

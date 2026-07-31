@@ -151,9 +151,34 @@ fn fingerprint() -> (u64, Vec<Sample>) {
     (h, samples)
 }
 
-/// O pin, capturado 2026-07-28 na árvore com o C4 fechado. Se uma wave o mover, ela
-/// tocou o fade **nestes** canais — re-pine no MESMO commit com o motivo, ou reverta.
-const CHANNEL_FINGERPRINT: u64 = 0x4706_da93_85d2_8f53;
+/// O pin. Se uma wave o mover, ela tocou o fade **nestes** canais — re-pine no MESMO
+/// commit com o motivo, ou reverta.
+///
+/// ⚠️ **RE-PINADO em 2026-07-30, e o motivo é uma correção pedida pelo Enio:** *"o Fade
+/// gera Path de transição entre um path de uma strip e outro path de outra strip. Isso
+/// acaba deformando os paths de ambas as strips. O Fade precisa ser similar ao modo sem
+/// Path."* Com a trajetória por-clip, cruzar dois strips misturava DISTÂNCIAS de curvas
+/// diferentes — números de réguas diferentes — e avaliava o resultado numa curva só; agora
+/// cada strip converte a própria distância na PRÓPRIA curva e o blend compõe COORDENADAS,
+/// que é o que o modo Separate sempre fez.
+///
+/// **MEDIDO, não afirmado** (sonda `probe_channel_samples`, antes × depois nas MESMAS 161
+/// amostras): o canal `morph` difere em **0** delas, e Position em **18** — as janelas de
+/// fade, e só elas —, com delta máximo de **2,59** unidades. O irmão `fade_fingerprint.rs`
+/// (os canais de transform) ficou **byte-idêntico**. Juntos, provam que o que mudou foi a
+/// leitura de Position e não o maquinário do fade.
+///
+/// ⚠️ **E a primeira medição estava ERRADA, pela forma como eu a tirei:** usei a MUTAÇÃO
+/// (ignorar o `Query::axis`) como "antes", e ela não é o modelo antigo — com o apply já
+/// roteando Position pelo `sample_stack_point`, ignorar o eixo devolve a DISTÂNCIA nos dois
+/// eixos (`x=14, y=14` para distância 14, um ponto que não está na curva). Dava *"140 de
+/// 161 amostras moveram"*, e eu quase reportei isso. **Uma mutação não é uma máquina do
+/// tempo:** para medir antes×depois desliga-se a ROTA, não o miolo dela.
+///
+/// O pin anterior (`0x4706_da93_85d2_8f53`, capturado 2026-07-28) descrevia a composição em
+/// distância; ele não volta, porque a cena que ele media é exatamente a que o report
+/// reprovou.
+const CHANNEL_FINGERPRINT: u64 = 0xd233_0eb0_8b58_0205;
 
 #[test]
 fn the_fade_surface_is_byte_stable_on_morph_and_position() {
@@ -191,4 +216,17 @@ fn the_fade_surface_is_byte_stable_on_morph_and_position() {
             .map(|s| (s.t, s.morph, s.x, s.y))
             .collect::<Vec<_>>()
     );
+}
+
+/// Sonda: as amostras, para ver QUAL canal se moveu.
+#[test]
+#[ignore]
+fn probe_channel_samples() {
+    let (_, samples) = fingerprint();
+    for s in &samples {
+        println!(
+            "t={:.3} morph={:.6} x={:.6} y={:.6}",
+            s.t, s.morph, s.x, s.y
+        );
+    }
 }

@@ -12,7 +12,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_anim::AnimValue;
-use ph2d_ecs::{Entity, World};
+use ph2d_ecs::{Entity, Transform, World};
 
 use crate::apply_prop::{read_prop, write_prop};
 use crate::doc::TimelineDoc;
@@ -126,6 +126,38 @@ fn apply_inner(
         // THE branch (ADR-0115 §6): an empty stack is the single-clip path — UNLESS
         // `scene_mode` forced `stacked` true (the Arrange view, where empty = rest).
         // A stack blends its lanes instead.
+        // ⚠️ **Position sob a COMPOSIÇÃO compõe PONTOS** (Enio, 2026-07-30: *"o Fade
+        // precisa ser similar ao modo sem Path"*) — cada strip resolve a própria distância
+        // na PRÓPRIA curva e o que cruza é a coordenada. Escrito e retornado aqui porque o
+        // resto do laço fala em escalar; o canal de prop-link segue publicando a DISTÂNCIA
+        // (o `sampled` abaixo), que é o que uma fórmula `Nome.position` sempre leu.
+        if stacked && b.prop == PropKind::Position {
+            if let (Some(p), Some(e)) = (
+                stack_eval::sample_stack_point(
+                    doc,
+                    &scratch,
+                    stack_eval::Query {
+                        entity: b.entity,
+                        target: b.target,
+                        prop: b.prop,
+                        rest: b.rest.unwrap_or(0.0),
+                        axis: None, // preenchido por eixo lá dentro
+                    },
+                    &links,
+                ),
+                Entity::try_from_bits(b.entity),
+            ) && let Some(mut xf) = world.get_mut::<Transform>(e)
+            {
+                let orient = doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+                crate::pose::set_transform_point(
+                    &mut xf,
+                    doc.driving_path(&scratch, b.target),
+                    p,
+                    orient,
+                );
+            }
+            continue;
+        }
         let sampled = if stacked {
             stack_eval::sample_stack(
                 doc,
@@ -135,6 +167,7 @@ fn apply_inner(
                     target: b.target,
                     prop: b.prop,
                     rest: b.rest.unwrap_or(0.0),
+                    axis: None,
                 },
                 &links,
             )

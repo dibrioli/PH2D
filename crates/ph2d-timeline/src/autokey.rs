@@ -311,6 +311,8 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
             target: b.target,
             prop,
             rest: b.rest.unwrap_or(0.0),
+            // A rota de PROBE resolve em DISTÂNCIA — é a unidade que a key guarda.
+            axis: None,
         },
         &links,
     )
@@ -385,6 +387,8 @@ pub fn key_value_in_active_clip(
             target,
             prop,
             rest,
+            // A rota de PROBE resolve em DISTÂNCIA — é a unidade que a key guarda.
+            axis: None,
         },
         doc.active_index(),
         t_key,

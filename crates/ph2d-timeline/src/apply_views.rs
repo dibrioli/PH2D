@@ -62,6 +62,32 @@ pub fn apply_container(
         if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
             continue;
         }
+        // Position compõe PONTOS aqui pela MESMA razão do apply da cena: cada strip
+        // resolve a própria distância na própria curva (`Query::axis`). Uma segunda
+        // resposta aqui faria a pose dentro do container divergir da pose fora dele.
+        if b.prop == PropKind::Position {
+            let q = stack_eval::Query {
+                entity: b.entity,
+                target: b.target,
+                prop: b.prop,
+                rest: b.rest.unwrap_or(0.0),
+                axis: None,
+            };
+            if let (Some(p), Some(e)) = (
+                stack_eval::sample_stack_point(doc, &scratch, q, &links),
+                Entity::try_from_bits(b.entity),
+            ) && let Some(mut xf) = world.get_mut::<ph2d_ecs::Transform>(e)
+            {
+                let orient = doc.auto_orient(b.entity) == crate::AutoOrient::Active;
+                crate::pose::set_transform_point(
+                    &mut xf,
+                    doc.driving_path(&scratch, b.target),
+                    p,
+                    orient,
+                );
+            }
+            continue;
+        }
         let sampled = stack_eval::sample_stack(
             doc,
             &scratch,
@@ -70,6 +96,7 @@ pub fn apply_container(
                 target: b.target,
                 prop: b.prop,
                 rest: b.rest.unwrap_or(0.0),
+                axis: None,
             },
             &links,
         );

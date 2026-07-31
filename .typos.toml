@@ -475,6 +475,12 @@ irracional = "irracional"
 #     (`ph2d-mesh/src/adjacency_tests.rs`); é o carimbo que garante isso.
 termine = "termine"
 duplicatas = "duplicatas"
+#   `multiplicativo` — o zoom da câmera orbital é MULTIPLICATIVO, nunca aditivo
+#     (`ph2d-mesh-render/src/camera.rs`): é o que faz o mesmo gesto valer a mesma
+#     razão perto e longe. Lido como um "multiplication" torto.
+multiplicativo = "multiplicativo"
+Multiplicativo = "Multiplicativo"
+MULTIPLICATIVO = "MULTIPLICATIVO"
 
 [files]
 extend-exclude = [

@@ -2548,6 +2548,13 @@ impl App {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
             return;
         }
+        // ADR-0145 W1/M2: a órbita da cena 3D. Só consome com um arrasto EM
+        // CURSO — a porta devolve `false` sem cena armada e sem botão preso, e
+        // é por isso que ela não rouba o hover do app 2D.
+        #[cfg(feature = "sculpt3d")]
+        if self.sculpt3d_pointer_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Audio Editor piece drag (SHELL-only): Move / Scale own the pointer while they are live.
         #[cfg(feature = "panel-audio-editor")]
         if self.audio_piece_drag_move(self.last_pointer.0) {
@@ -2789,6 +2796,12 @@ impl App {
         // (forward to hero).
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
+        // ADR-0145 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um
+        // "passo" é uma linha de roda (os 16 px acima são a régua do zoom 2D).
+        #[cfg(feature = "sculpt3d")]
+        if !over_panel && self.sculpt3d_wheel(dy / 16.0) {
+            return;
+        }
         // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
         // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
         // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
@@ -2841,6 +2854,18 @@ impl App {
             self.release_body_grab();
             self.release_body_pose();
             self.release_body_fk();
+        }
+        // ADR-0145 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
+        // portanto invisível) sem cena armada.
+        #[cfg(feature = "sculpt3d")]
+        {
+            let taken = match state {
+                ElementState::Pressed => self.sculpt3d_pointer_down(button),
+                ElementState::Released => self.sculpt3d_pointer_up(),
+            };
+            if taken {
+                return;
+            }
         }
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,

@@ -5353,6 +5353,8 @@ dependencies = [
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
  "ph2d-input",
+ "ph2d-mesh",
+ "ph2d-mesh-render",
  "ph2d-motion-doc",
  "ph2d-node-fx-glow",
  "ph2d-node-motion-time-remap",
@@ -5652,6 +5654,17 @@ name = "ph2d-mesh"
 version = "0.0.0"
 dependencies = [
  "dhat",
+]
+
+[[package]]
+name = "ph2d-mesh-render"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "glam 0.30.10",
+ "ph2d-mesh",
+ "pollster",
+ "wgpu",
 ]
 
 [[package]]

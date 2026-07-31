@@ -98,6 +98,8 @@ mod flip_gizmo_view;
 mod flip_layers;
 mod flip_multiframe;
 mod flip_multiplane_smoke;
+#[cfg(feature = "sculpt3d")]
+mod sculpt3d;
 mod flip_peek;
 mod flip_pose_gizmo;
 mod flip_pose_smoke;

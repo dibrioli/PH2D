@@ -131,6 +131,11 @@ pub(crate) struct AppGfx {
     /// ADR-0114 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
     /// (HDR), amostrado pelo playhead. Criado 1× (device + formato do game_rt).
     pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
+    /// ADR-0145 W1/M2: a cena 3D viva (malha + camera orbital + pipeline).
+    /// `None` num run normal — so o smoke a cria, e sem ela toda porta do
+    /// `crate::sculpt3d` devolve `false` e o frame 2D fica intocado.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) sculpt3d: Option<crate::sculpt3d::Sculpt3dScene>,
     /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
     /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
     /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.

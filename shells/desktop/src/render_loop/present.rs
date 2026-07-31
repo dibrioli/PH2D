@@ -41,6 +41,8 @@ impl crate::App {
             return;
         };
         let AppGfx {
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d,
             surface,
             renderer,
             present,
@@ -206,6 +208,27 @@ impl crate::App {
                     window_size,
                     surface.gpu(),
                 );
+                // Pass 1d: a malha 3D (ADR-0145 W1/M2) — MESMO alvo `game_rt`,
+                //   câmera PRÓPRIA (perspectiva orbital) e depth-buffer próprio.
+                //   `LoadOp::Load`, então a cena 2D fica por baixo. No-op sem
+                //   cena armada: num run normal `sculpt3d` é `None` e o frame é
+                //   byte-idêntico ao de antes deste bloco existir.
+                #[cfg(feature = "sculpt3d")]
+                if let Some(scene) = sculpt3d.as_mut() {
+                    let gpu = surface.gpu();
+                    let mut enc = gpu
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("ph2d-mesh encoder"),
+                        });
+                    scene.render(
+                        gpu,
+                        &mut enc,
+                        game_rt.view(),
+                        (window_size.width, window_size.height),
+                    );
+                    gpu.queue.submit([enc.finish()]);
+                }
                 // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
                 //   OWN HDR effect, authored as an `fx.glow` node in the graph.
                 //   Only runs when the artist has dropped that node (and dialed

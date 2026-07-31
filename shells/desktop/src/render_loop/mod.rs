@@ -701,6 +701,8 @@ impl crate::App {
         self.flip_tween_torsion_smoke();
         self.flip_tip_smoke();
         self.flip_multiplane_smoke();
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_smoke();
         self.flip_self_overlap_smoke();
         self.flip_airbrush_smoke();
         self.flip_resample_smoke();
@@ -763,6 +765,9 @@ impl crate::App {
             return;
         };
         let AppGfx {
+            // A cena 3D é consumida no `present`, não neste bloco.
+            #[cfg(feature = "sculpt3d")]
+                sculpt3d: _,
             surface,
             renderer,
             sim,

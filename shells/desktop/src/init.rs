@@ -407,6 +407,9 @@ pub(crate) fn build_initial_state(
         ph2d_flip_render::FlipCompose::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
 
     let gfx = AppGfx {
+        // ADR-0145 W1/M2: cena 3D nasce VAZIA — o smoke a arma no 1o frame.
+        #[cfg(feature = "sculpt3d")]
+        sculpt3d: None,
         surface,
         renderer,
         sim,

@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-mesh-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Tudo que o modulo 3D fala com a GPU: upload da malha, camera orbital, o passe
+# de matcap e (nas waves seguintes) o G-buffer da doacao. Espelha a
+# `ph2d-flip-render`: o `ph2d-render` deliberadamente NAO depende de crates de
+# documento, entao um passe wgpu dedicado mora na propria crate e recebe
+# device/queue + o alvo do shell.
+[dependencies]
+# A malha residente — a fonte da geometria a rasterizar.
+ph2d-mesh = { path = "../ph2d-mesh" }
+# Mat4/Vec3 da camera. `glam` ja e a algebra desta casa (`ph2d-core`,
+# `ph2d-vector-doc`); uma Mat4 escrita a mao aqui seria a segunda resposta.
+glam = "0.30"
+# wgpu 28 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render.
+wgpu = "28"
+# Pod/Zeroable + cast_slice para o uniform e os vertex buffers — a mesma
+# convencao do `instance_buffer` do ph2d-render.
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.
+pollster = "0.4"

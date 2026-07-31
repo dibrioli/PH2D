@@ -1,5 +1,13 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics`, jornada da POLIA (2026-07-27 → 2026-07-30)
 
+> ⚠️ **SUPERSEDED (2026-07-30, mesmo dia).** Não integre por este documento. A
+> linha REABRIU depois dele (a wave do **pino de mundo**) e — pior — ele afirma
+> que *"o `main` NÃO andou"*, o que deixou de ser verdade: o `main` andou **186
+> commits**. O handoff vivo é
+> [`HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md`](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md),
+> que traz os conflitos MEDIDOS e a colisão de número de ADR que este não podia
+> conhecer.
+
 > **Para o agente INTEGRADOR.** A linha está FECHADA. Este documento é a única
 > coisa que você precisa ler para integrar; o detalhe por-wave vive no tracker
 > ([`HANDOFF_line_physics.md`](HANDOFF_line_physics.md)), o mapa em

@@ -7418,9 +7418,21 @@ desta janela: o **PISO** do comprimento · a **corda que não roteia PARA de seg
 o **§10** (bias com raio + o custo contra o HR-4) · o **ÍMÃ** do eixo montado · a
 **cadernal dirigida** (vantagem 2, medida) · o **conta-gotas de corda** · e a
 **W-WESTON** (o eixo composto atravessado duas vezes, `2R/(R−r)`). **Smokes aprovados:
-`=61`, `=63`, `=64`** (o `=64` em 2026-07-30 — *"Smoke OK"*). **A linha está FECHADA;
-o handoff de integração é
-[`HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md`](HANDOFF_INTEGRACAO_line_physics_pulley_2026-07-30.md).**
+`=61`, `=63`, `=64`, `=65`** (2026-07-30). **A linha está FECHADA; o handoff de
+integração é
+[`HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md`](HANDOFF_INTEGRACAO_line_physics_world_pin_2026-07-30.md)**
+— o `..._pulley_...` do mesmo dia está **SUPERSEDED** (a linha reabriu para a wave
+do pino de mundo, e o `main` andou 186 commits depois que ele afirmou o
+contrário).
+
+⚠️ **A W-JointWorld fechou o item 3 do horizonte do plano 02 §8** (a metade
+autorável do *Pin-to-world*): um joint cujo lado B é um PONTO DO CENÁRIO, o que
+remove o corpo estático inventado. Marcador `JointWorldAnchor`, **zero bump de
+schema**, registro 23→24, cena **`=65`**. Detalhe: [plano 02 §9](02_plano_joints_ui_authoring.md).
+⚠️ **Dois relatos de smoke a corrigiram**: o gesto de canvas recusava o vazio (e
+a recusa DIZIA que pinos de mundo não existiam — frase que a própria wave
+falsificara), e o dot âmbar escrevia `local_a` em vez da âncora, então arrastar
+não movia nada.
 
 ⚠️ **Estado no tip:** `PROJECT_SCHEMA` **45** (a Weston não o move — marcador),
 registro `ph2d-ecs` **23**, c9 `7cb7728d…` com 96 corpos (a wave não alcança o hash).

@@ -1,7 +1,12 @@
-//! **O fade externo FINAL provoca a transição também sob PingPong** (Enio, 2026-07-31:
-//! *"para PingPong a FADE final externa não provoca nenhum movimento, mas deveria provocar
-//! a transição mesmo sendo inútil (sem sentido para uso real) mas para manter a coerência
-//! do sistema e concordar com o que faz a FADE externa inicial"*).
+//! **Os fades externos das DUAS pontas provocam a transição sob PingPong** (Enio,
+//! 2026-07-31: *"a FADE final externa não provoca nenhum movimento, mas deveria … para
+//! manter a coerência do sistema"* — e, na rodada seguinte, *"corrigiu a da direita mas
+//! matou a inicial"*).
+//!
+//! ⚠️ **A cauda e a cabeça eram o MESMO defeito**, e eu só vi metade: as duas decaíam para o
+//! `rest`. Consertar uma e afirmar que a outra era "por desenho" (o que este arquivo chegou
+//! a pinar num gate) foi ler a lei de 2026-07-23 como sendo sobre o MODO, quando ela é sobre
+//! um **vão SECO** — uma strip sem fade, num vão onde a lane não escreve nada.
 //!
 //! ⚠️ **O oráculo tem de ser o REST "ruim"**, e é essa a lição desta fixture: sob ping-pong a
 //! cauda decaía para a pose de REPOUSO, e o `rest` é capturado por binding — quem liga a
@@ -81,17 +86,21 @@ fn the_final_outward_fade_travels_under_pingpong_too() {
     );
 }
 
-/// **A abertura NÃO envolve sob ping-pong** — o fix do Enio de 2026-07-23 fica intacto.
+/// **O que distingue a abertura NÃO é o modo, é o FADE** (Enio, 2026-07-31: *"corrigiu a
+/// FADE externa final mas matou a inicial"*).
 ///
-/// As duas metades vivem no mesmo `loop_range`, e a correção acima o entrega à borda de
-/// SAÍDA. Esta prova que ela não vazou para a de ENTRADA: um playhead que reflete nunca
-/// cruza a costura, então a pose que o fim do loop deixa não pode aparecer no vão de
-/// abertura. Sob ping-pong a cabeça sai do REST; sob loop, da costura.
+/// ⚠️ Este gate nasceu, horas antes, afirmando o OPOSTO (*"sob ping-pong a abertura sai do
+/// REST"*) — eu li a lei de 2026-07-23 como sendo sobre o MODO, e ela é sobre um **vão
+/// SECO**: a cena dela é uma strip *sem fade*, num vão onde a lane não escreve nada. Com um
+/// `lead_in` a lane já escreve, e sair do `rest` era **morte medida** para quem parkou a
+/// sprite na pose inicial — `-3,000 -3,000 -3,000 -3,000`, o mesmo mecanismo que matava a
+/// cauda, com o mesmo disfarce.
+///
+/// As duas metades ficam num gate só de propósito: elas são a MESMA pergunta respondida
+/// pela presença do fade, e separá-las é como uma metade sobrevive a uma mutação da outra.
 #[test]
-fn the_opening_gap_still_does_not_wrap_under_pingpong() {
-    let head = |ping: bool| {
-        let (mut sim, mut st, bits) = scene(ping, 5.0);
-        apply_from_doc(sim.world_mut(), &mut st.doc, 0.0);
+fn the_opening_fade_travels_under_pingpong_but_a_bare_gap_stays_silent() {
+    let x = |sim: &SimWorld, bits: u64| {
         f64::from(
             sim.world()
                 .get::<Transform>(ph2d_ecs::Entity::from_bits(bits))
@@ -100,15 +109,37 @@ fn the_opening_gap_still_does_not_wrap_under_pingpong() {
                 .x,
         )
     };
+    // (a) COM fade: a cabeça cruza da COSTURA — logo o `rest` não tem voto, e é isso que a
+    // mantém viva na cena ordinária (sprite parkada onde a animação começa, `rest = -3`).
+    let head = |rest: f32| {
+        let (mut sim, mut st, bits) = scene(true, rest);
+        apply_from_doc(sim.world_mut(), &mut st.doc, 0.0);
+        x(&sim, bits)
+    };
     assert!(
-        (head(true) - 5.0).abs() < 0.01,
-        "sob ping-pong a abertura sai do REST (5), não da costura: {}",
-        head(true)
+        (head(5.0) - head(-3.0)).abs() < 1e-9,
+        "o rest não pode ter voto na abertura: {} vs {}",
+        head(5.0),
+        head(-3.0)
     );
     assert!(
-        (head(false) - 5.0).abs() > 1.0,
-        "e sob LOOP ela sai da costura, que é outra pose: {}",
-        head(false)
+        (head(-3.0) + 3.0).abs() > 1.0,
+        "e ela tem de SAIR da pose inicial — senão o fade não provoca transição: {}",
+        head(-3.0)
+    );
+
+    // (b) SEM fade: vão seco, a lane escreve NADA e o objeto fica onde a strip o deixou
+    // (a lei de 2026-07-23). `rest = 5` e a costura valem poses distintas da parada, então
+    // este oráculo separa os três.
+    let (mut sim, mut st, bits) = scene(true, 5.0);
+    st.doc.stack_mut()[0].strips[0].lead_in = 0.0;
+    apply_from_doc(sim.world_mut(), &mut st.doc, 2.0); // dentro da strip
+    let parked = x(&sim, bits);
+    apply_from_doc(sim.world_mut(), &mut st.doc, 0.2); // o vão seco
+    assert!(
+        (x(&sim, bits) - parked).abs() < 1e-9,
+        "vão SECO sob ping-pong tem de ficar mudo: {} != {parked}",
+        x(&sim, bits)
     );
 }
 
@@ -156,5 +187,113 @@ fn the_seam_curve_does_not_govern_the_head_under_pingpong() {
     assert!(
         (head_at(false, Some(LINEAR)) - head_at(false, None)).abs() > 0.01,
         "e sob loop ela PRECISA moldar — a costura é uma travessia só"
+    );
+}
+
+/// **Um fade que não ALCANÇA o começo do alcance não é a abertura** — o espelho do
+/// `reaches_the_end`, e a cláusula que impede o fix de mexer no que ninguém reportou.
+///
+/// Aqui a primeira strip começa em `3.0` com um fade de `0.5`, precedido de um vão SECO
+/// `[0, 2.5)`. Ela fadeia, mas não é a abertura da composição: o que ela cruza fica como
+/// era (o REST), e o `rest` VOLTA a ter voto — que é exatamente a diferença observável.
+#[test]
+fn a_fade_that_does_not_reach_the_range_start_is_not_the_opening() {
+    let at = |rest: f32| {
+        let (mut sim, mut st, bits) = scene(true, rest);
+        {
+            let s = &mut st.doc.stack_mut()[0].strips[0];
+            s.t_start = 3.0;
+            s.lead_in = 0.5; // lead_start = 2.5 > a = 0
+        }
+        apply_from_doc(sim.world_mut(), &mut st.doc, 2.55);
+        f64::from(
+            sim.world()
+                .get::<Transform>(ph2d_ecs::Entity::from_bits(bits))
+                .unwrap()
+                .translation
+                .x,
+        )
+    };
+    assert!(
+        (at(5.0) - at(-3.0)).abs() > 1.0,
+        "fora da abertura o rest ainda manda: {} vs {}",
+        at(5.0),
+        at(-3.0)
+    );
+}
+
+/// **A costura da abertura não vaza para o fade-out da PRÓPRIA strip que abre.**
+///
+/// ⚠️ Este gate existe porque uma mutação SOBREVIVEU (tirar a janela do fade do predicado da
+/// abertura) — e o buraco era de FIXTURE, não do produto: nenhuma cena minha tinha uma strip
+/// que ABRE a composição e depois fadeia para fora **sem alcançar o fim do alcance**. Ali
+/// nada terminou ainda, então o ramo da abertura é alcançável no meio do fade de SAÍDA dela,
+/// e sem a janela ele responderia a costura no lugar do decaimento para o rest.
+#[test]
+fn the_opening_seam_does_not_leak_into_the_first_strips_own_fade_out() {
+    let mut sim = SimWorld::new();
+    let mut tr = Transform::default();
+    tr.translation.x = 100.0; // um rest INCONFUNDÍVEL
+    let bits = sim.world_mut().spawn((tr, Name::new("F"))).id().to_bits();
+    let mut st = TimelineState::new();
+    key(&mut st.doc, bits, 0.0, 0.0);
+    key(&mut st.doc, bits, 4.0, 10.0); // a rampa: começo e fim DIFEREM
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    let a = st.doc.add_strip(lane, 0, 0.5, 4.0).unwrap();
+    {
+        let s = st.doc.strip_mut(lane, a).unwrap();
+        s.lead_in = 0.5; // ela ABRE a composição
+        s.ease_out = 0.5; // e fadeia para fora em [3.5, 4.0], longe do fim do alcance (8)
+    }
+    st.doc.set_active_loop_for(false, Some((0.0, 8.0)));
+    st.doc.set_active_ping_pong_for(false, true);
+    apply_from_doc(sim.world_mut(), &mut st.doc, 3.9);
+    let x = f64::from(
+        sim.world()
+            .get::<Transform>(ph2d_ecs::Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .x,
+    );
+    assert!(
+        x > 20.0,
+        "no fade-out dela a pose decai para o REST (100), não para a costura: {x}"
+    );
+}
+
+/// **Uma strip que começa ANTES do alcance não abre a composição** — o espelho do
+/// `last.t_end <= b` da borda de saída.
+///
+/// ⚠️ Também nasceu de uma mutação sobrevivente, e a geometria que a torna observável não é
+/// óbvia: com um fade para FORA (`lead_in`) a cláusula é redundante (a janela já a implica),
+/// e com uma SOBREPOSIÇÃO a cobertura soma 1 e o peso segurado é zero. Quem a acorda é um
+/// **`ease_in` autorado** numa lane sem vizinho, com o alcance do loop começando DEPOIS do
+/// início da strip: ali o fade dela corre quase todo fora do alcance, e a costura seria a
+/// pose de um fim que este playhead nunca visita.
+#[test]
+fn a_strip_that_starts_before_the_range_does_not_open_the_composition() {
+    let mut sim = SimWorld::new();
+    let mut tr = Transform::default();
+    tr.translation.x = 100.0;
+    let bits = sim.world_mut().spawn((tr, Name::new("F"))).id().to_bits();
+    let mut st = TimelineState::new();
+    key(&mut st.doc, bits, 0.0, 0.0);
+    key(&mut st.doc, bits, 4.0, 10.0);
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    let a = st.doc.add_strip(lane, 0, 0.5, 4.0).unwrap();
+    st.doc.strip_mut(lane, a).unwrap().ease_in = 2.5; // fade PARA DENTRO, longo
+    st.doc.set_active_loop_for(false, Some((2.0, 8.0))); // o alcance começa DEPOIS dela
+    st.doc.set_active_ping_pong_for(false, true);
+    apply_from_doc(sim.world_mut(), &mut st.doc, 2.1);
+    let x = f64::from(
+        sim.world()
+            .get::<Transform>(ph2d_ecs::Entity::from_bits(bits))
+            .unwrap()
+            .translation
+            .x,
+    );
+    assert!(
+        x > 20.0,
+        "ela não é a abertura: o complemento vai para o REST (100), não para a costura: {x}"
     );
 }

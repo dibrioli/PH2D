@@ -41,10 +41,16 @@ impl ClipLane {
     /// back before it starts: fading in from the rest pose at the top of a timeline is
     /// a real thing to want, and there is nothing behind the first strip to hold.
     ///
-    /// `loop_range` is a **WRAPPING** loop's range — the caller (`stack_frames`)
-    /// filters by mode, because a ping-pong playhead REFLECTS at the ends and never
-    /// crosses the seam: its range must never arrive here, or the opening gap shows
-    /// the loop-end pose on a seam nobody travels (Enio, 2026-07-23).
+    /// `loop_range` chega SEMPRE, e `wraps` diz se a costura é **VIAJADA** — duas
+    /// perguntas, dois parâmetros. Um playhead de ping-pong REFLETE nas pontas e nunca
+    /// cruza a costura, e a lei que nasceu disso (Enio, 2026-07-23) é sobre um **VÃO
+    /// SECO**: ali a lane não escreve NADA e o objeto fica onde a strip o deixou. Um
+    /// alcance filtrado a `None` respondia isso *e* mais três coisas que ninguém pediu —
+    /// as duas BORDAS FADEADAS decaíam para o `rest`, que é invisível para quem parkou a
+    /// sprite na pose da animação (medido: `-3,000` a faixa inteira, as duas pontas).
+    /// Hoje as bordas com fade cruzam a costura sob os dois modos, cada uma sob o guard
+    /// que a torna *a ponta da composição* (`reaches_the_end` · `opening_fade_owns_the_turn`),
+    /// e o vão seco segue mudo.
     ///
     /// That last clause is true of a timeline you play once, and **false of one you
     /// loop**, where the ruler's ends are neighbours: what is "before the first strip"
@@ -249,19 +255,65 @@ impl ClipLane {
         // certa enquanto a costura tinha um dono só. Com as duas pontas fadeando ela é uma
         // MISTURA, e duas expressões para a mesma pose divergiriam exatamente onde o loop
         // pula: os dois lados da volta ficariam em poses diferentes.
-        // ⚠️ **A ABERTURA só envolve sob um loop que ENVOLVE** (Enio, 2026-07-23): um
-        // playhead de ping-pong REFLETE nas pontas e nunca cruza a costura, então a pose que
-        // o fim do loop deixa não pode aparecer no vão de entrada, numa costura que ninguém
-        // viaja. É a metade que o `wraps` protege — e é por isso que ele é um parâmetro em
-        // vez de o `loop_range` ser filtrado a `None` lá em cima: a borda de SAÍDA precisa do
-        // alcance, esta não.
-        let Some((a, b)) = loop_range.filter(|_| wraps) else {
+        // ⚠️ **Sob ping-pong, só o FADE que abre a composição** — o espelho exato do
+        // `reaches_the_end` da borda de saída (Enio, 2026-07-31: *"corrigiu a FADE externa
+        // final mas matou a inicial"*).
+        //
+        // A lei de 2026-07-23 que mora aqui é sobre um **VÃO SECO**, e a cena dela diz isso:
+        // *"se estamos num PingPong e no retorno ao início há um gap, ele deve parar
+        // exatamente na posição inicial da strip … ao encontrar a strip o objeto ainda está
+        // no lugar onde estava"* — uma strip **sem fade**, num vão onde a lane não escreve
+        // NADA. Com um `lead_in` a lane já escreve (o peso rampa dentro do vão): a pergunta
+        // deixa de ser *"escrevo?"* e passa a ser *"cruzo a partir de quê?"*, e a resposta
+        // era o REST — invisível exatamente para quem ligou a sprite onde a animação a
+        // deixa, que é o mesmo mecanismo que matava a cauda.
+        //
+        // Então o vão seco continua **mudo** (sem fade o predicado é falso) e o fade que
+        // alcança o começo do alcance cruza da MESMA costura para onde a cauda vai — é isso
+        // que faz as duas pontas *concordarem*, que é a coerência pedida. Sob um loop que
+        // ENVOLVE nada disto se aplica: ali a abertura wrapa incondicionalmente, e o
+        // `a_ping_pong_gap_never_shows_the_loops_end` pina as duas metades.
+        let Some((a, b)) = loop_range else {
             return [None, None];
         };
-        if t < a || t >= b {
+        if t < a || t >= b || (!wraps && !self.opening_fade_owns_the_turn(t, a)) {
             return [None, None];
         }
         self.seam_held(a, b, w, seam)
+    }
+
+    /// **Este `t` está no fade que ABRE a composição?** — o espelho do `reaches_the_end`.
+    ///
+    /// Só pergunta quando a reflexão tirou a costura de cena (ping-pong): a primeira strip
+    /// (a de menor `t_start`, e aqui ela é a primeira POR CONSTRUÇÃO — este ramo só roda
+    /// quando nada terminou ainda) tem de ter um fade de entrada, começar dentro do alcance,
+    /// e o fade tem de **chegar ao começo dele**.
+    ///
+    /// ⚠️ Esta última cláusula NÃO existe para evitar um salto, e a distinção importa: uma
+    /// strip que fadeia entrando no MEIO do alcance, depois de um vão seco, salta de qualquer
+    /// jeito no instante em que o fade começa (com a costura, salta PARA a costura; sem ela,
+    /// para o REST — o peso segurado ali é 1). Ela existe porque tal strip **não é a abertura
+    /// da composição**, e mudar o que ela cruza seria mexer no que ninguém reportou; o que um
+    /// fade precedido de silêncio deveria cruzar é outra pergunta, e é anterior a isto.
+    ///
+    /// ⚠️ **Cliff nomeado, e é o MESMO das duas pontas:** `lead_start() <= a` é exato, então
+    /// um fade que para 10 ms depois do começo do alcance não é a abertura — como um
+    /// `lead_out` que para 10 ms antes do fim não é o fecho (`reaches_the_end`). Uma
+    /// tolerância seria um número que eu não medi; a lei é uma só, nas duas bordas.
+    fn opening_fade_owns_the_turn(&self, t: f64, a: f64) -> bool {
+        self.strips
+            .iter()
+            .enumerate()
+            .min_by(|(_, x), (_, y)| x.t_start.total_cmp(&y.t_start))
+            .is_some_and(|(fi, first)| {
+                let bi = self.blend_in(fi);
+                // ⚠️ Não há cláusula *"tem de ter fade"*, e a MUTAÇÃO é que decidiu isso: uma
+                // sobreviveu, e ela era **provavelmente redundante** — sem fade,
+                // `lead_start() == t_start`, então as duas primeiras cláusulas exigem
+                // `t_start == a`, e aí a janela pede `t < a` contra o `t >= a` que o chamador
+                // já garantiu. Uma condição que não pode ser falsa lê como carga e não é.
+                first.t_start >= a && first.lead_start() <= a && t < first.t_start + bi
+            })
     }
 
     /// **What the loop shows at the seam** (`b` ≡ `a`) — the pose the object rests on

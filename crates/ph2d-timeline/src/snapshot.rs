@@ -94,10 +94,6 @@ fn key_view(k: &Key, id: KeyId, roving: bool, selected: bool) -> KeyView {
 }
 
 /// One clip strip, as the panel draws it: a named rectangle.
-///
-/// It carries `clip_name` already resolved rather than an index for the panel to
-/// look up — the panel is a pure function of this snapshot, and a strip whose
-/// clip vanished between rebuild and paint would otherwise index into thin air.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StripView {
     /// Stable identity — what a drag and a context menu hold on to.
@@ -149,6 +145,9 @@ pub struct StripView {
     pub curve_in: Option<ph2d_anim::Easing>,
     /// Mirror of `curve_in`, at the end edge.
     pub curve_out: Option<ph2d_anim::Easing>,
+    /// **A fatia da curva da COSTURA que uma das bordas desenha**, quando um loop parte a
+    /// travessia entre as duas pontas. `None` = cada borda desenha a curva dela, inteira.
+    pub seam: Option<crate::stack::SeamSlice>,
     /// Whether its source loops, ping-pongs, or plays once.
     pub loop_mode: StripLoop,
     /// Its playback rate. The panel writes it on the strip whenever it is not
@@ -530,8 +529,24 @@ impl TimelineViewSnapshot {
             self.loop_ping_pong = ping;
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host()).unwrap_or(&[]);
+        // ⚠️ **O loop que governa a PILHA, perguntado como o avaliador o pergunta** — nunca
+        // pelo `self.loop_range`, que na aba Keys é o do CLIPE: o desenho da costura tem de
+        // ler a mesma faixa que o `stack_frames` lê, senão a curva desenhada descreveria uma
+        // volta que a pose não faz.
+        let stack_host = state.edit_path.last().map(|s| s.container);
+        let (stack_range, stack_ping) = stack_host.map_or_else(
+            || (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
+            |c| doc.container_loop(c),
+        );
         self.lanes.clear();
         for lane in host_lanes {
+            // ⚠️ **A costura é resolvida por LANE, uma vez** — e só sob um loop que ENVOLVE:
+            // sob ping-pong o playhead reflete, não há travessia da volta a desenhar.
+            let seam = if stack_ping {
+                None
+            } else {
+                lane.seam(stack_range).filter(|s| s.split())
+            };
             let mut strips = Vec::with_capacity(lane.strips.len());
             for (i, st) in lane.strips.iter().enumerate() {
                 strips.push(StripView {
@@ -561,6 +576,7 @@ impl TimelineViewSnapshot {
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
                     curve_in: lane.effective_curve(i, 0),
                     curve_out: lane.effective_curve(i, 1),
+                    seam: seam.and_then(|sm| sm.slice_for(i)),
                     loop_mode: st.loop_mode,
                     speed: st.speed,
                 });

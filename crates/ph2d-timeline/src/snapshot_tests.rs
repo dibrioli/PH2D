@@ -261,3 +261,50 @@ fn the_snapshot_publishes_the_views_own_loop() {
     );
     assert!(!snap.loop_ping_pong, "which wraps");
 }
+
+/// **O snapshot publica a costura como DUAS fatias de uma curva só** (Enio, 2026-08-01).
+///
+/// A cauda leva `[0, f]` na borda de SAÍDA e a cabeça `[f, 1]` na de ENTRADA — é o que faz
+/// o painel desenhar uma curva que começa na fade final e termina na inicial. E ela existe
+/// só sob um loop que ENVOLVE: sob ping-pong o playhead reflete e não há volta a desenhar.
+#[test]
+fn the_snapshot_publishes_the_seam_as_two_slices_of_one_curve() {
+    use crate::TimelineViewSnapshot;
+    let mut st = crate::TimelineState::new();
+    let e = 7_u64;
+    st.doc.insert_key(
+        e,
+        crate::PropKind::TranslationX,
+        s(0.0),
+        ph2d_anim::AnimValue::Float(0.0),
+        ph2d_anim::Interp::Linear,
+    );
+    let c2 = st.doc.add_clip("B".into());
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    let main = st.doc.add_strip(lane, 0, 0.5, 4.0).unwrap();
+    let tail = st.doc.add_strip(lane, c2, 4.0, 7.5).unwrap();
+    st.doc.strip_mut(lane, main).unwrap().lead_in = 0.5;
+    st.doc.strip_mut(lane, tail).unwrap().lead_out = 1.5;
+    st.doc.set_active_loop_for(false, Some((0.0, 9.0)));
+    let ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let mut snap = TimelineViewSnapshot::default();
+
+    snap.rebuild(&mut st, &ph, false);
+    let strips = &snap.lanes[0].strips;
+    // `f = 1,5 / (1,5 + 0,5) = 0,75` — assimétrico, então uma fatia trocada não passa.
+    let head = strips[0].seam.expect("a cabeça carrega a 2ª fatia");
+    let tail_slice = strips[1].seam.expect("a cauda carrega a 1ª");
+    assert_eq!((head.edge, head.u0, head.u1), (0, 0.75, 1.0));
+    assert_eq!(
+        (tail_slice.edge, tail_slice.u0, tail_slice.u1),
+        (1, 0.0, 0.75)
+    );
+
+    // …e sob PING-PONG não há travessia da volta: nenhuma fatia.
+    st.doc.set_active_ping_pong_for(false, true);
+    snap.rebuild(&mut st, &ph, false);
+    assert!(
+        snap.lanes[0].strips.iter().all(|s| s.seam.is_none()),
+        "sob ping-pong o playhead reflete — não há costura a desenhar"
+    );
+}

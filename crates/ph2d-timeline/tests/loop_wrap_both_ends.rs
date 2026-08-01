@@ -120,9 +120,14 @@ fn both_outward_fades_split_the_seam_journey() {
 /// **A divisão é PROPORCIONAL às duas janelas**, e é isso que faz os dois casos de UMA
 /// ponta só continuarem exatamente como eram.
 ///
-/// Com a saída três vezes maior que a entrada, a costura cai a três quartos do caminho
-/// (`+5 → −3` ⇒ `−1`), não no meio. Sem esta asserção, uma divisão fixa em 50% passaria no
-/// gate acima e mentiria em toda geometria assimétrica — que é a comum.
+/// Com a saída três vezes maior que a entrada, a volta cai a três quartos da JANELA — e a
+/// pose ali é onde a CURVA está nesse ponto, não onde uma régua linear estaria.
+///
+/// ⚠️ **O número mudou de `−1` para `−1,75` quando a travessia virou uma só** (2026-08-01):
+/// `f = 0,75` é a fração da janela, e `smoothstep(0,75) = 0,84375` é a fração do PERCURSO.
+/// Com a linear aqui e a curvada nos pesos, os dois lados discordariam sobre a pose da
+/// costura e o objeto saltaria exatamente na volta. As duas metades da asserção separam as
+/// três respostas possíveis: 50% fixo (`+1`), a régua linear (`−1`) e a curva (`−1,75`).
 #[test]
 fn the_split_follows_the_two_window_lengths() {
     let Scene {
@@ -132,8 +137,13 @@ fn the_split_follows_the_two_window_lengths() {
     } = both_ends_fade(0.2, 0.6);
     let before_wrap = x_at(&mut sim, &mut st, bits, 8.0 - FRAME);
     assert!(
-        (before_wrap + 1.0).abs() < 0.5,
-        "janela de saída 3x a de entrada ⇒ a costura cai a 3/4 do caminho (−1): {before_wrap}"
+        (before_wrap + 1.75).abs() < 0.3,
+        "saída 3x a entrada ⇒ a volta cai onde a curva põe 3/4 da janela (−1,75): \
+         {before_wrap}"
+    );
+    assert!(
+        before_wrap < -1.3,
+        "…e é a CURVA que decide, não a régua linear (que daria −1): {before_wrap}"
     );
 }
 

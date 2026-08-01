@@ -1725,16 +1725,43 @@ fn every_timeline_menu_row_is_registered_and_hittable() {
     // A row painted into the menu but never `register`ed is a menu item that
     // silently does nothing — the failure mode this table-driven wiring exists
     // to make impossible.
+    //
+    // ⚠️ **Este gate JÁ EXISTIA e estava VERDE sobre o defeito** (Enio, 2026-07-31: *"o
+    // menu de Easing não está aceitando escolher Smooth"*): ele varria DUAS tabelas
+    // escritas à mão, e a `TIMELINE_FADE_MENU` era a décima-primeira. Um gate que enumera
+    // seus leitores apodrece exatamente como o código que ele vigia
+    // ([[feedback_a_condition_that_enumerates_its_readers_rots]]) — agora ele varre a
+    // lista ÚNICA, e a segunda metade fecha o vão que sobra: **toda tabela que um escopo
+    // de menu PINTA** tem de estar registrada, mesmo que alguém esqueça de acrescentá-la
+    // à lista.
     crate::test_support::ensure_panel_registry();
     let hero = HeroScreen::new(NodeId(1));
-    for (id, label, _) in ids::TIMELINE_SEGMENT_MENU
-        .iter()
-        .chain(ids::TIMELINE_EASE_MENU.iter())
-    {
+    let mut rows = 0_usize;
+    for (id, label, _) in ids::ALL_TIMELINE_MENUS.iter().copied().flatten() {
+        rows += 1;
         assert!(
             hero.store.get(*id).is_some(),
             "menu row {label:?} is painted but never registered in populate"
         );
+    }
+    assert!(rows > 40, "a lista não pode encolher em silêncio: {rows}");
+
+    use crate::interaction::TimelineInterpScope as S;
+    for scope in [
+        S::Key { target: 1, key: 0 },
+        S::Column { t_bits: 0 },
+        S::StripFade {
+            lane: 0,
+            strip: 0,
+            edge: 0,
+        },
+    ] {
+        for (id, label, _) in scope.menu_table() {
+            assert!(
+                hero.store.get(*id).is_some(),
+                "a row {label:?} que o escopo {scope:?} pinta não está registrada"
+            );
+        }
     }
 }
 

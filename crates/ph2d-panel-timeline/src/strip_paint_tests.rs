@@ -37,6 +37,7 @@ fn strip(marks: [f64; 4]) -> StripView {
         ease_locked_out: false,
         curve_in: None,
         curve_out: None,
+        seam: None,
         loop_mode: StripLoop::Once,
         speed: 1.0,
         marks,
@@ -151,6 +152,7 @@ fn the_drawn_curve_is_the_ramp_the_evaluator_uses() {
             crate::strip_paint::FadeCurve {
                 curve,
                 rising: true,
+                slice: None,
             },
         );
         assert!(pts.len() > 2, "uma banda folgada tem de render curva");
@@ -182,6 +184,7 @@ fn a_fade_in_climbs_and_a_fade_out_falls() {
             crate::strip_paint::FadeCurve {
                 curve: None,
                 rising,
+                slice: None,
             },
         );
         (p.first().unwrap().1, p.last().unwrap().1)
@@ -204,6 +207,7 @@ fn a_sliver_of_a_fade_draws_no_curve() {
             crate::strip_paint::FadeCurve {
                 curve: None,
                 rising: true,
+                slice: None,
             },
         )
         .is_empty()
@@ -267,4 +271,75 @@ fn a_band_with_no_width_is_not_offered() {
         crate::strip_paint::fade_bands(&s, far, body).is_empty(),
         "meio segundo de fade que não mede um pixel não é uma faixa clicável"
     );
+}
+
+// ── A costura desenhada como UMA curva (Enio, 2026-08-01) ───────────────────
+
+/// **As duas cunhas da costura desenham UMA curva, e as pontas se ENCONTRAM na volta.**
+///
+/// *"A curva começa a ser desenhada na FADE final e acaba de ser desenhada na FADE
+/// inicial"* — a cauda mostra `[0, f]`, a cabeça `[f, 1]`, e o valor no corte é o mesmo nas
+/// duas. Sem o encontro seriam duas curvas vizinhas, que é o que o Enio viu; sem a
+/// monotonicidade seriam duas fatias certas desenhadas ao contrário.
+#[test]
+fn the_seam_is_drawn_as_one_curve_across_the_two_wedges() {
+    let r = band();
+    let f = 0.375; // uma divisão assimétrica: em 0,5 um erro de fatia se esconde
+    let curve = Some(ph2d_timeline::Easing {
+        family: ph2d_timeline::EasingFamily::Quint,
+        mode: ph2d_timeline::EasingMode::InOut,
+    });
+    let slice = |u0: f64, u1: f64| {
+        crate::strip_paint::fade_curve_points(
+            r,
+            crate::strip_paint::FadeCurve {
+                curve,
+                rising: true,
+                slice: Some((u0, u1)),
+            },
+        )
+    };
+    let tail = slice(0.0, f);
+    let head = slice(f, 1.0);
+    assert!(!tail.is_empty() && !head.is_empty());
+    assert!(
+        (tail.last().unwrap().1 - head.first().unwrap().1).abs() < 1e-9,
+        "as duas fatias têm de se encontrar na volta: {:?} vs {:?}",
+        tail.last().unwrap().1,
+        head.first().unwrap().1
+    );
+    // …e juntas sobem sem voltar atrás (`y` cresce para BAIXO, então ele só DECRESCE).
+    let ys: Vec<f64> = tail.iter().chain(head.iter()).map(|p| p.1).collect();
+    assert!(
+        ys.windows(2).all(|w| w[1] <= w[0] + 1e-9),
+        "a curva da costura é uma só, monotônica: {ys:?}"
+    );
+    // A fatia da CAUDA é a primeira: ela termina abaixo da metade da altura da banda…
+    let mid = f64::from(r.y) + f64::from(r.h) / 2.0;
+    assert!(
+        tail.first().unwrap().1 > mid,
+        "a cauda COMEÇA a curva (peso baixo, y alto): {:?}",
+        tail.first().unwrap().1
+    );
+    assert!(
+        head.last().unwrap().1 < mid,
+        "e a cabeça a TERMINA (peso cheio, y baixo): {:?}",
+        head.last().unwrap().1
+    );
+}
+
+/// **CONTROLE: sem costura, cada cunha segue desenhando o peso da própria strip** — a
+/// entrada sobe, a saída desce. Sem esta metade, um desenho que sempre subisse passaria no
+/// gate acima e inverteria em silêncio toda cunha de saída do documento.
+#[test]
+fn without_a_seam_a_fade_out_still_falls() {
+    let mut s = strip([0.0; 4]);
+    s.lead_out = 0.5;
+    s.seam = None;
+    let bands = crate::strip_paint::fade_bands(&s, view(), body());
+    let (_, _, fade) = bands
+        .iter()
+        .find(|(e, _, _)| *e == crate::stack_ease_grip::BAND_OUT)
+        .expect("a cunha de saída");
+    assert!(fade.slice.is_none() && !fade.rising, "{fade:?}");
 }

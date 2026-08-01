@@ -330,11 +330,7 @@ impl StackScratch {
             } else {
                 (None, false)
             };
-            let seam = if wraps {
-                lane.seam_curve(loop_range)
-            } else {
-                None
-            };
+            let seam = if wraps { lane.seam(loop_range) } else { None };
             for (si, strip) in lane.strips.iter().enumerate() {
                 // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
                 // zero.** O peso é DADO — a resposta da lane —, não um filtro.

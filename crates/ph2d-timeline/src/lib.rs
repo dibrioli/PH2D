@@ -100,7 +100,8 @@ pub use signal::{TimelineSignal, signals_crossed};
 pub use snapshot::{ContainerView, KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
 pub use stack::{
-    ClipLane, ClipStrip, LaneMode, StripId, StripLoop, StripSource, fade_ramp, mark_index,
+    ClipLane, ClipStrip, LaneMode, Seam, SeamSlice, StripId, StripLoop, StripSource, fade_ramp,
+    mark_index,
 };
 pub use stack_edit::MAX_LANES;
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of

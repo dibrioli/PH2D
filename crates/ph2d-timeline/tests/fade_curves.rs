@@ -102,6 +102,14 @@ fn an_authored_curve_shapes_the_fade() {
 ///
 /// A Clip 2 leva `Linear` na saída; a Main não escolheu nada. Sob o loop, o fade de ENTRADA
 /// da Main tem de sair do `smoothstep` de fábrica e seguir o `Linear` da Clip 2.
+///
+/// ⚠️ **A DIREÇÃO desta asserção inverteu quando a travessia virou uma só** (2026-08-01), e a
+/// inversão é a consequência correta: a cabeça deixou de correr a curva INTEIRA na própria
+/// janela e passa a correr a **segunda fatia** dela (`[f, 1]`). No começo de um `smoothstep`
+/// o Linear vai na frente; na segunda metade é o `smoothstep` que vai — então a mesma
+/// governança que empurrava a pose para BAIXO agora a segura mais ALTO. Medido: default
+/// `-0,469`, governada `0,000`. O que o gate afirma continua sendo *"a curva da Clip 2
+/// governa a entrada da Main"*; o sinal é derivado disso, não o contrário.
 #[test]
 fn under_a_loop_the_last_strips_curve_governs_the_head_fade() {
     let (mut sim, mut st, bits) = scene(None, None, true);
@@ -111,9 +119,50 @@ fn under_a_loop_the_last_strips_curve_governs_the_head_fade() {
     let governed_at = x_at(&mut sim, &mut st, bits, 0.125);
 
     assert!(
-        governed_at < default_at - 0.05,
+        governed_at > default_at + 0.05,
         "a entrada da Main tem de ser moldada pela curva de SAÍDA da Clip 2: \
          default={default_at} governada={governed_at}"
+    );
+}
+
+/// **A travessia da costura é UMA — o objeto não PARA na volta** (Enio, 2026-08-01: *"a
+/// curva desenhada não expressa essa continuidade, mas deve"*).
+///
+/// A regra *"a curva da última prevalece"* dava a mesma CURVA aos dois lados e deixava cada
+/// um correr um S INTEIRO na própria janela — o joelho voltava pelo outro caminho. Medido
+/// antes: a velocidade subia a `-0,299`, caía a **`0,000` exatamente na volta** e recomeçava
+/// do zero. Depois: sobe monotônica até `-0,298`, atravessa, e desce simétrica.
+///
+/// ⚠️ O oráculo é a VELOCIDADE, não a pose: a pose já era contínua (as duas metades
+/// concordavam sobre a pose da costura) — o que faltava era a DERIVADA, e um gate de pose
+/// ficaria verde sobre a parada.
+#[test]
+fn the_seam_crossing_is_one_traversal_with_no_stall_at_the_wrap() {
+    let (mut sim, mut st, bits) = scene(None, None, true);
+    // A cauda `[7.5, 8.0)` e, pela volta, a cabeça `[0.0, 0.5)` — o mesmo passo nas duas.
+    let step = 0.025;
+    let mut xs = Vec::new();
+    for i in 0..20 {
+        xs.push(x_at(&mut sim, &mut st, bits, 7.5 + f64::from(i) * step));
+    }
+    for i in 0..20 {
+        xs.push(x_at(&mut sim, &mut st, bits, f64::from(i) * step));
+    }
+    let v: Vec<f64> = xs.windows(2).map(|w| (w[1] - w[0]).abs()).collect();
+    let peak = v.iter().fold(0.0_f64, |a, b| a.max(*b));
+    // A volta cai entre a última amostra da cauda e a primeira da cabeça.
+    let at_wrap = v[19];
+    assert!(
+        at_wrap > peak * 0.8,
+        "na volta a travessia está no seu ponto MAIS RÁPIDO (f = 0,5), não parada: \
+         v={at_wrap} pico={peak}"
+    );
+    // …e a subida até lá é monotônica: um S por ponta faria a velocidade subir e DESCER
+    // dentro da cauda antes da volta.
+    assert!(
+        v[..19].windows(2).all(|w| w[1] >= w[0] - 1e-9),
+        "a cauda tem de ACELERAR até a volta, sem um S próprio: {:?}",
+        &v[..19]
     );
 }
 
@@ -322,5 +371,93 @@ fn the_snapshot_reports_the_curve_the_blend_actually_uses() {
         strips[1].curve_in,
         Some(LINEAR),
         "e o outro lado da mesma sobreposição reporta a mesma"
+    );
+}
+
+/// **Numa SOBREPOSIÇÃO as duas cunhas autoram a MESMA curva** (Enio, 2026-07-31: *"o fade
+/// central entre strips sobrepostas deve ter apenas 1 easing mas está tocando dois"*).
+///
+/// Um crossfade é UMA travessia: a curva é a de quem CHEGA e o lado que sai é o complemento
+/// explícito dela. O avaliador e o desenho já respondiam assim; a AUTORIA escrevia o
+/// `curve_out` de quem parte — um campo que ninguém lê ali —, então o menu aceitava o clique
+/// e a tela não mudava. As três metades (escreve · desenha · MOVE) ficam juntas porque foi
+/// justamente a que faltava que passou despercebida com as outras verdes.
+#[test]
+fn an_overlap_has_one_easing_authored_from_either_wedge() {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{TimelineIntent, apply_intent};
+
+    let build = || {
+        let mut sim = SimWorld::new();
+        let bits = sim
+            .world_mut()
+            .spawn((Transform::default(), Name::new("O")))
+            .id()
+            .to_bits();
+        let mut st = TimelineState::new();
+        let doc = &mut st.doc;
+        key(doc, bits, PropKind::TranslationX, 0.0, -3.0);
+        key(doc, bits, PropKind::TranslationX, 6.0, -3.0);
+        let c2 = doc.add_clip("B".into());
+        doc.set_active(c2);
+        key(doc, bits, PropKind::TranslationX, 0.0, 5.0);
+        key(doc, bits, PropKind::TranslationX, 6.0, 5.0);
+        doc.set_active(0);
+        let lane = doc.add_lane("L".into()).unwrap();
+        let a = doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
+        let b = doc.add_strip(lane, c2, 2.0, 6.0).unwrap(); // sobrepõe [2, 4]
+        (sim, st, bits, lane, a, b)
+    };
+    // Um quarto dentro da janela de sobreposição — onde `Linear` e `smoothstep` mais diferem.
+    let probe = 2.5;
+
+    let (mut sim, mut st, bits, ..) = build();
+    let plain = x_at(&mut sim, &mut st, bits, probe);
+
+    // Autorado pela cunha de SAÍDA (a de quem parte) — a que era inerte.
+    let (mut sim, mut st, bits, lane, a, b) = build();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripCurve {
+            lane,
+            id: a,
+            edge: 1,
+            curve: Some(LINEAR),
+        },
+    );
+    let from_out = x_at(&mut sim, &mut st, bits, probe);
+    assert!(
+        (from_out - plain).abs() > 0.05,
+        "a cunha de saída tem de MOVER o crossfade: {from_out} vs {plain}"
+    );
+    {
+        let l = &st.doc.stack()[lane];
+        assert_eq!(l.strips[1].curve_in, Some(LINEAR), "escreve no DONO");
+        assert_eq!(l.strips[0].curve_out, None, "e não no campo inerte");
+        assert_eq!(
+            l.effective_curve(0, 1),
+            l.effective_curve(1, 0),
+            "as duas cunhas mostram a MESMA curva"
+        );
+    }
+
+    // …e a cunha de ENTRADA autora o mesmo campo: escolher Smooth ali volta ao de fábrica.
+    let mut ph = Playhead::new(1.0 / 60.0);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripCurve {
+            lane,
+            id: b,
+            edge: 0,
+            curve: None,
+        },
+    );
+    let back = x_at(&mut sim, &mut st, bits, probe);
+    assert!(
+        (back - plain).abs() < 1e-9,
+        "Smooth pela outra cunha tem de desfazer a escolha: {back} vs {plain}"
     );
 }

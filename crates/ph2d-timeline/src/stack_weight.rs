@@ -15,8 +15,17 @@
 //! explícito do que entra), não por acidente da curva de fábrica — e o gate que a pina varre
 //! curvas ASSIMÉTRICAS de propósito.
 
-use crate::stack::{ClipLane, ramp_with};
+use crate::stack::{ClipLane, Seam, ramp_with};
 use ph2d_anim::Easing;
+
+/// Que fração da janela já passou (`1` numa janela de comprimento zero, como o
+/// [`ramp_with`] — a borda degenerada tem de responder o mesmo nos dois caminhos).
+fn frac(elapsed: f64, window: f64) -> f64 {
+    if window <= 0.0 {
+        return 1.0;
+    }
+    (elapsed / window).clamp(0.0, 1.0) // CLAMP-OK: uma fração de janela
+}
 
 impl ClipLane {
     /// The blend window at the START of strip `i`: how far into it another strip is
@@ -134,12 +143,17 @@ impl ClipLane {
     /// o peso segurado é `1 − vivo`, então uma metade que resolvesse a curva diferente da
     /// outra faria a lane somar ≠ 1 e a pose afundar para as lanes de baixo.
     #[must_use]
-    pub fn weight_at_with(&self, i: usize, t: f64, seam: Option<Easing>) -> f64 {
+    pub fn weight_at_with(&self, i: usize, t: f64, seam: Option<Seam>) -> f64 {
         let s = &self.strips[i];
         let lead = s.lead_in.max(0.0);
         if t < s.lead_start() || t >= s.lead_end() {
             return 0.0;
         }
+        // ⚠️ **A costura é UMA travessia, então as duas pontas dela são FATIAS de uma curva
+        // só** ([`Seam`]) — cada uma corria um S inteiro na própria janela, e o objeto
+        // PARAVA na volta (velocidade medida: 0,000 exatamente ali). Só com as duas pontas
+        // fadeando (`split`); com uma só, o caminho abaixo é o que já shipava, ao bit.
+        let sm = seam.filter(|s| s.split());
         // ⚠️ **Numa SOBREPOSIÇÃO o crossfade tem UMA curva, e o lado que SAI é o COMPLEMENTO
         // dela** — é isso que deixa a curva autorada alcançar um crossfade sem quebrar nada.
         //
@@ -159,13 +173,21 @@ impl ClipLane {
         // não é nada que se veja, mas a frase "reduz literalmente" seria falsa, e uma
         // afirmação de identidade que ninguém conferiu é como um gate de identidade nasce
         // verde sobre uma diferença real.
-        let curve_in = seam.or(s.curve_in);
-        let fade_in = ramp_with(t - s.lead_start(), lead + self.blend_in(i), curve_in);
+        let win_in = lead + self.blend_in(i);
+        let fade_in = match sm {
+            Some(sm) if sm.head == i => sm.head_weight(frac(t - s.lead_start(), win_in)),
+            _ => ramp_with(t - s.lead_start(), win_in, s.curve_in),
+        };
         let win_out = s.lead_out.max(0.0) + self.blend_out(i);
-        let fade_out = match self.overlap_partner_out(i) {
+        let fade_out = match (sm, self.overlap_partner_out(i)) {
+            // A costura vem primeiro: uma sobreposição no fim do alcance é o crossfade da
+            // volta, e quem manda ali é a travessia inteira.
+            (Some(sm), _) if sm.tail == i => {
+                sm.tail_weight(frac(win_out - (s.lead_end() - t), win_out))
+            }
             // `win_out > 0` é garantido por haver parceiro (a sobreposição É a janela), mas o
             // guard fica: sem ele um `win_out` zero viraria `1 − 1 = 0` e apagaria o strip.
-            Some(j) if win_out > 0.0 => {
+            (_, Some(j)) if win_out > 0.0 => {
                 1.0 - ramp_with(
                     win_out - (s.lead_end() - t),
                     win_out,
@@ -194,20 +216,30 @@ impl ClipLane {
             .map(|(j, _)| j)
     }
 
-    /// **A curva que de fato molda o fade de uma borda** — o que o PAINEL desenha dentro da
-    /// cunha, e o que o menu do fade autora.
+    /// **Onde MORA a curva que molda esta borda** — `(strip, borda)`, a porta única que o
+    /// desenho LÊ e o menu ESCREVE.
     ///
-    /// Numa sobreposição as duas bordas do crossfade mostram a MESMA curva (a de quem chega),
-    /// porque é uma travessia só; fora dela, cada borda mostra a sua.
+    /// Numa sobreposição a travessia é uma só e a curva é a de quem CHEGA, então as duas
+    /// cunhas do crossfade são duas VISTAS do mesmo campo; fora dela, cada borda é dona da
+    /// sua. Duas respostas para *"onde mora esta curva?"* é um menu que aceita o clique e
+    /// não muda a tela (foi o que aconteceu — ver [`crate::intent_apply_fade`]).
+    #[must_use]
+    pub fn curve_owner(&self, i: usize, edge: u8) -> (usize, u8) {
+        match self.overlap_partner_out(i) {
+            Some(j) if edge == 1 => (j, 0),
+            _ => (i, edge),
+        }
+    }
+
+    /// **A curva que de fato molda o fade de uma borda** — o que o PAINEL desenha dentro da
+    /// cunha. Lê pelo [`Self::curve_owner`].
     #[must_use]
     pub fn effective_curve(&self, i: usize, edge: u8) -> Option<Easing> {
-        if edge == 0 {
-            self.strips[i].curve_in
+        let (j, e) = self.curve_owner(i, edge);
+        if e == 0 {
+            self.strips[j].curve_in
         } else {
-            match self.overlap_partner_out(i) {
-                Some(j) => self.strips[j].curve_in,
-                None => self.strips[i].curve_out,
-            }
+            self.strips[j].curve_out
         }
     }
 

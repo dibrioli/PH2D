@@ -85,6 +85,15 @@ pub(crate) fn set_lead(
 /// It writes ONE field and nothing else: the curve is orthogonal to which kind of fade lives
 /// at this edge (inward ease or outward lead), so it survives the exclusivity dance those two
 /// perform. `None` restores the factory `smoothstep`.
+///
+/// ⚠️ **Numa SOBREPOSIÇÃO o campo escrito é o do DONO da travessia**, não o da borda clicada
+/// (Enio, 2026-07-31: *"o fade central entre strips sobrepostas deve ter apenas 1 easing mas
+/// está tocando dois"*). Um crossfade é UMA travessia com UMA curva — a de quem CHEGA — e o
+/// lado que sai é o complemento explícito dela ([`crate::ClipLane::weight_at_with`]). O
+/// desenho já perguntava isso a [`crate::ClipLane::curve_owner`]; a AUTORIA não, então
+/// escolher um easing na cunha de saída escrevia um `curve_out` que ninguém lê: o menu
+/// aceitava o clique e a tela não mudava. Ler e escrever pela MESMA porta é o que impede as
+/// duas metades de discordarem sobre onde a curva mora.
 pub(crate) fn set_curve(
     doc: &mut TimelineDoc,
     host: StackHost,
@@ -93,11 +102,16 @@ pub(crate) fn set_curve(
     edge: u8,
     curve: Option<ph2d_anim::Easing>,
 ) {
-    if let Some(s) = doc.strip_in_mut(host, lane, id) {
-        if edge == 0 {
-            s.curve_in = curve;
-        } else {
-            s.curve_out = curve;
-        }
+    let Some(l) = doc.host_stack_mut(host).and_then(|s| s.get_mut(lane)) else {
+        return;
+    };
+    let Some(i) = l.index_of(id) else {
+        return;
+    };
+    let (owner, edge) = l.curve_owner(i, edge);
+    if edge == 0 {
+        l.strips[owner].curve_in = curve;
+    } else {
+        l.strips[owner].curve_out = curve;
     }
 }

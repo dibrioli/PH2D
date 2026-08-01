@@ -412,8 +412,8 @@ impl ClipLane {
             .sort_by(|a, b| a.t_start.total_cmp(&b.t_start).then(a.id.cmp(&b.id)));
     }
 
-    /// **A curva que governa a COSTURA de um loop** — a de SAÍDA da última strip, quando as
-    /// duas pontas fadeiam.
+    /// **A COSTURA de um loop, resolvida** — quem são as duas pontas, que curva as molda, e
+    /// onde a volta cai dentro dessa curva.
     ///
     /// `None` sem loop (não há costura: cada fade usa a própria curva — decisão do Enio),
     /// quando a última strip não fadeia para fora, ou quando ela é a própria cabeça.
@@ -421,27 +421,35 @@ impl ClipLane {
     /// Resolvida **uma vez por lane por frame** pelo chamador, nunca por strip: ela varre a
     /// lane duas vezes, e `weight_at` roda por strip.
     #[must_use]
-    pub fn seam_curve(&self, loop_range: Option<(f64, f64)>) -> Option<Easing> {
+    pub fn seam(&self, loop_range: Option<(f64, f64)>) -> Option<Seam> {
         let (a, b) = loop_range?;
         let (ti, tail) = self
             .strips
             .iter()
             .enumerate()
             .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))?;
-        if tail.t_end > b || (tail.lead_out.max(0.0) + self.blend_out(ti)) <= 0.0 {
+        let l_out = tail.lead_out.max(0.0) + self.blend_out(ti);
+        if tail.t_end > b || l_out <= 0.0 {
             return None;
         }
-        let (_, head) = self
+        let (hi, head) = self
             .strips
             .iter()
             .enumerate()
             .filter(|(_, s)| s.lead_start() <= a && s.lead_end() > a)
             .min_by(|(_, x), (_, y)| x.t_start.total_cmp(&y.t_start))?;
         // A cabeça É a cauda: uma strip só, e não há duas curvas para discordar.
-        if std::ptr::eq(head, tail) {
+        if hi == ti {
             return None;
         }
-        tail.curve_out
+        let l_in = head.lead_in.max(0.0) + self.blend_in(hi);
+        let total = l_out + l_in;
+        (total > 0.0).then(|| Seam {
+            curve: tail.curve_out,
+            tail: ti,
+            head: hi,
+            f: l_out / total,
+        })
     }
 
     /// The empty span before strip `i` — from the end of the nearest strip that ends
@@ -512,5 +520,110 @@ pub fn fade_ramp(u: f64, curve: Option<Easing>) -> f64 {
     match curve {
         None => u * u * (3.0 - 2.0 * u),
         Some(e) => e.eval(u),
+    }
+}
+
+/// **A travessia da costura de um loop** — UMA, com UMA curva, partida pela volta.
+///
+/// ⚠️ A regra *"a curva da última prevalece sobre a da primeira"* existia porque as duas
+/// metades da volta são uma travessia só, e duas curvas a moldariam com um joelho no meio.
+/// Ela dava a mesma CURVA aos dois lados e deixava cada um correr um S INTEIRO na própria
+/// janela — o que põe o joelho de volta pelo outro caminho: medido, a velocidade subia a
+/// −0,299, caía a **0,000 exatamente na volta** e recomeçava. O objeto PARAVA na costura
+/// (Enio, 2026-08-01: *"a curva desenhada não expressa essa continuidade, mas deve"*).
+///
+/// Agora a curva é parametrizada pela travessia INTEIRA e cada ponta desenha e toca a sua
+/// FATIA: a cauda `[0, f]`, a cabeça `[f, 1]`, com `f` = a fração do percurso que acontece
+/// antes da volta. É isso que faz a curva *começar na fade final e terminar na inicial*.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Seam {
+    /// A curva da travessia — a de SAÍDA da cauda (`None` = o `smoothstep` de fábrica).
+    pub curve: Option<Easing>,
+    /// A strip que fadeia para FORA no fim do alcance.
+    pub tail: usize,
+    /// A que fadeia para DENTRO no começo dele.
+    pub head: usize,
+    /// A fração da travessia que cabe ANTES da volta — `janela_de_saída / (saída + entrada)`.
+    pub f: f64,
+}
+
+/// **Uma fatia da curva única da costura** — o que UMA borda desenha dela (ADR-0115).
+///
+/// A travessia da volta é uma só: a cauda mostra `[0, f]` e a cabeça `[f, 1]` da MESMA
+/// curva, e é assim que ela *começa a ser desenhada na fade final e termina na inicial*
+/// (Enio, 2026-08-01). As duas fatias desenham o PROGRESSO da travessia — por isso as duas
+/// sobem, e por isso se encontram na volta.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SeamSlice {
+    /// Qual borda desta strip carrega a fatia: `0` = entrada (a cabeça), `1` = saída.
+    pub edge: u8,
+    /// O começo da fatia dentro da curva inteira.
+    pub u0: f64,
+    /// E o fim dela.
+    pub u1: f64,
+    /// A curva da travessia — a de SAÍDA da cauda.
+    pub curve: Option<ph2d_anim::Easing>,
+}
+
+impl Seam {
+    /// **A fatia que a strip `i` desenha** — `None` se ela não é nenhuma das duas pontas.
+    ///
+    /// A cauda leva `[0, f]` na borda de SAÍDA e a cabeça `[f, 1]` na de ENTRADA: uma curva,
+    /// duas fatias, e é UMA porta que as reparte (o painel não re-deriva a divisão).
+    #[must_use]
+    pub fn slice_for(self, i: usize) -> Option<SeamSlice> {
+        let (edge, u0, u1) = if self.tail == i {
+            (1_u8, 0.0, self.f)
+        } else if self.head == i {
+            (0_u8, self.f, 1.0)
+        } else {
+            return None;
+        };
+        Some(SeamSlice {
+            edge,
+            u0,
+            u1,
+            curve: self.curve,
+        })
+    }
+}
+
+impl Seam {
+    /// A travessia é de fato PARTIDA pelas duas pontas?
+    ///
+    /// ⚠️ Com uma ponta só (`f` em 0 ou 1) não há continuidade a resolver — há um fade, um S,
+    /// uma travessia — e o caminho fica **byte-idêntico ao que o Enio aprovou**. A
+    /// reparametrização só existe onde havia o joelho.
+    #[must_use]
+    pub fn split(self) -> bool {
+        self.f > 0.0 && self.f < 1.0
+    }
+
+    /// O progresso da travessia NO instante da volta — a fração em que a pose da costura
+    /// mistura as duas pontas ([`ClipLane::seam_split`] a usa no lugar do `f` linear, senão
+    /// as duas metades discordariam sobre onde a volta caiu).
+    #[must_use]
+    pub fn at_wrap(self) -> f64 {
+        fade_ramp(self.f, self.curve)
+    }
+
+    /// O peso de quem SAI, no ponto `u` da janela dela (`0` no começo do fade, `1` no fim).
+    #[must_use]
+    pub fn tail_weight(self, u: f64) -> f64 {
+        let w = self.at_wrap();
+        if w <= 0.0 {
+            return 1.0 - u;
+        }
+        (1.0 - fade_ramp(self.f * u, self.curve) / w).clamp(0.0, 1.0) // CLAMP-OK: um peso
+    }
+
+    /// O peso de quem CHEGA, no ponto `u` da janela dela.
+    #[must_use]
+    pub fn head_weight(self, u: f64) -> f64 {
+        let w = self.at_wrap();
+        if w >= 1.0 {
+            return u;
+        }
+        ((fade_ramp(self.f + (1.0 - self.f) * u, self.curve) - w) / (1.0 - w)).clamp(0.0, 1.0) // CLAMP-OK: um peso
     }
 }

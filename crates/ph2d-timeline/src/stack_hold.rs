@@ -7,8 +7,7 @@
 //! geometry (`weight_at`, `blend_in`/`blend_out`, `gap_*`) and the strips' time map
 //! (`fold`, `hold_source_time`), and writes nothing.
 
-use crate::stack::{ClipLane, ClipStrip};
-use ph2d_anim::Easing;
+use crate::stack::{ClipLane, ClipStrip, Seam};
 
 impl ClipLane {
     /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for
@@ -92,11 +91,7 @@ impl ClipLane {
         //
         // ⚠️ Só sob um loop que ENVOLVE: sob ping-pong a volta não é uma travessia (o
         // playhead reflete), então a cabeça mantém a curva dela.
-        let seam = if wraps {
-            self.seam_curve(loop_range)
-        } else {
-            None
-        };
+        let seam = if wraps { self.seam(loop_range) } else { None };
         let live: f64 = (0..self.strips.len())
             .map(|i| self.weight_at_with(i, t, seam))
             .sum();
@@ -364,7 +359,7 @@ impl ClipLane {
         &self,
         a: f64,
         b: f64,
-        seam: Option<Easing>,
+        seam: Option<Seam>,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         // O que o FIM do loop deixa asserindo — a última strip lida na volta.
         let Some((ti, tail)) = self
@@ -400,7 +395,14 @@ impl ClipLane {
         // `total == 0` é inalcançável pelos dois chamadores (o de saída exige uma janela de
         // saída; o de entrada só roda com peso a preencher, o que exige uma de entrada) —
         // o zero é o recuo conservador: a costura de sempre.
-        let f = if total > 0.0 { l_out / total } else { 0.0 };
+        //
+        // ⚠️ **Sob um loop a fração é a CURVADA, não a linear** ([`Seam::at_wrap`]): a
+        // travessia é uma só e a volta cai onde a CURVA diz que ela cai. Com a linear aqui e
+        // a curvada nos pesos, os dois lados discordariam sobre a pose da costura e o objeto
+        // saltaria exatamente na volta. Sob ping-pong não há `Seam` e a linear fica.
+        let f = seam
+            .filter(|s| s.split())
+            .map_or(if total > 0.0 { l_out / total } else { 0.0 }, Seam::at_wrap);
         if f >= 1.0 {
             // A cabeça não fadeia: ela é a dona da costura, e a saída faz a travessia
             // inteira até ela. É o `head_live >= 1` de sempre, respondido pela GEOMETRIA.
@@ -438,7 +440,7 @@ impl ClipLane {
         a: f64,
         b: f64,
         w: f64,
-        seam: Option<Easing>,
+        seam: Option<Seam>,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         self.seam_split(a, b, seam)
             .map(|e| e.map(|(s, t, frac)| (s, t, w * frac)))

@@ -362,18 +362,30 @@ pub(crate) fn fade_bands(
 /// Two accessors instead of two literals so the four call sites cannot pair a band with the
 /// other edge's shape.
 fn fade_in_curve(s: &ph2d_timeline::StripView) -> FadeCurve {
-    FadeCurve {
+    seam_curve(s, 0).unwrap_or(FadeCurve {
         curve: s.curve_in,
         rising: true,
-    }
+        slice: None,
+    })
+}
+
+/// A fatia da costura, quando é ESTA borda que a carrega — a porta única das duas.
+fn seam_curve(s: &ph2d_timeline::StripView, edge: u8) -> Option<FadeCurve> {
+    let sm = s.seam.filter(|sm| sm.edge == edge)?;
+    Some(FadeCurve {
+        curve: sm.curve,
+        rising: true,
+        slice: Some((sm.u0, sm.u1)),
+    })
 }
 
 /// The end edge's fade — mirror of [`fade_in_curve`], falling.
 fn fade_out_curve(s: &ph2d_timeline::StripView) -> FadeCurve {
-    FadeCurve {
+    seam_curve(s, 1).unwrap_or(FadeCurve {
         curve: s.curve_out,
         rising: false,
-    }
+        slice: None,
+    })
 }
 
 /// Which fade this band is, and what shape it wears — the pair every fade band needs to
@@ -391,6 +403,14 @@ pub(crate) struct FadeCurve {
     pub curve: Option<ph2d_timeline::Easing>,
     /// `true` for a fade-IN (weight climbs left to right), `false` for a fade-out.
     pub rising: bool,
+    /// **A FATIA da curva única da costura** que esta banda desenha, quando um loop parte a
+    /// travessia entre as duas pontas ([`ph2d_timeline::SeamSlice`]).
+    ///
+    /// Com ela a banda deixa de desenhar o peso da PRÓPRIA strip e passa a desenhar o
+    /// PROGRESSO da travessia no trecho `[u0, u1]` — por isso as duas bandas sobem, e por
+    /// isso as duas metades se encontram na volta: é UMA curva, que começa a ser desenhada
+    /// na fade FINAL e termina na INICIAL (Enio, 2026-08-01).
+    pub slice: Option<(f64, f64)>,
 }
 
 /// **A curva do fade, desenhada DENTRO da própria cunha** (Enio, 2026-07-31: *"coloque o
@@ -445,7 +465,12 @@ pub(crate) fn fade_curve_points(rect: Rect, fade: FadeCurve) -> Vec<(f64, f64)> 
             let f = f64::from(i) / f64::from(FADE_CURVE_STEPS);
             // Um fade-out é medido a partir do FIM da janela — é assim que `weight_at_with`
             // o avalia (`lead_end - t`) —, então a fração que entra na rampa é `1 - f`.
-            let u = if fade.rising { f } else { 1.0 - f };
+            let u = match fade.slice {
+                // A costura: uma curva só, e esta banda mostra o trecho `[u0, u1]` dela.
+                Some((u0, u1)) => u0 + f * (u1 - u0),
+                None if fade.rising => f,
+                None => 1.0 - f,
+            };
             let weight = ph2d_timeline::fade_ramp(u, fade.curve);
             (x0 + f * w, y0 + (1.0 - weight) * h)
         })

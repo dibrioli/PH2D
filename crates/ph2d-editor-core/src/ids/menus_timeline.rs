@@ -330,3 +330,34 @@ pub const TIMELINE_EASE_MENU: [(NodeId, &str, Option<[u8; 4]>); 10] = [
     (CTX_MENU_TL_FAM_ELASTIC, "Elastic", None),
     (CTX_MENU_TL_FAM_BOUNCE, "Bounce", None),
 ];
+
+/// Uma row de menu: o id, o rótulo, e o atalho opcional que ela mostra.
+pub type MenuRow = (NodeId, &'static str, Option<[u8; 4]>);
+/// Uma tabela de menu — o que a [`ALL_TIMELINE_MENUS`] lista e o overlay pinta.
+pub type MenuTable = &'static [MenuRow];
+
+/// **TODA tabela de menu da timeline, numa lista só** — a que o `pre_populate` registra.
+///
+/// ⚠️ Ela existe porque a enumeração à mão APODRECEU, e o custo foi um report (Enio,
+/// 2026-07-31: *"o menu de Easing não está aceitando escolher Smooth"*): o `pre_populate`
+/// listava dez tabelas, a [`TIMELINE_FADE_MENU`] nasceu como a décima-primeira, e a row
+/// `Smooth (Default)` ficou **pintada, com hit, e MUDA** — a forma exata que o comentário
+/// ali em cima já dizia estar prevenindo. E só ela: todas as outras rows do menu de fade
+/// vivem TAMBÉM na tabela do segmento, então herdaram o registro por acidente.
+///
+/// [[feedback_a_condition_that_enumerates_its_readers_rots]] — uma lista que enumera seus
+/// leitores é uma lista que a próxima adição esquece. Aqui a adição é **um item nesta
+/// lista**, e o gate `every_timeline_menu_row_is_registered` recusa a tabela que faltar.
+pub const ALL_TIMELINE_MENUS: &[MenuTable] = &[
+    &TIMELINE_SEGMENT_MENU,
+    &TIMELINE_EASE_MENU,
+    &TIMELINE_FADE_MENU,
+    &TIMELINE_TRACK_MENU,
+    &TIMELINE_AXIS_TRACK_MENU,
+    &TIMELINE_PATH_TRACK_MENU,
+    &TIMELINE_TIMEREMAP_TRACK_MENU,
+    &TIMELINE_EXTRAP_MENU,
+    &TIMELINE_STRIP_MENU,
+    &TIMELINE_LANE_MENU,
+    &TIMELINE_MARKER_MENU,
+];

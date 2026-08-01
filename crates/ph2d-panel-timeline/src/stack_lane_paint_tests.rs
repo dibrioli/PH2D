@@ -291,6 +291,7 @@ fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
         ease_locked_out: false,
         curve_in: None,
         curve_out: None,
+        seam: None,
         loop_mode: StripLoop::Once,
         speed: 1.0,
     };

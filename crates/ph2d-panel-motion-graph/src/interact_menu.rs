@@ -178,15 +178,26 @@ pub(super) fn resolve_menu(
                 color: i as u8,
             });
         }
-        // **The node context menu** (doc 62): the row IS a keyboard verb, so the pick is
-        // dispatched through the SAME `apply_key` a key press goes through — the menu can
-        // never do something subtly different from its shortcut. It acts on the selection
-        // the right-press left set (`open_on_right_press`). `NodeAction::ALL` is the one
-        // list the paint enumerates, so row `i` is the verb the label showed.
-        MenuBody::NodeActions { multi } => {
-            // The SAME `visible` list the paint drew, so row `i` is the verb the label showed.
-            let acts = crate::state::NodeAction::visible(*multi);
-            super::key::apply_key(state, acts[i].graph_key(), rect, snap);
+        // **The node context menu** (doc 62): the pick acts on the selection the right-press
+        // left set (`open_on_right_press`). The SAME `visible` list the paint drew, so row `i`
+        // is the verb the label showed.
+        MenuBody::NodeActions { multi, group } => {
+            let act = crate::state::NodeAction::visible(*multi, *group)[i];
+            match act.graph_key() {
+                // Every keyboard-verb row is dispatched through the SAME `apply_key` a key
+                // press goes through — the menu can never do something subtly different from
+                // its shortcut.
+                Some(k) => super::key::apply_key(state, k, rect, snap),
+                // Enter is a NAVIGATION, not a verb (`graph_key` is `None`): route it through
+                // the ONE door the double-click uses (`subgraph_gesture::enter`), which untags
+                // the card id and checks it IS a subgraph. `group` was captured over a single
+                // card, so the one selected id is that card.
+                None => {
+                    if let Some(&card) = state.selected.iter().next() {
+                        super::subgraph_gesture::enter(state, snap, card);
+                    }
+                }
+            }
         }
         MenuBody::Library {
             connect_from,
@@ -264,10 +275,18 @@ pub(super) fn open_on_right_press(
                 state.selected.insert(node);
                 state.selected_backdrop = None;
             }
-            // `multi` decides which rows the menu offers (Rename drops out for many), captured
-            // now against the selection this press just settled.
+            // `multi` decides which rows the menu offers (Rename drops out for many); `group`
+            // adds the group-only rows (Enter / Ungroup) when the single subject is a collapsed
+            // card. Both captured now against the selection this press just settled.
+            let group = state.selected.len() == 1
+                && state
+                    .selected
+                    .iter()
+                    .next()
+                    .is_some_and(|id| crate::snapshot::is_subgraph_view(*id));
             MenuBody::NodeActions {
                 multi: state.selected.len() > 1,
+                group,
             }
         }
         _ => MenuBody::Library {

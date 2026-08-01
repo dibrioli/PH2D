@@ -6,29 +6,36 @@ use crate::snapshot::PortChoice;
 use ph2d_editor_core::interaction::GraphKey;
 use std::collections::BTreeSet;
 
-/// **A row of the node context menu** (right-click a node, doc 62). Each row is exactly one
-/// of the keyboard verbs: the menu is an alternate TRIGGER, never a second implementation,
-/// so [`Self::graph_key`] routes every pick back through `apply_key` and the menu cannot
-/// drift from the shortcut. The labels name the shortcut, so the menu also TEACHES it.
+/// **A row of the node context menu** (right-click a node or a group card, doc 62). The menu is
+/// an alternate TRIGGER, never a second implementation: each row routes back through the SAME door
+/// its gesture uses — a keyboard verb via [`Self::graph_key`] + `apply_key`, or, for [`Self::Enter`]
+/// (whose `graph_key` is `None`), the double-click's `subgraph_gesture::enter`. So the menu cannot
+/// drift from the shortcut, and the labels name it, so the menu also TEACHES it.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum NodeAction {
+    Enter,
     Cut,
     Copy,
     Duplicate,
     Delete,
     Bypass,
     Rename,
+    Ungroup,
 }
 
 impl NodeAction {
-    /// Every action, in display order.
-    const ALL: [NodeAction; 6] = [
+    /// Every action, in display order — Enter first (walk in), the shared edits, Ungroup last
+    /// (dissolve). The two `group`-only rows top and tail the list so a plain node's menu (which
+    /// shows neither) is the exact list, in the exact order, it always was.
+    const ALL: [NodeAction; 8] = [
+        NodeAction::Enter,
         NodeAction::Cut,
         NodeAction::Copy,
         NodeAction::Duplicate,
         NodeAction::Delete,
         NodeAction::Bypass,
         NodeAction::Rename,
+        NodeAction::Ungroup,
     ];
     /// **Whether this action needs a SINGLE subject.** Rename asks for one name; with many
     /// nodes selected there is no single name to ask about, so its verb is inert and the row
@@ -37,35 +44,54 @@ impl NodeAction {
     fn requires_single(self) -> bool {
         matches!(self, NodeAction::Rename)
     }
-    /// **The rows to show for a selection of this size** — the ONE list `menu_rows` draws AND
-    /// `resolve_menu` dispatches, so row `i` means the same thing on screen and under the
-    /// cursor. Single-subject actions drop out when the selection is `multi` (> 1).
-    pub(crate) fn visible(multi: bool) -> Vec<NodeAction> {
+    /// **Whether this action only means something on a GROUP card.** Enter walks INTO a subgraph
+    /// and Ungroup dissolves one — neither is meaningful for a plain node, so the rows appear
+    /// only when the single subject is a collapsed card. (A card selection is exactly one card,
+    /// so `group` implies `!multi`.)
+    fn requires_group(self) -> bool {
+        matches!(self, NodeAction::Enter | NodeAction::Ungroup)
+    }
+    /// **The rows to show for this selection** — the ONE list `menu_rows` draws AND `resolve_menu`
+    /// dispatches, so row `i` means the same thing on screen and under the cursor. `group`-only
+    /// rows (Enter/Ungroup) appear only over a card; single-subject rows (Rename) drop out when
+    /// the selection is `multi` (> 1).
+    pub(crate) fn visible(multi: bool, group: bool) -> Vec<NodeAction> {
         NodeAction::ALL
             .iter()
             .copied()
-            .filter(|a| !(multi && a.requires_single()))
+            .filter(|a| {
+                if a.requires_group() && !group {
+                    return false;
+                }
+                !(multi && a.requires_single())
+            })
             .collect()
     }
     pub(crate) fn label(self) -> &'static str {
         match self {
+            NodeAction::Enter => "Enter (Double-click)",
             NodeAction::Cut => "Cut (Ctrl+X)",
             NodeAction::Copy => "Copy (Ctrl+C)",
             NodeAction::Duplicate => "Duplicate (Ctrl+D)",
             NodeAction::Delete => "Delete (Del)",
             NodeAction::Bypass => "Toggle Mute (H)",
             NodeAction::Rename => "Rename (F2)",
+            NodeAction::Ungroup => "Ungroup (Ctrl+Alt+G)",
         }
     }
-    pub(crate) fn graph_key(self) -> GraphKey {
-        match self {
+    /// The keyboard verb this row runs, or `None` for [`NodeAction::Enter`] — a NAVIGATION
+    /// (double-click), not an `apply_key` verb, which the resolve routes through its own door.
+    pub(crate) fn graph_key(self) -> Option<GraphKey> {
+        Some(match self {
             NodeAction::Cut => GraphKey::Cut,
             NodeAction::Copy => GraphKey::Copy,
             NodeAction::Duplicate => GraphKey::Duplicate,
             NodeAction::Delete => GraphKey::Delete,
             NodeAction::Bypass => GraphKey::Bypass,
             NodeAction::Rename => GraphKey::Rename,
-        }
+            NodeAction::Ungroup => GraphKey::Ungroup,
+            NodeAction::Enter => return None,
+        })
     }
 }
 
@@ -301,8 +327,9 @@ pub(crate) enum MenuBody {
     /// target is whatever `open_on_right_press` left SELECTED (the right-clicked node, or the
     /// whole selection if it was part of one), and each pick runs the matching keyboard verb
     /// via `apply_key`, which reads that selection. `multi` (> 1 selected, captured at open)
-    /// drops the single-subject rows (Rename) — [`NodeAction::visible`].
-    NodeActions { multi: bool },
+    /// drops the single-subject rows (Rename); `group` (the single subject is a collapsed card)
+    /// adds the group-only rows (Enter / Ungroup) — [`NodeAction::visible`].
+    NodeActions { multi: bool, group: bool },
 }
 
 /// Retained panel state.

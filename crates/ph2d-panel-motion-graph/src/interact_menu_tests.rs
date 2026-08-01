@@ -257,9 +257,9 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
     assert!(
         matches!(
             st.menu.as_ref().map(|m| &m.body),
-            Some(MenuBody::NodeActions { multi: false })
+            Some(MenuBody::NodeActions { multi: false, group: false })
         ),
-        "a node right-press opens its actions (single subject)"
+        "a node right-press opens its actions (single subject, a plain node)"
     );
     assert_eq!(
         st.selected.iter().copied().collect::<Vec<_>>(),
@@ -270,7 +270,7 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
     // Resolve the Delete row (NodeAction index 3, single selection → all rows shown) →
     // GraphKey::Delete on the selection.
     let menu = st.menu.take().expect("the menu is open");
-    let panel = geom::menu_panel(&menu, NodeAction::visible(false).len(), RECT);
+    let panel = geom::menu_panel(&menu, NodeAction::visible(false, false).len(), RECT);
     let del = geom::menu_row(&menu, panel, 3, 0.0);
     resolve_menu(
         &mut st,
@@ -295,8 +295,8 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
 #[test]
 fn the_node_menu_hides_rename_for_a_multi_selection() {
     use crate::state::NodeAction;
-    let single = NodeAction::visible(false);
-    let multi = NodeAction::visible(true);
+    let single = NodeAction::visible(false, false);
+    let multi = NodeAction::visible(true, false);
     assert!(single.contains(&NodeAction::Rename), "one node: rename is offered");
     assert!(!multi.contains(&NodeAction::Rename), "many nodes: rename drops out");
     assert!(
@@ -319,9 +319,95 @@ fn the_node_menu_hides_rename_for_a_multi_selection() {
     assert!(
         matches!(
             st.menu.as_ref().map(|m| &m.body),
-            Some(MenuBody::NodeActions { multi: true })
+            Some(MenuBody::NodeActions { multi: true, group: false })
         ),
         "a right-press inside a multi-selection keeps it and opens in multi mode"
+    );
+}
+
+/// **A group card's menu adds the two verbs unique to a group** — Enter (walk in) and Ungroup
+/// (dissolve). A plain node's menu shows neither, so its list is unchanged; a card's menu leads
+/// with Enter and tails with Ungroup, around the shared edits. Each row still routes through its
+/// ONE door: Enter through `subgraph_gesture::enter` (the double-click's), Ungroup through
+/// `apply_key(GraphKey::Ungroup)` (Ctrl+Alt+G's) — both on the untagged subgraph id.
+/// FALSIFIED by `requires_group` returning false (a plain node would be offered them), by the
+/// `group` flag never being set at open (a card's menu would omit them), or by Enter's `graph_key`
+/// resolving to a verb instead of the enter door (the pick would not navigate).
+#[test]
+fn the_group_card_menu_adds_enter_and_ungroup() {
+    use crate::state::NodeAction;
+
+    // MODEL: a plain node is offered neither group verb; a card leads with Enter, tails with
+    // Ungroup, and keeps the shared rows.
+    let plain = NodeAction::visible(false, false);
+    assert!(
+        !plain.contains(&NodeAction::Enter) && !plain.contains(&NodeAction::Ungroup),
+        "a plain node's menu has no group-only verbs"
+    );
+    let card_rows = NodeAction::visible(false, true);
+    assert_eq!(card_rows.first(), Some(&NodeAction::Enter), "a card leads with Enter");
+    assert_eq!(card_rows.last(), Some(&NodeAction::Ungroup), "a card tails with Ungroup");
+    assert!(
+        card_rows.contains(&NodeAction::Rename) && card_rows.contains(&NodeAction::Bypass),
+        "the shared edits are still there"
+    );
+
+    // A collapsed card: node 3 as a tagged Subgraph view.
+    let mut snap = two_node_snapshot();
+    snap.nodes[1].id = crate::snapshot::SUBGRAPH_VIEW_TAG | 3;
+    snap.nodes[1].kind = crate::snapshot::NodeViewKind::Subgraph;
+    let cardid = snap.nodes[1].id;
+
+    let open = || -> MotionGraphPanelState {
+        let mut st = MotionGraphPanelState::default();
+        let mut g = gesture(
+            GraphHitKind::Node {
+                node: cardid as u64,
+            },
+            GesturePhase::Begin,
+            RECT.x + 30.0,
+            RECT.y + 30.0,
+        );
+        g.button = PointerButton::Secondary;
+        super::menu::open_on_right_press(&mut st, g, RECT, &snap);
+        st
+    };
+
+    // SEAM: a right-press on the card opens its actions in `group` mode.
+    let st0 = open();
+    assert!(
+        matches!(
+            st0.menu.as_ref().map(|m| &m.body),
+            Some(MenuBody::NodeActions { multi: false, group: true })
+        ),
+        "a right-press on a card opens its actions in group mode"
+    );
+
+    // The Enter row (index 0) walks INTO the subgraph — the untagged id, the double-click's door.
+    let mut st = open();
+    let _ = drain_intents();
+    let menu = st.menu.take().expect("the menu is open");
+    let rows = NodeAction::visible(false, true).len();
+    let panel = geom::menu_panel(&menu, rows, RECT);
+    let r0 = geom::menu_row(&menu, panel, 0, 0.0);
+    resolve_menu(&mut st, &menu, RECT, &snap, r0.x + r0.w * 0.5, r0.y + r0.h * 0.5);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::EnterSubgraph { id: 3 }],
+        "the Enter row entered the subgraph"
+    );
+
+    // The Ungroup row (last) dissolves it — the untagged id, Ctrl+Alt+G's door.
+    let mut st = open();
+    let _ = drain_intents();
+    let menu = st.menu.take().expect("the menu is open");
+    let panel = geom::menu_panel(&menu, rows, RECT);
+    let rl = geom::menu_row(&menu, panel, rows - 1, 0.0);
+    resolve_menu(&mut st, &menu, RECT, &snap, rl.x + rl.w * 0.5, rl.y + rl.h * 0.5);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::Ungroup { id: 3 }],
+        "the Ungroup row dissolved the group"
     );
 }
 

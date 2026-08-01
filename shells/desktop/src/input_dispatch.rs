@@ -3057,6 +3057,34 @@ impl App {
         {
             return;
         }
+        // **AS GUIAS** (plano 25 §9, a W6.2). O gesto da régua vem ANTES de toda ferramenta,
+        // e não por prioridade inventada: a faixa da régua está VISÍVEL com qualquer ferramenta
+        // na mão, então um press nela que caísse no picking/gizmo moveria um objeto em vez de
+        // puxar uma guia — chrome desenhado e morto sob o mouse, que é o defeito que esta
+        // codebase varre a cada wave.
+        //
+        // ⚠️ Uma vez começado, o arrasto é DONO do ponteiro até o Up (o padrão do `joint_draw`):
+        // sem isto um Move que saísse da faixa devolveria o gesto ao gizmo no meio do caminho.
+        if self.guide_drag.is_some() {
+            match kind {
+                PointerKind::Move => {
+                    self.guide_pointer_move(evt.x, evt.y);
+                    return;
+                }
+                PointerKind::Up => {
+                    self.guide_pointer_up(evt.x, evt.y);
+                    return;
+                }
+                _ => {}
+            }
+        }
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.guide_pointer_down(evt.x, evt.y)
+        {
+            return;
+        }
         // Flip sculpt (W5): o pen-UP encerra o gesto (a máscara congelada morre com
         // ele; o passo de undo sai do diff pós-frame).
         if kind == PointerKind::Up

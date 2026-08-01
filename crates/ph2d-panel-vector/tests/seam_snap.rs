@@ -51,6 +51,10 @@ fn every_snap_option_reaches_the_bus() {
         (ids::VECTOR_SNAP_PATH_ON, "Path/On"),
         (ids::VECTOR_SNAP_CROSS_OFF, "Cross/Off"),
         (ids::VECTOR_SNAP_CROSS_ON, "Cross/On"),
+        (ids::VECTOR_SNAP_GUIDES_OFF, "Guides/Off"),
+        (ids::VECTOR_SNAP_GUIDES_ON, "Guides/On"),
+        (ids::VECTOR_RULERS_OFF, "Rulers/Off"),
+        (ids::VECTOR_RULERS_ON, "Rulers/On"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -78,7 +82,7 @@ fn every_snap_option_reaches_the_bus() {
     }
 }
 
-/// **A seção empilha TRÊS linhas independentes**, cada uma com o seu par Off/On lado a lado.
+/// **A seção empilha CINCO linhas independentes**, cada uma com o seu par Off/On lado a lado.
 ///
 /// ⚠️ **Isto é menos do que eu quis afirmar, e a mutação me corrigiu.** A primeira versão
 /// chamava-se *"cada linha mostra o seu próprio estado"* e mutar `current_snap_crossings()` para
@@ -87,7 +91,7 @@ fn every_snap_option_reaches_the_bus() {
 /// é observável por aqui. Quem prova que os dois interruptores não estão cruzados é o arch-gate
 /// da shell (`the_snap_toggles_are_not_crossed`), onde a fiação de facto mora.
 #[test]
-fn the_snap_section_stacks_three_independent_rows() {
+fn the_snap_section_stacks_five_independent_rows() {
     ph2d_panel_vector::set_current_snap(true);
     ph2d_panel_vector::set_current_snap_position(true, false);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -100,9 +104,12 @@ fn the_snap_section_stacks_three_independent_rows() {
     let shapes = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_ON);
     let path = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_PATH_ON);
     let cross = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_CROSS_ON);
+    let guides = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_GUIDES_ON);
+    let rulers = rect(&mut host, &mut panel_state, ids::VECTOR_RULERS_ON);
     assert!(
-        shapes.y < path.y && path.y < cross.y,
-        "as tres linhas ocupam alturas distintas: {shapes:?} {path:?} {cross:?}"
+        shapes.y < path.y && path.y < cross.y && cross.y < guides.y && guides.y < rulers.y,
+        "as CINCO linhas ocupam alturas distintas: \
+         {shapes:?} {path:?} {cross:?} {guides:?} {rulers:?}"
     );
     // E o par Off/On de uma linha são dois retângulos, não um: o estado é escolhível.
     let path_off = rect(&mut host, &mut panel_state, ids::VECTOR_SNAP_PATH_OFF);

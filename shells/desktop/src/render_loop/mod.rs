@@ -806,6 +806,8 @@ impl crate::App {
             return;
         };
         let AppGfx {
+            // As guias do documento: lidas para desenhar e para alimentar o snap.
+            guides: doc_guides,
             // A cena 3D é consumida no `present`, não neste bloco.
             #[cfg(feature = "sculpt3d")]
                 sculpt3d: _,
@@ -2109,6 +2111,8 @@ impl crate::App {
             let mut pending_vec_snap_on: Option<bool> = None;
             let mut pending_vec_snap_path: Option<bool> = None;
             let mut pending_vec_snap_cross: Option<bool> = None;
+            let mut pending_vec_snap_guides: Option<bool> = None;
+            let mut pending_rulers: Option<bool> = None;
 
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
@@ -2392,6 +2396,14 @@ impl crate::App {
                                 pending_vec_snap_cross = Some(false);
                             } else if *id == ph2d_editor::ids::VECTOR_SNAP_CROSS_ON {
                                 pending_vec_snap_cross = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_GUIDES_OFF {
+                                pending_vec_snap_guides = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_GUIDES_ON {
+                                pending_vec_snap_guides = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_RULERS_OFF {
+                                pending_rulers = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_RULERS_ON {
+                                pending_rulers = Some(true);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_PREV {
                                 pending_vec_font_cycle = Some(-1);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_NEXT {
@@ -4349,6 +4361,15 @@ impl crate::App {
             if let Some(on) = pending_vec_snap_cross {
                 self.vec_snap.crossings = on;
             }
+            if let Some(on) = pending_vec_snap_guides {
+                self.vec_snap.guides = on;
+            }
+            // ⚠️ A régua é estado do HERO, não da ferramenta: ela é chrome de canvas, aparece
+            // com qualquer ferramenta na mão, e é o mesmo flag que a tecla/menu de vista
+            // mexeria. O painel do vetor é só mais um lugar de onde se alcança o interruptor.
+            if let Some(on) = pending_rulers {
+                hero.view.rulers_visible = on;
+            }
             if let Some(kind) = pending_vec_vertex_kind {
                 crate::input_dispatch::apply_vec_vertex_kind(
                     vec_scene,
@@ -6027,6 +6048,22 @@ impl crate::App {
             // Smart guides do snap: FORA do guard de modo — explicam o encaixe vivo em
             // qualquer modo, inclusive o gizmo-move do Select (P1, ADR-0112).
             if overlay.snap_guides {
+                // As guias do DOCUMENTO primeiro: elas são o fundo permanente contra o qual a
+                // guia de snap (viva, tracejada, de um frame) se lê. Desenhá-las por cima
+                // esconderia a marca do encaixe atrás da linha que ele acabou de encontrar.
+                //
+                // ⚠️ O recorte é a JANELA DA CENA, não o retângulo do canvas: o `cam_affine`
+                // projeta nas dims da cena, e o chrome dos painéis é pintado DEPOIS, por cima.
+                // Pedir o canvas aqui obrigaria a shell a espelhar a aritmética de layout que
+                // o `paint_hero_screen` já faz — a segunda porta exata que a régua evita.
+                let (sw, sh) =
+                    crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+                ph2d_vec_render::draw_document_guides(
+                    &doc_guides.iter().copied().collect::<Vec<_>>(),
+                    [0.0, 0.0, f64::from(sw), f64::from(sh)],
+                    cam_affine,
+                    vector_scene,
+                );
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
             }
             // **O realce do Shape Builder** — as faces sob o cursor e as já pintadas. Fora do

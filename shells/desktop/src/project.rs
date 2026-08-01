@@ -200,7 +200,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// deixá-lo *inteiramente livre*. Um campo apendado, mesmo raciocínio posicional
 /// do v43..v46; a dureza reusa a `stiffness`/`damping` que a mola já carregava,
 /// então é UM bool e não três campos.
-const PROJECT_SCHEMA: u32 = 48;
+/// v49 (vector, W6.2 — as guias e a régua): o `ProjectState` ganhou **`guides`**, a
+/// lista de linhas de referência que o artista arrasta da régua. Campo apendado ao
+/// `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio posicional
+/// do `flip`, e o mesmo motivo de estar ali e não num campo de arquivo próprio: o
+/// `ProjectState` é a unidade do UNDO, e uma guia arrastada tem de desfazer.
+/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 49 é
+/// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 49;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

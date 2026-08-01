@@ -166,6 +166,14 @@ pub struct HeroScreen {
     /// to the left of their parent when the right edge is reached).
     /// Defaults to a zero rect until the first paint.
     pub last_viewport: Rect,
+    /// O retângulo do CANVAS que o último `paint_hero_screen` resolveu.
+    ///
+    /// ⚠️ Irmão exato do [`Self::last_viewport`], e existe pelo MESMO motivo: o layout é
+    /// calculado dentro do paint, e quem trata ponteiro precisa do retângulo que o paint de
+    /// fato usou. Sem isto a shell teria de espelhar a aritmética do `HeroLayout` para saber
+    /// onde as faixas de régua estão — duas respostas para *onde fica o canvas?*, que divergem
+    /// no dia em que um painel muda de largura.
+    pub last_canvas: Rect,
     /// Pending Painter Falloff handle from the right-click menu (`HandleType` wire u8 `0`=Auto/`1`=Vector);
     /// `.take()`n by the shell onto the selected point.
     pub pending_falloff_point_handle: Option<u8>,
@@ -249,6 +257,7 @@ impl HeroScreen {
                 ui_mirrored: false,
                 stats_visible: true,
                 grid_visible: true,
+                rulers_visible: true,
                 center_split: crate::screens::layout::CenterSplit::None,
             },
             panel_visibility: default_panel_visibility(),
@@ -261,6 +270,7 @@ impl HeroScreen {
             dragging_files: None,
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
+            last_canvas: Rect::new(0.0, 0.0, 0.0, 0.0),
             pending_falloff_point_handle: None,
             pending_curve_point_handle: None,
             pending_motion_path_handle: None,

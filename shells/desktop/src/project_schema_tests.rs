@@ -146,7 +146,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // dois lados escreveram o mesmo literal e o git não tem opinião sobre o que o número
         // SIGNIFICA — o bump da FLIP teria evaporado com a suíte verde. O valor se CONTA a
         // partir do `main` do dia; ele não estava em nenhum dos dois lados.
-        (48, 13, 13),
+        // PROJECT 48→49 (vector, W6.2 — as guias e a régua): o `ProjectState` ganhou
+        // `guides`, a lista de linhas de referência que o artista arrasta da régua. Campo
+        // apendado ao `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio
+        // posicional do `flip`. ⚠️ O 49 é PROVISÓRIO: ele se CONTA contra o `main` do dia da
+        // integração, não se escolhe, e esta linha o escreveu contra o `main` de 2026-08-01.
+        (49, 13, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

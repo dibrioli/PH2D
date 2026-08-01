@@ -31,7 +31,15 @@ fn scene() -> (SimWorld, VecScene) {
 fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut wl = WorklistBuf::new();
-    ProjectState::capture(sim, vec, &FlipDoc::new(), reg, &mut prop, &mut wl)
+    ProjectState::capture(
+        sim,
+        vec,
+        &FlipDoc::new(),
+        &ph2d_guides::GuideSet::default(),
+        reg,
+        &mut prop,
+        &mut wl,
+    )
 }
 
 /// Capturar → mexer no mundo E na geometria → restaurar devolve o estado exato,
@@ -110,6 +118,7 @@ fn push_undo_then_undo_redo_alternate() {
         world: s0.world.clone(),
         vec: vec1,
         flip: FlipDoc::new(),
+        guides: ph2d_guides::GuideSet::default(),
     };
     stack.push_undo(s0.clone());
     assert!(stack.can_undo() && !stack.can_redo());
@@ -179,7 +188,15 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
     let snap = {
         let mut prop = TransformPropagationState::new(sim.world_mut());
         let mut wl = WorklistBuf::new();
-        ProjectState::capture(&sim, &vec, &flip, &reg, &mut prop, &mut wl)
+        ProjectState::capture(
+            &sim,
+            &vec,
+            &flip,
+            &ph2d_guides::GuideSet::default(),
+            &reg,
+            &mut prop,
+            &mut wl,
+        )
     };
 
     // Muda o flip (adiciona objeto) e restaura ao capturado.
@@ -194,8 +211,24 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
     // Capturar o mesmo estado 2× = idêntico (sem passo espúrio de undo).
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut wl = WorklistBuf::new();
-    let a = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
-    let b = ProjectState::capture(&sim, &vec, &rflip, &reg, &mut prop, &mut wl);
+    let a = ProjectState::capture(
+        &sim,
+        &vec,
+        &rflip,
+        &ph2d_guides::GuideSet::default(),
+        &reg,
+        &mut prop,
+        &mut wl,
+    );
+    let b = ProjectState::capture(
+        &sim,
+        &vec,
+        &rflip,
+        &ph2d_guides::GuideSet::default(),
+        &reg,
+        &mut prop,
+        &mut wl,
+    );
     assert_eq!(a, b, "flip determinístico -> sem diff espúrio");
 }
 

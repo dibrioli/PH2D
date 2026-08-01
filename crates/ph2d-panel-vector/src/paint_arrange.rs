@@ -71,6 +71,8 @@ impl BodyCtx<'_> {
         let on = state::current_snap();
         let path = state::current_snap_path();
         let cross = state::current_snap_crossings();
+        let guides = state::current_snap_guides();
+        let rulers = state::current_rulers();
         let (y, collapsed) =
             self.section_header(ids::VECTOR_SECTION_SNAP, tr("panel.vector.section.snap"), y);
         if collapsed {
@@ -92,11 +94,32 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        self.segmented(
+        let y = self.segmented(
             "Cross",
             &[
                 (ids::VECTOR_SNAP_CROSS_OFF, "Off", !cross),
                 (ids::VECTOR_SNAP_CROSS_ON, "On", cross),
+            ],
+            y,
+        );
+        // As GUIAS (W6.2). Alinhamento como o "Shapes", com um interruptor próprio: desligar
+        // o ímã das formas não deve desligar o das linhas que o artista pôs à mão.
+        let y = self.segmented(
+            "Guides",
+            &[
+                (ids::VECTOR_SNAP_GUIDES_OFF, "Off", !guides),
+                (ids::VECTOR_SNAP_GUIDES_ON, "On", guides),
+            ],
+            y,
+        );
+        // ⚠️ A RÉGUA não é um ímã, e por isso fecha a seção em vez de se misturar às três
+        // acima: ela decide se as faixas aparecem — e, com elas, se as guias podem ser
+        // ARRASTADAS. É o *lock* que o Illustrator esconde num booleano de menu.
+        self.segmented(
+            "Rulers",
+            &[
+                (ids::VECTOR_RULERS_OFF, "Off", !rulers),
+                (ids::VECTOR_RULERS_ON, "On", rulers),
             ],
             y,
         )

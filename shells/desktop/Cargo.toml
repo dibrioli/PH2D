@@ -232,6 +232,7 @@ ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
+ph2d-guides = { path = "../../crates/ph2d-guides" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
 # Conectores: o roteador (A*/OVG) da linha que gruda em duas formas e as segue. A

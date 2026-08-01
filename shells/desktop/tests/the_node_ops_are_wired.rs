@@ -290,6 +290,16 @@ fn the_snap_toggles_are_not_crossed() {
             "VECTOR_SNAP_CROSS_ON",
             "pending_vec_snap_cross = Some(true)",
         ),
+        (
+            "VECTOR_SNAP_GUIDES_OFF",
+            "pending_vec_snap_guides = Some(false)",
+        ),
+        (
+            "VECTOR_SNAP_GUIDES_ON",
+            "pending_vec_snap_guides = Some(true)",
+        ),
+        ("VECTOR_RULERS_OFF", "pending_rulers = Some(false)"),
+        ("VECTOR_RULERS_ON", "pending_rulers = Some(true)"),
     ] {
         let at = code
             .find(&format!("ids::{id} {{"))
@@ -312,6 +322,10 @@ fn each_pending_snap_toggle_lands_on_its_own_field() {
     for (pending, field) in [
         ("pending_vec_snap_path", "self.vec_snap.path = on"),
         ("pending_vec_snap_cross", "self.vec_snap.crossings = on"),
+        ("pending_vec_snap_guides", "self.vec_snap.guides = on"),
+        // ⚠️ A régua é o único dos cinco que NÃO é campo de ferramenta: ela é vista, e o
+        // destino é o hero. Colapsá-la com os outros faria esconder a régua desligar o ímã.
+        ("pending_rulers", "hero.view.rulers_visible = on"),
     ] {
         let at = code
             .find(&format!("if let Some(on) = {pending} {{"))
@@ -323,4 +337,86 @@ fn each_pending_snap_toggle_lands_on_its_own_field() {
             "`{pending}` nao escreve `{field}`"
         );
     }
+}
+
+/// **O gesto da régua vem ANTES de toda ferramenta.**
+///
+/// A faixa da régua está VISÍVEL com qualquer ferramenta na mão, então um press nela que
+/// caísse no picking/gizmo moveria um objeto em vez de puxar uma guia — chrome desenhado e
+/// morto sob o mouse. A ordem é a afirmação inteira, e ela não é observável por nenhum teste
+/// de unidade: o `dispatch_pointer` exige janela.
+///
+/// ⚠️ Afirma uma RELAÇÃO POSICIONAL, nunca uma distância em bytes: um proxy de janela expira
+/// no dia em que alguém acrescenta um bloco no meio (a cicatriz que os dois arch-gates desta
+/// linha já carregaram em 23/07).
+#[test]
+fn the_guide_gesture_runs_before_any_tool_claims_the_pointer() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/input_dispatch.rs"),
+    )
+    .expect("input_dispatch.rs");
+    let guide = src
+        .find("self.guide_pointer_down(")
+        .expect("o press de guia é despachado");
+    for (needle, what) in [
+        ("self.flip_canvas_down(", "o canvas do Flip"),
+        ("self.joint_draw_press(", "o arrasto de joint"),
+        // ⚠️ A âncora é a CHAMADA, nunca a definição: a posição de um `fn` no arquivo não diz
+        // nada sobre ordem de despacho, e a primeira versão deste gate reprovou por comparar
+        // com a declaração — um oráculo que não podia estar certo.
+        ("self.vec_path_pick_click(", "o picker do Vector"),
+        ("self.joint_body_pick_click(", "o picker de corpo do joint"),
+    ] {
+        if let Some(other) = src.find(needle) {
+            assert!(
+                guide < other,
+                "o press de guia corre DEPOIS de {what} — um press na régua cairia nele"
+            );
+        }
+    }
+    // E o arrasto é dono do ponteiro até o Up: sem isto um Move que saísse da faixa devolveria
+    // o gesto ao gizmo no meio do caminho.
+    let owns = src
+        .find("if self.guide_drag.is_some() {")
+        .expect("o arrasto em curso captura o ponteiro");
+    assert!(
+        owns < guide,
+        "a captura do arrasto tem de vir ANTES do press que o cria, senão o primeiro Move \
+         do gesto é roubado por quem estiver adiante"
+    );
+}
+
+/// A régua é pintada, e o canvas que ela usa é o que o paint RESOLVEU.
+///
+/// ⚠️ Gate de FONTE porque o `paint_hero_screen` calcula o layout dentro de si: um teste de
+/// unidade da régua nunca veria se alguém a alimentou com o `hero.grid.view` cru, cujo canvas
+/// é um retângulo de fachada `(0,0,0,0)` — as faixas nasceriam vazias e o gesto nunca
+/// dispararia, com todos os 9 gates da régua verdes.
+#[test]
+fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/ph2d-editor-core/src/screens/hero/paint.rs"),
+    )
+    .expect("hero/paint.rs");
+    let call = src
+        .find("crate::ruler::paint_rulers(")
+        .expect("as réguas são pintadas");
+    let head = &src[..call];
+    let block = head
+        .rfind("if hero.view.rulers_visible")
+        .expect("o desenho é gateado no interruptor das réguas");
+    assert!(
+        head[block..].contains("canvas: layout.canvas,"),
+        "a régua recebe o canvas RESOLVIDO pelo layout, não o de fachada do `grid.view`"
+    );
+    assert!(
+        head[block..].contains("hero.grid.snap_state.active_origin()"),
+        "o zero da régua É a origem da grade — um número, dois consumidores"
+    );
+    assert!(
+        src.contains("hero.last_canvas = layout.canvas;"),
+        "o canvas resolvido é publicado para quem trata ponteiro; sem isto o gesto da régua \
+         teria de espelhar a aritmética do layout"
+    );
 }

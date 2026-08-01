@@ -404,6 +404,9 @@ pub(super) fn dispatch(
     ph2d_panel_vector::set_current_snap(snap.on);
     #[cfg(feature = "panel-vector")]
     ph2d_panel_vector::set_current_snap_position(snap.path, snap.crossings);
+    // ⚠️ A régua vem do HERO, não do `snap`: ela é chrome de canvas (aparece com qualquer
+    // ferramenta) e o seu dono é a vista, não a ferramenta vetorial. O painel só a alcança.
+    ph2d_panel_vector::set_current_guides(snap.guides, hero.view.rulers_visible);
 
     // Publish the selected path's fill rule — `Some` ONLY when it is a compound
     // path, since with a single contour both rules paint identically and the row

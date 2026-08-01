@@ -42,6 +42,10 @@ pub(crate) struct ProjectState {
     pub(crate) world: WorldSnapshot,
     pub(crate) vec: VecScene,
     pub(crate) flip: FlipDoc,
+    /// As guias do documento. Plain data — nenhuma ponte a reconstruir, ao contrário do
+    /// vetor e do Flip, e é por isso que o `restore` não as devolve na tupla: quem aplica
+    /// simplesmente copia.
+    pub(crate) guides: ph2d_guides::GuideSet,
 }
 
 impl ProjectState {
@@ -52,6 +56,7 @@ impl ProjectState {
         sim: &SimWorld,
         vec: &VecScene,
         flip: &FlipDoc,
+        guides: &ph2d_guides::GuideSet,
         registry: &ComponentRegistry,
         prop: &mut TransformPropagationState,
         worklist: &mut WorklistBuf,
@@ -65,6 +70,7 @@ impl ProjectState {
             world,
             vec: vec.clone(),
             flip: flip.clone(),
+            guides: guides.clone(),
         }
     }
 
@@ -220,6 +226,7 @@ impl crate::App {
             &gfx.sim,
             &gfx.vec_scene,
             &gfx.flip,
+            &gfx.guides,
             &gfx.component_registry,
             &mut gfx.prop_state,
             &mut gfx.worklist,
@@ -249,6 +256,7 @@ impl crate::App {
         let (vec, map, flip, flip_map) = state.restore(&mut gfx.sim, &gfx.component_registry);
         gfx.vec_scene = vec;
         gfx.flip = flip;
+        gfx.guides = state.guides.clone();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.clear_all_selection();
         }

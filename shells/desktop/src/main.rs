@@ -154,6 +154,7 @@ mod fx_smoke;
 mod fx_turbulence_smoke;
 mod fx_undo_smoke;
 mod gradient_smoke;
+mod guide_gesture;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
 mod harmony_smoke;
 mod hero_bridge;
@@ -645,6 +646,7 @@ impl App {
             vec_snap: crate::vec_snap::VecSnapSettings::default(),
             vec_snap_targets: ph2d_vec_edit::SnapTargets::default(),
             vec_snap_guides: Vec::new(),
+            guide_drag: None,
             vec_text_edit: None,
             vec_text_size: ph2d_tool_vector::params::DEFAULT_TEXT_SIZE,
             vec_text_weight: ph2d_tool_vector::params::DEFAULT_TEXT_WEIGHT as f32,

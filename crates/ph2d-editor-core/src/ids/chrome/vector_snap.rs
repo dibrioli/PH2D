@@ -27,3 +27,20 @@ pub const VECTOR_SNAP_CROSS_OFF: NodeId = hash_node_id("vector.snap.cross.off");
 /// **Snap to Intersections — ligado.** O ponto pousa onde duas curvas se cruzam — um lugar que
 /// o desenho produziu e que nenhuma âncora marca.
 pub const VECTOR_SNAP_CROSS_ON: NodeId = hash_node_id("vector.snap.cross.on");
+
+// ── As GUIAS e a RÉGUA (bloco APPEND-ONLY, plano 25 §9, a W6.2) ──────────────
+// Uma guia é ALINHAMENTO, como o "Shapes" — a diferença é que a reta é AUTORADA em vez de
+// derivada de uma forma, e por isso ela vence o empate. O interruptor é próprio porque
+// desligar o ímã das formas não deve desligar o das linhas que o artista pôs à mão.
+
+/// **Snap to Guides — desligado.**
+pub const VECTOR_SNAP_GUIDES_OFF: NodeId = hash_node_id("vector.snap.guides.off");
+/// **Snap to Guides — ligado.** Nasce assim: num documento sem guias o ímã é inerte.
+pub const VECTOR_SNAP_GUIDES_ON: NodeId = hash_node_id("vector.snap.guides.on");
+
+/// **Réguas — escondidas.** ⚠️ Este interruptor governa DUAS coisas: se as faixas aparecem e
+/// se as guias podem ser ARRASTADAS. É o *lock de guias* que o Illustrator esconde num
+/// booleano de menu — aqui ele é o mesmo controle que já se vê na tela.
+pub const VECTOR_RULERS_OFF: NodeId = hash_node_id("vector.rulers.off");
+/// **Réguas — à mostra.**
+pub const VECTOR_RULERS_ON: NodeId = hash_node_id("vector.rulers.on");

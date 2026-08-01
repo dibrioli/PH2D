@@ -90,6 +90,7 @@ impl Frame {
             sim,
             scene,
             &FlipDoc::new(),
+            &ph2d_guides::GuideSet::default(),
             &self.reg,
             &mut self.prop,
             &mut self.worklist,

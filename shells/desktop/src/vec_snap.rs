@@ -41,6 +41,12 @@ pub(crate) struct VecSnapSettings {
     pub path: bool,
     /// Encaixar nos cruzamentos entre curvas.
     pub crossings: bool,
+    /// Encaixar nas **guias** do documento.
+    ///
+    /// ⚠️ Nasce LIGADO, ao contrário das duas de posição: uma guia só existe porque o artista
+    /// a arrastou até lá, então o ímã dela não muda o app debaixo de ninguém — num documento
+    /// sem guias este interruptor é inerte por construção.
+    pub guides: bool,
 }
 
 impl Default for VecSnapSettings {
@@ -53,6 +59,7 @@ impl Default for VecSnapSettings {
             on: true,
             path: false,
             crossings: false,
+            guides: true,
         }
     }
 }
@@ -88,6 +95,7 @@ pub(crate) fn guides_of(r: &SnapResult) -> Vec<Guide> {
             SnapSource::Grid => GuideKind::Grid,
             SnapSource::Curve => GuideKind::Curve,
             SnapSource::Crossing => GuideKind::Crossing,
+            SnapSource::Guide => GuideKind::GuideHit,
         };
         let guide = Guide {
             a: moved,
@@ -139,6 +147,7 @@ impl App {
             to_points: self.vec_snap.on,
             to_path: self.vec_snap.path,
             to_crossings: self.vec_snap.crossings,
+            to_guides: self.vec_snap.guides,
             threshold: SNAP_PX * px_to_world,
         }
     }
@@ -177,6 +186,10 @@ impl App {
                 let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
                 let mut t = collect_targets(&gfx.vec_scene, &xf, skip_paths, skip_verts, curves);
                 t.points.extend(sprites);
+                // ⚠️ As guias entram INTEIRAS, sem filtro de gesto: elas não pertencem a forma
+                // nenhuma, então mover o que quer que seja nunca tira uma da lista. É o que as
+                // torna a única referência que sobrevive a arrastar tudo o que há na cena.
+                t.guides = gfx.guides.iter().copied().collect();
                 t
             }
             None => SnapTargets::default(),

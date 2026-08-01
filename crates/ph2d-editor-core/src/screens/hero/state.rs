@@ -74,6 +74,15 @@ pub struct ViewState {
     /// `true`. Toggled via the "Show Grid" context-menu entry and the
     /// `G` key.
     pub grid_visible: bool,
+    /// As **RÉGUAS** do canvas (plano 25 §9, a W6.2). Default `true`.
+    ///
+    /// ⚠️ Este flag governa DUAS coisas de propósito: se as réguas aparecem **e** se as guias
+    /// do documento podem ser arrastadas. É o *lock de guias* que o Illustrator e o Photoshop
+    /// têm como booleano escondido — aqui ele é o mesmo interruptor que já se vê na tela, e
+    /// por isso não pode ficar dessincronizado do que o artista enxerga. As guias continuam
+    /// VISÍVEIS e magnéticas com as réguas fora; o que some é a possibilidade de mexer nelas
+    /// sem querer.
+    pub rulers_visible: bool,
     /// Center split between the scene viewport and the Motion Nodes graph
     /// (Motion Nodes M0.T4). Default [`CenterSplit::None`] — no split for any
     /// non-Motion tool. The Motion bridge sets it to the remembered orientation
@@ -88,6 +97,7 @@ impl Default for ViewState {
             ui_mirrored: false,
             stats_visible: true,
             grid_visible: true,
+            rulers_visible: true,
             center_split: crate::screens::layout::CenterSplit::None,
         }
     }

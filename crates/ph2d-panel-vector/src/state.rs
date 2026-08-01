@@ -73,6 +73,11 @@ thread_local! {
     static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
     static CURRENT_SNAP_PATH: Cell<bool> = const { Cell::new(false) };
     static CURRENT_SNAP_CROSS: Cell<bool> = const { Cell::new(false) };
+    /// O ímã das GUIAS (W6.2). Nasce LIGADO — num documento sem guias ele é inerte.
+    static CURRENT_SNAP_GUIDES: Cell<bool> = const { Cell::new(true) };
+    /// As RÉGUAS à mostra (W6.2). Nasce LIGADO: elas são o gesto de onde as guias nascem, e
+    /// uma afordância que ninguém acha é uma que não existe.
+    static CURRENT_RULERS: Cell<bool> = const { Cell::new(true) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
@@ -277,6 +282,26 @@ pub(crate) fn current_snap_path() -> bool {
 /// Whether snapping to curve crossings is on this frame.
 pub(crate) fn current_snap_crossings() -> bool {
     CURRENT_SNAP_CROSS.with(|c| c.get())
+}
+
+/// Publish the two switches of the W6.2 — o ímã das GUIAS e a visibilidade das RÉGUAS.
+///
+/// ⚠️ São publicados juntos porque a seção os pinta juntos, mas respondem a perguntas
+/// diferentes: um decide se a guia ATRAI, o outro se ela pode ser MEXIDA (e se a faixa
+/// aparece). Colapsá-los faria esconder a régua desligar o ímã, que é o oposto do desejado.
+pub fn set_current_guides(snap: bool, rulers: bool) {
+    CURRENT_SNAP_GUIDES.with(|c| c.set(snap));
+    CURRENT_RULERS.with(|c| c.set(rulers));
+}
+
+/// Whether snapping to document guides is on this frame.
+pub(crate) fn current_snap_guides() -> bool {
+    CURRENT_SNAP_GUIDES.with(|c| c.get())
+}
+
+/// Whether the canvas rulers are on screen this frame.
+pub(crate) fn current_rulers() -> bool {
+    CURRENT_RULERS.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

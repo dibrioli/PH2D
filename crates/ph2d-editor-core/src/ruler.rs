@@ -235,6 +235,22 @@ pub fn world_at(view: &GridView, screen: f32, axis: RulerAxis) -> f64 {
     })
 }
 
+/// Quantas unidades de mundo vale UM pixel, ao longo de uma régua. É o que converte a
+/// tolerância de agarrar uma guia (um número de pixels, porque é o dedo que a define) para a
+/// régua em que as guias vivem.
+#[must_use]
+pub fn world_per_px(view: &GridView, axis: RulerAxis) -> f64 {
+    let (bounds, ppm_y) = world_bounds(view);
+    let ppm = match axis {
+        RulerAxis::Top => view.window_w / (bounds.right - bounds.left),
+        RulerAxis::Left => ppm_y,
+    };
+    if ppm.abs() < f32::EPSILON {
+        return 0.0;
+    }
+    f64::from(1.0 / ppm)
+}
+
 /// Um traço da régua: **onde** na tela, **que** valor de mundo, e se leva rótulo.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Tick {

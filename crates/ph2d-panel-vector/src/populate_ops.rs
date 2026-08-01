@@ -161,6 +161,10 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_SNAP_PATH_ON);
     button(store, ids::VECTOR_SNAP_CROSS_OFF);
     button(store, ids::VECTOR_SNAP_CROSS_ON);
+    button(store, ids::VECTOR_SNAP_GUIDES_OFF);
+    button(store, ids::VECTOR_SNAP_GUIDES_ON);
+    button(store, ids::VECTOR_RULERS_OFF);
+    button(store, ids::VECTOR_RULERS_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ids::VECTOR_FILL_KIND_SOLID);

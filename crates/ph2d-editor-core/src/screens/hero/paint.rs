@@ -154,6 +154,22 @@ pub fn paint_hero_screen(
         }
         crate::grid_snap::render::paint(scene, &view, &state_for_paint, hero.theme);
     }
+    // O canvas que ESTE paint resolveu, para quem trata ponteiro (o gesto da régua) ler o
+    // mesmo retângulo — o irmão do `last_viewport`, e pelo mesmo motivo.
+    hero.last_canvas = layout.canvas;
+    // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
+    // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
+    // O zero é a origem da GRADE — um número, dois consumidores.
+    if hero.view.rulers_visible
+        && let Some(view) = hero.grid.view
+    {
+        let view = crate::grid::GridView {
+            canvas: layout.canvas,
+            ..view
+        };
+        let origin = hero.grid.snap_state.active_origin();
+        crate::ruler::paint_rulers(scene, &view, origin, text_system, hero.theme);
+    }
     // M14.4c: the legacy mockup selection marquee draws a fixed-size
     // dashed rect at the CANVAS center in screen pixels — it has no
     // world-space coupling and so doesn't follow pan/zoom. Skip it

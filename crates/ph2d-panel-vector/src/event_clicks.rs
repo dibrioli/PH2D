@@ -151,6 +151,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_SNAP_PATH_ON
         || id == ids::VECTOR_SNAP_CROSS_OFF
         || id == ids::VECTOR_SNAP_CROSS_ON
+        || id == ids::VECTOR_SNAP_GUIDES_OFF
+        || id == ids::VECTOR_SNAP_GUIDES_ON
+        || id == ids::VECTOR_RULERS_OFF
+        || id == ids::VECTOR_RULERS_ON
         || id == ids::VECTOR_ARRANGE_DUPLICATE
         || id == ids::VECTOR_ARRANGE_TO_BACK
         || id == ids::VECTOR_ARRANGE_BACKWARD

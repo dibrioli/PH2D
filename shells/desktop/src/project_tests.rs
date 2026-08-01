@@ -32,6 +32,7 @@ fn empty_state() -> ProjectState {
         world: WorldSnapshot::new(),
         vec: VecScene::new(),
         flip: ph2d_flip::FlipDoc::new(),
+        guides: ph2d_guides::GuideSet::default(),
     }
 }
 
@@ -308,6 +309,7 @@ fn project_file_round_trips_through_postcard() {
         world: WorldSnapshot::new(),
         vec,
         flip,
+        guides: ph2d_guides::GuideSet::default(),
     };
     // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
     // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja

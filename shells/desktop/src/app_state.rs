@@ -123,6 +123,13 @@ pub(crate) struct AppGfx {
     /// Vello compartilhada. Fase 0 = cena-demo (prova o seam ponta-a-ponta);
     /// Fase 1 = dirigida pelas ferramentas de desenho.
     pub(crate) vec_scene: ph2d_vec_scene::VecScene,
+    /// As **GUIAS** do documento (plano 25 §9) — as linhas que o artista arrasta da régua.
+    ///
+    /// Vivem AQUI, ao lado da geometria, porque viajam no [`crate::undo::ProjectState`]: é isso
+    /// que lhes dá undo e save de graça, pelo mesmo diff que cobre o mundo, o vetor e o Flip.
+    /// Não são entidades ECS de propósito — uma guia herdaria Hierarquia, gizmo, marquee e
+    /// z-order, e cada um deles seria um comportamento a SUPRIMIR.
+    pub(crate) guides: ph2d_guides::GuideSet,
     /// ADR-0114: cena Flip (animação quadro-a-quadro). Documento puro
     /// (`ph2d-flip`); cada objeto vira uma entidade na Hierarquia via
     /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do
@@ -1095,6 +1102,8 @@ pub(crate) struct App {
     pub(crate) vec_snap_targets: ph2d_vec_edit::SnapTargets,
     /// Smart guides to draw this frame (cleared at Up / when nothing snapped).
     pub(crate) vec_snap_guides: Vec<ph2d_vec_render::Guide>,
+    /// O arrasto de guia em curso (plano 25 §9). Runtime-only: um gesto não é documento.
+    pub(crate) guide_drag: Option<crate::guide_gesture::GuideDrag>,
     /// Edição de texto em curso (modo `DrawMode::Text`): o ponto de inserção, o
     /// conteúdo e os glyphs já na cena. `None` = sem cursor de texto ativo.
     pub(crate) vec_text_edit: Option<crate::vec_text::VecTextEdit>,

@@ -29,7 +29,8 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
-| **portar QUALQUER COISA do SculptGL (é aqui)** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) |
+| **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[03.8-HANDOFF-implementador-W4]] |
+| **portar QUALQUER COISA do SculptGL** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) |
 | **saber o que vem agora** | [[06.1-Waves-riscos-e-alvos]] |
 | entender a decisão inteira | `ADR-0150` → [[02.1-Representacao-malha-primaria]] |
 | **saber onde o motor roda (CPU × GPU)** | [[03.5-Onde-roda-o-motor]] |
@@ -87,8 +88,12 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 - **[[HANDOFF_INTEGRACAO_line_sculpt3d_W1_2026-07-30]]** · `handoff` `integracao` —
   **O que a W1 entregou e o que ela MEDIU.** *Identidade da linha, o que foi tocado fora do
   módulo, os símbolos que podem colidir, e a tabela K1/K2 com a decisão que ficou para o Enio.*
-- **[[03.6-HANDOFF-implementador-W1]]** · `handoff` `plano` — **O briefing para COMEÇAR.** *O bloco a
-  colar, a ordem dos marcos, as decisões que não se re-litigam e o formato do reporte.*
+- **[[03.8-HANDOFF-implementador-W4]]** · `handoff` `plano` `fidelidade` — **O briefing de QUEM ASSUME A
+  LINHA AGORA.** *Onde você está e o `cd` que não se pula; o que já foi feito e não se refaz; e os seis
+  itens da W4 com `arquivo:linha`, a cura, o gate red-first com o número que ele dá HOJE, a fixture e a
+  armadilha de cada um — os seis auditados por um cético, os seis **corrigidos**.*
+- **[[03.6-HANDOFF-implementador-W1]]** · `handoff` `plano` — ⚠️ **HISTÓRICO** (a W1 fechou e integrou).
+  *O briefing original: o bloco a colar, a ordem dos marcos e o formato do reporte.*
 
 ### 04 — Ferramentas
 

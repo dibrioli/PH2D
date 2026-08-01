@@ -11,44 +11,40 @@ use ph2d_editor::InspectorPhysicsInfo;
 /// The WRITE half, in the sibling module. Re-exported so callers are unchanged.
 pub(crate) use super::inspector_physics_apply::apply_physics_edit;
 
+/// **O nome do corpo ancestral mais próximo** — o dono que adotaria uma peça, ou
+/// que já é dono dela (W-Compound / W-PartFace); vazio se não há nenhum.
+///
+/// ⚠️ Só faz sentido para uma entidade que NÃO é corpo: um objeto que já é corpo
+/// não vira peça de ninguém.
+///
+/// ⚠️ **O WALK delega** a `ph2d_physics_ecs::owner_body` — a MESMA função que a
+/// ponte usa para decidir onde pendurar a forma. Este nome aparece no rótulo de
+/// *Add Shape to X* e no cabeçalho da face de peça, então nomear um dono
+/// diferente daquele que o solver escolheu seria o painel mentindo com convicção.
+fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
+    ph2d_physics_ecs::owner_body(world, e).map_or_else(String::new, |p| {
+        world
+            .get::<ph2d_ecs::Name>(p)
+            .map_or_else(|| "the body above".to_string(), |n| n.as_str().to_string())
+    })
+}
+
 /// Build the §11 Physics Body snapshot (ADR-0131 D8).
 ///
 /// **Returns `Some` for a Transform-bearing entity even when it has NO
-/// body** — `has_body: false` is what lets the section offer the Add button.
-/// Without that, physics would be authorable only on entities that already
-/// have physics, which is nowhere.
-// O 8º argumento é o `rig_parts` da W-Rig. Esta função é uma PROJEÇÃO — cada
-// argumento é um fato que só a shell enxerga (a seleção, o relógio, a árvore) e
-// que o painel não pode derivar; empacotá-los num struct só moveria a mesma lista
-// para outro arquivo, com um sítio de construção a mais para alguém esquecer.
-#[allow(clippy::too_many_arguments)]
-/// **O nome do corpo ancestral mais próximo** — o dono que adotaria uma peça
-/// (W-Compound), ou vazio se não há nenhum.
+/// body** — `has_body: false` é o que deixa a seção oferecer o botão *Add*, e
+/// (desde a W-PartFace) `has_collider` sem `has_body` é o que a manda pintar a
+/// face de **PEÇA**. Sem isso, física seria autorável só onde já há física, ou
+/// seja em lugar nenhum.
 ///
-/// ⚠️ Só faz sentido para uma entidade que NÃO é corpo (a face vazia do §11): um
-/// objeto que já é corpo não vira peça de ninguém. E o walk pula o pai literal
-/// quando ele é só organização — a mesma transparência de GRUPO do `rig_edges`,
-/// porque pôr as formas de uma peça dentro de uma pasta não pode desligá-las.
-fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
-    let mut cur = world
-        .get::<ph2d_ecs::ChildOf>(e)
-        .map(ph2d_ecs::ChildOf::parent);
-    while let Some(p) = cur {
-        if world.get::<ph2d_physics_ecs::RigidBody>(p).is_some() {
-            return world
-                .get::<ph2d_ecs::Name>(p)
-                .map_or_else(|| "the body above".to_string(), |n| n.as_str().to_string());
-        }
-        cur = world
-            .get::<ph2d_ecs::ChildOf>(p)
-            .map(ph2d_ecs::ChildOf::parent);
-    }
-    String::new()
-}
-
-/// ⚠️ Oito argumentos: cada um é um fato que só a SHELL tem (a seleção, o gesto
-/// armado, o alcance do bake). Empacotá-los num struct seria um tipo que existe
-/// só para atravessar esta chamada.
+/// ⚠️ **Cada argumento é um fato que só a SHELL enxerga** (a seleção, o gesto
+/// armado, o alcance do bake, a árvore). Empacotá-los num struct só moveria a
+/// mesma lista para outro arquivo, com um sítio de construção a mais para alguém
+/// esquecer de preencher.
+///
+/// ⚠️ Este doc-comment estava **ÓRFÃO** desde antes desta wave — colado no
+/// `nearest_body_name` abaixo, afirmando *"o 8º argumento"* de uma função que já
+/// tinha outros. Reancorado aqui.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_physics_info(
     world: &World,
@@ -56,6 +52,11 @@ pub(crate) fn build_physics_info(
     join_count: u8,
     // W-Rig: partes que um rig tocaria; `0` = o botão não é oferecido.
     rig_parts: u8,
+    // W-PartFace: quantas PEÇAS estão penduradas neste corpo. Só a shell pode
+    // contar (precisa de uma query sobre o mundo inteiro — não há índice de
+    // filhos no ECS), e sem o número um corpo composto é indistinguível de um
+    // de forma única quando o contorno está desligado.
+    part_count: u8,
     join_draw_armed: bool,
     join_kind_tag: u8,
     bake_range: (f32, f32),
@@ -132,12 +133,21 @@ pub(crate) fn build_physics_info(
     // Optional AreaFalloff (W-AreaFalloff) — quanto o empurrão perde do centro à borda,
     // sétimo componente da mesma zona e pela mesma razão. Mesma condição de Sensor.
     let area_falloff = world.get::<AreaFalloff>(entity).map_or(0.0, |f| f.0);
-    let (Some(rb), Some(col)) = (rb, col) else {
+    // ⚠️ **A pergunta é pelo COLLIDER, não pelo par** (W-PartFace): um `Collider`
+    // sem `RigidBody` é uma **PEÇA** — mais uma forma do corpo ancestral —, e ela
+    // é simulada. Enquanto esta linha exigia os dois, toda peça caía na face
+    // vazia, cujo texto diz *"Not simulated"* e cujos números são SEMENTES:
+    // medido, uma peça autorada como barra `0,17 × 0,91` com offset
+    // `[0,13, −0,07]`, densidade `3,5` e camada `2` era mostrada como caixa
+    // `0,50 × 0,50`, offset `[0, 0]`, densidade `1,00`, camada `0`.
+    let Some(col) = col else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
         return Some(InspectorPhysicsInfo {
             entity_bits,
             has_body: false,
+            has_collider: false,
+            part_count: 0,
             bake_seconds,
             bake_start_seconds,
             kind_tag: 0,
@@ -217,8 +227,16 @@ pub(crate) fn build_physics_info(
     };
     Some(InspectorPhysicsInfo {
         entity_bits,
-        has_body: true,
-        kind_tag: rb.kind.tag(),
+        has_body: rb.is_some(),
+        has_collider: true,
+        // ⚠️ Só um CORPO tem peças penduradas nele; numa peça o número é dela
+        // mesma, e uma peça não hospeda peças (o walk sobe até o corpo, e ele é
+        // o dono de todas).
+        part_count: if rb.is_some() { part_count } else { 0 },
+        // ⚠️ Não é lido na face de peça (o §11 nunca pinta os chips de Body sem
+        // corpo, e o event handler os gateia em `has_body`), então o `0` aqui é
+        // um valor de exibição que ninguém consulta — não um `Dynamic` afirmado.
+        kind_tag: rb.map_or(0, |b| b.kind.tag()),
         shape_tag,
         radius,
         half_x,
@@ -227,10 +245,17 @@ pub(crate) fn build_physics_info(
         restitution: col.restitution,
         friction: col.friction,
         layer: col.layer,
-        join_count,
+        // ⚠️ Uma entidade SEM corpo não pode ser metade de um joint, seja qual
+        // for a seleção — a mesma razão pela qual a face vazia zera este número.
+        join_count: if rb.is_some() { join_count } else { 0 },
         rig_parts,
-        // Um corpo não é peça de ninguém (docs do `nearest_body_name`).
-        part_owner: String::new(),
+        // Um corpo não é peça de ninguém (docs do `nearest_body_name`); uma peça
+        // NOMEIA o dono no cabeçalho da própria face.
+        part_owner: if rb.is_some() {
+            String::new()
+        } else {
+            nearest_body_name(world, entity)
+        },
         join_draw_armed,
         join_kind_tag,
         bake_seconds,
@@ -308,7 +333,7 @@ mod tests {
             if marked {
                 world.entity_mut(e).insert(AreaForceWorldAxes);
             }
-            build_physics_info(&world, e.to_bits(), 0, 0, false, 0, (0.0, 5.0), 0)
+            build_physics_info(&world, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
                 .expect("a zone has a Transform, so §11 describes it")
                 .force_world_axes
         };

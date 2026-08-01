@@ -83,6 +83,10 @@ pub(crate) mod inspector_joint_world;
 #[path = "inspector_joint_world_tests.rs"]
 mod inspector_joint_world_tests;
 mod inspector_ordering;
+/// W-PartFace: o que o §11 responde sobre uma PEÇA (um filho com `Collider` e
+/// sem `RigidBody`) — a volta que a W-Compound não deu.
+#[cfg(test)]
+mod inspector_part_tests;
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
 // (`crate::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig

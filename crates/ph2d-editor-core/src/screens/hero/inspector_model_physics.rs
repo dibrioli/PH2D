@@ -111,7 +111,38 @@ pub struct InspectorPhysicsInfo {
     /// há nenhum. O rótulo do botão o NOMEIA: *"Add Shape to Torso"* diz de quem a
     /// peça vai ser, que é a única coisa que o artista não consegue inferir da
     /// tela (um collider é invisível, e a hierarquia pode ter um grupo no meio).
+    ///
+    /// ⚠️ Preenchido para qualquer entidade que **não** seja corpo — tanto a que
+    /// ainda não tem forma (e a porta *Add Shape* a oferece) quanto a que já É
+    /// peça (e a face dela NOMEIA o dono, W-PartFace). Um corpo não é peça de
+    /// ninguém, então nele o campo é vazio.
     pub part_owner: String,
+    /// Esta entidade carrega um `Collider` **agora**?
+    ///
+    /// ⚠️ **Não é o complemento de [`has_body`]**, e é essa diferença que a
+    /// W-PartFace existe para exprimir: um `Collider` SEM `RigidBody` é uma
+    /// **peça** — mais uma forma do corpo ancestral (W-Compound) —, e antes deste
+    /// campo o §11 a mandava para a face vazia, que diz *"Not simulated"*. A
+    /// medição do defeito: uma peça autorada como barra `0,17 × 0,91` com offset
+    /// `[0,13, −0,07]`, densidade `3,5` e camada `2` era mostrada como caixa
+    /// `0,50 × 0,50`, offset `[0, 0]`, densidade `1,00`, camada `0` — as sementes
+    /// da face vazia, isto é **nada** do que o artista autorou.
+    ///
+    /// As três faces são, então: corpo (`has_body`), **peça ou forma solta**
+    /// (`has_collider` sem corpo) e vazia (nenhum dos dois).
+    ///
+    /// [`has_body`]: InspectorPhysicsInfo::has_body
+    pub has_collider: bool,
+    /// Quantas PEÇAS este corpo tem penduradas nele (W-PartFace) — filhos que
+    /// carregam `Collider` e não `RigidBody`, com este corpo como ancestral mais
+    /// próximo. `0` num corpo de forma única.
+    ///
+    /// ⚠️ Existe porque uma peça é **invisível dos dois lados**: com o contorno
+    /// desligado, nada na tela nem no §11 dizia que aquele corpo era composto. O
+    /// número vive na ÁRVORE (o mesmo walk que decide de quem a peça é), nunca no
+    /// solver — perguntá-lo à ponte seria uma segunda resposta para *de quem é
+    /// esta forma*.
+    pub part_count: u8,
     /// **The canvas drawing gesture is ARMED** (the *Draw Joint* button paints
     /// pressed). Runtime state of the shell, mirrored for the painter.
     pub join_draw_armed: bool,

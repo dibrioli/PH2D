@@ -786,12 +786,36 @@ pub(super) fn publish(
         }
     };
 
+    // W-PartFace: quantas PEÇAS estão penduradas no objeto selecionado — filhos
+    // que carregam `Collider` e não `RigidBody`.
+    //
+    // ⚠️ **Só a shell pode contar**, e é por isso que o número atravessa a
+    // fronteira em vez de o painel o derivar: `ChildOf` é a única aresta do ECS,
+    // então não há como DESCER a árvore — cada candidato tem de SUBIR até achar
+    // um corpo, e a lista de candidatos vem de uma query sobre o mundo inteiro.
+    // Mesma classe do `rig_parts` logo acima, e o mesmo custo por frame.
+    let part_count = hero.gizmo.selection.map_or(0, |b| {
+        let owner = ph2d_ecs::Entity::from_bits(b);
+        let mut q = sim.world_mut().query_filtered::<ph2d_ecs::Entity, (
+            bevy_ecs::query::With<ph2d_physics_ecs::Collider>,
+            bevy_ecs::query::Without<ph2d_physics_ecs::RigidBody>,
+        )>();
+        let candidates: Vec<ph2d_ecs::Entity> = q.iter(sim.world()).collect();
+        u8::try_from(ph2d_physics_ecs::count_parts(
+            sim.world(),
+            owner,
+            candidates,
+        ))
+        .unwrap_or(u8::MAX)
+    });
+
     let inspector_physics = hero.gizmo.selection.and_then(|b| {
         super::inspector_physics::build_physics_info(
             sim.world(),
             b,
             join_count,
             rig_parts,
+            part_count,
             join_draw_armed,
             join_kind_tag,
             bake_range,

@@ -29,16 +29,17 @@ mod paint_breadcrumb;
 mod paint_stamp;
 #[path = "paint_wire.rs"]
 mod paint_wire;
+#[path = "paint_wires.rs"]
+mod paint_wires;
 use paint_stamp::draw_preview;
 pub(crate) use paint_wire::{
     detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints, wire_hit_polyline,
     wires_crossed,
 };
+use paint_wires::{WirePass, draw_wires};
 
 use crate::geom::{self, View, card_h, socket_center};
-use crate::hits::{
-    bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, push_wire_hits, register_hits,
-};
+use crate::hits::{bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, register_hits};
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
 };
@@ -101,6 +102,7 @@ const MENU_ROW_TEXT_Y: f32 = 3.0; // LITERAL-PX-OK: row label y-inset
 const MENU_ROW_SIZE: f32 = 13.0; // LITERAL-PX-OK: row label font size
 const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
 
+/// que uma delas ganhasse um caso especial.
 pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let rect = ctx.layout.motion_graph;
     let theme = ctx.host.theme();
@@ -181,33 +183,21 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let focus =
         (!state.selected.is_empty()).then(|| crate::flow::influence_set(&snap, &state.selected));
     let veiled = |id: u32| !live.contains(&id) || focus.as_ref().is_some_and(|f| !f.contains(&id));
-    for e in &snap.edges {
-        if detached == Some((e.to_node, e.to_port)) {
-            continue;
-        }
-        let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
-        // A SELECTED wire wears the hover highlight persistently — the visible affordance for the
-        // click-then-Delete idiom (the alt-click Disconnect had none). Hover is transient (under
-        // the cursor), so off-cursor only the selected wire stays lit.
-        let is_selected = state.selected_wire == Some((e.to_node, e.to_port));
-        // A wire is drawn full-strength only if it is live AND (with a selection up) inside the
-        // influence. The wire and the cards it joins fade together — the whole point of the
-        // reading is that a region of the canvas recedes as ONE region.
-        let bright = crate::flow::edge_is_live(&live, e.to_node)
-            && focus
-                .as_ref()
-                .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
-        draw_wire(
-            ctx,
-            &snap,
-            e,
-            &view,
+    draw_wires(
+        WirePass {
+            state,
+            snap: &snap,
+            view: &view,
             theme,
-            is_hovered || is_selected,
-            bright,
-        );
-        push_wire_hits(&mut hits, &snap, e, &view, rect);
-    }
+            rect,
+            hovered,
+            detached,
+            live: &live,
+            focus: &focus,
+        },
+        ctx,
+        &mut hits,
+    );
     // Cards, collecting body hits as we draw them. A card whose rect does not touch the panel is
     // SKIPPED entirely: the clip layer already hides it, but Vello still has to bound and bin
     // every path inside it — panning a big graph would pay for cards nobody can see. (Its hit

@@ -166,5 +166,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::guide_smoke::frame(app, f);
         return true;
     }
+    // A cena da SIMETRIA de desenho (=46, plano 25 §9, a W6.3) — irmã `symmetry_smoke`. Mesma
+    // disciplina: dá o material (um meio-perfil, uma pétala, um controle) e **não arma modo
+    // nenhum** — a simetria nasce desarmada porque esse é o default do produto.
+    if level == 46 {
+        crate::symmetry_smoke::frame(app, f);
+        return true;
+    }
     false
 }

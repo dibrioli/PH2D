@@ -256,6 +256,8 @@ mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
 mod symmetry_live;
+/// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
+mod symmetry_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;

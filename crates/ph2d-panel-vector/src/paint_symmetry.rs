@@ -34,7 +34,10 @@ pub(crate) const SEGMENTS_OFFSET: f32 = MIN_SEGMENTS as f32;
 /// O track `0..=1` que corresponde a `n` segmentos.
 #[must_use]
 pub(crate) fn segments_to_track(n: u32) -> f32 {
-    (n.clamp(MIN_SEGMENTS, MAX_SEGMENTS) - MIN_SEGMENTS) as f32 / SEGMENTS_SCALE
+    // Os dois limites são consts `u32` do vocabulário: NaN é impossível por TIPO, e a ordem
+    // deles é a MESMA que o `SymmetrySpec::segments()` honra — as duas leem a mesma faixa.
+    let n = n.clamp(MIN_SEGMENTS, MAX_SEGMENTS); // CLAMP-OK: bounds são consts `u32`
+    (n - MIN_SEGMENTS) as f32 / SEGMENTS_SCALE
 }
 
 impl BodyCtx<'_> {

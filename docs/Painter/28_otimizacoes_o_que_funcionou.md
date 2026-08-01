@@ -5419,3 +5419,70 @@ o ter medido, que é exatamente o que um kill de wall-clock existe para fazer.
 **Fica:** o split instrumentado (`cfg(test)`, custo zero no produto) e a sonda
 `measure_how_much_of_the_composite_needs_the_engine` — quem quiser reabrir a
 frente encontra o número, e o motivo pelo qual ele não basta.
+
+---
+
+## §5.58 — S3, degrau 3b: a premissa RE-MEDIDA, e a decomposição que decide por onde começar (2026-08-01)
+
+O §5.28 fechou dizendo *"os pré-requisitos estão todos medidos e gateados; o que sobra é a troca"*.
+Antes de construí-la, a premissa foi re-medida — e ela **moveu em dois lugares**.
+
+### O preço, hoje, na máquina calma (4096², impasto)
+
+| item que o S3 mata | §5.28 | **hoje** |
+|---|---|---|
+| fold (`commit_stroke_height`) | 9,25 ms | **11,92 ms** |
+| fork do canvas no pen-down | 3,16 | **~3,2** |
+| `free` da geração anterior | 2,4–5,0 | 2,4–5,0 |
+| **total por traço** | — | **~17–20 ms** |
+
+⚠️ **E a nota que eu tinha citado ao Enio (*"~21 ms, pen-down 11,7 + pen-up 9,2"*) estava velha:** os
+11,7 são de ANTES da §5.15, que paralelizou a porta de fork; hoje o fork do canvas custa **3,2**. O
+total honesto é o mesmo em ordem de grandeza, mas **a maior fatia é o FOLD, não o pen-down** — e é isso
+que muda por onde a wave começa.
+
+### O censo de donos separa dois regimes que a nota tratava como um
+
+`who_holds_the_planes_when_a_stroke_begins`, hoje:
+
+```text
+REGIME (2 traços commitados, nenhum gesto)   canvas 2 · heights 2 · covers 2 · mats 2
+DENTRO do gesto (logo após o pen-down)       canvas 1 · heights 4 · covers 4 · mats 4
+  - sem o snapshot de pen-down               canvas 1 · heights 3 · covers 3 · mats 3
+  - …e sem o histórico                       canvas 1 · heights 1 · covers 1 · mats 1
+```
+
+⇒ **O canvas já está em UM dono dentro do gesto** (o pen-down forkou uma vez e o tool ficou sozinho);
+quem está em **quatro** é o RELEVO. E o fold — 11,92 ms, o maior item — é exatamente
+`fork_covers`/`fork_mats`/`fork_heights` sobre esses quatro donos: **9,61 ms medidos hoje** pela porta
+do produto (covers 0,476 · heights 3,291 · mats 5,847).
+
+⇒ **A wave começa pelo RELEVO, não pelo canvas.** É ~9,6 dos ~17-20 ms, o escopo é menor, e o journal
+**já descreve o relevo de 100 % dos passos** (§5.29: 302 de 302 DESCREVEM, 0 incompletos, 0 divergências).
+
+### O desenho, e a peça que reduz o tamanho da troca
+
+A leitura ingênua da identidade do §5.28 (`cursor[i] == journal.get(i).unwrap_or(vivo[i])`) sugere
+**materializar** o `before` a partir do journal — e isso seria **trocar seis por meia dúzia**: a
+materialização produz um `Vec` novo, que é a cópia que se queria evitar.
+
+⚠️ **O `split` não precisa do `before` MATERIALIZADO — ele precisa do DELTA**, e o lado `before` do
+delta **é literalmente o conteúdo do journal**: os bytes velhos dos tiles que o passo tocou. Então:
+
+* `stroke_undo` **não guarda os planos de relevo** — nem elididos, nem clonados;
+* no commit, o delta sai de `(journal, plano vivo)` **direto**, sem passar por um snapshot completo;
+* no undo, a materialização parte do **plano VIVO** (a identidade do 3a: o vivo **é** o cursor em 92 de
+  92, e a absorção a estabelece nos DOIS consumidores desde a §5.24);
+* o cursor larga os planos de relevo pela mesma razão.
+
+⚠️ **A promoção do journal para release NÃO pode landar sozinha:** ela paga **captura + fork** até o
+fork morrer, o que é regressão pura. A troca é **atômica por plano** (§5.14: remover um dono de quatro
+não compra milissegundo nenhum) e por isso **os três planos de relevo saem juntos**.
+
+### O que fica pronto para o próximo degrau
+
+Tudo o que a troca consome já existe e está gateado: o `TileJournal` com captura paralela e caminho
+contíguo (§5.25), a proveniência `journal_since` que responde *"este journal descreve ESTE passo?"*
+(§5.26), o oráculo `absent` vs `incomplete` (§5.29), a absorção nos dois consumidores (§5.24) e a
+identidade do cursor medida em 233/233 (§5.28). **O que falta é escrever a troca** — uma edição do
+ciclo de vida do `ModelSnapshot`, não uma otimização local.

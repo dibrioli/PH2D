@@ -192,3 +192,83 @@ fn the_upload_bbox_is_a_rect_and_a_corner_reading_gives_nonsense() {
          errada voltaria a dar um numero plausivel e o gate perderia os dentes"
     );
 }
+
+/// **O QUE A FATORAÇÃO DA LINHA POUPA NO AMOSTRADOR** — A/B costas-com-costas.
+///
+/// ⚠️ **A tabela do produto não pôde decidir isto, e o motivo fica registrado:**
+/// as duas corridas de verificação caíram com `load average 24,88` (três
+/// `rustc` de outras linhas a 704%/360%/335%), e nelas a MESMA célula deu
+/// 134,4 ms e 42,7 ms. *Nenhum número absoluto desta máquina significa algo com
+/// o load acima de ~5* — o corolário que o doc 28 §5.49 já escreveu.
+///
+/// A saída é a do §5.46: **cronometrar as duas rotas na MESMA corrida, sobre o
+/// MESMO plano**, o que torna a carga um fator comum. A rota velha é a
+/// [`SampleU::at`] congelada sob `cfg(test)`; a nova é `row(py).at(px)`.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_what_hoisting_the_row_saves_in_the_upsampler() {
+    use super::wetpaint::grid_map::SampleU;
+    const GW: usize = 512;
+    const GH: usize = 288;
+    const REPS: usize = 5;
+
+    println!("\n  O AMOSTRADOR DE UPSAMPLE: por-pixel x por-LINHA (A/B na mesma corrida)\n");
+    println!(
+        "    {:>6} {:>14} {:>14} {:>10}   {:>12}",
+        "razao", "por-pixel ms", "por-linha ms", "razao", "ns/px"
+    );
+
+    let pig: Vec<u8> = (0..GW * GH * 4)
+        .map(|i| {
+            let cell = i / 4;
+            match i % 4 {
+                0 => (cell * 7 % 251) as u8,
+                1 => (cell * 31 % 241) as u8,
+                2 => (cell * 97 % 239) as u8,
+                _ => (cell * 13 % 256) as u8,
+            }
+        })
+        .collect();
+
+    for ratio in [2u8, 4, 8] {
+        let s = SampleU::new(ratio, GW, GH);
+        let (pw, ph) = (GW * usize::from(ratio) / 4, GH * usize::from(ratio) / 4);
+        let (mut old_ms, mut new_ms) = (Vec::new(), Vec::new());
+        for _ in 0..REPS {
+            // Intercaladas: a carga da maquina cai igual nas duas.
+            let t0 = Instant::now();
+            let mut sink = 0.0f64;
+            for py in 0..ph {
+                for px in 0..pw {
+                    sink += s.at(&pig, px, py)[3];
+                }
+            }
+            old_ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let t1 = Instant::now();
+            let mut sink2 = 0.0f64;
+            for py in 0..ph {
+                let r = s.row(py);
+                for px in 0..pw {
+                    sink2 += r.at(&pig, px)[3];
+                }
+            }
+            new_ms.push(t1.elapsed().as_secs_f64() * 1e3);
+            assert!(
+                (sink - sink2).abs() < 1e-9,
+                "as duas rotas divergiram no acumulado — a fatoracao nao e' exata"
+            );
+        }
+        old_ms.sort_by(f64::total_cmp);
+        new_ms.sort_by(f64::total_cmp);
+        let (o, n) = (old_ms[REPS / 2], new_ms[REPS / 2]);
+        println!(
+            "    {ratio:>5}:1 {o:>13.3} {n:>13.3} {:>9.2}x   {:>11.2}",
+            o / n.max(1e-9),
+            n * 1e6 / (pw * ph) as f64,
+        );
+    }
+    println!(
+        "\n    Leitura: a razao e' quanto a metade-`y` custava por PIXEL. O composite do\n    \
+         produto paga isto uma vez por pixel do retangulo sujo, em toda razao > 1."
+    );
+}

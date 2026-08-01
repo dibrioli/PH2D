@@ -333,3 +333,62 @@ fn the_upsample_weights_are_smooth_at_the_cell_seams() {
         prev = v;
     }
 }
+
+/// **A LINHA HOISTED É BIT A BIT A ROTA QUE SHIPAVA.**
+///
+/// ⚠️ O composite escreve o canvas que o artista vê, então a fatoração da
+/// metade-`y` só é aceitável se for **byte-exata** — e ela é por construção (as
+/// mesmas operações, na mesma ordem, sobre os mesmos `f64`; o que saiu do laço é
+/// um valor que não mudava). Este gate afirma isso contra a
+/// [`SampleU::at`] CONGELADA sob `cfg(test)`.
+///
+/// ⚠️ **O campo é ESTRUTURADO de propósito.** Um plano de pigmento chato faria
+/// qualquer amostragem concordar, e o gate seria verde por vácuo — a lição que
+/// o `FlowRowSampler` do doc 28 §5.42 já pagou. Aqui cada célula tem cor e
+/// alpha variando em duas frequências diferentes, então os quatro cantos e os
+/// dois `continue` de peso zero são de fato exercitados.
+///
+/// Mutação que sangra: trocar a ordem dos dois laços (`x` por fora), ou somar
+/// `row1` antes de `row0` — a soma em `f64` não é associativa e a igualdade
+/// bit a bit morre.
+#[test]
+fn the_hoisted_row_sampler_is_bit_identical_to_the_frozen_route() {
+    for ratio in [1u8, 2, 3, 4, 7, 8] {
+        let (gw, gh) = (37usize, 23usize);
+        // Cor e alpha em frequências diferentes: nenhum canto é redundante.
+        let pig: Vec<u8> = (0..gw * gh * 4)
+            .map(|i| {
+                let cell = i / 4;
+                match i % 4 {
+                    0 => (cell * 7 % 251) as u8,
+                    1 => (cell * 31 % 241) as u8,
+                    2 => (cell * 97 % 239) as u8,
+                    _ => (cell * 13 % 256) as u8,
+                }
+            })
+            .collect();
+        let s = SampleU::new(ratio, gw, gh);
+        let (pw, ph) = (gw * usize::from(ratio), gh * usize::from(ratio));
+        let mut seen_nonzero = false;
+        for py in 0..ph.min(40) {
+            let srow = s.row(py);
+            for px in 0..pw.min(40) {
+                let a = s.at(&pig, px, py);
+                let b = srow.at(&pig, px);
+                assert_eq!(
+                    a.map(f64::to_bits),
+                    b.map(f64::to_bits),
+                    "razao {ratio}, pixel ({px},{py}): a linha hoisted divergiu \
+                     da rota congelada — o composite escreve o canvas do \
+                     artista, entao a fatoracao so vale byte-exata"
+                );
+                seen_nonzero |= a.iter().any(|v| *v != 0.0);
+            }
+        }
+        assert!(
+            seen_nonzero,
+            "razao {ratio}: o campo amostrado saiu todo zero — o gate estaria \
+             comparando dois nadas"
+        );
+    }
+}

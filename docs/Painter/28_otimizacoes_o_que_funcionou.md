@@ -5117,3 +5117,81 @@ mediu como **honestamente limitado pela pegada** (~30 ns/r², plano de raio 60 a
 400) e cuja alavanca embarcada é o **`Grid Size`** (0,34× na razão 2, 0,22× na 4
 — medido pela porta do artista). Um pincel no topo do slider a `Grid Size 1`
 custa 17 fps *por construção*, e o slider está sempre visível.
+
+---
+
+## §5.55 — O item 2 (K–M) DISSOLVEU, e a tabela mostrou o que eu não procurava (2026-08-01)
+
+O CLAUDE.md nomeava o K–M como *"o único regime que segue work-limited — **4,75×
+o passo**, 67,9 ms, 14,7 Hz a 4096²/razão 1"*. Medido hoje pela porta do produto
+(`measure_what_km_costs_at_each_grid_ratio`, duas corridas limpas):
+
+| razão | passo off | passo ON | **custo do K–M** |
+|---|---|---|---|
+| 1:1 | 15,8 / 16,6 | 19,1 / 18,8 | **1,21× / 1,13×** |
+| 2:1 | 4,5 / 4,5 | 5,7 / 5,0 | **1,28× / 1,10×** |
+| 4:1 | 1,4 / 1,3 | 1,7 / 1,9 | **1,17× / 1,42×** |
+| 8:1 | 0,8 / 0,8 | 0,9 / 0,8 | **1,08× / 1,09×** |
+
+**1,1-1,4×, não 4,75×.** A tabela de transferência sRGB (doc 24) já o levara de
+20-34× para 2-3%, e o solver independente de ordem (ADR-0147) + a decomposição
+do fluxo (§5.46) fecharam o resto. **A nota sobreviveu ao fato**, e foi
+corrigida no CLAUDE.md.
+
+⚠️ **E a PRIMEIRA corrida disse 3,39×** — com uma célula em que a razão 2 ligada
+custava *mais* que a razão 1 ligada, o que é impossível com 4× menos células.
+Não reproduziu. *Um número que não reproduz não é achado, é ruído com casas
+decimais* (§5.13), e repetir custou 20 segundos.
+
+### O que a tabela mostrou sem eu procurar
+
+A coluna do COMPOSITE, estável nas três corridas limpas:
+
+| razão | passo | **composite** |
+|---|---|---|
+| 1:1 | 16,6 ms | **9,4 ms** |
+| 2:1 | 4,5 | **18,5** |
+| 4:1 | 1,3 | **17,6** |
+| 8:1 | 0,8 | **17,0** |
+
+**O composite DOBRA quando a grade fica mais grossa**, e a partir da razão 2 ele
+é ~93% do custo da água. O mecanismo está no desenho: o composite tem duas
+fases — um laço por CÉLULA (que encolhe com `ratio²`) e um laço por **PIXEL**
+(que não encolhe, e que na razão 1 é uma cópia direta e acima dela vira a
+reconstrução smoothstep de quatro cantos).
+
+⇒ **A alavanca do `Grid Size` é limitada pelo composite, não pelo solver.**
+
+### A fatoração que shipou — 1,24×, bit-idêntica
+
+`SampleU::at` recomputava **por pixel** seis grandezas que só dependem de `py`
+(a coordenada, o `floor`, o smoothstep, os dois índices de célula e os dois
+offsets de linha) — e o composite percorre o retângulo **por linhas**, onde `py`
+é constante. É a mesma fatoração que o `FlowRowSampler` fez no `advect` (§5.42),
+e é byte-exata por construção: as mesmas operações, na mesma ordem, sobre os
+mesmos `f64`.
+
+`SampleU::row(py) -> SampleURow` + `SampleURow::at(pig, px)`. A rota antiga ficou
+**CONGELADA sob `cfg(test)`** como oráculo (um `pub` sem chamador seria uma
+segunda resposta esperando alguém chamá-la).
+
+**A/B costas-com-costas na mesma corrida, sobre o mesmo plano:**
+
+| razão | por-pixel | por-linha | **razão** |
+|---|---|---|---|
+| 2:1 | 0,869 ms | 0,702 | **1,24×** |
+| 4:1 | 3,476 | 2,806 | **1,24×** |
+| 8:1 | 13,980 | 11,432 | **1,22×** |
+
+Gate de igualdade **BIT A BIT** contra a rota congelada, em seis razões, sobre um
+campo **estruturado** de propósito (um plano chato faria qualquer amostragem
+concordar — a lição do §5.42); mutação (trocar a ordem dos dois cantos, que é a
+ordem das somas em `f64`) **sangra**. Campo morto `SampleURow::stride` removido —
+os offsets de linha já o embutem.
+
+⚠️ **O NÚMERO DE PRODUTO ESTÁ PENDENTE, e o motivo fica escrito:** as duas
+corridas de verificação caíram com `load average 24,88` (três `rustc` de outras
+linhas a 704%/360%/335%) e a MESMA célula deu **134,4 ms e 42,7 ms**. *Nenhum
+número absoluto desta máquina significa algo com o load acima de ~5* (§5.49). O
+A/B do amostrador é imune porque as duas rotas correm na mesma corrida; o
+composite do produto precisa de uma máquina calma.

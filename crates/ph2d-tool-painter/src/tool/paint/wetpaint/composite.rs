@@ -143,6 +143,8 @@ impl PainterTool {
             .for_each(|(k, row)| {
                 let py = py0 + k;
                 let gb = py * stride;
+                // A metade-`y` do amostrador, resolvida UMA vez por linha.
+                let srow = sampler.row(py);
                 for px in px0..px1 {
                     let lo = px * 4; // dentro da linha
                     let o = gb + lo; // global, para os planos e os gates
@@ -163,7 +165,7 @@ impl PainterTool {
                         // dividir por 255 dá exatamente `pc · pa`, sem passar
                         // pela cor straight (que precisaria dividir pelo alpha
                         // e multiplicar de volta).
-                        let s = sampler.at(pigment, px, py);
+                        let s = srow.at(pigment, px);
                         (
                             [
                                 (s[0] / 255.0) as f32,

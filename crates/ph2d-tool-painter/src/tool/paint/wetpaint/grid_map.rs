@@ -274,6 +274,13 @@ impl SampleU {
     ///
     /// O chamador da rota identidade não passa por aqui — ele lê os quatro
     /// bytes direto, e é isso que faz a razão 1 não ter uma segunda resposta.
+    /// ⚠️ **A rota que SHIPAVA, congelada como ORÁCULO.** Ela recomputava a
+    /// metade-`y` (a coordenada, o `floor`, o smoothstep, os dois índices de
+    /// célula e os dois offsets de linha) **por PIXEL**, e `py` é constante
+    /// numa linha inteira do composite. O produto usa [`SampleU::row`]; esta
+    /// fica para o gate de igualdade BIT A BIT — um `pub` sem `cfg(test)` seria
+    /// uma segunda resposta esperando alguém chamá-la.
+    #[cfg(test)]
     pub(in crate::tool::paint) fn at(self, pig: &[u8], px: usize, py: usize) -> [f64; 4] {
         let (ux, uy) = (self.u(px), self.u(py));
         // `floor` e não `as usize`: a coordenada nunca é negativa aqui (o
@@ -326,6 +333,75 @@ impl SampleU {
         // As três primeiras saem multiplicadas por alpha em 0..255 (ou seja,
         // por 255x o alpha normalizado); o composite divide pelo alpha
         // acumulado, então a escala cancela.
+        out
+    }
+
+    /// **A metade-`y` de uma LINHA, computada uma vez.**
+    ///
+    /// ⚠️ O composite percorre o retângulo sujo por linhas
+    /// (`par_chunks_mut(stride)`), então dentro de um chunk o `py` **não muda**
+    /// — e a [`SampleU::at`] recomputava, por pixel, seis grandezas que só
+    /// dependem dele. É a mesma fatoração que o `FlowRowSampler` fez no
+    /// `advect` (doc 28 §5.42), e é **byte-exata por construção**: as mesmas
+    /// operações, na mesma ordem, sobre os mesmos `f64` — o que sai do laço é
+    /// um valor que não mudava.
+    pub(in crate::tool::paint) fn row(self, py: usize) -> SampleURow {
+        let uy = self.u(py);
+        let fy0 = uy.floor();
+        let ty = smooth_weight(uy - fy0);
+        let cy0 = (fy0 as usize).clamp(1, self.max_y);
+        let cy1 = (cy0 + 1).min(self.max_y);
+        SampleURow {
+            inv_r: self.inv_r,
+            max_x: self.max_x,
+            ty,
+            row0: (cy0 - 1) * self.stride,
+            row1: (cy1 - 1) * self.stride,
+        }
+    }
+}
+
+/// Uma LINHA já resolvida do [`SampleU`] — ver [`SampleU::row`].
+#[derive(Clone, Copy)]
+pub(in crate::tool::paint) struct SampleURow {
+    inv_r: f64,
+    max_x: usize,
+    /// O peso smoothstep no eixo `y`, e os dois offsets de linha que ele pesa —
+    /// eles JÁ embutem o stride, então a linha não precisa dele.
+    ty: f64,
+    row0: usize,
+    row1: usize,
+}
+
+impl SampleURow {
+    /// Amostra o pixel `px` desta linha — o corpo é o da [`SampleU::at`], com a
+    /// metade-`y` já resolvida. **A ordem dos quatro cantos e os dois
+    /// `continue` de peso zero são preservados ao pé da letra**: eles decidem a
+    /// ordem das somas em `f64`, e a igualdade é bit a bit.
+    pub(in crate::tool::paint) fn at(self, pig: &[u8], px: usize) -> [f64; 4] {
+        let ux = (px as f64 + 0.5) * self.inv_r + 0.5;
+        let fx0 = ux.floor();
+        let tx = smooth_weight(ux - fx0);
+        let cx0 = (fx0 as usize).clamp(1, self.max_x);
+        let cx1 = (cx0 + 1).min(self.max_x);
+        let mut out = [0.0f64; 4];
+        for (row, wy) in [(self.row0, 1.0 - self.ty), (self.row1, self.ty)] {
+            if wy == 0.0 {
+                continue;
+            }
+            for (cx, wx) in [(cx0, 1.0 - tx), (cx1, tx)] {
+                if wx == 0.0 {
+                    continue;
+                }
+                let o = row + (cx - 1) * 4;
+                let a = f64::from(pig[o + 3]);
+                let w = wx * wy;
+                out[0] += f64::from(pig[o]) * a * w;
+                out[1] += f64::from(pig[o + 1]) * a * w;
+                out[2] += f64::from(pig[o + 2]) * a * w;
+                out[3] += a * w;
+            }
+        }
         out
     }
 }

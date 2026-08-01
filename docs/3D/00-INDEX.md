@@ -29,10 +29,11 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
-| **começar a implementar (é aqui)** | [[03.6-HANDOFF-implementador-W1]] |
+| **portar QUALQUER COISA do SculptGL (é aqui)** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) |
+| **saber o que vem agora** | [[06.1-Waves-riscos-e-alvos]] |
 | entender a decisão inteira | `ADR-0150` → [[02.1-Representacao-malha-primaria]] |
 | **saber onde o motor roda (CPU × GPU)** | [[03.5-Onde-roda-o-motor]] |
-| usar o SculptGL como referência | [[03.4-Referencia-SculptGL]] |
+| o briefing histórico da W1 | [[03.6-HANDOFF-implementador-W1]] |
 | saber por que não há protótipo web | [[02.4-Por-que-nao-ha-MVP-em-TypeScript]] |
 | decidir arquitetura | [[02.1-Representacao-malha-primaria]] → [[02.2-Sprite-com-malha-filha]] → [[02.3-Modulo-removivel-e-mapa-de-crates]] |
 | implementar um pincel | [[04.1-Pinceis]] |
@@ -72,9 +73,15 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 > **não recicla número** ([[99.1-Taxonomia-e-convencoes]]) — um link a `03.1-PROMPT-MVP` escrito em
 > qualquer lugar tem de continuar **quebrando**, e não resolvendo em silêncio para outro documento.
 
-- **[[03.4-Referencia-SculptGL]]** · `porte` `arquitetura` — *O SculptGL como referência: licença MIT e a
-  política de atribuição que ela obriga, a arquitetura real dele, o mapa arquivo→crate, e o que NÃO se
-  porta (o undo, a lei do traço, o render).*
+- **[[03.4-Referencia-SculptGL]]** · `porte` `arquitetura` `fidelidade` — **O documento central do porte.**
+  *A licença e o que ela obriga; a **POLÍTICA de fidelidade** (o default é PORTAR — divergir custa uma
+  entrada escrita); o **LIVRO-RAZÃO** com toda divergência que sobreviveu à refutação adversarial,
+  marcada `✅ deliberada` / `⚠️ dívida` / `⛔ defeito`; e o mapa arquivo→crate com o tamanho medido de
+  cada bloco.*
+- **[[03.7-Oraculo-de-fidelidade]]** · `fidelidade` `gate` — **Por que ler o original não basta.**
+  *67 alegações de divergência, 37 refutadas: 55% de falso-positivo, medido. As três formas de oráculo
+  que funcionam aqui (fixture que contém o fenômeno · oráculo de propriedade · transcrição congelada),
+  e por que rodar o JS deles NÃO é o plano.*
 - **[[03.5-Onde-roda-o-motor]]** · `decisao` `performance` — **A decisão que o fim do MVP forçou.** *Malha
   na CPU com rayon, GPU dona do render e da doação, porta única, e kill-criterion escrito antes do build.*
 - **[[HANDOFF_INTEGRACAO_line_sculpt3d_W1_2026-07-30]]** · `handoff` `integracao` —
@@ -101,8 +108,10 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 ### 06 — Plano
 
-- **[[06.1-Waves-riscos-e-alvos]]** · `plano` `waves` `performance` `risco` — *As waves em ordem de
-  pagamento (a doação é a W3, e depende só da W1), os riscos com a solução de cada um, e os alvos a MEDIR.*
+- **[[06.1-Waves-riscos-e-alvos]]** · `plano` `waves` `performance` `risco` — **O plano vivo, re-cortado
+  pelo censo medido (2026-08-01).** *Cada wave é UMA coisa que o artista abre e usa, nomeia os
+  arquivos-fonte que traduz e traz o tamanho em linhas; os três CANAIS que destravam famílias inteiras;
+  os riscos com solução; e os alvos a MEDIR.*
 
 ### 99 — Meta
 

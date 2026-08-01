@@ -27,7 +27,7 @@ pub(super) fn apply_key(
         GraphKey::Escape => {
             state.selected.clear();
             state.selected_backdrop = None;
-            state.selected_wire = None;
+            state.selected_wires.clear();
             state.interaction = Interaction::Idle;
             state.menu = None;
             state.knife_armed = false;
@@ -91,8 +91,9 @@ pub(super) fn apply_key(
         // dispatch: M0 focus gate + the shell's cursor push). Node, backdrop and
         // wire selection are mutually exclusive, so Delete is never ambiguous — a
         // deleted backdrop takes nothing with it (it owns no nodes; it draws around
-        // them), and a deleted wire is exactly the alt-click `Disconnect` (its unique
-        // target input), one undo step.
+        // them), and each deleted wire is exactly the alt-click `Disconnect` (its
+        // unique target input). The set drains in one gesture — a bundle of edges
+        // dropped together, one Disconnect apiece.
         GraphKey::Delete => {
             if !state.selected.is_empty() {
                 push_intent(GraphIntent::DeleteSelection {
@@ -101,8 +102,10 @@ pub(super) fn apply_key(
                 state.selected.clear();
             } else if let Some(id) = state.selected_backdrop.take() {
                 push_intent(GraphIntent::DeleteBackdrop { id });
-            } else if let Some((to_node, to_port)) = state.selected_wire.take() {
-                push_intent(GraphIntent::Disconnect { to_node, to_port });
+            } else if !state.selected_wires.is_empty() {
+                for (to_node, to_port) in std::mem::take(&mut state.selected_wires) {
+                    push_intent(GraphIntent::Disconnect { to_node, to_port });
+                }
             }
             state.interaction = Interaction::Idle;
         }
@@ -130,7 +133,7 @@ pub(super) fn apply_key(
         GraphKey::SelectAll => {
             state.selected = snap.nodes.iter().map(|n| n.id).collect();
             state.selected_backdrop = None;
-            state.selected_wire = None;
+            state.selected_wires.clear();
         }
         // Ctrl+L — grow the selection to the connected island(s) it touches (Select Linked).
         GraphKey::SelectLinked => grow_selection_to_linked(state, snap),
@@ -148,7 +151,7 @@ pub(super) fn apply_key(
                 .filter(|id| !was.contains(id))
                 .collect();
             state.selected_backdrop = None;
-            state.selected_wire = None;
+            state.selected_wires.clear();
         }
         // H — switch the selected node(s) off/on (bypass/mute). The scope rule is the rove
         // idiom: press once and everything selected goes OFF; if it is ALL already off, press
@@ -212,6 +215,26 @@ pub(super) fn select_on_press(state: &mut MotionGraphPanelState, node: u32, shif
     } else if !state.selected.contains(&node) {
         state.selected.clear();
         state.selected.insert(node);
+    }
+}
+
+/// Selection on wire press — the mirror of [`select_on_press`], on the wire's target `(to_node,
+/// to_port)`. Shift toggles it into/out of the set; a plain press makes it the sole wire. Unlike a
+/// node there is no keep-for-multi-drag branch: a wire is not draggable, so a plain press always
+/// replaces. (The caller — the `Wire` arm in `interact` — has already cleared the node and backdrop
+/// selections: one subject at a time.)
+pub(super) fn select_wire_on_press(
+    state: &mut MotionGraphPanelState,
+    wire: (u32, u16),
+    shift: bool,
+) {
+    if shift {
+        if !state.selected_wires.insert(wire) {
+            state.selected_wires.remove(&wire);
+        }
+    } else {
+        state.selected_wires.clear();
+        state.selected_wires.insert(wire);
     }
 }
 

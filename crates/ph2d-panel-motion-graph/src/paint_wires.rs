@@ -60,7 +60,7 @@ pub(crate) fn draw_wires(
         // A SELECTED wire wears the hover highlight persistently — the visible affordance for the
         // click-then-Delete idiom (the alt-click Disconnect had none). Hover is transient (under
         // the cursor), so off-cursor only the selected wire stays lit.
-        let is_selected = p.state.selected_wire == Some((e.to_node, e.to_port));
+        let is_selected = p.state.selected_wires.contains(&(e.to_node, e.to_port));
         // A wire is drawn full-strength only if it is live AND (with a selection up) inside the
         // influence. The wire and the cards it joins fade together — the whole point of the
         // reading is that a region of the canvas recedes as ONE region.

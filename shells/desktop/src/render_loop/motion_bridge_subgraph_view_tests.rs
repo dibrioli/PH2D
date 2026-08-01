@@ -142,17 +142,17 @@ fn at_the_root_the_card_stands_in_for_its_contents() {
     }
 }
 
-/// **A group card draws muted only when EVERY member is muted** — muting a whole group (the H
-/// verb / the right-click Mute) has to be VISIBLE on the card, and the panel reads exactly this
-/// to decide mute-vs-unmute (so the toggle can unmute a fully-muted group). FALSIFIED by the old
-/// `bypassed: false`: a muted group looked identical to a live one, and the toggle could only
-/// ever mute, never unmute.
+/// **A group card draws muted iff the group is bypassed AS A UNIT** — the H verb / the right-click
+/// Mute sets the GROUP's own bypass (input[0] → output[0], the interior skipped), and the card has
+/// to SHOW that, since the panel reads exactly this to draw it muted and to decide mute-vs-unmute.
+/// Muting individual MEMBERS is a different thing and does NOT mute the card. FALSIFIED by reading
+/// the members' node-bypass instead of the group flag (the old "all members muted" fold).
 #[test]
-fn a_group_card_is_muted_only_when_all_of_it_is() {
+fn a_group_card_draws_muted_when_the_group_is_bypassed_as_a_unit() {
     let mut m = MotionState::new();
     let sid = m.doc.subgraphs[0].id;
     let inside = subgraph::member_nodes_deep(&m.doc.subgraphs, &m.doc.members, sid);
-    assert!(inside.len() >= 2, "the demo group has members to mute");
+    assert!(inside.len() >= 2, "the demo group has members");
 
     let card_bypassed = |m: &MotionState| {
         let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
@@ -165,16 +165,16 @@ fn a_group_card_is_muted_only_when_all_of_it_is() {
     };
 
     assert!(!card_bypassed(&m), "a live group is not muted");
-    for n in &inside[..inside.len() - 1] {
+    // Muting every MEMBER does NOT draw the card muted — the card reads the GROUP flag, not the
+    // members' node-bypass (muting a group is not muting each member).
+    for n in &inside {
         m.doc.graph.set_bypassed(*n, true);
     }
-    assert!(
-        !card_bypassed(&m),
-        "SOME members muted is not the group muted"
-    );
-    m.doc.graph.set_bypassed(*inside.last().unwrap(), true);
+    assert!(!card_bypassed(&m), "muted members are not a muted GROUP");
+    // Bypassing the group as a unit draws the card muted.
+    m.doc.set_subgraph_bypassed(sid, true);
     assert!(
         card_bypassed(&m),
-        "EVERY member muted -> the card draws muted"
+        "the group bypassed as a unit -> the card draws muted"
     );
 }

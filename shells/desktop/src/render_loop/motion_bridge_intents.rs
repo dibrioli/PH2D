@@ -328,25 +328,27 @@ pub(super) fn apply_graph_intents(
             // arrange above.
             GraphIntent::SetBypass { nodes, on } => {
                 let pre = motion.doc.clone();
-                // A CARD in the selection stands for its member nodes — muting a GROUP mutes
-                // everything inside it, at every depth, exactly as delete/copy/duplicate expand
-                // it. A card id is not a graph node, so without this its `set_bypassed` was a
-                // no-op and the H verb did nothing to a group (Enio, smoke: *"Mute não funciona
-                // para grupos"*).
-                let mut targets: Vec<NodeId> = Vec::new();
+                // A CARD is muted AS A UNIT — the group short-circuits input[0] → output[0] and
+                // its interior is skipped (`group_bypass` does it on a throwaway cook clone). This
+                // is the Blender/Nuke idiom: muting a group is NOT muting each member (enter the
+                // group and mute nodes for that). A real node id mutes that node, as ever. The
+                // `find` guard keeps a phantom card id (its group cut this frame) out of the
+                // `bypassed_subgraphs` set — a phantom would emit a `yg` the loader rejects.
                 for id in nodes {
                     match subgraph::subgraph_of(id) {
-                        Some(sid) => targets.extend(ph2d_motion_doc::subgraph::member_nodes_deep(
-                            &motion.doc.subgraphs,
-                            &motion.doc.members,
-                            sid,
-                        )),
-                        None => targets.push(NodeId(id)),
-                    }
-                }
-                for nid in targets {
-                    if motion.doc.graph.node(nid).is_some() {
-                        motion.doc.graph.set_bypassed(nid, on);
+                        Some(sid)
+                            if ph2d_motion_doc::subgraph::find(&motion.doc.subgraphs, sid)
+                                .is_some() =>
+                        {
+                            motion.doc.set_subgraph_bypassed(sid, on)
+                        }
+                        Some(_) => {}
+                        None => {
+                            let nid = NodeId(id);
+                            if motion.doc.graph.node(nid).is_some() {
+                                motion.doc.graph.set_bypassed(nid, on);
+                            }
+                        }
                     }
                 }
                 if motion.doc != pre {

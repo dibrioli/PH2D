@@ -53,13 +53,14 @@ fn muting_a_node_switches_it_off_recooks_and_is_one_undo_step() {
     assert!(!back.graph.node_bypassed(a), "Ctrl+Z un-mutes");
 }
 
-/// **Muting a GROUP mutes every node inside it** (Enio, smoke: *"Mute não funciona para
-/// grupos"*). A card id is not a graph node, so before the fix its `set_bypassed` was a no-op
-/// and the H verb / the right-click Mute did nothing to a group. The card is EXPANDED to its
-/// member nodes (at every depth), like delete/copy/duplicate. FALSIFIED by dropping the
-/// expansion: the card id names no node, and nothing is muted.
+/// **Muting a GROUP bypasses it AS A UNIT** — the H verb / the right-click Mute sets the GROUP's
+/// own bypass (input[0] → output[0], the interior skipped; the cook rewires a throwaway clone),
+/// NOT a node-bypass on each member. This is the Blender/Nuke idiom (Enio's choice): muting a
+/// group is not muting each member (enter the group and mute nodes for that). The members are
+/// LEFT ALONE. One undo step; re-cooks (semantic). FALSIFIED by muting the members instead of the
+/// group, or by not setting the group flag at all.
 #[test]
-fn muting_a_group_mutes_every_node_inside_it() {
+fn muting_a_group_bypasses_it_as_a_unit() {
     use ph2d_motion_doc::subgraph::Subgraph;
     let (mut m, _a) = cooked_with_a_node();
     let b = m.doc.graph.add_node("motion.grid");
@@ -73,16 +74,30 @@ fn muting_a_group_mutes_every_node_inside_it() {
     });
     m.doc.members.insert(b, 1);
     m.doc.members.insert(c, 1);
-    assert!(!m.doc.graph.node_bypassed(b) && !m.doc.graph.node_bypassed(c));
 
-    // Mute the CARD (its tagged view id), not the member nodes.
+    // Mute the CARD (its tagged view id).
     let card = super::subgraph::view_id(1);
     set_bypass(&mut m, vec![card], true);
     assert!(
-        m.doc.graph.node_bypassed(b) && m.doc.graph.node_bypassed(c),
-        "muting the group card muted every member node inside it"
+        m.doc.subgraph_bypassed(1),
+        "the group is bypassed as a unit"
+    );
+    assert!(
+        !m.doc.graph.node_bypassed(b) && !m.doc.graph.node_bypassed(c),
+        "the MEMBERS are left alone -- muting a group is not muting each member"
+    );
+    assert!(
+        m.pump.is_dirty(),
+        "a group bypass is semantic -- it re-cooks"
     );
     assert!(m.history.can_undo(), "and it is one undo step");
+
+    // Un-mute clears the group flag (no phantom `yg` left to serialize).
+    set_bypass(&mut m, vec![card], false);
+    assert!(
+        !m.doc.subgraph_bypassed(1),
+        "un-muting clears the group flag"
+    );
 }
 
 /// **A bypass on a non-existent node is inert.** A subgraph CARD's id is tagged, and a stale
@@ -98,4 +113,49 @@ fn muting_a_phantom_id_is_inert() {
         "a bypass on a non-existent node is not an edit"
     );
     assert!(!m.pump.is_dirty(), "and it does not re-cook");
+
+    // A tagged CARD id whose group does not exist is inert too (the `find` guard) — a phantom
+    // must never reach `bypassed_subgraphs`, or it would emit a `yg` the loader rejects.
+    let phantom_card = super::subgraph::view_id(4242);
+    set_bypass(&mut m, vec![phantom_card], true);
+    assert!(
+        !m.history.can_undo() && m.doc.bypassed_subgraphs.is_empty(),
+        "a phantom card bypass is inert -- no `yg` for a group that does not exist"
+    );
+}
+
+/// **Dissolving or deleting a bypassed group forgets its bypass** — a dangling id left in
+/// `bypassed_subgraphs` would emit a `yg` the loader rejects. Both removal sites clean up, next to
+/// where they already drop membership. FALSIFIED by dropping the cleanup at either site.
+#[test]
+fn dissolving_a_bypassed_group_forgets_its_bypass() {
+    use ph2d_motion_doc::subgraph::Subgraph;
+    let sg = |m: &mut MotionState| {
+        let b = m.doc.graph.add_node("motion.grid");
+        m.doc.subgraphs.push(Subgraph {
+            id: 1,
+            parent: None,
+            x: 0.0,
+            y: 0.0,
+            title: "Rig".into(),
+        });
+        m.doc.members.insert(b, 1);
+        m.doc.set_subgraph_bypassed(1, true);
+    };
+
+    let (mut m, _a) = cooked_with_a_node();
+    sg(&mut m);
+    super::subgraph::ungroup(&mut m, 1);
+    assert!(
+        m.doc.bypassed_subgraphs.is_empty(),
+        "ungroup drops the group's bypass"
+    );
+
+    let (mut m, _a) = cooked_with_a_node();
+    sg(&mut m);
+    super::subgraph::delete_deep(&mut m, 1);
+    assert!(
+        m.doc.bypassed_subgraphs.is_empty(),
+        "delete drops the group's bypass"
+    );
 }

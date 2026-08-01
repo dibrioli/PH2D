@@ -138,6 +138,31 @@ fn the_coarse_hit_boxes_still_cover_the_drawn_wire() {
     }
 }
 
+/// **A selected wire wears the SELECTION hue, distinct from a hovered one.** A selected wire draws
+/// in `Accent` — the same colour a selected node's ring wears (the app's one selection hue) — so it
+/// reads as *committed*, not merely *under the cursor*; a hovered-but-unselected wire keeps the
+/// bright `Text1` emphasis, and an idle wire keeps its own port-domain hue. Selection wins over
+/// hover, exactly as a node's Accent ring does — this is what makes several selected wires read as a
+/// SELECTION rather than a row of hovers. FALSIFIED three ways: `Selected` reusing the hover `Text1`
+/// (the v1 that made selection and hover indistinguishable once many wires could be lit at once),
+/// the `Hover` branch folding away so a hovered wire loses its bright emphasis, or `of` letting hover
+/// win over selection.
+#[test]
+fn a_selected_wire_is_accent_distinct_from_the_hover_hue() {
+    let dom = ColorToken::PortInstances; // any port-domain hue
+    // Selected → Accent (the selection hue).
+    assert_eq!(WireEmphasis::Selected.token(dom), ColorToken::Accent);
+    // Hovered but not selected → the bright hover emphasis, the delete-target read.
+    assert_eq!(WireEmphasis::Hover.token(dom), ColorToken::Text1);
+    // Idle → the wire keeps its own port-domain hue.
+    assert_eq!(WireEmphasis::Idle.token(dom), dom);
+    // Selection WINS over hover, exactly as a node's Accent ring does.
+    assert_eq!(WireEmphasis::of(true, true), WireEmphasis::Selected);
+    assert_eq!(WireEmphasis::of(true, false), WireEmphasis::Hover);
+    assert_eq!(WireEmphasis::of(false, false), WireEmphasis::Idle);
+    assert!(WireEmphasis::Selected.lit() && WireEmphasis::Hover.lit() && !WireEmphasis::Idle.lit());
+}
+
 /// **An incompatible drop target reads as DANGER RED, not muted grey** — the ghost wire and
 /// the target-socket ring both go red, the affirmative "no" the artist sees before releasing.
 /// This is the `connects_directly` verdict (resolved onto the target by the interaction) made

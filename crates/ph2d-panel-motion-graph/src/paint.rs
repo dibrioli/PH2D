@@ -33,8 +33,8 @@ mod paint_wire;
 mod paint_wires;
 use paint_stamp::draw_preview;
 pub(crate) use paint_wire::{
-    detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints, wire_hit_polyline,
-    wires_crossed,
+    WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
+    wire_hit_polyline, wires_crossed,
 };
 use paint_wires::{WirePass, draw_wires};
 

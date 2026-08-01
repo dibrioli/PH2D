@@ -21,45 +21,83 @@ use super::{
     WIRE_W_HOVER, cubic_polyline, domain_token, highlight_socket, port_out_domain,
 };
 
+/// How prominently a wire is drawn — ONE enum instead of two adjacent `bool`s, the hazard this
+/// crate calls out (`WirePass`): `is_hovered` and `is_selected` are the same type, so a positional
+/// pair invites a silent swap. `Idle` keeps the wire's port-domain hue; `Hover` the bright `Text1`
+/// emphasis (the delete target under the cursor); `Selected` the `Accent` a selected node's ring
+/// wears (committed). Selection WINS over hover, exactly as a node's Accent ring does — [`of`] folds
+/// the two independent bools with that precedence in ONE place, so nothing downstream re-decides it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum WireEmphasis {
+    Idle,
+    Hover,
+    Selected,
+}
+
+impl WireEmphasis {
+    pub(crate) fn of(hovered: bool, selected: bool) -> Self {
+        if selected {
+            Self::Selected
+        } else if hovered {
+            Self::Hover
+        } else {
+            Self::Idle
+        }
+    }
+
+    /// Emphasised = thicker, and never veiled or marched: a wire the artist is acting on.
+    fn lit(self) -> bool {
+        self != Self::Idle
+    }
+
+    /// The stroke colour for this state; `domain` (the wire's port-domain hue) is used only when Idle.
+    fn token(self, domain: ColorToken) -> ColorToken {
+        match self {
+            Self::Idle => domain,
+            Self::Hover => ColorToken::Text1,
+            Self::Selected => ColorToken::Accent,
+        }
+    }
+}
+
 pub(crate) fn draw_wire(
     ctx: &mut PaintCtx,
     snap: &GraphViewSnapshot,
     e: &GraphEdgeView,
     view: &View,
     theme: Theme,
-    hovered: bool,
+    emphasis: WireEmphasis,
     bright: bool,
 ) {
     let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
         return;
     };
+    let lit = emphasis.lit();
     // A `pre` edge draws as PORTAL BADGES at its sockets, never as a spline
     // (docs/Motion Nodes/03): the state loop is machine plumbing, so the canvas
     // keeps reading left→right instead of lassoing back across the graph.
     // Hovering a badge reveals its partner with a thin ghost of the pair.
     if e.delayed {
-        draw_pre_badges(ctx, e, p0, p3, view, theme, hovered);
+        draw_pre_badges(ctx, e, p0, p3, view, theme, emphasis);
         return;
     }
     let src = snap.nodes.iter().find(|n| n.id == e.from_node);
     let pts = wire_polyline(p0, p3, view.zoom);
-    // Hovered wires draw thicker and in a bright emphasis colour so the delete target is
-    // unmistakable regardless of the port domain hue. Otherwise the wire keeps its domain
-    // colour and takes its WIDTH from the mass of the stream it carries (F3).
-    let (base_w, token) = if hovered {
-        (WIRE_W_HOVER, ColorToken::Text1)
+    // Emphasised wires draw thicker; a SELECTED one wears the Accent a selected node's ring wears
+    // (committed), a merely hovered one the bright `Text1` (delete target). Otherwise the wire keeps
+    // its domain colour and takes its WIDTH from the mass of the stream it carries (F3).
+    let domain = domain_token(e.out_domain);
+    let (base_w, token) = if lit {
+        (WIRE_W_HOVER, emphasis.token(domain))
     } else {
-        (
-            flow::wire_width(src.and_then(|n| n.count)),
-            domain_token(e.out_domain),
-        )
+        (flow::wire_width(src.and_then(|n| n.count)), domain)
     };
     stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
 
     // **Data is moving through this wire right now** — the source's output changed since last
     // frame (TouchDesigner's animated wire). Bright dashes march along it, source → target.
     // They ride the SAME polyline, so they cannot drift off the wire they belong to.
-    if bright && src.is_some_and(|n| n.hot) && !hovered {
+    if bright && src.is_some_and(|n| n.hot) && !lit {
         let z = view.zoom;
         // ONE draw call for the whole marching pattern: a dozen little strokes per wire, on every
         // wire, every frame, is a dozen draw objects Vello has to bound and bin (doc 53).
@@ -102,15 +140,10 @@ fn draw_pre_badges(
     p3: (f32, f32),
     view: &View,
     theme: Theme,
-    hovered: bool,
+    emphasis: WireEmphasis,
 ) {
-    let token = if hovered {
-        ColorToken::Text1
-    } else {
-        domain_token(e.out_domain)
-    };
-    let color = resolve(token, theme);
-    if hovered {
+    let color = resolve(emphasis.token(domain_token(e.out_domain)), theme);
+    if emphasis.lit() {
         // Reveal the pair: a thin ghost of the path the state actually takes.
         let pts = wire_polyline(p0, p3, view.zoom);
         stroke_polyline(ctx.scene, &pts, WIRE_W_DELAYED * view.zoom, color);

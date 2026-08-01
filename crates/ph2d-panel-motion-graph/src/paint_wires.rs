@@ -10,7 +10,7 @@
 
 use crate::geom::View;
 use crate::hits::push_wire_hits;
-use crate::paint::draw_wire;
+use crate::paint::{WireEmphasis, draw_wire};
 use crate::snapshot::GraphViewSnapshot;
 use crate::state::MotionGraphPanelState;
 use ph2d_a11y::NodeId;
@@ -57,9 +57,10 @@ pub(crate) fn draw_wires(
             continue;
         }
         let is_hovered = p.hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
-        // A SELECTED wire wears the hover highlight persistently — the visible affordance for the
-        // click-then-Delete idiom (the alt-click Disconnect had none). Hover is transient (under
-        // the cursor), so off-cursor only the selected wire stays lit.
+        // A SELECTED wire wears the Accent a selected node's ring wears (the app's one selection
+        // hue), so it reads as COMMITTED — distinct from a wire merely under the cursor, which keeps
+        // the bright hover emphasis. `draw_wire` folds the two bools into its width. This is the
+        // visible affordance for the click-then-Delete idiom (the alt-click Disconnect had none).
         let is_selected = p.state.selected_wires.contains(&(e.to_node, e.to_port));
         // A wire is drawn full-strength only if it is live AND (with a selection up) inside the
         // influence. The wire and the cards it joins fade together — the whole point of the
@@ -68,8 +69,8 @@ pub(crate) fn draw_wires(
             && p.focus
                 .as_ref()
                 .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
-        let lit = is_hovered || is_selected;
-        draw_wire(ctx, p.snap, e, p.view, p.theme, lit, bright);
+        let emphasis = WireEmphasis::of(is_hovered, is_selected);
+        draw_wire(ctx, p.snap, e, p.view, p.theme, emphasis, bright);
         push_wire_hits(hits, p.snap, e, p.view, p.rect);
     }
 }

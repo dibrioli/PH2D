@@ -7,11 +7,16 @@
 //!
 //! ```text
 //! docs/design/tokens.json   ←  source of truth (4 themes, OKLCH)
-//!         ↓ (manual sync — future codegen via build.rs)
-//! crates/ph2d-tokens/src/   ←  Rust mirror (this crate)
+//!         ↓ build.rs        ←  parses the JSON, emits `crate::generated::*`
+//! crates/ph2d-tokens/src/   ←  enums read those consts
 //!         ↓
 //! ph2d-editor widgets       ←  consume via ColorToken::resolve(theme)
 //! ```
+//!
+//! The codegen is real, and `tests/design_token_sync.rs` guards it by re-parsing
+//! the JSON with an **independent** parser (`serde_json`) and asserting the public
+//! token API agrees. A build.rs parser bug — or a renamed JSON key that still
+//! matches something — fails CI instead of drifting silently.
 //!
 //! Source of truth for everything that carries color, size, spacing,
 //! radius, shadow, motion or z-stack in the UI. Semantic tokens (not
@@ -33,8 +38,10 @@
 //!
 //! - Rendering (Vello, raster) — lives in `ph2d-editor` / `ph2d-vector`.
 //! - Theme persistence — lives in `ph2d-editor` settings.
-//! - Automatic codegen tokens.json → this crate (planned; see
-//!   "Pipeline" above — sync is manual for now).
+//! - **Authoring** the tokens. The table is a hand-edited JSON and the four
+//!   themes are enum variants; aliases, math, artist-defined modes and DTCG
+//!   import/export are not here. See `docs/Vector Module/Estudos/
+//!   PLANO_UI_UX_padrao_figma.md` §4/W4.
 
 pub mod chrome;
 pub mod color;

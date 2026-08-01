@@ -40,9 +40,16 @@ mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;
+/// A face de CORPO do §11 — as rows de quem tem `RigidBody` + `Collider`.
+/// Irmã do `physics.rs` pelos caps de painel: com TRÊS faces, `physics.rs` fica
+/// sendo o cabeçalho e o roteador.
+mod physics_body;
 /// As portas da face VAZIA do §11 (docs dele) — irmão pelo cap de 600 LOC.
 mod physics_doors;
 mod physics_join_rows;
+/// W-PartFace: a 3ª face do §11 — o que se mostra de um `Collider` que não é
+/// corpo (uma PEÇA de um corpo composto).
+mod physics_part;
 mod physics_rows;
 mod render_source;
 mod rows;

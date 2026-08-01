@@ -28,9 +28,16 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         });
         return true;
     }
+    // ⚠️ **`has_collider`, não `has_body`** (W-PartFace): TODA row numérica desta
+    // lista descreve o COLLIDER (forma, dims, offset, densidade) ou uma zona, e um
+    // `Collider` sem `RigidBody` é uma PEÇA — mais uma forma do corpo ancestral,
+    // que o solver de fato integra. Enquanto a guarda era `has_body`, a face de
+    // peça podia PINTAR os campos e nenhum deles chegava ao ECS: o artista
+    // digitava e nada acontecia. As rows de zona ficam protegidas por
+    // construção — o painter só as pinta num corpo (peça não tem efetor).
     if let WidgetEvent::ValueChanged(id) = ev
         && let Some(info) = state::current_inspector_physics()
-        && info.has_body
+        && info.has_collider
     {
         let v = host.store().number_value(id).unwrap_or(0.0) as f32;
         let edit = match id {
@@ -116,13 +123,20 @@ fn click_edit(
 ) -> Option<PhysicsFieldEdit> {
     if id == ids::INSP_PHYS_ADD && !info.has_body {
         Some(PhysicsFieldEdit::Add)
-    } else if id == ids::INSP_PHYS_REMOVE && info.has_body {
+    } else if id == ids::INSP_PHYS_REMOVE && (info.has_body || info.has_collider) {
+        // ⚠️ **`has_collider` também** (W-PartFace): numa PEÇA este botão se
+        // chama *Remove Shape* e faz exatamente o mesmo — tira corpo e collider,
+        // e `queue_remove` de um componente ausente é no-op. Sem a segunda
+        // metade, uma peça era uma porta de mão ÚNICA: criada por um clique e
+        // desfeita só apagando o objeto.
         Some(PhysicsFieldEdit::Remove)
     } else if let Some(i) = ids::INSP_PHYS_LAYER.iter().position(|&o| o == id) {
-        // Gated on `has_body` like every other field edit: the chips are
-        // only painted for a body, and dim is not a refusal
-        // ([[feedback_disabled_button_still_dispatches]]).
-        info.has_body.then_some(PhysicsFieldEdit::Layer(i as u8))
+        // ⚠️ **`has_collider`** (W-PartFace): a camada é propriedade do
+        // COLLIDER, e uma PEÇA tem uma. A guarda de `has_body` a tornava um chip
+        // pintado e mudo na face de peça — dim não é recusa, e pintado-e-inerte
+        // é pior ([[feedback_disabled_button_still_dispatches]]).
+        info.has_collider
+            .then_some(PhysicsFieldEdit::Layer(i as u8))
     } else if id == ids::INSP_PHYS_BAKE {
         // Gated on `has_body` AND on the body being the kind that actually
         // has simulated motion: a Static body never moves and a Kinematic
@@ -144,9 +158,16 @@ fn click_edit(
         // this handler read the SAME number; when they were a `bool` beside
         // a count they disagreed the day the chain arrived.
         Some(PhysicsFieldEdit::Join)
-    } else if id == ids::INSP_PHYS_ADD_SHAPE && !info.part_owner.is_empty() {
+    } else if id == ids::INSP_PHYS_ADD_SHAPE && !info.part_owner.is_empty() && !info.has_collider {
         // A recusa vive AQUI e não no laço de pintura: uma forma sem corpo acima
         // não tem a quem pertencer, e um botão apagado que ainda despacha mente.
+        //
+        // ⚠️ **`!has_collider` é a metade nova** (W-PartFace): o apply escreve um
+        // `Collider` DEFAULT, então clicar isto sobre algo que já tem forma
+        // apaga a autorada em silêncio — medido, a barra `0,17 × 0,91` com
+        // offset `[0,13, −0,07]`, densidade `3,5` e camada `2` virava a caixa do
+        // sprite com tudo zerado. A face de peça não pinta mais o botão; esta é
+        // a outra metade, porque o id fica no store a sessão inteira.
         Some(PhysicsFieldEdit::AddShape)
     } else if id == ids::INSP_PHYS_RIG && info.rig_parts > 0 {
         // W-Rig. Gateado no MESMO número que o painter usa para oferecer — o
@@ -168,10 +189,12 @@ fn click_edit(
         // ([[feedback_disabled_button_still_dispatches]]).
         info.has_body.then_some(PhysicsFieldEdit::Kind(i as u8))
     } else if let Some(i) = ids::INSP_PHYS_SENSOR.iter().position(|&o| o == id) {
-        // Two segments: `0` Solid, `1` Sensor. Gated on `has_body` like its
-        // siblings — the toggle is painted only inside the body block, and
-        // dim is not a refusal.
-        info.has_body.then_some(PhysicsFieldEdit::Sensor(i == 1))
+        // Two segments: `0` Solid, `1` Sensor. ⚠️ `has_collider` (W-PartFace):
+        // *sólido ou atravessável* é pergunta do COLLIDER, e o solver a honra
+        // numa peça (o `is_sensor` chega ao `build_collider` por ela). Dim não é
+        // recusa, então a condição é a mesma que o painter usa para oferecer.
+        info.has_collider
+            .then_some(PhysicsFieldEdit::Sensor(i == 1))
     } else if let Some(i) = ids::INSP_PHYS_CCD.iter().position(|&o| o == id) {
         // Two segments: `0` Discrete, `1` Continuous. Dynamic-only, the same
         // gate the painter offers it under (only a body the solver moves fast
@@ -199,11 +222,12 @@ fn click_edit(
         // Gated on `has_body` like its siblings — but NOT Dynamic-only: it is a
         // collider material property, so a static floor's rule matters too. Dim is
         // not a refusal, so the check lives here.
-        info.has_body
+        // ⚠️ `has_collider` (W-PartFace): material é do collider, peça tem um.
+        info.has_collider
             .then_some(PhysicsFieldEdit::RestitutionCombine(i as u8))
     } else if let Some(i) = ids::INSP_PHYS_FRIC_COMBINE.iter().position(|&o| o == id) {
-        // Friction combine — the sibling, same `has_body`-only gate.
-        info.has_body
+        // Friction combine — the sibling, same collider-only gate.
+        info.has_collider
             .then_some(PhysicsFieldEdit::FrictionCombine(i as u8))
     } else if let Some(i) = ids::INSP_PHYS_ONEWAY.iter().position(|&o| o == id) {
         // Off | On (W-OneWay). NOT Dynamic-only — it is a collider property and a
@@ -211,7 +235,8 @@ fn click_edit(
         // modifying solver CONTACTS, and a sensor generates none, so the painter
         // offers it for a solid collider alone. Dim is not a refusal, so the same
         // condition is asked here (W-Area made this row exclusive with Force).
-        (info.has_body && !info.is_sensor).then_some(PhysicsFieldEdit::OneWay(i == 1))
+        // ⚠️ `has_collider` (W-PartFace): a ponte lê `OneWayPlatform` da PEÇA.
+        (info.has_collider && !info.is_sensor).then_some(PhysicsFieldEdit::OneWay(i == 1))
     } else if let Some(i) = ids::INSP_PHYS_FORCE_AXES.iter().position(|&o| o == id) {
         // Zone | World (W-AreaFrame) — the mirror image of the One-Way gate above:
         // SENSOR-only, because it qualifies the force rows, and those only exist for
@@ -231,7 +256,9 @@ fn click_edit(
         ids::INSP_PHYS_SHAPE
             .iter()
             .position(|&o| o == id)
-            .filter(|_| info.has_body)
+            // ⚠️ `has_collider` (W-PartFace): a FORMA é a pergunta central de
+            // uma peça, e era a primeira que o artista tentaria mudar.
+            .filter(|_| info.has_collider)
             .map(|i| PhysicsFieldEdit::Shape(i as u8))
     }
 }

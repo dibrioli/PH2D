@@ -261,6 +261,17 @@ const FORCE_AXES_LABELS: [&str; 2] = ["Zone", "World"];
 /// gating any of them on Dynamic would delete the control from its own use case. Split
 /// here so `paint_physics_section` stays under the panel's 200-LOC fn cap; the
 /// selections read straight off the snapshot, so only the force numbers are synced.
+///
+/// ⚠️ **O bloco de ZONA saiu daqui** (W-PartFace) para o irmão [`paint_area_rows`],
+/// e o corte é o que o doc acima já desenhava: estas três rows dizem *como este
+/// COLLIDER participa de uma colisão*, e as da zona dizem *o que esta ÁREA faz a
+/// quem está dentro dela* — perguntas diferentes com respostas de escopo
+/// diferente. A separação existe porque uma **peça** (`Collider` sem `RigidBody`)
+/// tem as três primeiras vivas e **nenhuma** da zona: `reconcile_parts` não lê
+/// efetor nenhum, então pintá-las numa peça seriam sete knobs que o solver
+/// ignora. A ORDEM na tela não muda para um corpo — one-way e zona são
+/// mutuamente exclusivos, então o chamador as pinta em sequência e o resultado é
+/// o mesmo retângulo de sempre.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_collision_rows(
     scene: &mut VectorScene,
@@ -274,7 +285,6 @@ pub(super) fn paint_collision_rows(
     layer: u8,
     is_sensor: bool,
     one_way: bool,
-    force_world_axes: bool,
 ) -> f32 {
     let mut yy = y;
     // The per-body half of collision layers. The other half — WHICH layers collide —
@@ -311,7 +321,47 @@ pub(super) fn paint_collision_rows(
             sel,
         );
     }
-    if is_sensor {
+    if !is_sensor {
+        // A SOLID collider: which side is it solid from?
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "One-Way",
+            ids::INSP_LIVE_PHYSICS_ONEWAY,
+            &ids::INSP_PHYS_ONEWAY,
+            &ONEWAY_LABELS,
+            u8::from(one_way),
+        );
+    }
+    yy
+}
+
+/// **O que esta ÁREA faz a quem está dentro dela** — o bloco de zona, irmão do
+/// [`paint_collision_rows`] (W-PartFace).
+///
+/// Só faz sentido num collider **sensor**, e o chamador é quem decide isso: um
+/// corpo sólido não tem zona, e uma **peça** não tem zona alguma (a ponte não lê
+/// efetor nenhum de uma peça — ver o doc do irmão).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_area_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    force_world_axes: bool,
+) -> f32 {
+    let mut yy = y;
+    {
         // A SENSOR: what force does this area apply to whatever is inside it? Wind,
         // an updraft, a conveyor. Newtons, so it is resisted by mass — the number an
         // artist tunes against a body's own weight.
@@ -384,23 +434,6 @@ pub(super) fn paint_collision_rows(
                 id,
             );
         }
-    } else {
-        // A SOLID collider: which side is it solid from?
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            "One-Way",
-            ids::INSP_LIVE_PHYSICS_ONEWAY,
-            &ids::INSP_PHYS_ONEWAY,
-            &ONEWAY_LABELS,
-            u8::from(one_way),
-        );
     }
     yy
 }

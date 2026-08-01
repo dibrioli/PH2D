@@ -106,3 +106,46 @@ pub(super) fn paint_empty_face(
     }
     yy + SECTION_BOTTOM_PAD_PX
 }
+
+/// As portas da face de **PEÇA** (W-PartFace): as duas saídas de um `Collider`
+/// que não é corpo.
+///
+/// ⚠️ **São os MESMOS dois ids das outras faces**, e de propósito — cada um faz
+/// exatamente a mesma coisa ao ECS (`INSP_PHYS_ADD` anexa um `RigidBody`,
+/// `INSP_PHYS_REMOVE` tira corpo e collider) e o que muda é a **consequência**,
+/// que é o que o rótulo tem de nomear: numa peça, ganhar um corpo é *deixar de
+/// ser peça*, e perder o collider é *voltar a ser só desenho*. Dois ids novos
+/// seriam duas rotas para a mesma operação, e é assim que elas divergem.
+///
+/// ⚠️ **NÃO se oferece *Add Shape to X* aqui** — foi o que a wave veio corrigir:
+/// a porta que CRIA a peça, clicada de novo, reescreve o collider com os defaults
+/// e apaga a forma autorada em silêncio (medido: barra `0,17 × 0,91` → caixa do
+/// sprite `0,20 × 1,00`, offset/densidade/camada zerados). A recusa mora nas duas
+/// metades: o painter não a pinta e o handler não a honra.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_part_doors(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let mut yy = y;
+    let h = ROW_H_PX;
+    for (id, label) in [
+        (ids::INSP_PHYS_ADD, "Make Independent Body"),
+        (ids::INSP_PHYS_REMOVE, "Remove Shape"),
+    ] {
+        let rect = Rect::new(x, yy, w, h);
+        let btn = Button::new(id, label)
+            .kind(ButtonKind::Default)
+            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(id, rect);
+        yy += h;
+    }
+    yy + SECTION_BOTTOM_PAD_PX
+}

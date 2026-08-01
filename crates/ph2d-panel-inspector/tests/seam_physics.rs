@@ -33,6 +33,12 @@ fn with_body() -> InspectorPhysicsInfo {
         has_body: true,
         join_count: 0,
         rig_parts: 0,
+        // W-PartFace: um corpo SEMPRE tem collider — a `BodyQuery` da ponte exige
+        // os dois, então `has_body ⇒ has_collider` por construção. Declarado, e
+        // não herdado, porque uma fixture que chega ao estado por omissão inverte
+        // de sentido no dia em que o default se move.
+        has_collider: true,
+        part_count: 0,
         // W-Compound: a fixture base é um objeto SOLTO, sem corpo acima — então
         // não há dono e o "Add Shape" não é oferecido. Os gates que o exercitam
         // preenchem este campo.
@@ -86,9 +92,25 @@ fn with_body() -> InspectorPhysicsInfo {
 }
 
 /// A plain sprite: the empty face, where the only control is Add.
+///
+/// ⚠️ **`has_collider: false` junto** (W-PartFace): sem essa metade este fixture
+/// descreveria uma PEÇA (collider sem corpo), que é a TERCEIRA face — e todo
+/// gate da face vazia passaria a pintar a errada.
 fn without_body() -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
         has_body: false,
+        has_collider: false,
+        ..with_body()
+    }
+}
+
+/// Uma **PEÇA** (W-PartFace): collider sem corpo, pendurada num dono nomeado.
+/// A terceira face do §11.
+fn as_part() -> InspectorPhysicsInfo {
+    InspectorPhysicsInfo {
+        has_body: false,
+        has_collider: true,
+        part_owner: "Torso".into(),
         ..with_body()
     }
 }
@@ -1830,5 +1852,240 @@ fn the_add_shape_door_is_offered_only_with_an_owner_and_a_real_click_reaches_it(
     assert!(
         painted.iter().any(|(n, _)| *n == ids::INSP_PHYS_ADD_SHAPE),
         "a porta não foi pintada para um filho de corpo"
+    );
+}
+
+// ─── W-PartFace: a TERCEIRA face ────────────────────────────────────────────
+
+/// Que ids o §11 pinta para este snapshot.
+fn painted_ids(info: InspectorPhysicsInfo) -> Vec<ph2d_a11y::NodeId> {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(info));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    rects.iter().map(|(n, _)| *n).collect()
+}
+
+/// **A face de PEÇA pinta o COLLIDER e nada do CORPO** (W-PartFace).
+///
+/// A lista não é de gosto: são exatamente as propriedades que a ponte lê de uma
+/// peça (`reconcile_parts` monta o `BodyDesc` do `Collider` + o marcador
+/// `OneWayPlatform`, e passa constantes para tudo que é do corpo). Um knob de
+/// corpo aqui seria um controle que o solver ignora — a lei que esta seção
+/// repete desde o W2b — e a ausência sozinha ficaria verde com a seção inteira
+/// em branco, então as duas metades andam juntas
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+#[test]
+fn the_part_face_paints_the_collider_rows_and_no_body_rows() {
+    let painted = painted_ids(as_part());
+    let has = |id| painted.contains(&id);
+    for (id, what) in [
+        (ids::INSP_PHYS_SHAPE[0], "o seletor de forma"),
+        (ids::INSP_PHYS_HALF_X, "as dimensões"),
+        (ids::INSP_PHYS_OFFSET_X, "o offset"),
+        (ids::INSP_PHYS_DENSITY, "a densidade"),
+        (ids::INSP_PHYS_RESTITUTION, "o quique"),
+        (ids::INSP_PHYS_FRICTION, "o atrito"),
+        (ids::INSP_PHYS_REST_COMBINE[0], "o combine de quique"),
+        (ids::INSP_PHYS_LAYER[0], "a camada"),
+        (ids::INSP_PHYS_SENSOR[0], "o trigger"),
+        (ids::INSP_PHYS_ONEWAY[0], "o one-way"),
+        (ids::INSP_PHYS_ADD, "a promoção a corpo próprio"),
+        (ids::INSP_PHYS_REMOVE, "a remoção da forma"),
+    ] {
+        assert!(has(id), "a face de peça não pintou {what} ({id:?})");
+    }
+    for (id, what) in [
+        (ids::INSP_PHYS_KIND[0], "o tipo de corpo"),
+        (ids::INSP_PHYS_MASSMODE[0], "o modo de massa"),
+        (ids::INSP_PHYS_GRAVITY_SCALE, "a gravidade"),
+        (ids::INSP_PHYS_LINVEL_X, "a velocidade inicial"),
+        (ids::INSP_PHYS_CCD[0], "o CCD"),
+        (ids::INSP_PHYS_LOCKROT[0], "a trava de rotação"),
+        (ids::INSP_PHYS_DOMINANCE, "a dominância"),
+        (ids::INSP_PHYS_LINEAR_DAMPING, "o damping"),
+        (ids::INSP_PHYS_BAKE, "o bake"),
+        // ⚠️ E a porta que a criou: re-oferecê-la reescreve o collider com os
+        // defaults e apaga a forma autorada em silêncio.
+        (ids::INSP_PHYS_ADD_SHAPE, "a porta *Add Shape*"),
+    ] {
+        assert!(
+            !has(id),
+            "a face de peça pintou {what} ({id:?}), que o solver ignora numa peça"
+        );
+    }
+}
+
+/// **E a ZONA fica de fora inteira**, mesmo com o trigger marcado.
+///
+/// Uma peça marcada como sensor atravessa — isso o solver honra — mas
+/// `reconcile_parts` não lê `AreaEffector` nem nenhum dos seis irmãos, então os
+/// sete números de zona não teriam leitor nenhum. É por isso que o bloco de área
+/// virou função própria em vez de um `if` dentro do bloco de colisão.
+#[test]
+fn a_sensor_part_paints_no_zone_rows() {
+    let painted = painted_ids(InspectorPhysicsInfo {
+        is_sensor: true,
+        ..as_part()
+    });
+    for (id, what) in [
+        (ids::INSP_PHYS_FORCE_X, "a força"),
+        (ids::INSP_PHYS_AREA_TORQUE, "o torque"),
+        (ids::INSP_PHYS_AREA_FALLOFF, "o falloff"),
+        (ids::INSP_PHYS_AREA_DRAG, "o arrasto"),
+        (ids::INSP_PHYS_AREA_DENSITY, "a densidade do fluido"),
+        (ids::INSP_PHYS_AREA_FORM_DRAG, "o shape drag"),
+        (ids::INSP_PHYS_FORCE_AXES[0], "os eixos da força"),
+    ] {
+        assert!(
+            !painted.contains(&id),
+            "uma peça-sensor pintou {what} ({id:?}) — a ponte não lê efetor de peça"
+        );
+    }
+    // E o CONTROLE: num CORPO-sensor as mesmas rows são pintadas. Sem esta
+    // metade, o gate acima ficaria verde com o bloco de zona apagado do produto.
+    let body = painted_ids(InspectorPhysicsInfo {
+        is_sensor: true,
+        ..with_body()
+    });
+    assert!(
+        body.contains(&ids::INSP_PHYS_FORCE_X) && body.contains(&ids::INSP_PHYS_AREA_TORQUE),
+        "o corpo-sensor perdeu o bloco de zona — o corte quebrou a face de corpo"
+    );
+}
+
+/// **Cada controle da face de peça CHEGA ao barramento.**
+///
+/// Pintado e hit-registrado não é vivo — e as rows desta face passavam por uma
+/// guarda de `has_body` que uma peça não satisfaz, então o artista podia digitar
+/// e nada acontecia. Os chips vão pelo ponteiro REAL (eles registram em LAÇO, o
+/// ponto cego do `architecture_panel_wiring_parity`).
+#[test]
+fn every_part_face_control_reaches_the_bus() {
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_SHAPE[0]),
+        PhysicsFieldEdit::Shape(0),
+        "a forma de uma peça",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_LAYER[2]),
+        PhysicsFieldEdit::Layer(2),
+        "a camada de uma peça",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_SENSOR[1]),
+        PhysicsFieldEdit::Sensor(true),
+        "o trigger de uma peça",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_ONEWAY[1]),
+        PhysicsFieldEdit::OneWay(true),
+        "o one-way de uma peça",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_REST_COMBINE[3]),
+        PhysicsFieldEdit::RestitutionCombine(3),
+        "o combine de quique de uma peça",
+    );
+    expect(
+        &commit(as_part(), ids::INSP_PHYS_HALF_X, 0.42),
+        PhysicsFieldEdit::HalfX(0.42),
+        "a meia-largura de uma peça",
+    );
+    expect(
+        &commit(as_part(), ids::INSP_PHYS_OFFSET_Y, -0.3),
+        PhysicsFieldEdit::OffsetY(-0.3),
+        "o offset de uma peça",
+    );
+    expect(
+        &commit(as_part(), ids::INSP_PHYS_DENSITY, 7.5),
+        PhysicsFieldEdit::Density(7.5),
+        "a densidade de uma peça",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_REMOVE),
+        PhysicsFieldEdit::Remove,
+        "*Remove Shape*",
+    );
+    expect(
+        &click_real(as_part(), ids::INSP_PHYS_ADD),
+        PhysicsFieldEdit::Add,
+        "*Make Independent Body*",
+    );
+}
+
+/// **A porta que criou a peça é RECUSADA no handler, não só no pintor.**
+///
+/// O id fica no store a sessão inteira e *dim não é recusa*
+/// ([[feedback_disabled_button_still_dispatches]]); e o preço do clique está
+/// medido do outro lado da fronteira (`inspector_part_tests`): ele reescreve o
+/// collider com a caixa do sprite e zera offset, densidade e camada.
+///
+/// A metade PRESENÇA é o que impede este gate de ficar verde com o botão morto
+/// em toda parte.
+#[test]
+fn add_shape_is_refused_on_something_that_already_has_a_shape() {
+    assert!(
+        click(as_part(), ids::INSP_PHYS_ADD_SHAPE).is_empty(),
+        "*Add Shape* despachou sobre uma PEÇA — o clique reescreve a forma autorada"
+    );
+    let offered = InspectorPhysicsInfo {
+        part_owner: "Torso".into(),
+        ..without_body()
+    };
+    expect(
+        &click(offered, ids::INSP_PHYS_ADD_SHAPE),
+        PhysicsFieldEdit::AddShape,
+        "*Add Shape* na face VAZIA, onde ela é a porta certa",
+    );
+}
+
+/// **Um corpo COMPOSTO diz que é** (W-PartFace).
+///
+/// O readout é TEXTO — não tem id, então nenhum gate de hit o alcança. O oráculo
+/// honesto é o que ele de fato faz na tela: **ocupa uma linha**, e tudo abaixo
+/// dele desce. Comparar o `y` da row de Offset entre `part_count` 0 e 2 mede
+/// exatamente isso, sem espelhar a regra que julga.
+///
+/// ⚠️ Sem esta linha o `part_count` seria um campo **write-only**: a shell o
+/// computa todo frame (com uma query sobre o mundo inteiro) e ninguém o lê.
+#[test]
+fn a_compound_body_says_so_and_the_rows_below_make_room() {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let y_of = |parts: u8| {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(InspectorPhysicsInfo {
+            part_count: parts,
+            ..with_body()
+        }));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_physics(None);
+        rects
+            .iter()
+            .find(|(n, _)| *n == ids::INSP_PHYS_OFFSET_X)
+            .map(|(_, r)| r.y)
+            .expect("§11 nunca pintou a row de Offset X")
+    };
+    let plain = y_of(0);
+    let compound = y_of(2);
+    assert!(
+        compound > plain,
+        "um corpo com 2 peças pintou a MESMA seção de um de forma única \
+         (Offset X em {compound} nos dois) — o readout não existe"
     );
 }

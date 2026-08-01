@@ -39,8 +39,13 @@ const EDGE_MARGIN: f32 = 40.0; // LITERAL-PX-OK: min gap from the viewport edge 
 const CARD_MAX_H_FRAC: f32 = 0.86; // LITERAL-PX-OK: card height fraction of the viewport
 const HEADER_H: f32 = 44.0; // LITERAL-PX-OK: the "Add Node" + search + close band height
 const CLOSE_W: f32 = 24.0; // LITERAL-PX-OK: close-X square
-const MIN_COL_W: f32 = 200.0; // LITERAL-PX-OK: masonry column min width (below this, fewer columns)
-const MAX_COLS: usize = 4; // LITERAL-PX-OK: CONTAGEM de colunas do masonry, nao medida
+const MIN_COL_W: f32 = 200.0; // LITERAL-PX-OK: narrow column min width (below this, fewer columns)
+const MAX_COLS: usize = 4; // LITERAL-PX-OK: CONTAGEM de colunas estreitas, nao medida
+// A category with this many items reads as a pile-up when stacked in ONE narrow column, so it is
+// laid as a full-width band instead (flows wide, stays short). Motion's catalog splits cleanly:
+// the small categories cap at 15 items, the two big ones (Transform/Utility) have 39/41 — any
+// threshold in [16, 38] is equivalent. This is a LAYOUT choice (readability), not a resource cap.
+const MIN_WIDE_ITEMS: usize = 20; // LITERAL-PX-OK: CONTAGEM que promove uma categoria a faixa, nao medida
 const COL_GAP: f32 = 20.0; // LITERAL-PX-OK: gap between masonry columns
 const SECT_GAP: f32 = 18.0; // LITERAL-PX-OK: vertical gap between category sections in a column
 const RULE_H: f32 = 2.0; // LITERAL-PX-OK: the coloured underline under a category header
@@ -256,7 +261,12 @@ pub fn paint(
         resolve(ColorToken::Text1, theme),
     );
 
-    // ── Content: a greedy masonry of category sections into N balanced columns. ──
+    // ── Content: two regions, so the two big categories cannot pile up in one column and the small
+    //    ones cannot leave gaps. SMALL categories pack into N balanced narrow columns (greedy
+    //    shortest-column); BIG categories (>= MIN_WIDE_ITEMS) are full-width bands BELOW, where a
+    //    40-node category is a few short rows across the whole card instead of a tall pile. This is
+    //    the approved mockup's shape (narrow A/B columns + a wide Transform + a full-width Utility
+    //    strip) derived from category SIZE, so a new/renamed category never breaks a hardcoded map. ──
     let content_x = inner_x;
     let content_y = header_y + HEADER_H + Spacing::Sm.px();
     let content_w = inner_w;
@@ -264,24 +274,33 @@ pub fn paint(
     let n_cols = ((content_w / MIN_COL_W).floor() as usize).clamp(1, MAX_COLS);
     let col_w = (content_w - COL_GAP * (n_cols as f32 - 1.0)) / n_cols as f32;
 
-    let layouts: Vec<GroupLayout> = model
-        .groups
-        .iter()
-        .map(|g| layout_group(ts, g, col_w))
-        .collect();
-
-    // Greedy: place each section in the currently-shortest column (balances height like the mockup).
+    // Small categories → balanced narrow columns, in display order (so Source leads at the
+    // top-left, the pipeline reading order).
     let mut col_bottom = vec![content_y; n_cols];
-    for gl in &layouts {
+    for g in model.groups.iter().filter(|g| group_count(g) < MIN_WIDE_ITEMS) {
+        let gl = layout_group(ts, g, col_w);
         let c = shortest_column(&col_bottom);
         let ox = content_x + c as f32 * (col_w + COL_GAP);
         let oy = col_bottom[c];
-        paint_group(scene, ts, theme, hit_index, gl, ox, oy, col_w);
+        paint_group(scene, ts, theme, hit_index, &gl, ox, oy, col_w);
         col_bottom[c] = oy + gl.height + SECT_GAP;
+    }
+
+    // Big categories → full-width bands stacked below the narrow columns.
+    let mut band_y = col_bottom.iter().copied().fold(content_y, f32::max);
+    for g in model.groups.iter().filter(|g| group_count(g) >= MIN_WIDE_ITEMS) {
+        let gl = layout_group(ts, g, content_w);
+        paint_group(scene, ts, theme, hit_index, &gl, content_x, band_y, content_w);
+        band_y += gl.height + SECT_GAP;
     }
 
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);
+}
+
+/// Item count of a group (decides narrow-column vs full-width-band placement in [`paint`]).
+fn group_count(g: &PaletteGroup) -> usize {
+    g.subs.iter().map(|s| s.items.len()).sum()
 }
 
 fn shortest_column(bottoms: &[f32]) -> usize {

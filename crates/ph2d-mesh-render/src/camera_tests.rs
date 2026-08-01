@@ -431,3 +431,99 @@ fn project_is_the_exact_inverse_of_ray_through() {
     }
     assert_eq!(checked, 40);
 }
+
+/// A câmera de referência dos gates de raio-de-tela: fora dos eixos nos três
+/// ângulos, para que nenhum deles seja zero por acidente.
+fn oblique() -> Camera3d {
+    Camera3d {
+        target: glam::Vec3::new(0.2, -0.1, 0.4),
+        distance: 5.0,
+        yaw: 0.8,
+        pitch: -0.3,
+        fov_y: core::f32::consts::FRAC_PI_4,
+    }
+}
+
+/// Os eixos da câmera em mundo — `right` é perpendicular ao eixo de vista, então
+/// andar ao longo dele **preserva a profundidade**, que é a premissa do oráculo.
+fn screen_axes(cam: &Camera3d) -> (Vec3, Vec3) {
+    let axis = (cam.eye() - cam.target).normalize();
+    let right = Vec3::Y.cross(axis).normalize();
+    (right, axis)
+}
+
+/// ⚠️ **O oráculo é o `project`, não a fórmula.** O gate converte `px` pixels em
+/// mundo, anda esse tanto na tela, projeta de volta e exige de novo `px` — então
+/// ele mede a PROPRIEDADE que a porta promete sem conhecer a conta dela. Uma
+/// asserção escrita com `2·d·tan(fov/2)/h` seria a fórmula conferindo a si
+/// mesma, e ficaria verde sobre qualquer erro comum às duas cópias.
+#[test]
+fn a_screen_radius_measures_the_pixels_it_names() {
+    let size = (1280u32, 720u32);
+    let cam = oblique();
+    let (right, _) = screen_axes(&cam);
+    let mut checked = 0;
+    // Vários pontos, incluindo FORA do eixo da tela: a conversão não pode
+    // depender de onde o ponto cai lateralmente, só da profundidade.
+    for at in [
+        cam.target,
+        cam.target + right * 1.2,
+        cam.target - right * 0.8 + Vec3::Y * 0.5,
+        cam.target + Vec3::Y * 1.5,
+    ] {
+        for px in [4.0f32, 20.0, 96.0] {
+            let r = cam.world_radius_for_screen_px(at.into(), px, size);
+            assert!(r > 0.0, "raio nulo em {at} para {px} px");
+            let (ax, ay) = cam.project(at.into(), size).expect("à frente");
+            let (bx, by) = cam
+                .project((at + right * r).into(), size)
+                .expect("à frente");
+            let moved = ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt();
+            assert!(
+                (moved - px).abs() < 0.05,
+                "{px} px viraram {r} de mundo, que a tela lê como {moved} px"
+            );
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 12);
+}
+
+/// **A ENTREGA da wave, enunciada como propriedade:** o pincel mede o mesmo
+/// tanto de TELA a qualquer distância, logo o raio de MUNDO tem de acompanhar a
+/// distância. Sem isto, aproximar a câmera faz o pincel engolir o modelo — que é
+/// o defeito que o item 6b existe para fechar.
+#[test]
+fn the_world_radius_tracks_the_distance_so_the_screen_size_holds() {
+    let size = (1024u32, 768u32);
+    let near = Camera3d {
+        distance: 2.0,
+        ..oblique()
+    };
+    let far = Camera3d {
+        distance: 8.0,
+        ..oblique()
+    };
+    let at: [f32; 3] = oblique().target.into();
+    let rn = near.world_radius_for_screen_px(at, 40.0, size);
+    let rf = far.world_radius_for_screen_px(at, 40.0, size);
+    let ratio = rf / rn;
+    assert!(
+        (ratio - 4.0).abs() < 0.01,
+        "4x a distância devia dar 4x o raio de mundo, e deu {ratio}x ({rn} → {rf})"
+    );
+}
+
+/// Um ponto ATRÁS do olho não tem pixel, então não tem conversão. O caso não
+/// acontece no produto (um `Hit` está sempre à frente), e a porta não pode
+/// devolver um raio negativo por isso.
+#[test]
+fn a_point_behind_the_eye_has_no_screen_radius() {
+    let size = (800u32, 600u32);
+    let cam = oblique();
+    let behind = cam.eye() + (cam.eye() - cam.target).normalize() * 2.0;
+    assert_eq!(
+        cam.world_radius_for_screen_px(behind.into(), 30.0, size),
+        0.0
+    );
+}

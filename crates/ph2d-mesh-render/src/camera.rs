@@ -197,6 +197,47 @@ impl Camera3d {
         Some(((ndc.x + 1.0) * 0.5 * w, (1.0 - ndc.y) * 0.5 * h))
     }
 
+    /// O raio de MUNDO que mede `px` pixels de tela no ponto `at` — a conversão
+    /// que faz um pincel **manter o tamanho aparente** quando a câmera aproxima.
+    ///
+    /// É o `computeWorldRadius2` do SculptGL (`Picking.js:378-387`), passo a
+    /// passo: projeta o ponto, anda `px` pixels para o lado **na mesma
+    /// profundidade**, e mede a distância de mundo entre os dois.
+    ///
+    /// ⚠️ **Ela NÃO re-deriva o frustum, e isso é o desenho.** A forma fechada
+    /// (`2·d·tan(fov/2)·px / altura`) é mais curta e seria uma **segunda cópia**
+    /// das mesmas grandezas que o [`Self::ray_through`] usa — exatamente o que o
+    /// doc dele adverte, porque as duas divergiriam por um fator pequeno e
+    /// constante que nenhum teste de nenhuma das metades enxerga. Aqui só entram
+    /// as portas (`project`, `ray_through`) e o eixo da vista, que é a definição
+    /// de `eye`/`target`.
+    ///
+    /// ⚠️ **O `t` do segundo raio é resolvido, não copiado do primeiro:** o
+    /// [`Ray::new`] **normaliza** a direção, então dois raios com o mesmo `t`
+    /// pousam em profundidades diferentes (o de fora está mais inclinado). O
+    /// que iguala é a profundidade ao longo do eixo, e é ela que a conta pede.
+    ///
+    /// Devolve `0.0` para um ponto que não está à frente do olho — não há pixel
+    /// para ele, então não há raio a converter.
+    #[must_use]
+    pub fn world_radius_for_screen_px(&self, at: [f32; 3], px: f32, size: (u32, u32)) -> f32 {
+        let Some((sx, sy)) = self.project(at, size) else {
+            return 0.0;
+        };
+        let eye = self.eye();
+        let axis = (eye - self.target).normalize_or(Vec3::Z); // alvo → olho
+        let depth = (Vec3::from(at) - eye).dot(-axis);
+        if depth <= 0.0 {
+            return 0.0;
+        }
+        let side = Vec3::from(self.ray_through(sx + px, sy, size).dir());
+        let along = side.dot(-axis);
+        if along <= 1e-6 {
+            return 0.0;
+        }
+        (eye + side * (depth / along) - Vec3::from(at)).length()
+    }
+
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um
     /// pixel, porque é ela que conhece a densidade da tela.
     ///

@@ -219,12 +219,38 @@ pub(crate) fn apply_physics_edit(
             // scales by the area factor, but this is only a starting value the artist
             // then tunes, and reading the exact scaled mass would re-derive rapier's
             // own computation in a second place.
+            // ⚠️ **Somando as PEÇAS** (W-PartMass): num corpo composto o seed lia
+            // a forma própria e ignorava o resto, então este gesto — cuja razão
+            // de existir é o número NÃO saltar — cortava a massa. Medido numa
+            // jangada de duas metades iguais: `0,600` semeado contra `1,200`
+            // reais. A lista de candidatos vem de uma query porque `ChildOf` é a
+            // única aresta do ECS: só se SOBE (a mesma restrição do `part_count`
+            // do snapshot).
+            //
+            // ⚠️ **`QueryState::try_new`, e é ela que salva a assinatura:** esta
+            // função toma `&SimWorld` de propósito — é um passe de LEITURA que
+            // ENFILEIRA escritas —, e `World::query` exige `&mut`. Trocar a
+            // assinatura por `&mut` para semear um número teria feito a função
+            // deixar de prometer o que ela promete.
+            let candidates: Vec<Entity> = {
+                let mut q = bevy_ecs::query::QueryState::<
+                    Entity,
+                    (
+                        bevy_ecs::query::With<Collider>,
+                        bevy_ecs::query::Without<ph2d_physics_ecs::RigidBody>,
+                    ),
+                >::try_new(world)
+                .expect("query");
+                q.iter(world).collect()
+            };
+            let seed =
+                ph2d_physics_ecs::auto_mass_with_parts(sim.world(), entity, &col, candidates);
             queue_set(
                 queue,
                 registry,
                 entity_bits,
                 MASS_OVERRIDE,
-                &MassOverride(col.auto_mass()),
+                &MassOverride(seed),
             );
         } else {
             // Manual → Auto: drop the override so the body weighs density × area again

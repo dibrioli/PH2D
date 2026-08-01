@@ -59,7 +59,7 @@ pub use interaction::{
 pub use joint::{JointKind, JointWorldAnchor, LengthField, MotorMode, PhysicsJoint};
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
-pub use parts::{count_parts, governing_kind, is_part, owner_body};
+pub use parts::{auto_mass_with_parts, count_parts, governing_kind, is_part, owner_body};
 pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};

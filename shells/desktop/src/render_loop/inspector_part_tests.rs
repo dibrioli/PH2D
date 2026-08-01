@@ -273,3 +273,155 @@ fn removing_a_part_leaves_a_plain_drawing() {
         "o dono não pode perder a própria forma"
     );
 }
+
+/// **O seed do `Mass: Auto → Manual` conhece as PEÇAS** (W-PartMass).
+///
+/// ⚠️ O comentário daquele gesto diz, com todas as letras, que o seed existe
+/// *"para a massa não saltar quando o toggle vira"* — e num corpo composto ele
+/// fazia exatamente isso: lia a forma PRÓPRIA e ignorava o resto. Medido numa
+/// jangada de duas metades iguais, **`0,600` semeado contra `1,200` reais**.
+/// Metade, em silêncio, no gesto cuja razão de existir é não mexer no número.
+///
+/// ⚠️ **O oráculo é o DOBRO do que o gate irmão mede num corpo simples**, e não
+/// uma segunda conta de área: as duas metades são idênticas, então a resposta
+/// certa é `2 × 0,600`. Re-derivar a área aqui daria uma expectativa que
+/// concordaria com o bug se ele voltasse pela mesma porta.
+#[test]
+fn the_mass_seed_of_a_compound_body_counts_its_parts() {
+    use ph2d_ecs::ChildOf;
+    use ph2d_physics_ecs::MassOverride;
+
+    let mut sim = SimWorld::new();
+    let body = sim
+        .world_mut()
+        .spawn((
+            Name::new("Raft"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.6,
+                    half_y: 0.25,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+    sim.world_mut().spawn((
+        Name::new("Raft Deck"),
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.6,
+                half_y: 0.25,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(1.2, 0.0)),
+        ChildOf(body),
+    ));
+
+    // ⚠️ **Um SEGUNDO corpo, com peças PRÓPRIAS, e ele é o que dá dentes ao
+    // gate.** Sem ele *"as peças deste corpo"* e *"todas as peças da cena"* são
+    // o mesmo número, e a mutação que ignora o dono passa — foi exatamente o que
+    // aconteceu, pela terceira vez nesta linha (o `count_parts` da W-PartFace
+    // teve o mesmo buraco).
+    let other = sim
+        .world_mut()
+        .spawn((
+            Name::new("Other"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 2.0,
+                    half_y: 2.0,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(20.0, 0.0)),
+        ))
+        .id();
+    for i in 0..3 {
+        sim.world_mut().spawn((
+            Name::new(format!("Other Part {i}")),
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 2.0,
+                    half_y: 2.0,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 4.0 * (i + 1) as f32)),
+            ChildOf(other),
+        ));
+    }
+
+    super::inspector_physics_tests::apply(
+        &mut sim,
+        body,
+        ph2d_editor::PhysicsFieldEdit::MassMode(true),
+    );
+    let seeded = sim
+        .world()
+        .get::<MassOverride>(body)
+        .map(|m| m.0)
+        .expect("o toggle Manual tem de semear um override");
+
+    // Uma metade pesa `4 · 0,6 · 0,25 · 1,0 = 0,600` (o gate irmão a mede pela
+    // porta do produto); duas metades idênticas pesam o dobro.
+    let half = 0.6_f32;
+    assert!(
+        (seeded - half * 2.0).abs() < 1e-3,
+        "seed {seeded:.4} contra os {:.4} das duas metades -- a forma propria \
+         sozinha da' {half:.4}, que e' o bug",
+        half * 2.0
+    );
+}
+
+/// **E o seed de um corpo SIMPLES não mudou** — o controle, e o que impede a
+/// cura de virar uma regressão para todo corpo que não é composto.
+#[test]
+fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
+    use ph2d_physics_ecs::MassOverride;
+
+    let mut sim = SimWorld::new();
+    let body = sim
+        .world_mut()
+        .spawn((
+            Name::new("Box"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.6,
+                    half_y: 0.25,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+    super::inspector_physics_tests::apply(
+        &mut sim,
+        body,
+        ph2d_editor::PhysicsFieldEdit::MassMode(true),
+    );
+    let seeded = sim
+        .world()
+        .get::<MassOverride>(body)
+        .map(|m| m.0)
+        .expect("override");
+    assert!(
+        (seeded - 0.6).abs() < 1e-3,
+        "um corpo de UMA forma passou a semear {seeded:.4} em vez de 0,600"
+    );
+}

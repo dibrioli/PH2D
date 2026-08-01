@@ -92,3 +92,40 @@ pub fn count_parts(
         .filter(|&e| owner_body(world, e) == Some(body))
         .count()
 }
+
+/// **A massa AUTOMÁTICA de `body`, contando as peças dele** (W-PartMass).
+///
+/// O seed do toggle *Mass: Auto → Manual* existe, pelas palavras do próprio
+/// comentário dele, *"para a massa não saltar quando o toggle vira"* — e num
+/// corpo composto ele fazia exatamente isso, porque lia `Collider::auto_mass()`
+/// da forma PRÓPRIA e ignorava as peças. Medido numa jangada de duas metades
+/// iguais: **seed `0,600` contra massa real `1,200`.** Metade, em silêncio, num
+/// gesto cuja razão de existir é não mexer no número.
+///
+/// ⚠️ **É `Collider::auto_mass` SOMADO, nunca uma segunda fórmula de área.** Uma
+/// re-derivação aqui divergiria de `auto_mass` no dia em que uma forma nova
+/// entrar no enum, e o sintoma seria uma massa semeada que não bate com a que o
+/// corpo tinha — o defeito que esta função existe para fechar, de volta por
+/// outra porta.
+///
+/// `candidates` vem de uma query do chamador, pela mesma razão que
+/// [`count_parts`]: `ChildOf` é a única aresta, então só se sobe.
+#[must_use]
+pub fn auto_mass_with_parts(
+    world: &World,
+    body: Entity,
+    own: &crate::Collider,
+    candidates: impl IntoIterator<Item = Entity>,
+) -> f32 {
+    let parts: f32 = candidates
+        .into_iter()
+        .filter(|&e| owner_body(world, e) == Some(body))
+        .filter_map(|e| world.get::<crate::Collider>(e))
+        // ⚠️ Um SENSOR não tem peso que o artista queira semear? **Tem** — e a
+        // diferença com o empuxo (`world::shapes::displaces`) é deliberada: um
+        // sensor não desloca fluido, mas o rapier lhe dá massa, e a massa que o
+        // seed tem de reproduzir é a que o solver de fato usa.
+        .map(crate::Collider::auto_mass)
+        .sum();
+    own.auto_mass() + parts
+}

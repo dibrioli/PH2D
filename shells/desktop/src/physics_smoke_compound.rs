@@ -144,7 +144,27 @@ impl crate::App {
                (!) SCRUB: toque Play, deixe assentar e arraste a regua PARA TRAS ate o\n     \
                zero. As duas mesas tem de cair de novo IGUAL. Se a da direita afundar\n     \
                no replay, as pecas nao voltaram ao mundo reconstruido -- a licao do\n     \
-               Weston.\n",
+               Weston.\n\n  \
+               === W-PartFace: a PECA agora e EDITAVEL ===\n  \
+               Ate esta wave, criar uma peca era uma porta de mao unica. Selecionando\n  \
+               'Solid Leg 1' o painel dizia \"Not simulated\" -- o oposto da verdade --\n  \
+               e mostrava as SEMENTES (caixa 0,50 x 0,50, offset 0, densidade 1,00) em\n  \
+               vez da forma autorada; a porta que a criou era re-oferecida, e clica-la\n  \
+               reescrevia o collider com os defaults, EM SILENCIO.\n\n  \
+               3. Selecione 'Solid Leg 1'. A secao agora abre a TERCEIRA face:\n     \
+                  - o cabecalho diz \"Shape of Solid Top -- simulated as part of it\";\n     \
+                  - Collider/dimensoes/Offset/Density/Bounce/Friction/Layer/Trigger\n       \
+                    sao as propriedades que a PONTE de fato le de uma peca, e cada\n       \
+                    uma chega ao solver;\n     \
+                  - as portas sao 'Make Independent Body' e 'Remove Shape'.\n     \
+                  Mude Half Width para 0,4 e veja a mesa alargar o pe: antes o campo\n     \
+                  nao existia, e o valor digitado nao chegava a lugar nenhum.\n  \
+               4. Selecione 'Solid Top'. Abaixo das dimensoes DELE aparece\n     \
+                  \"+ 2 more shapes from children\" -- sem essa linha, com o contorno\n     \
+                  desligado nada distinguia um corpo composto de um de forma unica.\n  \
+               5. E confira a recusa: em 'Solid Leg 1' NAO ha mais 'Add Shape to ...'.\n     \
+                  Ela e a porta da face VAZIA, e clica-la sobre algo que ja tem forma\n     \
+                  so apagava o que o artista afinou.\n",
             t0 = MEASURED_TOP_Y[0],
             l0 = MEASURED_LEG_TIP_Y[0],
             t1 = MEASURED_TOP_Y[1],

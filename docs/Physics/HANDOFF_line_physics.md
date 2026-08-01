@@ -8418,3 +8418,53 @@ leem os dois como chão, e gatear 45° seria pinar **estilo, não afirmação**.
 **Zero schema, zero componente, zero id, zero ADR.** Sem cena nova: a **`=65`** já
 encenava o A/B exato (dois pêndulos idênticos, um pelo gancho inventado e outro
 pelo mundo) e ganhou o parágrafo que aponta a marca.
+
+---
+
+## W-WorldPinLocal — a alça de ONDE NO CORPO o pino prende (2026-08-01, cena `=65`)
+
+O `local_a` era **inalcançável depois da criação** — nem alça, nem row numérica
+(o `INSP_JOINT_ANCHOR_B` é o toggle *Object | World*, não um número). E medindo
+para desenhar a alça, o vão mostrou ser maior do que a nota dizia.
+
+### ⚠️ A porta LIA um número e ESCREVIA outro
+
+`joint_anchor_world(A)` devolve `world_from_local(corpo, local_a)` sempre que o
+joint está `anchored` — e um pino de mundo está —, enquanto
+`set_joint_anchor_world(A)` escrevia o `Transform` (o prego). **Medido:** pedir
+`[0,5; 2,0]` deixava a leitura em `[0,0; 2,0]` com o `Transform` já em 0,5 — ou
+seja, **o dot não seguia o mouse**.
+
+A premissa que aquele ramo carregava (*"o dot é desenhado no `Transform`, então
+escrever `local_a` deixaria o desenho parado"*) era **exata para o defeito
+ORIGINAL e falsa para a cura**: ela trocou o defeito de lado.
+
+### O desenho
+
+Cada lado significa o que significa em todo joint — **A é onde no corpo A, B é a
+outra ponta**, que num pino de mundo é o **PREGO**. Por lerem e escreverem o MESMO
+número, as duas alças seguem o cursor.
+
+⚠️ **E ele cai numa infra que já existia para ele:** *"A pega o quadrado interno e
+B a banda de fora, que é como um par coincidente continua sendo duas alças"* — em
+repouso as duas nascem no mesmo ponto, porque é isso que um pino satisfeito é.
+
+⚠️ **MUDANÇA DE COMPORTAMENTO, nomeada:** o gesto aprovado no smoke da `=65`
+(*"arraste o DOT ÂMBAR e a âncora anda"*) **mudou de alça — é o ANEL**. A mensagem
+da cena foi reescrita: um smoke que instrui o gesto errado é pior que nenhum.
+
+**Medido depois:** arrastar A ⇒ A lê `0,5` e `local_a` vai de `−1,0` a `−0,5`, o
+prego fica; arrastar B ⇒ B lê `1,5`, `local_a` intacto.
+
+### Números e gates
+
+**c9 byte-idêntico** (`16ba80e8…`, 99 corpos) — autoria em repouso não alcança o
+solver. **Zero schema, zero componente, zero id, zero ADR.**
+
+3 gates (o par de alças na ponte + o par **OFERECIDO** pelo shell); **2 mutações,
+2 sangram** (a alça B some · o prego volta para o lado A).
+
+⚠️ **E o gate antigo `dragging_the_dot_moves_a_world_pins_anchor` ficava VERDE
+sobre o dot que não segue o mouse:** ele media o `Transform` — que de fato anda —
+e **nunca perguntava onde a alça é desenhada**. Reescrito para exigir que cada
+lado siga o próprio arrasto.

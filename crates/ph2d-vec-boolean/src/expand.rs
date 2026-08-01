@@ -362,7 +362,7 @@ fn ink_style(s: &StrokeSpec) -> VecPath {
 ///
 /// O piso é RELATIVO ao total (livre de escala) e não uma densidade: um traço fino e ondulado
 /// tem densidade baixa mas área REAL, e um piso de densidade o mataria junto com a lasca.
-fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
+pub(crate) fn drop_slivers(paths: Vec<VecPath>) -> Vec<VecPath> {
     let total: f64 = paths.iter().map(crate::area).sum();
     if total <= MIN_TOL {
         return Vec::new();

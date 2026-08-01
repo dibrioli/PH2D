@@ -57,6 +57,43 @@ impl OffsetSide {
     }
 }
 
+/// **De que lado da linha a tinta do traço cai** — o *Align Stroke* do Illustrator / o
+/// *stroke-alignment* do Figma.
+///
+/// Um traço centrado gasta metade da largura para dentro da forma e metade para fora, então
+/// **engrossá-lo muda a silhueta**: um botão de 100 px com borda de 20 mede 120. Inner o prende à
+/// borda (a silhueta não se mexe, que é o que um contorno de UI quer) e Outer o deita todo por
+/// fora (a moldura, o *sticker*, o realce que não pode comer o desenho).
+///
+/// ⚠️ **É uma pergunta sobre REGIÃO, e uma linha aberta não tem uma.** *Dentro* e *fora* só
+/// existem onde há interior; num caminho aberto os dois nomes não significam nada, e é por isso
+/// que quem oferece a escolha (o painel) e quem a executa (a booleana) perguntam ambos a
+/// [`Self::needs_a_region`] — a mesma função, para o botão nunca prometer o que a geometria
+/// recusa.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum StrokeAlign {
+    /// Metade para cada lado. O default, e o que todo desenho já feito tem.
+    #[default]
+    Centre,
+    /// Toda a largura para DENTRO. A silhueta da forma não se move ao engrossar.
+    Inner,
+    /// Toda a largura para FORA. O miolo desenhado não é comido pelo contorno.
+    Outer,
+}
+
+impl StrokeAlign {
+    /// **Este alinhamento precisa de um interior para significar alguma coisa?**
+    ///
+    /// Porta única da pergunta *"posso oferecer/executar isto?"*: o painel a usa para decidir se
+    /// pinta as opções, e a `ph2d-vec-boolean` para decidir se recorta. Duas cópias divergiriam no
+    /// dia em que um quarto modo entrasse, e a divergência apareceria como um botão que desenha e
+    /// não faz nada.
+    #[must_use]
+    pub fn needs_a_region(self) -> bool {
+        !matches!(self, StrokeAlign::Centre)
+    }
+}
+
 /// Estilo do traço de um path: cor + largura (world-units) + ponta/junção +
 /// tracejado opcional. Substitui a tupla `(Rgba8, f64)` da Fase 0.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -71,8 +108,13 @@ pub struct StrokeSpec {
     /// projeção da ponta nunca engole o vão.
     pub dash: Option<(f64, f64)>,
     /// **Ponta no COMEÇO** do caminho (arrowhead). Só vale em caminho aberto.
-    /// Apendado por ÚLTIMO: o postcard é posicional, então um save anterior a este campo
-    /// segue legível e lê `Marker::None` (que é o default — uma linha é uma linha).
+    ///
+    /// ⚠️ **Corrigido em 2026-08-01 — a frase anterior era falsa.** Ela dizia que *"o postcard é
+    /// posicional, então um save anterior a este campo segue legível e lê `Marker::None`"*: as duas
+    /// metades não se seguem. Posicional é justamente o que **impede** a leitura — não há marca de
+    /// ausência, o leitor chega ao fim dos bytes e falha (`Hit the end of buffer`, medido). O
+    /// `#[serde(default)]` serve a formatos auto-descritivos e à construção em código; quem protege
+    /// o arquivo é o `VEC_SCENE_SCHEMA_VERSION`, que recusa em vez de ler torto.
     #[serde(default)]
     pub marker_start: Marker,
     /// **Ponta no FIM** do caminho. Idem.
@@ -90,6 +132,16 @@ pub struct StrokeSpec {
     /// da ponta comporta sem se descaracterizar.
     #[serde(default)]
     pub marker_round: f64,
+    /// **De que lado da linha a faixa cai** — ver [`StrokeAlign`]. Default `Centre`, que é o que
+    /// todo desenho já feito tem.
+    ///
+    /// ⚠️ **Apendar aqui BUMPA o `VEC_SCENE_SCHEMA_VERSION`** (13→14), e o `#[serde(default)]` das
+    /// linhas acima **não** salva um save anterior: o postcard é posicional e **não sinaliza
+    /// ausência** — ele chega ao fim dos bytes e falha, em vez de cair no default. O atributo
+    /// serve para construir o struct em código e para formatos auto-descritivos; a compatibilidade
+    /// de leitura vem do NÚMERO, e é ele que recusa o arquivo velho em vez de o ler torto.
+    #[serde(default)]
+    pub align: StrokeAlign,
 }
 
 /// O default do [`StrokeSpec::marker_scale`]. Precisa ser uma função porque o default de
@@ -112,7 +164,19 @@ impl StrokeSpec {
             marker_end: Marker::None,
             marker_scale: 1.0,
             marker_round: 0.0,
+            align: StrokeAlign::Centre,
         }
+    }
+
+    /// **Esta faixa precisa ser RECORTADA contra o interior da forma?**
+    ///
+    /// Porta única do *"tem alinhamento a executar aqui?"*: a booleana pergunta antes de montar a
+    /// banda dupla, o desenho pergunta antes de trocar o traço por um preenchimento, e o painel
+    /// pergunta antes de anunciar o modo. Um traço de largura zero responde `false` pelo mesmo
+    /// motivo que [`Self::lays_a_band`] existe — recortar o nada é trabalho sobre o vazio.
+    #[must_use]
+    pub fn is_aligned(&self) -> bool {
+        self.align.needs_a_region() && self.lays_a_band()
     }
 
     /// `true` se o traço tem alguma ponta — o render então precisa recuar a linha.

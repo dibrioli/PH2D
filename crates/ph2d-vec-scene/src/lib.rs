@@ -236,7 +236,7 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeSpec};
+pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeAlign, StrokeSpec};
 
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
 /// do caminho, e é o que separa um desenho de um diagrama.
@@ -424,7 +424,12 @@ pub struct VecPath {
 /// sentido inverso: um save v11 com um Repeater, lido por um binário v10, encontra um índice de
 /// variant que não conhece. O bump é o que transforma isso num erro de versão em vez de um
 /// postcard a falhar longe da causa. (Migração robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 13;
+/// v14: [`StrokeSpec`] ganhou [`StrokeAlign`] (Centre/Inner/Outer). Campo APENDADO, e o bump é
+/// obrigatório nos DOIS sentidos — o postcard não sinaliza ausência, então um save v13 lido por
+/// v14 chega ao fim dos bytes no campo novo (`Hit the end of buffer`, medido em 2026-08-01) e um
+/// save v14 lido por v13 traz um byte a mais. O número é o que transforma os dois casos num erro
+/// de versão em vez de num postcard a falhar longe da causa.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 14;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

@@ -41,6 +41,13 @@ pub use expand::{
     silhouette_paths,
 };
 
+/// **O ALINHAMENTO do traço** — Inner/Outer como `banda-dupla ∩ interior` / `banda-dupla −
+/// interior`. Módulo irmão pela mesma razão do Pathfinder: é COMPOSIÇÃO do que já está aqui, e
+/// mora nesta crate porque o `stroke_plan` — o dono natural da pergunta — não pode chamar a
+/// booleana (o ciclo de dependência que o cargo recusa por nome).
+pub mod align;
+pub use align::aligned_stroke;
+
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 
 /// **A fronteira com o motor** — conversão, guarda de entrada e o motivo da recusa. Irmão pelo

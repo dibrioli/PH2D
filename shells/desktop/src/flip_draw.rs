@@ -343,6 +343,15 @@ fn build_stroke(
         });
     }
     s.hardness = style.hardness;
+    // **A PONTA do traço.** ⚠️ O motor honra `cap` ponta a ponta desde que o percurso landou — o
+    // bit no `pack`, o semi-plano no `stroke_silhouette`, o ramo do `flip.wgsl`, tudo gateado e
+    // com paridade CPU×device provada. O que NÃO existia era esta linha: sem ela todo traço saía
+    // no `Cap::default()` e a ponta reta era alcançável só de um teste. Uma capacidade sem porta
+    // é pior que uma que falta, porque ela passa nos gates.
+    //
+    // ⚠️ **O par recebe o MESMO valor nas duas pontas**: o par existe porque a borracha, ao partir
+    // um traço, pode dar pontas diferentes às metades — não porque o artista as autore separadas.
+    s.cap = (style.cap, style.cap);
     // **O *tip* pontilhado** (03 §8): o traço herda a ponta do pincel (linha cheia ou
     // contas). `dot_spacing` é um MÚLTIPLO do diâmetro (relativo à espessura), direto para o
     // modelo — o fragment o escala pela largura de referência do traço.

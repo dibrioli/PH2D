@@ -6,7 +6,7 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use ph2d_tool_flip::{DOT_SPACING_MAX, FlipMode, FlipStyleSnapshot, StrokeTip};
+use ph2d_tool_flip::{Cap, DOT_SPACING_MAX, FlipMode, FlipStyleSnapshot, StrokeTip};
 
 impl BodyCtx<'_> {
     /// A linha **Tip** [Line | Dots | Squares] + o slider **Spacing** (só com contas).
@@ -47,6 +47,21 @@ impl BodyCtx<'_> {
                 y,
             );
         }
+        // **Cap** — a PONTA do traço: o disco do pincel (Round) ou o corte reto (Flat, o `butt` do
+        // SVG). Fica logo abaixo do Tip porque as duas respondem *"que forma tem a ponta?"* — uma
+        // ao LONGO do traço, outra na EXTREMIDADE dele.
+        //
+        // ⚠️ **Oferecido com QUALQUER tip, e é medido, não suposto:** com contas o `Flat` corta a
+        // fita antes da última conta, então ele não é inerte ali; escondê-lo seria decidir por um
+        // artista que talvez queira exatamente isso.
+        y = self.segmented(
+            "Cap",
+            [
+                (ids::FLIP_CAP_ROUND, "Round", snap.cap == Cap::Round),
+                (ids::FLIP_CAP_FLAT, "Flat", snap.cap == Cap::Flat),
+            ],
+            y,
+        );
         // **Self Overlap** (03 §8) — o toggle de auto-sobreposição com acúmulo. Um chip
         // largura-cheia (segmented de 1 opção, sem caption): destaca quando ligado, e o
         // clique ALTERNA (o `PanelEvent::Click` cai no arm de toggle da tool). Só no Draw.

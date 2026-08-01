@@ -450,3 +450,5 @@ fn measure_what_the_third_and_fourth_plane_buy() {
 /// oráculo (`true_area`) — duplicá-lo daria duas referências para uma pergunta.
 #[path = "ink_drop_tests.rs"]
 mod ink_drop;
+#[path = "ink_drop_probes.rs"]
+mod ink_drop_probes;

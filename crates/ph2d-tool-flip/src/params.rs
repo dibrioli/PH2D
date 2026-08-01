@@ -334,6 +334,9 @@ pub struct FlipStyleSnapshot {
     /// **A PONTA ao longo do traço** ([`ph2d_flip::StrokeTip`]): linha cheia (default) ou
     /// contas pontilhadas/quadradas. O traço desenhado herda isto (`flip_draw`).
     pub tip: ph2d_flip::StrokeTip,
+    /// **A PONTA do traço** ([`ph2d_flip::Cap`]): redonda (o disco do pincel, default) ou reta.
+    /// O traço desenhado herda isto nas DUAS extremidades (`flip_draw::build_stroke`).
+    pub cap: ph2d_flip::Cap,
     /// **O espaçamento centro-a-centro das contas** como MÚLTIPLO do diâmetro do traço
     /// (relativo à espessura ⇒ o padrão aparece em qualquer grossura). Só relevante quando
     /// `tip` é pontilhado. Ver [`DOT_SPACING_MAX`].
@@ -432,6 +435,7 @@ impl Default for FlipStyleSnapshot {
             width_px: 6.0,
             hardness: 1.0,
             tip: ph2d_flip::StrokeTip::Continuous,
+            cap: ph2d_flip::Cap::Round,
             dot_spacing: ph2d_flip::DEFAULT_DOT_SPACING as f64,
             self_overlap: false,
             airbrush: false,

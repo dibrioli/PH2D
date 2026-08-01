@@ -265,3 +265,46 @@ fn the_real_pipeline_step_in_radii() {
         );
     }
 }
+
+/// 🔴 **A PONTA AUTORADA CHEGA AO TRAÇO — e ao BIT que o motor lê.**
+///
+/// ⚠️ **Este gate cobre uma porta que não existia, não uma capacidade nova.** O motor honra
+/// `FlipStroke::cap` ponta a ponta desde que o percurso landou — o `FLAG_START_FLAT`/`FLAG_END_FLAT`
+/// no `pack`, o semi-plano no `stroke_silhouette`, o ramo do `flip.wgsl` —, tudo gateado e com
+/// paridade CPU×device provada. E mesmo assim **nenhum traço do artista jamais foi reto**: o
+/// `build_stroke` não escrevia `s.cap`, então todo traço saía no `Cap::default()` e `Cap::Flat`
+/// era alcançável só de dentro de um teste.
+///
+/// É a forma de falha mais silenciosa que existe neste repo — uma capacidade **sem porta passa em
+/// todos os gates**, porque cada peça dela está certa. Por isso o oráculo aqui é o BIT: ele
+/// atravessa estilo → traço → empacotamento, que é o caminho que estava roto no meio.
+///
+/// Mutação que sangra: apagar `s.cap = (style.cap, style.cap)` do `build_stroke`.
+#[test]
+fn the_authored_cap_reaches_the_stroke_and_the_packed_flag() {
+    use ph2d_flip::Cap;
+    let (pts, prs) = hand_arc(24);
+    for (cap, reto) in [(Cap::Round, false), (Cap::Flat, true)] {
+        let st = FlipStyleSnapshot { cap, ..style() };
+        let s = stroke_from_samples(&st, &pts, &prs, &Xform::IDENTITY);
+        assert_eq!(
+            s.cap,
+            (cap, cap),
+            "o `build_stroke` nao carimbou a ponta autorada nas DUAS extremidades"
+        );
+        // E o bit que o motor de fato lê — o elo que faltava era justamente entre os dois.
+        let mut d = ph2d_flip::FlipDrawing::default();
+        d.strokes.push(s);
+        let data = ph2d_flip_render::pack_drawing(&d);
+        let flags = data.strokes[0].flags;
+        let tem = |b| flags & b != 0;
+        assert_eq!(
+            (
+                tem(ph2d_flip_render::FLAG_START_FLAT),
+                tem(ph2d_flip_render::FLAG_END_FLAT)
+            ),
+            (reto, reto),
+            "a ponta {cap:?} nao chegou aos bits do pack (flags {flags:#b})"
+        );
+    }
+}

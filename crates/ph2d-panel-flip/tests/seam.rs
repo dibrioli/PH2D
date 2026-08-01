@@ -261,6 +261,77 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
     );
 }
 
+/// 🔴 **O seletor Cap é pintado no Draw e o clique chega à tool** — a PORTA que faltava.
+///
+/// ⚠️ **Este gate existe porque o motor já sabia fazer a ponta reta e ninguém conseguia pedir:** o
+/// `FlipStroke::cap` é honrado ponta a ponta pelos DOIS motores (o bit do `pack`, o semi-plano da
+/// silhueta, o ramo do `flip.wgsl`), com paridade CPU×device provada — e mesmo assim `Cap::Flat`
+/// era alcançável só de um teste, porque o `build_stroke` nunca escrevia o campo. Uma capacidade
+/// sem porta **passa em todos os gates**, e é por isso que o gate tinha de ser o da COSTURA.
+///
+/// Mutação que sangra: tirar `FLIP_CAP_FLAT` do arm de `event.rs` (o chip morre sob o mouse).
+#[test]
+fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+
+    // (a) PINTADO + clicável no Draw — as DUAS opções, senão o rádio tem um lado inalcançável.
+    ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Draw,
+        ..Default::default()
+    }));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    for (id, nome) in [(ids::FLIP_CAP_ROUND, "Round"), (ids::FLIP_CAP_FLAT, "Flat")] {
+        let Some((_, r)) = painted.iter().find(|(w, _)| *w == id) else {
+            panic!("a opcao Cap {nome} NAO e pintada no Draw: nao existe na tela");
+        };
+        assert!(
+            r.w > 0.0 && r.h > 0.0,
+            "a opcao Cap {nome} foi pintada com area ZERO: invisivel e inclicavel ({r:?})"
+        );
+    }
+
+    // (b) MODAL: some fora do Draw (a ponta é atributo do traço desenhado).
+    ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Select,
+        ..Default::default()
+    }));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        !painted
+            .iter()
+            .any(|(w, _)| *w == ids::FLIP_CAP_ROUND || *w == ids::FLIP_CAP_FLAT),
+        "o seletor Cap nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
+    );
+
+    // (c) O Click FORWARDS à tool, pela costura real, e VOLTA — um rádio que só vai de ida deixa
+    // o artista preso na ponta reta.
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+    assert_eq!(tool.cap(), ph2d_tool_flip::Cap::Round, "nasce redonda");
+    for (id, esperado) in [
+        (ids::FLIP_CAP_FLAT, ph2d_tool_flip::Cap::Flat),
+        (ids::FLIP_CAP_ROUND, ph2d_tool_flip::Cap::Round),
+    ] {
+        let outcome = host.apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "panel ignorou a opcao Cap — o arm dela falta em `event.rs`"
+        );
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        assert_eq!(
+            tool.cap(),
+            esperado,
+            "o clique nao chegou ao cap da tool — a costura esta morta"
+        );
+    }
+}
+
 /// 🔴 **O toggle Airbrush é pintado NO DRAW (e só nele) e o clique chega à tool** (03 §8). As três
 /// metades da costura: PINTADO+clicável, MODAL (some fora do Draw), Click FORWARDS ao flag. Mutação
 /// que sangra: tirar `FLIP_AIRBRUSH` do arm de `event.rs` (o chip morre sob o mouse).

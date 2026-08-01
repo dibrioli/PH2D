@@ -44,6 +44,9 @@ fn is_style_forward_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::FLIP_TIP_LINE
         || id == ids::FLIP_TIP_DOTS
         || id == ids::FLIP_TIP_SQUARES
+        // Cap (Draw): a PONTA do traço — disco redondo ou corte reto.
+        || id == ids::FLIP_CAP_ROUND
+        || id == ids::FLIP_CAP_FLAT
         // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição — a tool inverte.
         || id == ids::FLIP_SELF_OVERLAP
         // Airbrush (Draw, 03 §8): o toggle do pincel airbrush — a tool inverte.

@@ -40,6 +40,9 @@ fn draw_style_buttons(store: &mut WidgetStore) {
     button(store, ids::FLIP_TIP_LINE);
     button(store, ids::FLIP_TIP_DOTS);
     button(store, ids::FLIP_TIP_SQUARES);
+    // Cap (Draw): the stroke's TIP SHAPE — round disc or straight cut.
+    button(store, ids::FLIP_CAP_ROUND);
+    button(store, ids::FLIP_CAP_FLAT);
     // Self Overlap (Draw, 03 §8): the accumulate toggle-chip.
     button(store, ids::FLIP_SELF_OVERLAP);
     // Airbrush (Draw, 03 §8): the analytic-airbrush toggle-chip.

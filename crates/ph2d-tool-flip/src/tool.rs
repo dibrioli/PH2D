@@ -13,7 +13,7 @@
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
-use ph2d_flip::{DEFAULT_DOT_SPACING, StrokeTip};
+use ph2d_flip::{Cap, DEFAULT_DOT_SPACING, StrokeTip};
 
 use crate::params::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_WORLD, GROW_MAX,
@@ -50,6 +50,15 @@ pub struct FlipTool {
     hardness: f32,
     /// A PONTA ao longo do traço (o *tip* pontilhado) + o vão entre contas (MUNDO).
     tip: StrokeTip,
+    /// **A PONTA do traço** — redonda (o disco do pincel, o default do GP) ou reta (o `butt` do
+    /// SVG: o traço acaba exatamente onde a mão parou).
+    ///
+    /// ⚠️ **UM valor para as DUAS pontas, e é decisão.** O `FlipStroke::cap` é um PAR porque a
+    /// borracha, ao partir um traço ao meio, pode dar pontas diferentes às duas metades — mas o
+    /// artista autora *um* pincel, e todo produto de desenho (o `stroke-linecap` do SVG, o
+    /// Illustrator, o Krita) oferece um controle só. Dois controles seriam duas perguntas para
+    /// uma decisão.
+    cap: Cap,
     dot_spacing: f32,
     /// **Auto-sobreposição com acúmulo** (03 §8): o traço que cruza a si mesmo escurece no
     /// cruzamento. Herdado por cada `FlipStroke` desenhado. Default OFF (byte-idêntico).
@@ -105,6 +114,7 @@ impl Default for FlipTool {
             width_px: DEFAULT_WIDTH_PX,
             hardness: DEFAULT_HARDNESS,
             tip: StrokeTip::Continuous,
+            cap: Cap::Round,
             dot_spacing: DEFAULT_DOT_SPACING,
             self_overlap: false,
             airbrush: false,
@@ -254,6 +264,15 @@ impl FlipTool {
     pub fn set_tip(&mut self, tip: StrokeTip) {
         self.tip = tip;
     }
+    /// A PONTA do traço (redonda ou reta) — o que as duas extremidades ganham.
+    #[must_use]
+    pub fn cap(&self) -> Cap {
+        self.cap
+    }
+    /// Define a ponta do traço.
+    pub fn set_cap(&mut self, cap: Cap) {
+        self.cap = cap;
+    }
     /// Define o espaçamento das contas (múltiplo do diâmetro, clampado a `[0, DOT_SPACING_MAX]`).
     pub fn set_dot_spacing(&mut self, ratio: f32) {
         self.dot_spacing = ratio.clamp(0.0, crate::params::DOT_SPACING_MAX as f32);
@@ -311,6 +330,7 @@ impl FlipTool {
             width_px: self.width_px,
             hardness: self.hardness,
             tip: self.tip,
+            cap: self.cap,
             dot_spacing: f64::from(self.dot_spacing),
             self_overlap: self.self_overlap,
             airbrush: self.airbrush,
@@ -412,6 +432,9 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_TIP_LINE => self.tip = StrokeTip::Continuous,
             PanelEvent::Click(id) if id == ids::FLIP_TIP_DOTS => self.tip = StrokeTip::Dots,
             PanelEvent::Click(id) if id == ids::FLIP_TIP_SQUARES => self.tip = StrokeTip::Squares,
+            // Cap (Draw): a ponta do traço. O motor já a honrava ponta a ponta; faltava a porta.
+            PanelEvent::Click(id) if id == ids::FLIP_CAP_ROUND => self.cap = Cap::Round,
+            PanelEvent::Click(id) if id == ids::FLIP_CAP_FLAT => self.cap = Cap::Flat,
             // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição com acúmulo.
             PanelEvent::Click(id) if id == ids::FLIP_SELF_OVERLAP => {
                 self.self_overlap = !self.self_overlap;

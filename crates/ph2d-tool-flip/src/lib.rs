@@ -32,7 +32,7 @@ pub use params::{
 };
 /// O enum do *tip* pontilhado vem do MODELO (`ph2d-flip`) — re-exportado aqui para o painel
 /// (que já depende deste crate) nomeá-lo sem uma aresta nova de dependência.
-pub use ph2d_flip::{DEFAULT_DOT_SPACING, StrokeTip};
+pub use ph2d_flip::{Cap, DEFAULT_DOT_SPACING, StrokeTip};
 pub use tool::{
     DEFAULT_FILL, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING,
     DEFAULT_STROKE, DEFAULT_WIDTH_PX, FlipTool,

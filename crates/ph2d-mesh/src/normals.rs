@@ -50,7 +50,14 @@ pub fn face_normal(positions: &[[f32; 3]], face: Face) -> [f32; 3] {
         ny += (a[2] - b[2]) * (a[0] + b[0]);
         nz += (a[0] - b[0]) * (a[1] + b[1]);
     }
-    normalize([nx, ny, nz])
+    // ⚠️ **Área zero devolve o vetor ZERO, e não um `+Y` fabricado.** Um
+    // triângulo degenerado não tem direção, e a resposta anterior — um unitário
+    // arbitrário — **votava com peso cheio** na média de cada vértice dele: um
+    // único triângulo colapsado num OBJ de terceiro inclinava o sombreamento da
+    // vizinhança inteira. É o que o SculptGL faz por outra via (ele guarda o
+    // Newell CRU, `Mesh.js`: `faceNormals[idTri] = crx`, sem normalizar), então
+    // a face sem área contribui zero lá também.
+    normalize_or([nx, ny, nz], [0.0, 0.0, 0.0])
 }
 
 /// Recalcula TODAS as normais de face.
@@ -169,14 +176,24 @@ fn gather(face_normals: &[[f32; 3]], vert_faces: &crate::adjacency::Csr, v: usiz
         acc[1] += n[1];
         acc[2] += n[2];
     }
-    normalize(acc)
+    // Aqui o `+Y` FICA, e a diferença para a face é a pergunta: um vértice cujo
+    // anel não soma direção nenhuma (todo mundo degenerado, ou normais que se
+    // cancelam) ainda precisa de um vetor unitário estável para o shader — um
+    // zero aqui viraria um `NaN` na primeira normalização a jusante.
+    normalize_or(acc, [0.0, 1.0, 0.0])
 }
 
-/// Normaliza, com o degenerado devolvendo `+Y` em vez de `NaN`.
-fn normalize(v: [f32; 3]) -> [f32; 3] {
+/// Normaliza; `fallback` é a resposta quando não há direção defensável.
+///
+/// ⚠️ **O fallback é do CHAMADOR de propósito, e é a correção inteira do
+/// item 3.** As duas chamadas fazem perguntas diferentes: uma FACE sem área não
+/// tem voto (zero), um VÉRTICE sem orientação precisa de um unitário estável
+/// (`+Y`). Enquanto a resposta era uma constante DENTRO desta função, as duas
+/// perguntas recebiam a mesma — e a errada era a que entrava numa média.
+fn normalize_or(v: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
     let len2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
     if len2 <= f32::MIN_POSITIVE {
-        return [0.0, 1.0, 0.0];
+        return fallback;
     }
     let inv = 1.0 / len2.sqrt();
     [v[0] * inv, v[1] * inv, v[2] * inv]

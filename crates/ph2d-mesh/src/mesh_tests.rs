@@ -52,6 +52,90 @@ fn the_normals_of_a_convex_solid_point_outward() {
     }
 }
 
+/// Uma face sem ÁREA não vota na normal dos vértices dela.
+///
+/// ⚠️ **O vértice que discrimina não é o óbvio.** No `collapsed_tetra` as duas
+/// faces boas são exatamente opostas e se cancelam, então em `v0`/`v1` o
+/// resultado é `[0,1,0]` **com ou sem** a cura — um gate ancorado ali passaria
+/// nos dois mundos. Quem separa é `v2`/`v3`, cujo anel tem UMA face com área e
+/// duas degeneradas: a normal do vértice tem de ser a daquela face, e antes da
+/// cura ela vinha **37,16° inclinada para `+Y`** pelos dois votos fabricados
+/// (medido: `[0,214, 0,953, −0,214]` contra `[0,577, 0,577, −0,577]`).
+///
+/// A asserção é escrita como PROPRIEDADE — *"anel com exatamente uma face de
+/// área ⇒ a normal do vértice é a dela"* — e não como o par de índices, para não
+/// virar um espelho da fixture.
+#[test]
+fn a_zero_area_face_does_not_vote_on_its_vertices_normal() {
+    let m = crate::shapes_open::collapsed_tetra();
+    // ⚠️ **A ÁREA sai do Newell CRU, e nunca do `face_normal`.** Perguntar a
+    // degenerescência à função sob teste é um oráculo auto-referente: com a cura
+    // revertida ela devolve um unitário, o detector responde *"não há face
+    // degenerada"*, e o gate reprova dizendo que a FIXTURE está errada — o
+    // diagnóstico apontando para o lugar oposto ao do defeito. (Escrito de novo
+    // aqui, e não importado do irmão `shapes_open_tests`: são módulos filhos de
+    // pais diferentes, e a alternativa seria promover a área a API de produto
+    // com um chamador de teste.)
+    let area2 = |f: usize| {
+        let vs = m.faces()[f].verts();
+        let n = vs.len();
+        let mut acc = [0.0f32; 3];
+        for i in 0..n {
+            let a = m.positions()[vs[i] as usize];
+            let b = m.positions()[vs[(i + 1) % n] as usize];
+            acc[0] += (a[1] - b[1]) * (a[2] + b[2]);
+            acc[1] += (a[2] - b[2]) * (a[0] + b[0]);
+            acc[2] += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]
+    };
+    let dead: Vec<usize> = (0..m.face_count()).filter(|&f| area2(f) == 0.0).collect();
+    assert_eq!(
+        dead,
+        vec![1, 3],
+        "a fixture tinha de trazer exatamente duas faces sem área"
+    );
+
+    let mut checked = 0;
+    for v in 0..m.vert_count() {
+        let ring = m.adjacency().vert_faces.neighbours(v);
+        let live: Vec<u32> = ring
+            .iter()
+            .copied()
+            .filter(|&f| area2(f as usize) > 0.0)
+            .collect();
+        if live.len() != 1 {
+            continue;
+        }
+        checked += 1;
+        let want = crate::normals::face_normal(m.positions(), m.faces()[live[0] as usize]);
+        let got = m.normals()[v];
+        for k in 0..3 {
+            assert!(
+                (got[k] - want[k]).abs() < 1e-5,
+                "vértice {v}: {got:?} contra a única face com área, {want:?} — \
+                 as degeneradas votaram"
+            );
+        }
+    }
+    assert!(
+        checked >= 2,
+        "a fixture não contém o caso: nenhum vértice com uma só face de área"
+    );
+
+    // A outra metade, e ela é o motivo de o fallback ser do CHAMADOR: mesmo onde
+    // o anel não soma direção nenhuma — em `v0`/`v1` as faces boas se cancelam —
+    // o vértice ainda tem de sair com um vetor UNITÁRIO. Um zero aqui viraria
+    // `NaN` na primeira normalização a jusante, e a tela não diria de onde veio.
+    for (v, n) in m.normals().iter().enumerate() {
+        let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+        assert!(
+            (len - 1.0).abs() < 1e-5,
+            "a normal do vértice {v} não é unitária: {n:?}"
+        );
+    }
+}
+
 /// As normais de uma esfera unitária são a própria posição normalizada. É o
 /// oráculo ANALÍTICO — independente do código, ao contrário de comparar a saída
 /// com ela mesma.

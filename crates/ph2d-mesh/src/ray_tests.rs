@@ -203,3 +203,44 @@ fn an_empty_mesh_is_a_miss_not_a_panic() {
     let ray = Ray::new([0.0, 0.0, 1.0], [0.0, 0.0, -1.0]);
     assert!(mesh.raycast(&ray).is_none());
 }
+
+/// O VÃO nomeado no doc do [`Hit::normal`], escrito como teste em vez de prosa.
+///
+/// Um quad "gravata" — diagonais paralelas — tem Newell **exatamente zero** com
+/// os dois triângulos de área cheia. O `PARALLEL_EPS` do Möller–Trumbore recusa
+/// triângulo degenerado, mas não este: o raio ACERTA, e a normal que sai é a da
+/// FACE, que é o vetor zero.
+///
+/// ⚠️ **Este gate não afirma que isso está certo — afirma qual é o número.** Ele
+/// existe para o próximo consumidor de `Hit::normal` descobrir o vão aqui, e não
+/// numa iluminação errada; o dia em que houver leitor de produto, a cura é cair
+/// na normal do TRIÂNGULO acertado e este teste muda de lado junto.
+#[test]
+fn a_bowtie_quad_is_hit_and_its_face_normal_is_the_named_gap() {
+    // (0,0) → (1,0) → (0,1) → (1,1): os dois lóbulos têm área igual e sinal
+    // oposto, então a soma de Newell cancela.
+    let positions = vec![
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [1.0, 1.0, 0.0],
+    ];
+    let m = Mesh::from_parts(positions, vec![Face::quad(0, 1, 2, 3)])
+        .expect("o quad gravata é construído aqui e é válido");
+
+    assert_eq!(
+        m.face_normals()[0],
+        [0.0, 0.0, 0.0],
+        "a premissa do vão: o Newell da FACE cancela"
+    );
+
+    let hit = m
+        .raycast(&Ray::new([0.25, 0.25, 1.0], [0.0, 0.0, -1.0]))
+        .expect("os DOIS triângulos têm área cheia — o raio tinha de acertar");
+    assert!((hit.t - 1.0).abs() < 1e-4, "t = {}", hit.t);
+    assert_eq!(
+        hit.normal,
+        [0.0, 0.0, 0.0],
+        "é ISTO que o campo devolve hoje, e é o vão que o doc dele nomeia"
+    );
+}

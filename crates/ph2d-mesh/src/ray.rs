@@ -102,6 +102,23 @@ pub struct Hit {
     /// A normal **geométrica** da face (não a interpolada dos vértices): é a
     /// direção da superfície que de fato foi tocada, que é o que um pincel e um
     /// cursor querem. A suave é `Mesh::normals()`, e quem a quiser interpola.
+    ///
+    /// ⚠️ **NÃO é garantidamente unitária, e o vão tem nome.** Um TRIÂNGULO
+    /// degenerado nunca chega aqui — o `PARALLEL_EPS` do Möller–Trumbore o
+    /// recusa antes. Mas este campo é a normal da **FACE**, e um quad "gravata"
+    /// (diagonais paralelas) tem Newell **exatamente zero** com os dois
+    /// triângulos de área cheia: o raio acerta, e a normal sai `[0, 0, 0]`.
+    ///
+    /// Fica assim de propósito: hoje **nenhum consumidor de produto lê este
+    /// campo** (só o gate `a_bowtie_quad_is_hit_and_its_face_normal_is_the_named_gap`,
+    /// que o pina), e resolvê-lo obrigaria o laço quente do [`Mesh::raycast`] a
+    /// carregar QUAL triângulo venceu — estado novo no caminho de pick por causa
+    /// de um caso que ninguém lê. **O gatilho que acorda o conserto é o primeiro
+    /// leitor de produto**, e aí a cura é cair na normal do triângulo acertado.
+    ///
+    /// ⚠️ A afirmação anterior deste doc — *"está PROVADO que a face degenerada
+    /// não chega aqui"* — era verdadeira por TRIÂNGULO e falsa por FACE, e a
+    /// diferença é exatamente o quad.
     pub normal: [f32; 3],
 }
 

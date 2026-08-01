@@ -1,6 +1,6 @@
 # Handoff de integração — `line/Vector`, as GUIAS e a RÉGUA (W6.2)
 
-> **2026-08-01.** Fecha o **único item `G`** da tabela do plano 25 §9. Três commits sobre
+> **2026-08-01.** Fecha o **único item `G`** da tabela do plano 25 §9. Oito commits sobre
 > `3197c5c9e` (o `main` de 2026-08-01, já com a integração anterior desta linha).
 >
 > ⚠️ **A linha NÃO integra e NÃO pusha.** Este documento existe para o agente integrador, sob
@@ -18,6 +18,8 @@ o gesto. Mais a UI (duas linhas na seção Snap) e o arquivo.
 | `0d02b2c83` | O MOTOR: crate `ph2d-guides`, a espécie `Guide` no snap, `draw_document_guides`, o módulo `ruler` |
 | `db5ddaa0e` | O PRODUTO: o gesto, as duas linhas de UI, `ProjectState.guides`, `PROJECT_SCHEMA` 48→49 |
 | `7fa42c1d9` | A cena de smoke `=45` e o plano 25 §9 documentado |
+| `0ede804b7` | ⚠️ **O 1º fix de auditoria** — a régua vive com a ferramenta Vector, por UMA porta (§4.4) |
+| `df9a58bb3` | ⚠️ **O FIX do 1º smoke** — o movimento estava ligado no handler que não entrega movimento (§8.3) |
 
 ---
 

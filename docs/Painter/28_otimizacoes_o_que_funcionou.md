@@ -4537,3 +4537,69 @@ Quarenta vezes mais eventos pagam o mesmo handshake.
 evento conforme o raio, invariante ao número de entregas, com ~1,1-1,3× de
 handshake amortizado por quadro. Os relatos de *"o traço ficou muito mais
 lento"* saem de logs com `load average` 74.
+
+---
+
+## §5.50 — O primeiro log de TRAÇO com a máquina sã, e o que ele nomeia (2026-07-31)
+
+```text
+poca: 1,58 -> 1,90 M celulas | 7,0-7,1 ns/celula   ← EM TODAS as janelas
+stamps: media  58,92ms em 42/120 (315 entregas,  7,86ms cada)
+stamps: media 130,89ms em  4/120 ( 49 entregas, 10,69ms cada)
+worker: busy 39% away 161% sleep 29%              ← soma 229%
+```
+
+⚠️ **A contenção está DESCARTADA por medição**: o `ns/célula` fica em 7,0-7,1
+*inclusive nas janelas que carimbam*. Então **7,86-10,69 ms por entrega é
+real** — contra os **0,78 ms** que a sonda irmã mede a raio 100 com a sim
+rodando. **10-14×, e não é a máquina.**
+
+### §5.50.1 — ⛔ MEDIDO E REJEITADO: a poça já existente não é o ingrediente
+
+A hipótese natural — *um dab que cai em água tem outro trabalho pela frente* —
+foi construída e medida: o MESMO traço numa folha limpa e por cima da
+`heavy_puddle` (1,6 M células vivas), na mesma corrida.
+
+| raio | folha limpa | sobre a poça | razão | por entrega |
+|---|---|---|---|---|
+| 100 px | 77,07 ms | 74,43 | **0,97×** | 1,861 ms |
+| 200 px | 136,69 | 133,72 | **0,98×** | 3,343 |
+| 300 px | 176,29 | 174,93 | **0,99×** | 4,373 |
+
+**A água que já está lá não custa nada.** O que a tabela mostra é o **PINCEL**:
+1,86 → 4,37 ms por entrega de raio 100 a 300, e o produto a 7,86-10,69 é
+consistente com um pincel maior e/ou uma mão mais rápida. ⚠️ E a escala é
+**sub-linear no raio** (1 : 1,8 : 2,3 contra 1 : 4 : 9 de uma pegada), o que
+diz que o custo **não é a área** — provável assinatura do `TRAIL_HALF = 61`, que
+clipa pincel grande. **Decompor isso é uma wave própria**, e ela tem alvo: o
+depósito de um dab, não a água.
+
+### §5.50.2 — E o `away 161%` era o instrumento, pela TERCEIRA vez
+
+Três baldes que dizem PARTIÇÃO somando **229%**. ⚠️ **Um intervalo aberto
+pertence à janela em que ele está ABERTO, não àquela em que fecha** — o `away`
+era creditado inteiro no `recv`, então uma retenção de vários segundos (a
+rajada de carimbos segurando o motor) caía toda na janela onde o intervalo
+terminou.
+
+**É a mesma classe do `sleep 909%` da §5.46.11, por outra via**: lá a janela era
+*assumida*, aqui o intervalo *atravessa* a janela. O worker passa a **publicar**
+a abertura e o `take_worker` credita a parte aberta antes de drenar,
+re-baseando; o CAS impede a contagem dupla.
+
+⚠️ **Duas lições nos meus próprios gates:**
+
+- **UM teste, não dois** — os baldes são globais e a 1ª versão eram dois gates
+  que **se drenaram mutuamente**, com um doc-comment meu afirmando que eles
+  eram indiferentes a um vizinho. É a lição que o
+  `the_worker_reports_what_a_step_costs` já pregava, violada um arquivo adiante.
+- **A mutação do CAS NÃO sangra**, e fica **documentada em vez de gateada**: a
+  contagem dupla só existe sob corrida real com o worker, que um teste
+  single-threaded não produz (precedente do ADR-0145 §gates). Escrevê-lo é o
+  que impede a próxima pessoa de "simplificar" o CAS achando que a suíte verde
+  a autoriza.
+
+⇒ **O placar do instrumento nesta sessão: três defeitos, todos achados por um
+log do produto e nenhum por uma suspeita minha** (a janela assumida · o divisor
+ausente do carimbo · o intervalo que atravessa a janela). *Um instrumento errado
+não é neutro: ele responde com confiança à pergunta errada.*

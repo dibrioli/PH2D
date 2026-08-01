@@ -572,3 +572,80 @@ fn what_an_undo_costs() {
         undo_ms(4096)
     );
 }
+
+/// **DE QUEM É O PREÇO DO RELEVO NO PEN-UP** — a decomposição por DONO que decide o degrau 4
+/// (doc 28 §5.60).
+///
+/// A §5.14 mediu *quantos* donos existem e a `what_the_pen_up_is_made_of_by_ablation` mediu *quanto o
+/// commit custa*; nenhuma das duas responde **qual dos donos paga o quê**, e é essa a pergunta, porque
+/// o degrau 4 tem DUAS elisões de dificuldade muito diferente — o **cursor** (que o degrau 3 já deixou
+/// sem leitor para estas três famílias ⇒ largar é seguro) e o **`before` do pen-down** (que é a entrada
+/// do caminho de fallback ⇒ largar exige o guard, §5.59.3).
+///
+/// ⚠️ **A ablação é pela ENTRADA e ela PROVA A SI MESMA:** a contagem de donos é impressa ao lado de
+/// cada linha, então uma configuração que não alcança 1 dono se denuncia em vez de reportar um ganho
+/// que não é o dela. Sem isso a tabela mediria uma elisão que não aconteceu — a forma exata do gate
+/// vazio, num relógio.
+///
+/// ⚠️ **Ablar o relevo do `before` MUDA A FORMA do delta** (mapas vazios ⇒ `OnlyAfter`, que guarda um
+/// `Arc` do plano VIVO), então esta configuração **não** é o degrau 4: ela é o limite superior do que
+/// ele pode comprar, e a linha de donos mostra exatamente isso.
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_each_owner_of_the_relief_costs_at_pen_up() {
+    use std::time::Instant;
+
+    fn relief_owners(t: &PainterTool) -> usize {
+        t.layers
+            .active()
+            .and_then(|a| t.heights.get(&a).map(std::sync::Arc::strong_count))
+            .unwrap_or(0)
+    }
+
+    /// `drop_cursor` / `drop_before`: quais donos a configuração tira, logo antes do Up.
+    fn pen_up_ms(side: u32, drop_cursor: bool, drop_before: bool) -> (f64, usize) {
+        let mut t = armed(side);
+        let mut v = Vec::new();
+        let mut owners = 0usize;
+        for k in 0..8u8 {
+            let y = 200.0 + f32::from(k) * 8.0;
+            t.on_canvas_pointer(cp([60.0, y], PointerPhase::Down));
+            for j in 1..=6u8 {
+                t.on_canvas_pointer(cp([60.0 + f32::from(j) * 30.0, y], PointerPhase::Move));
+            }
+            if drop_cursor {
+                t.undo.probe_drop_cursor_relief();
+            }
+            if drop_before && let Some(s) = t.paint.stroke_undo.as_mut() {
+                s.heights.clear();
+                s.covers.clear();
+                s.mats.clear();
+            }
+            owners = relief_owners(&t);
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([260.0, y], PointerPhase::Up));
+            let dt = t0.elapsed().as_secs_f64() * 1000.0;
+            if k > 0 {
+                v.push(dt);
+            }
+        }
+        v.sort_by(f64::total_cmp);
+        (v[v.len() / 2], owners)
+    }
+
+    println!(
+        "\n{:<34} {:>12} {:>8} {:>12} {:>8}",
+        "pen-up (mediana, ms)", "2048", "donos", "4096", "donos"
+    );
+    for (name, dc, db) in [
+        ("baseline", false, false),
+        ("sem o relevo do CURSOR", true, false),
+        ("sem o relevo do BEFORE", false, true),
+        ("sem os DOIS", true, true),
+    ] {
+        let (a, ao) = pen_up_ms(2048, dc, db);
+        let (b, bo) = pen_up_ms(4096, dc, db);
+        println!("{name:<34} {a:>12.2} {ao:>8} {b:>12.2} {bo:>8}");
+    }
+    println!();
+}

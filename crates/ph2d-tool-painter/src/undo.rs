@@ -608,14 +608,6 @@ impl UndoController {
         self.redo.len()
     }
 
-    /// O **cursor** — só para a rede de verificação do S3 (ver
-    /// [`crate::undo_planes::PlaneDeltas::divergences`]). Ele é a base de todo delta, e a pergunta que a
-    /// rede faz é se o estado VIVO do tool poderia sê-lo no lugar dele.
-    #[cfg(any(test, debug_assertions))]
-    pub(crate) fn cursor_for_audit(&self) -> Option<&ModelSnapshot> {
-        self.cursor.as_deref()
-    }
-
     /// Drop the controller's history (e.g. on `set_source` of a fresh canvas).
     pub fn clear(&mut self) {
         self.undo.clear();
@@ -682,6 +674,10 @@ mod record; // como uma ENTRADA nasce: o cursor anda, o delta e partido, o cap m
 
 #[path = "undo_absorb.rs"]
 mod absorb; // a reconciliacao com escritas que nao passaram pela historia
+
+#[cfg(any(test, debug_assertions))]
+#[path = "undo_inspect.rs"]
+mod inspect; // o que a REDE olha e o que a SONDA ablaciona — nenhum caminho de produto entra aqui
 
 #[cfg(test)]
 #[path = "undo_tests.rs"]

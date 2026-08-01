@@ -216,3 +216,56 @@ fn what_the_journal_retains_for_one_real_stroke() {
     }
     println!();
 }
+
+/// **O PRÊMIO DO DEGRAU 4 É CONDICIONAL À ROTA DO JOURNAL, e isto é FORMA — não relógio**
+/// (doc 28 §5.60).
+///
+/// A elisão do relevo no `before` do pen-down parecia remover um dono. Ela **não remove: troca de
+/// lugar.** Com o mapa `before` vazio o `split` cai em [`StoredEntry::OnlyAfter`], que guarda um `Arc`
+/// **forte do plano VIVO** — antes o fork copiava porque o `before` segurava o plano ANTIGO, depois
+/// copiaria porque a ENTRADA segura o de agora. O único delta que não segura `Arc` nenhum é o `Patch`
+/// da rota do journal (ele extrai uma JANELA em `Vec`), e por isso a rota deixa de ser uma otimização
+/// e passa a ser **pré-requisito** da elisão.
+///
+/// ⚠️ **Roda em DEBUG de propósito, e sem cronômetro.** O journal é `cfg(debug_assertions)`, então em
+/// release esta pergunta não existe ainda; e a resposta é uma CONTAGEM, que uma máquina carregada não
+/// sabe distorcer (a §5.49: nenhum relógio desta máquina significa nada com o load acima de ~5).
+#[test]
+#[ignore = "medicao — rode SEM --release (o journal e cfg(debug))"]
+fn the_journal_route_is_what_makes_the_elision_worth_anything() {
+    let mut t = armed(1024);
+    stroke(&mut t, 200.0);
+    let fired_first = crate::undo_planes::RELIEF_FROM_JOURNAL.with(std::cell::Cell::get);
+    stroke(&mut t, 260.0);
+    let fired = crate::undo_planes::RELIEF_FROM_JOURNAL.with(std::cell::Cell::get);
+    let (c, h, cv, m) = owners(&t);
+    println!(
+        "\n[degrau 4] a rota do journal disparou {fired} vez(es) em 2 tracos (1a: {fired_first})"
+    );
+    println!(
+        "[degrau 4] em REPOUSO, apos 2 tracos: canvas {c} · heights {h} · covers {cv} · mats {m}"
+    );
+
+    // A elisão simulada: o `before` do pen-down larga o relevo, e conta-se o que sobra.
+    t.on_canvas_pointer(cp([60.0, 320.0], PointerPhase::Down));
+    for k in 1..=6u8 {
+        t.on_canvas_pointer(cp([60.0 + f32::from(k) * 30.0, 320.0], PointerPhase::Move));
+    }
+    let (_, h_in, _, _) = owners(&t);
+    if let Some(s) = t.paint.stroke_undo.as_mut() {
+        s.heights.clear();
+        s.covers.clear();
+        s.mats.clear();
+    }
+    let (_, h_elided, _, _) = owners(&t);
+    t.on_canvas_pointer(cp([260.0, 320.0], PointerPhase::Up));
+    let (_, h_after, _, _) = owners(&t);
+    println!(
+        "[degrau 4] heights: {h_in} donos no gesto · {h_elided} com o `before` elidido · \
+         {h_after} depois do commit"
+    );
+    println!(
+        "[degrau 4] (1 = so o tool. Se o numero DEPOIS do commit nao cair, a entrada assumiu a \
+         posse — `OnlyAfter` — e a elisao nao comprou nada.)\n"
+    );
+}

@@ -428,15 +428,20 @@ fn the_worker_reports_what_a_step_costs() {
     // ⚠️ Os `take_*` ZERAM a janela, então o laço **acumula** o que cada leitura tirou: um poll
     // que descartasse a leitura vazia perderia justamente o balde que ele espera.
     let (mut step_sum, mut step_n, mut busy, mut away) = (0.0f64, 0u64, 0.0f64, 0.0f64);
+    let mut cells = 0u64;
     let deadline = std::time::Instant::now() + Duration::from_secs(10);
     loop {
         let ((s, _, n), ..) = crate::wet_diag::take_window();
         let (b, a, _sleep) = crate::wet_diag::take_worker();
+        // ⚠️ **Drenado no MESMO laço, e não num gate irmão:** este é o único
+        // teste não-`#[ignore]` que consome a janela global, e um 2º leitor
+        // zeraria a dele — o verde viraria sorte.
+        cells = cells.max(crate::wet_diag::take_cells());
         step_sum += s;
         step_n += n;
         busy += b;
         away += a;
-        if (step_n > 0 && step_sum > 0.0 && busy > 0.0 && away > 0.0)
+        if (step_n > 0 && step_sum > 0.0 && busy > 0.0 && away > 0.0 && cells > 0)
             || std::time::Instant::now() >= deadline
         {
             break;
@@ -461,5 +466,16 @@ fn the_worker_reports_what_a_step_costs() {
         away > 0.0,
         "o balde AWAY esta vazio: o motor viajou para o frame (houve composite) e o \
          preco do handshake nao foi medido de nenhum lado"
+    );
+    // ⚠️ **O TAMANHO da poça é o divisor sem o qual o custo não é atribuível**
+    // (`wet_diag::note_cells`): com ele o log dá `ns/célula`, e um custo por
+    // célula CONSTANTE entre duas janelas diz *"a poça cresceu"* enquanto um
+    // que SOBE diz *"a máquina ficou disputada"* — curas opostas. Sem ele as
+    // duas leituras são o mesmo número, que foi exatamente o impasse do smoke
+    // de 2026-07-31.
+    assert!(
+        cells > 0,
+        "o balde POCA esta vazio: o log volta a dizer so quanto o passo CUSTOU, e \
+         'a agua esta lenta' deixa de ser atribuivel a trabalho ou a contencao"
     );
 }

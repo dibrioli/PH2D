@@ -75,6 +75,8 @@ pub fn note_wait(ms: f32) {
 static BUSY_US: AtomicU64 = AtomicU64::new(0);
 static AWAY_US: AtomicU64 = AtomicU64::new(0);
 static SLEEP_US: AtomicU64 = AtomicU64::new(0);
+static CELLS: AtomicU64 = AtomicU64::new(0);
+static CELLS_N: AtomicU64 = AtomicU64::new(0);
 
 /// O worker gastou isto DENTRO de um `step_stage` (o trabalho da física).
 pub fn note_busy(us: u64) {
@@ -101,6 +103,36 @@ pub fn note_sleep(us: u64) {
 pub fn take_worker() -> (f64, f64, f64) {
     let take = |c: &AtomicU64| c.swap(0, Ordering::Relaxed) as f64 / 1000.0;
     (take(&BUSY_US), take(&AWAY_US), take(&SLEEP_US))
+}
+
+/// **O TAMANHO DA POÇA sobre a qual o passo foi dado** — o divisor sem o qual
+/// *"a água está a 17,7 Hz"* não é atribuível.
+///
+/// ⚠️ **Este balde nasceu de três hipóteses REJEITADAS por medição**
+/// (2026-07-31, doc 28 §5.47): o log do smoke mostrou o passo a **45,52 ms
+/// pintando** contra **20,11 ms só assistindo**, com o `busy` do worker
+/// praticamente igual nas duas janelas — ele trabalha o mesmo e entrega
+/// metade dos passos. Duas leituras cabem nisso e pedem curas OPOSTAS —
+/// *a poça ficou maior* (não há nada a consertar; o slider `Grid Size` é a
+/// resposta) contra *a máquina ficou disputada* (o solver é core-limited,
+/// 11,62× sob contenção) — e **o log não as distingue**, porque as duas
+/// metades se movem juntas nele.
+///
+/// Com o tamanho ao lado do custo a pergunta some: `ns/célula` constante entre
+/// as janelas é TRABALHO; `ns/célula` subindo é CONTENÇÃO.
+pub fn note_cells(n: u64) {
+    CELLS.fetch_add(n, Ordering::Relaxed);
+    CELLS_N.fetch_add(1, Ordering::Relaxed);
+}
+
+/// A poça MÉDIA da janela em células (0 se nenhum passo foi dado), ZERANDO.
+#[must_use]
+pub fn take_cells() -> u64 {
+    let (sum, n) = (
+        CELLS.swap(0, Ordering::Relaxed),
+        CELLS_N.swap(0, Ordering::Relaxed),
+    );
+    sum.checked_div(n).unwrap_or(0)
 }
 
 /// Uma metade do tick, na janela: `(soma ms, pico ms, n)`.

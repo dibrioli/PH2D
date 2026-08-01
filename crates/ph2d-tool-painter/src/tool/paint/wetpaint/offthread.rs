@@ -267,6 +267,11 @@ fn worker_loop(
                 acc -= STEP_S;
                 steps.fetch_add(1, Ordering::Release);
                 crate::wet_diag::note_step(step_us as f32 / 1000.0);
+                // ⚠️ **O custo sem o TAMANHO não é atribuível** — a mesma linha
+                // de log serve *"a poça é grande"* e *"a máquina está
+                // disputada"*, que pedem curas opostas (`note_cells`). É
+                // `O(linhas)` e sai de uma faixa que o rebuild já materializou.
+                crate::wet_diag::note_cells(engine.active_grid().live_span_cells());
                 step_us = 0;
             }
         }

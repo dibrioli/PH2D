@@ -246,6 +246,34 @@ impl Grid {
         )
     }
 
+    /// **O TAMANHO DA POÇA** — quantas células os passes de fato percorrem, e
+    /// portanto o divisor honesto de *"quanto custou este passo?"*.
+    ///
+    /// ⚠️ **É `O(linhas)`, não `O(células)`**, e é isso que a torna publicável
+    /// no log de todo passo: a faixa viva de cada linha já está materializada
+    /// em `row_lo`/`row_hi` (o rebuild a escreve), então somá-las custa uma
+    /// varredura de 4096 inteiros — microssegundos contra os 14-45 ms de um
+    /// passo. Contar `active` seria `O(células)` e pagaria o preço da pergunta.
+    ///
+    /// A faixa é o que os passes ANDAM; as células `active` são um subconjunto
+    /// dela (**82,2%** na poça do produto, medido no doc 28 §5.46), então este
+    /// número é a régua certa para a leitura *"a água está lenta porque a poça
+    /// é grande"* contra *"…porque a máquina está disputada"*. Sem ele as duas
+    /// leituras são indistinguíveis num log, e foi exatamente o que aconteceu
+    /// no smoke de 2026-07-31 (§5.47).
+    #[must_use]
+    pub fn live_span_cells(&self) -> u64 {
+        if self.by1 < self.by0 {
+            return 0;
+        }
+        (self.by0..=self.by1)
+            .map(|y| {
+                let (lo, hi) = self.span_x(y);
+                u64::try_from(hi - lo + 1).unwrap_or(0)
+            })
+            .sum()
+    }
+
     /// Declara que as linhas `y0..=y1` podem ter vida em `x0..=x1` — a porta
     /// por onde a água NOVA entra na atenção do solver. Só cresce.
     pub fn note_live(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
@@ -466,121 +494,9 @@ pub fn verify_spans(g: &Grid) {
     }
 }
 
-/// Wetness byte a given paper tooth stamps: valleys (low paper) read wetter.
-#[inline]
-pub fn wet_byte_from_paper(paper_value: f64) -> u8 {
-    let mut v = 2.0 - 2.0 * paper_value;
-    if v > 1.0 {
-        v = 1.0;
-    }
-    if v < 0.0 {
-        v = 0.0;
-    }
-    (v * 255.0) as u8
-}
-
-// ---------------------------------------------------------------------------
-// Canvas-wide actions (SPEC §12)
-// ---------------------------------------------------------------------------
-
-/// Wet canvas: raise the wetness byte to the paper-derived value via max over
-/// the whole interior. Injects NO water and touches no bbox — the sim stays
-/// idle, but subsequent strokes bleed everywhere and show-wet reads damp.
-pub fn wet_canvas(g: &mut Grid) {
-    let s = g.s;
-    for y in 1..=g.h {
-        let mut i = 1 + y * s;
-        for _x in 1..=g.w {
-            let b = wet_byte_from_paper(g.paper[i] as f64);
-            if b > g.wet[i] {
-                g.wet[i] = b;
-            }
-            i += 1;
-        }
-    }
-}
-
-/// Dry canvas: one-shot O(area) — settle every cell's suspended mass into the
-/// settled layer (opacity-composite color, same as the dry pass), zero water,
-/// both velocity fields and wetness, and empty the bbox.
-pub fn dry_canvas(g: &mut Grid, mix: ColorMix) {
-    let s = g.s;
-    let mut out = [0.0f64; 3];
-    for y in 1..=g.h {
-        let mut i = 1 + y * s;
-        for _x in 1..=g.w {
-            let dm = g.susp[i] as f64;
-            if dm > 0.0 {
-                settle_composite(g, i, dm, mix, &mut out);
-                g.sett[i] = (g.sett[i] as f64 + dm) as f32;
-                g.susp[i] = 0.0;
-            }
-            g.film[i] = 0.0;
-            g.wet[i] = 0;
-            i += 1;
-        }
-    }
-    // A velocidade mora na grade de FLUXO — mesmo interior, outra régua.
-    let fg = g.flow;
-    for cy in 1..=fg.h {
-        let mut i = 1 + cy * fg.s;
-        for _cx in 1..=fg.w {
-            g.vel_x[i] = 0.0;
-            g.vel_y[i] = 0.0;
-            g.flow_x[i] = 0.0;
-            g.flow_y[i] = 0.0;
-            i += 1;
-        }
-    }
-    g.empty_bbox();
-}
-
-/// Opacity-composite `dm` of suspended pigment into the settled layer's color
-/// at cell i (SPEC §6.2 step 3). NOT mass-weighted: coverage-weighted, so a
-/// thin new glaze barely shifts an already-opaque settled color.
-#[inline]
-pub fn settle_composite(g: &mut Grid, i: usize, dm: f64, mix: ColorMix, out: &mut [f64; 3]) {
-    let a_sett = alpha_of_mass(g.sett[i] as f64);
-    let a_in = alpha_of_mass(dm);
-    if a_sett > 0.0 {
-        let u = a_sett * (1.0 - a_in);
-        let w = a_in / (u + a_in);
-        let sc = g.sett_rgb[i];
-        let uc = g.susp_rgb[i];
-        mix.mix(
-            sc[0] as f64,
-            sc[1] as f64,
-            sc[2] as f64,
-            uc[0] as f64,
-            uc[1] as f64,
-            uc[2] as f64,
-            w,
-            out,
-        );
-        g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
-    } else {
-        g.sett_rgb[i] = g.susp_rgb[i];
-    }
-}
-
-/// Clear: zero all dynamic state; the paper is untouched.
-pub fn clear_canvas(g: &mut Grid) {
-    g.film.fill(0.0);
-    g.susp.fill(0.0);
-    g.susp_rgb.fill([0.0; 3]);
-    g.sett.fill(0.0);
-    g.sett_rgb.fill([0.0; 3]);
-    g.vel_x.fill(0.0);
-    g.vel_y.fill(0.0);
-    g.flow_x.fill(0.0);
-    g.flow_y.fill(0.0);
-    g.wet.fill(0);
-    g.active.fill(0);
-    g.bloom.fill(0);
-    g.empty_bbox();
-    // Aqui a faixa PODE ser zerada: esta é a porta que zerou a velocidade.
-    g.clear_spans();
-}
+#[path = "grid/canvas_ops.rs"]
+mod canvas_ops; // as AÇÕES de folha inteira (molhar/secar/limpar) — filho por LOC
+pub use canvas_ops::{clear_canvas, dry_canvas, settle_composite, wet_byte_from_paper, wet_canvas};
 
 // ---------------------------------------------------------------------------
 // History snapshots (SPEC §15). The transient flow arrays are scratch rebuilt

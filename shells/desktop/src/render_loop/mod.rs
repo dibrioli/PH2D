@@ -7169,6 +7169,10 @@ impl crate::App {
                 // worker. Estes três baldes dizem se a água lenta é TRABALHO (busy alto: só a GPU
                 // move) ou AGENDAMENTO (away/sleep alto), que têm curas opostas.
                 let (busy, away, sleep) = ph2d_tool_painter::wet_diag::take_worker();
+                // ⚠️ **DRENADO SEMPRE, junto com os irmãos** — um balde que só é
+                // lido sob condição acumula entre janelas e passa a reportar a
+                // MÉDIA de uma janela que ninguém escolheu.
+                let cells = ph2d_tool_painter::wet_diag::take_cells();
                 // A janela REAL desde o último dreno — nunca `frame_medio × 120`.
                 let span = FRAME_PROF_SINCE.with(|c| {
                     let now = std::time::Instant::now();
@@ -7188,7 +7192,10 @@ impl crate::App {
                      | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n} \
                      | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)\n\
                      [frame]   worker: busy {:.0}% away {:.0}% sleep {:.0}% \
-                     | TAXA DA AGUA {:.1} Hz ({sim_n} passos em {:.1}s)",
+                     | TAXA DA AGUA {:.1} Hz ({sim_n} passos em {:.1}s)\n\
+                     [frame]   poca: {:.2} M celulas | {:.1} ns/celula \
+                     (o custo por celula e CONSTANTE quando a agua fica lenta por TRABALHO, \
+                     e sobe quando fica por CONTENCAO)",
                     1000.0 / f64::from(total).max(0.001),
                     (f64::from(total) - f64::from(encode)).max(0.0),
                     per(sim_sum, sim_n),
@@ -7204,6 +7211,12 @@ impl crate::App {
                         0.0
                     },
                     span / 1000.0,
+                    cells as f64 / 1e6,
+                    if cells > 0 {
+                        1e6 * per(sim_sum, sim_n) / cells as f64
+                    } else {
+                        0.0
+                    },
                 );
             }
         }

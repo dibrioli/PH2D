@@ -4352,3 +4352,103 @@ acima do nominal e o worker dorme. O que resta é quanto da máquina o **frame**
 toma enquanto o artista pinta — e ali o item nomeado é o `painter-dispatch` de
 6,90 ms, que **não é o retângulo** (§5.47.3) e vive na shell, fora do alcance de
 uma sonda headless.
+
+---
+
+## §5.48 — O TRAÇO lento: a espiral REFUTADA, e a linha do log que não decidia nada (2026-07-31)
+
+Report do Enio no smoke seguinte: *"o traço (deposição do pigmento antes do
+mouse up) ficou muito mais lento. Já era lento e já precisava melhorar. Agora
+piorou."*
+
+```text
+total=54.53ms (~18 fps) | present/acquire-stall=52.26ms | painter-dispatch=0.49ms
+  tool-tick: media 0.11ms | stamps: media 105.82ms pico 531.42ms em 26/120
+  agua: sim x0 | worker: busy 0% away 0% sleep 0% | poca: 0.00 M celulas
+```
+
+⚠️ **A água está inocente e o log prova**: `sim x0`, `worker 0%`, `poça 0,00 M`
+— ela nem roda naquelas janelas. Quem custa é o **carimbo**: `stamps` mede 39 a
+106 ms de média por quadro, com pico em **531 ms**.
+
+### §5.48.1 — Duas medições antes de qualquer hipótese
+
+**Não há regressão no custo por evento.** O censo dos quatro meios mede o move
+do Wet Paint a **2,028 ms** a 4096², contra os **1,82 ms** que a §5.12 pinou —
+mesma faixa, diferença de máquina.
+
+⛔ **E a espiral está REFUTADA.** O comentário do `painter_canvas_move` descreve
+o mecanismo (*mais eventos → quadro mais lento → mais eventos*) e isenta os
+métodos incrementais do coalescing **de propósito**, porque cada evento deposita
+dabs. A isenção só seria desonesta se o custo fosse **fixo por evento** — aí o
+trabalho cresceria com a taxa de polling do mouse, e não com o traço, que é a
+lei que esta linha já pagou cinco vezes.
+
+O mesmo caminho de 640 px, entregue em passos diferentes:
+
+| meio | passo | eventos | TOTAL | vs 40 px |
+|---|---|---|---|---|
+| Digital | 40 px | 16 | 17,62 ms | 1,00× |
+| Digital | 1 px | 640 | 18,03 | **1,02×** |
+| Impasto | 40 px | 16 | 29,06 | 1,00× |
+| Impasto | 1 px | 640 | 29,95 | **1,03×** |
+| WetPaint | 40 px | 16 | 27,85 | 1,00× |
+| WetPaint | 1 px | 640 | 29,87 | **1,07×** |
+
+**O total é constante.** O custo é por **DAB** — quarenta vezes mais eventos
+sobre o mesmo caminho custam 2-7% a mais, não 40×. ⚠️ E a mediana **por evento**
+cai a **0,000-0,004 ms** nos passos pequenos: a maioria dos eventos não emite
+dab nenhum (abaixo do spacing) e não custa nada. *A taxa de polling não compra
+trabalho.*
+
+### §5.48.2 — O que sobrou: a linha do log não tem divisor
+
+`stamps: media 105,82 ms` admite duas leituras, e elas pedem curas **opostas**:
+
+- **UM** re-stamp de forma inteira a 105 ms ⇒ o alvo é o re-stamp;
+- **CINQUENTA** entregas incrementais a 2 ms ⇒ o alvo é a taxa de entrega.
+
+Com o custo por-evento medido em ~2 ms e o custo por-caminho constante, a
+diferença entre as duas é **uma ordem de grandeza no número de eventos** — e a
+média a escondia.
+
+⚠️ **É a MESMA doença que o §5.47.4 acabara de curar do outro lado da mesma
+linha do log**, um sistema adiante: *um custo sem divisor não é atribuível*. O
+shell já contava as entregas (`paint_stamps_this_frame`) e **não as imprimia**.
+
+Agora imprime: `({stamp_ev} entregas, {stamp_per:.2}ms cada)`. ⚠️ O divisor é
+acumulado no **MESMO `if st > 0`** da soma — contado noutro lugar, os dois
+baldes descreveriam janelas diferentes e a média por entrega seria de uma
+amostra que ninguém escolheu.
+
+### §5.48.3 — ⚠️ O gate nasceu VERDE-sobre-errado, por casar com a própria prosa
+
+A 1ª versão do arch-gate ancorava na **frase** `"stamps: media"` — e casou com o
+**doc-comment que esta mesma wave escreveu**, citando a linha do log para
+explicar por que o divisor existe. O scanner leu a prosa e reprovou o código
+correto.
+
+**A âncora tem de ser algo que só o CÓDIGO tem** (aqui o placeholder
+`{stamp_avg:`). *Um oráculo que casa com a documentação de si mesmo não está
+olhando para o produto.*
+
+### §5.48.4 — ✅ E o instrumento da §5.47 se pagou no MESMO log
+
+A pergunta que a §5.47 não conseguiu responder — *trabalho ou contenção?* — foi
+respondida pelo balde novo, no primeiro smoke em que ele apareceu:
+
+| janela | poça | ns/célula |
+|---|---|---|
+| com carimbos (`stamps 10,00 ms x19`) | 0,70 M | **13,5** |
+| sem carimbos | 0,76 M | **7,5** |
+| sem carimbos | 0,87 M | 7,5 |
+| sem carimbos | 1,06 M | 8,3 |
+
+**Mesma poça, custo por célula 1,8×.** É **CONTENÇÃO**, medida — e ela aparece
+exatamente enquanto o artista carimba, que é o regime que a §5.47.1 mediu em
+1,07-1,43× com carga sintética.
+
+⚠️ **E a água, quando o carimbo para, está EXATAMENTE onde a wave a deixou:**
+`40,0 Hz` com `sleep 56-71%` e `busy 23-35%` sobre 0,76-1,06 M células. O
+regime work-limited acabou; o que sobra no traço é o carimbo, e o divisor novo é
+quem diz de que ele é feito.

@@ -200,7 +200,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// deixá-lo *inteiramente livre*. Um campo apendado, mesmo raciocínio posicional
 /// do v43..v46; a dureza reusa a `stiffness`/`damping` que a mola já carregava,
 /// então é UM bool e não três campos.
-const PROJECT_SCHEMA: u32 = 47;
+const PROJECT_SCHEMA: u32 = 48;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

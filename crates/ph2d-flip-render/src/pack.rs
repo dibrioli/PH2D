@@ -206,10 +206,13 @@ fn stroke_flags(closed: bool, cap: (Cap, Cap), self_overlap: bool, airbrush: boo
     if closed {
         f |= FLAG_CLOSED;
     }
-    if cap.0 == Cap::Flat {
+    // ⚠️ **A ponta QUADRADA também corta** — no ponto ESTENDIDO que o `append_drawing` acabou de
+    // materializar. Do bit para baixo as duas são a mesma coisa: um plano reto na última ponta que
+    // o traço de fato tem; o que as separa é ONDE essa ponta está.
+    if cap.0 != Cap::Round {
         f |= FLAG_START_FLAT;
     }
-    if cap.1 == Cap::Flat {
+    if cap.1 != Cap::Round {
         f |= FLAG_END_FLAT;
     }
     if self_overlap {
@@ -294,6 +297,48 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             // Comprimento de arco cumulativo (MUNDO), reiniciado neste traço: o `arc_len`
             // do ponto `i` é a soma das distâncias `|pos[k+1]−pos[k]|` até `i` (0 no início).
             let mut arc = 0.0f32;
+            // **A PONTA QUADRADA VIRA GEOMETRIA AQUI** — e é a definição do SVG tomada ao pé da
+            // letra: *"square" é o traço ESTENDIDO por meia-espessura e então cortado RETO*.
+            //
+            // ⚠️ **Materializá-la no empacotamento é o que a torna barata E exata.** No motor de
+            // TINTA ADITIVA a cobertura é `∫` ao longo do CAMINHO, então uma tampa que ACRESCENTA
+            // região (a quadrada) não pode ser um `max` na silhueta como a reta: fora do caminho
+            // não há o que integrar e a região sairia **VAZIA**. Estendendo o caminho, a extensão
+            // é um segmento de verdade — o binner o lista, a quadratura o integra, o `walk.wgsl` o
+            // vê — e o corte reto no ponto NOVO faz o resto. Zero lei nova, zero shader novo.
+            //
+            // ⚠️ **Só em traço ABERTO, de linha CHEIA e com largura** — com contas a linha já é uma
+            // série de carimbos, e estender um retângulo do último ponto desenharia uma BARRA onde
+            // tem de haver uma conta.
+            let ext = |de: Vec2, para: Vec2, w: f32| -> Option<Vec2> {
+                let v = para - de;
+                let len = v.length();
+                (len > 1e-6 && w > 0.0).then(|| para + v * (w * 0.5 / len))
+            };
+            let quadrada = |c: Cap| c == Cap::Square && !s.closed && s.tip == StrokeTip::Continuous;
+            let head_ext = (quadrada(s.cap.0) && pos.len() >= 2)
+                .then(|| ext(pos[1], pos[0], w[0]))
+                .flatten();
+            let tail_ext = (quadrada(s.cap.1) && pos.len() >= 2)
+                .then(|| ext(pos[pos.len() - 2], pos[pos.len() - 1], w[pos.len() - 1]))
+                .flatten();
+            // A extensão herda largura/opacidade/cor da PONTA — raio constante ao longo dela, que é
+            // o que faz o retângulo do `square` ser um retângulo.
+            let push_ext = |g: &mut FlipGpuData, e: Vec2, i: usize, arc: f32| {
+                g.points.push(GpuPoint {
+                    pos: [e.x, e.y],
+                    width: w[i],
+                    opacity: op[i],
+                    color: col[i].0,
+                });
+                g.point_stroke.push(sid);
+                g.arc_len.push(arc);
+                g.seg_extra_range.push([0, 0]);
+            };
+            if let Some(e) = head_ext {
+                push_ext(g, e, 0, 0.0);
+                arc = (pos[0] - e).length();
+            }
             for i in 0..pos.len() {
                 g.points.push(GpuPoint {
                     pos: [pos[i].x, pos[i].y],
@@ -308,9 +353,15 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                     arc += (pos[i + 1] - pos[i]).length();
                 }
             }
+            if let Some(e) = tail_ext {
+                let ultimo = pos.len() - 1;
+                push_ext(g, e, ultimo, arc + (e - pos[ultimo]).length());
+            }
+            let n_pontos =
+                pos.len() + usize::from(head_ext.is_some()) + usize::from(tail_ext.is_some());
             g.strokes.push(GpuStroke {
                 first_point,
-                point_count: pos.len() as u32,
+                point_count: n_pontos as u32,
                 flags: stroke_flags(s.closed, s.cap, s.self_overlap, s.airbrush),
                 hardness: s.hardness,
                 material: s.material.0,
@@ -321,7 +372,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
 
             // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;
             // vazia para traços que não voltam sobre si mesmos — o caso comum).
-            let segs = stroke_segments(g, first_point, pos.len() as u32, s.closed);
+            let segs = stroke_segments(g, first_point, n_pontos as u32, s.closed);
             for (i, extras) in neighbors::extras_for_stroke(&segs).into_iter().enumerate() {
                 if extras.list.is_empty() {
                     continue;

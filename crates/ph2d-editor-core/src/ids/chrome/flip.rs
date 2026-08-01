@@ -39,16 +39,18 @@ pub const FLIP_TIP_SQUARES: NodeId = hash_node_id("flip.tip.squares");
 pub const FLIP_DOT_SPACING: NodeId = hash_node_id("flip.tip.spacing");
 pub const FLIP_DOT_SPACING_NUM: NodeId = hash_node_id("flip.tip.spacing.num");
 
-/// Cap (Draw mode): the stroke's TIP SHAPE — `Round` ends in the brush disc (the GP default),
-/// `Flat` cuts straight where the hand stopped (the SVG `butt`).
+/// Cap (Draw mode): the stroke's TIP SHAPE — the three of the drawing standard. `Round` ends in
+/// the brush disc (the GP default), `Flat` cuts straight where the hand stopped (the SVG `butt`),
+/// `Square` extends half a thickness past the end and cuts there.
 ///
 /// ⚠️ **The engine has honoured `FlipStroke::cap` end-to-end since the walk engine landed** — the
 /// flag bits, the half-plane `max` in the silhouette, the `flip.wgsl` branch, all gated and
 /// parity-proven. What did not exist was a way for the artist to ASK: `build_stroke` never wrote
 /// `s.cap`, so every stroke got the default and `Cap::Flat` was reachable only from a test. These
-/// two ids are that door.
+/// three ids are that door.
 pub const FLIP_CAP_ROUND: NodeId = hash_node_id("flip.cap.round");
 pub const FLIP_CAP_FLAT: NodeId = hash_node_id("flip.cap.flat");
+pub const FLIP_CAP_SQUARE: NodeId = hash_node_id("flip.cap.square");
 
 /// Self Overlap (Draw mode, 03 §8): a toggle — when on, a stroke that crosses itself ACCUMULATES
 /// (darkens at the crossing, like a marker) instead of the flat union. The GP `GP_STROKE_OVERLAP`.

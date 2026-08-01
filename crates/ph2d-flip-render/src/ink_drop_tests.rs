@@ -221,3 +221,64 @@ fn the_flat_cap_cuts_even_when_the_next_point_is_one_pixel_away() {
         );
     }
 }
+
+/// 🔴 **AS TRÊS PONTAS SÃO TRÊS FORMAS — e o oráculo é o CANTO do quadrado.**
+///
+/// `Round` termina no disco, `Flat` corta no ponto, `Square` estende meia-espessura e corta. O que
+/// as separa sem ambiguidade não é *"até onde vai a tinta no EIXO"* — ali `Round` e `Square` ambos
+/// passam do ponto — e sim o **canto**: a `(0,8r, 0,8r)` da ponta, `Square` tem tinta e as outras
+/// duas não (o ponto está FORA do disco e além do corte).
+///
+/// ⚠️ **`Square` é a única das três que ACRESCENTA região**, e é por isso que ela não podia ser um
+/// `max` na silhueta como a reta: neste motor a cobertura é a integral da tinta ao LONGO DO
+/// CAMINHO, então fora do caminho não há o que integrar e a região sairia **vazia**. Ela é
+/// materializada como geometria no `pack` — o traço estendido, cortado reto no ponto novo —, que é
+/// a definição do SVG ao pé da letra.
+///
+/// Mutação que sangra: devolver `None` no `ext` do `append_drawing` (a extensão some e o canto
+/// esvazia).
+#[test]
+fn the_three_caps_are_three_shapes_and_the_corner_tells_them_apart() {
+    use ph2d_flip::{Cap, FlipDrawing, FlipStroke, Point, Rgba};
+    let sc = screen(160.0, 96.0);
+    let (r, fim) = (20.0_f32, 100.0_f32);
+    let tinta = |cap: Cap, p: [f32; 2]| -> f32 {
+        let mut st = FlipStroke::new();
+        for x in [40.0_f32, fim] {
+            st.push_point(Point {
+                pos: ph2d_core::Vec2::new(x, 48.0),
+                width: r * 2.0,
+                opacity: 1.0,
+                color: Rgba::new(0.0, 0.0, 0.0, 1.0),
+            });
+        }
+        st.hardness = 1.0;
+        st.cap = (Cap::Round, cap);
+        let mut d = FlipDrawing::default();
+        d.strokes.push(st);
+        let g = crate::pack::pack_drawing(&d);
+        let bins = bin_segments(&g, &sc, 16);
+        crate::binning::walk_pixel(&bins, &g, &sc, p)[3]
+    };
+    // O CANTO: 0,8r além da ponta e 0,8r ao lado. Fora do disco (|d| = 1,13r) e além do corte.
+    let canto = [fim + 0.8 * r, 48.0 + 0.8 * r];
+    assert!(
+        tinta(Cap::Square, canto) > 0.9,
+        "a ponta QUADRADA nao pintou o proprio canto — a extensao nao virou geometria"
+    );
+    for outra in [Cap::Round, Cap::Flat] {
+        assert!(
+            tinta(outra, canto) < 0.05,
+            "a ponta {outra:?} pintou o canto do QUADRADO: as tres deixaram de ser tres formas"
+        );
+    }
+    // E no EIXO, logo além da ponta, a reta corta e as outras duas não.
+    let eixo = [fim + 0.5 * r, 48.0];
+    assert!(tinta(Cap::Flat, eixo) < 0.05, "a ponta RETA nao cortou");
+    for outra in [Cap::Round, Cap::Square] {
+        assert!(
+            tinta(outra, eixo) > 0.9,
+            "a ponta {outra:?} tinha de passar do ponto final no eixo"
+        );
+    }
+}

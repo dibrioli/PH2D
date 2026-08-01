@@ -435,6 +435,7 @@ impl Tool for FlipTool {
             // Cap (Draw): a ponta do traço. O motor já a honrava ponta a ponta; faltava a porta.
             PanelEvent::Click(id) if id == ids::FLIP_CAP_ROUND => self.cap = Cap::Round,
             PanelEvent::Click(id) if id == ids::FLIP_CAP_FLAT => self.cap = Cap::Flat,
+            PanelEvent::Click(id) if id == ids::FLIP_CAP_SQUARE => self.cap = Cap::Square,
             // Self Overlap (Draw, 03 §8): o toggle de auto-sobreposição com acúmulo.
             PanelEvent::Click(id) if id == ids::FLIP_SELF_OVERLAP => {
                 self.self_overlap = !self.self_overlap;

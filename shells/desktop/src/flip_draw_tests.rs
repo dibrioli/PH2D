@@ -284,7 +284,7 @@ fn the_real_pipeline_step_in_radii() {
 fn the_authored_cap_reaches_the_stroke_and_the_packed_flag() {
     use ph2d_flip::Cap;
     let (pts, prs) = hand_arc(24);
-    for (cap, reto) in [(Cap::Round, false), (Cap::Flat, true)] {
+    for (cap, corta) in [(Cap::Round, false), (Cap::Flat, true), (Cap::Square, true)] {
         let st = FlipStyleSnapshot { cap, ..style() };
         let s = stroke_from_samples(&st, &pts, &prs, &Xform::IDENTITY);
         assert_eq!(
@@ -303,7 +303,7 @@ fn the_authored_cap_reaches_the_stroke_and_the_packed_flag() {
                 tem(ph2d_flip_render::FLAG_START_FLAT),
                 tem(ph2d_flip_render::FLAG_END_FLAT)
             ),
-            (reto, reto),
+            (corta, corta),
             "a ponta {cap:?} nao chegou aos bits do pack (flags {flags:#b})"
         );
     }

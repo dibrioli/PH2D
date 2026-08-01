@@ -109,7 +109,7 @@ pub use ph2d_painter_effects::BlendMode;
 /// `FlipStroke` salvo em v10 lê os campos seguintes deslocados ⇒ bump obrigatório.
 /// v12 (Airbrush, 03 §8): o traço ganhou `airbrush` (falloff físico Beer-Lambert por dab
 /// esférico). Campo no MEIO do `FlipStroke` (após `self_overlap`) ⇒ mesmo raciocínio ⇒ bump.
-pub const FLIP_SCHEMA_VERSION: u32 = 12;
+pub const FLIP_SCHEMA_VERSION: u32 = 13;
 
 #[cfg(test)]
 mod tests {

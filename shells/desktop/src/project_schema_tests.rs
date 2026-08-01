@@ -130,12 +130,23 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // roldana montada num corpo que se move, e com ela a vantagem mecânica). Três
         // campos apendados, mesmo raciocínio posicional; o par `local`/`mounted` é o do
         // W-AnchorFollow, para o eixo não deslizar pelo bloco quando o bloco se move.
-        // PROJECT 46→47: o `PhysicsJoint` ganhou `soft` (W-SoftWeld — a solda que cede;
-        // um bool apendado, e a dureza reusa a `stiffness`/`damping` da mola).
         // PROJECT 45→46: a `PulleyWheel` ganhou `radius_out` (W-Pulley W4 — o tambor
         // DIFERENCIAL: uma roldana com dois raios, e a vantagem mecânica contínua que
         // cai do quociente deles). Um campo apendado, mesmo raciocínio posicional.
-        (47, 12, 13),
+        // PROJECT 46→47: o `PhysicsJoint` ganhou `soft` (W-SoftWeld — a solda que cede;
+        // um bool apendado, e a dureza reusa a `stiffness`/`damping` da mola).
+        // PROJECT 47→48 + FLIP 12→13: o `Cap` ganhou a variante `Square` (a 3ª ponta do
+        // padrão — o traço estendido por meia-espessura e cortado reto). Apender variante
+        // NÃO move os índices de `Round`/`Flat`, então todo arquivo já salvo segue legível;
+        // o bump é pelo caminho INVERSO (um arquivo novo aberto por um leitor velho leria
+        // `Square` como lixo), o mesmo raciocínio do `JointKind::Weld`.
+        // ⚠️ A `line/FLIP` escreveu **47** e a `line/physics` reivindicou o MESMO 47 na
+        // mesma janela — a TERCEIRA colisão entre estas duas linhas (30 em 25/07, 32/33/34
+        // em 27/07). E aqui ela quase passou MUDA: o `project.rs` não conflitou, porque os
+        // dois lados escreveram o mesmo literal e o git não tem opinião sobre o que o número
+        // SIGNIFICA — o bump da FLIP teria evaporado com a suíte verde. O valor se CONTA a
+        // partir do `main` do dia; ele não estava em nenhum dos dois lados.
+        (48, 13, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

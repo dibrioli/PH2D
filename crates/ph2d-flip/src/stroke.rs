@@ -21,12 +21,37 @@ pub const DEFAULT_OPACITY: f32 = 1.0;
 /// efetiva é `1 - softness` = `1.0` (borda dura).
 pub const DEFAULT_HARDNESS: f32 = 1.0;
 
-/// Ponta do traço. `Round` arredonda (default do GP), `Flat` corta reto.
+/// **A PONTA do traço** — as três do padrão de desenho (o `stroke-linecap` do SVG, o Illustrator,
+/// o Krita).
+///
+/// | | o que é | o que se vê |
+/// |---|---|---|
+/// | `Round` | o disco do pincel | a ponta arredondada (o default do GP) |
+/// | `Flat` | um corte reto NO ponto final | o traço acaba onde a mão parou (o `butt`) |
+/// | `Square` | o traço ESTENDIDO por meia-espessura, e então cortado reto | passa do fim com canto |
+///
+/// ⚠️ **`Round` é a AUSÊNCIA de corte, não um corte no infinito** — o plano entra no motor por um
+/// `max` cujo neutro é `−∞`, então um traço de ponta redonda é **byte-intocado** pelo maquinário
+/// inteiro. É a mesma lei do `tip` contínuo e do `self_overlap` desligado.
+///
+/// ⚠️ **`Square` é GEOMETRIA, não máscara**, e a distinção é o motor: neste renderizador a
+/// cobertura é a integral da tinta ao LONGO DO CAMINHO, então uma tampa que *acrescenta* região
+/// (a quadrada) não pode ser um `max` na silhueta como a reta — fora do caminho não há o que
+/// integrar, e ela sairia **vazia**. Ela é materializada no empacotamento (`pack.rs`) como um
+/// segmento a mais, e o corte reto no ponto novo faz o resto.
+///
+/// ⚠️ **Num traço FECHADO não há ponta**, e com o *tip* pontilhado a `Square` não se aplica (a
+/// linha já é uma série de carimbos) — nos dois casos ela rende como `Round`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Cap {
     #[default]
     Round,
     Flat,
+    /// ⚠️ Variante **APENDADA** (discriminante 2): postcard escreve o índice, então acrescentar ao
+    /// FIM não move `Round`/`Flat` e todo arquivo já salvo segue legível. O bump de
+    /// `FLIP_SCHEMA_VERSION` que a acompanha é pelo caminho INVERSO — um arquivo novo aberto por um
+    /// leitor velho —, o mesmo raciocínio do `JointKind::Weld` da física.
+    Square,
 }
 
 /// **A PONTA do pincel ao longo do traço** — o *tip* pontilhado do Ciallo/GP (03 §8).

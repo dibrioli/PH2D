@@ -59,6 +59,7 @@ impl BodyCtx<'_> {
             [
                 (ids::FLIP_CAP_ROUND, "Round", snap.cap == Cap::Round),
                 (ids::FLIP_CAP_FLAT, "Flat", snap.cap == Cap::Flat),
+                (ids::FLIP_CAP_SQUARE, "Square", snap.cap == Cap::Square),
             ],
             y,
         );

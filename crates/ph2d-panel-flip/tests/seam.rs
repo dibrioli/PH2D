@@ -298,9 +298,9 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
     assert!(
-        !painted
-            .iter()
-            .any(|(w, _)| *w == ids::FLIP_CAP_ROUND || *w == ids::FLIP_CAP_FLAT),
+        !painted.iter().any(|(w, _)| *w == ids::FLIP_CAP_ROUND
+            || *w == ids::FLIP_CAP_FLAT
+            || *w == ids::FLIP_CAP_SQUARE),
         "o seletor Cap nao pode aparecer fora do Draw (controle invisivel-e-clicavel)"
     );
 
@@ -311,6 +311,7 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
     assert_eq!(tool.cap(), ph2d_tool_flip::Cap::Round, "nasce redonda");
     for (id, esperado) in [
         (ids::FLIP_CAP_FLAT, ph2d_tool_flip::Cap::Flat),
+        (ids::FLIP_CAP_SQUARE, ph2d_tool_flip::Cap::Square),
         (ids::FLIP_CAP_ROUND, ph2d_tool_flip::Cap::Round),
     ] {
         let outcome = host.apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(id));

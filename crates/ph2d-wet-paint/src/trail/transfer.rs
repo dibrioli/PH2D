@@ -11,9 +11,18 @@ impl Trail {
         let mut out = [0.0f64; 3];
         let mix = p.mix;
         // 1. Tip self-cleaning: every texel eases back toward the stroke color.
+        //
+        // ⚠️ **O laço mede a janela VIVA, nunca a do PISO.** Ele ia `0..N` (a
+        // área de `TRAIL_SIZE²`), o que era o mesmo número enquanto a janela
+        // era fixa e virou um bug mudo no dia em que ela passou a seguir o
+        // pincel: os 15129 primeiros índices LINEARES não são uma região, são
+        // as ~18 primeiras LINHAS de uma janela de 845 de largura, e o corpo do
+        // pincel nunca mais limpava. Num pincel dentro do teto do modelo os
+        // dois números coincidem ⇒ o fingerprint segue byte-idêntico POR
+        // CONSTRUÇÃO. Gate: `the_tip_cleaning_covers_the_live_window_…`.
         let clean = p.k(Knob::TipClean);
         if clean > 0.0 {
-            for l in 0..N {
+            for l in 0..self.tip_r.len() {
                 self.tip_r[l] =
                     (self.tip_r[l] as f64 + (self.base_r - self.tip_r[l] as f64) * clean) as f32;
                 self.tip_g[l] =

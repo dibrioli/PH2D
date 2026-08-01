@@ -252,6 +252,23 @@ impl Trail {
             .then_some((self.lx0, self.ly0, self.lx1, self.ly1))
     }
 
+    /// A cor do BICO num texel local — o oráculo do gate da auto-limpeza.
+    ///
+    /// ⚠️ Só para MEDIÇÃO, como as duas irmãs acima: o produto nunca lê um
+    /// texel do bico por coordenada (ele deposita a janela inteira). Existe
+    /// porque a pergunta *"a limpeza cobre a janela VIVA?"* é sobre um plano, e
+    /// o único jeito de observá-la sem um oráculo de canvas de três estágios é
+    /// ler o plano. Fora da janela devolve `None` em vez de panicar — um gate
+    /// que indexa errado deve falhar dizendo isso, não estourar.
+    #[must_use]
+    pub fn tip_rgb_for_measure(&self, lx: i32, ly: i32) -> Option<[f32; 3]> {
+        if lx < 0 || ly < 0 || lx >= self.size || ly >= self.size {
+            return None;
+        }
+        let l = (lx + ly * self.size) as usize;
+        Some([self.tip_r[l], self.tip_g[l], self.tip_b[l]])
+    }
+
     /// Frame-segment callback: size the window from the chord length.
     pub fn on_segment(&mut self, chord_len: f64, spacing: f64) {
         let cap = if self.mode == TrailMode::Blend {

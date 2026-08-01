@@ -107,10 +107,13 @@ pub struct Engine {
     prev_dab_y: f64,
     stroke_tool_backup: Option<Tool>,
     /// Product LANES: one trail per symmetry copy / tile offset of the host's
-    /// stroke. The engine's own `trail` is ONE 123² window anchored at its
-    /// first dab — feed it an interleaved multi-copy dab list and every copy
-    /// outside the window is silently dropped (`lx >= TRAIL_SIZE` returns),
-    /// which is exactly "Simetria Circular não está correta" (Enio, W2).
+    /// stroke. The engine's own `trail` is ONE window anchored at its first dab
+    /// — feed it an interleaved multi-copy dab list and every copy outside the
+    /// window is silently dropped (`lx` fora de `0..size` returns), which is
+    /// exactly "Simetria Circular não está correta" (Enio, W2).
+    ///
+    /// ⚠️ A janela **não é mais 123²**: ela segue o pincel (`Trail::fit_to`), e
+    /// o `TRAIL_SIZE` virou o PISO dela. O texto antigo dizia o número fixo.
     /// Lazily grown; ended together by [`Self::end_direct_stroke`].
     pub lane_trails: Vec<Trail>,
     /// Test hook: (pressure, dab) per dispatched dab.

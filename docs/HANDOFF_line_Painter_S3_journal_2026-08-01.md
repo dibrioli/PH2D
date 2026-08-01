@@ -4,10 +4,13 @@
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > — o bloco pronto para esta linha está no §0 abaixo.
 >
-> **Estado:** `line/Painter` @ `b882f5cc7`, árvore limpa, 18 commits nesta jornada, tudo verde
-> (tool-painter 936/0 · wet-paint fingerprint 3/3 · painter-brush 280/0 · clippy limpo).
-> **Nada pendente de smoke** — as duas coisas desta jornada que tocam o produto são uma fatoração
-> bit-exata e um conserto de contador `cfg(test)`.
+> **Estado:** `line/Painter`, árvore limpa, tudo verde (tool-painter 939/0 debug e release ·
+> wet-paint fingerprint 3/3 · LOC workspace 2/2 · LOC shell 2/2 · contrato congelado 4/4 · clippy
+> `--release --all-targets` limpo). **Nada pendente de smoke** — tudo o que landou é byte-idêntico.
+>
+> ✅ **DEGRAUS 2 E 3 ESTÃO CONSTRUÍDOS E GATEADOS** (doc 28 §5.59). Eles não compram um milissegundo:
+> é o desenho deles. O que sobra é o **degrau 4**, e ele **não é mecânico** — a construção achou três
+> coisas que o §5.58.2 não previa, e as três estão medidas na §5.59. **Comece pela §4 deste doc.**
 
 ---
 
@@ -26,6 +29,27 @@ cargo check -p ph2d-tool-painter
 isso (o `cargo` foi tentar `/home/enio/Documentos/Projetos/PH2D/target`, que é um symlink para um
 tmpfs evaporado). **Prefixe TODO comando com o `cd` da worktree** — não é conselho, é o desenho da
 bancada.
+
+---
+
+## §0.5 — O QUE JÁ ESTÁ FEITO (não reconstrua)
+
+| degrau | estado | onde |
+|---|---|---|
+| 1 · identificar o 4º dono | ✅ | §5.58.1 — são **três** (tool · `stroke_undo` · `cursor`) |
+| **2 · `split_from_journal`** | ✅ **construído, 5 gates, 7 mutações, 7 sangram** | `undo_delta_journal.rs` (filho novo) · `journal_delta_tests.rs` |
+| **3 · a materialização parte do VIVO** | ✅ **construído, net + mutação** | `PlaneDeltas::side` ganhou duas bases |
+| 4 · a elisão + a promoção | ⛔ **redesenhado** — ver §4 | — |
+
+**Duas correções ao plano, as duas achadas por gate vermelho:**
+
+1. ⚠️ **`UndoEntry::materialize` tem DOIS chamadores com adjacências diferentes** (a tabela do §5.58.2
+   tratava-o como um): `undo`/`redo` são adjacentes ao AGORA (base = o vivo); `absorb_foreign_writes` e
+   a extensão de run coalescido reconstroem contra o cursor ANTIGO (base = o cursor) — e no `absorb` o
+   vivo difere do cursor **por construção**.
+2. ⚠️ **A caixa de tiles do journal é 128-alinhada**, e sozinha ela levou o passo típico de **2,51 para
+   8,23 MB a 1024²** com os endpoints materializados idênticos. Ela é cruzada com a janela DECLARADA
+   (dois superconjuntos). *Conteúdo e memória são perguntas separadas.*
 
 ---
 
@@ -97,56 +121,63 @@ donos removíveis **não compra milissegundo nenhum**. Os dois saem juntos, e os
 
 ---
 
-## §4 — O DESENHO (§5.58.2), e as três perguntas
+## §4 — ⛔ O DEGRAU 4 NÃO É MECÂNICO — a elisão joga fora a ENTRADA do fallback
 
-O `cursor` e o `stroke_undo` respondiam três perguntas. Cada uma tem um consumidor com sítio exato:
+A política que sustenta todo o S3 é *lento nunca, errado jamais*: o guard recusa e o commit **cai no
+caminho de sempre**. ⚠️ **Ela não sobrevive à elisão**, e o motivo é de ordem no tempo:
 
-| pergunta | consumidor | hoje | depois |
-|---|---|---|---|
-| qual é o lado `before` do delta? | `UndoEntry::split` (`undo_record.rs:33/66/71`) | `stroke_undo.relief` | **os tiles do journal** |
-| alguém escreveu no meio? | `absorb_foreign_writes` (`undo_absorb.rs:44`) | `split(cursor, before)` | o **estado** do journal |
-| de que estado o undo parte? | `UndoEntry::materialize` (`undo.rs:432`) | `cursor.relief` | o **plano VIVO** |
+* o guard é perguntado no **COMMIT**;
+* a elisão acontece no **PEN-DOWN** (é ela que tira o dono — é ela que É a wave);
+* o caminho de sempre precisa de `before.relief`, **que a elisão acabou de descartar**.
 
-**O relevo ganha um caminho de delta PRÓPRIO** — é isso que torna a wave tratável. O canvas continua
-pelo `split(before, after)` de dois snapshots (não há o que ganhar ali).
+⇒ Num passo em que o guard recuse, o `split` clássico vê `before` sem relevo e `after` com, devolve
+`OnlyAfter`, e **desfazer aquele passo REMOVE o relevo** em vez de o restaurar. Em silêncio. Mesma
+classe do buraco que o `mats` fora do `ModelSnapshot` custou em 2026-07-13.
 
-* lado **`before`** = os tiles do journal — **bytes que já existem**, sem cópia nova;
-* lado **`after`** = a janela correspondente do plano VIVO;
-* **janela** = a união dos tiles tomados (o journal já a conhece: `taken`);
-* **materialização** aplica o patch ao plano VIVO — e o chamador **já constrói o vivo uma linha
-  acima** (`absorb_foreign_writes_now` faz `snapshot_model()`), então a mudança de assinatura de
-  `undo()`/`redo()` não acrescenta trabalho.
+**Logo: o guard tem de ser decidível no pen-down, ou o commit tem de RECUSAR** (descartar o histórico,
+como o `side` já faz com um cursor incoerente). Não há terceira saída — um `Whole` com `before = after`
+é a mesma perda vestida de delta.
 
-⚠️ **O guard de proveniência é o que mantém *lento nunca, errado jamais*:** se
-`journal_describes_step_at(before.writes)` for falso, o relevo cai no caminho de hoje — que só existe
-enquanto os snapshots carregarem os planos. ⇒ **a elisão é do caminho do TRAÇO**, nunca de
-`snapshot_model()` em geral: uma edição de camada continua carregando os planos, é user-paced, e é o
-**fallback VIVO** em vez de um ramo morto.
+### 📊 O CENSO que redesenha o guard (`PH2D_UNDO_AUDIT=1`, a suíte `--lib` inteira)
 
----
+| estado do journal de relevo | passos |
+|---|---|
+| **DESCREVE** (`relevo/PASSO`) | **307** |
+| **SEM-RELEVO** | **467** |
+| MISTURADO | **0** |
+| INCOMPLETO | **0** |
 
-## §5 — A ORDEM de landing (a chave é o degrau 2)
-
-| # | o quê | ganho | oráculo |
-|---|---|---|---|
-| 1 | ~~identificar o 4º dono~~ | — | ✅ feito (§3) |
-| **2** | **`split_from_journal`** + a pergunta de escrita estrangeira pelo journal, **atrás do guard**, com os snapshots ainda carregando tudo | **zero** | **gate de IGUALDADE** contra o `split` de dois snapshots |
-| 3 | a materialização parte do vivo (`undo`/`redo` recebem o vivo) | zero | os gates de undo/redo existentes |
-| 4 | o journal sai do `cfg(debug)` **JUNTO** com o `cursor` e o `stroke_undo` largarem o relevo | **~9,6 ms/traço** | a sonda de donos vai a **1**; o fold cai |
-
-⚠️ **O degrau 2 é a chave de tudo, e ele é byte-idêntico POR CONSTRUÇÃO:** o delta que ele produz tem
-de ser **igual** ao que o `split` de dois snapshots produz. Isso é um **gate de igualdade**, não uma
-promessa — e com ele verde o degrau 4 vira mecânico.
-
-⚠️ **O degrau 4 não pode ser partido:** promover o journal sozinho paga **captura + fork** até o fork
-morrer (regressão pura), **e** deixa metade da API do journal com o AUDIT como único consumidor ⇒
-**dead-code que só aparece em `--release`** — a armadilha exata que a §5.25 já pagou (4 warnings por
-3 commits, porque `cargo clippy -p` roda em **debug**).
-
-⚠️ **O AUDIT fica gateado.** Ele é a rede que confere a troca, e *uma rede de verificação não pode
-viver no relógio do que ela observa* (§5.23). A promoção é do **journal**, nunca do audit.
+1. **Nenhum passo da suíte é indescritível** ⇒ a política de *recusar no commit* é barata de verdade.
+2. ⚠️ **A MAIORIA não escreve relevo, e hoje o guard os RECUSA.** O `speaks_for` exige
+   `layer == Some(l)`, então um passo que não tocou relevo cai no fallback — que, com o `before`
+   elidido, é o caminho que perde a edição. *"Este passo não escreveu relevo"* é uma descrição boa e o
+   journal já a tem: **o guard tem de aceitar `layer.is_none()` e responder `Unchanged` em toda
+   chave.** Sem isso a elisão quebra em **467 dos 774** passos.
+3. O `absorb` ganha a metade dele de graça: os journals estão **intactos** quando ele roda (o
+   `begin_undo_step` só os zera *depois* dele), então *"escreveram relevo no intervalo?"* é
+   `relief journals vazios?`.
 
 ---
+
+## §5 — A ORDEM do degrau 4, revisada
+
+| # | o quê | por quê |
+|---|---|---|
+| 1 | o guard aceita **"nada escrito"** (`layer.is_none()` ⇒ `Unchanged` em toda chave) | 467 dos 774 passos; **gate próprio** |
+| 2 | `ModelSnapshot::without_relief` + os dois sítios de elisão (`stroke_undo` no pen-down · o `cursor`) | é a wave |
+| 3 | o `absorb` pergunta o relevo ao **journal** e, no re-split, **adota o delta de relevo da entrada velha** | o escorrido é do CANVAS; o relevo do topo não mudou — **conferido**, não assumido |
+| 4 | a mesma cirurgia na extensão de run coalescido | mesmo chamador de `materialize` |
+| 5 | o commit **RECUSA** quando o guard falha sobre um `before` elidido | não há fallback a que cair |
+| 6 | o journal sai do `cfg(debug)` | **junto**, nunca antes (§5.58.1) — e o `expect(dead_code)` do `ReliefSource` vira erro e obriga a removê-lo |
+| 7 | os gates do §6 | a sonda de donos vira gate |
+
+⚠️ **Tudo-ou-nada segue valendo** (§5.14): `heights/covers/mats` estão a **3** donos dentro do gesto
+(medido hoje), e só as duas elisões juntas levam a **1**.
+
+⚠️ **O prêmio segue lá, e o número é do handoff, não desta sessão:** o `what_the_two_halves` mediu o
+fold em **12,33 ms a 4096²** contra os 11,92 do §5.58 — mesma ordem, mas com `load average 22`, e
+**nenhum relógio desta máquina vale nada acima de ~5** (§5.49). Re-meça com a máquina calma antes de
+citar qualquer ganho.
 
 ## §6 — Os gates que a wave deve deixar (red-first, com mutação)
 

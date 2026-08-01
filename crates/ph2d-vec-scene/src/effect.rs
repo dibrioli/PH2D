@@ -38,6 +38,7 @@
 use crate::fx_falloff::{Falloff, FalloffSpec};
 use crate::fx_hatch;
 use crate::fx_knot::{self, KnotSpec};
+use crate::fx_mirror;
 use crate::fx_sketch;
 use crate::fx_trim::{self, TrimSpec};
 use crate::fx_twist::{self, TwistSpec};
@@ -211,6 +212,13 @@ pub enum PathEffect {
     /// **Hatch** — enche a forma fechada com linhas paralelas (scanline clip; cross-hatch opcional).
     /// Ver [`crate::fx_hatch`]. **Apendado por último**: postcard é posicional.
     Hatch(fx_hatch::HatchSpec),
+    /// **Mirror** — a simetria VIVA: um eixo, e o outro lado é derivado. Ver [`crate::fx_mirror`].
+    /// **Apendado por último**: postcard é posicional.
+    ///
+    /// ⚠️ O único efeito cuja transformação tem determinante **−1**. O Repeater compõe rotações e
+    /// translações (det +1 sempre), então um espelho está fora do alcance dele por álgebra, não
+    /// por falta de um botão.
+    Mirror(fx_mirror::MirrorSpec),
 }
 
 impl PathEffect {
@@ -231,6 +239,7 @@ impl PathEffect {
             Self::Knot(k) => k.is_neutral(),
             Self::Sketch(s) => s.is_neutral(),
             Self::Hatch(h) => h.is_neutral(),
+            Self::Mirror(m) => m.is_neutral(),
         }
     }
 
@@ -249,9 +258,14 @@ impl PathEffect {
             }
             // Hatch recorta uma região (sem "força" por-ponto que um campo module) ⇒ inerte, como
             // Trim/Repeat/Knot.
-            Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) | Self::Knot(_) | Self::Hatch(_) => {
-                false
-            }
+            // Mirror multiplica contornos (como Repeat) — não há "força" por-ponto que um campo
+            // espacial module ⇒ um Falloff acima dele é inerte na geometria.
+            Self::Trim(_)
+            | Self::Repeat(_)
+            | Self::Falloff(_)
+            | Self::Knot(_)
+            | Self::Hatch(_)
+            | Self::Mirror(_) => false,
         }
     }
 
@@ -294,6 +308,8 @@ impl PathEffect {
         // cada um bate o nome, então `every_effect_kind_is_reachable` fica VERMELHO num typo.
         "Sketch",
         "Hatch",
+        // ⚠️ O Mirror, no fim — um variant só. `label(Mirror) == "Mirror"`, mesmo gate.
+        "Mirror",
     ];
 
     /// Quantos KINDS vêm ANTES da família de warp — o offset dos estilos em [`Self::KINDS`].
@@ -314,6 +330,9 @@ impl PathEffect {
 
     /// O índice do Hatch em [`Self::KINDS`] — logo depois do Sketch. `label(Hatch) == "Hatch"`.
     const HATCH_KIND: usize = Self::SKETCH_KIND + 1;
+
+    /// O índice do Mirror em [`Self::KINDS`] — logo depois do Hatch. `label(Mirror) == "Mirror"`.
+    const MIRROR_KIND: usize = Self::HATCH_KIND + 1;
 
     /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
     ///
@@ -340,6 +359,9 @@ impl PathEffect {
             k if k == Self::TWIST_KIND => Some(Self::Twist(TwistSpec::new())),
             // O Knot, o KIND seguinte.
             k if k == Self::KNOT_KIND => Some(Self::Knot(KnotSpec::new())),
+            // O Mirror, o KIND seguinte. Nasce em `axes = 0` — o neutro que a lei
+            // `every_kind_is_born_neutral` exige, e que é o "nenhum eixo marcado" do Blender.
+            k if k == Self::MIRROR_KIND => Some(Self::Mirror(fx_mirror::MirrorSpec::new())),
             _ => None,
         }
     }
@@ -360,6 +382,7 @@ impl PathEffect {
             Self::Knot(_) => Self::KNOT_KIND,
             Self::Sketch(_) => Self::SKETCH_KIND,
             Self::Hatch(_) => Self::HATCH_KIND,
+            Self::Mirror(_) => Self::MIRROR_KIND,
         }
     }
 
@@ -416,6 +439,12 @@ impl PathEffect {
                 out = fx_sketch::sketch_path(path, spec, ctx.ref_size, falloff);
             }
             Self::Hatch(spec) => out = fx_hatch::hatch_path(path, spec, ctx.ref_size),
+            // ⚠️ O Mirror também não passa pelo `apply_per_contour`: reflectir um buraco por conta
+            // própria perderia a relação dele com o contorno de fora. E usa o `ctx` AUTORADO (ao
+            // contrário do Repeater): o eixo é um LUGAR, e um lugar que se mexesse conforme o
+            // efeito anterior seria um eixo que foge enquanto se edita — é o que o modificador
+            // Mirror do Blender faz ao espelhar sobre a origem do OBJETO.
+            Self::Mirror(spec) => out = fx_mirror::mirror_path(path, spec, ctx),
             // O Falloff não é geometria: ele é CONSUMIDO pelo `run_stack`, que o passa como o
             // `falloff` do efeito seguinte. Chamar `apply` num Falloff (fora da pilha) é um no-op.
             Self::Falloff(_) => {}

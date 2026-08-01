@@ -200,6 +200,22 @@ impl PathEffect {
             },
             flag("Cross"),
         ];
+        // O Mirror: quantos eixos (`0` é o neutro — o "nenhum eixo marcado" do Blender), a
+        // direcção da linha, o deslize dela ao longo da própria normal (`100` = a borda da caixa,
+        // em qualquer ângulo) e a fusão. `Offset -200..200` é faixa de AUTORIA: duas caixas para
+        // cada lado põem o eixo bem fora da forma, que é o caso do "espelha para longe".
+        const MIRROR: &[FxParam] = &[
+            count("Axes", 0.0, 2.0),
+            turn("Angle"),
+            FxParam {
+                name: "Offset",
+                min: -200.0,
+                max: 200.0,
+                toggle: false,
+                integer: false,
+            },
+            flag("Fuse"),
+        ];
         match self {
             Self::Trim(_) => TRIM,
             Self::ZigZag(_) => ZIGZAG,
@@ -210,6 +226,7 @@ impl PathEffect {
             Self::Knot(_) => KNOT,
             Self::Sketch(_) => SKETCH,
             Self::Hatch(_) => HATCH,
+            Self::Mirror(_) => MIRROR,
             // O Falloff descreve os próprios params (a lista muda com a FORMA), então delega — a
             // porta única que impede o painel e o motor de discordarem sobre o layout por-forma.
             Self::Falloff(f) => f.params(),
@@ -256,6 +273,10 @@ impl PathEffect {
             (Self::Hatch(h), 0) => h.angle,
             (Self::Hatch(h), 1) => h.spacing,
             (Self::Hatch(h), 2) => f64::from(u8::from(h.cross)),
+            (Self::Mirror(m), 0) => m.axes,
+            (Self::Mirror(m), 1) => m.angle,
+            (Self::Mirror(m), 2) => m.offset,
+            (Self::Mirror(m), 3) => m.fuse,
             _ => 0.0,
         }
     }
@@ -312,6 +333,10 @@ impl PathEffect {
             (Self::Hatch(h), 0) => h.angle = v,
             (Self::Hatch(h), 1) => h.spacing = v,
             (Self::Hatch(h), 2) => h.cross = v >= 0.5,
+            (Self::Mirror(m), 0) => m.axes = v,
+            (Self::Mirror(m), 1) => m.angle = v,
+            (Self::Mirror(m), 2) => m.offset = v,
+            (Self::Mirror(m), 3) => m.fuse = v,
             _ => {}
         }
     }

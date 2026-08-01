@@ -178,6 +178,8 @@ mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
 mod mask_smoke;
+/// A cena do MIRROR (a simetria VIVA) — `PH2D_BUILD_SMOKE=46`.
+mod mirror_smoke;
 mod morph_fade_smoke;
 mod morph_live;
 mod motion_delay_smoke;

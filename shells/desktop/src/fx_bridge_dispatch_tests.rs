@@ -20,6 +20,35 @@ fn scene_with_square() -> (VecScene, VecPathId) {
     (scene, id)
 }
 
+/// **O teto do painel alcança TODO tipo que o motor publica** — com as DUAS constantes lidas ao
+/// vivo, e é isso que o distingue do irmão dele.
+///
+/// ⚠️ A `ph2d-vec-scene` não alcança a `ph2d-editor-core` (seria ciclo), então o gate que mora lá
+/// (`the_engine_and_panel_agree_on_the_kind_ceiling`) compara contra uma **cópia literal** do
+/// teto. Isso pega o motor a CRESCER além do painel — e é cego ao painel a ENCOLHER abaixo do
+/// motor: baixar `MAX_FX_KINDS` deixa aquela suíte inteira VERDE com os últimos tipos
+/// inalcançáveis no menu Add. Medido, indo lá e baixando o número.
+///
+/// A shell vê os dois lados. É aqui, e só aqui, que a pergunta pode ser feita sem cópia.
+#[test]
+fn the_panel_ceiling_reaches_every_kind_the_engine_publishes() {
+    assert!(
+        PathEffect::KINDS.len() <= i::MAX_FX_KINDS,
+        "o motor publica {} tipos e o menu Add regista {} — os últimos ficam pintados em \
+         lugar nenhum",
+        PathEffect::KINDS.len(),
+        i::MAX_FX_KINDS
+    );
+    // E o último tipo é de facto construível pelo índice que o painel oferece: um teto que
+    // alcança um `from_kind` que devolve `None` seria um botão que não faz nada.
+    let last = PathEffect::KINDS.len() - 1;
+    assert!(
+        PathEffect::from_kind(last).is_some(),
+        "o último tipo ({}) não é construível",
+        PathEffect::KINDS[last]
+    );
+}
+
 /// **Todo id que o painel pode pintar é CLASSIFICADO.** Varre os tetos inteiros: um id que
 /// caísse no `None` seria um controle desenhado que o dispatch ignora — o botão-morto.
 #[test]

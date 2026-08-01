@@ -133,10 +133,7 @@ impl VecScene {
             let Some((verts, _)) = path.contour_mut(c) else {
                 continue;
             };
-            verts.reverse();
-            for v in verts.iter_mut() {
-                std::mem::swap(&mut v.in_handle, &mut v.out_handle);
-            }
+            crate::compound::reverse_contour(verts);
         }
         true
     }

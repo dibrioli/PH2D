@@ -166,5 +166,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::guide_smoke::frame(app, f);
         return true;
     }
+    // A cena do MIRROR (=46, plano 25 §9, a W6.3) — irmã `mirror_smoke`. Ela ARMA as pilhas,
+    // porque é a pilha que está sob teste; modo nenhum.
+    if level == 46 {
+        crate::mirror_smoke::frame(app, f);
+        return true;
+    }
     false
 }

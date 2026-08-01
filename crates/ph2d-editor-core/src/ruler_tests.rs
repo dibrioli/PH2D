@@ -49,7 +49,7 @@ fn the_drop_lands_on_the_value_the_tick_shows() {
             let back = world_at(&v, t.screen, axis);
             assert!(
                 (back - t.world).abs() < 1e-3,
-                "{axis:?}: tela {} → mundo {back}, esperado {}",
+                "{axis:?}: tela {} -> mundo {back}, esperado {}",
                 t.screen,
                 t.world
             );

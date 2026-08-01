@@ -299,3 +299,25 @@ impl VecScene {
         new_ids
     }
 }
+
+/// **Inverte o SENTIDO de percurso de um contorno, no lugar.**
+///
+/// A lista de vértices vira do avesso e os handles `in`/`out` trocam de papel — sem a troca, o
+/// contorno percorre ao contrário com as alças a apontarem para o lado errado, e as curvas
+/// invertem-se em silêncio.
+///
+/// ⚠️ **Porta ÚNICA, e é por isso que ela existe.** A pergunta *"como se inverte um contorno?"*
+/// tinha um dono ([`crate::VecScene::reverse_path`], o botão **Reverse** da seção Vertex) e
+/// ganhou um segundo consumidor no [`crate::fx_mirror`], que precisa de repor o winding que a
+/// reflexão inverte. Duas cópias de duas linhas divergem no dia em que uma delas aprender sobre
+/// um campo novo do vértice — e a que esquecer reescreve o desenho sem erro nenhum.
+///
+/// O que ela **não** decide é *quais* contornos inverter: um compound invertido pela metade fica
+/// com sentidos misturados e, sob [`FillRule::NonZero`], muda qual região é buraco. Essa é uma
+/// pergunta do chamador, e os dois respondem-na do mesmo jeito (todos).
+pub fn reverse_contour(verts: &mut [crate::VecVertex]) {
+    verts.reverse();
+    for v in verts.iter_mut() {
+        core::mem::swap(&mut v.in_handle, &mut v.out_handle);
+    }
+}

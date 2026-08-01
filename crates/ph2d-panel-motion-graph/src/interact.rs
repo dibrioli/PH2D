@@ -327,7 +327,7 @@ fn apply_background(
             } else if let Some(menu) = state.menu.take() {
                 // A primary click while the menu is open closes it; a click on a
                 // row also adds that node at the menu's spawn point.
-                resolve_menu(&menu, rect, snap, g.x, g.y);
+                resolve_menu(state, &menu, rect, snap, g.x, g.y);
             } else {
                 // A plain tap on empty canvas clears the selection — including a
                 // selected backdrop (the tap goes THROUGH its click-through body).
@@ -357,7 +357,7 @@ fn apply_background(
             if let Some(menu) = state.menu.take() {
                 let rows = crate::snapshot::menu_rows(snap, &menu).len();
                 if geom::menu_panel(&menu, rows, rect).contains(g.x, g.y) {
-                    resolve_menu(&menu, rect, snap, g.x, g.y);
+                    resolve_menu(state, &menu, rect, snap, g.x, g.y);
                 }
                 state.interaction = Interaction::Idle;
                 return;

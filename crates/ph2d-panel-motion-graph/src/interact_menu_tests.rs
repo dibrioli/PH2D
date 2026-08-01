@@ -232,6 +232,57 @@ fn the_paint_and_the_hit_enumerate_one_list() {
     }
 }
 
+/// **Right-clicking a node opens its actions, and a pick runs the keyboard verb** (doc 62) —
+/// the missing case of the context-dependent right-press (backdrop → tints, wire → splice,
+/// node → actions). Opening SELECTS the node it asks about; picking a row dispatches through
+/// the SAME `apply_key` the shortcut uses, so the menu cannot drift from the key. FALSIFIED:
+/// the right-press not opening node-actions (or not selecting the node), or a row running the
+/// wrong verb (e.g. the Delete row not deleting).
+#[test]
+fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
+    use crate::state::NodeAction;
+    let _ = drain_intents();
+    let snap = two_node_snapshot();
+    let mut st = MotionGraphPanelState::default();
+
+    // Right-press a node that is NOT selected: opens the node-actions menu AND selects it.
+    let mut g = gesture(
+        GraphHitKind::Node { node: 1 },
+        GesturePhase::Begin,
+        RECT.x + 30.0,
+        RECT.y + 30.0,
+    );
+    g.button = PointerButton::Secondary;
+    super::menu::open_on_right_press(&mut st, g, RECT, &snap);
+    assert!(
+        matches!(st.menu.as_ref().map(|m| &m.body), Some(MenuBody::NodeActions)),
+        "a node right-press opens its actions"
+    );
+    assert_eq!(
+        st.selected.iter().copied().collect::<Vec<_>>(),
+        vec![1],
+        "and selects the node it asked about"
+    );
+
+    // Resolve the Delete row (NodeAction index 3) → GraphKey::Delete on the selection.
+    let menu = st.menu.take().expect("the menu is open");
+    let panel = geom::menu_panel(&menu, NodeAction::ALL.len(), RECT);
+    let del = geom::menu_row(&menu, panel, 3, 0.0);
+    resolve_menu(
+        &mut st,
+        &menu,
+        RECT,
+        &snap,
+        del.x + del.w * 0.5,
+        del.y + del.h * 0.5,
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::DeleteSelection { nodes: vec![1] }],
+        "the Delete row ran the Delete verb on the selected node"
+    );
+}
+
 // ── The search (doc 59) ─────────────────────────────────────────────────────
 
 /// A catalog whose FIRST entry is a decoy: "Mirror Alpha Pass" matches the query `map` as a

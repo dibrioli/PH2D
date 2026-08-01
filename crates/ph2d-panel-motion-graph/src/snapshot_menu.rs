@@ -65,6 +65,17 @@ pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Men
                 selected: false,
             })
             .collect(),
+        // The node context menu (doc 62): one row per keyboard verb, in `NodeAction::ALL`
+        // order. A neutral dot — a verb has no category to tint, and the label carries the
+        // shortcut, which is the row's whole job.
+        MenuBody::NodeActions => crate::state::NodeAction::ALL
+            .iter()
+            .map(|a| MenuRow {
+                label: a.label(),
+                dot: ColorToken::Text2,
+                selected: false,
+            })
+            .collect(),
         // The palette IS its own preview: each row's dot is painted in the tint it sets, so you
         // pick the colour by looking at it rather than by reading its name.
         MenuBody::BackdropTints { current, .. } => TINT_NAMES

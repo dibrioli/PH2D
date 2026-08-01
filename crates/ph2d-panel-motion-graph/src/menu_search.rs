@@ -127,11 +127,13 @@ pub(crate) fn pick_first(menu: &crate::state::Menu) {
                 menu.spawn,
             ));
         }
-        // A card/param menu and a colour palette are short and picked by EYE; Enter there would
-        // be guessing which port (or which colour) the artist meant. Neither has a search field
-        // at all, so neither can even receive an Enter — this arm is the belt to that braces.
-        crate::state::MenuBody::CardPorts { .. } | crate::state::MenuBody::BackdropTints { .. } => {
-        }
+        // A card/param menu, a colour palette and the node-actions menu are short and picked by
+        // EYE; Enter there would be guessing which port (or colour, or verb) the artist meant.
+        // None has a search field at all, so none can even receive an Enter — this arm is the
+        // belt to that braces.
+        crate::state::MenuBody::CardPorts { .. }
+        | crate::state::MenuBody::BackdropTints { .. }
+        | crate::state::MenuBody::NodeActions => {}
     }
 }
 

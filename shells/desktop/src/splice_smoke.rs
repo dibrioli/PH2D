@@ -12,6 +12,11 @@
 //! desfazendo a inserção inteira. R-click em canvas VAZIO ainda só adiciona o nó solto (sem
 //! splice). Um source que não encaixa (`motion.grid`) é recusado e o fio original fica.
 //!
+//! ⊙ R-CLICK SOBRE UM NÓ → o menu de AÇÕES dele (Cut / Copy / Duplicate / Delete / Toggle Mute /
+//! Rename), com o atalho de teclado ao lado de cada. O R-click SELECIONA o nó (como no backdrop);
+//! se ele já fizer parte de uma seleção, a ação vale para o grupo todo. Cada linha roda o MESMO
+//! verbo do atalho (é a mesma porta), então o menu nunca faz algo diferente da tecla.
+//!
 //! O INVERSO do splice também está aqui: SELECIONE o nó do meio (ex. **scale**, ou o **twist**
 //! recém-splicado) e aperte **Delete** — a cadeia se RE-CONECTA (grid -> output), em vez de
 //! ficar cortada (delete-and-reconnect: no Blender é o Ctrl+X; AQUI é o **Delete**, e o Ctrl+X é o
@@ -124,6 +129,9 @@ impl crate::App {
              GRID SE DEFORMA NA HORA, com UM Ctrl+Z desfazendo tudo. R-click em canvas VAZIO ainda \
              so adiciona o no solto (sem splice). Um source que nao encaixa (motion.grid) e \
              recusado e o fio original fica.\n  \
+             R-CLICK SOBRE UM NO: o menu de ACOES dele (Cut / Copy / Duplicate / Delete / Toggle \
+             Mute / Rename, com o atalho ao lado). O R-click seleciona o no; se ele ja estiver numa \
+             selecao, a acao vale para o grupo. Cada linha roda o MESMO verbo do atalho.\n  \
              INVERSO: selecione o no do MEIO (scale, ou o twist splicado) e aperte DELETE -> a \
              cadeia se RE-CONECTA (grid -> output), em vez de ficar cortada (no Blender e o Ctrl+X; \
              AQUI e o Delete, e o Ctrl+X e o Cut, abaixo). Deletar uma PONTA (grid/output) so remove.\n  \

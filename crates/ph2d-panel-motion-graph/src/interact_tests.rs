@@ -427,8 +427,9 @@ fn right_click_background_opens_menu_then_left_pick_adds_node() {
 fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     let _ = drain_intents();
     let mut st = MotionGraphPanelState::default();
-    // A right-press whose hit resolved to a node still opens the add-menu
-    // (movement-independent, over any hit) — the node is not selected/dragged.
+    // A right-press over a node opens its ACTIONS menu (doc 62) and SELECTS the node it
+    // asks about — like the backdrop's right-press. Movement-independent (over any hit,
+    // on the press), and the node is not dragged.
     let mut down = gesture(
         GraphHitKind::Node { node: 7 },
         GesturePhase::Begin,
@@ -437,8 +438,14 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     );
     down.button = PointerButton::Secondary;
     apply_gesture(&mut st, down, RECT, CENTER, &two_node_snapshot());
-    assert!(st.menu.is_some(), "right-press opens the menu over a node");
-    assert!(st.selected.is_empty(), "the node is not selected");
+    assert!(
+        matches!(
+            st.menu.as_ref().map(|m| &m.body),
+            Some(crate::state::MenuBody::NodeActions)
+        ),
+        "right-press over a node opens its actions menu"
+    );
+    assert!(st.selected.contains(&7), "the node it asked about is selected");
     // A right-release classified as End (the click drifted) must NOT dismiss.
     let mut up = gesture(
         GraphHitKind::Node { node: 7 },

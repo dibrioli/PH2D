@@ -98,7 +98,14 @@ pub(super) fn drag_menu_thumb(
 ///
 /// The row index is resolved against [`menu_rows`] — the same list the paint drew. Anything
 /// else and the artist clicks one row and gets another.
-pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x: f32, y: f32) {
+pub(super) fn resolve_menu(
+    state: &mut MotionGraphPanelState,
+    menu: &Menu,
+    rect: Rect,
+    snap: &GraphViewSnapshot,
+    x: f32,
+    y: f32,
+) {
     let rows = menu_rows(snap, menu);
     let panel = geom::menu_panel(menu, rows.len(), rect);
     let hit = (0..rows.len()).find(|i| {
@@ -171,6 +178,14 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
                 color: i as u8,
             });
         }
+        // **The node context menu** (doc 62): the row IS a keyboard verb, so the pick is
+        // dispatched through the SAME `apply_key` a key press goes through — the menu can
+        // never do something subtly different from its shortcut. It acts on the selection
+        // the right-press left set (`open_on_right_press`). `NodeAction::ALL` is the one
+        // list the paint enumerates, so row `i` is the verb the label showed.
+        MenuBody::NodeActions => {
+            super::key::apply_key(state, crate::state::NodeAction::ALL[i].graph_key(), rect, snap);
+        }
         MenuBody::Library {
             connect_from,
             splice,
@@ -234,6 +249,21 @@ pub(super) fn open_on_right_press(
             connect_from: None,
             splice: Some(crate::paint::wire_target(edge)),
         },
+        // R-press ON a node: the ACTIONS on it (doc 62) — the case the context-dependent
+        // right-press was missing. A right-click SELECTS what it is asking about (like the
+        // backdrop above): a node not already in the selection becomes the whole selection,
+        // so the menu acts on what you pointed at; a node already in a multi-selection keeps
+        // it, so the actions apply to the group. Every pick runs a keyboard verb via
+        // `apply_key`, which reads that selection.
+        GraphHitKind::Node { node } => {
+            let node = node as u32;
+            if !state.selected.contains(&node) {
+                state.selected.clear();
+                state.selected.insert(node);
+                state.selected_backdrop = None;
+            }
+            MenuBody::NodeActions
+        }
         _ => MenuBody::Library {
             connect_from: None,
             splice: None,

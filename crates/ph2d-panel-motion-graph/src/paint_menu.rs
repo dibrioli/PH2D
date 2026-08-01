@@ -40,6 +40,7 @@ pub(super) fn draw_menu(
         MenuBody::Library { .. } => "Add Node",
         MenuBody::CardPorts { .. } => "Connect Inside Group",
         MenuBody::BackdropTints { .. } => "Backdrop Colour",
+        MenuBody::NodeActions => "Node",
     };
     let panel = geom::menu_panel(menu, rows.len(), canvas);
     fill_rounded_rect(

@@ -3,7 +3,55 @@
 //! Owned by the typed panel registry; passed `&mut` into `paint`.
 
 use crate::snapshot::PortChoice;
+use ph2d_editor_core::interaction::GraphKey;
 use std::collections::BTreeSet;
+
+/// **A row of the node context menu** (right-click a node, doc 62). Each row is exactly one
+/// of the keyboard verbs: the menu is an alternate TRIGGER, never a second implementation,
+/// so [`Self::graph_key`] routes every pick back through `apply_key` and the menu cannot
+/// drift from the shortcut. The labels name the shortcut, so the menu also TEACHES it.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum NodeAction {
+    Cut,
+    Copy,
+    Duplicate,
+    Delete,
+    Bypass,
+    Rename,
+}
+
+impl NodeAction {
+    /// The rows, in display order — the ONE list `menu_rows` draws AND `resolve_menu`
+    /// dispatches, so row `i` means the same thing on screen and under the cursor.
+    pub(crate) const ALL: [NodeAction; 6] = [
+        NodeAction::Cut,
+        NodeAction::Copy,
+        NodeAction::Duplicate,
+        NodeAction::Delete,
+        NodeAction::Bypass,
+        NodeAction::Rename,
+    ];
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            NodeAction::Cut => "Cut (Ctrl+X)",
+            NodeAction::Copy => "Copy (Ctrl+C)",
+            NodeAction::Duplicate => "Duplicate (Ctrl+D)",
+            NodeAction::Delete => "Delete (Del)",
+            NodeAction::Bypass => "Toggle Mute (H)",
+            NodeAction::Rename => "Rename (F2)",
+        }
+    }
+    pub(crate) fn graph_key(self) -> GraphKey {
+        match self {
+            NodeAction::Cut => GraphKey::Cut,
+            NodeAction::Copy => GraphKey::Copy,
+            NodeAction::Duplicate => GraphKey::Duplicate,
+            NodeAction::Delete => GraphKey::Delete,
+            NodeAction::Bypass => GraphKey::Bypass,
+            NodeAction::Rename => GraphKey::Rename,
+        }
+    }
+}
 
 /// graph-space → screen affine: `screen = panel_origin + pan + graph * zoom`.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -232,6 +280,13 @@ pub(crate) enum MenuBody {
         /// dropped on the floor.
         detach: Option<(u32, u16)>,
     },
+    /// **The actions on a node** (right-click a NODE, doc 62) — the missing case of the
+    /// context-dependent right-press (backdrop → tints, wire → splice, node → actions). It
+    /// has no fields: the target is whatever `open_on_right_press` left SELECTED (the
+    /// right-clicked node, or the whole selection if it was part of one), and each pick
+    /// runs the matching keyboard verb via `apply_key`, which reads that selection. The row
+    /// list is [`NodeAction::ALL`].
+    NodeActions,
 }
 
 /// Retained panel state.

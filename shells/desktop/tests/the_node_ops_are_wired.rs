@@ -374,16 +374,108 @@ fn the_guide_gesture_runs_before_any_tool_claims_the_pointer() {
             );
         }
     }
-    // E o arrasto é dono do ponteiro até o Up: sem isto um Move que saísse da faixa devolveria
-    // o gesto ao gizmo no meio do caminho.
-    let owns = src
-        .find("if self.guide_drag.is_some() {")
-        .expect("o arrasto em curso captura o ponteiro");
-    assert!(
-        owns < guide,
-        "a captura do arrasto tem de vir ANTES do press que o cria, senão o primeiro Move \
-         do gesto é roubado por quem estiver adiante"
+}
+
+/// O corpo de um `fn` do `input_dispatch`, do nome dele até o `fn` seguinte, **sem comentários**.
+///
+/// ⚠️ A remoção dos comentários é load-bearing (a lição de `the_grab_is_wired_to_the_pointer`):
+/// um gate sobre ordem de CÓDIGO que lê prosa é um gate que qualquer frase dispara, nos dois
+/// sentidos — e a prosa desta wave cita os nomes das próprias funções que ele procura.
+fn fn_body(src: &str, name: &str, next: &[&str]) -> String {
+    let i = src.find(name).unwrap_or_else(|| panic!("`{name}` existe"));
+    let tail = &src[i..];
+    // O primeiro delimitador que aparecer fecha o corpo. ⚠️ O `#[cfg(test)]` está na lista
+    // porque o `on_mouse_input` é o ÚLTIMO `fn` do `impl`: sem ele o "corpo" engoliria o
+    // módulo de testes do arquivo, e as asserções NEGATIVAS deste gate passariam a falhar
+    // sobre um teste que mencione a função.
+    let end = next
+        .iter()
+        .filter_map(|n| tail.find(n))
+        .min()
+        .unwrap_or(tail.len());
+    tail[..end]
+        .lines()
+        .map(|l| match l.find("//") {
+            Some(c) => &l[..c],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// **Cada FASE do arrasto de guia está ligada à porta que ENTREGA aquela fase.**
+///
+/// Um arrasto tem três — press, movimento, release — e o winit as entrega por **duas** portas:
+/// `on_mouse_input` (botão) e `on_cursor_moved` (movimento). A política pura (`press_plan`,
+/// `guide_pos_under`) é **cega a qual delas a chamou**, então nenhum dos gates de unidade pode
+/// ver uma fase ligada no lugar errado.
+///
+/// ⚠️ **Este gate existe porque a wave shipou exatamente esse defeito.** O braço
+/// `PointerKind::Move` nasceu dentro do `on_mouse_input`, que **só produz `Down` e `Up`** — o
+/// braço era estruturalmente inalcançável, `guide_pointer_move` ficou sem chamador nenhum, e
+/// os seis gates de política seguiram VERDES (eles afirmam o que a guia deve fazer *quando
+/// alguém a move*, e ninguém a movia). No produto isso saiu como dois sintomas de um defeito
+/// só: *"clicar na faixa cria a linha mas ela não segue o mouse"* e *"mover linha não é
+/// possível"* — a guia nascia sob o cursor, ficava, e o Up a largava ali.
+///
+/// O irmão é `the_move_advances_the_hand` (W-Grab), cuja prosa já dizia a consequência:
+/// *"sem isto a mão não segue o cursor — ela pega e fica onde estava."*
+#[test]
+fn each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/input_dispatch.rs"),
+    )
+    .expect("input_dispatch.rs");
+    let moved = fn_body(
+        &src,
+        "pub(crate) fn on_cursor_moved(",
+        &["pub(crate) fn on_mouse_wheel("],
     );
+    let button = fn_body(
+        &src,
+        "pub(crate) fn on_mouse_input(",
+        &["\n    pub(crate) fn ", "\n#[cfg(test)]"],
+    );
+
+    // O MOVIMENTO mora onde o movimento chega.
+    let mv = moved.find("self.guide_pointer_move(").unwrap_or_else(|| {
+        panic!(
+            "o `guide_pointer_move` tem de ser chamado do `on_cursor_moved` — sem isto a guia \
+             nasce sob o cursor e fica onde nasceu"
+        )
+    });
+    assert!(
+        !button.contains("self.guide_pointer_move("),
+        "o `on_mouse_input` só produz Down e Up: um braço de Move ali é inalcançável, e \
+         acreditar nele é o que deixou o gesto meio-ligado"
+    );
+
+    // O PRESS e o RELEASE moram onde o botão chega.
+    for needle in ["self.guide_pointer_down(", "self.guide_pointer_up("] {
+        assert!(
+            button.contains(needle),
+            "`{needle}` tem de ser chamado do `on_mouse_input`"
+        );
+        assert!(
+            !moved.contains(needle),
+            "`{needle}` não pertence ao handler de movimento"
+        );
+    }
+
+    // E o movimento de um arrasto VIVO precede os outros gestos: um arrasto em curso é dono do
+    // ponteiro, senão sair da faixa devolve o gesto ao gizmo no meio do caminho.
+    for (needle, what) in [
+        ("self.painter_canvas_move(", "o traço do Painter"),
+        ("self.flip_canvas_move(", "o traço do Flip"),
+        ("self.field_gizmo_move(", "o gizmo de field"),
+    ] {
+        if let Some(other) = moved.find(needle) {
+            assert!(
+                mv < other,
+                "o movimento da guia corre DEPOIS de {what} — o arrasto perderia o ponteiro"
+            );
+        }
+    }
 }
 
 /// A régua é pintada, e o canvas que ela usa é o que o paint RESOLVEU.

@@ -2574,6 +2574,17 @@ impl App {
         self.last_cursor = self.last_pointer;
         // Reflect the colour-picker eyedropper in the OS cursor (a crosshair "target" while armed).
         self.update_eyedropper_cursor();
+        // **AS GUIAS** (plano 25 §9, a W6.2): um arrasto de guia em curso é DONO do ponteiro,
+        // então ele vem antes de todo o resto — a mesma doutrina dos `*_move` abaixo.
+        //
+        // ⚠️ **É AQUI que um arrasto de guia anda, e não no `on_mouse_input`.** A primeira
+        // versão desta wave pôs o braço `PointerKind::Move` junto do Down/Up, num handler que
+        // só produz Down e Up: o braço era **inalcançável**, `guide_pointer_move` ficou sem
+        // chamador nenhum, e o produto criava a guia e a deixava onde nasceu — o que se lê
+        // como *"criar funciona, mover não"*, dois sintomas de um defeito só.
+        if self.guide_pointer_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // BgRemoval eyedropper drag (SHELL-only): while the primary
         // button is held with the eyedropper armed, every motion
         // samples another colour. Early-return so the move does not
@@ -3063,20 +3074,15 @@ impl App {
         // puxar uma guia — chrome desenhado e morto sob o mouse, que é o defeito que esta
         // codebase varre a cada wave.
         //
-        // ⚠️ Uma vez começado, o arrasto é DONO do ponteiro até o Up (o padrão do `joint_draw`):
-        // sem isto um Move que saísse da faixa devolveria o gesto ao gizmo no meio do caminho.
-        if self.guide_drag.is_some() {
-            match kind {
-                PointerKind::Move => {
-                    self.guide_pointer_move(evt.x, evt.y);
-                    return;
-                }
-                PointerKind::Up => {
-                    self.guide_pointer_up(evt.x, evt.y);
-                    return;
-                }
-                _ => {}
-            }
+        // ⚠️ Uma vez começado, o arrasto é DONO do ponteiro até o Up (o padrão do `joint_draw`).
+        // O passo do MEIO — o Move que leva a guia — mora no `on_cursor_moved`, que é o
+        // handler que o winit usa para movimento; **este só recebe Down e Up**.
+        //
+        // ⚠️ E o Up **não é gateado no Primary**, pelo mesmo motivo que abre o `on_mouse_input`
+        // com o release da mão: um arrasto que sobrevive ao release fica colado no cursor para
+        // sempre, e um botão secundário não é um modificador de gesto.
+        if kind == PointerKind::Up && self.guide_pointer_up(evt.x, evt.y) {
+            return;
         }
         if kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary

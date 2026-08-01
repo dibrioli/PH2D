@@ -104,7 +104,7 @@ ph2d-vec-edit    149 ok    ph2d-editor-core  885 ok    shell            1788 ok
 - **Debug E release** — a lição da `line/FLIP` (um gate que reprovava só em debug) e a do
   `ph2d-flip-colorize` (um pânico que só o debug via).
 
-**12 mutações, 12 sangram:**
+**15 mutações, 15 sangram:**
 
 | # | o que muta | quem sangra |
 |---|---|---|
@@ -120,6 +120,9 @@ ph2d-vec-edit    149 ok    ph2d-editor-core  885 ok    shell            1788 ok
 | M10 | o press de guia cai depois do Flip | `the_guide_gesture_runs_before_any_tool_claims_the_pointer` |
 | M11 | a porta esquece a ferramenta (a régua volta a comer o pen-down do Painter) | `the_rulers_are_live_only_with_the_vector_tool_and_the_toggle_on` |
 | M12 | o gesto recompõe a condição em vez de perguntar a porta | `the_paint_and_the_gesture_ask_the_same_door_about_the_rulers` |
+| M13 | o movimento perde o chamador | `each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it` |
+| M14 | **o defeito do 1º smoke, verbatim** (o braço de Move de volta ao `on_mouse_input`) | idem — e **só ele**: os outros 14 gates do arquivo passam |
+| M15 | a guia anda depois do traço do Painter | idem (a metade de ORDEM) |
 
 ---
 
@@ -160,3 +163,23 @@ visíveis e magnéticas e imóveis) · o **zero** (a régua conta da origem da g
 2. **Dois gates meus nasceram errados, os dois reprovando código correto** (a escada 1/2/5
    enumerada em vez de construída; um arch-gate ancorado na *definição* de um `fn` em vez da
    *chamada*). Estão descritos no plano 25 §9 e nos próprios doc-comments.
+3. ⚠️ **E o 1º smoke REPROVOU o gesto**, por um defeito que os 36 gates não podiam ver: o braço
+   `PointerKind::Move` nasceu dentro do `on_mouse_input`, que **só produz `Down` e `Up`** — o
+   braço era **estruturalmente inalcançável** e `guide_pointer_move` ficou **sem chamador
+   nenhum**. Quem entrega movimento é o `on_cursor_moved`.
+   - **Um defeito, os dois sintomas do report:** a guia nascia sob o cursor e ficava lá (*"cria
+     a linha mas ela não segue o mouse"*), e pegar uma guia posta armava um arrasto que nunca
+     andava (*"mover linha não é possível"*).
+   - **Por que nada viu:** os seis gates de política afirmam o que a guia deve fazer *quando
+     alguém a move*, e são **cegos a qual porta chamou** — a lição de que *um gate de unidade
+     é CEGO à fiação do shell*, aqui na forma mais barata de cometer. O `dead_code` também não
+     ajuda: a função **era** chamada, de um braço que nunca roda.
+   - **O gate que faltava já existia para outro gesto:** `the_move_advances_the_hand` (W-Grab)
+     afirma exatamente isto para a mão da física, com a prosa certa — *"sem isto a mão não
+     segue o cursor: ela pega e fica onde estava."* O irmão agora existe para as guias
+     (`each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it`), e afirma as **três
+     fases contra as duas portas** mais a ordem do movimento.
+   - **Higiene junto:** o `Up` deixou de ser gateado por `kind` dentro de um `match` e passou a
+     ser uma condição direta, **sem exigir Primary** — o mesmo motivo pelo qual o
+     `on_mouse_input` abre soltando a mão da física: *um arrasto que sobrevive ao release fica
+     colado no cursor para sempre*, e um botão secundário não é modificador de gesto.

@@ -810,7 +810,7 @@ lhes dá desfazer e salvar de graça, pelo mesmo diff que já cobre o mundo, o v
 intacto**, contrato congelado **intacto**, **nenhum ADR**.
 
 **36 gates novos** (7 modelo · 9 régua · 8 snap · 6 gesto · 1 porta · 3 arch · 2 seam estendidos),
-**12 mutações, 12 sangram**.
+**15 mutações, 15 sangram**.
 
 ⚠️ **E dois gates MEUS nasceram errados, os dois reprovando código correto:**
 1. A metade *"o passo não é folgado"* da régua enumerava `step/2`, `step/2.5`, `step/5` como

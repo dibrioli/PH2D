@@ -442,7 +442,19 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
             t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
             let n = (PATH_PX / step).round() as u32;
             let mut ms = Vec::with_capacity(n as usize);
+            // ⚠️ **A sim RODANDO, e é o que torna esta tabela decisiva.** A 1ª
+            // versão media com o motor PARADO e concluiu que o custo é do
+            // CAMINHO — verdade para o depósito, e insuficiente: no produto
+            // cada evento chama `bring_home()` BLOQUEANTE, e isso é custo por
+            // EVENTO. Com o motor parado o handshake não existe, então aquela
+            // tabela não podia ver a diferença que ela existe para procurar.
+            let mut since_tick = Instant::now();
             for k in 1..=n {
+                // Um tick por QUADRO, como o produto — nunca por evento.
+                if since_tick.elapsed().as_micros() >= 16_000 {
+                    t.wetpaint_tick(1.0 / 60.0);
+                    since_tick = Instant::now();
+                }
                 let x = x0 + step * k as f32;
                 let t0 = Instant::now();
                 t.on_canvas_pointer(cp([x, y0], PointerPhase::Move));
@@ -531,5 +543,85 @@ fn measure_that_the_ruler_costs_nothing_against_the_step_it_divides() {
         "\n    Leitura: e uma RAZAO, entao ela sobrevive a maquina carregada — as duas\n    \
          metades sobem juntas. Abaixo de ~1% o instrumento esta exonerado, e continua\n    \
          exonerado amanha, com a maquina noutro estado."
+    );
+}
+
+/// **O CARIMBO COM A SIM RODANDO** — o defeito de fixture que fazia o meu
+/// número não bater com o do produto.
+///
+/// ⚠️ **O censo dos quatro meios mede o carimbo com o motor PARADO** (ele nunca
+/// chama o tick, então o worker nunca recebe o engine) e reporta **2,03
+/// ms/move** a 4096². O produto reportou `13,12 ms cada` — e mesmo descontando
+/// a máquina saturada daquele log, a fixture e o produto não estão medindo a
+/// mesma coisa: **no produto o carimbo disputa o motor com o worker.**
+///
+/// Cada evento de ponteiro chama `WetSession::bring_home()`, que é
+/// **BLOQUEANTE e sem timeout** — o irmão `try_bring_home` do tick espera no
+/// máximo `TICK_WAIT`, o do carimbo espera o que for preciso. O worker só
+/// devolve em **fronteira de estágio**, e a `ESPERA` medida no produto é de
+/// **2,3-2,6 ms**: é isso que um estágio custa.
+///
+/// A tabela mede as duas condições lado a lado, na MESMA corrida (razão imune
+/// à carga da máquina), varrendo também o RAIO — porque o custo de um dab é a
+/// pegada, e o artista pinta com pincel grande.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_the_stamp_while_the_sim_is_actually_running() {
+    const SIDE: u32 = 4096;
+    const MOVES: u32 = 60;
+    const STEP_PX: f32 = 12.0;
+    /// O vão entre a entrega do motor e o carimbo seguinte — um quadro.
+    const GAP_US: u64 = 16_000;
+
+    println!("\n  O CARIMBO COM O MOTOR PARADO x COM O WORKER SIMULANDO ({SIDE}x{SIDE})\n");
+    println!(
+        "    {:>6} {:>14} {:>14} {:>10}   {:>12}",
+        "raio", "parado ms", "simulando ms", "razao", "por evento"
+    );
+
+    for radius in [60.0f32, 100.0, 200.0] {
+        let mut row = [0.0f64; 2];
+        for (slot, live) in [(0usize, false), (1, true)] {
+            let mut t = wetted(SIDE, radius);
+            t.set_paint_media(PaintMedia::WetPaint);
+            let (x0, y0) = (400.0f32, 2048.0f32);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            let mut ms = Vec::with_capacity(MOVES as usize);
+            for k in 1..=MOVES {
+                // A condição do PRODUTO: um tick por quadro entrega o motor ao
+                // worker, e o carimbo seguinte tem de o trazer de volta.
+                if live {
+                    t.wetpaint_tick(1.0 / 60.0);
+                    // ⚠️ **O VÃO é o ingrediente essencial da fixture.** Sem ele o
+                    // tick entrega o motor e o carimbo o retoma no instante
+                    // seguinte — o worker nunca chega a ENTRAR num estágio, e o
+                    // `bring_home` bloqueante nunca bloqueia: a 1ª versão desta
+                    // sonda mediu 0,99× e concluiu, erradamente, que o handshake
+                    // é grátis. No produto há um quadro inteiro entre a entrega
+                    // e o carimbo seguinte, e é nesse vão que o worker está no
+                    // meio de um estágio quando o artista mexe o dedo.
+                    std::thread::sleep(std::time::Duration::from_micros(GAP_US));
+                }
+                let x = x0 + STEP_PX * k as f32;
+                let t0 = Instant::now();
+                t.on_canvas_pointer(cp([x, y0], PointerPhase::Move));
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                let _ = t.take_preview_arc();
+            }
+            t.on_canvas_pointer(cp([x0 + STEP_PX * MOVES as f32, y0], PointerPhase::Up));
+            row[slot] = ms.iter().sum();
+        }
+        println!(
+            "    {radius:>5.0}p {:>13.2} {:>13.2} {:>9.2}x   {:>11.3}ms",
+            row[0],
+            row[1],
+            row[1] / row[0].max(1e-9),
+            row[1] / f64::from(MOVES),
+        );
+    }
+    println!(
+        "\n    Leitura: a coluna PARADO e a que o censo dos quatro meios mede; a SIMULANDO\n    \
+         e a que o artista sente. A razao entre elas e o preco do handshake — cada evento\n    \
+         chama `bring_home()` BLOQUEANTE, e o worker so devolve em fronteira de estagio."
     );
 }

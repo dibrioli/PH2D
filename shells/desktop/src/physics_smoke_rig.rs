@@ -161,13 +161,20 @@ impl crate::App {
                   Hierarchy'**. A contagem esta NO rotulo, porque o clique alcanca a\n     \
                   subarvore inteira e voce tem de ver isso antes.\n  \
                2. clique em Rig. Toast: 'Rigged {parts} new bodies with {joints} joints'.\n  \
-               3. De PLAY: o boneco DESABA sobre o piso e os membros se DOBRAM --\n     \
-                  o tronco cai ~{drop:.1} m e as juntas seguram (a violacao da\n     \
-                  restricao do pescoco fica abaixo de {gap_mm:.1} mm em 3 s).\n  \
-               4. **RESET** (rebobine a regua): TODAS as partes voltam a pose\n     \
-                  autorada, nao so o tronco. Era exatamente isto que estava\n     \
-                  quebrado -- e nao era do rig: o readback escrevia um FILHO antes\n     \
-                  do PAI, entao o local dele absorvia a queda inteira do pai.\n\n  \
+               3. toque com **ESPACO** (ou o botao play do transporte, no painel da\n     \
+                  timeline que ja abriu embaixo): o boneco DESABA sobre o piso e os\n     \
+                  membros se DOBRAM -- o tronco cai ~{drop:.1} m e as juntas seguram\n     \
+                  (a violacao da restricao do pescoco fica abaixo de {gap_mm:.1} mm\n     \
+                  em 3 s).\n  \
+               4. **REBOBINE**: no transporte da timeline, o botao |< (ir para o\n     \
+                  inicio) -- ou arraste a regua de volta ao zero. TODAS as partes\n     \
+                  voltam a pose autorada, nao so o tronco.\n     \
+                  (!) NAO e' o botao 'Reset to Defaults' do painel de fisica (tecla\n     \
+                  W): aquele reseta a GRAVIDADE e os sub-passos, nao a simulacao.\n     \
+                  Era exatamente isto que estava quebrado -- e nao era do rig nem\n     \
+                  dos joints: o readback escrevia um FILHO antes do PAI, entao o\n     \
+                  local dele absorvia a queda inteira do pai (4,91 m medidos num\n     \
+                  par sem joint nenhum).\n\n  \
                O QUE CONFERIR, e vale mais que a queda:\n  \
                - a Hierarquia ganhou {joints} objetos-joint nomeados pelo par que eles\n    \
                  ligam ('Torso : Head', 'Torso : ArmL', ...). Nenhum deles se chama\n    \

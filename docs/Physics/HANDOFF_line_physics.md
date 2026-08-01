@@ -7621,3 +7621,30 @@ superfície pública nova** da `ph2d-physics-ecs`; `collider_offset` virou porta
 
 **c9 segue byte-idêntico** (`7cb7728d…`, 96 corpos): a emenda vive na porta de
 CRIAÇÃO, e a cena de determinismo constrói os joints por literal.
+
+### §W-Rig — *"rebobine a régua — que régua?"* (2026-07-31)
+
+A segunda coisa que o smoke da cena 67 devolveu, e ela é de CLASSE. A mensagem
+mandava rebobinar a régua e a cena não abria a timeline. Medido em seguida:
+**17 das ~40 cenas de física** mandam usar a régua ou o transporte e **nenhuma**
+os mostrava — a `=66`, da wave anterior, inclusive.
+
+⚠️ **E o modo de falha é pior que uma instrução vaga**, porque existe um controle
+com quase esse nome fazendo outra coisa: o painel de física (tecla `W`) tem um
+botão **"Reset to Defaults"** que reseta a GRAVIDADE e os sub-passos. Um artista
+procurando *"Reset"* sem régua na tela acha ele, vê as settings mudarem, e conclui
+que o Reset está quebrado.
+
+**Uma linha no PRÓLOGO, não dezessete nas cenas.** O prólogo do
+`physics_smoke` já é o dono do relógio delas — arma o toggle Physics, rebobina e
+decide play/pause —, então a régua é dele também. Uma lista por-cena seria a
+enumeração de que a próxima cena nasce fora, exatamente o que o
+`handle_scenes_start_paused` documenta em primeira pessoa.
+
+⚠️ **`Espaco` toca sem painel nenhum** (`input_handlers`), e é por isso que a
+classe é a RÉGUA e não o PLAY: o que só a timeline oferece é rebobinar e o scrub.
+
+Gate: `shells/desktop/tests/scenes_that_ask_for_the_ruler_open_the_timeline.rs` —
+ele afirma o prólogo, e a classificação por MENSAGEM continua viva como o **preço**
+que a falha nomeia (mutação: tirar a linha ⇒ *"estas 18 cenas ficam sem onde
+clicar"*, com a lista).

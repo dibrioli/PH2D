@@ -159,6 +159,26 @@ impl crate::App {
         // then asks the artist to turn it back OFF, which is the point of Bake.
         self.timeline.flags.simulate_physics = true;
 
+        // ⚠️ **E a TIMELINE ABERTA, para TODA cena de física.** O prólogo já é o
+        // dono do relógio destas cenas — ele arma o toggle acima, rebobina e
+        // decide play/pause —, e o transporte é o instrumento de todas elas: quem
+        // toca, quem rebobina e quem faz scrub mora lá.
+        //
+        // ⚠️ **Isto falhou em produto** (Enio, smoke da cena 67): a mensagem dizia
+        // *"rebobine a régua"* e a resposta foi ***"que régua?"***. Medido depois,
+        // **17 cenas** mandam usar a régua ou o transporte e nenhuma os mostrava —
+        // a minha 66 inclusive. E o modo de falha é pior que uma instrução vaga:
+        // o painel de física tem um botão **"Reset to Defaults"** que reseta a
+        // gravidade e os sub-passos, então um artista procurando "Reset" sem régua
+        // na tela acha o controle errado e conclui que o Reset está quebrado.
+        //
+        // Uma linha no PRÓLOGO em vez de dezessete nas cenas: a lista por-cena
+        // seria a enumeração de que a próxima cena nasce fora, e o `Espaco` já
+        // toca sem painel nenhum — o que só a timeline oferece é a RÉGUA.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.panel_visibility.insert("timeline", true);
+        }
+
         self.playhead.rewind();
         if PAUSED_SCENES.contains(&which.trim()) {
             self.playhead.pause();

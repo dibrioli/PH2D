@@ -95,6 +95,8 @@ impl PainterTool {
         // Byte-identical by construction: every row computes exactly what the
         // serial loop computed, and rows never read each other's output.
         let params = sess.engine.sim.gather_params(&sess.engine.tuning);
+        #[cfg(test)]
+        let t_engine = std::time::Instant::now();
         let stride = w * 4;
         // O plano de pigmento é da GRADE (uma linha por linha de célula), e é
         // por isso que uma razão maior corta o render de pigmento por `ratio²`
@@ -107,6 +109,37 @@ impl PainterTool {
                 render_pigment_row_visual(Some(&params), &layers, visual, cy0 + k, cx0, cx1, row);
             });
         drop(layers);
+        // ⚠️ **A FRONTEIRA DO MOTOR.** Tudo acima lê `sess.engine` (as camadas, o
+        // `params`, o dirty); tudo abaixo lê `sess.pigment`, `sess.base` e o
+        // `canvas` — **e mais nada do motor**, exceto o véu no fim.
+        //
+        // ⛔ **MEDIDO E REJEITADO — não refaça: devolver o motor ao worker AQUI.**
+        // O log do Enio (2026-08-01, janela assistindo) mostra `worker: busy 67 %
+        // **away 24 %** sleep 9 %` com a água a 34,0 Hz contra 40 nominais, e o
+        // `split` abaixo diz que **55,8 % do composite não toca o motor** na razão
+        // 1. A conclusão óbvia — *o worker está parado à toa, devolva antes* — foi
+        // construída (uma porta `wetpaint_composite_releasing` para o tick, com o
+        // véu vetando) e **o relógio a negou**: A/B costas-com-costas em máquina
+        // calma, três amostras cada, `heavy_puddle` a 4096²:
+        //
+        // | | água | tick p50 | tick max |
+        // |---|---|---|---|
+        // | sem | 35,6 / 36,2 / 36,1 Hz | 4,1-5,5 | **12,9 / 15,9 / 14,3 ms** |
+        // | com | 36,6 / 36,6 / 36,9 Hz | 4,1-5,8 | **20,5 / 16,7 / 27,5 ms** |
+        //
+        // **+0,6 Hz de água (2 %) ao preço de +50 % no PIOR TICK** — um hitch que
+        // o artista vê trocado por uma taxa que ele não distingue.
+        //
+        // ⚠️ **O mecanismo, e é ele que vale mais que o número:** o `away` **não é
+        // núcleo ocioso**. As duas metades já são row-parallel (ADR-0109 no
+        // composite, ADR-0145/0147 no solver) e saturam os 32 núcleos, então
+        // sobrepô-las não cria capacidade — só move a contenção para DENTRO do
+        // frame. *Um balde de espera só é oportunidade quando o recurso que ele
+        // espera está parado.*
+        #[cfg(test)]
+        split::note_engine(t_engine.elapsed());
+        #[cfg(test)]
+        let t_pixel = std::time::Instant::now();
         // Straight-alpha OVER the frozen base, cell (cx,cy) → pixel (cx-1,cy-1).
         let gsel: Option<&[u8]> = gate_sel.as_deref().map(Vec::as_slice);
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
@@ -208,6 +241,8 @@ impl PainterTool {
                     }
                 }
             });
+        #[cfg(test)]
+        split::note_pixel(t_pixel.elapsed());
         if veil {
             // Show-wet: the damp overlay, display-only (never baked). Reads
             // the ACTIVE grid's wetness byte + film exactly like the model;
@@ -279,5 +314,43 @@ impl PainterTool {
             h: (py1 - py0) as u32,
         };
         self.mark_dirty(region);
+    }
+}
+
+/// **O SPLIT DO COMPOSITE, medido no código que SHIPA** (só sob `cfg(test)`).
+///
+/// A pergunta que ele responde é de PRODUTO, não de curiosidade: o tick segura o
+/// motor durante o composite inteiro e só o devolve no `hand_off_sim` do fim, então
+/// **a metade que não precisa do motor é tempo em que o worker fica parado à toa** —
+/// o balde `away` do log do Enio (24 % da janela dele, 2026-08-01).
+///
+/// ⚠️ **Isto é instrumentação do PRODUTO, não uma sonda com laço próprio** — a
+/// distinção que a §5.11 e a §5.44 pagaram: um laço meu ficaria cego à porta, e
+/// atribuir a uma LINHA dentro de um bloco é inferência de segunda ordem. Aqui os
+/// dois blocos já são separados pela fronteira do motor, e o relógio só diz de que
+/// lado dela o tempo caiu.
+#[cfg(test)]
+pub(in crate::tool::paint) mod split {
+    use std::cell::Cell;
+    use std::time::Duration;
+
+    thread_local! {
+        static ENGINE_US: Cell<u64> = const { Cell::new(0) };
+        static PIXEL_US: Cell<u64> = const { Cell::new(0) };
+    }
+
+    pub(in crate::tool::paint) fn note_engine(d: Duration) {
+        ENGINE_US.with(|c| c.set(c.get() + d.as_micros() as u64));
+    }
+
+    pub(in crate::tool::paint) fn note_pixel(d: Duration) {
+        PIXEL_US.with(|c| c.set(c.get() + d.as_micros() as u64));
+    }
+
+    /// Drena os dois baldes em milissegundos — `(precisa do motor, não precisa)`.
+    pub(in crate::tool::paint) fn take() -> (f64, f64) {
+        let e = ENGINE_US.with(Cell::take);
+        let p = PIXEL_US.with(Cell::take);
+        (e as f64 / 1000.0, p as f64 / 1000.0)
     }
 }

@@ -308,6 +308,8 @@ impl PainterTool {
 
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod composite;
+#[cfg(test)]
+pub(in crate::tool::paint) use composite::split as composite_split;
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
 
 #[cfg(test)]

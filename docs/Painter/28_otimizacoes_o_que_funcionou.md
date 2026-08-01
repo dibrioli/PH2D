@@ -5344,3 +5344,78 @@ talvez ~1,2× sobre 9 ms. **Não construída de propósito**: na razão 1 — o 
 folga contra o nominal. *É estritamente menos trabalho e não compra nada que o
 artista veja*, que é o critério que a §5.11 fixou para não vender ruído como
 ganho.
+
+---
+
+## §5.57 — O `away 24 %` do worker NÃO é núcleo ocioso: construído, medido, REVERTIDO (2026-08-01)
+
+O log de smoke do Enio (janela **assistindo** — `stamps: 0 entregas`) trouxe:
+
+```text
+[frame]   agua: sim media 19.82ms pico 31.54ms x68 | composite media 6.06ms x62
+[frame]   worker: busy 67% away 24% sleep 9% | TAXA DA AGUA 34.0 Hz
+[frame]   poca: 1.88 M celulas | 10.6 ns/celula
+```
+
+Três leituras que reconciliam antes de qualquer hipótese: `10,6 ns/célula` é **um
+dígito** ⇒ máquina sã (§5.49); `19,82 ms` sobre 1,88 M células escala dos
+**15,59 ms** que a §5.56 mediu sobre ~1,6 M ⇒ o passo é o esperado a `Grid Size 1`;
+e o **`composite media 6,06 ms`** casa com os **5,59** que a sonda do retângulo
+real previu. *Três testemunhas concordando é o que separa um número de um achado.*
+
+O item que sobra é o `away 24 %`: o tick pede o motor, composita e só o devolve no
+`hand_off_sim` do FIM — então o worker fica **480 ms de uma janela de 2 s** sem o
+motor. A §5.40 já tinha nomeado isto e o precificado em **~1,06×**, um número que
+quatro waves moveram sem ninguém reconferir (CLAUDE.md §0).
+
+### O split, medido no código que SHIPA
+
+`cfg(test)` em torno dos dois blocos que a **fronteira do motor** já separava — não
+uma sonda com laço próprio (§5.11) e não atribuição a uma LINHA dentro de um bloco
+(§5.44); os dois blocos já são distintos, e o relógio só diz de que lado o tempo cai.
+
+| razão | motor ms | pixels ms | total | **livre** |
+|---|---|---|---|---|
+| **1:1** (default) | 2,846 | **3,594** | 6,440 | **55,8 %** |
+| 2:1 | 0,818 | 9,522 | 10,340 | 92,1 % |
+| 4:1 | 0,260 | 9,548 | 9,808 | 97,4 % |
+| 8:1 | 0,118 | 9,731 | 9,849 | 98,8 % |
+
+⚠️ **E a aritmética que eu tinha feito ANTES estava errada**: extrapolando a tabela
+de razões da §5.56 eu previ **81 % livre** na razão 1; medido, são **55,8 %**. A
+medição direta ganha da inferência de segunda ordem sobre uma tabela — a lição da
+§5.44, aqui do lado favorável (eu ia prometer mais do que havia).
+
+### ⛔ MEDIDO E REJEITADO — não refaça: devolver o motor na fronteira
+
+Construído: uma porta `wetpaint_composite_releasing` só para o tick (as ações
+autoradas mexem no motor logo depois; o `dab_route` tem traço aberto e o
+`hand_off_sim` recusa ali sozinho), com o **véu vetando** a entrega porque ele lê o
+grid vivo depois do laço de pixels.
+
+**A/B costas-com-costas, máquina calma (`load < 2`), três amostras cada,
+`heavy_puddle` a 4096²:**
+
+| | água | tick p50 | **tick max** |
+|---|---|---|---|
+| sem (a rota que shipa) | 35,6 / 36,2 / 36,1 Hz | 4,1-5,5 ms | **12,9 / 15,9 / 14,3 ms** |
+| com a entrega antecipada | 36,6 / 36,6 / 36,9 Hz | 4,1-5,8 ms | **20,5 / 16,7 / 27,5 ms** |
+
+**+0,6 Hz de água (2 %) ao preço de +50 % no PIOR TICK.** Um *hitch* que o artista
+vê, trocado por uma taxa que ele não distingue — o inverso exato do trade que a wave
+off-thread (§5.31-5.38) fez para chegar aqui. Revertida inteira.
+
+⚠️ **O MECANISMO vale mais que o número, e é a lição desta seção:** o `away`
+**não é núcleo ocioso**. As duas metades já são row-parallel — o composite pelo
+ADR-0109, o solver pelo ADR-0145/0147 — e **saturam os 32 núcleos**, então
+sobrepô-las não cria capacidade: só move a contenção para DENTRO do frame. *Um
+balde de ESPERA só é oportunidade quando o recurso que ele espera está PARADO*, e
+aqui o recurso é a máquina inteira, que já estava ocupada pelo outro lado da espera.
+
+O `the_tick_never_waits_for_a_whole_stage` **reprovou por isso** (42,90 contra a
+barra de 30, e depois 20-27 ms em máquina calma) — ele nomeou o preço antes de eu
+o ter medido, que é exatamente o que um kill de wall-clock existe para fazer.
+
+**Fica:** o split instrumentado (`cfg(test)`, custo zero no produto) e a sonda
+`measure_how_much_of_the_composite_needs_the_engine` — quem quiser reabrir a
+frente encontra o número, e o motivo pelo qual ele não basta.

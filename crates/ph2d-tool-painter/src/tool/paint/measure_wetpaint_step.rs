@@ -570,6 +570,70 @@ fn measure_the_composite_with_the_rect_it_actually_writes() {
     );
 }
 
+/// **QUANTO DO COMPOSITE PRECISA DO MOTOR** — a pergunta que o `away 24 %` do
+/// log do Enio (2026-08-01) faz.
+///
+/// O tick pede o motor, composita e só o devolve no `hand_off_sim` do FIM. Se a
+/// maior parte do composite não toca o motor, esse tempo é o worker parado à
+/// toa — e a §5.40 já tinha nomeado o item e o precificado em **~1,06×**, um
+/// número que as waves seguintes moveram sem ninguém reconferir (CLAUDE.md §0).
+///
+/// Mede pelo split instrumentado no PRODUTO ([`super::wetpaint::composite::split`]),
+/// sobre o retângulo que um passo de fato suja — nunca a tela cheia.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_how_much_of_the_composite_needs_the_engine() {
+    use crate::tool::paint::wetpaint::composite_split as split;
+    const REPS: usize = 7;
+    const SIDE: u32 = 4096;
+
+    println!("\n  A FRONTEIRA DO MOTOR DENTRO DO COMPOSITE ({SIDE}x{SIDE}, r=100)\n");
+    println!(
+        "    {:>5}  {:>12} {:>12} {:>12}   {:>10}",
+        "razao", "motor ms", "pixels ms", "total ms", "livre %"
+    );
+
+    for ratio in [1u8, 2, 4, 8] {
+        const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+        let mut t = wetted(SIDE, 100.0);
+        t.set_wet_grid_ratio(f64::from(ratio));
+        for lane in 0..3 {
+            let off = 260.0 * lane as f32;
+            let (x0, y0) = (200.0 + off, 200.0);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            for k in 1..=90u32 {
+                let d = 40.0 * k as f32;
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+            }
+            let d = 40.0 * 90.0;
+            t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+        }
+        t.wet_bring_home();
+
+        let _ = split::take(); // zera o que o traço acumulou
+        for _ in 0..REPS {
+            if let Some(sess) = t.paint.wetpaint.session.as_mut() {
+                sess.bring_home();
+                sess.engine.step_simulation();
+            }
+            crate::tool::paint::wetpaint::composite_for_measure(&mut t);
+        }
+        let (engine_ms, pixel_ms) = split::take();
+        let (e, p) = (engine_ms / REPS as f64, pixel_ms / REPS as f64);
+        let total = e + p;
+        println!(
+            "    {ratio:>3}:1  {e:>11.3}ms {p:>11.3}ms {total:>11.3}ms   {:>9.1}%",
+            100.0 * p / total.max(1e-9),
+        );
+    }
+    println!(
+        "\n    Leitura: `livre %` e' o tempo do composite que NAO toca o motor — o worker\n    \
+         fica parado por ele hoje, porque o tick so entrega no `hand_off_sim` do fim.\n    \
+         Entregar o motor NA FRONTEIRA devolve essa fatia a' agua."
+    );
+}
+
 #[cfg(test)]
 #[path = "measure_wetpaint_contention.rs"]
 mod measure_wetpaint_contention; // o que a MAQUINA faz com o passo - irmao por LOC

@@ -366,3 +366,79 @@ fn a_point_eraser_does_not_shred_a_filled_region() {
         );
     }
 }
+
+/// 🔴 **A BORRACHA NÃO PODE FAZER O TRAÇO CRESCER PARA DENTRO DO VÃO QUE ELA ABRIU.**
+///
+/// ⚠️ **Regressão que a ponta `Square` introduziu, e o `new_like` já avisava:** o doc-comment dele
+/// diz que *todo campo novo do `FlipStroke` tem de passar por aqui*. `Square` não é campo novo — é
+/// **variante nova**, e ela muda o que `s.cap = src.cap` SIGNIFICA. Copiada verbatim, cada fragmento
+/// ganha `Square` nas pontas **CORTADAS**, e uma ponta quadrada ESTENDE o traço por meia-espessura:
+/// a borracha tira tinta e o fragmento volta a crescer para dentro do buraco, que fica mais estreito
+/// que ela por uma espessura inteira.
+///
+/// **A lei:** uma tampa descreve onde o ARTISTA terminou o traço. Uma ponta de CORTE não é isso —
+/// é onde a borracha passou —, então ela nunca pode ESTENDER. As pontas originais herdam o que o
+/// traço tinha; as cortadas recusam a `Square`.
+///
+/// ⚠️ **`Round` numa ponta cortada fica como está, de propósito:** é o comportamento de sempre e
+/// mudá-lo (para `Flat`) alteraria TODA borracha já usada, em silêncio, sem um smoke que o julgue.
+/// Aqui eu desfaço só o dano que a minha variante causou.
+///
+/// Mutação que sangra: voltar `new_like` a copiar o cap verbatim nos dois lados.
+#[test]
+fn erasing_a_square_capped_stroke_does_not_extend_the_cut_ends() {
+    use ph2d_flip::Cap;
+    // Fixture PRÓPRIA: a premissa desta wave é um traço de ponta QUADRADA, e uma fixture que
+    // chegasse lá mutando a compartilhada esconderia exatamente o que está sendo testado.
+    let mut doc = FlipDoc::new();
+    let oid = doc.push_object("O");
+    let obj = doc.object_mut(oid).unwrap();
+    let l = obj.add_layer("L");
+    let d = obj
+        .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    let mut st = FlipStroke::new();
+    for x in 0..5 {
+        st.push_point(Point {
+            pos: Vec2::new(x as f32, 0.0),
+            width: 0.1,
+            opacity: 1.0,
+            color: Rgba::WHITE,
+        });
+    }
+    st.cap = (Cap::Square, Cap::Square);
+    obj.drawing_mut(d).unwrap().strokes.push(st);
+    let hit = erase_at(
+        &mut doc,
+        &Playhead::default(),
+        Some(l),
+        &mut crate::flip_strip::FlipStrip::default(),
+        EraseMode::Hard,
+        Vec2::new(2.0, 0.0),
+        0.5,
+        1.0,
+    );
+    assert!(hit);
+    let obj = doc.objects().first().unwrap();
+    let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
+    let fr = &obj.drawing(did).unwrap().strokes;
+    assert_eq!(fr.len(), 2, "o corte tinha de dar dois fragmentos");
+    // O primeiro fragmento: ponta 0 é a ORIGINAL (herda), ponta 1 foi CORTADA (não estende).
+    assert_eq!(
+        fr[0].cap.0,
+        Cap::Square,
+        "a ponta ORIGINAL perdeu a autoria"
+    );
+    assert_ne!(
+        fr[0].cap.1,
+        Cap::Square,
+        "a ponta CORTADA ficou quadrada: o fragmento cresce para dentro do vao que a borracha abriu"
+    );
+    // O segundo: espelho exato.
+    assert_ne!(fr[1].cap.0, Cap::Square, "a ponta CORTADA ficou quadrada");
+    assert_eq!(
+        fr[1].cap.1,
+        Cap::Square,
+        "a ponta ORIGINAL perdeu a autoria"
+    );
+}

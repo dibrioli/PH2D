@@ -12,7 +12,7 @@
 //! HR-5: the falloff is a clamped linear ramp (no transcendentals).
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDrawing, FlipStroke, LayerId};
+use ph2d_flip::{Cap, FlipDrawing, FlipStroke, LayerId};
 use ph2d_tool_flip::EraseMode;
 
 /// Below this opacity a soft-erased point is dropped on pen-up (GP `erase.cc`).
@@ -77,6 +77,25 @@ fn active_drawing_mut<'a>(
 /// `hide_stroke` ao modelo e atualizou só o primeiro — e a borracha passou a devolver
 /// fragmentos de preenchimento SEM os furos (o "O" ficava sólido) e SEM o `hide_stroke`
 /// (o fragmento virava fronteira do próximo balde e o Unpaint não o reconhecia mais).
+/// **A tampa de uma ponta que a BORRACHA cortou** — nunca uma que ESTENDE.
+///
+/// ⚠️ Uma tampa descreve onde o ARTISTA terminou o traço. Uma ponta de corte não é isso: é onde a
+/// borracha passou. `Cap::Square` estende o traço por meia-espessura, então herdá-la num corte faz
+/// o fragmento **crescer de volta para dentro do vão que a borracha acabou de abrir** — o buraco
+/// sai mais estreito que a borracha por uma espessura inteira.
+///
+/// ⚠️ **`Round` numa ponta cortada fica como está, de propósito.** É o comportamento de sempre, e
+/// trocá-lo por `Flat` mudaria TODA borracha já usada, em silêncio e sem um smoke que o julgue.
+/// Esta função desfaz só o que a variante `Square` quebrou; se o `Round` no corte for reprovado
+/// algum dia, é a mesma linha que muda.
+fn cut_cap(original: Cap) -> Cap {
+    if original == Cap::Square {
+        Cap::Flat
+    } else {
+        original
+    }
+}
+
 fn new_like(src: &FlipStroke) -> FlipStroke {
     let mut s = FlipStroke::new();
     s.closed = src.closed;
@@ -119,20 +138,42 @@ fn touches(s: &FlipStroke, center: Vec2, radius: f32) -> bool {
 fn split_by<F: Fn(usize) -> bool>(s: &FlipStroke, keep: F) -> Vec<FlipStroke> {
     let mut out = Vec::new();
     let mut cur = new_like(s);
+    // Onde o run atual começou. É ele que diz se a ponta INICIAL do fragmento é a do traço ou uma
+    // que a borracha abriu — a informação já estava aqui, só não era lida.
+    let mut inicio = 0usize;
+    // Fecha o run corrente: as pontas ORIGINAIS herdam a autoria, as CORTADAS recusam a `Square`.
+    let fecha = |cur: &mut FlipStroke, out: &mut Vec<FlipStroke>, inicio: usize, fim: usize| {
+        if cur.len() >= 2 {
+            cur.cap = (
+                if inicio == 0 {
+                    s.cap.0
+                } else {
+                    cut_cap(s.cap.0)
+                },
+                if fim + 1 == s.len() {
+                    s.cap.1
+                } else {
+                    cut_cap(s.cap.1)
+                },
+            );
+            out.push(std::mem::replace(cur, new_like(s)));
+        } else {
+            *cur = new_like(s);
+        }
+    };
     for i in 0..s.len() {
         if keep(i) {
+            if cur.is_empty() {
+                inicio = i;
+            }
             if let Some(p) = s.point(i) {
                 cur.push_point(p);
             }
-        } else if cur.len() >= 2 {
-            out.push(std::mem::replace(&mut cur, new_like(s)));
         } else {
-            cur = new_like(s);
+            fecha(&mut cur, &mut out, inicio, i.saturating_sub(1));
         }
     }
-    if cur.len() >= 2 {
-        out.push(cur);
-    }
+    fecha(&mut cur, &mut out, inicio, s.len().saturating_sub(1));
     out
 }
 

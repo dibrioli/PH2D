@@ -78,13 +78,15 @@
 - [Ofício de gate (21)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Âncora em BYTES é proxy que expira](feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires.md) — arch-gate afirma relação posicional, nunca distância/janela no fonte
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
-- [Costura de UI (11)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [Capacidade sem PORTA passa em todo gate](feedback_a_capability_without_a_door_passes_every_gate.md) — grepe quem ESCREVE o campo, nao quem le
+- [Costura de UI (12)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Gate de identidade não vê defeito no CORPO compartilhado](feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body.md) — rota A==rota B só prova o walker; o corpo quer oráculo externo
 - [Ganho por-passe passa pela CADÊNCIA](feedback_a_per_pass_gain_becomes_a_product_gain_only_through_the_cadence.md) — 1,56× virou 1,10×; e razão não se transporta entre cenas
 - [Instrumento MUDO lê-se como resultado](feedback_a_silenced_instrument_reads_as_a_result.md) — zero ≠ não-medido; gateie a presença de cada balde
 - [Gates compostos verdes escondem conector não-provado](feedback_green_composed_gates_can_hide_an_unproven_connector.md) — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
 - [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra
+- ["Faça o desenho expressar X"? meça se o produto FAZ X](feedback_a_request_to_draw_a_property_is_first_a_question_of_whether_the_product_has_it.md) — desenhar X sobre quem não faz X é desenho que mente
 - [Gate que espera DURAÇÃO fixa aposta na máquina](feedback_a_gate_that_waits_a_fixed_duration_bets_on_machine_speed.md) — vire CONDIÇÃO; se só o outro lado carimba, a espera DIRIGE o produto
 - [Sonda sem chamador leva o número citado junto](feedback_a_cited_number_whose_probe_lost_its_caller_stops_being_reproducible.md) — devolva a chamada e confira o valor, nunca silencie o lint
 - [Bug de default que persiste? é num RESET, não no CREATE](feedback_a_persistent_default_bug_lives_in_a_reset_path_not_the_create_path.md) — enumere toda porta que reconstrói o estado (new/default/purge/load)

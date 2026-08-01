@@ -4452,3 +4452,88 @@ exatamente enquanto o artista carimba, que é o regime que a §5.47.1 mediu em
 `40,0 Hz` com `sleep 56-71%` e `busy 23-35%` sobre 0,76-1,06 M células. O
 regime work-limited acabou; o que sobra no traço é o carimbo, e o divisor novo é
 quem diz de que ele é feito.
+
+---
+
+## §5.49 — O log CALMO, e o que ele fecha (2026-07-31)
+
+Com `load average 1,86` o mesmo build dá:
+
+```text
+poca: 2,16 -> 2,29 M celulas | 6,8-6,9 ns/celula  (CONSTANTE em quatro janelas)
+worker: busy 59-61% away 12-16% sleep 23-29% | TAXA DA AGUA 38,6-40,1 Hz
+total 16,42-17,26 ms (~58-61 fps) | GPU 1,2 ms
+```
+
+**A água está no nominal com folga**, e o `ns/célula` **constante** enquanto a
+poça cresce 6% diz **TRABALHO** — o instrumento da §5.47 lendo exatamente o que
+foi construído para ler.
+
+⚠️ **E é o contraste que fecha os relatos de "tudo lento":** o log da rodada
+anterior, `load average 74` em 32 núcleos (seis `rustc` de outras linhas a
+300-600% cada), media **130-200 ns/célula** sobre uma poça do MESMO tamanho —
+**17-27×**. A prova de que era a máquina e não o código é a linha *controle* da
+tabela do §5.47.1: **mesmo binário, mesma fixture, 14,240 → 46,633 ms/passo sem
+uma linha mudar**, e a tabela saindo incoerente (`memcpy ×4` a **0,61×**, mais
+*rápido* que o controle) porque a carga oscilava entre amostras.
+
+⚠️ **Corolário operacional:** *nenhum smoke desta máquina significa nada com o
+load acima de ~5*, e a linha `poca:` é o detector — **um dígito de `ns/célula` =
+máquina sã; três dígitos = o log não fala sobre o código.**
+
+### §5.49.1 — E o instrumento foi exonerado por uma RAZÃO, não por uma opinião
+
+Sob máquina saturada a suspeita cai sobre a última coisa que mudou, e **nenhum
+número absoluto a defende**. O que sobrevive é uma razão medida na MESMA
+corrida — as duas metades sobem juntas:
+
+| | |
+|---|---|
+| régua (`live_span_cells`) | 0,0009 ms |
+| passo | 9,4436 ms |
+| **a régua vale** | **0,0096% do passo** |
+
+Um décimo de milésimo, e continua verdade amanhã com a máquina noutro estado.
+
+### §5.49.2 — O carimbo, medido com a SIM RODANDO (o defeito de fixture do censo)
+
+⚠️ **O censo dos quatro meios mede o carimbo com o motor PARADO** — ele nunca
+chama o tick, então o worker nunca recebe o engine e o `bring_home()`
+**bloqueante** de cada evento nunca bloqueia. No produto ele bloqueia até a
+**fronteira de estágio**, e a `ESPERA` medida é de 2,3-2,6 ms.
+
+⚠️ **E a 1ª versão da sonda nova também não continha o fenômeno:** sem VÃO entre
+a entrega e o carimbo seguinte, o worker não chega a ENTRAR num estágio e a
+razão mede **0,99×** — *o handshake é grátis*, conclusão errada. Com o vão de um
+quadro:
+
+| raio | parado | simulando | razão | por evento |
+|---|---|---|---|---|
+| 60 px | 24,97 ms | 33,42 | **1,34×** | 0,557 ms |
+| 100 px | 38,84 | 46,88 | **1,21×** | 0,781 |
+| 200 px | 63,05 | 69,05 | **1,10×** | 1,151 |
+
+Pior no pincel **PEQUENO**: o handshake é custo fixo, e um pincel pequeno tem
+menos trabalho para amortizá-lo.
+
+### §5.49.3 — A invariância de caminho SOBREVIVE — e o porquê é a resposta
+
+O handshake é custo por **EVENTO**, e a tabela do §5.48.1 foi medida com o motor
+parado — ela **não podia ver** a diferença que existe para procurar. Re-medida
+com a sim rodando (um tick por quadro, como o produto):
+
+| meio | 16 eventos | 640 eventos | razão |
+|---|---|---|---|
+| Digital | 17,70 ms | 17,99 | 1,02× |
+| Impasto | 29,45 | 31,78 | 1,08× |
+| WetPaint | 28,16 | 29,24 | **1,04×** |
+
+**Sobrevive.** ⚠️ **E o mecanismo é o que decide:** o tick dispara **uma vez por
+QUADRO**, então o `bring_home` bloqueia no **primeiro** evento depois de cada
+tick e é **no-op** nos demais — *o handshake é por quadro, nunca por evento*.
+Quarenta vezes mais eventos pagam o mesmo handshake.
+
+⇒ **Com a máquina calma não há patologia no traço.** O custo é 0,56-1,15 ms por
+evento conforme o raio, invariante ao número de entregas, com ~1,1-1,3× de
+handshake amortizado por quadro. Os relatos de *"o traço ficou muito mais
+lento"* saem de logs com `load average` 74.

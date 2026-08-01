@@ -363,8 +363,6 @@ mod lut_ab_tests {
 
     /// Carimba um dab inteiro pela `stamp_band` do PRODUTO, com o plano da LUT ou sem ele.
     fn stamp_once(spec: &BrushSpec, with_lut: bool) -> Vec<u8> {
-        // Este gate não LÊ os contadores, mas DISPARA a estrada rápida — e quem polui é quem dispara.
-        let _guard = crate::height_film_lut::lock_counts();
         let stride = (SIDE as usize) * 4;
         let mut dst = vec![0u8; stride * (SIDE as usize)];
         let film_aa = FilmAa::for_dab(spec, false, RADIUS);

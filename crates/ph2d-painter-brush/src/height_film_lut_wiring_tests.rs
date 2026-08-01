@@ -95,8 +95,11 @@ fn deposit(s: &BrushSpec, radius: f32, side: u32, centre: [f32; 2]) -> (Planes, 
     let n = (side as usize) * (side as usize);
     let mut planes = Planes::new(n);
     let dab = swept_dab(s, radius, centre);
-    let _guard = crate::height_film_lut::lock_counts();
-    let _ = take_lut_counts(); // descarta o que uma corrida anterior deixou
+    // ⚠️ **Sem trava, e é o conserto:** os contadores são POR THREAD
+    // ([`crate::height_film_lut::take_lut_counts`]), então nenhum vizinho pode
+    // poluir esta janela. A trava que morava aqui protegia os dois gates que
+    // LEEM um do outro e deixava os outros ONZE sítios de depósito livres.
+    let _ = take_lut_counts(); // descarta o que uma corrida anterior desta thread deixou
     let _ = accumulate_dab_height(&mut planes.fields(), side, side, s, &dab, None);
     let counts = take_lut_counts();
     (planes, counts)

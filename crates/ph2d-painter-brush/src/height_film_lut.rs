@@ -199,7 +199,7 @@ impl<'a> FilmLutPlan<'a> {
                 let reach = crate::height_film::AA_REACH_PX;
                 if proj.abs() < reach || (proj - b.back).abs() < reach {
                     #[cfg(test)]
-                    LUT_STRADDLES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    LUT_STRADDLES.with(|c| c.set(c.get() + 1));
                     return None;
                 }
                 if proj > 0.0 && proj < b.back {
@@ -210,7 +210,7 @@ impl<'a> FilmLutPlan<'a> {
             }
         };
         #[cfg(test)]
-        LUT_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        LUT_HITS.with(|c| c.set(c.get() + 1));
         Some(aa.film_at_lut(self.lut, t, w, basis[0], basis[1]))
     }
 }
@@ -220,33 +220,35 @@ impl<'a> FilmLutPlan<'a> {
 /// ⚠️ **Contadores, não um segundo caminho** — eles OBSERVAM o produto. Existem porque a lição do
 /// ADR-0120 é exatamente esta: um caminho rápido que nunca dispara é código morto com todos os gates
 /// verdes, e a única defesa é CONTAR quantas vezes ele disparou no laço real.
+/// ⚠️ **POR THREAD, e é isso que os torna sãos.** Eles já foram atômicos GLOBAIS com uma trava
+/// ao lado, e o doc dela prescrevia *"todo gate que RODA a estrada rápida a segura, não só os que a
+/// LEEM"* — uma **ENUMERAÇÃO**, e ela apodreceu exatamente como toda enumeração apodrece: **13 sítios
+/// depositam pela LUT nesta crate e 2 seguravam a trava**. O resultado é um flake que só aparece com a
+/// máquina carregada, porque é aí que a interleaving abre: reportado pela `line/Vector` rodando
+/// `--workspace` (2026-08-01) e reproduzido aqui em **1 de 8 corridas sob carga sintética**, sempre na
+/// metade `assert_eq!(hits, 0)` — a que a poluição de um vizinho quebra.
+///
+/// **A crate não tem `rayon`** (conferido no `Cargo.toml`), então todo hit da LUT acontece na thread
+/// que chamou o depósito ⇒ um contador por thread não pode ser poluído por outro teste, e **não há
+/// lista de quem precisa travar**. *A representação apaga o caso especial*, e a trava morre com ele.
+///
+/// ⚠️ **Contadores, não um segundo caminho** — eles OBSERVAM o produto. Existem porque a lição do
+/// ADR-0120 é exatamente esta: um caminho rápido que nunca dispara é código morto com todos os gates
+/// verdes, e a única defesa é CONTAR quantas vezes ele disparou no laço real.
 #[cfg(test)]
-static LUT_HITS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-/// Irmão do [`LUT_HITS`]: os texels que a fronteira calota↔banda devolveu ao caminho exato.
-#[cfg(test)]
-static LUT_STRADDLES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-
-/// Zera os dois contadores e devolve o par `(hits, straddles)` acumulado desde o último reset.
-#[cfg(test)]
-pub(crate) fn take_lut_counts() -> (usize, usize) {
-    use std::sync::atomic::Ordering::Relaxed;
-    (LUT_HITS.swap(0, Relaxed), LUT_STRADDLES.swap(0, Relaxed))
+thread_local! {
+    static LUT_HITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Irmão do [`LUT_HITS`]: os texels que a fronteira calota↔banda devolveu ao caminho exato.
+    static LUT_STRADDLES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-/// ⚠️ **Os contadores são GLOBAIS e os testes correm em PARALELO** — sem esta trava um gate lê os
-/// disparos de outro, e a primeira rodada de mutações desta wave mediu exatamente isso (uma mutação
-/// no basis da banda "matou" o gate que conta hits, que ela não toca). Todo gate que RODA a estrada
-/// rápida a segura, não só os que a LEEM: quem polui é quem dispara.
+/// Zera os dois contadores DESTA THREAD e devolve o par `(hits, straddles)` desde o último reset.
 #[cfg(test)]
-pub(crate) static COUNT_LOCK: Mutex<()> = Mutex::new(());
-
-/// Segura a [`COUNT_LOCK`] ignorando envenenamento — um teste que entrou em pânico segurando-a não
-/// pode derrubar os outros gates com uma falha que não é a deles.
-#[cfg(test)]
-pub(crate) fn lock_counts() -> std::sync::MutexGuard<'static, ()> {
-    COUNT_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+pub(crate) fn take_lut_counts() -> (usize, usize) {
+    (
+        LUT_HITS.with(std::cell::Cell::take),
+        LUT_STRADDLES.with(std::cell::Cell::take),
+    )
 }
 
 /// A chave do memo: **tudo** que [`crate::BrushSpec::falloff_weight`] lê — e são exatamente estes dois

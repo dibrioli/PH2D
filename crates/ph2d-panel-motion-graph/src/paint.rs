@@ -197,7 +197,15 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
             && focus
                 .as_ref()
                 .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
-        draw_wire(ctx, &snap, e, &view, theme, is_hovered || is_selected, bright);
+        draw_wire(
+            ctx,
+            &snap,
+            e,
+            &view,
+            theme,
+            is_hovered || is_selected,
+            bright,
+        );
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
     // Cards, collecting body hits as we draw them. A card whose rect does not touch the panel is

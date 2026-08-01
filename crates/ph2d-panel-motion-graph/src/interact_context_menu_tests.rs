@@ -33,7 +33,10 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
     assert!(
         matches!(
             st.menu.as_ref().map(|m| &m.body),
-            Some(MenuBody::NodeActions { multi: false, group: false })
+            Some(MenuBody::NodeActions {
+                multi: false,
+                group: false
+            })
         ),
         "a node right-press opens its actions (single subject, a plain node)"
     );
@@ -73,8 +76,14 @@ fn the_node_menu_hides_rename_for_a_multi_selection() {
     use crate::state::NodeAction;
     let single = NodeAction::visible(false, false);
     let multi = NodeAction::visible(true, false);
-    assert!(single.contains(&NodeAction::Rename), "one node: rename is offered");
-    assert!(!multi.contains(&NodeAction::Rename), "many nodes: rename drops out");
+    assert!(
+        single.contains(&NodeAction::Rename),
+        "one node: rename is offered"
+    );
+    assert!(
+        !multi.contains(&NodeAction::Rename),
+        "many nodes: rename drops out"
+    );
     assert!(
         multi.contains(&NodeAction::Delete) && multi.contains(&NodeAction::Bypass),
         "the verbs that act on a whole selection stay"
@@ -95,7 +104,10 @@ fn the_node_menu_hides_rename_for_a_multi_selection() {
     assert!(
         matches!(
             st.menu.as_ref().map(|m| &m.body),
-            Some(MenuBody::NodeActions { multi: true, group: false })
+            Some(MenuBody::NodeActions {
+                multi: true,
+                group: false
+            })
         ),
         "a right-press inside a multi-selection keeps it and opens in multi mode"
     );
@@ -121,8 +133,16 @@ fn the_group_card_menu_adds_enter_and_ungroup() {
         "a plain node's menu has no group-only verbs"
     );
     let card_rows = NodeAction::visible(false, true);
-    assert_eq!(card_rows.first(), Some(&NodeAction::Enter), "a card leads with Enter");
-    assert_eq!(card_rows.last(), Some(&NodeAction::Ungroup), "a card tails with Ungroup");
+    assert_eq!(
+        card_rows.first(),
+        Some(&NodeAction::Enter),
+        "a card leads with Enter"
+    );
+    assert_eq!(
+        card_rows.last(),
+        Some(&NodeAction::Ungroup),
+        "a card tails with Ungroup"
+    );
     assert!(
         card_rows.contains(&NodeAction::Rename) && card_rows.contains(&NodeAction::Bypass),
         "the shared edits are still there"
@@ -154,7 +174,10 @@ fn the_group_card_menu_adds_enter_and_ungroup() {
     assert!(
         matches!(
             st0.menu.as_ref().map(|m| &m.body),
-            Some(MenuBody::NodeActions { multi: false, group: true })
+            Some(MenuBody::NodeActions {
+                multi: false,
+                group: true
+            })
         ),
         "a right-press on a card opens its actions in group mode"
     );
@@ -166,7 +189,14 @@ fn the_group_card_menu_adds_enter_and_ungroup() {
     let rows = NodeAction::visible(false, true).len();
     let panel = geom::menu_panel(&menu, rows, RECT);
     let r0 = geom::menu_row(&menu, panel, 0, 0.0);
-    resolve_menu(&mut st, &menu, RECT, &snap, r0.x + r0.w * 0.5, r0.y + r0.h * 0.5);
+    resolve_menu(
+        &mut st,
+        &menu,
+        RECT,
+        &snap,
+        r0.x + r0.w * 0.5,
+        r0.y + r0.h * 0.5,
+    );
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::EnterSubgraph { id: 3 }],
@@ -179,7 +209,14 @@ fn the_group_card_menu_adds_enter_and_ungroup() {
     let menu = st.menu.take().expect("the menu is open");
     let panel = geom::menu_panel(&menu, rows, RECT);
     let rl = geom::menu_row(&menu, panel, rows - 1, 0.0);
-    resolve_menu(&mut st, &menu, RECT, &snap, rl.x + rl.w * 0.5, rl.y + rl.h * 0.5);
+    resolve_menu(
+        &mut st,
+        &menu,
+        RECT,
+        &snap,
+        rl.x + rl.w * 0.5,
+        rl.y + rl.h * 0.5,
+    );
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::Ungroup { id: 3 }],
@@ -225,8 +262,16 @@ fn the_backdrop_menu_offers_rename_and_delete() {
     let st = open();
     let menu = st.menu.as_ref().expect("the backdrop menu is open");
     let rows = menu_rows(&snap, menu);
-    assert_eq!(rows.len(), 8 + acts.len(), "eight tints, then the two actions");
-    assert_eq!(rows[rows.len() - 2].label, acts[0].0, "Rename after the tints");
+    assert_eq!(
+        rows.len(),
+        8 + acts.len(),
+        "eight tints, then the two actions"
+    );
+    assert_eq!(
+        rows[rows.len() - 2].label,
+        acts[0].0,
+        "Rename after the tints"
+    );
     assert_eq!(rows[rows.len() - 1].label, acts[1].0, "Delete last");
 
     // REGRESSION: a tint row still sets that colour by its index.
@@ -248,7 +293,10 @@ fn the_backdrop_menu_offers_rename_and_delete() {
         Some(RenameTarget::Backdrop(bd)),
         "the Rename row armed the box on the backdrop"
     );
-    assert!(drain_intents().is_empty(), "arming the rename box is not itself an edit");
+    assert!(
+        drain_intents().is_empty(),
+        "arming the rename box is not itself an edit"
+    );
 
     // Delete (the last row) removes the backdrop.
     let mut st = open();
@@ -260,4 +308,3 @@ fn the_backdrop_menu_offers_rename_and_delete() {
         "the Delete row removed the backdrop"
     );
 }
-

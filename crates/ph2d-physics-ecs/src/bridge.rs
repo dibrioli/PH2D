@@ -253,7 +253,7 @@ pub struct PhysicsBridge {
     /// ⚠️ **Ancestral ANTES de descendente, e isso é correção, não arrumação.**
     /// `Transform` é LOCAL, então o readback converte a pose de MUNDO do solver
     /// contra o pai VIGENTE; escrito antes do pai, o filho é convertido contra uma
-    /// pose que o mesmo passe está prestes a substituir. O mapa de corpos é um
+    /// pose que o mesmo passe vai substituir em seguida. O mapa de corpos é um
     /// `BTreeMap<Entity>` e a ordem de `Entity` **não** é a de spawn — medido, um
     /// par pai/filho itera **o filho primeiro**. Scratch: limpo a cada readback.
     pub(super) readback_order: Vec<(u32, Entity, f32, f32, f32)>,

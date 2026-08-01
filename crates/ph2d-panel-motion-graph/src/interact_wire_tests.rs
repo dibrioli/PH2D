@@ -20,8 +20,15 @@ fn alt_click_on_wire_emits_disconnect() {
     );
     // A plain press now SELECTS the wire (it used to be inert) — view-state, so no intent.
     apply_gesture(&mut st, g, RECT, CENTER, &snap);
-    assert!(drain_intents().is_empty(), "selecting a wire is not a doc edit");
-    assert_eq!(st.selected_wire, Some((2, 0)), "the plain press selected the wire");
+    assert!(
+        drain_intents().is_empty(),
+        "selecting a wire is not a doc edit"
+    );
+    assert_eq!(
+        st.selected_wire,
+        Some((2, 0)),
+        "the plain press selected the wire"
+    );
     // Alt-press: disconnect the edge into (2, 0). The alt arm is tried first, so it wins over
     // the plain-press select arm.
     g.mods.alt = true;
@@ -61,7 +68,11 @@ fn a_left_click_selects_a_wire_and_delete_disconnects_it() {
     // Plain press selects the wire; Delete disconnects exactly it and clears the selection.
     let mut st = MotionGraphPanelState::default();
     press_wire(&mut st);
-    assert_eq!(st.selected_wire, Some((2, 0)), "the plain press selected the wire");
+    assert_eq!(
+        st.selected_wire,
+        Some((2, 0)),
+        "the plain press selected the wire"
+    );
     apply_key(&mut st, GraphKey::Delete, RECT, &snap);
     assert_eq!(
         drain_intents(),

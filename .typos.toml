@@ -17,6 +17,11 @@ extend-ignore-identifiers-re = [
     # "PN" wanting "ON". Audit-9 Lens O O-5 (2026-05-26): anchored
     # regex `^PNGs$` instead of unanchored substring `PNGs`.
     "^PNGs$",
+    # `FULLs` — o MESMO caso do `PNGs` acima: typos parte o identificador e lê
+    # `FUL` querendo `FULL`. A palavra É "FULL" (o cabeçalho da coluna que conta
+    # quantos retângulos sujos cobriram a tela inteira, doc 28 §5.47), então o
+    # que está errado é a tokenização, não o texto. Regex ancorada.
+    "^FULLs$",
     # `ba` — the `vector.boolean` engine's reverse-direction closure (B∘A,
     # mirror of the `ab` = A∘B forward) in `ph2d-node-vector-boolean`. A
     # deliberate short identifier, not a typo of `by`/`be`. Anchored (2026-06-04).
@@ -48,6 +53,7 @@ FleX = "FleX"
 # dentro das aspas falsificaria a citacao, entao a palavra entra aqui. O identificador
 # e o nome da feature seguem "container" (ingles correto) no codigo.
 resolvemos = "resolvemos"  # pt-BR (citacao VERBATIM do Enio: "ainda nao resolvemos o primeiro traco")
+instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) — lido como "install" mal escrito
 # pt-BR de comentario, drenadas no ship de 2026-07-31 (a jornada de SETE linhas
 # acumulou 33 ocorrencias / 16 palavras -- este gate nao roda no fechamento de
 # linha, so' no `ship.sh`, entao a divida chega toda junta ao integrador).

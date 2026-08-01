@@ -326,7 +326,10 @@ fn cut_key_emits_copy_then_delete_in_order() {
         ],
         "cut is copy-then-delete, and the copy must run first"
     );
-    assert!(st.selected.is_empty(), "cut clears the selection like delete");
+    assert!(
+        st.selected.is_empty(),
+        "cut clears the selection like delete"
+    );
 
     // Cut of nothing is inert (double-dispatch safe, and there is nothing to carry).
     apply_key(&mut st, GraphKey::Cut, RECT, &two_node_snapshot());
@@ -418,7 +421,10 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
         ),
         "right-press over a node opens its actions menu"
     );
-    assert!(st.selected.contains(&7), "the node it asked about is selected");
+    assert!(
+        st.selected.contains(&7),
+        "the node it asked about is selected"
+    );
     // A right-release classified as End (the click drifted) must NOT dismiss.
     let mut up = gesture(
         GraphHitKind::Node { node: 7 },

@@ -146,8 +146,11 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
         .iter()
         .flat_map(|c| ph2d_motion_doc::subgraph::descendants(&motion.doc.subgraphs, *c))
         .collect();
-    let sub_index: std::collections::BTreeMap<u32, usize> =
-        relevant.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+    let sub_index: std::collections::BTreeMap<u32, usize> = relevant
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (*id, i))
+        .collect();
     let clip_subgraphs: Vec<crate::motion_state::ClipSubgraph> = relevant
         .iter()
         .filter_map(|sid| ph2d_motion_doc::subgraph::find(&motion.doc.subgraphs, *sid))
@@ -164,7 +167,11 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: V
     let clip_nodes: Vec<crate::motion_state::ClipNode> = sources
         .iter()
         .map(|src| {
-            let inst = motion.doc.graph.node(*src).expect("filtered to live nodes above");
+            let inst = motion
+                .doc
+                .graph
+                .node(*src)
+                .expect("filtered to live nodes above");
             crate::motion_state::ClipNode {
                 type_name: inst.type_name.clone(),
                 params: motion
@@ -257,7 +264,10 @@ pub(super) fn paste(motion: &mut MotionState) {
             motion.doc.graph.set_param(dst, name.clone(), *value);
         }
         for (name, value) in &cn.texts {
-            motion.doc.graph.set_text_param(dst, name.clone(), value.clone());
+            motion
+                .doc
+                .graph
+                .set_text_param(dst, name.clone(), value.clone());
         }
         new_ids.push(dst);
     }

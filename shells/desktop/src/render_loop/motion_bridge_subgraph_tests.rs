@@ -288,9 +288,15 @@ fn a_group_card_is_muted_only_when_all_of_it_is() {
     for n in &inside[..inside.len() - 1] {
         m.doc.graph.set_bypassed(*n, true);
     }
-    assert!(!card_bypassed(&m), "SOME members muted is not the group muted");
+    assert!(
+        !card_bypassed(&m),
+        "SOME members muted is not the group muted"
+    );
     m.doc.graph.set_bypassed(*inside.last().unwrap(), true);
-    assert!(card_bypassed(&m), "EVERY member muted -> the card draws muted");
+    assert!(
+        card_bypassed(&m),
+        "EVERY member muted -> the card draws muted"
+    );
 }
 
 // ── The verbs ──────────────────────────────────────────────────────────────

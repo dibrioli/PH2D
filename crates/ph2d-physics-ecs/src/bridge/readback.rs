@@ -43,7 +43,7 @@ impl PhysicsBridge {
     /// ⚠️ **E a ORDEM é ancestral-antes-de-descendente, o que é correção e não
     /// arrumação.** A conversão mundo→local pergunta ao pai VIGENTE; escrito
     /// antes do pai, um filho é convertido contra a pose que este mesmo passe
-    /// está prestes a substituir, e o erro é exatamente o quanto o pai andou
+    /// vai substituir em seguida, e o erro é exatamente o quanto o pai andou
     /// entre as duas escritas. O mapa de corpos é um `BTreeMap<Entity>` e a
     /// ordem de `Entity` **não** é a de spawn — medido, um par pai/filho itera
     /// **o filho primeiro**.

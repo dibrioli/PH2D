@@ -57,7 +57,7 @@ fn the_plane_offset_lifts_the_plane_the_verbs_project_onto() {
 }
 
 #[test]
-fn draw_lifts_along_one_direction_and_inflate_along_each_vertexs_own() {
+fn draw_lifts_along_one_direction_and_inflate_along_each_vertex_own() {
     // A distinção Draw×Inflate, medida onde ela EXISTE: numa superfície curva as
     // normais divergem, então o Inflate espalha as direções de deslocamento e o
     // Draw as mantém paralelas. Num plano os dois coincidem — e um fixture plano

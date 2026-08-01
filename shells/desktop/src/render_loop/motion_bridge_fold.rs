@@ -441,8 +441,7 @@ fn card_view(
         // artist mutes a group and sees nothing change. A group with only SOME members
         // bypassed still draws normally: it is not, as a whole, off. (Read from the graph, so
         // members at every nested depth count, not just the ones this view happens to draw.)
-        bypassed: !inside.is_empty()
-            && inside.iter().all(|n| motion.doc.graph.node_bypassed(*n)),
+        bypassed: !inside.is_empty() && inside.iter().all(|n| motion.doc.graph.node_bypassed(*n)),
     }
 }
 

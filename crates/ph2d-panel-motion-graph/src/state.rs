@@ -101,8 +101,10 @@ impl NodeAction {
 /// right-press left SELECTED — so the menu can never drift from the key. This is the ONE list
 /// `menu_rows` appends and `resolve_menu` dispatches (past the tints), so a row means the same
 /// thing on screen and under the cursor.
-pub(crate) const BACKDROP_ACTIONS: [(&str, GraphKey); 2] =
-    [("Rename (F2)", GraphKey::Rename), ("Delete (Del)", GraphKey::Delete)];
+pub(crate) const BACKDROP_ACTIONS: [(&str, GraphKey); 2] = [
+    ("Rename (F2)", GraphKey::Rename),
+    ("Delete (Del)", GraphKey::Delete),
+];
 
 /// graph-space → screen affine: `screen = panel_origin + pan + graph * zoom`.
 #[derive(Copy, Clone, Debug, PartialEq)]

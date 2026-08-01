@@ -2121,28 +2121,28 @@ fn the_join_button_is_not_offered_for_a_single_path() {
     ph2d_panel_vector::state::set_current_selection_count(0);
 }
 
-/// **O pill da TESOURA arma o modo** (W4) — o gesto inteiro dela vive no canvas, então este é o
+/// **O pill do CORTE arma o modo** (W4) — o gesto inteiro dele vive no canvas, então este é o
 /// único caminho pelo qual o artista lá chega. Um pill que pinta e não arma o modo é uma
 /// ferramenta que não existe.
+///
+/// ⚠️ Ele substituiu DOIS gates (Tesoura e Faca), porque substituiu dois pills: as duas
+/// ferramentas produziam peças ABERTAS, e a lei do produto é que uma forma fechada cortada dá
+/// formas FECHADAS.
 #[test]
-fn clicking_the_scissors_pill_reaches_the_tool() {
+fn clicking_the_cut_pill_reaches_the_tool() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
-    assert_ne!(
-        tool.mode(),
-        DrawMode::Scissors,
-        "precondition: nao e Scissors"
-    );
+    assert_ne!(tool.mode(), DrawMode::Cut, "precondition: nao e Cut");
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_SCISSORS),
+        WidgetEvent::Click(ids::VECTOR_MODE_CUT),
     );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
-        "o pill Tesoura nao foi consumido -- falta o id no `event_clicks`"
+        "o pill Cut nao foi consumido -- falta o id no `event_clicks`"
     );
     assert!(
         drain_into_tool(&mut host, &mut tool),
@@ -2150,119 +2150,22 @@ fn clicking_the_scissors_pill_reaches_the_tool() {
     );
     assert_eq!(
         tool.mode(),
-        DrawMode::Scissors,
+        DrawMode::Cut,
         "o clique chegou ao bus mas nao virou modo -- falta o arm em `handle_panel_event`"
     );
 }
 
-/// **O pill da FACA arma o modo** (W4) — irmão do da tesoura, e pela mesma razão: o gesto inteiro
-/// dela vive no canvas, então este é o único caminho pelo qual o artista lá chega.
-#[test]
-fn clicking_the_knife_pill_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    let mut tool = VectorTool::default();
-    assert_ne!(tool.mode(), DrawMode::Knife, "precondition: nao e Knife");
-
-    let outcome = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_KNIFE),
-    );
-    assert_eq!(
-        outcome,
-        EventOutcome::Consumed,
-        "falta o id no event_clicks"
-    );
-    assert!(drain_into_tool(&mut host, &mut tool), "o seam esta morto");
-    assert_eq!(tool.mode(), DrawMode::Knife, "falta o arm no tool");
-}
-
-/// **Os pills de corte respondem a um PONTEIRO real** — e este gate SUBSTITUI dois irmãos que
-/// só perguntavam *foi pintado?*, porque foi exactamente essa a pergunta que deixou os dois
-/// passarem enquanto estavam mortos sob o mouse (report do Enio: *"botão não funciona"*).
+/// **TODO pill da fileira TOOL responde a um PONTEIRO real** — Down + Up de verdade, não um
+/// `WidgetEvent` sintético.
 ///
-/// O gate irmão dirige um `WidgetEvent::Click` sintético, que **pula a checagem de focabilidade do
-/// store**: um id pintado e registado no `hit_index` mas ausente do `populate` fica *vivo aos olhos
-/// daquele gate e MORTO sob o mouse*. É a cicatriz que este repo já pagou nos dez chips do impasto.
-#[test]
-fn the_cutting_pills_answer_a_real_pointer() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 900.0,
-    };
-    const SEC: u128 = 1_000_000_000;
-    for (id, name) in [
-        (ids::VECTOR_MODE_SCISSORS, "Scissors"),
-        (ids::VECTOR_MODE_KNIFE, "Knife"),
-    ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut panel_state = VectorPanelState;
-        let r = host
-            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-            .unwrap_or_else(|| panic!("{name} nao foi pintado"));
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        assert!(
-            evs.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
-            "o ponteiro sobre {name} NAO virou Click -- o pill esta' morto sob o mouse"
-        );
-    }
-}
-
-/// **O Average NÃO é oferecido com um nó só** — a metade de AUSÊNCIA, irmã da do Join.
+/// Um clique sintético **pula a checagem de focabilidade do store**: um id pintado e registado no
+/// `hit_index` mas ausente do `populate` fica *vivo aos olhos daquele gate e MORTO sob o mouse*.
+/// Foi assim que os dois pills de corte chegaram ao smoke pintados, acesos e mudos (*"botão não
+/// funciona"*, Enio) — e o gate que devia cobri-los, o `architecture_panel_wiring_parity`, é
+/// estruturalmente CEGO a eles: ele só coleta `.register(ids::LITERAL` direto, e estes são
+/// registados num LAÇO.
 ///
-/// ⚠️ A seção Vertex aparece assim que UM vértice é selecionado, e o Average precisa de dois: sem
-/// esta regra ele fica pintado, vivo sob o mouse e **mudo** justamente no estado mais comum de
-/// todos — a forma exacta de um botão morto, e o mesmo defeito que os pills acabaram de ter.
-#[test]
-fn the_average_button_is_not_offered_for_a_single_node() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 900.0,
-    };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    ph2d_panel_vector::state::set_selected_vertex_type(Some(ph2d_tool_vector::VertexSel::Uniform(
-        ph2d_tool_vector::VertexType::Corner,
-    )));
-
-    ph2d_panel_vector::state::set_current_vertex_count(1);
-    assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_AVERAGE)
-            .is_none(),
-        "o Average foi pintado com UM no' selecionado -- nao ha' o que mediar"
-    );
-    // E o Delete, que age sobre um só, continua lá — a linha não pode sumir com ele.
-    assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_DELETE)
-            .is_some(),
-        "o Delete sumiu junto -- ele age sobre UM no'"
-    );
-
-    ph2d_panel_vector::state::set_current_vertex_count(2);
-    assert!(
-        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_VERT_AVERAGE)
-            .is_some(),
-        "o Average nao aparece com DOIS nos selecionados"
-    );
-    ph2d_panel_vector::state::set_current_vertex_count(0);
-}
-
-/// **TODO pill da fileira TOOL responde a um ponteiro real.**
-///
-/// ⚠️ **Este gate existe porque o genérico do repo NÃO os vê**, e isso está escrito no doc dele: o
-/// `architecture_panel_wiring_parity` só coleta `.register(ids::LITERAL` direto, e os pills são
-/// registados num LAÇO (`button_grid`). É o mesmo ponto cego que as 36 células da matriz de
-/// colisão da `line/physics` documentaram — e foi por ele que a Tesoura e a Faca chegaram ao
-/// smoke pintadas, acesas sob o mouse e MUDAS (*"botão não funciona"*, Enio).
-///
-/// ⚠️ **A lista é enumerada à mão, e a exposição é essa:** um 15º modo que não entre aqui nasce
+/// ⚠️ **A lista é enumerada à mão, e a exposição é essa:** um 13º modo que não entre aqui nasce
 /// descoberto. Não há como derivá-la — a tabela que o painel pinta é privada dele.
 #[test]
 fn every_tool_row_pill_answers_a_real_pointer() {
@@ -2273,7 +2176,7 @@ fn every_tool_row_pill_answers_a_real_pointer() {
         h: 900.0,
     };
     const SEC: u128 = 1_000_000_000;
-    let pills: [(ph2d_a11y::NodeId, &str); 13] = [
+    let pills: [(ph2d_a11y::NodeId, &str); 12] = [
         (ids::VECTOR_MODE_SELECT, "Select"),
         (ids::VECTOR_MODE_NODE, "Node"),
         (ids::VECTOR_MODE_PEN, "Pen"),
@@ -2285,8 +2188,7 @@ fn every_tool_row_pill_answers_a_real_pointer() {
         (ids::VECTOR_MODE_FILLET, "Fillet"),
         (ids::VECTOR_MODE_CHAMFER, "Chamfer"),
         (ids::VECTOR_MODE_WIDTH, "Width"),
-        (ids::VECTOR_MODE_SCISSORS, "Scissors"),
-        (ids::VECTOR_MODE_KNIFE, "Knife"),
+        (ids::VECTOR_MODE_CUT, "Cut"),
     ];
     let mut dead = Vec::new();
     for (id, name) in pills {

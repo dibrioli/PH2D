@@ -1913,6 +1913,8 @@ impl crate::App {
             // **As três da W4** (plano 25 §7). Ao contrário das duas acima, estas MUDAM o
             // documento — logo abrem passo de undo, e cada uma abre exatamente um.
             let mut pending_vec_join = false;
+            let mut pending_vec_cut = false;
+            let mut pending_vec_cut_discard = false;
             let mut pending_vec_reverse = false;
             let mut pending_vec_average = false;
             // O índice do perfil nomeado que o clique pediu (W2b), se algum.
@@ -2233,6 +2235,10 @@ impl crate::App {
                                 pending_vec_reverse = true;
                             } else if *id == ph2d_editor::ids::VECTOR_VERT_AVERAGE {
                                 pending_vec_average = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_CUT_APPLY {
+                                pending_vec_cut = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_CUT_DISCARD {
+                                pending_vec_cut_discard = true;
                             } else if let Some(order) =
                                 crate::input_dispatch::vec_reorder_for_id(*id)
                             {
@@ -4252,6 +4258,25 @@ impl crate::App {
                     self.vec_history.commit_if_changed(vec_scene);
                 }
             }
+            // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
+            // acima: um passo de undo por gesto, e só se algo de facto mudou (uma lâmina que não
+            // atravessa nada não pode deixar uma linha na fila do Ctrl+Z).
+            if pending_vec_cut {
+                self.vec_history.begin(vec_scene);
+                let selected = self.vec_pen.selected_paths().to_vec();
+                if crate::vec_cut_line::apply_cut(sim, vec_scene, &self.vec_entities, &selected) > 0
+                {
+                    // A seleção descreve formas que já não existem — as peças as substituíram.
+                    self.vec_pen.select(None);
+                    self.vec_history.commit_if_changed(vec_scene);
+                }
+            }
+            if pending_vec_cut_discard {
+                self.vec_history.begin(vec_scene);
+                if crate::vec_cut_line::discard(sim, vec_scene, &self.vec_entities) {
+                    self.vec_history.commit_if_changed(vec_scene);
+                }
+            }
             if let Some(order) = pending_vec_reorder {
                 crate::input_dispatch::apply_vec_reorder(
                     vec_scene,
@@ -5422,6 +5447,14 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_blend_pending,
             );
+            // **A LINHA DE CORTE, 1ª metade:** pendura o `VecCutPath` na entidade (nascida no
+            // `sync`) da lâmina recém-desenhada. Mesma posição e mesma razão dos dois de cima.
+            crate::vec_cut_line::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_cut_pending,
+            );
             // **Morph Objects, 1ª metade:** idem, e pela MESMA razão — sem o componente pendurado
             // antes do `settle`, o path recém-empurrado seria assentado como um path comum e o
             // recook do frame seguinte sairia deslocado.
@@ -5813,15 +5846,18 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-                // **A LÂMINA da faca** (W4), em espaço de tela — o mesmo desenho do marquee, e
-                // de propósito: as duas são "o que este arrasto vai apanhar", e um 2º vocabulário
-                // gráfico obrigaria o artista a aprender duas linguagens para o mesmo conceito.
-                if let Some((start, cur)) = self.vec_knife {
-                    ph2d_vec_render::draw_marquee(
-                        [f64::from(start.0), f64::from(start.1)],
-                        [f64::from(cur.0), f64::from(cur.1)],
-                        vector_scene,
-                    );
+                // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única
+                // geometria da cena que o render de ARTE não desenha (perde fill e stroke ao ser
+                // adotada como lâmina), e é aqui que ela reaparece: uma ferramenta tem de ter
+                // vocabulário próprio, senão é indistinguível de um desenho.
+                for id in crate::vec_cut_line::cut_lines(sim, &self.vec_entities) {
+                    if let Some(p) = vec_scene.paths().iter().find(|p| p.id == id) {
+                        ph2d_vec_render::draw_cut_line(
+                            &ph2d_vec_render::build_bezpath(p),
+                            ph2d_vec_render::path_to_screen(&vec_xf, id, cam_affine),
+                            vector_scene,
+                        );
+                    }
                 }
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {

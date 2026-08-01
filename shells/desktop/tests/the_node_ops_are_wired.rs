@@ -104,83 +104,98 @@ fn the_close_button_goes_through_the_welding_door() {
     );
 }
 
-/// **O gesto da TESOURA corre no canvas, antes das ferramentas de quina, e não cai adiante.**
+/// **O modo Corte NÃO tem ramo próprio no press — ele cai na CANETA.**
 ///
-/// A ordem é load-bearing: sem o `return`, o mesmo press seguiria para o roteador do pen/shape e a
-/// tesourada viria acompanhada de um segundo gesto que o artista não pediu.
-#[test]
-fn the_scissors_press_cuts_and_stops_there() {
-    let block = at(DISPATCH, "// **Modo Tesoura** (W4)");
-    let corner = at(DISPATCH, "if self.vec_draw_config.mode.is_corner_tool() {");
-    assert!(
-        block < corner,
-        "o ramo da tesoura corre DEPOIS das ferramentas de quina -- a ordem dos modos exclusivos \
-         nesta cadeia e' o que decide quem ve^ o press"
-    );
-    let window = &DISPATCH[block..corner];
-    assert!(
-        window.contains("DrawMode::Scissors"),
-        "o ramo nao e' gateado no modo Tesoura -- ele cortaria em todo modo"
-    );
-    assert!(
-        window.contains("scissors_cut("),
-        "o ramo nao chama a porta que corta"
-    );
-    assert!(
-        window.contains("self.vec_history.begin(") && window.contains("commit_if_changed("),
-        "a tesourada nao abre UM passo de undo -- o Ctrl+Z saltaria por cima dela"
-    );
-    assert!(
-        window.contains("return;"),
-        "o press da tesoura cai adiante -- o pen/shape veria o mesmo clique"
-    );
-}
-
-/// **A FACA arma no press e CORTA no release** — e a lâmina segue o dedo pelo meio.
+/// Esta é a decisão inteira do modo, e é a que um gate de fonte tem de proteger: a linha de corte
+/// é desenhada pela caneta, e um ramo próprio aqui seria uma segunda resposta a *"como se desenha
+/// uma curva?"* — divergiria dela no primeiro refino (handles, fechamento, snap, continuar por um
+/// endpoint), e o artista teria duas canetas com comportamentos diferentes.
 ///
-/// Um gesto de três tempos tem três sítios onde morre em silêncio, e cada um deixa a suíte inteira
-/// verde: sem o arm nada acontece, sem o `k.1 = …` a lâmina fica com comprimento zero e nunca
-/// atravessa nada, sem o corte no release o artista desenha um traço e larga-o no vazio.
+/// O que o modo muda é só o que a caneta PRODUZ: o caminho começado nele fica pendente até o
+/// `sync` lhe dar entidade.
 #[test]
-fn the_knife_arms_on_press_tracks_on_move_and_cuts_on_release() {
-    let arm = at(DISPATCH, "// **Modo Faca** (W4)");
-    let scissors = at(DISPATCH, "// **Modo Tesoura** (W4)");
+fn the_cut_mode_draws_with_the_pen_and_owns_no_press_branch() {
+    // Nenhum ramo exclusivo de modo intercepta o Cut antes do roteador do pen/shape.
     assert!(
-        arm < scissors,
-        "os dois modos de corte trocaram de ordem na cadeia -- quem ve^ o press muda"
+        !DISPATCH.contains("mode == ph2d_tool_vector::DrawMode::Cut {"),
+        "o modo Corte ganhou um ramo de press proprio -- ele deixaria de desenhar pela caneta"
     );
-    let arm_window = &DISPATCH[arm..scissors];
-    assert!(
-        arm_window.contains("DrawMode::Knife") && arm_window.contains("self.vec_knife = Some("),
-        "o press nao ARMA a lamina"
-    );
-    assert!(
-        !arm_window.contains("knife_cut("),
-        "o press CORTA -- uma faca e' um traco, e um traco nao existe ate' se soltar"
-    );
-
-    // O move: a lâmina segue o dedo.
-    let track = at(DISPATCH, "if let Some(k) = self.vec_knife.as_mut() {");
-    assert!(
-        DISPATCH[track..track + 200].contains("k.1 = self.last_pointer"),
-        "a lamina nao segue o dedo -- ela ficaria com comprimento zero"
-    );
-
-    // O release: corta, com UM passo de undo.
-    let rel = at(
-        DISPATCH,
-        "if let Some((start, cur)) = self.vec_knife.take()",
-    );
-    let end = at(&DISPATCH[rel..], "return;") + rel;
-    let window = &DISPATCH[rel..end];
+    // E o press da caneta ARMA a adoção da lâmina.
+    let pen = at(DISPATCH, "let click = self.vec_pen.on_press(");
+    let window = &DISPATCH[pen..at(&DISPATCH[pen..], "Some(kind) => {") + pen];
     for (needle, why) in [
-        ("knife_cut(", "o release nao corta"),
-        ("self.vec_history.begin(", "sem passo de undo"),
-        ("commit_if_changed(", "sem commit do passo"),
-        ("vec_world_at(", "a lamina nao e' convertida para MUNDO"),
+        ("DrawMode::Cut", "a adocao nao e' gateada no modo Corte"),
+        (
+            "PenClick::Started",
+            "adota em todo clique, nao so' no que CRIA um caminho",
+        ),
+        (
+            "self.vec_cut_pending = Some(",
+            "o caminho novo nunca vira lamina",
+        ),
     ] {
         assert!(window.contains(needle), "{why} -- falta `{needle}`");
     }
+}
+
+/// **A lâmina é adotada DEPOIS do `sync` e ANTES do `settle`** — a mesma posição do conector e do
+/// blend, e pela mesma razão em cada ponta.
+///
+/// Antes do `sync` a entidade não existe e o componente não tem onde pousar; depois do `settle` o
+/// caminho já teria sido assentado como arte comum.
+#[test]
+fn the_cut_line_is_adopted_between_the_sync_and_the_settle() {
+    let sync = at(LOOP_SRC, "crate::vec_entities::sync(");
+    let adopt = at(LOOP_SRC, "crate::vec_cut_line::upkeep(");
+    let settle = at(LOOP_SRC, "settle_origins(");
+    assert!(
+        sync < adopt && adopt < settle,
+        "a adocao da lamina saiu da janela entre o sync e o settle"
+    );
+}
+
+/// **Os dois botões do corte são drenados, com UM passo de undo cada.**
+///
+/// Um `Cut` sem `begin`/`commit_if_changed` é um corte que o Ctrl+Z salta por cima; e sem o
+/// `select(None)` a seleção continuaria a apontar formas que as peças substituíram.
+#[test]
+fn the_two_cut_buttons_are_drained_by_the_shell() {
+    let apply = at(LOOP_SRC, "if pending_vec_cut {");
+    let discard = at(LOOP_SRC, "if pending_vec_cut_discard {");
+    assert!(apply < discard, "os dois ramos trocaram de ordem");
+    let a = &LOOP_SRC[apply..discard];
+    for (needle, why) in [
+        (
+            "vec_cut_line::apply_cut(",
+            "o botao Cut nao chama a porta que corta",
+        ),
+        ("self.vec_history.begin(", "sem passo de undo"),
+        ("commit_if_changed(", "sem commit do passo"),
+        (
+            "self.vec_pen.select(None)",
+            "a selecao sobrevive as formas que ela apontava",
+        ),
+    ] {
+        assert!(a.contains(needle), "{why} -- falta `{needle}`");
+    }
+    let d = &LOOP_SRC[discard..discard + 400];
+    assert!(
+        d.contains("vec_cut_line::discard("),
+        "o botao Discard nao chama a porta que apaga a lamina"
+    );
+}
+
+/// **A shell publica se existe LÂMINA.** Sem isso o painel lê sempre `false` e os dois botões do
+/// corte nunca aparecem — a feature ficaria completa e inalcançável.
+#[test]
+fn the_shell_publishes_whether_a_cut_line_exists() {
+    const BRIDGE: &str = include_str!("../src/render_loop/vector_bridge.rs");
+    let pos = at(BRIDGE, "set_cut_line_exists(");
+    let window = &BRIDGE[pos..pos + 220];
+    assert!(
+        window.contains("cut_line(") && window.contains("is_some()"),
+        "a publicacao nao pergunta ao ECS -- ela e' o unico caminho ate' o painel"
+    );
 }
 
 /// **A shell publica a CONTAGEM de nós selecionados.** Sem ela o painel lê sempre `0` e o botão

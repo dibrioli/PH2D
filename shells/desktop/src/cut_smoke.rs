@@ -7,7 +7,8 @@
 //! que o `impasto_smoke` do Painter prega).
 //!
 //! O que ela monta:
-//! - um **anel** fechado (a tesoura tem de o abrir num clique e parti-lo em duas fitas em dois);
+//! - um **losango** FECHADO (a lei da wave: cortado, ele tem de dar duas formas **FECHADAS**, no
+//!   lugar onde estava);
 //! - **duas fitas com as pontas encostadas** (Average + Join têm de as soldar num vértice só);
 //! - **duas fitas com as pontas SEPARADAS** (o Join tem de pôr o segmento entre elas — a outra
 //!   metade da lei, e sem ela o smoke não distingue *soldar* de *ligar*);
@@ -111,43 +112,41 @@ fn announce(app: &mut crate::App) {
     let gap_far = gap(3, 4);
     let tol = ph2d_vec_edit::WELD_TOL;
     eprintln!(
-        "[smoke] os CORTES (plano 25 §7, W4): {n} formas -- um LOSANGO fechado (azul), duas fitas \
-         VERDES com as pontas quase a tocar (vao MEDIDO: {gap_near:.2}), duas fitas LARANJA com as pontas \
-         longe (vao {gap_far:.2}) e uma SETA roxa. Nenhum modo esta' armado: o gesto comeca no pill. \
-         [A TESOURA] (1) na fileira TOOL clique **Scissors**; (2) clique no MEIO de uma aresta do \
-         losango azul: ele tem de continuar UMA forma e passar a ser uma FITA aberta -- se nascer \
-         um 2o objeto, PARE; (3) clique no meio da aresta OPOSTA: agora ele parte-se em DUAS fitas \
-         abertas, que se podem arrastar em separado (mude para o pill **Select** e puxe uma); \
-         (4) desfaca tudo com Ctrl+Z ate' o losango voltar fechado -- **um Ctrl+Z por tesourada**, \
-         nem mais nem menos; (5) volte a Scissors e clique EM CIMA de um dos cantos do losango: \
-         ele tem de abrir NAQUELE canto, sem nascer um no' gemeo colado (no pill Node, os nos \
-         visiveis tem de continuar a ser QUATRO mais a costura, nao cinco). \
-         [JOIN + AVERAGE] (6) pill **Select**, clique a 1a fita verde e **Shift+clique** a 2a; \
-         (7) na secao **PATH** do painel clique **Join**: as duas viram UMA -- e, como as pontas \
-         estavam a {gap_near:.2} (muito acima da tolerancia de solda, {tol:e}), tem de aparecer um SEGMENTO a \
-         liga-las; (8) Ctrl+Z; (9) agora pill **Node**, clique a ponta de uma fita verde, \
-         **Shift+clique** a ponta da outra... e repare que a secao Vertex so' edita UM caminho: \
-         para o par canonico *Average + Join*, selecione DOIS nos numa fita (o botao Average so' \
-         aparece com dois -- com um so' nao ha' o que mediar) e aproxime cada ponta dentro da SUA \
-         fita e depois Join -- com as pontas COINCIDENTES a emenda tem de ser **um vertice so'**, \
-         nao dois sobrepostos; (10) nas fitas LARANJA (vao {gap_far:.2}) faca Select + Shift+clique + \
-         **Join**: aqui o segmento de ligacao e' longo e OBVIO -- e' a metade da lei que distingue \
-         soldar de ligar. \
-         [A FACA] (11) na fileira TOOL clique **Knife** e ARRASTE uma lamina horizontal por cima \
-         das duas fitas LARANJA e do que restar do losango: tudo o que ela atravessar tem de ser \
-         cortado de uma vez, e as pecas ficam **ABERTAS** (fechar e' um clique no Close Path); \
-         (12) repare que a lamina se desenha enquanto o dedo anda -- se ela nao aparecer, PARE; \
-         (13) arraste uma lamina que PARA a meio caminho: o que fica para la' da ponta **nao pode \
-         ser tocado** -- uma faca que corta alem do traco esta' a fazer o que ninguem desenhou; \
-         (14) arraste uma lamina no VAZIO: nada acontece, e **Ctrl+Z nao tem o que desfazer** (um \
-         no-op nao e' um gesto); (15) esconda ou TRAVE uma forma na Hierarquia e passe a lamina \
-         por cima dela: ela tem de sobreviver intacta. \
-         [REVERSE] (16) clique a SETA roxa e, na secao PATH, **Reverse**; (17) a direcao nao se ve \
-         sozinha, entao confirme assim: com a seta selecionada, secao **Stroke**, ponha um MARKER \
-         de ponta -- ele tem de saltar de uma extremidade para a outra ao clicar Reverse. \
-         [CLOSE] (18) selecione uma fita verde sozinha e clique **Close Path**: ela fecha; se as \
-         pontas dela estiverem coincidentes (depois do Average), o fecho tem de **fundir** as duas \
-         num vertice so' -- no pill Node, conte os nos: **um a menos** do que antes de fechar."
+        "[smoke] O CORTE (plano 25 §7, W4): {n} formas -- um LOSANGO fechado (azul), duas fitas \
+         VERDES com as pontas quase a tocar (vao MEDIDO: {gap_near:.2}), duas fitas LARANJA com as \
+         pontas longe (vao {gap_far:.2}) e uma SETA roxa. Nenhum modo esta' armado: o gesto comeca \
+         no pill. \
+         [A LINHA DE CORTE] (1) na fileira TOOL clique **Cut**; (2) DESENHE uma linha atravessando \
+         o losango azul de lado a lado, exactamente como se desenha com a Pen (clique, clique, e \
+         **Enter** ou Esc para terminar) -- ela tem de aparecer **HACHURADA em ambar, com uma \
+         TESOURA na ponta**; se ela nao aparecer, PARE; (3) repare que logo abaixo da fileira TOOL \
+         nasceram DOIS botoes: **Cut** e **Discard Cut Line** -- eles nao existiam antes de a linha \
+         existir; (4) pill **Select** e ARRASTE a linha de corte: ela e' um objeto como qualquer \
+         outro (mova-a, e no pill **Node** edite os nos dela); (5) volte a posiciona-la sobre o \
+         losango e clique **Cut**. \
+         [A LEI] (6) o losango tem de virar DUAS formas **FECHADAS** (preenchidas!), nao duas \
+         fitas abertas -- se sair fita, PARE: e' o defeito que esta wave existe para fechar; \
+         (7) as pecas tem de ficar **ONDE o losango estava** -- nenhuma pode saltar para outro \
+         lugar da tela; (8) pill Select e arraste uma peca: as duas separam-se limpas; (9) Ctrl+Z \
+         devolve o losango inteiro, **num unico** Ctrl+Z. \
+         [A LINHA SOBREVIVE] (10) repare que a linha de corte **continua la'** depois do corte -- \
+         mova-a para outro sitio e clique **Cut** de novo; (11) clique **Discard Cut Line**: ela \
+         some, e os dois botoes somem com ela. \
+         [O QUE NAO CORTA, e e' correcto] (12) desenhe uma linha nova que PARE no meio de uma \
+         forma e clique Cut: **nada acontece** -- uma regiao menos uma fenda continua inteira; \
+         (13) esconda ou TRAVE uma forma na Hierarquia e corte por cima dela: ela sobrevive \
+         intacta; (14) com a linha por cima de VARIAS formas, selecione UMA e clique Cut: so' a \
+         selecionada e' cortada (sem seleccao, corta todas as que a linha atravessar). \
+         [O CORTADOR FECHADO] (15) desenhe uma linha de corte **FECHADA** (termine-a clicando no \
+         primeiro ponto) por cima de uma forma e clique Cut: sai o MIOLO e o resto -- um cortador \
+         fechado nao precisa de extensao nenhuma. \
+         [AS FITAS] (16) as fitas VERDES/LARANJA sao ABERTAS: o corte nao as toca por ora, e isso \
+         esta' nomeado no handoff. Use-as para o **Join** (Select + Shift+clique + Join na secao \
+         PATH) e o **Average** (pill Node, dois nos, Average) -- as pontas verdes estao a \
+         {gap_near:.2}, muito acima da tolerancia de solda ({tol:e}), entao o Join tem de por um \
+         SEGMENTO a liga-las; nas laranja (vao {gap_far:.2}) o segmento e' longo e obvio. \
+         [REVERSE] (17) clique a SETA roxa e, na secao PATH, **Reverse**; confirme com um MARKER \
+         de ponta na secao Stroke -- ele salta de uma extremidade para a outra."
     );
 }
 

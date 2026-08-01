@@ -522,11 +522,8 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_WIDTH => {
                 self.mode = DrawMode::Width;
             }
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_SCISSORS => {
-                self.mode = DrawMode::Scissors;
-            }
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_KNIFE => {
-                self.mode = DrawMode::Knife;
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_CUT => {
+                self.mode = DrawMode::Cut;
             }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;

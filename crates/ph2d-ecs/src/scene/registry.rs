@@ -274,6 +274,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // forma sem o offset, em silêncio, com a curva certa por baixo.
     reg.register::<crate::VecOffset>("ph2d::ecs::VecOffset");
     reg.register::<crate::VecStrokeProfile>("ph2d::ecs::VecStrokeProfile");
+    // A LÂMINA: qual caminho é linha de corte. Mesma razão de todos os irmãos, e mais afiada —
+    // sem o registro, reabrir o projeto devolveria a linha como um caminho SEM fill e SEM stroke:
+    // invisível na tela, inerte, e fora do alcance do botão que existe para a apagar.
+    reg.register::<crate::VecCutPath>("ph2d::ecs::VecCutPath");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -348,7 +352,8 @@ mod tests {
         // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath)
         // + 1 pattern em caminho (VecPatternPath, plano 23)
         // + 1 FX raster (VecFilter, plano 24)
-        // + 1 largura viva (VecStrokeProfile, ADR-0148).
+        // + 1 largura viva (VecStrokeProfile, ADR-0148)
+        // + 1 linha de corte (VecCutPath, plano 25 §7).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -360,7 +365,8 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 39);
+        assert_eq!(reg.len(), 40);
+        assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecFilter").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecStrokeProfile").is_some());

@@ -837,11 +837,6 @@ pub(crate) struct App {
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
-    /// **A LÂMINA da faca** (`DrawMode::Knife`, plano 25 §7) — `(início, actual)` em espaço de
-    /// TELA, o mesmo par do marquee. `None` = sem gesto; no release ela corta tudo o que
-    /// atravessa. Vive em tela e não em mundo porque é isso que o overlay desenha, e converter
-    /// duas vezes daria duas lâminas para o artista comparar.
-    pub(crate) vec_knife: Option<((f32, f32), (f32, f32))>,
     /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que
@@ -855,6 +850,12 @@ pub(crate) struct App {
     /// antes de qualquer `sync` — sem esta fila de um item, a linha ficaria na cena sem
     /// `VecConnector`: um traço inerte que não segue ninguém.
     pub(crate) vec_connect_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecConnector)>,
+    /// A **LINHA DE CORTE recém-começada** (o press da caneta em modo `Cut`), esperando a
+    /// entidade dela nascer no `vec_entities::sync` para receber o `VecCutPath`. Espelho exato do
+    /// `vec_connect_pending` e do `vec_blend_pending`, e pela mesma razão: sem esta fila de um
+    /// item, a lâmina ficaria na cena como um caminho comum — desenhada como arte, exportada
+    /// como arte, e fora do alcance do botão que existe para a descartar.
+    pub(crate) vec_cut_pending: Option<ph2d_vec_scene::VecPathId>,
     /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
     /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
     pub(crate) vec_connect_sides: crate::connector_live::SideCache,

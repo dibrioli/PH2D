@@ -105,6 +105,7 @@ pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecC
 mod vec_blend;
 pub use vec_blend::VecBlend;
 mod vec_contour;
+mod vec_cut_path;
 mod vec_filter;
 mod vec_filter_kinds;
 mod vec_filter_new;
@@ -114,6 +115,7 @@ mod vec_pattern_rotation;
 mod vec_stroke_profile;
 mod vec_text_path;
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
+pub use vec_cut_path::VecCutPath;
 pub use vec_filter::{FxKindSpec, FxOp, VecFilter};
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;

@@ -284,6 +284,9 @@ mod vec_connector_panel;
 /// Diagnóstico do overlay vetorial (`PH2D_VEC_OVERLAY_DIAG=1`) — nomeia o dono de geometria fora
 /// do lugar, em vez de a adivinhar.
 mod vec_convert;
+/// **A LINHA DE CORTE** (plano 25 §7): o caminho que a tesoura usa como lâmina — adotado depois
+/// do `sync`, desenhado pelo overlay, e nunca alvo do próprio corte. Espelha `connector_live`.
+mod vec_cut_line;
 mod vec_entities;
 mod vec_expand;
 mod vec_font;
@@ -574,12 +577,12 @@ impl App {
             field_gizmo_drag: None,
             flip_edit_domain: None,
             vec_marquee: None,
-            vec_knife: None,
             vec_connect: None,
             vec_conn_handle: None,
             vec_blend: None,
             vec_restack: Vec::new(),
             vec_connect_pending: None,
+            vec_cut_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_blend_pending: None,
             vec_morph_pending: None,

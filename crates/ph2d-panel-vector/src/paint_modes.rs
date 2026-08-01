@@ -110,31 +110,55 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.width"),
                 DrawMode::Width,
             ),
-            // **Tesoura** — o 13º pill, e fica no fim desta vizinhança de propósito: os quatro
-            // (Fillet · Chamfer · Width · Scissors) editam uma forma que JÁ existe apontando-a no
+            // **Corte** — o 13º pill, e fica no fim desta vizinhança de propósito: os quatro
+            // (Fillet · Chamfer · Width · Cut) editam uma forma que JÁ existe apontando-a no
             // canvas, em vez de produzir geometria nova.
+            //
+            // ⚠️ Ele é UM pill onde havia dois (Tesoura + Faca). As duas produziam peças ABERTAS,
+            // e a lei do produto é que uma forma fechada cortada dá formas FECHADAS — então não
+            // eram duas ferramentas, eram duas metades de uma que não existia ainda.
             (
-                ids::VECTOR_MODE_SCISSORS,
-                tr("panel.vector.mode.scissors"),
-                DrawMode::Scissors,
-            ),
-            // **Faca** — o 14º pill, ao lado da tesoura: as duas cortam, e a diferença é só o
-            // GESTO (um clique × um arrasto). Vizinhas, o artista descobre a segunda ao usar a
-            // primeira.
-            (
-                ids::VECTOR_MODE_KNIFE,
-                tr("panel.vector.mode.knife"),
-                DrawMode::Knife,
+                ids::VECTOR_MODE_CUT,
+                tr("panel.vector.mode.cut"),
+                DrawMode::Cut,
             ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.
         ];
         let cols = 3usize;
-        self.button_grid(y, cols, modes.len(), |i| {
+        let y = self.button_grid(y, cols, modes.len(), |i| {
             let (id, label, m) = modes[i];
             (id, label, snap.mode == m)
-        })
+        });
+        self.cut_line_row(y)
+    }
+
+    /// **Os dois botões da LINHA DE CORTE** — executar e descartar.
+    ///
+    /// Ficam aqui, colados na fileira TOOL, e não numa seção própria lá em baixo: o gesto do
+    /// corte COMEÇA no pill (escolher `Cut`) e termina num botão, e separar as duas metades por
+    /// meia tela é como o artista desenha a lâmina e não descobre o que fazer com ela.
+    ///
+    /// ⚠️ **Só com lâmina desenhada.** Um `Cut` sem linha não tem com que cortar e um
+    /// `Discard` sem linha não tem o que descartar — pintados assim seriam dois botões mudos
+    /// no estado mais comum de todos, que é exatamente o defeito que o Average e os dois pills
+    /// desta wave já pagaram no mesmo dia.
+    fn cut_line_row(&mut self, y: f32) -> f32 {
+        if !state::cut_line_exists() {
+            return y;
+        }
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        self.row2(
+            w,
+            gap,
+            [
+                (ids::VECTOR_CUT_APPLY, tr("panel.vector.cut.apply")),
+                (ids::VECTOR_CUT_DISCARD, tr("panel.vector.cut.discard")),
+            ],
+            y,
+        )
     }
 
     pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {

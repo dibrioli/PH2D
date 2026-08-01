@@ -83,7 +83,7 @@ pub use ph2d_editor_core::ids::{
 /// O 9º e 10º pills de modo: **Fillet** / **Chamfer** — arredondar / chanfrar quina por
 /// clicar-e-arrastar (consolidam a alça do Node + o toggle da seção Vertex numa dupla).
 pub use ph2d_editor_core::ids::{
-    VECTOR_MODE_CHAMFER, VECTOR_MODE_FILLET, VECTOR_MODE_KNIFE, VECTOR_MODE_SCISSORS,
+    VECTOR_CUT_APPLY, VECTOR_CUT_DISCARD, VECTOR_MODE_CHAMFER, VECTOR_MODE_CUT, VECTOR_MODE_FILLET,
     VECTOR_MODE_WIDTH,
 };
 /// Os cabeçalhos COLAPSÁVEIS (canon `section_header.md`) + o 5º pill de modo + o chip de

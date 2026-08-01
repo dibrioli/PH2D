@@ -30,10 +30,9 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_FILLET);
     button(store, ids::VECTOR_MODE_CHAMFER);
     button(store, ids::VECTOR_MODE_WIDTH);
-    // **Tesoura / Faca** (W4) — as duas ferramentas de corte. Foram esquecidas aqui na 1ª escrita
-    // da wave (o `populate` das SEÇÕES recebeu os botões novos, este não), e o preço foi
-    // exactamente o que este doc-comment prometia: os dois pills pintavam, acendiam sob o mouse e
-    // o clique **nunca virava evento**. Reportado no smoke: *"botão não funciona"*.
-    button(store, ids::VECTOR_MODE_SCISSORS);
-    button(store, ids::VECTOR_MODE_KNIFE);
+    // **Corte** (W4) — a ferramenta de corte. Ela foi esquecida aqui na 1ª escrita da wave (o
+    // `populate` das SEÇÕES recebeu os botões novos, este não), e o preço foi exactamente o que
+    // este doc-comment prometia: o pill pintava, acendia sob o mouse e o clique **nunca virava
+    // evento**. Reportado no smoke: *"botão não funciona"*.
+    button(store, ids::VECTOR_MODE_CUT);
 }

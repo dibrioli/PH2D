@@ -407,6 +407,11 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_AVERAGE);
     button(store, ids::VECTOR_PATH_JOIN);
     button(store, ids::VECTOR_PATH_REVERSE);
+    // Os dois da LINHA DE CORTE. Registrados INCONDICIONALMENTE (a store é agnóstica de estado),
+    // embora só sejam PINTADOS com lâmina desenhada — as duas perguntas são diferentes, e
+    // confundi-las é o que deixa um botão vivo na tela e morto sob o mouse.
+    button(store, ids::VECTOR_CUT_APPLY);
+    button(store, ids::VECTOR_CUT_DISCARD);
     button(store, ids::VECTOR_VERT_SEL_SUBPATH);
     button(store, ids::VECTOR_VERT_SEL_SAME);
 

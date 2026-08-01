@@ -25,10 +25,18 @@ pub const VECTOR_PATH_REVERSE: NodeId = hash_node_id("vector.path.reverse");
 /// Join* é a solda exata de duas pontas, o par canônico do Illustrator.
 pub const VECTOR_VERT_AVERAGE: NodeId = hash_node_id("vector.vert.average");
 
-/// **Tesoura** — o 13º modo (plano 25 §7, W4): clicar num caminho e ele abre ali. Fica ao lado dos
-/// pills de quina e do Width: os quatro editam uma forma que JÁ existe, apontando-a no canvas.
-pub const VECTOR_MODE_SCISSORS: NodeId = hash_node_id("vector.mode.scissors");
+/// **Corte** — o 13º modo (plano 25 §7, W4): desenha-se a LINHA DE CORTE com a caneta, e o botão
+/// [`VECTOR_CUT_APPLY`] corta com ela. Fica ao lado dos pills de quina e do Width: os quatro
+/// editam uma forma que JÁ existe, apontando-a no canvas.
+///
+/// ⚠️ Ele substituiu **dois** pills (Tesoura e Faca), cujas strings de id morreram com eles. Um id
+/// registrado que nada pinta é a podridão que os Rake/Random do Paper viraram no Painter.
+pub const VECTOR_MODE_CUT: NodeId = hash_node_id("vector.mode.cut");
 
-/// **Faca** — o 14º modo (plano 25 §7, W4): arrastar uma lâmina reta e tudo o que ela atravessa é
-/// cortado. Irmã da tesoura na fileira TOOL, e o mesmo primitivo por baixo.
-pub const VECTOR_MODE_KNIFE: NodeId = hash_node_id("vector.mode.knife");
+/// **Cut** — executa o corte com a linha desenhada. Só é oferecido quando ela existe: um botão
+/// que não tem lâmina para usar é um botão morto.
+pub const VECTOR_CUT_APPLY: NodeId = hash_node_id("vector.cut.apply");
+
+/// **Discard Cut Line** — apaga a linha de corte. O par do de cima, e a razão de a linha poder
+/// ser um objeto persistente sem virar lixo na cena: há um gesto explícito para a tirar de lá.
+pub const VECTOR_CUT_DISCARD: NodeId = hash_node_id("vector.cut.discard");

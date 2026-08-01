@@ -24,6 +24,13 @@ mod counts;
 pub(crate) use counts::{current_selection_count, current_vertex_count};
 pub use counts::{set_current_selection_count, set_current_vertex_count};
 
+/// **A LINHA DE CORTE existe?** — irmão pela mesma razão dos counts: é a pergunta que decide se
+/// os dois botões do corte são oferecidos.
+#[path = "state_cut.rs"]
+mod cut;
+pub(crate) use cut::cut_line_exists;
+pub use cut::set_cut_line_exists;
+
 thread_local! {
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).

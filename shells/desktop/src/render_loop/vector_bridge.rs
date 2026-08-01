@@ -353,6 +353,12 @@ pub(super) fn dispatch(
     } else {
         0
     });
+    // **Existe LÂMINA?** — o fato que decide se os dois botões do corte são oferecidos. A verdade
+    // mora no ECS (`VecCutPath`); isto é a projeção, como toda a fronteira deste painel.
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_cut_line_exists(
+        vector_active && crate::vec_cut_line::cut_line(sim, vec_entities).is_some(),
+    );
     // NOTA: o estilo de quina não é mais publicado para um toggle na seção Vertex — ele virou o
     // par de ferramentas Fillet / Chamfer (o SINAL do `corner_radius` é escrito pelo arrasto).
 

@@ -46,10 +46,11 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_MODE_CHAMFER
         // O 12º modo (Width). Fora daqui, o pill pinta e está MORTO.
         || id == ids::VECTOR_MODE_WIDTH
-        // O 13º modo (Tesoura). Fora daqui, o pill pinta e está MORTO.
-        || id == ids::VECTOR_MODE_SCISSORS
-        // O 14º modo (Faca). Fora daqui, o pill pinta e está MORTO.
-        || id == ids::VECTOR_MODE_KNIFE
+        // O 13º modo (Corte). Fora daqui, o pill pinta e está MORTO.
+        || id == ids::VECTOR_MODE_CUT
+        // Os dois botões da seção CUT — executar e descartar a linha de corte.
+        || id == ids::VECTOR_CUT_APPLY
+        || id == ids::VECTOR_CUT_DISCARD
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

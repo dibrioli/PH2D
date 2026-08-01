@@ -184,20 +184,20 @@ pub enum DrawMode {
     /// âncoras — uma parada de multiplicador pequeno senta a milímetros da curva, ou seja em
     /// cima delas. O Illustrator também o faz uma ferramenta (Shift+W).
     Width,
-    /// **Tesoura** (plano 25 §7, W4): clicar num caminho e ele ABRE ali — um fechado vira uma fita,
-    /// um aberto parte em dois. É o `C` do Illustrator.
+    /// **Corte** (plano 25 §7, W4): desenha-se uma **LINHA DE CORTE** — com a caneta, exatamente
+    /// como se desenha qualquer curva — e um botão do painel corta com ela.
     ///
-    /// É um modo e não um botão porque a unidade de trabalho é um PONTO NA CURVA, não o objeto: o
-    /// que o gesto escolhe é *onde* cortar, e isso só se diz apontando. E é um modo distinto do
-    /// Node porque ali o press já tem três donos (âncora, handle, segmento) — a tesoura seria o
-    /// quarto significado do mesmo clique, e o artista não teria como pedir um deles.
-    Scissors,
-    /// **Faca** (plano 25 §7, W4): arrasta-se uma LÂMINA reta e tudo o que ela atravessa é cortado.
+    /// ⚠️ **A linha não é um gesto transiente, é um OBJETO.** Ela fica na cena depois de
+    /// desenhada: move-se com o Select, edita-se no Node, sobrevive ao save, e um segundo botão a
+    /// descarta. Esse é o ponto inteiro do modo — a lâmina que some no `release` obriga a acertar
+    /// o traço de primeira, e cortar é justamente o gesto em que se quer mirar antes.
     ///
-    /// É a tesoura repetida em cada cruzamento — nenhuma geometria nova. As peças ficam **abertas**
-    /// (a escolha do Affinity): fechar em silêncio destrói informação, enquanto fechar é um clique
-    /// no `Close Path`, que esta mesma wave ensinou a soldar.
-    Knife,
+    /// **Um modo, não dois.** Ele substitui a Tesoura (clicar para abrir num ponto) e a Faca
+    /// (arrastar uma lâmina reta): as duas produziam peças **ABERTAS**, e a lei do produto é que
+    /// uma forma fechada cortada dá formas **FECHADAS** (Enio, 2026-07-31). Abrir um caminho num
+    /// nó continua a ser uma operação legítima — mas é outro verbo (*Break Path*, do modo Node),
+    /// e não pode vestir a palavra "cortar".
+    Cut,
 }
 
 impl DrawMode {

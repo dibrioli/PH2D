@@ -22,6 +22,12 @@ use kurbo::{BezPath, PathEl, Point, Shape};
 pub mod arrangement;
 pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 
+/// **O CORTE por uma linha** — uma forma fechada cortada dá formas FECHADAS. Módulo irmão pela
+/// mesma razão do arranjo: o motor é o mesmo, e o trabalho todo é dar ao motor um cortador
+/// fechado (ele recusa contornos abertos, por contrato).
+pub mod cut;
+pub use cut::{CutRefusal, cut_closed};
+
 /// **Expand** — Outline Stroke (o traço vira forma) e Offset Path (a forma cresce). Módulo
 /// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.
 pub mod expand;
@@ -226,7 +232,7 @@ pub(crate) enum Closing {
 /// da aresta. A geometria continua reta, mas cada quina volta como vértice
 /// *Smooth* com handles pendurados no meio das arestas — pontos de controle que o
 /// usuário nunca pediu. Com `line_to`, o corte de uma reta devolve retas.
-fn to_bez(path: &VecPath) -> BezPath {
+pub(crate) fn to_bez(path: &VecPath) -> BezPath {
     to_bez_with(path, Closing::Always)
 }
 

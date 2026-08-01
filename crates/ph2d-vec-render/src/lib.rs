@@ -33,6 +33,8 @@ use gradient::fill_multipoint;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
 /// Smart guides (o feedback visual do snap), likewise a sibling.
+mod cut_line;
+pub use cut_line::draw_cut_line;
 mod guides;
 pub use guides::{Guide, draw_snap_guides, draw_text_caret};
 

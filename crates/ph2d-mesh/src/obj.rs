@@ -11,8 +11,28 @@
 //!
 //! ⚠️ **Quads são PRESERVADOS.** Triangular na porta de entrada jogaria fora
 //! exatamente a topologia que a multiresolução (`docs/3D/04.3`) precisa — o
-//! `Face` guarda tri e quad justamente para isso. N-gons acima de 4 viram leque
-//! de triângulos, porque não há representação para eles.
+//! `Face` guarda tri e quad justamente para isso.
+//!
+//! ⚠️ **N-gons acima de 4 viram leque de TRIÂNGULOS, e o motivo que esta nota
+//! dava era falso.** Ela dizia *"porque não há representação para eles"* — há: o
+//! `Face` guarda quad, e o `ImportOBJ.js:65-98` **quadrangula** (`nbPrim =
+//! ceil(nbVerts/2) - 1`, emitindo quads e no máximo um triângulo). A escolha do
+//! leque fica, agora com a razão verdadeira: ela é a mais simples que preserva a
+//! superfície, e o quad só paga por si quando a subdivisão existir para
+//! consumi-lo. **O gatilho é a W6**, e portar a quadrangulação é lá.
+//!
+//! ⚠️ **Uma linha `v` malformada RECUSA o arquivo, e isto é uma DIVERGÊNCIA
+//! deliberada da referência.** O `ImportOBJ.js:44` empurra `parseFloat` de cada
+//! token e faz `++nbVertices` **incondicionalmente**: no original o índice nunca
+//! desliza, mas o preço é um vértice `NaN` dentro da malha. `NaN` em posição
+//! atravessa o `from_parts` (que valida ÍNDICE, não coordenada), envenena o
+//! octree e a AABB, e some das comparações — o defeito reaparece a três sistemas
+//! de distância, sem nada apontando para o arquivo. Recusar nomeia a linha.
+//!
+//! ⚠️ **E a nota anterior desta casa dizia que o original "descarta o arquivo".
+//! É falso** — foi lido inteiro para escrever este parágrafo. É exatamente o
+//! falso-positivo de 55% que o `docs/3D/03.7` mede: fidelidade não se afirma por
+//! leitura.
 
 use crate::face::Face;
 use crate::mesh::{Mesh, MeshError};
@@ -23,6 +43,9 @@ pub enum ObjError {
     /// `f` referenciou um vértice que o arquivo não declarou (índice 0, fora de
     /// alcance, ou negativo além do começo).
     BadFaceIndex { line: usize, token: String },
+    /// Uma linha `v` que não descreve um vértice: menos de três números, um
+    /// token que não é número, ou uma coordenada não-finita.
+    BadVertex { line: usize, text: String },
     /// A geometria carregou, mas não forma uma malha (ver `MeshError`).
     Mesh(MeshError),
 }
@@ -32,6 +55,9 @@ impl core::fmt::Display for ObjError {
         match self {
             Self::BadFaceIndex { line, token } => {
                 write!(f, "linha {line}: índice de face inválido {token:?}")
+            }
+            Self::BadVertex { line, text } => {
+                write!(f, "linha {line}: vértice malformado {text:?}")
             }
             Self::Mesh(e) => write!(f, "{e}"),
         }
@@ -52,17 +78,23 @@ pub fn import_obj(text: &str) -> Result<Mesh, ObjError> {
     let mut faces: Vec<Face> = Vec::new();
     let mut idx: Vec<u32> = Vec::new();
 
+    // ⚠️ **O BOM é comido na porta.** Ele é marcador de codificação — todo editor
+    // de Windows o escreve —, não geometria: sem isto o primeiro token vira
+    // `"\u{feff}v"`, a linha cai no braço desconhecido, e o arquivo INTEIRO
+    // carrega com todo índice deslocado de um.
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+
     for (lineno, raw) in text.lines().enumerate() {
         let line = raw.trim();
         let mut it = line.split_ascii_whitespace();
         match it.next() {
             Some("v") => {
-                let n: Vec<f32> = it.filter_map(|t| t.parse::<f32>().ok()).collect();
-                if n.len() < 3 {
-                    continue;
-                }
+                let (n, count) = parse_vertex(it).ok_or_else(|| ObjError::BadVertex {
+                    line: lineno + 1,
+                    text: line.to_string(),
+                })?;
                 positions.push([n[0], n[1], n[2]]);
-                if n.len() >= 6 {
+                if count >= 6 {
                     has_colors = true;
                     colors.push([n[3], n[4], n[5]]);
                 } else {
@@ -111,8 +143,59 @@ pub fn import_obj(text: &str) -> Result<Mesh, ObjError> {
     Ok(mesh)
 }
 
+/// Os números de uma linha `v`, ou `None` se ela não descreve um vértice.
+///
+/// Devolve os SEIS primeiros (posição + cor) e quantos havia — sem alocar, que
+/// é o que importa numa malha de milhões de vértices.
+///
+/// ⚠️ **Um token que não é número RECUSA a linha; ele não é pulado.** O
+/// `filter_map(...ok())` anterior descartava o inconversível em silêncio, e as
+/// duas consequências eram diferentes conforme quantos números sobravam:
+/// sobrando menos de três, a linha era descartada e **todo índice seguinte
+/// deslizava**; sobrando três ou mais, o vértice FICAVA com as coordenadas
+/// erradas (`v 1,0 0 0 1.0` virava `(0, 0, 1)`). Um arquivo assim carregava sem
+/// um aviso, com a geometria embaralhada.
+///
+/// ⚠️ **O `#` corta a linha, e é o que separa isto de uma cura ingênua.** Um
+/// comentário de fim de linha (`v 1 0 0 1 0 0 # vermelho`) é OBJ legal, e uma
+/// regra do tipo *"todo token tem de ser número"* o recusaria — trocando um
+/// defeito por outro, em arquivos que hoje funcionam.
+///
+/// ⚠️ **Não-finito também recusa.** `inf` sobrevive ao `parse` e é **visível à
+/// AABB** (ao contrário do `NaN`, que some nas comparações): um só deles
+/// envenena o `Aabb::longest_edge`, que é de onde saem os raios de pincel
+/// default — o pincel inteiro passa a medir infinito, e a causa está a três
+/// sistemas de distância.
+fn parse_vertex<'a>(tokens: impl Iterator<Item = &'a str>) -> Option<([f32; 6], usize)> {
+    let mut out = [0.0f32; 6];
+    let mut count = 0usize;
+    for t in tokens {
+        if t.starts_with('#') {
+            break;
+        }
+        let v: f32 = t.parse().ok()?;
+        if !v.is_finite() {
+            return None;
+        }
+        if count < out.len() {
+            out[count] = v;
+        }
+        count += 1;
+    }
+    (count >= 3).then_some((out, count))
+}
+
 /// Um polígono do arquivo vira 1 face (tri/quad) ou um leque de triângulos.
+///
+/// ⚠️ **Índice repetido descarta a face** (`ImportOBJ.js:88-92`, que faz o
+/// mesmo). `f 1 1 2` tem área zero **por construção** — não é o caso limite de
+/// uma malha achatada, é uma face que o arquivo declarou impossível —, e aceitá-la
+/// era criar de graça exatamente a face degenerada cujo voto o `normals.rs`
+/// precisou aprender a recusar.
 fn push_face(idx: &[u32], faces: &mut Vec<Face>) {
+    if has_repeat(idx) {
+        return;
+    }
     match idx.len() {
         0..=2 => {} // linha ou ponto: não é superfície
         3 => faces.push(Face::tri(idx[0], idx[1], idx[2])),
@@ -123,6 +206,15 @@ fn push_face(idx: &[u32], faces: &mut Vec<Face>) {
             }
         }
     }
+}
+
+/// Algum índice se repete? Um polígono com um vértice citado duas vezes não é
+/// uma superfície, seja tri, quad ou n-gon — a checagem é sobre a LISTA, e não
+/// um caso especial por tamanho.
+fn has_repeat(idx: &[u32]) -> bool {
+    idx.iter()
+        .enumerate()
+        .any(|(i, a)| idx[i + 1..].contains(a))
 }
 
 #[cfg(test)]

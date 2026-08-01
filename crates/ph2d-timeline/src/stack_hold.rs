@@ -79,10 +79,18 @@ impl ClipLane {
         &self,
         t: f64,
         loop_range: Option<(f64, f64)>,
+        wraps: bool,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         // A curva da costura, resolvida UMA vez: ela molda a entrada da cabeça, então o
         // somatório vivo daqui e o peso vivo do `stack_frames` têm de vê-la igual.
-        let seam = self.seam_curve(loop_range);
+        //
+        // ⚠️ Só sob um loop que ENVOLVE: sob ping-pong a volta não é uma travessia (o
+        // playhead reflete), então a cabeça mantém a curva dela.
+        let seam = if wraps {
+            self.seam_curve(loop_range)
+        } else {
+            None
+        };
         let live: f64 = (0..self.strips.len())
             .map(|i| self.weight_at_with(i, t, seam))
             .sum();
@@ -90,6 +98,16 @@ impl ClipLane {
         if w <= 0.0 {
             return [None, None];
         }
+        // ⚠️ **E ela dispara TAMBÉM sob ping-pong** (Enio, 2026-07-31: *"para PingPong a FADE
+        // final externa não provoca nenhum movimento, mas deveria provocar a transição mesmo
+        // sendo inútil … para manter a coerência do sistema"*). Sem o alcance aqui, a cauda
+        // decaía para o **REST**, e o `rest` é capturado por binding: quem ligou a sprite onde
+        // a animação a DEIXA — o caso ordinário — via a influência cair sobre uma pose
+        // idêntica, ou seja **nada** (medido: `5,00 5,00 5,00 5,00` com `rest = 5`, contra
+        // `5,00 → 1,42` sob loop). Sob ping-pong a travessia é semanticamente inútil (o
+        // playhead volta por onde veio) e o Enio a pediu assim mesmo: um fade autorado tem de
+        // FAZER alguma coisa, e a que ele faz é a mesma que faz sob loop.
+        //
         // **CLOSING edge of a loop.** The strip that ends latest (at or before the loop
         // end) in its fade-OUT ramp — INWARD (`ease_out`, from `t_end - bo`) or OUTWARD
         // (`lead_out`, in the gap from `t_end`) — crosses to the pose the loop shows at the
@@ -110,7 +128,23 @@ impl ClipLane {
                 .max_by(|(_, x), (_, y)| x.t_end.total_cmp(&y.t_end))
                 .is_some_and(|(li, last)| {
                     let bo = self.blend_out(li);
-                    (bo > 0.0 || last.lead_out > 0.0) && last.t_end <= b && t >= last.t_end - bo
+                    // ⚠️ **Sob ping-pong, só o fade que ALCANÇA o fim do alcance** — o final da
+                    // composição, que é o caso que o Enio pediu ("fim da animação"). Sem esta
+                    // metade eu ressuscitei o bug de 2026-07-23 na hora, e o gate
+                    // `a_pingpong_scrub_does_not_jump_at_a_faded_strips_exit` o pegou: um
+                    // overlay que fadeia no MEIO do loop passava a cruzar para a costura em vez
+                    // de revelar a lane de baixo, e o frame congelado dele espetava (x=20 onde
+                    // o fundo lê 25).
+                    //
+                    // Sob um loop que ENVOLVE a largura é deliberada (o irmão *no overreach* a
+                    // aprova): ali a costura É viajada, então segurar a pose de saída através
+                    // dela é o desenho do loop sem emenda. Sob reflexão não há costura viajada,
+                    // e a única travessia que faz sentido dar a um fade é a do fim.
+                    let reaches_the_end = wraps || last.lead_end() >= b;
+                    (bo > 0.0 || last.lead_out > 0.0)
+                        && last.t_end <= b
+                        && reaches_the_end
+                        && t >= last.t_end - bo
                 });
             if closing {
                 let held = self.seam_held(a, b, w, seam);
@@ -198,7 +232,9 @@ impl ClipLane {
                 let hard_cut = self.blend_out(i) <= 0.0 && s.lead_out <= 0.0;
                 (s.t_end > t && s.lead_end() > t) || (s.lead_end() >= t && hard_cut)
             });
-            let cyclic = loop_range.is_some_and(|(a, b)| t >= a && t < b);
+            // ⚠️ Cíclico só sob um loop que ENVOLVE: sob ping-pong "depois da última" não é
+            // "antes da primeira", então o vão do fim NÃO segura — ele solta, como sem loop.
+            let cyclic = wraps && loop_range.is_some_and(|(a, b)| t >= a && t < b);
             if something_ahead || cyclic {
                 return [Some((held, held.hold_source_time(), w)), None];
             }
@@ -213,7 +249,13 @@ impl ClipLane {
         // certa enquanto a costura tinha um dono só. Com as duas pontas fadeando ela é uma
         // MISTURA, e duas expressões para a mesma pose divergiriam exatamente onde o loop
         // pula: os dois lados da volta ficariam em poses diferentes.
-        let Some((a, b)) = loop_range else {
+        // ⚠️ **A ABERTURA só envolve sob um loop que ENVOLVE** (Enio, 2026-07-23): um
+        // playhead de ping-pong REFLETE nas pontas e nunca cruza a costura, então a pose que
+        // o fim do loop deixa não pode aparecer no vão de entrada, numa costura que ninguém
+        // viaja. É a metade que o `wraps` protege — e é por isso que ele é um parâmetro em
+        // vez de o `loop_range` ser filtrado a `None` lá em cima: a borda de SAÍDA precisa do
+        // alcance, esta não.
+        let Some((a, b)) = loop_range.filter(|_| wraps) else {
             return [None, None];
         };
         if t < a || t >= b {

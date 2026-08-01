@@ -315,16 +315,26 @@ impl StackScratch {
             // o peso vivo de cada strip e o complemento que o `hold_at` devolve têm de ver a
             // MESMA curva de costura, senão a lane soma ≠ 1 e a pose afunda. E `seam_curve`
             // varre a lane, então perguntá-la por strip seria quadrático.
-            let loop_range = (frame == 0)
-                .then(|| {
-                    let (range, ping_pong) = match self.root {
-                        None => (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
-                        Some(c) => doc.container_loop(c),
-                    };
-                    range.filter(|_| !ping_pong)
-                })
-                .flatten();
-            let seam = lane.seam_curve(loop_range);
+            //
+            // ⚠️ **O alcance chega INTEIRO, e o `wraps` diz se a costura é VIAJADA.** Ele já
+            // foi filtrado a `None` sob ping-pong, e isso respondia duas perguntas com uma:
+            // a abertura não pode wrappar (certo — o playhead reflete) mas a SAÍDA precisa do
+            // alcance, senão o fade final não tem para onde cruzar e decai para o rest
+            // (Enio, 2026-07-31). Duas perguntas, dois parâmetros.
+            let (loop_range, wraps) = if frame == 0 {
+                let (range, ping_pong) = match self.root {
+                    None => (doc.active_loop_for(false), doc.active_ping_pong_for(false)),
+                    Some(c) => doc.container_loop(c),
+                };
+                (range, !ping_pong)
+            } else {
+                (None, false)
+            };
+            let seam = if wraps {
+                lane.seam_curve(loop_range)
+            } else {
+                None
+            };
             for (si, strip) in lane.strips.iter().enumerate() {
                 // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
                 // zero.** O peso é DADO — a resposta da lane —, não um filtro.
@@ -389,7 +399,7 @@ impl StackScratch {
             // média ponderada da lane já sabe misturar N entradas: os pesos somam o MESMO
             // complemento, então `den` continua 1 e o único caso que muda é o que antes
             // ficava congelado. Uma ponta só devolve UMA fonte, byte-idêntica ao que era.
-            for (strip, t_local, w) in lane.hold_at(t, loop_range).into_iter().flatten() {
+            for (strip, t_local, w) in lane.hold_at(t, loop_range, wraps).into_iter().flatten() {
                 let t_local = doc.cut_source(strip.source, t_local);
                 if let Some(source) =
                     self.resolve(doc, strip.source, t_local, additive, strip.src_in)

@@ -40,6 +40,21 @@ use ph2d_ecs::Entity;
 
 use super::PhysicsBridge;
 
+/// **Algo ENTROU num sensor** (W-Signal) — a transição que o mapa permanente
+/// não carrega.
+///
+/// Duas entidades, e cada uma responde a uma pergunta diferente, exatamente como
+/// no canal de trigger (W-PartSensor): o **`sensor`** é quem o artista MARCOU (a
+/// peça, se for peça), e o **`other`** é o CORPO que chegou — quem pergunta
+/// *"quem entrou no gatilho?"* quer um objeto, não uma das formas dele.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct TriggerEvent {
+    /// A entidade que carrega o `Collider` sensor.
+    pub sensor: Entity,
+    /// O corpo que acabou de entrar.
+    pub other: Entity,
+}
+
 /// De quem é este collider: a entidade que o AUTOROU, o corpo a que ele
 /// pertence, e se ele é sensor.
 type ColliderOwner = (Entity, Entity, bool);
@@ -53,6 +68,17 @@ impl PhysicsBridge {
         self.triggers.clear();
         let pairs = self.world.intersecting_collider_pairs();
         if pairs.is_empty() {
+            // ⚠️ **O diff roda mesmo com o grafo VAZIO**, e a primeira versão não
+            // rodava. O early-out existe para não construir os dois mapas numa
+            // cena sem triggers — mas pular o diff junto significa que
+            // `trigger_events` **guarda o conteúdo do último quadro em que houve
+            // algo**, e o publicador o re-emite para sempre.
+            //
+            // Achado pela sonda `measure_sensor_blind_speed`: uma bala a 60 m/s
+            // atravessava o sensor e o canal disparava **58 vezes em 60 ticks**,
+            // porque o grafo esvaziava logo depois e nada mais limpava a lista.
+            // *Um early-out que pula uma limpeza não é um atalho, é um vazamento.*
+            self.diff_trigger_entries();
             return;
         }
         // handle → (forma, corpo, sensor?), construído aqui uma vez (só quando um
@@ -102,6 +128,92 @@ impl PhysicsBridge {
             inside.sort_unstable_by_key(|e| e.to_bits());
             inside.dedup();
         }
+        self.diff_trigger_entries();
+    }
+
+    /// Diff the standing set against the previous one to fill
+    /// [`trigger_events`](Self::trigger_events) — *quem ENTROU num sensor*
+    /// (W-Signal).
+    ///
+    /// # Por que ENTRADA e não os dois extremos
+    ///
+    /// O canal existe para acordar coisas, e a saída é uma segunda pergunta com
+    /// um segundo nome — ver o doc de [`crate::SignalOnHit`]. Emitir os dois sob
+    /// o MESMO nome tornaria o sinal ambíguo para quem escuta.
+    ///
+    /// # ⚠️ Este diff é por DISPATCH, e o irmão de contato é por TICK
+    ///
+    /// A assimetria é medida, não descuido. O canal de contato passou a ser
+    /// por-tick (W-TickContacts) porque o **SOLVER separa** um par dentro de um
+    /// tick: uma queda de 8 m não gerava evento nenhum. Um sensor não empurra —
+    /// ele é atravessado —, então o tempo que algo passa dentro dele é
+    /// geometria pura, e a única forma de perdê-lo é ATRAVESSAR o sensor inteiro
+    /// dentro de um tick.
+    ///
+    /// Isso é uma velocidade, e ela foi **MEDIDA** — não deduzida.
+    ///
+    /// ⚠️ **O número que eu tinha escrito aqui estava errado por uma ordem de
+    /// grandeza.** A aritmética diz que um sensor de `2h` metros é atravessado
+    /// num tick a `2h / dt`, ou seja **60 m/s** para o sensor de 1 m da sonda; a
+    /// varredura (`tests/signal.rs::measure_sensor_blind_speed`) mostra que ele
+    /// ainda dispara a **280 m/s** e só fica cego a partir de **320**:
+    ///
+    /// | m/s | 240 | 280 | **320** | 480 | 960 |
+    /// |---|---|---|---|---|---|
+    /// | sinais | 1 | 1 | **0** | 0 | 0 |
+    ///
+    /// O mecanismo é a **fase larga**, que trabalha com AABBs preditas: o par
+    /// entra no grafo pelo movimento, não pelas poses de fim de tick. Cinco vezes
+    /// a margem que a aritmética previa.
+    ///
+    /// Acima disso o `Ccd` (W-CCD) é a resposta e já existe; um diff por-tick aqui
+    /// custaria uma varredura do grafo de interseção **por tick** (o
+    /// `rebuild_triggers` reconstrói dois mapas do zero) para cobrir um regime que
+    /// o CCD cobre melhor. Nomeado com o número em vez de escondido — e o número é
+    /// o da medição, não o do meu palpite (§0).
+    ///
+    /// # A descontinuidade RE-BASELIZA em silêncio
+    ///
+    /// A mesma disciplina do canal de contato, e pelo mesmo motivo: o conjunto
+    /// permanente é recomputado do zero, então um diff ingênuo faz de todo
+    /// scrub uma tempestade de entradas. `hold` e `rewind` derrubam
+    /// `triggers_continuous`, e a próxima passada adota o conjunto sem reportar
+    /// nada.
+    fn diff_trigger_entries(&mut self) {
+        self.trigger_events.clear();
+        if !self.triggers_continuous {
+            self.trigger_since = self.triggers.clone();
+            self.triggers_continuous = true;
+            return;
+        }
+        for (sensor, inside) in &self.triggers {
+            let before = self.trigger_since.get(sensor);
+            for &other in inside {
+                if !before.is_some_and(|v| v.contains(&other)) {
+                    self.trigger_events.push(TriggerEvent {
+                        sensor: *sensor,
+                        other,
+                    });
+                }
+            }
+        }
+        self.trigger_since.clone_from(&self.triggers);
+    }
+
+    /// Forget what was inside every sensor, **sem reportar nada** — o irmão
+    /// exato do `discard_contact_history`, chamado das mesmas duas
+    /// descontinuidades.
+    pub(super) fn discard_trigger_history(&mut self) {
+        self.trigger_since.clear();
+        self.trigger_events.clear();
+        self.triggers_continuous = false;
+    }
+
+    /// **Quem ENTROU num sensor** neste dispatch (W-Signal). Vazio em todo frame
+    /// em que nada chegou, que é quase todos.
+    #[must_use]
+    pub fn trigger_events(&self) -> &[TriggerEvent] {
+        &self.trigger_events
     }
 
     /// Is `entity` a **sensor** with at least one body inside it right now? The

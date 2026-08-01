@@ -1678,6 +1678,25 @@ impl crate::App {
         for msg in physics_bridge::break_reports(physics, sim) {
             toasts.push(Toast::warning(msg));
         }
+        // **E a FÍSICA publica no MESMO outbox dos sinais da timeline** (W-Signal).
+        // Os quatro canais de leitura dela existem desde o W7 e nenhum fazia nada
+        // ACONTECER; o que faltava era o publicador, não o consumidor — a nota do
+        // dreno da timeline, acima, já nomeia *gameplay* como um dos consumidores
+        // diferidos DAQUELA saída (ADR-0143 + ADR-0075).
+        //
+        // ⚠️ **Duas fontes, um consumidor, e é aqui que elas se encontram.** A
+        // física não importa o tipo de sinal da timeline: fazer o motor de colisão
+        // depender do editor de animação para dizer *"algo bateu"* é o oposto do
+        // ADR-0075. Cada uma publica o seu, e o SHELL — que já é o dono do
+        // consumidor — funde as duas.
+        //
+        // ⚠️ **Aqui e não lá em cima:** o dreno da timeline roda ANTES do dispatch
+        // da física, então ler os sinais de física ali entregaria os do quadro
+        // ANTERIOR. Um atraso de um quadro é invisível num toast e deixa de ser
+        // invisível no dia em que o consumidor for som.
+        for sig in physics.signal_events(sim) {
+            toasts.push(Toast::info(format!("Signal: {}", sig.name)));
+        }
         sim_extract::run(
             dt,
             sim,
@@ -2203,6 +2222,7 @@ impl crate::App {
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
+            let mut signal_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
             // back into the bus so `image_edit::dispatch`'s
@@ -3087,6 +3107,11 @@ impl crate::App {
                     EditorAction::InspectorNameEdit(info) => {
                         // Latest-wins (Option-coalesce parity).
                         name_edit = Some(info);
+                    }
+                    EditorAction::InspectorSignalEdit(info) => {
+                        // Mesma coalescência: um `TextChanged` por tecla, e só a
+                        // última do quadro vira comando (W-Signal).
+                        signal_edit = Some(info);
                     }
                     EditorAction::SetImageFilter { mode } => {
                         // Single global image-filter toggle. Rebuilds the
@@ -6787,6 +6812,7 @@ impl crate::App {
                 transform_edit,
                 visibility_edit,
                 name_edit,
+                signal_edit,
                 sprite_source_change,
                 &sprite_edits,
                 &ordering_edits,

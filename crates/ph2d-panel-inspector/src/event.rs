@@ -482,6 +482,24 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             }));
         return true;
     }
+    // W-Signal — o nome que este objeto GRITA quando algo chega nele.
+    //
+    // ⚠️ Pelo MESMO barramento por-entidade do nome, e não por um `PhysicsFieldEdit`
+    // novo: o valor é uma STRING, e todo o resto da §11 fala em número ou em chip.
+    // Um braço de string no enum de campos numéricos seria um segundo formato de
+    // edição vivendo dentro do primeiro.
+    if let WidgetEvent::TextChanged(id) = ev
+        && id == ids::INSP_PHYS_SIGNAL
+        && let Some(info) = state::current_inspector_physics()
+    {
+        let text = host.store().text(id).unwrap_or("").to_string();
+        host.bus_mut()
+            .push(EditorAction::InspectorSignalEdit(InspectorNameInfo {
+                entity_bits: info.entity_bits,
+                name: text,
+            }));
+        return true;
+    }
     // ADR-0029 Phase C.1: showcase-shared events
     // (`CTX_MENU_OUTLINE_*`, `CTX_MENU_CREATE_NOTE`, `SECTION_IDS`,
     // radio/tab/tree pinning) are now routed at host level via

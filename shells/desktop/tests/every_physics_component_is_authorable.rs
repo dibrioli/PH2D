@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 6] = [
+const WRITERS: [&str; 7] = [
     "src/render_loop/inspector_physics_apply.rs",
     "src/render_loop/inspector_physics_area.rs",
     "src/render_loop/inspector_physics_markers.rs",
@@ -36,6 +36,12 @@ const WRITERS: [&str; 6] = [
     // alça continua sendo alcançável no produto, que é o que este gate mede.
     "src/render_loop/inspector_joint_wheel.rs",
     "src/joint_anchor_drag.rs",
+    // ⚠️ **E nem todo caminho de autoria é um NÚMERO.** O nome do sinal (W-Signal)
+    // é uma STRING, então ele não passa pelo `PhysicsFieldEdit` — vai pelo mesmo
+    // pipeline canônico de componente que o nome da entidade usa (fila de comandos
+    // + registro), que mora aqui. Um braço de string dentro do enum de campos
+    // numéricos seria um segundo formato de edição vivendo dentro do primeiro.
+    "src/render_loop/inspector_commits.rs",
 ];
 
 #[test]

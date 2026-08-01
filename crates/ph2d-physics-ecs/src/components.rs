@@ -241,6 +241,7 @@ impl SimComponent for Collider {}
 mod area;
 mod overrides;
 mod rope;
+mod signal;
 
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
@@ -252,3 +253,4 @@ pub use overrides::{
 pub use rope::{
     PulleyWheel, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
+pub use signal::SignalOnHit;

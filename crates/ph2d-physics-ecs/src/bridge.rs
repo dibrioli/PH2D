@@ -37,8 +37,9 @@ mod rewind;
 pub mod rope;
 /// As settings de MUNDO — módulo irmão pelo cap de 700 LOC.
 mod settings;
+pub mod signals;
 mod space;
-mod triggers;
+pub mod triggers;
 pub mod views;
 
 pub use kinematic::{FrozenScene, SceneAtTick};
@@ -288,6 +289,14 @@ pub struct PhysicsBridge {
     /// non-trigger scene pays nothing. `BTreeMap` for the determinism reason
     /// `bodies` documents.
     triggers: BTreeMap<Entity, Vec<Entity>>,
+    /// O conjunto do dispatch ANTERIOR — a baseline de que `trigger_events`
+    /// sai (W-Signal). Irmão de `contact_since`.
+    trigger_since: BTreeMap<Entity, Vec<Entity>>,
+    /// Quem ENTROU num sensor neste dispatch, drenado pelo shell.
+    trigger_events: Vec<triggers::TriggerEvent>,
+    /// `trigger_since` descreve o dispatch imediatamente anterior? Falso
+    /// depois de toda descontinuidade do relógio — ver `diff_trigger_entries`.
+    triggers_continuous: bool,
     /// The pairs touching this frame (`bridge::contacts`). A flat list, not a map:
     /// a contact is a RELATIONSHIP with no owner, unlike a trigger, which is asked
     /// about one sensor. Cleared and refilled per dispatch; empty in free fall.
@@ -373,6 +382,9 @@ impl PhysicsBridge {
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
             triggers: BTreeMap::new(),
+            trigger_since: BTreeMap::new(),
+            trigger_events: Vec::new(),
+            triggers_continuous: true,
             contacts: Vec::new(),
             contact_since: BTreeMap::new(),
             contact_events: Vec::new(),

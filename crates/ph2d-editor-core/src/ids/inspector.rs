@@ -600,6 +600,17 @@ pub const INSP_PHYS_RIG: NodeId = hash_node_id("insp_phys_rig");
 /// **Add Shape** (W-Compound) — a terceira porta da face vazia: esta forma vira
 /// mais um collider do corpo ancestral, em vez de um corpo novo.
 pub const INSP_PHYS_ADD_SHAPE: NodeId = hash_node_id("insp_phys_add_shape");
+/// **Signal** (W-Signal) — o nome que este objeto GRITA quando algo chega nele.
+///
+/// Um `TextInput`, porque o valor É uma string: o sinal é um **contrato por
+/// nome** (ADR-0143) e quem escuta casa pelo nome, então não há lista de opções
+/// a oferecer nem número a arrastar.
+///
+/// ⚠️ **Mora na §11 ao lado das rows de COLISÃO, não num card próprio:** ele
+/// responde *"e daí?"* à pergunta que Trigger/One-Way fazem, e um controle que
+/// só faz sentido junto de outros tem de estar onde eles estão (o argumento do
+/// `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
+pub const INSP_PHYS_SIGNAL: NodeId = hash_node_id("insp_phys_signal");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates
 /// the joint TYPE they want in one gesture, instead of making a Pin and

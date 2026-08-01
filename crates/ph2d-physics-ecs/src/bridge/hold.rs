@@ -156,5 +156,6 @@ impl PhysicsBridge {
         // re-arming re-adopts the set in silence instead of reporting the pause as
         // a collision (`bridge::contacts::discard_contact_history`).
         self.discard_contact_history();
+        self.discard_trigger_history();
     }
 }

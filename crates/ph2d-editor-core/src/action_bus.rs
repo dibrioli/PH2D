@@ -433,6 +433,12 @@ pub enum EditorAction {
     /// same pipeline as Transform / Visibility. Raised by
     /// `TextChanged` on `INSP_ENTITY_NAME`.
     InspectorNameEdit(crate::screens::hero::InspectorNameInfo),
+    /// **O nome do sinal que este objeto emite quando algo chega nele** (W-Signal).
+    ///
+    /// Reusa o `InspectorNameInfo` porque a carga é a MESMA — uma entidade e uma
+    /// string —, e um tipo novo idêntico ao existente seria um segundo formato
+    /// para a mesma pergunta.
+    InspectorSignalEdit(crate::screens::hero::InspectorNameInfo),
 
     /// Transport control from the TopBar Play/Pause/Reset chips
     /// (`chrome::transport`). The shell owns the ONE clock

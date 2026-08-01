@@ -34,6 +34,8 @@ pub use bridge::contacts::{
     BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,
 };
 pub use bridge::joint_break::JointBreakEvent;
+pub use bridge::signals::SignalEvent;
+pub use bridge::triggers::TriggerEvent;
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
 pub use bridge::fk::FkSession;
@@ -49,8 +51,8 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, WestonAxle, WrapSide,
-    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, SignalOnHit, WestonAxle,
+    WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -95,6 +97,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<Collider>("ph2d::physics::Collider");
     reg.register::<PhysicsJoint>("ph2d::physics::PhysicsJoint");
     reg.register::<GravityScale>("ph2d::physics::GravityScale");
+    reg.register::<SignalOnHit>("ph2d::physics::SignalOnHit");
     reg.register::<InitialVelocity>("ph2d::physics::InitialVelocity");
     reg.register::<Ccd>("ph2d::physics::Ccd");
     reg.register::<LockRotation>("ph2d::physics::LockRotation");
@@ -128,7 +131,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 24);
+        assert_eq!(reg.len(), 25);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -143,6 +146,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::physics::MaterialCombine").is_some());
         assert!(reg.get_by_name("ph2d::physics::DampingOverride").is_some());
         assert!(reg.get_by_name("ph2d::physics::OneWayPlatform").is_some());
+        assert!(reg.get_by_name("ph2d::physics::SignalOnHit").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaEffector").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaDrag").is_some());
         assert!(reg.get_by_name("ph2d::physics::AreaBuoyancy").is_some());

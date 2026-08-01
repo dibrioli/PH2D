@@ -339,7 +339,59 @@ pub(super) fn paint_collision_rows(
             u8::from(one_way),
         );
     }
+    // **O que este objeto GRITA quando algo chega nele** (W-Signal).
+    //
+    // ⚠️ Aqui e não num card próprio: ele responde *"e daí?"* à pergunta que as
+    // rows acima fazem — um Trigger sem sinal detecta e não acorda nada —, e um
+    // controle que só faz sentido junto de outros tem de estar onde eles estão
+    // (o argumento do `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
+    //
+    // ⚠️ **Oferecido em TODO collider**, sólido ou sensor: as duas fontes de
+    // chegada são um contato que COMEÇA e uma entrada em sensor, e restringir a
+    // row a um dos dois deixaria metade dos casos sem porta. Uma entidade é uma
+    // coisa ou a outra, então um nome só responde às duas.
+    yy = signal_row(scene, text_system, theme, hit_index, store, x, w, yy);
     yy
+}
+
+/// A row do nome do sinal — um `TextInput`, porque o valor É uma string e o
+/// contrato é por NOME (ADR-0143).
+#[allow(clippy::too_many_arguments)]
+fn signal_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let host = Rect::new(x, y, w, ROW_H_PX);
+    hit_index.register(ids::INSP_PHYS_SIGNAL, host);
+    let (state, text, caret, anchor) = match store.get(ids::INSP_PHYS_SIGNAL) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, None, 0, None),
+    };
+    let input = TextInput::new(ids::INSP_PHYS_SIGNAL, "")
+        .placeholder("Signal on hit\u{2026}")
+        .state(state);
+    paint_text_input_with_buffer(
+        &input,
+        text,
+        Some(caret),
+        anchor,
+        host,
+        scene,
+        text_system,
+        theme,
+    );
+    y + ROW_H_PX
 }
 
 /// **O que esta ÁREA faz a quem está dentro dela** — o bloco de zona, irmão do

@@ -105,6 +105,7 @@ pub(super) fn dispatch(
     transform_edit: Option<InspectorTransformInfo>,
     visibility_edit: Option<InspectorVisibilityInfo>,
     name_edit: Option<InspectorNameInfo>,
+    signal_edit: Option<InspectorNameInfo>,
     sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
@@ -388,6 +389,43 @@ pub(super) fn dispatch(
             Err(e) => {
                 toasts.push(Toast::error(format!("Name encode failed: {e}")));
                 title_dirty = true;
+            }
+        }
+    }
+    // **O nome do sinal** (W-Signal), pelo MESMO pipeline canônico de componente
+    // que o nome da entidade usa — fila de comandos + registro —, e não por uma
+    // escrita direta no mundo: um segundo caminho para *"editar um componente"*
+    // é como um deles passa a não aparecer no undo.
+    //
+    // ⚠️ O `type_id` sai do REGISTRO em vez de ser mais um parâmetro enfiado por
+    // dez assinaturas: o registro já é argumento desta função, e ele é a fonte
+    // de quem sabe o id de um componente.
+    if let Some(info) = signal_edit {
+        let sig = ph2d_physics_ecs::SignalOnHit(info.name.clone());
+        match (
+            postcard::to_allocvec(&sig),
+            component_registry.get_by_name("ph2d::physics::SignalOnHit"),
+        ) {
+            (Ok(data), Some(entry)) => {
+                let push_res = editor_queue.push(EditorCommand::SetComponent {
+                    entity: info.entity_bits,
+                    type_id: entry.type_id,
+                    data,
+                });
+                if let Err(e) = push_res {
+                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                } else if let Err(e) =
+                    apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+                {
+                    toasts.push(Toast::error(format!("Signal commit failed: {e}")));
+                }
+                title_dirty = true;
+            }
+            (Err(e), _) => {
+                toasts.push(Toast::error(format!("Signal encode failed: {e}")));
+            }
+            (_, None) => {
+                toasts.push(Toast::error("SignalOnHit is not registered".to_string()));
             }
         }
     }

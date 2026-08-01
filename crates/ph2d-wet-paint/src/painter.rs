@@ -206,37 +206,6 @@ impl Engine {
         }
     }
 
-    /// Write a knob and react to what it invalidates (the JS onChange).
-    pub fn set_knob(&mut self, knob: Knob, v: f64) {
-        if let Some(def) = self.tuning.set(knob, v) {
-            self.react_to_knob_change(def);
-        }
-    }
-
-    fn react_to_knob_change(&mut self, def: &'static crate::tuning::KnobDef) {
-        match def.rebuild {
-            Some(Rebuild::Brush) => self.brush_tex = None, // lazy rebuild
-            Some(Rebuild::Paper) => self.paper_dirty = true, // re-bake on release
-            Some(Rebuild::Render) => self.mark_dirty_full(),
-            None => {}
-        }
-    }
-
-    /// Reset a whole knob group, reacting to every changed knob exactly as
-    /// [`Engine::set_knob`] would — the JS fires onChange per knob from
-    /// resetGroup; dropping those left a stale brush texture / unbaked paper
-    /// (port-verify finding). The panel's group-reset button goes HERE.
-    pub fn reset_knob_group(&mut self, group: crate::tuning::KnobGroup) {
-        for def in self.tuning.reset_group(group) {
-            self.react_to_knob_change(def);
-        }
-    }
-
-    /// The shell calls this on slider release when a paper knob changed.
-    pub fn paper_dirty(&self) -> bool {
-        self.paper_dirty
-    }
-
     fn texture(&mut self) -> &[f32] {
         if self.brush_tex.is_none() {
             self.brush_tex = Some(build_bristle_texture(self.bristle_knobs()));
@@ -697,4 +666,5 @@ impl Engine {
 }
 
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
+mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
 mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split

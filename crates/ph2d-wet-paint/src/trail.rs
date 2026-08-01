@@ -23,7 +23,21 @@ use crate::opacity::alpha_of_mass;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// Buffer half-size: max radius 35 plus the max window drift (~4 x spacing).
+/// **O PISO da janela do trail** — meia-largura para raio 35 mais a deriva
+/// máxima (~4 × spacing): `ceil(35 + 4*6) + 2`.
+///
+/// ⚠️ **O 35 é o teto de raio do MODELO JS de referência, e ele era o TETO
+/// DESTE PRODUTO** (CLAUDE.md §0: *nunca deixe o fallback definir o produto*).
+/// Medido pela porta do artista antes de mexer: o slider promete
+/// `BRUSH_SIZE_MAX_PX = 512` e o traço saturava em **119 px de largura** a
+/// partir do raio 100 — raio efetivo **59,5**, ou seja **0,15×** do que o
+/// artista pedia em 400. E em SILÊNCIO: nada na ferramenta dizia que o pincel
+/// tinha parado de crescer.
+///
+/// Hoje isto é o **PISO** (`Trail::fit_to` cresce a janela para o pincel que
+/// chega), e ele fica pelo que garante: com um pincel dentro do teto do modelo
+/// a janela é EXATAMENTE a de antes, então o fingerprint do ADR-0134 é
+/// byte-idêntico por construção — não por promessa.
 pub const TRAIL_HALF: i32 = 61; // ceil(35 + 4*6) + 2
 pub const TRAIL_SIZE: i32 = TRAIL_HALF * 2 + 1; // 123
 
@@ -75,6 +89,13 @@ pub struct Trail {
     lx1: i32,
     ly1: i32,
     mode: TrailMode,
+    /// A meia-largura VIVA da janela — `self.half` é só o piso dela.
+    half: i32,
+    /// `half * 2 + 1`, guardado porque é o stride de todo índice local.
+    size: i32,
+    /// O espaçamento do último segmento — a deriva da janela entre dois
+    /// transfers é `window_size × spacing`, com `window_size` capado em 4.
+    spacing: f64,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -129,6 +150,9 @@ impl Default for Trail {
             lx1: -1,
             ly1: -1,
             mode: TrailMode::Paint,
+            half: TRAIL_HALF,
+            size: TRAIL_SIZE,
+            spacing: 6.0,
         }
     }
 }
@@ -173,6 +197,61 @@ impl Trail {
         self.tip_b.fill(color[2] as f32);
     }
 
+    /// **A janela cresce para o pincel que chegou** — a lei do [`TRAIL_HALF`],
+    /// agora com o raio do PINCEL no lugar do 35 do modelo de referência.
+    ///
+    /// ⚠️ **Só CRESCE, nunca encolhe.** Encolher exigiria decidir o que fazer
+    /// com a tinta que já está na janela, e o ganho seria devolver memória no
+    /// meio de um traço — a troca errada. Um traço novo com pincel pequeno
+    /// reusa a janela grande e paga só a varredura, que o `lx0..lx1` já limita
+    /// ao que foi de fato tocado.
+    ///
+    /// ⚠️ **E o piso é `TRAIL_HALF`**, então todo pincel dentro do teto do
+    /// modelo JS produz a janela EXATA de antes: o fingerprint do ADR-0134 é
+    /// byte-idêntico por construção, e não por promessa.
+    fn fit_to(&mut self, radius: f64) {
+        let want = (((radius + 4.0 * self.spacing).ceil() as i32) + 2).max(TRAIL_HALF);
+        if want <= self.half {
+            return;
+        }
+        self.half = want;
+        self.size = want * 2 + 1;
+        let n = (self.size as usize) * (self.size as usize);
+        // As seis superfícies são re-semeadas: `pig`/`water`/`mask` em zero e as
+        // três do BICO na cor base, que é exatamente o que o `start_stroke`
+        // faz — a janela vazia não tem outro estado válido.
+        self.pig = vec![0.0; n];
+        self.water = vec![0.0; n];
+        self.mask = vec![0.0; n];
+        self.tip_r = vec![self.base_r as f32; n];
+        self.tip_g = vec![self.base_g as f32; n];
+        self.tip_b = vec![self.base_b as f32; n];
+        self.lx0 = 0;
+        self.ly0 = 0;
+        self.lx1 = -1;
+        self.ly1 = -1;
+    }
+
+    /// **A meia-largura VIVA da janela** — para o gate que julga o cap.
+    ///
+    /// ⚠️ Só para MEDIÇÃO: o produto nunca a lê, e um gate que a comparasse com
+    /// a fórmula estaria espelhando a regra que julga. Quem julga o cap mede o
+    /// RETÂNGULO TOCADO (`touched_extent_for_measure`); esta existe só para a
+    /// metade oposta — provar que um pincel dentro do teto do modelo de
+    /// referência não moveu nada.
+    #[must_use]
+    pub fn window_half_for_measure(&self) -> i32 {
+        self.half
+    }
+
+    /// O retângulo LOCAL que a janela de fato tocou (`None` se nada tocou) — o
+    /// oráculo do gate do cap, e ele não conhece constante nenhuma.
+    #[must_use]
+    pub fn touched_extent_for_measure(&self) -> Option<(i32, i32, i32, i32)> {
+        (self.lx0 <= self.lx1 && self.ly0 <= self.ly1)
+            .then_some((self.lx0, self.ly0, self.lx1, self.ly1))
+    }
+
     /// Frame-segment callback: size the window from the chord length.
     pub fn on_segment(&mut self, chord_len: f64, spacing: f64) {
         let cap = if self.mode == TrailMode::Blend {
@@ -181,6 +260,10 @@ impl Trail {
             2.0
         };
         self.window_size = (chord_len / spacing.max(0.0001)).floor().min(cap) as u32;
+        // A deriva da janela entre transfers é `window_size × spacing`, e é
+        // metade da conta do [`Trail::fit_to`]. Guardado aqui porque é o único
+        // sítio que o conhece.
+        self.spacing = spacing;
     }
 
     /// Accumulate one paint dab into the trail. Returns true when the window
@@ -231,6 +314,12 @@ impl Trail {
             // the window's first dab anchors it
             self.anchor_x = js_round(dab.x) as i32;
             self.anchor_y = js_round(dab.y) as i32;
+            // ⚠️ **A janela é função do PINCEL, e cresce só AQUI.** Com
+            // `dab_count == 0` ela está vazia por construção (o `start_stroke`
+            // e todo transfer a zeram), então realocar não pode perder tinta
+            // acumulada — crescer no meio de uma janela invalidaria as
+            // coordenadas locais do que já está lá.
+            self.fit_to(dab.r);
         }
         let gain = p.k(Knob::PigmentPerDab);
         let gate = p.k(Knob::PaperGate);
@@ -285,12 +374,12 @@ impl Trail {
             // Wetness seed: OVERWRITE (not max) — repainting can dry the
             // byte back down.
             wet[i] = wet_byte_from_paper(tooth);
-            let lx = x - anchor_x + TRAIL_HALF;
-            let ly = y - anchor_y + TRAIL_HALF;
-            if !(0..TRAIL_SIZE).contains(&lx) || !(0..TRAIL_SIZE).contains(&ly) {
+            let lx = x - anchor_x + self.half;
+            let ly = y - anchor_y + self.half;
+            if !(0..self.size).contains(&lx) || !(0..self.size).contains(&ly) {
                 return;
             }
-            let l = (lx + ly * TRAIL_SIZE) as usize;
+            let l = (lx + ly * self.size) as usize;
             pig[l] = (pig[l] as f64 + deposit * gain) as f32;
             water[l] = (water[l] as f64 + deposit * dab.water_amount) as f32;
             touch_ext(&mut ext, lx, ly);
@@ -366,12 +455,12 @@ impl Trail {
                 if e <= 0.0 {
                     return;
                 }
-                let lx = x - anchor_x + TRAIL_HALF;
-                let ly = y - anchor_y + TRAIL_HALF;
-                if !(0..TRAIL_SIZE).contains(&lx) || !(0..TRAIL_SIZE).contains(&ly) {
+                let lx = x - anchor_x + self.half;
+                let ly = y - anchor_y + self.half;
+                if !(0..self.size).contains(&lx) || !(0..self.size).contains(&ly) {
                     return;
                 }
-                let l = (lx + ly * TRAIL_SIZE) as usize;
+                let l = (lx + ly * self.size) as usize;
                 mask[l] = (mask[l] as f64 * (1.0 - e) + e) as f32; // scrubbing builds toward 1
                 touch_ext(&mut ext, lx, ly);
             },
@@ -390,7 +479,7 @@ impl Trail {
         self.prev_anchor_y = self.anchor_y;
         if self.lx1 >= self.lx0 {
             for ly in self.ly0..=self.ly1 {
-                let b = (ly * TRAIL_SIZE) as usize;
+                let b = (ly * self.size) as usize;
                 let a = b + self.lx0 as usize;
                 let z = b + self.lx1 as usize + 1;
                 self.pig[a..z].fill(0.0);

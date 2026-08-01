@@ -33,12 +33,12 @@ impl Trail {
 
         // 2. Tip pickup (the dirty brush) — reads the PRE-deposit canvas.
         for ly in self.ly0..=self.ly1 {
-            let cy = self.anchor_y + (ly - TRAIL_HALF);
+            let cy = self.anchor_y + (ly - self.half);
             if cy < 2 || cy > h - 1 {
                 continue;
             }
             for lx in self.lx0..=self.lx1 {
-                let cx = self.anchor_x + (lx - TRAIL_HALF);
+                let cx = self.anchor_x + (lx - self.half);
                 if cx < 2 || cx > w - 1 {
                     continue;
                 }
@@ -56,7 +56,7 @@ impl Trail {
                 let cg = (sc[1] as f64 * w_s + uc[1] as f64 * w_f) * inv;
                 let cb = (sc[2] as f64 * w_s + uc[2] as f64 * w_f) * inv;
                 let k = tip_retain + (1.0 - tip_retain) * (1.0 - fe.min(1.0));
-                let l = (lx + ly * TRAIL_SIZE) as usize;
+                let l = (lx + ly * self.size) as usize;
                 self.tip_r[l] = (self.tip_r[l] as f64 * k + cr * (1.0 - k)) as f32;
                 self.tip_g[l] = (self.tip_g[l] as f64 * k + cg * (1.0 - k)) as f32;
                 self.tip_b[l] = (self.tip_b[l] as f64 * k + cb * (1.0 - k)) as f32;
@@ -69,7 +69,7 @@ impl Trail {
         let mut count = 0u32;
         for ly in self.ly0..=self.ly1 {
             for lx in self.lx0..=self.lx1 {
-                let l = (lx + ly * TRAIL_SIZE) as usize;
+                let l = (lx + ly * self.size) as usize;
                 if self.pig[l] > 0.0 {
                     sum_pig += self.pig[l] as f64;
                     sum_water += self.water[l] as f64;
@@ -98,17 +98,17 @@ impl Trail {
         let mut rx1 = 0;
         let mut ry1 = 0;
         for ly in self.ly0..=self.ly1 {
-            let cy = self.anchor_y + (ly - TRAIL_HALF);
+            let cy = self.anchor_y + (ly - self.half);
             if cy < 2 || cy > h - 1 {
                 continue;
             }
             for lx in self.lx0..=self.lx1 {
-                let l = (lx + ly * TRAIL_SIZE) as usize;
+                let l = (lx + ly * self.size) as usize;
                 let v = self.pig[l] as f64;
                 if v <= 0.0 {
                     continue;
                 }
-                let cx = self.anchor_x + (lx - TRAIL_HALF);
+                let cx = self.anchor_x + (lx - self.half);
                 if cx < 2 || cx > w - 1 {
                     continue;
                 }
@@ -167,8 +167,8 @@ impl Trail {
                 // 5. Paint drag: pull from the same window offset at the
                 // PREVIOUS anchor — the film gets tugged along under the
                 // stroke.
-                let sx = self.prev_anchor_x + (lx - TRAIL_HALF);
-                let sy = self.prev_anchor_y + (ly - TRAIL_HALF);
+                let sx = self.prev_anchor_x + (lx - self.half);
+                let sy = self.prev_anchor_y + (ly - self.half);
                 if sx >= 2 && sx < w && sy >= 2 && sy < h {
                     let si = sx as usize + sy as usize * s;
                     let had_susp = g.susp[i] > 0.0;
@@ -248,15 +248,15 @@ impl Trail {
         let mut w_susp = 0.0f64;
         let mut w_sett = 0.0f64;
         for ly in self.ly0..=self.ly1 {
-            let cy = self.anchor_y + (ly - TRAIL_HALF);
+            let cy = self.anchor_y + (ly - self.half);
             if cy < 2 || cy > h - 1 {
                 continue;
             }
             for lx in self.lx0..=self.lx1 {
-                if self.mask[(lx + ly * TRAIL_SIZE) as usize] <= 0.0 {
+                if self.mask[(lx + ly * self.size) as usize] <= 0.0 {
                     continue;
                 }
-                let cx = self.anchor_x + (lx - TRAIL_HALF);
+                let cx = self.anchor_x + (lx - self.half);
                 if cx < 2 || cx > w - 1 {
                     continue;
                 }
@@ -301,19 +301,19 @@ impl Trail {
         let mut rx1 = 0;
         let mut ry1 = 0;
         for ly in self.ly0..=self.ly1 {
-            let cy = self.anchor_y + (ly - TRAIL_HALF);
+            let cy = self.anchor_y + (ly - self.half);
             if cy < 2 || cy > h - 1 {
                 continue;
             }
             for lx in self.lx0..=self.lx1 {
-                let mut a = self.mask[(lx + ly * TRAIL_SIZE) as usize] as f64;
+                let mut a = self.mask[(lx + ly * self.size) as usize] as f64;
                 if a <= 0.0 {
                     continue;
                 }
                 if a > 1.0 {
                     a = 1.0;
                 }
-                let cx = self.anchor_x + (lx - TRAIL_HALF);
+                let cx = self.anchor_x + (lx - self.half);
                 if cx < 2 || cx > w - 1 {
                     continue;
                 }

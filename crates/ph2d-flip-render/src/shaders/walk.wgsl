@@ -367,16 +367,38 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
     // tampa. Num traço FECHADO não há ponta (o `flip.wgsl` gateia em `!closed` pelo mesmo motivo).
     var cap_head = 0xffffffffu;
     var cap_tail = 0xffffffffu;
+    // `binning.rs::resolve_caps` — o plano de tampa e' um fato do TRACO (onde passa, para onde
+    // aponta o fora, em que ARCO), resolvido UMA vez. Ele nao pode sair do segmento que o laco esta
+    // vendo: um segmento do meio nao sabe para onde a ponta olha.
+    var cap_q = array<vec2<f32>, 2>(vec2<f32>(0.0), vec2<f32>(0.0));
+    var cap_n = array<vec2<f32>, 2>(vec2<f32>(0.0), vec2<f32>(0.0));
+    var cap_arc = array<f32, 2>(0.0, 0.0);
     if (hi > lo) {
         let sid = segs[lo].stroke;
         tail = tail_point(sid);
         let st = strokes[sid];
-        if ((st.flags & FLAG_CLOSED) == 0u && st.point_count > 0u) {
+        if ((st.flags & FLAG_CLOSED) == 0u && st.point_count > 1u) {
+            let ini = st.first_point;
+            let fim = st.first_point + st.point_count - 1u;
             if ((st.flags & FLAG_START_FLAT) != 0u) {
-                cap_head = st.first_point;
+                let q = point_px(points[ini].pos);
+                let v = q - point_px(points[ini + 1u].pos);
+                if (length(v) > 1e-6) {
+                    cap_head = ini;
+                    cap_q[0] = q;
+                    cap_n[0] = normalize(v);
+                    cap_arc[0] = arc_len[ini];
+                }
             }
             if ((st.flags & FLAG_END_FLAT) != 0u) {
-                cap_tail = st.first_point + st.point_count - 1u;
+                let q = point_px(points[fim].pos);
+                let v = q - point_px(points[fim - 1u].pos);
+                if (length(v) > 1e-6) {
+                    cap_tail = fim;
+                    cap_q[1] = q;
+                    cap_n[1] = normalize(v);
+                    cap_arc[1] = arc_len[fim];
+                }
             }
         }
     }
@@ -391,18 +413,23 @@ fn stroke_silhouette(lo: u32, hi: u32, p: vec2<f32>, pitch: f32, square: bool) -
         let rb = radius_px(pb.width);
         // O CORTE deste segmento (`-1e30` = sem tampa; `max` com ele é a identidade exata, então
         // todo traço de tampa redonda é byte-intocado). A normal aponta para FORA.
+        // O corte alcanca todo segmento a menos de `r` de ARCO da tampa, nao so' o primeiro: o
+        // disco de ponta do VIZINHO imediato e' o que espiava para alem do plano. O arco -- e nao a
+        // distancia geometrica -- preserva o traco que se ENROLA de volta sobre o proprio comeco.
         var cut = -1e30;
-        if (s.a == cap_head || s.b == cap_tail) {
-            let v = sb - sa;
-            let vlen = length(v);
-            if (vlen > 1e-6) {
-                let dir = v / vlen;
-                if (s.a == cap_head) {
-                    cut = max(cut, cap_sd(p, sa, -dir));
-                }
-                if (s.b == cap_tail) {
-                    cut = max(cut, cap_sd(p, sb, dir));
-                }
+        let arc_lo = arc_len[s.a];
+        let arc_hi = arc_lo + length(pb.pos - pa.pos);
+        let rmax = max(ra, rb);
+        if (cap_head != 0xffffffffu) {
+            let fora = max(max(cap_arc[0] - arc_hi, arc_lo - cap_arc[0]), 0.0) * sc.view.z;
+            if (fora < rmax) {
+                cut = max(cut, cap_sd(p, cap_q[0], cap_n[0]));
+            }
+        }
+        if (cap_tail != 0xffffffffu) {
+            let fora = max(max(cap_arc[1] - arc_hi, arc_lo - cap_arc[1]), 0.0) * sc.view.z;
+            if (fora < rmax) {
+                cut = max(cut, cap_sd(p, cap_q[1], cap_n[1]));
             }
         }
         if (pitch > 0.0) {

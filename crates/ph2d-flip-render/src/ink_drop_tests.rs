@@ -164,3 +164,60 @@ fn a_soft_edge_hardens_when_the_stroke_crosses_itself_and_this_is_its_number() {
          entrou, atualize a nota da §22.11 do doc 12; se nao, algo mexeu na lei da tinta."
     );
 }
+
+/// 🔴 **A PONTA CHATA CORTA, mesmo quando o vizinho está a UM PIXEL** — o resquício redondo.
+///
+/// Report do Enio (2026-07-31, com foto): a tampa `Flat` saía com um DOMO raso no meio do corte.
+///
+/// ⚠️ **A causa é um defeito LATENTE que outra wave desta mesma linha tornou visível.** O corte era
+/// aplicado só ao PRIMEIRO segmento (`cap_head == seg.a`), então o disco de raio `r` na ponta do
+/// SEGUNDO ficava inteiro e espiava `r − |p1 − p0|` **além** do plano. Com o ajuste esparso de
+/// antes o primeiro segmento era longo e isso valia zero; com o ajuste **3× mais denso** que esta
+/// linha shipou ele passou a ter poucos px, e o resquício virou quase `r` inteiro. Medido a
+/// `r = 20`: primeiro segmento de 8 px ⇒ **11,50 px** de tinta passando; de 3 px ⇒ 16,50; de 1 px
+/// ⇒ **18,50**. Depois: **0,50 px** (o anti-aliasing) em todos.
+///
+/// ⚠️ **O alcance é de ARCO, não geométrico**, e é isso que preserva a razão que o `flat_caps`
+/// documenta para o corte ser por-segmento: um traço que se ENROLA de volta sobre o próprio começo
+/// está geometricamente perto e a ARCOS de distância, então ele segue pintando ali — um semi-plano
+/// global apagaria essa tinta.
+///
+/// ⚠️ **A fixture PRECISA carregar `arc_len` de verdade:** o `art` o zera, e com ele zerado todo
+/// segmento parece colado na tampa ⇒ o gate ficaria verde **pelo motivo errado**, sobre um corte
+/// que passou a valer para o traço inteiro.
+///
+/// Mutação que sangra: voltar a condição para `arc_lo == cp.arc` (só o primeiro segmento).
+#[test]
+fn the_flat_cap_cuts_even_when_the_next_point_is_one_pixel_away() {
+    let sc = screen(160.0, 96.0);
+    let r = 20.0_f32;
+    for gap in [8.0_f32, 3.0, 1.0] {
+        let pts: Vec<[f32; 2]> = std::iter::once([60.0, 48.0])
+            .chain((0..6).map(|k| [60.0 + gap + k as f32 * 20.0, 48.0]))
+            .collect();
+        let mut g = art(&[(&pts, r * 2.0, false, BLACK)]);
+        g.strokes[0].flags |= crate::pack::FLAG_START_FLAT;
+        let mut acc = 0.0_f32;
+        for k in 0..pts.len() {
+            g.arc_len[k] = acc;
+            if k + 1 < pts.len() {
+                acc += (pts[k + 1][0] - pts[k][0]).hypot(pts[k + 1][1] - pts[k][1]);
+            }
+        }
+        let bins = bin_segments(&g, &sc, 16);
+        let mut alcance = 0.0_f32;
+        for xi in 0..60 {
+            let x = 59.5 - xi as f32;
+            for yi in 0..96 {
+                if crate::binning::walk_pixel(&bins, &g, &sc, [x, yi as f32 + 0.5])[3] > 0.02 {
+                    alcance = alcance.max(60.0 - x);
+                }
+            }
+        }
+        assert!(
+            alcance <= 1.0,
+            "com o 1o segmento de {gap} px a tinta passou {alcance:.2} px alem do plano da tampa \
+             (o disco do VIZINHO espiando); o corte tem de alcancar por ARCO, nao so' o 1o segmento"
+        );
+    }
+}

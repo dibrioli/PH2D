@@ -25,6 +25,7 @@ mod neighbors;
 mod pack;
 mod pipeline;
 mod pixel_area;
+mod silhouette;
 mod tau;
 mod walk_gpu;
 

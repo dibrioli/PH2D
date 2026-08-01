@@ -563,3 +563,51 @@ fn measure_whether_the_third_law_also_switches_off_the_self_overlap() {
         );
     }
 }
+
+/// 📏 **SONDA — o "resquício redondo" na ponta CHATA** (report do Enio 2026-07-31, com foto).
+///
+/// A tampa reta saiu com um DOMO raso no meio do corte. A hipótese a medir: o corte é aplicado
+/// **só ao PRIMEIRO segmento** (`cap_head == Some(seg.a)`), então o disco de raio `r` na ponta
+/// `a` do SEGUNDO segmento fica INTEIRO — e ele espia para além do plano por `r − |p1 − p0|`.
+/// Com pontos esparsos isso é zero (o vizinho está longe); com o ajuste DENSO que esta linha
+/// shipou, `|p1 − p0|` é de poucos px e o disco atravessa quase `r` inteiro.
+///
+/// A sonda varre o espaçamento do 1º segmento e imprime até onde a tinta passa do plano.
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_round_residue_on_a_flat_cap() {
+    let sc = screen(160.0, 96.0);
+    let r = 20.0_f32;
+    println!("=== RESQUICIO NA PONTA CHATA (r = {r}) ===");
+    println!("  1o seg |  tinta max alem do plano (px) | esperado se so' o 1o seg for cortado");
+    for gap in [40.0_f32, 20.0, 8.0, 3.0, 1.0] {
+        // Traço reto para +x começando em x = 60, com o 1º segmento de comprimento `gap`.
+        let pts: Vec<[f32; 2]> = std::iter::once([60.0, 48.0])
+            .chain((0..6).map(|k| [60.0 + gap + k as f32 * 20.0, 48.0]))
+            .collect();
+        let mut g = art(&[(&pts, r * 2.0, false, BLACK)]);
+        g.strokes[0].flags |= crate::pack::FLAG_START_FLAT;
+        // ⚠️ **O `art` zera o `arc_len`**, e o alcance da tampa é medido em ARCO — sem preencher,
+        // a fixture não contém o fenômeno e a sonda mediria zero pelo motivo errado.
+        let mut acc = 0.0_f32;
+        for k in 0..pts.len() {
+            g.arc_len[k] = acc;
+            if k + 1 < pts.len() {
+                acc += (pts[k + 1][0] - pts[k][0]).hypot(pts[k + 1][1] - pts[k][1]);
+            }
+        }
+        let bins = bin_segments(&g, &sc, 16);
+        // O plano está em x = 60 com normal −x ⇒ "além" é x < 60.
+        let mut alcance = 0.0_f32;
+        for xi in 0..60 {
+            let x = 59.5 - xi as f32;
+            for yi in 0..96 {
+                let y = yi as f32 + 0.5;
+                if crate::binning::walk_pixel(&bins, &g, &sc, [x, y])[3] > 0.02 {
+                    alcance = alcance.max(60.0 - x);
+                }
+            }
+        }
+        println!("  {gap:5.1} | {alcance:26.2} | {:.2}", (r - gap).max(0.0));
+    }
+}

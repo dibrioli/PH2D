@@ -17,6 +17,15 @@
 use super::impasto_light::{AMBIENT, DEPTH_UNIT_PX};
 use ph2d_painter_brush::material::MaterialBytes;
 
+/// **O mundo sem escultura** — a forma NEUTRA, e o que faz a doação ser aditiva de verdade.
+///
+/// `[0, 0, 1]` é a normal de um plano virado para o olho e `0` é o peso. Somada à inclinação da tinta
+/// em [`Rig::shade_over`], ela devolve **literalmente** a expressão que o passe sempre computou — não
+/// um caminho equivalente, a mesma aritmética. É isso que torna *"com a flag off o caminho da tinta
+/// sai byte-idêntico"* ([`docs/3D/02.3`](../../../../../docs/3D/02-Arquitetura/02.3-Modulo-removivel-e-mapa-de-crates.md),
+/// costura S1) uma propriedade da forma escrita, e não uma promessa a testar em todo canto.
+pub(super) const NO_FORM: [f32; 4] = [0.0, 0.0, 1.0, 0.0];
+
 pub(super) struct Lamp {
     /// Unit light direction (x, y, z); `z > 0` points out of the canvas.
     dir: [f32; 3],
@@ -228,7 +237,46 @@ impl Rig {
         dhy: f32,
         albedo: [f32; 3],
     ) -> ([f32; 3], [f32; 3]) {
-        if (dhx == 0.0 && dhy == 0.0) || body <= 0.0 {
+        self.shade_over(mat, body, gloss, dhx, dhy, NO_FORM, albedo)
+    }
+
+    /// [`Self::shade`] com a **SEGUNDA FONTE DE NORMAL** — a forma doada pelo módulo 3D
+    /// (`docs/3D/05.2`). `form` é `[nx, ny, nz, peso]`; [`NO_FORM`] é o mundo sem escultura.
+    ///
+    /// ## As duas fontes compõem, e a forma da composição apaga o caso especial
+    ///
+    /// A normal da tinta é `[-∇h·K, 1]` e a da forma é um vetor unitário. Compor não é escolher uma:
+    /// é **somar a inclinação da tinta à normal da forma** e renormalizar —
+    ///
+    /// ```text
+    /// v = [ form.x − dhx·K ,  form.y − dhy·K ,  form.z ]
+    /// ```
+    ///
+    /// — que é o *blend UDN* dos normal maps, e que degenera EXATO nos dois extremos:
+    ///
+    /// - **sem forma** (`form = [0, 0, 1]`): `v` é literalmente `[-dhx·K, -dhy·K, 1]`, a expressão que
+    ///   sempre esteve aqui ⇒ **byte-idêntico**, sem ramo e sem `if`;
+    /// - **tinta plana** (`dh = 0`): `v` é a normal da forma, intocada.
+    ///
+    /// É por isso que não há uma pergunta *"qual fonte manda?"* a responder: uma pincelada sobre uma
+    /// escultura tem o relevo da tinta **por cima** da inclinação da forma, que é o que a mão faz.
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn shade_over(
+        &self,
+        mat: &MatShade,
+        body: f32,
+        gloss: f32,
+        dhx: f32,
+        dhy: f32,
+        form: [f32; 4],
+        albedo: [f32; 3],
+    ) -> ([f32; 3], [f32; 3]) {
+        // ⚠️ O early-out ganhou a terceira condição, e ela é load-bearing: com tinta PLANA sobre uma
+        // forma, `dhx` e `dhy` são zero e o gradiente não tem nada a dizer — mas a forma tem. Sem
+        // `form[3] <= 0.0` aqui, a doação seria invisível exatamente onde ela é o ponto: pintar chapado
+        // sobre uma escultura e ver a escultura acender a tinta.
+        if (dhx == 0.0 && dhy == 0.0 && form[3] <= 0.0) || body <= 0.0 {
             return ([1.0; 3], [0.0; 3]); // flat paint — or bare paper — is untouched, to the byte
         }
         // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The
@@ -236,7 +284,11 @@ impl Rig {
         // no gain and no coverage mute: the body curve already ends the relief where the paint thins,
         // so wherever the gradient is nonzero there is real paint standing there.
         let n = {
-            let v = [-dhx * DEPTH_UNIT_PX, -dhy * DEPTH_UNIT_PX, 1.0];
+            let v = [
+                form[0] - dhx * DEPTH_UNIT_PX,
+                form[1] - dhy * DEPTH_UNIT_PX,
+                form[2],
+            ];
             let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
             [v[0] / len, v[1] / len, v[2] / len]
         };
@@ -420,6 +472,102 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// **A COSTURA S1, provada e não prometida: sem forma, a aritmética é a que sempre shipou.**
+    ///
+    /// `docs/3D/02.3` promete que *"com a flag off o caminho da tinta sai byte-idêntico"*. Aqui isso
+    /// não é um teste de regressão sobre uma imagem — é a comparação contra a EXPRESSÃO ANTIGA,
+    /// congelada abaixo verbatim. Se alguém trocar a soma por um ramo (`if há forma { … } else { … }`),
+    /// os dois lados deixam de ser a mesma conta e isto sangra.
+    #[test]
+    fn the_shade_with_no_form_is_the_shade_that_shipped() {
+        // A normal como ela era antes da doação existir — o código que shipava, sem forma nenhuma.
+        fn normal_before_the_donation(dhx: f32, dhy: f32) -> [f32; 3] {
+            let v = [-dhx * DEPTH_UNIT_PX, -dhy * DEPTH_UNIT_PX, 1.0];
+            let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
+            [v[0] / len, v[1] / len, v[2] / len]
+        }
+        // E a mesma normal, pela porta nova, com a forma NEUTRA.
+        fn normal_with_no_form(dhx: f32, dhy: f32) -> [f32; 3] {
+            let v = [
+                NO_FORM[0] - dhx * DEPTH_UNIT_PX,
+                NO_FORM[1] - dhy * DEPTH_UNIT_PX,
+                NO_FORM[2],
+            ];
+            let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
+            [v[0] / len, v[1] / len, v[2] / len]
+        }
+        for &(dhx, dhy) in &[
+            (0.05f32, 0.0f32),
+            (-0.3, 0.12),
+            (0.9, -0.9),
+            (0.0071, 0.0033),
+            (-1.7, 0.4),
+        ] {
+            assert_eq!(
+                normal_before_the_donation(dhx, dhy),
+                normal_with_no_form(dhx, dhy),
+                "a forma neutra moveu a normal em ({dhx}, {dhy})"
+            );
+        }
+        // E o resultado inteiro do passe, ponta a ponta.
+        let rig = Rig::new(&LightRig::default()).expect("a principal nasce acesa");
+        let mat = rig.resolve(Material::NEUTRAL.to_bytes());
+        for &(dhx, dhy) in &[(0.05f32, 0.0f32), (-0.3, 0.12), (0.9, -0.9)] {
+            for &body in &[0.2f32, 1.0] {
+                let albedo = [0.83f32, 0.41, 0.17];
+                assert_eq!(
+                    rig.shade(&mat, body, body, dhx, dhy, albedo),
+                    rig.shade_over(&mat, body, body, dhx, dhy, NO_FORM, albedo),
+                    "as duas portas divergiram sem forma"
+                );
+            }
+        }
+    }
+
+    /// **A doação faz o que ela existe para fazer — e a tinta continua por cima dela.**
+    ///
+    /// Duas metades, e as duas importam:
+    ///
+    /// 1. **tinta PLANA sobre uma forma acende.** É o objetivo O1 inteiro (*"pintar sobre forma"*) e é
+    ///    exatamente o caso que o early-out antigo teria engolido: sem gradiente, o passe devolvia
+    ///    "intocado".
+    /// 2. **o relevo da própria tinta ainda cavalga a forma.** Se a composição fosse um ramo — *a
+    ///    forma vence onde ela cobre* — uma pincelada com corpo sobre uma escultura perderia o próprio
+    ///    corpo, e ninguém saberia dizer onde ele foi parar.
+    #[test]
+    fn a_form_lights_flat_paint_and_the_paints_own_relief_still_rides_on_it() {
+        let rig = Rig::new(&LightRig::default()).expect("a principal nasce acesa");
+        let mat = rig.resolve(Material::NEUTRAL.to_bytes());
+        let albedo = [0.6f32, 0.6, 0.6];
+        // Uma forma inclinada PARA a lâmpada principal (que vem de cima e da esquerda: x<0, y<0).
+        // Unitária de propósito — é uma normal, e `0.25 + 0.25 + 0.5 = 1`.
+        let tilted = [-0.5f32, -0.5, std::f32::consts::FRAC_1_SQRT_2, 1.0];
+
+        // (1) Tinta plana: sem forma é intocada AO BYTE; com forma, acende.
+        let flat_no_form = rig.shade_over(&mat, 1.0, 1.0, 0.0, 0.0, NO_FORM, albedo);
+        assert_eq!(
+            flat_no_form,
+            ([1.0; 3], [0.0; 3]),
+            "sem forma, tinta plana é intocada — o contrato que a doação não pode quebrar"
+        );
+        let flat_on_form = rig.shade_over(&mat, 1.0, 1.0, 0.0, 0.0, tilted, albedo);
+        assert!(
+            flat_on_form.0[0] > 1.05,
+            "a forma inclinada para a luz tinha de CLAREAR a tinta plana: {:?}",
+            flat_on_form.0
+        );
+
+        // (2) O relevo da tinta cavalga: a mesma forma, com e sem uma inclinação de tinta por cima.
+        let ridged = rig.shade_over(&mat, 1.0, 1.0, 0.02, 0.0, tilted, albedo);
+        assert!(
+            (ridged.0[0] - flat_on_form.0[0]).abs() > 1e-3,
+            "o relevo da tinta sumiu sobre a forma — a composição virou um ramo: \
+             {:?} contra {:?}",
+            ridged.0,
+            flat_on_form.0
+        );
     }
 
     /// The exported rig is the resolved one, lamp for lamp — the GPU shades from THESE numbers, so a

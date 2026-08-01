@@ -1,6 +1,7 @@
-# Handoff de integração — `line/Vector`, as GUIAS e a RÉGUA (W6.2)
+# Handoff de integração — `line/Vector`: as GUIAS e a RÉGUA (W6.2) + o MIRROR (W6.3)
 
-> **2026-08-01.** Fecha o **único item `G`** da tabela do plano 25 §9. Oito commits sobre
+> **2026-08-01.** Fecha o **único item `G`** da tabela do plano 25 §9 (W6.2) e o **mirror
+> vivo** (W6.3). Nove commits sobre
 > `3197c5c9e` (o `main` de 2026-08-01, já com a integração anterior desta linha).
 >
 > ⚠️ **A linha NÃO integra e NÃO pusha.** Este documento existe para o agente integrador, sob
@@ -20,6 +21,7 @@ o gesto. Mais a UI (duas linhas na seção Snap) e o arquivo.
 | `7fa42c1d9` | A cena de smoke `=45` e o plano 25 §9 documentado |
 | `0ede804b7` | ⚠️ **O 1º fix de auditoria** — a régua vive com a ferramenta Vector, por UMA porta (§4.4) |
 | `df9a58bb3` | ⚠️ **O FIX do 1º smoke** — o movimento estava ligado no handler que não entrega movimento (§8.3) |
+| `<mirror>` | **O MIRROR** (W6.3): a simetria VIVA — `PathEffect::Mirror`, `MAX_FX_KINDS` 21→22, o split de `paint.rs` |
 
 ---
 
@@ -32,6 +34,7 @@ o gesto. Mais a UI (duas linhas na seção Snap) e o arquivo.
 | registro do `ph2d-ecs` | **intocado** | nenhum componente novo — uma guia **não** é entidade |
 | ADR | **nenhum** | a linha fica fora de toda disputa de número desta janela |
 | contrato congelado | **intacto** | rodado, não auto-relatado: `Tool=12`/`RasterEditTool=5`/`CanvasPaintTool=1`/`PanelEvent=4` verdes |
+| `MAX_FX_KINDS` (W6.3) | **21 → 22** | o teto do menu Add; **conferir contra o `main`** — se outra linha acrescentou um efeito, o valor se CONTA |
 
 ⚠️ **A armadilha que a `line/FLIP` documentou em 2026-08-01 vale aqui e é MUDA:** se outra linha
 escrever o **mesmo** literal 49 no `project.rs`, o git **não conflita** — os dois lados escreveram
@@ -84,7 +87,14 @@ ganharam as inversas `screen_to_world_x`/`_y`.
    ⚠️ **`HeroScreen::rulers_live()` é a PORTA ÚNICA** (`view.rulers_visible` **e** a ferramenta
    vetorial em mãos), perguntada pelo paint e pelo gesto — a segunda metade é uma correção
    achada auditando a wave: sem ela a faixa comeria o pen-down do **Painter** nos 20 px de cima.
-5. **Os dois gates de fiação de snap** (`the_snap_toggles_are_not_crossed` e
+5. **`PathEffect` ganhou um variant no FIM** (`Mirror`) — postcard é posicional, então a ordem
+   é a afirmação. Se outra linha também apendou um efeito, os dois vão para o fim e o
+   `KINDS`/`from_kind`/`kind_index`/`label` de cada um sobe de índice: **conferir o gate
+   `every_effect_kind_is_reachable_from_the_add_table`**, que fecha a volta.
+6. **`lib.rs` da `ph2d-vec-scene` foi SPLIT** (`paint.rs`): `Rgba8`/`GradientStop`/`GradientPoint`/
+   `Paint` mudaram de arquivo com **re-export na raiz** ⇒ nenhum caminho muda, mas um merge que
+   traga edições àqueles tipos vai querer o arquivo novo.
+7. **Os dois gates de fiação de snap** (`the_snap_toggles_are_not_crossed` e
    `each_pending_snap_toggle_lands_on_its_own_field`) foram **estendidos de 4 para 8 entradas**.
    Um merge que perdesse as novas deixaria o par novo livre para cruzar.
 

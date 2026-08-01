@@ -823,7 +823,7 @@ intacto**, contrato congelado **intacto**, **nenhum ADR**.
 
 **Smoke: `PH2D_BUILD_SMOKE=45`** (a cena imprime o que montou e o roteiro de 7 passos).
 
-**Aberto na W6** (a ordem da tabela §9): **mirror vivo** · **rótulo de distância** nos smart guides.
+**Aberto na W6** (a ordem da tabela §9): **rótulo de distância** nos smart guides.
 
 **Aberto nesta wave, nomeado com o preço:**
 - **A guia INCLINADA não existe**, e é decisão. Uma reta oblíqua é uma restrição 1-D que **não se
@@ -839,8 +839,94 @@ intacto**, contrato congelado **intacto**, **nenhum ADR**.
 - **O consumo é do Vector**: quem encaixa nas guias é o motor de snap vetorial. Levá-las ao gizmo
   de sprite dos outros modos é wave própria — o gesto já é tool-agnóstico, o ímã ainda não.
 
-**Aberto na W6** (a ordem da tabela §9): **mirror vivo** ·
-**rótulo de distância** nos smart guides.
+### ✅ W6.3 — ENTREGUE (2026-08-01): o MIRROR, a simetria VIVA
+
+A forma ganha um eixo e o outro lado passa a ser **derivado**: editar um nó move os dois. O repo
+só tinha **Flip H/V destrutivo**, que vira a forma uma vez e esquece; isto é um `PathEffect`
+(ADR-0132), então o reflexo re-cozinha a cada frame e segue a caneta, o arrasto de âncora e o
+Width Tool **de graça**.
+
+**Por que não é um parâmetro do Repeater — e é um FATO, não gosto.** O Repeater compõe rotações e
+translações, cujas matrizes têm **determinante +1** sempre; uma reflexão tem **determinante −1**.
+Nenhuma combinação de `spin`/`orbit`/`move` a alcança — os dois geram *grupos diferentes*. O gate
+`a_reflection_is_out_of_the_repeaters_reach` afirma-o pela **área com sinal**, que é o
+determinante a fazer o seu trabalho.
+
+**O neutro é `Axes = 0`, e é o Blender.** A pilha tem uma lei **executável**
+(`every_kind_is_born_neutral`) e um espelho não tem um *amount* contínuo que se possa zerar —
+reflectir *um pouco* não quer dizer nada. O que ele tem é **quantos eixos** espelha, e o
+modificador Mirror do Blender é exactamente isso: nenhuma caixinha marcada é um no-op. ⚠️ Não é
+uma segunda porta para o `FxEntry.enabled` — o Repeater tem a mesma forma (`copies = 1` também é
+geometricamente igual a desarmar a entrada), e o `is_neutral` existe para nomear a versão em
+espaço-de-parâmetros.
+
+**O eixo é ângulo + deslize, sem segunda geometria.** O deslize é percentagem do **SUPORTE da
+caixa** na direcção da normal (`|n.x|·hx + |n.y|·hy`), então `100` põe a linha **tangente à
+caixa em QUALQUER ângulo** — a propriedade *"um número redondo dá um encaixe exacto"* do
+*Relative Offset* do Array do Blender, que o cabeçalho do Repeater já defende. Uma referência
+isotrópica (`ref_size`) só acertaria numa forma quadrada.
+
+⚠️ **E o default é `100`, não `0` — um defeito de PRODUTO que eu ia shipar.** Com o eixo no
+CENTRO da caixa o reflexo cai **em cima** da forma (mesma caixa, virada): ligar o espelho quase
+não muda nada, e um meio-perfil espelha sobre o meio de si mesmo. Com a linha tangente, subir
+`Axes` a 1 **duplica a forma ao lado** e o meio-perfil **funde** no vaso — o caso de uso inteiro,
+sem tocar num slider. ⚠️ A decisão não tinha gate nenhum, porque *cada gate declarava o seu
+próprio deslize*: **um default só é testado por um teste que não o menciona**
+(`the_defaults_alone_turn_a_half_profile_into_a_fused_vase`).
+
+**O winding é REPOSTO.** Uma reflexão inverte o sentido de percurso, e sob `NonZero` dois
+contornos sobrepostos de sentidos opostos **cancelam-se** — o artista veria um *buraco* onde
+espelhou. Cada contorno reflectido é invertido de volta, e como a inversão é **uniforme** o
+buraco de um compound continua buraco.
+
+**A FUSÃO faz do meio-perfil um vaso.** Um contorno ABERTO com as duas pontas no eixo funde-se
+num **único contorno FECHADO** (o *Fuse paths* do LPE do Inkscape / o *Merge* do Blender), com as
+alças da costura reflectidas. ⚠️ **A costura fica lisa quando a alça é PERPENDICULAR ao eixo** —
+a mesma regra do Blender, documentada em vez de descoberta; uma alça oblíqua dá um bico simétrico,
+que às vezes é o que se quer. Onde não se aplica (contorno fechado, pontas fora do eixo) degrada
+para o espelho simples, **visivelmente**.
+
+**`Axes = 2`** é o mesmo espelho aplicado duas vezes (o segundo eixo é a perpendicular pelo mesmo
+ponto) ⇒ 4 dobras. É deliberadamente **equivalente a empilhar dois Mirror**, e a equivalência é
+uma virtude: há **uma** lei, e a contagem é a forma barata de a pedir sem gastar um dos quatro
+slots da pilha.
+
+**Porta única nova:** `reverse_contour` saiu do `reverse_path` (o botão **Reverse** da seção
+Vertex) para o `compound.rs`, porque *"como se inverte um contorno?"* ganhou um segundo consumidor.
+
+⚠️ **`MAX_FX_KINDS` 21→22, e o gate do teto tinha um buraco que esta wave tornou load-bearing:**
+o que mora na `ph2d-vec-scene` compara contra uma **cópia literal** do número (a crate não alcança
+a `editor-core` — seria ciclo), então ele pega o motor a **crescer** além do painel e é **cego ao
+painel a encolher** abaixo do motor. Medido: baixar `MAX_FX_KINDS` deixa aquela suíte **inteira
+verde** com o último tipo inalcançável no menu Add. O gate novo mora na **shell**, que vê os dois
+lados, e lê as duas constantes **ao vivo**.
+
+**Nenhum schema** (`PROJECT_SCHEMA` 49 e `VEC_SCENE_SCHEMA` 13 intactos — apender um variant não
+bumpa, o precedente desta própria linha na wave do Falloff) · **nenhum ADR** · **zero `Cargo.toml`**
+· contrato congelado intacto.
+
+**LOC:** o `lib.rs` cruzou 700 com a declaração do módulo novo ⇒ **split por ASSUNTO** em
+`paint.rs` (`Rgba8`, os gradientes e o `Paint` — *com que tinta a forma aparece*, contra *o que a
+forma É*, que fica no `lib.rs`), com re-export na raiz ⇒ **nenhum caminho do workspace muda**.
+702 → 581.
+
+⚠️ **E um vermelho LATENTE da W6.2 fechou de carona:** um `→` unicode num `assert` do
+`ruler_tests.rs` disparava o `no_tofu_glyphs` — que mora em `tests/` e **a bateria daquela wave
+não o alcançou**. É a mesma causa estrutural que a `line/physics` e a `line/motion-value` já
+documentaram: *um gate em `tests/` não é alcançado por uma corrida filtrada*.
+
+**16 gates novos, 9 mutações, 9 sangram.** **Smoke: `PH2D_BUILD_SMOKE=46`** (quatro sujeitos — o
+vaso que funde, a sobreposição que prova o winding, a roseta de 4 dobras e o **controle** com o
+espelho neutro; a cena **mede a própria geometria cozida** e imprime os números).
+
+**Aberto nesta wave, nomeado:**
+- **"Discard original"** (o 3º modo do Inkscape — só o reflexo) **não foi construído**: como LPE
+  ele é um *flip vivo*, e o repo já tem o Flip H/V destrutivo. Um parâmetro custa uma row para
+  sempre; se o smoke o pedir, é uma linha.
+- **A fusão aplica-se ao PRIMEIRO eixo**; com `Axes = 2` o segundo espelha o que saiu do primeiro
+  (que é o que compor significa) — não há uma segunda fusão a decidir.
+
+**Aberto na W6** (a ordem da tabela §9): **rótulo de distância** nos smart guides.
 
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 

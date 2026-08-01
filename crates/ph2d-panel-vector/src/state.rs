@@ -16,6 +16,10 @@ use ph2d_vec_scene::ShapeKind;
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 
+#[path = "state_text.rs"]
+mod text;
+pub use text::*;
+
 /// **As CONTAGENS da seleção** — quantos caminhos, quantos nós. Irmão pelo teto de 600 LOC, e o
 /// corte é por RESPONSABILIDADE: o resto deste arquivo publica *o que a seleção É*; ali mora
 /// *quantos há*, a pergunta que decide se um gesto de CONJUNTO é sequer oferecido.
@@ -32,6 +36,12 @@ pub(crate) use cut::cut_line_exists;
 pub use cut::set_cut_line_exists;
 
 thread_local! {
+    static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };
+    static CURRENT_TEXT_FONT: RefCell<Option<String>> = const { RefCell::new(None) };
+    static CURRENT_TEXT_ALIGN: Cell<Option<TextAlign>> = const { Cell::new(None) };
+    static CURRENT_TEXT_AXES: RefCell<Vec<TextAxisSlot>> = const { RefCell::new(Vec::new()) };
+    static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).
     static CURRENT_SNAPSHOT: RefCell<Option<VectorStyleSnapshot>> = const { RefCell::new(None) };
@@ -70,7 +80,6 @@ thread_local! {
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
-    static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
     /// A forma cujos PARÂMETROS o painel desenha: a da forma VIVA selecionada, quando há
     /// uma (os campos então a editam — Live Shape). `None` = sem forma viva na seleção;
     /// o foco vira a forma ATIVA do catálogo (o default do próximo traço).
@@ -85,16 +94,12 @@ thread_local! {
     /// Texto da sessão de edição ativa (modo Text). `None` = sem sessão. Só
     /// LEITURA no painel (display); a digitação segue no canvas (A2). Publicado
     /// pela shell a cada frame.
-    static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };
     /// Rótulo da família de fonte corrente do texto (embutida ou do sistema),
     /// publicado pela shell. Exibido entre os botões `<`/`>` do seletor de fonte.
-    static CURRENT_TEXT_FONT: RefCell<Option<String>> = const { RefCell::new(None) };
     /// Alinhamento horizontal corrente do texto (L/C/R), publicado pela shell no modo
     /// Text — destaca o botão ativo na seção Paragraph. `None` fora do modo Text.
-    static CURRENT_TEXT_ALIGN: Cell<Option<TextAlign>> = const { Cell::new(None) };
     /// Eixos de variação da fonte corrente (sem `wght`), publicados pela shell — a
     /// seção Axes desenha um campo por eixo. Vazio fora do modo Text / fonte estática.
-    static CURRENT_TEXT_AXES: RefCell<Vec<TextAxisSlot>> = const { RefCell::new(Vec::new()) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -113,7 +118,6 @@ thread_local! {
     static FONT_PREVIEWS: RefCell<Vec<FontPreview>> = const { RefCell::new(Vec::new()) };
     /// One-shot: the popover sets this when it has no previews yet; the shell reads
     /// it (`take_want_font_previews`), builds + publishes, and it stays quiet after.
-    static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
     /// Chip rect stashed by the body paint when the font dropdown is open, taken by
     /// the deferred popover pass so the list paints ON TOP of every section.
     static PENDING_FONT_DD: Cell<Option<Rect>> = const { Cell::new(None) };
@@ -370,15 +374,6 @@ pub use filters::{
     set_current_filter_can_add, set_current_filters, set_filter_blend_names, set_filter_kinds,
 };
 
-/// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
-pub fn set_current_text_visible(v: bool) {
-    CURRENT_TEXT_VISIBLE.with(|c| c.set(v));
-}
-
-pub(crate) fn text_visible() -> bool {
-    CURRENT_TEXT_VISIBLE.with(Cell::get)
-}
-
 /// Publica a forma em FOCO: `Some(kind)` = há uma forma VIVA selecionada (os campos
 /// dela aparecem e a editam, mesmo na ferramenta Select); `None` = os campos são os da
 /// forma ativa do catálogo. A shell resolve o alvo e semeia os campos.
@@ -400,46 +395,9 @@ pub(crate) fn set_current_shape_group(g: Option<ShapeGroup>) {
     CURRENT_SHAPE_GROUP.with(|c| c.set(g));
 }
 
-/// Publica a semente ONE-SHOT dos sliders de texto (só quando o alvo muda).
-pub fn set_current_text_seed(seed: Option<[f64; 4]>) {
-    TEXT_SEED.with(|c| c.set(seed));
-}
-
 /// O paint consome a semente (uma vez) e escreve no store.
 pub(crate) fn take_text_seed() -> Option<[f64; 4]> {
     TEXT_SEED.with(|c| c.take())
-}
-
-/// Publica o texto da sessão de edição ativa (`None` = sem sessão de texto).
-/// A shell chama a cada frame; o painel só o exibe (read-only na A2).
-pub fn set_current_text(text: Option<String>) {
-    CURRENT_TEXT.with(|c| *c.borrow_mut() = text);
-}
-
-/// O texto da sessão ativa este frame (`None` ⇒ nada a exibir).
-pub(crate) fn current_text() -> Option<String> {
-    CURRENT_TEXT.with(|c| c.borrow().clone())
-}
-
-/// Publica o rótulo da família de fonte corrente do texto (a shell resolve o nome,
-/// inclusive o da embutida). `None` fora do modo Text.
-pub fn set_current_text_font(name: Option<String>) {
-    CURRENT_TEXT_FONT.with(|c| *c.borrow_mut() = name);
-}
-
-/// O rótulo da família de fonte corrente este frame (para o seletor `<` nome `>`).
-pub(crate) fn current_text_font() -> Option<String> {
-    CURRENT_TEXT_FONT.with(|c| c.borrow().clone())
-}
-
-/// Publica o alinhamento horizontal corrente do texto (`None` fora do modo Text).
-pub fn set_current_text_align(align: Option<TextAlign>) {
-    CURRENT_TEXT_ALIGN.with(|c| c.set(align));
-}
-
-/// O alinhamento corrente este frame (destaca o botão L/C/R ativo). `None` = default.
-pub(crate) fn current_text_align() -> Option<TextAlign> {
-    CURRENT_TEXT_ALIGN.with(Cell::get)
 }
 
 /// Um eixo de variação da fonte corrente exposto como campo numérico na seção Axes do
@@ -452,12 +410,6 @@ pub struct TextAxisSlot {
     pub min: f64,
     pub max: f64,
     pub value: f64,
-}
-
-/// Publica os eixos de variação da fonte corrente (sem `wght`), na ordem em que a
-/// shell os aplica. Vazio fora do modo Text ou para fontes não-variáveis.
-pub fn set_current_text_axes(axes: Vec<TextAxisSlot>) {
-    CURRENT_TEXT_AXES.with(|c| *c.borrow_mut() = axes);
 }
 
 /// Roda `f` com os eixos publicados (sem clonar o `Vec`).
@@ -510,11 +462,6 @@ pub struct FontPreview {
     pub advance_em: f64,
 }
 
-/// Publica a lista de previews do dropdown de fonte (a shell constrói sob demanda).
-pub fn set_current_text_font_previews(previews: Vec<FontPreview>) {
-    FONT_PREVIEWS.with(|c| *c.borrow_mut() = previews);
-}
-
 /// Roda `f` com as previews publicadas (sem clonar o `Vec`/`BezPath`).
 pub(crate) fn with_font_previews<R>(f: impl FnOnce(&[FontPreview]) -> R) -> R {
     FONT_PREVIEWS.with(|c| f(&c.borrow()))
@@ -523,11 +470,6 @@ pub(crate) fn with_font_previews<R>(f: impl FnOnce(&[FontPreview]) -> R) -> R {
 /// O popover pede à shell que construa as previews (quando ainda não há nenhuma).
 pub(crate) fn request_font_previews() {
     WANT_FONT_PREVIEWS.with(|c| c.set(true));
-}
-
-/// A shell drena o pedido (one-shot): `true` ⇒ construa + publique as previews.
-pub fn take_want_font_previews() -> bool {
-    WANT_FONT_PREVIEWS.with(|c| c.replace(false))
 }
 
 /// Índice da família cujo id de opção do dropdown é `id` (`None` se não for uma

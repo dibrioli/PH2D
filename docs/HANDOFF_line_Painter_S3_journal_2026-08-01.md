@@ -10,7 +10,10 @@
 >
 > ✅ **DEGRAUS 2 E 3 ESTÃO CONSTRUÍDOS E GATEADOS** (doc 28 §5.59). Eles não compram um milissegundo:
 > é o desenho deles. O que sobra é o **degrau 4**, e ele **não é mecânico** — a construção achou três
-> coisas que o §5.58.2 não previa, e as três estão medidas na §5.59. **Comece pela §4 deste doc.**
+> coisas que o §5.58.2 não previa (§5.59), e a tentativa de construí-lo achou **outras três**
+> (**§5.60**), que exigem um **terceiro estado no `ModelSnapshot`**. **Comece pela §4, e leia a §5.60
+> do doc 28 INTEIRA antes de tocar em código** — a ordem em 7 passos que este handoff trazia até
+> 01/08 está obsoleta e a §5 já traz a corrigida.
 
 ---
 
@@ -39,7 +42,7 @@ bancada.
 | 1 · identificar o 4º dono | ✅ | §5.58.1 — são **três** (tool · `stroke_undo` · `cursor`) |
 | **2 · `split_from_journal`** | ✅ **construído, 5 gates, 7 mutações, 7 sangram** | `undo_delta_journal.rs` (filho novo) · `journal_delta_tests.rs` |
 | **3 · a materialização parte do VIVO** | ✅ **construído, net + mutação** | `PlaneDeltas::side` ganhou duas bases |
-| 4 · a elisão + a promoção | ⛔ **redesenhado** — ver §4 | — |
+| 4 · a elisão + a promoção | ⛔ **redesenhado 2×** — ver §4 + doc 28 **§5.60** | — |
 
 **Duas correções ao plano, as duas achadas por gate vermelho:**
 
@@ -148,36 +151,55 @@ como o `side` já faz com um cursor incoerente). Não há terceira saída — um
 | INCOMPLETO | **0** |
 
 1. **Nenhum passo da suíte é indescritível** ⇒ a política de *recusar no commit* é barata de verdade.
-2. ⚠️ **A MAIORIA não escreve relevo, e hoje o guard os RECUSA.** O `speaks_for` exige
-   `layer == Some(l)`, então um passo que não tocou relevo cai no fallback — que, com o `before`
-   elidido, é o caminho que perde a edição. *"Este passo não escreveu relevo"* é uma descrição boa e o
-   journal já a tem: **o guard tem de aceitar `layer.is_none()` e responder `Unchanged` em toda
-   chave.** Sem isso a elisão quebra em **467 dos 774** passos.
+2. ⚠️ **A MAIORIA não escreve relevo, e hoje o guard os RECUSA** (`speaks_for` exige
+   `layer == Some(l)`) — mas ⛔ **aceitar `layer.is_none()` como *"nada mudou"* é INVÁLIDO, e a §5.60
+   mede por quê:** há DUAS escritas de produção que trocam o plano inteiro **sem passar por porta de
+   captura** (o eraser em `impasto.rs:475`, o reset do warp em `warp/relief.rs:200`), então journal
+   silencioso **não** implica relevo intacto. Ver a ordem corrigida abaixo.
 3. O `absorb` ganha a metade dele de graça: os journals estão **intactos** quando ele roda (o
    `begin_undo_step` só os zera *depois* dele), então *"escreveram relevo no intervalo?"* é
    `relief journals vazios?`.
 
 ---
 
-## §5 — A ORDEM do degrau 4, revisada
+## §5 — A ORDEM do degrau 4 — ⛔ **RE-DESENHADA PELA TERCEIRA VEZ (§5.60)**
+
+⚠️ **A ordem em 7 passos que esta seção trazia está OBSOLETA.** Indo construir o passo 1, três
+medições — **nenhuma delas um relógio** — derrubaram o desenho. Leia a **§5.60 do doc 28** inteira
+antes de tocar em código; o resumo executável:
+
+| # | achado | consequência |
+|---|---|---|
+| 1 | o guard **não pode inferir** *"nada mudou"* de *"nada capturado"* — 2 escritas wholesale furam as portas | a cura é **testemunha**, não lista: as duas **substituem o `Arc`** ⇒ `Arc::ptr_eq` as vê em `O(camadas)` |
+| 2 | **`OnlyAfter` guarda um `Arc` FORTE do plano VIVO** (`undo_delta_journal.rs:234`) | elidir o `before` **não remove um dono, TROCA o dono de lugar** ⇒ a rota do journal vira **pré-requisito**, não otimização |
+| 3 | **`OnlyAfter` SIGNIFICA *"não existia antes"*** ⇒ desfazer **remove a chave** | com o `before` elidido, **o undo apagaria o relevo**. É o §4 uma camada abaixo: a elisão confunde *não existia* com *não te contei* |
+
+⇒ **O degrau 4 exige um TERCEIRO estado no `ModelSnapshot`** (presente · ausente · **elidido, pergunte
+ao journal**), não um ajuste no guard. O candidato natural é o **`Weak`**, e ele fecha os três de uma
+vez: é distinguível de ausente (a chave existe) · **não** força cópia (§5.12/§5.15 mediram `make_mut`
+com só um `Weak` vivo em **0,0000 ms**, e o `fork_par` pergunta `strong_count > 1` desde a §5.15) · e
+**falha ao dar upgrade exatamente quando o plano foi substituído por inteiro**, que é a testemunha do
+achado 1, de graça e sem lista.
+
+**A ordem corrigida:**
 
 | # | o quê | por quê |
 |---|---|---|
-| 1 | o guard aceita **"nada escrito"** (`layer.is_none()` ⇒ `Unchanged` em toda chave) | 467 dos 774 passos; **gate próprio** |
-| 2 | `ModelSnapshot::without_relief` + os dois sítios de elisão (`stroke_undo` no pen-down · o `cursor`) | é a wave |
-| 3 | o `absorb` pergunta o relevo ao **journal** e, no re-split, **adota o delta de relevo da entrada velha** | o escorrido é do CANVAS; o relevo do topo não mudou — **conferido**, não assumido |
-| 4 | a mesma cirurgia na extensão de run coalescido | mesmo chamador de `materialize` |
-| 5 | o commit **RECUSA** quando o guard falha sobre um `before` elidido | não há fallback a que cair |
-| 6 | o journal sai do `cfg(debug)` | **junto**, nunca antes (§5.58.1) — e o `expect(dead_code)` do `ReliefSource` vira erro e obriga a removê-lo |
-| 7 | os gates do §6 | a sonda de donos vira gate |
+| 1 | o `ModelSnapshot` ganha o 3º estado do relevo (`Weak`) | **gate:** a mutação que o colapsa em *ausente* tem de fazer o undo **apagar relevo** |
+| 2 | `from_journal` aprende o estado: elidido + journal ⇒ `Patch`; elidido + **upgrade falhou** ⇒ recusa | quem recusa no commit precisa ter o que instalar (§4) |
+| 3 | as duas elisões (o `cursor` — que o degrau 3 já deixou sem leitor — e o `before`) | é a wave |
+| 4 | o `absorb` e a extensão de run coalescido | mesmo chamador de `materialize`, adjacências diferentes (§0.5) |
+| 5 | o journal sai do `cfg(debug)` | **junto**, nunca antes (§5.58.1); o `expect(dead_code)` do `ReliefSource` vira erro e sai |
+| 6 | os gates do §6 | a sonda de donos vira gate (tem de ir a **1**) |
+| 7 | **re-medir com a máquina calma** | nenhum número desta sessão serve |
 
-⚠️ **Tudo-ou-nada segue valendo** (§5.14): `heights/covers/mats` estão a **3** donos dentro do gesto
-(medido hoje), e só as duas elisões juntas levam a **1**.
-
-⚠️ **O prêmio segue lá, e o número é do handoff, não desta sessão:** o `what_the_two_halves` mediu o
-fold em **12,33 ms a 4096²** contra os 11,92 do §5.58 — mesma ordem, mas com `load average 22`, e
-**nenhum relógio desta máquina vale nada acima de ~5** (§5.49). Re-meça com a máquina calma antes de
-citar qualquer ganho.
+⚠️ **A tabela de relógio da sessão de 01/08 NÃO decide nada** — ela saiu incoerente (ablações que só
+podem tirar trabalho medindo *mais*: 23,35 → 27,23 → 33,25 ms a 4096²) com `load average` 4-8. O que
+decide é **forma e contagem**: `heights/covers/mats` a **3** donos dentro do gesto, `2` com o `before`
+elidido, e **`3` de novo depois do commit** — a entrada assumiu a posse. Sondas:
+`what_each_owner_of_the_relief_costs_at_pen_up` (release) e
+`the_journal_route_is_what_makes_the_elision_worth_anything` (**debug** — o journal é `cfg(debug)`, e a
+resposta é uma contagem, que máquina carregada não distorce).
 
 ## §6 — Os gates que a wave deve deixar (red-first, com mutação)
 

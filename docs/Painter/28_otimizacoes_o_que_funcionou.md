@@ -5714,3 +5714,63 @@ Três leituras, e a segunda é a que muda o desenho:
 §5.58 — mesma ordem, e a máquina estava com `load average 22`, então **não é um A/B limpo** (§5.49). O
 censo de donos, que não é relógio, confirma o resto: `heights/covers/mats` a **3** dentro do gesto, e só
 as duas elisões juntas levam a **1**.
+
+> ⚠️ **CORREÇÃO (§5.60): a última frase está ERRADA.** As duas elisões juntas levam a 1 **apenas se a
+> rota do journal produzir `Patch`** — com o `before` elidido e a rota recusando, o `split` cai em
+> `OnlyAfter`, que guarda um `Arc` **forte do plano vivo**: o dono não sai, ele troca de lugar. Medido
+> na sonda `what_each_owner_of_the_relief_costs_at_pen_up`, e o mecanismo está no
+> `undo_delta_journal.rs:234`.
+
+### §5.60 — E O DEGRAU 4 FOI RE-DESENHADO PELA TERCEIRA VEZ: elidir o `before` NÃO remove um dono, TROCA o dono de lugar — e "elidido" é indistinguível de "não existia"
+
+O §5.59 fechou com a frase *"só as duas elisões juntas levam a 1"*, e ela está **ERRADA**. Indo
+construir o passo 1 da ordem revisada, três medições — nenhuma delas um relógio — derrubaram o desenho
+outra vez. As três ficam escritas porque **cada uma sozinha faria o degrau 4 perder relevo em silêncio**,
+que é o único modo de falha que este módulo não aceita.
+
+**(1) O guard não pode inferir "nada mudou" de "nada foi capturado".** O passo 1 dizia: *o guard aceita
+`layer.is_none()` e responde `Unchanged` em toda chave* (467 dos 774 passos do censo). A premissa é que
+**toda** escrita de relevo passa por uma porta que captura — e ela é uma **ENUMERAÇÃO**, que apodreceu:
+o `grep` acha DUAS escritas de produção que substituem o plano inteiro sem passar por porta nenhuma —
+o **eraser** (`impasto.rs:475`, `heights.insert(active, Arc::new(field))`) e o **reset do warp**
+(`warp/relief.rs:200`, `heights.insert(layer, pre_h)`). Um passo que só faça um dos dois deixa os
+journals **silenciosos** com o relevo trocado por inteiro. *A cura não é listar os dois: é uma
+TESTEMUNHA* — e ela existe de graça, porque os dois **substituem o `Arc`**, então `Arc::ptr_eq` os
+detecta em `O(camadas)`. O que a torna inaplicável hoje é o (2).
+
+**(2) `OnlyAfter` segura um `Arc` FORTE do plano VIVO.** Medido pela sonda nova
+(`what_each_owner_of_the_relief_costs_at_pen_up`), a coluna que decide **não é o relógio, é a de
+DONOS**: a configuração *"sem o relevo do BEFORE"* segue com **3 donos** — ela não removeu dono nenhum.
+O mecanismo está no `undo_delta_journal.rs:234`: com o mapa `before` vazio, **toda** chave cai em
+`(None, Some(a)) => StoredEntry::OnlyAfter(Arc::clone(a))`. Antes o fork copiava porque o `before`
+segurava o plano ANTIGO; depois copiaria porque a ENTRADA segura o de agora. ⇒ **A rota do journal
+deixa de ser otimização e passa a ser PRÉ-REQUISITO** da elisão: só o `Patch` dela extrai uma janela em
+`Vec` e não segura `Arc` nenhum (o ramo `Whole` da mesma rota **também** clona o vivo, então o prêmio é
+condicional à janela ser pequena — o caso normal de um traço).
+
+**(3) E o grave: `OnlyAfter` SIGNIFICA "este plano não existia antes".** Desfazer uma entrada assim
+**REMOVE a chave**. Com o `before` elidido isso deixa de ser verdade e vira o oposto do que aconteceu:
+*o undo apagaria o relevo anterior*. É a doença do §5.59.3 uma camada abaixo — **a elisão faz o motor
+confundir *"não existia"* com *"eu não te contei"***. ⇒ O degrau 4 exige um **TERCEIRO estado** no
+`ModelSnapshot` (presente · ausente · **elidido, pergunte ao journal**), e não um ajuste no guard. O
+candidato natural é o **`Weak`**: ele é distinguível de ausente (a chave existe), **não** força cópia
+(§5.12/§5.15 mediram `make_mut` com só um `Weak` vivo em 0,0000 ms, e o `fork_par` pergunta
+`strong_count > 1` desde a §5.15), e **falha ao dar upgrade exatamente quando o plano foi substituído
+por inteiro** — que é a testemunha que o (1) pediu, de graça e sem lista.
+
+⚠️ **A tabela de relógio desta sessão NÃO decide nada e não é citada como ganho:** ela saiu incoerente
+(ablações que só podem tirar trabalho medindo *mais* — 23,35 → 27,23 → 33,25 ms a 4096²) com a máquina
+em `load average` 4-8. O que decide aqui é forma e contagem, e é só isso que está escrito acima.
+
+**A ordem revisada do degrau 4, agora com o desenho corrigido:**
+
+1. o `ModelSnapshot` ganha o terceiro estado do relevo (`Weak`), com gate provando que ele é
+   **distinguível de ausente** — a mutação que o colapsa em ausente tem de fazer o undo apagar relevo;
+2. `from_journal` aprende o estado: elidido + journal ⇒ `Patch`; elidido + upgrade FALHOU (substituição
+   wholesale) ⇒ **recusa**, e quem recusa no commit tem de ter o que instalar (o §5.59.3);
+3. só então as duas elisões (o `cursor` — que o degrau 3 já deixou sem leitor — e o `before`);
+4. o journal sai de `cfg(debug)` **junto** com elas, nunca antes (§5.58.1), e o `expect(dead_code)` do
+   `ReliefSource` vira erro e sai;
+5. os gates: a sonda de donos vira gate (tem de ir a **1**), o comportamental *pinte · desfaça · refaça
+   — a tinta **e o relevo** voltam iguais*, e a razão do fold;
+6. re-medir com a máquina calma (`load average` < 5), porque nenhum número desta sessão serve.

@@ -41,6 +41,7 @@ struct MeshGpu {
 /// O renderizador da malha.
 pub struct MeshRenderer {
     pipeline: wgpu::RenderPipeline,
+    gbuffer_pipeline: wgpu::RenderPipeline,
     uniform: wgpu::Buffer,
     rig_uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
@@ -55,6 +56,14 @@ pub struct MeshRenderer {
 impl MeshRenderer {
     /// O formato do depth-buffer da cena 3D.
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
+    /// O formato do **G-buffer** da doação: `xyz` = normal no espaço do rig, `w` = cobertura.
+    ///
+    /// ⚠️ Ponto flutuante, e não um formato normalizado: as componentes de uma normal vivem em
+    /// `[-1, 1]`, e um unorm exigiria codificar `n * 0.5 + 0.5` de um lado e decodificar do outro —
+    /// duas metades que precisam concordar, num canal onde a discordância é uma luz levemente torta que
+    /// ninguém consegue nomear.
+    pub const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     #[must_use]
     pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
@@ -147,61 +156,71 @@ impl MeshRenderer {
             attributes: attrs,
         };
 
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ph2d-mesh pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM)],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: target_format,
-                    // Opaco: a escultura é sólida, e um blend aqui só serviria
-                    // para esconder um erro de profundidade atrás de uma mistura.
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                // ⚠️ **Sem culling, de propósito.** Uma escultura em progresso é
-                // frequentemente uma casca aberta, e um OBJ de terceiro chega com
-                // winding misto; descartar a face de trás transformaria isso num
-                // buraco, que é indistinguível de geometria faltando. O shader
-                // vira a normal para o olho, então o verso acende como frente.
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: Self::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                // `Less` com limpeza em 1.0: profundidade 3D comum. (O Flip usa
-                // `Greater` porque a ordem dele é 2D por-traço, outra pergunta.)
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview_mask: None,
-            cache: None,
-        });
+        // Os dois pipelines diferem em DOIS campos — a entrada do fragment e o
+        // formato do alvo — e em nada mais. Uma segunda cópia do descritor seria
+        // uma segunda resposta a "como esta malha é rasterizada": o dia em que
+        // alguém trocasse o `cull_mode` num e não no outro, o G-buffer passaria a
+        // descrever uma silhueta que a tela não mostra.
+        let make = |label: &str, entry: &str, format: wgpu::TextureFormat| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM)],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some(entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        // Opaco: a escultura é sólida, e um blend aqui só serviria
+                        // para esconder um erro de profundidade atrás de uma mistura.
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    // ⚠️ **Sem culling, de propósito.** Uma escultura em progresso é
+                    // frequentemente uma casca aberta, e um OBJ de terceiro chega com
+                    // winding misto; descartar a face de trás transformaria isso num
+                    // buraco, que é indistinguível de geometria faltando. O shader
+                    // vira a normal para o olho, então o verso acende como frente.
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: Self::DEPTH_FORMAT,
+                    depth_write_enabled: true,
+                    // `Less` com limpeza em 1.0: profundidade 3D comum. (O Flip usa
+                    // `Greater` porque a ordem dele é 2D por-traço, outra pergunta.)
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let pipeline = make("ph2d-mesh pipeline", "fs_main", target_format);
+        let gbuffer_pipeline = make("ph2d-mesh gbuffer", "fs_gbuffer", Self::GBUFFER_FORMAT);
 
         Self {
             pipeline,
+            gbuffer_pipeline,
             uniform,
             rig_uniform,
             bind,
@@ -408,6 +427,78 @@ impl MeshRenderer {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.bind, &[]);
+        pass.set_vertex_buffer(0, g.positions.slice(..));
+        pass.set_vertex_buffer(1, g.normals.slice(..));
+        pass.set_index_buffer(g.indices.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..g.index_count, 0, 0..1);
+    }
+
+    /// **A DOAÇÃO, do lado de quem doa** — rasteriza a malha num G-buffer de normais.
+    ///
+    /// `xyz` de cada texel é a normal no espaço do RIG (a mesma que o barro usa para se acender —
+    /// porta única no shader, `canvas_normal`) e `w` é a **cobertura**: `1` onde há forma, `0` onde
+    /// não há.
+    ///
+    /// É isto que `docs/3D/05.2` chama de *"uma SEGUNDA FONTE DE NORMAL para o sistema que já
+    /// existe"*: o passe de luz da tinta deriva a normal de `∇h`; com este plano na mão ele pode
+    /// escolher a fonte **por pixel**, e é a cobertura que torna essa escolha possível.
+    ///
+    /// ⚠️ **Limpa o alvo, ao contrário do [`Self::render`]**, e a assimetria é o ponto: o passe de cor
+    /// preserva o que está embaixo (`LoadOp::Load`, a cena 2D), enquanto um G-buffer com resíduo do
+    /// frame anterior descreveria uma forma que saiu de quadro. Um plano de normais é uma MEDIÇÃO, e
+    /// uma medição velha é pior que medição nenhuma — a cobertura diria `1` onde não há forma.
+    ///
+    /// No-op sem geometria.
+    pub fn render_gbuffer(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        normal_view: &wgpu::TextureView,
+        camera: &Camera3d,
+        size: (u32, u32),
+    ) {
+        if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
+            return;
+        }
+        self.ensure_depth(device, size);
+        let aspect = size.0 as f32 / size.1 as f32;
+        queue.write_buffer(
+            &self.uniform,
+            0,
+            bytemuck::bytes_of(&CameraRaw {
+                view_proj: camera.view_proj(aspect).to_cols_array_2d(),
+                view: camera.view().to_cols_array_2d(),
+            }),
+        );
+
+        let g = self.mesh.as_ref().expect("has_mesh acabou de confirmar");
+        let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("ph2d-mesh gbuffer pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: normal_view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_vertex_buffer(0, g.positions.slice(..));
         pass.set_vertex_buffer(1, g.normals.slice(..));

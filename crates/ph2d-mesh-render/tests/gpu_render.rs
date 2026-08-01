@@ -526,3 +526,339 @@ fn the_pixels_the_ray_hits_are_the_pixels_the_mesh_painted() {
         (1.0 - share) * 100.0
     );
 }
+
+/// Decodifica meio-float. O G-buffer é `Rgba16Float` porque uma normal vive em
+/// `[-1, 1]` e um formato normalizado exigiria codificar de um lado e decodificar
+/// do outro; o preço é este decodificador de dez linhas no lado que MEDE.
+fn f16(bits: u16) -> f32 {
+    let sign = f32::from(bits >> 15);
+    let exp = i32::from((bits >> 10) & 0x1f);
+    let frac = f32::from(bits & 0x3ff);
+    let mag = if exp == 0 {
+        frac * 2f32.powi(-24)
+    } else {
+        (1.0 + frac / 1024.0) * 2f32.powi(exp - 15)
+    };
+    if sign > 0.0 { -mag } else { mag }
+}
+
+/// Rasteriza o G-buffer da doação e devolve `(normal, cobertura)` por texel.
+fn gbuffer(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mesh: &Mesh,
+    camera: &Camera3d,
+) -> Vec<([f32; 3], f32)> {
+    let mut renderer = MeshRenderer::new(device, FORMAT);
+    renderer.upload(device, queue, mesh);
+    let target = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("gbuffer"),
+        size: wgpu::Extent3d {
+            width: W,
+            height: H,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: MeshRenderer::GBUFFER_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    // ⚠️ Sem pré-passe de limpeza, de propósito: o `render_gbuffer` LIMPA o alvo
+    // ele mesmo, e é isso que faz a cobertura sair certa sem o chamador combinar
+    // nada. Se ele parar de limpar, este gate mede o lixo.
+    renderer.render_gbuffer(device, queue, &mut encoder, &view, camera, (W, H));
+
+    let bpr = (W * 8).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("readback"),
+        size: u64::from(bpr * H),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    encoder.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture: &target,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buffer,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(bpr),
+                rows_per_image: Some(H),
+            },
+        },
+        wgpu::Extent3d {
+            width: W,
+            height: H,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit([encoder.finish()]);
+    let slice = buffer.slice(..);
+    slice.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+    device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .expect("poll");
+    let mapped = slice.get_mapped_range();
+    let mut out = Vec::with_capacity((W * H) as usize);
+    for row in 0..H {
+        let s = (row * bpr) as usize;
+        for x in 0..W as usize {
+            let o = s + x * 8;
+            let c = |k: usize| {
+                f16(u16::from_le_bytes([
+                    mapped[o + k * 2],
+                    mapped[o + k * 2 + 1],
+                ]))
+            };
+            out.push(([c(0), c(1), c(2)], c(3)));
+        }
+    }
+    drop(mapped);
+    buffer.unmap();
+    out
+}
+
+/// **O G-buffer descreve a forma: unitário onde há malha, e nada onde não há.**
+///
+/// A cobertura é o que deixa o passe de luz da tinta escolher a fonte de normal
+/// **por pixel** — sem ela a doação seria por documento, e a forma iluminaria a
+/// tela inteira em vez da própria silhueta.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_gbuffer_covers_the_form_and_nothing_else() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    let g = gbuffer(&device, &queue, &mesh, &cam);
+
+    let covered = g.iter().filter(|(_, w)| *w > 0.5).count();
+    let frac = covered as f32 / (W * H) as f32;
+    println!("cobertura do G-buffer: {:.1}%", frac * 100.0);
+    // A mesma esfera enquadrada que o gate de silhueta mede na rota de COR.
+    assert!(
+        (0.20..0.45).contains(&frac),
+        "a silhueta cobre {frac:.3} da tela — o enquadramento ou a cobertura estão errados"
+    );
+    // Fora da forma o plano é ZERO, não lixo do frame anterior.
+    let (corner_n, corner_w) = g[0];
+    assert_eq!(corner_w, 0.0, "a quina não tem forma");
+    assert_eq!(corner_n, [0.0; 3], "e nem normal — o alvo foi limpo");
+    // Dentro, toda normal é unitária: é ela que vai virar `N·L`.
+    let mut worst = 0.0f32;
+    for (n, _) in g.iter().filter(|(_, w)| *w > 0.5) {
+        let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+        worst = worst.max((len - 1.0).abs());
+    }
+    println!("pior desvio de unitariedade: {worst:.5}");
+    assert!(worst < 0.02, "normais não-unitárias: {worst}");
+}
+
+/// **A normal doada está no espaço do RIG** — a mesma convenção da tinta.
+///
+/// Numa esfera vista de frente: o centro aponta para o olho, a metade esquerda tem
+/// `x < 0`, e — a metade que a conversão de espaço decide — a metade DE CIMA tem
+/// `y < 0`, porque o espaço do rig tem `y` para baixo. Doar a normal com o `y` da
+/// VISTA faria a forma iluminar a tinta pelo lado oposto ao que a própria forma
+/// aparece iluminada, no mesmo pixel.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_donated_normal_is_in_the_rigs_space() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let g = gbuffer(&device, &queue, &mesh, &camera_for(&mesh));
+    let at = |x: u32, y: u32| g[(y * W + x) as usize];
+
+    let (c, cw) = at(W / 2, H / 2);
+    assert!(cw > 0.5, "o centro está na esfera");
+    assert!(
+        c[2] > 0.9,
+        "o centro de uma esfera aponta para o olho: {c:?}"
+    );
+
+    let (l, _) = at(W / 2 - W / 5, H / 2);
+    let (r, _) = at(W / 2 + W / 5, H / 2);
+    let (t, _) = at(W / 2, H / 2 - H / 5);
+    let (b, _) = at(W / 2, H / 2 + H / 5);
+    println!(
+        "esq {:.2} dir {:.2} · alto {:.2} baixo {:.2}",
+        l[0], r[0], t[1], b[1]
+    );
+    assert!(l[0] < -0.2 && r[0] > 0.2, "o eixo x está espelhado");
+    assert!(
+        t[1] < -0.2 && b[1] > 0.2,
+        "o `y` doado está na convenção da VISTA, não na do rig — alto {:.2}, baixo {:.2}",
+        t[1],
+        b[1]
+    );
+}
+
+/// **A porta é ÚNICA: o barro se acende pela normal que o G-buffer doa.**
+///
+/// Este é o gate que torna a doação uma promessa em vez de uma coincidência. Ele
+/// não compara dois shaders: ele mede a normal que a malha DOA, aplica a LEI (a
+/// razão relativa do `ph2d-light` — difusa sobre a resposta plana, dobrada pelo
+/// piso ambiente) e exige que o barro na tela tenha sido pintado por ela.
+///
+/// ⚠️ O oráculo é a lei escrita em Rust, e isso é deliberado: um oráculo que
+/// chamasse o shader seria o shader concordando consigo mesmo. O que se afirma é
+/// que a normal doada e a normal que sombreia são a MESMA — se o `fs_gbuffer`
+/// ganhar uma segunda opinião sobre para onde a superfície aponta, isto sangra.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_clay_is_lit_by_the_very_normal_it_donates() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    let rig = LightRig::default();
+    let lit = render_with_rig(&device, &queue, &mesh, &cam, &rig);
+    let g = gbuffer(&device, &queue, &mesh, &cam);
+    let lamps = ph2d_light::resolve(&rig).expect("a principal nasce acesa");
+
+    // A LEI, em Rust: difusa / plana, clampada, dobrada pelo piso ambiente.
+    let ratio_of = |n: [f32; 3]| {
+        let (mut d, mut flat) = (0.0f32, 0.0f32);
+        for l in lamps.lamps() {
+            d += l.tint[0] * (n[0] * l.dir[0] + n[1] * l.dir[1] + n[2] * l.dir[2]).max(0.0);
+            flat += l.tint[0] * l.dir[2].max(0.0);
+        }
+        let flat = if flat <= 1.0e-4 { 1.0 } else { flat };
+        ph2d_light::AMBIENT + (1.0 - ph2d_light::AMBIENT) * (d / flat).clamp(0.0, 2.0)
+    };
+
+    // Amostras espalhadas pela silhueta, longe da borda (onde o realce especular e
+    // o serrilhado da rasterização dominam e a comparação mediria outra coisa).
+    let mut n_samples = 0usize;
+    let mut worst = 0.0f32;
+    for gy in 1..8u32 {
+        for gx in 1..8u32 {
+            let (x, y) = (W * gx / 8, H * gy / 8);
+            let (n, w) = g[(y * W + x) as usize];
+            if w < 0.5 || n[2] < 0.35 {
+                continue; // fora da forma, ou perto demais da silhueta
+            }
+            // ⚠️ E fora do REALCE, que esta lei não modela — de propósito, porque
+            // o assunto do gate é a NORMAL e não a óptica inteira. A exclusão não
+            // é um número escolhido: `pow(ndh, 24)` a 0,85 vale 0,020, que vezes
+            // o `CLAY_SHINE` de 0,35 dá 0,007 — uma ordem de grandeza abaixo da
+            // barra. (Medido antes de existir: os quatro únicos desvios acima de
+            // 0,03 estavam todos em `ndh > 0,91`, e o desvio acompanhava o realce
+            // termo a termo.)
+            let ndh = lamps
+                .lamps()
+                .iter()
+                .map(|l| n[0] * l.half[0] + n[1] * l.half[1] + n[2] * l.half[2])
+                .fold(0.0f32, f32::max);
+            if ndh > 0.85 {
+                continue;
+            }
+            // O canal VERDE do barro: `CLAY.g * m`, e o realce é fraco aqui dentro.
+            let drawn = f32::from(lit[((y * W + x) * 4 + 1) as usize]) / 255.0;
+            let want = 0.70 * ratio_of(n);
+            n_samples += 1;
+            worst = worst.max((drawn - want).abs());
+        }
+    }
+    println!("{n_samples} amostras, pior desvio lei-vs-tela {worst:.4}");
+    assert!(n_samples >= 12, "poucas amostras ({n_samples}) para valer");
+    // A barra admite a quantização de 8 bits do alvo e o resíduo do realce fora da
+    // zona excluída. O que ela NÃO admite é uma normal diferente.
+    assert!(
+        worst < 0.05,
+        "o barro não foi pintado pela normal que ele doa: desvio {worst:.4}"
+    );
+}
+
+/// A MESMA malha com o winding invertido — normais apontando para DENTRO.
+///
+/// É o caso que o `cull_mode: None` do pipeline existe para tolerar: uma casca
+/// aberta em progresso, ou um OBJ de terceiro que chegou com winding misto.
+fn inward(mesh: &Mesh) -> Mesh {
+    let faces = mesh
+        .faces()
+        .iter()
+        .map(|f| {
+            let v = f.verts();
+            if v.len() == 3 {
+                ph2d_mesh::Face::tri(v[2], v[1], v[0])
+            } else {
+                ph2d_mesh::Face::quad(v[3], v[2], v[1], v[0])
+            }
+        })
+        .collect();
+    Mesh::from_parts(mesh.positions().to_vec(), faces).expect("mesma geometria, outra ordem")
+}
+
+/// **Uma malha de normais invertidas acende como uma normal — e DOA como uma normal.**
+///
+/// O shader vira a normal para o olho antes de qualquer outra coisa, e sem isso o
+/// interior de uma peça aberta vira um buraco preto que o artista lê como
+/// geometria faltando. O pipeline não descarta a face de trás justamente para
+/// tolerar isso (`cull_mode: None`), então quem responde é o `canvas_normal`.
+///
+/// ⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU.** Tirar o flip do
+/// `fs_gbuffer` passava nos doze gates, e não por buraco: numa esfera FECHADA com
+/// teste de profundidade o verso nunca vence, então o flip é *semanticamente
+/// inerte* ali — a mutação era inválida, e a fixture é que não continha o
+/// fenômeno. Uma malha virada do avesso contém.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_mesh_turned_inside_out_lights_and_donates_like_one_that_is_not() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let out = shapes::uv_sphere(40, 56, 1.0);
+    let inn = inward(&out);
+    let cam = camera_for(&out);
+
+    // A COR: as duas telas têm de ser a mesma imagem.
+    let a = render(&device, &queue, &out, &cam);
+    let b = render(&device, &queue, &inn, &cam);
+    let worst_px = a
+        .iter()
+        .zip(&b)
+        .map(|(x, y)| i32::from(*x) - i32::from(*y))
+        .map(i32::abs)
+        .max()
+        .unwrap_or(0);
+    println!("pior diferença de pixel entre fora e dentro: {worst_px}");
+    assert!(
+        worst_px <= 2,
+        "a malha virada do avesso acendeu diferente ({worst_px} níveis)"
+    );
+
+    // E a DOAÇÃO: a normal doada tem de ser a mesma, não a negada.
+    let ga = gbuffer(&device, &queue, &out, &cam);
+    let gb = gbuffer(&device, &queue, &inn, &cam);
+    let mut worst_n = 0.0f32;
+    for ((na, wa), (nb, wb)) in ga.iter().zip(&gb) {
+        if *wa < 0.5 || *wb < 0.5 {
+            continue;
+        }
+        for c in 0..3 {
+            worst_n = worst_n.max((na[c] - nb[c]).abs());
+        }
+    }
+    println!("pior diferença de normal doada: {worst_n:.4}");
+    assert!(
+        worst_n < 0.02,
+        "o G-buffer doou a normal do avesso: {worst_n:.4}"
+    );
+}

@@ -92,11 +92,14 @@ fn vs_main(
     return out;
 }
 
-@fragment
-fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+// **A normal, no espaço em que o rig vive.** Porta única: o barro a lê para se
+// acender, e o G-buffer a ESCREVE para a tinta se acender por ela. Duas versões
+// disto seriam duas respostas a "para onde esta superfície aponta", e elas
+// divergiriam no unico lugar onde ninguem le um numero de volta.
+fn canvas_normal(n_view: vec3<f32>) -> vec3<f32> {
     // A interpolação entre vértices encurta a normal; sem renormalizar, a
     // superfície escurece no meio de cada triângulo (o facetamento clássico).
-    var n = normalize(in.n_view);
+    var n = normalize(n_view);
 
     // Em espaço de vista o olho olha por `-Z`, então `n.z > 0` está de frente.
     // Uma face vista por trás (malha aberta, casca fina) tem de acender como
@@ -111,7 +114,31 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // em cima, à esquerda" só quer dizer algo lá). A vista tem `y` para CIMA.
     // Sem esta negação a mesma lâmpada acende a pintura por cima e a escultura por
     // baixo, no mesmo documento, sob o mesmo card, com o mesmo número.
-    let nc = vec3<f32>(n.x, -n.y, n.z);
+    return vec3<f32>(n.x, -n.y, n.z);
+}
+
+// **O G-BUFFER — a DOAÇÃO, do lado de quem doa.**
+//
+// `docs/3D/05.2` numa frase: *"a malha não pede um sistema de luz novo, ela pede
+// uma SEGUNDA FONTE DE NORMAL para o que já existe"*. Isto é essa fonte.
+//
+// `xyz` = a normal no espaço do rig (a MESMA que o barro usa, pela porta acima).
+// `w`  = COBERTURA: 1 onde a malha está. O alvo é limpo em zero, então `w = 0`
+//        quer dizer *"aqui não há forma"*, e é isso que deixa o passe de luz da
+//        tinta escolher a fonte por PIXEL em vez de por documento.
+//
+// ⚠️ `Rgba16Float` e não um formato normalizado: as componentes vivem em [-1, 1] e
+// um unorm exigiria codificar `n * 0.5 + 0.5` de um lado e decodificar do outro —
+// duas metades que precisam concordar, num canal onde a discordância é uma luz
+// levemente torta que ninguém consegue nomear.
+@fragment
+fn fs_gbuffer(in: VsOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(canvas_normal(in.n_view), 1.0);
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let nc = canvas_normal(in.n_view);
 
     // Sem lâmpada acesa não há razão a computar: o barro cru é a leitura honesta
     // de "o artista apagou tudo" para uma superfície opaca.

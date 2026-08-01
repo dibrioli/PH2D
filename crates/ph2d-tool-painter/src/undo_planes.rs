@@ -5,11 +5,50 @@
 //! o fallback) mora lá; *quais são os planos, e com que stride* mora aqui, ao lado da única coisa que
 //! precisa mudar quando um vigésimo nascer.
 
+use crate::layers::LayerId as RtLayerId;
 use crate::undo_delta::{StoredImages, StoredMap, StoredPlane, Strides};
 use ph2d_painter_brush::material::MaterialBytes;
 
-#[cfg(any(test, debug_assertions))]
-use crate::layers::LayerId as RtLayerId;
+/// **De onde sai o lado `before` do RELEVO** — dos journals do passo, em vez de um segundo snapshot
+/// (doc 28 §5.58.2, degrau 2).
+///
+/// ⚠️ **Não é gateado por `cfg`, e a razão é a mesma do [`ReliefPlane`](crate::undo::window::ReliefPlane):**
+/// ele atravessa a assinatura de [`PlaneDeltas::split`], que o commit chama em **qualquer** perfil. Um
+/// tipo que só existisse em debug daria duas formas à porta — e uma porta com duas formas é o começo de
+/// duas respostas. Em release o `Some` simplesmente cai no caminho de sempre, porque o journal é quem
+/// ainda é debug-only.
+#[cfg_attr(
+    not(any(test, debug_assertions)),
+    expect(
+        dead_code,
+        reason = "degrau 2: em release o journal ainda é cfg(debug), então os três campos só são lidos \
+                  no ramo de debug de `relief_maps`. É `expect` e não `allow` de propósito — quando o \
+                  degrau 4 promover o journal os campos passam a ser lidos, e aí o próprio atributo \
+                  vira erro e obriga a removê-lo. Um `allow` sobreviveria calado à promoção."
+    )
+)]
+pub(crate) struct ReliefSource<'a> {
+    pub(crate) state: &'a crate::undo::window::WriteState,
+    /// O contador de escritas do `before` — a metade de PROVENIÊNCIA do guard.
+    pub(crate) writes: u64,
+    /// A camada de que os journals falam.
+    pub(crate) layer: RtLayerId,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// **Quantas vezes o relevo saiu do JOURNAL neste thread** — o contador que impede o gate de igualdade
+    /// de ser verde por VÁCUO.
+    ///
+    /// ⚠️ Sem ele, um gate que compara as duas rotas passa perfeitamente quando **as duas** caem no
+    /// fallback: ele compararia o caminho de sempre contra ele mesmo, sobre uma rota que nunca rodou. É a
+    /// armadilha que o ADR-0120 nomeou e que o oráculo de undo do ADR-0124 pagou uma segunda vez.
+    ///
+    /// **Por thread e não global com trava:** esta crate não roda o `split` sob rayon, então cada teste
+    /// conta o próprio trabalho — e um contador por-thread não tem a lista de "quem precisa travar" que a
+    /// §5.57 viu apodrecer no contador da LUT do `ph2d-painter-brush`.
+    pub(crate) static RELIEF_FROM_JOURNAL: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
 
 /// **Os DEZENOVE planos canvas-shaped de um `ModelSnapshot`, guardados como delta.**
 ///
@@ -52,6 +91,7 @@ impl PlaneDeltas {
         before: &mut crate::undo::ModelSnapshot,
         after: &mut crate::undo::ModelSnapshot,
         hint: Option<crate::compositor::Region>,
+        relief: Option<ReliefSource<'_>>,
     ) -> Self {
         // O stride vem do endpoint que está sendo guardado. Um passo que muda o TAMANHO do canvas cai
         // sozinho no `Whole` (os comprimentos não batem), então basta um dos dois.
@@ -63,6 +103,8 @@ impl PlaneDeltas {
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.rgba));
         let win_scalar =
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.scalar));
+        let (heights, covers, mats) =
+            Self::relief_maps(before, after, s.scalar, win_scalar, relief);
         Self {
             canvas_rgba: StoredPlane::split(
                 &mut before.canvas_rgba,
@@ -71,14 +113,9 @@ impl PlaneDeltas {
                 win_rgba,
             ),
             images: StoredImages::split(&mut before.images, &mut after.images),
-            heights: StoredMap::split(
-                &mut before.heights,
-                &mut after.heights,
-                s.scalar,
-                win_scalar,
-            ),
-            covers: StoredMap::split(&mut before.covers, &mut after.covers, s.scalar, win_scalar),
-            mats: StoredMap::split(&mut before.mats, &mut after.mats, s.scalar, win_scalar),
+            heights,
+            covers,
+            mats,
             mask_scratch: StoredPlane::split(
                 &mut before.mask_scratch,
                 &mut after.mask_scratch,
@@ -164,6 +201,82 @@ impl PlaneDeltas {
                 win_rgba,
             ),
         }
+    }
+
+    /// **Os TRÊS mapas de relevo** — pelos journals do passo quando eles o descrevem, pelo `split` de
+    /// dois snapshots quando não (doc 28 §5.58.2, degrau 2).
+    ///
+    /// ⚠️ **Tudo-ou-nada, e o esvaziamento é o que a torna assim:** as três famílias são um fato só
+    /// sobre um traço (a altura, a cobertura e o material — doc 18 §10.4), e qualquer uma pode recusar.
+    /// O [`StoredMap::from_journal`] por isso **não** esvazia; quem esvazia é esta função, depois de as
+    /// três passarem. Esvaziar à medida deixaria o `heights` drenado quando o `mats` recusasse, e o
+    /// caminho de fallback partiria de mapas vazios — perdendo o relevo em silêncio.
+    ///
+    /// ⚠️ **Em release ela é hoje SEMPRE o caminho de sempre**, porque o journal ainda é `cfg(debug)`.
+    /// Isso é o degrau 2 por desenho: byte-idêntico e sem ganho, com o gate de igualdade a provar a
+    /// rota antes de o degrau 4 lhe dar consumidor.
+    fn relief_maps(
+        before: &mut crate::undo::ModelSnapshot,
+        after: &mut crate::undo::ModelSnapshot,
+        stride: usize,
+        win: Option<crate::undo_delta::PlaneWindow>,
+        relief: Option<ReliefSource<'_>>,
+    ) -> (StoredMap<f32>, StoredMap<u8>, StoredMap<MaterialBytes>) {
+        #[cfg(any(test, debug_assertions))]
+        {
+            if let Some(src) = relief {
+                let built = src
+                    .state
+                    .with_relief_before(src.writes, src.layer, |j| {
+                        let l = src.layer;
+                        Some((
+                            StoredMap::from_journal(
+                                &before.heights,
+                                &after.heights,
+                                l,
+                                j.absent[0],
+                                j.heights,
+                                win,
+                            )?,
+                            StoredMap::from_journal(
+                                &before.covers,
+                                &after.covers,
+                                l,
+                                j.absent[1],
+                                j.covers,
+                                win,
+                            )?,
+                            StoredMap::from_journal(
+                                &before.mats,
+                                &after.mats,
+                                l,
+                                j.absent[2],
+                                j.mats,
+                                win,
+                            )?,
+                        ))
+                    })
+                    .flatten();
+                if let Some(maps) = built {
+                    #[cfg(test)]
+                    RELIEF_FROM_JOURNAL.with(|c| c.set(c.get() + 1));
+                    before.heights.clear();
+                    after.heights.clear();
+                    before.covers.clear();
+                    after.covers.clear();
+                    before.mats.clear();
+                    after.mats.clear();
+                    return maps;
+                }
+            }
+        }
+        #[cfg(not(any(test, debug_assertions)))]
+        let _ = relief;
+        (
+            StoredMap::split(&mut before.heights, &mut after.heights, stride, win),
+            StoredMap::split(&mut before.covers, &mut after.covers, stride, win),
+            StoredMap::split(&mut before.mats, &mut after.mats, stride, win),
+        )
     }
 
     /// Reenche `out` (o endpoint guardado, esvaziado) a partir do **cursor**. `None` = a entrada não pode

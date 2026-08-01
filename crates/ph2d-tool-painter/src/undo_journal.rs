@@ -223,6 +223,58 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
         }
     }
 
+    /// **A JANELA que este journal descreve** — a caixa dos tiles tomados, em ELEMENTOS do plano.
+    ///
+    /// ⚠️ Ela é um **SUPERCONJUNTO** do que o passo escreveu, e é exatamente isso que a torna usável
+    /// como janela de delta. Um tile é capturado inteiro, então a caixa contém tiles que ninguém tomou
+    /// e elementos que ninguém escreveu; para todos eles o lado `before` é o **valor VIVO**, e é a
+    /// identidade que a §5.28 mediu em 233/233:
+    ///
+    /// ```text
+    ///   before[i] == journal.get(i).unwrap_or(vivo[i])
+    /// ```
+    ///
+    /// Superconjunto é seguro pela MESMA razão que a janela declarada é ([`crate::undo::window`]): a
+    /// materialização reescreve texels que não mudaram com os valores que eles já tinham.
+    ///
+    /// `None` quando nada foi capturado **ou** quando a captura foi de plano inteiro — o segundo caso é
+    /// de [`Self::whole`], que responde com os bytes em vez de uma caixa.
+    pub(crate) fn window(&self) -> Option<crate::undo_delta::PlaneWindow> {
+        if self.whole.is_some() || self.taken == 0 || self.stride == 0 {
+            return None;
+        }
+        let (mut ty0, mut ty1) = (usize::MAX, 0usize);
+        let (mut tx0, mut tx1) = (usize::MAX, 0usize);
+        for (t, slot) in self.data.iter().enumerate() {
+            if slot.is_none() {
+                continue;
+            }
+            let (ty, tx) = (t / self.tiles_x, t % self.tiles_x);
+            ty0 = ty0.min(ty);
+            ty1 = ty1.max(ty);
+            tx0 = tx0.min(tx);
+            tx1 = tx1.max(tx);
+        }
+        let row = ty0 * TILE;
+        let col = tx0 * TILE;
+        crate::undo_delta::PlaneWindow::tiles(
+            row,
+            ((ty1 + 1) * TILE).min(self.rows) - row,
+            col,
+            ((tx1 + 1) * TILE).min(self.stride) - col,
+            self.stride,
+            self.stride * self.rows,
+        )
+    }
+
+    /// O plano INTEIRO, quando a captura foi de plano inteiro (o sítio não sabia onde ia escrever).
+    ///
+    /// Ele é o lado `before` COMPLETO, então quem o tem não precisa de janela nenhuma — e é por isso
+    /// que a [`Self::window`] se cala aqui em vez de devolver a caixa de todos os tiles.
+    pub(crate) fn whole(&self) -> Option<&[T]> {
+        self.whole.as_deref()
+    }
+
     /// O valor que o elemento `i` tinha no início do passo, se o tile dele foi capturado.
     pub(crate) fn get(&self, i: usize) -> Option<T> {
         if let Some(w) = &self.whole {

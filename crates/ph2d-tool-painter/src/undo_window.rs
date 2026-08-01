@@ -431,6 +431,21 @@ impl WriteState {
     }
 }
 
+/// **Os três journals de relevo, emprestados sob o guard** — ver [`WriteState::with_relief_before`].
+///
+/// Os três juntos e não um a um porque a rota é **tudo-ou-nada**: eles descrevem um passo, e um passo
+/// que só souber dizer a altura deixaria a cobertura e o material saírem por outro caminho — dois
+/// modelos do mesmo fato, que é o que o `SculptSnap` do doc 18 §10.4 já custou uma vez.
+#[cfg(any(test, debug_assertions))]
+pub(crate) struct ReliefBefore<'a> {
+    pub(crate) heights: &'a crate::undo::journal::TileJournal<f32>,
+    pub(crate) covers: &'a crate::undo::journal::TileJournal<u8>,
+    pub(crate) mats:
+        &'a crate::undo::journal::TileJournal<ph2d_painter_brush::material::MaterialBytes>,
+    /// Quais planos foram escritos **sem ter forma de canvas** — ver [`ReliefJournals::absent`].
+    pub(crate) absent: [bool; 3],
+}
+
 /// Qual dos três planos de relevo — o índice que [`ReliefJournals::absent`] usa.
 ///
 /// Existe porque as três portas fazem a MESMA pergunta sobre planos de tipos diferentes, e um enum é o
@@ -567,6 +582,34 @@ impl WriteState {
             () if r.layer.is_none() => "SEM-RELEVO", // o passo não tocou relevo nenhum
             () => "DESCREVE",
         }
+    }
+
+    /// **Empresta os três journals de relevo, SE eles descrevem o passo** — a porta única por onde o
+    /// motor de delta os alcança (doc 28 §5.58.2, degrau 2).
+    ///
+    /// ⚠️ **A pergunta e o empréstimo são a MESMA chamada, de propósito.** Perguntar num lugar e pegar
+    /// os journals noutro abriria espaço para um chamador futuro pegar sem perguntar — e um journal que
+    /// não descreve o passo devolve bytes de um passado que não é o dele, que é o modo de falha exato
+    /// que a proveniência ([`Self::journal_describes_step_at`]) existe para impedir.
+    ///
+    /// `None` = não descrevem; o chamador cai no caminho de sempre (*lento nunca, errado jamais*).
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) fn with_relief_before<R>(
+        &self,
+        writes: u64,
+        layer: crate::layers::LayerId,
+        f: impl FnOnce(ReliefBefore<'_>) -> R,
+    ) -> Option<R> {
+        if !self.relief_describes_step_at(writes, layer) {
+            return None;
+        }
+        let r = self.relief.borrow();
+        Some(f(ReliefBefore {
+            heights: &r.heights,
+            covers: &r.covers,
+            mats: &r.mats,
+            absent: r.absent,
+        }))
     }
 
     /// **Os journals de relevo descrevem o passo que começou em `writes`, para a camada `layer`?**

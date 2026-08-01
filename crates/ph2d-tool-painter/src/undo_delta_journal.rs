@@ -1,0 +1,241 @@
+//! **O LADO `before` QUE VEM DO JOURNAL** — filho de [`super`] (`#[path]`, então ele enxerga os
+//! campos privados da janela), o degrau 2 do S3 (doc 28 §5.58.2).
+//!
+//! O [`super::StoredPlane::split`] precisa dos DOIS endpoints materializados, e é isso que obriga o
+//! `stroke_undo` e o `cursor` a segurarem um `Arc` de cada plano — os donos extras que fazem toda
+//! escrita de gesto pagar `Arc::make_mut` sobre o documento inteiro. Aqui o lado `before` **não é um
+//! buffer**: são os bytes velhos que o journal capturou na hora da escrita.
+//!
+//! ⚠️ **Tudo aqui é `cfg(any(test, debug_assertions))`, junto com o journal.** A promoção para release
+//! é do degrau 4, e ela tem de levar os dois — promover o journal sozinho paga captura *e* fork até o
+//! fork morrer, que é regressão pura (doc 28 §5.58.1).
+
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use super::{PlaneWindow, StoredEntry, StoredMap, StoredPlane, fits};
+use crate::layers::LayerId as RtLayerId;
+
+impl PlaneWindow {
+    /// **A janela de uma caixa de TILES do journal** — ver
+    /// [`TileJournal::window`](crate::undo::journal::TileJournal::window), o único chamador.
+    ///
+    /// Ela chega já ancorada (o journal conhece o plano de que capturou), então não passa pelo
+    /// [`Self::fit_to`]; o que este construtor faz é recusar o degenerado, que é o mesmo `None` que o
+    /// `fit_to` devolve — *lento nunca, errado jamais*.
+    pub(crate) const fn tiles(
+        row: usize,
+        rows: usize,
+        col: usize,
+        cols: usize,
+        stride: usize,
+        plane_len: usize,
+    ) -> Option<Self> {
+        if rows == 0 || cols == 0 || !fits(plane_len, stride) {
+            return None;
+        }
+        Some(Self {
+            row,
+            rows,
+            col,
+            cols,
+            stride,
+            plane_len,
+        })
+    }
+
+    /// **A interseção de duas janelas do MESMO plano** — `None` quando elas não se cruzam.
+    ///
+    /// ⚠️ **Cruzar dois SUPERCONJUNTOS ainda contém o escrito**, e é isso que a torna segura: a janela
+    /// DECLARADA contém o que o passo escreveu (o contrato de [`crate::undo::window`]) e a caixa de
+    /// tiles do journal também (ela é a caixa dos tiles que a área declarada tocou). Cruzá-las aperta a
+    /// janela sem cortar um texel que mudou.
+    ///
+    /// ⚠️ **E ela existe por MEDIÇÃO, não por elegância.** Um tile mede 128 elementos de lado, então a
+    /// caixa do journal arredonda o traço para fora em até 127 de cada lado: com ela sozinha o passo
+    /// típico saltou de **2,51 para 8,23 MB a 1024²** e o `measure_undo_capacity` reprovou na hora — o
+    /// delta comprava 3,9× mais passos que um documento por endpoint, contra os ~13× que a §5.28 mediu.
+    fn intersect(self, other: Self) -> Option<Self> {
+        if self.stride != other.stride || self.plane_len != other.plane_len {
+            return None;
+        }
+        let row = self.row.max(other.row);
+        let col = self.col.max(other.col);
+        let row_end = (self.row + self.rows).min(other.row + other.rows);
+        let col_end = (self.col + self.cols).min(other.col + other.cols);
+        if row >= row_end || col >= col_end {
+            return None;
+        }
+        Some(Self {
+            row,
+            rows: row_end - row,
+            col,
+            cols: col_end - col,
+            stride: self.stride,
+            plane_len: self.plane_len,
+        })
+    }
+
+    /// Copia a janela para fora de uma função de ELEMENTO, em vez de um slice.
+    ///
+    /// Existe porque o lado `before` do journal não é um buffer: ele é
+    /// `journal.get(i).unwrap_or(vivo[i])`, elemento a elemento. Irmã do [`Self::extract`], e as duas
+    /// percorrem a janela na MESMA ordem — o `Patch` guarda os dois lados e eles têm de se corresponder
+    /// índice a índice.
+    fn extract_by<T>(&self, mut f: impl FnMut(usize) -> T) -> Box<[T]> {
+        let mut out = Vec::with_capacity(self.elems());
+        for r in 0..self.rows {
+            let s = (self.row + r) * self.stride + self.col;
+            out.extend((s..s + self.cols).map(&mut f));
+        }
+        out.into_boxed_slice()
+    }
+}
+
+impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+    /// **O delta de um plano cujo lado `before` vem do JOURNAL** — o degrau 2 do S3 (doc 28 §5.58.2).
+    ///
+    /// O `split` clássico precisa dos DOIS endpoints materializados, e é isso que obriga o
+    /// `stroke_undo` e o `cursor` a segurarem um `Arc` de cada plano — os donos extras que fazem toda
+    /// escrita de gesto pagar `Arc::make_mut` sobre o documento inteiro. Aqui o lado `before` **não é
+    /// um buffer**: são os bytes velhos que o journal capturou na hora da escrita, e o lado `after` é o
+    /// plano VIVO. Nenhum dos dois é uma cópia nova.
+    ///
+    /// ⚠️ **A lei do lado `before` é a identidade da §5.28**, e ela é o que torna a janela do journal
+    /// (uma caixa de tiles, sempre um SUPERCONJUNTO do escrito) utilizável sem erro:
+    ///
+    /// ```text
+    ///   before[i] == journal.get(i).unwrap_or(vivo[i])
+    /// ```
+    ///
+    /// Dentro da caixa há tiles que ninguém tomou e elementos que ninguém escreveu; para todos eles o
+    /// valor de antes **é** o valor de agora, então lê-los do vivo é exato, não uma aproximação.
+    ///
+    /// ⚠️ **`None` = "não sei descrever este plano", e o chamador cai no caminho de sempre.** É a mesma
+    /// política do `undeclared` do S1 e do `journal_describes_step_at` do S2: um caso que o journal não
+    /// cobre degrada o passo para *lento*, nunca para *errado*.
+    ///
+    /// ⛔ **O caminho de `Whole` MATERIALIZA, e é deliberado** (o "atalho 1 morto" da §5.58.2 proíbe
+    /// materializar no caso comum, não neste): ele só é tomado quando a janela cobre mais de metade do
+    /// plano, e ali o `Whole` guardaria os dois planos inteiros de qualquer forma — o `split` clássico
+    /// faz exatamente a mesma escolha, no mesmo limiar.
+    pub(crate) fn from_journal(
+        live: &Arc<Vec<T>>,
+        j: &crate::undo::journal::TileJournal<T>,
+        hint: Option<PlaneWindow>,
+    ) -> Option<Self> {
+        // A captura de plano INTEIRO (o sítio que não sabia onde ia escrever): o `before` já existe
+        // completo, então não há janela a derivar.
+        if let Some(w) = j.whole() {
+            if w.len() != live.len() {
+                return None; // o journal descreve um plano de outra forma
+            }
+            if w == live.as_slice() {
+                return Some(Self::Unchanged);
+            }
+            return Some(Self::Whole {
+                before: Arc::new(w.to_vec()),
+                after: Arc::clone(live),
+            });
+        }
+        let Some(jwin) = j.window() else {
+            // Nada capturado: este passo não escreveu neste plano, logo os dois lados são o mesmo.
+            return Some(Self::Unchanged);
+        };
+        if jwin.plane_len != live.len() {
+            return None;
+        }
+        // A caixa de tiles APERTADA pela janela declarada — ver [`PlaneWindow::intersect`], que é quem
+        // devolve ao passo o tamanho que a §5.28 mediu. Sem declaração, a caixa sozinha (correta, só
+        // mais gorda), que é a mesma política do `hint` ausente no `split`.
+        let win = match hint.and_then(|h| h.fit_to(live.len())) {
+            Some(h) => jwin.intersect(h)?,
+            None => jwin,
+        };
+        let before = win.extract_by(|i| j.get(i).unwrap_or(live[i]));
+        let after = win.extract(live);
+        if before == after {
+            // Escreveu os mesmos bytes de volta — o `split` clássico chega aqui pelo `diff_window`, que
+            // devolve `None`. As duas rotas têm de dar a MESMA forma, senão o gate de igualdade
+            // reportaria uma diferença de memória como se fosse de conteúdo.
+            return Some(Self::Unchanged);
+        }
+        if 2 * win.elems() >= live.len() {
+            let mut b = crate::plane_copy::par_clone(live);
+            for (i, v) in b.iter_mut().enumerate() {
+                if let Some(old) = j.get(i) {
+                    *v = old;
+                }
+            }
+            return Some(Self::Whole {
+                before: Arc::new(b),
+                after: Arc::clone(live),
+            });
+        }
+        Some(Self::Patch { win, before, after })
+    }
+}
+
+impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
+    /// **O mapa de uma família de relevo, com o lado `before` vindo do JOURNAL** — ver
+    /// [`StoredPlane::from_journal`], que é o motor; aqui mora só *quais chaves*, que é a metade que o
+    /// journal não sabe (ele guarda bytes de UM plano, não a forma de um mapa).
+    ///
+    /// ⚠️ **As OUTRAS camadas são `Unchanged` por LEI, não por comparação** — e a lei é o guard que
+    /// autoriza esta rota: os journals só falam pelo passo quando **uma** camada foi capturada
+    /// (`speaks_for` recusa `mixed`), e toda escrita de relevo passa por uma porta nomeada
+    /// (`fork_heights`/`fork_covers`/`fork_mats`). Logo nenhuma outra camada foi escrita neste passo.
+    /// Em DEBUG a premissa é conferida contra os dois lados, que o degrau 2 ainda carrega — é o mesmo
+    /// molde da rede que o `split` mantém sobre a janela declarada.
+    ///
+    /// ⚠️ **`absent` com a chave presente no `before` é RECUSA, não `Unchanged`.** O journal marca um
+    /// plano ausente quando ele foi escrito sem ter forma de canvas; se o `before` o tem assim mesmo, o
+    /// plano existia com OUTRA forma, e um mapa que dissesse `Unchanged` perderia a troca em silêncio —
+    /// que é exatamente o modo de falha que o [`diff_window`] documenta e teme.
+    ///
+    /// `None` = o journal não descreve este mapa; o chamador usa o [`Self::split`] de sempre.
+    ///
+    /// ⚠️ **Ele NÃO esvazia os mapas, ao contrário do [`Self::split`]** — e a assimetria é o que torna a
+    /// rota tudo-ou-nada. São TRÊS famílias de relevo e qualquer uma pode recusar; esvaziar à medida
+    /// que cada uma passa deixaria o `heights` drenado quando o `mats` recusasse, e o caminho de
+    /// fallback partiria de mapas vazios. Quem esvazia é o chamador, **depois** de as três passarem.
+    pub(crate) fn from_journal(
+        before: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
+        after: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
+        layer: RtLayerId,
+        absent: bool,
+        j: &crate::undo::journal::TileJournal<T>,
+        hint: Option<PlaneWindow>,
+    ) -> Option<Self> {
+        let mut entries = BTreeMap::new();
+        let keys: Vec<RtLayerId> = before.keys().chain(after.keys()).copied().collect();
+        for k in keys {
+            if entries.contains_key(&k) {
+                continue;
+            }
+            let e = match (before.get(&k), after.get(&k)) {
+                (Some(_), Some(_)) if k == layer && absent => return None,
+                (Some(b), Some(a)) => {
+                    if k == layer {
+                        StoredEntry::Both(StoredPlane::from_journal(a, j, hint)?)
+                    } else {
+                        debug_assert!(
+                            Arc::ptr_eq(b, a) || **b == **a,
+                            "o journal fala pela camada {layer:?} e outra camada MUDOU no mesmo passo \
+                             — a lei do `speaks_for` (uma camada por passo) nao vale aqui, e o \
+                             `Unchanged` abaixo perderia a edicao (doc 28 §5.58.2)"
+                        );
+                        StoredEntry::Both(StoredPlane::Unchanged)
+                    }
+                }
+                // O passo REMOVEU o relevo desta camada. O journal descreve o que foi escrito, nunca o
+                // que deixou de existir: a resposta honesta é não descrever.
+                (Some(_), None) => return None,
+                (None, Some(a)) => StoredEntry::OnlyAfter(Arc::clone(a)),
+                (None, None) => continue,
+            };
+            entries.insert(k, e);
+        }
+        Some(Self { entries })
+    }
+}

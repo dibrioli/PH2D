@@ -1,3 +1,5 @@
+#[path = "journal_delta_tests.rs"]
+mod journal_delta_tests; // o delta do journal É o de dois snapshots (doc 28 §5.58.2, degrau 2 do S3)
 #[path = "journal_tests.rs"]
 mod journal_tests; // o journal descreve a TELA, e só ela (doc 28 §5.23, os 3 mecanismos do degrau 2)
 #[path = "measure_commit_cost.rs"]

@@ -501,7 +501,7 @@ fn what_the_record_structural_is_made_of() {
             // (a) só o motor de delta, sobre CÓPIAS dos endpoints (o split esvazia o que recebe).
             let (mut b, mut a) = (before.clone(), after.clone());
             let t0 = Instant::now();
-            let d = crate::undo_planes::PlaneDeltas::split(&mut b, &mut a, None);
+            let d = crate::undo_planes::PlaneDeltas::split(&mut b, &mut a, None, None);
             let s = t0.elapsed().as_secs_f64() * 1000.0;
             std::hint::black_box(d.heap_bytes());
 

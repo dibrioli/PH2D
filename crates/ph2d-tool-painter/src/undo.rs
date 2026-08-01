@@ -418,8 +418,9 @@ impl UndoEntry {
         mut after: ModelSnapshot,
         kind: Option<CoalesceKind>,
         hint: Option<crate::compositor::Region>,
+        relief: Option<crate::undo_planes::ReliefSource<'_>>,
     ) -> Self {
-        let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after, hint);
+        let planes = crate::undo_planes::PlaneDeltas::split(&mut before, &mut after, hint, relief);
         Self {
             before: Box::new(before),
             after: Box::new(after),

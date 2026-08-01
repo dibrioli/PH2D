@@ -674,6 +674,17 @@ impl Strides {
     }
 }
 
+/// **A rota do JOURNAL** — o mesmo motor, com o lado `before` vindo dos bytes que a escrita capturou
+/// em vez de um segundo snapshot (doc 28 §5.58.2, degrau 2 do S3).
+///
+/// Filho por `#[path]`, e não irmão: ele mexe nos campos privados de [`PlaneWindow`], que são privados
+/// ao MÓDULO — um irmão teria de os abrir para o resto da crate, e a janela deixaria de ser um tipo com
+/// um dono. O corte é o mesmo do [`tests`]: *o que um plano guardado É* fica aqui, *de onde o `before`
+/// vem quando não há segundo snapshot* fica lá.
+#[cfg(any(test, debug_assertions))]
+#[path = "undo_delta_journal.rs"]
+mod journal_route;
+
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]
 mod tests;

@@ -1,5 +1,11 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
+> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-01) e o handoff de integração é
+> [`HANDOFF_INTEGRACAO_line_physics_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-01.md)**
+> — quatro waves (W-JointCopy · W-Rig · W-SoftWeld · W-Compound), cenas `=66`..`=69`, **todos os
+> smokes aprovados**. `PROJECT_SCHEMA` **47**, c9 **99 corpos / `556cb652…`**, zero `Cargo.toml`
+> tocado. Ela **não** integrou e **não** pushou.
+>
 > ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
 > [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md)** —
 > a jornada de 21/07 (mais 21 waves, W6 → W-FormDrag) **INTEGROU** ao `main`, com todos os smokes

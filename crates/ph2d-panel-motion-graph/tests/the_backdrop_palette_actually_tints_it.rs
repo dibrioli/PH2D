@@ -168,17 +168,27 @@ fn the_palette_has_no_search_field() {
         "the palette grabbed the keyboard for a field that filters nothing"
     );
 
-    // …and the library, which DOES have something to search, still takes it.
+    // …and the ADD key (A) now asks the SHELL to open the full-screen "Add Node" palette — the browse
+    // UI moved out of the panel — so it emits `OpenLibrary` and opens NO local menu (no field to grab
+    // the keyboard). The palette's own search is the shell's concern now.
     bg(&mut host, GesturePhase::Begin, 40.0, 600.0);
     bg(&mut host, GesturePhase::Click, 40.0, 600.0);
     frame(&mut host, &mut state);
+    let _ = ph2d_panel_motion_graph::drain_intents(); // clear the click's selection intents
     host.store_mut()
         .push_graph_key(ph2d_editor_core::interaction::GraphKey::Add);
     frame(&mut host, &mut state);
-    match host.store().focus_id().and_then(|id| host.store().get(id)) {
-        Some(InteractiveState::TextInput { .. }) => {}
-        other => panic!("the ADD menu must still own the keyboard for its search: {other:?}"),
-    }
+    assert!(
+        ph2d_panel_motion_graph::drain_intents()
+            .iter()
+            .any(|i| matches!(i, ph2d_panel_motion_graph::GraphIntent::OpenLibrary { .. })),
+        "the A key asks the shell to open the full-screen Add Node palette"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        None,
+        "A opens no local search menu -- the palette is the shell's"
+    );
 }
 
 /// A left-press still selects and drags the backdrop — the palette took the right button, which

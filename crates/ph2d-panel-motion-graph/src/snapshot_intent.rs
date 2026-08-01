@@ -59,6 +59,11 @@ pub enum GraphIntent {
     /// Remove the edge feeding an input port (alt-click a wire). Identified by its
     /// unique target `(to_node, to_port)`. One undo step; re-cooks.
     Disconnect { to_node: u32, to_port: u16 },
+    /// Open the full-screen "Add Node" palette (the `A` key). Carries the graph-space `(x, y)` where a
+    /// picked node should land (the canvas centre). The shell owns the palette (it lives in the editor's
+    /// `WidgetStore`, over the whole app), so the panel only asks — it does not open a local menu. UI-only
+    /// (no undo step); the actual add arrives later as an [`Self::AddNode`] when the shell routes the pick.
+    OpenLibrary { x: f32, y: f32 },
     /// Add a node of the given canonical type at a graph-space position (add-node
     /// menu). `type_name` is a `&'static` canonical name from the published
     /// [`NodeChoice`] catalog. One undo step; re-cooks.

@@ -151,6 +151,13 @@ pub(crate) struct MotionState {
     /// an undo must not empty it, entering a group must not lose it, and it can
     /// outlive the nodes it snapshotted. See [`GraphClip`].
     pub(crate) clip: Option<GraphClip>,
+    /// **Add Node palette handshake.** `open_library` is the TRANSIENT trigger the `OpenLibrary` intent
+    /// sets (graph-space spawn); the bridge — which owns the editor `WidgetStore` — takes it and opens
+    /// the full-screen palette. `library_spawn` then PERSISTS while the palette is up so the routed pick
+    /// lands the node where the artist opened it (the panel and the store live in different structs, so
+    /// the spawn has to ride the handshake here). Both are runtime-only (never serialized).
+    pub(crate) open_library: Option<(f32, f32)>,
+    pub(crate) library_spawn: Option<(f32, f32)>,
 }
 
 /// A **portable snapshot of copied nodes** — the graph clipboard (Ctrl+C/Ctrl+V).
@@ -380,6 +387,9 @@ impl MotionState {
             gpu_tap: None,
             // Nothing copied yet — the first Ctrl+C fills it.
             clip: None,
+            // No palette open until the `A` key asks.
+            open_library: None,
+            library_spawn: None,
         }
     }
 

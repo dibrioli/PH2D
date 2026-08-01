@@ -541,7 +541,9 @@ pub(crate) fn wire_target(handle: u64) -> (u32, u16) {
     ((handle >> 16) as u32, (handle & 0xffff) as u16)
 }
 
-pub(crate) fn cat_token(c: NodeUiCategory) -> ColorToken {
+/// The `node-cat-*` header/dot tint for a category (the colour that *teaches the library map*, plan §2.4).
+/// The single source — the graph menu row dot, and now the shell's full-screen palette model, both call it.
+pub fn cat_token(c: NodeUiCategory) -> ColorToken {
     match c {
         NodeUiCategory::Source => ColorToken::NodeCatSource,
         NodeUiCategory::Distribute => ColorToken::NodeCatDistribute,

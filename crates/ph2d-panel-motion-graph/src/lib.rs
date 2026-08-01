@@ -40,6 +40,10 @@ pub use snapshot::{
 };
 pub use state::MotionGraphPanelState;
 
+/// The `node-cat-*` colour token for a UI category — the single source shared by the graph menu row dot
+/// and the shell's full-screen "Add Node" palette model (so the two never disagree on a category's hue).
+pub use paint::cat_token;
+
 /// **Is the add-menu open?** (seam gates only — the panel's state is private, and a test that
 /// cannot see the menu cannot tell "it never opened" from "it opened and ate the click".)
 pub fn menu_is_open(state: &MotionGraphPanelState) -> bool {

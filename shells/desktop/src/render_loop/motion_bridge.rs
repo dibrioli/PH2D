@@ -70,6 +70,10 @@ mod rewire;
 mod connect;
 
 #[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_library.rs"]
+mod library;
+
+#[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_adapt.rs"]
 mod adapt;
 
@@ -114,6 +118,9 @@ mod backdrop_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_bypass_tests.rs"]
 mod bypass_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_library_tests.rs"]
+mod library_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_connect_tests.rs"]
 mod connect_tests;
@@ -237,7 +244,32 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-motion-graph")]
     {
         if motion_active {
+            // Route a command-palette pick from LAST frame into an `AddNode` BEFORE we drain intents, so
+            // the node lands this frame. The palette is the shell's (over the whole app); the panel never
+            // sees it, so the round-trip is: `A` → `OpenLibrary` → store opens → the user clicks → the
+            // store holds the pick → here we map its id back to a `type_name` and add at the saved spawn.
+            if let Some(id) = hero.store.take_command_pick() {
+                // Map the pick's opaque id back to a canonical name (`hash_node_id(type_name)`).
+                let type_name = motion
+                    .registry
+                    .manifests()
+                    .map(|m| m.name)
+                    .find(|name| ph2d_tool_registry::hash_node_id(name) == id);
+                if let Some(type_name) = type_name {
+                    let (x, y) = motion.library_spawn.take().unwrap_or((0.0, 0.0));
+                    ph2d_panel_motion_graph::push_intent(
+                        ph2d_panel_motion_graph::GraphIntent::AddNode { type_name, x, y },
+                    );
+                }
+            }
             apply_graph_intents(motion, playhead, toasts, &mut hero.view.center_split);
+            // The `A` key asked (`OpenLibrary`): build the model from the live catalog, open the palette,
+            // and remember the spawn for the pick above.
+            if let Some((x, y)) = motion.open_library.take() {
+                motion.library_spawn = Some((x, y));
+                hero.store
+                    .open_command_palette(library::build_palette_model(&motion.registry));
+            }
             // The level the artist is standing in can stop existing under their feet
             // (an undo that unmakes the group). Checked AFTER the intents — an undo
             // arrives as one — and before anything is published, so the fold never
@@ -247,7 +279,7 @@ pub(super) fn dispatch(
             // active frame (cheap: ~dozens of `Copy` entries) alongside the
             // snapshot; memoizing it is a follow-up like the snapshot's own
             // dirty gate.
-            ph2d_panel_motion_graph::set_current_node_catalog(build_catalog(&motion.registry));
+            ph2d_panel_motion_graph::set_current_node_catalog(library::build_catalog(&motion.registry));
         } else {
             ph2d_panel_motion_graph::set_current_node_catalog(Vec::new());
         }
@@ -548,34 +580,6 @@ fn output_nodes(graph: &ph2d_nodegraph::graph::Graph) -> Vec<ph2d_nodegraph::gra
         .collect();
     ids.sort();
     ids
-}
-
-/// Human-readable reason a structural `connect` was rejected (add-menu toast).
-#[cfg(feature = "panel-motion-graph")]
-/// Build the addable-node catalog from the registry (canonical name + English
-/// display label + category), sorted by category then label so the menu groups
-/// by color (the palette teaches the library map, plan §2.4).
-fn build_catalog(
-    registry: &ph2d_node_registry::NodeRegistry,
-) -> Vec<ph2d_panel_motion_graph::NodeChoice> {
-    use ph2d_node_registry::NodeUiCategory;
-    use ph2d_panel_motion_graph::NodeChoice;
-    let mut v: Vec<NodeChoice> = registry
-        .manifests()
-        .map(|m| {
-            let ui = registry.ui_manifest(m.id);
-            NodeChoice {
-                type_name: m.name,
-                display: ui.map(|u| u.display_name).unwrap_or(m.name),
-                category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
-                // Straight off the manifest (`&'static`), so the panel can filter
-                // the smart-connect menu by what each type can actually take.
-                inputs: m.inputs,
-            }
-        })
-        .collect();
-    v.sort_by(|a, b| (a.category as u8, a.display).cmp(&(b.category as u8, b.display)));
-    v
 }
 
 /// **Publish the drawn shapes into the cook** (doc 65) — called by the render loop right before the

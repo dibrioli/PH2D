@@ -5,10 +5,9 @@
 //! probe) or a single [`GraphIntent`] — the panel never edits the document itself.
 
 use super::{
-    GraphIntent, GraphKey, GraphViewSnapshot, Interaction, Menu, MotionGraphPanelState, Rect, View,
+    GraphIntent, GraphKey, GraphViewSnapshot, Interaction, MotionGraphPanelState, Rect, View,
     push_intent, subgraph_gesture,
 };
-use crate::state::MenuBody;
 
 pub(super) fn apply_key(
     state: &mut MotionGraphPanelState,
@@ -109,22 +108,17 @@ pub(super) fn apply_key(
             }
             state.interaction = Interaction::Idle;
         }
-        // `A` opens the add-node menu at the canvas center (the keyboard verb
-        // carries no cursor position). Idempotent: a second `A` (menu already
-        // open) falls through to the no-op arm below.
+        // `A` opens the full-screen "Add Node" palette at the canvas center (the keyboard verb carries no
+        // cursor position). The shell owns the palette (it lives over the whole app, not in the graph
+        // panel), so the panel only ASKS via `OpenLibrary`; the picked node lands back as an `AddNode`
+        // at this graph-space spawn. Idempotent against the double key dispatch (the shell no-ops a
+        // second open while the palette is already up).
         GraphKey::Add if state.menu.is_none() => {
             let center = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
             let spawn = View::new(rect, state.view).graph(center.0, center.1);
-            state.menu = Some(Menu {
-                scroll: 0.0,
-                screen: center,
-                spawn,
-                query: String::new(),
-                opened: false,
-                body: MenuBody::Library {
-                    connect_from: None,
-                    splice: None,
-                },
+            push_intent(GraphIntent::OpenLibrary {
+                x: spawn.0,
+                y: spawn.1,
             });
         }
         // Ctrl+A — select every node at THIS level (the snapshot is level-scoped). A backdrop is

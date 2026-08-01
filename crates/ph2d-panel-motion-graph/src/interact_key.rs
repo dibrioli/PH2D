@@ -193,3 +193,19 @@ fn grow_selection_to_linked(state: &mut MotionGraphPanelState, snap: &GraphViewS
         }
     }
 }
+
+/// Collapse a CONSECUTIVE repeat of the same graph verb — the double-dispatch
+/// artifact (the store gets each verb from both the focus gate and the shell's cursor
+/// router). A human cannot press a key twice in one frame, so an adjacent repeat is
+/// never intentional. Distinct verbs, and a repeat from two SEPARATE presses (not
+/// adjacent), are preserved — only the back-to-back double is dropped.
+pub(super) fn dedup_double_dispatch(keys: Vec<GraphKey>) -> Vec<GraphKey> {
+    let mut out: Vec<GraphKey> = Vec::with_capacity(keys.len());
+    for k in keys {
+        if out.last() == Some(&k) {
+            continue;
+        }
+        out.push(k);
+    }
+    out
+}

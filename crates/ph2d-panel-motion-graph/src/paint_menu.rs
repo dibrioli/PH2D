@@ -39,7 +39,7 @@ pub(super) fn draw_menu(
     let header = match menu.body {
         MenuBody::Library { .. } => "Add Node",
         MenuBody::CardPorts { .. } => "Connect Inside Group",
-        MenuBody::BackdropTints { .. } => "Backdrop Colour",
+        MenuBody::BackdropTints { .. } => "Backdrop",
         MenuBody::NodeActions { .. } => "Node",
     };
     let panel = geom::menu_panel(menu, rows.len(), canvas);

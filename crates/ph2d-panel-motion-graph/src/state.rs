@@ -95,6 +95,15 @@ impl NodeAction {
     }
 }
 
+/// **The backdrop menu's action rows, AFTER the tint swatches** (doc 62) — the two things a
+/// backdrop has besides its colour. Each routes through the SAME `apply_key` its shortcut does
+/// (`rename::arm` for F2, the backdrop arm of Delete for Del), acting on the backdrop the
+/// right-press left SELECTED — so the menu can never drift from the key. This is the ONE list
+/// `menu_rows` appends and `resolve_menu` dispatches (past the tints), so a row means the same
+/// thing on screen and under the cursor.
+pub(crate) const BACKDROP_ACTIONS: [(&str, GraphKey); 2] =
+    [("Rename (F2)", GraphKey::Rename), ("Delete (Del)", GraphKey::Delete)];
+
 /// graph-space → screen affine: `screen = panel_origin + pan + graph * zoom`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) struct ViewState {

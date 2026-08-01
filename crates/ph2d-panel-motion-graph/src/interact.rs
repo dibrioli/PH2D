@@ -47,23 +47,9 @@ pub(crate) use subgraph_gesture::{GroupVerb, verb as group_verb};
 
 #[path = "interact_key.rs"]
 mod key;
-use key::apply_key;
-
-/// Collapse a CONSECUTIVE repeat of the same graph verb — the double-dispatch
-/// artifact (the store gets each verb from both the focus gate and the shell's cursor
-/// router). A human cannot press a key twice in one frame, so an adjacent repeat is
-/// never intentional. Distinct verbs, and a repeat from two SEPARATE presses (not
-/// adjacent), are preserved — only the back-to-back double is dropped.
-fn dedup_double_dispatch(keys: Vec<GraphKey>) -> Vec<GraphKey> {
-    let mut out: Vec<GraphKey> = Vec::with_capacity(keys.len());
-    for k in keys {
-        if out.last() == Some(&k) {
-            continue;
-        }
-        out.push(k);
-    }
-    out
-}
+// `dedup_double_dispatch` lives with the other keyboard-verb logic in `key` (it dedups the
+// graph KEYS the store double-delivers); it is re-exported here for the drain loop below.
+use key::{apply_key, dedup_double_dispatch};
 
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
@@ -600,6 +586,10 @@ mod f2b_tests;
 #[cfg(test)]
 #[path = "interact_menu_tests.rs"]
 mod menu_tests;
+
+#[cfg(test)]
+#[path = "interact_context_menu_tests.rs"]
+mod context_menu_tests;
 
 #[cfg(test)]
 #[path = "interact_subgraph_tests.rs"]

@@ -87,6 +87,14 @@ pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Men
                 dot: crate::backdrop::tint_token(i as u8),
                 selected: i as u8 == *current,
             })
+            // Then the backdrop's other actions (Rename / Delete) — a neutral dot, since a verb
+            // has no colour to preview, and the label carries the shortcut. `resolve_menu`
+            // dispatches these same last rows.
+            .chain(crate::state::BACKDROP_ACTIONS.iter().map(|(label, _)| MenuRow {
+                label,
+                dot: ColorToken::Text2,
+                selected: false,
+            }))
             .collect(),
     }
 }

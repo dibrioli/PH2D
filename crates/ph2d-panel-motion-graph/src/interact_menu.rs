@@ -168,15 +168,25 @@ pub(super) fn resolve_menu(
                 to_port: to.1,
             });
         }
-        // **The palette** (doc 62): the row IS the tint index — the paint enumerates
-        // `TINT_NAMES` in order and so does this, which is the whole reason there is one
-        // `menu_rows`. One undo step, and no re-cook: a colour is decoration, and a cook that
-        // depended on it would be a cook that depended on taste.
+        // **The backdrop menu** (doc 62): the first rows ARE the tint index — the paint
+        // enumerates `TINT_NAMES` in order and so does this, which is the whole reason there is
+        // one `menu_rows`. Setting a tint is one undo step and no re-cook: a colour is
+        // decoration, and a cook that depended on it would be a cook that depended on taste. The
+        // LAST rows are the backdrop's other actions (Rename / Delete), dispatched through the
+        // SAME `apply_key` F2 / Del use — the right-press left the backdrop SELECTED, so
+        // `rename::arm` / the Delete arm act on it. The boundary is `rows` minus the action count,
+        // so it cannot drift from what `menu_rows` appended.
         MenuBody::BackdropTints { backdrop, .. } => {
-            push_intent(GraphIntent::SetBackdropColor {
-                id: *backdrop,
-                color: i as u8,
-            });
+            let acts = crate::state::BACKDROP_ACTIONS;
+            let tints = rows.len() - acts.len();
+            if i < tints {
+                push_intent(GraphIntent::SetBackdropColor {
+                    id: *backdrop,
+                    color: i as u8,
+                });
+            } else {
+                super::key::apply_key(state, acts[i - tints].1, rect, snap);
+            }
         }
         // **The node context menu** (doc 62): the pick acts on the selection the right-press
         // left set (`open_on_right_press`). The SAME `visible` list the paint drew, so row `i`

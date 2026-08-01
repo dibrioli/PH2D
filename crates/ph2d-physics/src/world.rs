@@ -200,6 +200,15 @@ pub struct PhysicsWorld {
     /// is the hot path with a zero-alloc gate, so the capacity is reached once and
     /// reused (`clear` keeps it). Empty for a scene where nothing touches.
     contact_peaks: std::collections::BTreeMap<contacts::PeakKey, contacts::PeakSample>,
+    /// Scratch for the per-sub-step fold that fills [`Self::contact_peaks`]: the
+    /// tick's actively-touching COLLIDER pairs, sorted, before they are merged into
+    /// per-BODY answers (W-CompoundContact).
+    ///
+    /// A field for the same reason its sibling is — `step` runs this once per
+    /// sub-step and the zero-alloc gate measures exactly that; `Vec::clear` keeps the
+    /// capacity, so a steady scene reaches it once. It carries nothing between calls:
+    /// every use begins by refilling it.
+    contact_scratch: Vec<contacts::ActivePair>,
     /// The **peak reaction** each joint carried over the current tick's sub-steps
     /// (W-J7): joint handle → the largest force and torque it was resisting at any
     /// single sub-step. Cleared and refilled exactly like [`Self::contact_peaks`],
@@ -306,6 +315,7 @@ impl PhysicsWorld {
             pulley_bias: pulley::PULLEY_BIAS,
             pulley_lag: pulley::PULLEY_CORRECTION_LAG,
             contact_peaks: std::collections::BTreeMap::new(),
+            contact_scratch: Vec::new(),
             joint_peaks: std::collections::BTreeMap::new(),
             joint_breaks: Vec::new(),
             grab: None,

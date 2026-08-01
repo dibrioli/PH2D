@@ -303,3 +303,41 @@ fn a_tilted_pool_draws_a_level_waterline() {
         "os dois extremos têm de sair na MESMA altura de tela ({pts:?})"
     );
 }
+
+/// **A metade VISÍVEL da W-CompoundContact: duas marcas de meia-carga não são uma
+/// marca de carga inteira.**
+///
+/// O braço da cruz significa CARGA, então a jangada composta — antes da fusão —
+/// desenhava DUAS marcas menores onde a de uma peça desenha UMA maior, para o mesmo
+/// peso no mesmo chão. O artista lê *"dois toques leves"* onde houve um pesado.
+///
+/// Os números são os MEDIDOS no produto (`measure_compound_contact`): a jangada de
+/// uma peça carrega `0,061313` e a de duas carregava `0,030677 + 0,030636`.
+///
+/// ⚠️ Este gate mora aqui, e não num e2e sobre a ponte, de propósito: o overlay
+/// desenha **um caminho por entrada**, sem lookup nenhum, então um gate e2e afirmaria
+/// a composição de duas coisas já pinadas e **não poderia falhar pelo motivo que
+/// alega**. O que é falsificável é a frase acima — que as duas leituras DIFEREM na
+/// tela — e é ela que está escrita.
+#[test]
+fn two_half_load_marks_are_not_one_full_load_mark() {
+    let merged = contact_marks(true, &[contact([0.0, 0.0], 0.061_313)], &camera(), window());
+    let split = contact_marks(
+        true,
+        &[
+            contact([0.0, 0.0], 0.030_677),
+            contact([1.0, 0.0], 0.030_636),
+        ],
+        &camera(),
+        window(),
+    );
+    assert_eq!(merged.len(), 1, "um toque, uma marca");
+    assert_eq!(split.len(), 2, "a leitura pre-fusao desenhava duas");
+    let (whole, half) = (arm_px(&merged[0]), arm_px(&split[0]));
+    assert!(
+        whole > half + 1.0,
+        "a marca fundida ({whole:.2} px) tem de ser visivelmente maior que a de meia \
+         carga ({half:.2} px) -- se forem iguais, o braco saturou e esta cena nao \
+         distingue as duas leituras"
+    );
+}

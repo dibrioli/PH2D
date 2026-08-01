@@ -128,6 +128,7 @@ impl PhysicsWorld {
             contacts::accumulate_peaks(
                 &self.narrow_phase,
                 &self.colliders,
+                &mut self.contact_scratch,
                 &mut self.contact_peaks,
             );
             // W-J7: fold this sub-step's joint reactions into the peak ledger and

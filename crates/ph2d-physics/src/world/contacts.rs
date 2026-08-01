@@ -23,6 +23,18 @@
 //! gameplay consumer) asks. The report carries the **deepest** point, which is where
 //! the collision most is, and the **summed** normal impulse, which is how hard the
 //! whole pair pushed.
+//!
+//! ⚠️ **That law held for contact POINTS and broke for SHAPES** (W-CompoundContact).
+//! `contact_pairs()` iterates COLLIDER pairs, and until the W-Compound a body had
+//! exactly one collider, so *"one entry per collider pair"* and *"one entry per body
+//! pair"* were the same sentence. With a compound body they stop being: two rafts of
+//! identical silhouette and identical mass resting on the same floor were measured at
+//! **1 report / impulse 0.061313** (one-piece) against **2 reports / 0.030677 +
+//! 0.030636** (two planks) — the overlay drawing two half-size crosses for one touch,
+//! and `contact_count` answering *how many planks*, which is a fact about how the
+//! artist decomposed the body. The merge is now this module's job, and the law above
+//! is enforced at the level it was always about. Same aged premise as W-PartSensor and
+//! W-CompoundZone, in the third channel.
 
 use std::collections::BTreeMap;
 
@@ -111,7 +123,7 @@ pub struct ContactReport {
 fn active_pair(
     pair: &rapier2d::geometry::ContactPair,
     colliders: &ColliderSet,
-) -> Option<(RigidBodyHandle, RigidBodyHandle, [f32; 2], f32)> {
+) -> Option<ActivePair> {
     if !pair.has_any_active_contact {
         return None;
     }
@@ -129,7 +141,97 @@ fn active_pair(
     } else {
         (b2, b1)
     };
-    Some((body1, body2, [world.x, world.y], impulse))
+    let (s1, s2) = (
+        pair.collider1.into_raw_parts(),
+        pair.collider2.into_raw_parts(),
+    );
+    Some(ActivePair {
+        key: (body1.into_raw_parts(), body2.into_raw_parts()),
+        seq: if s1 <= s2 { (s1, s2) } else { (s2, s1) },
+        point: [world.x, world.y],
+        dist: deepest.dist,
+        impulse,
+    })
+}
+
+/// One actively-touching **collider** pair, already resolved to bodies — the raw
+/// material both readers fold into per-BODY answers (W-CompoundContact).
+///
+/// # Why this type exists at all
+///
+/// A compound body (W-Compound) touches through as many collider pairs as it has
+/// shapes in reach, and every one of them resolves to the SAME body pair. The
+/// narrow phase hands them over one at a time; turning that into *"these two objects
+/// are touching, here, this hard"* is a **fold**, and the fold has to be written once
+/// — the collider→body resolution already was ([`active_pair`]), and splitting the
+/// merge out of it would put the drift one level up instead of removing it.
+///
+/// # `seq` fixes the SUM's order — and is NOT observable today
+///
+/// Merging means adding `f32` impulses, and float addition is **not associative**,
+/// while `NarrowPhase::contact_pairs()` iterates rapier's internal graph — an order
+/// nobody promised us. Sorting by (body pair, collider pair) makes the sum
+/// **specified**, the same HR-5 care [`super::shapes::sorted_shapes`] takes one
+/// module over.
+///
+/// ⚠️ **Measured: removing `seq` from the key leaves every gate green**, and that is
+/// honest rather than a hole. A two-shape body has two addends and IEEE-754 addition
+/// is **commutative** (only *associativity* fails), and on a slice this small
+/// `sort_unstable` happens to keep the input order anyway. What `seq` buys is that
+/// the order is *stated* instead of *observed*: it becomes load-bearing at three
+/// shapes on the same pair, and it is exactly the kind of unspecified behaviour that
+/// changes under a dependency update without anything failing. Documented, not gated
+/// — the precedent of the CAS in ADR-0145.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct ActivePair {
+    /// The ordered body pair (lower handle first) — the key both readers group on.
+    key: PeakKey,
+    /// The ordered collider pair — the tiebreak that fixes the summation order.
+    seq: ((u32, u32), (u32, u32)),
+    point: [f32; 2],
+    /// Depth of `point` (negative = penetrating), so the DEEPEST contact across a
+    /// compound body's shapes wins the merge — the literal extension of what one
+    /// collider pair already answers with `find_deepest_contact`.
+    dist: f32,
+    impulse: f32,
+}
+
+/// Every actively-touching collider pair right now, resolved to bodies and sorted
+/// into the fixed order [`ActivePair::seq`] documents. Written into `out`, which the
+/// caller owns and reuses (the step loop's scratch keeps its capacity — the
+/// hot-path zero-alloc gate).
+fn collect_active(narrow_phase: &NarrowPhase, colliders: &ColliderSet, out: &mut Vec<ActivePair>) {
+    out.clear();
+    for pair in narrow_phase.contact_pairs() {
+        if let Some(p) = active_pair(pair, colliders) {
+            out.push(p);
+        }
+    }
+    out.sort_unstable_by_key(|p| (p.key, p.seq));
+}
+
+/// Fold a sorted [`collect_active`] list into **one answer per BODY pair** — summed
+/// impulse, deepest point — and hand each to `emit` in key order.
+///
+/// This is the module's own law, applied one level up from where it was written:
+/// *two objects touching is ONE event*. A box resting flat reports one pair, not two
+/// corners; a compound raft resting flat reports one pair, not one per plank. Both
+/// are facts about how the thing was built, not about the scene.
+fn for_each_body_pair(sorted: &[ActivePair], mut emit: impl FnMut(PeakKey, [f32; 2], f32)) {
+    let mut i = 0;
+    while i < sorted.len() {
+        let key = sorted[i].key;
+        let (mut point, mut dist, mut impulse) = (sorted[i].point, sorted[i].dist, 0.0);
+        while i < sorted.len() && sorted[i].key == key {
+            impulse += sorted[i].impulse;
+            if sorted[i].dist < dist {
+                dist = sorted[i].dist;
+                point = sorted[i].point;
+            }
+            i += 1;
+        }
+        emit(key, point, impulse);
+    }
 }
 
 /// Fold this instant's contact loads into the peak map by `max` — the impact
@@ -143,24 +245,29 @@ fn active_pair(
 /// **overwritten** each sub-step, so at the tick's end they hold the LAST sub-step the
 /// pair was active in — which is what a fast touch's event needs (W-TickContacts): a
 /// place and a load for a pair that is no longer touching when `step` returns.
+///
+/// ⚠️ **The `max` is over SUB-STEPS, of the pair's SUMMED load** — never over the
+/// pair's individual colliders (W-CompoundContact). Taking the max across shapes
+/// would report a compound body's hit at the strength of its single hardest-hit
+/// plank: measured, a two-plank raft landing read **0.0307 N·s** where the identical
+/// one-piece raft read **0.0613**. Half, in the number a hit sound sizes itself by.
 pub(super) fn accumulate_peaks(
     narrow_phase: &NarrowPhase,
     colliders: &ColliderSet,
+    scratch: &mut Vec<ActivePair>,
     out: &mut BTreeMap<PeakKey, PeakSample>,
 ) {
-    for pair in narrow_phase.contact_pairs() {
-        if let Some((b1, b2, point, impulse)) = active_pair(pair, colliders) {
-            let key = (b1.into_raw_parts(), b2.into_raw_parts());
-            let s = out.entry(key).or_insert(PeakSample {
-                impact: 0.0,
-                point,
-                impulse,
-            });
-            s.impact = s.impact.max(impulse);
-            s.point = point;
-            s.impulse = impulse;
-        }
-    }
+    collect_active(narrow_phase, colliders, scratch);
+    for_each_body_pair(scratch, |key, point, impulse| {
+        let s = out.entry(key).or_insert(PeakSample {
+            impact: 0.0,
+            point,
+            impulse,
+        });
+        s.impact = s.impact.max(impulse);
+        s.point = point;
+        s.impulse = impulse;
+    });
 }
 
 impl PhysicsWorld {
@@ -190,32 +297,34 @@ impl PhysicsWorld {
     /// an empty graph.
     #[must_use]
     pub fn contact_reports(&self) -> Vec<ContactReport> {
-        let mut out: Vec<ContactReport> = self
-            .narrow_phase
-            .contact_pairs()
-            .filter_map(|pair| {
-                let (body1, body2, point, impulse) = active_pair(pair, &self.colliders)?;
-                // The impact peak the step loop captured for this pair. `impulse`
-                // (the settled load) is the floor: the peak is at least the
-                // endpoint, and a pair with no captured peak (impossible from the
-                // current loop — a live pair touched the last sub-step) reads its
-                // load.
-                let key = (body1.into_raw_parts(), body2.into_raw_parts());
-                let impact = self
-                    .contact_peaks
-                    .get(&key)
-                    .map_or(impulse, |s| s.impact)
-                    .max(impulse);
-                Some(ContactReport {
-                    body1,
-                    body2,
-                    point,
-                    impulse,
-                    impact,
-                })
-            })
-            .collect();
-        out.sort_unstable_by_key(|r| (r.body1.into_raw_parts(), r.body2.into_raw_parts()));
+        // A `&self` readout that already allocates its answer, so it brings its own
+        // scratch rather than borrowing the step loop's — the caller is not on the
+        // hot path and the alternative is a `&mut self` on a pure query.
+        let mut active = Vec::new();
+        collect_active(&self.narrow_phase, &self.colliders, &mut active);
+        let mut out = Vec::new();
+        for_each_body_pair(&active, |key, point, impulse| {
+            // The impact peak the step loop captured for this pair. `impulse`
+            // (the settled load) is the floor: the peak is at least the
+            // endpoint, and a pair with no captured peak (impossible from the
+            // current loop — a live pair touched the last sub-step) reads its
+            // load.
+            let impact = self
+                .contact_peaks
+                .get(&key)
+                .map_or(impulse, |s| s.impact)
+                .max(impulse);
+            out.push(ContactReport {
+                body1: RigidBodyHandle::from_raw_parts(key.0.0, key.0.1),
+                body2: RigidBodyHandle::from_raw_parts(key.1.0, key.1.1),
+                point,
+                impulse,
+                impact,
+            });
+        });
+        // Already in key order — `for_each_body_pair` walks a list sorted by
+        // (body pair, collider pair), so the reports come out sorted by body pair
+        // without a second pass.
         out
     }
 

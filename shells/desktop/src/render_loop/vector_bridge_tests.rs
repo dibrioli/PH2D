@@ -216,3 +216,134 @@ fn a_path_without_a_stroke_is_left_alone() {
     assert_eq!(n, 0);
     assert!(scene.paths()[0].stroke.is_none());
 }
+
+/// **A LEI: o que o apply ESCREVE, a seleção LÊ de volta.**
+///
+/// ⚠️ Este é o gate da wave, e o oráculo é um ROUND-TRIP, não uma lista de campos. Um gate que
+/// enumerasse os campos nasceria incompleto no dia em que um entrasse — que é literalmente o que
+/// aconteceu: a semente adotava só as PONTAS, e cor/largura/cap/join/dash/align ficavam com o
+/// último valor autorado (report do Enio, 2026-08-01).
+///
+/// E não era só display: o `take_apply_to_selected` REESCREVE a seleção com o que a tool tem,
+/// então tocar um controle empurrava o estilo velho inteiro para cima da forma recém-selecionada.
+#[test]
+fn what_the_apply_writes_the_selection_reads_back() {
+    use ph2d_tool_vector::VectorTool;
+    use ph2d_vec_scene::{Marker, StrokeAlign};
+
+    // Uma ficha DELIBERADAMENTE diferente do default em todo campo — sem isso o round-trip
+    // passa por acidente sobre o valor de fábrica.
+    let ficha = StrokeStyle {
+        color: Rgba8::new(11, 22, 33, 200),
+        cap: LineCap::Square,
+        join: LineJoin::Bevel,
+        align: StrokeAlign::Outer,
+        dash: Some((2.5, 1.5)),
+        marker_start: Marker::Triangle,
+        marker_end: Marker::DiamondOpen,
+        marker_scale: 1.75,
+        marker_round: 0.5,
+    };
+    let width_world = 0.4;
+    let spec = ficha.onto(width_world);
+
+    let mut tool = VectorTool::default();
+    // O documento fala MUNDO, a tool fala px de TELA — a conversão é do chamador.
+    let world_to_px = 50.0;
+    tool.adopt_stroke(&spec, width_world * world_to_px);
+
+    // …e a volta: a ficha que a tool produziria tem de ser a MESMA.
+    let back = StrokeStyle {
+        color: super::style::rgba(tool.stroke_rgba()),
+        cap: tool.cap().into(),
+        join: tool.join().into(),
+        align: tool.stroke_align(),
+        dash: (tool.dash() > 0.0).then_some((tool.dash(), tool.gap())),
+        marker_start: tool.marker_start(),
+        marker_end: tool.marker_end(),
+        marker_scale: tool.marker_scale(),
+        marker_round: tool.marker_round(),
+    };
+    assert!(
+        !back.differs_from(&spec),
+        "a adocao perdeu um campo da ficha"
+    );
+    assert!(
+        (tool.stroke_width_px() - width_world * world_to_px).abs() < 1e-9,
+        "a largura nao atravessou a fronteira de unidade"
+    );
+}
+
+/// **Adotar é LER — nunca arma a reescrita da seleção.**
+///
+/// ⚠️ Sem isto o produto entraria num laço: selecionar arma, o apply reescreve a seleção com o
+/// que ela já é, e cada frame vira um passo de undo. É a mesma lei que o `adopt_markers` já
+/// declarava, agora com gate.
+#[test]
+fn adopting_a_style_does_not_arm_the_restyle() {
+    use ph2d_tool_vector::VectorTool;
+    let mut tool = VectorTool::default();
+    assert!(!tool.take_apply_to_selected(), "o default nao arma");
+    tool.adopt_stroke(&style().onto(0.2), 10.0);
+    tool.adopt_fill([1, 2, 3, 4]);
+    assert!(
+        !tool.take_apply_to_selected(),
+        "adotar armou a reescrita da selecao"
+    );
+}
+
+/// **Selecionar um caminho re-semeia o STORE, não só a tool.**
+///
+/// ⚠️ As duas metades são perguntas diferentes, e sem a segunda metade do painel continua a
+/// mentir. As rows de Cap/Join/Align pintam do SNAPSHOT (que segue a tool), mas Width, as duas
+/// Opacity, Dash e Gap pintam do **STORE** — `store.slider(...)` com o snapshot só como
+/// *fallback*, e o fallback nunca dispara porque o `populate` já registrou o widget. Adotar na
+/// tool sem semear o store deixaria a barra de Width parada no valor anterior.
+///
+/// Este gate dirige a PORTA REAL (`seed_style_from_selection`), não o helper privado.
+#[test]
+fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
+    use ph2d_editor::panel::Panel;
+    use ph2d_tool_vector::{VectorTool, params};
+    use ph2d_vec_edit::PenTool;
+    use ph2d_vec_scene::{StrokeSpec, VecPath, VecVertex};
+
+    // O store REGISTRADO — o fluxo do produto; num vazio o `set` não alcança widget nenhum.
+    let mut store = ph2d_editor::interaction::WidgetStore::default();
+    <ph2d_panel_vector::VectorPanel as Panel>::populate(&mut store);
+
+    // Um caminho com largura BEM diferente do default, para o número não passar por acidente.
+    let world_to_px = 50.0;
+    let width_world = 1.5; // 75 px de tela — fora da faixa que o default ocupa
+    let mut scene = VecScene::default();
+    let id = scene.push_path(VecPath {
+        verts: vec![
+            VecVertex::corner([0.0, 0.0]),
+            VecVertex::corner([1.0, 0.0]),
+            VecVertex::corner([1.0, 1.0]),
+        ],
+        closed: true,
+        stroke: Some(StrokeSpec::new(Rgba8::new(9, 9, 9, 255), width_world)),
+        ..VecPath::default()
+    });
+
+    let mut tool = VectorTool::default();
+    let mut pen = PenTool::default();
+    pen.select(Some(id));
+    super::style::seed_style_from_selection(&mut tool, &mut store, &pen, &scene, world_to_px);
+
+    assert!(
+        (tool.stroke_width_px() - width_world * world_to_px).abs() < 1e-9,
+        "a tool nao adotou a largura"
+    );
+    let track = store
+        .slider(ph2d_editor::ids::VECTOR_WIDTH)
+        .map(|(_, v)| v)
+        .expect("o slider de Width existe no store");
+    assert!(
+        (f64::from(track) - f64::from(params::px_to_slider(width_world * world_to_px))).abs()
+            < 1e-6,
+        "o STORE ficou com o valor anterior: a barra de Width mostraria a largura errada \
+         (track {track})"
+    );
+}

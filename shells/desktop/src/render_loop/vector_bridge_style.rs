@@ -180,36 +180,100 @@ thread_local! {
     /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário
     /// acabou de fazer (o `SetValue` do popover chega DEPOIS deste passe, no frame
     /// seguinte, e seria imediatamente desfeito).
-    static MARKER_TARGET: Cell<Option<ph2d_vec_scene::VecPathId>> = const { Cell::new(None) };
+    static STYLE_TARGET: Cell<Option<ph2d_vec_scene::VecPathId>> = const { Cell::new(None) };
 }
 
-/// **Semeia os seletores de ponta a partir do caminho SELECIONADO** (quando a seleção
-/// muda). O painel pinta a partir da tool, então sem isto os dois chips mostrariam a
-/// última ponta autorada — não a do traço que está na tela. Espelho exato do
-/// `seed_shape_fields` + `adopt_shape_values` dos campos de forma.
+/// **Semeia o ESTILO a partir do caminho SELECIONADO** (quando a seleção muda) — cor, largura,
+/// cap, join, alinhamento, tracejado e as pontas.
 ///
-/// Um caminho SEM traço (só preenchimento) não tem ponta nenhuma a doar: o alvo passa a
-/// ser ele, mas o Style da tool fica onde estava (o default do próximo traço).
-pub(crate) fn seed_markers_from_selection(
+/// # A lei, numa frase: a ponte LÊ na seleção o que ESCREVE no apply
+///
+/// O `restyle_selected_strokes` escreve um `StrokeSpec` inteiro nos caminhos selecionados; esta
+/// função lê um `StrokeSpec` inteiro do caminho selecionado. A simetria é literal e é o que
+/// impede o painel de mentir.
+///
+/// ⚠️ **Ela era `seed_markers_from_selection` e adotava SÓ as pontas** — cor, largura, cap, join,
+/// dash e o alinhamento novo ficavam com o último valor autorado. Não era só display: o
+/// `take_apply_to_selected` REESCREVE a seleção com o que a tool tem, então tocar um único
+/// controle empurrava o estilo velho inteiro para cima da forma recém-selecionada. Report do
+/// Enio, 2026-08-01: *"as propriedades ainda não são atualizadas para o objeto selecionado"*.
+///
+/// ⚠️ **O STORE é re-semeado junto, e não é redundância:** as rows de slider (Width, as duas
+/// Opacity, Dash, Gap) pintam do **store**, não do snapshot — `store.slider(...)` com o snapshot
+/// só como *fallback*, e o fallback nunca dispara porque o `populate` registrou o widget. Adotar
+/// na tool sem semear o store deixaria metade do painel a mostrar o valor velho.
+///
+/// Um caminho SEM traço (só preenchimento) não tem estilo a doar: o alvo passa a ser ele, mas o
+/// Style da tool fica onde estava (o default do próximo traço).
+pub(crate) fn seed_style_from_selection(
     tool: &mut ph2d_tool_vector::VectorTool,
+    store: &mut ph2d_editor::interaction::WidgetStore,
     pen: &PenTool,
     scene: &VecScene,
+    world_to_px: f64,
 ) {
     let target = pen.selected();
-    if MARKER_TARGET.with(Cell::get) == target {
+    if STYLE_TARGET.with(Cell::get) == target {
         return;
     }
-    MARKER_TARGET.with(|c| c.set(target));
-    let Some(stroke) = target
-        .and_then(|id| scene.paths().iter().find(|p| p.id == id))
-        .and_then(|p| p.stroke)
-    else {
+    STYLE_TARGET.with(|c| c.set(target));
+    let Some(path) = target.and_then(|id| scene.paths().iter().find(|p| p.id == id)) else {
         return;
     };
-    tool.adopt_markers(
-        stroke.marker_start,
-        stroke.marker_end,
-        stroke.marker_scale,
-        stroke.marker_round,
+    // O preenchimento SÓLIDO vira a swatch de Fill; alfa 0 é o "sem preenchimento" que a
+    // ponte já usa no caminho inverso. Um gradiente fica QUIETO — ele tem alça própria, e
+    // esmagá-lo numa cor só seria a seleção destruindo o que o artista autorou.
+    match &path.fill {
+        Some(ph2d_vec_scene::Paint::Solid(c)) => tool.adopt_fill([c.r, c.g, c.b, c.a]),
+        None => tool.adopt_fill([0, 0, 0, 0]),
+        Some(_) => {}
+    }
+    let Some(stroke) = path.stroke else {
+        return;
+    };
+    tool.adopt_stroke(&stroke, stroke.width * world_to_px);
+    reseed_style_sliders(store, tool);
+}
+
+/// As rows que pintam do STORE — sem isto o painel mostra o valor velho mesmo com a tool já
+/// adotada. Espelho exato do `seed_shape_fields`, e pela mesma razão.
+fn reseed_style_sliders(
+    store: &mut ph2d_editor::interaction::WidgetStore,
+    tool: &ph2d_tool_vector::VectorTool,
+) {
+    use ph2d_tool_vector::params;
+    let set = |store: &mut ph2d_editor::interaction::WidgetStore, id, track: f32| {
+        // ⚠️ Nunca sobre um slider em ARRASTO: a semente brigaria com o dedo do artista, a
+        // mesma armadilha que o `seed_shape_fields` documenta.
+        if let Some(ph2d_editor::InteractiveState::Slider { state, value, .. }) = store.get_mut(id)
+            && !matches!(*state, ph2d_editor::widget::SliderState::Dragging)
+        {
+            *value = track.clamp(0.0, 1.0);
+        }
+    };
+    set(
+        store,
+        ph2d_editor::ids::VECTOR_WIDTH,
+        params::px_to_slider(tool.stroke_width_px()),
+    );
+    set(
+        store,
+        ph2d_editor::ids::VECTOR_DASH,
+        params::dash_to_slider(tool.dash()),
+    );
+    set(
+        store,
+        ph2d_editor::ids::VECTOR_GAP,
+        params::gap_to_slider(tool.gap()),
+    );
+    sync_opacity_slider(
+        store,
+        ph2d_editor::ids::VECTOR_STROKE_OPACITY,
+        tool.stroke_rgba()[3],
+    );
+    sync_opacity_slider(
+        store,
+        ph2d_editor::ids::VECTOR_FILL_OPACITY,
+        tool.fill_rgba()[3],
     );
 }

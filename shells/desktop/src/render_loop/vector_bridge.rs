@@ -34,7 +34,7 @@ use ph2d_vec_scene::{LineCap, LineJoin, Paint, VecScene};
 mod style;
 pub(crate) use style::restyle_selected_strokes;
 use style::{
-    RECOLOR_PRE, StrokeStyle, rgba, seed_markers_from_selection, selected_grad_color,
+    RECOLOR_PRE, StrokeStyle, rgba, seed_style_from_selection, selected_grad_color,
     set_selected_grad_color, sync_opacity_slider,
 };
 
@@ -172,9 +172,22 @@ pub(super) fn dispatch(
         }
     }
 
-    // As PONTAS do caminho selecionado viram as correntes quando a seleção muda (antes de
-    // qualquer leitura do Style abaixo, senão o frame da seleção ainda pintaria as antigas).
-    seed_markers_from_selection(tool, pen, scene);
+    // O ESTILO do caminho selecionado vira o corrente quando a seleção muda (antes de qualquer
+    // leitura do Style abaixo, senão o frame da seleção ainda pintaria o antigo).
+    //
+    // ⚠️ A largura viaja em px de TELA na tool e em MUNDO no documento; a conversão tem um dono
+    // só, e é este (`px_to_world` é o recíproco).
+    seed_style_from_selection(
+        tool,
+        &mut hero.store,
+        pen,
+        scene,
+        if px_to_world > 0.0 {
+            1.0 / px_to_world
+        } else {
+            0.0
+        },
+    );
 
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();

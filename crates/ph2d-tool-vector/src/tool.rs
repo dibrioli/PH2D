@@ -289,14 +289,6 @@ impl VectorTool {
         crate::shapes::clamp(k, slot);
     }
 
-    /// ADOTA os parâmetros de uma forma (a shell chama ao selecionar uma forma viva):
-    /// eles viram os correntes daquela forma, então o painel para de mentir e a próxima
-    /// desenhada os herda (modelo Figma "último usado").
-    pub fn adopt_shape_values(&mut self, k: ShapeKind, v: ShapeValues) {
-        self.shape_values[k.as_u16() as usize] = v;
-        crate::shapes::clamp(k, &mut self.shape_values[k.as_u16() as usize]);
-    }
-
     /// Stroke cap / join / dash (multiple of width) — the shell maps cap/join to
     /// the geometry enums; the render multiplies dash by the path's width.
     #[must_use]
@@ -411,19 +403,6 @@ impl VectorTool {
     fn set_marker_end(&mut self, m: Marker) {
         self.marker_end = m;
         self.apply_to_selected = true;
-    }
-
-    /// **ADOTA** as pontas de um caminho (o shell chama ao SELECIONAR um): elas viram as
-    /// correntes, e o painel — que pinta a partir da tool — passa a mostrar as pontas
-    /// daquele caminho em vez das últimas autoradas. Espelho exato de
-    /// [`Self::adopt_shape_values`], e pela mesma razão: sem isto o seletor mente sobre o
-    /// que está na tela. **Não** marca `apply_to_selected` — adotar é LER o documento; se
-    /// marcasse, o próprio ato de selecionar reescreveria o caminho.
-    pub fn adopt_markers(&mut self, start: Marker, end: Marker, scale: f64, round: f64) {
-        self.marker_start = start;
-        self.marker_end = end;
-        self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, scale);
-        self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, round);
     }
 
     /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
@@ -698,3 +677,7 @@ impl Tool for VectorTool {
 #[cfg(test)]
 #[path = "tool_tests.rs"]
 mod tests;
+
+/// A família que LÊ o documento — ver o cabeçalho do módulo.
+#[path = "tool_adopt.rs"]
+mod adopt;

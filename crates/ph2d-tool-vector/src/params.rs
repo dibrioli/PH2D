@@ -251,23 +251,6 @@ pub enum VertexSel {
     Mixed,
 }
 
-/// UI-facing line cap / join (mirror of `ph2d_vec_scene::{LineCap, LineJoin}`;
-/// the shell maps between them — the tool crate doesn't dep `ph2d-vec-scene`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum StrokeCap {
-    #[default]
-    Butt,
-    Round,
-    Square,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum StrokeJoin {
-    #[default]
-    Miter,
-    Round,
-    Bevel,
-}
-
 /// Dash range as a **multiple of the stroke width** (`0` = solid). Width-aware:
 /// the render draws dash/gap of `dash·width`, so a thick line keeps its gaps.
 pub const DASH_MIN: f64 = 0.0;
@@ -699,3 +682,8 @@ mod tests {
         );
     }
 }
+
+/// Os espelhos de UI do traço — ver o cabeçalho do módulo.
+#[path = "params_stroke.rs"]
+mod stroke_mirrors;
+pub use stroke_mirrors::{StrokeCap, StrokeJoin};

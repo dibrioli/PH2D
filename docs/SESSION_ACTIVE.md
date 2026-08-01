@@ -19,152 +19,91 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## Integração — jornada FECHADA (7 linhas), ship+CI POR ORDEM DO ENIO
+## Integração — jornada FECHADA (7 linhas), `ship.sh` VERDE, aguardando PUSH
 
-**Sete linhas integraram**, na ordem MEDIDA: **`line/Painter`** (74 commits — o journal de
-undo por tile + a performance do Wet Paint) → **`line/Vector`** (58 — a pilha de FX raster +
-o lápis, a largura viva e o alcance do nó) → **`line/motion-value`** (43 — o editor de nós
-ganhou mãos) → **`line/physics`** (70 — a POLIA W0..W6 + a Weston + o pino de mundo) →
-**`line/sculpt3d`** (7 — a W1 do módulo 3D, a malha) → **`line/FLIP`** (58 — o motor novo de
-traço, que passa a ser PERCORRIDO em vez de rasterizado) → **`line/anim`** (89, em 2026-07-31
-— a expressão vira fonte de lane que FADEIA e a trajetória é do CLIP).
+**Sete linhas integraram** (2026-08-01), na ordem **MEDIDA**: **`line/Vector`** (10 commits —
+o corte, o pathfinder, a reivindicação 2-D) → **`line/physics`** (7 — o rig sai da hierarquia,
+a solda que cede, o corpo com várias formas) → **`line/Painter`** (28 — a performance do Wet
+Paint e o teto de raio herdado do modelo) → **`line/sculpt3d`** (23 — a doação chega à tinta) →
+**`line/anim`** (11 — a wave dos fades) → **`line/motion-value`** (10 — o conjunto completo de
+idiomas do editor de nós) → **`line/FLIP`** (10 — as pontas do traço). **107 commits.**
 
-> **A ordem da última NÃO foi medida, e isso é a resposta honesta:** a sobreposição par-a-par
-> existe entre linhas CONCORRENTES, e a `line/anim` era a única restante. Medir teria sido
-> ritual.
+> **Como a ordem foi medida** (a sobreposição se MEDE, não se escolhe): as DUAS metades —
+> `git diff --name-only main...BRANCH` (net) **e** `git log --diff-filter=AD --name-only`
+> (nascidos/mortos por commit, o corolário de 31/07). A segunda pagou-se na hora: a
+> `line/Vector` tinha **união 68 > net 66** (o `cut_tool.rs` nasce e morre dentro dela,
+> invisível ao diff net). A sobreposição real ficou **concentrada no wiring da shell**
+> (`app_state.rs` · `main.rs` · `render_loop/mod.rs`), com duas colisões substantivas:
+> `FLIP × physics` no `project.rs` (schema) e `motion-value × anim` no `interaction/`
+> (que era **textual pura** — enums diferentes do mesmo arquivo).
+>
+> O critério de ordem foi o **custo de rebase medido**, não o tamanho: commits que tocam
+> arquivo quente (Vector **13** · physics **11** · Painter 5 · os outros 4 · FLIP **2**).
+> Quem vai primeiro é fast-forward puro e não paga nada ⇒ **o mais caro primeiro**, e a FLIP
+> por último porque o que ela paga é uma CONTAGEM determinística.
 
-> **Como a ordem foi medida nas duas últimas** (a sobreposição se MEDE, não se escolhe): as
-> duas tocavam os MESMOS 3 arquivos (`Cargo.lock` · `main.rs` · `render_loop/mod.rs`), as duas
-> **só acrescentando** um `mod` e uma chamada de smoke — sobreposição **simétrica e trivial**.
-> O desempate foi RISCO: sculpt3d são 7 commits de arquivos quase todos NOVOS, a FLIP são 58
-> replayados sobre 186 commits de `main`. A barata primeiro dá um `main` verde intermediário
-> que serve de CONTROLE para a cara.
+**Verde na árvore COMBINADA** (rodado por linha, depois de cada ff-merge): impactados
+**7339 · 6958 · 4831 · 4854 · 7073 · 6786 · 6973**. E o **`ship.sh` fechou VERDE 7/7**
+(fmt · clippy · machete · deny · audit · typos · nextest `ci-test`) em **4 iterações**.
+⚠️ **NÃO foi pushado** — é ordem explícita do Enio (§0.7).
 
-**Verde na árvore COMBINADA** (rodado por linha, depois do ff-merge): impactados
-**6674 · 1704 · 3692** (`ci-test`) · **workspace inteiro em DEBUG** · `clippy --workspace
---all-targets` **0** · `fmt --check --all` limpo · `machete` limpo · os arch-gates por NOME
-(LOC de workspace/painel/shell, `node_id_collisions`, `panel_wiring_parity`,
-`adr_numbers_are_unique`, `arch_safe_clamp_only`, HR-15 magic/color) · e os **gates de GPU
-`#[ignore]` na RTX: FLIP 114/114 · 3D 4/4** (sem adapter fazem *skip gracioso*, **que não é
-verde**). ⚠️ **NÃO foi pushado, e o `ship.sh` NÃO foi rodado** — os dois são ordem explícita
-do Enio (§0.7).
+**Gates `#[ignore]` rodados na RTX:** `ph2d-flip-render` **118/118** · `ph2d-mesh-render`
+**16/16** · `ph2d-render` os reais verdes. ⚠️ **E aqui uma lição do integrador:** `--ignored`
+**não é sinônimo de "os gates de GPU"** — este repo usa `#[ignore]` para TRÊS coisas (precisa
+de adapter · scaffold `unimplemented!()` · probe manual que exige env), e a varredura cega
+produziu 5 "falhas" que **não eram regressão nenhuma** (as 4 do `smoke_fixture_renderable` são
+scaffolds da W2 do Sprite Inspector com **zero commits da jornada**; a do
+`write_mobile_to_disk` diz no próprio doc *"it is a probe, not a gate"* e quer `PROBE_OUT`).
 
 **Números no `main` de hoje** (a fonte é o código, não esta linha):
-`PROJECT_SCHEMA` **46** · `FLIP_SCHEMA` **12** · `VEC_SCENE` **13** · `DOC_VERSION` **17** ·
-formato textual do nodegraph **v5** · **ADR max 0152** · registro `ph2d-ecs` **39**
-(espelhos `ph2d-render`/`ph2d-script` **40**) · registro `ph2d-physics-ecs` **24** · gizmo ids
-**próximo livre 972** · `physics_ecs_c9` **`7cb7728d…`, 96 corpos** · crates novas
-**`ph2d-stroke-width`** + **`ph2d-mesh`/`ph2d-mesh-render`/`ph2d-sculpt3d`**.
+`PROJECT_SCHEMA` **48** · `FLIP_SCHEMA` **13** · `VEC_SCENE` **13** · `DOC_VERSION` **17** ·
+**ADR max 0152** (nenhum ADR novo nesta jornada — pela primeira vez em quatro, zero disputa de
+número) · registro `ph2d-ecs` **40** (espelhos **41**) · registro `ph2d-physics-ecs` **24** ·
+gizmo ids **próximo livre 972** · `physics_ecs_c9` **`556cb652…`, 99 corpos**.
 
-> ⚠️ **A disputa desta jornada foi de ADR, e ela CONTINUOU depois de eu declará-la fechada:**
-> `line/Painter` levou **0145/0146/0147**, `line/Vector` renumerou para **0148** (5ª vez),
-> `line/physics` para **0149** (6ª) e `line/sculpt3d` para **0150** (7ª) — as quatro tinham
-> escrito **0145**. Como os NOMES de arquivo diferem, o git **nunca conflita**: quem chega ao
-> `main` primeiro fica com o número, e o gate `architecture_adr_numbers_are_unique` é quem
-> acusa. ⚠️ **E o rewrite tem armadilha MEDIDA:** o `Cargo.lock` contém `0145` **dentro de um
-> checksum**, e no dia da sculpt3d havia **10+ arquivos ALHEIOS** citando `ADR-0145` (o do
-> wet-paint) — o token é `ADR-0145` + o stem do arquivo, **escopado aos arquivos que a LINHA
-> mudou**, nunca o número nu sobre a árvore.
+### ⚠️ O que a ÁRVORE COMBINADA pegou, e nenhuma linha podia ver sozinha
 
-> ⚠️ **O `PROJECT_SCHEMA` também subiu depois:** a `line/physics` escreveu 45 e o valor certo
-> era **46** — a `line/Vector` tinha acabado de levar o 38 e a escada SOMA. O handoff dela
-> dizia *"no `main` de hoje é 38"* e **envelheceu no MESMO dia**. *Um número que se CONTA
-> envelhece entre escrever o handoff e integrá-lo.*
+**(1) Um PÂNICO real no Wet Paint, escondido pelo `--release`.** O `live_span_cells` (o readout
+da poça, doc 28 §5.47) fazia `hi - lo + 1` sobre o par SENTINELA de uma linha sem faixa viva
+(`row_lo = i32::MAX`, `row_hi = i32::MIN`) ⇒ **overflow de `i32`**: panica em debug, embrulha em
+silêncio em release. O `try_from(..).unwrap_or(0)` que o autor escreveu É a resposta certa para a
+linha vazia — ele só nunca RECEBIA o número. A linha fechou em `--release` e ficou verde; é a
+MESMA lição que o `ph2d-flip-colorize` pagou em 21/07. **Rode as duas.** Corrigido em `i64`
+(byte-idêntico em linha não-vazia), com gate mutação-provado verde→RED→verde.
 
-> ⚠️ **A falha EMERGENTE desta rodada foi de `fmt`, e nenhuma linha a tinha:** a sculpt3d
-> fechou com `cargo fmt` verde na própria árvore, e o rebase pôs o `mod sculpt3d;` no slot
-> alfabético que era certo **no fork** e errado no `main` de hoje (que ganhou dezenas de
-> `mod flip_*`), além de mudar a quebra de linha do `present.rs` pela indentação ao redor.
-> Corrigido com `rustfmt` nos 2 arquivos — **nunca `cargo fmt -p`**, que reformata WIP alheio.
+**(2) O schema que quase EVAPOROU em silêncio.** `line/physics` e `line/FLIP` escreveram **ambas
+47** contra o `main` de 30/07, a **TERCEIRA** colisão entre estas duas linhas (30 em 25/07,
+32/33/34 em 27/07). ⚠️ **E o `project.rs` NÃO conflitou** — o literal era o mesmo dos dois lados,
+e o git não tem opinião sobre o que o número SIGNIFICA: o bump da segunda teria sumido com a
+suíte inteira verde. Quem denunciou foi o conflito do `project_schema_tests.rs` **ao lado**.
+Contado para **48**, tripla `(48, 13, 13)`.
 
-> ⚠️ **E um `✗` do gate era do AMBIENTE, não do código:** o `target/` da árvore PRIMÁRIA é um
-> symlink para `/dev/shm/ph2d-target` e a tmpfs evaporou, então todo `cargo` rodado da raiz
-> morria em `failed to create directory`. Os gates das linhas rodam das worktrees (target
-> próprio) e por isso passaram. Com `main == line/FLIP` byte a byte, o gate de fechamento foi
-> rodado da worktree quente. **Recrie o diretório antes do `ship.sh`.**
+**(3) Um LOC vermelho-latente que não era conflito.** `motion_bridge_edit_tests.rs` a **615** nas
+DUAS árvores (medido antes e depois do rebase): os gates de `shells/desktop/tests/` só correm na
+varredura impactada, e um fechamento por `cargo test -p` por crate não os alcança — 4ª jornada
+seguida com esta família.
 
-> ⚠️ **SEIS latentes foram drenados na integração, e NENHUM era conflito de merge** — todos
-> eram vermelhos que já estavam no tip de uma linha e que só a árvore combinada mostra:
-> **(1)** um conflito SEMÂNTICO de mesmo-símbolo (a Vector trocou `take_curve_point_drag()`
-> por `..._if(pred)` e a motion-value acrescentou um chamador com a API velha — cada lado
-> compilava sozinho; e o `drain_drag` dela já perguntava de quem era o gesto, mas **depois de
-> drenar**, que é o roubo que aquele fix descreve) · **(2)** dois gates de **HR-15** (o sufixo
-> `_tests.rs` não é cosmético: os gates isentam por ele; e o marcador `LITERAL-COLOR-OK` casa
-> **na linha da chamada**, então numa chamada multi-linha ele estava em lugar nenhum) ·
-> **(3)** três demos que semeavam um nó por **param morto**, fazendo o `validate` recusar o
-> grafo inteiro · **(4)** dívida de `fmt` (a linha conferiu só `-p ph2d-host-desktop`) ·
-> **(5)** dois arquivos por cima do teto de LOC — ⚠️ **causados PELO fmt**, que re-expande
-> (os dois gates passavam antes dele) · **(6)** cinco avisos de clippy, com o CI em
-> `-D warnings`. **A regra que atravessa os seis: um fechamento por `cargo test -p <crate>`
-> não alcança o gate cujo dono é outra crate** — é a 4ª jornada seguida com esta família.
+### ⚠️ E o `ship.sh` drenou uma CASCATA cuja causa era ele mesmo
 
-> ⚠️ **DUAS gates de RELÓGIO flakaram, e uma foi CORRIGIDA:** o
-> `the_cost_of_depth_is_linear_not_explosive` (timeline) é a flake pré-existente que a §5 já
-> nomeia — passa isolado, re-rode antes de suspeitar do merge. Já o
-> `the_worker_reports_what_a_step_costs` (a água) falhou **duas vezes no mesmo dia** (sob a
-> suíte inteira em paralelo, e em DEBUG, ~16× mais lento) porque **esperava uma DURAÇÃO
-> fixa**; agora espera uma **CONDIÇÃO**, e a espera **dirige o produto** (o balde `away` só
-> existe quando o motor VIAJA — um laço que só dorme nunca o preenche). Mutação conferida.
+Nenhum dos `✗` era código de linha:
 
-> ⚠️ **E a `line/FLIP` fechou com dois gates VERMELHOS no próprio tip** (`paint_sections.rs`
-> 621 > 600 · `populate` 216 > 200) — medidos idênticos antes e depois do rebase, então não
-> era conflito de integração. O `architecture_panel_loc_cap` mora na `ph2d-editor-core`, e um
-> fechamento por `cargo test -p ph2d-panel-flip` **não o alcança**. É a **terceira** vez nesta
-> família (o `file_loc_caps` da shell na `line/physics`; os dois arch-gates de shell na
-> `line/Vector`). **Quem fecha uma linha roda o gate de LOC do dono do teto, não só o `-p` da
-> própria crate.**
+1. **fmt** (12 arquivos) — nenhum estava sujo na própria árvore. O `rustfmt` decide a quebra pelo
+   **contexto ao redor**, o rebase mudou o contexto, e o `foundational-integrate.sh` **não roda
+   fmt** ⇒ a dívida só aparece no ship. ⚠️ **A edição importa:** `--edition 2021` faz o rustfmt
+   **RECUSAR o arquivo inteiro** (*"let chains are only allowed in Rust 2024"*) sem escrever nada.
+2. **typos** (5) — e o critério da própria `.typos.toml` (*"allowlistar isto pode esconder um typo
+   real?"*) decidiu **diferente para cada palavra**: o pt-BR de *"está a ponto de"* foi REESCRITO
+   porque **123 arquivos `.rs` dizem `presets`** e a allowlist cegaria o gate para todos eles; o
+   plural errado de `vertex` num nome de teste era typo inglês DE VERDADE; `FULLs` virou regex (o caso
+   `PNGs` que a config já explica: a tokenização erra, não o texto); só `instale` entrou na
+   allowlist.
+3. **`paint()` 207 > 200** — ⚠️ **causado pelo fix de fmt do passo 1**: uma chamada de 7 argumentos
+   virou 9 linhas. Cortado em `paint_wires.rs`.
+4. **`subgraph_tests` 601 > 600** — o 4º arquivo do mesmo fmt. Cortado pela seção que o **próprio
+   arquivo já nomeava** num banner.
+5. **`Disk quota exceeded`** — AMBIENTE, não código: a tmpfs do `target/` a 80%, com **27 G de
+   `debug/`** acumulados pelas chamadas `cargo test -p` do integrador (o ship usa `ci-test`).
 
-> ⚠️ **A `line/anim` trouxe DOIS conflitos que o handoff dela não previu, e os dois no MESMO
-> arquivo:** `ph2d-editor-core/src/paint_shapes.rs`. Duas linhas o criaram **independentemente
-> e pelo mesmo motivo** (`paint.rs` no teto congelado de 884 LOC ⇒ um primitivo novo nasce num
-> irmão) — `fill_diamond` pela `motion-value`, `fill_polygon` pela `anim`. Primeiro **add/add**
-> (mecânico: ficam os dois, é ponto de extensão append-only); depois **modify/delete**, quando
-> a própria `anim` apagou o arquivo ao retirar o preview de expressão. Apagar teria levado o
-> `fill_diamond` que o `ph2d-panel-motion-graph` importa e que **já shipou**. ⚠️ **E a metade
-> que o merge textual não mostra:** o commit de remoção tirou **também** o `pub mod
-> paint_shapes;` do `lib.rs` — restaurar só o ARQUIVO deixa o módulo **órfão**, uma árvore que
-> funde limpa e **não compila**. *As duas metades voltam juntas.*
-
-> ⚠️ **O rewrite de token da renumeração mediu o próprio preço, e o escopo por-ARQUIVO NÃO
-> bastou:** 23 arquivos **alheios** citam `ADR-0145/0146` (todos do wet paint), então o escopo
-> foi a interseção *arquivos-da-linha ∩ citações* — **44**. Mas dois deles são **MISTOS**: o
-> `CLAUDE.md` cita os 0145/0146 do wet paint **11 vezes** e os da timeline **1**, e o handoff
-> da linha nomeia os dois donos de propósito. Os 42 puros foram por token; o `CLAUDE.md` levou
-> **edição cirúrgica**, com controle confirmando as 11 citações alheias intactas.
-
-### ⚠️ Ao REABRIR uma linha: rebase primeiro
-
-**Toda worktree está ATRÁS do `main`** — nenhuma continua de onde parou sem rebase. Rota
-"linha reaberta" do [`MODELO_ABERTURA_LINHA`](IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md):
-
-```
-cd Worktrees/<linha> && pwd && git branch --show-current   # ANTES de ler ou editar qualquer arquivo
-git rebase main
-```
-
-O `cd` + `pwd` não é zelo: a janela abre na raiz (= `main`) e **o mesmo path relativo existe nas
-duas árvores** — editar a errada compila e commita sem erro
-([`MODELO_TROCA_DE_AGENTE_NA_LINHA`](IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
-
-**NENHUMA linha em voo.** Todas as worktrees estão em **zero** commits contra o `main`
-(confira, que é a fonte: `for w in Worktrees/*; do git -C $w rev-list --count main..HEAD; done`).
-
-> ⚠️ **Toda nota anterior de "linha em voo" está VENCIDA** — as sete integraram, a `line/anim`
-> por último. ⚠️ E a que dizia que a `motion-value` carregava 17 commits órfãos também: o
-> trabalho de 14/07-15/07 (as crates-nó `fx-glow`/`motion-delay`/`motion-path`, o
-> `ph2d-nodegraph::external`, o W4.T4) está no `main`. **A armadilha dos DOIS
-> `motion_path_smoke.rs` foi resolvida na própria linha** — não a re-litigue.
-
-> ⚠️ **TODOS os smokes desta jornada seguem PENDENTES** (as três primeiras linhas já estavam
-> assim; physics/sculpt3d/FLIP/anim foram smokadas pelos donos ANTES da integração, e
-> **integrar não é aprovar**). Os comandos por módulo estão na §5 do CLAUDE.md.
-
-**`line/cook-parallel` foi DESCARTADA (2026-07-25)** — estava subsumida pela `line/gpu-nodes`.
-Worktree e branch removidas; o histórico vive na tag **`archive/cook-parallel-2026-07-15`**.
-
-> Os `target/` de todas as worktrees foram limpos no fim-de-dia de 2026-07-25 (389 GB): o
-> primeiro build de cada linha é **frio**, servido pelo `~/.cache/sccache` (~46 GB, quente —
-> **nunca apague**, DIRETIVA_FIM_DE_DIA §3).
 
 ## Estado da orquestração
 

@@ -22,6 +22,9 @@ pub struct VectorStyleSnapshot {
     /// **De onde a largura do traço de lápis vem** (W1d) — o painel pinta os três chips a partir
     /// disto e não sabe o que uma fonte É; a tool é a dona.
     pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
+    /// **O estilo da SIMETRIA de desenho** (W6.3) — o painel pinta os chips a partir disto e não
+    /// sabe o que um espelho É; a tool é a dona.
+    pub symmetry: ph2d_symmetry::SymmetryStyle,
     /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
     /// seletor e os campos a partir disto, sem saber que formas existem.
     pub shape: ShapeKind,
@@ -70,6 +73,7 @@ impl Default for VectorStyleSnapshot {
             mode: DrawMode::Pen,
             blend_stack_up: true,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
+            symmetry: ph2d_symmetry::SymmetryStyle::default(),
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,

@@ -59,6 +59,18 @@ fn shape_index(id: ph2d_a11y::NodeId) -> Option<usize> {
     (0..crate::shapes::SHAPES.len()).find(|&i| ids::vector_shape_id(i) == id)
 }
 
+/// O tipo de simetria cujo chip é `id` (`None` se não for um).
+///
+/// ⚠️ A tabela é percorrida a partir de [`ph2d_symmetry::SymmetryKind::ALL`], e não escrita à mão:
+/// um tipo novo entra na lista do vocabulário e o chip dele passa a responder de graça. Uma tabela
+/// paralela aqui nasceria incompleta no dia do quinto.
+pub(crate) fn symmetry_kind(id: ph2d_a11y::NodeId) -> Option<ph2d_symmetry::SymmetryKind> {
+    ph2d_symmetry::SymmetryKind::ALL
+        .iter()
+        .copied()
+        .find(|k| crate::params::symmetry_kind_id(*k) == id)
+}
+
 use crate::params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, marker_from_value,
     slider_to_dash, slider_to_gap, slider_to_opacity, slider_to_px,
@@ -125,6 +137,10 @@ pub struct VectorTool {
     /// De onde a largura do traço de lápis vem (W1d). Estado AUTORADO da ferramenta, como o
     /// estabilizador: o documento guarda o `WidthStops` que ele produziu, não a fonte.
     pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
+    /// **O estilo da SIMETRIA de desenho** (plano 25 W6.3) — que espelho, quantas cópias, funde
+    /// ou não. O LUGAR da linha não está aqui: ele pertence ao desenho e viaja no componente dele
+    /// (`ph2d_ecs::VecSymmetry`). Um centro guardado na ferramenta seria um campo que nunca se lê.
+    symmetry: ph2d_symmetry::SymmetryStyle,
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
@@ -169,6 +185,7 @@ impl Default for VectorTool {
             pencil_fidelity_px: crate::params::PENCIL_FIDELITY_DEFAULT_PX,
             pencil_stabilizer: crate::params::PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
+            symmetry: ph2d_symmetry::SymmetryStyle::default(),
             mode: DrawMode::Select,
             blend_stack_up: true,
             shape: ShapeKind::default(),
@@ -404,6 +421,7 @@ impl VectorTool {
             values: self.shape_values(self.shape),
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
+            symmetry: self.symmetry,
         }
     }
 
@@ -432,6 +450,7 @@ impl VectorTool {
             mode: self.mode,
             blend_stack_up: self.blend_stack_up,
             pencil_width_source: self.pencil_width_source,
+            symmetry: self.symmetry,
             shape: self.shape,
             values: self.shape_values(self.shape),
             cap: self.cap,
@@ -540,6 +559,20 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_PENCIL_W_PRESSURE => {
                 self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Pressure;
             }
+            // **A SIMETRIA de desenho** (W6.3) — o par que arma o modo e os quatro tipos.
+            //
+            // ⚠️ O `Enable` fica no TOPO e gateia toda a seção (a lei que o Enio estabeleceu no
+            // painel do impasto), então os chips abaixo só são clicáveis com ele ligado: não há
+            // como escolher um tipo para um espelho que não existe.
+            PanelEvent::Click(id) if id == ids::VECTOR_SYM_OFF => self.symmetry.on = false,
+            PanelEvent::Click(id) if id == ids::VECTOR_SYM_ON => self.symmetry.on = true,
+            PanelEvent::Click(id) if symmetry_kind(id).is_some() => {
+                if let Some(k) = symmetry_kind(id) {
+                    self.symmetry.kind = k;
+                }
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_SYM_FUSE_OFF => self.symmetry.fuse = false,
+            PanelEvent::Click(id) if id == ids::VECTOR_SYM_FUSE_ON => self.symmetry.fuse = true,
             // **Forma** — o 5º pill. Re-arma o gesto na forma ATIVA do catálogo (não a
             // troca): é o caminho de volta ao desenho depois de um desvio pelo Select,
             // e é o pill que ACENDE enquanto se desenha (antes o modo Shape não tinha

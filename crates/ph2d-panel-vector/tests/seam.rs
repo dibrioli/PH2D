@@ -564,7 +564,8 @@ fn every_section_header_is_registered_as_collapsible() {
         // +1 (plano 25 W1): PENCIL — os dois knobs da mão livre. ⚠️ O número se CONTA, não se
         // escolhe: ele é o tamanho da lista de hoje, e mexer nele sem acrescentar um header é
         // exactamente o que este gate existe para pegar.
-        28,
+        // +1 (plano 25 W6.3): SYMMETRY — a simetria de desenho, um MODO e não um efeito.
+        29,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -2350,4 +2351,148 @@ fn every_pathfinder_button_answers_a_real_pointer() {
         }
     }
     assert!(dead.is_empty(), "operacoes que nao respondem: {dead:?}");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A SIMETRIA de desenho (plano 25 §9, W6.3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Arma o snapshot com a simetria ligada num `kind` dado, pinta, e devolve os retângulos.
+fn symmetry_rects(
+    host: &mut MockPanelHost,
+    kind: ph2d_symmetry::SymmetryKind,
+) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let snap = ph2d_tool_vector::VectorStyleSnapshot {
+        symmetry: ph2d_symmetry::SymmetryStyle {
+            on: true,
+            kind,
+            ..ph2d_symmetry::SymmetryStyle::default()
+        },
+        ..ph2d_tool_vector::VectorStyleSnapshot::default()
+    };
+    ph2d_panel_vector::set_current_vector_style(Some(snap));
+    let mut st = VectorPanelState;
+    host.paint::<VectorPanel>(&mut st, VIEWPORT)
+}
+
+/// **Os quatro tipos são pintados E vivos sob o mouse.**
+///
+/// ⚠️ O oráculo é o CLIQUE, não o retângulo: pintar e hit-testar não basta — sem o registro no
+/// `populate` o chip nasce morto, e foi assim que dez chips do painel do impasto ficaram verdes e
+/// inertes. E a fileira é construída a partir de `SymmetryKind::ALL`, então um tipo novo entra
+/// neste gate sozinho.
+#[test]
+fn every_symmetry_kind_chip_is_painted_and_alive() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let rects = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
+    for k in ph2d_symmetry::SymmetryKind::ALL {
+        let id = ph2d_tool_vector::params::symmetry_kind_id(*k);
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("o chip de {:?} tem de ser pintado", k));
+        let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(
+            !events.is_empty(),
+            "o chip de {k:?} está pintado e MORTO sob o mouse — falta o registro no `populate`"
+        );
+    }
+    ph2d_panel_vector::set_current_vector_style(None);
+}
+
+/// **`Enable` gateia toda a seção** — a lei que o Enio estabeleceu no painel do impasto (*"esse
+/// card só aparece se enable estiver checado"*). Desarmado, os controles abaixo editariam o estilo
+/// de um espelho que não existe.
+#[test]
+fn the_enable_pair_gates_the_whole_symmetry_section() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    ph2d_panel_vector::set_current_vector_style(None);
+    let mut st = VectorPanelState;
+    let off = host.paint::<VectorPanel>(&mut st, VIEWPORT);
+    // Desarmada: o par Enable existe (é como se arma) e mais nada da seção.
+    assert!(
+        off.iter().any(|(n, _)| *n == ids::VECTOR_SYM_ON),
+        "o par Enable tem de existir desarmado — senão não há como armar"
+    );
+    for k in ph2d_symmetry::SymmetryKind::ALL {
+        let id = ph2d_tool_vector::params::symmetry_kind_id(*k);
+        assert!(
+            !off.iter().any(|(n, _)| *n == id),
+            "o chip de {k:?} não pode ser pintado com a simetria desarmada"
+        );
+    }
+    let on = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
+    assert!(
+        on.iter().any(|(n, _)| *n == ids::VECTOR_SYM_KIND_RADIAL),
+        "armada, os tipos aparecem"
+    );
+    ph2d_panel_vector::set_current_vector_style(None);
+}
+
+/// **Cada controle aparece só onde tem o que fazer.** `Segments` no Radial (num espelho a contagem
+/// é dois por definição) e `Fuse` nos espelhos (no Radial não há costura a fechar, e o kernel o
+/// ignora — oferecê-lo ali seriam dois chips que não fazem nada).
+#[test]
+fn segments_belongs_to_radial_and_fuse_to_the_mirrors() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let radial = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::Radial);
+    assert!(
+        radial.iter().any(|(n, _)| *n == ids::VECTOR_SYM_SEGMENTS),
+        "Radial mostra Segments"
+    );
+    assert!(
+        !radial.iter().any(|(n, _)| *n == ids::VECTOR_SYM_FUSE_ON),
+        "Radial NÃO mostra Fuse — não há costura a fechar"
+    );
+    let mirror = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorY);
+    assert!(
+        mirror.iter().any(|(n, _)| *n == ids::VECTOR_SYM_FUSE_ON),
+        "um espelho mostra Fuse"
+    );
+    assert!(
+        !mirror.iter().any(|(n, _)| *n == ids::VECTOR_SYM_SEGMENTS),
+        "um espelho NÃO mostra Segments — a contagem é dois por definição"
+    );
+    ph2d_panel_vector::set_current_vector_style(None);
+}
+
+/// **O `Apply` só é oferecido quando há o que consolidar.** A pergunta é feita à shell (só ela vê
+/// a cena); sem simetria viva na seleção, um *Apply* que não aplica nada é pior que *Apply*
+/// nenhum.
+#[test]
+fn the_apply_button_only_exists_when_something_is_live() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
+    let none = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
+    assert!(
+        !none.iter().any(|(n, _)| *n == ids::VECTOR_SYM_APPLY),
+        "sem simetria viva o Apply não é oferecido"
+    );
+    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
+    let some = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
+    let r = some
+        .iter()
+        .find(|(n, _)| *n == ids::VECTOR_SYM_APPLY)
+        .map(|(_, r)| *r)
+        .expect("com simetria viva o Apply aparece");
+    let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert!(
+        !events.is_empty(),
+        "o Apply está pintado e MORTO sob o mouse"
+    );
+    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
+    ph2d_panel_vector::set_current_vector_style(None);
 }

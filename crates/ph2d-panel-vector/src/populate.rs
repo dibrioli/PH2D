@@ -41,6 +41,10 @@ mod modes;
 #[path = "populate_pencil.rs"]
 mod pencil;
 
+/// Os controles da SIMETRIA de desenho — irmão pelo teto de LOC (600) do painel.
+#[path = "populate_symmetry.rs"]
+mod symmetry;
+
 /// **As OPERAÇÕES** — vértice, topologia (as três da W4 + o corte), booleana, regra de
 /// preenchimento, o ímã, o tipo de fill e o alinhamento. Irmão pelo teto de 600 LOC, e o corte é
 /// por RESPONSABILIDADE: lá ficam os comandos que AGEM sobre a seleção, aqui a forma e a moldura
@@ -268,6 +272,7 @@ fn populate_shape(store: &mut WidgetStore) {
     // (a checagem de focabilidade mora no store) — a falha que as 36 células da matriz de física
     // e os dez chips do Painter já pagaram.
     pencil::pencil_knobs(store);
+    symmetry::symmetry_controls(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
     modes::mode_buttons(store);

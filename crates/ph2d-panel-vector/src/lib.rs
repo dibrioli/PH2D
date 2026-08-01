@@ -84,6 +84,8 @@ mod paint_markers;
 mod paint_modes;
 /// A seção PENCIL — irmã de `paint_modes` pelo teto de 600 LOC dos painéis.
 mod paint_pencil;
+/// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
+pub(crate) mod paint_symmetry;
 mod paint_sections;
 mod paint_transform;
 pub mod populate;
@@ -91,6 +93,8 @@ pub mod populate;
 /// seção some). Irmão de `state` (teto de LOC).
 mod shape_focus;
 pub mod state;
+/// O que a shell OBSERVOU sobre a simetria da seleção — irmão de `state` (teto de LOC).
+pub mod state_symmetry;
 
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{

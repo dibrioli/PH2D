@@ -107,6 +107,15 @@ pub use ph2d_editor_core::ids::{
     VECTOR_PENCIL_STABILIZER_NUM, VECTOR_PENCIL_W_PRESSURE, VECTOR_PENCIL_W_SPEED,
     VECTOR_PENCIL_W_UNIFORM, VECTOR_SECTION_PENCIL,
 };
+/// **A SIMETRIA de desenho** (plano 25 W6.3): a seção + o par que arma + os quatro tipos + os
+/// controles que só existem onde têm o que fazer (Segments no Radial, Fuse nos espelhos) + o
+/// Apply. Os ids dos TIPOS não estão nomeados aqui: quem os resolve é a porta única
+/// `ph2d_tool_vector::params::symmetry_kind_id`, e o `glob` do `ids` os traz.
+pub use ph2d_editor_core::ids::{
+    VECTOR_SECTION_SYMMETRY, VECTOR_SYM_APPLY, VECTOR_SYM_FUSE_OFF, VECTOR_SYM_FUSE_ON,
+    VECTOR_SYM_KIND_CUSTOM, VECTOR_SYM_KIND_RADIAL, VECTOR_SYM_KIND_X, VECTOR_SYM_KIND_Y,
+    VECTOR_SYM_OFF, VECTOR_SYM_ON, VECTOR_SYM_SEGMENTS, VECTOR_SYM_SEGMENTS_NUM,
+};
 /// **Text on Path** (plano 22): a seção + os quatro controles + o par do offset.
 pub use ph2d_editor_core::ids::{
     VECTOR_SECTION_TEXTPATH, VECTOR_TEXTPATH_DETACH, VECTOR_TEXTPATH_FLIP,

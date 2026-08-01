@@ -55,4 +55,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_filters::VECTOR_SECTION_FILTERS,
     // O LÁPIS (plano 25 W1): Fidelity + Stabilizer.
     VECTOR_SECTION_PENCIL,
+    // A SIMETRIA de desenho (plano 25 §9 W6.3): um MODO, não um efeito.
+    super::vector_symmetry::VECTOR_SECTION_SYMMETRY,
 ];

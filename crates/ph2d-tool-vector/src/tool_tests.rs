@@ -461,3 +461,45 @@ fn picking_a_width_source_does_not_change_the_draw_mode() {
     Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_PENCIL_W_SPEED));
     assert_eq!(t.draw_config().mode, before);
 }
+
+/// **Cada chip da SIMETRIA chega ao `draw_config`** (plano 25 W6.3) — o quarto degrau da lei de UI
+/// deste repo: o widget existe, é pintado, o clique chega ao barramento, **e a sequência leva a
+/// algum lugar**. Os três primeiros estão gateados no seam do painel; este é o quarto.
+///
+/// O oráculo é o `draw_config()` — o que o laço de frame de facto consome, e é ele que ARMA o
+/// componente da forma — e não o campo privado: um gate que lesse o campo provaria que a
+/// atribuição aconteceu, não que ela chega a quem desenha.
+///
+/// ⚠️ A fileira de tipos é percorrida a partir de `SymmetryKind::ALL`, como o painel a pinta e como
+/// a tool resolve o clique: um tipo novo entra neste gate sozinho. Uma lista escrita à mão aqui
+/// ficaria verde sobre o quinto tipo nascendo morto.
+#[test]
+fn each_symmetry_chip_reaches_the_draw_config() {
+    use ph2d_symmetry::SymmetryKind as K;
+    let mut t = VectorTool::default();
+    assert!(
+        !t.draw_config().symmetry.on,
+        "a simetria nasce DESARMADA — um modo que se arma sozinho muda a cena antes de o artista olhar"
+    );
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_ON));
+    assert!(t.draw_config().symmetry.on, "o chip On arma");
+    for k in K::ALL {
+        let id = crate::params::symmetry_kind_id(*k);
+        Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
+        assert_eq!(t.draw_config().symmetry.kind, *k, "chip {k:?}");
+        assert_eq!(
+            t.ui_snapshot().symmetry.kind,
+            *k,
+            "o painel pinta a partir do snapshot — ele tem de concordar com o config"
+        );
+    }
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_FUSE_OFF));
+    assert!(!t.draw_config().symmetry.fuse, "o par Fuse chega ao config");
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_FUSE_ON));
+    assert!(t.draw_config().symmetry.fuse);
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_SYM_OFF));
+    assert!(
+        !t.draw_config().symmetry.on,
+        "e o chip Off desarma — é ele que faz as cópias sumirem sem destruir nada"
+    );
+}

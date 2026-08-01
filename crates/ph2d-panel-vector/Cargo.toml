@@ -23,6 +23,10 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # slider↔chip mapping from there. Direction panel → tool does not cycle (tool
 # depends on editor-core, panel on both).
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+# O vocabulário da SIMETRIA de desenho (W6.3): o painel pinta os chips a partir de
+# `SymmetryKind::ALL` e dos `label()` do próprio enum — uma tabela paralela aqui nasceria
+# incompleta no dia do quinto tipo. Folha pura (só serde).
+ph2d-symmetry = { path = "../ph2d-symmetry" }
 # O `WidthSource` que os três chips da seção Pencil pintam (W1d): o painel compara o enum que a
 # tool publica no snapshot, e não guarda um espelho dele — a mesma disciplina do `ShapeKind`.
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }

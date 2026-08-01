@@ -93,6 +93,35 @@ impl SymmetryKind {
     }
 }
 
+/// **O ESTILO da simetria** — a parte que é da FERRAMENTA, não da forma.
+///
+/// A divisão não é arbitrária e decide onde cada coisa mora: *que espelho, quantas cópias, funde
+/// ou não* é uma preferência que sobrevive à forma seguinte (o artista escolhe Radial 6 e continua
+/// em Radial 6), enquanto *onde a linha está* pertence ao desenho e viaja no componente dele. Um
+/// centro guardado na ferramenta seria um campo que nunca se lê; um estilo guardado só na forma
+/// obrigaria o artista a re-escolher tudo a cada desenho novo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SymmetryStyle {
+    /// A simetria está ARMADA? Desarmada, a ferramenta não pendura componente nenhum e as cópias
+    /// desaparecem sem destruir nada — nunca estiveram no documento.
+    pub on: bool,
+    pub kind: SymmetryKind,
+    pub segments: u32,
+    pub fuse: bool,
+}
+
+impl Default for SymmetryStyle {
+    fn default() -> Self {
+        let d = SymmetrySpec::default();
+        Self {
+            on: false,
+            kind: d.kind,
+            segments: d.segments,
+            fuse: d.fuse,
+        }
+    }
+}
+
 /// **A simetria autorada de uma forma.**
 ///
 /// ⚠️ O `center` e o `dir` são do espaço **LOCAL** da forma — o mesmo em que os vértices do
@@ -127,6 +156,31 @@ impl Default for SymmetrySpec {
 }
 
 impl SymmetrySpec {
+    /// Monta a spec de uma forma a partir do estilo da ferramenta e do LUGAR que o artista
+    /// escolheu. Porta única dos dois lados: o `style()` volta a extrair, e nenhum campo é
+    /// escrito à mão em dois sítios.
+    #[must_use]
+    pub fn from_style(style: SymmetryStyle, center: [f64; 2], dir: [f64; 2]) -> Self {
+        Self {
+            kind: style.kind,
+            center,
+            dir,
+            segments: style.segments,
+            fuse: style.fuse,
+        }
+    }
+
+    /// O estilo desta spec — o que o painel espelha ao seleccionar uma forma que já tem simetria.
+    #[must_use]
+    pub fn style(&self) -> SymmetryStyle {
+        SymmetryStyle {
+            on: true,
+            kind: self.kind,
+            segments: self.segments,
+            fuse: self.fuse,
+        }
+    }
+
     /// O número de segmentos preso à faixa da UI.
     #[must_use]
     pub fn segments(&self) -> u32 {

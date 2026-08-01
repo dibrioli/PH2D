@@ -450,6 +450,8 @@ impl crate::App {
         // O Pattern vivo pela MESMA razão (id reciclado entre documentos).
         self.pattern_live.forget();
         self.contour_live.forget();
+        // A SIMETRIA viva pela MESMA razão (id reciclado; o memo é chaveado por `VecPathId`).
+        self.symmetry_live.forget();
         // O FX raster vivo (plano 24) pela MESMA razão (id reciclado entre documentos).
         self.fx_live.forget();
         self.vec_offset_mirrored = None;

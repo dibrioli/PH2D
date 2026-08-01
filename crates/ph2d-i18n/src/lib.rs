@@ -177,6 +177,17 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.fill_type" => "Fill Type",
         "panel.vector.section.snap" => "Snap",
         "panel.vector.section.pencil" => "Pencil",
+        // A SIMETRIA de desenho (W6.3). ⚠️ Os rótulos dos TIPOS não estão aqui: eles moram em
+        // `ph2d_symmetry::SymmetryKind::label`, ao lado do enum, porque uma segunda lista
+        // divergiria da primeira no dia em que o vocabulário ganhasse o quinto tipo.
+        "panel.vector.section.symmetry" => "Symmetry",
+        "panel.vector.symmetry.off" => "Off",
+        "panel.vector.symmetry.on" => "On",
+        "panel.vector.symmetry.enable" => "Enable",
+        "panel.vector.symmetry.axis" => "Axis",
+        "panel.vector.symmetry.segments" => "Segments",
+        "panel.vector.symmetry.fuse" => "Fuse",
+        "panel.vector.symmetry.apply" => "Apply Symmetry",
         // A FONTE da largura de um traço de lápis (W1d). "Pen" e não "Pressure": o rótulo diz o
         // DISPOSITIVO, e é ele que hoje não existe nesta shell — o artista escolhe e não vê
         // diferença nenhuma, o que é a resposta honesta enquanto o caminho do tablet não chega.

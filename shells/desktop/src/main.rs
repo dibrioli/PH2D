@@ -625,6 +625,7 @@ impl App {
             offset_live: crate::offset_live::OffsetLive::default(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
+            symmetry_live: crate::symmetry_live::SymmetryLive::default(),
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),

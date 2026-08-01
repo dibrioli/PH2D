@@ -503,6 +503,11 @@ pub struct VectorDrawConfig {
     /// estabilizador: quem a consome é o laço de frame da shell, e alcançar o tool por downcast
     /// para ler um enum seria trabalho por frame para uma pergunta que o espelho já responde.
     pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
+    /// **O estilo da SIMETRIA de desenho** (W6.3). Viaja no config pela MESMA razão do
+    /// estabilizador do lápis: quem o consome é o laço de frame da shell (para ARMAR o componente
+    /// da forma), e alcançar o tool por downcast para ler quatro campos seria trabalho por frame
+    /// para uma pergunta que o espelho já responde.
+    pub symmetry: ph2d_symmetry::SymmetryStyle,
     /// A forma ATIVA do catálogo (só importa no modo [`DrawMode::Shape`]).
     pub shape: ShapeKind,
     /// Os parâmetros dela, na unidade em que o usuário os autora (px para raios). A
@@ -518,6 +523,7 @@ impl Default for VectorDrawConfig {
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
+            symmetry: ph2d_symmetry::SymmetryStyle::default(),
         }
     }
 }
@@ -678,3 +684,8 @@ mod tests {
         );
     }
 }
+
+/// A porta ÚNICA `kind → id` da SIMETRIA — mora no irmão [`super::params_symmetry`] pelo teto de
+/// 700 LOC, e o corte é por assunto: ela responde *"que chip é este espelho?"*, e não *"em que
+/// unidade este knob fala"*, que é do que este arquivo trata.
+pub use super::params_symmetry::symmetry_kind_id;

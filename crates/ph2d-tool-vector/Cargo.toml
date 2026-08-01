@@ -36,3 +36,7 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # consome mora ao lado do motor que o lê (`ph2d-vec-edit::pencil_width`). O tool só carrega o
 # enum — um catálogo, como o `ShapeKind` que ele já espelha da `ph2d-vec-scene`.
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+# O vocabulário da SIMETRIA de desenho (W6.3). Folha pura (só serde) — o tool carrega o ESTILO
+# (que espelho, quantas cópias), e o LUGAR da linha vive no componente da forma. Mesmo padrão do
+# `WidthSource` acima: um catálogo, não um motor.
+ph2d-symmetry = { path = "../ph2d-symmetry" }

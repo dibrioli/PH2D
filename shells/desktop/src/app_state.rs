@@ -1021,6 +1021,11 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecContour`, pesquisa `20_*` item #9), irmão do `offset_live` de que é a
     /// generalização. Runtime-only e memoizado POR ANEL.
     pub(crate) contour_live: crate::contour_live::ContourLive,
+    /// O **cozimento da SIMETRIA VIVA** — as cópias que o modo simétrico desenha
+    /// (`ph2d_ecs::VecSymmetry`, plano 25 W6.3), irmão do `offset_live`. Runtime-only, e é isso
+    /// que faz *"desmarcar antes do Apply"* não destruir nada: as cópias nunca estiveram no
+    /// documento.
+    pub(crate) symmetry_live: crate::symmetry_live::SymmetryLive,
     /// O **cozimento do FX raster VIVO** — as imagens de Blur/Glow/Drop Shadow por-forma
     /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.

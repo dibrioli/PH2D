@@ -49,7 +49,7 @@ pub(crate) use subgraph_gesture::{GroupVerb, verb as group_verb};
 mod key;
 // `dedup_double_dispatch` lives with the other keyboard-verb logic in `key` (it dedups the
 // graph KEYS the store double-delivers); it is re-exported here for the drain loop below.
-use key::{apply_key, dedup_double_dispatch};
+use key::{apply_key, dedup_double_dispatch, select_on_press};
 
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
@@ -70,6 +70,7 @@ pub(crate) fn process(
     if let Some(nodes) = crate::snapshot::take_selection_request() {
         state.selected = nodes.into_iter().collect();
         state.selected_backdrop = None;
+        state.selected_wire = None;
     }
 
     crate::menu_search::mirror_query(state, ctx);
@@ -171,6 +172,14 @@ fn apply_gesture(
         GraphHitKind::Wire { edge } if g.phase == GesturePhase::Begin && g.mods.alt => {
             let (to_node, to_port) = crate::paint::wire_target(edge);
             push_intent(GraphIntent::Disconnect { to_node, to_port });
+        }
+        // A plain left-press on a wire SELECTS it (one subject at a time — clears node/backdrop);
+        // `Delete` then removes it, the click-then-Delete affordance the alt-click never had. A
+        // wire is not draggable, so this leaves the interaction Idle (as an inert wire press did).
+        GraphHitKind::Wire { edge } if g.phase == GesturePhase::Begin => {
+            state.selected.clear();
+            state.selected_backdrop = None;
+            state.selected_wire = Some(crate::paint::wire_target(edge));
         }
         // **Double-click a wire → splice a REROUTE node into it** (doc 45). The dot is a
         // node: it bends the wire AND you can drag a new wire out of it. The shell picks the
@@ -319,6 +328,7 @@ fn apply_background(
                 // selected backdrop (the tap goes THROUGH its click-through body).
                 state.selected.clear();
                 state.selected_backdrop = None;
+                state.selected_wire = None;
             }
             state.interaction = Interaction::Idle;
         }
@@ -375,6 +385,7 @@ fn apply_background(
                         // A band selects NODES; a backdrop is picked by its header
                         // alone (its body is click-through — the band swept over it).
                         state.selected_backdrop = None;
+                        state.selected_wire = None;
                     }
                     Interaction::Knife { anchor, cur } => {
                         let targets = crate::paint::wires_crossed(snap, &view, anchor, cur);
@@ -412,6 +423,7 @@ fn apply_node(
     match g.phase {
         GesturePhase::Begin => {
             state.selected_backdrop = None; // one subject at a time (see the state docs)
+            state.selected_wire = None;
             select_on_press(state, node, g.mods.shift);
             state.interaction = Interaction::DragNodes {
                 nodes: state.selected.iter().copied().collect(),
@@ -553,20 +565,6 @@ pub(super) fn target_socket(
     Some((to_node, to_port, compat))
 }
 
-/// Selection on node press: plain click selects only this node (unless it is
-/// already part of the selection — then keep it, so a multi-drag works); Shift
-/// toggles it into/out of the selection.
-fn select_on_press(state: &mut MotionGraphPanelState, node: u32, shift: bool) {
-    if shift {
-        if !state.selected.insert(node) {
-            state.selected.remove(&node);
-        }
-    } else if !state.selected.contains(&node) {
-        state.selected.clear();
-        state.selected.insert(node);
-    }
-}
-
 #[cfg(test)]
 #[path = "interact_tests.rs"]
 mod tests;
@@ -590,6 +588,10 @@ mod menu_tests;
 #[cfg(test)]
 #[path = "interact_context_menu_tests.rs"]
 mod context_menu_tests;
+
+#[cfg(test)]
+#[path = "interact_wire_tests.rs"]
+mod wire_tests;
 
 #[cfg(test)]
 #[path = "interact_subgraph_tests.rs"]

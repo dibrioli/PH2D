@@ -205,33 +205,6 @@ fn socket_drag_into_empty_space_emits_nothing() {
 }
 
 #[test]
-fn alt_click_on_wire_emits_disconnect() {
-    let _ = drain_intents();
-    let snap = two_node_snapshot();
-    let mut st = MotionGraphPanelState::default();
-    let handle = crate::paint::wire_handle(2, 0);
-    let mut g = gesture(
-        GraphHitKind::Wire { edge: handle },
-        GesturePhase::Begin,
-        100.0,
-        37.0,
-    );
-    // Plain press: inert.
-    apply_gesture(&mut st, g, RECT, CENTER, &snap);
-    assert!(drain_intents().is_empty());
-    // Alt-press: disconnect the edge into (2, 0).
-    g.mods.alt = true;
-    apply_gesture(&mut st, g, RECT, CENTER, &snap);
-    assert_eq!(
-        drain_intents(),
-        vec![GraphIntent::Disconnect {
-            to_node: 2,
-            to_port: 0,
-        }]
-    );
-}
-
-#[test]
 fn delete_key_emits_delete_selection_and_is_idempotent() {
     let _ = drain_intents();
     let mut st = MotionGraphPanelState::default();

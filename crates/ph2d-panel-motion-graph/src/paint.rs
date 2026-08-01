@@ -186,6 +186,10 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
             continue;
         }
         let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
+        // A SELECTED wire wears the hover highlight persistently — the visible affordance for the
+        // click-then-Delete idiom (the alt-click Disconnect had none). Hover is transient (under
+        // the cursor), so off-cursor only the selected wire stays lit.
+        let is_selected = state.selected_wire == Some((e.to_node, e.to_port));
         // A wire is drawn full-strength only if it is live AND (with a selection up) inside the
         // influence. The wire and the cards it joins fade together — the whole point of the
         // reading is that a region of the canvas recedes as ONE region.
@@ -193,7 +197,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
             && focus
                 .as_ref()
                 .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
-        draw_wire(ctx, &snap, e, &view, theme, is_hovered, bright);
+        draw_wire(ctx, &snap, e, &view, theme, is_hovered || is_selected, bright);
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
     // Cards, collecting body hits as we draw them. A card whose rect does not touch the panel is

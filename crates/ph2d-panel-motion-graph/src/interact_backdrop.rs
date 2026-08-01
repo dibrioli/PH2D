@@ -42,6 +42,7 @@ pub(super) fn apply_backdrop(
         GesturePhase::Begin => {
             state.selected.clear(); // a backdrop and nodes are never co-selected
             state.selected_backdrop = Some(id);
+            state.selected_wire = None;
             let nodes = snap
                 .backdrops
                 .iter()
@@ -110,6 +111,7 @@ pub(super) fn apply_backdrop_resize(
         GesturePhase::Begin => {
             state.selected.clear();
             state.selected_backdrop = Some(id);
+            state.selected_wire = None;
             state.interaction = Interaction::ResizeBackdrop {
                 id,
                 left,

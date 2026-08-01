@@ -358,6 +358,12 @@ pub struct MotionGraphPanelState {
     /// params panel shows the properties of ONE subject, and a Delete must never
     /// be ambiguous about what it removes.
     pub(crate) selected_backdrop: Option<u32>,
+    /// The selected WIRE, if any — its unique target input `(to_node, to_port)`, the same handle
+    /// a `Disconnect` carries. Mutually exclusive with `selected` and `selected_backdrop` (one
+    /// subject at a time), so a left-click on a wire selects it, `Delete` removes it, and the
+    /// three selections clear each other. Left-clicking a wire used to be inert; this is the
+    /// universal click-then-Delete idiom the alt-click Disconnect had no visible affordance for.
+    pub(crate) selected_wire: Option<(u32, u16)>,
     pub(crate) interaction: Interaction,
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.

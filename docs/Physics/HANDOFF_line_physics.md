@@ -7850,3 +7850,141 @@ pernas (tampo 1,15, ponta −0,80, exatamente no chão).
 vazia com a porta; editar a FORMA dela depois de criada passa pelas rows normais de
 collider, que já funcionam) · o `part_views` da ponte existe e **não tem consumidor**
 (o overlay desenha do ECS, que é a fonte que o artista arrasta).
+
+---
+
+## W-PartFace — a PEÇA vira EDITÁVEL (2026-08-01, cena `=70`, **smoke APROVADO**)
+
+A W-Compound deu ao artista como **criar** uma peça e nenhum jeito de **mexer**
+nela. O §11 tinha duas faces — *corpo* e *vazia* — e uma peça caía na vazia, que
+diz **"Not simulated"** sobre uma forma que o solver está integrando. Pior: a
+única porta oferecida ali era *Add Shape*, que sobre uma peça a **apagava**
+(virava corpo próprio, e as peças se espalham — a segunda linha da tabela de
+medição da W-Compound).
+
+### `has_collider` não é o complemento de `has_body`
+
+O snapshot do §11 exigia `RigidBody` **e** `Collider` para dizer qualquer coisa,
+e essa conjunção é a wave inteira: as três faces são
+
+| tem `Collider`? | tem `RigidBody`? | face |
+|---|---|---|
+| não | — | **vazia** (as portas de criação) |
+| sim | sim | **corpo** (tudo) |
+| sim | **não** | **peça** ← a que faltava |
+
+⚠️ **As rows da face de peça são exatamente o que a ponte LÊ de uma peça** — o
+`reconcile_parts` monta o `BodyDesc` do `Collider` + do marcador
+`OneWayPlatform` e passa **constantes** para tudo que é do corpo (gravidade,
+velocidade inicial, CCD, travas, massa, dominância, damping). Daí a face não ter
+Gravity/Mass/CCD/Freeze/Bake, e não ter row de ZONA: a lista não é de gosto, é a
+leitura do consumidor. Um knob a mais ali seria knob morto com gate verde.
+
+### A porta única
+
+`ph2d_physics_ecs::parts::{owner_body, governing_kind, is_part, count_parts}` —
+*de quem é esta forma*, perguntado uma vez. ⚠️ **Três leitores delegam, não
+quatro**: o overlay, o snapshot do §11 e as gates. **A ponte NÃO delega, de
+propósito** — ela pergunta `self.bodies`, isto é *"que corpo eu de fato
+construí?"*, e um `RigidBody` sem `Collider` não é corpo para o solver. O preço
+dessa divergência é nomeável e está no doc do módulo.
+
+⚠️ **E eu escrevera "quatro lugares" até uma mutação me corrigir:** reduzir o
+walk ao pai literal deixou a suíte da PONTE **verde**, o que prova que ela nunca
+chamou a porta nova.
+
+### Os dois defeitos do smoke, que eram UM ponto
+
+Reporte do Enio: *"houve penetração da Shape no Static"* e *"a interação com o
+mouse na simulação não funcionou com a shape filha"*.
+
+**O segundo é a causa.** `grab_with` fazia `self.bodies.get(&entity)` e uma peça
+não está lá — o gesto era recusado **em silêncio** e o press caía adiante para o
+**gizmo**. **O primeiro é a consequência:** o gizmo arrasta o `Transform` e o
+`reconcile_parts` só re-descrevia uma peça **em repouso**, um gate copiado do
+corpo — cuja pose o *solver* escreve. **Numa peça a pose é AUTORADA o tempo
+todo.** Medido: empurrar a peça para dentro de um teto estático deixava o dono em
+`0,2990` **com e sem** o movimento, bit-idêntico; o desenho entrava, o collider
+ficava.
+
+⚠️ **A física foi medida INOCENTE antes de qualquer hipótese** — uma peça penetra
+um estático **exatamente** como um corpo (`−0,0033 / −0,0068 / −0,0346` nas quedas
+de 1/4/10 m). Não era substeps, nem contact-Hz, nem material: as três coisas em
+que eu teria mexido partindo do palpite.
+
+### O churn que o gate escondia
+
+Tirado o gate, a peça passou a ser despendurada e re-pendurada em **133 de 301
+ticks** numa descida de rampa. **Duas causas independentes, cada uma medida:**
+
+- `p.rest == desc` comparava o `BodyDesc` **inteiro**, e `x`/`y`/`rotation` dele
+  são a pose de **mundo** — que muda todo frame e que `attach_part` **nem lê**;
+- o `local` vinha de um **round-trip pelo solver** (`inverse_compose` sobre a
+  pose recém-escrita): estável a `1,2e-7`, e a comparação é exata.
+
+| cura | re-attaches / 301 |
+|---|---|
+| nenhuma (gate removido) | 141 |
+| só a cadeia autorada | 133 |
+| só a pose zerada | 107 |
+| **as duas** | **1** (o spawn) |
+
+⚠️ **A MINHA PRIMEIRA CURA NÃO ERA A CAUSA.** Troquei a derivação por
+`space::local_in_ancestor` **argumentando** que o round-trip causava o churn, e a
+contagem disse `141 → 133`. As duas ficam porque as duas foram medidas; nenhuma
+ficaria por argumento.
+
+⚠️ **E o gate que eu escrevi para guardar isso não guardava:** a mutação que
+devolve o round-trip **passou** por *"a pose local não deriva"*, porque o que
+deriva é o `local` computado **dentro** da ponte, que nenhum `Transform` mostra.
+Renomeado para o que ele mede (`nothing_writes_back_to_a_parts_authored_pose`) e
+o buraco fechado por um gate de **churn** cujo oráculo é o **handle** do collider
+— uma peça re-pendurada assenta igual (tremor medido `0,0`), então nem a pose nem
+a aparência a denunciam.
+
+### Números
+
+**Nenhum schema** (`PROJECT_SCHEMA` fica em **48**, tripla `(48, 13, 13)`) ·
+registro **fica em 24** · **nenhum id novo** (a face de peça REUSA
+`INSP_PHYS_ADD`/`INSP_PHYS_REMOVE`, com rótulos que nomeiam a consequência:
+*Make Independent Body* · *Remove Shape*) · **nenhum ADR, nenhuma dep, nenhuma
+crate nova**; contrato congelado intacto.
+
+⚠️ **`physics_ecs_c9` MUDA:** `556cb652…` → `e216e367…`, e é **correto** — a cena
+tem a lane `C9 Compound Leg`, cujo collider parou de ser recriado ~44% dos
+frames. Determinismo intacto (debug ≡ release, corridas repetidas idênticas).
+
+⚠️ **Dois defeitos meus, achados pelas próprias mutações:** o `count_parts`
+ignorando o dono **sobreviveu** porque a fixture tinha UM corpo (*"as peças do
+braço"* e *"todas as peças"* eram o mesmo número — a segunda metade só existe com
+um segundo corpo) · e o `part_count` era **write-only**: eu o pus no snapshot e
+nunca o pintei. O readout *"+ N more shapes from children"* fechou o segundo, com
+gate cujo oráculo é a row de Offset **descer uma linha**.
+
+⚠️ **E o `MaterialCombine` de uma peça não chegava ao solver** — a ponte passava
+`default()`, um esquecimento meu da W-Compound. Gate próprio.
+
+**LOC — dois splits por responsabilidade:** `sections/physics.rs` → irmão
+`physics_body.rs` (*o que este CORPO é* × o roteador de 3 vias e o que as três
+faces compartilham; as tabelas de rótulo foram junto, para o único leitor delas) ·
+`sections/physics_rows.rs` → `paint_area_rows` separado do `paint_collision_rows`
+(a face de peça pinta o segundo e **não** o primeiro). ⚠️ E um cap foi **criado
+pelo `cargo fmt`**: `inspector_physics_gesture_tests.rs` saltou de 555 para 653
+linhas só pelo reflow de 16 callsites depois do argumento novo — resolvido por um
+helper `snapshot(sim, e)`, não por split, porque a repetição de sete defaults era
+o problema real.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=70`** — *A CHAVE E A FENDA*. A 69 mostra que uma peça
+**existe**; esta mostra que ela é **editável**, e o oráculo não admite
+interpretação: a chave cujo palhetão é largo demais **entala** (cabo em 2,00 m, em
+cima do muro) e afiná-lo a faz **passar** (cabo em 0,00 m, no chão). ⚠️ A faixa
+`Slim` é o **CONTROLE** — sem ela a cena não distinguiria *"a peça larga entala"*
+de *"nenhuma chave passa nesta fenda"*. ⚠️ E os números da mensagem saíram da
+sonda **antes** de ela ser escrita: os meus palpites (1,85 / −0,15) caíam dentro
+da tolerância do gate e mesmo assim estavam errados; os medidos são 2,00 / 0,00.
+
+**Aberto:** uma peça não pode ser arrastada pelo **gizmo** com o relógio parado
+para dentro de outra peça do mesmo corpo (não há auto-colisão dentro de um corpo
+composto — é o que "um corpo" significa, e não é defeito) · o rótulo *Make
+Independent Body* não avisa que a peça vai **saltar** para a pose de mundo dela
+(ela já estava lá; o que muda é quem a integra).

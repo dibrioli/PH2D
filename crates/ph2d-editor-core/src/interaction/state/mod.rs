@@ -473,6 +473,15 @@ pub struct WidgetStore {
     /// slider/swatch values live in the `TIMELINE_ONION_MODAL_*` widgets — the shell reads them back
     /// into `TimelineState::onion` each frame the modal is open (WidgetStore is the shared blackboard).
     pub(super) onion_modal: Option<(f32, f32)>,
+    /// Full-screen command palette (Motion's "Add Node"): `Some(model)` = open, painted over the whole
+    /// app by `chrome::paint_command_palette`; `None` = closed. The model (grouped, coloured items) is
+    /// set ONCE on open by the shell — never rebuilt per frame — mirroring `open_onion_modal`'s
+    /// value-seeding. The picked item id lands in `command_pick` for the shell to read back and route.
+    pub(super) command_palette: Option<crate::widget::command_palette::PaletteModel>,
+    /// The item id the user picked in the command palette, awaiting the shell's read-back (`take_command_pick`).
+    /// `None` = nothing picked since the last take. This is the generic-widget/shell-routes seam (mirrors the
+    /// colour picker's `picker_target` read-back), so editor-core never learns what an item *means*.
+    pub(super) command_pick: Option<NodeId>,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

@@ -57,6 +57,8 @@ impl WidgetStore {
             new_image_request: None,
             fill_modal: None,
             onion_modal: None,
+            command_palette: None,
+            command_pick: None,
             section_outline_color: BTreeMap::new(),
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,

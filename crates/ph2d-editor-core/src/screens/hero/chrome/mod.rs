@@ -52,6 +52,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 // from a scan of `chrome/*.rs`. Do NOT edit between markers by hand —
 // staleness gate catches drift.
 // <ph2d-chrome-sync:begin>
+mod command_palette;
 mod curve_point_handle;
 mod falloff_handle;
 mod fill_modal;
@@ -101,6 +102,10 @@ pub use fill_modal::paint_fill_adjust_modal;
 /// Re-exported so the hero paint pass renders it alongside the other floating dialogs.
 pub use onion_modal::paint_onion_modal;
 
+/// Paint the full-screen command palette (Motion's "Add Node"; gated on `store.command_palette_model()`).
+/// Re-exported so the hero paint pass renders it over the whole app, above the floating dialogs.
+pub use command_palette::paint_command_palette;
+
 /// The onion ghost-count↔slider mapping (ADR-0142). Lives next to the modal's painter (which shows
 /// the count) so there is ONE copy; the shell imports it for its read-back / open-seed.
 pub use onion_modal::{MAX_GHOSTS, count_to_frac, frac_to_count};
@@ -132,6 +137,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || new_image::apply(hero, event)
         || fill_modal::apply(hero, event)
         || onion_modal::apply(hero, event)
+        || command_palette::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

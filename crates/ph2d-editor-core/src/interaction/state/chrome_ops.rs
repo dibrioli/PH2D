@@ -302,6 +302,46 @@ impl WidgetStore {
         }
     }
 
+    /// Open the full-screen command palette with `model` (Motion's "Add Node"). Clears any stale pick so
+    /// the shell's read-back only ever sees a fresh choice. The model is set ONCE here — never rebuilt
+    /// per frame — mirroring [`Self::open_onion_modal`]'s value-seeding.
+    pub fn open_command_palette(&mut self, model: crate::widget::command_palette::PaletteModel) {
+        self.command_palette = Some(model);
+        self.command_pick = None;
+    }
+
+    /// Close the command palette (the close-X, a click on the dimmed scrim, or Esc). Leaves any pending
+    /// pick alone — the shell drains it via [`Self::take_command_pick`] on the same frame it routes.
+    pub fn close_command_palette(&mut self) {
+        self.command_palette = None;
+    }
+
+    /// The open palette's model, or `None` when closed. The painter gates the whole full-screen render +
+    /// hit registration on this being `Some`.
+    #[must_use]
+    pub fn command_palette_model(&self) -> Option<&crate::widget::command_palette::PaletteModel> {
+        self.command_palette.as_ref()
+    }
+
+    /// Is the command palette open? (Convenience for the shell's input gating.)
+    #[must_use]
+    pub fn command_palette_open(&self) -> bool {
+        self.command_palette.is_some()
+    }
+
+    /// Record the item id the user picked (the chrome handler calls this on an item click). The shell
+    /// reads it back with [`Self::take_command_pick`] and maps it to a real action.
+    pub fn set_command_pick(&mut self, id: ph2d_a11y::NodeId) {
+        self.command_pick = Some(id);
+    }
+
+    /// Take the pending command-palette pick, clearing it (so a pick is routed exactly once). `None` when
+    /// nothing was picked since the last take.
+    #[must_use]
+    pub fn take_command_pick(&mut self) -> Option<ph2d_a11y::NodeId> {
+        self.command_pick.take()
+    }
+
     /// The Fill modal's top-left `(x, y)` in screen px, or `None` when the modal is closed. The painter
     /// gates the modal's render + hit registration on this being `Some`.
     #[must_use]

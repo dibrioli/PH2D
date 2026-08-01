@@ -551,6 +551,17 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
+    // Command palette (Motion's "Add Node") — a full-screen dimmed modal painted over the whole app
+    // (no-op when closed). Above the floating dialogs so it dominates; its full-viewport scrim registers
+    // FIRST so the card + item pills (registered after) win the back-to-front hit walk.
+    chrome::paint_command_palette(
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        viewport,
+    );
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to
     // import" hint while the OS drag is active.

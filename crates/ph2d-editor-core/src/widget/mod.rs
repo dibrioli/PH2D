@@ -22,6 +22,7 @@ mod checkbox;
 mod color_picker;
 mod color_swatch;
 mod combobox;
+pub mod command_palette;
 mod context_menu;
 mod divider;
 mod dropdown;

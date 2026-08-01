@@ -34,7 +34,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{BodyKind, Collider, RigidBody, scaled_shape};
+use ph2d_physics_ecs::{BodyKind, Collider, scaled_shape};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, VectorScene};
 
@@ -120,23 +120,13 @@ fn outline_rgba(is_sensor: bool, triggered: bool, kind: BodyKind) -> [f32; 4] {
 /// próximo, que é o que faz de uma PEÇA (W-Compound) uma forma a mais do dono e
 /// não um objeto solto. `None` quando não há corpo nenhum acima: aquele collider
 /// não é simulado, e desenhá-lo afirmaria que é.
-fn owning_kind(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> Option<BodyKind> {
-    if let Some(rb) = world.get::<RigidBody>(e) {
-        return Some(rb.kind);
-    }
-    let mut cur = world
-        .get::<ph2d_ecs::ChildOf>(e)
-        .map(ph2d_ecs::ChildOf::parent);
-    while let Some(p) = cur {
-        if let Some(rb) = world.get::<RigidBody>(p) {
-            return Some(rb.kind);
-        }
-        cur = world
-            .get::<ph2d_ecs::ChildOf>(p)
-            .map(ph2d_ecs::ChildOf::parent);
-    }
-    None
-}
+///
+/// ⚠️ **DELEGA** (W-PartFace): o walk vive em `ph2d_physics_ecs::governing_kind`,
+/// ao lado da regra que a PONTE usa para pendurar a peça. Ele já esteve escrito
+/// aqui, no Inspector e na ponte — três cópias da mesma frase, e um contorno que
+/// colorisse por um dono diferente daquele em que o solver pendurou a forma seria
+/// o drift mais difícil de ver, porque os dois lados parecem certos.
+use ph2d_physics_ecs::governing_kind as owning_kind;
 
 pub(crate) fn outlines(
     show: bool,

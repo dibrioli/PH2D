@@ -28,6 +28,13 @@
 //! desenho, só organização) tem de ser transparente. Sem isso, pôr as formas de
 //! uma peça dentro de uma pasta as desligaria do corpo em silêncio.
 //!
+//! ⚠️ **`part_views` MORREU** (W-PartFace): ela devolvia a forma e a pose que o
+//! SOLVER guarda, e nunca teve chamador — o contorno deriva a pose de mundo do
+//! `Transform`, que é o que o artista de fato arrasta, e um segundo canal para o
+//! mesmo fato é a divergência esperando alguém chamá-la. Quem precisar de *quais
+//! formas este corpo tem* pergunta à ÁRVORE (`crate::count_parts`), que é onde a
+//! resposta é autorada.
+//!
 //! # A pose é derivada, nunca autorada duas vezes
 //!
 //! Onde a peça está no corpo sai de `inverse_compose(peça_mundo, corpo_mundo)` —
@@ -126,7 +133,17 @@ impl PhysicsBridge {
                 false,
                 None,
                 0,
-                crate::MaterialCombine::default(),
+                // ⚠️ **Lido da PEÇA** (W-PartFace): as regras de combine são
+                // propriedade do COLLIDER em rapier, e este passava
+                // `default()` enquanto o `OneWayPlatform` logo abaixo já vinha
+                // da entidade — a única assimetria da lista, e um descuido meu
+                // na W-Compound. Com ela, o §11 de uma peça pintaria dois chips
+                // que o solver ignora; sem ela, dois chips a menos que o irmão
+                // sólido tem. A cura é o lado que faz o knob VIVER.
+                world
+                    .get::<crate::MaterialCombine>(e)
+                    .copied()
+                    .unwrap_or_default(),
                 None,
                 world.get::<crate::OneWayPlatform>(e).is_some(),
                 None,
@@ -203,18 +220,5 @@ impl PhysicsBridge {
                 p.handle = h;
             }
         }
-    }
-
-    /// Os colliders extra de um corpo, para quem DESENHA — o overlay precisa de
-    /// cada forma, e uma peça invisível é o vão que esta wave fechou.
-    ///
-    /// Devolve `(entidade da peça, entidade do dono, a forma já escalada, a pose
-    /// LOCAL no dono)`.
-    pub fn part_views(
-        &self,
-    ) -> impl Iterator<Item = (Entity, Entity, ph2d_physics::ShapeDesc, [f32; 3])> + '_ {
-        self.parts
-            .iter()
-            .map(|(e, p)| (*e, p.owner, p.rest.shape, p.local))
     }
 }

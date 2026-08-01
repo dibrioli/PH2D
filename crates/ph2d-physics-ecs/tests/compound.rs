@@ -201,3 +201,79 @@ fn a_collider_with_no_body_above_it_is_not_a_part() {
         world_y(&sim, lone)
     );
 }
+
+/// **As regras de COMBINE de uma peça chegam ao solver** (W-PartFace).
+///
+/// `reconcile_parts` passava `MaterialCombine::default()` enquanto o
+/// `OneWayPlatform` logo abaixo já vinha da entidade — a única assimetria da
+/// lista, e um descuido da W-Compound. Ela decidia uma pergunta de UI por
+/// omissão: com ela, os dois chips de combine numa peça seriam controles que o
+/// solver ignora.
+///
+/// O oráculo é a `Max` do W-Material: uma superball de `Max` quica em QUALQUER
+/// piso, mesmo num chão morto — e o CONTROLE (`Average`, a média com o zero do
+/// chão) é o que torna a diferença atribuível.
+#[test]
+fn a_parts_combine_rules_reach_the_solver() {
+    use ph2d_physics_ecs::{CombineRule, MaterialCombine};
+
+    // Um corpo cuja ÚNICA forma que toca o chão é a PEÇA: o braço fica alto e a
+    // perna desce até o piso, então o contato medido é o dela.
+    fn drop_with(rule: CombineRule) -> f32 {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            // Chão MORTO: o quique tem de vir da regra, não do piso.
+            Collider {
+                restitution: 0.0,
+                ..box_of(20.0, 0.5)
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ));
+        let arm = sim
+            .world_mut()
+            .spawn((
+                Name::new("Arm"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                box_of(0.4, 0.2),
+                Transform::from_translation(Vec2::new(0.0, 4.0)),
+            ))
+            .id();
+        sim.world_mut().spawn((
+            Name::new("Foot"),
+            Collider {
+                restitution: 1.0,
+                ..box_of(0.4, 0.4)
+            },
+            MaterialCombine {
+                restitution: rule,
+                friction: CombineRule::Average,
+            },
+            Transform::from_translation(Vec2::new(0.0, -0.8)),
+            ChildOf(arm),
+        ));
+        let mut bridge = PhysicsBridge::new();
+        // O pico depois do primeiro impacto: com `Max` o corpo sobe de volta.
+        let mut peak = f32::MIN;
+        for t in 0..=140u64 {
+            bridge.dispatch(&mut sim, true, t);
+            if t > 60 {
+                peak = peak.max(world_y(&sim, arm));
+            }
+        }
+        peak
+    }
+
+    let max = drop_with(CombineRule::Max);
+    let avg = drop_with(CombineRule::Average);
+    assert!(
+        max > avg + 0.3,
+        "a regra da peça não chegou ao solver: Max subiu a {max:.3} e Average a \
+         {avg:.3} — a peça está usando o default"
+    );
+}

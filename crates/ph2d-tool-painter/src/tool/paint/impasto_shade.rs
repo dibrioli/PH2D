@@ -227,20 +227,7 @@ impl Rig {
     /// highlight). Returns `(multiply, glint)` PER CHANNEL: the composite's RGB is
     /// `screen(rgb × multiply, glint)` — see [`PainterTool::apply_impasto_light`]. A FLAT pixel — or one
     /// with no real body of paint — returns exactly `([1, 1, 1], [0, 0, 0])`, at every material.
-    #[inline]
-    pub(super) fn shade(
-        &self,
-        mat: &MatShade,
-        body: f32,
-        gloss: f32,
-        dhx: f32,
-        dhy: f32,
-        albedo: [f32; 3],
-    ) -> ([f32; 3], [f32; 3]) {
-        self.shade_over(mat, body, gloss, dhx, dhy, NO_FORM, albedo)
-    }
-
-    /// [`Self::shade`] com a **SEGUNDA FONTE DE NORMAL** — a forma doada pelo módulo 3D
+    /// Sombreia um pixel, com a **SEGUNDA FONTE DE NORMAL** — a forma doada pelo módulo 3D
     /// (`docs/3D/05.2`). `form` é `[nx, ny, nz, peso]`; [`NO_FORM`] é o mundo sem escultura.
     ///
     /// ## As duas fontes compõem, e a forma da composição apaga o caso especial
@@ -260,6 +247,11 @@ impl Rig {
     ///
     /// É por isso que não há uma pergunta *"qual fonte manda?"* a responder: uma pincelada sobre uma
     /// escultura tem o relevo da tinta **por cima** da inclinação da forma, que é o que a mão faz.
+    ///
+    /// ⚠️ **Porta ÚNICA, e o wrapper `shade(…)` sem forma foi REMOVIDO.** Ele só delegava com
+    /// [`NO_FORM`], então o gate que o comparava com esta função era uma tautologia — duas maneiras de
+    /// escrever a mesma chamada, concordando por construção. O que prova a byte-identidade é a
+    /// comparação contra a EXPRESSÃO antiga, congelada no gate, e essa continua valendo.
     #[inline]
     #[allow(clippy::too_many_arguments)]
     pub(super) fn shade_over(
@@ -461,8 +453,8 @@ mod tests {
                 for &(dhx, dhy) in &[(0.05f32, 0.0f32), (-0.3, 0.12), (0.9, -0.9), (0.01, 0.004)] {
                     for &body in &[0.2f32, 0.6, 1.0] {
                         let albedo = [0.83f32, 0.41, 0.17];
-                        let a = fast.shade(&mf, body, body, dhx, dhy, albedo);
-                        let b = slow.shade(&ms, body, body, dhx, dhy, albedo);
+                        let a = fast.shade_over(&mf, body, body, dhx, dhy, NO_FORM, albedo);
+                        let b = slow.shade_over(&ms, body, body, dhx, dhy, NO_FORM, albedo);
                         assert_eq!(
                             a, b,
                             "lanes diverged at rough {rough} shine {shine} slope ({dhx}, {dhy}) \
@@ -511,19 +503,19 @@ mod tests {
                 "a forma neutra moveu a normal em ({dhx}, {dhy})"
             );
         }
-        // E o resultado inteiro do passe, ponta a ponta.
+        // ⚠️ Havia aqui uma segunda metade comparando `shade(…)` com `shade_over(…, NO_FORM, …)`, e
+        // ela era uma TAUTOLOGIA: o wrapper só delegava, então os dois lados eram duas maneiras de
+        // escrever a mesma chamada, concordando por construção. O wrapper foi removido (uma porta), e
+        // o que resta é a comparação que de fato pode falhar — a expressão de hoje contra a de ontem.
+        //
+        // E a tinta plana continua intocada AO BYTE, que é a outra metade do contrato.
         let rig = Rig::new(&LightRig::default()).expect("a principal nasce acesa");
         let mat = rig.resolve(Material::NEUTRAL.to_bytes());
-        for &(dhx, dhy) in &[(0.05f32, 0.0f32), (-0.3, 0.12), (0.9, -0.9)] {
-            for &body in &[0.2f32, 1.0] {
-                let albedo = [0.83f32, 0.41, 0.17];
-                assert_eq!(
-                    rig.shade(&mat, body, body, dhx, dhy, albedo),
-                    rig.shade_over(&mat, body, body, dhx, dhy, NO_FORM, albedo),
-                    "as duas portas divergiram sem forma"
-                );
-            }
-        }
+        assert_eq!(
+            rig.shade_over(&mat, 1.0, 1.0, 0.0, 0.0, NO_FORM, [0.5; 3]),
+            ([1.0; 3], [0.0; 3]),
+            "sem forma e sem gradiente o passe não pode tocar o pixel"
+        );
     }
 
     /// **A doação faz o que ela existe para fazer — e a tinta continua por cima dela.**

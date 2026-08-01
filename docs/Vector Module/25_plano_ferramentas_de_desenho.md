@@ -738,7 +738,102 @@ Newton pode ser removido com os doze gates verdes, porque `0/0` vira `NaN`, o `c
 a aceitação final o recusa. Ele fica por tornar a intenção visível — depender de propagação de
 `NaN` morre em silêncio no dia em que alguém acrescentar um `is_finite` acima.
 
-**Aberto na W6** (a ordem da tabela §9): **guias e réguas** (o único **G**) · **mirror vivo** ·
+### ✅ W6.2 — ENTREGUE (2026-08-01): as GUIAS e a RÉGUA (o único **G** da tabela)
+
+**O que uma guia É decide o resto.** Ela é uma reta **alinhada a um eixo**, logo uma restrição
+**1-D**: a horizontal fixa o `y` e não diz nada sobre o `x`. Isso a põe exatamente na espécie que
+o motor já tinha — o **ALINHAMENTO** por eixo, aquele que se decompõe — e **não** na de POSIÇÃO
+que a W6.1 acrescentou. Confundi-las seria fatal na direção óbvia: uma guia que reclamasse os dois
+eixos prenderia o ponto num lugar arbitrário DA linha, que é precisamente o que uma guia não faz.
+
+⚠️ **A lei nova é uma só: a guia vence o EMPATE** contra um ponto de forma. Ela é a restrição que
+o artista **autorou**; a borda de uma vizinha é incidental. Um ponto estritamente mais perto ainda
+ganha — prioridade no empate, não imunidade (medido na cena de smoke: com a guia em `x=1,00` e o
+vértice em `0,94`, a guia passa a vencer a partir de `x=0,970`, o ponto médio exato que a lei
+prevê).
+
+⚠️ **Duas guias que se cruzam são um ponto distinto** tanto quanto um vértice é, então a
+reivindicação de POSIÇÃO se retira diante delas. Elas **não** passam pelo teste de alvo-único (cada
+uma congela só a sua coordenada, então os dois `target` diferem por construção), e sem essa segunda
+cláusula uma curva por perto roubaria o cruzamento de duas linhas que o artista pôs de propósito.
+
+**A crate é própria** (`ph2d-guides`, leaf, só `serde`): uma guia não é geometria vetorial, e são
+três consumidores independentes (o motor de snap, o desenho, o arquivo) sem que nenhum seja dono do
+fato. Mesmo argumento e mesmo precedente da `ph2d-stroke-width`.
+
+⚠️ **Sem teto no número de guias, e o §0 é o motivo:** um teto tem de dizer de que recurso ele é, e
+aqui não há nenhum — 9 bytes por guia, e o `nearest` sobre **mil** delas custa **0,305 µs** (o
+número vive no gate `the_cost_of_a_guide_is_a_comparison`, não numa nota).
+
+**A RÉGUA mora ao lado da GRADE** (`ph2d-editor-core::ruler`) e **não tem projeção própria**: as
+duas respondem à mesma pergunta — *onde a coordenada `x` do mundo pousa na tela?* — e um traço
+marcado em 100 que não coincida com a linha de grade de 100 é o tipo de discordância que ninguém
+atribui a um bug de projeção, só a *"o app está torto"*. O `ticks()` é puro e chama
+`grid::world_to_screen_*`; o `world_at()` (o pouso do gesto) chama a **inversa**, que nasceu no
+mesmo arquivo da ida para que não possam divergir.
+
+⚠️ **A cadência dos traços NÃO é a da grade**, e é decisão: a grade pode estar desligada, e uma
+régua tem de ser legível em qualquer zoom — ela escolhe o passo `1/2/5 × 10^k` que mantém os
+rótulos separados. **A grade marca a REDE; a régua mede o MUNDO.** O **zero** é a origem da grade:
+um número, dois consumidores.
+
+⚠️ **Um vocabulário, com a ponte explícita:** `RulerAxis::{Top,Left}` e
+`GuideAxis::{Horizontal,Vertical}` são enums distintos porque a régua de CIMA mede o **X** e o que
+nasce dela é uma linha **HORIZONTAL** — a inversão exata que se troca sem o compilador reclamar.
+`RulerAxis::spawns()` é a ponte, com gate.
+
+**O gesto:** arrastar da régua cria · arrastar move · arrastar de volta para **qualquer** faixa
+apaga (o modelo universal — Figma, Illustrator, Photoshop). **Criar e mover são o MESMO caminho**:
+um press na régua já empurra a guia para o documento e o gesto continua como um arrasto dela, então
+desistir de uma guia nova e descartar uma antiga são o mesmo gesto sem que nada precise saber qual
+era. ⚠️ **Ele é TOOL-AGNÓSTICO** — a faixa está visível com qualquer ferramenta na mão, e um gesto
+que só respondesse no Vector deixaria chrome desenhado e **morto sob o mouse** no resto do app.
+
+⚠️ **Com as réguas fora as guias ficam INERTES** — visíveis e magnéticas, mas não agarráveis. É o
+*lock de guias* que o Illustrator e o Photoshop escondem num booleano de menu (e que o **Figma não
+tem**, com os usuários a pedi-lo no fórum): aqui ele é o mesmo interruptor que já se vê na tela,
+então não há como o estado travado ficar invisível.
+
+**UI:** a seção **Snap** ganhou duas linhas — `Guides` (o ímã, nasce LIGADO: num documento sem
+guias ele é inerte por construção) e `Rulers` (as faixas, e com elas o lock; nasce LIGADO porque
+uma afordância que ninguém acha é uma que não existe).
+
+**`PROJECT_SCHEMA` 48→49** — as guias viajam no `ProjectState`, que é a unidade do UNDO: é isso que
+lhes dá desfazer e salvar de graça, pelo mesmo diff que já cobre o mundo, o vetor e o Flip. ⚠️ O 49
+é **PROVISÓRIO**: o valor se CONTA contra o `main` do dia da integração. `VEC_SCENE_SCHEMA` **13
+intacto**, contrato congelado **intacto**, **nenhum ADR**.
+
+**34 gates novos** (7 modelo · 9 régua · 8 snap · 6 gesto · 2 arch · 2 seam estendidos),
+**10 mutações, 10 sangram**.
+
+⚠️ **E dois gates MEUS nasceram errados, os dois reprovando código correto:**
+1. A metade *"o passo não é folgado"* da régua enumerava `step/2`, `step/2.5`, `step/5` como
+   candidatos anteriores — e `step/2` de 5000 é **2500**, que não é um degrau da escada (ela vai
+   1000, 2000, 5000). O oráculo virou a escada **construída fora da função sob teste**. *Uma
+   propriedade se afirma, não se enumera.*
+2. O arch-gate da ordem de despacho comparava a posição do press de guia com a **definição** de
+   `fn vec_path_pick_click` — e a posição de um `fn` no arquivo não diz nada sobre ordem de
+   despacho. A âncora virou a **CHAMADA**.
+
+**Smoke: `PH2D_BUILD_SMOKE=45`** (a cena imprime o que montou e o roteiro de 7 passos).
+
+**Aberto na W6** (a ordem da tabela §9): **mirror vivo** · **rótulo de distância** nos smart guides.
+
+**Aberto nesta wave, nomeado com o preço:**
+- **A guia INCLINADA não existe**, e é decisão. Uma reta oblíqua é uma restrição 1-D que **não se
+  decompõe em eixos** — encaixar nela move `x` E `y`, e o resultado é uma projeção perpendicular,
+  não um alinhamento. É uma **terceira espécie** de reivindicação (a *linha*), com gesto próprio
+  (criar, girar) e matemática própria; enfiá-la no tipo de hoje obrigaria o `pos: f64` a virar
+  `(origem, direção)` e o laço de snap a ramificar em duas leis onde hoje tem uma.
+- **A ORIGEM MÓVEL** (arrastar o canto para mudar o zero) **não foi construída, e o preço está
+  medido**: a régua já lê a origem da GRADE (porta única), mas `GridSnapState` **não é
+  persistido** — então uma origem movida seria um ajuste que ESQUECE. Fazê-la direito exige levar o
+  estado da grade ao arquivo, que é decisão sobre uma struct foundational com 9 configs, não um
+  gesto de canto.
+- **O consumo é do Vector**: quem encaixa nas guias é o motor de snap vetorial. Levá-las ao gizmo
+  de sprite dos outros modos é wave própria — o gesto já é tool-agnóstico, o ímã ainda não.
+
+**Aberto na W6** (a ordem da tabela §9): **mirror vivo** ·
 **rótulo de distância** nos smart guides.
 
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)

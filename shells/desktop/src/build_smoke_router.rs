@@ -160,5 +160,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::cut_smoke::frame(app, f);
         return true;
     }
+    // A cena das GUIAS e da RÉGUA (=45, plano 25 §9, a W6.2) — irmã `guide_smoke`. Mesma
+    // disciplina: dá o material (duas guias e duas formas) e **não arma modo nenhum**.
+    if level == 45 {
+        crate::guide_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -155,6 +155,7 @@ mod fx_turbulence_smoke;
 mod fx_undo_smoke;
 mod gradient_smoke;
 mod guide_gesture;
+mod guide_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.
 mod harmony_smoke;
 mod hero_bridge;

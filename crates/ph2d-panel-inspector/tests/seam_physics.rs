@@ -33,6 +33,10 @@ fn with_body() -> InspectorPhysicsInfo {
         has_body: true,
         join_count: 0,
         rig_parts: 0,
+        // W-Compound: a fixture base é um objeto SOLTO, sem corpo acima — então
+        // não há dono e o "Add Shape" não é oferecido. Os gates que o exercitam
+        // preenchem este campo.
+        part_owner: String::new(),
         join_draw_armed: false,
         kind_tag: 0,
         shape_tag: 1,
@@ -92,7 +96,7 @@ fn without_body() -> InspectorPhysicsInfo {
 fn click(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
-    set_current_inspector_physics(Some(info));
+    set_current_inspector_physics(Some(info.clone()));
     let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(id));
     let out = host.drained_actions();
     set_current_inspector_physics(None);
@@ -119,7 +123,7 @@ fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAc
     };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
-    set_current_inspector_physics(Some(info));
+    set_current_inspector_physics(Some(info.clone()));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let rect = rects
         .iter()
@@ -146,7 +150,7 @@ fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAc
 fn commit(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
-    set_current_inspector_physics(Some(info));
+    set_current_inspector_physics(Some(info.clone()));
     host.set_number_value(id, v);
     let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::ValueChanged(id));
     let out = host.drained_actions();
@@ -694,7 +698,7 @@ fn gravity_scale_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
@@ -704,7 +708,7 @@ fn gravity_scale_is_offered_and_committed_only_for_a_dynamic_body() {
             offered,
             "kind_tag={tag}: the Gravity Scale row's presence is wrong"
         );
-        let actions = commit(info, ids::INSP_PHYS_GRAVITY_SCALE, 0.3);
+        let actions = commit(info.clone(), ids::INSP_PHYS_GRAVITY_SCALE, 0.3);
         assert_eq!(
             !actions.is_empty(),
             offered,
@@ -753,7 +757,7 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let painted = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for id in rows {
@@ -763,7 +767,7 @@ fn initial_velocity_is_offered_and_committed_only_for_a_dynamic_body() {
                 "kind_tag={tag}: an initial-velocity row's presence is wrong"
             );
             assert_eq!(
-                !commit(info, id, 1.0).is_empty(),
+                !commit(info.clone(), id, 1.0).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  an initial-velocity row"
@@ -805,7 +809,7 @@ fn dominance_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
@@ -814,7 +818,7 @@ fn dominance_is_offered_and_committed_only_for_a_dynamic_body() {
             "kind_tag={tag}: the Dominance row's presence is wrong"
         );
         assert_eq!(
-            !commit(info, ids::INSP_PHYS_DOMINANCE, 5.0).is_empty(),
+            !commit(info.clone(), ids::INSP_PHYS_DOMINANCE, 5.0).is_empty(),
             offered,
             "kind_tag={tag}: the event handler disagrees with the painter about \
              whether Dominance is offered"
@@ -856,7 +860,7 @@ fn ccd_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_CCD.iter() {
@@ -866,7 +870,7 @@ fn ccd_is_offered_and_committed_only_for_a_dynamic_body() {
                 "kind_tag={tag}: the CCD toggle's presence is wrong"
             );
             assert_eq!(
-                !click(info, id).is_empty(),
+                !click(info.clone(), id).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  whether CCD is offered"
@@ -902,7 +906,7 @@ fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_LOCKROT.iter() {
@@ -912,7 +916,7 @@ fn lock_rotation_is_offered_and_committed_only_for_a_dynamic_body() {
                 "kind_tag={tag}: the Lock-rotation toggle's presence is wrong"
             );
             assert_eq!(
-                !click(info, id).is_empty(),
+                !click(info.clone(), id).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  whether Lock-rotation is offered"
@@ -945,7 +949,7 @@ fn mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only() {
     let painted = |info: InspectorPhysicsInfo| {
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         let has = |id| rects.iter().any(|(n, _)| *n == id);
@@ -990,7 +994,7 @@ fn mass_source_toggle_swaps_density_for_mass_and_is_dynamic_only() {
         };
         for &id in ids::INSP_PHYS_MASSMODE.iter() {
             assert_eq!(
-                !click(info, id).is_empty(),
+                !click(info.clone(), id).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  whether the Mass toggle is offered"
@@ -1041,7 +1045,7 @@ fn freeze_position_is_offered_and_committed_only_for_a_dynamic_body() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_LOCKX
@@ -1054,7 +1058,7 @@ fn freeze_position_is_offered_and_committed_only_for_a_dynamic_body() {
                 "kind_tag={tag}: a Freeze-Position toggle's presence is wrong"
             );
             assert_eq!(
-                !click(info, id).is_empty(),
+                !click(info.clone(), id).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about \
                  whether Freeze Position is offered"
@@ -1090,7 +1094,7 @@ fn bake_is_offered_only_for_a_body_the_solver_moves() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         assert_eq!(
@@ -1099,7 +1103,7 @@ fn bake_is_offered_only_for_a_body_the_solver_moves() {
             "kind_tag={tag}: the Bake button's presence is wrong"
         );
         assert_eq!(
-            !click(info, ids::INSP_PHYS_BAKE).is_empty(),
+            !click(info.clone(), ids::INSP_PHYS_BAKE).is_empty(),
             offered,
             "kind_tag={tag}: the event handler disagrees with the painter about \
              whether this body can be baked"
@@ -1140,7 +1144,7 @@ fn combine_rules_are_offered_for_every_kind_and_each_option_reaches_the_bus() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_REST_COMBINE
@@ -1213,7 +1217,7 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         // The two number boxes AND both mode chips are painted only for a Dynamic body.
@@ -1234,7 +1238,7 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
         // The mode chips honour the click only for a Dynamic body.
         for &id in ids::INSP_PHYS_DAMPMODE.iter() {
             assert_eq!(
-                !click(info, id).is_empty(),
+                !click(info.clone(), id).is_empty(),
                 offered,
                 "kind_tag={tag}: the event handler disagrees with the painter about the \
                  damp-mode toggle"
@@ -1242,7 +1246,7 @@ fn damping_rows_are_dynamic_only_and_each_reaches_the_bus() {
         }
         // The value commits honour only for a Dynamic body.
         assert_eq!(
-            !commit(info, ids::INSP_PHYS_LINEAR_DAMPING, 3.0).is_empty(),
+            !commit(info.clone(), ids::INSP_PHYS_LINEAR_DAMPING, 3.0).is_empty(),
             offered,
             "kind_tag={tag}: Linear Damping commit / painter disagree"
         );
@@ -1296,7 +1300,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(info));
+        set_current_inspector_physics(Some(info.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_ONEWAY.iter() {
@@ -1327,7 +1331,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
         };
         let mut host = Host::with_panel::<InspectorPanel>();
         let mut state = InspectorState::default();
-        set_current_inspector_physics(Some(sensor));
+        set_current_inspector_physics(Some(sensor.clone()));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
         set_current_inspector_physics(None);
         for &id in ids::INSP_PHYS_ONEWAY.iter() {
@@ -1336,7 +1340,7 @@ fn one_way_is_offered_for_every_kind_and_each_option_reaches_the_bus() {
                 "a One-Way chip was painted on a SENSOR, where it cannot do anything"
             );
             assert!(
-                click(sensor, id).is_empty(),
+                click(sensor.clone(), id).is_empty(),
                 "a One-Way chip reached the bus on a SENSOR"
             );
         }
@@ -1391,7 +1395,7 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
             };
             let mut host = Host::with_panel::<InspectorPanel>();
             let mut state = InspectorState::default();
-            set_current_inspector_physics(Some(info));
+            set_current_inspector_physics(Some(info.clone()));
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_physics(None);
             for &id in FORCE_IDS.iter().chain(ids::INSP_PHYS_FORCE_AXES.iter()) {
@@ -1411,12 +1415,12 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
         ..with_body()
     };
     expect(
-        &commit(sensor, ids::INSP_PHYS_FORCE_X, 12.5),
+        &commit(sensor.clone(), ids::INSP_PHYS_FORCE_X, 12.5),
         PhysicsFieldEdit::ForceX(12.5),
         "Force X",
     );
     expect(
-        &commit(sensor, ids::INSP_PHYS_FORCE_Y, -3.25),
+        &commit(sensor.clone(), ids::INSP_PHYS_FORCE_Y, -3.25),
         PhysicsFieldEdit::ForceY(-3.25),
         "Force Y",
     );
@@ -1428,7 +1432,7 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // leaves every OTHER gate in this file green.
     for (i, &id) in ids::INSP_PHYS_FORCE_AXES.iter().enumerate() {
         expect(
-            &click_real(sensor, id),
+            &click_real(sensor.clone(), id),
             PhysicsFieldEdit::ForceWorldAxes(i == 1),
             &format!("Force Axes toggle option {i}"),
         );
@@ -1450,7 +1454,7 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // must survive the event layer intact — a clamp here (as the drag rows take) would
     // silently drop the clockwise half.
     expect(
-        &commit(sensor, ids::INSP_PHYS_AREA_TORQUE, -7.5),
+        &commit(sensor.clone(), ids::INSP_PHYS_AREA_TORQUE, -7.5),
         PhysicsFieldEdit::AreaTorque(-7.5),
         "Torque",
     );
@@ -1458,22 +1462,22 @@ fn the_force_rows_are_sensor_only_and_each_axis_reaches_the_bus() {
     // apply da shell, que é onde ela vira componente. Clampar aqui também seria a segunda
     // porta para a mesma regra.
     expect(
-        &commit(sensor, ids::INSP_PHYS_AREA_FALLOFF, 0.75),
+        &commit(sensor.clone(), ids::INSP_PHYS_AREA_FALLOFF, 0.75),
         PhysicsFieldEdit::AreaFalloff(0.75),
         "Falloff",
     );
     expect(
-        &commit(sensor, ids::INSP_PHYS_AREA_DRAG, 4.0),
+        &commit(sensor.clone(), ids::INSP_PHYS_AREA_DRAG, 4.0),
         PhysicsFieldEdit::AreaDrag(4.0),
         "Area Drag",
     );
     expect(
-        &commit(sensor, ids::INSP_PHYS_AREA_DENSITY, 6.0),
+        &commit(sensor.clone(), ids::INSP_PHYS_AREA_DENSITY, 6.0),
         PhysicsFieldEdit::AreaDensity(6.0),
         "Fluid Density",
     );
     expect(
-        &commit(sensor, ids::INSP_PHYS_AREA_FORM_DRAG, 2.5),
+        &commit(sensor.clone(), ids::INSP_PHYS_AREA_FORM_DRAG, 2.5),
         PhysicsFieldEdit::AreaFormDrag(2.5),
         "Shape Drag",
     );
@@ -1525,7 +1529,7 @@ fn selecting_a_zone_shows_its_authored_area_values() {
     };
     let mut host = Host::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
-    set_current_inspector_physics(Some(info));
+    set_current_inspector_physics(Some(info.clone()));
     // ⚠️ `sync_inspector_from_snapshots` derives the "which entity" (and thus the
     // selection-changed edge that gates the sync) from the TRANSFORM snapshot, not the
     // physics one — every real selected entity has a Transform. Set it so the edge fires.
@@ -1606,7 +1610,7 @@ fn the_draw_joint_button_is_always_offered_and_reaches_the_bus() {
             },
         ),
     ] {
-        let acts = click_real(info, ids::INSP_PHYS_JOIN_DRAW);
+        let acts = click_real(info.clone(), ids::INSP_PHYS_JOIN_DRAW);
         assert!(
             acts.iter().any(|a| matches!(
                 a,
@@ -1668,7 +1672,7 @@ fn the_rig_button_is_alive_under_the_mouse_on_both_faces() {
             rig_parts: 6,
             ..base
         };
-        let actions = click_real(info, ids::INSP_PHYS_RIG);
+        let actions = click_real(info.clone(), ids::INSP_PHYS_RIG);
         assert!(
             actions.iter().any(|a| matches!(
                 a,
@@ -1703,7 +1707,7 @@ fn the_rig_button_is_absent_when_there_is_nothing_to_rig() {
             let mut state = InspectorState::default();
             set_current_inspector_physics(Some(InspectorPhysicsInfo {
                 rig_parts: parts,
-                ..base
+                ..base.clone()
             }));
             let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
             set_current_inspector_physics(None);
@@ -1762,5 +1766,69 @@ fn the_rig_label_says_how_many_parts_it_will_touch() {
         label,
         ph2d_panel_inspector::rig_button_label(9),
         "o rótulo é o mesmo para 6 e 9 partes"
+    );
+}
+
+/// **"Add Shape to X" — a terceira porta da face vazia** (W-Compound): oferecida
+/// só quando há um corpo ancestral, ausente quando não há, e alcançada por um
+/// clique REAL.
+///
+/// ⚠️ **Este gate nasceu de DUAS mutações sobreviventes.** Tirar o id do
+/// `populate` deixava o botão pintado, registrado no hit index e **morto sob o
+/// mouse** — com a suíte inteira verde. É a falha das 36 células do W2c e dos dois
+/// chips do W-AreaFrame, pela terceira vez.
+#[test]
+fn the_add_shape_door_is_offered_only_with_an_owner_and_a_real_click_reaches_it() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let orphan = without_body();
+    let child = InspectorPhysicsInfo {
+        part_owner: "Torso".into(),
+        ..without_body()
+    };
+
+    // AUSÊNCIA: sem corpo acima não há a quem pertencer.
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(orphan));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_ADD_SHAPE),
+        "a porta foi oferecida a um objeto sem corpo ancestral — a peça não teria \
+         a quem pertencer"
+    );
+
+    // PRESENÇA + o clique real.
+    let actions = click_real(child.clone(), ids::INSP_PHYS_ADD_SHAPE);
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorPhysicsEdit {
+                edit: PhysicsFieldEdit::AddShape,
+                ..
+            }
+        )),
+        "o clique não virou `AddShape`: {actions:?}"
+    );
+
+    // E o rótulo NOMEIA o dono — um collider é invisível, e a hierarquia pode ter
+    // um grupo no meio, então *de quem esta forma vai ser* é a única coisa que o
+    // artista não consegue inferir da tela.
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(child));
+    let painted = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    assert!(
+        painted.iter().any(|(n, _)| *n == ids::INSP_PHYS_ADD_SHAPE),
+        "a porta não foi pintada para um filho de corpo"
     );
 }

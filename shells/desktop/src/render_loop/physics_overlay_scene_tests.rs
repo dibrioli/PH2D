@@ -401,3 +401,88 @@ fn a_parented_bodys_outline_grows_with_its_world_scale() {
          scale never reached the collider"
     );
 }
+
+/// **A PEÇA de um corpo composto é desenhada, e com a cor do DONO** (W-Compound).
+///
+/// ⚠️ **Este gate nasceu de uma mutação sobrevivente.** A wave trocou a query do
+/// passe de `(RigidBody, Collider)` para `Collider` + *de quem é esta forma*, e
+/// reverter isso — voltar a exigir `RigidBody` — deixava **toda peça invisível**
+/// com a suíte inteira VERDE. Um collider invisível é exatamente o que o contorno
+/// existe para não deixar acontecer.
+///
+/// A cor é a do dono porque a peça não tem tipo próprio: ela É o corpo dele.
+#[test]
+fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{ChildOf, Transform};
+    use ph2d_physics_ecs::{Collider, RigidBody};
+
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let arm = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 0.2,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 2.0)),
+        ))
+        .id();
+    // A peça: `Collider` e NADA de `RigidBody`.
+    sim.world_mut().spawn((
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.2,
+                half_y: 1.0,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.8, -1.0)),
+        ChildOf(arm),
+    ));
+
+    let out = outlines(true, false, &mut sim, &[], &camera(), window());
+    assert_eq!(
+        out.len(),
+        2,
+        "o corpo composto desenhou {} contorno(s); são DUAS formas",
+        out.len()
+    );
+    for (_, rgba) in &out {
+        assert_eq!(
+            *rgba, DYNAMIC_RGBA,
+            "a peça não herdou a cor do dono — ela não tem tipo próprio, ela É o \
+             corpo dele"
+        );
+    }
+}
+
+/// **E um collider SEM corpo acima não é desenhado** — o controle da metade
+/// acima. Sem ele o gate ficaria verde sobre um passe que desenha toda forma da
+/// cena, inclusive as que o solver ignora.
+#[test]
+fn a_collider_with_no_body_above_it_is_not_drawn() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    use ph2d_physics_ecs::Collider;
+
+    let mut sim = ph2d_ecs::SimWorld::new();
+    sim.world_mut().spawn((
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.3 },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 2.0)),
+    ));
+    assert!(
+        outlines(true, false, &mut sim, &[], &camera(), window()).is_empty(),
+        "uma forma que o solver ignora ganhou contorno — a marca afirmaria que ela \
+         é simulada"
+    );
+}

@@ -26,6 +26,8 @@ pub mod joints;
 pub mod kinematic;
 pub mod layers;
 pub mod oneway;
+/// Os colliders EXTRA de um corpo composto (docs dele).
+pub mod parts;
 pub mod pulley;
 pub mod queries;
 pub mod rope_load;

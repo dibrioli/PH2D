@@ -7462,14 +7462,16 @@ linha bumpou oito vezes. Quarta vez que estas duas linhas disputam este número
 
 ### O que está ABERTO para a próxima jornada
 
-**Do plano 02 §8 — quatro itens, nenhum escalonado:**
+**Do plano 02 §8 — DOIS itens, e os dois condicionados** (⚠️ esta tabela dizia
+*"quatro"* até 2026-07-31 e listava dois que as waves daquele dia fecharam; uma
+lista de pendências velha faz a próxima LLM propor construir o que existe):
 
 | item | estado medido |
 |---|---|
 | **Params de joint KEYFRAMÁVEIS** | ⚠️ **decisão do Enio + cross-line.** `PropKind` é enum FECHADO de 7 variants, todas de POSE, e o apply escreve `Transform`. Keyframar `motor_target` é *a timeline aprender a dirigir campo de componente* — não é apendar variant |
-| **Ragdoll wizard** | ⚠️ **metade já existe:** o *make-chain* é `join_selected_chain` + "Chain N Selected Bodies". Sobra o GERADOR, e ele só fazia sentido sobre o conjunto de tipos fechado — que agora está (8 tipos) |
 | **Custom/GenericJoint** | *"só se um caso real pedir"* — e a própria nota registra que **o Wheel NÃO é esse caso**. Cerca de Chesterton |
-| **Soft weld** | premissa falsificada e MEDIDA (um motor em eixo TRAVADO é mascarado pelo rapier); nada o pede |
+| ~~**Ragdoll wizard**~~ | ✅ **FECHADO (W-Rig, cena `=67`)** — e o valor não veio do conjunto de tipos, veio da **HIERARQUIA** |
+| ~~**Soft weld**~~ | ✅ **FECHADO (W-SoftWeld, cena `=68`)** — ⚠️ e a premissa *já corrigida* aqui estava **errada outra vez**: a receita *"não travar nada + três molas"* foi construída e REPROVADA por medição (as peças se separam 0,92 m) |
 | ~~Rows de readout tingidas~~ | ⚠️ **condição NÃO satisfeita**: o readout de carga do W-J7b vive no **OVERLAY**, não em row. Fica fechado pela própria regra |
 
 **Dívidas menores nomeadas pelas waves desta janela:**
@@ -7592,9 +7594,12 @@ reancorado junto (o corte o tinha orfanado).
 
 **Aberto, nomeado:**
 
-- **a âncora é o ponto MÉDIO dos dois centros**, exata só quando as partes têm o
-  mesmo tamanho; numa cabeça pequena sobre um tronco grande o pivô fica dentro do
-  tronco. A cura muda o desenho das TRÊS rotas ⇒ **decisão de produto**.
+- ~~**a âncora é o ponto MÉDIO dos dois centros**~~ — ✅ **FECHADO no mesmo dia**
+  (o smoke da `=67` o puxou): a âncora vai para a **EMENDA**, o meio entre os dois
+  pontos em que as SILHUETAS cruzam a linha dos centros, nas TRÊS rotas de criação.
+  Sem geometria nova — a `radial_fraction` do W-AreaFalloff é função-calibre, então
+  o alcance da silhueta é `1/f(d)` em forma fechada. ⚠️ Esta linha ficou dizendo
+  *"aberto"* vinte linhas acima da seção que a fechou.
 - **todo joint nasce Pin** (do seletor *Join As*). Limites por junta são o gesto que
   a W-JointCopy tornou barato (afine um joelho → copie → cole nos outros); o gerador
   não adivinha ângulos por parte do corpo, e inventar um vocabulário de osso para
@@ -7742,3 +7747,100 @@ laranja MOLE frouxa (26,83°) e azul MOLE sob uma bola pesada (pico **62,42°**,
 volta a 3,01°). ⚠️ Os números são os da CENA e não os da fixture do wrapper — o
 braço aqui é 1,8 m e lá 1,0 m, e a sonda `probe_smoke_68` corrigiu as constantes
 que eu havia emprestado.
+
+---
+
+## W-Compound — um corpo, VÁRIAS formas (2026-08-01, cena `=69`)
+
+O maior vão de AUTORIA que restava no módulo, e ele era **silencioso**.
+
+### A medição que abriu a wave
+
+Até aqui um corpo tinha exatamente UM collider, e a `BodyQuery` da ponte dizia
+isso no TIPO (`RigidBody` **e** `Collider` na mesma entidade). As duas coisas que
+um artista tentaria foram medidas (`tests/measure_compound.rs`) e as duas falham:
+
+| tentativa | o que acontece |
+|---|---|
+| filho com **só** `Collider` | **invisível ao solver** — a perna de um "L" atravessa o chão (`y = −0,30`, topo do chão em `0,5`), sem erro e sem warning |
+| filho com `Collider` **e** `RigidBody` | vira OUTRO corpo: o offset autorado `[0,8, −1,0]` virou `[2,08, +0,80]` — as peças se espalham |
+
+Quem desenha uma mesa recebe metade dela sem física, e nada avisa.
+
+### A resposta é a HIERARQUIA, e ela já existia
+
+Um filho com `Collider` e **sem** `RigidBody` é mais uma forma do corpo ancestral
+mais próximo — o `CollisionShape2D` do Godot, com a nossa árvore no lugar da dele
+e o norte do ADR-0110 (*tudo é entidade, uma árvore só*) no lugar de um vetor de
+formas dentro do componente. O que se ganha é o que a Hierarquia já sabe fazer:
+nomear, selecionar, mover, apagar, desfazer e salvar cada peça.
+
+⚠️ **O ancestral é o mais PRÓXIMO que é corpo**, não o pai literal — o mesmo walk
+do `rig_edges`, e pela mesma razão: um GRUPO no meio tem de ser transparente.
+
+⚠️ **A pose é DERIVADA** (`inverse_compose(peça_mundo, corpo_mundo)` — a álgebra
+que o W5 construiu para o oposto). Um campo "local" no componente seria o segundo
+lugar do mesmo fato, e ele divergiria do `Transform` que o artista arrasta.
+
+### O que a construção achou
+
+- ⚠️ **rapier NÃO recomputa a massa no `remove`** — medido: o corpo ficava em
+  1,6000 kg depois de perder uma peça de 0,8. Um corpo pesando o que ele não tem
+  mais é estado velho que ninguém vê. `detach_part` recomputa.
+- ⚠️ **O offset da peça COMPÕE com a pose local** (`L * O`, nessa ordem — o offset
+  é medido no frame da PEÇA). Sobrescrever apagaria o número em silêncio.
+- ⚠️ **O `attach_part` reusa o `build_collider`**, então uma propriedade de
+  collider nova cai em peças automaticamente. Um descriptor próprio seria a
+  segunda resposta a *"o que é um collider?"*.
+
+### As três metades da UI
+
+1. **A porta** — a face VAZIA do §11 ganhou a terceira: **"Add Shape to <Dono>"**,
+   ao lado de *Add Physics Body* (faz um corpo) e *Rig N Parts* (faz o personagem
+   inteiro). O rótulo NOMEIA o dono porque um collider é invisível e a hierarquia
+   pode ter um grupo no meio.
+2. **O desenho** — o contorno passou a perguntar *de quem é esta forma* em vez de
+   exigir `RigidBody`; sem isso toda peça seria **invisível**, que é exatamente o
+   que o contorno existe para não deixar acontecer.
+3. **O rewind** — `respawn_parts_from_rest`, no MESMO chamado do
+   `rebuild_from_rest` e ao lado dos joints: um replay com metade das formas é
+   outra simulação.
+
+### Números
+
+**Nenhum schema** (`PROJECT_SCHEMA` fica em **47**; o `Collider` já existia — o que
+mudou é quem o lê) · registro do `ph2d-physics-ecs` **fica em 24** · **c9 98 → 99
+corpos**, hash **`556cb652…`** (debug ≡ release) · id novo `INSP_PHYS_ADD_SHAPE`.
+**Nenhum ADR, nenhuma dep, nenhuma crate nova**; contrato congelado intacto.
+
+⚠️ **`InspectorPhysicsInfo` deixou de ser `Copy`** (o nome do dono é uma `String`)
+e o thread-local dele virou `RefCell`, como o do joint ao lado.
+
+**LOC — três splits por responsabilidade:** `bridge/joints.rs` 706 → irmão
+`bridge/joint_desc.rs` (*o que este joint É para o solver* × *manter os joints em
+dia*) · `sections/physics.rs` 612 → `physics_doors.rs` (*o que este corpo É* × *o
+que CRIAR aqui*) · `render_loop/physics_overlay.rs` 620 →
+`physics_overlay_shapes.rs` (*que figura é esta* × *o que o passe desenha*).
+
+### Gates e as duas mutações que sobreviveram
+
+5 no wrapper · 5 na ponte · 2 no overlay · 1 de seam · 3 na cena. **7 mutações, 7
+sangram** — mas ⚠️ **duas só sangram porque a rodada de mutação as fez existir**:
+neutralizar o desenho das peças e tirar o botão do `populate` deixavam a suíte
+INTEIRA verde. São a falha das 36 células do W2c pela terceira vez nesta linha, e
+os dois gates novos as pinam.
+
+⚠️ **E uma fixture minha quase virou um defeito reportado:** a 1ª versão da cena
+pôs as mesas em `x = ±3,2` com tampo de 2,8 m, e o chão do smoke vai só até
+`x = ±4` — a da direita passava da borda, tombava e caía para **−74,88 m**. O que
+separou os dois casos foi o CONTROLE: a mesa da esquerda media certo.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=69`** — duas mesas idênticas no desenho; só o collider
+das pernas difere. A da esquerda desce até o TAMPO tocar o chão (−0,65) e as pernas
+atravessam (ponta em −2,60, 1,8 m abaixo do chão); a da direita para sobre as
+pernas (tampo 1,15, ponta −0,80, exatamente no chão).
+
+**Aberto:** uma peça não tem seção própria no Inspector (selecioná-la mostra a face
+vazia com a porta; editar a FORMA dela depois de criada passa pelas rows normais de
+collider, que já funcionam) · o `part_views` da ponte existe e **não tem consumidor**
+(o overlay desenha do ECS, que é a fonte que o artista arrasta).

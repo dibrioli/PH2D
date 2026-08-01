@@ -197,6 +197,7 @@ mod physics_smoke;
 mod physics_smoke_authoring;
 mod physics_smoke_collider;
 mod physics_smoke_collision;
+mod physics_smoke_compound;
 mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;

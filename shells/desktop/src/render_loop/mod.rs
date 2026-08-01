@@ -166,6 +166,8 @@ mod physics_overlay_joint_glyphs;
 mod physics_overlay_joint_readout;
 mod physics_overlay_joints;
 mod physics_overlay_pulley;
+/// A GEOMETRIA do contorno de um collider (docs dele) — irmão pelo cap de LOC.
+pub(crate) mod physics_overlay_shapes;
 pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]

@@ -104,60 +104,19 @@ pub(crate) fn paint_physics_section(
     }
 
     let mut yy = y + header_h;
-    let h = ROW_H_PX;
-    let label_font = TypeToken::Sm.px();
 
     if !info.has_body {
-        // The door. One line of explanation, because "Add Physics Body" on a
-        // sprite that is about to start falling deserves to say so.
-        paint_text(
-            text_system,
+        return super::physics_doors::paint_empty_face(
             scene,
-            "Not simulated \u{00b7} add a body to make it fall and collide",
+            text_system,
+            theme,
+            hit_index,
+            store,
+            info,
             x,
-            yy + (h - label_font) * 0.5,
-            label_font,
             w,
-            resolve(ColorToken::Text3, theme),
+            yy,
         );
-        yy += h;
-        let btn_rect = Rect::new(x, yy, w, h);
-        let btn = Button::new(ids::INSP_PHYS_ADD, "Add Physics Body")
-            .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PHYS_ADD)
-                    .unwrap_or(ButtonState::Normal),
-            );
-        paint_button(&btn, btn_rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PHYS_ADD, btn_rect);
-        yy += h;
-        // **E a segunda resposta à mesma pergunta** (W-Rig): a porta acima torna
-        // ESTE objeto físico; o rig torna o personagem INTEIRO físico e o monta,
-        // lendo a árvore que o artista já desenhou.
-        //
-        // ⚠️ **A face vazia é o caso NORMAL do rig, não uma borda** — um
-        // personagem nasce como sprites parenteados, sem corpo em lugar nenhum.
-        // Deixá-lo só na face com corpo faria o gerador exigir o passo manual que
-        // ele existe para remover (é por isso que as rotas de LIGAR não aparecem
-        // aqui e esta aparece: elas precisam de corpos, esta os cria).
-        if info.rig_parts > 0 {
-            let rect = Rect::new(x, yy, w, h);
-            let btn = Button::new(
-                ids::INSP_PHYS_RIG,
-                super::physics_join_rows::rig_button_label(info.rig_parts),
-            )
-            .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PHYS_RIG)
-                    .unwrap_or(ButtonState::Normal),
-            );
-            paint_button(&btn, rect, scene, text_system, theme);
-            hit_index.register(ids::INSP_PHYS_RIG, rect);
-            yy += h;
-        }
-        return yy + SECTION_BOTTOM_PAD_PX;
     }
 
     yy = seg_row(

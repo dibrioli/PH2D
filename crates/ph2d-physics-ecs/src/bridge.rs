@@ -24,12 +24,14 @@ mod hold;
 pub mod ik;
 mod inspect;
 pub mod joint_break;
-/// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
-/// LOC, cortado por responsabilidade (docs dele).
 pub mod joint_desc;
 mod joint_respawn;
 pub mod joints;
 mod kinematic;
+/// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
+/// LOC, cortado por responsabilidade (docs dele).
+/// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
+pub mod parts;
 mod readback;
 mod rewind;
 pub mod rope;
@@ -44,6 +46,7 @@ pub use kinematic::{FrozenScene, SceneAtTick};
 use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
+use parts as bridge_parts;
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_physics::{BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle};
 
@@ -84,6 +87,14 @@ type PendingJoint = (
     (Entity, Option<Entity>),
     Option<[f32; 2]>,
 );
+
+/// **As PEÇAS** (W-Compound): quem carrega `Collider` e **não** `RigidBody`. O
+/// `Without` é a definição inteira — uma entidade com os dois é um CORPO, e a
+/// `BodyQuery` já a pegou.
+type PartQuery = QueryState<
+    (Entity, &'static Collider, &'static Transform),
+    bevy_ecs::query::Without<RigidBody>,
+>;
 
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
 /// The `Transform` is the anchor — see `bridge::joints` for the policy.
@@ -142,6 +153,11 @@ pub struct PhysicsBridge {
     /// `Transform` autorado que o chamador escreveu.
     pub(super) fk: Option<fk::FkSession>,
     joint_query: Option<JointQuery>,
+    /// W-Compound: a query das peças e a tabela delas.
+    part_query: Option<PartQuery>,
+    parts: std::collections::BTreeMap<Entity, bridge_parts::PartRef>,
+    /// Scratch da varredura de peças — zero-alloc em regime, como o `seen`.
+    part_seen: Vec<Entity>,
     /// A query das roldanas. Separada da dos joints porque uma roldana é uma
     /// ENTIDADE própria (W-Pulley W1) — a corda a aponta pelo nome.
     wheel_query: Option<rope::WheelQuery>,
@@ -326,6 +342,9 @@ impl PhysicsBridge {
             ik: None,
             fk: None,
             joint_query: None,
+            part_query: None,
+            parts: std::collections::BTreeMap::new(),
+            part_seen: Vec::new(),
             wheel_query: None,
             seen: Vec::new(),
             names: BTreeMap::new(),
@@ -411,7 +430,13 @@ impl PhysicsBridge {
         if self.wheel_query.is_none() {
             self.wheel_query = Some(sim.world_mut().query());
         }
+        if self.part_query.is_none() {
+            // `query_filtered`, não `query`: o `Without<RigidBody>` É a definição
+            // de uma peça, e ele mora no TIPO.
+            self.part_query = Some(sim.world_mut().query_filtered());
+        }
         self.reconcile_structure(sim);
+        self.reconcile_parts(sim);
         self.reconcile_joints(sim);
         self.restamp_damping();
         // A static body has ONE author — the authored `Transform` — so it tracks

@@ -22,6 +22,34 @@ pub(crate) use super::inspector_physics_apply::apply_physics_edit;
 // que o painel não pode derivar; empacotá-los num struct só moveria a mesma lista
 // para outro arquivo, com um sítio de construção a mais para alguém esquecer.
 #[allow(clippy::too_many_arguments)]
+/// **O nome do corpo ancestral mais próximo** — o dono que adotaria uma peça
+/// (W-Compound), ou vazio se não há nenhum.
+///
+/// ⚠️ Só faz sentido para uma entidade que NÃO é corpo (a face vazia do §11): um
+/// objeto que já é corpo não vira peça de ninguém. E o walk pula o pai literal
+/// quando ele é só organização — a mesma transparência de GRUPO do `rig_edges`,
+/// porque pôr as formas de uma peça dentro de uma pasta não pode desligá-las.
+fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
+    let mut cur = world
+        .get::<ph2d_ecs::ChildOf>(e)
+        .map(ph2d_ecs::ChildOf::parent);
+    while let Some(p) = cur {
+        if world.get::<ph2d_physics_ecs::RigidBody>(p).is_some() {
+            return world
+                .get::<ph2d_ecs::Name>(p)
+                .map_or_else(|| "the body above".to_string(), |n| n.as_str().to_string());
+        }
+        cur = world
+            .get::<ph2d_ecs::ChildOf>(p)
+            .map(ph2d_ecs::ChildOf::parent);
+    }
+    String::new()
+}
+
+/// ⚠️ Oito argumentos: cada um é um fato que só a SHELL tem (a seleção, o gesto
+/// armado, o alcance do bake). Empacotá-los num struct seria um tipo que existe
+/// só para atravessar esta chamada.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
@@ -133,6 +161,9 @@ pub(crate) fn build_physics_info(
             // dele é exatamente este: um personagem desenhado em sprites, nenhum
             // corpo em lugar nenhum.
             rig_parts,
+            // W-Compound: a face VAZIA é a única em que a pergunta faz sentido —
+            // um objeto que já é corpo não vira peça de ninguém.
+            part_owner: nearest_body_name(world, entity),
             join_draw_armed,
             join_kind_tag,
             is_sensor: false,
@@ -198,6 +229,8 @@ pub(crate) fn build_physics_info(
         layer: col.layer,
         join_count,
         rig_parts,
+        // Um corpo não é peça de ninguém (docs do `nearest_body_name`).
+        part_owner: String::new(),
         join_draw_armed,
         join_kind_tag,
         bake_seconds,

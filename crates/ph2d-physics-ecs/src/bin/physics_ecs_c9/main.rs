@@ -516,6 +516,44 @@ fn main() {
         Transform::from_translation(Vec2::new(-64.0, 8.0)),
     ));
 
+    // Um corpo COMPOSTO (W-Compound): um "L" -- um braco que e corpo, mais uma
+    // perna que e so `Collider` pendurada nele. Entra no hash porque e um caminho
+    // de solver proprio (varios colliders no mesmo corpo: a massa soma, o centro
+    // de massa desloca, e o narrow phase reporta contato por FORMA), e porque um
+    // L largado TOMBA -- ele nao dorme parado, entao toda divergencia de
+    // plataforma continua acumulando ate o fim dos passos.
+    let c9_arm = sim
+        .world_mut()
+        .spawn((
+            Name::new("C9 Compound Arm"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.0,
+                    half_y: 0.2,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(-76.0, 3.0)),
+        ))
+        .id();
+    sim.world_mut().spawn((
+        Name::new("C9 Compound Leg"),
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.2,
+                half_y: 1.0,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.8, -1.0)),
+        ph2d_ecs::ChildOf(c9_arm),
+    ));
+
     // Uma SOLDA MOLE (W-SoftWeld): uma viga em balanco cujo angulo e uma mola.
     // Entra no hash porque e um caminho de solver PROPRIO -- um `GenericJoint`
     // com os dois eixos lineares travados e um motor de POSICAO no angular --,

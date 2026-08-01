@@ -25,7 +25,11 @@
 /// other sections describe something that exists; this one also has to offer
 /// the thing that does not yet, or a body could never be authored at all —
 /// physics would be reachable only from a smoke scene.
-#[derive(Copy, Clone, Debug, PartialEq)]
+/// ⚠️ **Deixou de ser `Copy` na W-Compound** — o nome do corpo que adotaria uma
+/// peça é uma `String`, e ele é o único jeito de o botão dizer DE QUEM a forma
+/// vai ser. O irmão `InspectorJointInfo` já não era, pela mesma razão (os nomes
+/// dos dois corpos).
+#[derive(Clone, Debug, PartialEq)]
 pub struct InspectorPhysicsInfo {
     pub entity_bits: u64,
     /// Does this entity carry `RigidBody` + `Collider` right now?
@@ -103,6 +107,11 @@ pub struct InspectorPhysicsInfo {
     /// corrente chegou. Aqui o zero é a resposta inteira, e o painter e o event
     /// handler leem o mesmo campo.
     pub rig_parts: u8,
+    /// **O corpo ancestral que adotaria esta forma** (W-Compound), ou vazio se não
+    /// há nenhum. O rótulo do botão o NOMEIA: *"Add Shape to Torso"* diz de quem a
+    /// peça vai ser, que é a única coisa que o artista não consegue inferir da
+    /// tela (um collider é invisível, e a hierarquia pode ter um grupo no meio).
+    pub part_owner: String,
     /// **The canvas drawing gesture is ARMED** (the *Draw Joint* button paints
     /// pressed). Runtime state of the shell, mirrored for the painter.
     pub join_draw_armed: bool,
@@ -247,6 +256,10 @@ pub struct InspectorPhysicsInfo {
 pub enum PhysicsFieldEdit {
     /// Attach `RigidBody{Dynamic}` + a `Collider` boxed to the sprite.
     Add,
+    /// **Esta forma é mais uma PEÇA do corpo ancestral** (W-Compound) — o
+    /// `Collider` entra SEM `RigidBody`, e é a ausência dele que faz da entidade
+    /// uma forma do dono em vez de um segundo corpo.
+    AddShape,
     /// Detach both components — the entity goes back to being plain art.
     Remove,
     /// `BodyKind` tag: `0` Dynamic · `1` Static · `2` Kinematic.

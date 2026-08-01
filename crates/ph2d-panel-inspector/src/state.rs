@@ -90,8 +90,11 @@ thread_local! {
     /// §11: live Physics Body snapshot (ADR-0131 D8). `Some` even for an
     /// entity with NO body — `has_body: false` is what lets the section
     /// offer the Add button, which is the only door into physics.
+    /// ⚠️ **`RefCell` e não `Cell` desde a W-Compound** — o info deixou de ser
+    /// `Copy` quando ganhou o NOME do corpo que adotaria uma peça. É o mesmo
+    /// motivo (e o mesmo remédio) do `CURRENT_INSPECTOR_JOINT` ao lado.
     pub(crate) static CURRENT_INSPECTOR_PHYSICS:
-        std::cell::Cell<Option<InspectorPhysicsInfo>> = const { std::cell::Cell::new(None) };
+        std::cell::RefCell<Option<InspectorPhysicsInfo>> = const { std::cell::RefCell::new(None) };
 
     /// W3 §8: live visibility-section snapshot (layer mask / clip / mask /
     /// on-screen). Distinct from `CURRENT_INSPECTOR_VISIBILITY` (the Visible
@@ -193,11 +196,11 @@ pub(crate) fn current_inspector_wheel() -> Option<InspectorWheelInfo> {
 }
 
 pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {
-    CURRENT_INSPECTOR_PHYSICS.with(|c| c.set(info));
+    CURRENT_INSPECTOR_PHYSICS.with(|c| *c.borrow_mut() = info);
 }
 
 pub(crate) fn current_inspector_physics() -> Option<InspectorPhysicsInfo> {
-    CURRENT_INSPECTOR_PHYSICS.with(|c| c.get())
+    CURRENT_INSPECTOR_PHYSICS.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_visibility_section(info: Option<InspectorVisibilitySectionInfo>) {

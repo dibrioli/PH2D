@@ -73,6 +73,32 @@ pub(crate) fn apply_physics_edit(
         );
         return;
     }
+    // **A peça** (W-Compound): o MESMO collider que o `Add` faz — a caixa do
+    // sprite, a única forma inicial que não pode discordar do que está desenhado
+    // — mas **sem** `RigidBody`. É a ausência dele que faz desta entidade uma
+    // forma a mais do corpo ancestral em vez de um segundo corpo, e a ponte
+    // pergunta exatamente isso (`Without<RigidBody>`).
+    if matches!(edit, PhysicsFieldEdit::AddShape) {
+        let half = world
+            .get::<ph2d_render::Sprite>(entity)
+            .map_or([0.5, 0.5], |s| {
+                [(s.size[0] * 0.5).max(1e-3), (s.size[1] * 0.5).max(1e-3)]
+            });
+        queue_set(
+            queue,
+            registry,
+            entity_bits,
+            COLLIDER,
+            &Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: half[0],
+                    half_y: half[1],
+                },
+                ..Collider::default()
+            },
+        );
+        return;
+    }
     if matches!(edit, PhysicsFieldEdit::Remove) {
         queue_remove(queue, registry, entity_bits, RIGID_BODY);
         queue_remove(queue, registry, entity_bits, COLLIDER);
@@ -470,6 +496,7 @@ pub(crate) fn apply_physics_edit(
         PhysicsFieldEdit::Layer(n) => next.layer = n.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1),
         PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
         PhysicsFieldEdit::Add
+        | PhysicsFieldEdit::AddShape
         | PhysicsFieldEdit::Remove
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)

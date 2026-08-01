@@ -153,6 +153,11 @@ impl PhysicsBridge {
         // Joints come back in the SAME call: the rewind replays its owed steps
         // immediately, and a replay missing the joints is a different
         // simulation — the chain would fall apart and re-assemble a frame later.
+        // ⚠️ As PEÇAS voltam ANTES dos joints e no MESMO chamado: um corpo
+        // composto que replaya com metade das formas é outra simulação, e o
+        // silêncio disso é o do Weston (alvo `0` replaya zero passos, então o
+        // primeiro Reset parece certo).
+        self.respawn_parts_from_rest();
         self.respawn_joints_from_rest();
     }
 }

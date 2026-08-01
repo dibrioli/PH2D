@@ -40,6 +40,8 @@ mod joint_pair_rows;
 mod material_blend;
 pub(crate) mod ordering;
 mod physics;
+/// As portas da face VAZIA do §11 (docs dele) — irmão pelo cap de 600 LOC.
+mod physics_doors;
 mod physics_join_rows;
 mod physics_rows;
 mod render_source;

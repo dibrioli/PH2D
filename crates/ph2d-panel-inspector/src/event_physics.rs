@@ -20,7 +20,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     // vez em vez de duas identicas.
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_physics()
-        && let Some(edit) = click_edit(id, info)
+        && let Some(edit) = click_edit(id, info.clone())
     {
         host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
             entity_bits: info.entity_bits,
@@ -87,7 +87,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // As sete rows da ZONA — o que esta ÁREA faz a OUTROS corpos, extraídas para
             // um irmão pelo cap de 200 LOC desta fn (o mesmo corte que separou
             // `components/area.rs` e `inspector_physics_area.rs`).
-            other => area_edit(other, v, info),
+            other => area_edit(other, v, info.clone()),
         };
         if let Some(edit) = edit {
             host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
@@ -144,6 +144,10 @@ fn click_edit(
         // this handler read the SAME number; when they were a `bool` beside
         // a count they disagreed the day the chain arrived.
         Some(PhysicsFieldEdit::Join)
+    } else if id == ids::INSP_PHYS_ADD_SHAPE && !info.part_owner.is_empty() {
+        // A recusa vive AQUI e não no laço de pintura: uma forma sem corpo acima
+        // não tem a quem pertencer, e um botão apagado que ainda despacha mente.
+        Some(PhysicsFieldEdit::AddShape)
     } else if id == ids::INSP_PHYS_RIG && info.rig_parts > 0 {
         // W-Rig. Gateado no MESMO número que o painter usa para oferecer — o
         // zero é a resposta inteira, e uma recusa que mora no laço de pintura

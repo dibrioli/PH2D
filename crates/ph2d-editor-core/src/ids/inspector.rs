@@ -597,6 +597,9 @@ pub const INSP_PHYS_JOIN_DRAW: NodeId = hash_node_id("insp_phys_join_draw");
 /// árvore o artista já desenhou na Hierarquia. Este botão a lê: cada aresta
 /// pai→filho vira um joint, e cada parte sem corpo ganha um.
 pub const INSP_PHYS_RIG: NodeId = hash_node_id("insp_phys_rig");
+/// **Add Shape** (W-Compound) — a terceira porta da face vazia: esta forma vira
+/// mais um collider do corpo ancestral, em vez de um corpo novo.
+pub const INSP_PHYS_ADD_SHAPE: NodeId = hash_node_id("insp_phys_add_shape");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates
 /// the joint TYPE they want in one gesture, instead of making a Pin and

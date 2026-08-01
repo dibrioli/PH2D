@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-guides"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A CASA ÚNICA das guias do documento (plano 25 §9, a W6). Uma guia NÃO é geometria vetorial
+# — é uma referência de CANVAS, do mesmo parentesco da grade universal —, e ela tem três
+# consumidores que não dependem uns dos outros: o motor de snap (`ph2d-vec-edit`), o desenho
+# (`ph2d-vec-render`) e o arquivo de projeto (a shell). Enfiá-la na `ph2d-vec-scene` faria o
+# modelo de documento VETORIAL possuir um fato que não é dele, e obrigaria um consumidor
+# futuro (o gizmo de sprite) a depender do documento vetorial para ler uma linha.
+#
+# É o mesmo argumento — e o mesmo precedente desta linha — da `ph2d-stroke-width`.
+#
+# serde: as guias viajam no save, dentro do `ProjectState`. Sem `postcard` aqui: só o tipo é
+# serializado, quem escreve o wire é o consumidor.
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# Só o gate de round-trip: o wire real é escrito pela shell (o `ProjectFile`), e este teste
+# confere que o TIPO atravessa o mesmo formato que ela usa.
+postcard = { version = "1", features = ["alloc"] }

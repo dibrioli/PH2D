@@ -24,6 +24,9 @@ build = "build.rs"
 # exact-version contract as ph2d-ecs (T1.3.5 spec carry-over).
 libm                  = { version = "=0.2.16", default-features = false }
 ph2d-tokens           = { path = "../ph2d-tokens" }
+# As GUIAS do documento (plano 25 §9): a régua só precisa do EIXO — o gesto que ela arma diz
+# se a linha nasce horizontal ou vertical, e esse vocabulário tem um dono só.
+ph2d-guides           = { path = "../ph2d-guides" }
 ph2d-a11y             = { path = "../ph2d-a11y" }
 ph2d-vector           = { path = "../ph2d-vector" }
 ph2d-text             = { path = "../ph2d-text" }

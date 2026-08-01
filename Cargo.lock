@@ -5128,6 +5128,7 @@ dependencies = [
  "ph2d-chrome-sync",
  "ph2d-color",
  "ph2d-grid",
+ "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-text",
@@ -5320,6 +5321,14 @@ dependencies = [
 [[package]]
 name = "ph2d-grid"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-guides"
+version = "0.0.0"
+dependencies = [
+ "postcard",
+ "serde",
+]
 
 [[package]]
 name = "ph2d-host"
@@ -7510,6 +7519,7 @@ name = "ph2d-vec-edit"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
+ "ph2d-guides",
  "ph2d-vec-scene",
  "ph2d-vector-doc",
 ]
@@ -7526,6 +7536,7 @@ dependencies = [
 name = "ph2d-vec-render"
 version = "0.0.0"
 dependencies = [
+ "ph2d-guides",
  "ph2d-tokens",
  "ph2d-vec-scene",
  "ph2d-vector",

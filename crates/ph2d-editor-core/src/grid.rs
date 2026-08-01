@@ -258,14 +258,14 @@ pub fn paint_grid(scene: &mut VectorScene, theme: Theme, view: &GridView, config
 }
 
 #[derive(Copy, Clone, Debug)]
-struct WorldBounds {
-    left: f32,
-    right: f32,
-    bottom: f32,
-    top: f32,
+pub(crate) struct WorldBounds {
+    pub(crate) left: f32,
+    pub(crate) right: f32,
+    pub(crate) bottom: f32,
+    pub(crate) top: f32,
 }
 
-fn world_bounds(view: &GridView) -> (WorldBounds, f32) {
+pub(crate) fn world_bounds(view: &GridView) -> (WorldBounds, f32) {
     let aspect = view.window_w / view.window_h;
     let half_h = view.camera_height_world * 0.5;
     let half_w = half_h * aspect;
@@ -281,15 +281,30 @@ fn world_bounds(view: &GridView) -> (WorldBounds, f32) {
     (bounds, ppm_y)
 }
 
-fn world_to_screen_x(wx: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
+pub(crate) fn world_to_screen_x(wx: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
     let t = (wx - bounds.left) / (bounds.right - bounds.left);
     t * view.window_w
 }
 
-fn world_to_screen_y(wy: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
+pub(crate) fn world_to_screen_y(wy: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
     // Y-flip: world Y-up → screen Y-down (SKILL §11.1).
     let t = (wy - bounds.bottom) / (bounds.top - bounds.bottom);
     view.window_h - t * view.window_h
+}
+
+/// A INVERSA de [`world_to_screen_x`]. Mora AO LADO da ida de propósito: o arrasto de uma guia
+/// converte tela→mundo e o desenho converte mundo→tela, e se as duas viverem em arquivos
+/// diferentes a guia pousa a meio pixel de onde o dedo a largou — a doença que este repo já
+/// pagou como *seed que não casa com sample*.
+pub(crate) fn screen_to_world_x(sx: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
+    let t = sx / view.window_w;
+    bounds.left + t * (bounds.right - bounds.left)
+}
+
+/// A inversa de [`world_to_screen_y`], com o mesmo Y-flip.
+pub(crate) fn screen_to_world_y(sy: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
+    let t = (view.window_h - sy) / view.window_h;
+    bounds.bottom + t * (bounds.top - bounds.bottom)
 }
 
 fn build_grid_path(

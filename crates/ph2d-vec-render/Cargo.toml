@@ -17,6 +17,9 @@ authors.workspace = true
 ph2d-vector = { path = "../ph2d-vector" }
 # O modelo editor-first que esta pipeline renderiza.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# As GUIAS do documento (plano 25 §9). Aresta para o TIPO: a linha é desenhada a partir do que
+# o documento guarda, sem um segundo `{axis, pos}` aqui para divergir dele.
+ph2d-guides = { path = "../ph2d-guides" }
 # Tokens de design (HR-15) — a alça de raio de quina é a primeira coisa TOKENIZADA deste
 # crate. O overlay de âncoras e as alças de conector ainda usam literais (dívida da Fase
 # 1, registrada no doc-comment delas); migrá-las muda a aparência do que já existe, e isso

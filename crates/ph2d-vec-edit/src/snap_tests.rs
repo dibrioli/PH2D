@@ -223,6 +223,7 @@ fn geometry_in_the_target_list_changes_nothing_while_the_toggles_are_off() {
     let with_geometry = SnapTargets {
         points: vec![[10.0, 20.0]],
         segs: vec![seg([0.0, 0.0], [100.0, 0.0])],
+        ..SnapTargets::default()
     };
     let plain = targets(&[[10.0, 20.0]]);
     for q in [[9.5, 20.4], [9.8, 50.0], [0.2, 0.3]] {
@@ -242,6 +243,7 @@ fn a_position_claim_lands_the_point_on_the_curve_and_claims_both_axes() {
     let t = SnapTargets {
         points: Vec::new(),
         segs: vec![seg([0.0, 0.0], [100.0, 0.0])],
+        ..SnapTargets::default()
     };
     let q = [40.0, 0.6];
     let r = snap(&[q], &t, cfg2d(), None);
@@ -261,6 +263,7 @@ fn a_vertex_beats_the_curve_that_passes_through_it() {
     let t = SnapTargets {
         points: vec![[10.0, 10.0], [20.0, 10.0]],
         segs: vec![seg([10.0, 10.0], [20.0, 10.0])],
+        ..SnapTargets::default()
     };
     let q = [10.3, 10.2];
     let r = snap(&[q], &t, cfg2d(), None);
@@ -277,6 +280,7 @@ fn a_half_alignment_does_not_silence_the_position_claim() {
     let t = SnapTargets {
         points: vec![[500.0, 0.4]],
         segs: vec![seg([0.0, 0.0], [100.0, 0.0])],
+        ..SnapTargets::default()
     };
     let q = [40.0, 0.6];
     let r = snap(&[q], &t, cfg2d(), None);
@@ -295,6 +299,7 @@ fn a_crossing_beats_the_curves_that_make_it() {
             seg([0.0, 0.0], [100.0, 100.0]),
             seg([0.0, 100.0], [100.0, 0.0]),
         ],
+        ..SnapTargets::default()
     };
     let q = [50.4, 50.0];
     let r = snap(&[q], &t, cfg2d(), None);
@@ -317,6 +322,7 @@ fn each_toggle_governs_only_its_own_species() {
             seg([0.0, 0.0], [100.0, 100.0]),
             seg([0.0, 100.0], [100.0, 0.0]),
         ],
+        ..SnapTargets::default()
     };
     let q = [50.4, 50.6];
 
@@ -340,6 +346,7 @@ fn each_toggle_governs_only_its_own_species() {
     let lone = SnapTargets {
         points: Vec::new(),
         segs: vec![seg([0.0, 0.0], [100.0, 0.0])],
+        ..SnapTargets::default()
     };
     assert!(!snap(&[[40.0, 0.6]], &lone, only_crossings, None).any());
 }
@@ -351,6 +358,7 @@ fn alt_kills_the_position_claim_too() {
     let t = SnapTargets {
         points: Vec::new(),
         segs: vec![seg([0.0, 0.0], [100.0, 0.0])],
+        ..SnapTargets::default()
     };
     let off = SnapConfig {
         enabled: false,
@@ -392,5 +400,150 @@ fn a_deforming_path_offers_neither_its_box_nor_its_curves() {
         t.segs.iter().all(|s| s[0][0] >= 20.0),
         "e são os dele: {:?}",
         t.segs
+    );
+}
+
+// ---------------------------------------------------------------------------
+// As GUIAS (plano 25 §9, a W6.2) — a 5ª espécie, e a única que é ALINHAMENTO
+// sem ser um ponto.
+// ---------------------------------------------------------------------------
+
+use ph2d_guides::Guide;
+
+/// Alvos com guias e mais nada.
+fn guided(gs: &[Guide]) -> SnapTargets {
+    SnapTargets {
+        guides: gs.to_vec(),
+        ..SnapTargets::default()
+    }
+}
+
+/// **A propriedade que define a espécie:** uma guia horizontal prende o `y` e deixa o `x`
+/// LIVRE — livre inclusive para vir de outro alvo, que é o que "alinhamento se decompõe"
+/// significa em código.
+///
+/// ⚠️ A mutação que este gate existe para pegar é a troca dos eixos (`locked_axis` invertido):
+/// o snap continua acontecendo, com a mesma magnitude, no eixo errado.
+#[test]
+fn a_horizontal_guide_claims_the_y_and_leaves_the_x_to_whoever_else() {
+    let mut t = guided(&[Guide::horizontal(20.0)]);
+    t.points.push([10.0, 999.0]); // uma vizinha longe em Y, mas com o X a oferecer
+    let r = snap(&[[9.6, 20.4]], &t, cfg(), None);
+    assert_eq!(
+        r.apply([9.6, 20.4]),
+        [10.0, 20.0],
+        "o X veio da forma e o Y veio da guia — dois alvos, um resultado"
+    );
+    assert_eq!(r.y.unwrap().from, SnapSource::Guide);
+    assert_eq!(r.x.unwrap().from, SnapSource::Shape);
+}
+
+/// **A LEI da wave:** empatados em deslocamento, a guia vence o ponto de forma — ela é a
+/// restrição que o artista autorou, o ponto é incidental.
+///
+/// ⚠️ A mutação é de UM caractere (`<=` → `<`) e sem este gate ela não sangra em lugar nenhum.
+#[test]
+fn a_guide_wins_a_tie_against_a_shape_point() {
+    let mut t = guided(&[Guide::vertical(10.5)]);
+    t.points.push([9.5, 0.0]); // mesmo módulo de deslocamento, lado oposto
+    let r = snap(&[[10.0, 0.0]], &t, cfg(), None);
+    let x = r.x.expect("algum alvo reclamou o X");
+    assert_eq!(x.from, SnapSource::Guide, "o empate fica com a guia");
+    assert!((r.apply([10.0, 0.0])[0] - 10.5).abs() < 1e-12);
+}
+
+/// E o corolário honesto: **um ponto ESTRITAMENTE mais perto ainda vence**. A guia tem
+/// prioridade no empate, não imunidade.
+#[test]
+fn a_strictly_closer_shape_point_still_beats_a_guide() {
+    let mut t = guided(&[Guide::vertical(10.9)]);
+    t.points.push([10.1, 0.0]);
+    let r = snap(&[[10.0, 0.0]], &t, cfg(), None);
+    assert_eq!(r.x.unwrap().from, SnapSource::Shape);
+}
+
+/// **A inércia**, o irmão exato do gate das curvas: sem guias na lista, o encaixe é o que já
+/// shipava — byte a byte, com o interruptor LIGADO.
+#[test]
+fn an_empty_guide_list_changes_nothing_even_with_the_toggle_on() {
+    let plain = targets(&[[10.0, 20.0]]);
+    let mut grid = square_grid(5.0, 1.0);
+    let with = snap(&[[9.6, 20.4]], &plain, cfg(), Some(&mut grid));
+    let mut grid2 = square_grid(5.0, 1.0);
+    let off = SnapConfig {
+        to_guides: false,
+        ..cfg()
+    };
+    let without = snap(&[[9.6, 20.4]], &plain, off, Some(&mut grid2));
+    assert_eq!(
+        with, without,
+        "lista vazia ⇒ o flag é inerte por construção"
+    );
+}
+
+/// O interruptor governa **só** a sua espécie.
+#[test]
+fn the_guide_toggle_governs_only_guides() {
+    let mut t = guided(&[Guide::vertical(10.5)]);
+    t.points.push([0.0, 20.4]); // um alvo de FORMA no eixo Y
+    let off = SnapConfig {
+        to_guides: false,
+        ..cfg()
+    };
+    let r = snap(&[[10.0, 20.0]], &t, off, None);
+    assert!(
+        r.x.is_none(),
+        "a guia não reclama nada com o flag desligado"
+    );
+    assert_eq!(
+        r.y.expect("a forma continua reclamando o Y").from,
+        SnapSource::Shape
+    );
+}
+
+/// Fora do limiar, uma guia é invisível — o mesmo contrato dos outros alvos de alinhamento.
+#[test]
+fn a_guide_beyond_the_threshold_is_ignored() {
+    let r = snap(
+        &[[10.0, 0.0]],
+        &guided(&[Guide::vertical(50.0)]),
+        cfg(),
+        None,
+    );
+    assert!(!r.any());
+}
+
+/// **Duas guias que se cruzam são um ponto distinto**, e por isso a reivindicação de POSIÇÃO
+/// se retira diante delas — a mesma lei do *vértice vence curva*, com o ponto distinto sendo
+/// feito de duas retas em vez de uma âncora.
+///
+/// ⚠️ Elas NÃO passam pelo teste de alvo-único (cada guia congela só a sua coordenada, então
+/// os dois `target` diferem), e é exatamente por isso que a segunda cláusula existe. A mutação
+/// que a remove faz a curva roubar o cruzamento.
+#[test]
+fn two_crossing_guides_retire_the_position_claim() {
+    let mut t = guided(&[Guide::vertical(10.0), Guide::horizontal(0.4)]);
+    t.segs.push(seg([0.0, 0.0], [100.0, 0.0]));
+    let r = snap(&[[10.2, 0.6]], &t, cfg2d(), None);
+    assert_eq!(
+        r.apply([10.2, 0.6]),
+        [10.0, 0.4],
+        "o cruzamento das duas guias vence a curva que passa a 0,6 dali"
+    );
+    assert_eq!(r.x.unwrap().from, SnapSource::Guide);
+    assert_eq!(r.y.unwrap().from, SnapSource::Guide);
+}
+
+/// E o controle da cláusula acima: com UMA guia só, a reivindicação de posição continua
+/// valendo — não há ponto distinto, só uma reta.
+#[test]
+fn a_lone_guide_does_not_retire_the_position_claim() {
+    let mut t = guided(&[Guide::vertical(10.0)]);
+    t.segs.push(seg([0.0, 0.0], [100.0, 0.0]));
+    let r = snap(&[[10.2, 0.3]], &t, cfg2d(), None);
+    assert_eq!(
+        r.x.unwrap().from,
+        SnapSource::Curve,
+        "sem o par, a curva reclama os dois eixos como sempre"
     );
 }

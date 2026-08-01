@@ -36,7 +36,7 @@ pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_
 mod cut_line;
 pub use cut_line::draw_cut_line;
 mod guides;
-pub use guides::{Guide, GuideKind, draw_snap_guides, draw_text_caret};
+pub use guides::{Guide, GuideKind, draw_document_guides, draw_snap_guides, draw_text_caret};
 
 /// **As alças de ponta do conector** — os dois círculos que dizem onde a linha encosta na
 /// forma. O raio vive lá dentro, e o hit-test da shell o importa: desenhar num raio e agarrar

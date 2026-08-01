@@ -27,6 +27,13 @@ pub enum GuideKind {
     Curve,
     /// *Estou onde duas linhas se cruzam* — um mais, que é a figura do próprio fato.
     Crossing,
+    /// *Estou PRESO nesta guia* — um quadradinho cheio sobre a linha, como um alfinete.
+    ///
+    /// ⚠️ A marca é **independente do eixo** de propósito. Um traço perpendicular seria mais
+    /// bonito e exigiria que este módulo soubesse a direção da guia — um segundo lugar onde a
+    /// pergunta *"esta guia é horizontal?"* passaria a ser respondida, e o dia em que as duas
+    /// respostas divergirem o alfinete aponta para o lado errado sem nada quebrar.
+    GuideHit,
 }
 
 /// Um segmento de guia em world-space. Com `a == b` (as espécies de POSIÇÃO e a grade) só a
@@ -40,6 +47,10 @@ pub struct Guide {
 
 /// Ciano das guias — mesmo tom dos vértices selecionados nos overlays.
 const GUIDE: Color = Color::from_rgba8(90, 200, 235, 230);
+/// A guia do DOCUMENTO: o mesmo ciano, mais apagado. Ela é permanente e atravessa a tela, então
+/// no brilho da guia de snap competiria com o desenho; recuar o alfa a põe atrás da arte sem
+/// mudar a família de cor — as duas são a mesma espécie de afirmação (*alinhe-se aqui*).
+const DOC_GUIDE: Color = Color::from_rgba8(90, 200, 235, 150);
 /// Meia-aresta da cruz que marca a ponta de uma guia, em pixels de tela.
 const TICK_PX: f64 = 4.0;
 /// Raio do anel que marca um pouso SOBRE a curva, em pixels de tela.
@@ -85,14 +96,99 @@ pub fn draw_snap_guides(guides: &[Guide], transform: Affine, target: &mut Vector
             }
             continue;
         }
-        // As outras três são pontos: `a == b`, uma marca só, e a figura diz qual espécie é.
+        // As outras são pontos: `a == b`, uma marca só, e a figura diz qual espécie é.
         let mark = match g.kind {
             GuideKind::Curve => ring(a),
             GuideKind::Crossing => upright_cross(a),
+            GuideKind::GuideHit => pin(a),
             GuideKind::Align | GuideKind::Grid => diagonal_cross(a),
         };
         ink(&mark, &pen);
     }
+}
+
+/// As **guias do DOCUMENTO** — as linhas que o artista arrastou da régua.
+///
+/// Traço **SÓLIDO e fino**, contra o tracejado das guias de snap: as duas são referências de
+/// alinhamento e por isso partilham a cor, mas uma é permanente (foi autorada) e a outra vive
+/// um frame (explica o encaixe vivo). Sólido × tracejado é a distinção que se lê sem legenda,
+/// e o comprimento reforça: a do documento **atravessa a tela**, a de snap liga dois pontos.
+///
+/// `canvas` é o retângulo visível em pixels de tela (`[x, y, w, h]`); a linha é recortada a
+/// ele. `transform` é o mundo→tela — a linha é construída a partir de UM ponto e da DIREÇÃO,
+/// então ela continua correta se um dia a câmera girar (o que o par de extremos não daria).
+pub fn draw_document_guides(
+    guides: &[ph2d_guides::Guide],
+    canvas: [f64; 4],
+    transform: Affine,
+    target: &mut VectorScene,
+) {
+    let thin = Stroke::new(1.0);
+    for g in guides {
+        // Um ponto QUALQUER da guia, e um segundo deslocado ao longo dela.
+        let (p0, p1) = match g.axis {
+            ph2d_guides::GuideAxis::Horizontal => ([0.0, g.pos], [1.0, g.pos]),
+            ph2d_guides::GuideAxis::Vertical => ([g.pos, 0.0], [g.pos, 1.0]),
+        };
+        let a = transform * Point::new(p0[0], p0[1]);
+        let b = transform * Point::new(p1[0], p1[1]);
+        let Some((s, e)) = clip_line_to_rect(a, Point::new(b.x - a.x, b.y - a.y), canvas) else {
+            continue;
+        };
+        let mut line = BezPath::new();
+        line.move_to(s);
+        line.line_to(e);
+        target.inner_mut().stroke(
+            &thin,
+            Affine::IDENTITY,
+            &Brush::Solid(DOC_GUIDE),
+            None,
+            &line,
+        );
+    }
+}
+
+/// Recorta a reta `p + t·d` ao retângulo `[x, y, w, h]`, devolvendo os dois pontos de saída.
+/// `None` quando a reta não cruza o retângulo (ou `d` é degenerada).
+///
+/// Método das fatias (slab), o mesmo do Liang-Barsky: cada par de bordas dá um intervalo em
+/// `t`, e a interseção dos dois é o trecho visível. Uma direção com componente zero num eixo
+/// é o caso NORMAL aqui (toda guia é paralela a um eixo), então ele é tratado no ramo, não por
+/// divisão por quase-zero.
+fn clip_line_to_rect(p: Point, d: Point, rect: [f64; 4]) -> Option<(Point, Point)> {
+    let (x0, y0, x1, y1) = (rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]);
+    let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
+    for (num0, num1, den) in [(x0 - p.x, x1 - p.x, d.x), (y0 - p.y, y1 - p.y, d.y)] {
+        if den == 0.0 {
+            // Paralela a esta fatia: ou está dentro dela para todo `t`, ou nunca.
+            if num0 > 0.0 || num1 < 0.0 {
+                return None;
+            }
+            continue;
+        }
+        let (a, b) = (num0 / den, num1 / den);
+        let (a, b) = if a <= b { (a, b) } else { (b, a) };
+        lo = lo.max(a);
+        hi = hi.min(b);
+    }
+    (lo <= hi && lo.is_finite() && hi.is_finite()).then(|| {
+        (
+            Point::new(p.x + d.x * lo, p.y + d.y * lo),
+            Point::new(p.x + d.x * hi, p.y + d.y * hi),
+        )
+    })
+}
+
+/// O alfinete do encaixe numa guia: um quadradinho, a única das cinco figuras que é uma ÁREA.
+fn pin(p: Point) -> BezPath {
+    let r = TICK_PX * 0.6;
+    let mut c = BezPath::new();
+    c.move_to(Point::new(p.x - r, p.y - r));
+    c.line_to(Point::new(p.x + r, p.y - r));
+    c.line_to(Point::new(p.x + r, p.y + r));
+    c.line_to(Point::new(p.x - r, p.y + r));
+    c.close_path();
+    c
 }
 
 /// O ✕ da grade (e das pontas de uma guia de alinhamento).

@@ -51,6 +51,7 @@ pub mod panel;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;
 pub mod project;
+pub mod ruler;
 pub mod screens;
 pub mod text_elide;
 pub mod toast;

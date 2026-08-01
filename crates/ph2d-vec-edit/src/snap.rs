@@ -36,7 +36,18 @@
 //!
 //! O corolário é o que torna a mudança segura: sem curvas na lista de alvos, esta lei nunca
 //! dispara, e o encaixe é **byte-idêntico** ao que já shipava.
+//!
+//! # A GUIA é alinhamento, não posição (plano 25 §9, a W6.2)
+//!
+//! Uma guia arrastada da régua é uma reta **alinhada a um eixo**, logo uma restrição 1-D: a
+//! horizontal fixa o `y` e não diz nada sobre o `x`. Ela entra portanto na PRIMEIRA espécie —
+//! compete por-eixo com as âncoras das outras formas, no mesmo laço e no mesmo limiar.
+//!
+//! ⚠️ **Ela vence o empate**, e isso é a única regra nova: uma guia é uma restrição que o
+//! artista **autorou**, enquanto a borda de uma forma vizinha é incidental. Empatar em módulo
+//! de deslocamento e escolher a incidental seria a ferramenta descartando a decisão explícita.
 
+use ph2d_guides::Guide;
 use ph2d_vec_scene::curve_probe::{CubicSeg, crossings_near, nearest_on_segs, world_segs};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -54,6 +65,12 @@ pub struct SnapConfig {
     /// Encaixar nos **cruzamentos** entre curvas. Também posição, e distinta: um cruzamento
     /// é um ponto que o desenho produziu, não um lugar qualquer do contínuo.
     pub to_crossings: bool,
+    /// Encaixar nas **guias** do documento — alinhamento por eixo, e vence o empate.
+    ///
+    /// ⚠️ Nasce **LIGADO**, ao contrário das duas reivindicações de posição. Uma guia só existe
+    /// porque o artista a arrastou até lá: ligar o ímã dela por default não muda o app debaixo
+    /// de ninguém — num documento sem guias este flag é inerte por construção.
+    pub to_guides: bool,
     /// Distância máxima de encaixe em forma, por eixo. Nas reivindicações de posição ela é
     /// um RAIO — o alinhamento captura num quadrado, a posição num círculo, porque uma diz
     /// respeito a cada eixo sozinho e a outra ao ponto.
@@ -67,6 +84,7 @@ impl Default for SnapConfig {
             to_points: true,
             to_path: false,
             to_crossings: false,
+            to_guides: true,
             threshold: 0.0,
         }
     }
@@ -89,6 +107,14 @@ pub struct SnapTargets {
     /// ⚠️ Os **cruzamentos não são um terceiro campo**: eles são derivados daqui na hora da
     /// consulta, localizados em volta do cursor. Guardá-los seria memória que envelhece.
     pub segs: Vec<CubicSeg>,
+    /// As **guias** do documento, em mundo. Alvos de ALINHAMENTO, como os `points` — a
+    /// diferença é que cada uma reclama **um** eixo só, então não cabem naquele vetor (um
+    /// ponto oferece os dois).
+    ///
+    /// ⚠️ Ao contrário dos outros dois campos, este **não é filtrado pelo gesto**: uma guia não
+    /// pertence a forma nenhuma, então mover uma forma nunca tira uma guia da lista. É também
+    /// por isso que ela é a única referência que sobrevive a arrastar TUDO o que há na cena.
+    pub guides: Vec<Guide>,
 }
 
 /// De onde veio um encaixe. É o que decide como a guia se desenha, e as quatro espécies
@@ -104,6 +130,8 @@ pub enum SnapSource {
     Curve,
     /// Um **cruzamento** entre curvas (posição, os dois eixos).
     Crossing,
+    /// Uma **guia** do documento, por EIXO — a reta que o artista arrastou da régua.
+    Guide,
 }
 
 /// Um encaixe achado num eixo.
@@ -227,7 +255,14 @@ pub fn collect_targets(
             world_segs(path, &xf, &mut segs);
         }
     }
-    SnapTargets { points, segs }
+    // ⚠️ As guias NÃO vêm daqui: elas não pertencem à cena vetorial (nem a forma nenhuma), e
+    // quem as guarda é o documento de projeto. Quem monta a lista as anexa depois — o mesmo
+    // padrão dos pontos-chave dos sprites.
+    SnapTargets {
+        points,
+        segs,
+        guides: Vec::new(),
+    }
 }
 
 /// A reivindicação de POSIÇÃO: o ponto 2-D que vence os dois eixos, se houver.
@@ -349,10 +384,46 @@ pub fn snap(
         }
     }
 
+    // 2b. As GUIAS — mesma espécie (alinhamento por eixo), mesmo limiar, mesmos slots.
+    //     ⚠️ `<=` e não `<`: uma guia vence o empate contra um ponto de forma, porque ela é a
+    //     restrição que o artista AUTOROU e o ponto é incidental.
+    if cfg.to_guides && cfg.threshold > 0.0 {
+        for &s in sources {
+            for g in &targets.guides {
+                let axis = g.axis.locked_axis();
+                let delta = g.pos - s[axis];
+                if delta.abs() > cfg.threshold {
+                    continue;
+                }
+                let slot = if axis == 0 { &mut px } else { &mut py };
+                if slot.is_none_or(|b: SnapAxis| delta.abs() <= b.delta.abs()) {
+                    // O alvo é o ponto ONDE a fonte pousa na guia: a coordenada presa vira a
+                    // da guia, a livre fica onde estava. É um ponto de verdade (o desenho e a
+                    // lei de coincidência abaixo o consomem), não um `[pos, 0]` de fachada.
+                    let mut target = s;
+                    target[axis] = g.pos;
+                    *slot = Some(SnapAxis {
+                        delta,
+                        source: s,
+                        target,
+                        from: SnapSource::Guide,
+                    });
+                }
+            }
+        }
+    }
+
     // 3. A reivindicação de POSIÇÃO. Ela se retira quando o alinhamento já pousou
     //    exactamente sobre um alvo — *vértice vence curva*, enunciado sobre o resultado.
+    //
+    //    ⚠️ **Duas guias que se cruzam são um ponto distinto tanto quanto um vértice é.** Elas
+    //    não passam pelo teste de alvo-único (os alvos delas diferem por construção — cada uma
+    //    só congela a sua coordenada), então sem esta segunda cláusula uma curva por perto
+    //    roubaria o cruzamento de duas linhas que o artista posicionou de propósito.
     let coincident = match (px, py) {
-        (Some(a), Some(b)) => a.target == b.target,
+        (Some(a), Some(b)) => {
+            a.target == b.target || (a.from == SnapSource::Guide && b.from == SnapSource::Guide)
+        }
         _ => false,
     };
     if !coincident && let Some((from, s, t)) = position_claim(sources, targets, cfg) {

@@ -5370,6 +5370,7 @@ dependencies = [
  "ph2d-flip-reshape",
  "ph2d-gpu",
  "ph2d-gpu-cook",
+ "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-imageio",

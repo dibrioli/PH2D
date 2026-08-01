@@ -23,6 +23,9 @@ impl PainterTool {
             heights: self.heights.clone(),
             covers: self.covers.clone(),
             mats: self.mats.clone(),
+            // Este snapshot SEGURA o relevo; quem o descreve sem segurar é
+            // [`Self::snapshot_model_eliding_relief`].
+            relief_elided: crate::undo::elide::ElidedRelief::default(),
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             // A forma do que o snapshot carrega — o stride de cada plano para o motor de delta.
             canvas_size: self.source_size,
@@ -50,6 +53,37 @@ impl PainterTool {
             deform,
             sculpt,
         }
+    }
+
+    /// **O mesmo snapshot, DESCREVENDO o relevo em vez de o segurar** — o degrau 4 do S3
+    /// (doc 28 §5.60); o porquê inteiro está em [`crate::undo::elide`].
+    ///
+    /// ⚠️ **É uma segunda PORTA e não uma segunda RESPOSTA:** as duas devolvem o mesmo modelo, e a
+    /// diferença é quem fica dono dos três planos de relevo. Quem precisa deles materializados (o
+    /// `live` que o undo/redo passa por base, a rede do audit) chama a de cima; quem só precisa
+    /// DESCREVER um passo — o `before` de um traço — chama esta, e é isso que faz o 1º dab escrever
+    /// no lugar em vez de forkar o documento (`strong_count > 1` é a pergunta do copiador, §5.15).
+    ///
+    /// ⚠️ **Ela esvazia os mapas fortes no MESMO passo em que baixa as testemunhas.** Um snapshot que
+    /// elidisse e segurasse carregaria o fato duas vezes — e o dono extra que ele deixaria é
+    /// exatamente o que a elisão existe para remover.
+    ///
+    /// ⚠️ **E ela só elide onde o JOURNAL existe** (hoje `cfg(any(test, debug_assertions))`). O lado
+    /// `before` de um passo elidido **é** o journal; sem ele não há de onde tirá-lo, e todo commit
+    /// cairia no `relief_indescribable` — a história inteira descartada a cada traço. Os dois têm de
+    /// ser promovidos JUNTOS (doc 28 §5.58.1), e é por isso que a promoção é a fase seguinte e não
+    /// um detalhe desta.
+    pub(crate) fn snapshot_model_eliding_relief(&self) -> crate::undo::ModelSnapshot {
+        let mut m = self.snapshot_model();
+        #[cfg(any(test, debug_assertions))]
+        {
+            m.relief_elided =
+                crate::undo::elide::ElidedRelief::of(&self.heights, &self.covers, &self.mats);
+            m.heights.clear();
+            m.covers.clear();
+            m.mats.clear();
+        }
+        m
     }
 
     /// Reinstall a model snapshot (a structural undo/redo). Restores the layer

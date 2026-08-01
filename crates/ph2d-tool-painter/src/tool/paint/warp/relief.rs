@@ -195,16 +195,36 @@ impl PainterTool {
         if self.layers.active() != Some(layer) {
             return;
         }
+        // ⚠️ **A CAPTURA vem ANTES da troca, e é ela que torna o Reset descritível** (degrau 4, doc 28
+        // §5.60). Este sítio troca o plano INTEIRO por outro objeto sem passar por porta de fork —
+        // nenhuma captura o veria — e um `before` elidido não guarda os planos: sem isto o journal
+        // ficaria calado sobre bytes que mudaram em toda a tela, e o `Unchanged` que sairia do delta
+        // seria uma afirmação sobre bytes que ninguém olhou. `None` na área é o caso que ela nomeia:
+        // *o sítio não sabe onde vai escrever* — aqui ele escreve em todo lugar.
+        let stride = w as usize;
         let pre_h = Arc::clone(&self.paint.warp.pre_h);
         if pre_h.len() == n {
+            if let Some(old) = self.heights.get(&layer) {
+                self.undo
+                    .write_state
+                    .capture_heights(layer, old, stride, None);
+            }
             self.heights.insert(layer, pre_h);
         }
         let pre_cover = Arc::clone(&self.paint.warp.pre_cover);
         if pre_cover.len() == n {
+            if let Some(old) = self.covers.get(&layer) {
+                self.undo
+                    .write_state
+                    .capture_covers(layer, old, stride, None);
+            }
             self.covers.insert(layer, pre_cover);
         }
         let pre_mats = Arc::clone(&self.paint.warp.pre_mats);
         if pre_mats.len() == n {
+            if let Some(old) = self.mats.get(&layer) {
+                self.undo.write_state.capture_mats(layer, old, stride, None);
+            }
             self.mats.insert(layer, pre_mats);
         }
         self.sync_relief_flags();

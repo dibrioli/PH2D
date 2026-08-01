@@ -81,7 +81,22 @@ impl PainterTool {
                         .remove(&active)
                         .map(owned)
                         .filter(|c| c.len() == n);
-                    erase_buffers = Some((f, c.unwrap_or_else(|| vec![0u8; n])));
+                    let c = c.unwrap_or_else(|| vec![0u8; n]);
+                    // ⚠️ **A CAPTURA do plano inteiro, e ela é o que torna o eraser descritível**
+                    // (degrau 4, doc 28 §5.60). Este sítio **arranca** o plano do mapa e devolve outro
+                    // objeto lá adiante: nenhuma porta de fork o vê, então sem isto o journal fica em
+                    // silêncio sobre bytes que mudaram — e um `before` elidido não tem de onde tirá-los.
+                    // `None` na área é exatamente o caso que ela nomeia: *o sítio não sabe onde vai
+                    // escrever*. A testemunha do `Weak` pegou este sítio ao vivo, com a suíte verde em
+                    // tudo o mais.
+                    let stride = w as usize;
+                    self.undo
+                        .write_state
+                        .capture_heights(active, &f, stride, None);
+                    self.undo
+                        .write_state
+                        .capture_covers(active, &c, stride, None);
+                    erase_buffers = Some((f, c));
                 }
                 // Nothing to erase (no relief on this layer) — and a stale, differently-sized field is
                 // dropped rather than indexed into (the shape guard the sweep taught us to write).

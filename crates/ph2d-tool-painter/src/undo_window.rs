@@ -241,8 +241,22 @@ impl ReliefJournals {
     }
 
     /// `true` se estes journals podem responder pela camada `l`.
+    ///
+    /// ⚠️ **Um journal SILENCIOSO responde `true`, e isso é uma correção do degrau 4** (doc 28 §5.60,
+    /// que registrou o oposto). Um passo que não tocou relevo nenhum tem `layer == None`, e a versão
+    /// anterior o recusava — o que era *certo enquanto ninguém elidia*: journal vazio significa tanto
+    /// *"nada mudou"* quanto *"alguém trocou o plano por fora e eu não vi"*, e as duas escritas de
+    /// produção que trocam o plano inteiro (o eraser, o reset do warp) são reais.
+    ///
+    /// **O que mudou foi a TESTEMUNHA.** Um `before` elidido carrega um `Weak` por plano, e ele dá
+    /// upgrade exatamente enquanto o plano vivo for o objeto que o snapshot descrevia — então o par
+    /// *journal vazio + testemunha viva* é uma afirmação verificada, não uma suposição. Sem ela o
+    /// silêncio era ambíguo; com ela é a resposta certa, e ela responde `Unchanged` para toda camada.
+    ///
+    /// ⚠️ **`Some(outra)` continua RECUSANDO:** aí houve escrita de relevo, e ela foi numa camada que
+    /// não é a do passo — o `Unchanged` que sairia daqui perderia a edição.
     fn speaks_for(&self, l: crate::layers::LayerId) -> bool {
-        !self.mixed && !self.incomplete && self.layer == Some(l)
+        !self.mixed && !self.incomplete && self.layer.is_none_or(|cur| cur == l)
     }
 
     fn reset(&mut self) {
@@ -610,6 +624,18 @@ impl WriteState {
             mats: &r.mats,
             absent: r.absent,
         }))
+    }
+
+    /// **Ninguém escreveu relevo desde o último commit.**
+    ///
+    /// É o que autoriza usar o cursor REIDRATADO como base do relevo: com o journal em silêncio, o
+    /// plano vivo (o mesmo objeto que a testemunha do cursor aponta) ainda carrega os bytes da era
+    /// dele. Uma única captura o derruba — aí o objeto pode ser o mesmo e o conteúdo não.
+    #[cfg(any(test, debug_assertions))]
+    #[must_use]
+    pub(crate) fn relief_untouched(&self) -> bool {
+        let r = self.relief.borrow();
+        r.layer.is_none() && !r.mixed && !r.incomplete
     }
 
     /// **Os journals de relevo descrevem o passo que começou em `writes`, para a camada `layer`?**

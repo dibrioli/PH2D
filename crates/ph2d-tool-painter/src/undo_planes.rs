@@ -82,6 +82,11 @@ pub(crate) struct PlaneDeltas {
     sculpt_pre_cover: StoredPlane<u8>,
     sculpt_pre_mats: StoredPlane<MaterialBytes>,
     sculpt_pre_rgba: StoredPlane<u8>,
+    /// **Este passo não pôde descrever o relevo** — o `before` o elidiu e o journal recusou (degrau 4,
+    /// doc 28 §5.60). Não é um plano: é o veredito de que os três acima **não** dizem a verdade sobre
+    /// um `before` que já não existe em lugar nenhum, e quem chama tem de descartar a história em vez
+    /// de guardar uma entrada que apagaria relevo ao ser desfeita.
+    pub(crate) relief_indescribable: bool,
 }
 
 impl PlaneDeltas {
@@ -103,9 +108,10 @@ impl PlaneDeltas {
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.rgba));
         let win_scalar =
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.scalar));
-        let (heights, covers, mats) =
+        let (heights, covers, mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
         Self {
+            relief_indescribable,
             canvas_rgba: StoredPlane::split(
                 &mut before.canvas_rgba,
                 &mut after.canvas_rgba,
@@ -221,10 +227,16 @@ impl PlaneDeltas {
         stride: usize,
         win: Option<crate::undo_delta::PlaneWindow>,
         relief: Option<ReliefSource<'_>>,
-    ) -> (StoredMap<f32>, StoredMap<u8>, StoredMap<MaterialBytes>) {
+    ) -> (
+        StoredMap<f32>,
+        StoredMap<u8>,
+        StoredMap<MaterialBytes>,
+        bool,
+    ) {
         #[cfg(any(test, debug_assertions))]
         {
             if let Some(src) = relief {
+                let el = &before.relief_elided;
                 let built = src
                     .state
                     .with_relief_before(src.writes, src.layer, |j| {
@@ -232,6 +244,7 @@ impl PlaneDeltas {
                         Some((
                             StoredMap::from_journal(
                                 &before.heights,
+                                &el.heights,
                                 &after.heights,
                                 l,
                                 j.absent[0],
@@ -240,6 +253,7 @@ impl PlaneDeltas {
                             )?,
                             StoredMap::from_journal(
                                 &before.covers,
+                                &el.covers,
                                 &after.covers,
                                 l,
                                 j.absent[1],
@@ -248,6 +262,7 @@ impl PlaneDeltas {
                             )?,
                             StoredMap::from_journal(
                                 &before.mats,
+                                &el.mats,
                                 &after.mats,
                                 l,
                                 j.absent[2],
@@ -266,16 +281,25 @@ impl PlaneDeltas {
                     after.covers.clear();
                     before.mats.clear();
                     after.mats.clear();
-                    return maps;
+                    before.relief_elided = crate::undo::elide::ElidedRelief::default();
+                    return (maps.0, maps.1, maps.2, false);
                 }
             }
         }
         #[cfg(not(any(test, debug_assertions)))]
         let _ = relief;
+        // ⚠️ **A recusa não pode cair no `split` quando o `before` ELIDIU** (degrau 4, doc 28 §5.60).
+        // O `split` lê os mapas fortes, que num snapshot elidido estão vazios: toda chave sairia como
+        // `OnlyAfter` = *"não existia antes"*, e desfazer **apagaria o relevo**. Um `before` elidido não
+        // tem os planos em lugar nenhum — nem aqui nem no tool, que os escreveu no LUGAR — então a
+        // resposta honesta é dizer que este passo é indescritível e deixar quem chama descartar a
+        // história. *Lento nunca, errado jamais; e quando nem lento existe, LOUD.*
+        let indescribable = !before.relief_elided.is_empty();
         (
             StoredMap::split(&mut before.heights, &mut after.heights, stride, win),
             StoredMap::split(&mut before.covers, &mut after.covers, stride, win),
             StoredMap::split(&mut before.mats, &mut after.mats, stride, win),
+            indescribable,
         )
     }
 

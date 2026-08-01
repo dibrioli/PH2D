@@ -45,10 +45,20 @@ impl UndoController {
         if crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None).heap_bytes() == 0 {
             return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }
+        // ⚠️ **A base do RELEVO vem da porta única** ([`Self::base_for_top`]): o cursor elide os planos
+        // (degrau 4) e materializar contra ele devolveria `None`, matando a absorção em silêncio. Ela
+        // recusa quando alguém escreveu relevo desde o commit, e aí a absorção sai calada — que é a
+        // mesma resposta que ela já dava quando o cursor não descrevia o topo.
+        let Some(base) = self.base_for_top() else {
+            return;
+        };
+        let Some(cursor) = self.cursor.as_deref() else {
+            return;
+        };
         let Some(top) = self.undo.last() else {
             return;
         };
-        let (kind, Some(first_before)) = (top.kind, top.materialize(cursor, cursor, true)) else {
+        let (kind, Some(first_before)) = (top.kind, top.materialize(cursor, &base, true)) else {
             // O cursor não descreve mais o delta do topo. Não há como esticá-lo honestamente, e mentir
             // aqui seria pior que a divergência: sai calado, exatamente como o `undo` faz.
             return;

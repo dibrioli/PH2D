@@ -199,8 +199,23 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
     /// rota tudo-ou-nada. São TRÊS famílias de relevo e qualquer uma pode recusar; esvaziar à medida
     /// que cada uma passa deixaria o `heights` drenado quando o `mats` recusasse, e o caminho de
     /// fallback partiria de mapas vazios. Quem esvazia é o chamador, **depois** de as três passarem.
+    ///
+    /// # O `before` ELIDIDO — o terceiro estado (degrau 4, doc 28 §5.60)
+    ///
+    /// `before_elided` são as camadas que o `before` **descreve sem segurar** (ver
+    /// [`crate::undo::elide`]). Elas entram na união de chaves exatamente como as fortes, e é **isso**
+    /// que impede o defeito medido: sem o terceiro estado uma chave elidida cai no braço
+    /// `(None, Some(a))` = `OnlyAfter`, que SIGNIFICA *"não existia antes"* ⇒ desfazer remove a chave
+    /// e **o undo apaga o relevo**.
+    ///
+    /// ⚠️ **E toda chave elidida passa pela TESTEMUNHA.** O lado `before` de um passo elidido é
+    /// `journal.get(i).unwrap_or(vivo[i])`, e essa identidade só vale enquanto o plano vivo for o
+    /// MESMO objeto que o snapshot descrevia. Um sítio que troca o plano por inteiro a quebra, e a
+    /// resposta é recusar — reconstruir um `before` sobre um fundo estranho não falharia em lugar
+    /// nenhum.
     pub(crate) fn from_journal(
         before: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
+        before_elided: &BTreeMap<RtLayerId, std::sync::Weak<Vec<T>>>,
         after: &BTreeMap<RtLayerId, Arc<Vec<T>>>,
         layer: RtLayerId,
         absent: bool,
@@ -208,19 +223,45 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
         hint: Option<PlaneWindow>,
     ) -> Option<Self> {
         let mut entries = BTreeMap::new();
-        let keys: Vec<RtLayerId> = before.keys().chain(after.keys()).copied().collect();
+        let keys: Vec<RtLayerId> = before
+            .keys()
+            .chain(before_elided.keys())
+            .chain(after.keys())
+            .copied()
+            .collect();
         for k in keys {
             if entries.contains_key(&k) {
                 continue;
             }
-            let e = match (before.get(&k), after.get(&k)) {
-                (Some(_), Some(_)) if k == layer && absent => return None,
-                (Some(b), Some(a)) => {
+            // *O `before` TINHA relevo nesta camada?* — as duas metades do terceiro estado respondem
+            // juntas, e é a única pergunta que este laço faz sobre o lado de antes.
+            let had = before.contains_key(&k) || before_elided.contains_key(&k);
+            let e = match (had, after.get(&k)) {
+                (true, Some(_)) if k == layer && absent => return None,
+                (true, Some(a)) => {
+                    // ⚠️ **A TESTEMUNHA, e SÓ onde o journal é silencioso sobre este plano.**
+                    //
+                    // `Some(false)` diz *"o plano vivo não é o objeto que o snapshot descrevia"*. Com
+                    // o journal calado isso é fatal: o `Unchanged` que sairia daqui afirmaria que nada
+                    // mudou sobre bytes que ninguém olhou — o buraco exato das escritas que trocam o
+                    // plano por inteiro sem passar por porta de captura.
+                    //
+                    // ⚠️ **Com o journal FALANDO ela é estrita demais, e isso está MEDIDO:** o próprio
+                    // fold (`commit_stroke_height`) monta um plano novo e o INSERE, então o `Arc` muda
+                    // de identidade em todo traço de impasto. Os bytes estão cobertos pela captura, e
+                    // exigir `ptr_eq` ali reprovou **58 gates** do caminho normal.
+                    if j.is_empty()
+                        && crate::undo::elide::witness(before_elided, k, a) == Some(false)
+                    {
+                        return None;
+                    }
                     if k == layer {
                         StoredEntry::Both(StoredPlane::from_journal(a, j, hint)?)
                     } else {
                         debug_assert!(
-                            Arc::ptr_eq(b, a) || **b == **a,
+                            before
+                                .get(&k)
+                                .is_none_or(|b| Arc::ptr_eq(b, a) || **b == **a),
                             "o journal fala pela camada {layer:?} e outra camada MUDOU no mesmo passo \
                              — a lei do `speaks_for` (uma camada por passo) nao vale aqui, e o \
                              `Unchanged` abaixo perderia a edicao (doc 28 §5.58.2)"
@@ -230,9 +271,9 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
                 }
                 // O passo REMOVEU o relevo desta camada. O journal descreve o que foi escrito, nunca o
                 // que deixou de existir: a resposta honesta é não descrever.
-                (Some(_), None) => return None,
-                (None, Some(a)) => StoredEntry::OnlyAfter(Arc::clone(a)),
-                (None, None) => continue,
+                (true, None) => return None,
+                (false, Some(a)) => StoredEntry::OnlyAfter(Arc::clone(a)),
+                (false, None) => continue,
             };
             entries.insert(k, e);
         }

@@ -45,11 +45,23 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 /// **sobreviveram** ao gate na primeira rodada. A 512² a caixa é grossa o bastante para diferir da
 /// janela declarada e fina o bastante para não engolir o plano — que é onde a diferença entre as rotas
 /// existe para ser vista.
-fn tool_mid_step(side: u32) -> crate::tool::PainterTool {
+/// ⚠️ **E o `hold` é o que torna a comparação POSSÍVEL depois do degrau 4.** O produto guarda um
+/// `before` que **elide** o relevo (ele o descreve pelo journal em vez de o segurar), então a rota
+/// clássica — *dois snapshots materializados* — deixou de existir no caminho real: não há segundo
+/// snapshot para comparar. Reidratar o elidido não serve, porque as escritas passaram a ser NO LUGAR
+/// e o objeto reidratado carrega os bytes de DEPOIS.
+///
+/// A comparação honesta é dirigir **dois tools pelo MESMO script**: um com o `before` do produto
+/// (elidido → rota do journal) e outro com um `before` que SEGURA (→ rota clássica, cujo fold forka e
+/// produz os mesmos bytes por outro caminho). O oráculo continua sendo o endpoint materializado.
+fn tool_mid_step(side: u32, hold: bool) -> crate::tool::PainterTool {
     let mut t = armed(side);
     stroke(&mut t, 40.0); // o 1º traço instala o histórico, o cursor e o relevo da camada
     t.begin_undo_step();
     t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Down));
+    if hold {
+        t.paint.stroke_undo = Some(t.snapshot_model());
+    }
     for k in 1..=6u8 {
         t.on_canvas_pointer(cp([60.0 + f32::from(k) * 20.0, 120.0], PointerPhase::Move));
     }
@@ -71,33 +83,26 @@ fn endpoints(t: &crate::tool::PainterTool) -> (ModelSnapshot, ModelSnapshot) {
 ///
 /// Cada rota come as suas próprias cópias — `split` esvazia o que recebe, e uma cópia de
 /// `ModelSnapshot` é um punhado de refcounts.
-fn both_routes(t: &crate::tool::PainterTool) -> (PlaneDeltas, PlaneDeltas, ModelSnapshot) {
-    let (before, after) = endpoints(t);
+fn one_route(t: &crate::tool::PainterTool, journal: bool) -> (PlaneDeltas, ModelSnapshot) {
+    let (mut before, mut after) = endpoints(t);
     let hint = t.undo.write_state.get().hint_for(before.writes);
     let cursor = after.clone();
-
-    let (mut b1, mut a1) = (before.clone(), after.clone());
+    let src = journal.then(|| ReliefSource {
+        state: &t.undo.write_state,
+        writes: before.writes,
+        layer: t.layers.active().expect("o fixture pinta numa camada"),
+    });
     let seen = RELIEF_FROM_JOURNAL.with(std::cell::Cell::get);
-    let from_journal = PlaneDeltas::split(
-        &mut b1,
-        &mut a1,
-        hint,
-        Some(ReliefSource {
-            state: &t.undo.write_state,
-            writes: before.writes,
-            layer: t.layers.active().expect("o fixture pinta numa camada"),
-        }),
-    );
-    assert_eq!(
-        RELIEF_FROM_JOURNAL.with(std::cell::Cell::get),
-        seen + 1,
-        "a rota do JOURNAL nao rodou — o guard de proveniencia a recusou, e comparar o caminho de \
-         sempre contra ele mesmo e' verde por vacuo (doc 28 §5.58.2)"
-    );
-
-    let (mut b2, mut a2) = (before, after);
-    let classic = PlaneDeltas::split(&mut b2, &mut a2, hint, None);
-    (from_journal, classic, cursor)
+    let d = PlaneDeltas::split(&mut before, &mut after, hint, src);
+    if journal {
+        assert_eq!(
+            RELIEF_FROM_JOURNAL.with(std::cell::Cell::get),
+            seen + 1,
+            "a rota do JOURNAL nao rodou — o guard de proveniencia a recusou, e comparar o caminho \
+             de sempre contra ele mesmo e' verde por vacuo (doc 28 §5.58.2)"
+        );
+    }
+    (d, cursor)
 }
 
 /// O lado `want_before` do relevo, materializado a partir do cursor — o que o `restore_model`
@@ -134,7 +139,7 @@ fn relief_side(
 /// texels que nunca existiram, e é exatamente o que o undo instalaria.
 #[test]
 fn the_journal_delta_describes_the_same_two_endpoints_as_two_snapshots() {
-    assert_routes_agree(&tool_mid_step(512));
+    assert_routes_agree(&tool_mid_step(512, false), &tool_mid_step(512, true));
 }
 
 /// **Dentro da caixa há tiles que NINGUÉM tomou, e ali o `before` é o plano VIVO** — a metade da lei
@@ -152,10 +157,18 @@ fn the_journal_delta_describes_the_same_two_endpoints_as_two_snapshots() {
 /// ⚠️ **Mutação que sangra:** `unwrap_or(live[i])` → `unwrap_or(live[0])` (ou `live[i-1]`).
 #[test]
 fn inside_the_box_an_untaken_tile_reads_the_before_from_the_live_plane() {
+    assert_routes_agree(&tool_two_regions(false), &tool_two_regions(true));
+}
+
+/// O script do gate acima — ver [`tool_mid_step`] quanto ao `hold`.
+fn tool_two_regions(hold: bool) -> crate::tool::PainterTool {
     let mut t = armed(1024);
     stroke(&mut t, 300.0); // o relevo do MIOLO — a faixa que o passo seguinte não toca
     t.begin_undo_step();
     t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Down));
+    if hold {
+        t.paint.stroke_undo = Some(t.snapshot_model());
+    }
     for k in 1..=6u8 {
         t.on_canvas_pointer(cp([60.0 + f32::from(k) * 20.0, 120.0], PointerPhase::Move));
     }
@@ -180,17 +193,17 @@ fn inside_the_box_an_untaken_tile_reads_the_before_from_the_live_plane() {
         }
     }
     t.declare_wrote(Some(far));
-
-    assert_routes_agree(&t);
+    t
 }
 
 /// A comparação em si — **uma porta**, para que o caso esparso não nasça com a asserção fraca.
-fn assert_routes_agree(t: &crate::tool::PainterTool) {
-    let (j, c, cursor) = both_routes(t);
+fn assert_routes_agree(tj: &crate::tool::PainterTool, tc: &crate::tool::PainterTool) {
+    let (j, jcur) = one_route(tj, true);
+    let (c, ccur) = one_route(tc, false);
 
     for want_before in [true, false] {
-        let (jh, jc, jm) = relief_side(&j, &cursor, want_before);
-        let (ch, cc, cm) = relief_side(&c, &cursor, want_before);
+        let (jh, jc, jm) = relief_side(&j, &jcur, want_before);
+        let (ch, cc, cm) = relief_side(&c, &ccur, want_before);
         let side = if want_before { "before" } else { "after" };
 
         // Controle: o fixture tem de CONTER o fenômeno. Um relevo vazio faria as duas rotas
@@ -229,8 +242,8 @@ fn assert_routes_agree(t: &crate::tool::PainterTool) {
 /// [`StoredPlane::from_journal`](crate::undo_delta::StoredPlane::from_journal).
 #[test]
 fn the_journal_route_retains_what_the_classic_route_retains() {
-    let t = tool_mid_step(512);
-    let (j, c, _) = both_routes(&t);
+    let (j, _) = one_route(&tool_mid_step(512, false), true);
+    let (c, _) = one_route(&tool_mid_step(512, true), false);
     let (bj, bc) = (j.heap_bytes(), c.heap_bytes());
     assert!(
         bc > 0,
@@ -255,7 +268,7 @@ fn the_journal_route_retains_what_the_classic_route_retains() {
 /// `true` sempre — o contador passa a subir com um `before` que o journal não descreve.
 #[test]
 fn a_before_the_journal_does_not_describe_never_reaches_the_journal_route() {
-    let t = tool_mid_step(512);
+    let t = tool_mid_step(512, false);
     let (before, after) = endpoints(&t);
     let (mut b, mut a) = (before.clone(), after.clone());
     let seen = RELIEF_FROM_JOURNAL.with(std::cell::Cell::get);
@@ -285,7 +298,7 @@ fn a_before_the_journal_does_not_describe_never_reaches_the_journal_route() {
 /// olhou.
 #[test]
 fn the_journals_refuse_to_answer_for_a_layer_they_did_not_capture() {
-    let t = tool_mid_step(512);
+    let t = tool_mid_step(512, false);
     let active = t.layers.active().expect("a camada ativa do fixture");
     let other = crate::layers::LayerId(active.0.wrapping_add(1));
     let (before, after) = endpoints(&t);

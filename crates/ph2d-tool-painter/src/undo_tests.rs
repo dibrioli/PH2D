@@ -9,6 +9,7 @@ fn model(active_px: u8) -> ModelSnapshot {
         heights: BTreeMap::new(),
         mats: BTreeMap::new(),
         covers: BTreeMap::new(),
+        relief_elided: crate::undo::elide::ElidedRelief::default(),
         canvas_rgba: Arc::new(vec![active_px; 16]),
         writes: 0,
         canvas_size: (4, 4),
@@ -551,8 +552,17 @@ fn a_generous_budget_keeps_every_step() {
 #[test]
 fn the_byte_ledger_gives_the_memory_back() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
-    c.record_structural(model_all_planes(1), model_all_planes(2));
-    c.record_structural(model_all_planes(2), model_all_planes(3));
+    // ⚠️ **Os modelos ficam VIVOS de propósito.** O cursor elide o relevo (degrau 4), então ele o
+    // descreve por `Weak` e alguém tem de segurar os planos — no produto é o tool, que instala o que
+    // o undo devolve. Um fixture que solta os modelos deixa a testemunha morrer e mede a si mesmo.
+    let (m1, m2, m3, m9) = (
+        model_all_planes(1),
+        model_all_planes(2),
+        model_all_planes(3),
+        model_all_planes(9),
+    );
+    c.record_structural(m1.clone(), m2.clone());
+    c.record_structural(m2.clone(), m3.clone());
     let two = c.retained_bytes();
     c.undo_here();
     assert_eq!(
@@ -561,7 +571,7 @@ fn the_byte_ledger_gives_the_memory_back() {
         "um undo MOVE bytes de pilha, nao os devolve"
     );
     // Uma edição nova mata o redo — e os bytes dele.
-    c.record_structural(model_all_planes(2), model_all_planes(9));
+    c.record_structural(m2.clone(), m9.clone());
     assert!(
         c.retained_bytes() <= two,
         "a ramificacao de redo descartada nao devolveu os bytes: {} > {two}",

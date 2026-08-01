@@ -4216,3 +4216,139 @@ melhor e não existe: a thread é solta de propósito.
 sonda chamando a rota congelada · o `ensure` dentro do relógio · o A/B
 cross-run sob máquina compartilhada · a janela assumida). O padrão é sempre o
 mesmo: *o número que não reconcilia é o que vale a pena perseguir*.
+
+---
+
+## §5.47 — TRÊS hipóteses minhas sobre a água lenta, medidas e REJEITADAS — e o instrumento que sobrou (2026-07-31)
+
+O smoke seguinte veio com a partição do worker já sã (`busy + away + sleep ≈
+100%`) e a taxa abaixo dos 40 Hz nominais — os dois consertos da §5.46.11
+landaram. E trouxe o número novo:
+
+```text
+pintando:      sim media 45.52ms x35 | busy 80% away 23% sleep  2% | 17.7 Hz | painter-dispatch 6.90ms
+so assistindo: sim media 20.11ms x70 | busy 71% away 20% sleep 10% | 35.0 Hz | painter-dispatch 0.03ms
+so assistindo: sim media 21.01ms x67 | busy 70% away 22% sleep  8% | 33.5 Hz | painter-dispatch 0.05ms
+```
+
+⚠️ **O `busy` é praticamente o MESMO nas três janelas** (1593 · 1408 · 1407 ms
+de 2000): o worker trabalha o mesmo tempo e entrega **metade** dos passos. Duas
+leituras cabem nisso e elas pedem curas **opostas** — *a poça ficou maior*
+(pintar acrescenta células molhadas; não há nada a consertar, e o slider `Grid
+Size` já é a resposta) contra *a máquina ficou disputada* (o solver ficou
+massivamente paralelo depois dos ADR-0145/0147, e a thread do frame trabalha
+justamente enquanto o artista pinta). **O log não as distingue**, porque as duas
+metades se movem juntas nele.
+
+### §5.47.1 — BANDA contra NÚCLEO, e o CONTROLE que a 1ª versão não tinha
+
+A medição que separa: **congelar a poça** (mesma cena, `snapshot_grid` /
+`restore_grid` antes de cada amostra, ciclo de cadência de 12 passos) e
+acrescentar carga por fora, um recurso de cada vez.
+
+| carga | núcleos | banda | ms/passo | razão |
+|---|---|---|---|---|
+| controle | — | — | 15,923 | — |
+| memcpy serial | 1 | 8,9 GB/s | 16,872 | **1,06×** |
+| **ALU ×4 (controle)** | 4 | 0 | 17,048 | **1,07×** |
+| **memcpy ×4** | 4 | 15,4 GB/s | 22,718 | **1,43×** |
+| ALU ×32 | 32 | 0 | 170,530 | **10,71×** |
+| memcpy ×32 | 32 | 25,9 GB/s | 233,075 | 14,64× |
+
+⚠️ **A linha que decide é o CONTROLE, e a 1ª versão desta tabela não o tinha.**
+Com só *memcpy serial* (1,06×) e *ALU ×32* (10,71×) a leitura óbvia — e errada —
+é *"banda não custa nada"*. Quatro threads de cópia tomam **banda E quatro
+núcleos**; quatro threads de ALU tomam **os mesmos quatro núcleos e zero
+banda**. A diferença entre 1,43× e 1,07× é banda pura ⇒ **15,4 GB/s custam 34%
+do passo**, e a frase do §5.46 (*o `advect` é limitado por LARGURA DE BANDA
+sobre a faixa viva*) **sobrevive, agora com número ao lado**.
+
+⚠️ **E `10,71×` é patológico, não é partilha:** 32 threads a mais em 32 núcleos
+deveriam dar ~2× a cada lado. O fator que falta é a **BARREIRA** — um passe
+row-parallel termina quando o ÚLTIMO chunk termina, então basta um worker
+preemptado para segurar o passe inteiro, e um passo roda SETE passes.
+
+### §5.47.2 — ⛔ MEDIDO E REJEITADO — não refaça: encolher o pool do rayon
+
+Se a causa é amplificação de barreira, a cura óbvia não é *"mais rápido"*, é
+*"menos sensível"*: um pool de `k < núcleos` quase nunca tem todos os workers
+preemptados ao mesmo tempo, e deixa o resto da máquina para o frame. Construído
+(`ThreadPool::install` em volta do ciclo) e medido:
+
+| pool | sozinho | sob carga total |
+|---|---|---|
+| global (32) | 14,389 ms | 169,660 |
+| 16 | 15,924 | 159,950 |
+| 8 | 24,647 | 158,170 |
+| 4 | 40,218 | 149,478 |
+
+**O custo sob carga é ~150-170 ms em TODO tamanho de pool.** Nenhuma partição
+protege contra saturação real: 32 spinners tomam todos os núcleos e qualquer
+pool é faminto proporcionalmente. O preço, esse sim, é real e monotônico — a
+coluna *sozinho* piora 2,8× de 32 para 4.
+
+⚠️ **E a carga sintética é dura DEMAIS para decidir o produto:** 32 spinners
+permanentes não é o que a thread do frame faz (6,90 ms num quadro de 16,6 =
+**41% de duty**, e paralelo em rajadas). Na contenção que o frame de fato cria —
+quatro núcleos, duty parcial — a tabela acima diz **1,07-1,43×**, não 2,2×.
+
+### §5.47.3 — ⛔ MEDIDO E REJEITADO: a água publica um retângulo maior que os outros meios
+
+O `painter-dispatch` é proporcional ao retângulo que o tool declara sujo (a
+pista de GPU re-envia esse sub-rect), e ele mede **6,90 ms pintando contra 0,03
+só assistindo**. O censo, pela porta do produto:
+
+| meio | eventos | mediana px | pior px | full-canvas | telas/traço |
+|---|---|---|---|---|---|
+| Digital | 270 | 46.656 | 6.831.789 | 0 | 1,6 |
+| Impasto | 270 | 92.416 | 7.887.516 | 0 | 2,3 |
+| **WetPaint** | 180 | 15.625 | 16.777.216 | **1** (o publish `[0]`) | **1,9** |
+
+**A água não é outlier** — ela fica ENTRE o Digital e o Impasto. O único
+full-canvas é o **nascimento da sessão**, que é legítimo: não existe cache
+anterior a remendar.
+
+⚠️ **E a fixture precisou de TRÊS traços para conter a diferença.** Com um só, a
+tabela dizia *pior 100% da tela, 1,1 telas/traço* — e *"uma vez por SESSÃO"* e
+*"uma vez por TRAÇO"* são o mesmo número ali. Foi o índice do publish (`[0]` de
+180) que respondeu, não a estatística.
+
+### §5.47.4 — O que sobrou: o INSTRUMENTO, porque o impasse era de atribuição
+
+Três hipóteses, três rejeições — e nenhuma delas era necessária: **o log não
+tinha o divisor.** Agora tem.
+
+O `[frame]` publica a **poça em milhões de células** e o **ns/célula** derivado.
+A leitura é uma linha: *custo por célula CONSTANTE entre duas janelas = TRABALHO
+(a poça cresceu); custo por célula SUBINDO = CONTENÇÃO*. A pergunta que consumiu
+esta sessão passa a ser respondida por um smoke.
+
+⚠️ **`Grid::live_span_cells` é `O(LINHAS)`, e é isso que a torna publicável a
+cada passo:** a faixa viva de cada linha já está materializada em
+`row_lo`/`row_hi` (o rebuild a escreve), então somá-las é uma varredura de 4096
+inteiros — microssegundos contra os 14-45 ms de um passo. Contar `active` seria
+`O(células)` e **pagaria o preço da pergunta**.
+
+⚠️ **A faixa é o que os passes ANDAM, e ela não é a bbox.** Numa diagonal — a
+forma de um traço de verdade — a bbox é um múltiplo dela, e um `ns/célula`
+computado sobre a caixa mentiria para **baixo** exatamente quando a poça é
+grande, que é quando alguém o lê. É o que o gate afirma, e a mutação que devolve
+a bbox sangra.
+
+⚠️ **O balde novo é drenado DENTRO do gate que já existe** (`the_worker_reports_-
+what_a_step_costs`): ele é o único teste não-`#[ignore]` que consome a janela
+global, e um gate irmão zeraria a dele — o verde viraria sorte.
+
+### §5.47.5 — A leitura de produto que fecha a sessão
+
+Com a poça congelada e a máquina livre, o passo custa **14,2-15,9 ms = 63-70 Hz**
+sobre 1,61 M células vivas — **8,9 ns/célula**. O nominal da SPEC é 40 Hz (25
+ms), o que dá um orçamento de **~2,8 M células a `Grid Size 1`**. Uma poça de
+três traços sobrepostos num canvas de 4096² passa disso, e o slider é a resposta
+que já existe (a razão corta células por `r²`).
+
+⇒ **Otimizar mais o solver não compra nada visível**: sozinho ele já roda 1,6×
+acima do nominal e o worker dorme. O que resta é quanto da máquina o **frame**
+toma enquanto o artista pinta — e ali o item nomeado é o `painter-dispatch` de
+6,90 ms, que **não é o retângulo** (§5.47.3) e vive na shell, fora do alcance de
+uma sonda headless.

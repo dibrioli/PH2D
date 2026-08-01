@@ -1,5 +1,5 @@
 ---
-titulo: "Handoff de integração — line/sculpt3d, W3 (M1..M3): a doação, três quartos"
+titulo: "Handoff de integração — line/sculpt3d, W3: a doação, sem a mão"
 tags: [modulo/3d, tipo/handoff, assunto/integracao, status/pendente-de-smoke]
 status: pendente-de-smoke
 modulo: 3D
@@ -8,7 +8,7 @@ resumo: "O rig de luz passa a ter um dono (ph2d-light), a escultura acende por e
 relacionados: ["[[05.2-Doacao-de-sombreamento-para-2D]]", "[[06.1-Waves-riscos-e-alvos]]", "[[02.3-Modulo-removivel-e-mapa-de-crates]]"]
 ---
 
-# W3 (M1..M3) — a doação, três quartos
+# W3 — a doação, sem a mão
 
 > **A W2 foi aprovada no smoke** (*"Smoke OK"*, 2026-07-31). Isto é a wave seguinte, e ela **não está
 > completa**: três das quatro fatias aterrissaram.
@@ -19,7 +19,7 @@ relacionados: ["[[05.2-Doacao-de-sombreamento-para-2D]]", "[[06.1-Waves-riscos-e
 |---|---|
 | **M1** | **`ph2d-light` deixa de estar vazia** — o rig (quantas lâmpadas, onde, com que força) e a conversão graus→vetor passam a ter **um dono**. O Painter re-exporta pelos nomes que já usava. |
 | **M2** | **A escultura acende pelo rig do artista** — o matcap procedural da W1 sai; entra o mesmo modelo **RELATIVO** da tinta, o mesmo piso ambiente, as mesmas lâmpadas. |
-| **S1 (a lei)** | `Rig::shade_over` — o passe compõe **duas** fontes de normal, e sem forma a aritmética é a que sempre shipou. |
+| **S1** | `Rig::shade_over` — o passe compõe **duas** fontes de normal (sem forma, a aritmética é a que sempre shipou), e o plano atravessa as duas rotas de preview: **0 de 16384 bytes diferem**. |
 | **M3** | **O G-buffer** — `MeshRenderer::render_gbuffer` rasteriza normal (no espaço do rig) + **cobertura**. É a *"segunda fonte de normal"* que o `05.2` pede. |
 
 ## Os três números que a wave produziu
@@ -48,21 +48,35 @@ responder: o relevo da pincelada fica **por cima** da inclinação da forma, que
 promessa: `the_shade_with_no_form_is_the_shade_that_shipped` compara contra a **expressão antiga
 congelada verbatim**, não contra uma imagem de regressão.
 
+## A S1 FECHOU — as duas rotas de preview doam, e concordam ao byte
+
+`PainterTool::set_donated_form` instala o plano; as duas rotas o consomem; **pior delta 0, 0 de 16384
+bytes diferem**. Os dois lados entraram juntos de propósito — uma doação que aparecesse numa e não na
+outra seria uma escultura que ilumina a tinta *até o artista redimensionar a janela*.
+
+**São TRÊS perguntas, e cada uma tem gate:** `impasto_visible` (o passe corre?) · `impasto_fields` (há
+planos?) · o early-out por texel (este pixel muda?). Um plano que passe em duas e morra na terceira é
+invisível — e verde.
+
+⚠️ **A doação não passa pelo `impasto_show`**: aquele interruptor pergunta *"mostrar o relevo da
+TINTA?"*, e a forma de uma escultura não é relevo de tinta.
+
+⚠️ **E o ausente viaja como um BIT** (`has_form`), não como uma tela de zeros: um `z` zero não é
+"nenhuma forma", é uma normal DEITADA. A textura é persistente, então sem o bit um documento que perdeu
+a escultura seguiria iluminado pela última forma.
+
 ## O que NÃO entra, e é a metade que decide
 
-**M4 — a doação chegar à tinta.** O que falta de S1, e depois S2:
+**S2 — o gesto.** `LayerKind::Sculpt3d(...)` **apendado** + o toggle *"iluminada pela forma abaixo"* na
+pilha de camadas + o shell rasterizando a malha com uma câmera alinhada ao documento e chamando
+`set_donated_form`.
 
-- **S1, o produtor** — o plano de forma no `ImpastoFields` (CPU) **e** no `ImpastoLightInput` +
-  o ramo no `impasto_light.wgsl` (GPU).
-  ⚠️ **Os dois lados ou nenhum**, e a razão é medida em cicatriz: o Painter tem dois produtores de
-  preview e a casa já pagou para aprender que *"as duas pistas TÊM de concordar ou o trabalho vai pra
-  pior delas"*. Uma doação que aparecesse na rota de CPU e não na de GPU seria uma escultura que
-  ilumina a tinta **até o artista redimensionar a janela**.
-- **S2** — `LayerKind::Sculpt3d(...)` **apendado** + o toggle *"iluminada pela forma abaixo"* na pilha
-  de camadas.
+⚠️ **Nada chama `set_donated_form` no produto ainda**, então a doação é inalcançável pelo artista. O
+motor está pronto e gateado dos dois lados; o que falta é a mão.
 
-⚠️ **Até o M4, a pergunta *"o módulo vale?"* continua aberta.** O que existe é *a escultura acesa pela
-luz certa*, não *a pintura acesa pela forma*.
+⚠️ **Até a S2, a pergunta *"o módulo vale?"* continua aberta** — não porque a doação não funcione (ela
+funciona e está medida dos dois lados), mas porque **o artista não a alcança**. O que ele pode ver hoje
+é a escultura acesa pela luz certa.
 
 ⚠️ **E o `render_gbuffer` não tem consumidor de produto.** Quem o exercita são os gates. Se o M4 for
 cancelado, **ele sai** — infraestrutura sem consumidor apodrece, e a removibilidade é literal.

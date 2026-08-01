@@ -73,18 +73,37 @@ const CLAY_EXPONENT: f32 = 24.0;
 // motivo do expoente.
 const CLAY_SHINE: f32 = 0.35;
 
+// **A MÁSCARA.** ⚠️ Convenção INVERTIDA em relação ao SculptGL: aqui `0 = livre`
+// e `1 = protegido` (lá é o contrário). É a armadilha nº 1 de todo port desta
+// área, e ela está no livro-razão.
+//
+// O tinto é AZUL-FRIO e escuro porque o barro é claro e quente: a região
+// protegida tem de se ler como *outra substância*, não como *o mesmo barro na
+// sombra* — senão o artista confunde máscara com a forma que ele acabou de
+// esculpir, que é o único erro caro aqui.
+const MASK_TINT: vec3<f32> = vec3<f32>(0.30, 0.42, 0.58);
+
+// Quanto a região protegida cede à cor de máscara no teto (`mask = 1`).
+// ⚠️ NÃO é 1.0: apagar o barro por completo esconderia o RELEVO embaixo, e a
+// pergunta que o artista faz olhando uma máscara é *"cobri a dobra inteira?"* —
+// que é sobre a forma, não sobre a máscara.
+const MASK_STRENGTH: f32 = 0.75;
+
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) n_view: vec3<f32>,
+    @location(1) mask: f32,
 };
 
 @vertex
 fn vs_main(
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
+    @location(2) mask: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * vec4<f32>(pos, 1.0);
+    out.mask = mask;
     // `w = 0` ⇒ direção, não ponto: a translação da vista não entra. A matriz de
     // vista é ortonormal (sai de uma `look_at`), então não há inverso-transposto
     // a fazer — a normal viaja por ela como um vetor comum.
@@ -131,6 +150,11 @@ fn canvas_normal(n_view: vec3<f32>) -> vec3<f32> {
 // um unorm exigiria codificar `n * 0.5 + 0.5` de um lado e decodificar do outro —
 // duas metades que precisam concordar, num canal onde a discordância é uma luz
 // levemente torta que ninguém consegue nomear.
+// ⚠️ **O G-buffer IGNORA a máscara, e isso é decisão e não esquecimento.** A
+// máscara é chrome de AUTORIA — ela diz ao escultor onde o pincel não pega — e
+// não uma propriedade da forma. Se ela entrasse aqui, a tinta que o Painter
+// acende por baixo sairia azulada onde o escultor protegeu, e o artista veria a
+// sua ferramenta de trabalho vazar para dentro da obra. Há gate.
 @fragment
 fn fs_gbuffer(in: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(canvas_normal(in.n_view), 1.0);
@@ -169,6 +193,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let m = vec3<f32>(AMBIENT) + (1.0 - AMBIENT) * ratio;
 
     // Soma, não `screen`: o destino é HDR e quem faz o roll-off é o tonemap.
-    let c = CLAY * m + CLAY_SHINE * spec;
+    var c = CLAY * m + CLAY_SHINE * spec;
+
+    // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê
+    // em vez de mudar como a superfície responde à lâmpada. Tingir antes faria a
+    // região protegida acender diferente — e a máscara passaria a ser um
+    // material, que é a metade que o G-buffer recusa logo acima.
+    c = mix(c, MASK_TINT * m, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
     return vec4<f32>(c, 1.0);
 }

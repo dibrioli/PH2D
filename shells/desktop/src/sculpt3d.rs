@@ -27,7 +27,6 @@ pub(crate) mod donation;
 #[path = "sculpt3d_input.rs"]
 mod input;
 
-
 use donation::FormRole;
 use donation::FormStamp;
 
@@ -67,6 +66,14 @@ const RADIUS_STEP: f32 = 1.15;
 /// vértice"*, e na cena do smoke um disco de **0,5 px já pega um vértice**
 /// (`measure_screen_radius.rs`), porque a malha é densa. O que de fato quebra
 /// abaixo de um pixel é o artista **ver onde está mirando**.
+/// Quantos passos um clique de blur/sharpen dá.
+///
+/// ⚠️ **Número de SMOKE, não teto de recurso.** Um passo é pequeno de propósito
+/// (`BLUR_MIX = 0,5`, para o gesto não apagar a própria borda de uma vez), então
+/// o clique precisa de vários para o artista ver a diferença — e clicar de novo
+/// borra mais, que é o que o gesto significa.
+const MASK_OP_PASSES: u32 = 6;
+
 const RADIUS_MIN_PX: f32 = 1.0;
 
 /// O teto do raio, em fração da ALTURA do viewport.
@@ -97,6 +104,26 @@ pub(crate) fn donation_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("2")
 }
 
+/// As quatro operações de máscara — ver [`Sculpt3dScene::mask_op`].
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MaskOp {
+    Clear,
+    Invert,
+    Blur,
+    Sharpen,
+}
+
+impl MaskOp {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Clear => "limpa",
+            Self::Invert => "inverte",
+            Self::Blur => "borra",
+            Self::Sharpen => "afia",
+        }
+    }
+}
+
 /// O que o arrasto está fazendo.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Drag {
@@ -114,6 +141,12 @@ struct StrokeUndo {
     verts: Vec<u32>,
     positions: Vec<[f32; 3]>,
     masks: Option<Vec<f32>>,
+    /// A entrada é a máscara INTEIRA (uma operação de máscara), e não a janela
+    /// de um traço. ⚠️ Sem esta marca, `masks: None` seria ambíguo: *"foi um
+    /// traço de geometria"* e *"a máscara estava limpa e tem de voltar a
+    /// estar"* são a mesma ausência, e desfazer um `Invert` sobre malha virgem
+    /// deixaria tudo protegido para sempre.
+    whole_mask: bool,
 }
 
 /// A cena 3D viva: a malha, a câmera, o pincel e o pipeline que a desenha.
@@ -299,9 +332,45 @@ impl Sculpt3dScene {
         Self::mesh_changed(
             &mut self.dirty,
             &mut self.edits,
-            self.stroke.last_refreshed(),
+            // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
+            // não move geometria, então ele não refresca normal nenhuma — e
+            // perguntar *"o que refresquei?"* devolveria VAZIO, deixando a
+            // máscara invisível na GPU com todos os gates de CPU verdes.
+            self.stroke.last_gpu_dirty(),
         );
         true
+    }
+
+    /// **Uma operação de máscara**, com o undo e o upload que ela implica.
+    ///
+    /// ⚠️ **A entrada de undo é a MÁSCARA INTEIRA, e não a janela de um traço.**
+    /// Estas operações agem na malha toda por definição (o `blur` alcança todo
+    /// vértice cuja vizinhança tem máscara), então uma janela seria uma mentira
+    /// sobre o que mudou — e o que ela custa é `4 B × vértices`, o mesmo que o
+    /// plano que ela desfaz.
+    ///
+    /// ⚠️ E a GPU tem de re-ler a malha INTEIRA: o `dirty` incremental é a
+    /// janela de um dab, e aqui não houve dab.
+    fn mask_op(&mut self, op: MaskOp) {
+        let before = self.mesh.masks().map(<[f32]>::to_vec);
+        match op {
+            MaskOp::Clear => {
+                if !ph2d_sculpt3d::mask_ops::clear(&mut self.mesh) {
+                    return;
+                }
+            }
+            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(&mut self.mesh),
+            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(&mut self.mesh, MASK_OP_PASSES),
+            MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(&mut self.mesh, MASK_OP_PASSES),
+        }
+        self.undo.push(StrokeUndo {
+            verts: Vec::new(),
+            positions: Vec::new(),
+            masks: before,
+            whole_mask: true,
+        });
+        self.uploaded = false;
+        self.edits += 1;
     }
 
     /// Fecha o traço e guarda o desfazer.
@@ -317,6 +386,7 @@ impl Sculpt3dScene {
                 .verb
                 .paints_mask()
                 .then(|| self.stroke.base_masks().to_vec()),
+            whole_mask: false,
         });
     }
 
@@ -325,7 +395,19 @@ impl Sculpt3dScene {
         let Some(entry) = self.undo.pop() else {
             return false;
         };
-        if let Some(masks) = &entry.masks {
+        if entry.whole_mask {
+            // Uma operação de máscara mexeu na malha inteira: o estado anterior
+            // é o plano INTEIRO, e `None` quer dizer *não havia máscara* — o
+            // que se desfaz REMOVENDO o plano, não zerando-o.
+            match entry.masks {
+                Some(m) => self.mesh.put_masks(m),
+                None => {
+                    self.mesh.take_masks();
+                }
+            }
+            self.uploaded = false;
+            self.edits += 1;
+        } else if let Some(masks) = &entry.masks {
             let out = self.mesh.masks_mut();
             for (&v, m) in entry.verts.iter().zip(masks) {
                 out[v as usize] = *m;

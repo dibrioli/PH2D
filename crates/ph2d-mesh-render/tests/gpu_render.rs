@@ -990,3 +990,137 @@ fn measure_a_donation() {
         eprintln!("  {edge:>5}²  {best:>7.2} ms   ({mb:>6.1} MB lidos)");
     }
 }
+
+/// Uma esfera com uma calota MASCARADA, pela porta do produto (um traço de
+/// `Verb::Mask`), e a lista de vértices que a GPU precisa re-ler.
+fn masked_sphere() -> (Mesh, Vec<u32>) {
+    let mut mesh = shapes::uv_sphere(48, 72, 1.0);
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    stroke.dab(
+        &mut mesh,
+        &Brush {
+            verb: Verb::Mask,
+            radius: 0.6,
+            ..Brush::default()
+        },
+        &Dab::at([0.0, 0.0, 1.0], 0.6, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    let dirty = stroke.last_gpu_dirty().to_vec();
+    assert!(!dirty.is_empty(), "o traço de máscara tem de tocar alguém");
+    (mesh, dirty)
+}
+
+/// **A ENTREGA da W4.2: a máscara APARECE.**
+///
+/// ⚠️ O defeito que este gate fecha é *"pintamos e nada aparece"* — a máscara
+/// existe desde a W2 e nunca chegou ao device. Um gate de CPU não consegue vê-lo:
+/// o canal estava correto na malha o tempo todo.
+///
+/// O oráculo é a região que o traço TOCOU contra a que ele não tocou, no mesmo
+/// quadro — assim ele não depende do rig, da cor do barro nem do tinto escolhido.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_masked_region_reads_as_another_substance() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let (masked, _) = masked_sphere();
+    let plain = shapes::uv_sphere(48, 72, 1.0);
+    let cam = camera_for(&plain);
+
+    let before = render(&device, &queue, &plain, &cam);
+    let after = render(&device, &queue, &masked, &cam);
+
+    // O centro da tela caiu dentro da calota mascarada; a silhueta longe dela não.
+    let at = |px: &[u8], x: u32, y: u32| {
+        let i = ((y * W + x) * 4) as usize;
+        [px[i], px[i + 1], px[i + 2]]
+    };
+    let (cx, cy) = (W / 2, H / 2);
+    let (b, a) = (at(&before, cx, cy), at(&after, cx, cy));
+    assert_ne!(b, a, "o centro mascarado tem de mudar de cor");
+    // E muda para MAIS FRIO: o tinto é azul e o barro é quente, então o artista
+    // lê "outra substância" em vez de "o mesmo barro na sombra".
+    let warm = |c: [u8; 3]| i32::from(c[0]) - i32::from(c[2]);
+    assert!(
+        warm(a) < warm(b),
+        "o barro é quente ({b:?}) e a máscara tem de esfriar ({a:?})"
+    );
+
+    // ⚠️ O CONTROLE, sem o qual o gate passaria com o shader tingindo a malha
+    // INTEIRA: uma coluna longe do dab tem de sair byte-idêntica.
+    let far = (W / 2, H - 6);
+    assert_eq!(
+        at(&before, far.0, far.1),
+        at(&after, far.0, far.1),
+        "fora da máscara o quadro não pode mudar"
+    );
+}
+
+/// ⚠️ **A máscara é chrome de AUTORIA e não pode vazar para a obra.**
+///
+/// Ela diz ao escultor onde o pincel não pega. Se entrasse no G-buffer, a tinta
+/// que o Painter acende por baixo sairia azulada onde o escultor protegeu — a
+/// ferramenta de trabalho dentro do quadro, e um artista que não faz ideia de por
+/// que a pintura mudou de cor.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_mask_is_authoring_chrome_and_never_reaches_the_donation() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let (masked, _) = masked_sphere();
+    let plain = shapes::uv_sphere(48, 72, 1.0);
+    let cam = camera_for(&plain);
+
+    let a = gbuffer(&device, &queue, &plain, &cam);
+    let b = gbuffer(&device, &queue, &masked, &cam);
+    assert_eq!(a.len(), b.len());
+    let covered = a.iter().filter(|t| t.1 > 0.5).count();
+    assert!(
+        covered > 500,
+        "a fixture tem de conter forma: {covered} texels"
+    );
+    // BYTE a byte: a doação é a mesma malha, e mascarar não é esculpir.
+    assert_eq!(a, b, "a máscara não pode aparecer no G-buffer da doação");
+}
+
+/// **A costura que o `last_gpu_dirty` existe para fechar.**
+///
+/// Um traço de máscara não move geometria, então ele não refresca normal nenhuma.
+/// Um upload incremental guiado por *"o que refresquei"* não subiria byte algum, e
+/// a máscara ficaria invisível — de novo, agora no caminho que o produto usa em
+/// TODO movimento do mouse.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_mask_dab_reaches_the_device_through_the_incremental_path() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let plain = shapes::uv_sphere(48, 72, 1.0);
+    let cam = camera_for(&plain);
+    let (masked, dirty) = masked_sphere();
+
+    // O caminho do produto: a malha limpa já está no device, e só a janela suja
+    // do dab é copiada por cima.
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload(&device, &queue, &plain);
+    assert!(
+        renderer.upload_region(&queue, &masked, &dirty),
+        "a região tem de ser aceita: a topologia não mudou"
+    );
+    let incremental = render_using(&device, &queue, &mut renderer, &cam);
+
+    // E o oráculo é o upload CHEIO da mesma malha — a mesma dança do gate irmão
+    // das normais.
+    let full = render(&device, &queue, &masked, &cam);
+    assert_eq!(
+        incremental, full,
+        "o caminho incremental tem de mostrar o que o cheio mostra"
+    );
+}

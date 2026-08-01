@@ -138,3 +138,79 @@ fn the_families_that_the_ui_asks_about_agree_with_the_verb_list() {
     labels.dedup();
     assert_eq!(labels.len(), n);
 }
+
+/// ⚠️ **A máscara nasce em força CHEIA, e o número que justifica isso está
+/// medido.** Com a força de geometria (0,5), o envelope faz um traço parar em
+/// 0,5000 por mais que se esfregue — e `keep = 1 − mask` deixa metade de todo
+/// dab seguinte atravessar a proteção.
+#[test]
+fn the_mask_is_born_at_full_strength_and_geometry_is_not() {
+    assert_eq!(Verb::Mask.default_strength(), 1.0);
+    for v in Verb::ALL.iter().filter(|v| !v.paints_mask()) {
+        assert_eq!(
+            v.default_strength(),
+            0.5,
+            "{} não é máscara: a força é *quão longe ao longo do trajeto*",
+            v.label()
+        );
+    }
+    // E o default do `Brush` continua sendo o de geometria — quem arma o do
+    // verbo é quem ESCOLHE o verbo.
+    assert_eq!(Brush::default().strength, 0.5);
+}
+
+/// A entrega: **um traço protege de fato**, e é o envelope que o faz saturar em
+/// vez de uma acumulação que dependeria do espaçamento.
+#[test]
+fn one_full_strength_stroke_protects_completely() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    let brush = Brush {
+        verb: Verb::Mask,
+        radius: 0.5,
+        strength: Verb::Mask.default_strength(),
+        ..Brush::default()
+    };
+    let mut stroke = crate::SculptStroke::default();
+    stroke.begin(&mesh);
+    stroke.dab(
+        &mut mesh,
+        &brush,
+        &crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    let peak = mesh
+        .masks()
+        .expect("mascarou")
+        .iter()
+        .fold(0.0f32, |a, &b| a.max(b));
+    assert!(
+        peak > 0.999,
+        "um traço tem de chegar ao teto, e chegou a {peak}"
+    );
+
+    // O CONTROLE, que é o defeito medido: com a força de geometria ele para na
+    // metade — e esfregar não ajuda, porque o envelope é um `max`.
+    let mut half = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    let mut st2 = crate::SculptStroke::default();
+    st2.begin(&half);
+    for _ in 0..8 {
+        st2.dab(
+            &mut half,
+            &Brush {
+                strength: 0.5,
+                ..brush
+            },
+            &crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
+            Symmetry::default(),
+        );
+    }
+    let weak = half
+        .masks()
+        .expect("mascarou")
+        .iter()
+        .fold(0.0f32, |a, &b| a.max(b));
+    assert!(
+        (weak - 0.5).abs() < 1e-6,
+        "oito dabs a meia força param em 0,5 (o envelope), e deram {weak}"
+    );
+}

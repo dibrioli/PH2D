@@ -32,6 +32,14 @@ struct CameraRaw {
 struct MeshGpu {
     positions: wgpu::Buffer,
     normals: wgpu::Buffer,
+    /// A MÁSCARA por vértice — o canal de autoria, `0 = livre`.
+    ///
+    /// ⚠️ **Um `f32` e não um `vec3` de material.** O SculptGL guarda a máscara
+    /// no canal `z` de um atributo de material cujos outros dois canais são
+    /// rugosidade e metalness; portá-lo inteiro agora subiria **dois canais que
+    /// ninguém escreve e ninguém lê** — 12 B/vértice contra 4, e dois controles
+    /// mortos. O material chega com o Paint (W7/W9), e o canal é aditivo.
+    masks: wgpu::Buffer,
     indices: wgpu::Buffer,
     index_count: u32,
     vert_capacity: usize,
@@ -51,6 +59,25 @@ pub struct MeshRenderer {
     scratch_indices: Vec<[u32; 3]>,
     scratch_moved: Vec<u32>,
     scratch_runs: Vec<(u32, u32)>,
+    /// Zeros para uma malha que ninguém mascarou — ver [`masks_of`].
+    scratch_masks: Vec<f32>,
+}
+
+/// A máscara da malha, ou **zeros** para uma que ninguém mascarou.
+///
+/// ⚠️ O plano é `Option` na malha (uma esfera intocada não paga 4 B/vértice), e
+/// o device quer um buffer sempre presente: um pipeline por presença de máscara
+/// seriam DUAS respostas a *"como esta malha é desenhada"*, divergindo no único
+/// lugar onde ninguém lê um número de volta.
+fn masks_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
+    match mesh.masks() {
+        Some(m) => m,
+        None => {
+            scratch.clear();
+            scratch.resize(mesh.vert_count(), ph2d_mesh::DEFAULT_MASK);
+            scratch
+        }
+    }
 }
 
 impl MeshRenderer {
@@ -150,6 +177,19 @@ impl MeshRenderer {
         }
         const POS: [wgpu::VertexAttribute; 1] = vec3_attr(0);
         const NRM: [wgpu::VertexAttribute; 1] = vec3_attr(1);
+        const MASK: [wgpu::VertexAttribute; 1] = [wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32,
+            offset: 0,
+            shader_location: 2,
+        }];
+        // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
+        // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
+        // capturado por move faria dele um `FnOnce`.
+        let f32_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
+            array_stride: 4,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: attrs,
+        };
         let vec3_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
             array_stride: 12,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -169,7 +209,7 @@ impl MeshRenderer {
                     module: &shader,
                     entry_point: Some("vs_main"),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM)],
+                    buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM), f32_buffer(&MASK)],
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -230,6 +270,7 @@ impl MeshRenderer {
             scratch_indices: Vec::new(),
             scratch_moved: Vec::new(),
             scratch_runs: Vec::new(),
+            scratch_masks: Vec::new(),
         }
     }
 
@@ -250,6 +291,11 @@ impl MeshRenderer {
             let g = self.mesh.as_mut().expect("acabou de ser conferido");
             queue.write_buffer(&g.positions, 0, bytemuck::cast_slice(mesh.positions()));
             queue.write_buffer(&g.normals, 0, bytemuck::cast_slice(mesh.normals()));
+            queue.write_buffer(
+                &g.masks,
+                0,
+                bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
+            );
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
             return;
@@ -265,6 +311,10 @@ impl MeshRenderer {
         self.mesh = Some(MeshGpu {
             positions: vb("ph2d-mesh pos", bytemuck::cast_slice(mesh.positions())),
             normals: vb("ph2d-mesh nrm", bytemuck::cast_slice(mesh.normals())),
+            masks: vb(
+                "ph2d-mesh mask",
+                bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
+            ),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),
                 contents: bytemuck::cast_slice(&self.scratch_indices),
@@ -308,6 +358,8 @@ impl MeshRenderer {
         self.scratch_moved.sort_unstable();
         self.scratch_moved.dedup();
         upload::plan_runs(&self.scratch_moved, &mut self.scratch_runs);
+        let masks = masks_of(mesh, &mut self.scratch_masks);
+        let g = self.mesh.as_ref().expect("conferido acima");
 
         let stride = size_of::<[f32; 3]>() as u64;
         for &(a, b) in &self.scratch_runs {
@@ -322,6 +374,12 @@ impl MeshRenderer {
                 bytemuck::cast_slice(&mesh.positions()[a..b]),
             );
             queue.write_buffer(&g.normals, at, bytemuck::cast_slice(&mesh.normals()[a..b]));
+            // ⚠️ **A máscara viaja na MESMA janela, sempre.** Um dab é de
+            // geometria ou de máscara — nunca dos dois — então uma das duas
+            // cópias reescreve bytes idênticos, e a alternativa (perguntar de
+            // qual canal é este dab) seria o chamador conhecendo a regra que o
+            // `last_gpu_dirty` existe para responder.
+            queue.write_buffer(&g.masks, a as u64 * 4, bytemuck::cast_slice(&masks[a..b]));
         }
         true
     }
@@ -430,6 +488,7 @@ impl MeshRenderer {
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_vertex_buffer(0, g.positions.slice(..));
         pass.set_vertex_buffer(1, g.normals.slice(..));
+        pass.set_vertex_buffer(2, g.masks.slice(..));
         pass.set_index_buffer(g.indices.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..g.index_count, 0, 0..1);
     }
@@ -502,6 +561,7 @@ impl MeshRenderer {
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_vertex_buffer(0, g.positions.slice(..));
         pass.set_vertex_buffer(1, g.normals.slice(..));
+        pass.set_vertex_buffer(2, g.masks.slice(..));
         pass.set_index_buffer(g.indices.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..g.index_count, 0, 0..1);
     }

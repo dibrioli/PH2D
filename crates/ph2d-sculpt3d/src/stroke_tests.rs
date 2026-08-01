@@ -490,3 +490,57 @@ mod verb_crease;
 /// O conjunto FRONTAL, que tem fixtures de silhueta — ver o cabeçalho dele.
 #[path = "verb_culling_tests.rs"]
 mod verb_culling;
+
+/// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
+/// de máscara escreve um canal por vértice e **não move geometria**, então ele
+/// esquece a região refrescada de propósito (não há normal nova a subir). Quem
+/// perguntasse *"o que refresquei?"* para decidir o upload não subiria byte
+/// nenhum — e a máscara ficaria invisível na GPU com todos os gates de CPU
+/// verdes, que é exatamente como ela já era invisível antes desta wave.
+#[test]
+fn a_mask_dab_publishes_a_gpu_window_even_though_it_refreshes_no_normal() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(32, 48, 1.0);
+    let brush = Brush {
+        verb: Verb::Mask,
+        radius: 0.4,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    let n = stroke.dab(
+        &mut mesh,
+        &brush,
+        &Dab::at([0.0, 0.0, 1.0], 0.4, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    assert!(n > 0, "o dab tem de tocar alguém");
+    assert!(
+        stroke.last_refreshed().is_empty(),
+        "máscara não move geometria: não há normal recomputada, e isso é correto"
+    );
+    assert_eq!(
+        stroke.last_gpu_dirty().len(),
+        n,
+        "mas a GPU precisa re-ler exatamente os vértices cuja máscara mudou"
+    );
+
+    // E o CONTROLE: para um verbo de geometria a janela continua sendo a das
+    // normais, que é ESTRITAMENTE MAIOR que a dos movidos (o anel da borda).
+    let mut geo = SculptStroke::default();
+    geo.begin(&mesh);
+    geo.dab(
+        &mut mesh,
+        &Brush {
+            verb: Verb::Draw,
+            radius: 0.4,
+            ..Brush::default()
+        },
+        &Dab::at([0.0, 0.0, 1.0], 0.4, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    assert_eq!(geo.last_gpu_dirty().len(), geo.last_refreshed().len());
+    assert!(
+        geo.last_gpu_dirty().len() > geo.last_moved().len(),
+        "para geometria a janela da GPU é o superconjunto, nunca os movidos"
+    );
+}

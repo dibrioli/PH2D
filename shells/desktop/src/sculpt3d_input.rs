@@ -6,9 +6,7 @@
 //! chama, e todas recusam no primeiro `if` sem cena armada — a promessa de
 //! removibilidade do `docs/3D/02.3` no nível do frame.
 
-use super::{
-    Drag, LIGHT_STEP_DEG, ORBIT_RAD_PER_PX, RADIUS_STEP, Sculpt3dScene, Verb,
-};
+use super::{Drag, LIGHT_STEP_DEG, MaskOp, ORBIT_RAD_PER_PX, RADIUS_STEP, Sculpt3dScene, Verb};
 use crate::app_state::App;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -36,6 +34,7 @@ impl App {
              [sculpt3d] Shift = Smooth enquanto segurar · Ctrl inverte Draw/Inflate/Clay/Crease e limpa a mascara\n\
              [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
              [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
+             [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
              [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
              [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
@@ -234,9 +233,39 @@ impl App {
             K::KeyM => Some(Verb::Mask),
             _ => None,
         };
+        // As QUATRO operações de máscara. ⚠️ Elas não são verbos: um verbo pinta
+        // *onde a mão passou* e estas respondem a *o que já está pintado*, então
+        // elas não podem entrar na lista de números (escolher uma não é pegar
+        // uma ferramenta — é executar um gesto e acabar).
+        let mask_op = match code {
+            K::KeyC => Some(MaskOp::Clear),
+            K::KeyI => Some(MaskOp::Invert),
+            K::KeyB => Some(MaskOp::Blur),
+            K::KeyN => Some(MaskOp::Sharpen),
+            _ => None,
+        };
+        if let Some(op) = mask_op {
+            scene.mask_op(op);
+            eprintln!("[sculpt3d] mascara: {}", op.label());
+            return true;
+        }
         if let Some(v) = verb {
+            // ⚠️ **Arma o default do verbo, e só se o artista ainda não mexeu.**
+            // O precedente é o `arm_inflate_defaults` do Painter: um verbo pode
+            // querer nascer diferente (a máscara nasce em força cheia, senão ela
+            // protege pela metade e o barro se move por baixo), e nenhum verbo
+            // pode APAGAR uma escolha deliberada. "Não mexeu" é a força ser
+            // exatamente o default do verbo que está saindo.
+            let old = scene.brush.verb;
+            if (scene.brush.strength - old.default_strength()).abs() < 1e-6 {
+                scene.brush.strength = v.default_strength();
+            }
             scene.brush.verb = v;
-            eprintln!("[sculpt3d] verbo: {}", v.label());
+            eprintln!(
+                "[sculpt3d] verbo: {} (forca {:.2})",
+                v.label(),
+                scene.brush.strength
+            );
             return true;
         }
         match code {

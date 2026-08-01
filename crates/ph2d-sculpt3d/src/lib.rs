@@ -35,6 +35,7 @@
 //! números da W1 foram **re-medidos** em vez de herdados.
 
 mod brush;
+pub mod mask_ops;
 mod spacing;
 mod stroke;
 

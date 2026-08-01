@@ -170,6 +170,37 @@ impl Mesh {
             .get_or_insert_with(|| vec![DEFAULT_MASK; self.positions.len()])
     }
 
+    /// **Tira o plano de máscara da malha**, se houver — o gesto de *limpar*, e
+    /// a metade que empresta o plano a quem precisa ler a adjacência ao mesmo
+    /// tempo.
+    ///
+    /// ⚠️ **A segunda razão é o borrow, e ela decide o desenho das operações de
+    /// máscara:** borrar uma máscara é `m ← média do anel`, o que exige a
+    /// adjacência (imutável) e o plano (mutável) no MESMO escopo. Clonar a
+    /// adjacência custaria milhões de `u32` por passo; tirar o plano custa mover
+    /// um `Vec`. Quem tira devolve com [`Self::put_masks`].
+    ///
+    /// Devolve `None` se ninguém mascarou — e é isso que faz *limpar uma malha
+    /// limpa* não alocar nada.
+    pub fn take_masks(&mut self) -> Option<Vec<f32>> {
+        self.masks.take()
+    }
+
+    /// Devolve o plano tirado por [`Self::take_masks`].
+    ///
+    /// ⚠️ **Recusa em silêncio um plano do tamanho errado** — não: ele PANICA,
+    /// porque um plano curto seria lido como *"os últimos vértices estão
+    /// livres"*, que é uma máscara diferente da que o artista pintou, e nada na
+    /// tela diria por quê.
+    pub fn put_masks(&mut self, masks: Vec<f32>) {
+        assert_eq!(
+            masks.len(),
+            self.positions.len(),
+            "o plano de máscara tem de medir a malha"
+        );
+        self.masks = Some(masks);
+    }
+
     /// As posições para escrita — o que um kernel de pincel move.
     ///
     /// Quem escreve aqui **fica devendo** um `refresh_region`: a normal, o

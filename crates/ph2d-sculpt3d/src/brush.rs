@@ -229,6 +229,33 @@ impl Verb {
             Self::Mask => "Mask",
         }
     }
+
+    /// A força com que um pincel deste verbo **nasce**.
+    ///
+    /// ⚠️ **A máscara nasce em 1,0 e a geometria em 0,5, e a diferença é o
+    /// significado da força em cada canal.** Para geometria ela é *quão longe ao
+    /// longo do trajeto*, e meio caminho é um default são. Para a máscara o alvo
+    /// é um PLATÔ (protegido) e a lei do traço é um envelope, então a força vira
+    /// o **TETO** que um traço alcança: medido com 0,5, esfregar oito dabs no
+    /// mesmo lugar chega a **0,5000 e para** — e `keep = 1 − mask` deixa metade
+    /// de todo dab seguinte atravessar a proteção. O artista mascara, esculpe, e
+    /// o barro se move debaixo da máscara pela metade, que é indistinguível de
+    /// *"a máscara não funciona"*. Traços repetidos convergem geometricamente
+    /// (0,75 · 0,875 · 0,969), e depois de DEZ ainda são 31 texels acima de 0,99.
+    ///
+    /// ⚠️ **Divergência do original, e ela é sobre a LEI, não sobre o número:**
+    /// lá a força é uma TAXA (ele acumula sobre o estado vivo e satura dentro do
+    /// traço), aqui é um TETO (envelope sobre o `pre` congelado). Trocar a nossa
+    /// lei devolveria a dependência de espaçamento que o módulo inteiro existe
+    /// para não ter; trocar o DEFAULT entrega o gesto sem tocar em nada.
+    /// A proteção parcial continua exprimível — é o slider.
+    #[must_use]
+    pub fn default_strength(self) -> f32 {
+        match self {
+            Self::Mask => 1.0,
+            _ => 0.5,
+        }
+    }
 }
 
 /// Quanto do RAIO do pincel um dab de força cheia desloca.

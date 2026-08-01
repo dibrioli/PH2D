@@ -114,6 +114,11 @@ pub struct SculptStroke {
     moved: Vec<u32>,
     query: QueryScratch,
     region: RegionScratch,
+    /// O último dab pintou MÁSCARA? Decide de qual janela a GPU precisa — ver
+    /// [`SculptStroke::last_gpu_dirty`]. Um bool escrito no mesmo `if` que já
+    /// separa os dois braços; derivá-lo do `Brush` no chamador seria pedir a ele
+    /// que soubesse a regra.
+    last_paints_mask: bool,
 }
 
 impl SculptStroke {
@@ -183,6 +188,27 @@ impl SculptStroke {
     #[must_use]
     pub fn last_refreshed(&self) -> &[u32] {
         self.region.refreshed()
+    }
+
+    /// Os vértices que a GPU precisa **RE-LER** depois do último dab, em
+    /// QUALQUER canal — a janela do upload incremental.
+    ///
+    /// ⚠️ **Não é o mesmo que [`Self::last_refreshed`], e a diferença é uma
+    /// feature inteira.** Aquele responde *de quem eu recomputei a NORMAL*, e um
+    /// traço de máscara não move geometria: ele escreve o canal de máscara e
+    /// **esquece a região de propósito**. Um chamador que subisse `refreshed`
+    /// não subiria byte nenhum de um traço de Mask — a máscara ficaria invisível
+    /// na GPU, agora por um segundo motivo, com todos os gates de CPU verdes.
+    ///
+    /// Os dois casos são exclusivos por construção (o dab ou pinta máscara, ou
+    /// move geometria), então a resposta é uma escolha e nunca uma união.
+    #[must_use]
+    pub fn last_gpu_dirty(&self) -> &[u32] {
+        if self.last_paints_mask {
+            &self.moved
+        } else {
+            self.region.refreshed()
+        }
     }
 
     /// Bytes segurados. A sonda de memória o soma: o custo do GESTO não pode
@@ -300,6 +326,7 @@ impl SculptStroke {
         if self.moved.is_empty() {
             return 0;
         }
+        self.last_paints_mask = brush.verb.paints_mask();
         if brush.verb.paints_mask() {
             self.apply_mask(mesh, brush);
             // Nada de geometria mudou: quem lê `last_refreshed` tem de ver

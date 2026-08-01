@@ -215,28 +215,30 @@ impl<'a> FilmLutPlan<'a> {
     }
 }
 
-/// Quantas vezes a estrada rápida foi tomada, e quantas o straddle a recusou.
-///
-/// ⚠️ **Contadores, não um segundo caminho** — eles OBSERVAM o produto. Existem porque a lição do
-/// ADR-0120 é exatamente esta: um caminho rápido que nunca dispara é código morto com todos os gates
-/// verdes, e a única defesa é CONTAR quantas vezes ele disparou no laço real.
-/// ⚠️ **POR THREAD, e é isso que os torna sãos.** Eles já foram atômicos GLOBAIS com uma trava
-/// ao lado, e o doc dela prescrevia *"todo gate que RODA a estrada rápida a segura, não só os que a
-/// LEEM"* — uma **ENUMERAÇÃO**, e ela apodreceu exatamente como toda enumeração apodrece: **13 sítios
-/// depositam pela LUT nesta crate e 2 seguravam a trava**. O resultado é um flake que só aparece com a
-/// máquina carregada, porque é aí que a interleaving abre: reportado pela `line/Vector` rodando
-/// `--workspace` (2026-08-01) e reproduzido aqui em **1 de 8 corridas sob carga sintética**, sempre na
-/// metade `assert_eq!(hits, 0)` — a que a poluição de um vizinho quebra.
-///
-/// **A crate não tem `rayon`** (conferido no `Cargo.toml`), então todo hit da LUT acontece na thread
-/// que chamou o depósito ⇒ um contador por thread não pode ser poluído por outro teste, e **não há
-/// lista de quem precisa travar**. *A representação apaga o caso especial*, e a trava morre com ele.
-///
-/// ⚠️ **Contadores, não um segundo caminho** — eles OBSERVAM o produto. Existem porque a lição do
-/// ADR-0120 é exatamente esta: um caminho rápido que nunca dispara é código morto com todos os gates
-/// verdes, e a única defesa é CONTAR quantas vezes ele disparou no laço real.
+// **QUANTAS VEZES A ESTRADA RÁPIDA FOI TOMADA, e quantas o straddle a recusou.**
+//
+// ⚠️ **Contadores, não um segundo caminho** — eles OBSERVAM o produto. Existem porque a lição do
+// ADR-0120 é exatamente esta: um caminho rápido que nunca dispara é código morto com todos os gates
+// verdes, e a única defesa é CONTAR quantas vezes ele disparou no laço real.
+//
+// ⚠️ **POR THREAD, e é isso que os torna sãos.** Eles já foram atômicos GLOBAIS com uma trava ao
+// lado, e o doc dela prescrevia *"todo gate que RODA a estrada rápida a segura, não só os que a
+// LEEM"* — uma **ENUMERAÇÃO**, e ela apodreceu como toda enumeração apodrece: **13 sítios depositam
+// pela LUT nesta crate e 2 seguravam a trava**. O resultado é um flake que só aparece com a máquina
+// carregada, porque é aí que a interleaving abre: reportado pela `line/Vector` rodando `--workspace`
+// (2026-08-01) e reproduzido aqui em **1 de 8 corridas sob carga sintética**, sempre na metade
+// `assert_eq!(hits, 0)` — a que a poluição de um vizinho quebra (a metade `hits > 1000` é imune,
+// porque poluição só a ajuda).
+//
+// **A crate não tem `rayon`** (conferido no `Cargo.toml`), então todo hit da LUT acontece na thread
+// que chamou o depósito ⇒ um contador por thread não pode ser poluído por outro teste, e **não há
+// lista de quem precisa travar**. *A representação apaga o caso especial*, e a trava morre com ele.
+//
+// ⚠️ **Um doc-comment não gruda numa invocação de macro** — por isso o bloco acima é `//` e cada
+// `static` leva o seu `///` DENTRO do `thread_local!`.
 #[cfg(test)]
 thread_local! {
+    /// Os texels que a estrada rápida da LUT serviu, nesta thread.
     static LUT_HITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     /// Irmão do [`LUT_HITS`]: os texels que a fronteira calota↔banda devolveu ao caminho exato.
     static LUT_STRADDLES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };

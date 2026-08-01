@@ -442,6 +442,134 @@ fn measure_what_km_costs_at_each_grid_ratio() {
     );
 }
 
+/// **O COMPOSITE COM O SEU DIVISOR — o retângulo que o QUADRO paga, e não a
+/// tela inteira.**
+///
+/// ⚠️ **Esta sonda existe porque a irmã acima mede o PIOR CASO e eu publiquei o
+/// número dela como se fosse o do quadro.** A
+/// [`measure_what_km_costs_at_each_grid_ratio`] chama `mark_dirty_full()` antes
+/// de cada amostra — ela compõe uma TELA INTEIRA de 4096², que o produto paga
+/// no **nascimento da sessão** e em ações autoradas (Wet Canvas, Dry, um knob
+/// que reconcilia), nunca por quadro. Da tabela dela saiu a frase *"o composite
+/// dobra quando a grade engrossa e a partir da razão 2 é ~93% do custo da
+/// água"*, e ela é verdadeira **sobre o pior caso**, não sobre o ponto de
+/// operação.
+///
+/// *Um custo sem o seu escopo é inatribuível* — literalmente a regra que o
+/// `painter-dispatch` me custou um smoke (doc 28 §5.53), um sistema adiante e
+/// três dias antes.
+///
+/// As duas colunas respondem perguntas diferentes e as duas importam:
+///
+/// * **cheio** — o preço de uma composição de tela inteira, que decide se o
+///   nascimento de uma sessão engasga;
+/// * **passo** — o retângulo que um `step_simulation` suja, que é o que um
+///   quadro **assistindo** paga, e o único número comparável ao `sim`.
+///
+/// E cada uma vem com a **ÁREA** ao lado, porque foi a falta dela que deixou o
+/// número anterior ser lido pelo avesso.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_the_composite_with_the_rect_it_actually_writes() {
+    const REPS: usize = 7;
+    const SIDE: u32 = 4096;
+
+    println!("\n  O COMPOSITE E O RETANGULO QUE ELE ESCREVE ({SIDE}x{SIDE}, pincel r=100)\n");
+    println!(
+        "    {:>5}  {:>11} {:>10} {:>9}   {:>11} {:>10} {:>9}",
+        "razao", "cheio ms", "M px", "ns/px", "passo ms", "M px", "ns/px"
+    );
+
+    for ratio in [1u8, 2, 4, 8] {
+        const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2;
+        let mut t = wetted(SIDE, 100.0);
+        t.set_wet_grid_ratio(f64::from(ratio));
+        for lane in 0..3 {
+            let off = 260.0 * lane as f32;
+            let (x0, y0) = (200.0 + off, 200.0);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            for k in 1..=90u32 {
+                let d = 40.0 * k as f32;
+                t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Move));
+                let _ = t.take_preview_arc();
+            }
+            let d = 40.0 * 90.0;
+            t.on_canvas_pointer(cp([x0 + d * DIAG, y0 + d * DIAG], PointerPhase::Up));
+        }
+        t.wet_bring_home();
+
+        let mut out = [(0.0f64, 0.0f64); 2];
+        for (slot, full) in [(0usize, true), (1, false)] {
+            let (mut ms, mut px) = (Vec::with_capacity(REPS), Vec::with_capacity(REPS));
+            for _ in 0..REPS {
+                if let Some(sess) = t.paint.wetpaint.session.as_mut() {
+                    sess.bring_home();
+                    if full {
+                        sess.engine.mark_dirty_full();
+                    } else {
+                        // O dirty NATURAL de um passo — exatamente a sequência do
+                        // produto (o worker dá o passo, o tick compõe o que ele sujou).
+                        sess.engine.step_simulation();
+                    }
+                }
+                // ⚠️ **O divisor sai do `dirty` do MOTOR, convertido pela PORTA
+                // do composite** (`cell_rect_to_px`) — nunca de uma segunda
+                // aritmética minha, e nunca do `preview_upload_bbox`, que só é
+                // preenchido pelo dreno do frame e por isso ficava saturado na
+                // tela inteira nas DUAS colunas (a 1ª versão desta sonda dizia
+                // `16,78 M px` para um composite que custava metade do outro).
+                let area = {
+                    let sess = t.paint.wetpaint.session.as_ref().expect("sessao");
+                    let (gw, gh) = sess.grid;
+                    let cells = match sess.engine.dirty {
+                        ph2d_wet_paint::painter::Dirty::Clean => None,
+                        ph2d_wet_paint::painter::Dirty::Full => Some((1, 1, gw, gh)),
+                        ph2d_wet_paint::painter::Dirty::Rect { x0, y0, x1, y1 } => Some((
+                            (x0.max(1) as usize).min(gw),
+                            (y0.max(1) as usize).min(gh),
+                            (x1.max(1) as usize).min(gw),
+                            (y1.max(1) as usize).min(gh),
+                        )),
+                    };
+                    cells.map_or(0, |c| {
+                        let (a, b, x, y) = crate::tool::paint::wetpaint::grid_map::cell_rect_to_px(
+                            c,
+                            sess.ratio,
+                            SIDE as usize,
+                            SIDE as usize,
+                        );
+                        ((x.saturating_sub(a)) as u64) * ((y.saturating_sub(b)) as u64)
+                    })
+                };
+                let t0 = std::time::Instant::now();
+                crate::tool::paint::wetpaint::composite_for_measure(&mut t);
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                px.push(area);
+            }
+            ms.sort_by(f64::total_cmp);
+            px.sort_unstable();
+            out[slot] = (ms[ms.len() / 2], px[px.len() / 2] as f64);
+        }
+
+        let per = |(ms, px): (f64, f64)| if px > 0.0 { ms * 1e6 / px } else { 0.0 };
+        println!(
+            "    {ratio:>3}:1  {:>10.3}ms {:>9.2} {:>8.2}   {:>10.3}ms {:>9.2} {:>8.2}",
+            out[0].0,
+            out[0].1 / 1e6,
+            per(out[0]),
+            out[1].0,
+            out[1].1 / 1e6,
+            per(out[1]),
+        );
+    }
+    println!(
+        "\n    Leitura: a coluna `passo` e o que um quadro ASSISTINDO paga, e e' ela que\n    \
+         se compara ao `sim`. A coluna `cheio` e' o nascimento da sessao. Se `ns/px` for\n    \
+         igual nas duas, o composite e' limitado pela AREA (a forma correta) e a diferenca\n    \
+         entre as colunas e so o tamanho do retangulo — nao ha wave, ha um retangulo."
+    );
+}
+
 #[cfg(test)]
 #[path = "measure_wetpaint_contention.rs"]
 mod measure_wetpaint_contention; // o que a MAQUINA faz com o passo - irmao por LOC

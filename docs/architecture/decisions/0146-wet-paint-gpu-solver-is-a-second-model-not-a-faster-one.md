@@ -305,3 +305,87 @@ resposta sancionada na CPU (o slider **Grid Size**, que a §5.41 mediu levando-o
 a 8,3 ms) e um remédio de CPU medido e rejeitado por **403 MB de rascunho**
 (doc 28 §5.46.10). Se a GPU voltar à mesa, é **contra 16 ms e contra uma cena
 que já dorme**, não contra os 52 ms que este ADR foi escrito para atacar.
+
+---
+
+## Emenda 5 (2026-08-01) — os DOIS gatilhos mensuráveis fecharam; sobra o hipotético
+
+A Emenda 4 fechou nomeando o último regime work-limited do módulo: *"o K–M do
+Tuning custa **4,75× o passo** a 4096²/razão 1 (67,9 ms, 14,7 Hz)"*. **Medido
+hoje pela porta do produto, ele custa 1,1-1,4×** (doc 28 §5.55) — a tabela de
+transferência sRGB do doc 24 e o solver independente de ordem do ADR-0147 já o
+tinham fechado, e **a nota sobreviveu ao fato**.
+
+Com isso, as três condições de re-abertura escritas na §"O que RE-ABRE (B)"
+ficam assim:
+
+| gatilho | estado |
+|---|---|
+| 1. o smoke reprovar a razão 2-4 **no desenho** | **moot** — ninguém precisa engrossar a grade por velocidade (abaixo) |
+| 2. **1:1 a 4096² sem concessão** como requisito | ⛔ **morto por medição** |
+| 3. uma feature nova pedir campos que a CPU não alcança | hipotético, inalterado — **o único que sobrevive** |
+
+### O gatilho 2, que era o legítimo, morreu com o número
+
+Este ADR foi escrito quando 1:1 a 4096² custava **32,2 ms/passo (31 Hz)**,
+**abaixo** do nominal de 40 Hz da SPEC — e era exatamente essa concessão que (B)
+existia para remover. Medido hoje, mesma porta, mesma cena:
+
+| | ADR (2026-07-29) | **hoje** |
+|---|---|---|
+| passo 1:1, 4096² | 32,2 ms · **31 Hz** | **15,59 ms · 64 Hz** |
+| idem com `km_mixing` + `km_glaze` | 104,4 ms · 9,6 Hz | **18,54 ms · 54 Hz** |
+| água inteira/quadro (passo + composite) 1:1 | — | **21,18 ms**, contra 25 de nominal |
+
+⇒ **A concessão não existe mais.** O artista pode rodar `Grid Size 1` a 4096²
+**com o K–M do Tuning ligado** e a água ainda excede o nominal da SPEC.
+
+Confirmação pela porta do produto (último smoke aprovado do Enio): `busy 62 %
+away 16 % **sleep 22 %** | TAXA DA AGUA 38,5 Hz | poça 2,20 M | 7,3 ns/célula` —
+e `7,3 × 2,20 M = 16,06 ms/passo`, que reconcilia com os 15,59 da sonda. **A
+água não está esperando a CPU; está esperando o próprio relógio**, e uma GPU não
+entrega mais que o nominal.
+
+### O gatilho 1 vira decisão de LOOK, e o slider SATURA
+
+Com o retângulo real (doc 28 §5.56), o custo por quadro da água:
+
+| razão | passo | composite | **água/quadro** | ganho vs 1:1 |
+|---|---|---|---|---|
+| 1:1 | 15,59 | 5,59 | **21,18 ms** | — |
+| 2:1 | 4,52 | 9,38 | **13,90** | 1,52× |
+| 4:1 | 1,31 | 9,01 | **10,32** | **2,05×** |
+| 8:1 | 0,77 | 9,12 | **9,89** | 2,14× |
+
+**O solver sozinho cai 20×; a água cai 2,1×** — porque acima da razão 1 quem
+domina é o composite (67 / 87 / 92 % nas razões 2 / 4 / 8), que não encolhe com
+a grade. ⇒ O `Grid Size` deixou de ser um controle de velocidade **também neste
+eixo**: o que ele muda é o LOOK (borda, granulação, backrun), e a decisão do
+smoke é estética, não de performance.
+
+### A razão NOVA contra a Fase 2
+
+Este ADR lista dois obstáculos que nunca foram sobre o solver — o **stamp** (a
+silhueta do Painter por closure) e a **residência** dos 14 planos. A tabela
+acima acrescenta um terceiro, e ele é estrutural:
+
+⚠️ **Acima da razão 1, o maior item por-quadro da água é o composite — e o
+composite escreve o `canvas_rgba`, o DOCUMENTO do artista.** Ele pertence à CPU
+por contrato: o undo por delta, o histórico por janela, o bake, o save e os ~25
+sítios de escrita de plano leem dali. Levar o composite ao device obriga a
+escolher entre *deixar o documento desatualizado* (o undo devolve lixo) e *ler de
+volta por quadro* (a mesma banda, com uma sincronização a mais que a wave
+off-thread tinha removido).
+
+⇒ A **Fase 2** (*"os planos device-resident e o composite lendo do device"*)
+resolve a LEITURA do pigmento e **não** resolve a escrita, que é o lado caro.
+
+### Recomendação (revisada)
+
+**Não construir (B)**, e agora não por "ainda não": porque **todo número que ela
+atacaria já está abaixo do que domina**. Dos três gatilhos escritos para não
+depender de memória, dois fecharam por medição e o terceiro é hipotético.
+
+O ADR fica em PROPOSTA e o desenho continua válido — se o gatilho 3 aparecer, as
+cinco fases estão escritas. O que mudou é que **não há mais um número de produto
+que peça a construção**, e é isso que este ADR sempre disse que decidiria.

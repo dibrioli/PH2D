@@ -5147,20 +5147,32 @@ decimais* (§5.13), e repetir custou 20 segundos.
 
 A coluna do COMPOSITE, estável nas três corridas limpas:
 
-| razão | passo | **composite** |
+| razão | passo | **composite (tela CHEIA)** |
 |---|---|---|
 | 1:1 | 16,6 ms | **9,4 ms** |
 | 2:1 | 4,5 | **18,5** |
 | 4:1 | 1,3 | **17,6** |
 | 8:1 | 0,8 | **17,0** |
 
-**O composite DOBRA quando a grade fica mais grossa**, e a partir da razão 2 ele
-é ~93% do custo da água. O mecanismo está no desenho: o composite tem duas
-fases — um laço por CÉLULA (que encolhe com `ratio²`) e um laço por **PIXEL**
-(que não encolhe, e que na razão 1 é uma cópia direta e acima dela vira a
-reconstrução smoothstep de quatro cantos).
+**O composite DOBRA quando a grade fica mais grossa.** O mecanismo está no
+desenho: ele tem duas fases — um laço por CÉLULA (que encolhe com `ratio²`) e um
+laço por **PIXEL** (que não encolhe, e que na razão 1 é uma cópia direta e acima
+dela vira a reconstrução smoothstep de quatro cantos).
 
 ⇒ **A alavanca do `Grid Size` é limitada pelo composite, não pelo solver.**
+
+> ⚠️ **CORREÇÃO (mesma sessão, §5.56): esta coluna é o PIOR CASO, e eu a
+> publiquei como se fosse a do quadro.** A sonda chama `mark_dirty_full()` antes
+> de cada amostra — ela compõe a **tela inteira** de 4096², que o produto paga no
+> nascimento da sessão e em ações autoradas, **nunca por quadro**. A frase *"a
+> partir da razão 2 ele é ~93% do custo da água"* saiu daqui.
+>
+> *Um custo sem o seu escopo é inatribuível* — literalmente a regra que o
+> `painter-dispatch` me custou um smoke três dias antes (§5.53), aplicada por
+> mim a todo mundo e não à minha própria fixture. O número honesto, com o
+> retângulo ao lado, está na §5.56 — e ⚠️ **a conclusão sobrevive**: com o
+> retângulo real o composite é 26% do custo da água na razão 1 e **67 / 87 / 92%**
+> nas razões 2 / 4 / 8.
 
 ### A fatoração que shipou — 1,24×, bit-idêntica
 
@@ -5195,3 +5207,140 @@ linhas a 704%/360%/335%) e a MESMA célula deu **134,4 ms e 42,7 ms**. *Nenhum
 número absoluto desta máquina significa algo com o load acima de ~5* (§5.49). O
 A/B do amostrador é imune porque as duas rotas correm na mesma corrida; o
 composite do produto precisa de uma máquina calma.
+
+### O número que faltava, com a máquina calma (`load 4,76 / 1,52 / 0,84`)
+
+| razão | passo off | passo ON (K–M) | composite ANTES | **composite AGORA** | |
+|---|---|---|---|---|---|
+| 1:1 | 15,59 | 18,54 | 9,4 | **9,25** | ← **o controle** |
+| 2:1 | 4,52 | 5,63 | 18,5 | **15,84** | 1,17× |
+| 4:1 | 1,31 | 1,62 | 17,6 | **15,13** | 1,16× |
+| 8:1 | 0,77 | 0,86 | — | **15,00** | |
+
+⚠️ **A razão 1 é o CONTROLE INTERNO da wave**: ela toma o caminho de identidade
+(`is_identity()`), onde a fatoração não existe, então ela **tem** de ficar
+parada — e ficou (9,4 → 9,25, dentro do ruído). Um ganho que aparecesse ali
+significaria que o `one_cell_per_pixel` deixou de ser o caminho antigo.
+
+O produto vê **1,16-1,17×** contra os **1,24×** do A/B do amostrador, e a
+diferença é honesta: o composite faz mais coisa além de amostrar (o `over`, os
+gates, o arredondamento), e a fatoração só toca a amostragem.
+
+---
+
+## §5.56 — O item 3 (a GPU do solver): os dois gatilhos MENSURÁVEIS do ADR-0146 fecharam (2026-08-01)
+
+O terceiro item da fila era *"a GPU do solver"* — o [ADR-0146](../architecture/decisions/0146-wet-paint-gpu-solver-is-a-second-model-not-a-faster-one.md),
+em proposta desde 2026-07-29 com quatro emendas, cada uma re-precificando-o para
+baixo. A regra do CLAUDE.md §0 corta nos dois sentidos: *quem move o número que
+tornava algo inalcançável tem de reconferir a nota* — e quem move o número que
+tornava algo **necessário** tem de reconferir a necessidade.
+
+### O erro de fixture que eu tinha de consertar primeiro
+
+A §5.55 publicou *"o composite é ~93% do custo da água a partir da razão 2"*
+sobre uma sonda que chama **`mark_dirty_full()`** antes de cada amostra — isto é,
+sobre uma composição de **tela inteira**, que o produto paga no nascimento da
+sessão e em ações autoradas, nunca por quadro.
+
+*Um custo sem o seu escopo é inatribuível.* É literalmente a regra que o
+`painter-dispatch` me custou um smoke três dias antes (§5.53) — e eu a apliquei
+a todo mundo menos à minha própria fixture.
+
+A sonda nova (`measure_the_composite_with_the_rect_it_actually_writes`) mede as
+DUAS colunas lado a lado, **cada uma com a área ao lado**:
+
+| razão | cheio | M px | ns/px | **passo** | M px | **ns/px** | composite ÷ água |
+|---|---|---|---|---|---|---|---|
+| 1:1 | 8,56 ms | 16,78 | 0,51 | **5,59 ms** | 9,01 | **0,62** | **26 %** |
+| 2:1 | 15,91 | 16,78 | 0,95 | **9,38** | 9,05 | **1,04** | **67 %** |
+| 4:1 | 15,43 | 16,78 | 0,92 | **9,01** | 9,14 | **0,99** | **87 %** |
+| 8:1 | 14,80 | 16,78 | 0,88 | **9,12** | 9,53 | **0,96** | **92 %** |
+
+⚠️ **O `ns/px` concorda entre as duas colunas** (0,51 × 0,62 · 0,95 × 1,04 · …)
+⇒ **o composite é limitado pela ÁREA**, que é a forma correta, e a diferença
+entre as colunas é o **retângulo**, não uma patologia. *Não há wave; há um
+retângulo.*
+
+⚠️ **E o divisor teve DUAS versões, porque a primeira saturou:** eu li a área do
+`take_preview_upload_bbox`, que só é preenchido pelo **dreno do frame** — as
+duas colunas diziam `16,78 M px` para composições cujos tempos diferiam 1,7×. O
+divisor honesto é o `dirty` do MOTOR convertido pela **porta do composite**
+(`cell_rect_to_px`), nunca por uma segunda aritmética minha.
+
+⚠️ **A conclusão da §5.55 sobrevive com o número certo:** o composite domina a
+partir da razão 2 (67 / 87 / 92 %), e na razão 1 ele é 26 %.
+
+### O que isso faz com o slider `Grid Size` — ele SATURA
+
+Somando as duas metades (o passo + o composite do retângulo real):
+
+| razão | passo | composite | **água/quadro** | ganho vs 1:1 |
+|---|---|---|---|---|
+| 1:1 | 15,59 | 5,59 | **21,18 ms** | — |
+| 2:1 | 4,52 | 9,38 | **13,90** | 1,52× |
+| 4:1 | 1,31 | 9,01 | **10,32** | **2,05×** |
+| 8:1 | 0,77 | 9,12 | **9,89** | 2,14× |
+
+**O solver sozinho cai 20×; a água cai 2,1×.** O `Grid Size` continua sendo a
+alavanca sancionada, mas o teto dela é o composite — e isso está agora medido
+em vez de suposto.
+
+### Os dois gatilhos mensuráveis do ADR-0146
+
+O ADR nomeia três condições que o RE-ABREM. Duas são mensuráveis e as duas
+fecharam:
+
+1. **"o smoke reprovar a razão 2-4 no DESENHO"** — moot: a tabela acima diz que
+   **ninguém precisa engrossar a grade por velocidade**. A razão 1 custa 21,18 ms
+   contra o nominal de **25 ms (40 Hz)** da SPEC. O slider vira decisão de LOOK.
+2. **"1:1 a 4096² sem concessão como requisito de produto"** — **morto por
+   medição**. O ADR foi escrito quando 1:1 custava **32,2 ms (31 Hz)**, abaixo do
+   nominal. Hoje o passo custa **15,59 ms (64 Hz)**, e **18,54 (54 Hz) com o K–M
+   ligado**. *A concessão que o gatilho existia para remover não existe mais.*
+3. **"uma feature nova pedir campos que a CPU não alcança"** — hipotética,
+   inalterada, e é a única que sobrevive.
+
+⚠️ **E o produto confirma pela própria porta:** o último smoke aprovado do Enio
+traz `busy 62 % away 16 % **sleep 22 %** | TAXA DA AGUA 38,5 Hz | poça 2,20 M |
+7,3 ns/célula` — e `7,3 × 2,20 M = 16,06 ms/passo`, que reconcilia com os 15,59
+da sonda. **A água não espera a CPU; ela espera o próprio relógio.** Uma GPU não
+entrega mais que o nominal, e o nominal já chegou.
+
+### A razão NOVA contra a Fase 2, que o ADR não tem
+
+O ADR lista dois obstáculos que nunca foram sobre o solver: o **stamp** (a
+silhueta do Painter por closure) e a **residência** dos 14 planos. A tabela
+acrescenta um terceiro, e ele é estrutural:
+
+⚠️ **O maior item por-quadro da água acima da razão 1 é o composite, e o
+composite escreve o `canvas_rgba` — o DOCUMENTO do artista.** Ele é da CPU por
+contrato: o undo por delta, o histórico por janela, o bake, o save e os ~25
+sítios de escrita de plano leem dali. Levar o composite ao device obrigaria a
+escolher entre *deixar o documento desatualizado* (o undo devolveria lixo) e
+*ler de volta por quadro* (a mesma banda, com uma sincronização a mais).
+
+⇒ A Fase 2 do ADR (*"os planos device-resident e o composite lendo do device"*)
+resolve a LEITURA do pigmento e **não** resolve a escrita, que é o lado caro.
+
+### Veredito
+
+**Item 3 não tem wave.** Não porque seja difícil — porque **todo número que ele
+atacaria já está abaixo do que domina**: o solver corre 1,6× acima do nominal na
+razão 1, o worker dorme 22 % na cena do smoke, e o que sobra do custo da água é
+um composite limitado pela área que escreve o documento do artista.
+
+O ADR-0146 recebe a **Emenda 5** com esta tabela. A recomendação não muda de
+sinal — ela deixa de ser *"não construir agora"* e passa a ser *"os dois
+gatilhos mensuráveis fecharam; sobra o hipotético"*.
+
+⚠️ **O que fica NOMEADO, não escondido:** o `ns/px` do composite **dobra** ao
+sair da razão 1 (0,62 → 1,04) — é a reconstrução smoothstep de quatro cantos
+contra a cópia direta. A fatoração da COLUNA (os dois índices de célula só mudam
+quando o pixel cruza uma fronteira; `ratio` pixels consecutivos compartilham os
+mesmos cantos) é a irmã exata da fatoração da LINHA que a §5.55 shipou, e vale
+talvez ~1,2× sobre 9 ms. **Não construída de propósito**: na razão 1 — o default
+— ela não muda um byte (caminho de identidade), e acima dela a água já corre com
+folga contra o nominal. *É estritamente menos trabalho e não compra nada que o
+artista veja*, que é o critério que a §5.11 fixou para não vender ruído como
+ganho.

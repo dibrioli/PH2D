@@ -367,6 +367,15 @@ pub(super) fn dispatch(
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
             painter_dirty_bbox = painter.take_preview_upload_bbox();
+            // O DIVISOR do `painter-dispatch` — a area publicada e' o que o
+            // gather + premultiply + upload adiante tem de mover, e sem ela o
+            // numero do log nao distingue um retangulo grande de um pequeno.
+            super::note_preview_px(painter_dirty_bbox.map_or_else(
+                || u64::from(w) * u64::from(h),
+                |(x0, y0, x1, y1)| {
+                    u64::from(x1.saturating_sub(x0)) * u64::from(y1.saturating_sub(y0))
+                },
+            ));
             // Diagnostic TRAP for the per-layer-colour "rectangle residue" (BUGS_painter.md #11 — OPEN,
             // intermittent). `PH2D_PREVIEW_DUMP=<dir>` writes each frame's CPU composite (the exact bytes
             // about to be uploaded, BEFORE any overlay) to `<dir>/preview_NNNN.png`, capped so a long

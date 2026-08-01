@@ -480,3 +480,5 @@ fn measure_whether_the_grid_slider_pays_for_a_big_brush() {
          dentro da entrega, e o veredito da sonda nao depende disso."
     );
 }
+
+mod measure_preview_drain; // o que o DISPATCH custa sem carimbo -- irma por assunto

@@ -4858,3 +4858,76 @@ isso 2,9× e o `4`, 4,5×.
 ⚠️ **O que o log deixa NOMEADO para depois:** na janela SEM carimbo o maior item
 é `painter-dispatch(cpu) = 11,80 ms` (era 6,90 na §5.47) — ele **não é o
 retângulo** e vive na shell, não na água.
+
+---
+
+## §5.53 — O `painter-dispatch` sem carimbo, e o divisor que faltava (2026-08-01)
+
+Fechada a frente do depósito (§5.52), o maior item que sobrou no log é a janela
+em que **ninguém está pintando**:
+
+```text
+[frame] total=16.21ms (~62 fps) | painter-dispatch(cpu)=11.80ms
+  tool-tick: media 3.89ms em 115/120 | stamps: 0 entregas
+  worker: busy 66% away 18% sleep 16% | TAXA DA AGUA 38.6 Hz
+  poca: 2.37 M celulas | 7.2 ns/celula
+```
+
+**11,80 ms de dispatch com zero carimbos**, e `ns/célula` constante (7,2 contra
+7,5 na janela que carimba) ⇒ **não é contenção**. Era **6,90 ms** quando a §5.47
+o nomeou: quase dobrou.
+
+⚠️ **E a linha não decidia nada** — `FRAME_PROF_DISPATCH_US` é **um balde só**. O
+split existe (`PH2D_PAINT_PERF` divide em `preview`/`panel`/`overlay`/`upload` e
+ainda por sub-chamada), mas o smoke não o liga; e as duas leituras possíveis
+pedem curas **opostas**: *um retângulo grande de vez em quando* (o alvo é a
+frequência) × *um retângulo grande sempre* (o alvo é o TAMANHO).
+
+### O que a medição headless diz — antes de gastar outro smoke
+
+`measure_what_the_preview_drain_costs_with_the_water_running`, reproduzindo a
+janela 3 (poça de ~2 M células a 4096², um tick por quadro, **zero eventos**):
+
+| condição | dreno ms | px publicados/quadro | células vivas | **razão** |
+|---|---|---|---|---|
+| poça viva | **0,001** | **8.263.228** | 2.068.506 | **3,99×** |
+| tela seca (controle) | 0,000 | 0 | 0 | — |
+
+**Duas coisas, e as duas importam:**
+
+1. **O dreno do TOOL é grátis** — `take_preview_arc` devolve um `Arc` por
+   refcount, não uma cópia. O custo não está lá.
+2. **Mas ele publica metade da tela por quadro.** 8,26 M px numa tela de 16,8 M,
+   **toda vez que a água anda**, para 2,07 M células de água viva ⇒ **o retângulo
+   pede 3,99×** o que a água tocou. A bbox de uma faixa diagonal é um múltiplo
+   da faixa — exatamente o que o censo do `live_span_cells` (§5.47) já nomeou
+   para o outro lado: *"a faixa NÃO é a bbox"*.
+
+⇒ O `painter-dispatch` é o *gather + premultiply + upload* dessa área, e o alvo
+provável é **a região publicada**, não a velocidade de quem a move.
+
+### A cura desta seção é o INSTRUMENTO, e é a mesma da §5.48
+
+A linha `[frame]` passa a imprimir o divisor:
+`painter-dispatch(cpu)=11.80ms (8.26 M px publicados em 57 quadros)`. A contagem
+mora **onde a bbox é resolvida** (`painter_bridge`, logo depois do
+`take_preview_upload_bbox`), senão o divisor descreveria quadros que o numerador
+não pagou. Dois arch-gates, **2 mutações, 2 sangram**, uma em cada.
+
+⚠️ **TRÊS defeitos de fixture nesta sonda, todos meus e todos já escritos neste
+doc:**
+
+- **sem VÃO entre quadros** os 90 "quadros" passam em microssegundos, o worker
+  nunca acorda (`IDLE_SLEEP` = 4 ms), `fresh` é sempre falso, o composite nunca
+  roda e a tabela saiu **0,000 ms / 0 px** — medindo uma água parada. É a lição
+  que a sonda irmã do carimbo **carrega escrita**, violada um arquivo adiante;
+- **dividi pelos 90 quadros do laço** e não pelos 57 que drenaram (a água corre
+  a ~38 Hz contra 60 de display), diluindo o retângulo em 40% — **o divisor
+  errado dentro do instrumento que existe para consertar divisores**;
+- e o controle de tela seca é o que prova que a tabela não é vácuo: **0 px, 0
+  quadros drenados**.
+
+**Aberto:** confirmar pela porta do produto (o próximo log já traz o divisor) e,
+se a área for mesmo o alvo, publicar por FAIXA em vez de bbox — o `row_lo`/
+`row_hi` que o `live_span_cells` percorre já é a faixa, e ela não custa nada a
+mais para quem já a mantém.

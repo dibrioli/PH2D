@@ -263,8 +263,30 @@ thread_local! {
     /// `stamps: media 105,82ms` não distingue *um re-stamp de forma inteira* de
     /// *cinquenta eventos incrementais*, que pedem curas opostas.
     static FRAME_PROF_STAMP_EV: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// **O DIVISOR DO `painter-dispatch`** — quantos PIXELS o dreno do preview
+    /// publicou na janela, e em quantos quadros.
+    ///
+    /// ⚠️ A mesma doença que o `FRAME_PROF_STAMP_EV` curou no carimbo, um
+    /// sistema adiante: `painter-dispatch=11,80ms` **sem carimbo nenhum** não
+    /// distingue *um retângulo grande uma vez* de *um retângulo pequeno sempre*,
+    /// e o custo é dominado por gather + premultiply + upload da área
+    /// publicada. Medido headless (doc 28 §5.53): com a água correndo o dreno
+    /// publica **8,26 M px por quadro** numa tela de 16,8 M — metade dela — para
+    /// **2,07 M células** de água viva, ou seja o retângulo pede **3,99×**.
+    static FRAME_PROF_PREVIEW_PX: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_PREVIEW_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// `paint_hero_screen` µs (panel/chrome Vello encode — includes the Paper preview).
     static FRAME_PROF_HERO_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// O dreno do preview publicou `px` pixels neste quadro — o divisor do
+/// `painter-dispatch`. Chamado de [`painter_bridge`], no sítio onde a bbox é
+/// resolvida; no-op sem o `PH2D_FLUID_PROFILE`.
+pub(crate) fn note_preview_px(px: u64) {
+    if frame_prof_on() {
+        FRAME_PROF_PREVIEW_PX.with(|c| c.set(c.get() + px));
+        FRAME_PROF_PREVIEW_N.with(|c| c.set(c.get() + 1));
+    }
 }
 
 /// Quiet frames after the last resize event before the present mode saved by the fluid-drag override is
@@ -7676,11 +7698,21 @@ impl crate::App {
                         .map_or(0.0, |t0| (now - t0).as_secs_f64() * 1000.0)
                 });
                 let pct = |x: f64| if span > 0.0 { 100.0 * x / span } else { 0.0 };
+                // O divisor do dispatch: a AREA que o dreno publicou, por quadro
+                // que de fato drenou (a agua corre a ~38 Hz contra 60 de display,
+                // entao dividir pelos 120 do laco diluiria o retangulo).
+                let prev_n = FRAME_PROF_PREVIEW_N.with(std::cell::Cell::take);
+                let prev_px = FRAME_PROF_PREVIEW_PX.with(std::cell::Cell::take);
+                let prev_mpx = if prev_n > 0 {
+                    prev_px as f64 / f64::from(prev_n) / 1.0e6
+                } else {
+                    0.0
+                };
                 let per = |sum: f64, n: u64| if n > 0 { sum / n as f64 } else { 0.0 };
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
                      | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
-                     | hero-paint={hero_ms:.2}ms\n\
+                     ({prev_mpx:.2} M px publicados em {prev_n} quadros) | hero-paint={hero_ms:.2}ms\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\

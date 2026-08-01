@@ -4603,3 +4603,76 @@ re-baseando; o CAS impede a contagem dupla.
 log do produto e nenhum por uma suspeita minha** (a janela assumida · o divisor
 ausente do carimbo · o intervalo que atravessa a janela). *Um instrumento errado
 não é neutro: ele responde com confiança à pergunta errada.*
+
+---
+
+## §5.51 — O teto de raio do MODELO de referência era o teto do PRODUTO (2026-08-01)
+
+Report do Enio: *"todos esses testes tenho feito com raio 300, mas na prática o
+app limita o tamanho para aproximadamente 200"*.
+
+⚠️ **Medido pela porta do artista ANTES de tocar em código — e é pior que o
+reportado:**
+
+| meio | pedido | largura real | raio efetivo | razão |
+|---|---|---|---|---|
+| Digital | 100 → 400 px | 190 → 760 | 95 → 380 | **0,95×** em toda a faixa |
+| **WetPaint** | 100 px | 119 | 59,5 | 0,59× |
+| **WetPaint** | 200 px | **119** | 59,5 | **0,30×** |
+| **WetPaint** | 300 px | **119** | 59,5 | **0,20×** |
+| **WetPaint** | 400 px | **119** | 59,5 | **0,15×** |
+
+O slider promete `BRUSH_SIZE_MAX_PX = 512` e o traço **saturava em 119 px de
+largura** a partir do raio 100 — e **em SILÊNCIO**: nada na ferramenta dizia
+que o pincel tinha parado de crescer.
+
+**A causa:** `TRAIL_HALF = 61 // ceil(35 + 4*6) + 2`. O **35 é o teto de raio do
+modelo JS de referência**, e ele era o teto deste produto. ⚠️ É a forma exata
+que o **CLAUDE.md §0** nomeia — *nunca deixe o fallback definir o produto* — e o
+§0 também diz o que fazer: **medir, e escrever o número que a medição deu**.
+
+### §5.51.1 — A janela é função do PINCEL, e duas propriedades decidem o desenho
+
+`Trail::fit_to(radius)` aplica a MESMA lei do `TRAIL_HALF` com o raio do pincel
+no lugar do 35, e o `TRAIL_HALF` vira o **PISO**.
+
+- ⚠️ **Cresce só com `dab_count == 0`**, onde a janela está vazia por construção
+  (o `start_stroke` e todo transfer a zeram). Crescer no meio de uma janela
+  invalidaria as coordenadas locais do que já está acumulado.
+- ⚠️ **Só CRESCE, nunca encolhe.** Encolher exigiria decidir o que fazer com a
+  tinta que já está lá, para devolver memória no meio de um traço — a troca
+  errada. Um traço novo com pincel pequeno reusa a janela grande e paga só a
+  varredura, que o `lx0..lx1` já limita ao que foi tocado.
+
+⚠️ **E o PISO é o que mantém o fingerprint do ADR-0134 byte-idêntico POR
+CONSTRUÇÃO, não por promessa:** um pincel dentro do teto do modelo produz a
+janela EXATA de antes. **3/3 no fingerprint, 9/9 na aceitação.**
+
+### §5.51.2 — O resultado, e o preço
+
+| pedido | antes | depois | custo/entrega antes → depois |
+|---|---|---|---|
+| 100 px | 119 px | **153** | 1,861 → 2,343 ms |
+| 200 px | 119 | **338** | 3,343 → 4,243 |
+| 300 px | 119 | **514** | 4,373 → 5,747 |
+| 400 px | 119 | **664** | — |
+
+**+26-31% de custo por um pincel 2,8× mais largo no raio 200** (8× a área). A
+razão do WetPaint fica em 0,77-0,86× contra os 0,95 do Digital — a diferença é
+a **silhueta de cerdas** ser mais macia no aro, não um cap: a curva é monotônica.
+
+⚠️ **Memória, nomeada:** o trail são 6 planos de `f32` em `size²`, alocados
+**lazy** por lane. Raio 400 com o spacing de produto dá `half ≈ 482` ⇒ ~22 MB
+por lane; com Symmetry a 8 lanes isso multiplica, e o `Grid Size` continua sendo
+a resposta que já existe.
+
+### §5.51.3 — O gate não pode espelhar a regra que ele julga
+
+O oráculo é o **RETÂNGULO TOCADO** (`touched_extent_for_measure`), que não
+conhece constante nenhuma — um gate que comparasse `half` com a fórmula estaria
+verificando aritmética, não comportamento. A metade oposta (o piso) usa
+`window_half_for_measure`, e é ela que prova a byte-identidade.
+
+**A mutação (o cap de volta) sangra o primeiro e deixa o segundo VERDE** — que é
+exatamente o par certo: um gate que morresse nos dois estaria medindo a mesma
+coisa duas vezes.

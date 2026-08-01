@@ -418,7 +418,9 @@ fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
         stroke.dab(
             &mut mesh,
             &brush,
-            &Dab::at([x, 0.0, 0.95], brush.radius),
+            // Olhando de +Z para a calota: a pegada inteira é frontal, que é o
+            // caso que esta cena descreve.
+            &Dab::at([x, 0.0, 0.95], brush.radius, [0.0, 0.0, -1.0]),
             Symmetry::default(),
         );
         assert!(

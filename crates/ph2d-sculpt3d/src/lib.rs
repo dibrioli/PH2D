@@ -14,7 +14,8 @@
 //! let brush = Brush { verb: Verb::Draw, radius: 0.3, ..Brush::default() };
 //! let mut stroke = SculptStroke::default();
 //! stroke.begin(&mesh);                                        // congela o `pre`
-//! stroke.dab(&mut mesh, &brush, &Dab::at(hit_point, 0.3), Symmetry::MIRROR_X);
+//! let eye = [0.0, 0.0, -1.0];  // o `dir` do raio que produziu o acerto
+//! stroke.dab(&mut mesh, &brush, &Dab::at(hit_point, 0.3, eye), Symmetry::MIRROR_X);
 //! ```
 //!
 //! # Sobre a "porta única" que o `docs/3D/03.5` promete

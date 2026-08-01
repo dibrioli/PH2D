@@ -51,7 +51,7 @@ fn the_crease_cuts_a_narrower_groove_than_an_inverted_draw_of_the_same_reach() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.0, 0.0, 1.0], radius),
+            &dab_at([0.0, 0.0, 1.0], radius),
             Symmetry::default(),
         );
 
@@ -126,7 +126,7 @@ fn the_crease_exponent_eats_the_mask_but_not_the_strength() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.0, 0.0, 1.0], radius),
+            &dab_at([0.0, 0.0, 1.0], radius),
             Symmetry::default(),
         );
         mesh.positions()

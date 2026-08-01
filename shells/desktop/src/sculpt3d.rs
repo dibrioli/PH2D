@@ -253,7 +253,11 @@ impl Sculpt3dScene {
         self.stroke.dab(
             &mut self.mesh,
             &brush,
-            &Dab::at(hit.point, brush.radius),
+            // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
+            // e não uma direção derivada da câmera de novo: duas respostas para
+            // *"de onde se está olhando"* divergem no frame em que a câmera se
+            // move entre o pick e o dab.
+            &Dab::at(hit.point, brush.radius, ray.dir()),
             self.symmetry,
         );
         Self::mesh_changed(

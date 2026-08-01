@@ -96,7 +96,7 @@ fn measure(mesh: &mut Mesh, radius_frac: f32, dabs: usize) -> Row {
     let mut affected = 0usize;
     for c in &centers {
         stroke.begin(mesh);
-        let dab = Dab::at(*c, radius);
+        let dab = Dab::at(*c, radius, eye_towards(*c));
         let t = Instant::now();
         let moved = stroke.dab(mesh, &brush, &dab, Symmetry::default());
         full.push(t.elapsed().as_secs_f64() * 1e3);
@@ -207,7 +207,7 @@ fn measure_brush_kernel() {
             let n = stroke.dab(
                 &mut mesh,
                 &probe_brush(Verb::Draw, r),
-                &Dab::at(probe_at, r),
+                &Dab::at(probe_at, r, eye_towards(probe_at)),
                 Symmetry::default(),
             );
             let err = (n as f32 - 30_000.0).abs();
@@ -232,4 +232,15 @@ fn measure_brush_kernel() {
         "10x a malha custou {growth:.2}x com a MESMA pegada — isso é assinatura \
          de varredura de malha, e é o que mata a malha grande"
     );
+}
+
+/// O olho de uma sonda: de fora, olhando direto para o dab — o mesmo caso que a
+/// suíte de gates usa, para o conjunto frontal não mudar o que se está medindo.
+fn eye_towards(c: [f32; 3]) -> [f32; 3] {
+    let l = (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]).sqrt();
+    if l > 1e-6 {
+        [-c[0] / l, -c[1] / l, -c[2] / l]
+    } else {
+        [0.0, 0.0, -1.0]
+    }
 }

@@ -13,6 +13,25 @@ fn sphere() -> Mesh {
     shapes::uv_sphere(32, 48, 1.0)
 }
 
+/// Um dab visto **de fora, olhando direto para o centro dele** — o caso normal
+/// de toda fixture desta suíte.
+///
+/// ⚠️ Ele existe para o conjunto FRONTAL não mudar o sentido de nenhum gate
+/// escrito antes dele: com o olho apontando para o centro, a calota inteira sob
+/// o pincel é frontal, que é a situação que todas estas fixtures descrevem. Um
+/// olho fixo (`[0,0,-1]`) faria a pegada de um dab fora do eixo ficar
+/// parcialmente de costas, e o culling passaria a mexer em gates que não são
+/// sobre ele.
+fn dab_at(center: [f32; 3], radius: f32) -> Dab {
+    let l = (center[0] * center[0] + center[1] * center[1] + center[2] * center[2]).sqrt();
+    let eye = if l > 1e-6 {
+        [-center[0] / l, -center[1] / l, -center[2] / l]
+    } else {
+        [0.0, 0.0, -1.0]
+    };
+    Dab::at(center, radius, eye)
+}
+
 fn snapshot(mesh: &Mesh) -> Vec<[f32; 3]> {
     mesh.positions().to_vec()
 }
@@ -44,7 +63,7 @@ fn sweep(mesh: &mut Mesh, brush: &Brush, a: [f32; 3], b: [f32; 3], samples: usiz
             a[1] + (b[1] - a[1]) * u,
             a[2] + (b[2] - a[2]) * u,
         ];
-        stroke.dab(mesh, brush, &Dab::at(c, brush.radius), Symmetry::default());
+        stroke.dab(mesh, brush, &dab_at(c, brush.radius), Symmetry::default());
     }
 }
 
@@ -164,7 +183,7 @@ fn the_envelope_is_order_free_where_the_footprint_cannot_move() {
                     strength: 0.9,
                     ..Brush::default()
                 },
-                &Dab::at(path[i], radii[i]),
+                &dab_at(path[i], radii[i]),
                 Symmetry::default(),
             );
         }
@@ -196,12 +215,12 @@ fn the_smooth_target_is_the_frozen_neighbourhood_not_the_moved_one() {
     let base = snapshot(&mesh);
     let mut st = SculptStroke::default();
     st.begin(&mesh);
-    st.dab(&mut mesh, &brush, &Dab::at(c1, r), Symmetry::default());
+    st.dab(&mut mesh, &brush, &dab_at(c1, r), Symmetry::default());
     // `BTreeSet` e não `HashSet`: a lint estrutural do repo, e aqui ela também
     // torna a varredura do gate reproduzível na mesma ordem.
     let moved_by_first: std::collections::BTreeSet<u32> = st.last_moved().iter().copied().collect();
     assert!(!moved_by_first.is_empty(), "o 1º dab não moveu nada");
-    st.dab(&mut mesh, &brush, &Dab::at(c2, r), Symmetry::default());
+    st.dab(&mut mesh, &brush, &dab_at(c2, r), Symmetry::default());
 
     // Um vértice que o SEGUNDO dab venceu e cujo anel o PRIMEIRO já tinha
     // mexido: é o único lugar onde "congelado" e "vivo" dão respostas
@@ -253,7 +272,7 @@ fn re_stamping_the_same_dab_list_changes_nothing() {
     let mut mesh = sphere();
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
-    let dab = Dab::at([0.0, 0.0, 1.0], brush.radius);
+    let dab = dab_at([0.0, 0.0, 1.0], brush.radius);
     stroke.dab(&mut mesh, &brush, &dab, Symmetry::default());
     let once = snapshot(&mesh);
     for _ in 0..12 {
@@ -282,7 +301,7 @@ fn a_new_stroke_forgets_the_previous_envelope_and_builds_on_top() {
     };
     let mut mesh = sphere();
     let base = snapshot(&mesh);
-    let dab = Dab::at([0.0, 0.0, 1.0], brush.radius);
+    let dab = dab_at([0.0, 0.0, 1.0], brush.radius);
     let mut stroke = SculptStroke::default();
 
     stroke.begin(&mesh);
@@ -319,7 +338,7 @@ fn a_masked_vertex_is_not_moved_by_any_verb() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.0, 0.0, 1.0], b.radius),
+            &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),
         );
         assert_eq!(
@@ -347,7 +366,7 @@ fn every_verb_inherits_symmetry_from_the_one_place_it_is_expanded() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.6, 0.0, 0.8], b.radius),
+            &dab_at([0.6, 0.0, 0.8], b.radius),
             Symmetry::MIRROR_X,
         );
         let touched = s.touched().len();
@@ -389,7 +408,7 @@ fn the_undo_window_is_the_touched_list_and_restoring_the_base_is_exact() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([x, 0.0, 0.95], b.radius),
+            &dab_at([x, 0.0, 0.95], b.radius),
             Symmetry::default(),
         );
     }
@@ -414,12 +433,11 @@ fn a_dab_that_touches_nothing_is_a_no_op() {
     let mut s = SculptStroke::default();
     s.begin(&mesh);
     for dab in [
-        Dab::at([9.0, 9.0, 9.0], 0.2),
-        Dab::at([0.0, 0.0, 1.0], 0.0),
+        dab_at([9.0, 9.0, 9.0], 0.2),
+        dab_at([0.0, 0.0, 1.0], 0.0),
         Dab {
-            center: [0.0, 0.0, 1.0],
-            radius: 0.2,
             pressure: 0.0,
+            ..dab_at([0.0, 0.0, 1.0], 0.2)
         },
     ] {
         assert_eq!(s.dab(&mut mesh, &b, &dab, Symmetry::default()), 0);
@@ -445,7 +463,7 @@ fn the_normals_after_a_stroke_are_what_a_full_rebuild_would_give() {
         s.dab(
             &mut mesh,
             &b,
-            &Dab::at([x, 0.1, 0.9], b.radius),
+            &dab_at([x, 0.1, 0.9], b.radius),
             Symmetry::MIRROR_X,
         );
     }
@@ -468,3 +486,7 @@ mod verbs;
 /// O Crease, que tem fixtures próprias e caras — ver o cabeçalho dele.
 #[path = "verb_crease_tests.rs"]
 mod verb_crease;
+
+/// O conjunto FRONTAL, que tem fixtures de silhueta — ver o cabeçalho dele.
+#[path = "verb_culling_tests.rs"]
+mod verb_culling;

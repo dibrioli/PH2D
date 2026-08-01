@@ -34,7 +34,7 @@ fn the_plane_offset_lifts_the_plane_the_verbs_project_onto() {
                 plane_offset: offset,
                 ..b
             },
-            &Dab::at(c, b.radius),
+            &dab_at(c, b.radius),
             Symmetry::default(),
         );
         // A altura do platô: o vértice mais alto da calota achatada.
@@ -77,7 +77,7 @@ fn draw_lifts_along_one_direction_and_inflate_along_each_vertex_own() {
         stroke.dab(
             &mut mesh,
             &b,
-            &Dab::at([0.0, 0.0, 1.0], b.radius),
+            &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),
         );
         // Cosseno entre o deslocamento de cada vértice e o do polo: 1 = paralelo.
@@ -122,7 +122,7 @@ fn invert_digs_where_the_verb_lifted() {
         strength: 1.0,
         ..Brush::default()
     };
-    let dab = Dab::at([0.0, 0.0, 1.0], b.radius);
+    let dab = dab_at([0.0, 0.0, 1.0], b.radius);
     let mut s = SculptStroke::default();
     s.begin(&up);
     s.dab(&mut up, &b, &dab, Symmetry::default());
@@ -174,7 +174,7 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         s.dab(
             &mut mesh,
             brush,
-            &Dab::at(centre, brush.radius),
+            &dab_at(centre, brush.radius),
             Symmetry::default(),
         );
         let n = mesh.vert_count();
@@ -244,7 +244,7 @@ fn smooth_flattens_a_spike_and_sharpen_deepens_it() {
     s.dab(
         &mut mesh,
         &poke,
-        &Dab::at([0.0, 0.0, 1.0], poke.radius),
+        &dab_at([0.0, 0.0, 1.0], poke.radius),
         Symmetry::default(),
     );
     let (top, _) = mesh
@@ -271,7 +271,7 @@ fn smooth_flattens_a_spike_and_sharpen_deepens_it() {
         st.dab(
             m,
             &Brush { verb, ..b },
-            &Dab::at([0.0, 0.0, 1.0], b.radius),
+            &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),
         );
     }
@@ -322,7 +322,7 @@ fn flatten_brings_the_footprint_onto_one_plane() {
     };
     let mut s = SculptStroke::default();
     s.begin(&mesh);
-    s.dab(&mut mesh, &b, &Dab::at(c, b.radius), Symmetry::default());
+    s.dab(&mut mesh, &b, &dab_at(c, b.radius), Symmetry::default());
     let after = flatness(&mesh, c, 0.4);
     assert!(
         after < before * 0.05,
@@ -340,7 +340,7 @@ fn flatten_brings_the_footprint_onto_one_plane() {
             falloff: Falloff::Smooth,
             ..b
         },
-        &Dab::at(c, b.radius),
+        &dab_at(c, b.radius),
         Symmetry::default(),
     );
     let soft_after = flatness(&soft, c, 0.4);
@@ -367,7 +367,7 @@ fn fill_only_raises_and_scrape_only_lowers() {
     s.dab(
         &mut bumpy,
         &poke,
-        &Dab::at([0.0, 0.0, 1.0], poke.radius),
+        &dab_at([0.0, 0.0, 1.0], poke.radius),
         Symmetry::default(),
     );
     let dip = Brush {
@@ -379,7 +379,7 @@ fn fill_only_raises_and_scrape_only_lowers() {
     s2.dab(
         &mut bumpy,
         &dip,
-        &Dab::at([0.25, 0.0, 0.97], dip.radius),
+        &dab_at([0.25, 0.0, 0.97], dip.radius),
         Symmetry::default(),
     );
 
@@ -406,7 +406,7 @@ fn fill_only_raises_and_scrape_only_lowers() {
         st.dab(
             &mut mesh,
             &Brush { verb, ..b },
-            &Dab::at(c, b.radius),
+            &dab_at(c, b.radius),
             Symmetry::default(),
         );
         for (p, q) in base.iter().zip(mesh.positions()) {
@@ -461,7 +461,7 @@ fn clay_adds_material_where_flatten_conserves_it() {
         s.dab(
             &mut mesh,
             &Brush { verb, ..b },
-            &Dab::at(c, b.radius),
+            &dab_at(c, b.radius),
             Symmetry::default(),
         );
         out.push(volume_proxy(&mesh, &base));
@@ -490,7 +490,7 @@ fn pinch_pulls_along_the_surface_and_does_not_secretly_flatten() {
     };
     let mut s = SculptStroke::default();
     s.begin(&mesh);
-    s.dab(&mut mesh, &b, &Dab::at(c, b.radius), Symmetry::default());
+    s.dab(&mut mesh, &b, &dab_at(c, b.radius), Symmetry::default());
 
     // ⚠️ A razão é POR VÉRTICE. Comparar o maior desvio normal com o maior
     // deslocamento lateral compara dois vértices DIFERENTES, e uma mutação que
@@ -532,7 +532,7 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
     s.dab(
         &mut mesh,
         &b,
-        &Dab::at([0.0, 0.0, 1.0], b.radius),
+        &dab_at([0.0, 0.0, 1.0], b.radius),
         Symmetry::default(),
     );
     assert_eq!(base, snapshot(&mesh), "o Mask moveu geometria");
@@ -552,7 +552,7 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
                 falloff,
                 ..b
             },
-            &Dab::at([0.0, 0.0, 1.0], b.radius),
+            &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),
         );
         m.masks().unwrap().iter().copied().fold(0.0f32, f32::max)

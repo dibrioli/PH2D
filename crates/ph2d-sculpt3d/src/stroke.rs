@@ -50,16 +50,31 @@ pub struct Dab {
     pub radius: f32,
     /// Pressão do dispositivo em `[0, 1]`. Sem tablet, `1.0`.
     pub pressure: f32,
+    /// A direção do OLHO no instante do pick — do olho para a superfície,
+    /// unitária. É o `dir` do raio que produziu o `center`.
+    ///
+    /// ⚠️ **Ela é do DAB e não do pincel**, e a razão é a simetria: no original
+    /// o espelho é aplicado ao raio **antes** de a direção ser computada
+    /// (`Picking.js:211-223`), então a cópia espelhada tem o olho espelhado
+    /// junto. Guardá-la no `Brush` daria a MESMA direção às duas cópias, e a
+    /// metade espelhada passaria a ser ajustada por um olho que não é o dela.
+    ///
+    /// ⚠️ **É argumento obrigatório do [`Dab::at`], nunca um builder opcional.**
+    /// A lição é do `with_arc_len` do Painter 2D: um campo opcional de dab
+    /// chegava em 2 de 7 rotas, e nas outras 5 a feature simplesmente não
+    /// acontecia — em silêncio, com o painel dizendo que sim.
+    pub eye: [f32; 3],
 }
 
 impl Dab {
-    /// Um dab de pressão cheia.
+    /// Um dab de pressão cheia, visto de `eye`.
     #[must_use]
-    pub fn at(center: [f32; 3], radius: f32) -> Self {
+    pub fn at(center: [f32; 3], radius: f32, eye: [f32; 3]) -> Self {
         Self {
             center,
             radius,
             pressure: 1.0,
+            eye,
         }
     }
 }
@@ -330,6 +345,37 @@ impl SculptStroke {
     }
 
     fn fit_plane(&self, brush: &Brush, dab: &Dab) -> PlaneFit {
+        // ⚠️ **O conjunto FRONTAL, e é a metade que o original faz
+        // INCONDICIONALMENTE.** O `getFrontVertices` (`SculptBase.js:206-221`)
+        // filtra por `n · eyeDir <= 0`, e o `Brush.js:32-34` / `Flatten.js:25-27`
+        // o consomem sem perguntar a ninguém — é ele que decide a DIREÇÃO do
+        // Draw e o PLANO do Flatten.
+        //
+        // ⚠️ **A outra metade do culling — filtrar o que se MOVE — NÃO entra.**
+        // Ela é um checkbox do usuário, `_culling = false` por default em dez
+        // tools (`GuiSculptingTools.js:62`), e portá-la ligada seria divergir
+        // com a ferramenta em silêncio (livro-razão §A).
+        //
+        // Sem isto, um dab perto da silhueta ajusta o plano com vértices que
+        // olham para o OUTRO lado, e o Draw empurra numa direção que o artista
+        // não vê.
+        let mut fit = self.fit_plane_over(brush, dab, true);
+        if fit.is_none() {
+            // Pegada inteiramente de costas (um dab que pegou só o outro lado da
+            // silhueta): sem frontais não há o que cullar, e recusar aqui seria
+            // devolver um plano NaN. A pegada inteira é a melhor resposta que
+            // existe, e é a que havia antes desta fatia.
+            fit = self.fit_plane_over(brush, dab, false);
+        }
+        fit.unwrap_or(PlaneFit {
+            point: dab.center,
+            normal: [0.0, 1.0, 0.0],
+        })
+    }
+
+    /// O ajuste sobre a pegada, opcionalmente só nos vértices que olham para o
+    /// olho. `None` = ninguém pesou (conjunto vazio, ou todo peso zero).
+    fn fit_plane_over(&self, brush: &Brush, dab: &Dab, front_only: bool) -> Option<PlaneFit> {
         let inv_r = 1.0 / dab.radius;
         let mut acc_p = [0.0f64; 3];
         let mut acc_n = [0.0f64; 3];
@@ -338,6 +384,9 @@ impl SculptStroke {
             let s = self.slot[v as usize] as usize;
             let p = self.base_pos[s];
             let n = self.base_nrm[s];
+            if front_only && n[0] * dab.eye[0] + n[1] * dab.eye[1] + n[2] * dab.eye[2] > 0.0 {
+                continue;
+            }
             let d = [
                 p[0] - dab.center[0],
                 p[1] - dab.center[1],
@@ -359,12 +408,9 @@ impl SculptStroke {
         }
         if sum <= 0.0 {
             // Pegada inteira na borda do falloff (Sharper com raio grande, por
-            // exemplo). O centro do dab e a normal dele são a melhor resposta
-            // disponível, e ela nunca é usada para mais que um plano degenerado.
-            return PlaneFit {
-                point: dab.center,
-                normal: [0.0, 1.0, 0.0],
-            };
+            // exemplo) — ou, com o filtro ligado, nenhum vértice frontal. Quem
+            // chama decide o que fazer com o `None`.
+            return None;
         }
         let inv = 1.0 / sum;
         let mut point = [0.0f32; 3];
@@ -389,7 +435,7 @@ impl SculptStroke {
         for k in 0..3 {
             point[k] += normal[k] * off;
         }
-        PlaneFit { point, normal }
+        Some(PlaneFit { point, normal })
     }
 
     #[allow(clippy::too_many_arguments)]

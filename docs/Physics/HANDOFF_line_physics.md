@@ -8248,3 +8248,98 @@ solver. `PROJECT_SCHEMA` **48**, registro **24**, nenhum componente, nenhum id,
 nenhum ADR, zero `Cargo.toml`. Sem cena: o gesto vive na cena `=72` (selecionar a
 jangada composta e virar o toggle), e uma cena própria para um número de campo
 seria cena que não se julga de olho.
+
+---
+
+## W-CompoundContact — um corpo COMPOSTO toca UMA vez (2026-08-01, sem cena)
+
+A **quarta** instância da premissa que a W-Compound tornou falsa, e a única em que a
+frase estava escrita no repo como uma **LEI**, no doc do módulo de contatos:
+
+> *"uma caixa deitada tem duas quinas; relatar cada uma responde **quantas quinas**,
+> fato sobre tesselação, não sobre a cena — dois objetos se tocando é UM evento"*
+
+Ela valia para **pontos de contato** e quebrou para **FORMAS**. `contact_pairs()`
+itera pares de COLLIDER, e enquanto um corpo tinha exatamente um, *"uma entrada por
+par de collider"* e *"uma entrada por par de corpos"* eram a mesma frase.
+
+### A medição, com CONTROLE
+
+Duas jangadas de **silhueta e massa idênticas** (`2,40 × 0,50`, massa `1,200000`),
+uma de UMA caixa e outra de DUAS, pousadas no MESMO chão
+(`tests/measure_compound_contact.rs`):
+
+| jangada | entradas | `contact_count` | impulso | impacto |
+|---|---|---|---|---|
+| controle (uma forma) | **1** | 1 | 0,061313 | 0,061313 |
+| **composta** (duas formas) | **2** | **2** | 0,030677 · 0,030636 | **0,030677** |
+
+Três consequências, e nenhuma delas parece quebrada na tela:
+
+- o overlay desenha **duas cruzes de meia-carga** onde houve um toque — e o braço da
+  cruz *significa carga*, então o artista lê *"dois toques leves"*;
+- `contact_count` responde **quantas pranchas**, que é um fato sobre como o artista
+  decompôs o corpo;
+- e o **`impact`** — o número que um som de batida dimensiona (W-ImpactForce) — lia
+  **metade**, porque o `max` do laço de sub-passos era tomado por par de COLLIDER.
+
+### O desenho
+
+A fusão é do MÓDULO, e é feita **uma vez**: `ActivePair` (par de collider já
+resolvido a corpos) + `collect_active` (varre e ordena) + `for_each_body_pair` (a
+fusão: soma de impulso, ponto mais PROFUNDO). Os dois leitores — o `contact_reports`
+da carga e o `accumulate_peaks` do pico — passam pela mesma porta, exatamente como já
+passavam pelo `active_pair`; escrever a fusão só num deles teria posto a divergência
+um nível acima em vez de removê-la, e o sintoma seria o `impulse` certo com o
+`impact` pela metade.
+
+⚠️ **O `max` do pico é sobre SUB-PASSOS, da carga SOMADA** — nunca sobre as formas.
+
+⚠️ **A ordem da soma é FIXA** (`(par de corpos, par de colliders)`), a mesma cautela
+HR-5 do `shapes::sorted_shapes` — mas **medida: tirar o desempate deixa todo gate
+verde**, e isso está escrito no código em vez de escondido. Com dois somandos a adição
+IEEE-754 é **comutativa** (o que falha é a *associatividade*), e num slice desse
+tamanho o `sort_unstable` preserva a entrada de qualquer jeito. O que o desempate
+compra é a ordem ser **declarada** em vez de observada — ela vira load-bearing na
+terceira forma do mesmo par. *Documentado, não gateado* (precedente do CAS no
+ADR-0145).
+
+### Números
+
+**`physics_ecs_c9` byte-idêntico** (`16ba80e8…`, 99 corpos, debug ≡ release) — contato
+é **readout**, o solver não o lê. **Nenhum schema** (`PROJECT_SCHEMA` fica em **48**) ·
+registro **fica em 24** · **nenhum componente, nenhum id, nenhum ADR, zero
+`Cargo.toml`**.
+
+### Gates e as duas lições
+
+7 na crate ECS (`tests/compound_contact.rs`) + 1 no overlay. **5 mutações, 4 sangram.**
+
+- **M1** (uma entrada por par de collider, o mundo pré-wave) ⇒ **5** gates vermelhos, e
+  o controle de uma forma fica **VERDE** — a forma certa, porque o defeito não toca
+  corpo de uma forma só.
+- **M2** (`max` sobre as formas em vez da soma) ⇒ sangra exatamente os **dois** gates
+  do número: a carga e o impacto.
+- **M3** (o ponto é o da primeira forma) ⇒ ver abaixo.
+- **M4** (sem ordenação) ⇒ sangra um gate **PRÉ-EXISTENTE** do wrapper
+  (`the_bottom_of_a_stack_carries_more_load_than_the_top`, que indexa `[0]` esperando o
+  contato do chão primeiro): a ordenação era load-bearing e já tinha dono.
+- **M5** (sem o desempate `seq`) ⇒ **sobrevive**, por álgebra, documentado acima.
+
+⚠️ **A fixture do M3 nasceu SEM O FENÔMENO, e a mutação a pegou.** A tentativa óbvia —
+largar a composta numa rampa esperando que uma peça afunde mais — foi **medida**: a
+jangada escorrega e descansa numa ponta só (`ponto x = 1,8632`, **um** par ativo), a
+fusão recebe um elemento e o desempate nunca roda; o gate passava com ele **desligado**.
+A fixture nova **AUTORA as duas profundidades** (gravidade zero, a jangada posta dentro
+do chão, a peça 3 mm mais funda), e ali o M3 sangra com `−0,600` — o lado do corpo.
+
+⚠️ **E um gate e2e de overlay foi escrito, avaliado e NÃO shipado:** o overlay desenha
+**um caminho por entrada**, sem lookup nenhum, então ele afirmaria a composição de duas
+coisas já pinadas e **não poderia falhar pelo motivo que alega** (o oposto do e2e da
+W-PartSensor, onde a composição não era implicada). No lugar dele ficou a metade que É
+falsificável, no nível certo: `two_half_load_marks_are_not_one_full_load_mark`, que
+mede o braço DESENHADO das duas leituras.
+
+**Sem cena:** a `=72` já monta a jangada composta sobre a poça, e a tecla `B` mostra as
+marcas de contato. Uma cena própria para *"uma cruz em vez de duas"* seria a mesma
+jangada com outra mensagem.

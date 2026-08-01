@@ -35,7 +35,9 @@
 //! números da W1 foram **re-medidos** em vez de herdados.
 
 mod brush;
+mod spacing;
 mod stroke;
 
 pub use brush::{Brush, Falloff, REACH_FRACTION, Symmetry, Verb};
+pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

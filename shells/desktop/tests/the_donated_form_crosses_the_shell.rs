@@ -17,6 +17,17 @@
 const BRIDGE: &str = include_str!("../src/render_loop/painter_bridge.rs");
 const LOOP: &str = include_str!("../src/render_loop/mod.rs");
 const SCENE: &str = include_str!("../src/sculpt3d.rs");
+/// ⚠️ **O GESTO mora num arquivo irmão** (`sculpt3d_input.rs`), e as portas que
+/// este gate interroga moram lá. A separação é de responsabilidade — *o que a
+/// cena É* contra *o que a mão FAZ* — e ela nasceu de um teto de LOC, então pode
+/// se mover de novo: por isso as buscas usam [`scene_and_gesture`] em vez de
+/// nomear o arquivo de cada função.
+const INPUT: &str = include_str!("../src/sculpt3d_input.rs");
+
+/// A cena e o gesto como um só texto — ver [`INPUT`].
+fn scene_and_gesture() -> String {
+    format!("{SCENE}\n{INPUT}")
+}
 const DONATION: &str = include_str!("../src/sculpt3d_donation.rs");
 
 /// **As DUAS metades do canal existem no bridge.**
@@ -96,12 +107,13 @@ fn the_frame_asks_the_module_to_donate() {
 /// entrada que a cena tem (o botão e a roda); o `Move` herda por não ter arrasto aberto.
 #[test]
 fn a_hidden_clay_hands_the_pointer_back() {
+    let both = scene_and_gesture();
     for door in ["fn sculpt3d_pointer_down", "fn sculpt3d_wheel"] {
-        let at = SCENE
+        let at = both
             .find(door)
-            .unwrap_or_else(|| panic!("`{door}` sumiu do sculpt3d.rs — atualize este gate"));
+            .unwrap_or_else(|| panic!("`{door}` sumiu do módulo 3D — atualize este gate"));
         // A porta é curta; a recusa tem de estar dentro dela, antes de qualquer gesto ser tomado.
-        let body = &SCENE[at..];
+        let body = &both[at..];
         let end = body.find("\n    /// ").unwrap_or(body.len());
         assert!(
             body[..end].contains("shows_clay()"),

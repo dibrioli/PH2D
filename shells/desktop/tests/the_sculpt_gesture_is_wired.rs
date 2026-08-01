@@ -51,9 +51,51 @@ fn function_body(src: &str, name: &str) -> String {
     panic!("`fn {name}` não fecha");
 }
 
+/// O bloco `{...}` que começa logo depois de `anchor`, balanceado.
+///
+/// ⚠️ Existe para afirmar **em que bloco** uma linha mora — que é uma pergunta
+/// estrutural — em vez de *a quantos bytes* ela está de outra. A segunda forma é
+/// um proxy que expira: a `line/Vector` teve dois arch-gates vermelhos por
+/// medirem distância em bytes num arquivo que cresceu.
+fn braced_block(src: &str, anchor: &str) -> String {
+    let at = src
+        .find(anchor)
+        .unwrap_or_else(|| panic!("não achei `{anchor}`"));
+    let open = src[at..].find('{').expect("bloco") + at;
+    let mut depth = 0i32;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[open..open + i + 1].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("`{anchor}` não fecha");
+}
+
+/// A fiação do módulo 3D no shell, **os dois arquivos como um**.
+///
+/// ⚠️ O corte entre *a cena* (`sculpt3d.rs`) e *o gesto* (`sculpt3d_input.rs`) é
+/// de responsabilidade e já se moveu uma vez (o teto de LOC). Um gate que
+/// nomeia o ARQUIVO de cada função vira vermelho no próximo split, sobre
+/// produto correto — a `line/Vector` pagou isso duas vezes. As asserções aqui
+/// são sobre o que a fiação FAZ, então elas leem o par.
+fn sculpt_src() -> String {
+    format!(
+        "{}\n{}",
+        source("sculpt3d.rs"),
+        source("sculpt3d_input.rs")
+    )
+}
+
 #[test]
 fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
-    let body = function_body(&source("sculpt3d.rs"), "sculpt3d_pointer_down");
+    let body = function_body(&sculpt_src(), "sculpt3d_pointer_down");
     assert!(
         body.contains("stroke.begin("),
         "o pen-down tem de CONGELAR o `pre` — sem isso a lei do traço não começa"
@@ -81,7 +123,7 @@ fn the_modifiers_are_read_once_at_pen_down_and_hold_for_the_whole_stroke() {
     // ferramenta — e a lei do traço congela um `pre` só, então não há como
     // representar isso. Nenhum app de escultura permite, e aqui a garantia é
     // estrutural: quem lê os modificadores é o Down, e o Move não os consulta.
-    let src = source("sculpt3d.rs");
+    let src = sculpt_src();
     let down = function_body(&src, "sculpt3d_pointer_down");
     assert!(
         down.contains("scene.brush.invert = ctrl"),
@@ -106,7 +148,7 @@ fn the_gpu_is_handed_the_refreshed_window_not_the_moved_one() {
     // deixa a malha iluminada por normais velhas numa faixa de um anel de
     // largura, bem na BORDA do pincel. O arch-gate impede a regressão de entrar
     // pela porta do shell, onde nenhum gate de crate a veria.
-    let body = function_body(&source("sculpt3d.rs"), "sculpt_at");
+    let body = function_body(&sculpt_src(), "sculpt_at");
     assert!(
         body.contains("last_refreshed()"),
         "a janela do upload é `last_refreshed`, o superconjunto"
@@ -119,7 +161,7 @@ fn the_gpu_is_handed_the_refreshed_window_not_the_moved_one() {
 
 #[test]
 fn releasing_the_button_turns_the_stroke_into_an_undo_entry() {
-    let src = source("sculpt3d.rs");
+    let src = sculpt_src();
     let up = function_body(&src, "sculpt3d_pointer_up");
     assert!(
         up.contains("Drag::Sculpt") && up.contains("close_stroke()"),
@@ -140,7 +182,7 @@ fn undoing_rebuilds_the_index_instead_of_refitting_the_way_back() {
     // abaixo do que já viu), então cada Ctrl+Z deixaria a árvore um pouco mais
     // gorda e a consulta um pouco mais lenta, para sempre. Um undo é
     // user-paced — é o lugar certo para pagar a resposta exata.
-    let body = function_body(&source("sculpt3d.rs"), "undo_stroke");
+    let body = function_body(&sculpt_src(), "undo_stroke");
     assert!(
         body.contains("self.mesh.rebuild()"),
         "desfazer tem de reconstruir o índice"
@@ -156,7 +198,7 @@ fn every_3d_port_is_inert_without_a_scene() {
     // A promessa de removibilidade do `docs/3D/02.3` no nível do FRAME: num run
     // normal `sculpt3d` é `None`, cada porta devolve `false` no primeiro `if`, e
     // o dispatch 2D segue como se o módulo não existisse.
-    let src = source("sculpt3d.rs");
+    let src = sculpt_src();
     for port in [
         "sculpt3d_pointer_down",
         "sculpt3d_pointer_up",
@@ -199,7 +241,7 @@ fn the_model_follows_the_hand() {
     // Os dois sinais estavam TROCADOS e o smoke os pegou: `yaw` positivo leva o
     // OLHO para `+X`, e a câmera indo para a direita faz o modelo parecer ir
     // para a esquerda.
-    let body = function_body(&source("sculpt3d.rs"), "sculpt3d_pointer_move");
+    let body = function_body(&sculpt_src(), "sculpt3d_pointer_move");
     assert!(
         body.contains(".orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX)"),
         "a órbita da shell tem de negar o `dx` e NÃO o `dy`"
@@ -211,7 +253,7 @@ fn a_click_on_a_panel_is_not_a_click_on_the_model() {
     // Sem esta pergunta a cena 3D engolia TODO botão do app, inclusive os do
     // rail — ela devolvia `true` incondicionalmente e o dispatch 2D nunca via o
     // evento.
-    let src = source("sculpt3d.rs");
+    let src = sculpt_src();
     let down = function_body(&src, "sculpt3d_pointer_down");
     assert!(
         down.contains("cursor_over_hero_panel("),
@@ -234,9 +276,85 @@ fn the_mirror_is_off_until_the_artist_asks_for_it() {
     // Um default que só se descobre por acidente é pior que um default menos
     // ambicioso: com o espelho ligado o artista clicava de um lado e via uma
     // segunda protuberância do outro, sem nada na tela explicando por quê.
-    let body = function_body(&source("sculpt3d.rs"), "new(");
+    let body = function_body(&sculpt_src(), "new(");
     assert!(
         body.contains("symmetry: Symmetry::default()"),
         "a simetria tem de nascer desligada; o `X` a liga"
+    );
+}
+
+#[test]
+fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
+    // A entrega do item 6b: o pincel mede pixels de TELA, e o raio de mundo é
+    // derivado por dab. Ancorá-lo no modelo fazia o pincel crescer junto com a
+    // imagem ao aproximar, o que é o oposto de como se alcança detalhe fino.
+    let src = sculpt_src();
+    let armed = function_body(&src, "armed_brush");
+    assert!(
+        armed.contains("world_radius_for_screen_px("),
+        "o raio de mundo tem de vir da CÂMERA"
+    );
+    assert!(
+        armed.contains("self.radius_px()"),
+        "e do raio já clampado contra a tela, não do campo cru"
+    );
+    // O teto é do VIEWPORT: um número fixo de pixels muda de significado com a
+    // resolução (medido: 160 px = 91% do modelo a 720p e 45% a 1440p).
+    let port = function_body(&src, "radius_px(&self)");
+    assert!(
+        port.contains("self.viewport.1"),
+        "o teto do raio tem de ser fração da ALTURA da janela"
+    );
+    // E nada mais pode responder "de que tamanho é o pincel": um segundo sítio
+    // é como o cursor e a tinta passam a discordar.
+    assert_eq!(
+        src.matches("world_radius_for_screen_px(").count(),
+        1,
+        "a conversão tela→mundo tem de ter UM sítio no shell"
+    );
+}
+
+#[test]
+fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_misses() {
+    // A entrega do item 6c. Um evento de ponteiro não é um dab: o caminho é
+    // percorrido a passos do espaçamento, e um passo que erra a malha PARA o
+    // gesto (o `break` do `SculptBase.js:151`) em vez de carimbar através do vão.
+    let arm = braced_block(
+        &function_body(&sculpt_src(), "sculpt3d_pointer_move"),
+        "Drag::Sculpt =>",
+    );
+    assert!(
+        arm.contains("ph2d_sculpt3d::walk(") && arm.contains("min_spacing("),
+        "o arrasto tem de percorrer o caminho no espaçamento do pincel"
+    );
+    assert!(
+        arm.contains("break"),
+        "um passo fora do modelo encerra o gesto"
+    );
+
+    // ⚠️ **O CARRY, e ele é a metade que se perde distraído:** a âncora só anda
+    // quando o `walk` de fato carimbou. Movê-la sempre faria um gesto lento
+    // depositar dez vezes mais dabs pelo mesmo caminho — e nada na tela diria
+    // por quê. A afirmação é sobre em que BLOCO a atribuição mora.
+    let deposited = braced_block(&arm, "if let Some(steps)");
+    assert!(
+        deposited.contains("stroke_anchor = [x, y]"),
+        "a âncora avança dentro do ramo que carimbou"
+    );
+    assert!(
+        !arm.replace(&deposited, "").contains("stroke_anchor ="),
+        "a âncora NÃO pode avançar fora dele: é ali que o resíduo se acumula"
+    );
+}
+
+#[test]
+fn the_stroke_anchor_is_armed_at_pen_down() {
+    // Sem isto o primeiro arrasto de um traço mede a distância até a âncora do
+    // traço ANTERIOR — no outro canto da tela, o que carimba uma fileira de
+    // dabs atravessando o modelo.
+    assert!(
+        function_body(&sculpt_src(), "sculpt3d_pointer_down")
+            .contains("stroke_anchor = [pos.0, pos.1]"),
+        "o pen-down tem de armar a âncora do espaçamento"
     );
 }

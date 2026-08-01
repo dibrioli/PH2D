@@ -10,20 +10,23 @@
 //! só o smoke a cria, então num run normal cada porta daqui devolve `false` no
 //! primeiro `if` e o frame 2D é byte-idêntico.
 
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use ph2d_light::LightRig;
 use ph2d_mesh::{Mesh, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
-
-use crate::app_state::App;
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
 /// o escultor FAZ* (aqui) contra *o que a forma DOA* (lá).
 #[path = "sculpt3d_donation.rs"]
 pub(crate) mod donation;
+
+/// **O GESTO** — as portas de ponteiro, roda e teclado. Filho (`#[path]`) para
+/// alcançar os campos privados da cena; o corte é *o que a cena É* (aqui) contra
+/// *o que a mão FAZ* (lá), o mesmo que separa a [`donation`].
+#[path = "sculpt3d_input.rs"]
+mod input;
+
 
 use donation::FormRole;
 use donation::FormStamp;
@@ -35,12 +38,19 @@ use donation::FormStamp;
 /// recurso, então não tem tabela de medição ao lado — tem o olho do Enio.
 const ORBIT_RAD_PER_PX: f32 = 0.01;
 
-/// O raio do pincel, em fração do maior lado do modelo.
+/// O raio do pincel, em **pixels de tela**.
 ///
-/// ⚠️ **Fração, não valor absoluto** — uma cabeça e um planeta chegam pela mesma
-/// porta, e um raio em metros seria invisível num e engoliria o outro. É o mesmo
-/// argumento do `REACH_FRACTION` da crate de escultura, um nível acima.
-const DEFAULT_RADIUS_FRAC: f32 = 0.12;
+/// ⚠️ **Pixels, não fração do modelo** — o raio de MUNDO é derivado por dab
+/// (`Camera3d::world_radius_for_screen_px`), então o pincel mantém o tamanho
+/// aparente quando a câmera aproxima. É o `computeWorldRadius2` do SculptGL, e
+/// é o que Blender e ZBrush entregam: aproximar É como se alcança detalhe fino,
+/// e um raio ancorado no modelo tornava isso impossível (o pincel crescia junto
+/// com a imagem).
+///
+/// **50 px é MEDIDO, não escolhido:** é o que reproduz o tamanho aparente do
+/// default anterior (0,12 do span) na cena do smoke a 720p — ver
+/// `ph2d-mesh-render/tests/measure_screen_radius.rs`.
+const DEFAULT_RADIUS_PX: f32 = 50.0;
 
 /// Passo das teclas de LUZ (`Q`/`E` giram, `R`/`F` sobem e descem), em graus
 /// inteiros — que é a unidade em que o rig é autorado. Quinze graus porque o
@@ -52,11 +62,22 @@ const LIGHT_STEP_DEG: u16 = 15;
 /// mesmo efeito *aparente* com pincel grande e pequeno.
 const RADIUS_STEP: f32 = 1.15;
 
-/// Os limites do slider de raio, em fração do modelo. O piso existe porque um
-/// pincel menor que uma aresta não pega vértice nenhum e o artista conclui que a
-/// ferramenta quebrou; o teto porque acima de meio modelo o "pincel" é um
-/// deformador global, que é outra ferramenta (W6).
-const RADIUS_RANGE: (f32, f32) = (0.005, 0.5);
+/// O piso do raio, em pixels. **Quem aperta é a TELA, não a malha** — e isso é
+/// medição, não herança: a régua antiga dizia *"menor que uma aresta não pega
+/// vértice"*, e na cena do smoke um disco de **0,5 px já pega um vértice**
+/// (`measure_screen_radius.rs`), porque a malha é densa. O que de fato quebra
+/// abaixo de um pixel é o artista **ver onde está mirando**.
+const RADIUS_MIN_PX: f32 = 1.0;
+
+/// O teto do raio, em fração da ALTURA do viewport.
+///
+/// ⚠️ **Fração da tela, e não um número fixo de pixels, porque um teto fixo muda
+/// de SIGNIFICADO com a resolução:** medido, 160 px cobre **91% da altura do
+/// modelo a 1280×720 e 45% a 2560×1440**. `0,125` é a mesma promessa do teto
+/// antigo (*acima de meio modelo o "pincel" é um deformador global, que é outra
+/// ferramenta*) escrita no recurso que de fato aperta — com o enquadramento
+/// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
+const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
 
 /// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1` ou `2`.)
 pub(crate) fn smoke_armed() -> bool {
@@ -107,14 +128,14 @@ pub(crate) struct Sculpt3dScene {
     viewport: (u32, u32),
 
     brush: Brush,
-    /// O raio autorado, em fração do modelo — ver [`DEFAULT_RADIUS_FRAC`].
-    radius_frac: f32,
-    /// O tamanho do modelo, capturado UMA vez.
-    ///
-    /// ⚠️ Lê-lo vivo faria o pincel *respirar* enquanto a escultura cresce — a
-    /// mesma cautela do `stroke_radius_px` do Painter, que divide pelo raio do
-    /// TRAÇO e não pelo raio vivo justamente para o padrão não re-fasar.
-    model_span: f32,
+    /// O raio autorado, em **pixels de tela** — ver [`DEFAULT_RADIUS_PX`]. O raio
+    /// de MUNDO é derivado por dab, contra a câmera e o ponto de acerto.
+    radius_px: f32,
+    /// Onde o traço carimbou pela última vez, em pixels — **a âncora do
+    /// espaçamento**, e ela é separada do `last` de propósito: o `last` é o
+    /// delta de TODO arrasto (a órbita precisa dele por evento) e esta só anda
+    /// quando um dab de fato saiu. Colapsá-las apagaria o carry.
+    stroke_anchor: [f32; 2],
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).
@@ -149,7 +170,6 @@ impl Sculpt3dScene {
             ..Camera3d::default()
         };
         camera.frame(mesh.bounds(), aspect);
-        let model_span = mesh.bounds().longest_edge().max(1e-6);
         Self {
             mesh,
             camera,
@@ -159,8 +179,8 @@ impl Sculpt3dScene {
             last: (0.0, 0.0),
             viewport: (1, 1),
             brush: Brush::default(),
-            radius_frac: DEFAULT_RADIUS_FRAC,
-            model_span,
+            radius_px: DEFAULT_RADIUS_PX,
+            stroke_anchor: [0.0, 0.0],
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na
@@ -178,14 +198,30 @@ impl Sculpt3dScene {
         }
     }
 
-    /// O pincel com o raio resolvido em unidades de MUNDO.
+    /// O raio autorado, **já clampado contra a tela desta janela**.
     ///
-    /// Porta única: a fração é o estado autorado e o raio absoluto é derivado —
-    /// guardar os dois seria o mesmo número em dois lugares, e eles divergem no
-    /// dia em que alguém escrever num só.
-    fn armed_brush(&self) -> Brush {
+    /// Porta única, e é ela que faz um `resize` re-clampar sozinho: o cru é o
+    /// estado autorado e o limite é do viewport, então guardar o clampado seria
+    /// o mesmo número em dois lugares — e o segundo fica velho no primeiro
+    /// arrasto de janela.
+    fn radius_px(&self) -> f32 {
+        let ceiling =
+            (RADIUS_MAX_FRAC_OF_HEIGHT * self.viewport.1.max(1) as f32).max(RADIUS_MIN_PX);
+        self.radius_px.clamp(RADIUS_MIN_PX, ceiling)
+    }
+
+    /// O pincel com o raio resolvido em unidades de MUNDO, no ponto `at`.
+    ///
+    /// ⚠️ **O raio é função do ACERTO, não do pincel** — o mesmo pincel cobre
+    /// menos mundo perto da câmera e mais longe dela, que é o que "tamanho em
+    /// pixels" significa. Guardar um raio de mundo no `Brush` seria o mesmo
+    /// número em dois lugares, e o segundo ficaria velho a cada `dolly`.
+    fn armed_brush(&self, at: [f32; 3]) -> Brush {
         Brush {
-            radius: (self.radius_frac * self.model_span).max(1e-6),
+            radius: self
+                .camera
+                .world_radius_for_screen_px(at, self.radius_px(), self.viewport)
+                .max(1e-6),
             ..self.brush
         }
     }
@@ -249,7 +285,7 @@ impl Sculpt3dScene {
                 self.viewport, hit.point
             );
         }
-        let brush = self.armed_brush();
+        let brush = self.armed_brush(hit.point);
         self.stroke.dab(
             &mut self.mesh,
             &brush,
@@ -308,292 +344,5 @@ impl Sculpt3dScene {
             self.mesh_rebuilt();
         }
         true
-    }
-}
-
-impl App {
-    /// `PH2D_SCULPT3D_SMOKE=1` — a cena pronta: uma esfera de barro para
-    /// esculpir. `=2` acrescenta a TELA e é a cena da **doação**
-    /// (`crate::sculpt3d::donation`). Roda uma vez, no primeiro frame com GPU.
-    pub(crate) fn sculpt3d_smoke(&mut self) {
-        // Guard estático, o mesmo idioma dos outros smokes do shell — evita um
-        // campo em `App` que só existe para dizer "já rodei".
-        static ARMED: AtomicBool = AtomicBool::new(false);
-        if !crate::sculpt3d::smoke_armed()
-            || self.gfx.is_none()
-            || ARMED.swap(true, Ordering::Relaxed)
-        {
-            return;
-        }
-        let mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
-        // A cena IMPRIME o que montou. Um smoke que não se declara deixa o
-        // artista sem saber se está vendo a feature ou o app vazio — a lição
-        // que o smoke do Colorize pagou.
-        eprintln!(
-            "[sculpt3d] esfera com {} vértices / {} faces / {} triângulos\n\
-             [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
-             [sculpt3d] Shift = Smooth enquanto segurar · Ctrl inverte Draw/Inflate/Clay/Crease e limpa a mascara\n\
-             [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
-             [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
-             [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
-            mesh.vert_count(),
-            mesh.face_count(),
-            mesh.triangle_count()
-        );
-        if crate::sculpt3d::donation_scene() {
-            eprintln!(
-                "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\
-                 [sculpt3d]    BARRO (esculpir) -> LUZ (a forma acende a tinta) -> DESLIGADA (o A/B)\n\
-                 [sculpt3d]    esculpa, aperte D, pegue o Painter e pinte CHAPADO: a tinta tem de sair ACESA\n\
-                 [sculpt3d]    aperte D de novo e a MESMA tinta fica plana -- e essa diferenca e a wave"
-            );
-        }
-        let Some(gfx) = self.gfx.as_mut() else {
-            return;
-        };
-        let size = gfx.surface.size();
-        let aspect = size.width as f32 / size.height.max(1) as f32;
-        let device = std::sync::Arc::clone(&gfx.surface.gpu().device);
-        gfx.sculpt3d = Some(Sculpt3dScene::new(&device, mesh, aspect));
-    }
-
-    /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
-    pub(crate) fn sculpt3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
-        let pos = self.last_pointer;
-        // ⚠️ Um clique SOBRE PAINEL não é da cena — e sem esta pergunta a cena 3D
-        // engolia todo botão do app, inclusive os do rail. O `Move` e o `Up` NÃO
-        // a fazem de propósito: um arrasto em curso continua sendo do gesto que
-        // o abriu, mesmo que o cursor passeie por cima de um painel (a regra de
-        // captura que todo gizmo deste shell segue). É a MESMA porta que a roda
-        // já usava.
-        if crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), pos.0, pos.1) {
-            return false;
-        }
-        let mods = self.modifiers;
-        let (ctrl, shift) = (mods.control_key(), mods.shift_key());
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        // ⚠️ **Com o barro fora da tela, o ponteiro NÃO é da cena.** Sem esta
-        // pergunta a doação seria inalcançável pelo motivo mais bobo possível:
-        // o artista troca para o modo LUZ, vai pintar, e cada clique orbita um
-        // modelo invisível. É a mesma classe do clique-sobre-painel que o smoke
-        // da W2 pegou — quem não está na tela não recebe o gesto.
-        if !scene.shows_clay() {
-            return false;
-        }
-        match button {
-            winit::event::MouseButton::Left => {
-                // ⚠️ Os modificadores são lidos UMA vez, no pen-down, e valem o
-                // traço inteiro. Soltar o Shift no meio de uma pincelada faria
-                // metade dela ser outra ferramenta — e nenhum app de escultura
-                // faz isso, porque a lei do traço congela um `pre` só.
-                scene.brush.invert = ctrl;
-                let verb = scene.brush.verb;
-                if shift {
-                    scene.brush.verb = Verb::Smooth;
-                }
-                scene.stroke.begin(&scene.mesh);
-                if scene.sculpt_at(pos.0, pos.1) {
-                    scene.drag = Some(Drag::Sculpt);
-                } else {
-                    // Errou o modelo: o botão vira ÓRBITA. É o que o SculptGL
-                    // faz, e é o que impede o gesto mais comum do mundo —
-                    // arrastar no vazio — de não fazer nada.
-                    scene.brush.verb = verb;
-                    scene.drag = Some(Drag::Orbit);
-                }
-            }
-            winit::event::MouseButton::Right => scene.drag = Some(Drag::Orbit),
-            winit::event::MouseButton::Middle => scene.drag = Some(Drag::Pan),
-            _ => return false,
-        }
-        scene.last = pos;
-        true
-    }
-
-    /// O botão soltou.
-    pub(crate) fn sculpt3d_pointer_up(&mut self) -> bool {
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        let was = scene.drag.take();
-        if was == Some(Drag::Sculpt) {
-            scene.close_stroke();
-        }
-        was.is_some()
-    }
-
-    /// O ponteiro moveu. Só consome com um arrasto EM CURSO — senão a cena 3D
-    /// engoliria todo hover do app.
-    pub(crate) fn sculpt3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        let Some(drag) = scene.drag else {
-            return false;
-        };
-        let (dx, dy) = (x - scene.last.0, y - scene.last.1);
-        scene.last = (x, y);
-        let height = scene.viewport.1.max(1) as f32;
-        match drag {
-            // ⚠️ **Manipulação direta: o modelo segue a mão.** `yaw` positivo
-            // leva o OLHO para `+X`, e a câmera indo para a direita faz o
-            // modelo *parecer* ir para a esquerda — então arrastar para a
-            // direita pede `yaw -= dx`. E arrastar para BAIXO mostra o TOPO
-            // (o modelo tomba para a frente), que é `pitch += dy`.
-            //
-            // Os DOIS sinais estavam trocados e o smoke os pegou; o gate que os
-            // prende (`dragging_right_turns_the_model_right`) mede o modelo NA
-            // TELA em vez de argumentar sobre sinais, que foi como o erro entrou.
-            Drag::Orbit => scene
-                .camera
-                .orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX),
-            Drag::Pan => scene.camera.pan(dx / height, dy / height),
-            Drag::Sculpt => {
-                scene.sculpt_at(x, y);
-            }
-        }
-        true
-    }
-
-    /// A roda aproxima.
-    pub(crate) fn sculpt3d_wheel(&mut self, steps: f32) -> bool {
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        // Mesma lei do `pointer_down`: barro fora da tela, roda do 2D. Sem isto
-        // o zoom do canvas ficaria preso enquanto a forma acende a tinta.
-        if !scene.shows_clay() {
-            return false;
-        }
-        scene.camera.dolly(steps);
-        true
-    }
-
-    /// As teclas da cena 3D. Devolve `true` se consumiu.
-    pub(crate) fn sculpt3d_key(&mut self, code: winit::keyboard::KeyCode, ctrl: bool) -> bool {
-        use winit::keyboard::KeyCode as K;
-        let Some(scene) = self.sculpt3d_scene_mut() else {
-            return false;
-        };
-        if ctrl {
-            return code == K::KeyZ && scene.undo_stroke();
-        }
-        // Os dez primeiros verbos por número; o Mask fica no `M` porque ele não
-        // é uma escultura a mais, é o canal que todos os outros respeitam.
-        const BY_NUMBER: [Verb; 10] = [
-            Verb::Draw,
-            Verb::Inflate,
-            Verb::Smooth,
-            Verb::Sharpen,
-            Verb::Flatten,
-            Verb::Fill,
-            Verb::Scrape,
-            Verb::Clay,
-            Verb::Pinch,
-            Verb::Crease,
-        ];
-        let verb = match code {
-            K::Digit1 => Some(BY_NUMBER[0]),
-            K::Digit2 => Some(BY_NUMBER[1]),
-            K::Digit3 => Some(BY_NUMBER[2]),
-            K::Digit4 => Some(BY_NUMBER[3]),
-            K::Digit5 => Some(BY_NUMBER[4]),
-            K::Digit6 => Some(BY_NUMBER[5]),
-            K::Digit7 => Some(BY_NUMBER[6]),
-            K::Digit8 => Some(BY_NUMBER[7]),
-            K::Digit9 => Some(BY_NUMBER[8]),
-            K::Digit0 => Some(BY_NUMBER[9]),
-            K::KeyM => Some(Verb::Mask),
-            _ => None,
-        };
-        if let Some(v) = verb {
-            scene.brush.verb = v;
-            eprintln!("[sculpt3d] verbo: {}", v.label());
-            return true;
-        }
-        match code {
-            K::BracketLeft | K::BracketRight => {
-                let f = if code == K::BracketRight {
-                    RADIUS_STEP
-                } else {
-                    1.0 / RADIUS_STEP
-                };
-                scene.radius_frac = (scene.radius_frac * f).clamp(RADIUS_RANGE.0, RADIUS_RANGE.1);
-                eprintln!(
-                    "[sculpt3d] raio: {:.1}% do modelo",
-                    scene.radius_frac * 100.0
-                );
-                true
-            }
-            // **O INTERRUPTOR DA DOAÇÃO** — barro ⇄ luz ⇄ desligada.
-            //
-            // ⚠️ Gesto de SMOKE, como o `Q`/`E`/`R`/`F` da luz: a UI final é o
-            // toggle *"iluminada pela forma abaixo"* na pilha de camadas
-            // (`docs/3D/05.2`), e ele espera a escultura ser uma CAMADA do
-            // documento. Enquanto ela é um viewport solto, uma tecla é a única
-            // porta honesta — um checkbox num painel diria que a forma pertence
-            // a um documento a que ela ainda não pertence.
-            K::KeyD => {
-                let label = scene.cycle_role();
-                eprintln!("[sculpt3d] a forma agora e: {label}");
-                true
-            }
-            K::KeyX | K::KeyY | K::KeyZ => {
-                let axis = match code {
-                    K::KeyX => &mut scene.symmetry.x,
-                    K::KeyY => &mut scene.symmetry.y,
-                    _ => &mut scene.symmetry.z,
-                };
-                *axis = !*axis;
-                eprintln!("[sculpt3d] espelho: {:?}", scene.symmetry);
-                true
-            }
-            // **A LUZ.** Girar a lâmpada principal em torno da cena e subi-la.
-            //
-            // ⚠️ Isto é o gesto do SMOKE, não a UI final: o card de Lighting do
-            // Painter já é o lugar onde este rig se autora, e é ele que a M4
-            // conecta. Um segundo card aqui seria a segunda porta para o mesmo
-            // número. Estas teclas existem para o Enio poder ver a forma reacender
-            // sem abrir um documento de pintura.
-            K::KeyQ | K::KeyE => {
-                let d = if code == K::KeyE {
-                    LIGHT_STEP_DEG
-                } else {
-                    360 - LIGHT_STEP_DEG
-                };
-                let l = scene.rig.current_mut();
-                l.angle_deg = (l.angle_deg + d) % 360;
-                eprintln!(
-                    "[sculpt3d] luz: azimute {}deg elevacao {}deg",
-                    l.angle_deg, l.elev_deg
-                );
-                true
-            }
-            K::KeyR | K::KeyF => {
-                let l = scene.rig.current_mut();
-                let up = code == K::KeyR;
-                // Clampado no piso do resolvedor, e não em 0: abaixo dele a
-                // resposta plana vai a zero e o modelo relativo dividiria por ~0.
-                l.elev_deg = if up {
-                    (l.elev_deg + LIGHT_STEP_DEG).min(90)
-                } else {
-                    l.elev_deg
-                        .saturating_sub(LIGHT_STEP_DEG)
-                        .max(ph2d_light::MIN_ELEV_DEG)
-                };
-                eprintln!(
-                    "[sculpt3d] luz: azimute {}deg elevacao {}deg",
-                    l.angle_deg, l.elev_deg
-                );
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn sculpt3d_scene_mut(&mut self) -> Option<&mut Sculpt3dScene> {
-        self.gfx.as_mut()?.sculpt3d.as_mut()
     }
 }

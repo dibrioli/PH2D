@@ -5486,3 +5486,41 @@ contíguo (§5.25), a proveniência `journal_since` que responde *"este journal 
 (§5.26), o oráculo `absent` vs `incomplete` (§5.29), a absorção nos dois consumidores (§5.24) e a
 identidade do cursor medida em 233/233 (§5.28). **O que falta é escrever a troca** — uma edição do
 ciclo de vida do `ModelSnapshot`, não uma otimização local.
+
+### 5.58.1 🗺️ O MAPA da troca — os donos, onde cada um é posto, e a ordem
+
+A leitura do código (não do plano) fecha três dos quatro donos e **deixa um por identificar**, que é
+por onde o próximo passo começa.
+
+| dono | onde é posto | como sai |
+|---|---|---|
+| **o tool** | os campos `heights`/`covers`/`mats` | irredutível — é o produto |
+| **`paint.stroke_undo`** | `capture_shape_model()`/`snapshot_model()` no pen-down (`tool/paint.rs:215`) | elidir o relevo na captura do TRAÇO |
+| **`cursor`** | `set_cursor(after.clone())` em `undo_record.rs:32/63/70`, **ANTES** do `split` (o comentário diz por quê: o cursor tem de ser o `after` COMPLETO) | elidir o relevo, e reconstruí-lo de `(vivo, journal)` — identidade medida em 233/233 (§5.28) |
+| **o QUARTO** | ⚠️ **não identificado** | ⚠️ **é aqui que o próximo passo começa** |
+
+⚠️ **O quarto é real e mede-se antes de escrever qualquer linha.** O censo diz `heights 4` dentro do
+gesto e `3` sem o `stroke_undo`; tool + cursor + `stroke_undo` são **três**. Os candidatos são a pilha
+de **redo**, o `set_cursor(before.clone())` da absorção (`undo_absorb.rs:62`) e uma entrada cujo delta
+tenha caído em `StoredPlane::Whole` — ⚠️ **este último é improvável e a medição já o diz**: a §5.28
+mede **2,36 MB por passo** (3,7 % de um documento), o que é a assinatura de `Patch`, não de `Whole`.
+*Um dono não identificado é a diferença entre a troca render 9,6 ms e render zero* (§5.14: remover um
+de quatro não compra milissegundo nenhum).
+
+**A ordem, e por que ela não é negociável:**
+
+1. **identificar o quarto dono** (`who_holds_the_planes_when_a_stroke_begins` com uma ablação a mais);
+2. **promover o journal para release** — ⛔ **não pode landar sozinha**, e agora com um segundo motivo
+   além do custo: o `begin_step` é **no-op em release** e metade da API do journal só tem o AUDIT como
+   consumidor, então a promoção sem o consumidor produz **dead-code que só aparece em `--release`** (a
+   armadilha exata que a §5.25 já pagou, quatro warnings por três commits);
+3. **o consumidor**: o `split` do relevo passa a sair de `(journal, plano vivo)` em vez de dois
+   snapshots — o lado `before` do delta **é** o conteúdo do journal, e é isso que evita materializar
+   (materializar produziria o `Vec` que a wave existe para não pagar);
+4. **a materialização** parte do plano VIVO, o que exige `undo()`/`redo()` receberem o vivo — e o
+   chamador **já o constrói uma linha acima** (`absorb_foreign_writes_now` faz `snapshot_model()`), então
+   a mudança de assinatura não acrescenta trabalho;
+5. **os três planos saem JUNTOS** (tudo-ou-nada por plano).
+
+⚠️ **O AUDIT fica gateado.** Ele é a rede que confere a troca, e *uma rede de verificação não pode viver
+no relógio do que ela observa* (§5.23) — a promoção é do **journal**, nunca do audit.

@@ -123,15 +123,52 @@ fn subgraphs_round_trip_through_the_text_format() {
         subgraphs: vec![sg(0, None, "Forces Of Nature"), sg(1, Some(0), "Inner")],
         members: Members::from([(a, 0), (b, 1)]),
         backdrop_members: BTreeMap::from([(3, 1)]),
+        // A bypassed group rides the SAME round trip (the `yg` record); dropping the
+        // write or the parse of it, or losing it in `validate`, sangra this assert.
+        bypassed_subgraphs: BTreeSet::from([1]),
     };
     let back = MotionDoc::from_text(&doc.to_text()).unwrap();
     assert_eq!(back, doc, "the whole nesting survives a round trip");
+    assert!(
+        doc.to_text().contains("yg 1"),
+        "the bypassed group writes a `yg` record"
+    );
     assert_eq!(
         back.subgraphs[0].title, "Forces Of Nature",
         "a title with spaces round-trips (trailing free-text field)"
     );
     // Deterministic bytes (the same document always writes the same file).
     assert_eq!(doc.to_text(), back.to_text());
+}
+
+#[test]
+fn a_bypass_naming_no_group_is_rejected_and_the_accessors_are_the_node_bypass_twins() {
+    // A `yg` for a group that does not exist is a phantom — rejected at the boundary,
+    // exactly like the graph's `y` naming a phantom node. FALSIFIED by dropping the
+    // `bypassed` loop in `validate`.
+    let text = "v1\n[layout]\n[backdrop]\nz 0\n[subgraph]\ng 0 - 0 0 A\nyg 9\n";
+    assert!(matches!(
+        MotionDoc::from_text(text),
+        Err(ParseError::BadLine(_))
+    ));
+    // A duplicate `yg` is a malformed file (the set holds an id once).
+    let dup = "v1\n[layout]\n[backdrop]\nz 0\n[subgraph]\ng 0 - 0 0 A\nyg 0\nyg 0\n";
+    assert!(matches!(
+        MotionDoc::from_text(dup),
+        Err(ParseError::BadLine(_))
+    ));
+
+    // The accessors mirror the graph's node-bypass: set on, read on, set off REMOVES
+    // (so an un-mute leaves no phantom id to serialize).
+    let mut doc = MotionDoc {
+        subgraphs: vec![sg(0, None, "A")],
+        ..MotionDoc::new()
+    };
+    assert!(!doc.subgraph_bypassed(0));
+    doc.set_subgraph_bypassed(0, true);
+    assert!(doc.subgraph_bypassed(0) && doc.bypassed_subgraphs.contains(&0));
+    doc.set_subgraph_bypassed(0, false);
+    assert!(!doc.subgraph_bypassed(0) && doc.bypassed_subgraphs.is_empty());
 }
 
 #[test]

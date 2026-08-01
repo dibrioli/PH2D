@@ -94,8 +94,9 @@ pub type Members = BTreeMap<NodeId, u32>;
 /// backdrop → the subgraph whose canvas it decorates (absent = the root canvas).
 pub type BackdropMembers = BTreeMap<u32, u32>;
 
-/// Everything the `[subgraph]` section carries: the groups, and who is in them.
-type Section = (Vec<Subgraph>, Members, BackdropMembers);
+/// Everything the `[subgraph]` section carries: the groups, who is in them, and
+/// which groups are BYPASSED (muted as a unit — [`crate::MotionDoc::bypassed_subgraphs`]).
+type Section = (Vec<Subgraph>, Members, BackdropMembers, BTreeSet<u32>);
 
 /// The parent chain of `id`, from its parent up to the root (excludes `id`).
 /// Empty for a root-level subgraph. Bounded by the subgraph count even if the
@@ -212,14 +213,21 @@ pub fn next_id(subgraphs: &[Subgraph]) -> u32 {
 //   g <id> <parent|-> <x> <y> <title...>     one per subgraph
 //   m <node_id> <subgraph_id>                node membership
 //   bm <backdrop_id> <subgraph_id>           backdrop membership (decoration has a level too)
+//   yg <subgraph_id>                         the group is BYPASSED (muted as a unit)
+//
+// `yg` is the group-level twin of the graph's `y` node-bypass record: append-only,
+// so a document written before it still round-trips, and a reader that predates it
+// rejects a `yg` line loudly rather than reading it as junk (the inverse-path bump).
 
 /// Write the `[subgraph]` section, or nothing at all when the document has no
-/// subgraphs (see the module docs on back-compat).
+/// subgraphs (see the module docs on back-compat). A `bypassed` id is always a real
+/// subgraph (enforced by [`validate`]), so an empty `subgraphs` implies no `yg` line.
 pub(crate) fn write_section(
     out: &mut String,
     subgraphs: &[Subgraph],
     members: &Members,
     backdrop_members: &BTreeMap<u32, u32>,
+    bypassed: &BTreeSet<u32>,
 ) {
     if subgraphs.is_empty() {
         return;
@@ -244,6 +252,10 @@ pub(crate) fn write_section(
     for (b, sid) in backdrop_members {
         let _ = writeln!(out, "bm {b} {sid}");
     }
+    // BTreeSet iterates in ascending order → deterministic bytes.
+    for sid in bypassed {
+        let _ = writeln!(out, "yg {sid}");
+    }
 }
 
 /// Parse the `[subgraph]` section (the text AFTER the header line).
@@ -251,6 +263,7 @@ pub(crate) fn parse_section(part: &str) -> Result<Section, ParseError> {
     let mut subgraphs: Vec<Subgraph> = Vec::new();
     let mut members: Members = BTreeMap::new();
     let mut backdrop_members: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut bypassed: BTreeSet<u32> = BTreeSet::new();
     let mut seen = BTreeSet::new();
 
     for line in part.lines().map(str::trim).filter(|l| !l.is_empty()) {
@@ -295,11 +308,17 @@ pub(crate) fn parse_section(part: &str) -> Result<Section, ParseError> {
             if tok.next().is_some() || members.insert(NodeId(n), sid).is_some() {
                 return Err(ParseError::BadLine(line.into())); // trailing junk / duplicate member
             }
+        } else if let Some(rest) = line.strip_prefix("yg ") {
+            let mut tok = rest.split_whitespace();
+            let sid: u32 = parse(tok.next().unwrap_or_default(), line)?;
+            if tok.next().is_some() || !bypassed.insert(sid) {
+                return Err(ParseError::BadLine(line.into())); // trailing junk / duplicate bypass
+            }
         } else if line != "[subgraph]" {
             return Err(ParseError::BadLine(line.into()));
         }
     }
-    Ok((subgraphs, members, backdrop_members))
+    Ok((subgraphs, members, backdrop_members, bypassed))
 }
 
 /// Reject a corrupt nesting at the BOUNDARY, where a bad file becomes an error
@@ -312,8 +331,16 @@ pub(crate) fn validate(
     members: &Members,
     backdrop_members: &BTreeMap<u32, u32>,
     backdrop_ids: &BTreeSet<u32>,
+    bypassed: &BTreeSet<u32>,
 ) -> Result<(), ParseError> {
     let ids: BTreeSet<u32> = subgraphs.iter().map(|s| s.id).collect();
+    // A `yg` naming a group that does not exist is a phantom, exactly like the
+    // graph's `y` naming a phantom node — a corrupt file, not a silent shrug.
+    for sid in bypassed {
+        if !ids.contains(sid) {
+            return Err(ParseError::BadLine(format!("bypass subgraph {sid}")));
+        }
+    }
     for s in subgraphs {
         if let Some(p) = s.parent
             && !ids.contains(&p)

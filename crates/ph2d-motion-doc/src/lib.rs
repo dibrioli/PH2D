@@ -42,7 +42,7 @@ pub use subgraph::{Holder, Members, Subgraph};
 
 use ph2d_nodegraph::format::ParseError;
 use ph2d_nodegraph::graph::Graph;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 /// A translucent group region drawn **behind** a set of nodes (Cavalry/Blender
@@ -85,6 +85,13 @@ pub struct MotionDoc {
     /// canvas). Decoration has a level for the same reason nodes do: a backdrop
     /// added while inside a group has to be drawn there, and nowhere else.
     pub backdrop_members: BTreeMap<u32, u32>,
+    /// The subgraphs BYPASSED as a unit — the group-level twin of the graph's
+    /// `node_bypassed` set. A parallel set, not a field on [`Subgraph`], for the
+    /// same reason the graph keeps one: [`Subgraph`] is built at ~7 sites, and a
+    /// side set extends the document without touching any of them. SEMANTIC (the
+    /// shell rewires a bypassed group's boundary before the cook), so it is
+    /// serialized (`yg` record) and every id in it is a real subgraph.
+    pub bypassed_subgraphs: BTreeSet<u32>,
 }
 
 impl MotionDoc {
@@ -120,6 +127,7 @@ impl MotionDoc {
             &self.subgraphs,
             &self.members,
             &self.backdrop_members,
+            &self.bypassed_subgraphs,
         );
         out
     }
@@ -200,17 +208,19 @@ impl MotionDoc {
                 }
             }
         }
-        let (subgraphs, members, backdrop_members) = subgraph::parse_section(subgraph_part)?;
+        let (subgraphs, members, backdrop_members, bypassed_subgraphs) =
+            subgraph::parse_section(subgraph_part)?;
         // A corrupt nesting dies HERE, at the boundary — an unknown parent, a cycle,
-        // a member naming a node that does not exist. Past this line every walk in
-        // `subgraph` is total, and the editor can fold without asking whether the
-        // document makes sense.
+        // a member naming a node that does not exist, a bypass naming a group that
+        // does not. Past this line every walk in `subgraph` is total, and the editor
+        // can fold without asking whether the document makes sense.
         subgraph::validate(
             &graph,
             &subgraphs,
             &members,
             &backdrop_members,
             &backdrops.iter().map(|b| b.id).collect(),
+            &bypassed_subgraphs,
         )?;
         Ok(Self {
             graph,
@@ -219,7 +229,25 @@ impl MotionDoc {
             subgraphs,
             members,
             backdrop_members,
+            bypassed_subgraphs,
         })
+    }
+
+    /// Whether a group is bypassed (muted as a unit) — the twin of
+    /// [`ph2d_nodegraph::graph::Graph::node_bypassed`], one level up.
+    pub fn subgraph_bypassed(&self, sid: u32) -> bool {
+        self.bypassed_subgraphs.contains(&sid)
+    }
+
+    /// Mute or un-mute a group as a unit. `on == false` REMOVES the id, so an
+    /// un-mute leaves the set clean (no phantom ids to serialize) — the twin of
+    /// [`ph2d_nodegraph::graph::Graph::set_bypassed`].
+    pub fn set_subgraph_bypassed(&mut self, sid: u32, on: bool) {
+        if on {
+            self.bypassed_subgraphs.insert(sid);
+        } else {
+            self.bypassed_subgraphs.remove(&sid);
+        }
     }
 
     /// Drop every trace of the nodes in `dead` from the nesting (call after

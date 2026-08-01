@@ -152,19 +152,32 @@ fn the_canvas_release_on_empty_routes_to_the_world_pin() {
 }
 
 /// **A ÂNCORA DE MUNDO SE MOVE** — o 2º relato de smoke (*"ainda não posso mover
-/// a âncora colocada no mundo"*).
+/// a âncora colocada no mundo"*) — **pelo ANEL** (W-WorldPinLocal).
 ///
-/// ⚠️ O mecanismo era exato: o dot é desenhado no `Transform` do joint, mas o
-/// arrasto escrevia `local_a` — *onde no CORPO o pino prende* —, e o desenho
-/// ficava exatamente onde estava. A alça respondia a pergunta errada, então
-/// arrastar não fazia nada visível.
+/// ⚠️ O mecanismo original era exato: o arrasto escrevia `local_a` — *onde no
+/// CORPO o pino prende* — e o prego ficava onde estava, então arrastar não fazia
+/// nada visível. Mas a cura de então deu ao lado **A** a segunda
+/// responsabilidade, e com ela a porta passou a **ler um número e escrever
+/// outro**: `joint_anchor_world(A)` devolve `world_from_local(corpo, local_a)`
+/// sempre que o joint está `anchored`, e um pino de mundo está — medido, pedir
+/// `[0,5; 2,0]` deixava a leitura em `[0,0; 2,0]` com o `Transform` já em 0,5, ou
+/// seja **o dot não seguia o mouse**.
+///
+/// ⚠️ **Agora cada lado significa o que significa em todo joint:** o **dot (A)** é
+/// onde no corpo A, o **anel (B)** é a outra ponta — que num pino de mundo é o
+/// PREGO. Os dois lêem e escrevem o MESMO número, então os dois seguem o cursor,
+/// e a pergunta que não tinha porta nenhuma (*onde no corpo isto prende?*) passa a
+/// ter a mesma do resto do app.
+///
+/// ⚠️ **É MUDANÇA DE COMPORTAMENTO:** o gesto aprovado no smoke da `=65` era o
+/// dot. Ele mudou de alça, e a infra de par coincidente é o que o torna
+/// alcançável — *A pega o quadrado interno e B a banda de fora*.
 ///
 /// ⚠️ **E o CONTROLE é a outra metade:** num joint corpo-a-corpo o MESMO gesto tem
 /// de continuar escrevendo `local_a`. Sem ele este gate ficaria verde sobre uma
 /// porta que passou a mover o pivô de TODO joint do app.
 #[test]
-fn dragging_the_dot_moves_a_world_pins_anchor_and_still_slides_a_normal_one() {
-    // --- o pino de mundo: o `Transform` anda ---
+fn dragging_the_ring_moves_a_world_pins_nail_and_the_dot_moves_where_it_hangs() {
     let (mut sim, body) = one_body();
     let joint = create_world_pin_at(
         &mut sim,
@@ -176,10 +189,24 @@ fn dragging_the_dot_moves_a_world_pins_anchor_and_still_slides_a_normal_one() {
     .expect("pino");
     let mut bridge = PhysicsBridge::new();
     bridge.dispatch(&mut sim, false, 0);
+    // Uma closure sobre `sim` prenderia o empréstimo pela função inteira; a
+    // pergunta é feita na hora, ao lado de cada escrita.
+    let follows = |got: Option<[f32; 2]>, want: [f32; 2]| {
+        let g = got.expect("a alça não existe");
+        (g[0] - want[0]).abs() < 1e-3 && (g[1] - want[1]).abs() < 1e-3
+    };
+    // Em repouso as duas alças COINCIDEM: é o que um pino satisfeito é, e o
+    // quadrado interno / banda de fora é como o par continua sendo duas.
+    assert_eq!(
+        bridge.joint_anchor_world(&sim, joint, ph2d_physics_ecs::JointSide::A),
+        bridge.joint_anchor_world(&sim, joint, ph2d_physics_ecs::JointSide::B)
+    );
+
+    // --- o ANEL: o prego anda, e onde no corpo prende NÃO muda ---
     let before = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     assert!(
-        bridge.set_joint_anchor_world(&mut sim, joint, ph2d_physics_ecs::JointSide::A, [2.0, 9.0]),
-        "a porta recusou o arrasto"
+        bridge.set_joint_anchor_world(&mut sim, joint, ph2d_physics_ecs::JointSide::B, [2.0, 9.0]),
+        "a porta recusou o arrasto do anel"
     );
     let t = sim.world().get::<Transform>(joint).expect("joint");
     assert!(
@@ -188,11 +215,42 @@ fn dragging_the_dot_moves_a_world_pins_anchor_and_still_slides_a_normal_one() {
         t.translation.x,
         t.translation.y
     );
+    assert!(
+        follows(
+            bridge.joint_anchor_world(&sim, joint, ph2d_physics_ecs::JointSide::B),
+            [2.0, 9.0]
+        ),
+        "o anel não seguiu o próprio arrasto -- a porta le' um numero e escreve outro"
+    );
     let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
     assert_eq!(
         before.local_a, after.local_a,
-        "mover a âncora NÃO pode mexer em onde no corpo o pino prende — é o \
+        "mover o prego NÃO pode mexer em onde no corpo o pino prende — é o \
          `local_a` intacto que faz o corpo ir junto"
+    );
+
+    // --- o DOT: onde no corpo prende, e o prego NÃO se move ---
+    assert!(
+        bridge.set_joint_anchor_world(&mut sim, joint, ph2d_physics_ecs::JointSide::A, [1.0, 6.0]),
+        "a porta recusou o arrasto do dot"
+    );
+    assert!(
+        follows(
+            bridge.joint_anchor_world(&sim, joint, ph2d_physics_ecs::JointSide::A),
+            [1.0, 6.0]
+        ),
+        "o dot não seguiu o próprio arrasto"
+    );
+    let after = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    assert_ne!(
+        before.local_a, after.local_a,
+        "o dot nao autorou onde no corpo o pino prende -- a pergunta segue sem porta"
+    );
+    let t = sim.world().get::<Transform>(joint).expect("joint");
+    assert!(
+        (t.translation.x - 2.0).abs() < 1e-4,
+        "arrastar o dot moveu o PREGO: {}",
+        t.translation.x
     );
 
     // --- o CONTROLE: um joint corpo-a-corpo segue escrevendo o local ---

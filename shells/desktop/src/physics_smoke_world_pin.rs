@@ -151,8 +151,18 @@ impl crate::App {
                - clique 'Object': o pino perde o mundo, 'Body B' volta a '(missing)' e\n    \
                  o conta-gotas REAPARECE. No Play a bola VERDE cai.\n  \
                - clique 'World' de novo: ela volta a pender.\n  \
-               - com o pino selecionado, arraste o DOT AMBAR: a ancora anda e a bola\n    \
-                 vai junto. Ctrl+Z desfaz em UM passo.\n  \
+               - com o pino selecionado, ha DUAS alcas no MESMO ponto -- um pino\n    \
+                 satisfeito tem prego e ponto-de-corpo no mesmo lugar, e o que as\n    \
+                 mantem sendo duas e' o miolo contra a BANDA de fora do anel\n    \
+                 (W-WorldPinLocal):\n    \
+                 . o ANEL (a banda de fora) e' o PREGO. Arraste: a ancora anda e a\n      \
+                   bola vai junto. Ctrl+Z desfaz em UM passo.\n    \
+                 . o DOT (o miolo) e' ONDE NO CORPO o pino prende. Arraste ao longo\n      \
+                   da barra: o prego fica, e no Play a bola pende de OUTRO ponto\n      \
+                   dela. Ate esta wave esse numero nao tinha porta nenhuma -- nem\n      \
+                   alca, nem row -- e era inalcancavel depois da criacao.\n    \
+                 (!) O gesto do PREGO mudou de alca: era o dot, e ele nem seguia o\n      \
+                   mouse (a porta lia o ponto do corpo e escrevia o prego).\n  \
                - e faca o mesmo em 'Old Pin' (o laranja): clicar 'World' ali\n    \
                  ABANDONA o gancho inventado -- e ai da para apagar o objeto.\n\n  \
                DESENHE UM NO CANVAS: na secao Physics Body de qualquer corpo, 'Join\n  \

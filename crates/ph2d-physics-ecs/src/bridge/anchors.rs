@@ -154,6 +154,22 @@ impl PhysicsBridge {
                 local,
             ));
         }
+        // ⚠️ **Num pino de MUNDO o lado B É o PREGO** — o `Transform` do joint
+        // (W-WorldPinLocal). Antes desta wave ele devolvia `None`, e a
+        // consequência não era só uma alça a menos: o lado A ficava com DUAS
+        // responsabilidades e a porta passava a **ler um número e escrever
+        // outro** — o dot era desenhado no ponto do CORPO
+        // (`world_from_local`) e o arrasto escrevia o prego, então ele **não
+        // seguia o mouse** (medido: pedir `[0,5; 2,0]` deixava a leitura em
+        // `[0,0; 2,0]`, com o `Transform` já em 0,5).
+        //
+        // Agora cada lado significa o que significa em todo joint — **A é onde
+        // no corpo A, B é a outra ponta** —, e por ler e escrever o MESMO número
+        // as duas alças seguem o cursor.
+        if side == JointSide::B && self.joint_is_world_anchored(joint) {
+            let t = sim.world().get::<Transform>(joint)?;
+            return Some([t.translation.x, t.translation.y]);
+        }
         match side {
             JointSide::A => {
                 let t = sim.world().get::<Transform>(joint)?;
@@ -184,17 +200,21 @@ impl PhysicsBridge {
         side: JointSide,
         world: [f32; 2],
     ) -> bool {
-        // ⚠️ **Num pino de MUNDO o lado A move a ÂNCORA, não o ponto no corpo**
-        // (W-JointWorld), e sem esta linha a alça é MORTA: o dot é desenhado no
-        // `Transform` do joint — que num pino de mundo **É** a âncora —, então
-        // escrever `local_a` mudava *onde no corpo o pino prende* e deixava o
-        // desenho exatamente onde estava. O artista arrasta e nada acontece.
+        // ⚠️ **Num pino de MUNDO o PREGO é o lado B** (W-WorldPinLocal). A
+        // premissa que este ramo carregava — *"o dot é desenhado no `Transform`,
+        // que num pino de mundo É a âncora, então escrever `local_a` deixaria o
+        // desenho parado"* — foi **MEDIDA e é falsa**: `joint_anchor_world(A)`
+        // devolve `world_from_local(corpo, local_a)` sempre que o joint está
+        // `anchored`, e um pino de mundo está. O ramo trocava o defeito de lado:
+        // a porta passava a **ler um número e escrever outro**, e era o dot que
+        // não seguia o mouse (pedir `[0,5; 2,0]` deixava a leitura em
+        // `[0,0; 2,0]`).
         //
-        // ⚠️ E o CORPO vai junto, que é o certo: com o `local_a` intacto, mover a
-        // âncora de um pêndulo o faz pender do ponto novo (medido no kernel —
-        // âncora 6→9, corpo 5→8). Mudar *onde no corpo* ele prende é outra
-        // pergunta, e ela não tem alça hoje (plano 02 §9.3).
-        if side == JointSide::A && self.joint_is_world_anchored(joint) {
+        // Com o prego no lado B — a banda de fora do anel, que a infra de alça
+        // coincidente já reserva — cada lado lê e escreve o MESMO número, e a
+        // pergunta que não tinha porta nenhuma (*onde no corpo isto prende?*)
+        // passa a ter a mesma do resto do app: o dot de A.
+        if side == JointSide::B && self.joint_is_world_anchored(joint) {
             if sim.world().get::<PhysicsJoint>(joint).is_none() {
                 return false;
             }

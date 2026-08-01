@@ -222,6 +222,8 @@ mod physics_smoke_contacts;
 mod physics_smoke_damping;
 mod physics_smoke_events;
 mod physics_smoke_fk;
+/// W-PartFace: a chave e a fenda -- editar uma PECA muda o resultado.
+mod physics_smoke_foot;
 mod physics_smoke_grab;
 mod physics_smoke_ik;
 mod physics_smoke_interact;
@@ -236,7 +238,6 @@ mod physics_smoke_joint_pair;
 mod physics_smoke_joint_pose;
 mod physics_smoke_joint_rig;
 mod physics_smoke_joint_slider;
-/// W-PartFace: a chave e a fenda -- editar uma PECA muda o resultado.
 mod physics_smoke_part;
 mod physics_smoke_props;
 mod physics_smoke_pulley;

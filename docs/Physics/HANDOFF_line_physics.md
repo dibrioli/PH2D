@@ -7988,3 +7988,99 @@ para dentro de outra peça do mesmo corpo (não há auto-colisão dentro de um c
 composto — é o que "um corpo" significa, e não é defeito) · o rótulo *Make
 Independent Body* não avisa que a peça vai **saltar** para a pose de mundo dela
 (ela já estava lá; o que muda é quem a integra).
+
+---
+
+## W-PartSensor — o SENSOR DE PÉ (2026-08-01, cena `=71`, pendente de smoke)
+
+A W-PartFace deu à peça um chip **`Solid | Sensor`**. Auditando a face que ela
+acabara de shipar — a política de fechamento desta linha exige que a *sequência*
+leve a algum lugar, não só que o clique chegue ao barramento — duas rows nunca
+tinham sido medidas. Uma delas estava morta.
+
+### A medição, antes de qualquer hipótese
+
+`tests/measure_part_sensor.rs` monta o caso canônico (tronco sólido + peça-sensor
+embaixo) e pergunta três coisas:
+
+| pé | tronco assenta em | `triggered_sensors()` |
+|---|---|---|
+| sólido | `1,6990` (escorado) | `[]` |
+| **sensor** | `1,4990` (atravessa) | **`[]`** |
+
+⚠️ **O chip SEMPRE chegou ao solver** — a diferença de altura prova que a peça
+atravessa. O que não chegava era o **canal**.
+
+### A causa estava escrita no doc do wrapper
+
+`intersecting_body_pairs` colapsava o par de colliders num par de CORPOS,
+jogando fora *qual* forma era a sensora, e o doc dela justificava isso assim:
+
+> *"each body owns one collider, so the pair is reported by body handle"*
+
+Era verdade até a **W-Compound**. Com um corpo composto o par reportado é
+`(tronco, chão)`, o teste da ponte perguntava se o collider **próprio do tronco**
+era sensor — não é — e a sobreposição era descartada.
+
+⚠️ **O caso morto é o mais comum que existe num módulo 2D:** o *sensor de pé* de
+um personagem, o `isGrounded` de Box2D e Unity, que os dois expressam
+**exatamente** assim (uma *fixture* sensora no mesmo corpo).
+
+### O desenho
+
+**A primitiva do wrapper passa a ser o COLLIDER** (`intersecting_collider_pairs`)
+e a versão por corpo é **derivada** dela — duas varreduras do mesmo grafo são
+duas respostas a *o que sobrepõe o quê*, e divergem no dia em que uma delas
+aprende um filtro que a outra não tem.
+
+⚠️ **As duas metades do par são respondidas por perguntas DIFERENTES**, e é isso
+que torna o canal correto:
+
+- **quem é o sensor** é a ENTIDADE que carrega o `Collider` marcado — o corpo, se
+  for a forma própria dele; a **peça**, se for peça. É o que o artista marcou e é
+  o que o contorno desenha.
+- **o que está dentro** é o CORPO, lido do MESMO `PartRef::owner` de onde a mão
+  tira a resposta dela: quem pergunta *"quem entrou no gatilho?"* quer um objeto,
+  não uma das formas dele.
+
+### A metade visível é a razão de a wave existir
+
+O overlay é o **único** consumidor deste canal neste build (o doc do
+`bodies_inside` já o dizia), então a consequência de o canal ser cego era exata:
+a peça-sensor desenhada magenta **APAGADO para sempre**, sem nunca acender.
+
+### Números
+
+**`physics_ecs_c9` byte-idêntico** (`e216e367…`, 99 corpos) — trigger é
+**readout**, o solver não o lê. **Nenhum schema** (`PROJECT_SCHEMA` fica em
+**48**) · registro **fica em 24** · **nenhum componente, nenhum id, nenhum ADR,
+zero `Cargo.toml`**.
+
+### Gates e as duas lições de fixture
+
+4 na crate ECS (o pé dispara e se NOMEIA · a peça sólida é o controle · a
+transição *acende ao chegar, não antes* · o que está dentro é o corpo mesmo
+quando quem entra é uma peça) + 3 no wrapper + 1 e2e no overlay + 4 na cena.
+**5 mutações, 5 sangram.**
+
+⚠️ **Um gate meu nasceu VERDE-SOBRE-ERRADO, e a fixture era a culpada:** o
+quase-toque a `2,4` **nem entra no grafo de interseção**, então o flag
+`intersecting` nunca é consultado e a mutação que o remove passa. A janela foi
+**MEDIDA** — `2,0005` / `2,001` / `2,002` entram; `2,005` em diante já não — e a
+fixture mudou-se para dentro dela. *Uma varredura afastada demais mede a ausência
+do PAR, não a do filtro.*
+
+⚠️ **E outra media um vazio por FÍSICA:** rapier **não reporta interseção entre
+dois corpos FIXOS** (o default de `ActiveCollisionTypes` cobre DYNAMIC-vs-\*),
+então o personagem da fixture tem de ser `Dynamic` — `GravityScale(0)` o deixa
+parado sem recorrer a travas, e a pose fica sendo a autorada.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=71`** — três personagens idênticos, o contorno é o
+oráculo. **Grounded** acende e fica · **Hovering** (`GravityScale 0`) **nunca**
+acende, e é o CONTROLE · **Falling** cai de 5,5 m e acende **no instante** em que
+encosta. O tronco **não** acende em nenhum dos três, e trocar o pé para `Solid`
+o transforma em apoio (o tronco sobe `0,32 m`, medido).
+
+**Aberto:** o **consumidor de GAMEPLAY** (colisão → sinal via script/timeline)
+segue não construído — é a próxima camada, cross-line, e continua decisão do
+Enio; o que esta wave fecha é a metade que o overlay mostra.

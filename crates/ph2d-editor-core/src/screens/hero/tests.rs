@@ -1833,3 +1833,33 @@ fn every_painted_rail_button_is_dispatched_by_somebody() {
         );
     }
 }
+
+// ── A PORTA das réguas (plano 25 §9, a W6.2) ────────────────────────────────
+
+/// **Visível ⇔ vivo**, e as duas condições, nenhuma bastando sozinha.
+///
+/// ⚠️ A segunda metade — a ferramenta vetorial em mãos — é uma CORREÇÃO, não escopo escolhido:
+/// a faixa da régua **ocupa** a borda do canvas e o gesto dela corre antes de toda ferramenta,
+/// então uma régua permanente comeria o pen-down do **Painter** nos 20 px de cima (o artista
+/// pincela ali e nasce uma guia). Este gate existe porque a mutação que apaga essa metade
+/// sobrevivia a todos os outros — a correção estava shipada e desguardada.
+#[test]
+fn the_rulers_are_live_only_with_the_vector_tool_and_the_toggle_on() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.view.rulers_visible = true;
+
+    hero.panel_visibility.insert("vector", false);
+    assert!(
+        !hero.rulers_live(),
+        "sem a ferramenta vetorial a faixa não existe — senão ela come o pen-down do Painter"
+    );
+
+    hero.panel_visibility.insert("vector", true);
+    assert!(hero.rulers_live(), "com a ferramenta e o interruptor, viva");
+
+    hero.view.rulers_visible = false;
+    assert!(
+        !hero.rulers_live(),
+        "o interruptor do artista continua mandando — é ele o *lock* das guias"
+    );
+}

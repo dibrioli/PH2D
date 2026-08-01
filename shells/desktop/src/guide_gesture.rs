@@ -130,12 +130,13 @@ impl App {
         })
     }
 
-    /// As réguas estão à mostra? É o mesmo interruptor que decide se as guias são agarráveis.
+    /// As réguas estão vivas? ⚠️ **A MESMA porta que o paint pergunta** — duas cópias desta
+    /// condição shipariam uma faixa que desenha e não responde (ou o contrário).
     pub(crate) fn rulers_visible(&self) -> bool {
         self.gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.view.rulers_visible)
+            .is_some_and(ph2d_editor::HeroScreen::rulers_live)
     }
 
     /// Pen-down: começa um arrasto de guia, se houver um a começar. Devolve `true` quando

@@ -108,14 +108,19 @@ fn announce(app: &mut crate::App) {
         gfx.vec_scene.paths().len()
     );
     eprintln!(
-        "[guides] REGUAS: {} (o default do produto)",
+        "[guides] REGUAS agora: {} — ⚠️ elas vivem com a ferramenta VECTOR em mãos, e não \
+         por escopo escolhido: a faixa OCUPA a borda do canvas e o gesto dela corre antes de \
+         toda ferramenta, então uma régua permanente comeria o pen-down do Painter nos 20 px \
+         de cima.",
         if app.rulers_visible() {
-            "à mostra"
+            "vivas"
         } else {
             "fora"
         }
     );
-    eprintln!("[guides] o roteiro:");
+    eprintln!("[guides] o roteiro (pegue a ferramenta VECTOR primeiro):");
+    eprintln!("  0. As duas faixas graduadas aparecem nas bordas de cima e da esquerda. Sem a");
+    eprintln!("     ferramenta Vector elas somem — e as guias FICAM, visíveis e magnéticas.");
     eprintln!("  1. CRIAR — arraste de dentro da faixa de cima para baixo: nasce uma guia");
     eprintln!("     HORIZONTAL. Da faixa da esquerda para a direita, uma VERTICAL.");
     eprintln!("  2. MOVER — pegue uma das duas que já estão lá e arraste. Um Ctrl+Z depois");
@@ -135,6 +140,7 @@ fn announce(app: &mut crate::App) {
     );
     eprintln!("  5. O LOCK — desligue 'Rulers' na seção Snap: as faixas somem, as guias FICAM");
     eprintln!("     visíveis e magnéticas, e nenhum arrasto as move. Religue e volta tudo.");
+    eprintln!("     (trocar de ferramenta faz o mesmo — é a MESMA porta.)");
     eprintln!("  6. O ZERO — a régua conta a partir da origem da GRADE. Mude a origem no");
     eprintln!("     painel de Grid Snap e os rótulos têm de acompanhar, sem a rede sair do");
     eprintln!("     lugar em relação a eles.");

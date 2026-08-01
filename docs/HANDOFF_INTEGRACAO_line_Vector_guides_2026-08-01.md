@@ -79,6 +79,9 @@ ganharam as inversas `screen_to_world_x`/`_y`.
    pina contra o canvas do Flip, o arrasto de joint e os dois pickers.
 4. **`hero/paint.rs`** ganhou o `hero.last_canvas = layout.canvas;` e a chamada da régua. O
    arch-gate `the_ruler_is_painted_with_the_canvas_the_layout_resolved` pina os três fatos.
+   ⚠️ **`HeroScreen::rulers_live()` é a PORTA ÚNICA** (`view.rulers_visible` **e** a ferramenta
+   vetorial em mãos), perguntada pelo paint e pelo gesto — a segunda metade é uma correção
+   achada auditando a wave: sem ela a faixa comeria o pen-down do **Painter** nos 20 px de cima.
 5. **Os dois gates de fiação de snap** (`the_snap_toggles_are_not_crossed` e
    `each_pending_snap_toggle_lands_on_its_own_field`) foram **estendidos de 4 para 8 entradas**.
    Um merge que perdesse as novas deixaria o par novo livre para cruzar.
@@ -101,7 +104,7 @@ ph2d-vec-edit    149 ok    ph2d-editor-core  885 ok    shell            1788 ok
 - **Debug E release** — a lição da `line/FLIP` (um gate que reprovava só em debug) e a do
   `ph2d-flip-colorize` (um pânico que só o debug via).
 
-**10 mutações, 10 sangram:**
+**12 mutações, 12 sangram:**
 
 | # | o que muta | quem sangra |
 |---|---|---|
@@ -115,6 +118,8 @@ ph2d-vec-edit    149 ok    ph2d-editor-core  885 ok    shell            1788 ok
 | M8 | soltar sobre a régua não apaga | `releasing_over_a_ruler_deletes_…` |
 | M9 | a régua recebe o canvas de FACHADA | `the_ruler_is_painted_with_the_canvas_the_layout_resolved` |
 | M10 | o press de guia cai depois do Flip | `the_guide_gesture_runs_before_any_tool_claims_the_pointer` |
+| M11 | a porta esquece a ferramenta (a régua volta a comer o pen-down do Painter) | `the_rulers_are_live_only_with_the_vector_tool_and_the_toggle_on` |
+| M12 | o gesto recompõe a condição em vez de perguntar a porta | `the_paint_and_the_gesture_ask_the_same_door_about_the_rulers` |
 
 ---
 

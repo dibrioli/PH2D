@@ -786,8 +786,14 @@ nasce dela é uma linha **HORIZONTAL** — a inversão exata que se troca sem o 
 apaga (o modelo universal — Figma, Illustrator, Photoshop). **Criar e mover são o MESMO caminho**:
 um press na régua já empurra a guia para o documento e o gesto continua como um arrasto dela, então
 desistir de uma guia nova e descartar uma antiga são o mesmo gesto sem que nada precise saber qual
-era. ⚠️ **Ele é TOOL-AGNÓSTICO** — a faixa está visível com qualquer ferramenta na mão, e um gesto
-que só respondesse no Vector deixaria chrome desenhado e **morto sob o mouse** no resto do app.
+era. ⚠️ **E a régua vive com a ferramenta VECTOR em mãos** — uma CORREÇÃO achada auditando a própria
+wave, não escopo escolhido: a faixa **ocupa** a borda do canvas e o gesto dela corre **antes de
+toda ferramenta**, então uma régua permanente comeria o pen-down do **Painter** nos 20 px de cima
+(o artista pincela ali e nasce uma guia). O invariante que importa fica de pé — ***visível ⇔
+vivo***, por uma **porta única** (`HeroScreen::rulers_live`) que o paint e o gesto perguntam: uma
+faixa que desenha e não responde, ou que responde sem aparecer, é o chrome morto sob o mouse que
+esta codebase varre a cada wave. ⚠️ A mutação que apaga a segunda metade da porta **sobreviveu a
+todos os outros gates** — a correção estava shipada e desguardada até o gate próprio nascer.
 
 ⚠️ **Com as réguas fora as guias ficam INERTES** — visíveis e magnéticas, mas não agarráveis. É o
 *lock de guias* que o Illustrator e o Photoshop escondem num booleano de menu (e que o **Figma não
@@ -803,8 +809,8 @@ lhes dá desfazer e salvar de graça, pelo mesmo diff que já cobre o mundo, o v
 é **PROVISÓRIO**: o valor se CONTA contra o `main` do dia da integração. `VEC_SCENE_SCHEMA` **13
 intacto**, contrato congelado **intacto**, **nenhum ADR**.
 
-**34 gates novos** (7 modelo · 9 régua · 8 snap · 6 gesto · 2 arch · 2 seam estendidos),
-**10 mutações, 10 sangram**.
+**36 gates novos** (7 modelo · 9 régua · 8 snap · 6 gesto · 1 porta · 3 arch · 2 seam estendidos),
+**12 mutações, 12 sangram**.
 
 ⚠️ **E dois gates MEUS nasceram errados, os dois reprovando código correto:**
 1. A metade *"o passo não é folgado"* da régua enumerava `step/2`, `step/2.5`, `step/5` como

@@ -286,6 +286,29 @@ impl HeroScreen {
         self.panel_visibility.get(id).copied().unwrap_or(false)
     }
 
+    /// **As réguas estão vivas neste frame?** — a PORTA ÚNICA da W6.2, perguntada pelo paint
+    /// (para desenhar as faixas) e pelo gesto (para decidir se um press nelas cria uma guia).
+    ///
+    /// São DUAS condições e nenhuma basta sozinha:
+    /// - o interruptor do artista (`view.rulers_visible`), que é também o *lock* das guias;
+    /// - **a ferramenta vetorial estar em mãos.**
+    ///
+    /// ⚠️ **A segunda condição é uma CORREÇÃO, não uma restrição de escopo.** A faixa da régua
+    /// **ocupa** a borda do canvas (o modelo de sobreposição), e o gesto dela corre antes de
+    /// toda ferramenta — então uma régua permanente comeria o pen-down do PAINTER nos 20 px de
+    /// cima: o artista pincelaria ali e nasceria uma guia. Hoje quem consome guias é só o snap
+    /// vetorial, então uma faixa presente noutra ferramenta seria custo sem contrapartida.
+    ///
+    /// ⚠️ E ela **preserva o invariante que importa**: *visível ⇔ vivo*. Uma faixa que
+    /// aparecesse sem responder — ou que respondesse sem aparecer — é a forma exata do chrome
+    /// morto sob o mouse que esta codebase varre a cada wave.
+    ///
+    /// O dia em que o gizmo de sprite consumir guias, esta função é o único lugar a mudar.
+    #[must_use]
+    pub fn rulers_live(&self) -> bool {
+        self.view.rulers_visible && self.is_panel_visible("vector")
+    }
+
     /// Pre-populate the [`WidgetStore`] by delegating to each
     /// region's `populate` function. Each region owns its ids;
     /// adding a widget means editing only that region's file.

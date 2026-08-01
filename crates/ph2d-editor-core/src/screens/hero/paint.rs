@@ -160,7 +160,7 @@ pub fn paint_hero_screen(
     // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
     // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
     // O zero é a origem da GRADE — um número, dois consumidores.
-    if hero.view.rulers_visible
+    if hero.rulers_live()
         && let Some(view) = hero.grid.view
     {
         let view = crate::grid::GridView {

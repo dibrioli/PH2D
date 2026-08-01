@@ -404,8 +404,8 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
         .expect("as réguas são pintadas");
     let head = &src[..call];
     let block = head
-        .rfind("if hero.view.rulers_visible")
-        .expect("o desenho é gateado no interruptor das réguas");
+        .rfind("if hero.rulers_live()")
+        .expect("o desenho pergunta a PORTA ÚNICA, não uma condição própria");
     assert!(
         head[block..].contains("canvas: layout.canvas,"),
         "a régua recebe o canvas RESOLVIDO pelo layout, não o de fachada do `grid.view`"
@@ -419,4 +419,38 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
         "o canvas resolvido é publicado para quem trata ponteiro; sem isto o gesto da régua \
          teria de espelhar a aritmética do layout"
     );
+}
+
+/// **Uma faixa que desenha e não responde é chrome morto sob o mouse** — e o inverso, uma que
+/// responde sem aparecer, é pior: o artista clica no vazio e nasce uma guia.
+///
+/// O invariante é *visível ⇔ vivo*, e ele só se sustenta enquanto as DUAS metades perguntarem
+/// à mesma função. Este gate afirma isso onde nenhum teste de unidade chega: o paint mora na
+/// `editor-core` e o gesto na shell, então nada os obriga a concordar exceto a porta.
+#[test]
+fn the_paint_and_the_gesture_ask_the_same_door_about_the_rulers() {
+    let paint = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/ph2d-editor-core/src/screens/hero/paint.rs"),
+    )
+    .expect("hero/paint.rs");
+    let gesture = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/guide_gesture.rs"),
+    )
+    .expect("guide_gesture.rs");
+    assert!(
+        paint.contains("hero.rulers_live()"),
+        "o paint tem de perguntar a porta, não uma condição própria"
+    );
+    assert!(
+        gesture.contains("HeroScreen::rulers_live"),
+        "o gesto tem de perguntar a MESMA porta"
+    );
+    // E nenhum dos dois pode ter uma segunda cópia da condição composta.
+    for (name, src) in [("o paint", &paint), ("o gesto", &gesture)] {
+        assert!(
+            !src.contains("view.rulers_visible &&") && !src.contains("&& view.rulers_visible"),
+            "{name} recompõe a condição em vez de a perguntar — duas cópias divergem"
+        );
+    }
 }

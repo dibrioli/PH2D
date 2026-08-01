@@ -33,3 +33,8 @@ ph2d-warp-style = { path = "../ph2d-warp-style" }
 # `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente da
 # `ph2d-warp-style` logo acima. Re-exportado por `lib.rs`.
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
+# A casa ÚNICA do vocabulário de simetria: `SymmetryKind`/`SymmetrySpec`/`Axis` moram nesta folha
+# porque têm dois donos que não se veem — este crate (o motor, `symmetry::symmetry_paths`) e o
+# `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente das
+# duas acima. Re-exportado por `symmetry.rs`.
+ph2d-symmetry = { path = "../ph2d-symmetry" }

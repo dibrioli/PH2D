@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-symmetry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A CASA ÚNICA do vocabulário de simetria de desenho. Ele vive em DOIS lugares do editor: o
+# documento o guarda num componente (`ph2d-ecs::VecSymmetry`) e o motor o consome ao produzir as
+# cópias (`ph2d-vec-scene::symmetry`). `ph2d-ecs` é fundação e `ph2d-vec-scene` é o modelo puro de
+# documento; nenhum depende do outro, então a casa tem de ser esta folha — exatamente o argumento
+# (e o precedente) da `ph2d-warp-style` e da `ph2d-stroke-width`.
+#
+# A alternativa era o componente guardar sete campos soltos e a shell remontar a spec. Isso põe a
+# MESMA remontagem no cozimento E no overlay, que é precisamente a segunda cópia que o
+# `mirror_dir` existe para não ter.
+#
+# serde: a simetria viaja no save (`VecSymmetry`). Sem `postcard`: só o tipo é serializado, quem
+# escreve o wire é o consumidor.
+serde = { version = "1", features = ["derive"] }

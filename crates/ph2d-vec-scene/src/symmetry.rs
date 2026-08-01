@@ -10,18 +10,12 @@
 //! do winding e a fusão sobreviveram inteiras. O que mudou é quem manda no eixo: era um número
 //! relativo à caixa da forma, e passa a ser um **ponto autorado** que o artista arrasta.
 //!
-//! # O vocabulário é o do PAINTER, e isso é uma decisão, não coincidência
+//! # O vocabulário mora numa FOLHA, não aqui
 //!
-//! *"exatamente como o modo painter"* — então os tipos são os DELE
-//! (`ph2d_painter_brush::symmetry`): **Mirror X** (linha vertical, esquerda↔direita) · **Mirror
-//! Y** (horizontal) · **Custom** (a linha que o artista desenha) · **Radial** (3..=12 cópias em
-//! torno de um centro). Duas listas de *"que simetrias este app tem"* divergiriam no dia em que
-//! uma delas ganhasse a quinta — há gate na shell (a única crate que vê os dois lados) a exigir
-//! que as duas concordem em número, discriminante de wire e faixa de segmentos.
-//!
-//! ⚠️ A matemática **não** é partilhável: o Painter transforma um `Dab` (pixels de canvas, com
-//! vetores de orientação) e isto transforma um contorno (unidades de documento, com alças). O que
-//! se partilha é a palavra.
+//! [`ph2d_symmetry`] guarda *que espelho, onde, quantas cópias* — porque o **documento** também
+//! precisa dele (`ph2d_ecs::VecSymmetry`) e a fundação não vê este crate. Aqui fica só o que
+//! precisa de `VecPath`: reflectir vértices, repor o winding, fundir as metades. Os tipos são
+//! re-exportados, então quem já escrevia `symmetry::SymmetrySpec` continua a escrever.
 //!
 //! # A reflexão inverte o WINDING, e sem repor abre-se um buraco
 //!
@@ -51,13 +45,10 @@
 
 use crate::{Contour, VecPath, VecVertex, reverse_contour};
 
+pub use ph2d_symmetry::{Axis, MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind, SymmetrySpec};
+
 /// Abaixo disto uma distância é zero.
 const EPS: f64 = 1e-12;
-
-/// Menos cópias radiais que a UI alcança — o mesmo `3` do Painter.
-pub const MIN_SEGMENTS: u32 = 3;
-/// Mais cópias radiais que a UI alcança — o mesmo `12` do Painter.
-pub const MAX_SEGMENTS: u32 = 12;
 
 /// **A tolerância da fusão**, em fracção da extensão da forma.
 ///
@@ -72,169 +63,6 @@ pub const MAX_SEGMENTS: u32 = 12;
 /// zoom de trabalho) e apertado para não fundir uma ponta visivelmente afastada — a `0,02` o vão
 /// já se vê no ecrã. Há gate a varrer exactamente esta tabela.
 const FUSE_TOL_FRAC: f64 = 0.01;
-
-/// **Que simetria** — o vocabulário do Painter, palavra por palavra.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-pub enum SymmetryKind {
-    /// Reflecte esquerda↔direita numa linha **vertical** pelo centro (a "X" que os artistas
-    /// esperam: ela espelha a coordenada X).
-    #[default]
-    MirrorX,
-    /// Reflecte cima↔baixo numa linha **horizontal** pelo centro.
-    MirrorY,
-    /// Reflecte na linha arbitrária pelo centro, com a direcção que o artista desenhou.
-    Custom,
-    /// `segments` cópias em rotação à volta do centro — a *circular*.
-    Radial,
-}
-
-impl SymmetryKind {
-    /// Todos, na ordem em que o painel os desenha.
-    pub const ALL: &'static [Self] = &[Self::MirrorX, Self::MirrorY, Self::Custom, Self::Radial];
-
-    /// O discriminante de wire — **o mesmo do Painter** (`0` X, `1` Y, `2` Custom), com o Radial
-    /// no fim (lá ele é um bool à parte, aqui é o quarto membro da mesma lista).
-    #[must_use]
-    pub fn to_u8(self) -> u8 {
-        match self {
-            Self::MirrorX => 0,
-            Self::MirrorY => 1,
-            Self::Custom => 2,
-            Self::Radial => 3,
-        }
-    }
-
-    /// Decodifica um discriminante de wire (fora de alcance → `MirrorX`).
-    #[must_use]
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            1 => Self::MirrorY,
-            2 => Self::Custom,
-            3 => Self::Radial,
-            _ => Self::MirrorX,
-        }
-    }
-
-    /// O rótulo que o painel mostra. Mora aqui, e não numa tabela do painel, porque uma segunda
-    /// lista divergiria da primeira assim que alguém acrescentasse um tipo.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::MirrorX => "Mirror X",
-            Self::MirrorY => "Mirror Y",
-            Self::Custom => "Custom",
-            Self::Radial => "Radial",
-        }
-    }
-
-    /// Esta simetria é uma REFLEXÃO (e portanto inverte o winding)?
-    #[must_use]
-    pub fn reflects(self) -> bool {
-        !matches!(self, Self::Radial)
-    }
-}
-
-/// **A simetria autorada de uma forma.** Tudo em unidades de DOCUMENTO — o centro é um lugar que
-/// o artista arrasta, não uma fracção da caixa.
-#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct SymmetrySpec {
-    pub kind: SymmetryKind,
-    /// Um ponto NA linha de espelho, ou o centro da rosácea.
-    pub center: [f64; 2],
-    /// Direcção da linha quando `kind == Custom`. Normalizada defensivamente; `[0,0]` cai numa
-    /// vertical.
-    pub dir: [f64; 2],
-    /// Cópias em rotação quando `kind == Radial`, presa a `[MIN_SEGMENTS, MAX_SEGMENTS]`.
-    pub segments: u32,
-    /// Funde as metades num contorno fechado quando as pontas de um contorno aberto pousam no
-    /// eixo. Inerte no Radial (não há costura a fechar).
-    pub fuse: bool,
-}
-
-impl Default for SymmetrySpec {
-    fn default() -> Self {
-        Self {
-            kind: SymmetryKind::MirrorX,
-            center: [0.0, 0.0],
-            dir: [0.0, 1.0],
-            segments: 6,
-            fuse: true,
-        }
-    }
-}
-
-impl SymmetrySpec {
-    /// O número de segmentos preso à faixa da UI.
-    #[must_use]
-    pub fn segments(&self) -> u32 {
-        self.segments.clamp(MIN_SEGMENTS, MAX_SEGMENTS)
-    }
-
-    /// A direcção UNITÁRIA da linha de espelho — vertical no X, horizontal no Y, a autorada no
-    /// Custom (com queda para vertical se for degenerada).
-    ///
-    /// ⚠️ Porta única: o kernel usa-a para reflectir e o **overlay** para desenhar a linha. Duas
-    /// respostas desenhariam um eixo onde a geometria não espelha.
-    #[must_use]
-    pub fn mirror_dir(&self) -> [f64; 2] {
-        match self.kind {
-            SymmetryKind::MirrorX => [0.0, 1.0],
-            SymmetryKind::MirrorY => [1.0, 0.0],
-            SymmetryKind::Custom | SymmetryKind::Radial => {
-                let len = self.dir[0].hypot(self.dir[1]);
-                if len < 1e-9 {
-                    [0.0, 1.0]
-                } else {
-                    [self.dir[0] / len, self.dir[1] / len]
-                }
-            }
-        }
-    }
-
-    /// Quantas cópias esta simetria produz ao TODO, contando o original.
-    #[must_use]
-    pub fn copy_count(&self) -> usize {
-        match self.kind {
-            SymmetryKind::Radial => self.segments() as usize,
-            _ => 2,
-        }
-    }
-}
-
-/// **Uma linha de espelho**: um ponto `at` e a normal UNITÁRIA `n`.
-#[derive(Copy, Clone, Debug)]
-pub struct Axis {
-    pub at: [f64; 2],
-    pub n: [f64; 2],
-}
-
-impl Axis {
-    /// A linha desta simetria (sem sentido para o Radial, que não tem eixo).
-    #[must_use]
-    pub fn of(spec: &SymmetrySpec) -> Self {
-        let d = spec.mirror_dir();
-        Self {
-            at: spec.center,
-            n: [-d[1], d[0]],
-        }
-    }
-
-    /// O reflexo de `p`. Como `n` é unitária, `p − 2·((p−at)·n)·n` é exacto e sem divisão.
-    #[must_use]
-    pub fn reflect(self, p: [f64; 2]) -> [f64; 2] {
-        let d = (p[0] - self.at[0]).mul_add(self.n[0], (p[1] - self.at[1]) * self.n[1]);
-        [
-            (-2.0 * d).mul_add(self.n[0], p[0]),
-            (-2.0 * d).mul_add(self.n[1], p[1]),
-        ]
-    }
-
-    /// A distância COM SINAL de `p` à linha — positiva do lado para onde `n` aponta.
-    #[must_use]
-    pub fn signed_distance(self, p: [f64; 2]) -> f64 {
-        (p[0] - self.at[0]).mul_add(self.n[0], (p[1] - self.at[1]) * self.n[1])
-    }
-}
 
 /// Reflecte um vértice. O `corner_radius` é um comprimento LOCAL e a reflexão é uma isometria,
 /// então ele sobrevive intacto.

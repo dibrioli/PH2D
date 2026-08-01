@@ -113,6 +113,7 @@ mod vec_offset;
 mod vec_pattern_path;
 mod vec_pattern_rotation;
 mod vec_stroke_profile;
+mod vec_symmetry;
 mod vec_text_path;
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_cut_path::VecCutPath;
@@ -121,6 +122,7 @@ pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
 pub use vec_pattern_rotation::VecPatternRotation;
 pub use vec_stroke_profile::VecStrokeProfile;
+pub use vec_symmetry::VecSymmetry;
 pub use vec_text_path::VecTextPath;
 
 mod vec_morph;

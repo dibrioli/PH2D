@@ -27,6 +27,10 @@ ph2d-warp-style = { path = "../ph2d-warp-style" }
 # via o re-export da `ph2d-vec-scene`). Fundação e modelo puro não se veem, então a
 # casa é esta folha — mesmo argumento e mesmo precedente da `ph2d-warp-style` acima.
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
+# A casa ÚNICA do vocabulário de simetria: `VecSymmetry` guarda um `SymmetrySpec`, e o MESMO tipo
+# é consumido pelo motor que produz as cópias (`ph2d-vec-scene::symmetry`). Fundação e modelo puro
+# não se veem, então a casa é esta folha — mesmo argumento e mesmo precedente das duas acima.
+ph2d-symmetry = { path = "../ph2d-symmetry" }
 # serde derives on every SimComponent (HR-14 mitigation while
 # `#[derive(Saveable)]` macro is pending). PrefabDoc/SceneDoc in
 # ph2d-asset (M14.3) consume these via postcard.

@@ -255,6 +255,7 @@ mod smoke_layout;
 mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
+mod symmetry_live;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;

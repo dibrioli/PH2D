@@ -4805,3 +4805,56 @@ com o host é grátis, e o custo do pincel grande já tem resposta embarcada.
 ⚠️ **Aberto, com número:** os ~13-18% ratio-independentes de uma entrega (não
 atribuídos, candidatos nomeados) · e a pergunta de PRODUTO que só o smoke
 responde: **o artista encontra o `Grid Size` quando o pincel grande fica pesado?**
+
+### 5. O smoke de 2026-08-01 fecha as duas perguntas, e o log traz um TERCEIRO fato
+
+Enio: *"Parece correto o Tip Clean"* · *"O gridsize é sempre visível"*. As duas
+metades que a §5.52 mandou para o smoke voltaram aprovadas — e a segunda **fecha
+a pergunta de produto sem trabalho**: a resposta ao pincel caro já está na tela.
+
+O log, porém, traz uma linha que eu já tinha lido **errado** antes:
+
+```text
+worker: busy 0% away 100% sleep 0% | TAXA DA AGUA 0.0 Hz (0 passos em 5.3s)
+poca: 0.00 M celulas | 0.0 ns/celula
+stamps: media 61.85ms pico 608.62ms em 69/120 (465 entregas, 9.18ms cada)
+```
+
+⚠️ Na §5.48 eu escrevi *"a água está INOCENTE e o log prova (`sim x0`, `worker
+0%`)"* — li aquilo como *não é ela que custa* e **nunca perguntei por que ela
+estava PARADA**. Um `away 100%` com zero passos em 5,3 s não é inocência, é a
+água não rodando; e o instrumento estava dizendo isso desde julho.
+
+**A causa é uma LEI, não um defeito**, e ela está em duas camadas que concordam:
+
+- `Engine::sim_should_run() = !stroke_down || tool == Blow` — o motor **pausa a
+  sim enquanto o traço está encostado**, que é o modelo de referência portado.
+- `hand_off_sim` devolve cedo com `stroke_open`, porque entregar o motor ao
+  worker durante o gesto compraria **zero passos** (o worker consulta o mesmo
+  predicado, `offthread.rs:255`) e custaria uma viagem por dab.
+
+⇒ **A água congelar sob a mão é o desenho**, e o `away 100%` é o balde
+reportando-o com fidelidade. Fica escrito aqui para ninguém re-abrir isto como
+fome de agendamento.
+
+**E o carimbo do log RECONCILIA com a fixture.** Re-medindo o mesmo probe
+depois do cap (`measure_the_stamp_landing_on_a_puddle_that_is_already_there`):
+
+| raio | sob o cap (§5.50) | pós-cap | |
+|---|---|---|---|
+| 100 | 1,86 ms | **2,356 ms** | 1,27× |
+| 200 | 3,34 ms | **4,200 ms** | 1,26× |
+| 300 | 4,37 ms | **5,892 ms** | 1,35× |
+
+O cap escondia 26-35% do trabalho nesses raios. A fixture não roda a sim, e a
+§5.49 já mediu esse imposto em **1,10-1,34×** ⇒ `5,89 × 1,34 = 7,9 ms`, contra
+os **9,18 ms/entrega** do produto — o resto cabe em tamanho de pincel e passo do
+mouse. **Nenhum número órfão sobrou.**
+
+Os 33 fps da janela de traço são, então, o preço honesto de um pincel no topo do
+slider com `Grid Size 1`: 61,85 ms de carimbo por quadro. O `Grid Size 2` corta
+isso 2,9× e o `4`, 4,5×.
+
+⚠️ **O que o log deixa NOMEADO para depois:** na janela SEM carimbo o maior item
+é `painter-dispatch(cpu) = 11,80 ms` (era 6,90 na §5.47) — ele **não é o
+retângulo** e vive na shell, não na água.

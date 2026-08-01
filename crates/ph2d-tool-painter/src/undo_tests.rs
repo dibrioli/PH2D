@@ -74,8 +74,8 @@ fn a_canvas_write_with_no_entry_is_absorbed_by_the_step_that_caused_it() {
     let after_b = model_marked(0x11, &[(5, 0x22), (9, 0x33), (13, 0x44)]);
     c.record_structural(drifted, after_b);
 
-    assert!(c.undo().is_some(), "desfaz o 2o passo");
-    let back = c.undo().expect("desfaz o 1o passo");
+    assert!(c.undo_here().is_some(), "desfaz o 2o passo");
+    let back = c.undo_here().expect("desfaz o 1o passo");
     assert_eq!(
         back.canvas_rgba.as_ref(),
         pristine.canvas_rgba.as_ref(),
@@ -113,8 +113,8 @@ fn the_cursor_walks_with_the_absorption_so_a_coalesced_run_rebuilds_on_the_right
     c.record_structural_coalesced(CoalesceKind::Simplify, drift2, s2);
 
     assert_eq!(c.undo_depth(), 2, "o run de Simplify e UM passo");
-    assert!(c.undo().is_some(), "desfaz o run de Simplify");
-    let back = c.undo().expect("desfaz o 1o passo");
+    assert!(c.undo_here().is_some(), "desfaz o run de Simplify");
+    let back = c.undo_here().expect("desfaz o 1o passo");
     assert_eq!(
         back.canvas_rgba.as_ref(),
         pristine.canvas_rgba.as_ref(),
@@ -153,13 +153,13 @@ fn a_foreign_write_that_returns_to_the_run_start_value_still_lands_on_the_right_
     c.record_structural_coalesced(CoalesceKind::Simplify, dried, s2);
 
     assert_eq!(c.undo_depth(), 2, "o run de Simplify e UM passo");
-    let back = c.undo().expect("desfaz o run");
+    let back = c.undo_here().expect("desfaz o run");
     assert_eq!(
         back.canvas_rgba.as_ref(),
         run_start.canvas_rgba.as_ref(),
         "desfazer o run tem de devolver o estado do INICIO dele, nao um fundo que o cursor velho servia"
     );
-    let back = c.undo().expect("desfaz o 1o passo");
+    let back = c.undo_here().expect("desfaz o 1o passo");
     assert_eq!(
         back.canvas_rgba.as_ref(),
         pristine.canvas_rgba.as_ref(),
@@ -172,7 +172,7 @@ fn undo_rolls_back_to_before() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     c.record_structural(model(0x11), model(0x22));
     assert!(c.can_undo());
-    let restored = c.undo().expect("one entry to undo");
+    let restored = c.undo_here().expect("one entry to undo");
     assert_eq!(restored.canvas_rgba.as_slice(), &[0x11; 16]);
     assert!(!c.can_undo());
     assert!(c.can_redo());
@@ -182,8 +182,8 @@ fn undo_rolls_back_to_before() {
 fn redo_rolls_forward_to_after() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     c.record_structural(model(0x11), model(0x22));
-    c.undo();
-    let restored = c.redo().expect("one entry to redo");
+    c.undo_here();
+    let restored = c.redo_here().expect("one entry to redo");
     assert_eq!(restored.canvas_rgba.as_slice(), &[0x22; 16]);
     assert!(c.can_undo());
     assert!(!c.can_redo());
@@ -194,7 +194,7 @@ fn new_edit_clears_redo_branch() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     c.record_structural(model(0), model(1));
     c.record_structural(model(1), model(2));
-    c.undo();
+    c.undo_here();
     assert!(c.can_redo());
     c.record_structural(model(1), model(3));
     assert!(!c.can_redo(), "a new edit must invalidate the redo branch");
@@ -209,13 +209,13 @@ fn coalesced_runs_merge_and_break_correctly() {
     c.record_structural_coalesced(CoalesceKind::Simplify, model(1), model(2));
     c.record_structural_coalesced(CoalesceKind::Simplify, model(2), model(3));
     assert_eq!(c.undo_depth(), 1, "three Simplify presses = one entry");
-    let restored = c.undo().expect("entry");
+    let restored = c.undo_here().expect("entry");
     assert_eq!(
         restored.canvas_rgba.as_slice(),
         &[0; 16],
         "one undo restores the state before the FIRST press"
     );
-    let fwd = c.redo().expect("entry");
+    let fwd = c.redo_here().expect("entry");
     assert_eq!(
         fwd.canvas_rgba.as_slice(),
         &[3; 16],
@@ -246,11 +246,11 @@ fn coalesced_runs_merge_and_break_correctly() {
 fn coalescing_never_merges_across_an_undo_boundary() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(1));
-    c.undo();
+    c.undo_here();
     c.record_structural_coalesced(CoalesceKind::Simplify, model(0), model(9));
     assert_eq!(c.undo_depth(), 1);
     assert!(!c.can_redo(), "the redo branch was discarded");
-    let restored = c.undo().expect("entry");
+    let restored = c.undo_here().expect("entry");
     assert_eq!(restored.canvas_rgba.as_slice(), &[0; 16]);
 }
 
@@ -258,7 +258,7 @@ fn coalescing_never_merges_across_an_undo_boundary() {
 fn clear_drops_both_stacks() {
     let mut c = UndoController::new(DEFAULT_MAX_BYTES);
     c.record_structural(model(0), model(1));
-    c.undo();
+    c.undo_here();
     c.clear();
     assert!(!c.can_undo() && !c.can_redo());
 }
@@ -471,13 +471,13 @@ fn every_plane_of_a_snapshot_survives_the_round_trip() {
     let after = model_all_planes(0x40);
     c.record_structural(before.clone(), after.clone());
 
-    let back = c.undo().expect("um passo a desfazer");
+    let back = c.undo_here().expect("um passo a desfazer");
     assert_same_planes(&back, &before, "undo");
-    let fwd = c.redo().expect("um passo a refazer");
+    let fwd = c.redo_here().expect("um passo a refazer");
     assert_same_planes(&fwd, &after, "redo");
     // …e a segunda volta usa um cursor que a primeira instalou: é aqui que um cursor que não anda com a
     // história (ou que ficou preso no estado vivo) produz o segundo undo errado.
-    let back2 = c.undo().expect("de novo");
+    let back2 = c.undo_here().expect("de novo");
     assert_same_planes(&back2, &before, "undo (2a volta)");
 }
 
@@ -497,11 +497,11 @@ fn a_chain_of_deltas_walks_back_through_every_state() {
         c.record_structural(w[0].clone(), w[1].clone());
     }
     for i in (0..states.len() - 1).rev() {
-        let back = c.undo().expect("passo");
+        let back = c.undo_here().expect("passo");
         assert_same_planes(&back, &states[i], &format!("undo até o estado {i}"));
     }
     for (i, want) in states.iter().enumerate().skip(1) {
-        let fwd = c.redo().expect("passo");
+        let fwd = c.redo_here().expect("passo");
         assert_same_planes(&fwd, want, &format!("redo até o estado {i}"));
     }
 }
@@ -532,7 +532,7 @@ fn the_history_is_capped_in_bytes_not_in_steps() {
         "vinte passos cabendo em 300 bytes: o cap esta contando PASSOS, nao BYTES"
     );
     // E o passo que sobreviveu ainda desfaz de verdade.
-    let back = c.undo().expect("o passo mais recente");
+    let back = c.undo_here().expect("o passo mais recente");
     assert_eq!(back.canvas_rgba.as_slice(), &[19; 16]);
 }
 
@@ -554,7 +554,7 @@ fn the_byte_ledger_gives_the_memory_back() {
     c.record_structural(model_all_planes(1), model_all_planes(2));
     c.record_structural(model_all_planes(2), model_all_planes(3));
     let two = c.retained_bytes();
-    c.undo();
+    c.undo_here();
     assert_eq!(
         c.retained_bytes(),
         two,
@@ -588,9 +588,9 @@ fn a_plane_the_stride_cannot_measure_is_stored_whole_not_unchanged() {
     before.canvas_size = (0, 0);
     after.canvas_size = (0, 0);
     c.record_structural(before.clone(), after.clone());
-    let back = c.undo().expect("um passo");
+    let back = c.undo_here().expect("um passo");
     assert_same_planes(&back, &before, "undo sem stride utilizavel");
-    let fwd = c.redo().expect("um passo");
+    let fwd = c.redo_here().expect("um passo");
     assert_same_planes(&fwd, &after, "redo sem stride utilizavel");
 }
 
@@ -610,8 +610,8 @@ fn a_coalesced_run_recomposes_the_delta_instead_of_stacking_two() {
     c.record_structural_coalesced(CoalesceKind::Simplify, s0.clone(), s1.clone());
     c.record_structural_coalesced(CoalesceKind::Simplify, s1, s2.clone());
     assert_eq!(c.undo_depth(), 1, "dois presses = um passo");
-    let back = c.undo().expect("o passo colapsado");
+    let back = c.undo_here().expect("o passo colapsado");
     assert_same_planes(&back, &s0, "undo de um run coalescido");
-    let fwd = c.redo().expect("de volta");
+    let fwd = c.redo_here().expect("de volta");
     assert_same_planes(&fwd, &s2, "redo de um run coalescido");
 }

@@ -84,7 +84,7 @@ impl UndoController {
             // o `after` novo. Concatenar os dois deltas seria a alternativa, e ela erra quando as duas
             // janelas se sobrepõem — o segundo passo escreveria por cima do primeiro na ordem errada.
             && let Some(cursor) = self.cursor.as_deref()
-            && let Some(first_before) = top.materialize(cursor, true)
+            && let Some(first_before) = top.materialize(cursor, cursor, true)
         {
             let old = self.undo.pop().expect("o topo que acabamos de ler");
             self.bytes -= old.heap_bytes();

@@ -48,7 +48,7 @@ impl UndoController {
         let Some(top) = self.undo.last() else {
             return;
         };
-        let (kind, Some(first_before)) = (top.kind, top.materialize(cursor, true)) else {
+        let (kind, Some(first_before)) = (top.kind, top.materialize(cursor, cursor, true)) else {
             // O cursor não descreve mais o delta do topo. Não há como esticá-lo honestamente, e mentir
             // aqui seria pior que a divergência: sai calado, exatamente como o `undo` faz.
             return;

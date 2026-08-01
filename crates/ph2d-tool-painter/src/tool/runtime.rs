@@ -68,7 +68,10 @@ impl PainterTool {
         // que começa por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte.
         self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("undo");
-        if let Some(model) = self.undo.undo() {
+        // O VIVO é a base de que o relevo é materializado (degrau 3) — e ele é o MESMO snapshot que a
+        // absorção acabou de construir, então recebê-lo não acrescenta trabalho.
+        let live = self.snapshot_model();
+        if let Some(model) = self.undo.undo(&live) {
             self.restore_model(*model);
             true
         } else {
@@ -101,7 +104,8 @@ impl PainterTool {
         // que começa por `Arc::ptr_eq` em cada plano ⇒ sem escrita estrangeira ele não lê um byte.
         self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("redo");
-        if let Some(model) = self.undo.redo() {
+        let live = self.snapshot_model();
+        if let Some(model) = self.undo.redo(&live) {
             self.restore_model(*model);
             true
         } else {

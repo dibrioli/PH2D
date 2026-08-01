@@ -114,7 +114,9 @@ fn relief_side(
         m.get(&layer).map(|v| (**v).clone()).unwrap_or_default()
     }
     let mut out = cursor.clone();
-    d.side(cursor, &mut out, want_before)
+    // A base do RELEVO é o VIVO (degrau 3) — e aqui o cursor É o vivo, que é a premissa que o
+    // `debug_assert` de `side` confere a cada chamada.
+    d.side(cursor, cursor, &mut out, want_before)
         .expect("o cursor descreve o delta que acabamos de partir");
     let l = cursor.layers.active().expect("a camada ativa do fixture");
     (

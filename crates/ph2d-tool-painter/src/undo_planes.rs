@@ -279,20 +279,42 @@ impl PlaneDeltas {
         )
     }
 
-    /// Reenche `out` (o endpoint guardado, esvaziado) a partir do **cursor**. `None` = a entrada não pode
-    /// ser honrada com este cursor; quem chama descarta o histórico.
+    /// Reenche `out` (o endpoint guardado, esvaziado) a partir do **cursor** — e, para os três planos
+    /// de RELEVO, a partir do plano **VIVO** (`live`).
+    ///
+    /// ⚠️ **Duas bases e não uma, e é o degrau 3 do S3** (doc 28 §5.58.2). O cursor larga o relevo no
+    /// degrau 4, então quem responde *"de que estado o undo parte?"* para essas três famílias passa a
+    /// ser o tool. Hoje as duas respostas são a MESMA — a identidade da §5.28 (*o vivo É o cursor, pelo
+    /// mesmo buffer*, 233/233) —, e o `debug_assert` abaixo é quem a confere a cada undo da suíte em vez
+    /// de a assumir.
+    ///
+    /// ⚠️ **A base tem de valer para tudo FORA da janela do patch**, que é o que `side` copia dela. É
+    /// por isso que a pergunta certa é *o vivo é o cursor?* e não *o vivo é parecido?*.
+    ///
+    /// ⚠️ **E é por isso que só o UNDO/REDO passa o vivo.** O
+    /// [`absorb_foreign_writes`](crate::undo::UndoController::absorb_foreign_writes) e a extensão de um
+    /// run coalescido materializam o `before` de uma entrada contra o cursor ANTIGO, e no primeiro deles
+    /// o vivo difere do cursor **por construção** — é exatamente a divergência que ele existe para
+    /// reconciliar. Os dois passam o cursor nas duas pontas, e a primeira versão desta wave passava o
+    /// vivo: o `debug_assert` abaixo nasceu vermelho em três gates (warp e os dois filtros do sculpt) e
+    /// nomeou o sítio. *A base é o estado ADJACENTE à entrada, e nem sempre ele é o de agora.*
+    ///
+    /// `None` = a entrada não pode ser honrada com esta base; quem chama descarta o histórico.
     pub(crate) fn side(
         &self,
         cursor: &crate::undo::ModelSnapshot,
+        live: &crate::undo::ModelSnapshot,
         out: &mut crate::undo::ModelSnapshot,
         want_before: bool,
     ) -> Option<()> {
         let b = want_before;
+        #[cfg(debug_assertions)]
+        Self::debug_relief_base_is_the_cursor(cursor, live);
         out.canvas_rgba = self.canvas_rgba.side(&cursor.canvas_rgba, b)?;
         out.images = self.images.side(&cursor.images, b)?;
-        out.heights = self.heights.side(&cursor.heights, b)?;
-        out.covers = self.covers.side(&cursor.covers, b)?;
-        out.mats = self.mats.side(&cursor.mats, b)?;
+        out.heights = self.heights.side(&live.heights, b)?;
+        out.covers = self.covers.side(&live.covers, b)?;
+        out.mats = self.mats.side(&live.mats, b)?;
         out.mask_scratch = self.mask_scratch.side(&cursor.mask_scratch, b)?;
         out.selection_mask = self.selection_mask.side(&cursor.selection_mask, b)?;
         out.selection_crisp = self.selection_crisp.side(&cursor.selection_crisp, b)?;
@@ -308,6 +330,37 @@ impl PlaneDeltas {
         out.sculpt.pre_mats = self.sculpt_pre_mats.side(&cursor.sculpt.pre_mats, b)?;
         out.sculpt.pre_rgba = self.sculpt_pre_rgba.side(&cursor.sculpt.pre_rgba, b)?;
         Some(())
+    }
+
+    /// **A rede do degrau 3: a base do relevo É o cursor.**
+    ///
+    /// Enquanto o cursor ainda carrega os três planos (até o degrau 4), a troca de base é
+    /// byte-idêntica — e isto o afirma a cada undo/redo que a suíte encena, em vez de o assumir. Um
+    /// mapa VAZIO no cursor é o próprio degrau 4 e sai calado: aí não há com que comparar, e a
+    /// correção passa a se apoiar na cadeia (`absorb_foreign_writes`).
+    #[cfg(debug_assertions)]
+    fn debug_relief_base_is_the_cursor(
+        cursor: &crate::undo::ModelSnapshot,
+        live: &crate::undo::ModelSnapshot,
+    ) {
+        fn same<T: PartialEq>(
+            c: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
+            l: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
+        ) -> bool {
+            c.is_empty() // degrau 4: o cursor largou o relevo, não há com que comparar
+                || (c.len() == l.len()
+                    && c.iter().all(|(k, cv)| {
+                        l.get(k)
+                            .is_some_and(|lv| std::sync::Arc::ptr_eq(cv, lv) || **cv == **lv)
+                    }))
+        }
+        debug_assert!(
+            same(&cursor.heights, &live.heights)
+                && same(&cursor.covers, &live.covers)
+                && same(&cursor.mats, &live.mats),
+            "a base do relevo NAO e o cursor: a materializacao escreveria a janela certa sobre um \
+             fundo errado, e nada no sistema piscaria (doc 28 §5.58.2, degrau 3)"
+        );
     }
 
     /// **Onde dois snapshots DIFEREM, plano a plano** — o TERCEIRO consumidor desta lista, e ele existe

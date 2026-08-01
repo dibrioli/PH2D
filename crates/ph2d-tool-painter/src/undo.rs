@@ -430,13 +430,18 @@ impl UndoEntry {
     }
 
     /// Reconstrói um dos endpoints a partir do cursor (o estado adjacente).
-    fn materialize(&self, cursor: &ModelSnapshot, want_before: bool) -> Option<Box<ModelSnapshot>> {
+    fn materialize(
+        &self,
+        cursor: &ModelSnapshot,
+        live: &ModelSnapshot,
+        want_before: bool,
+    ) -> Option<Box<ModelSnapshot>> {
         let mut out = Box::new(if want_before {
             self.before.as_ref().clone()
         } else {
             self.after.as_ref().clone()
         });
-        self.planes.side(cursor, &mut out, want_before)?;
+        self.planes.side(cursor, live, &mut out, want_before)?;
         Some(out)
     }
 
@@ -512,10 +517,13 @@ impl UndoController {
     /// Undo the most recent structural edit: roll back to its `before` model and
     /// park the entry on the redo stack so a later [`Self::redo`] can roll forward
     /// to `after`. Returns the model to reinstall, or `None` if nothing to undo.
-    pub fn undo(&mut self) -> Option<Box<ModelSnapshot>> {
+    /// `live` é o estado VIVO do tool — a base de que o RELEVO é materializado (degrau 3 do S3, doc
+    /// 28 §5.58.2). O chamador já o constrói uma linha acima (`absorb_foreign_writes_now`), então
+    /// recebê-lo não acrescenta trabalho.
+    pub fn undo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
         let entry = self.undo.last()?;
         let cursor = self.cursor.as_deref()?;
-        let Some(restore) = entry.materialize(cursor, true) else {
+        let Some(restore) = entry.materialize(cursor, live, true) else {
             // O cursor não descreve mais o plano que a entrada deltou (o canvas mudou de forma sob o
             // histórico). Um undo que devolve pixels quase-certos é pior que um que se recusa: descarta.
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado");
@@ -536,10 +544,11 @@ impl UndoController {
     /// Redo the most recently undone structural edit: roll forward to its `after`
     /// model and park the entry back on the undo stack. Returns the model to
     /// reinstall, or `None` if the redo stack is empty.
-    pub fn redo(&mut self) -> Option<Box<ModelSnapshot>> {
+    /// Ver [`Self::undo`] quanto ao `live`.
+    pub fn redo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
         let entry = self.redo.last()?;
         let cursor = self.cursor.as_deref()?;
-        let Some(restore) = entry.materialize(cursor, false) else {
+        let Some(restore) = entry.materialize(cursor, live, false) else {
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado (redo)");
             debug_assert!(
                 false,
@@ -552,6 +561,25 @@ impl UndoController {
         self.undo.push(entry);
         self.set_cursor((*restore).clone());
         Some(restore)
+    }
+
+    /// [`Self::undo`] / [`Self::redo`] com o **cursor** por base do relevo.
+    ///
+    /// ⚠️ Só para os gates que dirigem o controller **sem um tool** — ali o vivo e o cursor são o mesmo
+    /// estado, porque nada escreve entre os passos, e os modelos que eles constroem têm o relevo vazio.
+    /// `cfg(test)` para que a conveniência não possa virar uma segunda porta no produto: quem tem um
+    /// tool tem o vivo, e é ele que a base do relevo tem de ser (degrau 3 do S3).
+    #[cfg(test)]
+    fn undo_here(&mut self) -> Option<Box<ModelSnapshot>> {
+        let live = self.cursor.as_deref()?.clone();
+        self.undo(&live)
+    }
+
+    /// Ver [`Self::undo_here`].
+    #[cfg(test)]
+    fn redo_here(&mut self) -> Option<Box<ModelSnapshot>> {
+        let live = self.cursor.as_deref()?.clone();
+        self.redo(&live)
     }
 
     /// `true` if there is at least one edit to undo (drives the `undo_enabled`

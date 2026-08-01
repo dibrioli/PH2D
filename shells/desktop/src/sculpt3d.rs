@@ -169,6 +169,12 @@ pub(crate) struct Sculpt3dScene {
     /// delta de TODO arrasto (a órbita precisa dele por evento) e esta só anda
     /// quando um dab de fato saiu. Colapsá-las apagaria o carry.
     stroke_anchor: [f32; 2],
+    /// Onde o Grab **pegou** — o ponto de mundo do pen-down e o pixel dele.
+    ///
+    /// ⚠️ O Grab prende a pegada: o centro do dab é este ponto durante o traço
+    /// inteiro, e o que varia é o `pull`. Recalcular o centro por evento faria
+    /// dele um Snake Hook, que é outro verbo (a pegada anda e o barro estica).
+    grab: Option<([f32; 3], (f32, f32))>,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).
@@ -214,6 +220,7 @@ impl Sculpt3dScene {
             brush: Brush::default(),
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
+            grab: None,
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na
@@ -295,6 +302,40 @@ impl Sculpt3dScene {
     /// O raio do cursor, pela câmera desta cena.
     fn ray_at(&self, x: f32, y: f32) -> Ray {
         self.camera.ray_through(x, y, self.viewport)
+    }
+
+    /// **O gesto de quem PUXA.** Devolve `false` enquanto não há pegada — e a
+    /// primeira chamada é quem a prende.
+    ///
+    /// ⚠️ Ele não re-pica: o centro é o do pen-down, e o que muda é o quanto o
+    /// dedo já andou desde então. Re-picar por evento arrastaria a pegada atrás
+    /// do cursor, que é o Snake Hook.
+    fn grab_at(&mut self, x: f32, y: f32) -> bool {
+        let Some((at, from)) = self.grab else {
+            let ray = self.ray_at(x, y);
+            let Some(hit) = self.mesh.raycast(&ray) else {
+                return false;
+            };
+            self.grab = Some((hit.point, (x, y)));
+            return true;
+        };
+        let pull = self
+            .camera
+            .screen_delta_to_world(at, x - from.0, y - from.1, self.viewport);
+        let brush = self.armed_brush(at);
+        let eye = self.ray_at(x, y).dir();
+        self.stroke.dab(
+            &mut self.mesh,
+            &brush,
+            &Dab::pulling(at, brush.radius, eye, pull),
+            self.symmetry,
+        );
+        Self::mesh_changed(
+            &mut self.dirty,
+            &mut self.edits,
+            self.stroke.last_gpu_dirty(),
+        );
+        true
     }
 
     /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a

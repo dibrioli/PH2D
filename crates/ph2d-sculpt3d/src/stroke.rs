@@ -64,6 +64,19 @@ pub struct Dab {
     /// chegava em 2 de 7 rotas, e nas outras 5 a feature simplesmente não
     /// acontecia — em silêncio, com o painel dizendo que sim.
     pub eye: [f32; 3],
+    /// **O gesto**: quanto o dedo puxou desde o pen-down, em MUNDO.
+    ///
+    /// ⚠️ **É o deslocamento TOTAL, não o incremento do evento** — e essa é a
+    /// escolha que mantém a lei do traço de pé. O alvo do Grab é
+    /// `base + pull·falloff`, função do `pre` congelado: puxar de volta devolve
+    /// o barro ao lugar, re-carimbar a mesma lista não intensifica nada, e o
+    /// undo continua sendo o `base`. Com incrementos, cada um deles seria uma
+    /// soma sobre o resultado do anterior — o produto sobre a lista de dabs que
+    /// este módulo inteiro existe para não ter.
+    ///
+    /// Só os verbos que respondem `true` a [`Brush::verb`]`.pulls()` o leem;
+    /// para os outros ele é zero e inerte.
+    pub pull: [f32; 3],
 }
 
 impl Dab {
@@ -75,6 +88,21 @@ impl Dab {
             radius,
             pressure: 1.0,
             eye,
+            pull: [0.0; 3],
+        }
+    }
+
+    /// Um dab que **PUXA** — o gesto do Grab.
+    ///
+    /// ⚠️ Construtor irmão em vez de um builder opcional: um `with_pull()` é
+    /// exatamente a forma que o `with_arc_len` do Painter 2D tinha quando ele
+    /// chegava em 2 de 7 rotas e a feature simplesmente não acontecia nas outras
+    /// cinco, em silêncio. Quem puxa pede este; quem não puxa não o vê.
+    #[must_use]
+    pub fn pulling(center: [f32; 3], radius: f32, eye: [f32; 3], pull: [f32; 3]) -> Self {
+        Self {
+            pull,
+            ..Self::at(center, radius, eye)
         }
     }
 }
@@ -315,7 +343,12 @@ impl SculptStroke {
             // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
             // inteira e a mandaria para o refit do octree e para o upload
             // incremental, todo frame, sem um pixel mudar.
-            if w <= self.accum[s] {
+            // ⚠️ **Quem PUXA não pode ser freado pelo early-out**: a pegada
+            // do Grab é presa no pen-down, então o peso de cada vértice é o do
+            // primeiro dab e nunca mais sobe. Sem esta exceção o barro andaria
+            // UM evento e pararia, com o cursor seguindo em frente — e o alvo
+            // que mudou não é o peso, é o `pull`. Ver `Verb::pulls`.
+            if w <= self.accum[s] && !brush.verb.pulls() {
                 continue;
             }
             self.accum[s] = w;
@@ -550,6 +583,11 @@ impl SculptStroke {
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria, e `apply_mask` é quem escreve o canal dele.
             Verb::Mask => base,
+            // **O GRAB.** O alvo é o `pre` deslocado pelo gesto, atenuado pelo
+            // falloff: o miolo acompanha o dedo e a borda fica, que é o que
+            // *"pego o barro e ele vem comigo"* significa. `shape` já traz a
+            // máscara, então uma região protegida não é arrastada.
+            Verb::Move => add_vec(base, dab.pull, shape),
         }
     }
 

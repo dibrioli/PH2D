@@ -96,9 +96,18 @@ fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
         body.contains("stroke.begin("),
         "o pen-down tem de CONGELAR o `pre` — sem isso a lei do traço não começa"
     );
+    // ⚠️ A agulha é o `if took`, e não `if scene.sculpt_at(`: com o Grab a
+    // decisão passou a ter DUAS portas de pick (quem puxa PEGA, quem carimba
+    // CARIMBA), e um gate ancorado numa delas ficou vermelho sobre produto
+    // correto — a terceira vez nesta sessão que um proxy expirou.
+    assert!(
+        body.contains("scene.grab_at(pos.0, pos.1)")
+            && body.contains("scene.sculpt_at(pos.0, pos.1)"),
+        "as duas portas de pick têm de ser tentadas conforme o verbo PUXA ou não"
+    );
     let hit = body
-        .find("if scene.sculpt_at(")
-        .expect("o Down decide pelo resultado do pick");
+        .find("if took {")
+        .expect("o Down decide pelo RESULTADO do pick, seja qual for a porta");
     let sculpt = body[hit..]
         .find("Drag::Sculpt")
         .expect("o ramo que ACERTA abre um traço");
@@ -418,5 +427,47 @@ fn the_four_mask_operations_have_a_gesture_and_an_undo() {
     assert!(
         undo.contains("take_masks()"),
         "o caso `None` tem de REMOVER o plano, não zerá-lo"
+    );
+}
+
+#[test]
+fn the_grab_holds_its_footprint_instead_of_re_picking() {
+    // ⚠️ **A diferença entre Grab e Snake Hook é ONDE a pegada mora**, e ela
+    // mora aqui: o Grab prende o ponto do pen-down e arrasta os mesmos vértices;
+    // re-picar por evento arrastaria a pegada atrás do cursor, que é o outro
+    // verbo. Nenhum gate de unidade vê isto — quem escolhe o centro é a shell.
+    let src = sculpt_src();
+    let grab = function_body(&src, "grab_at");
+    assert!(
+        grab.contains("let Some((at, from)) = self.grab"),
+        "a pegada tem de ser LIDA do estado, não re-picada"
+    );
+    assert!(
+        grab.contains("screen_delta_to_world("),
+        "o gesto é o delta de TELA convertido pela câmera, senão o barro escapa do cursor ao aproximar"
+    );
+    assert!(
+        grab.contains("Dab::pulling("),
+        "e ele chega ao dab pelo construtor que PEDE o gesto"
+    );
+
+    // O `raycast` só pode acontecer no ramo que PRENDE (o primeiro toque).
+    let first = braced_block(&grab, "else {");
+    assert!(
+        first.contains("raycast("),
+        "o primeiro toque escolhe a pegada"
+    );
+    assert!(
+        !grab.replace(&first, "").contains("raycast("),
+        "e nenhum evento seguinte re-pica: isso arrastaria a pegada (Snake Hook)"
+    );
+
+    // E o arrasto de quem puxa NÃO passa pelo walk do espaçamento: um Grab não
+    // carimba, então percorrer o caminho daria N dabs idênticos no mesmo lugar.
+    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let pulling = braced_block(&mv, "Drag::Sculpt if scene.brush.verb.pulls()");
+    assert!(
+        pulling.contains("grab_at(") && !pulling.contains("walk("),
+        "quem puxa arrasta a pegada, não percorre um caminho"
     );
 }

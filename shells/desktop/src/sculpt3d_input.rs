@@ -35,6 +35,7 @@ impl App {
              [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
              [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
              [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
+             [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
              [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
@@ -98,7 +99,17 @@ impl App {
                 // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
                 // está sob o dedo, e o resíduo passa a contar a partir dele.
                 scene.stroke_anchor = [pos.0, pos.1];
-                if scene.sculpt_at(pos.0, pos.1) {
+                scene.grab = None;
+                // ⚠️ **Quem PUXA não carimba no pen-down: ele PEGA.** O primeiro
+                // toque escolhe a pegada e não move nada; o barro vem quando o
+                // dedo anda. Carimbar aqui daria um dab de gesto zero — inócuo,
+                // mas o `grab_at` já é a porta que decide isso.
+                let took = if scene.brush.verb.pulls() {
+                    scene.grab_at(pos.0, pos.1)
+                } else {
+                    scene.sculpt_at(pos.0, pos.1)
+                };
+                if took {
                     scene.drag = Some(Drag::Sculpt);
                 } else {
                     // Errou o modelo: o botão vira ÓRBITA. É o que o SculptGL
@@ -165,6 +176,14 @@ impl App {
             // usa isso para `break`). Interpolar em MUNDO entre dois acertos
             // seria outro algoritmo: ele carimbaria através do vão onde a
             // superfície não está — exatamente onde o original desiste.
+            // ⚠️ **Quem PUXA não percorre o caminho.** O espaçamento existe para
+            // não deixar buracos entre dois carimbos; um Grab não carimba — ele
+            // segura uma pegada e a arrasta, e o "caminho" dele é o vetor do
+            // pen-down até aqui. Rodar o walk num Grab daria N dabs idênticos
+            // no mesmo lugar.
+            Drag::Sculpt if scene.brush.verb.pulls() => {
+                scene.grab_at(x, y);
+            }
             Drag::Sculpt => {
                 let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                 if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
@@ -219,6 +238,14 @@ impl App {
             Verb::Pinch,
             Verb::Crease,
         ];
+        // ⚠️ O **Move** fica no `G` (de *grab*) e não num número: os dez números
+        // já estão tomados, e `G` é a tecla que Blender e SculptGL usam para o
+        // mesmo gesto — um artista a tenta antes de procurar.
+        if code == K::KeyG {
+            scene.brush.verb = Verb::Move;
+            eprintln!("[sculpt3d] verbo: {}", Verb::Move.label());
+            return true;
+        }
         let verb = match code {
             K::Digit1 => Some(BY_NUMBER[0]),
             K::Digit2 => Some(BY_NUMBER[1]),

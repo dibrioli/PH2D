@@ -174,7 +174,9 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
         s.dab(
             &mut mesh,
             brush,
-            &dab_at(centre, brush.radius),
+            // A porta que dá a cada verbo o dab de que ELE precisa: sem
+            // gesto o Grab é inerte, e a comparação abaixo seria vácuo.
+            &dab_for(brush.verb, centre, brush.radius),
             Symmetry::default(),
         );
         let n = mesh.vert_count();

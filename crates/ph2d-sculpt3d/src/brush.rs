@@ -123,11 +123,13 @@ pub enum Verb {
     Crease,
     /// Não move geometria: escreve `mask[v]`, que **todos** os outros respeitam.
     Mask,
+    /// **Pega o barro e o traz junto** — ver [`Verb::pulls`].
+    Move,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -140,6 +142,7 @@ impl Verb {
         Self::Magnify,
         Self::Crease,
         Self::Mask,
+        Self::Move,
     ];
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -227,7 +230,32 @@ impl Verb {
             Self::Magnify => "Magnify",
             Self::Crease => "Crease",
             Self::Mask => "Mask",
+            Self::Move => "Move / Grab",
         }
+    }
+
+    /// **Este verbo PUXA?** — a exceção declarada à lei do envelope.
+    ///
+    /// O envelope (`accum ← max`) existe porque *passar devagar não pode
+    /// depositar mais*, e ele traz um early-out: um dab cujo peso não supera o
+    /// que já está lá **não recomputa o alvo**, para re-carimbar a mesma lista
+    /// não mandar a pegada inteira ao refit e ao upload a cada frame.
+    ///
+    /// ⚠️ **Para quem puxa, re-carimbar É o gesto.** O Grab prende uma pegada no
+    /// pen-down e a arrasta: o peso de cada vértice é o do primeiro dab e nunca
+    /// mais sobe, então o early-out o congelaria — o barro andaria um evento e
+    /// pararia, com o cursor seguindo em frente. Aqui o alvo é reescrito a cada
+    /// dab, e é o `pull` que mudou.
+    ///
+    /// ⚠️ **E isto NÃO revoga a lei, só o early-out.** O alvo continua sendo
+    /// função do `pre` congelado (`base + pull·falloff`), então o traço é
+    /// idempotente sob re-stamp, puxar de volta devolve o barro ao lugar, e
+    /// dois TRAÇOS compõem — cada um congela um `pre` novo. É por isso que o
+    /// Grab não precisa da *composição de mapas* que o `04.1` prevê para o
+    /// Snake Hook: aquele move a PEGADA, este a prende.
+    #[must_use]
+    pub fn pulls(self) -> bool {
+        matches!(self, Self::Move)
     }
 
     /// A força com que um pincel deste verbo **nasce**.

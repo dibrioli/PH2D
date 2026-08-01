@@ -32,6 +32,26 @@ fn dab_at(center: [f32; 3], radius: f32) -> Dab {
     Dab::at(center, radius, eye)
 }
 
+/// **O dab que ESTE verbo precisa** — a porta que os gates que varrem
+/// [`Verb::ALL`] usam.
+///
+/// ⚠️ Ela existe porque um gate que dá o MESMO dab a todo verbo mede vácuo em
+/// quem puxa: sem gesto o Grab não move nada, e a comparação vira *nada contra
+/// nada*. O gate do `honours_invert` pegou isso sozinho no dia em que o `Move`
+/// entrou no enum — ele se recusa a comparar dois dabs inertes —, e enumerar a
+/// exceção em cada gate é o que apodrece quando chega o próximo verbo com
+/// gesto (Snake Hook, Twist, Local Scale).
+fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
+    if verb.pulls() {
+        // Um puxão tangente à superfície: ele move de fato, e não empurra o
+        // vértice para dentro (o que confundiria um gate de deslocamento).
+        let base = dab_at(center, radius);
+        Dab::pulling(center, radius, base.eye, [0.0, radius * 0.5, 0.0])
+    } else {
+        dab_at(center, radius)
+    }
+}
+
 fn snapshot(mesh: &Mesh) -> Vec<[f32; 3]> {
     mesh.positions().to_vec()
 }
@@ -490,6 +510,10 @@ mod verb_crease;
 /// O conjunto FRONTAL, que tem fixtures de silhueta — ver o cabeçalho dele.
 #[path = "verb_culling_tests.rs"]
 mod verb_culling;
+
+/// O Grab, que é a exceção ao envelope — ver o cabeçalho dele.
+#[path = "verb_move_tests.rs"]
+mod verb_move;
 
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele

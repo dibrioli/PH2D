@@ -238,6 +238,34 @@ impl Camera3d {
         (eye + side * (depth / along) - Vec3::from(at)).length()
     }
 
+    /// O deslocamento de MUNDO que corresponde a `(dx, dy)` pixels de tela, na
+    /// profundidade de `at` — **o gesto do Grab**.
+    ///
+    /// Irmão do [`Self::world_radius_for_screen_px`], e pela mesma razão: o dedo
+    /// anda na TELA e o barro tem de andar junto, na profundidade em que ele
+    /// está. Um delta de mundo derivado de outra forma faria o barro escapar do
+    /// cursor conforme a câmera aproxima ou afasta.
+    ///
+    /// ⚠️ `dy` cresce para BAIXO (a convenção de janela, a mesma do
+    /// [`Self::ray_through`]) e o mundo tem `y` para cima — a negação mora aqui,
+    /// porque fazê-la no chamador é como nasce um Grab que puxa para o lado
+    /// errado só na vertical.
+    #[must_use]
+    pub fn screen_delta_to_world(
+        &self,
+        at: [f32; 3],
+        dx: f32,
+        dy: f32,
+        size: (u32, u32),
+    ) -> [f32; 3] {
+        let axis = (self.eye() - self.target).normalize_or(Vec3::Z);
+        let right = Vec3::Y.cross(axis).normalize_or(Vec3::X);
+        let up = axis.cross(right);
+        // A régua é a MESMA do raio de tela: quantos mundos vale um pixel ali.
+        let per_px = self.world_radius_for_screen_px(at, 1.0, size);
+        (right * (dx * per_px) + up * (-dy * per_px)).into()
+    }
+
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um
     /// pixel, porque é ela que conhece a densidade da tela.
     ///

@@ -35,6 +35,13 @@ mod cut;
 pub(crate) use cut::cut_line_exists;
 pub use cut::set_cut_line_exists;
 
+/// **A BOOLEANA VIVA** — o modo dos oito botões (escolha do artista) e se há grupo booleano na
+/// seleção (fato da cena). Irmão dos dois acima, e as duas metades têm donos diferentes.
+#[path = "state_bool.rs"]
+mod bool_state;
+pub(crate) use bool_state::bool_group_selected;
+pub use bool_state::{bool_live_on, set_bool_group_selected, set_bool_live_on};
+
 thread_local! {
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };

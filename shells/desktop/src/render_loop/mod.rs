@@ -1999,6 +1999,10 @@ impl crate::App {
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::PathfinderOp> = None;
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
+            // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
+            // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
+            // plano existe. Aqui só se anota o clique.
+            let mut pending_bool_apply = false;
             // **A ESCALA da seleção de nós** (plano 25 §6, W3b): os dois alcances que o retângulo
             // não dá. Não são edições de documento — só mudam QUEM está selecionado —, então não
             // abrem passo de undo (o `post_frame_undo` compara o ESTADO, e a seleção não é dele).
@@ -2316,6 +2320,16 @@ impl crate::App {
                             {
                                 // W2b: escolhe a FORMA da largura (o catálogo de perfis).
                                 pending_width_preset = Some(i);
+                            } else if *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_OFF
+                                || *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON
+                            {
+                                // O MODO dos oito botões. Panel-local no valor, mas quem o lê no
+                                // clique de uma das oito é a shell — por isso ele passa por aqui.
+                                ph2d_panel_vector::state::set_bool_live_on(
+                                    *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
+                                );
+                            } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
+                                pending_bool_apply = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -4114,14 +4128,34 @@ impl crate::App {
                 );
             }
             if let Some(op) = pending_vec_bool {
-                let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                crate::input_dispatch::apply_vec_boolean(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    &xf,
-                    op,
-                );
+                // **Um clique, três destinos** (`bool_gesture`): re-mirar um grupo booleano que a
+                // seleção já habita · criar um, com o modo `Live` ligado · ou o caminho
+                // destrutivo de sempre. ⚠️ A ordem é a lei: sem o primeiro, clicar "Intersect"
+                // sobre um grupo vivo com o modo desligado CONSUMIRIA os operandos, e o artista
+                // perderia a arte no gesto que ele fez para trocar a operação.
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let live_mode = ph2d_panel_vector::state::bool_live_on();
+                let has_group =
+                    crate::bool_gesture::group_of_selection(sim, &self.vec_entities, &sel)
+                        .is_some();
+                if has_group || live_mode {
+                    crate::bool_gesture::arm(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &sel,
+                        crate::bool_live::code_of_op(op),
+                    );
+                } else {
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    crate::input_dispatch::apply_vec_boolean(
+                        vec_scene,
+                        &mut self.vec_history,
+                        &mut self.vec_pen,
+                        &xf,
+                        op,
+                    );
+                }
             }
             // ── Offset AO VIVO ───────────────────────────────────────────────────
             // *"os botões Miter, Round e Bevel são previsualizações em tempo real dos efeitos,
@@ -5954,6 +5988,37 @@ impl crate::App {
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),
             );
+            // **A BOOLEANA VIVA roda DEPOIS dos cinco e ANTES do alinhamento**, e a ordem é a lei
+            // da wave — trocar dois destes termos dá arte diferente sem nenhum gate vermelho:
+            //
+            // - depois dos cinco, porque ela consome *o que os filhos de facto desenham* (um
+            //   operando com offset vivo tem de entrar deslocado);
+            // - antes do alinhamento, porque o alinhamento é um campo do `StrokeSpec` do
+            //   RESULTADO — alinhar os operandos e só então os combinar responderia outra
+            //   pergunta;
+            // - e ela TRANSFORMA o mapa (não o estende) pela mesma razão do alinhamento: é um
+            //   componente do PAI, então convive com o offset de cada filho.
+            self.bool_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
+            // **O Apply corre AQUI, e não no dreno**, porque ele materializa o `plan` que o
+            // `recook` acabou de computar — *o que está na tela*. Chamar o motor de novo lá em
+            // cima seria a segunda porta, e ela faria a forma SALTAR no clique.
+            //
+            // ⚠️ A shell publica também *"há grupo booleano selecionado?"* para o painel decidir
+            // se oferece o botão: o painel não alcança o mundo ECS, e uma segunda resposta a essa
+            // pergunta seria um Apply pintado sobre uma seleção que não tem o que consolidar.
+            {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let group = crate::bool_gesture::group_of_selection(sim, &self.vec_entities, &sel);
+                ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
+                if pending_bool_apply
+                    && let Some(g) = group
+                    && let Some(plan) = self.bool_live.plan(g)
+                {
+                    let n = crate::bool_gesture::bake(sim, vec_scene, &mut self.vec_pen, plan, g);
+                    eprintln!("[ph2d-vec] boolean live: consolidada ({n} path[s])");
+                }
+            }
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
             // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa

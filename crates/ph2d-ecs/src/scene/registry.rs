@@ -283,6 +283,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // sem o registro, reabrir o projeto devolveria a linha como um caminho SEM fill e SEM stroke:
     // invisível na tela, inerte, e fora do alcance do botão que existe para a apagar.
     reg.register::<crate::VecCutPath>("ph2d::ecs::VecCutPath");
+    // A BOOLEANA viva: com que operação os filhos de um grupo se combinam. Mesma razão de todos
+    // os irmãos, e aqui a perda seria a mais visível de todas — sem o registro, um Ctrl+Z (ou
+    // reabrir o projeto) devolveria os operandos SOLTOS, empilhados uns sobre os outros, e a
+    // forma combinada simplesmente não existiria mais: ela é desenho derivado, e o que tem de
+    // sobreviver é a RELAÇÃO.
+    reg.register::<crate::VecBoolGroup>("ph2d::ecs::VecBoolGroup");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -359,7 +365,8 @@ mod tests {
         // + 1 FX raster (VecFilter, plano 24)
         // + 1 largura viva (VecStrokeProfile, ADR-0148)
         // + 1 linha de corte (VecCutPath, plano 25 §7)
-        // + 1 simetria viva (VecSymmetry, plano 25 §9 W6.3).
+        // + 1 simetria viva (VecSymmetry, plano 25 §9 W6.3)
+        // + 1 booleana viva (VecBoolGroup, plano UI/UX W1).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -371,7 +378,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 41);
+        assert_eq!(reg.len(), 42);
         assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecSymmetry").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());

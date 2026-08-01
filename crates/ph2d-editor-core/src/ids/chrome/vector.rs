@@ -283,15 +283,6 @@ pub const MAX_SHAPE_SLOTS: usize = 64;
 /// Teto de abas de família.
 pub const MAX_SHAPE_GROUP_SLOTS: usize = 12;
 
-// ── Boolean ops (ADR-0108 Fase 1 — edit-time union/subtract/intersect) ───────
-// Act on the DOCUMENT (shell-owned `vec_scene`), NOT the tool's Style: the
-// panel forwards a `Click` over `ToolPanelEvent` and the shell drain applies
-// the op to the two last closed regions (mirror of the U/I/D hotkeys).
-pub const VECTOR_BOOL_UNION: NodeId = hash_node_id("vector.bool.union");
-pub const VECTOR_BOOL_SUBTRACT: NodeId = hash_node_id("vector.bool.subtract");
-pub const VECTOR_BOOL_INTERSECT: NodeId = hash_node_id("vector.bool.intersect");
-pub const VECTOR_BOOL_EXCLUDE: NodeId = hash_node_id("vector.bool.exclude");
-
 // ── Expand: Outline Stroke + Offset Path ─────────────────────────────────────
 // Os dois são COMANDOS destrutivos sobre a seleção, irmãos das booleanas acima e
 // pelo mesmo motor (`ph2d_vec_boolean::expand`). O `join` é do OFFSET, não do

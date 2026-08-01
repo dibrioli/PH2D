@@ -144,6 +144,12 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION
+        // A BOOLEANA VIVA: os dois chips de modo sao panel-local no VALOR, mas a shell precisa
+        // saber que o modo mudou (ela e' quem le' o modo no clique de uma das oito); e o Apply e'
+        // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
+        || id == ids::VECTOR_BOOL_LIVE_OFF
+        || id == ids::VECTOR_BOOL_LIVE_ON
+        || id == ids::VECTOR_BOOL_APPLY
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM
         || id == ids::VECTOR_BOOL_CROP

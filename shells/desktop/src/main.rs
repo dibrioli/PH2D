@@ -51,6 +51,14 @@ mod blend_smoke;
 mod body_fk;
 mod body_grab;
 mod body_pose;
+/// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
+/// motor, no `bool_live`.
+mod bool_gesture;
+/// A BOOLEANA VIVA (plano UI/UX W1): um grupo cujos filhos se combinam e continuam editáveis.
+/// O 7º produtor de `LiveGeometry`, e o segundo que TRANSFORMA o mapa em vez de o estender.
+mod bool_live;
+/// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
+mod bool_smoke;
 mod buffer_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
@@ -630,6 +638,7 @@ impl App {
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             align_live: crate::align_live::AlignLive::default(),
+            bool_live: crate::bool_live::BoolLive::default(),
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),
             vec_symmetry_origin: None,
             pattern_live: crate::pattern_live::PatternLive::default(),

@@ -373,6 +373,11 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.bool.trim" => "Trim",
         "panel.vector.bool.crop" => "Crop",
         "panel.vector.bool.merge" => "Merge",
+        // A BOOLEANA VIVA (plano UI/UX W1): o modo dos oito acima + o commit.
+        "panel.vector.bool.live" => "Live",
+        "panel.vector.bool.live.off" => "Off",
+        "panel.vector.bool.live.on" => "On",
+        "panel.vector.bool.apply" => "Apply Boolean",
         "panel.vector.cut.apply" => "Cut",
         "panel.vector.cut.discard" => "Discard Cut Line",
         "panel.vector.section.cut" => "Cut",

@@ -253,7 +253,7 @@ esqueceu).
 - `a_clipping_frame_hides_what_overflows` — o filho fora da caixa não é desenhado (oráculo: o retângulo desenhado, não a flag).
 - `an_unclipped_frame_hides_nothing` — o controle.
 
-**Smoke** (`PH2D_BUILD_SMOKE=48`): uma moldura 390×844 (um telefone) com três filhos, um deles a
+**Smoke** (`PH2D_BUILD_SMOKE=49`): uma moldura 390×844 (um telefone) com três filhos, um deles a
 transbordar. Roteiro: ligar Clip (o transbordo some) · arrastar a alça (o número acompanha) · trocar
 o preset (a moldura muda de tamanho e **o conteúdo NÃO se move** — sem layout ainda, e é isso que
 torna a W2 visível).
@@ -262,13 +262,24 @@ torna a W2 visível).
 
 ---
 
-### W1 — A BOOLEANA VIVA
+### W1 — A BOOLEANA VIVA ✅ **CONSTRUÍDA (2026-08-01)**
+
+> Fechada por ordem do Enio (*"W1 booleana viva"*). O que shipou está abaixo; onde a
+> construção corrigiu o plano, a correção está marcada ⚠️ no texto.
 
 **O quê.** Duas ou mais formas dentro de um grupo, e o grupo desenha `A − B` (ou ∪, ∩, XOR). Os
 operandos continuam **editáveis, animáveis e vivos**; a booleana re-cozinha quando eles mudam.
 
 **Por quê agora.** O Enio nomeou-a; é a menor wave do plano; e é **independente** de todas as
 outras — não espera moldura, nem layout, nem token. Fecha um item aberto desde o cutover.
+
+⚠️ **A construção corrigiu o modelo deste plano num ponto, e ele estava ERRADO:** o texto abaixo
+dizia que *"o resultado entra no id do PAI (que é uma entidade-grupo, logo tem `VecPathRef`)"*. Um
+grupo é, por definição do repo, *"uma entidade **sem geometria própria** … que tem filhos"*
+(`vec_entities::ungroup_entities`) — ele nasce com `Transform`, `Name` e `RootOrder`, e **não tem
+`VecPathId`**. Como a `LiveGeometry` é chaveada por `VecPathId`, o resultado passou a pousar no id da
+**BASE** (o operando mais ao fundo), com os demais recebendo lista vazia — que é exatamente a regra
+que a booleana destrutiva já segue, e o que faz o Apply não mover a arte.
 
 **A porta única.** O **7º produtor de `LiveGeometry`**, irmão exato do `align_live` que acabou de
 shipar — e, como ele, um produtor que **COMPÕE em vez de estender**:
@@ -295,8 +306,8 @@ silhueta é *do que se desenha*, que já é isto. Trocar dois desses termos dá 
 nenhum gate vermelho ⇒ **gate de ordem sobre o `render_loop`** (arch-gate, como o
 `the_z_projection_reads_the_tree_after_the_sync`).
 
-**Schema/contrato.** +1 componente (**42 → 43**), **sem bump de `PROJECT_SCHEMA`**. `BoolOp` já
-existe e é `u8` append-only. Nada do §6.
+**Schema/contrato.** +1 componente (**41 → 42**), **sem bump de `PROJECT_SCHEMA`**. O código de
+operação é `PathfinderOp as u8`, append-only. Nada do §6.
 
 **UI.** Os botões booleanos **já existem** no painel (Union/Subtract/Intersect/Exclude + Pathfinder).
 A wave acrescenta **um** controle: **"Live"** (checkbox ao lado deles) — marcado, o botão cria um
@@ -313,14 +324,25 @@ verbos coexistem, e o gate de seam prova os dois caminhos.
 - `the_producers_run_in_the_order_the_art_depends_on` (arch-gate; mutação: booleana depois do alinhamento ⇒ sangra).
 - **Gate de RAZÃO** (nunca de relógio): re-cozinhar `N` booleanas custa `N ×` uma, e uma cena parada custa **zero** (o memo).
 
-**Smoke** (`PH2D_BUILD_SMOKE=49`): dois círculos e um `Subtract` vivo, com a **posição de um deles
-keyframada na timeline** — a lua crescente **respira**, e os dois círculos continuam selecionáveis e
-editáveis na Hierarquia. Números medidos a imprimir na cena: o custo por re-cozimento e o total do
-frame.
+**Smoke** (`PH2D_BUILD_SMOKE=48`): três rigs — o par (quadrado + círculo), a rosquinha+barra (onde
+`Subtract` e `Intersect` dão figuras claramente diferentes, para o re-mirar ser visível num clique) e
+o rig do **CONTROLE**, com uma **linha ABERTA** por cima. A cena **nasce com o modo Live em OFF**, o
+default do produto — quem liga é o artista. A pergunta é de olho: *depois da operação os operandos
+continuam lá, e arrastar um deles muda o resultado enquanto a mão se move.*
 
-**Custo (MEDIDO hoje).** 0,053–0,074 ms (rosquinha) · 0,157–0,208 (estrela de 5) · 0,799–1,453
-(estrela de 24), contra 16,6 ms de quadro. **MEDIR na wave:** `N` booleanas animadas em simultâneo, e
-o joelho onde o memo deixa de bastar.
+**Custo (MEDIDO na porta do PRODUTO, release).** O `recook` INTEIRO — a caminhada da árvore, o
+assamento em mundo, o motor e o mapa — com o memo **invalidado a cada volta** (o caso do arrasto, o
+único em que o custo importa):
+
+| operação | par simples | dez operandos |
+|---|---|---|
+| Union | **0,055 ms** | 1,530 ms |
+| Subtract | **0,051** | 0,355 |
+| Intersect | **0,051** | 0,229 |
+
+Contra **16,6 ms** de quadro a 60 fps: o caso real é **0,3%** e o pior medido, 9%. ⇒ *animável em
+tempo real* é aritmética, não aposta. (O `pathfinder` isolado já media 0,053–1,453 ms; o produtor
+inteiro custa a mesma ordem, que é o que a medição confirma.)
 
 ---
 
@@ -793,8 +815,8 @@ escreveu**:
 
 | Wave | Entrega | Componentes | Schema | Dep | ADR | Smoke |
 |---|---|---|---|---|---|---|
-| **W1** | booleana não-destrutiva, animável | +1 (43) | — | — | — | `=49` |
-| **W0** | a moldura | +1 (42) | — | — | — | `=48` |
+| **W1** ✅ | booleana não-destrutiva, animável | +1 (**42**) | — | — | — | `=48` |
+| **W0** | a moldura | +1 (43) | — | — | — | `=49` |
 | **W4** | tokens no documento + modos + animar token | +1 (47) | `DOC_VERSION`, seção | — | sim (indireção) | `=52` |
 | **W2** | auto layout | +2 (45) | ⚠️ bump (W2a) | **taffy** | **sim** | `=50` |
 | **W3** | âncoras | +1 (46) | — | — | — | `=51` |

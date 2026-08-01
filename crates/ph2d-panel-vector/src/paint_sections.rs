@@ -438,6 +438,37 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // **O MODO dos oito botões abaixo** (plano UI/UX W1). Acima deles e não abaixo, porque
+        // ele decide o que eles FAZEM: `Off` consome os operandos (o mundo de sempre), `On` cria
+        // um grupo cujos filhos se combinam e continuam editáveis.
+        let live = crate::state::bool_live_on();
+        y = self.segmented(
+            tr("panel.vector.bool.live"),
+            &[
+                (
+                    ids::VECTOR_BOOL_LIVE_OFF,
+                    tr("panel.vector.bool.live.off"),
+                    !live,
+                ),
+                (
+                    ids::VECTOR_BOOL_LIVE_ON,
+                    tr("panel.vector.bool.live.on"),
+                    live,
+                ),
+            ],
+            y,
+        );
+        // **O Apply só existe com uma booleana viva selecionada.** Sem ela não há o que
+        // consolidar, e um botão que não aplica nada é pior que botão nenhum — a mesma lei do
+        // Apply da simetria e dos dois botões do corte.
+        if crate::state::bool_group_selected() {
+            y = self.action_button_kind(
+                ids::VECTOR_BOOL_APPLY,
+                tr("panel.vector.bool.apply"),
+                ButtonKind::Accent,
+                y,
+            );
+        }
         // **As OITO** (plano 25 §8): as quatro de conjunto e as quatro receitas. Duas colunas —
         // a fileira de oito botoes de largura cheia empurrava a linha Compound para fora da vista.
         let ops = [

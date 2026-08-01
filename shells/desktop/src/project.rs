@@ -265,6 +265,11 @@ struct SavedAsset {
     rgba: Vec<u8>,
 }
 
+/// **O que a troca de documento faz os produtores VIVOS esquecerem** — irmão pelo teto de LOC
+/// (HR-18), e o corte é por responsabilidade: aqui vive *o que não sobrevive a um load*.
+#[path = "project_forget.rs"]
+mod forget;
+
 impl crate::App {
     /// Caminho do arquivo de projeto (env `PH2D_PROJECT_PATH`, default no CWD).
     fn project_path() -> String {
@@ -444,18 +449,7 @@ impl crate::App {
         // zero — então uma nota do projeto A seria entregue ao binding do projeto B que
         // herdou o número. É a MESMA razão da linha acima, um nível abaixo.
         ph2d_timeline::expr_owed::forget_owed_poses();
-        // O memo do Offset vivo — pela razão do restore de undo: os `VecPathId` são reciclados
-        // entre documentos, e um acerto de memo desenharia o offset do projeto ANTERIOR.
-        self.offset_live.forget();
-        // O Pattern vivo pela MESMA razão (id reciclado entre documentos).
-        self.pattern_live.forget();
-        self.contour_live.forget();
-        self.align_live.forget();
-        // A SIMETRIA viva pela MESMA razão (id reciclado; o memo é chaveado por `VecPathId`).
-        self.symmetry_live.forget();
-        // O FX raster vivo (plano 24) pela MESMA razão (id reciclado entre documentos).
-        self.fx_live.forget();
-        self.vec_offset_mirrored = None;
+        self.forget_live_producers();
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos

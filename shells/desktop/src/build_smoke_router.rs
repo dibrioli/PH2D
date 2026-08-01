@@ -180,5 +180,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::align_smoke::frame(app, f);
         return true;
     }
+    // A cena da BOOLEANA VIVA (=48) — irmã `bool_smoke`. Mesma disciplina: dá o material (os três
+    // rigs) e **nasce com o modo Live em OFF**, que é o default do produto — quem liga é o artista.
+    if level == 48 {
+        crate::bool_smoke::frame(app, f);
+        return true;
+    }
     false
 }

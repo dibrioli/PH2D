@@ -1032,6 +1032,11 @@ pub(crate) struct App {
     /// `render_loop` os funde com `extend`; o alinhamento é um campo do `StrokeSpec` e **compõe**
     /// com qualquer um deles, então fundi-lo apagaria o vizinho em silêncio.
     pub(crate) align_live: crate::align_live::AlignLive,
+    /// **A BOOLEANA VIVA** — um grupo cujos filhos se combinam e continuam editáveis.
+    /// ⚠️ Segundo membro da família do `align_live`: ele **TRANSFORMA** o mapa em vez de o
+    /// estender, porque um operando pode ter o seu próprio offset vivo — fundido por `extend`
+    /// ele apagaria esse offset, ou seria apagado por ele, em silêncio.
+    pub(crate) bool_live: crate::bool_live::BoolLive,
     /// **O eixo de SESSÃO da simetria**, em MUNDO — a linha que aparece no instante em que o botão
     /// liga, com a cena vazia e nada seleccionado.
     ///

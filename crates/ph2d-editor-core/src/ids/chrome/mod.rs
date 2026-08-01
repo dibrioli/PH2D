@@ -45,6 +45,7 @@ mod timeline;
 mod topbar;
 mod vector;
 /// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
+mod vector_bool;
 mod vector_contour;
 /// **Os ids do CORTE** (plano 25 §7, W4) — a família que muda a TOPOLOGIA de um caminho.
 mod vector_cut;
@@ -93,6 +94,7 @@ pub use rail_painter::*;
 pub use timeline::*;
 pub use topbar::*;
 pub use vector::*;
+pub use vector_bool::*;
 pub use vector_contour::*;
 pub use vector_cut::*;
 pub use vector_filters::*;

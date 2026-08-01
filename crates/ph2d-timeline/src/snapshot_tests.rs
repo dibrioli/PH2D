@@ -308,3 +308,38 @@ fn the_snapshot_publishes_the_seam_as_two_slices_of_one_curve() {
         "sob ping-pong o playhead reflete — não há costura a desenhar"
     );
 }
+
+/// **O desenho decorativo segue a direção do relógio** (Enio, 2026-08-01: *"e o desenho
+/// decorativo da curva de easing na fade também"*).
+///
+/// O snapshot publica a curva EFETIVA do frame — que inclui a direção —, e é por isso que o
+/// painel não precisa saber de nada: ele desenha o que a pose faz.
+#[test]
+fn the_published_curve_follows_the_clocks_direction() {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    const EASE_IN: Easing = Easing {
+        family: EasingFamily::Quint,
+        mode: EasingMode::In,
+    };
+    let mut st = crate::TimelineState::new();
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    let a = st.doc.add_strip(lane, 0, 0.5, 4.0).unwrap();
+    {
+        let s = st.doc.strip_mut(lane, a).unwrap();
+        s.lead_in = 0.5;
+        s.curve_in = Some(EASE_IN);
+    }
+    let ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let mut snap = crate::TimelineViewSnapshot::default();
+
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.lanes[0].strips[0].curve_in, Some(EASE_IN));
+
+    st.doc.set_reverse_play(true);
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(
+        snap.lanes[0].strips[0].curve_in,
+        Some(EASE_IN.mirrored()),
+        "andando para trás o desenho mostra o espelho — o que a pose faz"
+    );
+}

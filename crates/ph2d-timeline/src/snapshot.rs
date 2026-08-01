@@ -542,11 +542,15 @@ impl TimelineViewSnapshot {
         for lane in host_lanes {
             // ⚠️ **A costura é resolvida por LANE, uma vez** — e só sob um loop que ENVOLVE:
             // sob ping-pong o playhead reflete, não há travessia da volta a desenhar.
-            let seam = if stack_ping {
-                None
-            } else {
-                lane.seam(stack_range).filter(|s| s.split())
+            let ctx = crate::stack::FadeCtx {
+                seam: if stack_ping {
+                    None
+                } else {
+                    lane.seam(stack_range)
+                },
+                reversed: doc.reverse_play(),
             };
+            let seam = ctx.split_seam();
             let mut strips = Vec::with_capacity(lane.strips.len());
             for (i, st) in lane.strips.iter().enumerate() {
                 strips.push(StripView {
@@ -574,8 +578,12 @@ impl TimelineViewSnapshot {
                     marks: st.marks,
                     ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
-                    curve_in: lane.effective_curve(i, 0),
-                    curve_out: lane.effective_curve(i, 1),
+                    // ⚠️ **A curva PUBLICADA é a efetiva do frame** — inclusive a direção:
+                    // com o relógio andando para trás o desenho decorativo tem de mostrar o
+                    // espelho, que é o que a pose faz. É por isso que o painel não precisa
+                    // saber da direção (Enio, 2026-08-01).
+                    curve_in: ctx.shape(lane.effective_curve(i, 0)),
+                    curve_out: ctx.shape(lane.effective_curve(i, 1)),
                     seam: seam.and_then(|sm| sm.slice_for(i)),
                     loop_mode: st.loop_mode,
                     speed: st.speed,

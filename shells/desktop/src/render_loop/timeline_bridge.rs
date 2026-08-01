@@ -143,6 +143,17 @@ pub(crate) fn run(
     //   it is arranged (Enio, 2026-07-27). `apply_scene` forces the stack path, so
     //   with nothing arranged every entity blends toward `rest`.
     // All honour `skip` (the gizmo-dragged entity, the displaced pin).
+    // ⚠️ **A DIREÇÃO do relógio, estampada ANTES do apply** (Enio, 2026-08-01: *"a direção
+    // do easing é invertida se a playhead está voltando a zero"*): um fade percorrido de trás
+    // para frente — a perna de volta de um ping-pong — tem de SENTIR o easing que o artista
+    // autorou, e sem o espelho um `Ease In` lido ao contrário lê como `Ease Out`.
+    //
+    // Quem sabe a direção é o `Playhead`, que não alcança o avaliador; o doc a carrega como
+    // transiente (`#[serde(skip)]`, nenhum schema se move). **Pausado é para a frente**: um
+    // scrub para trás é o artista LENDO a cena, não a animação rodando ao contrário.
+    timeline
+        .doc
+        .set_reverse_play(playhead.is_playing() && !playhead.is_advancing_forward());
     if let Some(c) = container {
         ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
     } else if solo {

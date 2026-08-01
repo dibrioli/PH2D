@@ -15,7 +15,7 @@
 //! explícito do que entra), não por acidente da curva de fábrica — e o gate que a pina varre
 //! curvas ASSIMÉTRICAS de propósito.
 
-use crate::stack::{ClipLane, Seam, ramp_with};
+use crate::stack::{ClipLane, FadeCtx, ramp_with};
 use ph2d_anim::Easing;
 
 /// Que fração da janela já passou (`1` numa janela de comprimento zero, como o
@@ -127,7 +127,7 @@ impl ClipLane {
     /// window is `[…, t_end]` and this is byte-for-byte the old behaviour.
     #[must_use]
     pub fn weight_at(&self, i: usize, t: f64) -> f64 {
-        self.weight_at_with(i, t, None)
+        self.weight_at_with(i, t, FadeCtx::default())
     }
 
     /// [`Self::weight_at`] com a curva da COSTURA de um loop, quando há uma.
@@ -143,7 +143,7 @@ impl ClipLane {
     /// o peso segurado é `1 − vivo`, então uma metade que resolvesse a curva diferente da
     /// outra faria a lane somar ≠ 1 e a pose afundar para as lanes de baixo.
     #[must_use]
-    pub fn weight_at_with(&self, i: usize, t: f64, seam: Option<Seam>) -> f64 {
+    pub fn weight_at_with(&self, i: usize, t: f64, ctx: FadeCtx) -> f64 {
         let s = &self.strips[i];
         let lead = s.lead_in.max(0.0);
         if t < s.lead_start() || t >= s.lead_end() {
@@ -153,7 +153,7 @@ impl ClipLane {
         // só** ([`Seam`]) — cada uma corria um S inteiro na própria janela, e o objeto
         // PARAVA na volta (velocidade medida: 0,000 exatamente ali). Só com as duas pontas
         // fadeando (`split`); com uma só, o caminho abaixo é o que já shipava, ao bit.
-        let sm = seam.filter(|s| s.split());
+        let sm = ctx.split_seam();
         // ⚠️ **Numa SOBREPOSIÇÃO o crossfade tem UMA curva, e o lado que SAI é o COMPLEMENTO
         // dela** — é isso que deixa a curva autorada alcançar um crossfade sem quebrar nada.
         //
@@ -176,7 +176,7 @@ impl ClipLane {
         let win_in = lead + self.blend_in(i);
         let fade_in = match sm {
             Some(sm) if sm.head == i => sm.head_weight(frac(t - s.lead_start(), win_in)),
-            _ => ramp_with(t - s.lead_start(), win_in, s.curve_in),
+            _ => ramp_with(t - s.lead_start(), win_in, ctx.shape(s.curve_in)),
         };
         let win_out = s.lead_out.max(0.0) + self.blend_out(i);
         let fade_out = match (sm, self.overlap_partner_out(i)) {
@@ -191,10 +191,10 @@ impl ClipLane {
                 1.0 - ramp_with(
                     win_out - (s.lead_end() - t),
                     win_out,
-                    self.strips[j].curve_in,
+                    ctx.shape(self.strips[j].curve_in),
                 )
             }
-            _ => ramp_with(s.lead_end() - t, win_out, s.curve_out),
+            _ => ramp_with(s.lead_end() - t, win_out, ctx.shape(s.curve_out)),
         };
         fade_in * fade_out
     }

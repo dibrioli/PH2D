@@ -565,6 +565,44 @@ pub struct SeamSlice {
     pub curve: Option<ph2d_anim::Easing>,
 }
 
+/// **O contexto de fade de um frame** — a costura resolvida e a DIREÇÃO do relógio.
+///
+/// Os dois viajam juntos porque os dois são fatos do FRAME, não da lane: quem pergunta o
+/// peso de uma strip precisa saber *qual travessia* está em curso e *para que lado* o
+/// playhead anda. Um `Default` é o caso ordinário — sem costura, andando para a frente.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FadeCtx {
+    /// A travessia da volta, quando há uma.
+    pub seam: Option<Seam>,
+    /// O playhead está TOCANDO para trás (a perna de volta de um ping-pong, ou `rate < 0`).
+    ///
+    /// ⚠️ Pausado é **para a frente**: um scrub para trás é o artista lendo a cena, não a
+    /// animação rodando ao contrário, e inverter ali faria a pose depender de por onde o
+    /// dedo veio.
+    pub reversed: bool,
+}
+
+impl FadeCtx {
+    /// A curva que de fato molda um fade neste frame — espelhada se o relógio anda para trás.
+    #[must_use]
+    pub fn shape(self, curve: Option<Easing>) -> Option<Easing> {
+        if self.reversed {
+            curve.map(Easing::mirrored)
+        } else {
+            curve
+        }
+    }
+
+    /// A costura deste frame, já com a curva na direção do relógio.
+    #[must_use]
+    pub fn split_seam(self) -> Option<Seam> {
+        self.seam.filter(|s| s.split()).map(|mut s| {
+            s.curve = self.shape(s.curve);
+            s
+        })
+    }
+}
+
 impl Seam {
     /// **A fatia que a strip `i` desenha** — `None` se ela não é nenhuma das duas pontas.
     ///

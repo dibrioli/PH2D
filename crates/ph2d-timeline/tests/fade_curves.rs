@@ -461,3 +461,47 @@ fn an_overlap_has_one_easing_authored_from_either_wedge() {
         "Smooth pela outra cunha tem de desfazer a escolha: {back} vs {plain}"
     );
 }
+
+/// **Tocando para trás, o fade usa o easing ESPELHADO** (Enio, 2026-08-01: *"a direção do
+/// easing é invertida se a playhead está voltando a zero"*).
+///
+/// Um `Ease In` percorrido de trás para frente lê como `Ease Out` — a inversão devolve ao
+/// artista a forma que ele autorou, na perna de volta de um ping-pong.
+///
+/// ⚠️ O oráculo compara com a pose que o easing ESPELHADO produz andando para a frente: é
+/// isso que "a direção inverteu" significa, e um gate que só pedisse *"a pose mudou"* ficaria
+/// verde sobre um espelho errado (`InOut` virando `In`, por exemplo).
+#[test]
+fn playing_backwards_uses_the_mirrored_easing() {
+    use ph2d_anim::{EasingFamily, EasingMode};
+    const EASE_IN: Easing = Easing {
+        family: EasingFamily::Quint,
+        mode: EasingMode::In,
+    };
+    let at = |curve: Easing, reversed: bool| {
+        let (mut sim, mut st, bits) = scene(None, Some(curve), false);
+        st.doc.set_reverse_play(reversed);
+        x_at(&mut sim, &mut st, bits, 0.125)
+    };
+    let forward = at(EASE_IN, false);
+    let backwards = at(EASE_IN, true);
+    assert!(
+        (backwards - forward).abs() > 0.05,
+        "a direção tem de mudar a forma do fade: {forward} vs {backwards}"
+    );
+    assert!(
+        (backwards - at(EASE_IN.mirrored(), false)).abs() < 1e-9,
+        "…e a forma nova é EXATAMENTE o espelho: {backwards} vs {}",
+        at(EASE_IN.mirrored(), false)
+    );
+
+    // CONTROLE: o `smoothstep` de fábrica é o seu próprio espelho, então o default não se
+    // move um bit — a inversão só é visível num easing AUTORADO assimétrico.
+    let (mut sim, mut st, bits) = scene(None, None, false);
+    let plain = x_at(&mut sim, &mut st, bits, 0.125);
+    st.doc.set_reverse_play(true);
+    assert!(
+        (x_at(&mut sim, &mut st, bits, 0.125) - plain).abs() < 1e-12,
+        "o smoothstep de fábrica é simétrico: a direção não pode movê-lo"
+    );
+}

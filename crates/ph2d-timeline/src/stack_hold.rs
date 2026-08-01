@@ -7,7 +7,7 @@
 //! geometry (`weight_at`, `blend_in`/`blend_out`, `gap_*`) and the strips' time map
 //! (`fold`, `hold_source_time`), and writes nothing.
 
-use crate::stack::{ClipLane, ClipStrip, Seam};
+use crate::stack::{ClipLane, ClipStrip, FadeCtx, Seam};
 
 impl ClipLane {
     /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for
@@ -85,6 +85,7 @@ impl ClipLane {
         t: f64,
         loop_range: Option<(f64, f64)>,
         wraps: bool,
+        reversed: bool,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         // A curva da costura, resolvida UMA vez: ela molda a entrada da cabeça, então o
         // somatório vivo daqui e o peso vivo do `stack_frames` têm de vê-la igual.
@@ -92,8 +93,9 @@ impl ClipLane {
         // ⚠️ Só sob um loop que ENVOLVE: sob ping-pong a volta não é uma travessia (o
         // playhead reflete), então a cabeça mantém a curva dela.
         let seam = if wraps { self.seam(loop_range) } else { None };
+        let ctx = FadeCtx { seam, reversed };
         let live: f64 = (0..self.strips.len())
-            .map(|i| self.weight_at_with(i, t, seam))
+            .map(|i| self.weight_at_with(i, t, ctx))
             .sum();
         let w = 1.0 - live;
         if w <= 0.0 {
@@ -148,7 +150,7 @@ impl ClipLane {
                         && t >= last.t_end - bo
                 });
             if closing {
-                let held = self.seam_held(a, b, w, seam);
+                let held = self.seam_held(a, b, w, ctx);
                 if held[0].is_some() {
                     return held;
                 }
@@ -274,7 +276,7 @@ impl ClipLane {
         if t < a || t >= b || (!wraps && !self.opening_fade_owns_the_turn(t, a)) {
             return [None, None];
         }
-        self.seam_held(a, b, w, seam)
+        self.seam_held(a, b, w, ctx)
     }
 
     /// **Este `t` está no fade que ABRE a composição?** — o espelho do `reaches_the_end`.
@@ -355,12 +357,7 @@ impl ClipLane {
     ///
     /// Devolve até DUAS fontes `(strip, tempo-de-clipe, FRAÇÃO)`, com as frações somando 1.
     /// Array e não `Vec` porque isto roda por frame e por lane (`no_alloc_bridge`).
-    fn seam_split(
-        &self,
-        a: f64,
-        b: f64,
-        seam: Option<Seam>,
-    ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
+    fn seam_split(&self, a: f64, b: f64, ctx: FadeCtx) -> [Option<(&ClipStrip, f64, f64)>; 2] {
         // O que o FIM do loop deixa asserindo — a última strip lida na volta.
         let Some((ti, tail)) = self
             .strips
@@ -400,7 +397,8 @@ impl ClipLane {
         // travessia é uma só e a volta cai onde a CURVA diz que ela cai. Com a linear aqui e
         // a curvada nos pesos, os dois lados discordariam sobre a pose da costura e o objeto
         // saltaria exatamente na volta. Sob ping-pong não há `Seam` e a linear fica.
-        let f = seam
+        let f = ctx
+            .seam
             .filter(|s| s.split())
             .map_or(if total > 0.0 { l_out / total } else { 0.0 }, Seam::at_wrap);
         if f >= 1.0 {
@@ -423,7 +421,7 @@ impl ClipLane {
         // começa mais cedo ainda fadeia. Aí a costura tem dona (a que cobre), e dividir
         // mandaria o objeto para uma mistura que ninguém está mostrando.
         let head_live: f64 = (0..self.strips.len())
-            .map(|i| self.weight_at_with(i, a, seam))
+            .map(|i| self.weight_at_with(i, a, ctx))
             .sum();
         if head_live >= 1.0
             && let Some(first) = self.strips.iter().find(|s| s.covers(a))
@@ -440,9 +438,9 @@ impl ClipLane {
         a: f64,
         b: f64,
         w: f64,
-        seam: Option<Seam>,
+        ctx: FadeCtx,
     ) -> [Option<(&ClipStrip, f64, f64)>; 2] {
-        self.seam_split(a, b, seam)
+        self.seam_split(a, b, ctx)
             .map(|e| e.map(|(s, t, frac)| (s, t, w * frac)))
     }
 

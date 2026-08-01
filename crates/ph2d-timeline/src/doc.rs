@@ -256,6 +256,9 @@ pub struct TimelineDoc {
     /// equal, and its buffers are retained frame to frame (zero-alloc, HR-3).
     #[serde(skip)]
     scratch: StackScratch,
+    /// A direção do relógio DESTE frame — transiente, prosa em [`Self::set_reverse_play`].
+    #[serde(skip)]
+    reverse_play: bool,
 }
 
 impl Default for TimelineDoc {
@@ -291,6 +294,7 @@ impl TimelineDoc {
             containers: Vec::new(),
             scene_length: None,
             scratch: StackScratch::default(),
+            reverse_play: false,
         }
     }
 

@@ -60,3 +60,27 @@ impl TimelineDoc {
         self.put_scratch(scratch);
     }
 }
+
+impl TimelineDoc {
+    /// O playhead está TOCANDO para trás neste frame? Ver [`Self::set_reverse_play`].
+    #[must_use]
+    pub fn reverse_play(&self) -> bool {
+        self.reverse_play
+    }
+
+    /// **Estampa a direção do relógio deste frame** (Enio, 2026-08-01: *"a direção do easing
+    /// é invertida se a playhead está voltando a zero"*).
+    ///
+    /// Um fade percorrido ao contrário tem de *sentir* o easing que o artista autorou — sem
+    /// o espelho um `Ease In` lido de trás para frente lê como `Ease Out`. Quem sabe a
+    /// direção é o `Playhead`, que não alcança o avaliador, então a shell a estampa aqui uma
+    /// vez por frame (`is_playing() && !is_advancing_forward()`) e o `stack_frames` a lê.
+    ///
+    /// ⚠️ **Transiente como o scratch**: `#[serde(skip)]`, então **nenhum schema se move** e
+    /// um documento em disco não carrega a direção de quem o salvou. E **pausado é para a
+    /// FRENTE**: um scrub para trás é o artista LENDO a cena, não a animação rodando ao
+    /// contrário — inverter ali faria a pose depender de por onde o dedo veio.
+    pub fn set_reverse_play(&mut self, reversed: bool) {
+        self.reverse_play = reversed;
+    }
+}

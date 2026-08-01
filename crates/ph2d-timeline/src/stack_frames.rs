@@ -331,6 +331,13 @@ impl StackScratch {
                 (None, false)
             };
             let seam = if wraps { lane.seam(loop_range) } else { None };
+            // ⚠️ **A DIREÇÃO do relógio entra aqui**: um fade percorrido de trás para frente
+            // (a perna de volta de um ping-pong) tem de *sentir* o easing autorado, e sem o
+            // espelho um `Ease In` lido ao contrário lê como `Ease Out` (Enio, 2026-08-01).
+            let ctx = crate::stack::FadeCtx {
+                seam,
+                reversed: doc.reverse_play(),
+            };
             for (si, strip) in lane.strips.iter().enumerate() {
                 // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
                 // zero.** O peso é DADO — a resposta da lane —, não um filtro.
@@ -343,7 +350,7 @@ impl StackScratch {
                 //
                 // Custo: no máximo um punhado de strips de peso zero na lista, e só nas beiras
                 // exatas de um fade (o clamp da soma garante que o peso só zera nos extremos).
-                let w = lane.weight_at_with(si, t, seam);
+                let w = lane.weight_at_with(si, t, ctx);
                 // `source_time_with_lead`, not `source_time`: in the strip's outward
                 // lead-in window (in the gap before it) this returns the FROZEN first
                 // frame, so the strip contributes a still pose there — the travel the
@@ -395,7 +402,11 @@ impl StackScratch {
             // média ponderada da lane já sabe misturar N entradas: os pesos somam o MESMO
             // complemento, então `den` continua 1 e o único caso que muda é o que antes
             // ficava congelado. Uma ponta só devolve UMA fonte, byte-idêntica ao que era.
-            for (strip, t_local, w) in lane.hold_at(t, loop_range, wraps).into_iter().flatten() {
+            for (strip, t_local, w) in lane
+                .hold_at(t, loop_range, wraps, ctx.reversed)
+                .into_iter()
+                .flatten()
+            {
                 let t_local = doc.cut_source(strip.source, t_local);
                 if let Some(source) =
                     self.resolve(doc, strip.source, t_local, additive, strip.src_in)

@@ -74,8 +74,11 @@ fn measure_what_the_preview_drain_costs_with_the_water_running() {
             if got.is_some() {
                 drained += 1;
                 // A REGIÃO que o dreno de fato publicou — o divisor.
-                if let Some((x0, y0, x1, y1)) = t.take_preview_upload_bbox() {
-                    px_total += u64::from(x1 - x0) * u64::from(y1 - y0);
+                // ⚠️ `(x, y, w, h)`, nao cantos — ver o fix gemeo no
+                // `painter_bridge`. A 1a versao desta sonda reportou 8,26 M px
+                // com a formula ERRADA, e esse numero foi publicado num doc.
+                if let Some((_, _, bw, bh)) = t.take_preview_upload_bbox() {
+                    px_total += u64::from(bw) * u64::from(bh);
                 } else {
                     let (w, h) = t.canvas_size();
                     px_total += u64::from(w) * u64::from(h);
@@ -110,5 +113,76 @@ fn measure_what_the_preview_drain_costs_with_the_water_running() {
          TOOL e a atribuicao fecha aqui. Se ficar muito abaixo, o custo mora nas outras\n    \
          fases do dispatch (panel/overlay/upload), que so o `PH2D_PAINT_PERF` separa —\n    \
          e ai o proximo passo e' o DIVISOR na linha `[frame]`, nao uma hipotese."
+    );
+}
+
+/// **A BBOX DE UPLOAD É `(x, y, w, h)`, NÃO DOIS CANTOS** — e este gate existe
+/// porque eu li errado e publiquei o número num doc.
+///
+/// ⚠️ **A história, para ninguém repetir.** Esta wave precisava da ÁREA que o
+/// dreno publica. `take_preview_upload_bbox` devolve `(x, y, w, h)` — o
+/// doc-comment dele diz isso quatro linhas acima da assinatura — e eu computei
+/// `(x1 - x0) * (y1 - y0)`, ou seja `(w - x) * (h - y)`.
+///
+/// **O que torna esse erro perigoso é que ele às vezes dá um número plausível:**
+/// na fixture headless os retângulos caem perto da origem, `w > x`, e a sonda
+/// reportou **8,26 M px** contra os **8,89 M** verdadeiros — perto o bastante
+/// para eu escrever um doc em cima. No PRODUTO os retângulos vivem longe da
+/// origem, `w < x`, o `saturating_sub` devolve zero, e o log do smoke veio
+/// `0.00 M px publicados em 80 quadros`: **o sítio de contagem disparando e o
+/// valor sendo lixo.** Quem pegou foi o instrumento do produto, não a sonda.
+///
+/// ⚠️ **E os dois arch-gates da wave não podiam pegar isto:** um afirma que o
+/// placeholder é IMPRESSO, o outro que a contagem mora no sítio certo — nenhum
+/// olha para o VALOR. *Um gate de instrumento que nunca afirma que o número é
+/// plausível deixa passar exatamente a classe de erro que ele existe para
+/// caçar.*
+///
+/// Mutação que sangra: qualquer consumidor que troque `w * h` por
+/// `(w - x) * (h - y)` — nesta fixture `x > w`, então a leitura errada satura
+/// em zero e a asserção de área não-vazia morre.
+#[test]
+fn the_upload_bbox_is_a_rect_and_a_corner_reading_gives_nonsense() {
+    const SIDE: u32 = 2048;
+    // ⚠️ **LONGE da origem é o ingrediente da fixture.** Perto dela a leitura
+    // errada devolve um número plausível — foi exatamente assim que ela chegou
+    // a um doc —, e um gate que não contém o fenômeno é verde sobre o defeito.
+    const CX: f32 = 1500.0;
+    const CY: f32 = 1500.0;
+
+    let mut t = wetted(SIDE, 40.0);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.on_canvas_pointer(cp([CX, CY], PointerPhase::Down));
+    for k in 1..=6 {
+        t.on_canvas_pointer(cp([CX + 12.0 * k as f32, CY], PointerPhase::Move));
+        let _ = t.take_preview_arc();
+    }
+    t.on_canvas_pointer(cp([CX + 84.0, CY], PointerPhase::Up));
+    let _ = t.take_preview_arc();
+
+    let Some((x, y, w, h)) = t.take_preview_upload_bbox() else {
+        // `None` = "suba a textura inteira", e aí não há tupla a interpretar: a
+        // fixture não contém o fenômeno, e dizer isso é melhor que passar.
+        panic!(
+            "o dreno nao publicou uma sub-regiao — a fixture nao contem o \
+             fenomeno que este gate julga"
+        );
+    };
+
+    assert!(
+        w > 0 && h > 0,
+        "a bbox publicada tem area vazia ({w}x{h}) — o dreno diz nao ter tocado \
+         nada e mesmo assim pediu um upload parcial"
+    );
+    assert!(
+        x + w <= SIDE && y + h <= SIDE,
+        "a bbox ({x},{y},{w},{h}) sai da tela {SIDE}x{SIDE}: se `w`/`h` fossem \
+         CANTOS isto seria normal, e e' a leitura que este gate recusa"
+    );
+    // A prova de que a leitura-por-cantos e' absurda NESTA fixture.
+    assert!(
+        x > w && y > h,
+        "a fixture deixou de ser 'longe da origem' ({x},{y},{w},{h}): a leitura \
+         errada voltaria a dar um numero plausivel e o gate perderia os dentes"
     );
 }

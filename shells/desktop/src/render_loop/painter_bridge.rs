@@ -370,11 +370,15 @@ pub(super) fn dispatch(
             // O DIVISOR do `painter-dispatch` — a area publicada e' o que o
             // gather + premultiply + upload adiante tem de mover, e sem ela o
             // numero do log nao distingue um retangulo grande de um pequeno.
+            // ⚠️ A bbox e' `(x, y, w, h)` -- NAO `(x0, y0, x1, y1)`, e o
+            // doc-comment do `take_preview_upload_bbox` o diz. A 1a versao
+            // subtraiu como se fossem cantos, o que da `(w - x) * (h - y)` e
+            // SATURA EM ZERO para todo retangulo longe da origem: o log do
+            // smoke veio `0.00 M px publicados em 80 quadros` -- o sitio de
+            // contagem disparando e o valor sendo lixo.
             super::note_preview_px(painter_dirty_bbox.map_or_else(
                 || u64::from(w) * u64::from(h),
-                |(x0, y0, x1, y1)| {
-                    u64::from(x1.saturating_sub(x0)) * u64::from(y1.saturating_sub(y0))
-                },
+                |(_, _, bw, bh)| u64::from(bw) * u64::from(bh),
             ));
             // Diagnostic TRAP for the per-layer-colour "rectangle residue" (BUGS_painter.md #11 — OPEN,
             // intermittent). `PH2D_PREVIEW_DUMP=<dir>` writes each frame's CPU composite (the exact bytes

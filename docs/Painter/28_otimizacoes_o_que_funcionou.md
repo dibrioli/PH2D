@@ -4890,16 +4890,16 @@ janela 3 (poça de ~2 M células a 4096², um tick por quadro, **zero eventos**)
 
 | condição | dreno ms | px publicados/quadro | células vivas | **razão** |
 |---|---|---|---|---|
-| poça viva | **0,001** | **8.263.228** | 2.068.506 | **3,99×** |
+| poça viva | **0,001** | **8.892.819** | 2.068.506 | **4,30×** |
 | tela seca (controle) | 0,000 | 0 | 0 | — |
 
 **Duas coisas, e as duas importam:**
 
 1. **O dreno do TOOL é grátis** — `take_preview_arc` devolve um `Arc` por
    refcount, não uma cópia. O custo não está lá.
-2. **Mas ele publica metade da tela por quadro.** 8,26 M px numa tela de 16,8 M,
+2. **Mas ele publica metade da tela por quadro.** 8,89 M px numa tela de 16,8 M,
    **toda vez que a água anda**, para 2,07 M células de água viva ⇒ **o retângulo
-   pede 3,99×** o que a água tocou. A bbox de uma faixa diagonal é um múltiplo
+   pede 4,30×** o que a água tocou. A bbox de uma faixa diagonal é um múltiplo
    da faixa — exatamente o que o censo do `live_span_cells` (§5.47) já nomeou
    para o outro lado: *"a faixa NÃO é a bbox"*.
 
@@ -4931,3 +4931,56 @@ doc:**
 se a área for mesmo o alvo, publicar por FAIXA em vez de bbox — o `row_lo`/
 `row_hi` que o `live_span_cells` percorre já é a faixa, e ela não custa nada a
 mais para quem já a mantém.
+
+### ⚠️ CORREÇÃO (mesmo dia): os primeiros números desta seção estavam ERRADOS
+
+O smoke seguinte veio com o divisor novo dizendo:
+
+```text
+painter-dispatch(cpu)=0.07ms (0.00 M px publicados em 80 quadros)
+painter-dispatch(cpu)=4.47ms (0.00 M px publicados em 80 quadros)
+painter-dispatch(cpu)=0.02ms (0.00 M px publicados em 80 quadros)
+```
+
+**`prev_n = 80`** (o sítio de contagem disparando, e batendo exato com os 80
+passos da água) **com `0.00 M px`** — o instrumento acusando a si mesmo.
+
+**A causa é minha:** `take_preview_upload_bbox` devolve **`(x, y, w, h)`** — o
+doc-comment dele diz isso quatro linhas acima da assinatura — e eu computei
+`(x1 - x0) * (y1 - y0)`, ou seja `(w - x) * (h - y)`.
+
+⚠️ **O que torna esse erro perigoso é que ele às vezes dá um número plausível.**
+Na fixture headless os retângulos caem perto da origem, `w > x`, e a sonda
+reportou **8,26 M** contra os **8,89 M** verdadeiros — perto o bastante para eu
+escrever um doc em cima. No PRODUTO os retângulos vivem longe da origem, `w < x`,
+o `saturating_sub` devolve zero, e o log gritou. **Quem pegou foi o instrumento
+do produto; a minha sonda não.** É a quarta vez nesta sessão que um log do
+produto vence o meu raciocínio.
+
+Corrigidos os dois sítios (o produto e a sonda), a tabela acima já traz os
+números certos: **8,89 M px, 4,30×**. O veredito não muda — **muda a confiança
+que ele merecia antes de ser conferido**.
+
+⚠️ **E o buraco de gate era real:** os dois arch-gates da wave afirmam que o
+placeholder é IMPRESSO e que a contagem mora no sítio certo — **nenhum olha para
+o VALOR**. *Um gate de instrumento que nunca afirma que o número é plausível
+deixa passar exatamente a classe de erro que o instrumento existe para caçar.*
+Nasceu o terceiro, comportamental
+(`the_upload_bbox_is_a_rect_and_a_corner_reading_gives_nonsense`), cuja fixture
+põe o traço **longe da origem** — onde a leitura-por-cantos dá resposta absurda —
+e afirma `x > w`, para que ela não volte a ser plausível por acidente.
+
+### E o smoke NÃO reproduziu os 11,80 ms
+
+Nas três janelas o dispatch custa **0,02 · 4,47 · 0,07 ms**, com a poça em
+**1,04-1,17 M células** — metade da poça de 2,37 M da janela que media 11,80.
+Com a água a **40,0 Hz** e `sleep 58-61%`, ela está no nominal da SPEC e o worker
+dorme.
+
+⇒ **O `painter-dispatch` acompanha o tamanho da poça, e nesta cena ele é
+essencialmente grátis.** Os 11,80 ms eram uma poça 2× maior. O alvo continua
+nomeado e agora tem instrumento: se um log futuro trouxer o par
+`dispatch alto + M px alto`, a cura é publicar por **FAIXA** em vez de bbox
+(o `row_lo`/`row_hi` que o `live_span_cells` já percorre É a faixa); se vier
+`dispatch alto + M px baixo`, o custo está noutra fase e o `PH2D_PAINT_PERF` a
+separa.

@@ -63,13 +63,31 @@ fn the_dispatch_line_prints_the_area_it_moves() {
 /// Mutação que sangra: mover o `note_preview_px` para fora do braço do dreno.
 #[test]
 fn the_area_is_counted_where_the_bbox_is_resolved() {
+    // ⚠️ **A JANELA É ESTRUTURAL, NÃO UMA DISTÂNCIA EM BYTES.** A 1ª versão
+    // varria 600 caracteres depois da bbox e **quebrou com o próprio comentário
+    // que o fix da fórmula acrescentou** — o código estava certo e o gate
+    // reprovou. É a classe que a `line/Vector` já pagou: *um arch-gate ancorado
+    // numa distância é um proxy que expira*. A pergunta verdadeira é *a
+    // contagem está DENTRO do braço que resolveu a bbox?*, e o fim desse braço
+    // é a estrutura, não um número.
     let at_bbox = BRIDGE
         .find("painter_dirty_bbox = painter.take_preview_upload_bbox();")
         .expect("o dreno de CPU resolve a bbox de upload");
-    let after: String = BRIDGE[at_bbox..].chars().take(600).collect();
+    let rest = &BRIDGE[at_bbox..];
+    // O braço fecha na primeira linha que volta à indentação de 8 espaços com
+    // uma chave — tudo antes disso ainda é o mesmo bloco.
+    let arm_end = rest.find("\n        }").unwrap_or(rest.len());
+    let arm = &rest[..arm_end];
     assert!(
-        after.contains("note_preview_px"),
-        "a area publicada nao e' contada logo onde a bbox e' resolvida — o divisor \
-         passaria a descrever outros quadros que o numerador:\n{after}"
+        arm.contains("note_preview_px"),
+        "a area publicada nao e' contada DENTRO do braco que resolve a bbox — o \
+         divisor passaria a descrever outros quadros que o numerador"
+    );
+    // E uma vez só: dois sítios contariam o mesmo quadro duas vezes.
+    assert_eq!(
+        BRIDGE.matches("note_preview_px").count(),
+        1,
+        "ha mais de um sitio contando a area publicada — o divisor contaria o \
+         mesmo quadro duas vezes"
     );
 }

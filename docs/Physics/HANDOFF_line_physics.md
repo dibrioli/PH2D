@@ -8348,3 +8348,73 @@ mede o braço DESENHADO das duas leituras.
 **Sem cena:** a `=72` já monta a jangada composta sobre a poça, e a tecla `B` mostra as
 marcas de contato. Uma cena própria para *"uma cruz em vez de duas"* seria a mesma
 jangada com outra mensagem.
+
+---
+
+## W-WorldPinGlyph — a ponta que é o CENÁRIO ganha figura (2026-08-01, cena `=65`)
+
+O pino de mundo (W-JointWorld) sempre teve a geometria certa e o overlay o
+desenhava **de graça** — cedo demais para alguém notar que o desenho não dizia
+nada.
+
+### A medição, antes de uma linha ser escrita
+
+Um pino de mundo e um pino entre dois corpos produziam caminhos
+**byte-idênticos**: 3 camadas, `[22, 0, 50]` pontos, mesmas cores. Nada no
+desenhista perguntava pelo lado B.
+
+⚠️ **E o que o produto entregava era uma AUSÊNCIA, não uma diferença.** A ponte
+põe `centre_b == anchor_b` num pino de mundo (medido: os dois em `[0,0; 2,0]`),
+então a tracejada de posse do lado B tem comprimento zero e não pinta. *Não
+desenhar nada* não é uma frase — é a falta de uma; e um joint entre **dois
+corpos** cujo B esteja centrado na própria âncora desenha a mesma ausência.
+
+### A figura, e onde ela mora
+
+A **hachura de apoio fixo** dos diagramas de mecanismo — a notação que todo livro
+de estática usa para *"deste lado é o quadro"*. Ela não precisa ser aprendida por
+quem já viu um desenho de mecanismo e não colide com nenhuma outra figura deste
+overlay.
+
+Mora no **`ownership_lines`**, a função que já responde *"de quem é esta ponta?"*
+— *"do mundo"* é resposta a ESSA pergunta, não uma anotação nova; uma camada
+própria daria duas portas para o mesmo fato. Por morar ali, ela **veste a banda
+apagada**, e portanto apaga num joint desligado e avermelha num rompido sem uma
+linha a mais.
+
+⚠️ **Desce pela GRAVIDADE**, reusando o `g_screen` que o quadro já computa para a
+barriga da corda: *chão* é o lado para onde as coisas caem, e sob flip de câmera —
+ou gravidade lateral, suportada desde o W2b — uma hachura presa ao eixo da tela
+apontaria para cima com toda a convicção. **Sem gravidade a marca não é
+desenhada**: inventar um *"para baixo"* seria o desenho escolhendo uma física que
+o mundo não tem.
+
+⚠️ **O predicado é `body_b.is_none()`, nunca uma comparação de posições** — a
+ponte publica `None` exatamente para isto (o campo virou `Option` no W-JointWorld
+*"para esquecer o caso do mundo ficar impossível por TIPO"*), e o teste de posição
+que ele substitui daria chão a um corpo B centrado na própria âncora.
+
+### Gates
+
+6 + 1 sonda. **5 mutações, 4 sangram.**
+
+⚠️ **A mutação que apaga os RISCOS sobreviveu aos cinco primeiros gates** — eles
+pinavam que o lado do mundo *difere* e que ele *segue a gravidade*, e **uma barra
+nua satisfaz as duas**. O gate novo lê a geometria desenhada e exige riscos
+atravessando a barra: uma barra sozinha lê como parede, batente ou fim de curso,
+três outras coisas que este overlay já desenha.
+
+⚠️ **E um gate meu nasceu VERDE-SOBRE-ERRADO:** *"a camada de posse tem > 2
+pontos"* passava com a wave inteira desligada (a tracejada tem 22 pontos) — uma
+afirmação que não podia falhar pelo motivo que alegava. O oráculo virou o
+**CRESCIMENTO** da camada com a gravidade, que só a hachura explica.
+
+⚠️ **Riscos PERPENDICULARES (um pente) sobrevivem, por desenho:** pente e hachura
+leem os dois como chão, e gatear 45° seria pinar **estilo, não afirmação**.
+
+⚠️ E dois probes meus empurraram `physics_overlay_joints_tests.rs` de ~592 para
+**662 > 600**; foram para o arquivo novo junto com os gates.
+
+**Zero schema, zero componente, zero id, zero ADR.** Sem cena nova: a **`=65`** já
+encenava o A/B exato (dois pêndulos idênticos, um pelo gancho inventado e outro
+pelo mundo) e ganhou o parágrafo que aponta a marca.

@@ -200,6 +200,15 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// deixá-lo *inteiramente livre*. Um campo apendado, mesmo raciocínio posicional
 /// do v43..v46; a dureza reusa a `stiffness`/`damping` que a mola já carregava,
 /// então é UM bool e não três campos.
+/// v48 (FLIP, as PONTAS do traço): o `Cap` ganhou a variante **`Square`**, e o
+/// `FlipDoc` viaja DENTRO do `ProjectFile` ⇒ o `FLIP_SCHEMA_VERSION` 12→13 arrasta
+/// este junto (a escada dele está no `ph2d_flip::FLIP_SCHEMA_VERSION`).
+/// ⚠️ **As duas linhas escreveram 47 na mesma janela** — a `line/FLIP` e a
+/// `line/physics` (v47 acima) —, e o valor se **CONTA** a partir do `main` do dia:
+/// a física ficou com o 47 e o Flip foi contado para o 48. É a 3ª vez entre estas
+/// duas ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]), e desta vez
+/// ela quase passou MUDA: os dois lados escreveram o mesmo literal, então o
+/// `project.rs` **não conflitou** — quem denunciou foi o gate da tripla ao lado.
 /// v49 (vector, W6.2 — as guias e a régua): o `ProjectState` ganhou **`guides`**, a
 /// lista de linhas de referência que o artista arrasta da régua. Campo apendado ao
 /// `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio posicional

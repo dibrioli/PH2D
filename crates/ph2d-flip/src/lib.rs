@@ -109,6 +109,15 @@ pub use ph2d_painter_effects::BlendMode;
 /// `FlipStroke` salvo em v10 lê os campos seguintes deslocados ⇒ bump obrigatório.
 /// v12 (Airbrush, 03 §8): o traço ganhou `airbrush` (falloff físico Beer-Lambert por dab
 /// esférico). Campo no MEIO do `FlipStroke` (após `self_overlap`) ⇒ mesmo raciocínio ⇒ bump.
+/// v13 (as PONTAS do traço): o [`Cap`] ganhou a variante **`Square`** (o traço
+/// estendido por meia-espessura e cortado reto). ⚠️ **Apender uma variante NÃO move
+/// os índices de `Round`/`Flat`**, então todo arquivo já salvo segue legível — o bump
+/// é pelo caminho INVERSO: sem ele um leitor v12 lê `Square` como lixo bem-formado em
+/// vez de recusar o arquivo. Mesmo raciocínio do `JointKind::Weld` na física.
+///
+/// ⚠️ Esta entrada foi escrita na REABERTURA da `line/physics` (2026-08-01) porque ela
+/// faltava: o const estava em 13 e a escada parava no v12. Uma escada com buraco é
+/// como o próximo bump nasce mal-numerado, e a regra é atualizá-la no MESMO commit.
 pub const FLIP_SCHEMA_VERSION: u32 = 13;
 
 #[cfg(test)]

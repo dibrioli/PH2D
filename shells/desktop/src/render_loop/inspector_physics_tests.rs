@@ -44,7 +44,12 @@ pub(super) fn sprite_scene() -> (SimWorld, Entity) {
     (sim, e)
 }
 
-pub(super) fn apply(sim: &mut SimWorld, e: Entity, edit: PhysicsFieldEdit) {
+/// Aplica um edit do §11 ao ECS pelo caminho do PRODUTO.
+///
+/// ⚠️ `pub(crate)`: a cena 70 (W-PartFace) a usa para provar que afinar uma PEÇA
+/// muda a simulação — o gesto inteiro da wave. Uma segunda fiação lá seria uma
+/// segunda resposta a *"o que este edit faz"*.
+pub(crate) fn apply(sim: &mut SimWorld, e: Entity, edit: PhysicsFieldEdit) {
     let reg = registry();
     let queue = EditorCommandQueue::default();
     apply_physics_edit(sim, e.to_bits(), edit, &queue, &reg);

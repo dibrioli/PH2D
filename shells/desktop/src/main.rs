@@ -546,6 +546,7 @@ impl App {
             last_dispatch_us: 0,
             paint_stamp_us_this_frame: 0,
             last_paint_stamp_us: 0,
+            last_paint_stamps: 0,
             paint_ms_ewma: 0.0,
             painter_preview: None,
             painter_preview_gpu: None,

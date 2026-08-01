@@ -391,3 +391,82 @@ fn measure_what_the_frame_re_uploads_while_the_artist_paints() {
          estrutural — e o alvo e o retangulo, nao o solver."
     );
 }
+
+/// **O CUSTO DE UM EVENTO DE PONTEIRO É POR DAB OU FIXO POR EVENTO?** — a
+/// pergunta que decide a cura do traço lento.
+///
+/// Medido no produto (2026-07-31): `stamps: media 105,82ms pico 531,42ms em
+/// 26/120 frames`, com o custo por MOVE em **2,03 ms** (censo dos quatro
+/// meios) ⇒ **~52 eventos por quadro**. É a espiral que o próprio comentário do
+/// `painter_canvas_move` descreve — *mais eventos → quadro mais lento → mais
+/// eventos* —, e os métodos incrementais estão **isentos do coalescing de
+/// propósito**, porque cada evento deposita dabs e engolir eventos engoliria
+/// tinta.
+///
+/// ⚠️ **Mas a isenção só é honesta se o custo for POR DAB.** Um mouse a 1000 Hz
+/// sobre um quadro de 95 ms entrega ~50 eventos que somam o MESMO caminho que
+/// 5 eventos entregariam — mesma tinta, mesmos dabs. Se o custo por evento for
+/// ~constante na distância, ele é **overhead fixo**, o trabalho cresce com a
+/// TAXA DE POLLING e não com o traço, e isso contradiz a lei que esta linha já
+/// pagou cinco vezes: *o depósito é propriedade do pincel e do CAMINHO, nunca
+/// de quão fino o motor amostrou o caminho*.
+///
+/// A tabela varre a distância do passo com o caminho TOTAL fixo: o mesmo traço,
+/// entregue em `n` eventos grandes ou `16n` pequenos. Custo total constante ⇒ é
+/// por dab (nada a consertar). Custo total subindo com o número de eventos ⇒ é
+/// overhead, e o número é o preço da espiral.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
+    const SIDE: u32 = 4096;
+    const PATH_PX: f32 = 640.0;
+
+    println!(
+        "\n  O MESMO CAMINHO DE {PATH_PX:.0} px, ENTREGUE EM EVENTOS DE TAMANHOS DIFERENTES\n"
+    );
+    println!(
+        "    {:<14} {:>7} {:>8} {:>12} {:>12} {:>12}",
+        "meio", "passo", "eventos", "por evento", "TOTAL ms", "vs 40px"
+    );
+
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        let mut base = 0.0f64;
+        for step in [40.0f32, 10.0, 2.5, 1.0] {
+            let mut t = wetted(SIDE, 100.0);
+            t.set_paint_media(media);
+            let (x0, y0) = (300.0f32, 2048.0f32);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            let n = (PATH_PX / step).round() as u32;
+            let mut ms = Vec::with_capacity(n as usize);
+            for k in 1..=n {
+                let x = x0 + step * k as f32;
+                let t0 = Instant::now();
+                t.on_canvas_pointer(cp([x, y0], PointerPhase::Move));
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                let _ = t.take_preview_arc();
+            }
+            t.on_canvas_pointer(cp([x0 + PATH_PX, y0], PointerPhase::Up));
+            ms.sort_by(f64::total_cmp);
+            let per = ms[ms.len() / 2];
+            let total: f64 = ms.iter().sum();
+            if base == 0.0 {
+                base = total;
+            }
+            println!(
+                "    {:<14} {step:>6.1}p {n:>8} {per:>11.3}m {total:>11.2}m {:>11.2}x",
+                format!("{media:?}"),
+                total / base,
+            );
+        }
+    }
+    println!(
+        "\n    Leitura: o CAMINHO e o mesmo nas quatro linhas de cada meio, entao a coluna\n    \
+         TOTAL deveria ser CONSTANTE — o pincel deposita a mesma tinta. O quanto ela sobe\n    \
+         e exatamente o overhead que a taxa de polling do mouse compra, e o combustivel\n    \
+         da espiral que o comentario do `painter_canvas_move` descreve."
+    );
+}

@@ -688,6 +688,15 @@ pub(crate) struct App {
     /// Diagnostics (HUD): the previous frame's total re-stamp time (µs) — snapshot of
     /// `paint_stamp_us_this_frame`; folded with the dispatch time into `paint_ms_ewma`.
     pub(crate) last_paint_stamp_us: u64,
+    /// **O DIVISOR do tempo acima** — quantas entregas de ponteiro o compõem.
+    ///
+    /// ⚠️ Sem ele `stamps: media 105,82ms` é inatribuível, e as duas leituras
+    /// pedem curas OPOSTAS: **um** re-stamp de forma inteira a 105 ms (o alvo é
+    /// o re-stamp) contra **cinquenta** eventos incrementais a 2 ms (o alvo é a
+    /// taxa de entrega, e o comentário do `painter_canvas_move` já descreve a
+    /// espiral). É a mesma doença que o balde da poça curou do outro lado do
+    /// log (doc 28 §5.47.4), um sistema adiante.
+    pub(crate) last_paint_stamps: u32,
     /// Diagnostics (HUD): EWMA of painter CPU per frame (stamp flush + dispatch), milliseconds.
     pub(crate) paint_ms_ewma: f32,
     /// Cached on-canvas live preview for the Painter tool — drained

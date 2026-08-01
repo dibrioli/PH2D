@@ -249,6 +249,10 @@ thread_local! {
     static FRAME_PROF_STAMP_SUM_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     static FRAME_PROF_STAMP_MAX_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     static FRAME_PROF_STAMP_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// Quantas ENTREGAS de ponteiro compõem a soma acima — o divisor sem o qual
+    /// `stamps: media 105,82ms` não distingue *um re-stamp de forma inteira* de
+    /// *cinquenta eventos incrementais*, que pedem curas opostas.
+    static FRAME_PROF_STAMP_EV: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// `paint_hero_screen` µs (panel/chrome Vello encode — includes the Paper preview).
     static FRAME_PROF_HERO_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
@@ -675,6 +679,7 @@ impl crate::App {
         // last frame, so "paint ms" is the real per-frame painter cost (not just the flush).
         let diag_input_events = std::mem::take(&mut self.input_events_this_frame);
         let diag_paint_stamps = std::mem::take(&mut self.paint_stamps_this_frame);
+        self.last_paint_stamps = diag_paint_stamps;
         self.last_paint_stamp_us = std::mem::take(&mut self.paint_stamp_us_this_frame);
         // M14.7 polish (10.1): tag the start of CPU work for the
         // raw-fps measurement. Stopped after `queue.submit` (before
@@ -1131,6 +1136,11 @@ impl crate::App {
                     FRAME_PROF_STAMP_SUM_US.with(|c| c.set(c.get() + st));
                     FRAME_PROF_STAMP_MAX_US.with(|c| c.set(c.get().max(st)));
                     FRAME_PROF_STAMP_N.with(|c| c.set(c.get() + 1));
+                    // ⚠️ O DIVISOR, acumulado no MESMO ponto que a soma: contado
+                    // noutro lugar, os dois baldes discordariam sobre QUAIS
+                    // frames entraram na janela, e a média por evento seria de
+                    // uma amostra que ninguém escolheu.
+                    FRAME_PROF_STAMP_EV.with(|c| c.set(c.get() + self.last_paint_stamps));
                 }
             }
             // Fill dwell gesture: a held-still ColorDrop fires the fill + enters live threshold-adjust
@@ -7157,6 +7167,13 @@ impl crate::App {
                     &FRAME_PROF_STAMP_MAX_US,
                     &FRAME_PROF_STAMP_N,
                 );
+                let stamp_ev = FRAME_PROF_STAMP_EV.with(std::cell::Cell::take);
+                // O custo POR ENTREGA — a média acima dividida pelo que ela soma.
+                let stamp_per = if stamp_ev > 0 {
+                    stamp_avg * f64::from(stamp_n) / f64::from(stamp_ev)
+                } else {
+                    0.0
+                };
                 // E o SPLIT do tick da água: um pico no `tool-tick` não diz se foi um passo de
                 // sim caro ou um composite sobre um casco grande, e as curas são outras.
                 let (
@@ -7187,7 +7204,8 @@ impl crate::App {
                      | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
                      | hero-paint={hero_ms:.2}ms\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
-                     | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120\n\
+                     | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
+                     ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\
                      [frame]   agua: sim media {:.2}ms pico {sim_max:.2}ms x{sim_n} \
                      | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n} \
                      | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)\n\

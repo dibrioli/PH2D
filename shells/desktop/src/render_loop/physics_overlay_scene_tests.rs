@@ -486,3 +486,90 @@ fn a_collider_with_no_body_above_it_is_not_drawn() {
          é simulada"
     );
 }
+
+/// **A PEÇA-SENSOR ACENDE, e este é o gate que teria pego a wave inteira**
+/// (W-PartSensor): ele junta as duas metades — quem a ponte NOMEIA como sensor
+/// disparado e quem o contorno DESENHA — dirigindo o `PhysicsBridge` de verdade
+/// em vez de passar uma lista à mão.
+///
+/// Antes da wave a peça era desenhada magenta **apagado para sempre**: o par
+/// reportado era `(tronco, chão)`, o canal perguntava se o collider próprio do
+/// tronco era sensor, e a sobreposição era descartada. Os dois gates de sensor
+/// acima ficavam VERDES — eles montam o sensor no PRÓPRIO corpo, que é
+/// exatamente o caso em que forma e corpo são a mesma entidade.
+#[test]
+fn a_sensor_part_lights_up_in_the_overlay() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{ChildOf, Transform};
+    use ph2d_physics_ecs::{Collider, PhysicsBridge, RigidBody};
+
+    let mut sim = ph2d_ecs::SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 20.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    let torso = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.4,
+                    half_y: 1.0,
+                },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 1.5)),
+        ))
+        .id();
+    let foot = sim
+        .world_mut()
+        .spawn((
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.5,
+                    half_y: 0.2,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, -1.0)),
+            ChildOf(torso),
+        ))
+        .id();
+
+    let mut bridge = PhysicsBridge::new();
+    for t in 0..=120u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let triggered = bridge.triggered_sensors();
+    assert!(
+        triggered.contains(&foot),
+        "a ponte não nomeou o pé como sensor disparado: {triggered:?}"
+    );
+
+    let drawn = outlines(true, false, &mut sim, &triggered, &camera(), window());
+    let lit = drawn
+        .iter()
+        .filter(|(_, rgba)| *rgba == SENSOR_ACTIVE_RGBA)
+        .count();
+    assert_eq!(
+        lit,
+        1,
+        "exatamente uma forma — a peça-sensor — devia estar acesa; \
+         cores desenhadas: {:?}",
+        drawn.iter().map(|(_, c)| *c).collect::<Vec<_>>()
+    );
+}

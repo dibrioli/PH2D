@@ -132,6 +132,17 @@ impl crate::App {
                   fica na Hierarquia para sempre podendo ser movido por acidente.\n  \
                2. VERDE (direita) -- o PINO DE MUNDO. Na Hierarquia ha 'New Bob' e\n     \
                   'Wall Pin', e mais nada. A ancora e o proprio joint.\n\n  \
+               3. E AGORA OLHE AS DUAS ANCORAS DE CIMA (W-WorldPinGlyph). O pino de\n     \
+                  MUNDO tem a HACHURA DE CHAO -- a barrinha com riscos atravessados,\n     \
+                  a notacao de apoio fixo dos diagramas de mecanismo. O laranja NAO\n     \
+                  tem: ele tem a linha TRACEJADA de posse indo ate o gancho\n     \
+                  inventado, porque do lado dele ha um corpo.\n     \
+                  (!) Ate esta wave os DOIS desenhavam a MESMA figura, byte a byte:\n     \
+                  o lado do mundo era dito por uma AUSENCIA -- a tracejada tinha\n     \
+                  comprimento zero e nao pintava -- e ausencia e' ambigua.\n     \
+                  (!) A hachura desce pela GRAVIDADE, nao pelo eixo da tela. Abra o\n     \
+                  painel Physics (tecla W) e ponha a gravidade DE LADO: ela vira\n     \
+                  junto, porque chao e' o lado para onde as coisas caem.\n\n  \
                Os dois balancam IGUAL ({swing:.3} m de percurso em 2 s, os DOIS): o\n  \
                pino de mundo e um pivo de verdade, nao um corpo congelado.\n\n  \
                AUTORE VOCE MESMO: selecione 'Wall Pin' na Hierarquia. Na secao Joint,\n  \

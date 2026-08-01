@@ -487,3 +487,68 @@ pub(super) fn length_ring(
     }
     p
 }
+
+/// Metade da largura da barra de chão do pino de MUNDO, em px de tela.
+const GROUND_HALF_PX: f64 = 9.0; // LITERAL-PX-OK: chrome de overlay
+/// Quanto a barra descansa ABAIXO da âncora, para não disputar pixel com o glifo
+/// do tipo (o anel do Pin mede [`PIN_RING_PX`]).
+const GROUND_GAP_PX: f64 = 7.5; // LITERAL-PX-OK: chrome de overlay
+/// O comprimento de cada risco da hachura.
+const GROUND_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
+/// Quantos riscos. Quatro é o que cabe legível na barra acima sem virar mancha.
+const GROUND_TICKS: usize = 4;
+
+/// **A hachura de CHÃO** — a ponta deste joint é o CENÁRIO, não um corpo
+/// (W-WorldPinGlyph).
+///
+/// # Por que existia um vão
+///
+/// A geometria de um pino de mundo sempre esteve certa, e o overlay o desenhava
+/// **de graça** — cedo demais para alguém notar que o desenho não dizia nada.
+/// Medido: um pino de mundo e um pino entre dois corpos produzem caminhos
+/// **byte-idênticos** (3 camadas, `[22, 0, 50]` pontos, mesmas cores), porque
+/// nada no desenhista pergunta pelo lado B.
+///
+/// O que o produto entrega hoje é uma **ausência**: a ponte põe
+/// `centre_b == anchor_b` (medido: os dois em `[0,0; 2,0]`), então a linha
+/// tracejada de posse do lado B tem comprimento zero e não pinta. ⚠️ **E uma
+/// ausência é ambígua** — um joint entre dois corpos cujo B esteja centrado na
+/// própria âncora desenha exatamente a mesma coisa. *Não desenhar nada* não é
+/// uma frase; é a falta de uma.
+///
+/// # Por que a hachura
+///
+/// É a notação de **apoio fixo** dos diagramas de mecanismo — a mesma que todo
+/// livro de estática usa para dizer *"deste lado é o quadro, e ele não vai a
+/// lugar nenhum"*. Ela não precisa ser aprendida por quem já viu um desenho de
+/// mecanismo, e não colide com nenhuma outra figura deste overlay.
+///
+/// ⚠️ **Ela desce pela GRAVIDADE, não pelo −Y da tela**, e reusa o `g_screen`
+/// que o quadro já computou para a barriga da corda: *chão* é o lado para onde
+/// as coisas caem, e sob um flip de câmera — ou uma gravidade lateral, que este
+/// módulo suporta desde o W2b — uma hachura presa ao eixo da tela apontaria para
+/// cima com toda a convicção. Sem gravidade a marca **não é desenhada**: não há
+/// "para baixo" a afirmar, e inventar um seria o desenho escolhendo uma física
+/// que o mundo não tem.
+pub(super) fn ground_hatch(at: Point, g_screen: (f64, f64)) -> BezPath {
+    let mut p = BezPath::new();
+    let (dx, dy) = g_screen;
+    if dx.hypot(dy) < 1e-9 {
+        return p;
+    }
+    // O "direita" da marca é a perpendicular de "para baixo" — a barra deita
+    // ATRAVESSADA na gravidade, que é o que a faz ler como chão.
+    let (rx, ry) = (-dy, dx);
+    let base = Point::new(at.x + dx * GROUND_GAP_PX, at.y + dy * GROUND_GAP_PX);
+    let end = |t: f64, l: f64| Point::new(base.x + rx * t + dx * l, base.y + ry * t + dy * l);
+    p.move_to(end(-GROUND_HALF_PX, 0.0));
+    p.line_to(end(GROUND_HALF_PX, 0.0));
+    // Os riscos, inclinados a 45° contra a barra — a hachura, não uma cerca.
+    let step = (2.0 * GROUND_HALF_PX) / GROUND_TICKS as f64;
+    for i in 0..GROUND_TICKS {
+        let t = -GROUND_HALF_PX + step * (i as f64 + 0.5);
+        p.move_to(end(t, 0.0));
+        p.line_to(end(t - GROUND_TICK_PX, GROUND_TICK_PX));
+    }
+    p
+}

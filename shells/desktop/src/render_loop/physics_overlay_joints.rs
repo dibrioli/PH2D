@@ -41,8 +41,8 @@ use ph2d_vector::{BezPath, Point};
 
 use super::physics_overlay_annotations::torque_glyph;
 use super::physics_overlay_joint_glyphs::{
-    length_ring, limit_arc, pin_glyph, ring_px, rod_bar, rope_span, screen_of, slider_rail,
-    spring_zigzag, weld_glyph, wheel_strut,
+    ground_hatch, length_ring, limit_arc, pin_glyph, ring_px, rod_bar, rope_span, screen_of,
+    slider_rail, spring_zigzag, weld_glyph, wheel_strut,
 };
 
 /// Raio do anel desenhado em cada âncora, px de tela. Grande o bastante para
@@ -152,7 +152,7 @@ pub(super) fn joint_marks(
         } else {
             (JOINT_RGBA, JOINT_DIM_RGBA)
         };
-        out.push((ownership_lines(v, a, b, camera, window), dim));
+        out.push((ownership_lines(v, a, b, g_screen, camera, window), dim));
         out.push((span, main));
         out.push((glyph, main));
         if v.broken {
@@ -453,18 +453,44 @@ fn kind_marks(
 
 /// As duas linhas de posse: âncora→centro de cada corpo. **A sólida, B
 /// tracejada** — ver o cabeçalho do módulo para o porquê de não ser cor.
+/// De quem é cada ponta: linha sólida até o centro de A, tracejada até o de B —
+/// e, quando o lado B é o CENÁRIO, a **hachura de chão** no lugar da tracejada.
+///
+/// ⚠️ **A hachura mora aqui, e não numa camada própria, de propósito.** Esta é a
+/// função que já responde *"de quem é esta ponta?"*, e *"do mundo"* é uma
+/// resposta a ESSA pergunta — não uma segunda anotação sobre o joint. Pô-la numa
+/// camada nova daria duas portas para o mesmo fato, e a que ninguém lembrasse de
+/// atualizar seria a que apodrece (o padrão que este módulo já pagou no
+/// `kind_marks`).
+///
+/// ⚠️ **E ela veste a banda APAGADA junto com o resto da posse**, o que a faz
+/// apagar num joint desligado e avermelhar num rompido sem uma linha a mais: a
+/// pergunta *de quem é a ponta* continua tendo a mesma resposta quando a
+/// restrição para de valer, e a cor já diz que ela parou.
 fn ownership_lines(
     v: &JointView,
     a: Point,
     b: Point,
+    g_screen: (f64, f64),
     camera: &Camera2d,
     window: WindowSize,
 ) -> BezPath {
     let mut p = BezPath::new();
     let ca = screen_of(camera, window, v.centre_a);
-    let cb = screen_of(camera, window, v.centre_b);
     p.move_to(a);
     p.line_to(ca);
+    if v.body_b.is_none() {
+        // ⚠️ **`body_b`, não uma comparação de posições.** A ponte publica `None`
+        // exatamente para isto (o campo virou `Option` no W-JointWorld *"para
+        // esquecer o caso do mundo ficar impossível por TIPO"*), e o teste de
+        // posição que ele substitui erraria: a ponte põe `centre_b == anchor_b`
+        // num pino de mundo, mas um joint entre dois corpos cujo B esteja
+        // centrado na âncora satisfaz a MESMA igualdade e ganharia um chão que
+        // não existe.
+        p.extend(ground_hatch(b, g_screen).iter());
+        return p;
+    }
+    let cb = screen_of(camera, window, v.centre_b);
     dashed(b, cb, &mut p);
     p
 }
@@ -552,6 +578,10 @@ mod joint_envelope_tests;
 
 /// Os gates da POLIA — o corte é por assunto: a única figura cujo caminho tem
 /// quantos nós o artista quiser, e cada nó é um círculo que a corda abraça.
+#[cfg(test)]
+#[path = "physics_overlay_joint_world_tests.rs"]
+mod joint_world_tests;
+
 #[cfg(test)]
 #[path = "physics_overlay_joint_pulley_tests.rs"]
 mod joint_pulley_tests;

@@ -470,3 +470,66 @@ fn measure_whether_a_pointer_event_costs_by_dab_or_by_event() {
          da espiral que o comentario do `painter_canvas_move` descreve."
     );
 }
+
+/// **O INSTRUMENTO NÃO PODE CUSTAR O QUE ELE MEDE** — a régua da poça
+/// (`Grid::live_span_cells`) contra o passo que ela divide.
+///
+/// ⚠️ **Escrito porque um smoke sob máquina saturada é indistinguível de uma
+/// regressão** (2026-07-31): com `load average 74` em 32 núcleos, a linha
+/// *controle* da tabela irmã — mesmo código, mesma fixture — foi de **14,2 para
+/// 46,6 ms/passo** sem uma linha mudar, e o produto reportou `130-200
+/// ns/célula` contra os 7,5 de uma hora antes. Nesse regime **nenhum número
+/// absoluto decide nada**, e a suspeita cai sobre a última coisa que mudou.
+///
+/// A resposta que sobrevive a máquina carregada é uma **RAZÃO medida na MESMA
+/// corrida**: as duas metades sobem juntas, então o quociente é estável. Se a
+/// régua vale uma fração desprezível do passo, ela está exonerada — e continua
+/// exonerada amanhã, com a máquina noutro estado.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_that_the_ruler_costs_nothing_against_the_step_it_divides() {
+    const REPS: usize = 9;
+
+    let mut t = heavy_puddle();
+    t.wet_bring_home();
+    let sess = t.paint.wetpaint.session.as_mut().expect("sessao");
+    let e = &mut *sess.engine;
+    ph2d_wet_paint::solver::rebuild_active_region(e.active_grid_mut());
+    let cells = e.active_grid().live_span_cells();
+    let snap = ph2d_wet_paint::grid::snapshot_grid(e.active_grid());
+    let frame0 = e.sim.frame;
+
+    // A RÉGUA, medida como o worker a chama: uma vez por passo fechado.
+    let mut r = Vec::with_capacity(REPS);
+    for _ in 0..REPS {
+        let t0 = Instant::now();
+        let n = e.active_grid().live_span_cells();
+        r.push(t0.elapsed().as_secs_f64() * 1e3);
+        assert_eq!(n, cells, "a regua e pura");
+    }
+    // E o PASSO, na mesma corrida e no mesmo estado de máquina.
+    let mut s = Vec::with_capacity(REPS);
+    for _ in 0..REPS {
+        ph2d_wet_paint::grid::restore_grid(e.active_grid_mut(), &snap);
+        e.sim.frame = frame0;
+        let t0 = Instant::now();
+        e.step_simulation();
+        s.push(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    r.sort_by(f64::total_cmp);
+    s.sort_by(f64::total_cmp);
+    let (ruler, step) = (r[REPS / 2], s[REPS / 2]);
+    println!("\n  A REGUA CONTRA O PASSO QUE ELA DIVIDE (mediana de {REPS}, MESMA corrida)\n");
+    println!("    poca            {:.2} M celulas", cells as f64 / 1e6);
+    println!("    regua           {ruler:9.4} ms");
+    println!("    passo           {step:9.4} ms");
+    println!(
+        "    a regua vale    {:9.4}% do passo",
+        100.0 * ruler / step.max(1e-9)
+    );
+    println!(
+        "\n    Leitura: e uma RAZAO, entao ela sobrevive a maquina carregada — as duas\n    \
+         metades sobem juntas. Abaixo de ~1% o instrumento esta exonerado, e continua\n    \
+         exonerado amanha, com a maquina noutro estado."
+    );
+}

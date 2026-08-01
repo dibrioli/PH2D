@@ -5536,3 +5536,64 @@ evicta como qualquer outra. É o `OnlyAfter` do motor de delta chegando por outr
 
 ⚠️ **O AUDIT fica gateado.** Ele é a rede que confere a troca, e *uma rede de verificação não pode viver
 no relógio do que ela observa* (§5.23) — a promoção é do **journal**, nunca do audit.
+
+### 5.58.2 🧩 O DESENHO da troca, e os dois atalhos que a leitura do código matou
+
+Com o mapa fechado (§5.58.1), o desenho tem de responder a UMA pergunta: *o `cursor` e o `stroke_undo`
+largam o relevo — quem responde pelas perguntas que eles respondiam?* São três, e cada uma tem um
+consumidor com um sítio exato:
+
+| pergunta | consumidor | hoje | depois |
+|---|---|---|---|
+| *qual é o lado `before` do delta?* | `UndoEntry::split` (`undo_record.rs:33/66/71`) | `stroke_undo.relief` | **o conteúdo do journal** |
+| *alguém escreveu no meio?* | `absorb_foreign_writes` (`undo_absorb.rs:44`) | `split(cursor, before)` | o **estado** do journal |
+| *de que estado o undo parte?* | `UndoEntry::materialize` (`undo.rs:432`) | `cursor.relief` | o **plano VIVO** |
+
+#### ⛔ Atalho 1, morto: *"reconstruir o cursor e seguir como está"*
+
+A identidade do §5.28 (`cursor[i] == journal.get(i).unwrap_or(vivo[i])`) sugere materializar o cursor e
+não mudar mais nada. **Ela é circular no lugar onde seria usada:** a materialização produz um `Vec`
+novo — que é exatamente a cópia que a wave existe para não pagar —, e ela seria feita **a cada
+`absorb_foreign_writes`**, isto é em todo `record_*` **e** em todo undo/redo. Trocar um fork por uma
+materialização é trocar seis por meia dúzia (a mesma frase da §5.58, agora com o sítio).
+
+#### ⛔ Atalho 2, morto: *"materializar só quando o journal não está vazio"*
+
+O refinamento óbvio — journal vazio ⇒ clone de `Arc` (grátis); journal cheio ⇒ materializa (raro) — **é
+falso na única cena que importa**: durante um traço o journal está SEMPRE cheio (o fold escreveu), então
+o caminho caro é o caso comum, não o raro. *Um caminho rápido cuja condição é falsa no gesto que ele
+existe para acelerar é código morto com todos os gates verdes* (a lição do ADR-0120, aqui de novo).
+
+#### ✅ O desenho que sobra
+
+**O relevo ganha um caminho de delta PRÓPRIO**, e é isso que o torna tratável: o canvas continua pelo
+`split(before, after)` de dois snapshots (ele já está em UM dono dentro do gesto — §5.58 —, então não há
+o que ganhar ali), e o relevo passa por `split_from_journal(journal, live, layer)`:
+
+* o lado **`before`** são os tiles do journal — bytes que já existem, sem cópia nova;
+* o lado **`after`** é a janela correspondente do plano VIVO;
+* a **janela** é a união dos tiles tomados (o journal já a conhece: `taken`);
+* *"alguém escreveu no meio?"* vira *"há tiles tomados fora da janela declarada do passo?"* — uma
+  pergunta ao journal, não uma comparação de planos;
+* a **materialização** aplica o patch ao plano VIVO, que o chamador já constrói uma linha acima
+  (`absorb_foreign_writes_now` faz `snapshot_model()`).
+
+⚠️ **E o guard de proveniência é o que mantém a política *lento nunca, errado jamais*:** se
+`journal_describes_step_at(before.writes)` for falso, o journal não descreve ESTE passo e o relevo cai
+no caminho de hoje — que só existe enquanto os snapshots ainda carregarem os planos. ⇒ **a elisão é do
+caminho do TRAÇO** (onde o passo é aberto por construção), não de `snapshot_model()` em geral: uma
+edição de camada continua carregando os planos, é user-paced, e é o fallback vivo em vez de um ramo
+morto.
+
+#### A ordem de landing, revisada
+
+1. ~~identificar o quarto dono~~ ✅ (§5.58.1 — são três, e o quarto é transiente do 1º traço);
+2. `split_from_journal` + a pergunta de escrita estrangeira pelo journal, **atrás do guard de
+   proveniência**, com os snapshots ainda carregando tudo ⇒ **byte-idêntico, zero ganho, gateável**;
+3. a materialização parte do vivo (`undo`/`redo` recebem o vivo, que o chamador já tem);
+4. o journal sai do `cfg(debug)` **junto com** o `stroke_undo` e o `cursor` largarem o relevo — os três
+   planos de uma vez. É aqui que os 9,6 ms caem, e é o único commit que muda um número.
+
+⚠️ **O degrau 2 é a chave de tudo**: ele é *byte-idêntico por construção* (o delta que ele produz tem de
+ser igual ao que o `split` de dois snapshots produz, e isso é um gate de igualdade, não uma promessa), e
+com ele verde o degrau 4 vira mecânico.

@@ -464,3 +464,7 @@ fn the_normals_after_a_stroke_are_what_a_full_rebuild_would_give() {
 /// Os verbos, um a um — a LEI mora no arquivo irmão.
 #[path = "verb_tests.rs"]
 mod verbs;
+
+/// O Crease, que tem fixtures próprias e caras — ver o cabeçalho dele.
+#[path = "verb_crease_tests.rs"]
+mod verb_crease;

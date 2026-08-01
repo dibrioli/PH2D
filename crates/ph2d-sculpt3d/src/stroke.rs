@@ -256,7 +256,19 @@ impl SculptStroke {
             } else {
                 1.0
             };
-            let w = brush.falloff.weight(dist * inv_r) * intensity * keep;
+            let fall = brush.falloff.weight(dist * inv_r);
+            // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
+            // "natural" seria derivar um do outro (`w = shape * intensity`), e
+            // ela **re-associa** o produto de `(falloff × intensity) × keep`
+            // para `(falloff × keep) × intensity`: medido, **30,4% dos triplos
+            // divergem**, até ~1 ulp. Em `keep == 1.0` EXATO — o caso comum,
+            // porque `DEFAULT_MASK` é 0 — a divergência é ZERO, mas o preço de
+            // não arriscar os doze verbos é **uma multiplicação**.
+            let w = fall * intensity * keep;
+            // A metade SEM intensidade: é ela que o Crease eleva, porque no
+            // original o expoente cai sobre `curva × máscara × alpha` e a
+            // intensidade entra depois, linear nos dois termos.
+            let shape = fall * keep;
             // `<=` e não `<`: um dab que EMPATA não vence. A diferença não é de
             // resultado (o alvo recomputado seria o mesmo) — é de TRABALHO: com
             // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
@@ -266,7 +278,7 @@ impl SculptStroke {
                 continue;
             }
             self.accum[s] = w;
-            self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, v, s);
+            self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, v, s);
             self.moved.push(v);
         }
 
@@ -388,6 +400,7 @@ impl SculptStroke {
         dab: &Dab,
         plane: &PlaneFit,
         reach: f32,
+        shape: f32,
         v: u32,
         s: usize,
     ) -> [f32; 3] {
@@ -432,7 +445,34 @@ impl SculptStroke {
                 // Aperta lateralmente E cava: o `-reach` é o que faz um vinco
                 // ser um vinco. Com `invert`, `reach` já chega negativo e o
                 // mesmo verbo levanta uma crista.
-                add(add_vec(base, t, brush.pinch), n_area, -reach)
+                //
+                // ⚠️ **O `shape⁴` é o que faz o vinco ser FINO** (`Crease.js:68`,
+                // `Math.pow(fallOff, 5)`). Quatro e não cinco porque o aplicador
+                // já multiplica `(alvo − base)` pelo `accum`: o deslocamento
+                // normal sai `shape⁵ · intensity · reach`, que é a estrutura
+                // exata da referência — o expoente cai **só** no coeficiente da
+                // normal, e o termo do pinch fica LINEAR.
+                //
+                // ⚠️ **Sem ele o Crease é um Draw invertido AO BIT** — medido em
+                // `uv_sphere(256,512)`: pico 0,06000 e largura 0,536 R nos dois,
+                // razão de afiação **1,000**. A metade que "cava" não era um
+                // vinco, era a marca do Draw com o sinal trocado.
+                //
+                // ⚠️ **E a cura de UMA LINHA existe, compila e está errada:**
+                // `self.accum[s].powi(4)` não toca a assinatura e fica verde,
+                // porque toda fixture desta crate usa `strength: 1.0`, onde
+                // `accum == shape` ao bit. Com `strength 0.5` ela entrega
+                // **3,1%** do reach em vez de 50% — o expoente comeria a
+                // intensidade quatro vezes a mais.
+                //
+                // ⚠️ **O `keep` vai DENTRO do expoente** (`Crease.js:67` roda
+                // antes do `:68`): um vértice meio-mascarado leva `0,5⁵ = 3%` do
+                // empurrão normal e `0,5` do pinch. A assimetria é da referência.
+                add(
+                    add_vec(base, t, brush.pinch),
+                    n_area,
+                    -reach * shape.powi(4),
+                )
             }
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria, e `apply_mask` é quem escreve o canal dele.

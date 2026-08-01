@@ -194,28 +194,43 @@ pub(crate) fn apply(
     gravity: Vector2<f32>,
     fluid_density: f32,
     dt: f32,
+    scratch: &mut Vec<rapier2d::geometry::ColliderHandle>,
 ) {
     let Some(zone) = colliders.get(zone_collider) else {
         return;
     };
-    let Some(rb) = bodies.get(body) else {
+    {
+        let Some(rb) = bodies.get(body) else {
+            return;
+        };
+        super::shapes::sorted_shapes(rb, scratch);
+    }
+    let Some(b) = bodies.get_mut(body) else {
         return;
     };
-    let Some(shape) = rb.colliders().first().and_then(|h| colliders.get(*h)) else {
-        return;
-    };
-    let pose = *rb.position();
-    let Some((force, at)) = buoyant_force(
-        shape.shape(),
-        &pose,
-        zone.shape(),
-        zone.position(),
-        gravity,
-        fluid_density,
-    ) else {
-        return;
-    };
-    if let Some(b) = bodies.get_mut(body) {
+    for &h in scratch.iter() {
+        // ⚠️ **Um SENSOR não desloca fluido**, e esta é uma pergunta que o
+        // `.first()` nunca deixou aparecer. Um sensor é um marcador, não matéria:
+        // ele atravessa tudo por definição, e o pé-sensor de um personagem
+        // (W-PartSensor) daria empuxo a um pedaço de nada. `shapes::displaces`
+        // é a porta única — o shape drag faz a MESMA pergunta uma linha adiante.
+        let Some(shape) = colliders.get(h).filter(|c| super::shapes::displaces(c)) else {
+            continue;
+        };
+        // ⚠️ **A pose é a do COLLIDER, não a do corpo.** Para a forma própria de
+        // um corpo sem offset as duas coincidem — e é por isso que ler
+        // `rb.position()` sobreviveu tanto tempo. Com o **offset** do W-Offset
+        // elas já divergiam, e com uma PEÇA divergem sempre.
+        let Some((force, at)) = buoyant_force(
+            shape.shape(),
+            shape.position(),
+            zone.shape(),
+            zone.position(),
+            gravity,
+            fluid_density,
+        ) else {
+            continue;
+        };
         b.apply_impulse_at_point(force * dt, at, true);
     }
 }

@@ -67,25 +67,37 @@ pub(crate) fn apply(
     body: RigidBodyHandle,
     k: f32,
     dt: f32,
+    scratch: &mut Vec<rapier2d::geometry::ColliderHandle>,
 ) {
-    let Some(rb) = bodies.get(body) else {
+    let (com, v, w) = {
+        let Some(rb) = bodies.get(body) else {
+            return;
+        };
+        let (v, w) = (*rb.linvel(), rb.angvel());
+        // Um corpo parado não é resistido por nada — e sair aqui evita acordá-lo à toa.
+        if v.norm_squared() <= 0.0 && w == 0.0 {
+            return;
+        }
+        super::shapes::sorted_shapes(rb, scratch);
+        (*rb.center_of_mass(), v, w)
+    };
+    let Some(b) = bodies.get_mut(body) else {
         return;
     };
-    let Some(collider) = rb.colliders().first().and_then(|h| colliders.get(*h)) else {
-        return;
-    };
-    let (pose, com) = (*rb.position(), *rb.center_of_mass());
-    let (v, w) = (*rb.linvel(), rb.angvel());
-    // Um corpo parado não é resistido por nada — e sair aqui evita acordá-lo à toa.
-    if v.norm_squared() <= 0.0 && w == 0.0 {
-        return;
-    }
-    let Some(poly) = super::buoyancy::local_polygon(collider.shape()) else {
-        return;
-    };
-    let impulses = edge_impulses(&poly, &pose, com, v, w, k, dt);
-    if let Some(b) = bodies.get_mut(body) {
-        for (imp, at) in impulses {
+    // ⚠️ **TODAS as formas resistem** (W-CompoundZone): as arestas de uma peça
+    // encaram o escoamento como as do corpo, e ler só a primeira dava a um corpo
+    // composto a resistência de um pedaço dele. Ordem FIXA porque isto SOMA
+    // impulsos — ver `shapes::sorted_shapes`.
+    for &h in scratch.iter() {
+        let Some(collider) = colliders.get(h).filter(|c| super::shapes::displaces(c)) else {
+            continue;
+        };
+        // A pose é a do COLLIDER: com offset ou como peça ela não é a do corpo.
+        let pose = *collider.position();
+        let Some(poly) = super::buoyancy::local_polygon(collider.shape()) else {
+            continue;
+        };
+        for (imp, at) in edge_impulses(&poly, &pose, com, v, w, k, dt) {
             b.apply_impulse_at_point(imp, at, true);
         }
     }

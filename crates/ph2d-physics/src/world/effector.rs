@@ -231,6 +231,9 @@ pub(crate) fn apply(
         return;
     }
     let mut to_float: Vec<RigidBodyHandle> = Vec::new();
+    // As formas de um corpo, em ordem estável — reusado por corpo E por zona
+    // (a capacidade sobrevive), então uma cena sem empuxo não aloca.
+    let mut shapes: Vec<rapier2d::geometry::ColliderHandle> = Vec::new();
     for &(zone_body, effect, zone_shape) in zones {
         to_float.clear();
         // The zone's own collider handle AND its pose, copied out so the immutable
@@ -331,6 +334,22 @@ pub(crate) fn apply(
                 to_float.push(parent);
             }
         }
+        // ⚠️ **UMA vez por CORPO, não por par de colliders** (W-CompoundZone). O laço
+        // acima anda sobre SOBREPOSIÇÕES, e um corpo composto sobrepõe a zona com
+        // cada uma das formas dele — então `to_float` recebia o mesmo corpo N vezes
+        // e o empuxo era aplicado N vezes.
+        //
+        // Isto era invisível enquanto o empuxo lia só a PRIMEIRA forma: uma jangada
+        // de duas metades iguais recebia `2 × meia-força` = a força certa, **por
+        // acidente aritmético**. Medido: com o empuxo somando todas as formas e sem
+        // esta linha, a mesma jangada boia com METADE da submersão (0,0624 contra os
+        // 0,125 do controle) — a força dobra.
+        //
+        // Ordenar antes de deduplicar torna a lista independente da ordem em que o
+        // grafo de interseção reportou os pares, e a ordem de aplicação dos impulsos
+        // é soma de `f32` (HR-5).
+        to_float.sort_unstable_by_key(|h| h.into_raw_parts());
+        to_float.dedup();
         for &body in &to_float {
             if effect.density > 0.0 {
                 buoyancy::apply(
@@ -341,12 +360,13 @@ pub(crate) fn apply(
                     gravity,
                     effect.density,
                     dt,
+                    &mut shapes,
                 );
             }
             // O arrasto de forma vive no mesmo passe pelo mesmo motivo: ele precisa do
             // collider do corpo enquanto escreve nele.
             if effect.form_drag > 0.0 {
-                form_drag::apply(bodies, colliders, body, effect.form_drag, dt);
+                form_drag::apply(bodies, colliders, body, effect.form_drag, dt, &mut shapes);
             }
         }
     }

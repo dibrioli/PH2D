@@ -34,6 +34,7 @@ pub mod rope_load;
 pub mod rope_route;
 pub mod sensors;
 pub mod shape;
+mod shapes;
 mod step;
 pub mod tuning;
 

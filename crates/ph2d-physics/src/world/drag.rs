@@ -100,9 +100,36 @@ fn characteristic_length(
     handles: &[rapier2d::geometry::ColliderHandle],
     colliders: &ColliderSet,
 ) -> f32 {
-    let Some(collider) = handles.first().and_then(|h| colliders.get(*h)) else {
+    // ⚠️ **A UNIÃO das formas, não a primeira** (W-CompoundZone). A secção de um
+    // corpo composto é a do corpo inteiro; ler só a primeira dava a um "L" a
+    // secção de um dos braços. A caixa é montada no frame do CORPO
+    // (`position_wrt_parent`), que é o que torna a soma independente de onde o
+    // corpo está no mundo — e um sensor não tem secção que resista ao ar
+    // (`shapes::displaces`, a mesma porta do empuxo).
+    //
+    // ⚠️ **A união é uma caixa, não uma soma:** somar as extensões contaria duas
+    // vezes a sobreposição de duas formas empilhadas, e um corpo montado com
+    // duas metades no MESMO lugar teria o dobro do arrasto de um só.
+    let mut aabb: Option<rapier2d::parry::bounding_volume::Aabb> = None;
+    for h in handles {
+        let Some(c) = colliders.get(*h).filter(|c| super::shapes::displaces(c)) else {
+            continue;
+        };
+        // `position_wrt_parent` é `None` para um collider sem corpo, que não pode
+        // aparecer aqui (viemos de `body.colliders()`); a identidade é a resposta
+        // segura, e é a pose de um collider sem offset.
+        let local = c.position_wrt_parent().copied().unwrap_or_default();
+        let box_ = c.shape().compute_aabb(&local);
+        aabb = Some(
+            aabb.map_or(box_, |a: rapier2d::parry::bounding_volume::Aabb| {
+                use rapier2d::parry::bounding_volume::BoundingVolume;
+                a.merged(&box_)
+            }),
+        );
+    }
+    let Some(aabb) = aabb else {
         return 0.0;
     };
-    let extents = collider.shape().compute_local_aabb().extents();
+    let extents = aabb.extents();
     (extents.x + extents.y) * 0.5
 }

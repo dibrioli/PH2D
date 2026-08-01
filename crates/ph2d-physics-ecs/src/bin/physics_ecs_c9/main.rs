@@ -516,6 +516,53 @@ fn main() {
         Transform::from_translation(Vec2::new(-64.0, 8.0)),
     ));
 
+    // Uma SOLDA MOLE (W-SoftWeld): uma viga em balanco cujo angulo e uma mola.
+    // Entra no hash porque e um caminho de solver PROPRIO -- um `GenericJoint`
+    // com os dois eixos lineares travados e um motor de POSICAO no angular --,
+    // e porque ela nunca dorme parada: a viga assenta num angulo que a mola
+    // segura, entao toda divergencia de plataforma continua acumulando ate o fim
+    // dos passos em vez de ser congelada pelo sono no primeiro segundo.
+    sim.world_mut().spawn((
+        Name::new("C9 Soft Wall"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.1,
+                half_y: 0.3,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-70.0, 8.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Soft Arm"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.5,
+                half_y: 0.1,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(-69.5, 8.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Soft Weld"),
+        PhysicsJoint {
+            body_a: stable_name_id("C9 Soft Wall"),
+            body_b: stable_name_id("C9 Soft Arm"),
+            kind: JointKind::Weld,
+            soft: true,
+            ..PhysicsJoint::default()
+        },
+        Transform::from_translation(Vec2::new(-70.0, 8.0)),
+    ));
+
     // Os dois RIGS articulados (a roda e a polia) -- modulo irmao pelo cap de
     // 700 LOC, cortado por assunto: uma lane de zona e um corpo com um flag, um
     // RIG e uma montagem de varios corpos mais o vinculo que os une.

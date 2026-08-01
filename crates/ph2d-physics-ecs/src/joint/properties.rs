@@ -100,6 +100,7 @@ impl PhysicsJoint {
             break_force,
             break_torque,
             collide_connected,
+            soft,
         } = *source;
 
         Self {
@@ -128,6 +129,7 @@ impl PhysicsJoint {
             break_force,
             break_torque,
             collide_connected,
+            soft,
         }
     }
 }
@@ -163,6 +165,7 @@ mod tests {
             break_torque: 55.0,
             active: false,
             collide_connected: true,
+            soft: true,
         }
     }
 

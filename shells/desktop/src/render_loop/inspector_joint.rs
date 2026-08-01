@@ -160,6 +160,7 @@ pub(crate) fn build_joint_info(
     Some(InspectorJointInfo {
         entity_bits,
         kind_tag: tag_of(joint.kind),
+        soft: joint.soft,
         wheel_count,
         paste_targets,
         // `bound` is about the NAMES resolving, which is the thing the artist
@@ -196,7 +197,11 @@ pub(crate) fn build_joint_info(
         // sibling section), so the ENGINE's answer travels in the snapshot rather
         // than being re-derived from `kind_tag` on the far side — a second copy of
         // "which kinds can report a torque" would be a second thing to keep true.
-        breaks_on_torque: joint.kind.breaks_on_torque(),
+        // ⚠️ À INSTÂNCIA, não ao tipo: uma solda MOLE motoriza o eixo angular
+        // que a rígida trava, e rapier só publica reação de eixo motorizado ou
+        // limitado (medido: 0,9619 N·m contra 0,0000). A ponte pergunta à MESMA
+        // porta antes de entregar o limiar ao solver.
+        breaks_on_torque: joint.breaks_on_torque(),
         active: joint.active,
         collide_connected: joint.collide_connected,
     })
@@ -402,6 +407,10 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // is exactly why these two rows need no `limit_in`/`motor_in` twin.
         // W-J8. Two plain switches — no conversion, no unit, no gating on kind:
         // every joint can be turned off, and every joint has a pair.
+        // A ponte gateia por `can_be_soft`, então guardar o flag num tipo que não
+        // o usa é inerte — e é o mesmo comportamento que todo outro param tem
+        // aqui: trocar Weld→Pin→Weld devolve a solda que o artista tinha.
+        JointFieldEdit::Soft(on) => next.soft = on,
         JointFieldEdit::Active(on) => next.active = on,
         JointFieldEdit::CollideConnected(on) => next.collide_connected = on,
         // **The pair, exchanged.** The whole operation lives on the component

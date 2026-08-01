@@ -81,6 +81,10 @@ fn scene(with_joint: bool) -> SimWorld {
                 body_b: stable_name_id("Plank"),
                 kind: JointKind::Rope,
                 max_length: 3.25,
+                // W-SoftWeld: longe do default, pelo motivo que o doc do gate já
+                // dá — um campo silenciosamente perdido e recriado reproduz o
+                // default de graça.
+                soft: true,
                 ..PhysicsJoint::default()
             },
             Transform::from_translation(Vec2::new(0.0, 6.0)),
@@ -178,6 +182,7 @@ fn a_joint_round_trips_through_the_snapshot_with_its_parameters() {
         "the joint came back as another kind"
     );
     assert_eq!(j.max_length, 3.25, "the rope's length was not preserved");
+    assert!(j.soft, "o `soft` (v47) não sobreviveu ao round-trip");
     assert_eq!(j.body_a, stable_name_id("Hook"));
     assert_eq!(j.body_b, stable_name_id("Plank"));
     assert!(

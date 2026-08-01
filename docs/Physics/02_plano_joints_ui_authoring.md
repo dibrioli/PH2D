@@ -52,11 +52,9 @@ diagnóstico da pesquisa:
 > **⚠️ ESTE QUADRO É O DIAGNÓSTICO DE 2026-07-25, NÃO O ESTADO DE HOJE.** As sete limitações
 > estão **FECHADAS**: L1→W-J1 · L2→W-J2/W-J2b · L3→W-J4/W-J4b · L4→W-J5/W-J6 (+ os tipos que o
 > §8 não previa: **Rod** · **Wheel** · **Pulley**) · L5→W-J3 · L6→W-J7/W-J7b · L7→W-J8. O §7
-> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **quatro** itens,
-> **nenhum escalonado** — params keyframáveis (cross-line com a timeline, pede decisão do Enio) ·
-> Custom/GenericJoint · **ragdoll wizard** (⚠️ o *make-chain* do mesmo item **já existe**:
-> `join_selected_chain` + o rótulo "Chain N Selected Bodies") · soft weld (premissa
-> falsificada e medida) · rows de readout tingidas
+> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **três** itens,
+> **nenhum escalonado e os três condicionados** — params keyframáveis (cross-line com a timeline,
+> pede decisão do Enio) · Custom/GenericJoint (*só se um caso real pedir*) · rows de readout tingidas
 > (⚠️ **condição NÃO satisfeita** — o readout de carga vive no OVERLAY, não em row).
 > ⚠️ **Duas saíram da lista construídas**: a metade autorável do Pin-to-world (W-JointWorld,
 > cena `=65`, §9) e o **copy/paste de propriedades** (W-JointCopy, cena `=66`, §10). Dos
@@ -77,7 +75,7 @@ Pasta: `~/Documentos/Recursos/UI_Reference/` — 44 arquivos, todos verificados 
 | `unity_distancejoint2d_inspector.png` | Distance: checkbox **"Max Distance Only"** | Corda e barra-rígida são UM tipo com um toggle — opção elegante p/ nossa Rope ganhar modo "Rod" (min=max, expressável no rapier) |
 | `unity_sliderjoint2d_inspector.png` | Slider: Auto Configure Angle, **Angle** = eixo, Motor (m/s), Translation Limits | O slider deles pede um ÂNGULO digitado; o nosso eixo pode ser a ROTAÇÃO da entidade-joint (gesto que já existe) — zero campo novo |
 | `unity_wheeljoint2d_inspector.png` | Wheel: Suspension (Damping/Frequency/Angle) + Motor | Wheel = prismatic+spring+motor num pacote; p/ nós é PRESET futuro, não tipo novo |
-| `unity_fixedjoint2d_inspector.png` | Fixed: **Damping Ratio + Frequency num WELD** | O weld deles é mola dura (tunável); o nosso é rígido (rapier FixedJoint). Anotar como variante futura "soft weld", não default |
+| `unity_fixedjoint2d_inspector.png` | Fixed: **Damping Ratio + Frequency num WELD** | O weld deles é mola dura (tunável); o nosso era rígido (rapier FixedJoint). ✅ **Construído (W-SoftWeld, `=68`)** como VARIANTE e não default — a chave `Rigid \| Soft`, e a rígida segue sendo um `FixedJoint` de verdade (exato e mais barato) em vez de um motor rigidíssimo |
 | `unity_relativejoint2d_inspector.png` | Relative: Max Force/Torque, **Correction Scale 0.3** ("tweak to correct its behavior") | Knob-fudge documentado como "ajuste até parecer certo" — exatamente o que [feedback_ergonomics] proíbe. Anti-exemplo |
 | `unity_targetjoint2d_inspector.png` | Target: Anchor + **Target em MUNDO**, sem Connected Body | O joint de "carregar com o mouse". Para nós: interação de PLAY futura, não autoria |
 | `unity_frictionjoint2d_inspector.png` | Friction: Max Force/Max Torque | Freio relativo entre 2 corpos; nicho — vocabulário §4, sem wave |
@@ -328,11 +326,16 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
   CARIMBA — dois gestos em vez de um), e o que faltava mesmo era o wizard, porque **uma corrente é uma
   FILA e um ragdoll é uma ÁRVORE**. A árvore não precisou ser inventada: o artista já a desenhou na
   Hierarquia.
-- **Soft weld** — ⚠️ **a premissa desta linha estava ERRADA e foi medida (2026-07-27).** *"frequency/damping
-  no Fixed"* supõe que uma mola possa ser posta nos eixos de um `FixedJoint`; `contact_constraints_set.rs:48`
-  faz `let motor_axes = joint.motor_axes.bits() & !locked_axes` ⇒ **um motor num eixo TRAVADO é mascarado**.
-  Um weld macio não é dois knobs no Fixed: é um caminho de builder próprio (**não travar nada** + três
-  molas em alvo 0). Fica por último — nada o pede hoje.
+- ~~**Soft weld**~~ — **FECHADO (W-SoftWeld, 2026-07-31, cena `=68`, §12 deste plano).** A premissa
+  original (*"frequency/damping no Fixed"*) já estava corrigida aqui em 2026-07-27, e a construção
+  corrigiu a **correção**: ela prescrevia *"não travar nada + três molas em alvo 0"*, e isso foi
+  construído, medido e **REPROVADO** — com os três eixos moles o braço deriva **0,92 m** para longe da
+  parede e balança 104° sem nunca assentar. As peças vêm APART, que se lê como a solda FALHANDO, não
+  vergando. O que shipou trava os DOIS eixos lineares e amolece só o **ANGULAR** (separação medida
+  `0,0000 m`), que é o que uma solda mole é. E o *"nada o pede hoje"* estava certo sobre a demanda e
+  errado sobre o VÃO: este conjunto segurava um ângulo **absolutamente** (Weld, Slider) ou o deixava
+  **inteiramente livre** (Spring, Rope, Rod, o giro do Wheel), e não havia nada no meio — o espelho
+  exato do vão que o Rod preencheu na distância.
 - ~~**Rod**~~ — **FECHADO (W-Rod, 2026-07-27, cena `=56`).** E a construção que esta linha previa está
   **MEDIDA E MORTA**: `set_limits(LinX, [len, len])` não segura, porque o limite linear acoplado do rapier
   é **unilateral** (`// FIXME: handle min limit too.` no solver dele). O que ficou é um **motor de posição
@@ -357,7 +360,7 @@ Não é a ordem da lista; é a que sai das dependências **medidas** acima.
 | ~~3~~ | ~~**Polia**~~ ✅ `=58` | a primeira que precisa de um passe de restrição PRÓPRIO (rapier não a tem). ⚠️ **NÃO puxou o *Pin-to-world*** — ela guarda os próprios pontos de mundo, e o gizmo de PONTO que a nota queria já existia desde a W-JointAnchor |
 | ~~4~~ | ~~**Ragdoll wizard / make chain**~~ ✅ `=67` | era um GERADOR, e a previsão se confirmou pelo avesso: o valor não veio do conjunto de tipos, veio da **HIERARQUIA** — a estrutura que uma corrente não expressa e que já estava desenhada |
 | ~~5~~ | ~~**Copy/paste de propriedades**~~ ✅ `=66` | e a previsão *"vale mais quanto mais propriedades existirem"* se confirmou: são **doze** campos de afinação a carimbar hoje |
-| 6 | **Soft weld** | premissa corrigida acima; nada o pede |
+| ~~6~~ | ~~**Soft weld**~~ ✅ `=68` | e o vão era o espelho do que o Rod preencheu: nada segurava um ÂNGULO com folga. A previsão *"caminho de builder próprio"* estava certa; a receita dela (**não travar nada**) foi medida e reprovada — as peças se separam 0,92 m |
 
 ---
 
@@ -715,6 +718,75 @@ remover. As duas rotas continuam duas respostas para duas perguntas diferentes.
   adivinha porque conhece nomes de osso; nós não temos esse vocabulário, e inventá-lo seria adivinhar.
   O que o rig entrega é uma faixa uniforme medida, e a W-JointCopy torna a afinação por-junta um gesto
   de dois cliques.
+
+## §12 — W-SoftWeld: a solda que CEDE (2026-07-31)
+
+O item **6** do §8.1, e o último numerado da lista.
+
+### O vão, e por que ele é o espelho do Rod
+
+Este conjunto sabia segurar um ângulo de dois jeitos e só dois: **absoluto** (Weld, Slider) ou
+**livre** (Spring, Rope, Rod, o giro do Wheel). Não havia nada no meio. Um poste que balança no vento,
+um pescoço que resiste mas cede, uma placa que treme sob impacto — nenhum era exprimível, e a
+justificativa do Rod (*"nada segurava dois corpos a distância fixa deixando os dois GIRAREM"*) é a
+mesma frase no outro eixo.
+
+### As duas medições que decidiram o desenho
+
+**(1) Que eixos ficam moles.** A receita que o §8 prescrevia — *"não travar nada + três molas em alvo
+0"* — foi construída e **reprovada pela medição**: sob o próprio peso o braço deriva **0,92 m** para
+longe da parede e balança **104°** pico-a-pico sem nunca assentar. As peças vêm APART, e isso se lê
+como a solda **falhando**, não vergando. O que shipou trava `LIN_X`+`LIN_Y` e põe UM motor de posição
+no `AngX`: separação medida **`0,0000 m`** em toda a varredura, e só o ângulo cede.
+
+**(2) O ganho angular.** A rigidez linear é N/m e a angular é N·m/rad — não são a mesma grandeza, e o
+knob do artista é um só. Varrido com os defaults dele (`k=30`, `d=0,5`):
+
+| ganho | pendor | balanço |
+|---|---|---|
+| 1 | 31,6° | **77,2°** ← nunca assenta |
+| 10 | 10,0° | 0,0° ← o joelho, sem margem |
+| **20** | **5,3°** | **0,0°** |
+| 200 | 0,5° | 0,0° ← indistinguível de rígido |
+
+`SOFT_WELD_ANGULAR_GAIN = 20` é o dobro do joelho, e com ele a **faixa inteira** do artista assenta
+(stiffness 1 → 65,5° · 1000 → 0,16°, balanço 0,000 em todos).
+
+⚠️ **O pendor NÃO depende da carga** — o motor de posição do rapier é normalizado pela massa, e uma
+varredura de 100× (0,05 kg → 5 kg) mediu os MESMOS 31,6°. Gravidade e torque restaurador escalam
+juntos e a massa cancela.
+
+### Onde o flag mora, e por que é um campo
+
+`PhysicsJoint.soft: bool`, apendado (**`PROJECT_SCHEMA` 46→47**), e **não** um componente-marcador — que
+seria o idioma desta linha (`Ccd`, `LockRotation`, `OneWayPlatform`) e custaria zero bump. O que decidiu
+foi o **copy/paste de propriedades** (W-JointCopy): ele desestrutura `PhysicsJoint` **exaustivamente**,
+então um campo novo **não compila** até ser classificado — e um marcador escaparia do paste em silêncio.
+A dureza reusa a `stiffness`/`damping` que a mola já carregava, então é UM bool e não três campos.
+
+### A consequência que a medição achou de carona
+
+O **break torque** passa a alcançar uma solda mole: rapier publica a reação de um eixo *motorizado* e
+nada de um *travado*, e o `soft` é exatamente o que troca um pelo outro — medido, **0,9619 N·m** contra
+**0,0000**. A nota do `JointKind::breaks_on_torque` que dizia *"uma Weld lê 0,0000"* ficou meia-verdadeira
+e foi **reconferida**; a pergunta que o painel e a ponte fazem passou a ser a da INSTÂNCIA
+(`PhysicsJoint::breaks_on_torque`). É o caso do Wheel outra vez: *quem manda é o estado em que a row
+pode ser alcançada*.
+
+### O que NÃO mudou, de propósito
+
+- **A solda rígida continua um `FixedJoint` de verdade** — exata e mais barata que um motor rigidíssimo.
+  A chave seleciona restrições genuinamente diferentes, não um modo de UI.
+- **`is_rigid_link` (IK/FK) segue incluindo o Weld**, e o `soft` não a muda: posar escreve `Transform`s,
+  e uma solda mole segura os dois corpos JUNTOS — a mola governa o quanto o ângulo cede sob CARGA, não
+  se as duas peças são a mesma peça.
+
+### Números, gates e a mutação que sobreviveu
+
+`physics_ecs_c9` **96 → 98 corpos**, hash `58b0bae0…` (debug ≡ release) — a lane nova é um caminho de
+solver próprio. **8 mutações, 7 sangram**; a que sobreviveu (o `can_be_soft` da ponte) **acusou uma
+afirmação minha, não um buraco**: `desc.soft` tem UM leitor no wrapper inteiro, então o guard é higiene
+e o doc-comment foi corrigido para dizê-lo.
 
 ---
 

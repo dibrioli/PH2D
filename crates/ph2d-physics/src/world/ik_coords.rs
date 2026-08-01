@@ -265,6 +265,13 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
 /// rod**. Posar através de um estica a barra, e o primeiro tick de Play a
 /// devolve ao comprimento. É a mesma exposição que uma corda tem, com a
 /// diferença de que aqui o retorno é visível — que é melhor do que silencioso.
+/// ⚠️ **Uma solda MOLE (W-SoftWeld) segue sendo um elo, e a decisão é
+/// deliberada:** ela pergunta ao TIPO, e o `soft` não a muda. Posar é escrever
+/// `Transform`s, e uma solda mole segura os dois corpos JUNTOS — a mola governa
+/// o quanto o ângulo cede sob CARGA, não se as duas peças são a mesma peça.
+/// Negá-la partiria a cadeia justamente onde o artista vê um objeto só; o preço
+/// é o mesmo de um rod, e menor: ao soltar, o primeiro tick devolve o ângulo à
+/// pose autorada, e ele é visível.
 #[must_use]
 pub fn is_rigid_link(kind: JointKind) -> bool {
     matches!(kind, JointKind::Pin | JointKind::Weld | JointKind::Slider)

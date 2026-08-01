@@ -218,6 +218,41 @@ impl PhysicsWorld {
             .local_anchor1(anchor_a)
             .local_anchor2(anchor_b)
             .into(),
+            // **The weld that GIVES** — nothing locked, three position motors at
+            // zero. The gap it fills is the mirror of the Rod's: this kit could
+            // hold an ANGLE absolutely (Weld, Slider) or leave it entirely free
+            // (Spring, Rope, Rod, Wheel's spin), and nothing in between. A
+            // signpost that sways and springs back was inexpressible.
+            //
+            // ⚠️ **The two linear axes stay LOCKED, and that is the measurement
+            // that chose the design.** Leaving all three soft (nothing locked,
+            // three position motors) was built and measured first: under its own
+            // weight the arm drifted **0.92 m** away from the wall and swung
+            // 104° peak-to-peak without ever settling — the pieces come APART,
+            // which reads as the weld failing rather than flexing. Locked, the
+            // anchors coincide to **0.0000 m** in every case swept and only the
+            // ANGLE gives, which is what a soft weld is.
+            //
+            // ⚠️ **A `GenericJoint` and not a spring on the `FixedJoint`:** rapier
+            // masks motors on locked axes (`motor_axes.bits() & !locked_axes`), so
+            // a spring on a fixed joint is silently nothing. See
+            // [`JointDesc::soft`].
+            //
+            // ⚠️ **The angular gain converts the unit** — see
+            // [`JointDesc::SOFT_WELD_ANGULAR_GAIN`], where the sweep that chose it
+            // lives.
+            JointKind::Weld if desc.soft => {
+                GenericJointBuilder::new(JointAxesMask::LIN_X | JointAxesMask::LIN_Y)
+                    .local_anchor1(anchor_a)
+                    .local_anchor2(anchor_b)
+                    .motor_position(
+                        JointAxis::AngX,
+                        0.0,
+                        desc.stiffness * JointDesc::SOFT_WELD_ANGULAR_GAIN,
+                        desc.damping * JointDesc::SOFT_WELD_ANGULAR_GAIN,
+                    )
+                    .build()
+            }
             // A rigid lock: the anchors coincide (shared-point policy) and no
             // relative rotation is allowed. No tunable parameters.
             JointKind::Weld => FixedJointBuilder::new()

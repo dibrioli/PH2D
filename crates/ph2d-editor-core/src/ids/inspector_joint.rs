@@ -62,6 +62,18 @@ pub const INSP_JOINT_MOTOR: [NodeId; 2] = [
     hash_node_id("insp_joint_motor_on"),
 ];
 
+/// Rigid · Soft — does this WELD give? (W-SoftWeld.)
+///
+/// Its own pair rather than the generic `INSP_JOINT_LIMITS` switch because it is
+/// its own question, and because the labels are not Off/On: the artist is picking
+/// between two things a weld can BE, the way `Solid | Sensor` and
+/// `Discrete | Continuous` do next door.
+pub const INSP_JOINT_SOFT_GROUP: NodeId = hash_node_id("insp_joint_soft_group");
+pub const INSP_JOINT_SOFT: [NodeId; 2] = [
+    hash_node_id("insp_joint_soft_rigid"),
+    hash_node_id("insp_joint_soft_soft"),
+];
+
 /// Velocity · Position — what a driven joint is AIMING at (W-J6). Not another
 /// on/off switch: the two carry different instructions (*keep going at this
 /// rate* vs *go to this place and hold*) and each shows its own row underneath.

@@ -130,10 +130,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // roldana montada num corpo que se move, e com ela a vantagem mecânica). Três
         // campos apendados, mesmo raciocínio posicional; o par `local`/`mounted` é o do
         // W-AnchorFollow, para o eixo não deslizar pelo bloco quando o bloco se move.
+        // PROJECT 46→47: o `PhysicsJoint` ganhou `soft` (W-SoftWeld — a solda que cede;
+        // um bool apendado, e a dureza reusa a `stiffness`/`damping` da mola).
         // PROJECT 45→46: a `PulleyWheel` ganhou `radius_out` (W-Pulley W4 — o tambor
         // DIFERENCIAL: uma roldana com dois raios, e a vantagem mecânica contínua que
         // cai do quociente deles). Um campo apendado, mesmo raciocínio posicional.
-        (46, 12, 13),
+        (47, 12, 13),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

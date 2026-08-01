@@ -55,6 +55,10 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         stiffness: 30.0,
         damping: 0.5,
         max_length: 2.0,
+        // Marcada pela MESMA razão das duas chaves acima: a fixture existe para
+        // que a seção pinte toda row que ela tem, e num Weld a mola só existe
+        // quando a solda cede (W-SoftWeld).
+        soft: true,
         // No pick armed by default — the base fixture is a joint being tuned.
         pick_armed: 0,
         wheel_count: 2,
@@ -172,6 +176,79 @@ fn the_pin_switches_write_the_side_they_are_on() {
             &click_real(joint(0), id),
             JointFieldEdit::MotorEnabled(i == 1),
             &format!("motor switch {i}"),
+        );
+    }
+}
+
+/// Tag do Weld — o único tipo que pode ser MOLE (W-SoftWeld).
+const KIND_WELD: u8 = 3;
+
+/// A MOLA: os dois campos que a Spring, a suspensão de um Wheel e uma solda MOLE
+/// compartilham. Gêmea da const local do `each_kind_paints_only_the_rows_it_uses`
+/// — ela vive lá dentro, e duplicá-la aqui é mais honesto que hoistá-la, porque
+/// as duas afirmam coisas diferentes sobre os mesmos ids.
+const SPRING_ROWS: [ph2d_a11y::NodeId; 2] = [ids::INSP_JOINT_STIFFNESS, ids::INSP_JOINT_DAMPING];
+
+/// Tudo o que a §12 pinta para este joint.
+fn painted_ids(info: InspectorJointInfo) -> Vec<ph2d_a11y::NodeId> {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_joint(Some(info));
+    let out = host
+        .paint::<InspectorPanel>(&mut state, VIEWPORT)
+        .into_iter()
+        .map(|(n, _)| n)
+        .collect();
+    set_current_inspector_joint(None);
+    out
+}
+
+/// **A chave `Rigid | Soft` é uma chave, e é alcançada por um clique REAL.**
+///
+/// ⚠️ `click_real` e não um `WidgetEvent` sintético: um evento fabricado pula a
+/// checagem de FOCABILIDADE do store, e é assim que um chip pintado, registrado
+/// no hit index e AUSENTE do `populate` passa por verde — as 36 células do W2c
+/// e os dois chips do W-AreaFrame já foram esse bug.
+#[test]
+fn the_soft_switch_writes_the_side_it_is_on() {
+    let weld = |soft: bool| {
+        let mut j = joint(KIND_WELD);
+        j.soft = soft;
+        j
+    };
+    for (i, &id) in ids::INSP_JOINT_SOFT.iter().enumerate() {
+        expect(
+            &click_real(weld(true), id),
+            JointFieldEdit::Soft(i == 1),
+            &format!("soft switch {i}"),
+        );
+    }
+}
+
+/// **A solda RÍGIDA não tem mola, e a MOLE tem** — a condicional que a tabela de
+/// donos do `each_kind_paints_only_the_rows_it_uses` não consegue expressar
+/// (ela é função só do TIPO, e esta é a única row do painel que também é função
+/// de um FLAG).
+///
+/// As duas metades num gate só de propósito: sozinha, a primeira ficaria verde
+/// sobre uma feature que nunca pinta nada, e a segunda sobre uma que pinta a
+/// mola em toda solda — inclusive na rígida, onde os dois números não alcançam
+/// o solver e seriam controles mortos.
+#[test]
+fn a_rigid_weld_has_no_spring_and_a_soft_one_does() {
+    let weld = |soft: bool| {
+        let mut j = joint(KIND_WELD);
+        j.soft = soft;
+        j
+    };
+    for &id in &SPRING_ROWS {
+        assert!(
+            !painted_ids(weld(false)).contains(&id),
+            "a solda RÍGIDA pintou {id:?}: os dois números não alcançam o solver              nela, então são controles mortos"
+        );
+        assert!(
+            painted_ids(weld(true)).contains(&id),
+            "a solda MOLE não pintou {id:?} — a dureza dela é exatamente esses              dois campos"
         );
     }
 }
@@ -407,11 +484,19 @@ fn each_kind_paints_only_the_rows_it_uses() {
                 }
             );
         }
-        // A mola pertence à Spring E ao Wheel; o comprimento à Rope, ao Rod E à
-        // Pulley (nela o número é a CORDA inteira — o mesmo campo, outro rótulo).
+        // A mola pertence à Spring, ao Wheel E à solda MOLE; o comprimento à Rope,
+        // ao Rod E à Pulley (nela o número é a CORDA inteira — o mesmo campo,
+        // outro rótulo).
+        //
+        // ⚠️ **O Weld (3) está na lista porque a FIXTURE é mole** — nele a mola é
+        // condicional, e é a única entrada desta tabela que não é função só do
+        // tipo. As duas metades da condição têm gate PRÓPRIO
+        // (`a_rigid_weld_has_no_spring_and_a_soft_one_does`); esta tabela
+        // sozinha, com um Weld rígido na fixture, diria `[1, 6]` e ficaria verde
+        // sobre uma solda mole sem mola nenhuma.
         for (owners, ids_) in [
             (&[1u8][..], &REST_ONLY[..]),
-            (&[1, 6][..], &SPRING_ROWS[..]),
+            (&[1, 3, 6][..], &SPRING_ROWS[..]),
             (&[2, 5, 7][..], &LENGTH_ROWS[..]),
         ] {
             for &id in ids_ {
@@ -874,6 +959,8 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         &ids::INSP_JOINT_COLLIDE[..],
         // W-JointWorld: o par Object|World do lado B.
         &ids::INSP_JOINT_ANCHOR_B[..],
+        // W-SoftWeld: o par Rigid|Soft de uma solda.
+        &ids::INSP_JOINT_SOFT[..],
     ] {
         not_a_number.extend_from_slice(group);
     }
@@ -886,6 +973,7 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_JOINT_ACTIVE_GROUP,
         ids::INSP_JOINT_COLLIDE_GROUP,
         ids::INSP_JOINT_ANCHOR_B_GROUP,
+        ids::INSP_JOINT_SOFT_GROUP,
         ids::INSP_JOINT_SWAP,
         // O botão que acrescenta uma roldana (W-Pulley W1) — botão, não número.
         ids::INSP_JOINT_ADD_WHEEL,

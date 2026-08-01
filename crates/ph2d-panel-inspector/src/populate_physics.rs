@@ -43,6 +43,8 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_ACTIVE);
     register_button_ids(store, &ids::INSP_JOINT_COLLIDE);
     register_button_ids(store, &ids::INSP_JOINT_ANCHOR_B);
+    // W-SoftWeld — mesma razão da linha acima.
+    register_button_ids(store, &ids::INSP_JOINT_SOFT);
     register_button_ids(
         store,
         &[

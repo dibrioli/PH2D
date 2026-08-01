@@ -24,6 +24,9 @@ mod hold;
 pub mod ik;
 mod inspect;
 pub mod joint_break;
+/// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
+/// LOC, cortado por responsabilidade (docs dele).
+pub mod joint_desc;
 mod joint_respawn;
 pub mod joints;
 mod kinematic;

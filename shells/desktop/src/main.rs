@@ -225,6 +225,7 @@ mod physics_smoke_pulley_weston;
 mod physics_smoke_rig;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;
+mod physics_smoke_soft_weld;
 mod physics_smoke_wheel;
 mod physics_smoke_world_pin;
 mod physics_smoke_zones;

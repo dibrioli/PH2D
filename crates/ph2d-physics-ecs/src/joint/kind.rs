@@ -305,6 +305,14 @@ impl JointKind {
     /// — a Weld cantilever holds 4.905 N·m and reads `0.0000`. A Rope and a
     /// Spring leave the angular axis free, so their torque is genuinely zero.
     ///
+    /// ⚠️ **A frase sobre o Weld ficou meia-verdadeira em 2026-07-31** e esta é a
+    /// nota reconferida: ela vale para uma solda **RÍGIDA**, e uma solda MOLE
+    /// (W-SoftWeld) MOTORIZA justamente o eixo que a rígida trava — medido, a
+    /// mesma viga lê **0,9619 N·m** mole contra **0,0000** rígida. Por isso a
+    /// pergunta que o painel e a ponte fazem é a da INSTÂNCIA
+    /// ([`super::PhysicsJoint::breaks_on_torque`]); esta segue respondendo pelo
+    /// TIPO, que é o que ela sempre respondeu.
+    ///
     /// ⚠️ **Um [`JointKind::Wheel`] entrou por MEDIÇÃO, e o caso dele é o mais
     /// fino da lista:** o eixo angular de uma roda é livre *enquanto o motor
     /// está desligado* e motorizado quando está ligado — medido no mesmo carro,
@@ -385,6 +393,36 @@ impl JointKind {
             JointKind::Pin
             | JointKind::Weld
             | JointKind::Slider
+            | JointKind::Wheel
+            | JointKind::Pulley => false,
+        }
+    }
+
+    /// **Este tipo pode ser MOLE?** — o [`PhysicsJoint::soft`] só significa algo
+    /// num [`JointKind::Weld`].
+    ///
+    /// Um Weld é o único que segura a ORIENTAÇÃO dos dois corpos, então é o único
+    /// que tem uma orientação a amolecer: os demais ou a deixam livre (Spring,
+    /// Rope, Rod, o giro do Wheel) ou a travam junto com o resto do que fazem
+    /// (Slider), e amolecer o ângulo de um Slider seria transformá-lo noutro
+    /// tipo, não afiná-lo.
+    ///
+    /// O painel pergunta a esta para OFERECER a caixa e a ponte pergunta a esta
+    /// antes de entregar ao solver — o mesmo par que `has_limits`/`has_motor`
+    /// fazem, e é o que impede um `soft` deixado por uma troca de tipo de
+    /// continuar em vigor em silêncio.
+    ///
+    /// ⚠️ `match` exaustivo, não `matches!`: o oitavo tipo **não compila** até
+    /// dizer a sua, que é a lei deste arquivo desde a [`JointKind::Pulley`].
+    #[must_use]
+    pub fn can_be_soft(self) -> bool {
+        match self {
+            JointKind::Weld => true,
+            JointKind::Pin
+            | JointKind::Spring
+            | JointKind::Rope
+            | JointKind::Slider
+            | JointKind::Rod
             | JointKind::Wheel
             | JointKind::Pulley => false,
         }

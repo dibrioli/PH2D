@@ -195,7 +195,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// diâmetro do eixo, que faz dela um **tambor diferencial** e devolve a vantagem
 /// mecânica CONTÍNUA que o `ratio` do W-Pulley prometia sem ter peça na cena. Um
 /// campo apendado, mesmo raciocínio posicional do v43/v44/v45.
-const PROJECT_SCHEMA: u32 = 46;
+/// v47 (physics, W-SoftWeld): o `PhysicsJoint` ganhou **`soft`** — a solda que
+/// CEDE, o vão que este conjunto tinha entre segurar um ângulo *absolutamente* e
+/// deixá-lo *inteiramente livre*. Um campo apendado, mesmo raciocínio posicional
+/// do v43..v46; a dureza reusa a `stiffness`/`damping` que a mola já carregava,
+/// então é UM bool e não três campos.
+const PROJECT_SCHEMA: u32 = 47;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

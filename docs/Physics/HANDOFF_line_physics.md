@@ -7648,3 +7648,97 @@ Gate: `shells/desktop/tests/scenes_that_ask_for_the_ruler_open_the_timeline.rs` 
 ele afirma o prólogo, e a classificação por MENSAGEM continua viva como o **preço**
 que a falha nomeia (mutação: tirar a linha ⇒ *"estas 18 cenas ficam sem onde
 clicar"*, com a lista).
+
+---
+
+## W-SoftWeld — a solda que CEDE (2026-07-31, cena `=68`, plano 02 §12)
+
+O item **6** do §8.1 do plano 02, o último numerado da lista — e com ele o §8
+fica só com os três itens que estão explicitamente **condicionados** (params
+keyframáveis, cross-line com a timeline; Custom/GenericJoint, *só se um caso real
+pedir*; rows de readout tingidas, cuja condição não é satisfeita).
+
+**O vão, e ele é o espelho do Rod.** Este conjunto sabia segurar um ângulo de dois
+jeitos e só dois: **absoluto** (Weld, Slider) ou **livre** (Spring, Rope, Rod, o
+giro do Wheel). Um poste que balança e volta, um pescoço que resiste mas cede, uma
+placa que treme — nenhum era exprimível.
+
+### As duas medições que decidiram o desenho (não a nota do plano)
+
+⚠️ **A receita que o §8 prescrevia foi construída e REPROVADA.** Ela dizia *"não
+travar nada + três molas em alvo 0"*; sob o próprio peso o braço deriva **0,92 m**
+para longe da parede e balança **104°** pico-a-pico sem nunca assentar — as peças
+vêm APART, que se lê como a solda **falhando**. O que shipou trava `LIN_X`+`LIN_Y`
+e amolece só o `AngX`: separação **`0,0000 m`** em toda a varredura.
+
+⚠️ **E o ganho angular é MEDIDO.** A rigidez linear é N/m, a angular é N·m/rad, e
+o knob do artista é um só. Com os defaults dele, ganho 1 → 31,6° de pendor com
+**77,2° de balanço que nunca para**; ganho 10 é o joelho; **20** é o dobro dele e
+põe o default em **5,3° e parado**. A faixa inteira assenta (stiffness 1 → 65,5°,
+1000 → 0,16°).
+
+⚠️ **O pendor não depende da CARGA** — o motor de posição do rapier é normalizado
+pela massa: 100× de massa (0,05 → 5 kg) mede os MESMOS 31,6°. Vale saber antes de
+afinar contra um corpo pesado.
+
+### Onde o flag mora, e por que NÃO é um marcador
+
+`PhysicsJoint.soft: bool` apendado ⇒ **`PROJECT_SCHEMA` 46→47** (tripla
+`(47, 12, 13)`). Um componente-marcador é o idioma desta linha (`Ccd`,
+`LockRotation`, `OneWayPlatform`, `JointWorldAnchor`) e custaria **zero bump** —
+o que decidiu contra ele foi o **copy/paste de propriedades** (W-JointCopy): ele
+desestrutura `PhysicsJoint` **exaustivamente**, então um campo novo **não compila**
+até ser classificado, e um marcador escaparia do paste **em silêncio**. A dureza
+reusa `stiffness`/`damping`, então é UM bool e não três campos.
+
+### A consequência que a medição achou de carona
+
+O **break torque** passa a alcançar uma solda mole (**0,9619 N·m** contra
+**0,0000** da rígida): rapier publica a reação de um eixo motorizado e nada de um
+travado. A nota do `JointKind::breaks_on_torque` ficou meia-verdadeira e foi
+**reconferida**; a pergunta virou a da INSTÂNCIA (`PhysicsJoint::breaks_on_torque`).
+É o caso do Wheel outra vez — *quem manda é o estado em que a row pode ser
+alcançada* —, e o preço, igual ao dele, é que a caixa de Break de uma solda
+RÍGIDA mostra um limiar que nunca dispara.
+
+### O que ficou intocado de propósito
+
+- **A solda rígida continua um `FixedJoint`** — exata e mais barata que um motor
+  rigidíssimo. A chave seleciona restrições genuinamente diferentes.
+- **`is_rigid_link` (IK/FK) segue incluindo o Weld** e o `soft` não a muda: posar
+  escreve `Transform`s, e uma solda mole segura os dois corpos JUNTOS.
+- **`ph2d-panel-physics` (§11) não foi tocado** — `soft` é parâmetro de joint.
+
+### Números
+
+`physics_ecs_c9` **96 → 98 corpos**, hash **`58b0bae0…`** (debug ≡ release) — a
+lane nova é um caminho de solver próprio. Registro do `ph2d-physics-ecs` **fica em
+24** (nenhum componente novo); ids novos: `INSP_JOINT_SOFT_GROUP` +
+`INSP_JOINT_SOFT[2]`. **Nenhum ADR, nenhuma dep, nenhuma crate nova**; contrato
+congelado intacto.
+
+**LOC:** `bridge/joints.rs` bateu 706 ⇒ irmão **`bridge/joint_desc.rs`** (610 +
+113), cortado por responsabilidade — *o que este joint É para o solver* × *manter
+os joints do solver em dia com a cena*.
+
+### Gates e a mutação que sobreviveu
+
+4 no wrapper (verga · não se abre · assenta · o knob ordena e toda a faixa
+assenta) · 5 no ECS (o flag chega ao solver · o rewind re-arma · inerte fora do
+Weld · só o Weld pode ser mole · só a mole parte sob torção) · 2 no painel (a
+chave por clique REAL · rígida-sem-mola E mole-com-mola) · 1 de persistência · 3
+na cena. **8 mutações, 7 sangram.**
+
+⚠️ **A sobrevivente acusou uma AFIRMAÇÃO minha, não um buraco:** eu escrevera que
+o `can_be_soft` da ponte impedia um `soft` deixado por troca de tipo de seguir em
+vigor. `desc.soft` tem **UM leitor** no wrapper inteiro (o braço `Weld` do
+`spawn_joint`), então um Pin com o flag já o ignora — o guard é **higiene**, o
+doc-comment foi corrigido, e ele fica porque a MESMA porta é load-bearing um andar
+acima (no `breaks_on_torque`, onde a mutação sangra).
+
+**Smoke: `PH2D_PHYSICS_SMOKE=68`** — quatro vigas idênticas, quatro soldas
+diferentes: cinza RÍGIDA (o controle, 0,00°), verde MOLE no default (3,03°),
+laranja MOLE frouxa (26,83°) e azul MOLE sob uma bola pesada (pico **62,42°**,
+volta a 3,01°). ⚠️ Os números são os da CENA e não os da fixture do wrapper — o
+braço aqui é 1,8 m e lá 1,0 m, e a sonda `probe_smoke_68` corrigiu as constantes
+que eu havia emprestado.

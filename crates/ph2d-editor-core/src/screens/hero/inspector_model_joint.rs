@@ -110,6 +110,12 @@ pub struct InspectorJointInfo {
     /// parameters and its anchors exactly where they are and stops it holding —
     /// the thing Delete cannot do.
     pub active: bool,
+    /// **Esta solda CEDE?** (W-SoftWeld — `Weld` apenas.)
+    ///
+    /// Marcada, o ângulo vira mola e a seção passa a oferecer Stiffness/Damping —
+    /// os MESMOS dois campos e os MESMOS dois ids que a Spring e o Wheel usam,
+    /// porque é a mesma coisa física noutro eixo.
+    pub soft: bool,
     /// **Do the two jointed bodies still collide with each other?** (W-J8.)
     /// Default off, and the default is measured: a chain link overlaps its
     /// neighbour at the pin by construction.
@@ -170,6 +176,10 @@ pub enum JointFieldEdit {
     /// write the same rapier flag, and only this one rides in the descriptor —
     /// so a Reset brings an inactive joint back inactive and a broken one back
     /// holding.
+    /// A solda CEDE? (W-SoftWeld.) Só um `Weld` a oferece; a ponte pergunta a
+    /// `JointKind::can_be_soft` antes de entregar ao solver, então um `soft`
+    /// deixado por uma troca de tipo não segue em vigor.
+    Soft(bool),
     Active(bool),
     /// **Do the two jointed bodies collide with each other?** (W-J8.)
     CollideConnected(bool),

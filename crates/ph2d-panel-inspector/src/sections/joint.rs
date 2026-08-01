@@ -58,9 +58,14 @@ const KIND_PIN: u8 = 0;
 /// Tag of the Spring kind.
 const KIND_SPRING: u8 = 1;
 /// Tag of the Rope kind. Named so the Rope branch is explicit and a Weld
-/// (tag 3) — which has no parameter rows at all — falls through to nothing
-/// instead of inheriting the Rope's "Max Length" from a bare `else`.
+/// falls through to nothing instead of inheriting the Rope's "Max Length" from
+/// a bare `else`.
 const KIND_ROPE: u8 = 2;
+/// Tag of the Weld kind. ⚠️ **Ele deixou de não ter parâmetro nenhum** — o doc do
+/// [`KIND_ROPE`] dizia *"which has no parameter rows at all"*, verdade até a
+/// W-SoftWeld: uma solda MOLE oferece a chave `Rigid | Soft` e, marcada, os dois
+/// campos da mola.
+const KIND_WELD: u8 = 3;
 /// Tag of the Rod kind. A rigid bar: ONE number (the length), no limits and no
 /// motor — so it paints exactly one row, and shares `INSP_JOINT_MAX_LENGTH` with
 /// the Rope because engine-side it is the same authored field.
@@ -110,9 +115,21 @@ const fn limits_label(kind_tag: u8) -> &'static str {
 /// thing — what differs is the SCALE they want (a spring hangs a body, a
 /// suspension holds a vehicle up), which is why the kind change re-seeds them
 /// engine-side (`PhysicsJoint::default_spring`).
-const fn kind_has_spring(kind_tag: u8) -> bool {
-    kind_tag == KIND_SPRING || kind_tag == KIND_WHEEL
+///
+/// ⚠️ **E um WELD MOLE é a terceira**, o que fez esta pergunta deixar de ser
+/// função só do tipo: a mola de uma solda existe quando a chave `Soft` está
+/// marcada. É a mesma forma do `breaks_on_torque` de um Wheel — *o estado em que
+/// a row pode ser alcançada* é quem manda —, e o flag chega aqui em vez de o
+/// painter perguntar `kind == Weld && info.soft` no sítio da pintura, que é a
+/// enumeração que apodrece.
+const fn kind_has_spring(kind_tag: u8, soft: bool) -> bool {
+    kind_tag == KIND_SPRING || kind_tag == KIND_WHEEL || (kind_tag == KIND_WELD && soft)
 }
+
+/// **Rigid · Soft** — os dois estados de uma solda, e não um Off/On genérico: o
+/// artista escolhe entre duas coisas que uma solda PODE SER, do jeito que o
+/// `Solid | Sensor` e o `Discrete | Continuous` da §11 já falam.
+const SOFT_LABELS: [&str; 2] = ["Rigid", "Soft"];
 
 /// **Este tipo pode PARTIR sob carga?** Todos, hoje.
 ///
@@ -410,10 +427,30 @@ fn paint_kind_params(
             ids::INSP_JOINT_REST_LENGTH,
         );
     }
-    // A mola: da Spring (que PENDURA um corpo) e do Wheel (cuja suspensão
-    // SUSTENTA um). Mesmos dois campos, mesmos dois ids — é a mesma coisa
-    // física, e por isso a troca de tipo re-semeia a ESCALA deles.
-    if kind_has_spring(info.kind_tag) {
+    // A solda que CEDE (W-SoftWeld). A chave vem ANTES da mola porque é ela quem
+    // a revela — a mesma ordem do `Limits` e do seu Min/Max.
+    if info.kind_tag == KIND_WELD {
+        yy = seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            "Weld",
+            ids::INSP_JOINT_SOFT_GROUP,
+            &ids::INSP_JOINT_SOFT,
+            &SOFT_LABELS,
+            u8::from(info.soft),
+        );
+    }
+    // A mola: da Spring (que PENDURA um corpo), do Wheel (cuja suspensão
+    // SUSTENTA um) e da solda MOLE (cujo ÂNGULO cede). Mesmos dois campos,
+    // mesmos dois ids — é a mesma coisa física, e por isso a troca de tipo
+    // re-semeia a ESCALA deles.
+    if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
             ("Stiffness", ids::INSP_JOINT_STIFFNESS),
             ("Damping", ids::INSP_JOINT_DAMPING),

@@ -58,6 +58,8 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::CollideConnected(i == 1))
             } else if let Some(i) = ids::INSP_JOINT_ANCHOR_B.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::AnchorToWorld(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_SOFT.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::Soft(i == 1))
             } else {
                 ids::INSP_JOINT_MOTOR_MODE
                     .iter()

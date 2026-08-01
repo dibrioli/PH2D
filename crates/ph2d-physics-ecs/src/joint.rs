@@ -208,6 +208,27 @@ pub struct PhysicsJoint {
     /// to a static block **rests on it** (`y = 0.899`) with contacts on and falls
     /// straight through it to the rope's full length (`y = −4.000`) with them off.
     pub collide_connected: bool,
+    /// **Esta solda CEDE?** ([`JointKind::Weld`] apenas.)
+    ///
+    /// Um Weld segura a ORIENTAÇÃO dos dois corpos, e a segura absolutamente.
+    /// Marcado, o ângulo vira uma MOLA: as duas peças continuam unidas na âncora
+    /// (medido: separação `0,0000 m` em toda a varredura) e só o ângulo verga sob
+    /// carga, voltando sozinho. O poste que balança no vento, o pescoço que
+    /// resiste mas cede, a placa que treme — nenhum era exprimível, porque este
+    /// conjunto só sabia segurar um ângulo **absolutamente** (Weld, Slider) ou
+    /// deixá-lo **inteiramente livre** (Spring, Rope, Rod, o giro do Wheel).
+    ///
+    /// A dureza é a [`Self::stiffness`] e a [`Self::damping`] — os MESMOS dois
+    /// campos que uma Spring usa, porque é a mesma coisa física num eixo
+    /// diferente; a conversão de unidade vive em
+    /// [`ph2d_physics::JointDesc::SOFT_WELD_ANGULAR_GAIN`], com a varredura que a
+    /// escolheu.
+    ///
+    /// ⚠️ **Apendado no FIM** (postcard é POSICIONAL), com `PROJECT_SCHEMA`
+    /// bumpando junto: um blob v46 tem o comprimento errado para este struct.
+    /// Inserir no meio faria todo joint de todo projeto salvo decodificar como
+    /// outra coisa — em silêncio, que é o oposto de recusar o arquivo.
+    pub soft: bool,
     // ⚠️ **As ROLDANAS de uma polia NÃO moram aqui** — cada uma é uma ENTIDADE
     // própria, com `PulleyWheel` e `Transform` (W-Pulley W1). Elas viveram neste
     // struct, como dois pontos de mundo mais um `ratio`, e os três campos saíram
@@ -255,6 +276,10 @@ impl Default for PhysicsJoint {
             // measured there.
             active: true,
             collide_connected: false,
+            // Uma solda é RÍGIDA. A que cede é a variante, então todo projeto que
+            // precede esta wave abre com o `FixedJoint` com que foi autorado — e
+            // é isso que mantém o `physics_ecs_c9` dos corpos antigos intacto.
+            soft: false,
         }
     }
 }
@@ -483,6 +508,31 @@ impl PhysicsJoint {
     /// (measured: `rot 0.000` after 180 steps). A hinge the artist believes is
     /// limited to ±45° being a weld is the kind of wrong that has no symptom
     /// to search for, so the pair is ordered here.
+    /// **ESTE joint pode partir sob TORQUE?** — a pergunta que o painel faz para
+    /// oferecer a row e a ponte faz para entregar o limiar.
+    ///
+    /// [`JointKind::breaks_on_torque`] responde pelo TIPO; esta responde pela
+    /// INSTÂNCIA, e a diferença é uma solda mole. rapier publica a reação de um
+    /// eixo angular *limitado ou motorizado* e **nada** de um TRAVADO — e o
+    /// `soft` é exatamente o que troca um pelo outro. Medido na mesma viga em
+    /// balanço, com os mesmos defaults:
+    ///
+    /// | solda | força | torque |
+    /// |---|---|---|
+    /// | rígida | 1,9620 N | **0,0000 N·m** |
+    /// | mole | 2,0044 N | **0,9619 N·m** |
+    ///
+    /// ⚠️ **É o caso do [`JointKind::Wheel`] outra vez** (o eixo dele é livre com
+    /// o motor desligado e motorizado com ele ligado, 0,0000 contra 0,5125): quem
+    /// manda é *o estado em que a row pode ser alcançada*, e negá-la deixaria a
+    /// torção ser o único jeito de arrancar uma solda mole sem que exista o
+    /// número que a segura. O preço, igual ao do Wheel, é que a caixa de Break
+    /// de uma solda RÍGIDA mostra um limiar de torque que nunca dispara.
+    #[must_use]
+    pub fn breaks_on_torque(&self) -> bool {
+        self.kind.breaks_on_torque() || (self.kind.can_be_soft() && self.soft)
+    }
+
     pub fn clamped(mut self) -> Self {
         fn finite(v: f32, fallback: f32) -> f32 {
             if v.is_finite() { v } else { fallback }

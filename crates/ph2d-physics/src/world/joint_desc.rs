@@ -241,6 +241,31 @@ pub struct JointDesc {
     /// rebuild clears it). A joint that is authored inactive comes back inactive
     /// from a Reset; a broken one comes back holding.
     pub enabled: bool,
+    /// [`JointKind::Weld`]: **does this weld GIVE?**
+    ///
+    /// A weld is the only kind that holds the two bodies' *orientation*, and it
+    /// holds it absolutely: the axes are LOCKED. Set this and the angle becomes a
+    /// spring instead — the two stay joined at the anchor, but the piece flexes
+    /// under load and springs back.
+    ///
+    /// The gap it fills is the mirror of the [`JointKind::Rod`]'s. This kit could
+    /// hold an angle **absolutely** (Weld, Slider) or leave it **entirely free**
+    /// (Spring, Rope, Rod, a Wheel's spin), with nothing in between: a signpost
+    /// that sways and springs back, a neck that resists but yields, a bridge deck
+    /// that flexes — none of them were expressible.
+    ///
+    /// ⚠️ **The obvious construction is measured and dead, and it is why this is
+    /// a flag on the DESCRIPTOR rather than two knobs on the fixed joint.**
+    /// Putting a spring on a `FixedJoint`'s axes does nothing:
+    /// `contact_constraints_set.rs:48` computes
+    /// `let motor_axes = joint.motor_axes.bits() & !locked_axes` — a motor on a
+    /// LOCKED axis is masked out. A soft weld is not a tunable rigid weld; it is
+    /// a different constraint that answers the same question.
+    ///
+    /// The stiffness and damping are the artist's own ([`Self::stiffness`],
+    /// [`Self::damping`]) — the same two fields a Spring uses, because it is the
+    /// same physical thing on three axes instead of one.
+    pub soft: bool,
     /// **Do the two jointed bodies collide with each other?**
     ///
     /// `false` — the default, and the right one — because the canonical case is a
@@ -281,6 +306,11 @@ impl Default for JointDesc {
             break_torque: f32::INFINITY,
             // A joint holds; that is what a joint is for.
             enabled: true,
+            // A weld is rigid. The soft one is the variant, so every scene that
+            // predates this wave keeps the `FixedJoint` it was built with — and
+            // that is what makes the `physics_ecs_c9` hash of the old bodies
+            // survive it.
+            soft: false,
             // Jointed bodies do not collide — see the field, where the number
             // that decided it lives.
             contacts_enabled: false,
@@ -422,4 +452,37 @@ impl JointDesc {
     /// nothing is coupled, so both ends hold — and only the DROOP stop proves
     /// it, because a magnitude limit would honour the `max` too.
     pub const WHEEL_TRAVEL: f32 = 0.15;
+
+    /// What the artist's [`Self::stiffness`] **and** [`Self::damping`] are
+    /// multiplied by on a soft weld's **ANGULAR** axis.
+    ///
+    /// It exists because the two axes do not share a unit — a spring's stiffness
+    /// is N/m and a weld's is N·m/rad — so the artist's number cannot mean the
+    /// same thing in both places. Both gains carry the SAME factor on purpose:
+    /// that preserves the damping *ratio*, which is what decides whether the
+    /// joint settles, so the character the artist tuned survives the conversion.
+    ///
+    /// **MEASURED** (`measure_soft_weld`, a 1 × 0.2 m arm welded to a wall by one
+    /// end and left under gravity for 6 s; `swing` is the peak-to-peak angle over
+    /// the last third — near zero means it stopped):
+    ///
+    /// | gain | droop | swing |
+    /// |---|---|---|
+    /// | 1 | 31.6° | **77.2°** | ← never settles: a rubber band, not a weld
+    /// | 5 | 20.9° | 8.5° |
+    /// | 10 | 10.0° | 0.0° | ← the settling knee, with no margin
+    /// | **20** | **5.3°** | **0.0°** |
+    /// | 50 | 2.2° | 0.0° |
+    /// | 200 | 0.5° | 0.0° | ← indistinguishable from rigid
+    ///
+    /// **20** is double the settling knee and lands the default at a droop that
+    /// reads as *it gives* rather than *it broke*. And the whole slider stays
+    /// usable from it: at stiffness 1 the arm hangs 65.5°, at 1000 it holds
+    /// 0.16°, and **every one of them settles** (swing 0.000 across the range).
+    ///
+    /// ⚠️ **Droop does not depend on the load**, which is worth knowing before
+    /// tuning against a heavy body: rapier's position motor is mass-normalised,
+    /// so a 100× mass sweep (0.05 kg → 5 kg) measured the SAME 31.6° — gravity
+    /// and the restoring torque scale together and the mass cancels exactly.
+    pub const SOFT_WELD_ANGULAR_GAIN: f32 = 20.0;
 }
